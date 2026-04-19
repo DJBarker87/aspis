@@ -1,0 +1,491 @@
+{
+  "generated_at_utc": "2026-04-19T16:30:12.887549+00:00",
+  "record_count": 128,
+  "upload_model": {
+    "chosen": {
+      "method": "huber_irls",
+      "selected_features": [
+        "upload_bytes",
+        "upload_chunks"
+      ],
+      "dropped_features": [],
+      "coefficients": {
+        "intercept": {
+          "estimate": 1.4613865673140936e-12,
+          "stderr": 7.819933433510804e-13,
+          "rationale": "baseline transaction/program overhead"
+        },
+        "sha_calls": null,
+        "sha_bytes": null,
+        "merkle_levels": null,
+        "proof_bytes": null,
+        "upload_bytes": {
+          "estimate": -4.208872833588728e-16,
+          "stderr": 2.7698279737712974e-16,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "upload_chunks": {
+          "estimate": 836.0,
+          "stderr": 9.14948335037756e-14,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "heap_pages_32k": null,
+        "ro_account_count": null,
+        "rw_account_count": null,
+        "account_data_bytes_read": null,
+        "account_data_bytes_written": null,
+        "field_add_sub_ops": null,
+        "field_mul_ops": null,
+        "field_inv_ops": null,
+        "extension_mul_ops": null
+      },
+      "metrics": {
+        "record_count": 10,
+        "rmse": 6.933965179076453e-13,
+        "mae": 3.410605131648481e-13,
+        "p95_abs_error": 1.5120349416974925e-12,
+        "max_abs_error": 1.8189894035458565e-12,
+        "r_squared": 1.0
+      },
+      "uncertainty_rmse": 6.933965179076453e-13,
+      "condition_number": 11674.76158156944,
+      "notes": [
+        "Huber IRLS down-weights outliers from local validator noise or allocator jitter."
+      ]
+    },
+    "ols": {
+      "method": "ordinary_least_squares",
+      "selected_features": [
+        "upload_bytes",
+        "upload_chunks"
+      ],
+      "dropped_features": [],
+      "coefficients": {
+        "intercept": {
+          "estimate": 1.4613865673140936e-12,
+          "stderr": 7.819933433510804e-13,
+          "rationale": "baseline transaction/program overhead"
+        },
+        "sha_calls": null,
+        "sha_bytes": null,
+        "merkle_levels": null,
+        "proof_bytes": null,
+        "upload_bytes": {
+          "estimate": -4.208872833588728e-16,
+          "stderr": 2.7698279737712974e-16,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "upload_chunks": {
+          "estimate": 836.0,
+          "stderr": 9.14948335037756e-14,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "heap_pages_32k": null,
+        "ro_account_count": null,
+        "rw_account_count": null,
+        "account_data_bytes_read": null,
+        "account_data_bytes_written": null,
+        "field_add_sub_ops": null,
+        "field_mul_ops": null,
+        "field_inv_ops": null,
+        "extension_mul_ops": null
+      },
+      "metrics": {
+        "record_count": 10,
+        "rmse": 6.933965179076453e-13,
+        "mae": 3.410605131648481e-13,
+        "p95_abs_error": 1.5120349416974925e-12,
+        "max_abs_error": 1.8189894035458565e-12,
+        "r_squared": 1.0
+      },
+      "uncertainty_rmse": 6.933965179076453e-13,
+      "condition_number": 11674.76158156944,
+      "notes": [
+        "Chosen to keep the initial model additive and interpretable."
+      ]
+    },
+    "huber": {
+      "method": "huber_irls",
+      "selected_features": [
+        "upload_bytes",
+        "upload_chunks"
+      ],
+      "dropped_features": [],
+      "coefficients": {
+        "intercept": {
+          "estimate": 1.4613865673140936e-12,
+          "stderr": 7.819933433510804e-13,
+          "rationale": "baseline transaction/program overhead"
+        },
+        "sha_calls": null,
+        "sha_bytes": null,
+        "merkle_levels": null,
+        "proof_bytes": null,
+        "upload_bytes": {
+          "estimate": -4.208872833588728e-16,
+          "stderr": 2.7698279737712974e-16,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "upload_chunks": {
+          "estimate": 836.0,
+          "stderr": 9.14948335037756e-14,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "heap_pages_32k": null,
+        "ro_account_count": null,
+        "rw_account_count": null,
+        "account_data_bytes_read": null,
+        "account_data_bytes_written": null,
+        "field_add_sub_ops": null,
+        "field_mul_ops": null,
+        "field_inv_ops": null,
+        "extension_mul_ops": null
+      },
+      "metrics": {
+        "record_count": 10,
+        "rmse": 6.933965179076453e-13,
+        "mae": 3.410605131648481e-13,
+        "p95_abs_error": 1.5120349416974925e-12,
+        "max_abs_error": 1.8189894035458565e-12,
+        "r_squared": 1.0
+      },
+      "uncertainty_rmse": 6.933965179076453e-13,
+      "condition_number": 11674.76158156944,
+      "notes": [
+        "Huber IRLS down-weights outliers from local validator noise or allocator jitter."
+      ]
+    }
+  },
+  "account_io_model": {
+    "chosen": {
+      "method": "huber_irls",
+      "selected_features": [
+        "ro_account_count",
+        "rw_account_count",
+        "account_data_bytes_read",
+        "account_data_bytes_written"
+      ],
+      "dropped_features": [],
+      "coefficients": {
+        "intercept": {
+          "estimate": 438.0000000000193,
+          "stderr": 1.750376550909134e-11,
+          "rationale": "baseline transaction/program overhead"
+        },
+        "sha_calls": null,
+        "sha_bytes": null,
+        "merkle_levels": null,
+        "proof_bytes": null,
+        "upload_bytes": null,
+        "upload_chunks": null,
+        "heap_pages_32k": null,
+        "ro_account_count": {
+          "estimate": 208.9999999999996,
+          "stderr": 4.424274223058994e-12,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "rw_account_count": {
+          "estimate": 224.00000000000387,
+          "stderr": 8.55623913849003e-12,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "account_data_bytes_read": {
+          "estimate": 0.2812499999999993,
+          "stderr": 3.8671976267239244e-15,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "account_data_bytes_written": {
+          "estimate": 9.999999999999874,
+          "stderr": 3.115669741063942e-14,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "field_add_sub_ops": null,
+        "field_mul_ops": null,
+        "field_inv_ops": null,
+        "extension_mul_ops": null
+      },
+      "metrics": {
+        "record_count": 26,
+        "rmse": 3.28364721809871e-11,
+        "mae": 2.1880343690729484e-11,
+        "p95_abs_error": 8.594724931754172e-11,
+        "max_abs_error": 1.0186340659856796e-10,
+        "r_squared": 1.0
+      },
+      "uncertainty_rmse": 3.28364721809871e-11,
+      "condition_number": 7110.823839791714,
+      "notes": [
+        "Huber IRLS down-weights outliers from local validator noise or allocator jitter."
+      ]
+    },
+    "ols": {
+      "method": "ordinary_least_squares",
+      "selected_features": [
+        "ro_account_count",
+        "rw_account_count",
+        "account_data_bytes_read",
+        "account_data_bytes_written"
+      ],
+      "dropped_features": [],
+      "coefficients": {
+        "intercept": {
+          "estimate": 438.0000000000193,
+          "stderr": 1.750376550909134e-11,
+          "rationale": "baseline transaction/program overhead"
+        },
+        "sha_calls": null,
+        "sha_bytes": null,
+        "merkle_levels": null,
+        "proof_bytes": null,
+        "upload_bytes": null,
+        "upload_chunks": null,
+        "heap_pages_32k": null,
+        "ro_account_count": {
+          "estimate": 208.9999999999996,
+          "stderr": 4.424274223058994e-12,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "rw_account_count": {
+          "estimate": 224.00000000000387,
+          "stderr": 8.55623913849003e-12,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "account_data_bytes_read": {
+          "estimate": 0.2812499999999993,
+          "stderr": 3.8671976267239244e-15,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "account_data_bytes_written": {
+          "estimate": 9.999999999999874,
+          "stderr": 3.115669741063942e-14,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "field_add_sub_ops": null,
+        "field_mul_ops": null,
+        "field_inv_ops": null,
+        "extension_mul_ops": null
+      },
+      "metrics": {
+        "record_count": 26,
+        "rmse": 3.28364721809871e-11,
+        "mae": 2.1880343690729484e-11,
+        "p95_abs_error": 8.594724931754172e-11,
+        "max_abs_error": 1.0186340659856796e-10,
+        "r_squared": 1.0
+      },
+      "uncertainty_rmse": 3.28364721809871e-11,
+      "condition_number": 7110.823839791714,
+      "notes": [
+        "Chosen to keep the initial model additive and interpretable."
+      ]
+    },
+    "huber": {
+      "method": "huber_irls",
+      "selected_features": [
+        "ro_account_count",
+        "rw_account_count",
+        "account_data_bytes_read",
+        "account_data_bytes_written"
+      ],
+      "dropped_features": [],
+      "coefficients": {
+        "intercept": {
+          "estimate": 438.0000000000193,
+          "stderr": 1.750376550909134e-11,
+          "rationale": "baseline transaction/program overhead"
+        },
+        "sha_calls": null,
+        "sha_bytes": null,
+        "merkle_levels": null,
+        "proof_bytes": null,
+        "upload_bytes": null,
+        "upload_chunks": null,
+        "heap_pages_32k": null,
+        "ro_account_count": {
+          "estimate": 208.9999999999996,
+          "stderr": 4.424274223058994e-12,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "rw_account_count": {
+          "estimate": 224.00000000000387,
+          "stderr": 8.55623913849003e-12,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "account_data_bytes_read": {
+          "estimate": 0.2812499999999993,
+          "stderr": 3.8671976267239244e-15,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "account_data_bytes_written": {
+          "estimate": 9.999999999999874,
+          "stderr": 3.115669741063942e-14,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "field_add_sub_ops": null,
+        "field_mul_ops": null,
+        "field_inv_ops": null,
+        "extension_mul_ops": null
+      },
+      "metrics": {
+        "record_count": 26,
+        "rmse": 3.28364721809871e-11,
+        "mae": 2.1880343690729484e-11,
+        "p95_abs_error": 8.594724931754172e-11,
+        "max_abs_error": 1.0186340659856796e-10,
+        "r_squared": 1.0
+      },
+      "uncertainty_rmse": 3.28364721809871e-11,
+      "condition_number": 7110.823839791714,
+      "notes": [
+        "Huber IRLS down-weights outliers from local validator noise or allocator jitter."
+      ]
+    }
+  },
+  "field_inv_model": {
+    "chosen": {
+      "method": "huber_irls",
+      "selected_features": [
+        "field_inv_ops"
+      ],
+      "dropped_features": [],
+      "coefficients": {
+        "intercept": {
+          "estimate": 400.99999999972647,
+          "stderr": 9.956251658291936e-11,
+          "rationale": "baseline transaction/program overhead"
+        },
+        "sha_calls": null,
+        "sha_bytes": null,
+        "merkle_levels": null,
+        "proof_bytes": null,
+        "upload_bytes": null,
+        "upload_chunks": null,
+        "heap_pages_32k": null,
+        "ro_account_count": null,
+        "rw_account_count": null,
+        "account_data_bytes_read": null,
+        "account_data_bytes_written": null,
+        "field_add_sub_ops": null,
+        "field_mul_ops": null,
+        "field_inv_ops": {
+          "estimate": 11280.250000000004,
+          "stderr": 1.872658416006289e-12,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "extension_mul_ops": null
+      },
+      "metrics": {
+        "record_count": 12,
+        "rmse": 1.767323963793914e-10,
+        "mae": 1.4309383307894072e-10,
+        "p95_abs_error": 2.473825588822365e-10,
+        "max_abs_error": 2.473825588822365e-10,
+        "r_squared": 1.0
+      },
+      "uncertainty_rmse": 1.767323963793914e-10,
+      "condition_number": 94.7375669951408,
+      "notes": [
+        "Huber IRLS down-weights outliers from local validator noise or allocator jitter."
+      ]
+    },
+    "ols": {
+      "method": "ordinary_least_squares",
+      "selected_features": [
+        "field_inv_ops"
+      ],
+      "dropped_features": [],
+      "coefficients": {
+        "intercept": {
+          "estimate": 400.99999999972647,
+          "stderr": 9.956251658291936e-11,
+          "rationale": "baseline transaction/program overhead"
+        },
+        "sha_calls": null,
+        "sha_bytes": null,
+        "merkle_levels": null,
+        "proof_bytes": null,
+        "upload_bytes": null,
+        "upload_chunks": null,
+        "heap_pages_32k": null,
+        "ro_account_count": null,
+        "rw_account_count": null,
+        "account_data_bytes_read": null,
+        "account_data_bytes_written": null,
+        "field_add_sub_ops": null,
+        "field_mul_ops": null,
+        "field_inv_ops": {
+          "estimate": 11280.250000000004,
+          "stderr": 1.872658416006289e-12,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "extension_mul_ops": null
+      },
+      "metrics": {
+        "record_count": 12,
+        "rmse": 1.767323963793914e-10,
+        "mae": 1.4309383307894072e-10,
+        "p95_abs_error": 2.473825588822365e-10,
+        "max_abs_error": 2.473825588822365e-10,
+        "r_squared": 1.0
+      },
+      "uncertainty_rmse": 1.767323963793914e-10,
+      "condition_number": 94.7375669951408,
+      "notes": [
+        "Chosen to keep the initial model additive and interpretable."
+      ]
+    },
+    "huber": {
+      "method": "huber_irls",
+      "selected_features": [
+        "field_inv_ops"
+      ],
+      "dropped_features": [],
+      "coefficients": {
+        "intercept": {
+          "estimate": 400.99999999972647,
+          "stderr": 9.956251658291936e-11,
+          "rationale": "baseline transaction/program overhead"
+        },
+        "sha_calls": null,
+        "sha_bytes": null,
+        "merkle_levels": null,
+        "proof_bytes": null,
+        "upload_bytes": null,
+        "upload_chunks": null,
+        "heap_pages_32k": null,
+        "ro_account_count": null,
+        "rw_account_count": null,
+        "account_data_bytes_read": null,
+        "account_data_bytes_written": null,
+        "field_add_sub_ops": null,
+        "field_mul_ops": null,
+        "field_inv_ops": {
+          "estimate": 11280.250000000004,
+          "stderr": 1.872658416006289e-12,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "extension_mul_ops": null
+      },
+      "metrics": {
+        "record_count": 12,
+        "rmse": 1.767323963793914e-10,
+        "mae": 1.4309383307894072e-10,
+        "p95_abs_error": 2.473825588822365e-10,
+        "max_abs_error": 2.473825588822365e-10,
+        "r_squared": 1.0
+      },
+      "uncertainty_rmse": 1.767323963793914e-10,
+      "condition_number": 94.7375669951408,
+      "notes": [
+        "Huber IRLS down-weights outliers from local validator noise or allocator jitter."
+      ]
+    }
+  },
+  "field_inv_failed_runs": 2,
+  "notes": [
+    "Upload sweeps use aggregate records synthesized from full chunked uploads so upload_bytes and upload_chunks can be fit jointly.",
+    "Account I/O sweeps were executed against real probe-owned accounts on the local validator.",
+    "Field inversion now uses the Winterfell f128 field implementation rather than the earlier hand-rolled exponentiation kernel.",
+    "2 of 14 field inversion sweep runs still failed under the reduced settings; the fitted inversion coefficient is probe-specific and based only on successful runs."
+  ]
+}

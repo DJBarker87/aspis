@@ -1,0 +1,40 @@
+{
+  "generated_at_utc": "2026-04-19T16:30:13.283378+00:00",
+  "command": "cargo xtask phase1-next",
+  "raw_artifacts": [
+    "phase1_results/real_verifier_comparison.json",
+    "phase1_results/spend_profile_scores.json",
+    "phase1_results/refined_spend_model.json",
+    "phase1_results/refined_spend_core_model.json",
+    "phase1_results/refined_spend_scores.json",
+    "phase1_results/refined_spend_sweep.json",
+    "phase1_results/refined_spend_sweep.csv",
+    "phase1_results/structured_spend_projections.json",
+    "phase1_results/refined_spend_summary.json",
+    "phase1_results/security_qualified_spend_sweep.json",
+    "phase1_results/security_qualified_spend_sweep.csv",
+    "phase1_results/security_qualified_spend_summary.json",
+    "phase1_results/orthogonal_measurements.jsonl",
+    "phase1_results/orthogonal_measurements.csv",
+    "phase1_results/orthogonal_sweep_summary.json",
+    "phase1_results/version_manifest.json",
+    "phase1_results/phase1_next_summary.json",
+    "docs/phase1-next-experiments.md"
+  ],
+  "real_verifier_comparison_path": "phase1_results/real_verifier_comparison.json",
+  "spend_profile_scores_path": "phase1_results/spend_profile_scores.json",
+  "refined_spend_summary_path": "phase1_results/refined_spend_summary.json",
+  "refined_spend_sweep_path": "phase1_results/refined_spend_sweep.json",
+  "constrained_spend_model_path": "phase1_results/refined_spend_model.json",
+  "orthogonal_measurements_path": "phase1_results/orthogonal_measurements.jsonl",
+  "orthogonal_summary_path": "phase1_results/orthogonal_sweep_summary.json",
+  "version_manifest_path": "phase1_results/version_manifest.json",
+  "notes": [
+    "Real-verifier comparison is scored from a locally generated proof and externally measured verify_stark CSV data from pqzk-labs/solana-pqzk-fullchain.",
+    "Spend profiles now carry protocol-backed query-soundness assessments, but they still stop short of a full production-verifier security proof.",
+    "In all spend outputs, q is a literal absolute verifier-query count in the current model rather than a query-round count or hidden effective-query estimate.",
+    "Security-qualified spend outputs now sweep rate and grinding jointly, then solve for the minimum q required under each soundness assumption before scoring verifier cost.",
+    "Orthogonal sweeps were executed locally on Agave/Solana 2.3.0 using the Phase 1 probe program.",
+    "Refined spend scoring constrains account-I/O coefficients from orthogonal sweeps without refitting the full additive model; inversion is used only if the Winterfell-aligned inversion sweep completes without failures."
+  ]
+}

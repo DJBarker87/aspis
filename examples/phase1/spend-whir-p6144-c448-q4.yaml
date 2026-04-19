@@ -1,0 +1,85 @@
+name: spend-whir-p6144-c448-q4
+features:
+  sha_calls: 124
+  sha_bytes: 20416
+  merkle_paths: 6
+  merkle_levels: 96
+  proof_bytes: 6144
+  proof_segments: 12
+  upload_bytes: 6144
+  upload_chunks: 14
+  heap_frame_bytes_requested: 98304
+  heap_pages_32k: 3
+  ro_account_count: 6
+  rw_account_count: 1
+  account_data_bytes_read: 7168
+  account_data_bytes_written: 256
+  field_add_sub_ops: 2832
+  field_mul_ops: 1140
+  field_inv_ops: 5
+  extension_mul_ops: 138
+protocol_family: WHIR
+transport:
+  sha_calls: 14
+  sha_bytes: 6592
+  upload_bytes: 6144
+  upload_chunks: 14
+parameter_choices:
+- name: query_count
+  value: '4'
+  rationale: Literal absolute proof queries in the screening model. q is an explicit verifier-query counter, not a query-round counter and not an effective-query estimate after hidden batching.
+  sources:
+  - https://eprint.iacr.org/2024/1586
+- name: query_security_status
+  value: query_soundness_assessed
+  rationale: 'Query soundness is assessed with the official WHIR query-term models at inverse rate 16: Johnson-bound as the lower bound and capacity-bound as the upper bound, plus 0 PoW bits.'
+  sources:
+  - https://eprint.iacr.org/2024/1586
+- name: log_inv_rate
+  value: '4'
+  rationale: Sweeps the WHIR starting inverse code rate jointly with q and PoW; higher values improve query soundness but enlarge proof paths.
+  sources:
+  - https://eprint.iacr.org/2024/1586
+  - https://eprint.iacr.org/2025/2055
+- name: pow_bits
+  value: '0'
+  rationale: Verifier-side grinding is modeled as a fixed-size witness check when enabled; difficulty bits mainly move security, not verifier work.
+  sources:
+  - https://github.com/Plonky3/Plonky3/blob/main/whir/src/parameters/whir.rs
+  - https://github.com/Plonky3/Plonky3/blob/main/whir/src/sumcheck/data.rs
+- name: chunk_size_bytes
+  value: '448'
+  rationale: Upload chunking remains an explicit transport lever under the Solana transaction byte cap.
+  sources: []
+- name: proof_bytes
+  value: '6144'
+  rationale: Proof bytes were overridden after structured arithmetization to sweep transport sensitivity around the derived baseline.
+  sources:
+  - https://eprint.iacr.org/2024/1586
+- name: evaluation_domain_log2
+  value: '13'
+  rationale: Derived from the explicit spend arithmetization row budget rather than a hand-picked verifier proxy count.
+  sources: []
+references:
+- https://eprint.iacr.org/2024/1586
+- https://eprint.iacr.org/2024/1810
+- https://eprint.iacr.org/2025/2055
+query_soundness_model:
+  model: whir
+  query_count: 4
+  log_inv_rate: 4
+  pow_bits: 0
+  target_bits: 128.0
+  sources:
+  - https://eprint.iacr.org/2024/1586
+  - https://eprint.iacr.org/2025/2055
+  - https://github.com/Plonky3/Plonky3/blob/main/whir/src/parameters/soundness.rs
+  notes:
+  - WHIR spend scoring treats q as the explicit proximity-query count.
+notes:
+- Structured spend-screen profile derived from explicit statement and arithmetization assumptions; total_rows=6720, log2_rows=13.
+- Literal absolute proof queries in the screening model. q is an explicit verifier-query counter, not a query-round counter and not an effective-query estimate after hidden batching.
+- 'Query soundness is assessed with the official WHIR query-term models at inverse rate 16: Johnson-bound as the lower bound and capacity-bound as the upper bound, plus 0 PoW bits.'
+- This tuned screen uses log_inv_rate=4 and grinding_bits=0.
+- field_inv_ops uses a structural proxy of 5 instead of the earlier query-scaled proxy of 14.
+- Derived proof_bytes baseline was 5336; this profile overrides it to 6144 for transport sensitivity.

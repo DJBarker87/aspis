@@ -1,0 +1,770 @@
+{
+  "generated_at_utc": "2026-04-19T16:30:13.213355+00:00",
+  "sweep_path": "phase1_results/security_qualified_spend_sweep.json",
+  "best_by_protocol_assumption_target": [
+    {
+      "scenario_name": "qualified-circle-t100-r32-g32-fri_proven-m31_mul_0p75",
+      "protocol_family": "Circle",
+      "soundness_assumption": "fri_proven",
+      "security_target_bits": 100.0,
+      "cost_scenario_name": "m31_mul_0p75",
+      "rate_parameter_name": "log_blowup",
+      "log_rate": 5,
+      "reciprocal_rate": 32,
+      "grinding_bits": 32,
+      "minimum_secure_query_count": 28,
+      "total_explicit_query_count": 28,
+      "chunk_size": 640,
+      "proof_bytes": 14048,
+      "predicted_cu": 3726162.677849574,
+      "lower_cu": 3667141.2825600062,
+      "upper_cu": 3785184.073139142,
+      "verification_core_cu": 3710456.1279072287,
+      "transport_overhead_cu": 15706.549942345557,
+      "cu_budget_fraction": 2.661544769892553,
+      "proof_transport_pressure": 11.402597402597403,
+      "assumption_qualified_feasible": false,
+      "assumption_feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget",
+        "fri_proven soundness term 102.0 bits is below the 128.0-bit target"
+      ],
+      "lower_bound_model_feasible": false,
+      "lower_bound_model_feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "query_soundness": {
+        "model": "fri_query_soundness",
+        "query_count": 28,
+        "target_bits": 128.0,
+        "lower_bits": 102.0,
+        "lower_assumption": "fri_proven_rate_pow_q_over_2",
+        "upper_bits": 172.0,
+        "upper_assumption": "ethstark_conjectured_rate_pow_q",
+        "meets_target": false,
+        "notes": [
+          "Lower bound uses the proven FRI query term rate^(q/2).",
+          "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+          "Circle spend scoring treats q as the literal FRI query count."
+        ],
+        "sources": [
+          "https://eprint.iacr.org/2020/654",
+          "https://eprint.iacr.org/2021/582",
+          "https://github.com/Plonky3/Plonky3/blob/main/fri/src/config.rs",
+          "https://github.com/Plonky3/Plonky3/blob/main/fri/src/prover.rs"
+        ]
+      },
+      "notes": [
+        "Structured spend-screen profile derived from explicit statement and arithmetization assumptions; total_rows=6720, log2_rows=13.",
+        "Literal absolute proof-oracle queries in the screening model. Each unit of q contributes one proof-side Merkle authentication path; q is not a round count and not multiplied by hidden batching.",
+        "Query soundness is assessed with FRI-style lower and upper bounds at blowup 32: a proven rate^(q/2) lower bound and a conjectured ethSTARK-style rate^q upper bound, plus 32 query-grinding bits.",
+        "This tuned screen uses log_blowup=5 and grinding_bits=32.",
+        "field_inv_ops uses a structural proxy of 8 instead of the earlier query-scaled proxy of 38.",
+        "Inferred scenario: scales field_mul_ops and extension_mul_ops coefficients by 0.75 as an M31-native arithmetic calibration proxy.",
+        "This is not yet a measured re-fit against M31-native kernels."
+      ]
+    },
+    {
+      "scenario_name": "qualified-circle-t100-r32-g32-fri_conjectured-m31_mul_0p75",
+      "protocol_family": "Circle",
+      "soundness_assumption": "fri_conjectured",
+      "security_target_bits": 100.0,
+      "cost_scenario_name": "m31_mul_0p75",
+      "rate_parameter_name": "log_blowup",
+      "log_rate": 5,
+      "reciprocal_rate": 32,
+      "grinding_bits": 32,
+      "minimum_secure_query_count": 14,
+      "total_explicit_query_count": 14,
+      "chunk_size": 640,
+      "proof_bytes": 9568,
+      "predicted_cu": 2437117.0130105293,
+      "lower_cu": 2378095.6177209616,
+      "upper_cu": 2496138.408300097,
+      "verification_core_cu": 2426189.530106957,
+      "transport_overhead_cu": 10927.482903572429,
+      "cu_budget_fraction": 1.7407978664360924,
+      "proof_transport_pressure": 7.766233766233766,
+      "assumption_qualified_feasible": false,
+      "assumption_feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget",
+        "fri_conjectured soundness term 102.0 bits is below the 128.0-bit target"
+      ],
+      "lower_bound_model_feasible": false,
+      "lower_bound_model_feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "query_soundness": {
+        "model": "fri_query_soundness",
+        "query_count": 14,
+        "target_bits": 128.0,
+        "lower_bits": 67.0,
+        "lower_assumption": "fri_proven_rate_pow_q_over_2",
+        "upper_bits": 102.0,
+        "upper_assumption": "ethstark_conjectured_rate_pow_q",
+        "meets_target": false,
+        "notes": [
+          "Lower bound uses the proven FRI query term rate^(q/2).",
+          "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+          "Circle spend scoring treats q as the literal FRI query count."
+        ],
+        "sources": [
+          "https://eprint.iacr.org/2020/654",
+          "https://eprint.iacr.org/2021/582",
+          "https://github.com/Plonky3/Plonky3/blob/main/fri/src/config.rs",
+          "https://github.com/Plonky3/Plonky3/blob/main/fri/src/prover.rs"
+        ]
+      },
+      "notes": [
+        "Structured spend-screen profile derived from explicit statement and arithmetization assumptions; total_rows=6720, log2_rows=13.",
+        "Literal absolute proof-oracle queries in the screening model. Each unit of q contributes one proof-side Merkle authentication path; q is not a round count and not multiplied by hidden batching.",
+        "Query soundness is assessed with FRI-style lower and upper bounds at blowup 32: a proven rate^(q/2) lower bound and a conjectured ethSTARK-style rate^q upper bound, plus 32 query-grinding bits.",
+        "This tuned screen uses log_blowup=5 and grinding_bits=32.",
+        "field_inv_ops uses a structural proxy of 8 instead of the earlier query-scaled proxy of 24.",
+        "Inferred scenario: scales field_mul_ops and extension_mul_ops coefficients by 0.75 as an M31-native arithmetic calibration proxy.",
+        "This is not yet a measured re-fit against M31-native kernels."
+      ]
+    },
+    {
+      "scenario_name": "qualified-whir-t100-r16-g32-whir_johnson_full-fenzi_whir_core_0p8_plus_m31_mul_0p75",
+      "protocol_family": "WHIR",
+      "soundness_assumption": "whir_johnson_full",
+      "security_target_bits": 100.0,
+      "cost_scenario_name": "fenzi_whir_core_0p8_plus_m31_mul_0p75",
+      "rate_parameter_name": "log_inv_rate",
+      "log_rate": 4,
+      "reciprocal_rate": 16,
+      "grinding_bits": 32,
+      "minimum_secure_query_count": 36,
+      "total_explicit_query_count": 56,
+      "chunk_size": 640,
+      "proof_bytes": 20218,
+      "predicted_cu": 4279371.716182635,
+      "lower_cu": 4220350.320893068,
+      "upper_cu": 4338393.111472202,
+      "verification_core_cu": 4257020.360438881,
+      "transport_overhead_cu": 22351.355743753906,
+      "cu_budget_fraction": 3.0566940829875966,
+      "proof_transport_pressure": 16.410714285714285,
+      "assumption_qualified_feasible": false,
+      "assumption_feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "lower_bound_model_feasible": false,
+      "lower_bound_model_feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "query_soundness": {
+        "model": "whir_full_derived",
+        "query_count": 56,
+        "target_bits": 100.0,
+        "lower_bits": 100.46598419590968,
+        "lower_assumption": "whir_johnson_full",
+        "upper_bits": null,
+        "upper_assumption": null,
+        "meets_target": true,
+        "notes": [
+          "Full WHIR-derived screen with starting rate 1/16 over 13 variables and field size 155 bits.",
+          "Commitment OOD samples: 1; total explicit proof queries across all rounds: 56.",
+          "Maximum derived PoW requirement is 32 bits against a configured cap of 32 bits.",
+          "Overall security is taken as the minimum protected term across commitment OOD, folding, per-round query/combination, final query, and final folding steps."
+        ],
+        "sources": [
+          "https://github.com/Plonky3/Plonky3/blob/main/whir/src/parameters/soundness.rs",
+          "https://github.com/Plonky3/Plonky3/blob/main/whir/src/parameters/whir.rs",
+          "https://eprint.iacr.org/2024/1586",
+          "https://eprint.iacr.org/2025/2055"
+        ]
+      },
+      "notes": [
+        "Structured spend-screen profile derived from explicit statement and arithmetization assumptions; total_rows=6720, log2_rows=13.",
+        "Literal absolute proof queries in the screening model. q is an explicit verifier-query counter, not a query-round counter and not an effective-query estimate after hidden batching.",
+        "Query soundness is assessed with the official WHIR query-term models at inverse rate 16: Johnson-bound as the lower bound and capacity-bound as the upper bound, plus 32 PoW bits.",
+        "This tuned screen uses log_inv_rate=4 and grinding_bits=32.",
+        "field_inv_ops uses a structural proxy of 5 instead of the earlier query-scaled proxy of 66.",
+        "Full WHIR-derived security replaces the earlier query-only screen; total explicit queries=56, total OOD samples=2, final rate=1/128.",
+        "Starting-round query count is 36; final-round query count is 20.",
+        "Inferred optimistic scenario: combines the Fenzi-style 20% WHIR core reduction with the 0.75 M31-native multiplication calibration.",
+        "This is a stacked scenario analysis, not a measured verifier implementation."
+      ]
+    },
+    {
+      "scenario_name": "qualified-whir-t100-r16-g32-whir_capacity_full-fenzi_whir_core_0p8_plus_m31_mul_0p75",
+      "protocol_family": "WHIR",
+      "soundness_assumption": "whir_capacity_full",
+      "security_target_bits": 100.0,
+      "cost_scenario_name": "fenzi_whir_core_0p8_plus_m31_mul_0p75",
+      "rate_parameter_name": "log_inv_rate",
+      "log_rate": 4,
+      "reciprocal_rate": 16,
+      "grinding_bits": 32,
+      "minimum_secure_query_count": 18,
+      "total_explicit_query_count": 28,
+      "chunk_size": 640,
+      "proof_bytes": 12356,
+      "predicted_cu": 2526934.478921059,
+      "lower_cu": 2467913.0836314913,
+      "upper_cu": 2585955.874210627,
+      "verification_core_cu": 2512920.169417421,
+      "transport_overhead_cu": 14014.309503637956,
+      "cu_budget_fraction": 1.804953199229328,
+      "proof_transport_pressure": 10.029220779220779,
+      "assumption_qualified_feasible": false,
+      "assumption_feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "lower_bound_model_feasible": false,
+      "lower_bound_model_feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "query_soundness": {
+        "model": "whir_full_derived",
+        "query_count": 28,
+        "target_bits": 100.0,
+        "lower_bits": 100.29610672108606,
+        "lower_assumption": "whir_capacity_full",
+        "upper_bits": null,
+        "upper_assumption": null,
+        "meets_target": true,
+        "notes": [
+          "Full WHIR-derived screen with starting rate 1/16 over 13 variables and field size 155 bits.",
+          "Commitment OOD samples: 2; total explicit proof queries across all rounds: 28.",
+          "Maximum derived PoW requirement is 31 bits against a configured cap of 32 bits.",
+          "Overall security is taken as the minimum protected term across commitment OOD, folding, per-round query/combination, final query, and final folding steps."
+        ],
+        "sources": [
+          "https://github.com/Plonky3/Plonky3/blob/main/whir/src/parameters/soundness.rs",
+          "https://github.com/Plonky3/Plonky3/blob/main/whir/src/parameters/whir.rs",
+          "https://eprint.iacr.org/2024/1586",
+          "https://eprint.iacr.org/2025/2055"
+        ]
+      },
+      "notes": [
+        "Structured spend-screen profile derived from explicit statement and arithmetization assumptions; total_rows=6720, log2_rows=13.",
+        "Literal absolute proof queries in the screening model. q is an explicit verifier-query counter, not a query-round counter and not an effective-query estimate after hidden batching.",
+        "Query soundness is assessed with the official WHIR query-term models at inverse rate 16: Johnson-bound as the lower bound and capacity-bound as the upper bound, plus 32 PoW bits.",
+        "This tuned screen uses log_inv_rate=4 and grinding_bits=32.",
+        "field_inv_ops uses a structural proxy of 5 instead of the earlier query-scaled proxy of 38.",
+        "Full WHIR-derived security replaces the earlier query-only screen; total explicit queries=28, total OOD samples=4, final rate=1/128.",
+        "Starting-round query count is 18; final-round query count is 10.",
+        "Inferred optimistic scenario: combines the Fenzi-style 20% WHIR core reduction with the 0.75 M31-native multiplication calibration.",
+        "This is a stacked scenario analysis, not a measured verifier implementation."
+      ]
+    },
+    {
+      "scenario_name": "qualified-circle-t120-r32-g32-fri_proven-m31_mul_0p75",
+      "protocol_family": "Circle",
+      "soundness_assumption": "fri_proven",
+      "security_target_bits": 120.0,
+      "cost_scenario_name": "m31_mul_0p75",
+      "rate_parameter_name": "log_blowup",
+      "log_rate": 5,
+      "reciprocal_rate": 32,
+      "grinding_bits": 32,
+      "minimum_secure_query_count": 36,
+      "total_explicit_query_count": 36,
+      "chunk_size": 640,
+      "proof_bytes": 16608,
+      "predicted_cu": 4462760.200614743,
+      "lower_cu": 4403738.805325175,
+      "upper_cu": 4521781.595904311,
+      "verification_core_cu": 4444322.75522167,
+      "transport_overhead_cu": 18437.445393073056,
+      "cu_budget_fraction": 3.1876858575819593,
+      "proof_transport_pressure": 13.480519480519481,
+      "assumption_qualified_feasible": false,
+      "assumption_feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget",
+        "fri_proven soundness term 122.0 bits is below the 128.0-bit target"
+      ],
+      "lower_bound_model_feasible": false,
+      "lower_bound_model_feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "query_soundness": {
+        "model": "fri_query_soundness",
+        "query_count": 36,
+        "target_bits": 128.0,
+        "lower_bits": 122.0,
+        "lower_assumption": "fri_proven_rate_pow_q_over_2",
+        "upper_bits": 212.0,
+        "upper_assumption": "ethstark_conjectured_rate_pow_q",
+        "meets_target": false,
+        "notes": [
+          "Lower bound uses the proven FRI query term rate^(q/2).",
+          "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+          "Circle spend scoring treats q as the literal FRI query count."
+        ],
+        "sources": [
+          "https://eprint.iacr.org/2020/654",
+          "https://eprint.iacr.org/2021/582",
+          "https://github.com/Plonky3/Plonky3/blob/main/fri/src/config.rs",
+          "https://github.com/Plonky3/Plonky3/blob/main/fri/src/prover.rs"
+        ]
+      },
+      "notes": [
+        "Structured spend-screen profile derived from explicit statement and arithmetization assumptions; total_rows=6720, log2_rows=13.",
+        "Literal absolute proof-oracle queries in the screening model. Each unit of q contributes one proof-side Merkle authentication path; q is not a round count and not multiplied by hidden batching.",
+        "Query soundness is assessed with FRI-style lower and upper bounds at blowup 32: a proven rate^(q/2) lower bound and a conjectured ethSTARK-style rate^q upper bound, plus 32 query-grinding bits.",
+        "This tuned screen uses log_blowup=5 and grinding_bits=32.",
+        "field_inv_ops uses a structural proxy of 8 instead of the earlier query-scaled proxy of 46.",
+        "Inferred scenario: scales field_mul_ops and extension_mul_ops coefficients by 0.75 as an M31-native arithmetic calibration proxy.",
+        "This is not yet a measured re-fit against M31-native kernels."
+      ]
+    },
+    {
+      "scenario_name": "qualified-circle-t120-r32-g32-fri_conjectured-m31_mul_0p75",
+      "protocol_family": "Circle",
+      "soundness_assumption": "fri_conjectured",
+      "security_target_bits": 120.0,
+      "cost_scenario_name": "m31_mul_0p75",
+      "rate_parameter_name": "log_blowup",
+      "log_rate": 5,
+      "reciprocal_rate": 32,
+      "grinding_bits": 32,
+      "minimum_secure_query_count": 18,
+      "total_explicit_query_count": 18,
+      "chunk_size": 640,
+      "proof_bytes": 10848,
+      "predicted_cu": 2805415.774393114,
+      "lower_cu": 2746394.379103546,
+      "upper_cu": 2864437.1696826816,
+      "verification_core_cu": 2793122.8437641775,
+      "transport_overhead_cu": 12292.93062893618,
+      "cu_budget_fraction": 2.0038684102807958,
+      "proof_transport_pressure": 8.805194805194805,
+      "assumption_qualified_feasible": false,
+      "assumption_feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget",
+        "fri_conjectured soundness term 122.0 bits is below the 128.0-bit target"
+      ],
+      "lower_bound_model_feasible": false,
+      "lower_bound_model_feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "query_soundness": {
+        "model": "fri_query_soundness",
+        "query_count": 18,
+        "target_bits": 128.0,
+        "lower_bits": 77.0,
+        "lower_assumption": "fri_proven_rate_pow_q_over_2",
+        "upper_bits": 122.0,
+        "upper_assumption": "ethstark_conjectured_rate_pow_q",
+        "meets_target": false,
+        "notes": [
+          "Lower bound uses the proven FRI query term rate^(q/2).",
+          "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+          "Circle spend scoring treats q as the literal FRI query count."
+        ],
+        "sources": [
+          "https://eprint.iacr.org/2020/654",
+          "https://eprint.iacr.org/2021/582",
+          "https://github.com/Plonky3/Plonky3/blob/main/fri/src/config.rs",
+          "https://github.com/Plonky3/Plonky3/blob/main/fri/src/prover.rs"
+        ]
+      },
+      "notes": [
+        "Structured spend-screen profile derived from explicit statement and arithmetization assumptions; total_rows=6720, log2_rows=13.",
+        "Literal absolute proof-oracle queries in the screening model. Each unit of q contributes one proof-side Merkle authentication path; q is not a round count and not multiplied by hidden batching.",
+        "Query soundness is assessed with FRI-style lower and upper bounds at blowup 32: a proven rate^(q/2) lower bound and a conjectured ethSTARK-style rate^q upper bound, plus 32 query-grinding bits.",
+        "This tuned screen uses log_blowup=5 and grinding_bits=32.",
+        "field_inv_ops uses a structural proxy of 8 instead of the earlier query-scaled proxy of 28.",
+        "Inferred scenario: scales field_mul_ops and extension_mul_ops coefficients by 0.75 as an M31-native arithmetic calibration proxy.",
+        "This is not yet a measured re-fit against M31-native kernels."
+      ]
+    },
+    {
+      "scenario_name": "qualified-whir-t120-r16-g32-whir_johnson_full-fenzi_whir_core_0p8_plus_m31_mul_0p75",
+      "protocol_family": "WHIR",
+      "soundness_assumption": "whir_johnson_full",
+      "security_target_bits": 120.0,
+      "cost_scenario_name": "fenzi_whir_core_0p8_plus_m31_mul_0p75",
+      "rate_parameter_name": "log_inv_rate",
+      "log_rate": 4,
+      "reciprocal_rate": 16,
+      "grinding_bits": 32,
+      "minimum_secure_query_count": 46,
+      "total_explicit_query_count": 72,
+      "chunk_size": 640,
+      "proof_bytes": 24762,
+      "predicted_cu": 5281542.7208698355,
+      "lower_cu": 5222521.325580267,
+      "upper_cu": 5340564.116159404,
+      "verification_core_cu": 5254361.534170672,
+      "transport_overhead_cu": 27181.186699162972,
+      "cu_budget_fraction": 3.772530514907025,
+      "proof_transport_pressure": 20.099025974025974,
+      "assumption_qualified_feasible": false,
+      "assumption_feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "lower_bound_model_feasible": false,
+      "lower_bound_model_feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "query_soundness": {
+        "model": "whir_full_derived",
+        "query_count": 72,
+        "target_bits": 120.0,
+        "lower_bits": 120.12337538682735,
+        "lower_assumption": "whir_johnson_full",
+        "upper_bits": null,
+        "upper_assumption": null,
+        "meets_target": true,
+        "notes": [
+          "Full WHIR-derived screen with starting rate 1/16 over 13 variables and field size 155 bits.",
+          "Commitment OOD samples: 1; total explicit proof queries across all rounds: 72.",
+          "Maximum derived PoW requirement is 32 bits against a configured cap of 32 bits.",
+          "Overall security is taken as the minimum protected term across commitment OOD, folding, per-round query/combination, final query, and final folding steps."
+        ],
+        "sources": [
+          "https://github.com/Plonky3/Plonky3/blob/main/whir/src/parameters/soundness.rs",
+          "https://github.com/Plonky3/Plonky3/blob/main/whir/src/parameters/whir.rs",
+          "https://eprint.iacr.org/2024/1586",
+          "https://eprint.iacr.org/2025/2055"
+        ]
+      },
+      "notes": [
+        "Structured spend-screen profile derived from explicit statement and arithmetization assumptions; total_rows=6720, log2_rows=13.",
+        "Literal absolute proof queries in the screening model. q is an explicit verifier-query counter, not a query-round counter and not an effective-query estimate after hidden batching.",
+        "Query soundness is assessed with the official WHIR query-term models at inverse rate 16: Johnson-bound as the lower bound and capacity-bound as the upper bound, plus 32 PoW bits.",
+        "This tuned screen uses log_inv_rate=4 and grinding_bits=32.",
+        "field_inv_ops uses a structural proxy of 5 instead of the earlier query-scaled proxy of 82.",
+        "Full WHIR-derived security replaces the earlier query-only screen; total explicit queries=72, total OOD samples=2, final rate=1/128.",
+        "Starting-round query count is 46; final-round query count is 26.",
+        "Inferred optimistic scenario: combines the Fenzi-style 20% WHIR core reduction with the 0.75 M31-native multiplication calibration.",
+        "This is a stacked scenario analysis, not a measured verifier implementation."
+      ]
+    },
+    {
+      "scenario_name": "qualified-whir-t120-r16-g32-whir_capacity_full-fenzi_whir_core_0p8_plus_m31_mul_0p75",
+      "protocol_family": "WHIR",
+      "soundness_assumption": "whir_capacity_full",
+      "security_target_bits": 120.0,
+      "cost_scenario_name": "fenzi_whir_core_0p8_plus_m31_mul_0p75",
+      "rate_parameter_name": "log_inv_rate",
+      "log_rate": 4,
+      "reciprocal_rate": 16,
+      "grinding_bits": 32,
+      "minimum_secure_query_count": 23,
+      "total_explicit_query_count": 36,
+      "chunk_size": 640,
+      "proof_bytes": 14628,
+      "predicted_cu": 3027932.438916497,
+      "lower_cu": 2968911.043626929,
+      "upper_cu": 3086953.8342060647,
+      "verification_core_cu": 3011590.756283316,
+      "transport_overhead_cu": 16341.68263318124,
+      "cu_budget_fraction": 2.162808884940355,
+      "proof_transport_pressure": 11.873376623376624,
+      "assumption_qualified_feasible": false,
+      "assumption_feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "lower_bound_model_feasible": false,
+      "lower_bound_model_feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "query_soundness": {
+        "model": "whir_full_derived",
+        "query_count": 36,
+        "target_bits": 120.0,
+        "lower_bits": 120.08493873741189,
+        "lower_assumption": "whir_capacity_full",
+        "upper_bits": null,
+        "upper_assumption": null,
+        "meets_target": true,
+        "notes": [
+          "Full WHIR-derived screen with starting rate 1/16 over 13 variables and field size 155 bits.",
+          "Commitment OOD samples: 2; total explicit proof queries across all rounds: 36.",
+          "Maximum derived PoW requirement is 30 bits against a configured cap of 32 bits.",
+          "Overall security is taken as the minimum protected term across commitment OOD, folding, per-round query/combination, final query, and final folding steps."
+        ],
+        "sources": [
+          "https://github.com/Plonky3/Plonky3/blob/main/whir/src/parameters/soundness.rs",
+          "https://github.com/Plonky3/Plonky3/blob/main/whir/src/parameters/whir.rs",
+          "https://eprint.iacr.org/2024/1586",
+          "https://eprint.iacr.org/2025/2055"
+        ]
+      },
+      "notes": [
+        "Structured spend-screen profile derived from explicit statement and arithmetization assumptions; total_rows=6720, log2_rows=13.",
+        "Literal absolute proof queries in the screening model. q is an explicit verifier-query counter, not a query-round counter and not an effective-query estimate after hidden batching.",
+        "Query soundness is assessed with the official WHIR query-term models at inverse rate 16: Johnson-bound as the lower bound and capacity-bound as the upper bound, plus 32 PoW bits.",
+        "This tuned screen uses log_inv_rate=4 and grinding_bits=32.",
+        "field_inv_ops uses a structural proxy of 5 instead of the earlier query-scaled proxy of 46.",
+        "Full WHIR-derived security replaces the earlier query-only screen; total explicit queries=36, total OOD samples=4, final rate=1/128.",
+        "Starting-round query count is 23; final-round query count is 13.",
+        "Inferred optimistic scenario: combines the Fenzi-style 20% WHIR core reduction with the 0.75 M31-native multiplication calibration.",
+        "This is a stacked scenario analysis, not a measured verifier implementation."
+      ]
+    },
+    {
+      "scenario_name": "qualified-circle-t128-r32-g32-fri_proven-m31_mul_0p75",
+      "protocol_family": "Circle",
+      "soundness_assumption": "fri_proven",
+      "security_target_bits": 128.0,
+      "cost_scenario_name": "m31_mul_0p75",
+      "rate_parameter_name": "log_blowup",
+      "log_rate": 5,
+      "reciprocal_rate": 32,
+      "grinding_bits": 32,
+      "minimum_secure_query_count": 39,
+      "total_explicit_query_count": 39,
+      "chunk_size": 640,
+      "proof_bytes": 17568,
+      "predicted_cu": 4739071.813999842,
+      "lower_cu": 4680050.418710275,
+      "upper_cu": 4798093.209289409,
+      "verification_core_cu": 4719522.740464585,
+      "transport_overhead_cu": 19549.07353525712,
+      "cu_budget_fraction": 3.385051295714173,
+      "proof_transport_pressure": 14.25974025974026,
+      "assumption_qualified_feasible": false,
+      "assumption_feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "lower_bound_model_feasible": false,
+      "lower_bound_model_feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "query_soundness": {
+        "model": "fri_query_soundness",
+        "query_count": 39,
+        "target_bits": 128.0,
+        "lower_bits": 129.5,
+        "lower_assumption": "fri_proven_rate_pow_q_over_2",
+        "upper_bits": 227.0,
+        "upper_assumption": "ethstark_conjectured_rate_pow_q",
+        "meets_target": true,
+        "notes": [
+          "Lower bound uses the proven FRI query term rate^(q/2).",
+          "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+          "Circle spend scoring treats q as the literal FRI query count."
+        ],
+        "sources": [
+          "https://eprint.iacr.org/2020/654",
+          "https://eprint.iacr.org/2021/582",
+          "https://github.com/Plonky3/Plonky3/blob/main/fri/src/config.rs",
+          "https://github.com/Plonky3/Plonky3/blob/main/fri/src/prover.rs"
+        ]
+      },
+      "notes": [
+        "Structured spend-screen profile derived from explicit statement and arithmetization assumptions; total_rows=6720, log2_rows=13.",
+        "Literal absolute proof-oracle queries in the screening model. Each unit of q contributes one proof-side Merkle authentication path; q is not a round count and not multiplied by hidden batching.",
+        "Query soundness is assessed with FRI-style lower and upper bounds at blowup 32: a proven rate^(q/2) lower bound and a conjectured ethSTARK-style rate^q upper bound, plus 32 query-grinding bits.",
+        "This tuned screen uses log_blowup=5 and grinding_bits=32.",
+        "field_inv_ops uses a structural proxy of 8 instead of the earlier query-scaled proxy of 49.",
+        "Inferred scenario: scales field_mul_ops and extension_mul_ops coefficients by 0.75 as an M31-native arithmetic calibration proxy.",
+        "This is not yet a measured re-fit against M31-native kernels."
+      ]
+    },
+    {
+      "scenario_name": "qualified-circle-t128-r32-g32-fri_conjectured-m31_mul_0p75",
+      "protocol_family": "Circle",
+      "soundness_assumption": "fri_conjectured",
+      "security_target_bits": 128.0,
+      "cost_scenario_name": "m31_mul_0p75",
+      "rate_parameter_name": "log_blowup",
+      "log_rate": 5,
+      "reciprocal_rate": 32,
+      "grinding_bits": 32,
+      "minimum_secure_query_count": 20,
+      "total_explicit_query_count": 20,
+      "chunk_size": 640,
+      "proof_bytes": 11488,
+      "predicted_cu": 2989565.155084406,
+      "lower_cu": 2930543.7597948383,
+      "upper_cu": 3048586.550373974,
+      "verification_core_cu": 2976589.5005927878,
+      "transport_overhead_cu": 12975.654491618054,
+      "cu_budget_fraction": 2.135403682203147,
+      "proof_transport_pressure": 9.324675324675324,
+      "assumption_qualified_feasible": false,
+      "assumption_feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget",
+        "fri_conjectured soundness term 132.0 bits is below the 128.0-bit target"
+      ],
+      "lower_bound_model_feasible": false,
+      "lower_bound_model_feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "query_soundness": {
+        "model": "fri_query_soundness",
+        "query_count": 20,
+        "target_bits": 128.0,
+        "lower_bits": 82.0,
+        "lower_assumption": "fri_proven_rate_pow_q_over_2",
+        "upper_bits": 132.0,
+        "upper_assumption": "ethstark_conjectured_rate_pow_q",
+        "meets_target": false,
+        "notes": [
+          "Lower bound uses the proven FRI query term rate^(q/2).",
+          "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+          "Circle spend scoring treats q as the literal FRI query count."
+        ],
+        "sources": [
+          "https://eprint.iacr.org/2020/654",
+          "https://eprint.iacr.org/2021/582",
+          "https://github.com/Plonky3/Plonky3/blob/main/fri/src/config.rs",
+          "https://github.com/Plonky3/Plonky3/blob/main/fri/src/prover.rs"
+        ]
+      },
+      "notes": [
+        "Structured spend-screen profile derived from explicit statement and arithmetization assumptions; total_rows=6720, log2_rows=13.",
+        "Literal absolute proof-oracle queries in the screening model. Each unit of q contributes one proof-side Merkle authentication path; q is not a round count and not multiplied by hidden batching.",
+        "Query soundness is assessed with FRI-style lower and upper bounds at blowup 32: a proven rate^(q/2) lower bound and a conjectured ethSTARK-style rate^q upper bound, plus 32 query-grinding bits.",
+        "This tuned screen uses log_blowup=5 and grinding_bits=32.",
+        "field_inv_ops uses a structural proxy of 8 instead of the earlier query-scaled proxy of 30.",
+        "Inferred scenario: scales field_mul_ops and extension_mul_ops coefficients by 0.75 as an M31-native arithmetic calibration proxy.",
+        "This is not yet a measured re-fit against M31-native kernels."
+      ]
+    },
+    {
+      "scenario_name": "qualified-whir-t128-r16-g32-whir_johnson_full-fenzi_whir_core_0p8_plus_m31_mul_0p75",
+      "protocol_family": "WHIR",
+      "soundness_assumption": "whir_johnson_full",
+      "security_target_bits": 128.0,
+      "cost_scenario_name": "fenzi_whir_core_0p8_plus_m31_mul_0p75",
+      "rate_parameter_name": "log_inv_rate",
+      "log_rate": 4,
+      "reciprocal_rate": 16,
+      "grinding_bits": 32,
+      "minimum_secure_query_count": 50,
+      "total_explicit_query_count": 78,
+      "chunk_size": 640,
+      "proof_bytes": 26463,
+      "predicted_cu": 5657061.867474247,
+      "lower_cu": 5598040.472184679,
+      "upper_cu": 5716083.262763815,
+      "verification_core_cu": 5628006.2169642765,
+      "transport_overhead_cu": 29055.650509969997,
+      "cu_budget_fraction": 4.040758476767319,
+      "proof_transport_pressure": 21.479707792207794,
+      "assumption_qualified_feasible": false,
+      "assumption_feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "lower_bound_model_feasible": false,
+      "lower_bound_model_feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "query_soundness": {
+        "model": "whir_full_derived",
+        "query_count": 78,
+        "target_bits": 128.0,
+        "lower_bits": 128.02909881904083,
+        "lower_assumption": "whir_johnson_full",
+        "upper_bits": null,
+        "upper_assumption": null,
+        "meets_target": true,
+        "notes": [
+          "Full WHIR-derived screen with starting rate 1/16 over 13 variables and field size 155 bits.",
+          "Commitment OOD samples: 1; total explicit proof queries across all rounds: 78.",
+          "Maximum derived PoW requirement is 32 bits against a configured cap of 32 bits.",
+          "Overall security is taken as the minimum protected term across commitment OOD, folding, per-round query/combination, final query, and final folding steps."
+        ],
+        "sources": [
+          "https://github.com/Plonky3/Plonky3/blob/main/whir/src/parameters/soundness.rs",
+          "https://github.com/Plonky3/Plonky3/blob/main/whir/src/parameters/whir.rs",
+          "https://eprint.iacr.org/2024/1586",
+          "https://eprint.iacr.org/2025/2055"
+        ]
+      },
+      "notes": [
+        "Structured spend-screen profile derived from explicit statement and arithmetization assumptions; total_rows=6720, log2_rows=13.",
+        "Literal absolute proof queries in the screening model. q is an explicit verifier-query counter, not a query-round counter and not an effective-query estimate after hidden batching.",
+        "Query soundness is assessed with the official WHIR query-term models at inverse rate 16: Johnson-bound as the lower bound and capacity-bound as the upper bound, plus 32 PoW bits.",
+        "This tuned screen uses log_inv_rate=4 and grinding_bits=32.",
+        "field_inv_ops uses a structural proxy of 5 instead of the earlier query-scaled proxy of 88.",
+        "Full WHIR-derived security replaces the earlier query-only screen; total explicit queries=78, total OOD samples=3, final rate=1/128.",
+        "Starting-round query count is 50; final-round query count is 28.",
+        "Inferred optimistic scenario: combines the Fenzi-style 20% WHIR core reduction with the 0.75 M31-native multiplication calibration.",
+        "This is a stacked scenario analysis, not a measured verifier implementation."
+      ]
+    },
+    {
+      "scenario_name": "qualified-whir-t128-r16-g32-whir_capacity_full-fenzi_whir_core_0p8_plus_m31_mul_0p75",
+      "protocol_family": "WHIR",
+      "soundness_assumption": "whir_capacity_full",
+      "security_target_bits": 128.0,
+      "cost_scenario_name": "fenzi_whir_core_0p8_plus_m31_mul_0p75",
+      "rate_parameter_name": "log_inv_rate",
+      "log_rate": 4,
+      "reciprocal_rate": 16,
+      "grinding_bits": 32,
+      "minimum_secure_query_count": 25,
+      "total_explicit_query_count": 39,
+      "chunk_size": 640,
+      "proof_bytes": 15468,
+      "predicted_cu": 3215704.9325745986,
+      "lower_cu": 3156683.537285031,
+      "upper_cu": 3274726.3278641663,
+      "verification_core_cu": 3198346.804142926,
+      "transport_overhead_cu": 17358.128431672918,
+      "cu_budget_fraction": 2.296932094696142,
+      "proof_transport_pressure": 12.555194805194805,
+      "assumption_qualified_feasible": false,
+      "assumption_feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "lower_bound_model_feasible": false,
+      "lower_bound_model_feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "query_soundness": {
+        "model": "whir_full_derived",
+        "query_count": 39,
+        "target_bits": 128.0,
+        "lower_bits": 128.0145494095205,
+        "lower_assumption": "whir_capacity_full",
+        "upper_bits": null,
+        "upper_assumption": null,
+        "meets_target": true,
+        "notes": [
+          "Full WHIR-derived screen with starting rate 1/16 over 13 variables and field size 155 bits.",
+          "Commitment OOD samples: 2; total explicit proof queries across all rounds: 39.",
+          "Maximum derived PoW requirement is 31 bits against a configured cap of 32 bits.",
+          "Overall security is taken as the minimum protected term across commitment OOD, folding, per-round query/combination, final query, and final folding steps."
+        ],
+        "sources": [
+          "https://github.com/Plonky3/Plonky3/blob/main/whir/src/parameters/soundness.rs",
+          "https://github.com/Plonky3/Plonky3/blob/main/whir/src/parameters/whir.rs",
+          "https://eprint.iacr.org/2024/1586",
+          "https://eprint.iacr.org/2025/2055"
+        ]
+      },
+      "notes": [
+        "Structured spend-screen profile derived from explicit statement and arithmetization assumptions; total_rows=6720, log2_rows=13.",
+        "Literal absolute proof queries in the screening model. q is an explicit verifier-query counter, not a query-round counter and not an effective-query estimate after hidden batching.",
+        "Query soundness is assessed with the official WHIR query-term models at inverse rate 16: Johnson-bound as the lower bound and capacity-bound as the upper bound, plus 32 PoW bits.",
+        "This tuned screen uses log_inv_rate=4 and grinding_bits=32.",
+        "field_inv_ops uses a structural proxy of 5 instead of the earlier query-scaled proxy of 49.",
+        "Full WHIR-derived security replaces the earlier query-only screen; total explicit queries=39, total OOD samples=4, final rate=1/128.",
+        "Starting-round query count is 25; final-round query count is 14.",
+        "Inferred optimistic scenario: combines the Fenzi-style 20% WHIR core reduction with the 0.75 M31-native multiplication calibration.",
+        "This is a stacked scenario analysis, not a measured verifier implementation."
+      ]
+    }
+  ],
+  "feasible_counts": {
+    "Circle/fri_conjectured/t100": 0,
+    "Circle/fri_conjectured/t120": 0,
+    "Circle/fri_conjectured/t128": 0,
+    "Circle/fri_proven/t100": 0,
+    "Circle/fri_proven/t120": 0,
+    "Circle/fri_proven/t128": 0,
+    "WHIR/whir_capacity_full/t100": 0,
+    "WHIR/whir_capacity_full/t120": 0,
+    "WHIR/whir_capacity_full/t128": 0,
+    "WHIR/whir_johnson_full/t100": 0,
+    "WHIR/whir_johnson_full/t120": 0,
+    "WHIR/whir_johnson_full/t128": 0
+  },
+  "notes": [
+    "This sweep varies rate, grinding, security target (100/120/128 bits), and inferred cost scenario jointly before scoring verifier cost.",
+    "Circle still solves for the minimum literal FRI query count q that reaches the target under the proven or conjectured bound.",
+    "WHIR no longer uses the earlier query-only screen: it derives commitment OOD samples, per-round query counts, query/combination PoW requirements, folding checks, final queries, and final PoW from the official Plonky3 parameter-generation logic.",
+    "Grinding bits mostly move security, not verifier work. The current screen charges only a fixed-size witness check when grinding is enabled.",
+    "The Fenzi and M31 scenario multipliers are inference-only sensitivity cases layered on top of the measured model; they are not yet backed by a new probe fit."
+  ]
+}

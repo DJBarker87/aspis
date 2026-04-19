@@ -1,0 +1,2189 @@
+{
+  "generated_at_utc": "2026-04-19T13:01:13.842218+00:00",
+  "command": "cargo xtask phase1",
+  "repo_baseline": {
+    "discovery_summary": "Workspace was empty at `/Users/dominic/ZK`. Phase 1 is a from-scratch scaffold: no pre-existing on-chain program, verifier entrypoint, benchmark harness, upload path, allocator tuning, or vendored proof-system dependency was present to reuse.",
+    "existing_onchain_programs": [],
+    "existing_verifier_entrypoints": [],
+    "existing_benchmark_scripts": [],
+    "existing_upload_path": null,
+    "existing_heap_handling": null,
+    "existing_patched_dependencies": []
+  },
+  "historical_baseline": {
+    "name": "verify_stark",
+    "mean_cu": 1104510,
+    "max_cu": 1190982,
+    "run_count": 100,
+    "notes": [
+      "Preserved from prompt context; not reproduced in this empty workspace.",
+      "Likely included chunked uploads, SHA-256 via Solana hash syscall path, explicit heap tuning, and end-to-end benchmark scripts."
+    ]
+  },
+  "measurement_count": 219,
+  "raw_artifacts": [
+    "phase1_results/measurements.jsonl",
+    "phase1_results/measurements.csv",
+    "phase1_results/profile_scores.json",
+    "phase1_results/circle_sweep.json",
+    "phase1_results/circle_sweep.csv",
+    "phase1_results/coefficient_bootstrap.json",
+    "phase1_results/summary.json",
+    "docs/phase1-cost-model.md"
+  ],
+  "measured_variables": [
+    "transaction CU from local simulation",
+    "transaction byte size",
+    "hash call count per benchmark definition",
+    "hashed bytes per benchmark definition",
+    "proof bytes uploaded and parsed",
+    "upload chunk count",
+    "heap frame request bytes",
+    "readonly and writable account counts",
+    "account data bytes read/written by benchmark construction"
+  ],
+  "inferred_variables": [
+    "total merkle levels = path_count * path_depth",
+    "heap_pages_32k from requested heap frame",
+    "proof transport pressure from upload bytes vs 1232-byte transaction cap",
+    "dominant contributor ordering from additive fitted coefficients",
+    "verification-core vs transport decomposition from secondary additive fits",
+    "coefficient uncertainty bands from deterministic bootstrap resampling"
+  ],
+  "unknowns": [
+    "real verifier semantic op mix, because no verifier implementation was present",
+    "stack pressure under production verifier recursion or inlined frames",
+    "validator-version drift beyond local Agave 2.3.0",
+    "cache warmth effects across distributed validators"
+  ],
+  "model": {
+    "chosen": {
+      "method": "huber_irls",
+      "selected_features": [
+        "sha_calls",
+        "sha_bytes",
+        "merkle_levels",
+        "proof_bytes",
+        "heap_pages_32k",
+        "account_data_bytes_written",
+        "field_add_sub_ops",
+        "field_mul_ops",
+        "field_inv_ops",
+        "extension_mul_ops"
+      ],
+      "dropped_features": [
+        "upload_bytes",
+        "upload_chunks",
+        "ro_account_count",
+        "rw_account_count",
+        "account_data_bytes_read"
+      ],
+      "coefficients": {
+        "intercept": {
+          "estimate": 722.8439688302715,
+          "stderr": 116.19838425353413,
+          "rationale": "baseline transaction/program overhead"
+        },
+        "sha_calls": {
+          "estimate": 148.72383381098405,
+          "stderr": 41.65480173493143,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "sha_bytes": {
+          "estimate": 0.7949057882907558,
+          "stderr": 0.09405479902145093,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "merkle_levels": {
+          "estimate": 366.5358903305693,
+          "stderr": 38.404013976956975,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "proof_bytes": {
+          "estimate": 7.093796614916194,
+          "stderr": 0.09222847772306628,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "upload_bytes": null,
+        "upload_chunks": null,
+        "heap_pages_32k": {
+          "estimate": 83783.89361870188,
+          "stderr": 328.96591978403444,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "ro_account_count": null,
+        "rw_account_count": null,
+        "account_data_bytes_read": null,
+        "account_data_bytes_written": {
+          "estimate": 898.1611453646544,
+          "stderr": 2.107752020484091,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "field_add_sub_ops": {
+          "estimate": 36.97136513826711,
+          "stderr": 0.05911472633659531,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "field_mul_ops": {
+          "estimate": 491.3739010822489,
+          "stderr": 0.9481913792264329,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "field_inv_ops": {
+          "estimate": 11270.192375974053,
+          "stderr": 22.756593101434387,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "extension_mul_ops": {
+          "estimate": 3175.4537344967566,
+          "stderr": 2.8445741376792983,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        }
+      },
+      "metrics": {
+        "record_count": 186,
+        "rmse": 59021.395289567765,
+        "mae": 9606.87923085885,
+        "p95_abs_error": 1728.0605638213638,
+        "max_abs_error": 450267.3503955333,
+        "r_squared": 0.8823342634402469
+      },
+      "uncertainty_rmse": 59021.395289567765,
+      "condition_number": 11130.239557307894,
+      "notes": [
+        "Huber IRLS down-weights outliers from local validator noise or allocator jitter."
+      ]
+    },
+    "ols": {
+      "method": "ordinary_least_squares",
+      "selected_features": [
+        "sha_calls",
+        "sha_bytes",
+        "merkle_levels",
+        "proof_bytes",
+        "heap_pages_32k",
+        "account_data_bytes_written",
+        "field_add_sub_ops",
+        "field_mul_ops",
+        "field_inv_ops",
+        "extension_mul_ops"
+      ],
+      "dropped_features": [
+        "upload_bytes",
+        "upload_chunks",
+        "ro_account_count",
+        "rw_account_count",
+        "account_data_bytes_read"
+      ],
+      "coefficients": {
+        "intercept": {
+          "estimate": -5083.745330488778,
+          "stderr": 4786.088390878589,
+          "rationale": "baseline transaction/program overhead"
+        },
+        "sha_calls": {
+          "estimate": 300.7393548289441,
+          "stderr": 1511.359272649933,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "sha_bytes": {
+          "estimate": 1.201189964543383,
+          "stderr": 3.7238831345225165,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "merkle_levels": {
+          "estimate": 273.0859469506461,
+          "stderr": 1361.0279167299213,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "proof_bytes": {
+          "estimate": 8.18711588825098,
+          "stderr": 3.893523519392151,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "upload_bytes": null,
+        "upload_chunks": null,
+        "heap_pages_32k": {
+          "estimate": 87267.84719829354,
+          "stderr": 14214.174714112798,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "ro_account_count": null,
+        "rw_account_count": null,
+        "account_data_bytes_read": null,
+        "account_data_bytes_written": {
+          "estimate": 721.5000664830649,
+          "stderr": 27.679605283917066,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "field_add_sub_ops": {
+          "estimate": 37.493426562242874,
+          "stderr": 2.5504361088668586,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "field_mul_ops": {
+          "estimate": 498.93456423241054,
+          "stderr": 41.00815284839416,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "field_inv_ops": {
+          "estimate": 11451.648291577734,
+          "stderr": 984.19566836146,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "extension_mul_ops": {
+          "estimate": 3198.13572394723,
+          "stderr": 123.0244585451825,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        }
+      },
+      "metrics": {
+        "record_count": 186,
+        "rmse": 52297.50891434286,
+        "mae": 14884.608765604893,
+        "p95_abs_error": 20941.352824201582,
+        "max_abs_error": 354010.28870884044,
+        "r_squared": 0.907616783575694
+      },
+      "uncertainty_rmse": 52297.50891434286,
+      "condition_number": 11130.239557307894,
+      "notes": [
+        "Chosen to keep the initial model additive and interpretable."
+      ]
+    },
+    "huber": {
+      "method": "huber_irls",
+      "selected_features": [
+        "sha_calls",
+        "sha_bytes",
+        "merkle_levels",
+        "proof_bytes",
+        "heap_pages_32k",
+        "account_data_bytes_written",
+        "field_add_sub_ops",
+        "field_mul_ops",
+        "field_inv_ops",
+        "extension_mul_ops"
+      ],
+      "dropped_features": [
+        "upload_bytes",
+        "upload_chunks",
+        "ro_account_count",
+        "rw_account_count",
+        "account_data_bytes_read"
+      ],
+      "coefficients": {
+        "intercept": {
+          "estimate": 722.8439688302715,
+          "stderr": 116.19838425353413,
+          "rationale": "baseline transaction/program overhead"
+        },
+        "sha_calls": {
+          "estimate": 148.72383381098405,
+          "stderr": 41.65480173493143,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "sha_bytes": {
+          "estimate": 0.7949057882907558,
+          "stderr": 0.09405479902145093,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "merkle_levels": {
+          "estimate": 366.5358903305693,
+          "stderr": 38.404013976956975,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "proof_bytes": {
+          "estimate": 7.093796614916194,
+          "stderr": 0.09222847772306628,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "upload_bytes": null,
+        "upload_chunks": null,
+        "heap_pages_32k": {
+          "estimate": 83783.89361870188,
+          "stderr": 328.96591978403444,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "ro_account_count": null,
+        "rw_account_count": null,
+        "account_data_bytes_read": null,
+        "account_data_bytes_written": {
+          "estimate": 898.1611453646544,
+          "stderr": 2.107752020484091,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "field_add_sub_ops": {
+          "estimate": 36.97136513826711,
+          "stderr": 0.05911472633659531,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "field_mul_ops": {
+          "estimate": 491.3739010822489,
+          "stderr": 0.9481913792264329,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "field_inv_ops": {
+          "estimate": 11270.192375974053,
+          "stderr": 22.756593101434387,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "extension_mul_ops": {
+          "estimate": 3175.4537344967566,
+          "stderr": 2.8445741376792983,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        }
+      },
+      "metrics": {
+        "record_count": 186,
+        "rmse": 59021.395289567765,
+        "mae": 9606.87923085885,
+        "p95_abs_error": 1728.0605638213638,
+        "max_abs_error": 450267.3503955333,
+        "r_squared": 0.8823342634402469
+      },
+      "uncertainty_rmse": 59021.395289567765,
+      "condition_number": 11130.239557307894,
+      "notes": [
+        "Huber IRLS down-weights outliers from local validator noise or allocator jitter."
+      ]
+    }
+  },
+  "verification_core_model": {
+    "chosen": {
+      "method": "huber_irls",
+      "selected_features": [
+        "sha_calls",
+        "sha_bytes",
+        "merkle_levels",
+        "proof_bytes",
+        "heap_pages_32k",
+        "account_data_bytes_written",
+        "field_add_sub_ops",
+        "field_mul_ops",
+        "field_inv_ops",
+        "extension_mul_ops"
+      ],
+      "dropped_features": [
+        "ro_account_count",
+        "rw_account_count",
+        "account_data_bytes_read"
+      ],
+      "coefficients": {
+        "intercept": {
+          "estimate": 878.1915063479028,
+          "stderr": 482.7903573238648,
+          "rationale": "baseline transaction/program overhead"
+        },
+        "sha_calls": {
+          "estimate": 131.86866182430322,
+          "stderr": 70.17057999044707,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "sha_bytes": {
+          "estimate": 0.8211316072202992,
+          "stderr": 0.15515700755454903,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "merkle_levels": {
+          "estimate": 381.1061572985004,
+          "stderr": 63.06810491985246,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "proof_bytes": {
+          "estimate": 7.0709561537698455,
+          "stderr": 0.1673950446170289,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "upload_bytes": null,
+        "upload_chunks": null,
+        "heap_pages_32k": {
+          "estimate": 83690.68509619165,
+          "stderr": 602.7609377625172,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "ro_account_count": null,
+        "rw_account_count": null,
+        "account_data_bytes_read": null,
+        "account_data_bytes_written": {
+          "estimate": 897.9808007650018,
+          "stderr": 3.3621637717342185,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "field_add_sub_ops": {
+          "estimate": 36.9585405311862,
+          "stderr": 0.1042870079080543,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "field_mul_ops": {
+          "estimate": 491.1716256427699,
+          "stderr": 1.662457309088384,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "field_inv_ops": {
+          "estimate": 11265.337765426648,
+          "stderr": 39.89897541812122,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "extension_mul_ops": {
+          "estimate": 3174.846908178325,
+          "stderr": 4.987371927265152,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        }
+      },
+      "metrics": {
+        "record_count": 83,
+        "rmse": 88370.73709795756,
+        "mae": 21387.97726452512,
+        "p95_abs_error": 113019.73400426813,
+        "max_abs_error": 450330.36149802885,
+        "r_squared": 0.8634155439977839
+      },
+      "uncertainty_rmse": 88370.73709795756,
+      "condition_number": 12397.118056219733,
+      "notes": [
+        "Huber IRLS down-weights outliers from local validator noise or allocator jitter."
+      ]
+    },
+    "ols": {
+      "method": "ordinary_least_squares",
+      "selected_features": [
+        "sha_calls",
+        "sha_bytes",
+        "merkle_levels",
+        "proof_bytes",
+        "heap_pages_32k",
+        "account_data_bytes_written",
+        "field_add_sub_ops",
+        "field_mul_ops",
+        "field_inv_ops",
+        "extension_mul_ops"
+      ],
+      "dropped_features": [
+        "ro_account_count",
+        "rw_account_count",
+        "account_data_bytes_read"
+      ],
+      "coefficients": {
+        "intercept": {
+          "estimate": -24806.05437125845,
+          "stderr": 15520.394988391929,
+          "rationale": "baseline transaction/program overhead"
+        },
+        "sha_calls": {
+          "estimate": 1822.8681065199714,
+          "stderr": 2558.1753460246887,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "sha_bytes": {
+          "estimate": -0.8108210044882678,
+          "stderr": 5.92127011501491,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "merkle_levels": {
+          "estimate": -1009.814713344211,
+          "stderr": 2278.2649815075524,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "proof_bytes": {
+          "estimate": 11.73242222179736,
+          "stderr": 6.468803747674055,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "upload_bytes": null,
+        "upload_chunks": null,
+        "heap_pages_32k": {
+          "estimate": 99101.23262275457,
+          "stderr": 23334.658406861716,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "ro_account_count": null,
+        "rw_account_count": null,
+        "account_data_bytes_read": null,
+        "account_data_bytes_written": {
+          "estimate": 746.2290419392737,
+          "stderr": 45.86361458088347,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "field_add_sub_ops": {
+          "estimate": 39.27127893971901,
+          "stderr": 4.108924412607458,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "field_mul_ops": {
+          "estimate": 524.6146541292426,
+          "stderr": 65.49136534211,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "field_inv_ops": {
+          "estimate": 12067.970449101835,
+          "stderr": 1571.7927682106401,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "extension_mul_ops": {
+          "estimate": 3275.1759936377193,
+          "stderr": 196.47409602633002,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        }
+      },
+      "metrics": {
+        "record_count": 83,
+        "rmse": 77180.09038188221,
+        "mae": 33608.055495377754,
+        "p95_abs_error": 181963.51542544225,
+        "max_abs_error": 346949.21510164964,
+        "r_squared": 0.8958174728214092
+      },
+      "uncertainty_rmse": 77180.09038188221,
+      "condition_number": 12397.118056219733,
+      "notes": [
+        "Chosen to keep the initial model additive and interpretable."
+      ]
+    },
+    "huber": {
+      "method": "huber_irls",
+      "selected_features": [
+        "sha_calls",
+        "sha_bytes",
+        "merkle_levels",
+        "proof_bytes",
+        "heap_pages_32k",
+        "account_data_bytes_written",
+        "field_add_sub_ops",
+        "field_mul_ops",
+        "field_inv_ops",
+        "extension_mul_ops"
+      ],
+      "dropped_features": [
+        "ro_account_count",
+        "rw_account_count",
+        "account_data_bytes_read"
+      ],
+      "coefficients": {
+        "intercept": {
+          "estimate": 878.1915063479028,
+          "stderr": 482.7903573238648,
+          "rationale": "baseline transaction/program overhead"
+        },
+        "sha_calls": {
+          "estimate": 131.86866182430322,
+          "stderr": 70.17057999044707,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "sha_bytes": {
+          "estimate": 0.8211316072202992,
+          "stderr": 0.15515700755454903,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "merkle_levels": {
+          "estimate": 381.1061572985004,
+          "stderr": 63.06810491985246,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "proof_bytes": {
+          "estimate": 7.0709561537698455,
+          "stderr": 0.1673950446170289,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "upload_bytes": null,
+        "upload_chunks": null,
+        "heap_pages_32k": {
+          "estimate": 83690.68509619165,
+          "stderr": 602.7609377625172,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "ro_account_count": null,
+        "rw_account_count": null,
+        "account_data_bytes_read": null,
+        "account_data_bytes_written": {
+          "estimate": 897.9808007650018,
+          "stderr": 3.3621637717342185,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "field_add_sub_ops": {
+          "estimate": 36.9585405311862,
+          "stderr": 0.1042870079080543,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "field_mul_ops": {
+          "estimate": 491.1716256427699,
+          "stderr": 1.662457309088384,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "field_inv_ops": {
+          "estimate": 11265.337765426648,
+          "stderr": 39.89897541812122,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "extension_mul_ops": {
+          "estimate": 3174.846908178325,
+          "stderr": 4.987371927265152,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        }
+      },
+      "metrics": {
+        "record_count": 83,
+        "rmse": 88370.73709795756,
+        "mae": 21387.97726452512,
+        "p95_abs_error": 113019.73400426813,
+        "max_abs_error": 450330.36149802885,
+        "r_squared": 0.8634155439977839
+      },
+      "uncertainty_rmse": 88370.73709795756,
+      "condition_number": 12397.118056219733,
+      "notes": [
+        "Huber IRLS down-weights outliers from local validator noise or allocator jitter."
+      ]
+    }
+  },
+  "transport_model": {
+    "chosen": {
+      "method": "huber_irls",
+      "selected_features": [
+        "sha_calls",
+        "sha_bytes"
+      ],
+      "dropped_features": [],
+      "coefficients": {
+        "intercept": {
+          "estimate": 712.0069216622707,
+          "stderr": 12.770207139241734,
+          "rationale": "baseline transaction/program overhead"
+        },
+        "sha_calls": {
+          "estimate": 149.7027380045299,
+          "stderr": 4.461135965340875,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "sha_bytes": {
+          "estimate": 0.7931861974365257,
+          "stderr": 0.009992128584685185,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "merkle_levels": null,
+        "proof_bytes": null,
+        "upload_bytes": null,
+        "upload_chunks": null,
+        "heap_pages_32k": null,
+        "ro_account_count": null,
+        "rw_account_count": null,
+        "account_data_bytes_read": null,
+        "account_data_bytes_written": null,
+        "field_add_sub_ops": null,
+        "field_mul_ops": null,
+        "field_inv_ops": null,
+        "extension_mul_ops": null
+      },
+      "metrics": {
+        "record_count": 129,
+        "rmse": 223.63538138887463,
+        "mae": 140.56255791093832,
+        "p95_abs_error": 370.00692166227066,
+        "max_abs_error": 1168.0562933187557,
+        "r_squared": 0.9956152148099453
+      },
+      "uncertainty_rmse": 223.63538138887463,
+      "condition_number": 3403.849442656709,
+      "notes": [
+        "Huber IRLS down-weights outliers from local validator noise or allocator jitter."
+      ]
+    },
+    "ols": {
+      "method": "ordinary_least_squares",
+      "selected_features": [
+        "sha_calls",
+        "sha_bytes"
+      ],
+      "dropped_features": [],
+      "coefficients": {
+        "intercept": {
+          "estimate": 712.3002903637242,
+          "stderr": 21.269828465212214,
+          "rationale": "baseline transaction/program overhead"
+        },
+        "sha_calls": {
+          "estimate": 159.8944842263864,
+          "stderr": 6.386655175189045,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "sha_bytes": {
+          "estimate": 0.7771988962405939,
+          "stderr": 0.015776438818237808,
+          "rationale": "fitted from Phase 1 measurement surface via ordinary_least_squares"
+        },
+        "merkle_levels": null,
+        "proof_bytes": null,
+        "upload_bytes": null,
+        "upload_chunks": null,
+        "heap_pages_32k": null,
+        "ro_account_count": null,
+        "rw_account_count": null,
+        "account_data_bytes_read": null,
+        "account_data_bytes_written": null,
+        "field_add_sub_ops": null,
+        "field_mul_ops": null,
+        "field_inv_ops": null,
+        "extension_mul_ops": null
+      },
+      "metrics": {
+        "record_count": 129,
+        "rmse": 220.08543090075398,
+        "mae": 142.15871812942007,
+        "p95_abs_error": 370.30029036372423,
+        "max_abs_error": 1078.6202657975873,
+        "r_squared": 0.9957533166256578
+      },
+      "uncertainty_rmse": 220.08543090075398,
+      "condition_number": 3403.849442656709,
+      "notes": [
+        "Chosen to keep the initial model additive and interpretable."
+      ]
+    },
+    "huber": {
+      "method": "huber_irls",
+      "selected_features": [
+        "sha_calls",
+        "sha_bytes"
+      ],
+      "dropped_features": [],
+      "coefficients": {
+        "intercept": {
+          "estimate": 712.0069216622707,
+          "stderr": 12.770207139241734,
+          "rationale": "baseline transaction/program overhead"
+        },
+        "sha_calls": {
+          "estimate": 149.7027380045299,
+          "stderr": 4.461135965340875,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "sha_bytes": {
+          "estimate": 0.7931861974365257,
+          "stderr": 0.009992128584685185,
+          "rationale": "fitted from Phase 1 measurement surface via huber_irls"
+        },
+        "merkle_levels": null,
+        "proof_bytes": null,
+        "upload_bytes": null,
+        "upload_chunks": null,
+        "heap_pages_32k": null,
+        "ro_account_count": null,
+        "rw_account_count": null,
+        "account_data_bytes_read": null,
+        "account_data_bytes_written": null,
+        "field_add_sub_ops": null,
+        "field_mul_ops": null,
+        "field_inv_ops": null,
+        "extension_mul_ops": null
+      },
+      "metrics": {
+        "record_count": 129,
+        "rmse": 223.63538138887463,
+        "mae": 140.56255791093832,
+        "p95_abs_error": 370.00692166227066,
+        "max_abs_error": 1168.0562933187557,
+        "r_squared": 0.9956152148099453
+      },
+      "uncertainty_rmse": 223.63538138887463,
+      "condition_number": 3403.849442656709,
+      "notes": [
+        "Huber IRLS down-weights outliers from local validator noise or allocator jitter."
+      ]
+    }
+  },
+  "coefficient_bootstrap": [
+    {
+      "feature": "intercept",
+      "samples": 256,
+      "mean": 271.46409728782214,
+      "p05": -4368.4341049620125,
+      "p50": 720.2782872800776,
+      "p95": 749.5582865568799,
+      "sign_stable": false
+    },
+    {
+      "feature": "sha_calls",
+      "samples": 252,
+      "mean": 168.33213526086945,
+      "p05": 136.64511795626487,
+      "p50": 152.050446683461,
+      "p95": 239.42292377974235,
+      "sign_stable": true
+    },
+    {
+      "feature": "sha_bytes",
+      "samples": 256,
+      "mean": 0.8160180599602506,
+      "p05": 0.6389965876842232,
+      "p50": 0.7888635552427166,
+      "p95": 1.115532268243678,
+      "sign_stable": true
+    },
+    {
+      "feature": "merkle_levels",
+      "samples": 256,
+      "mean": 372.05684370450393,
+      "p05": 323.0928283334471,
+      "p50": 365.5771746135608,
+      "p95": 539.3169835941344,
+      "sign_stable": true
+    },
+    {
+      "feature": "proof_bytes",
+      "samples": 256,
+      "mean": 7.210280026536678,
+      "p05": 7.085555759580194,
+      "p50": 7.093547676647612,
+      "p95": 8.053143520937024,
+      "sign_stable": true
+    },
+    {
+      "feature": "heap_pages_32k",
+      "samples": 255,
+      "mean": 84068.34010144396,
+      "p05": 83744.12768891467,
+      "p50": 83784.22411955388,
+      "p95": 87030.52779829428,
+      "sign_stable": true
+    },
+    {
+      "feature": "account_data_bytes_written",
+      "samples": 256,
+      "mean": 662.2698736465495,
+      "p05": 18.78175341346456,
+      "p50": 897.8194536708954,
+      "p95": 898.9858177731525,
+      "sign_stable": true
+    },
+    {
+      "feature": "field_add_sub_ops",
+      "samples": 256,
+      "mean": 37.00360644404183,
+      "p05": 36.964667377241575,
+      "p50": 36.97165316768783,
+      "p95": 37.43366885885679,
+      "sign_stable": true
+    },
+    {
+      "feature": "field_mul_ops",
+      "samples": 240,
+      "mean": 491.9615781362053,
+      "p05": 491.33914262404744,
+      "p50": 491.37687638831187,
+      "p95": 497.9857739285586,
+      "sign_stable": true
+    },
+    {
+      "feature": "field_inv_ops",
+      "samples": 242,
+      "mean": 11283.099969501589,
+      "p05": 11269.355385533132,
+      "p50": 11270.283754429933,
+      "p95": 11427.779522011626,
+      "sign_stable": true
+    },
+    {
+      "feature": "extension_mul_ops",
+      "samples": 248,
+      "mean": 3177.2740396590725,
+      "p05": 3175.3492268351238,
+      "p50": 3175.4645698255204,
+      "p95": 3195.445912346242,
+      "sign_stable": true
+    }
+  ],
+  "sample_scores": [
+    {
+      "name": "hypothetical-fri-profile",
+      "protocol_family": "FRI",
+      "predicted_cu": 3373583.5770883006,
+      "lower_cu": 3314562.181798733,
+      "upper_cu": 3432604.9723778684,
+      "cu_budget_fraction": 2.4097025550630717,
+      "proof_transport_pressure": 7.48051948051948,
+      "verification_core_cu": 3361952.601942599,
+      "transport_overhead_cu": 10823.36605839727,
+      "component_predicted_cu": 3372775.968000996,
+      "component_gap_vs_monolithic_cu": -807.6090873046778,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "dominant_contributors": [
+        {
+          "feature": "field_inv_ops",
+          "coefficient": 11270.192375974053,
+          "feature_value": 96.0,
+          "cu": 1081938.468093509
+        },
+        {
+          "feature": "field_mul_ops",
+          "coefficient": 491.3739010822489,
+          "feature_value": 1536.0,
+          "cu": 754750.3120623343
+        },
+        {
+          "feature": "extension_mul_ops",
+          "coefficient": 3175.4537344967566,
+          "feature_value": 192.0,
+          "cu": 609687.1170233772
+        }
+      ]
+    },
+    {
+      "name": "hypothetical-circle-profile",
+      "protocol_family": "Circle",
+      "predicted_cu": 1900735.3080277897,
+      "lower_cu": 1841713.912738222,
+      "upper_cu": 1959756.7033173575,
+      "cu_budget_fraction": 1.357668077162707,
+      "proof_transport_pressure": 4.1558441558441555,
+      "verification_core_cu": 1894046.21357462,
+      "transport_overhead_cu": 6523.96721576227,
+      "component_predicted_cu": 1900570.1807903822,
+      "component_gap_vs_monolithic_cu": -165.1272374074906,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "dominant_contributors": [
+        {
+          "feature": "field_inv_ops",
+          "coefficient": 11270.192375974053,
+          "feature_value": 48.0,
+          "cu": 540969.2340467545
+        },
+        {
+          "feature": "field_mul_ops",
+          "coefficient": 491.3739010822489,
+          "feature_value": 1024.0,
+          "cu": 503166.87470822287
+        },
+        {
+          "feature": "extension_mul_ops",
+          "coefficient": 3175.4537344967566,
+          "feature_value": 96.0,
+          "cu": 304843.5585116886
+        }
+      ]
+    },
+    {
+      "name": "hypothetical-whir-profile",
+      "protocol_family": "WHIR",
+      "predicted_cu": 1524952.627877808,
+      "lower_cu": 1465931.2325882402,
+      "upper_cu": 1583974.0231673757,
+      "cu_budget_fraction": 1.089251877055577,
+      "proof_transport_pressure": 3.324675324675325,
+      "verification_core_cu": 1519600.403728368,
+      "transport_overhead_cu": 5361.57515694227,
+      "component_predicted_cu": 1524961.9788853102,
+      "component_gap_vs_monolithic_cu": 9.351007502293214,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "dominant_contributors": [
+        {
+          "feature": "field_mul_ops",
+          "coefficient": 491.3739010822489,
+          "feature_value": 896.0,
+          "cu": 440271.01536969503
+        },
+        {
+          "feature": "field_inv_ops",
+          "coefficient": 11270.192375974053,
+          "feature_value": 32.0,
+          "cu": 360646.1560311697
+        },
+        {
+          "feature": "heap_pages_32k",
+          "coefficient": 83783.89361870188,
+          "feature_value": 3.0,
+          "cu": 251351.68085610564
+        }
+      ]
+    }
+  ],
+  "circle_sweep": [
+    {
+      "scenario_name": "circle-p4608-c448-q3",
+      "protocol_family": "Circle",
+      "proof_bytes": 4608,
+      "chunk_size": 448,
+      "query_count": 3,
+      "predicted_cu": 1525163.199264002,
+      "lower_cu": 1466141.8039744343,
+      "upper_cu": 1584184.5945535698,
+      "verification_core_cu": 1518845.7179472444,
+      "transport_overhead_cu": 6292.940578997267,
+      "component_predicted_cu": 1525138.6585262418,
+      "component_gap_vs_monolithic_cu": -24.54073776025325,
+      "cu_budget_fraction": 1.089402285188573,
+      "proof_transport_pressure": 3.74025974025974,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=4608, chunk_size=448, query_count=3.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p4608-c448-q4",
+      "protocol_family": "Circle",
+      "proof_bytes": 4608,
+      "chunk_size": 448,
+      "query_count": 4,
+      "predicted_cu": 1896463.4614527791,
+      "lower_cu": 1837442.0661632114,
+      "upper_cu": 1955484.856742347,
+      "verification_core_cu": 1890005.4646409932,
+      "transport_overhead_cu": 6292.940578997267,
+      "component_predicted_cu": 1896298.4052199905,
+      "component_gap_vs_monolithic_cu": -165.05623278860003,
+      "cu_budget_fraction": 1.3546167581805566,
+      "proof_transport_pressure": 3.74025974025974,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=4608, chunk_size=448, query_count=4.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p4608-c448-q5",
+      "protocol_family": "Circle",
+      "proof_bytes": 4608,
+      "chunk_size": 448,
+      "query_count": 5,
+      "predicted_cu": 2267763.7236415567,
+      "lower_cu": 2208742.328351989,
+      "upper_cu": 2326785.1189311245,
+      "verification_core_cu": 2261165.2113347417,
+      "transport_overhead_cu": 6292.940578997267,
+      "component_predicted_cu": 2267458.151913739,
+      "component_gap_vs_monolithic_cu": -305.5717278178781,
+      "cu_budget_fraction": 1.6198312311725405,
+      "proof_transport_pressure": 3.74025974025974,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=4608, chunk_size=448, query_count=5.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p4608-c448-q6",
+      "protocol_family": "Circle",
+      "proof_bytes": 4608,
+      "chunk_size": 448,
+      "query_count": 6,
+      "predicted_cu": 2722847.879449036,
+      "lower_cu": 2663826.484159468,
+      "upper_cu": 2781869.2747386037,
+      "verification_core_cu": 2716015.6431246824,
+      "transport_overhead_cu": 6292.940578997267,
+      "component_predicted_cu": 2722308.5837036795,
+      "component_gap_vs_monolithic_cu": -539.2957453564741,
+      "cu_budget_fraction": 1.9448913424635972,
+      "proof_transport_pressure": 3.74025974025974,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=4608, chunk_size=448, query_count=6.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p4608-c512-q3",
+      "protocol_family": "Circle",
+      "proof_bytes": 4608,
+      "chunk_size": 512,
+      "query_count": 3,
+      "predicted_cu": 1524814.8776259297,
+      "lower_cu": 1465793.482336362,
+      "upper_cu": 1583836.2729154974,
+      "verification_core_cu": 1518845.7179472444,
+      "transport_overhead_cu": 5942.771186352269,
+      "component_predicted_cu": 1524788.4891335967,
+      "component_gap_vs_monolithic_cu": -26.38849233300425,
+      "cu_budget_fraction": 1.089153484018521,
+      "proof_transport_pressure": 3.74025974025974,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=4608, chunk_size=512, query_count=3.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p4608-c512-q4",
+      "protocol_family": "Circle",
+      "proof_bytes": 4608,
+      "chunk_size": 512,
+      "query_count": 4,
+      "predicted_cu": 1896115.1398147068,
+      "lower_cu": 1837093.744525139,
+      "upper_cu": 1955136.5351042745,
+      "verification_core_cu": 1890005.4646409932,
+      "transport_overhead_cu": 5942.771186352269,
+      "component_predicted_cu": 1895948.2358273454,
+      "component_gap_vs_monolithic_cu": -166.90398736135103,
+      "cu_budget_fraction": 1.3543679570105047,
+      "proof_transport_pressure": 3.74025974025974,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=4608, chunk_size=512, query_count=4.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p4608-c512-q5",
+      "protocol_family": "Circle",
+      "proof_bytes": 4608,
+      "chunk_size": 512,
+      "query_count": 5,
+      "predicted_cu": 2267415.402003484,
+      "lower_cu": 2208394.006713916,
+      "upper_cu": 2326436.7972930516,
+      "verification_core_cu": 2261165.2113347417,
+      "transport_overhead_cu": 5942.771186352269,
+      "component_predicted_cu": 2267107.982521094,
+      "component_gap_vs_monolithic_cu": -307.41948238993064,
+      "cu_budget_fraction": 1.6195824300024884,
+      "proof_transport_pressure": 3.74025974025974,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=4608, chunk_size=512, query_count=5.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p4608-c512-q6",
+      "protocol_family": "Circle",
+      "proof_bytes": 4608,
+      "chunk_size": 512,
+      "query_count": 6,
+      "predicted_cu": 2722499.557810963,
+      "lower_cu": 2663478.1625213954,
+      "upper_cu": 2781520.953100531,
+      "verification_core_cu": 2716015.6431246824,
+      "transport_overhead_cu": 5942.771186352269,
+      "component_predicted_cu": 2721958.4143110346,
+      "component_gap_vs_monolithic_cu": -541.1434999285266,
+      "cu_budget_fraction": 1.944642541293545,
+      "proof_transport_pressure": 3.74025974025974,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=4608, chunk_size=512, query_count=6.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p4608-c640-q3",
+      "protocol_family": "Circle",
+      "proof_bytes": 4608,
+      "chunk_size": 640,
+      "query_count": 3,
+      "predicted_cu": 1524640.7168068932,
+      "lower_cu": 1465619.3215173255,
+      "upper_cu": 1583662.112096461,
+      "verification_core_cu": 1518845.7179472444,
+      "transport_overhead_cu": 5767.686490029771,
+      "component_predicted_cu": 1524613.4044372742,
+      "component_gap_vs_monolithic_cu": -27.312369619030505,
+      "cu_budget_fraction": 1.0890290834334952,
+      "proof_transport_pressure": 3.74025974025974,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=4608, chunk_size=640, query_count=3.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p4608-c640-q4",
+      "protocol_family": "Circle",
+      "proof_bytes": 4608,
+      "chunk_size": 640,
+      "query_count": 4,
+      "predicted_cu": 1895940.9789956703,
+      "lower_cu": 1836919.5837061026,
+      "upper_cu": 1954962.374285238,
+      "verification_core_cu": 1890005.4646409932,
+      "transport_overhead_cu": 5767.686490029771,
+      "component_predicted_cu": 1895773.151131023,
+      "component_gap_vs_monolithic_cu": -167.82786464737728,
+      "cu_budget_fraction": 1.354243556425479,
+      "proof_transport_pressure": 3.74025974025974,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=4608, chunk_size=640, query_count=4.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p4608-c640-q5",
+      "protocol_family": "Circle",
+      "proof_bytes": 4608,
+      "chunk_size": 640,
+      "query_count": 5,
+      "predicted_cu": 2267241.2411844474,
+      "lower_cu": 2208219.8458948797,
+      "upper_cu": 2326262.636474015,
+      "verification_core_cu": 2261165.2113347417,
+      "transport_overhead_cu": 5767.686490029771,
+      "component_predicted_cu": 2266932.8978247712,
+      "component_gap_vs_monolithic_cu": -308.3433596761897,
+      "cu_budget_fraction": 1.6194580294174625,
+      "proof_transport_pressure": 3.74025974025974,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=4608, chunk_size=640, query_count=5.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p4608-c640-q6",
+      "protocol_family": "Circle",
+      "proof_bytes": 4608,
+      "chunk_size": 640,
+      "query_count": 6,
+      "predicted_cu": 2722325.396991927,
+      "lower_cu": 2663304.0017023594,
+      "upper_cu": 2781346.792281495,
+      "verification_core_cu": 2716015.6431246824,
+      "transport_overhead_cu": 5767.686490029771,
+      "component_predicted_cu": 2721783.329614712,
+      "component_gap_vs_monolithic_cu": -542.0673772152513,
+      "cu_budget_fraction": 1.9445181407085195,
+      "proof_transport_pressure": 3.74025974025974,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=4608, chunk_size=640, query_count=6.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p5120-c448-q3",
+      "protocol_family": "Circle",
+      "proof_bytes": 5120,
+      "chunk_size": 448,
+      "query_count": 3,
+      "predicted_cu": 1529783.3674770852,
+      "lower_cu": 1470761.9721875174,
+      "upper_cu": 1588804.762766653,
+      "verification_core_cu": 1522886.4668808714,
+      "transport_overhead_cu": 6874.136608407267,
+      "component_predicted_cu": 1529760.6034892788,
+      "component_gap_vs_monolithic_cu": -22.763987806392834,
+      "cu_budget_fraction": 1.0927024053407752,
+      "proof_transport_pressure": 4.1558441558441555,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=5120, chunk_size=448, query_count=3.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p5120-c448-q4",
+      "protocol_family": "Circle",
+      "proof_bytes": 5120,
+      "chunk_size": 448,
+      "query_count": 4,
+      "predicted_cu": 1901083.6296658625,
+      "lower_cu": 1842062.2343762948,
+      "upper_cu": 1960105.0249554303,
+      "verification_core_cu": 1894046.21357462,
+      "transport_overhead_cu": 6874.136608407267,
+      "component_predicted_cu": 1900920.3501830273,
+      "component_gap_vs_monolithic_cu": -163.27948283520527,
+      "cu_budget_fraction": 1.3579168783327589,
+      "proof_transport_pressure": 4.1558441558441555,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=5120, chunk_size=448, query_count=4.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p5120-c448-q5",
+      "protocol_family": "Circle",
+      "proof_bytes": 5120,
+      "chunk_size": 448,
+      "query_count": 5,
+      "predicted_cu": 2272383.8918546396,
+      "lower_cu": 2213362.496565072,
+      "upper_cu": 2331405.2871442074,
+      "verification_core_cu": 2265205.9602683685,
+      "transport_overhead_cu": 6874.136608407267,
+      "component_predicted_cu": 2272080.096876776,
+      "component_gap_vs_monolithic_cu": -303.7949778637849,
+      "cu_budget_fraction": 1.6231313513247425,
+      "proof_transport_pressure": 4.1558441558441555,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=5120, chunk_size=448, query_count=5.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p5120-c448-q6",
+      "protocol_family": "Circle",
+      "proof_bytes": 5120,
+      "chunk_size": 448,
+      "query_count": 6,
+      "predicted_cu": 2727468.047662119,
+      "lower_cu": 2668446.652372551,
+      "upper_cu": 2786489.4429516867,
+      "verification_core_cu": 2720056.392058309,
+      "transport_overhead_cu": 6874.136608407267,
+      "component_predicted_cu": 2726930.5286667165,
+      "component_gap_vs_monolithic_cu": -537.5189954023808,
+      "cu_budget_fraction": 1.9481914626157992,
+      "proof_transport_pressure": 4.1558441558441555,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=5120, chunk_size=448, query_count=6.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p5120-c512-q3",
+      "protocol_family": "Circle",
+      "proof_bytes": 5120,
+      "chunk_size": 512,
+      "query_count": 3,
+      "predicted_cu": 1529435.0458390126,
+      "lower_cu": 1470413.6505494448,
+      "upper_cu": 1588456.4411285804,
+      "verification_core_cu": 1522886.4668808714,
+      "transport_overhead_cu": 6523.96721576227,
+      "component_predicted_cu": 1529410.4340966337,
+      "component_gap_vs_monolithic_cu": -24.611742378911003,
+      "cu_budget_fraction": 1.0924536041707233,
+      "proof_transport_pressure": 4.1558441558441555,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=5120, chunk_size=512, query_count=3.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p5120-c512-q4",
+      "protocol_family": "Circle",
+      "proof_bytes": 5120,
+      "chunk_size": 512,
+      "query_count": 4,
+      "predicted_cu": 1900735.3080277897,
+      "lower_cu": 1841713.912738222,
+      "upper_cu": 1959756.7033173575,
+      "verification_core_cu": 1894046.21357462,
+      "transport_overhead_cu": 6523.96721576227,
+      "component_predicted_cu": 1900570.1807903822,
+      "component_gap_vs_monolithic_cu": -165.1272374074906,
+      "cu_budget_fraction": 1.357668077162707,
+      "proof_transport_pressure": 4.1558441558441555,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=5120, chunk_size=512, query_count=4.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p5120-c512-q5",
+      "protocol_family": "Circle",
+      "proof_bytes": 5120,
+      "chunk_size": 512,
+      "query_count": 5,
+      "predicted_cu": 2272035.5702165673,
+      "lower_cu": 2213014.1749269995,
+      "upper_cu": 2331056.965506135,
+      "verification_core_cu": 2265205.9602683685,
+      "transport_overhead_cu": 6523.96721576227,
+      "component_predicted_cu": 2271729.927484131,
+      "component_gap_vs_monolithic_cu": -305.64273243630305,
+      "cu_budget_fraction": 1.6228825501546909,
+      "proof_transport_pressure": 4.1558441558441555,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=5120, chunk_size=512, query_count=5.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p5120-c512-q6",
+      "protocol_family": "Circle",
+      "proof_bytes": 5120,
+      "chunk_size": 512,
+      "query_count": 6,
+      "predicted_cu": 2727119.7260240465,
+      "lower_cu": 2668098.330734479,
+      "upper_cu": 2786141.1213136143,
+      "verification_core_cu": 2720056.392058309,
+      "transport_overhead_cu": 6523.96721576227,
+      "component_predicted_cu": 2726580.3592740716,
+      "component_gap_vs_monolithic_cu": -539.366749974899,
+      "cu_budget_fraction": 1.9479426614457476,
+      "proof_transport_pressure": 4.1558441558441555,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=5120, chunk_size=512, query_count=6.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p5120-c640-q3",
+      "protocol_family": "Circle",
+      "proof_bytes": 5120,
+      "chunk_size": 640,
+      "query_count": 3,
+      "predicted_cu": 1529086.72420094,
+      "lower_cu": 1470065.3289113722,
+      "upper_cu": 1588108.1194905078,
+      "verification_core_cu": 1522886.4668808714,
+      "transport_overhead_cu": 6173.797823117272,
+      "component_predicted_cu": 1529060.2647039888,
+      "component_gap_vs_monolithic_cu": -26.459496951196343,
+      "cu_budget_fraction": 1.0922048030006715,
+      "proof_transport_pressure": 4.1558441558441555,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=5120, chunk_size=640, query_count=3.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p5120-c640-q4",
+      "protocol_family": "Circle",
+      "proof_bytes": 5120,
+      "chunk_size": 640,
+      "query_count": 4,
+      "predicted_cu": 1900386.9863897173,
+      "lower_cu": 1841365.5911001496,
+      "upper_cu": 1959408.381679285,
+      "verification_core_cu": 1894046.21357462,
+      "transport_overhead_cu": 6173.797823117272,
+      "component_predicted_cu": 1900220.0113977373,
+      "component_gap_vs_monolithic_cu": -166.97499198000878,
+      "cu_budget_fraction": 1.3574192759926553,
+      "proof_transport_pressure": 4.1558441558441555,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=5120, chunk_size=640, query_count=4.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p5120-c640-q5",
+      "protocol_family": "Circle",
+      "proof_bytes": 5120,
+      "chunk_size": 640,
+      "query_count": 5,
+      "predicted_cu": 2271687.2485784944,
+      "lower_cu": 2212665.8532889266,
+      "upper_cu": 2330708.643868062,
+      "verification_core_cu": 2265205.9602683685,
+      "transport_overhead_cu": 6173.797823117272,
+      "component_predicted_cu": 2271379.7580914856,
+      "component_gap_vs_monolithic_cu": -307.4904870088212,
+      "cu_budget_fraction": 1.622633748984639,
+      "proof_transport_pressure": 4.1558441558441555,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=5120, chunk_size=640, query_count=5.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p5120-c640-q6",
+      "protocol_family": "Circle",
+      "proof_bytes": 5120,
+      "chunk_size": 640,
+      "query_count": 6,
+      "predicted_cu": 2726771.4043859737,
+      "lower_cu": 2667750.009096406,
+      "upper_cu": 2785792.7996755415,
+      "verification_core_cu": 2720056.392058309,
+      "transport_overhead_cu": 6173.797823117272,
+      "component_predicted_cu": 2726230.1898814263,
+      "component_gap_vs_monolithic_cu": -541.2145045474172,
+      "cu_budget_fraction": 1.9476938602756955,
+      "proof_transport_pressure": 4.1558441558441555,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=5120, chunk_size=640, query_count=6.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p5632-c448-q3",
+      "protocol_family": "Circle",
+      "proof_bytes": 5632,
+      "chunk_size": 448,
+      "query_count": 3,
+      "predicted_cu": 1577897.2977696233,
+      "lower_cu": 1518875.9024800556,
+      "upper_cu": 1636918.693059191,
+      "verification_core_cu": 1570408.8296944895,
+      "transport_overhead_cu": 7455.332637817268,
+      "component_predicted_cu": 1577864.1623323068,
+      "component_gap_vs_monolithic_cu": -33.13543731649406,
+      "cu_budget_fraction": 1.1270694984068739,
+      "proof_transport_pressure": 4.571428571428571,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=5632, chunk_size=448, query_count=3.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p5632-c448-q4",
+      "protocol_family": "Circle",
+      "proof_bytes": 5632,
+      "chunk_size": 448,
+      "query_count": 4,
+      "predicted_cu": 1949197.5599584007,
+      "lower_cu": 1890176.164668833,
+      "upper_cu": 2008218.9552479684,
+      "verification_core_cu": 1941568.576388238,
+      "transport_overhead_cu": 7455.332637817268,
+      "component_predicted_cu": 1949023.9090260554,
+      "component_gap_vs_monolithic_cu": -173.6509323453065,
+      "cu_budget_fraction": 1.3922839713988575,
+      "proof_transport_pressure": 4.571428571428571,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=5632, chunk_size=448, query_count=4.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p5632-c448-q5",
+      "protocol_family": "Circle",
+      "proof_bytes": 5632,
+      "chunk_size": 448,
+      "query_count": 5,
+      "predicted_cu": 2320497.822147178,
+      "lower_cu": 2261476.4268576102,
+      "upper_cu": 2379519.2174367458,
+      "verification_core_cu": 2312728.323081987,
+      "transport_overhead_cu": 7455.332637817268,
+      "component_predicted_cu": 2320183.655719804,
+      "component_gap_vs_monolithic_cu": -314.1664273738861,
+      "cu_budget_fraction": 1.6574984443908414,
+      "proof_transport_pressure": 4.571428571428571,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=5632, chunk_size=448, query_count=5.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p5632-c448-q6",
+      "protocol_family": "Circle",
+      "proof_bytes": 5632,
+      "chunk_size": 448,
+      "query_count": 6,
+      "predicted_cu": 2775581.977954657,
+      "lower_cu": 2716560.582665089,
+      "upper_cu": 2834603.3732442246,
+      "verification_core_cu": 2767578.754871927,
+      "transport_overhead_cu": 7455.332637817268,
+      "component_predicted_cu": 2775034.0875097443,
+      "component_gap_vs_monolithic_cu": -547.890444912482,
+      "cu_budget_fraction": 1.9825585556818976,
+      "proof_transport_pressure": 4.571428571428571,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=5632, chunk_size=448, query_count=6.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p5632-c512-q3",
+      "protocol_family": "Circle",
+      "proof_bytes": 5632,
+      "chunk_size": 512,
+      "query_count": 3,
+      "predicted_cu": 1577548.9761315507,
+      "lower_cu": 1518527.580841983,
+      "upper_cu": 1636570.3714211185,
+      "verification_core_cu": 1570408.8296944895,
+      "transport_overhead_cu": 7105.16324517227,
+      "component_predicted_cu": 1577513.9929396617,
+      "component_gap_vs_monolithic_cu": -34.98319188901223,
+      "cu_budget_fraction": 1.126820697236822,
+      "proof_transport_pressure": 4.571428571428571,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=5632, chunk_size=512, query_count=3.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p5632-c512-q4",
+      "protocol_family": "Circle",
+      "proof_bytes": 5632,
+      "chunk_size": 512,
+      "query_count": 4,
+      "predicted_cu": 1948849.2383203278,
+      "lower_cu": 1889827.84303076,
+      "upper_cu": 2007870.6336098956,
+      "verification_core_cu": 1941568.576388238,
+      "transport_overhead_cu": 7105.16324517227,
+      "component_predicted_cu": 1948673.7396334102,
+      "component_gap_vs_monolithic_cu": -175.49868691759184,
+      "cu_budget_fraction": 1.3920351702288056,
+      "proof_transport_pressure": 4.571428571428571,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=5632, chunk_size=512, query_count=4.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p5632-c512-q5",
+      "protocol_family": "Circle",
+      "proof_bytes": 5632,
+      "chunk_size": 512,
+      "query_count": 5,
+      "predicted_cu": 2320149.5005091056,
+      "lower_cu": 2261128.105219538,
+      "upper_cu": 2379170.8957986734,
+      "verification_core_cu": 2312728.323081987,
+      "transport_overhead_cu": 7105.16324517227,
+      "component_predicted_cu": 2319833.486327159,
+      "component_gap_vs_monolithic_cu": -316.0141819464043,
+      "cu_budget_fraction": 1.6572496432207897,
+      "proof_transport_pressure": 4.571428571428571,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=5632, chunk_size=512, query_count=5.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p5632-c512-q6",
+      "protocol_family": "Circle",
+      "proof_bytes": 5632,
+      "chunk_size": 512,
+      "query_count": 6,
+      "predicted_cu": 2775233.656316584,
+      "lower_cu": 2716212.261027016,
+      "upper_cu": 2834255.0516061517,
+      "verification_core_cu": 2767578.754871927,
+      "transport_overhead_cu": 7105.16324517227,
+      "component_predicted_cu": 2774683.9181170994,
+      "component_gap_vs_monolithic_cu": -549.7381994845346,
+      "cu_budget_fraction": 1.9823097545118458,
+      "proof_transport_pressure": 4.571428571428571,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=5632, chunk_size=512, query_count=6.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p5632-c640-q3",
+      "protocol_family": "Circle",
+      "proof_bytes": 5632,
+      "chunk_size": 640,
+      "query_count": 3,
+      "predicted_cu": 1577200.6544934784,
+      "lower_cu": 1518179.2592039106,
+      "upper_cu": 1636222.0497830461,
+      "verification_core_cu": 1570408.8296944895,
+      "transport_overhead_cu": 6754.993852527272,
+      "component_predicted_cu": 1577163.8235470168,
+      "component_gap_vs_monolithic_cu": -36.8309464615304,
+      "cu_budget_fraction": 1.1265718960667703,
+      "proof_transport_pressure": 4.571428571428571,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=5632, chunk_size=640, query_count=3.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p5632-c640-q4",
+      "protocol_family": "Circle",
+      "proof_bytes": 5632,
+      "chunk_size": 640,
+      "query_count": 4,
+      "predicted_cu": 1948500.9166822555,
+      "lower_cu": 1889479.5213926877,
+      "upper_cu": 2007522.3119718232,
+      "verification_core_cu": 1941568.576388238,
+      "transport_overhead_cu": 6754.993852527272,
+      "component_predicted_cu": 1948323.5702407653,
+      "component_gap_vs_monolithic_cu": -177.34644149011,
+      "cu_budget_fraction": 1.391786369058754,
+      "proof_transport_pressure": 4.571428571428571,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=5632, chunk_size=640, query_count=4.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p5632-c640-q5",
+      "protocol_family": "Circle",
+      "proof_bytes": 5632,
+      "chunk_size": 640,
+      "query_count": 5,
+      "predicted_cu": 2319801.178871033,
+      "lower_cu": 2260779.783581465,
+      "upper_cu": 2378822.5741606005,
+      "verification_core_cu": 2312728.323081987,
+      "transport_overhead_cu": 6754.993852527272,
+      "component_predicted_cu": 2319483.3169345143,
+      "component_gap_vs_monolithic_cu": -317.8619365184568,
+      "cu_budget_fraction": 1.6570008420507376,
+      "proof_transport_pressure": 4.571428571428571,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=5632, chunk_size=640, query_count=5.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p5632-c640-q6",
+      "protocol_family": "Circle",
+      "proof_bytes": 5632,
+      "chunk_size": 640,
+      "query_count": 6,
+      "predicted_cu": 2774885.334678512,
+      "lower_cu": 2715863.9393889443,
+      "upper_cu": 2833906.72996808,
+      "verification_core_cu": 2767578.754871927,
+      "transport_overhead_cu": 6754.993852527272,
+      "component_predicted_cu": 2774333.7487244545,
+      "component_gap_vs_monolithic_cu": -551.5859540575184,
+      "cu_budget_fraction": 1.9820609533417943,
+      "proof_transport_pressure": 4.571428571428571,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=5632, chunk_size=640, query_count=6.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p6144-c448-q3",
+      "protocol_family": "Circle",
+      "proof_bytes": 6144,
+      "chunk_size": 448,
+      "query_count": 3,
+      "predicted_cu": 1709795.1216808637,
+      "lower_cu": 1650773.726391296,
+      "upper_cu": 1768816.5169704314,
+      "verification_core_cu": 1701621.8776042992,
+      "transport_overhead_cu": 8036.528667227267,
+      "component_predicted_cu": 1709658.4062715266,
+      "component_gap_vs_monolithic_cu": -136.7154093370773,
+      "cu_budget_fraction": 1.2212822297720454,
+      "proof_transport_pressure": 4.987012987012987,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=6144, chunk_size=448, query_count=3.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p6144-c448-q4",
+      "protocol_family": "Circle",
+      "proof_bytes": 6144,
+      "chunk_size": 448,
+      "query_count": 4,
+      "predicted_cu": 2081095.3838696408,
+      "lower_cu": 2022073.988580073,
+      "upper_cu": 2140116.7791592088,
+      "verification_core_cu": 2072781.6242980477,
+      "transport_overhead_cu": 8036.528667227267,
+      "component_predicted_cu": 2080818.152965275,
+      "component_gap_vs_monolithic_cu": -277.2309043656569,
+      "cu_budget_fraction": 1.486496702764029,
+      "proof_transport_pressure": 4.987012987012987,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=6144, chunk_size=448, query_count=4.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p6144-c448-q5",
+      "protocol_family": "Circle",
+      "proof_bytes": 6144,
+      "chunk_size": 448,
+      "query_count": 5,
+      "predicted_cu": 2452395.646058418,
+      "lower_cu": 2393374.25076885,
+      "upper_cu": 2511417.0413479856,
+      "verification_core_cu": 2443941.3709917967,
+      "transport_overhead_cu": 8036.528667227267,
+      "component_predicted_cu": 2451977.899659024,
+      "component_gap_vs_monolithic_cu": -417.74639939377084,
+      "cu_budget_fraction": 1.7517111757560127,
+      "proof_transport_pressure": 4.987012987012987,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=6144, chunk_size=448, query_count=5.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p6144-c448-q6",
+      "protocol_family": "Circle",
+      "proof_bytes": 6144,
+      "chunk_size": 448,
+      "query_count": 6,
+      "predicted_cu": 2823695.9082471956,
+      "lower_cu": 2764674.512957628,
+      "upper_cu": 2882717.3035367634,
+      "verification_core_cu": 2815101.1176855457,
+      "transport_overhead_cu": 8036.528667227267,
+      "component_predicted_cu": 2823137.646352773,
+      "component_gap_vs_monolithic_cu": -558.2618944225833,
+      "cu_budget_fraction": 2.0169256487479967,
+      "proof_transport_pressure": 4.987012987012987,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=6144, chunk_size=448, query_count=6.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p6144-c512-q3",
+      "protocol_family": "Circle",
+      "proof_bytes": 6144,
+      "chunk_size": 512,
+      "query_count": 3,
+      "predicted_cu": 1709446.8000427908,
+      "lower_cu": 1650425.404753223,
+      "upper_cu": 1768468.1953323586,
+      "verification_core_cu": 1701621.8776042992,
+      "transport_overhead_cu": 7686.35927458227,
+      "component_predicted_cu": 1709308.2368788815,
+      "component_gap_vs_monolithic_cu": -138.56316390936263,
+      "cu_budget_fraction": 1.2210334286019935,
+      "proof_transport_pressure": 4.987012987012987,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=6144, chunk_size=512, query_count=3.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p6144-c512-q4",
+      "protocol_family": "Circle",
+      "proof_bytes": 6144,
+      "chunk_size": 512,
+      "query_count": 4,
+      "predicted_cu": 2080747.062231568,
+      "lower_cu": 2021725.6669420002,
+      "upper_cu": 2139768.457521136,
+      "verification_core_cu": 2072781.6242980477,
+      "transport_overhead_cu": 7686.35927458227,
+      "component_predicted_cu": 2080467.98357263,
+      "component_gap_vs_monolithic_cu": -279.07865893794224,
+      "cu_budget_fraction": 1.4862479015939771,
+      "proof_transport_pressure": 4.987012987012987,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=6144, chunk_size=512, query_count=4.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p6144-c512-q5",
+      "protocol_family": "Circle",
+      "proof_bytes": 6144,
+      "chunk_size": 512,
+      "query_count": 5,
+      "predicted_cu": 2452047.3244203455,
+      "lower_cu": 2393025.9291307777,
+      "upper_cu": 2511068.7197099132,
+      "verification_core_cu": 2443941.3709917967,
+      "transport_overhead_cu": 7686.35927458227,
+      "component_predicted_cu": 2451627.730266379,
+      "component_gap_vs_monolithic_cu": -419.594153966289,
+      "cu_budget_fraction": 1.751462374585961,
+      "proof_transport_pressure": 4.987012987012987,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=6144, chunk_size=512, query_count=5.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p6144-c512-q6",
+      "protocol_family": "Circle",
+      "proof_bytes": 6144,
+      "chunk_size": 512,
+      "query_count": 6,
+      "predicted_cu": 2823347.586609123,
+      "lower_cu": 2764326.191319555,
+      "upper_cu": 2882368.9818986906,
+      "verification_core_cu": 2815101.1176855457,
+      "transport_overhead_cu": 7686.35927458227,
+      "component_predicted_cu": 2822787.476960128,
+      "component_gap_vs_monolithic_cu": -560.1096489946358,
+      "cu_budget_fraction": 2.016676847577945,
+      "proof_transport_pressure": 4.987012987012987,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=6144, chunk_size=512, query_count=6.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p6144-c640-q3",
+      "protocol_family": "Circle",
+      "proof_bytes": 6144,
+      "chunk_size": 640,
+      "query_count": 3,
+      "predicted_cu": 1709098.4784047185,
+      "lower_cu": 1650077.0831151507,
+      "upper_cu": 1768119.8736942862,
+      "verification_core_cu": 1701621.8776042992,
+      "transport_overhead_cu": 7336.189881937273,
+      "component_predicted_cu": 1708958.0674862366,
+      "component_gap_vs_monolithic_cu": -140.4109184818808,
+      "cu_budget_fraction": 1.2207846274319418,
+      "proof_transport_pressure": 4.987012987012987,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=6144, chunk_size=640, query_count=3.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p6144-c640-q4",
+      "protocol_family": "Circle",
+      "proof_bytes": 6144,
+      "chunk_size": 640,
+      "query_count": 4,
+      "predicted_cu": 2080398.7405934955,
+      "lower_cu": 2021377.3453039278,
+      "upper_cu": 2139420.135883063,
+      "verification_core_cu": 2072781.6242980477,
+      "transport_overhead_cu": 7336.189881937273,
+      "component_predicted_cu": 2080117.814179985,
+      "component_gap_vs_monolithic_cu": -280.9264135104604,
+      "cu_budget_fraction": 1.4859991004239255,
+      "proof_transport_pressure": 4.987012987012987,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=6144, chunk_size=640, query_count=4.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p6144-c640-q5",
+      "protocol_family": "Circle",
+      "proof_bytes": 6144,
+      "chunk_size": 640,
+      "query_count": 5,
+      "predicted_cu": 2451699.0027822726,
+      "lower_cu": 2392677.607492705,
+      "upper_cu": 2510720.3980718404,
+      "verification_core_cu": 2443941.3709917967,
+      "transport_overhead_cu": 7336.189881937273,
+      "component_predicted_cu": 2451277.560873734,
+      "component_gap_vs_monolithic_cu": -421.4419085388072,
+      "cu_budget_fraction": 1.751213573415909,
+      "proof_transport_pressure": 4.987012987012987,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=6144, chunk_size=640, query_count=5.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    },
+    {
+      "scenario_name": "circle-p6144-c640-q6",
+      "protocol_family": "Circle",
+      "proof_bytes": 6144,
+      "chunk_size": 640,
+      "query_count": 6,
+      "predicted_cu": 2822999.26497105,
+      "lower_cu": 2763977.869681482,
+      "upper_cu": 2882020.6602606177,
+      "verification_core_cu": 2815101.1176855457,
+      "transport_overhead_cu": 7336.189881937273,
+      "component_predicted_cu": 2822437.307567483,
+      "component_gap_vs_monolithic_cu": -561.957403567154,
+      "cu_budget_fraction": 2.016428046407893,
+      "proof_transport_pressure": 4.987012987012987,
+      "feasible": false,
+      "feasibility_reasons": [
+        "predicted CU exceeds the transaction compute budget"
+      ],
+      "notes": [
+        "Exploratory Circle profile with proof_bytes=6144, chunk_size=640, query_count=6.",
+        "Not security-certified; intended for relative SVM pressure comparison only."
+      ]
+    }
+  ],
+  "failure_modes": [
+    {
+      "boundary": "heap_pressure",
+      "status": "observed",
+      "details": "{\"InstructionError\":[1,\"InvalidInstructionData\"]}"
+    },
+    {
+      "boundary": "transaction_size_friction",
+      "status": "observed",
+      "details": "serialized transaction 1335 exceeds limit 1232"
+    },
+    {
+      "boundary": "compute_unit_exhaustion",
+      "status": "observed",
+      "details": "{\"InstructionError\":[2,\"ComputationalBudgetExceeded\"]}"
+    },
+    {
+      "boundary": "stack_pressure",
+      "status": "unknown",
+      "details": "No production verifier or recursive stack-heavy probe was present. The scaffold keeps stack pressure explicit via the documented 4096-byte frame limit, but does not force a stack overflow probe yet."
+    }
+  ],
+  "notes": [
+    "All field-operation counts are proxy microkernel counts, not dynamic counters from a live verifier.",
+    "Synthetic verifier measurements aggregate upload cost and verify cost into one record for scoring purposes.",
+    "Verification-core and transport component models are secondary fits used for decomposition, not replacements for the monolithic scorer."
+  ]
+}

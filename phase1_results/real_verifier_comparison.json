@@ -1,0 +1,237 @@
+{
+  "generated_at_utc": "2026-04-19T16:29:28.890167+00:00",
+  "source_repo": "https://github.com/pqzk-labs/solana-pqzk-fullchain",
+  "source_paper": "https://eprint.iacr.org/2025/1741",
+  "verify_stark_baseline": {
+    "run_count": 100,
+    "mean_cu": 1104506.47,
+    "median_cu": 1110513.5,
+    "min_cu": 988312,
+    "max_cu": 1190982
+  },
+  "finalize_sig_baseline": {
+    "run_count": 100,
+    "mean_cu": 501263.05,
+    "median_cu": 499946.5,
+    "min_cu": 467360,
+    "max_cu": 543534
+  },
+  "structure": {
+    "proof_path": "/Users/dominic/ZK/third_party/solana-pqzk-fullchain/proof.bin",
+    "proof_sha256": "210f901d310df058c6c27760275f1da7beb64d3e191e0d7d09952db2f1b514c3",
+    "proof_bytes": 4211,
+    "trace_width": 1,
+    "trace_length": 8,
+    "num_trace_segments": 1,
+    "num_unique_queries": 27,
+    "configured_queries": 30,
+    "blowup_factor": 16,
+    "grinding_factor": 8,
+    "field_extension": "none",
+    "folding_factor": 4,
+    "fri_layers": 0,
+    "fri_remainder_elements": 8,
+    "lde_domain_size": 128,
+    "trace_query_depths": [
+      7
+    ],
+    "constraint_query_depth": 7,
+    "fri_layer_depths": [],
+    "merkle_query_families": 2,
+    "total_merkle_levels_unbatched": 378,
+    "total_batched_merkle_nodes": 92,
+    "cipher_bytes": 28,
+    "kem_ciphertext_bytes": 1088,
+    "body_bytes": 5327,
+    "chat_msg_account_bytes": 5499,
+    "heap_frame_bytes_requested": 262144,
+    "notes": [
+      "Proof structure was parsed from a locally generated proof.bin emitted by the pqzk-labs prover.",
+      "Cipher bytes follow the external CLI demo's Hello world AES-256-GCM example: 12 plaintext bytes + 16-byte tag = 28 bytes.",
+      "ChatMsg account size uses 8 discriminator bytes + CHAT_HEAD(164) + body length from the external verifier state layout."
+    ]
+  },
+  "scored_profile_path": "/Users/dominic/ZK/examples/phase1/pqzk-real-verifier-profile.yaml",
+  "scored_profile": {
+    "name": "pqzk-real-verifier-profile",
+    "features": {
+      "sha_calls": 435,
+      "sha_bytes": 27804,
+      "merkle_paths": 54,
+      "merkle_levels": 378,
+      "proof_bytes": 4211,
+      "proof_segments": 1,
+      "upload_bytes": 0,
+      "upload_chunks": 0,
+      "heap_frame_bytes_requested": 262144,
+      "heap_pages_32k": 8,
+      "ro_account_count": 1,
+      "rw_account_count": 0,
+      "account_data_bytes_read": 5499,
+      "account_data_bytes_written": 0,
+      "field_add_sub_ops": 243,
+      "field_mul_ops": 243,
+      "field_inv_ops": 4,
+      "extension_mul_ops": 0
+    },
+    "protocol_family": "Winterfell-FRI",
+    "transport": {
+      "sha_calls": 0,
+      "sha_bytes": 0,
+      "upload_bytes": 0,
+      "upload_chunks": 0
+    },
+    "parameter_choices": [
+      {
+        "name": "proof_bytes",
+        "value": "4211",
+        "rationale": "Directly measured from the locally generated proof.bin emitted by the external pqzk-labs prover.",
+        "sources": [
+          "https://github.com/pqzk-labs/solana-pqzk-fullchain"
+        ]
+      },
+      {
+        "name": "num_queries",
+        "value": "30",
+        "rationale": "Taken directly from the prover's ProofOptions::new(30, 16, 8, FieldExtension::None, 4, 31, ...).",
+        "sources": [
+          "https://github.com/pqzk-labs/solana-pqzk-fullchain",
+          "https://eprint.iacr.org/2025/1741"
+        ]
+      },
+      {
+        "name": "heap_frame_bytes_requested",
+        "value": "262144",
+        "rationale": "Matches the external verifier's documented 256 KiB heap request for verify_stark.",
+        "sources": [
+          "https://github.com/pqzk-labs/solana-pqzk-fullchain"
+        ]
+      }
+    ],
+    "references": [
+      "https://github.com/pqzk-labs/solana-pqzk-fullchain",
+      "https://eprint.iacr.org/2025/1741"
+    ],
+    "query_soundness_model": {
+      "model": "fri",
+      "query_count": 30,
+      "log_blowup": 4,
+      "query_proof_of_work_bits": 8,
+      "target_bits": 128.0,
+      "sources": [
+        "https://eprint.iacr.org/2020/654",
+        "https://eprint.iacr.org/2021/582",
+        "https://github.com/Plonky3/Plonky3/blob/main/fri/src/prover.rs"
+      ],
+      "notes": [
+        "Query soundness is attached here to make the real-verifier comparison explicit about its 30-query, blowup-16 configuration."
+      ]
+    },
+    "notes": [
+      "Intended to approximate the external verify_stark phase only; upload transport is set to zero because the comparison target is the repo's verify-only benchmark.",
+      "Hash, Merkle, and account-byte features are structure-derived from the proof and verifier layout.",
+      "Field-operation counts are source-backed verifier-kernel proxies, not dynamic Winterfell counters.",
+      "field_inv_ops uses an execution-structure proxy of 4 rather than the earlier query-scaled proxy of 27.",
+      "field_mul_ops uses a source-backed proxy of 243 built from remainder Horner multiplications (216) plus queried x-coordinate lifts (27)."
+    ]
+  },
+  "score": {
+    "name": "pqzk-real-verifier-profile",
+    "protocol_family": "Winterfell-FRI",
+    "predicted_cu": 1099681.6344497085,
+    "lower_cu": 1040660.2391601407,
+    "upper_cu": 1158703.0297392763,
+    "cu_budget_fraction": 0.7854868817497918,
+    "proof_transport_pressure": 0.0,
+    "verification_core_cu": 1097828.188640942,
+    "transport_overhead_cu": 712.0069216622707,
+    "component_predicted_cu": 1098540.1955626043,
+    "component_gap_vs_monolithic_cu": -1141.4388871041592,
+    "feasible": false,
+    "feasibility_reasons": [
+      "query-controlled soundness lower bound 68.0 bits is below the 128.0-bit target"
+    ],
+    "dominant_contributors": [
+      {
+        "feature": "heap_pages_32k",
+        "coefficient": 83783.89361870188,
+        "feature_value": 8.0,
+        "cu": 670271.1489496151
+      },
+      {
+        "feature": "merkle_levels",
+        "coefficient": 366.5358903305693,
+        "feature_value": 378.0,
+        "cu": 138550.5665449552
+      },
+      {
+        "feature": "field_mul_ops",
+        "coefficient": 491.3739010822489,
+        "feature_value": 243.0,
+        "cu": 119403.85796298648
+      }
+    ],
+    "query_soundness": {
+      "model": "fri_query_soundness",
+      "query_count": 30,
+      "target_bits": 128.0,
+      "lower_bits": 68.0,
+      "lower_assumption": "fri_proven_rate_pow_q_over_2",
+      "upper_bits": 128.0,
+      "upper_assumption": "ethstark_conjectured_rate_pow_q",
+      "meets_target": false,
+      "notes": [
+        "Lower bound uses the proven FRI query term rate^(q/2).",
+        "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+        "Query soundness is attached here to make the real-verifier comparison explicit about its 30-query, blowup-16 configuration."
+      ],
+      "sources": [
+        "https://eprint.iacr.org/2020/654",
+        "https://eprint.iacr.org/2021/582",
+        "https://github.com/Plonky3/Plonky3/blob/main/fri/src/prover.rs"
+      ]
+    }
+  },
+  "measured_minus_predicted_cu": 4824.835550291464,
+  "absolute_error_cu": 4824.835550291464,
+  "relative_error_fraction": 0.004368318050949456,
+  "field_inv_diagnostic": {
+    "prior_query_scaled_proxy": 27,
+    "ood_transition_divisions": 1,
+    "boundary_constraint_group_divisions": 2,
+    "deep_composer_batch_inversions": 1,
+    "fri_layer_batch_inversions": 0,
+    "estimated_total": 4,
+    "notes": [
+      "The previous proxy scaled field inversions with the number of unique queries, which treated the verifier like a per-query inversion kernel.",
+      "Code inspection of the Winterfell verifier path points to a small constant number of inversions for this AIR: one transition-divisor division in evaluator::combine_evaluations, two boundary-constraint-group divisions from the AIR's two assertions, one DEEP batch inversion in composer::compose_columns, and one interpolation batch inversion per recursive FRI layer.",
+      "For the current pqzk proof, fri_layers=0, so the defensible field_inv_ops proxy is 4 rather than 27."
+    ]
+  },
+  "field_mul_diagnostic": {
+    "prior_proxy": 243,
+    "remainder_horner_mul_ops": 216,
+    "query_coordinate_lift_mul_ops": 27,
+    "estimated_total": 243,
+    "notes": [
+      "The real-verifier field_mul_ops proxy is now tied to the two dominant query-scaled multiplication kernels visible in the Winterfell source: Horner evaluation of the FRI remainder polynomial and one base-field lift/multiply when materializing each queried x-coordinate.",
+      "For this proof, the FRI remainder has 8 coefficients and there are 27 unique queries, yielding 216 Horner multiplications plus 27 x-coordinate lifts for a total proxy of 243.",
+      "This remains a compressed proxy rather than a literal count of every multiplication in the verifier; mixed arithmetic inside DEEP composition and OOD reduction is intentionally left out so the proxy stays aligned with the fitted Phase 1 microkernel scale."
+    ]
+  },
+  "extension_mul_diagnostic": {
+    "estimated_total": 0,
+    "notes": [
+      "The pqzk verifier selects Winterfell's base-field verification path because proof.options().field_extension() is None.",
+      "Under this path, quadratic/cubic extension arithmetic is not instantiated, so extension_mul_ops is exactly zero for this proof family."
+    ]
+  },
+  "field_mul_ops_backsolved_for_mean": 252.81907166755246,
+  "notes": [
+    "Measured baseline comes from the external repository's 100-run verify-only CSV, not from a rerun in this workspace.",
+    "The scored profile uses a locally generated proof.bin and structural feature extraction against the same verifier family.",
+    "The 23% miss in the prior pass was traced to an unsupported query-scaled field_inv_ops proxy; this artifact records the corrected execution-structure proxy.",
+    "Field multiplication and extension-field terms are now audited against the Winterfell source path used by this proof family, rather than left as unlabeled heuristics.",
+    "Backsolved field_mul_ops is diagnostic only; it is not an independently measured coefficient."
+  ]
+}

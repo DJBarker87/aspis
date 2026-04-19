@@ -1,0 +1,59 @@
+{
+  "generated_at_utc": "2026-04-19T18:12:20.698044+00:00",
+  "command": "cargo xtask phase2-real-experiments",
+  "versions": {
+    "generated_at_utc": "2026-04-19T18:11:51.366890+00:00",
+    "executed": [
+      {
+        "command": "solana-test-validator --version",
+        "output": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)"
+      },
+      {
+        "command": "cargo-build-sbf --version",
+        "output": "solana-cargo-build-sbf 2.3.0\nplatform-tools v1.48\nrustc 1.84.1"
+      },
+      {
+        "command": "rustc --version",
+        "output": "rustc 1.93.0 (254b59607 2026-01-19)"
+      },
+      {
+        "command": "cargo --version",
+        "output": "cargo 1.93.0 (083ac5135 2025-12-15)"
+      }
+    ],
+    "not_executed": [
+      "Cross-version validator drift was not executed here; set up alternate Agave/Solana binaries and rerun `cargo xtask phase1-next` under those toolchains."
+    ]
+  },
+  "archived_trace8_reference": {
+    "verify_stark_mean_cu": 1104506.47,
+    "proof_bytes": 4211,
+    "trace_length": 8,
+    "fri_layers": 0
+  },
+  "raw_artifacts": [
+    "results/phase2-real/run_config.json",
+    "results/phase2-real/version_manifest.json",
+    "results/phase2-real/variants.json",
+    "results/phase2-real/predicted_vs_measured.json",
+    "results/phase2-real/raw.jsonl",
+    "results/phase2-real/raw.csv",
+    "results/phase2-real/summary.json",
+    "results/phase2-real/proofs/",
+    "docs/phase2-real-experiments.md"
+  ],
+  "sanity_variant": "trace8_raw_rows",
+  "sanity_variant_verify_cu": 1157699,
+  "experimental_trace_len": 64,
+  "experimental_num_queries": 30,
+  "baseline_variant": "trace64_q30_raw_rows",
+  "winning_variant": "trace64_q30_raw_rows",
+  "baseline_verify_cu": 1400000,
+  "winning_verify_cu": 1400000,
+  "baseline_pipeline_cu": 1457359,
+  "winning_pipeline_cu": 1457359,
+  "delta_verify_cu": 0,
+  "delta_pipeline_cu": 0,
+  "delta_bytes": 0,
+  "note": "This measures the actual Anchor/Winterfell `verify_stark` instruction present in the repo. It is a real transparent verifier path, but it is still Winterfell/FRI over f128 rather than a native WHIR/M31 verifier. At least one measured verify variant hit the transaction CU cap before completion; those rows are preserved as lower-bound CU observations and marked as failed-to-complete."
+}

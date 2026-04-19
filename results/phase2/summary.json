@@ -1,0 +1,63 @@
+{
+  "generated_at_utc": "2026-04-19T19:00:40.433308+00:00",
+  "command": "cargo xtask phase2-experiments",
+  "raw_artifacts": [
+    "results/phase2/run_config.json",
+    "results/phase2/version_manifest.json",
+    "examples/phase2/phase2-run-config.json",
+    "results/phase2/arithmetic/raw.jsonl",
+    "results/phase2/arithmetic/raw.csv",
+    "results/phase2/lift-policy/extension_raw.jsonl",
+    "results/phase2/lift-policy/extension_raw.csv",
+    "results/phase2/whir-fold/raw.jsonl",
+    "results/phase2/whir-fold/raw.csv",
+    "results/phase2/whir-query/scenarios.json",
+    "results/phase2/whir-query/raw.jsonl",
+    "results/phase2/whir-query/raw.csv",
+    "results/phase2/manifests/",
+    "results/phase2/summary.json",
+    "docs/phase2-experiments.md"
+  ],
+  "versions": {
+    "generated_at_utc": "2026-04-19T18:56:56.513904+00:00",
+    "executed": [
+      {
+        "command": "solana-test-validator --version",
+        "output": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)"
+      },
+      {
+        "command": "cargo-build-sbf --version",
+        "output": "solana-cargo-build-sbf 2.3.0\nplatform-tools v1.48\nrustc 1.84.1"
+      },
+      {
+        "command": "rustc --version",
+        "output": "rustc 1.93.0 (254b59607 2026-01-19)"
+      },
+      {
+        "command": "cargo --version",
+        "output": "cargo 1.93.0 (083ac5135 2025-12-15)"
+      }
+    ],
+    "not_executed": [
+      "Cross-version validator drift was not executed here; set up alternate Agave/Solana binaries and rerun `cargo xtask phase1-next` under those toolchains."
+    ]
+  },
+  "workspace_git_hash": null,
+  "vendor_git_hash": "730fc660238e1ebb64782ce427ea6fb2c5429899",
+  "arithmetic_winner_raw_mul": "reference_canonical",
+  "arithmetic_winner_verifier_kernel": "reference_canonical",
+  "extension_kernel_winner": "karatsuba",
+  "lift_policy_winner": "late_lift_qm31",
+  "whir_fold_winner": "local_interpolant",
+  "combined_best_variant": "karatsuba_late_lift_qm31_local_interpolant",
+  "combined_estimated_savings_cu": 467606.71329352306,
+  "combined_estimated_headroom_cu": 417606.71329352306,
+  "combined_estimated_post_change_cu": 982393.2867064769,
+  "whir_query_high_fidelity_winner": "reference_karatsuba_late",
+  "whir_query_translation_summary": [
+    "whir_t100_capacity_full: direct/schoolbook/eager 528729 CU -> reference/schoolbook/eager 481389 CU -> reference/karatsuba/eager 476956 CU -> reference/karatsuba/late 458043 CU",
+    "whir_t128_capacity_full: direct/schoolbook/eager 697986 CU -> reference/schoolbook/eager 632049 CU -> reference/karatsuba/eager 625903 CU -> reference/karatsuba/late 599602 CU",
+    "whir_t128_johnson_full: direct/schoolbook/eager 1291130 CU -> reference/schoolbook/eager 1160804 CU -> reference/karatsuba/eager 1148039 CU -> reference/karatsuba/late 1095421 CU"
+  ],
+  "biggest_remaining_risk": "The high-fidelity WHIR path is now bound to the concrete Spend statement shape, but it still is not a native WHIR prover/verifier transcript, so proof-layout and transcript costs can still move when the real query evaluator lands."
+}

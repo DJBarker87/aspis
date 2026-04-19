@@ -1,0 +1,121 @@
+[
+  {
+    "name": "spend-circle-profile",
+    "protocol_family": "Circle",
+    "predicted_cu": 2166297.564641387,
+    "lower_cu": 2107276.1693518194,
+    "upper_cu": 2225318.959930955,
+    "cu_budget_fraction": 1.5473554033152765,
+    "proof_transport_pressure": 5.402597402597403,
+    "verification_core_cu": 2157784.34631701,
+    "transport_overhead_cu": 8267.555303992269,
+    "component_predicted_cu": 2166051.9016210022,
+    "component_gap_vs_monolithic_cu": -245.6630203849636,
+    "feasible": false,
+    "feasibility_reasons": [
+      "predicted CU exceeds the transaction compute budget",
+      "query-controlled soundness lower bound 10.0 bits is below the 128.0-bit target"
+    ],
+    "dominant_contributors": [
+      {
+        "feature": "field_mul_ops",
+        "coefficient": 491.3739010822489,
+        "feature_value": 1424.0,
+        "cu": 699716.4351411224
+      },
+      {
+        "feature": "extension_mul_ops",
+        "coefficient": 3175.4537344967566,
+        "feature_value": 204.0,
+        "cu": 647792.5618373384
+      },
+      {
+        "feature": "heap_pages_32k",
+        "coefficient": 83783.89361870188,
+        "feature_value": 3.0,
+        "cu": 251351.68085610564
+      }
+    ],
+    "query_soundness": {
+      "model": "fri_query_soundness",
+      "query_count": 5,
+      "target_bits": 128.0,
+      "lower_bits": 10.0,
+      "lower_assumption": "fri_proven_rate_pow_q_over_2",
+      "upper_bits": 20.0,
+      "upper_assumption": "ethstark_conjectured_rate_pow_q",
+      "meets_target": false,
+      "notes": [
+        "Lower bound uses the proven FRI query term rate^(q/2).",
+        "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+        "Circle spend scoring treats q as the literal FRI query count."
+      ],
+      "sources": [
+        "https://eprint.iacr.org/2020/654",
+        "https://eprint.iacr.org/2021/582",
+        "https://github.com/Plonky3/Plonky3/blob/main/fri/src/config.rs",
+        "https://github.com/Plonky3/Plonky3/blob/main/fri/src/prover.rs"
+      ]
+    }
+  },
+  {
+    "name": "spend-whir-profile",
+    "protocol_family": "WHIR",
+    "predicted_cu": 1749910.3025729763,
+    "lower_cu": 1690888.9072834086,
+    "upper_cu": 1808931.697862544,
+    "cu_budget_fraction": 1.2499359304092688,
+    "proof_transport_pressure": 4.571428571428571,
+    "verification_core_cu": 1742737.4068782604,
+    "transport_overhead_cu": 7105.16324517227,
+    "component_predicted_cu": 1749842.5701234327,
+    "component_gap_vs_monolithic_cu": -67.73244954366237,
+    "feasible": false,
+    "feasibility_reasons": [
+      "predicted CU exceeds the transaction compute budget",
+      "query-controlled soundness lower bound 7.7 bits is below the 128.0-bit target"
+    ],
+    "dominant_contributors": [
+      {
+        "feature": "field_mul_ops",
+        "coefficient": 491.3739010822489,
+        "feature_value": 1140.0,
+        "cu": 560166.2472337637
+      },
+      {
+        "feature": "extension_mul_ops",
+        "coefficient": 3175.4537344967566,
+        "feature_value": 138.0,
+        "cu": 438212.6153605524
+      },
+      {
+        "feature": "heap_pages_32k",
+        "coefficient": 83783.89361870188,
+        "feature_value": 3.0,
+        "cu": 251351.68085610564
+      }
+    ],
+    "query_soundness": {
+      "model": "whir_query_soundness",
+      "query_count": 4,
+      "target_bits": 128.0,
+      "lower_bits": 7.7184426884344095,
+      "lower_assumption": "whir_johnson_bound_query_term",
+      "upper_bits": 15.718442688434404,
+      "upper_assumption": "whir_capacity_bound_query_term",
+      "meets_target": false,
+      "notes": [
+        "Lower bound uses the Johnson-bound query term with eta = sqrt(rho)/20 from the official Plonky3 WHIR soundness model.",
+        "Upper bound uses the capacity-bound query term with eta = rho/20 from the same model.",
+        "This assessment interprets q as the explicit proximity-query count and adds the configured WHIR proof-of-work budget as an independent additive term.",
+        "It still omits OOD and folding terms, so it remains a query-controlled security screen rather than a full WHIR security proof.",
+        "WHIR spend scoring treats q as the explicit proximity-query count."
+      ],
+      "sources": [
+        "https://eprint.iacr.org/2024/1586",
+        "https://eprint.iacr.org/2025/2055",
+        "https://github.com/Plonky3/Plonky3/blob/main/whir/src/parameters/soundness.rs"
+      ]
+    }
+  }
+]

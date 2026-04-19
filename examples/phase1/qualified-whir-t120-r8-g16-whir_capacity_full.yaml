@@ -1,0 +1,93 @@
+name: qualified-whir-t120-r8-g16-whir_capacity_full
+features:
+  sha_calls: 541
+  sha_bytes: 69896
+  merkle_paths: 56
+  merkle_levels: 496
+  proof_bytes: 17764
+  proof_segments: 35
+  upload_bytes: 17764
+  upload_chunks: 28
+  heap_frame_bytes_requested: 98304
+  heap_pages_32k: 3
+  ro_account_count: 6
+  rw_account_count: 1
+  account_data_bytes_read: 7168
+  account_data_bytes_written: 256
+  field_add_sub_ops: 2832
+  field_mul_ops: 5540
+  field_inv_ops: 5
+  extension_mul_ops: 938
+protocol_family: WHIR
+transport:
+  sha_calls: 28
+  sha_bytes: 18660
+  upload_bytes: 17764
+  upload_chunks: 28
+parameter_choices:
+- name: query_count
+  value: '54'
+  rationale: Literal absolute proof queries in the screening model. q is an explicit verifier-query counter, not a query-round counter and not an effective-query estimate after hidden batching.
+  sources:
+  - https://eprint.iacr.org/2024/1586
+- name: query_security_status
+  value: query_soundness_assessed
+  rationale: 'Query soundness is assessed with the official WHIR query-term models at inverse rate 8: Johnson-bound as the lower bound and capacity-bound as the upper bound, plus 16 PoW bits.'
+  sources:
+  - https://eprint.iacr.org/2024/1586
+- name: log_inv_rate
+  value: '3'
+  rationale: Sweeps the WHIR starting inverse code rate jointly with q and PoW; higher values improve query soundness but enlarge proof paths.
+  sources:
+  - https://eprint.iacr.org/2024/1586
+  - https://eprint.iacr.org/2025/2055
+- name: pow_bits
+  value: '16'
+  rationale: Verifier-side grinding is modeled as a fixed-size witness check when enabled; difficulty bits mainly move security, not verifier work.
+  sources:
+  - https://github.com/Plonky3/Plonky3/blob/main/whir/src/parameters/whir.rs
+  - https://github.com/Plonky3/Plonky3/blob/main/whir/src/sumcheck/data.rs
+- name: chunk_size_bytes
+  value: '640'
+  rationale: Upload chunking remains an explicit transport lever under the Solana transaction byte cap.
+  sources: []
+- name: proof_bytes
+  value: '15952'
+  rationale: Proof bytes were derived from the structured spend arithmetization, query count, and protocol-specific transcript assumptions.
+  sources:
+  - https://eprint.iacr.org/2024/1586
+- name: evaluation_domain_log2
+  value: '13'
+  rationale: Derived from the explicit spend arithmetization row budget rather than a hand-picked verifier proxy count.
+  sources: []
+- name: security_target_bits
+  value: '120'
+  rationale: Explicit security target for the scorer-side sweep.
+  sources: []
+- name: total_explicit_query_count
+  value: '54'
+  rationale: Total explicit WHIR proof queries across intermediate and final phases, derived from the official round-by-round parameter generation.
+  sources:
+  - https://github.com/Plonky3/Plonky3/blob/main/whir/src/parameters/whir.rs
+- name: field_size_bits
+  value: '155'
+  rationale: 'Inferred M31-style screening assumption: degree-5 extension field for the full-WHIR security model.'
+  sources:
+  - https://eprint.iacr.org/2025/2055
+- name: folding_factor
+  value: 4/4
+  rationale: 'Inferred WHIR screening assumption: first-round folding factor 4 and later-round folding factor 4, matching the reference CLI defaults.'
+  sources:
+  - https://github.com/GalArnon/whir/blob/main/src/bin/main.rs
+references:
+- https://eprint.iacr.org/2024/1586
+- https://eprint.iacr.org/2024/1810
+- https://eprint.iacr.org/2025/2055
+query_soundness_model: null
+notes:
+- Structured spend-screen profile derived from explicit statement and arithmetization assumptions; total_rows=6720, log2_rows=13.
+- Literal absolute proof queries in the screening model. q is an explicit verifier-query counter, not a query-round counter and not an effective-query estimate after hidden batching.
+- 'Query soundness is assessed with the official WHIR query-term models at inverse rate 8: Johnson-bound as the lower bound and capacity-bound as the upper bound, plus 16 PoW bits.'
+- This tuned screen uses log_inv_rate=3 and grinding_bits=16.
+- field_inv_ops uses a structural proxy of 5 instead of the earlier query-scaled proxy of 64.
+- Full WHIR-derived security replaces the earlier query-only screen; total explicit queries=54, total OOD samples=4, final rate=1/64.

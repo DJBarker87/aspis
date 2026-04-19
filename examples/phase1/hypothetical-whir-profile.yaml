@@ -1,0 +1,48 @@
+name: hypothetical-whir-profile
+features:
+  sha_calls: 42
+  sha_bytes: 10752
+  merkle_paths: 3
+  merkle_levels: 24
+  proof_bytes: 4096
+  proof_segments: 9
+  upload_bytes: 4096
+  upload_chunks: 8
+  heap_frame_bytes_requested: 98304
+  heap_pages_32k: 3
+  ro_account_count: 4
+  rw_account_count: 1
+  account_data_bytes_read: 3072
+  account_data_bytes_written: 128
+  field_add_sub_ops: 2048
+  field_mul_ops: 896
+  field_inv_ops: 32
+  extension_mul_ops: 72
+protocol_family: WHIR
+transport:
+  sha_calls: 8
+  sha_bytes: 4352
+  upload_bytes: 4096
+  upload_chunks: 8
+parameter_choices:
+- name: query_count
+  value: '3'
+  rationale: WHIR is modeled with fewer queries than the FRI baseline to reflect its intended verifier-side savings.
+  sources:
+  - https://eprint.iacr.org/2024/1586
+  - https://eprint.iacr.org/2024/1810
+- name: merkle_depth
+  value: '8'
+  rationale: Keeps the Merkle surface shallower than the FRI baseline while preserving a transparent commitment shape.
+  sources:
+  - https://eprint.iacr.org/2024/1586
+- name: chunk_size_bytes
+  value: '512'
+  rationale: Matches the existing 512-byte upload-friendly shape used elsewhere in Phase 1.
+  sources: []
+references:
+- https://eprint.iacr.org/2024/1586
+- https://eprint.iacr.org/2024/1810
+notes:
+- Exploratory WHIR-shaped profile for direct comparison against the Circle and FRI examples.
+- Parameter values are intended for SVM cost screening, not as a definitive WHIR parameterization.
