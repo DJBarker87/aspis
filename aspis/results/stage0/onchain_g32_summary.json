@@ -1,0 +1,130 @@
+{
+  "generated_at_utc": "2026-07-04T12:42:01.980896+00:00",
+  "command": "cargo run -p aspis-xtask -- stage0-onchain-g32",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "verify_cu_limit": 1400000,
+  "heap_frame_bytes": 262144,
+  "gate_matrix_only": true,
+  "variants": [
+    {
+      "profile": "capacity_lr12_q36_g32",
+      "soundness_label": "heuristic diagnostic (capacity-conjecture shaped; g32 query trade)",
+      "fold_payload": "raw_fibers",
+      "merkle_mode": "minimal_subtree",
+      "status": "accepted",
+      "verify_error": null,
+      "proof_bytes": 23510,
+      "upload_chunks": 37,
+      "upload_cu_total": 18276,
+      "verify_cu": [
+        1025729,
+        1025729,
+        1025729,
+        1025729,
+        1025729
+      ],
+      "verify_cu_mean": 1025729.0,
+      "verify_repetitions_requested": 5,
+      "corruption_rejected_onchain": [
+        [
+          "root_corruption",
+          true
+        ],
+        [
+          "payload_corruption",
+          true
+        ],
+        [
+          "final_value_corruption",
+          true
+        ],
+        [
+          "grinding_corruption",
+          true
+        ],
+        [
+          "statement_digest_mismatch",
+          true
+        ],
+        [
+          "trailing_byte",
+          true
+        ],
+        [
+          "truncation",
+          true
+        ],
+        [
+          "mode_flag_replay",
+          true
+        ],
+        [
+          "profile_swap",
+          true
+        ]
+      ]
+    },
+    {
+      "profile": "capacity_lr12_q32_g32",
+      "soundness_label": "heuristic diagnostic (capacity-conjecture shaped; g32 query trade)",
+      "fold_payload": "raw_fibers",
+      "merkle_mode": "minimal_subtree",
+      "status": "accepted",
+      "verify_error": null,
+      "proof_bytes": 21078,
+      "upload_chunks": 33,
+      "upload_cu_total": 16738,
+      "verify_cu": [
+        894891,
+        894891,
+        894891,
+        894891,
+        894891
+      ],
+      "verify_cu_mean": 894891.0,
+      "verify_repetitions_requested": 5,
+      "corruption_rejected_onchain": [
+        [
+          "root_corruption",
+          true
+        ],
+        [
+          "payload_corruption",
+          true
+        ],
+        [
+          "final_value_corruption",
+          true
+        ],
+        [
+          "grinding_corruption",
+          true
+        ],
+        [
+          "statement_digest_mismatch",
+          true
+        ],
+        [
+          "trailing_byte",
+          true
+        ],
+        [
+          "truncation",
+          true
+        ],
+        [
+          "mode_flag_replay",
+          true
+        ],
+        [
+          "profile_swap",
+          true
+        ]
+      ]
+    }
+  ],
+  "notes": [
+    "Diagnostic g32 query/grinding trade; not a frozen profile until Stage 1 soundness accounting confirms the query count.",
+    "Only raw_fibers/minimal_subtree is measured because proof_carried_round_local lost on both bytes and CU in the gate artifact."
+  ]
+}

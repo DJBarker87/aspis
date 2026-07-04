@@ -45,6 +45,32 @@ pub fn verify_single_path(
     index == 0 && acc == *root
 }
 
+/// Allocation-free sibling-path verifier. `path_bytes` is `depth` sibling
+/// hashes, leaf level first.
+pub fn verify_single_path_bytes(
+    hash: HashFn,
+    root: &[u8; 32],
+    depth: u32,
+    mut index: u32,
+    leaf: [u8; 32],
+    path_bytes: &[u8],
+) -> bool {
+    if path_bytes.len() != depth as usize * 32 {
+        return false;
+    }
+    let mut acc = leaf;
+    for sibling in path_bytes.chunks_exact(32) {
+        let sibling: [u8; 32] = sibling.try_into().unwrap();
+        acc = if index & 1 == 0 {
+            node_hash(hash, &acc, &sibling)
+        } else {
+            node_hash(hash, &sibling, &acc)
+        };
+        index >>= 1;
+    }
+    index == 0 && acc == *root
+}
+
 /// Verify a deduplicated multiproof for `entries` = sorted, unique
 /// (leaf_index, leaf_hash) pairs. `nodes` supplies the frontier siblings in
 /// deterministic traversal order (level by level, ascending index, a sibling
@@ -101,6 +127,68 @@ pub fn verify_minimal_subtree(
         level = next;
     }
     stream.next().is_none() && level.len() == 1 && level[0].0 == 0 && level[0].1 == *root
+}
+
+/// Allocation-reusing minimal-subtree verifier. `node_bytes` is the same node
+/// stream as `verify_minimal_subtree`, encoded as contiguous 32-byte hashes.
+/// `level` and `next` are caller-owned scratch buffers reused across layers.
+pub fn verify_minimal_subtree_bytes(
+    hash: HashFn,
+    root: &[u8; 32],
+    depth: u32,
+    entries: &[(u32, [u8; 32])],
+    node_bytes: &[u8],
+    level: &mut Vec<(u32, [u8; 32])>,
+    next: &mut Vec<(u32, [u8; 32])>,
+) -> bool {
+    if entries.is_empty() || node_bytes.len() % 32 != 0 {
+        return false;
+    }
+    for pair in entries.windows(2) {
+        if pair[0].0 >= pair[1].0 {
+            return false;
+        }
+    }
+    if entries.last().unwrap().0 >= (1u32 << depth) {
+        return false;
+    }
+
+    let mut node_pos = 0usize;
+    level.clear();
+    level.extend_from_slice(entries);
+    for _ in 0..depth {
+        next.clear();
+        let mut i = 0;
+        while i < level.len() {
+            let (idx, h) = level[i];
+            let parent = if idx & 1 == 0 {
+                if i + 1 < level.len() && level[i + 1].0 == idx + 1 {
+                    let combined = node_hash(hash, &h, &level[i + 1].1);
+                    i += 2;
+                    combined
+                } else {
+                    if node_pos + 32 > node_bytes.len() {
+                        return false;
+                    }
+                    let sib: [u8; 32] = node_bytes[node_pos..node_pos + 32].try_into().unwrap();
+                    node_pos += 32;
+                    i += 1;
+                    node_hash(hash, &h, &sib)
+                }
+            } else {
+                if node_pos + 32 > node_bytes.len() {
+                    return false;
+                }
+                let sib: [u8; 32] = node_bytes[node_pos..node_pos + 32].try_into().unwrap();
+                node_pos += 32;
+                i += 1;
+                node_hash(hash, &sib, &h)
+            };
+            next.push((idx >> 1, parent));
+        }
+        core::mem::swap(level, next);
+    }
+    node_pos == node_bytes.len() && level.len() == 1 && level[0].0 == 0 && level[0].1 == *root
 }
 
 #[cfg(test)]
@@ -173,12 +261,12 @@ mod tests {
         let root = levels.last().unwrap()[0];
         let indices = [1u32, 4, 5, 19, 30];
         // prover-side emission mirrors the verifier traversal
-        let entries: Vec<(u32, [u8; 32])> = indices
-            .iter()
-            .map(|&i| (i, leaves[i as usize]))
-            .collect();
+        let entries: Vec<(u32, [u8; 32])> =
+            indices.iter().map(|&i| (i, leaves[i as usize])).collect();
         let nodes = crate::merkle::tests::emit_nodes(&levels, &indices);
-        assert!(verify_minimal_subtree(test_hash, &root, 5, &entries, &nodes));
+        assert!(verify_minimal_subtree(
+            test_hash, &root, 5, &entries, &nodes
+        ));
         // truncated stream fails
         assert!(!verify_minimal_subtree(
             test_hash,
@@ -190,7 +278,9 @@ mod tests {
         // extra node fails
         let mut extra = nodes.clone();
         extra.push([0u8; 32]);
-        assert!(!verify_minimal_subtree(test_hash, &root, 5, &entries, &extra));
+        assert!(!verify_minimal_subtree(
+            test_hash, &root, 5, &entries, &extra
+        ));
     }
 
     pub(crate) fn emit_nodes(levels: &[Vec<[u8; 32]>], indices: &[u32]) -> Vec<[u8; 32]> {

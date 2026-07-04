@@ -5,7 +5,11 @@
 `aspis/` is a self-contained workspace holding the Aspis staged project
 (transparent shielded spend on Solana): the native WHIR-style M31 PCS
 substrate, its prover, SBF verifier program, and Stage 0 measurement
-runners. See `aspis/README.md` and `aspis/docs/stage0-gate.md`.
+runners. See `aspis/README.md`, `aspis/docs/aspis-staged-design.md`,
+and `aspis/docs/stage0-gate.md`. Stage 0 now has a conditional conclusion:
+the old lr14 narrow-layout target and Johnson q80 are RED, while the measured
+continuation target is lr10/k64/q32/g32 with a projected 887,776 CU before
+Stage 1 hardening and Stage 2 composition costs.
 
 # Phase 1 SVM Cost Model
 

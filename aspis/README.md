@@ -6,12 +6,17 @@ a program on Solana. This subrepo is **Stage 0**: the native WHIR-style M31
 PCS substrate ("native v0"), consolidated with the measured Phase 2 kernel
 winners built in from the first line.
 
-**Status**: Stage 0, host-complete. Host prove/verify parity 10/10 on every
-profile/packaging variant; all corruption classes rejected. **No on-chain CU
-number exists for this code yet** — `stage0-onchain` must run on a machine
-with the Agave toolchain before the Stage 0 gate closes (see
-`docs/stage0-gate.md`). Every soundness label in this tree is `heuristic`
-until the Stage 1 soundness note exists.
+**Status**: Stage 0, **conditionally closed**. Host prove/verify parity is
+10/10 on every profile/packaging variant; all host corruption classes reject.
+The gate-focused SBF run on Agave `2.3.0` accepts the capacity lr12
+raw/minimal profile at `1,063,093` CU. Johnson q80 exceeds the cap and stays
+research-track. The lr14 profile also exceeds the cap, but it is now recorded
+as a narrow-layout diagnostic rather than the statement target; the real
+target is lr10/k64/q32/g32 as a Stage 1 hypothesis. The measured projection is
+`887,776` CU after PCS + wide-leaf/RLC overhead + the existing 30K sumcheck
+estimate, leaving `302,224` CU against the 1.19M target. See
+`docs/stage0-conclusion.md` and `docs/stage0-gate.md`. Every soundness label
+in this tree is `heuristic` until the Stage 1 soundness note exists.
 
 ## What this is (and is not)
 
@@ -69,22 +74,55 @@ crates/aspis-core        no_std verifier core, byte-exact host + SBF (the seam a
 crates/aspis-prover      host-only prover
 programs/aspis-verifier  SBF program: staged upload + verify; knows nothing about spends
 xtask                    stage0-host / stage0-onchain measurement runners
-docs/                    stage 0 gate note, whir-p3 divergence note
+docs/                    staged design, stage 0 gate note, audit notes, divergence note
 results/stage0/          raw artifacts backing every number quoted anywhere
 ```
+
+## Stage gates
+
+| Stage | Goal | Current status |
+| --- | --- | --- |
+| Stage 0 | Consolidate the native WHIR-style M31 PCS substrate | **CONDITIONAL GO**: lr10/k64/q32/g32 target hypothesis; Johnson q80 and old lr14 target are RED |
+| Stage 1 | Harden and budget the PCS soundness argument | next; must justify or kill q32/g32 |
+| Stage 2 | Build the direct spend evaluator and statement layer | blocked until Stage 1 closes |
+| Stage 3 | Add commitment and sumcheck/evaluation hiding | future |
+| Stage 4 | Split verifier crate seam and demo shielded pool | future |
+| Stage 5 | Freeze, devnet n=100 measurement, novelty re-check, writeup | future |
 
 ## Commands
 
 ```bash
 cargo test                                     # parity + corruption + unit suites
 cargo run --release -p aspis-xtask -- stage0-host     # host artifacts (results/stage0/host_summary.json)
-cargo run --release -p aspis-xtask -- stage0-onchain  # CU measurement; needs cargo-build-sbf + solana-test-validator
+cargo run --release -p aspis-xtask -- stage0-onchain-gate  # gate CU matrix, writes results/stage0/onchain_summary.json
+cargo run --release -p aspis-xtask -- stage0-onchain-profile # native CU markers, writes onchain_profile.json
+cargo run --release -p aspis-xtask -- stage0-layout-sweep    # synthetic (log_rows,k) sweep
+cargo run --release -p aspis-xtask -- stage0-onchain-g32     # g32 query/grinding diagnostics
+cargo run --release -p aspis-xtask -- stage0-onchain-layout-target # lr10 q40/q36/q32 target profiles
+cargo run --release -p aspis-xtask -- stage0-onchain       # full packaging matrix; slow
 ```
+
+## On-chain proof account layout
+
+`aspis-verifier` keeps staged upload separate from proof verification. Upload
+state is a program-owned account with:
+
+```text
+[0..4]   magic "ASPU"
+[4..8]   proof_len u32 LE
+[8..40]  upload authority pubkey
+[40..]   proof bytes
+```
+
+`InitProof` requires both the proof account signer (first initialization only)
+and the upload authority signer. `UploadChunk` requires the stored authority
+signer. `Verify` only reads the uploaded proof and statement digest; it does
+not know about spends and does not require the upload authority.
 
 ## Working rules (inherited from the staged design)
 
 - No public number without a reproduction script and a soundness label.
 - No stage begins before the previous gate document is written.
 - Scope deviations are named as deviations — see `docs/stage0-gate.md`, which
-  records two: this tree contained no pre-existing native v0 to port into,
-  and on-chain measurement was environment-blocked at authoring time.
+  records the bootstrap-native deviation, gate-focused measurement deviation,
+  and the lr14 target demotion.

@@ -147,7 +147,71 @@ pub const PROFILE_CAPACITY_LR14: Profile = Profile {
     soundness_label: "heuristic (capacity-conjecture shaped; Stage 1 budget pending)",
 };
 
-pub const PROFILES: &[Profile] = &[PROFILE_CAPACITY, PROFILE_JOHNSON, PROFILE_CAPACITY_LR14];
+/// Diagnostic profiles for the g16 -> g32 grinding/query trade. These are not
+/// frozen Stage 0 profiles; they exist to measure whether prover-side grinding
+/// can buy back enough verifier queries to recover Stage 1 headroom.
+pub const PROFILE_CAPACITY_G32_Q36: Profile = Profile {
+    id: 3,
+    name: "capacity_lr12_q36_g32",
+    log_rows: 12,
+    log_blowup: 2,
+    query_count: 36,
+    grinding_bits: 32,
+    soundness_label: "heuristic diagnostic (capacity-conjecture shaped; g32 query trade)",
+};
+
+pub const PROFILE_CAPACITY_G32_Q32: Profile = Profile {
+    id: 4,
+    name: "capacity_lr12_q32_g32",
+    log_rows: 12,
+    log_blowup: 2,
+    query_count: 32,
+    grinding_bits: 32,
+    soundness_label: "heuristic diagnostic (capacity-conjecture shaped; g32 query trade)",
+};
+
+/// Lower-row diagnostics for the wide-row statement layout decision. These
+/// are Stage 0 measurement targets, not frozen soundness profiles.
+pub const PROFILE_CAPACITY_LR10_Q40_G16: Profile = Profile {
+    id: 5,
+    name: "capacity_lr10_q40_g16",
+    log_rows: 10,
+    log_blowup: 2,
+    query_count: 40,
+    grinding_bits: 16,
+    soundness_label: "heuristic diagnostic (lower-row layout target; Stage 1 budget pending)",
+};
+
+pub const PROFILE_CAPACITY_LR10_Q36_G16: Profile = Profile {
+    id: 6,
+    name: "capacity_lr10_q36_g16",
+    log_rows: 10,
+    log_blowup: 2,
+    query_count: 36,
+    grinding_bits: 16,
+    soundness_label: "heuristic diagnostic (lower-row layout target; q36 verifier cost)",
+};
+
+pub const PROFILE_CAPACITY_LR10_Q32_G16: Profile = Profile {
+    id: 7,
+    name: "capacity_lr10_q32_g16",
+    log_rows: 10,
+    log_blowup: 2,
+    query_count: 32,
+    grinding_bits: 16,
+    soundness_label: "heuristic diagnostic (lower-row layout target; q32 verifier cost)",
+};
+
+pub const PROFILES: &[Profile] = &[
+    PROFILE_CAPACITY,
+    PROFILE_JOHNSON,
+    PROFILE_CAPACITY_LR14,
+    PROFILE_CAPACITY_G32_Q36,
+    PROFILE_CAPACITY_G32_Q32,
+    PROFILE_CAPACITY_LR10_Q40_G16,
+    PROFILE_CAPACITY_LR10_Q36_G16,
+    PROFILE_CAPACITY_LR10_Q32_G16,
+];
 
 pub fn profile_by_id(id: u8) -> Option<&'static Profile> {
     PROFILES.iter().find(|p| p.id == id)
