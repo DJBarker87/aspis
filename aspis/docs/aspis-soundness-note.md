@@ -10,10 +10,10 @@ challenged line by line). Section status ledger:
 | 1. Protocol as implemented | reviewed; constants corrected |
 | 2. The assumption + canonical challenge order | reviewed; **gamma-ordering fix applied** |
 | 3. Field-ceiling lemma | reviewed; T7 harmonized, model paragraph added, honest margin stated |
-| 4. Per-round query budget | drafted on the q36/g32 ruling — in review |
+| 4. Per-round query budget | **reviewed, approved** (q38 labeled extrapolated; T1 pinning is a §4 open item) |
 | 5. Copy-argument soundness term | reviewed line-by-line; hardened with resolutions |
-| 6. Grinding + Fiat-Shamir model | drafted — in review |
-| 7. Proven-vs-conjectured ledger | stub; written last, includes SHA-256 assumption lines |
+| 6. Grinding + Fiat-Shamir model | reviewed; binding-term sentence inverted, work-metric phrasing fixed |
+| 7. Proven-vs-conjectured ledger | drafted (fully determined by §1-§6) — awaiting final sign-off |
 
 Headline decision this note serves (design §13.3, decided 2026-07-04): the
 public claim is frozen at **t = 100 bits, capacity-conjectured**; §3 is the
@@ -168,11 +168,12 @@ Union of T1-T8: dominated by T1 and T6, total ~2^-106 .. 2^-109 of algebraic
 error before queries. t = 128 would require every enumerated term to vanish
 — not a parameter choice, a different field tower.
 
-**The honest final number.** The query term joins the union: at q36/g32
-(§4), total error <= 2^-104 + 2^-106..-109 ~ **2^-103.7 worst-case**. The
-claim's true margin over t = 100 is ~3.5-4 bits, not the table's 6-9 — the
-6-9 figure is the algebraic ceiling alone and must not be quoted as the
-system margin.
+**The honest final number.** The query term joins the union — in the
+success-per-unit-work metric, where both categories denominate in hashes
+(§6): success/work <= 2^-106..-109 + 2^-32 * 2^-72 ~ **2^-103.7
+worst-case**. The claim's true margin over t = 100 is ~3.5-4 bits, not the
+table's 6-9 — the 6-9 figure is the algebraic ceiling alone and must not be
+quoted as the system margin.
 
 Grinding does not appear in the table by construction: the PoW sits before
 query derivation and raises the price of re-rolling the query challenge
@@ -238,9 +239,9 @@ work/success metric.
 
 | schedule | query bits | verdict | measured PCS CU (lr10) | projection | headroom vs 1.19M |
 | --- | ---: | --- | ---: | ---: | ---: |
-| q32/g32 | 96 | **retired — 4 bits short of t=100** | 656,662 | 887,776 | 302,224 |
-| **q36/g32** | **104** | **ruled: the Stage 1 schedule** | 742,795 | 973,909 | 216,091 |
-| q38/g32 | 108 | inline contingency (see below) | ~785,900 (slope) | ~1,016,975 | ~173,000 |
+| q32/g32 | 96 | **retired — 4 bits short of t=100** | 656,662 (measured) | 887,776 | 302,224 |
+| **q36/g32** | **104** | **ruled: the Stage 1 schedule** | 742,795 (measured) | 973,909 | 216,091 |
+| q38/g32 | 108 | inline contingency (see below) | ~785,900 (**extrapolated**) | ~1,016,975 | ~173,000 |
 
 The q32 -> q36 promotion costs **+86,133 CU** on the measured lr10 slope
 (887,776 -> 973,909; headroom 302K -> 216K, already re-labelled in the
@@ -250,11 +251,16 @@ constant-pinning lands at the bad end of the ~106-112 bracket, q38 (108
 query bits) is the escape hatch at roughly +43K CU more on the same
 measured slope (~21.5K CU per query). If q38's projection cannot absorb the
 Stage 2 constraint-composition measurement, the split-verification fallback
-from the Stage 0 conclusion triggers — that ladder is unchanged.
+from the Stage 0 conclusion triggers — that ladder is unchanged. The q38 row is
+extrapolated, not measured: linearity of the CU slope beyond q36 is assumed
+and gets measured only if the contingency fires.
 
-Open in this section until §7 freezes: pinning T1's per-round gathering
-constants against the pinned upstream `WizardOfMenlo/whir` reference (the
-one place the 1.6 deliberate-conservatism bits of §3 may be spent).
+**§4 open item (an experiment, not a ledger entry):** pin T1's per-round
+gathering constants against the pinned upstream `WizardOfMenlo/whir`
+reference, with its own reproduction artifact under `results/stage1/`. This
+is the one place the 1.6 deliberate-conservatism bits of §3 may be spent.
+§7 records the outcome's status; the work and the artifact live here, per
+the house rule that every number traces to a script.
 
 ## 5. Copy-argument soundness term (LogUp multiset copy check)
 
@@ -357,9 +363,20 @@ ratio against round i is at least 1/eps_i hash queries (one query per
 attempt, eps_i the round's per-attempt error), and 2^g per attempt for the
 query round. The system's bits in the work/success metric are then
 min_i(-log2 eps_i) over the rounds, which the §3 union bounds conservatively
-from below by summing. With algebraic union ~2^-106..-109 and query term
-2^-104 at q36/g32, the binding round is the query round, as it should be —
-the parameters put the conjectured term last in line.
+from below by summing.
+
+**Which term binds — stated the honest way around.** In the work metric the
+query round binds (104 < 106-109), but that must not be read as "the
+conjectured term is last in line": the query term's 2-bits-per-query rate
+IS the capacity conjecture — T1 is the conjecture's algebraic-validity face
+and the query rate is its radius face, one conjecture wearing two hats,
+which is why §7 puts them on a single shared line. Under proven accounting
+on the same schedule (Johnson radius 1 - sqrt(rho) - eta at rho = 2^-2,
+delta ~ 0.475 after slack), a traced query buys ~0.93 bits and q36/g32
+proves roughly 65-68 bits, not 104. The correct sayable sentence is the
+inversion: **every term this note proves clears 2^-110; the binding term is
+the single conjectured one, at 104 work-bits; the system's security equals
+the capacity conjecture's truth, with no weaker proven link anywhere.**
 
 **Sampler completeness (from the §3 T9 fix).** Rejection sampling with a
 bounded retry loop (8 per limb, fresh transcript bytes per retry via a
@@ -370,15 +387,57 @@ This is a completeness event, not a soundness term; it appears here and
 nowhere in the §3 table.
 
 **The honest final margin, restated as the one-line summary a reader takes
-away:** total per-attempt error <= 2^-104 (query, q36/g32) + 2^-106..-109
-(algebraic union) ~ 2^-103.7 worst-case; the frozen headline t = 100 holds
-with ~3.5-4 bits of margin, conditional on the capacity conjecture (§2) and
-the two SHA-256 assumptions (§7). No other number in this note is the
-system's security level.
+away:** adversary success **per unit of adversary work** <= 2^-106..-109
+(algebraic union, ~1 hash per attempt) + 2^-32 * 2^-72 (query term at
+q36/g32, 2^32 hashes per attempt) ~ 2^-103.7 worst-case; the frozen
+headline t = 100 holds with ~3.5-4 bits of margin, conditional on the
+capacity conjecture (§2) and the two SHA-256 assumptions (§7); the proven
+floor on the same schedule is ~65-68 bits (§7). No other number in this
+note is the system's security level.
 
-## 7. Proven-vs-conjectured ledger — STUB
+## 7. Proven-vs-conjectured ledger
 
-One line per term, written last, after §4 and §6 survive review. Includes
-the two SHA-256 assumption lines (random-oracle transcript; >= 100-bit
-Merkle collision binding), the capacity-conjecture line covering T1 and the
-query term, and `proven` lines for T2-T8 and the sampler fix.
+One line per term. `proven` lines are proven **within the model**, i.e.
+conditional on the two assumption lines above them; nothing on a `proven`
+line is conditional on the conjecture line.
+
+| item | label | bits / basis |
+| --- | --- | --- |
+| SHA-256 as a random oracle (Fiat-Shamir transcript) | **assumption** | model floor for every line below |
+| SHA-256 collision resistance for Merkle binding | **assumption** | >= 100 bits claimed (128-bit birthday bound) |
+| Capacity conjecture — one line, two faces: T1 gathering terms AND the 2-bits/query rate | **conjectured** | T1 ~106-112 (constants: §4 open item); query term 104 work-bits at q36/g32 |
+| **Proven floor, same schedule, Johnson-radius accounting** | **proven** | **~65-68 bits**: delta <= 1 - sqrt(rho) - eta, rho = 2^-2, delta ~ 0.475 -> ~0.93 bits/traced query; 36 x 0.93 + 32 ~ 65.5 |
+| T2 OOD binding | proven (SZ) | 112 |
+| T3 fused sumcheck | proven (SZ) | 117.9 |
+| T4 zerocheck eq-reduction | proven (SZ) | 120.7 |
+| T5 gamma-RLC batching | proven (SZ; conditional on gamma-after-claims order, enforced by test) | 117.7 |
+| T6 copy-argument compression | proven (UFD + SZ) | 109.9 (worst layout m = 2^10) |
+| T7 copy-argument pole/SZ | proven (log-derivative lemma) | 112 (deliberately loose 4m) |
+| T8 claim batching | proven (SZ) | ~122 |
+| T9 challenge sampler | fixed by construction (rejection sampling, exact uniform) | 0 soundness cost; completeness < 2^-242 |
+| Grinding g32 | proven (ROM work accounting, §6) | +32 bits on the query term only |
+| **Headline** | **conditional** | **t = 100, capacity-conjectured; success/work <= 2^-103.7 worst-case; proven floor ~65-68** |
+
+The proven-floor line follows house precedent (the WHIR-UD gate reported
+"lower 58.0 / upper 100.0"): the positive result does not get a lower
+standard than the negatives, and the number a hostile reviewer would
+compute anyway is computed here, with the derivation shown. Any public
+quotation of the headline carries all three numbers of the last line or
+none of them.
+
+---
+
+## Appendix: hardening implementation queue (order fixed in review)
+
+1. **Rejection sampler** (T9): smallest diff, kills the only formal blocker,
+   unblocks re-measuring real transcripts. Fresh bytes per retry via squeeze
+   counter; 8-retry bound on SBF, reject on exhaustion.
+2. **(z, v) claim binding + challenge-order tests** together: they touch the
+   same transcript code, and the failing tests (gamma-before-claims,
+   chi-before-C1) are what make the §2 ordering fix permanent.
+3. **OOD absorptions** (T2).
+4. **Second commitment phase** (C2, §5) last: the largest envelope change,
+   and everything before it is prerequisite-free.
+
+Each step re-measures CU on the gate profiles and updates the §4 projection
+table; the Stage 1 gate cannot close on projections alone.
