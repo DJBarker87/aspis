@@ -8,7 +8,7 @@ use std::time::Instant;
 use anyhow::Result;
 use serde::Serialize;
 
-use aspis_core::params::{PROFILE_CAPACITY, PROFILE_CAPACITY_LR14, PROFILE_JOHNSON};
+use aspis_core::params::{PROFILES, PROFILE_CAPACITY, PROFILE_CAPACITY_LR14, PROFILE_JOHNSON};
 use aspis_core::proof::HEADER_LEN;
 use aspis_core::{verify, FoldPayload, MerkleMode, Profile, VerifyError};
 use aspis_prover::{prove, seeded_coeffs, ProveOptions, HOST_HASH};
@@ -68,6 +68,34 @@ fn mode_name(m: MerkleMode) -> &'static str {
     }
 }
 
+fn record_corruption(
+    results: &mut Vec<CorruptionResult>,
+    name: &'static str,
+    byte_offset: usize,
+    corrupted: Vec<u8>,
+    digest: &[u8; 32],
+) {
+    let outcome = verify(&corrupted, digest, HOST_HASH);
+    results.push(CorruptionResult {
+        name,
+        byte_offset,
+        rejected: outcome.is_err(),
+        error: format!("{:?}", outcome.err()),
+    });
+}
+
+fn flip_corruption(
+    results: &mut Vec<CorruptionResult>,
+    name: &'static str,
+    proof: &[u8],
+    offset: usize,
+    digest: &[u8; 32],
+) {
+    let mut corrupted = proof.to_vec();
+    corrupted[offset] ^= 0x01;
+    record_corruption(results, name, offset, corrupted, digest);
+}
+
 /// The four Stage 0 corruption classes (plus binding checks), applied to a
 /// known-good proof. Every one must reject.
 pub fn corruption_suite(
@@ -82,26 +110,39 @@ pub fn corruption_suite(
     let body_off = nonce_off + 8;
 
     let mut results = Vec::new();
-    let mut run = |name: &'static str, offset: usize, digest: &[u8; 32]| {
-        let mut corrupted = proof.to_vec();
-        corrupted[offset] ^= 0x01;
-        let outcome = verify(&corrupted, digest, HOST_HASH);
-        results.push(CorruptionResult {
-            name,
-            byte_offset: offset,
-            rejected: outcome.is_err(),
-            error: format!("{:?}", outcome.err()),
-        });
-    };
 
     // 1. commitment root corruption
-    run("root_corruption", roots_off + 5, digest);
+    flip_corruption(
+        &mut results,
+        "root_corruption",
+        proof,
+        roots_off + 5,
+        digest,
+    );
     // 2. fold payload (opened fiber value) corruption
-    run("payload_corruption", body_off + 2 + 3, digest);
+    flip_corruption(
+        &mut results,
+        "payload_corruption",
+        proof,
+        body_off + 2 + 3,
+        digest,
+    );
     // 3. final polynomial corruption
-    run("final_value_corruption", final_off + 1, digest);
+    flip_corruption(
+        &mut results,
+        "final_value_corruption",
+        proof,
+        final_off + 1,
+        digest,
+    );
     // 4. grinding witness corruption
-    run("grinding_corruption", nonce_off, digest);
+    flip_corruption(
+        &mut results,
+        "grinding_corruption",
+        proof,
+        nonce_off,
+        digest,
+    );
 
     // binding: same proof, wrong statement digest
     let wrong = statement_digest(0xDEAD_BEEF);
@@ -130,6 +171,19 @@ pub fn corruption_suite(
         rejected: outcome.is_err(),
         error: format!("{:?}", outcome.err()),
     });
+    // replay: same proof under a different packaging flag
+    let mut mode_replay = proof.to_vec();
+    mode_replay[12] ^= 0x01;
+    record_corruption(&mut results, "mode_flag_replay", 12, mode_replay, digest);
+
+    // replay: same proof under a different frozen profile id
+    let replacement_profile = PROFILES
+        .iter()
+        .find(|candidate| candidate.id != profile.id)
+        .expect("at least two Stage 0 profiles");
+    let mut profile_replay = proof.to_vec();
+    profile_replay[5] = replacement_profile.id;
+    record_corruption(&mut results, "profile_swap", 5, profile_replay, digest);
 
     results
 }

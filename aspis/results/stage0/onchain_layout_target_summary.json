@@ -1,0 +1,190 @@
+{
+  "generated_at_utc": "2026-07-04T13:23:54.940576+00:00",
+  "command": "cargo run -p aspis-xtask -- stage0-onchain-layout-target",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "verify_cu_limit": 1400000,
+  "heap_frame_bytes": 262144,
+  "gate_matrix_only": true,
+  "variants": [
+    {
+      "profile": "capacity_lr10_q40_g16",
+      "soundness_label": "heuristic diagnostic (lower-row layout target; Stage 1 budget pending)",
+      "fold_payload": "raw_fibers",
+      "merkle_mode": "minimal_subtree",
+      "status": "accepted",
+      "verify_error": null,
+      "proof_bytes": 14768,
+      "upload_chunks": 24,
+      "upload_cu_total": 15969,
+      "verify_cu": [
+        773668,
+        773668,
+        773668,
+        773668,
+        773668
+      ],
+      "verify_cu_mean": 773668.0,
+      "verify_repetitions_requested": 5,
+      "corruption_rejected_onchain": [
+        [
+          "root_corruption",
+          true
+        ],
+        [
+          "payload_corruption",
+          true
+        ],
+        [
+          "final_value_corruption",
+          true
+        ],
+        [
+          "grinding_corruption",
+          true
+        ],
+        [
+          "statement_digest_mismatch",
+          true
+        ],
+        [
+          "trailing_byte",
+          true
+        ],
+        [
+          "truncation",
+          true
+        ],
+        [
+          "mode_flag_replay",
+          true
+        ],
+        [
+          "profile_swap",
+          true
+        ]
+      ]
+    },
+    {
+      "profile": "capacity_lr10_q36_g16",
+      "soundness_label": "heuristic diagnostic (lower-row layout target; q36 verifier cost)",
+      "fold_payload": "raw_fibers",
+      "merkle_mode": "minimal_subtree",
+      "status": "accepted",
+      "verify_error": null,
+      "proof_bytes": 14512,
+      "upload_chunks": 23,
+      "upload_cu_total": 13662,
+      "verify_cu": [
+        742795,
+        742795,
+        742795,
+        742795,
+        742795
+      ],
+      "verify_cu_mean": 742795.0,
+      "verify_repetitions_requested": 5,
+      "corruption_rejected_onchain": [
+        [
+          "root_corruption",
+          true
+        ],
+        [
+          "payload_corruption",
+          true
+        ],
+        [
+          "final_value_corruption",
+          true
+        ],
+        [
+          "grinding_corruption",
+          true
+        ],
+        [
+          "statement_digest_mismatch",
+          true
+        ],
+        [
+          "trailing_byte",
+          true
+        ],
+        [
+          "truncation",
+          true
+        ],
+        [
+          "mode_flag_replay",
+          true
+        ],
+        [
+          "profile_swap",
+          true
+        ]
+      ]
+    },
+    {
+      "profile": "capacity_lr10_q32_g16",
+      "soundness_label": "heuristic diagnostic (lower-row layout target; q32 verifier cost)",
+      "fold_payload": "raw_fibers",
+      "merkle_mode": "minimal_subtree",
+      "status": "accepted",
+      "verify_error": null,
+      "proof_bytes": 12560,
+      "upload_chunks": 20,
+      "upload_cu_total": 14431,
+      "verify_cu": [
+        656662,
+        656662,
+        656662,
+        656662,
+        656662
+      ],
+      "verify_cu_mean": 656662.0,
+      "verify_repetitions_requested": 5,
+      "corruption_rejected_onchain": [
+        [
+          "root_corruption",
+          true
+        ],
+        [
+          "payload_corruption",
+          true
+        ],
+        [
+          "final_value_corruption",
+          true
+        ],
+        [
+          "grinding_corruption",
+          true
+        ],
+        [
+          "statement_digest_mismatch",
+          true
+        ],
+        [
+          "trailing_byte",
+          true
+        ],
+        [
+          "truncation",
+          true
+        ],
+        [
+          "mode_flag_replay",
+          true
+        ],
+        [
+          "profile_swap",
+          true
+        ]
+      ]
+    }
+  ],
+  "notes": [
+    "Lower-row diagnostic for the wide-row statement layout decision; not a frozen profile until Stage 1 soundness accounting and the Stage 2 direct evaluator exist.",
+    "Only raw_fibers/minimal_subtree is measured because proof_carried_round_local lost on both bytes and CU in the gate artifact.",
+    "This runner uses g16 to avoid prover-side grinding variance; verifier-side g32 overhead is one grinding hash and was measured separately in onchain_g32_summary.json.",
+    "Combine these PCS verifier costs with layout_sweep RLC/wide-leaf deltas; do not add the full synthetic Merkle loop or path hashing is double-counted."
+  ]
+}

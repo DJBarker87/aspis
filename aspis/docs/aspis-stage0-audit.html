@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Aspis Stage 0 Audit</title>
+  <style>
+    body { font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 40px auto; max-width: 980px; color: #1f2933; }
+    h1, h2, h3 { line-height: 1.2; color: #111827; }
+    table { border-collapse: collapse; width: 100%; margin: 16px 0 24px; }
+    th, td { border: 1px solid #d8dee4; padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #f6f8fa; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    pre { background: #f6f8fa; padding: 12px; overflow-x: auto; }
+    .status-open { color: #9a3412; font-weight: 600; }
+    .status-fixed { color: #166534; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>Aspis Stage 0 Audit</h1>
+  <p><strong>Date:</strong> 2026-07-04<br>
+  <strong>Scope:</strong> <code>aspis/</code> workspace after the Stage 0 bootstrap pull.<br>
+  <strong>Design reference:</strong> <code>docs/aspis-staged-design.md</code>.</p>
+
+  <h2>Summary</h2>
+  <p>Stage 0 is substantially implemented as a bootstrap native WHIR-style M31 PCS slice:
+  field tower, transcript, Merkle packaging, prover, no_std verifier, SBF verifier
+  program, host measurement runner, on-chain measurement harness, and gate notes all
+  exist. Stage 0 is conditionally closed for Stage 1: Johnson q80 and the old
+  lr14 narrow-layout target are RED, while the measured continuation target is
+  lr10/k64/q32/g32 as a soundness hypothesis.</p>
+
+  <h2>Scores</h2>
+  <table>
+    <thead><tr><th>Dimension</th><th>Score</th><th>Rationale</th></tr></thead>
+    <tbody>
+      <tr><td>Security</td><td>B-</td><td>Upload authority checks are now present; cryptographic soundness is Stage 1.</td></tr>
+      <tr><td>Correctness</td><td>B</td><td>Host parity passes; lr12, g32, and lr10 target diagnostics accept on-chain; Johnson/lr14 failures are measured gate data.</td></tr>
+      <tr><td>Error handling</td><td>B</td><td>Proof parsing is length-checked; short proof accounts reject.</td></tr>
+      <tr><td>Testing</td><td>B</td><td>Unit, host, and gate-focused on-chain artifacts exist; false-statement suites remain open.</td></tr>
+      <tr><td>Code organization</td><td>A-</td><td>Clean host/SBF seam; verifier core is no_std; spend logic is not mixed in.</td></tr>
+      <tr><td>Documentation</td><td>A-</td><td>Staged design, gate note, divergence note, and audit artifact are in-repo.</td></tr>
+    </tbody>
+  </table>
+  <p><strong>Ready for mainnet:</strong> no. This repo is a measurement/research artifact until Stages 1-5 complete.</p>
+
+  <h2>Findings</h2>
+  <h3>High - Stage 0 only conditionally closes because q32/g32 is unproven</h3>
+  <p class="status-open">Status: conditionally closed for Stage 1 entry.</p>
+  <p>The gate-focused SBF artifact shows capacity lr12 raw/minimal accepting at
+  <code>1,063,093</code> CU, carried/minimal accepting at <code>1,078,628</code> CU,
+  Johnson q80 hitting the CU ceiling, and lr14 hitting the CU ceiling as a
+  narrow-layout diagnostic.</p>
+  <p>Follow-up diagnostics show <code>capacity_lr12_q36_g32</code> accepting at
+  <code>1,025,729</code> CU and <code>capacity_lr12_q32_g32</code> accepting at
+  <code>894,891</code> CU. Lower-row target profiles accept at
+  <code>773,668</code>, <code>742,795</code>, and <code>656,662</code> CU for
+  q40/q36/q32 respectively. The corrected layout sweep gives
+  <code>201,114</code> CU for lr10/k64 wide-leaf hashing plus gamma-RLC.</p>
+  <p>Conclusion: the Stage 1 target is lr10/k64/q32/g32, projected at
+  <code>887,776</code> CU after PCS + measured wide-row overhead + the existing
+  30K sumcheck estimate. If Stage 1 cannot justify q32/g32, q36 is the reserve
+  target and q40 is too tight for the current single-transaction statement plan.</p>
+
+  <h3>High - Staged upload lacked account authority checks</h3>
+  <p class="status-fixed">Status: fixed.</p>
+  <p>Proof accounts now carry magic, proof length, and upload authority. First
+  initialization requires proof-account signer and authority signer; chunk upload
+  requires the stored authority signer; verification remains read-only.</p>
+
+  <h3>Medium - Host artifact corruption suite did not match gate-note claims</h3>
+  <p class="status-fixed">Status: fixed.</p>
+  <p>The host artifact now records <code>mode_flag_replay</code> and
+  <code>profile_swap</code> in addition to the original corruption cases.</p>
+
+  <h3>Medium - Stage 1 soundness work is intentionally unimplemented</h3>
+  <p class="status-open">Status: open by design.</p>
+  <p>Missing items include OOD samples, sumcheck/fold interleaving, soundness
+  budgeting, external evaluation-claim binding, and RLC batched-opening soundness.</p>
+
+  <h3>Medium - Stage 2/3 spend and hiding layers are intentionally absent</h3>
+  <p class="status-open">Status: open by design.</p>
+  <p>There is no shielded spend evaluator, statement circuit, zerocheck/sumcheck
+  layer, wide-leaf RLC opening, commitment hiding, or evaluation hiding yet.</p>
+
+  <h2>Verified Command</h2>
+  <pre><code>cargo test --manifest-path aspis/Cargo.toml
+cargo run --release -p aspis-xtask -- stage0-host
+cargo run --release -p aspis-xtask -- stage0-onchain-gate
+cargo run --release -p aspis-xtask -- stage0-onchain-profile
+cargo run --release -p aspis-xtask -- stage0-layout-sweep
+cargo run --release -p aspis-xtask -- stage0-onchain-g32
+cargo run --release -p aspis-xtask -- stage0-onchain-layout-target</code></pre>
+</body>
+</html>

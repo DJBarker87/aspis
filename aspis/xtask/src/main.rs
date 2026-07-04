@@ -37,15 +37,55 @@ fn main() -> Result<()> {
             Ok(())
         }
         Some("stage0-onchain") => {
-            let summary = onchain::run_stage0_onchain()?;
+            let summary = onchain::run_stage0_onchain(false)?;
             let dir = results_dir()?;
             let path = dir.join("onchain_summary.json");
             fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
             eprintln!("stage0-onchain: wrote {}", path.display());
             Ok(())
         }
+        Some("stage0-onchain-gate") => {
+            let summary = onchain::run_stage0_onchain(true)?;
+            let dir = results_dir()?;
+            let path = dir.join("onchain_summary.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!("stage0-onchain-gate: wrote {}", path.display());
+            Ok(())
+        }
+        Some("stage0-onchain-g32") => {
+            let summary = onchain::run_stage0_onchain_g32()?;
+            let dir = results_dir()?;
+            let path = dir.join("onchain_g32_summary.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!("stage0-onchain-g32: wrote {}", path.display());
+            Ok(())
+        }
+        Some("stage0-onchain-layout-target") => {
+            let summary = onchain::run_stage0_onchain_layout_target()?;
+            let dir = results_dir()?;
+            let path = dir.join("onchain_layout_target_summary.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!("stage0-onchain-layout-target: wrote {}", path.display());
+            Ok(())
+        }
+        Some("stage0-onchain-profile") => {
+            let summary = onchain::run_stage0_onchain_profile()?;
+            let dir = results_dir()?;
+            let path = dir.join("onchain_profile.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!("stage0-onchain-profile: wrote {}", path.display());
+            Ok(())
+        }
+        Some("stage0-layout-sweep") => {
+            let summary = onchain::run_layout_sweep()?;
+            let dir = results_dir()?;
+            let path = dir.join("layout_sweep.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!("stage0-layout-sweep: wrote {}", path.display());
+            Ok(())
+        }
         other => bail!(
-            "usage: cargo run -p aspis-xtask -- stage0-host | stage0-onchain (got {:?})",
+            "usage: cargo run -p aspis-xtask -- stage0-host | stage0-onchain | stage0-onchain-gate | stage0-onchain-g32 | stage0-onchain-layout-target | stage0-onchain-profile | stage0-layout-sweep (got {:?})",
             other
         ),
     }

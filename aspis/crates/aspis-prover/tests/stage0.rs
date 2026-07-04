@@ -93,7 +93,12 @@ fn corruption_class_1_root() {
 #[test]
 fn corruption_class_2_fold_payload() {
     let profile = &PROFILE_CAPACITY;
-    let (proof, d) = prove_one(profile, 0, FoldPayload::RawFibers, MerkleMode::MinimalSubtree);
+    let (proof, d) = prove_one(
+        profile,
+        0,
+        FoldPayload::RawFibers,
+        MerkleMode::MinimalSubtree,
+    );
     let body = HEADER_LEN
         + profile.num_rounds() as usize * 32
         + profile.final_poly_len() as usize * 16
@@ -106,7 +111,12 @@ fn corruption_class_2_fold_payload() {
 #[test]
 fn corruption_class_3_final_poly() {
     let profile = &PROFILE_CAPACITY;
-    let (proof, d) = prove_one(profile, 0, FoldPayload::RawFibers, MerkleMode::MinimalSubtree);
+    let (proof, d) = prove_one(
+        profile,
+        0,
+        FoldPayload::RawFibers,
+        MerkleMode::MinimalSubtree,
+    );
     let final_off = HEADER_LEN + profile.num_rounds() as usize * 32;
     let bad = corrupt_at(&proof, final_off + 1);
     assert!(verify(&bad, &d, HOST_HASH).is_err());
@@ -115,10 +125,14 @@ fn corruption_class_3_final_poly() {
 #[test]
 fn corruption_class_4_grinding() {
     let profile = &PROFILE_CAPACITY;
-    let (proof, d) = prove_one(profile, 0, FoldPayload::RawFibers, MerkleMode::MinimalSubtree);
-    let nonce_off = HEADER_LEN
-        + profile.num_rounds() as usize * 32
-        + profile.final_poly_len() as usize * 16;
+    let (proof, d) = prove_one(
+        profile,
+        0,
+        FoldPayload::RawFibers,
+        MerkleMode::MinimalSubtree,
+    );
+    let nonce_off =
+        HEADER_LEN + profile.num_rounds() as usize * 32 + profile.final_poly_len() as usize * 16;
     let bad = corrupt_at(&proof, nonce_off);
     let outcome = verify(&bad, &d, HOST_HASH);
     assert!(matches!(
@@ -196,7 +210,12 @@ fn degree_overflow_rejects() {
     // rejects; the full false-statement adversarial corpus is a Stage 1
     // deliverable (design section 8.2).
     let profile = &PROFILE_CAPACITY;
-    let (proof, d) = prove_one(profile, 3, FoldPayload::RawFibers, MerkleMode::MinimalSubtree);
+    let (proof, d) = prove_one(
+        profile,
+        3,
+        FoldPayload::RawFibers,
+        MerkleMode::MinimalSubtree,
+    );
     // strip the last final-poly coefficient and splice the sections back
     let final_off = HEADER_LEN + profile.num_rounds() as usize * 32;
     let final_len = profile.final_poly_len() as usize * 16;

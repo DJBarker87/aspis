@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-07-04T09:49:17.318481890+00:00",
+  "generated_at_utc": "2026-07-04T10:50:38.270448+00:00",
   "command": "cargo run -p aspis-xtask -- stage0-host",
   "parity_runs_per_variant": 10,
   "variants": [
@@ -17,8 +17,8 @@
       "proof_bytes_min": 23414,
       "proof_bytes_max": 25686,
       "proof_bytes_mean": 24790.0,
-      "prove_ms_mean": 33.68314310000001,
-      "verify_ms_mean": 0.6331298,
+      "prove_ms_mean": 15.710749799999999,
+      "verify_ms_mean": 0.30740829999999997,
       "corruption": [
         {
           "name": "root_corruption",
@@ -61,6 +61,18 @@
           "byte_offset": 24693,
           "rejected": true,
           "error": "Some(BadLength)"
+        },
+        {
+          "name": "mode_flag_replay",
+          "byte_offset": 12,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "profile_swap",
+          "byte_offset": 5,
+          "rejected": true,
+          "error": "Some(HeaderProfileMismatch)"
         }
       ]
     },
@@ -78,8 +90,8 @@
       "proof_bytes_min": 50914,
       "proof_bytes_max": 56834,
       "proof_bytes_mean": 54059.6,
-      "prove_ms_mean": 33.457821200000005,
-      "verify_ms_mean": 1.1484626,
+      "prove_ms_mean": 13.778179300000001,
+      "verify_ms_mean": 0.46411679999999994,
       "corruption": [
         {
           "name": "root_corruption",
@@ -122,6 +134,18 @@
           "byte_offset": 53569,
           "rejected": true,
           "error": "Some(BadLength)"
+        },
+        {
+          "name": "mode_flag_replay",
+          "byte_offset": 12,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "profile_swap",
+          "byte_offset": 5,
+          "rejected": true,
+          "error": "Some(HeaderProfileMismatch)"
         }
       ]
     },
@@ -139,8 +163,8 @@
       "proof_bytes_min": 29622,
       "proof_bytes_max": 30806,
       "proof_bytes_mean": 30172.4,
-      "prove_ms_mean": 38.6495739,
-      "verify_ms_mean": 0.6620048,
+      "prove_ms_mean": 15.6619208,
+      "verify_ms_mean": 0.2537335,
       "corruption": [
         {
           "name": "root_corruption",
@@ -183,6 +207,18 @@
           "byte_offset": 30229,
           "rejected": true,
           "error": "Some(BadLength)"
+        },
+        {
+          "name": "mode_flag_replay",
+          "byte_offset": 12,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "profile_swap",
+          "byte_offset": 5,
+          "rejected": true,
+          "error": "Some(HeaderProfileMismatch)"
         }
       ]
     },
@@ -200,8 +236,8 @@
       "proof_bytes_min": 57762,
       "proof_bytes_max": 61122,
       "proof_bytes_mean": 59720.4,
-      "prove_ms_mean": 34.0352017,
-      "verify_ms_mean": 1.1570169000000001,
+      "prove_ms_mean": 14.241470900000001,
+      "verify_ms_mean": 0.4934042999999999,
       "corruption": [
         {
           "name": "root_corruption",
@@ -244,6 +280,18 @@
           "byte_offset": 58913,
           "rejected": true,
           "error": "Some(BadLength)"
+        },
+        {
+          "name": "mode_flag_replay",
+          "byte_offset": 12,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "profile_swap",
+          "byte_offset": 5,
+          "rejected": true,
+          "error": "Some(HeaderProfileMismatch)"
         }
       ]
     },
@@ -261,8 +309,8 @@
       "proof_bytes_min": 38646,
       "proof_bytes_max": 40310,
       "proof_bytes_mean": 39615.6,
-      "prove_ms_mean": 32.4276065,
-      "verify_ms_mean": 1.0100362,
+      "prove_ms_mean": 13.5662707,
+      "verify_ms_mean": 0.4198081,
       "corruption": [
         {
           "name": "root_corruption",
@@ -305,6 +353,18 @@
           "byte_offset": 39477,
           "rejected": true,
           "error": "Some(BadLength)"
+        },
+        {
+          "name": "mode_flag_replay",
+          "byte_offset": 12,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "profile_swap",
+          "byte_offset": 5,
+          "rejected": true,
+          "error": "Some(HeaderProfileMismatch)"
         }
       ]
     },
@@ -322,8 +382,8 @@
       "proof_bytes_min": 96610,
       "proof_bytes_max": 103554,
       "proof_bytes_mean": 99838.8,
-      "prove_ms_mean": 34.318242399999995,
-      "verify_ms_mean": 2.0870634,
+      "prove_ms_mean": 14.548708300000001,
+      "verify_ms_mean": 0.8865083,
       "corruption": [
         {
           "name": "root_corruption",
@@ -366,6 +426,18 @@
           "byte_offset": 100097,
           "rejected": true,
           "error": "Some(BadLength)"
+        },
+        {
+          "name": "mode_flag_replay",
+          "byte_offset": 12,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "profile_swap",
+          "byte_offset": 5,
+          "rejected": true,
+          "error": "Some(HeaderProfileMismatch)"
         }
       ]
     },
@@ -383,8 +455,8 @@
       "proof_bytes_min": 47574,
       "proof_bytes_max": 49846,
       "proof_bytes_mean": 48681.2,
-      "prove_ms_mean": 24.679984400000002,
-      "verify_ms_mean": 1.0421609,
+      "prove_ms_mean": 10.7401999,
+      "verify_ms_mean": 0.4480874999999999,
       "corruption": [
         {
           "name": "root_corruption",
@@ -427,6 +499,18 @@
           "byte_offset": 49365,
           "rejected": true,
           "error": "Some(BadLength)"
+        },
+        {
+          "name": "mode_flag_replay",
+          "byte_offset": 12,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "profile_swap",
+          "byte_offset": 5,
+          "rejected": true,
+          "error": "Some(HeaderProfileMismatch)"
         }
       ]
     },
@@ -444,8 +528,8 @@
       "proof_bytes_min": 100802,
       "proof_bytes_max": 111426,
       "proof_bytes_mean": 108354.0,
-      "prove_ms_mean": 32.1884561,
-      "verify_ms_mean": 2.1129983,
+      "prove_ms_mean": 14.0447956,
+      "verify_ms_mean": 0.9006043,
       "corruption": [
         {
           "name": "root_corruption",
@@ -488,6 +572,18 @@
           "byte_offset": 108865,
           "rejected": true,
           "error": "Some(BadLength)"
+        },
+        {
+          "name": "mode_flag_replay",
+          "byte_offset": 12,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "profile_swap",
+          "byte_offset": 5,
+          "rejected": true,
+          "error": "Some(HeaderProfileMismatch)"
         }
       ]
     },
@@ -505,8 +601,8 @@
       "proof_bytes_min": 36252,
       "proof_bytes_max": 38332,
       "proof_bytes_mean": 37666.4,
-      "prove_ms_mean": 59.3508121,
-      "verify_ms_mean": 0.9684586,
+      "prove_ms_mean": 26.144383300000005,
+      "verify_ms_mean": 0.39451259999999994,
       "corruption": [
         {
           "name": "root_corruption",
@@ -549,6 +645,18 @@
           "byte_offset": 37307,
           "rejected": true,
           "error": "Some(BadLength)"
+        },
+        {
+          "name": "mode_flag_replay",
+          "byte_offset": 12,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "profile_swap",
+          "byte_offset": 5,
+          "rejected": true,
+          "error": "Some(HeaderProfileMismatch)"
         }
       ]
     },
@@ -566,8 +674,8 @@
       "proof_bytes_min": 72036,
       "proof_bytes_max": 76324,
       "proof_bytes_mean": 74944.8,
-      "prove_ms_mean": 49.233132499999996,
-      "verify_ms_mean": 1.6125494,
+      "prove_ms_mean": 21.728283299999994,
+      "verify_ms_mean": 0.6715333000000001,
       "corruption": [
         {
           "name": "root_corruption",
@@ -610,6 +718,18 @@
           "byte_offset": 75747,
           "rejected": true,
           "error": "Some(BadLength)"
+        },
+        {
+          "name": "mode_flag_replay",
+          "byte_offset": 12,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "profile_swap",
+          "byte_offset": 5,
+          "rejected": true,
+          "error": "Some(HeaderProfileMismatch)"
         }
       ]
     },
@@ -627,8 +747,8 @@
       "proof_bytes_min": 43164,
       "proof_bytes_max": 44924,
       "proof_bytes_mean": 44076.0,
-      "prove_ms_mean": 64.18312180000001,
-      "verify_ms_mean": 0.9646089,
+      "prove_ms_mean": 28.720774799999997,
+      "verify_ms_mean": 0.3990667,
       "corruption": [
         {
           "name": "root_corruption",
@@ -671,6 +791,18 @@
           "byte_offset": 44539,
           "rejected": true,
           "error": "Some(BadLength)"
+        },
+        {
+          "name": "mode_flag_replay",
+          "byte_offset": 12,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "profile_swap",
+          "byte_offset": 5,
+          "rejected": true,
+          "error": "Some(HeaderProfileMismatch)"
         }
       ]
     },
@@ -688,8 +820,8 @@
       "proof_bytes_min": 79332,
       "proof_bytes_max": 83716,
       "proof_bytes_mean": 81223.2,
-      "prove_ms_mean": 64.65369769999998,
-      "verify_ms_mean": 1.6144566999999999,
+      "prove_ms_mean": 28.875704300000006,
+      "verify_ms_mean": 0.6713749999999999,
       "corruption": [
         {
           "name": "root_corruption",
@@ -732,6 +864,18 @@
           "byte_offset": 83715,
           "rejected": true,
           "error": "Some(BadLength)"
+        },
+        {
+          "name": "mode_flag_replay",
+          "byte_offset": 12,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "profile_swap",
+          "byte_offset": 5,
+          "rejected": true,
+          "error": "Some(HeaderProfileMismatch)"
         }
       ]
     }

@@ -11,6 +11,8 @@ crate-type = ["cdylib", "lib"]
 [features]
 default = []
 no-entrypoint = []
+custom-heap = []
+custom-panic = []
 
 [dependencies]
 aspis-core = { path = "../../crates/aspis-core" }

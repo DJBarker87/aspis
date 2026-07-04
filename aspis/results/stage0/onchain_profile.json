@@ -1,0 +1,175 @@
+{
+  "generated_at_utc": "2026-07-04T12:30:09.205357+00:00",
+  "command": "cargo run -p aspis-xtask -- stage0-onchain-profile",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "profile": "capacity_lr12_q40_g16",
+  "fold_payload": "raw_fibers",
+  "merkle_mode": "minimal_subtree",
+  "proof_bytes": 24694,
+  "upload_chunks": 39,
+  "simulation_units": 1072699,
+  "simulation_error": null,
+  "markers": [
+    {
+      "label": "start",
+      "remaining": 1398874,
+      "delta_from_previous": null
+    },
+    {
+      "label": "header_parsed",
+      "remaining": 1398598,
+      "delta_from_previous": 276
+    },
+    {
+      "label": "transcript_ready",
+      "remaining": 1394001,
+      "delta_from_previous": 4597
+    },
+    {
+      "label": "queries_ready",
+      "remaining": 1387289,
+      "delta_from_previous": 6712
+    },
+    {
+      "label": "layer_start:0",
+      "remaining": 1384867,
+      "delta_from_previous": 2422
+    },
+    {
+      "label": "layer_merkle_done:0",
+      "remaining": 1296343,
+      "delta_from_previous": 88524
+    },
+    {
+      "label": "layer_fold_done:0",
+      "remaining": 1120925,
+      "delta_from_previous": 175418
+    },
+    {
+      "label": "layer_start:1",
+      "remaining": 1120431,
+      "delta_from_previous": 494
+    },
+    {
+      "label": "layer_merkle_done:1",
+      "remaining": 1050627,
+      "delta_from_previous": 69804
+    },
+    {
+      "label": "layer_fold_done:1",
+      "remaining": 861315,
+      "delta_from_previous": 189312
+    },
+    {
+      "label": "layer_start:2",
+      "remaining": 860821,
+      "delta_from_previous": 494
+    },
+    {
+      "label": "layer_merkle_done:2",
+      "remaining": 806898,
+      "delta_from_previous": 53923
+    },
+    {
+      "label": "layer_fold_done:2",
+      "remaining": 632677,
+      "delta_from_previous": 174221
+    },
+    {
+      "label": "layer_start:3",
+      "remaining": 632183,
+      "delta_from_previous": 494
+    },
+    {
+      "label": "layer_merkle_done:3",
+      "remaining": 597302,
+      "delta_from_previous": 34881
+    },
+    {
+      "label": "layer_fold_done:3",
+      "remaining": 469196,
+      "delta_from_previous": 128106
+    },
+    {
+      "label": "layer_start:4",
+      "remaining": 468702,
+      "delta_from_previous": 494
+    },
+    {
+      "label": "layer_merkle_done:4",
+      "remaining": 448090,
+      "delta_from_previous": 20612
+    },
+    {
+      "label": "layer_fold_done:4",
+      "remaining": 381455,
+      "delta_from_previous": 66635
+    },
+    {
+      "label": "final_check_start",
+      "remaining": 381233,
+      "delta_from_previous": 222
+    },
+    {
+      "label": "done",
+      "remaining": 327622,
+      "delta_from_previous": 53611
+    }
+  ],
+  "logs": [
+    "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+    "Program ComputeBudget111111111111111111111111111111 success",
+    "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+    "Program ComputeBudget111111111111111111111111111111 success",
+    "Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD invoke [1]",
+    "Program log: aspis-cu:start",
+    "Program consumption: 1398874 units remaining",
+    "Program log: aspis-cu:header_parsed",
+    "Program consumption: 1398598 units remaining",
+    "Program log: aspis-cu:transcript_ready",
+    "Program consumption: 1394001 units remaining",
+    "Program log: aspis-cu:queries_ready",
+    "Program consumption: 1387289 units remaining",
+    "Program log: aspis-cu:layer_start:0",
+    "Program consumption: 1384867 units remaining",
+    "Program log: aspis-cu:layer_merkle_done:0",
+    "Program consumption: 1296343 units remaining",
+    "Program log: aspis-cu:layer_fold_done:0",
+    "Program consumption: 1120925 units remaining",
+    "Program log: aspis-cu:layer_start:1",
+    "Program consumption: 1120431 units remaining",
+    "Program log: aspis-cu:layer_merkle_done:1",
+    "Program consumption: 1050627 units remaining",
+    "Program log: aspis-cu:layer_fold_done:1",
+    "Program consumption: 861315 units remaining",
+    "Program log: aspis-cu:layer_start:2",
+    "Program consumption: 860821 units remaining",
+    "Program log: aspis-cu:layer_merkle_done:2",
+    "Program consumption: 806898 units remaining",
+    "Program log: aspis-cu:layer_fold_done:2",
+    "Program consumption: 632677 units remaining",
+    "Program log: aspis-cu:layer_start:3",
+    "Program consumption: 632183 units remaining",
+    "Program log: aspis-cu:layer_merkle_done:3",
+    "Program consumption: 597302 units remaining",
+    "Program log: aspis-cu:layer_fold_done:3",
+    "Program consumption: 469196 units remaining",
+    "Program log: aspis-cu:layer_start:4",
+    "Program consumption: 468702 units remaining",
+    "Program log: aspis-cu:layer_merkle_done:4",
+    "Program consumption: 448090 units remaining",
+    "Program log: aspis-cu:layer_fold_done:4",
+    "Program consumption: 381455 units remaining",
+    "Program log: aspis-cu:final_check_start",
+    "Program consumption: 381233 units remaining",
+    "Program log: aspis-cu:done",
+    "Program consumption: 327622 units remaining",
+    "Program log: aspis: proof accepted",
+    "Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD consumed 1072343 of 1399700 compute units",
+    "Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD success"
+  ],
+  "notes": [
+    "Diagnostic only: msg!/sol_log_compute_units markers add CU and should not be quoted as the verifier cost.",
+    "Use marker deltas for stage attribution: header/transcript/query/layer Merkle+fold/final."
+  ]
+}

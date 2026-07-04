@@ -12,7 +12,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use crate::field::{cm31_batch_inverse, CM31, M31_HALF, QM31};
-use crate::merkle::{leaf_hash, verify_minimal_subtree, verify_single_path};
+use crate::merkle::{leaf_hash, verify_minimal_subtree_bytes, verify_single_path_bytes};
 use crate::params::{
     profile_by_id, FoldPayload, MerkleMode, Profile, CIRCLE_GEN, CIRCLE_LOG_ORDER,
     FINAL_POLY_LOG_LEN, FOLD_VARS,
@@ -34,6 +34,28 @@ pub enum VerifyError {
     CarriedFoldMismatch { layer: u8 },
     FinalPolyMismatch,
     TrailingBytes,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum TraceEvent {
+    Start,
+    HeaderParsed,
+    TranscriptReady,
+    QueriesReady,
+    LayerStart(u8),
+    LayerMerkleDone(u8),
+    LayerFoldDone(u8),
+    FinalCheckStart,
+    Done,
+}
+
+pub type TraceFn = fn(TraceEvent);
+
+#[inline(always)]
+fn trace(trace: Option<TraceFn>, event: TraceEvent) {
+    if let Some(trace) = trace {
+        trace(event);
+    }
 }
 
 impl VerifyError {
@@ -93,6 +115,7 @@ pub fn domain_point(geom: &LayerGeometry, index: u32) -> CM31 {
     geom.offset.mul(geom.omega.pow(index as u64))
 }
 
+#[derive(Clone, Copy)]
 enum Fiber {
     Base([CM31; 4]),
     Ext([QM31; 4]),
@@ -123,14 +146,6 @@ fn parse_fiber(bytes: &[u8], layer: u32) -> Result<Fiber, VerifyError> {
     }
 }
 
-/// Sorted unique values of `indices`.
-fn unique_sorted(indices: &[u32]) -> Vec<u32> {
-    let mut v: Vec<u32> = indices.to_vec();
-    v.sort_unstable();
-    v.dedup();
-    v
-}
-
 /// Fold one fiber with challenge alpha at slot-0 point `s`, given batched
 /// inverses of (2s, 2*iota*s, 2s^2). Late-lift arithmetic throughout.
 #[allow(clippy::too_many_arguments)]
@@ -148,10 +163,10 @@ fn fold_fiber(
             let dif02 = v[0].sub(v[2]);
             let sum13 = v[1].add(v[3]);
             let dif13 = v[1].sub(v[3]);
-            let g1 = QM31::from_cm31(sum02.mul_m31(M31_HALF))
-                .add(alpha.mul_cm31(dif02.mul(inv_2s)));
-            let g2 = QM31::from_cm31(sum13.mul_m31(M31_HALF))
-                .add(alpha.mul_cm31(dif13.mul(inv_2is)));
+            let g1 =
+                QM31::from_cm31(sum02.mul_m31(M31_HALF)).add(alpha.mul_cm31(dif02.mul(inv_2s)));
+            let g2 =
+                QM31::from_cm31(sum13.mul_m31(M31_HALF)).add(alpha.mul_cm31(dif13.mul(inv_2is)));
             (g1, g2)
         }
         Fiber::Ext(v) => {
@@ -159,21 +174,25 @@ fn fold_fiber(
             let dif02 = v[0].sub(v[2]);
             let sum13 = v[1].add(v[3]);
             let dif13 = v[1].sub(v[3]);
-            let g1 = sum02.mul_m31(M31_HALF).add(alpha.mul(dif02.mul_cm31(inv_2s)));
-            let g2 = sum13.mul_m31(M31_HALF).add(alpha.mul(dif13.mul_cm31(inv_2is)));
+            let g1 = sum02
+                .mul_m31(M31_HALF)
+                .add(alpha.mul(dif02.mul_cm31(inv_2s)));
+            let g2 = sum13
+                .mul_m31(M31_HALF)
+                .add(alpha.mul(dif13.mul_cm31(inv_2is)));
             (g1, g2)
         }
     };
     let sum = g1.add(g2);
     let dif = g1.sub(g2);
-    sum.mul_m31(M31_HALF)
-        .add(alpha2.mul(dif.mul_cm31(inv_2s2)))
+    sum.mul_m31(M31_HALF).add(alpha2.mul(dif.mul_cm31(inv_2s2)))
 }
 
 /// Division-free carried-payload checks for one fiber (proof_carried_round_local).
 /// Returns (ok_of_intra_round_checks, deferred) where `deferred` carries what
 /// check3 needs once the next layer's value is known:
 ///   h * 2s^2 == s^2*(g1+g2) + alpha^2*(g1-g2)
+#[derive(Clone, Copy)]
 struct CarriedDeferred {
     two_s2: CM31,
     rhs: QM31,
@@ -201,10 +220,10 @@ fn carried_checks(
             c1 && c2
         }
         Fiber::Ext(v) => {
-            let c1 = g1.mul_cm31(two_s)
-                == v[0].add(v[2]).mul_cm31(s).add(alpha.mul(v[0].sub(v[2])));
-            let c2 = g2.mul_cm31(two_is)
-                == v[1].add(v[3]).mul_cm31(is).add(alpha.mul(v[1].sub(v[3])));
+            let c1 =
+                g1.mul_cm31(two_s) == v[0].add(v[2]).mul_cm31(s).add(alpha.mul(v[0].sub(v[2])));
+            let c2 =
+                g2.mul_cm31(two_is) == v[1].add(v[3]).mul_cm31(is).add(alpha.mul(v[1].sub(v[3])));
             c1 && c2
         }
     };
@@ -221,6 +240,18 @@ fn carried_checks(
 /// Verify a proof against a statement digest. `hash` is the SHA-256 backend
 /// (syscall on SBF, sha2 on host).
 pub fn verify(proof: &[u8], statement_digest: &[u8; 32], hash: HashFn) -> Result<(), VerifyError> {
+    verify_with_trace(proof, statement_digest, hash, None)
+}
+
+/// Verify with optional diagnostic trace events. The trace hook is for SBF CU
+/// profiling only; normal verification calls `verify`.
+pub fn verify_with_trace(
+    proof: &[u8],
+    statement_digest: &[u8; 32],
+    hash: HashFn,
+    trace_fn: Option<TraceFn>,
+) -> Result<(), VerifyError> {
+    trace(trace_fn, TraceEvent::Start);
     let header = Header::parse(proof).ok_or(VerifyError::BadHeader)?;
     let profile = profile_by_id(header.profile_id).ok_or(VerifyError::UnknownProfile)?;
     if header.log_rows != profile.log_rows
@@ -232,9 +263,9 @@ pub fn verify(proof: &[u8], statement_digest: &[u8; 32], hash: HashFn) -> Result
     {
         return Err(VerifyError::HeaderProfileMismatch);
     }
-    let fold_payload =
-        FoldPayload::from_u8(header.fold_payload).ok_or(VerifyError::BadHeader)?;
+    let fold_payload = FoldPayload::from_u8(header.fold_payload).ok_or(VerifyError::BadHeader)?;
     let merkle_mode = MerkleMode::from_u8(header.merkle_mode).ok_or(VerifyError::BadHeader)?;
+    trace(trace_fn, TraceEvent::HeaderParsed);
 
     let num_rounds = profile.num_rounds();
     let query_count = profile.query_count as usize;
@@ -271,9 +302,11 @@ pub fn verify(proof: &[u8], statement_digest: &[u8; 32], hash: HashFn) -> Result
         return Err(VerifyError::GrindingFailed);
     }
     transcript.absorb(label::GRIND_NONCE, &nonce.to_le_bytes());
+    trace(trace_fn, TraceEvent::TranscriptReady);
 
     let geom0 = layer_geometry(profile, 0);
     let queries = transcript.challenge_queries(query_count, geom0.fiber_count);
+    trace(trace_fn, TraceEvent::QueriesReady);
 
     // ---- opening + fold phase ----
     // per-query running domain index i_r (i_0 = sampled fiber index)
@@ -285,16 +318,37 @@ pub fn verify(proof: &[u8], statement_digest: &[u8; 32], hash: HashFn) -> Result
         deferred = (0..query_count).map(|_| None).collect();
     }
 
+    let mut fiber_index: Vec<u32> = Vec::with_capacity(query_count);
+    let mut slot: Vec<u32> = Vec::with_capacity(query_count);
+    let mut unique: Vec<u32> = Vec::with_capacity(query_count);
+    let mut fibers: Vec<Fiber> = Vec::with_capacity(query_count);
+    let mut carried: Vec<(QM31, QM31)> = Vec::with_capacity(query_count);
+    let mut entries: Vec<(u32, [u8; 32])> = Vec::with_capacity(query_count);
+    let mut merkle_level: Vec<(u32, [u8; 32])> = Vec::with_capacity(query_count);
+    let mut merkle_next: Vec<(u32, [u8; 32])> = Vec::with_capacity(query_count);
+    let mut s_values: Vec<CM31> = Vec::with_capacity(query_count);
+    let mut folded: Vec<QM31> = Vec::with_capacity(query_count);
+    let mut denoms: Vec<CM31> = Vec::with_capacity(query_count * 3);
+    let mut invs: Vec<CM31> = Vec::with_capacity(query_count * 3);
+
     for layer in 0..num_rounds {
+        trace(trace_fn, TraceEvent::LayerStart(layer as u8));
         let geom = layer_geometry(profile, layer);
         let alpha = alphas[layer as usize];
         let alpha2 = alpha.mul(alpha);
         let fiber_mask = geom.fiber_count - 1;
 
         // geometry per query
-        let fiber_index: Vec<u32> = index.iter().map(|i| i & fiber_mask).collect();
-        let slot: Vec<u32> = index.iter().map(|i| i >> geom.log_fiber_count).collect();
-        let unique = unique_sorted(&fiber_index);
+        fiber_index.clear();
+        slot.clear();
+        for i in &index {
+            fiber_index.push(*i & fiber_mask);
+            slot.push(*i >> geom.log_fiber_count);
+        }
+        unique.clear();
+        unique.extend_from_slice(&fiber_index);
+        unique.sort_unstable();
+        unique.dedup();
 
         let unique_count = cursor.take_u16().ok_or(VerifyError::BadLength)? as usize;
         if unique_count != unique.len() {
@@ -304,7 +358,7 @@ pub fn verify(proof: &[u8], statement_digest: &[u8; 32], hash: HashFn) -> Result
         let values_section = cursor
             .take(unique_count * value_bytes)
             .ok_or(VerifyError::BadLength)?;
-        let mut fibers = Vec::with_capacity(unique_count);
+        fibers.clear();
         for k in 0..unique_count {
             fibers.push(parse_fiber(
                 &values_section[k * value_bytes..(k + 1) * value_bytes],
@@ -312,13 +366,14 @@ pub fn verify(proof: &[u8], statement_digest: &[u8; 32], hash: HashFn) -> Result
             )?);
         }
 
-        let mut carried: Vec<(QM31, QM31)> = Vec::new();
+        carried.clear();
         if fold_payload == FoldPayload::ProofCarriedRoundLocal {
             let carried_section = cursor
                 .take(unique_count * 32)
                 .ok_or(VerifyError::BadLength)?;
             for chunk in carried_section.chunks_exact(32) {
-                let g1 = QM31::from_le_bytes(&chunk[0..16]).ok_or(VerifyError::NonCanonicalValue)?;
+                let g1 =
+                    QM31::from_le_bytes(&chunk[0..16]).ok_or(VerifyError::NonCanonicalValue)?;
                 let g2 =
                     QM31::from_le_bytes(&chunk[16..32]).ok_or(VerifyError::NonCanonicalValue)?;
                 carried.push((g1, g2));
@@ -339,11 +394,7 @@ pub fn verify(proof: &[u8], statement_digest: &[u8; 32], hash: HashFn) -> Result
                     let path_bytes = cursor
                         .take(depth as usize * 32)
                         .ok_or(VerifyError::BadLength)?;
-                    let path: Vec<[u8; 32]> = path_bytes
-                        .chunks_exact(32)
-                        .map(|c| <[u8; 32]>::try_from(c).unwrap())
-                        .collect();
-                    if !verify_single_path(hash, root, depth, fidx, leaf, &path) {
+                    if !verify_single_path_bytes(hash, root, depth, fidx, leaf, path_bytes) {
                         return Err(VerifyError::MerkleMismatch { layer: layer as u8 });
                     }
                 }
@@ -351,29 +402,31 @@ pub fn verify(proof: &[u8], statement_digest: &[u8; 32], hash: HashFn) -> Result
             MerkleMode::MinimalSubtree => {
                 let node_count = cursor.take_u32().ok_or(VerifyError::BadLength)? as usize;
                 let node_bytes = cursor.take(node_count * 32).ok_or(VerifyError::BadLength)?;
-                let nodes: Vec<[u8; 32]> = node_bytes
-                    .chunks_exact(32)
-                    .map(|c| <[u8; 32]>::try_from(c).unwrap())
-                    .collect();
-                let entries: Vec<(u32, [u8; 32])> = unique
-                    .iter()
-                    .enumerate()
-                    .map(|(k, &fidx)| {
-                        (
-                            fidx,
-                            leaf_hash(
-                                hash,
-                                layer as u8,
-                                &values_section[k * value_bytes..(k + 1) * value_bytes],
-                            ),
-                        )
-                    })
-                    .collect();
-                if !verify_minimal_subtree(hash, root, depth, &entries, &nodes) {
+                entries.clear();
+                for (k, &fidx) in unique.iter().enumerate() {
+                    entries.push((
+                        fidx,
+                        leaf_hash(
+                            hash,
+                            layer as u8,
+                            &values_section[k * value_bytes..(k + 1) * value_bytes],
+                        ),
+                    ));
+                }
+                if !verify_minimal_subtree_bytes(
+                    hash,
+                    root,
+                    depth,
+                    &entries,
+                    node_bytes,
+                    &mut merkle_level,
+                    &mut merkle_next,
+                ) {
                     return Err(VerifyError::MerkleMismatch { layer: layer as u8 });
                 }
             }
         }
+        trace(trace_fn, TraceEvent::LayerMerkleDone(layer as u8));
 
         // Slot consistency for the incoming value (layers >= 1).
         for q in 0..query_count {
@@ -399,21 +452,23 @@ pub fn verify(proof: &[u8], statement_digest: &[u8; 32], hash: HashFn) -> Result
         }
 
         // Fold each unique fiber once (round_batch_inversion in raw mode).
-        let s_values: Vec<CM31> = unique
-            .iter()
-            .map(|&fidx| domain_point(&geom, fidx))
-            .collect();
-        let mut folded = vec![QM31::ZERO; unique.len()];
+        s_values.clear();
+        for &fidx in &unique {
+            s_values.push(domain_point(&geom, fidx));
+        }
+        folded.clear();
+        folded.resize(unique.len(), QM31::ZERO);
         match fold_payload {
             FoldPayload::RawFibers => {
                 // gather denominators for the whole round, invert once
-                let mut denoms = Vec::with_capacity(unique.len() * 3);
+                denoms.clear();
                 for &s in &s_values {
                     denoms.push(s.double());
                     denoms.push(s.mul(geom.iota).double());
                     denoms.push(s.mul(s).double());
                 }
-                let mut invs = vec![CM31::ZERO; denoms.len()];
+                invs.clear();
+                invs.resize(denoms.len(), CM31::ZERO);
                 cm31_batch_inverse(&denoms, &mut invs);
                 for (k, fiber) in fibers.iter().enumerate() {
                     folded[k] = fold_fiber(
@@ -453,10 +508,14 @@ pub fn verify(proof: &[u8], statement_digest: &[u8; 32], hash: HashFn) -> Result
             }
         }
 
-        index = fiber_index;
+        for q in 0..query_count {
+            index[q] = fiber_index[q];
+        }
+        trace(trace_fn, TraceEvent::LayerFoldDone(layer as u8));
     }
 
     // ---- final polynomial check ----
+    trace(trace_fn, TraceEvent::FinalCheckStart);
     let final_geom = layer_geometry(profile, num_rounds);
     for q in 0..query_count {
         let x = domain_point(&final_geom, index[q]);
@@ -483,5 +542,6 @@ pub fn verify(proof: &[u8], statement_digest: &[u8; 32], hash: HashFn) -> Result
     if !cursor.is_empty() {
         return Err(VerifyError::TrailingBytes);
     }
+    trace(trace_fn, TraceEvent::Done);
     Ok(())
 }

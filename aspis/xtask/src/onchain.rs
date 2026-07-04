@@ -32,10 +32,14 @@ use solana_sdk::{
 #[allow(deprecated)]
 use solana_sdk::system_instruction;
 
-use aspis_core::params::{PROFILE_CAPACITY, PROFILE_CAPACITY_LR14, PROFILE_JOHNSON};
+use aspis_core::params::{
+    PROFILE_CAPACITY, PROFILE_CAPACITY_G32_Q32, PROFILE_CAPACITY_G32_Q36,
+    PROFILE_CAPACITY_LR10_Q32_G16, PROFILE_CAPACITY_LR10_Q36_G16, PROFILE_CAPACITY_LR10_Q40_G16,
+    PROFILE_CAPACITY_LR14, PROFILE_JOHNSON,
+};
 use aspis_core::{FoldPayload, MerkleMode, Profile};
 use aspis_prover::{prove, seeded_coeffs, ProveOptions, HOST_HASH};
-use aspis_verifier::AspisInstruction;
+use aspis_verifier::{AspisInstruction, PROOF_ACCOUNT_HEADER_LEN};
 
 const UPLOAD_CHUNK_BYTES: usize = 640;
 const VERIFY_CU_LIMIT: u32 = 1_400_000;
@@ -48,11 +52,14 @@ pub struct OnchainVariant {
     pub soundness_label: &'static str,
     pub fold_payload: &'static str,
     pub merkle_mode: &'static str,
+    pub status: &'static str,
+    pub verify_error: Option<String>,
     pub proof_bytes: usize,
     pub upload_chunks: usize,
     pub upload_cu_total: u64,
     pub verify_cu: Vec<u64>,
     pub verify_cu_mean: f64,
+    pub verify_repetitions_requested: usize,
     pub corruption_rejected_onchain: Vec<(String, bool)>,
 }
 
@@ -63,7 +70,52 @@ pub struct OnchainSummary {
     pub validator_version: String,
     pub verify_cu_limit: u32,
     pub heap_frame_bytes: u32,
+    pub gate_matrix_only: bool,
     pub variants: Vec<OnchainVariant>,
+    pub notes: Vec<String>,
+}
+
+#[derive(Serialize)]
+pub struct CuMarker {
+    pub label: String,
+    pub remaining: u64,
+    pub delta_from_previous: Option<i64>,
+}
+
+#[derive(Serialize)]
+pub struct ProfileRun {
+    pub generated_at_utc: String,
+    pub command: String,
+    pub validator_version: String,
+    pub profile: &'static str,
+    pub fold_payload: &'static str,
+    pub merkle_mode: &'static str,
+    pub proof_bytes: usize,
+    pub upload_chunks: usize,
+    pub simulation_units: Option<u64>,
+    pub simulation_error: Option<String>,
+    pub markers: Vec<CuMarker>,
+    pub logs: Vec<String>,
+    pub notes: Vec<String>,
+}
+
+#[derive(Serialize)]
+pub struct LayoutPoint {
+    pub log_rows: u8,
+    pub columns: u16,
+    pub query_count: u16,
+    pub leaf_bytes: u16,
+    pub simulation_units: Option<u64>,
+    pub simulation_error: Option<String>,
+    pub markers: Vec<CuMarker>,
+}
+
+#[derive(Serialize)]
+pub struct LayoutSweep {
+    pub generated_at_utc: String,
+    pub command: String,
+    pub validator_version: String,
+    pub points: Vec<LayoutPoint>,
     pub notes: Vec<String>,
 }
 
@@ -82,6 +134,12 @@ impl Drop for Validator {
 struct Rpc {
     url: String,
     http: reqwest::blocking::Client,
+}
+
+struct SimulationResult {
+    units: Option<u64>,
+    err: Option<String>,
+    logs: Vec<String>,
 }
 
 impl Rpc {
@@ -169,20 +227,36 @@ impl Rpc {
             .unwrap_or(0))
     }
 
-    /// Simulate and return (units_consumed, error).
-    fn simulate(&self, tx: &Transaction) -> Result<(Option<u64>, Option<String>)> {
+    fn simulate_verbose(&self, tx: &Transaction) -> Result<SimulationResult> {
         let encoded = BASE64.encode(bincode::serialize(tx)?);
         let result = self.call(
             "simulateTransaction",
             json!([encoded, {"encoding": "base64", "sigVerify": false, "replaceRecentBlockhash": true, "commitment": "processed"}]),
         )?;
         let units = result["value"]["unitsConsumed"].as_u64();
+        let logs = result["value"]["logs"]
+            .as_array()
+            .map(|logs| {
+                logs.iter()
+                    .filter_map(|log| log.as_str().map(str::to_string))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
         let err = if result["value"]["err"].is_null() {
             None
         } else {
-            Some(result["value"]["err"].to_string())
+            Some(format!(
+                "{} logs={}",
+                result["value"]["err"], result["value"]["logs"]
+            ))
         };
-        Ok((units, err))
+        Ok(SimulationResult { units, err, logs })
+    }
+
+    /// Simulate and return (units_consumed, error).
+    fn simulate(&self, tx: &Transaction) -> Result<(Option<u64>, Option<String>)> {
+        let result = self.simulate_verbose(tx)?;
+        Ok((result.units, result.err))
     }
 }
 
@@ -264,14 +338,41 @@ fn proof_instruction(
     proof_account: &Pubkey,
     instruction: &AspisInstruction,
 ) -> Result<Instruction> {
+    let proof_account_signer = matches!(instruction, AspisInstruction::InitProof { .. });
     Ok(Instruction {
         program_id: aspis_verifier::id(),
         accounts: vec![
-            AccountMeta::new(*proof_account, false),
+            AccountMeta::new(*proof_account, proof_account_signer),
             AccountMeta::new_readonly(*payer, true),
         ],
         data: to_vec(instruction)?,
     })
+}
+
+fn create_program_account(
+    rpc: &Rpc,
+    payer: &Keypair,
+    account: &Keypair,
+    space: usize,
+) -> Result<()> {
+    let rent = rpc.call("getMinimumBalanceForRentExemption", json!([space]))?;
+    let rent = rent.as_u64().ok_or_else(|| anyhow!("bad rent"))?;
+    let create = system_instruction::create_account(
+        &payer.pubkey(),
+        &account.pubkey(),
+        rent,
+        space as u64,
+        &aspis_verifier::id(),
+    );
+    let blockhash = rpc.latest_blockhash()?;
+    let tx = Transaction::new_signed_with_payer(
+        &[create],
+        Some(&payer.pubkey()),
+        &[payer, account],
+        blockhash,
+    );
+    rpc.send_and_confirm(&tx)?;
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -282,12 +383,9 @@ fn upload_proof(
     proof: &[u8],
     fresh_account: bool,
 ) -> Result<(usize, u64)> {
-    let space = 4 + proof.len();
+    let space = PROOF_ACCOUNT_HEADER_LEN + proof.len();
     if fresh_account {
-        let rent = rpc.call(
-            "getMinimumBalanceForRentExemption",
-            json!([space]),
-        )?;
+        let rent = rpc.call("getMinimumBalanceForRentExemption", json!([space]))?;
         let rent = rent.as_u64().ok_or_else(|| anyhow!("bad rent"))?;
         let create = system_instruction::create_account(
             &payer.pubkey(),
@@ -315,7 +413,12 @@ fn upload_proof(
         },
     )?;
     let blockhash = rpc.latest_blockhash()?;
-    let tx = Transaction::new_signed_with_payer(&[init], Some(&payer.pubkey()), &[payer], blockhash);
+    let tx = Transaction::new_signed_with_payer(
+        &[init],
+        Some(&payer.pubkey()),
+        &[payer, proof_account],
+        blockhash,
+    );
     total_cu += rpc.send_and_confirm(&tx)?;
 
     let mut chunks = 0usize;
@@ -346,17 +449,21 @@ fn verify_tx(
     proof_account: &Pubkey,
     digest: [u8; 32],
     blockhash: solana_sdk::hash::Hash,
+    profile_cu: bool,
 ) -> Result<Transaction> {
+    let instruction = if profile_cu {
+        AspisInstruction::VerifyProfile {
+            statement_digest: digest,
+        }
+    } else {
+        AspisInstruction::Verify {
+            statement_digest: digest,
+        }
+    };
     let ixs = vec![
         ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
         ComputeBudgetInstruction::request_heap_frame(HEAP_FRAME_BYTES),
-        proof_instruction(
-            &payer.pubkey(),
-            proof_account,
-            &AspisInstruction::Verify {
-                statement_digest: digest,
-            },
-        )?,
+        proof_instruction(&payer.pubkey(), proof_account, &instruction)?,
     ];
     Ok(Transaction::new_signed_with_payer(
         &ixs,
@@ -366,7 +473,47 @@ fn verify_tx(
     ))
 }
 
-pub fn run_stage0_onchain() -> Result<OnchainSummary> {
+fn validator_version() -> String {
+    Command::new("solana-test-validator")
+        .arg("--version")
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_else(|_| "unknown".to_string())
+}
+
+fn parse_cu_markers(logs: &[String], marker_prefix: &str) -> Vec<CuMarker> {
+    let mut pending: Option<String> = None;
+    let mut previous: Option<u64> = None;
+    let mut markers = Vec::new();
+    for log in logs {
+        if let Some((_, suffix)) = log.split_once(marker_prefix) {
+            pending = Some(suffix.trim().to_string());
+            continue;
+        }
+        let Some((_, rest)) = log.split_once("Program consumption:") else {
+            continue;
+        };
+        let Some(label) = pending.take() else {
+            continue;
+        };
+        let Some(remaining) = rest
+            .split_whitespace()
+            .find_map(|token| token.parse::<u64>().ok())
+        else {
+            continue;
+        };
+        let delta_from_previous = previous.map(|prev| prev as i64 - remaining as i64);
+        previous = Some(remaining);
+        markers.push(CuMarker {
+            label,
+            remaining,
+            delta_from_previous,
+        });
+    }
+    markers
+}
+
+pub fn run_stage0_onchain(gate_matrix_only: bool) -> Result<OnchainSummary> {
     let root = workspace_root()?;
     let so = build_sbf(&root)?;
     let validator = start_validator(&root, &so)?;
@@ -379,16 +526,23 @@ pub fn run_stage0_onchain() -> Result<OnchainSummary> {
     let payer = Keypair::new();
     rpc.airdrop_and_wait(&payer.pubkey(), 500 * LAMPORTS_PER_SOL)?;
 
-    let validator_version = Command::new("solana-test-validator")
-        .arg("--version")
-        .output()
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-        .unwrap_or_else(|_| "unknown".to_string());
+    let validator_version = validator_version();
 
     let mut variants = Vec::new();
+    let modes: &[MerkleMode] = if gate_matrix_only {
+        &[MerkleMode::MinimalSubtree]
+    } else {
+        &[MerkleMode::MinimalSubtree, MerkleMode::SinglePaths]
+    };
     for profile in [&PROFILE_CAPACITY, &PROFILE_JOHNSON, &PROFILE_CAPACITY_LR14] {
         for payload in [FoldPayload::RawFibers, FoldPayload::ProofCarriedRoundLocal] {
-            for mode in [MerkleMode::MinimalSubtree, MerkleMode::SinglePaths] {
+            for &mode in modes {
+                if gate_matrix_only
+                    && profile.id == PROFILE_CAPACITY_LR14.id
+                    && payload == FoldPayload::ProofCarriedRoundLocal
+                {
+                    continue;
+                }
                 variants.push(run_onchain_variant(&rpc, &payer, profile, payload, mode)?);
             }
         }
@@ -396,14 +550,225 @@ pub fn run_stage0_onchain() -> Result<OnchainSummary> {
 
     Ok(OnchainSummary {
         generated_at_utc: chrono::Utc::now().to_rfc3339(),
-        command: "cargo run -p aspis-xtask -- stage0-onchain".to_string(),
+        command: if gate_matrix_only {
+            "cargo run -p aspis-xtask -- stage0-onchain-gate".to_string()
+        } else {
+            "cargo run -p aspis-xtask -- stage0-onchain".to_string()
+        },
         validator_version,
         verify_cu_limit: VERIFY_CU_LIMIT,
         heap_frame_bytes: HEAP_FRAME_BYTES,
+        gate_matrix_only,
         variants,
         notes: vec![
-            "verify_cu are simulateTransaction unitsConsumed for the full verify instruction (plus compute-budget instructions) against a local test validator.".to_string(),
+            "verify_cu are simulateTransaction unitsConsumed for the full verify transaction (including compute-budget instructions) against a local test validator.".to_string(),
+            "Variants with status=verify_failed exceeded budget or otherwise failed during simulation; their corruption suite is skipped because no accepting baseline exists.".to_string(),
             "Soundness labels remain heuristic pending the Stage 1 note; the capacity-vs-Johnson asymmetry must be restated wherever these CU numbers are quoted.".to_string(),
+        ],
+    })
+}
+
+pub fn run_stage0_onchain_g32() -> Result<OnchainSummary> {
+    let root = workspace_root()?;
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), 500 * LAMPORTS_PER_SOL)?;
+
+    let mut variants = Vec::new();
+    for profile in [&PROFILE_CAPACITY_G32_Q36, &PROFILE_CAPACITY_G32_Q32] {
+        variants.push(run_onchain_variant(
+            &rpc,
+            &payer,
+            profile,
+            FoldPayload::RawFibers,
+            MerkleMode::MinimalSubtree,
+        )?);
+    }
+
+    Ok(OnchainSummary {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command: "cargo run -p aspis-xtask -- stage0-onchain-g32".to_string(),
+        validator_version: validator_version(),
+        verify_cu_limit: VERIFY_CU_LIMIT,
+        heap_frame_bytes: HEAP_FRAME_BYTES,
+        gate_matrix_only: true,
+        variants,
+        notes: vec![
+            "Diagnostic g32 query/grinding trade; not a frozen profile until Stage 1 soundness accounting confirms the query count.".to_string(),
+            "Only raw_fibers/minimal_subtree is measured because proof_carried_round_local lost on both bytes and CU in the gate artifact.".to_string(),
+        ],
+    })
+}
+
+pub fn run_stage0_onchain_layout_target() -> Result<OnchainSummary> {
+    let root = workspace_root()?;
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), 500 * LAMPORTS_PER_SOL)?;
+
+    let mut variants = Vec::new();
+    for profile in [
+        &PROFILE_CAPACITY_LR10_Q40_G16,
+        &PROFILE_CAPACITY_LR10_Q36_G16,
+        &PROFILE_CAPACITY_LR10_Q32_G16,
+    ] {
+        variants.push(run_onchain_variant(
+            &rpc,
+            &payer,
+            profile,
+            FoldPayload::RawFibers,
+            MerkleMode::MinimalSubtree,
+        )?);
+    }
+
+    Ok(OnchainSummary {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command: "cargo run -p aspis-xtask -- stage0-onchain-layout-target".to_string(),
+        validator_version: validator_version(),
+        verify_cu_limit: VERIFY_CU_LIMIT,
+        heap_frame_bytes: HEAP_FRAME_BYTES,
+        gate_matrix_only: true,
+        variants,
+        notes: vec![
+            "Lower-row diagnostic for the wide-row statement layout decision; not a frozen profile until Stage 1 soundness accounting and the Stage 2 direct evaluator exist.".to_string(),
+            "Only raw_fibers/minimal_subtree is measured because proof_carried_round_local lost on both bytes and CU in the gate artifact.".to_string(),
+            "This runner uses g16 to avoid prover-side grinding variance; verifier-side g32 overhead is one grinding hash and was measured separately in onchain_g32_summary.json.".to_string(),
+            "Combine these PCS verifier costs with layout_sweep RLC/wide-leaf deltas; do not add the full synthetic Merkle loop or path hashing is double-counted.".to_string(),
+        ],
+    })
+}
+
+pub fn run_stage0_onchain_profile() -> Result<ProfileRun> {
+    let root = workspace_root()?;
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), 500 * LAMPORTS_PER_SOL)?;
+
+    let profile = &PROFILE_CAPACITY;
+    let payload = FoldPayload::RawFibers;
+    let mode = MerkleMode::MinimalSubtree;
+    let coeffs = seeded_coeffs(profile.log_rows, 1);
+    let digest = crate::host_statement_digest(0);
+    let proof = prove(
+        profile,
+        &coeffs,
+        &digest,
+        &ProveOptions {
+            fold_payload: payload,
+            merkle_mode: mode,
+        },
+        HOST_HASH,
+    );
+    let proof_account = Keypair::new();
+    let (chunks, _) = upload_proof(&rpc, &payer, &proof_account, &proof, true)?;
+    let blockhash = rpc.latest_blockhash()?;
+    let tx = verify_tx(&payer, &proof_account.pubkey(), digest, blockhash, true)?;
+    let sim = rpc.simulate_verbose(&tx)?;
+    Ok(ProfileRun {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command: "cargo run -p aspis-xtask -- stage0-onchain-profile".to_string(),
+        validator_version: validator_version(),
+        profile: profile.name,
+        fold_payload: "raw_fibers",
+        merkle_mode: "minimal_subtree",
+        proof_bytes: proof.len(),
+        upload_chunks: chunks,
+        simulation_units: sim.units,
+        simulation_error: sim.err,
+        markers: parse_cu_markers(&sim.logs, "aspis-cu:"),
+        logs: sim.logs,
+        notes: vec![
+            "Diagnostic only: msg!/sol_log_compute_units markers add CU and should not be quoted as the verifier cost.".to_string(),
+            "Use marker deltas for stage attribution: header/transcript/query/layer Merkle+fold/final.".to_string(),
+        ],
+    })
+}
+
+pub fn run_layout_sweep() -> Result<LayoutSweep> {
+    let root = workspace_root()?;
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), 10 * LAMPORTS_PER_SOL)?;
+
+    let probe_account = Keypair::new();
+    create_program_account(&rpc, &payer, &probe_account, PROOF_ACCOUNT_HEADER_LEN)?;
+
+    let sweep = [
+        (12, 16, 32),
+        (11, 32, 32),
+        (10, 64, 32),
+        (9, 128, 32),
+        (8, 256, 32),
+        (6, 400, 32),
+    ];
+    let mut points = Vec::new();
+    for (log_rows, columns, query_count) in sweep {
+        let leaf_bytes = (columns as u16).saturating_mul(4);
+        let instruction = AspisInstruction::LayoutProbe {
+            log_rows,
+            columns,
+            query_count,
+            leaf_bytes,
+        };
+        let ix = proof_instruction(&payer.pubkey(), &probe_account.pubkey(), &instruction)?;
+        let blockhash = rpc.latest_blockhash()?;
+        let tx = Transaction::new_signed_with_payer(
+            &[
+                ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+                ix,
+            ],
+            Some(&payer.pubkey()),
+            &[&payer],
+            blockhash,
+        );
+        let sim = rpc.simulate_verbose(&tx)?;
+        points.push(LayoutPoint {
+            log_rows,
+            columns,
+            query_count,
+            leaf_bytes,
+            simulation_units: sim.units,
+            simulation_error: sim.err,
+            markers: parse_cu_markers(&sim.logs, "aspis-layout:"),
+        });
+    }
+
+    Ok(LayoutSweep {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command: "cargo run -p aspis-xtask -- stage0-layout-sweep".to_string(),
+        validator_version: validator_version(),
+        points,
+        notes: vec![
+            "Synthetic Stage 2 layout probe: SHA-256 leaf/path hashing plus QM31 RLC recombination over k columns.".to_string(),
+            "This does not prove statement correctness; it pulls design item 13.8 forward so lr14 is not treated as a frozen target.".to_string(),
         ],
     })
 }
@@ -423,7 +788,10 @@ fn run_onchain_variant(
         MerkleMode::SinglePaths => "single_paths",
         MerkleMode::MinimalSubtree => "minimal_subtree",
     };
-    eprintln!("stage0-onchain: {} / {payload_name} / {mode_name}", profile.name);
+    eprintln!(
+        "stage0-onchain: {} / {payload_name} / {mode_name}",
+        profile.name
+    );
 
     let coeffs = seeded_coeffs(profile.log_rows, 1);
     let digest = crate::host_statement_digest(0);
@@ -437,14 +805,42 @@ fn run_onchain_variant(
     let (chunks, upload_cu) = upload_proof(rpc, payer, &proof_account, &proof, true)?;
 
     let mut verify_cu = Vec::new();
+    let mut verify_error = None;
     for _ in 0..VERIFY_REPETITIONS {
         let blockhash = rpc.latest_blockhash()?;
-        let tx = verify_tx(payer, &proof_account.pubkey(), digest, blockhash)?;
+        let tx = verify_tx(payer, &proof_account.pubkey(), digest, blockhash, false)?;
         let (units, err) = rpc.simulate(&tx)?;
         if let Some(err) = err {
-            bail!("verify simulation failed for {}: {err}", profile.name);
+            if let Some(units) = units {
+                verify_cu.push(units);
+            }
+            verify_error = Some(err);
+            break;
         }
         verify_cu.push(units.ok_or_else(|| anyhow!("no unitsConsumed"))?);
+    }
+
+    if verify_error.is_some() {
+        let mean = if verify_cu.is_empty() {
+            0.0
+        } else {
+            verify_cu.iter().sum::<u64>() as f64 / verify_cu.len() as f64
+        };
+        return Ok(OnchainVariant {
+            profile: profile.name,
+            soundness_label: profile.soundness_label,
+            fold_payload: payload_name,
+            merkle_mode: mode_name,
+            status: "verify_failed",
+            verify_error,
+            proof_bytes: proof.len(),
+            upload_chunks: chunks,
+            upload_cu_total: upload_cu,
+            verify_cu,
+            verify_cu_mean: mean,
+            verify_repetitions_requested: VERIFY_REPETITIONS,
+            corruption_rejected_onchain: Vec::new(),
+        });
     }
 
     // On-chain corruption suite: re-upload each corrupted proof, expect the
@@ -469,7 +865,13 @@ fn run_onchain_variant(
             digest
         };
         let blockhash = rpc.latest_blockhash()?;
-        let tx = verify_tx(payer, &corrupt_account.pubkey(), check_digest, blockhash)?;
+        let tx = verify_tx(
+            payer,
+            &corrupt_account.pubkey(),
+            check_digest,
+            blockhash,
+            false,
+        )?;
         let (_, err) = rpc.simulate(&tx)?;
         corruption_rejected.push((case.name.to_string(), err.is_some()));
     }
@@ -480,11 +882,14 @@ fn run_onchain_variant(
         soundness_label: profile.soundness_label,
         fold_payload: payload_name,
         merkle_mode: mode_name,
+        status: "accepted",
+        verify_error: None,
         proof_bytes: proof.len(),
         upload_chunks: chunks,
         upload_cu_total: upload_cu,
         verify_cu,
         verify_cu_mean: mean,
+        verify_repetitions_requested: VERIFY_REPETITIONS,
         corruption_rejected_onchain: corruption_rejected,
     })
 }

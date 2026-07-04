@@ -1,0 +1,182 @@
+{
+  "generated_at_utc": "2026-07-04T10:47:56.487833+00:00",
+  "command": "cargo run -p aspis-xtask -- stage0-onchain-gate",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "verify_cu_limit": 1400000,
+  "heap_frame_bytes": 262144,
+  "gate_matrix_only": true,
+  "variants": [
+    {
+      "profile": "capacity_lr12_q40_g16",
+      "soundness_label": "heuristic (capacity-conjecture shaped; Stage 1 budget pending)",
+      "fold_payload": "raw_fibers",
+      "merkle_mode": "minimal_subtree",
+      "status": "accepted",
+      "verify_error": null,
+      "proof_bytes": 24694,
+      "upload_chunks": 39,
+      "upload_cu_total": 22036,
+      "verify_cu": [
+        1063093,
+        1063093,
+        1063093,
+        1063093,
+        1063093
+      ],
+      "verify_cu_mean": 1063093.0,
+      "verify_repetitions_requested": 5,
+      "corruption_rejected_onchain": [
+        [
+          "root_corruption",
+          true
+        ],
+        [
+          "payload_corruption",
+          true
+        ],
+        [
+          "final_value_corruption",
+          true
+        ],
+        [
+          "grinding_corruption",
+          true
+        ],
+        [
+          "statement_digest_mismatch",
+          true
+        ],
+        [
+          "trailing_byte",
+          true
+        ],
+        [
+          "truncation",
+          true
+        ],
+        [
+          "mode_flag_replay",
+          true
+        ],
+        [
+          "profile_swap",
+          true
+        ]
+      ]
+    },
+    {
+      "profile": "capacity_lr12_q40_g16",
+      "soundness_label": "heuristic (capacity-conjecture shaped; Stage 1 budget pending)",
+      "fold_payload": "proof_carried_round_local",
+      "merkle_mode": "minimal_subtree",
+      "status": "accepted",
+      "verify_error": null,
+      "proof_bytes": 30230,
+      "upload_chunks": 48,
+      "upload_cu_total": 25780,
+      "verify_cu": [
+        1078628,
+        1078628,
+        1078628,
+        1078628,
+        1078628
+      ],
+      "verify_cu_mean": 1078628.0,
+      "verify_repetitions_requested": 5,
+      "corruption_rejected_onchain": [
+        [
+          "root_corruption",
+          true
+        ],
+        [
+          "payload_corruption",
+          true
+        ],
+        [
+          "final_value_corruption",
+          true
+        ],
+        [
+          "grinding_corruption",
+          true
+        ],
+        [
+          "statement_digest_mismatch",
+          true
+        ],
+        [
+          "trailing_byte",
+          true
+        ],
+        [
+          "truncation",
+          true
+        ],
+        [
+          "mode_flag_replay",
+          true
+        ],
+        [
+          "profile_swap",
+          true
+        ]
+      ]
+    },
+    {
+      "profile": "johnson_lr12_q80_g16",
+      "soundness_label": "heuristic (Johnson shaped; Stage 1 budget pending)",
+      "fold_payload": "raw_fibers",
+      "merkle_mode": "minimal_subtree",
+      "status": "verify_failed",
+      "verify_error": "{\"InstructionError\":[2,\"ProgramFailedToComplete\"]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD invoke [1]\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD consumed 1399644 of 1399700 compute units\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD failed: exceeded CUs meter at BPF instruction\"]",
+      "proof_bytes": 39478,
+      "upload_chunks": 62,
+      "upload_cu_total": 30502,
+      "verify_cu": [
+        1400000
+      ],
+      "verify_cu_mean": 1400000.0,
+      "verify_repetitions_requested": 5,
+      "corruption_rejected_onchain": []
+    },
+    {
+      "profile": "johnson_lr12_q80_g16",
+      "soundness_label": "heuristic (Johnson shaped; Stage 1 budget pending)",
+      "fold_payload": "proof_carried_round_local",
+      "merkle_mode": "minimal_subtree",
+      "status": "verify_failed",
+      "verify_error": "{\"InstructionError\":[2,\"ProgramFailedToComplete\"]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD invoke [1]\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD consumed 1399644 of 1399700 compute units\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD failed: exceeded CUs meter at BPF instruction\"]",
+      "proof_bytes": 49366,
+      "upload_chunks": 78,
+      "upload_cu_total": 37776,
+      "verify_cu": [
+        1400000
+      ],
+      "verify_cu_mean": 1400000.0,
+      "verify_repetitions_requested": 5,
+      "corruption_rejected_onchain": []
+    },
+    {
+      "profile": "capacity_lr14_q40_g16",
+      "soundness_label": "heuristic (capacity-conjecture shaped; Stage 1 budget pending)",
+      "fold_payload": "raw_fibers",
+      "merkle_mode": "minimal_subtree",
+      "status": "verify_failed",
+      "verify_error": "{\"InstructionError\":[2,\"ProgramFailedToComplete\"]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD invoke [1]\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD consumed 1399644 of 1399700 compute units\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD failed: exceeded CUs meter at BPF instruction\"]",
+      "proof_bytes": 37308,
+      "upload_chunks": 59,
+      "upload_cu_total": 32076,
+      "verify_cu": [
+        1400000
+      ],
+      "verify_cu_mean": 1400000.0,
+      "verify_repetitions_requested": 5,
+      "corruption_rejected_onchain": []
+    }
+  ],
+  "notes": [
+    "verify_cu are simulateTransaction unitsConsumed for the full verify transaction (including compute-budget instructions) against a local test validator.",
+    "Variants with status=verify_failed exceeded budget or otherwise failed during simulation; their corruption suite is skipped because no accepting baseline exists.",
+    "Soundness labels remain heuristic pending the Stage 1 note; the capacity-vs-Johnson asymmetry must be restated wherever these CU numbers are quoted."
+  ]
+}

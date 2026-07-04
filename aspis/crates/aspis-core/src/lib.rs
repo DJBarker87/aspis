@@ -24,7 +24,7 @@ pub mod verify;
 
 pub use params::{FoldPayload, MerkleMode, Profile, PROFILES};
 pub use transcript::HashFn;
-pub use verify::{verify, VerifyError};
+pub use verify::{verify, verify_with_trace, TraceEvent, TraceFn, VerifyError};
 
 #[cfg(test)]
 mod tests {
@@ -41,10 +41,7 @@ mod tests {
         assert_eq!(norm, crate::field::M31::ONE);
         // order exactly 2^31: G^(2^30) == -1, G^(2^31) == 1
         let half = CIRCLE_GEN.pow(1u64 << (CIRCLE_LOG_ORDER - 1));
-        assert_eq!(
-            half,
-            CM31::from_m31(crate::field::M31(crate::field::P - 1))
-        );
+        assert_eq!(half, CM31::from_m31(crate::field::M31(crate::field::P - 1)));
         assert_eq!(half.mul(half), CM31::ONE);
     }
 }
