@@ -1,0 +1,10 @@
+[package]
+name = "aspis-prover"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+description = "Host-only prover for the Aspis native WHIR-style M31 PCS substrate"
+
+[dependencies]
+aspis-core = { path = "../aspis-core" }
+sha2.workspace = true
