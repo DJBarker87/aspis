@@ -1,0 +1,744 @@
+{
+  "generated_at_utc": "2026-07-04T09:49:17.318481890+00:00",
+  "command": "cargo run -p aspis-xtask -- stage0-host",
+  "parity_runs_per_variant": 10,
+  "variants": [
+    {
+      "profile": "capacity_lr12_q40_g16",
+      "soundness_label": "heuristic (capacity-conjecture shaped; Stage 1 budget pending)",
+      "log_rows": 12,
+      "log_blowup": 2,
+      "query_count": 40,
+      "grinding_bits": 16,
+      "fold_payload": "raw_fibers",
+      "merkle_mode": "minimal_subtree",
+      "runs": 10,
+      "accepted": 10,
+      "proof_bytes_min": 23414,
+      "proof_bytes_max": 25686,
+      "proof_bytes_mean": 24790.0,
+      "prove_ms_mean": 33.68314310000001,
+      "verify_ms_mean": 0.6331298,
+      "corruption": [
+        {
+          "name": "root_corruption",
+          "byte_offset": 21,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "payload_corruption",
+          "byte_offset": 253,
+          "rejected": true,
+          "error": "Some(MerkleMismatch { layer: 0 })"
+        },
+        {
+          "name": "final_value_corruption",
+          "byte_offset": 177,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "grinding_corruption",
+          "byte_offset": 240,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "statement_digest_mismatch",
+          "byte_offset": 0,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "trailing_byte",
+          "byte_offset": 24694,
+          "rejected": true,
+          "error": "Some(TrailingBytes)"
+        },
+        {
+          "name": "truncation",
+          "byte_offset": 24693,
+          "rejected": true,
+          "error": "Some(BadLength)"
+        }
+      ]
+    },
+    {
+      "profile": "capacity_lr12_q40_g16",
+      "soundness_label": "heuristic (capacity-conjecture shaped; Stage 1 budget pending)",
+      "log_rows": 12,
+      "log_blowup": 2,
+      "query_count": 40,
+      "grinding_bits": 16,
+      "fold_payload": "raw_fibers",
+      "merkle_mode": "single_paths",
+      "runs": 10,
+      "accepted": 10,
+      "proof_bytes_min": 50914,
+      "proof_bytes_max": 56834,
+      "proof_bytes_mean": 54059.6,
+      "prove_ms_mean": 33.457821200000005,
+      "verify_ms_mean": 1.1484626,
+      "corruption": [
+        {
+          "name": "root_corruption",
+          "byte_offset": 21,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "payload_corruption",
+          "byte_offset": 253,
+          "rejected": true,
+          "error": "Some(MerkleMismatch { layer: 0 })"
+        },
+        {
+          "name": "final_value_corruption",
+          "byte_offset": 177,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "grinding_corruption",
+          "byte_offset": 240,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "statement_digest_mismatch",
+          "byte_offset": 0,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "trailing_byte",
+          "byte_offset": 53570,
+          "rejected": true,
+          "error": "Some(TrailingBytes)"
+        },
+        {
+          "name": "truncation",
+          "byte_offset": 53569,
+          "rejected": true,
+          "error": "Some(BadLength)"
+        }
+      ]
+    },
+    {
+      "profile": "capacity_lr12_q40_g16",
+      "soundness_label": "heuristic (capacity-conjecture shaped; Stage 1 budget pending)",
+      "log_rows": 12,
+      "log_blowup": 2,
+      "query_count": 40,
+      "grinding_bits": 16,
+      "fold_payload": "proof_carried_round_local",
+      "merkle_mode": "minimal_subtree",
+      "runs": 10,
+      "accepted": 10,
+      "proof_bytes_min": 29622,
+      "proof_bytes_max": 30806,
+      "proof_bytes_mean": 30172.4,
+      "prove_ms_mean": 38.6495739,
+      "verify_ms_mean": 0.6620048,
+      "corruption": [
+        {
+          "name": "root_corruption",
+          "byte_offset": 21,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "payload_corruption",
+          "byte_offset": 253,
+          "rejected": true,
+          "error": "Some(MerkleMismatch { layer: 0 })"
+        },
+        {
+          "name": "final_value_corruption",
+          "byte_offset": 177,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "grinding_corruption",
+          "byte_offset": 240,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "statement_digest_mismatch",
+          "byte_offset": 0,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "trailing_byte",
+          "byte_offset": 30230,
+          "rejected": true,
+          "error": "Some(TrailingBytes)"
+        },
+        {
+          "name": "truncation",
+          "byte_offset": 30229,
+          "rejected": true,
+          "error": "Some(BadLength)"
+        }
+      ]
+    },
+    {
+      "profile": "capacity_lr12_q40_g16",
+      "soundness_label": "heuristic (capacity-conjecture shaped; Stage 1 budget pending)",
+      "log_rows": 12,
+      "log_blowup": 2,
+      "query_count": 40,
+      "grinding_bits": 16,
+      "fold_payload": "proof_carried_round_local",
+      "merkle_mode": "single_paths",
+      "runs": 10,
+      "accepted": 10,
+      "proof_bytes_min": 57762,
+      "proof_bytes_max": 61122,
+      "proof_bytes_mean": 59720.4,
+      "prove_ms_mean": 34.0352017,
+      "verify_ms_mean": 1.1570169000000001,
+      "corruption": [
+        {
+          "name": "root_corruption",
+          "byte_offset": 21,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "payload_corruption",
+          "byte_offset": 253,
+          "rejected": true,
+          "error": "Some(MerkleMismatch { layer: 0 })"
+        },
+        {
+          "name": "final_value_corruption",
+          "byte_offset": 177,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "grinding_corruption",
+          "byte_offset": 240,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "statement_digest_mismatch",
+          "byte_offset": 0,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "trailing_byte",
+          "byte_offset": 58914,
+          "rejected": true,
+          "error": "Some(TrailingBytes)"
+        },
+        {
+          "name": "truncation",
+          "byte_offset": 58913,
+          "rejected": true,
+          "error": "Some(BadLength)"
+        }
+      ]
+    },
+    {
+      "profile": "johnson_lr12_q80_g16",
+      "soundness_label": "heuristic (Johnson shaped; Stage 1 budget pending)",
+      "log_rows": 12,
+      "log_blowup": 2,
+      "query_count": 80,
+      "grinding_bits": 16,
+      "fold_payload": "raw_fibers",
+      "merkle_mode": "minimal_subtree",
+      "runs": 10,
+      "accepted": 10,
+      "proof_bytes_min": 38646,
+      "proof_bytes_max": 40310,
+      "proof_bytes_mean": 39615.6,
+      "prove_ms_mean": 32.4276065,
+      "verify_ms_mean": 1.0100362,
+      "corruption": [
+        {
+          "name": "root_corruption",
+          "byte_offset": 21,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "payload_corruption",
+          "byte_offset": 253,
+          "rejected": true,
+          "error": "Some(MerkleMismatch { layer: 0 })"
+        },
+        {
+          "name": "final_value_corruption",
+          "byte_offset": 177,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "grinding_corruption",
+          "byte_offset": 240,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "statement_digest_mismatch",
+          "byte_offset": 0,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "trailing_byte",
+          "byte_offset": 39478,
+          "rejected": true,
+          "error": "Some(TrailingBytes)"
+        },
+        {
+          "name": "truncation",
+          "byte_offset": 39477,
+          "rejected": true,
+          "error": "Some(BadLength)"
+        }
+      ]
+    },
+    {
+      "profile": "johnson_lr12_q80_g16",
+      "soundness_label": "heuristic (Johnson shaped; Stage 1 budget pending)",
+      "log_rows": 12,
+      "log_blowup": 2,
+      "query_count": 80,
+      "grinding_bits": 16,
+      "fold_payload": "raw_fibers",
+      "merkle_mode": "single_paths",
+      "runs": 10,
+      "accepted": 10,
+      "proof_bytes_min": 96610,
+      "proof_bytes_max": 103554,
+      "proof_bytes_mean": 99838.8,
+      "prove_ms_mean": 34.318242399999995,
+      "verify_ms_mean": 2.0870634,
+      "corruption": [
+        {
+          "name": "root_corruption",
+          "byte_offset": 21,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "payload_corruption",
+          "byte_offset": 253,
+          "rejected": true,
+          "error": "Some(MerkleMismatch { layer: 0 })"
+        },
+        {
+          "name": "final_value_corruption",
+          "byte_offset": 177,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "grinding_corruption",
+          "byte_offset": 240,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "statement_digest_mismatch",
+          "byte_offset": 0,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "trailing_byte",
+          "byte_offset": 100098,
+          "rejected": true,
+          "error": "Some(TrailingBytes)"
+        },
+        {
+          "name": "truncation",
+          "byte_offset": 100097,
+          "rejected": true,
+          "error": "Some(BadLength)"
+        }
+      ]
+    },
+    {
+      "profile": "johnson_lr12_q80_g16",
+      "soundness_label": "heuristic (Johnson shaped; Stage 1 budget pending)",
+      "log_rows": 12,
+      "log_blowup": 2,
+      "query_count": 80,
+      "grinding_bits": 16,
+      "fold_payload": "proof_carried_round_local",
+      "merkle_mode": "minimal_subtree",
+      "runs": 10,
+      "accepted": 10,
+      "proof_bytes_min": 47574,
+      "proof_bytes_max": 49846,
+      "proof_bytes_mean": 48681.2,
+      "prove_ms_mean": 24.679984400000002,
+      "verify_ms_mean": 1.0421609,
+      "corruption": [
+        {
+          "name": "root_corruption",
+          "byte_offset": 21,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "payload_corruption",
+          "byte_offset": 253,
+          "rejected": true,
+          "error": "Some(MerkleMismatch { layer: 0 })"
+        },
+        {
+          "name": "final_value_corruption",
+          "byte_offset": 177,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "grinding_corruption",
+          "byte_offset": 240,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "statement_digest_mismatch",
+          "byte_offset": 0,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "trailing_byte",
+          "byte_offset": 49366,
+          "rejected": true,
+          "error": "Some(TrailingBytes)"
+        },
+        {
+          "name": "truncation",
+          "byte_offset": 49365,
+          "rejected": true,
+          "error": "Some(BadLength)"
+        }
+      ]
+    },
+    {
+      "profile": "johnson_lr12_q80_g16",
+      "soundness_label": "heuristic (Johnson shaped; Stage 1 budget pending)",
+      "log_rows": 12,
+      "log_blowup": 2,
+      "query_count": 80,
+      "grinding_bits": 16,
+      "fold_payload": "proof_carried_round_local",
+      "merkle_mode": "single_paths",
+      "runs": 10,
+      "accepted": 10,
+      "proof_bytes_min": 100802,
+      "proof_bytes_max": 111426,
+      "proof_bytes_mean": 108354.0,
+      "prove_ms_mean": 32.1884561,
+      "verify_ms_mean": 2.1129983,
+      "corruption": [
+        {
+          "name": "root_corruption",
+          "byte_offset": 21,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "payload_corruption",
+          "byte_offset": 253,
+          "rejected": true,
+          "error": "Some(MerkleMismatch { layer: 0 })"
+        },
+        {
+          "name": "final_value_corruption",
+          "byte_offset": 177,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "grinding_corruption",
+          "byte_offset": 240,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "statement_digest_mismatch",
+          "byte_offset": 0,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "trailing_byte",
+          "byte_offset": 108866,
+          "rejected": true,
+          "error": "Some(TrailingBytes)"
+        },
+        {
+          "name": "truncation",
+          "byte_offset": 108865,
+          "rejected": true,
+          "error": "Some(BadLength)"
+        }
+      ]
+    },
+    {
+      "profile": "capacity_lr14_q40_g16",
+      "soundness_label": "heuristic (capacity-conjecture shaped; Stage 1 budget pending)",
+      "log_rows": 14,
+      "log_blowup": 2,
+      "query_count": 40,
+      "grinding_bits": 16,
+      "fold_payload": "raw_fibers",
+      "merkle_mode": "minimal_subtree",
+      "runs": 10,
+      "accepted": 10,
+      "proof_bytes_min": 36252,
+      "proof_bytes_max": 38332,
+      "proof_bytes_mean": 37666.4,
+      "prove_ms_mean": 59.3508121,
+      "verify_ms_mean": 0.9684586,
+      "corruption": [
+        {
+          "name": "root_corruption",
+          "byte_offset": 21,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "payload_corruption",
+          "byte_offset": 285,
+          "rejected": true,
+          "error": "Some(MerkleMismatch { layer: 0 })"
+        },
+        {
+          "name": "final_value_corruption",
+          "byte_offset": 209,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "grinding_corruption",
+          "byte_offset": 272,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "statement_digest_mismatch",
+          "byte_offset": 0,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "trailing_byte",
+          "byte_offset": 37308,
+          "rejected": true,
+          "error": "Some(TrailingBytes)"
+        },
+        {
+          "name": "truncation",
+          "byte_offset": 37307,
+          "rejected": true,
+          "error": "Some(BadLength)"
+        }
+      ]
+    },
+    {
+      "profile": "capacity_lr14_q40_g16",
+      "soundness_label": "heuristic (capacity-conjecture shaped; Stage 1 budget pending)",
+      "log_rows": 14,
+      "log_blowup": 2,
+      "query_count": 40,
+      "grinding_bits": 16,
+      "fold_payload": "raw_fibers",
+      "merkle_mode": "single_paths",
+      "runs": 10,
+      "accepted": 10,
+      "proof_bytes_min": 72036,
+      "proof_bytes_max": 76324,
+      "proof_bytes_mean": 74944.8,
+      "prove_ms_mean": 49.233132499999996,
+      "verify_ms_mean": 1.6125494,
+      "corruption": [
+        {
+          "name": "root_corruption",
+          "byte_offset": 21,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "payload_corruption",
+          "byte_offset": 285,
+          "rejected": true,
+          "error": "Some(MerkleMismatch { layer: 0 })"
+        },
+        {
+          "name": "final_value_corruption",
+          "byte_offset": 209,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "grinding_corruption",
+          "byte_offset": 272,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "statement_digest_mismatch",
+          "byte_offset": 0,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "trailing_byte",
+          "byte_offset": 75748,
+          "rejected": true,
+          "error": "Some(TrailingBytes)"
+        },
+        {
+          "name": "truncation",
+          "byte_offset": 75747,
+          "rejected": true,
+          "error": "Some(BadLength)"
+        }
+      ]
+    },
+    {
+      "profile": "capacity_lr14_q40_g16",
+      "soundness_label": "heuristic (capacity-conjecture shaped; Stage 1 budget pending)",
+      "log_rows": 14,
+      "log_blowup": 2,
+      "query_count": 40,
+      "grinding_bits": 16,
+      "fold_payload": "proof_carried_round_local",
+      "merkle_mode": "minimal_subtree",
+      "runs": 10,
+      "accepted": 10,
+      "proof_bytes_min": 43164,
+      "proof_bytes_max": 44924,
+      "proof_bytes_mean": 44076.0,
+      "prove_ms_mean": 64.18312180000001,
+      "verify_ms_mean": 0.9646089,
+      "corruption": [
+        {
+          "name": "root_corruption",
+          "byte_offset": 21,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "payload_corruption",
+          "byte_offset": 285,
+          "rejected": true,
+          "error": "Some(MerkleMismatch { layer: 0 })"
+        },
+        {
+          "name": "final_value_corruption",
+          "byte_offset": 209,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "grinding_corruption",
+          "byte_offset": 272,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "statement_digest_mismatch",
+          "byte_offset": 0,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "trailing_byte",
+          "byte_offset": 44540,
+          "rejected": true,
+          "error": "Some(TrailingBytes)"
+        },
+        {
+          "name": "truncation",
+          "byte_offset": 44539,
+          "rejected": true,
+          "error": "Some(BadLength)"
+        }
+      ]
+    },
+    {
+      "profile": "capacity_lr14_q40_g16",
+      "soundness_label": "heuristic (capacity-conjecture shaped; Stage 1 budget pending)",
+      "log_rows": 14,
+      "log_blowup": 2,
+      "query_count": 40,
+      "grinding_bits": 16,
+      "fold_payload": "proof_carried_round_local",
+      "merkle_mode": "single_paths",
+      "runs": 10,
+      "accepted": 10,
+      "proof_bytes_min": 79332,
+      "proof_bytes_max": 83716,
+      "proof_bytes_mean": 81223.2,
+      "prove_ms_mean": 64.65369769999998,
+      "verify_ms_mean": 1.6144566999999999,
+      "corruption": [
+        {
+          "name": "root_corruption",
+          "byte_offset": 21,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "payload_corruption",
+          "byte_offset": 285,
+          "rejected": true,
+          "error": "Some(MerkleMismatch { layer: 0 })"
+        },
+        {
+          "name": "final_value_corruption",
+          "byte_offset": 209,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "grinding_corruption",
+          "byte_offset": 272,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "statement_digest_mismatch",
+          "byte_offset": 0,
+          "rejected": true,
+          "error": "Some(GrindingFailed)"
+        },
+        {
+          "name": "trailing_byte",
+          "byte_offset": 83716,
+          "rejected": true,
+          "error": "Some(TrailingBytes)"
+        },
+        {
+          "name": "truncation",
+          "byte_offset": 83715,
+          "rejected": true,
+          "error": "Some(BadLength)"
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "Host-side measurements only; CU numbers come from stage0-onchain on a machine with the Solana toolchain.",
+    "All soundness labels are heuristic until the Stage 1 soundness note exists; no security figure may be quoted from this artifact.",
+    "verify() here is the identical no_std code path the SBF program executes (hash backend swapped), so accept/reject parity is structural; on-chain re-execution is still required by the Stage 0 gate."
+  ]
+}

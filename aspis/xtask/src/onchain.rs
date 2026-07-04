@@ -1,0 +1,490 @@
+//! `stage0-onchain`: build the SBF program, spawn a local validator, run the
+//! Stage 0 measurement matrix and corruption suite on-chain, and write
+//! `results/stage0/onchain_summary.json`.
+//!
+//! Requires `cargo-build-sbf` and `solana-test-validator` on PATH (blocked in
+//! some sandboxes; the gate note records where this has and hasn't run).
+
+use std::{
+    fs,
+    net::TcpListener,
+    path::{Path, PathBuf},
+    process::{Child, Command, Stdio},
+    thread,
+    time::{Duration, Instant},
+};
+
+use anyhow::{anyhow, bail, Context, Result};
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+use borsh::to_vec;
+use serde::Serialize;
+use serde_json::{json, Value};
+use solana_sdk::{
+    compute_budget::ComputeBudgetInstruction,
+    instruction::{AccountMeta, Instruction},
+    native_token::LAMPORTS_PER_SOL,
+    pubkey::Pubkey,
+    signature::{Keypair, Signer},
+    transaction::Transaction,
+};
+// solana-sdk 2.x deprecates the re-export in favor of solana-system-interface;
+// keep the single-crate dependency surface for the Stage 0 harness.
+#[allow(deprecated)]
+use solana_sdk::system_instruction;
+
+use aspis_core::params::{PROFILE_CAPACITY, PROFILE_CAPACITY_LR14, PROFILE_JOHNSON};
+use aspis_core::{FoldPayload, MerkleMode, Profile};
+use aspis_prover::{prove, seeded_coeffs, ProveOptions, HOST_HASH};
+use aspis_verifier::AspisInstruction;
+
+const UPLOAD_CHUNK_BYTES: usize = 640;
+const VERIFY_CU_LIMIT: u32 = 1_400_000;
+const HEAP_FRAME_BYTES: u32 = 262_144;
+const VERIFY_REPETITIONS: usize = 5;
+
+#[derive(Serialize)]
+pub struct OnchainVariant {
+    pub profile: &'static str,
+    pub soundness_label: &'static str,
+    pub fold_payload: &'static str,
+    pub merkle_mode: &'static str,
+    pub proof_bytes: usize,
+    pub upload_chunks: usize,
+    pub upload_cu_total: u64,
+    pub verify_cu: Vec<u64>,
+    pub verify_cu_mean: f64,
+    pub corruption_rejected_onchain: Vec<(String, bool)>,
+}
+
+#[derive(Serialize)]
+pub struct OnchainSummary {
+    pub generated_at_utc: String,
+    pub command: String,
+    pub validator_version: String,
+    pub verify_cu_limit: u32,
+    pub heap_frame_bytes: u32,
+    pub variants: Vec<OnchainVariant>,
+    pub notes: Vec<String>,
+}
+
+struct Validator {
+    child: Child,
+    rpc_url: String,
+}
+
+impl Drop for Validator {
+    fn drop(&mut self) {
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+    }
+}
+
+struct Rpc {
+    url: String,
+    http: reqwest::blocking::Client,
+}
+
+impl Rpc {
+    fn call(&self, method: &str, params: Value) -> Result<Value> {
+        let response = self
+            .http
+            .post(&self.url)
+            .json(&json!({"jsonrpc": "2.0", "id": 1, "method": method, "params": params}))
+            .send()
+            .with_context(|| format!("rpc {method}"))?;
+        let value: Value = response.json()?;
+        if let Some(err) = value.get("error") {
+            bail!("rpc {method} error: {err}");
+        }
+        value
+            .get("result")
+            .cloned()
+            .ok_or_else(|| anyhow!("rpc {method}: missing result"))
+    }
+
+    fn latest_blockhash(&self) -> Result<solana_sdk::hash::Hash> {
+        let result = self.call("getLatestBlockhash", json!([{"commitment": "processed"}]))?;
+        let hash = result["value"]["blockhash"]
+            .as_str()
+            .ok_or_else(|| anyhow!("missing blockhash"))?;
+        Ok(hash.parse()?)
+    }
+
+    fn airdrop_and_wait(&self, pubkey: &Pubkey, lamports: u64) -> Result<()> {
+        self.call(
+            "requestAirdrop",
+            json!([pubkey.to_string(), lamports, {"commitment": "processed"}]),
+        )?;
+        let started = Instant::now();
+        loop {
+            let balance = self.call(
+                "getBalance",
+                json!([pubkey.to_string(), {"commitment": "processed"}]),
+            )?;
+            if balance["value"].as_u64().unwrap_or(0) >= lamports {
+                return Ok(());
+            }
+            if started.elapsed() > Duration::from_secs(20) {
+                bail!("airdrop timed out");
+            }
+            thread::sleep(Duration::from_millis(200));
+        }
+    }
+
+    fn send_and_confirm(&self, tx: &Transaction) -> Result<u64> {
+        let encoded = BASE64.encode(bincode::serialize(tx)?);
+        let sig = self.call(
+            "sendTransaction",
+            json!([encoded, {"encoding": "base64", "preflightCommitment": "processed"}]),
+        )?;
+        let sig = sig.as_str().ok_or_else(|| anyhow!("missing signature"))?;
+        let started = Instant::now();
+        loop {
+            let statuses = self.call(
+                "getSignatureStatuses",
+                json!([[sig], {"searchTransactionHistory": false}]),
+            )?;
+            let status = &statuses["value"][0];
+            if !status.is_null() {
+                if !status["err"].is_null() {
+                    bail!("transaction failed: {}", status["err"]);
+                }
+                if status["confirmationStatus"].as_str().is_some() {
+                    break;
+                }
+            }
+            if started.elapsed() > Duration::from_secs(15) {
+                bail!("confirmation timed out");
+            }
+            thread::sleep(Duration::from_millis(100));
+        }
+        // fetch CU from simulation-free path is awkward; use getTransaction meta
+        let tx_info = self.call(
+            "getTransaction",
+            json!([sig, {"encoding": "json", "commitment": "confirmed", "maxSupportedTransactionVersion": 0}]),
+        );
+        Ok(tx_info
+            .ok()
+            .and_then(|t| t["meta"]["computeUnitsConsumed"].as_u64())
+            .unwrap_or(0))
+    }
+
+    /// Simulate and return (units_consumed, error).
+    fn simulate(&self, tx: &Transaction) -> Result<(Option<u64>, Option<String>)> {
+        let encoded = BASE64.encode(bincode::serialize(tx)?);
+        let result = self.call(
+            "simulateTransaction",
+            json!([encoded, {"encoding": "base64", "sigVerify": false, "replaceRecentBlockhash": true, "commitment": "processed"}]),
+        )?;
+        let units = result["value"]["unitsConsumed"].as_u64();
+        let err = if result["value"]["err"].is_null() {
+            None
+        } else {
+            Some(result["value"]["err"].to_string())
+        };
+        Ok((units, err))
+    }
+}
+
+fn workspace_root() -> Result<PathBuf> {
+    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    Ok(manifest
+        .parent()
+        .ok_or_else(|| anyhow!("no workspace root"))?
+        .to_path_buf())
+}
+
+fn build_sbf(root: &Path) -> Result<PathBuf> {
+    let status = Command::new("cargo-build-sbf")
+        .arg("--manifest-path")
+        .arg(root.join("programs/aspis-verifier/Cargo.toml"))
+        .status()
+        .context("cargo-build-sbf not found on PATH — install the Solana toolchain")?;
+    if !status.success() {
+        bail!("cargo-build-sbf failed");
+    }
+    let so = root.join("target/deploy/aspis_verifier.so");
+    if !so.exists() {
+        bail!("missing {}", so.display());
+    }
+    Ok(so)
+}
+
+fn free_port() -> Result<u16> {
+    Ok(TcpListener::bind("127.0.0.1:0")?.local_addr()?.port())
+}
+
+fn start_validator(root: &Path, so: &Path) -> Result<Validator> {
+    let ledger = root.join(".stage0-validator");
+    let _ = fs::remove_dir_all(&ledger);
+    let rpc_port = free_port()?;
+    let faucet_port = free_port()?;
+    let child = Command::new("solana-test-validator")
+        .arg("--reset")
+        .arg("--quiet")
+        .arg("--ledger")
+        .arg(&ledger)
+        .arg("--rpc-port")
+        .arg(rpc_port.to_string())
+        .arg("--faucet-port")
+        .arg(faucet_port.to_string())
+        .arg("--bpf-program")
+        .arg(aspis_verifier::id().to_string())
+        .arg(so)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .context("solana-test-validator not found on PATH")?;
+    let validator = Validator {
+        child,
+        rpc_url: format!("http://127.0.0.1:{rpc_port}"),
+    };
+    // wait for RPC
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let started = Instant::now();
+    loop {
+        if rpc.call("getHealth", json!([])).is_ok() {
+            break;
+        }
+        if started.elapsed() > Duration::from_secs(90) {
+            bail!("validator did not become healthy");
+        }
+        thread::sleep(Duration::from_millis(500));
+    }
+    Ok(validator)
+}
+
+fn proof_instruction(
+    payer: &Pubkey,
+    proof_account: &Pubkey,
+    instruction: &AspisInstruction,
+) -> Result<Instruction> {
+    Ok(Instruction {
+        program_id: aspis_verifier::id(),
+        accounts: vec![
+            AccountMeta::new(*proof_account, false),
+            AccountMeta::new_readonly(*payer, true),
+        ],
+        data: to_vec(instruction)?,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn upload_proof(
+    rpc: &Rpc,
+    payer: &Keypair,
+    proof_account: &Keypair,
+    proof: &[u8],
+    fresh_account: bool,
+) -> Result<(usize, u64)> {
+    let space = 4 + proof.len();
+    if fresh_account {
+        let rent = rpc.call(
+            "getMinimumBalanceForRentExemption",
+            json!([space]),
+        )?;
+        let rent = rent.as_u64().ok_or_else(|| anyhow!("bad rent"))?;
+        let create = system_instruction::create_account(
+            &payer.pubkey(),
+            &proof_account.pubkey(),
+            rent,
+            space as u64,
+            &aspis_verifier::id(),
+        );
+        let blockhash = rpc.latest_blockhash()?;
+        let tx = Transaction::new_signed_with_payer(
+            &[create],
+            Some(&payer.pubkey()),
+            &[payer, proof_account],
+            blockhash,
+        );
+        rpc.send_and_confirm(&tx)?;
+    }
+
+    let mut total_cu = 0u64;
+    let init = proof_instruction(
+        &payer.pubkey(),
+        &proof_account.pubkey(),
+        &AspisInstruction::InitProof {
+            total_len: proof.len() as u32,
+        },
+    )?;
+    let blockhash = rpc.latest_blockhash()?;
+    let tx = Transaction::new_signed_with_payer(&[init], Some(&payer.pubkey()), &[payer], blockhash);
+    total_cu += rpc.send_and_confirm(&tx)?;
+
+    let mut chunks = 0usize;
+    for (i, chunk) in proof.chunks(UPLOAD_CHUNK_BYTES).enumerate() {
+        let upload = proof_instruction(
+            &payer.pubkey(),
+            &proof_account.pubkey(),
+            &AspisInstruction::UploadChunk {
+                offset: (i * UPLOAD_CHUNK_BYTES) as u32,
+                chunk: chunk.to_vec(),
+            },
+        )?;
+        let blockhash = rpc.latest_blockhash()?;
+        let tx = Transaction::new_signed_with_payer(
+            &[upload],
+            Some(&payer.pubkey()),
+            &[payer],
+            blockhash,
+        );
+        total_cu += rpc.send_and_confirm(&tx)?;
+        chunks += 1;
+    }
+    Ok((chunks, total_cu))
+}
+
+fn verify_tx(
+    payer: &Keypair,
+    proof_account: &Pubkey,
+    digest: [u8; 32],
+    blockhash: solana_sdk::hash::Hash,
+) -> Result<Transaction> {
+    let ixs = vec![
+        ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+        ComputeBudgetInstruction::request_heap_frame(HEAP_FRAME_BYTES),
+        proof_instruction(
+            &payer.pubkey(),
+            proof_account,
+            &AspisInstruction::Verify {
+                statement_digest: digest,
+            },
+        )?,
+    ];
+    Ok(Transaction::new_signed_with_payer(
+        &ixs,
+        Some(&payer.pubkey()),
+        &[payer],
+        blockhash,
+    ))
+}
+
+pub fn run_stage0_onchain() -> Result<OnchainSummary> {
+    let root = workspace_root()?;
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), 500 * LAMPORTS_PER_SOL)?;
+
+    let validator_version = Command::new("solana-test-validator")
+        .arg("--version")
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_else(|_| "unknown".to_string());
+
+    let mut variants = Vec::new();
+    for profile in [&PROFILE_CAPACITY, &PROFILE_JOHNSON, &PROFILE_CAPACITY_LR14] {
+        for payload in [FoldPayload::RawFibers, FoldPayload::ProofCarriedRoundLocal] {
+            for mode in [MerkleMode::MinimalSubtree, MerkleMode::SinglePaths] {
+                variants.push(run_onchain_variant(&rpc, &payer, profile, payload, mode)?);
+            }
+        }
+    }
+
+    Ok(OnchainSummary {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command: "cargo run -p aspis-xtask -- stage0-onchain".to_string(),
+        validator_version,
+        verify_cu_limit: VERIFY_CU_LIMIT,
+        heap_frame_bytes: HEAP_FRAME_BYTES,
+        variants,
+        notes: vec![
+            "verify_cu are simulateTransaction unitsConsumed for the full verify instruction (plus compute-budget instructions) against a local test validator.".to_string(),
+            "Soundness labels remain heuristic pending the Stage 1 note; the capacity-vs-Johnson asymmetry must be restated wherever these CU numbers are quoted.".to_string(),
+        ],
+    })
+}
+
+fn run_onchain_variant(
+    rpc: &Rpc,
+    payer: &Keypair,
+    profile: &'static Profile,
+    payload: FoldPayload,
+    mode: MerkleMode,
+) -> Result<OnchainVariant> {
+    let payload_name = match payload {
+        FoldPayload::RawFibers => "raw_fibers",
+        FoldPayload::ProofCarriedRoundLocal => "proof_carried_round_local",
+    };
+    let mode_name = match mode {
+        MerkleMode::SinglePaths => "single_paths",
+        MerkleMode::MinimalSubtree => "minimal_subtree",
+    };
+    eprintln!("stage0-onchain: {} / {payload_name} / {mode_name}", profile.name);
+
+    let coeffs = seeded_coeffs(profile.log_rows, 1);
+    let digest = crate::host_statement_digest(0);
+    let options = ProveOptions {
+        fold_payload: payload,
+        merkle_mode: mode,
+    };
+    let proof = prove(profile, &coeffs, &digest, &options, HOST_HASH);
+
+    let proof_account = Keypair::new();
+    let (chunks, upload_cu) = upload_proof(rpc, payer, &proof_account, &proof, true)?;
+
+    let mut verify_cu = Vec::new();
+    for _ in 0..VERIFY_REPETITIONS {
+        let blockhash = rpc.latest_blockhash()?;
+        let tx = verify_tx(payer, &proof_account.pubkey(), digest, blockhash)?;
+        let (units, err) = rpc.simulate(&tx)?;
+        if let Some(err) = err {
+            bail!("verify simulation failed for {}: {err}", profile.name);
+        }
+        verify_cu.push(units.ok_or_else(|| anyhow!("no unitsConsumed"))?);
+    }
+
+    // On-chain corruption suite: re-upload each corrupted proof, expect the
+    // verify simulation to error.
+    let mut corruption_rejected = Vec::new();
+    let host_results = crate::host::corruption_suite(profile, &proof, &digest);
+    for case in &host_results {
+        let mut corrupted = proof.to_vec();
+        match case.name {
+            "trailing_byte" => corrupted.push(0),
+            "truncation" => {
+                corrupted.truncate(corrupted.len() - 1);
+            }
+            "statement_digest_mismatch" => {}
+            _ => corrupted[case.byte_offset] ^= 0x01,
+        }
+        let corrupt_account = Keypair::new();
+        upload_proof(rpc, payer, &corrupt_account, &corrupted, true)?;
+        let check_digest = if case.name == "statement_digest_mismatch" {
+            crate::host_statement_digest(0xDEAD_BEEF)
+        } else {
+            digest
+        };
+        let blockhash = rpc.latest_blockhash()?;
+        let tx = verify_tx(payer, &corrupt_account.pubkey(), check_digest, blockhash)?;
+        let (_, err) = rpc.simulate(&tx)?;
+        corruption_rejected.push((case.name.to_string(), err.is_some()));
+    }
+
+    let mean = verify_cu.iter().sum::<u64>() as f64 / verify_cu.len() as f64;
+    Ok(OnchainVariant {
+        profile: profile.name,
+        soundness_label: profile.soundness_label,
+        fold_payload: payload_name,
+        merkle_mode: mode_name,
+        proof_bytes: proof.len(),
+        upload_chunks: chunks,
+        upload_cu_total: upload_cu,
+        verify_cu,
+        verify_cu_mean: mean,
+        corruption_rejected_onchain: corruption_rejected,
+    })
+}

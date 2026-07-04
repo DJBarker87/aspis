@@ -1,0 +1,11 @@
+[package]
+name = "aspis-core"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+description = "Aspis native WHIR-style M31 PCS substrate: shared no_std verifier core (host + SBF byte-exact)"
+
+[dependencies]
+
+[dev-dependencies]
+sha2 = "0.10.8"
