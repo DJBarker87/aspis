@@ -37,6 +37,12 @@ pub enum VerifyError {
     /// Bounded rejection-sampling retries exhausted while deriving a QM31
     /// challenge (2^-248 per limb; soundness-note §3 T9 / §6 completeness).
     ChallengeSampleExhausted,
+    /// Proof header declares an evaluation claim but the caller supplied none.
+    ClaimMissing,
+    /// Caller supplied an evaluation claim but the proof header declares none.
+    ClaimUnexpected,
+    /// Claim point dimension does not match the profile's variable count.
+    ClaimShape,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -78,6 +84,9 @@ impl VerifyError {
             VerifyError::FinalPolyMismatch => 11,
             VerifyError::TrailingBytes => 12,
             VerifyError::ChallengeSampleExhausted => 13,
+            VerifyError::ClaimMissing => 14,
+            VerifyError::ClaimUnexpected => 15,
+            VerifyError::ClaimShape => 16,
         }
     }
 }
@@ -241,10 +250,55 @@ fn carried_checks(
     )
 }
 
+/// Externally supplied evaluation claim "w(z) = v" for the multilinear
+/// reading of the committed coefficient table, absorbed as a PUBLIC INPUT
+/// (never proof bytes) directly after the statement digest.
+///
+/// **Binding only at this revision (soundness-note appendix, queue item 2):**
+/// absorbing the claim makes every challenge depend on it, so a proof
+/// generated for one (z, v) rejects under any other (mix-and-match replay is
+/// dead) and the seam interface is final. The RELATION w(z) = v is NOT yet
+/// enforced — enforcement is the sumcheck/fold interleaving and lands with
+/// the statement-layer sumcheck. Until then an accepted claim-carrying proof
+/// must not be treated as proof of the evaluation, and the test
+/// `claim_enforcement_pending_documented` exists to flip loudly when this
+/// paragraph becomes stale.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EvaluationClaim {
+    /// Evaluation point, one coordinate per variable (len == log_rows).
+    pub z: Vec<QM31>,
+    /// Claimed value of the multilinear at z.
+    pub v: QM31,
+}
+
+impl EvaluationClaim {
+    /// Canonical absorption bytes: z coordinates then v, LE.
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut out = vec![0u8; (self.z.len() + 1) * 16];
+        for (k, zi) in self.z.iter().enumerate() {
+            zi.write_le_bytes(&mut out[k * 16..k * 16 + 16]);
+        }
+        let tail = self.z.len() * 16;
+        self.v.write_le_bytes(&mut out[tail..tail + 16]);
+        out
+    }
+}
+
 /// Verify a proof against a statement digest. `hash` is the SHA-256 backend
 /// (syscall on SBF, sha2 on host).
 pub fn verify(proof: &[u8], statement_digest: &[u8; 32], hash: HashFn) -> Result<(), VerifyError> {
-    verify_with_trace(proof, statement_digest, hash, None)
+    verify_with_claim_and_trace(proof, statement_digest, None, hash, None)
+}
+
+/// Verify a claim-carrying proof (see `EvaluationClaim` for the binding-only
+/// caveat at this revision).
+pub fn verify_with_claim(
+    proof: &[u8],
+    statement_digest: &[u8; 32],
+    claim: Option<&EvaluationClaim>,
+    hash: HashFn,
+) -> Result<(), VerifyError> {
+    verify_with_claim_and_trace(proof, statement_digest, claim, hash, None)
 }
 
 /// Verify with optional diagnostic trace events. The trace hook is for SBF CU
@@ -252,6 +306,16 @@ pub fn verify(proof: &[u8], statement_digest: &[u8; 32], hash: HashFn) -> Result
 pub fn verify_with_trace(
     proof: &[u8],
     statement_digest: &[u8; 32],
+    hash: HashFn,
+    trace_fn: Option<TraceFn>,
+) -> Result<(), VerifyError> {
+    verify_with_claim_and_trace(proof, statement_digest, None, hash, trace_fn)
+}
+
+pub fn verify_with_claim_and_trace(
+    proof: &[u8],
+    statement_digest: &[u8; 32],
+    claim: Option<&EvaluationClaim>,
     hash: HashFn,
     trace_fn: Option<TraceFn>,
 ) -> Result<(), VerifyError> {
@@ -269,6 +333,19 @@ pub fn verify_with_trace(
     }
     let fold_payload = FoldPayload::from_u8(header.fold_payload).ok_or(VerifyError::BadHeader)?;
     let merkle_mode = MerkleMode::from_u8(header.merkle_mode).ok_or(VerifyError::BadHeader)?;
+    // Claim flag and supplied claim must agree, and the point dimension must
+    // match the profile — before anything is derived.
+    match (header.claim_flag, claim) {
+        (0, None) => {}
+        (1, Some(claim)) => {
+            if claim.z.len() != profile.log_rows as usize {
+                return Err(VerifyError::ClaimShape);
+            }
+        }
+        (1, None) => return Err(VerifyError::ClaimMissing),
+        (0, Some(_)) => return Err(VerifyError::ClaimUnexpected),
+        _ => return Err(VerifyError::BadHeader),
+    }
     trace(trace_fn, TraceEvent::HeaderParsed);
 
     let num_rounds = profile.num_rounds();
@@ -281,6 +358,10 @@ pub fn verify_with_trace(
     let mut transcript = Transcript::new(hash);
     transcript.absorb(label::PROFILE, header_bytes);
     transcript.absorb(label::STATEMENT, statement_digest);
+    if let Some(claim) = claim {
+        // canonical position: public-input claim before any commitment root
+        transcript.absorb(label::CLAIM, &claim.to_bytes());
+    }
 
     let mut roots = Vec::with_capacity(num_rounds as usize);
     let mut alphas = Vec::with_capacity(num_rounds as usize);

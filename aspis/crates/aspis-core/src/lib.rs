@@ -24,7 +24,10 @@ pub mod verify;
 
 pub use params::{FoldPayload, MerkleMode, Profile, PROFILES};
 pub use transcript::HashFn;
-pub use verify::{verify, verify_with_trace, TraceEvent, TraceFn, VerifyError};
+pub use verify::{
+    verify, verify_with_claim, verify_with_claim_and_trace, verify_with_trace, EvaluationClaim,
+    TraceEvent, TraceFn, VerifyError,
+};
 
 #[cfg(test)]
 mod tests {

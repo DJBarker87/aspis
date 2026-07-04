@@ -14,7 +14,7 @@ use aspis_core::merkle::{leaf_hash, node_hash};
 use aspis_core::params::{FoldPayload, MerkleMode, Profile, FINAL_POLY_LOG_LEN};
 use aspis_core::proof::{fiber_value_bytes, Header, HEADER_LEN};
 use aspis_core::transcript::{label, Transcript};
-use aspis_core::verify::{domain_point, layer_geometry};
+use aspis_core::verify::{domain_point, layer_geometry, EvaluationClaim};
 use aspis_core::HashFn;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
@@ -204,6 +204,84 @@ pub fn prove(
     options: &ProveOptions,
     hash: HashFn,
 ) -> Vec<u8> {
+    prove_inner(profile, coeffs, statement_digest, None, options, hash, false)
+}
+
+/// Produce a claim-carrying proof: the externally supplied (z, v) is absorbed
+/// as a public input in the canonical position (after the statement digest,
+/// before any root). See `aspis_core::verify::EvaluationClaim` for the
+/// binding-only caveat at this revision.
+pub fn prove_with_claim(
+    profile: &Profile,
+    coeffs: &[M31],
+    statement_digest: &[u8; 32],
+    claim: &EvaluationClaim,
+    options: &ProveOptions,
+    hash: HashFn,
+) -> Vec<u8> {
+    prove_inner(
+        profile,
+        coeffs,
+        statement_digest,
+        Some(claim),
+        options,
+        hash,
+        false,
+    )
+}
+
+/// Adversarial prover for the challenge-order test suite ONLY: absorbs the
+/// claim AFTER the commitment roots instead of the canonical position. The
+/// verifier (canonical order) must reject its output. Never call this
+/// outside tests.
+#[doc(hidden)]
+pub fn prove_with_misordered_claim_for_tests(
+    profile: &Profile,
+    coeffs: &[M31],
+    statement_digest: &[u8; 32],
+    claim: &EvaluationClaim,
+    options: &ProveOptions,
+    hash: HashFn,
+) -> Vec<u8> {
+    prove_inner(
+        profile,
+        coeffs,
+        statement_digest,
+        Some(claim),
+        options,
+        hash,
+        true,
+    )
+}
+
+/// Multilinear evaluation of the coefficient table at z (big-endian variable
+/// order: z[0] pairs with the highest coefficient-index bit). Used to form
+/// honest claims; also the future sumcheck/fold-interleave ingredient.
+pub fn multilinear_eval(coeffs: &[M31], z: &[QM31]) -> QM31 {
+    assert_eq!(coeffs.len(), 1usize << z.len());
+    // fold one variable at a time, last coordinate first (bit 0)
+    let mut layer: Vec<QM31> = coeffs
+        .iter()
+        .map(|c| QM31::from_cm31(CM31::from_m31(*c)))
+        .collect();
+    for zi in z.iter().rev() {
+        layer = (0..layer.len() / 2)
+            .map(|j| layer[2 * j].add(zi.mul(layer[2 * j + 1].sub(layer[2 * j]))))
+            .collect();
+    }
+    layer[0]
+}
+
+#[allow(clippy::too_many_arguments)]
+fn prove_inner(
+    profile: &Profile,
+    coeffs: &[M31],
+    statement_digest: &[u8; 32],
+    claim: Option<&EvaluationClaim>,
+    options: &ProveOptions,
+    hash: HashFn,
+    misorder_claim: bool,
+) -> Vec<u8> {
     assert_eq!(coeffs.len(), 1usize << profile.log_rows);
     let num_rounds = profile.num_rounds();
     let query_count = profile.query_count as usize;
@@ -218,6 +296,7 @@ pub fn prove(
         merkle_mode: options.merkle_mode as u8,
         num_rounds,
         final_poly_log_len: FINAL_POLY_LOG_LEN,
+        claim_flag: claim.is_some() as u8,
     };
     let mut header_bytes = [0u8; HEADER_LEN];
     header.write(&mut header_bytes);
@@ -225,6 +304,9 @@ pub fn prove(
     let mut transcript = Transcript::new(hash);
     transcript.absorb(label::PROFILE, &header_bytes);
     transcript.absorb(label::STATEMENT, statement_digest);
+    if let (Some(claim), false) = (claim, misorder_claim) {
+        transcript.absorb(label::CLAIM, &claim.to_bytes());
+    }
 
     // ---- commit phase ----
     let geom0 = layer_geometry(profile, 0);
@@ -319,6 +401,11 @@ pub fn prove(
     let mut final_poly_bytes = vec![0u8; ext_coeffs.len() * 16];
     for (k, c) in ext_coeffs.iter().enumerate() {
         c.write_le_bytes(&mut final_poly_bytes[k * 16..k * 16 + 16]);
+    }
+    if let (Some(claim), true) = (claim, misorder_claim) {
+        // adversarial order for the challenge-order test suite: claim lands
+        // after the roots instead of the canonical public-input position
+        transcript.absorb(label::CLAIM, &claim.to_bytes());
     }
     transcript.absorb(label::FINAL_POLY, &final_poly_bytes);
 
