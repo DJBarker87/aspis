@@ -239,9 +239,18 @@ work/success metric.
 
 | schedule | query bits | verdict | measured PCS CU (lr10) | projection | headroom vs 1.19M |
 | --- | ---: | --- | ---: | ---: | ---: |
-| q32/g32 | 96 | **retired — 4 bits short of t=100** | 656,662 (measured) | 887,776 | 302,224 |
-| **q36/g32** | **104** | **ruled: the Stage 1 schedule** | 742,795 (measured) | 973,909 | 216,091 |
-| q38/g32 | 108 | inline contingency (see below) | ~785,900 (**extrapolated**) | ~1,016,975 | ~173,000 |
+| q32/g32 | 96 | **retired — 4 bits short of t=100** | 656,983 (measured) | 888,097 | 301,903 |
+| **q36/g32** | **104** | **ruled: the Stage 1 schedule** | 743,116 (measured) | 974,230 | 215,770 |
+| q38/g32 | 108 | inline contingency (see below) | ~786,200 (**extrapolated**) | ~1,017,300 | ~172,700 |
+
+Measured figures are the **post-rejection-sampler** re-measure (Agave 2.3.0,
+artifacts at `results/stage0/onchain_layout_target_summary.json`, commit
+`caca9f2`): each lr10 profile moved +321 CU versus the pre-sampler run
+(~80 CU per challenge round of bounded rejection branching), the transcript
+KAT round-tripped on SBF (`results/stage0/transcript_kat.json`,
+`matched_on_sbf: true`, 10,792 CU for the KAT instruction itself), and all
+on-chain corruption vectors still reject. The q32 -> q36 promotion delta is
+unchanged at +86,133 CU (both rows moved together).
 
 The q32 -> q36 promotion costs **+86,133 CU** on the measured lr10 slope
 (887,776 -> 973,909; headroom 302K -> 216K, already re-labelled in the
@@ -454,6 +463,10 @@ pessimistic Johnson-l form at ~2^-101 sits thirty-plus bits above 65.5.
    is pinned (`TRANSCRIPT_KAT_EXPECTED`, host test `transcript_kat_pinned`,
    SBF instruction `TranscriptKat`, runner `stage0-transcript-kat`) so a
    silent host/chain divergence costs a test failure, not a week.
+   **ROUND-TRIPPED**: KAT matched on SBF (Agave 2.3.0,
+   `results/stage0/transcript_kat.json`, commit `caca9f2`); post-sampler
+   gate re-measure folded into §4 (+321 CU per lr10 profile, all corruption
+   vectors still rejecting). This item is CLOSED.
 2. **(z, v) claim binding + challenge-order tests** together: they touch the
    same transcript code, and the failing tests (gamma-before-claims,
    chi-before-C1) are what make the §2 ordering fix permanent.
