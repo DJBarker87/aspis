@@ -275,7 +275,9 @@ pub fn prove(
         let root = tree.root();
         transcript.absorb(label::ROOT, &root);
         roots.push(root);
-        let alpha = transcript.challenge_qm31();
+        let alpha = transcript
+            .challenge_qm31()
+            .expect("prover transcript sampler exhausted (2^-248 per limb)");
         alphas.push(alpha);
 
         // fold coefficients: two half-folds with alpha then alpha^2

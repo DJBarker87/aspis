@@ -48,6 +48,11 @@ pub enum AspisInstruction {
         query_count: u16,
         leaf_bytes: u16,
     },
+    /// Known-answer transcript vector: recompute `aspis_core::transcript_kat`
+    /// with the SHA-256 syscall backend and compare against the host-pinned
+    /// digest supplied by the client. A mismatch is a host/SBF transcript
+    /// divergence and errors loudly.
+    TranscriptKat { expected: [u8; 32] },
 }
 
 /// hashv-shaped backend over the Solana SHA-256 syscall.
@@ -206,6 +211,19 @@ pub fn process_instruction(
 ) -> ProgramResult {
     let instruction = AspisInstruction::try_from_slice(instruction_data)
         .map_err(|_| ProgramError::InvalidInstructionData)?;
+
+    // Pure-compute diagnostic: no accounts required.
+    if let AspisInstruction::TranscriptKat { expected } = instruction {
+        let digest = aspis_core::transcript::transcript_kat(sbf_hashv);
+        return if digest == expected {
+            msg!("aspis: transcript KAT matched");
+            Ok(())
+        } else {
+            msg!("aspis: transcript KAT MISMATCH (host/SBF divergence)");
+            Err(ProgramError::InvalidInstructionData)
+        };
+    }
+
     let account_iter = &mut accounts.iter();
     let proof_account = next_account_info(account_iter)?;
     if proof_account.owner != program_id {
@@ -266,6 +284,8 @@ pub fn process_instruction(
             query_count,
             leaf_bytes,
         } => run_layout_probe(log_rows, columns, query_count, leaf_bytes),
+        // handled before account resolution above
+        AspisInstruction::TranscriptKat { .. } => unreachable!(),
     }
 }
 
