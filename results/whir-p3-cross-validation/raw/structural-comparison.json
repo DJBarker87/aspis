@@ -1,0 +1,40 @@
+[
+  {
+    "scenario": "whir_t100_capacity_full",
+    "field_profile": "babybear5-poseidon2",
+    "exact_match": false,
+    "compared_field_count": 24,
+    "divergences": [
+      "final_query_pow_bits_required differs: local=31 whir-p3=30",
+      "max_required_pow_bits differs: local=31 whir-p3=30",
+      "round[0].query_pow_bits_required differs: local=30 whir-p3=29"
+    ]
+  },
+  {
+    "scenario": "whir_t128_capacity_full",
+    "field_profile": "babybear5-poseidon2",
+    "exact_match": false,
+    "compared_field_count": 24,
+    "divergences": [
+      "starting_folding_pow_bits_required differs: local=3 whir-p3=2",
+      "final_query_pow_bits_required differs: local=31 whir-p3=30",
+      "max_required_pow_bits differs: local=31 whir-p3=30",
+      "round[0].query_pow_bits_required differs: local=30 whir-p3=29",
+      "round[0].folding_pow_bits_required differs: local=8 whir-p3=7"
+    ]
+  },
+  {
+    "scenario": "whir_t128_johnson_full",
+    "field_profile": "babybear5-poseidon2",
+    "exact_match": false,
+    "compared_field_count": 24,
+    "divergences": [
+      "starting_folding_pow_bits_required differs: local=13 whir-p3=36",
+      "final_query_pow_bits_required differs: local=32 whir-p3=31",
+      "max_required_pow_bits differs: local=32 whir-p3=38",
+      "pow_cap_satisfied differs: local=`true` whir-p3=`false`",
+      "round[0].query_pow_bits_required differs: local=32 whir-p3=31",
+      "round[0].folding_pow_bits_required differs: local=16 whir-p3=38"
+    ]
+  }
+]

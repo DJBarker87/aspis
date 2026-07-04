@@ -1,0 +1,12 @@
+{
+  "generated_at_utc": "2026-04-20T09:50:42.244552+00:00",
+  "gate": "AMBER",
+  "best_attempt_id": "whir-ud-goldilocks2-t100-rate1over4-d18-e1-l0-i4-k4-affine3x5",
+  "rationale": [
+    "Direct SBF compilation failed for the wrapper program, so there is no proven compilation path yet.",
+    "Largest successfully round-tripped trace in this sweep used 2^18 coefficients.",
+    "Smaller toy traces produce lower hash-only floors, but the gate is evaluated on the largest trace reached in the sweep: whir-ud-goldilocks2-t100-rate1over4-d18-e1-l0-i4-k4-affine3x5.",
+    "Best hash-only lower bound is 499648 CU for whir-ud-goldilocks2-t100-rate1over4-d18-e1-l0-i4-k4-affine3x5 at 2^18 coefficients and 163680 bytes.",
+    "Even the best measured proof needs at least 133 staged transactions just to upload raw bytes."
+  ]
+}

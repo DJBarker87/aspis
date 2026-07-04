@@ -1,0 +1,37 @@
+{
+  "scenarios": [
+    {
+      "name": "whir_t100_capacity_full",
+      "security_level": 100,
+      "pow_bits": 32,
+      "num_variables": 13,
+      "starting_log_inv_rate": 4,
+      "first_round_folding_factor": 4,
+      "later_round_folding_factor": 4,
+      "rs_domain_initial_reduction_factor": 1,
+      "soundness_assumption": "CapacityBound"
+    },
+    {
+      "name": "whir_t128_capacity_full",
+      "security_level": 128,
+      "pow_bits": 32,
+      "num_variables": 13,
+      "starting_log_inv_rate": 4,
+      "first_round_folding_factor": 4,
+      "later_round_folding_factor": 4,
+      "rs_domain_initial_reduction_factor": 1,
+      "soundness_assumption": "CapacityBound"
+    },
+    {
+      "name": "whir_t128_johnson_full",
+      "security_level": 128,
+      "pow_bits": 32,
+      "num_variables": 13,
+      "starting_log_inv_rate": 4,
+      "first_round_folding_factor": 4,
+      "later_round_folding_factor": 4,
+      "rs_domain_initial_reduction_factor": 1,
+      "soundness_assumption": "JohnsonBound"
+    }
+  ]
+}

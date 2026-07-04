@@ -1,0 +1,95 @@
+[
+  {
+    "base_target_proof_bytes": 12356,
+    "commitment_ood_samples": 2,
+    "name": "whir_t100_capacity_full",
+    "round_query_counts": [
+      18,
+      10
+    ],
+    "security_target_bits": 100.0,
+    "soundness_assumption": "whir_capacity_full",
+    "transcript_plan": {
+      "final_query_count": 10,
+      "final_sumcheck_rounds": 5,
+      "initial_sumcheck_rounds": 4,
+      "round_count": 1
+    },
+    "variants": [
+      {
+        "merkle_proof_mode": "separate_paths",
+        "synthetic_merkle_nodes": 254,
+        "synthetic_merkle_witness_bytes": 8128,
+        "target_proof_bytes": 12356
+      },
+      {
+        "merkle_proof_mode": "minimal_subtree",
+        "synthetic_merkle_nodes": 45,
+        "synthetic_merkle_witness_bytes": 1440,
+        "target_proof_bytes": 5668
+      }
+    ]
+  },
+  {
+    "base_target_proof_bytes": 15468,
+    "commitment_ood_samples": 2,
+    "name": "whir_t128_capacity_full",
+    "round_query_counts": [
+      25,
+      14
+    ],
+    "security_target_bits": 128.0,
+    "soundness_assumption": "whir_capacity_full",
+    "transcript_plan": {
+      "final_query_count": 14,
+      "final_sumcheck_rounds": 5,
+      "initial_sumcheck_rounds": 4,
+      "round_count": 1
+    },
+    "variants": [
+      {
+        "merkle_proof_mode": "separate_paths",
+        "synthetic_merkle_nodes": 354,
+        "synthetic_merkle_witness_bytes": 11328,
+        "target_proof_bytes": 15468
+      },
+      {
+        "merkle_proof_mode": "minimal_subtree",
+        "synthetic_merkle_nodes": 56,
+        "synthetic_merkle_witness_bytes": 1792,
+        "target_proof_bytes": 5932
+      }
+    ]
+  },
+  {
+    "base_target_proof_bytes": 26463,
+    "commitment_ood_samples": 1,
+    "name": "whir_t128_johnson_full",
+    "round_query_counts": [
+      50,
+      28
+    ],
+    "security_target_bits": 128.0,
+    "soundness_assumption": "whir_johnson_full",
+    "transcript_plan": {
+      "final_query_count": 28,
+      "final_sumcheck_rounds": 5,
+      "initial_sumcheck_rounds": 4,
+      "round_count": 1
+    },
+    "variants": [
+      {
+        "merkle_proof_mode": "separate_paths",
+        "synthetic_merkle_nodes": 708,
+        "synthetic_merkle_witness_bytes": 22656,
+        "target_proof_bytes": 29512
+      },
+      {
+        "merkle_proof_mode": "minimal_subtree",
+        "synthetic_merkle_nodes": 95,
+        "synthetic_merkle_witness_bytes": 3040,
+        "target_proof_bytes": 9896
+      }
+    ]
+  }
+]

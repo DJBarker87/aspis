@@ -1,0 +1,76 @@
+{
+  "methodology": "Exact FIPS 204 pkDecode/sigDecode plus SHAKE256 hash path for ML-DSA-44 Verify_internal. Arithmetic reconstruction is omitted; w1' is supplied as an external witness to isolate the remaining hash/challenge slice.",
+  "fixture": {
+    "parameter_set": "ML-DSA-44",
+    "rho_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "message_hex": "6d6c2d6473612076657269667920686173682070617468",
+    "message_len": 23,
+    "pk_len": 1312,
+    "sig_len": 2420,
+    "hint_ones": 9,
+    "w1_coeff_max": 43,
+    "z_max_abs": 128
+  },
+  "tr_hex": "0ec0de9a0c3248d07abe2ff21040e658cd2778e2603b9fe3615bef2acb3c54c7a3de1fe9661946921267e5d4e7174f22a5f9ebc4f0dc9110495a16600c9d7e1d",
+  "mu_hex": "6839e984c2bab3865dda73f086f6b0d98c1a51f502491113849714a8c61df7cdca28852417bc22a06588c7f7fe3cc1ef2840fa47bb1260a8e69d41c85236e350",
+  "ctilde_hex": "e0e96a59fae57b44683545d7dcfec509dd0235b8bc90a9704667bbc3554cfe85",
+  "z_bound_ok": true,
+  "ctilde_match": true,
+  "hash_path_verdict": true,
+  "tr_hash": {
+    "label": "tr",
+    "input_bytes": 1312,
+    "output_bytes": 64,
+    "rate_bytes": 136,
+    "total_permutations": 10,
+    "round_rows": 240
+  },
+  "mu_hash": {
+    "label": "mu",
+    "input_bytes": 87,
+    "output_bytes": 64,
+    "rate_bytes": 136,
+    "total_permutations": 1,
+    "round_rows": 24
+  },
+  "ctilde_hash": {
+    "label": "ctilde_prime",
+    "input_bytes": 832,
+    "output_bytes": 32,
+    "rate_bytes": 136,
+    "total_permutations": 7,
+    "round_rows": 168
+  },
+  "sample_in_ball": {
+    "seed_bytes": 32,
+    "sign_bytes": 8,
+    "position_bytes": 40,
+    "total_output_bytes": 48,
+    "total_permutations": 1,
+    "round_rows": 24,
+    "total_attempts": 40,
+    "rejected_attempts": 1,
+    "hamming_weight": 39,
+    "first_nonzero_positions": [
+      11,
+      21,
+      29,
+      31,
+      39,
+      43,
+      44,
+      45,
+      50,
+      52,
+      70,
+      72
+    ]
+  },
+  "total_hash_round_rows_excluding_expanda": 456,
+  "negative_checks": {
+    "malformed_hint_leftover_rejected": true,
+    "malformed_hint_non_monotone_rejected": true,
+    "wrong_signature_length_rejected": true,
+    "wrong_w1_mismatch_detected": true
+  }
+}

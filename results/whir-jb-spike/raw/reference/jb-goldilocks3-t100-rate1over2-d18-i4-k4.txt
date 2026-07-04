@@ -1,0 +1,50 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.17s
+     Running `/tmp/whir-ref/target/release/main -l 100 -d 18 -e 1 -r 1 -i 4 -k 4 -f Goldilocks3 --hash Blake3 --reps 1`
+=========================================
+Whir (PCS) 🌪️
+Field: Goldilocks3 and hash: Blake3
+Security level: 100.00 bits using list decoding
+Source field: 64.00 bits, target field: 192.00 bits
+Initial:
+  commit   size 1×262144/16 rate 2⁻1.00 samples 187 in- 1 out-domain
+  sumcheck size 262144 rounds 4 pow 0.00 ℓ_zk 0
+Round 0:
+  commit   size 1×16384/16 rate 2⁻4.00 samples 42 in- 1 out-domain
+  pow      19.66 bits
+  sumcheck size 16384 rounds 4 pow 0.00 ℓ_zk 0
+Round 1:
+  commit   size 1×1024/16 rate 2⁻7.00 samples 24 in- 1 out-domain
+  pow      18.96 bits
+  sumcheck size 1024 rounds 4 pow 0.00 ℓ_zk 0
+Round 2:
+  commit   size 1×64/16 rate 2⁻10.00 samples 17 in- 1 out-domain
+  pow      17.69 bits
+  sumcheck size 64 rounds 4 pow 0.00 ℓ_zk 0
+Final:
+  pow      16.20bits
+  sumcheck size 4 rounds 2 pow 0.00 ℓ_zk 0
+------------------------------------
+Round by round soundness analysis:
+------------------------------------
+no loss -- initial vector RLC (1 vector)
+188.8 bits -- initial linear-form RLC (10 linear form)
+166.4 bits -- OOD commitment
+137.2 bits -- (x4) prox gaps: 137.2, sumcheck: 186.7, pow: 0.0, list size 2^4.3
+164.4 bits -- OOD sample
+100.0 bits -- query error: 80.3, combination: 176.1, pow: 19.7
+134.7 bits -- (x4) prox gaps: 134.7, sumcheck: 183.7, pow: 0.0, list size 2^7.3
+162.4 bits -- OOD sample
+100.0 bits -- query error: 81.0, combination: 175.3, pow: 19.0
+132.2 bits -- (x4) prox gaps: 132.2, sumcheck: 180.7, pow: 0.0, list size 2^10.3
+160.4 bits -- OOD sample
+100.0 bits -- query error: 82.3, combination: 173.0, pow: 17.7
+129.7 bits -- (x4) prox gaps: 129.7, sumcheck: 177.7, pow: 0.0, list size 2^13.3
+100.0 bits -- query error: 83.8, pow: 16.2
+191.0 bits -- (x2) combination: 191.0, pow: 0.0
+
+Prover time: 78.1ms + 338.8ms = 417.0ms
+Proof size: 113.9 KiB
+Verifier time: 883.7µs
+Average hashes: 2.4k

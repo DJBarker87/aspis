@@ -1,0 +1,11 @@
+{
+  "field": "Goldilocks2",
+  "fold": 4,
+  "initfold": 4,
+  "num_variables": 20,
+  "ok": false,
+  "panic": "assertion failed: (0.0..=60.0).contains(&difficulty.into())",
+  "pow_bits": 20,
+  "rate_log_inv": 1,
+  "security_level": 128
+}

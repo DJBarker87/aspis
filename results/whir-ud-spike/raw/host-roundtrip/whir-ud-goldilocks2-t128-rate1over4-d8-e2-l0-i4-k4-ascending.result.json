@@ -1,0 +1,98 @@
+{
+  "config": {
+    "evaluations": 2,
+    "folding_factor": 4,
+    "initial_folding_factor": 4,
+    "linear_constraints": 0,
+    "name": "whir-ud-goldilocks2",
+    "num_variables": 8,
+    "pow_bits": 20,
+    "rate_bits": 2,
+    "security_level": 128,
+    "unique_decoding": true,
+    "vector_pattern": "Ascending"
+  },
+  "id": "whir-ud-goldilocks2-t128-rate1over4-d8-e2-l0-i4-k4-ascending",
+  "metadata": {
+    "achieved_security_bits": 127.9999999993282,
+    "evaluations": 2,
+    "final_coeff_count": 1,
+    "folding_factor": 4,
+    "initial_folding_factor": 4,
+    "initial_in_domain_samples": 160,
+    "linear_constraints": 0,
+    "max_required_pow_bits": 19.508495181977942,
+    "name": "whir-ud-goldilocks2",
+    "num_variables": 8,
+    "pow_bits_requested": 20,
+    "pow_cap_satisfied": true,
+    "rate": "1/4",
+    "rate_bits": 2,
+    "round_count": 1,
+    "security_target_bits": 128,
+    "source_field_bits": 63.9999999996641,
+    "target_field_bits": 127.9999999993282,
+    "unique_decoding": true,
+    "vector_size": 256
+  },
+  "mirror": {
+    "elapsed_ns": 716417,
+    "hash_count": 378
+  },
+  "proof_summary": {
+    "hints_bytes": 49904,
+    "narg_bytes": 416,
+    "serialized_bytes": 95510,
+    "transcript_bytes": 50320
+  },
+  "reference": {
+    "elapsed_ns": 2818208,
+    "hash_count": 378
+  },
+  "variants": [
+    {
+      "expectation": "reject",
+      "matched": true,
+      "mirror_accepts": false,
+      "mirror_error": "mirror verifier rejected",
+      "proof_path": "results/whir-ud-spike/proofs/whir-ud-goldilocks2-t128-rate1over4-d8-e2-l0-i4-k4-ascending-query-response-bit.cbor",
+      "reference_accepts": false,
+      "reference_error": "reference verifier rejected",
+      "sha256": "a76f5002745c44d39d815897f8337859a15c324fc0bed7d4c176151669637cbb",
+      "variant": "query-response-bit"
+    },
+    {
+      "expectation": "reject",
+      "matched": true,
+      "mirror_accepts": false,
+      "mirror_error": "mirror verifier rejected",
+      "proof_path": "results/whir-ud-spike/proofs/whir-ud-goldilocks2-t128-rate1over4-d8-e2-l0-i4-k4-ascending-merkle-path-bit.cbor",
+      "reference_accepts": false,
+      "reference_error": "reference verifier rejected",
+      "sha256": "1e8b27ffc960b186702feb4dab0b43a40d13bf8975425d2651d3fa835186a11d",
+      "variant": "merkle-path-bit"
+    },
+    {
+      "expectation": "reject",
+      "matched": true,
+      "mirror_accepts": false,
+      "mirror_error": "mirror verifier rejected",
+      "proof_path": "results/whir-ud-spike/proofs/whir-ud-goldilocks2-t128-rate1over4-d8-e2-l0-i4-k4-ascending-transcript-commitment-bit.cbor",
+      "reference_accepts": false,
+      "reference_error": "reference verifier rejected",
+      "sha256": "afd9b5dbe26571206d596d18a65ea6d6832e5e3223ddcc53e8f95680a0dc78aa",
+      "variant": "transcript-commitment-bit"
+    },
+    {
+      "expectation": "reject",
+      "matched": true,
+      "mirror_accepts": false,
+      "mirror_error": "mirror verifier rejected",
+      "proof_path": "results/whir-ud-spike/proofs/whir-ud-goldilocks2-t128-rate1over4-d8-e2-l0-i4-k4-ascending-final-polynomial-bit.cbor",
+      "reference_accepts": false,
+      "reference_error": "reference verifier rejected",
+      "sha256": "4e009162e72d766b89f1e3728eb01c3acf18ca4f0e6853d8bf4a9add695e54db",
+      "variant": "final-polynomial-bit"
+    }
+  ]
+}

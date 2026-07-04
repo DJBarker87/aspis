@@ -1,0 +1,134 @@
+[
+  {
+    "invalid_payload_rejected": true,
+    "merkle_proof_mode": "separate_paths",
+    "payload_format": "flat_nodes",
+    "payloads": {
+      "invalid": "results/phase2/whir-multiproof-payload/payloads/whir_t100_capacity_full_separate_paths_flat_nodes_invalid.bin",
+      "valid": "results/phase2/whir-multiproof-payload/payloads/whir_t100_capacity_full_separate_paths_flat_nodes.bin"
+    },
+    "scenario_name": "whir_t100_capacity_full",
+    "valid_payload": true
+  },
+  {
+    "invalid_payload_rejected": true,
+    "merkle_proof_mode": "separate_paths",
+    "payload_format": "canonical_payload",
+    "payloads": {
+      "invalid": "results/phase2/whir-multiproof-payload/payloads/whir_t100_capacity_full_separate_paths_canonical_payload_invalid.bin",
+      "valid": "results/phase2/whir-multiproof-payload/payloads/whir_t100_capacity_full_separate_paths_canonical_payload.bin"
+    },
+    "scenario_name": "whir_t100_capacity_full",
+    "valid_payload": true
+  },
+  {
+    "invalid_payload_rejected": true,
+    "merkle_proof_mode": "minimal_subtree",
+    "payload_format": "flat_nodes",
+    "payloads": {
+      "invalid": "results/phase2/whir-multiproof-payload/payloads/whir_t100_capacity_full_minimal_subtree_flat_nodes_invalid.bin",
+      "valid": "results/phase2/whir-multiproof-payload/payloads/whir_t100_capacity_full_minimal_subtree_flat_nodes.bin"
+    },
+    "scenario_name": "whir_t100_capacity_full",
+    "valid_payload": true
+  },
+  {
+    "invalid_payload_rejected": true,
+    "merkle_proof_mode": "minimal_subtree",
+    "payload_format": "canonical_payload",
+    "payloads": {
+      "invalid": "results/phase2/whir-multiproof-payload/payloads/whir_t100_capacity_full_minimal_subtree_canonical_payload_invalid.bin",
+      "valid": "results/phase2/whir-multiproof-payload/payloads/whir_t100_capacity_full_minimal_subtree_canonical_payload.bin"
+    },
+    "scenario_name": "whir_t100_capacity_full",
+    "valid_payload": true
+  },
+  {
+    "invalid_payload_rejected": true,
+    "merkle_proof_mode": "separate_paths",
+    "payload_format": "flat_nodes",
+    "payloads": {
+      "invalid": "results/phase2/whir-multiproof-payload/payloads/whir_t128_capacity_full_separate_paths_flat_nodes_invalid.bin",
+      "valid": "results/phase2/whir-multiproof-payload/payloads/whir_t128_capacity_full_separate_paths_flat_nodes.bin"
+    },
+    "scenario_name": "whir_t128_capacity_full",
+    "valid_payload": true
+  },
+  {
+    "invalid_payload_rejected": true,
+    "merkle_proof_mode": "separate_paths",
+    "payload_format": "canonical_payload",
+    "payloads": {
+      "invalid": "results/phase2/whir-multiproof-payload/payloads/whir_t128_capacity_full_separate_paths_canonical_payload_invalid.bin",
+      "valid": "results/phase2/whir-multiproof-payload/payloads/whir_t128_capacity_full_separate_paths_canonical_payload.bin"
+    },
+    "scenario_name": "whir_t128_capacity_full",
+    "valid_payload": true
+  },
+  {
+    "invalid_payload_rejected": true,
+    "merkle_proof_mode": "minimal_subtree",
+    "payload_format": "flat_nodes",
+    "payloads": {
+      "invalid": "results/phase2/whir-multiproof-payload/payloads/whir_t128_capacity_full_minimal_subtree_flat_nodes_invalid.bin",
+      "valid": "results/phase2/whir-multiproof-payload/payloads/whir_t128_capacity_full_minimal_subtree_flat_nodes.bin"
+    },
+    "scenario_name": "whir_t128_capacity_full",
+    "valid_payload": true
+  },
+  {
+    "invalid_payload_rejected": true,
+    "merkle_proof_mode": "minimal_subtree",
+    "payload_format": "canonical_payload",
+    "payloads": {
+      "invalid": "results/phase2/whir-multiproof-payload/payloads/whir_t128_capacity_full_minimal_subtree_canonical_payload_invalid.bin",
+      "valid": "results/phase2/whir-multiproof-payload/payloads/whir_t128_capacity_full_minimal_subtree_canonical_payload.bin"
+    },
+    "scenario_name": "whir_t128_capacity_full",
+    "valid_payload": true
+  },
+  {
+    "invalid_payload_rejected": true,
+    "merkle_proof_mode": "separate_paths",
+    "payload_format": "flat_nodes",
+    "payloads": {
+      "invalid": "results/phase2/whir-multiproof-payload/payloads/whir_t128_johnson_full_separate_paths_flat_nodes_invalid.bin",
+      "valid": "results/phase2/whir-multiproof-payload/payloads/whir_t128_johnson_full_separate_paths_flat_nodes.bin"
+    },
+    "scenario_name": "whir_t128_johnson_full",
+    "valid_payload": true
+  },
+  {
+    "invalid_payload_rejected": true,
+    "merkle_proof_mode": "separate_paths",
+    "payload_format": "canonical_payload",
+    "payloads": {
+      "invalid": "results/phase2/whir-multiproof-payload/payloads/whir_t128_johnson_full_separate_paths_canonical_payload_invalid.bin",
+      "valid": "results/phase2/whir-multiproof-payload/payloads/whir_t128_johnson_full_separate_paths_canonical_payload.bin"
+    },
+    "scenario_name": "whir_t128_johnson_full",
+    "valid_payload": true
+  },
+  {
+    "invalid_payload_rejected": true,
+    "merkle_proof_mode": "minimal_subtree",
+    "payload_format": "flat_nodes",
+    "payloads": {
+      "invalid": "results/phase2/whir-multiproof-payload/payloads/whir_t128_johnson_full_minimal_subtree_flat_nodes_invalid.bin",
+      "valid": "results/phase2/whir-multiproof-payload/payloads/whir_t128_johnson_full_minimal_subtree_flat_nodes.bin"
+    },
+    "scenario_name": "whir_t128_johnson_full",
+    "valid_payload": true
+  },
+  {
+    "invalid_payload_rejected": true,
+    "merkle_proof_mode": "minimal_subtree",
+    "payload_format": "canonical_payload",
+    "payloads": {
+      "invalid": "results/phase2/whir-multiproof-payload/payloads/whir_t128_johnson_full_minimal_subtree_canonical_payload_invalid.bin",
+      "valid": "results/phase2/whir-multiproof-payload/payloads/whir_t128_johnson_full_minimal_subtree_canonical_payload.bin"
+    },
+    "scenario_name": "whir_t128_johnson_full",
+    "valid_payload": true
+  }
+]

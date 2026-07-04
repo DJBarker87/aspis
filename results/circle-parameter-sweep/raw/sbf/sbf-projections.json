@@ -1,0 +1,3331 @@
+{
+  "generated_at_utc": "2026-04-20T08:40:26.739242+00:00",
+  "methodology": "Reuse the existing phase1 SVM cost model. For each successful host proof, derive feature counts from proof structure (hash calls/bytes, Merkle levels, field ops, staged upload bytes), then score with the chosen monolithic/core/transport models. This is a projection, not a direct SBF run.",
+  "compilation_status": "projection-only",
+  "blockers": [
+    "Pinned reference still inherits the earlier cargo-build-sbf blocker: Solana's bundled Cargo 1.84 rejects edition2024 crates in the dependency tree.",
+    "To preserve proof-byte compatibility with the validated p3-circle reference commit, this sweep does not pin an older upstream version just to satisfy cargo-build-sbf."
+  ],
+  "ranked": [
+    {
+      "rank": 1,
+      "attempt_id": "counter4-t100-rate1over2-q84-pow16-arity1",
+      "target_bits": 100,
+      "conjectured_soundness_bits": 100,
+      "scenario": "counter4",
+      "fri": {
+        "log_blowup": 1,
+        "log_final_poly_len": 0,
+        "max_log_arity": 1,
+        "num_queries": 84,
+        "commit_proof_of_work_bits": 0,
+        "query_proof_of_work_bits": 16
+      },
+      "proof_bytes": 43149,
+      "profile": {
+        "name": "counter4-t100-rate1over2-q84-pow16-arity1",
+        "features": {
+          "sha_calls": 1265,
+          "sha_bytes": 199386,
+          "merkle_paths": 420,
+          "merkle_levels": 1092,
+          "proof_bytes": 43149,
+          "proof_segments": 85,
+          "upload_bytes": 43149,
+          "upload_chunks": 85,
+          "heap_frame_bytes_requested": 131072,
+          "heap_pages_32k": 4,
+          "ro_account_count": 2,
+          "rw_account_count": 1,
+          "account_data_bytes_read": 47245,
+          "account_data_bytes_written": 128,
+          "field_add_sub_ops": 1176,
+          "field_mul_ops": 2192,
+          "field_inv_ops": 253,
+          "extension_mul_ops": 2100
+        },
+        "protocol_family": "Circle",
+        "transport": {
+          "sha_calls": 85,
+          "sha_bytes": 45869,
+          "upload_bytes": 43149,
+          "upload_chunks": 85
+        },
+        "parameter_choices": [
+          {
+            "name": "scenario",
+            "value": "counter4",
+            "rationale": "Measured on the actual p3-circle proof generated during the host sweep.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "log_blowup",
+            "value": "1",
+            "rationale": "Literal FRI blowup exponent supplied to p3-circle.",
+            "sources": [
+              "docs/circle-parameter-space.md"
+            ]
+          },
+          {
+            "name": "num_queries",
+            "value": "84",
+            "rationale": "Literal FRI query count used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "query_proof_of_work_bits",
+            "value": "16",
+            "rationale": "Literal PoW bits used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "upload_chunk_bytes",
+            "value": "512",
+            "rationale": "Conservative staging chunk under the 1232-byte Solana transaction ceiling.",
+            "sources": [
+              "phase1_results/summary.json"
+            ]
+          }
+        ],
+        "references": [
+          "results/circle-parameter-sweep/host-results.md",
+          "docs/circle-parameter-space.md",
+          "phase1_results/summary.json"
+        ],
+        "query_soundness_model": {
+          "model": "fri",
+          "query_count": 84,
+          "log_blowup": 1,
+          "query_proof_of_work_bits": 16,
+          "target_bits": 100.0,
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ],
+          "notes": [
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ]
+        },
+        "notes": [
+          "Projected from proof structure and the existing phase1 CU model; no direct SBF execution was possible under the pinned reference because the Solana cargo-build-sbf toolchain still rejects edition2024 dependencies.",
+          "Transport cost assumes staged upload in 512-byte chunks because every successful Circle proof in this sweep exceeds the 1232-byte transaction cap."
+        ]
+      },
+      "score": {
+        "name": "counter4-t100-rate1over2-q84-pow16-arity1",
+        "protocol_family": "Circle",
+        "predicted_cu": 12144180.632842865,
+        "lower_cu": 12085159.237553297,
+        "upper_cu": 12203202.028132433,
+        "cu_budget_fraction": 8.674414737744904,
+        "proof_transport_pressure": 35.02353896103896,
+        "verification_core_cu": 12090938.176037379,
+        "transport_overhead_cu": 49819.39734226331,
+        "component_predicted_cu": 12140757.573379641,
+        "component_gap_vs_monolithic_cu": -3423.0594632234424,
+        "feasible": false,
+        "feasibility_reasons": [
+          "predicted CU exceeds the transaction compute budget",
+          "query-controlled soundness lower bound 58.0 bits is below the 100.0-bit target"
+        ],
+        "dominant_contributors": [
+          {
+            "feature": "extension_mul_ops",
+            "coefficient": 3175.4537344967566,
+            "feature_value": 2100.0,
+            "cu": 6668452.842443189
+          },
+          {
+            "feature": "field_inv_ops",
+            "coefficient": 11270.192375974051,
+            "feature_value": 253.0,
+            "cu": 2851358.671121435
+          },
+          {
+            "feature": "field_mul_ops",
+            "coefficient": 491.3739010822489,
+            "feature_value": 2192.0,
+            "cu": 1077091.5911722896
+          }
+        ],
+        "query_soundness": {
+          "model": "fri_query_soundness",
+          "query_count": 84,
+          "target_bits": 100.0,
+          "lower_bits": 58.0,
+          "lower_assumption": "fri_proven_rate_pow_q_over_2",
+          "upper_bits": 100.0,
+          "upper_assumption": "ethstark_conjectured_rate_pow_q",
+          "meets_target": false,
+          "notes": [
+            "Lower bound uses the proven FRI query term rate^(q/2).",
+            "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ],
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ]
+        }
+      }
+    },
+    {
+      "rank": 2,
+      "attempt_id": "counter4-t100-rate1over2-q84-pow16-arity2",
+      "target_bits": 100,
+      "conjectured_soundness_bits": 100,
+      "scenario": "counter4",
+      "fri": {
+        "log_blowup": 1,
+        "log_final_poly_len": 0,
+        "max_log_arity": 2,
+        "num_queries": 84,
+        "commit_proof_of_work_bits": 0,
+        "query_proof_of_work_bits": 16
+      },
+      "proof_bytes": 43149,
+      "profile": {
+        "name": "counter4-t100-rate1over2-q84-pow16-arity2",
+        "features": {
+          "sha_calls": 1265,
+          "sha_bytes": 199386,
+          "merkle_paths": 420,
+          "merkle_levels": 1092,
+          "proof_bytes": 43149,
+          "proof_segments": 85,
+          "upload_bytes": 43149,
+          "upload_chunks": 85,
+          "heap_frame_bytes_requested": 131072,
+          "heap_pages_32k": 4,
+          "ro_account_count": 2,
+          "rw_account_count": 1,
+          "account_data_bytes_read": 47245,
+          "account_data_bytes_written": 128,
+          "field_add_sub_ops": 1176,
+          "field_mul_ops": 2192,
+          "field_inv_ops": 253,
+          "extension_mul_ops": 2100
+        },
+        "protocol_family": "Circle",
+        "transport": {
+          "sha_calls": 85,
+          "sha_bytes": 45869,
+          "upload_bytes": 43149,
+          "upload_chunks": 85
+        },
+        "parameter_choices": [
+          {
+            "name": "scenario",
+            "value": "counter4",
+            "rationale": "Measured on the actual p3-circle proof generated during the host sweep.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "log_blowup",
+            "value": "1",
+            "rationale": "Literal FRI blowup exponent supplied to p3-circle.",
+            "sources": [
+              "docs/circle-parameter-space.md"
+            ]
+          },
+          {
+            "name": "num_queries",
+            "value": "84",
+            "rationale": "Literal FRI query count used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "query_proof_of_work_bits",
+            "value": "16",
+            "rationale": "Literal PoW bits used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "upload_chunk_bytes",
+            "value": "512",
+            "rationale": "Conservative staging chunk under the 1232-byte Solana transaction ceiling.",
+            "sources": [
+              "phase1_results/summary.json"
+            ]
+          }
+        ],
+        "references": [
+          "results/circle-parameter-sweep/host-results.md",
+          "docs/circle-parameter-space.md",
+          "phase1_results/summary.json"
+        ],
+        "query_soundness_model": {
+          "model": "fri",
+          "query_count": 84,
+          "log_blowup": 1,
+          "query_proof_of_work_bits": 16,
+          "target_bits": 100.0,
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ],
+          "notes": [
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ]
+        },
+        "notes": [
+          "Projected from proof structure and the existing phase1 CU model; no direct SBF execution was possible under the pinned reference because the Solana cargo-build-sbf toolchain still rejects edition2024 dependencies.",
+          "Transport cost assumes staged upload in 512-byte chunks because every successful Circle proof in this sweep exceeds the 1232-byte transaction cap."
+        ]
+      },
+      "score": {
+        "name": "counter4-t100-rate1over2-q84-pow16-arity2",
+        "protocol_family": "Circle",
+        "predicted_cu": 12144180.632842865,
+        "lower_cu": 12085159.237553297,
+        "upper_cu": 12203202.028132433,
+        "cu_budget_fraction": 8.674414737744904,
+        "proof_transport_pressure": 35.02353896103896,
+        "verification_core_cu": 12090938.176037379,
+        "transport_overhead_cu": 49819.39734226331,
+        "component_predicted_cu": 12140757.573379641,
+        "component_gap_vs_monolithic_cu": -3423.0594632234424,
+        "feasible": false,
+        "feasibility_reasons": [
+          "predicted CU exceeds the transaction compute budget",
+          "query-controlled soundness lower bound 58.0 bits is below the 100.0-bit target"
+        ],
+        "dominant_contributors": [
+          {
+            "feature": "extension_mul_ops",
+            "coefficient": 3175.4537344967566,
+            "feature_value": 2100.0,
+            "cu": 6668452.842443189
+          },
+          {
+            "feature": "field_inv_ops",
+            "coefficient": 11270.192375974051,
+            "feature_value": 253.0,
+            "cu": 2851358.671121435
+          },
+          {
+            "feature": "field_mul_ops",
+            "coefficient": 491.3739010822489,
+            "feature_value": 2192.0,
+            "cu": 1077091.5911722896
+          }
+        ],
+        "query_soundness": {
+          "model": "fri_query_soundness",
+          "query_count": 84,
+          "target_bits": 100.0,
+          "lower_bits": 58.0,
+          "lower_assumption": "fri_proven_rate_pow_q_over_2",
+          "upper_bits": 100.0,
+          "upper_assumption": "ethstark_conjectured_rate_pow_q",
+          "meets_target": false,
+          "notes": [
+            "Lower bound uses the proven FRI query term rate^(q/2).",
+            "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ],
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ]
+        }
+      }
+    },
+    {
+      "rank": 3,
+      "attempt_id": "counter4-t100-rate1over2-q84-pow16-arity3",
+      "target_bits": 100,
+      "conjectured_soundness_bits": 100,
+      "scenario": "counter4",
+      "fri": {
+        "log_blowup": 1,
+        "log_final_poly_len": 0,
+        "max_log_arity": 3,
+        "num_queries": 84,
+        "commit_proof_of_work_bits": 0,
+        "query_proof_of_work_bits": 16
+      },
+      "proof_bytes": 43149,
+      "profile": {
+        "name": "counter4-t100-rate1over2-q84-pow16-arity3",
+        "features": {
+          "sha_calls": 1265,
+          "sha_bytes": 199386,
+          "merkle_paths": 420,
+          "merkle_levels": 1092,
+          "proof_bytes": 43149,
+          "proof_segments": 85,
+          "upload_bytes": 43149,
+          "upload_chunks": 85,
+          "heap_frame_bytes_requested": 131072,
+          "heap_pages_32k": 4,
+          "ro_account_count": 2,
+          "rw_account_count": 1,
+          "account_data_bytes_read": 47245,
+          "account_data_bytes_written": 128,
+          "field_add_sub_ops": 1176,
+          "field_mul_ops": 2192,
+          "field_inv_ops": 253,
+          "extension_mul_ops": 2100
+        },
+        "protocol_family": "Circle",
+        "transport": {
+          "sha_calls": 85,
+          "sha_bytes": 45869,
+          "upload_bytes": 43149,
+          "upload_chunks": 85
+        },
+        "parameter_choices": [
+          {
+            "name": "scenario",
+            "value": "counter4",
+            "rationale": "Measured on the actual p3-circle proof generated during the host sweep.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "log_blowup",
+            "value": "1",
+            "rationale": "Literal FRI blowup exponent supplied to p3-circle.",
+            "sources": [
+              "docs/circle-parameter-space.md"
+            ]
+          },
+          {
+            "name": "num_queries",
+            "value": "84",
+            "rationale": "Literal FRI query count used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "query_proof_of_work_bits",
+            "value": "16",
+            "rationale": "Literal PoW bits used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "upload_chunk_bytes",
+            "value": "512",
+            "rationale": "Conservative staging chunk under the 1232-byte Solana transaction ceiling.",
+            "sources": [
+              "phase1_results/summary.json"
+            ]
+          }
+        ],
+        "references": [
+          "results/circle-parameter-sweep/host-results.md",
+          "docs/circle-parameter-space.md",
+          "phase1_results/summary.json"
+        ],
+        "query_soundness_model": {
+          "model": "fri",
+          "query_count": 84,
+          "log_blowup": 1,
+          "query_proof_of_work_bits": 16,
+          "target_bits": 100.0,
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ],
+          "notes": [
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ]
+        },
+        "notes": [
+          "Projected from proof structure and the existing phase1 CU model; no direct SBF execution was possible under the pinned reference because the Solana cargo-build-sbf toolchain still rejects edition2024 dependencies.",
+          "Transport cost assumes staged upload in 512-byte chunks because every successful Circle proof in this sweep exceeds the 1232-byte transaction cap."
+        ]
+      },
+      "score": {
+        "name": "counter4-t100-rate1over2-q84-pow16-arity3",
+        "protocol_family": "Circle",
+        "predicted_cu": 12144180.632842865,
+        "lower_cu": 12085159.237553297,
+        "upper_cu": 12203202.028132433,
+        "cu_budget_fraction": 8.674414737744904,
+        "proof_transport_pressure": 35.02353896103896,
+        "verification_core_cu": 12090938.176037379,
+        "transport_overhead_cu": 49819.39734226331,
+        "component_predicted_cu": 12140757.573379641,
+        "component_gap_vs_monolithic_cu": -3423.0594632234424,
+        "feasible": false,
+        "feasibility_reasons": [
+          "predicted CU exceeds the transaction compute budget",
+          "query-controlled soundness lower bound 58.0 bits is below the 100.0-bit target"
+        ],
+        "dominant_contributors": [
+          {
+            "feature": "extension_mul_ops",
+            "coefficient": 3175.4537344967566,
+            "feature_value": 2100.0,
+            "cu": 6668452.842443189
+          },
+          {
+            "feature": "field_inv_ops",
+            "coefficient": 11270.192375974051,
+            "feature_value": 253.0,
+            "cu": 2851358.671121435
+          },
+          {
+            "feature": "field_mul_ops",
+            "coefficient": 491.3739010822489,
+            "feature_value": 2192.0,
+            "cu": 1077091.5911722896
+          }
+        ],
+        "query_soundness": {
+          "model": "fri_query_soundness",
+          "query_count": 84,
+          "target_bits": 100.0,
+          "lower_bits": 58.0,
+          "lower_assumption": "fri_proven_rate_pow_q_over_2",
+          "upper_bits": 100.0,
+          "upper_assumption": "ethstark_conjectured_rate_pow_q",
+          "meets_target": false,
+          "notes": [
+            "Lower bound uses the proven FRI query term rate^(q/2).",
+            "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ],
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ]
+        }
+      }
+    },
+    {
+      "rank": 4,
+      "attempt_id": "counter4-t100-rate1over2-q84-pow16-arity1-final2",
+      "target_bits": 100,
+      "conjectured_soundness_bits": 100,
+      "scenario": "counter4",
+      "fri": {
+        "log_blowup": 1,
+        "log_final_poly_len": 2,
+        "max_log_arity": 1,
+        "num_queries": 84,
+        "commit_proof_of_work_bits": 0,
+        "query_proof_of_work_bits": 16
+      },
+      "proof_bytes": 43149,
+      "profile": {
+        "name": "counter4-t100-rate1over2-q84-pow16-arity1-final2",
+        "features": {
+          "sha_calls": 1265,
+          "sha_bytes": 199386,
+          "merkle_paths": 420,
+          "merkle_levels": 1092,
+          "proof_bytes": 43149,
+          "proof_segments": 85,
+          "upload_bytes": 43149,
+          "upload_chunks": 85,
+          "heap_frame_bytes_requested": 131072,
+          "heap_pages_32k": 4,
+          "ro_account_count": 2,
+          "rw_account_count": 1,
+          "account_data_bytes_read": 47245,
+          "account_data_bytes_written": 128,
+          "field_add_sub_ops": 1176,
+          "field_mul_ops": 2192,
+          "field_inv_ops": 253,
+          "extension_mul_ops": 2100
+        },
+        "protocol_family": "Circle",
+        "transport": {
+          "sha_calls": 85,
+          "sha_bytes": 45869,
+          "upload_bytes": 43149,
+          "upload_chunks": 85
+        },
+        "parameter_choices": [
+          {
+            "name": "scenario",
+            "value": "counter4",
+            "rationale": "Measured on the actual p3-circle proof generated during the host sweep.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "log_blowup",
+            "value": "1",
+            "rationale": "Literal FRI blowup exponent supplied to p3-circle.",
+            "sources": [
+              "docs/circle-parameter-space.md"
+            ]
+          },
+          {
+            "name": "num_queries",
+            "value": "84",
+            "rationale": "Literal FRI query count used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "query_proof_of_work_bits",
+            "value": "16",
+            "rationale": "Literal PoW bits used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "upload_chunk_bytes",
+            "value": "512",
+            "rationale": "Conservative staging chunk under the 1232-byte Solana transaction ceiling.",
+            "sources": [
+              "phase1_results/summary.json"
+            ]
+          }
+        ],
+        "references": [
+          "results/circle-parameter-sweep/host-results.md",
+          "docs/circle-parameter-space.md",
+          "phase1_results/summary.json"
+        ],
+        "query_soundness_model": {
+          "model": "fri",
+          "query_count": 84,
+          "log_blowup": 1,
+          "query_proof_of_work_bits": 16,
+          "target_bits": 100.0,
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ],
+          "notes": [
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ]
+        },
+        "notes": [
+          "Projected from proof structure and the existing phase1 CU model; no direct SBF execution was possible under the pinned reference because the Solana cargo-build-sbf toolchain still rejects edition2024 dependencies.",
+          "Transport cost assumes staged upload in 512-byte chunks because every successful Circle proof in this sweep exceeds the 1232-byte transaction cap."
+        ]
+      },
+      "score": {
+        "name": "counter4-t100-rate1over2-q84-pow16-arity1-final2",
+        "protocol_family": "Circle",
+        "predicted_cu": 12144180.632842865,
+        "lower_cu": 12085159.237553297,
+        "upper_cu": 12203202.028132433,
+        "cu_budget_fraction": 8.674414737744904,
+        "proof_transport_pressure": 35.02353896103896,
+        "verification_core_cu": 12090938.176037379,
+        "transport_overhead_cu": 49819.39734226331,
+        "component_predicted_cu": 12140757.573379641,
+        "component_gap_vs_monolithic_cu": -3423.0594632234424,
+        "feasible": false,
+        "feasibility_reasons": [
+          "predicted CU exceeds the transaction compute budget",
+          "query-controlled soundness lower bound 58.0 bits is below the 100.0-bit target"
+        ],
+        "dominant_contributors": [
+          {
+            "feature": "extension_mul_ops",
+            "coefficient": 3175.4537344967566,
+            "feature_value": 2100.0,
+            "cu": 6668452.842443189
+          },
+          {
+            "feature": "field_inv_ops",
+            "coefficient": 11270.192375974051,
+            "feature_value": 253.0,
+            "cu": 2851358.671121435
+          },
+          {
+            "feature": "field_mul_ops",
+            "coefficient": 491.3739010822489,
+            "feature_value": 2192.0,
+            "cu": 1077091.5911722896
+          }
+        ],
+        "query_soundness": {
+          "model": "fri_query_soundness",
+          "query_count": 84,
+          "target_bits": 100.0,
+          "lower_bits": 58.0,
+          "lower_assumption": "fri_proven_rate_pow_q_over_2",
+          "upper_bits": 100.0,
+          "upper_assumption": "ethstark_conjectured_rate_pow_q",
+          "meets_target": false,
+          "notes": [
+            "Lower bound uses the proven FRI query term rate^(q/2).",
+            "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ],
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ]
+        }
+      }
+    },
+    {
+      "rank": 5,
+      "attempt_id": "counter4-t100-rate1over2-q84-pow16-arity1-commitpow8",
+      "target_bits": 100,
+      "conjectured_soundness_bits": 100,
+      "scenario": "counter4",
+      "fri": {
+        "log_blowup": 1,
+        "log_final_poly_len": 0,
+        "max_log_arity": 1,
+        "num_queries": 84,
+        "commit_proof_of_work_bits": 8,
+        "query_proof_of_work_bits": 16
+      },
+      "proof_bytes": 43149,
+      "profile": {
+        "name": "counter4-t100-rate1over2-q84-pow16-arity1-commitpow8",
+        "features": {
+          "sha_calls": 1265,
+          "sha_bytes": 199386,
+          "merkle_paths": 420,
+          "merkle_levels": 1092,
+          "proof_bytes": 43149,
+          "proof_segments": 85,
+          "upload_bytes": 43149,
+          "upload_chunks": 85,
+          "heap_frame_bytes_requested": 131072,
+          "heap_pages_32k": 4,
+          "ro_account_count": 2,
+          "rw_account_count": 1,
+          "account_data_bytes_read": 47245,
+          "account_data_bytes_written": 128,
+          "field_add_sub_ops": 1176,
+          "field_mul_ops": 2192,
+          "field_inv_ops": 253,
+          "extension_mul_ops": 2100
+        },
+        "protocol_family": "Circle",
+        "transport": {
+          "sha_calls": 85,
+          "sha_bytes": 45869,
+          "upload_bytes": 43149,
+          "upload_chunks": 85
+        },
+        "parameter_choices": [
+          {
+            "name": "scenario",
+            "value": "counter4",
+            "rationale": "Measured on the actual p3-circle proof generated during the host sweep.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "log_blowup",
+            "value": "1",
+            "rationale": "Literal FRI blowup exponent supplied to p3-circle.",
+            "sources": [
+              "docs/circle-parameter-space.md"
+            ]
+          },
+          {
+            "name": "num_queries",
+            "value": "84",
+            "rationale": "Literal FRI query count used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "query_proof_of_work_bits",
+            "value": "16",
+            "rationale": "Literal PoW bits used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "upload_chunk_bytes",
+            "value": "512",
+            "rationale": "Conservative staging chunk under the 1232-byte Solana transaction ceiling.",
+            "sources": [
+              "phase1_results/summary.json"
+            ]
+          }
+        ],
+        "references": [
+          "results/circle-parameter-sweep/host-results.md",
+          "docs/circle-parameter-space.md",
+          "phase1_results/summary.json"
+        ],
+        "query_soundness_model": {
+          "model": "fri",
+          "query_count": 84,
+          "log_blowup": 1,
+          "query_proof_of_work_bits": 16,
+          "target_bits": 100.0,
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ],
+          "notes": [
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ]
+        },
+        "notes": [
+          "Projected from proof structure and the existing phase1 CU model; no direct SBF execution was possible under the pinned reference because the Solana cargo-build-sbf toolchain still rejects edition2024 dependencies.",
+          "Transport cost assumes staged upload in 512-byte chunks because every successful Circle proof in this sweep exceeds the 1232-byte transaction cap."
+        ]
+      },
+      "score": {
+        "name": "counter4-t100-rate1over2-q84-pow16-arity1-commitpow8",
+        "protocol_family": "Circle",
+        "predicted_cu": 12144180.632842865,
+        "lower_cu": 12085159.237553297,
+        "upper_cu": 12203202.028132433,
+        "cu_budget_fraction": 8.674414737744904,
+        "proof_transport_pressure": 35.02353896103896,
+        "verification_core_cu": 12090938.176037379,
+        "transport_overhead_cu": 49819.39734226331,
+        "component_predicted_cu": 12140757.573379641,
+        "component_gap_vs_monolithic_cu": -3423.0594632234424,
+        "feasible": false,
+        "feasibility_reasons": [
+          "predicted CU exceeds the transaction compute budget",
+          "query-controlled soundness lower bound 58.0 bits is below the 100.0-bit target"
+        ],
+        "dominant_contributors": [
+          {
+            "feature": "extension_mul_ops",
+            "coefficient": 3175.4537344967566,
+            "feature_value": 2100.0,
+            "cu": 6668452.842443189
+          },
+          {
+            "feature": "field_inv_ops",
+            "coefficient": 11270.192375974051,
+            "feature_value": 253.0,
+            "cu": 2851358.671121435
+          },
+          {
+            "feature": "field_mul_ops",
+            "coefficient": 491.3739010822489,
+            "feature_value": 2192.0,
+            "cu": 1077091.5911722896
+          }
+        ],
+        "query_soundness": {
+          "model": "fri_query_soundness",
+          "query_count": 84,
+          "target_bits": 100.0,
+          "lower_bits": 58.0,
+          "lower_assumption": "fri_proven_rate_pow_q_over_2",
+          "upper_bits": 100.0,
+          "upper_assumption": "ethstark_conjectured_rate_pow_q",
+          "meets_target": false,
+          "notes": [
+            "Lower bound uses the proven FRI query term rate^(q/2).",
+            "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ],
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ]
+        }
+      }
+    },
+    {
+      "rank": 6,
+      "attempt_id": "counter4-t100-rate1over2-q92-pow8-arity1",
+      "target_bits": 100,
+      "conjectured_soundness_bits": 100,
+      "scenario": "counter4",
+      "fri": {
+        "log_blowup": 1,
+        "log_final_poly_len": 0,
+        "max_log_arity": 1,
+        "num_queries": 92,
+        "commit_proof_of_work_bits": 0,
+        "query_proof_of_work_bits": 8
+      },
+      "proof_bytes": 47234,
+      "profile": {
+        "name": "counter4-t100-rate1over2-q92-pow8-arity1",
+        "features": {
+          "sha_calls": 1385,
+          "sha_bytes": 218308,
+          "merkle_paths": 460,
+          "merkle_levels": 1196,
+          "proof_bytes": 47234,
+          "proof_segments": 93,
+          "upload_bytes": 47234,
+          "upload_chunks": 93,
+          "heap_frame_bytes_requested": 131072,
+          "heap_pages_32k": 4,
+          "ro_account_count": 2,
+          "rw_account_count": 1,
+          "account_data_bytes_read": 51330,
+          "account_data_bytes_written": 128,
+          "field_add_sub_ops": 1288,
+          "field_mul_ops": 2400,
+          "field_inv_ops": 277,
+          "extension_mul_ops": 2300
+        },
+        "protocol_family": "Circle",
+        "transport": {
+          "sha_calls": 93,
+          "sha_bytes": 50210,
+          "upload_bytes": 47234,
+          "upload_chunks": 93
+        },
+        "parameter_choices": [
+          {
+            "name": "scenario",
+            "value": "counter4",
+            "rationale": "Measured on the actual p3-circle proof generated during the host sweep.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "log_blowup",
+            "value": "1",
+            "rationale": "Literal FRI blowup exponent supplied to p3-circle.",
+            "sources": [
+              "docs/circle-parameter-space.md"
+            ]
+          },
+          {
+            "name": "num_queries",
+            "value": "92",
+            "rationale": "Literal FRI query count used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "query_proof_of_work_bits",
+            "value": "8",
+            "rationale": "Literal PoW bits used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "upload_chunk_bytes",
+            "value": "512",
+            "rationale": "Conservative staging chunk under the 1232-byte Solana transaction ceiling.",
+            "sources": [
+              "phase1_results/summary.json"
+            ]
+          }
+        ],
+        "references": [
+          "results/circle-parameter-sweep/host-results.md",
+          "docs/circle-parameter-space.md",
+          "phase1_results/summary.json"
+        ],
+        "query_soundness_model": {
+          "model": "fri",
+          "query_count": 92,
+          "log_blowup": 1,
+          "query_proof_of_work_bits": 8,
+          "target_bits": 100.0,
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ],
+          "notes": [
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ]
+        },
+        "notes": [
+          "Projected from proof structure and the existing phase1 CU model; no direct SBF execution was possible under the pinned reference because the Solana cargo-build-sbf toolchain still rejects edition2024 dependencies.",
+          "Transport cost assumes staged upload in 512-byte chunks because every successful Circle proof in this sweep exceeds the 1232-byte transaction cap."
+        ]
+      },
+      "score": {
+        "name": "counter4-t100-rate1over2-q92-pow8-arity1",
+        "protocol_family": "Circle",
+        "predicted_cu": 13256088.520235855,
+        "lower_cu": 13197067.124946287,
+        "upper_cu": 13315109.915525423,
+        "cu_budget_fraction": 9.468634657311325,
+        "proof_transport_pressure": 38.339285714285715,
+        "verification_core_cu": 13197840.825052869,
+        "transport_overhead_cu": 54460.24052937151,
+        "component_predicted_cu": 13252301.06558224,
+        "component_gap_vs_monolithic_cu": -3787.454653615132,
+        "feasible": false,
+        "feasibility_reasons": [
+          "predicted CU exceeds the transaction compute budget",
+          "query-controlled soundness lower bound 54.0 bits is below the 100.0-bit target"
+        ],
+        "dominant_contributors": [
+          {
+            "feature": "extension_mul_ops",
+            "coefficient": 3175.4537344967566,
+            "feature_value": 2300.0,
+            "cu": 7303543.58934254
+          },
+          {
+            "feature": "field_inv_ops",
+            "coefficient": 11270.192375974051,
+            "feature_value": 277.0,
+            "cu": 3121843.288144812
+          },
+          {
+            "feature": "field_mul_ops",
+            "coefficient": 491.3739010822489,
+            "feature_value": 2400.0,
+            "cu": 1179297.3625973973
+          }
+        ],
+        "query_soundness": {
+          "model": "fri_query_soundness",
+          "query_count": 92,
+          "target_bits": 100.0,
+          "lower_bits": 54.0,
+          "lower_assumption": "fri_proven_rate_pow_q_over_2",
+          "upper_bits": 100.0,
+          "upper_assumption": "ethstark_conjectured_rate_pow_q",
+          "meets_target": false,
+          "notes": [
+            "Lower bound uses the proven FRI query term rate^(q/2).",
+            "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ],
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ]
+        }
+      }
+    },
+    {
+      "rank": 7,
+      "attempt_id": "counter4-t100-rate1over2-q92-pow8-arity2",
+      "target_bits": 100,
+      "conjectured_soundness_bits": 100,
+      "scenario": "counter4",
+      "fri": {
+        "log_blowup": 1,
+        "log_final_poly_len": 0,
+        "max_log_arity": 2,
+        "num_queries": 92,
+        "commit_proof_of_work_bits": 0,
+        "query_proof_of_work_bits": 8
+      },
+      "proof_bytes": 47234,
+      "profile": {
+        "name": "counter4-t100-rate1over2-q92-pow8-arity2",
+        "features": {
+          "sha_calls": 1385,
+          "sha_bytes": 218308,
+          "merkle_paths": 460,
+          "merkle_levels": 1196,
+          "proof_bytes": 47234,
+          "proof_segments": 93,
+          "upload_bytes": 47234,
+          "upload_chunks": 93,
+          "heap_frame_bytes_requested": 131072,
+          "heap_pages_32k": 4,
+          "ro_account_count": 2,
+          "rw_account_count": 1,
+          "account_data_bytes_read": 51330,
+          "account_data_bytes_written": 128,
+          "field_add_sub_ops": 1288,
+          "field_mul_ops": 2400,
+          "field_inv_ops": 277,
+          "extension_mul_ops": 2300
+        },
+        "protocol_family": "Circle",
+        "transport": {
+          "sha_calls": 93,
+          "sha_bytes": 50210,
+          "upload_bytes": 47234,
+          "upload_chunks": 93
+        },
+        "parameter_choices": [
+          {
+            "name": "scenario",
+            "value": "counter4",
+            "rationale": "Measured on the actual p3-circle proof generated during the host sweep.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "log_blowup",
+            "value": "1",
+            "rationale": "Literal FRI blowup exponent supplied to p3-circle.",
+            "sources": [
+              "docs/circle-parameter-space.md"
+            ]
+          },
+          {
+            "name": "num_queries",
+            "value": "92",
+            "rationale": "Literal FRI query count used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "query_proof_of_work_bits",
+            "value": "8",
+            "rationale": "Literal PoW bits used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "upload_chunk_bytes",
+            "value": "512",
+            "rationale": "Conservative staging chunk under the 1232-byte Solana transaction ceiling.",
+            "sources": [
+              "phase1_results/summary.json"
+            ]
+          }
+        ],
+        "references": [
+          "results/circle-parameter-sweep/host-results.md",
+          "docs/circle-parameter-space.md",
+          "phase1_results/summary.json"
+        ],
+        "query_soundness_model": {
+          "model": "fri",
+          "query_count": 92,
+          "log_blowup": 1,
+          "query_proof_of_work_bits": 8,
+          "target_bits": 100.0,
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ],
+          "notes": [
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ]
+        },
+        "notes": [
+          "Projected from proof structure and the existing phase1 CU model; no direct SBF execution was possible under the pinned reference because the Solana cargo-build-sbf toolchain still rejects edition2024 dependencies.",
+          "Transport cost assumes staged upload in 512-byte chunks because every successful Circle proof in this sweep exceeds the 1232-byte transaction cap."
+        ]
+      },
+      "score": {
+        "name": "counter4-t100-rate1over2-q92-pow8-arity2",
+        "protocol_family": "Circle",
+        "predicted_cu": 13256088.520235855,
+        "lower_cu": 13197067.124946287,
+        "upper_cu": 13315109.915525423,
+        "cu_budget_fraction": 9.468634657311325,
+        "proof_transport_pressure": 38.339285714285715,
+        "verification_core_cu": 13197840.825052869,
+        "transport_overhead_cu": 54460.24052937151,
+        "component_predicted_cu": 13252301.06558224,
+        "component_gap_vs_monolithic_cu": -3787.454653615132,
+        "feasible": false,
+        "feasibility_reasons": [
+          "predicted CU exceeds the transaction compute budget",
+          "query-controlled soundness lower bound 54.0 bits is below the 100.0-bit target"
+        ],
+        "dominant_contributors": [
+          {
+            "feature": "extension_mul_ops",
+            "coefficient": 3175.4537344967566,
+            "feature_value": 2300.0,
+            "cu": 7303543.58934254
+          },
+          {
+            "feature": "field_inv_ops",
+            "coefficient": 11270.192375974051,
+            "feature_value": 277.0,
+            "cu": 3121843.288144812
+          },
+          {
+            "feature": "field_mul_ops",
+            "coefficient": 491.3739010822489,
+            "feature_value": 2400.0,
+            "cu": 1179297.3625973973
+          }
+        ],
+        "query_soundness": {
+          "model": "fri_query_soundness",
+          "query_count": 92,
+          "target_bits": 100.0,
+          "lower_bits": 54.0,
+          "lower_assumption": "fri_proven_rate_pow_q_over_2",
+          "upper_bits": 100.0,
+          "upper_assumption": "ethstark_conjectured_rate_pow_q",
+          "meets_target": false,
+          "notes": [
+            "Lower bound uses the proven FRI query term rate^(q/2).",
+            "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ],
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ]
+        }
+      }
+    },
+    {
+      "rank": 8,
+      "attempt_id": "counter4-t100-rate1over2-q92-pow8-arity3",
+      "target_bits": 100,
+      "conjectured_soundness_bits": 100,
+      "scenario": "counter4",
+      "fri": {
+        "log_blowup": 1,
+        "log_final_poly_len": 0,
+        "max_log_arity": 3,
+        "num_queries": 92,
+        "commit_proof_of_work_bits": 0,
+        "query_proof_of_work_bits": 8
+      },
+      "proof_bytes": 47234,
+      "profile": {
+        "name": "counter4-t100-rate1over2-q92-pow8-arity3",
+        "features": {
+          "sha_calls": 1385,
+          "sha_bytes": 218308,
+          "merkle_paths": 460,
+          "merkle_levels": 1196,
+          "proof_bytes": 47234,
+          "proof_segments": 93,
+          "upload_bytes": 47234,
+          "upload_chunks": 93,
+          "heap_frame_bytes_requested": 131072,
+          "heap_pages_32k": 4,
+          "ro_account_count": 2,
+          "rw_account_count": 1,
+          "account_data_bytes_read": 51330,
+          "account_data_bytes_written": 128,
+          "field_add_sub_ops": 1288,
+          "field_mul_ops": 2400,
+          "field_inv_ops": 277,
+          "extension_mul_ops": 2300
+        },
+        "protocol_family": "Circle",
+        "transport": {
+          "sha_calls": 93,
+          "sha_bytes": 50210,
+          "upload_bytes": 47234,
+          "upload_chunks": 93
+        },
+        "parameter_choices": [
+          {
+            "name": "scenario",
+            "value": "counter4",
+            "rationale": "Measured on the actual p3-circle proof generated during the host sweep.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "log_blowup",
+            "value": "1",
+            "rationale": "Literal FRI blowup exponent supplied to p3-circle.",
+            "sources": [
+              "docs/circle-parameter-space.md"
+            ]
+          },
+          {
+            "name": "num_queries",
+            "value": "92",
+            "rationale": "Literal FRI query count used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "query_proof_of_work_bits",
+            "value": "8",
+            "rationale": "Literal PoW bits used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "upload_chunk_bytes",
+            "value": "512",
+            "rationale": "Conservative staging chunk under the 1232-byte Solana transaction ceiling.",
+            "sources": [
+              "phase1_results/summary.json"
+            ]
+          }
+        ],
+        "references": [
+          "results/circle-parameter-sweep/host-results.md",
+          "docs/circle-parameter-space.md",
+          "phase1_results/summary.json"
+        ],
+        "query_soundness_model": {
+          "model": "fri",
+          "query_count": 92,
+          "log_blowup": 1,
+          "query_proof_of_work_bits": 8,
+          "target_bits": 100.0,
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ],
+          "notes": [
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ]
+        },
+        "notes": [
+          "Projected from proof structure and the existing phase1 CU model; no direct SBF execution was possible under the pinned reference because the Solana cargo-build-sbf toolchain still rejects edition2024 dependencies.",
+          "Transport cost assumes staged upload in 512-byte chunks because every successful Circle proof in this sweep exceeds the 1232-byte transaction cap."
+        ]
+      },
+      "score": {
+        "name": "counter4-t100-rate1over2-q92-pow8-arity3",
+        "protocol_family": "Circle",
+        "predicted_cu": 13256088.520235855,
+        "lower_cu": 13197067.124946287,
+        "upper_cu": 13315109.915525423,
+        "cu_budget_fraction": 9.468634657311325,
+        "proof_transport_pressure": 38.339285714285715,
+        "verification_core_cu": 13197840.825052869,
+        "transport_overhead_cu": 54460.24052937151,
+        "component_predicted_cu": 13252301.06558224,
+        "component_gap_vs_monolithic_cu": -3787.454653615132,
+        "feasible": false,
+        "feasibility_reasons": [
+          "predicted CU exceeds the transaction compute budget",
+          "query-controlled soundness lower bound 54.0 bits is below the 100.0-bit target"
+        ],
+        "dominant_contributors": [
+          {
+            "feature": "extension_mul_ops",
+            "coefficient": 3175.4537344967566,
+            "feature_value": 2300.0,
+            "cu": 7303543.58934254
+          },
+          {
+            "feature": "field_inv_ops",
+            "coefficient": 11270.192375974051,
+            "feature_value": 277.0,
+            "cu": 3121843.288144812
+          },
+          {
+            "feature": "field_mul_ops",
+            "coefficient": 491.3739010822489,
+            "feature_value": 2400.0,
+            "cu": 1179297.3625973973
+          }
+        ],
+        "query_soundness": {
+          "model": "fri_query_soundness",
+          "query_count": 92,
+          "target_bits": 100.0,
+          "lower_bits": 54.0,
+          "lower_assumption": "fri_proven_rate_pow_q_over_2",
+          "upper_bits": 100.0,
+          "upper_assumption": "ethstark_conjectured_rate_pow_q",
+          "meets_target": false,
+          "notes": [
+            "Lower bound uses the proven FRI query term rate^(q/2).",
+            "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ],
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ]
+        }
+      }
+    },
+    {
+      "rank": 9,
+      "attempt_id": "counter4-t120-rate1over2-q104-pow16-arity1",
+      "target_bits": 120,
+      "conjectured_soundness_bits": 120,
+      "scenario": "counter4",
+      "fri": {
+        "log_blowup": 1,
+        "log_final_poly_len": 0,
+        "max_log_arity": 1,
+        "num_queries": 104,
+        "commit_proof_of_work_bits": 0,
+        "query_proof_of_work_bits": 16
+      },
+      "proof_bytes": 53358,
+      "profile": {
+        "name": "counter4-t120-rate1over2-q104-pow16-arity1",
+        "features": {
+          "sha_calls": 1565,
+          "sha_bytes": 246684,
+          "merkle_paths": 520,
+          "merkle_levels": 1352,
+          "proof_bytes": 53358,
+          "proof_segments": 105,
+          "upload_bytes": 53358,
+          "upload_chunks": 105,
+          "heap_frame_bytes_requested": 131072,
+          "heap_pages_32k": 4,
+          "ro_account_count": 2,
+          "rw_account_count": 1,
+          "account_data_bytes_read": 57454,
+          "account_data_bytes_written": 128,
+          "field_add_sub_ops": 1456,
+          "field_mul_ops": 2712,
+          "field_inv_ops": 313,
+          "extension_mul_ops": 2600
+        },
+        "protocol_family": "Circle",
+        "transport": {
+          "sha_calls": 105,
+          "sha_bytes": 56718,
+          "upload_bytes": 53358,
+          "upload_chunks": 105
+        },
+        "parameter_choices": [
+          {
+            "name": "scenario",
+            "value": "counter4",
+            "rationale": "Measured on the actual p3-circle proof generated during the host sweep.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "log_blowup",
+            "value": "1",
+            "rationale": "Literal FRI blowup exponent supplied to p3-circle.",
+            "sources": [
+              "docs/circle-parameter-space.md"
+            ]
+          },
+          {
+            "name": "num_queries",
+            "value": "104",
+            "rationale": "Literal FRI query count used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "query_proof_of_work_bits",
+            "value": "16",
+            "rationale": "Literal PoW bits used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "upload_chunk_bytes",
+            "value": "512",
+            "rationale": "Conservative staging chunk under the 1232-byte Solana transaction ceiling.",
+            "sources": [
+              "phase1_results/summary.json"
+            ]
+          }
+        ],
+        "references": [
+          "results/circle-parameter-sweep/host-results.md",
+          "docs/circle-parameter-space.md",
+          "phase1_results/summary.json"
+        ],
+        "query_soundness_model": {
+          "model": "fri",
+          "query_count": 104,
+          "log_blowup": 1,
+          "query_proof_of_work_bits": 16,
+          "target_bits": 120.0,
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ],
+          "notes": [
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ]
+        },
+        "notes": [
+          "Projected from proof structure and the existing phase1 CU model; no direct SBF execution was possible under the pinned reference because the Solana cargo-build-sbf toolchain still rejects edition2024 dependencies.",
+          "Transport cost assumes staged upload in 512-byte chunks because every successful Circle proof in this sweep exceeds the 1232-byte transaction cap."
+        ]
+      },
+      "score": {
+        "name": "counter4-t120-rate1over2-q104-pow16-arity1",
+        "protocol_family": "Circle",
+        "predicted_cu": 14923919.95869667,
+        "lower_cu": 14864898.563407103,
+        "upper_cu": 14982941.353986239,
+        "cu_budget_fraction": 10.65994282764048,
+        "proof_transport_pressure": 43.310064935064936,
+        "verification_core_cu": 14858167.176268939,
+        "transport_overhead_cu": 61418.72915834278,
+        "component_predicted_cu": 14919585.90542728,
+        "component_gap_vs_monolithic_cu": -4334.053269390017,
+        "feasible": false,
+        "feasibility_reasons": [
+          "predicted CU exceeds the transaction compute budget",
+          "query-controlled soundness lower bound 68.0 bits is below the 120.0-bit target"
+        ],
+        "dominant_contributors": [
+          {
+            "feature": "extension_mul_ops",
+            "coefficient": 3175.4537344967566,
+            "feature_value": 2600.0,
+            "cu": 8256179.709691567
+          },
+          {
+            "feature": "field_inv_ops",
+            "coefficient": 11270.192375974051,
+            "feature_value": 313.0,
+            "cu": 3527570.213679878
+          },
+          {
+            "feature": "field_mul_ops",
+            "coefficient": 491.3739010822489,
+            "feature_value": 2712.0,
+            "cu": 1332606.019735059
+          }
+        ],
+        "query_soundness": {
+          "model": "fri_query_soundness",
+          "query_count": 104,
+          "target_bits": 120.0,
+          "lower_bits": 68.0,
+          "lower_assumption": "fri_proven_rate_pow_q_over_2",
+          "upper_bits": 120.0,
+          "upper_assumption": "ethstark_conjectured_rate_pow_q",
+          "meets_target": false,
+          "notes": [
+            "Lower bound uses the proven FRI query term rate^(q/2).",
+            "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ],
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ]
+        }
+      }
+    },
+    {
+      "rank": 10,
+      "attempt_id": "counter4-t120-rate1over2-q104-pow16-arity2",
+      "target_bits": 120,
+      "conjectured_soundness_bits": 120,
+      "scenario": "counter4",
+      "fri": {
+        "log_blowup": 1,
+        "log_final_poly_len": 0,
+        "max_log_arity": 2,
+        "num_queries": 104,
+        "commit_proof_of_work_bits": 0,
+        "query_proof_of_work_bits": 16
+      },
+      "proof_bytes": 53358,
+      "profile": {
+        "name": "counter4-t120-rate1over2-q104-pow16-arity2",
+        "features": {
+          "sha_calls": 1565,
+          "sha_bytes": 246684,
+          "merkle_paths": 520,
+          "merkle_levels": 1352,
+          "proof_bytes": 53358,
+          "proof_segments": 105,
+          "upload_bytes": 53358,
+          "upload_chunks": 105,
+          "heap_frame_bytes_requested": 131072,
+          "heap_pages_32k": 4,
+          "ro_account_count": 2,
+          "rw_account_count": 1,
+          "account_data_bytes_read": 57454,
+          "account_data_bytes_written": 128,
+          "field_add_sub_ops": 1456,
+          "field_mul_ops": 2712,
+          "field_inv_ops": 313,
+          "extension_mul_ops": 2600
+        },
+        "protocol_family": "Circle",
+        "transport": {
+          "sha_calls": 105,
+          "sha_bytes": 56718,
+          "upload_bytes": 53358,
+          "upload_chunks": 105
+        },
+        "parameter_choices": [
+          {
+            "name": "scenario",
+            "value": "counter4",
+            "rationale": "Measured on the actual p3-circle proof generated during the host sweep.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "log_blowup",
+            "value": "1",
+            "rationale": "Literal FRI blowup exponent supplied to p3-circle.",
+            "sources": [
+              "docs/circle-parameter-space.md"
+            ]
+          },
+          {
+            "name": "num_queries",
+            "value": "104",
+            "rationale": "Literal FRI query count used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "query_proof_of_work_bits",
+            "value": "16",
+            "rationale": "Literal PoW bits used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "upload_chunk_bytes",
+            "value": "512",
+            "rationale": "Conservative staging chunk under the 1232-byte Solana transaction ceiling.",
+            "sources": [
+              "phase1_results/summary.json"
+            ]
+          }
+        ],
+        "references": [
+          "results/circle-parameter-sweep/host-results.md",
+          "docs/circle-parameter-space.md",
+          "phase1_results/summary.json"
+        ],
+        "query_soundness_model": {
+          "model": "fri",
+          "query_count": 104,
+          "log_blowup": 1,
+          "query_proof_of_work_bits": 16,
+          "target_bits": 120.0,
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ],
+          "notes": [
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ]
+        },
+        "notes": [
+          "Projected from proof structure and the existing phase1 CU model; no direct SBF execution was possible under the pinned reference because the Solana cargo-build-sbf toolchain still rejects edition2024 dependencies.",
+          "Transport cost assumes staged upload in 512-byte chunks because every successful Circle proof in this sweep exceeds the 1232-byte transaction cap."
+        ]
+      },
+      "score": {
+        "name": "counter4-t120-rate1over2-q104-pow16-arity2",
+        "protocol_family": "Circle",
+        "predicted_cu": 14923919.95869667,
+        "lower_cu": 14864898.563407103,
+        "upper_cu": 14982941.353986239,
+        "cu_budget_fraction": 10.65994282764048,
+        "proof_transport_pressure": 43.310064935064936,
+        "verification_core_cu": 14858167.176268939,
+        "transport_overhead_cu": 61418.72915834278,
+        "component_predicted_cu": 14919585.90542728,
+        "component_gap_vs_monolithic_cu": -4334.053269390017,
+        "feasible": false,
+        "feasibility_reasons": [
+          "predicted CU exceeds the transaction compute budget",
+          "query-controlled soundness lower bound 68.0 bits is below the 120.0-bit target"
+        ],
+        "dominant_contributors": [
+          {
+            "feature": "extension_mul_ops",
+            "coefficient": 3175.4537344967566,
+            "feature_value": 2600.0,
+            "cu": 8256179.709691567
+          },
+          {
+            "feature": "field_inv_ops",
+            "coefficient": 11270.192375974051,
+            "feature_value": 313.0,
+            "cu": 3527570.213679878
+          },
+          {
+            "feature": "field_mul_ops",
+            "coefficient": 491.3739010822489,
+            "feature_value": 2712.0,
+            "cu": 1332606.019735059
+          }
+        ],
+        "query_soundness": {
+          "model": "fri_query_soundness",
+          "query_count": 104,
+          "target_bits": 120.0,
+          "lower_bits": 68.0,
+          "lower_assumption": "fri_proven_rate_pow_q_over_2",
+          "upper_bits": 120.0,
+          "upper_assumption": "ethstark_conjectured_rate_pow_q",
+          "meets_target": false,
+          "notes": [
+            "Lower bound uses the proven FRI query term rate^(q/2).",
+            "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ],
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ]
+        }
+      }
+    },
+    {
+      "rank": 11,
+      "attempt_id": "counter4-t120-rate1over2-q104-pow16-arity3",
+      "target_bits": 120,
+      "conjectured_soundness_bits": 120,
+      "scenario": "counter4",
+      "fri": {
+        "log_blowup": 1,
+        "log_final_poly_len": 0,
+        "max_log_arity": 3,
+        "num_queries": 104,
+        "commit_proof_of_work_bits": 0,
+        "query_proof_of_work_bits": 16
+      },
+      "proof_bytes": 53358,
+      "profile": {
+        "name": "counter4-t120-rate1over2-q104-pow16-arity3",
+        "features": {
+          "sha_calls": 1565,
+          "sha_bytes": 246684,
+          "merkle_paths": 520,
+          "merkle_levels": 1352,
+          "proof_bytes": 53358,
+          "proof_segments": 105,
+          "upload_bytes": 53358,
+          "upload_chunks": 105,
+          "heap_frame_bytes_requested": 131072,
+          "heap_pages_32k": 4,
+          "ro_account_count": 2,
+          "rw_account_count": 1,
+          "account_data_bytes_read": 57454,
+          "account_data_bytes_written": 128,
+          "field_add_sub_ops": 1456,
+          "field_mul_ops": 2712,
+          "field_inv_ops": 313,
+          "extension_mul_ops": 2600
+        },
+        "protocol_family": "Circle",
+        "transport": {
+          "sha_calls": 105,
+          "sha_bytes": 56718,
+          "upload_bytes": 53358,
+          "upload_chunks": 105
+        },
+        "parameter_choices": [
+          {
+            "name": "scenario",
+            "value": "counter4",
+            "rationale": "Measured on the actual p3-circle proof generated during the host sweep.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "log_blowup",
+            "value": "1",
+            "rationale": "Literal FRI blowup exponent supplied to p3-circle.",
+            "sources": [
+              "docs/circle-parameter-space.md"
+            ]
+          },
+          {
+            "name": "num_queries",
+            "value": "104",
+            "rationale": "Literal FRI query count used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "query_proof_of_work_bits",
+            "value": "16",
+            "rationale": "Literal PoW bits used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "upload_chunk_bytes",
+            "value": "512",
+            "rationale": "Conservative staging chunk under the 1232-byte Solana transaction ceiling.",
+            "sources": [
+              "phase1_results/summary.json"
+            ]
+          }
+        ],
+        "references": [
+          "results/circle-parameter-sweep/host-results.md",
+          "docs/circle-parameter-space.md",
+          "phase1_results/summary.json"
+        ],
+        "query_soundness_model": {
+          "model": "fri",
+          "query_count": 104,
+          "log_blowup": 1,
+          "query_proof_of_work_bits": 16,
+          "target_bits": 120.0,
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ],
+          "notes": [
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ]
+        },
+        "notes": [
+          "Projected from proof structure and the existing phase1 CU model; no direct SBF execution was possible under the pinned reference because the Solana cargo-build-sbf toolchain still rejects edition2024 dependencies.",
+          "Transport cost assumes staged upload in 512-byte chunks because every successful Circle proof in this sweep exceeds the 1232-byte transaction cap."
+        ]
+      },
+      "score": {
+        "name": "counter4-t120-rate1over2-q104-pow16-arity3",
+        "protocol_family": "Circle",
+        "predicted_cu": 14923919.95869667,
+        "lower_cu": 14864898.563407103,
+        "upper_cu": 14982941.353986239,
+        "cu_budget_fraction": 10.65994282764048,
+        "proof_transport_pressure": 43.310064935064936,
+        "verification_core_cu": 14858167.176268939,
+        "transport_overhead_cu": 61418.72915834278,
+        "component_predicted_cu": 14919585.90542728,
+        "component_gap_vs_monolithic_cu": -4334.053269390017,
+        "feasible": false,
+        "feasibility_reasons": [
+          "predicted CU exceeds the transaction compute budget",
+          "query-controlled soundness lower bound 68.0 bits is below the 120.0-bit target"
+        ],
+        "dominant_contributors": [
+          {
+            "feature": "extension_mul_ops",
+            "coefficient": 3175.4537344967566,
+            "feature_value": 2600.0,
+            "cu": 8256179.709691567
+          },
+          {
+            "feature": "field_inv_ops",
+            "coefficient": 11270.192375974051,
+            "feature_value": 313.0,
+            "cu": 3527570.213679878
+          },
+          {
+            "feature": "field_mul_ops",
+            "coefficient": 491.3739010822489,
+            "feature_value": 2712.0,
+            "cu": 1332606.019735059
+          }
+        ],
+        "query_soundness": {
+          "model": "fri_query_soundness",
+          "query_count": 104,
+          "target_bits": 120.0,
+          "lower_bits": 68.0,
+          "lower_assumption": "fri_proven_rate_pow_q_over_2",
+          "upper_bits": 120.0,
+          "upper_assumption": "ethstark_conjectured_rate_pow_q",
+          "meets_target": false,
+          "notes": [
+            "Lower bound uses the proven FRI query term rate^(q/2).",
+            "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ],
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ]
+        }
+      }
+    },
+    {
+      "rank": 12,
+      "attempt_id": "counter4-t120-rate1over2-q112-pow8-arity1",
+      "target_bits": 120,
+      "conjectured_soundness_bits": 120,
+      "scenario": "counter4",
+      "fri": {
+        "log_blowup": 1,
+        "log_final_poly_len": 0,
+        "max_log_arity": 1,
+        "num_queries": 112,
+        "commit_proof_of_work_bits": 0,
+        "query_proof_of_work_bits": 8
+      },
+      "proof_bytes": 57437,
+      "profile": {
+        "name": "counter4-t120-rate1over2-q112-pow8-arity1",
+        "features": {
+          "sha_calls": 1685,
+          "sha_bytes": 265594,
+          "merkle_paths": 560,
+          "merkle_levels": 1456,
+          "proof_bytes": 57437,
+          "proof_segments": 113,
+          "upload_bytes": 57437,
+          "upload_chunks": 113,
+          "heap_frame_bytes_requested": 131072,
+          "heap_pages_32k": 4,
+          "ro_account_count": 2,
+          "rw_account_count": 1,
+          "account_data_bytes_read": 61533,
+          "account_data_bytes_written": 128,
+          "field_add_sub_ops": 1568,
+          "field_mul_ops": 2920,
+          "field_inv_ops": 337,
+          "extension_mul_ops": 2800
+        },
+        "protocol_family": "Circle",
+        "transport": {
+          "sha_calls": 113,
+          "sha_bytes": 61053,
+          "upload_bytes": 57437,
+          "upload_chunks": 113
+        },
+        "parameter_choices": [
+          {
+            "name": "scenario",
+            "value": "counter4",
+            "rationale": "Measured on the actual p3-circle proof generated during the host sweep.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "log_blowup",
+            "value": "1",
+            "rationale": "Literal FRI blowup exponent supplied to p3-circle.",
+            "sources": [
+              "docs/circle-parameter-space.md"
+            ]
+          },
+          {
+            "name": "num_queries",
+            "value": "112",
+            "rationale": "Literal FRI query count used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "query_proof_of_work_bits",
+            "value": "8",
+            "rationale": "Literal PoW bits used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "upload_chunk_bytes",
+            "value": "512",
+            "rationale": "Conservative staging chunk under the 1232-byte Solana transaction ceiling.",
+            "sources": [
+              "phase1_results/summary.json"
+            ]
+          }
+        ],
+        "references": [
+          "results/circle-parameter-sweep/host-results.md",
+          "docs/circle-parameter-space.md",
+          "phase1_results/summary.json"
+        ],
+        "query_soundness_model": {
+          "model": "fri",
+          "query_count": 112,
+          "log_blowup": 1,
+          "query_proof_of_work_bits": 8,
+          "target_bits": 120.0,
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ],
+          "notes": [
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ]
+        },
+        "notes": [
+          "Projected from proof structure and the existing phase1 CU model; no direct SBF execution was possible under the pinned reference because the Solana cargo-build-sbf toolchain still rejects edition2024 dependencies.",
+          "Transport cost assumes staged upload in 512-byte chunks because every successful Circle proof in this sweep exceeds the 1232-byte transaction cap."
+        ]
+      },
+      "score": {
+        "name": "counter4-t120-rate1over2-q112-pow8-arity1",
+        "protocol_family": "Circle",
+        "predicted_cu": 16035775.74444051,
+        "lower_cu": 15976754.349150943,
+        "upper_cu": 16094797.13973008,
+        "cu_budget_fraction": 11.454125531743221,
+        "proof_transport_pressure": 46.62094155844156,
+        "verification_core_cu": 15965022.47275786,
+        "transport_overhead_cu": 66054.81322826636,
+        "component_predicted_cu": 16031077.285986125,
+        "component_gap_vs_monolithic_cu": -4698.4584543854,
+        "feasible": false,
+        "feasibility_reasons": [
+          "predicted CU exceeds the transaction compute budget",
+          "query-controlled soundness lower bound 64.0 bits is below the 120.0-bit target"
+        ],
+        "dominant_contributors": [
+          {
+            "feature": "extension_mul_ops",
+            "coefficient": 3175.4537344967566,
+            "feature_value": 2800.0,
+            "cu": 8891270.456590919
+          },
+          {
+            "feature": "field_inv_ops",
+            "coefficient": 11270.192375974051,
+            "feature_value": 337.0,
+            "cu": 3798054.8307032553
+          },
+          {
+            "feature": "field_mul_ops",
+            "coefficient": 491.3739010822489,
+            "feature_value": 2920.0,
+            "cu": 1434811.7911601667
+          }
+        ],
+        "query_soundness": {
+          "model": "fri_query_soundness",
+          "query_count": 112,
+          "target_bits": 120.0,
+          "lower_bits": 64.0,
+          "lower_assumption": "fri_proven_rate_pow_q_over_2",
+          "upper_bits": 120.0,
+          "upper_assumption": "ethstark_conjectured_rate_pow_q",
+          "meets_target": false,
+          "notes": [
+            "Lower bound uses the proven FRI query term rate^(q/2).",
+            "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ],
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ]
+        }
+      }
+    },
+    {
+      "rank": 13,
+      "attempt_id": "counter4-t120-rate1over2-q112-pow8-arity2",
+      "target_bits": 120,
+      "conjectured_soundness_bits": 120,
+      "scenario": "counter4",
+      "fri": {
+        "log_blowup": 1,
+        "log_final_poly_len": 0,
+        "max_log_arity": 2,
+        "num_queries": 112,
+        "commit_proof_of_work_bits": 0,
+        "query_proof_of_work_bits": 8
+      },
+      "proof_bytes": 57437,
+      "profile": {
+        "name": "counter4-t120-rate1over2-q112-pow8-arity2",
+        "features": {
+          "sha_calls": 1685,
+          "sha_bytes": 265594,
+          "merkle_paths": 560,
+          "merkle_levels": 1456,
+          "proof_bytes": 57437,
+          "proof_segments": 113,
+          "upload_bytes": 57437,
+          "upload_chunks": 113,
+          "heap_frame_bytes_requested": 131072,
+          "heap_pages_32k": 4,
+          "ro_account_count": 2,
+          "rw_account_count": 1,
+          "account_data_bytes_read": 61533,
+          "account_data_bytes_written": 128,
+          "field_add_sub_ops": 1568,
+          "field_mul_ops": 2920,
+          "field_inv_ops": 337,
+          "extension_mul_ops": 2800
+        },
+        "protocol_family": "Circle",
+        "transport": {
+          "sha_calls": 113,
+          "sha_bytes": 61053,
+          "upload_bytes": 57437,
+          "upload_chunks": 113
+        },
+        "parameter_choices": [
+          {
+            "name": "scenario",
+            "value": "counter4",
+            "rationale": "Measured on the actual p3-circle proof generated during the host sweep.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "log_blowup",
+            "value": "1",
+            "rationale": "Literal FRI blowup exponent supplied to p3-circle.",
+            "sources": [
+              "docs/circle-parameter-space.md"
+            ]
+          },
+          {
+            "name": "num_queries",
+            "value": "112",
+            "rationale": "Literal FRI query count used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "query_proof_of_work_bits",
+            "value": "8",
+            "rationale": "Literal PoW bits used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "upload_chunk_bytes",
+            "value": "512",
+            "rationale": "Conservative staging chunk under the 1232-byte Solana transaction ceiling.",
+            "sources": [
+              "phase1_results/summary.json"
+            ]
+          }
+        ],
+        "references": [
+          "results/circle-parameter-sweep/host-results.md",
+          "docs/circle-parameter-space.md",
+          "phase1_results/summary.json"
+        ],
+        "query_soundness_model": {
+          "model": "fri",
+          "query_count": 112,
+          "log_blowup": 1,
+          "query_proof_of_work_bits": 8,
+          "target_bits": 120.0,
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ],
+          "notes": [
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ]
+        },
+        "notes": [
+          "Projected from proof structure and the existing phase1 CU model; no direct SBF execution was possible under the pinned reference because the Solana cargo-build-sbf toolchain still rejects edition2024 dependencies.",
+          "Transport cost assumes staged upload in 512-byte chunks because every successful Circle proof in this sweep exceeds the 1232-byte transaction cap."
+        ]
+      },
+      "score": {
+        "name": "counter4-t120-rate1over2-q112-pow8-arity2",
+        "protocol_family": "Circle",
+        "predicted_cu": 16035775.74444051,
+        "lower_cu": 15976754.349150943,
+        "upper_cu": 16094797.13973008,
+        "cu_budget_fraction": 11.454125531743221,
+        "proof_transport_pressure": 46.62094155844156,
+        "verification_core_cu": 15965022.47275786,
+        "transport_overhead_cu": 66054.81322826636,
+        "component_predicted_cu": 16031077.285986125,
+        "component_gap_vs_monolithic_cu": -4698.4584543854,
+        "feasible": false,
+        "feasibility_reasons": [
+          "predicted CU exceeds the transaction compute budget",
+          "query-controlled soundness lower bound 64.0 bits is below the 120.0-bit target"
+        ],
+        "dominant_contributors": [
+          {
+            "feature": "extension_mul_ops",
+            "coefficient": 3175.4537344967566,
+            "feature_value": 2800.0,
+            "cu": 8891270.456590919
+          },
+          {
+            "feature": "field_inv_ops",
+            "coefficient": 11270.192375974051,
+            "feature_value": 337.0,
+            "cu": 3798054.8307032553
+          },
+          {
+            "feature": "field_mul_ops",
+            "coefficient": 491.3739010822489,
+            "feature_value": 2920.0,
+            "cu": 1434811.7911601667
+          }
+        ],
+        "query_soundness": {
+          "model": "fri_query_soundness",
+          "query_count": 112,
+          "target_bits": 120.0,
+          "lower_bits": 64.0,
+          "lower_assumption": "fri_proven_rate_pow_q_over_2",
+          "upper_bits": 120.0,
+          "upper_assumption": "ethstark_conjectured_rate_pow_q",
+          "meets_target": false,
+          "notes": [
+            "Lower bound uses the proven FRI query term rate^(q/2).",
+            "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ],
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ]
+        }
+      }
+    },
+    {
+      "rank": 14,
+      "attempt_id": "counter4-t120-rate1over2-q112-pow8-arity3",
+      "target_bits": 120,
+      "conjectured_soundness_bits": 120,
+      "scenario": "counter4",
+      "fri": {
+        "log_blowup": 1,
+        "log_final_poly_len": 0,
+        "max_log_arity": 3,
+        "num_queries": 112,
+        "commit_proof_of_work_bits": 0,
+        "query_proof_of_work_bits": 8
+      },
+      "proof_bytes": 57437,
+      "profile": {
+        "name": "counter4-t120-rate1over2-q112-pow8-arity3",
+        "features": {
+          "sha_calls": 1685,
+          "sha_bytes": 265594,
+          "merkle_paths": 560,
+          "merkle_levels": 1456,
+          "proof_bytes": 57437,
+          "proof_segments": 113,
+          "upload_bytes": 57437,
+          "upload_chunks": 113,
+          "heap_frame_bytes_requested": 131072,
+          "heap_pages_32k": 4,
+          "ro_account_count": 2,
+          "rw_account_count": 1,
+          "account_data_bytes_read": 61533,
+          "account_data_bytes_written": 128,
+          "field_add_sub_ops": 1568,
+          "field_mul_ops": 2920,
+          "field_inv_ops": 337,
+          "extension_mul_ops": 2800
+        },
+        "protocol_family": "Circle",
+        "transport": {
+          "sha_calls": 113,
+          "sha_bytes": 61053,
+          "upload_bytes": 57437,
+          "upload_chunks": 113
+        },
+        "parameter_choices": [
+          {
+            "name": "scenario",
+            "value": "counter4",
+            "rationale": "Measured on the actual p3-circle proof generated during the host sweep.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "log_blowup",
+            "value": "1",
+            "rationale": "Literal FRI blowup exponent supplied to p3-circle.",
+            "sources": [
+              "docs/circle-parameter-space.md"
+            ]
+          },
+          {
+            "name": "num_queries",
+            "value": "112",
+            "rationale": "Literal FRI query count used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "query_proof_of_work_bits",
+            "value": "8",
+            "rationale": "Literal PoW bits used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "upload_chunk_bytes",
+            "value": "512",
+            "rationale": "Conservative staging chunk under the 1232-byte Solana transaction ceiling.",
+            "sources": [
+              "phase1_results/summary.json"
+            ]
+          }
+        ],
+        "references": [
+          "results/circle-parameter-sweep/host-results.md",
+          "docs/circle-parameter-space.md",
+          "phase1_results/summary.json"
+        ],
+        "query_soundness_model": {
+          "model": "fri",
+          "query_count": 112,
+          "log_blowup": 1,
+          "query_proof_of_work_bits": 8,
+          "target_bits": 120.0,
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ],
+          "notes": [
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ]
+        },
+        "notes": [
+          "Projected from proof structure and the existing phase1 CU model; no direct SBF execution was possible under the pinned reference because the Solana cargo-build-sbf toolchain still rejects edition2024 dependencies.",
+          "Transport cost assumes staged upload in 512-byte chunks because every successful Circle proof in this sweep exceeds the 1232-byte transaction cap."
+        ]
+      },
+      "score": {
+        "name": "counter4-t120-rate1over2-q112-pow8-arity3",
+        "protocol_family": "Circle",
+        "predicted_cu": 16035775.74444051,
+        "lower_cu": 15976754.349150943,
+        "upper_cu": 16094797.13973008,
+        "cu_budget_fraction": 11.454125531743221,
+        "proof_transport_pressure": 46.62094155844156,
+        "verification_core_cu": 15965022.47275786,
+        "transport_overhead_cu": 66054.81322826636,
+        "component_predicted_cu": 16031077.285986125,
+        "component_gap_vs_monolithic_cu": -4698.4584543854,
+        "feasible": false,
+        "feasibility_reasons": [
+          "predicted CU exceeds the transaction compute budget",
+          "query-controlled soundness lower bound 64.0 bits is below the 120.0-bit target"
+        ],
+        "dominant_contributors": [
+          {
+            "feature": "extension_mul_ops",
+            "coefficient": 3175.4537344967566,
+            "feature_value": 2800.0,
+            "cu": 8891270.456590919
+          },
+          {
+            "feature": "field_inv_ops",
+            "coefficient": 11270.192375974051,
+            "feature_value": 337.0,
+            "cu": 3798054.8307032553
+          },
+          {
+            "feature": "field_mul_ops",
+            "coefficient": 491.3739010822489,
+            "feature_value": 2920.0,
+            "cu": 1434811.7911601667
+          }
+        ],
+        "query_soundness": {
+          "model": "fri_query_soundness",
+          "query_count": 112,
+          "target_bits": 120.0,
+          "lower_bits": 64.0,
+          "lower_assumption": "fri_proven_rate_pow_q_over_2",
+          "upper_bits": 120.0,
+          "upper_assumption": "ethstark_conjectured_rate_pow_q",
+          "meets_target": false,
+          "notes": [
+            "Lower bound uses the proven FRI query term rate^(q/2).",
+            "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ],
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ]
+        }
+      }
+    },
+    {
+      "rank": 15,
+      "attempt_id": "counter4-t128-rate1over2-q112-pow16-arity1",
+      "target_bits": 128,
+      "conjectured_soundness_bits": 128,
+      "scenario": "counter4",
+      "fri": {
+        "log_blowup": 1,
+        "log_final_poly_len": 0,
+        "max_log_arity": 1,
+        "num_queries": 112,
+        "commit_proof_of_work_bits": 0,
+        "query_proof_of_work_bits": 16
+      },
+      "proof_bytes": 57443,
+      "profile": {
+        "name": "counter4-t128-rate1over2-q112-pow16-arity1",
+        "features": {
+          "sha_calls": 1685,
+          "sha_bytes": 265606,
+          "merkle_paths": 560,
+          "merkle_levels": 1456,
+          "proof_bytes": 57443,
+          "proof_segments": 113,
+          "upload_bytes": 57443,
+          "upload_chunks": 113,
+          "heap_frame_bytes_requested": 131072,
+          "heap_pages_32k": 4,
+          "ro_account_count": 2,
+          "rw_account_count": 1,
+          "account_data_bytes_read": 61539,
+          "account_data_bytes_written": 128,
+          "field_add_sub_ops": 1568,
+          "field_mul_ops": 2920,
+          "field_inv_ops": 337,
+          "extension_mul_ops": 2800
+        },
+        "protocol_family": "Circle",
+        "transport": {
+          "sha_calls": 113,
+          "sha_bytes": 61059,
+          "upload_bytes": 57443,
+          "upload_chunks": 113
+        },
+        "parameter_choices": [
+          {
+            "name": "scenario",
+            "value": "counter4",
+            "rationale": "Measured on the actual p3-circle proof generated during the host sweep.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "log_blowup",
+            "value": "1",
+            "rationale": "Literal FRI blowup exponent supplied to p3-circle.",
+            "sources": [
+              "docs/circle-parameter-space.md"
+            ]
+          },
+          {
+            "name": "num_queries",
+            "value": "112",
+            "rationale": "Literal FRI query count used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "query_proof_of_work_bits",
+            "value": "16",
+            "rationale": "Literal PoW bits used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "upload_chunk_bytes",
+            "value": "512",
+            "rationale": "Conservative staging chunk under the 1232-byte Solana transaction ceiling.",
+            "sources": [
+              "phase1_results/summary.json"
+            ]
+          }
+        ],
+        "references": [
+          "results/circle-parameter-sweep/host-results.md",
+          "docs/circle-parameter-space.md",
+          "phase1_results/summary.json"
+        ],
+        "query_soundness_model": {
+          "model": "fri",
+          "query_count": 112,
+          "log_blowup": 1,
+          "query_proof_of_work_bits": 16,
+          "target_bits": 128.0,
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ],
+          "notes": [
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ]
+        },
+        "notes": [
+          "Projected from proof structure and the existing phase1 CU model; no direct SBF execution was possible under the pinned reference because the Solana cargo-build-sbf toolchain still rejects edition2024 dependencies.",
+          "Transport cost assumes staged upload in 512-byte chunks because every successful Circle proof in this sweep exceeds the 1232-byte transaction cap."
+        ]
+      },
+      "score": {
+        "name": "counter4-t128-rate1over2-q112-pow16-arity1",
+        "protocol_family": "Circle",
+        "predicted_cu": 16035827.84608966,
+        "lower_cu": 15976806.450800091,
+        "upper_cu": 16094849.241379227,
+        "cu_budget_fraction": 11.4541627472069,
+        "proof_transport_pressure": 46.625811688311686,
+        "verification_core_cu": 15965069.825284425,
+        "transport_overhead_cu": 66059.57234545097,
+        "component_predicted_cu": 16031129.397629876,
+        "component_gap_vs_monolithic_cu": -4698.448459783569,
+        "feasible": false,
+        "feasibility_reasons": [
+          "predicted CU exceeds the transaction compute budget",
+          "query-controlled soundness lower bound 72.0 bits is below the 128.0-bit target"
+        ],
+        "dominant_contributors": [
+          {
+            "feature": "extension_mul_ops",
+            "coefficient": 3175.4537344967566,
+            "feature_value": 2800.0,
+            "cu": 8891270.456590919
+          },
+          {
+            "feature": "field_inv_ops",
+            "coefficient": 11270.192375974051,
+            "feature_value": 337.0,
+            "cu": 3798054.8307032553
+          },
+          {
+            "feature": "field_mul_ops",
+            "coefficient": 491.3739010822489,
+            "feature_value": 2920.0,
+            "cu": 1434811.7911601667
+          }
+        ],
+        "query_soundness": {
+          "model": "fri_query_soundness",
+          "query_count": 112,
+          "target_bits": 128.0,
+          "lower_bits": 72.0,
+          "lower_assumption": "fri_proven_rate_pow_q_over_2",
+          "upper_bits": 128.0,
+          "upper_assumption": "ethstark_conjectured_rate_pow_q",
+          "meets_target": false,
+          "notes": [
+            "Lower bound uses the proven FRI query term rate^(q/2).",
+            "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ],
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ]
+        }
+      }
+    },
+    {
+      "rank": 16,
+      "attempt_id": "counter4-t128-rate1over2-q112-pow16-arity2",
+      "target_bits": 128,
+      "conjectured_soundness_bits": 128,
+      "scenario": "counter4",
+      "fri": {
+        "log_blowup": 1,
+        "log_final_poly_len": 0,
+        "max_log_arity": 2,
+        "num_queries": 112,
+        "commit_proof_of_work_bits": 0,
+        "query_proof_of_work_bits": 16
+      },
+      "proof_bytes": 57443,
+      "profile": {
+        "name": "counter4-t128-rate1over2-q112-pow16-arity2",
+        "features": {
+          "sha_calls": 1685,
+          "sha_bytes": 265606,
+          "merkle_paths": 560,
+          "merkle_levels": 1456,
+          "proof_bytes": 57443,
+          "proof_segments": 113,
+          "upload_bytes": 57443,
+          "upload_chunks": 113,
+          "heap_frame_bytes_requested": 131072,
+          "heap_pages_32k": 4,
+          "ro_account_count": 2,
+          "rw_account_count": 1,
+          "account_data_bytes_read": 61539,
+          "account_data_bytes_written": 128,
+          "field_add_sub_ops": 1568,
+          "field_mul_ops": 2920,
+          "field_inv_ops": 337,
+          "extension_mul_ops": 2800
+        },
+        "protocol_family": "Circle",
+        "transport": {
+          "sha_calls": 113,
+          "sha_bytes": 61059,
+          "upload_bytes": 57443,
+          "upload_chunks": 113
+        },
+        "parameter_choices": [
+          {
+            "name": "scenario",
+            "value": "counter4",
+            "rationale": "Measured on the actual p3-circle proof generated during the host sweep.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "log_blowup",
+            "value": "1",
+            "rationale": "Literal FRI blowup exponent supplied to p3-circle.",
+            "sources": [
+              "docs/circle-parameter-space.md"
+            ]
+          },
+          {
+            "name": "num_queries",
+            "value": "112",
+            "rationale": "Literal FRI query count used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "query_proof_of_work_bits",
+            "value": "16",
+            "rationale": "Literal PoW bits used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "upload_chunk_bytes",
+            "value": "512",
+            "rationale": "Conservative staging chunk under the 1232-byte Solana transaction ceiling.",
+            "sources": [
+              "phase1_results/summary.json"
+            ]
+          }
+        ],
+        "references": [
+          "results/circle-parameter-sweep/host-results.md",
+          "docs/circle-parameter-space.md",
+          "phase1_results/summary.json"
+        ],
+        "query_soundness_model": {
+          "model": "fri",
+          "query_count": 112,
+          "log_blowup": 1,
+          "query_proof_of_work_bits": 16,
+          "target_bits": 128.0,
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ],
+          "notes": [
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ]
+        },
+        "notes": [
+          "Projected from proof structure and the existing phase1 CU model; no direct SBF execution was possible under the pinned reference because the Solana cargo-build-sbf toolchain still rejects edition2024 dependencies.",
+          "Transport cost assumes staged upload in 512-byte chunks because every successful Circle proof in this sweep exceeds the 1232-byte transaction cap."
+        ]
+      },
+      "score": {
+        "name": "counter4-t128-rate1over2-q112-pow16-arity2",
+        "protocol_family": "Circle",
+        "predicted_cu": 16035827.84608966,
+        "lower_cu": 15976806.450800091,
+        "upper_cu": 16094849.241379227,
+        "cu_budget_fraction": 11.4541627472069,
+        "proof_transport_pressure": 46.625811688311686,
+        "verification_core_cu": 15965069.825284425,
+        "transport_overhead_cu": 66059.57234545097,
+        "component_predicted_cu": 16031129.397629876,
+        "component_gap_vs_monolithic_cu": -4698.448459783569,
+        "feasible": false,
+        "feasibility_reasons": [
+          "predicted CU exceeds the transaction compute budget",
+          "query-controlled soundness lower bound 72.0 bits is below the 128.0-bit target"
+        ],
+        "dominant_contributors": [
+          {
+            "feature": "extension_mul_ops",
+            "coefficient": 3175.4537344967566,
+            "feature_value": 2800.0,
+            "cu": 8891270.456590919
+          },
+          {
+            "feature": "field_inv_ops",
+            "coefficient": 11270.192375974051,
+            "feature_value": 337.0,
+            "cu": 3798054.8307032553
+          },
+          {
+            "feature": "field_mul_ops",
+            "coefficient": 491.3739010822489,
+            "feature_value": 2920.0,
+            "cu": 1434811.7911601667
+          }
+        ],
+        "query_soundness": {
+          "model": "fri_query_soundness",
+          "query_count": 112,
+          "target_bits": 128.0,
+          "lower_bits": 72.0,
+          "lower_assumption": "fri_proven_rate_pow_q_over_2",
+          "upper_bits": 128.0,
+          "upper_assumption": "ethstark_conjectured_rate_pow_q",
+          "meets_target": false,
+          "notes": [
+            "Lower bound uses the proven FRI query term rate^(q/2).",
+            "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ],
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ]
+        }
+      }
+    },
+    {
+      "rank": 17,
+      "attempt_id": "counter4-t128-rate1over2-q112-pow16-arity3",
+      "target_bits": 128,
+      "conjectured_soundness_bits": 128,
+      "scenario": "counter4",
+      "fri": {
+        "log_blowup": 1,
+        "log_final_poly_len": 0,
+        "max_log_arity": 3,
+        "num_queries": 112,
+        "commit_proof_of_work_bits": 0,
+        "query_proof_of_work_bits": 16
+      },
+      "proof_bytes": 57443,
+      "profile": {
+        "name": "counter4-t128-rate1over2-q112-pow16-arity3",
+        "features": {
+          "sha_calls": 1685,
+          "sha_bytes": 265606,
+          "merkle_paths": 560,
+          "merkle_levels": 1456,
+          "proof_bytes": 57443,
+          "proof_segments": 113,
+          "upload_bytes": 57443,
+          "upload_chunks": 113,
+          "heap_frame_bytes_requested": 131072,
+          "heap_pages_32k": 4,
+          "ro_account_count": 2,
+          "rw_account_count": 1,
+          "account_data_bytes_read": 61539,
+          "account_data_bytes_written": 128,
+          "field_add_sub_ops": 1568,
+          "field_mul_ops": 2920,
+          "field_inv_ops": 337,
+          "extension_mul_ops": 2800
+        },
+        "protocol_family": "Circle",
+        "transport": {
+          "sha_calls": 113,
+          "sha_bytes": 61059,
+          "upload_bytes": 57443,
+          "upload_chunks": 113
+        },
+        "parameter_choices": [
+          {
+            "name": "scenario",
+            "value": "counter4",
+            "rationale": "Measured on the actual p3-circle proof generated during the host sweep.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "log_blowup",
+            "value": "1",
+            "rationale": "Literal FRI blowup exponent supplied to p3-circle.",
+            "sources": [
+              "docs/circle-parameter-space.md"
+            ]
+          },
+          {
+            "name": "num_queries",
+            "value": "112",
+            "rationale": "Literal FRI query count used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "query_proof_of_work_bits",
+            "value": "16",
+            "rationale": "Literal PoW bits used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "upload_chunk_bytes",
+            "value": "512",
+            "rationale": "Conservative staging chunk under the 1232-byte Solana transaction ceiling.",
+            "sources": [
+              "phase1_results/summary.json"
+            ]
+          }
+        ],
+        "references": [
+          "results/circle-parameter-sweep/host-results.md",
+          "docs/circle-parameter-space.md",
+          "phase1_results/summary.json"
+        ],
+        "query_soundness_model": {
+          "model": "fri",
+          "query_count": 112,
+          "log_blowup": 1,
+          "query_proof_of_work_bits": 16,
+          "target_bits": 128.0,
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ],
+          "notes": [
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ]
+        },
+        "notes": [
+          "Projected from proof structure and the existing phase1 CU model; no direct SBF execution was possible under the pinned reference because the Solana cargo-build-sbf toolchain still rejects edition2024 dependencies.",
+          "Transport cost assumes staged upload in 512-byte chunks because every successful Circle proof in this sweep exceeds the 1232-byte transaction cap."
+        ]
+      },
+      "score": {
+        "name": "counter4-t128-rate1over2-q112-pow16-arity3",
+        "protocol_family": "Circle",
+        "predicted_cu": 16035827.84608966,
+        "lower_cu": 15976806.450800091,
+        "upper_cu": 16094849.241379227,
+        "cu_budget_fraction": 11.4541627472069,
+        "proof_transport_pressure": 46.625811688311686,
+        "verification_core_cu": 15965069.825284425,
+        "transport_overhead_cu": 66059.57234545097,
+        "component_predicted_cu": 16031129.397629876,
+        "component_gap_vs_monolithic_cu": -4698.448459783569,
+        "feasible": false,
+        "feasibility_reasons": [
+          "predicted CU exceeds the transaction compute budget",
+          "query-controlled soundness lower bound 72.0 bits is below the 128.0-bit target"
+        ],
+        "dominant_contributors": [
+          {
+            "feature": "extension_mul_ops",
+            "coefficient": 3175.4537344967566,
+            "feature_value": 2800.0,
+            "cu": 8891270.456590919
+          },
+          {
+            "feature": "field_inv_ops",
+            "coefficient": 11270.192375974051,
+            "feature_value": 337.0,
+            "cu": 3798054.8307032553
+          },
+          {
+            "feature": "field_mul_ops",
+            "coefficient": 491.3739010822489,
+            "feature_value": 2920.0,
+            "cu": 1434811.7911601667
+          }
+        ],
+        "query_soundness": {
+          "model": "fri_query_soundness",
+          "query_count": 112,
+          "target_bits": 128.0,
+          "lower_bits": 72.0,
+          "lower_assumption": "fri_proven_rate_pow_q_over_2",
+          "upper_bits": 128.0,
+          "upper_assumption": "ethstark_conjectured_rate_pow_q",
+          "meets_target": false,
+          "notes": [
+            "Lower bound uses the proven FRI query term rate^(q/2).",
+            "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ],
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ]
+        }
+      }
+    },
+    {
+      "rank": 18,
+      "attempt_id": "counter4-t128-rate1over2-q120-pow8-arity1",
+      "target_bits": 128,
+      "conjectured_soundness_bits": 128,
+      "scenario": "counter4",
+      "fri": {
+        "log_blowup": 1,
+        "log_final_poly_len": 0,
+        "max_log_arity": 1,
+        "num_queries": 120,
+        "commit_proof_of_work_bits": 0,
+        "query_proof_of_work_bits": 8
+      },
+      "proof_bytes": 61515,
+      "profile": {
+        "name": "counter4-t128-rate1over2-q120-pow8-arity1",
+        "features": {
+          "sha_calls": 1805,
+          "sha_bytes": 284502,
+          "merkle_paths": 600,
+          "merkle_levels": 1560,
+          "proof_bytes": 61515,
+          "proof_segments": 121,
+          "upload_bytes": 61515,
+          "upload_chunks": 121,
+          "heap_frame_bytes_requested": 131072,
+          "heap_pages_32k": 4,
+          "ro_account_count": 2,
+          "rw_account_count": 1,
+          "account_data_bytes_read": 65611,
+          "account_data_bytes_written": 128,
+          "field_add_sub_ops": 1680,
+          "field_mul_ops": 3128,
+          "field_inv_ops": 361,
+          "extension_mul_ops": 3000
+        },
+        "protocol_family": "Circle",
+        "transport": {
+          "sha_calls": 121,
+          "sha_bytes": 65387,
+          "upload_bytes": 61515,
+          "upload_chunks": 121
+        },
+        "parameter_choices": [
+          {
+            "name": "scenario",
+            "value": "counter4",
+            "rationale": "Measured on the actual p3-circle proof generated during the host sweep.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "log_blowup",
+            "value": "1",
+            "rationale": "Literal FRI blowup exponent supplied to p3-circle.",
+            "sources": [
+              "docs/circle-parameter-space.md"
+            ]
+          },
+          {
+            "name": "num_queries",
+            "value": "120",
+            "rationale": "Literal FRI query count used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "query_proof_of_work_bits",
+            "value": "8",
+            "rationale": "Literal PoW bits used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "upload_chunk_bytes",
+            "value": "512",
+            "rationale": "Conservative staging chunk under the 1232-byte Solana transaction ceiling.",
+            "sources": [
+              "phase1_results/summary.json"
+            ]
+          }
+        ],
+        "references": [
+          "results/circle-parameter-sweep/host-results.md",
+          "docs/circle-parameter-space.md",
+          "phase1_results/summary.json"
+        ],
+        "query_soundness_model": {
+          "model": "fri",
+          "query_count": 120,
+          "log_blowup": 1,
+          "query_proof_of_work_bits": 8,
+          "target_bits": 128.0,
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ],
+          "notes": [
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ]
+        },
+        "notes": [
+          "Projected from proof structure and the existing phase1 CU model; no direct SBF execution was possible under the pinned reference because the Solana cargo-build-sbf toolchain still rejects edition2024 dependencies.",
+          "Transport cost assumes staged upload in 512-byte chunks because every successful Circle proof in this sweep exceeds the 1232-byte transaction cap."
+        ]
+      },
+      "score": {
+        "name": "counter4-t128-rate1over2-q120-pow8-arity1",
+        "protocol_family": "Circle",
+        "predicted_cu": 17147622.84657616,
+        "lower_cu": 17088601.451286595,
+        "upper_cu": 17206644.241865728,
+        "cu_budget_fraction": 12.248302033268686,
+        "proof_transport_pressure": 49.931006493506494,
+        "verification_core_cu": 17071869.87715902,
+        "transport_overhead_cu": 70690.10411199249,
+        "component_predicted_cu": 17142559.981271014,
+        "component_gap_vs_monolithic_cu": -5062.865305148065,
+        "feasible": false,
+        "feasibility_reasons": [
+          "predicted CU exceeds the transaction compute budget",
+          "query-controlled soundness lower bound 68.0 bits is below the 128.0-bit target"
+        ],
+        "dominant_contributors": [
+          {
+            "feature": "extension_mul_ops",
+            "coefficient": 3175.4537344967566,
+            "feature_value": 3000.0,
+            "cu": 9526361.20349027
+          },
+          {
+            "feature": "field_inv_ops",
+            "coefficient": 11270.192375974051,
+            "feature_value": 361.0,
+            "cu": 4068539.4477266325
+          },
+          {
+            "feature": "field_mul_ops",
+            "coefficient": 491.3739010822489,
+            "feature_value": 3128.0,
+            "cu": 1537017.5625852745
+          }
+        ],
+        "query_soundness": {
+          "model": "fri_query_soundness",
+          "query_count": 120,
+          "target_bits": 128.0,
+          "lower_bits": 68.0,
+          "lower_assumption": "fri_proven_rate_pow_q_over_2",
+          "upper_bits": 128.0,
+          "upper_assumption": "ethstark_conjectured_rate_pow_q",
+          "meets_target": false,
+          "notes": [
+            "Lower bound uses the proven FRI query term rate^(q/2).",
+            "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ],
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ]
+        }
+      }
+    },
+    {
+      "rank": 19,
+      "attempt_id": "counter4-t128-rate1over2-q120-pow8-arity2",
+      "target_bits": 128,
+      "conjectured_soundness_bits": 128,
+      "scenario": "counter4",
+      "fri": {
+        "log_blowup": 1,
+        "log_final_poly_len": 0,
+        "max_log_arity": 2,
+        "num_queries": 120,
+        "commit_proof_of_work_bits": 0,
+        "query_proof_of_work_bits": 8
+      },
+      "proof_bytes": 61515,
+      "profile": {
+        "name": "counter4-t128-rate1over2-q120-pow8-arity2",
+        "features": {
+          "sha_calls": 1805,
+          "sha_bytes": 284502,
+          "merkle_paths": 600,
+          "merkle_levels": 1560,
+          "proof_bytes": 61515,
+          "proof_segments": 121,
+          "upload_bytes": 61515,
+          "upload_chunks": 121,
+          "heap_frame_bytes_requested": 131072,
+          "heap_pages_32k": 4,
+          "ro_account_count": 2,
+          "rw_account_count": 1,
+          "account_data_bytes_read": 65611,
+          "account_data_bytes_written": 128,
+          "field_add_sub_ops": 1680,
+          "field_mul_ops": 3128,
+          "field_inv_ops": 361,
+          "extension_mul_ops": 3000
+        },
+        "protocol_family": "Circle",
+        "transport": {
+          "sha_calls": 121,
+          "sha_bytes": 65387,
+          "upload_bytes": 61515,
+          "upload_chunks": 121
+        },
+        "parameter_choices": [
+          {
+            "name": "scenario",
+            "value": "counter4",
+            "rationale": "Measured on the actual p3-circle proof generated during the host sweep.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "log_blowup",
+            "value": "1",
+            "rationale": "Literal FRI blowup exponent supplied to p3-circle.",
+            "sources": [
+              "docs/circle-parameter-space.md"
+            ]
+          },
+          {
+            "name": "num_queries",
+            "value": "120",
+            "rationale": "Literal FRI query count used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "query_proof_of_work_bits",
+            "value": "8",
+            "rationale": "Literal PoW bits used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "upload_chunk_bytes",
+            "value": "512",
+            "rationale": "Conservative staging chunk under the 1232-byte Solana transaction ceiling.",
+            "sources": [
+              "phase1_results/summary.json"
+            ]
+          }
+        ],
+        "references": [
+          "results/circle-parameter-sweep/host-results.md",
+          "docs/circle-parameter-space.md",
+          "phase1_results/summary.json"
+        ],
+        "query_soundness_model": {
+          "model": "fri",
+          "query_count": 120,
+          "log_blowup": 1,
+          "query_proof_of_work_bits": 8,
+          "target_bits": 128.0,
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ],
+          "notes": [
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ]
+        },
+        "notes": [
+          "Projected from proof structure and the existing phase1 CU model; no direct SBF execution was possible under the pinned reference because the Solana cargo-build-sbf toolchain still rejects edition2024 dependencies.",
+          "Transport cost assumes staged upload in 512-byte chunks because every successful Circle proof in this sweep exceeds the 1232-byte transaction cap."
+        ]
+      },
+      "score": {
+        "name": "counter4-t128-rate1over2-q120-pow8-arity2",
+        "protocol_family": "Circle",
+        "predicted_cu": 17147622.84657616,
+        "lower_cu": 17088601.451286595,
+        "upper_cu": 17206644.241865728,
+        "cu_budget_fraction": 12.248302033268686,
+        "proof_transport_pressure": 49.931006493506494,
+        "verification_core_cu": 17071869.87715902,
+        "transport_overhead_cu": 70690.10411199249,
+        "component_predicted_cu": 17142559.981271014,
+        "component_gap_vs_monolithic_cu": -5062.865305148065,
+        "feasible": false,
+        "feasibility_reasons": [
+          "predicted CU exceeds the transaction compute budget",
+          "query-controlled soundness lower bound 68.0 bits is below the 128.0-bit target"
+        ],
+        "dominant_contributors": [
+          {
+            "feature": "extension_mul_ops",
+            "coefficient": 3175.4537344967566,
+            "feature_value": 3000.0,
+            "cu": 9526361.20349027
+          },
+          {
+            "feature": "field_inv_ops",
+            "coefficient": 11270.192375974051,
+            "feature_value": 361.0,
+            "cu": 4068539.4477266325
+          },
+          {
+            "feature": "field_mul_ops",
+            "coefficient": 491.3739010822489,
+            "feature_value": 3128.0,
+            "cu": 1537017.5625852745
+          }
+        ],
+        "query_soundness": {
+          "model": "fri_query_soundness",
+          "query_count": 120,
+          "target_bits": 128.0,
+          "lower_bits": 68.0,
+          "lower_assumption": "fri_proven_rate_pow_q_over_2",
+          "upper_bits": 128.0,
+          "upper_assumption": "ethstark_conjectured_rate_pow_q",
+          "meets_target": false,
+          "notes": [
+            "Lower bound uses the proven FRI query term rate^(q/2).",
+            "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ],
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ]
+        }
+      }
+    },
+    {
+      "rank": 20,
+      "attempt_id": "counter4-t128-rate1over2-q120-pow8-arity3",
+      "target_bits": 128,
+      "conjectured_soundness_bits": 128,
+      "scenario": "counter4",
+      "fri": {
+        "log_blowup": 1,
+        "log_final_poly_len": 0,
+        "max_log_arity": 3,
+        "num_queries": 120,
+        "commit_proof_of_work_bits": 0,
+        "query_proof_of_work_bits": 8
+      },
+      "proof_bytes": 61515,
+      "profile": {
+        "name": "counter4-t128-rate1over2-q120-pow8-arity3",
+        "features": {
+          "sha_calls": 1805,
+          "sha_bytes": 284502,
+          "merkle_paths": 600,
+          "merkle_levels": 1560,
+          "proof_bytes": 61515,
+          "proof_segments": 121,
+          "upload_bytes": 61515,
+          "upload_chunks": 121,
+          "heap_frame_bytes_requested": 131072,
+          "heap_pages_32k": 4,
+          "ro_account_count": 2,
+          "rw_account_count": 1,
+          "account_data_bytes_read": 65611,
+          "account_data_bytes_written": 128,
+          "field_add_sub_ops": 1680,
+          "field_mul_ops": 3128,
+          "field_inv_ops": 361,
+          "extension_mul_ops": 3000
+        },
+        "protocol_family": "Circle",
+        "transport": {
+          "sha_calls": 121,
+          "sha_bytes": 65387,
+          "upload_bytes": 61515,
+          "upload_chunks": 121
+        },
+        "parameter_choices": [
+          {
+            "name": "scenario",
+            "value": "counter4",
+            "rationale": "Measured on the actual p3-circle proof generated during the host sweep.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "log_blowup",
+            "value": "1",
+            "rationale": "Literal FRI blowup exponent supplied to p3-circle.",
+            "sources": [
+              "docs/circle-parameter-space.md"
+            ]
+          },
+          {
+            "name": "num_queries",
+            "value": "120",
+            "rationale": "Literal FRI query count used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "query_proof_of_work_bits",
+            "value": "8",
+            "rationale": "Literal PoW bits used by the generated proof.",
+            "sources": [
+              "results/circle-parameter-sweep/host-results.md"
+            ]
+          },
+          {
+            "name": "upload_chunk_bytes",
+            "value": "512",
+            "rationale": "Conservative staging chunk under the 1232-byte Solana transaction ceiling.",
+            "sources": [
+              "phase1_results/summary.json"
+            ]
+          }
+        ],
+        "references": [
+          "results/circle-parameter-sweep/host-results.md",
+          "docs/circle-parameter-space.md",
+          "phase1_results/summary.json"
+        ],
+        "query_soundness_model": {
+          "model": "fri",
+          "query_count": 120,
+          "log_blowup": 1,
+          "query_proof_of_work_bits": 8,
+          "target_bits": 128.0,
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ],
+          "notes": [
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ]
+        },
+        "notes": [
+          "Projected from proof structure and the existing phase1 CU model; no direct SBF execution was possible under the pinned reference because the Solana cargo-build-sbf toolchain still rejects edition2024 dependencies.",
+          "Transport cost assumes staged upload in 512-byte chunks because every successful Circle proof in this sweep exceeds the 1232-byte transaction cap."
+        ]
+      },
+      "score": {
+        "name": "counter4-t128-rate1over2-q120-pow8-arity3",
+        "protocol_family": "Circle",
+        "predicted_cu": 17147622.84657616,
+        "lower_cu": 17088601.451286595,
+        "upper_cu": 17206644.241865728,
+        "cu_budget_fraction": 12.248302033268686,
+        "proof_transport_pressure": 49.931006493506494,
+        "verification_core_cu": 17071869.87715902,
+        "transport_overhead_cu": 70690.10411199249,
+        "component_predicted_cu": 17142559.981271014,
+        "component_gap_vs_monolithic_cu": -5062.865305148065,
+        "feasible": false,
+        "feasibility_reasons": [
+          "predicted CU exceeds the transaction compute budget",
+          "query-controlled soundness lower bound 68.0 bits is below the 128.0-bit target"
+        ],
+        "dominant_contributors": [
+          {
+            "feature": "extension_mul_ops",
+            "coefficient": 3175.4537344967566,
+            "feature_value": 3000.0,
+            "cu": 9526361.20349027
+          },
+          {
+            "feature": "field_inv_ops",
+            "coefficient": 11270.192375974051,
+            "feature_value": 361.0,
+            "cu": 4068539.4477266325
+          },
+          {
+            "feature": "field_mul_ops",
+            "coefficient": 491.3739010822489,
+            "feature_value": 3128.0,
+            "cu": 1537017.5625852745
+          }
+        ],
+        "query_soundness": {
+          "model": "fri_query_soundness",
+          "query_count": 120,
+          "target_bits": 128.0,
+          "lower_bits": 68.0,
+          "lower_assumption": "fri_proven_rate_pow_q_over_2",
+          "upper_bits": 128.0,
+          "upper_assumption": "ethstark_conjectured_rate_pow_q",
+          "meets_target": false,
+          "notes": [
+            "Lower bound uses the proven FRI query term rate^(q/2).",
+            "Upper bound uses the conjectured ethSTARK-style rate^q term used by p3-fri.",
+            "Security bound is the p3-fri conjectured helper, not a separate proven Circle-STARK soundness calculator."
+          ],
+          "sources": [
+            "https://github.com/Plonky3/Plonky3/blob/0f87f2b543a01880274965c410bf804c124f5046/fri/src/config.rs"
+          ]
+        }
+      }
+    }
+  ]
+}

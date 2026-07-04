@@ -1,0 +1,106 @@
+{
+  "config": {
+    "arithmetic_kernel_id": "reference_canonical",
+    "extension_kernel_id": "karatsuba",
+    "lazy_reduction_mode": "none",
+    "lift_policy": "late_lift_qm31",
+    "merkle_proof_mode": "minimal_subtree",
+    "query_precompute_mode": "proof_carried_round_local",
+    "query_reuse_mode": "round_batch_inversion",
+    "reduction_mode": "canonical",
+    "whir_fold_mode": "raw_fibers"
+  },
+  "proofs": {
+    "invalid_challenge": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_raw_fibers_proof_carried_round_local_invalid_challenge.bin",
+    "invalid_folding": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_raw_fibers_proof_carried_round_local_invalid_folding.bin",
+    "invalid_missing_query": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_raw_fibers_proof_carried_round_local_invalid_missing_query.bin",
+    "invalid_truncated": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_raw_fibers_proof_carried_round_local_invalid_truncated.bin",
+    "valid": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_raw_fibers_proof_carried_round_local_valid.bin"
+  },
+  "query_plan": {
+    "query_schedule_seed": 1085890802496684250,
+    "round_count": 2,
+    "rounds": [
+      {
+        "merkle_depth": 8,
+        "ood_samples": 1,
+        "opening_count": 2,
+        "query_count": 36,
+        "selector_count": 1
+      },
+      {
+        "merkle_depth": 11,
+        "ood_samples": 1,
+        "opening_count": 2,
+        "query_count": 20,
+        "selector_count": 2
+      }
+    ],
+    "statement_seed": 5975943706417329969,
+    "target_proof_bytes": 20218
+  },
+  "scenario_name": "whir_t100_johnson_full",
+  "security_target_bits": 100.0,
+  "soundness_assumption": "whir_johnson_full",
+  "statement_shape": {
+    "amount_range_checks_64": 4,
+    "application_hash_gadgets": 4,
+    "application_merkle_paths": 2,
+    "balance_constraints": 8,
+    "balance_rows": 48,
+    "boundary_constraint_groups": 4,
+    "evaluation_domain_log2": 13,
+    "lookup_arguments": 3,
+    "lookup_rows": 320,
+    "merkle_rows_per_level": 12,
+    "misc_rows": 768,
+    "note_commitment_rows": 512,
+    "note_commitments_per_output": 1,
+    "note_openings_per_spend": 1,
+    "note_tree_depth": 32,
+    "nullifier_hash_rows": 512,
+    "nullifier_hashes_per_spend": 1,
+    "outputs": 2,
+    "ownership_checks": 2,
+    "ownership_rows": 384,
+    "range_check_rows": 256,
+    "row_breakdown": [
+      768,
+      1024,
+      1024,
+      1024,
+      768,
+      384,
+      960,
+      768
+    ],
+    "spends": 2,
+    "total_rows": 6720
+  },
+  "transcript_plan": {
+    "commitment_ood_samples": 1,
+    "final_folding_pow_bits": 0,
+    "final_merkle_depth": 11,
+    "final_pow_bits": 32,
+    "final_query_count": 20,
+    "final_sumcheck_rounds": 5,
+    "initial_folding_pow_bits": 0,
+    "initial_sumcheck_rounds": 4,
+    "query_schedule_seed": 1085890802496684250,
+    "round_count": 1,
+    "rounds": [
+      {
+        "folding_pow_bits": 0,
+        "merkle_depth": 8,
+        "ood_samples": 1,
+        "opening_count": 2,
+        "pow_bits": 31,
+        "query_count": 36,
+        "selector_count": 1,
+        "sumcheck_rounds": 4
+      }
+    ],
+    "statement_seed": 5975943706417329969,
+    "target_proof_bytes": 7440
+  }
+}

@@ -10,8 +10,15 @@ use std::{
     time::{Duration, Instant},
 };
 
+mod circle_parameter_sweep;
+mod circle_spike;
+mod native_whir;
+mod official_whir_compare;
 mod phase2;
 mod phase2_real;
+mod whir_jb_parity;
+mod whir_p3_cross_validate;
+mod whir_ud_spike;
 
 use anyhow::{anyhow, bail, Context, Result};
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine};
@@ -690,6 +697,24 @@ impl LocalRpcClient {
             .map(|space| space as usize))
     }
 
+    fn get_account_data(&self, pubkey: &Pubkey) -> Result<Option<Vec<u8>>> {
+        let result = self.rpc(
+            "getAccountInfo",
+            json!([pubkey.to_string(), { "encoding": "base64", "commitment": "processed" }]),
+        )?;
+        let value = result.get("value").cloned().unwrap_or(Value::Null);
+        if value.is_null() {
+            return Ok(None);
+        }
+        let data = value
+            .get("data")
+            .and_then(Value::as_array)
+            .and_then(|items| items.first())
+            .and_then(Value::as_str)
+            .ok_or_else(|| anyhow!("getAccountInfo missing base64 data"))?;
+        Ok(Some(BASE64_STANDARD.decode(data)?))
+    }
+
     fn simulate_transaction(&self, tx: &Transaction) -> Result<RpcSimulation> {
         let encoded = BASE64_STANDARD.encode(bincode::serialize(tx)?);
         let result = self.rpc(
@@ -785,9 +810,28 @@ fn main() -> Result<()> {
         Some("phase1") => run_phase1(),
         Some("phase1-next") => run_phase1_next(),
         Some("phase2-experiments") => phase2::run_phase2_experiments(),
+        Some("phase2-transcript") => phase2::run_phase2_transcript_experiments(),
+        Some("phase2-multiproof") => phase2::run_phase2_multiproof_experiments(),
+        Some("phase2-multiproof-payload") => phase2::run_phase2_multiproof_payload_experiments(),
+        Some("phase2-fold-payload") => phase2::run_phase2_fold_payload_experiments(),
+        Some("phase2-round0") => phase2::run_phase2_round0_experiments(),
+        Some("phase2-full-reuse") => phase2::run_phase2_full_reuse_experiments(),
+        Some("phase2-roundlocal") => phase2::run_phase2_roundlocal_experiments(),
+        Some("phase2-mul-taxonomy") => phase2::run_phase2_mul_taxonomy_experiments(),
+        Some("phase2-next3") => phase2::run_phase2_next3_experiments(),
+        Some("phase2-freeze-capacity-v0") => phase2::run_phase2_freeze_capacity_v0(),
         Some("phase2-real-experiments") => phase2_real::run_phase2_real_experiments(),
+        Some("circle-spike") => circle_spike::run_circle_spike(),
+        Some("circle-parameter-sweep") => circle_parameter_sweep::run_circle_parameter_sweep(),
+        Some("native-whir-m31") => native_whir::run_native_whir_m31(),
+        Some("compare-official-whir") => official_whir_compare::run_compare_official_whir(),
+        Some("whir-jb-parity") => whir_jb_parity::run_whir_jb_parity(),
+        Some("whir-ud-spike") => whir_ud_spike::run_whir_ud_spike(),
+        Some("whir-p3-cross-validate") => {
+            whir_p3_cross_validate::run_whir_p3_cross_validate()
+        }
         Some(other) => bail!("unknown xtask subcommand: {other}"),
-        None => bail!("usage: cargo xtask phase1 | cargo xtask phase1-next | cargo xtask phase2-experiments | cargo xtask phase2-real-experiments"),
+        None => bail!("usage: cargo xtask phase1 | cargo xtask phase1-next | cargo xtask phase2-experiments | cargo xtask phase2-transcript | cargo xtask phase2-multiproof | cargo xtask phase2-multiproof-payload | cargo xtask phase2-fold-payload | cargo xtask phase2-round0 | cargo xtask phase2-full-reuse | cargo xtask phase2-roundlocal | cargo xtask phase2-mul-taxonomy | cargo xtask phase2-next3 | cargo xtask phase2-freeze-capacity-v0 | cargo xtask phase2-real-experiments | cargo xtask circle-spike | cargo xtask circle-parameter-sweep | cargo xtask native-whir-m31 | cargo xtask compare-official-whir | cargo xtask whir-jb-parity | cargo xtask whir-ud-spike | cargo xtask whir-p3-cross-validate"),
     }
 }
 

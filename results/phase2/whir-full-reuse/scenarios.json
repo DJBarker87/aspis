@@ -1,0 +1,24 @@
+[
+  {
+    "commitment_ood_samples": 2,
+    "merkle_proof_mode": "minimal_subtree",
+    "name": "whir_t128_capacity_full",
+    "round_query_counts": [
+      25,
+      14
+    ],
+    "security_target_bits": 128.0,
+    "soundness_assumption": "whir_capacity_full"
+  },
+  {
+    "commitment_ood_samples": 1,
+    "merkle_proof_mode": "minimal_subtree",
+    "name": "whir_t100_johnson_full",
+    "round_query_counts": [
+      36,
+      20
+    ],
+    "security_target_bits": 100.0,
+    "soundness_assumption": "whir_johnson_full"
+  }
+]

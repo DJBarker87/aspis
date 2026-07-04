@@ -1,0 +1,33 @@
+Usage: main [OPTIONS]
+
+Options:
+  -l, --security-level <SECURITY_LEVEL>
+          [default: 128]
+  -p, --pow-bits <POW_BITS>
+          Maximum proof of work difficulty in bits [default: 20]
+  -d, --num-variables <NUM_VARIABLES>
+          [default: 20]
+  -e, --evaluations <NUM_EVALUATIONS>
+          [default: 1]
+      --linear-constraints <NUM_LINEAR_CONSTRAINTS>
+          [default: 0]
+  -r, --rate <RATE>
+          [default: 1]
+      --reps <VERIFIER_REPETITIONS>
+          [default: 1000]
+  -i, --initfold <FIRST_ROUND_FOLDING_FACTOR>
+          [default: 4]
+  -k, --fold <FOLDING_FACTOR>
+          [default: 4]
+      --unique-decoding
+          Restrict PCS to the Unique Decoding regime. LDT is always UD
+  -f, --field <FIELD>
+          [default: Goldilocks3]
+      --hash <HASH>
+          [default: Blake3]
+      --zk
+          
+  -h, --help
+          Print help
+  -V, --version
+          Print version

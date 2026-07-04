@@ -1,0 +1,128 @@
+[
+  {
+    "name": "whir_t100_capacity_full",
+    "security_target_bits": 100.0,
+    "soundness_assumption": "whir_capacity_full",
+    "soundness_assumption_whir_p3": "CapacityBound",
+    "field_tower": "M31 base field with CM31/QM31 extension arithmetic in the Solana verifier path",
+    "hash_backend": "Solana SHA-256 via `solana_program::hash::hashv` / `sol_sha256` syscall path",
+    "log_inv_rate": 4,
+    "nominal_rate": "1/16",
+    "evaluation_domain_log2": 13,
+    "fold_arity": 4,
+    "grinding_bits": 32,
+    "total_explicit_query_count": 28,
+    "round_query_counts": [
+      18,
+      10
+    ],
+    "merkle_depths": [
+      8,
+      11,
+      0,
+      0
+    ],
+    "ood_samples_per_round": [
+      2,
+      2,
+      0,
+      0
+    ],
+    "opening_counts_per_round": [
+      3,
+      3,
+      0,
+      0
+    ],
+    "target_proof_bytes": 12356,
+    "arithmetic_kernel_id": "reference_canonical",
+    "extension_kernel_id": "karatsuba",
+    "lift_policy": "late_lift_qm31",
+    "fold_mode": "raw_fibers",
+    "merkle_proof_mode": "separate_paths"
+  },
+  {
+    "name": "whir_t128_capacity_full",
+    "security_target_bits": 128.0,
+    "soundness_assumption": "whir_capacity_full",
+    "soundness_assumption_whir_p3": "CapacityBound",
+    "field_tower": "M31 base field with CM31/QM31 extension arithmetic in the Solana verifier path",
+    "hash_backend": "Solana SHA-256 via `solana_program::hash::hashv` / `sol_sha256` syscall path",
+    "log_inv_rate": 4,
+    "nominal_rate": "1/16",
+    "evaluation_domain_log2": 13,
+    "fold_arity": 4,
+    "grinding_bits": 32,
+    "total_explicit_query_count": 39,
+    "round_query_counts": [
+      25,
+      14
+    ],
+    "merkle_depths": [
+      8,
+      11,
+      0,
+      0
+    ],
+    "ood_samples_per_round": [
+      2,
+      2,
+      0,
+      0
+    ],
+    "opening_counts_per_round": [
+      3,
+      3,
+      0,
+      0
+    ],
+    "target_proof_bytes": 15468,
+    "arithmetic_kernel_id": "reference_canonical",
+    "extension_kernel_id": "karatsuba",
+    "lift_policy": "late_lift_qm31",
+    "fold_mode": "raw_fibers",
+    "merkle_proof_mode": "separate_paths"
+  },
+  {
+    "name": "whir_t128_johnson_full",
+    "security_target_bits": 128.0,
+    "soundness_assumption": "whir_johnson_full",
+    "soundness_assumption_whir_p3": "JohnsonBound",
+    "field_tower": "M31 base field with CM31/QM31 extension arithmetic in the Solana verifier path",
+    "hash_backend": "Solana SHA-256 via `solana_program::hash::hashv` / `sol_sha256` syscall path",
+    "log_inv_rate": 4,
+    "nominal_rate": "1/16",
+    "evaluation_domain_log2": 13,
+    "fold_arity": 4,
+    "grinding_bits": 32,
+    "total_explicit_query_count": 78,
+    "round_query_counts": [
+      50,
+      28
+    ],
+    "merkle_depths": [
+      8,
+      11,
+      0,
+      0
+    ],
+    "ood_samples_per_round": [
+      2,
+      1,
+      0,
+      0
+    ],
+    "opening_counts_per_round": [
+      3,
+      2,
+      0,
+      0
+    ],
+    "target_proof_bytes": 26463,
+    "arithmetic_kernel_id": "reference_canonical",
+    "extension_kernel_id": "karatsuba",
+    "lift_policy": "late_lift_qm31",
+    "fold_mode": "raw_fibers",
+    "merkle_proof_mode": "separate_paths"
+  }
+]

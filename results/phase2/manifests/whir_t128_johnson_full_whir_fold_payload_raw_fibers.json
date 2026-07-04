@@ -1,0 +1,44 @@
+{
+  "config": {
+    "arithmetic_kernel_id": "reference_canonical",
+    "extension_kernel_id": "karatsuba",
+    "lazy_reduction_mode": "none",
+    "lift_policy": "late_lift_qm31",
+    "merkle_proof_mode": "minimal_subtree",
+    "reduction_mode": "canonical",
+    "whir_fold_mode": "raw_fibers"
+  },
+  "proofs": {
+    "invalid": "results/phase2/whir-fold-payload/proofs/whir_t128_johnson_full_raw_fibers_invalid.bin",
+    "valid": "results/phase2/whir-fold-payload/proofs/whir_t128_johnson_full_raw_fibers_valid.bin"
+  },
+  "scenario_name": "whir_t128_johnson_full",
+  "security_target_bits": 128.0,
+  "soundness_assumption": "whir_johnson_full",
+  "transcript_plan": {
+    "commitment_ood_samples": 1,
+    "final_folding_pow_bits": 0,
+    "final_merkle_depth": 11,
+    "final_pow_bits": 32,
+    "final_query_count": 28,
+    "final_sumcheck_rounds": 5,
+    "initial_folding_pow_bits": 13,
+    "initial_sumcheck_rounds": 4,
+    "query_schedule_seed": 1085890802496684250,
+    "round_count": 1,
+    "rounds": [
+      {
+        "folding_pow_bits": 16,
+        "merkle_depth": 8,
+        "ood_samples": 2,
+        "opening_count": 3,
+        "pow_bits": 32,
+        "query_count": 50,
+        "selector_count": 1,
+        "sumcheck_rounds": 4
+      }
+    ],
+    "statement_seed": 5975943706417329969,
+    "target_proof_bytes": 9896
+  }
+}

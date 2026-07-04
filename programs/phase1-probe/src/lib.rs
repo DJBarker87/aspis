@@ -21,13 +21,20 @@ mod phase2;
 mod real_fri;
 
 pub use phase2::{
-    build_phase2_proof_bytes, build_phase2_whir_query_proof_bytes, run_phase2_arithmetic_bench,
-    run_phase2_extension_bench, run_phase2_skeleton_verify, run_phase2_whir_query_verify,
-    ArithmeticKernelId, ArithmeticWorkloadId, ExtensionKernelId, ExtensionWorkloadId,
-    LazyReductionMode, LiftPolicy, MerkleProofMode, Phase2ArithmeticConfig, Phase2Counters,
-    Phase2ExtensionConfig, Phase2ProofPlan, Phase2VerifierConfig, Phase2WhirQueryPlan,
-    Phase2WhirRoundPlan, Phase2WhirStatementShape, ReductionMode, WhirFoldMode,
-    PHASE2_WHIR_MAX_OPENING_TERMS, PHASE2_WHIR_MAX_ROUNDS,
+    build_phase2_proof_bytes, build_phase2_whir_merkle_payload_bytes,
+    build_phase2_whir_query_proof_bytes, build_phase2_whir_transcript_proof_bytes,
+    build_phase2_whir_transcript_proof_bytes_with_precompute_mode,
+    derive_phase2_whir_transcript_checkpoints, run_phase2_arithmetic_bench,
+    run_phase2_extension_bench, run_phase2_skeleton_verify, run_phase2_whir_merkle_payload_parse,
+    run_phase2_whir_query_verify, run_phase2_whir_transcript_segment_verify,
+    run_phase2_whir_transcript_verify, ArithmeticKernelId, ArithmeticWorkloadId, ExtensionKernelId,
+    ExtensionWorkloadId, LazyReductionMode, LiftPolicy, MerkleProofMode, Phase2ArithmeticConfig,
+    Phase2Counters, Phase2ExtensionConfig, Phase2ProofPlan, Phase2VerifierConfig,
+    Phase2WhirQueryPlan, Phase2WhirRoundPlan, Phase2WhirStatementShape,
+    Phase2WhirTranscriptCheckpoint, Phase2WhirTranscriptCheckpoints, Phase2WhirTranscriptPlan,
+    Phase2WhirTranscriptRoundPlan, ReductionMode, WhirFoldMode, WhirMerklePayloadFormat,
+    WhirQueryPrecomputeMode, WhirQueryReuseMode, WhirTranscriptDiagnosticStage,
+    WhirTranscriptTraceMode, PHASE2_WHIR_MAX_OPENING_TERMS, PHASE2_WHIR_MAX_ROUNDS,
 };
 pub use real_fri::{run_real_fri_verify, RealFriVerifyOutcome};
 
@@ -131,6 +138,25 @@ pub enum ProbeInstruction {
     },
     Phase2WhirQueryVerify {
         config: Phase2VerifierConfig,
+        repeat: u32,
+    },
+    Phase2WhirTranscriptVerify {
+        config: Phase2VerifierConfig,
+        repeat: u32,
+        trace_mode: WhirTranscriptTraceMode,
+    },
+    Phase2WhirTranscriptSegmentVerify {
+        config: Phase2VerifierConfig,
+        stage: WhirTranscriptDiagnosticStage,
+        round_index: u16,
+        checkpoint: Phase2WhirTranscriptCheckpoint,
+        repeat: u32,
+        trace_mode: WhirTranscriptTraceMode,
+    },
+    Phase2WhirMerklePayloadParse {
+        config: Phase2VerifierConfig,
+        plan: Phase2WhirTranscriptPlan,
+        payload_format: WhirMerklePayloadFormat,
         repeat: u32,
     },
     Phase2RealFriVerify {
@@ -285,6 +311,66 @@ pub fn process_instruction(
                 run_phase2_whir_query_verify(config, &proof_bytes, repeat)
                     .map_err(|_| ProgramError::InvalidInstructionData)?
                     .digest,
+            );
+            Ok(())
+        }
+        ProbeInstruction::Phase2WhirTranscriptVerify {
+            config,
+            repeat,
+            trace_mode,
+        } => {
+            let proof_account = next_account_info(&mut accounts.iter())?;
+            let proof_bytes = proof_account.try_borrow_data()?;
+            black_box(
+                run_phase2_whir_transcript_verify(config, &proof_bytes, repeat, trace_mode)
+                    .map_err(|_| ProgramError::InvalidInstructionData)?
+                    .digest,
+            );
+            Ok(())
+        }
+        ProbeInstruction::Phase2WhirTranscriptSegmentVerify {
+            config,
+            stage,
+            round_index,
+            checkpoint,
+            repeat,
+            trace_mode,
+        } => {
+            let proof_account = next_account_info(&mut accounts.iter())?;
+            let proof_bytes = proof_account.try_borrow_data()?;
+            black_box(
+                run_phase2_whir_transcript_segment_verify(
+                    config,
+                    &proof_bytes,
+                    stage,
+                    round_index,
+                    checkpoint,
+                    repeat,
+                    trace_mode,
+                )
+                .map_err(|_| ProgramError::InvalidInstructionData)?
+                .digest,
+            );
+            Ok(())
+        }
+        ProbeInstruction::Phase2WhirMerklePayloadParse {
+            config,
+            plan,
+            payload_format,
+            repeat,
+        } => {
+            let proof_account = next_account_info(&mut accounts.iter())?;
+            let proof_bytes = proof_account.try_borrow_data()?;
+            black_box(
+                run_phase2_whir_merkle_payload_parse(
+                    config,
+                    plan,
+                    &proof_bytes,
+                    payload_format,
+                    repeat,
+                )
+                .map_err(|_| ProgramError::InvalidInstructionData)?
+                .digest,
             );
             Ok(())
         }
@@ -774,6 +860,68 @@ pub fn build_phase2_whir_query_instruction(
         program_id,
         vec![AccountMeta::new_readonly(proof_account, false)],
         ProbeInstruction::Phase2WhirQueryVerify { config, repeat },
+    )
+}
+
+pub fn build_phase2_whir_transcript_instruction(
+    program_id: Pubkey,
+    proof_account: Pubkey,
+    config: Phase2VerifierConfig,
+    repeat: u32,
+    trace_mode: WhirTranscriptTraceMode,
+) -> Instruction {
+    ProbeInstruction::instruction(
+        program_id,
+        vec![AccountMeta::new_readonly(proof_account, false)],
+        ProbeInstruction::Phase2WhirTranscriptVerify {
+            config,
+            repeat,
+            trace_mode,
+        },
+    )
+}
+
+pub fn build_phase2_whir_transcript_segment_instruction(
+    program_id: Pubkey,
+    proof_account: Pubkey,
+    config: Phase2VerifierConfig,
+    stage: WhirTranscriptDiagnosticStage,
+    round_index: u16,
+    checkpoint: Phase2WhirTranscriptCheckpoint,
+    repeat: u32,
+    trace_mode: WhirTranscriptTraceMode,
+) -> Instruction {
+    ProbeInstruction::instruction(
+        program_id,
+        vec![AccountMeta::new_readonly(proof_account, false)],
+        ProbeInstruction::Phase2WhirTranscriptSegmentVerify {
+            config,
+            stage,
+            round_index,
+            checkpoint,
+            repeat,
+            trace_mode,
+        },
+    )
+}
+
+pub fn build_phase2_whir_merkle_payload_instruction(
+    program_id: Pubkey,
+    payload_account: Pubkey,
+    config: Phase2VerifierConfig,
+    plan: Phase2WhirTranscriptPlan,
+    payload_format: WhirMerklePayloadFormat,
+    repeat: u32,
+) -> Instruction {
+    ProbeInstruction::instruction(
+        program_id,
+        vec![AccountMeta::new_readonly(payload_account, false)],
+        ProbeInstruction::Phase2WhirMerklePayloadParse {
+            config,
+            plan,
+            payload_format,
+            repeat,
+        },
     )
 }
 
