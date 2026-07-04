@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-07-04T13:23:54.940576+00:00",
+  "generated_at_utc": "2026-07-04T17:27:56.234317+00:00",
   "command": "cargo run -p aspis-xtask -- stage0-onchain-layout-target",
   "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
   "verify_cu_limit": 1400000,
@@ -15,15 +15,15 @@
       "verify_error": null,
       "proof_bytes": 14768,
       "upload_chunks": 24,
-      "upload_cu_total": 15969,
+      "upload_cu_total": 13698,
       "verify_cu": [
-        773668,
-        773668,
-        773668,
-        773668,
-        773668
+        773989,
+        773989,
+        773989,
+        773989,
+        773989
       ],
-      "verify_cu_mean": 773668.0,
+      "verify_cu_mean": 773989.0,
       "verify_repetitions_requested": 5,
       "corruption_rejected_onchain": [
         [
@@ -73,15 +73,15 @@
       "verify_error": null,
       "proof_bytes": 14512,
       "upload_chunks": 23,
-      "upload_cu_total": 13662,
+      "upload_cu_total": 12927,
       "verify_cu": [
-        742795,
-        742795,
-        742795,
-        742795,
-        742795
+        743116,
+        743116,
+        743116,
+        743116,
+        743116
       ],
-      "verify_cu_mean": 742795.0,
+      "verify_cu_mean": 743116.0,
       "verify_repetitions_requested": 5,
       "corruption_rejected_onchain": [
         [
@@ -131,15 +131,15 @@
       "verify_error": null,
       "proof_bytes": 12560,
       "upload_chunks": 20,
-      "upload_cu_total": 14431,
+      "upload_cu_total": 10794,
       "verify_cu": [
-        656662,
-        656662,
-        656662,
-        656662,
-        656662
+        656983,
+        656983,
+        656983,
+        656983,
+        656983
       ],
-      "verify_cu_mean": 656662.0,
+      "verify_cu_mean": 656983.0,
       "verify_repetitions_requested": 5,
       "corruption_rejected_onchain": [
         [

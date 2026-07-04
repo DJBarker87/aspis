@@ -1,0 +1,11 @@
+{
+  "generated_at_utc": "2026-07-04T17:13:11.509861+00:00",
+  "command": "cargo run -p aspis-xtask -- stage0-transcript-kat",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "expected_digest_hex": "16eb0cabdd02fabec91cace95d2db1a69fd9d8e665109152f1ac01f46a9ce9a9",
+  "matched_on_sbf": true,
+  "simulation_units": 10792,
+  "notes": [
+    "matched_on_sbf=false means the SBF transcript diverged from the host — stop and diagnose before trusting any on-chain measurement."
+  ]
+}
