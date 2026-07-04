@@ -7,19 +7,20 @@ challenged line by line). Section status ledger:
 
 | section | status |
 | --- | --- |
-| 1. Protocol as implemented | drafted, in review |
-| 2. The assumption | drafted, in review |
-| 3. Field-ceiling lemma | drafted, in review — one hardening item found (challenge sampler) |
-| 4. Per-round query budget (q32/g32, q36 alongside) | stub — flat-rate finding recorded below |
-| 5. Copy-argument soundness term | in chat review; hardens into this file only after line-by-line pass |
-| 6. Grinding accounting | stub |
-| 7. Proven-vs-conjectured ledger | stub |
+| 1. Protocol as implemented | reviewed; constants corrected |
+| 2. The assumption + canonical challenge order | reviewed; **gamma-ordering fix applied** |
+| 3. Field-ceiling lemma | reviewed; T7 harmonized, model paragraph added, honest margin stated |
+| 4. Per-round query budget | drafted on the q36/g32 ruling — in review |
+| 5. Copy-argument soundness term | reviewed line-by-line; hardened with resolutions |
+| 6. Grinding + Fiat-Shamir model | drafted — in review |
+| 7. Proven-vs-conjectured ledger | stub; written last, includes SHA-256 assumption lines |
 
 Headline decision this note serves (design §13.3, decided 2026-07-04): the
 public claim is frozen at **t = 100 bits, capacity-conjectured**; §3 is the
 justification. Layout this note is written for (design §13.8 as amended):
 lr10, k ~ 64-80 wide rows, rounds-per-row blocks, boundary interface columns,
-LogUp copy check, second commitment phase.
+LogUp copy check, second commitment phase. Query schedule ruled by §4:
+**q36/g32** (q32/g32 retired at 96 bits; q38 is the inline contingency).
 
 ---
 
@@ -33,7 +34,7 @@ length; then roots, final polynomial, grinding nonce, per-layer openings;
 fixed layout, trailing bytes reject).
 
 Fields. M31 = GF(2^31 - 1); CM31 = M31[i]/(i^2+1); QM31 = CM31[u]/(u^2-(2+i)).
-|QM31| = (2^31 - 1)^4, log2 = 123.9999999978 (call it 2^124 with the deficit
+|QM31| = (2^31 - 1)^4, log2 = 124 - 2.7e-9 (call it 2^124 with the deficit
 noted once here and never again).
 
 Domain. Evaluation domain of the committed polynomial (degree < 2^10 at the
@@ -46,30 +47,27 @@ x -> x^4 on the domain): layer domains 2^12 -> 2^10 -> 2^8 -> 2^6, then a
 final domain of size 2^4 on which the explicit final polynomial
 (4 QM31 coefficients, shipped in clear) is evaluated directly. Leaves pack
 whole arity-4 fibers (stride N/4); layer-0 values are CM31, all later layers
-QM31 (late lift at the first challenge).
+QM31 (late lift at the first challenge). **Degree and domain both shrink 4x
+per round, so the rate is 2^-2 at every layer — flat, not improving. §4 is
+computed for this schedule.**
 
-Transcript order (Fiat-Shamir, SHA-256 duplex; syscall on-chain):
-absorb(header) -> absorb(statement digest) -> for each round r: absorb(root_r),
-sample alpha_r in QM31 -> absorb(final polynomial) -> grinding check on the
-current state (g leading zero bits over hash(state, nonce)), absorb(nonce) ->
-derive query positions (masked uniform over the power-of-two fiber count;
-exact-uniform). One query set, sampled once, traced through all rounds; each
-query opens one fiber per layer, the verifier refolds locally (challenges
-alpha_r, alpha_r^2 for the two sub-steps; denominators batch-inverted per
-round) and compares against the next layer's opened slot, terminating against
-the final polynomial.
+Transcript order as implemented today (v0 base): absorb(header) ->
+absorb(statement digest) -> per round r: absorb(root_r), sample alpha_r ->
+absorb(final polynomial) -> grinding check (g leading zero bits), absorb
+(nonce) -> derive query positions (exact-uniform masking over the
+power-of-two fiber count). One query set, sampled once, traced through all
+rounds; each query opens one fiber per layer, the verifier refolds locally
+(alpha_r, alpha_r^2; denominators batch-inverted per round) and compares
+against the next layer's opened slot, terminating against the final
+polynomial. Grinding is a single g-bit check before query derivation; there
+is no per-round PoW (recorded divergence, `whir-p3-divergence.md`).
 
-Grinding is a single g-bit check placed after all absorptions and before
-query derivation. There is no per-round PoW (this is a recorded divergence
-from both the reference v0 schedule and upstream WHIR; see
-`whir-p3-divergence.md`).
+What Stage 1 adds on top of this implemented base: OOD samples per round,
+the externally supplied (z, v) evaluation claim, the second commitment phase
+for the copy argument, the statement-layer sumcheck, and the challenge-order
+requirements of §2.
 
-What Stage 1 adds on top of this implemented base (audited here, implemented
-as the note firms up): OOD samples per round, the externally supplied (z, v)
-evaluation claim, the second commitment phase for the copy argument, and the
-statement-layer sumcheck the PCS serves.
-
-## 2. The assumption, stated once
+## 2. The assumption, stated once — and the canonical challenge order
 
 All conjectured terms in this note rest on exactly one assumption, named
 here and nowhere re-derived:
@@ -81,118 +79,306 @@ here and nowhere re-derived:
 > capacity bound: a codeword delta-far from the code, delta up to 1 - rho,
 > survives one uniformly sampled traced query with probability at most
 > (1 - delta), i.e. one query yields -log2(rho_worst) bits; and the per-round
-> folding/gathering error terms carry denominators |QM31| with the
-> constants tabulated in section 4.
+> folding/gathering error terms carry denominators |QM31| with the constants
+> tabulated in §4.
 
-Everything labelled `conjectured (capacity)` in the ledger (section 7)
-depends on this and only this. Terms that do not depend on it (sumcheck SZ,
-RLC batching, copy-argument compression, zerocheck reduction, Merkle binding
+Everything labelled `conjectured (capacity)` in the ledger (§7) depends on
+this and only this. Terms that do not depend on it (sumcheck SZ, RLC
+batching, copy-argument compression, zerocheck reduction, Merkle binding
 under SHA-256 collision resistance, grinding in the ROM) are labelled
 separately. The Johnson-regime alternative is dead for a different reason
-(section 3): the field ceiling makes its target unreachable anyway, which
-retires the johnson_q80 profile without needing to resolve the whir-p3
-divergence in its favor.
+(§3): the field ceiling makes its target unreachable anyway, which retires
+the johnson_q80 profile without resolving the whir-p3 divergence in its
+favor.
+
+**Canonical challenge order for the full (hardened + statement) protocol.**
+This order is normative; every implementation change is checked against it,
+and the adversarial suite enforces it with failing tests, not prose:
+
+```text
+C1 (main witness incl. boundary interface columns; + OOD absorptions)
+  -> lambda, chi            (copy-argument compression and evaluation point)
+C2 (LogUp helper column h)
+  -> mu                     (claim batching)
+  -> r                      (zerocheck eq point)
+  -> sumcheck messages, round by round (absorb before each round challenge)
+  -> CLAIMED COLUMN EVALUATIONS {v_1..v_k} and h-claims ABSORBED
+  -> gamma                  (RLC batching)
+  -> PCS opening of w* = sum gamma^i w_i at z (the sumcheck terminal point)
+```
+
+The bolded step is load-bearing and was caught in review, not design: if
+gamma is squeezed before the claimed evaluations {v_i} are absorbed, the
+prover sees gamma first and must satisfy only the single linear constraint
+sum(gamma^i v_i) = w*(z) — one equation, k free variables. He fixes k-1 of
+the v_i to make eq(r,z) * C(v_1..v_k) match his final sumcheck message and
+solves the last one from the RLC constraint; the constraint-composition
+check is fully bypassed and the entire statement layer evaporates. Same
+class as the inflation bug: invisible in every honest-prover test, fatal
+against a real one. Likewise C1 -> (lambda, chi) is load-bearing, not
+stylistic: the phi values are fixed before chi exists, which is what makes
+chi hitting a committed phi a completeness event rather than an attack
+surface (§5). The Stage 1 adversarial suite gains a **challenge-order
+family**: gamma-before-claims and chi-before-C1 transcripts must reject.
 
 ## 3. The field-ceiling lemma (why the headline is t = 100)
+
+**Model paragraph (the frame the table lives in).** The protocol is an
+interactive argument compiled by Fiat-Shamir with SHA-256 modeled as a
+random oracle; the adversary's resource is its hash-query budget, and
+"lambda bits of security" means no attacker achieves success probability /
+work ratio better than 2^-lambda. The terms below are round-by-round
+(state-restoration) errors: each is the probability that one adversarial
+attempt at the corresponding challenge produces a false-accepting
+continuation, and FS security is governed by the worst round an attacker
+can grind at. The union bound below is conservative — it sums the rounds
+instead of taking the max. Two hash assumptions sit UNDER this model and get
+their own §7 ledger lines because they are assumptions, not terms: SHA-256
+as a random oracle for the transcript, and >= 100-bit collision resistance
+for Merkle binding.
 
 **Lemma (informal).** Every algebraic soundness term of the full target
 system has denominator |QM31| ~ 2^124, and grinding offsets none of them.
 Union-bounded, the system's achievable soundness on this field tower is
 roughly 106-112 bits before a single query is spent. Therefore 128 bits was
 never reachable on M31/CM31/QM31, and the headline claim is frozen at
-t = 100, capacity-conjectured, with the remaining 6-12 bits as union-bound
-margin.
+t = 100, capacity-conjectured.
 
-Enumeration (lr10 / k <= 82 / fused sumcheck; numerator shapes first, then
-the value at the target parameters):
+Enumeration (lr10 / k' <= 82 / fused sumcheck; numerator shapes first, then
+the value at the target parameters, in bits below zero):
 
-| # | term | shape | value (bits below 0) |
+| # | term | shape | bits |
 | --- | --- | --- | ---: |
-| T1 | per-round proximity gathering (4 rounds) | c_r * N_0 / \|F\|, N_0 = 2^12 | ~106-112 (constants pinned in §4 against the upstream reference) |
+| T1 | per-round proximity gathering (4 rounds) | c_r * N_0 / \|F\|, N_0 = 2^12 | ~106-112 (constants pinned in §4) |
 | T2 | OOD binding, 1 sample x 4 rounds | R * 2^lr / \|F\| | 112 |
 | T3 | fused sumcheck Schwartz-Zippel | nu * d / \|F\|, nu = 10, d <= 7 | 117.9 |
 | T4 | zerocheck eq-reduction (sample r) | nu / \|F\| | 120.7 |
 | T5 | gamma-RLC batching over k' <= 82 columns | (k'-1) / \|F\| | 117.7 |
 | T6 | copy-argument tuple compression (lambda) | m * w / \|F\| (worst m = 2^10, w = 17) | 109.9 |
-| T7 | copy-argument pole/SZ (z) | 2m / \|F\| | 113 |
+| T7 | copy-argument pole/SZ (chi) | 4m / \|F\| | 112 |
 | T8 | claim-batching challenge (mu) | (#claims) / \|F\| | ~122 |
-| T9 | challenge-sampler statistical distance | see finding below | currently ~26 (!) — must be fixed, then 0 |
+| T9 | challenge-sampler statistical distance | fixed by rejection sampling | 0 after fix (was ~25) |
 
-Union of T1-T8: dominated by T1 and T6, total ~2^-106 .. 2^-109. Ceiling
-before queries: **~106-109 bits** (the bracket narrows when §4 pins T1's
-constants; it does not move above ~115 under any reading of the gathering
-constants). t = 100 leaves 6-9 bits of union-bound margin. t = 128 would
-require every enumerated term to vanish — not a parameter choice, a
-different field tower.
+On T1's counting: the four rounds' domains are 2^12, 2^10, 2^8, 2^6, so the
+true sum is ~1.33 * 2^12 / |F|, about 1.6 bits better than the 4 * 2^12
+used in the bracket. The overcount is **deliberate conservatism**; if §4's
+constant-pinning needs the 1.6 bits back, they are real.
 
-Grinding does not appear in this table by construction: a PoW placed before
-query derivation raises the cost of resampling the query challenge only; T1-T8
-are sampled from transcript states the prover must commit to before the PoW,
-and re-grinding does not re-roll them cheaply — but even granting the
-adversary free re-rolls of everything, each T_i is an information-theoretic
-SZ/collision bound per transcript, and the union bound above is per-proof.
-Section 6 does the careful version of this paragraph.
+Union of T1-T8: dominated by T1 and T6, total ~2^-106 .. 2^-109 of algebraic
+error before queries. t = 128 would require every enumerated term to vanish
+— not a parameter choice, a different field tower.
+
+**The honest final number.** The query term joins the union: at q36/g32
+(§4), total error <= 2^-104 + 2^-106..-109 ~ **2^-103.7 worst-case**. The
+claim's true margin over t = 100 is ~3.5-4 bits, not the table's 6-9 — the
+6-9 figure is the algebraic ceiling alone and must not be quoted as the
+system margin.
+
+Grinding does not appear in the table by construction: the PoW sits before
+query derivation and raises the price of re-rolling the query challenge
+only; T1-T8 are information-theoretic per-attempt bounds and re-grinding
+does not improve any of them. §6 does the careful version.
 
 Corroboration from outside this repo (context, not proof): the WHIR-JB
-reference implementation runs 128-bit settings on Goldilocks3 (~192-bit
-field) and structurally fails on Goldilocks2 (~128-bit field); the M31
-circle-STARK ecosystem (stwo) targets ~96-100 bits. The ~124-bit field
-ceiling also matches the ~124-bit collision resistance of the 8-limb
-Poseidon2-M31 digest (design §13.2), so the whole system lands on one
-coherent ~100-bit label with no weakest-link asymmetry to apologize for.
+reference runs 128-bit settings on Goldilocks3 (~192-bit field) and
+structurally fails on Goldilocks2; the M31 circle-STARK ecosystem targets
+~96-100 bits. The ~124-bit field ceiling also matches the ~124-bit collision
+resistance of the 8-limb Poseidon2-M31 digest (design §13.2), so the whole
+system lands on one coherent ~100-bit label with no weakest-link asymmetry.
 
-**Finding (T9, must fix in Stage 1 hardening): the implemented QM31
-challenge sampler is not statistically close enough to uniform for a
-2^-100 claim.** `Transcript::challenge_qm31` takes 31 bits per limb and
-folds the single value P to 0, giving each limb a 2^-32 statistical distance
-from uniform (the point 0 has doubled mass). The generic bound
-|P_biased(A) - P_uniform(A)| <= SD applies to every event, so with ~50 limbs
-sampled per proof the union-bound cost is ~2^-26 additive — formally
-swamping every other term in this table, even though it corresponds to no
-known attack. Widening the sample does not fix it (a u128 reduction still
-leaves ~2^-97 per limb). The fix is rejection sampling: resample the 32-bit
-limb when the masked value equals P (expected retries 1 + 2^-31; verifier
-cost unchanged in practice), making the sampler exactly uniform and T9
-identically zero. This lands in the hardening implementation together with
-OOD and the (z, v) interface.
+**Finding (T9, fixed in Stage 1 hardening): the implemented QM31 challenge
+sampler is not statistically close enough to uniform for a 2^-100 claim.**
+`Transcript::challenge_qm31` takes 31 bits per limb and folds the value P to
+0, putting excess mass 2^-30 - 1/p ~ 2^-31 on zero: per-limb total variation
+~2^-31. The generic bound |P_biased(A) - P_uniform(A)| <= SD applies to
+every event, so with ~50 limbs per proof the union cost is ~2^-25 additive —
+formally swamping every other term despite corresponding to no attack.
+Widening the sample does not fix it (u128 reduction still leaves ~2^-97 per
+limb). The fix is **rejection sampling** (the SampleInBall pattern from
+FIPS 204), with two implementation requirements that are part of the spec,
+not optional detail:
 
-## 4. Per-round query budget — STUB, one finding already recorded
+1. Retries consume **fresh transcript bytes deterministically** — append a
+   retry counter to the squeeze input; never re-hash the same input, else
+   every retry returns the same rejected value and the loop cannot
+   terminate.
+2. The SBF verifier bounds the retry loop (8 per limb) and **rejects the
+   proof on exhaustion**. Per-limb exhaustion probability is (2^-31)^8 =
+   2^-248, a completeness event (§6), which is the correct trade on a
+   CU-metered chain versus an unmetered loop.
 
-To be drafted next (after §3 review). It must be computed for the schedule
-as implemented, not the Phase 2 two-round shape, and the first honest look
-already produces a discrepancy worth flagging before the table exists:
+## 4. Per-round query budget — q36/g32 ruled, q32 retired, q38 contingency
 
-**Finding: the implemented fold schedule has FLAT rate, not improving
-rate.** Each round folds degree by 4 AND domain by 4, so rho_i = 2^-2 at
-every layer; there is no per-round rate improvement for later queries to
-exploit. Under flat-rate capacity accounting with one traced query set,
-query soundness is ~2 bits/query + g: q32/g32 = 96 bits — **4 bits short of
-t = 100** — while q36/g32 = 104 clears it. The Phase 2-derived expectation
-(q32 at t ~ 108-112) implicitly assumed an improving-rate schedule (rate
-1/16 shapes). Three resolutions exist and the choice belongs to this
-section's review: (a) accept q36/g32 as the target (measured 742,795 CU PCS
-at q36 lr10, projection 973,909 CU — still >200K of budget); (b) restructure
-the fold to WHIR's domain-halving shape so rho improves per round and
-re-derive per-round query counts (protocol change, CU consequences
-re-measured); (c) re-examine whether the traced-query accounting can credit
-later rounds at all without per-round query sets. No number from this
-section is usable until one of these is chosen in review.
+Computed for the schedule **as implemented** (§1): 4 committed arity-4
+rounds at lr10, degree and domain both shrinking 4x per round.
 
-## 5. Copy-argument soundness term — IN CHAT REVIEW
+| layer | domain | degree bound | rho_i | bits/traced query |
+| ---: | ---: | ---: | ---: | ---: |
+| 0 | 2^12 | 2^10 | 2^-2 | 2 |
+| 1 | 2^10 | 2^8 | 2^-2 | 2 |
+| 2 | 2^8 | 2^6 | 2^-2 | 2 |
+| 3 | 2^6 | 2^4 | 2^-2 | 2 |
+| final | 2^4 | 2^2 (explicit) | 2^-2 | — |
 
-Being reviewed line by line before it hardens into this file (explicitly
-requested workflow). The draft under review covers: interface tuple
-definition (tag + w-limb state), lambda tuple-compression term (m*w/|F|),
-z pole-collision/SZ term (2m/|F|), the helper-column relation folded into
-the fused zerocheck, Fiat-Shamir ordering (interface columns committed
-before lambda and z; helper column committed after — the second commitment
-phase), and the insensitivity of all terms to the m = 40 vs m = 2^10 layout
-reading.
+**The rate is flat.** There is no per-round rate improvement, so there is
+nothing for later rounds to credit: a word that survives folding is caught
+by a traced query only at the capacity rate of its loosest layer, and all
+layers are equally loose. Per-round query sets — the machinery that exploits
+improving rates in WHIR's domain-halving schedule — are therefore
+arithmetically empty here, not merely unimplemented: restructuring the fold
+(domain-halving) and crediting later rounds are one option, not two, and
+that option is a protocol restructure with unmeasured CU. It is declined for
+this note; if a future revision adopts domain-halving, this section is
+recomputed from scratch.
 
-## 6. Grinding accounting and what it does NOT cover — STUB
+Query soundness under the capacity conjecture with one traced query set:
+attack success per grinding attempt <= rho^q = 2^-2q, each attempt costs
+2^g hashes, so the query term contributes **2q + g bits** in the
+work/success metric.
 
-To be drafted after §4 settles the query schedule.
+| schedule | query bits | verdict | measured PCS CU (lr10) | projection | headroom vs 1.19M |
+| --- | ---: | --- | ---: | ---: | ---: |
+| q32/g32 | 96 | **retired — 4 bits short of t=100** | 656,662 | 887,776 | 302,224 |
+| **q36/g32** | **104** | **ruled: the Stage 1 schedule** | 742,795 | 973,909 | 216,091 |
+| q38/g32 | 108 | inline contingency (see below) | ~785,900 (slope) | ~1,016,975 | ~173,000 |
+
+The q32 -> q36 promotion costs **+86,133 CU** on the measured lr10 slope
+(887,776 -> 973,909; headroom 302K -> 216K, already re-labelled in the
+Stage 0 conclusion as a budget for three unpriced items). **Contingency,
+carried inside this section rather than as a new fork:** if T1's
+constant-pinning lands at the bad end of the ~106-112 bracket, q38 (108
+query bits) is the escape hatch at roughly +43K CU more on the same
+measured slope (~21.5K CU per query). If q38's projection cannot absorb the
+Stage 2 constraint-composition measurement, the split-verification fallback
+from the Stage 0 conclusion triggers — that ladder is unchanged.
+
+Open in this section until §7 freezes: pinning T1's per-round gathering
+constants against the pinned upstream `WizardOfMenlo/whir` reference (the
+one place the 1.6 deliberate-conservatism bits of §3 may be spent).
+
+## 5. Copy-argument soundness term (LogUp multiset copy check)
+
+Reviewed line by line before hardening; resolutions from review are folded
+in.
+
+**Setting.** Witness table of N = 2^10 rows, k main columns, containing
+sequential Poseidon2 chains. Each cross-row link j has a producer row
+emitting a w-limb state and a consumer row receiving it. Interface tuples
+(tag_j, d_j), d_j in M31^w, and **tag_j a verifier-computable layout
+constant** — tags are fixed by the wiring, never witness, else multiset
+equality fails to pin which output feeds which input.
+
+**Selectors.** Block-periodic evaluation suffices; **no committed selector
+columns.** A selector depending only on within-block position (low b bits of
+the row index, b = 4-5) has an MLE that factors into an O(2^b)-term
+evaluation at the sumcheck point. Edge rows break strict periodicity —
+chain heads with no consumer, tails with no producer, and the ~5 non-Merkle
+permutations with a different block pattern — and are handled as explicit
+corrections: sel = periodic part +/- sum over exceptional rows of
+eq(row_i, x), costing O(exceptions * nu) verifier field ops and nothing
+committed. **"Wiring regularity + enumerated exceptions" is hereby a Stage 2
+layout constraint** so this paragraph stays true.
+
+**Protocol.** (1) Commit main witness including boundary columns —
+commitment C1. (2) Sample lambda (tuple compression) and chi (evaluation
+point). (3) Compress: phi_j = tag_j + sum_i lambda^i d_{j,i}. (4) Commit the
+helper column h with h_row = sel_P/(chi - phi_P(row)) - sel_C/(chi -
+phi_C(row)) — commitment C2, the second phase. (5) Row-local relation fused
+into the zerocheck: h * (chi - phi_P) * (chi - phi_C) = sel_P * (chi -
+phi_C) - sel_C * (chi - phi_P); each phi is degree 1 in committed values, so
+the relation is degree 3, under the d <= 7 sumcheck budget with Poseidon2's
+degree-5 S-box (+eq) still binding. (6) One extra batched claim:
+sum_rows h = 0.
+
+**Soundness terms.**
+
+- **E1, compression (lambda): <= m*w / |F|.** If the tuple multisets differ,
+  consider Q(lambda, X) = prod_{j in P}(X - phi_j(lambda)) - prod_{j in C}
+  (X - phi_j(lambda)). Distinct (tag, d) tuples give distinct degree-<=w
+  polynomials phi_j(lambda); monic linear factorizations over the integral
+  domain F[lambda] are unique, so Q is not identically zero; its
+  X-coefficients are polynomials in lambda of degree <= m*w;
+  Schwartz-Zippel over lambda gives m*w / |F|. The pairwise m^2*w union
+  bound is unnecessary, and it is exactly the UFD argument that makes it so.
+- **E2, evaluation (chi): <= 4m / |F|, kept deliberately loose.** The
+  logarithmic-derivative lemma applies (multiplicities <= 2^10 << char =
+  2^31 - 1): if the compressed multisets differ, sum_P 1/(X - phi) -
+  sum_C 1/(X - phi) is a nonzero rational function with numerator degree
+  <= 2m - 1; chi must also avoid the <= 2m poles, where the row relation
+  degenerates. Sharpening below 4m buys nothing that survives the union
+  (E2 sits ~2 bits below E1 in every layout reading); the effort goes to
+  pinning T1's constants instead. One subtlety worth its sentence: chi
+  hitting a committed phi value is a **completeness** event only because C1
+  precedes chi in the canonical order — the phi's are fixed before chi
+  exists. That is why C1 -> (lambda, chi) -> C2 is load-bearing, not
+  stylistic (§2).
+- **E3, helper relation and total-sum:** enforced by the fused
+  zerocheck/sumcheck; they add degree (3 + eq, non-binding) and one batched
+  claim (T8 increments) but **no new denominators**.
+
+**Numbers.** Worst layout reading (every rounds-block row interface,
+m = 2^10, w = 17): E1 ~ 2^-109.9, E2 ~ 2^-112. Chain-boundaries-only
+reading (m ~ 40, w = 9): both <= 2^-114. Realistic middle for the record:
+at k ~ 64, ~3-4 Poseidon2 rounds fit per row, so ~6-7 rows per permutation
+and m ~ 240-300 at w = 17, giving m*w ~ 2^-111.8. **All readings sit inside
+the §3 ceiling with the union bracket unchanged, so the m-choice is a
+CU/bytes/columns decision, not a soundness one** — and on-chain it is
+nearly free either way: h is committed at full column length regardless of
+how many entries are nonzero, so the CU delta reduces to w mul-adds per
+interface side in the phi evaluations at opened rows. §5 carries the worst
+case (m = 2^10); Stage 2's layout freeze documents the real (m, w) and does
+not optimize for it.
+
+**Cost of the second phase (C2), to be priced by the hardening
+measurement:** one extra root absorb; one extra opening per query in the
+phase-2 tree (q ~ 36 over 2^10 leaves — order tens of K CU and ~6-8 KB with
+multiproof sharing); one extra gamma term per query in the RLC. If Stage 3's
+masking polynomial also needs a post-challenge commitment, both share the
+one phase-2 tree; that decision is taken in the hiding note, not silently.
+
+## 6. Grinding, the Fiat-Shamir model, and what grinding does NOT cover
+
+**What grinding offsets: the query term, only, by construction.** The PoW
+sits after all absorptions and before query derivation, so each fresh
+sample of the query challenge costs the adversary 2^g expected hash
+queries. In the work/success metric this adds g bits to the query term
+(2q + g, §4). It offsets **no algebraic term**: T1-T8 are per-attempt
+information-theoretic bounds on challenges (alpha_r, lambda, chi, mu, r,
+gamma) that sit before the PoW in the transcript; re-rolling them is free
+of the PoW and bounded by their own denominators, and grinding after them
+cannot retroactively improve them.
+
+**The model, carefully (this is the paragraph §3's table lives in).**
+SHA-256 is modeled as a random oracle; an adversary with hash budget Q
+attacks the FS-compiled protocol by state restoration: pick any prefix of
+the transcript, re-roll the next challenge, keep the best continuation.
+Security is therefore governed round by round: the attack cost/success
+ratio against round i is at least 1/eps_i hash queries (one query per
+attempt, eps_i the round's per-attempt error), and 2^g per attempt for the
+query round. The system's bits in the work/success metric are then
+min_i(-log2 eps_i) over the rounds, which the §3 union bounds conservatively
+from below by summing. With algebraic union ~2^-106..-109 and query term
+2^-104 at q36/g32, the binding round is the query round, as it should be —
+the parameters put the conjectured term last in line.
+
+**Sampler completeness (from the §3 T9 fix).** Rejection sampling with a
+bounded retry loop (8 per limb, fresh transcript bytes per retry via a
+retry counter in the squeeze input) rejects an honest proof only if some
+limb exhausts all retries: per-limb probability (2^-31)^8 = 2^-248, and
+under ~50 limbs per proof the honest-rejection probability is < 2^-242.
+This is a completeness event, not a soundness term; it appears here and
+nowhere in the §3 table.
+
+**The honest final margin, restated as the one-line summary a reader takes
+away:** total per-attempt error <= 2^-104 (query, q36/g32) + 2^-106..-109
+(algebraic union) ~ 2^-103.7 worst-case; the frozen headline t = 100 holds
+with ~3.5-4 bits of margin, conditional on the capacity conjecture (§2) and
+the two SHA-256 assumptions (§7). No other number in this note is the
+system's security level.
 
 ## 7. Proven-vs-conjectured ledger — STUB
 
-One line per term, written last, after every section above survives review.
+One line per term, written last, after §4 and §6 survive review. Includes
+the two SHA-256 assumption lines (random-oracle transcript; >= 100-bit
+Merkle collision binding), the capacity-conjecture line covering T1 and the
+query term, and `proven` lines for T2-T8 and the sampler fix.

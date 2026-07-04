@@ -245,8 +245,12 @@ Deliverables:
    frozen profile.
 2. Missing checks implemented in host + SBF verifier, re-measured.
 3. Adversarial vector suite beyond bit flips: wrong-evaluation claims,
-   off-domain openings, round-skipping, grinding-forgery attempts, and
-   mixed-profile replay.
+   off-domain openings, round-skipping, grinding-forgery attempts,
+   mixed-profile replay, and **challenge-order attacks** (gamma sampled
+   before the claimed column evaluations are absorbed; chi sampled before
+   the interface commitment C1) — the gamma-before-claims ordering was
+   caught in soundness-note review as a full statement-layer bypass and the
+   ordering must be enforced by failing tests, not prose (soundness-note §2).
 
 Gate: soundness note complete, checks implemented, adversarial suite rejecting
 `100%`, hardened verifier CU recorded. Stop if the hardened verifier exceeds
