@@ -84,8 +84,20 @@ fn main() -> Result<()> {
             eprintln!("stage0-layout-sweep: wrote {}", path.display());
             Ok(())
         }
+        Some("stage0-transcript-kat") => {
+            let summary = onchain::run_transcript_kat()?;
+            anyhow::ensure!(
+                summary.matched_on_sbf,
+                "transcript KAT MISMATCH on SBF — host/chain divergence"
+            );
+            let dir = results_dir()?;
+            let path = dir.join("transcript_kat.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!("stage0-transcript-kat: matched; wrote {}", path.display());
+            Ok(())
+        }
         other => bail!(
-            "usage: cargo run -p aspis-xtask -- stage0-host | stage0-onchain | stage0-onchain-gate | stage0-onchain-g32 | stage0-onchain-layout-target | stage0-onchain-profile | stage0-layout-sweep (got {:?})",
+            "usage: cargo run -p aspis-xtask -- stage0-host | stage0-onchain | stage0-onchain-gate | stage0-onchain-g32 | stage0-onchain-layout-target | stage0-onchain-profile | stage0-layout-sweep | stage0-transcript-kat (got {:?})",
             other
         ),
     }

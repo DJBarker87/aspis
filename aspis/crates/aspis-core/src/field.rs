@@ -104,13 +104,6 @@ impl M31 {
         self.0.to_le_bytes()
     }
 
-    /// Reduce an arbitrary u32 (used for transcript challenge sampling; the
-    /// sampler masks to 31 bits first so the only folded value is P itself).
-    #[inline(always)]
-    pub fn from_u32_reduced(v: u32) -> M31 {
-        let v = v & P;
-        M31(if v == P { 0 } else { v })
-    }
 }
 
 /// CM31 = M31[i] / (i^2 + 1). Element a + b*i.

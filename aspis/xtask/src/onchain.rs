@@ -705,6 +705,72 @@ pub fn run_stage0_onchain_profile() -> Result<ProfileRun> {
     })
 }
 
+#[derive(Serialize)]
+pub struct TranscriptKatRun {
+    pub generated_at_utc: String,
+    pub command: String,
+    pub validator_version: String,
+    pub expected_digest_hex: String,
+    pub matched_on_sbf: bool,
+    pub simulation_units: Option<u64>,
+    pub notes: Vec<String>,
+}
+
+/// Host/SBF transcript known-answer check: send `TranscriptKat` with the
+/// host-pinned digest; the program recomputes with the syscall backend and
+/// errors on mismatch (soundness-note appendix, sampler step).
+pub fn run_transcript_kat() -> Result<TranscriptKatRun> {
+    // host-side assertion first, so a drifted pin fails before spawning a validator
+    let host_digest = aspis_core::transcript::transcript_kat(HOST_HASH);
+    anyhow::ensure!(
+        host_digest == aspis_core::transcript::TRANSCRIPT_KAT_EXPECTED,
+        "host transcript KAT does not match the pinned constant; re-pin only as a deliberate protocol change"
+    );
+
+    let root = workspace_root()?;
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), LAMPORTS_PER_SOL)?;
+
+    let instruction = Instruction {
+        program_id: aspis_verifier::id(),
+        accounts: vec![],
+        data: to_vec(&AspisInstruction::TranscriptKat {
+            expected: aspis_core::transcript::TRANSCRIPT_KAT_EXPECTED,
+        })?,
+    };
+    let blockhash = rpc.latest_blockhash()?;
+    let tx = Transaction::new_signed_with_payer(
+        &[instruction],
+        Some(&payer.pubkey()),
+        &[&payer],
+        blockhash,
+    );
+    let (units, err) = rpc.simulate(&tx)?;
+    let mut hex = String::new();
+    for b in aspis_core::transcript::TRANSCRIPT_KAT_EXPECTED {
+        hex.push_str(&format!("{b:02x}"));
+    }
+    Ok(TranscriptKatRun {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command: "cargo run -p aspis-xtask -- stage0-transcript-kat".to_string(),
+        validator_version: validator_version(),
+        expected_digest_hex: hex,
+        matched_on_sbf: err.is_none(),
+        simulation_units: units,
+        notes: vec![
+            "matched_on_sbf=false means the SBF transcript diverged from the host — stop and diagnose before trusting any on-chain measurement.".to_string(),
+        ],
+    })
+}
+
 pub fn run_layout_sweep() -> Result<LayoutSweep> {
     let root = workspace_root()?;
     let so = build_sbf(&root)?;

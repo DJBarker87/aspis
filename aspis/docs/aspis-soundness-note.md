@@ -13,7 +13,7 @@ challenged line by line). Section status ledger:
 | 4. Per-round query budget | **reviewed, approved** (q38 labeled extrapolated; T1 pinning is a §4 open item) |
 | 5. Copy-argument soundness term | reviewed line-by-line; hardened with resolutions |
 | 6. Grinding + Fiat-Shamir model | reviewed; binding-term sentence inverted, work-metric phrasing fixed |
-| 7. Proven-vs-conjectured ledger | drafted (fully determined by §1-§6) — awaiting final sign-off |
+| 7. Proven-vs-conjectured ledger | **reviewed, cleared** — T2 split into conjectured/proven forms, proven threshold restated at 2^-109; note is at complete-draft |
 
 Headline decision this note serves (design §13.3, decided 2026-07-04): the
 public claim is frozen at **t = 100 bits, capacity-conjectured**; §3 is the
@@ -150,7 +150,7 @@ the value at the target parameters, in bits below zero):
 | # | term | shape | bits |
 | --- | --- | --- | ---: |
 | T1 | per-round proximity gathering (4 rounds) | c_r * N_0 / \|F\|, N_0 = 2^12 | ~106-112 (constants pinned in §4) |
-| T2 | OOD binding, 1 sample x 4 rounds | R * 2^lr / \|F\| | 112 |
+| T2 | OOD binding, 1 sample x 4 rounds | R * l * 2^lr / \|F\| — **l is the decoding-list size and is regime-dependent** (see §7: conjectured form shown here assumes capacity-small l) | 112 (conjectured form) |
 | T3 | fused sumcheck Schwartz-Zippel | nu * d / \|F\|, nu = 10, d <= 7 | 117.9 |
 | T4 | zerocheck eq-reduction (sample r) | nu / \|F\| | 120.7 |
 | T5 | gamma-RLC batching over k' <= 82 columns | (k'-1) / \|F\| | 117.7 |
@@ -255,12 +255,15 @@ from the Stage 0 conclusion triggers — that ladder is unchanged. The q38 row i
 extrapolated, not measured: linearity of the CU slope beyond q36 is assumed
 and gets measured only if the contingency fires.
 
-**§4 open item (an experiment, not a ledger entry):** pin T1's per-round
-gathering constants against the pinned upstream `WizardOfMenlo/whir`
-reference, with its own reproduction artifact under `results/stage1/`. This
-is the one place the 1.6 deliberate-conservatism bits of §3 may be spent.
-§7 records the outcome's status; the work and the artifact live here, per
-the house rule that every number traces to a script.
+**§4 open item (an experiment, not a ledger entry):** pin, against the
+pinned upstream `WizardOfMenlo/whir` reference, with one reproduction
+artifact under `results/stage1/`: (a) T1's per-round gathering constants,
+and (b) T2's exact OOD term shape — whether the list size enters as l or as
+l^2 * (d / |F|) (the dependence is certain, the exponent is not). One
+artifact, two constants. This is the one place the 1.6
+deliberate-conservatism bits of §3 may be spent. §7 records the outcomes'
+status; the work and the artifact live here, per the house rule that every
+number traces to a script.
 
 ## 5. Copy-argument soundness term (LogUp multiset copy check)
 
@@ -374,9 +377,14 @@ which is why §7 puts them on a single shared line. Under proven accounting
 on the same schedule (Johnson radius 1 - sqrt(rho) - eta at rho = 2^-2,
 delta ~ 0.475 after slack), a traced query buys ~0.93 bits and q36/g32
 proves roughly 65-68 bits, not 104. The correct sayable sentence is the
-inversion: **every term this note proves clears 2^-110; the binding term is
-the single conjectured one, at 104 work-bits; the system's security equals
-the capacity conjecture's truth, with no weaker proven link anywhere.**
+inversion: **every term this note proves clears 2^-109 — T6 at the
+deliberately-carried worst-case layout is the binding proven term at
+2^-109.9, and sits at ~2^-111.8 under the expected Stage 2 layout, so this
+threshold is revisited upward when the layout freezes; T2 is excluded from
+the sentence's scope pending its regime resolution (§7) — the binding term
+is the single conjectured one, at 104 work-bits; the system's security
+equals the capacity conjecture's truth, with no weaker proven link
+anywhere.**
 
 **Sampler completeness (from the §3 T9 fix).** Rejection sampling with a
 bounded retry loop (8 per limb, fresh transcript bytes per retry via a
@@ -407,7 +415,8 @@ line is conditional on the conjecture line.
 | SHA-256 collision resistance for Merkle binding | **assumption** | >= 100 bits claimed (128-bit birthday bound) |
 | Capacity conjecture — one line, two faces: T1 gathering terms AND the 2-bits/query rate | **conjectured** | T1 ~106-112 (constants: §4 open item); query term 104 work-bits at q36/g32 |
 | **Proven floor, same schedule, Johnson-radius accounting** | **proven** | **~65-68 bits**: delta <= 1 - sqrt(rho) - eta, rho = 2^-2, delta ~ 0.475 -> ~0.93 bits/traced query; 36 x 0.93 + 32 ~ 65.5 |
-| T2 OOD binding | proven (SZ) | 112 |
+| T2 OOD binding, capacity-l form (the §3 table's 112) | **conjecture-conditional** | 112 — the OOD constant carries the decoding-list size l, which is small only under the capacity conjecture; internally consistent with the conjectured headline, NOT a clean proven line |
+| T2 OOD binding, Johnson-l proven form | proven (pending shape pinning, §4 open item) | l ~ 1/(2 * eta * sqrt(rho)) ~ 40 provable; lands ~2^-101..-107 depending on l vs l^2 * (d/\|F\|) shape; either way 30+ bits above the proven floor |
 | T3 fused sumcheck | proven (SZ) | 117.9 |
 | T4 zerocheck eq-reduction | proven (SZ) | 120.7 |
 | T5 gamma-RLC batching | proven (SZ; conditional on gamma-after-claims order, enforced by test) | 117.7 |
@@ -425,13 +434,26 @@ compute anyway is computed here, with the derivation shown. Any public
 quotation of the headline carries all three numbers of the last line or
 none of them.
 
+T2's split is itself a record of this section doing its job: in draft 1 the
+capacity-l constant wore a `proven` label — exactly the contamination class
+this ledger exists to prevent — and was caught in review before the note
+hardened. The proven floor is untouched by the split either way: even the
+pessimistic Johnson-l form at ~2^-101 sits thirty-plus bits above 65.5.
+
 ---
 
 ## Appendix: hardening implementation queue (order fixed in review)
 
 1. **Rejection sampler** (T9): smallest diff, kills the only formal blocker,
    unblocks re-measuring real transcripts. Fresh bytes per retry via squeeze
-   counter; 8-retry bound on SBF, reject on exhaustion.
+   counter; 8-retry bound on SBF, reject on exhaustion. **IMPLEMENTED**:
+   `challenge_qm31` now rejection-samples (word-stream retries, bounded 8 per
+   limb, `VerifyError::ChallengeSampleExhausted` code 13); output is
+   word-identical to the old sampler except on a P-hit, so existing
+   transcripts and artifacts remain valid. A known-answer transcript vector
+   is pinned (`TRANSCRIPT_KAT_EXPECTED`, host test `transcript_kat_pinned`,
+   SBF instruction `TranscriptKat`, runner `stage0-transcript-kat`) so a
+   silent host/chain divergence costs a test failure, not a week.
 2. **(z, v) claim binding + challenge-order tests** together: they touch the
    same transcript code, and the failing tests (gamma-before-claims,
    chi-before-C1) are what make the §2 ordering fix permanent.

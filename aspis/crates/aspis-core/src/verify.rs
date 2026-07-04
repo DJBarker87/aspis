@@ -34,6 +34,9 @@ pub enum VerifyError {
     CarriedFoldMismatch { layer: u8 },
     FinalPolyMismatch,
     TrailingBytes,
+    /// Bounded rejection-sampling retries exhausted while deriving a QM31
+    /// challenge (2^-248 per limb; soundness-note §3 T9 / §6 completeness).
+    ChallengeSampleExhausted,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -74,6 +77,7 @@ impl VerifyError {
             VerifyError::CarriedFoldMismatch { .. } => 10,
             VerifyError::FinalPolyMismatch => 11,
             VerifyError::TrailingBytes => 12,
+            VerifyError::ChallengeSampleExhausted => 13,
         }
     }
 }
@@ -284,7 +288,11 @@ pub fn verify_with_trace(
         let root = cursor.take_hash().ok_or(VerifyError::BadLength)?;
         transcript.absorb(label::ROOT, &root);
         roots.push(root);
-        alphas.push(transcript.challenge_qm31());
+        alphas.push(
+            transcript
+                .challenge_qm31()
+                .map_err(|_| VerifyError::ChallengeSampleExhausted)?,
+        );
     }
 
     let final_poly_len = profile.final_poly_len() as usize;
