@@ -53,6 +53,15 @@ pub enum AspisInstruction {
     /// digest supplied by the client. A mismatch is a host/SBF transcript
     /// divergence and errors loudly.
     TranscriptKat { expected: [u8; 32] },
+    /// Verify a claim-carrying proof. The (z, v) evaluation claim is a public
+    /// input (16-byte LE QM31 coordinates + value), transcript-absorbed by
+    /// the verifier. Binding only at this revision: see
+    /// `aspis_core::EvaluationClaim`.
+    VerifyWithClaim {
+        statement_digest: [u8; 32],
+        claim_z: Vec<[u8; 16]>,
+        claim_v: [u8; 16],
+    },
 }
 
 /// hashv-shaped backend over the Solana SHA-256 syscall.
@@ -149,6 +158,7 @@ fn run_layout_probe(
 fn verify_uploaded_proof(
     proof_account: &AccountInfo,
     statement_digest: [u8; 32],
+    claim: Option<&aspis_core::EvaluationClaim>,
     profile_cu: bool,
 ) -> ProgramResult {
     let data = proof_account.try_borrow_data()?;
@@ -160,11 +170,9 @@ fn verify_uploaded_proof(
         return Err(ProgramError::InvalidAccountData);
     }
     let proof = &data[PROOF_ACCOUNT_HEADER_LEN..end];
-    let result = if profile_cu {
-        aspis_core::verify_with_trace(proof, &statement_digest, sbf_hashv, Some(trace_cu))
-    } else {
-        aspis_core::verify(proof, &statement_digest, sbf_hashv)
-    };
+    let trace_fn = if profile_cu { Some(trace_cu as _) } else { None };
+    let result =
+        aspis_core::verify_with_claim_and_trace(proof, &statement_digest, claim, sbf_hashv, trace_fn);
     match result {
         Ok(()) => {
             msg!("aspis: proof accepted");
@@ -273,10 +281,25 @@ pub fn process_instruction(
             Ok(())
         }
         AspisInstruction::Verify { statement_digest } => {
-            verify_uploaded_proof(proof_account, statement_digest, false)
+            verify_uploaded_proof(proof_account, statement_digest, None, false)
         }
         AspisInstruction::VerifyProfile { statement_digest } => {
-            verify_uploaded_proof(proof_account, statement_digest, true)
+            verify_uploaded_proof(proof_account, statement_digest, None, true)
+        }
+        AspisInstruction::VerifyWithClaim {
+            statement_digest,
+            claim_z,
+            claim_v,
+        } => {
+            let z = claim_z
+                .iter()
+                .map(|bytes| aspis_core::field::QM31::from_le_bytes(bytes))
+                .collect::<Option<Vec<_>>>()
+                .ok_or(ProgramError::InvalidInstructionData)?;
+            let v = aspis_core::field::QM31::from_le_bytes(&claim_v)
+                .ok_or(ProgramError::InvalidInstructionData)?;
+            let claim = aspis_core::EvaluationClaim { z, v };
+            verify_uploaded_proof(proof_account, statement_digest, Some(&claim), false)
         }
         AspisInstruction::LayoutProbe {
             log_rows,

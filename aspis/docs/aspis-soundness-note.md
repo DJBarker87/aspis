@@ -470,6 +470,23 @@ pessimistic Johnson-l form at ~2^-101 sits thirty-plus bits above 65.5.
 2. **(z, v) claim binding + challenge-order tests** together: they touch the
    same transcript code, and the failing tests (gamma-before-claims,
    chi-before-C1) are what make the §2 ordering fix permanent.
+   **IMPLEMENTED — binding scope only, enforcement explicitly pending.**
+   `EvaluationClaim { z, v }` is a transcript-absorbed public input (label
+   CLAIM, canonical position: after the statement digest, before any root;
+   header byte 15 is the claim flag, so pre-claim proofs parse unchanged).
+   Delivered rejections, each with a test: claim mix-and-match (point or
+   value swap), flag mismatch both ways (ClaimMissing/ClaimUnexpected,
+   codes 14/15), point-dimension mismatch (ClaimShape, 16), and the
+   challenge-order attack (a mis-ordered prover absorbing the claim after
+   the roots rejects — the order-family test realizable at this protocol
+   revision; gamma-before-claims lands with the sumcheck phase). The
+   RELATION w(z) = v is NOT enforced yet — that is the sumcheck/fold
+   interleaving — and `claim_enforcement_pending_documented` asserts the
+   unenforced behavior so it fails loudly and must be inverted the day the
+   interleave lands. Program side: `VerifyWithClaim` instruction;
+   `multilinear_eval` shipped in the prover as the future interleave
+   ingredient. CU impact of binding: one extra transcript absorb
+   (~1 hash), no re-measure required.
 3. **OOD absorptions** (T2).
 4. **Second commitment phase** (C2, §5) last: the largest envelope change,
    and everything before it is prerequisite-free.

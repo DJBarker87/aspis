@@ -13,7 +13,11 @@
 //!   12 u8   merkle_mode    (0 single_paths, 1 minimal_subtree)
 //!   13 u8   num_rounds
 //!   14 u8   final_poly_log_len
-//!   15 u8   reserved (0)
+//!   15 u8   claim_flag (0 = no evaluation claim; 1 = an externally supplied
+//!           (z, v) claim is transcript-absorbed — the claim itself is a
+//!           PUBLIC INPUT supplied by the caller, never proof bytes.
+//!           Byte 15 was reserved-zero before the claim interface, so all
+//!           pre-claim proofs parse unchanged as claim-less.)
 //! roots:        num_rounds * 32
 //! final_poly:   (1 << final_poly_log_len) * 16   (QM31 LE)
 //! grinding_nonce: u64 LE
@@ -43,6 +47,7 @@ pub struct Header {
     pub merkle_mode: u8,
     pub num_rounds: u32,
     pub final_poly_log_len: u32,
+    pub claim_flag: u8,
 }
 
 impl Header {
@@ -51,7 +56,7 @@ impl Header {
             return None;
         }
         let magic = u32::from_le_bytes(bytes[0..4].try_into().unwrap());
-        if magic != MAGIC || bytes[4] != VERSION || bytes[15] != 0 {
+        if magic != MAGIC || bytes[4] != VERSION || bytes[15] > 1 {
             return None;
         }
         Some(Header {
@@ -64,6 +69,7 @@ impl Header {
             merkle_mode: bytes[12],
             num_rounds: bytes[13] as u32,
             final_poly_log_len: bytes[14] as u32,
+            claim_flag: bytes[15],
         })
     }
 
@@ -79,7 +85,7 @@ impl Header {
         out[12] = self.merkle_mode;
         out[13] = self.num_rounds as u8;
         out[14] = self.final_poly_log_len as u8;
-        out[15] = 0;
+        out[15] = self.claim_flag;
     }
 }
 

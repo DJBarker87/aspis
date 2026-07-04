@@ -32,6 +32,10 @@ pub mod label {
     pub const ROOT: u8 = 3;
     pub const FINAL_POLY: u8 = 4;
     pub const GRIND_NONCE: u8 = 5;
+    /// Externally supplied (z, v) evaluation claim — absorbed as a public
+    /// input directly after the statement digest, before any commitment
+    /// root (canonical order, soundness-note §2).
+    pub const CLAIM: u8 = 6;
 }
 
 const DOM_ABSORB: u8 = 0x00;
