@@ -1,3 +1,12 @@
+# ZK on Solana — measurement scaffolds and the Aspis substrate
+
+## Aspis (Stage 0)
+
+`aspis/` is a self-contained workspace holding the Aspis staged project
+(transparent shielded spend on Solana): the native WHIR-style M31 PCS
+substrate, its prover, SBF verifier program, and Stage 0 measurement
+runners. See `aspis/README.md` and `aspis/docs/stage0-gate.md`.
+
 # Phase 1 SVM Cost Model
 
 Reproducible Solana/SVM measurement scaffold for transparent-proof verifier cost modeling.
