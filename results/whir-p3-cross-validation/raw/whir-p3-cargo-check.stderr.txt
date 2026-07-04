@@ -1,0 +1,5 @@
+    Updating crates.io index
+    Updating git repository `https://github.com/Plonky3/Plonky3`
+error: no matching package named `p3-interpolation` found
+location searched: Git repository https://github.com/Plonky3/Plonky3?branch=main
+required by package `whir-p3 v0.1.0 (/tmp/whir-p3-ref)`

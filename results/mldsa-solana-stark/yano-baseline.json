@@ -1,0 +1,38 @@
+{
+  "source": {
+    "vendored_path": "third_party/solana-pqzk-fullchain",
+    "fixed_digest_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+  },
+  "winterfell": {
+    "winterfell": "0.12.0",
+    "winter_air": "0.12.3",
+    "winter_verifier": "0.12.3"
+  },
+  "local_measurement": {
+    "proof_bytes": 4211
+  },
+  "published_benchmark_summary": {
+    "n_runs": 100,
+    "finalize_sig": {
+      "mean_cu": 501263,
+      "median_cu": 499946,
+      "min_cu": 467360,
+      "max_cu": 543534
+    },
+    "verify_stark": {
+      "mean_cu": 1104510,
+      "median_cu": 1110510,
+      "min_cu": 988312,
+      "max_cu": 1190982
+    }
+  },
+  "solana_side_parameters": {
+    "body_chunk_bytes": 900,
+    "finalize_sig_cu_limit": 700000,
+    "verify_stark_cu_limit": 1400000,
+    "max_account_bytes": 10240,
+    "max_chat_payload": 10068,
+    "max_sig_payload": 10156,
+    "slh_dsa_signature_bytes": 7856
+  }
+}

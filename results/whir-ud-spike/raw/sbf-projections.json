@@ -1,0 +1,388 @@
+{
+  "generated_at_utc": "2026-04-20T09:50:42.244308+00:00",
+  "methodology": "Direct SBF compilation was attempted on a minimal wrapper program. Quantitative CU numbers are lower bounds only: verifier hash count multiplied by the SHA syscall floor (148 CU/hash). No Goldilocks-specific arithmetic coefficient was available, and actual WHIR-UD hashes are Blake3/Shake128/SHA3 in software, so real CU is higher than the reported floor.",
+  "compilation_status": "failed",
+  "command": "cargo-build-sbf --manifest-path experiments/whir-ud-sbf-solo/Cargo.toml --sbf-out-dir target/whir-ud-sbf-solo",
+  "stdout_path": "results/whir-ud-spike/raw/sbf/build.stdout",
+  "stderr_path": "results/whir-ud-spike/raw/sbf/build.stderr",
+  "blockers": [
+    "error: failed to download `indexmap v2.14.0`",
+    "failed to parse manifest at `/Users/dominic/.cargo/registry/src/index.crates.io-6f17d22bba15001f/indexmap-2.14.0/Cargo.toml`"
+  ],
+  "ranked": [
+    {
+      "rank": 1,
+      "attempt_id": "whir-ud-goldilocks2-t100-rate1over16-d4-e1-l0-i4-k4-ascending",
+      "security_target_bits": 100,
+      "achieved_security_bits": 99.99999999999997,
+      "num_variables": 4,
+      "proof_bytes": 11456,
+      "verifier_hashes": 104,
+      "hash_floor_cu": 15392.0,
+      "min_tx_count": 10,
+      "floor_margin_cu": 1384608.0,
+      "notes": [
+        "CU figure is a lower bound: hash_count * 148 CU, pretending every verifier hash were a cheap SHA syscall.",
+        "Real WHIR-UD uses Blake3 plus Shake128/SHA3 in software on SBF, so actual CU is higher.",
+        "Proof is 10x over the raw transaction byte limit."
+      ]
+    },
+    {
+      "rank": 2,
+      "attempt_id": "whir-ud-goldilocks2-t100-rate1over4-d4-e1-l0-i4-k4-affine3x5",
+      "security_target_bits": 100,
+      "achieved_security_bits": 99.99999999999994,
+      "num_variables": 4,
+      "proof_bytes": 15296,
+      "verifier_hashes": 122,
+      "hash_floor_cu": 18056.0,
+      "min_tx_count": 13,
+      "floor_margin_cu": 1381944.0,
+      "notes": [
+        "CU figure is a lower bound: hash_count * 148 CU, pretending every verifier hash were a cheap SHA syscall.",
+        "Real WHIR-UD uses Blake3 plus Shake128/SHA3 in software on SBF, so actual CU is higher.",
+        "Proof is 13x over the raw transaction byte limit."
+      ]
+    },
+    {
+      "rank": 3,
+      "attempt_id": "whir-ud-goldilocks2-t128-rate1over16-d4-e1-l0-i4-k4-affine3x5",
+      "security_target_bits": 128,
+      "achieved_security_bits": 127.99999999999997,
+      "num_variables": 4,
+      "proof_bytes": 15456,
+      "verifier_hashes": 139,
+      "hash_floor_cu": 20572.0,
+      "min_tx_count": 13,
+      "floor_margin_cu": 1379428.0,
+      "notes": [
+        "CU figure is a lower bound: hash_count * 148 CU, pretending every verifier hash were a cheap SHA syscall.",
+        "Real WHIR-UD uses Blake3 plus Shake128/SHA3 in software on SBF, so actual CU is higher.",
+        "Proof is 13x over the raw transaction byte limit."
+      ]
+    },
+    {
+      "rank": 4,
+      "attempt_id": "whir-ud-goldilocks2-t128-rate1over4-d4-e1-l0-i4-k4-quadratic7",
+      "security_target_bits": 128,
+      "achieved_security_bits": 127.99999999999997,
+      "num_variables": 4,
+      "proof_bytes": 20704,
+      "verifier_hashes": 168,
+      "hash_floor_cu": 24864.0,
+      "min_tx_count": 17,
+      "floor_margin_cu": 1375136.0,
+      "notes": [
+        "CU figure is a lower bound: hash_count * 148 CU, pretending every verifier hash were a cheap SHA syscall.",
+        "Real WHIR-UD uses Blake3 plus Shake128/SHA3 in software on SBF, so actual CU is higher.",
+        "Proof is 17x over the raw transaction byte limit."
+      ]
+    },
+    {
+      "rank": 5,
+      "attempt_id": "whir-ud-goldilocks2-t100-rate1over2-d4-e1-l0-i4-k4-ascending",
+      "security_target_bits": 100,
+      "achieved_security_bits": 99.99999999999997,
+      "num_variables": 4,
+      "proof_bytes": 24896,
+      "verifier_hashes": 195,
+      "hash_floor_cu": 28860.0,
+      "min_tx_count": 21,
+      "floor_margin_cu": 1371140.0,
+      "notes": [
+        "CU figure is a lower bound: hash_count * 148 CU, pretending every verifier hash were a cheap SHA syscall.",
+        "Real WHIR-UD uses Blake3 plus Shake128/SHA3 in software on SBF, so actual CU is higher.",
+        "Proof is 21x over the raw transaction byte limit."
+      ]
+    },
+    {
+      "rank": 6,
+      "attempt_id": "whir-ud-goldilocks2-t128-rate1over2-d4-e1-l0-i4-k4-affine3x5",
+      "security_target_bits": 128,
+      "achieved_security_bits": 128.0,
+      "num_variables": 4,
+      "proof_bytes": 33632,
+      "verifier_hashes": 267,
+      "hash_floor_cu": 39516.0,
+      "min_tx_count": 28,
+      "floor_margin_cu": 1360484.0,
+      "notes": [
+        "CU figure is a lower bound: hash_count * 148 CU, pretending every verifier hash were a cheap SHA syscall.",
+        "Real WHIR-UD uses Blake3 plus Shake128/SHA3 in software on SBF, so actual CU is higher.",
+        "Proof is 28x over the raw transaction byte limit."
+      ]
+    },
+    {
+      "rank": 7,
+      "attempt_id": "whir-ud-goldilocks2-t100-rate1over4-d8-e2-l0-i4-k4-quadratic7",
+      "security_target_bits": 100,
+      "achieved_security_bits": 99.99999999999994,
+      "num_variables": 8,
+      "proof_bytes": 37392,
+      "verifier_hashes": 297,
+      "hash_floor_cu": 43956.0,
+      "min_tx_count": 31,
+      "floor_margin_cu": 1356044.0,
+      "notes": [
+        "CU figure is a lower bound: hash_count * 148 CU, pretending every verifier hash were a cheap SHA syscall.",
+        "Real WHIR-UD uses Blake3 plus Shake128/SHA3 in software on SBF, so actual CU is higher.",
+        "Proof is 31x over the raw transaction byte limit."
+      ]
+    },
+    {
+      "rank": 8,
+      "attempt_id": "whir-ud-goldilocks2-t100-rate1over2-d8-e1-l0-i4-k4-affine3x5",
+      "security_target_bits": 100,
+      "achieved_security_bits": 99.99999999999997,
+      "num_variables": 8,
+      "proof_bytes": 47600,
+      "verifier_hashes": 329,
+      "hash_floor_cu": 48692.0,
+      "min_tx_count": 39,
+      "floor_margin_cu": 1351308.0,
+      "notes": [
+        "CU figure is a lower bound: hash_count * 148 CU, pretending every verifier hash were a cheap SHA syscall.",
+        "Real WHIR-UD uses Blake3 plus Shake128/SHA3 in software on SBF, so actual CU is higher.",
+        "Proof is 39x over the raw transaction byte limit."
+      ]
+    },
+    {
+      "rank": 9,
+      "attempt_id": "whir-ud-goldilocks2-t128-rate1over4-d8-e2-l0-i4-k4-ascending",
+      "security_target_bits": 128,
+      "achieved_security_bits": 127.9999999993282,
+      "num_variables": 8,
+      "proof_bytes": 50320,
+      "verifier_hashes": 378,
+      "hash_floor_cu": 55944.0,
+      "min_tx_count": 41,
+      "floor_margin_cu": 1344056.0,
+      "notes": [
+        "CU figure is a lower bound: hash_count * 148 CU, pretending every verifier hash were a cheap SHA syscall.",
+        "Real WHIR-UD uses Blake3 plus Shake128/SHA3 in software on SBF, so actual CU is higher.",
+        "Proof is 41x over the raw transaction byte limit."
+      ]
+    },
+    {
+      "rank": 10,
+      "attempt_id": "whir-ud-goldilocks2-t128-rate1over2-d8-e1-l0-i4-k4-quadratic7",
+      "security_target_bits": 128,
+      "achieved_security_bits": 127.99999999999997,
+      "num_variables": 8,
+      "proof_bytes": 64304,
+      "verifier_hashes": 436,
+      "hash_floor_cu": 64528.0,
+      "min_tx_count": 53,
+      "floor_margin_cu": 1335472.0,
+      "notes": [
+        "CU figure is a lower bound: hash_count * 148 CU, pretending every verifier hash were a cheap SHA syscall.",
+        "Real WHIR-UD uses Blake3 plus Shake128/SHA3 in software on SBF, so actual CU is higher.",
+        "Proof is 53x over the raw transaction byte limit."
+      ]
+    },
+    {
+      "rank": 11,
+      "attempt_id": "whir-ud-goldilocks2-t100-rate1over16-d8-e1-l0-i4-k4-affine3x5",
+      "security_target_bits": 100,
+      "achieved_security_bits": 99.99999999999994,
+      "num_variables": 8,
+      "proof_bytes": 37040,
+      "verifier_hashes": 445,
+      "hash_floor_cu": 65860.0,
+      "min_tx_count": 31,
+      "floor_margin_cu": 1334140.0,
+      "notes": [
+        "CU figure is a lower bound: hash_count * 148 CU, pretending every verifier hash were a cheap SHA syscall.",
+        "Real WHIR-UD uses Blake3 plus Shake128/SHA3 in software on SBF, so actual CU is higher.",
+        "Proof is 31x over the raw transaction byte limit."
+      ]
+    },
+    {
+      "rank": 12,
+      "attempt_id": "whir-ud-goldilocks2-t128-rate1over16-d8-e1-l0-i4-k4-quadratic7",
+      "security_target_bits": 128,
+      "achieved_security_bits": 127.99999999999994,
+      "num_variables": 8,
+      "proof_bytes": 48368,
+      "verifier_hashes": 552,
+      "hash_floor_cu": 81696.0,
+      "min_tx_count": 40,
+      "floor_margin_cu": 1318304.0,
+      "notes": [
+        "CU figure is a lower bound: hash_count * 148 CU, pretending every verifier hash were a cheap SHA syscall.",
+        "Real WHIR-UD uses Blake3 plus Shake128/SHA3 in software on SBF, so actual CU is higher.",
+        "Proof is 40x over the raw transaction byte limit."
+      ]
+    },
+    {
+      "rank": 13,
+      "attempt_id": "whir-ud-goldilocks2-t100-rate1over2-d12-e1-l0-i4-k4-quadratic7",
+      "security_target_bits": 100,
+      "achieved_security_bits": 99.99999999999994,
+      "num_variables": 12,
+      "proof_bytes": 79936,
+      "verifier_hashes": 1023,
+      "hash_floor_cu": 151404.0,
+      "min_tx_count": 65,
+      "floor_margin_cu": 1248596.0,
+      "notes": [
+        "CU figure is a lower bound: hash_count * 148 CU, pretending every verifier hash were a cheap SHA syscall.",
+        "Real WHIR-UD uses Blake3 plus Shake128/SHA3 in software on SBF, so actual CU is higher.",
+        "Proof is 65x over the raw transaction byte limit."
+      ]
+    },
+    {
+      "rank": 14,
+      "attempt_id": "whir-ud-goldilocks2-t100-rate1over4-d12-e1-l0-i4-k4-ascending",
+      "security_target_bits": 100,
+      "achieved_security_bits": 99.99999999999994,
+      "num_variables": 12,
+      "proof_bytes": 75232,
+      "verifier_hashes": 1079,
+      "hash_floor_cu": 159692.0,
+      "min_tx_count": 62,
+      "floor_margin_cu": 1240308.0,
+      "notes": [
+        "CU figure is a lower bound: hash_count * 148 CU, pretending every verifier hash were a cheap SHA syscall.",
+        "Real WHIR-UD uses Blake3 plus Shake128/SHA3 in software on SBF, so actual CU is higher.",
+        "Proof is 62x over the raw transaction byte limit."
+      ]
+    },
+    {
+      "rank": 15,
+      "attempt_id": "whir-ud-goldilocks2-t128-rate1over2-d12-e1-l1-i4-k4-ascending",
+      "security_target_bits": 128,
+      "achieved_security_bits": 127.9999999993282,
+      "num_variables": 12,
+      "proof_bytes": 103584,
+      "verifier_hashes": 1210,
+      "hash_floor_cu": 179080.0,
+      "min_tx_count": 85,
+      "floor_margin_cu": 1220920.0,
+      "notes": [
+        "CU figure is a lower bound: hash_count * 148 CU, pretending every verifier hash were a cheap SHA syscall.",
+        "Real WHIR-UD uses Blake3 plus Shake128/SHA3 in software on SBF, so actual CU is higher.",
+        "Proof is 85x over the raw transaction byte limit."
+      ]
+    },
+    {
+      "rank": 16,
+      "attempt_id": "whir-ud-goldilocks2-t128-rate1over4-d12-e1-l1-i4-k4-affine3x5",
+      "security_target_bits": 128,
+      "achieved_security_bits": 127.9999999993282,
+      "num_variables": 12,
+      "proof_bytes": 97344,
+      "verifier_hashes": 1337,
+      "hash_floor_cu": 197876.0,
+      "min_tx_count": 80,
+      "floor_margin_cu": 1202124.0,
+      "notes": [
+        "CU figure is a lower bound: hash_count * 148 CU, pretending every verifier hash were a cheap SHA syscall.",
+        "Real WHIR-UD uses Blake3 plus Shake128/SHA3 in software on SBF, so actual CU is higher.",
+        "Proof is 80x over the raw transaction byte limit."
+      ]
+    },
+    {
+      "rank": 17,
+      "attempt_id": "whir-ud-goldilocks2-t100-rate1over16-d12-e1-l0-i4-k4-quadratic7",
+      "security_target_bits": 100,
+      "achieved_security_bits": 99.99999999999994,
+      "num_variables": 12,
+      "proof_bytes": 83776,
+      "verifier_hashes": 1448,
+      "hash_floor_cu": 214304.0,
+      "min_tx_count": 68,
+      "floor_margin_cu": 1185696.0,
+      "notes": [
+        "CU figure is a lower bound: hash_count * 148 CU, pretending every verifier hash were a cheap SHA syscall.",
+        "Real WHIR-UD uses Blake3 plus Shake128/SHA3 in software on SBF, so actual CU is higher.",
+        "Proof is 68x over the raw transaction byte limit."
+      ]
+    },
+    {
+      "rank": 18,
+      "attempt_id": "whir-ud-goldilocks2-t128-rate1over16-d12-e1-l1-i4-k4-ascending",
+      "security_target_bits": 128,
+      "achieved_security_bits": 127.9999999993282,
+      "num_variables": 12,
+      "proof_bytes": 109472,
+      "verifier_hashes": 1852,
+      "hash_floor_cu": 274096.0,
+      "min_tx_count": 89,
+      "floor_margin_cu": 1125904.0,
+      "notes": [
+        "CU figure is a lower bound: hash_count * 148 CU, pretending every verifier hash were a cheap SHA syscall.",
+        "Real WHIR-UD uses Blake3 plus Shake128/SHA3 in software on SBF, so actual CU is higher.",
+        "Proof is 89x over the raw transaction byte limit."
+      ]
+    },
+    {
+      "rank": 19,
+      "attempt_id": "whir-ud-goldilocks2-t100-rate1over4-d18-e1-l0-i4-k4-affine3x5",
+      "security_target_bits": 100,
+      "achieved_security_bits": 99.99999999999994,
+      "num_variables": 18,
+      "proof_bytes": 163680,
+      "verifier_hashes": 3376,
+      "hash_floor_cu": 499648.0,
+      "min_tx_count": 133,
+      "floor_margin_cu": 900352.0,
+      "notes": [
+        "CU figure is a lower bound: hash_count * 148 CU, pretending every verifier hash were a cheap SHA syscall.",
+        "Real WHIR-UD uses Blake3 plus Shake128/SHA3 in software on SBF, so actual CU is higher.",
+        "Proof is 133x over the raw transaction byte limit."
+      ]
+    },
+    {
+      "rank": 20,
+      "attempt_id": "whir-ud-goldilocks2-t100-rate1over2-d18-e1-l0-i4-k4-affine3x5",
+      "security_target_bits": 100,
+      "achieved_security_bits": 99.99999999999994,
+      "num_variables": 18,
+      "proof_bytes": 175520,
+      "verifier_hashes": 3571,
+      "hash_floor_cu": 528508.0,
+      "min_tx_count": 143,
+      "floor_margin_cu": 871492.0,
+      "notes": [
+        "CU figure is a lower bound: hash_count * 148 CU, pretending every verifier hash were a cheap SHA syscall.",
+        "Real WHIR-UD uses Blake3 plus Shake128/SHA3 in software on SBF, so actual CU is higher.",
+        "Proof is 143x over the raw transaction byte limit."
+      ]
+    },
+    {
+      "rank": 21,
+      "attempt_id": "whir-ud-goldilocks2-t128-rate1over4-d18-e1-l0-i4-k4-affine3x5",
+      "security_target_bits": 128,
+      "achieved_security_bits": 127.99999999999997,
+      "num_variables": 18,
+      "proof_bytes": 213904,
+      "verifier_hashes": 4358,
+      "hash_floor_cu": 644984.0,
+      "min_tx_count": 174,
+      "floor_margin_cu": 755016.0,
+      "notes": [
+        "CU figure is a lower bound: hash_count * 148 CU, pretending every verifier hash were a cheap SHA syscall.",
+        "Real WHIR-UD uses Blake3 plus Shake128/SHA3 in software on SBF, so actual CU is higher.",
+        "Proof is 174x over the raw transaction byte limit."
+      ]
+    },
+    {
+      "rank": 22,
+      "attempt_id": "whir-ud-goldilocks2-t128-rate1over2-d18-e1-l0-i4-k4-affine3x5",
+      "security_target_bits": 128,
+      "achieved_security_bits": 127.99999999999994,
+      "num_variables": 18,
+      "proof_bytes": 227792,
+      "verifier_hashes": 4552,
+      "hash_floor_cu": 673696.0,
+      "min_tx_count": 185,
+      "floor_margin_cu": 726304.0,
+      "notes": [
+        "CU figure is a lower bound: hash_count * 148 CU, pretending every verifier hash were a cheap SHA syscall.",
+        "Real WHIR-UD uses Blake3 plus Shake128/SHA3 in software on SBF, so actual CU is higher.",
+        "Proof is 185x over the raw transaction byte limit."
+      ]
+    }
+  ]
+}

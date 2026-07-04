@@ -1,0 +1,29 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on artifact directory
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.13s
+     Running `/tmp/whir-ref/target/release/main --unique-decoding -l 100 -d 4 -e 1 -r 1 -i 4 -k 4 -f Field192 --hash Blake3 --reps 1`
+=========================================
+Whir (PCS) 🌪️
+Field: Field192 and hash: Blake3
+Security level: 100.00 bits using unique decoding
+Source field: 191.28 bits, target field: 191.28 bits
+Initial:
+  commit   size 1×16/16 rate 2⁻1.00 samples 193 in- 0 out-domain
+  sumcheck size 16 rounds 4 pow 0.00 ℓ_zk 0
+Final:
+  pow      19.90bits
+  sumcheck size 1 rounds 0 pow 0.00 ℓ_zk 0
+------------------------------------
+Round by round soundness analysis:
+------------------------------------
+no loss -- initial vector RLC (1 vector)
+188.1 bits -- initial linear-form RLC (10 linear form)
+190.3 bits -- (x4) prox gaps: 190.3, sumcheck: 190.3, pow: 0.0, list size 2^0.0
+100.0 bits -- query error: 80.1, pow: 19.9
+
+Prover time: 3.8ms + 32.7ms = 36.6ms
+Proof size: 72.6 KiB
+Verifier time: 188.9µs
+Average hashes: 0.2k

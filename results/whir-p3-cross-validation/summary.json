@@ -1,0 +1,476 @@
+{
+  "generated_at_utc": "2026-04-20T07:36:54.607848+00:00",
+  "command": "cargo xtask whir-p3-cross-validate",
+  "current_whir_p3": {
+    "repo_url": "https://github.com/tcoratger/whir-p3",
+    "checkout_path": "/tmp/whir-p3-ref",
+    "git_head": "a755a26ae41c52e3a1695ac4c443af627c96fe77",
+    "cargo_toml_has_p3_mersenne31": false,
+    "cargo_toml_has_sha256_backend": false,
+    "cli_field": "KoalaBear",
+    "cli_extension_field": "BinomialExtensionField<KoalaBear, 4>",
+    "cli_hash_backend": "Poseidon2KoalaBear sponge + truncated Poseidon permutation for MMCS",
+    "cli_challenger": "DuplexChallenger<KoalaBear, Poseidon2KoalaBear<16>, 16, 8>",
+    "cli_mmcs": "MerkleTreeMmcs<PackedF, PackedF, PaddingFreeSponge<Poseidon24>, TruncatedPermutation<Poseidon16>, 2, 8>",
+    "cli_rate_flag": "-r / --rate -> starting_log_inv_rate",
+    "cli_fold_flag": "-k / --fold -> FoldingFactor::Constant(args.folding_factor)",
+    "cli_security_flag": "--sec -> SecurityAssumption::{CapacityBound, JohnsonBound, ...}",
+    "cli_pow_flag": "-p / --pow-bits -> ProtocolParameters::pow_bits",
+    "cli_initial_rs_reduction_flag": "--initial-rs-reduction -> rs_domain_initial_reduction_factor",
+    "query_count_control": "No direct CLI query-count flag; `WhirProof::from_protocol_parameters` derives capacity from `soundness_type.queries(protocol_security_level, starting_log_inv_rate)`.",
+    "proof_serialization": "`bincode::serialize(&proof)` over a serde `WhirProof` object",
+    "additional_hash_variants": [
+      "Keccak test-only path over KoalaBear in `src/whir/mod.rs`.",
+      "No checked-in SHA-256 MMCS/challenger path found at this commit."
+    ]
+  },
+  "current_main_build_preflight": {
+    "command": [
+      "cargo",
+      "check",
+      "--manifest-path",
+      "/tmp/whir-p3-ref/Cargo.toml",
+      "--features",
+      "cli"
+    ],
+    "status_code": 101,
+    "success": false,
+    "stdout": "",
+    "stderr": "    Updating crates.io index\n    Updating git repository `https://github.com/Plonky3/Plonky3`\nerror: no matching package named `p3-interpolation` found\nlocation searched: Git repository https://github.com/Plonky3/Plonky3?branch=main\nrequired by package `whir-p3 v0.1.0 (/tmp/whir-p3-ref)`\n"
+  },
+  "buildable_pair": {
+    "checkout_path": "/tmp/whir-p3-ade33e7",
+    "whir_p3_commit": "ade33e7f5900a0f6c763d2793d7e1a5068d0b338",
+    "plonky3_commit": "ccbffd6df66389f45d308a9df77c90bd53fdf81e",
+    "cargo_check": {
+      "command": [
+        "cargo",
+        "check",
+        "--manifest-path",
+        "/tmp/whir-p3-ade33e7/Cargo.toml",
+        "--features",
+        "cli"
+      ],
+      "status_code": 0,
+      "success": true,
+      "stdout": "",
+      "stderr": "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.09s\n"
+    },
+    "api_findings": [
+      "Buildable pair API checked at `src/bin/main.rs`, `src/parameters/mod.rs`, `src/whir/parameters.rs`, and `src/whir/proof.rs`.",
+      "The checked-in CLI still hardcodes KoalaBear4 + Poseidon2, but the generic `WhirConfig`/`ProtocolParameters` surface is usable from an external helper crate.",
+      "Round structure is exposed through `WhirConfig::round_parameters`, `final_queries`, `final_pow_bits`, and `final_sumcheck_rounds`.",
+      "Proof serialization remains serde/bincode over `WhirProof`, so proof-byte interop with the local fixed-layout transcript is still unavailable."
+    ]
+  },
+  "local_scenarios": [
+    {
+      "name": "whir_t100_capacity_full",
+      "security_target_bits": 100.0,
+      "soundness_assumption": "whir_capacity_full",
+      "soundness_assumption_whir_p3": "CapacityBound",
+      "field_tower": "M31 base field with CM31/QM31 extension arithmetic in the Solana verifier path",
+      "hash_backend": "Solana SHA-256 via `solana_program::hash::hashv` / `sol_sha256` syscall path",
+      "log_inv_rate": 4,
+      "nominal_rate": "1/16",
+      "evaluation_domain_log2": 13,
+      "fold_arity": 4,
+      "grinding_bits": 32,
+      "total_explicit_query_count": 28,
+      "round_query_counts": [
+        18,
+        10
+      ],
+      "merkle_depths": [
+        8,
+        11,
+        0,
+        0
+      ],
+      "ood_samples_per_round": [
+        2,
+        2,
+        0,
+        0
+      ],
+      "opening_counts_per_round": [
+        3,
+        3,
+        0,
+        0
+      ],
+      "target_proof_bytes": 12356,
+      "arithmetic_kernel_id": "reference_canonical",
+      "extension_kernel_id": "karatsuba",
+      "lift_policy": "late_lift_qm31",
+      "fold_mode": "raw_fibers",
+      "merkle_proof_mode": "separate_paths"
+    },
+    {
+      "name": "whir_t128_capacity_full",
+      "security_target_bits": 128.0,
+      "soundness_assumption": "whir_capacity_full",
+      "soundness_assumption_whir_p3": "CapacityBound",
+      "field_tower": "M31 base field with CM31/QM31 extension arithmetic in the Solana verifier path",
+      "hash_backend": "Solana SHA-256 via `solana_program::hash::hashv` / `sol_sha256` syscall path",
+      "log_inv_rate": 4,
+      "nominal_rate": "1/16",
+      "evaluation_domain_log2": 13,
+      "fold_arity": 4,
+      "grinding_bits": 32,
+      "total_explicit_query_count": 39,
+      "round_query_counts": [
+        25,
+        14
+      ],
+      "merkle_depths": [
+        8,
+        11,
+        0,
+        0
+      ],
+      "ood_samples_per_round": [
+        2,
+        2,
+        0,
+        0
+      ],
+      "opening_counts_per_round": [
+        3,
+        3,
+        0,
+        0
+      ],
+      "target_proof_bytes": 15468,
+      "arithmetic_kernel_id": "reference_canonical",
+      "extension_kernel_id": "karatsuba",
+      "lift_policy": "late_lift_qm31",
+      "fold_mode": "raw_fibers",
+      "merkle_proof_mode": "separate_paths"
+    },
+    {
+      "name": "whir_t128_johnson_full",
+      "security_target_bits": 128.0,
+      "soundness_assumption": "whir_johnson_full",
+      "soundness_assumption_whir_p3": "JohnsonBound",
+      "field_tower": "M31 base field with CM31/QM31 extension arithmetic in the Solana verifier path",
+      "hash_backend": "Solana SHA-256 via `solana_program::hash::hashv` / `sol_sha256` syscall path",
+      "log_inv_rate": 4,
+      "nominal_rate": "1/16",
+      "evaluation_domain_log2": 13,
+      "fold_arity": 4,
+      "grinding_bits": 32,
+      "total_explicit_query_count": 78,
+      "round_query_counts": [
+        50,
+        28
+      ],
+      "merkle_depths": [
+        8,
+        11,
+        0,
+        0
+      ],
+      "ood_samples_per_round": [
+        2,
+        1,
+        0,
+        0
+      ],
+      "opening_counts_per_round": [
+        3,
+        2,
+        0,
+        0
+      ],
+      "target_proof_bytes": 26463,
+      "arithmetic_kernel_id": "reference_canonical",
+      "extension_kernel_id": "karatsuba",
+      "lift_policy": "late_lift_qm31",
+      "fold_mode": "raw_fibers",
+      "merkle_proof_mode": "separate_paths"
+    }
+  ],
+  "parameter_mapping": [
+    {
+      "scenario": "whir_t100_capacity_full",
+      "local_parameter": "field tower",
+      "local_value": "M31 base field with CM31/QM31 extension arithmetic in the Solana verifier path",
+      "whir_p3_api": "Current checked-in CLI/examples use `KoalaBear` + `BinomialExtensionField<KoalaBear, 4>`; generic `WhirConfig` can be instantiated from an external helper crate.",
+      "compatibility": "proof-level blocked; schedule-level comparison required a helper crate and a field-size-matched `BinomialExtensionField<BabyBear, 5>` surface because the local Phase 2 screen hard-codes 155 field bits"
+    },
+    {
+      "scenario": "whir_t100_capacity_full",
+      "local_parameter": "hash / transcript / MMCS",
+      "local_value": "Solana SHA-256 via `solana_program::hash::hashv` / `sol_sha256` syscall path",
+      "whir_p3_api": "Checked-in surfaces are Poseidon-based; tests add Keccak only.",
+      "compatibility": "blocked for proof bytes and transcript data"
+    },
+    {
+      "scenario": "whir_t100_capacity_full",
+      "local_parameter": "starting rate",
+      "local_value": "log_inv_rate=4 (nominal rate 1/16)",
+      "whir_p3_api": "`ProtocolParameters { starting_log_inv_rate, .. }` or CLI `-r/--rate`",
+      "compatibility": "maps directly"
+    },
+    {
+      "scenario": "whir_t100_capacity_full",
+      "local_parameter": "folding factor",
+      "local_value": "first=4, later=4",
+      "whir_p3_api": "`FoldingFactor::ConstantFromSecondRound(first, later)`",
+      "compatibility": "maps for the schedule derivation"
+    },
+    {
+      "scenario": "whir_t100_capacity_full",
+      "local_parameter": "query schedule",
+      "local_value": "total=28 with round_query_counts=[18, 10]",
+      "whir_p3_api": "`WhirConfig::round_parameters[..].num_queries` plus `final_queries` after parameter derivation",
+      "compatibility": "derivable and compared structurally; not a direct CLI input"
+    },
+    {
+      "scenario": "whir_t100_capacity_full",
+      "local_parameter": "grinding / PoW bits",
+      "local_value": "32",
+      "whir_p3_api": "`ProtocolParameters { pow_bits, .. }` or CLI `-p/--pow-bits`",
+      "compatibility": "maps for the schedule derivation"
+    },
+    {
+      "scenario": "whir_t100_capacity_full",
+      "local_parameter": "soundness assumption",
+      "local_value": "whir_capacity_full",
+      "whir_p3_api": "`SecurityAssumption::{CapacityBound, JohnsonBound}`",
+      "compatibility": "maps directly"
+    },
+    {
+      "scenario": "whir_t100_capacity_full",
+      "local_parameter": "proof serialization",
+      "local_value": "fixed-layout phase2 transcript proof, target_proof_bytes=12356",
+      "whir_p3_api": "`bincode::serialize(&proof)` over the serde `WhirProof<F, EF, MT>` object",
+      "compatibility": "blocked: byte layout and parser model differ completely, so direct proof interchange is not available"
+    },
+    {
+      "scenario": "whir_t128_capacity_full",
+      "local_parameter": "field tower",
+      "local_value": "M31 base field with CM31/QM31 extension arithmetic in the Solana verifier path",
+      "whir_p3_api": "Current checked-in CLI/examples use `KoalaBear` + `BinomialExtensionField<KoalaBear, 4>`; generic `WhirConfig` can be instantiated from an external helper crate.",
+      "compatibility": "proof-level blocked; schedule-level comparison required a helper crate and a field-size-matched `BinomialExtensionField<BabyBear, 5>` surface because the local Phase 2 screen hard-codes 155 field bits"
+    },
+    {
+      "scenario": "whir_t128_capacity_full",
+      "local_parameter": "hash / transcript / MMCS",
+      "local_value": "Solana SHA-256 via `solana_program::hash::hashv` / `sol_sha256` syscall path",
+      "whir_p3_api": "Checked-in surfaces are Poseidon-based; tests add Keccak only.",
+      "compatibility": "blocked for proof bytes and transcript data"
+    },
+    {
+      "scenario": "whir_t128_capacity_full",
+      "local_parameter": "starting rate",
+      "local_value": "log_inv_rate=4 (nominal rate 1/16)",
+      "whir_p3_api": "`ProtocolParameters { starting_log_inv_rate, .. }` or CLI `-r/--rate`",
+      "compatibility": "maps directly"
+    },
+    {
+      "scenario": "whir_t128_capacity_full",
+      "local_parameter": "folding factor",
+      "local_value": "first=4, later=4",
+      "whir_p3_api": "`FoldingFactor::ConstantFromSecondRound(first, later)`",
+      "compatibility": "maps for the schedule derivation"
+    },
+    {
+      "scenario": "whir_t128_capacity_full",
+      "local_parameter": "query schedule",
+      "local_value": "total=39 with round_query_counts=[25, 14]",
+      "whir_p3_api": "`WhirConfig::round_parameters[..].num_queries` plus `final_queries` after parameter derivation",
+      "compatibility": "derivable and compared structurally; not a direct CLI input"
+    },
+    {
+      "scenario": "whir_t128_capacity_full",
+      "local_parameter": "grinding / PoW bits",
+      "local_value": "32",
+      "whir_p3_api": "`ProtocolParameters { pow_bits, .. }` or CLI `-p/--pow-bits`",
+      "compatibility": "maps for the schedule derivation"
+    },
+    {
+      "scenario": "whir_t128_capacity_full",
+      "local_parameter": "soundness assumption",
+      "local_value": "whir_capacity_full",
+      "whir_p3_api": "`SecurityAssumption::{CapacityBound, JohnsonBound}`",
+      "compatibility": "maps directly"
+    },
+    {
+      "scenario": "whir_t128_capacity_full",
+      "local_parameter": "proof serialization",
+      "local_value": "fixed-layout phase2 transcript proof, target_proof_bytes=15468",
+      "whir_p3_api": "`bincode::serialize(&proof)` over the serde `WhirProof<F, EF, MT>` object",
+      "compatibility": "blocked: byte layout and parser model differ completely, so direct proof interchange is not available"
+    },
+    {
+      "scenario": "whir_t128_johnson_full",
+      "local_parameter": "field tower",
+      "local_value": "M31 base field with CM31/QM31 extension arithmetic in the Solana verifier path",
+      "whir_p3_api": "Current checked-in CLI/examples use `KoalaBear` + `BinomialExtensionField<KoalaBear, 4>`; generic `WhirConfig` can be instantiated from an external helper crate.",
+      "compatibility": "proof-level blocked; schedule-level comparison required a helper crate and a field-size-matched `BinomialExtensionField<BabyBear, 5>` surface because the local Phase 2 screen hard-codes 155 field bits"
+    },
+    {
+      "scenario": "whir_t128_johnson_full",
+      "local_parameter": "hash / transcript / MMCS",
+      "local_value": "Solana SHA-256 via `solana_program::hash::hashv` / `sol_sha256` syscall path",
+      "whir_p3_api": "Checked-in surfaces are Poseidon-based; tests add Keccak only.",
+      "compatibility": "blocked for proof bytes and transcript data"
+    },
+    {
+      "scenario": "whir_t128_johnson_full",
+      "local_parameter": "starting rate",
+      "local_value": "log_inv_rate=4 (nominal rate 1/16)",
+      "whir_p3_api": "`ProtocolParameters { starting_log_inv_rate, .. }` or CLI `-r/--rate`",
+      "compatibility": "maps directly"
+    },
+    {
+      "scenario": "whir_t128_johnson_full",
+      "local_parameter": "folding factor",
+      "local_value": "first=4, later=4",
+      "whir_p3_api": "`FoldingFactor::ConstantFromSecondRound(first, later)`",
+      "compatibility": "maps for the schedule derivation"
+    },
+    {
+      "scenario": "whir_t128_johnson_full",
+      "local_parameter": "query schedule",
+      "local_value": "total=78 with round_query_counts=[50, 28]",
+      "whir_p3_api": "`WhirConfig::round_parameters[..].num_queries` plus `final_queries` after parameter derivation",
+      "compatibility": "derivable and compared structurally; not a direct CLI input"
+    },
+    {
+      "scenario": "whir_t128_johnson_full",
+      "local_parameter": "grinding / PoW bits",
+      "local_value": "32",
+      "whir_p3_api": "`ProtocolParameters { pow_bits, .. }` or CLI `-p/--pow-bits`",
+      "compatibility": "maps for the schedule derivation"
+    },
+    {
+      "scenario": "whir_t128_johnson_full",
+      "local_parameter": "soundness assumption",
+      "local_value": "whir_johnson_full",
+      "whir_p3_api": "`SecurityAssumption::{CapacityBound, JohnsonBound}`",
+      "compatibility": "maps directly"
+    },
+    {
+      "scenario": "whir_t128_johnson_full",
+      "local_parameter": "proof serialization",
+      "local_value": "fixed-layout phase2 transcript proof, target_proof_bytes=26463",
+      "whir_p3_api": "`bincode::serialize(&proof)` over the serde `WhirProof<F, EF, MT>` object",
+      "compatibility": "blocked: byte layout and parser model differ completely, so direct proof interchange is not available"
+    }
+  ],
+  "comparison_surface": {
+    "name": "Derived WHIR schedule trace from whir-p3 `WhirConfig`",
+    "rationale": "The first honest overlap is the protocol schedule derivation: OOD sample counts, per-round query counts, per-round PoW requirements, and final-query/final-sumcheck structure. Exact proof bytes, transcript challenges, query indices, and Merkle roots are not compared because the local verifier is SHA-256 + fixed-layout `P2T1`, while whir-p3 is Poseidon/Keccak-capable + serde/bincode.",
+    "selected_field_profile": "babybear5-poseidon2",
+    "selected_field_profile_rationale": "The Phase 2 scenarios in this workspace hard-code a 155-bit screening assumption. The closest buildable whir-p3 generic surface for that exact field-size input is `BinomialExtensionField<BabyBear, 5>`. This is a schedule-level comparison only; it is not an M31 proof-equivalence claim.",
+    "compared_fields": [
+      "soundness assumption",
+      "target security bits",
+      "field_size_bits",
+      "starting_log_inv_rate",
+      "max_pow_bits",
+      "num_variables",
+      "first/later folding factors",
+      "commitment OOD samples",
+      "starting folding PoW bits",
+      "per-round query counts",
+      "per-round OOD samples",
+      "per-round query/folding PoW bits",
+      "final queries",
+      "final query PoW bits",
+      "final sumcheck rounds",
+      "final folding PoW bits",
+      "total explicit query count",
+      "pow-cap satisfied"
+    ],
+    "intentionally_not_compared": [
+      "proof bytes",
+      "proof object layout",
+      "Merkle roots",
+      "Fiat-Shamir challenge bytes",
+      "query indices",
+      "opened values",
+      "host-verifier accept/reject",
+      "SBF-verifier accept/reject"
+    ]
+  },
+  "structural_trace_run": {
+    "field_profile": "babybear5-poseidon2",
+    "attempted": true,
+    "helper_command": [
+      "cargo",
+      "run",
+      "--manifest-path",
+      "/Users/dominic/ZK/target/whir-p3-cross-validation/trace-helper/Cargo.toml",
+      "--quiet",
+      "--",
+      "babybear5-poseidon2",
+      "/Users/dominic/ZK/results/whir-p3-cross-validation/raw/trace-helper.input.json"
+    ],
+    "helper_status_code": 0,
+    "helper_success": true,
+    "helper_manifest_path": "/Users/dominic/ZK/target/whir-p3-cross-validation/trace-helper/Cargo.toml",
+    "helper_input_path": "/Users/dominic/ZK/results/whir-p3-cross-validation/raw/trace-helper.input.json",
+    "helper_stdout_path": "/Users/dominic/ZK/results/whir-p3-cross-validation/raw/trace-helper.babybear5.stdout.json",
+    "helper_stderr_path": "/Users/dominic/ZK/results/whir-p3-cross-validation/raw/trace-helper.babybear5.stderr.txt",
+    "helper_status_path": "/Users/dominic/ZK/results/whir-p3-cross-validation/raw/trace-helper.babybear5.status.txt",
+    "local_trace_path": "/Users/dominic/ZK/results/whir-p3-cross-validation/raw/local-structural-traces.json",
+    "whir_p3_trace_path": "/Users/dominic/ZK/results/whir-p3-cross-validation/raw/whir-p3-structural-traces.json",
+    "comparison_path": "/Users/dominic/ZK/results/whir-p3-cross-validation/raw/structural-comparison.json",
+    "comparisons": [
+      {
+        "scenario": "whir_t100_capacity_full",
+        "field_profile": "babybear5-poseidon2",
+        "exact_match": false,
+        "compared_field_count": 24,
+        "divergences": [
+          "final_query_pow_bits_required differs: local=31 whir-p3=30",
+          "max_required_pow_bits differs: local=31 whir-p3=30",
+          "round[0].query_pow_bits_required differs: local=30 whir-p3=29"
+        ]
+      },
+      {
+        "scenario": "whir_t128_capacity_full",
+        "field_profile": "babybear5-poseidon2",
+        "exact_match": false,
+        "compared_field_count": 24,
+        "divergences": [
+          "starting_folding_pow_bits_required differs: local=3 whir-p3=2",
+          "final_query_pow_bits_required differs: local=31 whir-p3=30",
+          "max_required_pow_bits differs: local=31 whir-p3=30",
+          "round[0].query_pow_bits_required differs: local=30 whir-p3=29",
+          "round[0].folding_pow_bits_required differs: local=8 whir-p3=7"
+        ]
+      },
+      {
+        "scenario": "whir_t128_johnson_full",
+        "field_profile": "babybear5-poseidon2",
+        "exact_match": false,
+        "compared_field_count": 24,
+        "divergences": [
+          "starting_folding_pow_bits_required differs: local=13 whir-p3=36",
+          "final_query_pow_bits_required differs: local=32 whir-p3=31",
+          "max_required_pow_bits differs: local=32 whir-p3=38",
+          "pow_cap_satisfied differs: local=`true` whir-p3=`false`",
+          "round[0].query_pow_bits_required differs: local=32 whir-p3=31",
+          "round[0].folding_pow_bits_required differs: local=16 whir-p3=38"
+        ]
+      }
+    ],
+    "notes": [
+      "The selected surface is the derived WHIR schedule, not proof bytes.",
+      "The helper uses `BinomialExtensionField<BabyBear, 5>` because the local Phase 2 sweep hard-codes a 155-bit field-size assumption.",
+      "Any exact match reported here is only a formula-level schedule agreement on this surface."
+    ]
+  },
+  "proof_interop_possible": false,
+  "proof_interop_block_reasons": [
+    "The current whir-p3 main checkout does not build against its declared Plonky3 main dependency set, so there is no stable current-main prover/verifier binary to compare against yet.",
+    "The local implementation uses SHA-256 through Solana's syscall path, while the checked-in whir-p3 surfaces are Poseidon-based and tests add Keccak only; transcript bytes and Merkle roots are therefore expected to diverge.",
+    "The local proof is a fixed-layout `P2T1` envelope parsed by deterministic offsets, while whir-p3 serializes `WhirProof` via serde/bincode with nested vectors, enums, and options.",
+    "The first trace comparison had to target the derived schedule rather than the proof bytes. Matching the local 155-bit Phase 2 screen required a generic `BabyBear` degree-5 helper, not the public M31 path advertised by the reference repository."
+  ]
+}

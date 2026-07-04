@@ -1,0 +1,31 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on artifact directory
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.28s
+     Running `/tmp/whir-ref/target/release/main -l 100 -d 4 -e 1 -r 1 -i 4 -k 4 -f Goldilocks3 --hash Blake3 --reps 1`
+=========================================
+Whir (PCS) 🌪️
+Field: Goldilocks3 and hash: Blake3
+Security level: 100.00 bits using list decoding
+Source field: 64.00 bits, target field: 192.00 bits
+Initial:
+  commit   size 1×16/16 rate 2⁻1.00 samples 187 in- 1 out-domain
+  sumcheck size 16 rounds 4 pow 0.00 ℓ_zk 0
+Final:
+  pow      19.66bits
+  sumcheck size 1 rounds 0 pow 0.00 ℓ_zk 0
+------------------------------------
+Round by round soundness analysis:
+------------------------------------
+no loss -- initial vector RLC (1 vector)
+188.8 bits -- initial linear-form RLC (10 linear form)
+180.5 bits -- OOD commitment
+165.2 bits -- (x4) prox gaps: 165.2, sumcheck: 186.7, pow: 0.0, list size 2^4.3
+100.0 bits -- query error: 80.3, pow: 19.7
+
+Prover time: 371.8µs + 19.7ms = 20.0ms
+Proof size: 23.7 KiB
+Verifier time: 255.3µs
+Average hashes: 0.2k

@@ -78,6 +78,9 @@
   "verify_repetitions": 3,
   "skeleton_repeat_inside_instruction": 12,
   "whir_query_repeat_inside_instruction": 1,
+  "whir_transcript_repeat_inside_instruction": 1,
+  "whir_transcript_verify_repetitions": 10,
+  "whir_transcript_trace_repetitions": 10,
   "proof_plan": {
     "query_count": 4,
     "fold_arity": 4,
@@ -105,6 +108,13 @@
     {
       "name": "whir_t128_johnson_full",
       "security_target_bits": 128.0,
+      "soundness_assumption": "whir_johnson_full",
+      "log_inv_rate": 4,
+      "grinding_bits": 32
+    },
+    {
+      "name": "whir_t100_johnson_full",
+      "security_target_bits": 100.0,
       "soundness_assumption": "whir_johnson_full",
       "log_inv_rate": 4,
       "grinding_bits": 32

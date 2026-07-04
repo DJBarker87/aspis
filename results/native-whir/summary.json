@@ -1,0 +1,108 @@
+{
+  "generated_at_utc": "2026-04-19T20:40:52.726252+00:00",
+  "command": "cargo xtask native-whir-m31",
+  "versions": {
+    "generated_at_utc": "2026-04-19T20:40:14.389011+00:00",
+    "executed": [
+      {
+        "command": "solana-test-validator --version",
+        "output": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)"
+      },
+      {
+        "command": "cargo-build-sbf --version",
+        "output": "solana-cargo-build-sbf 2.3.0\nplatform-tools v1.48\nrustc 1.84.1"
+      },
+      {
+        "command": "rustc --version",
+        "output": "rustc 1.93.0 (254b59607 2026-01-19)"
+      },
+      {
+        "command": "cargo --version",
+        "output": "cargo 1.93.0 (083ac5135 2025-12-15)"
+      }
+    ],
+    "not_executed": [
+      "Cross-version validator drift was not executed here; set up alternate Agave/Solana binaries and rerun `cargo xtask phase1-next` under those toolchains."
+    ]
+  },
+  "raw_artifacts": [
+    "results/native-whir/manifests/whir-m31-dev-v0.json",
+    "results/native-whir/manifests/whir-m31-solana-v0.json",
+    "results/native-whir/proofs/whir-m31-dev-v0.bin",
+    "results/native-whir/proofs/whir-m31-solana-v0.bin",
+    "results/native-whir/host/raw.jsonl",
+    "results/native-whir/host/raw.csv",
+    "results/native-whir/onchain/raw.jsonl",
+    "results/native-whir/onchain/raw.csv",
+    "results/native-whir/summary.json",
+    "docs/native-whir-m31-v0.md"
+  ],
+  "proof_profiles": [
+    "whir-m31-dev-v0",
+    "whir-m31-solana-v0"
+  ],
+  "dev_profile": {
+    "profile": "whir-m31-dev-v0",
+    "executed": true,
+    "proof_bytes": 4108,
+    "proof_path": "/Users/dominic/ZK/results/native-whir/proofs/whir-m31-dev-v0.bin",
+    "host_prove_ns": 2311792,
+    "host_verify_ok": true,
+    "onchain_verify_ok": true,
+    "onchain_verify_cu": 96118,
+    "upload_chunks": 7,
+    "upload_total_cu": 9694,
+    "heap_frame_bytes_requested": 32768,
+    "error": null
+  },
+  "target_profile": {
+    "profile": "whir-m31-solana-v0",
+    "executed": true,
+    "proof_bytes": 18316,
+    "proof_path": "/Users/dominic/ZK/results/native-whir/proofs/whir-m31-solana-v0.bin",
+    "host_prove_ns": 25763625,
+    "host_verify_ok": true,
+    "onchain_verify_ok": true,
+    "onchain_verify_cu": 326021,
+    "upload_chunks": 29,
+    "upload_total_cu": 38965,
+    "heap_frame_bytes_requested": 65536,
+    "error": null
+  },
+  "corruption_tests": [
+    {
+      "profile": "whir-m31-dev-v0",
+      "mutation": "flip_merkle_sibling",
+      "host_rejected": true,
+      "onchain_rejected": true,
+      "onchain_error": "{\"InstructionError\":[2,\"InvalidInstructionData\"]}"
+    },
+    {
+      "profile": "whir-m31-dev-v0",
+      "mutation": "flip_fold_coefficient",
+      "host_rejected": true,
+      "onchain_rejected": true,
+      "onchain_error": "{\"InstructionError\":[2,\"InvalidInstructionData\"]}"
+    },
+    {
+      "profile": "whir-m31-dev-v0",
+      "mutation": "flip_query_opening",
+      "host_rejected": true,
+      "onchain_rejected": true,
+      "onchain_error": "{\"InstructionError\":[2,\"InvalidInstructionData\"]}"
+    },
+    {
+      "profile": "whir-m31-dev-v0",
+      "mutation": "flip_statement_digest",
+      "host_rejected": true,
+      "onchain_rejected": true,
+      "onchain_error": "{\"InstructionError\":[2,\"InvalidInstructionData\"]}"
+    }
+  ],
+  "biggest_remaining_risk": "v0 proves transcript-bound local fold consistency for a fixed committed multilinear table, but it is not yet the full WHIR paper path or a full SpendV0 arithmetic relation.",
+  "next_steps": [
+    "replace the deterministic table witness with the first real SpendV0 arithmetic/witness slice while keeping the same statement binding",
+    "measure and, if needed, tighten the target profile with a narrower Merkle proof representation once real proof bytes dominate upload cost",
+    "formalize the v0 soundness delta against the full WHIR protocol and decide which missing checks must land before SpendV0"
+  ]
+}

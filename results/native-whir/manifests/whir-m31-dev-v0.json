@@ -1,0 +1,20 @@
+{
+  "id": 1,
+  "name": "whir-m31-dev-v0",
+  "proof_version": 0,
+  "statement_binding_version": 0,
+  "log_num_rows": 8,
+  "fold_vars_per_round": 2,
+  "round_count": 4,
+  "query_repetitions_per_round": 4,
+  "query_pow_bits": 0,
+  "target_security_bits": 96,
+  "heap_frame_bytes": 32768,
+  "upload_chunk_bytes": 640,
+  "max_compute_units_per_tx": 1400000,
+  "max_transaction_bytes": 1232,
+  "min_heap_frame_bytes": 32768,
+  "max_heap_frame_bytes": 262144,
+  "heap_page_bytes": 32768,
+  "stack_frame_bytes": 4096
+}

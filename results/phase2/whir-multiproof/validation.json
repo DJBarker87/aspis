@@ -1,0 +1,98 @@
+[
+  {
+    "invalid_challenge_rejected": true,
+    "invalid_folding_rejected": true,
+    "invalid_missing_query_rejected": true,
+    "invalid_truncated_rejected": true,
+    "merkle_proof_mode": "separate_paths",
+    "proofs": {
+      "invalid_challenge": "results/phase2/whir-multiproof/proofs/whir_t100_capacity_full_separate_paths_invalid_challenge.bin",
+      "invalid_folding": "results/phase2/whir-multiproof/proofs/whir_t100_capacity_full_separate_paths_invalid_folding.bin",
+      "invalid_missing_query": "results/phase2/whir-multiproof/proofs/whir_t100_capacity_full_separate_paths_invalid_missing_query.bin",
+      "invalid_truncated": "results/phase2/whir-multiproof/proofs/whir_t100_capacity_full_separate_paths_invalid_truncated.bin",
+      "valid": "results/phase2/whir-multiproof/proofs/whir_t100_capacity_full_separate_paths_valid.bin"
+    },
+    "scenario_name": "whir_t100_capacity_full",
+    "valid_proof": true
+  },
+  {
+    "invalid_challenge_rejected": true,
+    "invalid_folding_rejected": true,
+    "invalid_missing_query_rejected": true,
+    "invalid_truncated_rejected": true,
+    "merkle_proof_mode": "minimal_subtree",
+    "proofs": {
+      "invalid_challenge": "results/phase2/whir-multiproof/proofs/whir_t100_capacity_full_minimal_subtree_invalid_challenge.bin",
+      "invalid_folding": "results/phase2/whir-multiproof/proofs/whir_t100_capacity_full_minimal_subtree_invalid_folding.bin",
+      "invalid_missing_query": "results/phase2/whir-multiproof/proofs/whir_t100_capacity_full_minimal_subtree_invalid_missing_query.bin",
+      "invalid_truncated": "results/phase2/whir-multiproof/proofs/whir_t100_capacity_full_minimal_subtree_invalid_truncated.bin",
+      "valid": "results/phase2/whir-multiproof/proofs/whir_t100_capacity_full_minimal_subtree_valid.bin"
+    },
+    "scenario_name": "whir_t100_capacity_full",
+    "valid_proof": true
+  },
+  {
+    "invalid_challenge_rejected": true,
+    "invalid_folding_rejected": true,
+    "invalid_missing_query_rejected": true,
+    "invalid_truncated_rejected": true,
+    "merkle_proof_mode": "separate_paths",
+    "proofs": {
+      "invalid_challenge": "results/phase2/whir-multiproof/proofs/whir_t128_capacity_full_separate_paths_invalid_challenge.bin",
+      "invalid_folding": "results/phase2/whir-multiproof/proofs/whir_t128_capacity_full_separate_paths_invalid_folding.bin",
+      "invalid_missing_query": "results/phase2/whir-multiproof/proofs/whir_t128_capacity_full_separate_paths_invalid_missing_query.bin",
+      "invalid_truncated": "results/phase2/whir-multiproof/proofs/whir_t128_capacity_full_separate_paths_invalid_truncated.bin",
+      "valid": "results/phase2/whir-multiproof/proofs/whir_t128_capacity_full_separate_paths_valid.bin"
+    },
+    "scenario_name": "whir_t128_capacity_full",
+    "valid_proof": true
+  },
+  {
+    "invalid_challenge_rejected": true,
+    "invalid_folding_rejected": true,
+    "invalid_missing_query_rejected": true,
+    "invalid_truncated_rejected": true,
+    "merkle_proof_mode": "minimal_subtree",
+    "proofs": {
+      "invalid_challenge": "results/phase2/whir-multiproof/proofs/whir_t128_capacity_full_minimal_subtree_invalid_challenge.bin",
+      "invalid_folding": "results/phase2/whir-multiproof/proofs/whir_t128_capacity_full_minimal_subtree_invalid_folding.bin",
+      "invalid_missing_query": "results/phase2/whir-multiproof/proofs/whir_t128_capacity_full_minimal_subtree_invalid_missing_query.bin",
+      "invalid_truncated": "results/phase2/whir-multiproof/proofs/whir_t128_capacity_full_minimal_subtree_invalid_truncated.bin",
+      "valid": "results/phase2/whir-multiproof/proofs/whir_t128_capacity_full_minimal_subtree_valid.bin"
+    },
+    "scenario_name": "whir_t128_capacity_full",
+    "valid_proof": true
+  },
+  {
+    "invalid_challenge_rejected": true,
+    "invalid_folding_rejected": true,
+    "invalid_missing_query_rejected": true,
+    "invalid_truncated_rejected": true,
+    "merkle_proof_mode": "separate_paths",
+    "proofs": {
+      "invalid_challenge": "results/phase2/whir-multiproof/proofs/whir_t128_johnson_full_separate_paths_invalid_challenge.bin",
+      "invalid_folding": "results/phase2/whir-multiproof/proofs/whir_t128_johnson_full_separate_paths_invalid_folding.bin",
+      "invalid_missing_query": "results/phase2/whir-multiproof/proofs/whir_t128_johnson_full_separate_paths_invalid_missing_query.bin",
+      "invalid_truncated": "results/phase2/whir-multiproof/proofs/whir_t128_johnson_full_separate_paths_invalid_truncated.bin",
+      "valid": "results/phase2/whir-multiproof/proofs/whir_t128_johnson_full_separate_paths_valid.bin"
+    },
+    "scenario_name": "whir_t128_johnson_full",
+    "valid_proof": true
+  },
+  {
+    "invalid_challenge_rejected": true,
+    "invalid_folding_rejected": true,
+    "invalid_missing_query_rejected": true,
+    "invalid_truncated_rejected": true,
+    "merkle_proof_mode": "minimal_subtree",
+    "proofs": {
+      "invalid_challenge": "results/phase2/whir-multiproof/proofs/whir_t128_johnson_full_minimal_subtree_invalid_challenge.bin",
+      "invalid_folding": "results/phase2/whir-multiproof/proofs/whir_t128_johnson_full_minimal_subtree_invalid_folding.bin",
+      "invalid_missing_query": "results/phase2/whir-multiproof/proofs/whir_t128_johnson_full_minimal_subtree_invalid_missing_query.bin",
+      "invalid_truncated": "results/phase2/whir-multiproof/proofs/whir_t128_johnson_full_minimal_subtree_invalid_truncated.bin",
+      "valid": "results/phase2/whir-multiproof/proofs/whir_t128_johnson_full_minimal_subtree_valid.bin"
+    },
+    "scenario_name": "whir_t128_johnson_full",
+    "valid_proof": true
+  }
+]

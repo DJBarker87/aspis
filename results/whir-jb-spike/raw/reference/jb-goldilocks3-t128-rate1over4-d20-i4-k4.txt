@@ -1,0 +1,57 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.36s
+     Running `/tmp/whir-ref/target/release/main -l 128 -d 20 -e 1 -r 2 -i 4 -k 4 -f Goldilocks3 --hash Blake3 --reps 1`
+=========================================
+Whir (PCS) 🌪️
+Field: Goldilocks3 and hash: Blake3
+Security level: 128.00 bits using list decoding
+Source field: 64.00 bits, target field: 192.00 bits
+Initial:
+  commit   size 1×1048576/16 rate 2⁻2.00 samples 117 in- 1 out-domain
+  sumcheck size 1048576 rounds 4 pow 0.00 ℓ_zk 0
+Round 0:
+  commit   size 1×65536/16 rate 2⁻5.00 samples 45 in- 1 out-domain
+  pow      19.24 bits
+  sumcheck size 65536 rounds 4 pow 0.75 ℓ_zk 0
+Round 1:
+  commit   size 1×4096/16 rate 2⁻8.00 samples 28 in- 1 out-domain
+  pow      18.67 bits
+  sumcheck size 4096 rounds 4 pow 3.25 ℓ_zk 0
+Round 2:
+  commit   size 1×256/16 rate 2⁻11.00 samples 20 in- 1 out-domain
+  pow      17.97 bits
+  sumcheck size 256 rounds 4 pow 5.75 ℓ_zk 0
+Round 3:
+  commit   size 1×16/16 rate 2⁻14.00 samples 16 in- 1 out-domain
+  pow      19.41 bits
+  sumcheck size 16 rounds 4 pow 8.25 ℓ_zk 0
+Final:
+  pow      17.13bits
+  sumcheck size 1 rounds 0 pow 0.00 ℓ_zk 0
+------------------------------------
+Round by round soundness analysis:
+------------------------------------
+no loss -- initial vector RLC (1 vector)
+188.8 bits -- initial linear-form RLC (10 linear form)
+162.4 bits -- OOD commitment
+129.7 bits -- (x4) prox gaps: 129.7, sumcheck: 185.7, pow: 0.0, list size 2^5.3
+160.4 bits -- OOD sample
+128.0 bits -- query error: 108.8, combination: 175.8, pow: 19.2
+128.0 bits -- (x4) prox gaps: 127.2, sumcheck: 182.7, pow: 0.8, list size 2^8.3
+158.4 bits -- OOD sample
+128.0 bits -- query error: 109.3, combination: 174.2, pow: 18.7
+128.0 bits -- (x4) prox gaps: 124.7, sumcheck: 179.7, pow: 3.3, list size 2^11.3
+156.4 bits -- OOD sample
+128.0 bits -- query error: 110.0, combination: 171.8, pow: 18.0
+128.0 bits -- (x4) prox gaps: 122.2, sumcheck: 176.7, pow: 5.8, list size 2^14.3
+154.4 bits -- OOD sample
+128.0 bits -- query error: 108.6, combination: 169.3, pow: 19.4
+128.0 bits -- (x4) prox gaps: 119.7, sumcheck: 173.7, pow: 8.3, list size 2^17.3
+128.0 bits -- query error: 110.9, pow: 17.1
+
+Prover time: 284.2ms + 1.4s = 1.7s
+Proof size: 129.4 KiB
+Verifier time: 16.1ms
+Average hashes: 2.8k

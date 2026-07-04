@@ -1,0 +1,3 @@
+success=true
+status_code=Some(0)
+command=cargo check --manifest-path /tmp/whir-p3-ade33e7/Cargo.toml --features cli

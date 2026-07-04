@@ -1,0 +1,12 @@
+{
+  "name": "whir-jb-goldilocks3-dev",
+  "security_level": 100,
+  "pow_bits": 20,
+  "num_variables": 8,
+  "evaluations": 1,
+  "linear_constraints": 0,
+  "rate_bits": 4,
+  "initial_folding_factor": 4,
+  "folding_factor": 4,
+  "vector_pattern": "Affine3x5"
+}

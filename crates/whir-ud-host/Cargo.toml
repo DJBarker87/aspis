@@ -1,0 +1,12 @@
+[package]
+name = "whir-ud-host"
+edition = "2021"
+license = "MIT"
+version = "0.1.0"
+
+[dependencies]
+anyhow = "1.0.100"
+ark-ff = "0.5"
+ciborium = "0.2.2"
+serde = { version = "1.0.228", features = ["derive"] }
+whir = { git = "https://github.com/WizardOfMenlo/whir", rev = "0aeaa7f337c743d9ddfcb9d909628d6491e3355c" }

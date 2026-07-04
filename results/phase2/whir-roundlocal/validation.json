@@ -1,0 +1,154 @@
+[
+  {
+    "invalid_challenge_rejected": true,
+    "invalid_folding_rejected": true,
+    "invalid_missing_query_rejected": true,
+    "invalid_truncated_rejected": true,
+    "merkle_proof_mode": "minimal_subtree",
+    "proofs": {
+      "invalid_challenge": "results/phase2/whir-roundlocal/proofs/whir_t128_capacity_full_raw_fibers_none_invalid_challenge.bin",
+      "invalid_folding": "results/phase2/whir-roundlocal/proofs/whir_t128_capacity_full_raw_fibers_none_invalid_folding.bin",
+      "invalid_missing_query": "results/phase2/whir-roundlocal/proofs/whir_t128_capacity_full_raw_fibers_none_invalid_missing_query.bin",
+      "invalid_truncated": "results/phase2/whir-roundlocal/proofs/whir_t128_capacity_full_raw_fibers_none_invalid_truncated.bin",
+      "valid": "results/phase2/whir-roundlocal/proofs/whir_t128_capacity_full_raw_fibers_none_valid.bin"
+    },
+    "query_precompute_mode": "none",
+    "query_reuse_mode": "round_batch_inversion",
+    "scenario_name": "whir_t128_capacity_full",
+    "valid_proof": true,
+    "whir_fold_mode": "raw_fibers"
+  },
+  {
+    "invalid_challenge_rejected": true,
+    "invalid_folding_rejected": true,
+    "invalid_missing_query_rejected": true,
+    "invalid_truncated_rejected": true,
+    "merkle_proof_mode": "minimal_subtree",
+    "proofs": {
+      "invalid_challenge": "results/phase2/whir-roundlocal/proofs/whir_t128_capacity_full_raw_fibers_proof_carried_round_local_invalid_challenge.bin",
+      "invalid_folding": "results/phase2/whir-roundlocal/proofs/whir_t128_capacity_full_raw_fibers_proof_carried_round_local_invalid_folding.bin",
+      "invalid_missing_query": "results/phase2/whir-roundlocal/proofs/whir_t128_capacity_full_raw_fibers_proof_carried_round_local_invalid_missing_query.bin",
+      "invalid_truncated": "results/phase2/whir-roundlocal/proofs/whir_t128_capacity_full_raw_fibers_proof_carried_round_local_invalid_truncated.bin",
+      "valid": "results/phase2/whir-roundlocal/proofs/whir_t128_capacity_full_raw_fibers_proof_carried_round_local_valid.bin"
+    },
+    "query_precompute_mode": "proof_carried_round_local",
+    "query_reuse_mode": "round_batch_inversion",
+    "scenario_name": "whir_t128_capacity_full",
+    "valid_proof": true,
+    "whir_fold_mode": "raw_fibers"
+  },
+  {
+    "invalid_challenge_rejected": true,
+    "invalid_folding_rejected": true,
+    "invalid_missing_query_rejected": true,
+    "invalid_truncated_rejected": true,
+    "merkle_proof_mode": "minimal_subtree",
+    "proofs": {
+      "invalid_challenge": "results/phase2/whir-roundlocal/proofs/whir_t128_capacity_full_local_interpolant_none_invalid_challenge.bin",
+      "invalid_folding": "results/phase2/whir-roundlocal/proofs/whir_t128_capacity_full_local_interpolant_none_invalid_folding.bin",
+      "invalid_missing_query": "results/phase2/whir-roundlocal/proofs/whir_t128_capacity_full_local_interpolant_none_invalid_missing_query.bin",
+      "invalid_truncated": "results/phase2/whir-roundlocal/proofs/whir_t128_capacity_full_local_interpolant_none_invalid_truncated.bin",
+      "valid": "results/phase2/whir-roundlocal/proofs/whir_t128_capacity_full_local_interpolant_none_valid.bin"
+    },
+    "query_precompute_mode": "none",
+    "query_reuse_mode": "round_batch_inversion",
+    "scenario_name": "whir_t128_capacity_full",
+    "valid_proof": true,
+    "whir_fold_mode": "local_interpolant"
+  },
+  {
+    "invalid_challenge_rejected": true,
+    "invalid_folding_rejected": true,
+    "invalid_missing_query_rejected": true,
+    "invalid_truncated_rejected": true,
+    "merkle_proof_mode": "minimal_subtree",
+    "proofs": {
+      "invalid_challenge": "results/phase2/whir-roundlocal/proofs/whir_t128_capacity_full_local_interpolant_proof_carried_round_local_invalid_challenge.bin",
+      "invalid_folding": "results/phase2/whir-roundlocal/proofs/whir_t128_capacity_full_local_interpolant_proof_carried_round_local_invalid_folding.bin",
+      "invalid_missing_query": "results/phase2/whir-roundlocal/proofs/whir_t128_capacity_full_local_interpolant_proof_carried_round_local_invalid_missing_query.bin",
+      "invalid_truncated": "results/phase2/whir-roundlocal/proofs/whir_t128_capacity_full_local_interpolant_proof_carried_round_local_invalid_truncated.bin",
+      "valid": "results/phase2/whir-roundlocal/proofs/whir_t128_capacity_full_local_interpolant_proof_carried_round_local_valid.bin"
+    },
+    "query_precompute_mode": "proof_carried_round_local",
+    "query_reuse_mode": "round_batch_inversion",
+    "scenario_name": "whir_t128_capacity_full",
+    "valid_proof": true,
+    "whir_fold_mode": "local_interpolant"
+  },
+  {
+    "invalid_challenge_rejected": true,
+    "invalid_folding_rejected": true,
+    "invalid_missing_query_rejected": true,
+    "invalid_truncated_rejected": true,
+    "merkle_proof_mode": "minimal_subtree",
+    "proofs": {
+      "invalid_challenge": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_raw_fibers_none_invalid_challenge.bin",
+      "invalid_folding": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_raw_fibers_none_invalid_folding.bin",
+      "invalid_missing_query": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_raw_fibers_none_invalid_missing_query.bin",
+      "invalid_truncated": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_raw_fibers_none_invalid_truncated.bin",
+      "valid": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_raw_fibers_none_valid.bin"
+    },
+    "query_precompute_mode": "none",
+    "query_reuse_mode": "round_batch_inversion",
+    "scenario_name": "whir_t100_johnson_full",
+    "valid_proof": true,
+    "whir_fold_mode": "raw_fibers"
+  },
+  {
+    "invalid_challenge_rejected": true,
+    "invalid_folding_rejected": true,
+    "invalid_missing_query_rejected": true,
+    "invalid_truncated_rejected": true,
+    "merkle_proof_mode": "minimal_subtree",
+    "proofs": {
+      "invalid_challenge": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_raw_fibers_proof_carried_round_local_invalid_challenge.bin",
+      "invalid_folding": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_raw_fibers_proof_carried_round_local_invalid_folding.bin",
+      "invalid_missing_query": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_raw_fibers_proof_carried_round_local_invalid_missing_query.bin",
+      "invalid_truncated": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_raw_fibers_proof_carried_round_local_invalid_truncated.bin",
+      "valid": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_raw_fibers_proof_carried_round_local_valid.bin"
+    },
+    "query_precompute_mode": "proof_carried_round_local",
+    "query_reuse_mode": "round_batch_inversion",
+    "scenario_name": "whir_t100_johnson_full",
+    "valid_proof": true,
+    "whir_fold_mode": "raw_fibers"
+  },
+  {
+    "invalid_challenge_rejected": true,
+    "invalid_folding_rejected": true,
+    "invalid_missing_query_rejected": true,
+    "invalid_truncated_rejected": true,
+    "merkle_proof_mode": "minimal_subtree",
+    "proofs": {
+      "invalid_challenge": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_local_interpolant_none_invalid_challenge.bin",
+      "invalid_folding": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_local_interpolant_none_invalid_folding.bin",
+      "invalid_missing_query": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_local_interpolant_none_invalid_missing_query.bin",
+      "invalid_truncated": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_local_interpolant_none_invalid_truncated.bin",
+      "valid": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_local_interpolant_none_valid.bin"
+    },
+    "query_precompute_mode": "none",
+    "query_reuse_mode": "round_batch_inversion",
+    "scenario_name": "whir_t100_johnson_full",
+    "valid_proof": true,
+    "whir_fold_mode": "local_interpolant"
+  },
+  {
+    "invalid_challenge_rejected": true,
+    "invalid_folding_rejected": true,
+    "invalid_missing_query_rejected": true,
+    "invalid_truncated_rejected": true,
+    "merkle_proof_mode": "minimal_subtree",
+    "proofs": {
+      "invalid_challenge": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_local_interpolant_proof_carried_round_local_invalid_challenge.bin",
+      "invalid_folding": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_local_interpolant_proof_carried_round_local_invalid_folding.bin",
+      "invalid_missing_query": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_local_interpolant_proof_carried_round_local_invalid_missing_query.bin",
+      "invalid_truncated": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_local_interpolant_proof_carried_round_local_invalid_truncated.bin",
+      "valid": "results/phase2/whir-roundlocal/proofs/whir_t100_johnson_full_local_interpolant_proof_carried_round_local_valid.bin"
+    },
+    "query_precompute_mode": "proof_carried_round_local",
+    "query_reuse_mode": "round_batch_inversion",
+    "scenario_name": "whir_t100_johnson_full",
+    "valid_proof": true,
+    "whir_fold_mode": "local_interpolant"
+  }
+]
