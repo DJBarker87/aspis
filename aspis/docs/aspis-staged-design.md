@@ -227,6 +227,16 @@ Audit checklist:
 - evaluation-claim binding for externally supplied `(z, v)`
 - batched-opening soundness for the `gamma` RLC argument and its
   Fiat-Shamir order
+- copy-argument soundness (LogUp multiset term per amended §13.8): tuple
+  compression and pole-collision terms, challenge ordering (interfaces
+  committed before `lambda`, `z`), and the second commitment phase this
+  forces on the PCS interface
+- per-round proximity recomputation for the implemented fold schedule (the
+  native v0 schedule at lr10 is 4 committed arity-4 rounds with domain and
+  degree both shrinking 4x per round — the rate does NOT improve across
+  rounds as WHIR's domain-halving schedule assumes; the per-round query
+  budget table must be computed for the schedule as implemented, not the
+  Phase 2 two-round shape)
 
 Deliverables:
 
@@ -350,7 +360,20 @@ claim boundary and soundness labels present in README and paper.
 1. Tree depth `32` vs `20` for the demo pool.
 2. Poseidon2-M31 instance: width, round numbers, digest limbs, and source of
    parameter analysis.
-3. Soundness regime targeted for the headline claim.
+3. Soundness regime targeted for the headline claim. **Decided `2026-07-04`:
+   headline frozen at `t = 100` bits, capacity-conjectured.** Rationale (the
+   field-ceiling lemma, soundness-note §3): `|QM31| = p^4 ~ 2^124`, and every
+   algebraic soundness term in the system — proximity-gathering terms per fold
+   round, OOD binding, sumcheck Schwartz-Zippel, `gamma`-RLC batching, the
+   copy-argument terms — carries a `2^124` denominator that grinding does not
+   offset (grinding buys back query-sampling error only). Union-bounded, the
+   achievable ceiling on this tower is roughly `106-115` bits before any query
+   is spent; `128` bits was never reachable on M31/CM31/QM31, consistent with
+   upstream evidence (WHIR-JB needing Goldilocks3 for 128-bit settings; the
+   M31 circle-STARK ecosystem targeting `~96-100` bits). Changing field towers
+   is a different project. The `~124`-bit field ceiling and the `~124`-bit
+   8-limb Poseidon2 digest land the whole system on one coherent
+   `~100-bit / conjectured / capacity` label with no weakest-link asymmetry.
 4. `proof_carried_round_local` in or out of the frozen profile. Stage 0
    measurement says **out** for native v0.
 5. Nullifier key schedule; cite a standard shape rather than inventing one.
@@ -358,7 +381,29 @@ claim boundary and soundness labels present in README and paper.
    on-chain.
 7. Range width (`2^30` fits one M31 limb cleanly).
 8. Witness column layout: number of columns `k`, wide-leaf packing format, and
-   `gamma` RLC batching parameters.
+   `gamma` RLC batching parameters. **Amended `2026-07-04`: the lr10/k64
+   cost-freeze is not constraint-realizable as originally shaped, and the
+   layout freeze becomes "lr10, `k ~ 64-80`, rounds-per-row blocks, boundary
+   interface columns, LogUp-style multiset copy check".** Why: the spend
+   witness is dominated by sequential Poseidon2 chains (32 Merkle levels where
+   permutation i's output is permutation i+1's input), and row-locality forces
+   one of three shapes. (a) Fully self-contained rows — one permutation per
+   row — needs `k ~ 352` columns, and the measured RLC scaling (`192,127` CU
+   at `k = 64`, linear in `k`) prices that at `~1.1M` CU of recombination
+   alone: dead. (b) Chaining across rows is exactly the shifted operand this
+   design bans, and multilinear shifts are not the univariate `g*z` trick — a
+   shifted polynomial's evaluation is not a point-opening of the original.
+   (c) The adopted shape: pack a block of rounds per row, commit the chain
+   interface state as boundary columns, and prove multiset equality between
+   chain-outputs and chain-inputs with a LogUp-style logarithmic-derivative
+   argument fused into the statement sumcheck. Consequences the later stages
+   must absorb: the copy argument brings its own soundness terms (all with
+   `/|QM31|` denominators — folded into the §3 ceiling budget) and requires a
+   **second commitment phase** (the LogUp helper column depends on a
+   challenge sampled after the interface columns are committed), which is a
+   PCS interface change of the same kind as the external `(z, v)` claim.
+   Stage 1's soundness note must be written for THIS layout — a note written
+   for a layout Stage 2 cannot build is wasted work.
 
 ## 14. Risk Register
 

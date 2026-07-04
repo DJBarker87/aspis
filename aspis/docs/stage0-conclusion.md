@@ -70,6 +70,22 @@ falling back to split verification. q36 remains a reserve target if Stage 1
 does not accept q32. q40 fits only on paper and is too tight for the current
 statement plan.
 
+**The 302K headroom is not margin — it is a budget already spoken for three
+times over.** The projection above prices the PCS, the gamma-RLC
+recombination, and the sumcheck rounds. It does not price:
+
+1. **Stage 1 hardening itself**: OOD absorptions, external `(z, v)`
+   evaluation-claim binding, the second commitment phase required by the copy
+   argument (design §13.8 as amended), and the added transcript work.
+2. **Constraint-composition evaluation at the opened point**: with `k = 64`
+   columns and Poseidon2's degree-5 relations this is hundreds to low
+   thousands of QM31 operations — plausibly `50-150K` CU, unmeasured (the
+   Stage 2 isolated-SBF measurement item).
+3. **eq / public-input work**: small, but nonzero and currently unpriced.
+
+Any Stage 1 or Stage 2 artifact quoting the q32 projection must call the
+`302,224` CU figure a budget for these three unpriced items, not slack.
+
 ## Stage 1 Entry Condition
 
 Stage 1 may start only under this explicit condition:
