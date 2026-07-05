@@ -237,17 +237,28 @@ attack success per grinding attempt <= rho^q = 2^-2q, each attempt costs
 2^g hashes, so the query term contributes **2q + g bits** in the
 work/success metric.
 
-| schedule | query bits | verdict | measured PCS CU (lr10) | projection | headroom vs 1.19M |
+| schedule | query bits | verdict | PCS CU (lr10, g16 verifier-cost proxy) | projection | headroom vs 1.19M |
 | --- | ---: | --- | ---: | ---: | ---: |
-| q32/g32 | 96 | **retired — 4 bits short of t=100** | 656,983 (measured) | 888,097 | 301,903 |
-| **q36/g32** | **104** | **ruled: the Stage 1 schedule** | 743,116 (measured) | 974,230 | 215,770 |
+| q32/g32 | 96 | **retired — 4 bits short of t=100** | 656,983 | 888,097 | 301,903 |
+| **q36/g32** | **104** | **ruled: the Stage 1 schedule** | 743,116 | 974,230 | 215,770 |
 | q38/g32 | 108 | inline contingency (see below) | ~786,200 (**extrapolated**) | ~1,017,300 | ~172,700 |
 
-Measured figures are the **post-rejection-sampler** re-measure (Agave 2.3.0,
-artifacts at `results/stage0/onchain_layout_target_summary.json`, commit
-`caca9f2`): each lr10 profile moved +321 CU versus the pre-sampler run
-(~80 CU per challenge round of bounded rejection branching), the transcript
-KAT round-tripped on SBF (`results/stage0/transcript_kat.json`,
+**Proxy labeling (review catch):** the measured artifacts behind this column
+are the `capacity_lr10_qNN_g16` profiles
+(`results/stage0/onchain_layout_target_summary.json`), used as verifier-cost
+proxies for the ruled g32 schedules. The proxy is sound because the
+verifier-side grinding check is a single SHA-256 syscall whose cost is
+independent of the difficulty bits — g16 -> g32 changes prover search work
+and the threshold comparison only, corroborated by the lr12 g32
+measurements in `results/stage0/onchain_g32_summary.json`. The literal
+profile `capacity_lr10_q36_g32` (id 8) is now frozen in `params.rs` and is
+the first row of the `stage0-onchain-layout-target` runner; the next local
+run replaces this proxy column with the literal measurement.
+
+Proxy figures are the **post-rejection-sampler** re-measure (Agave 2.3.0,
+commit `caca9f2`): each lr10 profile moved +321 CU versus the pre-sampler
+run (~80 CU per challenge round of bounded rejection branching), the
+transcript KAT round-tripped on SBF (`results/stage0/transcript_kat.json`,
 `matched_on_sbf: true`, 10,792 CU for the KAT instruction itself), and all
 on-chain corruption vectors still reject. The q32 -> q36 promotion delta is
 unchanged at +86,133 CU (both rows moved together).

@@ -456,4 +456,123 @@ mod tests {
             Err(ProgramError::InvalidAccountData)
         );
     }
+
+    /// End-to-end instruction-path test for `VerifyWithClaim` (review Low):
+    /// a real claim-carrying proof through the program dispatch, with the
+    /// non-SBF hashv fallback standing in for the syscall (the transcript
+    /// KAT covers host/SBF hash equivalence separately).
+    #[test]
+    fn verify_with_claim_instruction_paths() {
+        use aspis_core::params::PROFILE_CAPACITY_LR10_Q32_G16 as PROFILE;
+        use aspis_prover::{multilinear_eval, prove_with_claim, seeded_coeffs, ProveOptions};
+
+        let coeffs = seeded_coeffs(PROFILE.log_rows, 5);
+        let statement_digest = [0x42u8; 32];
+        let z: Vec<aspis_core::field::QM31> = (0..PROFILE.log_rows)
+            .map(|i| {
+                aspis_core::field::QM31::from_cm31(aspis_core::field::CM31::from_m31(
+                    aspis_core::field::M31(1000 + i),
+                ))
+            })
+            .collect();
+        let claim = aspis_core::EvaluationClaim {
+            v: multilinear_eval(&coeffs, &z),
+            z,
+        };
+        let proof = prove_with_claim(
+            &PROFILE,
+            &coeffs,
+            &statement_digest,
+            &claim,
+            &ProveOptions {
+                fold_payload: aspis_core::FoldPayload::RawFibers,
+                merkle_mode: aspis_core::MerkleMode::MinimalSubtree,
+            },
+            aspis_prover::HOST_HASH,
+        );
+
+        // proof account: ASPU magic, len, authority, proof bytes
+        let program_id = id();
+        let proof_key = Pubkey::new_unique();
+        let mut proof_lamports = 0;
+        let mut proof_data = vec![0u8; PROOF_ACCOUNT_HEADER_LEN + proof.len()];
+        proof_data[0..4].copy_from_slice(&PROOF_ACCOUNT_MAGIC);
+        proof_data[4..8].copy_from_slice(&(proof.len() as u32).to_le_bytes());
+        proof_data[PROOF_ACCOUNT_HEADER_LEN..].copy_from_slice(&proof);
+
+        let claim_z: Vec<[u8; 16]> = claim
+            .z
+            .iter()
+            .map(|zi| {
+                let mut b = [0u8; 16];
+                zi.write_le_bytes(&mut b);
+                b
+            })
+            .collect();
+        let mut claim_v = [0u8; 16];
+        claim.v.write_le_bytes(&mut claim_v);
+
+        // correct claim accepts through the instruction path
+        {
+            let account = make_account(
+                &proof_key,
+                &program_id,
+                &mut proof_lamports,
+                &mut proof_data,
+                false,
+                false,
+            );
+            let ix = borsh::to_vec(&AspisInstruction::VerifyWithClaim {
+                statement_digest,
+                claim_z: claim_z.clone(),
+                claim_v,
+            })
+            .unwrap();
+            assert_eq!(process_instruction(&program_id, &[account], &ix), Ok(()));
+        }
+
+        // perturbed claim value rejects (transcript binding)
+        {
+            let account = make_account(
+                &proof_key,
+                &program_id,
+                &mut proof_lamports,
+                &mut proof_data,
+                false,
+                false,
+            );
+            let mut wrong_v = claim_v;
+            wrong_v[0] ^= 1;
+            let ix = borsh::to_vec(&AspisInstruction::VerifyWithClaim {
+                statement_digest,
+                claim_z: claim_z.clone(),
+                claim_v: wrong_v,
+            })
+            .unwrap();
+            assert!(matches!(
+                process_instruction(&program_id, &[account], &ix),
+                Err(ProgramError::Custom(_))
+            ));
+        }
+
+        // claim-carrying proof through the plain Verify path rejects with
+        // ClaimMissing (code 14)
+        {
+            let account = make_account(
+                &proof_key,
+                &program_id,
+                &mut proof_lamports,
+                &mut proof_data,
+                false,
+                false,
+            );
+            let ix = borsh::to_vec(&AspisInstruction::Verify { statement_digest }).unwrap();
+            assert_eq!(
+                process_instruction(&program_id, &[account], &ix),
+                Err(ProgramError::Custom(
+                    aspis_core::VerifyError::ClaimMissing.code()
+                ))
+            );
+        }
+    }
 }
