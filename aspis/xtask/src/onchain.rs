@@ -622,6 +622,8 @@ pub fn run_stage0_onchain_layout_target() -> Result<OnchainSummary> {
 
     let mut variants = Vec::new();
     for profile in [
+        // the literal ruled Stage 1 schedule first (soundness-note §4)
+        &aspis_core::params::PROFILE_CAPACITY_LR10_Q36_G32,
         &PROFILE_CAPACITY_LR10_Q40_G16,
         &PROFILE_CAPACITY_LR10_Q36_G16,
         &PROFILE_CAPACITY_LR10_Q32_G16,

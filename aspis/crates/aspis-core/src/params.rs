@@ -202,6 +202,19 @@ pub const PROFILE_CAPACITY_LR10_Q32_G16: Profile = Profile {
     soundness_label: "heuristic diagnostic (lower-row layout target; q32 verifier cost)",
 };
 
+/// The literal ruled Stage 1 schedule (soundness-note §4): q36 with g32
+/// grinding at the lr10 layout target. Exists so the §4 "measured" column can
+/// be a measurement of THIS profile rather than a g16 verifier-cost proxy.
+pub const PROFILE_CAPACITY_LR10_Q36_G32: Profile = Profile {
+    id: 8,
+    name: "capacity_lr10_q36_g32",
+    log_rows: 10,
+    log_blowup: 2,
+    query_count: 36,
+    grinding_bits: 32,
+    soundness_label: "conjectured (capacity) pending soundness-note freeze; ruled Stage 1 schedule",
+};
+
 pub const PROFILES: &[Profile] = &[
     PROFILE_CAPACITY,
     PROFILE_JOHNSON,
@@ -211,6 +224,7 @@ pub const PROFILES: &[Profile] = &[
     PROFILE_CAPACITY_LR10_Q40_G16,
     PROFILE_CAPACITY_LR10_Q36_G16,
     PROFILE_CAPACITY_LR10_Q32_G16,
+    PROFILE_CAPACITY_LR10_Q36_G32,
 ];
 
 pub fn profile_by_id(id: u8) -> Option<&'static Profile> {
