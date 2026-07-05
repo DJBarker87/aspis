@@ -648,7 +648,7 @@ pub fn run_stage0_onchain_layout_target() -> Result<OnchainSummary> {
         notes: vec![
             "Lower-row diagnostic for the wide-row statement layout decision; not a frozen profile until Stage 1 soundness accounting and the Stage 2 direct evaluator exist.".to_string(),
             "Only raw_fibers/minimal_subtree is measured because proof_carried_round_local lost on both bytes and CU in the gate artifact.".to_string(),
-            "This runner uses g16 to avoid prover-side grinding variance; verifier-side g32 overhead is one grinding hash and was measured separately in onchain_g32_summary.json.".to_string(),
+            "This runner measures the literal ruled schedule capacity_lr10_q36_g32 first (prover-side grinding for that row is a ~2^32-hash one-off); the remaining qNN/g16 rows are verifier-cost proxies for their g32 counterparts, sound because the verifier-side grinding check is one SHA-256 syscall independent of the difficulty bits (corroborated by onchain_g32_summary.json).".to_string(),
             "Combine these PCS verifier costs with layout_sweep RLC/wide-leaf deltas; do not add the full synthetic Merkle loop or path hashing is double-counted.".to_string(),
         ],
     })
