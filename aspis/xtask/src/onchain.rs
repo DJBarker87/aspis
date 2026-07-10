@@ -1339,6 +1339,36 @@ pub fn run_stage2_composition_probe() -> Result<CompositionProbeSummary> {
             true,
         ),
         (
+            "r3_lookup_range_optimized",
+            aspis_statement::CompositionProbe {
+                // 3 Poseidon2 rounds per row: 48 S-box outputs, 48 + 6
+                // reconstruction linear terms, 67 opened columns
+                // (64 main + multiplicity + two helpers open at the row,
+                // matching the r=3 layout candidate's k').
+                opened_values: 67,
+                poseidon_sbox_terms: 48,
+                poseidon_linear_terms: 54,
+                logup_degree3_terms: 2,
+                range_bit_terms: 0,
+                eq_variables: 10,
+            },
+            true,
+        ),
+        (
+            "r3_lookup_range_stress_linear102",
+            aspis_statement::CompositionProbe {
+                // r=3 bracket top: 3/4 of the r=4 [64,128] bracket plus the
+                // six reconstruction terms.
+                opened_values: 67,
+                poseidon_sbox_terms: 48,
+                poseidon_linear_terms: 102,
+                logup_degree3_terms: 2,
+                range_bit_terms: 0,
+                eq_variables: 10,
+            },
+            true,
+        ),
+        (
             "realistic",
             aspis_statement::CompositionProbe::REALISTIC,
             false,
@@ -1452,7 +1482,8 @@ pub fn run_stage2_layout_probe() -> Result<Stage2LayoutSummary> {
     create_program_account(&rpc, &payer, &probe_account, PROOF_ACCOUNT_HEADER_LEN)?;
 
     let mut raw = Vec::new();
-    for columns in [64u16, 80, 82] {
+    // 67 = r=3 layout candidate width, 84 = the k' <= 84 pin.
+    for columns in [64u16, 67, 80, 82, 84] {
         let leaf_bytes = columns * 4;
         let instruction = AspisInstruction::LayoutProbe {
             log_rows: LOG_ROWS,
@@ -1836,12 +1867,49 @@ pub fn run_stage2_wide_rlc_probe() -> Result<WideRlcProbeSummary> {
         ("raw_u128_dot", 6u8),
         ("lazy_dot4_outer_lazy", 7u8),
         ("fixed80_outer_lazy", 8u8),
+        ("fixed84_outer_lazy", 9u8),
+        ("fixed67_outer_lazy", 10u8),
+        ("fixed65_outer_lazy", 11u8),
     ];
+    // Fixed-width kernels run only at their own width; k84 is the k' <= 84
+    // pin, k67 the r=3 layout candidate, k65 the r=3 + GKR (helper-free)
+    // candidate.
     let shapes = [(64u16, 32u16), (80u16, 36u16)];
+    let fixed_width: [(u8, u16); 4] = [(8, 80), (9, 84), (10, 67), (11, 65)];
     let mut variants = Vec::new();
     for (kernel, kernel_id) in kernels {
         for (columns, query_count) in shapes {
-            if kernel_id == 8 && columns != 80 {
+            if let Some(&(_, width)) = fixed_width.iter().find(|(id, _)| *id == kernel_id) {
+                if query_count != 36 {
+                    continue;
+                }
+                let columns = width;
+                let mut means = Vec::new();
+                let mut full_samples = Vec::new();
+                for measured_queries in [0, query_count] {
+                    let instruction = Instruction {
+                        program_id: aspis_verifier::id(),
+                        accounts: vec![],
+                        data: to_vec(&AspisInstruction::WideRlcProbe {
+                            columns,
+                            query_count: measured_queries,
+                            kernel: kernel_id,
+                        })?,
+                    };
+                    let samples =
+                        simulate_pure_instruction(&rpc, &payer, instruction, REPETITIONS)?;
+                    means.push(samples.iter().sum::<u64>() as f64 / samples.len() as f64);
+                    full_samples = samples;
+                }
+                variants.push(WideRlcProbeVariant {
+                    kernel,
+                    columns,
+                    query_count,
+                    simulation_cu: full_samples,
+                    simulation_cu_mean: means[1],
+                    baseline_cu_mean: means[0],
+                    incremental_cu: (means[1] - means[0]).round() as i64,
+                });
                 continue;
             }
             let mut means = Vec::new();
