@@ -1369,6 +1369,35 @@ pub fn run_stage2_composition_probe() -> Result<CompositionProbeSummary> {
             true,
         ),
         (
+            "r2_lookup_range_optimized",
+            aspis_statement::CompositionProbe {
+                // 2 Poseidon2 rounds per row (the sweep floor: r=1 exceeds
+                // the 2^10 row cap): 32 S-box outputs, 32 + 6 linear terms,
+                // k' = 51 opened columns.
+                opened_values: 51,
+                poseidon_sbox_terms: 32,
+                poseidon_linear_terms: 38,
+                logup_degree3_terms: 2,
+                range_bit_terms: 0,
+                eq_variables: 10,
+            },
+            true,
+        ),
+        (
+            "r2_lookup_range_stress_linear70",
+            aspis_statement::CompositionProbe {
+                // r=2 bracket top: 2/4 of the r=4 [64,128] bracket plus the
+                // six reconstruction terms.
+                opened_values: 51,
+                poseidon_sbox_terms: 32,
+                poseidon_linear_terms: 70,
+                logup_degree3_terms: 2,
+                range_bit_terms: 0,
+                eq_variables: 10,
+            },
+            true,
+        ),
+        (
             "realistic",
             aspis_statement::CompositionProbe::REALISTIC,
             false,
@@ -1482,8 +1511,8 @@ pub fn run_stage2_layout_probe() -> Result<Stage2LayoutSummary> {
     create_program_account(&rpc, &payer, &probe_account, PROOF_ACCOUNT_HEADER_LEN)?;
 
     let mut raw = Vec::new();
-    // 67 = r=3 layout candidate width, 84 = the k' <= 84 pin.
-    for columns in [64u16, 67, 80, 82, 84] {
+    // 51/67 = r=2 and r=3 layout candidate widths, 84 = the k' <= 84 pin.
+    for columns in [51u16, 64, 67, 80, 82, 84] {
         let leaf_bytes = columns * 4;
         let instruction = AspisInstruction::LayoutProbe {
             log_rows: LOG_ROWS,
@@ -1870,12 +1899,14 @@ pub fn run_stage2_wide_rlc_probe() -> Result<WideRlcProbeSummary> {
         ("fixed84_outer_lazy", 9u8),
         ("fixed67_outer_lazy", 10u8),
         ("fixed65_outer_lazy", 11u8),
+        ("fixed51_outer_lazy", 12u8),
+        ("fixed49_outer_lazy", 13u8),
     ];
     // Fixed-width kernels run only at their own width; k84 is the k' <= 84
-    // pin, k67 the r=3 layout candidate, k65 the r=3 + GKR (helper-free)
-    // candidate.
+    // pin, k67/k51 the r=3 and r=2 layout candidates, k65/k49 those layouts
+    // under LogUp-GKR (helper-free).
     let shapes = [(64u16, 32u16), (80u16, 36u16)];
-    let fixed_width: [(u8, u16); 4] = [(8, 80), (9, 84), (10, 67), (11, 65)];
+    let fixed_width: [(u8, u16); 6] = [(8, 80), (9, 84), (10, 67), (11, 65), (12, 51), (13, 49)];
     let mut variants = Vec::new();
     for (kernel, kernel_id) in kernels {
         for (columns, query_count) in shapes {
@@ -2383,6 +2414,266 @@ pub fn run_stage2_radix4_g32() -> Result<Radix4G32Summary> {
             "The Merkle-mode header byte is transcript-absorbed, so roots, challenges, grinding nonce, query positions, proof digest, and proof bytes are all freshly generated for radix-4.".to_string(),
             "TRANSCRIPT_KAT_EXPECTED intentionally does not move: radix-4 changes a transcript input, not the schedule or sampler that the standalone KAT pins.".to_string(),
             "A real radix-4 layer-0 frontier node is corrupted and must reject on both host and SBF.".to_string(),
+        ],
+    })
+}
+
+#[derive(Serialize)]
+pub struct SumcheckProbeVariant {
+    pub name: &'static str,
+    pub rounds: u8,
+    pub coefficients: u8,
+    pub claims: u8,
+    pub selector_terms: u16,
+    pub selector_exceptions: u8,
+    pub simulation_cu: Vec<u64>,
+    pub simulation_cu_mean: f64,
+    pub incremental_cu_over_baseline: i64,
+}
+
+#[derive(Serialize)]
+pub struct SumcheckProbeSummary {
+    pub generated_at_utc: String,
+    pub command: String,
+    pub validator_version: String,
+    pub repetitions: usize,
+    pub baseline_cu_mean: f64,
+    pub synthetic_allowance_cu: i64,
+    pub variants: Vec<SumcheckProbeVariant>,
+    pub central_replaces_allowance_cu: i64,
+    pub allowance_error_cu: i64,
+    pub notes: Vec<String>,
+}
+
+/// Measure the fused statement-sumcheck verifier work that the synthetic
+/// 30,000-CU allowance stands in for. Risk retirement: every registered
+/// gate statistic silently assumes the allowance.
+pub fn run_stage2_sumcheck_probe() -> Result<SumcheckProbeSummary> {
+    const REPETITIONS: usize = 5;
+    const ALLOWANCE: i64 = 30_000;
+    let root = workspace_root()?;
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), LAMPORTS_PER_SOL)?;
+
+    let probe_instruction = |rounds: u8,
+                             coefficients: u8,
+                             claims: u8,
+                             selector_terms: u16,
+                             selector_exceptions: u8|
+     -> Result<Instruction> {
+        Ok(Instruction {
+            program_id: aspis_verifier::id(),
+            accounts: vec![],
+            data: to_vec(&AspisInstruction::StatementSumcheckProbe {
+                rounds,
+                coefficients,
+                claims,
+                selector_terms,
+                selector_exceptions,
+            })?,
+        })
+    };
+
+    let baseline = simulate_pure_instruction(
+        &rpc,
+        &payer,
+        probe_instruction(0, 1, 0, 0, 0)?,
+        REPETITIONS,
+    )?;
+    let baseline_mean = baseline.iter().sum::<u64>() as f64 / baseline.len() as f64;
+
+    // (rounds, coefficients, claims, selector_terms, selector_exceptions):
+    // optimistic assumes degree-6 messages and lean selectors; central is
+    // the nu=10 / degree-7 / three-claim / b=4-5 block-periodic reading;
+    // pessimistic is the T3 nu<=14 budget with heavier selectors.
+    let shapes: [(&'static str, u8, u8, u8, u16, u8); 3] = [
+        ("optimistic", 10, 7, 3, 16, 3),
+        ("central", 10, 8, 3, 24, 5),
+        ("pessimistic", 14, 8, 4, 48, 8),
+    ];
+    let mut variants = Vec::new();
+    for (name, rounds, coefficients, claims, selector_terms, selector_exceptions) in shapes {
+        let samples = simulate_pure_instruction(
+            &rpc,
+            &payer,
+            probe_instruction(rounds, coefficients, claims, selector_terms, selector_exceptions)?,
+            REPETITIONS,
+        )?;
+        let mean = samples.iter().sum::<u64>() as f64 / samples.len() as f64;
+        variants.push(SumcheckProbeVariant {
+            name,
+            rounds,
+            coefficients,
+            claims,
+            selector_terms,
+            selector_exceptions,
+            simulation_cu: samples,
+            simulation_cu_mean: mean,
+            incremental_cu_over_baseline: (mean - baseline_mean).round() as i64,
+        });
+    }
+    let central = variants[1].incremental_cu_over_baseline;
+    Ok(SumcheckProbeSummary {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command: "cargo run --release -p aspis-xtask -- stage2-sumcheck-probe".to_string(),
+        validator_version: validator_version(),
+        repetitions: REPETITIONS,
+        baseline_cu_mean: baseline_mean,
+        synthetic_allowance_cu: ALLOWANCE,
+        variants,
+        central_replaces_allowance_cu: central,
+        allowance_error_cu: central - ALLOWANCE,
+        notes: vec![
+            "Prices mu-batched zero claims, transcript-absorbed round messages with boundary checks and Horner terminal evaluation, and block-periodic selector evaluation with enumerated exception rows.".to_string(),
+            "eq(r,z) and the composition C(v_1..v_k) are deliberately excluded: the constraint-composition probe already prices them; adding them here would double-count the seam.".to_string(),
+            "The central incremental value REPLACES the synthetic 30,000-CU statement-sumcheck allowance in every projection from this artifact onward.".to_string(),
+        ],
+    })
+}
+
+#[derive(Serialize)]
+pub struct QueryTradeProfileStats {
+    pub profile: &'static str,
+    pub query_count: u16,
+    pub per_seed_cu: Vec<u64>,
+    pub mean_cu: f64,
+    pub min_cu: u64,
+    pub max_cu: u64,
+    pub range_cu: u64,
+}
+
+#[derive(Serialize)]
+pub struct QueryTradeSummary {
+    pub generated_at_utc: String,
+    pub command: String,
+    pub validator_version: String,
+    pub seeds: u64,
+    pub repetitions_per_seed: usize,
+    pub profiles: Vec<QueryTradeProfileStats>,
+    pub q36_to_q34_mean_saving_cu: f64,
+    pub q36_to_q32_mean_saving_cu: f64,
+    pub marginal_cu_per_query_q36_q32: f64,
+    pub notes: Vec<String>,
+}
+
+/// Multi-seed q36/q34/q32 comparison at fixed g16 shape for the
+/// query/grinding trade (production pairings q34/g36, q32/g40 hold
+/// 2q + g = 104). Per the pre-registered evidence standard, generation-
+/// changing candidates are evaluated on >= 8-seed means.
+pub fn run_stage2_query_trade_g16() -> Result<QueryTradeSummary> {
+    const REPETITIONS: usize = 5;
+    const SEEDS: u64 = 8;
+    let root = workspace_root()?;
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), 40 * LAMPORTS_PER_SOL)?;
+
+    let profiles = [
+        &PROFILE_CAPACITY_LR10_Q36_G16,
+        &aspis_core::params::PROFILE_CAPACITY_LR10_Q34_G16,
+        &aspis_core::params::PROFILE_CAPACITY_LR10_Q32_G16,
+    ];
+    let mut stats = Vec::new();
+    for profile in profiles {
+        let mut per_seed = Vec::new();
+        for seed in 1..=SEEDS {
+            let digest = crate::host_statement_digest(seed);
+            let coeffs = seeded_coeffs(profile.log_rows, seed);
+            let proof = prove_with_synthetic_second_phase(
+                profile,
+                &coeffs,
+                &digest,
+                &ProveOptions {
+                    fold_payload: FoldPayload::RawFibers,
+                    merkle_mode: MerkleMode::Radix4MinimalSubtree,
+                },
+                HOST_HASH,
+            );
+            ensure!(
+                aspis_core::verify(&proof, &digest, HOST_HASH).is_ok(),
+                "{} seed {seed} proof failed host verification",
+                profile.name
+            );
+            let proof_account = Keypair::new();
+            upload_proof(&rpc, &payer, &proof_account, &proof, true)?;
+            let mut reps = Vec::new();
+            for _ in 0..REPETITIONS {
+                let instruction = AspisInstruction::Verify {
+                    statement_digest: digest,
+                };
+                let blockhash = rpc.latest_blockhash()?;
+                let transaction = Transaction::new_signed_with_payer(
+                    &[
+                        ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+                        proof_instruction(&payer.pubkey(), &proof_account.pubkey(), &instruction)?,
+                    ],
+                    Some(&payer.pubkey()),
+                    &[&payer],
+                    blockhash,
+                );
+                let (units, error) = rpc.simulate(&transaction)?;
+                ensure!(
+                    error.is_none(),
+                    "{} seed {seed} production Verify failed: {error:?}",
+                    profile.name
+                );
+                reps.push(units.context("production Verify did not report units")?);
+            }
+            ensure!(
+                reps.windows(2).all(|pair| pair[0] == pair[1]),
+                "{} seed {seed} simulation was not deterministic: {reps:?}",
+                profile.name
+            );
+            per_seed.push(reps[0]);
+            eprintln!(
+                "stage2-query-trade-g16: {} seed {seed}/{SEEDS} {}",
+                profile.name, reps[0]
+            );
+        }
+        let mean = per_seed.iter().sum::<u64>() as f64 / per_seed.len() as f64;
+        let min = *per_seed.iter().min().expect("nonempty");
+        let max = *per_seed.iter().max().expect("nonempty");
+        stats.push(QueryTradeProfileStats {
+            profile: profile.name,
+            query_count: profile.query_count,
+            per_seed_cu: per_seed,
+            mean_cu: mean,
+            min_cu: min,
+            max_cu: max,
+            range_cu: max - min,
+        });
+    }
+    let q36_q34 = stats[0].mean_cu - stats[1].mean_cu;
+    let q36_q32 = stats[0].mean_cu - stats[2].mean_cu;
+    Ok(QueryTradeSummary {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command: "cargo run --release -p aspis-xtask -- stage2-query-trade-g16".to_string(),
+        validator_version: validator_version(),
+        seeds: SEEDS,
+        repetitions_per_seed: REPETITIONS,
+        profiles: stats,
+        q36_to_q34_mean_saving_cu: q36_q34,
+        q36_to_q32_mean_saving_cu: q36_q32,
+        marginal_cu_per_query_q36_q32: q36_q32 / 4.0,
+        notes: vec![
+            "Radix-4 synthetic-C2 g16 proofs, production Verify, 8 fresh draws per query count; means are the comparison statistic per the pre-registered evidence standard.".to_string(),
+            "This measures the PCS-side query scaling only. The q-linear statement terms (wide RLC and leaf, ~ (k' RLC + leaf)/36 per query) add to the projected saving arithmetically and are called out in the hunt ledger.".to_string(),
+            "Production pairings hold 2q + g = 104: q34/g36 and q32/g40. Each traded query improves the proven Johnson floor by ~1.07 bits net (0.93 proven query-bits out, 2 proven ROM work-bits in).".to_string(),
         ],
     })
 }

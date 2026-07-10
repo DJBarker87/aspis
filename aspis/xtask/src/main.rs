@@ -208,6 +208,32 @@ fn main() -> Result<()> {
             eprintln!("stage2-radix4-g32: wrote {}", path.display());
             Ok(())
         }
+        Some("stage2-sumcheck-probe") => {
+            let summary = onchain::run_stage2_sumcheck_probe()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("sumcheck_probe.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!(
+                "stage2-sumcheck-probe: central={} allowance_error={}; wrote {}",
+                summary.central_replaces_allowance_cu,
+                summary.allowance_error_cu,
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-query-trade-g16") => {
+            let summary = onchain::run_stage2_query_trade_g16()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("query_trade_g16.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!(
+                "stage2-query-trade-g16: q36->q34 saves {:.0}, q36->q32 saves {:.0}; wrote {}",
+                summary.q36_to_q34_mean_saving_cu,
+                summary.q36_to_q32_mean_saving_cu,
+                path.display()
+            );
+            Ok(())
+        }
         Some("stage2-variance-g16") => {
             let summary = onchain::run_stage2_variance_g16()?;
             let dir = stage2_results_dir()?;
@@ -221,7 +247,7 @@ fn main() -> Result<()> {
             Ok(())
         }
         other => bail!(
-            "usage: cargo run -p aspis-xtask -- stage0-host | stage0-onchain | stage0-onchain-gate | stage0-onchain-g32 | stage0-onchain-layout-target | stage0-onchain-profile | stage0-layout-sweep | stage0-transcript-kat | stage1-soundness-pin | stage1-onchain-hardening | stage2-evaluator | stage2-composition-probe | stage2-layout-probe | stage2-poseidon2-probe | stage2-zk-kernel-probe | stage2-wide-rlc-probe | stage2-merkle-arity-probe | stage2-radix4-g16 | stage2-radix4-g32 | stage2-variance-g16 (got {:?})",
+            "usage: cargo run -p aspis-xtask -- stage0-host | stage0-onchain | stage0-onchain-gate | stage0-onchain-g32 | stage0-onchain-layout-target | stage0-onchain-profile | stage0-layout-sweep | stage0-transcript-kat | stage1-soundness-pin | stage1-onchain-hardening | stage2-evaluator | stage2-composition-probe | stage2-layout-probe | stage2-poseidon2-probe | stage2-zk-kernel-probe | stage2-wide-rlc-probe | stage2-merkle-arity-probe | stage2-radix4-g16 | stage2-radix4-g32 | stage2-variance-g16 | stage2-sumcheck-probe | stage2-query-trade-g16 (got {:?})",
             other
         ),
     }

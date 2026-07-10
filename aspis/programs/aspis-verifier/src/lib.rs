@@ -116,6 +116,20 @@ pub enum AspisInstruction {
     /// Pre-optimization software-batch denominator path. Appended to preserve
     /// every existing Borsh instruction discriminant; measurement only.
     VerifyLegacySoftware { statement_digest: [u8; 32] },
+    /// Pure-compute probe for the fused statement-sumcheck verifier work
+    /// that the synthetic 30,000-CU allowance stands in for: mu-batched
+    /// zero claims, `rounds` transcript-absorbed degree-(coefficients-1)
+    /// messages with boundary checks and Horner terminal evaluation, and
+    /// block-periodic selector evaluation with enumerated exception rows.
+    /// eq(r,z) and the composition C(v_1..v_k) are deliberately excluded:
+    /// the constraint-composition probe already prices them.
+    StatementSumcheckProbe {
+        rounds: u8,
+        coefficients: u8,
+        claims: u8,
+        selector_terms: u16,
+        selector_exceptions: u8,
+    },
 }
 
 fn run_poseidon2_probe(permutations: u16, optimized: bool) -> ProgramResult {
@@ -265,11 +279,13 @@ fn run_wide_rlc_probe(columns: u16, query_count: u16, kernel: u8) -> ProgramResu
     if columns == 0
         || columns > 256
         || query_count > 64
-        || kernel > 11
+        || kernel > 13
         || (kernel == 8 && columns != 80)
         || (kernel == 9 && columns != 84)
         || (kernel == 10 && columns != 67)
         || (kernel == 11 && columns != 65)
+        || (kernel == 12 && columns != 51)
+        || (kernel == 13 && columns != 49)
         || ((kernel == 3 || kernel == 4) && columns % 4 != 0)
     {
         return Err(ProgramError::InvalidInstructionData);
@@ -279,13 +295,16 @@ fn run_wide_rlc_probe(columns: u16, query_count: u16, kernel: u8) -> ProgramResu
         c1: CM31::new(M31(13), M31(17)),
     };
     // Fixed-width variants of the winning outer-lazy kernel: 80 is the
-    // historical k80 candidate, 84 the k'<=84 pin, 67 the r=3 layout
-    // candidate, 65 the r=3 + LogUp-GKR (no committed helpers) candidate.
+    // historical k80 candidate, 84 the k'<=84 pin, 67/51 the r=3 and r=2
+    // rounds-per-row layout candidates, and 65/49 those layouts under
+    // LogUp-GKR (no committed helper columns).
     match kernel {
         8 => return run_wide_rlc_fixed::<80>(query_count, gamma),
         9 => return run_wide_rlc_fixed::<84>(query_count, gamma),
         10 => return run_wide_rlc_fixed::<67>(query_count, gamma),
         11 => return run_wide_rlc_fixed::<65>(query_count, gamma),
+        12 => return run_wide_rlc_fixed::<51>(query_count, gamma),
+        13 => return run_wide_rlc_fixed::<49>(query_count, gamma),
         _ => {}
     }
     let coefficient_count = if kernel == 5 {
@@ -376,6 +395,118 @@ fn run_wide_rlc_fixed<const N: usize>(
         }
         sink = sink.add(qm31_m31_dot(&powers, &values));
     }
+    if sink == QM31::ZERO {
+        Err(ProgramError::InvalidInstructionData)
+    } else {
+        Ok(())
+    }
+}
+
+fn run_statement_sumcheck_probe(
+    rounds: u8,
+    coefficients: u8,
+    claims: u8,
+    selector_terms: u16,
+    selector_exceptions: u8,
+) -> ProgramResult {
+    use aspis_core::field::{CM31, M31, QM31};
+    use aspis_core::transcript::{label, Transcript};
+
+    if rounds > 32
+        || coefficients == 0
+        || coefficients > 16
+        || claims > 8
+        || selector_terms > 256
+        || selector_exceptions > 32
+    {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+    let sample = |index: u32, lane: u32| -> QM31 {
+        let value =
+            |offset: u32| M31(1 + index.wrapping_mul(131).wrapping_add(offset) % 1_000_003);
+        QM31 {
+            c0: CM31 {
+                a: value(lane * 17),
+                b: value(lane * 17 + 3),
+            },
+            c1: CM31 {
+                a: value(lane * 17 + 7),
+                b: value(lane * 17 + 11),
+            },
+        }
+    };
+
+    let mut transcript = Transcript::new(sbf_hashv);
+    transcript.absorb(label::STATEMENT, &[0x5a; 32]);
+
+    // mu-batch the zero claims (zerocheck plus the sum(h)=0 claims).
+    let mut claim_bytes = [0u8; 16];
+    for claim in 0..claims {
+        sample(claim as u32, 1).write_le_bytes(&mut claim_bytes);
+        transcript.absorb(label::CLAIM, &claim_bytes);
+    }
+    let mu = transcript
+        .challenge_qm31()
+        .map_err(|_| ProgramError::InvalidInstructionData)?;
+    let mut mu_power = QM31::ONE;
+    let mut running_claim = QM31::ZERO;
+    for claim in 0..claims {
+        running_claim = running_claim.add(mu_power.mul(sample(claim as u32, 1)));
+        mu_power = mu_power.mul(mu);
+    }
+
+    let mut sink = QM31::ONE;
+    let mut round_bytes = [0u8; 16 * 16];
+    let mut challenges = [QM31::ZERO; 32];
+    for round in 0..rounds {
+        let coefficient = |j: u8| sample(u32::from(round) * 16 + u32::from(j), 2);
+        for j in 0..coefficients {
+            coefficient(j).write_le_bytes(&mut round_bytes[usize::from(j) * 16..][..16]);
+        }
+        transcript.absorb(
+            label::SUMCHECK_POLY,
+            &round_bytes[..usize::from(coefficients) * 16],
+        );
+        // Boundary p(0) + p(1) against the running claim; the probe folds
+        // the residual into the sink instead of enforcing it.
+        let mut p1 = QM31::ZERO;
+        for j in 0..coefficients {
+            p1 = p1.add(coefficient(j));
+        }
+        sink = sink.add(coefficient(0).add(p1).sub(running_claim));
+        let challenge = transcript
+            .challenge_qm31()
+            .map_err(|_| ProgramError::InvalidInstructionData)?;
+        challenges[usize::from(round)] = challenge;
+        let mut value = QM31::ZERO;
+        for j in (0..coefficients).rev() {
+            value = value.mul(challenge).add(coefficient(j));
+        }
+        running_claim = value;
+    }
+
+    // Block-periodic selector at the terminal point plus enumerated
+    // exception rows corrected with eq(row_i, r) factors.
+    let mut selector = QM31::ZERO;
+    for term in 0..selector_terms {
+        selector = selector.add(sample(u32::from(term), 3).mul(sample(u32::from(term) + 7, 4)));
+    }
+    for exception in 0..selector_exceptions {
+        let mut eq = QM31::ONE;
+        for round in 0..rounds {
+            let challenge = challenges[usize::from(round)];
+            let bit = (u32::from(exception) >> (u32::from(round) % 30)) & 1 == 1;
+            let factor = if bit {
+                challenge
+            } else {
+                QM31::ONE.sub(challenge)
+            };
+            eq = eq.mul(factor);
+        }
+        selector = selector.add(eq);
+    }
+    sink = sink.add(selector.mul(running_claim));
+
     if sink == QM31::ZERO {
         Err(ProgramError::InvalidInstructionData)
     } else {
@@ -711,6 +842,22 @@ pub fn process_instruction(
     {
         return run_merkle_arity_probe(depth, query_count, arity);
     }
+    if let AspisInstruction::StatementSumcheckProbe {
+        rounds,
+        coefficients,
+        claims,
+        selector_terms,
+        selector_exceptions,
+    } = instruction
+    {
+        return run_statement_sumcheck_probe(
+            rounds,
+            coefficients,
+            claims,
+            selector_terms,
+            selector_exceptions,
+        );
+    }
 
     let account_iter = &mut accounts.iter();
     let proof_account = next_account_info(account_iter)?;
@@ -804,6 +951,7 @@ pub fn process_instruction(
         AspisInstruction::ZkKernelProbe { .. } => unreachable!(),
         AspisInstruction::WideRlcProbe { .. } => unreachable!(),
         AspisInstruction::MerkleArityProbe { .. } => unreachable!(),
+        AspisInstruction::StatementSumcheckProbe { .. } => unreachable!(),
     }
 }
 
