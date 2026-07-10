@@ -131,6 +131,7 @@ cargo run --release -p aspis-xtask -- stage2-wide-rlc-probe # correct q-by-k gam
 cargo run --release -p aspis-xtask -- stage2-merkle-arity-probe # binary vs radix-4 model
 cargo run --release -p aspis-xtask -- stage2-radix4-g16 # real binary/radix-4 C2 comparison
 cargo run --release -p aspis-xtask -- stage2-radix4-g32 # literal g32 proof + production SBF comparison
+cargo run --release -p aspis-xtask -- stage2-variance-g16 # 16-seed transcript-draw variance vs pre-registered criterion
 cargo run --release -p aspis-xtask -- stage0-onchain       # full packaging matrix; slow
 ```
 

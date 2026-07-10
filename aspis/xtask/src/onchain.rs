@@ -240,8 +240,11 @@ pub struct Radix4ProofVariant {
     pub merkle_mode: &'static str,
     pub proof_bytes: usize,
     pub proof_sha256: String,
-    pub verify_fast_cu: Vec<u64>,
-    pub verify_fast_cu_mean: f64,
+    /// Production `Verify` CU (the optimized path). Named `verify_cu`, not
+    /// `verify_fast_cu`: `VerifyFast` survives only as a wire-compatible
+    /// alias and the g32 runner has always measured `Verify` itself.
+    pub verify_cu: Vec<u64>,
+    pub verify_cu_mean: f64,
     pub host_corruption_cases: usize,
     pub host_corruption_all_rejected: bool,
 }
@@ -284,6 +287,79 @@ pub struct Radix4G32Summary {
     pub radix4_frontier_corruption_rejected_host: bool,
     pub radix4_frontier_corruption_rejected_sbf: bool,
     pub notes: Vec<String>,
+}
+
+#[derive(Serialize)]
+pub struct VarianceSeedSample {
+    pub seed: u64,
+    pub binary_proof_bytes: usize,
+    pub binary_verify_cu: u64,
+    pub radix4_proof_bytes: usize,
+    pub radix4_verify_cu: u64,
+    pub radix4_saving_cu: i64,
+}
+
+#[derive(Serialize)]
+pub struct VarianceModeStats {
+    pub merkle_mode: &'static str,
+    pub per_seed_cu: Vec<u64>,
+    pub mean_cu: f64,
+    pub population_std_dev_cu: f64,
+    pub min_cu: u64,
+    pub max_cu: u64,
+    pub range_cu: u64,
+    pub max_minus_mean_cu: f64,
+    pub mean_plus_two_sigma_cu: f64,
+}
+
+#[derive(Serialize)]
+pub struct VarianceG16Summary {
+    pub generated_at_utc: String,
+    pub command: String,
+    pub validator_version: String,
+    pub profile: &'static str,
+    pub seeds: u64,
+    pub repetitions_per_seed: usize,
+    pub criterion: String,
+    pub samples: Vec<VarianceSeedSample>,
+    pub binary_stats: VarianceModeStats,
+    pub radix4_stats: VarianceModeStats,
+    pub strict_candidate_projection_cu: i64,
+    pub ten_percent_slack_maximum_cu: i64,
+    pub single_draw_headroom_cu: i64,
+    pub criterion_penalty_range_cu: u64,
+    pub criterion_adjusted_projection_cu: i64,
+    pub criterion_passes: bool,
+    pub secondary_two_sigma_penalty_cu: f64,
+    pub secondary_adjusted_projection_cu: i64,
+    pub notes: Vec<String>,
+}
+
+fn variance_stats(merkle_mode: &'static str, per_seed_cu: Vec<u64>) -> VarianceModeStats {
+    let n = per_seed_cu.len() as f64;
+    let mean = per_seed_cu.iter().sum::<u64>() as f64 / n;
+    let variance = per_seed_cu
+        .iter()
+        .map(|&cu| {
+            let d = cu as f64 - mean;
+            d * d
+        })
+        .sum::<f64>()
+        / n;
+    let sigma = variance.sqrt();
+    let min = *per_seed_cu.iter().min().expect("nonempty seed set");
+    let max = *per_seed_cu.iter().max().expect("nonempty seed set");
+    VarianceModeStats {
+        merkle_mode,
+        mean_cu: mean,
+        population_std_dev_cu: sigma,
+        min_cu: min,
+        max_cu: max,
+        range_cu: max - min,
+        max_minus_mean_cu: max as f64 - mean,
+        mean_plus_two_sigma_cu: mean + 2.0 * sigma,
+        per_seed_cu,
+    }
 }
 
 #[derive(Serialize)]
@@ -1248,6 +1324,21 @@ pub fn run_stage2_composition_probe() -> Result<CompositionProbeSummary> {
             true,
         ),
         (
+            "evaluator_lookup_range_stress_linear128",
+            aspis_statement::CompositionProbe {
+                opened_values: 80,
+                poseidon_sbox_terms: 64,
+                // Stress row: the lookup candidate at the top of the
+                // evaluator's per-row linear bracket [64, 128], instead of
+                // the 70 terms the shared-output layout assumes.
+                poseidon_linear_terms: 128,
+                logup_degree3_terms: 2,
+                range_bit_terms: 0,
+                eq_variables: 10,
+            },
+            true,
+        ),
+        (
             "realistic",
             aspis_statement::CompositionProbe::REALISTIC,
             false,
@@ -1333,6 +1424,7 @@ pub fn run_stage2_composition_probe() -> Result<CompositionProbeSummary> {
             "Composition deltas subtract a matching RLC-only run so the gamma RLC already represented in the frozen 201,114-CU layout allowance is not double-counted. Projected totals add the measured k64-to-k' RLC delta and composition-only delta to 1,175,086 CU.".to_string(),
             "Wide-leaf hashing for k'=80 is not updated by this arithmetic-only probe; it is measured separately before a final product decision.".to_string(),
             "The lookup-range candidate replaces 64 Boolean terms with six 10-bit limbs, one additional LogUp relation, and six reconstruction terms. It is an isolated cost candidate, not yet a frozen statement rule.".to_string(),
+            "The stress row prices the lookup candidate at linear_terms=128, the top of the evaluator's per-row bracket. If only the 70-term reading fits the slack ceiling, candidate-green is bracket-conditional and the gate note must say so.".to_string(),
             "The 10% slack maximum is 1,071,000 CU. The frozen pre-composition projection already exceeds it by 104,086 CU, so no positive composition result can pass that gate without a named reclaim or rule change.".to_string(),
         ],
     })
@@ -1917,7 +2009,7 @@ pub fn run_stage2_radix4_g16() -> Result<Radix4G16Summary> {
 
         let mut samples = Vec::new();
         for _ in 0..REPETITIONS {
-            let instruction = AspisInstruction::VerifyFast {
+            let instruction = AspisInstruction::Verify {
                 statement_digest: digest,
             };
             let blockhash = rpc.latest_blockhash()?;
@@ -1931,8 +2023,11 @@ pub fn run_stage2_radix4_g16() -> Result<Radix4G16Summary> {
                 blockhash,
             );
             let (units, error) = rpc.simulate(&transaction)?;
-            ensure!(error.is_none(), "{mode:?} VerifyFast failed: {error:?}");
-            samples.push(units.context("VerifyFast did not report units")?);
+            ensure!(
+                error.is_none(),
+                "{mode:?} production Verify failed: {error:?}"
+            );
+            samples.push(units.context("production Verify did not report units")?);
         }
         let mean = samples.iter().sum::<u64>() as f64 / samples.len() as f64;
         let proof_hash = HOST_HASH(&[&proof]);
@@ -1948,8 +2043,8 @@ pub fn run_stage2_radix4_g16() -> Result<Radix4G16Summary> {
             },
             proof_bytes: proof.len(),
             proof_sha256,
-            verify_fast_cu: samples,
-            verify_fast_cu_mean: mean,
+            verify_cu: samples,
+            verify_cu_mean: mean,
             host_corruption_cases: corruption.len(),
             host_corruption_all_rejected: corruption.iter().all(|case| case.rejected),
         });
@@ -1984,7 +2079,7 @@ pub fn run_stage2_radix4_g16() -> Result<Radix4G16Summary> {
 
     let corrupted_account = Keypair::new();
     upload_proof(&rpc, &payer, &corrupted_account, &corrupted, true)?;
-    let instruction = AspisInstruction::VerifyFast {
+    let instruction = AspisInstruction::Verify {
         statement_digest: digest,
     };
     let blockhash = rpc.latest_blockhash()?;
@@ -1999,8 +2094,8 @@ pub fn run_stage2_radix4_g16() -> Result<Radix4G16Summary> {
     );
     let (_, sbf_corruption_error) = rpc.simulate(&transaction)?;
 
-    let binary_mean = variants[0].verify_fast_cu_mean;
-    let radix4_mean = variants[1].verify_fast_cu_mean;
+    let binary_mean = variants[0].verify_cu_mean;
+    let radix4_mean = variants[1].verify_cu_mean;
     let savings = (binary_mean - radix4_mean).round() as i64;
     let proof_bytes_delta = variants[1].proof_bytes as i64 - variants[0].proof_bytes as i64;
     Ok(Radix4G16Summary {
@@ -2018,7 +2113,7 @@ pub fn run_stage2_radix4_g16() -> Result<Radix4G16Summary> {
         radix4_frontier_corruption_rejected_sbf: sbf_corruption_error.is_some(),
         notes: vec![
             "Both rows are real claim-free Stage-1 synthetic-C2 proofs over identical coefficients and statement bytes; only the transcript-bound Merkle mode differs.".to_string(),
-            "VerifyFast uses the cached-domain and unit-circle-conjugate verifier kernels selected by the Stage-2 kernel probe.".to_string(),
+            "Production Verify uses the cached-domain and unit-circle-conjugate verifier kernels selected by the Stage-2 kernel probe; VerifyFast remains a wire-compatible alias of the same path.".to_string(),
             "The radix-4 root uses domain byte 0x12 and one SHA-256 input containing four ordered child hashes. It is not a reinterpretation of a binary root.".to_string(),
             "A layer-0 radix-4 frontier hash is deliberately corrupted after proof construction and must reject both on host and SBF.".to_string(),
             "This g16 checkpoint does not re-pin the frozen g32 proof or transcript KAT; that happens only after this comparison is accepted.".to_string(),
@@ -2148,8 +2243,8 @@ pub fn run_stage2_radix4_g32() -> Result<Radix4G32Summary> {
             merkle_mode: mode_name,
             proof_bytes: proof.len(),
             proof_sha256: hex(&proof_hash),
-            verify_fast_cu_mean: samples.iter().sum::<u64>() as f64 / samples.len() as f64,
-            verify_fast_cu: samples,
+            verify_cu_mean: samples.iter().sum::<u64>() as f64 / samples.len() as f64,
+            verify_cu: samples,
             host_corruption_cases: corruption.len(),
             host_corruption_all_rejected: corruption.iter().all(|case| case.rejected),
         });
@@ -2192,8 +2287,8 @@ pub fn run_stage2_radix4_g32() -> Result<Radix4G32Summary> {
     );
     let (_, sbf_corruption_error) = rpc.simulate(&transaction)?;
 
-    let binary_mean = variants[0].verify_fast_cu_mean;
-    let radix4_mean = variants[1].verify_fast_cu_mean;
+    let binary_mean = variants[0].verify_cu_mean;
+    let radix4_mean = variants[1].verify_cu_mean;
     let savings = (binary_mean - radix4_mean).round() as i64;
     let proof_bytes_delta = variants[1].proof_bytes as i64 - variants[0].proof_bytes as i64;
     Ok(Radix4G32Summary {
@@ -2220,6 +2315,145 @@ pub fn run_stage2_radix4_g32() -> Result<Radix4G32Summary> {
             "The Merkle-mode header byte is transcript-absorbed, so roots, challenges, grinding nonce, query positions, proof digest, and proof bytes are all freshly generated for radix-4.".to_string(),
             "TRANSCRIPT_KAT_EXPECTED intentionally does not move: radix-4 changes a transcript input, not the schedule or sampler that the standalone KAT pins.".to_string(),
             "A real radix-4 layer-0 frontier node is corrupted and must reject on both host and SBF.".to_string(),
+        ],
+    })
+}
+
+/// Multi-seed transcript-draw variance study at fixed g16 shape.
+///
+/// This is the pre-registered decider for whether the strict candidate's
+/// 29,056-CU single-draw headroom survives draw-to-draw spread. The
+/// criterion string is committed before any multi-seed data exists; the
+/// runner only evaluates it.
+pub fn run_stage2_variance_g16() -> Result<VarianceG16Summary> {
+    const REPETITIONS: usize = 5;
+    const SEEDS: u64 = 16;
+    const STRICT_CANDIDATE_PROJECTION: i64 = 1_041_944;
+    const TEN_PERCENT_SLACK_MAXIMUM: i64 = 1_071_000;
+    const CRITERION: &str = "Pre-registered before any multi-seed run: let R = max - min of \
+        production Verify CU for the radix-4 minimal-subtree variant over 16 fresh transcript \
+        draws (seed s in 1..=16; statement digest seed s, coefficient seed s) at fixed shape \
+        capacity_lr10_q36_g16 with RawFibers and synthetic C2. The strict candidate stays green \
+        only if 1,041,944 + R <= 1,071,000. Rationale: the single measured g32 radix-4 draw \
+        (678,407 CU) may sit anywhere in its own draw distribution, including at its minimum, \
+        so the full observed fixed-shape range bounds a worst-case redraw under the stated \
+        g16-to-g32 spread-transfer assumption (the query-index and frontier-collision mechanism \
+        is identical; grinding bits enter only as a header byte and a threshold). mean+2*sigma \
+        and the binary-mode spread are reported as secondary diagnostics and are not binding. \
+        On failure, projection_status downgrades to variance_conditional before any \
+        integration nonce is ground.";
+
+    let root = workspace_root()?;
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), 40 * LAMPORTS_PER_SOL)?;
+
+    let profile = &PROFILE_CAPACITY_LR10_Q36_G16;
+    let mut samples = Vec::new();
+    let mut binary_cu = Vec::new();
+    let mut radix4_cu = Vec::new();
+    for seed in 1..=SEEDS {
+        let digest = crate::host_statement_digest(seed);
+        let coeffs = seeded_coeffs(profile.log_rows, seed);
+        let mut per_mode = Vec::new();
+        for mode in [MerkleMode::MinimalSubtree, MerkleMode::Radix4MinimalSubtree] {
+            let proof = prove_with_synthetic_second_phase(
+                profile,
+                &coeffs,
+                &digest,
+                &ProveOptions {
+                    fold_payload: FoldPayload::RawFibers,
+                    merkle_mode: mode,
+                },
+                HOST_HASH,
+            );
+            ensure!(
+                aspis_core::verify(&proof, &digest, HOST_HASH).is_ok(),
+                "seed {seed} {mode:?} proof failed host verification"
+            );
+            let proof_account = Keypair::new();
+            upload_proof(&rpc, &payer, &proof_account, &proof, true)?;
+            let mut reps = Vec::new();
+            for _ in 0..REPETITIONS {
+                let instruction = AspisInstruction::Verify {
+                    statement_digest: digest,
+                };
+                let blockhash = rpc.latest_blockhash()?;
+                let transaction = Transaction::new_signed_with_payer(
+                    &[
+                        ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+                        proof_instruction(&payer.pubkey(), &proof_account.pubkey(), &instruction)?,
+                    ],
+                    Some(&payer.pubkey()),
+                    &[&payer],
+                    blockhash,
+                );
+                let (units, error) = rpc.simulate(&transaction)?;
+                ensure!(
+                    error.is_none(),
+                    "seed {seed} {mode:?} production Verify failed: {error:?}"
+                );
+                reps.push(units.context("production Verify did not report units")?);
+            }
+            ensure!(
+                reps.windows(2).all(|pair| pair[0] == pair[1]),
+                "seed {seed} {mode:?} simulation was not deterministic: {reps:?}"
+            );
+            per_mode.push((proof.len(), reps[0]));
+        }
+        binary_cu.push(per_mode[0].1);
+        radix4_cu.push(per_mode[1].1);
+        samples.push(VarianceSeedSample {
+            seed,
+            binary_proof_bytes: per_mode[0].0,
+            binary_verify_cu: per_mode[0].1,
+            radix4_proof_bytes: per_mode[1].0,
+            radix4_verify_cu: per_mode[1].1,
+            radix4_saving_cu: per_mode[0].1 as i64 - per_mode[1].1 as i64,
+        });
+        eprintln!(
+            "stage2-variance-g16: seed {seed}/{SEEDS} binary {} radix4 {}",
+            per_mode[0].1, per_mode[1].1
+        );
+    }
+
+    let binary_stats = variance_stats("binary_minimal_subtree", binary_cu);
+    let radix4_stats = variance_stats("radix4_minimal_subtree", radix4_cu);
+    let penalty = radix4_stats.range_cu;
+    let adjusted = STRICT_CANDIDATE_PROJECTION + penalty as i64;
+    let two_sigma = 2.0 * radix4_stats.population_std_dev_cu;
+    let secondary_adjusted = STRICT_CANDIDATE_PROJECTION + two_sigma.round() as i64;
+    Ok(VarianceG16Summary {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command: "cargo run --release -p aspis-xtask -- stage2-variance-g16".to_string(),
+        validator_version: validator_version(),
+        profile: profile.name,
+        seeds: SEEDS,
+        repetitions_per_seed: REPETITIONS,
+        criterion: CRITERION.to_string(),
+        samples,
+        binary_stats,
+        radix4_stats,
+        strict_candidate_projection_cu: STRICT_CANDIDATE_PROJECTION,
+        ten_percent_slack_maximum_cu: TEN_PERCENT_SLACK_MAXIMUM,
+        single_draw_headroom_cu: TEN_PERCENT_SLACK_MAXIMUM - STRICT_CANDIDATE_PROJECTION,
+        criterion_penalty_range_cu: penalty,
+        criterion_adjusted_projection_cu: adjusted,
+        criterion_passes: adjusted <= TEN_PERCENT_SLACK_MAXIMUM,
+        secondary_two_sigma_penalty_cu: two_sigma,
+        secondary_adjusted_projection_cu: secondary_adjusted,
+        notes: vec![
+            "Each row is a real claim-free synthetic-C2 g16 proof; g16 grinding makes 16 fresh draws affordable where 16 fresh 32-bit nonce searches are not.".to_string(),
+            "Spread mechanism: the statement digest and coefficients move every absorbed root, so challenges, grinding nonce, query positions, unique-fiber counts, and minimal-subtree frontiers are fresh per seed; the verifier code path is fixed.".to_string(),
+            "All five repetitions per seed are asserted identical; per-seed CU is a deterministic function of the draw, so the across-seed spread is exactly the transcript-draw variance.".to_string(),
+            "The g16-to-g32 spread transfer is an assumption stated inside the criterion, not a measurement; the integrated g32 payment proof remains the final word.".to_string(),
         ],
     })
 }
