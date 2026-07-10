@@ -21,7 +21,9 @@ proof lowers it again to 678,407 CU. The six-limb lookup semantic corpus and a
 fixed-width outer-lazy q36/k80 RLC now project the combined verifier to
 1,041,944 CU, 29,056 inside the strict 1.071M slack ceiling. The product gate
 stays open until the LogUp relation and wide RLC are integrated into one real
-payment proof. Split verification remains the fallback.
+payment proof. The measured reusable field/RLC/Merkle kernels have also been
+extracted into SolMath's standalone `solmath-zk` crate at commit `682b5d4`.
+Split verification remains the fallback.
 
 # Phase 1 SVM Cost Model
 

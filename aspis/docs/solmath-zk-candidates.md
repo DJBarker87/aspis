@@ -2,17 +2,19 @@
 
 Date: `2026-07-10`
 
-Recommendation: **yes, build `solmath-zk`, but extract only measured reusable
-kernels.** Keep Aspis protocol choices (range argument, transcript schedule,
-proof envelope) outside the math crate.
+Status: **the first `solmath-zk` extraction now exists at SolMath commit
+`682b5d4`.** It contains only measured reusable kernels. Aspis protocol choices
+(range argument, transcript schedule, proof envelope) remain outside the math
+crate.
 
 The current `~/solmath` worktree contains extensive unrelated in-progress
-changes, so the kernels were prototyped and measured inside Aspis first. This
-avoids silently mixing a new crate into unfinished SolMath work. Once the APIs
-below stabilize, they can move into a standalone no_std, zero-default-
-dependency crate.
+changes, so the kernels were prototyped and measured inside Aspis first. The
+extraction is a standalone nested workspace at `crate/solmath-zk`, avoiding
+changes to SolMath's dirty root `Cargo.toml` and `Cargo.lock`. It is `no_std`,
+has zero runtime dependencies, passes six unit/differential tests, and passes
+`clippy -D warnings`.
 
-## Proposed modules
+## Module boundary
 
 ### `field::m31`
 
@@ -34,7 +36,7 @@ dependency crate.
   final reduction per output limb;
 - batch inversion with an injected base-field inverse backend.
 
-### `circle`
+### `circle` (still Aspis-local)
 
 - cached omega power table;
 - arity-4 layer advance by table shift and fourth powers;
@@ -42,20 +44,20 @@ dependency crate.
   `inv(2s)`, `inv(2*iota*s)`, `inv(2s^2)` without inversion;
 - final-domain evaluation cache.
 
-### `poseidon2_m31`
+### `poseidon2_m31` (not extracted yet)
 
 - Plonky3-0.6.1-pinned width-16 constants and KAT;
 - canonical reference permutation;
 - lazy M31 linear layers and power-of-two diagonals;
 - domain/length-separated rate-8 sponge.
 
-### `sbf` (optional feature)
+### `sbf` (future optional feature)
 
 - stack-backed `sol_big_mod_exp` adapter for general M31 inversion;
 - host fallback injected by the caller;
 - no Solana dependency in the default field crate.
 
-### `merkle` (optional)
+### `merkle`
 
 - fixed-preimage packed SHA node helper;
 - binary and radix-4 minimal-subtree traversal with caller-supplied hash
