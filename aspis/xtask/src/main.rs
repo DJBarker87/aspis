@@ -1,6 +1,8 @@
 mod host;
 mod onchain;
+mod retired_numbers;
 mod stage1;
+mod stage1_theta;
 mod stage2;
 
 use std::fs;
@@ -128,6 +130,23 @@ fn main() -> Result<()> {
             eprintln!("stage1-soundness-pin: wrote {}", path.display());
             Ok(())
         }
+        Some("stage1-theta-optimize") => {
+            let artifact = stage1_theta::theta_optimizer_artifact();
+            let dir = stage1_results_dir()?;
+            let path = dir.join("theta_optimizer.json");
+            fs::write(&path, format!("{}\n", serde_json::to_string_pretty(&artifact)?))?;
+            eprintln!("stage1-theta-optimize: wrote {}", path.display());
+            Ok(())
+        }
+        Some("stage1-retired-number-lint") => {
+            let summary = retired_numbers::lint_retired_numbers()?;
+            eprintln!(
+                "stage1-retired-number-lint: {} files, {} allowed historical occurrences, 0 violations",
+                summary.files_scanned,
+                summary.retired_occurrences_allowed
+            );
+            Ok(())
+        }
         Some("stage1-onchain-hardening") => {
             let summary = onchain::run_stage1_onchain_hardening()?;
             let dir = stage1_results_dir()?;
@@ -142,6 +161,33 @@ fn main() -> Result<()> {
             let path = dir.join("evaluator_corpus.json");
             fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
             eprintln!("stage2-evaluator: wrote {}", path.display());
+            Ok(())
+        }
+        Some("stage2-logup-compression-kat") => {
+            let summary = onchain::run_logup_compression_kat()?;
+            anyhow::ensure!(
+                summary.matched_on_sbf,
+                "LogUp compression KAT MISMATCH on SBF — host/chain divergence"
+            );
+            let dir = stage2_results_dir()?;
+            let path = dir.join("logup_compression_kat.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!(
+                "stage2-logup-compression-kat: matched; wrote {}",
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-s2-ood-probe") => {
+            let summary = onchain::run_stage2_s2_ood_probe()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("s2_ood_probe.json");
+            fs::write(&path, format!("{}\n", serde_json::to_string_pretty(&summary)?))?;
+            eprintln!(
+                "stage2-s2-ood-probe: second-sample transcript/relation delta={} CU; wrote {}",
+                summary.pcs_s2_second_ood_sample_transcript_relation_cu,
+                path.display()
+            );
             Ok(())
         }
         Some("stage2-composition-probe") => {
@@ -247,7 +293,7 @@ fn main() -> Result<()> {
             Ok(())
         }
         other => bail!(
-            "usage: cargo run -p aspis-xtask -- stage0-host | stage0-onchain | stage0-onchain-gate | stage0-onchain-g32 | stage0-onchain-layout-target | stage0-onchain-profile | stage0-layout-sweep | stage0-transcript-kat | stage1-soundness-pin | stage1-onchain-hardening | stage2-evaluator | stage2-composition-probe | stage2-layout-probe | stage2-poseidon2-probe | stage2-zk-kernel-probe | stage2-wide-rlc-probe | stage2-merkle-arity-probe | stage2-radix4-g16 | stage2-radix4-g32 | stage2-variance-g16 | stage2-sumcheck-probe | stage2-query-trade-g16 (got {:?})",
+            "usage: cargo run -p aspis-xtask -- stage0-host | stage0-onchain | stage0-onchain-gate | stage0-onchain-g32 | stage0-onchain-layout-target | stage0-onchain-profile | stage0-layout-sweep | stage0-transcript-kat | stage1-soundness-pin | stage1-theta-optimize | stage1-retired-number-lint | stage1-onchain-hardening | stage2-evaluator | stage2-logup-compression-kat | stage2-s2-ood-probe | stage2-composition-probe | stage2-layout-probe | stage2-poseidon2-probe | stage2-zk-kernel-probe | stage2-wide-rlc-probe | stage2-merkle-arity-probe | stage2-radix4-g16 | stage2-radix4-g32 | stage2-variance-g16 | stage2-sumcheck-probe | stage2-query-trade-g16 (got {:?})",
             other
         ),
     }

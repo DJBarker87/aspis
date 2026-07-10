@@ -14,22 +14,21 @@ phase and teeth-demonstrated ordering tests. Its literal lr10/q36/g32
 verifier measures 943,972 CU; after already-priced statement work the
 projection is 1,175,086 CU, leaving only 14,914 CU before the still-unpriced
 Stage 2 constraint composition. Stage 2 now has an executable economic-attack
-evaluator and isolated SBF measurements. Its first one-transaction projection
-was 1,415,268 CU; measured M31/tower/circle kernels have since cut the frozen
-binary PCS from 943,972 to 714,111 CU. A fresh domain-separated radix-4 g32
-proof lowers it again to 678,407 CU. The six-limb lookup semantic corpus and a
-fixed-width outer-lazy RLC project a central combined verifier of 1,049,941
-CU after the k'=83 column recount — but a pre-registered 16-seed variance
-study (worst-of-16 range 55,786 CU) and a linear=128 composition stress row
-both break the strict 1.071M slack ceiling, so the projection is
-variance-and-bracket-conditional; all readings clear the 1.19M target. A
-measured-arithmetic shrink hunt then re-froze the layout at r=2/k'=51
-(central 974,112 CU). Stage 1 has since been REOPENED: the up-to-capacity
+evaluator and isolated SBF measurements. After a historical k'=83 variance
+failure, the measured-arithmetic shrink hunt re-froze the layout at
+r=2/k'=51: **974,112 CU central and 1,047,561 registered combined-worst**,
+23,439 below the strict 1.071M ceiling at s1. The adopted s2 line now has a
+measured +49,099-CU cost, moving q36 to 1,096,660 registered (strict-red);
+the held q34/g36 lever projects 1,052,181 and restores 18,819 CU of strict
+margin. These are preintegration projections, not a product close; the real
+v4 statement proof and final-shape draws remain.
+Stage 1 has since been REOPENED: the up-to-capacity
 conjecture family was disproved (ePrint 2025/2046, 2026/782; no known
-attack at these parameters), the revised S-two conjecture is adopted, and
-the headline is RULED at t=90 stated / 93.89 computed (q36/g32/s=2,
-refutation disclosed with every quotation); the ~65.5-bit proven floor is
-untouched. The
+attack at these parameters). The ruling keeps t=90 stated at q36/g32/s2;
+the source-constant audit gives a provisional 93.73-bit sensitivity but
+S-two leaves a finite-length remainder unbounded, so no computed
+conjectured value is currently quotable. The ~65.5-bit proven floor is
+untouched and remains the only quotable security number. The
 product gate stays open until the LogUp relation and wide RLC are integrated
 into one real payment proof. The measured reusable field/RLC/Merkle kernels have also been
 extracted into SolMath's standalone `solmath-zk` crate at commit `682b5d4`.

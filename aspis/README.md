@@ -24,10 +24,11 @@ target before unpriced constraint composition. **Stage 1 is REOPENED
 old t=100 headline was disproved (Crites–Stewart ePrint 2025/2046;
 Krachun–Kazanin–Haböck ePrint 2026/782), with no known attack at these
 parameters. Under the adopted revised conjecture (S-two ePrint 2026/532
-App. A.5, transported to circle codes), q36/g32 gives ~90.3 system bits
-(s=1) / ~93.9 (s=2); the t=100 headline does not survive at q36. RULED:
-headline t=90 stated / 93.89 computed at q36/g32/s=2, refutation
-disclosed with every quotation. The proven Johnson floor ~65.5 bits is
+App. A.5, transported to circle codes), the t=100 headline does not survive
+at q36. RULED: keep t=90 stated at q36/g32/s2. The source-constant audit
+gives 93.73 only as a provisional sensitivity because the cited conjecture
+does not bound its finite-length remainder; no computed conjectured value
+is quotable yet. The proven Johnson floor ~65.5 bits is
 untouched and strengthens to ~67.5-68 preliminary under the same season's
 proven-side results.** See
 `docs/aspis-soundness-note.md` (§9), `docs/stage0-conclusion.md`, and
@@ -45,9 +46,11 @@ showed the 30,000-CU allowance was really 83,849 — so the shrink hunt ran
 with a pre-registered close condition and closed on measured arithmetic:
 the r=2 / k'=51 layout re-freeze (RLC 131,759, leaf 9,143, composition
 70,954) projects **974,112 CU central and 1,047,561 combined-worst, both
-under the strict 1,071,000 ceiling**. LogUp-GKR and STIR were priced
-against verified sources and rejected; q34/g36 (-44K, proven floor +2.1
-bits) stays available. The LogUp proof and wide RLC are still not
+under the strict 1,071,000 ceiling at s1**. The measured s2 delta is
+49,099 CU: current q36 becomes 1,096,660 registered and strict-red;
+q34/g36 is the named recovery lever at 1,052,181 (18,819 strict margin),
+but remains a deliberate second transcript knob. LogUp-GKR and STIR were
+priced and rejected. The LogUp proof and wide RLC are still not
 integrated into one payment proof, so split verification remains the
 fallback; see `docs/stage2-shrink-hunt.md`, `docs/stage2-feasibility.md`,
 and `docs/aspis-soundness-note.md` §8.
@@ -117,8 +120,8 @@ results/stage0,stage1/   raw artifacts backing every number quoted anywhere
 | Stage | Goal | Current status |
 | --- | --- | --- |
 | Stage 0 | Consolidate the native WHIR-style M31 PCS substrate | **CLOSED/CONDITIONAL (historical)**: admitted q32/g32 as a hypothesis; Stage 1 has since retired it |
-| Stage 1 | Harden and budget the PCS soundness argument | **CLOSED, then REOPENED `2026-07-10` (note §9)**: the up-to-capacity conjecture family was refuted; revised conjecture adopted; headline ruled t=90 stated / 93.89 computed at q36/g32/s=2; measurements and teeth tests stand |
-| Stage 2 | Build the direct spend evaluator and statement layer | **IN PROGRESS / VARIANCE-AND-BRACKET-CONDITIONAL PROJECTION**: direct + lookup evaluators complete; real radix-4 g32 PCS; 26.38% saving from the historical checkpoint; pre-registered variance criterion failed; LogUp/RLC/full-proof integration pending; split receipt retained |
+| Stage 1 | Harden and budget the PCS soundness argument | **REOPENED / FINITE-LENGTH CONSTANTS GATE**: t=90 ruling retained at q36/g32/s2; 93.73 is provisional sensitivity only; 65.5 is the only quotable floor; measurements and teeth tests stand |
+| Stage 2 | Build the direct spend evaluator and statement layer | **IN PROGRESS / CURRENT q36 STRICT-RED**: measured s2 moves q36 registered to 1,096,660; q34/g36 recovery projects 1,052,181 but is not silently adopted; LogUp/RLC/full-proof integration pending; split receipt retained |
 | Stage 3 | Add commitment and sumcheck/evaluation hiding | future |
 | Stage 4 | Split verifier crate seam and demo shielded pool | future |
 | Stage 5 | Freeze, devnet n=100 measurement, novelty re-check, writeup | future |

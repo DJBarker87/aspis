@@ -1,8 +1,12 @@
 {
   "generated_at_utc": "2026-07-10T19:40:00Z",
-  "status": "one_transaction_projection_variance_and_bracket_conditional_pending_statement_integration",
+  "amended_at_utc": "2026-07-10T20:23:55Z",
+  "status": "r2_kprime51_q36_s2_registered_strict_red; q34_g36_recovery_held; product_gate_open_pending_integrated_v4_proof",
   "sources": {
     "stage1_gate": "../stage1/gate_close.json",
+    "theta_optimizer": "../stage1/theta_optimizer.json",
+    "retired_number_allowlist": "../stage1/retired_numbers_allowlist.json",
+    "s2_ood_probe": "s2_ood_probe.json",
     "evaluator": "evaluator_corpus.json",
     "composition": "composition_probe.json",
     "layout": "layout_probe.json",
@@ -22,9 +26,14 @@
   "evaluator": {
     "economic_vectors": 13,
     "all_passed": true,
-    "candidate_raw_columns": 80,
-    "max_poseidon_sbox_terms_per_active_row": 64,
-    "poseidon_linear_term_bracket": [64, 128],
+    "layout_status": "frozen r2/kprime51",
+    "frozen_rounds_per_wide_row": 2,
+    "frozen_poseidon_constraint_rows": 539,
+    "frozen_poseidon_allocated_rows": 784,
+    "frozen_main_and_interface_columns": 48,
+    "frozen_opened_values_k_prime": 51,
+    "max_poseidon_sbox_terms_per_active_row": 32,
+    "poseidon_linear_term_bracket": [32, 64],
     "current_wiring_logup_terms": 1,
     "current_boolean_range_terms": 64,
     "candidate_lookup_logup_terms": 2,
@@ -49,6 +58,8 @@
     "poseidon2_canonical_per_permutation": 24047.75,
     "poseidon2_lazy_m31_per_permutation": 22705.25,
     "poseidon2_depth20_saved": 66830,
+    "poseidon2_current_gate_impact_cu": 0,
+    "poseidon2_scope_note": "Spend hash_fields is host-only semantic-evaluator work today; production Verify uses SHA-256. The saving is future direct-evaluator evidence, not current gate headroom.",
     "wide_leaf_k80_q36": 11231,
     "correct_wide_rlc_k80_q36_precomputed_powers": 361963,
     "correct_wide_rlc_k80_q36_lazy_dot4": 236170,
@@ -81,6 +92,7 @@
     "reason": "The historical layout loop multiplied every column by the same gamma. It is not a sound gamma-power RLC and is retained only as provenance; wide_rlc_probe.json replaces it."
   },
   "single_transaction_projection_cu": {
+    "status": "HISTORICAL k80 projection; superseded by shrink_hunt.adopted_package r2/kprime51",
     "formula_math_only": "optimized_binary_pcs + k80_leaf + fixed80_outer_lazy_rlc + boolean_range_composition + statement_sumcheck_allowance",
     "math_only": 1134217,
     "formula_lookup_candidate": "math_only - boolean_range_composition + lookup_range_composition",
@@ -97,6 +109,7 @@
     "saved_vs_historical_checkpoint_percent": 26.38
   },
   "post_review_corrections": {
+    "status": "HISTORICAL kprime83 correction layer; superseded by shrink_hunt.adopted_package r2/kprime51",
     "k_prime_recount": {
       "reason": "The 80-column candidate trace did not reserve the lookup's committed columns: 80 main + 1 multiplicity (C1) + copy helper h1 + range helper h2 (both C2) = 83; pinned k' <= 84 in soundness note section 8.",
       "k_prime": 83,
@@ -161,6 +174,24 @@
         "combined_worst": 1047561,
         "nu14_sumcheck_sensitivity_only": 1107245
       },
+      "measured_s2_overlay_cu": {
+        "source": "s2_ood_probe.json",
+        "s1_isolated": 86815,
+        "s2_isolated": 135914,
+        "delta": 49099,
+        "q36_central": 1023211,
+        "q36_registered_stress_plus_full_range": 1096660,
+        "q36_strict_margin": -25660,
+        "q36_anchor_corrected_sensitivity": 1058112,
+        "q36_anchor_strict_margin": 12888,
+        "q34_g36_recovery_central": 978732,
+        "q34_g36_recovery_registered": 1052181,
+        "q34_g36_recovery_strict_margin": 18819,
+        "q34_g36_recovery_anchor_corrected_sensitivity": 1013633,
+        "q40_registered": 1177988,
+        "q40_margin_vs_1_19m": 12012,
+        "status": "binding q36 product projection is strict-red; q34/g36 is the named but not-yet-adopted recovery lever"
+      },
       "close_condition_evaluation": "974,112 <= 1,071,000 - 27,893: PASSES by 68,995 CU; final-shape multi-seed re-check at integration as registered",
       "ledger_labels": {
         "draw_anchor": "the +55,786 range rows are conservative double-counted tails: the g32 anchor sits +2,236 (0.33%) above the 16-seed fixed-shape mean, so the plausible worst-draw increment is ~17,238 CU and the combined-worst margin plausibly ~62K, not 23K",
@@ -197,38 +228,53 @@
       "bchks_m31_instances": "ePrint 2025/2055: explicit M31 and QM31-sized correlated-agreement failures at delta ~ 1/2 on multiplicative-group domains (not circle cosets); plus the ethSTARK-toy DEEP-ALI attack"
     },
     "no_known_attack": "no computationally efficient attack on any deployed system at production parameters; Fenzi-Sanso 2025/2197's ~11.5-bit IT shortfall at 31-bit fields is flagged computationally infeasible",
-    "adopted_replacement": "S-two Conjectures 1-2 (ePrint 2026/532 Appendix A.5): prime-field RS list-/line-decodability up to the Elias radius with l(theta) <= 2^(H(rho)/eta), extension alphabets included, transported to circle codes by the scaled-RS isometry",
+    "adopted_replacement": "S-two Conjectures 1-2 (ePrint 2026/532 Appendix A.5), with source terms stated exactly: l(theta)<=c1*2^(c2*H(rho)/eta), existential c1,c2>=1; a=l*n+o(n), no finite-n remainder bound. Aspis c1=c2=1 and zero-remainder substitutions are sensitivity assumptions, not paper consequences.",
     "domain_exposure": "KKH cannot instantiate on F_M31^x (2-adicity 1) but the circle group (order 2^31) is fully 2-adic and our n=2^12 sits inside KKH's dimensional envelope; a circle-group analogue is an open question; flagged in note section 9.3, not buried",
     "rederivation_at_frozen_shape": {
       "derivation_doc": "../../docs/stage1-theta-rederivation.md",
       "t1_prime_correction": "first-committed numbers used sum(domain/rho) where the correct T1 numerators are sum(degree/rho) = sum(domain); found drafting the derivation for line-by-line review; sanity anchor: refuted-form T1 reproduces the frozen 111.5906",
       "q36_g32_s1_bits": 90.34,
-      "q36_g32_s2_bits": 93.89,
-      "q40_g32_s2_bits": 97.88,
-      "q43_g32_s2_bits": 100.19,
-      "s2_cost_cu": "5000-12000 bracket, probe pending per calibration rule",
-      "q40_delta_cu": 89000,
-      "t100_restore": "q43/s=2, ~+150K: strict ceiling dead; 1.19M clears every reading (worst-range by ~10K). Declined BY RULING on the epistemic argument, NOT gate-forced — the pre-correction q45/+191K gate-breach reading was an artifact of the T1' error"
+      "unit_coefficient_sensitivity_q36_g32_s2_bits": 93.89,
+      "provisional_known_table4_sensitivity_q36_g32_s2_bits": 93.7263,
+      "provisional_known_table4_sensitivity_q40_g32_s2_bits": 97.6560,
+      "provisional_known_table4_sensitivity_q43_g32_s2_bits": 99.9251,
+      "provisional_known_table4_sensitivity_q44_g32_s2_bits": 100.5642,
+      "quotable_computed_conjectured_value": null,
+      "finite_length_gate": "OPEN: pin c1/c2, finite-n o(n) bound, and circle-code transport in results/stage1/theta_optimizer.json before quoting a computed conjectured value; the independent t=90 ruling permits v4 integration after the atomic P0+P1 hardening commit",
+      "s2_cost_cu": 49099,
+      "s2_cost_source": "s2_ood_probe.json; contamination-free isolated transcript/relation A/B, 5/5 identical; supersedes first probe by -56 CU",
+      "q40_query_delta_vs_q36_s2_cu": 81328,
+      "q40_total_delta_vs_s1_base_cu": 130427,
+      "t100_restore": {
+        "provisional_crossing": "q44/s2 at 100.5642; q43 is 99.9251 under the known-Table-4 sensitivity",
+        "q43_registered_combined_worst_cu": 1238984,
+        "q43_registered_breach_cu": 48984,
+        "q43_anchor_corrected_sensitivity_cu": 1200436,
+        "q43_anchor_corrected_sensitivity_breach_cu": 10436,
+        "q44_registered_combined_worst_cu": 1259316,
+        "q44_anchor_corrected_sensitivity_cu": 1220768,
+        "verdict": "q43 and q44 breach 1.19M under both draw readings and remain dead by epistemic ruling"
+      }
     },
     "proven_floor": "65.5 bits untouched and the ONLY quotable floor until its derivation section exists; preliminary ~67.5-68.0 under BCHKS zero-loss Johnson CA (error O(n/eta^5)) + Haböck 2025/2110 mutual-CA-to-Johnson theorem",
-    "headline_ruling": "RATIFIED 2026-07-10: option 1 — t=90 stated / 93.89 computed / q36 g32 s=2, revised-conjectured, refutation disclosed with every quotation (four-element rule). s=2 ADOPTED for the v4 envelope (was declined at +0.99 bits under refuted accounting; worth +3.55 now because T2' became the binding s=1 term).",
-    "contingency": "pre-registered retreat ladder if a circle-group counterexample reaches theta*~0.70: primary q40/s=2 (+89K), re-balance theta at q36, terminal proven-regime split; note section 9.7",
-    "publication_freeze_earmark": "q34/g36/s=2 — strictly dominant at freeze (gains ~0.6-0.8 computed bits, saves ~44K CU, lifts preliminary proven floor toward ~70); out of v4 for one-knob discipline",
-    "blocked": "transcript-bound integration artifacts until the theta-derivation clears line-by-line review; q-independent statement layer (r=2/k'=51 freeze) and the s=2/masking probes proceed"
+    "headline_ruling": "AMENDED 2026-07-10: retain t=90 stated at q36/g32/s2. The 93.73 known-coefficient result is provisional sensitivity only; no computed conjectured value is quotable until the finite-length constants gate closes. The 65.5 proven floor is the only quotable security value. Measured s2 costs 49,099 CU, making current q36 registered-strict red; this product result does not change the security ruling.",
+    "contingency": "security-conjecture retreat: q40/s2 (97.656 provisional; 1,177,988 registered), re-balance theta, terminal proven split. Product strict-line recovery: q34/g36/s2 at 1,052,181 registered, held pending deliberate transcript re-pin.",
+    "publication_freeze_earmark": "q34/g36/s2 — gains 0.3494 provisional bits, saves 44,479 CU, and projects 1,052,181 registered (18,819 strict margin). It is now the named strict recovery lever but remains held as a deliberate second transcript knob.",
+    "blocked": "quotation or promotion of the 93.73 sensitivity until the finite-n Conjecture-2 remainder and circle-code transport are pinned; v4 integration may proceed under the independent t=90 ruling after the atomic P0+P1 hardening commit; s2 probe is complete"
   },
   "gate_decision": {
-    "projection_status": "variance_and_bracket_conditional",
-    "protocol_gate_status": "open",
-    "product_gate_status": "red_pending_logup_wide_rlc_and_integrated_statement_proof",
-    "reason": "The literal q36/g32 radix-4 PCS proof verifies on SBF; the 10-bit lookup evaluator replays every economic attack; and the LogUp corpus now has seven vectors including the multiplicity-after-chi order attack. But the pre-registered 16-seed variance criterion fails (range 55,786 CU vs 29,056 headroom) and the linear=128 stress row breaches the strict ceiling on its own (+32,024 CU), so candidate_green is withdrawn. Every reading including the combined worst case clears the 1.19M target.",
+    "projection_status": "q36_s2_registered_strict_red; q34_g36_recovery_held",
+    "protocol_gate_status": "stage1_security_reopened_finite_length_constants; statement_integration_open",
+    "product_gate_status": "red_pending_q34_or_reclaim_ruling_plus_integrated_v4_statement_proof",
+    "reason": "The frozen r2/kprime51 s1 base is 974,112 central / 1,047,561 registered. The contamination-free isolated s2 A/B adds 49,099 CU, moving current q36 to 1,096,660 registered, 25,660 over strict. q34/g36 would recover to 1,052,181 with 18,819 margin, but is held as a second transcript knob. Final integrated v4 measurement remains required.",
     "split_fallback": "retained_not_currently_forced",
-    "headline": "No one-transaction product claim until a real radix-4 proof with the LogUp lookup and fixed-width RLC verifies on SBF below the stated gate. The strict 10%-slack ceiling fails the pre-registered worst-of-16 draw criterion by 26,730 CU and the bracket top by 10,965 CU (k'=83-corrected); closing it requires a further named shrink or a documented gate-rule decision on per-draw variance."
+    "headline": "No strict one-transaction product claim at current q36/s2: its registered projection is 1,096,660. Either deliberately adopt and re-pin q34/g36, find another named reclaim, or revise the gate rule; then verify the integrated v4 proof across final-shape draws."
   },
   "next_measurements": [
-    "Name a further shrink (>= ~11K CU for the bracket top, ~35K for the worst draw, ~67K combined) or take an explicit documented gate-rule decision on per-draw variance before quoting any strict-slack claim.",
+    "Rule explicitly on q34/g36 adoption versus another >=25,660-CU registered reclaim (or a gate-rule change); do not integrate q36 and silently quote strict.",
     "Integrate the tested fixed-table LogUp main/helper columns, the multiplicity column, and both sum(h)=0 claims into the C1/C2 statement proof under the v4 envelope (soundness note section 8).",
-    "Integrate the gamma-power table and fixed-width outer-lazy dot at the corrected k'=83 width into the real wide PCS parser rather than adding its isolated total arithmetically.",
+    "Integrate the gamma-power table and fixed-width outer-lazy dot at the frozen kprime51 width into the real wide PCS parser rather than adding its isolated total arithmetically.",
     "Generate the real statement proof with radix-4 commitments and run the complete SBF transaction five times, including economic and proof-corruption attacks."
   ],
-  "caveat": "The 678,407-CU radix-4 result is a real q36/g32 two-phase PCS verification with fresh roots, grinding nonce, queries, and proof bytes; the 16-seed study shows it sits within 0.2% of the fixed-shape mean, with a 55,786-CU worst-of-16 range. The fixed-width wide RLC and lookup-range composition remain isolated SBF measurements at the pre-recount k80 width, and the lookup exists as a no-proof semantic oracle. Their sum is a feasibility projection, not an end-to-end payment proof or a closed product gate."
+  "caveat": "The 678,407-CU radix-4 result is a real q36/g32 two-phase PCS verification. The frozen r2/kprime51 RLC/composition/sumcheck components remain combined as a feasibility projection, not an end-to-end payment proof. The registered full 55,786 draw range remains binding; the 17,238 anchor-corrected draw is sensitivity only. Poseidon spend hashing is host-only semantic-evaluator work today, so the 66,830-CU Poseidon probe saving has zero impact on the current SHA-256 verifier/composition gate."
 }

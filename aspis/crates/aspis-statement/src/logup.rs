@@ -10,6 +10,14 @@ use aspis_core::field::{CM31, M31, QM31};
 
 pub const RANGE_TABLE_SIZE: usize = 1 << 10;
 
+/// Canonical little-endian QM31 encoding of [`logup_compression_kat`].
+///
+/// A change means the tagged-tuple encoding moved and must be treated as a
+/// deliberate statement-protocol change, not silently re-pinned.
+pub const LOGUP_COMPRESSION_KAT_EXPECTED: [u8; 16] = [
+    84, 25, 5, 102, 233, 45, 246, 7, 176, 105, 135, 89, 34, 91, 195, 120,
+];
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct LogUpMainRow {
     pub producer_value: QM31,
@@ -39,9 +47,25 @@ fn lift(value: M31) -> QM31 {
     QM31::from_cm31(CM31::from_m31(value))
 }
 
-/// Compress a tagged M31 tuple as `tag + sum_i lambda^i * value_i`.
+/// Compress a tagged M31 tuple as `tag + sum_i lambda^(i + 1) * value_i`.
 /// Tags are verifier-computable wiring constants, never witness values.
 pub fn compress_tagged_tuple(tag: M31, values: &[M31], lambda: QM31) -> QM31 {
+    let mut compressed = lift(tag);
+    let mut power = lambda;
+    for value in values {
+        compressed = compressed.add(power.mul_m31(*value));
+        power = power.mul(lambda);
+    }
+    compressed
+}
+
+/// Deliberately broken pre-fix compression for adversarial teeth tests.
+///
+/// This API is absent from normal builds. It assigns coefficient one to both
+/// the tag and first data limb, reproducing the coupled collision fixed by
+/// [`compress_tagged_tuple`]. Never enable this feature in a verifier build.
+#[cfg(feature = "insecure-test-logup-compression")]
+pub fn compress_tagged_tuple_insecure_lambda_zero(tag: M31, values: &[M31], lambda: QM31) -> QM31 {
     let mut compressed = lift(tag);
     let mut power = QM31::ONE;
     for value in values {
@@ -49,6 +73,30 @@ pub fn compress_tagged_tuple(tag: M31, values: &[M31], lambda: QM31) -> QM31 {
         power = power.mul(lambda);
     }
     compressed
+}
+
+/// Fixed host/SBF known-answer vector for tagged-tuple compression.
+pub fn logup_compression_kat() -> QM31 {
+    let lambda = QM31 {
+        c0: CM31 {
+            a: M31(1_234_567),
+            b: M31(7_654_321),
+        },
+        c1: CM31 {
+            a: M31(99),
+            b: M31(101),
+        },
+    };
+    compress_tagged_tuple(
+        M31(0x1357_9bdf),
+        &[
+            M31(0x0246_8ace),
+            M31(0x1020_3040),
+            M31(0x3141_5926),
+            M31(0x5a5a_5a5a),
+        ],
+        lambda,
+    )
 }
 
 /// Construct the post-chi helper column
@@ -128,28 +176,28 @@ pub fn forge_post_chi_multiplicities(chi: QM31, nonmember: QM31) -> Option<[M31;
     let coords = |value: QM31| [value.c0.a, value.c0.b, value.c1.a, value.c1.b];
     let target = coords(chi.sub(nonmember).try_inv()?);
     let mut matrix = [[M31::ZERO; 5]; 4];
-    for column in 0..4 {
-        let basis = coords(chi.sub(lift(M31(column as u32))).try_inv()?);
-        for row in 0..4 {
-            matrix[row][column] = basis[row];
+    for (column, value) in (0u32..4).enumerate() {
+        let basis = coords(chi.sub(lift(M31(value))).try_inv()?);
+        for (matrix_row, basis_coordinate) in matrix.iter_mut().zip(basis) {
+            matrix_row[column] = basis_coordinate;
         }
     }
-    for row in 0..4 {
-        matrix[row][4] = target[row];
+    for (matrix_row, target_coordinate) in matrix.iter_mut().zip(target) {
+        matrix_row[4] = target_coordinate;
     }
     for pivot in 0..4 {
         let pivot_row = (pivot..4).find(|&row| matrix[row][pivot] != M31::ZERO)?;
         matrix.swap(pivot, pivot_row);
         let scale = matrix[pivot][pivot].inv();
-        for column in pivot..5 {
-            matrix[pivot][column] = matrix[pivot][column].mul(scale);
+        for entry in &mut matrix[pivot][pivot..] {
+            *entry = entry.mul(scale);
         }
-        for row in 0..4 {
-            if row != pivot && matrix[row][pivot] != M31::ZERO {
-                let factor = matrix[row][pivot];
-                for column in pivot..5 {
-                    matrix[row][column] =
-                        matrix[row][column].sub(matrix[pivot][column].mul(factor));
+        let pivot_values = matrix[pivot];
+        for (row_index, row) in matrix.iter_mut().enumerate() {
+            if row_index != pivot && row[pivot] != M31::ZERO {
+                let factor = row[pivot];
+                for (entry, pivot_entry) in row[pivot..].iter_mut().zip(&pivot_values[pivot..]) {
+                    *entry = entry.sub(pivot_entry.mul(factor));
                 }
             }
         }
@@ -215,6 +263,74 @@ mod tests {
         assert_ne!(
             tuple,
             compress_tagged_tuple(M31(7), &[M31(13), M31(11), M31(17)], lambda)
+        );
+    }
+
+    #[test]
+    fn tagged_tuple_compression_rejects_coupled_tag_first_limb_collision() {
+        let lambda = challenge();
+        let tuple = compress_tagged_tuple(M31(7), &[M31(11), M31(13)], lambda);
+
+        // With a coefficient of one on the first limb, moving delta from that
+        // limb into the tag leaves the compressed value unchanged.
+        let coupled_shift = compress_tagged_tuple(M31(10), &[M31(8), M31(13)], lambda);
+        assert_ne!(tuple, coupled_shift);
+    }
+
+    #[cfg(feature = "insecure-test-logup-compression")]
+    #[test]
+    fn coupled_tag_first_limb_collision_has_teeth_against_weakened_compression() {
+        let lambda = challenge();
+        let tuple = [M31(11), M31(13)];
+        let shifted = [M31(8), M31(13)];
+
+        assert_eq!(
+            compress_tagged_tuple_insecure_lambda_zero(M31(7), &tuple, lambda),
+            compress_tagged_tuple_insecure_lambda_zero(M31(10), &shifted, lambda)
+        );
+        assert_ne!(
+            compress_tagged_tuple(M31(7), &tuple, lambda),
+            compress_tagged_tuple(M31(10), &shifted, lambda)
+        );
+    }
+
+    #[test]
+    fn coupled_tag_first_limb_shifts_never_collide_for_deterministic_random_deltas() {
+        let lambda = challenge();
+        let tag = M31(0x1357_9bdf);
+        let tuple = [M31(0x0246_8ace), M31(0x1020_3040), M31(0x3141_5926)];
+        let expected = compress_tagged_tuple(tag, &tuple, lambda);
+        let mut state = 0xd1b5_4a32_d192_ed03u64;
+
+        for _ in 0..512 {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            let delta = M31((state % u64::from(aspis_core::field::P - 1)) as u32 + 1);
+            let shifted = [tuple[0].sub(delta), tuple[1], tuple[2]];
+            #[cfg(feature = "insecure-test-logup-compression")]
+            assert_eq!(
+                compress_tagged_tuple_insecure_lambda_zero(tag, &tuple, lambda),
+                compress_tagged_tuple_insecure_lambda_zero(tag.add(delta), &shifted, lambda),
+                "weakened lambda^0 encoding lost its coupled collision for delta {}",
+                delta.0
+            );
+            assert_ne!(
+                expected,
+                compress_tagged_tuple(tag.add(delta), &shifted, lambda),
+                "nonzero delta {} produced a coupled collision",
+                delta.0
+            );
+        }
+    }
+
+    #[test]
+    fn logup_compression_kat_is_pinned() {
+        let mut phi = [0u8; 16];
+        logup_compression_kat().write_le_bytes(&mut phi);
+        assert_eq!(
+            phi, LOGUP_COMPRESSION_KAT_EXPECTED,
+            "LogUp compression KAT drifted; re-pin only for a deliberate statement-protocol change"
         );
     }
 
