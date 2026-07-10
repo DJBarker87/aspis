@@ -15,6 +15,7 @@ feasibility warning, not a claim that payments work. Section status ledger:
 | 5. Copy-argument soundness term | reviewed line-by-line; hardened with resolutions |
 | 6. Grinding + Fiat-Shamir model | reviewed; binding terms and work metric updated from the pin |
 | 7. Proven-vs-conjectured ledger | reviewed; exact T2 shape and T1 Johnson floor integrated |
+| 8. Stage 2 range-lookup amendment | drafted `2026-07-10` with the multiplicity-order teeth vector; pre-integration |
 
 Headline decision this note serves (design §13.3, decided 2026-07-04): the
 public claim is frozen at **t = 100 bits, capacity-conjectured**; §3 is the
@@ -169,7 +170,9 @@ never reachable on M31/CM31/QM31, and the headline claim is frozen at
 t = 100, capacity-conjectured.
 
 Enumeration (lr10 / k' <= 82 / fused sumcheck; numerator shapes first, then
-the value at the target parameters, in bits below zero):
+the value at the target parameters, in bits below zero. These are the FROZEN
+Stage 1 values; the Stage 2 statement protocol amends T5, T7, and T8 — see
+§8, which supersedes those three rows for any integrated payment proof):
 
 | # | term | shape | bits |
 | --- | --- | --- | ---: |
@@ -408,6 +411,10 @@ interface side in the phi evaluations at opened rows. §5 carries the worst
 case (m = 2^10); Stage 2's layout freeze documents the real (m, w) and does
 not optimize for it.
 
+**Stage 2 pointer:** the fixed-table range lookup shares chi with this
+argument, commits its multiplicity column in C1 and its helper h2 in C2,
+and adds term E4 plus an executable multiplicity-order teeth vector — §8.
+
 **Measured cost of the second phase (C2):** the helper already uses
 `minimal_subtree`, not 36 individual depth-10 paths. It is a separate tree
 (soundness requires C1 before chi and C2 after chi), but its queried leaves
@@ -514,6 +521,7 @@ line is conditional on the conjecture line.
 | T8 claim batching | proven (SZ) | ~122 |
 | T9 challenge sampler | fixed by construction (rejection sampling, exact uniform) | 0 soundness cost; field-sampler completeness < 2^-242, OOD-subfield completeness < 2^-184 |
 | Grinding g32 | proven (ROM work accounting, §6) | +32 bits on the query term only |
+| Stage 2 statement amendment (T5', T7' incl. E4, T8', multiplicity-order line) | proven (SZ / log-derivative; teeth vector executable) | integrated-statement union 103.9453 algebraic, 102.9724 total (§8); Stage 1 rows above unchanged |
 | **Headline** | **conditional** | **t = 100, capacity-conjectured; success/work <= 2^-102.9752 worst-case; proven floor ~65.5** |
 
 The proven-floor line follows house precedent (the WHIR-UD gate reported
@@ -529,6 +537,128 @@ as linear. The upstream pin corrected both errors: the formula is proven,
 the capacity list bound is not, and the exact dependence is `C(L,2)`. The
 proven floor remains the 65.5-bit query term; the pinned Johnson T1 branch is
 the next proven term at 73.6534 bits.
+
+---
+
+## 8. Stage 2 amendment — fixed-table range lookup behind the shared chi (`2026-07-10`)
+
+Second occurrence of code-before-note, recorded as such: the range-lookup
+helper algebra and its teeth corpus landed in `aspis-statement` before this
+section existed. This amendment closes that gap **before integration**, while
+the diff is small. Everything here is normative for the Stage 2 payment
+protocol; the frozen Stage 1 synthetic-C2 milestone and its §3 numbers are
+unchanged.
+
+**Protocol delta.** SpendV0-min replaces 64 Boolean range residuals with one
+fixed-table LogUp: six 10-bit limbs (three per bounded value) are looked up
+in the verifier-known table `[0, 1024)` and six linear reconstruction
+constraints rebuild the two values, preserving the integer-before-field
+check. New committed data: one **multiplicity column in C1** (consumer
+weights over the 2^10 table rows) and one **range helper column h2 in C2**.
+The table itself is never committed: consumer values are the row-index
+function, whose multilinear evaluation `index(x) = sum_i 2^i x_i` the
+verifier computes at the terminal point in O(nu) operations. Producer-side
+weights are verifier-computable 0/1 layout selectors, like §5's.
+
+**Challenge decision: the range lookup shares chi (and its FS position) with
+the copy argument.** The alternative — a fresh chi_2 with its own transcript
+position and its own challenge-order teeth vector — is declined: it adds an
+FS position without removing any term, and batched-LogUp practice draws all
+lookup denominators from one challenge. Sharing is sound by a union bound
+because the two arguments cannot pay each other's debts: they live in
+**separate helper columns with separate batched total-sum claims**
+(`sum(h1) = 0` and `sum(h2) = 0`), so a deficit in the copy multiset cannot
+cancel against a surplus in the range multiset regardless of value
+collisions. lambda is not used by the range lookup at all (single-limb
+values need no tuple compression); T6 is untouched.
+
+**Canonical order, extended (normative).** The §2 order gains one
+load-bearing line: **the multiplicity column and every range-checked limb
+are C1 columns, committed before chi exists.** The teeth are executable, not
+prose: `logup_multiplicity_after_chi_weakened_order_accepts` in the
+evaluator corpus demonstrates that if multiplicities could be chosen after
+chi, four fractional multiplicities solving the M31-linear system
+`sum_v m_v/(chi - v) = 1/(chi - w)` cancel an out-of-table producer `w` and
+**every check accepts** — local relations and both total sums. Same failure
+class as gamma-before-claims: invisible to honest-prover tests, fatal
+against a real adversary. The constructor is
+`aspis_statement::forge_post_chi_multiplicities`; the canonical order is
+what makes the construction unbuildable.
+
+**New soundness terms.**
+
+- **E4, range-lookup pole/SZ (chi): <= 4m / |F|, m = 2^10, kept
+  deliberately loose like E2.** Let D(X) = sum_i sel_i/(X - q_i) -
+  sum_v m_v/(X - v) over the committed producer limbs and multiplicities.
+  If any weight-1 producer limb w lies outside the table, D has a pole at w
+  whose residue is the **integer count of producer entries at w**, in
+  [1, 2^10] and therefore nonzero mod 2^31 - 1; consumer poles sit only on
+  table values, so D is not identically zero. D has at most N + T poles and
+  numerator degree at most N + T - 1 (N = 2^10 producer rows, T = 2^10
+  table entries); chi must avoid both sets, and 4m covers 2(N + T) with
+  room. The checks force D(chi) = 0 (each row's local relation pins h2's
+  row to its term; sum(h2) = 0 sums them), so a false lookup survives with
+  probability at most E4.
+- **Below-characteristic condition, stated precisely.** The log-derivative
+  argument needs the **producer-side aggregate count per value** to be
+  nonzero mod char: it is an integer in [1, 2^10], and 2^10 << 2^31 - 1 by
+  construction (`TooManyRangeQueries` caps queries at table size). Committed
+  consumer multiplicities need no integrality condition at all — a
+  non-member producer pole has no consumer pole to hide behind, which is
+  exactly what the post-chi teeth vector shows becomes false the moment
+  multiplicities can depend on chi.
+- **Completeness poles.** chi hitting an active committed value
+  (`ActivePole`) requires chi in the base subfield containing limbs and
+  table, probability <= 2^-62 per proof; a completeness event of the §6
+  class, not a soundness term.
+
+**Amended enumeration (supersedes §3's T5/T7/T8 for the Stage 2 statement
+protocol).**
+
+| # | term | shape | bits |
+| --- | --- | --- | ---: |
+| T5' | gamma-RLC batching over k' <= 84 columns | (k'-1) / \|F\| | 117.6 |
+| T7' | copy pole/SZ (E2) + range pole/SZ (E4), shared chi, union | 8m / \|F\|, m = 2^10 | 111 |
+| T8' | claim batching | (#claims) / \|F\|, #claims <= 8 | ~121 |
+
+The k' recount that forces T5': the 80-column candidate main trace did not
+reserve the lookup's committed columns, so k' = 80 (main) + 1 (multiplicity,
+C1) + 1 (copy helper h1, C2) + 1 (range helper h2, C2) = **83**; this note
+pins k' <= 84 with one column of slack. **§3's "k' <= 82" is false for the
+integrated statement and must not be quoted for it.** The RLC consequence
+is priced in `stage2-feasibility.md`: the measured fixed-width kernel is
+`qm31_power_table::<80>` and the integrated verifier RLCs 83 values per
+query, so the 202,031-CU term scales by 83/80 (~+7,600 CU) and the k80
+wide-leaf marker grows by 12 bytes per leaf; both are projection
+corrections until integration measures them.
+
+Recomputed union with T5', T7', T8' and all other terms unchanged:
+**103.9453 algebraic bits** (was 103.9508); with the q36/g32 query term,
+success/work <= 2^-103.9453 + 2^-104 = **2^-102.9724 worst-case** (was
+2^-102.9752). The headline stays t = 100, capacity-conjectured, with ~2.97
+bits of margin; T2 and the query term still co-bind and nothing moved
+between regimes. T3 is unchanged (the range relation is degree 3, inside
+d <= 7; no new sumcheck rounds beyond the nu <= 14 allowance); T4 and T6
+are unchanged.
+
+**Envelope consequence: version 4.** The Stage 2 C2 phase carries **two**
+helper columns, so the C2 layer-0 leaf widens from 4 QM31 (64 bytes) to
+8 QM31 (128 bytes) per opened fiber, and the C2 claimed-evaluation field
+carries two values. That is a fixed-layout change: the payment envelope
+bumps to **v4** and v3 remains the frozen Stage 1 format. The gamma
+combination generalizes to `w* = sum_i gamma^i w_i + gamma^k1 h1 +
+gamma^(k1+1) h2` with all claims absorbed before gamma exactly as today
+(the existing gamma-before-claims vector covers the extended claim set; the
+sum(h) = 0 claims are batched into the fused statement sumcheck and add no
+denominators, E3). The schedule-level transcript KAT will move when the v4
+absorptions land; that is a deliberate named re-pin recorded in
+`transcript_kat_repin_ledger.json` like the four before it, not a constant
+edited to green the suite.
+
+**What integration may still change.** Exact leaf packing for the wide C1
+row, the selector reading for which cells are range-checked, and the final
+(m, w) for §5 are layout-freeze decisions; if any of them moves a number in
+this section, this section is re-dated before the gate note quotes it.
 
 ---
 

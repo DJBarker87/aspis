@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-07-10T15:49:54.659453+00:00",
+  "generated_at_utc": "2026-07-10T16:50:09.359627+00:00",
   "command": "cargo run --release -p aspis-xtask -- stage2-evaluator",
   "poseidon2_pin": {
     "upstream": "https://github.com/Plonky3/Plonky3",
@@ -205,6 +205,12 @@
       "expected": "Err(ActivePole { row: 0, side: Producer })",
       "observed": "Err(ActivePole { row: 0, side: Producer })",
       "passed": true
+    },
+    {
+      "name": "logup_multiplicity_after_chi_weakened_order_accepts",
+      "expected": "Ok(())",
+      "observed": "Ok(())",
+      "passed": true
     }
   ],
   "all_vectors_passed": true,
@@ -213,6 +219,7 @@
     "The corpus starts with economic failures: wraparound inflation, public binding, ownership, membership, nullifier replay, output binding, balance, and range boundaries.",
     "The lookup evaluator uses six exact 10-bit limbs, checks fixed-table membership, and enforces reconstruction. It is a semantic oracle; the LogUp proof relation is not integrated yet.",
     "The LogUp oracle now constructs the post-chi helper, checks the degree-3 local identity, and separately checks sum(h)=0. Its teeth corpus shows that local rows alone do not reject an unmatched nonmember.",
+    "logup_multiplicity_after_chi_weakened_order_accepts is an attack demonstration: expected Ok means the forged fractional multiplicities defeat every check when the multiplicity column is chosen after chi. The canonical order commits multiplicities in C1 before chi; the vector is the teeth behind that ordering line in the soundness note.",
     "The 80-column/4-round row layout is a candidate used to confirm the synthetic composition bracket, not yet a frozen arithmetization.",
     "Depth 20 is the explicit demo choice. Moving to depth 32 adds 24 Poseidon2 permutations because each 8+8 digest compression needs two rate-8 sponge permutations."
   ]

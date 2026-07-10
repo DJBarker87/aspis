@@ -4,10 +4,10 @@ use serde::Serialize;
 use aspis_core::field::{CM31, M31, P, QM31};
 use aspis_statement::{
     build_10bit_range_logup_rows, build_logup_helper, derive_nullifier, derive_owner_key,
-    evaluate_spend, evaluate_spend_with_range_lookup, merkle_root, note_commitment,
-    output_commitment, verify_logup_constraints, Digest, EvaluationContext, LogUpError,
-    LogUpMainRow, MerklePath, RangeLookupWitness, SpendError, SpendPublic, SpendWitness,
-    RANGE_LIMB_BITS, RANGE_LIMB_LIMIT, VALUE_LIMIT,
+    evaluate_spend, evaluate_spend_with_range_lookup, forge_post_chi_multiplicities, merkle_root,
+    note_commitment, output_commitment, verify_logup_constraints, Digest, EvaluationContext,
+    LogUpError, LogUpMainRow, MerklePath, RangeLookupWitness, SpendError, SpendPublic,
+    SpendWitness, RANGE_LIMB_BITS, RANGE_LIMB_LIMIT, VALUE_LIMIT,
 };
 
 const DEPTH: usize = 20;
@@ -382,6 +382,26 @@ pub fn run_evaluator_corpus() -> Result<EvaluatorCorpusSummary> {
         producer_weight: M31::ONE,
         consumer_weight: M31::ONE,
     }];
+
+    // Order-teeth demonstration: with the multiplicity column chosen AFTER
+    // chi, four fractional multiplicities cancel an out-of-table producer
+    // and the full constraint set accepts. Expected Ok(()) means the attack
+    // succeeds under the weakened order; the canonical order (multiplicity
+    // column committed in C1 before chi) is what forbids the construction.
+    let mut post_chi_rows = require_logup(build_10bit_range_logup_rows(&[]))?;
+    post_chi_rows[0].producer_value = lift(1024);
+    post_chi_rows[0].producer_weight = M31::ONE;
+    let forged = forge_post_chi_multiplicities(chi, lift(1024))
+        .ok_or_else(|| anyhow::anyhow!("post-chi multiplicity solve unexpectedly singular"))?;
+    ensure!(
+        forged.iter().any(|weight| *weight != M31::ZERO),
+        "post-chi forgery degenerated to the honest empty multiset"
+    );
+    for (row, multiplicity) in forged.into_iter().enumerate() {
+        post_chi_rows[row].consumer_weight = multiplicity;
+    }
+    let post_chi_helper = require_logup(build_logup_helper(&post_chi_rows, chi))?;
+
     let logup_constraint_vectors = vec![
         logup_vector(
             "logup_honest_range_multiset",
@@ -422,6 +442,11 @@ pub fn run_evaluator_corpus() -> Result<EvaluatorCorpusSummary> {
                 side: aspis_statement::LogUpSide::Producer,
             }),
             build_logup_helper(&pole_rows, lift(5)).map(|_| ()),
+        ),
+        logup_vector(
+            "logup_multiplicity_after_chi_weakened_order_accepts",
+            Ok(()),
+            verify_logup_constraints(&post_chi_rows, &post_chi_helper, chi),
         ),
     ];
 
@@ -484,6 +509,7 @@ pub fn run_evaluator_corpus() -> Result<EvaluatorCorpusSummary> {
             "The corpus starts with economic failures: wraparound inflation, public binding, ownership, membership, nullifier replay, output binding, balance, and range boundaries.".to_string(),
             "The lookup evaluator uses six exact 10-bit limbs, checks fixed-table membership, and enforces reconstruction. It is a semantic oracle; the LogUp proof relation is not integrated yet.".to_string(),
             "The LogUp oracle now constructs the post-chi helper, checks the degree-3 local identity, and separately checks sum(h)=0. Its teeth corpus shows that local rows alone do not reject an unmatched nonmember.".to_string(),
+            "logup_multiplicity_after_chi_weakened_order_accepts is an attack demonstration: expected Ok means the forged fractional multiplicities defeat every check when the multiplicity column is chosen after chi. The canonical order commits multiplicities in C1 before chi; the vector is the teeth behind that ordering line in the soundness note.".to_string(),
             "The 80-column/4-round row layout is a candidate used to confirm the synthetic composition bracket, not yet a frozen arithmetization.".to_string(),
             "Depth 20 is the explicit demo choice. Moving to depth 32 adds 24 Poseidon2 permutations because each 8+8 digest compression needs two rate-8 sponge permutations.".to_string(),
         ],
