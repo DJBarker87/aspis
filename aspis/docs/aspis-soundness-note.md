@@ -16,6 +16,7 @@ feasibility warning, not a claim that payments work. Section status ledger:
 | 6. Grinding + Fiat-Shamir model | reviewed; binding terms and work metric updated from the pin |
 | 7. Proven-vs-conjectured ledger | reviewed; exact T2 shape and T1 Johnson floor integrated |
 | 8. Stage 2 range-lookup amendment | drafted `2026-07-10` with the multiplicity-order teeth vector; pre-integration |
+| 9. Capacity-conjecture refutation (CS25/KKH26) | **STAGE 1 REOPENED `2026-07-10`**: general form refuted; revised conjecture adopted; t=100 does not survive at q36; headline ruling pending |
 
 Headline decision this note serves (design §13.3, decided 2026-07-04): the
 public claim is frozen at **t = 100 bits, capacity-conjectured**; §3 is the
@@ -88,11 +89,22 @@ relation.
 
 ## 2. The assumption, stated once — and the canonical challenge order
 
+> **REFUTATION NOTICE (`2026-07-10`, §9).** The conjecture below is the
+> frozen Stage 1 statement. Its general form — behavior up to the capacity
+> radius 1 - rho with a fixed small list — was **disproved** by Crites and
+> Stewart (ePrint 2025/2046, Nov 2025; the WHIR mutual-correlated-agreement
+> lineage this note descends from), with the failure radius pushed below
+> the Elias radius on smooth 2-adic domains by Krachun–Kazanin–Haböck
+> (ePrint 2026/782, Apr 2026). No attack at these parameters is known. The
+> replacement assumption, the re-derived numbers, and the headline
+> consequence are in §9; the block below must not be quoted as current.
+
 All conjectured terms in this note rest on exactly one assumption, named
 here and nowhere re-derived:
 
 > **Capacity conjecture (folded Reed-Solomon over the CM31 circle-coset
-> domain).** For the code ensemble produced by the implemented fold schedule
+> domain) — REFUTED AS STATED, see §9.** For the code ensemble produced by
+> the implemented fold schedule
 > (arity-4 folding of RS-type evaluations over cosets of 2^k circle
 > subgroups), proximity gathering and query soundness behave up to the code
 > capacity bound: a codeword delta-far from the code, delta up to 1 - rho,
@@ -321,7 +333,12 @@ therefore begins with the direct evaluator and isolated SBF composition
 measurement; a fit requires a named shrink, otherwise the split-verification
 fallback from the Stage 0 conclusion triggers.
 
-**§4 upstream pin (CLOSED experiment).** The reproduction command
+**§4 upstream pin (CLOSED experiment; RELABELED `2026-07-10`, §9).** The
+pinned upstream WHIR accounting predates the Crites–Stewart refutation of
+the WHIR mutual-correlated-agreement conjecture: this pin is a
+**consistency check against a superseded document, not a validity
+source**. Its constants remain the record of what was computed and from
+where; their epistemic weight is set by §9. The reproduction command
 `cargo run -p aspis-xtask -- stage1-soundness-pin` writes
 `results/stage1/upstream_soundness_pin.json`, pinned to
 `WizardOfMenlo/whir@10aa7d0bae3663fd149b6b88b6eff2209b867970`. It resolves
@@ -489,13 +506,18 @@ rounds. These are completeness events, not soundness terms; they appear here
 and nowhere in the §3 table.
 
 **The honest final margin, restated as the one-line summary a reader takes
-away:** adversary success **per unit of adversary work** <= 2^-103.9508
+away — SUPERSEDED BY §9 for any current quotation:** adversary success
+**per unit of adversary work** <= 2^-103.9508
 (algebraic union, ~1 hash per attempt) + 2^-32 * 2^-72 (query term at
 q36/g32, 2^32 hashes per attempt) = 2^-102.9752 worst-case; the frozen
 headline t = 100 holds with about 2.98 bits of margin, conditional on the
 three-clause capacity conjecture (§2) and the two SHA-256 assumptions (§7);
 the proven floor on the same schedule is about 65.5 bits (§7). No other
-number in this note is the system's security level.
+number in this note is the system's security level. **The §2 conjecture
+was subsequently refuted as stated; under the adopted revised conjecture
+this paragraph's headline arithmetic does not survive at q36 — §9 carries
+the current numbers, and only the proven-floor clause of this summary
+remains quotable unchanged.**
 
 ## 7. Proven-vs-conjectured ledger
 
@@ -507,7 +529,9 @@ line is conditional on the conjecture line.
 | --- | --- | --- |
 | SHA-256 as a random oracle (Fiat-Shamir transcript) | **assumption** | model floor for every line below |
 | SHA-256 collision resistance for Merkle binding | **assumption** | >= 100 bits claimed (128-bit birthday bound) |
-| Capacity conjecture — query radius, T1 gathering constant, effective list bound | **conjectured** | query term 104 work-bits; T1 unique-shaped union 111.5906; effective OOD list `L <= 40` |
+| Capacity conjecture — query radius, T1 gathering constant, effective list bound | **REFUTED AS STATED (`2026-07-10`, §9)** | general up-to-capacity form disproved (CS25 ePrint 2025/2046; KKH ePrint 2026/782 below Elias on smooth 2-adic domains); `L <= 40` at capacity is dead (Elias 1957 forces q^Omega(eta n) beyond list capacity); historical values retained one row down |
+| (historical Stage 1 values under the refuted form) | superseded | query term 104 work-bits; T1 unique-shaped union 111.5906; effective OOD list `L <= 40` |
+| **Revised conjecture (adopted): S-two Conjectures 1-2 (ePrint 2026/532 App. A.5)** | **conjectured** | prime-field RS list-/line-decodability up to the Elias radius r_E(rho) with l(theta) <= 2^(H(rho)/eta) at theta = 1-rho-eta; extension alphabets included; transported to circle codes by the scaled-RS isometry; at q36/g32: system 90.3 bits (s=1) / 93.2 bits (s=2) — §9 |
 | **Proven floor, same schedule, Johnson-radius accounting** | **proven** | **~65.5 bits**: delta <= 1 - sqrt(rho) - eta, rho = 2^-2, delta ~ 0.475 -> ~0.93 bits/traced query; 36 x 0.93 + 32 ~ 65.5 |
 | T1 proximity gaps, pinned Johnson branch without per-fold PoW | proven for the pinned upstream model; mapped conservatively to the Aspis round sizes | 73.6534-bit four-round union; above the 65.5-bit proven query floor, far below the capacity-shaped T1 clause |
 | T2 OOD formula | proven conditional on a decoding-list bound | `C(L,2) * ((degree-1)/\|F\|)^s`; exact quadratic shape pinned in §4 |
@@ -522,7 +546,7 @@ line is conditional on the conjecture line.
 | T9 challenge sampler | fixed by construction (rejection sampling, exact uniform) | 0 soundness cost; field-sampler completeness < 2^-242, OOD-subfield completeness < 2^-184 |
 | Grinding g32 | proven (ROM work accounting, §6) | +32 bits on the query term only |
 | Stage 2 statement amendment (T5', T7' incl. E4, T8', multiplicity-order line) | proven (SZ / log-derivative; teeth vector executable) | integrated-statement union 103.9453 algebraic, 102.9724 total (§8); Stage 1 rows above unchanged |
-| **Headline** | **conditional** | **t = 100, capacity-conjectured; success/work <= 2^-102.9752 worst-case; proven floor ~65.5** |
+| **Headline** | **conditional — REOPENED by §9** | frozen Stage 1 reading (historical): t = 100, capacity-conjectured, 2^-102.9752; **current: t = 100 does not survive at q36 under the revised conjecture (90.3/93.2 bits at s=1/s=2); ruling pending between re-headline ~t=90 and a paid query restore — §9. Proven floor ~65.5 unchanged and strengthened in lineage (Haböck 2025/2110: mutual CA proven to Johnson)** |
 
 The proven-floor line follows house precedent (the WHIR-UD gate reported
 "lower 58.0 / upper 100.0"): the positive result does not get a lower
@@ -706,6 +730,196 @@ criterion are recorded in the hunt document. The T3 nu <= 14 sumcheck
 budget is a conservative allowance; at lr10 the zerocheck runs nu = 10
 rounds and the nu = 14 pessimistic sumcheck probe reading is
 **sensitivity-only, excluded from every gate statistic**.
+
+---
+
+## 9. Stage 1 reopened — the capacity conjecture is refuted as stated (`2026-07-10`)
+
+Every citation in this section was fetched and read on `2026-07-10`; local
+copies are archived with the session record. This section supersedes the
+§2 conjecture block, the §3/§6 headline arithmetic, and the §7 capacity
+rows for any current quotation. The frozen Stage 1 text is retained above
+as the historical record.
+
+### 9.1 What happened, from the primary sources
+
+- **Crites–Stewart, "On Reed–Solomon Proximity Gaps Conjectures," ePrint
+  2025/2046 (received 2025-11-05, revised 2025-12-19)** disproves, as
+  stated up to capacity: the BCIKS correlated-agreement conjecture
+  (Conjecture 8.4, J.ACM'23), the **WHIR mutual-correlated-agreement
+  conjecture (Conjecture 4.12)** — the exact lineage this note's §2
+  descends from — and the DEEP-FRI list-decodability conjecture
+  (Conjecture 2.3; its failure follows from Elias 1957: beyond
+  list-decoding capacity every list is q^Omega(eta n)). The constructions
+  are counting arguments, **domain-agnostic** (any evaluation domain, any
+  field, q >= n): there is no escape by domain structure from CS25.
+  Failure in the band between the Elias radius and capacity is total (an
+  explicit pair u0, u1 = x^k with every lambda in F_q close to the code).
+  Their Section 5 lifts failure from a subfield to every extension:
+  **sampling challenges from QM31 does not help; the characteristic
+  entropy H_p at p = 2^31 - 1 governs.** Concurrent refutations:
+  Diamond–Gruen ePrint 2025/2010 (rate -> 0 families, all domains and
+  characteristics) and BCHKS ePrint 2025/2055 (below).
+- **Krachun–Kazanin–Haböck, "Failure of proximity gaps close to
+  capacity," ePrint 2026/782 (received 2026-04-20)**, formalizing a
+  December 2025 Ethereum-Foundation communication (independent write-up:
+  Kambiré, arXiv:2604.09724): for smooth **2-adic multiplicative
+  subgroups** of prime fields (the standard FRI domain shape), proximity
+  gaps and list-decoding fail at capacity minus Theta(1/log n) — **below
+  the Elias radius** — with lists/bad-challenge counts >= 2^(c/eta),
+  i.e. exponential in the inverse gap. Structured smooth domains provably
+  behave worse than random ones (random RS achieves the Elias radius:
+  Goyal–Guruswami ePrint 2025/2054, STOC'26). The family needs
+  p = Theta(n^beta), p ≡ 1 mod n, chosen per n; it does not assert
+  failure for any one fixed prime.
+- **BCHKS, "On Proximity Gaps for Reed–Solomon Codes," ePrint 2025/2055
+  (2025-11-06; STOC 2026)** — the BCIKS-team response, both directions.
+  Negative: unconditional characteristic-2 failure a constant below
+  capacity; **explicit M31 instances** (q = 2^31 - 1, G = <-2> of order
+  62, D = F_q^*, rate ~ 1/2: for ALL z, Delta(f + zg, C) <= 1/2 while the
+  pair is 0.516-far) and a QM31-sized instance (q ~ 2^124, delta ~ 0.508);
+  and a demonstrated attack on the ethSTARK toy problem (Theorem 1.17)
+  showing DEEP-ALI soundness is governed by list-decodability. Positive:
+  **correlated agreement with ZERO proximity loss up to the Johnson
+  radius at error O(n/eta^5)/q** (down from O(n^2)), with curve/
+  set-specific/weighted versions.
+- **Haböck, "A note on mutual correlated agreement," ePrint 2025/2110
+  (2025-11-17)**: WHIR-style **mutual** correlated agreement — the exact
+  notion our folding schedule needs — is now a **theorem up to the
+  Johnson radius**, no conjecture.
+- **Fenzi–Sanso, ePrint 2025/2197**: at 31-bit base fields, rate 1/2,
+  128-bit-conjectured parameters, an information-theoretic prover
+  strategy reaches success ~2^-116.5 (~11.5-bit shortfall); explicitly
+  flagged as likely computationally infeasible to realize. **No
+  computationally efficient attack on any deployed system at production
+  parameters is known**, and none of the counterexample families
+  instantiates on circle-group domains (checked by full-text search
+  across CS25, KKH26, Kambiré). A days-old SoK (Skatharoudis, ePrint
+  2026/1367, abstract + excerpts only — full text unavailable at
+  fetch time) frames the season's lesson as: the proven-vs-conjectured
+  axis, not query count, is the load-bearing dimension.
+
+### 9.2 What this refutes in this note
+
+All three clauses of the §2 conjecture are struck as stated: clause 1
+(capacity query radius) and clause 2 (the unique-shaped T1 constant used
+at the capacity radius) fall with the WHIR lineage; clause 3 (`L <= 40`
+at the capacity radius) was a DEEP-FRI-shaped assumption and is dead
+outright — beyond the Elias radius, list sizes are exponential, and near
+it they are 2^(Theta(1/eta)) (KKH). The §4 upstream T1/T2 pin is hereby a
+**consistency check against a superseded document**; its constants
+survive as provenance only. The §3 "field ceiling" framing survives in
+direction (128 was never reachable) but its 104-112-bit algebraic band no
+longer describes the conjectured regime.
+
+### 9.3 The adopted replacement and our domain exposure, honestly
+
+**Adopted: the S-two Conjectures 1 and 2 (Carmon–Goldberg–Haböck–Lerer–
+Lesokhin–Papini–Samocha, ePrint 2026/532, Appendix A.5, March 2026)** —
+the M31 circle-STARK camp's post-refutation statement: Reed–Solomon codes
+over prime fields F_p, **arbitrary evaluation domains**, are
+list-decodable and line-decodable up to the **Elias radius r_E(rho)**
+(1 - rho - 1/log2(p) <= r_E < 1 - rho) with list size
+**l(theta) <= 2^(H(rho)/eta)** at theta = 1 - rho - eta (constants
+c1 = c2 = 1, calibrated so the KKH counterexample saturates but does not
+violate the bound); extension-field alphabets over prime-field domains
+are explicitly included (our QM31-over-M31 shape). Line-decodability
+yields every correlated-agreement facet this note uses, including
+WHIR-style mutual correlated agreement, with error ~ l(theta) * n / |F|.
+CS25's own modifications (Elias-radius cap, characteristic entropy, +1/n
+slack) are subsumed: they lack the exponential list-size correction that
+KKH forces, so the S-two form is the survivor. Transport to circle codes
+is the standard scaled-RS isometry (S-two §1.4: a circle code IS a
+coordinatewise-scaled RS code on the projected domain; scaling preserves
+Hamming distance, so decodability statements transfer verbatim — the
+same bridge our substrate's 2024/278 lineage uses).
+
+**Exposure statement for our exact parameters, stated plainly rather
+than buried:** the KKH family requires a 2-power multiplicative subgroup;
+F_M31^x has 2-adicity 1, so KKH cannot instantiate on M31's
+multiplicative group — but our evaluation domains live in the **circle
+group of order p + 1 = 2^31, which is fully 2-adic**, and our size
+regime (n = 2^12 at log2(p) = 31) sits inside KKH's dimensional envelope
+(n <~ 2^12.9 at beta >= 12/5). Whether a KKH-style construction exists
+on circle-group cosets is an **open question no paper addresses**. The
+adopted conjecture already prices KKH-shaped behavior via the
+exponential list bound, and the BCHKS M31 instances live on the full
+multiplicative group at rate ~1/2, not on circle cosets — but the honest
+label on our conjectured regime is: *domain-specific, refutation-adjacent,
+open on our exact domain family*.
+
+### 9.4 Re-derivation at the frozen statement shape
+
+Under Conjectures 1-2 the list factor l(theta) = 2^(H(rho)/eta) enters
+the gathering/OOD terms, so theta is an optimization, not a free choice:
+more radius buys query bits but inflates T1'/T2'. With our round
+structure (domains 2^12..2^6, degrees 2^10..2^4, |F| = 2^124), grinding
+NOT applied to algebraic rounds (§6 rule, unchanged), and all other
+amended terms (T3..T8', §8) as-is:
+
+| option | eta* | system bits | delta CU vs frozen shape | budget verdict (r=2/k'=51 base: central 974,112 / combined-worst 1,047,561) |
+| --- | ---: | ---: | ---: | --- |
+| q36/g32, s=1 (frozen shape) | 0.071 | **90.3** | 0 | strict ceiling survives all readings |
+| **q36/g32, s=2** | 0.054 | **93.2** | ~+5-12K (probe pending) | strict ceiling survives all readings |
+| q40/g32, s=2 | 0.069 | 96.9 | ~+89K (PCS +65.7K, RLC +14.6K, leaf +1.0K, s=2) | central under strict; stress/draw readings breach strict, clear 1.19M |
+| q45/g32, s=2 | ~0.09 | ~100.2 | ~+191K | central clears 1.19M by ~25K; **combined-worst ~1,239K breaches 1.19M**; reserves recover only ~45K |
+
+The s = 2 OOD decision — priced and declined in §6 under the refuted
+accounting at ~1 conditional bit — is worth **+2.9 bits** under the
+revised accounting (it removes T2' = C(l,2)-shaped, the binding term at
+s = 1) at near-zero CU. It is the clear first move on every branch. The
+query-per-bit economics inverted: at ~1.6-1.7 conjectured bits per query,
+grinding bits (1 work-bit each, 2^g prover cost) trade BETTER against
+queries than before — the held q34/g36 reserve now *gains* ~0.6-0.8
+system bits while saving ~44K CU, appreciating twice over.
+
+**The t = 100 headline does not survive at q36.** Restoring it honestly
+costs ~+190K CU and threatens the 1.19M transaction target at the
+worst-draw reading; a fully proven t = 100 is out of reach on this
+schedule (~1.0 proven bits/query would need ~q68, ~+525K CU, over the
+1.4M cap). The realistic positions:
+
+1. **t = 90 (recommend stating 90, holding 93.2 computed), q36/g32,
+   s = 2, revised-conjectured** — every measured budget line survives,
+   including the strict ceiling at combined-worst; the freeze and the
+   shrink-hunt close stand unchanged.
+2. **t = 95-97, q40/g32, s = 2** — ~+89K; strict ceiling reduced to a
+   central-only claim; 1.19M holds everywhere.
+3. **t = 100 restored, q45/g32, s = 2** — ~+191K; strict ceiling dead;
+   1.19M becomes worst-draw-conditional. The 10%-slack design rule would
+   need an explicit re-registration to survive this option.
+
+The choice between them is a product/headline ruling (design §13.3
+territory), not an implementation decision, and is **PENDING**.
+Transcript-bound work stays blocked until it lands. The q-independent
+statement layer (r=2/k'=51 freeze, §8) is untouched by every option.
+
+### 9.5 The proven floor appreciated
+
+Unchanged as the floor: ~65.5 bits (36 x 0.93 + 32). Strengthened in
+lineage: mutual correlated agreement — previously the conjectural step
+even below Johnson for WHIR-shaped folds — is now Haböck's theorem to
+the Johnson radius, and BCHKS's zero-loss Johnson correlated agreement
+at error O(n/eta^5)/q lets eta shrink at our tiny n = 2^12: a
+preliminary re-derivation gives **~67.5-68.0 proven bits at q36/g32**
+(eta ~ 0.002-0.005 balanced against the CA error term), and ~70 with the
+q34/g36 reserve. These numbers are to be pinned by a dedicated
+re-derivation before any public quotation; the direction is certain, the
+decimals are not. Deployment context, for calibration: SP1's flagship
+moved to the proven/unique-decoding regime entirely; StarkWare re-derived
+under the same Conjectures 1-2 adopted here (their accounting: legacy
+beta bits/query -> ~0.83-0.91 beta); RISC Zero's public docs still cite
+the refuted forms unchanged.
+
+### 9.6 Actions
+
+Taken in this revision: §2 refutation notice; §4 pin relabel; §6 summary
+supersession marker; §7 rows (refuted / historical / revised-adopted /
+headline-reopened); this section. Pending: the headline ruling (three
+options above); the s=2 CU probe (calibration rule: no "~5-12K" leans on
+an envelope); the proven-floor re-pin; a KAT re-pin and §4 table rebuild
+once the ruling lands; the publication-freeze q34/g36 earmark now also
+carries its revised-accounting bonus.
 
 ---
 

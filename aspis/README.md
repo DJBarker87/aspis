@@ -19,11 +19,17 @@ the same three ordering vectors accept under matching deliberately weakened
 test-only schedules. On Agave `2.3.0`, the literal lr10/q36/g32 v3 verifier
 accepts at `943,972` CU; the current PCS + wide-leaf/RLC + statement-sumcheck
 projection is `1,175,086` CU, leaving only `14,914` CU against the 1.19M
-target before unpriced constraint composition. The
-conditional headline is t=100
-capacity-conjectured (~102.98 system bits under the stated three-clause
-assumption), with a proven Johnson floor of ~65.5 bits. See
-`docs/aspis-soundness-note.md`, `docs/stage0-conclusion.md`, and
+target before unpriced constraint composition. **Stage 1 is REOPENED
+(`2026-07-10`, note §9): the up-to-capacity conjecture family behind the
+old t=100 headline was disproved (Crites–Stewart ePrint 2025/2046;
+Krachun–Kazanin–Haböck ePrint 2026/782), with no known attack at these
+parameters. Under the adopted revised conjecture (S-two ePrint 2026/532
+App. A.5, transported to circle codes), q36/g32 gives ~90.3 system bits
+(s=1) / ~93.2 (s=2); the t=100 headline does not survive at q36 and the
+headline ruling is pending. The proven Johnson floor ~65.5 bits is
+untouched and strengthens to ~67.5-68 preliminary under the same season's
+proven-side results.** See
+`docs/aspis-soundness-note.md` (§9), `docs/stage0-conclusion.md`, and
 `docs/stage0-gate.md`. Stage 2 now has an executable SpendV0-min evaluator,
 13 economic vectors replayed by both direct and six-limb lookup evaluators,
 two lookup-specific teeth vectors, a Plonky3-pinned Poseidon2-M31
