@@ -38,7 +38,9 @@ use aspis_core::params::{
     PROFILE_CAPACITY_LR14, PROFILE_JOHNSON,
 };
 use aspis_core::{FoldPayload, MerkleMode, Profile};
-use aspis_prover::{prove, seeded_coeffs, ProveOptions, HOST_HASH};
+use aspis_prover::{
+    prove, prove_with_synthetic_second_phase, seeded_coeffs, ProveOptions, HOST_HASH,
+};
 use aspis_verifier::{AspisInstruction, PROOF_ACCOUNT_HEADER_LEN};
 
 const UPLOAD_CHUNK_BYTES: usize = 640;
@@ -270,6 +272,7 @@ fn workspace_root() -> Result<PathBuf> {
 
 fn build_sbf(root: &Path) -> Result<PathBuf> {
     let status = Command::new("cargo-build-sbf")
+        .env("NO_DNA", "1")
         .arg("--manifest-path")
         .arg(root.join("programs/aspis-verifier/Cargo.toml"))
         .status()
@@ -284,16 +287,25 @@ fn build_sbf(root: &Path) -> Result<PathBuf> {
     Ok(so)
 }
 
-fn free_port() -> Result<u16> {
-    Ok(TcpListener::bind("127.0.0.1:0")?.local_addr()?.port())
+fn free_ports(count: usize) -> Result<Vec<u16>> {
+    // Hold every listener until all ports have been selected so the OS
+    // cannot hand the same ephemeral port back to a later request.
+    let listeners = (0..count)
+        .map(|_| TcpListener::bind("127.0.0.1:0"))
+        .collect::<std::io::Result<Vec<_>>>()?;
+    listeners
+        .iter()
+        .map(|listener| Ok(listener.local_addr()?.port()))
+        .collect()
 }
 
 fn start_validator(root: &Path, so: &Path) -> Result<Validator> {
     let ledger = root.join(".stage0-validator");
     let _ = fs::remove_dir_all(&ledger);
-    let rpc_port = free_port()?;
-    let faucet_port = free_port()?;
+    let ports = free_ports(3)?;
+    let (rpc_port, faucet_port, gossip_port) = (ports[0], ports[1], ports[2]);
     let child = Command::new("solana-test-validator")
+        .env("NO_DNA", "1")
         .arg("--reset")
         .arg("--quiet")
         .arg("--ledger")
@@ -302,6 +314,8 @@ fn start_validator(root: &Path, so: &Path) -> Result<Validator> {
         .arg(rpc_port.to_string())
         .arg("--faucet-port")
         .arg(faucet_port.to_string())
+        .arg("--gossip-port")
+        .arg(gossip_port.to_string())
         .arg("--bpf-program")
         .arg(aspis_verifier::id().to_string())
         .arg(so)
@@ -309,7 +323,7 @@ fn start_validator(root: &Path, so: &Path) -> Result<Validator> {
         .stderr(Stdio::null())
         .spawn()
         .context("solana-test-validator not found on PATH")?;
-    let validator = Validator {
+    let mut validator = Validator {
         child,
         rpc_url: format!("http://127.0.0.1:{rpc_port}"),
     };
@@ -324,6 +338,9 @@ fn start_validator(root: &Path, so: &Path) -> Result<Validator> {
     loop {
         if rpc.call("getHealth", json!([])).is_ok() {
             break;
+        }
+        if let Some(status) = validator.child.try_wait()? {
+            bail!("validator exited before RPC became healthy: {status}");
         }
         if started.elapsed() > Duration::from_secs(90) {
             bail!("validator did not become healthy");
@@ -475,6 +492,7 @@ fn verify_tx(
 
 fn validator_version() -> String {
     Command::new("solana-test-validator")
+        .env("NO_DNA", "1")
         .arg("--version")
         .output()
         .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
@@ -648,8 +666,86 @@ pub fn run_stage0_onchain_layout_target() -> Result<OnchainSummary> {
         notes: vec![
             "Lower-row diagnostic for the wide-row statement layout decision; not a frozen profile until Stage 1 soundness accounting and the Stage 2 direct evaluator exist.".to_string(),
             "Only raw_fibers/minimal_subtree is measured because proof_carried_round_local lost on both bytes and CU in the gate artifact.".to_string(),
-            "This runner measures the literal ruled schedule capacity_lr10_q36_g32 first (prover-side grinding for that row is a ~2^32-hash one-off); the remaining qNN/g16 rows are verifier-cost proxies for their g32 counterparts, sound because the verifier-side grinding check is one SHA-256 syscall independent of the difficulty bits (corroborated by onchain_g32_summary.json).".to_string(),
+            "The first row is the literal ruled q36/g32 Stage 1 profile and performs the real prover-side 32-bit nonce search; the remaining g16 rows are comparison diagnostics.".to_string(),
+            "Although the verifier's grinding threshold check is constant-cost, changing g16 to g32 changes the transcript-bound header and therefore the sampled query collisions and minimal-subtree shape. Use the literal g32 row, not a g16 CU proxy, for the ruled profile.".to_string(),
+            "Historical lower-row diagnostic emitted by the current v3 verifier without C2: one OOD value and its interleaved relation polynomial are enforced per round. Use stage1-onchain-hardening for the frozen C2 gate profile.".to_string(),
             "Combine these PCS verifier costs with layout_sweep RLC/wide-leaf deltas; do not add the full synthetic Merkle loop or path hashing is double-counted.".to_string(),
+        ],
+    })
+}
+
+/// Stage 1 hardened-profile measurement. The valid g32 proof is cached as a
+/// pinned fixture after its expensive nonce search; every reuse first runs
+/// the current host verifier, so a protocol change invalidates and replaces
+/// it instead of silently measuring stale bytes.
+pub fn run_stage1_onchain_hardening() -> Result<OnchainSummary> {
+    let root = workspace_root()?;
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), 500 * LAMPORTS_PER_SOL)?;
+
+    let profile = &aspis_core::params::PROFILE_CAPACITY_LR10_Q36_G32;
+    let payload = FoldPayload::RawFibers;
+    let mode = MerkleMode::MinimalSubtree;
+    let coeffs = seeded_coeffs(profile.log_rows, 1);
+    let digest = crate::host_statement_digest(0);
+    let options = ProveOptions {
+        fold_payload: payload,
+        merkle_mode: mode,
+    };
+    let proof_dir = root.join("results/stage1/proofs");
+    fs::create_dir_all(&proof_dir)?;
+    let proof_path = proof_dir.join("capacity_lr10_q36_g32_v3_c2.bin");
+
+    let cached = fs::read(&proof_path)
+        .ok()
+        .filter(|proof| aspis_core::verify(proof, &digest, HOST_HASH).is_ok());
+    let (proof, proof_source) = if let Some(proof) = cached {
+        (proof, "reused host-verified cached g32 proof".to_string())
+    } else {
+        eprintln!("stage1-onchain: searching literal g32 nonce (cached after success)");
+        let started = Instant::now();
+        let proof =
+            prove_with_synthetic_second_phase(profile, &coeffs, &digest, &options, HOST_HASH);
+        fs::write(&proof_path, &proof)?;
+        (
+            proof,
+            format!(
+                "generated and cached literal g32 proof; prover search {:.3}s",
+                started.elapsed().as_secs_f64()
+            ),
+        )
+    };
+    let proof_digest = HOST_HASH(&[&proof]);
+    let proof_digest_hex = proof_digest
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+
+    let variant =
+        run_onchain_variant_with_proof(&rpc, &payer, profile, payload, mode, Some(proof))?;
+
+    Ok(OnchainSummary {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command: "cargo run --release -p aspis-xtask -- stage1-onchain-hardening".to_string(),
+        validator_version: validator_version(),
+        verify_cu_limit: VERIFY_CU_LIMIT,
+        heap_frame_bytes: HEAP_FRAME_BYTES,
+        gate_matrix_only: true,
+        variants: vec![variant],
+        notes: vec![
+            "Literal ruled Stage 1 q36/g32 profile with C1 -> (lambda, chi) -> C2 -> claims -> gamma and the interleaved OOD/evaluation-relation sumcheck enabled.".to_string(),
+            "C2 uses a deterministic challenge-dependent Stage-1 helper to price and test the generic second-phase interface; it is not the Stage-2 LogUp helper and proves no payment relation.".to_string(),
+            "All host-generated corruption cases are replayed against the SBF verifier; every entry must be true.".to_string(),
+            format!("proof fixture: {}; {proof_source}", proof_path.display()),
+            format!("proof SHA-256: {proof_digest_hex}"),
         ],
     })
 }
@@ -848,6 +944,17 @@ fn run_onchain_variant(
     payload: FoldPayload,
     mode: MerkleMode,
 ) -> Result<OnchainVariant> {
+    run_onchain_variant_with_proof(rpc, payer, profile, payload, mode, None)
+}
+
+fn run_onchain_variant_with_proof(
+    rpc: &Rpc,
+    payer: &Keypair,
+    profile: &'static Profile,
+    payload: FoldPayload,
+    mode: MerkleMode,
+    proof_override: Option<Vec<u8>>,
+) -> Result<OnchainVariant> {
     let payload_name = match payload {
         FoldPayload::RawFibers => "raw_fibers",
         FoldPayload::ProofCarriedRoundLocal => "proof_carried_round_local",
@@ -867,7 +974,12 @@ fn run_onchain_variant(
         fold_payload: payload,
         merkle_mode: mode,
     };
-    let proof = prove(profile, &coeffs, &digest, &options, HOST_HASH);
+    let proof =
+        proof_override.unwrap_or_else(|| prove(profile, &coeffs, &digest, &options, HOST_HASH));
+    anyhow::ensure!(
+        aspis_core::verify(&proof, &digest, HOST_HASH).is_ok(),
+        "proof override failed current host verification"
+    );
 
     let proof_account = Keypair::new();
     let (chunks, upload_cu) = upload_proof(rpc, payer, &proof_account, &proof, true)?;

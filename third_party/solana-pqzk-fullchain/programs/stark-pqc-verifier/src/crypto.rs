@@ -2,6 +2,8 @@
 //!
 //! AIR: affine counter x_{t+1} = x_t + inc, with x_0 = seed, x_last = seed + inc*(n-1).
 //! Public inputs (seed, inc) are derived from SHA-256(cipher) in finalize::handle_verify_stark.
+//! The exceptional zero increment is canonically mapped to one, matching the prover and avoiding
+//! a constant trace which Winterfell's DEEP composer cannot prove.
 //! Security: AcceptableOptions::MinConjecturedSecurity(127) (≈128-bit).
 
 use anchor_lang::prelude::msg;
@@ -65,6 +67,9 @@ pub fn verify_stark(bytes: &[u8], seed_u64: u64, inc_u64: u64) -> Result<(), Ver
         .map_err(|e| VerifierError::ProofDeserializationError(format!("{e:?}")))?;
     let opts = AcceptableOptions::MinConjecturedSecurity(127);
     msg!("DBG STARK(verify): degs=1 assertions=2");
-    let pi = PublicInputs { seed: BaseElement::from(seed_u64), inc: BaseElement::from(inc_u64) };
+    let pi = PublicInputs {
+        seed: BaseElement::from(seed_u64),
+        inc: BaseElement::from(inc_u64.max(1)),
+    };
     stark_verify::<MessageAir, H, RC, VC>(proof, pi, &opts)
 }

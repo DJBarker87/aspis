@@ -4,6 +4,11 @@ Date: 2026-07-04. Base repo revision at Stage 0 start: `d0d7605`.
 Design reference: `docs/aspis-staged-design.md`, section 7.
 Audit reference: `docs/aspis-stage0-audit.md`.
 
+> **Stage 1 supersession (`2026-07-10`):** this note is the historical Stage
+> 0 gate. q32/g32 has since been retired; q36/g32 is the ruled schedule and
+> its relation-enforcing v3 C2 verifier measures 943,972 CU. The original
+> rows below are preserved rather than silently rewritten.
+
 ## 1. Deviation record (named, per working rule §16)
 
 **Deviation 1 — no pre-existing native v0 in this tree.** The design's Stage 0

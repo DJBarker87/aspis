@@ -1,5 +1,6 @@
 mod host;
 mod onchain;
+mod stage1;
 
 use std::fs;
 use std::path::PathBuf;
@@ -21,6 +22,17 @@ fn results_dir() -> Result<PathBuf> {
         .ok_or_else(|| anyhow!("no workspace root"))?
         .to_path_buf();
     let dir = root.join("results/stage0");
+    fs::create_dir_all(&dir)?;
+    Ok(dir)
+}
+
+fn stage1_results_dir() -> Result<PathBuf> {
+    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let root = manifest
+        .parent()
+        .ok_or_else(|| anyhow!("no workspace root"))?
+        .to_path_buf();
+    let dir = root.join("results/stage1");
     fs::create_dir_all(&dir)?;
     Ok(dir)
 }
@@ -96,8 +108,24 @@ fn main() -> Result<()> {
             eprintln!("stage0-transcript-kat: matched; wrote {}", path.display());
             Ok(())
         }
+        Some("stage1-soundness-pin") => {
+            let pin = stage1::soundness_pin();
+            let dir = stage1_results_dir()?;
+            let path = dir.join("upstream_soundness_pin.json");
+            fs::write(&path, serde_json::to_string_pretty(&pin)?)?;
+            eprintln!("stage1-soundness-pin: wrote {}", path.display());
+            Ok(())
+        }
+        Some("stage1-onchain-hardening") => {
+            let summary = onchain::run_stage1_onchain_hardening()?;
+            let dir = stage1_results_dir()?;
+            let path = dir.join("onchain_hardening_summary.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!("stage1-onchain-hardening: wrote {}", path.display());
+            Ok(())
+        }
         other => bail!(
-            "usage: cargo run -p aspis-xtask -- stage0-host | stage0-onchain | stage0-onchain-gate | stage0-onchain-g32 | stage0-onchain-layout-target | stage0-onchain-profile | stage0-layout-sweep | stage0-transcript-kat (got {:?})",
+            "usage: cargo run -p aspis-xtask -- stage0-host | stage0-onchain | stage0-onchain-gate | stage0-onchain-g32 | stage0-onchain-layout-target | stage0-onchain-profile | stage0-layout-sweep | stage0-transcript-kat | stage1-soundness-pin | stage1-onchain-hardening (got {:?})",
             other
         ),
     }

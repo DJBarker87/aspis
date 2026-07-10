@@ -5,6 +5,13 @@ Date: `2026-07-04`
 Status: **CONDITIONAL GO to Stage 1** for one measured target; RED for the
 old narrow-layout lr14 target and for Johnson q80.
 
+> **Stage 1 supersession (`2026-07-10`):** this is a historical gate record.
+> Stage 1 retired q32/g32, ruled q36/g32, enforced external/OOD relations,
+> implemented the v3 C2 boundary, and measured the literal profile at
+> 943,972 CU (1,175,086-CU combined projection; 14,914 CU left before
+> unpriced constraint composition). See
+> `aspis-soundness-note.md`; the numbers below remain the Stage 0 evidence.
+
 ## Conclusion
 
 Stage 0 has a real continuation target:

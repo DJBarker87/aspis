@@ -1,9 +1,12 @@
-//! Host-only prover for the Aspis v0 substrate.
+//! Host-only prover for the Aspis Stage 1 substrate.
 //!
 //! Commits evaluations of a polynomial (degree < 2^log_rows, M31
 //! coefficients) over a coset of a 2^k subgroup of the M31 circle group in
 //! CM31, folds it WHIR-style two variables per round to an explicit final
-//! polynomial, and packages openings in the envelope `aspis-core` parses.
+//! polynomial, supplies a transcript-bound evaluation at one derived OOD
+//! point per committed layer, and packages openings in the envelope
+//! `aspis-core` parses. A degree-6 relation sumcheck is interleaved before
+//! each fold challenge, enforcing both OOD and external evaluation claims.
 //!
 //! The prover mirrors the verifier's transcript step-for-step; any
 //! divergence is caught by the parity tests (10/10 accept on host must equal
@@ -12,7 +15,13 @@
 use aspis_core::field::{cm31_batch_inverse, CM31, M31, QM31};
 use aspis_core::merkle::{leaf_hash, node_hash};
 use aspis_core::params::{FoldPayload, MerkleMode, Profile, FINAL_POLY_LOG_LEN};
-use aspis_core::proof::{fiber_value_bytes, Header, HEADER_LEN};
+use aspis_core::proof::{
+    fiber_value_bytes, Header, FLAG_EVALUATION_CLAIM, FLAG_SECOND_PHASE, HEADER_LEN,
+    SECOND_PHASE_LAYER_TAG,
+};
+use aspis_core::sumcheck::{
+    polynomial_for_base, polynomial_for_extension, WeightAccumulator, SUMCHECK_BYTES,
+};
 use aspis_core::transcript::{label, Transcript};
 use aspis_core::verify::{domain_point, layer_geometry, EvaluationClaim};
 use aspis_core::HashFn;
@@ -185,6 +194,9 @@ struct LayerData {
     /// per-fiber leaf bytes (fiber i = values at {i, i+F, i+2F, i+3F})
     leaf_bytes: Vec<Vec<u8>>,
     tree: FiberTree,
+    /// C2's QM31 fibers/tree exist only at layer zero.
+    second_phase_leaf_bytes: Option<Vec<Vec<u8>>>,
+    second_phase_tree: Option<FiberTree>,
     /// per-fiber carried payload (g1, g2) for proof_carried_round_local
     carried: Vec<(QM31, QM31)>,
 }
@@ -192,6 +204,20 @@ struct LayerData {
 pub struct ProveOptions {
     pub fold_payload: FoldPayload,
     pub merkle_mode: MerkleMode,
+}
+
+#[derive(Clone, Copy)]
+enum OodBehavior {
+    Honest,
+    LieAt(u32),
+    AbsorbAfterAlpha,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum OrderingBehavior {
+    Canonical,
+    ChiBeforeC1,
+    GammaBeforeClaims,
 }
 
 /// Produce a proof for the committed polynomial `coeffs` (len must be
@@ -204,13 +230,25 @@ pub fn prove(
     options: &ProveOptions,
     hash: HashFn,
 ) -> Vec<u8> {
-    prove_inner(profile, coeffs, statement_digest, None, options, hash, false)
+    prove_inner(
+        profile,
+        coeffs,
+        statement_digest,
+        None,
+        options,
+        hash,
+        false,
+        None,
+        OrderingBehavior::Canonical,
+        OodBehavior::Honest,
+    )
 }
 
-/// Produce a claim-carrying proof: the externally supplied (z, v) is absorbed
-/// as a public input in the canonical position (after the statement digest,
-/// before any root). See `aspis_core::verify::EvaluationClaim` for the
-/// binding-only caveat at this revision.
+/// Produce a claim-carrying two-phase proof. C1 is absorbed before lambda and
+/// chi; a deterministic Stage-1 helper is committed as C2; the main and C2
+/// evaluations are absorbed before gamma; and their gamma-RLC is enforced by
+/// the relation sumcheck. The helper is plumbing/cost scaffolding, not the
+/// Stage-2 LogUp relation.
 pub fn prove_with_claim(
     profile: &Profile,
     coeffs: &[M31],
@@ -226,16 +264,72 @@ pub fn prove_with_claim(
         Some(claim),
         options,
         hash,
-        false,
+        true,
+        Some(&synthetic_second_phase_coefficients),
+        OrderingBehavior::Canonical,
+        OodBehavior::Honest,
     )
 }
 
-/// Adversarial prover for the challenge-order test suite ONLY: absorbs the
-/// claim AFTER the commitment roots instead of the canonical position. The
-/// verifier (canonical order) must reject its output. Never call this
-/// outside tests.
+/// Produce the two-phase Stage-1 plumbing/cost proof without an external
+/// evaluation claim. The helper is deterministic but challenge-dependent;
+/// the verifier treats C2 generically and authenticates/recombines it.
+pub fn prove_with_synthetic_second_phase(
+    profile: &Profile,
+    coeffs: &[M31],
+    statement_digest: &[u8; 32],
+    options: &ProveOptions,
+    hash: HashFn,
+) -> Vec<u8> {
+    prove_inner(
+        profile,
+        coeffs,
+        statement_digest,
+        None,
+        options,
+        hash,
+        true,
+        Some(&synthetic_second_phase_coefficients),
+        OrderingBehavior::Canonical,
+        OodBehavior::Honest,
+    )
+}
+
+/// Generic second-phase prover interface. The builder runs only after C1 is
+/// transcript-bound and receives the resulting `(lambda, chi)` challenges.
+/// Stage 2 can supply its LogUp helper here without changing the proof
+/// envelope or verifier schedule.
+pub fn prove_with_second_phase_builder<F>(
+    profile: &Profile,
+    coeffs: &[M31],
+    statement_digest: &[u8; 32],
+    claim: Option<&EvaluationClaim>,
+    options: &ProveOptions,
+    hash: HashFn,
+    build_helper: F,
+) -> Vec<u8>
+where
+    F: Fn(&[M31], QM31, QM31) -> Vec<QM31>,
+{
+    prove_inner(
+        profile,
+        coeffs,
+        statement_digest,
+        claim,
+        options,
+        hash,
+        true,
+        Some(&build_helper),
+        OrderingBehavior::Canonical,
+        OodBehavior::Honest,
+    )
+}
+
+/// Adversarial prover for the gamma-order test ONLY: squeezes gamma before
+/// absorbing the main/C2 claimed evaluations. The canonical verifier must
+/// reject. Never call outside tests.
 #[doc(hidden)]
-pub fn prove_with_misordered_claim_for_tests(
+pub fn prove_with_gamma_before_claims_for_tests(
     profile: &Profile,
     coeffs: &[M31],
     statement_digest: &[u8; 32],
@@ -251,6 +345,106 @@ pub fn prove_with_misordered_claim_for_tests(
         options,
         hash,
         true,
+        Some(&synthetic_second_phase_coefficients),
+        OrderingBehavior::GammaBeforeClaims,
+        OodBehavior::Honest,
+    )
+}
+
+/// Backward-compatible test helper name; this is now the precise
+/// gamma-before-claims adversarial vector.
+#[doc(hidden)]
+pub fn prove_with_misordered_claim_for_tests(
+    profile: &Profile,
+    coeffs: &[M31],
+    statement_digest: &[u8; 32],
+    claim: &EvaluationClaim,
+    options: &ProveOptions,
+    hash: HashFn,
+) -> Vec<u8> {
+    prove_with_gamma_before_claims_for_tests(
+        profile,
+        coeffs,
+        statement_digest,
+        claim,
+        options,
+        hash,
+    )
+}
+
+/// Adversarial prover for the C1-order test ONLY: squeezes lambda and chi
+/// before C1 is absorbed. The canonical verifier must reject.
+#[doc(hidden)]
+pub fn prove_with_chi_before_c1_for_tests(
+    profile: &Profile,
+    coeffs: &[M31],
+    statement_digest: &[u8; 32],
+    options: &ProveOptions,
+    hash: HashFn,
+) -> Vec<u8> {
+    prove_inner(
+        profile,
+        coeffs,
+        statement_digest,
+        None,
+        options,
+        hash,
+        true,
+        Some(&synthetic_second_phase_coefficients),
+        OrderingBehavior::ChiBeforeC1,
+        OodBehavior::Honest,
+    )
+}
+
+/// Adversarial prover for the OOD challenge-order test ONLY: samples the
+/// layer fold challenge before absorbing the claimed OOD value. The
+/// canonical verifier must reject. Never call outside tests.
+#[doc(hidden)]
+pub fn prove_with_misordered_ood_for_tests(
+    profile: &Profile,
+    coeffs: &[M31],
+    statement_digest: &[u8; 32],
+    options: &ProveOptions,
+    hash: HashFn,
+) -> Vec<u8> {
+    prove_inner(
+        profile,
+        coeffs,
+        statement_digest,
+        None,
+        options,
+        hash,
+        false,
+        None,
+        OrderingBehavior::Canonical,
+        OodBehavior::AbsorbAfterAlpha,
+    )
+}
+
+/// Adversarial prover for the explicit enforcement-caveat test ONLY: places
+/// a false but transcript-consistent OOD value in one round. The verifier's
+/// relation sumcheck must reject it at that round's boundary.
+#[doc(hidden)]
+pub fn prove_with_lying_ood_for_tests(
+    profile: &Profile,
+    coeffs: &[M31],
+    statement_digest: &[u8; 32],
+    lying_layer: u32,
+    options: &ProveOptions,
+    hash: HashFn,
+) -> Vec<u8> {
+    assert!(lying_layer < profile.num_rounds());
+    prove_inner(
+        profile,
+        coeffs,
+        statement_digest,
+        None,
+        options,
+        hash,
+        false,
+        None,
+        OrderingBehavior::Canonical,
+        OodBehavior::LieAt(lying_layer),
     )
 }
 
@@ -272,6 +466,46 @@ pub fn multilinear_eval(coeffs: &[M31], z: &[QM31]) -> QM31 {
     layer[0]
 }
 
+fn multilinear_eval_extension(coeffs: &[QM31], z: &[QM31]) -> QM31 {
+    assert_eq!(coeffs.len(), 1usize << z.len());
+    let mut layer = coeffs.to_vec();
+    for zi in z.iter().rev() {
+        layer = (0..layer.len() / 2)
+            .map(|index| layer[2 * index].add(zi.mul(layer[2 * index + 1].sub(layer[2 * index]))))
+            .collect();
+    }
+    layer[0]
+}
+
+/// Deterministic challenge-dependent helper used to exercise the generic C2
+/// proof boundary before Stage 2 supplies the actual LogUp helper. Its exact
+/// algebra is intentionally not assigned statement soundness.
+fn synthetic_second_phase_coefficients(coeffs: &[M31], lambda: QM31, chi: QM31) -> Vec<QM31> {
+    let cross = lambda.mul(chi);
+    coeffs
+        .iter()
+        .enumerate()
+        .map(|(index, coefficient)| {
+            let main = QM31::from_cm31(CM31::from_m31(*coefficient));
+            let index_value = QM31::from_cm31(CM31::from_m31(M31((index + 1) as u32)));
+            lambda.mul(main).add(chi.mul(index_value)).add(cross)
+        })
+        .collect()
+}
+
+fn evaluate_m31_coefficients(coeffs: &[M31], point: QM31) -> QM31 {
+    coeffs.iter().rev().fold(QM31::ZERO, |acc, coefficient| {
+        acc.mul(point)
+            .add(QM31::from_cm31(CM31::from_m31(*coefficient)))
+    })
+}
+
+fn evaluate_qm31_coefficients(coeffs: &[QM31], point: QM31) -> QM31 {
+    coeffs.iter().rev().fold(QM31::ZERO, |acc, coefficient| {
+        acc.mul(point).add(*coefficient)
+    })
+}
+
 #[allow(clippy::too_many_arguments)]
 fn prove_inner(
     profile: &Profile,
@@ -280,9 +514,14 @@ fn prove_inner(
     claim: Option<&EvaluationClaim>,
     options: &ProveOptions,
     hash: HashFn,
-    misorder_claim: bool,
+    second_phase: bool,
+    second_phase_builder: Option<&dyn Fn(&[M31], QM31, QM31) -> Vec<QM31>>,
+    ordering: OrderingBehavior,
+    ood_behavior: OodBehavior,
 ) -> Vec<u8> {
     assert_eq!(coeffs.len(), 1usize << profile.log_rows);
+    assert!(claim.is_none() || second_phase);
+    assert_eq!(second_phase, second_phase_builder.is_some());
     let num_rounds = profile.num_rounds();
     let query_count = profile.query_count as usize;
 
@@ -296,7 +535,11 @@ fn prove_inner(
         merkle_mode: options.merkle_mode as u8,
         num_rounds,
         final_poly_log_len: FINAL_POLY_LOG_LEN,
-        claim_flag: claim.is_some() as u8,
+        flags: (if claim.is_some() {
+            FLAG_EVALUATION_CLAIM
+        } else {
+            0
+        }) | (if second_phase { FLAG_SECOND_PHASE } else { 0 }),
     };
     let mut header_bytes = [0u8; HEADER_LEN];
     header.write(&mut header_bytes);
@@ -304,9 +547,19 @@ fn prove_inner(
     let mut transcript = Transcript::new(hash);
     transcript.absorb(label::PROFILE, &header_bytes);
     transcript.absorb(label::STATEMENT, statement_digest);
-    if let (Some(claim), false) = (claim, misorder_claim) {
-        transcript.absorb(label::CLAIM, &claim.to_bytes());
-    }
+
+    let early_phase_challenges = if second_phase && ordering == OrderingBehavior::ChiBeforeC1 {
+        Some((
+            transcript
+                .challenge_qm31()
+                .expect("prover lambda sampler exhausted (2^-248 per limb)"),
+            transcript
+                .challenge_qm31()
+                .expect("prover chi sampler exhausted (2^-248 per limb)"),
+        ))
+    } else {
+        None
+    };
 
     // ---- commit phase ----
     let geom0 = layer_geometry(profile, 0);
@@ -320,35 +573,43 @@ fn prove_inner(
     let mut ext_coeffs: Vec<QM31> = Vec::new(); // populated after first fold
     let mut layers: Vec<LayerData> = Vec::new();
     let mut roots: Vec<[u8; 32]> = Vec::new();
-    let mut alphas: Vec<QM31> = Vec::new();
+    let mut ood_values: Vec<[u8; 16]> = Vec::new();
+    let mut sumcheck_polynomials: Vec<[u8; SUMCHECK_BYTES]> = Vec::new();
+    let mut relation_weights = WeightAccumulator::empty(profile.log_rows);
+    let mut second_phase_root: Option<[u8; 32]> = None;
+    let mut second_phase_claim_bytes: Option<[u8; 16]> = None;
 
     for layer in 0..num_rounds {
         let geom = layer_geometry(profile, layer);
         let fiber_count = geom.fiber_count as usize;
         let value_bytes = fiber_value_bytes(layer);
 
-        let (base_values, ext_values): (Option<Vec<CM31>>, Option<Vec<QM31>>) = if layer == 0 {
-            (Some(layer0_values.clone()), None)
-        } else {
-            // evaluate current ext_coeffs over this layer's domain
-            let values = coset_evaluate_qm31(
+        // These are the values of the polynomial actually folded this round.
+        // At layer zero C1 is base-valued, while a two-phase proof folds the
+        // gamma-combination of C1 and C2 in QM31.
+        let mut fold_base_values: Option<Vec<CM31>> = None;
+        let mut fold_ext_values: Option<Vec<QM31>> = None;
+        if layer == 0 && !second_phase {
+            fold_base_values = Some(layer0_values.clone());
+        } else if layer > 0 {
+            fold_ext_values = Some(coset_evaluate_qm31(
                 &ext_coeffs,
                 geom.offset,
                 geom.omega,
                 geom.domain_size as usize,
-            );
-            (None, Some(values))
-        };
+            ));
+        }
 
         let mut leaf_bytes = Vec::with_capacity(fiber_count);
         for f in 0..fiber_count {
             let mut bytes = vec![0u8; value_bytes];
             for m in 0..4 {
                 let idx = f + m * fiber_count;
-                match (&base_values, &ext_values) {
-                    (Some(v), None) => v[idx].write_le_bytes(&mut bytes[m * 8..m * 8 + 8]),
-                    (None, Some(v)) => v[idx].write_le_bytes(&mut bytes[m * 16..m * 16 + 16]),
-                    _ => unreachable!(),
+                if layer == 0 {
+                    layer0_values[idx].write_le_bytes(&mut bytes[m * 8..m * 8 + 8]);
+                } else {
+                    fold_ext_values.as_ref().unwrap()[idx]
+                        .write_le_bytes(&mut bytes[m * 16..m * 16 + 16]);
                 }
             }
             leaf_bytes.push(bytes);
@@ -357,13 +618,142 @@ fn prove_inner(
         let root = tree.root();
         transcript.absorb(label::ROOT, &root);
         roots.push(root);
-        let alpha = transcript
+
+        let mut second_phase_leaf_bytes = None;
+        let mut second_phase_tree = None;
+        if layer == 0 && second_phase {
+            let (lambda, chi) = early_phase_challenges.unwrap_or_else(|| {
+                (
+                    transcript
+                        .challenge_qm31()
+                        .expect("prover lambda sampler exhausted (2^-248 per limb)"),
+                    transcript
+                        .challenge_qm31()
+                        .expect("prover chi sampler exhausted (2^-248 per limb)"),
+                )
+            });
+            let helper_coeffs = second_phase_builder.unwrap()(coeffs, lambda, chi);
+            assert_eq!(helper_coeffs.len(), coeffs.len());
+            let helper_values = coset_evaluate_qm31(
+                &helper_coeffs,
+                geom.offset,
+                geom.omega,
+                geom.domain_size as usize,
+            );
+            let mut helper_leaves = Vec::with_capacity(fiber_count);
+            for fiber in 0..fiber_count {
+                let mut bytes = vec![0u8; 4 * 16];
+                for slot in 0..4 {
+                    let index = fiber + slot * fiber_count;
+                    helper_values[index].write_le_bytes(&mut bytes[slot * 16..slot * 16 + 16]);
+                }
+                helper_leaves.push(bytes);
+            }
+            let helper_tree = FiberTree::build(hash, SECOND_PHASE_LAYER_TAG, &helper_leaves);
+            let helper_root = helper_tree.root();
+            transcript.absorb(label::SECOND_PHASE_ROOT, &helper_root);
+            second_phase_root = Some(helper_root);
+
+            let early_gamma = if ordering == OrderingBehavior::GammaBeforeClaims {
+                Some(
+                    transcript
+                        .challenge_qm31()
+                        .expect("prover gamma sampler exhausted (2^-248 per limb)"),
+                )
+            } else {
+                None
+            };
+
+            let helper_claim = claim.map(|main_claim| {
+                transcript.absorb(label::CLAIM, &main_claim.to_bytes());
+                let value = multilinear_eval_extension(&helper_coeffs, &main_claim.z);
+                let mut bytes = [0u8; 16];
+                value.write_le_bytes(&mut bytes);
+                transcript.absorb(label::SECOND_PHASE_CLAIM, &bytes);
+                second_phase_claim_bytes = Some(bytes);
+                value
+            });
+
+            let gamma = early_gamma.unwrap_or_else(|| {
+                transcript
+                    .challenge_qm31()
+                    .expect("prover gamma sampler exhausted (2^-248 per limb)")
+            });
+
+            ext_coeffs = coeffs
+                .iter()
+                .zip(&helper_coeffs)
+                .map(|(main, helper)| {
+                    QM31::from_cm31(CM31::from_m31(*main)).add(gamma.mul(*helper))
+                })
+                .collect();
+            fold_ext_values = Some(
+                layer0_values
+                    .iter()
+                    .zip(&helper_values)
+                    .map(|(main, helper)| QM31::from_cm31(*main).add(gamma.mul(*helper)))
+                    .collect(),
+            );
+            relation_weights = WeightAccumulator::from_claim(profile.log_rows, claim);
+            debug_assert_eq!(claim.is_some(), helper_claim.is_some());
+            second_phase_leaf_bytes = Some(helper_leaves);
+            second_phase_tree = Some(helper_tree);
+        }
+
+        let ood_point = transcript
+            .challenge_ood_qm31()
+            .expect("prover OOD sampler exhausted (<2^-186)");
+        let mut ood_value = if layer == 0 && !second_phase {
+            evaluate_m31_coefficients(coeffs, ood_point)
+        } else {
+            evaluate_qm31_coefficients(&ext_coeffs, ood_point)
+        };
+        if matches!(ood_behavior, OodBehavior::LieAt(lying_layer) if lying_layer == layer) {
+            ood_value = ood_value.add(QM31::ONE);
+        }
+        let mut ood_bytes = [0u8; 16];
+        ood_value.write_le_bytes(&mut ood_bytes);
+        ood_values.push(ood_bytes);
+
+        // The adversarial-order variant deliberately derives alpha before
+        // the OOD value, mix challenge, and sumcheck polynomial.
+        let early_alpha = if matches!(ood_behavior, OodBehavior::AbsorbAfterAlpha) {
+            Some(
+                transcript
+                    .challenge_qm31()
+                    .expect("prover transcript sampler exhausted (2^-248 per limb)"),
+            )
+        } else {
+            None
+        };
+        transcript.absorb(label::OOD_VALUE, &ood_bytes);
+
+        let mix = transcript
             .challenge_qm31()
-            .expect("prover transcript sampler exhausted (2^-248 per limb)");
-        alphas.push(alpha);
+            .expect("prover claim-mix sampler exhausted (2^-248 per limb)");
+        relation_weights.add_geometric(mix, ood_point);
+
+        let sumcheck = if layer == 0 && !second_phase {
+            polynomial_for_base(coeffs, &relation_weights)
+        } else {
+            polynomial_for_extension(&ext_coeffs, &relation_weights)
+        };
+        let mut sumcheck_bytes = [0u8; SUMCHECK_BYTES];
+        for (index, coefficient) in sumcheck.iter().enumerate() {
+            coefficient.write_le_bytes(&mut sumcheck_bytes[index * 16..index * 16 + 16]);
+        }
+        transcript.absorb(label::SUMCHECK_POLY, &sumcheck_bytes);
+        sumcheck_polynomials.push(sumcheck_bytes);
+
+        let alpha = early_alpha.unwrap_or_else(|| {
+            transcript
+                .challenge_qm31()
+                .expect("prover transcript sampler exhausted (2^-248 per limb)")
+        });
+        relation_weights.fold(alpha);
 
         // fold coefficients: two half-folds with alpha then alpha^2
-        if layer == 0 {
+        if layer == 0 && !second_phase {
             let step1: Vec<QM31> = (0..coeffs.len() / 2)
                 .map(|j| {
                     QM31::from_cm31(CM31::from_m31(coeffs[2 * j]))
@@ -387,12 +777,20 @@ fn prove_inner(
         // carried payload (per fiber): the two intra-round folded values
         let mut carried = Vec::new();
         if options.fold_payload == FoldPayload::ProofCarriedRoundLocal {
-            carried = compute_carried(&geom, &base_values, &ext_values, alpha, fiber_count);
+            carried = compute_carried(
+                &geom,
+                &fold_base_values,
+                &fold_ext_values,
+                alpha,
+                fiber_count,
+            );
         }
 
         layers.push(LayerData {
             leaf_bytes,
             tree,
+            second_phase_leaf_bytes,
+            second_phase_tree,
             carried,
         });
     }
@@ -401,11 +799,6 @@ fn prove_inner(
     let mut final_poly_bytes = vec![0u8; ext_coeffs.len() * 16];
     for (k, c) in ext_coeffs.iter().enumerate() {
         c.write_le_bytes(&mut final_poly_bytes[k * 16..k * 16 + 16]);
-    }
-    if let (Some(claim), true) = (claim, misorder_claim) {
-        // adversarial order for the challenge-order test suite: claim lands
-        // after the roots instead of the canonical public-input position
-        transcript.absorb(label::CLAIM, &claim.to_bytes());
     }
     transcript.absorb(label::FINAL_POLY, &final_poly_bytes);
 
@@ -418,8 +811,21 @@ fn prove_inner(
 
     let mut proof = Vec::new();
     proof.extend_from_slice(&header_bytes);
-    for root in &roots {
+    for (layer, ((root, ood_value), sumcheck)) in roots
+        .iter()
+        .zip(&ood_values)
+        .zip(&sumcheck_polynomials)
+        .enumerate()
+    {
         proof.extend_from_slice(root);
+        if layer == 0 && second_phase {
+            proof.extend_from_slice(second_phase_root.as_ref().unwrap());
+            if let Some(bytes) = second_phase_claim_bytes.as_ref() {
+                proof.extend_from_slice(bytes);
+            }
+        }
+        proof.extend_from_slice(ood_value);
+        proof.extend_from_slice(sumcheck);
     }
     proof.extend_from_slice(&final_poly_bytes);
     proof.extend_from_slice(&nonce.to_le_bytes());
@@ -437,6 +843,11 @@ fn prove_inner(
         proof.extend_from_slice(&(unique.len() as u16).to_le_bytes());
         for &f in &unique {
             proof.extend_from_slice(&data.leaf_bytes[f as usize]);
+        }
+        if let Some(helper_leaves) = &data.second_phase_leaf_bytes {
+            for &f in &unique {
+                proof.extend_from_slice(&helper_leaves[f as usize]);
+            }
         }
         if options.fold_payload == FoldPayload::ProofCarriedRoundLocal {
             for &f in &unique {
@@ -460,6 +871,24 @@ fn prove_inner(
                 proof.extend_from_slice(&(nodes.len() as u32).to_le_bytes());
                 for node in nodes {
                     proof.extend_from_slice(&node);
+                }
+            }
+        }
+        if let Some(helper_tree) = &data.second_phase_tree {
+            match options.merkle_mode {
+                MerkleMode::SinglePaths => {
+                    for &f in &unique {
+                        for node in helper_tree.single_path(f) {
+                            proof.extend_from_slice(&node);
+                        }
+                    }
+                }
+                MerkleMode::MinimalSubtree => {
+                    let nodes = helper_tree.minimal_subtree(&unique);
+                    proof.extend_from_slice(&(nodes.len() as u32).to_le_bytes());
+                    for node in nodes {
+                        proof.extend_from_slice(&node);
+                    }
                 }
             }
         }

@@ -1,7 +1,9 @@
 # Open soundness question: whir-p3 Johnson divergence (feeds Stage 1)
 
-Recorded per Stage 0 work item 4 (design §7.4). Status: **open**. Owner:
-Stage 1 soundness audit (design §8.1).
+Recorded per Stage 0 work item 4 (design §7.4). Status: **closed for the
+Stage 1 regime decision; upstream non-equivalence remains recorded**. The
+headline moved to an explicitly capacity-conjectured regime and the same
+schedule's Johnson floor is reported separately (soundness note §§4, 7).
 
 ## The question
 
@@ -25,11 +27,12 @@ claimed about ANY v0-lineage verifier, including the one bootstrapped here.
    v0 and upstream WHIR, and it must appear as its own line in the Stage 1
    proximity-parameter accounting (queries per round, rate, grinding, regime,
    per-round budget in bits).
-3. Related v0 gaps the Stage 1 audit checklist already names, restated here
-   because they interact with the Johnson question: no out-of-domain samples
-   (upstream WHIR uses nonzero OOD in the list-decoding regime), no
-   sumcheck/fold interleaving, queries derived once after all roots and the
-   final value rather than per round.
+3. Related v0 gaps the Stage 1 audit checklist named: Stage 0 had no OOD
+   samples or sumcheck/fold interleaving, and derived one query set only after
+   all roots and the final value. The frozen v3 envelope now derives, binds,
+   and enforces one OOD evaluation per round plus the external `(z,v)` / C2
+   gamma relation. The one-query-set shape is unchanged and remains a named
+   divergence covered by the capacity conjecture rather than upstream WHIR.
 
 ## Exit criteria
 
