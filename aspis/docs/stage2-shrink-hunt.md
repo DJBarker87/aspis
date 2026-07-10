@@ -87,7 +87,7 @@ q32/g32 remains retired (96 bits); q32/g40 is a different, sound point.
 
 ## Measured results
 
-(filled as runs land; every number carries its reproduction command)
+(every number carries its reproduction command)
 
 ### First batch — predates the close-condition registration, disclosed above
 
@@ -104,3 +104,113 @@ q32/g32 remains retired (96 bits); q32/g40 is a different, sound point.
 Build note: fixed80 re-measured at 202,056 this build vs 202,031 on the
 prior build (+25 CU build-layout drift); cross-build comparisons carry
 this ~tens-of-CU noise and all deltas in this hunt are same-build.
+
+### Sumcheck allowance probe — the risk-retirement item, and it fired
+
+`stage2-sumcheck-probe` (mu-batched claims, transcript-absorbed round
+messages, boundary checks, Horner terminal evaluation, block-periodic
+selectors; eq and C(v) excluded — the composition probe prices those):
+
+| reading | shape | measured CU |
+| --- | --- | ---: |
+| optimistic | 10 rounds, 7 coeffs, 3 claims, 16 sel, 3 exc | 65,901 |
+| **central** | 10 rounds, 8 coeffs, 3 claims, 24 sel, 5 exc | **83,849** |
+| pessimistic (T3 nu=14 budget) | 14 rounds, 8 coeffs, 4 claims, 48 sel, 8 exc | 143,533 |
+
+**The synthetic 30,000-CU allowance was understated by +53,849 CU
+(central).** Every projection in `feasibility_decision.json` recorded
+before this artifact carries that error; from here on the measured central
+value replaces the allowance. At the pre-hunt shape (k'=84, r=4) the true
+central projection is ~1,105,900 — over the strict ceiling before any
+variance or bracket penalty. The hunt's real requirement was ~54K higher
+than registered, exactly as the review suspected.
+
+### k-axis sweep (isolated deterministic kernels, same build)
+
+| width / shape | RLC total | leaf | composition central | composition stress |
+| --- | ---: | ---: | ---: | ---: |
+| k'=84 (r=4 current) | 211,858 | 11,519 | 120,275 | 152,299 |
+| k'=67 (r=3) | 171,005 | 10,295 | 95,601 | 122,102 |
+| **k'=51 (r=2)** | **131,759** | **9,143** | **70,954** | **88,617** |
+| k'=49 (r=2 + GKR) | 128,621 | — | — | — |
+
+Layout findings (research track, code-verified reasoning): the 16-column
+consumer interface cannot overlap round outputs (no cross-row shifts in a
+multilinear opening; producer endpoints reuse the previous row's outputs
+free, consumers pay). Statement aux values live in unused rows of the same
+columns, so k_main = 16r + 16 exactly. **Block alignment matters: r=4's
+6-row blocks do NOT factor over the Boolean cube, so §5's stated O(2^b)
+block-periodic selector form was silently false for the current
+candidate**; r=3 gives 2^3-aligned 8-row blocks and makes §5 true as
+written; r=2 requires padding to 2^4-aligned 16-row blocks — 49 x 16 = 784
+rows of 1024, fits, with idle cells constrained off periodically. Rows:
+r=2 -> 784, r=3 -> 392; r=1 exceeds the cap (pre-registered floor).
+
+### Query/grinding trade (8-seed g16 means, radix-4, production Verify)
+
+| profile | mean CU | range |
+| --- | ---: | ---: |
+| q36 | 681,619 | 27,275 |
+| q34 | 644,990 | 48,668 |
+| q32 | 615,946 | 45,047 |
+
+q36 -> q34 saves **36,629** mean (mean-difference SE ~6-7K at these seed
+counts); q36 -> q32 saves 65,673; marginal ~16.4K/query, matching the
+independent estimate. The q-linear statement terms add ~7.9K (q34) /
+~15.9K (q32) at k'=51 on top. Production pairings q34/g36 (grind ~30-80
+min) and q32/g40 (~half a day) hold 2q+g = 104 and RAISE the proven floor
+to 67.6 / 69.8 bits.
+
+### Priced and rejected (research track, citations verified)
+
+- **LogUp-GKR helper elimination: NET LOSS ~175K CU central** (adds
+  ~268-427K: 78 degree-3 sumcheck rounds at ~360 CU/QM31-mult plus
+  per-layer overhead; deletes only ~154K of C2 + RLC width). Engineered
+  floor ~235K still exceeds the delete. GKR-LogUp pays where verifier
+  mults are nearly free (recursion: SP1 Hypercube); on SBF it is
+  backwards. Two further flags: the 2023/1284 paper defers its formal
+  soundness proof, and a univariate-only claim language would force a
+  post-chi Lagrange-kernel commitment (the Miden two-aux-column outcome).
+  Pre-written abandon criterion (>143K) would have fired at 2-3x.
+  [ePrint 2023/1284; stwo gkr_verifier.rs; SP1 Hypercube; Miden PR #1493]
+- **STIR domain-halving: decline now priced** — ~70-90K net for a full
+  restructure plus a circle-code STIR theory step that does not exist in
+  the literature; strictly dominated by the adopted package.
+  [ePrint 2024/390]
+- **Carried-fold: measured anti-shrink** (+15,535 CU / +5,536 bytes at
+  lr12, stage0 record) on top of the conjugate-backend analysis.
+- **Merkle cap-truncation, digest truncation, Gruen eq-factor alone,
+  SWAR/packing/u128 RLC variants**: single-digit-K or measured losers.
+
+## Hunt close — the pre-registered condition PASSES at the r=2 shape
+
+**Adopted package: r=2 layout re-freeze (k' = 51, 16-row-aligned blocks,
+784 rows) with the measured sumcheck replacing the allowance. No fold,
+rate, query, or C2 changes.**
+
+| reading | CU | vs strict 1,071,000 |
+| --- | ---: | ---: |
+| central: 678,407 PCS + 9,143 leaf + 131,759 RLC + 70,954 comp + 83,849 sumcheck | **974,112** | **-96,888** |
+| + composition stress (88,617) | 991,775 | -79,225 |
+| + worst-of-16 draw (+55,786) | 1,029,898 | -41,102 |
+| + stress + draw (combined worst) | 1,047,561 | **-23,439** |
+| (pessimistic nu=14 sumcheck instead of central, + stress + draw) | 1,107,245 | +36,245 over — reported, not central |
+
+Close condition: `974,112 <= 1,071,000 - 27,893 (half observed range)` →
+**passes by 68,995 CU.** The condition's final-shape multi-seed re-check
+happens on the integrated proof's own >= 8 draws, as registered. The
+boring pair closed the hunt without GKR leaving the reading pile.
+
+**Optional adders, not needed for close, available if integration eats
+margin:** q34/g36 (-44K measured+scaled, floor +2.1 bits, grind cost
+30-80 min, needs the §4 re-rule); flat-commit of the small deep layers
+(-30-33K estimate AND shrinks the draw spread itself; needs multi-seed
+remeasure + named root/KAT re-pin); RLC/leaf single-pass fusion (-10-20K,
+kernel-only, measure-first). Pin-flagged and not taken: blowup 2^-3.
+
+**Pending at the layout freeze (notes before code, per standing rule):**
+§8 k' pin moves 84 -> 52 (T5' improves to ~118.3 bits), the copy multiset
+recount at r=2 (~490 links, inside the m = 2^10 worst-case reading), the
+2^4-block selector form recorded in §5 terms, and the evaluator corpus
+re-confirmation of the r=2 composition bracket (32 sbox / [38, 70]
+linear).

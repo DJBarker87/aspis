@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-07-10T17:15:06.206016+00:00",
+  "generated_at_utc": "2026-07-10T17:23:47.818263+00:00",
   "command": "cargo run --release -p aspis-xtask -- stage2-wide-rlc-probe",
   "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
   "repetitions": 5,
@@ -9,254 +9,254 @@
       "columns": 64,
       "query_count": 32,
       "simulation_cu": [
-        264207,
-        264207,
-        264207,
-        264207,
-        264207
+        262118,
+        262118,
+        262118,
+        262118,
+        262118
       ],
-      "simulation_cu_mean": 264207.0,
-      "baseline_cu_mean": 23202.0,
-      "incremental_cu": 241005
+      "simulation_cu_mean": 262118.0,
+      "baseline_cu_mean": 23064.0,
+      "incremental_cu": 239054
     },
     {
       "kernel": "precomputed_powers",
       "columns": 80,
       "query_count": 36,
       "simulation_cu": [
-        366402,
-        366402,
-        366402,
-        366402,
-        366402
+        363463,
+        363463,
+        363463,
+        363463,
+        363463
       ],
-      "simulation_cu_mean": 366402.0,
-      "baseline_cu_mean": 28766.0,
-      "incremental_cu": 337636
+      "simulation_cu_mean": 363463.0,
+      "baseline_cu_mean": 28598.0,
+      "incremental_cu": 334865
     },
     {
       "kernel": "lazy_dot4",
       "columns": 64,
       "query_count": 32,
       "simulation_cu": [
-        173858,
-        173858,
-        173858,
-        173858,
-        173858
+        171769,
+        171769,
+        171769,
+        171769,
+        171769
       ],
-      "simulation_cu_mean": 173858.0,
-      "baseline_cu_mean": 23202.0,
-      "incremental_cu": 150656
+      "simulation_cu_mean": 171769.0,
+      "baseline_cu_mean": 23064.0,
+      "incremental_cu": 148705
     },
     {
       "kernel": "lazy_dot4",
       "columns": 80,
       "query_count": 36,
       "simulation_cu": [
-        239493,
-        239493,
-        239493,
-        239493,
-        239493
+        236554,
+        236554,
+        236554,
+        236554,
+        236554
       ],
-      "simulation_cu_mean": 239493.0,
-      "baseline_cu_mean": 28766.0,
-      "incremental_cu": 210727
+      "simulation_cu_mean": 236554.0,
+      "baseline_cu_mean": 28598.0,
+      "incremental_cu": 207956
     },
     {
       "kernel": "per_query_horner",
       "columns": 64,
       "query_count": 32,
       "simulation_cu": [
-        798429,
-        798429,
-        798429,
-        798429,
-        798429
+        796500,
+        796500,
+        796500,
+        796500,
+        796500
       ],
-      "simulation_cu_mean": 798429.0,
-      "baseline_cu_mean": 971.0,
-      "incremental_cu": 797458
+      "simulation_cu_mean": 796500.0,
+      "baseline_cu_mean": 961.0,
+      "incremental_cu": 795539
     },
     {
       "kernel": "per_query_horner",
       "columns": 80,
       "query_count": 36,
       "simulation_cu": [
-        1121373,
-        1121373,
-        1121373,
-        1121373,
-        1121373
+        1118630,
+        1118630,
+        1118630,
+        1118630,
+        1118630
       ],
-      "simulation_cu_mean": 1121373.0,
-      "baseline_cu_mean": 968.0,
-      "incremental_cu": 1120405
+      "simulation_cu_mean": 1118630.0,
+      "baseline_cu_mean": 960.0,
+      "incremental_cu": 1117670
     },
     {
       "kernel": "packed4_lazy_dot",
       "columns": 64,
       "query_count": 32,
       "simulation_cu": [
-        209549,
-        209549,
-        209549,
-        209549,
-        209549
+        208576,
+        208576,
+        208576,
+        208576,
+        208576
       ],
-      "simulation_cu_mean": 209549.0,
-      "baseline_cu_mean": 6530.0,
-      "incremental_cu": 203019
+      "simulation_cu_mean": 208576.0,
+      "baseline_cu_mean": 6484.0,
+      "incremental_cu": 202092
     },
     {
       "kernel": "packed4_lazy_dot",
       "columns": 80,
       "query_count": 36,
       "simulation_cu": [
-        290410,
-        290410,
-        290410,
-        290410,
-        290410
+        289027,
+        289027,
+        289027,
+        289027,
+        289027
       ],
-      "simulation_cu_mean": 290410.0,
-      "baseline_cu_mean": 7913.0,
-      "incremental_cu": 282497
+      "simulation_cu_mean": 289027.0,
+      "baseline_cu_mean": 7861.0,
+      "incremental_cu": 281166
     },
     {
       "kernel": "packed4_naive",
       "columns": 64,
       "query_count": 32,
       "simulation_cu": [
-        291930,
-        291930,
-        291930,
-        291930,
-        291930
+        290925,
+        290925,
+        290925,
+        290925,
+        290925
       ],
-      "simulation_cu_mean": 291930.0,
-      "baseline_cu_mean": 6530.0,
-      "incremental_cu": 285400
+      "simulation_cu_mean": 290925.0,
+      "baseline_cu_mean": 6484.0,
+      "incremental_cu": 284441
     },
     {
       "kernel": "packed4_naive",
       "columns": 80,
       "query_count": 36,
       "simulation_cu": [
-        407829,
-        407829,
-        407829,
-        407829,
-        407829
+        406410,
+        406410,
+        406410,
+        406410,
+        406410
       ],
-      "simulation_cu_mean": 407829.0,
-      "baseline_cu_mean": 7913.0,
-      "incremental_cu": 399916
+      "simulation_cu_mean": 406410.0,
+      "baseline_cu_mean": 7861.0,
+      "incremental_cu": 398549
     },
     {
       "kernel": "packed2_lazy_dot",
       "columns": 64,
       "query_count": 32,
       "simulation_cu": [
-        204561,
-        204561,
-        204561,
-        204561,
-        204561
+        202536,
+        202536,
+        202536,
+        202536,
+        202536
       ],
-      "simulation_cu_mean": 204561.0,
-      "baseline_cu_mean": 12098.0,
-      "incremental_cu": 192463
+      "simulation_cu_mean": 202536.0,
+      "baseline_cu_mean": 12024.0,
+      "incremental_cu": 190512
     },
     {
       "kernel": "packed2_lazy_dot",
       "columns": 80,
       "query_count": 36,
       "simulation_cu": [
-        283892,
-        283892,
-        283892,
-        283892,
-        283892
+        281033,
+        281033,
+        281033,
+        281033,
+        281033
       ],
-      "simulation_cu_mean": 283892.0,
-      "baseline_cu_mean": 14876.0,
-      "incremental_cu": 269016
+      "simulation_cu_mean": 281033.0,
+      "baseline_cu_mean": 14788.0,
+      "incremental_cu": 266245
     },
     {
       "kernel": "raw_u128_dot",
       "columns": 64,
       "query_count": 32,
       "simulation_cu": [
-        728762,
-        728762,
-        728762,
-        728762,
-        728762
+        726641,
+        726641,
+        726641,
+        726641,
+        726641
       ],
-      "simulation_cu_mean": 728762.0,
-      "baseline_cu_mean": 23202.0,
-      "incremental_cu": 705560
+      "simulation_cu_mean": 726641.0,
+      "baseline_cu_mean": 23064.0,
+      "incremental_cu": 703577
     },
     {
       "kernel": "raw_u128_dot",
       "columns": 80,
       "query_count": 36,
       "simulation_cu": [
-        1017761,
-        1017761,
-        1017761,
-        1017761,
-        1017761
+        1014786,
+        1014786,
+        1014786,
+        1014786,
+        1014786
       ],
-      "simulation_cu_mean": 1017761.0,
-      "baseline_cu_mean": 28766.0,
-      "incremental_cu": 988995
+      "simulation_cu_mean": 1014786.0,
+      "baseline_cu_mean": 28598.0,
+      "incremental_cu": 986188
     },
     {
       "kernel": "lazy_dot4_outer_lazy",
       "columns": 64,
       "query_count": 32,
       "simulation_cu": [
-        162970,
-        162970,
-        162970,
-        162970,
-        162970
+        160881,
+        160881,
+        160881,
+        160881,
+        160881
       ],
-      "simulation_cu_mean": 162970.0,
-      "baseline_cu_mean": 23202.0,
-      "incremental_cu": 139768
+      "simulation_cu_mean": 160881.0,
+      "baseline_cu_mean": 23064.0,
+      "incremental_cu": 137817
     },
     {
       "kernel": "lazy_dot4_outer_lazy",
       "columns": 80,
       "query_count": 36,
       "simulation_cu": [
-        223709,
-        223709,
-        223709,
-        223709,
-        223709
+        220770,
+        220770,
+        220770,
+        220770,
+        220770
       ],
-      "simulation_cu_mean": 223709.0,
-      "baseline_cu_mean": 28766.0,
-      "incremental_cu": 194943
+      "simulation_cu_mean": 220770.0,
+      "baseline_cu_mean": 28598.0,
+      "incremental_cu": 192172
     },
     {
       "kernel": "fixed80_outer_lazy",
       "columns": 80,
       "query_count": 36,
       "simulation_cu": [
-        202056,
-        202056,
-        202056,
-        202056,
-        202056
+        202046,
+        202046,
+        202046,
+        202046,
+        202046
       ],
-      "simulation_cu_mean": 202056.0,
-      "baseline_cu_mean": 28333.0,
+      "simulation_cu_mean": 202046.0,
+      "baseline_cu_mean": 28323.0,
       "incremental_cu": 173723
     },
     {
@@ -264,14 +264,14 @@
       "columns": 84,
       "query_count": 36,
       "simulation_cu": [
-        211867,
-        211867,
-        211867,
-        211867,
-        211867
+        211858,
+        211858,
+        211858,
+        211858,
+        211858
       ],
-      "simulation_cu_mean": 211867.0,
-      "baseline_cu_mean": 29723.0,
+      "simulation_cu_mean": 211858.0,
+      "baseline_cu_mean": 29714.0,
       "incremental_cu": 182144
     },
     {
@@ -279,14 +279,14 @@
       "columns": 67,
       "query_count": 36,
       "simulation_cu": [
-        171011,
-        171011,
-        171011,
-        171011,
-        171011
+        171005,
+        171005,
+        171005,
+        171005,
+        171005
       ],
-      "simulation_cu_mean": 171011.0,
-      "baseline_cu_mean": 23820.0,
+      "simulation_cu_mean": 171005.0,
+      "baseline_cu_mean": 23814.0,
       "incremental_cu": 147191
     },
     {
@@ -294,15 +294,45 @@
       "columns": 65,
       "query_count": 36,
       "simulation_cu": [
-        167868,
-        167868,
-        167868,
-        167868,
-        167868
+        167857,
+        167857,
+        167857,
+        167857,
+        167857
       ],
-      "simulation_cu_mean": 167868.0,
-      "baseline_cu_mean": 23130.0,
+      "simulation_cu_mean": 167857.0,
+      "baseline_cu_mean": 23119.0,
       "incremental_cu": 144738
+    },
+    {
+      "kernel": "fixed51_outer_lazy",
+      "columns": 51,
+      "query_count": 36,
+      "simulation_cu": [
+        131759,
+        131759,
+        131759,
+        131759,
+        131759
+      ],
+      "simulation_cu_mean": 131759.0,
+      "baseline_cu_mean": 18270.0,
+      "incremental_cu": 113489
+    },
+    {
+      "kernel": "fixed49_outer_lazy",
+      "columns": 49,
+      "query_count": 36,
+      "simulation_cu": [
+        128621,
+        128621,
+        128621,
+        128621,
+        128621
+      ],
+      "simulation_cu_mean": 128621.0,
+      "baseline_cu_mean": 17579.0,
+      "incremental_cu": 111042
     }
   ],
   "notes": [

@@ -1,0 +1,68 @@
+{
+  "generated_at_utc": "2026-07-10T17:23:45.608049+00:00",
+  "command": "cargo run --release -p aspis-xtask -- stage2-sumcheck-probe",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "repetitions": 5,
+  "baseline_cu_mean": 1557.0,
+  "synthetic_allowance_cu": 30000,
+  "variants": [
+    {
+      "name": "optimistic",
+      "rounds": 10,
+      "coefficients": 7,
+      "claims": 3,
+      "selector_terms": 16,
+      "selector_exceptions": 3,
+      "simulation_cu": [
+        67458,
+        67458,
+        67458,
+        67458,
+        67458
+      ],
+      "simulation_cu_mean": 67458.0,
+      "incremental_cu_over_baseline": 65901
+    },
+    {
+      "name": "central",
+      "rounds": 10,
+      "coefficients": 8,
+      "claims": 3,
+      "selector_terms": 24,
+      "selector_exceptions": 5,
+      "simulation_cu": [
+        85406,
+        85406,
+        85406,
+        85406,
+        85406
+      ],
+      "simulation_cu_mean": 85406.0,
+      "incremental_cu_over_baseline": 83849
+    },
+    {
+      "name": "pessimistic",
+      "rounds": 14,
+      "coefficients": 8,
+      "claims": 4,
+      "selector_terms": 48,
+      "selector_exceptions": 8,
+      "simulation_cu": [
+        145090,
+        145090,
+        145090,
+        145090,
+        145090
+      ],
+      "simulation_cu_mean": 145090.0,
+      "incremental_cu_over_baseline": 143533
+    }
+  ],
+  "central_replaces_allowance_cu": 83849,
+  "allowance_error_cu": 53849,
+  "notes": [
+    "Prices mu-batched zero claims, transcript-absorbed round messages with boundary checks and Horner terminal evaluation, and block-periodic selector evaluation with enumerated exception rows.",
+    "eq(r,z) and the composition C(v_1..v_k) are deliberately excluded: the constraint-composition probe already prices them; adding them here would double-count the seam.",
+    "The central incremental value REPLACES the synthetic 30,000-CU statement-sumcheck allowance in every projection from this artifact onward."
+  ]
+}
