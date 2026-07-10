@@ -128,6 +128,59 @@
       "strict_ceiling_survives_only_central_reading": true
     }
   },
+  "shrink_hunt": {
+    "doc": "../../docs/stage2-shrink-hunt.md",
+    "close_condition": "pre-registered: central projection + measured sumcheck <= 1,071,000 - half observed range at the final shape, multi-seed means",
+    "sumcheck_allowance_correction": {
+      "source": "sumcheck_probe.json",
+      "synthetic_allowance_cu": 30000,
+      "measured_central_cu": 83849,
+      "measured_optimistic_cu": 65901,
+      "measured_pessimistic_cu": 143533,
+      "allowance_error_cu": 53849,
+      "note": "Every projection block above this one carries the stale 30,000 allowance; this block supersedes them."
+    },
+    "adopted_package": {
+      "name": "r2_layout_refreeze_k51",
+      "layout": "2 Poseidon2 rounds per row, 16-row-aligned blocks (2^4 selector factoring), 784 of 1024 rows, k' = 51 = 32 state + 16 interface + 1 multiplicity + 2 helpers",
+      "measured_components_cu": {
+        "pcs_radix4_g32_single_draw": 678407,
+        "pcs_g16_16seed_mean": 676171,
+        "wide_leaf_k51": 9143,
+        "rlc_fixed51": 131759,
+        "composition_r2_central": 70954,
+        "composition_r2_stress_linear70": 88617,
+        "sumcheck_central": 83849
+      },
+      "projection_cu": {
+        "central": 974112,
+        "with_stress": 991775,
+        "with_worst_of_16_draw": 1029898,
+        "combined_worst": 1047561,
+        "pessimistic_sumcheck_combined_worst": 1107245
+      },
+      "close_condition_evaluation": "974,112 <= 1,071,000 - 27,893: PASSES by 68,995 CU; final-shape multi-seed re-check at integration as registered"
+    },
+    "optional_adders_cu": {
+      "q34_g36": {
+        "measured_pcs_saving_8seed_mean": 36629,
+        "q_linear_statement_scaling": 7850,
+        "proven_floor_bits": "65.5 -> 67.6",
+        "grind_cost": "2^36 SHA-256, ~30-80 minutes",
+        "status": "available, not adopted; requires the section-4 re-rule"
+      },
+      "flat_commit_deep_layers": { "estimate": "30000-33000 plus draw-spread reduction", "status": "engineering candidate, needs multi-seed remeasure and named root/KAT re-pin" },
+      "rlc_leaf_fusion": { "estimate": "10000-20000", "status": "kernel-only, measure-first" }
+    },
+    "priced_and_rejected": {
+      "logup_gkr": "net loss ~175K CU central on SBF (adds 268-427K in 78 degree-3 rounds vs deletes ~154K of C2); ePrint 2023/1284 defers its formal soundness proof; univariate-only claim language would force a post-chi commitment",
+      "stir_domain_halving": "~70-90K net for a full restructure plus a missing circle-code theory step; decline now priced",
+      "carried_fold": "measured anti-shrink +15,535 CU / +5,536 bytes at lr12",
+      "merkle_cap_truncation": "single-digit hashes; minimal-subtree already dedups the top",
+      "blowup_2pow3": "pin-flagged; not taken"
+    },
+    "layout_finding": "r=4's 6-row blocks do not factor over the Boolean cube, so section 5's O(2^b) block-periodic selector form was silently false for the k80 candidate; r=3 (2^3 blocks) and padded r=2 (2^4 blocks) make it true as written"
+  },
   "gate_decision": {
     "projection_status": "variance_and_bracket_conditional",
     "protocol_gate_status": "open",

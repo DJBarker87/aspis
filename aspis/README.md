@@ -32,15 +32,18 @@ first structured projection was `1,415,268` CU. Cached circle powers,
 conjugate denominators,
 specialized tower arithmetic, and lazy dots reduce the measured frozen binary
 PCS to `714,111` CU. A fresh literal radix-4 q36/g32 proof measures `678,407`
-CU. The lookup semantic oracle plus fixed-width RLC project a central path of
-`1,049,941` CU after the k'=83 recount, 21,059 below the strict slack
-ceiling — but the pre-registered 16-seed variance criterion fails
-(worst-of-16 range 55,786 CU) and the linear=128 stress row breaches the
-ceiling on its own, so the projection is variance-and-bracket-conditional;
-every reading, including the combined worst case, clears the 1.19M target.
-The LogUp proof and wide RLC are not integrated into one payment proof, so
-split verification remains the fallback; see `docs/stage2-feasibility.md`,
-`docs/aspis-soundness-note.md` §8, and `docs/solmath-zk-candidates.md`.
+CU. The pre-registered 16-seed variance criterion failed (range 55,786 CU), the
+linear=128 stress row failed, and the measured statement-sumcheck probe
+showed the 30,000-CU allowance was really 83,849 — so the shrink hunt ran
+with a pre-registered close condition and closed on measured arithmetic:
+the r=2 / k'=51 layout re-freeze (RLC 131,759, leaf 9,143, composition
+70,954) projects **974,112 CU central and 1,047,561 combined-worst, both
+under the strict 1,071,000 ceiling**. LogUp-GKR and STIR were priced
+against verified sources and rejected; q34/g36 (-44K, proven floor +2.1
+bits) stays available. The LogUp proof and wide RLC are still not
+integrated into one payment proof, so split verification remains the
+fallback; see `docs/stage2-shrink-hunt.md`, `docs/stage2-feasibility.md`,
+and `docs/aspis-soundness-note.md` §8.
 
 ## What this is (and is not)
 

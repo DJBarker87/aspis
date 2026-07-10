@@ -660,6 +660,20 @@ row, the selector reading for which cells are range-checked, and the final
 (m, w) for §5 are layout-freeze decisions; if any of them moves a number in
 this section, this section is re-dated before the gate note quotes it.
 
+**Selector-factoring correction (`2026-07-10`, shrink hunt).** The r=4
+candidate packs permutations into 6-row blocks, and 6-row periodicity does
+NOT factor over the low bits of the Boolean cube — §5's stated O(2^b)
+block-periodic selector evaluation was silently false for that reading.
+Power-of-two block alignment restores it: r=3 gives 2^3-aligned 8-row
+blocks (392 rows), r=2 padded blocks are 2^4-aligned (784 rows); r=1
+exceeds the 2^10 row cap. The shrink hunt's adopted candidate is the r=2
+/ k' = 51 shape (`docs/stage2-shrink-hunt.md`); at its layout freeze the
+k' pin moves to <= 52, T5' improves to ~118.3 bits, the copy multiset
+recount (~490 links) stays inside the m = 2^10 worst-case reading, and
+this section is re-dated. LogUp-GKR helper elimination was priced against
+verified sources and rejected as a net ~175K-CU loss on SBF; the analysis
+and abandon criterion are recorded in the hunt document.
+
 ---
 
 ## Appendix: hardening implementation queue (order fixed in review)

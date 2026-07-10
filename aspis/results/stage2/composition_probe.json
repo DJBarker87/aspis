@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-07-10T17:15:08.187784+00:00",
+  "generated_at_utc": "2026-07-10T17:23:49.734775+00:00",
   "command": "cargo run --release -p aspis-xtask -- stage2-composition-probe",
   "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
   "repetitions": 5,
@@ -273,6 +273,78 @@
       "rlc_delta_from_frozen_k64_cu": -23105,
       "projected_total_cu": 1274083,
       "headroom_vs_1_19m_cu": -84083,
+      "meets_10_percent_slack": false
+    },
+    {
+      "name": "r2_lookup_range_optimized",
+      "kernel": "structured_horner",
+      "parameters": {
+        "opened_values": 51,
+        "poseidon_sbox_terms": 32,
+        "poseidon_linear_terms": 38,
+        "logup_degree3_terms": 2,
+        "range_bit_terms": 0,
+        "eq_variables": 10
+      },
+      "host_qm31_multiplications": 226,
+      "host_qm31_by_cm31_multiplications": 0,
+      "host_additions_or_subtractions": 310,
+      "simulation_cu": [
+        93208,
+        93208,
+        93208,
+        93208,
+        93208
+      ],
+      "simulation_cu_mean": 93208.0,
+      "matching_rlc_only_cu": [
+        22254,
+        22254,
+        22254,
+        22254,
+        22254
+      ],
+      "matching_rlc_only_cu_mean": 22254.0,
+      "composition_incremental_cu_over_matching_rlc": 70954,
+      "rlc_delta_from_frozen_k64_cu": -29893,
+      "projected_total_cu": 1216147,
+      "headroom_vs_1_19m_cu": -26147,
+      "meets_10_percent_slack": false
+    },
+    {
+      "name": "r2_lookup_range_stress_linear70",
+      "kernel": "structured_horner",
+      "parameters": {
+        "opened_values": 51,
+        "poseidon_sbox_terms": 32,
+        "poseidon_linear_terms": 70,
+        "logup_degree3_terms": 2,
+        "range_bit_terms": 0,
+        "eq_variables": 10
+      },
+      "host_qm31_multiplications": 258,
+      "host_qm31_by_cm31_multiplications": 0,
+      "host_additions_or_subtractions": 470,
+      "simulation_cu": [
+        110871,
+        110871,
+        110871,
+        110871,
+        110871
+      ],
+      "simulation_cu_mean": 110871.0,
+      "matching_rlc_only_cu": [
+        22254,
+        22254,
+        22254,
+        22254,
+        22254
+      ],
+      "matching_rlc_only_cu_mean": 22254.0,
+      "composition_incremental_cu_over_matching_rlc": 88617,
+      "rlc_delta_from_frozen_k64_cu": -29893,
+      "projected_total_cu": 1233810,
+      "headroom_vs_1_19m_cu": -43810,
       "meets_10_percent_slack": false
     },
     {
