@@ -30,6 +30,16 @@ const PROOF_ACCOUNT_MAGIC: [u8; 4] = *b"ASPU";
 pub const PROOF_ACCOUNT_HEADER_LEN: usize = 40;
 const AUTHORITY_OFFSET: usize = 8;
 
+#[derive(Clone, Copy, Debug, BorshSerialize, BorshDeserialize)]
+pub enum ZkKernelKind {
+    M31InverseSoftware,
+    M31InverseSyscall,
+    Qm31SquareGeneric,
+    Qm31SquareSpecialized,
+    M31Pow2Generic,
+    M31Pow2Shift,
+}
+
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize)]
 pub enum AspisInstruction {
     /// Set the proof length header. Account must be pre-created with owner =
@@ -37,8 +47,15 @@ pub enum AspisInstruction {
     InitProof { total_len: u32 },
     /// Copy `chunk` into the proof body at `offset`.
     UploadChunk { offset: u32, chunk: Vec<u8> },
-    /// Verify the uploaded proof against `statement_digest`.
+    /// Verify the uploaded proof against `statement_digest` with the selected
+    /// cached-domain and unit-circle-conjugate kernels.
     Verify { statement_digest: [u8; 32] },
+    /// Compatibility alias for the optimized verifier, retained so existing
+    /// Stage-2 measurement transactions remain decodable.
+    VerifyFast { statement_digest: [u8; 32] },
+    /// Legacy batch-denominator verifier with `sol_big_mod_exp` supplying its
+    /// one M31 inverse per round. Measurement-only comparison path.
+    VerifySyscallInverse { statement_digest: [u8; 32] },
     /// Diagnostic verifier run with CU markers in the simulation logs.
     VerifyProfile { statement_digest: [u8; 32] },
     /// Synthetic wide-row layout probe for the Stage 2 layout decision.
@@ -66,6 +83,28 @@ pub enum AspisInstruction {
     },
     /// Pure-compute software Poseidon2-M31 permutation measurement.
     Poseidon2Probe { permutations: u16 },
+    /// The same permutation using lazy M31 linear layers and power-of-two
+    /// shifts. Kept as a separate instruction so the SBF delta is literal.
+    Poseidon2OptimizedProbe { permutations: u16 },
+    /// Microbench reusable field kernels proposed for a `solmath-zk` crate.
+    ZkKernelProbe { kind: ZkKernelKind, iterations: u16 },
+    /// Correct wide-column gamma RLC probe. Kernel 0 is precomputed powers,
+    /// 1 is a four-product lazy dot, 2 is per-query Horner, 3/4 pack four
+    /// M31 columns into QM31, 5 packs pairs into CM31, 6 uses whole-dot u128
+    /// accumulation, 7 lazily accumulates four-term block reductions, and 8
+    /// specializes that winner to fixed stack-backed k=80 tables.
+    WideRlcProbe {
+        columns: u16,
+        query_count: u16,
+        kernel: u8,
+    },
+    /// Synthetic minimal-subtree traversal with current binary nodes or
+    /// candidate radix-4 nodes. Leaf hashing is deliberately excluded.
+    MerkleArityProbe {
+        depth: u8,
+        query_count: u16,
+        arity: u8,
+    },
     /// Verify a claim-carrying proof. The (z, v) evaluation claim is a public
     /// input (16-byte LE QM31 coordinates + value), transcript-absorbed and
     /// enforced by the interleaved relation sumcheck.
@@ -74,16 +113,23 @@ pub enum AspisInstruction {
         claim_z: Vec<[u8; 16]>,
         claim_v: [u8; 16],
     },
+    /// Pre-optimization software-batch denominator path. Appended to preserve
+    /// every existing Borsh instruction discriminant; measurement only.
+    VerifyLegacySoftware { statement_digest: [u8; 32] },
 }
 
-fn run_poseidon2_probe(permutations: u16) -> ProgramResult {
+fn run_poseidon2_probe(permutations: u16, optimized: bool) -> ProgramResult {
     if permutations > 128 {
         return Err(ProgramError::InvalidInstructionData);
     }
     let mut state = core::array::from_fn(|index| aspis_core::field::M31(index as u32 + 1));
     for iteration in 0..permutations {
         state[0] = state[0].add(aspis_core::field::M31(iteration as u32 + 1));
-        aspis_statement::poseidon2::permute(&mut state);
+        if optimized {
+            aspis_statement::poseidon2::permute_optimized(&mut state);
+        } else {
+            aspis_statement::poseidon2::permute(&mut state);
+        }
     }
     if state[0] == aspis_core::field::M31::ZERO && permutations == u16::MAX {
         Err(ProgramError::InvalidInstructionData)
@@ -118,6 +164,289 @@ fn run_constraint_composition_probe(
         Err(ProgramError::InvalidInstructionData)
     } else {
         Ok(())
+    }
+}
+
+#[allow(unexpected_cfgs)]
+#[inline(always)]
+fn m31_inverse_syscall(value: aspis_core::field::M31) -> aspis_core::field::M31 {
+    #[cfg(target_os = "solana")]
+    {
+        #[repr(C)]
+        struct BigModExpParams {
+            base: *const u8,
+            base_len: u64,
+            exponent: *const u8,
+            exponent_len: u64,
+            modulus: *const u8,
+            modulus_len: u64,
+        }
+
+        let base = value.0.to_be_bytes();
+        let exponent = (aspis_core::field::P - 2).to_be_bytes();
+        let modulus = aspis_core::field::P.to_be_bytes();
+        let mut output = [0u8; 4];
+        let params = BigModExpParams {
+            base: base.as_ptr(),
+            base_len: base.len() as u64,
+            exponent: exponent.as_ptr(),
+            exponent_len: exponent.len() as u64,
+            modulus: modulus.as_ptr(),
+            modulus_len: modulus.len() as u64,
+        };
+        #[allow(deprecated)]
+        unsafe {
+            solana_program::syscalls::sol_big_mod_exp(
+                &params as *const _ as *const u8,
+                output.as_mut_ptr(),
+            );
+        }
+        aspis_core::field::M31(u32::from_be_bytes(output))
+    }
+    #[cfg(not(target_os = "solana"))]
+    {
+        value.inv()
+    }
+}
+
+fn run_zk_kernel_probe(kind: ZkKernelKind, iterations: u16) -> ProgramResult {
+    use aspis_core::field::{CM31, M31, QM31};
+
+    if iterations > 8_192 {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+    let mut scalar = M31(17);
+    let mut extension = QM31 {
+        c0: CM31::new(M31(3), M31(5)),
+        c1: CM31::new(M31(7), M31(11)),
+    };
+    for iteration in 0..iterations {
+        let step = M31(1 + iteration as u32 % 1_000);
+        match kind {
+            ZkKernelKind::M31InverseSoftware => {
+                scalar = scalar.add(step).inv();
+            }
+            ZkKernelKind::M31InverseSyscall => {
+                scalar = m31_inverse_syscall(scalar.add(step));
+            }
+            ZkKernelKind::Qm31SquareGeneric => {
+                extension.c0.a = extension.c0.a.add(step);
+                extension = extension.mul(extension);
+                scalar = scalar.add(extension.c0.a);
+            }
+            ZkKernelKind::Qm31SquareSpecialized => {
+                extension.c0.a = extension.c0.a.add(step);
+                extension = extension.square();
+                scalar = scalar.add(extension.c0.a);
+            }
+            ZkKernelKind::M31Pow2Generic => {
+                let shift = (iteration % 17) as u8;
+                scalar = scalar.add(step).mul(M31(1u32 << shift));
+            }
+            ZkKernelKind::M31Pow2Shift => {
+                let shift = (iteration % 17) as u8;
+                scalar = scalar.add(step).mul_pow2(shift);
+            }
+        }
+    }
+    if scalar == M31::ZERO {
+        Err(ProgramError::InvalidInstructionData)
+    } else {
+        Ok(())
+    }
+}
+
+fn run_wide_rlc_probe(columns: u16, query_count: u16, kernel: u8) -> ProgramResult {
+    use aspis_core::field::{
+        qm31_cm31_dot, qm31_dot, qm31_m31_dot, qm31_m31_dot_eager_outer, qm31_m31_dot_u128, CM31,
+        M31, QM31,
+    };
+
+    if columns == 0
+        || columns > 256
+        || query_count > 64
+        || kernel > 8
+        || (kernel == 8 && columns != 80)
+        || ((kernel == 3 || kernel == 4) && columns % 4 != 0)
+    {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+    let gamma = QM31 {
+        c0: CM31::new(M31(7), M31(11)),
+        c1: CM31::new(M31(13), M31(17)),
+    };
+    if kernel == 8 {
+        return run_wide_rlc_fixed80(query_count, gamma);
+    }
+    let coefficient_count = if kernel == 5 {
+        columns / 2
+    } else if kernel == 3 || kernel == 4 {
+        columns / 4
+    } else {
+        columns
+    };
+    let mut powers = Vec::with_capacity(coefficient_count as usize);
+    if kernel != 2 {
+        let mut power = QM31::ONE;
+        for _ in 0..coefficient_count {
+            powers.push(power);
+            power = power.mul(gamma);
+        }
+    }
+    let mut values = Vec::with_capacity(columns as usize);
+    let mut packed_values = Vec::with_capacity((columns / 4) as usize);
+    let mut paired_values = Vec::with_capacity((columns / 2) as usize);
+    let mut sink = QM31::ONE;
+    for query in 0..query_count {
+        values.clear();
+        for column in 0..columns {
+            let seed = 1 + (query as u32 * 131 + column as u32 * 17) % 1_000_000;
+            values.push(M31(seed));
+        }
+        if kernel == 5 {
+            paired_values.clear();
+            for chunk in values.chunks_exact(2) {
+                paired_values.push(CM31::new(chunk[0], chunk[1]));
+            }
+        } else if kernel == 3 || kernel == 4 {
+            packed_values.clear();
+            for chunk in values.chunks_exact(4) {
+                packed_values.push(QM31 {
+                    c0: CM31::new(chunk[0], chunk[1]),
+                    c1: CM31::new(chunk[2], chunk[3]),
+                });
+            }
+        }
+        let rlc = match kernel {
+            0 => powers
+                .iter()
+                .zip(&values)
+                .fold(QM31::ZERO, |sum, (power, value)| {
+                    sum.add(power.mul_m31(*value))
+                }),
+            1 => qm31_m31_dot_eager_outer(&powers, &values),
+            2 => values.iter().rev().fold(QM31::ZERO, |accumulator, value| {
+                accumulator
+                    .mul(gamma)
+                    .add(QM31::from_cm31(CM31::from_m31(*value)))
+            }),
+            3 => qm31_dot(&powers, &packed_values),
+            4 => powers
+                .iter()
+                .zip(&packed_values)
+                .fold(QM31::ZERO, |sum, (power, value)| sum.add(power.mul(*value))),
+            5 => qm31_cm31_dot(&powers, &paired_values),
+            6 => qm31_m31_dot_u128(&powers, &values),
+            7 => qm31_m31_dot(&powers, &values),
+            _ => unreachable!(),
+        };
+        sink = sink.add(rlc);
+    }
+    if sink == QM31::ZERO {
+        Err(ProgramError::InvalidInstructionData)
+    } else {
+        Ok(())
+    }
+}
+
+#[inline(never)]
+fn run_wide_rlc_fixed80(query_count: u16, gamma: aspis_core::field::QM31) -> ProgramResult {
+    use aspis_core::field::{qm31_m31_dot, qm31_power_table, M31, QM31};
+
+    let powers = qm31_power_table::<80>(gamma);
+    let mut values = [M31::ZERO; 80];
+    let mut sink = QM31::ONE;
+    for query in 0..query_count {
+        for (column, value) in values.iter_mut().enumerate() {
+            let seed = 1 + (query as u32 * 131 + column as u32 * 17) % 1_000_000;
+            *value = M31(seed);
+        }
+        sink = sink.add(qm31_m31_dot(&powers, &values));
+    }
+    if sink == QM31::ZERO {
+        Err(ProgramError::InvalidInstructionData)
+    } else {
+        Ok(())
+    }
+}
+
+fn run_merkle_arity_probe(depth: u8, query_count: u16, arity: u8) -> ProgramResult {
+    if depth == 0
+        || depth > 16
+        || query_count == 0
+        || query_count > 64
+        || (arity != 2 && arity != 4)
+        || (arity == 4 && depth % 2 != 0)
+    {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+    let mask = (1u32 << depth) - 1;
+    let mut level = Vec::with_capacity(query_count as usize);
+    for query in 0..query_count {
+        let index = (query as u32)
+            .wrapping_mul(0x9e37_79b9)
+            .wrapping_add(0x7f4a_7c15)
+            & mask;
+        let mut value = [0u8; 32];
+        value[0..4].copy_from_slice(&index.to_le_bytes());
+        level.push((index, value));
+    }
+    level.sort_unstable_by_key(|entry| entry.0);
+    level.dedup_by_key(|entry| entry.0);
+    let mut next = Vec::with_capacity(level.len());
+    if arity == 2 {
+        for _ in 0..depth {
+            next.clear();
+            let mut position = 0usize;
+            while position < level.len() {
+                let (index, hash) = level[position];
+                let parent = if index & 1 == 0
+                    && position + 1 < level.len()
+                    && level[position + 1].0 == index + 1
+                {
+                    let parent =
+                        aspis_core::merkle::node_hash(sbf_hashv, &hash, &level[position + 1].1);
+                    position += 2;
+                    parent
+                } else {
+                    let sibling = [0u8; 32];
+                    position += 1;
+                    if index & 1 == 0 {
+                        aspis_core::merkle::node_hash(sbf_hashv, &hash, &sibling)
+                    } else {
+                        aspis_core::merkle::node_hash(sbf_hashv, &sibling, &hash)
+                    }
+                };
+                next.push((index >> 1, parent));
+            }
+            core::mem::swap(&mut level, &mut next);
+        }
+    } else {
+        for _ in 0..depth / 2 {
+            next.clear();
+            let mut position = 0usize;
+            while position < level.len() {
+                let parent_index = level[position].0 >> 2;
+                let mut children = [[0u8; 32]; 4];
+                while position < level.len() && level[position].0 >> 2 == parent_index {
+                    let slot = (level[position].0 & 3) as usize;
+                    children[slot] = level[position].1;
+                    position += 1;
+                }
+                let mut input = [0u8; 129];
+                input[0] = 0x12;
+                for (slot, child) in children.iter().enumerate() {
+                    input[1 + slot * 32..1 + (slot + 1) * 32].copy_from_slice(child);
+                }
+                next.push((parent_index, sbf_hashv(&[&input])));
+            }
+            core::mem::swap(&mut level, &mut next);
+        }
+    }
+    if level.len() == 1 && level[0].1 != [0u8; 32] {
+        Ok(())
+    } else {
+        Err(ProgramError::InvalidInstructionData)
     }
 }
 
@@ -221,6 +550,7 @@ fn verify_uploaded_proof(
     statement_digest: [u8; 32],
     claim: Option<&aspis_core::EvaluationClaim>,
     profile_cu: bool,
+    denominator_mode: u8,
 ) -> ProgramResult {
     let data = proof_account.try_borrow_data()?;
     let total_len = proof_len(&data)?;
@@ -236,13 +566,33 @@ fn verify_uploaded_proof(
     } else {
         None
     };
-    let result = aspis_core::verify_with_claim_and_trace(
-        proof,
-        &statement_digest,
-        claim,
-        sbf_hashv,
-        trace_fn,
-    );
+    let result = if denominator_mode == 2 {
+        aspis_core::verify_with_claim_trace_and_inverse(
+            proof,
+            &statement_digest,
+            claim,
+            sbf_hashv,
+            trace_fn,
+            m31_inverse_syscall,
+        )
+    } else if denominator_mode == 1 {
+        aspis_core::verify_with_claim_and_trace(
+            proof,
+            &statement_digest,
+            claim,
+            sbf_hashv,
+            trace_fn,
+        )
+    } else {
+        aspis_core::verify_with_claim_trace_and_inverse(
+            proof,
+            &statement_digest,
+            claim,
+            sbf_hashv,
+            trace_fn,
+            aspis_core::field::M31::inv,
+        )
+    };
     match result {
         Ok(()) => {
             msg!("aspis: proof accepted");
@@ -324,7 +674,29 @@ pub fn process_instruction(
         );
     }
     if let AspisInstruction::Poseidon2Probe { permutations } = instruction {
-        return run_poseidon2_probe(permutations);
+        return run_poseidon2_probe(permutations, false);
+    }
+    if let AspisInstruction::Poseidon2OptimizedProbe { permutations } = instruction {
+        return run_poseidon2_probe(permutations, true);
+    }
+    if let AspisInstruction::ZkKernelProbe { kind, iterations } = instruction {
+        return run_zk_kernel_probe(kind, iterations);
+    }
+    if let AspisInstruction::WideRlcProbe {
+        columns,
+        query_count,
+        kernel,
+    } = instruction
+    {
+        return run_wide_rlc_probe(columns, query_count, kernel);
+    }
+    if let AspisInstruction::MerkleArityProbe {
+        depth,
+        query_count,
+        arity,
+    } = instruction
+    {
+        return run_merkle_arity_probe(depth, query_count, arity);
     }
 
     let account_iter = &mut accounts.iter();
@@ -376,10 +748,16 @@ pub fn process_instruction(
             Ok(())
         }
         AspisInstruction::Verify { statement_digest } => {
-            verify_uploaded_proof(proof_account, statement_digest, None, false)
+            verify_uploaded_proof(proof_account, statement_digest, None, false, 1)
+        }
+        AspisInstruction::VerifyFast { statement_digest } => {
+            verify_uploaded_proof(proof_account, statement_digest, None, false, 1)
+        }
+        AspisInstruction::VerifySyscallInverse { statement_digest } => {
+            verify_uploaded_proof(proof_account, statement_digest, None, false, 2)
         }
         AspisInstruction::VerifyProfile { statement_digest } => {
-            verify_uploaded_proof(proof_account, statement_digest, None, true)
+            verify_uploaded_proof(proof_account, statement_digest, None, true, 1)
         }
         AspisInstruction::VerifyWithClaim {
             statement_digest,
@@ -394,7 +772,10 @@ pub fn process_instruction(
             let v = aspis_core::field::QM31::from_le_bytes(&claim_v)
                 .ok_or(ProgramError::InvalidInstructionData)?;
             let claim = aspis_core::EvaluationClaim { z, v };
-            verify_uploaded_proof(proof_account, statement_digest, Some(&claim), false)
+            verify_uploaded_proof(proof_account, statement_digest, Some(&claim), false, 1)
+        }
+        AspisInstruction::VerifyLegacySoftware { statement_digest } => {
+            verify_uploaded_proof(proof_account, statement_digest, None, false, 0)
         }
         AspisInstruction::LayoutProbe {
             log_rows,
@@ -406,6 +787,10 @@ pub fn process_instruction(
         AspisInstruction::TranscriptKat { .. } => unreachable!(),
         AspisInstruction::ConstraintCompositionProbe { .. } => unreachable!(),
         AspisInstruction::Poseidon2Probe { .. } => unreachable!(),
+        AspisInstruction::Poseidon2OptimizedProbe { .. } => unreachable!(),
+        AspisInstruction::ZkKernelProbe { .. } => unreachable!(),
+        AspisInstruction::WideRlcProbe { .. } => unreachable!(),
+        AspisInstruction::MerkleArityProbe { .. } => unreachable!(),
     }
 }
 
@@ -434,11 +819,66 @@ mod tests {
 
     #[test]
     fn poseidon2_probe_requires_no_accounts() {
-        let instruction = AspisInstruction::Poseidon2Probe { permutations: 2 };
-        assert_eq!(
-            process_instruction(&id(), &[], &borsh::to_vec(&instruction).unwrap()),
-            Ok(())
-        );
+        for instruction in [
+            AspisInstruction::Poseidon2Probe { permutations: 2 },
+            AspisInstruction::Poseidon2OptimizedProbe { permutations: 2 },
+        ] {
+            assert_eq!(
+                process_instruction(&id(), &[], &borsh::to_vec(&instruction).unwrap()),
+                Ok(())
+            );
+        }
+    }
+
+    #[test]
+    fn zk_kernel_probes_require_no_accounts() {
+        for kind in [
+            ZkKernelKind::M31InverseSoftware,
+            ZkKernelKind::M31InverseSyscall,
+            ZkKernelKind::Qm31SquareGeneric,
+            ZkKernelKind::Qm31SquareSpecialized,
+            ZkKernelKind::M31Pow2Generic,
+            ZkKernelKind::M31Pow2Shift,
+        ] {
+            let instruction = AspisInstruction::ZkKernelProbe {
+                kind,
+                iterations: 8,
+            };
+            assert_eq!(
+                process_instruction(&id(), &[], &borsh::to_vec(&instruction).unwrap()),
+                Ok(())
+            );
+        }
+    }
+
+    #[test]
+    fn wide_rlc_kernels_require_no_accounts() {
+        for kernel in 0..=6 {
+            let instruction = AspisInstruction::WideRlcProbe {
+                columns: 8,
+                query_count: 3,
+                kernel,
+            };
+            assert_eq!(
+                process_instruction(&id(), &[], &borsh::to_vec(&instruction).unwrap()),
+                Ok(())
+            );
+        }
+    }
+
+    #[test]
+    fn merkle_arity_probes_require_no_accounts() {
+        for arity in [2, 4] {
+            let instruction = AspisInstruction::MerkleArityProbe {
+                depth: 10,
+                query_count: 8,
+                arity,
+            };
+            assert_eq!(
+                process_instruction(&id(), &[], &borsh::to_vec(&instruction).unwrap()),
+                Ok(())
+            );
+        }
     }
 
     fn make_account<'a>(

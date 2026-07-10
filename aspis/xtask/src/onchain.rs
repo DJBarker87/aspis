@@ -14,7 +14,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, bail, ensure, Context, Result};
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use borsh::to_vec;
 use serde::Serialize;
@@ -41,7 +41,7 @@ use aspis_core::{FoldPayload, MerkleMode, Profile};
 use aspis_prover::{
     prove, prove_with_synthetic_second_phase, seeded_coeffs, ProveOptions, HOST_HASH,
 };
-use aspis_verifier::{AspisInstruction, PROOF_ACCOUNT_HEADER_LEN};
+use aspis_verifier::{AspisInstruction, ZkKernelKind, PROOF_ACCOUNT_HEADER_LEN};
 
 const UPLOAD_CHUNK_BYTES: usize = 640;
 const VERIFY_CU_LIMIT: u32 = 1_400_000;
@@ -128,6 +128,10 @@ pub struct Stage2LayoutVariant {
     pub simulation_cu: Vec<u64>,
     pub simulation_cu_mean: f64,
     pub delta_vs_k64_cu: i64,
+    pub diagnostic_markers: Vec<CuMarker>,
+    pub wide_leaf_hash_cu: Option<i64>,
+    pub synthetic_merkle_cu: Option<i64>,
+    pub obsolete_same_gamma_rlc_cu: Option<i64>,
 }
 
 #[derive(Serialize)]
@@ -144,6 +148,7 @@ pub struct Stage2LayoutSummary {
 
 #[derive(Serialize)]
 pub struct Poseidon2ProbeVariant {
+    pub implementation: &'static str,
     pub permutations: u16,
     pub simulation_cu: Vec<Option<u64>>,
     pub simulation_errors: Vec<Option<String>>,
@@ -161,6 +166,140 @@ pub struct Poseidon2ProbeSummary {
     pub variants: Vec<Poseidon2ProbeVariant>,
     pub measured_incremental_cu_per_permutation_from_8: Option<f64>,
     pub notes: Vec<String>,
+}
+
+#[derive(Serialize)]
+pub struct ZkKernelProbeVariant {
+    pub kernel: &'static str,
+    pub iterations: u16,
+    pub simulation_cu: Vec<u64>,
+    pub simulation_cu_mean: f64,
+    pub incremental_cu_over_zero: i64,
+    pub incremental_cu_per_iteration: f64,
+}
+
+#[derive(Serialize)]
+pub struct ZkKernelProbeSummary {
+    pub generated_at_utc: String,
+    pub command: String,
+    pub validator_version: String,
+    pub repetitions: usize,
+    pub variants: Vec<ZkKernelProbeVariant>,
+    pub full_pcs_verifier: FullPcsVerifierComparison,
+    pub notes: Vec<String>,
+}
+
+#[derive(Serialize)]
+pub struct WideRlcProbeVariant {
+    pub kernel: &'static str,
+    pub columns: u16,
+    pub query_count: u16,
+    pub simulation_cu: Vec<u64>,
+    pub simulation_cu_mean: f64,
+    pub baseline_cu_mean: f64,
+    pub incremental_cu: i64,
+}
+
+#[derive(Serialize)]
+pub struct WideRlcProbeSummary {
+    pub generated_at_utc: String,
+    pub command: String,
+    pub validator_version: String,
+    pub repetitions: usize,
+    pub variants: Vec<WideRlcProbeVariant>,
+    pub notes: Vec<String>,
+}
+
+#[derive(Serialize)]
+pub struct MerkleArityProbePoint {
+    pub tree: &'static str,
+    pub depth: u8,
+    pub query_count: u16,
+    pub binary_cu: Vec<u64>,
+    pub binary_cu_mean: f64,
+    pub radix4_cu: Vec<u64>,
+    pub radix4_cu_mean: f64,
+    pub radix4_savings_cu: i64,
+}
+
+#[derive(Serialize)]
+pub struct MerkleArityProbeSummary {
+    pub generated_at_utc: String,
+    pub command: String,
+    pub validator_version: String,
+    pub repetitions: usize,
+    pub points: Vec<MerkleArityProbePoint>,
+    pub modeled_binary_total_cu: i64,
+    pub modeled_radix4_total_cu: i64,
+    pub modeled_radix4_savings_cu: i64,
+    pub notes: Vec<String>,
+}
+
+#[derive(Serialize)]
+pub struct Radix4ProofVariant {
+    pub merkle_mode: &'static str,
+    pub proof_bytes: usize,
+    pub proof_sha256: String,
+    pub verify_fast_cu: Vec<u64>,
+    pub verify_fast_cu_mean: f64,
+    pub host_corruption_cases: usize,
+    pub host_corruption_all_rejected: bool,
+}
+
+#[derive(Serialize)]
+pub struct Radix4G16Summary {
+    pub generated_at_utc: String,
+    pub command: String,
+    pub validator_version: String,
+    pub profile: &'static str,
+    pub repetitions: usize,
+    pub second_phase_enabled: bool,
+    pub variants: Vec<Radix4ProofVariant>,
+    pub radix4_savings_cu: i64,
+    pub radix4_savings_percent: f64,
+    pub radix4_proof_bytes_delta: i64,
+    pub radix4_frontier_corruption_rejected_host: bool,
+    pub radix4_frontier_corruption_rejected_sbf: bool,
+    pub notes: Vec<String>,
+}
+
+#[derive(Serialize)]
+pub struct Radix4G32Summary {
+    pub generated_at_utc: String,
+    pub command: String,
+    pub validator_version: String,
+    pub profile: &'static str,
+    pub repetitions: usize,
+    pub binary_proof_source: String,
+    pub radix4_proof_source: String,
+    pub radix4_generation_seconds: Option<f64>,
+    pub binary_first_root: String,
+    pub radix4_first_root: String,
+    pub root_changed: bool,
+    pub transcript_kat_unchanged: bool,
+    pub variants: Vec<Radix4ProofVariant>,
+    pub radix4_savings_cu: i64,
+    pub radix4_savings_percent: f64,
+    pub radix4_proof_bytes_delta: i64,
+    pub radix4_frontier_corruption_rejected_host: bool,
+    pub radix4_frontier_corruption_rejected_sbf: bool,
+    pub notes: Vec<String>,
+}
+
+#[derive(Serialize)]
+pub struct FullPcsVerifierComparison {
+    pub profile: &'static str,
+    pub proof_bytes: usize,
+    pub software_inverse_cu: Vec<u64>,
+    pub software_inverse_cu_mean: f64,
+    pub syscall_inverse_cu: Vec<u64>,
+    pub syscall_inverse_cu_mean: f64,
+    pub syscall_savings_cu: i64,
+    pub circle_conjugate_cu: Vec<u64>,
+    pub circle_conjugate_cu_mean: f64,
+    pub circle_conjugate_savings_vs_software_cu: i64,
+    pub diagnostic_profile_cu: Option<u64>,
+    pub diagnostic_profile_markers: Vec<CuMarker>,
 }
 
 struct Validator {
@@ -1095,6 +1234,20 @@ pub fn run_stage2_composition_probe() -> Result<CompositionProbeSummary> {
             true,
         ),
         (
+            "evaluator_low_lookup_range_optimized",
+            aspis_statement::CompositionProbe {
+                opened_values: 80,
+                poseidon_sbox_terms: 64,
+                // Six 10-bit limbs reconstruct the two bounded values.
+                poseidon_linear_terms: 70,
+                // Wiring LogUp plus a 10-bit fixed-table range LogUp.
+                logup_degree3_terms: 2,
+                range_bit_terms: 0,
+                eq_variables: 10,
+            },
+            true,
+        ),
+        (
             "realistic",
             aspis_statement::CompositionProbe::REALISTIC,
             false,
@@ -1179,6 +1332,7 @@ pub fn run_stage2_composition_probe() -> Result<CompositionProbeSummary> {
             "Synthetic bracket only: runtime term counts are explicit and must be replaced/confirmed by the evaluator-derived layout.".to_string(),
             "Composition deltas subtract a matching RLC-only run so the gamma RLC already represented in the frozen 201,114-CU layout allowance is not double-counted. Projected totals add the measured k64-to-k' RLC delta and composition-only delta to 1,175,086 CU.".to_string(),
             "Wide-leaf hashing for k'=80 is not updated by this arithmetic-only probe; it is measured separately before a final product decision.".to_string(),
+            "The lookup-range candidate replaces 64 Boolean terms with six 10-bit limbs, one additional LogUp relation, and six reconstruction terms. It is an isolated cost candidate, not yet a frozen statement rule.".to_string(),
             "The 10% slack maximum is 1,071,000 CU. The frozen pre-composition projection already exceeds it by 104,086 CU, so no positive composition result can pass that gate without a named reclaim or rule change.".to_string(),
         ],
     })
@@ -1232,18 +1386,37 @@ pub fn run_stage2_layout_probe() -> Result<Stage2LayoutSummary> {
             units.push(run_units.context("stage2 layout probe did not report units")?);
         }
         let mean = units.iter().sum::<u64>() as f64 / units.len() as f64;
-        raw.push((columns, leaf_bytes, units, mean));
+        let diagnostic = rpc.simulate_verbose(&transaction)?;
+        anyhow::ensure!(
+            diagnostic.err.is_none(),
+            "stage2 layout diagnostic failed: {:?}",
+            diagnostic.err
+        );
+        let markers = parse_cu_markers(&diagnostic.logs, "aspis-layout:");
+        raw.push((columns, leaf_bytes, units, mean, markers));
     }
     let baseline = raw[0].3;
     let variants = raw
         .into_iter()
         .map(
-            |(columns, leaf_bytes, simulation_cu, simulation_cu_mean)| Stage2LayoutVariant {
-                columns,
-                leaf_bytes,
-                simulation_cu,
-                simulation_cu_mean,
-                delta_vs_k64_cu: (simulation_cu_mean - baseline).round() as i64,
+            |(columns, leaf_bytes, simulation_cu, simulation_cu_mean, diagnostic_markers)| {
+                let marker_delta = |label: &str| {
+                    diagnostic_markers
+                        .iter()
+                        .find(|marker| marker.label == label)
+                        .and_then(|marker| marker.delta_from_previous)
+                };
+                Stage2LayoutVariant {
+                    columns,
+                    leaf_bytes,
+                    simulation_cu,
+                    simulation_cu_mean,
+                    delta_vs_k64_cu: (simulation_cu_mean - baseline).round() as i64,
+                    wide_leaf_hash_cu: marker_delta("leaf_hash_done"),
+                    synthetic_merkle_cu: marker_delta("merkle_done"),
+                    obsolete_same_gamma_rlc_cu: marker_delta("rlc_done"),
+                    diagnostic_markers,
+                }
             },
         )
         .collect();
@@ -1257,9 +1430,9 @@ pub fn run_stage2_layout_probe() -> Result<Stage2LayoutSummary> {
         repetitions: REPETITIONS,
         variants,
         notes: vec![
-            "Synthetic SHA-256 wide-leaf/path plus QM31 gamma-RLC probe, re-run at the evaluator's candidate k'=80 with the same q36/lr10 geometry.".to_string(),
-            "Only the k80-minus-k64 delta is applied to the frozen 201,114-CU allowance; the absolute probe is not added to the PCS because that would double-count path hashing.".to_string(),
-            "This confirms the layout lever at the real candidate k but is not an integrated wide-row PCS measurement.".to_string(),
+            "The leaf-hash and synthetic path markers remain useful for k80/q36 geometry. The historical RLC marker is explicitly obsolete because that loop multiplies every column by the same gamma rather than gamma powers.".to_string(),
+            "Use results/stage2/wide_rlc_probe.json for the correct q-by-k RLC; lazy_dot4 is the measured winner. Do not quote the old k80-minus-k64 total as an RLC projection.".to_string(),
+            "This is still not an integrated wide-row PCS measurement.".to_string(),
         ],
     })
 }
@@ -1280,54 +1453,73 @@ pub fn run_stage2_poseidon2_probe() -> Result<Poseidon2ProbeSummary> {
     rpc.airdrop_and_wait(&payer.pubkey(), LAMPORTS_PER_SOL)?;
 
     let mut variants = Vec::new();
-    for permutations in [0u16, 1, 8, 49, 73] {
-        let instruction = Instruction {
-            program_id: aspis_verifier::id(),
-            accounts: vec![],
-            data: to_vec(&AspisInstruction::Poseidon2Probe { permutations })?,
-        };
-        let blockhash = rpc.latest_blockhash()?;
-        let transaction = Transaction::new_signed_with_payer(
-            &[
-                ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
-                instruction,
-            ],
-            Some(&payer.pubkey()),
-            &[&payer],
-            blockhash,
-        );
-        let mut simulation_cu = Vec::new();
-        let mut simulation_errors = Vec::new();
-        for _ in 0..REPETITIONS {
-            let (units, error) = rpc.simulate(&transaction)?;
-            simulation_cu.push(units);
-            simulation_errors.push(error);
+    for (implementation, optimized) in [("canonical", false), ("lazy_m31", true)] {
+        for permutations in [0u16, 1, 8, 49, 73] {
+            let probe = if optimized {
+                AspisInstruction::Poseidon2OptimizedProbe { permutations }
+            } else {
+                AspisInstruction::Poseidon2Probe { permutations }
+            };
+            let instruction = Instruction {
+                program_id: aspis_verifier::id(),
+                accounts: vec![],
+                data: to_vec(&probe)?,
+            };
+            let blockhash = rpc.latest_blockhash()?;
+            let transaction = Transaction::new_signed_with_payer(
+                &[
+                    ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+                    instruction,
+                ],
+                Some(&payer.pubkey()),
+                &[&payer],
+                blockhash,
+            );
+            let mut simulation_cu = Vec::new();
+            let mut simulation_errors = Vec::new();
+            for _ in 0..REPETITIONS {
+                let (units, error) = rpc.simulate(&transaction)?;
+                simulation_cu.push(units);
+                simulation_errors.push(error);
+            }
+            let accepted_all = simulation_errors.iter().all(Option::is_none);
+            let mean = if accepted_all {
+                Some(
+                    simulation_cu.iter().flatten().sum::<u64>() as f64 / simulation_cu.len() as f64,
+                )
+            } else {
+                None
+            };
+            variants.push(Poseidon2ProbeVariant {
+                implementation,
+                permutations,
+                simulation_cu,
+                simulation_errors,
+                accepted_all,
+                mean_cu_if_accepted: mean,
+                incremental_cu_over_zero_if_accepted: None,
+            });
         }
-        let accepted_all = simulation_errors.iter().all(Option::is_none);
-        let mean = if accepted_all {
-            Some(simulation_cu.iter().flatten().sum::<u64>() as f64 / simulation_cu.len() as f64)
-        } else {
-            None
-        };
-        variants.push(Poseidon2ProbeVariant {
-            permutations,
-            simulation_cu,
-            simulation_errors,
-            accepted_all,
-            mean_cu_if_accepted: mean,
-            incremental_cu_over_zero_if_accepted: None,
-        });
     }
-    let zero = variants[0].mean_cu_if_accepted;
-    for variant in &mut variants {
-        variant.incremental_cu_over_zero_if_accepted = match (variant.mean_cu_if_accepted, zero) {
-            (Some(mean), Some(zero)) => Some((mean - zero).round() as i64),
-            _ => None,
-        };
+    for implementation in ["canonical", "lazy_m31"] {
+        let zero = variants
+            .iter()
+            .find(|variant| variant.implementation == implementation && variant.permutations == 0)
+            .and_then(|variant| variant.mean_cu_if_accepted);
+        for variant in variants
+            .iter_mut()
+            .filter(|variant| variant.implementation == implementation)
+        {
+            variant.incremental_cu_over_zero_if_accepted = match (variant.mean_cu_if_accepted, zero)
+            {
+                (Some(mean), Some(zero)) => Some((mean - zero).round() as i64),
+                _ => None,
+            };
+        }
     }
     let per_permutation = variants
         .iter()
-        .find(|variant| variant.permutations == 8)
+        .find(|variant| variant.implementation == "lazy_m31" && variant.permutations == 8)
         .and_then(|variant| variant.incremental_cu_over_zero_if_accepted)
         .map(|delta| delta as f64 / 8.0);
 
@@ -1339,9 +1531,695 @@ pub fn run_stage2_poseidon2_probe() -> Result<Poseidon2ProbeSummary> {
         variants,
         measured_incremental_cu_per_permutation_from_8: per_permutation,
         notes: vec![
-            "Pure software Poseidon2-M31 width-16 permutation using the exact p3-mersenne-31 0.6.1 constants and scalar M31 implementation shared with the evaluator.".to_string(),
+            "Canonical and lazy-M31 software Poseidon2 width-16 permutations use the exact p3-mersenne-31 0.6.1 constants; differential tests require identical outputs.".to_string(),
+            "The lazy-M31 candidate reduces each linear-layer output once and replaces partial-round power-of-two multiplications with shifts. It is the first measured solmath-zk kernel candidate.".to_string(),
             "49 permutations is the depth-20 SpendV0 evaluator schedule; 73 is the depth-32 sensitivity. A capped run is recorded as a failure, not extrapolated into an accepted measurement.".to_string(),
             "This is deposit/direct-evaluator cost evidence, not proof-verifier constraint-composition cost.".to_string(),
+        ],
+    })
+}
+
+/// Measure small reusable field kernels before they become a standalone
+/// `solmath-zk` API. Every point subtracts a zero-iteration instruction with
+/// the same enum variant and dispatch path.
+pub fn run_stage2_zk_kernel_probe() -> Result<ZkKernelProbeSummary> {
+    const REPETITIONS: usize = 5;
+    let root = workspace_root()?;
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), LAMPORTS_PER_SOL)?;
+
+    let kernels = [
+        ("m31_inverse_software", ZkKernelKind::M31InverseSoftware, 32),
+        ("m31_inverse_syscall", ZkKernelKind::M31InverseSyscall, 32),
+        ("qm31_square_generic", ZkKernelKind::Qm31SquareGeneric, 512),
+        (
+            "qm31_square_specialized",
+            ZkKernelKind::Qm31SquareSpecialized,
+            512,
+        ),
+        ("m31_pow2_generic", ZkKernelKind::M31Pow2Generic, 4_096),
+        ("m31_pow2_shift", ZkKernelKind::M31Pow2Shift, 4_096),
+    ];
+    let mut variants = Vec::new();
+    for (kernel, kind, iterations) in kernels {
+        let mut means = Vec::new();
+        let mut samples_by_count = Vec::new();
+        for count in [0, iterations] {
+            let instruction = Instruction {
+                program_id: aspis_verifier::id(),
+                accounts: vec![],
+                data: to_vec(&AspisInstruction::ZkKernelProbe {
+                    kind,
+                    iterations: count,
+                })?,
+            };
+            let blockhash = rpc.latest_blockhash()?;
+            let transaction = Transaction::new_signed_with_payer(
+                &[
+                    ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+                    instruction,
+                ],
+                Some(&payer.pubkey()),
+                &[&payer],
+                blockhash,
+            );
+            let mut samples = Vec::new();
+            for _ in 0..REPETITIONS {
+                let (units, error) = rpc.simulate(&transaction)?;
+                anyhow::ensure!(error.is_none(), "{kernel} probe failed: {error:?}");
+                samples.push(units.ok_or_else(|| anyhow!("no unitsConsumed for {kernel}"))?);
+            }
+            means.push(samples.iter().sum::<u64>() as f64 / samples.len() as f64);
+            samples_by_count.push(samples);
+        }
+        let delta = (means[1] - means[0]).round() as i64;
+        variants.push(ZkKernelProbeVariant {
+            kernel,
+            iterations,
+            simulation_cu: samples_by_count.pop().unwrap(),
+            simulation_cu_mean: means[1],
+            incremental_cu_over_zero: delta,
+            incremental_cu_per_iteration: delta as f64 / iterations as f64,
+        });
+    }
+
+    let profile = &aspis_core::params::PROFILE_CAPACITY_LR10_Q36_G32;
+    let digest = crate::host_statement_digest(0);
+    let proof_path = root.join("results/stage1/proofs/capacity_lr10_q36_g32_v3_c2.bin");
+    let proof = fs::read(&proof_path)
+        .with_context(|| format!("read frozen proof {}", proof_path.display()))?;
+    anyhow::ensure!(
+        aspis_core::verify(&proof, &digest, HOST_HASH).is_ok(),
+        "frozen Stage 1 proof no longer verifies on host"
+    );
+    let proof_account = Keypair::new();
+    upload_proof(&rpc, &payer, &proof_account, &proof, true)?;
+    let measure_verifier = |mode: u8| -> Result<Vec<u64>> {
+        let instruction = if mode == 2 {
+            AspisInstruction::VerifySyscallInverse {
+                statement_digest: digest,
+            }
+        } else if mode == 1 {
+            AspisInstruction::VerifyFast {
+                statement_digest: digest,
+            }
+        } else {
+            AspisInstruction::VerifyLegacySoftware {
+                statement_digest: digest,
+            }
+        };
+        let blockhash = rpc.latest_blockhash()?;
+        let transaction = Transaction::new_signed_with_payer(
+            &[
+                ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+                proof_instruction(&payer.pubkey(), &proof_account.pubkey(), &instruction)?,
+            ],
+            Some(&payer.pubkey()),
+            &[&payer],
+            blockhash,
+        );
+        let mut samples = Vec::new();
+        for _ in 0..REPETITIONS {
+            let (units, error) = rpc.simulate(&transaction)?;
+            anyhow::ensure!(error.is_none(), "full verifier probe failed: {error:?}");
+            samples.push(units.context("full verifier probe did not report units")?);
+        }
+        Ok(samples)
+    };
+    let software_inverse_cu = measure_verifier(0)?;
+    let syscall_inverse_cu = measure_verifier(2)?;
+    let circle_conjugate_cu = measure_verifier(1)?;
+    let software_inverse_cu_mean =
+        software_inverse_cu.iter().sum::<u64>() as f64 / software_inverse_cu.len() as f64;
+    let syscall_inverse_cu_mean =
+        syscall_inverse_cu.iter().sum::<u64>() as f64 / syscall_inverse_cu.len() as f64;
+    let circle_conjugate_cu_mean =
+        circle_conjugate_cu.iter().sum::<u64>() as f64 / circle_conjugate_cu.len() as f64;
+
+    let profile_instruction = AspisInstruction::VerifyProfile {
+        statement_digest: digest,
+    };
+    let blockhash = rpc.latest_blockhash()?;
+    let profile_transaction = Transaction::new_signed_with_payer(
+        &[
+            ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+            proof_instruction(
+                &payer.pubkey(),
+                &proof_account.pubkey(),
+                &profile_instruction,
+            )?,
+        ],
+        Some(&payer.pubkey()),
+        &[&payer],
+        blockhash,
+    );
+    let diagnostic_profile = rpc.simulate_verbose(&profile_transaction)?;
+    anyhow::ensure!(
+        diagnostic_profile.err.is_none(),
+        "diagnostic full verifier probe failed: {:?}",
+        diagnostic_profile.err
+    );
+    let full_pcs_verifier = FullPcsVerifierComparison {
+        profile: profile.name,
+        proof_bytes: proof.len(),
+        software_inverse_cu,
+        software_inverse_cu_mean,
+        syscall_inverse_cu,
+        syscall_inverse_cu_mean,
+        syscall_savings_cu: (software_inverse_cu_mean - syscall_inverse_cu_mean).round() as i64,
+        circle_conjugate_cu,
+        circle_conjugate_cu_mean,
+        circle_conjugate_savings_vs_software_cu: (software_inverse_cu_mean
+            - circle_conjugate_cu_mean)
+            .round() as i64,
+        diagnostic_profile_cu: diagnostic_profile.units,
+        diagnostic_profile_markers: parse_cu_markers(&diagnostic_profile.logs, "aspis-cu:"),
+    };
+
+    Ok(ZkKernelProbeSummary {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command: "cargo run --release -p aspis-xtask -- stage2-zk-kernel-probe".to_string(),
+        validator_version: validator_version(),
+        repetitions: REPETITIONS,
+        variants,
+        full_pcs_verifier,
+        notes: vec![
+            "Candidate reusable solmath-zk kernels measured on Agave SBF; these are instruction-level deltas, not host timings.".to_string(),
+            "The M31 syscall inversion uses sol_big_mod_exp with stack-backed four-byte base/exponent/modulus/output and no Vec allocation on SBF.".to_string(),
+            "Specialized QM31 squaring uses seven M31 products versus nine for generic multiplication; power-of-two multiplication uses a shift plus Mersenne reduction.".to_string(),
+        ],
+    })
+}
+
+/// Measure the actual q-by-k gamma RLC shape for wide base-field columns.
+pub fn run_stage2_wide_rlc_probe() -> Result<WideRlcProbeSummary> {
+    const REPETITIONS: usize = 5;
+    let root = workspace_root()?;
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), LAMPORTS_PER_SOL)?;
+
+    let kernels = [
+        ("precomputed_powers", 0u8),
+        ("lazy_dot4", 1u8),
+        ("per_query_horner", 2u8),
+        ("packed4_lazy_dot", 3u8),
+        ("packed4_naive", 4u8),
+        ("packed2_lazy_dot", 5u8),
+        ("raw_u128_dot", 6u8),
+        ("lazy_dot4_outer_lazy", 7u8),
+        ("fixed80_outer_lazy", 8u8),
+    ];
+    let shapes = [(64u16, 32u16), (80u16, 36u16)];
+    let mut variants = Vec::new();
+    for (kernel, kernel_id) in kernels {
+        for (columns, query_count) in shapes {
+            if kernel_id == 8 && columns != 80 {
+                continue;
+            }
+            let mut means = Vec::new();
+            let mut full_samples = Vec::new();
+            for measured_queries in [0, query_count] {
+                let instruction = Instruction {
+                    program_id: aspis_verifier::id(),
+                    accounts: vec![],
+                    data: to_vec(&AspisInstruction::WideRlcProbe {
+                        columns,
+                        query_count: measured_queries,
+                        kernel: kernel_id,
+                    })?,
+                };
+                let samples = simulate_pure_instruction(&rpc, &payer, instruction, REPETITIONS)?;
+                means.push(samples.iter().sum::<u64>() as f64 / samples.len() as f64);
+                full_samples = samples;
+            }
+            variants.push(WideRlcProbeVariant {
+                kernel,
+                columns,
+                query_count,
+                simulation_cu: full_samples,
+                simulation_cu_mean: means[1],
+                baseline_cu_mean: means[0],
+                incremental_cu: (means[1] - means[0]).round() as i64,
+            });
+        }
+    }
+    Ok(WideRlcProbeSummary {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command: "cargo run --release -p aspis-xtask -- stage2-wide-rlc-probe".to_string(),
+        validator_version: validator_version(),
+        repetitions: REPETITIONS,
+        variants,
+        notes: vec![
+            "Unlike the historical layout loop, this probe uses gamma powers and measures all q*k base-column contributions required at the wide PCS seam.".to_string(),
+            "lazy_dot4 fuses four raw-M31 scalar products per reduction. lazy_dot4_outer_lazy then accumulates those canonical block results in u64 and performs one final reduction per QM31 limb; both are differential-tested against the eager reference.".to_string(),
+            "fixed80_outer_lazy uses qm31_power_table::<80> and stack-backed fixed arrays for the ruled k=80 shape; it is the selected 201,990-CU kernel. The generic outer-lazy slice API remains available for other widths.".to_string(),
+            "packed4_lazy_dot injectively maps four raw M31 columns into one QM31 coefficient before batching; the k=80 shape therefore has degree 19 in gamma rather than 79 and no column information is discarded.".to_string(),
+            "This still excludes wide-leaf hashing and must be integrated with real proof parsing before a gate closes.".to_string(),
+        ],
+    })
+}
+
+pub fn run_stage2_merkle_arity_probe() -> Result<MerkleArityProbeSummary> {
+    const REPETITIONS: usize = 5;
+    let root = workspace_root()?;
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), LAMPORTS_PER_SOL)?;
+    let shapes = [
+        ("c1_layer_0", 10u8, 36u16),
+        ("c2_layer_0", 10, 36),
+        ("c1_layer_1", 8, 36),
+        ("c1_layer_2", 6, 36),
+        ("c1_layer_3", 4, 36),
+    ];
+    let mut points = Vec::new();
+    for (tree, depth, query_count) in shapes {
+        let mut runs = Vec::new();
+        for arity in [2u8, 4u8] {
+            let instruction = Instruction {
+                program_id: aspis_verifier::id(),
+                accounts: vec![],
+                data: to_vec(&AspisInstruction::MerkleArityProbe {
+                    depth,
+                    query_count,
+                    arity,
+                })?,
+            };
+            runs.push(simulate_pure_instruction(
+                &rpc,
+                &payer,
+                instruction,
+                REPETITIONS,
+            )?);
+        }
+        let binary_mean = runs[0].iter().sum::<u64>() as f64 / runs[0].len() as f64;
+        let radix4_mean = runs[1].iter().sum::<u64>() as f64 / runs[1].len() as f64;
+        points.push(MerkleArityProbePoint {
+            tree,
+            depth,
+            query_count,
+            binary_cu: runs.remove(0),
+            binary_cu_mean: binary_mean,
+            radix4_cu: runs.remove(0),
+            radix4_cu_mean: radix4_mean,
+            radix4_savings_cu: (binary_mean - radix4_mean).round() as i64,
+        });
+    }
+    let binary_total = points
+        .iter()
+        .map(|point| point.binary_cu_mean.round() as i64)
+        .sum();
+    let radix4_total = points
+        .iter()
+        .map(|point| point.radix4_cu_mean.round() as i64)
+        .sum();
+    Ok(MerkleArityProbeSummary {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command: "cargo run --release -p aspis-xtask -- stage2-merkle-arity-probe".to_string(),
+        validator_version: validator_version(),
+        repetitions: REPETITIONS,
+        points,
+        modeled_binary_total_cu: binary_total,
+        modeled_radix4_total_cu: radix4_total,
+        modeled_radix4_savings_cu: binary_total - radix4_total,
+        notes: vec![
+            "Pure minimal-subtree traversal/hash model over deterministic query indices; leaf hashing and proof-byte parsing are excluded equally.".to_string(),
+            "Radix-4 is tailored to the arity-4 fold: all frozen depths are even, and one 129-byte SHA call replaces up to three 65-byte binary-node calls.".to_string(),
+            "A positive model is not authorization to re-pin roots or the transcript; a real g16 proof comparison must precede any g32 fixture change.".to_string(),
+        ],
+    })
+}
+
+/// Real two-phase proof comparison at g16. The transcript header and every
+/// Merkle root are genuinely changed for the radix-4 variant; this is the
+/// teeth-first checkpoint before regenerating the expensive frozen g32 KAT.
+pub fn run_stage2_radix4_g16() -> Result<Radix4G16Summary> {
+    const REPETITIONS: usize = 5;
+    let root = workspace_root()?;
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), 2 * LAMPORTS_PER_SOL)?;
+
+    let profile = &PROFILE_CAPACITY_LR10_Q36_G16;
+    let digest = crate::host_statement_digest(0);
+    let coeffs = seeded_coeffs(profile.log_rows, 1);
+    let mut variants = Vec::new();
+    let mut radix4_proof = None;
+
+    for mode in [MerkleMode::MinimalSubtree, MerkleMode::Radix4MinimalSubtree] {
+        let proof = prove_with_synthetic_second_phase(
+            profile,
+            &coeffs,
+            &digest,
+            &ProveOptions {
+                fold_payload: FoldPayload::RawFibers,
+                merkle_mode: mode,
+            },
+            HOST_HASH,
+        );
+        ensure!(
+            aspis_core::verify(&proof, &digest, HOST_HASH).is_ok(),
+            "generated {mode:?} proof failed host verification"
+        );
+        let corruption = crate::host::corruption_suite(profile, &proof, &digest);
+        let proof_account = Keypair::new();
+        upload_proof(&rpc, &payer, &proof_account, &proof, true)?;
+
+        let mut samples = Vec::new();
+        for _ in 0..REPETITIONS {
+            let instruction = AspisInstruction::VerifyFast {
+                statement_digest: digest,
+            };
+            let blockhash = rpc.latest_blockhash()?;
+            let transaction = Transaction::new_signed_with_payer(
+                &[
+                    ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+                    proof_instruction(&payer.pubkey(), &proof_account.pubkey(), &instruction)?,
+                ],
+                Some(&payer.pubkey()),
+                &[&payer],
+                blockhash,
+            );
+            let (units, error) = rpc.simulate(&transaction)?;
+            ensure!(error.is_none(), "{mode:?} VerifyFast failed: {error:?}");
+            samples.push(units.context("VerifyFast did not report units")?);
+        }
+        let mean = samples.iter().sum::<u64>() as f64 / samples.len() as f64;
+        let proof_hash = HOST_HASH(&[&proof]);
+        let proof_sha256 = proof_hash
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>();
+        variants.push(Radix4ProofVariant {
+            merkle_mode: match mode {
+                MerkleMode::MinimalSubtree => "binary_minimal_subtree",
+                MerkleMode::Radix4MinimalSubtree => "radix4_minimal_subtree",
+                MerkleMode::SinglePaths => unreachable!(),
+            },
+            proof_bytes: proof.len(),
+            proof_sha256,
+            verify_fast_cu: samples,
+            verify_fast_cu_mean: mean,
+            host_corruption_cases: corruption.len(),
+            host_corruption_all_rejected: corruption.iter().all(|case| case.rejected),
+        });
+        if mode == MerkleMode::Radix4MinimalSubtree {
+            radix4_proof = Some(proof);
+        }
+    }
+
+    let mut corrupted = radix4_proof.context("radix-4 proof missing")?;
+    let header = aspis_core::proof::Header::parse(&corrupted).context("radix-4 header")?;
+    let body_offset = aspis_core::proof::HEADER_LEN
+        + aspis_core::proof::transcript_records_len(profile.num_rounds() as usize, header.flags)
+        + profile.final_poly_len() as usize * 16
+        + 8;
+    let unique_count =
+        u16::from_le_bytes(corrupted[body_offset..body_offset + 2].try_into().unwrap()) as usize;
+    let main_node_count_offset = body_offset + 2 + unique_count * (32 + 64);
+    let node_count = u32::from_le_bytes(
+        corrupted[main_node_count_offset..main_node_count_offset + 4]
+            .try_into()
+            .unwrap(),
+    );
+    ensure!(
+        node_count > 0,
+        "radix-4 layer-0 frontier unexpectedly empty"
+    );
+    corrupted[main_node_count_offset + 4] ^= 1;
+    let host_corruption = matches!(
+        aspis_core::verify(&corrupted, &digest, HOST_HASH),
+        Err(aspis_core::VerifyError::MerkleMismatch { layer: 0 })
+    );
+
+    let corrupted_account = Keypair::new();
+    upload_proof(&rpc, &payer, &corrupted_account, &corrupted, true)?;
+    let instruction = AspisInstruction::VerifyFast {
+        statement_digest: digest,
+    };
+    let blockhash = rpc.latest_blockhash()?;
+    let transaction = Transaction::new_signed_with_payer(
+        &[
+            ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+            proof_instruction(&payer.pubkey(), &corrupted_account.pubkey(), &instruction)?,
+        ],
+        Some(&payer.pubkey()),
+        &[&payer],
+        blockhash,
+    );
+    let (_, sbf_corruption_error) = rpc.simulate(&transaction)?;
+
+    let binary_mean = variants[0].verify_fast_cu_mean;
+    let radix4_mean = variants[1].verify_fast_cu_mean;
+    let savings = (binary_mean - radix4_mean).round() as i64;
+    let proof_bytes_delta = variants[1].proof_bytes as i64 - variants[0].proof_bytes as i64;
+    Ok(Radix4G16Summary {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command: "cargo run --release -p aspis-xtask -- stage2-radix4-g16".to_string(),
+        validator_version: validator_version(),
+        profile: profile.name,
+        repetitions: REPETITIONS,
+        second_phase_enabled: true,
+        variants,
+        radix4_savings_cu: savings,
+        radix4_savings_percent: savings as f64 / binary_mean * 100.0,
+        radix4_proof_bytes_delta: proof_bytes_delta,
+        radix4_frontier_corruption_rejected_host: host_corruption,
+        radix4_frontier_corruption_rejected_sbf: sbf_corruption_error.is_some(),
+        notes: vec![
+            "Both rows are real claim-free Stage-1 synthetic-C2 proofs over identical coefficients and statement bytes; only the transcript-bound Merkle mode differs.".to_string(),
+            "VerifyFast uses the cached-domain and unit-circle-conjugate verifier kernels selected by the Stage-2 kernel probe.".to_string(),
+            "The radix-4 root uses domain byte 0x12 and one SHA-256 input containing four ordered child hashes. It is not a reinterpretation of a binary root.".to_string(),
+            "A layer-0 radix-4 frontier hash is deliberately corrupted after proof construction and must reject both on host and SBF.".to_string(),
+            "This g16 checkpoint does not re-pin the frozen g32 proof or transcript KAT; that happens only after this comparison is accepted.".to_string(),
+        ],
+    })
+}
+
+pub fn run_stage2_radix4_g32() -> Result<Radix4G32Summary> {
+    const REPETITIONS: usize = 5;
+    let root = workspace_root()?;
+    let profile = &aspis_core::params::PROFILE_CAPACITY_LR10_Q36_G32;
+    let digest = crate::host_statement_digest(0);
+    let coeffs = seeded_coeffs(profile.log_rows, 1);
+
+    let binary_path = root.join("results/stage1/proofs/capacity_lr10_q36_g32_v3_c2.bin");
+    let binary_proof = fs::read(&binary_path)
+        .with_context(|| format!("read frozen binary proof {}", binary_path.display()))?;
+    ensure!(
+        aspis_core::verify(&binary_proof, &digest, HOST_HASH).is_ok(),
+        "frozen binary g32 proof failed current host verification"
+    );
+
+    let proof_dir = root.join("results/stage2/proofs");
+    fs::create_dir_all(&proof_dir)?;
+    let radix4_path = proof_dir.join("capacity_lr10_q36_g32_v3_c2_radix4.bin");
+    let cached_radix4 = fs::read(&radix4_path).ok().filter(|proof| {
+        let correct_mode = aspis_core::proof::Header::parse(proof)
+            .map(|header| header.merkle_mode == MerkleMode::Radix4MinimalSubtree as u8)
+            .unwrap_or(false);
+        correct_mode && aspis_core::verify(proof, &digest, HOST_HASH).is_ok()
+    });
+    let (radix4_proof, radix4_source, generation_seconds) = if let Some(proof) = cached_radix4 {
+        (
+            proof,
+            format!("reused host-verified cache {}", radix4_path.display()),
+            None,
+        )
+    } else {
+        eprintln!("stage2-radix4-g32: searching a fresh 32-bit grinding nonce");
+        let started = Instant::now();
+        let proof = prove_with_synthetic_second_phase(
+            profile,
+            &coeffs,
+            &digest,
+            &ProveOptions {
+                fold_payload: FoldPayload::RawFibers,
+                merkle_mode: MerkleMode::Radix4MinimalSubtree,
+            },
+            HOST_HASH,
+        );
+        let elapsed = started.elapsed().as_secs_f64();
+        ensure!(
+            aspis_core::verify(&proof, &digest, HOST_HASH).is_ok(),
+            "fresh radix-4 g32 proof failed host verification"
+        );
+        fs::write(&radix4_path, &proof)?;
+        (
+            proof,
+            format!("generated and cached {}", radix4_path.display()),
+            Some(elapsed),
+        )
+    };
+
+    let hex = |bytes: &[u8]| {
+        bytes
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>()
+    };
+    let root_start = aspis_core::proof::HEADER_LEN;
+    let binary_first_root = hex(&binary_proof[root_start..root_start + 32]);
+    let radix4_first_root = hex(&radix4_proof[root_start..root_start + 32]);
+    ensure!(
+        binary_first_root != radix4_first_root,
+        "radix-4 and binary C1 roots unexpectedly match"
+    );
+    let transcript_kat_unchanged = aspis_core::transcript::transcript_kat(HOST_HASH)
+        == aspis_core::transcript::TRANSCRIPT_KAT_EXPECTED;
+    ensure!(
+        transcript_kat_unchanged,
+        "schedule-level transcript KAT drifted"
+    );
+
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), 3 * LAMPORTS_PER_SOL)?;
+
+    let mut variants = Vec::new();
+    for (mode_name, proof) in [
+        ("binary_minimal_subtree", &binary_proof),
+        ("radix4_minimal_subtree", &radix4_proof),
+    ] {
+        let corruption = crate::host::corruption_suite(profile, proof, &digest);
+        let proof_account = Keypair::new();
+        upload_proof(&rpc, &payer, &proof_account, proof, true)?;
+        let mut samples = Vec::new();
+        for _ in 0..REPETITIONS {
+            let instruction = AspisInstruction::Verify {
+                statement_digest: digest,
+            };
+            let blockhash = rpc.latest_blockhash()?;
+            let transaction = Transaction::new_signed_with_payer(
+                &[
+                    ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+                    proof_instruction(&payer.pubkey(), &proof_account.pubkey(), &instruction)?,
+                ],
+                Some(&payer.pubkey()),
+                &[&payer],
+                blockhash,
+            );
+            let (units, error) = rpc.simulate(&transaction)?;
+            ensure!(
+                error.is_none(),
+                "{mode_name} production Verify failed: {error:?}"
+            );
+            samples.push(units.context("production Verify did not report units")?);
+        }
+        let proof_hash = HOST_HASH(&[proof]);
+        variants.push(Radix4ProofVariant {
+            merkle_mode: mode_name,
+            proof_bytes: proof.len(),
+            proof_sha256: hex(&proof_hash),
+            verify_fast_cu_mean: samples.iter().sum::<u64>() as f64 / samples.len() as f64,
+            verify_fast_cu: samples,
+            host_corruption_cases: corruption.len(),
+            host_corruption_all_rejected: corruption.iter().all(|case| case.rejected),
+        });
+    }
+
+    let mut corrupted = radix4_proof.clone();
+    let header = aspis_core::proof::Header::parse(&corrupted).context("radix-4 header")?;
+    let body_offset = aspis_core::proof::HEADER_LEN
+        + aspis_core::proof::transcript_records_len(profile.num_rounds() as usize, header.flags)
+        + profile.final_poly_len() as usize * 16
+        + 8;
+    let unique_count =
+        u16::from_le_bytes(corrupted[body_offset..body_offset + 2].try_into().unwrap()) as usize;
+    let main_node_count_offset = body_offset + 2 + unique_count * (32 + 64);
+    let node_count = u32::from_le_bytes(
+        corrupted[main_node_count_offset..main_node_count_offset + 4]
+            .try_into()
+            .unwrap(),
+    );
+    ensure!(node_count > 0, "radix-4 g32 frontier unexpectedly empty");
+    corrupted[main_node_count_offset + 4] ^= 1;
+    let host_corruption = matches!(
+        aspis_core::verify(&corrupted, &digest, HOST_HASH),
+        Err(aspis_core::VerifyError::MerkleMismatch { layer: 0 })
+    );
+    let corrupted_account = Keypair::new();
+    upload_proof(&rpc, &payer, &corrupted_account, &corrupted, true)?;
+    let instruction = AspisInstruction::Verify {
+        statement_digest: digest,
+    };
+    let blockhash = rpc.latest_blockhash()?;
+    let transaction = Transaction::new_signed_with_payer(
+        &[
+            ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+            proof_instruction(&payer.pubkey(), &corrupted_account.pubkey(), &instruction)?,
+        ],
+        Some(&payer.pubkey()),
+        &[&payer],
+        blockhash,
+    );
+    let (_, sbf_corruption_error) = rpc.simulate(&transaction)?;
+
+    let binary_mean = variants[0].verify_fast_cu_mean;
+    let radix4_mean = variants[1].verify_fast_cu_mean;
+    let savings = (binary_mean - radix4_mean).round() as i64;
+    let proof_bytes_delta = variants[1].proof_bytes as i64 - variants[0].proof_bytes as i64;
+    Ok(Radix4G32Summary {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command: "cargo run --release -p aspis-xtask -- stage2-radix4-g32".to_string(),
+        validator_version: validator_version(),
+        profile: profile.name,
+        repetitions: REPETITIONS,
+        binary_proof_source: binary_path.display().to_string(),
+        radix4_proof_source: radix4_source,
+        radix4_generation_seconds: generation_seconds,
+        binary_first_root,
+        radix4_first_root,
+        root_changed: true,
+        transcript_kat_unchanged,
+        variants,
+        radix4_savings_cu: savings,
+        radix4_savings_percent: savings as f64 / binary_mean * 100.0,
+        radix4_proof_bytes_delta: proof_bytes_delta,
+        radix4_frontier_corruption_rejected_host: host_corruption,
+        radix4_frontier_corruption_rejected_sbf: sbf_corruption_error.is_some(),
+        notes: vec![
+            "Both proofs use the literal q36/g32 profile, synthetic C2, identical coefficients, and identical statement bytes. Production Verify selects the optimized denominator/domain path.".to_string(),
+            "The Merkle-mode header byte is transcript-absorbed, so roots, challenges, grinding nonce, query positions, proof digest, and proof bytes are all freshly generated for radix-4.".to_string(),
+            "TRANSCRIPT_KAT_EXPECTED intentionally does not move: radix-4 changes a transcript input, not the schedule or sampler that the standalone KAT pins.".to_string(),
+            "A real radix-4 layer-0 frontier node is corrupted and must reject on both host and SBF.".to_string(),
         ],
     })
 }
@@ -1439,6 +2317,7 @@ fn run_onchain_variant_with_proof(
     let mode_name = match mode {
         MerkleMode::SinglePaths => "single_paths",
         MerkleMode::MinimalSubtree => "minimal_subtree",
+        MerkleMode::Radix4MinimalSubtree => "radix4_minimal_subtree",
     };
     eprintln!(
         "stage0-onchain: {} / {payload_name} / {mode_name}",

@@ -1,0 +1,260 @@
+{
+  "generated_at_utc": "2026-07-10T15:43:08.951329+00:00",
+  "command": "cargo run --release -p aspis-xtask -- stage2-zk-kernel-probe",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "repetitions": 5,
+  "variants": [
+    {
+      "kernel": "m31_inverse_software",
+      "iterations": 32,
+      "simulation_cu": [
+        39986,
+        39986,
+        39986,
+        39986,
+        39986
+      ],
+      "simulation_cu_mean": 39986.0,
+      "incremental_cu_over_zero": 39566,
+      "incremental_cu_per_iteration": 1236.4375
+    },
+    {
+      "kernel": "m31_inverse_syscall",
+      "iterations": 32,
+      "simulation_cu": [
+        11666,
+        11666,
+        11666,
+        11666,
+        11666
+      ],
+      "simulation_cu_mean": 11666.0,
+      "incremental_cu_over_zero": 11246,
+      "incremental_cu_per_iteration": 351.4375
+    },
+    {
+      "kernel": "qm31_square_generic",
+      "iterations": 512,
+      "simulation_cu": [
+        183168,
+        183168,
+        183168,
+        183168,
+        183168
+      ],
+      "simulation_cu_mean": 183168.0,
+      "incremental_cu_over_zero": 182748,
+      "incremental_cu_per_iteration": 356.9296875
+    },
+    {
+      "kernel": "qm31_square_specialized",
+      "iterations": 512,
+      "simulation_cu": [
+        147127,
+        147127,
+        147127,
+        147127,
+        147127
+      ],
+      "simulation_cu_mean": 147127.0,
+      "incremental_cu_over_zero": 146707,
+      "incremental_cu_per_iteration": 286.537109375
+    },
+    {
+      "kernel": "m31_pow2_generic",
+      "iterations": 4096,
+      "simulation_cu": [
+        176562,
+        176562,
+        176562,
+        176562,
+        176562
+      ],
+      "simulation_cu_mean": 176562.0,
+      "incremental_cu_over_zero": 176142,
+      "incremental_cu_per_iteration": 43.00341796875
+    },
+    {
+      "kernel": "m31_pow2_shift",
+      "iterations": 4096,
+      "simulation_cu": [
+        172466,
+        172466,
+        172466,
+        172466,
+        172466
+      ],
+      "simulation_cu_mean": 172466.0,
+      "incremental_cu_over_zero": 172046,
+      "incremental_cu_per_iteration": 42.00341796875
+    }
+  ],
+  "full_pcs_verifier": {
+    "profile": "capacity_lr10_q36_g32",
+    "proof_bytes": 21364,
+    "software_inverse_cu": [
+      814304,
+      814304,
+      814304,
+      814304,
+      814304
+    ],
+    "software_inverse_cu_mean": 814304.0,
+    "syscall_inverse_cu": [
+      810786,
+      810786,
+      810786,
+      810786,
+      810786
+    ],
+    "syscall_inverse_cu_mean": 810786.0,
+    "syscall_savings_cu": 3518,
+    "circle_conjugate_cu": [
+      714116,
+      714116,
+      714116,
+      714116,
+      714116
+    ],
+    "circle_conjugate_cu_mean": 714116.0,
+    "circle_conjugate_savings_vs_software_cu": 100188,
+    "diagnostic_profile_cu": 725172,
+    "diagnostic_profile_markers": [
+      {
+        "label": "start",
+        "remaining": 1398927,
+        "delta_from_previous": null
+      },
+      {
+        "label": "header_parsed",
+        "remaining": 1398635,
+        "delta_from_previous": 292
+      },
+      {
+        "label": "layer_ood_done:0",
+        "remaining": 1395172,
+        "delta_from_previous": 3463
+      },
+      {
+        "label": "layer_sumcheck_done:0",
+        "remaining": 1393024,
+        "delta_from_previous": 2148
+      },
+      {
+        "label": "layer_ood_done:1",
+        "remaining": 1385422,
+        "delta_from_previous": 7602
+      },
+      {
+        "label": "layer_sumcheck_done:1",
+        "remaining": 1383419,
+        "delta_from_previous": 2003
+      },
+      {
+        "label": "layer_ood_done:2",
+        "remaining": 1373419,
+        "delta_from_previous": 10000
+      },
+      {
+        "label": "layer_sumcheck_done:2",
+        "remaining": 1371412,
+        "delta_from_previous": 2007
+      },
+      {
+        "label": "layer_ood_done:3",
+        "remaining": 1359004,
+        "delta_from_previous": 12408
+      },
+      {
+        "label": "layer_sumcheck_done:3",
+        "remaining": 1356996,
+        "delta_from_previous": 2008
+      },
+      {
+        "label": "transcript_ready",
+        "remaining": 1321411,
+        "delta_from_previous": 35585
+      },
+      {
+        "label": "queries_ready",
+        "remaining": 1313322,
+        "delta_from_previous": 8089
+      },
+      {
+        "label": "layer_start:0",
+        "remaining": 1310790,
+        "delta_from_previous": 2532
+      },
+      {
+        "label": "layer_merkle_done:0",
+        "remaining": 1141320,
+        "delta_from_previous": 169470
+      },
+      {
+        "label": "layer_fold_done:0",
+        "remaining": 1026614,
+        "delta_from_previous": 114706
+      },
+      {
+        "label": "layer_start:1",
+        "remaining": 1026118,
+        "delta_from_previous": 496
+      },
+      {
+        "label": "layer_merkle_done:1",
+        "remaining": 981249,
+        "delta_from_previous": 44869
+      },
+      {
+        "label": "layer_fold_done:1",
+        "remaining": 874741,
+        "delta_from_previous": 106508
+      },
+      {
+        "label": "layer_start:2",
+        "remaining": 874245,
+        "delta_from_previous": 496
+      },
+      {
+        "label": "layer_merkle_done:2",
+        "remaining": 845461,
+        "delta_from_previous": 28784
+      },
+      {
+        "label": "layer_fold_done:2",
+        "remaining": 760109,
+        "delta_from_previous": 85352
+      },
+      {
+        "label": "layer_start:3",
+        "remaining": 759613,
+        "delta_from_previous": 496
+      },
+      {
+        "label": "layer_merkle_done:3",
+        "remaining": 743919,
+        "delta_from_previous": 15694
+      },
+      {
+        "label": "layer_fold_done:3",
+        "remaining": 692097,
+        "delta_from_previous": 51822
+      },
+      {
+        "label": "final_check_start",
+        "remaining": 691876,
+        "delta_from_previous": 221
+      },
+      {
+        "label": "done",
+        "remaining": 675212,
+        "delta_from_previous": 16664
+      }
+    ]
+  },
+  "notes": [
+    "Candidate reusable solmath-zk kernels measured on Agave SBF; these are instruction-level deltas, not host timings.",
+    "The M31 syscall inversion uses sol_big_mod_exp with stack-backed four-byte base/exponent/modulus/output and no Vec allocation on SBF.",
+    "Specialized QM31 squaring uses seven M31 products versus nine for generic multiplication; power-of-two multiplication uses a shift plus Mersenne reduction."
+  ]
+}

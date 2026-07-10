@@ -13,7 +13,7 @@
 //! accept on SBF for identical bytes).
 
 use aspis_core::field::{cm31_batch_inverse, CM31, M31, QM31};
-use aspis_core::merkle::{leaf_hash, node_hash};
+use aspis_core::merkle::{leaf_hash, node_hash, node_hash4};
 use aspis_core::params::{FoldPayload, MerkleMode, Profile, FINAL_POLY_LOG_LEN};
 use aspis_core::proof::{
     fiber_value_bytes, Header, FLAG_EVALUATION_CLAIM, FLAG_SECOND_PHASE, HEADER_LEN,
@@ -128,23 +128,40 @@ fn coset_evaluate(coeffs: &[M31], offset: CM31, omega: CM31, domain_size: usize)
 /// Merkle tree over fiber-packed leaves; levels[0] = leaf hashes.
 struct FiberTree {
     levels: Vec<Vec<[u8; 32]>>,
+    radix4: bool,
 }
 
 impl FiberTree {
-    fn build(hash: HashFn, layer: u8, leaf_bytes: &[Vec<u8>]) -> FiberTree {
+    fn build(
+        hash: HashFn,
+        layer: u8,
+        leaf_bytes: &[Vec<u8>],
+        merkle_mode: MerkleMode,
+    ) -> FiberTree {
+        let radix4 = merkle_mode == MerkleMode::Radix4MinimalSubtree;
         let mut levels = vec![leaf_bytes
             .iter()
             .map(|bytes| leaf_hash(hash, layer, bytes))
             .collect::<Vec<_>>()];
         while levels.last().unwrap().len() > 1 {
             let prev = levels.last().unwrap();
-            let mut next = Vec::with_capacity(prev.len() / 2);
-            for pair in prev.chunks_exact(2) {
-                next.push(node_hash(hash, &pair[0], &pair[1]));
+            if radix4 {
+                assert_eq!(prev.len() % 4, 0);
+                let mut next = Vec::with_capacity(prev.len() / 4);
+                for children in prev.chunks_exact(4) {
+                    next.push(node_hash4(hash, children.try_into().unwrap()));
+                }
+                levels.push(next);
+            } else {
+                assert_eq!(prev.len() % 2, 0);
+                let mut next = Vec::with_capacity(prev.len() / 2);
+                for pair in prev.chunks_exact(2) {
+                    next.push(node_hash(hash, &pair[0], &pair[1]));
+                }
+                levels.push(next);
             }
-            levels.push(next);
         }
-        FiberTree { levels }
+        FiberTree { levels, radix4 }
     }
 
     fn root(&self) -> [u8; 32] {
@@ -152,6 +169,7 @@ impl FiberTree {
     }
 
     fn single_path(&self, mut index: u32) -> Vec<[u8; 32]> {
+        assert!(!self.radix4);
         let mut path = Vec::with_capacity(self.levels.len() - 1);
         for level in &self.levels[..self.levels.len() - 1] {
             path.push(level[(index ^ 1) as usize]);
@@ -163,6 +181,9 @@ impl FiberTree {
     /// Frontier nodes for sorted unique indices, in the deterministic
     /// traversal order `verify_minimal_subtree` consumes.
     fn minimal_subtree(&self, indices: &[u32]) -> Vec<[u8; 32]> {
+        if self.radix4 {
+            return self.radix4_minimal_subtree(indices);
+        }
         let mut nodes = Vec::new();
         let mut level_indices: Vec<u32> = indices.to_vec();
         for level in &self.levels[..self.levels.len() - 1] {
@@ -182,6 +203,31 @@ impl FiberTree {
                     i += 1;
                 }
                 next.push(idx >> 1);
+            }
+            level_indices = next;
+        }
+        nodes
+    }
+
+    fn radix4_minimal_subtree(&self, indices: &[u32]) -> Vec<[u8; 32]> {
+        let mut nodes = Vec::new();
+        let mut level_indices = indices.to_vec();
+        for level in &self.levels[..self.levels.len() - 1] {
+            let mut next = Vec::new();
+            let mut position = 0usize;
+            while position < level_indices.len() {
+                let parent = level_indices[position] >> 2;
+                let mut present = 0u8;
+                while position < level_indices.len() && level_indices[position] >> 2 == parent {
+                    present |= 1u8 << (level_indices[position] & 3);
+                    position += 1;
+                }
+                for slot in 0..4u32 {
+                    if present & (1u8 << slot) == 0 {
+                        nodes.push(level[(parent * 4 + slot) as usize]);
+                    }
+                }
+                next.push(parent);
             }
             level_indices = next;
         }
@@ -614,7 +660,7 @@ fn prove_inner(
             }
             leaf_bytes.push(bytes);
         }
-        let tree = FiberTree::build(hash, layer as u8, &leaf_bytes);
+        let tree = FiberTree::build(hash, layer as u8, &leaf_bytes, options.merkle_mode);
         let root = tree.root();
         transcript.absorb(label::ROOT, &root);
         roots.push(root);
@@ -649,7 +695,12 @@ fn prove_inner(
                 }
                 helper_leaves.push(bytes);
             }
-            let helper_tree = FiberTree::build(hash, SECOND_PHASE_LAYER_TAG, &helper_leaves);
+            let helper_tree = FiberTree::build(
+                hash,
+                SECOND_PHASE_LAYER_TAG,
+                &helper_leaves,
+                options.merkle_mode,
+            );
             let helper_root = helper_tree.root();
             transcript.absorb(label::SECOND_PHASE_ROOT, &helper_root);
             second_phase_root = Some(helper_root);
@@ -866,7 +917,7 @@ fn prove_inner(
                     }
                 }
             }
-            MerkleMode::MinimalSubtree => {
+            MerkleMode::MinimalSubtree | MerkleMode::Radix4MinimalSubtree => {
                 let nodes = data.tree.minimal_subtree(&unique);
                 proof.extend_from_slice(&(nodes.len() as u32).to_le_bytes());
                 for node in nodes {
@@ -883,7 +934,7 @@ fn prove_inner(
                         }
                     }
                 }
-                MerkleMode::MinimalSubtree => {
+                MerkleMode::MinimalSubtree | MerkleMode::Radix4MinimalSubtree => {
                     let nodes = helper_tree.minimal_subtree(&unique);
                     proof.extend_from_slice(&(nodes.len() as u32).to_le_bytes());
                     for node in nodes {

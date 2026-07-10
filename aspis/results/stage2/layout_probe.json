@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-07-10T14:08:04.601699+00:00",
+  "generated_at_utc": "2026-07-10T15:07:09.646561+00:00",
   "command": "cargo run --release -p aspis-xtask -- stage2-layout-probe",
   "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
   "log_rows": 10,
@@ -10,45 +10,120 @@
       "columns": 64,
       "leaf_bytes": 256,
       "simulation_cu": [
-        295600,
-        295600,
-        295600,
-        295600,
-        295600
+        309505,
+        309505,
+        309505,
+        309505,
+        309505
       ],
-      "simulation_cu_mean": 295600.0,
-      "delta_vs_k64_cu": 0
+      "simulation_cu_mean": 309505.0,
+      "delta_vs_k64_cu": 0,
+      "diagnostic_markers": [
+        {
+          "label": "start log_rows=10 columns=64 queries=36 leaf_bytes=256",
+          "remaining": 1398236,
+          "delta_from_previous": null
+        },
+        {
+          "label": "leaf_hash_done",
+          "remaining": 1388157,
+          "delta_from_previous": 10079
+        },
+        {
+          "label": "merkle_done",
+          "remaining": 1320626,
+          "delta_from_previous": 67531
+        },
+        {
+          "label": "rlc_done",
+          "remaining": 1090676,
+          "delta_from_previous": 229950
+        }
+      ],
+      "wide_leaf_hash_cu": 10079,
+      "synthetic_merkle_cu": 67531,
+      "obsolete_same_gamma_rlc_cu": 229950
     },
     {
       "columns": 80,
       "leaf_bytes": 320,
       "simulation_cu": [
-        350320,
-        350320,
-        350320,
-        350320,
-        350320
+        367681,
+        367681,
+        367681,
+        367681,
+        367681
       ],
-      "simulation_cu_mean": 350320.0,
-      "delta_vs_k64_cu": 54720
+      "simulation_cu_mean": 367681.0,
+      "delta_vs_k64_cu": 58176,
+      "diagnostic_markers": [
+        {
+          "label": "start log_rows=10 columns=80 queries=36 leaf_bytes=320",
+          "remaining": 1398236,
+          "delta_from_previous": null
+        },
+        {
+          "label": "leaf_hash_done",
+          "remaining": 1387005,
+          "delta_from_previous": 11231
+        },
+        {
+          "label": "merkle_done",
+          "remaining": 1319474,
+          "delta_from_previous": 67531
+        },
+        {
+          "label": "rlc_done",
+          "remaining": 1032500,
+          "delta_from_previous": 286974
+        }
+      ],
+      "wide_leaf_hash_cu": 11231,
+      "synthetic_merkle_cu": 67531,
+      "obsolete_same_gamma_rlc_cu": 286974
     },
     {
       "columns": 82,
       "leaf_bytes": 328,
       "simulation_cu": [
-        357160,
-        357160,
-        357160,
-        357160,
-        357160
+        374953,
+        374953,
+        374953,
+        374953,
+        374953
       ],
-      "simulation_cu_mean": 357160.0,
-      "delta_vs_k64_cu": 61560
+      "simulation_cu_mean": 374953.0,
+      "delta_vs_k64_cu": 65448,
+      "diagnostic_markers": [
+        {
+          "label": "start log_rows=10 columns=82 queries=36 leaf_bytes=328",
+          "remaining": 1398236,
+          "delta_from_previous": null
+        },
+        {
+          "label": "leaf_hash_done",
+          "remaining": 1386861,
+          "delta_from_previous": 11375
+        },
+        {
+          "label": "merkle_done",
+          "remaining": 1319330,
+          "delta_from_previous": 67531
+        },
+        {
+          "label": "rlc_done",
+          "remaining": 1025228,
+          "delta_from_previous": 294102
+        }
+      ],
+      "wide_leaf_hash_cu": 11375,
+      "synthetic_merkle_cu": 67531,
+      "obsolete_same_gamma_rlc_cu": 294102
     }
   ],
   "notes": [
-    "Synthetic SHA-256 wide-leaf/path plus QM31 gamma-RLC probe, re-run at the evaluator's candidate k'=80 with the same q36/lr10 geometry.",
-    "Only the k80-minus-k64 delta is applied to the frozen 201,114-CU allowance; the absolute probe is not added to the PCS because that would double-count path hashing.",
-    "This confirms the layout lever at the real candidate k but is not an integrated wide-row PCS measurement."
+    "The leaf-hash and synthetic path markers remain useful for k80/q36 geometry. The historical RLC marker is explicitly obsolete because that loop multiplies every column by the same gamma rather than gamma powers.",
+    "Use results/stage2/wide_rlc_probe.json for the correct q-by-k RLC; lazy_dot4 is the measured winner. Do not quote the old k80-minus-k64 total as an RLC projection.",
+    "This is still not an integrated wide-row PCS measurement."
   ]
 }

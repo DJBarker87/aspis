@@ -26,8 +26,8 @@ pub mod verify;
 pub use params::{FoldPayload, MerkleMode, Profile, PROFILES};
 pub use transcript::HashFn;
 pub use verify::{
-    verify, verify_with_claim, verify_with_claim_and_trace, verify_with_trace, EvaluationClaim,
-    TraceEvent, TraceFn, VerifyError,
+    verify, verify_with_claim, verify_with_claim_and_trace, verify_with_claim_trace_and_inverse,
+    verify_with_trace, EvaluationClaim, M31InverseFn, TraceEvent, TraceFn, VerifyError,
 };
 #[cfg(feature = "insecure-test-ordering")]
 pub use verify::{verify_with_insecure_ordering, InsecureOrdering};

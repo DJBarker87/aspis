@@ -14,8 +14,11 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
-use crate::field::{cm31_batch_inverse, CM31, M31_HALF, QM31};
-use crate::merkle::{leaf_hash, verify_minimal_subtree_bytes, verify_single_path_bytes};
+use crate::field::{cm31_batch_inverse_with, CM31, M31, QM31};
+use crate::merkle::{
+    leaf_hash, verify_minimal_subtree_bytes, verify_radix4_minimal_subtree_bytes,
+    verify_single_path_bytes,
+};
 use crate::params::{
     profile_by_id, FoldPayload, MerkleMode, Profile, CIRCLE_GEN, CIRCLE_LOG_ORDER,
     FINAL_POLY_LOG_LEN, FOLD_VARS,
@@ -87,6 +90,15 @@ pub enum TraceEvent {
 }
 
 pub type TraceFn = fn(TraceEvent);
+pub type M31InverseFn = fn(M31) -> M31;
+
+#[derive(Clone, Copy)]
+enum DenominatorBackend {
+    /// Circle points have norm one, so their inverse is their conjugate.
+    CircleConjugate,
+    /// Retained for literal SBF comparisons and non-circle callers.
+    BatchInverse(M31InverseFn),
+}
 
 #[inline(always)]
 fn trace(trace: Option<TraceFn>, event: TraceEvent) {
@@ -123,6 +135,7 @@ impl VerifyError {
 }
 
 /// Per-layer domain geometry, derived from the circle group generator.
+#[derive(Clone, Copy)]
 pub struct LayerGeometry {
     /// generator of the layer's domain subgroup (order = domain size)
     pub omega: CM31,
@@ -157,6 +170,61 @@ pub fn layer_geometry(profile: &Profile, layer: u32) -> LayerGeometry {
 /// Point at natural index `i` of the layer's domain: offset * omega^i.
 pub fn domain_point(geom: &LayerGeometry, index: u32) -> CM31 {
     geom.offset.mul(geom.omega.pow(index as u64))
+}
+
+/// Per-verification window table for the public circle domain. The old path
+/// recomputed the same sequence of omega squares for every queried fiber.
+/// This table computes them once for layer zero, then advances layers by
+/// shifting the table because omega_(r+1) = omega_r^4.
+struct DomainPowerTable {
+    geometry: LayerGeometry,
+    omega_powers: [CM31; CIRCLE_LOG_ORDER as usize],
+}
+
+impl DomainPowerTable {
+    fn new(profile: &Profile) -> Self {
+        let geometry = layer_geometry(profile, 0);
+        let mut omega_powers = [CM31::ONE; CIRCLE_LOG_ORDER as usize];
+        omega_powers[0] = geometry.omega;
+        for bit in 1..omega_powers.len() {
+            omega_powers[bit] = omega_powers[bit - 1].square();
+        }
+        Self {
+            geometry,
+            omega_powers,
+        }
+    }
+
+    #[inline(always)]
+    fn point(&self, mut index: u32) -> CM31 {
+        debug_assert!(index < self.geometry.domain_size);
+        let mut point = self.geometry.offset;
+        let mut bit = 0usize;
+        while index != 0 {
+            if index & 1 != 0 {
+                point = point.mul(self.omega_powers[bit]);
+            }
+            index >>= 1;
+            bit += 1;
+        }
+        point
+    }
+
+    fn fold_layer(&mut self) {
+        for bit in 0..self.omega_powers.len() - FOLD_VARS as usize {
+            self.omega_powers[bit] = self.omega_powers[bit + FOLD_VARS as usize];
+        }
+        for bit in self.omega_powers.len() - FOLD_VARS as usize..self.omega_powers.len() {
+            self.omega_powers[bit] = CM31::ONE;
+        }
+        self.geometry.omega = self.omega_powers[0];
+        self.geometry.offset = self.geometry.offset.square().square();
+        self.geometry.domain_size >>= FOLD_VARS;
+        self.geometry.fiber_count >>= FOLD_VARS;
+        self.geometry.log_fiber_count -= FOLD_VARS;
+        // iota = omega^(domain_size/4) is the same order-four circle
+        // element at every layer, so it is intentionally unchanged.
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -271,6 +339,32 @@ fn verify_merkle_section(
                 return Err(VerifyError::MerkleMismatch { layer: error_layer });
             }
         }
+        MerkleMode::Radix4MinimalSubtree => {
+            let node_count = cursor.take_u32().ok_or(VerifyError::BadLength)? as usize;
+            let node_bytes = cursor.take(node_count * 32).ok_or(VerifyError::BadLength)?;
+            entries.clear();
+            for (index, &fiber_index) in unique.iter().enumerate() {
+                entries.push((
+                    fiber_index,
+                    leaf_hash(
+                        hash,
+                        layer_tag,
+                        &values_section[index * value_bytes..(index + 1) * value_bytes],
+                    ),
+                ));
+            }
+            if !verify_radix4_minimal_subtree_bytes(
+                hash,
+                root,
+                depth,
+                entries,
+                node_bytes,
+                merkle_level,
+                merkle_next,
+            ) {
+                return Err(VerifyError::MerkleMismatch { layer: error_layer });
+            }
+        }
     }
     Ok(())
 }
@@ -292,10 +386,8 @@ fn fold_fiber(
             let dif02 = v[0].sub(v[2]);
             let sum13 = v[1].add(v[3]);
             let dif13 = v[1].sub(v[3]);
-            let g1 =
-                QM31::from_cm31(sum02.mul_m31(M31_HALF)).add(alpha.mul_cm31(dif02.mul(inv_2s)));
-            let g2 =
-                QM31::from_cm31(sum13.mul_m31(M31_HALF)).add(alpha.mul_cm31(dif13.mul(inv_2is)));
+            let g1 = QM31::from_cm31(sum02.half()).add(alpha.mul_cm31(dif02.mul(inv_2s)));
+            let g2 = QM31::from_cm31(sum13.half()).add(alpha.mul_cm31(dif13.mul(inv_2is)));
             (g1, g2)
         }
         Fiber::Ext(v) => {
@@ -303,18 +395,14 @@ fn fold_fiber(
             let dif02 = v[0].sub(v[2]);
             let sum13 = v[1].add(v[3]);
             let dif13 = v[1].sub(v[3]);
-            let g1 = sum02
-                .mul_m31(M31_HALF)
-                .add(alpha.mul(dif02.mul_cm31(inv_2s)));
-            let g2 = sum13
-                .mul_m31(M31_HALF)
-                .add(alpha.mul(dif13.mul_cm31(inv_2is)));
+            let g1 = sum02.half().add(alpha.mul(dif02.mul_cm31(inv_2s)));
+            let g2 = sum13.half().add(alpha.mul(dif13.mul_cm31(inv_2is)));
             (g1, g2)
         }
     };
     let sum = g1.add(g2);
     let dif = g1.sub(g2);
-    sum.mul_m31(M31_HALF).add(alpha2.mul(dif.mul_cm31(inv_2s2)))
+    sum.half().add(alpha2.mul(dif.mul_cm31(inv_2s2)))
 }
 
 /// Division-free carried-payload checks for one fiber (proof_carried_round_local).
@@ -339,7 +427,7 @@ fn carried_checks(
     let is = s.mul(iota);
     let two_s = s.double();
     let two_is = is.double();
-    let s2 = s.mul(s);
+    let s2 = s.square();
     let ok = match fiber {
         Fiber::Base(v) => {
             let c1 = g1.mul_cm31(two_s)
@@ -432,6 +520,30 @@ pub fn verify_with_claim_and_trace(
         hash,
         trace_fn,
         OrderingPolicy::Canonical,
+        DenominatorBackend::CircleConjugate,
+    )
+}
+
+/// Verify with an injected base-field inversion backend. The verifier uses
+/// it once per fold round through CM31 batch inversion; host callers keep the
+/// software default while SBF can select the native modular-exponentiation
+/// syscall.
+pub fn verify_with_claim_trace_and_inverse(
+    proof: &[u8],
+    statement_digest: &[u8; 32],
+    claim: Option<&EvaluationClaim>,
+    hash: HashFn,
+    trace_fn: Option<TraceFn>,
+    inverse: M31InverseFn,
+) -> Result<(), VerifyError> {
+    verify_inner(
+        proof,
+        statement_digest,
+        claim,
+        hash,
+        trace_fn,
+        OrderingPolicy::Canonical,
+        DenominatorBackend::BatchInverse(inverse),
     )
 }
 
@@ -496,7 +608,15 @@ pub fn verify_with_insecure_ordering(
         InsecureOrdering::GammaBeforeClaims => OrderingPolicy::GammaBeforeClaims,
         InsecureOrdering::OodAfterFoldChallenge => OrderingPolicy::OodAfterFoldChallenge,
     };
-    verify_inner(proof, statement_digest, claim, hash, None, policy)
+    verify_inner(
+        proof,
+        statement_digest,
+        claim,
+        hash,
+        None,
+        policy,
+        DenominatorBackend::CircleConjugate,
+    )
 }
 
 fn verify_inner(
@@ -506,6 +626,7 @@ fn verify_inner(
     hash: HashFn,
     trace_fn: Option<TraceFn>,
     ordering: OrderingPolicy,
+    denominator_backend: DenominatorBackend,
 ) -> Result<(), VerifyError> {
     trace(trace_fn, TraceEvent::Start);
     let header = Header::parse(proof).ok_or(VerifyError::BadHeader)?;
@@ -700,8 +821,8 @@ fn verify_inner(
     transcript.absorb(label::GRIND_NONCE, &nonce.to_le_bytes());
     trace(trace_fn, TraceEvent::TranscriptReady);
 
-    let geom0 = layer_geometry(profile, 0);
-    let queries = transcript.challenge_queries(query_count, geom0.fiber_count);
+    let mut domain_table = DomainPowerTable::new(profile);
+    let queries = transcript.challenge_queries(query_count, domain_table.geometry.fiber_count);
     trace(trace_fn, TraceEvent::QueriesReady);
 
     // ---- opening + fold phase ----
@@ -730,9 +851,9 @@ fn verify_inner(
 
     for layer in 0..num_rounds {
         trace(trace_fn, TraceEvent::LayerStart(layer as u8));
-        let geom = layer_geometry(profile, layer);
+        let geom = domain_table.geometry;
         let alpha = alphas[layer as usize];
-        let alpha2 = alpha.mul(alpha);
+        let alpha2 = alpha.square();
         let fiber_mask = geom.fiber_count - 1;
 
         // geometry per query
@@ -866,22 +987,39 @@ fn verify_inner(
         // Fold each unique fiber once (round_batch_inversion in raw mode).
         s_values.clear();
         for &fidx in &unique {
-            s_values.push(domain_point(&geom, fidx));
+            s_values.push(domain_table.point(fidx));
         }
         folded.clear();
         folded.resize(unique.len(), QM31::ZERO);
         match fold_payload {
             FoldPayload::RawFibers => {
-                // gather denominators for the whole round, invert once
-                denoms.clear();
-                for &s in &s_values {
-                    denoms.push(s.double());
-                    denoms.push(s.mul(geom.iota).double());
-                    denoms.push(s.mul(s).double());
-                }
                 invs.clear();
-                invs.resize(denoms.len(), CM31::ZERO);
-                cm31_batch_inverse(&denoms, &mut invs);
+                match denominator_backend {
+                    DenominatorBackend::CircleConjugate => {
+                        // Every s is derived from the unit circle, hence
+                        // s^-1 = conjugate(s). The constant iota is -i, so
+                        // iota^-1 = i and inv(2*iota*s) is just a swap/negate
+                        // of inv(2s). No batch inversion or denominator
+                        // materialization is needed.
+                        for &s in &s_values {
+                            let inv_s = s.conjugate();
+                            let inv_2s = inv_s.half();
+                            invs.push(inv_2s);
+                            invs.push(inv_2s.mul_i());
+                            invs.push(inv_s.square().half());
+                        }
+                    }
+                    DenominatorBackend::BatchInverse(inverse) => {
+                        denoms.clear();
+                        for &s in &s_values {
+                            denoms.push(s.double());
+                            denoms.push(s.mul(geom.iota).double());
+                            denoms.push(s.square().double());
+                        }
+                        invs.resize(denoms.len(), CM31::ZERO);
+                        cm31_batch_inverse_with(&denoms, &mut invs, inverse);
+                    }
+                }
                 for (k, fiber) in fibers.iter().enumerate() {
                     folded[k] = fold_fiber(
                         fiber,
@@ -923,19 +1061,32 @@ fn verify_inner(
         for q in 0..query_count {
             index[q] = fiber_index[q];
         }
+        domain_table.fold_layer();
         trace(trace_fn, TraceEvent::LayerFoldDone(layer as u8));
     }
 
     // ---- final polynomial check ----
     trace(trace_fn, TraceEvent::FinalCheckStart);
-    let final_geom = layer_geometry(profile, num_rounds);
+    // After all arity-4 folds the q transcript queries land in a tiny final
+    // domain (16 points for the frozen blowup-2 profiles). Cache each cubic
+    // evaluation by index instead of repeating it for colliding queries.
+    folded.clear();
+    folded.resize(domain_table.geometry.domain_size as usize, QM31::ZERO);
+    slot.clear();
+    slot.resize(domain_table.geometry.domain_size as usize, 0);
     for q in 0..query_count {
-        let x = domain_point(&final_geom, index[q]);
-        // Horner over QM31 coefficients at a CM31 point (late lift)
-        let mut acc = *final_poly.last().unwrap();
-        for c in final_poly.iter().rev().skip(1) {
-            acc = acc.mul_cm31(x).add(*c);
+        let final_index = index[q] as usize;
+        if slot[final_index] == 0 {
+            let x = domain_table.point(index[q]);
+            // Horner over QM31 coefficients at a CM31 point (late lift).
+            let mut acc = *final_poly.last().unwrap();
+            for c in final_poly.iter().rev().skip(1) {
+                acc = acc.mul_cm31(x).add(*c);
+            }
+            folded[final_index] = acc;
+            slot[final_index] = 1;
         }
+        let acc = folded[final_index];
         match fold_payload {
             FoldPayload::RawFibers => {
                 if acc != expected[q] {

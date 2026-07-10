@@ -60,6 +60,9 @@ pub enum MerkleMode {
     /// Deduplicated multiproof: shared subtree nodes shipped once
     /// (`minimal_subtree`).
     MinimalSubtree = 1,
+    /// Domain-separated radix-4 tree with a deduplicated minimal-subtree
+    /// opening. Two binary levels become one four-child SHA-256 compression.
+    Radix4MinimalSubtree = 2,
 }
 
 impl MerkleMode {
@@ -67,6 +70,7 @@ impl MerkleMode {
         match v {
             0 => Some(MerkleMode::SinglePaths),
             1 => Some(MerkleMode::MinimalSubtree),
+            2 => Some(MerkleMode::Radix4MinimalSubtree),
             _ => None,
         }
     }

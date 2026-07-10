@@ -1,11 +1,13 @@
 use anyhow::{ensure, Result};
 use serde::Serialize;
 
-use aspis_core::field::{M31, P};
+use aspis_core::field::{CM31, M31, P, QM31};
 use aspis_statement::{
-    derive_nullifier, derive_owner_key, evaluate_spend, merkle_root, note_commitment,
-    output_commitment, Digest, EvaluationContext, MerklePath, SpendError, SpendPublic,
-    SpendWitness, VALUE_LIMIT,
+    build_10bit_range_logup_rows, build_logup_helper, derive_nullifier, derive_owner_key,
+    evaluate_spend, evaluate_spend_with_range_lookup, merkle_root, note_commitment,
+    output_commitment, verify_logup_constraints, Digest, EvaluationContext, LogUpError,
+    LogUpMainRow, MerklePath, RangeLookupWitness, SpendError, SpendPublic, SpendWitness,
+    RANGE_LIMB_BITS, RANGE_LIMB_LIMIT, VALUE_LIMIT,
 };
 
 const DEPTH: usize = 20;
@@ -14,6 +16,25 @@ const DEPTH: usize = 20;
 pub struct EvaluatorVector {
     pub name: &'static str,
     pub expected: &'static str,
+    pub direct_observed: String,
+    pub lookup_observed: String,
+    pub direct_passed: bool,
+    pub lookup_passed: bool,
+    pub passed: bool,
+}
+
+#[derive(Serialize)]
+pub struct LookupAttackVector {
+    pub name: &'static str,
+    pub expected: String,
+    pub observed: String,
+    pub passed: bool,
+}
+
+#[derive(Serialize)]
+pub struct LogUpConstraintVector {
+    pub name: &'static str,
+    pub expected: String,
     pub observed: String,
     pub passed: bool,
 }
@@ -25,6 +46,8 @@ pub struct EvaluatorCorpusSummary {
     pub poseidon2_pin: Poseidon2Pin,
     pub statement_shape: StatementShape,
     pub vectors: Vec<EvaluatorVector>,
+    pub lookup_attack_vectors: Vec<LookupAttackVector>,
+    pub logup_constraint_vectors: Vec<LogUpConstraintVector>,
     pub all_vectors_passed: bool,
     pub notes: Vec<String>,
 }
@@ -57,6 +80,9 @@ pub struct StatementShape {
     pub candidate_linear_term_bracket_per_row: [usize; 2],
     pub candidate_logup_degree3_terms: usize,
     pub candidate_range_bit_terms: usize,
+    pub candidate_range_lookup_limb_bits: u32,
+    pub candidate_range_lookup_limbs: usize,
+    pub candidate_range_reconstruction_terms: usize,
     pub zerocheck_eq_variables: usize,
     pub witness_m31_elements_before_layout_padding: usize,
     pub public_m31_elements: usize,
@@ -111,30 +137,94 @@ fn run(public: &SpendPublic, witness: &SpendWitness, spent: &[Digest]) -> Result
     )
 }
 
+fn run_lookup(
+    public: &SpendPublic,
+    witness: &SpendWitness,
+    range_witness: &RangeLookupWitness,
+    spent: &[Digest],
+) -> Result<(), SpendError> {
+    evaluate_spend_with_range_lookup(
+        public,
+        witness,
+        range_witness,
+        EvaluationContext {
+            merkle_depth: DEPTH,
+            spent_nullifiers: spent,
+        },
+    )
+}
+
 fn vector(
     name: &'static str,
     expected: Result<(), SpendError>,
-    observed: Result<(), SpendError>,
+    public: &SpendPublic,
+    witness: &SpendWitness,
+    spent: &[Digest],
 ) -> EvaluatorVector {
+    let direct_observed = run(public, witness, spent);
+    let range_witness = RangeLookupWitness::from_spend(witness);
+    let lookup_observed = run_lookup(public, witness, &range_witness, spent);
+    let direct_passed = direct_observed == expected;
+    // The lookup path can report a lookup-specific error for the same invalid
+    // spend. Its accept/reject classification must agree with the oracle.
+    let lookup_passed = lookup_observed.is_ok() == expected.is_ok();
     EvaluatorVector {
         name,
         expected: if expected.is_ok() { "accept" } else { "reject" },
+        direct_observed: format!("{direct_observed:?}"),
+        lookup_observed: format!("{lookup_observed:?}"),
+        direct_passed,
+        lookup_passed,
+        passed: direct_passed && lookup_passed,
+    }
+}
+
+fn lookup_attack_vector(
+    name: &'static str,
+    expected: SpendError,
+    public: &SpendPublic,
+    witness: &SpendWitness,
+    range_witness: &RangeLookupWitness,
+) -> LookupAttackVector {
+    let observed = run_lookup(public, witness, range_witness, &[]);
+    LookupAttackVector {
+        name,
+        expected: format!("Err({expected:?})"),
+        observed: format!("{observed:?}"),
+        passed: observed == Err(expected),
+    }
+}
+
+fn logup_vector(
+    name: &'static str,
+    expected: Result<(), LogUpError>,
+    observed: Result<(), LogUpError>,
+) -> LogUpConstraintVector {
+    LogUpConstraintVector {
+        name,
+        expected: format!("{expected:?}"),
         observed: format!("{observed:?}"),
         passed: observed == expected,
     }
+}
+
+fn require_logup<T>(result: core::result::Result<T, LogUpError>) -> Result<T> {
+    result.map_err(|error| anyhow::anyhow!("LogUp fixture construction failed: {error:?}"))
 }
 
 pub fn run_evaluator_corpus() -> Result<EvaluatorCorpusSummary> {
     let mut vectors = Vec::new();
 
     let (public, witness) = fixture(10, 9, 1);
-    vectors.push(vector("valid_spend", Ok(()), run(&public, &witness, &[])));
+    vectors.push(vector("valid_spend", Ok(()), &public, &witness, &[]));
 
     let (public, witness) = fixture(1, P - 1, 2);
     vectors.push(vector(
         "field_wrap_inflation",
         Err(SpendError::OutputValueOutOfRange),
-        run(&public, &witness, &[]),
+        &public,
+        &witness,
+        &[],
     ));
 
     let (mut public, witness) = fixture(10, 9, 1);
@@ -142,7 +232,9 @@ pub fn run_evaluator_corpus() -> Result<EvaluatorCorpusSummary> {
     vectors.push(vector(
         "wrong_asset_binding",
         Err(SpendError::AssetMismatch),
-        run(&public, &witness, &[]),
+        &public,
+        &witness,
+        &[],
     ));
 
     let (mut public, witness) = fixture(10, 9, 1);
@@ -150,7 +242,9 @@ pub fn run_evaluator_corpus() -> Result<EvaluatorCorpusSummary> {
     vectors.push(vector(
         "wrong_anchor",
         Err(SpendError::AnchorMismatch),
-        run(&public, &witness, &[]),
+        &public,
+        &witness,
+        &[],
     ));
 
     let (public, mut witness) = fixture(10, 9, 1);
@@ -158,7 +252,9 @@ pub fn run_evaluator_corpus() -> Result<EvaluatorCorpusSummary> {
     vectors.push(vector(
         "wrong_merkle_path",
         Err(SpendError::AnchorMismatch),
-        run(&public, &witness, &[]),
+        &public,
+        &witness,
+        &[],
     ));
 
     let (public, mut witness) = fixture(10, 9, 1);
@@ -166,7 +262,9 @@ pub fn run_evaluator_corpus() -> Result<EvaluatorCorpusSummary> {
     vectors.push(vector(
         "forged_ownership_key",
         Err(SpendError::AnchorMismatch),
-        run(&public, &witness, &[]),
+        &public,
+        &witness,
+        &[],
     ));
 
     let (mut public, witness) = fixture(10, 9, 1);
@@ -174,7 +272,9 @@ pub fn run_evaluator_corpus() -> Result<EvaluatorCorpusSummary> {
     vectors.push(vector(
         "wrong_nullifier",
         Err(SpendError::NullifierMismatch),
-        run(&public, &witness, &[]),
+        &public,
+        &witness,
+        &[],
     ));
 
     let (mut public, witness) = fixture(10, 9, 1);
@@ -182,14 +282,18 @@ pub fn run_evaluator_corpus() -> Result<EvaluatorCorpusSummary> {
     vectors.push(vector(
         "wrong_output_commitment",
         Err(SpendError::OutputCommitmentMismatch),
-        run(&public, &witness, &[]),
+        &public,
+        &witness,
+        &[],
     ));
 
     let (public, witness) = fixture(10, 9, 1);
     vectors.push(vector(
         "double_spend_replay",
         Err(SpendError::NullifierAlreadySpent),
-        run(&public, &witness, &[public.nullifier]),
+        &public,
+        &witness,
+        &[public.nullifier],
     ));
 
     for (name, value, value_out, fee) in [
@@ -202,14 +306,16 @@ pub fn run_evaluator_corpus() -> Result<EvaluatorCorpusSummary> {
         ),
     ] {
         let (public, witness) = fixture(value, value_out, fee);
-        vectors.push(vector(name, Ok(()), run(&public, &witness, &[])));
+        vectors.push(vector(name, Ok(()), &public, &witness, &[]));
     }
 
     let (public, witness) = fixture(VALUE_LIMIT, 0, 0);
     vectors.push(vector(
         "boundary_value_2pow30",
         Err(SpendError::InputValueOutOfRange),
-        run(&public, &witness, &[]),
+        &public,
+        &witness,
+        &[],
     ));
 
     let (mut public, mut witness) = fixture(7, 6, 1);
@@ -223,11 +329,106 @@ pub fn run_evaluator_corpus() -> Result<EvaluatorCorpusSummary> {
     vectors.push(vector(
         "balance_mismatch",
         Err(SpendError::BalanceMismatch),
-        run(&public, &witness, &[]),
+        &public,
+        &witness,
+        &[],
     ));
 
+    let (public, witness) = fixture(1_000_000, 999_999, 1);
+    let canonical_lookup = RangeLookupWitness::from_spend(&witness);
+    let mut non_member = canonical_lookup;
+    non_member.input_value_limbs[0] = RANGE_LIMB_LIMIT;
+    let mut wrong_reconstruction = canonical_lookup;
+    wrong_reconstruction.output_value_limbs[0] ^= 1;
+    let lookup_attack_vectors = vec![
+        lookup_attack_vector(
+            "lookup_limb_1024",
+            SpendError::RangeLookupLimbOutOfRange,
+            &public,
+            &witness,
+            &non_member,
+        ),
+        lookup_attack_vector(
+            "lookup_reconstruction_corruption",
+            SpendError::RangeLookupReconstructionMismatch,
+            &public,
+            &witness,
+            &wrong_reconstruction,
+        ),
+    ];
+
+    let chi = QM31 {
+        c0: CM31::new(M31(1_234_567), M31(7_654_321)),
+        c1: CM31::new(M31(99), M31(101)),
+    };
+    let honest_rows = require_logup(build_10bit_range_logup_rows(&[0, 1, 1, 17, 511, 1023]))?;
+    let honest_helper = require_logup(build_logup_helper(&honest_rows, chi))?;
+    let mut corrupted_helper = honest_helper.clone();
+    corrupted_helper[17] = corrupted_helper[17].add(QM31::ONE);
+    let mut corrupted_multiplicity_rows = honest_rows.clone();
+    corrupted_multiplicity_rows[1].consumer_weight =
+        corrupted_multiplicity_rows[1].consumer_weight.add(M31::ONE);
+    let corrupted_multiplicity_helper =
+        require_logup(build_logup_helper(&corrupted_multiplicity_rows, chi))?;
+
+    let lift = |value: u32| QM31::from_cm31(CM31::from_m31(M31(value)));
+    let mut unmatched_rows = require_logup(build_10bit_range_logup_rows(&[]))?;
+    unmatched_rows[0].producer_value = lift(1024);
+    unmatched_rows[0].producer_weight = M31::ONE;
+    let unmatched_helper = require_logup(build_logup_helper(&unmatched_rows, chi))?;
+    let pole_rows = vec![LogUpMainRow {
+        producer_value: lift(5),
+        consumer_value: lift(5),
+        producer_weight: M31::ONE,
+        consumer_weight: M31::ONE,
+    }];
+    let logup_constraint_vectors = vec![
+        logup_vector(
+            "logup_honest_range_multiset",
+            Ok(()),
+            verify_logup_constraints(&honest_rows, &honest_helper, chi),
+        ),
+        logup_vector(
+            "logup_helper_corruption",
+            Err(LogUpError::RowRelationMismatch { row: 17 }),
+            verify_logup_constraints(&honest_rows, &corrupted_helper, chi),
+        ),
+        logup_vector(
+            "logup_multiplicity_corruption",
+            Err(LogUpError::TotalSumMismatch),
+            verify_logup_constraints(
+                &corrupted_multiplicity_rows,
+                &corrupted_multiplicity_helper,
+                chi,
+            ),
+        ),
+        logup_vector(
+            "logup_nonmember_1024",
+            Err(LogUpError::RangeValueOutOfTable {
+                query: 0,
+                value: 1024,
+            }),
+            build_10bit_range_logup_rows(&[1024]).map(|_| ()),
+        ),
+        logup_vector(
+            "logup_total_sum_has_teeth",
+            Err(LogUpError::TotalSumMismatch),
+            verify_logup_constraints(&unmatched_rows, &unmatched_helper, chi),
+        ),
+        logup_vector(
+            "logup_active_pole",
+            Err(LogUpError::ActivePole {
+                row: 0,
+                side: aspis_statement::LogUpSide::Producer,
+            }),
+            build_logup_helper(&pole_rows, lift(5)).map(|_| ()),
+        ),
+    ];
+
     ensure!(
-        vectors.iter().all(|entry| entry.passed),
+        vectors.iter().all(|entry| entry.passed)
+            && lookup_attack_vectors.iter().all(|entry| entry.passed)
+            && logup_constraint_vectors.iter().all(|entry| entry.passed),
         "evaluator corpus failed"
     );
 
@@ -265,17 +466,24 @@ pub fn run_evaluator_corpus() -> Result<EvaluatorCorpusSummary> {
             candidate_opened_values_k_prime: 80,
             candidate_max_sbox_terms_per_row: 64,
             candidate_linear_term_bracket_per_row: [64, 128],
-            candidate_logup_degree3_terms: 1,
-            candidate_range_bit_terms: 64,
+            candidate_logup_degree3_terms: 2,
+            candidate_range_bit_terms: 0,
+            candidate_range_lookup_limb_bits: RANGE_LIMB_BITS,
+            candidate_range_lookup_limbs: 6,
+            candidate_range_reconstruction_terms: 6,
             zerocheck_eq_variables: 10,
             witness_m31_elements_before_layout_padding: 196,
             public_m31_elements: 26,
         },
         all_vectors_passed: true,
         vectors,
+        lookup_attack_vectors,
+        logup_constraint_vectors,
         notes: vec![
             "The evaluator proves no statement; it is the executable semantic oracle the future constraints must match.".to_string(),
             "The corpus starts with economic failures: wraparound inflation, public binding, ownership, membership, nullifier replay, output binding, balance, and range boundaries.".to_string(),
+            "The lookup evaluator uses six exact 10-bit limbs, checks fixed-table membership, and enforces reconstruction. It is a semantic oracle; the LogUp proof relation is not integrated yet.".to_string(),
+            "The LogUp oracle now constructs the post-chi helper, checks the degree-3 local identity, and separately checks sum(h)=0. Its teeth corpus shows that local rows alone do not reject an unmatched nonmember.".to_string(),
             "The 80-column/4-round row layout is a candidate used to confirm the synthetic composition bracket, not yet a frozen arithmetization.".to_string(),
             "Depth 20 is the explicit demo choice. Moving to depth 32 adds 24 Poseidon2 permutations because each 8+8 digest compression needs two rate-8 sponge permutations.".to_string(),
         ],
