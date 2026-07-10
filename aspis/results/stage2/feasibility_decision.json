@@ -200,18 +200,21 @@
     "adopted_replacement": "S-two Conjectures 1-2 (ePrint 2026/532 Appendix A.5): prime-field RS list-/line-decodability up to the Elias radius with l(theta) <= 2^(H(rho)/eta), extension alphabets included, transported to circle codes by the scaled-RS isometry",
     "domain_exposure": "KKH cannot instantiate on F_M31^x (2-adicity 1) but the circle group (order 2^31) is fully 2-adic and our n=2^12 sits inside KKH's dimensional envelope; a circle-group analogue is an open question; flagged in note section 9.3, not buried",
     "rederivation_at_frozen_shape": {
-      "q36_g32_s1_bits": 90.3,
-      "q36_g32_s2_bits": 93.2,
-      "q40_g32_s2_bits": 96.9,
-      "q45_g32_s2_bits": 100.2,
+      "derivation_doc": "../../docs/stage1-theta-rederivation.md",
+      "t1_prime_correction": "first-committed numbers used sum(domain/rho) where the correct T1 numerators are sum(degree/rho) = sum(domain); found drafting the derivation for line-by-line review; sanity anchor: refuted-form T1 reproduces the frozen 111.5906",
+      "q36_g32_s1_bits": 90.34,
+      "q36_g32_s2_bits": 93.89,
+      "q40_g32_s2_bits": 97.88,
+      "q43_g32_s2_bits": 100.19,
       "s2_cost_cu": "5000-12000 bracket, probe pending per calibration rule",
       "q40_delta_cu": 89000,
-      "q45_delta_cu": 191000,
-      "q45_budget_note": "combined-worst ~1,239K breaches the 1.19M target; reserves recover only ~45K"
+      "t100_restore": "q43/s=2, ~+150K: strict ceiling dead; 1.19M clears every reading (worst-range by ~10K). Declined BY RULING on the epistemic argument, NOT gate-forced — the pre-correction q45/+191K gate-breach reading was an artifact of the T1' error"
     },
-    "proven_floor": "65.5 bits untouched; preliminary ~67.5-68.0 under BCHKS zero-loss Johnson CA (error O(n/eta^5)) + Haböck 2025/2110 mutual-CA-to-Johnson theorem; re-pin before quotation",
-    "headline_ruling": "PENDING between: (1) t=90 at q36/s=2, all budget lines survive; (2) t=95-97 at q40/s=2, ~+89K; (3) t=100 at q45/s=2, ~+191K, 1.19M worst-draw-conditional",
-    "blocked": "all transcript-bound integration artifacts until the ruling lands; q-independent statement layer (r=2/k'=51 freeze) proceeds"
+    "proven_floor": "65.5 bits untouched and the ONLY quotable floor until its derivation section exists; preliminary ~67.5-68.0 under BCHKS zero-loss Johnson CA (error O(n/eta^5)) + Haböck 2025/2110 mutual-CA-to-Johnson theorem",
+    "headline_ruling": "RATIFIED 2026-07-10: option 1 — t=90 stated / 93.89 computed / q36 g32 s=2, revised-conjectured, refutation disclosed with every quotation (four-element rule). s=2 ADOPTED for the v4 envelope (was declined at +0.99 bits under refuted accounting; worth +3.55 now because T2' became the binding s=1 term).",
+    "contingency": "pre-registered retreat ladder if a circle-group counterexample reaches theta*~0.70: primary q40/s=2 (+89K), re-balance theta at q36, terminal proven-regime split; note section 9.7",
+    "publication_freeze_earmark": "q34/g36/s=2 — strictly dominant at freeze (gains ~0.6-0.8 computed bits, saves ~44K CU, lifts preliminary proven floor toward ~70); out of v4 for one-knob discipline",
+    "blocked": "transcript-bound integration artifacts until the theta-derivation clears line-by-line review; q-independent statement layer (r=2/k'=51 freeze) and the s=2/masking probes proceed"
   },
   "gate_decision": {
     "projection_status": "variance_and_bracket_conditional",

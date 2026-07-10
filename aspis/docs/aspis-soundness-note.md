@@ -481,8 +481,28 @@ capacity headline is jointly controlled by the capacity query rate and its
 effective-list-size premise, and no term may be silently transferred from
 one regime to the other.**
 
-**OOD sample count decision (third review touch): freeze `s = 1` for v3.**
-This is a deliberate product-budget decision, not an omitted option. At the
+**OOD sample count decision (third review touch): freeze `s = 1` for v3 —
+SUPERSEDED `2026-07-10` (§9), and the reason the value changed is the
+record.** Under the now-refuted accounting, `s=2` bought 0.9878
+conditional bits (T2 at 103.99 co-bound with the 104-bit query term, so
+removing it barely moved the union) and was correctly declined against
+its engineering cost. Under the adopted revised conjecture the list size
+is `l(theta) = 2^(H(rho)/eta)`, T2' becomes quadratic in `l` and is the
+**binding s=1 term**, so the identical protocol change is now worth
+**+3.55 bits (90.34 -> 93.89 at q36/g32)** at a 5-12K CU bracket (probe
+pending). `s = 2` is ADOPTED for the v4 payment envelope (§9.4 ruling).
+Normative Fiat-Shamir position of the second sample: each round carries
+two sequential (beta, y, mu) triples — root_r -> (beta_r1, y_r1, mu_r1)
+-> (beta_r2, y_r2, mu_r2) -> sumcheck poly -> alpha_r — both values
+entering the relation accumulator, +16 bytes per round per sample. The
+existing OOD challenge-order teeth vector (`ood_claim_after_fold_
+challenge`) extends with a second-triple variant (value-2 absorbed after
+alpha must reject; weakened schedule accepts). The bounded subfield-
+sampler completeness doubles retries: still < 2^-183 over four rounds.
+Its CU appears as a named line in the v4 integration measurement.
+Historical paragraph retained below for provenance:
+
+At the
 pinned constants, `s=1` gives 102.9752 total bits and 2.9752 bits over the
 headline. Two samples per round would push T2 to about 218.3031 bits and make
 the 109.2649-bit non-T2 residue the algebraic limiter; after the 104-bit query
@@ -551,9 +571,13 @@ line is conditional on the conjecture line.
 The proven-floor line follows house precedent (the WHIR-UD gate reported
 "lower 58.0 / upper 100.0"): the positive result does not get a lower
 standard than the negatives, and the number a hostile reviewer would
-compute anyway is computed here, with the derivation shown. Any public
-quotation of the headline carries all three numbers of the last line or
-none of them.
+compute anyway is computed here, with the derivation shown. **Quotation
+rule, amended `2026-07-10`: any public quotation of the headline carries
+FOUR elements or none — the stated headline, the computed conjectured
+bits, the proven floor, and the revised-conjecture citation (S-two
+ePrint 2026/532 App. A.5, adopted after the refutation of the
+up-to-capacity family, ePrint 2025/2046) — the conjecture's identity now
+travels with the numbers, always.**
 
 T2's split is itself a record of this section doing its job: in draft 1 the
 capacity-list constant wore a `proven` label and its dependence was written
@@ -857,12 +881,18 @@ structure (domains 2^12..2^6, degrees 2^10..2^4, |F| = 2^124), grinding
 NOT applied to algebraic rounds (§6 rule, unchanged), and all other
 amended terms (T3..T8', §8) as-is:
 
+CORRECTION (`2026-07-10`, same day): drafting the derivation document for
+line-by-line review (`stage1-theta-rederivation.md`, ruling condition 1)
+surfaced a factor-of-rho error in T1's numerator mapping in the
+first-committed table. Corrected values below; the sanity anchor is that
+the refuted-form T1 must reproduce the frozen 111.5906 (it does).
+
 | option | eta* | system bits | delta CU vs frozen shape | budget verdict (r=2/k'=51 base: central 974,112 / combined-worst 1,047,561) |
 | --- | ---: | ---: | ---: | --- |
-| q36/g32, s=1 (frozen shape) | 0.071 | **90.3** | 0 | strict ceiling survives all readings |
-| **q36/g32, s=2** | 0.054 | **93.2** | ~+5-12K (probe pending) | strict ceiling survives all readings |
-| q40/g32, s=2 | 0.069 | 96.9 | ~+89K (PCS +65.7K, RLC +14.6K, leaf +1.0K, s=2) | central under strict; stress/draw readings breach strict, clear 1.19M |
-| q45/g32, s=2 | ~0.09 | ~100.2 | ~+191K | central clears 1.19M by ~25K; **combined-worst ~1,239K breaches 1.19M**; reserves recover only ~45K |
+| q36/g32, s=1 (frozen shape) | 0.071 | **90.34** | 0 | strict ceiling survives all readings |
+| **q36/g32, s=2 — RATIFIED** | 0.050 | **93.89** | ~+5-12K (probe pending) | strict ceiling survives all readings |
+| q40/g32, s=2 | 0.064 | 97.88 | ~+89K (PCS +65.7K, RLC +14.6K, leaf +1.0K, s=2) | central under strict; stress/draw readings breach strict, clear 1.19M |
+| q43/g32, s=2 (t=100 restore) | 0.076 | 100.19 | ~+150K | strict dead; **1.19M clears every reading, worst-range by ~10K** — declined by ruling on the epistemic argument, NOT gate-forced (the pre-correction q45/+191K reading that breached 1.19M was an artifact of the T1' error; full record in the derivation doc §6) |
 
 The s = 2 OOD decision — priced and declined in §6 under the refuted
 accounting at ~1 conditional bit — is worth **+2.9 bits** under the
@@ -889,10 +919,18 @@ schedule (~1.0 proven bits/query would need ~q68, ~+525K CU, over the
    1.19M becomes worst-draw-conditional. The 10%-slack design rule would
    need an explicit re-registration to survive this option.
 
-The choice between them is a product/headline ruling (design §13.3
-territory), not an implementation decision, and is **PENDING**.
-Transcript-bound work stays blocked until it lands. The q-independent
-statement layer (r=2/k'=51 freeze, §8) is untouched by every option.
+**RULING (`2026-07-10`, ratified in review): option 1 — headline stated
+t = 90, computed 93.89, at q36/g32/s=2, revised-conjectured, refutation
+disclosed in the same breath.** Every registered budget line survives,
+including the strict ceiling at combined-worst; the freeze and the
+shrink-hunt close stand unchanged; the proven floor — now resting on
+Haböck's mutual-CA-to-Johnson theorem where the folding step used to be
+conjectural — is kept whole. The restore option died by ruling on the
+epistemic argument (150K CU and the strict line to reprint a label whose
+content changed in November), not by gate arithmetic — see the
+derivation document. Transcript-bound work proceeds on the ratified
+shape once the derivation clears line-by-line review. The q-independent
+statement layer (r=2/k'=51 freeze, §8) is untouched.
 
 ### 9.5 The proven floor appreciated
 
@@ -913,13 +951,41 @@ the refuted forms unchanged.
 
 ### 9.6 Actions
 
-Taken in this revision: §2 refutation notice; §4 pin relabel; §6 summary
-supersession marker; §7 rows (refuted / historical / revised-adopted /
-headline-reopened); this section. Pending: the headline ruling (three
-options above); the s=2 CU probe (calibration rule: no "~5-12K" leans on
-an envelope); the proven-floor re-pin; a KAT re-pin and §4 table rebuild
-once the ruling lands; the publication-freeze q34/g36 earmark now also
-carries its revised-accounting bonus.
+Taken: §2 refutation notice; §4 pin relabel; §6 summary supersession and
+the s=2 adoption record (with the reason its value changed); §7 rows and
+the four-element quotation rule; the ruling (option 1 ratified) and the
+T1' correction in 9.4; the derivation document
+(`stage1-theta-rederivation.md`, sent for line-by-line review); the
+ledger sweep annotations (gate_close.json, design doc §13.3). Pending:
+derivation review clearance (gates transcript-bound work); the s=2 CU
+probe (no "~5-12K" leans on an envelope); the proven-floor re-pin (65.5
+remains the only quotable floor until its derivation section exists,
+citing BCHKS Theorem 1.5 and Haböck 2025/2110 specifically, non-theorem
+steps marked); the KAT re-pin and §4 table rebuild at integration.
+**Publication-freeze earmark, updated: q34/g36/s=2** — under revised
+accounting the swap gains computed bits (~+0.6-0.8) while saving ~44K CU
+and lifting the preliminary proven floor toward ~70; strictly dominant
+at freeze time. It stays out of v4 only for one-knob discipline (one
+transcript-shaped protocol change per integration); grinding twice
+costs minutes.
+
+### 9.7 Conjecture-watch contingency (pre-registered)
+
+Honesty about the §9.3 open question without a response plan is
+exposure, so the response is pre-registered now, while no construction
+exists: **if a KKH-style counterexample is exhibited on circle-group
+cosets at radii reaching our operating point** (theta* ~ 0.70 at
+eta* ~ 0.050), the retreat ladder is, in order: (1) **primary: q40/g32/
+s=2** (+89K CU, 97.9 bits under whatever revised form survives the new
+construction; re-run the derivation document and re-rule the headline);
+(2) re-balance theta downward at q36 (costs headline bits, no CU) if the
+new failure touches only radii above ~0.65; (3) **terminal: the
+proven-regime split** — the three-transaction receipt (aspis-statement::
+split) priced at Johnson-proven accounting (~67-68 proven bits after the
+re-pin), which no conjecture touches. The same ladder, minus the split,
+applies if the S-two conjectures are tightened (larger c1/c2) rather
+than broken. This paragraph goes into the paper's limitations section
+verbatim alongside the §9.3 disclosure.
 
 ---
 

@@ -25,8 +25,9 @@ old t=100 headline was disproved (Crites–Stewart ePrint 2025/2046;
 Krachun–Kazanin–Haböck ePrint 2026/782), with no known attack at these
 parameters. Under the adopted revised conjecture (S-two ePrint 2026/532
 App. A.5, transported to circle codes), q36/g32 gives ~90.3 system bits
-(s=1) / ~93.2 (s=2); the t=100 headline does not survive at q36 and the
-headline ruling is pending. The proven Johnson floor ~65.5 bits is
+(s=1) / ~93.9 (s=2); the t=100 headline does not survive at q36. RULED:
+headline t=90 stated / 93.89 computed at q36/g32/s=2, refutation
+disclosed with every quotation. The proven Johnson floor ~65.5 bits is
 untouched and strengthens to ~67.5-68 preliminary under the same season's
 proven-side results.** See
 `docs/aspis-soundness-note.md` (§9), `docs/stage0-conclusion.md`, and
@@ -116,7 +117,7 @@ results/stage0,stage1/   raw artifacts backing every number quoted anywhere
 | Stage | Goal | Current status |
 | --- | --- | --- |
 | Stage 0 | Consolidate the native WHIR-style M31 PCS substrate | **CLOSED/CONDITIONAL (historical)**: admitted q32/g32 as a hypothesis; Stage 1 has since retired it |
-| Stage 1 | Harden and budget the PCS soundness argument | **CLOSED/FROZEN**: q36/g32, v3 C2, relation enforcement, teeth tests, literal SBF measurement |
+| Stage 1 | Harden and budget the PCS soundness argument | **CLOSED, then REOPENED `2026-07-10` (note §9)**: the up-to-capacity conjecture family was refuted; revised conjecture adopted; headline ruled t=90 stated / 93.89 computed at q36/g32/s=2; measurements and teeth tests stand |
 | Stage 2 | Build the direct spend evaluator and statement layer | **IN PROGRESS / VARIANCE-AND-BRACKET-CONDITIONAL PROJECTION**: direct + lookup evaluators complete; real radix-4 g32 PCS; 26.38% saving from the historical checkpoint; pre-registered variance criterion failed; LogUp/RLC/full-proof integration pending; split receipt retained |
 | Stage 3 | Add commitment and sumcheck/evaluation hiding | future |
 | Stage 4 | Split verifier crate seam and demo shielded pool | future |
