@@ -22,7 +22,13 @@ fixed-width outer-lazy RLC project a central combined verifier of 1,049,941
 CU after the k'=83 column recount — but a pre-registered 16-seed variance
 study (worst-of-16 range 55,786 CU) and a linear=128 composition stress row
 both break the strict 1.071M slack ceiling, so the projection is
-variance-and-bracket-conditional; all readings clear the 1.19M target. The
+variance-and-bracket-conditional; all readings clear the 1.19M target. A
+measured-arithmetic shrink hunt then re-froze the layout at r=2/k'=51
+(central 974,112 CU). Stage 1 has since been REOPENED: the up-to-capacity
+conjecture family was disproved (ePrint 2025/2046, 2026/782; no known
+attack at these parameters), the revised S-two conjecture is adopted, and
+the old t=100 headline reads ~90-93 bits at q36 pending a headline ruling;
+the ~65.5-bit proven floor is untouched. The
 product gate stays open until the LogUp relation and wide RLC are integrated
 into one real payment proof. The measured reusable field/RLC/Merkle kernels have also been
 extracted into SolMath's standalone `solmath-zk` crate at commit `682b5d4`.

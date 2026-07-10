@@ -188,6 +188,31 @@
     },
     "layout_finding": "r=4's 6-row blocks do not factor over the Boolean cube, so section 5's O(2^b) block-periodic selector form was silently false for the k80 candidate; r=3 (2^3 blocks) and padded r=2 (2^4 blocks) make it true as written"
   },
+  "conjecture_status": {
+    "date": "2026-07-10",
+    "event": "STAGE 1 REOPENED: the up-to-capacity conjecture family is refuted as stated",
+    "refutations": {
+      "crites_stewart": "ePrint 2025/2046 (2025-11-05, rev 2025-12-19): BCIKS correlated agreement, WHIR mutual correlated agreement (this note's direct lineage), DEEP-FRI list-decodability — all disproved up to capacity; constructions domain-agnostic; extension-field challenge sampling does not help (characteristic entropy governs)",
+      "krachun_kazanin_haboeck": "ePrint 2026/782 (2026-04-20): failure at capacity - Theta(1/log n), below the Elias radius, on smooth 2-adic multiplicative subgroups; forces exponential-in-1/eta list sizes; p = Theta(n^beta) chosen per n",
+      "bchks_m31_instances": "ePrint 2025/2055: explicit M31 and QM31-sized correlated-agreement failures at delta ~ 1/2 on multiplicative-group domains (not circle cosets); plus the ethSTARK-toy DEEP-ALI attack"
+    },
+    "no_known_attack": "no computationally efficient attack on any deployed system at production parameters; Fenzi-Sanso 2025/2197's ~11.5-bit IT shortfall at 31-bit fields is flagged computationally infeasible",
+    "adopted_replacement": "S-two Conjectures 1-2 (ePrint 2026/532 Appendix A.5): prime-field RS list-/line-decodability up to the Elias radius with l(theta) <= 2^(H(rho)/eta), extension alphabets included, transported to circle codes by the scaled-RS isometry",
+    "domain_exposure": "KKH cannot instantiate on F_M31^x (2-adicity 1) but the circle group (order 2^31) is fully 2-adic and our n=2^12 sits inside KKH's dimensional envelope; a circle-group analogue is an open question; flagged in note section 9.3, not buried",
+    "rederivation_at_frozen_shape": {
+      "q36_g32_s1_bits": 90.3,
+      "q36_g32_s2_bits": 93.2,
+      "q40_g32_s2_bits": 96.9,
+      "q45_g32_s2_bits": 100.2,
+      "s2_cost_cu": "5000-12000 bracket, probe pending per calibration rule",
+      "q40_delta_cu": 89000,
+      "q45_delta_cu": 191000,
+      "q45_budget_note": "combined-worst ~1,239K breaches the 1.19M target; reserves recover only ~45K"
+    },
+    "proven_floor": "65.5 bits untouched; preliminary ~67.5-68.0 under BCHKS zero-loss Johnson CA (error O(n/eta^5)) + Haböck 2025/2110 mutual-CA-to-Johnson theorem; re-pin before quotation",
+    "headline_ruling": "PENDING between: (1) t=90 at q36/s=2, all budget lines survive; (2) t=95-97 at q40/s=2, ~+89K; (3) t=100 at q45/s=2, ~+191K, 1.19M worst-draw-conditional",
+    "blocked": "all transcript-bound integration artifacts until the ruling lands; q-independent statement layer (r=2/k'=51 freeze) proceeds"
+  },
   "gate_decision": {
     "projection_status": "variance_and_bracket_conditional",
     "protocol_gate_status": "open",
