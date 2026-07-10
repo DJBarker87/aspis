@@ -1071,6 +1071,60 @@ pub struct TranscriptKatRun {
     pub notes: Vec<String>,
 }
 
+#[derive(Serialize)]
+pub struct LogUpCompressionKatRun {
+    pub generated_at_utc: String,
+    pub command: String,
+    pub validator_version: String,
+    pub expected_phi_hex: String,
+    pub host_phi_hex: String,
+    pub host_matched: bool,
+    pub matched_on_sbf: bool,
+    pub simulation_units: Option<u64>,
+    pub simulation_error: Option<String>,
+    pub weakened_feature_forwarded_to_verifier: bool,
+    pub notes: Vec<String>,
+}
+
+#[derive(Serialize)]
+pub struct OodSampleRelationProbeVariant {
+    pub samples_per_round: u8,
+    pub expected_sink_hex: String,
+    pub host_sink_hex: String,
+    pub host_sink_matched: bool,
+    pub sbf_sink_matched: bool,
+    pub simulation_cu: Vec<u64>,
+    pub simulation_cu_mean: f64,
+}
+
+#[derive(Serialize)]
+pub struct OodSampleRelationProbeSummary {
+    pub generated_at_utc: String,
+    pub command: String,
+    pub validator_version: String,
+    pub instruction_wire_ordinal: u8,
+    pub repetitions: usize,
+    pub log_rows: u8,
+    pub rounds: u8,
+    pub terminal_coefficients: u8,
+    pub existing_multilinear_claim_components: u8,
+    pub variants: Vec<OodSampleRelationProbeVariant>,
+    pub pcs_s2_second_ood_sample_transcript_relation_cu: i64,
+    pub superseded_probe_local_generated_value_delta_cu: i64,
+    pub probe_local_value_generation_contamination_removed_cu: i64,
+    pub previous_estimate_bracket_cu: [i64; 2],
+    pub delta_over_previous_bracket_max_cu: i64,
+    pub structural_proof_record_delta_bytes: u64,
+    pub extra_transcript_hash_calls_no_retry: u32,
+    pub extra_geometric_fold_operations: u32,
+    pub extra_terminal_component_evaluations: u32,
+    pub production_transcript_kat_unchanged: bool,
+    pub production_proof_format_unchanged: bool,
+    pub included_work: Vec<String>,
+    pub excluded_work: Vec<String>,
+    pub notes: Vec<String>,
+}
+
 /// Host/SBF transcript known-answer check: send `TranscriptKat` with the
 /// host-pinned digest; the program recomputes with the syscall backend and
 /// errors on mismatch (soundness-note appendix, sampler step).
@@ -1122,6 +1176,217 @@ pub fn run_transcript_kat() -> Result<TranscriptKatRun> {
         simulation_units: units,
         notes: vec![
             "matched_on_sbf=false means the SBF transcript diverged from the host — stop and diagnose before trusting any on-chain measurement.".to_string(),
+        ],
+    })
+}
+
+/// Host/SBF known-answer check for the canonical LogUp tagged-tuple encoding.
+/// The program is built through the normal production feature set, which does
+/// not forward `insecure-test-logup-compression` to `aspis-statement`.
+pub fn run_logup_compression_kat() -> Result<LogUpCompressionKatRun> {
+    let mut host_phi = [0u8; 16];
+    aspis_statement::logup_compression_kat().write_le_bytes(&mut host_phi);
+    let host_matched = host_phi == aspis_statement::LOGUP_COMPRESSION_KAT_EXPECTED;
+    anyhow::ensure!(
+        host_matched,
+        "host LogUp compression KAT does not match the pinned phi; re-pin only as a deliberate statement-protocol change"
+    );
+
+    let root = workspace_root()?;
+    let feature_tree = Command::new("cargo")
+        .args([
+            "tree",
+            "-p",
+            "aspis-verifier",
+            "-e",
+            "features",
+            "--prefix",
+            "none",
+        ])
+        .current_dir(&root)
+        .output()
+        .context("inspect verifier dependency features")?;
+    ensure!(
+        feature_tree.status.success(),
+        "cargo tree failed while checking verifier feature isolation: {}",
+        String::from_utf8_lossy(&feature_tree.stderr)
+    );
+    let weakened_feature_forwarded =
+        String::from_utf8_lossy(&feature_tree.stdout).contains("insecure-test-logup-compression");
+    ensure!(
+        !weakened_feature_forwarded,
+        "production verifier dependency graph enables insecure-test-logup-compression"
+    );
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), LAMPORTS_PER_SOL)?;
+
+    let instruction = Instruction {
+        program_id: aspis_verifier::id(),
+        accounts: vec![],
+        data: to_vec(&AspisInstruction::LogUpCompressionKat {
+            expected_phi: aspis_statement::LOGUP_COMPRESSION_KAT_EXPECTED,
+        })?,
+    };
+    let blockhash = rpc.latest_blockhash()?;
+    let tx = Transaction::new_signed_with_payer(
+        &[instruction],
+        Some(&payer.pubkey()),
+        &[&payer],
+        blockhash,
+    );
+    let (simulation_units, simulation_error) = rpc.simulate(&tx)?;
+
+    let to_hex = |bytes: &[u8]| {
+        let mut hex = String::new();
+        for byte in bytes {
+            hex.push_str(&format!("{byte:02x}"));
+        }
+        hex
+    };
+    Ok(LogUpCompressionKatRun {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command: "cargo run -p aspis-xtask -- stage2-logup-compression-kat".to_string(),
+        validator_version: validator_version(),
+        expected_phi_hex: to_hex(&aspis_statement::LOGUP_COMPRESSION_KAT_EXPECTED),
+        host_phi_hex: to_hex(&host_phi),
+        host_matched,
+        matched_on_sbf: simulation_error.is_none(),
+        simulation_units,
+        simulation_error,
+        weakened_feature_forwarded_to_verifier: weakened_feature_forwarded,
+        notes: vec![
+            "The runner mechanically checks `cargo tree -p aspis-verifier -e features` before the SBF build; the deliberately weakened lambda^0 compression feature must be absent.".to_string(),
+            "matched_on_sbf=false means host and SBF disagree on the pinned tagged-tuple phi; stop before regenerating transcript-bound statement artifacts.".to_string(),
+        ],
+    })
+}
+
+/// Isolated SBF A/B for the second sequential per-round OOD relation sample.
+/// Both rows run the same lr10/four-round claim-carrying kernel; subtracting
+/// s=1 from s=2 removes instruction and common sumcheck overhead without
+/// importing transcript-induced query/Merkle variance from a full proof.
+pub fn run_stage2_s2_ood_probe() -> Result<OodSampleRelationProbeSummary> {
+    const REPETITIONS: usize = 5;
+    const INSTRUCTION_WIRE_ORDINAL: u8 = 18;
+    let pinned = [
+        (1u8, aspis_core::verify::OOD_SAMPLE_PROBE_S1_EXPECTED),
+        (2u8, aspis_core::verify::OOD_SAMPLE_PROBE_S2_EXPECTED),
+    ];
+    let to_hex = |bytes: &[u8]| {
+        let mut hex = String::new();
+        for byte in bytes {
+            hex.push_str(&format!("{byte:02x}"));
+        }
+        hex
+    };
+
+    let mut host_rows = Vec::with_capacity(pinned.len());
+    for (samples_per_round, expected_sink) in pinned {
+        let value = aspis_core::verify::ood_sample_relation_probe(HOST_HASH, samples_per_round)
+            .map_err(|error| anyhow!("host OOD sample probe failed: {error:?}"))?;
+        let mut host_sink = [0u8; 16];
+        value.write_le_bytes(&mut host_sink);
+        anyhow::ensure!(
+            host_sink == expected_sink,
+            "host s={samples_per_round} OOD probe sink drifted: expected {}, got {}; re-pin only for a deliberate probe-kernel change",
+            to_hex(&expected_sink),
+            to_hex(&host_sink)
+        );
+        host_rows.push((samples_per_round, expected_sink, host_sink));
+    }
+
+    let root = workspace_root()?;
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), LAMPORTS_PER_SOL)?;
+
+    let mut variants = Vec::with_capacity(host_rows.len());
+    for (samples_per_round, expected_sink, host_sink) in host_rows {
+        let instruction = Instruction {
+            program_id: aspis_verifier::id(),
+            accounts: vec![],
+            data: to_vec(&AspisInstruction::OodSampleRelationProbe {
+                samples_per_round,
+                expected_sink,
+            })?,
+        };
+        let simulation_cu = simulate_pure_instruction(&rpc, &payer, instruction, REPETITIONS)?;
+        let simulation_cu_mean =
+            simulation_cu.iter().sum::<u64>() as f64 / simulation_cu.len() as f64;
+        variants.push(OodSampleRelationProbeVariant {
+            samples_per_round,
+            expected_sink_hex: to_hex(&expected_sink),
+            host_sink_hex: to_hex(&host_sink),
+            host_sink_matched: host_sink == expected_sink,
+            sbf_sink_matched: true,
+            simulation_cu,
+            simulation_cu_mean,
+        });
+    }
+    anyhow::ensure!(
+        variants.len() == 2
+            && variants[0].samples_per_round == 1
+            && variants[1].samples_per_round == 2,
+        "OOD probe A/B rows are not in canonical s=1, s=2 order"
+    );
+    let incremental =
+        (variants[1].simulation_cu_mean - variants[0].simulation_cu_mean).round() as i64;
+
+    Ok(OodSampleRelationProbeSummary {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command: "cargo run --release -p aspis-xtask -- stage2-s2-ood-probe".to_string(),
+        validator_version: validator_version(),
+        instruction_wire_ordinal: INSTRUCTION_WIRE_ORDINAL,
+        repetitions: REPETITIONS,
+        log_rows: 10,
+        rounds: 4,
+        terminal_coefficients: 4,
+        existing_multilinear_claim_components: 1,
+        variants,
+        pcs_s2_second_ood_sample_transcript_relation_cu: incremental,
+        superseded_probe_local_generated_value_delta_cu: 49_155,
+        probe_local_value_generation_contamination_removed_cu: 49_155 - incremental,
+        previous_estimate_bracket_cu: [5_000, 12_000],
+        delta_over_previous_bracket_max_cu: incremental - 12_000,
+        structural_proof_record_delta_bytes: 64,
+        extra_transcript_hash_calls_no_retry: 20,
+        extra_geometric_fold_operations: 10,
+        extra_terminal_component_evaluations: 16,
+        production_transcript_kat_unchanged: true,
+        production_proof_format_unchanged: true,
+        included_work: vec![
+            "four second sequential beta/y/mu triples: exact-uniform OOD sampling, canonical QM31 decode, y absorption, and mu sampling".to_string(),
+            "four relation-value mu*y updates and four geometric relation-weight insertions, including allocator behavior".to_string(),
+            "every later WeightAccumulator fold of the four added components (10 geometric folds total)".to_string(),
+            "terminal dot evaluation of the four added components across four final coefficients (16 component evaluations)".to_string(),
+        ],
+        excluded_work: vec![
+            "proof commitments, roots, Merkle openings, query derivation, and transcript-induced query/frontier variance".to_string(),
+            "proof-account upload CU and the eventual v4 C2 leaf/claim widening".to_string(),
+            "statement constraint composition, masking, and prover-side OOD evaluation work".to_string(),
+        ],
+        notes: vec![
+            "Book only pcs_s2_second_ood_sample_transcript_relation_cu as the isolated pre-v4 projection line; the integrated v4 eight-draw SBF measurement replaces it.".to_string(),
+            "The s=1 and s=2 instructions have identical Borsh size and expected-sink comparison overhead; their deterministic mean difference isolates the added second samples and retained relation-weight work.".to_string(),
+            "The probe reuses the production canonical OOD sample kernel but does not select a proof format. VERSION=3 and TRANSCRIPT_KAT_EXPECTED remain untouched.".to_string(),
+            "The +64-byte figure is the structural four-round record delta only; eventual full-proof bytes can move further when the v4 transcript changes openings.".to_string(),
+            format!("The measured {incremental}-CU delta refutes the old 5-12K bracket: that intuition priced transcript work but omitted the four retained components' later folds and terminal evaluations."),
+            format!("SUPERSEDED measurement: a first probe version generated and encoded each synthetic y inside the sample loop and measured 49,155 CU. Replacing those probe-only operations with a fixed canonical byte table removed {} CU of contamination; the pinned transcript sinks did not move.", 49_155 - incremental),
         ],
     })
 }
@@ -2482,12 +2747,8 @@ pub fn run_stage2_sumcheck_probe() -> Result<SumcheckProbeSummary> {
         })
     };
 
-    let baseline = simulate_pure_instruction(
-        &rpc,
-        &payer,
-        probe_instruction(0, 1, 0, 0, 0)?,
-        REPETITIONS,
-    )?;
+    let baseline =
+        simulate_pure_instruction(&rpc, &payer, probe_instruction(0, 1, 0, 0, 0)?, REPETITIONS)?;
     let baseline_mean = baseline.iter().sum::<u64>() as f64 / baseline.len() as f64;
 
     // (rounds, coefficients, claims, selector_terms, selector_exceptions):
@@ -2504,7 +2765,13 @@ pub fn run_stage2_sumcheck_probe() -> Result<SumcheckProbeSummary> {
         let samples = simulate_pure_instruction(
             &rpc,
             &payer,
-            probe_instruction(rounds, coefficients, claims, selector_terms, selector_exceptions)?,
+            probe_instruction(
+                rounds,
+                coefficients,
+                claims,
+                selector_terms,
+                selector_exceptions,
+            )?,
             REPETITIONS,
         )?;
         let mean = samples.iter().sum::<u64>() as f64 / samples.len() as f64;
@@ -2833,7 +3100,7 @@ pub fn run_layout_sweep() -> Result<LayoutSweep> {
     let probe_account = Keypair::new();
     create_program_account(&rpc, &payer, &probe_account, PROOF_ACCOUNT_HEADER_LEN)?;
 
-    let sweep = [
+    let sweep: [(u8, u16, u16); 6] = [
         (12, 16, 32),
         (11, 32, 32),
         (10, 64, 32),
@@ -2843,7 +3110,7 @@ pub fn run_layout_sweep() -> Result<LayoutSweep> {
     ];
     let mut points = Vec::new();
     for (log_rows, columns, query_count) in sweep {
-        let leaf_bytes = (columns as u16).saturating_mul(4);
+        let leaf_bytes = columns.saturating_mul(4);
         let instruction = AspisInstruction::LayoutProbe {
             log_rows,
             columns,

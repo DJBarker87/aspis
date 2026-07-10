@@ -180,9 +180,8 @@ pub fn permute(state: &mut [M31; 16]) {
 }
 
 /// Apply the same pinned permutation with SBF-oriented lazy linear layers.
-/// This function deliberately remains separate until its CU delta is measured
-/// on the validator; equality is covered against both the canonical kernel and
-/// the pinned Plonky3 implementation.
+/// Equality is covered against both the canonical kernel and the pinned
+/// Plonky3 implementation.
 pub fn permute_optimized(state: &mut [M31; 16]) {
     external_linear_lazy(state);
     for constants in &EXTERNAL_INITIAL {
@@ -211,13 +210,13 @@ pub fn hash_fields(domain: M31, input: &[M31]) -> Digest {
     state[RATE] = domain;
     state[RATE + 1] = M31(input.len() as u32);
     if input.is_empty() {
-        permute(&mut state);
+        permute_optimized(&mut state);
     } else {
         for chunk in input.chunks(RATE) {
             for (index, value) in chunk.iter().enumerate() {
                 state[index] = state[index].add(*value);
             }
-            permute(&mut state);
+            permute_optimized(&mut state);
         }
     }
     core::array::from_fn(|index| state[index])
@@ -225,18 +224,93 @@ pub fn hash_fields(domain: M31, input: &[M31]) -> Digest {
 
 #[cfg(test)]
 mod tests {
+    use alloc::vec::Vec;
+
     use super::*;
+
+    fn hash_fields_canonical(domain: M31, input: &[M31]) -> Digest {
+        let mut state = [M31::ZERO; 16];
+        state[RATE] = domain;
+        state[RATE + 1] = M31(input.len() as u32);
+        if input.is_empty() {
+            permute(&mut state);
+        } else {
+            for chunk in input.chunks(RATE) {
+                for (index, value) in chunk.iter().enumerate() {
+                    state[index] = state[index].add(*value);
+                }
+                permute(&mut state);
+            }
+        }
+        core::array::from_fn(|index| state[index])
+    }
 
     #[test]
     fn upstream_default_width_16_kat() {
         let mut state = core::array::from_fn(|index| M31(index as u32));
+        let mut optimized = state;
         permute(&mut state);
+        permute_optimized(&mut optimized);
         let expected = [
             0x0b2c803a, 0x5b1ee4d1, 0x49c6b1e3, 0x2cdc280c, 0x310a60c8, 0x530a729e, 0x4e61bcb4,
             0x2e84d3c3, 0x58709c08, 0x7e82ac42, 0x2162bcef, 0x6d153ab6, 0x742cf0e3, 0x2f21632d,
             0x61adce1e, 0x1973d6f1,
         ];
         assert_eq!(state.map(|value| value.0), expected);
+        assert_eq!(optimized.map(|value| value.0), expected);
+    }
+
+    #[test]
+    fn optimized_sponge_matches_canonical_across_block_boundaries() {
+        for length in 0..=(RATE * 2 + 1) {
+            let input: Vec<_> = (0..length)
+                .map(|index| M31((index as u32 + 1) * 97_409))
+                .collect();
+            for domain in [M31::ZERO, M31(1), M31(0x1234_5678)] {
+                assert_eq!(
+                    hash_fields(domain, &input),
+                    hash_fields_canonical(domain, &input)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn sponge_empty_and_multi_block_kat() {
+        let empty = hash_fields(M31(0x1234_5678), &[]).map(|value| value.0);
+        let multi_block = hash_fields(
+            M31(0x1234_5678),
+            &(1..=RATE + 1)
+                .map(|value| M31(value as u32))
+                .collect::<Vec<_>>(),
+        )
+        .map(|value| value.0);
+        assert_eq!(
+            empty,
+            [
+                864_784_964,
+                1_013_799_214,
+                203_488_630,
+                1_492_338_466,
+                1_402_770_185,
+                1_306_482_828,
+                486_923_140,
+                631_894_944,
+            ]
+        );
+        assert_eq!(
+            multi_block,
+            [
+                1_863_531_102,
+                1_912_681_246,
+                1_160_547_479,
+                466_862_115,
+                1_158_724_711,
+                1_610_526_762,
+                1_425_390_262,
+                1_741_061_033,
+            ]
+        );
     }
 
     #[test]

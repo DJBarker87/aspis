@@ -19,10 +19,12 @@ pub use composition::{
     evaluate_composition_probe, evaluate_composition_probe_optimized, CompositionProbe,
     CompositionProbeResult,
 };
+#[cfg(feature = "insecure-test-logup-compression")]
+pub use logup::compress_tagged_tuple_insecure_lambda_zero;
 pub use logup::{
     build_10bit_range_logup_rows, build_logup_helper, compress_tagged_tuple,
-    forge_post_chi_multiplicities, verify_logup_constraints, LogUpError, LogUpMainRow, LogUpSide,
-    RANGE_TABLE_SIZE,
+    forge_post_chi_multiplicities, logup_compression_kat, verify_logup_constraints, LogUpError,
+    LogUpMainRow, LogUpSide, LOGUP_COMPRESSION_KAT_EXPECTED, RANGE_TABLE_SIZE,
 };
 pub use poseidon2::{hash_fields, permute, Digest, DIGEST_ELEMS, POSEIDON2_WIDTH, RATE};
 pub use spend::{

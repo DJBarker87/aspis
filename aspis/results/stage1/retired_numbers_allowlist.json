@@ -1,0 +1,85 @@
+{
+  "schema": "aspis.retired_quote_numbers_allowlist.v1",
+  "files": [
+    "../README.md",
+    "README.md",
+    "docs/aspis-soundness-note.md",
+    "docs/stage1-theta-rederivation.md",
+    "docs/aspis-staged-design.md",
+    "results/stage1/gate_close.json",
+    "results/stage2/feasibility_decision.json"
+  ],
+  "patterns": [
+    {
+      "id": "retired_capacity_query_104",
+      "needles": ["104-bit", "104 bits", "not 104", "query term 104", "| **104** |", "2^-104", "104-112"]
+    },
+    {
+      "id": "retired_capacity_total_102_9752",
+      "needles": ["102.9752"]
+    },
+    {
+      "id": "retired_theta_93_2",
+      "needles": ["93.2"]
+    },
+    {
+      "id": "retired_q45_menu",
+      "needles": ["q45"]
+    },
+    {
+      "id": "retired_kprime83_layout",
+      "needles": ["k'=83", "k' = 83", "k′83", "k′ = 83", "k83", "kprime83"]
+    },
+    {
+      "id": "retired_projection_1058198",
+      "needles": ["1,058,198", "1058198"]
+    }
+  ],
+  "allowed_occurrences": [
+    {"path":"../README.md","pattern_id":"retired_kprime83_layout","line_contains":"historical k'=83 variance","reason":"explicitly historical pre-shrink projection"},
+
+    {"path":"docs/stage1-theta-rederivation.md","pattern_id":"retired_theta_93_2","line_contains":"q36/s=2 moved","reason":"correction provenance paragraph"},
+    {"path":"docs/stage1-theta-rederivation.md","pattern_id":"retired_q45_menu","line_contains":"t=100 restore moved q45","reason":"correction provenance paragraph"},
+    {"path":"docs/stage1-theta-rederivation.md","pattern_id":"retired_q45_menu","line_contains":"| q45/g32, s=2 |","reason":"unit-coefficient reproduction table explicitly labeled not current"},
+    {"path":"docs/stage1-theta-rederivation.md","pattern_id":"retired_capacity_query_104","line_contains":"co-binding with a 104-bit","reason":"refuted-accounting provenance"},
+    {"path":"docs/stage1-theta-rederivation.md","pattern_id":"retired_capacity_total_102_9752","line_contains":"102.9752 (§3) to four decimals","reason":"frozen reproduction anchor"},
+    {"path":"docs/stage1-theta-rederivation.md","pattern_id":"retired_q45_menu","line_contains":"Historical provenance","reason":"explicit historical ruling trail"},
+
+    {"path":"docs/aspis-soundness-note.md","pattern_id":"retired_capacity_query_104","line_contains":"roughly 104-112 bits","reason":"historical field-ceiling section retained for provenance"},
+    {"path":"docs/aspis-soundness-note.md","pattern_id":"retired_capacity_total_102_9752","line_contains":"2^-102.9752 worst-case","reason":"historical frozen-capacity derivation"},
+    {"path":"docs/aspis-soundness-note.md","pattern_id":"retired_capacity_query_104","line_contains":"| **q36/g32** | **104** |","reason":"historical Stage-1 measured schedule table"},
+    {"path":"docs/aspis-soundness-note.md","pattern_id":"retired_capacity_query_104","line_contains":"103.9875 and 104 bits","reason":"refuted-accounting comparison"},
+    {"path":"docs/aspis-soundness-note.md","pattern_id":"retired_capacity_query_104","line_contains":"not 104","reason":"explicit contrast with proven floor"},
+    {"path":"docs/aspis-soundness-note.md","pattern_id":"retired_capacity_query_104","line_contains":"104-bit query term","reason":"explicitly superseded OOD decision history"},
+    {"path":"docs/aspis-soundness-note.md","pattern_id":"retired_capacity_total_102_9752","line_contains":"pinned constants, `s=1` gives 102.9752","reason":"marked retired-numbers history block"},
+    {"path":"docs/aspis-soundness-note.md","pattern_id":"retired_capacity_query_104","line_contains":"after the 104-bit query","reason":"marked retired-numbers history block"},
+    {"path":"docs/aspis-soundness-note.md","pattern_id":"retired_capacity_total_102_9752","line_contains":"2^-102.9752 worst-case","reason":"historical summary explicitly superseded immediately below"},
+    {"path":"docs/aspis-soundness-note.md","pattern_id":"retired_capacity_query_104","line_contains":"historical query term 104","reason":"ledger row explicitly historical and superseded"},
+    {"path":"docs/aspis-soundness-note.md","pattern_id":"retired_kprime83_layout","line_contains":"historical readings: k'=83","reason":"parametric T5 provenance"},
+    {"path":"docs/aspis-soundness-note.md","pattern_id":"retired_kprime83_layout","line_contains":"The k83 reading","reason":"explicitly superseded layout provenance"},
+    {"path":"docs/aspis-soundness-note.md","pattern_id":"retired_capacity_query_104","line_contains":"2^-103.9453 + 2^-104","reason":"historical integrated-statement capacity reproduction"},
+    {"path":"docs/aspis-soundness-note.md","pattern_id":"retired_capacity_total_102_9752","line_contains":"2^-102.9752","reason":"historical integrated-statement comparison"},
+    {"path":"docs/aspis-soundness-note.md","pattern_id":"retired_capacity_query_104","line_contains":"104-112-bit algebraic band","reason":"explicit refutation scope"},
+    {"path":"docs/aspis-soundness-note.md","pattern_id":"retired_theta_93_2","line_contains":"93.2 and put","reason":"line is inside the marked historical ruling trail"},
+    {"path":"docs/aspis-soundness-note.md","pattern_id":"retired_q45_menu","line_contains":"q45/+191K","reason":"line is inside the marked historical ruling trail"},
+
+    {"path":"docs/aspis-staged-design.md","pattern_id":"retired_capacity_query_104","line_contains":"combining it with the 104-bit","reason":"original rationale explicitly labeled historical"},
+
+    {"path":"docs/stage2-feasibility.md","pattern_id":"retired_kprime83_layout","line_contains":"historical k'=83 variance failure","reason":"top status explicitly identifies superseded layer"},
+    {"path":"docs/stage2-feasibility.md","pattern_id":"retired_kprime83_layout","line_contains":"Historical post-review k'=83 corrections","reason":"section heading explicitly historical and superseded"},
+    {"path":"docs/stage2-feasibility.md","pattern_id":"retired_kprime83_layout","line_contains":"Historical corrected ledger","reason":"table explicitly historical and superseded"},
+    {"path":"docs/stage2-feasibility.md","pattern_id":"retired_kprime83_layout","line_contains":"historical k83 reading","reason":"explicit current-vs-historical closing sentence"},
+
+    {"path":"results/stage1/gate_close.json","pattern_id":"retired_capacity_total_102_9752","line_contains":"Every security number below is HISTORICAL","reason":"top-level supersession annotation"},
+    {"path":"results/stage1/gate_close.json","pattern_id":"retired_capacity_total_102_9752","line_contains":"capacity_conjectured_bits_at_pinned_t1","reason":"historical payload governed by supersession annotation"},
+
+    {"path":"results/stage2/feasibility_decision.json","pattern_id":"retired_kprime83_layout","line_contains":"HISTORICAL kprime83 correction layer","reason":"machine-readable supersession marker"},
+    {"path":"results/stage2/feasibility_decision.json","pattern_id":"retired_kprime83_layout","line_contains":"rlc_k83_scaled_cu","reason":"historical correction payload"},
+    {"path":"results/stage2/feasibility_decision.json","pattern_id":"retired_kprime83_layout","line_contains":"wide_leaf_k83_scaled_cu","reason":"historical correction payload"},
+    {"path":"results/stage2/feasibility_decision.json","pattern_id":"retired_kprime83_layout","line_contains":"central_70_linear_terms_kprime83","reason":"historical correction payload"},
+    {"path":"results/stage2/feasibility_decision.json","pattern_id":"retired_kprime83_layout","line_contains":"stress_linear128_kprime83","reason":"historical correction payload"},
+    {"path":"results/stage2/feasibility_decision.json","pattern_id":"retired_kprime83_layout","line_contains":"worst_of_16_draw_kprime83","reason":"historical correction payload"},
+    {"path":"results/stage2/feasibility_decision.json","pattern_id":"retired_kprime83_layout","line_contains":"combined_worst_stress_plus_draw_kprime83","reason":"historical correction payload"},
+    {"path":"results/stage2/feasibility_decision.json","pattern_id":"retired_kprime83_layout","line_contains":"historical kprime83 variance failure","reason":"explicit current-vs-historical status sentence"}
+  ]
+}

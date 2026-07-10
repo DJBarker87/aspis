@@ -224,6 +224,14 @@ boring pair closed the hunt without GKR leaving the reading pile.
 
 ### Rulings (`2026-07-10` review)
 
+**Post-close s2 overlay (`2026-07-10`):** the shrink close above was an s1
+base. The contamination-free s2 A/B adds 49,099 CU, moving current q36 to
+1,096,660 registered (25,660 over strict). q34/g36 saves 44,479 CU and
+projects 1,052,181 registered (18,819 strict margin). Thus q34 is now the
+named strict-line recovery lever, still held until an explicit second-knob
+proof/KAT re-pin; the original s1 close remains valid history but is not the
+current q36/s2 verdict.
+
 - **Ruling 1: r=2 / k' = 51 FROZEN**, note-first, with four conditions —
   all discharged in the soundness note §8 freeze record: (i) T5'
   parametric (118.36 bits at k'=51, pin <= 52); (ii) independent m
@@ -232,7 +240,7 @@ boring pair closed the hunt without GKR leaving the reading pile.
   round seams inside the periodic part, with a layout-freeze teeth vector
   required for the padding-leak hole; (iv) freeze confirmation on >= 8
   fresh g16 draws at the integrated v4 shape.
-- **Ruling 2: q34/g36 HELD as reserve.** Insurance is not spent before
+- **Ruling 2: q34/g36 HELD as the named recovery lever.** Insurance is not spent before
   the insured events (integration friction, final-shape spread) resolve;
   flat-commit and RLC/leaf fusion queue behind it as pocket levers.
   **Earmark: revisit q34/g36 at publication freeze regardless of CU** —
@@ -242,8 +250,8 @@ boring pair closed the hunt without GKR leaving the reading pile.
   costs have now run low three times (composition, C2 phase, sumcheck
   allowance — the last by 40%); measured probes precede belief.
 
-**Optional adders, not needed for close, available if integration eats
-margin:** q34/g36 (-44K measured+scaled, floor +2.1 bits, grind cost
+**Recovery adders for the current q36/s2 strict deficit:** q34/g36
+(-44,479 measured+scaled, floor +2.1 bits, grind cost
 30-80 min, needs the §4 re-rule); flat-commit of the small deep layers
 (-30-33K estimate AND shrinks the draw spread itself; needs multi-seed
 remeasure + named root/KAT re-pin); RLC/leaf single-pass fusion (-10-20K,

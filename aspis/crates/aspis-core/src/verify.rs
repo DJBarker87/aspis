@@ -14,7 +14,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
-use crate::field::{cm31_batch_inverse_with, CM31, M31, QM31};
+use crate::field::{cm31_batch_inverse_with, CM31, M31, M31_QUARTER, QM31};
 use crate::merkle::{
     leaf_hash, verify_minimal_subtree_bytes, verify_radix4_minimal_subtree_bytes,
     verify_single_path_bytes,
@@ -479,6 +479,173 @@ impl EvaluationClaim {
     }
 }
 
+/// Host/SBF-pinned outputs of [`ood_sample_relation_probe`] for the frozen
+/// lr10/four-round measurement shape. These are a probe-local conformance
+/// pin; they do not replace or modify the production transcript KAT.
+pub const OOD_SAMPLE_PROBE_S1_EXPECTED: [u8; 16] = [
+    0xb1, 0x5f, 0x05, 0x55, 0xd1, 0xf6, 0xb3, 0x1b, 0x38, 0x6d, 0x0c, 0x65, 0x0c, 0x09, 0xcc, 0x76,
+];
+pub const OOD_SAMPLE_PROBE_S2_EXPECTED: [u8; 16] = [
+    0xfe, 0x80, 0x15, 0x42, 0xf7, 0x2b, 0xf7, 0x76, 0xfc, 0x0b, 0xaa, 0x75, 0x50, 0x53, 0x09, 0x07,
+];
+
+#[inline(always)]
+fn sample_ood_point(transcript: &mut Transcript) -> Result<QM31, VerifyError> {
+    match transcript.challenge_ood_qm31() {
+        Ok(point) => Ok(point),
+        Err(OodSampleError::ChallengeSampleExhausted) => Err(VerifyError::ChallengeSampleExhausted),
+        Err(OodSampleError::SubfieldSampleExhausted) => Err(VerifyError::OodSampleExhausted),
+    }
+}
+
+#[inline(always)]
+fn absorb_ood_value_and_accumulate(
+    transcript: &mut Transcript,
+    point: QM31,
+    encoded_value: &[u8; OOD_VALUE_LEN],
+    relation_value: &mut QM31,
+    relation_weights: &mut WeightAccumulator,
+) -> Result<(), VerifyError> {
+    let value = QM31::from_le_bytes(encoded_value).ok_or(VerifyError::NonCanonicalValue)?;
+    transcript.absorb(label::OOD_VALUE, encoded_value);
+    let mix = transcript
+        .challenge_qm31()
+        .map_err(|_| VerifyError::ChallengeSampleExhausted)?;
+    *relation_value = relation_value.add(mix.mul(value));
+    relation_weights.add_geometric(mix, point);
+    Ok(())
+}
+
+/// Execute one canonical `(beta, y, mu)` OOD relation sample. Production
+/// verification and the isolated SBF A/B probe share this exact kernel so
+/// the probe prices the same sampler, canonical decode, transcript absorbs,
+/// relation update, and structured-weight insertion.
+#[doc(hidden)]
+#[inline(always)]
+pub fn accumulate_canonical_ood_sample(
+    transcript: &mut Transcript,
+    encoded_value: &[u8; OOD_VALUE_LEN],
+    relation_value: &mut QM31,
+    relation_weights: &mut WeightAccumulator,
+) -> Result<(), VerifyError> {
+    let point = sample_ood_point(transcript)?;
+    absorb_ood_value_and_accumulate(
+        transcript,
+        point,
+        encoded_value,
+        relation_value,
+        relation_weights,
+    )
+}
+
+fn ood_probe_value(index: u32, lane: u32) -> QM31 {
+    let limb = |offset: u32| M31(1 + index.wrapping_mul(131).wrapping_add(offset) % 1_000_003);
+    QM31 {
+        c0: CM31 {
+            a: limb(lane * 17),
+            b: limb(lane * 17 + 3),
+        },
+        c1: CM31 {
+            a: limb(lane * 17 + 7),
+            b: limb(lane * 17 + 11),
+        },
+    }
+}
+
+// Fixed canonical encodings of `ood_probe_value(index, 3)` for index 0..8.
+// Production receives these bytes from the proof; keeping them pre-encoded
+// prevents the s=2 A/B row from paying four probe-only value constructions
+// and serializations that the production verifier never performs.
+const OOD_PROBE_ENCODED_VALUES: [[u8; OOD_VALUE_LEN]; 8] = [
+    [0x34, 0, 0, 0, 0x37, 0, 0, 0, 0x3b, 0, 0, 0, 0x3f, 0, 0, 0],
+    [0xb7, 0, 0, 0, 0xba, 0, 0, 0, 0xbe, 0, 0, 0, 0xc2, 0, 0, 0],
+    [
+        0x3a, 0x01, 0, 0, 0x3d, 0x01, 0, 0, 0x41, 0x01, 0, 0, 0x45, 0x01, 0, 0,
+    ],
+    [
+        0xbd, 0x01, 0, 0, 0xc0, 0x01, 0, 0, 0xc4, 0x01, 0, 0, 0xc8, 0x01, 0, 0,
+    ],
+    [
+        0x40, 0x02, 0, 0, 0x43, 0x02, 0, 0, 0x47, 0x02, 0, 0, 0x4b, 0x02, 0, 0,
+    ],
+    [
+        0xc3, 0x02, 0, 0, 0xc6, 0x02, 0, 0, 0xca, 0x02, 0, 0, 0xce, 0x02, 0, 0,
+    ],
+    [
+        0x46, 0x03, 0, 0, 0x49, 0x03, 0, 0, 0x4d, 0x03, 0, 0, 0x51, 0x03, 0, 0,
+    ],
+    [
+        0xc9, 0x03, 0, 0, 0xcc, 0x03, 0, 0, 0xd0, 0x03, 0, 0, 0xd4, 0x03, 0, 0,
+    ],
+];
+
+/// Isolated verifier-work probe for one versus two sequential OOD samples.
+///
+/// The fixed shape matches the payment target: log_rows=10, four arity-4
+/// folds, a four-coefficient terminal polynomial, and one already-live
+/// multilinear evaluation-claim component. It deliberately excludes proof
+/// openings and query derivation so the A/B delta cannot be contaminated by
+/// transcript-induced Merkle/query variance.
+#[doc(hidden)]
+pub fn ood_sample_relation_probe(hash: HashFn, samples_per_round: u8) -> Result<QM31, VerifyError> {
+    const LOG_ROWS: u32 = 10;
+    const ROUNDS: u8 = 4;
+    if samples_per_round != 1 && samples_per_round != 2 {
+        return Err(VerifyError::BadHeader);
+    }
+
+    let claim = EvaluationClaim {
+        z: (0..LOG_ROWS)
+            .map(|coordinate| ood_probe_value(coordinate, 1))
+            .collect(),
+        v: ood_probe_value(97, 2),
+    };
+    let mut relation_weights = WeightAccumulator::from_claim(LOG_ROWS, Some(&claim));
+    let mut relation_value = claim.v;
+    let mut transcript = Transcript::new(hash);
+    transcript.absorb(label::PROFILE, b"aspis-s2-ood-relation-cu-probe-v1");
+    transcript.absorb(label::STATEMENT, &[0x5au8; 32]);
+
+    for layer in 0..ROUNDS {
+        transcript.absorb(label::ROOT, &[0x10 + layer; 32]);
+        for sample in 0..samples_per_round {
+            let encoded_value =
+                &OOD_PROBE_ENCODED_VALUES[usize::from(layer) * 2 + usize::from(sample)];
+            accumulate_canonical_ood_sample(
+                &mut transcript,
+                encoded_value,
+                &mut relation_value,
+                &mut relation_weights,
+            )?;
+        }
+
+        // A constant degree-0 message is still a valid member of the
+        // verifier's degree-6 envelope. Its boundary is made exactly equal
+        // to the accumulated relation so the probe follows the accepting
+        // verifier branch before folding every live weight component.
+        let mut sumcheck = [QM31::ZERO; 7];
+        sumcheck[0] = relation_value.mul_m31(M31_QUARTER);
+        if sumcheck_boundary(&sumcheck) != relation_value {
+            return Err(VerifyError::SumcheckBoundaryMismatch { layer });
+        }
+        let mut sumcheck_bytes = [0u8; SUMCHECK_BYTES];
+        for (index, coefficient) in sumcheck.iter().enumerate() {
+            coefficient.write_le_bytes(&mut sumcheck_bytes[index * 16..index * 16 + 16]);
+        }
+        transcript.absorb(label::SUMCHECK_POLY, &sumcheck_bytes);
+        let alpha = transcript
+            .challenge_qm31()
+            .map_err(|_| VerifyError::ChallengeSampleExhausted)?;
+        relation_value = evaluate_sumcheck(&sumcheck, alpha);
+        relation_weights.fold(alpha);
+    }
+
+    let final_values: [QM31; 4] =
+        core::array::from_fn(|index| ood_probe_value(200 + index as u32, 4));
+    let terminal = relation_weights.dot(&final_values);
+    Ok(terminal.add(relation_value))
+}
+
 /// Verify a proof against a statement digest. `hash` is the SHA-256 backend
 /// (syscall on SBF, sha2 on host).
 pub fn verify(proof: &[u8], statement_digest: &[u8; 32], hash: HashFn) -> Result<(), VerifyError> {
@@ -743,41 +910,43 @@ fn verify_inner(
             }
         }
 
-        // The point is verifier-derived after the root and forced outside
-        // CM31, which contains every circle-coset evaluation domain. The
-        // supplied value is canonical and transcript-bound before alpha.
-        let ood_point = match transcript.challenge_ood_qm31() {
-            Ok(point) => point,
-            Err(OodSampleError::ChallengeSampleExhausted) => {
-                return Err(VerifyError::ChallengeSampleExhausted)
-            }
-            Err(OodSampleError::SubfieldSampleExhausted) => {
-                return Err(VerifyError::OodSampleExhausted)
-            }
-        };
-        // The insecure OOD policy reproduces the old broken schedule: the
-        // fold challenge is squeezed before the OOD claim and sumcheck that
-        // are supposed to bind it.
+        // Canonical schedule: beta -> y -> mu. The deliberately weakened
+        // test-only policy inserts alpha after beta and before y; both paths
+        // share the exact y/mu relation-and-weight kernel.
         let early_alpha = if ordering.ood_after_fold_challenge() {
-            Some(
-                transcript
-                    .challenge_qm31()
-                    .map_err(|_| VerifyError::ChallengeSampleExhausted)?,
-            )
+            let point = sample_ood_point(&mut transcript)?;
+            let alpha = transcript
+                .challenge_qm31()
+                .map_err(|_| VerifyError::ChallengeSampleExhausted)?;
+            let bytes: &[u8; OOD_VALUE_LEN] = cursor
+                .take(OOD_VALUE_LEN)
+                .ok_or(VerifyError::BadLength)?
+                .try_into()
+                .map_err(|_| VerifyError::BadLength)?;
+            absorb_ood_value_and_accumulate(
+                &mut transcript,
+                point,
+                bytes,
+                &mut relation_value,
+                &mut relation_weights,
+            )?;
+            Some(alpha)
         } else {
+            let bytes: &[u8; OOD_VALUE_LEN] = cursor
+                .take(OOD_VALUE_LEN)
+                .ok_or(VerifyError::BadLength)?
+                .try_into()
+                .map_err(|_| VerifyError::BadLength)?;
+            accumulate_canonical_ood_sample(
+                &mut transcript,
+                bytes,
+                &mut relation_value,
+                &mut relation_weights,
+            )?;
             None
         };
-
-        let ood_bytes = cursor.take(OOD_VALUE_LEN).ok_or(VerifyError::BadLength)?;
-        let ood_value = QM31::from_le_bytes(ood_bytes).ok_or(VerifyError::NonCanonicalValue)?;
-        transcript.absorb(label::OOD_VALUE, ood_bytes);
+        // This marker now denotes the complete beta/y/mu relation sample.
         trace(trace_fn, TraceEvent::LayerOodDone(layer as u8));
-
-        let mix = transcript
-            .challenge_qm31()
-            .map_err(|_| VerifyError::ChallengeSampleExhausted)?;
-        relation_value = relation_value.add(mix.mul(ood_value));
-        relation_weights.add_geometric(mix, ood_point);
 
         let sumcheck_bytes = cursor.take(SUMCHECK_BYTES).ok_or(VerifyError::BadLength)?;
         let mut sumcheck: SumcheckPolynomial = [QM31::ZERO; 7];
@@ -1058,9 +1227,7 @@ fn verify_inner(
             }
         }
 
-        for q in 0..query_count {
-            index[q] = fiber_index[q];
-        }
+        index[..query_count].copy_from_slice(&fiber_index[..query_count]);
         domain_table.fold_layer();
         trace(trace_fn, TraceEvent::LayerFoldDone(layer as u8));
     }
@@ -1107,4 +1274,80 @@ fn verify_inner(
     }
     trace(trace_fn, TraceEvent::Done);
     Ok(())
+}
+
+#[cfg(test)]
+mod probe_tests {
+    use super::*;
+    use core::sync::atomic::{AtomicUsize, Ordering};
+
+    static HASH_CALLS: AtomicUsize = AtomicUsize::new(0);
+
+    fn host_hash(inputs: &[&[u8]]) -> [u8; 32] {
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        for input in inputs {
+            hasher.update(input);
+        }
+        hasher.finalize().into()
+    }
+
+    fn counting_host_hash(inputs: &[&[u8]]) -> [u8; 32] {
+        HASH_CALLS.fetch_add(1, Ordering::SeqCst);
+        host_hash(inputs)
+    }
+
+    fn encoded_probe_output(samples_per_round: u8) -> [u8; 16] {
+        let value = ood_sample_relation_probe(host_hash, samples_per_round)
+            .expect("fixed probe transcript must not exhaust");
+        let mut encoded = [0u8; 16];
+        value.write_le_bytes(&mut encoded);
+        encoded
+    }
+
+    #[test]
+    fn ood_sample_probe_sinks_are_pinned() {
+        assert_eq!(
+            encoded_probe_output(1),
+            OOD_SAMPLE_PROBE_S1_EXPECTED,
+            "s=1 OOD probe sink drifted; re-pin only for a deliberate probe-kernel change"
+        );
+        assert_eq!(
+            encoded_probe_output(2),
+            OOD_SAMPLE_PROBE_S2_EXPECTED,
+            "s=2 OOD probe sink drifted; re-pin only for a deliberate probe-kernel change"
+        );
+    }
+
+    #[test]
+    fn preencoded_ood_probe_values_match_the_reference_formula() {
+        for (index, expected) in OOD_PROBE_ENCODED_VALUES.iter().enumerate() {
+            let mut actual = [0u8; OOD_VALUE_LEN];
+            ood_probe_value(index as u32, 3).write_le_bytes(&mut actual);
+            assert_eq!(&actual, expected);
+        }
+    }
+
+    #[test]
+    fn ood_sample_probe_rejects_non_protocol_counts() {
+        assert_eq!(
+            ood_sample_relation_probe(host_hash, 0),
+            Err(VerifyError::BadHeader)
+        );
+        assert_eq!(
+            ood_sample_relation_probe(host_hash, 3),
+            Err(VerifyError::BadHeader)
+        );
+    }
+
+    #[test]
+    fn second_samples_add_exactly_twenty_no_retry_hash_calls() {
+        HASH_CALLS.store(0, Ordering::SeqCst);
+        ood_sample_relation_probe(counting_host_hash, 1).unwrap();
+        let s1_calls = HASH_CALLS.load(Ordering::SeqCst);
+        HASH_CALLS.store(0, Ordering::SeqCst);
+        ood_sample_relation_probe(counting_host_hash, 2).unwrap();
+        let s2_calls = HASH_CALLS.load(Ordering::SeqCst);
+        assert_eq!(s2_calls - s1_calls, 20);
+    }
 }

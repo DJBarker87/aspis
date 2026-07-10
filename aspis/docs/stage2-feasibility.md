@@ -2,19 +2,18 @@
 
 Date: `2026-07-10`
 
-Status: **the no-proof SpendV0-min evaluator passes. The first
-single-transaction projection failed, measured cross-layer math reopened it,
-and the post-review checks have now qualified it. The central
-lookup-candidate projection is 1,049,941 CU after the k' = 83 width
-correction, 21,059 below the strict 1,071,000-CU ceiling — but the
-pre-registered 16-seed variance criterion FAILS (worst-of-16 range 55,786
-CU) and the linear=128 bracket top fails on its own (10,965 over with the
-width correction), so the projection is `variance_and_bracket_conditional`,
-not candidate-green. Every reading, including the combined worst case at
-1,137,751 CU, still clears the 1.19M transaction target by at least 52,249
-CU. Radix-4 verifies in a literal q36/g32 proof; there is no gate close
-because the LogUp lookup and fixed-width wide RLC are not integrated into
-one payment proof.** The three-transaction receipt remains the fallback.
+Status: **the historical k'=83 variance failure is superseded by the
+review-ratified r2/k'=51 shrink. Its central projection is 974,112 CU and
+its binding registered stress-plus-full-range reading is 1,047,561 CU,
+23,439 below the strict 1,071,000 ceiling at s1. The measured s2 A/B adds
+49,099 CU, moving current q36 to 1,096,660 registered—25,660 over strict.
+The held q34/g36 lever saves 44,479 CU and projects 1,052,181 registered,
+restoring 18,819 CU of strict margin, but it is not silently adopted as a
+second transcript change. This is not a product gate close: the LogUp
+lookup, fixed-width wide RLC, and v4
+statement proof are not yet one measured SBF proof, and the final-shape
+draw set must still pass the registered rule.** The three-transaction
+receipt remains the fallback.
 
 ## Executable statement oracle
 
@@ -67,6 +66,11 @@ bytes, SHA-256, and savings), which is why the g16 row reads 734,230 ->
 | low constraint composition | 176,844 | **120,275 lookup candidate** | **56,569** |
 | g16 real binary -> radix-4 PCS | 734,230 | **657,643** | **76,587 (10.43%)** |
 
+The Poseidon2 row has **zero current verifier-gate impact**: Spend
+`hash_fields` runs only in the host semantic evaluator today, while the
+production PCS verifier uses SHA-256. Its depth-20 saving is future direct-
+evaluator evidence, not 66,830 CU of current gate headroom.
+
 The first PCS reduction is real and root-preserving: it verifies the frozen
 binary proof with unchanged transcript bytes. Its main reductions are:
 
@@ -92,7 +96,7 @@ evidence is in `results/stage2/zk_kernel_probe.json`,
 `results/stage2/radix4_g16.json`, `results/stage2/radix4_g32.json`, and
 `results/stage2/poseidon2_probe.json`.
 
-## RLC correction
+## Historical k80 RLC correction (kernel provenance; superseded as a layout)
 
 The old `+54,720` k80 layout delta is deprecated. Its loop multiplied every
 column by the same gamma, so it did not implement a sound gamma-power RLC. The
@@ -101,6 +105,9 @@ Precomputed powers cost 361,963 CU at q36/k80; a four-product lazy Mersenne dot
 reduces it first to 236,170 CU. Delaying the 20 block-result additions until
 one final reduction per QM31 limb reaches 220,386 CU. A fixed
 `qm31_power_table::<80>` and stack-backed 80-value row reaches **202,031 CU**.
+These are historical width-80 kernel measurements. The frozen k'=51
+projection uses the separately measured fixed51 RLC value 131,759 CU; no
+current projection scales from k80.
 Per-query Horner, packed-pair/four variants, and a u128 whole-dot variant all
 lose on SBF and stay out of the chosen path.
 
@@ -130,7 +137,10 @@ integrated PCS change:
    35,704 CU because its transcript-derived query collisions/frontier differ;
    the ledger uses the g32 number, not the friendlier model or g16 proxy.
 
-## Transcript-draw variance pre-registration
+## Historical r4/k80 transcript-draw variance (`SUPERSEDED` by r2/k'=51)
+
+Everything in this section is the pre-shrink registration and result. It is
+retained to show why the shrink hunt ran; it is not the current gate state.
 
 The 29,056-CU strict headroom is a single-transcript number. The artifacts
 already show material draw-to-draw movement at fixed verifier code (the g16
@@ -188,7 +198,10 @@ sixteen fresh 32-bit nonce searches are not; the transfer of the observed
 spread to the g32 shape is an assumption named inside the criterion, and
 the integrated g32 payment proof remains the final word.
 
-## Projection ledger
+## Historical r4/k80 projection ledger (`SUPERSEDED`)
+
+This table is provenance for the first candidate only. The authoritative
+current ledger follows it.
 
 The 30,000-CU statement-sumcheck allowance remains synthetic. Totals below are
 therefore feasibility projections, not integrated proof measurements.
@@ -205,7 +218,16 @@ product gate remains
 `red_pending_logup_wide_rlc_and_integrated_statement_proof`, and the
 projection status is qualified by the corrections below.
 
-## Post-review corrections (`2026-07-10`)
+### Current r2/k'=51 ledger with measured s2 overlay
+
+| reading | projected CU | current status |
+| --- | ---: | --- |
+| s1 central / registered stress+full-range | 974,112 / 1,047,561 | historical base that closed the shrink hunt |
+| q36/g32/s2 central / registered | **1,023,211 / 1,096,660** | current profile; strict-red by 25,660 |
+| q36/g32/s2 anchor-corrected sensitivity | 1,058,112 | clears strict by 12,888; not binding |
+| q34/g36/s2 central / registered | **978,732 / 1,052,181** | named recovery lever; 18,819 strict margin; not yet adopted |
+
+## Historical post-review k'=83 corrections (`2026-07-10`, superseded by r2/k'=51)
 
 Three checks ordered by review ran before integration; two failed and one
 recounted a column budget. All three are recorded here and in
@@ -224,7 +246,7 @@ recounted a column budget. All three are recorded here and in
 3. **Bracket stress row: FAILED** the strict ceiling, +32,024 CU over the
    70-term reading.
 
-Corrected ledger (all rows include the k' = 83 correction):
+Historical corrected ledger (all rows include the superseded k' = 83 correction):
 
 | reading | projected CU | vs strict 1.071M | vs 1.19M |
 | --- | ---: | ---: | ---: |
@@ -238,7 +260,8 @@ reading. Closing the strict gate honestly now requires either a further
 named shrink (>= ~11K CU for the bracket top, ~35K for the worst draw,
 ~67K combined) or an explicit, documented gate-rule decision on per-draw
 variance. Neither is assumed. The 1.19M transaction target and the 1.4M
-absolute cap clear in every reading.
+absolute cap cleared in every historical k83 reading. Current q36/s2 is
+instead governed by the r2/k51 ledger above.
 
 ## Split fallback and next gate
 
@@ -250,11 +273,14 @@ but it remains the fallback if integrated one-transaction measurement misses.
 
 The next gate is deliberately teeth-first:
 
-1. integrate the tested `[0,1024)` LogUp main/helper columns and `sum(h)=0`
+1. rule explicitly on adopting q34/g36 versus another >=25,660-CU reclaim
+   (or a gate-rule change), with the proof/KAT re-pin named;
+2. integrate the tested `[0,1024)` LogUp main/helper columns and `sum(h)=0`
    claim into the C1/C2 statement proof;
-2. integrate `qm31_power_table::<80>` and the fixed-width outer-lazy dot into
+3. integrate `qm31_power_table::<51>` (or the generic table specialized at
+   51) and the fixed-width outer-lazy dot into
    real wide proof parsing;
-3. generate one radix-4 payment proof and run the complete SBF transaction
+4. generate one radix-4 payment proof and run the complete SBF transaction
    five times with both economic and proof-corruption attacks.
 
 The machine-readable ledger is `results/stage2/feasibility_decision.json`.

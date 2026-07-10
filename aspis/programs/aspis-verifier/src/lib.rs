@@ -10,6 +10,10 @@
 //! [0..4] magic "ASPU", [4..8] proof_len u32 LE, [8..40] upload authority,
 //! [40..40+proof_len] proof bytes.
 
+// Solana's entrypoint macro emits `target_os = "solana"`; the host toolchain's
+// check-cfg list does not know that SBF target even though cargo-build-sbf does.
+#![allow(unexpected_cfgs)]
+
 use borsh::{BorshDeserialize, BorshSerialize};
 #[cfg(not(feature = "no-entrypoint"))]
 use solana_program::entrypoint;
@@ -50,12 +54,6 @@ pub enum AspisInstruction {
     /// Verify the uploaded proof against `statement_digest` with the selected
     /// cached-domain and unit-circle-conjugate kernels.
     Verify { statement_digest: [u8; 32] },
-    /// Compatibility alias for the optimized verifier, retained so existing
-    /// Stage-2 measurement transactions remain decodable.
-    VerifyFast { statement_digest: [u8; 32] },
-    /// Legacy batch-denominator verifier with `sol_big_mod_exp` supplying its
-    /// one M31 inverse per round. Measurement-only comparison path.
-    VerifySyscallInverse { statement_digest: [u8; 32] },
     /// Diagnostic verifier run with CU markers in the simulation logs.
     VerifyProfile { statement_digest: [u8; 32] },
     /// Synthetic wide-row layout probe for the Stage 2 layout decision.
@@ -70,6 +68,14 @@ pub enum AspisInstruction {
     /// digest supplied by the client. A mismatch is a host/SBF transcript
     /// divergence and errors loudly.
     TranscriptKat { expected: [u8; 32] },
+    /// Verify a claim-carrying proof. The (z, v) evaluation claim is a public
+    /// input (16-byte LE QM31 coordinates + value), transcript-absorbed and
+    /// enforced by the interleaved relation sumcheck.
+    VerifyWithClaim {
+        statement_digest: [u8; 32],
+        claim_z: Vec<[u8; 16]>,
+        claim_v: [u8; 16],
+    },
     /// Pure-compute Stage 2 measurement. This runs the extension-field
     /// constraint composition in isolation and requires no accounts.
     ConstraintCompositionProbe {
@@ -83,6 +89,13 @@ pub enum AspisInstruction {
     },
     /// Pure-compute software Poseidon2-M31 permutation measurement.
     Poseidon2Probe { permutations: u16 },
+    // Keep every variant above this line at its first-introduction wire tag
+    // (0..=8). New diagnostics are append-only below.
+    /// Compatibility alias for the optimized verifier.
+    VerifyFast { statement_digest: [u8; 32] },
+    /// Legacy batch-denominator verifier with `sol_big_mod_exp` supplying its
+    /// one M31 inverse per round. Measurement-only comparison path.
+    VerifySyscallInverse { statement_digest: [u8; 32] },
     /// The same permutation using lazy M31 linear layers and power-of-two
     /// shifts. Kept as a separate instruction so the SBF delta is literal.
     Poseidon2OptimizedProbe { permutations: u16 },
@@ -105,16 +118,7 @@ pub enum AspisInstruction {
         query_count: u16,
         arity: u8,
     },
-    /// Verify a claim-carrying proof. The (z, v) evaluation claim is a public
-    /// input (16-byte LE QM31 coordinates + value), transcript-absorbed and
-    /// enforced by the interleaved relation sumcheck.
-    VerifyWithClaim {
-        statement_digest: [u8; 32],
-        claim_z: Vec<[u8; 16]>,
-        claim_v: [u8; 16],
-    },
-    /// Pre-optimization software-batch denominator path. Appended to preserve
-    /// every existing Borsh instruction discriminant; measurement only.
+    /// Pre-optimization software-batch denominator path; measurement only.
     VerifyLegacySoftware { statement_digest: [u8; 32] },
     /// Pure-compute probe for the fused statement-sumcheck verifier work
     /// that the synthetic 30,000-CU allowance stands in for: mu-batched
@@ -130,6 +134,33 @@ pub enum AspisInstruction {
         selector_terms: u16,
         selector_exceptions: u8,
     },
+    /// Host/SBF conformance check for the pinned LogUp tagged-tuple encoding.
+    /// Appended to preserve every existing Borsh instruction discriminant.
+    LogUpCompressionKat { expected_phi: [u8; 16] },
+    /// Isolated A/B measurement for one versus two sequential per-round
+    /// `(beta, y, mu)` OOD relation samples. The expected sink makes every
+    /// relation-weight fold and terminal evaluation observable and doubles
+    /// as a host/SBF conformance check. Measurement only; no proof format or
+    /// production transcript schedule is selected by this instruction.
+    OodSampleRelationProbe {
+        samples_per_round: u8,
+        expected_sink: [u8; 16],
+    },
+}
+
+fn run_ood_sample_relation_probe(samples_per_round: u8, expected_sink: [u8; 16]) -> ProgramResult {
+    if samples_per_round != 1 && samples_per_round != 2 {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+    let value = aspis_core::verify::ood_sample_relation_probe(sbf_hashv, samples_per_round)
+        .map_err(|_| ProgramError::InvalidInstructionData)?;
+    let mut actual_sink = [0u8; 16];
+    value.write_le_bytes(&mut actual_sink);
+    if actual_sink == expected_sink {
+        Ok(())
+    } else {
+        Err(ProgramError::InvalidInstructionData)
+    }
 }
 
 fn run_poseidon2_probe(permutations: u16, optimized: bool) -> ProgramResult {
@@ -145,7 +176,10 @@ fn run_poseidon2_probe(permutations: u16, optimized: bool) -> ProgramResult {
             aspis_statement::poseidon2::permute(&mut state);
         }
     }
-    if state[0] == aspis_core::field::M31::ZERO && permutations == u16::MAX {
+    // The branch makes the computed state observable to the optimizer. The
+    // old `permutations == u16::MAX` conjunction was unreachable after the
+    // 128-round input bound and therefore did not keep the probe work live.
+    if state[0] == aspis_core::field::M31::ZERO {
         Err(ProgramError::InvalidInstructionData)
     } else {
         Ok(())
@@ -171,10 +205,10 @@ fn run_constraint_composition_probe(
         aspis_statement::evaluate_composition_probe(probe)
     };
     // Keep the dynamic computation observably live without adding a hash or
-    // log call to the isolated field-arithmetic measurement.
-    if result.accumulator == aspis_core::field::QM31::ZERO
-        && result.qm31_multiplications == u32::MAX
-    {
+    // log call to the isolated field-arithmetic measurement. Branch directly
+    // on the accumulator; the old u32::MAX counter conjunction was
+    // unreachable under the validated term bounds.
+    if result.accumulator == aspis_core::field::QM31::ZERO {
         Err(ProgramError::InvalidInstructionData)
     } else {
         Ok(())
@@ -286,7 +320,7 @@ fn run_wide_rlc_probe(columns: u16, query_count: u16, kernel: u8) -> ProgramResu
         || (kernel == 11 && columns != 65)
         || (kernel == 12 && columns != 51)
         || (kernel == 13 && columns != 49)
-        || ((kernel == 3 || kernel == 4) && columns % 4 != 0)
+        || ((kernel == 3 || kernel == 4) && columns & 3 != 0)
     {
         return Err(ProgramError::InvalidInstructionData);
     }
@@ -422,8 +456,7 @@ fn run_statement_sumcheck_probe(
         return Err(ProgramError::InvalidInstructionData);
     }
     let sample = |index: u32, lane: u32| -> QM31 {
-        let value =
-            |offset: u32| M31(1 + index.wrapping_mul(131).wrapping_add(offset) % 1_000_003);
+        let value = |offset: u32| M31(1 + index.wrapping_mul(131).wrapping_add(offset) % 1_000_003);
         QM31 {
             c0: CM31 {
                 a: value(lane * 17),
@@ -520,7 +553,7 @@ fn run_merkle_arity_probe(depth: u8, query_count: u16, arity: u8) -> ProgramResu
         || query_count == 0
         || query_count > 64
         || (arity != 2 && arity != 4)
-        || (arity == 4 && depth % 2 != 0)
+        || (arity == 4 && depth & 1 != 0)
     {
         return Err(ProgramError::InvalidInstructionData);
     }
@@ -858,6 +891,24 @@ pub fn process_instruction(
             selector_exceptions,
         );
     }
+    if let AspisInstruction::LogUpCompressionKat { expected_phi } = instruction {
+        let mut actual_phi = [0u8; 16];
+        aspis_statement::logup_compression_kat().write_le_bytes(&mut actual_phi);
+        return if actual_phi == expected_phi {
+            msg!("aspis: LogUp compression KAT matched");
+            Ok(())
+        } else {
+            msg!("aspis: LogUp compression KAT MISMATCH (host/SBF divergence)");
+            Err(ProgramError::InvalidInstructionData)
+        };
+    }
+    if let AspisInstruction::OodSampleRelationProbe {
+        samples_per_round,
+        expected_sink,
+    } = instruction
+    {
+        return run_ood_sample_relation_probe(samples_per_round, expected_sink);
+    }
 
     let account_iter = &mut accounts.iter();
     let proof_account = next_account_info(account_iter)?;
@@ -952,6 +1003,8 @@ pub fn process_instruction(
         AspisInstruction::WideRlcProbe { .. } => unreachable!(),
         AspisInstruction::MerkleArityProbe { .. } => unreachable!(),
         AspisInstruction::StatementSumcheckProbe { .. } => unreachable!(),
+        AspisInstruction::LogUpCompressionKat { .. } => unreachable!(),
+        AspisInstruction::OodSampleRelationProbe { .. } => unreachable!(),
     }
 }
 
@@ -1039,6 +1092,193 @@ mod tests {
                 process_instruction(&id(), &[], &borsh::to_vec(&instruction).unwrap()),
                 Ok(())
             );
+        }
+    }
+
+    #[test]
+    fn logup_compression_kat_requires_no_accounts_and_rejects_drift() {
+        let instruction = AspisInstruction::LogUpCompressionKat {
+            expected_phi: aspis_statement::LOGUP_COMPRESSION_KAT_EXPECTED,
+        };
+        assert_eq!(
+            process_instruction(&id(), &[], &borsh::to_vec(&instruction).unwrap()),
+            Ok(())
+        );
+
+        let mut drifted = aspis_statement::LOGUP_COMPRESSION_KAT_EXPECTED;
+        drifted[0] ^= 1;
+        let instruction = AspisInstruction::LogUpCompressionKat {
+            expected_phi: drifted,
+        };
+        assert_eq!(
+            process_instruction(&id(), &[], &borsh::to_vec(&instruction).unwrap()),
+            Err(ProgramError::InvalidInstructionData)
+        );
+    }
+
+    #[test]
+    fn ood_sample_relation_probe_requires_no_accounts_and_pins_both_sinks() {
+        for (samples_per_round, expected_sink) in [
+            (1, aspis_core::verify::OOD_SAMPLE_PROBE_S1_EXPECTED),
+            (2, aspis_core::verify::OOD_SAMPLE_PROBE_S2_EXPECTED),
+        ] {
+            let instruction = AspisInstruction::OodSampleRelationProbe {
+                samples_per_round,
+                expected_sink,
+            };
+            assert_eq!(
+                process_instruction(&id(), &[], &borsh::to_vec(&instruction).unwrap()),
+                Ok(())
+            );
+        }
+
+        let mut drifted = aspis_core::verify::OOD_SAMPLE_PROBE_S2_EXPECTED;
+        drifted[0] ^= 1;
+        let instruction = AspisInstruction::OodSampleRelationProbe {
+            samples_per_round: 2,
+            expected_sink: drifted,
+        };
+        assert_eq!(
+            process_instruction(&id(), &[], &borsh::to_vec(&instruction).unwrap()),
+            Err(ProgramError::InvalidInstructionData)
+        );
+
+        let instruction = AspisInstruction::OodSampleRelationProbe {
+            samples_per_round: 3,
+            expected_sink: [0u8; 16],
+        };
+        assert_eq!(
+            process_instruction(&id(), &[], &borsh::to_vec(&instruction).unwrap()),
+            Err(ProgramError::InvalidInstructionData)
+        );
+    }
+
+    #[test]
+    fn instruction_wire_discriminants_are_append_only() {
+        let digest = [0u8; 32];
+        let variants = vec![
+            (AspisInstruction::InitProof { total_len: 0 }, 0),
+            (
+                AspisInstruction::UploadChunk {
+                    offset: 0,
+                    chunk: vec![],
+                },
+                1,
+            ),
+            (
+                AspisInstruction::Verify {
+                    statement_digest: digest,
+                },
+                2,
+            ),
+            (
+                AspisInstruction::VerifyProfile {
+                    statement_digest: digest,
+                },
+                3,
+            ),
+            (
+                AspisInstruction::LayoutProbe {
+                    log_rows: 0,
+                    columns: 0,
+                    query_count: 0,
+                    leaf_bytes: 0,
+                },
+                4,
+            ),
+            (AspisInstruction::TranscriptKat { expected: digest }, 5),
+            (
+                AspisInstruction::VerifyWithClaim {
+                    statement_digest: digest,
+                    claim_z: vec![],
+                    claim_v: [0u8; 16],
+                },
+                6,
+            ),
+            (
+                AspisInstruction::ConstraintCompositionProbe {
+                    opened_values: 0,
+                    poseidon_sbox_terms: 0,
+                    poseidon_linear_terms: 0,
+                    logup_degree3_terms: 0,
+                    range_bit_terms: 0,
+                    eq_variables: 0,
+                    optimized: false,
+                },
+                7,
+            ),
+            (AspisInstruction::Poseidon2Probe { permutations: 0 }, 8),
+            (
+                AspisInstruction::VerifyFast {
+                    statement_digest: digest,
+                },
+                9,
+            ),
+            (
+                AspisInstruction::VerifySyscallInverse {
+                    statement_digest: digest,
+                },
+                10,
+            ),
+            (
+                AspisInstruction::Poseidon2OptimizedProbe { permutations: 0 },
+                11,
+            ),
+            (
+                AspisInstruction::ZkKernelProbe {
+                    kind: ZkKernelKind::M31InverseSoftware,
+                    iterations: 0,
+                },
+                12,
+            ),
+            (
+                AspisInstruction::WideRlcProbe {
+                    columns: 0,
+                    query_count: 0,
+                    kernel: 0,
+                },
+                13,
+            ),
+            (
+                AspisInstruction::MerkleArityProbe {
+                    depth: 0,
+                    query_count: 0,
+                    arity: 0,
+                },
+                14,
+            ),
+            (
+                AspisInstruction::VerifyLegacySoftware {
+                    statement_digest: digest,
+                },
+                15,
+            ),
+            (
+                AspisInstruction::StatementSumcheckProbe {
+                    rounds: 0,
+                    coefficients: 0,
+                    claims: 0,
+                    selector_terms: 0,
+                    selector_exceptions: 0,
+                },
+                16,
+            ),
+            (
+                AspisInstruction::LogUpCompressionKat {
+                    expected_phi: [0u8; 16],
+                },
+                17,
+            ),
+            (
+                AspisInstruction::OodSampleRelationProbe {
+                    samples_per_round: 1,
+                    expected_sink: [0u8; 16],
+                },
+                18,
+            ),
+        ];
+        for (variant, expected_tag) in variants {
+            assert_eq!(borsh::to_vec(&variant).unwrap()[0], expected_tag);
         }
     }
 

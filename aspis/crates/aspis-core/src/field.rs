@@ -7,6 +7,11 @@
 //!   lifted only when they meet a QM31 challenge; mixed-width kernels
 //!   (`QM31 * CM31`) avoid full 4-limb products where one operand is base.
 
+// These inherent names are deliberate in the verifier kernel: they keep field
+// arithmetic explicit and identical in `no_std` host/SBF builds without
+// introducing operator-trait dispatch into CU-sensitive call sites.
+#![allow(clippy::should_implement_trait)]
+
 /// The Mersenne prime 2^31 - 1.
 pub const P: u32 = 0x7fff_ffff;
 

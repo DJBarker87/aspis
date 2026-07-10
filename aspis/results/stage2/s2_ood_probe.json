@@ -1,0 +1,76 @@
+{
+  "generated_at_utc": "2026-07-10T20:47:26.291546+00:00",
+  "command": "cargo run --release -p aspis-xtask -- stage2-s2-ood-probe",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "instruction_wire_ordinal": 18,
+  "repetitions": 5,
+  "log_rows": 10,
+  "rounds": 4,
+  "terminal_coefficients": 4,
+  "existing_multilinear_claim_components": 1,
+  "variants": [
+    {
+      "samples_per_round": 1,
+      "expected_sink_hex": "b15f0555d1f6b31b386d0c650c09cc76",
+      "host_sink_hex": "b15f0555d1f6b31b386d0c650c09cc76",
+      "host_sink_matched": true,
+      "sbf_sink_matched": true,
+      "simulation_cu": [
+        86815,
+        86815,
+        86815,
+        86815,
+        86815
+      ],
+      "simulation_cu_mean": 86815.0
+    },
+    {
+      "samples_per_round": 2,
+      "expected_sink_hex": "fe801542f72bf776fc0baa7550530907",
+      "host_sink_hex": "fe801542f72bf776fc0baa7550530907",
+      "host_sink_matched": true,
+      "sbf_sink_matched": true,
+      "simulation_cu": [
+        135914,
+        135914,
+        135914,
+        135914,
+        135914
+      ],
+      "simulation_cu_mean": 135914.0
+    }
+  ],
+  "pcs_s2_second_ood_sample_transcript_relation_cu": 49099,
+  "superseded_probe_local_generated_value_delta_cu": 49155,
+  "probe_local_value_generation_contamination_removed_cu": 56,
+  "previous_estimate_bracket_cu": [
+    5000,
+    12000
+  ],
+  "delta_over_previous_bracket_max_cu": 37099,
+  "structural_proof_record_delta_bytes": 64,
+  "extra_transcript_hash_calls_no_retry": 20,
+  "extra_geometric_fold_operations": 10,
+  "extra_terminal_component_evaluations": 16,
+  "production_transcript_kat_unchanged": true,
+  "production_proof_format_unchanged": true,
+  "included_work": [
+    "four second sequential beta/y/mu triples: exact-uniform OOD sampling, canonical QM31 decode, y absorption, and mu sampling",
+    "four relation-value mu*y updates and four geometric relation-weight insertions, including allocator behavior",
+    "every later WeightAccumulator fold of the four added components (10 geometric folds total)",
+    "terminal dot evaluation of the four added components across four final coefficients (16 component evaluations)"
+  ],
+  "excluded_work": [
+    "proof commitments, roots, Merkle openings, query derivation, and transcript-induced query/frontier variance",
+    "proof-account upload CU and the eventual v4 C2 leaf/claim widening",
+    "statement constraint composition, masking, and prover-side OOD evaluation work"
+  ],
+  "notes": [
+    "Book only pcs_s2_second_ood_sample_transcript_relation_cu as the isolated pre-v4 projection line; the integrated v4 eight-draw SBF measurement replaces it.",
+    "The s=1 and s=2 instructions have identical Borsh size and expected-sink comparison overhead; their deterministic mean difference isolates the added second samples and retained relation-weight work.",
+    "The probe reuses the production canonical OOD sample kernel but does not select a proof format. VERSION=3 and TRANSCRIPT_KAT_EXPECTED remain untouched.",
+    "The +64-byte figure is the structural four-round record delta only; eventual full-proof bytes can move further when the v4 transcript changes openings.",
+    "The measured 49099-CU delta refutes the old 5-12K bracket: that intuition priced transcript work but omitted the four retained components' later folds and terminal evaluations.",
+    "SUPERSEDED measurement: a first probe version generated and encoded each synthetic y inside the sample loop and measured 49,155 CU. Replacing those probe-only operations with a fixed canonical byte table removed 56 CU of contamination; the pinned transcript sinks did not move."
+  ]
+}

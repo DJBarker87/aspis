@@ -418,10 +418,12 @@ claim boundary and soundness labels present in README and paper.
    headline frozen at `t = 100` bits, capacity-conjectured. SUPERSEDED
    `2026-07-10` (soundness-note §9, `stage1-theta-rederivation.md`): the
    up-to-capacity conjecture family was refuted (ePrint 2025/2046,
-   2026/782); under the adopted revised conjecture (S-two ePrint 2026/532
-   App. A.5) the ruling is headline `t = 90` stated / `93.89` computed at
-   q36/g32/s=2, refutation disclosed with every quotation (four-element
-   rule); the `~102.98`/`L <= 40` arithmetic below is historical.**
+   2026/782). The ruling keeps `t = 90` stated at q36/g32/s2, but the
+   source-constant audit makes `93.73` only a provisional sensitivity:
+   S-two App. A.5 leaves existential `c1,c2` and an unbounded finite-n
+   `o(n)` remainder. No computed conjectured value is quotable until that
+   gate is pinned; the 65.5 proven floor remains quotable. The
+   `~102.98`/`L <= 40` arithmetic below is historical.**
    Original rationale (the
    field-ceiling lemma, soundness-note §3): `|QM31| = p^4 ~ 2^124`, and every
    algebraic soundness term in the system — proximity-gathering terms per fold

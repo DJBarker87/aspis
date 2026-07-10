@@ -1,10 +1,12 @@
-# Aspis soundness note — Stage 1 frozen PCS milestone
+# Aspis soundness note — frozen PCS evidence, reopened security instantiation
 
-Status: **FROZEN FOR THE STAGE 1 PCS MILESTONE (`2026-07-10`)**. The
-capacity-conjectured headline is frozen with its caveats; Stage 2 payment
-feasibility is not. The final C2 build leaves only 14,914 CU before unpriced
-constraint composition, so this checkpoint is a protocol gate close and a
-feasibility warning, not a claim that payments work. Section status ledger:
+Status: **PCS evidence frozen; Stage 1 security gate REOPENED on finite-
+length constants (`2026-07-10`)**. The r2/k'=51 s1 base passed its budget,
+but measured s2 adds 49,099 CU: current q36 is registered-strict red at
+1,096,660, while the held q34/g36 recovery lever projects 1,052,181. Stage 2
+is not an integrated payment proof. The t=90 ruling is retained; 93.73 is provisional sensitivity
+only, and 65.5 is the sole quotable floor until §9.4's finite-n gate closes.
+Section status ledger:
 
 | section | status |
 | --- | --- |
@@ -16,14 +18,16 @@ feasibility warning, not a claim that payments work. Section status ledger:
 | 6. Grinding + Fiat-Shamir model | reviewed; binding terms and work metric updated from the pin |
 | 7. Proven-vs-conjectured ledger | reviewed; exact T2 shape and T1 Johnson floor integrated |
 | 8. Stage 2 range-lookup amendment | drafted `2026-07-10` with the multiplicity-order teeth vector; pre-integration |
-| 9. Capacity-conjecture refutation (CS25/KKH26) | **STAGE 1 REOPENED `2026-07-10`**: general form refuted; revised conjecture adopted; t=100 does not survive at q36; headline ruling pending |
+| 9. Capacity-conjecture refutation (CS25/KKH26) | **STAGE 1 REOPENED `2026-07-10`**: t=90 ruling stands; computed revised-conjecture value remains unquotable pending a finite-n bound; provisional known-coefficient sensitivity 93.73 |
 
-Headline decision this note serves (design §13.3, decided 2026-07-04): the
-public claim is frozen at **t = 100 bits, capacity-conjectured**; §3 is the
-justification. Layout this note is written for (design §13.8 as amended):
-lr10, k ~ 64-80 wide rows, rounds-per-row blocks, boundary interface columns,
-LogUp copy check, second commitment phase. Query schedule ruled by §4:
-**q36/g32** (q32/g32 retired at 96 bits; q38 is the inline contingency).
+Current decision (design §13.3, amended 2026-07-10): keep the stated
+**t = 90** position at q36/g32/s2, but do not attach a computed conjectured
+value until the finite-length constants gate in §9.4 closes. The provisional
+known-Table-4 sensitivity is 93.73; 93.89 is the earlier unit-coefficient
+reproduction. Neither is quotable security. The only current quotable floor
+is 65.5 bits. Layout this note is written for (design §13.8 as amended):
+lr10, r2/k'=51 wide rows, rounds-per-row blocks, boundary interface columns,
+LogUp copy check, second commitment phase.
 
 ---
 
@@ -380,7 +384,10 @@ layout constraint** so this paragraph stays true.
 
 **Protocol.** (1) Commit main witness including boundary columns —
 commitment C1. (2) Sample lambda (tuple compression) and chi (evaluation
-point). (3) Compress: phi_j = tag_j + sum_i lambda^i d_{j,i}. (4) Commit the
+point). (3) Compress:
+`phi_j(lambda) = tag_j + sum_{i=0}^{w-1} lambda^(i+1) d_{j,i}`. The tag is
+the constant coefficient and every data limb starts at `lambda^1`; this
+prevents a tag change from cancelling a change in `d_{j,0}`. (4) Commit the
 helper column h with h_row = sel_P/(chi - phi_P(row)) - sel_C/(chi -
 phi_C(row)) — commitment C2, the second phase. (5) Row-local relation fused
 into the zerocheck: h * (chi - phi_P) * (chi - phi_C) = sel_P * (chi -
@@ -393,12 +400,17 @@ sum_rows h = 0.
 
 - **E1, compression (lambda): <= m*w / |F|.** If the tuple multisets differ,
   consider Q(lambda, X) = prod_{j in P}(X - phi_j(lambda)) - prod_{j in C}
-  (X - phi_j(lambda)). Distinct (tag, d) tuples give distinct degree-<=w
+  (X - phi_j(lambda)). With the explicit index range `0 <= i < w`, distinct
+  `(tag, d)` tuples give distinct degree-`<= w`
   polynomials phi_j(lambda); monic linear factorizations over the integral
   domain F[lambda] are unique, so Q is not identically zero; its
   X-coefficients are polynomials in lambda of degree <= m*w;
   Schwartz-Zippel over lambda gives m*w / |F|. The pairwise m^2*w union
   bound is unnecessary, and it is exactly the UFD argument that makes it so.
+  **Degree recount after the exponent shift:** the ledger already booked
+  degree `w`, not `w-1`, so the bound and its 110.85-bit frozen-shape value
+  do not move. Using `m*(w+1)` would double-count the tag: it is a
+  coefficient, not an additional lambda degree.
 - **E2, evaluation (chi): <= 4m / |F|, kept deliberately loose.** The
   logarithmic-derivative lemma applies (multiplicities <= 2^10 << char =
   2^31 - 1): if the compressed multisets differ, sum_P 1/(X - phi) -
@@ -487,10 +499,16 @@ record.** Under the now-refuted accounting, `s=2` bought 0.9878
 conditional bits (T2 at 103.99 co-bound with the 104-bit query term, so
 removing it barely moved the union) and was correctly declined against
 its engineering cost. Under the adopted revised conjecture the list size
-is `l(theta) = 2^(H(rho)/eta)`, T2' becomes quadratic in `l` and is the
+is provisionally modeled with `l(theta) = 2^(H(rho)/eta)`, T2' becomes quadratic in `l` and is the
 **binding s=1 term**, so the identical protocol change is now worth
-**+3.55 bits (90.34 -> 93.89 at q36/g32)** at a 5-12K CU bracket (probe
-pending). `s = 2` is ADOPTED for the v4 payment envelope (§9.4 ruling).
+**+3.39 bits (90.34 -> 93.73 at q36/g32)** in the known-coefficient
+sensitivity. The contamination-free isolated SBF A/B measures **+49,099
+CU** (s1 86,815; s2 135,914; 5/5 identical), superseding the 5-12K
+estimate. The earlier probe was 56 CU higher because it generated synthetic
+values inside the timed path; fixed canonical bytes remove that work. The earlier
+unit-coefficient reproduction was +3.55 / 93.89. `s = 2` is ADOPTED for
+the v4 payment envelope (§9.4 ruling), independently of whether the
+finite-length sensitivity is ultimately promotable.
 Normative Fiat-Shamir position of the second sample: each round carries
 two sequential (beta, y, mu) triples — root_r -> (beta_r1, y_r1, mu_r1)
 -> (beta_r2, y_r2, mu_r2) -> sumcheck poly -> alpha_r — both values
@@ -500,6 +518,7 @@ challenge`) extends with a second-triple variant (value-2 absorbed after
 alpha must reject; weakened schedule accepts). The bounded subfield-
 sampler completeness doubles retries: still < 2^-183 over four rounds.
 Its CU appears as a named line in the v4 integration measurement.
+<!-- retired-numbers: allow-start id=s1-ood-history -->
 Historical paragraph retained below for provenance:
 
 At the
@@ -514,6 +533,7 @@ the extra conditional bit is declined until a material CU reclaim lands or
 the pinned T1/list premise changes. Under the frozen `s=1`, **T2 and the
 query term jointly bind within 0.0125 bits**; neither may be described as
 comfortably non-binding.
+<!-- retired-numbers: allow-end id=s1-ood-history -->
 
 **Sampler completeness (from the §3 T9 fix).** Rejection sampling with a
 bounded retry loop (8 per limb, fresh transcript bytes per retry via a
@@ -550,8 +570,8 @@ line is conditional on the conjecture line.
 | SHA-256 as a random oracle (Fiat-Shamir transcript) | **assumption** | model floor for every line below |
 | SHA-256 collision resistance for Merkle binding | **assumption** | >= 100 bits claimed (128-bit birthday bound) |
 | Capacity conjecture — query radius, T1 gathering constant, effective list bound | **REFUTED AS STATED (`2026-07-10`, §9)** | general up-to-capacity form disproved (CS25 ePrint 2025/2046; KKH ePrint 2026/782 below Elias on smooth 2-adic domains); `L <= 40` at capacity is dead (Elias 1957 forces q^Omega(eta n) beyond list capacity); historical values retained one row down |
-| (historical Stage 1 values under the refuted form) | superseded | query term 104 work-bits; T1 unique-shaped union 111.5906; effective OOD list `L <= 40` |
-| **Revised conjecture (adopted): S-two Conjectures 1-2 (ePrint 2026/532 App. A.5)** | **conjectured** | prime-field RS list-/line-decodability up to the Elias radius r_E(rho) with l(theta) <= 2^(H(rho)/eta) at theta = 1-rho-eta; extension alphabets included; transported to circle codes by the scaled-RS isometry; at q36/g32: system 90.3 bits (s=1) / 93.2 bits (s=2) — §9 |
+| (historical Stage 1 values under the refuted form) | superseded | historical query term 104 work-bits; T1 unique-shaped union 111.5906; effective OOD list `L <= 40` |
+| **Revised conjecture source: S-two Conjectures 1-2 (ePrint 2026/532 App. A.5)** | **conjectured; finite-length instantiation not ratified** | source has `l <= c1*2^(c2*H(rho)/eta)`, existential `c1,c2>=1`, and `a=l*n+o(n)` with no finite-n remainder bound. Under the stronger Aspis assumptions `c1=c2=1`, zero remainder, and conservative-known Table-4 numerator 7,488, q36/g32/s2 is a **93.73-bit provisional sensitivity only** — §9 |
 | **Proven floor, same schedule, Johnson-radius accounting** | **proven** | **~65.5 bits**: delta <= 1 - sqrt(rho) - eta, rho = 2^-2, delta ~ 0.475 -> ~0.93 bits/traced query; 36 x 0.93 + 32 ~ 65.5 |
 | T1 proximity gaps, pinned Johnson branch without per-fold PoW | proven for the pinned upstream model; mapped conservatively to the Aspis round sizes | 73.6534-bit four-round union; above the 65.5-bit proven query floor, far below the capacity-shaped T1 clause |
 | T2 OOD formula | proven conditional on a decoding-list bound | `C(L,2) * ((degree-1)/\|F\|)^s`; exact quadratic shape pinned in §4 |
@@ -560,24 +580,24 @@ line is conditional on the conjecture line.
 | T3 relation + fused statement sumchecks | proven (SZ) | 117.4 (conservative 14 rounds x degree 7) |
 | T4 zerocheck eq-reduction | proven (SZ) | 120.7 |
 | T5 gamma-RLC batching | proven (SZ; canonical gamma-after-claims order implemented for the generic C2 interface) | 117.7 |
-| T6 copy-argument compression | proven (UFD + SZ) | 109.9 (worst layout m = 2^10) |
+| T6 copy-argument compression | proven (UFD + SZ) | 110.85 at frozen m=534,w=17; historical worst-layout bound 109.9. The hardened `lambda^(i+1)` encoding does not move the already-booked degree `mw` |
 | T7 copy-argument pole/SZ | proven (log-derivative lemma) | 112 (deliberately loose 4m) |
-| T8 claim batching | proven (SZ) | ~122 |
+| T8 claim batching | proven (SZ) | `4log2(p)-3 = 120.9999999973` at the eight-claim upper bound (~121 in prose) |
 | T9 challenge sampler | fixed by construction (rejection sampling, exact uniform) | 0 soundness cost; field-sampler completeness < 2^-242, OOD-subfield completeness < 2^-184 |
 | Grinding g32 | proven (ROM work accounting, §6) | +32 bits on the query term only |
 | Stage 2 statement amendment (T5', T7' incl. E4, T8', multiplicity-order line) | proven (SZ / log-derivative; teeth vector executable) | integrated-statement union 103.9453 algebraic, 102.9724 total (§8); Stage 1 rows above unchanged |
-| **Headline** | **conditional — REOPENED by §9** | frozen Stage 1 reading (historical): t = 100, capacity-conjectured, 2^-102.9752; **current: t = 100 does not survive at q36 under the revised conjecture (90.3/93.2 bits at s=1/s=2); ruling pending between re-headline ~t=90 and a paid query restore — §9. Proven floor ~65.5 unchanged and strengthened in lineage (Haböck 2025/2110: mutual CA proven to Johnson)** |
+| **Headline** | **t=90 ruling retained; computed value gated** | provisional known-coefficient sensitivity 93.73 at q36/g32/s2, but no computed revised-conjecture number is quotable until the finite-n remainder/transport assumption is pinned. **Only the ~65.5 proven floor is currently quotable.** Historical refuted-capacity values remain provenance only |
 
 The proven-floor line follows house precedent (the WHIR-UD gate reported
 "lower 58.0 / upper 100.0"): the positive result does not get a lower
 standard than the negatives, and the number a hostile reviewer would
 compute anyway is computed here, with the derivation shown. **Quotation
-rule, amended `2026-07-10`: any public quotation of the headline carries
-FOUR elements or none — the stated headline, the computed conjectured
-bits, the proven floor, and the revised-conjecture citation (S-two
-ePrint 2026/532 App. A.5, adopted after the refutation of the
-up-to-capacity family, ePrint 2025/2046) — the conjecture's identity now
-travels with the numbers, always.**
+rule, amended `2026-07-10`: until the finite-length gate closes, only the
+65.5-bit proven floor may be quoted. After it closes, any public quotation
+of the headline carries FOUR elements or none — the stated headline, the
+then-ratified computed conjectured bits, the proven floor, and the revised-
+conjecture plus finite-length citation. A provisional sensitivity is never
+substituted into that four-element form.**
 
 T2's split is itself a record of this section doing its job: in draft 1 the
 capacity-list constant wore a `proven` label and its dependence was written
@@ -667,7 +687,7 @@ protocol).**
 | --- | --- | --- | ---: |
 | T5' | gamma-RLC batching, PARAMETRIC: (k'-1) / \|F\| = 124 - log2(k'-1) bits | frozen k' = 51 (pin <= 52) -> 118.36; historical readings: k'=83 -> 117.62, k'=82 -> 117.66 | 118.36 |
 | T7' | copy pole/SZ (E2) + range pole/SZ (E4), shared chi, union | 8m / \|F\|, m = 2^10 worst case (recounted m = 534 at the frozen shape) | 111 |
-| T8' | claim batching | (#claims) / \|F\|, #claims <= 8 | ~121 |
+| T8' | claim batching | (#claims) / \|F\|, #claims <= 8 | `4log2(p)-3 = 120.9999999973` at the eight-claim upper bound |
 
 T5' is now stated parametrically after three rewrites; any future layout
 change instantiates the formula and does not rewrite the line.
@@ -719,9 +739,9 @@ costs up) or produced silently wrong evaluations. No probe in the suite
 could have caught it; it was caught by note-work, the second defect
 intercepted that way after the gamma-ordering bug. The frozen shape is
 the one on which this note is true as written: 49 Poseidon2 permutations
-in 2^4-aligned 16-row blocks (11 active + 5 padding rows), 784 active
-rows of 2^10, position-in-block a function of the low 4 bits of the row
-index.
+in 2^4-aligned 16-row blocks (11 constraint-active + 5 padding rows),
+**539 constraint-active rows and 784 allocated rows** inside the 2^10 trace;
+position-in-block is a function of the low 4 bits of the row index.
 
 Frozen-shape facts, independently recounted:
 
@@ -732,7 +752,7 @@ Frozen-shape facts, independently recounted:
   that T6/T7' carry; both recounts (review and implementation) landed on
   the same numbers.
 - **Selector form (condition iii):** padding positions 11..15 and the
-  full/partial round seams (rows 1-2 full-full, 3-9 partial-partial,
+full/partial round seams (rows 1-2 full-full, 3-9 partial-partial,
   10-11 full-full) are all functions of position-in-block, hence inside
   the periodic part; exceptions proper remain the chain-structural rows
   only. **Padding rows are constraint-dead AND excluded from both copy
@@ -844,12 +864,17 @@ the M31 circle-STARK camp's post-refutation statement: Reed–Solomon codes
 over prime fields F_p, **arbitrary evaluation domains**, are
 list-decodable and line-decodable up to the **Elias radius r_E(rho)**
 (1 - rho - 1/log2(p) <= r_E < 1 - rho) with list size
-**l(theta) <= 2^(H(rho)/eta)** at theta = 1 - rho - eta (constants
-c1 = c2 = 1, calibrated so the KKH counterexample saturates but does not
-violate the bound); extension-field alphabets over prime-field domains
+**l(theta) <= c1 * 2^(c2*H(rho)/eta)** at theta = 1 - rho - eta for
+existential constants `c1,c2 >= 1`. Aspis's `c1=c2=1` substitution is a
+**strictly stronger sensitivity assumption**, not a value supplied by the
+paper. Conjecture 2 additionally states `a = l(theta)*n + o(n)` and gives no
+finite-length bound for that `o(n)` term; S-two's examples neglect it, but
+that does not license setting it to zero at `n <= 2^12`. Extension-field alphabets over prime-field domains
 are explicitly included (our QM31-over-M31 shape). Line-decodability
 yields every correlated-agreement facet this note uses, including
-WHIR-style mutual correlated agreement, with error ~ l(theta) * n / |F|.
+WHIR-style mutual correlated agreement, asymptotically with the above
+`l(theta)*n + o(n)` numerator rather than the finite expression previously
+printed here.
 CS25's own modifications (Elias-radius cap, characteristic entropy, +1/n
 slack) are subsumed: they lack the exponential list-size correction that
 KKH forces, so the S-two form is the survivor. Transport to circle codes
@@ -874,63 +899,62 @@ open on our exact domain family*.
 
 ### 9.4 Re-derivation at the frozen statement shape
 
-Under Conjectures 1-2 the list factor l(theta) = 2^(H(rho)/eta) enters
-the gathering/OOD terms, so theta is an optimization, not a free choice:
-more radius buys query bits but inflates T1'/T2'. With our round
-structure (domains 2^12..2^6, degrees 2^10..2^4, |F| = 2^124), grinding
-NOT applied to algebraic rounds (§6 rule, unchanged), and all other
-amended terms (T3..T8', §8) as-is:
+Under S-two Appendix A.5, Conjecture 1 gives
+`l(theta) <= c1*2^(c2*H(rho)/eta)` for existential `c1,c2>=1`; Conjecture 2
+gives `a=l(theta)*n+o(n)` without a finite-n remainder bound. The earlier
+optimizer silently set `c1=c2=1` and the remainder to zero. Those are now
+named stronger Aspis sensitivity assumptions, not source consequences.
 
-CORRECTION (`2026-07-10`, same day): drafting the derivation document for
-line-by-line review (`stage1-theta-rederivation.md`, ruling condition 1)
-surfaced a factor-of-rho error in T1's numerator mapping in the
-first-committed table. Corrected values below; the sanity anchor is that
-the refuted-form T1 must reproduce the frozen 111.5906 (it does).
+Table 4 also supplies the FRI-folding factor `3*2^-(k+1)`. It is 3/2 on
+the first fold, so the old claim that every dropped coefficient was <=1
+was false. Retaining 3/2 and conservatively clamping the later 3/4, 3/8,
+and 3/16 factors to one changes T1's numerator from 5,440 to 7,488. The
+checked-in runner records both mappings, both T2 union variants, and the
+exact eta grid optima in `results/stage1/theta_optimizer.json`.
 
-| option | eta* | system bits | delta CU vs frozen shape | budget verdict (r=2/k'=51 base: central 974,112 / combined-worst 1,047,561) |
+| option | eta* | known-coefficient sensitivity | CU reading | budget verdict |
 | --- | ---: | ---: | ---: | --- |
-| q36/g32, s=1 (frozen shape) | 0.071 | **90.34** | 0 | strict ceiling survives all readings |
-| **q36/g32, s=2 — RATIFIED** | 0.050 | **93.89** | ~+5-12K (probe pending) | strict ceiling survives all readings |
-| q40/g32, s=2 | 0.064 | 97.88 | ~+89K (PCS +65.7K, RLC +14.6K, leaf +1.0K, s=2) | central under strict; stress/draw readings breach strict, clear 1.19M |
-| q43/g32, s=2 (t=100 restore) | 0.076 | 100.19 | ~+150K | strict dead; **1.19M clears every reading, worst-range by ~10K** — declined by ruling on the epistemic argument, NOT gate-forced (the pre-correction q45/+191K reading that breached 1.19M was an artifact of the T1' error; full record in the derivation doc §6) |
+| q36/g32, s=1 | 0.0715 | 90.3374 | frozen-shape base | strict survives |
+| **q36/g32, s=2** | **0.0510** | **93.7263 provisional** | **+49,099 measured** | stated t=90 survives; registered product strict line fails by 25,660 |
+| q34/g36, s=2 reserve | 0.0522 | 94.0757 | q36 minus 44,479 | restores registered strict margin 18,819; deliberate second transcript knob |
+| q40/g32, s=2 | 0.0652 | 97.6560 | +130,427 incl. s2 | state t=95 if selected; 1.19M registered clears by 12,012 |
+| q43/g32, s=2 | 0.0778 | 99.9251 | +191,423 incl. s2 | below t=100; both draw readings breach 1.19M |
+| q44/g32, s=2 | 0.0823 | 100.5642 | +211,755 incl. s2 | first provisional t=100 crossing; both draw readings breach 1.19M |
 
-The s = 2 OOD decision — priced and declined in §6 under the refuted
-accounting at ~1 conditional bit — is worth **+2.9 bits** under the
-revised accounting (it removes T2' = C(l,2)-shaped, the binding term at
-s = 1) at near-zero CU. It is the clear first move on every branch. The
-query-per-bit economics inverted: at ~1.6-1.7 conjectured bits per query,
-grinding bits (1 work-bit each, 2^g prover cost) trade BETTER against
-queries than before — the held q34/g36 reserve now *gains* ~0.6-0.8
-system bits while saving ~44K CU, appreciating twice over.
+The registered budget statistic remains conservative: central + 17,663
+stress + 55,786 full draw range. The measured s2 delta moves q36 to
+1,023,211 central and **1,096,660 registered**, 25,660 above strict; the
+anchor-corrected sensitivity is 1,058,112 and clears strict by 12,888 but
+does not replace the rule. At q43, registered is **1,238,984** and the
+anchor sensitivity **1,200,436**: both exceed 1.19M. q44 is costlier.
 
-**The t = 100 headline does not survive at q36.** Restoring it honestly
-costs ~+190K CU and threatens the 1.19M transaction target at the
-worst-draw reading; a fully proven t = 100 is out of reach on this
-schedule (~1.0 proven bits/query would need ~q68, ~+525K CU, over the
-1.4M cap). The realistic positions:
+The s2 decision remains the clear first move: it gains about 3.39 bits in
+the binding known-coefficient sensitivity by removing the s1 T2' bottleneck.
+The q34/g36 reserve gains **0.3494**, not 0.6-0.8, computed bits while
+saving 44,479 CU and improving the proven floor. It now becomes the named
+strict-line recovery lever: 1,052,181 registered, 18,819 below strict. It
+is held rather than silently substituted because q/g is a second transcript
+knob requiring a deliberate proof/KAT re-pin.
 
-1. **t = 90 (recommend stating 90, holding 93.2 computed), q36/g32,
-   s = 2, revised-conjectured** — every measured budget line survives,
-   including the strict ceiling at combined-worst; the freeze and the
-   shrink-hunt close stand unchanged.
-2. **t = 95-97, q40/g32, s = 2** — ~+89K; strict ceiling reduced to a
-   central-only claim; 1.19M holds everywhere.
-3. **t = 100 restored, q45/g32, s = 2** — ~+191K; strict ceiling dead;
-   1.19M becomes worst-draw-conditional. The 10%-slack design rule would
-   need an explicit re-registration to survive this option.
+**RULING (`2026-07-10`, amended after constants and gate audit): keep
+option 1, stated t=90 at q36/g32/s2.** The provisional 93.73 sensitivity
+is not quotable until a finite-n bound for Conjecture 2 and the circle-code
+transport are ratified and encoded in the runner; only the 65.5 proven
+floor is quotable meanwhile. The q36 product projection is now strict-red
+after the measured s2 line; this does not change the security ruling.
+q34/g36/s2 is the pre-registered strict recovery lever, not the current
+profile. Option 3 remains dead by the epistemic ruling and exceeds 1.19M
+under both draw readings. The finite-length constants gate blocks quotation
+or promotion of the 93.73 sensitivity, not implementation: after the atomic
+P0+P1 hardening commit, transcript-bound v4 work may proceed under the
+independent t=90 ruling.
 
-**RULING (`2026-07-10`, ratified in review): option 1 — headline stated
-t = 90, computed 93.89, at q36/g32/s=2, revised-conjectured, refutation
-disclosed in the same breath.** Every registered budget line survives,
-including the strict ceiling at combined-worst; the freeze and the
-shrink-hunt close stand unchanged; the proven floor — now resting on
-Haböck's mutual-CA-to-Johnson theorem where the folding step used to be
-conjectural — is kept whole. The restore option died by ruling on the
-epistemic argument (150K CU and the strict line to reprint a label whose
-content changed in November), not by gate arithmetic — see the
-derivation document. Transcript-bound work proceeds on the ratified
-shape once the derivation clears line-by-line review. The q-independent
-statement layer (r=2/k'=51 freeze, §8) is untouched.
+<!-- retired-numbers: allow-start id=theta-ruling-history -->
+Historical ruling trail, provenance only: the factor-of-rho run printed
+93.2 and put the t=100 crossing at q45/+191K; correcting that bug produced
+the unit-coefficient 93.89 and q43/+150K menu. Source-constant enumeration
+supersedes both menus for current decisions.
+<!-- retired-numbers: allow-end id=theta-ruling-history -->
 
 ### 9.5 The proven floor appreciated
 
@@ -951,21 +975,22 @@ the refuted forms unchanged.
 
 ### 9.6 Actions
 
-Taken: §2 refutation notice; §4 pin relabel; §6 summary supersession and
-the s=2 adoption record (with the reason its value changed); §7 rows and
-the four-element quotation rule; the ruling (option 1 ratified) and the
-T1' correction in 9.4; the derivation document
-(`stage1-theta-rederivation.md`, sent for line-by-line review); the
-ledger sweep annotations (gate_close.json, design doc §13.3). Pending:
-derivation review clearance (gates transcript-bound work); the s=2 CU
-probe (no "~5-12K" leans on an envelope); the proven-floor re-pin (65.5
+Taken: §2 refutation notice; §4 pin relabel; §6 s2 adoption record; §7
+quotation gate; the factor-of-rho correction; the S-two constants
+enumeration; the deterministic `stage1-theta-optimize` runner/artifact; and
+the registered q43 gate recount; and the measured +49,099-CU s2 A/B probe.
+Pending: a finite-n bound for Conjecture
+2's `o(n)` remainder plus the circle-code transport, encoded in the runner
+(this gates quotation of a computed conjectured value, not v4 integration
+under the t=90 ruling); the proven-floor re-pin (65.5
 remains the only quotable floor until its derivation section exists,
 citing BCHKS Theorem 1.5 and Haböck 2025/2110 specifically, non-theorem
 steps marked); the KAT re-pin and §4 table rebuild at integration.
-**Publication-freeze earmark, updated: q34/g36/s=2** — under revised
-accounting the swap gains computed bits (~+0.6-0.8) while saving ~44K CU
-and lifting the preliminary proven floor toward ~70; strictly dominant
-at freeze time. It stays out of v4 only for one-knob discipline (one
+**Publication-freeze earmark, updated: q34/g36/s=2** — under the provisional
+known-coefficient sensitivity the swap gains **0.3494 computed bits**, saves
+44,479 CU, restores the registered strict line by 18,819 CU, and lifts the
+preliminary proven floor toward ~70. It stays out of the current v4 profile
+for one-knob discipline (one
 transcript-shaped protocol change per integration); grinding twice
 costs minutes.
 
@@ -976,8 +1001,10 @@ exposure, so the response is pre-registered now, while no construction
 exists: **if a KKH-style counterexample is exhibited on circle-group
 cosets at radii reaching our operating point** (theta* ~ 0.70 at
 eta* ~ 0.050), the retreat ladder is, in order: (1) **primary: q40/g32/
-s=2** (+89K CU, 97.9 bits under whatever revised form survives the new
-construction; re-run the derivation document and re-rule the headline);
+s=2** (+81,328 CU versus current q36/s2; 1,177,988 registered; currently
+97.66 only in the provisional sensitivity;
+re-run the derivation and do not assume that value survives a new
+construction);
 (2) re-balance theta downward at q36 (costs headline bits, no CU) if the
 new failure touches only radii above ~0.65; (3) **terminal: the
 proven-regime split** — the three-transaction receipt (aspis-statement::

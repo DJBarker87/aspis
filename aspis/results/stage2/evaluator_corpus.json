@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-07-10T16:50:09.359627+00:00",
+  "generated_at_utc": "2026-07-10T20:48:52.046093+00:00",
   "command": "cargo run --release -p aspis-xtask -- stage2-evaluator",
   "poseidon2_pin": {
     "upstream": "https://github.com/Plonky3/Plonky3",
@@ -14,24 +14,26 @@
     "differential_test_states": 16
   },
   "statement_shape": {
+    "layout_status": "FROZEN r2/kprime51 by review ruling 2026-07-10",
     "merkle_depth": 20,
     "poseidon2_permutations_per_spend": 49,
     "poseidon2_rounds_per_permutation": 22,
     "total_poseidon2_rounds": 1078,
     "total_poseidon2_sbox_relations": 6958,
-    "candidate_rounds_per_wide_row": 4,
-    "candidate_poseidon_rows": 294,
-    "candidate_opened_values_k_prime": 80,
-    "candidate_max_sbox_terms_per_row": 64,
-    "candidate_linear_term_bracket_per_row": [
-      64,
-      128
+    "frozen_rounds_per_wide_row": 2,
+    "frozen_poseidon_constraint_rows": 539,
+    "frozen_poseidon_allocated_rows": 784,
+    "frozen_opened_values_k_prime": 51,
+    "frozen_max_sbox_terms_per_row": 32,
+    "frozen_linear_term_bracket_per_row": [
+      32,
+      64
     ],
-    "candidate_logup_degree3_terms": 2,
-    "candidate_range_bit_terms": 0,
-    "candidate_range_lookup_limb_bits": 10,
-    "candidate_range_lookup_limbs": 6,
-    "candidate_range_reconstruction_terms": 6,
+    "frozen_logup_degree3_terms": 2,
+    "frozen_range_bit_terms": 0,
+    "frozen_range_lookup_limb_bits": 10,
+    "frozen_range_lookup_limbs": 6,
+    "frozen_range_reconstruction_terms": 6,
     "zerocheck_eq_variables": 10,
     "witness_m31_elements_before_layout_padding": 196,
     "public_m31_elements": 26
@@ -220,7 +222,7 @@
     "The lookup evaluator uses six exact 10-bit limbs, checks fixed-table membership, and enforces reconstruction. It is a semantic oracle; the LogUp proof relation is not integrated yet.",
     "The LogUp oracle now constructs the post-chi helper, checks the degree-3 local identity, and separately checks sum(h)=0. Its teeth corpus shows that local rows alone do not reject an unmatched nonmember.",
     "logup_multiplicity_after_chi_weakened_order_accepts is an attack demonstration: expected Ok means the forged fractional multiplicities defeat every check when the multiplicity column is chosen after chi. The canonical order commits multiplicities in C1 before chi; the vector is the teeth behind that ordering line in the soundness note.",
-    "The 80-column/4-round row layout is a candidate used to confirm the synthetic composition bracket, not yet a frozen arithmetization.",
+    "The statement shape is synchronized to the frozen r=2/k'=51 layout: 49 Poseidon2 permutations use 539 constraint-active rows inside 49 aligned 16-row blocks (784 allocated rows).",
     "Depth 20 is the explicit demo choice. Moving to depth 32 adds 24 Poseidon2 permutations because each 8+8 digest compression needs two rate-8 sponge permutations."
   ]
 }

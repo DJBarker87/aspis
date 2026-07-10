@@ -1,5 +1,11 @@
 {
   "generated_at_utc": "2026-07-10T13:31:05.217938+00:00",
+  "superseded_security_annotation": {
+    "status": "HISTORICAL v3/s1 measurement; measured CU/proof bytes remain valid for that artifact",
+    "old_label": "capacity-conjectured security under the refuted up-to-capacity form",
+    "current_record": "../../docs/aspis-soundness-note.md section 9 and theta_optimizer.json",
+    "current_security_status": "t=90 ruling retained at q36/g32/s2; 93.73 provisional sensitivity is not quotable; 65.5 is the only quotable floor pending the finite-length constants gate"
+  },
   "command": "cargo run --release -p aspis-xtask -- stage1-onchain-hardening",
   "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
   "verify_cu_limit": 1400000,
@@ -8,7 +14,7 @@
   "variants": [
     {
       "profile": "capacity_lr10_q36_g32",
-      "soundness_label": "conjectured (capacity); external/OOD relations and Stage 1 C2 plumbing enforced",
+      "soundness_label": "HISTORICAL v3/s1 capacity label, superseded by top-level annotation; external/OOD relations and Stage 1 C2 plumbing enforced",
       "fold_payload": "raw_fibers",
       "merkle_mode": "minimal_subtree",
       "status": "accepted",

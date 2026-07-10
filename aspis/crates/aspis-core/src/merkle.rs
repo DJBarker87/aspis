@@ -102,7 +102,7 @@ pub fn verify_minimal_subtree(
     entries: &[(u32, [u8; 32])],
     nodes: &[[u8; 32]],
 ) -> bool {
-    if entries.is_empty() {
+    if entries.is_empty() || depth >= 32 {
         return false;
     }
     // check sorted unique and in range
@@ -160,7 +160,7 @@ pub fn verify_minimal_subtree_bytes(
     level: &mut Vec<(u32, [u8; 32])>,
     next: &mut Vec<(u32, [u8; 32])>,
 ) -> bool {
-    if entries.is_empty() || node_bytes.len() % 32 != 0 {
+    if entries.is_empty() || depth >= 32 || node_bytes.len() & 31 != 0 {
         return false;
     }
     for pair in entries.windows(2) {
@@ -224,7 +224,7 @@ pub fn verify_radix4_minimal_subtree_bytes(
     level: &mut Vec<(u32, [u8; 32])>,
     next: &mut Vec<(u32, [u8; 32])>,
 ) -> bool {
-    if entries.is_empty() || binary_depth & 1 != 0 || node_bytes.len() % 32 != 0 {
+    if entries.is_empty() || binary_depth & 1 != 0 || node_bytes.len() & 31 != 0 {
         return false;
     }
     for pair in entries.windows(2) {
@@ -256,12 +256,12 @@ pub fn verify_radix4_minimal_subtree_bytes(
                 present |= slot_mask;
                 position += 1;
             }
-            for slot in 0..4 {
+            for (slot, child) in children.iter_mut().enumerate() {
                 if present & (1u8 << slot) == 0 {
                     if node_pos + 32 > node_bytes.len() {
                         return false;
                     }
-                    children[slot] = node_bytes[node_pos..node_pos + 32].try_into().unwrap();
+                    *child = node_bytes[node_pos..node_pos + 32].try_into().unwrap();
                     node_pos += 32;
                 }
             }
@@ -375,6 +375,25 @@ mod tests {
         extra.push([0u8; 32]);
         assert!(!verify_minimal_subtree(
             test_hash, &root, 5, &entries, &extra
+        ));
+    }
+
+    #[test]
+    fn binary_minimal_subtree_rejects_unrepresentable_depth() {
+        let root = [0u8; 32];
+        let entries = [(0u32, [0u8; 32])];
+        assert!(!verify_minimal_subtree(test_hash, &root, 32, &entries, &[],));
+
+        let mut level = Vec::new();
+        let mut next = Vec::new();
+        assert!(!verify_minimal_subtree_bytes(
+            test_hash,
+            &root,
+            32,
+            &entries,
+            &[],
+            &mut level,
+            &mut next,
         ));
     }
 

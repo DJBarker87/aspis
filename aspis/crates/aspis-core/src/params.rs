@@ -231,7 +231,8 @@ pub const PROFILE_CAPACITY_LR10_Q34_G16: Profile = Profile {
     log_blowup: 2,
     query_count: 34,
     grinding_bits: 16,
-    soundness_label: "heuristic diagnostic (query/grinding trade measurement; production pairing is q34/g36)",
+    soundness_label:
+        "heuristic diagnostic (query/grinding trade measurement; production pairing is q34/g36)",
 };
 
 pub const PROFILES: &[Profile] = &[

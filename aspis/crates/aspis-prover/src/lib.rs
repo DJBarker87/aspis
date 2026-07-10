@@ -552,6 +552,8 @@ fn evaluate_qm31_coefficients(coeffs: &[QM31], point: QM31) -> QM31 {
     })
 }
 
+type SecondPhaseBuilder<'a> = dyn Fn(&[M31], QM31, QM31) -> Vec<QM31> + 'a;
+
 #[allow(clippy::too_many_arguments)]
 fn prove_inner(
     profile: &Profile,
@@ -561,7 +563,7 @@ fn prove_inner(
     options: &ProveOptions,
     hash: HashFn,
     second_phase: bool,
-    second_phase_builder: Option<&dyn Fn(&[M31], QM31, QM31) -> Vec<QM31>>,
+    second_phase_builder: Option<&SecondPhaseBuilder<'_>>,
     ordering: OrderingBehavior,
     ood_behavior: OodBehavior,
 ) -> Vec<u8> {

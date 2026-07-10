@@ -5,6 +5,12 @@ license.workspace = true
 version.workspace = true
 description = "No-proof SpendV0 evaluator and constraint-composition kernels for Aspis"
 
+[features]
+# Exposes the deliberately broken lambda^0 tagged-tuple compression solely
+# for adversarial teeth/evaluation builds. The verifier program does not
+# forward this feature; enabling it requires an explicit dependency feature.
+insecure-test-logup-compression = []
+
 [dependencies]
 aspis-core.workspace = true
 

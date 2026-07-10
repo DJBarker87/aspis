@@ -68,21 +68,23 @@ pub struct Poseidon2Pin {
 
 #[derive(Serialize)]
 pub struct StatementShape {
+    pub layout_status: &'static str,
     pub merkle_depth: usize,
     pub poseidon2_permutations_per_spend: usize,
     pub poseidon2_rounds_per_permutation: usize,
     pub total_poseidon2_rounds: usize,
     pub total_poseidon2_sbox_relations: usize,
-    pub candidate_rounds_per_wide_row: usize,
-    pub candidate_poseidon_rows: usize,
-    pub candidate_opened_values_k_prime: usize,
-    pub candidate_max_sbox_terms_per_row: usize,
-    pub candidate_linear_term_bracket_per_row: [usize; 2],
-    pub candidate_logup_degree3_terms: usize,
-    pub candidate_range_bit_terms: usize,
-    pub candidate_range_lookup_limb_bits: u32,
-    pub candidate_range_lookup_limbs: usize,
-    pub candidate_range_reconstruction_terms: usize,
+    pub frozen_rounds_per_wide_row: usize,
+    pub frozen_poseidon_constraint_rows: usize,
+    pub frozen_poseidon_allocated_rows: usize,
+    pub frozen_opened_values_k_prime: usize,
+    pub frozen_max_sbox_terms_per_row: usize,
+    pub frozen_linear_term_bracket_per_row: [usize; 2],
+    pub frozen_logup_degree3_terms: usize,
+    pub frozen_range_bit_terms: usize,
+    pub frozen_range_lookup_limb_bits: u32,
+    pub frozen_range_lookup_limbs: usize,
+    pub frozen_range_reconstruction_terms: usize,
     pub zerocheck_eq_variables: usize,
     pub witness_m31_elements_before_layout_padding: usize,
     pub public_m31_elements: usize,
@@ -462,8 +464,9 @@ pub fn run_evaluator_corpus() -> Result<EvaluatorCorpusSummary> {
     let permutations = 1 + 3 + 2 + 3 + 2 * DEPTH;
     let poseidon_rounds = permutations * 22;
     let total_sboxes = permutations * (8 * 16 + 14);
-    let rounds_per_row = 4;
+    let rounds_per_row = 2;
     let poseidon_rows = permutations * 22usize.div_ceil(rounds_per_row);
+    let poseidon_allocated_rows = permutations * 16;
 
     Ok(EvaluatorCorpusSummary {
         generated_at_utc: chrono::Utc::now().to_rfc3339(),
@@ -481,21 +484,23 @@ pub fn run_evaluator_corpus() -> Result<EvaluatorCorpusSummary> {
             differential_test_states: 16,
         },
         statement_shape: StatementShape {
+            layout_status: "FROZEN r2/kprime51 by review ruling 2026-07-10",
             merkle_depth: DEPTH,
             poseidon2_permutations_per_spend: permutations,
             poseidon2_rounds_per_permutation: 22,
             total_poseidon2_rounds: poseidon_rounds,
             total_poseidon2_sbox_relations: total_sboxes,
-            candidate_rounds_per_wide_row: rounds_per_row,
-            candidate_poseidon_rows: poseidon_rows,
-            candidate_opened_values_k_prime: 80,
-            candidate_max_sbox_terms_per_row: 64,
-            candidate_linear_term_bracket_per_row: [64, 128],
-            candidate_logup_degree3_terms: 2,
-            candidate_range_bit_terms: 0,
-            candidate_range_lookup_limb_bits: RANGE_LIMB_BITS,
-            candidate_range_lookup_limbs: 6,
-            candidate_range_reconstruction_terms: 6,
+            frozen_rounds_per_wide_row: rounds_per_row,
+            frozen_poseidon_constraint_rows: poseidon_rows,
+            frozen_poseidon_allocated_rows: poseidon_allocated_rows,
+            frozen_opened_values_k_prime: 51,
+            frozen_max_sbox_terms_per_row: 32,
+            frozen_linear_term_bracket_per_row: [32, 64],
+            frozen_logup_degree3_terms: 2,
+            frozen_range_bit_terms: 0,
+            frozen_range_lookup_limb_bits: RANGE_LIMB_BITS,
+            frozen_range_lookup_limbs: 6,
+            frozen_range_reconstruction_terms: 6,
             zerocheck_eq_variables: 10,
             witness_m31_elements_before_layout_padding: 196,
             public_m31_elements: 26,
@@ -510,7 +515,7 @@ pub fn run_evaluator_corpus() -> Result<EvaluatorCorpusSummary> {
             "The lookup evaluator uses six exact 10-bit limbs, checks fixed-table membership, and enforces reconstruction. It is a semantic oracle; the LogUp proof relation is not integrated yet.".to_string(),
             "The LogUp oracle now constructs the post-chi helper, checks the degree-3 local identity, and separately checks sum(h)=0. Its teeth corpus shows that local rows alone do not reject an unmatched nonmember.".to_string(),
             "logup_multiplicity_after_chi_weakened_order_accepts is an attack demonstration: expected Ok means the forged fractional multiplicities defeat every check when the multiplicity column is chosen after chi. The canonical order commits multiplicities in C1 before chi; the vector is the teeth behind that ordering line in the soundness note.".to_string(),
-            "The 80-column/4-round row layout is a candidate used to confirm the synthetic composition bracket, not yet a frozen arithmetization.".to_string(),
+            "The statement shape is synchronized to the frozen r=2/k'=51 layout: 49 Poseidon2 permutations use 539 constraint-active rows inside 49 aligned 16-row blocks (784 allocated rows).".to_string(),
             "Depth 20 is the explicit demo choice. Moving to depth 32 adds 24 Poseidon2 permutations because each 8+8 digest compression needs two rate-8 sponge permutations.".to_string(),
         ],
     })
