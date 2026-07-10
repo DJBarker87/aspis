@@ -617,20 +617,21 @@ protocol).**
 
 | # | term | shape | bits |
 | --- | --- | --- | ---: |
-| T5' | gamma-RLC batching over k' <= 84 columns | (k'-1) / \|F\| | 117.6 |
-| T7' | copy pole/SZ (E2) + range pole/SZ (E4), shared chi, union | 8m / \|F\|, m = 2^10 | 111 |
+| T5' | gamma-RLC batching, PARAMETRIC: (k'-1) / \|F\| = 124 - log2(k'-1) bits | frozen k' = 51 (pin <= 52) -> 118.36; historical readings: k'=83 -> 117.62, k'=82 -> 117.66 | 118.36 |
+| T7' | copy pole/SZ (E2) + range pole/SZ (E4), shared chi, union | 8m / \|F\|, m = 2^10 worst case (recounted m = 534 at the frozen shape) | 111 |
 | T8' | claim batching | (#claims) / \|F\|, #claims <= 8 | ~121 |
 
-The k' recount that forces T5': the 80-column candidate main trace did not
-reserve the lookup's committed columns, so k' = 80 (main) + 1 (multiplicity,
-C1) + 1 (copy helper h1, C2) + 1 (range helper h2, C2) = **83**; this note
-pins k' <= 84 with one column of slack. **§3's "k' <= 82" is false for the
-integrated statement and must not be quoted for it.** The RLC consequence
-is priced in `stage2-feasibility.md`: the measured fixed-width kernel is
-`qm31_power_table::<80>` and the integrated verifier RLCs 83 values per
-query, so the 202,031-CU term scales by 83/80 (~+7,600 CU) and the k80
-wide-leaf marker grows by 12 bytes per leaf; both are projection
-corrections until integration measures them.
+T5' is now stated parametrically after three rewrites; any future layout
+change instantiates the formula and does not rewrite the line.
+
+The k' recount that forced the first T5' rewrite: the 80-column candidate
+main trace did not reserve the lookup's committed columns, so k' = 80
+(main) + 1 (multiplicity, C1) + 1 (copy helper h1, C2) + 1 (range helper
+h2, C2) = 83, briefly pinned <= 84. **§3's "k' <= 82" is false for the
+integrated statement and must not be quoted for it.** The k83 reading and
+its scaled RLC costs are superseded by the layout freeze below (r=2,
+k' = 51, measured kernels); they are retained here as provenance for the
+projection corrections recorded in `stage2-feasibility.md`.
 
 Recomputed union with T5', T7', T8' and all other terms unchanged:
 **103.9453 algebraic bits** (was 103.9508); with the q36/g32 query term,
@@ -660,19 +661,51 @@ row, the selector reading for which cells are range-checked, and the final
 (m, w) for §5 are layout-freeze decisions; if any of them moves a number in
 this section, this section is re-dated before the gate note quotes it.
 
-**Selector-factoring correction (`2026-07-10`, shrink hunt).** The r=4
-candidate packs permutations into 6-row blocks, and 6-row periodicity does
-NOT factor over the low bits of the Boolean cube — §5's stated O(2^b)
-block-periodic selector evaluation was silently false for that reading.
-Power-of-two block alignment restores it: r=3 gives 2^3-aligned 8-row
-blocks (392 rows), r=2 padded blocks are 2^4-aligned (784 rows); r=1
-exceeds the 2^10 row cap. The shrink hunt's adopted candidate is the r=2
-/ k' = 51 shape (`docs/stage2-shrink-hunt.md`); at its layout freeze the
-k' pin moves to <= 52, T5' improves to ~118.3 bits, the copy multiset
-recount (~490 links) stays inside the m = 2^10 worst-case reading, and
-this section is re-dated. LogUp-GKR helper elimination was priced against
-verified sources and rejected as a net ~175K-CU loss on SBF; the analysis
-and abandon criterion are recorded in the hunt document.
+**Layout freeze (`2026-07-10`, ratified in review): r = 2 rounds per row,
+k' = 51, pin k' <= 52.** The freeze record states plainly what the shrink
+hunt found: **the previous freeze candidate (k80 / r=4) was broken.**
+Six-row blocks do not factor over the low bits of the Boolean cube, so
+§5's verifier-evaluable O(2^b) selector claim was FALSE for that shape —
+integration on it would have needed committed selector columns (k' up,
+costs up) or produced silently wrong evaluations. No probe in the suite
+could have caught it; it was caught by note-work, the second defect
+intercepted that way after the gamma-ordering bug. The frozen shape is
+the one on which this note is true as written: 49 Poseidon2 permutations
+in 2^4-aligned 16-row blocks (11 active + 5 padding rows), 784 active
+rows of 2^10, position-in-block a function of the low 4 bits of the row
+index.
+
+Frozen-shape facts, independently recounted:
+
+- **m recount (condition ii):** 490 intra-permutation interfaces
+  (10 links x 49) + 44 chain boundaries (Merkle 20 intra-compression +
+  19 level-to-level, note 2, output 2, nullifier 1) = **m = 534**, w = 17:
+  E1 = 2^-110.85, E2 = 2^-112.94 — inside the m = 2^10 worst-case reading
+  that T6/T7' carry; both recounts (review and implementation) landed on
+  the same numbers.
+- **Selector form (condition iii):** padding positions 11..15 and the
+  full/partial round seams (rows 1-2 full-full, 3-9 partial-partial,
+  10-11 full-full) are all functions of position-in-block, hence inside
+  the periodic part; exceptions proper remain the chain-structural rows
+  only. **Padding rows are constraint-dead AND excluded from both copy
+  multisets: sel_P and sel_C are verifier-computable positional
+  constants that vanish on padding positions.** A padding row leaking
+  into the producer multiset would be a silent soundness hole; this line
+  is the guard, and the layout freeze test suite must include a vector
+  for it.
+- **T5' instantiation:** 124 - log2(50) = 118.36 bits; amended union
+  unchanged at 103.9453 algebraic / 102.9724 total (T5' is invisible at
+  four decimals next to T2).
+- **Freeze confirmation (condition iv):** multi-seed g16 means (>= 8
+  fresh draws) at the integrated v4 shape, per the registered evidence
+  standard — never a single draw.
+
+LogUp-GKR helper elimination was priced against verified sources and
+rejected as a net ~175K-CU loss on SBF; the analysis and abandon
+criterion are recorded in the hunt document. The T3 nu <= 14 sumcheck
+budget is a conservative allowance; at lr10 the zerocheck runs nu = 10
+rounds and the nu = 14 pessimistic sumcheck probe reading is
+**sensitivity-only, excluded from every gate statistic**.
 
 ---
 

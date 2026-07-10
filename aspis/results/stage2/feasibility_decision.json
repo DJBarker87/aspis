@@ -142,6 +142,8 @@
     },
     "adopted_package": {
       "name": "r2_layout_refreeze_k51",
+      "status": "FROZEN by review ruling 2026-07-10, note-first; four conditions discharged in soundness note section 8; confirmation on >= 8 fresh g16 draws at the integrated v4 shape",
+      "previous_candidate_defect": "k80/r4 was broken: 6-row blocks do not factor over the Boolean cube, so section 5's verifier-evaluable selector claim was false for it; caught by note-work, second such intercept after the gamma-ordering bug",
       "layout": "2 Poseidon2 rounds per row, 16-row-aligned blocks (2^4 selector factoring), 784 of 1024 rows, k' = 51 = 32 state + 16 interface + 1 multiplicity + 2 helpers",
       "measured_components_cu": {
         "pcs_radix4_g32_single_draw": 678407,
@@ -157,9 +159,14 @@
         "with_stress": 991775,
         "with_worst_of_16_draw": 1029898,
         "combined_worst": 1047561,
-        "pessimistic_sumcheck_combined_worst": 1107245
+        "nu14_sumcheck_sensitivity_only": 1107245
       },
-      "close_condition_evaluation": "974,112 <= 1,071,000 - 27,893: PASSES by 68,995 CU; final-shape multi-seed re-check at integration as registered"
+      "close_condition_evaluation": "974,112 <= 1,071,000 - 27,893: PASSES by 68,995 CU; final-shape multi-seed re-check at integration as registered",
+      "ledger_labels": {
+        "draw_anchor": "the +55,786 range rows are conservative double-counted tails: the g32 anchor sits +2,236 (0.33%) above the 16-seed fixed-shape mean, so the plausible worst-draw increment is ~17,238 CU and the combined-worst margin plausibly ~62K, not 23K",
+        "nu14_reading": "unreachable at lr10 (zerocheck is nu=10; nu<=14 is T3's conservative budget, not a shape); sensitivity-only, excluded from every gate statistic",
+        "rlc_seam_basis": "131,759 is total-probe basis including the per-query value-synthesis scaffold the real verifier does not run (it parses leaf bytes); conservative direction; resolves at integration where the real parse-plus-RLC path is measured"
+      }
     },
     "optional_adders_cu": {
       "q34_g36": {
@@ -167,7 +174,7 @@
         "q_linear_statement_scaling": 7850,
         "proven_floor_bits": "65.5 -> 67.6",
         "grind_cost": "2^36 SHA-256, ~30-80 minutes",
-        "status": "available, not adopted; requires the section-4 re-rule"
+        "status": "HELD as reserve by review ruling 2026-07-10: insurance is not spent before integration friction and final-shape spread resolve. EARMARK: revisit at publication freeze regardless of CU (claims-side proven-floor improvement priced only in grind minutes)"
       },
       "flat_commit_deep_layers": { "estimate": "30000-33000 plus draw-spread reduction", "status": "engineering candidate, needs multi-seed remeasure and named root/KAT re-pin" },
       "rlc_leaf_fusion": { "estimate": "10000-20000", "status": "kernel-only, measure-first" }

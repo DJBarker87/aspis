@@ -194,12 +194,53 @@ rate, query, or C2 changes.**
 | + composition stress (88,617) | 991,775 | -79,225 |
 | + worst-of-16 draw (+55,786) | 1,029,898 | -41,102 |
 | + stress + draw (combined worst) | 1,047,561 | **-23,439** |
-| (pessimistic nu=14 sumcheck instead of central, + stress + draw) | 1,107,245 | +36,245 over — reported, not central |
+| (nu=14 sumcheck, + stress + draw) | 1,107,245 | sensitivity-only — see labels |
 
 Close condition: `974,112 <= 1,071,000 - 27,893 (half observed range)` →
 **passes by 68,995 CU.** The condition's final-shape multi-seed re-check
 happens on the integrated proof's own >= 8 draws, as registered. The
 boring pair closed the hunt without GKR leaving the reading pile.
+
+### Ledger labels (review, before hardening)
+
+1. **Draw-row anchor annotation.** The +55,786 rows add the full
+   fixed-shape range to a central anchored at the g32 draw, which the
+   16-seed study places +2,236 (0.33%) above the fixed-shape mean. The
+   plausible worst-draw increment from that anchor is max - anchor =
+   **~17,238 CU**, not 55,786; the conservative rows stand, but the
+   combined-worst margin is plausibly **~62K**, not 23K. A reader taking
+   23K as the margin is reading the double-counted tail.
+2. **The nu=14 pessimistic sumcheck reading is unreachable at lr10** (the
+   zerocheck runs nu = 10 rounds over 2^10 rows; nu <= 14 is T3's
+   conservative budget, not a shape). It is sensitivity-only and is
+   excluded from every gate statistic.
+3. **RLC seam basis.** The 131,759 figure is total-probe basis and
+   includes the probe's per-query value-synthesis scaffold that the real
+   verifier does not run (it parses leaf bytes instead) — the
+   conservative direction. The seam resolves at integration, where the
+   real parse-plus-RLC path is measured in place of the synthetic loop;
+   the incremental-over-baseline basis for fixed51 is recorded in
+   `wide_rlc_probe.json` alongside the total.
+
+### Rulings (`2026-07-10` review)
+
+- **Ruling 1: r=2 / k' = 51 FROZEN**, note-first, with four conditions —
+  all discharged in the soundness note §8 freeze record: (i) T5'
+  parametric (118.36 bits at k'=51, pin <= 52); (ii) independent m
+  recount agreed at m = 534, E1 = 2^-110.85, E2 = 2^-112.94; (iii)
+  padding rows constraint-dead and excluded from both copy multisets,
+  round seams inside the periodic part, with a layout-freeze teeth vector
+  required for the padding-leak hole; (iv) freeze confirmation on >= 8
+  fresh g16 draws at the integrated v4 shape.
+- **Ruling 2: q34/g36 HELD as reserve.** Insurance is not spent before
+  the insured events (integration friction, final-shape spread) resolve;
+  flat-commit and RLC/leaf fusion queue behind it as pocket levers.
+  **Earmark: revisit q34/g36 at publication freeze regardless of CU** —
+  67.6 vs 65.5 proven bits is a claims-side improvement priced only in
+  grind minutes, and the three-number headline is where it earns keep.
+- Calibration note for future envelopes: review estimates of SBF verifier
+  costs have now run low three times (composition, C2 phase, sumcheck
+  allowance — the last by 40%); measured probes precede belief.
 
 **Optional adders, not needed for close, available if integration eats
 margin:** q34/g36 (-44K measured+scaled, floor +2.1 bits, grind cost
