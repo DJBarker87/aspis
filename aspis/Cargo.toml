@@ -2,6 +2,7 @@
 members = [
     "crates/aspis-core",
     "crates/aspis-prover",
+    "crates/aspis-statement",
     "programs/aspis-verifier",
     "xtask",
 ]
@@ -15,6 +16,7 @@ version = "0.1.0"
 [workspace.dependencies]
 aspis-core = { path = "crates/aspis-core" }
 aspis-prover = { path = "crates/aspis-prover" }
+aspis-statement = { path = "crates/aspis-statement" }
 aspis-verifier = { path = "programs/aspis-verifier", features = ["no-entrypoint"] }
 anyhow = "1.0.100"
 base64 = "0.22.1"

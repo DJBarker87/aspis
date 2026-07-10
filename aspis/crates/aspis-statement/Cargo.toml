@@ -1,0 +1,14 @@
+[package]
+name = "aspis-statement"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+description = "No-proof SpendV0 evaluator and constraint-composition kernels for Aspis"
+
+[dependencies]
+aspis-core.workspace = true
+
+[dev-dependencies]
+p3-field = "=0.6.1"
+p3-mersenne-31 = "=0.6.1"
+p3-symmetric = "=0.6.1"

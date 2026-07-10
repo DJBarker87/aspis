@@ -1,4 +1,4 @@
-# Aspis — transparent shielded spend on Solana (Stage 1 hardening)
+# Aspis — transparent shielded spend on Solana (Stage 2)
 
 Aspis is a staged project toward the first transparent, trusted-setup-free,
 plausibly-post-quantum verifier of a real private-payment statement running as
@@ -6,8 +6,8 @@ a program on Solana. This subrepo contains the native WHIR-style M31 PCS
 substrate ("native v0") and its staged hardening, with the measured Phase 2
 kernel winners built in from the first line.
 
-**Status**: Stage 1 PCS milestone **closed; Stage 2 feasibility work starts
-with a red headroom warning**. Stage 0 closed conditionally and the
+**Status**: Stage 1 PCS milestone **closed; Stage 2 evaluator complete and
+single-transaction feasibility negative**. Stage 0 closed conditionally and the
 soundness review retired q32/g32 in favor of q36/g32. The upstream T1/T2
 constants are pinned, the challenge sampler is exact-uniform, and external
 evaluation claims plus one OOD value per round are transcript-bound and
@@ -24,7 +24,12 @@ conditional headline is t=100
 capacity-conjectured (~102.98 system bits under the stated three-clause
 assumption), with a proven Johnson floor of ~65.5 bits. See
 `docs/aspis-soundness-note.md`, `docs/stage0-conclusion.md`, and
-`docs/stage0-gate.md`.
+`docs/stage0-gate.md`. Stage 2 now has an executable SpendV0-min evaluator,
+13 economic vectors, a Plonky3-pinned Poseidon2-M31 implementation, and
+isolated SBF composition/layout/hash measurements. After a measured
+structured/Horner shrink, the evaluator-confirmed low single-transaction
+projection is still `1,415,268` CU. The named continuation is three-
+transaction split verification; see `docs/stage2-feasibility.md`.
 
 ## What this is (and is not)
 
@@ -92,7 +97,7 @@ results/stage0,stage1/   raw artifacts backing every number quoted anywhere
 | --- | --- | --- |
 | Stage 0 | Consolidate the native WHIR-style M31 PCS substrate | **CLOSED/CONDITIONAL (historical)**: admitted q32/g32 as a hypothesis; Stage 1 has since retired it |
 | Stage 1 | Harden and budget the PCS soundness argument | **CLOSED/FROZEN**: q36/g32, v3 C2, relation enforcement, teeth tests, literal SBF measurement |
-| Stage 2 | Build the direct spend evaluator and statement layer | **starting**: no-proof evaluator/economic attacks first; isolated SBF composition cost before integration |
+| Stage 2 | Build the direct spend evaluator and statement layer | **IN PROGRESS / RULE CHANGE RECORDED**: evaluator and isolated probes complete; one-tx gate negative; split receipt seam implemented, real verifier integration pending |
 | Stage 3 | Add commitment and sumcheck/evaluation hiding | future |
 | Stage 4 | Split verifier crate seam and demo shielded pool | future |
 | Stage 5 | Freeze, devnet n=100 measurement, novelty re-check, writeup | future |
@@ -110,6 +115,10 @@ cargo run --release -p aspis-xtask -- stage0-onchain-layout-target # literal lr1
 cargo run --release -p aspis-xtask -- stage1-soundness-pin # pinned upstream T1/T2 artifact
 cargo run --release -p aspis-xtask -- stage1-onchain-hardening # literal enforced q36/g32 + cached proof
 cargo test -p aspis-prover --features insecure-test-ordering --test stage1_ordering # teeth proof against weakened schedules
+cargo run --release -p aspis-xtask -- stage2-evaluator # economic corpus + real statement shape
+cargo run --release -p aspis-xtask -- stage2-composition-probe # naive + structured SBF bracket
+cargo run --release -p aspis-xtask -- stage2-layout-probe # k64/k80/k82 wide-layout delta
+cargo run --release -p aspis-xtask -- stage2-poseidon2-probe # direct software hash cost
 cargo run --release -p aspis-xtask -- stage0-onchain       # full packaging matrix; slow
 ```
 

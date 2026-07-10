@@ -53,6 +53,19 @@ pub enum AspisInstruction {
     /// digest supplied by the client. A mismatch is a host/SBF transcript
     /// divergence and errors loudly.
     TranscriptKat { expected: [u8; 32] },
+    /// Pure-compute Stage 2 measurement. This runs the extension-field
+    /// constraint composition in isolation and requires no accounts.
+    ConstraintCompositionProbe {
+        opened_values: u16,
+        poseidon_sbox_terms: u16,
+        poseidon_linear_terms: u16,
+        logup_degree3_terms: u16,
+        range_bit_terms: u16,
+        eq_variables: u8,
+        optimized: bool,
+    },
+    /// Pure-compute software Poseidon2-M31 permutation measurement.
+    Poseidon2Probe { permutations: u16 },
     /// Verify a claim-carrying proof. The (z, v) evaluation claim is a public
     /// input (16-byte LE QM31 coordinates + value), transcript-absorbed and
     /// enforced by the interleaved relation sumcheck.
@@ -61,6 +74,51 @@ pub enum AspisInstruction {
         claim_z: Vec<[u8; 16]>,
         claim_v: [u8; 16],
     },
+}
+
+fn run_poseidon2_probe(permutations: u16) -> ProgramResult {
+    if permutations > 128 {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+    let mut state = core::array::from_fn(|index| aspis_core::field::M31(index as u32 + 1));
+    for iteration in 0..permutations {
+        state[0] = state[0].add(aspis_core::field::M31(iteration as u32 + 1));
+        aspis_statement::poseidon2::permute(&mut state);
+    }
+    if state[0] == aspis_core::field::M31::ZERO && permutations == u16::MAX {
+        Err(ProgramError::InvalidInstructionData)
+    } else {
+        Ok(())
+    }
+}
+
+fn run_constraint_composition_probe(
+    probe: aspis_statement::CompositionProbe,
+    optimized: bool,
+) -> ProgramResult {
+    if probe.opened_values > 256
+        || probe.poseidon_sbox_terms > 256
+        || probe.poseidon_linear_terms > 512
+        || probe.logup_degree3_terms > 8
+        || probe.range_bit_terms > 256
+        || probe.eq_variables > 24
+    {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+    let result = if optimized {
+        aspis_statement::evaluate_composition_probe_optimized(probe)
+    } else {
+        aspis_statement::evaluate_composition_probe(probe)
+    };
+    // Keep the dynamic computation observably live without adding a hash or
+    // log call to the isolated field-arithmetic measurement.
+    if result.accumulator == aspis_core::field::QM31::ZERO
+        && result.qm31_multiplications == u32::MAX
+    {
+        Err(ProgramError::InvalidInstructionData)
+    } else {
+        Ok(())
+    }
 }
 
 /// hashv-shaped backend over the Solana SHA-256 syscall.
@@ -243,6 +301,31 @@ pub fn process_instruction(
             Err(ProgramError::InvalidInstructionData)
         };
     }
+    if let AspisInstruction::ConstraintCompositionProbe {
+        opened_values,
+        poseidon_sbox_terms,
+        poseidon_linear_terms,
+        logup_degree3_terms,
+        range_bit_terms,
+        eq_variables,
+        optimized,
+    } = instruction
+    {
+        return run_constraint_composition_probe(
+            aspis_statement::CompositionProbe {
+                opened_values,
+                poseidon_sbox_terms,
+                poseidon_linear_terms,
+                logup_degree3_terms,
+                range_bit_terms,
+                eq_variables,
+            },
+            optimized,
+        );
+    }
+    if let AspisInstruction::Poseidon2Probe { permutations } = instruction {
+        return run_poseidon2_probe(permutations);
+    }
 
     let account_iter = &mut accounts.iter();
     let proof_account = next_account_info(account_iter)?;
@@ -321,6 +404,8 @@ pub fn process_instruction(
         } => run_layout_probe(log_rows, columns, query_count, leaf_bytes),
         // handled before account resolution above
         AspisInstruction::TranscriptKat { .. } => unreachable!(),
+        AspisInstruction::ConstraintCompositionProbe { .. } => unreachable!(),
+        AspisInstruction::Poseidon2Probe { .. } => unreachable!(),
     }
 }
 
@@ -328,6 +413,33 @@ pub fn process_instruction(
 mod tests {
     use super::*;
     use solana_program::{account_info::AccountInfo, clock::Epoch};
+
+    #[test]
+    fn constraint_composition_probe_requires_no_accounts() {
+        let probe = aspis_statement::CompositionProbe::OPTIMISTIC;
+        let instruction = AspisInstruction::ConstraintCompositionProbe {
+            opened_values: probe.opened_values,
+            poseidon_sbox_terms: probe.poseidon_sbox_terms,
+            poseidon_linear_terms: probe.poseidon_linear_terms,
+            logup_degree3_terms: probe.logup_degree3_terms,
+            range_bit_terms: probe.range_bit_terms,
+            eq_variables: probe.eq_variables,
+            optimized: false,
+        };
+        assert_eq!(
+            process_instruction(&id(), &[], &borsh::to_vec(&instruction).unwrap()),
+            Ok(())
+        );
+    }
+
+    #[test]
+    fn poseidon2_probe_requires_no_accounts() {
+        let instruction = AspisInstruction::Poseidon2Probe { permutations: 2 };
+        assert_eq!(
+            process_instruction(&id(), &[], &borsh::to_vec(&instruction).unwrap()),
+            Ok(())
+        );
+    }
 
     fn make_account<'a>(
         key: &'a Pubkey,

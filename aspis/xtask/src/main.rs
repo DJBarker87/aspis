@@ -1,6 +1,7 @@
 mod host;
 mod onchain;
 mod stage1;
+mod stage2;
 
 use std::fs;
 use std::path::PathBuf;
@@ -33,6 +34,17 @@ fn stage1_results_dir() -> Result<PathBuf> {
         .ok_or_else(|| anyhow!("no workspace root"))?
         .to_path_buf();
     let dir = root.join("results/stage1");
+    fs::create_dir_all(&dir)?;
+    Ok(dir)
+}
+
+fn stage2_results_dir() -> Result<PathBuf> {
+    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let root = manifest
+        .parent()
+        .ok_or_else(|| anyhow!("no workspace root"))?
+        .to_path_buf();
+    let dir = root.join("results/stage2");
     fs::create_dir_all(&dir)?;
     Ok(dir)
 }
@@ -124,8 +136,40 @@ fn main() -> Result<()> {
             eprintln!("stage1-onchain-hardening: wrote {}", path.display());
             Ok(())
         }
+        Some("stage2-evaluator") => {
+            let summary = stage2::run_evaluator_corpus()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("evaluator_corpus.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!("stage2-evaluator: wrote {}", path.display());
+            Ok(())
+        }
+        Some("stage2-composition-probe") => {
+            let summary = onchain::run_stage2_composition_probe()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("composition_probe.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!("stage2-composition-probe: wrote {}", path.display());
+            Ok(())
+        }
+        Some("stage2-layout-probe") => {
+            let summary = onchain::run_stage2_layout_probe()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("layout_probe.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!("stage2-layout-probe: wrote {}", path.display());
+            Ok(())
+        }
+        Some("stage2-poseidon2-probe") => {
+            let summary = onchain::run_stage2_poseidon2_probe()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("poseidon2_probe.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!("stage2-poseidon2-probe: wrote {}", path.display());
+            Ok(())
+        }
         other => bail!(
-            "usage: cargo run -p aspis-xtask -- stage0-host | stage0-onchain | stage0-onchain-gate | stage0-onchain-g32 | stage0-onchain-layout-target | stage0-onchain-profile | stage0-layout-sweep | stage0-transcript-kat | stage1-soundness-pin | stage1-onchain-hardening (got {:?})",
+            "usage: cargo run -p aspis-xtask -- stage0-host | stage0-onchain | stage0-onchain-gate | stage0-onchain-g32 | stage0-onchain-layout-target | stage0-onchain-profile | stage0-layout-sweep | stage0-transcript-kat | stage1-soundness-pin | stage1-onchain-hardening | stage2-evaluator | stage2-composition-probe | stage2-layout-probe | stage2-poseidon2-probe (got {:?})",
             other
         ),
     }

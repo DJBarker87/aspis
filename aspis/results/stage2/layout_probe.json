@@ -1,0 +1,54 @@
+{
+  "generated_at_utc": "2026-07-10T14:08:04.601699+00:00",
+  "command": "cargo run --release -p aspis-xtask -- stage2-layout-probe",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "log_rows": 10,
+  "query_count": 36,
+  "repetitions": 5,
+  "variants": [
+    {
+      "columns": 64,
+      "leaf_bytes": 256,
+      "simulation_cu": [
+        295600,
+        295600,
+        295600,
+        295600,
+        295600
+      ],
+      "simulation_cu_mean": 295600.0,
+      "delta_vs_k64_cu": 0
+    },
+    {
+      "columns": 80,
+      "leaf_bytes": 320,
+      "simulation_cu": [
+        350320,
+        350320,
+        350320,
+        350320,
+        350320
+      ],
+      "simulation_cu_mean": 350320.0,
+      "delta_vs_k64_cu": 54720
+    },
+    {
+      "columns": 82,
+      "leaf_bytes": 328,
+      "simulation_cu": [
+        357160,
+        357160,
+        357160,
+        357160,
+        357160
+      ],
+      "simulation_cu_mean": 357160.0,
+      "delta_vs_k64_cu": 61560
+    }
+  ],
+  "notes": [
+    "Synthetic SHA-256 wide-leaf/path plus QM31 gamma-RLC probe, re-run at the evaluator's candidate k'=80 with the same q36/lr10 geometry.",
+    "Only the k80-minus-k64 delta is applied to the frozen 201,114-CU allowance; the absolute probe is not added to the PCS because that would double-count path hashing.",
+    "This confirms the layout lever at the real candidate k but is not an integrated wide-row PCS measurement."
+  ]
+}

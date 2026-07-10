@@ -121,6 +121,48 @@ pub struct LayoutSweep {
     pub notes: Vec<String>,
 }
 
+#[derive(Serialize)]
+pub struct Stage2LayoutVariant {
+    pub columns: u16,
+    pub leaf_bytes: u16,
+    pub simulation_cu: Vec<u64>,
+    pub simulation_cu_mean: f64,
+    pub delta_vs_k64_cu: i64,
+}
+
+#[derive(Serialize)]
+pub struct Stage2LayoutSummary {
+    pub generated_at_utc: String,
+    pub command: String,
+    pub validator_version: String,
+    pub log_rows: u8,
+    pub query_count: u16,
+    pub repetitions: usize,
+    pub variants: Vec<Stage2LayoutVariant>,
+    pub notes: Vec<String>,
+}
+
+#[derive(Serialize)]
+pub struct Poseidon2ProbeVariant {
+    pub permutations: u16,
+    pub simulation_cu: Vec<Option<u64>>,
+    pub simulation_errors: Vec<Option<String>>,
+    pub accepted_all: bool,
+    pub mean_cu_if_accepted: Option<f64>,
+    pub incremental_cu_over_zero_if_accepted: Option<i64>,
+}
+
+#[derive(Serialize)]
+pub struct Poseidon2ProbeSummary {
+    pub generated_at_utc: String,
+    pub command: String,
+    pub validator_version: String,
+    pub repetitions: usize,
+    pub variants: Vec<Poseidon2ProbeVariant>,
+    pub measured_incremental_cu_per_permutation_from_8: Option<f64>,
+    pub notes: Vec<String>,
+}
+
 struct Validator {
     child: Child,
     rpc_url: String,
@@ -865,6 +907,441 @@ pub fn run_transcript_kat() -> Result<TranscriptKatRun> {
         simulation_units: units,
         notes: vec![
             "matched_on_sbf=false means the SBF transcript diverged from the host — stop and diagnose before trusting any on-chain measurement.".to_string(),
+        ],
+    })
+}
+
+#[derive(Serialize)]
+pub struct CompositionProbeVariant {
+    pub name: &'static str,
+    pub kernel: &'static str,
+    pub parameters: CompositionProbeParameters,
+    pub host_qm31_multiplications: u32,
+    pub host_qm31_by_cm31_multiplications: u32,
+    pub host_additions_or_subtractions: u32,
+    pub simulation_cu: Vec<u64>,
+    pub simulation_cu_mean: f64,
+    pub matching_rlc_only_cu: Vec<u64>,
+    pub matching_rlc_only_cu_mean: f64,
+    pub composition_incremental_cu_over_matching_rlc: i64,
+    pub rlc_delta_from_frozen_k64_cu: i64,
+    pub projected_total_cu: i64,
+    pub headroom_vs_1_19m_cu: i64,
+    pub meets_10_percent_slack: bool,
+}
+
+#[derive(Clone, Copy, Serialize)]
+pub struct CompositionProbeParameters {
+    pub opened_values: u16,
+    pub poseidon_sbox_terms: u16,
+    pub poseidon_linear_terms: u16,
+    pub logup_degree3_terms: u16,
+    pub range_bit_terms: u16,
+    pub eq_variables: u8,
+}
+
+impl From<aspis_statement::CompositionProbe> for CompositionProbeParameters {
+    fn from(value: aspis_statement::CompositionProbe) -> Self {
+        Self {
+            opened_values: value.opened_values,
+            poseidon_sbox_terms: value.poseidon_sbox_terms,
+            poseidon_linear_terms: value.poseidon_linear_terms,
+            logup_degree3_terms: value.logup_degree3_terms,
+            range_bit_terms: value.range_bit_terms,
+            eq_variables: value.eq_variables,
+        }
+    }
+}
+
+#[derive(Serialize)]
+pub struct CompositionProbeSummary {
+    pub generated_at_utc: String,
+    pub command: String,
+    pub validator_version: String,
+    pub repetitions: usize,
+    pub baseline_cu: Vec<u64>,
+    pub baseline_cu_mean: f64,
+    pub frozen_k64_rlc_only_cu: Vec<u64>,
+    pub frozen_k64_rlc_only_cu_mean: f64,
+    pub pre_composition_projection_cu: i64,
+    pub transaction_target_cu: i64,
+    pub ten_percent_slack_maximum_cu: i64,
+    pub variants: Vec<CompositionProbeVariant>,
+    pub notes: Vec<String>,
+}
+
+fn composition_instruction(
+    probe: aspis_statement::CompositionProbe,
+    optimized: bool,
+) -> Result<Instruction> {
+    Ok(Instruction {
+        program_id: aspis_verifier::id(),
+        accounts: vec![],
+        data: to_vec(&AspisInstruction::ConstraintCompositionProbe {
+            opened_values: probe.opened_values,
+            poseidon_sbox_terms: probe.poseidon_sbox_terms,
+            poseidon_linear_terms: probe.poseidon_linear_terms,
+            logup_degree3_terms: probe.logup_degree3_terms,
+            range_bit_terms: probe.range_bit_terms,
+            eq_variables: probe.eq_variables,
+            optimized,
+        })?,
+    })
+}
+
+fn simulate_pure_instruction(
+    rpc: &Rpc,
+    payer: &Keypair,
+    instruction: Instruction,
+    repetitions: usize,
+) -> Result<Vec<u64>> {
+    let blockhash = rpc.latest_blockhash()?;
+    let transaction = Transaction::new_signed_with_payer(
+        &[
+            ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+            instruction,
+        ],
+        Some(&payer.pubkey()),
+        &[payer],
+        blockhash,
+    );
+    let mut units = Vec::with_capacity(repetitions);
+    for _ in 0..repetitions {
+        let (run_units, error) = rpc.simulate(&transaction)?;
+        anyhow::ensure!(
+            error.is_none(),
+            "composition probe simulation failed: {error:?}"
+        );
+        units.push(run_units.context("composition probe did not report units")?);
+    }
+    Ok(units)
+}
+
+/// Freehand plus evaluator-confirmed extension-field composition bracket.
+pub fn run_stage2_composition_probe() -> Result<CompositionProbeSummary> {
+    const REPETITIONS: usize = 5;
+    const PRE_COMPOSITION_PROJECTION: i64 = 1_175_086;
+    const TARGET: i64 = 1_190_000;
+    const TEN_PERCENT_SLACK_MAXIMUM: i64 = 1_071_000;
+
+    let root = workspace_root()?;
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), LAMPORTS_PER_SOL)?;
+
+    let baseline_probe = aspis_statement::CompositionProbe {
+        opened_values: 1,
+        poseidon_sbox_terms: 0,
+        poseidon_linear_terms: 0,
+        logup_degree3_terms: 0,
+        range_bit_terms: 0,
+        eq_variables: 0,
+    };
+    let baseline_cu = simulate_pure_instruction(
+        &rpc,
+        &payer,
+        composition_instruction(baseline_probe, false)?,
+        REPETITIONS,
+    )?;
+    let baseline_mean = baseline_cu.iter().sum::<u64>() as f64 / baseline_cu.len() as f64;
+    let k64_rlc_probe = aspis_statement::CompositionProbe {
+        opened_values: 64,
+        ..baseline_probe
+    };
+    let frozen_k64_rlc_only_cu = simulate_pure_instruction(
+        &rpc,
+        &payer,
+        composition_instruction(k64_rlc_probe, false)?,
+        REPETITIONS,
+    )?;
+    let frozen_k64_rlc_mean =
+        frozen_k64_rlc_only_cu.iter().sum::<u64>() as f64 / frozen_k64_rlc_only_cu.len() as f64;
+
+    let profiles = [
+        (
+            "freehand_optimistic",
+            aspis_statement::CompositionProbe::OPTIMISTIC,
+            false,
+        ),
+        (
+            "evaluator_confirmed_low",
+            aspis_statement::CompositionProbe {
+                opened_values: 80,
+                poseidon_sbox_terms: 64,
+                poseidon_linear_terms: 64,
+                logup_degree3_terms: 1,
+                range_bit_terms: 64,
+                eq_variables: 10,
+            },
+            false,
+        ),
+        (
+            "evaluator_confirmed_low_optimized",
+            aspis_statement::CompositionProbe {
+                opened_values: 80,
+                poseidon_sbox_terms: 64,
+                poseidon_linear_terms: 64,
+                logup_degree3_terms: 1,
+                range_bit_terms: 64,
+                eq_variables: 10,
+            },
+            true,
+        ),
+        (
+            "realistic",
+            aspis_statement::CompositionProbe::REALISTIC,
+            false,
+        ),
+        (
+            "realistic_optimized",
+            aspis_statement::CompositionProbe::REALISTIC,
+            true,
+        ),
+        (
+            "pessimistic",
+            aspis_statement::CompositionProbe::PESSIMISTIC,
+            false,
+        ),
+    ];
+    let mut variants = Vec::new();
+    for (name, probe, optimized) in profiles {
+        let host = if optimized {
+            aspis_statement::evaluate_composition_probe_optimized(probe)
+        } else {
+            aspis_statement::evaluate_composition_probe(probe)
+        };
+        let simulation_cu = simulate_pure_instruction(
+            &rpc,
+            &payer,
+            composition_instruction(probe, optimized)?,
+            REPETITIONS,
+        )?;
+        let mean = simulation_cu.iter().sum::<u64>() as f64 / simulation_cu.len() as f64;
+        let matching_rlc_probe = aspis_statement::CompositionProbe {
+            opened_values: probe.opened_values,
+            ..baseline_probe
+        };
+        let matching_rlc_only_cu = simulate_pure_instruction(
+            &rpc,
+            &payer,
+            composition_instruction(matching_rlc_probe, optimized)?,
+            REPETITIONS,
+        )?;
+        let matching_rlc_mean =
+            matching_rlc_only_cu.iter().sum::<u64>() as f64 / matching_rlc_only_cu.len() as f64;
+        let composition_incremental = (mean - matching_rlc_mean).round() as i64;
+        let rlc_delta = (matching_rlc_mean - frozen_k64_rlc_mean).round() as i64;
+        let projected = PRE_COMPOSITION_PROJECTION + rlc_delta + composition_incremental;
+        variants.push(CompositionProbeVariant {
+            name,
+            kernel: if optimized {
+                "structured_horner"
+            } else {
+                "naive"
+            },
+            parameters: probe.into(),
+            host_qm31_multiplications: host.qm31_multiplications,
+            host_qm31_by_cm31_multiplications: host.qm31_by_cm31_multiplications,
+            host_additions_or_subtractions: host.additions_or_subtractions,
+            simulation_cu,
+            simulation_cu_mean: mean,
+            matching_rlc_only_cu,
+            matching_rlc_only_cu_mean: matching_rlc_mean,
+            composition_incremental_cu_over_matching_rlc: composition_incremental,
+            rlc_delta_from_frozen_k64_cu: rlc_delta,
+            projected_total_cu: projected,
+            headroom_vs_1_19m_cu: TARGET - projected,
+            meets_10_percent_slack: projected <= TEN_PERCENT_SLACK_MAXIMUM,
+        });
+    }
+
+    Ok(CompositionProbeSummary {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command: "cargo run --release -p aspis-xtask -- stage2-composition-probe".to_string(),
+        validator_version: validator_version(),
+        repetitions: REPETITIONS,
+        baseline_cu,
+        baseline_cu_mean: baseline_mean,
+        frozen_k64_rlc_only_cu,
+        frozen_k64_rlc_only_cu_mean: frozen_k64_rlc_mean,
+        pre_composition_projection_cu: PRE_COMPOSITION_PROJECTION,
+        transaction_target_cu: TARGET,
+        ten_percent_slack_maximum_cu: TEN_PERCENT_SLACK_MAXIMUM,
+        variants,
+        notes: vec![
+            "Synthetic bracket only: runtime term counts are explicit and must be replaced/confirmed by the evaluator-derived layout.".to_string(),
+            "Composition deltas subtract a matching RLC-only run so the gamma RLC already represented in the frozen 201,114-CU layout allowance is not double-counted. Projected totals add the measured k64-to-k' RLC delta and composition-only delta to 1,175,086 CU.".to_string(),
+            "Wide-leaf hashing for k'=80 is not updated by this arithmetic-only probe; it is measured separately before a final product decision.".to_string(),
+            "The 10% slack maximum is 1,071,000 CU. The frozen pre-composition projection already exceeds it by 104,086 CU, so no positive composition result can pass that gate without a named reclaim or rule change.".to_string(),
+        ],
+    })
+}
+
+/// Re-probe the frozen synthetic wide-leaf + gamma-RLC loop at the
+/// evaluator's real candidate k'=80, with k64 retained as the exact baseline.
+pub fn run_stage2_layout_probe() -> Result<Stage2LayoutSummary> {
+    const LOG_ROWS: u8 = 10;
+    const QUERY_COUNT: u16 = 36;
+    const REPETITIONS: usize = 5;
+
+    let root = workspace_root()?;
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), 10 * LAMPORTS_PER_SOL)?;
+    let probe_account = Keypair::new();
+    create_program_account(&rpc, &payer, &probe_account, PROOF_ACCOUNT_HEADER_LEN)?;
+
+    let mut raw = Vec::new();
+    for columns in [64u16, 80, 82] {
+        let leaf_bytes = columns * 4;
+        let instruction = AspisInstruction::LayoutProbe {
+            log_rows: LOG_ROWS,
+            columns,
+            query_count: QUERY_COUNT,
+            leaf_bytes,
+        };
+        let ix = proof_instruction(&payer.pubkey(), &probe_account.pubkey(), &instruction)?;
+        let blockhash = rpc.latest_blockhash()?;
+        let transaction = Transaction::new_signed_with_payer(
+            &[
+                ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+                ix,
+            ],
+            Some(&payer.pubkey()),
+            &[&payer],
+            blockhash,
+        );
+        let mut units = Vec::with_capacity(REPETITIONS);
+        for _ in 0..REPETITIONS {
+            let (run_units, error) = rpc.simulate(&transaction)?;
+            anyhow::ensure!(error.is_none(), "stage2 layout probe failed: {error:?}");
+            units.push(run_units.context("stage2 layout probe did not report units")?);
+        }
+        let mean = units.iter().sum::<u64>() as f64 / units.len() as f64;
+        raw.push((columns, leaf_bytes, units, mean));
+    }
+    let baseline = raw[0].3;
+    let variants = raw
+        .into_iter()
+        .map(
+            |(columns, leaf_bytes, simulation_cu, simulation_cu_mean)| Stage2LayoutVariant {
+                columns,
+                leaf_bytes,
+                simulation_cu,
+                simulation_cu_mean,
+                delta_vs_k64_cu: (simulation_cu_mean - baseline).round() as i64,
+            },
+        )
+        .collect();
+
+    Ok(Stage2LayoutSummary {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command: "cargo run --release -p aspis-xtask -- stage2-layout-probe".to_string(),
+        validator_version: validator_version(),
+        log_rows: LOG_ROWS,
+        query_count: QUERY_COUNT,
+        repetitions: REPETITIONS,
+        variants,
+        notes: vec![
+            "Synthetic SHA-256 wide-leaf/path plus QM31 gamma-RLC probe, re-run at the evaluator's candidate k'=80 with the same q36/lr10 geometry.".to_string(),
+            "Only the k80-minus-k64 delta is applied to the frozen 201,114-CU allowance; the absolute probe is not added to the PCS because that would double-count path hashing.".to_string(),
+            "This confirms the layout lever at the real candidate k but is not an integrated wide-row PCS measurement.".to_string(),
+        ],
+    })
+}
+
+/// Measure the pinned software Poseidon2-M31 permutation directly on SBF.
+pub fn run_stage2_poseidon2_probe() -> Result<Poseidon2ProbeSummary> {
+    const REPETITIONS: usize = 5;
+    let root = workspace_root()?;
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), LAMPORTS_PER_SOL)?;
+
+    let mut variants = Vec::new();
+    for permutations in [0u16, 1, 8, 49, 73] {
+        let instruction = Instruction {
+            program_id: aspis_verifier::id(),
+            accounts: vec![],
+            data: to_vec(&AspisInstruction::Poseidon2Probe { permutations })?,
+        };
+        let blockhash = rpc.latest_blockhash()?;
+        let transaction = Transaction::new_signed_with_payer(
+            &[
+                ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+                instruction,
+            ],
+            Some(&payer.pubkey()),
+            &[&payer],
+            blockhash,
+        );
+        let mut simulation_cu = Vec::new();
+        let mut simulation_errors = Vec::new();
+        for _ in 0..REPETITIONS {
+            let (units, error) = rpc.simulate(&transaction)?;
+            simulation_cu.push(units);
+            simulation_errors.push(error);
+        }
+        let accepted_all = simulation_errors.iter().all(Option::is_none);
+        let mean = if accepted_all {
+            Some(simulation_cu.iter().flatten().sum::<u64>() as f64 / simulation_cu.len() as f64)
+        } else {
+            None
+        };
+        variants.push(Poseidon2ProbeVariant {
+            permutations,
+            simulation_cu,
+            simulation_errors,
+            accepted_all,
+            mean_cu_if_accepted: mean,
+            incremental_cu_over_zero_if_accepted: None,
+        });
+    }
+    let zero = variants[0].mean_cu_if_accepted;
+    for variant in &mut variants {
+        variant.incremental_cu_over_zero_if_accepted = match (variant.mean_cu_if_accepted, zero) {
+            (Some(mean), Some(zero)) => Some((mean - zero).round() as i64),
+            _ => None,
+        };
+    }
+    let per_permutation = variants
+        .iter()
+        .find(|variant| variant.permutations == 8)
+        .and_then(|variant| variant.incremental_cu_over_zero_if_accepted)
+        .map(|delta| delta as f64 / 8.0);
+
+    Ok(Poseidon2ProbeSummary {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command: "cargo run --release -p aspis-xtask -- stage2-poseidon2-probe".to_string(),
+        validator_version: validator_version(),
+        repetitions: REPETITIONS,
+        variants,
+        measured_incremental_cu_per_permutation_from_8: per_permutation,
+        notes: vec![
+            "Pure software Poseidon2-M31 width-16 permutation using the exact p3-mersenne-31 0.6.1 constants and scalar M31 implementation shared with the evaluator.".to_string(),
+            "49 permutations is the depth-20 SpendV0 evaluator schedule; 73 is the depth-32 sensitivity. A capped run is recorded as a failure, not extrapolated into an accepted measurement.".to_string(),
+            "This is deposit/direct-evaluator cost evidence, not proof-verifier constraint-composition cost.".to_string(),
         ],
     })
 }

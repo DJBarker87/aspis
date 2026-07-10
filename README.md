@@ -13,7 +13,11 @@ evaluations. The frozen v3 Stage 1 PCS milestone includes the canonical C2
 phase and teeth-demonstrated ordering tests. Its literal lr10/q36/g32
 verifier measures 943,972 CU; after already-priced statement work the
 projection is 1,175,086 CU, leaving only 14,914 CU before the still-unpriced
-Stage 2 constraint composition.
+Stage 2 constraint composition. Stage 2 now has an executable economic-attack
+evaluator and isolated SBF measurements: even after a structured/Horner
+shrink, the evaluator-confirmed low one-transaction projection is 1,415,268
+CU. The project has therefore recorded a three-transaction split-verification
+continuation rather than silently weakening the 1.19M target.
 
 # Phase 1 SVM Cost Model
 

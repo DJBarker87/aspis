@@ -1,0 +1,123 @@
+{
+  "generated_at_utc": "2026-07-10T14:03:02.769500+00:00",
+  "command": "cargo run --release -p aspis-xtask -- stage2-evaluator",
+  "poseidon2_pin": {
+    "upstream": "https://github.com/Plonky3/Plonky3",
+    "crate_version": "p3-mersenne-31=0.6.1",
+    "width": 16,
+    "rate": 8,
+    "digest_elements": 8,
+    "sbox_degree": 5,
+    "full_rounds": 8,
+    "partial_rounds": 14,
+    "upstream_kat_passed": true,
+    "differential_test_states": 16
+  },
+  "statement_shape": {
+    "merkle_depth": 20,
+    "poseidon2_permutations_per_spend": 49,
+    "poseidon2_rounds_per_permutation": 22,
+    "total_poseidon2_rounds": 1078,
+    "total_poseidon2_sbox_relations": 6958,
+    "candidate_rounds_per_wide_row": 4,
+    "candidate_poseidon_rows": 294,
+    "candidate_opened_values_k_prime": 80,
+    "candidate_max_sbox_terms_per_row": 64,
+    "candidate_linear_term_bracket_per_row": [
+      64,
+      128
+    ],
+    "candidate_logup_degree3_terms": 1,
+    "candidate_range_bit_terms": 64,
+    "zerocheck_eq_variables": 10,
+    "witness_m31_elements_before_layout_padding": 196,
+    "public_m31_elements": 26
+  },
+  "vectors": [
+    {
+      "name": "valid_spend",
+      "expected": "accept",
+      "observed": "Ok(())",
+      "passed": true
+    },
+    {
+      "name": "field_wrap_inflation",
+      "expected": "reject",
+      "observed": "Err(OutputValueOutOfRange)",
+      "passed": true
+    },
+    {
+      "name": "wrong_asset_binding",
+      "expected": "reject",
+      "observed": "Err(AssetMismatch)",
+      "passed": true
+    },
+    {
+      "name": "wrong_anchor",
+      "expected": "reject",
+      "observed": "Err(AnchorMismatch)",
+      "passed": true
+    },
+    {
+      "name": "wrong_merkle_path",
+      "expected": "reject",
+      "observed": "Err(AnchorMismatch)",
+      "passed": true
+    },
+    {
+      "name": "forged_ownership_key",
+      "expected": "reject",
+      "observed": "Err(AnchorMismatch)",
+      "passed": true
+    },
+    {
+      "name": "wrong_nullifier",
+      "expected": "reject",
+      "observed": "Err(NullifierMismatch)",
+      "passed": true
+    },
+    {
+      "name": "wrong_output_commitment",
+      "expected": "reject",
+      "observed": "Err(OutputCommitmentMismatch)",
+      "passed": true
+    },
+    {
+      "name": "double_spend_replay",
+      "expected": "reject",
+      "observed": "Err(NullifierAlreadySpent)",
+      "passed": true
+    },
+    {
+      "name": "boundary_zero",
+      "expected": "accept",
+      "observed": "Ok(())",
+      "passed": true
+    },
+    {
+      "name": "boundary_value_2pow30_minus_1",
+      "expected": "accept",
+      "observed": "Ok(())",
+      "passed": true
+    },
+    {
+      "name": "boundary_value_2pow30",
+      "expected": "reject",
+      "observed": "Err(InputValueOutOfRange)",
+      "passed": true
+    },
+    {
+      "name": "balance_mismatch",
+      "expected": "reject",
+      "observed": "Err(BalanceMismatch)",
+      "passed": true
+    }
+  ],
+  "all_vectors_passed": true,
+  "notes": [
+    "The evaluator proves no statement; it is the executable semantic oracle the future constraints must match.",
+    "The corpus starts with economic failures: wraparound inflation, public binding, ownership, membership, nullifier replay, output binding, balance, and range boundaries.",
+    "The 80-column/4-round row layout is a candidate used to confirm the synthetic composition bracket, not yet a frozen arithmetization.",
+    "Depth 20 is the explicit demo choice. Moving to depth 32 adds 24 Poseidon2 permutations because each 8+8 digest compression needs two rate-8 sponge permutations."
+  ]
+}
