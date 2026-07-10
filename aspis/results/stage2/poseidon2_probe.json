@@ -1,0 +1,114 @@
+{
+  "generated_at_utc": "2026-07-10T14:17:01.817182+00:00",
+  "command": "cargo run --release -p aspis-xtask -- stage2-poseidon2-probe",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "repetitions": 5,
+  "variants": [
+    {
+      "permutations": 0,
+      "simulation_cu": [
+        407,
+        407,
+        407,
+        407,
+        407
+      ],
+      "simulation_errors": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "accepted_all": true,
+      "mean_cu_if_accepted": 407.0,
+      "incremental_cu_over_zero_if_accepted": 0
+    },
+    {
+      "permutations": 1,
+      "simulation_cu": [
+        24507,
+        24507,
+        24507,
+        24507,
+        24507
+      ],
+      "simulation_errors": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "accepted_all": true,
+      "mean_cu_if_accepted": 24507.0,
+      "incremental_cu_over_zero_if_accepted": 24100
+    },
+    {
+      "permutations": 8,
+      "simulation_cu": [
+        192799,
+        192799,
+        192799,
+        192799,
+        192799
+      ],
+      "simulation_errors": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "accepted_all": true,
+      "mean_cu_if_accepted": 192799.0,
+      "incremental_cu_over_zero_if_accepted": 192392
+    },
+    {
+      "permutations": 49,
+      "simulation_cu": [
+        1179744,
+        1179744,
+        1179744,
+        1179744,
+        1179744
+      ],
+      "simulation_errors": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "accepted_all": true,
+      "mean_cu_if_accepted": 1179744.0,
+      "incremental_cu_over_zero_if_accepted": 1179337
+    },
+    {
+      "permutations": 73,
+      "simulation_cu": [
+        1400000,
+        1400000,
+        1400000,
+        1400000,
+        1400000
+      ],
+      "simulation_errors": [
+        "{\"InstructionError\":[1,\"ProgramFailedToComplete\"]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD invoke [1]\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD consumed 1399850 of 1399850 compute units\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD failed: exceeded CUs meter at BPF instruction\"]",
+        "{\"InstructionError\":[1,\"ProgramFailedToComplete\"]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD invoke [1]\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD consumed 1399850 of 1399850 compute units\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD failed: exceeded CUs meter at BPF instruction\"]",
+        "{\"InstructionError\":[1,\"ProgramFailedToComplete\"]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD invoke [1]\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD consumed 1399850 of 1399850 compute units\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD failed: exceeded CUs meter at BPF instruction\"]",
+        "{\"InstructionError\":[1,\"ProgramFailedToComplete\"]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD invoke [1]\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD consumed 1399850 of 1399850 compute units\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD failed: exceeded CUs meter at BPF instruction\"]",
+        "{\"InstructionError\":[1,\"ProgramFailedToComplete\"]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD invoke [1]\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD consumed 1399850 of 1399850 compute units\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD failed: exceeded CUs meter at BPF instruction\"]"
+      ],
+      "accepted_all": false,
+      "mean_cu_if_accepted": null,
+      "incremental_cu_over_zero_if_accepted": null
+    }
+  ],
+  "measured_incremental_cu_per_permutation_from_8": 24049.0,
+  "notes": [
+    "Pure software Poseidon2-M31 width-16 permutation using the exact p3-mersenne-31 0.6.1 constants and scalar M31 implementation shared with the evaluator.",
+    "49 permutations is the depth-20 SpendV0 evaluator schedule; 73 is the depth-32 sensitivity. A capped run is recorded as a failure, not extrapolated into an accepted measurement.",
+    "This is deposit/direct-evaluator cost evidence, not proof-verifier constraint-composition cost."
+  ]
+}

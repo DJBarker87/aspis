@@ -1,0 +1,75 @@
+{
+  "generated_at_utc": "2026-07-10T14:15:05Z",
+  "status": "single_transaction_negative_split_verification_triggered",
+  "sources": {
+    "stage1_gate": "../stage1/gate_close.json",
+    "evaluator": "evaluator_corpus.json",
+    "composition": "composition_probe.json",
+    "layout": "layout_probe.json",
+    "poseidon2": "poseidon2_probe.json"
+  },
+  "evaluator": {
+    "economic_vectors": 13,
+    "all_passed": true,
+    "candidate_k_prime": 80,
+    "max_poseidon_sbox_terms_per_active_row": 64,
+    "poseidon_linear_term_bracket": [64, 128],
+    "logup_degree3_terms": 1,
+    "range_bit_terms": 64,
+    "eq_variables": 10
+  },
+  "measured_deltas_cu": {
+    "k80_wide_leaf_and_rlc_delta_over_frozen_k64": 54720,
+    "evaluator_low_composition_naive": 312103,
+    "evaluator_low_composition_structured": 185462,
+    "explicit_shrink_saved": 126641,
+    "realistic_composition_structured": 220594,
+    "matching_k80_rlc_naive": 64752,
+    "matching_k80_rlc_horner": 33931,
+    "matching_rlc_horner_saved": 30821
+  },
+  "software_poseidon2_sbf": {
+    "incremental_cu_per_permutation": 24049,
+    "depth20_49_permutations_cu": 1179744,
+    "depth20_accepted": true,
+    "depth32_73_permutations_accepted": false,
+    "depth32_failure": "exceeded 1.4M CU"
+  },
+  "single_transaction_projection_cu": {
+    "frozen_pre_composition_k64": 1175086,
+    "evaluator_low_after_structured_shrink": 1415268,
+    "realistic_after_structured_shrink": 1450400,
+    "target": 1190000,
+    "absolute_solana_cap": 1400000,
+    "evaluator_low_over_target": 225268,
+    "evaluator_low_over_absolute_cap": 15268,
+    "realistic_over_target": 260400,
+    "realistic_over_absolute_cap": 50400
+  },
+  "gate_decision": {
+    "ten_percent_slack_waiver_sufficient": false,
+    "reason": "The optimized evaluator-low projection exceeds the target and even the absolute cap; waiving only the 10% slack cannot make one transaction feasible.",
+    "named_exit": "split_verification",
+    "planned_transactions": 3,
+    "headline_change": "Any future positive claim must say verification and spend finalization complete across three transactions, not in one transaction."
+  },
+  "split_plan": [
+    {
+      "transaction": 1,
+      "role": "statement reduction",
+      "output": "A program-owned receipt binding the statement digest, C1/C2 roots, terminal point, claimed main/helper evaluations, gamma-combined claim, proof/session hash, authority, and expiry."
+    },
+    {
+      "transaction": 2,
+      "role": "wide PCS verification",
+      "output": "The same receipt is advanced only if the v3 PCS verifies the exact commitment roots and combined claim recorded by transaction 1."
+    },
+    {
+      "transaction": 3,
+      "role": "pool finalization",
+      "output": "Consume the verified receipt, recheck session/expiry/public binding, reject an existing nullifier, insert the new nullifier/output commitment, and close the receipt."
+    }
+  ],
+  "next_measurement": "Implement the receipt state machine and integrate the Horner gamma-RLC into the real wide PCS path; each verification transaction must be measured independently below its stated limit.",
+  "caveat": "The composition and k80 layout probes are isolated SBF measurements tied to the evaluator-derived candidate shape, not an integrated statement proof. They are sufficient to reject the current one-transaction target after the required explicit shrink attempt; they are not a positive proof-system result."
+}

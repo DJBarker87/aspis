@@ -3,7 +3,7 @@ name = "aspis-verifier"
 edition.workspace = true
 license.workspace = true
 version.workspace = true
-description = "Aspis on-chain verifier program: staged proof upload + native WHIR-style M31 PCS verification via the SHA-256 syscall. Knows nothing about spends."
+description = "Aspis on-chain verifier program: PCS verification plus isolated Stage 2 statement-cost probes"
 
 [lib]
 crate-type = ["cdylib", "lib"]
@@ -16,6 +16,7 @@ custom-panic = []
 
 [dependencies]
 aspis-core = { path = "../../crates/aspis-core" }
+aspis-statement = { path = "../../crates/aspis-statement" }
 borsh.workspace = true
 solana-program.workspace = true
 

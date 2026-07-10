@@ -316,6 +316,20 @@ Gate: evaluator vector-complete; host proof verifies end to end; projected
 on-chain total under `1.19M` CU with at least `10%` slack. Stop if the
 projection exceeds the budget after one explicit shrink attempt.
 
+**Stage 2 checkpoint (`2026-07-10`).** The evaluator-first milestone is
+complete: 13/13 economic vectors pass against a Plonky3-0.6.1-pinned
+Poseidon2-M31 implementation. Isolated SBF probes tied to the evaluator's
+k'=80/four-round-row candidate measured +312,103 CU for the naive low
+composition. The explicit structured/Horner shrink reduces that to +185,462
+CU (126,641 saved), but the corrected one-transaction low projection remains
+1,415,268 CU after the measured k80 layout delta—225,268 above the 1.19M
+target and 15,268 above the absolute 1.4M cap. The one-transaction gate is
+therefore RED after its required shrink; a slack waiver is insufficient.
+The named continuation is three-transaction split verification (statement
+receipt -> PCS receipt -> pool consume), and any future headline must say
+"across three transactions." Evidence and caveats:
+`docs/stage2-feasibility.md` and `results/stage2/`.
+
 ## 10. Stage 3 - Hiding Layer
 
 A transparent opening scheme is succinct but not hiding. Without this stage,
