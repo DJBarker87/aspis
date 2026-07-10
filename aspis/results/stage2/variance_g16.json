@@ -1,0 +1,209 @@
+{
+  "generated_at_utc": "2026-07-10T16:52:56.153061+00:00",
+  "command": "cargo run --release -p aspis-xtask -- stage2-variance-g16",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "profile": "capacity_lr10_q36_g16",
+  "seeds": 16,
+  "repetitions_per_seed": 5,
+  "criterion": "Pre-registered before any multi-seed run: let R = max - min of production Verify CU for the radix-4 minimal-subtree variant over 16 fresh transcript draws (seed s in 1..=16; statement digest seed s, coefficient seed s) at fixed shape capacity_lr10_q36_g16 with RawFibers and synthetic C2. The strict candidate stays green only if 1,041,944 + R <= 1,071,000. Rationale: the single measured g32 radix-4 draw (678,407 CU) may sit anywhere in its own draw distribution, including at its minimum, so the full observed fixed-shape range bounds a worst-case redraw under the stated g16-to-g32 spread-transfer assumption (the query-index and frontier-collision mechanism is identical; grinding bits enter only as a header byte and a threshold). mean+2*sigma and the binary-mode spread are reported as secondary diagnostics and are not binding. On failure, projection_status downgrades to variance_conditional before any integration nonce is ground.",
+  "samples": [
+    {
+      "seed": 1,
+      "binary_proof_bytes": 22228,
+      "binary_verify_cu": 714093,
+      "radix4_proof_bytes": 25940,
+      "radix4_verify_cu": 678629,
+      "radix4_saving_cu": 35464
+    },
+    {
+      "seed": 2,
+      "binary_proof_bytes": 21300,
+      "binary_verify_cu": 682872,
+      "radix4_proof_bytes": 26708,
+      "radix4_verify_cu": 689435,
+      "radix4_saving_cu": -6563
+    },
+    {
+      "seed": 3,
+      "binary_proof_bytes": 21588,
+      "binary_verify_cu": 710518,
+      "radix4_proof_bytes": 25588,
+      "radix4_verify_cu": 671571,
+      "radix4_saving_cu": 38947
+    },
+    {
+      "seed": 4,
+      "binary_proof_bytes": 21652,
+      "binary_verify_cu": 711623,
+      "radix4_proof_bytes": 28084,
+      "radix4_verify_cu": 694018,
+      "radix4_saving_cu": 17605
+    },
+    {
+      "seed": 5,
+      "binary_proof_bytes": 22548,
+      "binary_verify_cu": 714090,
+      "radix4_proof_bytes": 28244,
+      "radix4_verify_cu": 695645,
+      "radix4_saving_cu": 18445
+    },
+    {
+      "seed": 6,
+      "binary_proof_bytes": 21716,
+      "binary_verify_cu": 716218,
+      "radix4_proof_bytes": 26932,
+      "radix4_verify_cu": 668370,
+      "radix4_saving_cu": 47848
+    },
+    {
+      "seed": 7,
+      "binary_proof_bytes": 22228,
+      "binary_verify_cu": 724111,
+      "radix4_proof_bytes": 25716,
+      "radix4_verify_cu": 673002,
+      "radix4_saving_cu": 51109
+    },
+    {
+      "seed": 8,
+      "binary_proof_bytes": 20852,
+      "binary_verify_cu": 684672,
+      "radix4_proof_bytes": 26612,
+      "radix4_verify_cu": 682284,
+      "radix4_saving_cu": 2388
+    },
+    {
+      "seed": 9,
+      "binary_proof_bytes": 21972,
+      "binary_verify_cu": 709676,
+      "radix4_proof_bytes": 25556,
+      "radix4_verify_cu": 672207,
+      "radix4_saving_cu": 37469
+    },
+    {
+      "seed": 10,
+      "binary_proof_bytes": 22100,
+      "binary_verify_cu": 726267,
+      "radix4_proof_bytes": 26836,
+      "radix4_verify_cu": 663871,
+      "radix4_saving_cu": 62396
+    },
+    {
+      "seed": 11,
+      "binary_proof_bytes": 22068,
+      "binary_verify_cu": 744920,
+      "radix4_proof_bytes": 25620,
+      "radix4_verify_cu": 682194,
+      "radix4_saving_cu": 62726
+    },
+    {
+      "seed": 12,
+      "binary_proof_bytes": 21588,
+      "binary_verify_cu": 712035,
+      "radix4_proof_bytes": 26996,
+      "radix4_verify_cu": 683267,
+      "radix4_saving_cu": 28768
+    },
+    {
+      "seed": 13,
+      "binary_proof_bytes": 21972,
+      "binary_verify_cu": 731694,
+      "radix4_proof_bytes": 26068,
+      "radix4_verify_cu": 673244,
+      "radix4_saving_cu": 58450
+    },
+    {
+      "seed": 14,
+      "binary_proof_bytes": 21940,
+      "binary_verify_cu": 703926,
+      "radix4_proof_bytes": 25492,
+      "radix4_verify_cu": 639859,
+      "radix4_saving_cu": 64067
+    },
+    {
+      "seed": 15,
+      "binary_proof_bytes": 21172,
+      "binary_verify_cu": 709649,
+      "radix4_proof_bytes": 27412,
+      "radix4_verify_cu": 666126,
+      "radix4_saving_cu": 43523
+    },
+    {
+      "seed": 16,
+      "binary_proof_bytes": 22036,
+      "binary_verify_cu": 720749,
+      "radix4_proof_bytes": 28244,
+      "radix4_verify_cu": 685012,
+      "radix4_saving_cu": 35737
+    }
+  ],
+  "binary_stats": {
+    "merkle_mode": "binary_minimal_subtree",
+    "per_seed_cu": [
+      714093,
+      682872,
+      710518,
+      711623,
+      714090,
+      716218,
+      724111,
+      684672,
+      709676,
+      726267,
+      744920,
+      712035,
+      731694,
+      703926,
+      709649,
+      720749
+    ],
+    "mean_cu": 713569.5625,
+    "population_std_dev_cu": 14914.736412223105,
+    "min_cu": 682872,
+    "max_cu": 744920,
+    "range_cu": 62048,
+    "max_minus_mean_cu": 31350.4375,
+    "mean_plus_two_sigma_cu": 743399.0353244462
+  },
+  "radix4_stats": {
+    "merkle_mode": "radix4_minimal_subtree",
+    "per_seed_cu": [
+      678629,
+      689435,
+      671571,
+      694018,
+      695645,
+      668370,
+      673002,
+      682284,
+      672207,
+      663871,
+      682194,
+      683267,
+      673244,
+      639859,
+      666126,
+      685012
+    ],
+    "mean_cu": 676170.875,
+    "population_std_dev_cu": 13155.278160661408,
+    "min_cu": 639859,
+    "max_cu": 695645,
+    "range_cu": 55786,
+    "max_minus_mean_cu": 19474.125,
+    "mean_plus_two_sigma_cu": 702481.4313213228
+  },
+  "strict_candidate_projection_cu": 1041944,
+  "ten_percent_slack_maximum_cu": 1071000,
+  "single_draw_headroom_cu": 29056,
+  "criterion_penalty_range_cu": 55786,
+  "criterion_adjusted_projection_cu": 1097730,
+  "criterion_passes": false,
+  "secondary_two_sigma_penalty_cu": 26310.556321322816,
+  "secondary_adjusted_projection_cu": 1068255,
+  "notes": [
+    "Each row is a real claim-free synthetic-C2 g16 proof; g16 grinding makes 16 fresh draws affordable where 16 fresh 32-bit nonce searches are not.",
+    "Spread mechanism: the statement digest and coefficients move every absorbed root, so challenges, grinding nonce, query positions, unique-fiber counts, and minimal-subtree frontiers are fresh per seed; the verifier code path is fixed.",
+    "All five repetitions per seed are asserted identical; per-seed CU is a deterministic function of the draw, so the across-seed spread is exactly the transcript-draw variance.",
+    "The g16-to-g32 spread transfer is an assumption stated inside the criterion, not a measurement; the integrated g32 payment proof remains the final word."
+  ]
+}

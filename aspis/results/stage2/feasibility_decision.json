@@ -1,6 +1,6 @@
 {
-  "generated_at_utc": "2026-07-10T15:52:47Z",
-  "status": "one_transaction_projection_passes_strict_slack_radix4_real_pending_statement_integration",
+  "generated_at_utc": "2026-07-10T19:40:00Z",
+  "status": "one_transaction_projection_variance_and_bracket_conditional_pending_statement_integration",
   "sources": {
     "stage1_gate": "../stage1/gate_close.json",
     "evaluator": "evaluator_corpus.json",
@@ -11,7 +11,8 @@
     "wide_rlc": "wide_rlc_probe.json",
     "merkle_arity": "merkle_arity_probe.json",
     "radix4_g16": "radix4_g16.json",
-    "radix4_g32": "radix4_g32.json"
+    "radix4_g32": "radix4_g32.json",
+    "variance": "variance_g16.json"
   },
   "historical_checkpoint": {
     "status": "single_transaction_negative_split_verification_triggered",
@@ -31,8 +32,9 @@
     "lookup_semantic_replay_vectors": 13,
     "lookup_specific_attack_vectors": 2,
     "lookup_semantic_replay_all_passed": true,
-    "logup_constraint_vectors": 6,
+    "logup_constraint_vectors": 7,
     "logup_local_and_total_claim_tests_passed": true,
+    "logup_multiplicity_after_chi_order_attack_demonstrated": true,
     "eq_variables": 10
   },
   "measured_math_kernels_cu": {
@@ -58,6 +60,8 @@
     "boolean_range_composition": 176844,
     "lookup_range_composition": 120275,
     "lookup_range_saved": 56569,
+    "lookup_range_composition_stress_linear128": 152299,
+    "lookup_stress_delta_over_70_terms": 32024,
     "lookup_shape": "six 10-bit limbs, one additional fixed-table LogUp relation, six reconstruction terms",
     "radix4_modeled_binary_nodes": 172482,
     "radix4_modeled_nodes": 118754,
@@ -92,18 +96,51 @@
     "saved_vs_historical_checkpoint": 373324,
     "saved_vs_historical_checkpoint_percent": 26.38
   },
+  "post_review_corrections": {
+    "k_prime_recount": {
+      "reason": "The 80-column candidate trace did not reserve the lookup's committed columns: 80 main + 1 multiplicity (C1) + copy helper h1 + range helper h2 (both C2) = 83; pinned k' <= 84 in soundness note section 8.",
+      "k_prime": 83,
+      "rlc_k83_scaled_cu": 209607,
+      "rlc_correction_cu": 7576,
+      "wide_leaf_k83_scaled_cu": 11652,
+      "wide_leaf_correction_cu": 421,
+      "label": "arithmetic 83/80 scale of measured k80 kernels; pending integration measurement"
+    },
+    "variance_study": {
+      "source": "variance_g16.json",
+      "seeds": 16,
+      "radix4_mean_cu": 676170.875,
+      "radix4_population_sigma_cu": 13155.28,
+      "radix4_min_cu": 639859,
+      "radix4_max_cu": 695645,
+      "radix4_range_cu": 55786,
+      "criterion": "pre-registered worst-of-16 range: 1,041,944 + range <= 1,071,000",
+      "criterion_passes": false,
+      "criterion_adjusted_projection_cu": 1097730,
+      "failing_margin_cu": 26730
+    },
+    "corrected_ledger_cu": {
+      "central_70_linear_terms_kprime83": 1049941,
+      "stress_linear128_kprime83": 1081965,
+      "worst_of_16_draw_kprime83": 1105727,
+      "combined_worst_stress_plus_draw_kprime83": 1137751,
+      "all_readings_clear_1_19m_target": true,
+      "strict_ceiling_survives_only_central_reading": true
+    }
+  },
   "gate_decision": {
-    "projection_status": "candidate_green",
+    "projection_status": "variance_and_bracket_conditional",
     "protocol_gate_status": "open",
     "product_gate_status": "red_pending_logup_wide_rlc_and_integrated_statement_proof",
-    "reason": "The literal q36/g32 radix-4 PCS proof now verifies on SBF; the 10-bit lookup evaluator replays every economic attack; and the LogUp local relation plus total-sum claim have a six-vector teeth corpus. The projection is below the strict 1.071M ceiling, but the LogUp columns and fixed-width q36/k80 RLC are not yet integrated into one payment proof.",
+    "reason": "The literal q36/g32 radix-4 PCS proof verifies on SBF; the 10-bit lookup evaluator replays every economic attack; and the LogUp corpus now has seven vectors including the multiplicity-after-chi order attack. But the pre-registered 16-seed variance criterion fails (range 55,786 CU vs 29,056 headroom) and the linear=128 stress row breaches the strict ceiling on its own (+32,024 CU), so candidate_green is withdrawn. Every reading including the combined worst case clears the 1.19M target.",
     "split_fallback": "retained_not_currently_forced",
-    "headline": "No one-transaction product claim until a real radix-4 proof with the LogUp lookup and fixed-width q36/k80 RLC verifies on SBF below the stated gate."
+    "headline": "No one-transaction product claim until a real radix-4 proof with the LogUp lookup and fixed-width RLC verifies on SBF below the stated gate. The strict 10%-slack ceiling fails the pre-registered worst-of-16 draw criterion by 26,730 CU and the bracket top by 10,965 CU (k'=83-corrected); closing it requires a further named shrink or a documented gate-rule decision on per-draw variance."
   },
   "next_measurements": [
-    "Integrate the tested fixed-table LogUp main/helper columns and sum(h)=0 claim into the C1/C2 statement proof.",
-    "Integrate qm31_power_table::<80> plus the fixed-width outer-lazy dot into the real wide PCS parser rather than adding its isolated total arithmetically.",
+    "Name a further shrink (>= ~11K CU for the bracket top, ~35K for the worst draw, ~67K combined) or take an explicit documented gate-rule decision on per-draw variance before quoting any strict-slack claim.",
+    "Integrate the tested fixed-table LogUp main/helper columns, the multiplicity column, and both sum(h)=0 claims into the C1/C2 statement proof under the v4 envelope (soundness note section 8).",
+    "Integrate the gamma-power table and fixed-width outer-lazy dot at the corrected k'=83 width into the real wide PCS parser rather than adding its isolated total arithmetically.",
     "Generate the real statement proof with radix-4 commitments and run the complete SBF transaction five times, including economic and proof-corruption attacks."
   ],
-  "caveat": "The 678,407-CU radix-4 result is a real q36/g32 two-phase PCS verification with fresh roots, grinding nonce, queries, and proof bytes. The fixed-width wide RLC and lookup-range composition remain isolated SBF measurements, and the lookup currently exists as a no-proof semantic oracle. Their sum is a feasibility projection, not an end-to-end payment proof or a closed product gate."
+  "caveat": "The 678,407-CU radix-4 result is a real q36/g32 two-phase PCS verification with fresh roots, grinding nonce, queries, and proof bytes; the 16-seed study shows it sits within 0.2% of the fixed-shape mean, with a 55,786-CU worst-of-16 range. The fixed-width wide RLC and lookup-range composition remain isolated SBF measurements at the pre-recount k80 width, and the lookup exists as a no-proof semantic oracle. Their sum is a feasibility projection, not an end-to-end payment proof or a closed product gate."
 }
