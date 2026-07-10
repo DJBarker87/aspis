@@ -51,6 +51,10 @@ alias of `Verify`. Every before/after CU comparison must therefore name the
 instruction semantics it measured. The 943,972 -> 714,111 row holds the
 proof bytes fixed and changes only the verifier implementation; the
 `verify_cu` fields in the radix-4 artifacts record production `Verify`.
+Remeasuring the g16 comparison under the `Verify` discriminant moved both
+variants by exactly -5 CU (instruction-dispatch cost; identical proof
+bytes, SHA-256, and savings), which is why the g16 row reads 734,230 ->
+657,643 rather than the VerifyFast-era 734,235 -> 657,648.
 
 | kernel/system | before CU | after CU | saved |
 | --- | ---: | ---: | ---: |
@@ -61,7 +65,7 @@ proof bytes fixed and changes only the verifier implementation; the
 | Poseidon2-M31 permutation | 24,047.75 | 22,705.25 | 1,342.50 |
 | correct q36/k80 gamma-power RLC | 361,963 | **202,031** | **159,932** |
 | low constraint composition | 176,844 | **120,275 lookup candidate** | **56,569** |
-| g16 real binary -> radix-4 PCS | 734,235 | **657,648** | **76,587 (10.43%)** |
+| g16 real binary -> radix-4 PCS | 734,230 | **657,643** | **76,587 (10.43%)** |
 
 The first PCS reduction is real and root-preserving: it verifies the frozen
 binary proof with unchanged transcript bytes. Its main reductions are:

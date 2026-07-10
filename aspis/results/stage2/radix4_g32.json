@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-07-10T15:52:47.236443+00:00",
+  "generated_at_utc": "2026-07-10T17:02:48.306473+00:00",
   "command": "cargo run --release -p aspis-xtask -- stage2-radix4-g32",
   "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
   "profile": "capacity_lr10_q36_g32",
@@ -16,14 +16,14 @@
       "merkle_mode": "binary_minimal_subtree",
       "proof_bytes": 21364,
       "proof_sha256": "1557b82d4e4a35117104951e3e026d423b57e46c462bb314f4f701408ef2f805",
-      "verify_fast_cu": [
+      "verify_cu": [
         714111,
         714111,
         714111,
         714111,
         714111
       ],
-      "verify_fast_cu_mean": 714111.0,
+      "verify_cu_mean": 714111.0,
       "host_corruption_cases": 12,
       "host_corruption_all_rejected": true
     },
@@ -31,14 +31,14 @@
       "merkle_mode": "radix4_minimal_subtree",
       "proof_bytes": 26420,
       "proof_sha256": "e43661315a5e4f027770d2831c2af59ee4848d74929a4c2eebd0c144e0057c55",
-      "verify_fast_cu": [
+      "verify_cu": [
         678407,
         678407,
         678407,
         678407,
         678407
       ],
-      "verify_fast_cu_mean": 678407.0,
+      "verify_cu_mean": 678407.0,
       "host_corruption_cases": 12,
       "host_corruption_all_rejected": true
     }
