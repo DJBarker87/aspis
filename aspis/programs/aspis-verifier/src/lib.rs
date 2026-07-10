@@ -265,8 +265,11 @@ fn run_wide_rlc_probe(columns: u16, query_count: u16, kernel: u8) -> ProgramResu
     if columns == 0
         || columns > 256
         || query_count > 64
-        || kernel > 8
+        || kernel > 11
         || (kernel == 8 && columns != 80)
+        || (kernel == 9 && columns != 84)
+        || (kernel == 10 && columns != 67)
+        || (kernel == 11 && columns != 65)
         || ((kernel == 3 || kernel == 4) && columns % 4 != 0)
     {
         return Err(ProgramError::InvalidInstructionData);
@@ -275,8 +278,15 @@ fn run_wide_rlc_probe(columns: u16, query_count: u16, kernel: u8) -> ProgramResu
         c0: CM31::new(M31(7), M31(11)),
         c1: CM31::new(M31(13), M31(17)),
     };
-    if kernel == 8 {
-        return run_wide_rlc_fixed80(query_count, gamma);
+    // Fixed-width variants of the winning outer-lazy kernel: 80 is the
+    // historical k80 candidate, 84 the k'<=84 pin, 67 the r=3 layout
+    // candidate, 65 the r=3 + LogUp-GKR (no committed helpers) candidate.
+    match kernel {
+        8 => return run_wide_rlc_fixed::<80>(query_count, gamma),
+        9 => return run_wide_rlc_fixed::<84>(query_count, gamma),
+        10 => return run_wide_rlc_fixed::<67>(query_count, gamma),
+        11 => return run_wide_rlc_fixed::<65>(query_count, gamma),
+        _ => {}
     }
     let coefficient_count = if kernel == 5 {
         columns / 2
@@ -350,11 +360,14 @@ fn run_wide_rlc_probe(columns: u16, query_count: u16, kernel: u8) -> ProgramResu
 }
 
 #[inline(never)]
-fn run_wide_rlc_fixed80(query_count: u16, gamma: aspis_core::field::QM31) -> ProgramResult {
+fn run_wide_rlc_fixed<const N: usize>(
+    query_count: u16,
+    gamma: aspis_core::field::QM31,
+) -> ProgramResult {
     use aspis_core::field::{qm31_m31_dot, qm31_power_table, M31, QM31};
 
-    let powers = qm31_power_table::<80>(gamma);
-    let mut values = [M31::ZERO; 80];
+    let powers = qm31_power_table::<N>(gamma);
+    let mut values = [M31::ZERO; N];
     let mut sink = QM31::ONE;
     for query in 0..query_count {
         for (column, value) in values.iter_mut().enumerate() {
