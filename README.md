@@ -18,10 +18,13 @@ evaluator and isolated SBF measurements. Its first one-transaction projection
 was 1,415,268 CU; measured M31/tower/circle kernels have since cut the frozen
 binary PCS from 943,972 to 714,111 CU. A fresh domain-separated radix-4 g32
 proof lowers it again to 678,407 CU. The six-limb lookup semantic corpus and a
-fixed-width outer-lazy q36/k80 RLC now project the combined verifier to
-1,041,944 CU, 29,056 inside the strict 1.071M slack ceiling. The product gate
-stays open until the LogUp relation and wide RLC are integrated into one real
-payment proof. The measured reusable field/RLC/Merkle kernels have also been
+fixed-width outer-lazy RLC project a central combined verifier of 1,049,941
+CU after the k'=83 column recount — but a pre-registered 16-seed variance
+study (worst-of-16 range 55,786 CU) and a linear=128 composition stress row
+both break the strict 1.071M slack ceiling, so the projection is
+variance-and-bracket-conditional; all readings clear the 1.19M target. The
+product gate stays open until the LogUp relation and wide RLC are integrated
+into one real payment proof. The measured reusable field/RLC/Merkle kernels have also been
 extracted into SolMath's standalone `solmath-zk` crate at commit `682b5d4`.
 Split verification remains the fallback.
 

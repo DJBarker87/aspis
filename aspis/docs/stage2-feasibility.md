@@ -3,12 +3,18 @@
 Date: `2026-07-10`
 
 Status: **the no-proof SpendV0-min evaluator passes. The first
-single-transaction projection failed, but measured cross-layer math work has
-reopened it: the current strict candidate projects to 1,041,944 CU, 29,056
-below the 1,071,000-CU ten-percent-slack ceiling. Radix-4 now verifies in a
-literal q36/g32 proof; this is not a gate close because the LogUp lookup and
-fixed-width wide RLC are not integrated into one payment proof.** The
-three-transaction receipt remains the fallback.
+single-transaction projection failed, measured cross-layer math reopened it,
+and the post-review checks have now qualified it. The central
+lookup-candidate projection is 1,049,941 CU after the k' = 83 width
+correction, 21,059 below the strict 1,071,000-CU ceiling — but the
+pre-registered 16-seed variance criterion FAILS (worst-of-16 range 55,786
+CU) and the linear=128 bracket top fails on its own (10,965 over with the
+width correction), so the projection is `variance_and_bracket_conditional`,
+not candidate-green. Every reading, including the combined worst case at
+1,137,751 CU, still clears the 1.19M transaction target by at least 52,249
+CU. Radix-4 verifies in a literal q36/g32 proof; there is no gate close
+because the LogUp lookup and fixed-width wide RLC are not integrated into
+one payment proof.** The three-transaction receipt remains the fallback.
 
 ## Executable statement oracle
 
@@ -104,10 +110,16 @@ integrated PCS change:
 
 1. **10-bit fixed-table range lookup.** Six limbs reconstruct the two bounded
    values; one additional LogUp relation replaces 64 Boolean residuals. The
-   isolated composition delta falls from 176,844 to 120,275 CU. The semantic
-   evaluator now proves that it preserves the integer-before-field check
-   against wrap inflation. The fixed-table LogUp relation/helper oracle now
-   passes six teeth vectors; C1/C2 and sumcheck wiring are still pending.
+   isolated composition delta falls from 176,844 to 120,275 CU. The stress
+   row at the top of the per-row linear bracket
+   (`evaluator_lookup_range_stress_linear128`) measures **152,299 CU,
+   +32,024 over the 70-term reading** — enough on its own to breach the
+   strict ceiling, which is why the projection status is
+   bracket-conditional. The semantic evaluator proves that the lookup
+   preserves the integer-before-field check against wrap inflation. The
+   fixed-table LogUp relation/helper oracle now passes seven teeth vectors,
+   including the multiplicity-after-chi order attack (soundness note §8);
+   C1/C2 and sumcheck wiring are still pending.
 2. **Radix-4 minimal subtree.** Every PCS depth is even (10/8/6/4), matching
    the arity-4 fold. One 129-byte SHA call replaces up to three 65-byte binary
    calls. The real g16 comparison saves 76,587 CU. The literal g32 result saves
@@ -143,11 +155,34 @@ data exists:
 > `variance_conditional` and the failing margin is recorded in
 > `feasibility_decision.json` before any integration nonce is ground.
 
-Status: **criterion registered; run pending.** g16 is used because sixteen
-fresh 16-bit grinds are affordable where sixteen fresh 32-bit nonce searches
-are not; the transfer of the observed spread to the g32 shape is an
-assumption named inside the criterion, and the integrated g32 payment proof
-remains the final word.
+Status: **run complete — the criterion FAILS.** Sixteen fresh draws
+(`results/stage2/variance_g16.json`, five identical repetitions each, Agave
+2.3.0) give radix-4 production-Verify CU spanning **639,859 to 695,645: a
+range of 55,786 CU, 1.9x the 29,056-CU single-draw headroom.** The adjusted
+projection 1,041,944 + 55,786 = **1,097,730 exceeds the strict ceiling by
+26,730 CU.** The non-binding secondary diagnostic mean + 2 sigma = 26,311
+would pass by only 2,745 CU; the pre-registered range criterion is the
+binding one and no post-hoc switch is taken. Binary-mode spread is larger
+still (62,048 over the same seeds; mean 713,570, sigma 14,915). The
+measured single g32 draw (678,407) sits within 0.2% of the fixed-shape
+radix-4 mean (676,171; sigma 13,155), so the headline number was not a
+lucky draw — but a worst-case draw is ~+19K over the mean and the strict
+slack claim does not survive it.
+
+Consequence, per the pre-registration: `projection_status` is downgraded
+from `candidate_green` to **`variance_conditional`** in
+`feasibility_decision.json` before any integration nonce is ground. What
+survives: even the worst observed draw stays 92,270 CU under the 1.19M
+transaction target and 302,270 under the absolute 1.4M cap, so
+one-transaction feasibility is not dead — the 10%-slack claim on an
+arbitrary draw is. Closing the strict gate now requires either a further
+named shrink of roughly 27K+ CU or an explicit, documented gate-rule
+decision about per-draw variance; neither is assumed here.
+
+g16 was used because sixteen fresh 16-bit grinds are affordable where
+sixteen fresh 32-bit nonce searches are not; the transfer of the observed
+spread to the g32 shape is an assumption named inside the criterion, and
+the integrated g32 payment proof remains the final word.
 
 ## Projection ledger
 
@@ -161,9 +196,45 @@ therefore feasibility projections, not integrated proof measurements.
 | plus 10-bit lookup candidate | 1,077,648 | -112,352 | +6,648 |
 | **plus lookup and real radix-4 PCS** | **1,041,944** | **-148,056** | **-29,056** |
 
-The final row saves 373,324 CU (26.38%) from the historical checkpoint. It is
-candidate-green but the product gate remains
-`red_pending_logup_wide_rlc_and_integrated_statement_proof`.
+The final row saves 373,324 CU (26.38%) from the historical checkpoint. The
+product gate remains
+`red_pending_logup_wide_rlc_and_integrated_statement_proof`, and the
+projection status is qualified by the corrections below.
+
+## Post-review corrections (`2026-07-10`)
+
+Three checks ordered by review ran before integration; two failed and one
+recounted a column budget. All three are recorded here and in
+`feasibility_decision.json` before any integration nonce is ground.
+
+1. **k' recount (soundness note §8).** The 80-column candidate trace did not
+   reserve the lookup's committed columns: k' = 80 main + 1 multiplicity
+   (C1) + copy helper h1 + range helper h2 (both C2) = **83**, pinned at
+   k' <= 84 with one column of slack. Arithmetic consequences, pending
+   integration measurement: the fixed-width RLC term scales 83/80 from
+   202,031 to **209,607 CU** (+7,576) and the wide-leaf marker from 11,231
+   to **11,652 CU** (+421). T5' recomputes to 117.6 bits and the amended
+   union to 103.9453 algebraic / 102.9724 total — the t = 100 headline
+   holds.
+2. **Variance criterion (pre-registered above): FAILED**, range 55,786 CU.
+3. **Bracket stress row: FAILED** the strict ceiling, +32,024 CU over the
+   70-term reading.
+
+Corrected ledger (all rows include the k' = 83 correction):
+
+| reading | projected CU | vs strict 1.071M | vs 1.19M |
+| --- | ---: | ---: | ---: |
+| central, 70 linear terms | 1,049,941 | **-21,059** | -140,059 |
+| linear=128 bracket top | 1,081,965 | **+10,965 over** | -108,035 |
+| worst-of-16 draw | 1,105,727 | **+34,727 over** | -84,273 |
+| combined worst (stress + draw) | 1,137,751 | **+66,751 over** | -52,249 |
+
+Reading: the strict ten-percent-slack ceiling survives only the central
+reading. Closing the strict gate honestly now requires either a further
+named shrink (>= ~11K CU for the bracket top, ~35K for the worst draw,
+~67K combined) or an explicit, documented gate-rule decision on per-draw
+variance. Neither is assumed. The 1.19M transaction target and the 1.4M
+absolute cap clear in every reading.
 
 ## Split fallback and next gate
 

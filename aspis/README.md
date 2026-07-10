@@ -32,11 +32,15 @@ first structured projection was `1,415,268` CU. Cached circle powers,
 conjugate denominators,
 specialized tower arithmetic, and lazy dots reduce the measured frozen binary
 PCS to `714,111` CU. A fresh literal radix-4 q36/g32 proof measures `678,407`
-CU. The lookup semantic oracle plus fixed-width q36/k80 RLC project the full
-path to `1,041,944` CU, 29,056 below the strict slack ceiling. The LogUp proof
-and wide RLC are not integrated into one payment proof, so split verification
-remains the fallback; see `docs/stage2-feasibility.md` and
-`docs/solmath-zk-candidates.md`.
+CU. The lookup semantic oracle plus fixed-width RLC project a central path of
+`1,049,941` CU after the k'=83 recount, 21,059 below the strict slack
+ceiling — but the pre-registered 16-seed variance criterion fails
+(worst-of-16 range 55,786 CU) and the linear=128 stress row breaches the
+ceiling on its own, so the projection is variance-and-bracket-conditional;
+every reading, including the combined worst case, clears the 1.19M target.
+The LogUp proof and wide RLC are not integrated into one payment proof, so
+split verification remains the fallback; see `docs/stage2-feasibility.md`,
+`docs/aspis-soundness-note.md` §8, and `docs/solmath-zk-candidates.md`.
 
 ## What this is (and is not)
 
@@ -104,7 +108,7 @@ results/stage0,stage1/   raw artifacts backing every number quoted anywhere
 | --- | --- | --- |
 | Stage 0 | Consolidate the native WHIR-style M31 PCS substrate | **CLOSED/CONDITIONAL (historical)**: admitted q32/g32 as a hypothesis; Stage 1 has since retired it |
 | Stage 1 | Harden and budget the PCS soundness argument | **CLOSED/FROZEN**: q36/g32, v3 C2, relation enforcement, teeth tests, literal SBF measurement |
-| Stage 2 | Build the direct spend evaluator and statement layer | **IN PROGRESS / CANDIDATE-GREEN PROJECTION**: direct + lookup evaluators complete; real radix-4 g32 PCS; projected 26.38% saving; LogUp/RLC/full-proof integration pending; split receipt retained |
+| Stage 2 | Build the direct spend evaluator and statement layer | **IN PROGRESS / VARIANCE-AND-BRACKET-CONDITIONAL PROJECTION**: direct + lookup evaluators complete; real radix-4 g32 PCS; 26.38% saving from the historical checkpoint; pre-registered variance criterion failed; LogUp/RLC/full-proof integration pending; split receipt retained |
 | Stage 3 | Add commitment and sumcheck/evaluation hiding | future |
 | Stage 4 | Split verifier crate seam and demo shielded pool | future |
 | Stage 5 | Freeze, devnet n=100 measurement, novelty re-check, writeup | future |
