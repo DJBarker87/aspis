@@ -200,6 +200,19 @@ Union of T1-T8 is 103.9508 algebraic bits before queries, dominated by T2.
 t = 128 would require every enumerated term to vanish — not a parameter
 choice, a different field tower.
 
+**T1 provenance is load-bearing here.** `103.9508` is not evaluated at the
+favorable end of an unresolved 106-112 bracket. The deterministic artifact
+`results/stage1/upstream_soundness_pin.json` pins the unique-shaped
+four-round union to **111.5906090612 bits** from
+`WizardOfMenlo/whir@10aa7d0bae3663fd149b6b88b6eff2209b867970`; use of that
+constant at the capacity radius remains one of the three explicitly
+conjectural clauses. Removing T2 from the stated union leaves a 109.2649-bit
+residue (dominated by T6, not T1). Sensitivity only: replacing the pinned T1
+term by the old bracket's 106-bit endpoint would produce 103.6444 algebraic
+bits and 102.8113 total bits, a 2.8113-bit margin. The gate artifact records
+both the pinned result and this counterfactual; it no longer labels the
+pinned case as an unqualified “worst case.”
+
 **The honest final number.** The query term joins the union — in the
 success-per-unit-work metric, where both categories denominate in hashes
 (§6): success/work <= 2^-103.9508 + 2^-32 * 2^-72 =
@@ -395,12 +408,15 @@ interface side in the phi evaluations at opened rows. §5 carries the worst
 case (m = 2^10); Stage 2's layout freeze documents the real (m, w) and does
 not optimize for it.
 
-**Cost of the second phase (C2), to be priced by the hardening
-measurement:** one extra root absorb; one extra opening per query in the
-phase-2 tree (q ~ 36 over 2^10 leaves — order tens of K CU and ~6-8 KB with
-multiproof sharing); one extra gamma term per query in the RLC. If Stage 3's
-masking polynomial also needs a post-challenge commitment, both share the
-one phase-2 tree; that decision is taken in the hiding note, not silently.
+**Measured cost of the second phase (C2):** the helper already uses
+`minimal_subtree`, not 36 individual depth-10 paths. It is a separate tree
+(soundness requires C1 before chi and C2 after chi), but its queried leaves
+share the deterministic multiproof frontier. Even with that sharing, C2
+adds 142,447 CU and 6,148 proof bytes: 801,525 -> 943,972 CU and 15,216 ->
+21,364 bytes. Separate individual paths would be materially larger and are
+not a remaining reclaim. If Stage 3's masking polynomial also needs a
+post-challenge commitment, both can share the phase-2 tree; that decision is
+taken in the hiding note, not silently.
 
 ## 6. Grinding, the Fiat-Shamir model, and what grinding does NOT cover
 
@@ -440,6 +456,20 @@ on this schedule is the 65.5-bit Johnson query term; the conditional
 capacity headline is jointly controlled by the capacity query rate and its
 effective-list-size premise, and no term may be silently transferred from
 one regime to the other.**
+
+**OOD sample count decision (third review touch): freeze `s = 1` for v3.**
+This is a deliberate product-budget decision, not an omitted option. At the
+pinned constants, `s=1` gives 102.9752 total bits and 2.9752 bits over the
+headline. Two samples per round would push T2 to about 218.3031 bits and make
+the 109.2649-bit non-T2 residue the algebraic limiter; after the 104-bit query
+term the total would be about 103.9630 bits, a 0.9878-bit gain. It would not
+improve the 65.5-bit proven floor. The v3 product projection has only 14,914
+CU before unpriced composition, and `s=2` requires nonzero extra transcript,
+weight-evaluation, proof, KAT, and literal-g32 remeasurement work. Therefore
+the extra conditional bit is declined until a material CU reclaim lands or
+the pinned T1/list premise changes. Under the frozen `s=1`, **T2 and the
+query term jointly bind within 0.0125 bits**; neither may be described as
+comfortably non-binding.
 
 **Sampler completeness (from the §3 T9 fix).** Rejection sampling with a
 bounded retry loop (8 per limb, fresh transcript bytes per retry via a
