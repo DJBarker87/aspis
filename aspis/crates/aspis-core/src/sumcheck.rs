@@ -89,12 +89,12 @@ impl WeightAccumulator {
     /// Apply the dual of the arity-4 monomial coefficient fold.
     pub fn fold(&mut self, alpha: QM31) {
         debug_assert!(self.log_len >= 2);
-        let alpha2 = alpha.mul(alpha);
+        let alpha2 = alpha.square();
         let alpha3 = alpha2.mul(alpha);
         for component in &mut self.components {
             match component {
                 WeightComponent::Geometric { scale, base } => {
-                    let base2 = base.mul(*base);
+                    let base2 = base.square();
                     let base3 = base2.mul(*base);
                     let factor = QM31::ONE
                         .add(alpha3.mul(*base))
@@ -102,7 +102,7 @@ impl WeightAccumulator {
                         .add(alpha.mul(base3))
                         .mul_m31(M31_QUARTER);
                     *scale = scale.mul(factor);
-                    *base = base2.mul(base2);
+                    *base = base2.square();
                 }
                 WeightComponent::Multilinear { scale, point } => {
                     let split = point.len() - 2;

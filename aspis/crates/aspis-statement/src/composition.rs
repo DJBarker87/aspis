@@ -185,6 +185,7 @@ pub fn evaluate_composition_probe(probe: CompositionProbe) -> CompositionProbeRe
     }
 }
 
+#[cfg(test)]
 fn apply_mat4(values: &mut [QM31]) {
     let t01 = values[0].add(values[1]);
     let t23 = values[2].add(values[3]);
@@ -198,6 +199,7 @@ fn apply_mat4(values: &mut [QM31]) {
     values.copy_from_slice(&[out0, out1, out2, out3]);
 }
 
+#[cfg(test)]
 fn external_linear(values: &mut [QM31; 16]) {
     for chunk in values.chunks_exact_mut(4) {
         apply_mat4(chunk);
@@ -210,6 +212,55 @@ fn external_linear(values: &mut [QM31; 16]) {
     }
     for (index, value) in values.iter_mut().enumerate() {
         *value = value.add(sums[index & 3]);
+    }
+}
+
+#[inline(always)]
+fn linear_combination(values: &[QM31; 4], coefficients: [u64; 4]) -> QM31 {
+    let reduce = |limbs: [u32; 4]| {
+        M31::reduce_u62(
+            limbs[0] as u64 * coefficients[0]
+                + limbs[1] as u64 * coefficients[1]
+                + limbs[2] as u64 * coefficients[2]
+                + limbs[3] as u64 * coefficients[3],
+        )
+    };
+    QM31 {
+        c0: CM31 {
+            a: reduce(values.map(|value| value.c0.a.0)),
+            b: reduce(values.map(|value| value.c0.b.0)),
+        },
+        c1: CM31 {
+            a: reduce(values.map(|value| value.c1.a.0)),
+            b: reduce(values.map(|value| value.c1.b.0)),
+        },
+    }
+}
+
+#[inline(always)]
+fn apply_mat4_lazy(values: &mut [QM31]) {
+    let input: [QM31; 4] = values.try_into().expect("four-lane chunk");
+    values.copy_from_slice(&[
+        linear_combination(&input, [2, 3, 1, 1]),
+        linear_combination(&input, [1, 2, 3, 1]),
+        linear_combination(&input, [1, 1, 2, 3]),
+        linear_combination(&input, [3, 1, 1, 2]),
+    ]);
+}
+
+#[inline(always)]
+fn external_linear_lazy(values: &mut [QM31; 16]) {
+    for chunk in values.chunks_exact_mut(4) {
+        apply_mat4_lazy(chunk);
+    }
+    for column in 0..4 {
+        let indices = [column, column + 4, column + 8, column + 12];
+        let column_values = indices.map(|index| values[index]);
+        let sum = linear_combination(&column_values, [1, 1, 1, 1]);
+        for index in indices {
+            let value = values[index];
+            values[index] = linear_combination(&[value, sum, QM31::ZERO, QM31::ZERO], [1, 1, 0, 0]);
+        }
     }
 }
 
@@ -250,12 +301,12 @@ pub fn evaluate_composition_probe_optimized(probe: CompositionProbe) -> Composit
             ))))
         });
         for value in &mut state {
-            let square = value.mul(*value);
-            let fourth = square.mul(square);
+            let square = value.square();
+            let fourth = square.square();
             *value = fourth.mul(*value);
             qm31_multiplications += 3;
         }
-        external_linear(&mut state);
+        external_linear_lazy(&mut state);
         // Addition network: four mat4 blocks (7 adds each), four 4-way sums
         // (12 adds), and 16 outer additions.
         additions_or_subtractions += 56;
@@ -361,5 +412,16 @@ mod tests {
         let optimized = evaluate_composition_probe_optimized(CompositionProbe::REALISTIC);
         assert!(optimized.qm31_multiplications < naive.qm31_multiplications);
         assert!(optimized.qm31_by_cm31_multiplications < naive.qm31_by_cm31_multiplications);
+    }
+
+    #[test]
+    fn lazy_extension_linear_layer_matches_canonical() {
+        for seed in 0..32u32 {
+            let mut canonical = core::array::from_fn(|lane| sample(seed * 16 + lane as u32, 9));
+            let mut lazy = canonical;
+            external_linear(&mut canonical);
+            external_linear_lazy(&mut lazy);
+            assert_eq!(lazy, canonical);
+        }
     }
 }

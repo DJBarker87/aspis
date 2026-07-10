@@ -10,7 +10,8 @@
 //!   8  u16  query_count (LE)
 //!   10 u8   grinding_bits
 //!   11 u8   fold_payload   (0 raw_fibers, 1 proof_carried_round_local)
-//!   12 u8   merkle_mode    (0 single_paths, 1 minimal_subtree)
+//!   12 u8   merkle_mode    (0 single_paths, 1 binary minimal_subtree,
+//!                           2 radix-4 minimal_subtree)
 //!   13 u8   num_rounds
 //!   14 u8   final_poly_log_len
 //!   15 u8   flags (bit 0 = externally supplied (z, v) evaluation claim;
@@ -34,7 +35,8 @@
 //!   if C2 and r=0: unique_count * 64 helper-fiber bytes (4 QM31)
 //!   carried (fold_payload = 1 only): unique_count * 32 (g1, g2 as QM31)
 //!   merkle single_paths:    unique_count * depth_r * 32
-//!          minimal_subtree: u32 node_count LE + node_count * 32
+//!          binary/radix-4 minimal_subtree:
+//!                           u32 node_count LE + node_count * 32
 //!   if C2 and r=0: a second Merkle proof in the selected mode, for C2
 //! ```
 //!

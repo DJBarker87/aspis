@@ -7,6 +7,9 @@ use aspis_core::field::{M31, P};
 use crate::poseidon2::{hash_fields, Digest};
 
 pub const VALUE_LIMIT: u32 = 1 << 30;
+pub const RANGE_LIMB_BITS: u32 = 10;
+pub const RANGE_LIMB_LIMIT: u16 = 1 << RANGE_LIMB_BITS;
+pub const RANGE_LIMBS_PER_VALUE: usize = 3;
 
 const DOMAIN_OWNER_KEY: M31 = M31(0x4153_0001);
 const DOMAIN_NULLIFIER: M31 = M31(0x4153_0002);
@@ -41,6 +44,26 @@ pub struct SpendWitness {
     pub merkle_path: MerklePath,
 }
 
+/// Witness columns for the candidate 10-bit range-check lookup.
+///
+/// Six limbs replace the 64 Boolean bit constraints previously budgeted for
+/// the two private values. The fee remains public and is range-checked by the
+/// verifier program directly.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RangeLookupWitness {
+    pub input_value_limbs: [u16; RANGE_LIMBS_PER_VALUE],
+    pub output_value_limbs: [u16; RANGE_LIMBS_PER_VALUE],
+}
+
+impl RangeLookupWitness {
+    pub fn from_spend(witness: &SpendWitness) -> Self {
+        Self {
+            input_value_limbs: decompose_10bit_limbs(witness.value),
+            output_value_limbs: decompose_10bit_limbs(witness.value_out),
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct EvaluationContext<'a> {
     pub merkle_depth: usize,
@@ -62,6 +85,30 @@ pub enum SpendError {
     NullifierMismatch,
     OutputCommitmentMismatch,
     NullifierAlreadySpent,
+    RangeLookupLimbOutOfRange,
+    RangeLookupReconstructionMismatch,
+}
+
+pub fn decompose_10bit_limbs(value: u32) -> [u16; RANGE_LIMBS_PER_VALUE] {
+    let mask = u32::from(RANGE_LIMB_LIMIT) - 1;
+    core::array::from_fn(|index| ((value >> (index as u32 * RANGE_LIMB_BITS)) & mask) as u16)
+}
+
+pub fn verify_10bit_range_lookup(
+    value: u32,
+    limbs: &[u16; RANGE_LIMBS_PER_VALUE],
+) -> Result<(), SpendError> {
+    if limbs.iter().any(|limb| *limb >= RANGE_LIMB_LIMIT) {
+        return Err(SpendError::RangeLookupLimbOutOfRange);
+    }
+
+    let reconstructed = limbs.iter().enumerate().fold(0u32, |acc, (index, limb)| {
+        acc + (u32::from(*limb) << (index as u32 * RANGE_LIMB_BITS))
+    });
+    if reconstructed != value {
+        return Err(SpendError::RangeLookupReconstructionMismatch);
+    }
+    Ok(())
 }
 
 fn append_digest(output: &mut Vec<M31>, digest: &Digest) {
@@ -121,10 +168,7 @@ pub fn merkle_root(leaf: Digest, path: &MerklePath) -> Result<Digest, SpendError
     Ok(current)
 }
 
-/// Evaluate every SpendV0-min economic relation without constructing a
-/// proof. Success means the witness satisfies the statement and the supplied
-/// pool context has not already consumed its nullifier.
-pub fn evaluate_spend(
+fn validate_shape_and_asset(
     public: &SpendPublic,
     witness: &SpendWitness,
     context: EvaluationContext<'_>,
@@ -138,12 +182,14 @@ pub fn evaluate_spend(
     if witness.input_asset_id != public.asset_id {
         return Err(SpendError::AssetMismatch);
     }
-    if witness.value >= VALUE_LIMIT {
-        return Err(SpendError::InputValueOutOfRange);
-    }
-    if witness.value_out >= VALUE_LIMIT {
-        return Err(SpendError::OutputValueOutOfRange);
-    }
+    Ok(())
+}
+
+fn evaluate_spend_after_value_checks(
+    public: &SpendPublic,
+    witness: &SpendWitness,
+    context: EvaluationContext<'_>,
+) -> Result<(), SpendError> {
     if public.fee >= VALUE_LIMIT {
         return Err(SpendError::FeeOutOfRange);
     }
@@ -182,6 +228,41 @@ pub fn evaluate_spend(
         return Err(SpendError::NullifierAlreadySpent);
     }
     Ok(())
+}
+
+/// Evaluate every SpendV0-min economic relation without constructing a
+/// proof. This reference path uses direct integer range checks.
+pub fn evaluate_spend(
+    public: &SpendPublic,
+    witness: &SpendWitness,
+    context: EvaluationContext<'_>,
+) -> Result<(), SpendError> {
+    validate_shape_and_asset(public, witness, context)?;
+    if witness.value >= VALUE_LIMIT {
+        return Err(SpendError::InputValueOutOfRange);
+    }
+    if witness.value_out >= VALUE_LIMIT {
+        return Err(SpendError::OutputValueOutOfRange);
+    }
+    evaluate_spend_after_value_checks(public, witness, context)
+}
+
+/// Evaluate the same SpendV0-min statement with exact 10-bit limb lookup
+/// semantics for the two private values.
+///
+/// This is still a no-proof semantic oracle. A future LogUp relation must
+/// prove membership of each limb in the fixed `[0, 1024)` table and enforce
+/// the two reconstruction equalities represented here.
+pub fn evaluate_spend_with_range_lookup(
+    public: &SpendPublic,
+    witness: &SpendWitness,
+    range_witness: &RangeLookupWitness,
+    context: EvaluationContext<'_>,
+) -> Result<(), SpendError> {
+    validate_shape_and_asset(public, witness, context)?;
+    verify_10bit_range_lookup(witness.value, &range_witness.input_value_limbs)?;
+    verify_10bit_range_lookup(witness.value_out, &range_witness.output_value_limbs)?;
+    evaluate_spend_after_value_checks(public, witness, context)
 }
 
 #[cfg(test)]
@@ -245,6 +326,22 @@ mod tests {
         )
     }
 
+    fn evaluate_lookup(
+        public: &SpendPublic,
+        witness: &SpendWitness,
+        range_witness: &RangeLookupWitness,
+    ) -> Result<(), SpendError> {
+        evaluate_spend_with_range_lookup(
+            public,
+            witness,
+            range_witness,
+            EvaluationContext {
+                merkle_depth: DEPTH,
+                spent_nullifiers: &[],
+            },
+        )
+    }
+
     #[test]
     fn valid_spend_and_value_boundaries_accept() {
         for (value, value_out, fee) in [
@@ -255,6 +352,10 @@ mod tests {
         ] {
             let (public, witness) = fixture(value, value_out, fee);
             assert_eq!(evaluate(&public, &witness), Ok(()));
+            assert_eq!(
+                evaluate_lookup(&public, &witness, &RangeLookupWitness::from_spend(&witness)),
+                Ok(())
+            );
         }
     }
 
@@ -267,6 +368,40 @@ mod tests {
         assert_eq!(
             evaluate(&public, &witness),
             Err(SpendError::OutputValueOutOfRange)
+        );
+        assert!(
+            evaluate_lookup(&public, &witness, &RangeLookupWitness::from_spend(&witness)).is_err()
+        );
+    }
+
+    #[test]
+    fn ten_bit_lookup_membership_and_reconstruction_have_teeth() {
+        let (public, witness) = fixture(1_000_000, 999_999, 1);
+        let canonical = RangeLookupWitness::from_spend(&witness);
+        assert_eq!(evaluate_lookup(&public, &witness, &canonical), Ok(()));
+
+        let mut non_member = canonical;
+        non_member.input_value_limbs[0] = RANGE_LIMB_LIMIT;
+        assert_eq!(
+            evaluate_lookup(&public, &witness, &non_member),
+            Err(SpendError::RangeLookupLimbOutOfRange)
+        );
+
+        let mut wrong_reconstruction = canonical;
+        wrong_reconstruction.output_value_limbs[0] ^= 1;
+        assert_eq!(
+            evaluate_lookup(&public, &witness, &wrong_reconstruction),
+            Err(SpendError::RangeLookupReconstructionMismatch)
+        );
+
+        // The low 30-bit decomposition of 2^30 is all zero. Exact
+        // reconstruction is what stops truncation from becoming a range proof.
+        let (public, witness) = fixture(VALUE_LIMIT, 0, 0);
+        let truncated = RangeLookupWitness::from_spend(&witness);
+        assert_eq!(truncated.input_value_limbs, [0; RANGE_LIMBS_PER_VALUE]);
+        assert_eq!(
+            evaluate_lookup(&public, &witness, &truncated),
+            Err(SpendError::RangeLookupReconstructionMismatch)
         );
     }
 

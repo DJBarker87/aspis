@@ -168,8 +168,48 @@ fn main() -> Result<()> {
             eprintln!("stage2-poseidon2-probe: wrote {}", path.display());
             Ok(())
         }
+        Some("stage2-zk-kernel-probe") => {
+            let summary = onchain::run_stage2_zk_kernel_probe()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("zk_kernel_probe.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!("stage2-zk-kernel-probe: wrote {}", path.display());
+            Ok(())
+        }
+        Some("stage2-wide-rlc-probe") => {
+            let summary = onchain::run_stage2_wide_rlc_probe()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("wide_rlc_probe.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!("stage2-wide-rlc-probe: wrote {}", path.display());
+            Ok(())
+        }
+        Some("stage2-merkle-arity-probe") => {
+            let summary = onchain::run_stage2_merkle_arity_probe()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("merkle_arity_probe.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!("stage2-merkle-arity-probe: wrote {}", path.display());
+            Ok(())
+        }
+        Some("stage2-radix4-g16") => {
+            let summary = onchain::run_stage2_radix4_g16()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("radix4_g16.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!("stage2-radix4-g16: wrote {}", path.display());
+            Ok(())
+        }
+        Some("stage2-radix4-g32") => {
+            let summary = onchain::run_stage2_radix4_g32()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("radix4_g32.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!("stage2-radix4-g32: wrote {}", path.display());
+            Ok(())
+        }
         other => bail!(
-            "usage: cargo run -p aspis-xtask -- stage0-host | stage0-onchain | stage0-onchain-gate | stage0-onchain-g32 | stage0-onchain-layout-target | stage0-onchain-profile | stage0-layout-sweep | stage0-transcript-kat | stage1-soundness-pin | stage1-onchain-hardening | stage2-evaluator | stage2-composition-probe | stage2-layout-probe | stage2-poseidon2-probe (got {:?})",
+            "usage: cargo run -p aspis-xtask -- stage0-host | stage0-onchain | stage0-onchain-gate | stage0-onchain-g32 | stage0-onchain-layout-target | stage0-onchain-profile | stage0-layout-sweep | stage0-transcript-kat | stage1-soundness-pin | stage1-onchain-hardening | stage2-evaluator | stage2-composition-probe | stage2-layout-probe | stage2-poseidon2-probe | stage2-zk-kernel-probe | stage2-wide-rlc-probe | stage2-merkle-arity-probe | stage2-radix4-g16 | stage2-radix4-g32 (got {:?})",
             other
         ),
     }

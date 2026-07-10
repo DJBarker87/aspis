@@ -102,6 +102,33 @@ fn external_linear(state: &mut [M31; 16]) {
     }
 }
 
+/// Algebraically identical external layer with one canonical reduction per
+/// output. Each row has coefficient sum seven, so every temporary is far
+/// below the `M31::reduce_u62` bound.
+#[inline(always)]
+fn apply_mat4_lazy(values: &mut [M31]) {
+    let a = values[0].0 as u64;
+    let b = values[1].0 as u64;
+    let c = values[2].0 as u64;
+    let d = values[3].0 as u64;
+    values[0] = M31::reduce_u62(2 * a + 3 * b + c + d);
+    values[1] = M31::reduce_u62(a + 2 * b + 3 * c + d);
+    values[2] = M31::reduce_u62(a + b + 2 * c + 3 * d);
+    values[3] = M31::reduce_u62(3 * a + b + c + 2 * d);
+}
+
+#[inline(always)]
+fn external_linear_lazy(state: &mut [M31; 16]) {
+    for chunk in state.chunks_exact_mut(4) {
+        apply_mat4_lazy(chunk);
+    }
+    let sums: [u64; 4] =
+        core::array::from_fn(|column| (0..4).map(|row| state[row * 4 + column].0 as u64).sum());
+    for (index, value) in state.iter_mut().enumerate() {
+        *value = M31::reduce_u62(value.0 as u64 + sums[index & 3]);
+    }
+}
+
 #[inline(always)]
 fn full_round(state: &mut [M31; 16], constants: &[u32; 16]) {
     for index in 0..16 {
@@ -123,6 +150,20 @@ fn internal_linear(state: &mut [M31; 16]) {
     }
 }
 
+/// SBF-oriented partial-round linear layer. The Plonky3 diagonal is powers
+/// of two, so generic M31 multiplication is unnecessary. The full row sum is
+/// kept lazy and each output is reduced once.
+#[inline(always)]
+fn internal_linear_lazy(state: &mut [M31; 16]) {
+    let part_sum: u64 = state[1..].iter().map(|value| value.0 as u64).sum();
+    let full_sum = part_sum + state[0].0 as u64;
+    state[0] = M31::reduce_u62(part_sum + aspis_core::field::P as u64 - state[0].0 as u64);
+    for index in 1..16 {
+        state[index] =
+            M31::reduce_u62(full_sum + ((state[index].0 as u64) << INTERNAL_SHIFTS[index - 1]));
+    }
+}
+
 /// Apply the pinned Poseidon2-M31 permutation in place.
 pub fn permute(state: &mut [M31; 16]) {
     external_linear(state);
@@ -135,6 +176,30 @@ pub fn permute(state: &mut [M31; 16]) {
     }
     for constants in &EXTERNAL_FINAL {
         full_round(state, constants);
+    }
+}
+
+/// Apply the same pinned permutation with SBF-oriented lazy linear layers.
+/// This function deliberately remains separate until its CU delta is measured
+/// on the validator; equality is covered against both the canonical kernel and
+/// the pinned Plonky3 implementation.
+pub fn permute_optimized(state: &mut [M31; 16]) {
+    external_linear_lazy(state);
+    for constants in &EXTERNAL_INITIAL {
+        for index in 0..16 {
+            state[index] = pow5(state[index].add(M31(constants[index])));
+        }
+        external_linear_lazy(state);
+    }
+    for constant in INTERNAL {
+        state[0] = pow5(state[0].add(M31(constant)));
+        internal_linear_lazy(state);
+    }
+    for constants in &EXTERNAL_FINAL {
+        for index in 0..16 {
+            state[index] = pow5(state[index].add(M31(constants[index])));
+        }
+        external_linear_lazy(state);
     }
 }
 
@@ -189,8 +254,11 @@ mod tests {
                     % aspis_core::field::P)
             });
             let mut reference = ours.map(|value| Mersenne31::new(value.0));
+            let mut optimized = ours;
             permute(&mut ours);
+            permute_optimized(&mut optimized);
             permutation.permute_mut(&mut reference);
+            assert_eq!(optimized, ours);
             assert_eq!(
                 ours.map(|value| value.0),
                 reference.map(|value| value.as_canonical_u32())

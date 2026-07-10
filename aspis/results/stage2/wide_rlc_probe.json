@@ -1,0 +1,270 @@
+{
+  "generated_at_utc": "2026-07-10T15:50:46.429548+00:00",
+  "command": "cargo run --release -p aspis-xtask -- stage2-wide-rlc-probe",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "repetitions": 5,
+  "variants": [
+    {
+      "kernel": "precomputed_powers",
+      "columns": 64,
+      "query_count": 32,
+      "simulation_cu": [
+        260733,
+        260733,
+        260733,
+        260733,
+        260733
+      ],
+      "simulation_cu_mean": 260733.0,
+      "baseline_cu_mean": 22741.0,
+      "incremental_cu": 237992
+    },
+    {
+      "kernel": "precomputed_powers",
+      "columns": 80,
+      "query_count": 36,
+      "simulation_cu": [
+        361963,
+        361963,
+        361963,
+        361963,
+        361963
+      ],
+      "simulation_cu_mean": 361963.0,
+      "baseline_cu_mean": 28292.0,
+      "incremental_cu": 333671
+    },
+    {
+      "kernel": "lazy_dot4",
+      "columns": 64,
+      "query_count": 32,
+      "simulation_cu": [
+        171376,
+        171376,
+        171376,
+        171376,
+        171376
+      ],
+      "simulation_cu_mean": 171376.0,
+      "baseline_cu_mean": 22741.0,
+      "incremental_cu": 148635
+    },
+    {
+      "kernel": "lazy_dot4",
+      "columns": 80,
+      "query_count": 36,
+      "simulation_cu": [
+        236170,
+        236170,
+        236170,
+        236170,
+        236170
+      ],
+      "simulation_cu_mean": 236170.0,
+      "baseline_cu_mean": 28292.0,
+      "incremental_cu": 207878
+    },
+    {
+      "kernel": "per_query_horner",
+      "columns": 64,
+      "query_count": 32,
+      "simulation_cu": [
+        804228,
+        804228,
+        804228,
+        804228,
+        804228
+      ],
+      "simulation_cu_mean": 804228.0,
+      "baseline_cu_mean": 567.0,
+      "incremental_cu": 803661
+    },
+    {
+      "kernel": "per_query_horner",
+      "columns": 80,
+      "query_count": 36,
+      "simulation_cu": [
+        1129679,
+        1129679,
+        1129679,
+        1129679,
+        1129679
+      ],
+      "simulation_cu_mean": 1129679.0,
+      "baseline_cu_mean": 567.0,
+      "incremental_cu": 1129112
+    },
+    {
+      "kernel": "packed4_lazy_dot",
+      "columns": 64,
+      "query_count": 32,
+      "simulation_cu": [
+        208246,
+        208246,
+        208246,
+        208246,
+        208246
+      ],
+      "simulation_cu_mean": 208246.0,
+      "baseline_cu_mean": 6128.0,
+      "incremental_cu": 202118
+    },
+    {
+      "kernel": "packed4_lazy_dot",
+      "columns": 80,
+      "query_count": 36,
+      "simulation_cu": [
+        288706,
+        288706,
+        288706,
+        288706,
+        288706
+      ],
+      "simulation_cu_mean": 288706.0,
+      "baseline_cu_mean": 7510.0,
+      "incremental_cu": 281196
+    },
+    {
+      "kernel": "packed4_naive",
+      "columns": 64,
+      "query_count": 32,
+      "simulation_cu": [
+        291070,
+        291070,
+        291070,
+        291070,
+        291070
+      ],
+      "simulation_cu_mean": 291070.0,
+      "baseline_cu_mean": 6128.0,
+      "incremental_cu": 284942
+    },
+    {
+      "kernel": "packed4_naive",
+      "columns": 80,
+      "query_count": 36,
+      "simulation_cu": [
+        406981,
+        406981,
+        406981,
+        406981,
+        406981
+      ],
+      "simulation_cu_mean": 406981.0,
+      "baseline_cu_mean": 7510.0,
+      "incremental_cu": 399471
+    },
+    {
+      "kernel": "packed2_lazy_dot",
+      "columns": 64,
+      "query_count": 32,
+      "simulation_cu": [
+        202172,
+        202172,
+        202172,
+        202172,
+        202172
+      ],
+      "simulation_cu_mean": 202172.0,
+      "baseline_cu_mean": 11666.0,
+      "incremental_cu": 190506
+    },
+    {
+      "kernel": "packed2_lazy_dot",
+      "columns": 80,
+      "query_count": 36,
+      "simulation_cu": [
+        280678,
+        280678,
+        280678,
+        280678,
+        280678
+      ],
+      "simulation_cu_mean": 280678.0,
+      "baseline_cu_mean": 14439.0,
+      "incremental_cu": 266239
+    },
+    {
+      "kernel": "raw_u128_dot",
+      "columns": 64,
+      "query_count": 32,
+      "simulation_cu": [
+        726280,
+        726280,
+        726280,
+        726280,
+        726280
+      ],
+      "simulation_cu_mean": 726280.0,
+      "baseline_cu_mean": 22741.0,
+      "incremental_cu": 703539
+    },
+    {
+      "kernel": "raw_u128_dot",
+      "columns": 80,
+      "query_count": 36,
+      "simulation_cu": [
+        1014438,
+        1014438,
+        1014438,
+        1014438,
+        1014438
+      ],
+      "simulation_cu_mean": 1014438.0,
+      "baseline_cu_mean": 28292.0,
+      "incremental_cu": 986146
+    },
+    {
+      "kernel": "lazy_dot4_outer_lazy",
+      "columns": 64,
+      "query_count": 32,
+      "simulation_cu": [
+        160488,
+        160488,
+        160488,
+        160488,
+        160488
+      ],
+      "simulation_cu_mean": 160488.0,
+      "baseline_cu_mean": 22741.0,
+      "incremental_cu": 137747
+    },
+    {
+      "kernel": "lazy_dot4_outer_lazy",
+      "columns": 80,
+      "query_count": 36,
+      "simulation_cu": [
+        220386,
+        220386,
+        220386,
+        220386,
+        220386
+      ],
+      "simulation_cu_mean": 220386.0,
+      "baseline_cu_mean": 28292.0,
+      "incremental_cu": 192094
+    },
+    {
+      "kernel": "fixed80_outer_lazy",
+      "columns": 80,
+      "query_count": 36,
+      "simulation_cu": [
+        202031,
+        202031,
+        202031,
+        202031,
+        202031
+      ],
+      "simulation_cu_mean": 202031.0,
+      "baseline_cu_mean": 28308.0,
+      "incremental_cu": 173723
+    }
+  ],
+  "notes": [
+    "Unlike the historical layout loop, this probe uses gamma powers and measures all q*k base-column contributions required at the wide PCS seam.",
+    "lazy_dot4 fuses four raw-M31 scalar products per reduction. lazy_dot4_outer_lazy then accumulates those canonical block results in u64 and performs one final reduction per QM31 limb; both are differential-tested against the eager reference.",
+    "fixed80_outer_lazy uses qm31_power_table::<80> and stack-backed fixed arrays for the ruled k=80 shape; it is the selected 201,990-CU kernel. The generic outer-lazy slice API remains available for other widths.",
+    "packed4_lazy_dot injectively maps four raw M31 columns into one QM31 coefficient before batching; the k=80 shape therefore has degree 19 in gamma rather than 79 and no column information is discarded.",
+    "This still excludes wide-leaf hashing and must be integrated with real proof parsing before a gate closes."
+  ]
+}

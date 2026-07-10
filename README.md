@@ -14,10 +14,14 @@ phase and teeth-demonstrated ordering tests. Its literal lr10/q36/g32
 verifier measures 943,972 CU; after already-priced statement work the
 projection is 1,175,086 CU, leaving only 14,914 CU before the still-unpriced
 Stage 2 constraint composition. Stage 2 now has an executable economic-attack
-evaluator and isolated SBF measurements: even after a structured/Horner
-shrink, the evaluator-confirmed low one-transaction projection is 1,415,268
-CU. The project has therefore recorded a three-transaction split-verification
-continuation rather than silently weakening the 1.19M target.
+evaluator and isolated SBF measurements. Its first one-transaction projection
+was 1,415,268 CU; measured M31/tower/circle kernels have since cut the frozen
+binary PCS from 943,972 to 714,111 CU. A fresh domain-separated radix-4 g32
+proof lowers it again to 678,407 CU. The six-limb lookup semantic corpus and a
+fixed-width outer-lazy q36/k80 RLC now project the combined verifier to
+1,041,944 CU, 29,056 inside the strict 1.071M slack ceiling. The product gate
+stays open until the LogUp relation and wide RLC are integrated into one real
+payment proof. Split verification remains the fallback.
 
 # Phase 1 SVM Cost Model
 

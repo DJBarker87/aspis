@@ -325,10 +325,29 @@ CU (126,641 saved), but the corrected one-transaction low projection remains
 1,415,268 CU after the measured k80 layout delta—225,268 above the 1.19M
 target and 15,268 above the absolute 1.4M cap. The one-transaction gate is
 therefore RED after its required shrink; a slack waiver is insufficient.
-The named continuation is three-transaction split verification (statement
-receipt -> PCS receipt -> pool consume), and any future headline must say
-"across three transactions." Evidence and caveats:
+At that checkpoint the named continuation was three-transaction split
+verification (statement receipt -> PCS receipt -> pool consume), and any
+positive claim based on that checkpoint must say "across three transactions."
+The optimization update below supersedes the claim that a split is mandatory,
+but not the recorded negative or the fallback. Evidence and caveats:
 `docs/stage2-feasibility.md` and `results/stage2/`.
+
+**Stage 2 optimization update (`2026-07-10`).** The negative above has been
+reopened, not erased. SolMath-style specialization cut the real frozen binary
+PCS from 943,972 to 714,111 CU with identical proof bytes: cached circle powers,
+specialized squares/halves, unit-circle conjugate denominators, final-domain
+caching, and packed SHA inputs. The historical layout RLC was found to use the
+same gamma for every column and is deprecated; the correct q36/k80 gamma-power
+kernel measures 202,031 CU after four-product inner reduction, lazy outer
+accumulation, and fixed-width power/value tables. A six-limb 10-bit lookup
+candidate reduces composition from 176,844 to 120,275 CU and now replays the
+full economic corpus plus two lookup teeth vectors. A fresh radix-4 q36/g32
+proof verifies at 678,407 CU, 35,704 below optimized binary, with its changed
+roots/proof digest ledgered and corruption-tested. Their combined projection
+is 1,041,944 CU, 29,056 below the strict 1.071M slack ceiling. Because LogUp
+and the wide RLC are not integrated into one payment proof, the product gate
+remains open and the split receipt stays as fallback. See
+`docs/solmath-zk-candidates.md`.
 
 ## 10. Stage 3 - Hiding Layer
 

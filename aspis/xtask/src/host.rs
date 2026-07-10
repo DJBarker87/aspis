@@ -65,6 +65,7 @@ fn mode_name(m: MerkleMode) -> &'static str {
     match m {
         MerkleMode::SinglePaths => "single_paths",
         MerkleMode::MinimalSubtree => "minimal_subtree",
+        MerkleMode::Radix4MinimalSubtree => "radix4_minimal_subtree",
     }
 }
 

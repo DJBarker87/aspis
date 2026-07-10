@@ -6,8 +6,8 @@ a program on Solana. This subrepo contains the native WHIR-style M31 PCS
 substrate ("native v0") and its staged hardening, with the measured Phase 2
 kernel winners built in from the first line.
 
-**Status**: Stage 1 PCS milestone **closed; Stage 2 evaluator complete and
-single-transaction feasibility negative**. Stage 0 closed conditionally and the
+**Status**: Stage 1 PCS milestone **closed; Stage 2 one-transaction feasibility
+reopened by measured math kernels**. Stage 0 closed conditionally and the
 soundness review retired q32/g32 in favor of q36/g32. The upstream T1/T2
 constants are pinned, the challenge sampler is exact-uniform, and external
 evaluation claims plus one OOD value per round are transcript-bound and
@@ -25,11 +25,18 @@ capacity-conjectured (~102.98 system bits under the stated three-clause
 assumption), with a proven Johnson floor of ~65.5 bits. See
 `docs/aspis-soundness-note.md`, `docs/stage0-conclusion.md`, and
 `docs/stage0-gate.md`. Stage 2 now has an executable SpendV0-min evaluator,
-13 economic vectors, a Plonky3-pinned Poseidon2-M31 implementation, and
-isolated SBF composition/layout/hash measurements. After a measured
-structured/Horner shrink, the evaluator-confirmed low single-transaction
-projection is still `1,415,268` CU. The named continuation is three-
-transaction split verification; see `docs/stage2-feasibility.md`.
+13 economic vectors replayed by both direct and six-limb lookup evaluators,
+two lookup-specific teeth vectors, a Plonky3-pinned Poseidon2-M31
+implementation, and isolated SBF composition/layout/hash measurements. The
+first structured projection was `1,415,268` CU. Cached circle powers,
+conjugate denominators,
+specialized tower arithmetic, and lazy dots reduce the measured frozen binary
+PCS to `714,111` CU. A fresh literal radix-4 q36/g32 proof measures `678,407`
+CU. The lookup semantic oracle plus fixed-width q36/k80 RLC project the full
+path to `1,041,944` CU, 29,056 below the strict slack ceiling. The LogUp proof
+and wide RLC are not integrated into one payment proof, so split verification
+remains the fallback; see `docs/stage2-feasibility.md` and
+`docs/solmath-zk-candidates.md`.
 
 ## What this is (and is not)
 
@@ -97,7 +104,7 @@ results/stage0,stage1/   raw artifacts backing every number quoted anywhere
 | --- | --- | --- |
 | Stage 0 | Consolidate the native WHIR-style M31 PCS substrate | **CLOSED/CONDITIONAL (historical)**: admitted q32/g32 as a hypothesis; Stage 1 has since retired it |
 | Stage 1 | Harden and budget the PCS soundness argument | **CLOSED/FROZEN**: q36/g32, v3 C2, relation enforcement, teeth tests, literal SBF measurement |
-| Stage 2 | Build the direct spend evaluator and statement layer | **IN PROGRESS / RULE CHANGE RECORDED**: evaluator and isolated probes complete; one-tx gate negative; split receipt seam implemented, real verifier integration pending |
+| Stage 2 | Build the direct spend evaluator and statement layer | **IN PROGRESS / CANDIDATE-GREEN PROJECTION**: direct + lookup evaluators complete; real radix-4 g32 PCS; projected 26.38% saving; LogUp/RLC/full-proof integration pending; split receipt retained |
 | Stage 3 | Add commitment and sumcheck/evaluation hiding | future |
 | Stage 4 | Split verifier crate seam and demo shielded pool | future |
 | Stage 5 | Freeze, devnet n=100 measurement, novelty re-check, writeup | future |
@@ -119,6 +126,11 @@ cargo run --release -p aspis-xtask -- stage2-evaluator # economic corpus + real 
 cargo run --release -p aspis-xtask -- stage2-composition-probe # naive + structured SBF bracket
 cargo run --release -p aspis-xtask -- stage2-layout-probe # k64/k80/k82 wide-layout delta
 cargo run --release -p aspis-xtask -- stage2-poseidon2-probe # direct software hash cost
+cargo run --release -p aspis-xtask -- stage2-zk-kernel-probe # field/tower/circle kernels + full PCS
+cargo run --release -p aspis-xtask -- stage2-wide-rlc-probe # correct q-by-k gamma-power RLC
+cargo run --release -p aspis-xtask -- stage2-merkle-arity-probe # binary vs radix-4 model
+cargo run --release -p aspis-xtask -- stage2-radix4-g16 # real binary/radix-4 C2 comparison
+cargo run --release -p aspis-xtask -- stage2-radix4-g32 # literal g32 proof + production SBF comparison
 cargo run --release -p aspis-xtask -- stage0-onchain       # full packaging matrix; slow
 ```
 

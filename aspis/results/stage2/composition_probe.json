@@ -1,24 +1,24 @@
 {
-  "generated_at_utc": "2026-07-10T14:13:35.592373+00:00",
+  "generated_at_utc": "2026-07-10T15:06:07.172496+00:00",
   "command": "cargo run --release -p aspis-xtask -- stage2-composition-probe",
   "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
   "repetitions": 5,
   "baseline_cu": [
-    2206,
-    2206,
-    2206,
-    2206,
-    2206
+    2250,
+    2250,
+    2250,
+    2250,
+    2250
   ],
-  "baseline_cu_mean": 2206.0,
+  "baseline_cu_mean": 2250.0,
   "frozen_k64_rlc_only_cu": [
-    52110,
-    52110,
-    52110,
-    52110,
-    52110
+    52154,
+    52154,
+    52154,
+    52154,
+    52154
   ],
-  "frozen_k64_rlc_only_cu_mean": 52110.0,
+  "frozen_k64_rlc_only_cu_mean": 52154.0,
   "pre_composition_projection_cu": 1175086,
   "transaction_target_cu": 1190000,
   "ten_percent_slack_maximum_cu": 1071000,
@@ -38,21 +38,21 @@
       "host_qm31_by_cm31_multiplications": 288,
       "host_additions_or_subtractions": 736,
       "simulation_cu": [
-        273972,
-        273972,
-        273972,
-        273972,
-        273972
+        274016,
+        274016,
+        274016,
+        274016,
+        274016
       ],
-      "simulation_cu_mean": 273972.0,
+      "simulation_cu_mean": 274016.0,
       "matching_rlc_only_cu": [
-        64752,
-        64752,
-        64752,
-        64752,
-        64752
+        64796,
+        64796,
+        64796,
+        64796,
+        64796
       ],
-      "matching_rlc_only_cu_mean": 64752.0,
+      "matching_rlc_only_cu_mean": 64796.0,
       "composition_incremental_cu_over_matching_rlc": 209220,
       "rlc_delta_from_frozen_k64_cu": 12642,
       "projected_total_cu": 1396948,
@@ -74,21 +74,21 @@
       "host_qm31_by_cm31_multiplications": 320,
       "host_additions_or_subtractions": 960,
       "simulation_cu": [
-        376855,
-        376855,
-        376855,
-        376855,
-        376855
+        376899,
+        376899,
+        376899,
+        376899,
+        376899
       ],
-      "simulation_cu_mean": 376855.0,
+      "simulation_cu_mean": 376899.0,
       "matching_rlc_only_cu": [
-        64752,
-        64752,
-        64752,
-        64752,
-        64752
+        64796,
+        64796,
+        64796,
+        64796,
+        64796
       ],
-      "matching_rlc_only_cu_mean": 64752.0,
+      "matching_rlc_only_cu_mean": 64796.0,
       "composition_incremental_cu_over_matching_rlc": 312103,
       "rlc_delta_from_frozen_k64_cu": 12642,
       "projected_total_cu": 1499831,
@@ -110,25 +110,61 @@
       "host_qm31_by_cm31_multiplications": 64,
       "host_additions_or_subtractions": 736,
       "simulation_cu": [
-        219393,
-        219393,
-        219393,
-        219393,
-        219393
+        211381,
+        211381,
+        211381,
+        211381,
+        211381
       ],
-      "simulation_cu_mean": 219393.0,
+      "simulation_cu_mean": 211381.0,
       "matching_rlc_only_cu": [
-        33931,
-        33931,
-        33931,
-        33931,
-        33931
+        34537,
+        34537,
+        34537,
+        34537,
+        34537
       ],
-      "matching_rlc_only_cu_mean": 33931.0,
-      "composition_incremental_cu_over_matching_rlc": 185462,
-      "rlc_delta_from_frozen_k64_cu": -18179,
-      "projected_total_cu": 1342369,
-      "headroom_vs_1_19m_cu": -152369,
+      "matching_rlc_only_cu_mean": 34537.0,
+      "composition_incremental_cu_over_matching_rlc": 176844,
+      "rlc_delta_from_frozen_k64_cu": -17617,
+      "projected_total_cu": 1334313,
+      "headroom_vs_1_19m_cu": -144313,
+      "meets_10_percent_slack": false
+    },
+    {
+      "name": "evaluator_low_lookup_range_optimized",
+      "kernel": "structured_horner",
+      "parameters": {
+        "opened_values": 80,
+        "poseidon_sbox_terms": 64,
+        "poseidon_linear_terms": 70,
+        "logup_degree3_terms": 2,
+        "range_bit_terms": 0,
+        "eq_variables": 10
+      },
+      "host_qm31_multiplications": 383,
+      "host_qm31_by_cm31_multiplications": 0,
+      "host_additions_or_subtractions": 515,
+      "simulation_cu": [
+        154812,
+        154812,
+        154812,
+        154812,
+        154812
+      ],
+      "simulation_cu_mean": 154812.0,
+      "matching_rlc_only_cu": [
+        34537,
+        34537,
+        34537,
+        34537,
+        34537
+      ],
+      "matching_rlc_only_cu_mean": 34537.0,
+      "composition_incremental_cu_over_matching_rlc": 120275,
+      "rlc_delta_from_frozen_k64_cu": -17617,
+      "projected_total_cu": 1277744,
+      "headroom_vs_1_19m_cu": -87744,
       "meets_10_percent_slack": false
     },
     {
@@ -146,21 +182,21 @@
       "host_qm31_by_cm31_multiplications": 576,
       "host_additions_or_subtractions": 1344,
       "simulation_cu": [
-        467073,
-        467073,
-        467073,
-        467073,
-        467073
+        467117,
+        467117,
+        467117,
+        467117,
+        467117
       ],
-      "simulation_cu_mean": 467073.0,
+      "simulation_cu_mean": 467117.0,
       "matching_rlc_only_cu": [
-        64752,
-        64752,
-        64752,
-        64752,
-        64752
+        64796,
+        64796,
+        64796,
+        64796,
+        64796
       ],
-      "matching_rlc_only_cu_mean": 64752.0,
+      "matching_rlc_only_cu_mean": 64796.0,
       "composition_incremental_cu_over_matching_rlc": 402321,
       "rlc_delta_from_frozen_k64_cu": 12642,
       "projected_total_cu": 1590049,
@@ -182,25 +218,25 @@
       "host_qm31_by_cm31_multiplications": 64,
       "host_additions_or_subtractions": 1056,
       "simulation_cu": [
-        254525,
-        254525,
-        254525,
-        254525,
-        254525
+        246693,
+        246693,
+        246693,
+        246693,
+        246693
       ],
-      "simulation_cu_mean": 254525.0,
+      "simulation_cu_mean": 246693.0,
       "matching_rlc_only_cu": [
-        33931,
-        33931,
-        33931,
-        33931,
-        33931
+        34537,
+        34537,
+        34537,
+        34537,
+        34537
       ],
-      "matching_rlc_only_cu_mean": 33931.0,
-      "composition_incremental_cu_over_matching_rlc": 220594,
-      "rlc_delta_from_frozen_k64_cu": -18179,
-      "projected_total_cu": 1377501,
-      "headroom_vs_1_19m_cu": -187501,
+      "matching_rlc_only_cu_mean": 34537.0,
+      "composition_incremental_cu_over_matching_rlc": 212156,
+      "rlc_delta_from_frozen_k64_cu": -17617,
+      "projected_total_cu": 1369625,
+      "headroom_vs_1_19m_cu": -179625,
       "meets_10_percent_slack": false
     },
     {
@@ -218,21 +254,21 @@
       "host_qm31_by_cm31_multiplications": 864,
       "host_additions_or_subtractions": 1960,
       "simulation_cu": [
-        664287,
-        664287,
-        664287,
-        664287,
-        664287
+        664331,
+        664331,
+        664331,
+        664331,
+        664331
       ],
-      "simulation_cu_mean": 664287.0,
+      "simulation_cu_mean": 664331.0,
       "matching_rlc_only_cu": [
-        66334,
-        66334,
-        66334,
-        66334,
-        66334
+        66378,
+        66378,
+        66378,
+        66378,
+        66378
       ],
-      "matching_rlc_only_cu_mean": 66334.0,
+      "matching_rlc_only_cu_mean": 66378.0,
       "composition_incremental_cu_over_matching_rlc": 597953,
       "rlc_delta_from_frozen_k64_cu": 14224,
       "projected_total_cu": 1787263,
@@ -244,6 +280,7 @@
     "Synthetic bracket only: runtime term counts are explicit and must be replaced/confirmed by the evaluator-derived layout.",
     "Composition deltas subtract a matching RLC-only run so the gamma RLC already represented in the frozen 201,114-CU layout allowance is not double-counted. Projected totals add the measured k64-to-k' RLC delta and composition-only delta to 1,175,086 CU.",
     "Wide-leaf hashing for k'=80 is not updated by this arithmetic-only probe; it is measured separately before a final product decision.",
+    "The lookup-range candidate replaces 64 Boolean terms with six 10-bit limbs, one additional LogUp relation, and six reconstruction terms. It is an isolated cost candidate, not yet a frozen statement rule.",
     "The 10% slack maximum is 1,071,000 CU. The frozen pre-composition projection already exceeds it by 104,086 CU, so no positive composition result can pass that gate without a named reclaim or rule change."
   ]
 }

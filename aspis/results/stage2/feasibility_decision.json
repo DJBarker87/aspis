@@ -1,75 +1,109 @@
 {
-  "generated_at_utc": "2026-07-10T14:15:05Z",
-  "status": "single_transaction_negative_split_verification_triggered",
+  "generated_at_utc": "2026-07-10T15:52:47Z",
+  "status": "one_transaction_projection_passes_strict_slack_radix4_real_pending_statement_integration",
   "sources": {
     "stage1_gate": "../stage1/gate_close.json",
     "evaluator": "evaluator_corpus.json",
     "composition": "composition_probe.json",
     "layout": "layout_probe.json",
-    "poseidon2": "poseidon2_probe.json"
+    "poseidon2": "poseidon2_probe.json",
+    "zk_kernels": "zk_kernel_probe.json",
+    "wide_rlc": "wide_rlc_probe.json",
+    "merkle_arity": "merkle_arity_probe.json",
+    "radix4_g16": "radix4_g16.json",
+    "radix4_g32": "radix4_g32.json"
+  },
+  "historical_checkpoint": {
+    "status": "single_transaction_negative_split_verification_triggered",
+    "projection_cu": 1415268,
+    "reason": "The first structured composition shrink still exceeded the 1.4M cap. The split receipt seam remains a valid fallback, but later measured cross-layer math kernels supersede that feasibility projection."
   },
   "evaluator": {
     "economic_vectors": 13,
     "all_passed": true,
-    "candidate_k_prime": 80,
+    "candidate_raw_columns": 80,
     "max_poseidon_sbox_terms_per_active_row": 64,
     "poseidon_linear_term_bracket": [64, 128],
-    "logup_degree3_terms": 1,
-    "range_bit_terms": 64,
+    "current_wiring_logup_terms": 1,
+    "current_boolean_range_terms": 64,
+    "candidate_lookup_logup_terms": 2,
+    "candidate_lookup_range_terms": 0,
+    "lookup_semantic_replay_vectors": 13,
+    "lookup_specific_attack_vectors": 2,
+    "lookup_semantic_replay_all_passed": true,
+    "logup_constraint_vectors": 6,
+    "logup_local_and_total_claim_tests_passed": true,
     "eq_variables": 10
   },
-  "measured_deltas_cu": {
-    "k80_wide_leaf_and_rlc_delta_over_frozen_k64": 54720,
-    "evaluator_low_composition_naive": 312103,
-    "evaluator_low_composition_structured": 185462,
-    "explicit_shrink_saved": 126641,
-    "realistic_composition_structured": 220594,
-    "matching_k80_rlc_naive": 64752,
-    "matching_k80_rlc_horner": 33931,
-    "matching_rlc_horner_saved": 30821
+  "measured_math_kernels_cu": {
+    "frozen_stage1_pcs": 943972,
+    "optimized_binary_pcs": 714111,
+    "pcs_saved": 229861,
+    "pcs_saved_percent": 24.35,
+    "m31_inverse_software_per_call": 1226.47,
+    "m31_inverse_syscall_per_call": 346.97,
+    "qm31_square_generic_per_call": 360.93,
+    "qm31_square_specialized_per_call": 291.54,
+    "poseidon2_canonical_per_permutation": 24047.75,
+    "poseidon2_lazy_m31_per_permutation": 22705.25,
+    "poseidon2_depth20_saved": 66830,
+    "wide_leaf_k80_q36": 11231,
+    "correct_wide_rlc_k80_q36_precomputed_powers": 361963,
+    "correct_wide_rlc_k80_q36_lazy_dot4": 236170,
+    "correct_wide_rlc_k80_q36_outer_lazy": 220386,
+    "correct_wide_rlc_k80_q36_fixed80_outer_lazy": 202031,
+    "correct_wide_rlc_saved": 159932
   },
-  "software_poseidon2_sbf": {
-    "incremental_cu_per_permutation": 24049,
-    "depth20_49_permutations_cu": 1179744,
-    "depth20_accepted": true,
-    "depth32_73_permutations_accepted": false,
-    "depth32_failure": "exceeded 1.4M CU"
+  "measured_statement_candidates_cu": {
+    "boolean_range_composition": 176844,
+    "lookup_range_composition": 120275,
+    "lookup_range_saved": 56569,
+    "lookup_shape": "six 10-bit limbs, one additional fixed-table LogUp relation, six reconstruction terms",
+    "radix4_modeled_binary_nodes": 172482,
+    "radix4_modeled_nodes": 118754,
+    "radix4_modeled_saved": 53728,
+    "radix4_g16_binary_pcs": 734235,
+    "radix4_g16_pcs": 657648,
+    "radix4_g16_saved": 76587,
+    "radix4_g32_binary_pcs": 714111,
+    "radix4_g32_pcs": 678407,
+    "radix4_g32_saved": 35704,
+    "radix4_g32_proof_bytes_delta": 5056,
+    "radix4_corruption_rejected_host_and_sbf": true
+  },
+  "deprecated_measurement": {
+    "field": "k80_wide_leaf_and_rlc_delta_over_frozen_k64",
+    "old_value_cu": 54720,
+    "reason": "The historical layout loop multiplied every column by the same gamma. It is not a sound gamma-power RLC and is retained only as provenance; wide_rlc_probe.json replaces it."
   },
   "single_transaction_projection_cu": {
-    "frozen_pre_composition_k64": 1175086,
-    "evaluator_low_after_structured_shrink": 1415268,
-    "realistic_after_structured_shrink": 1450400,
-    "target": 1190000,
+    "formula_math_only": "optimized_binary_pcs + k80_leaf + fixed80_outer_lazy_rlc + boolean_range_composition + statement_sumcheck_allowance",
+    "math_only": 1134217,
+    "formula_lookup_candidate": "math_only - boolean_range_composition + lookup_range_composition",
+    "with_lookup_range": 1077648,
+    "formula_strict_candidate": "measured_radix4_g32_pcs + k80_leaf + fixed80_outer_lazy_rlc + lookup_range_composition + statement_sumcheck_allowance",
+    "with_lookup_and_radix4": 1041944,
+    "headline_target": 1190000,
+    "ten_percent_slack_maximum": 1071000,
     "absolute_solana_cap": 1400000,
-    "evaluator_low_over_target": 225268,
-    "evaluator_low_over_absolute_cap": 15268,
-    "realistic_over_target": 260400,
-    "realistic_over_absolute_cap": 50400
+    "strict_candidate_headroom_vs_headline": 148056,
+    "strict_candidate_headroom_vs_ten_percent_slack": 29056,
+    "strict_candidate_headroom_vs_absolute_cap": 358056,
+    "saved_vs_historical_checkpoint": 373324,
+    "saved_vs_historical_checkpoint_percent": 26.38
   },
   "gate_decision": {
-    "ten_percent_slack_waiver_sufficient": false,
-    "reason": "The optimized evaluator-low projection exceeds the target and even the absolute cap; waiving only the 10% slack cannot make one transaction feasible.",
-    "named_exit": "split_verification",
-    "planned_transactions": 3,
-    "headline_change": "Any future positive claim must say verification and spend finalization complete across three transactions, not in one transaction."
+    "projection_status": "candidate_green",
+    "protocol_gate_status": "open",
+    "product_gate_status": "red_pending_logup_wide_rlc_and_integrated_statement_proof",
+    "reason": "The literal q36/g32 radix-4 PCS proof now verifies on SBF; the 10-bit lookup evaluator replays every economic attack; and the LogUp local relation plus total-sum claim have a six-vector teeth corpus. The projection is below the strict 1.071M ceiling, but the LogUp columns and fixed-width q36/k80 RLC are not yet integrated into one payment proof.",
+    "split_fallback": "retained_not_currently_forced",
+    "headline": "No one-transaction product claim until a real radix-4 proof with the LogUp lookup and fixed-width q36/k80 RLC verifies on SBF below the stated gate."
   },
-  "split_plan": [
-    {
-      "transaction": 1,
-      "role": "statement reduction",
-      "output": "A program-owned receipt binding the statement digest, C1/C2 roots, terminal point, claimed main/helper evaluations, gamma-combined claim, proof/session hash, authority, and expiry."
-    },
-    {
-      "transaction": 2,
-      "role": "wide PCS verification",
-      "output": "The same receipt is advanced only if the v3 PCS verifies the exact commitment roots and combined claim recorded by transaction 1."
-    },
-    {
-      "transaction": 3,
-      "role": "pool finalization",
-      "output": "Consume the verified receipt, recheck session/expiry/public binding, reject an existing nullifier, insert the new nullifier/output commitment, and close the receipt."
-    }
+  "next_measurements": [
+    "Integrate the tested fixed-table LogUp main/helper columns and sum(h)=0 claim into the C1/C2 statement proof.",
+    "Integrate qm31_power_table::<80> plus the fixed-width outer-lazy dot into the real wide PCS parser rather than adding its isolated total arithmetically.",
+    "Generate the real statement proof with radix-4 commitments and run the complete SBF transaction five times, including economic and proof-corruption attacks."
   ],
-  "next_measurement": "Implement the receipt state machine and integrate the Horner gamma-RLC into the real wide PCS path; each verification transaction must be measured independently below its stated limit.",
-  "caveat": "The composition and k80 layout probes are isolated SBF measurements tied to the evaluator-derived candidate shape, not an integrated statement proof. They are sufficient to reject the current one-transaction target after the required explicit shrink attempt; they are not a positive proof-system result."
+  "caveat": "The 678,407-CU radix-4 result is a real q36/g32 two-phase PCS verification with fresh roots, grinding nonce, queries, and proof bytes. The fixed-width wide RLC and lookup-range composition remain isolated SBF measurements, and the lookup currently exists as a no-proof semantic oracle. Their sum is a feasibility projection, not an end-to-end payment proof or a closed product gate."
 }
