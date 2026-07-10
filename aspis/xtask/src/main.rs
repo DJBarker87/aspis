@@ -208,8 +208,20 @@ fn main() -> Result<()> {
             eprintln!("stage2-radix4-g32: wrote {}", path.display());
             Ok(())
         }
+        Some("stage2-variance-g16") => {
+            let summary = onchain::run_stage2_variance_g16()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("variance_g16.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!(
+                "stage2-variance-g16: criterion_passes={}; wrote {}",
+                summary.criterion_passes,
+                path.display()
+            );
+            Ok(())
+        }
         other => bail!(
-            "usage: cargo run -p aspis-xtask -- stage0-host | stage0-onchain | stage0-onchain-gate | stage0-onchain-g32 | stage0-onchain-layout-target | stage0-onchain-profile | stage0-layout-sweep | stage0-transcript-kat | stage1-soundness-pin | stage1-onchain-hardening | stage2-evaluator | stage2-composition-probe | stage2-layout-probe | stage2-poseidon2-probe | stage2-zk-kernel-probe | stage2-wide-rlc-probe | stage2-merkle-arity-probe | stage2-radix4-g16 | stage2-radix4-g32 (got {:?})",
+            "usage: cargo run -p aspis-xtask -- stage0-host | stage0-onchain | stage0-onchain-gate | stage0-onchain-g32 | stage0-onchain-layout-target | stage0-onchain-profile | stage0-layout-sweep | stage0-transcript-kat | stage1-soundness-pin | stage1-onchain-hardening | stage2-evaluator | stage2-composition-probe | stage2-layout-probe | stage2-poseidon2-probe | stage2-zk-kernel-probe | stage2-wide-rlc-probe | stage2-merkle-arity-probe | stage2-radix4-g16 | stage2-radix4-g32 | stage2-variance-g16 (got {:?})",
             other
         ),
     }

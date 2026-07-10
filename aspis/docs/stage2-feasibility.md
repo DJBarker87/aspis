@@ -37,6 +37,15 @@ not wired into the PCS yet.
 
 All SBF runs use Agave 2.3.0 and repeat five times identically.
 
+Methodology note: `Verify` semantics changed at the kernel-integration
+commit. The production `Verify` instruction now selects the optimized
+cached-domain/conjugate-denominator path; the previous software path
+survives as `VerifyLegacySoftware`, and `VerifyFast` is a wire-compatible
+alias of `Verify`. Every before/after CU comparison must therefore name the
+instruction semantics it measured. The 943,972 -> 714,111 row holds the
+proof bytes fixed and changes only the verifier implementation; the
+`verify_cu` fields in the radix-4 artifacts record production `Verify`.
+
 | kernel/system | before CU | after CU | saved |
 | --- | ---: | ---: | ---: |
 | frozen q36/g32 PCS verifier, same 21,364-byte proof | 943,972 | **714,111** | **229,861 (24.35%)** |
@@ -104,6 +113,41 @@ integrated PCS change:
    calls. The real g16 comparison saves 76,587 CU. The literal g32 result saves
    35,704 CU because its transcript-derived query collisions/frontier differ;
    the ledger uses the g32 number, not the friendlier model or g16 proxy.
+
+## Transcript-draw variance pre-registration
+
+The 29,056-CU strict headroom is a single-transcript number. The artifacts
+already show material draw-to-draw movement at fixed verifier code (the g16
+binary proof measures 734,235 CU where the g32 binary proof measures 714,111;
+the radix-4 saving swings 76,587 at g16 against 35,704 at g32), so until a
+multi-seed run exists the honest sentence is: **29K headroom on one
+transcript, with observed cross-draw movement of roughly 20K**.
+
+The decider is `cargo run --release -p aspis-xtask -- stage2-variance-g16`,
+and its acceptance criterion is pre-registered here, before any multi-seed
+data exists:
+
+> Let R = max - min of production `Verify` CU for the radix-4
+> minimal-subtree variant over 16 fresh transcript draws (seed s in 1..=16;
+> statement digest seed s, coefficient seed s) at fixed shape
+> `capacity_lr10_q36_g16` with RawFibers and synthetic C2. The strict
+> candidate stays green only if `1,041,944 + R <= 1,071,000`. The single
+> measured g32 radix-4 draw (678,407 CU) may sit anywhere in its own draw
+> distribution, including at its minimum, so the full observed fixed-shape
+> range bounds a worst-case redraw under a stated g16-to-g32
+> spread-transfer assumption: the query-index and frontier-collision
+> mechanism is identical, and grinding bits enter only as a header byte and
+> a threshold. `mean + 2*sigma` and the binary-mode spread are reported as
+> secondary diagnostics, not binding. If the criterion fails,
+> `projection_status` downgrades from `candidate_green` to
+> `variance_conditional` and the failing margin is recorded in
+> `feasibility_decision.json` before any integration nonce is ground.
+
+Status: **criterion registered; run pending.** g16 is used because sixteen
+fresh 16-bit grinds are affordable where sixteen fresh 32-bit nonce searches
+are not; the transfer of the observed spread to the g32 shape is an
+assumption named inside the criterion, and the integrated g32 payment proof
+remains the final word.
 
 ## Projection ledger
 
