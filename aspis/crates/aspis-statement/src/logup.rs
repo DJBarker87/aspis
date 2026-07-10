@@ -111,6 +111,52 @@ pub fn verify_logup_constraints(
     Ok(())
 }
 
+/// Teeth-only attack constructor for the canonical challenge order.
+///
+/// If the consumer multiplicity column could be committed after `chi`, the
+/// adversary knows `chi` when choosing multiplicities and cancels one
+/// out-of-table producer pole exactly: `sum_v m_v / (chi - v) = 1 /
+/// (chi - w)` is four M31-linear equations in the four unknowns
+/// `m_0..m_3`, generically solvable by elimination. Every local relation
+/// and `sum(h) = 0` then accept a non-member. The canonical order
+/// (multiplicity column in C1, before `chi` exists) removes this freedom;
+/// the below-characteristic condition only ever applies to the
+/// producer-side integer counts, never to committed consumer weights.
+/// Returns `None` on a pole hit or singular basis, impossible for a
+/// challenge sampled outside the base field.
+pub fn forge_post_chi_multiplicities(chi: QM31, nonmember: QM31) -> Option<[M31; 4]> {
+    let coords = |value: QM31| [value.c0.a, value.c0.b, value.c1.a, value.c1.b];
+    let target = coords(chi.sub(nonmember).try_inv()?);
+    let mut matrix = [[M31::ZERO; 5]; 4];
+    for column in 0..4 {
+        let basis = coords(chi.sub(lift(M31(column as u32))).try_inv()?);
+        for row in 0..4 {
+            matrix[row][column] = basis[row];
+        }
+    }
+    for row in 0..4 {
+        matrix[row][4] = target[row];
+    }
+    for pivot in 0..4 {
+        let pivot_row = (pivot..4).find(|&row| matrix[row][pivot] != M31::ZERO)?;
+        matrix.swap(pivot, pivot_row);
+        let scale = matrix[pivot][pivot].inv();
+        for column in pivot..5 {
+            matrix[pivot][column] = matrix[pivot][column].mul(scale);
+        }
+        for row in 0..4 {
+            if row != pivot && matrix[row][pivot] != M31::ZERO {
+                let factor = matrix[row][pivot];
+                for column in pivot..5 {
+                    matrix[row][column] =
+                        matrix[row][column].sub(matrix[pivot][column].mul(factor));
+                }
+            }
+        }
+    }
+    Some([matrix[0][4], matrix[1][4], matrix[2][4], matrix[3][4]])
+}
+
 /// Build the C1-side rows for an unlimited-multiplicity lookup into the fixed
 /// M31 table `[0, 1024)`. Query values occupy the first `queries.len()` rows;
 /// table multiplicities occupy all 1024 consumer rows.
@@ -223,6 +269,27 @@ mod tests {
                 side: LogUpSide::Producer
             })
         );
+    }
+
+    #[test]
+    fn post_chi_multiplicities_defeat_the_lookup_without_canonical_order() {
+        // Attack demonstration, not a property of the argument: with the
+        // multiplicity column chosen after chi, four fractional
+        // multiplicities cancel an out-of-table producer and every check
+        // accepts. The canonical order commits multiplicities in C1 before
+        // chi exists, which is exactly what makes this unbuildable.
+        let chi = challenge();
+        let nonmember = lift(M31(1024));
+        let mut rows = build_10bit_range_logup_rows(&[]).unwrap();
+        rows[0].producer_value = nonmember;
+        rows[0].producer_weight = M31::ONE;
+        let forged = forge_post_chi_multiplicities(chi, nonmember).unwrap();
+        assert!(forged.iter().any(|weight| *weight != M31::ZERO));
+        for (row, multiplicity) in forged.into_iter().enumerate() {
+            rows[row].consumer_weight = multiplicity;
+        }
+        let helper = build_logup_helper(&rows, chi).unwrap();
+        assert_eq!(verify_logup_constraints(&rows, &helper, chi), Ok(()));
     }
 
     #[test]

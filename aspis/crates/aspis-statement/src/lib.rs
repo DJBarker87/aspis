@@ -21,7 +21,8 @@ pub use composition::{
 };
 pub use logup::{
     build_10bit_range_logup_rows, build_logup_helper, compress_tagged_tuple,
-    verify_logup_constraints, LogUpError, LogUpMainRow, LogUpSide, RANGE_TABLE_SIZE,
+    forge_post_chi_multiplicities, verify_logup_constraints, LogUpError, LogUpMainRow, LogUpSide,
+    RANGE_TABLE_SIZE,
 };
 pub use poseidon2::{hash_fields, permute, Digest, DIGEST_ELEMS, POSEIDON2_WIDTH, RATE};
 pub use spend::{
