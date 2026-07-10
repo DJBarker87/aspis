@@ -136,6 +136,8 @@ cargo run --release -p aspis-xtask -- stage2-merkle-arity-probe # binary vs radi
 cargo run --release -p aspis-xtask -- stage2-radix4-g16 # real binary/radix-4 C2 comparison
 cargo run --release -p aspis-xtask -- stage2-radix4-g32 # literal g32 proof + production SBF comparison
 cargo run --release -p aspis-xtask -- stage2-variance-g16 # 16-seed transcript-draw variance vs pre-registered criterion
+cargo run --release -p aspis-xtask -- stage2-sumcheck-probe # measured replacement for the 30K statement-sumcheck allowance
+cargo run --release -p aspis-xtask -- stage2-query-trade-g16 # 8-seed q36/q34/q32 verifier cost for the query/grinding trade
 cargo run --release -p aspis-xtask -- stage0-onchain       # full packaging matrix; slow
 ```
 

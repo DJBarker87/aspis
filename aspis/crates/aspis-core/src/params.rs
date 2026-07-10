@@ -220,6 +220,20 @@ pub const PROFILE_CAPACITY_LR10_Q36_G32: Profile = Profile {
         "conjectured (capacity); external/OOD relations and Stage 1 C2 plumbing enforced",
 };
 
+/// Query/grinding-trade diagnostic (shrink hunt, `2026-07-10`): q34 at g16
+/// for multi-seed verifier-cost measurement of the q36 -> q34 step. The
+/// sound production pairing holds 2q + g = 104 (q34/g36); g16 here is the
+/// affordable measurement proxy, exactly as in the variance study.
+pub const PROFILE_CAPACITY_LR10_Q34_G16: Profile = Profile {
+    id: 9,
+    name: "capacity_lr10_q34_g16",
+    log_rows: 10,
+    log_blowup: 2,
+    query_count: 34,
+    grinding_bits: 16,
+    soundness_label: "heuristic diagnostic (query/grinding trade measurement; production pairing is q34/g36)",
+};
+
 pub const PROFILES: &[Profile] = &[
     PROFILE_CAPACITY,
     PROFILE_JOHNSON,
@@ -230,6 +244,7 @@ pub const PROFILES: &[Profile] = &[
     PROFILE_CAPACITY_LR10_Q36_G16,
     PROFILE_CAPACITY_LR10_Q32_G16,
     PROFILE_CAPACITY_LR10_Q36_G32,
+    PROFILE_CAPACITY_LR10_Q34_G16,
 ];
 
 pub fn profile_by_id(id: u8) -> Option<&'static Profile> {
