@@ -7,11 +7,36 @@
   "ruled_profile": "capacity_lr10_q36_g32",
   "security": {
     "headline_bits": 100,
-    "worst_case_capacity_conjectured_bits": 102.9752,
-    "margin_bits": 2.9752,
+    "capacity_conjectured_bits_at_pinned_t1": 102.9752,
+    "margin_bits_at_pinned_t1": 2.9752,
     "proven_johnson_floor_bits": 65.5,
     "algebraic_union_bits": 103.9508,
+    "t1_unique_shaped_union_bits": 111.59060906117507,
     "t2_ood_union_bits": 103.9875,
+    "non_t2_algebraic_residue_bits": 109.2649,
+    "t1_pin": {
+      "artifact": "upstream_soundness_pin.json",
+      "upstream_repository": "https://github.com/WizardOfMenlo/whir",
+      "upstream_commit": "10aa7d0bae3663fd149b6b88b6eff2209b867970",
+      "interpretation": "The unique-shaped constant is pinned from upstream code but its use at the capacity radius remains an explicit Aspis conjecture clause."
+    },
+    "sensitivity_if_t1_union_were_106_bits": {
+      "algebraic_union_bits": 103.6444,
+      "total_capacity_conjectured_bits": 102.8113,
+      "margin_bits": 2.8113,
+      "status": "sensitivity_only; superseded by the pinned 111.590609-bit T1 constant"
+    },
+    "ood_sampling_decision": {
+      "samples_per_round": 1,
+      "status": "frozen_for_v3",
+      "reason": "The pinned s=1 build clears t=100 by 2.9752 bits, while the product projection has only 14,914 CU of headroom. A second sample would not improve the 65.5-bit proven floor and would force another envelope/KAT/proof re-pin plus nonzero transcript and relation-weight work before the product decider is measured.",
+      "s2_sensitivity_not_implemented": {
+        "t2_union_bits": 218.3031,
+        "total_capacity_conjectured_bits": 103.9630,
+        "headline_gain_bits": 0.9878,
+        "revisit_trigger": "Revisit only after a material CU reclaim or if the pinned T1/list conjecture changes."
+      }
+    },
     "source": "../../docs/aspis-soundness-note.md"
   },
   "measured_pcs": {
@@ -39,7 +64,13 @@
   },
   "protocol_evidence": {
     "envelope_version": 3,
-    "canonical_prefix": "C1 -> (lambda, chi) -> C2 -> claimed evaluations -> gamma",
+    "implemented_pcs_prefix_elided_statement_layer": "C1 -> (lambda, chi) -> C2 -> claimed evaluations -> gamma -> PCS OOD/relation/fold transcript",
+    "normative_full_protocol_order": "C1 -> (lambda, chi) -> C2 -> mu -> r -> sumcheck messages/challenges -> claimed main/helper evaluations -> gamma -> PCS opening",
+    "c2_merkle_mode": "minimal_subtree",
+    "c2_uses_separate_commitment_tree": true,
+    "c2_uses_individual_paths": false,
+    "proof_byte_delta_vs_immediate_pre_c2_interleaved_build": 6148,
+    "proof_byte_delta_vs_earlier_binding_only_build": 6532,
     "ordering_vectors": [
       "chi_before_c1",
       "gamma_before_claimed_evaluations",
