@@ -415,7 +415,14 @@ claim boundary and soundness labels present in README and paper.
 2. Poseidon2-M31 instance: width, round numbers, digest limbs, and source of
    parameter analysis.
 3. Soundness regime targeted for the headline claim. **Decided `2026-07-04`:
-   headline frozen at `t = 100` bits, capacity-conjectured.** Rationale (the
+   headline frozen at `t = 100` bits, capacity-conjectured. SUPERSEDED
+   `2026-07-10` (soundness-note §9, `stage1-theta-rederivation.md`): the
+   up-to-capacity conjecture family was refuted (ePrint 2025/2046,
+   2026/782); under the adopted revised conjecture (S-two ePrint 2026/532
+   App. A.5) the ruling is headline `t = 90` stated / `93.89` computed at
+   q36/g32/s=2, refutation disclosed with every quotation (four-element
+   rule); the `~102.98`/`L <= 40` arithmetic below is historical.**
+   Original rationale (the
    field-ceiling lemma, soundness-note §3): `|QM31| = p^4 ~ 2^124`, and every
    algebraic soundness term in the system — proximity-gathering terms per fold
    round, OOD binding, sumcheck Schwartz-Zippel, `gamma`-RLC batching, the
@@ -429,7 +436,8 @@ claim boundary and soundness labels present in README and paper.
    M31 circle-STARK ecosystem targeting `~96-100` bits). Changing field towers
    is a different project. The `~124`-bit field ceiling and the `~124`-bit
    8-limb Poseidon2 digest land the whole system on one coherent
-   `~100-bit / conjectured / capacity` label with no weakest-link asymmetry.
+   conjectured label with no weakest-link asymmetry (the direction of this
+   sentence survives the refutation; the specific `100` does not).
 4. `proof_carried_round_local` in or out of the frozen profile. Stage 0
    measurement says **out** for native v0.
 5. Nullifier key schedule; cite a standard shape rather than inventing one.

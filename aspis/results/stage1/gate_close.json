@@ -1,7 +1,13 @@
 {
   "generated_at_utc": "2026-07-10T13:31:05.217938+00:00",
+  "superseded_2026_07_10": {
+    "event": "Stage 1 REOPENED: the up-to-capacity conjecture family behind this artifact's security block was refuted (Crites-Stewart ePrint 2025/2046; KKH ePrint 2026/782). Every security number below is HISTORICAL: headline_bits 100, the 102.9752/2.9752 capacity-conjectured figures, the s=1 OOD decision and its s2 sensitivity (whose value changed from +0.99 to +3.55 bits under the revised accounting, flipping the decision to s=2 ADOPTED).",
+    "current_record": "docs/aspis-soundness-note.md section 9 and docs/stage1-theta-rederivation.md",
+    "ratified_headline": "t=90 stated / 93.89 computed / q36 g32 s=2, revised-conjectured (S-two ePrint 2026/532 App. A.5); proven floor 65.5 unchanged (preliminary 67.5-68 pending re-pin)",
+    "quotation_rule": "four elements always: stated headline + computed bits + proven floor + the revised-conjecture citation"
+  },
   "status": {
-    "stage1_pcs_protocol_gate": "closed",
+    "stage1_pcs_protocol_gate": "closed_then_reopened_2026_07_10_see_superseded_annotation",
     "stage2_product_feasibility_gate": "red_pending_direct_measurement"
   },
   "ruled_profile": "capacity_lr10_q36_g32",

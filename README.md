@@ -27,8 +27,9 @@ measured-arithmetic shrink hunt then re-froze the layout at r=2/k'=51
 (central 974,112 CU). Stage 1 has since been REOPENED: the up-to-capacity
 conjecture family was disproved (ePrint 2025/2046, 2026/782; no known
 attack at these parameters), the revised S-two conjecture is adopted, and
-the old t=100 headline reads ~90-93 bits at q36 pending a headline ruling;
-the ~65.5-bit proven floor is untouched. The
+the headline is RULED at t=90 stated / 93.89 computed (q36/g32/s=2,
+refutation disclosed with every quotation); the ~65.5-bit proven floor is
+untouched. The
 product gate stays open until the LogUp relation and wide RLC are integrated
 into one real payment proof. The measured reusable field/RLC/Merkle kernels have also been
 extracted into SolMath's standalone `solmath-zk` crate at commit `682b5d4`.
