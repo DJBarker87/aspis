@@ -9,7 +9,7 @@ use anyhow::Result;
 use serde::Serialize;
 
 use aspis_core::params::{PROFILES, PROFILE_CAPACITY, PROFILE_CAPACITY_LR14, PROFILE_JOHNSON};
-use aspis_core::proof::HEADER_LEN;
+use aspis_core::proof::{transcript_records_len, Header, HEADER_LEN, OOD_VALUE_LEN, ROOT_LEN};
 use aspis_core::{verify, FoldPayload, MerkleMode, Profile, VerifyError};
 use aspis_prover::{prove, seeded_coeffs, ProveOptions, HOST_HASH};
 
@@ -104,10 +104,19 @@ pub fn corruption_suite(
     digest: &[u8; 32],
 ) -> Vec<CorruptionResult> {
     let num_rounds = profile.num_rounds() as usize;
+    let header = Header::parse(proof).expect("known-good proof header");
     let roots_off = HEADER_LEN;
-    let final_off = roots_off + num_rounds * 32;
+    let final_off = roots_off + transcript_records_len(num_rounds, header.flags);
     let nonce_off = final_off + profile.final_poly_len() as usize * 16;
     let body_off = nonce_off + 8;
+    let first_ood_off = roots_off
+        + ROOT_LEN
+        + if header.has_second_phase() {
+            ROOT_LEN
+        } else {
+            0
+        }
+        + if header.has_claim() { OOD_VALUE_LEN } else { 0 };
 
     let mut results = Vec::new();
 
@@ -119,6 +128,30 @@ pub fn corruption_suite(
         roots_off + 5,
         digest,
     );
+    // Stage 1: transcript-bound per-round OOD value corruption.
+    flip_corruption(
+        &mut results,
+        "ood_value_corruption",
+        proof,
+        first_ood_off,
+        digest,
+    );
+    flip_corruption(
+        &mut results,
+        "sumcheck_corruption",
+        proof,
+        first_ood_off + OOD_VALUE_LEN,
+        digest,
+    );
+    if header.has_second_phase() {
+        flip_corruption(
+            &mut results,
+            "second_phase_root_corruption",
+            proof,
+            roots_off + ROOT_LEN + 5,
+            digest,
+        );
+    }
     // 2. fold payload (opened fiber value) corruption
     flip_corruption(
         &mut results,

@@ -83,7 +83,9 @@ pub fn run_real_fri_verify(
     let acceptable = AcceptableOptions::MinConjecturedSecurity(127);
     let public_inputs = RealFriPublicInputs {
         seed: BaseElement::from(seed_u64),
-        inc: BaseElement::from(inc_u64),
+        // Keep the measurement verifier byte-for-byte compatible with the patched prover and
+        // the on-chain verifier for the otherwise-degenerate zero-increment digest.
+        inc: BaseElement::from(inc_u64.max(1)),
     };
 
     let mut digest = 0_u32;

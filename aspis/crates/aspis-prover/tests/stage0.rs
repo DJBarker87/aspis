@@ -6,7 +6,7 @@
 //! half of the accept/reject parity gate item.
 
 use aspis_core::params::{PROFILE_CAPACITY, PROFILE_CAPACITY_LR14, PROFILE_JOHNSON};
-use aspis_core::proof::HEADER_LEN;
+use aspis_core::proof::{HEADER_LEN, ROUND_COMMITMENT_LEN};
 use aspis_core::{verify, FoldPayload, MerkleMode, Profile, VerifyError};
 use aspis_prover::{prove, seeded_coeffs, ProveOptions, HOST_HASH};
 
@@ -100,7 +100,7 @@ fn corruption_class_2_fold_payload() {
         MerkleMode::MinimalSubtree,
     );
     let body = HEADER_LEN
-        + profile.num_rounds() as usize * 32
+        + profile.num_rounds() as usize * ROUND_COMMITMENT_LEN
         + profile.final_poly_len() as usize * 16
         + 8;
     // inside layer 0's first opened fiber (skip the u16 unique count)
@@ -117,7 +117,7 @@ fn corruption_class_3_final_poly() {
         FoldPayload::RawFibers,
         MerkleMode::MinimalSubtree,
     );
-    let final_off = HEADER_LEN + profile.num_rounds() as usize * 32;
+    let final_off = HEADER_LEN + profile.num_rounds() as usize * ROUND_COMMITMENT_LEN;
     let bad = corrupt_at(&proof, final_off + 1);
     assert!(verify(&bad, &d, HOST_HASH).is_err());
 }
@@ -131,8 +131,9 @@ fn corruption_class_4_grinding() {
         FoldPayload::RawFibers,
         MerkleMode::MinimalSubtree,
     );
-    let nonce_off =
-        HEADER_LEN + profile.num_rounds() as usize * 32 + profile.final_poly_len() as usize * 16;
+    let nonce_off = HEADER_LEN
+        + profile.num_rounds() as usize * ROUND_COMMITMENT_LEN
+        + profile.final_poly_len() as usize * 16;
     let bad = corrupt_at(&proof, nonce_off);
     let outcome = verify(&bad, &d, HOST_HASH);
     assert!(matches!(
@@ -217,7 +218,7 @@ fn degree_overflow_rejects() {
         MerkleMode::MinimalSubtree,
     );
     // strip the last final-poly coefficient and splice the sections back
-    let final_off = HEADER_LEN + profile.num_rounds() as usize * 32;
+    let final_off = HEADER_LEN + profile.num_rounds() as usize * ROUND_COMMITMENT_LEN;
     let final_len = profile.final_poly_len() as usize * 16;
     let mut shortened = Vec::new();
     shortened.extend_from_slice(&proof[..final_off]);

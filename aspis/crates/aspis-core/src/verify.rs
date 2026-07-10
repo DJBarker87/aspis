@@ -1,12 +1,15 @@
 //! The on-chain verifier logic (also the host reference — byte-exact shared
 //! code path).
 //!
-//! What this proves, stated precisely (v0, pre-Stage-1): transcript-bound
+//! What this proves, stated precisely (Stage 1 OOD-binding revision): transcript-bound
 //! local fold consistency of a committed evaluation table down to an explicit
-//! final polynomial, with grinding, against a bound statement digest. It is
-//! NOT yet the full WHIR paper path: no out-of-domain samples, no
-//! sumcheck/fold interleaving, no externally supplied evaluation claim. The
-//! soundness delta is characterized and closed in Stage 1.
+//! final polynomial, with grinding, against a bound statement digest, plus
+//! transcript-derived per-round OOD points and an interleaved degree-6
+//! sumcheck that enforces the OOD and external evaluation relations against
+//! the explicit final coefficients. Version 3 also authenticates a
+//! post-challenge C2 and folds its gamma-RLC with C1. It is not paper WHIR;
+//! the soundness note states the exact assumption and remaining statement
+//! layer delta.
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -17,8 +20,14 @@ use crate::params::{
     profile_by_id, FoldPayload, MerkleMode, Profile, CIRCLE_GEN, CIRCLE_LOG_ORDER,
     FINAL_POLY_LOG_LEN, FOLD_VARS,
 };
-use crate::proof::{fiber_value_bytes, Cursor, Header, HEADER_LEN};
-use crate::transcript::{label, HashFn, Transcript};
+use crate::proof::{
+    fiber_value_bytes, Cursor, Header, HEADER_LEN, OOD_VALUE_LEN, SECOND_PHASE_LAYER_TAG,
+};
+use crate::sumcheck::{
+    boundary_sum as sumcheck_boundary, evaluate as evaluate_sumcheck, SumcheckPolynomial,
+    WeightAccumulator, SUMCHECK_BYTES,
+};
+use crate::transcript::{label, HashFn, OodSampleError, Transcript};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum VerifyError {
@@ -28,10 +37,18 @@ pub enum VerifyError {
     BadLength,
     NonCanonicalValue,
     GrindingFailed,
-    UniqueCountMismatch { layer: u8 },
-    MerkleMismatch { layer: u8 },
-    SlotMismatch { layer: u8 },
-    CarriedFoldMismatch { layer: u8 },
+    UniqueCountMismatch {
+        layer: u8,
+    },
+    MerkleMismatch {
+        layer: u8,
+    },
+    SlotMismatch {
+        layer: u8,
+    },
+    CarriedFoldMismatch {
+        layer: u8,
+    },
     FinalPolyMismatch,
     TrailingBytes,
     /// Bounded rejection-sampling retries exhausted while deriving a QM31
@@ -43,6 +60,15 @@ pub enum VerifyError {
     ClaimUnexpected,
     /// Claim point dimension does not match the profile's variable count.
     ClaimShape,
+    /// The bounded sampler could not obtain a point outside the CM31
+    /// subfield after three draws (honest probability below 2^-186).
+    OodSampleExhausted,
+    /// A round polynomial does not sum to the incoming batched relation.
+    SumcheckBoundaryMismatch {
+        layer: u8,
+    },
+    /// The reduced relation does not hold on the explicit final coefficients.
+    EvaluationRelationMismatch,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -50,6 +76,8 @@ pub enum TraceEvent {
     Start,
     HeaderParsed,
     TranscriptReady,
+    LayerOodDone(u8),
+    LayerSumcheckDone(u8),
     QueriesReady,
     LayerStart(u8),
     LayerMerkleDone(u8),
@@ -87,6 +115,9 @@ impl VerifyError {
             VerifyError::ClaimMissing => 14,
             VerifyError::ClaimUnexpected => 15,
             VerifyError::ClaimShape => 16,
+            VerifyError::OodSampleExhausted => 17,
+            VerifyError::SumcheckBoundaryMismatch { .. } => 18,
+            VerifyError::EvaluationRelationMismatch => 19,
         }
     }
 }
@@ -157,6 +188,91 @@ fn parse_fiber(bytes: &[u8], layer: u32) -> Result<Fiber, VerifyError> {
         }
         Ok(Fiber::Ext(v))
     }
+}
+
+fn parse_extension_fiber(bytes: &[u8]) -> Result<[QM31; 4], VerifyError> {
+    let mut values = [QM31::ZERO; 4];
+    for (index, chunk) in bytes.chunks_exact(16).enumerate() {
+        values[index] = QM31::from_le_bytes(chunk).ok_or(VerifyError::NonCanonicalValue)?;
+    }
+    Ok(values)
+}
+
+fn combine_first_phase_fibers(
+    main: &Fiber,
+    helper: [QM31; 4],
+    gamma: QM31,
+) -> Result<Fiber, VerifyError> {
+    let Fiber::Base(main) = main else {
+        return Err(VerifyError::BadHeader);
+    };
+    let mut combined = [QM31::ZERO; 4];
+    for index in 0..4 {
+        combined[index] = QM31::from_cm31(main[index]).add(gamma.mul(helper[index]));
+    }
+    Ok(Fiber::Ext(combined))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn verify_merkle_section(
+    cursor: &mut Cursor<'_>,
+    hash: HashFn,
+    merkle_mode: MerkleMode,
+    root: &[u8; 32],
+    depth: u32,
+    unique: &[u32],
+    values_section: &[u8],
+    value_bytes: usize,
+    layer_tag: u8,
+    error_layer: u8,
+    entries: &mut Vec<(u32, [u8; 32])>,
+    merkle_level: &mut Vec<(u32, [u8; 32])>,
+    merkle_next: &mut Vec<(u32, [u8; 32])>,
+) -> Result<(), VerifyError> {
+    match merkle_mode {
+        MerkleMode::SinglePaths => {
+            for (index, &fiber_index) in unique.iter().enumerate() {
+                let leaf = leaf_hash(
+                    hash,
+                    layer_tag,
+                    &values_section[index * value_bytes..(index + 1) * value_bytes],
+                );
+                let path_bytes = cursor
+                    .take(depth as usize * 32)
+                    .ok_or(VerifyError::BadLength)?;
+                if !verify_single_path_bytes(hash, root, depth, fiber_index, leaf, path_bytes) {
+                    return Err(VerifyError::MerkleMismatch { layer: error_layer });
+                }
+            }
+        }
+        MerkleMode::MinimalSubtree => {
+            let node_count = cursor.take_u32().ok_or(VerifyError::BadLength)? as usize;
+            let node_bytes = cursor.take(node_count * 32).ok_or(VerifyError::BadLength)?;
+            entries.clear();
+            for (index, &fiber_index) in unique.iter().enumerate() {
+                entries.push((
+                    fiber_index,
+                    leaf_hash(
+                        hash,
+                        layer_tag,
+                        &values_section[index * value_bytes..(index + 1) * value_bytes],
+                    ),
+                ));
+            }
+            if !verify_minimal_subtree_bytes(
+                hash,
+                root,
+                depth,
+                entries,
+                node_bytes,
+                merkle_level,
+                merkle_next,
+            ) {
+                return Err(VerifyError::MerkleMismatch { layer: error_layer });
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Fold one fiber with challenge alpha at slot-0 point `s`, given batched
@@ -251,18 +367,9 @@ fn carried_checks(
 }
 
 /// Externally supplied evaluation claim "w(z) = v" for the multilinear
-/// reading of the committed coefficient table, absorbed as a PUBLIC INPUT
-/// (never proof bytes) directly after the statement digest.
-///
-/// **Binding only at this revision (soundness-note appendix, queue item 2):**
-/// absorbing the claim makes every challenge depend on it, so a proof
-/// generated for one (z, v) rejects under any other (mix-and-match replay is
-/// dead) and the seam interface is final. The RELATION w(z) = v is NOT yet
-/// enforced — enforcement is the sumcheck/fold interleaving and lands with
-/// the statement-layer sumcheck. Until then an accepted claim-carrying proof
-/// must not be treated as proof of the evaluation, and the test
-/// `claim_enforcement_pending_documented` exists to flip loudly when this
-/// paragraph becomes stale.
+/// reading of C1. It is absorbed as a PUBLIC INPUT (never proof bytes) after
+/// C2 and before gamma. The proof carries C2's evaluation at the same point;
+/// the interleaved relation sumcheck enforces their gamma-combination.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EvaluationClaim {
     /// Evaluation point, one coordinate per variable (len == log_rows).
@@ -290,8 +397,7 @@ pub fn verify(proof: &[u8], statement_digest: &[u8; 32], hash: HashFn) -> Result
     verify_with_claim_and_trace(proof, statement_digest, None, hash, None)
 }
 
-/// Verify a claim-carrying proof (see `EvaluationClaim` for the binding-only
-/// caveat at this revision).
+/// Verify a claim-carrying proof.
 pub fn verify_with_claim(
     proof: &[u8],
     statement_digest: &[u8; 32],
@@ -319,6 +425,88 @@ pub fn verify_with_claim_and_trace(
     hash: HashFn,
     trace_fn: Option<TraceFn>,
 ) -> Result<(), VerifyError> {
+    verify_inner(
+        proof,
+        statement_digest,
+        claim,
+        hash,
+        trace_fn,
+        OrderingPolicy::Canonical,
+    )
+}
+
+/// Deliberately insecure schedules used only to prove that the canonical
+/// challenge-order tests have teeth. This API does not exist unless the
+/// explicit test feature is enabled.
+#[cfg(feature = "insecure-test-ordering")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum InsecureOrdering {
+    ChiBeforeC1,
+    GammaBeforeClaims,
+    OodAfterFoldChallenge,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum OrderingPolicy {
+    Canonical,
+    #[cfg(feature = "insecure-test-ordering")]
+    ChiBeforeC1,
+    #[cfg(feature = "insecure-test-ordering")]
+    GammaBeforeClaims,
+    #[cfg(feature = "insecure-test-ordering")]
+    OodAfterFoldChallenge,
+}
+
+impl OrderingPolicy {
+    fn chi_before_c1(self) -> bool {
+        #[cfg(feature = "insecure-test-ordering")]
+        if self == Self::ChiBeforeC1 {
+            return true;
+        }
+        false
+    }
+
+    fn gamma_before_claims(self) -> bool {
+        #[cfg(feature = "insecure-test-ordering")]
+        if self == Self::GammaBeforeClaims {
+            return true;
+        }
+        false
+    }
+
+    fn ood_after_fold_challenge(self) -> bool {
+        #[cfg(feature = "insecure-test-ordering")]
+        if self == Self::OodAfterFoldChallenge {
+            return true;
+        }
+        false
+    }
+}
+
+#[cfg(feature = "insecure-test-ordering")]
+pub fn verify_with_insecure_ordering(
+    proof: &[u8],
+    statement_digest: &[u8; 32],
+    claim: Option<&EvaluationClaim>,
+    hash: HashFn,
+    ordering: InsecureOrdering,
+) -> Result<(), VerifyError> {
+    let policy = match ordering {
+        InsecureOrdering::ChiBeforeC1 => OrderingPolicy::ChiBeforeC1,
+        InsecureOrdering::GammaBeforeClaims => OrderingPolicy::GammaBeforeClaims,
+        InsecureOrdering::OodAfterFoldChallenge => OrderingPolicy::OodAfterFoldChallenge,
+    };
+    verify_inner(proof, statement_digest, claim, hash, None, policy)
+}
+
+fn verify_inner(
+    proof: &[u8],
+    statement_digest: &[u8; 32],
+    claim: Option<&EvaluationClaim>,
+    hash: HashFn,
+    trace_fn: Option<TraceFn>,
+    ordering: OrderingPolicy,
+) -> Result<(), VerifyError> {
     trace(trace_fn, TraceEvent::Start);
     let header = Header::parse(proof).ok_or(VerifyError::BadHeader)?;
     let profile = profile_by_id(header.profile_id).ok_or(VerifyError::UnknownProfile)?;
@@ -334,17 +522,20 @@ pub fn verify_with_claim_and_trace(
     let fold_payload = FoldPayload::from_u8(header.fold_payload).ok_or(VerifyError::BadHeader)?;
     let merkle_mode = MerkleMode::from_u8(header.merkle_mode).ok_or(VerifyError::BadHeader)?;
     // Claim flag and supplied claim must agree, and the point dimension must
-    // match the profile — before anything is derived.
-    match (header.claim_flag, claim) {
-        (0, None) => {}
-        (1, Some(claim)) => {
+    // match the profile — before anything is derived. Version 3 requires C2
+    // for claim-carrying proofs so gamma can bind both evaluations.
+    match (header.has_claim(), claim) {
+        (false, None) => {}
+        (true, Some(claim)) => {
             if claim.z.len() != profile.log_rows as usize {
                 return Err(VerifyError::ClaimShape);
             }
         }
-        (1, None) => return Err(VerifyError::ClaimMissing),
-        (0, Some(_)) => return Err(VerifyError::ClaimUnexpected),
-        _ => return Err(VerifyError::BadHeader),
+        (true, None) => return Err(VerifyError::ClaimMissing),
+        (false, Some(_)) => return Err(VerifyError::ClaimUnexpected),
+    }
+    if header.has_claim() && !header.has_second_phase() {
+        return Err(VerifyError::BadHeader);
     }
     trace(trace_fn, TraceEvent::HeaderParsed);
 
@@ -358,22 +549,135 @@ pub fn verify_with_claim_and_trace(
     let mut transcript = Transcript::new(hash);
     transcript.absorb(label::PROFILE, header_bytes);
     transcript.absorb(label::STATEMENT, statement_digest);
-    if let Some(claim) = claim {
-        // canonical position: public-input claim before any commitment root
-        transcript.absorb(label::CLAIM, &claim.to_bytes());
+
+    // The insecure chi-before-C1 policy deliberately squeezes these values
+    // before C1. Canonical verification takes the same two squeezes only
+    // after the first root has been absorbed.
+    if header.has_second_phase() && ordering.chi_before_c1() {
+        transcript
+            .challenge_qm31()
+            .map_err(|_| VerifyError::ChallengeSampleExhausted)?;
+        transcript
+            .challenge_qm31()
+            .map_err(|_| VerifyError::ChallengeSampleExhausted)?;
     }
 
     let mut roots = Vec::with_capacity(num_rounds as usize);
     let mut alphas = Vec::with_capacity(num_rounds as usize);
-    for _ in 0..num_rounds {
+    let mut relation_weights = WeightAccumulator::empty(profile.log_rows);
+    let mut relation_value = QM31::ZERO;
+    let mut second_phase_root = None;
+    let mut gamma = None;
+    for layer in 0..num_rounds {
         let root = cursor.take_hash().ok_or(VerifyError::BadLength)?;
         transcript.absorb(label::ROOT, &root);
         roots.push(root);
-        alphas.push(
-            transcript
+
+        if layer == 0 && header.has_second_phase() {
+            if !ordering.chi_before_c1() {
+                // lambda and chi: both are verifier-derived only after C1.
+                transcript
+                    .challenge_qm31()
+                    .map_err(|_| VerifyError::ChallengeSampleExhausted)?;
+                transcript
+                    .challenge_qm31()
+                    .map_err(|_| VerifyError::ChallengeSampleExhausted)?;
+            }
+
+            let c2_root = cursor.take_hash().ok_or(VerifyError::BadLength)?;
+            transcript.absorb(label::SECOND_PHASE_ROOT, &c2_root);
+            second_phase_root = Some(c2_root);
+
+            let early_gamma = if ordering.gamma_before_claims() {
+                Some(
+                    transcript
+                        .challenge_qm31()
+                        .map_err(|_| VerifyError::ChallengeSampleExhausted)?,
+                )
+            } else {
+                None
+            };
+
+            let second_phase_claim = if let Some(main_claim) = claim {
+                transcript.absorb(label::CLAIM, &main_claim.to_bytes());
+                let bytes = cursor.take(OOD_VALUE_LEN).ok_or(VerifyError::BadLength)?;
+                let value = QM31::from_le_bytes(bytes).ok_or(VerifyError::NonCanonicalValue)?;
+                transcript.absorb(label::SECOND_PHASE_CLAIM, bytes);
+                Some(value)
+            } else {
+                None
+            };
+
+            let sampled_gamma = match early_gamma {
+                Some(value) => value,
+                None => transcript
+                    .challenge_qm31()
+                    .map_err(|_| VerifyError::ChallengeSampleExhausted)?,
+            };
+            gamma = Some(sampled_gamma);
+
+            if let (Some(main_claim), Some(helper_claim)) = (claim, second_phase_claim) {
+                relation_weights = WeightAccumulator::from_claim(profile.log_rows, claim);
+                relation_value = main_claim.v.add(sampled_gamma.mul(helper_claim));
+            }
+        }
+
+        // The point is verifier-derived after the root and forced outside
+        // CM31, which contains every circle-coset evaluation domain. The
+        // supplied value is canonical and transcript-bound before alpha.
+        let ood_point = match transcript.challenge_ood_qm31() {
+            Ok(point) => point,
+            Err(OodSampleError::ChallengeSampleExhausted) => {
+                return Err(VerifyError::ChallengeSampleExhausted)
+            }
+            Err(OodSampleError::SubfieldSampleExhausted) => {
+                return Err(VerifyError::OodSampleExhausted)
+            }
+        };
+        // The insecure OOD policy reproduces the old broken schedule: the
+        // fold challenge is squeezed before the OOD claim and sumcheck that
+        // are supposed to bind it.
+        let early_alpha = if ordering.ood_after_fold_challenge() {
+            Some(
+                transcript
+                    .challenge_qm31()
+                    .map_err(|_| VerifyError::ChallengeSampleExhausted)?,
+            )
+        } else {
+            None
+        };
+
+        let ood_bytes = cursor.take(OOD_VALUE_LEN).ok_or(VerifyError::BadLength)?;
+        let ood_value = QM31::from_le_bytes(ood_bytes).ok_or(VerifyError::NonCanonicalValue)?;
+        transcript.absorb(label::OOD_VALUE, ood_bytes);
+        trace(trace_fn, TraceEvent::LayerOodDone(layer as u8));
+
+        let mix = transcript
+            .challenge_qm31()
+            .map_err(|_| VerifyError::ChallengeSampleExhausted)?;
+        relation_value = relation_value.add(mix.mul(ood_value));
+        relation_weights.add_geometric(mix, ood_point);
+
+        let sumcheck_bytes = cursor.take(SUMCHECK_BYTES).ok_or(VerifyError::BadLength)?;
+        let mut sumcheck: SumcheckPolynomial = [QM31::ZERO; 7];
+        for (index, chunk) in sumcheck_bytes.chunks_exact(16).enumerate() {
+            sumcheck[index] = QM31::from_le_bytes(chunk).ok_or(VerifyError::NonCanonicalValue)?;
+        }
+        if sumcheck_boundary(&sumcheck) != relation_value {
+            return Err(VerifyError::SumcheckBoundaryMismatch { layer: layer as u8 });
+        }
+        transcript.absorb(label::SUMCHECK_POLY, sumcheck_bytes);
+        trace(trace_fn, TraceEvent::LayerSumcheckDone(layer as u8));
+
+        let alpha = match early_alpha {
+            Some(value) => value,
+            None => transcript
                 .challenge_qm31()
                 .map_err(|_| VerifyError::ChallengeSampleExhausted)?,
-        );
+        };
+        relation_value = evaluate_sumcheck(&sumcheck, alpha);
+        relation_weights.fold(alpha);
+        alphas.push(alpha);
     }
 
     let final_poly_len = profile.final_poly_len() as usize;
@@ -384,6 +688,9 @@ pub fn verify_with_claim_and_trace(
     let mut final_poly = Vec::with_capacity(final_poly_len);
     for chunk in final_poly_bytes.chunks_exact(16) {
         final_poly.push(QM31::from_le_bytes(chunk).ok_or(VerifyError::NonCanonicalValue)?);
+    }
+    if relation_weights.dot(&final_poly) != relation_value {
+        return Err(VerifyError::EvaluationRelationMismatch);
     }
 
     let nonce = cursor.take_u64().ok_or(VerifyError::BadLength)?;
@@ -411,6 +718,7 @@ pub fn verify_with_claim_and_trace(
     let mut slot: Vec<u32> = Vec::with_capacity(query_count);
     let mut unique: Vec<u32> = Vec::with_capacity(query_count);
     let mut fibers: Vec<Fiber> = Vec::with_capacity(query_count);
+    let mut helper_fibers: Vec<[QM31; 4]> = Vec::with_capacity(query_count);
     let mut carried: Vec<(QM31, QM31)> = Vec::with_capacity(query_count);
     let mut entries: Vec<(u32, [u8; 32])> = Vec::with_capacity(query_count);
     let mut merkle_level: Vec<(u32, [u8; 32])> = Vec::with_capacity(query_count);
@@ -455,6 +763,30 @@ pub fn verify_with_claim_and_trace(
             )?);
         }
 
+        // C2 is opened only in the first layer. Authenticate its QM31
+        // fibers separately, then form exactly the gamma-RLC polynomial that
+        // the transcript relation and all later folds refer to.
+        let second_phase_values_section = if layer == 0 && header.has_second_phase() {
+            let helper_value_bytes = 4 * 16;
+            let section = cursor
+                .take(unique_count * helper_value_bytes)
+                .ok_or(VerifyError::BadLength)?;
+            helper_fibers.clear();
+            for index in 0..unique_count {
+                helper_fibers.push(parse_extension_fiber(
+                    &section[index * helper_value_bytes..(index + 1) * helper_value_bytes],
+                )?);
+            }
+            let gamma = gamma.ok_or(VerifyError::BadHeader)?;
+            for index in 0..unique_count {
+                fibers[index] =
+                    combine_first_phase_fibers(&fibers[index], helper_fibers[index], gamma)?;
+            }
+            Some(section)
+        } else {
+            None
+        };
+
         carried.clear();
         if fold_payload == FoldPayload::ProofCarriedRoundLocal {
             let carried_section = cursor
@@ -469,51 +801,42 @@ pub fn verify_with_claim_and_trace(
             }
         }
 
-        // Merkle verification over the unique fiber leaves.
+        // Merkle verification over the unique C1 fiber leaves.
         let root = &roots[layer as usize];
         let depth = geom.log_fiber_count;
-        match merkle_mode {
-            MerkleMode::SinglePaths => {
-                for (k, &fidx) in unique.iter().enumerate() {
-                    let leaf = leaf_hash(
-                        hash,
-                        layer as u8,
-                        &values_section[k * value_bytes..(k + 1) * value_bytes],
-                    );
-                    let path_bytes = cursor
-                        .take(depth as usize * 32)
-                        .ok_or(VerifyError::BadLength)?;
-                    if !verify_single_path_bytes(hash, root, depth, fidx, leaf, path_bytes) {
-                        return Err(VerifyError::MerkleMismatch { layer: layer as u8 });
-                    }
-                }
-            }
-            MerkleMode::MinimalSubtree => {
-                let node_count = cursor.take_u32().ok_or(VerifyError::BadLength)? as usize;
-                let node_bytes = cursor.take(node_count * 32).ok_or(VerifyError::BadLength)?;
-                entries.clear();
-                for (k, &fidx) in unique.iter().enumerate() {
-                    entries.push((
-                        fidx,
-                        leaf_hash(
-                            hash,
-                            layer as u8,
-                            &values_section[k * value_bytes..(k + 1) * value_bytes],
-                        ),
-                    ));
-                }
-                if !verify_minimal_subtree_bytes(
-                    hash,
-                    root,
-                    depth,
-                    &entries,
-                    node_bytes,
-                    &mut merkle_level,
-                    &mut merkle_next,
-                ) {
-                    return Err(VerifyError::MerkleMismatch { layer: layer as u8 });
-                }
-            }
+        verify_merkle_section(
+            &mut cursor,
+            hash,
+            merkle_mode,
+            root,
+            depth,
+            &unique,
+            values_section,
+            value_bytes,
+            layer as u8,
+            layer as u8,
+            &mut entries,
+            &mut merkle_level,
+            &mut merkle_next,
+        )?;
+
+        if let Some(section) = second_phase_values_section {
+            let c2_root = second_phase_root.as_ref().ok_or(VerifyError::BadHeader)?;
+            verify_merkle_section(
+                &mut cursor,
+                hash,
+                merkle_mode,
+                c2_root,
+                depth,
+                &unique,
+                section,
+                4 * 16,
+                SECOND_PHASE_LAYER_TAG,
+                SECOND_PHASE_LAYER_TAG,
+                &mut entries,
+                &mut merkle_level,
+                &mut merkle_next,
+            )?;
         }
         trace(trace_fn, TraceEvent::LayerMerkleDone(layer as u8));
 

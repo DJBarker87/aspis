@@ -19,6 +19,7 @@ pub mod field;
 pub mod merkle;
 pub mod params;
 pub mod proof;
+pub mod sumcheck;
 pub mod transcript;
 pub mod verify;
 
@@ -28,6 +29,8 @@ pub use verify::{
     verify, verify_with_claim, verify_with_claim_and_trace, verify_with_trace, EvaluationClaim,
     TraceEvent, TraceFn, VerifyError,
 };
+#[cfg(feature = "insecure-test-ordering")]
+pub use verify::{verify_with_insecure_ordering, InsecureOrdering};
 
 #[cfg(test)]
 mod tests {

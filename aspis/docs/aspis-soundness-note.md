@@ -1,19 +1,20 @@
-# Aspis soundness note (Stage 1) — DRAFT, section-by-section review in progress
+# Aspis soundness note — Stage 1 frozen PCS milestone
 
-Status: **DRAFT**. Sections are sent for line-by-line review as they are
-written and nothing here is frozen until the whole note survives review
-(working rule: no soundness claim frozen without the written reduction being
-challenged line by line). Section status ledger:
+Status: **FROZEN FOR THE STAGE 1 PCS MILESTONE (`2026-07-10`)**. The
+capacity-conjectured headline is frozen with its caveats; Stage 2 payment
+feasibility is not. The final C2 build leaves only 14,914 CU before unpriced
+constraint composition, so this checkpoint is a protocol gate close and a
+feasibility warning, not a claim that payments work. Section status ledger:
 
 | section | status |
 | --- | --- |
 | 1. Protocol as implemented | reviewed; constants corrected |
-| 2. The assumption + canonical challenge order | reviewed; **gamma-ordering fix applied** |
-| 3. Field-ceiling lemma | reviewed; T7 harmonized, model paragraph added, honest margin stated |
-| 4. Per-round query budget | **reviewed, approved** (q38 labeled extrapolated; T1 pinning is a §4 open item) |
+| 2. The assumption + canonical challenge order | reviewed; ordering implemented and teeth-demonstrated |
+| 3. Field-ceiling lemma | reviewed; upstream T1/T2 pin integrated, honest margin recomputed |
+| 4. Per-round query budget | **reviewed, approved** (q38 labeled extrapolated; upstream constants pinned) |
 | 5. Copy-argument soundness term | reviewed line-by-line; hardened with resolutions |
-| 6. Grinding + Fiat-Shamir model | reviewed; binding-term sentence inverted, work-metric phrasing fixed |
-| 7. Proven-vs-conjectured ledger | **reviewed, cleared** — T2 split into conjectured/proven forms, proven threshold restated at 2^-109; note is at complete-draft |
+| 6. Grinding + Fiat-Shamir model | reviewed; binding terms and work metric updated from the pin |
+| 7. Proven-vs-conjectured ledger | reviewed; exact T2 shape and T1 Johnson floor integrated |
 
 Headline decision this note serves (design §13.3, decided 2026-07-04): the
 public claim is frozen at **t = 100 bits, capacity-conjectured**; §3 is the
@@ -27,11 +28,14 @@ LogUp copy check, second commitment phase. Query schedule ruled by §4:
 ## 1. The protocol as implemented
 
 Everything in this section describes the code at this revision
-(`aspis-core`), not a paper protocol. Envelope: `aspis-core/src/proof.rs`
-(16-byte header binding profile id, log_rows, log_blowup, query count,
-grinding bits, payload and Merkle-mode flags, round count, final-poly
-length; then roots, final polynomial, grinding nonce, per-layer openings;
-fixed layout, trailing bytes reject).
+(`aspis-core`), not a paper protocol. Envelope v3:
+`aspis-core/src/proof.rs` (16-byte header binding profile id, log_rows,
+log_blowup, query count, grinding bits, payload and Merkle-mode flags, round
+count, final-poly length, and claim/C2 flags; C1 root; optional C2 root and
+helper claim; one OOD value and degree-6 relation polynomial per round;
+final polynomial, grinding nonce, and per-layer openings. A C2 proof opens
+both authenticated trees at layer zero and gamma-combines them before the
+existing folds; fixed layout and trailing bytes reject).
 
 Fields. M31 = GF(2^31 - 1); CM31 = M31[i]/(i^2+1); QM31 = CM31[u]/(u^2-(2+i)).
 |QM31| = (2^31 - 1)^4, log2 = 124 - 2.7e-9 (call it 2^124 with the deficit
@@ -51,21 +55,35 @@ QM31 (late lift at the first challenge). **Degree and domain both shrink 4x
 per round, so the rate is 2^-2 at every layer — flat, not improving. §4 is
 computed for this schedule.**
 
-Transcript order as implemented today (v0 base): absorb(header) ->
-absorb(statement digest) -> per round r: absorb(root_r), sample alpha_r ->
-absorb(final polynomial) -> grinding check (g leading zero bits), absorb
-(nonce) -> derive query positions (exact-uniform masking over the
-power-of-two fiber count). One query set, sampled once, traced through all
+Transcript order as implemented today: absorb(header) -> absorb(statement
+digest) -> absorb C1; for a two-phase proof sample lambda then chi, construct
+and absorb C2, absorb the optional main and helper `(z,v)` evaluations, then
+sample gamma -> for round zero (whose C1 was already absorbed), and then each
+later root r: sample beta_r uniformly from QM31 excluding CM31, read and
+absorb the claimed OOD value y_r, sample the claim-batching challenge mu_r,
+read/check/absorb the degree-6 relation polynomial G_r, sample alpha_r ->
+absorb(final polynomial) -> grinding check (g leading zero bits),
+absorb(nonce) -> derive query positions (exact-uniform masking over the
+power-of-two fiber count). One query set, sampled once, is traced through all
 rounds; each query opens one fiber per layer, the verifier refolds locally
 (alpha_r, alpha_r^2; denominators batch-inverted per round) and compares
 against the next layer's opened slot, terminating against the final
 polynomial. Grinding is a single g-bit check before query derivation; there
 is no per-round PoW (recorded divergence, `whir-p3-divergence.md`).
 
-What Stage 1 adds on top of this implemented base: OOD samples per round,
-the externally supplied (z, v) evaluation claim, the second commitment phase
-for the copy argument, the statement-layer sumcheck, and the challenge-order
-requirements of §2.
+For C2 proofs the polynomial entering the invariant is
+`w*(X)=w_C1(X)+gamma*h_C2(X)`. If public evaluations are present, the
+relation begins with `w*(z)=v_C1+gamma*v_C2`; it then adds each
+`mu_r * f_r(beta_r)=mu_r*y_r`, and is reduced by G_r at alpha_r to the next
+coefficient vector. After four rounds the verifier evaluates the accumulated
+structured weights on the four explicit final coefficients. False external
+claims and false OOD values now reject at their first inconsistent boundary;
+the tests also cover mix-and-match, corruption, old-envelope, and absorption
+order. The prover exposes a generic post-`(lambda,chi)` C2 builder; the Stage
+1 measurement uses a named synthetic challenge-dependent helper solely to
+price/authenticate the interface. Stage 2 supplies the actual LogUp helper
+and constraint composition; the synthetic helper proves no payment or copy
+relation.
 
 ## 2. The assumption, stated once — and the canonical challenge order
 
@@ -78,9 +96,11 @@ here and nowhere re-derived:
 > subgroups), proximity gathering and query soundness behave up to the code
 > capacity bound: a codeword delta-far from the code, delta up to 1 - rho,
 > survives one uniformly sampled traced query with probability at most
-> (1 - delta), i.e. one query yields -log2(rho_worst) bits; and the per-round
-> folding/gathering error terms carry denominators |QM31| with the constants
-> tabulated in §4.
+> (1 - delta), i.e. one query yields -log2(rho_worst) bits; the per-round
+> folding/gathering error uses the pinned upstream unique-shaped constant
+> `k/rho`; and the effective decoding list has size `L <= 40` for the OOD
+> binding step. The last two clauses are part of the conjecture, not facts
+> proved by upstream WHIR for the capacity radius (§4).
 
 Everything labelled `conjectured (capacity)` in the ledger (§7) depends on
 this and only this. Terms that do not depend on it (sumcheck SZ, RLC
@@ -118,8 +138,12 @@ class as the inflation bug: invisible in every honest-prover test, fatal
 against a real one. Likewise C1 -> (lambda, chi) is load-bearing, not
 stylistic: the phi values are fixed before chi exists, which is what makes
 chi hitting a committed phi a completeness event rather than an attack
-surface (§5). The Stage 1 adversarial suite gains a **challenge-order
-family**: gamma-before-claims and chi-before-C1 transcripts must reject.
+surface (§5). The Stage 1 adversarial suite contains a **challenge-order
+family**: gamma-before-claims, chi-before-C1, and OOD-after-alpha transcripts
+all reject under the production verifier. With the explicitly test-only
+`insecure-test-ordering` feature, three deliberately weakened verifier
+schedules accept the identical corresponding bytes. This is the evidence
+that each vector has teeth; the feature is absent from the SBF build.
 
 ## 3. The field-ceiling lemma (why the headline is t = 100)
 
@@ -140,7 +164,7 @@ for Merkle binding.
 **Lemma (informal).** Every algebraic soundness term of the full target
 system has denominator |QM31| ~ 2^124, and grinding offsets none of them.
 Union-bounded, the system's achievable soundness on this field tower is
-roughly 106-112 bits before a single query is spent. Therefore 128 bits was
+roughly 104-112 bits before a single query is spent. Therefore 128 bits was
 never reachable on M31/CM31/QM31, and the headline claim is frozen at
 t = 100, capacity-conjectured.
 
@@ -149,9 +173,9 @@ the value at the target parameters, in bits below zero):
 
 | # | term | shape | bits |
 | --- | --- | --- | ---: |
-| T1 | per-round proximity gathering (4 rounds) | c_r * N_0 / \|F\|, N_0 = 2^12 | ~106-112 (constants pinned in §4) |
-| T2 | OOD binding, 1 sample x 4 rounds | R * l * 2^lr / \|F\| — **l is the decoding-list size and is regime-dependent** (see §7: conjectured form shown here assumes capacity-small l) | 112 (conjectured form) |
-| T3 | fused sumcheck Schwartz-Zippel | nu * d / \|F\|, nu = 10, d <= 7 | 117.9 |
+| T1 | per-round proximity gathering (4 rounds) | sum_r (k_r / rho) / \|F\|, k_r = 2^(10-2r), rho = 1/4 | 111.59 (capacity conjecture's unique-shaped clause) |
+| T2 | OOD binding, 1 sample x 4 rounds | C(L,2) * sum_r(k_r-1) / \|F\|, L <= 40 | 103.99 (formula pinned; list bound conjecture-conditional at capacity) |
+| T3 | relation + fused statement sumchecks | nu * d / \|F\|, conservatively nu <= 14, d <= 7 | 117.4 |
 | T4 | zerocheck eq-reduction (sample r) | nu / \|F\| | 120.7 |
 | T5 | gamma-RLC batching over k' <= 82 columns | (k'-1) / \|F\| | 117.7 |
 | T6 | copy-argument tuple compression (lambda) | m * w / \|F\| (worst m = 2^10, w = 17) | 109.9 |
@@ -159,20 +183,28 @@ the value at the target parameters, in bits below zero):
 | T8 | claim-batching challenge (mu) | (#claims) / \|F\| | ~122 |
 | T9 | challenge-sampler statistical distance | fixed by rejection sampling | 0 after fix (was ~25) |
 
-On T1's counting: the four rounds' domains are 2^12, 2^10, 2^8, 2^6, so the
-true sum is ~1.33 * 2^12 / |F|, about 1.6 bits better than the 4 * 2^12
-used in the bracket. The overcount is **deliberate conservatism**; if §4's
-constant-pinning needs the 1.6 bits back, they are real.
+On T1's counting: the pinned upstream unique-decoding branch is
+`log2(|F|) - (log2(k) + log2(1/rho))`. Applied round by round, its
+numerators are exactly the four domain sizes 2^12, 2^10, 2^8, 2^6. Their
+union is 111.5906 bits. This is the constant now stated inside the capacity
+conjecture; upstream does not provide a capacity branch and therefore does
+not prove that substitution.
 
-Union of T1-T8: dominated by T1 and T6, total ~2^-106 .. 2^-109 of algebraic
-error before queries. t = 128 would require every enumerated term to vanish
-— not a parameter choice, a different field tower.
+T2's shape is no longer a range. Pinned upstream WHIR uses STIR Lemma 4.5 as
+`C(L,2) * ((degree-1)/|F|)^s`. With one sample in each round, L = 40, and
+degree bounds 1024, 256, 64, 16, the four-round union is 103.9875 bits.
+The formula is proved conditional on a list-size bound; `L <= 40` at the
+capacity radius is an explicit clause of this note's conjecture.
+
+Union of T1-T8 is 103.9508 algebraic bits before queries, dominated by T2.
+t = 128 would require every enumerated term to vanish — not a parameter
+choice, a different field tower.
 
 **The honest final number.** The query term joins the union — in the
 success-per-unit-work metric, where both categories denominate in hashes
-(§6): success/work <= 2^-106..-109 + 2^-32 * 2^-72 ~ **2^-103.7
-worst-case**. The claim's true margin over t = 100 is ~3.5-4 bits, not the
-table's 6-9 — the 6-9 figure is the algebraic ceiling alone and must not be
+(§6): success/work <= 2^-103.9508 + 2^-32 * 2^-72 =
+**2^-102.9752 worst-case**. The claim's true margin over t = 100 is about
+2.98 bits; the 103.95 figure is the algebraic union alone and must not be
 quoted as the system margin.
 
 Grinding does not appear in the table by construction: the PoW sits before
@@ -237,53 +269,58 @@ attack success per grinding attempt <= rho^q = 2^-2q, each attempt costs
 2^g hashes, so the query term contributes **2q + g bits** in the
 work/success metric.
 
-| schedule | query bits | verdict | PCS CU (lr10, g16 verifier-cost proxy) | projection | headroom vs 1.19M |
+| schedule | query bits | verdict | PCS CU / basis | projection | headroom vs 1.19M |
 | --- | ---: | --- | ---: | ---: | ---: |
-| q32/g32 | 96 | **retired — 4 bits short of t=100** | 656,983 | 888,097 | 301,903 |
-| **q36/g32** | **104** | **ruled: the Stage 1 schedule** | 743,116 | 974,230 | 215,770 |
-| q38/g32 | 108 | inline contingency (see below) | ~786,200 (**extrapolated**) | ~1,017,300 | ~172,700 |
+| q32/g32 | 96 | **retired — 4 bits short of t=100** | not remeasured with C2 (dead schedule) | — | — |
+| **q36/g32** | **104** | **ruled and Stage-1 measured** | **943,972 literal, v3 C2 + relations enforced** | **1,175,086** | **14,914** |
+| q38/g32 | 108 | soundness contingency only after a material CU shrink | >943,972 planning floor (**not measured, not a bound**) | >1,175,086 | <14,914 |
 
-**Proxy labeling (review catch):** the measured artifacts behind this column
-are the `capacity_lr10_qNN_g16` profiles
-(`results/stage0/onchain_layout_target_summary.json`), used as verifier-cost
-proxies for the ruled g32 schedules. The proxy is sound because the
-verifier-side grinding check is a single SHA-256 syscall whose cost is
-independent of the difficulty bits — g16 -> g32 changes prover search work
-and the threshold comparison only, corroborated by the lr12 g32
-measurements in `results/stage0/onchain_g32_summary.json`. The literal
-profile `capacity_lr10_q36_g32` (id 8) is now frozen in `params.rs` and is
-the first row of the `stage0-onchain-layout-target` runner; the next local
-run replaces this proxy column with the literal measurement.
+**Literal Stage 1 measurement.** The `2026-07-10` Agave 2.3.0 run in
+`results/stage1/onchain_hardening_summary.json` uses envelope v3 with the
+canonical C1/C2/gamma prefix, one OOD evaluation, and one interleaved relation
+polynomial per round. The literal `capacity_lr10_q36_g32` proof accepts in
+five identical runs at **943,972 CU**, 21,364 bytes (34 upload chunks; 22,435
+aggregate upload CU); all twelve on-chain corruption/binding cases reject,
+including `second_phase_root_corruption`, `ood_value_corruption`, and
+`sumcheck_corruption`. The host/SBF transcript KAT also matches
+(`results/stage0/transcript_kat.json`, 25,426 CU for the diagnostic
+instruction). The exact proof fixture is pinned under `results/stage1/proofs/`
+with SHA-256 `1557b82d4e4a35117104951e3e026d423b57e46c462bb314f4f701408ef2f805`.
 
-Proxy figures are the **post-rejection-sampler** re-measure (Agave 2.3.0,
-commit `caca9f2`): each lr10 profile moved +321 CU versus the pre-sampler
-run (~80 CU per challenge round of bounded rejection branching), the
-transcript KAT round-tripped on SBF (`results/stage0/transcript_kat.json`,
-`matched_on_sbf: true`, 10,792 CU for the KAT instruction itself), and all
-on-chain corruption vectors still reject. The q32 -> q36 promotion delta is
-unchanged at +86,133 CU (both rows moved together).
+The old g16 proxy rationale was incomplete. The grinding threshold check is
+constant-cost, but `grinding_bits` is in the transcript-bound header, so
+g16 -> g32 changes query collisions and the minimal-subtree shape. In this
+binding-only run literal q36/g32 was 5,538 CU above q36/g16 (743,060 versus
+737,522), demonstrating the effect. The enforced literal row is therefore
+authoritative; the q32 row stays a planning proxy because that schedule is
+already dead.
 
-The q32 -> q36 promotion costs **+86,133 CU** on the measured lr10 slope
-(887,776 -> 973,909; headroom 302K -> 216K, already re-labelled in the
-Stage 0 conclusion as a budget for three unpriced items). **Contingency,
-carried inside this section rather than as a new fork:** if T1's
-constant-pinning lands at the bad end of the ~106-112 bracket, q38 (108
-query bits) is the escape hatch at roughly +43K CU more on the same
-measured slope (~21.5K CU per query). If q38's projection cannot absorb the
-Stage 2 constraint-composition measurement, the split-verification fallback
-from the Stage 0 conclusion triggers — that ladder is unchanged. The q38 row is
-extrapolated, not measured: linearity of the CU slope beyond q36 is assumed
-and gets measured only if the contingency fires.
+The projection adds the existing 231,114-CU wide-leaf/RLC + statement-
+sumcheck budget to the literal PCS result: **1,175,086 CU, leaving only
+14,914 CU (1.25%)**. This is not enough to price unknown Stage 2 constraint
+composition and fails the design's 10% slack condition. q38 improves only the
+query term (not the 103.99-bit OOD term) and necessarily costs more, so it is
+no longer an executable inline contingency at the current CU level. Stage 2
+therefore begins with the direct evaluator and isolated SBF composition
+measurement; a fit requires a named shrink, otherwise the split-verification
+fallback from the Stage 0 conclusion triggers.
 
-**§4 open item (an experiment, not a ledger entry):** pin, against the
-pinned upstream `WizardOfMenlo/whir` reference, with one reproduction
-artifact under `results/stage1/`: (a) T1's per-round gathering constants,
-and (b) T2's exact OOD term shape — whether the list size enters as l or as
-l^2 * (d / |F|) (the dependence is certain, the exponent is not). One
-artifact, two constants. This is the one place the 1.6
-deliberate-conservatism bits of §3 may be spent. §7 records the outcomes'
-status; the work and the artifact live here, per the house rule that every
-number traces to a script.
+**§4 upstream pin (CLOSED experiment).** The reproduction command
+`cargo run -p aspis-xtask -- stage1-soundness-pin` writes
+`results/stage1/upstream_soundness_pin.json`, pinned to
+`WizardOfMenlo/whir@10aa7d0bae3663fd149b6b88b6eff2209b867970`. It resolves
+both requested constants:
+
+- T1's upstream unique-shaped four-round union is 111.5906 bits. The
+  upstream Johnson/list-decoding branch is only 73.6534 bits without its
+  per-fold PoW. Upstream has no capacity branch, so 111.5906 remains a named
+  clause of the Aspis capacity conjecture, never an upstream-proven result.
+- T2 uses `C(L,2)`, resolving the draft's exponent question in favor of the
+  quadratic list-size form. At the pinned Johnson choice `eta = 0.025`,
+  `L = 40`, one sample per Aspis round unions to 103.9875 bits.
+
+The artifact also records per-round values and list-size sensitivity. This
+closes the experiment while narrowing, rather than upgrading, the claim.
 
 ## 5. Copy-argument soundness term (LogUp multiset copy check)
 
@@ -388,40 +425,40 @@ query round. The system's bits in the work/success metric are then
 min_i(-log2 eps_i) over the rounds, which the §3 union bounds conservatively
 from below by summing.
 
-**Which term binds — stated the honest way around.** In the work metric the
-query round binds (104 < 106-109), but that must not be read as "the
-conjectured term is last in line": the query term's 2-bits-per-query rate
-IS the capacity conjecture — T1 is the conjecture's algebraic-validity face
-and the query rate is its radius face, one conjecture wearing two hats,
-which is why §7 puts them on a single shared line. Under proven accounting
-on the same schedule (Johnson radius 1 - sqrt(rho) - eta at rho = 2^-2,
-delta ~ 0.475 after slack), a traced query buys ~0.93 bits and q36/g32
-proves roughly 65-68 bits, not 104. The correct sayable sentence is the
-inversion: **every term this note proves clears 2^-109 — T6 at the
-deliberately-carried worst-case layout is the binding proven term at
-2^-109.9, and sits at ~2^-111.8 under the expected Stage 2 layout, so this
-threshold is revisited upward when the layout freezes; T2 is excluded from
-the sentence's scope pending its regime resolution (§7) — the binding term
-is the single conjectured one, at 104 work-bits; the system's security
-equals the capacity conjecture's truth, with no weaker proven link
-anywhere.**
+**Which term binds — stated the honest way around.** In the capacity work
+metric T2 and the query round co-bind at 103.9875 and 104 bits. They are two
+faces of the same conjectural regime: the query rate assumes capacity-radius
+behavior, while T2 additionally assumes the effective list bound `L <= 40`.
+T1's unique-shaped 111.5906-bit union is the third clause of that conjecture.
+Under proven accounting on the same schedule (Johnson radius
+`1 - sqrt(rho) - eta` at rho = 2^-2, delta ~ 0.475 after slack), a traced
+query buys ~0.93 bits and q36/g32 proves about 65.5 bits, not 104. The pinned
+upstream Johnson T1 branch unions to 73.6534 bits without per-fold PoW, so it
+still clears that proven query floor by about 8 bits; T2 at L = 40 is
+103.9875 bits. The correct sayable sentence is therefore: **the proven floor
+on this schedule is the 65.5-bit Johnson query term; the conditional
+capacity headline is jointly controlled by the capacity query rate and its
+effective-list-size premise, and no term may be silently transferred from
+one regime to the other.**
 
 **Sampler completeness (from the §3 T9 fix).** Rejection sampling with a
 bounded retry loop (8 per limb, fresh transcript bytes per retry via a
 retry counter in the squeeze input) rejects an honest proof only if some
 limb exhausts all retries: per-limb probability (2^-31)^8 = 2^-248, and
 under ~50 limbs per proof the honest-rejection probability is < 2^-242.
-This is a completeness event, not a soundness term; it appears here and
-nowhere in the §3 table.
+OOD points additionally reject the CM31 subfield and retry at most three
+times: exhaustion is below 2^-186 per round and below 2^-184 over four
+rounds. These are completeness events, not soundness terms; they appear here
+and nowhere in the §3 table.
 
 **The honest final margin, restated as the one-line summary a reader takes
-away:** adversary success **per unit of adversary work** <= 2^-106..-109
+away:** adversary success **per unit of adversary work** <= 2^-103.9508
 (algebraic union, ~1 hash per attempt) + 2^-32 * 2^-72 (query term at
-q36/g32, 2^32 hashes per attempt) ~ 2^-103.7 worst-case; the frozen
-headline t = 100 holds with ~3.5-4 bits of margin, conditional on the
-capacity conjecture (§2) and the two SHA-256 assumptions (§7); the proven
-floor on the same schedule is ~65-68 bits (§7). No other number in this
-note is the system's security level.
+q36/g32, 2^32 hashes per attempt) = 2^-102.9752 worst-case; the frozen
+headline t = 100 holds with about 2.98 bits of margin, conditional on the
+three-clause capacity conjecture (§2) and the two SHA-256 assumptions (§7);
+the proven floor on the same schedule is about 65.5 bits (§7). No other
+number in this note is the system's security level.
 
 ## 7. Proven-vs-conjectured ledger
 
@@ -433,19 +470,21 @@ line is conditional on the conjecture line.
 | --- | --- | --- |
 | SHA-256 as a random oracle (Fiat-Shamir transcript) | **assumption** | model floor for every line below |
 | SHA-256 collision resistance for Merkle binding | **assumption** | >= 100 bits claimed (128-bit birthday bound) |
-| Capacity conjecture — one line, two faces: T1 gathering terms AND the 2-bits/query rate | **conjectured** | T1 ~106-112 (constants: §4 open item); query term 104 work-bits at q36/g32 |
-| **Proven floor, same schedule, Johnson-radius accounting** | **proven** | **~65-68 bits**: delta <= 1 - sqrt(rho) - eta, rho = 2^-2, delta ~ 0.475 -> ~0.93 bits/traced query; 36 x 0.93 + 32 ~ 65.5 |
-| T2 OOD binding, capacity-l form (the §3 table's 112) | **conjecture-conditional** | 112 — the OOD constant carries the decoding-list size l, which is small only under the capacity conjecture; internally consistent with the conjectured headline, NOT a clean proven line |
-| T2 OOD binding, Johnson-l proven form | proven (pending shape pinning, §4 open item) | l ~ 1/(2 * eta * sqrt(rho)) ~ 40 provable; lands ~2^-101..-107 depending on l vs l^2 * (d/\|F\|) shape; either way 30+ bits above the proven floor |
-| T3 fused sumcheck | proven (SZ) | 117.9 |
+| Capacity conjecture — query radius, T1 gathering constant, effective list bound | **conjectured** | query term 104 work-bits; T1 unique-shaped union 111.5906; effective OOD list `L <= 40` |
+| **Proven floor, same schedule, Johnson-radius accounting** | **proven** | **~65.5 bits**: delta <= 1 - sqrt(rho) - eta, rho = 2^-2, delta ~ 0.475 -> ~0.93 bits/traced query; 36 x 0.93 + 32 ~ 65.5 |
+| T1 proximity gaps, pinned Johnson branch without per-fold PoW | proven for the pinned upstream model; mapped conservatively to the Aspis round sizes | 73.6534-bit four-round union; above the 65.5-bit proven query floor, far below the capacity-shaped T1 clause |
+| T2 OOD formula | proven conditional on a decoding-list bound | `C(L,2) * ((degree-1)/\|F\|)^s`; exact quadratic shape pinned in §4 |
+| T2 OOD binding at capacity | **conjecture-conditional** | 103.9875-bit four-round union at the conjectured `L <= 40`, one sample per round |
+| T2 OOD binding at Johnson radius | proven conditional on the pinned Johnson list bound | eta = 0.025, L = 40; same 103.9875-bit union |
+| T3 relation + fused statement sumchecks | proven (SZ) | 117.4 (conservative 14 rounds x degree 7) |
 | T4 zerocheck eq-reduction | proven (SZ) | 120.7 |
-| T5 gamma-RLC batching | proven (SZ; conditional on gamma-after-claims order, enforced by test) | 117.7 |
+| T5 gamma-RLC batching | proven (SZ; canonical gamma-after-claims order implemented for the generic C2 interface) | 117.7 |
 | T6 copy-argument compression | proven (UFD + SZ) | 109.9 (worst layout m = 2^10) |
 | T7 copy-argument pole/SZ | proven (log-derivative lemma) | 112 (deliberately loose 4m) |
 | T8 claim batching | proven (SZ) | ~122 |
-| T9 challenge sampler | fixed by construction (rejection sampling, exact uniform) | 0 soundness cost; completeness < 2^-242 |
+| T9 challenge sampler | fixed by construction (rejection sampling, exact uniform) | 0 soundness cost; field-sampler completeness < 2^-242, OOD-subfield completeness < 2^-184 |
 | Grinding g32 | proven (ROM work accounting, §6) | +32 bits on the query term only |
-| **Headline** | **conditional** | **t = 100, capacity-conjectured; success/work <= 2^-103.7 worst-case; proven floor ~65-68** |
+| **Headline** | **conditional** | **t = 100, capacity-conjectured; success/work <= 2^-102.9752 worst-case; proven floor ~65.5** |
 
 The proven-floor line follows house precedent (the WHIR-UD gate reported
 "lower 58.0 / upper 100.0"): the positive result does not get a lower
@@ -455,15 +494,21 @@ quotation of the headline carries all three numbers of the last line or
 none of them.
 
 T2's split is itself a record of this section doing its job: in draft 1 the
-capacity-l constant wore a `proven` label — exactly the contamination class
-this ledger exists to prevent — and was caught in review before the note
-hardened. The proven floor is untouched by the split either way: even the
-pessimistic Johnson-l form at ~2^-101 sits thirty-plus bits above 65.5.
+capacity-list constant wore a `proven` label and its dependence was written
+as linear. The upstream pin corrected both errors: the formula is proven,
+the capacity list bound is not, and the exact dependence is `C(L,2)`. The
+proven floor remains the 65.5-bit query term; the pinned Johnson T1 branch is
+the next proven term at 73.6534 bits.
 
 ---
 
 ## Appendix: hardening implementation queue (order fixed in review)
 
+0. **Upstream constant pin** (§4 experiment): **CLOSED.** The deterministic
+   `stage1-soundness-pin` runner and
+   `results/stage1/upstream_soundness_pin.json` pin T1/T2 to
+   `WizardOfMenlo/whir@10aa7d0`. The result narrowed the headline margin and
+   corrected T2 to the `C(L,2)` form; it did not upgrade any capacity claim.
 1. **Rejection sampler** (T9): smallest diff, kills the only formal blocker,
    unblocks re-measuring real transcripts. Fresh bytes per retry via squeeze
    counter; 8-retry bound on SBF, reject on exhaustion. **IMPLEMENTED**:
@@ -474,33 +519,56 @@ pessimistic Johnson-l form at ~2^-101 sits thirty-plus bits above 65.5.
    is pinned (`TRANSCRIPT_KAT_EXPECTED`, host test `transcript_kat_pinned`,
    SBF instruction `TranscriptKat`, runner `stage0-transcript-kat`) so a
    silent host/chain divergence costs a test failure, not a week.
-   **ROUND-TRIPPED**: KAT matched on SBF (Agave 2.3.0,
-   `results/stage0/transcript_kat.json`, commit `caca9f2`); post-sampler
-   gate re-measure folded into §4 (+321 CU per lr10 profile, all corruption
-   vectors still rejecting). This item is CLOSED.
-2. **(z, v) claim binding + challenge-order tests** together: they touch the
-   same transcript code, and the failing tests (gamma-before-claims,
-   chi-before-C1) are what make the §2 ordering fix permanent.
-   **IMPLEMENTED — binding scope only, enforcement explicitly pending.**
+   **ROUND-TRIPPED**: the current v3 two-phase KAT matches on SBF (Agave
+   2.3.0, `results/stage0/transcript_kat.json`, 25,426 CU). The complete pin
+   history and reason for every Stage 1 re-pin is recorded in
+   `results/stage1/transcript_kat_repin_ledger.json`: branch baseline
+   `16eb0c...`, OOD binding `bef9b0...`, relation interleaving `e00bd5...`,
+   and C2/order integration `26f091...`. Each new digest was first observed
+   as the expected failing host KAT and then matched on SBF. This answers the
+   re-pin question directly: all three changes were deliberate named
+   protocol changes, not constants edited merely to green the suite. This
+   item is CLOSED.
+2. **(z, v) claim binding + enforcement. IMPLEMENTED.**
    `EvaluationClaim { z, v }` is a transcript-absorbed public input (label
-   CLAIM, canonical position: after the statement digest, before any root;
-   header byte 15 is the claim flag, so pre-claim proofs parse unchanged).
-   Delivered rejections, each with a test: claim mix-and-match (point or
-   value swap), flag mismatch both ways (ClaimMissing/ClaimUnexpected,
-   codes 14/15), point-dimension mismatch (ClaimShape, 16), and the
-   challenge-order attack (a mis-ordered prover absorbing the claim after
-   the roots rejects — the order-family test realizable at this protocol
-   revision; gamma-before-claims lands with the sumcheck phase). The
-   RELATION w(z) = v is NOT enforced yet — that is the sumcheck/fold
-   interleaving — and `claim_enforcement_pending_documented` asserts the
-   unenforced behavior so it fails loudly and must be inverted the day the
-   interleave lands. Program side: `VerifyWithClaim` instruction;
-   `multilinear_eval` shipped in the prover as the future interleave
-   ingredient. CU impact of binding: one extra transcript absorb
-   (~1 hash), no re-measure required.
-3. **OOD absorptions** (T2).
-4. **Second commitment phase** (C2, §5) last: the largest envelope change,
-   and everything before it is prerequisite-free.
+   CLAIM, canonical position: after C2 and before gamma; header byte 15 is a
+   claim/C2 bitfield, and claim-carrying v3 proofs require C2).
+   Delivered rejections: claim mix-and-match, flag mismatch both ways
+   (ClaimMissing/ClaimUnexpected, codes 14/15), point-dimension mismatch
+   (ClaimShape, 16), gamma-before-claims ordering, and an honestly
+   constructed proof carrying a false `v` (SumcheckBoundaryMismatch, code
+   18). Program side: `VerifyWithClaim` instruction and instruction-path
+   test.
+3. **OOD absorption + enforcement** (T2): **IMPLEMENTED.** Envelope version
+   3 carries one canonical QM31 value after each round root (and after the
+   C2 prefix in round zero). The verifier derives `beta_r` after
+   the root, rejection-samples outside the CM31 subfield, absorbs the value,
+   samples its mix coefficient, and includes the relation in that round's
+   sumcheck. Delivered tests: honest roundtrip, value corruption, pre-v3
+   envelope, alpha-before-value order attack, bounded subfield-sampler
+   exhaustion, and a false round-1 OOD evaluation rejected at boundary 1.
+4. **Sumcheck/fold interleaving: IMPLEMENTED.** For every four-coefficient
+   chunk, `A(X)=a0+a1X+a2X^2+a3X^3`; the dual weight polynomial is
+   `B(X)=(b0+b3X+b2X^2+b1X^3)/4`. The degree-6 sum of `A*B` over the fourth
+   roots equals the incoming dot product, while evaluation at `alpha_r`
+   equals the relation on the exact arity-4 folded coefficients. Structured
+   geometric/MLE weights avoid a full verifier vector. Final reduction is
+   checked on the four explicit coefficients (EvaluationRelationMismatch,
+   code 19). Host invariants, false-claim/OOD vectors, corruption, SBF KAT,
+   and eleven pre-C2 on-chain negatives passed. The 801,525 CU / 15,216-byte
+   result is therefore explicitly historical, not the gate-close number.
+5. **Second commitment phase** (C2, §5): **IMPLEMENTED AT THE PCS
+   INTERFACE.** C1 is absorbed before lambda/chi; the generic builder then
+   produces C2; both trees are authenticated at the first opening; main and
+   helper claims are absorbed before gamma; and the gamma-combined
+   polynomial feeds the enforced relation accumulator and every fold.
+   Honest generic/synthetic C2 roundtrips and C2 root/claim corruption tests
+   pass. The three adversarial order vectors reject canonically and accept
+   under their matching deliberately weakened test-only schedules. The
+   Stage 1 artifact uses a synthetic helper only for interface cost; the real
+   LogUp helper and its economic-attack corpus begin Stage 2.
 
-Each step re-measures CU on the gate profiles and updates the §4 projection
-table; the Stage 1 gate cannot close on projections alone.
+The final step was remeasured on the literal gate profile and §4 is synced to
+that artifact. The Stage 1 PCS protocol gate is closed. The Stage 2 product
+feasibility gate is explicitly not: its opening measurement must recover or
+fit within the remaining 14,914 CU, which is below the required slack.

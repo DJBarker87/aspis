@@ -4,10 +4,10 @@
 //! stays no_std and dependency-free: the host passes a sha2-backed function,
 //! the SBF program passes `solana_program::hash::hashv`.
 //!
-//! v0 Fiat-Shamir ordering (audited in Stage 1, per design section 8.1):
-//! absorb profile header, statement digest, all roots (sampling one fold
-//! challenge after each root), final polynomial, grinding witness; only then
-//! derive query positions.
+//! Stage 1 Fiat-Shamir ordering (audited per design section 8.1): absorb C1,
+//! sample lambda and chi, absorb C2, absorb claimed evaluations, sample
+//! gamma, then run the per-round OOD/sumcheck/fold transcript. Absorb the
+//! final polynomial and grinding witness before deriving query positions.
 
 use crate::field::{M31, QM31};
 
@@ -17,10 +17,8 @@ use crate::field::{M31, QM31};
 /// Never edit this constant except as part of a deliberate, named transcript
 /// protocol change.
 pub const TRANSCRIPT_KAT_EXPECTED: [u8; 32] = [
-    0x16, 0xeb, 0x0c, 0xab, 0xdd, 0x02, 0xfa, 0xbe,
-    0xc9, 0x1c, 0xac, 0xe9, 0x5d, 0x2d, 0xb1, 0xa6,
-    0x9f, 0xd9, 0xd8, 0xe6, 0x65, 0x10, 0x91, 0x52,
-    0xf1, 0xac, 0x01, 0xf4, 0x6a, 0x9c, 0xe9, 0xa9,
+    0x26, 0xf0, 0x91, 0x71, 0xa5, 0x96, 0x80, 0xc0, 0x65, 0x27, 0x3a, 0xc5, 0x7b, 0x20, 0xbf, 0x91,
+    0x8b, 0x69, 0xeb, 0xb4, 0x0e, 0x64, 0x5f, 0x2f, 0x67, 0xad, 0x63, 0xe6, 0x20, 0x65, 0xc5, 0x91,
 ];
 
 /// hashv-shaped backend: hash the concatenation of the input slices.
@@ -32,10 +30,22 @@ pub mod label {
     pub const ROOT: u8 = 3;
     pub const FINAL_POLY: u8 = 4;
     pub const GRIND_NONCE: u8 = 5;
-    /// Externally supplied (z, v) evaluation claim — absorbed as a public
-    /// input directly after the statement digest, before any commitment
-    /// root (canonical order, soundness-note §2).
+    /// Externally supplied main-column (z, v) evaluation claim. In a
+    /// claim-carrying proof it is absorbed after C2 and before gamma.
     pub const CLAIM: u8 = 6;
+    /// Prover-supplied evaluation at the transcript-derived out-of-domain
+    /// point for the current committed layer. It must precede that layer's
+    /// fold challenge.
+    pub const OOD_VALUE: u8 = 7;
+    /// Degree-6 interleaved linear-relation sumcheck polynomial. It is
+    /// absorbed before the fold challenge used to reduce that relation.
+    pub const SUMCHECK_POLY: u8 = 8;
+    /// Second-phase helper commitment, absorbed only after lambda and chi
+    /// have been squeezed from a transcript already binding C1.
+    pub const SECOND_PHASE_ROOT: u8 = 9;
+    /// Proof-carried helper evaluation at the public claim point. It and the
+    /// main claim are both absorbed before gamma.
+    pub const SECOND_PHASE_CLAIM: u8 = 10;
 }
 
 const DOM_ABSORB: u8 = 0x00;
@@ -47,10 +57,23 @@ const DOM_GRIND: u8 = 0x03;
 /// exhausted. Per-limb exhaustion probability (2^-31)^8 = 2^-248.
 pub const CHALLENGE_RETRY_LIMIT: u32 = 8;
 
+/// Maximum field draws used to obtain a point outside the CM31 subfield.
+/// A random QM31 point lands in CM31 with probability 1/|CM31| ~= 2^-62;
+/// exhausting all three attempts is therefore below 2^-186.
+pub const OOD_RETRY_LIMIT: u32 = 3;
+
 /// The bounded rejection-sampling loop ran out of retries (a 2^-248-per-limb
 /// completeness event). The verifier maps this to proof rejection.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct ChallengeSampleExhausted;
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum OodSampleError {
+    /// The exact-uniform field sampler exhausted its per-limb retry bound.
+    ChallengeSampleExhausted,
+    /// Three independently sampled QM31 points all landed in CM31.
+    SubfieldSampleExhausted,
+}
 
 #[derive(Clone)]
 pub struct Transcript {
@@ -107,7 +130,9 @@ impl Transcript {
                     word_index = 0;
                 }
                 let word = u32::from_le_bytes(
-                    block[word_index * 4..word_index * 4 + 4].try_into().unwrap(),
+                    block[word_index * 4..word_index * 4 + 4]
+                        .try_into()
+                        .unwrap(),
                 );
                 word_index += 1;
                 let masked = word & crate::field::P;
@@ -131,6 +156,23 @@ impl Transcript {
                 b: limbs[3],
             },
         })
+    }
+
+    /// Sample exactly uniformly from QM31 \ CM31. Since every evaluation
+    /// domain used by Aspis lies in CM31, this makes the point genuinely
+    /// out-of-domain by construction instead of relying on a negligible
+    /// collision probability. The bounded outer retry is a completeness
+    /// trade (below 2^-186), not a soundness term.
+    pub fn challenge_ood_qm31(&mut self) -> Result<QM31, OodSampleError> {
+        for _ in 0..OOD_RETRY_LIMIT {
+            let point = self
+                .challenge_qm31()
+                .map_err(|_| OodSampleError::ChallengeSampleExhausted)?;
+            if point.c1 != crate::field::CM31::ZERO {
+                return Ok(point);
+            }
+        }
+        Err(OodSampleError::SubfieldSampleExhausted)
     }
 
     /// Derive `count` query positions in [0, bound) where bound is a power of
@@ -176,11 +218,53 @@ impl Transcript {
 /// failure here instead of a week.
 pub fn transcript_kat(hash: HashFn) -> [u8; 32] {
     let mut t = Transcript::new(hash);
-    t.absorb(label::PROFILE, b"aspis-transcript-kat-v1");
+    t.absorb(label::PROFILE, b"aspis-transcript-kat-v3-c2");
     t.absorb(label::STATEMENT, &[0xA5; 32]);
     let mut acc = [0u8; 32];
+
+    // Canonical two-phase prefix: C1 -> (lambda, chi) -> C2 -> claimed
+    // evaluations -> gamma. Each squeezed value contributes to the KAT
+    // digest, so deleting or moving any one of them is a loud re-pin.
+    t.absorb(label::ROOT, &[0u8; 32]);
+    for _ in 0..2 {
+        let challenge = t
+            .challenge_qm31()
+            .expect("kat: phase challenge sampler exhausted (2^-248 per limb)");
+        let mut bytes = [0u8; 16];
+        challenge.write_le_bytes(&mut bytes);
+        acc = hash(&[&acc, &bytes]);
+    }
+    t.absorb(label::SECOND_PHASE_ROOT, &[0x22; 32]);
+    t.absorb(label::CLAIM, &[0x33; 176]);
+    t.absorb(label::SECOND_PHASE_CLAIM, &[0x44; 16]);
+    let gamma = t
+        .challenge_qm31()
+        .expect("kat: gamma sampler exhausted (2^-248 per limb)");
+    let mut gamma_bytes = [0u8; 16];
+    gamma.write_le_bytes(&mut gamma_bytes);
+    acc = hash(&[&acc, &gamma_bytes]);
+
     for i in 0..8u8 {
-        t.absorb(label::ROOT, &[i; 32]);
+        if i > 0 {
+            t.absorb(label::ROOT, &[i; 32]);
+        }
+        let ood_point = t
+            .challenge_ood_qm31()
+            .expect("kat: OOD sampler exhausted (<2^-186)");
+        let mut point_bytes = [0u8; 16];
+        ood_point.write_le_bytes(&mut point_bytes);
+        acc = hash(&[&acc, &point_bytes]);
+        t.absorb(label::OOD_VALUE, &[0x40 + i; 16]);
+        let mix = t
+            .challenge_qm31()
+            .expect("kat: claim-mix sampler exhausted (2^-248 per limb)");
+        let mut mix_bytes = [0u8; 16];
+        mix.write_le_bytes(&mut mix_bytes);
+        acc = hash(&[&acc, &mix_bytes]);
+        t.absorb(
+            label::SUMCHECK_POLY,
+            &[0x80 + i; crate::sumcheck::SUMCHECK_BYTES],
+        );
         let alpha = t
             .challenge_qm31()
             .expect("kat: sampler exhausted (2^-248 per limb)");
@@ -237,6 +321,27 @@ mod tests {
     fn sampler_exhaustion_is_bounded_error() {
         let mut t = Transcript::new(all_p_hash);
         assert_eq!(t.challenge_qm31(), Err(ChallengeSampleExhausted));
+    }
+
+    fn cm31_only_hash(inputs: &[&[u8]]) -> [u8; 32] {
+        if inputs.len() == 2 && inputs[1] == [DOM_SQUEEZE] {
+            let mut block = [0u8; 32];
+            block[0..4].copy_from_slice(&1u32.to_le_bytes());
+            block[4..8].copy_from_slice(&2u32.to_le_bytes());
+            // c1 limbs stay zero: every candidate is in the CM31 subfield.
+            block
+        } else {
+            test_hash(inputs)
+        }
+    }
+
+    #[test]
+    fn ood_sampler_rejects_subfield_points_with_a_bound() {
+        let mut t = Transcript::new(cm31_only_hash);
+        assert_eq!(
+            t.challenge_ood_qm31(),
+            Err(OodSampleError::SubfieldSampleExhausted)
+        );
     }
 
     /// Backend that rejects exactly the first draw: word 0 masks to P, the

@@ -5,6 +5,9 @@ license.workspace = true
 version.workspace = true
 description = "Host-only prover for the Aspis native WHIR-style M31 PCS substrate"
 
+[features]
+insecure-test-ordering = ["aspis-core/insecure-test-ordering"]
+
 [dependencies]
 aspis-core = { path = "../aspis-core" }
 sha2.workspace = true

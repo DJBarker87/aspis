@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-07-04T10:50:38.270448+00:00",
+  "generated_at_utc": "2026-07-10T13:43:29.725665+00:00",
   "command": "cargo run -p aspis-xtask -- stage0-host",
   "parity_runs_per_variant": 10,
   "variants": [
@@ -14,33 +14,45 @@
       "merkle_mode": "minimal_subtree",
       "runs": 10,
       "accepted": 10,
-      "proof_bytes_min": 23414,
-      "proof_bytes_max": 25686,
-      "proof_bytes_mean": 24790.0,
-      "prove_ms_mean": 15.710749799999999,
-      "verify_ms_mean": 0.30740829999999997,
+      "proof_bytes_min": 25302,
+      "proof_bytes_max": 26166,
+      "proof_bytes_mean": 25644.4,
+      "prove_ms_mean": 15.5111043,
+      "verify_ms_mean": 0.2958794,
       "corruption": [
         {
           "name": "root_corruption",
           "byte_offset": 21,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
+        },
+        {
+          "name": "ood_value_corruption",
+          "byte_offset": 48,
+          "rejected": true,
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
+        },
+        {
+          "name": "sumcheck_corruption",
+          "byte_offset": 64,
+          "rejected": true,
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "payload_corruption",
-          "byte_offset": 253,
+          "byte_offset": 893,
           "rejected": true,
           "error": "Some(MerkleMismatch { layer: 0 })"
         },
         {
           "name": "final_value_corruption",
-          "byte_offset": 177,
+          "byte_offset": 817,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(EvaluationRelationMismatch)"
         },
         {
           "name": "grinding_corruption",
-          "byte_offset": 240,
+          "byte_offset": 880,
           "rejected": true,
           "error": "Some(GrindingFailed)"
         },
@@ -48,17 +60,17 @@
           "name": "statement_digest_mismatch",
           "byte_offset": 0,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "trailing_byte",
-          "byte_offset": 24694,
+          "byte_offset": 25590,
           "rejected": true,
           "error": "Some(TrailingBytes)"
         },
         {
           "name": "truncation",
-          "byte_offset": 24693,
+          "byte_offset": 25589,
           "rejected": true,
           "error": "Some(BadLength)"
         },
@@ -66,7 +78,7 @@
           "name": "mode_flag_replay",
           "byte_offset": 12,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "profile_swap",
@@ -87,33 +99,45 @@
       "merkle_mode": "single_paths",
       "runs": 10,
       "accepted": 10,
-      "proof_bytes_min": 50914,
-      "proof_bytes_max": 56834,
-      "proof_bytes_mean": 54059.6,
-      "prove_ms_mean": 13.778179300000001,
-      "verify_ms_mean": 0.46411679999999994,
+      "proof_bytes_min": 53250,
+      "proof_bytes_max": 56130,
+      "proof_bytes_mean": 55083.6,
+      "prove_ms_mean": 18.8636289,
+      "verify_ms_mean": 0.5044541,
       "corruption": [
         {
           "name": "root_corruption",
           "byte_offset": 21,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
+        },
+        {
+          "name": "ood_value_corruption",
+          "byte_offset": 48,
+          "rejected": true,
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
+        },
+        {
+          "name": "sumcheck_corruption",
+          "byte_offset": 64,
+          "rejected": true,
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "payload_corruption",
-          "byte_offset": 253,
+          "byte_offset": 893,
           "rejected": true,
           "error": "Some(MerkleMismatch { layer: 0 })"
         },
         {
           "name": "final_value_corruption",
-          "byte_offset": 177,
+          "byte_offset": 817,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(EvaluationRelationMismatch)"
         },
         {
           "name": "grinding_corruption",
-          "byte_offset": 240,
+          "byte_offset": 880,
           "rejected": true,
           "error": "Some(GrindingFailed)"
         },
@@ -121,17 +145,17 @@
           "name": "statement_digest_mismatch",
           "byte_offset": 0,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "trailing_byte",
-          "byte_offset": 53570,
+          "byte_offset": 54978,
           "rejected": true,
           "error": "Some(TrailingBytes)"
         },
         {
           "name": "truncation",
-          "byte_offset": 53569,
+          "byte_offset": 54977,
           "rejected": true,
           "error": "Some(BadLength)"
         },
@@ -139,7 +163,7 @@
           "name": "mode_flag_replay",
           "byte_offset": 12,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "profile_swap",
@@ -160,33 +184,45 @@
       "merkle_mode": "minimal_subtree",
       "runs": 10,
       "accepted": 10,
-      "proof_bytes_min": 29622,
-      "proof_bytes_max": 30806,
-      "proof_bytes_mean": 30172.4,
-      "prove_ms_mean": 15.6619208,
-      "verify_ms_mean": 0.2537335,
+      "proof_bytes_min": 29878,
+      "proof_bytes_max": 32086,
+      "proof_bytes_mean": 31071.6,
+      "prove_ms_mean": 17.0553334,
+      "verify_ms_mean": 0.2852875,
       "corruption": [
         {
           "name": "root_corruption",
           "byte_offset": 21,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
+        },
+        {
+          "name": "ood_value_corruption",
+          "byte_offset": 48,
+          "rejected": true,
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
+        },
+        {
+          "name": "sumcheck_corruption",
+          "byte_offset": 64,
+          "rejected": true,
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "payload_corruption",
-          "byte_offset": 253,
+          "byte_offset": 893,
           "rejected": true,
           "error": "Some(MerkleMismatch { layer: 0 })"
         },
         {
           "name": "final_value_corruption",
-          "byte_offset": 177,
+          "byte_offset": 817,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(EvaluationRelationMismatch)"
         },
         {
           "name": "grinding_corruption",
-          "byte_offset": 240,
+          "byte_offset": 880,
           "rejected": true,
           "error": "Some(GrindingFailed)"
         },
@@ -194,17 +230,17 @@
           "name": "statement_digest_mismatch",
           "byte_offset": 0,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "trailing_byte",
-          "byte_offset": 30230,
+          "byte_offset": 31798,
           "rejected": true,
           "error": "Some(TrailingBytes)"
         },
         {
           "name": "truncation",
-          "byte_offset": 30229,
+          "byte_offset": 31797,
           "rejected": true,
           "error": "Some(BadLength)"
         },
@@ -212,7 +248,7 @@
           "name": "mode_flag_replay",
           "byte_offset": 12,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "profile_swap",
@@ -233,33 +269,45 @@
       "merkle_mode": "single_paths",
       "runs": 10,
       "accepted": 10,
-      "proof_bytes_min": 57762,
-      "proof_bytes_max": 61122,
-      "proof_bytes_mean": 59720.4,
-      "prove_ms_mean": 14.241470900000001,
-      "verify_ms_mean": 0.4934042999999999,
+      "proof_bytes_min": 56898,
+      "proof_bytes_max": 61986,
+      "proof_bytes_mean": 59739.6,
+      "prove_ms_mean": 14.247337500000004,
+      "verify_ms_mean": 0.49640000000000006,
       "corruption": [
         {
           "name": "root_corruption",
           "byte_offset": 21,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
+        },
+        {
+          "name": "ood_value_corruption",
+          "byte_offset": 48,
+          "rejected": true,
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
+        },
+        {
+          "name": "sumcheck_corruption",
+          "byte_offset": 64,
+          "rejected": true,
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "payload_corruption",
-          "byte_offset": 253,
+          "byte_offset": 893,
           "rejected": true,
           "error": "Some(MerkleMismatch { layer: 0 })"
         },
         {
           "name": "final_value_corruption",
-          "byte_offset": 177,
+          "byte_offset": 817,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(EvaluationRelationMismatch)"
         },
         {
           "name": "grinding_corruption",
-          "byte_offset": 240,
+          "byte_offset": 880,
           "rejected": true,
           "error": "Some(GrindingFailed)"
         },
@@ -267,17 +315,17 @@
           "name": "statement_digest_mismatch",
           "byte_offset": 0,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "trailing_byte",
-          "byte_offset": 58914,
+          "byte_offset": 61122,
           "rejected": true,
           "error": "Some(TrailingBytes)"
         },
         {
           "name": "truncation",
-          "byte_offset": 58913,
+          "byte_offset": 61121,
           "rejected": true,
           "error": "Some(BadLength)"
         },
@@ -285,7 +333,7 @@
           "name": "mode_flag_replay",
           "byte_offset": 12,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "profile_swap",
@@ -306,33 +354,45 @@
       "merkle_mode": "minimal_subtree",
       "runs": 10,
       "accepted": 10,
-      "proof_bytes_min": 38646,
-      "proof_bytes_max": 40310,
-      "proof_bytes_mean": 39615.6,
-      "prove_ms_mean": 13.5662707,
-      "verify_ms_mean": 0.4198081,
+      "proof_bytes_min": 38550,
+      "proof_bytes_max": 41398,
+      "proof_bytes_mean": 40172.4,
+      "prove_ms_mean": 13.522454199999999,
+      "verify_ms_mean": 0.4359041,
       "corruption": [
         {
           "name": "root_corruption",
           "byte_offset": 21,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
+        },
+        {
+          "name": "ood_value_corruption",
+          "byte_offset": 48,
+          "rejected": true,
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
+        },
+        {
+          "name": "sumcheck_corruption",
+          "byte_offset": 64,
+          "rejected": true,
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "payload_corruption",
-          "byte_offset": 253,
+          "byte_offset": 893,
           "rejected": true,
           "error": "Some(MerkleMismatch { layer: 0 })"
         },
         {
           "name": "final_value_corruption",
-          "byte_offset": 177,
+          "byte_offset": 817,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(EvaluationRelationMismatch)"
         },
         {
           "name": "grinding_corruption",
-          "byte_offset": 240,
+          "byte_offset": 880,
           "rejected": true,
           "error": "Some(GrindingFailed)"
         },
@@ -340,17 +400,17 @@
           "name": "statement_digest_mismatch",
           "byte_offset": 0,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "trailing_byte",
-          "byte_offset": 39478,
+          "byte_offset": 40950,
           "rejected": true,
           "error": "Some(TrailingBytes)"
         },
         {
           "name": "truncation",
-          "byte_offset": 39477,
+          "byte_offset": 40949,
           "rejected": true,
           "error": "Some(BadLength)"
         },
@@ -358,7 +418,7 @@
           "name": "mode_flag_replay",
           "byte_offset": 12,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "profile_swap",
@@ -379,33 +439,45 @@
       "merkle_mode": "single_paths",
       "runs": 10,
       "accepted": 10,
-      "proof_bytes_min": 96610,
-      "proof_bytes_max": 103554,
-      "proof_bytes_mean": 99838.8,
-      "prove_ms_mean": 14.548708300000001,
-      "verify_ms_mean": 0.8865083,
+      "proof_bytes_min": 98402,
+      "proof_bytes_max": 102082,
+      "proof_bytes_mean": 100302.8,
+      "prove_ms_mean": 18.1178751,
+      "verify_ms_mean": 0.8756959,
       "corruption": [
         {
           "name": "root_corruption",
           "byte_offset": 21,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
+        },
+        {
+          "name": "ood_value_corruption",
+          "byte_offset": 48,
+          "rejected": true,
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
+        },
+        {
+          "name": "sumcheck_corruption",
+          "byte_offset": 64,
+          "rejected": true,
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "payload_corruption",
-          "byte_offset": 253,
+          "byte_offset": 893,
           "rejected": true,
           "error": "Some(MerkleMismatch { layer: 0 })"
         },
         {
           "name": "final_value_corruption",
-          "byte_offset": 177,
+          "byte_offset": 817,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(EvaluationRelationMismatch)"
         },
         {
           "name": "grinding_corruption",
-          "byte_offset": 240,
+          "byte_offset": 880,
           "rejected": true,
           "error": "Some(GrindingFailed)"
         },
@@ -413,17 +485,17 @@
           "name": "statement_digest_mismatch",
           "byte_offset": 0,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "trailing_byte",
-          "byte_offset": 100098,
+          "byte_offset": 99490,
           "rejected": true,
           "error": "Some(TrailingBytes)"
         },
         {
           "name": "truncation",
-          "byte_offset": 100097,
+          "byte_offset": 99489,
           "rejected": true,
           "error": "Some(BadLength)"
         },
@@ -431,7 +503,7 @@
           "name": "mode_flag_replay",
           "byte_offset": 12,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "profile_swap",
@@ -452,33 +524,45 @@
       "merkle_mode": "minimal_subtree",
       "runs": 10,
       "accepted": 10,
-      "proof_bytes_min": 47574,
-      "proof_bytes_max": 49846,
-      "proof_bytes_mean": 48681.2,
-      "prove_ms_mean": 10.7401999,
-      "verify_ms_mean": 0.4480874999999999,
+      "proof_bytes_min": 48054,
+      "proof_bytes_max": 51254,
+      "proof_bytes_mean": 49615.6,
+      "prove_ms_mean": 19.6113459,
+      "verify_ms_mean": 0.44957919999999996,
       "corruption": [
         {
           "name": "root_corruption",
           "byte_offset": 21,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
+        },
+        {
+          "name": "ood_value_corruption",
+          "byte_offset": 48,
+          "rejected": true,
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
+        },
+        {
+          "name": "sumcheck_corruption",
+          "byte_offset": 64,
+          "rejected": true,
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "payload_corruption",
-          "byte_offset": 253,
+          "byte_offset": 893,
           "rejected": true,
           "error": "Some(MerkleMismatch { layer: 0 })"
         },
         {
           "name": "final_value_corruption",
-          "byte_offset": 177,
+          "byte_offset": 817,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(EvaluationRelationMismatch)"
         },
         {
           "name": "grinding_corruption",
-          "byte_offset": 240,
+          "byte_offset": 880,
           "rejected": true,
           "error": "Some(GrindingFailed)"
         },
@@ -486,17 +570,17 @@
           "name": "statement_digest_mismatch",
           "byte_offset": 0,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "trailing_byte",
-          "byte_offset": 49366,
+          "byte_offset": 50934,
           "rejected": true,
           "error": "Some(TrailingBytes)"
         },
         {
           "name": "truncation",
-          "byte_offset": 49365,
+          "byte_offset": 50933,
           "rejected": true,
           "error": "Some(BadLength)"
         },
@@ -504,7 +588,7 @@
           "name": "mode_flag_replay",
           "byte_offset": 12,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "profile_swap",
@@ -525,33 +609,45 @@
       "merkle_mode": "single_paths",
       "runs": 10,
       "accepted": 10,
-      "proof_bytes_min": 100802,
-      "proof_bytes_max": 111426,
-      "proof_bytes_mean": 108354.0,
-      "prove_ms_mean": 14.0447956,
-      "verify_ms_mean": 0.9006043,
+      "proof_bytes_min": 104994,
+      "proof_bytes_max": 111074,
+      "proof_bytes_mean": 108494.8,
+      "prove_ms_mean": 16.839179,
+      "verify_ms_mean": 0.8888498000000002,
       "corruption": [
         {
           "name": "root_corruption",
           "byte_offset": 21,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
+        },
+        {
+          "name": "ood_value_corruption",
+          "byte_offset": 48,
+          "rejected": true,
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
+        },
+        {
+          "name": "sumcheck_corruption",
+          "byte_offset": 64,
+          "rejected": true,
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "payload_corruption",
-          "byte_offset": 253,
+          "byte_offset": 893,
           "rejected": true,
           "error": "Some(MerkleMismatch { layer: 0 })"
         },
         {
           "name": "final_value_corruption",
-          "byte_offset": 177,
+          "byte_offset": 817,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(EvaluationRelationMismatch)"
         },
         {
           "name": "grinding_corruption",
-          "byte_offset": 240,
+          "byte_offset": 880,
           "rejected": true,
           "error": "Some(GrindingFailed)"
         },
@@ -559,17 +655,17 @@
           "name": "statement_digest_mismatch",
           "byte_offset": 0,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "trailing_byte",
-          "byte_offset": 108866,
+          "byte_offset": 108418,
           "rejected": true,
           "error": "Some(TrailingBytes)"
         },
         {
           "name": "truncation",
-          "byte_offset": 108865,
+          "byte_offset": 108417,
           "rejected": true,
           "error": "Some(BadLength)"
         },
@@ -577,7 +673,7 @@
           "name": "mode_flag_replay",
           "byte_offset": 12,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "profile_swap",
@@ -598,33 +694,45 @@
       "merkle_mode": "minimal_subtree",
       "runs": 10,
       "accepted": 10,
-      "proof_bytes_min": 36252,
-      "proof_bytes_max": 38332,
-      "proof_bytes_mean": 37666.4,
-      "prove_ms_mean": 26.144383300000005,
-      "verify_ms_mean": 0.39451259999999994,
+      "proof_bytes_min": 37532,
+      "proof_bytes_max": 39772,
+      "proof_bytes_mean": 38364.0,
+      "prove_ms_mean": 34.187404099999995,
+      "verify_ms_mean": 0.39482910000000004,
       "corruption": [
         {
           "name": "root_corruption",
           "byte_offset": 21,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
+        },
+        {
+          "name": "ood_value_corruption",
+          "byte_offset": 48,
+          "rejected": true,
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
+        },
+        {
+          "name": "sumcheck_corruption",
+          "byte_offset": 64,
+          "rejected": true,
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "payload_corruption",
-          "byte_offset": 285,
+          "byte_offset": 1053,
           "rejected": true,
           "error": "Some(MerkleMismatch { layer: 0 })"
         },
         {
           "name": "final_value_corruption",
-          "byte_offset": 209,
+          "byte_offset": 977,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(EvaluationRelationMismatch)"
         },
         {
           "name": "grinding_corruption",
-          "byte_offset": 272,
+          "byte_offset": 1040,
           "rejected": true,
           "error": "Some(GrindingFailed)"
         },
@@ -632,17 +740,17 @@
           "name": "statement_digest_mismatch",
           "byte_offset": 0,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "trailing_byte",
-          "byte_offset": 37308,
+          "byte_offset": 38460,
           "rejected": true,
           "error": "Some(TrailingBytes)"
         },
         {
           "name": "truncation",
-          "byte_offset": 37307,
+          "byte_offset": 38459,
           "rejected": true,
           "error": "Some(BadLength)"
         },
@@ -650,7 +758,7 @@
           "name": "mode_flag_replay",
           "byte_offset": 12,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "profile_swap",
@@ -671,33 +779,45 @@
       "merkle_mode": "single_paths",
       "runs": 10,
       "accepted": 10,
-      "proof_bytes_min": 72036,
-      "proof_bytes_max": 76324,
-      "proof_bytes_mean": 74944.8,
-      "prove_ms_mean": 21.728283299999994,
-      "verify_ms_mean": 0.6715333000000001,
+      "proof_bytes_min": 72804,
+      "proof_bytes_max": 76388,
+      "proof_bytes_mean": 74711.2,
+      "prove_ms_mean": 30.1473252,
+      "verify_ms_mean": 0.6686623,
       "corruption": [
         {
           "name": "root_corruption",
           "byte_offset": 21,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
+        },
+        {
+          "name": "ood_value_corruption",
+          "byte_offset": 48,
+          "rejected": true,
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
+        },
+        {
+          "name": "sumcheck_corruption",
+          "byte_offset": 64,
+          "rejected": true,
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "payload_corruption",
-          "byte_offset": 285,
+          "byte_offset": 1053,
           "rejected": true,
           "error": "Some(MerkleMismatch { layer: 0 })"
         },
         {
           "name": "final_value_corruption",
-          "byte_offset": 209,
+          "byte_offset": 977,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(EvaluationRelationMismatch)"
         },
         {
           "name": "grinding_corruption",
-          "byte_offset": 272,
+          "byte_offset": 1040,
           "rejected": true,
           "error": "Some(GrindingFailed)"
         },
@@ -705,17 +825,17 @@
           "name": "statement_digest_mismatch",
           "byte_offset": 0,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "trailing_byte",
-          "byte_offset": 75748,
+          "byte_offset": 74532,
           "rejected": true,
           "error": "Some(TrailingBytes)"
         },
         {
           "name": "truncation",
-          "byte_offset": 75747,
+          "byte_offset": 74531,
           "rejected": true,
           "error": "Some(BadLength)"
         },
@@ -723,7 +843,7 @@
           "name": "mode_flag_replay",
           "byte_offset": 12,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "profile_swap",
@@ -744,33 +864,45 @@
       "merkle_mode": "minimal_subtree",
       "runs": 10,
       "accepted": 10,
-      "proof_bytes_min": 43164,
-      "proof_bytes_max": 44924,
-      "proof_bytes_mean": 44076.0,
-      "prove_ms_mean": 28.720774799999997,
-      "verify_ms_mean": 0.3990667,
+      "proof_bytes_min": 43484,
+      "proof_bytes_max": 45724,
+      "proof_bytes_mean": 44885.6,
+      "prove_ms_mean": 39.1196833,
+      "verify_ms_mean": 0.40290420000000005,
       "corruption": [
         {
           "name": "root_corruption",
           "byte_offset": 21,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
+        },
+        {
+          "name": "ood_value_corruption",
+          "byte_offset": 48,
+          "rejected": true,
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
+        },
+        {
+          "name": "sumcheck_corruption",
+          "byte_offset": 64,
+          "rejected": true,
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "payload_corruption",
-          "byte_offset": 285,
+          "byte_offset": 1053,
           "rejected": true,
           "error": "Some(MerkleMismatch { layer: 0 })"
         },
         {
           "name": "final_value_corruption",
-          "byte_offset": 209,
+          "byte_offset": 977,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(EvaluationRelationMismatch)"
         },
         {
           "name": "grinding_corruption",
-          "byte_offset": 272,
+          "byte_offset": 1040,
           "rejected": true,
           "error": "Some(GrindingFailed)"
         },
@@ -778,17 +910,17 @@
           "name": "statement_digest_mismatch",
           "byte_offset": 0,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "trailing_byte",
-          "byte_offset": 44540,
+          "byte_offset": 44156,
           "rejected": true,
           "error": "Some(TrailingBytes)"
         },
         {
           "name": "truncation",
-          "byte_offset": 44539,
+          "byte_offset": 44155,
           "rejected": true,
           "error": "Some(BadLength)"
         },
@@ -796,7 +928,7 @@
           "name": "mode_flag_replay",
           "byte_offset": 12,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "profile_swap",
@@ -817,33 +949,45 @@
       "merkle_mode": "single_paths",
       "runs": 10,
       "accepted": 10,
-      "proof_bytes_min": 79332,
-      "proof_bytes_max": 83716,
-      "proof_bytes_mean": 81223.2,
-      "prove_ms_mean": 28.875704300000006,
-      "verify_ms_mean": 0.6713749999999999,
+      "proof_bytes_min": 80228,
+      "proof_bytes_max": 83684,
+      "proof_bytes_mean": 81949.6,
+      "prove_ms_mean": 30.2992832,
+      "verify_ms_mean": 0.6828876000000002,
       "corruption": [
         {
           "name": "root_corruption",
           "byte_offset": 21,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
+        },
+        {
+          "name": "ood_value_corruption",
+          "byte_offset": 48,
+          "rejected": true,
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
+        },
+        {
+          "name": "sumcheck_corruption",
+          "byte_offset": 64,
+          "rejected": true,
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "payload_corruption",
-          "byte_offset": 285,
+          "byte_offset": 1053,
           "rejected": true,
           "error": "Some(MerkleMismatch { layer: 0 })"
         },
         {
           "name": "final_value_corruption",
-          "byte_offset": 209,
+          "byte_offset": 977,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(EvaluationRelationMismatch)"
         },
         {
           "name": "grinding_corruption",
-          "byte_offset": 272,
+          "byte_offset": 1040,
           "rejected": true,
           "error": "Some(GrindingFailed)"
         },
@@ -851,17 +995,17 @@
           "name": "statement_digest_mismatch",
           "byte_offset": 0,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "trailing_byte",
-          "byte_offset": 83716,
+          "byte_offset": 83044,
           "rejected": true,
           "error": "Some(TrailingBytes)"
         },
         {
           "name": "truncation",
-          "byte_offset": 83715,
+          "byte_offset": 83043,
           "rejected": true,
           "error": "Some(BadLength)"
         },
@@ -869,7 +1013,7 @@
           "name": "mode_flag_replay",
           "byte_offset": 12,
           "rejected": true,
-          "error": "Some(GrindingFailed)"
+          "error": "Some(SumcheckBoundaryMismatch { layer: 0 })"
         },
         {
           "name": "profile_swap",

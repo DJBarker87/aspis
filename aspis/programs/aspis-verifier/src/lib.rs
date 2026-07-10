@@ -54,9 +54,8 @@ pub enum AspisInstruction {
     /// divergence and errors loudly.
     TranscriptKat { expected: [u8; 32] },
     /// Verify a claim-carrying proof. The (z, v) evaluation claim is a public
-    /// input (16-byte LE QM31 coordinates + value), transcript-absorbed by
-    /// the verifier. Binding only at this revision: see
-    /// `aspis_core::EvaluationClaim`.
+    /// input (16-byte LE QM31 coordinates + value), transcript-absorbed and
+    /// enforced by the interleaved relation sumcheck.
     VerifyWithClaim {
         statement_digest: [u8; 32],
         claim_z: Vec<[u8; 16]>,
@@ -74,6 +73,10 @@ fn trace_cu(event: aspis_core::TraceEvent) {
         aspis_core::TraceEvent::Start => msg!("aspis-cu:start"),
         aspis_core::TraceEvent::HeaderParsed => msg!("aspis-cu:header_parsed"),
         aspis_core::TraceEvent::TranscriptReady => msg!("aspis-cu:transcript_ready"),
+        aspis_core::TraceEvent::LayerOodDone(layer) => msg!("aspis-cu:layer_ood_done:{}", layer),
+        aspis_core::TraceEvent::LayerSumcheckDone(layer) => {
+            msg!("aspis-cu:layer_sumcheck_done:{}", layer)
+        }
         aspis_core::TraceEvent::QueriesReady => msg!("aspis-cu:queries_ready"),
         aspis_core::TraceEvent::LayerStart(layer) => msg!("aspis-cu:layer_start:{}", layer),
         aspis_core::TraceEvent::LayerMerkleDone(layer) => {
@@ -170,9 +173,18 @@ fn verify_uploaded_proof(
         return Err(ProgramError::InvalidAccountData);
     }
     let proof = &data[PROOF_ACCOUNT_HEADER_LEN..end];
-    let trace_fn = if profile_cu { Some(trace_cu as _) } else { None };
-    let result =
-        aspis_core::verify_with_claim_and_trace(proof, &statement_digest, claim, sbf_hashv, trace_fn);
+    let trace_fn = if profile_cu {
+        Some(trace_cu as _)
+    } else {
+        None
+    };
+    let result = aspis_core::verify_with_claim_and_trace(
+        proof,
+        &statement_digest,
+        claim,
+        sbf_hashv,
+        trace_fn,
+    );
     match result {
         Ok(()) => {
             msg!("aspis: proof accepted");

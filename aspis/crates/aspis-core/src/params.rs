@@ -212,7 +212,8 @@ pub const PROFILE_CAPACITY_LR10_Q36_G32: Profile = Profile {
     log_blowup: 2,
     query_count: 36,
     grinding_bits: 32,
-    soundness_label: "conjectured (capacity) pending soundness-note freeze; ruled Stage 1 schedule",
+    soundness_label:
+        "conjectured (capacity); external/OOD relations and Stage 1 C2 plumbing enforced",
 };
 
 pub const PROFILES: &[Profile] = &[

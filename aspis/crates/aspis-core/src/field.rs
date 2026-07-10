@@ -16,6 +16,8 @@ pub struct M31(pub u32);
 
 /// 1/2 in M31 (P is odd, so (P+1)/2 = 2^30).
 pub const M31_HALF: M31 = M31(0x4000_0000);
+/// 1/4 in M31 (4 * 2^29 = 2^31 = 1 mod P).
+pub const M31_QUARTER: M31 = M31(0x2000_0000);
 
 #[inline(always)]
 fn reduce_u64(x: u64) -> u32 {
@@ -103,7 +105,6 @@ impl M31 {
     pub fn to_le_bytes(self) -> [u8; 4] {
         self.0.to_le_bytes()
     }
-
 }
 
 /// CM31 = M31[i] / (i^2 + 1). Element a + b*i.
@@ -323,6 +324,19 @@ impl QM31 {
     #[inline(always)]
     pub fn is_zero(self) -> bool {
         self.c0.is_zero() && self.c1.is_zero()
+    }
+
+    pub fn pow(self, mut exp: u64) -> QM31 {
+        let mut base = self;
+        let mut acc = QM31::ONE;
+        while exp > 0 {
+            if exp & 1 == 1 {
+                acc = acc.mul(base);
+            }
+            base = base.mul(base);
+            exp >>= 1;
+        }
+        acc
     }
 
     pub fn from_le_bytes(bytes: &[u8]) -> Option<QM31> {

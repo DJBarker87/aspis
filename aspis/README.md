@@ -1,31 +1,39 @@
-# Aspis — transparent shielded spend on Solana (Stage 0 substrate)
+# Aspis — transparent shielded spend on Solana (Stage 1 hardening)
 
 Aspis is a staged project toward the first transparent, trusted-setup-free,
 plausibly-post-quantum verifier of a real private-payment statement running as
-a program on Solana. This subrepo is **Stage 0**: the native WHIR-style M31
-PCS substrate ("native v0"), consolidated with the measured Phase 2 kernel
-winners built in from the first line.
+a program on Solana. This subrepo contains the native WHIR-style M31 PCS
+substrate ("native v0") and its staged hardening, with the measured Phase 2
+kernel winners built in from the first line.
 
-**Status**: Stage 0, **conditionally closed**. Host prove/verify parity is
-10/10 on every profile/packaging variant; all host corruption classes reject.
-The gate-focused SBF run on Agave `2.3.0` accepts the capacity lr12
-raw/minimal profile at `1,063,093` CU. Johnson q80 exceeds the cap and stays
-research-track. The lr14 profile also exceeds the cap, but it is now recorded
-as a narrow-layout diagnostic rather than the statement target; the real
-target is lr10/k64/q32/g32 as a Stage 1 hypothesis. The measured projection is
-`887,776` CU after PCS + wide-leaf/RLC overhead + the existing 30K sumcheck
-estimate, leaving `302,224` CU against the 1.19M target. See
-`docs/stage0-conclusion.md` and `docs/stage0-gate.md`. Every soundness label
-in this tree is `heuristic` until the Stage 1 soundness note exists.
+**Status**: Stage 1 PCS milestone **closed; Stage 2 feasibility work starts
+with a red headroom warning**. Stage 0 closed conditionally and the
+soundness review retired q32/g32 in favor of q36/g32. The upstream T1/T2
+constants are pinned, the challenge sampler is exact-uniform, and external
+evaluation claims plus one OOD value per round are transcript-bound and
+enforced by an interleaved degree-6 relation sumcheck. The v3 C2 interface
+implements `C1 -> (lambda,chi) -> C2 -> claims -> gamma`, authenticates both
+trees, and gamma-combines them before folding. False claims, false OOD
+evaluations, challenge-order attacks, and corruption reject on host and SBF;
+the same three ordering vectors accept under matching deliberately weakened
+test-only schedules. On Agave `2.3.0`, the literal lr10/q36/g32 v3 verifier
+accepts at `943,972` CU; the current PCS + wide-leaf/RLC + statement-sumcheck
+projection is `1,175,086` CU, leaving only `14,914` CU against the 1.19M
+target before unpriced constraint composition. The
+conditional headline is t=100
+capacity-conjectured (~102.98 system bits under the stated three-clause
+assumption), with a proven Johnson floor of ~65.5 bits. See
+`docs/aspis-soundness-note.md`, `docs/stage0-conclusion.md`, and
+`docs/stage0-gate.md`.
 
 ## What this is (and is not)
 
 - A **WHIR-style multilinear PCS substrate**, not paper WHIR. Do not call it
-  WHIR in any public claim: what v0 verifies is transcript-bound local fold
-  consistency of a committed evaluation table down to an explicit final
-  polynomial, with grinding, bound to a statement digest. Out-of-domain
-  samples, sumcheck/fold interleaving, and external evaluation claims are
-  Stage 1 work.
+  WHIR in any public claim: the current verifier checks transcript-bound
+  local fold consistency down to an explicit final polynomial, with grinding
+  and statement binding. External `(z,v)` and per-round OOD evaluation
+  relations are carried to the explicit final polynomial by an interleaved
+  degree-6 sumcheck.
 - Hashing on-chain and in the proof's own Merkle/transcript structure is
   SHA-256 via the Solana syscall (the two-hash rule: the in-circuit algebraic
   hash arrives with the Stage 2 statement layer, never on this path).
@@ -63,9 +71,9 @@ Verbatim from the staged design (this section ships with every artifact):
 > recursion, aggregation, batching of spends; any claim of equivalence to
 > paper WHIR; any "first" claim without the Stage 5 novelty re-check.
 
-Stage 0 realizes none of the positive claim yet — it is the substrate the
-later stages build on, and its own claims are limited to what
-`results/stage0/` reproduces.
+The current substrate still realizes none of the full positive spend claim;
+its claims are limited to the PCS/soundness artifacts under `results/stage0/`
+and `results/stage1/`.
 
 ## Layout
 
@@ -75,16 +83,16 @@ crates/aspis-prover      host-only prover
 programs/aspis-verifier  SBF program: staged upload + verify; knows nothing about spends
 xtask                    stage0-host / stage0-onchain measurement runners
 docs/                    staged design, stage 0 gate note, audit notes, divergence note
-results/stage0/          raw artifacts backing every number quoted anywhere
+results/stage0,stage1/   raw artifacts backing every number quoted anywhere
 ```
 
 ## Stage gates
 
 | Stage | Goal | Current status |
 | --- | --- | --- |
-| Stage 0 | Consolidate the native WHIR-style M31 PCS substrate | **CONDITIONAL GO**: lr10/k64/q32/g32 target hypothesis; Johnson q80 and old lr14 target are RED |
-| Stage 1 | Harden and budget the PCS soundness argument | next; must justify or kill q32/g32 |
-| Stage 2 | Build the direct spend evaluator and statement layer | blocked until Stage 1 closes |
+| Stage 0 | Consolidate the native WHIR-style M31 PCS substrate | **CLOSED/CONDITIONAL (historical)**: admitted q32/g32 as a hypothesis; Stage 1 has since retired it |
+| Stage 1 | Harden and budget the PCS soundness argument | **CLOSED/FROZEN**: q36/g32, v3 C2, relation enforcement, teeth tests, literal SBF measurement |
+| Stage 2 | Build the direct spend evaluator and statement layer | **starting**: no-proof evaluator/economic attacks first; isolated SBF composition cost before integration |
 | Stage 3 | Add commitment and sumcheck/evaluation hiding | future |
 | Stage 4 | Split verifier crate seam and demo shielded pool | future |
 | Stage 5 | Freeze, devnet n=100 measurement, novelty re-check, writeup | future |
@@ -98,7 +106,10 @@ cargo run --release -p aspis-xtask -- stage0-onchain-gate  # gate CU matrix, wri
 cargo run --release -p aspis-xtask -- stage0-onchain-profile # native CU markers, writes onchain_profile.json
 cargo run --release -p aspis-xtask -- stage0-layout-sweep    # synthetic (log_rows,k) sweep
 cargo run --release -p aspis-xtask -- stage0-onchain-g32     # g32 query/grinding diagnostics
-cargo run --release -p aspis-xtask -- stage0-onchain-layout-target # lr10 q40/q36/q32 target profiles
+cargo run --release -p aspis-xtask -- stage0-onchain-layout-target # literal lr10 q36/g32 + g16 diagnostics
+cargo run --release -p aspis-xtask -- stage1-soundness-pin # pinned upstream T1/T2 artifact
+cargo run --release -p aspis-xtask -- stage1-onchain-hardening # literal enforced q36/g32 + cached proof
+cargo test -p aspis-prover --features insecure-test-ordering --test stage1_ordering # teeth proof against weakened schedules
 cargo run --release -p aspis-xtask -- stage0-onchain       # full packaging matrix; slow
 ```
 

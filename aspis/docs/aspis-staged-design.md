@@ -169,6 +169,18 @@ Stage 2 constraint-composition costs. q32/g32 is a Stage 1 soundness
 hypothesis, not a public claim. Stage 0 is therefore a conditional GO to Stage
 1 for that target, RED for lr14 and Johnson q80.
 
+Stage 1 amendment (`2026-07-10`, frozen): the soundness note retired q32/g32
+and ruled q36/g32. Upstream T1/T2 constants are pinned; the v3 envelope
+enforces external and per-round OOD evaluations through an interleaved
+degree-6 relation sumcheck and implements the canonical two-phase PCS
+boundary `C1 -> (lambda,chi) -> C2 -> claims -> gamma`. The literal
+lr10/q36/g32 verifier is `943,972` CU and the current combined projection is
+`1,175,086` CU, leaving only `14,914` CU against the 1.19M target before
+unpriced constraint composition. Stage 1 is closed as a PCS milestone, but
+the 10% product-feasibility slack gate is red. These figures supersede the
+Stage 0 continuation projection; they do not retroactively alter the Stage 0
+gate.
+
 Do not trust the Phase 1 additive model's per-op coefficients for the
 statement layer. Constraint-evaluation cost is measured directly on SBF or not
 believed at all.
@@ -288,8 +300,13 @@ plausibly `2^13`-`2^14`, sumcheck degree roughly `<= 6-7` with `eq`.
 
 Discipline:
 
-1. Build the no-proof direct evaluator first, with valid and invalid vectors
-   and differential tests against an independent Poseidon2-M31 implementation.
+1. Build the no-proof direct evaluator first. Its first test corpus is the
+   economic attack surface, not happy-path proof plumbing: field-wrap
+   inflation (`fee > value` and unconstrained `value_out`), wrong asset/public
+   binding, wrong anchor/path, forged ownership/nullifier, double-spend
+   replay, and boundary values at `0`, `2^30-1`, and `2^30`. Add valid vectors
+   and differential tests against an independent Poseidon2-M31
+   implementation in the same evaluator milestone.
 2. Measure real witness size and constraint counts from the evaluator.
 3. Measure constraint-composition evaluation cost on SBF in isolation.
 4. Measure software Poseidon2-M31 permutation cost on SBF.
@@ -370,9 +387,11 @@ claim boundary and soundness labels present in README and paper.
    algebraic soundness term in the system — proximity-gathering terms per fold
    round, OOD binding, sumcheck Schwartz-Zippel, `gamma`-RLC batching, the
    copy-argument terms — carries a `2^124` denominator that grinding does not
-   offset (grinding buys back query-sampling error only). Union-bounded, the
-   achievable ceiling on this tower is roughly `106-115` bits before any query
-   is spent; `128` bits was never reachable on M31/CM31/QM31, consistent with
+   offset (grinding buys back query-sampling error only). The `2026-07-10`
+   upstream pin resolves the algebraic union to `~103.95` bits at the ruled
+   `L <= 40` capacity-conjecture clause, and combining it with the 104-bit
+   query term yields `~102.98` system bits; `128` bits was never reachable on
+   M31/CM31/QM31, consistent with
    upstream evidence (WHIR-JB needing Goldilocks3 for 128-bit settings; the
    M31 circle-STARK ecosystem targeting `~96-100` bits). Changing field towers
    is a different project. The `~124`-bit field ceiling and the `~124`-bit
