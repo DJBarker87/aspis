@@ -1,10 +1,13 @@
 # Aspis soundness note — frozen PCS evidence, reopened security instantiation
 
 Status: **PCS evidence frozen; Stage 1 security gate REOPENED on finite-
-length constants (`2026-07-10`)**. The r2/k'=51 s1 base passed its budget,
-but measured s2 adds 49,099 CU: current q36 is registered-strict red at
-1,096,660, while the held q34/g36 recovery lever projects 1,052,181. Stage 2
-is not an integrated payment proof. The t=90 ruling is retained; 93.73 is provisional sensitivity
+length constants (`2026-07-10`)**. The r2/k'=51 s1 base passed its budget.
+The isolated s2 OOD/transcript probe adds 49,099 CU, but its historical
+1,096,660 q36 arithmetic is superseded as a product projection: the corrected
+two-helper PCS scaffold measures +113,876.5 CU on average and still excludes
+the exact-wide C1/RLC and payment statement. Stage 2 is red and unpriced until
+those components are integrated; q34/g36 remains a held protocol lever. The
+t=90 ruling is retained; 93.73 is provisional sensitivity
 only, and 65.5 is the sole quotable floor until §9.4's finite-n gate closes.
 Section status ledger:
 
@@ -160,7 +163,9 @@ family**: gamma-before-claims, chi-before-C1, and OOD-after-alpha transcripts
 all reject under the production verifier. With the explicitly test-only
 `insecure-test-ordering` feature, three deliberately weakened verifier
 schedules accept the identical corresponding bytes. This is the evidence
-that each vector has teeth; the feature is absent from the SBF build.
+that each vector has teeth; the feature is absent from the SBF build. The v4
+extension adds second-OOD-after-alpha and gamma-before-second-helper-claim
+vectors with the same canonical-reject/weakened-accept evidence.
 
 ## 3. The field-ceiling lemma (why the headline is t = 100)
 
@@ -580,12 +585,12 @@ line is conditional on the conjecture line.
 | T3 relation + fused statement sumchecks | proven (SZ) | 117.4 (conservative 14 rounds x degree 7) |
 | T4 zerocheck eq-reduction | proven (SZ) | 120.7 |
 | T5 gamma-RLC batching | proven (SZ; canonical gamma-after-claims order implemented for the generic C2 interface) | 117.7 |
-| T6 copy-argument compression | proven (UFD + SZ) | 110.85 at frozen m=534,w=17; historical worst-layout bound 109.9. The hardened `lambda^(i+1)` encoding does not move the already-booked degree `mw` |
+| T6 copy-argument compression | proven shape (UFD + SZ), constraint registry open | current bound 109.91 at m<=1024,w=17; the endpoint-local m=589 trace layout gives a 110.7104 sensitivity. The hardened `lambda^(i+1)` encoding does not move degree `mw` |
 | T7 copy-argument pole/SZ | proven (log-derivative lemma) | 112 (deliberately loose 4m) |
-| T8 claim batching | proven (SZ) | `4log2(p)-3 = 120.9999999973` at the eight-claim upper bound (~121 in prose) |
+| T8 claim batching | proven shape, final count open | final payment term `(J+2)/|F|`; the exact eight-claim value `4log2(p)-3 = 120.9999999973` is preintegration sensitivity only until `ConstraintId` freezes |
 | T9 challenge sampler | fixed by construction (rejection sampling, exact uniform) | 0 soundness cost; field-sampler completeness < 2^-242, OOD-subfield completeness < 2^-184 |
 | Grinding g32 | proven (ROM work accounting, §6) | +32 bits on the query term only |
-| Stage 2 statement amendment (T5', T7' incl. E4, T8', multiplicity-order line) | proven (SZ / log-derivative; teeth vector executable) | integrated-statement union 103.9453 algebraic, 102.9724 total (§8); Stage 1 rows above unchanged |
+| Stage 2 statement amendment (T5', T7' incl. E4, T8', multiplicity-order line) | partial: LogUp terms proven; constraint registry open | 103.9453 algebraic / 102.9724 total is the retired eight-claim preintegration sensitivity; final payment union waits on exact `J` (§8); Stage 1 rows above unchanged |
 | **Headline** | **t=90 ruling retained; computed value gated** | provisional known-coefficient sensitivity 93.73 at q36/g32/s2, but no computed revised-conjecture number is quotable until the finite-n remainder/transport assumption is pinned. **Only the ~65.5 proven floor is currently quotable.** Historical refuted-capacity values remain provenance only |
 
 The proven-floor line follows house precedent (the WHIR-UD gate reported
@@ -686,8 +691,8 @@ protocol).**
 | # | term | shape | bits |
 | --- | --- | --- | ---: |
 | T5' | gamma-RLC batching, PARAMETRIC: (k'-1) / \|F\| = 124 - log2(k'-1) bits | frozen k' = 51 (pin <= 52) -> 118.36; historical readings: k'=83 -> 117.62, k'=82 -> 117.66 | 118.36 |
-| T7' | copy pole/SZ (E2) + range pole/SZ (E4), shared chi, union | 8m / \|F\|, m = 2^10 worst case (recounted m = 534 at the frozen shape) | 111 |
-| T8' | claim batching | (#claims) / \|F\|, #claims <= 8 | `4log2(p)-3 = 120.9999999973` at the eight-claim upper bound |
+| T7' | copy pole/SZ (E2) + range pole/SZ (E4), shared chi, union | 4(m_copy + 1024) / \|F\|; current m_copy <= 2^10 worst case. The endpoint-local m_copy=589 trace sensitivity is 111.3445 bits | 111 |
+| T8' | statement/claim batching | `(J + 2) / \|F\|`, where `J` is the frozen `ConstraintId` residual count and the two extra lanes are `sum(h1)=0`, `sum(h2)=0` | **OPEN until the constraint registry freezes**; the earlier eight-claim value `4log2(p)-3 = 120.9999999973` is a preintegration sensitivity only |
 
 T5' is now stated parametrically after three rewrites; any future layout
 change instantiates the formula and does not rewrite the line.
@@ -701,26 +706,39 @@ its scaled RLC costs are superseded by the layout freeze below (r=2,
 k' = 51, measured kernels); they are retained here as provenance for the
 projection corrections recorded in `stage2-feasibility.md`.
 
-Recomputed union with T5', T7', T8' and all other terms unchanged:
-**103.9453 algebraic bits** (was 103.9508); with the q36/g32 query term,
-success/work <= 2^-103.9453 + 2^-104 = **2^-102.9724 worst-case** (was
-2^-102.9752). The headline stays t = 100, capacity-conjectured, with ~2.97
-bits of margin; T2 and the query term still co-bind and nothing moved
-between regimes. T3 is unchanged (the range relation is degree 3, inside
-d <= 7; no new sumcheck rounds beyond the nu <= 14 allowance); T4 and T6
-are unchanged.
+**Integration correction (`2026-07-10`, note-first).** The synthetic
+composition probe used one deterministic accumulator and therefore did not
+establish the final `#claims <= 8` premise. A malicious trace can cancel
+independent residual families unless every stable `ConstraintId` is batched
+with verifier-sampled powers of `mu`; the two helper total-sum claims must be
+separate lanes as well. Consequently the final term is `(J+2)/|F|`, and `J`
+must be emitted by the checked-in constraint registry before a payment-proof
+union is quoted. The previous **103.9453 algebraic / 102.9724 total** values
+remain a preintegration eight-claim sensitivity, not an integrated-statement
+soundness number. T3 is unchanged (the range relation is degree 3, inside
+d <= 7; the fused Poseidon/selector/eq statement sumcheck remains within its
+degree-7 envelope); T4 and T6 are unchanged.
 
 **Envelope consequence: version 4.** The Stage 2 C2 phase carries **two**
 helper columns, so the C2 layer-0 leaf widens from 4 QM31 (64 bytes) to
 8 QM31 (128 bytes) per opened fiber, and the C2 claimed-evaluation field
-carries two values. That is a fixed-layout change: the payment envelope
+carries two values **at each statement evaluation point**. The row-local
+absorption layout requires the ordinary terminal point `z` plus the fixed
+low-bit-shifted point `z xor 11`; therefore the final statement framing
+absorbs 49 C1 + 2 C2 values at each point (102 field values total) before
+gamma. This does not double T5': for any fixed false transcript, at least one
+of the two claim-vector difference polynomials in gamma is nonzero and has
+degree at most 50, so simultaneous acceptance is still bounded by
+`50/|F|`. It does make the current single-point scalar-C1 PCS scaffold KAT
+explicitly non-final. That is a fixed-layout change: the payment envelope
 bumps to **v4** and v3 remains the frozen Stage 1 format. The gamma
 combination generalizes to `w* = sum_i gamma^i w_i + gamma^k1 h1 +
-gamma^(k1+1) h2` with all claims absorbed before gamma exactly as today
-(the existing gamma-before-claims vector covers the extended claim set; the
+gamma^(k1+1) h2` with all claims absorbed before gamma exactly as today.
+The v4 gamma-before-second-helper-claim teeth vector rejects canonically and
+accepts only under its matching deliberately weakened test schedule; the
 sum(h) = 0 claims are batched into the fused statement sumcheck and add no
-denominators, E3). The schedule-level transcript KAT will move when the v4
-absorptions land; that is a deliberate named re-pin recorded in
+denominators (E3). The schedule-level transcript KAT moved with the v4
+absorptions; that deliberate named re-pin is recorded in
 `transcript_kat_repin_ledger.json` like the four before it, not a constant
 edited to green the suite.
 
@@ -729,7 +747,8 @@ row, the selector reading for which cells are range-checked, and the final
 (m, w) for §5 are layout-freeze decisions; if any of them moves a number in
 this section, this section is re-dated before the gate note quotes it.
 
-**Layout freeze (`2026-07-10`, ratified in review): r = 2 rounds per row,
+**Layout freeze (`2026-07-10`, state-transition and endpoint-local trace
+shape ratified; randomized constraint registry open): r = 2 rounds per row,
 k' = 51, pin k' <= 52.** The freeze record states plainly what the shrink
 hunt found: **the previous freeze candidate (k80 / r=4) was broken.**
 Six-row blocks do not factor over the low bits of the Boolean cube, so
@@ -743,24 +762,53 @@ in 2^4-aligned 16-row blocks (11 constraint-active + 5 padding rows),
 **539 constraint-active rows and 784 allocated rows** inside the 2^10 trace;
 position-in-block is a function of the low 4 bits of the row index.
 
-Frozen-shape facts, independently recounted:
+Frozen-shape facts, with the integration correction stated before constraint
+code lands:
 
-- **m recount (condition ii):** 490 intra-permutation interfaces
-  (10 links x 49) + 44 chain boundaries (Merkle 20 intra-compression +
-  19 level-to-level, note 2, output 2, nullifier 1) = **m = 534**, w = 17:
-  E1 = 2^-110.85, E2 = 2^-112.94 — inside the m = 2^10 worst-case reading
-  that T6/T7' carry; both recounts (review and implementation) landed on
-  the same numbers.
-- **Selector form (condition iii):** padding positions 11..15 and the
-full/partial round seams (rows 1-2 full-full, 3-9 partial-partial,
-  10-11 full-full) are all functions of position-in-block, hence inside
+- **m recount (condition ii), TRACE FOUNDATION CLOSED / CONSTRAINT REGISTRY
+  OPEN:** the endpoint-local trace implementation contains **m=589** links:
+  490 intra-permutation, 25 sponge continuations, 19 prior-Merkle-output
+  links, 6 semantic ingress/reuse links, and 49 source-to-absorption links.
+  Executable tests require every tuple cell to live on its declared endpoint,
+  require unique producer rows and tags `producer_row+1`, and replay every
+  equality. A fresh SBF build passes without a stack-frame warning. This is
+  still a trace/layout foundation, not the randomized constraint registry;
+  until every endpoint is registered and evaluated, T6 keeps the existing
+  m <= 2^10 binding bound. The superseded m=534 number remains state-only
+  provenance.
+- **Absorption wiring (ratified note-first and implemented in the trace):**
+  for block `b`, source row `S_b = 808+b` and absorption row
+  `R_b = 16b+11` are row-local endpoints. `R_b[0..8]` is the chunk consumed
+  by round zero through the fixed XOR-11 low-bit shift. Each Merkle source row
+  materializes both halves locally as
+  `left=(1-bit)current+bit*sibling`,
+  `right=bit*current+(1-bit)sibling`, copies `left||right` into the even
+  absorption row, then uses that row's producer side to copy its right half
+  into the odd absorption row. This preserves one producer and one consumer
+  per row and avoids a third evaluation point: the statement needs only the
+  ordinary terminal point and its fixed XOR-11 absorption shift. No tuple
+  limb may dereference another row and no witness-dependent selector/tag is
+  permitted. The mechanical
+  trace count is **m=589**: 490 intra-permutation + 25 sponge continuations
+  + 19 prior-Merkle-output links + 6 semantic ingress/reuse links + 49
+  source-to-absorption links. At w=17 this gives T6 **110.7104 bits**; the
+  copy-pole component is **112.7979 bits**. Public anchor/nullifier/output,
+  asset, fee, and balance remain direct randomized residuals, not fake copy
+  entries. The m<=1024 line remains binding until the randomized
+  `ConstraintId` registry wires and evaluates these endpoints. T7' must also
+  retain the independent 1024-row range term: at this trace count its
+  sensitivity is `4*(589+1024)/|F|` = **111.3445 bits**, not `8*589/|F|`.
+- **Selector form (condition iii), amended note-first:** position 11 in each
+  block is reserved for the committed absorbed chunk so the round-0 relation
+  can access it through one low-bit XOR shift. Positions 12..15 and the
+  full/partial row classes (positions 0..1 external-initial, 2..8 internal,
+  9..10 external-final) are all functions of position-in-block, hence inside
   the periodic part; exceptions proper remain the chain-structural rows
-  only. **Padding rows are constraint-dead AND excluded from both copy
-  multisets: sel_P and sel_C are verifier-computable positional
-  constants that vanish on padding positions.** A padding row leaking
-  into the producer multiset would be a silent soundness hole; this line
-  is the guard, and the layout freeze test suite must include a vector
-  for it.
+  only. **Positions 12..15 are constraint-dead and excluded from both copy
+  multisets; position 11 is absorption-only and never a Poseidon transition
+  row.** A dead row leaking into the producer multiset, or an absorption row
+  escaping its witness/public binding, is a silent soundness hole; both
+  classes require executable vectors before the constraint registry freezes.
 - **T5' instantiation:** 124 - log2(50) = 118.36 bits; amended union
   unchanged at 103.9453 algebraic / 102.9724 total (T5' is invisible at
   four decimals next to T2).
@@ -877,11 +925,17 @@ WHIR-style mutual correlated agreement, asymptotically with the above
 printed here.
 CS25's own modifications (Elias-radius cap, characteristic entropy, +1/n
 slack) are subsumed: they lack the exponential list-size correction that
-KKH forces, so the S-two form is the survivor. Transport to circle codes
-is the standard scaled-RS isometry (S-two §1.4: a circle code IS a
-coordinatewise-scaled RS code on the projected domain; scaling preserves
-Hamming distance, so decodability statements transfer verbatim — the
-same bridge our substrate's 2024/278 lineage uses).
+KKH forces, so the S-two form is the survivor. S-two §1.4 supplies a
+scaled-RS isometry for its full circle-code family, which is a plausible
+transport route, but **not yet a completed transport for this protocol**.
+The genuine-M31 candidate uses Aspis's direct tensor coefficient space, its
+codimension-one circle-polynomial convention, grouped radix-4 folds, and a
+rational secure-circle OOD sampler. The full-code isometry alone does not pin
+that subcode identification, the fold/list-decoding correspondence, or the
+degree/probability term induced by the rational sample set. Therefore no T1 or
+T2 value transfers "verbatim" to the M31 candidate. The exact obligations are
+tracked in `stage2-circle-soundness-transport.md`; until they close, the
+finite-length/circle-transport quotation gate remains open.
 
 **Exposure statement for our exact parameters, stated plainly rather
 than buried:** the KKH family requires a 2-power multiplicative subgroup;
@@ -915,24 +969,30 @@ exact eta grid optima in `results/stage1/theta_optimizer.json`.
 | option | eta* | known-coefficient sensitivity | CU reading | budget verdict |
 | --- | ---: | ---: | ---: | --- |
 | q36/g32, s=1 | 0.0715 | 90.3374 | frozen-shape base | strict survives |
-| **q36/g32, s=2** | **0.0510** | **93.7263 provisional** | **+49,099 measured** | stated t=90 survives; registered product strict line fails by 25,660 |
-| q34/g36, s=2 reserve | 0.0522 | 94.0757 | q36 minus 44,479 | restores registered strict margin 18,819; deliberate second transcript knob |
+| **q36/g32, s=2** | **0.0510** | **93.7263 provisional** | **+49,099 isolated s2 probe** | stated t=90 survives; old component projection strict-red, now retired as a live product total |
+| q34/g36, s=2 reserve | 0.0522 | 94.0757 | old q36 arithmetic minus 44,479 | historical recovery sensitivity; deliberate second transcript knob, not priced on exact-wide v4 |
 | q40/g32, s=2 | 0.0652 | 97.6560 | +130,427 incl. s2 | state t=95 if selected; 1.19M registered clears by 12,012 |
 | q43/g32, s=2 | 0.0778 | 99.9251 | +191,423 incl. s2 | below t=100; both draw readings breach 1.19M |
 | q44/g32, s=2 | 0.0823 | 100.5642 | +211,755 incl. s2 | first provisional t=100 crossing; both draw readings breach 1.19M |
 
 The registered budget statistic remains conservative: central + 17,663
-stress + 55,786 full draw range. The measured s2 delta moves q36 to
-1,023,211 central and **1,096,660 registered**, 25,660 above strict; the
+stress + 55,786 full draw range. On the preintegration component model, the
+isolated s2 delta moved q36 to 1,023,211 central and **1,096,660
+registered**, 25,660 above strict; the
 anchor-corrected sensitivity is 1,058,112 and clears strict by 12,888 but
-does not replace the rule. At q43, registered is **1,238,984** and the
+does not replace the rule. These are now historical arithmetic sensitivities,
+not live product projections: the corrected two-helper PCS scaffold measures
++113,876.5 CU mean and still omits exact-wide payment work, so no additive
+integrated total is currently sound. At q43, the old registered reading is
+**1,238,984** and the
 anchor sensitivity **1,200,436**: both exceed 1.19M. q44 is costlier.
 
 The s2 decision remains the clear first move: it gains about 3.39 bits in
 the binding known-coefficient sensitivity by removing the s1 T2' bottleneck.
 The q34/g36 reserve gains **0.3494**, not 0.6-0.8, computed bits while
 saving 44,479 CU and improving the proven floor. It now becomes the named
-strict-line recovery lever: 1,052,181 registered, 18,819 below strict. It
+strict-line recovery lever in the old component sensitivity: 1,052,181
+registered, 18,819 below strict. Exact-wide integration must reprice it. It
 is held rather than silently substituted because q/g is a second transcript
 knob requiring a deliberate proof/KAT re-pin.
 
@@ -940,8 +1000,9 @@ knob requiring a deliberate proof/KAT re-pin.
 option 1, stated t=90 at q36/g32/s2.** The provisional 93.73 sensitivity
 is not quotable until a finite-n bound for Conjecture 2 and the circle-code
 transport are ratified and encoded in the runner; only the 65.5 proven
-floor is quotable meanwhile. The q36 product projection is now strict-red
-after the measured s2 line; this does not change the security ruling.
+floor is quotable meanwhile. The product gate is red and unpriced after the
+corrected two-helper scaffold invalidated the old additive total; this does
+not change the security ruling.
 q34/g36/s2 is the pre-registered strict recovery lever, not the current
 profile. Option 3 remains dead by the epistemic ruling and exceeds 1.19M
 under both draw readings. The finite-length constants gate blocks quotation
@@ -1006,13 +1067,17 @@ s=2** (+81,328 CU versus current q36/s2; 1,177,988 registered; currently
 re-run the derivation and do not assume that value survives a new
 construction);
 (2) re-balance theta downward at q36 (costs headline bits, no CU) if the
-new failure touches only radii above ~0.65; (3) **terminal: the
-proven-regime split** — the three-transaction receipt (aspis-statement::
-split) priced at Johnson-proven accounting (~67-68 proven bits after the
-re-pin), which no conjecture touches. The same ladder, minus the split,
-applies if the S-two conjectures are tightened (larger c1/c2) rather
-than broken. This paragraph goes into the paper's limitations section
-verbatim alongside the §9.3 disclosure.
+new failure touches only radii above ~0.65; (3) **terminal cryptographic
+retreat: proven-regime parameters** — Johnson-proven accounting (~67-68
+proven bits after the re-pin), which no conjecture touches. This security
+choice is independent of transaction transport. A one- versus multi-
+transaction verifier changes the product claim to "across N transactions";
+it does not make conjectured security proven or alter the Johnson line. If
+the proven-regime implementation also needs receipt-bound transport, that is
+priced as a separate product decision. The same cryptographic ladder applies
+if the S-two conjectures are tightened (larger c1/c2) rather than broken.
+This paragraph goes into the paper's limitations section verbatim alongside
+the §9.3 disclosure.
 
 ---
 

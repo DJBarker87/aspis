@@ -190,6 +190,73 @@ fn main() -> Result<()> {
             );
             Ok(())
         }
+        Some("stage2-v4-s2-pcs-scaffold-kat") => {
+            let summary = onchain::run_transcript_kat_v4_s2_pcs_scaffold()?;
+            anyhow::ensure!(
+                summary.matched_on_sbf,
+                "v4/s=2 PCS-scaffold transcript KAT MISMATCH on SBF"
+            );
+            let dir = stage2_results_dir()?;
+            let path = dir.join("transcript_kat_v4_s2_pcs_scaffold.json");
+            fs::write(&path, format!("{}\n", serde_json::to_string_pretty(&summary)?))?;
+            eprintln!(
+                "stage2-v4-s2-pcs-scaffold-kat: matched; wrote {}",
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-v4-s2-pcs-scaffold") => {
+            let summary = onchain::run_stage2_v4_s2_pcs_scaffold()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("v4_s2_pcs_scaffold_g16.json");
+            fs::write(&path, format!("{}\n", serde_json::to_string_pretty(&summary)?))?;
+            eprintln!(
+                "stage2-v4-s2-pcs-scaffold: paired delta mean={:.1} CU; wrote {}",
+                summary.paired_verify_cu_delta_mean,
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-v4-exact-wide-reconciled") => {
+            let summary = onchain::run_stage2_reconciled_exact_wide_v4_scaffold()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("v4_exact_wide_reconciled_g16.json");
+            fs::write(&path, format!("{}\n", serde_json::to_string_pretty(&summary)?))?;
+            eprintln!(
+                "stage2-v4-exact-wide-reconciled: accepted={} cap_exhausted={}; wrote {}",
+                summary.accepted_seed_count,
+                summary.compute_budget_exhausted_seed_count,
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-exact-wide-v4-diagnostic") => {
+            let summary = onchain::run_stage2_exact_wide_v4_diagnostic()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("exact_wide_v4_diagnostic.json");
+            fs::write(&path, format!("{}\n", serde_json::to_string_pretty(&summary)?))?;
+            eprintln!(
+                "stage2-exact-wide-v4-diagnostic: fused savings={} CU, C1 hash={} CU; wrote {}",
+                summary.fused_dot4_savings_cu,
+                summary.c1_leaf_hash_incremental_over_empty_cu,
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-m31-circle-basis-probe") => {
+            let summary = onchain::run_stage2_m31_circle_basis_probe()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("m31_circle_basis_probe.json");
+            fs::write(&path, format!("{}\n", serde_json::to_string_pretty(&summary)?))?;
+            eprintln!(
+                "stage2-m31-circle-basis-probe: winner={} at {} CU, saving={} CU vs structured; wrote {}",
+                summary.winning_rlc_mode,
+                summary.winning_rlc_cu_mean,
+                summary.winning_rlc_savings_vs_structured_cu,
+                path.display()
+            );
+            Ok(())
+        }
         Some("stage2-composition-probe") => {
             let summary = onchain::run_stage2_composition_probe()?;
             let dir = stage2_results_dir()?;
@@ -293,7 +360,7 @@ fn main() -> Result<()> {
             Ok(())
         }
         other => bail!(
-            "usage: cargo run -p aspis-xtask -- stage0-host | stage0-onchain | stage0-onchain-gate | stage0-onchain-g32 | stage0-onchain-layout-target | stage0-onchain-profile | stage0-layout-sweep | stage0-transcript-kat | stage1-soundness-pin | stage1-theta-optimize | stage1-retired-number-lint | stage1-onchain-hardening | stage2-evaluator | stage2-logup-compression-kat | stage2-s2-ood-probe | stage2-composition-probe | stage2-layout-probe | stage2-poseidon2-probe | stage2-zk-kernel-probe | stage2-wide-rlc-probe | stage2-merkle-arity-probe | stage2-radix4-g16 | stage2-radix4-g32 | stage2-variance-g16 | stage2-sumcheck-probe | stage2-query-trade-g16 (got {:?})",
+            "usage: cargo run -p aspis-xtask -- stage0-host | stage0-onchain | stage0-onchain-gate | stage0-onchain-g32 | stage0-onchain-layout-target | stage0-onchain-profile | stage0-layout-sweep | stage0-transcript-kat | stage1-soundness-pin | stage1-theta-optimize | stage1-retired-number-lint | stage1-onchain-hardening | stage2-evaluator | stage2-logup-compression-kat | stage2-s2-ood-probe | stage2-v4-s2-pcs-scaffold-kat | stage2-v4-s2-pcs-scaffold | stage2-exact-wide-v4-diagnostic | stage2-m31-circle-basis-probe | stage2-composition-probe | stage2-layout-probe | stage2-poseidon2-probe | stage2-zk-kernel-probe | stage2-wide-rlc-probe | stage2-merkle-arity-probe | stage2-radix4-g16 | stage2-radix4-g32 | stage2-variance-g16 | stage2-sumcheck-probe | stage2-query-trade-g16 (got {:?})",
             other
         ),
     }

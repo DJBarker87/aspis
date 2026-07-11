@@ -33,7 +33,9 @@ pub const FINAL_POLY_LOG_LEN: u32 = 2;
 pub enum FoldPayload {
     /// Proof carries only the committed raw fiber values; the verifier
     /// recomputes local folds using batched denominator inversions
-    /// (`round_batch_inversion`).
+    /// (`round_batch_inversion`). "Raw" describes payload packaging, not
+    /// the field basis: in the current custom PCS, layer-zero wire symbols
+    /// are CM31 coset evaluations of M31 coefficient vectors.
     RawFibers = 0,
     /// Proof additionally carries the two intra-round folded values per query
     /// per round; the verifier checks cross-multiplied fold relations with

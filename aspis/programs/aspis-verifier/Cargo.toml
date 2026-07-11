@@ -21,4 +21,4 @@ borsh.workspace = true
 solana-program.workspace = true
 
 [dev-dependencies]
-aspis-prover = { path = "../../crates/aspis-prover" }
+aspis-prover = { path = "../../crates/aspis-prover", features = ["insecure-test-framing"] }

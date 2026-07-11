@@ -1,0 +1,18 @@
+{
+  "generated_at_utc": "2026-07-10T21:06:14.759513+00:00",
+  "command": "cargo run --release -p aspis-xtask -- stage2-v4-s2-pcs-scaffold-kat",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "instruction_wire_ordinal": 19,
+  "expected_digest_hex": "74b65c825a6feec2850b3056a16cc2b6d0f7318e786a44ec165304980f8b5f07",
+  "host_digest_hex": "74b65c825a6feec2850b3056a16cc2b6d0f7318e786a44ec165304980f8b5f07",
+  "host_matched": true,
+  "matched_on_sbf": true,
+  "simulation_units": 36111,
+  "simulation_error": null,
+  "v3_pin_unchanged": true,
+  "notes": [
+    "Wire tag 19 is append-only and permanently names the two-helper v4/s=2 PCS scaffold; frozen v3 remains tag 5 and final payment-v4 will use tag 20 or later.",
+    "The vector absorbs one C2 root and both helper evaluations before gamma, then exercises two complete sequential beta/y/mu triples per round.",
+    "This KAT is necessary but neither a payment-v4 KAT nor a proof measurement; scaffold proof CU is measured separately through production VerifyWithClaim tag 6."
+  ]
+}

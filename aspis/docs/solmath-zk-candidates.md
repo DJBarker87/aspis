@@ -1,17 +1,18 @@
 # `solmath-zk` candidate crate
 
-Date: `2026-07-10`
+Date: `2026-07-11`
 
-Status: **the first `solmath-zk` extraction now exists at SolMath commit
-`682b5d4`.** It contains only measured reusable kernels. Aspis protocol choices
-(range argument, transcript schedule, proof envelope) remain outside the math
-crate.
+Status: **the first `solmath-zk` extraction exists at SolMath commit
+`682b5d4`; exact-wide CM31 and M31-circle arithmetic are frozen separately at
+SolMath commit `dabc471` while the product gate remains open.** The crate contains only reusable arithmetic
+kernels. Aspis protocol choices (PCS basis, range argument, transcript
+schedule, proof envelope) remain outside the math crate.
 
 The current `~/solmath` worktree contains extensive unrelated in-progress
 changes, so the kernels were prototyped and measured inside Aspis first. The
 extraction is a standalone nested workspace at `crate/solmath-zk`, avoiding
 changes to SolMath's dirty root `Cargo.toml` and `Cargo.lock`. It is `no_std`,
-has zero runtime dependencies, passes six unit/differential tests, and passes
+has zero runtime dependencies, passes 12 unit/differential tests, and passes
 `clippy -D warnings`.
 
 ## Module boundary
@@ -23,6 +24,8 @@ has zero runtime dependencies, passes six unit/differential tests, and passes
 - branch/shift division by two;
 - multiply by powers of two;
 - exact canonical parsing.
+- checked and explicitly prevalidated M31 batch inversion with an injected
+  single-inverse backend.
 
 ### `field::tower`
 
@@ -34,9 +37,17 @@ has zero runtime dependencies, passes six unit/differential tests, and passes
 - const-generic `[1, gamma, ..., gamma^(N-1)]` power tables;
 - two-level lazy accumulation: four products per Mersenne reduction, then one
   final reduction per output limb;
+- prepared const-generic four-slot `QM31 x CM31` dots, including geometric
+  preparation returning `gamma^N` and canonical slot-major byte parsing;
 - batch inversion with an injected base-field inverse backend.
 
-### `circle` (still Aspis-local)
+### `field::circle` (protocol-neutral fold extracted)
+
+- normalized four-point circle-to-line plus line fold over QM31 values;
+- caller-supplied, prevalidated `inv(2x)` and `inv(2y)`;
+- differential coefficient-evaluation and wrong-slot-order tests.
+
+### circle-domain machinery (still Aspis-local)
 
 - cached omega power table;
 - arity-4 layer advance by table shift and fourth powers;
@@ -78,6 +89,17 @@ has zero runtime dependencies, passes six unit/differential tests, and passes
 | packed-pair/four RLC | exclude from chosen SBF path | algebraically sound but slower |
 | whole-dot u128 accumulator | exclude | much slower on SBF |
 | per-query Horner RLC | exclude | over 1.09M CU at q36/k80 |
+| once-prepared exact 49-CM31 four-slot RLC | include API; protocol decision separate | unprepared q36 exhausts 1.4M; prepared structured diagnostic accepts at 1,125,266 CU |
+| canonical-byte exact CM31 dot | include API | 1,066,396 CU, saving 58,870 CU / 5.23% versus prepared structured decoding |
+| one-slot streaming four-row `QM31 x M31` dot | include API; protocol decision separate | tag23 winner 552,289 CU, 4,193 CU / 0.7535% below same-build full-matrix structured decode |
+| typed sixteen-accumulator `QM31 x M31` dot4 | exclude from chosen SBF path | 734,395 CU, substantially slower from register pressure |
+| normalized M31-circle first fold and prevalidated batch inverse | include arithmetic APIs; protocol decision separate | tag23 fold control 107,996 CU, including 4,130 CU for one prevalidated 72-denominator syscall-backed batch inverse |
+
+The exact-wide and circle rows are isolated arithmetic diagnostics, not an integrated
+payment-proof total. In particular, the CM31 exact diagnostic overlaps the
+scalar C1/C2 path in the PCS scaffold, and the M31 candidate requires the
+circle-polynomial encoding/fold/OOD changes in
+`stage2-column-basis-audit.md`.
 
 ## API discipline
 

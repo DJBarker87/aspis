@@ -180,6 +180,7 @@ name = "aspis-prover"
 version = "0.1.0"
 dependencies = [
  "aspis-core",
+ "aspis-statement",
  "sha2 0.10.9",
 ]
 

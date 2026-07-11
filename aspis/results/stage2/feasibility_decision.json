@@ -1,7 +1,7 @@
 {
   "generated_at_utc": "2026-07-10T19:40:00Z",
-  "amended_at_utc": "2026-07-10T20:23:55Z",
-  "status": "r2_kprime51_q36_s2_registered_strict_red; q34_g36_recovery_held; product_gate_open_pending_integrated_v4_proof",
+  "amended_at_utc": "2026-07-11T06:24:28Z",
+  "status": "owner_ruling_open; current_cm31_reconciled_scaffold_exceeds_cap; m31_circle_shape_and_host_conformance_pass; m31_in_place_measurement_pending; q34_g36_and_split_options_held",
   "sources": {
     "stage1_gate": "../stage1/gate_close.json",
     "theta_optimizer": "../stage1/theta_optimizer.json",
@@ -16,12 +16,102 @@
     "merkle_arity": "merkle_arity_probe.json",
     "radix4_g16": "radix4_g16.json",
     "radix4_g32": "radix4_g32.json",
-    "variance": "variance_g16.json"
+    "variance": "variance_g16.json",
+    "v4_s2_pcs_scaffold": "v4_s2_pcs_scaffold_g16.json",
+    "v4_s2_pcs_scaffold_kat": "transcript_kat_v4_s2_pcs_scaffold.json",
+    "exact_wide_v4": "exact_wide_v4_diagnostic.json",
+    "v4_exact_wide_reconciled": "v4_exact_wide_reconciled_g16.json",
+    "m31_circle_basis_probe": "m31_circle_basis_probe.json",
+    "m31_circle_conformance": "m31_circle_conformance.json",
+    "m31_line_fri_conformance": "m31_line_fri_conformance.json",
+    "column_basis_audit": "../../docs/stage2-column-basis-audit.md",
+    "m31_production_plan": "../../docs/stage2-m31-production-plan.md",
+    "circle_soundness_transport_audit": "../../docs/stage2-circle-soundness-transport.md",
+    "owner_decision_packet": "../../docs/stage2-owner-decision-packet.md"
+  },
+  "v4_integration_checkpoint": {
+    "status": "STANDARD_HEAP_PCS_SCAFFOLD_ONLY_NOT_A_PAYMENT_PROOF",
+    "transaction_envelope": "1,400,000 CU limit plus 262,144-byte heap frame",
+    "v3_mean_cu": 716086.75,
+    "v4_two_helper_mean_cu": 829963.25,
+    "paired_delta_mean_cu": 113876.5,
+    "paired_delta_min_cu": 76887,
+    "paired_delta_max_cu": 156195,
+    "draws": 8,
+    "corruptions": "all four second-OOD values, both helper claims, and both C2 helper leaf halves reject on host and production SBF VerifyWithClaim",
+    "excludes": [
+      "authenticated 49-column CM31 C1 and its 1,568-byte layer-zero fiber",
+      "exact kprime51 gamma recombination and 102 values across z and z xor 11",
+      "randomized ConstraintId batching, LogUp payment relations, and statement sumcheck",
+      "hiding and final q36/g32 measurement"
+    ],
+    "projection_effect": "The isolated +49,099-CU s2 overlay and its derived 1,096,660/q34 totals remain valid microbenchmark arithmetic but are retired as live product projections. The scaffold cannot be naively added to either the old component projection or the 1,066,396-CU exact-wide diagnostic because it overlaps transcript/C2/scalar per-query work. The reconciled in-place verifier must replace that path and measure the overlap."
+  },
+  "exact_wide_v4_checkpoint": {
+    "status": "MEASURED_DIAGNOSTIC_ONLY; PRODUCT_RULING_OPEN",
+    "profile": "q36 structural maximum of 36 distinct layer-zero fibers",
+    "transaction_envelope": "1,400,000 CU limit plus 262,144-byte heap frame",
+    "unprepared_fused_cu": "exhausted the 1,400,000-CU meter in all five runs",
+    "prepared_structured_cu": 1125266,
+    "prepared_wire_bytes_cu": 1066396,
+    "prepared_wire_bytes_saving_vs_structured_cu": 58870,
+    "prepared_wire_bytes_saving_vs_structured_percent": 5.231651893863318,
+    "prepared_wire_bytes_saving_vs_unprepared_cap_lower_bound_cu": 333604,
+    "isolated_headroom_vs_1190000_cu": 123604,
+    "isolated_headroom_vs_1400000_cu": 333604,
+    "corruptions": "canonical C1/C2 mutations change the consumed sink; noncanonical C1/C2 M31 limbs reject on host and SBF",
+    "scope": "49 CM31 C1 columns plus two QM31 C2 helpers, gamma powers 0..50, prepared once, canonical account-byte parsing, four slot outputs, and observable sink",
+    "excludes": "Merkle authentication/frontiers, PCS folds and deep layers, transcript/query derivation, 102 two-point evaluations, randomized statement constraints, LogUp totals, hiding, and pool state transition",
+    "gate_reason": "The optimized exact-wide seam consumes 1,066,396 CU, but it overlaps the scalar C1/C2/per-query work in the PCS scaffold and therefore cannot be added to that scaffold in either an optimistic or pessimistic direction. Its 123,604-CU isolated headroom is not product headroom. The in-place reconciliation is recorded separately and supersedes arithmetic combination for the current CM31 PCS.",
+    "next_architecture": "decision packet only: current-CM31 reconciliation, M31 circle-basis answer/probes, normalized eight-seed result, and priced one-transaction/split/proven-regime options; project owner rules"
+  },
+  "reconciled_current_cm31_pcs_checkpoint": {
+    "status": "MEASURED_CURRENT_CM31_PCS_SCAFFOLD_EXCEEDS_EXECUTION_CAP; OWNER_RULING_NOT_MADE",
+    "artifact": "v4_exact_wide_reconciled_g16.json",
+    "method": "replace scalar layer-zero C1/C2 processing in place inside the real v4 parser, Merkle, fold, and final-check path; never add the 829,963-CU scaffold to the 1,066,396-CU isolated seam",
+    "profile": "q36/g16, radix-4, standard 262,144-byte heap, eight independent seeds",
+    "unique_fibers": "34..36",
+    "proof_bytes": "80,500..85,204",
+    "result": "8/8 exhausted exactly the 1,400,000-CU meter with ProgramFailedToComplete/exceeded-CUs signature",
+    "per_seed_required_cu_lower_bound": 1400001,
+    "minimum_breach_vs_1190000_cu": 210001,
+    "minimum_breach_vs_1400000_cu": 1,
+    "security_boundary": "production VerifyWithClaim tag 6 rejects the diagnostic wide flag; only append-only measurement tag 22 enables it",
+    "corruptions": "canonical C1 and C2 leaf mutations plus noncanonical C1 and C2 limbs all reject conclusively on host and SBF before the cap",
+    "excludes": "second point/102-value framing, randomized ConstraintId/payment composition, hiding, pool transition, sealing, and final g32",
+    "interpretation": "This is a measured structural result for the current custom CM31 PCS scaffold. It does not price or reject the genuine-circle M31 replacement, adopt transaction splitting, or make the project-owner ruling."
+  },
+  "m31_circle_candidate_checkpoint": {
+    "status": "SHAPE_PROBE_AND_HOST_MATH_CONFORMANCE_PASS; PRODUCTION_INTEGRATION_AND_OWNER_RULING_OPEN",
+    "basis_boundary": "M31 C1 symbols are valid only under a genuine circle-polynomial encoding. Removing the imaginary limb from the current ordinary-univariate CM31 PCS is not valid.",
+    "stwo_reference_commit": "5d10e6b4baa559766e7bbae133b918121211a9c5",
+    "message_contract": "49 SpendTraceV4 columns x 1,024 big-endian multilinear message coordinates enter the circle FFT-basis encoder directly; no AIR-domain IFFT reinterpretation",
+    "shape": "q36 diagnostic over 36 fibers, four slots x 49 M31 C1 values (784-byte C1 leaf), two unchanged four-slot QM31 C2 helpers (128-byte C2 leaf), gamma powers 0..50",
+    "winning_rlc_mode": "one-slot fixed M31 buffer with four independent lazy QM31-by-M31 dots",
+    "winning_rlc_cu": 552289,
+    "same_build_structured_control_cu": 556482,
+    "saving_vs_same_build_structured_control_cu": 4193,
+    "saving_vs_same_build_structured_control_percent": 0.7534834909305242,
+    "isolated_comparison_vs_cm31_prepared_wire_bytes_cu": 514107,
+    "isolated_comparison_vs_cm31_prepared_wire_bytes_percent": 48.20976447773623,
+    "bookable_first_fold_control_cu": 107996,
+    "first_fold_control_scope": "36 already-combined four-QM31 fibers, cached public coordinates, and one 72-denominator sol_big_mod_exp batch inverse; disjoint from the RLC row and not additive to a verifier total",
+    "host_conformance": "pinned Stwo FFT anchors, all 49 actual MLE message columns, p/Jp/Ap/JAp slot order, normalized alpha/alpha^2 first fold, rational secure-circle OOD algebra, materialized circle/line tensor weights, bounded two-sample fixture, C1 gamma powers 0..48, and the later-line bitreverse/4^r bridge pass; this does not implement the production C1/C2 absorption schedule, C2 powers 49/50, 102-value framing, authenticated line-FRI proof, or SBF verifier",
+    "later_line_conformance": "official Stwo corpus digest 623df44fe1d5f9c5090e2b1301878f4308f1c6030314c515964e6b6e918801d8 reproduced; 48 randomized cases, 108 radix-4 rounds, 1,077 fibers; raw Stwo storage after r rounds is 4^r times bitreverse of Aspis natural adjacent-fold coefficients",
+    "diagnostic_wire_framing": "append-only flag 0x08 is valid only as exact v4/C2/claim word 0x0b; Borsh tag 24 checks profile id 6 q36/g16, raw fibers, radix-4, four rounds/final4, and ten canonical QM31 coordinates, then deliberately rejects; production tag 6 rejects the same flagged proof with BadHeader while the feature-gated legacy-basis weakened verifier accepts",
+    "soundness_transport": "code-level partial only: the exact direct L'_10 tensor space embeds in S-two's full circle code, so scaled-GRS isometry and Johnson-regime code facts apply conservatively; grouped arity-4 correlated agreement, two-phase C1/C2 batching, custom Boolean-MLE binding, actual CM31-excluded OOD denominator/product bound, extension-alphabet conjecture constants, finite-n remainder, and BCS/ROM accounting remain open; no T1/T2 or computed candidate security number is promoted",
+    "candidate_wire_kat_sha256": "95ca0bc440d1754d00be69de738122341381c50c395c2ae904f8ad845515d588",
+    "conjugate_compression": "algebraically valid partner mapping but rejected as an incremental payload-halving lever: each query still opens 1,568 C1 bytes, expected q36 unique leaves improve by only 0.595, and the 512-leaf C1 tree breaks current pure-radix4/C2 depth semantics",
+    "corruptions": "all tag-23 noncanonical C1/C2, coordinate, and slot-order cases reject on host and SBF; production circle wire and transcript weakened-build teeth remain pending",
+    "remaining": "extend the rejecting tag-24 frame with the real circle proof prefix, roots, 102-value transcript KAT, host-tested circle tensor, and authenticated later-line bridge; close C2/two-point wiring, circle-FRI/S-two transport, and an in-place eight-seed SBF verifier before quoting product headroom",
+    "production_integrated": false,
+    "in_place_sbf_measured": false,
+    "architecture_or_owner_ruling_made": false
   },
   "historical_checkpoint": {
-    "status": "single_transaction_negative_split_verification_triggered",
+    "status": "HISTORICAL_ONLY; superseded_projection; no_current_split_trigger_or_architecture_ruling",
     "projection_cu": 1415268,
-    "reason": "The first structured composition shrink still exceeded the 1.4M cap. The split receipt seam remains a valid fallback, but later measured cross-layer math kernels supersede that feasibility projection."
+    "reason": "The first structured composition shrink exceeded the 1.4M cap under an earlier component projection. Later measurements supersede that arithmetic, and the current ledger forbids using this entry to trigger split verification or decide an architecture."
   },
   "evaluator": {
     "economic_vectors": 13,
@@ -257,24 +347,28 @@
       }
     },
     "proven_floor": "65.5 bits untouched and the ONLY quotable floor until its derivation section exists; preliminary ~67.5-68.0 under BCHKS zero-loss Johnson CA (error O(n/eta^5)) + Haböck 2025/2110 mutual-CA-to-Johnson theorem",
-    "headline_ruling": "AMENDED 2026-07-10: retain t=90 stated at q36/g32/s2. The 93.73 known-coefficient result is provisional sensitivity only; no computed conjectured value is quotable until the finite-length constants gate closes. The 65.5 proven floor is the only quotable security value. Measured s2 costs 49,099 CU, making current q36 registered-strict red; this product result does not change the security ruling.",
-    "contingency": "security-conjecture retreat: q40/s2 (97.656 provisional; 1,177,988 registered), re-balance theta, terminal proven split. Product strict-line recovery: q34/g36/s2 at 1,052,181 registered, held pending deliberate transcript re-pin.",
-    "publication_freeze_earmark": "q34/g36/s2 — gains 0.3494 provisional bits, saves 44,479 CU, and projects 1,052,181 registered (18,819 strict margin). It is now the named strict recovery lever but remains held as a deliberate second transcript knob.",
+    "headline_ruling": "AMENDED 2026-07-10: retain t=90 stated at q36/g32/s2. The 93.73 known-coefficient result is provisional sensitivity only; no computed conjectured value is quotable until the finite-length constants gate closes. The 65.5 proven floor is the only quotable security value. The isolated s2 probe costs 49,099 CU, but the corrected two-helper scaffold retires its derived q36 total as a live product projection; this product-accounting correction does not change the security ruling.",
+    "contingency": "Security-conjecture retreat: q40/s2 (97.656 provisional under the historical component model), re-balance theta, then the terminal proven-regime parameter split. Separately, transaction splitting is a transport/product option and does not change the cryptographic regime. q34/g36/s2 remains held pending an integrated reprice and deliberate transcript re-pin; its old 1,052,181 reading is not a live product total.",
+    "publication_freeze_earmark": "q34/g36/s2 — gains 0.3494 provisional bits and saved 44,479 CU in the historical component model. It remains the named recovery lever, but exact-wide v4 must reprice it before any margin is claimed.",
     "blocked": "quotation or promotion of the 93.73 sensitivity until the finite-n Conjecture-2 remainder and circle-code transport are pinned; v4 integration may proceed under the independent t=90 ruling after the atomic P0+P1 hardening commit; s2 probe is complete"
   },
   "gate_decision": {
-    "projection_status": "q36_s2_registered_strict_red; q34_g36_recovery_held",
-    "protocol_gate_status": "stage1_security_reopened_finite_length_constants; statement_integration_open",
-    "product_gate_status": "red_pending_q34_or_reclaim_ruling_plus_integrated_v4_statement_proof",
-    "reason": "The frozen r2/kprime51 s1 base is 974,112 central / 1,047,561 registered. The contamination-free isolated s2 A/B adds 49,099 CU, moving current q36 to 1,096,660 registered, 25,660 over strict. q34/g36 would recover to 1,052,181 with 18,819 margin, but is held as a second transcript knob. Final integrated v4 measurement remains required.",
-    "split_fallback": "retained_not_currently_forced",
-    "headline": "No strict one-transaction product claim at current q36/s2: its registered projection is 1,096,660. Either deliberately adopt and re-pin q34/g36, find another named reclaim, or revise the gate rule; then verify the integrated v4 proof across final-shape draws."
+    "projection_status": "old q36/q34 arithmetic retired; current-CM31 reconciliation and M31 shape/host conformance measured; M31 in-place and integrated payment-v4 unresolved",
+    "protocol_gate_status": "stage1_security_reopened_finite_length_constants; statement_constraint_registry_open",
+    "product_gate_status": "owner_packet_drafted; ruling_open_pending_m31_production_candidate_and_in_place_measurement",
+    "reason": "The overlap is reconciled for the current custom CM31 PCS without adding partials: 8/8 in-place q36/g16 runs exhausted the 1,400,000-CU meter, each giving only a >=1,400,001-CU lower bound, while still excluding final payment work. The source audit and pinned host conformance prove that an M31 C1 lever is valid under a genuine circle-polynomial PCS, and the standard-envelope shape probe measures its best isolated RLC row at 552,289 CU. That row is not product headroom: circle tensor and later-line arithmetic now pass on host, but production C1/C2 absorption, authenticated circle/line FRI, wire/KAT teeth, soundness transport, and an in-place eight-seed verifier remain open. The current-CM31 result cannot reject that candidate or adopt split verification.",
+    "split_fallback": "pre_registered_option_not_adopted; proof-sealed v4 redesign priced for the owner decision packet",
+    "headline": "No architecture is selected. The current custom-CM31 PCS scaffold exceeds the absolute cap in all eight reconciled runs. The M31 circle-PCS lever is now source-audited, host-conformant, and shape-measured, but it still needs production circle-FRI integration and an in-place verifier result before its isolated saving can be treated as product evidence. The neutral one-transaction, transport-split, and proven-regime packet remains for the project owner."
   },
   "next_measurements": [
-    "Rule explicitly on q34/g36 adoption versus another >=25,660-CU registered reclaim (or a gate-rule change); do not integrate q36 and silently quote strict.",
+    "Integrate and teeth-test the host-tested circle-tensor OOD WeightAccumulator, new basis/envelope discriminator, production parser/root schedule, C2/two-point absorption, and downstream transcript KAT.",
+    "Integrate authenticated later line-FRI layers using the pinned bitreverse/4^r bridge and re-derive the circle-FRI/S-two transport before enabling an M31 production verifier.",
+    "Measure the conforming M31 PCS scaffold in place across at least eight q36/g16 seeds under the standard heap; do not add the 552,289-CU RLC and 107,996-CU fold controls to another artifact.",
+    "Prepare, but do not adopt, a proof-sealed split option binding proof/account/version/profile/roots/transcript/102 evaluations/authority/expiry, with mutation, mix-and-match, reordering, and replay teeth priced per phase.",
+    "Freeze the randomized ConstraintId registry and final T8=(J+2)/|F| before quoting an integrated statement soundness number.",
     "Integrate the tested fixed-table LogUp main/helper columns, the multiplicity column, and both sum(h)=0 claims into the C1/C2 statement proof under the v4 envelope (soundness note section 8).",
-    "Integrate the gamma-power table and fixed-width outer-lazy dot at the frozen kprime51 width into the real wide PCS parser rather than adding its isolated total arithmetically.",
-    "Generate the real statement proof with radix-4 commitments and run the complete SBF transaction five times, including economic and proof-corruption attacks."
+    "Integrate the measured prepared canonical-byte gamma dot into the real wide PCS phase rather than adding its isolated total arithmetically.",
+    "After the project-owner ruling, generate the real statement proof and measure the selected one-transaction or split architecture, including economic, receipt where applicable, proof-mutation, and proof-corruption attacks."
   ],
-  "caveat": "The 678,407-CU radix-4 result is a real q36/g32 two-phase PCS verification. The frozen r2/kprime51 RLC/composition/sumcheck components remain combined as a feasibility projection, not an end-to-end payment proof. The registered full 55,786 draw range remains binding; the 17,238 anchor-corrected draw is sensitivity only. Poseidon spend hashing is host-only semantic-evaluator work today, so the 66,830-CU Poseidon probe saving has zero impact on the current SHA-256 verifier/composition gate."
+  "caveat": "The 1,066,396-CU exact-wide result is a real standard-heap SBF arithmetic/parser diagnostic, not an end-to-end payment proof and not additive to the overlapping PCS scaffold. The 678,407-CU radix-4 result is a real q36/g32 scalar PCS verification. The randomized statement, two-point/102-value framing, hiding, receipt program, and pool transition remain incomplete. The registered full 55,786 draw range remains binding where draw statistics apply. Poseidon spend hashing is host-only semantic-evaluator work today, so the 66,830-CU Poseidon probe saving has zero impact on the current SHA-256 verifier/composition gate."
 }

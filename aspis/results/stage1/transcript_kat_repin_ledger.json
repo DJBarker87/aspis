@@ -1,6 +1,9 @@
 {
-  "purpose": "Audit ledger for every transcript KAT pin touched by the Stage 1 hardening diff. Each new pin was first observed as the expected failing host KAT, then pinned deliberately, then checked through the SBF SHA-256 syscall path.",
-  "repository_state": "The first entry is the branch baseline. The remaining entries are named protocol revisions within the current Stage 1 working diff; they are not silent suite-green edits.",
+  "purpose": "Audit ledger for every transcript KAT pin touched by the Stage 1 hardening and Stage 2 PCS-scaffold diffs. Each new pin was first observed as the expected failing host KAT, then pinned deliberately, then checked through the SBF SHA-256 syscall path.",
+  "repository_state": "The first entry is the branch baseline. The remaining entries are named protocol revisions; they are not silent suite-green edits. The v4 entries are explicitly PCS-scaffold evidence, not the final payment-v4 transcript KAT.",
+  "proof_serialization_anchors": [
+    "v3_serialization_kat.json"
+  ],
   "entries": [
     {
       "revision": "v1_branch_baseline",
@@ -32,6 +35,30 @@
       "host_kat_failed_before_repin": true,
       "matched_on_sbf_after_repin": true,
       "current_artifact": "../stage0/transcript_kat.json"
+    },
+    {
+      "revision": "v4_s2_one_helper_pcs_scaffold_superseded",
+      "digest_hex": "e6d998ede7eb2bb1566f84ea6d311370de0a3fd708907bdccc8d408a4028b681",
+      "sbf_simulation_cu": 35943,
+      "reason": "First deliberate v4/s=2 PCS-scaffold pin: two sequential beta/y/mu triples per round, but only one C2 helper and one carried helper claim. This exposed the versioned schedule and was then superseded when the normative second helper was added.",
+      "host_kat_failed_before_repin": true,
+      "matched_on_sbf_after_repin": true,
+      "v3_pin_unchanged": true,
+      "status": "SUPERSEDED: incomplete one-helper scaffold; never a payment-v4 KAT",
+      "artifact": "../stage2/v4_s2_pcs_scaffold_one_helper_superseded.json"
+    },
+    {
+      "revision": "v4_s2_two_helper_pcs_scaffold",
+      "digest_hex": "74b65c825a6feec2850b3056a16cc2b6d0f7318e786a44ec165304980f8b5f07",
+      "sbf_simulation_cu": 36111,
+      "reason": "Deliberate two-helper scaffold re-pin: one C2 root commits combined 128-byte h1/h2 leaves; both helper evaluations are absorbed before gamma; every round carries two complete sequential beta/y/mu triples. The superseded e6d998... expectation failed after the second helper absorption while the frozen v3 KAT still passed.",
+      "host_kat_failed_before_repin": true,
+      "matched_on_sbf_after_repin": true,
+      "v3_pin_unchanged": true,
+      "status": "CURRENT PCS SCAFFOLD ONLY: excludes the 102 pre-gamma values across z and z xor 11 (49 C1 + 2 C2 at each point), randomized statement constraints, hiding, and final g32 profile",
+      "current_artifact": "../stage2/transcript_kat_v4_s2_pcs_scaffold.json",
+      "wire_ordinal": 19,
+      "final_payment_kat_wire_ordinal_reserved": 20
     }
   ]
 }

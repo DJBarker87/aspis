@@ -11,7 +11,29 @@ use aspis_core::field::M31;
 pub const POSEIDON2_WIDTH: usize = 16;
 pub const RATE: usize = 8;
 pub const DIGEST_ELEMS: usize = 8;
+pub const POSEIDON2_ROUNDS: usize = 22;
 pub type Digest = [M31; DIGEST_ELEMS];
+
+/// Round class and index inside the pinned 4 + 14 + 4 schedule.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Poseidon2RoundKind {
+    ExternalInitial(u8),
+    Internal(u8),
+    ExternalFinal(u8),
+}
+
+/// One input/output transition of the optimized permutation.
+///
+/// The first transition includes the permutation's leading external linear
+/// layer; its `input` is therefore the raw sponge state supplied to
+/// [`permute_optimized`]. Every later input equals the previous output.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Poseidon2RoundTransition {
+    pub round: u8,
+    pub kind: Poseidon2RoundKind,
+    pub input: [M31; POSEIDON2_WIDTH],
+    pub output: [M31; POSEIDON2_WIDTH],
+}
 
 const EXTERNAL_INITIAL: [[u32; 16]; 4] = [
     [
@@ -183,40 +205,84 @@ pub fn permute(state: &mut [M31; 16]) {
 /// Equality is covered against both the canonical kernel and the pinned
 /// Plonky3 implementation.
 pub fn permute_optimized(state: &mut [M31; 16]) {
+    permute_optimized_with_trace(state, |_| {});
+}
+
+/// Apply the optimized permutation while emitting all 22 round transitions.
+pub fn permute_optimized_with_trace<F>(state: &mut [M31; 16], mut trace: F)
+where
+    F: FnMut(Poseidon2RoundTransition),
+{
+    let mut round = 0u8;
+    let mut input = *state;
     external_linear_lazy(state);
-    for constants in &EXTERNAL_INITIAL {
+    for (index, constants) in EXTERNAL_INITIAL.iter().enumerate() {
         for index in 0..16 {
             state[index] = pow5(state[index].add(M31(constants[index])));
         }
         external_linear_lazy(state);
+        trace(Poseidon2RoundTransition {
+            round,
+            kind: Poseidon2RoundKind::ExternalInitial(index as u8),
+            input,
+            output: *state,
+        });
+        round += 1;
+        input = *state;
     }
-    for constant in INTERNAL {
+    for (index, constant) in INTERNAL.into_iter().enumerate() {
         state[0] = pow5(state[0].add(M31(constant)));
         internal_linear_lazy(state);
+        trace(Poseidon2RoundTransition {
+            round,
+            kind: Poseidon2RoundKind::Internal(index as u8),
+            input,
+            output: *state,
+        });
+        round += 1;
+        input = *state;
     }
-    for constants in &EXTERNAL_FINAL {
+    for (index, constants) in EXTERNAL_FINAL.iter().enumerate() {
         for index in 0..16 {
             state[index] = pow5(state[index].add(M31(constants[index])));
         }
         external_linear_lazy(state);
+        trace(Poseidon2RoundTransition {
+            round,
+            kind: Poseidon2RoundKind::ExternalFinal(index as u8),
+            input,
+            output: *state,
+        });
+        round += 1;
+        input = *state;
     }
+    debug_assert_eq!(round as usize, POSEIDON2_ROUNDS);
 }
 
 /// Domain-separated rate-8 sponge returning eight M31 limbs (~248 output
 /// bits, ~124-bit collision strength). Input length is committed in the
 /// capacity portion, so chunk boundaries and trailing zeros are unambiguous.
 pub fn hash_fields(domain: M31, input: &[M31]) -> Digest {
+    hash_fields_with_trace(domain, input, |_, _| {})
+}
+
+/// The exact sponge path used by [`hash_fields`], with a permutation-local
+/// index and every round transition exposed to the caller.
+pub fn hash_fields_with_trace<F>(domain: M31, input: &[M31], mut trace: F) -> Digest
+where
+    F: FnMut(usize, Poseidon2RoundTransition),
+{
     let mut state = [M31::ZERO; 16];
     state[RATE] = domain;
     state[RATE + 1] = M31(input.len() as u32);
     if input.is_empty() {
-        permute_optimized(&mut state);
+        permute_optimized_with_trace(&mut state, |transition| trace(0, transition));
     } else {
-        for chunk in input.chunks(RATE) {
+        for (permutation, chunk) in input.chunks(RATE).enumerate() {
             for (index, value) in chunk.iter().enumerate() {
                 state[index] = state[index].add(*value);
             }
-            permute_optimized(&mut state);
+            permute_optimized_with_trace(&mut state, |transition| trace(permutation, transition));
         }
     }
     core::array::from_fn(|index| state[index])
@@ -270,6 +336,62 @@ mod tests {
                 assert_eq!(
                     hash_fields(domain, &input),
                     hash_fields_canonical(domain, &input)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn instrumented_permutation_emits_the_exact_22_round_chain() {
+        for seed in 0..16u32 {
+            let input = core::array::from_fn(|index| {
+                M31(seed
+                    .wrapping_mul(1_000_003)
+                    .wrapping_add(index as u32 * 97_409)
+                    % aspis_core::field::P)
+            });
+            let mut expected = input;
+            permute_optimized(&mut expected);
+            let mut actual = input;
+            let mut transitions = Vec::new();
+            permute_optimized_with_trace(&mut actual, |transition| transitions.push(transition));
+            assert_eq!(actual, expected);
+            assert_eq!(transitions.len(), POSEIDON2_ROUNDS);
+            assert_eq!(transitions[0].input, input);
+            for (round, transition) in transitions.iter().enumerate() {
+                assert_eq!(transition.round as usize, round);
+                if round > 0 {
+                    assert_eq!(transition.input, transitions[round - 1].output);
+                }
+            }
+            assert_eq!(transitions[POSEIDON2_ROUNDS - 1].output, expected);
+        }
+    }
+
+    #[test]
+    fn instrumented_sponge_is_identical_at_every_block_count() {
+        for length in 0..=(RATE * 3 + 1) {
+            let input = (0..length)
+                .map(|index| M31((index as u32 + 1) * 97_409))
+                .collect::<Vec<_>>();
+            let mut transitions = Vec::new();
+            let traced = hash_fields_with_trace(M31(77), &input, |permutation, transition| {
+                transitions.push((permutation, transition));
+            });
+            assert_eq!(traced, hash_fields(M31(77), &input));
+            let permutations = if input.is_empty() {
+                1
+            } else {
+                input.len().div_ceil(RATE)
+            };
+            assert_eq!(transitions.len(), permutations * POSEIDON2_ROUNDS);
+            for permutation in 0..permutations {
+                assert_eq!(
+                    transitions
+                        .iter()
+                        .filter(|(index, _)| *index == permutation)
+                        .count(),
+                    POSEIDON2_ROUNDS
                 );
             }
         }

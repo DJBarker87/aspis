@@ -545,6 +545,238 @@ pub fn qm31_cm31_dot(weights: &[QM31], values: &[CM31]) -> QM31 {
     }
 }
 
+#[inline(always)]
+fn finish_qm31_cm31_dot4(sums: [[M31; 6]; 4]) -> [QM31; 4] {
+    core::array::from_fn(|slot| {
+        let component = |offset: usize| CM31 {
+            a: sums[slot][offset].sub(sums[slot][offset + 1]),
+            b: sums[slot][offset + 2]
+                .sub(sums[slot][offset])
+                .sub(sums[slot][offset + 1]),
+        };
+        QM31 {
+            c0: component(0),
+            c1: component(3),
+        }
+    })
+}
+
+/// Four QM31-by-CM31 dot products with one shared weight vector.
+///
+/// The four value slices are independent fiber slots. Sharing the traversal
+/// lets the kernel compute each weight's Karatsuba cross terms once, and the
+/// outer accumulators defer canonical additions until the end of a bounded
+/// column window. This is an arithmetic primitive only; callers define what
+/// the four slots and weights represent.
+pub fn qm31_cm31_dot4(weights: &[QM31], values: [&[CM31]; 4]) -> [QM31; 4] {
+    for slot in values {
+        assert_eq!(weights.len(), slot.len());
+    }
+
+    // Each inner raw accumulator contains at most four maximal M31 products,
+    // so it fits in u64. A 256-column outer window contains at most 64
+    // canonical block results per limb and therefore also fits comfortably.
+    const OUTER_COLUMNS: usize = 256;
+    let mut sums = [[M31::ZERO; 6]; 4];
+    for outer_start in (0..weights.len()).step_by(OUTER_COLUMNS) {
+        let outer_end = core::cmp::min(outer_start + OUTER_COLUMNS, weights.len());
+        let mut outer = [[0u64; 6]; 4];
+        for start in (outer_start..outer_end).step_by(4) {
+            let end = core::cmp::min(start + 4, outer_end);
+            let mut raw = [[0u64; 6]; 4];
+            for index in start..end {
+                let weight = weights[index];
+                let weight_components = [
+                    (weight.c0.a, weight.c0.b, weight.c0.a.add(weight.c0.b)),
+                    (weight.c1.a, weight.c1.b, weight.c1.a.add(weight.c1.b)),
+                ];
+                for (slot, raw_slot) in raw.iter_mut().enumerate() {
+                    let value = values[slot][index];
+                    let value_sum = value.a.add(value.b);
+                    for (component, (weight_a, weight_b, weight_sum)) in
+                        weight_components.into_iter().enumerate()
+                    {
+                        let offset = component * 3;
+                        raw_slot[offset] += weight_a.0 as u64 * value.a.0 as u64;
+                        raw_slot[offset + 1] += weight_b.0 as u64 * value.b.0 as u64;
+                        raw_slot[offset + 2] += weight_sum.0 as u64 * value_sum.0 as u64;
+                    }
+                }
+            }
+            for slot in 0..4 {
+                for component in 0..6 {
+                    outer[slot][component] += M31::reduce_u64(raw[slot][component]).0 as u64;
+                }
+            }
+        }
+        for slot in 0..4 {
+            for component in 0..6 {
+                sums[slot][component] =
+                    sums[slot][component].add(M31::reduce_u64(outer[slot][component]));
+            }
+        }
+    }
+
+    finish_qm31_cm31_dot4(sums)
+}
+
+/// Karatsuba limbs for a protocol-fixed QM31 weight vector.
+///
+/// A verifier applies the same gamma powers to every authenticated query
+/// fiber. Preparing `(a, b, a+b)` for both CM31 components once avoids
+/// recomputing those challenge-dependent sums in every four-slot dot.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PreparedQm31Cm31Weights<const N: usize> {
+    components: [[M31; 6]; N],
+}
+
+impl<const N: usize> PreparedQm31Cm31Weights<N> {
+    #[inline(always)]
+    fn components(weight: QM31) -> [M31; 6] {
+        [
+            weight.c0.a,
+            weight.c0.b,
+            weight.c0.a.add(weight.c0.b),
+            weight.c1.a,
+            weight.c1.b,
+            weight.c1.a.add(weight.c1.b),
+        ]
+    }
+
+    pub fn new(weights: &[QM31]) -> Self {
+        assert_eq!(weights.len(), N);
+        Self {
+            components: core::array::from_fn(|index| Self::components(weights[index])),
+        }
+    }
+
+    /// Prepare `[1, gamma, ..., gamma^(N-1)]` in one pass and return
+    /// `gamma^N` for an immediately following protocol lane.
+    pub fn geometric(gamma: QM31) -> (Self, QM31) {
+        let mut power = QM31::ONE;
+        let components = core::array::from_fn(|_| {
+            let result = Self::components(power);
+            power = power.mul(gamma);
+            result
+        });
+        (Self { components }, power)
+    }
+}
+
+/// Four QM31-by-CM31 dots using a weight vector prepared once per proof.
+///
+/// This has the same field result as [`qm31_cm31_dot4`]. It is specialized
+/// for the common verifier shape where one Fiat-Shamir challenge determines
+/// the weights and many authenticated fibers reuse them.
+pub fn qm31_cm31_dot4_prepared<const N: usize>(
+    weights: &PreparedQm31Cm31Weights<N>,
+    values: [&[CM31; N]; 4],
+) -> [QM31; 4] {
+    // Four maximal M31 products fit in u64. Each 256-column window has at
+    // most 64 reduced blocks, so its outer accumulator is far below u64::MAX.
+    const OUTER_COLUMNS: usize = 256;
+    let mut sums = [[M31::ZERO; 6]; 4];
+    for outer_start in (0..N).step_by(OUTER_COLUMNS) {
+        let outer_end = core::cmp::min(outer_start + OUTER_COLUMNS, N);
+        let mut outer = [[0u64; 6]; 4];
+        for start in (outer_start..outer_end).step_by(4) {
+            let end = core::cmp::min(start + 4, outer_end);
+            let mut raw = [[0u64; 6]; 4];
+            for (relative, &weight) in weights.components[start..end].iter().enumerate() {
+                let index = start + relative;
+                for slot in 0..4 {
+                    let value = values[slot][index];
+                    let value_sum = value.a.add(value.b);
+                    for component in 0..2 {
+                        let offset = component * 3;
+                        raw[slot][offset] += weight[offset].0 as u64 * value.a.0 as u64;
+                        raw[slot][offset + 1] += weight[offset + 1].0 as u64 * value.b.0 as u64;
+                        raw[slot][offset + 2] += weight[offset + 2].0 as u64 * value_sum.0 as u64;
+                    }
+                }
+            }
+            for slot in 0..4 {
+                for component in 0..6 {
+                    outer[slot][component] += M31::reduce_u64(raw[slot][component]).0 as u64;
+                }
+            }
+        }
+        for slot in 0..4 {
+            for component in 0..6 {
+                sums[slot][component] =
+                    sums[slot][component].add(M31::reduce_u64(outer[slot][component]));
+            }
+        }
+    }
+
+    finish_qm31_cm31_dot4(sums)
+}
+
+/// Prepared four-slot dot directly over canonical little-endian CM31 bytes.
+///
+/// Wire order is slot-major: four consecutive slots of `N` CM31 values.
+/// Decoding and arithmetic share one traversal, and canonicality failures are
+/// accumulated into one final branch instead of materializing an intermediate
+/// matrix with one `Option` branch per limb.
+pub fn qm31_cm31_dot4_prepared_bytes<const N: usize>(
+    weights: &PreparedQm31Cm31Weights<N>,
+    bytes: &[u8],
+) -> Option<[QM31; 4]> {
+    if bytes.len() != 4 * N * 8 {
+        return None;
+    }
+
+    const OUTER_COLUMNS: usize = 256;
+    let mut invalid = 0u32;
+    let mut sums = [[M31::ZERO; 6]; 4];
+    for outer_start in (0..N).step_by(OUTER_COLUMNS) {
+        let outer_end = core::cmp::min(outer_start + OUTER_COLUMNS, N);
+        let mut outer = [[0u64; 6]; 4];
+        for start in (outer_start..outer_end).step_by(4) {
+            let end = core::cmp::min(start + 4, outer_end);
+            let mut raw = [[0u64; 6]; 4];
+            for (relative, &weight) in weights.components[start..end].iter().enumerate() {
+                let index = start + relative;
+                for (slot, raw_slot) in raw.iter_mut().enumerate() {
+                    let offset = (slot * N + index) * 8;
+                    let value_a = u32::from_le_bytes(bytes[offset..offset + 4].try_into().ok()?);
+                    let value_b =
+                        u32::from_le_bytes(bytes[offset + 4..offset + 8].try_into().ok()?);
+                    invalid |= u32::from(value_a >= P) | u32::from(value_b >= P);
+                    // Keep arithmetic bounded even for a rejected encoding;
+                    // canonical inputs are unchanged by the mask.
+                    let value_a = M31(value_a & P);
+                    let value_b = M31(value_b & P);
+                    let value_sum = value_a.add(value_b);
+                    for component in 0..2 {
+                        let limb = component * 3;
+                        raw_slot[limb] += weight[limb].0 as u64 * value_a.0 as u64;
+                        raw_slot[limb + 1] += weight[limb + 1].0 as u64 * value_b.0 as u64;
+                        raw_slot[limb + 2] += weight[limb + 2].0 as u64 * value_sum.0 as u64;
+                    }
+                }
+            }
+            for slot in 0..4 {
+                for component in 0..6 {
+                    outer[slot][component] += M31::reduce_u64(raw[slot][component]).0 as u64;
+                }
+            }
+        }
+        for slot in 0..4 {
+            for component in 0..6 {
+                sums[slot][component] =
+                    sums[slot][component].add(M31::reduce_u64(outer[slot][component]));
+            }
+        }
+    }
+
+    if invalid == 0 {
+        Some(finish_qm31_cm31_dot4(sums))
+    } else {
+        None
+    }
+}
+
 /// Prior four-products-per-reduction kernel with a canonical M31 addition
 /// after every block. Retained for literal SBF comparison.
 pub fn qm31_m31_dot_eager_outer(weights: &[QM31], values: &[M31]) -> QM31 {
@@ -599,6 +831,144 @@ pub fn qm31_m31_dot(weights: &[QM31], values: &[M31]) -> QM31 {
         c0: CM31::new(M31::reduce_u64(sums[0]), M31::reduce_u64(sums[1])),
         c1: CM31::new(M31::reduce_u64(sums[2]), M31::reduce_u64(sums[3])),
     }
+}
+
+#[inline(always)]
+fn finish_qm31_m31_dot4(sums: [[u64; 4]; 4]) -> [QM31; 4] {
+    core::array::from_fn(|slot| QM31 {
+        c0: CM31::new(
+            M31::reduce_u64(sums[slot][0]),
+            M31::reduce_u64(sums[slot][1]),
+        ),
+        c1: CM31::new(
+            M31::reduce_u64(sums[slot][2]),
+            M31::reduce_u64(sums[slot][3]),
+        ),
+    })
+}
+
+/// Four QM31-by-M31 dot products with one shared weight vector.
+///
+/// This is the raw-base-field analogue of [`qm31_cm31_dot4`]. It is an
+/// arithmetic primitive only: callers decide whether the four slots describe
+/// a genuine-circle PCS leaf, a diagnostic fixture, or another layout.
+pub fn qm31_m31_dot4(weights: &[QM31], values: [&[M31]; 4]) -> [QM31; 4] {
+    for slot in values {
+        assert_eq!(weights.len(), slot.len());
+    }
+
+    // Four maximal M31 products fit in u64. A 256-column outer window has at
+    // most 64 reduced blocks, keeping every outer accumulator far below the
+    // u64 limit while avoiding one canonical addition per four-column block.
+    const OUTER_COLUMNS: usize = 256;
+    let mut sums = [[0u64; 4]; 4];
+    for outer_start in (0..weights.len()).step_by(OUTER_COLUMNS) {
+        let outer_end = core::cmp::min(outer_start + OUTER_COLUMNS, weights.len());
+        let mut outer = [[0u64; 4]; 4];
+        for start in (outer_start..outer_end).step_by(4) {
+            let end = core::cmp::min(start + 4, outer_end);
+            let mut raw = [[0u64; 4]; 4];
+            for index in start..end {
+                let weight = weights[index];
+                let limbs = [weight.c0.a, weight.c0.b, weight.c1.a, weight.c1.b];
+                for slot in 0..4 {
+                    let value = values[slot][index].0 as u64;
+                    for limb in 0..4 {
+                        raw[slot][limb] += limbs[limb].0 as u64 * value;
+                    }
+                }
+            }
+            for slot in 0..4 {
+                for limb in 0..4 {
+                    outer[slot][limb] += M31::reduce_u64(raw[slot][limb]).0 as u64;
+                }
+            }
+        }
+        for slot in 0..4 {
+            for limb in 0..4 {
+                sums[slot][limb] += M31::reduce_u64(outer[slot][limb]).0 as u64;
+            }
+        }
+    }
+    finish_qm31_m31_dot4(sums)
+}
+
+/// Four QM31-by-M31 dots directly over canonical little-endian M31 bytes.
+///
+/// Wire order is slot-major: four consecutive slots of `N` M31 values.
+/// Decoding and arithmetic share one traversal. Canonicality failures are
+/// accumulated into one final branch, and rejected inputs are masked only to
+/// keep the speculative arithmetic bounded before that branch.
+pub fn qm31_m31_dot4_prepared_bytes<const N: usize>(
+    weights: &[QM31; N],
+    bytes: &[u8],
+) -> Option<[QM31; 4]> {
+    if bytes.len() != 4 * N * 4 {
+        return None;
+    }
+
+    const OUTER_COLUMNS: usize = 256;
+    let mut invalid = 0u32;
+    let mut sums = [[0u64; 4]; 4];
+    for outer_start in (0..N).step_by(OUTER_COLUMNS) {
+        let outer_end = core::cmp::min(outer_start + OUTER_COLUMNS, N);
+        let mut outer = [[0u64; 4]; 4];
+        for start in (outer_start..outer_end).step_by(4) {
+            let end = core::cmp::min(start + 4, outer_end);
+            let mut raw = [[0u64; 4]; 4];
+            for (relative, weight) in weights[start..end].iter().enumerate() {
+                let index = start + relative;
+                let limbs = [weight.c0.a, weight.c0.b, weight.c1.a, weight.c1.b];
+                for (slot, raw_slot) in raw.iter_mut().enumerate() {
+                    let offset = (slot * N + index) * 4;
+                    let value = u32::from_le_bytes(bytes[offset..offset + 4].try_into().ok()?);
+                    invalid |= u32::from(value >= P);
+                    let value = (value & P) as u64;
+                    for limb in 0..4 {
+                        raw_slot[limb] += limbs[limb].0 as u64 * value;
+                    }
+                }
+            }
+            for slot in 0..4 {
+                for limb in 0..4 {
+                    outer[slot][limb] += M31::reduce_u64(raw[slot][limb]).0 as u64;
+                }
+            }
+        }
+        for slot in 0..4 {
+            for limb in 0..4 {
+                sums[slot][limb] += M31::reduce_u64(outer[slot][limb]).0 as u64;
+            }
+        }
+    }
+
+    if invalid == 0 {
+        Some(finish_qm31_m31_dot4(sums))
+    } else {
+        None
+    }
+}
+
+/// Normalized four-value circle-to-line followed by line fold.
+///
+/// Slot order is `(x,y), (x,-y), (-x,-y), (-x,y)`. `inv_2x` and `inv_2y`
+/// are verifier-derived inverses of `2x` and `2y`; the third pair uses
+/// `-inv_2y`. The normalization matches coefficient evaluation
+/// `c0 + alpha*c1 + alpha^2*c2 + alpha^3*c3`, rather than the four-times
+/// unnormalized inverse-butterfly convention used by some circle FFTs.
+pub fn qm31_circle_to_line_fold4(values: [QM31; 4], alpha: QM31, inv_2x: M31, inv_2y: M31) -> QM31 {
+    let positive = values[0]
+        .add(values[1])
+        .half()
+        .add(alpha.mul(values[0].sub(values[1]).mul_m31(inv_2y)));
+    let negative = values[2]
+        .add(values[3])
+        .half()
+        .add(alpha.mul(values[2].sub(values[3]).mul_m31(M31::ZERO.sub(inv_2y))));
+    positive
+        .add(negative)
+        .half()
+        .add(alpha.square().mul(positive.sub(negative).mul_m31(inv_2x)))
 }
 
 /// Whole-vector variant of `qm31_m31_dot`: accumulate in u128 and reduce
@@ -661,11 +1031,35 @@ pub fn qm31_dot(weights: &[QM31], values: &[QM31]) -> QM31 {
     }
 }
 
-/// Montgomery batch inversion over CM31: one field inversion for the whole
-/// batch plus 3(n-1) multiplications. This is the `round_batch_inversion`
-/// kernel: the verifier gathers every fold denominator of a round and inverts
-/// them together. Panics if any element is zero (fold denominators are coset
-/// points, never zero).
+/// Montgomery batch inversion over M31: one field inversion for the whole
+/// batch plus 3(n-1) multiplications. Panics if any element is zero.
+pub fn m31_batch_inverse(values: &[M31], out: &mut [M31]) {
+    m31_batch_inverse_with(values, out, M31::inv)
+}
+
+/// M31 batch inversion with an injected single-inverse backend. This keeps
+/// the prefix/suffix multiplication schedule identical while allowing SBF to
+/// use its modular-exponentiation syscall once for the whole batch.
+pub fn m31_batch_inverse_with(values: &[M31], out: &mut [M31], inverse: fn(M31) -> M31) {
+    assert_eq!(values.len(), out.len());
+    if values.is_empty() {
+        return;
+    }
+    let mut accumulator = M31::ONE;
+    for (index, value) in values.iter().enumerate() {
+        out[index] = accumulator;
+        accumulator = accumulator.mul(*value);
+    }
+    let mut inverse = inverse(accumulator);
+    for index in (0..values.len()).rev() {
+        let prefix = out[index];
+        out[index] = prefix.mul(inverse);
+        inverse = inverse.mul(values[index]);
+    }
+}
+
+/// Quadratic-extension batch inversion with the same one-inverse Montgomery
+/// trick as [`m31_batch_inverse`].
 pub fn cm31_batch_inverse(values: &[CM31], out: &mut [CM31]) {
     cm31_batch_inverse_with(values, out, M31::inv)
 }
@@ -804,6 +1198,15 @@ mod tests {
 
     #[test]
     fn batch_inverse_matches_individual() {
+        let base_values = [M31(1), M31(123), M31(P - 1), M31(7)];
+        let mut base_out = [M31::ZERO; 4];
+        m31_batch_inverse(&base_values, &mut base_out);
+        for (value, inverse) in base_values.iter().zip(base_out.iter()) {
+            assert_eq!(value.mul(*inverse), M31::ONE);
+        }
+        let mut empty = [];
+        m31_batch_inverse(&[], &mut empty);
+
         let values = [
             CM31::new(M31(1), M31(0)),
             CM31::new(M31(123), M31(456)),
@@ -819,7 +1222,7 @@ mod tests {
 
     #[test]
     fn lazy_qm31_cm31_dot_matches_naive() {
-        for len in [0usize, 1, 3, 4, 5, 16, 80] {
+        for len in [0usize, 1, 3, 4, 5, 16, 49, 80] {
             let weights = (0..len)
                 .map(|index| QM31 {
                     c0: CM31::new(
@@ -851,6 +1254,154 @@ mod tests {
     }
 
     #[test]
+    fn fused_qm31_cm31_dot4_matches_independent_and_naive_dots() {
+        fn next(state: &mut u64) -> M31 {
+            *state ^= *state >> 12;
+            *state ^= *state << 25;
+            *state ^= *state >> 27;
+            M31((state.wrapping_mul(0x2545_f491_4f6c_dd1d) as u32) % P)
+        }
+
+        fn cm31(state: &mut u64) -> CM31 {
+            CM31::new(next(state), next(state))
+        }
+
+        fn qm31(state: &mut u64) -> QM31 {
+            QM31 {
+                c0: cm31(state),
+                c1: cm31(state),
+            }
+        }
+
+        for seed in 1..=24u64 {
+            for len in [0usize, 1, 3, 4, 5, 16, 49, 80, 257] {
+                let mut state = seed
+                    .wrapping_mul(0x9e37_79b9_7f4a_7c15)
+                    .wrapping_add(len as u64 + 1);
+                let weights = (0..len)
+                    .map(|_| qm31(&mut state))
+                    .collect::<alloc::vec::Vec<_>>();
+                let slots: [alloc::vec::Vec<CM31>; 4] =
+                    core::array::from_fn(|_| (0..len).map(|_| cm31(&mut state)).collect());
+                let fused = qm31_cm31_dot4(&weights, [&slots[0], &slots[1], &slots[2], &slots[3]]);
+                for slot in 0..4 {
+                    let independent = qm31_cm31_dot(&weights, &slots[slot]);
+                    let naive = weights
+                        .iter()
+                        .zip(&slots[slot])
+                        .fold(QM31::ZERO, |sum, (weight, value)| {
+                            sum.add(weight.mul_cm31(*value))
+                        });
+                    assert_eq!(
+                        fused[slot], independent,
+                        "seed={seed}, len={len}, slot={slot}"
+                    );
+                    assert_eq!(fused[slot], naive, "seed={seed}, len={len}, slot={slot}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn prepared_qm31_cm31_dot4_matches_fused_across_outer_windows() {
+        fn next(state: &mut u64) -> M31 {
+            *state ^= *state >> 12;
+            *state ^= *state << 25;
+            *state ^= *state >> 27;
+            M31((state.wrapping_mul(0x2545_f491_4f6c_dd1d) as u32) % P)
+        }
+
+        fn cm31(state: &mut u64) -> CM31 {
+            CM31::new(next(state), next(state))
+        }
+
+        fn qm31(state: &mut u64) -> QM31 {
+            QM31 {
+                c0: cm31(state),
+                c1: cm31(state),
+            }
+        }
+
+        fn check<const N: usize>(seed: u64) {
+            let mut state = seed;
+            let weights: [QM31; N] = core::array::from_fn(|_| qm31(&mut state));
+            let slots: [[CM31; N]; 4] =
+                core::array::from_fn(|_| core::array::from_fn(|_| cm31(&mut state)));
+            let prepared = PreparedQm31Cm31Weights::<N>::new(&weights);
+            let expected = qm31_cm31_dot4(&weights, [&slots[0], &slots[1], &slots[2], &slots[3]]);
+            assert_eq!(
+                qm31_cm31_dot4_prepared(&prepared, [&slots[0], &slots[1], &slots[2], &slots[3]],),
+                expected
+            );
+        }
+
+        for seed in 1..=16u64 {
+            check::<0>(seed);
+            check::<1>(seed);
+            check::<4>(seed);
+            check::<49>(seed);
+            check::<257>(seed);
+        }
+    }
+
+    #[test]
+    fn prepared_geometric_weights_match_power_table_and_return_next_power() {
+        let gamma = QM31 {
+            c0: CM31::new(M31(17), M31(19)),
+            c1: CM31::new(M31(23), M31(29)),
+        };
+        let powers = qm31_power_table::<49>(gamma);
+        let (geometric, next) = PreparedQm31Cm31Weights::<49>::geometric(gamma);
+        assert_eq!(geometric, PreparedQm31Cm31Weights::new(&powers));
+        assert_eq!(next, gamma.pow(49));
+    }
+
+    #[test]
+    fn prepared_byte_dot_matches_values_and_rejects_noncanonical_limbs() {
+        const N: usize = 49;
+        let mut state = 0x8f31_50a2_d192_ed03u64;
+        let mut next = || {
+            state ^= state >> 12;
+            state ^= state << 25;
+            state ^= state >> 27;
+            M31((state.wrapping_mul(0x2545_f491_4f6c_dd1d) as u32) % P)
+        };
+        let weights: [QM31; N] = core::array::from_fn(|_| QM31 {
+            c0: CM31::new(next(), next()),
+            c1: CM31::new(next(), next()),
+        });
+        let values: [[CM31; N]; 4] =
+            core::array::from_fn(|_| core::array::from_fn(|_| CM31::new(next(), next())));
+        let mut bytes = alloc::vec![0u8; 4 * N * 8];
+        for (slot, slot_values) in values.iter().enumerate() {
+            for (index, value) in slot_values.iter().enumerate() {
+                value.write_le_bytes(&mut bytes[(slot * N + index) * 8..][..8]);
+            }
+        }
+        let prepared = PreparedQm31Cm31Weights::new(&weights);
+        assert_eq!(
+            qm31_cm31_dot4_prepared_bytes(&prepared, &bytes),
+            Some(qm31_cm31_dot4_prepared(
+                &prepared,
+                [&values[0], &values[1], &values[2], &values[3]],
+            ))
+        );
+        assert_eq!(
+            qm31_cm31_dot4_prepared_bytes(&prepared, &bytes[..bytes.len() - 1]),
+            None
+        );
+        for offset in [0usize, 4, (N + 7) * 8 + 4, (4 * N - 1) * 8] {
+            let mut corrupted = bytes.clone();
+            corrupted[offset..offset + 4].copy_from_slice(&P.to_le_bytes());
+            assert_eq!(
+                qm31_cm31_dot4_prepared_bytes(&prepared, &corrupted),
+                None,
+                "noncanonical limb at byte {offset} accepted"
+            );
+        }
+    }
+
+    #[test]
     fn lazy_qm31_m31_dot_matches_naive() {
         for len in [0usize, 1, 3, 4, 5, 16, 80] {
             let weights = (0..len)
@@ -871,6 +1422,156 @@ mod tests {
             assert_eq!(qm31_m31_dot(&weights, &values), naive);
             assert_eq!(qm31_m31_dot_eager_outer(&weights, &values), naive);
             assert_eq!(qm31_m31_dot_u128(&weights, &values), naive);
+        }
+    }
+
+    #[test]
+    fn fused_qm31_m31_dot4_matches_independent_and_naive_dots() {
+        fn next(state: &mut u64) -> M31 {
+            *state ^= *state >> 12;
+            *state ^= *state << 25;
+            *state ^= *state >> 27;
+            M31((state.wrapping_mul(0x2545_f491_4f6c_dd1d) as u32) % P)
+        }
+
+        fn qm31(state: &mut u64) -> QM31 {
+            QM31 {
+                c0: CM31::new(next(state), next(state)),
+                c1: CM31::new(next(state), next(state)),
+            }
+        }
+
+        for seed in 1..=24u64 {
+            for len in [0usize, 1, 3, 4, 5, 16, 49, 80, 257] {
+                let mut state = seed
+                    .wrapping_mul(0x9e37_79b9_7f4a_7c15)
+                    .wrapping_add(len as u64 + 1);
+                let weights = (0..len)
+                    .map(|_| qm31(&mut state))
+                    .collect::<alloc::vec::Vec<_>>();
+                let slots: [alloc::vec::Vec<M31>; 4] =
+                    core::array::from_fn(|_| (0..len).map(|_| next(&mut state)).collect());
+                let fused = qm31_m31_dot4(&weights, [&slots[0], &slots[1], &slots[2], &slots[3]]);
+                for slot in 0..4 {
+                    let independent = qm31_m31_dot(&weights, &slots[slot]);
+                    let naive = weights
+                        .iter()
+                        .zip(&slots[slot])
+                        .fold(QM31::ZERO, |sum, (weight, value)| {
+                            sum.add(weight.mul_m31(*value))
+                        });
+                    assert_eq!(
+                        fused[slot], independent,
+                        "seed={seed}, len={len}, slot={slot}"
+                    );
+                    assert_eq!(fused[slot], naive, "seed={seed}, len={len}, slot={slot}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn prepared_m31_byte_dot4_matches_values_and_rejects_noncanonical_limbs() {
+        const N: usize = 49;
+        let mut state = 0x8f31_50a2_d192_ed03u64;
+        let mut next = || {
+            state ^= state >> 12;
+            state ^= state << 25;
+            state ^= state >> 27;
+            M31((state.wrapping_mul(0x2545_f491_4f6c_dd1d) as u32) % P)
+        };
+        let weights: [QM31; N] = core::array::from_fn(|_| QM31 {
+            c0: CM31::new(next(), next()),
+            c1: CM31::new(next(), next()),
+        });
+        let values: [[M31; N]; 4] = core::array::from_fn(|_| core::array::from_fn(|_| next()));
+        let mut bytes = alloc::vec![0u8; 4 * N * 4];
+        for (slot, slot_values) in values.iter().enumerate() {
+            for (index, value) in slot_values.iter().enumerate() {
+                bytes[(slot * N + index) * 4..][..4].copy_from_slice(&value.0.to_le_bytes());
+            }
+        }
+        let expected = qm31_m31_dot4(&weights, [&values[0], &values[1], &values[2], &values[3]]);
+        assert_eq!(
+            qm31_m31_dot4_prepared_bytes(&weights, &bytes),
+            Some(expected)
+        );
+        assert_eq!(
+            qm31_m31_dot4_prepared_bytes(&weights, &bytes[..bytes.len() - 1]),
+            None
+        );
+        for offset in (0..4 * N).map(|index| index * 4) {
+            let mut corrupted = bytes.clone();
+            corrupted[offset..offset + 4].copy_from_slice(&P.to_le_bytes());
+            assert_eq!(
+                qm31_m31_dot4_prepared_bytes(&weights, &corrupted),
+                None,
+                "noncanonical limb at byte {offset} accepted"
+            );
+        }
+        let mut high_bit = bytes;
+        high_bit[4..8].copy_from_slice(&u32::MAX.to_le_bytes());
+        assert_eq!(
+            qm31_m31_dot4_prepared_bytes(&weights, &high_bit),
+            None,
+            "high-bit noncanonical M31 accepted"
+        );
+    }
+
+    #[test]
+    fn normalized_circle_line_fold_matches_cubic_coefficient_evaluation() {
+        fn q(seed: u32) -> QM31 {
+            QM31 {
+                c0: CM31::new(M31(seed % P), M31((seed * 3 + 1) % P)),
+                c1: CM31::new(M31((seed * 5 + 2) % P), M31((seed * 7 + 3) % P)),
+            }
+        }
+
+        for seed in 1..=32u32 {
+            let x = M31(17 + seed);
+            let y = M31(97 + 3 * seed);
+            let inv_2x = x.double().inv();
+            let inv_2y = y.double().inv();
+            let coefficients = [q(seed), q(seed + 11), q(seed + 23), q(seed + 37)];
+            let evaluate = |x_value: M31, y_value: M31| {
+                coefficients[0]
+                    .add(coefficients[1].mul_m31(y_value))
+                    .add(coefficients[2].mul_m31(x_value))
+                    .add(coefficients[3].mul_m31(x_value.mul(y_value)))
+            };
+            let minus_x = M31::ZERO.sub(x);
+            let minus_y = M31::ZERO.sub(y);
+            let values = [
+                evaluate(x, y),
+                evaluate(x, minus_y),
+                evaluate(minus_x, minus_y),
+                evaluate(minus_x, y),
+            ];
+            let alpha = q(seed + 101);
+            let expected = coefficients[0]
+                .add(alpha.mul(coefficients[1]))
+                .add(alpha.square().mul(coefficients[2]))
+                .add(alpha.square().mul(alpha).mul(coefficients[3]));
+            assert_eq!(
+                qm31_circle_to_line_fold4(values, alpha, inv_2x, inv_2y),
+                expected,
+                "seed={seed}"
+            );
+
+            // The raw inverse-butterfly convention omits both halves and is
+            // therefore exactly four times the normalized coefficient fold.
+            let raw_positive = values[0]
+                .add(values[1])
+                .add(alpha.mul(values[0].sub(values[1]).mul_m31(y.inv())));
+            let raw_negative = values[2]
+                .add(values[3])
+                .add(alpha.mul(values[2].sub(values[3]).mul_m31(M31::ZERO.sub(y.inv()))));
+            let raw = raw_positive.add(raw_negative).add(
+                alpha
+                    .square()
+                    .mul(raw_positive.sub(raw_negative).mul_m31(x.inv())),
+            );
+            assert_eq!(raw.half().half(), expected, "raw normalization seed={seed}");
         }
     }
 

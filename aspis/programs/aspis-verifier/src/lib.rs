@@ -44,6 +44,36 @@ pub enum ZkKernelKind {
     M31Pow2Shift,
 }
 
+#[derive(Clone, Copy, Debug, BorshSerialize, BorshDeserialize)]
+pub enum ExactWideV4DiagnosticMode {
+    BaselineFourDots,
+    FusedDot4,
+    EmptyLeafHashControl,
+    C1LeafHash,
+    C2LeafHash,
+    GammaPowersControl,
+    GammaPowers0To50,
+    FusedBatch36Unprepared,
+    FusedBatch36Prepared,
+    FusedBatch36PreparedBytes,
+}
+
+/// Decision-packet-only probes for a possible genuine-circle M31 C1 basis.
+/// None of these modes is a production proof parser or verifier.
+#[derive(Clone, Copy, Debug, BorshSerialize, BorshDeserialize)]
+pub enum M31CircleBasisDiagnosticMode {
+    RlcStructuredFourDots,
+    RlcFusedCanonicalBytes,
+    EmptyLeafHashControl,
+    C1LeafHash784,
+    FoldPrevalidatedCoordinates,
+    FoldDerivedCoordinatesBatchInverse,
+    FoldCachedCoordinatesPrevalidatedInverses,
+    // Append-only: preserve the diagnostic submode ordinals above.
+    RlcDecodedFusedDot4,
+    RlcStreamingFourDots,
+}
+
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize)]
 pub enum AspisInstruction {
     /// Set the proof length header. Account must be pre-created with owner =
@@ -145,6 +175,45 @@ pub enum AspisInstruction {
     OodSampleRelationProbe {
         samples_per_round: u8,
         expected_sink: [u8; 16],
+    },
+    /// V4/s=2 two-helper PCS-scaffold transcript known-answer vector. This is
+    /// deliberately separate from tag 5 so the frozen v3 schedule remains
+    /// independently testable. The final payment-v4 KAT is a later tag.
+    TranscriptKatV4S2PcsScaffold { expected: [u8; 32] },
+    /// Wire tag 20 is reserved for the final payment-v4 transcript KAT. It
+    /// rejects until that normative schedule and its pin are implemented.
+    FinalPaymentTranscriptKatV4 { expected: [u8; 32] },
+    /// Account-backed exact-wide arithmetic/hash diagnostic. The fixture is
+    /// uploaded outside the measured transaction, avoiding generation-cost
+    /// contamination. This is a measurement seam, not a proof verifier.
+    ExactWideV4Diagnostic {
+        mode: ExactWideV4DiagnosticMode,
+        expected_sink: [u8; 32],
+    },
+    /// Diagnostic-only proof verifier for the reconciled exact-wide v4 PCS
+    /// scaffold. It runs the real parser/Merkle/fold/final-check path but is
+    /// isolated from production tag 6 until the final 102-value statement
+    /// semantics exist.
+    VerifyExactWideV4Scaffold {
+        statement_digest: [u8; 32],
+        claim_z: Vec<[u8; 16]>,
+        claim_v: [u8; 16],
+    },
+    /// Arithmetic/leaf-shape probe for an alternative circle-polynomial PCS
+    /// with M31-valued C1 symbols. It deliberately does not reinterpret the
+    /// current Aspis proof format and cannot authorize a payment.
+    M31CircleBasisDiagnostic {
+        mode: M31CircleBasisDiagnosticMode,
+        expected_sink: [u8; 32],
+    },
+    /// Append-only wire allocation for the v4/s=2 M31-circle candidate.
+    /// This slice validates only the diagnostic header and public-input
+    /// framing, then rejects: no circle PCS verifier or payment path is
+    /// enabled by allocating tag 24.
+    VerifyM31CircleV4Diagnostic {
+        statement_digest: [u8; 32],
+        claim_z: Vec<[u8; 16]>,
+        statement_evaluations_digest: [u8; 32],
     },
 }
 
@@ -632,6 +701,635 @@ fn sbf_hashv(inputs: &[&[u8]]) -> [u8; 32] {
     hashv(inputs).to_bytes()
 }
 
+const EXACT_WIDE_V4_GAMMA_BYTES: usize = 16;
+const EXACT_WIDE_V4_FIBER_BYTES: usize =
+    aspis_statement::wide_v4::C1_FIBER_BYTES + aspis_statement::wide_v4::C2_FIBER_BYTES;
+const EXACT_WIDE_V4_FIXTURE_BYTES: usize = EXACT_WIDE_V4_GAMMA_BYTES + EXACT_WIDE_V4_FIBER_BYTES;
+pub const EXACT_WIDE_V4_DIAGNOSTIC_BATCH_FIBERS: usize = 36;
+const EXACT_WIDE_V4_BATCH_FIXTURE_BYTES: usize =
+    EXACT_WIDE_V4_GAMMA_BYTES + EXACT_WIDE_V4_DIAGNOSTIC_BATCH_FIBERS * EXACT_WIDE_V4_FIBER_BYTES;
+
+#[inline(never)]
+fn decode_exact_wide_v4_fiber_into(
+    bytes: &[u8],
+    fiber: &mut aspis_statement::wide_v4::ExactWideFiber,
+) -> ProgramResult {
+    use aspis_core::field::{CM31, QM31};
+    use aspis_statement::wide_v4::{C1_COLUMNS, C2_COLUMNS, FIBER_SLOTS};
+
+    if bytes.len() != EXACT_WIDE_V4_FIBER_BYTES {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let c2_start = aspis_statement::wide_v4::C1_FIBER_BYTES;
+    for slot in 0..FIBER_SLOTS {
+        for column in 0..C1_COLUMNS {
+            let offset = (slot * C1_COLUMNS + column) * 8;
+            fiber.c1[slot][column] = CM31::from_le_bytes(&bytes[offset..offset + 8])
+                .ok_or(ProgramError::InvalidAccountData)?;
+        }
+    }
+    for helper in 0..C2_COLUMNS {
+        for slot in 0..FIBER_SLOTS {
+            let offset = c2_start + (helper * FIBER_SLOTS + slot) * 16;
+            fiber.c2[slot][helper] = QM31::from_le_bytes(&bytes[offset..offset + 16])
+                .ok_or(ProgramError::InvalidAccountData)?;
+        }
+    }
+    Ok(())
+}
+
+#[inline(never)]
+fn decode_exact_wide_v4_fiber(
+    bytes: &[u8],
+) -> Result<aspis_statement::wide_v4::ExactWideFiber, ProgramError> {
+    use aspis_core::field::{CM31, QM31};
+    use aspis_statement::wide_v4::{C1_COLUMNS, C2_COLUMNS, FIBER_SLOTS};
+
+    let mut fiber = aspis_statement::wide_v4::ExactWideFiber {
+        c1: [[CM31::ZERO; C1_COLUMNS]; FIBER_SLOTS],
+        c2: [[QM31::ZERO; C2_COLUMNS]; FIBER_SLOTS],
+    };
+    decode_exact_wide_v4_fiber_into(bytes, &mut fiber)?;
+    Ok(fiber)
+}
+
+#[inline(never)]
+fn boxed_zero_exact_wide_v4_fiber() -> Box<aspis_statement::wide_v4::ExactWideFiber> {
+    use aspis_core::field::{CM31, QM31};
+    use aspis_statement::wide_v4::{C1_COLUMNS, C2_COLUMNS, FIBER_SLOTS};
+
+    Box::new(aspis_statement::wide_v4::ExactWideFiber {
+        c1: [[CM31::ZERO; C1_COLUMNS]; FIBER_SLOTS],
+        c2: [[QM31::ZERO; C2_COLUMNS]; FIBER_SLOTS],
+    })
+}
+
+#[inline(never)]
+fn decode_exact_wide_v4_fixture(
+    bytes: &[u8],
+) -> Result<
+    (
+        aspis_core::field::QM31,
+        aspis_statement::wide_v4::ExactWideFiber,
+    ),
+    ProgramError,
+> {
+    use aspis_core::field::QM31;
+
+    if bytes.len() != EXACT_WIDE_V4_FIXTURE_BYTES {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let gamma = QM31::from_le_bytes(&bytes[..EXACT_WIDE_V4_GAMMA_BYTES])
+        .ok_or(ProgramError::InvalidAccountData)?;
+    // C2 wire layout is helper-major; the decoder transposes to the
+    // arithmetic seam's slot-major representation.
+    let fiber = decode_exact_wide_v4_fiber(&bytes[EXACT_WIDE_V4_GAMMA_BYTES..])?;
+    Ok((gamma, fiber))
+}
+
+#[inline(never)]
+fn exact_wide_v4_baseline_combine(
+    fiber: &aspis_statement::wide_v4::ExactWideFiber,
+    gamma: aspis_core::field::QM31,
+) -> [aspis_core::field::QM31; 4] {
+    aspis_statement::wide_v4::combine_exact_wide_fiber_baseline(fiber, gamma)
+}
+
+#[inline(never)]
+fn exact_wide_v4_fused_combine(
+    fiber: &aspis_statement::wide_v4::ExactWideFiber,
+    gamma: aspis_core::field::QM31,
+) -> [aspis_core::field::QM31; 4] {
+    aspis_statement::wide_v4::combine_exact_wide_fiber(fiber, gamma)
+}
+
+#[inline(never)]
+fn exact_wide_v4_prepared_combine(
+    fiber: &aspis_statement::wide_v4::ExactWideFiber,
+    weights: &aspis_statement::wide_v4::ExactWideWeights,
+) -> [aspis_core::field::QM31; 4] {
+    aspis_statement::wide_v4::combine_exact_wide_fiber_prepared(fiber, weights)
+}
+
+#[inline(never)]
+fn exact_wide_v4_prepared_bytes_combine(
+    c1_bytes: &[u8],
+    c2_bytes: &[u8],
+    weights: &aspis_statement::wide_v4::ExactWideWeights,
+) -> Result<[aspis_core::field::QM31; 4], ProgramError> {
+    aspis_statement::wide_v4::combine_exact_wide_bytes_prepared(c1_bytes, c2_bytes, weights)
+        .ok_or(ProgramError::InvalidAccountData)
+}
+
+#[inline(never)]
+fn exact_wide_v4_prepare_weights(
+    gamma: aspis_core::field::QM31,
+) -> aspis_statement::wide_v4::ExactWideWeights {
+    aspis_statement::wide_v4::prepare_exact_wide_weights(gamma)
+}
+
+#[inline(never)]
+fn exact_wide_v4_combined_sink(fixture: &[u8], fused: bool) -> Result<[u8; 32], ProgramError> {
+    let (gamma, fiber) = decode_exact_wide_v4_fixture(fixture)?;
+    let combined = if fused {
+        exact_wide_v4_fused_combine(&fiber, gamma)
+    } else {
+        exact_wide_v4_baseline_combine(&fiber, gamma)
+    };
+    let mut encoded = [0u8; aspis_statement::wide_v4::FIBER_SLOTS * 16];
+    for (slot, value) in combined.iter().enumerate() {
+        value.write_le_bytes(&mut encoded[slot * 16..(slot + 1) * 16]);
+    }
+    Ok(sbf_hashv(&[b"aspis-exact-wide-v4-combined", &encoded]))
+}
+
+#[inline(never)]
+fn exact_wide_v4_power_sink(fixture: &[u8], actual: bool) -> Result<[u8; 32], ProgramError> {
+    use aspis_core::field::{qm31_power_table, QM31};
+    use aspis_statement::wide_v4::TOTAL_COLUMNS;
+
+    let gamma = QM31::from_le_bytes(&fixture[..EXACT_WIDE_V4_GAMMA_BYTES])
+        .ok_or(ProgramError::InvalidAccountData)?;
+    let mut encoded = [0u8; TOTAL_COLUMNS * 16];
+    if actual {
+        let powers = qm31_power_table::<TOTAL_COLUMNS>(gamma);
+        for (power, chunk) in powers.iter().zip(encoded.chunks_exact_mut(16)) {
+            power.write_le_bytes(chunk);
+        }
+    } else {
+        for chunk in encoded.chunks_exact_mut(16) {
+            QM31::ONE.write_le_bytes(chunk);
+        }
+    }
+    Ok(sbf_hashv(&[b"aspis-exact-wide-v4-powers", &encoded]))
+}
+
+#[inline(never)]
+fn exact_wide_v4_batch_sink(fixture: &[u8], prepared: bool) -> Result<[u8; 32], ProgramError> {
+    use aspis_core::field::QM31;
+
+    let gamma = QM31::from_le_bytes(&fixture[..EXACT_WIDE_V4_GAMMA_BYTES])
+        .ok_or(ProgramError::InvalidAccountData)?;
+    let mut accumulator = [QM31::ZERO; aspis_statement::wide_v4::FIBER_SLOTS];
+    let mut fiber = boxed_zero_exact_wide_v4_fiber();
+    if prepared {
+        let weights = exact_wide_v4_prepare_weights(gamma);
+        for index in 0..EXACT_WIDE_V4_DIAGNOSTIC_BATCH_FIBERS {
+            let start = EXACT_WIDE_V4_GAMMA_BYTES + index * EXACT_WIDE_V4_FIBER_BYTES;
+            decode_exact_wide_v4_fiber_into(
+                &fixture[start..start + EXACT_WIDE_V4_FIBER_BYTES],
+                &mut fiber,
+            )?;
+            let combined = exact_wide_v4_prepared_combine(&fiber, &weights);
+            for slot in 0..aspis_statement::wide_v4::FIBER_SLOTS {
+                accumulator[slot] = accumulator[slot].add(combined[slot]);
+            }
+        }
+    } else {
+        for index in 0..EXACT_WIDE_V4_DIAGNOSTIC_BATCH_FIBERS {
+            let start = EXACT_WIDE_V4_GAMMA_BYTES + index * EXACT_WIDE_V4_FIBER_BYTES;
+            decode_exact_wide_v4_fiber_into(
+                &fixture[start..start + EXACT_WIDE_V4_FIBER_BYTES],
+                &mut fiber,
+            )?;
+            let combined = exact_wide_v4_fused_combine(&fiber, gamma);
+            for slot in 0..aspis_statement::wide_v4::FIBER_SLOTS {
+                accumulator[slot] = accumulator[slot].add(combined[slot]);
+            }
+        }
+    }
+    let mut encoded = [0u8; aspis_statement::wide_v4::FIBER_SLOTS * 16];
+    for (slot, value) in accumulator.iter().enumerate() {
+        value.write_le_bytes(&mut encoded[slot * 16..(slot + 1) * 16]);
+    }
+    Ok(sbf_hashv(&[b"aspis-exact-wide-v4-batch36", &encoded]))
+}
+
+#[inline(never)]
+fn exact_wide_v4_batch_bytes_sink(fixture: &[u8]) -> Result<[u8; 32], ProgramError> {
+    use aspis_core::field::QM31;
+
+    let gamma = QM31::from_le_bytes(&fixture[..EXACT_WIDE_V4_GAMMA_BYTES])
+        .ok_or(ProgramError::InvalidAccountData)?;
+    let weights = exact_wide_v4_prepare_weights(gamma);
+    let mut accumulator = [QM31::ZERO; aspis_statement::wide_v4::FIBER_SLOTS];
+    for index in 0..EXACT_WIDE_V4_DIAGNOSTIC_BATCH_FIBERS {
+        let start = EXACT_WIDE_V4_GAMMA_BYTES + index * EXACT_WIDE_V4_FIBER_BYTES;
+        let c2_start = start + aspis_statement::wide_v4::C1_FIBER_BYTES;
+        let combined = exact_wide_v4_prepared_bytes_combine(
+            &fixture[start..c2_start],
+            &fixture[c2_start..c2_start + aspis_statement::wide_v4::C2_FIBER_BYTES],
+            &weights,
+        )?;
+        for slot in 0..aspis_statement::wide_v4::FIBER_SLOTS {
+            accumulator[slot] = accumulator[slot].add(combined[slot]);
+        }
+    }
+    let mut encoded = [0u8; aspis_statement::wide_v4::FIBER_SLOTS * 16];
+    for (slot, value) in accumulator.iter().enumerate() {
+        value.write_le_bytes(&mut encoded[slot * 16..(slot + 1) * 16]);
+    }
+    Ok(sbf_hashv(&[b"aspis-exact-wide-v4-batch36", &encoded]))
+}
+
+fn run_exact_wide_v4_diagnostic(
+    fixture_account: &AccountInfo,
+    mode: ExactWideV4DiagnosticMode,
+    expected_sink: [u8; 32],
+) -> ProgramResult {
+    let data = fixture_account.try_borrow_data()?;
+    let total_len = proof_len(&data)?;
+    let batch_mode = matches!(
+        mode,
+        ExactWideV4DiagnosticMode::FusedBatch36Unprepared
+            | ExactWideV4DiagnosticMode::FusedBatch36Prepared
+            | ExactWideV4DiagnosticMode::FusedBatch36PreparedBytes
+    );
+    let expected_len = if batch_mode {
+        EXACT_WIDE_V4_BATCH_FIXTURE_BYTES
+    } else {
+        EXACT_WIDE_V4_FIXTURE_BYTES
+    };
+    if total_len != expected_len {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let end = PROOF_ACCOUNT_HEADER_LEN
+        .checked_add(total_len)
+        .ok_or(ProgramError::InvalidAccountData)?;
+    if end != data.len() {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let fixture = &data[PROOF_ACCOUNT_HEADER_LEN..end];
+    let c1_start = EXACT_WIDE_V4_GAMMA_BYTES;
+    let c2_start = c1_start + aspis_statement::wide_v4::C1_FIBER_BYTES;
+
+    let sink = match mode {
+        ExactWideV4DiagnosticMode::BaselineFourDots => exact_wide_v4_combined_sink(fixture, false)?,
+        ExactWideV4DiagnosticMode::FusedDot4 => exact_wide_v4_combined_sink(fixture, true)?,
+        ExactWideV4DiagnosticMode::EmptyLeafHashControl => {
+            aspis_core::merkle::leaf_hash(sbf_hashv, 0, &[])
+        }
+        ExactWideV4DiagnosticMode::C1LeafHash => {
+            aspis_core::merkle::leaf_hash(sbf_hashv, 0, &fixture[c1_start..c2_start])
+        }
+        ExactWideV4DiagnosticMode::C2LeafHash => aspis_core::merkle::leaf_hash(
+            sbf_hashv,
+            aspis_core::proof::SECOND_PHASE_LAYER_TAG,
+            &fixture[c2_start..],
+        ),
+        ExactWideV4DiagnosticMode::GammaPowersControl => exact_wide_v4_power_sink(fixture, false)?,
+        ExactWideV4DiagnosticMode::GammaPowers0To50 => exact_wide_v4_power_sink(fixture, true)?,
+        ExactWideV4DiagnosticMode::FusedBatch36Unprepared => {
+            exact_wide_v4_batch_sink(fixture, false)?
+        }
+        ExactWideV4DiagnosticMode::FusedBatch36Prepared => exact_wide_v4_batch_sink(fixture, true)?,
+        ExactWideV4DiagnosticMode::FusedBatch36PreparedBytes => {
+            exact_wide_v4_batch_bytes_sink(fixture)?
+        }
+    };
+    if sink == expected_sink {
+        Ok(())
+    } else {
+        Err(ProgramError::InvalidInstructionData)
+    }
+}
+
+pub const M31_CIRCLE_BASIS_DIAGNOSTIC_FIBERS: usize = 36;
+pub const M31_CIRCLE_BASIS_C1_COLUMNS: usize = 49;
+pub const M31_CIRCLE_BASIS_C1_LEAF_BYTES: usize = 4 * M31_CIRCLE_BASIS_C1_COLUMNS * 4;
+pub const M31_CIRCLE_BASIS_C2_LEAF_BYTES: usize = 2 * 4 * 16;
+const M31_CIRCLE_BASIS_GAMMA_BYTES: usize = 16;
+const M31_CIRCLE_BASIS_RLC_FIBER_BYTES: usize =
+    M31_CIRCLE_BASIS_C1_LEAF_BYTES + M31_CIRCLE_BASIS_C2_LEAF_BYTES;
+pub const M31_CIRCLE_BASIS_RLC_FIXTURE_BYTES: usize = M31_CIRCLE_BASIS_GAMMA_BYTES
+    + M31_CIRCLE_BASIS_DIAGNOSTIC_FIBERS * M31_CIRCLE_BASIS_RLC_FIBER_BYTES;
+
+const M31_CIRCLE_FOLD_ALPHA_BYTES: usize = 16;
+const M31_CIRCLE_FOLD_RECORD_BYTES: usize = 2 + 4 * 4 + 4 * 16;
+pub const M31_CIRCLE_FOLD_FIXTURE_BYTES: usize =
+    M31_CIRCLE_FOLD_ALPHA_BYTES + M31_CIRCLE_BASIS_DIAGNOSTIC_FIBERS * M31_CIRCLE_FOLD_RECORD_BYTES;
+
+#[inline(never)]
+fn m31_circle_basis_rlc_sink_with<F>(
+    fixture: &[u8],
+    mut combine_c1: F,
+) -> Result<[u8; 32], ProgramError>
+where
+    F: FnMut(
+        &[aspis_core::field::QM31; M31_CIRCLE_BASIS_C1_COLUMNS],
+        &[u8],
+    ) -> Result<[aspis_core::field::QM31; 4], ProgramError>,
+{
+    use aspis_core::field::{qm31_power_table, QM31};
+
+    if fixture.len() != M31_CIRCLE_BASIS_RLC_FIXTURE_BYTES {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let gamma = QM31::from_le_bytes(&fixture[..M31_CIRCLE_BASIS_GAMMA_BYTES])
+        .ok_or(ProgramError::InvalidAccountData)?;
+    let powers = qm31_power_table::<51>(gamma);
+    let c1_weights: &[QM31; M31_CIRCLE_BASIS_C1_COLUMNS] = powers[..M31_CIRCLE_BASIS_C1_COLUMNS]
+        .try_into()
+        .map_err(|_| ProgramError::InvalidAccountData)?;
+    let mut accumulator = [QM31::ZERO; 4];
+
+    for fiber in 0..M31_CIRCLE_BASIS_DIAGNOSTIC_FIBERS {
+        let start = M31_CIRCLE_BASIS_GAMMA_BYTES + fiber * M31_CIRCLE_BASIS_RLC_FIBER_BYTES;
+        let c2_start = start + M31_CIRCLE_BASIS_C1_LEAF_BYTES;
+        let c1_bytes = &fixture[start..c2_start];
+        let mut combined = combine_c1(c1_weights, c1_bytes)?;
+        let c2 = &fixture[c2_start..c2_start + M31_CIRCLE_BASIS_C2_LEAF_BYTES];
+        for helper in 0..2 {
+            for (slot, combined_slot) in combined.iter_mut().enumerate() {
+                let offset = (helper * 4 + slot) * 16;
+                let value = QM31::from_le_bytes(&c2[offset..offset + 16])
+                    .ok_or(ProgramError::InvalidAccountData)?;
+                *combined_slot = combined_slot.add(powers[49 + helper].mul(value));
+            }
+        }
+        for slot in 0..4 {
+            accumulator[slot] = accumulator[slot].add(combined[slot]);
+        }
+    }
+
+    let mut encoded = [0u8; 64];
+    for (slot, value) in accumulator.iter().enumerate() {
+        value.write_le_bytes(&mut encoded[slot * 16..(slot + 1) * 16]);
+    }
+    Ok(sbf_hashv(&[
+        b"aspis-m31-circle-basis-rlc-shape-v1",
+        &encoded,
+    ]))
+}
+
+#[inline(never)]
+fn m31_circle_basis_rlc_sink(
+    fixture: &[u8],
+    mode: M31CircleBasisDiagnosticMode,
+) -> Result<[u8; 32], ProgramError> {
+    use aspis_core::field::{qm31_m31_dot, qm31_m31_dot4, qm31_m31_dot4_prepared_bytes, M31};
+
+    match mode {
+        M31CircleBasisDiagnosticMode::RlcStructuredFourDots => {
+            let mut decoded = vec![M31::ZERO; 4 * M31_CIRCLE_BASIS_C1_COLUMNS];
+            m31_circle_basis_rlc_sink_with(fixture, |weights, c1_bytes| {
+                for (index, chunk) in c1_bytes.chunks_exact(4).enumerate() {
+                    decoded[index] = M31::from_le_bytes(
+                        chunk
+                            .try_into()
+                            .map_err(|_| ProgramError::InvalidAccountData)?,
+                    )
+                    .ok_or(ProgramError::InvalidAccountData)?;
+                }
+                Ok(core::array::from_fn(|slot| {
+                    let offset = slot * M31_CIRCLE_BASIS_C1_COLUMNS;
+                    qm31_m31_dot(
+                        weights,
+                        &decoded[offset..offset + M31_CIRCLE_BASIS_C1_COLUMNS],
+                    )
+                }))
+            })
+        }
+        M31CircleBasisDiagnosticMode::RlcFusedCanonicalBytes => {
+            m31_circle_basis_rlc_sink_with(fixture, |weights, c1_bytes| {
+                qm31_m31_dot4_prepared_bytes(weights, c1_bytes)
+                    .ok_or(ProgramError::InvalidAccountData)
+            })
+        }
+        M31CircleBasisDiagnosticMode::RlcDecodedFusedDot4 => {
+            let mut decoded = vec![M31::ZERO; 4 * M31_CIRCLE_BASIS_C1_COLUMNS];
+            m31_circle_basis_rlc_sink_with(fixture, |weights, c1_bytes| {
+                for (index, chunk) in c1_bytes.chunks_exact(4).enumerate() {
+                    decoded[index] = M31::from_le_bytes(
+                        chunk
+                            .try_into()
+                            .map_err(|_| ProgramError::InvalidAccountData)?,
+                    )
+                    .ok_or(ProgramError::InvalidAccountData)?;
+                }
+                Ok(qm31_m31_dot4(
+                    weights,
+                    [
+                        &decoded[0..M31_CIRCLE_BASIS_C1_COLUMNS],
+                        &decoded[M31_CIRCLE_BASIS_C1_COLUMNS..2 * M31_CIRCLE_BASIS_C1_COLUMNS],
+                        &decoded[2 * M31_CIRCLE_BASIS_C1_COLUMNS..3 * M31_CIRCLE_BASIS_C1_COLUMNS],
+                        &decoded[3 * M31_CIRCLE_BASIS_C1_COLUMNS..4 * M31_CIRCLE_BASIS_C1_COLUMNS],
+                    ],
+                ))
+            })
+        }
+        M31CircleBasisDiagnosticMode::RlcStreamingFourDots => {
+            let mut decoded = [M31::ZERO; M31_CIRCLE_BASIS_C1_COLUMNS];
+            m31_circle_basis_rlc_sink_with(fixture, |weights, c1_bytes| {
+                let mut combined = [aspis_core::field::QM31::ZERO; 4];
+                let slot_bytes = M31_CIRCLE_BASIS_C1_COLUMNS * 4;
+                for (slot, combined_slot) in combined.iter_mut().enumerate() {
+                    for (index, chunk) in c1_bytes[slot * slot_bytes..(slot + 1) * slot_bytes]
+                        .chunks_exact(4)
+                        .enumerate()
+                    {
+                        decoded[index] = M31::from_le_bytes(
+                            chunk
+                                .try_into()
+                                .map_err(|_| ProgramError::InvalidAccountData)?,
+                        )
+                        .ok_or(ProgramError::InvalidAccountData)?;
+                    }
+                    *combined_slot = qm31_m31_dot(weights, &decoded);
+                }
+                Ok(combined)
+            })
+        }
+        _ => Err(ProgramError::InvalidInstructionData),
+    }
+}
+
+#[inline(never)]
+fn m31_circle_basis_fold_sink(
+    fixture: &[u8],
+    mode: M31CircleBasisDiagnosticMode,
+) -> Result<[u8; 32], ProgramError> {
+    use aspis_core::field::{m31_batch_inverse_with, qm31_circle_to_line_fold4, CM31, M31, QM31};
+    use aspis_core::params::PROFILE_CAPACITY_LR10_Q36_G16;
+    use aspis_core::verify::layer_geometry;
+
+    if fixture.len() != M31_CIRCLE_FOLD_FIXTURE_BYTES {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let derive_coordinates = matches!(
+        mode,
+        M31CircleBasisDiagnosticMode::FoldCachedCoordinatesPrevalidatedInverses
+            | M31CircleBasisDiagnosticMode::FoldDerivedCoordinatesBatchInverse
+    );
+    let batch_invert = matches!(
+        mode,
+        M31CircleBasisDiagnosticMode::FoldDerivedCoordinatesBatchInverse
+    );
+    let alpha = QM31::from_le_bytes(&fixture[..M31_CIRCLE_FOLD_ALPHA_BYTES])
+        .ok_or(ProgramError::InvalidAccountData)?;
+    let geometry = layer_geometry(&PROFILE_CAPACITY_LR10_Q36_G16, 0);
+    let mut omega_powers = [CM31::ONE; aspis_core::params::CIRCLE_LOG_ORDER as usize];
+    omega_powers[0] = geometry.omega;
+    for bit in 1..omega_powers.len() {
+        omega_powers[bit] = omega_powers[bit - 1].square();
+    }
+    let cached_point = |mut index: u32| {
+        let mut point = geometry.offset;
+        let mut bit = 0usize;
+        while index != 0 {
+            if index & 1 != 0 {
+                point = point.mul(omega_powers[bit]);
+            }
+            index >>= 1;
+            bit += 1;
+        }
+        point
+    };
+    let mut coordinates = vec![M31::ZERO; 2 * M31_CIRCLE_BASIS_DIAGNOSTIC_FIBERS];
+    let mut inverses = vec![M31::ZERO; 2 * M31_CIRCLE_BASIS_DIAGNOSTIC_FIBERS];
+    let mut values = vec![[QM31::ZERO; 4]; M31_CIRCLE_BASIS_DIAGNOSTIC_FIBERS];
+    let mut previous_index = None;
+
+    for fiber in 0..M31_CIRCLE_BASIS_DIAGNOSTIC_FIBERS {
+        let start = M31_CIRCLE_FOLD_ALPHA_BYTES + fiber * M31_CIRCLE_FOLD_RECORD_BYTES;
+        let index = u16::from_le_bytes(
+            fixture[start..start + 2]
+                .try_into()
+                .map_err(|_| ProgramError::InvalidAccountData)?,
+        );
+        if usize::from(index) >= geometry.fiber_count as usize
+            || previous_index.is_some_and(|previous| index <= previous)
+        {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        previous_index = Some(index);
+        let x = M31::from_le_bytes(
+            fixture[start + 2..start + 6]
+                .try_into()
+                .map_err(|_| ProgramError::InvalidAccountData)?,
+        )
+        .ok_or(ProgramError::InvalidAccountData)?;
+        let y = M31::from_le_bytes(
+            fixture[start + 6..start + 10]
+                .try_into()
+                .map_err(|_| ProgramError::InvalidAccountData)?,
+        )
+        .ok_or(ProgramError::InvalidAccountData)?;
+        if derive_coordinates {
+            let point = cached_point(u32::from(index));
+            if point.a != x || point.b != y || x == M31::ZERO || y == M31::ZERO {
+                return Err(ProgramError::InvalidAccountData);
+            }
+            coordinates[2 * fiber] = x;
+            coordinates[2 * fiber + 1] = y;
+        }
+        if !batch_invert {
+            let supplied_inv_x = M31::from_le_bytes(
+                fixture[start + 10..start + 14]
+                    .try_into()
+                    .map_err(|_| ProgramError::InvalidAccountData)?,
+            )
+            .ok_or(ProgramError::InvalidAccountData)?;
+            let supplied_inv_y = M31::from_le_bytes(
+                fixture[start + 14..start + 18]
+                    .try_into()
+                    .map_err(|_| ProgramError::InvalidAccountData)?,
+            )
+            .ok_or(ProgramError::InvalidAccountData)?;
+            inverses[2 * fiber] = supplied_inv_x;
+            inverses[2 * fiber + 1] = supplied_inv_y;
+        }
+        let values_start = start + 18;
+        for slot in 0..4 {
+            values[fiber][slot] = QM31::from_le_bytes(
+                &fixture[values_start + slot * 16..values_start + (slot + 1) * 16],
+            )
+            .ok_or(ProgramError::InvalidAccountData)?;
+        }
+    }
+    if batch_invert {
+        m31_batch_inverse_with(&coordinates, &mut inverses, m31_inverse_syscall);
+    }
+
+    let mut accumulator = QM31::ZERO;
+    for fiber in 0..M31_CIRCLE_BASIS_DIAGNOSTIC_FIBERS {
+        let inv_2x = inverses[2 * fiber].half();
+        let inv_2y = inverses[2 * fiber + 1].half();
+        accumulator = accumulator.add(qm31_circle_to_line_fold4(
+            values[fiber],
+            alpha,
+            inv_2x,
+            inv_2y,
+        ));
+    }
+    let mut encoded = [0u8; 16];
+    accumulator.write_le_bytes(&mut encoded);
+    Ok(sbf_hashv(&[
+        b"aspis-m31-circle-basis-fold-control-v1",
+        &encoded,
+    ]))
+}
+
+fn run_m31_circle_basis_diagnostic(
+    fixture_account: &AccountInfo,
+    mode: M31CircleBasisDiagnosticMode,
+    expected_sink: [u8; 32],
+) -> ProgramResult {
+    let data = fixture_account.try_borrow_data()?;
+    let total_len = proof_len(&data)?;
+    let expected_len = match mode {
+        M31CircleBasisDiagnosticMode::RlcStructuredFourDots
+        | M31CircleBasisDiagnosticMode::RlcFusedCanonicalBytes
+        | M31CircleBasisDiagnosticMode::RlcDecodedFusedDot4
+        | M31CircleBasisDiagnosticMode::RlcStreamingFourDots
+        | M31CircleBasisDiagnosticMode::EmptyLeafHashControl
+        | M31CircleBasisDiagnosticMode::C1LeafHash784 => M31_CIRCLE_BASIS_RLC_FIXTURE_BYTES,
+        M31CircleBasisDiagnosticMode::FoldPrevalidatedCoordinates
+        | M31CircleBasisDiagnosticMode::FoldDerivedCoordinatesBatchInverse
+        | M31CircleBasisDiagnosticMode::FoldCachedCoordinatesPrevalidatedInverses => {
+            M31_CIRCLE_FOLD_FIXTURE_BYTES
+        }
+    };
+    let end = PROOF_ACCOUNT_HEADER_LEN
+        .checked_add(total_len)
+        .ok_or(ProgramError::InvalidAccountData)?;
+    if total_len != expected_len || end != data.len() {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let fixture = &data[PROOF_ACCOUNT_HEADER_LEN..end];
+    let sink = match mode {
+        M31CircleBasisDiagnosticMode::RlcStructuredFourDots
+        | M31CircleBasisDiagnosticMode::RlcFusedCanonicalBytes
+        | M31CircleBasisDiagnosticMode::RlcDecodedFusedDot4
+        | M31CircleBasisDiagnosticMode::RlcStreamingFourDots => {
+            m31_circle_basis_rlc_sink(fixture, mode)?
+        }
+        M31CircleBasisDiagnosticMode::EmptyLeafHashControl => {
+            aspis_core::merkle::leaf_hash(sbf_hashv, 0, &[])
+        }
+        M31CircleBasisDiagnosticMode::C1LeafHash784 => aspis_core::merkle::leaf_hash(
+            sbf_hashv,
+            0,
+            &fixture[M31_CIRCLE_BASIS_GAMMA_BYTES
+                ..M31_CIRCLE_BASIS_GAMMA_BYTES + M31_CIRCLE_BASIS_C1_LEAF_BYTES],
+        ),
+        M31CircleBasisDiagnosticMode::FoldPrevalidatedCoordinates => {
+            m31_circle_basis_fold_sink(fixture, mode)?
+        }
+        M31CircleBasisDiagnosticMode::FoldDerivedCoordinatesBatchInverse => {
+            m31_circle_basis_fold_sink(fixture, mode)?
+        }
+        M31CircleBasisDiagnosticMode::FoldCachedCoordinatesPrevalidatedInverses => {
+            m31_circle_basis_fold_sink(fixture, mode)?
+        }
+    };
+    if sink == expected_sink {
+        Ok(())
+    } else {
+        Err(ProgramError::InvalidInstructionData)
+    }
+}
+
 fn trace_cu(event: aspis_core::TraceEvent) {
     match event {
         aspis_core::TraceEvent::Start => msg!("aspis-cu:start"),
@@ -728,6 +1426,7 @@ fn verify_uploaded_proof(
     claim: Option<&aspis_core::EvaluationClaim>,
     profile_cu: bool,
     denominator_mode: u8,
+    allow_exact_wide_scaffold: bool,
 ) -> ProgramResult {
     let data = proof_account.try_borrow_data()?;
     let total_len = proof_len(&data)?;
@@ -743,7 +1442,14 @@ fn verify_uploaded_proof(
     } else {
         None
     };
-    let result = if denominator_mode == 2 {
+    let result = if allow_exact_wide_scaffold {
+        aspis_core::verify::verify_exact_wide_v4_scaffold_for_measurement(
+            proof,
+            &statement_digest,
+            claim,
+            sbf_hashv,
+        )
+    } else if denominator_mode == 2 {
         aspis_core::verify_with_claim_trace_and_inverse(
             proof,
             &statement_digest,
@@ -791,6 +1497,66 @@ fn proof_len(data: &[u8]) -> Result<usize, ProgramError> {
         return Err(ProgramError::InvalidAccountData);
     }
     Ok(u32::from_le_bytes(data[4..8].try_into().unwrap()) as usize)
+}
+
+/// Validate only the append-only M31-circle diagnostic envelope. This is a
+/// cheap framing gate: it intentionally performs no transcript, field,
+/// Merkle, or statement work and therefore cannot accept a proof.
+fn validate_m31_circle_v4_diagnostic_header(
+    proof: &[u8],
+) -> Result<aspis_core::proof::Header, ProgramError> {
+    use aspis_core::params::{MerkleMode, PROFILE_CAPACITY_LR10_Q36_G16 as DIAGNOSTIC_PROFILE};
+    use aspis_core::proof::{
+        Header, FLAG_EVALUATION_CLAIM, FLAG_M31_CIRCLE_C1_DIAGNOSTIC, FLAG_SECOND_PHASE,
+        VERSION_V4_S2,
+    };
+
+    let header = Header::parse(proof).ok_or(ProgramError::Custom(
+        aspis_core::VerifyError::BadHeader.code(),
+    ))?;
+    let required_flags = FLAG_EVALUATION_CLAIM | FLAG_SECOND_PHASE | FLAG_M31_CIRCLE_C1_DIAGNOSTIC;
+    if header.version != VERSION_V4_S2
+        || header.flags != required_flags
+        || header.profile_id != DIAGNOSTIC_PROFILE.id
+        || header.log_rows != DIAGNOSTIC_PROFILE.log_rows
+        || header.log_blowup != DIAGNOSTIC_PROFILE.log_blowup
+        || header.query_count != DIAGNOSTIC_PROFILE.query_count
+        || header.grinding_bits != DIAGNOSTIC_PROFILE.grinding_bits
+        || header.fold_payload != aspis_core::FoldPayload::RawFibers as u8
+        || header.merkle_mode != MerkleMode::Radix4MinimalSubtree as u8
+        || header.num_rounds != DIAGNOSTIC_PROFILE.num_rounds()
+        || header.final_poly_log_len != aspis_core::params::FINAL_POLY_LOG_LEN
+    {
+        return Err(ProgramError::Custom(
+            aspis_core::VerifyError::BadHeader.code(),
+        ));
+    }
+    Ok(header)
+}
+
+fn validate_m31_circle_v4_diagnostic_public_inputs(claim_z: &[[u8; 16]]) -> ProgramResult {
+    if claim_z.len() != 10
+        || claim_z
+            .iter()
+            .any(|coordinate| aspis_core::field::QM31::from_le_bytes(coordinate).is_none())
+    {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+    Ok(())
+}
+
+fn validate_uploaded_m31_circle_v4_diagnostic_header(
+    proof_account: &AccountInfo,
+) -> Result<aspis_core::proof::Header, ProgramError> {
+    let data = proof_account.try_borrow_data()?;
+    let total_len = proof_len(&data)?;
+    let end = PROOF_ACCOUNT_HEADER_LEN
+        .checked_add(total_len)
+        .ok_or(ProgramError::InvalidAccountData)?;
+    let proof = data
+        .get(PROOF_ACCOUNT_HEADER_LEN..end)
+        .ok_or(ProgramError::InvalidAccountData)?;
+    validate_m31_circle_v4_diagnostic_header(proof)
 }
 
 fn require_upload_authority(data: &[u8], authority: &AccountInfo) -> ProgramResult {
@@ -909,6 +1675,57 @@ pub fn process_instruction(
     {
         return run_ood_sample_relation_probe(samples_per_round, expected_sink);
     }
+    if let AspisInstruction::TranscriptKatV4S2PcsScaffold { expected } = instruction {
+        let digest = aspis_core::transcript::transcript_kat_v4_s2_pcs_scaffold(sbf_hashv);
+        return if digest == expected {
+            msg!("aspis: v4/s=2 PCS-scaffold transcript KAT matched");
+            Ok(())
+        } else {
+            msg!("aspis: v4/s=2 PCS-scaffold transcript KAT MISMATCH");
+            Err(ProgramError::InvalidInstructionData)
+        };
+    }
+    if let AspisInstruction::FinalPaymentTranscriptKatV4 { expected: _ } = instruction {
+        msg!("aspis: final payment-v4 transcript KAT tag is reserved, not implemented");
+        return Err(ProgramError::InvalidInstructionData);
+    }
+    if let AspisInstruction::ExactWideV4Diagnostic {
+        mode,
+        expected_sink,
+    } = instruction
+    {
+        let fixture_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
+        if fixture_account.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        return run_exact_wide_v4_diagnostic(fixture_account, mode, expected_sink);
+    }
+    if let AspisInstruction::M31CircleBasisDiagnostic {
+        mode,
+        expected_sink,
+    } = instruction
+    {
+        let fixture_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
+        if fixture_account.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        return run_m31_circle_basis_diagnostic(fixture_account, mode, expected_sink);
+    }
+    if let AspisInstruction::VerifyM31CircleV4Diagnostic {
+        statement_digest: _,
+        claim_z,
+        statement_evaluations_digest: _,
+    } = &instruction
+    {
+        let proof_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
+        if proof_account.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        validate_m31_circle_v4_diagnostic_public_inputs(claim_z)?;
+        validate_uploaded_m31_circle_v4_diagnostic_header(proof_account)?;
+        msg!("aspis: M31-circle v4 diagnostic verifier is framed, not implemented");
+        return Err(ProgramError::InvalidInstructionData);
+    }
 
     let account_iter = &mut accounts.iter();
     let proof_account = next_account_info(account_iter)?;
@@ -959,16 +1776,16 @@ pub fn process_instruction(
             Ok(())
         }
         AspisInstruction::Verify { statement_digest } => {
-            verify_uploaded_proof(proof_account, statement_digest, None, false, 1)
+            verify_uploaded_proof(proof_account, statement_digest, None, false, 1, false)
         }
         AspisInstruction::VerifyFast { statement_digest } => {
-            verify_uploaded_proof(proof_account, statement_digest, None, false, 1)
+            verify_uploaded_proof(proof_account, statement_digest, None, false, 1, false)
         }
         AspisInstruction::VerifySyscallInverse { statement_digest } => {
-            verify_uploaded_proof(proof_account, statement_digest, None, false, 2)
+            verify_uploaded_proof(proof_account, statement_digest, None, false, 2, false)
         }
         AspisInstruction::VerifyProfile { statement_digest } => {
-            verify_uploaded_proof(proof_account, statement_digest, None, true, 1)
+            verify_uploaded_proof(proof_account, statement_digest, None, true, 1, false)
         }
         AspisInstruction::VerifyWithClaim {
             statement_digest,
@@ -983,10 +1800,39 @@ pub fn process_instruction(
             let v = aspis_core::field::QM31::from_le_bytes(&claim_v)
                 .ok_or(ProgramError::InvalidInstructionData)?;
             let claim = aspis_core::EvaluationClaim { z, v };
-            verify_uploaded_proof(proof_account, statement_digest, Some(&claim), false, 1)
+            verify_uploaded_proof(
+                proof_account,
+                statement_digest,
+                Some(&claim),
+                false,
+                1,
+                false,
+            )
+        }
+        AspisInstruction::VerifyExactWideV4Scaffold {
+            statement_digest,
+            claim_z,
+            claim_v,
+        } => {
+            let z = claim_z
+                .iter()
+                .map(|bytes| aspis_core::field::QM31::from_le_bytes(bytes))
+                .collect::<Option<Vec<_>>>()
+                .ok_or(ProgramError::InvalidInstructionData)?;
+            let v = aspis_core::field::QM31::from_le_bytes(&claim_v)
+                .ok_or(ProgramError::InvalidInstructionData)?;
+            let claim = aspis_core::EvaluationClaim { z, v };
+            verify_uploaded_proof(
+                proof_account,
+                statement_digest,
+                Some(&claim),
+                false,
+                1,
+                true,
+            )
         }
         AspisInstruction::VerifyLegacySoftware { statement_digest } => {
-            verify_uploaded_proof(proof_account, statement_digest, None, false, 0)
+            verify_uploaded_proof(proof_account, statement_digest, None, false, 0, false)
         }
         AspisInstruction::LayoutProbe {
             log_rows,
@@ -1005,6 +1851,11 @@ pub fn process_instruction(
         AspisInstruction::StatementSumcheckProbe { .. } => unreachable!(),
         AspisInstruction::LogUpCompressionKat { .. } => unreachable!(),
         AspisInstruction::OodSampleRelationProbe { .. } => unreachable!(),
+        AspisInstruction::TranscriptKatV4S2PcsScaffold { .. } => unreachable!(),
+        AspisInstruction::FinalPaymentTranscriptKatV4 { .. } => unreachable!(),
+        AspisInstruction::ExactWideV4Diagnostic { .. } => unreachable!(),
+        AspisInstruction::M31CircleBasisDiagnostic { .. } => unreachable!(),
+        AspisInstruction::VerifyM31CircleV4Diagnostic { .. } => unreachable!(),
     }
 }
 
@@ -1154,6 +2005,45 @@ mod tests {
     }
 
     #[test]
+    fn transcript_kat_v4_s2_pcs_scaffold_requires_no_accounts_and_rejects_drift() {
+        let instruction = AspisInstruction::TranscriptKatV4S2PcsScaffold {
+            expected: aspis_core::transcript::TRANSCRIPT_KAT_V4_S2_PCS_SCAFFOLD_EXPECTED,
+        };
+        assert_eq!(
+            process_instruction(&id(), &[], &borsh::to_vec(&instruction).unwrap()),
+            Ok(())
+        );
+
+        let mut drifted = aspis_core::transcript::TRANSCRIPT_KAT_V4_S2_PCS_SCAFFOLD_EXPECTED;
+        drifted[0] ^= 1;
+        let instruction = AspisInstruction::TranscriptKatV4S2PcsScaffold { expected: drifted };
+        assert_eq!(
+            process_instruction(&id(), &[], &borsh::to_vec(&instruction).unwrap()),
+            Err(ProgramError::InvalidInstructionData)
+        );
+    }
+
+    #[test]
+    fn final_payment_kat_tag_is_reserved_and_exact_wide_requires_a_fixture() {
+        let reserved = AspisInstruction::FinalPaymentTranscriptKatV4 {
+            expected: [0u8; 32],
+        };
+        assert_eq!(
+            process_instruction(&id(), &[], &borsh::to_vec(&reserved).unwrap()),
+            Err(ProgramError::InvalidInstructionData)
+        );
+
+        let diagnostic = AspisInstruction::ExactWideV4Diagnostic {
+            mode: ExactWideV4DiagnosticMode::BaselineFourDots,
+            expected_sink: [0u8; 32],
+        };
+        assert_eq!(
+            process_instruction(&id(), &[], &borsh::to_vec(&diagnostic).unwrap()),
+            Err(ProgramError::NotEnoughAccountKeys)
+        );
+    }
+
+    #[test]
     fn instruction_wire_discriminants_are_append_only() {
         let digest = [0u8; 32];
         let variants = vec![
@@ -1276,10 +2166,144 @@ mod tests {
                 },
                 18,
             ),
+            (
+                AspisInstruction::TranscriptKatV4S2PcsScaffold { expected: digest },
+                19,
+            ),
+            (
+                AspisInstruction::FinalPaymentTranscriptKatV4 { expected: digest },
+                20,
+            ),
+            (
+                AspisInstruction::ExactWideV4Diagnostic {
+                    mode: ExactWideV4DiagnosticMode::BaselineFourDots,
+                    expected_sink: digest,
+                },
+                21,
+            ),
+            (
+                AspisInstruction::VerifyExactWideV4Scaffold {
+                    statement_digest: digest,
+                    claim_z: vec![],
+                    claim_v: [0u8; 16],
+                },
+                22,
+            ),
+            (
+                AspisInstruction::M31CircleBasisDiagnostic {
+                    mode: M31CircleBasisDiagnosticMode::RlcFusedCanonicalBytes,
+                    expected_sink: digest,
+                },
+                23,
+            ),
+            (
+                AspisInstruction::VerifyM31CircleV4Diagnostic {
+                    statement_digest: digest,
+                    claim_z: vec![],
+                    statement_evaluations_digest: digest,
+                },
+                24,
+            ),
         ];
         for (variant, expected_tag) in variants {
             assert_eq!(borsh::to_vec(&variant).unwrap()[0], expected_tag);
         }
+        assert_eq!(
+            borsh::to_vec(&M31CircleBasisDiagnosticMode::RlcDecodedFusedDot4).unwrap()[0],
+            7
+        );
+        assert_eq!(
+            borsh::to_vec(&M31CircleBasisDiagnosticMode::RlcStreamingFourDots).unwrap()[0],
+            8
+        );
+    }
+
+    #[test]
+    fn tag24_header_and_public_input_frame_is_exact() {
+        use aspis_core::params::PROFILE_CAPACITY_LR10_Q36_G16 as PROFILE;
+        use aspis_core::proof::{
+            Header, FLAG_EVALUATION_CLAIM, FLAG_EXACT_WIDE_C1, FLAG_M31_CIRCLE_C1_DIAGNOSTIC,
+            FLAG_SECOND_PHASE, HEADER_LEN, VERSION_V3, VERSION_V4_S2,
+        };
+
+        let required_flags =
+            FLAG_EVALUATION_CLAIM | FLAG_SECOND_PHASE | FLAG_M31_CIRCLE_C1_DIAGNOSTIC;
+        let header = Header {
+            version: VERSION_V4_S2,
+            profile_id: PROFILE.id,
+            log_rows: PROFILE.log_rows,
+            log_blowup: PROFILE.log_blowup,
+            query_count: PROFILE.query_count,
+            grinding_bits: PROFILE.grinding_bits,
+            fold_payload: aspis_core::FoldPayload::RawFibers as u8,
+            merkle_mode: aspis_core::MerkleMode::Radix4MinimalSubtree as u8,
+            num_rounds: PROFILE.num_rounds(),
+            final_poly_log_len: aspis_core::params::FINAL_POLY_LOG_LEN,
+            flags: required_flags,
+        };
+        let encode = |candidate: Header| {
+            let mut bytes = [0u8; HEADER_LEN];
+            candidate.write(&mut bytes);
+            bytes
+        };
+        assert!(validate_m31_circle_v4_diagnostic_header(&encode(header)).is_ok());
+
+        for invalid in [
+            Header {
+                version: VERSION_V3,
+                ..header
+            },
+            Header {
+                profile_id: PROFILE.id + 1,
+                ..header
+            },
+            Header {
+                query_count: PROFILE.query_count + 1,
+                ..header
+            },
+            Header {
+                fold_payload: aspis_core::FoldPayload::ProofCarriedRoundLocal as u8,
+                ..header
+            },
+            Header {
+                merkle_mode: aspis_core::MerkleMode::MinimalSubtree as u8,
+                ..header
+            },
+            Header {
+                num_rounds: PROFILE.num_rounds() - 1,
+                ..header
+            },
+            Header {
+                final_poly_log_len: aspis_core::params::FINAL_POLY_LOG_LEN + 1,
+                ..header
+            },
+            Header {
+                flags: required_flags | FLAG_EXACT_WIDE_C1,
+                ..header
+            },
+        ] {
+            assert!(matches!(
+                validate_m31_circle_v4_diagnostic_header(&encode(invalid)),
+                Err(ProgramError::Custom(code))
+                    if code == aspis_core::VerifyError::BadHeader.code()
+            ));
+        }
+
+        let canonical_z = vec![[0u8; 16]; 10];
+        assert_eq!(
+            validate_m31_circle_v4_diagnostic_public_inputs(&canonical_z),
+            Ok(())
+        );
+        assert_eq!(
+            validate_m31_circle_v4_diagnostic_public_inputs(&canonical_z[..9]),
+            Err(ProgramError::InvalidInstructionData)
+        );
+        let mut noncanonical_z = canonical_z;
+        noncanonical_z[0][..4].copy_from_slice(&aspis_core::field::P.to_le_bytes());
+        assert_eq!(
+            validate_m31_circle_v4_diagnostic_public_inputs(&noncanonical_z),
+            Err(ProgramError::InvalidInstructionData)
+        );
     }
 
     fn make_account<'a>(
@@ -1539,5 +2563,217 @@ mod tests {
                 ))
             );
         }
+    }
+
+    #[test]
+    fn production_tag6_rejects_exact_wide_flag_and_tag22_is_diagnostic_only() {
+        use aspis_core::params::PROFILE_CAPACITY_LR10_Q32_G16 as PROFILE;
+        use aspis_prover::{
+            multilinear_eval, prove_exact_wide_v4_scaffold_for_measurement, seeded_coeffs,
+            ProveOptions,
+        };
+
+        let coeffs = seeded_coeffs(PROFILE.log_rows, 22);
+        let statement_digest = [0x22u8; 32];
+        let z = (0..PROFILE.log_rows)
+            .map(|index| {
+                aspis_core::field::QM31::from_cm31(aspis_core::field::CM31::from_m31(
+                    aspis_core::field::M31(2_200 + index),
+                ))
+            })
+            .collect::<Vec<_>>();
+        let claim = aspis_core::EvaluationClaim {
+            v: multilinear_eval(&coeffs, &z),
+            z,
+        };
+        let proof = prove_exact_wide_v4_scaffold_for_measurement(
+            &PROFILE,
+            &coeffs,
+            &statement_digest,
+            &claim,
+            &ProveOptions {
+                fold_payload: aspis_core::FoldPayload::RawFibers,
+                merkle_mode: aspis_core::MerkleMode::Radix4MinimalSubtree,
+            },
+            aspis_prover::HOST_HASH,
+        );
+        let mut claim_v = [0u8; 16];
+        claim.v.write_le_bytes(&mut claim_v);
+        let claim_z = claim
+            .z
+            .iter()
+            .map(|coordinate| {
+                let mut bytes = [0u8; 16];
+                coordinate.write_le_bytes(&mut bytes);
+                bytes
+            })
+            .collect::<Vec<_>>();
+
+        let program_id = id();
+        let proof_key = Pubkey::new_unique();
+        let mut proof_lamports = 0;
+        let mut proof_data = vec![0u8; PROOF_ACCOUNT_HEADER_LEN + proof.len()];
+        proof_data[0..4].copy_from_slice(&PROOF_ACCOUNT_MAGIC);
+        proof_data[4..8].copy_from_slice(&(proof.len() as u32).to_le_bytes());
+        proof_data[PROOF_ACCOUNT_HEADER_LEN..].copy_from_slice(&proof);
+
+        let production = borsh::to_vec(&AspisInstruction::VerifyWithClaim {
+            statement_digest,
+            claim_z: claim_z.clone(),
+            claim_v,
+        })
+        .unwrap();
+        let account = make_account(
+            &proof_key,
+            &program_id,
+            &mut proof_lamports,
+            &mut proof_data,
+            false,
+            false,
+        );
+        assert_eq!(
+            process_instruction(&program_id, &[account], &production),
+            Err(ProgramError::Custom(
+                aspis_core::VerifyError::BadHeader.code()
+            ))
+        );
+
+        let diagnostic = borsh::to_vec(&AspisInstruction::VerifyExactWideV4Scaffold {
+            statement_digest,
+            claim_z,
+            claim_v,
+        })
+        .unwrap();
+        let account = make_account(
+            &proof_key,
+            &program_id,
+            &mut proof_lamports,
+            &mut proof_data,
+            false,
+            false,
+        );
+        assert_eq!(
+            process_instruction(&program_id, &[account], &diagnostic),
+            Ok(())
+        );
+    }
+
+    #[test]
+    fn production_tag6_rejects_m31_circle_flag_with_weakened_acceptance_teeth() {
+        use aspis_core::params::PROFILE_CAPACITY_LR10_Q36_G16 as PROFILE;
+        use aspis_core::proof::{
+            Header, FLAG_EVALUATION_CLAIM, FLAG_M31_CIRCLE_C1_DIAGNOSTIC, FLAG_SECOND_PHASE,
+            VERSION_V4_S2,
+        };
+        use aspis_prover::{
+            multilinear_eval, prove_with_claim_v4_m31_circle_flag_legacy_basis_for_tests,
+            seeded_coeffs, ProveOptions, HOST_HASH,
+        };
+
+        let coeffs = seeded_coeffs(PROFILE.log_rows, 24);
+        let statement_digest = [0x24u8; 32];
+        let z = (0..PROFILE.log_rows)
+            .map(|index| {
+                aspis_core::field::QM31::from_cm31(aspis_core::field::CM31::from_m31(
+                    aspis_core::field::M31(2_400 + index),
+                ))
+            })
+            .collect::<Vec<_>>();
+        let claim = aspis_core::EvaluationClaim {
+            v: multilinear_eval(&coeffs, &z),
+            z,
+        };
+        let proof = prove_with_claim_v4_m31_circle_flag_legacy_basis_for_tests(
+            &PROFILE,
+            &coeffs,
+            &statement_digest,
+            &claim,
+            &ProveOptions {
+                fold_payload: aspis_core::FoldPayload::RawFibers,
+                merkle_mode: aspis_core::MerkleMode::Radix4MinimalSubtree,
+            },
+            HOST_HASH,
+        );
+        let header = Header::parse(&proof).expect("recognized diagnostic header");
+        assert_eq!(header.version, VERSION_V4_S2);
+        assert_eq!(
+            header.flags,
+            FLAG_EVALUATION_CLAIM | FLAG_SECOND_PHASE | FLAG_M31_CIRCLE_C1_DIAGNOSTIC
+        );
+        assert!(validate_m31_circle_v4_diagnostic_header(&proof).is_ok());
+
+        // The same flagged bytes are accepted only when the basis guard is
+        // deliberately weakened to reinterpret them as the legacy CM31 PCS.
+        assert_eq!(
+            aspis_core::verify_with_insecure_m31_circle_as_legacy_for_tests(
+                &proof,
+                &statement_digest,
+                Some(&claim),
+                HOST_HASH,
+            ),
+            Ok(())
+        );
+
+        let mut claim_v = [0u8; 16];
+        claim.v.write_le_bytes(&mut claim_v);
+        let claim_z = claim
+            .z
+            .iter()
+            .map(|coordinate| {
+                let mut bytes = [0u8; 16];
+                coordinate.write_le_bytes(&mut bytes);
+                bytes
+            })
+            .collect::<Vec<_>>();
+        let program_id = id();
+        let proof_key = Pubkey::new_unique();
+        let mut proof_lamports = 0;
+        let mut proof_data = vec![0u8; PROOF_ACCOUNT_HEADER_LEN + proof.len()];
+        proof_data[0..4].copy_from_slice(&PROOF_ACCOUNT_MAGIC);
+        proof_data[4..8].copy_from_slice(&(proof.len() as u32).to_le_bytes());
+        proof_data[PROOF_ACCOUNT_HEADER_LEN..].copy_from_slice(&proof);
+
+        // Production tag 6 rejects at the header/basis allow-list boundary.
+        let production = borsh::to_vec(&AspisInstruction::VerifyWithClaim {
+            statement_digest,
+            claim_z: claim_z.clone(),
+            claim_v,
+        })
+        .unwrap();
+        let account = make_account(
+            &proof_key,
+            &program_id,
+            &mut proof_lamports,
+            &mut proof_data,
+            false,
+            false,
+        );
+        assert_eq!(
+            process_instruction(&program_id, &[account], &production),
+            Err(ProgramError::Custom(
+                aspis_core::VerifyError::BadHeader.code()
+            ))
+        );
+
+        // Tag 24 owns this exact frame, but remains deliberately rejecting
+        // until the genuine circle PCS parser/verifier is implemented.
+        let diagnostic = borsh::to_vec(&AspisInstruction::VerifyM31CircleV4Diagnostic {
+            statement_digest,
+            claim_z,
+            statement_evaluations_digest: [0x42u8; 32],
+        })
+        .unwrap();
+        let account = make_account(
+            &proof_key,
+            &program_id,
+            &mut proof_lamports,
+            &mut proof_data,
+            false,
+            false,
+        );
+        assert_eq!(
+            process_instruction(&program_id, &[account], &diagnostic),
+            Err(ProgramError::InvalidInstructionData)
+        );
     }
 }

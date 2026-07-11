@@ -120,10 +120,15 @@ struct AmendedTerms {
     t3_bits_nu14_d7: f64,
     t4_bits_nu10: f64,
     t5_prime_bits_kprime51: f64,
-    t6_bits_frozen_m534_w17: f64,
-    t6_historical_worst_case_bits: f64,
-    t7_prime_bits_frozen_m534_8m_union: f64,
-    t8_prime_bits_eight_claim_bound: f64,
+    t6_current_bits_worst_m1024_w17: f64,
+    t6_trace_layout_m589_sensitivity_bits: f64,
+    t6_state_only_m534_sensitivity_bits: f64,
+    t7_prime_current_bits_mcopy1024_range1024_union: f64,
+    t7_prime_trace_m589_range_m1024_sensitivity_bits: f64,
+    t7_prime_historical_8m534_superseded_bits: f64,
+    t8_prime_bits_eight_claim_preintegration_sensitivity: f64,
+    final_constraint_id_count: Option<u64>,
+    constraint_batching_status: &'static str,
     note: &'static str,
 }
 
@@ -171,6 +176,7 @@ struct Q34Earmark {
 
 #[derive(Serialize)]
 struct GateEconomics {
+    status: &'static str,
     gate_cu: u64,
     strict_gate_cu: u64,
     r2_kprime51_central_cu: u64,
@@ -218,8 +224,8 @@ fn unchanged_terms() -> [f64; 6] {
         field_bits() - (14.0_f64 * 7.0).log2(),
         field_bits() - 10.0_f64.log2(),
         field_bits() - 50.0_f64.log2(),
-        field_bits() - (534.0_f64 * 17.0).log2(),
-        field_bits() - (8.0_f64 * 534.0).log2(),
+        field_bits() - (1024.0_f64 * 17.0).log2(),
+        field_bits() - (8.0_f64 * 1024.0).log2(),
         field_bits() - 8.0_f64.log2(),
     ]
 }
@@ -393,7 +399,7 @@ pub(crate) fn theta_optimizer_artifact() -> ThetaArtifact {
         status: Status {
             quotable_security_value: false,
             only_quotable_floor_bits: 65.5,
-            reason: "93.73 is a provisional known-Table-4-coefficient sensitivity: c1=c2=1 is a stronger pinned assumption, Conjecture 2 supplies no finite-n bound for o(n), and the circle-code/Table-4 mapping is not a theorem.",
+            reason: "93.73 is a provisional known-Table-4-coefficient sensitivity: c1=c2=1 is a stronger pinned assumption, Conjecture 2 supplies no finite-n bound for o(n), the circle-code/Table-4 mapping is not a theorem, and final T8' awaits the randomized ConstraintId count J.",
             provisional_value_label: "provisional_known_table4_sensitivity_pending_finite_length_assumption",
             provisional_q36_g32_s2_bits: table4_sensitivity
                 .iter()
@@ -473,15 +479,23 @@ pub(crate) fn theta_optimizer_artifact() -> ThetaArtifact {
             recorded_anchor_system_bits: 102.9752,
         },
         amended_term_set: AmendedTerms {
-            label: "r2_kprime51_m534_frozen_shape",
+            label: "r2_kprime51_constraint_registry_open_m_le1024",
             t3_bits_nu14_d7: unchanged_terms()[0],
             t4_bits_nu10: unchanged_terms()[1],
             t5_prime_bits_kprime51: unchanged_terms()[2],
-            t6_bits_frozen_m534_w17: unchanged_terms()[3],
-            t6_historical_worst_case_bits: field_bits() - (1024.0_f64 * 17.0).log2(),
-            t7_prime_bits_frozen_m534_8m_union: unchanged_terms()[4],
-            t8_prime_bits_eight_claim_bound: unchanged_terms()[5],
-            note: "T6=110.85 is the current frozen m=534 line; 109.9 is retained only as the historical worst-layout bound. T8' uses the exact eight-claim expression 4*log2(2^31-1)-3 (approximately 121).",
+            t6_current_bits_worst_m1024_w17: unchanged_terms()[3],
+            t6_trace_layout_m589_sensitivity_bits: field_bits()
+                - (589.0_f64 * 17.0).log2(),
+            t6_state_only_m534_sensitivity_bits: field_bits() - (534.0_f64 * 17.0).log2(),
+            t7_prime_current_bits_mcopy1024_range1024_union: unchanged_terms()[4],
+            t7_prime_trace_m589_range_m1024_sensitivity_bits: field_bits()
+                - (4.0_f64 * (589.0_f64 + 1024.0_f64)).log2(),
+            t7_prime_historical_8m534_superseded_bits: field_bits()
+                - (8.0_f64 * 534.0).log2(),
+            t8_prime_bits_eight_claim_preintegration_sensitivity: unchanged_terms()[5],
+            final_constraint_id_count: None,
+            constraint_batching_status: "OPEN: final T8' is (J+2)/|F|; freeze the randomized ConstraintId registry before quoting a payment-proof union",
+            note: "The endpoint-local trace foundation contains 589 copy links, including committed absorption sources, and gives a 110.71-bit T6 sensitivity. The final randomized constraint registry has not yet wired those endpoints, so T6/T7 retain m_copy<=1024 with the fixed 1024-row range table (109.91/111.00 bits). At m_copy=589, T7' is 4*(589+1024)/|F| = 111.34 bits; 8*589 would incorrectly shrink the independent range term. The m=534 T6 state-continuity reading and historical 8*534 T7 arithmetic are retained only as explicitly superseded provenance. The approximately-121 T8' row is an eight-claim preintegration sensitivity, not the final statement-batching term.",
         },
         optimizer: Optimizer {
             eta_min: ETA_TICK_MIN as f64 / ETA_DENOMINATOR,
@@ -505,6 +519,7 @@ pub(crate) fn theta_optimizer_artifact() -> ThetaArtifact {
             disposition: "superseded: deterministic optimizer gives approximately 0.35 bits under the provisional known-Table-4-coefficient sensitivity",
         },
         gate_economics: GateEconomics {
+            status: "HISTORICAL COMPONENT ARITHMETIC ONLY: retired as a live product projection; the exact-wide diagnostic overlaps the scalar scaffold path, so a product ruling waits on in-place reconciliation and the M31/CM31 basis audit",
             gate_cu: 1_190_000,
             strict_gate_cu: 1_071_000,
             r2_kprime51_central_cu: 974_112,
@@ -532,7 +547,7 @@ pub(crate) fn theta_optimizer_artifact() -> ThetaArtifact {
             q43_anchor_corrected_sensitivity_margin_cu: -10_436,
             q44_registered_combined_worst_cu: 1_259_316,
             q44_anchor_corrected_sensitivity_cu: 1_220_768,
-            verdict: "q36/s2 keeps t=90 but fails the binding registered strict projection by 25,660 CU; anchor-corrected draw clears strict only as sensitivity. q34/g36/s2 is the named strict-line recovery lever (18,819 CU registered margin) but is a deliberate second transcript knob, not the current v4 profile. q43/q44 exceed 1.19M under both draw readings and remain dead by ruling.",
+            verdict: "These q36/q34 values are historical component sensitivities, not current product totals. q34/g36 remains a held second transcript knob. The q43/q44 security-menu ruling remains historical provenance; no one-transaction or transport-split product ruling is emitted by this optimizer.",
         },
     }
 }

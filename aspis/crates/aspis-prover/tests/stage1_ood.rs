@@ -1,6 +1,6 @@
 //! Stage 1 queue item 3: per-round out-of-domain point/value binding.
 //!
-//! These tests establish the version-2 envelope and canonical order
+//! These tests preserve the version-3 one-sample envelope and canonical order
 //! `root -> OOD point -> OOD value -> alpha`, including corruption and
 //! order-attack rejection. The interleaved relation sumcheck enforces every
 //! claimed OOD evaluation against the explicit final polynomial.

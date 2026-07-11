@@ -1,19 +1,48 @@
 # Stage 2 evaluator and feasibility decision
 
-Date: `2026-07-10`
+Date: `2026-07-11`
 
 Status: **the historical k'=83 variance failure is superseded by the
 review-ratified r2/k'=51 shrink. Its central projection is 974,112 CU and
 its binding registered stress-plus-full-range reading is 1,047,561 CU,
-23,439 below the strict 1,071,000 ceiling at s1. The measured s2 A/B adds
-49,099 CU, moving current q36 to 1,096,660 registered—25,660 over strict.
-The held q34/g36 lever saves 44,479 CU and projects 1,052,181 registered,
-restoring 18,819 CU of strict margin, but it is not silently adopted as a
-second transcript change. This is not a product gate close: the LogUp
-lookup, fixed-width wide RLC, and v4
-statement proof are not yet one measured SBF proof, and the final-shape
-draw set must still pass the registered rule.** The three-transaction
-receipt remains the fallback.
+23,439 below the strict 1,071,000 ceiling at s1. The isolated s2 A/B adds
+49,099 CU and historically moved the arithmetic projection to 1,096,660.
+That total is now retired as a live product projection. The two-helper v4 PCS
+scaffold omits the exact 49-column C1 opening, k'=51 recombination/evaluations,
+LogUp statement, hiding, and final g32 profile. The omitted exact-wide q36 seam
+is now measured under the standard 262,144-byte heap: the unprepared path
+exhausts 1.4M CU in all five runs; preparing factors once accepts at 1,125,266
+CU; direct canonical-byte parsing accepts at **1,066,396 CU**, saving another
+58,870 CU. That is at least 333,604 CU reclaimed from the unprepared cap, but
+the optimized seam alone leaves only 123,604 CU against 1.19M while excluding
+PCS and payment work. It also replaces scalar C1/C2/per-query work in the PCS
+scaffold, so the two diagnostics cannot be added. The held q34/g36 lever is not
+silently adopted. The non-additive current-CM31 reconciliation now exhausts
+the 1.4M meter on all eight q36/g16 draws. The basis audit proves that M31 C1
+is valid only as a genuine circle-polynomial PCS; its pinned host math
+conformance passes, and the best isolated standard-heap RLC shape is 552,289
+CU. Host conformance now also pins the secure-circle sampler/tensor weights
+and the later-line Stwo storage bridge, including its explicit raw `4^r`
+scale. Production circle/C2/transcript wiring, authenticated line-FRI layers,
+soundness transport, and an in-place eight-seed verifier remain open. No
+product architecture is ruled or adopted.**
+
+The first teeth-first production-plan slice is now landed without enabling
+acceptance. Header parsing reserves flag `0x08` only as the exact v4/C2/claim
+word `0x0b`; append-only instruction tag 24 checks the q36/g16/raw/radix-4
+frame and ten canonical public coordinates, then deliberately rejects.
+Production tag 6 rejects those same flagged proof bytes with `BadHeader`, while
+the feature-gated legacy-basis weakened verifier accepts them. Existing v3/v4
+KATs remain unchanged; the full circle transcript KAT is still pending.
+
+The primary-source soundness transport audit now separates the positive code
+fact from the open protocol claim. The exact direct tensor message space is a
+subcode of S-two's full circle code, so the scaled-GRS isometry and Johnson
+code facts apply conservatively. They do not supply the grouped arity-4
+correlated-agreement lemma, two-phase C1/C2 batching reduction, Boolean-MLE
+binding proof, actual rational-sampler denominator, or BCS/ROM accounting.
+Accordingly no T1/T2 value or computed circle-PCS security number is promoted;
+65.5 remains the sole quotable floor under the existing project rule.
 
 ## Executable statement oracle
 
@@ -65,6 +94,8 @@ bytes, SHA-256, and savings), which is why the g16 row reads 734,230 ->
 | correct q36/k80 gamma-power RLC | 361,963 | **202,031** | **159,932** |
 | low constraint composition | 176,844 | **120,275 lookup candidate** | **56,569** |
 | g16 real binary -> radix-4 PCS | 734,230 | **657,643** | **76,587 (10.43%)** |
+| exact q36 wide RLC, unprepared -> one prepared table | >=1,400,000 (cap failure) | **1,125,266** | **>=274,734** |
+| exact q36 prepared structured -> canonical bytes | 1,125,266 | **1,066,396** | **58,870 (5.23%)** |
 
 The Poseidon2 row has **zero current verifier-gate impact**: Spend
 `hash_fields` runs only in the host semantic evaluator today, while the
@@ -218,14 +249,19 @@ product gate remains
 `red_pending_logup_wide_rlc_and_integrated_statement_proof`, and the
 projection status is qualified by the corrections below.
 
-### Current r2/k'=51 ledger with measured s2 overlay
+### Historical r2/k'=51 component ledger (retired as product projections)
 
 | reading | projected CU | current status |
 | --- | ---: | --- |
 | s1 central / registered stress+full-range | 974,112 / 1,047,561 | historical base that closed the shrink hunt |
-| q36/g32/s2 central / registered | **1,023,211 / 1,096,660** | current profile; strict-red by 25,660 |
-| q36/g32/s2 anchor-corrected sensitivity | 1,058,112 | clears strict by 12,888; not binding |
-| q34/g36/s2 central / registered | **978,732 / 1,052,181** | named recovery lever; 18,819 strict margin; not yet adopted |
+| q36/g32/s2 central / registered | **1,023,211 / 1,096,660** | historical component sensitivity; not a live product total |
+| q36/g32/s2 anchor-corrected sensitivity | 1,058,112 | historical nonbinding sensitivity |
+| q34/g36/s2 central / registered | **978,732 / 1,052,181** | historical recovery sensitivity; q34 remains held and unpriced on exact-wide v4 |
+
+The current product gate has no quotable one-transaction total. The
+two-helper v4 PCS scaffold overlaps the isolated s2 work and still excludes
+the exact-wide statement seam, so adding either delta to this table would
+double-count some work and omit other work.
 
 ## Historical post-review k'=83 corrections (`2026-07-10`, superseded by r2/k'=51)
 
@@ -263,24 +299,40 @@ variance. Neither is assumed. The 1.19M transaction target and the 1.4M
 absolute cap cleared in every historical k83 reading. Current q36/s2 is
 instead governed by the r2/k51 ledger above.
 
-## Split fallback and next gate
+## Split option and next gate
 
-`aspis-statement::split` still tests the three-transaction receipt state
-machine: canonical order succeeds; PCS-before-statement, binding mix-and-match,
-failed verification, wrong authority, expiry, inconsistent combined claim and
-replay-after-consume reject. It is no longer forced by the latest projection,
-but it remains the fallback if integrated one-transaction measurement misses.
+Split verification remains the pre-registered option; it is not adopted by the
+isolated exact-wide result. The existing `aspis-statement::split` state machine is only a
+pre-v4 prototype: it carries one helper claim and does not itself seal the
+mutable uploaded proof account. Its ordering, binding, authority, expiry and
+replay tests remain useful, but it is not an integration-ready receipt.
+
+For the split option to be viable, the v4 receipt must bind a sealed proof hash
+and account, version/profile, C1/C2 roots, both helper claims, gamma/combined
+claim, the digest of all 102 two-point evaluations, transcript state, authority
+and expiry. Pool consumption remains a separate atomic nullifier/output state
+transition and consumes the terminal receipt exactly once. The measured phase
+boundary would decide whether this is two, three, or four verification
+transactions; the transaction count is not guessed from overlapping component
+totals and remains part of the owner decision packet.
 
 The next gate is deliberately teeth-first:
 
-1. rule explicitly on adopting q34/g36 versus another >=25,660-CU reclaim
-   (or a gate-rule change), with the proof/KAT re-pin named;
-2. integrate the tested `[0,1024)` LogUp main/helper columns and `sum(h)=0`
+1. integrate the host-tested circle-tensor OOD accumulator and later-line
+   storage bridge with the two-sample/C2 transcript, authenticated line-FRI
+   layers, new envelope/root/KAT teeth, and soundness transport;
+2. measure that conforming M31 PCS scaffold in place across at least eight
+   q36/g16 draws; never add its isolated RLC/fold controls to another total;
+3. specify and price proof-account sealing and v4 receipt mutation/mix-and-
+   match/reordering/expiry/replay teeth as the split option;
+4. integrate the tested `[0,1024)` LogUp main/helper columns and `sum(h)=0`
    claim into the C1/C2 statement proof;
-3. integrate `qm31_power_table::<51>` (or the generic table specialized at
-   51) and the fixed-width outer-lazy dot into
-   real wide proof parsing;
-4. generate one radix-4 payment proof and run the complete SBF transaction
-   five times with both economic and proof-corruption attacks.
+5. update the neutral one-transaction, transport-split, and proven-regime
+   packet with the in-place result for the project-owner ruling; then measure
+   the selected full architecture with economic, receipt where applicable,
+   and proof-corruption attacks.
 
 The machine-readable ledger is `results/stage2/feasibility_decision.json`.
+The source-level M31/CM31 result and its conformance gate are recorded in
+`docs/stage2-column-basis-audit.md`; the unfilled owner fields are in
+`docs/stage2-owner-decision-packet.md`.
