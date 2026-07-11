@@ -224,18 +224,22 @@ boring pair closed the hunt without GKR leaving the reading pile.
 
 ### Rulings (`2026-07-10` review)
 
-**Post-close s2 overlay (`2026-07-10`):** the shrink close above was an s1
-base. The contamination-free s2 A/B adds 49,099 CU, moving current q36 to
-1,096,660 registered (25,660 over strict). q34/g36 saves 44,479 CU and
-projects 1,052,181 registered (18,819 strict margin). Thus q34 is now the
-named strict-line recovery lever, still held until an explicit second-knob
-proof/KAT re-pin; the original s1 close remains valid history but is not the
-current q36/s2 verdict.
+**Post-close s2 overlay (`2026-07-10`, historical component arithmetic):**
+the shrink close above was an s1 base. The contamination-free s2 A/B adds
+49,099 CU, which moved the old arithmetic q36 total to 1,096,660 registered;
+q34/g36 saved 44,479 CU and produced 1,052,181 in that same model. The
+corrected two-helper PCS scaffold later measured +113,876.5 CU mean while
+still omitting exact-wide payment components, so both additive totals are
+retired as live product projections. q34 remains the named held lever, but
+exact-wide integration must reprice it; the original s1 close remains valid
+history, not a current q36/s2 verdict.
 
 - **Ruling 1: r=2 / k' = 51 FROZEN**, note-first, with four conditions —
-  all discharged in the soundness note §8 freeze record: (i) T5'
-  parametric (118.36 bits at k'=51, pin <= 52); (ii) independent m
-  recount agreed at m = 534, E1 = 2^-110.85, E2 = 2^-112.94; (iii)
+  tracked in the soundness note §8 freeze record: (i) T5' parametric
+  (118.36 bits at k'=51, pin <= 52); (ii) the original m=534 recount
+  covered state continuity only and is superseded by the endpoint-local
+  m=589 trace layout (T6 sensitivity 110.7104); the conservative m<=1024
+  line stays binding until the randomized constraint registry lands; (iii)
   padding rows constraint-dead and excluded from both copy multisets,
   round seams inside the periodic part, with a layout-freeze teeth vector
   required for the padding-leak hole; (iv) freeze confirmation on >= 8
@@ -250,16 +254,17 @@ current q36/s2 verdict.
   costs have now run low three times (composition, C2 phase, sumcheck
   allowance — the last by 40%); measured probes precede belief.
 
-**Recovery adders for the current q36/s2 strict deficit:** q34/g36
+**Historical component-model recovery menu (not a current product deficit):** q34/g36
 (-44,479 measured+scaled, floor +2.1 bits, grind cost
 30-80 min, needs the §4 re-rule); flat-commit of the small deep layers
 (-30-33K estimate AND shrinks the draw spread itself; needs multi-seed
 remeasure + named root/KAT re-pin); RLC/leaf single-pass fusion (-10-20K,
-kernel-only, measure-first). Pin-flagged and not taken: blowup 2^-3.
+kernel-only, measure-first). Exact-wide reconciliation must reprice every row
+before use. Pin-flagged and not taken: blowup 2^-3.
 
-**Pending at the layout freeze (notes before code, per standing rule):**
-§8 k' pin moves 84 -> 52 (T5' improves to ~118.3 bits), the copy multiset
-recount at r=2 (~490 links, inside the m = 2^10 worst-case reading), the
-2^4-block selector form recorded in §5 terms, and the evaluator corpus
-re-confirmation of the r=2 composition bracket (32 sbox / [38, 70]
-linear).
+**Layout-freeze provenance (later superseded where noted):** §8 k' pin moved
+84 -> 52 (T5' improves to ~118.3 bits). The early ~490-link state-only copy
+estimate is superseded by the endpoint-local m=589 trace layout; m<=1024 stays
+binding until the randomized registry lands. The 2^4-block selector form and
+evaluator-corpus reconfirmation of the r=2 composition bracket (32 sbox /
+[38, 70] linear) remain current.

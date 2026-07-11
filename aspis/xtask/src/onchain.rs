@@ -39,9 +39,15 @@ use aspis_core::params::{
 };
 use aspis_core::{FoldPayload, MerkleMode, Profile};
 use aspis_prover::{
-    prove, prove_with_synthetic_second_phase, seeded_coeffs, ProveOptions, HOST_HASH,
+    multilinear_eval, prove, prove_exact_wide_v4_scaffold_for_measurement, prove_with_claim,
+    prove_with_claim_v4, prove_with_synthetic_second_phase, seeded_coeffs, ProveOptions, HOST_HASH,
 };
-use aspis_verifier::{AspisInstruction, ZkKernelKind, PROOF_ACCOUNT_HEADER_LEN};
+use aspis_verifier::{
+    AspisInstruction, ExactWideV4DiagnosticMode, M31CircleBasisDiagnosticMode, ZkKernelKind,
+    M31_CIRCLE_BASIS_C1_COLUMNS, M31_CIRCLE_BASIS_C1_LEAF_BYTES, M31_CIRCLE_BASIS_C2_LEAF_BYTES,
+    M31_CIRCLE_BASIS_DIAGNOSTIC_FIBERS, M31_CIRCLE_BASIS_RLC_FIXTURE_BYTES,
+    M31_CIRCLE_FOLD_FIXTURE_BYTES, PROOF_ACCOUNT_HEADER_LEN,
+};
 
 const UPLOAD_CHUNK_BYTES: usize = 640;
 const VERIFY_CU_LIMIT: u32 = 1_400_000;
@@ -1072,6 +1078,22 @@ pub struct TranscriptKatRun {
 }
 
 #[derive(Serialize)]
+pub struct TranscriptKatV4S2PcsScaffoldRun {
+    pub generated_at_utc: String,
+    pub command: String,
+    pub validator_version: String,
+    pub instruction_wire_ordinal: u8,
+    pub expected_digest_hex: String,
+    pub host_digest_hex: String,
+    pub host_matched: bool,
+    pub matched_on_sbf: bool,
+    pub simulation_units: Option<u64>,
+    pub simulation_error: Option<String>,
+    pub v3_pin_unchanged: bool,
+    pub notes: Vec<String>,
+}
+
+#[derive(Serialize)]
 pub struct LogUpCompressionKatRun {
     pub generated_at_utc: String,
     pub command: String,
@@ -1120,6 +1142,327 @@ pub struct OodSampleRelationProbeSummary {
     pub extra_terminal_component_evaluations: u32,
     pub production_transcript_kat_unchanged: bool,
     pub production_proof_format_unchanged: bool,
+    pub included_work: Vec<String>,
+    pub excluded_work: Vec<String>,
+    pub notes: Vec<String>,
+}
+
+#[derive(Serialize)]
+pub struct V4S2PcsScaffoldSeedMeasurement {
+    pub seed: u64,
+    pub v3_proof_bytes: usize,
+    pub v4_proof_bytes: usize,
+    pub proof_bytes_delta: i64,
+    pub v3_proof_sha256: String,
+    pub v4_proof_sha256: String,
+    pub v3_layer0_unique_fibers: u16,
+    pub v4_layer0_unique_fibers: u16,
+    pub v3_verify_cu: u64,
+    pub v4_verify_cu: u64,
+    pub verify_cu_delta: i64,
+}
+
+#[derive(Serialize)]
+pub struct V4S2PcsScaffoldCorruptionCase {
+    pub seed: u64,
+    pub target: String,
+    pub layer: Option<u32>,
+    pub sample_index: Option<u8>,
+    pub helper_claim_index: Option<u8>,
+    pub helper_leaf_half_index: Option<u8>,
+    pub proof_byte_offset: usize,
+    pub host_rejected: bool,
+    pub host_error: String,
+    pub sbf_rejected: bool,
+    pub sbf_error: String,
+}
+
+#[derive(Serialize)]
+pub struct V4S2PcsScaffoldSummary {
+    pub generated_at_utc: String,
+    pub command: String,
+    pub validator_version: String,
+    pub profile: &'static str,
+    pub statement_kind: &'static str,
+    pub is_payment_proof: bool,
+    pub production_verify_instruction_wire_ordinal: u8,
+    pub compute_unit_limit: u32,
+    pub heap_frame_bytes: u32,
+    pub transaction_envelope: &'static str,
+    pub merkle_mode: &'static str,
+    pub seeds: u64,
+    pub repetitions_per_proof: usize,
+    pub v3_samples_per_round: u8,
+    pub v4_samples_per_round: u8,
+    pub v3_second_phase_helper_columns: u8,
+    pub v4_second_phase_helper_columns: u8,
+    pub v3_second_phase_leaf_bytes: u16,
+    pub v4_second_phase_leaf_bytes: u16,
+    pub v3_second_phase_claims: u8,
+    pub v4_second_phase_claims: u8,
+    pub transcript_kat_v4_s2_pcs_scaffold_wire_ordinal: u8,
+    pub transcript_kat_v4_s2_pcs_scaffold_expected_hex: String,
+    pub transcript_kat_v4_s2_pcs_scaffold_host_matched: bool,
+    pub transcript_kat_v4_s2_pcs_scaffold_sbf_matched: bool,
+    pub transcript_kat_v4_s2_pcs_scaffold_simulation_cu: u64,
+    pub transcript_kat_v3_unchanged: bool,
+    pub measurements: Vec<V4S2PcsScaffoldSeedMeasurement>,
+    pub v3_layer0_unique_fibers_min: u16,
+    pub v3_layer0_unique_fibers_max: u16,
+    pub v4_layer0_unique_fibers_min: u16,
+    pub v4_layer0_unique_fibers_max: u16,
+    pub v3_verify_cu_mean: f64,
+    pub v4_verify_cu_mean: f64,
+    pub paired_verify_cu_delta_mean: f64,
+    pub paired_verify_cu_delta_min: i64,
+    pub paired_verify_cu_delta_max: i64,
+    pub paired_verify_cu_delta_range: u64,
+    pub proof_bytes_delta_min: i64,
+    pub proof_bytes_delta_max: i64,
+    pub second_ood_corruptions: Vec<V4S2PcsScaffoldCorruptionCase>,
+    pub helper_claim_corruptions: Vec<V4S2PcsScaffoldCorruptionCase>,
+    pub helper_leaf_half_corruptions: Vec<V4S2PcsScaffoldCorruptionCase>,
+    pub every_second_ood_rejected_host: bool,
+    pub every_second_ood_rejected_sbf: bool,
+    pub every_helper_claim_rejected_host: bool,
+    pub every_helper_claim_rejected_sbf: bool,
+    pub every_helper_leaf_half_rejected_host: bool,
+    pub every_helper_leaf_half_rejected_sbf: bool,
+    pub normative_payment_v4_framing_complete: bool,
+    pub missing_payment_v4_components: Vec<String>,
+    pub notes: Vec<String>,
+}
+
+#[derive(Serialize)]
+pub struct ReconciledExactWideSeedMeasurement {
+    pub seed: u64,
+    pub proof_bytes: usize,
+    pub proof_sha256: String,
+    pub layer0_unique_fibers: u16,
+    pub authenticated_c1_opening_bytes: usize,
+    pub authenticated_c2_opening_bytes: usize,
+    pub diagnostic_host_accepted: bool,
+    pub production_host_rejected_bad_header: bool,
+    pub observed_cu_or_cap: u64,
+    pub simulation_error: Option<String>,
+    pub accepted_at_1_400_000_limit: bool,
+    pub compute_budget_exhausted: bool,
+    pub exact_cu_if_accepted: Option<u64>,
+    pub required_cu_lower_bound_if_exhausted: Option<u64>,
+    pub signed_headroom_vs_1_190_000_if_accepted: Option<i64>,
+    pub signed_headroom_vs_1_400_000_if_accepted: Option<i64>,
+    pub minimum_breach_vs_1_190_000_if_exhausted: Option<u64>,
+    pub minimum_breach_vs_1_400_000_if_exhausted: Option<u64>,
+    pub outcome_vs_1_190_000: String,
+    pub outcome_vs_1_400_000: String,
+}
+
+#[derive(Serialize)]
+pub struct ReconciledExactWideCorruptionCase {
+    pub target: &'static str,
+    pub kind: &'static str,
+    pub proof_byte_offset: usize,
+    pub host_rejected: bool,
+    pub host_error: String,
+    pub sbf_error: String,
+    pub sbf_compute_budget_exhausted: bool,
+    pub sbf_rejection_conclusive: bool,
+}
+
+#[derive(Serialize)]
+pub struct ReconciledExactWideSummary {
+    pub generated_at_utc: String,
+    pub command: &'static str,
+    pub validator_version: String,
+    pub profile: &'static str,
+    pub statement_kind: &'static str,
+    pub is_payment_proof: bool,
+    pub diagnostic_verify_instruction_wire_ordinal: u8,
+    pub production_verify_with_claim_wire_ordinal: u8,
+    pub production_verify_with_claim_accepts_wide_flag: bool,
+    pub compute_unit_limit: u32,
+    pub heap_frame_bytes: u32,
+    pub strict_project_threshold_cu: u64,
+    pub absolute_execution_cap_cu: u64,
+    pub transaction_envelope: &'static str,
+    pub merkle_mode: &'static str,
+    pub seeds: u64,
+    pub c1_columns: usize,
+    pub c1_leaf_bytes: usize,
+    pub c2_columns: usize,
+    pub c2_leaf_bytes: usize,
+    pub auxiliary_c1_columns: &'static str,
+    pub measurements: Vec<ReconciledExactWideSeedMeasurement>,
+    pub accepted_seed_count: usize,
+    pub compute_budget_exhausted_seed_count: usize,
+    pub all_seed_outcomes_classified: bool,
+    pub observed_cu_or_cap_min: u64,
+    pub observed_cu_or_cap_max: u64,
+    pub exact_accepted_cu_mean: Option<f64>,
+    pub threshold_1_190_000_observation: String,
+    pub threshold_1_400_000_observation: String,
+    pub production_tag6_seed1_sbf_rejected: bool,
+    pub production_tag6_seed1_sbf_cu: u64,
+    pub production_tag6_seed1_sbf_error: String,
+    pub corruption_cases: Vec<ReconciledExactWideCorruptionCase>,
+    pub canonical_mutations_rejected_host: bool,
+    pub noncanonical_limbs_rejected_host_and_sbf_conclusively: bool,
+    pub owner_ruling_made: bool,
+    pub overlap_replacement: Vec<String>,
+    pub excluded_work: Vec<String>,
+    pub notes: Vec<String>,
+}
+
+#[derive(Serialize)]
+pub struct ExactWideV4DiagnosticVariant {
+    pub mode: &'static str,
+    pub expected_host_sink_hex: String,
+    pub sbf_matched_host_sink: bool,
+    pub accepted_all: bool,
+    pub simulation_cu: Vec<u64>,
+    pub simulation_errors: Vec<Option<String>>,
+    pub simulation_cu_mean: f64,
+}
+
+#[derive(Serialize)]
+pub struct ExactWideV4CorruptionCase {
+    pub target: &'static str,
+    pub mode: &'static str,
+    pub fixture_byte_offset: usize,
+    pub host_corrupted_sink_differs: bool,
+    pub host_rejected_malformed: bool,
+    pub sbf_rejected_canonical_sink: bool,
+    pub sbf_error: String,
+}
+
+#[derive(Serialize)]
+pub struct ExactWideV4DiagnosticSummary {
+    pub generated_at_utc: String,
+    pub command: String,
+    pub validator_version: String,
+    pub diagnostic_instruction_wire_ordinal: u8,
+    pub final_payment_kat_reserved_wire_ordinal: u8,
+    pub final_payment_kat_implemented: bool,
+    pub repetitions: usize,
+    pub fixture_seed: u64,
+    pub fixture_payload_bytes: usize,
+    pub fixture_upload_chunks: usize,
+    pub fixture_upload_cu_excluded: u64,
+    pub batch_fixture_payload_bytes: usize,
+    pub batch_fixture_upload_chunks: usize,
+    pub batch_fixture_upload_cu_excluded: u64,
+    pub fixture_generation_in_measured_instruction: bool,
+    pub c1_columns: usize,
+    pub c2_columns: usize,
+    pub total_gamma_powers: usize,
+    pub c1_leaf_bytes: usize,
+    pub c2_leaf_bytes: usize,
+    pub c1_layout: &'static str,
+    pub c2_layout: &'static str,
+    pub host_baseline_equals_fused: bool,
+    pub variants: Vec<ExactWideV4DiagnosticVariant>,
+    pub fused_dot4_savings_cu: i64,
+    pub fused_dot4_savings_percent: f64,
+    pub c1_leaf_hash_incremental_over_empty_cu: i64,
+    pub c2_leaf_hash_incremental_over_empty_cu: i64,
+    pub gamma_powers_incremental_over_control_cu: i64,
+    pub gate_q36_batch_unique_fibers: usize,
+    pub gate_batch_count_provenance: String,
+    pub frozen_q36_fixture_unique_fibers: [usize; 2],
+    pub theoretical_q36_unique_fibers_max: usize,
+    pub transaction_compute_limit_cu: u32,
+    pub strict_transaction_target_cu: u32,
+    pub heap_frame_bytes: u32,
+    pub transaction_envelope: &'static str,
+    pub batch_unprepared_accepted: bool,
+    pub batch_unprepared_compute_budget_exhausted: bool,
+    pub batch_prepared_accepted: bool,
+    pub batch_unprepared_cu_mean_or_cap: f64,
+    pub batch_prepared_cu_mean: f64,
+    pub batch_prepared_headroom_vs_compute_cap_cu: i64,
+    pub batch_prepared_headroom_vs_strict_target_cu: i64,
+    pub batch_prepared_bytes_accepted: bool,
+    pub batch_prepared_bytes_cu_mean: f64,
+    pub batch_prepared_bytes_headroom_vs_compute_cap_cu: i64,
+    pub batch_prepared_bytes_headroom_vs_strict_target_cu: i64,
+    pub batch_prepared_bytes_savings_vs_structured_cu: i64,
+    pub batch_prepared_bytes_savings_vs_structured_percent: f64,
+    pub batch_prepared_savings_cu_if_exact: Option<i64>,
+    pub batch_prepared_savings_lower_bound_cu: i64,
+    pub batch_prepared_bytes_savings_lower_bound_cu: i64,
+    pub corruption_cases: Vec<ExactWideV4CorruptionCase>,
+    pub all_corruptions_rejected_sbf: bool,
+    pub included_work: Vec<String>,
+    pub excluded_work: Vec<String>,
+    pub notes: Vec<String>,
+}
+
+#[derive(Serialize)]
+pub struct M31CircleBasisVariant {
+    pub mode: &'static str,
+    pub expected_host_sink_hex: String,
+    pub accepted_all: bool,
+    pub simulation_cu: Vec<u64>,
+    pub simulation_cu_mean: f64,
+    pub signed_headroom_vs_1_190_000_cu: i64,
+    pub signed_headroom_vs_1_400_000_cu: i64,
+}
+
+#[derive(Serialize)]
+pub struct M31CircleBasisCorruptionCase {
+    pub target: &'static str,
+    pub fixture: &'static str,
+    pub fixture_byte_offset: usize,
+    pub host_rejected: bool,
+    pub sbf_rejected: bool,
+    pub sbf_error: String,
+}
+
+#[derive(Serialize)]
+pub struct M31CircleBasisSummary {
+    pub generated_at_utc: String,
+    pub command: &'static str,
+    pub validator_version: String,
+    pub status: &'static str,
+    pub diagnostic_instruction_wire_ordinal: u8,
+    pub repetitions: usize,
+    pub compute_unit_limit: u32,
+    pub heap_frame_bytes: u32,
+    pub transaction_envelope: &'static str,
+    pub structural_fibers: usize,
+    pub c1_field: &'static str,
+    pub c1_columns: usize,
+    pub c1_leaf_bytes: usize,
+    pub c2_field: &'static str,
+    pub c2_columns: usize,
+    pub c2_leaf_bytes: usize,
+    pub gamma_powers: &'static str,
+    pub rlc_fixture_bytes: usize,
+    pub fold_fixture_bytes: usize,
+    pub host_structured_equals_fused: bool,
+    pub host_all_rlc_modes_equal: bool,
+    pub host_normalized_fold_matches_cubic_reference: bool,
+    pub variants: Vec<M31CircleBasisVariant>,
+    pub fused_rlc_savings_cu: i64,
+    pub fused_rlc_savings_percent: f64,
+    pub decoded_fused_rlc_savings_vs_structured_cu: i64,
+    pub decoded_fused_rlc_savings_vs_structured_percent: f64,
+    pub streaming_rlc_savings_vs_structured_cu: i64,
+    pub streaming_rlc_savings_vs_structured_percent: f64,
+    pub winning_rlc_mode: &'static str,
+    pub winning_rlc_cu_mean: f64,
+    pub winning_rlc_savings_vs_structured_cu: i64,
+    pub winning_rlc_savings_vs_structured_percent: f64,
+    pub c1_leaf_hash_incremental_over_empty_cu: i64,
+    pub fold_cached_coordinate_derivation_increment_cu: i64,
+    pub fold_batch_inverse_syscall_increment_cu: i64,
+    pub fold_coordinate_and_batch_inverse_increment_cu: i64,
+    pub fold_batch_inverse_backend: &'static str,
+    pub corruption_cases: Vec<M31CircleBasisCorruptionCase>,
+    pub all_corruptions_rejected: bool,
+    pub current_aspis_serialization: bool,
+    pub genuine_circle_pcs_integration_implemented: bool,
+    pub protocol_or_architecture_ruling_made: bool,
     pub included_work: Vec<String>,
     pub excluded_work: Vec<String>,
     pub notes: Vec<String>,
@@ -1176,6 +1519,75 @@ pub fn run_transcript_kat() -> Result<TranscriptKatRun> {
         simulation_units: units,
         notes: vec![
             "matched_on_sbf=false means the SBF transcript diverged from the host — stop and diagnose before trusting any on-chain measurement.".to_string(),
+        ],
+    })
+}
+
+/// Host/SBF known-answer check for the explicit two-helper v4/s=2 PCS
+/// scaffold. The legacy tag-5 KAT remains independently pinned. This is not
+/// the final payment-v4 schedule KAT, which will use a later wire tag.
+pub fn run_transcript_kat_v4_s2_pcs_scaffold() -> Result<TranscriptKatV4S2PcsScaffoldRun> {
+    const INSTRUCTION_WIRE_ORDINAL: u8 = 19;
+    let hex = |bytes: &[u8]| {
+        bytes
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>()
+    };
+    let host_digest = aspis_core::transcript::transcript_kat_v4_s2_pcs_scaffold(HOST_HASH);
+    ensure!(
+        host_digest == aspis_core::transcript::TRANSCRIPT_KAT_V4_S2_PCS_SCAFFOLD_EXPECTED,
+        "host v4/s=2 PCS-scaffold transcript KAT drifted"
+    );
+    let v3_pin_unchanged = aspis_core::transcript::transcript_kat(HOST_HASH)
+        == aspis_core::transcript::TRANSCRIPT_KAT_EXPECTED;
+    ensure!(v3_pin_unchanged, "legacy v3 transcript KAT drifted");
+
+    let root = workspace_root()?;
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), LAMPORTS_PER_SOL)?;
+    let instruction = Instruction {
+        program_id: aspis_verifier::id(),
+        accounts: vec![],
+        data: to_vec(&AspisInstruction::TranscriptKatV4S2PcsScaffold {
+            expected: aspis_core::transcript::TRANSCRIPT_KAT_V4_S2_PCS_SCAFFOLD_EXPECTED,
+        })?,
+    };
+    let blockhash = rpc.latest_blockhash()?;
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction],
+        Some(&payer.pubkey()),
+        &[&payer],
+        blockhash,
+    );
+    let (simulation_units, simulation_error) = rpc.simulate(&transaction)?;
+    Ok(TranscriptKatV4S2PcsScaffoldRun {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command:
+            "cargo run --release -p aspis-xtask -- stage2-v4-s2-pcs-scaffold-kat".to_string(),
+        validator_version: validator_version(),
+        instruction_wire_ordinal: INSTRUCTION_WIRE_ORDINAL,
+        expected_digest_hex: hex(
+            &aspis_core::transcript::TRANSCRIPT_KAT_V4_S2_PCS_SCAFFOLD_EXPECTED,
+        ),
+        host_digest_hex: hex(&host_digest),
+        host_matched: true,
+        matched_on_sbf: simulation_error.is_none(),
+        simulation_units,
+        simulation_error,
+        v3_pin_unchanged,
+        notes: vec![
+            "Wire tag 19 is append-only and permanently names the two-helper v4/s=2 PCS scaffold; frozen v3 remains tag 5 and final payment-v4 will use tag 20 or later.".to_string(),
+            "The vector absorbs one C2 root and both helper evaluations before gamma, then exercises two complete sequential beta/y/mu triples per round.".to_string(),
+            "This KAT is necessary but neither a payment-v4 KAT nor a proof measurement; scaffold proof CU is measured separately through production VerifyWithClaim tag 6.".to_string(),
         ],
     })
 }
@@ -1387,6 +1799,2249 @@ pub fn run_stage2_s2_ood_probe() -> Result<OodSampleRelationProbeSummary> {
             "The +64-byte figure is the structural four-round record delta only; eventual full-proof bytes can move further when the v4 transcript changes openings.".to_string(),
             format!("The measured {incremental}-CU delta refutes the old 5-12K bracket: that intuition priced transcript work but omitted the four retained components' later folds and terminal evaluations."),
             format!("SUPERSEDED measurement: a first probe version generated and encoded each synthetic y inside the sample loop and measured 49,155 CU. Replacing those probe-only operations with a fixed canonical byte table removed {} CU of contamination; the pinned transcript sinks did not move.", 49_155 - incremental),
+        ],
+    })
+}
+
+/// Integrated v3/v4 comparison for an honest public evaluation claim and the
+/// synthetic-C2 PCS scaffold. V3 carries one helper claim; v4 carries two
+/// helper claims and samples two OOD points per round. This is not a payment
+/// proof and must not be described as one.
+pub fn run_stage2_v4_s2_pcs_scaffold() -> Result<V4S2PcsScaffoldSummary> {
+    const SEEDS: u64 = 8;
+    const REPETITIONS_PER_PROOF: usize = 1;
+    const PRODUCTION_VERIFY_WIRE_ORDINAL: u8 = 6;
+
+    fn hex(bytes: &[u8]) -> String {
+        bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+    }
+
+    fn layer0_unique_fibers(proof: &[u8]) -> Result<u16> {
+        let header = aspis_core::proof::Header::parse(proof).context("parse proof header")?;
+        let transcript_len = aspis_core::proof::transcript_records_len_for_version(
+            header.num_rounds as usize,
+            header.flags,
+            header.version,
+        )
+        .context("unsupported proof version")?;
+        let final_values = 1usize
+            .checked_shl(header.final_poly_log_len)
+            .context("final polynomial length overflow")?;
+        let offset = aspis_core::proof::HEADER_LEN
+            .checked_add(transcript_len)
+            .and_then(|value| value.checked_add(final_values * 16))
+            .and_then(|value| value.checked_add(8))
+            .context("layer-0 opening offset overflow")?;
+        let bytes = proof
+            .get(offset..offset + 2)
+            .context("layer-0 unique count missing")?;
+        Ok(u16::from_le_bytes(bytes.try_into().unwrap()))
+    }
+
+    fn simulate_verify_with_claim(
+        rpc: &Rpc,
+        payer: &Keypair,
+        proof_account: &Pubkey,
+        digest: [u8; 32],
+        claim: &aspis_core::EvaluationClaim,
+    ) -> Result<(Option<u64>, Option<String>)> {
+        let claim_z = claim
+            .z
+            .iter()
+            .map(|coordinate| {
+                let mut encoded = [0u8; 16];
+                coordinate.write_le_bytes(&mut encoded);
+                encoded
+            })
+            .collect();
+        let mut claim_v = [0u8; 16];
+        claim.v.write_le_bytes(&mut claim_v);
+        let instruction = AspisInstruction::VerifyWithClaim {
+            statement_digest: digest,
+            claim_z,
+            claim_v,
+        };
+        let blockhash = rpc.latest_blockhash()?;
+        let transaction = Transaction::new_signed_with_payer(
+            &[
+                ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+                ComputeBudgetInstruction::request_heap_frame(HEAP_FRAME_BYTES),
+                proof_instruction(&payer.pubkey(), proof_account, &instruction)?,
+            ],
+            Some(&payer.pubkey()),
+            &[payer],
+            blockhash,
+        );
+        rpc.simulate(&transaction)
+    }
+
+    let root = workspace_root()?;
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), 20 * LAMPORTS_PER_SOL)?;
+
+    let transcript_kat_v4_s2_pcs_scaffold_host =
+        aspis_core::transcript::transcript_kat_v4_s2_pcs_scaffold(HOST_HASH);
+    ensure!(
+        transcript_kat_v4_s2_pcs_scaffold_host
+            == aspis_core::transcript::TRANSCRIPT_KAT_V4_S2_PCS_SCAFFOLD_EXPECTED,
+        "host v4/s=2 PCS-scaffold transcript KAT drifted"
+    );
+    let transcript_kat_v3_unchanged = aspis_core::transcript::transcript_kat(HOST_HASH)
+        == aspis_core::transcript::TRANSCRIPT_KAT_EXPECTED;
+    ensure!(
+        transcript_kat_v3_unchanged,
+        "legacy v3 transcript KAT drifted"
+    );
+    let kat_instruction = Instruction {
+        program_id: aspis_verifier::id(),
+        accounts: vec![],
+        data: to_vec(&AspisInstruction::TranscriptKatV4S2PcsScaffold {
+            expected: aspis_core::transcript::TRANSCRIPT_KAT_V4_S2_PCS_SCAFFOLD_EXPECTED,
+        })?,
+    };
+    let blockhash = rpc.latest_blockhash()?;
+    let kat_transaction = Transaction::new_signed_with_payer(
+        &[kat_instruction],
+        Some(&payer.pubkey()),
+        &[&payer],
+        blockhash,
+    );
+    let (transcript_kat_v4_s2_pcs_scaffold_units, transcript_kat_v4_s2_pcs_scaffold_error) =
+        rpc.simulate(&kat_transaction)?;
+    ensure!(
+        transcript_kat_v4_s2_pcs_scaffold_error.is_none(),
+        "v4/s=2 PCS-scaffold KAT failed on SBF: {transcript_kat_v4_s2_pcs_scaffold_error:?}"
+    );
+    let transcript_kat_v4_s2_pcs_scaffold_simulation_cu =
+        transcript_kat_v4_s2_pcs_scaffold_units
+            .context("v4/s=2 PCS-scaffold KAT simulation did not report units")?;
+
+    let profile = &PROFILE_CAPACITY_LR10_Q36_G16;
+    let options = ProveOptions {
+        fold_payload: FoldPayload::RawFibers,
+        merkle_mode: MerkleMode::Radix4MinimalSubtree,
+    };
+    let mut measurements = Vec::with_capacity(SEEDS as usize);
+    let mut corruption_source = None;
+
+    for seed in 1..=SEEDS {
+        let digest = crate::host_statement_digest(seed);
+        let coeffs = seeded_coeffs(profile.log_rows, seed);
+        let claim_z = (0..profile.log_rows)
+            .map(|coordinate| {
+                aspis_core::field::QM31::from_cm31(aspis_core::field::CM31::from_m31(
+                    aspis_core::field::M31(1_000 + (seed as u32).wrapping_mul(37) + coordinate),
+                ))
+            })
+            .collect::<Vec<_>>();
+        let claim = aspis_core::EvaluationClaim {
+            v: multilinear_eval(&coeffs, &claim_z),
+            z: claim_z,
+        };
+        let v3_proof = prove_with_claim(profile, &coeffs, &digest, &claim, &options, HOST_HASH);
+        let v4_proof = prove_with_claim_v4(profile, &coeffs, &digest, &claim, &options, HOST_HASH);
+
+        ensure!(
+            aspis_core::verify_with_claim(&v3_proof, &digest, Some(&claim), HOST_HASH).is_ok(),
+            "seed {seed} v3 claim-carrying synthetic-C2 proof failed host verification"
+        );
+        ensure!(
+            aspis_core::verify_with_claim(&v4_proof, &digest, Some(&claim), HOST_HASH).is_ok(),
+            "seed {seed} v4/s=2 claim-carrying synthetic-C2 proof failed host verification"
+        );
+        let v3_header = aspis_core::proof::Header::parse(&v3_proof)
+            .context("parse generated v3 proof header")?;
+        let v4_header = aspis_core::proof::Header::parse(&v4_proof)
+            .context("parse generated v4 proof header")?;
+        ensure!(
+            v3_header.ood_samples_per_round() == 1,
+            "seed {seed} v3 proof did not encode s=1"
+        );
+        ensure!(
+            v4_header.ood_samples_per_round() == 2,
+            "seed {seed} v4 proof did not encode s=2"
+        );
+        ensure!(
+            v3_header.second_phase_helper_count() == 1
+                && v3_header.second_phase_leaf_len() == 64
+                && v3_header.second_phase_claims_len() == 16,
+            "seed {seed} v3 helper framing drifted"
+        );
+        ensure!(
+            v4_header.second_phase_helper_count() == 2
+                && v4_header.second_phase_leaf_len() == 128
+                && v4_header.second_phase_claims_len() == 32,
+            "seed {seed} v4 two-helper framing drifted"
+        );
+
+        let v3_account = Keypair::new();
+        let v4_account = Keypair::new();
+        upload_proof(&rpc, &payer, &v3_account, &v3_proof, true)?;
+        upload_proof(&rpc, &payer, &v4_account, &v4_proof, true)?;
+        let (v3_units, v3_error) =
+            simulate_verify_with_claim(&rpc, &payer, &v3_account.pubkey(), digest, &claim)?;
+        ensure!(
+            v3_error.is_none(),
+            "seed {seed} v3 production VerifyWithClaim failed: {v3_error:?}"
+        );
+        let (v4_units, v4_error) =
+            simulate_verify_with_claim(&rpc, &payer, &v4_account.pubkey(), digest, &claim)?;
+        ensure!(
+            v4_error.is_none(),
+            "seed {seed} v4 production VerifyWithClaim failed: {v4_error:?}"
+        );
+        let v3_verify_cu = v3_units.context("v3 production Verify did not report units")?;
+        let v4_verify_cu = v4_units.context("v4 production Verify did not report units")?;
+        let v3_hash = HOST_HASH(&[&v3_proof]);
+        let v4_hash = HOST_HASH(&[&v4_proof]);
+        measurements.push(V4S2PcsScaffoldSeedMeasurement {
+            seed,
+            v3_proof_bytes: v3_proof.len(),
+            v4_proof_bytes: v4_proof.len(),
+            proof_bytes_delta: v4_proof.len() as i64 - v3_proof.len() as i64,
+            v3_proof_sha256: hex(&v3_hash),
+            v4_proof_sha256: hex(&v4_hash),
+            v3_layer0_unique_fibers: layer0_unique_fibers(&v3_proof)?,
+            v4_layer0_unique_fibers: layer0_unique_fibers(&v4_proof)?,
+            v3_verify_cu,
+            v4_verify_cu,
+            verify_cu_delta: v4_verify_cu as i64 - v3_verify_cu as i64,
+        });
+        if seed == 1 {
+            corruption_source = Some((digest, claim, v4_proof));
+        }
+        eprintln!(
+            "stage2-v4-s2-pcs-scaffold: seed {seed}/{SEEDS} v3={v3_verify_cu} v4={v4_verify_cu} delta={}",
+            v4_verify_cu as i64 - v3_verify_cu as i64
+        );
+    }
+
+    let (corruption_digest, corruption_claim, v4_proof) =
+        corruption_source.context("seed-1 v4 proof missing")?;
+    let header = aspis_core::proof::Header::parse(&v4_proof)
+        .context("parse seed-1 v4 proof for corruption suite")?;
+    ensure!(
+        header.ood_samples_per_round() == 2,
+        "corruption proof is not s=2"
+    );
+    let mut second_ood_corruptions = Vec::with_capacity(header.num_rounds as usize);
+    for layer in 0..header.num_rounds {
+        let offset = aspis_core::proof::ood_value_offset(&header, layer as usize, 1)
+            .with_context(|| format!("locate layer-{layer} second OOD value"))?;
+        let mut corrupted = v4_proof.clone();
+        corrupted[offset] ^= 1;
+        let host_error = aspis_core::verify_with_claim(
+            &corrupted,
+            &corruption_digest,
+            Some(&corruption_claim),
+            HOST_HASH,
+        )
+        .expect_err("second-OOD corruption unexpectedly passed host verification");
+        let corrupt_account = Keypair::new();
+        upload_proof(&rpc, &payer, &corrupt_account, &corrupted, true)?;
+        let (_, sbf_error) = simulate_verify_with_claim(
+            &rpc,
+            &payer,
+            &corrupt_account.pubkey(),
+            corruption_digest,
+            &corruption_claim,
+        )?;
+        ensure!(
+            sbf_error.is_some(),
+            "layer {layer} second-OOD corruption unexpectedly passed VerifyWithClaim on SBF"
+        );
+        second_ood_corruptions.push(V4S2PcsScaffoldCorruptionCase {
+            seed: 1,
+            target: format!("layer_{layer}_second_ood_value"),
+            layer: Some(layer),
+            sample_index: Some(1),
+            helper_claim_index: None,
+            helper_leaf_half_index: None,
+            proof_byte_offset: offset,
+            host_rejected: true,
+            host_error: format!("{host_error:?}"),
+            sbf_rejected: true,
+            sbf_error: sbf_error.unwrap(),
+        });
+    }
+
+    let mut helper_claim_corruptions = Vec::with_capacity(header.second_phase_claim_count());
+    for helper in 0..header.second_phase_claim_count() {
+        let offset = aspis_core::proof::second_phase_claim_offset(&header, helper)
+            .with_context(|| format!("locate helper claim {helper}"))?;
+        let mut corrupted = v4_proof.clone();
+        corrupted[offset] ^= 1;
+        let host_error = aspis_core::verify_with_claim(
+            &corrupted,
+            &corruption_digest,
+            Some(&corruption_claim),
+            HOST_HASH,
+        )
+        .expect_err("helper-claim corruption unexpectedly passed host verification");
+        let corrupt_account = Keypair::new();
+        upload_proof(&rpc, &payer, &corrupt_account, &corrupted, true)?;
+        let (_, sbf_error) = simulate_verify_with_claim(
+            &rpc,
+            &payer,
+            &corrupt_account.pubkey(),
+            corruption_digest,
+            &corruption_claim,
+        )?;
+        ensure!(
+            sbf_error.is_some(),
+            "helper claim {helper} corruption unexpectedly passed VerifyWithClaim on SBF"
+        );
+        helper_claim_corruptions.push(V4S2PcsScaffoldCorruptionCase {
+            seed: 1,
+            target: format!("second_phase_helper_claim_{helper}"),
+            layer: None,
+            sample_index: None,
+            helper_claim_index: Some(helper as u8),
+            helper_leaf_half_index: None,
+            proof_byte_offset: offset,
+            host_rejected: true,
+            host_error: format!("{host_error:?}"),
+            sbf_rejected: true,
+            sbf_error: sbf_error.unwrap(),
+        });
+    }
+
+    let mut helper_leaf_half_corruptions = Vec::with_capacity(header.second_phase_helper_count());
+    for helper in 0..header.second_phase_helper_count() {
+        let offset = aspis_core::proof::first_layer_second_phase_helper_offset(&v4_proof, helper)
+            .with_context(|| format!("locate first C2 leaf helper half {helper}"))?;
+        ensure!(
+            offset + 64 <= v4_proof.len(),
+            "helper half {helper} is out of proof bounds"
+        );
+        let mut corrupted = v4_proof.clone();
+        let value = u32::from_le_bytes(corrupted[offset..offset + 4].try_into().unwrap());
+        let changed = if value + 1 == aspis_core::field::P {
+            0
+        } else {
+            value + 1
+        };
+        corrupted[offset..offset + 4].copy_from_slice(&changed.to_le_bytes());
+        let host_error = aspis_core::verify_with_claim(
+            &corrupted,
+            &corruption_digest,
+            Some(&corruption_claim),
+            HOST_HASH,
+        )
+        .expect_err("C2 helper-half corruption unexpectedly passed host verification");
+        let corrupt_account = Keypair::new();
+        upload_proof(&rpc, &payer, &corrupt_account, &corrupted, true)?;
+        let (_, sbf_error) = simulate_verify_with_claim(
+            &rpc,
+            &payer,
+            &corrupt_account.pubkey(),
+            corruption_digest,
+            &corruption_claim,
+        )?;
+        ensure!(
+            sbf_error.is_some(),
+            "C2 helper half {helper} corruption unexpectedly passed VerifyWithClaim on SBF"
+        );
+        helper_leaf_half_corruptions.push(V4S2PcsScaffoldCorruptionCase {
+            seed: 1,
+            target: format!("first_c2_leaf_helper_half_{helper}"),
+            layer: Some(0),
+            sample_index: None,
+            helper_claim_index: None,
+            helper_leaf_half_index: Some(helper as u8),
+            proof_byte_offset: offset,
+            host_rejected: true,
+            host_error: format!("{host_error:?}"),
+            sbf_rejected: true,
+            sbf_error: sbf_error.unwrap(),
+        });
+    }
+
+    let v3_verify_cu_mean = measurements.iter().map(|row| row.v3_verify_cu).sum::<u64>() as f64
+        / measurements.len() as f64;
+    let v4_verify_cu_mean = measurements.iter().map(|row| row.v4_verify_cu).sum::<u64>() as f64
+        / measurements.len() as f64;
+    let v3_layer0_unique_fibers_min = measurements
+        .iter()
+        .map(|row| row.v3_layer0_unique_fibers)
+        .min()
+        .context("empty v3 unique-fiber set")?;
+    let v3_layer0_unique_fibers_max = measurements
+        .iter()
+        .map(|row| row.v3_layer0_unique_fibers)
+        .max()
+        .context("empty v3 unique-fiber set")?;
+    let v4_layer0_unique_fibers_min = measurements
+        .iter()
+        .map(|row| row.v4_layer0_unique_fibers)
+        .min()
+        .context("empty v4 unique-fiber set")?;
+    let v4_layer0_unique_fibers_max = measurements
+        .iter()
+        .map(|row| row.v4_layer0_unique_fibers)
+        .max()
+        .context("empty v4 unique-fiber set")?;
+    let verify_deltas = measurements
+        .iter()
+        .map(|row| row.verify_cu_delta)
+        .collect::<Vec<_>>();
+    let paired_verify_cu_delta_mean =
+        verify_deltas.iter().sum::<i64>() as f64 / verify_deltas.len() as f64;
+    let paired_verify_cu_delta_min = *verify_deltas.iter().min().context("empty delta set")?;
+    let paired_verify_cu_delta_max = *verify_deltas.iter().max().context("empty delta set")?;
+    let proof_deltas = measurements
+        .iter()
+        .map(|row| row.proof_bytes_delta)
+        .collect::<Vec<_>>();
+    let proof_bytes_delta_min = *proof_deltas.iter().min().context("empty byte-delta set")?;
+    let proof_bytes_delta_max = *proof_deltas.iter().max().context("empty byte-delta set")?;
+    let every_second_ood_rejected_host =
+        second_ood_corruptions.iter().all(|case| case.host_rejected);
+    let every_second_ood_rejected_sbf = second_ood_corruptions.iter().all(|case| case.sbf_rejected);
+    let every_helper_claim_rejected_host = helper_claim_corruptions
+        .iter()
+        .all(|case| case.host_rejected);
+    let every_helper_claim_rejected_sbf = helper_claim_corruptions
+        .iter()
+        .all(|case| case.sbf_rejected);
+    let every_helper_leaf_half_rejected_host = helper_leaf_half_corruptions
+        .iter()
+        .all(|case| case.host_rejected);
+    let every_helper_leaf_half_rejected_sbf = helper_leaf_half_corruptions
+        .iter()
+        .all(|case| case.sbf_rejected);
+
+    Ok(V4S2PcsScaffoldSummary {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command: "cargo run --release -p aspis-xtask -- stage2-v4-s2-pcs-scaffold".to_string(),
+        validator_version: validator_version(),
+        profile: profile.name,
+        statement_kind: "honest public evaluation claim with synthetic-C2 PCS scaffold",
+        is_payment_proof: false,
+        production_verify_instruction_wire_ordinal: PRODUCTION_VERIFY_WIRE_ORDINAL,
+        compute_unit_limit: VERIFY_CU_LIMIT,
+        heap_frame_bytes: HEAP_FRAME_BYTES,
+        transaction_envelope: "set_compute_unit_limit(1,400,000) + request_heap_frame(262,144) + VerifyWithClaim",
+        merkle_mode: "radix4_minimal_subtree",
+        seeds: SEEDS,
+        repetitions_per_proof: REPETITIONS_PER_PROOF,
+        v3_samples_per_round: 1,
+        v4_samples_per_round: 2,
+        v3_second_phase_helper_columns: 1,
+        v4_second_phase_helper_columns: 2,
+        v3_second_phase_leaf_bytes: 64,
+        v4_second_phase_leaf_bytes: 128,
+        v3_second_phase_claims: 1,
+        v4_second_phase_claims: 2,
+        transcript_kat_v4_s2_pcs_scaffold_wire_ordinal: 19,
+        transcript_kat_v4_s2_pcs_scaffold_expected_hex: hex(
+            &aspis_core::transcript::TRANSCRIPT_KAT_V4_S2_PCS_SCAFFOLD_EXPECTED,
+        ),
+        transcript_kat_v4_s2_pcs_scaffold_host_matched: true,
+        transcript_kat_v4_s2_pcs_scaffold_sbf_matched: true,
+        transcript_kat_v4_s2_pcs_scaffold_simulation_cu,
+        transcript_kat_v3_unchanged,
+        measurements,
+        v3_layer0_unique_fibers_min,
+        v3_layer0_unique_fibers_max,
+        v4_layer0_unique_fibers_min,
+        v4_layer0_unique_fibers_max,
+        v3_verify_cu_mean,
+        v4_verify_cu_mean,
+        paired_verify_cu_delta_mean,
+        paired_verify_cu_delta_min,
+        paired_verify_cu_delta_max,
+        paired_verify_cu_delta_range: (paired_verify_cu_delta_max
+            - paired_verify_cu_delta_min) as u64,
+        proof_bytes_delta_min,
+        proof_bytes_delta_max,
+        second_ood_corruptions,
+        helper_claim_corruptions,
+        helper_leaf_half_corruptions,
+        every_second_ood_rejected_host,
+        every_second_ood_rejected_sbf,
+        every_helper_claim_rejected_host,
+        every_helper_claim_rejected_sbf,
+        every_helper_leaf_half_rejected_host,
+        every_helper_leaf_half_rejected_sbf,
+        normative_payment_v4_framing_complete: false,
+        missing_payment_v4_components: vec![
+            "authenticated wide C1: 49 CM31 columns and 1,568-byte layer-0 fibers".to_string(),
+            "the exact k'=51 query recombination: 49 QM31-by-CM31 terms plus two QM31 helper terms at gamma^49 and gamma^50".to_string(),
+            "the 102 pre-gamma statement values: 49 C1 plus 2 C2 evaluations at each of z and low-bit-XOR-11(z), with their transcript framing".to_string(),
+            "ConstraintId-bound statement framing, LogUp payment relation, constraint composition, and economic-attack corpus".to_string(),
+            "masking/hiding and the final q36/g32 measurement".to_string(),
+        ],
+        notes: vec![
+            "Every row is a real v3/s=1/one-helper-claim versus v4/s=2/two-helper-claim pair over identical profile, coefficients, honest public main claim, statement digest, synthetic C2 rule, and radix-4 mode. The changed transcript deliberately produces fresh roots, nonce, queries, and frontiers.".to_string(),
+            "The measured transaction invokes production AspisInstruction::VerifyWithClaim (Borsh tag 6); no measurement-only proof verifier or new proof-verification wire tag is involved.".to_string(),
+            "This proves and measures only the repository's public evaluation claim with synthetic-C2 PCS scaffold. It is not LogUp, does not prove a payment, and is not hiding.".to_string(),
+            "One simulation per proof is enough within a seed because Solana simulation CU is deterministic for fixed account data; the eight independently generated transcripts are the variance population.".to_string(),
+            "The seed-1 corruption suite changes every second OOD value, both v4 helper claims, and each committed 64-byte half of the first authenticated C2 leaf, requiring rejection by host and production VerifyWithClaim on SBF.".to_string(),
+            "Every paired and corruption simulation uses the standard 1,400,000-CU limit plus 262,144-byte heap-frame request; absolute v3/v4 CU is comparable to the production measurement envelope.".to_string(),
+            "The paired CU delta prices s=2 plus the second 128-byte-leaf helper within the scalar-C1 PCS scaffold. It does not price the normative 49-column authenticated C1 representation or its k'=51 recombination.".to_string(),
+            "The tag-21 exact-wide diagnostic is a separate replacement seam, not an additive line item: its 36-fiber prepared-byte CU must not be added wholesale to this scalar-C1 verifier total.".to_string(),
+            "This g16 result is a PCS-scaffold delta checkpoint, not the final q36/g32 strict-gate measurement or the final payment-v4 KAT.".to_string(),
+        ],
+    })
+}
+
+/// Reconciled exact-wide v4 PCS-scaffold measurement. The diagnostic-only
+/// tag invokes the real proof parser, Merkle authentication, folds and final
+/// checks, but replaces scalar layer-zero C1/C2 processing in place. No
+/// isolated artifact totals are added together.
+pub fn run_stage2_reconciled_exact_wide_v4_scaffold() -> Result<ReconciledExactWideSummary> {
+    const SEEDS: u64 = 8;
+    const DIAGNOSTIC_WIRE_ORDINAL: u8 = 22;
+    const PRODUCTION_WIRE_ORDINAL: u8 = 6;
+    const STRICT_PROJECT_THRESHOLD_CU: u64 = 1_190_000;
+    const ABSOLUTE_EXECUTION_CAP_CU: u64 = VERIFY_CU_LIMIT as u64;
+
+    fn hex(bytes: &[u8]) -> String {
+        bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+    }
+
+    fn layer0_unique_fibers(proof: &[u8]) -> Result<u16> {
+        let c1_start = aspis_core::proof::first_layer_first_phase_opening_offset(proof)
+            .context("locate exact-wide layer-zero C1 section")?;
+        let count_start = c1_start
+            .checked_sub(2)
+            .context("layer-zero unique-count underflow")?;
+        Ok(u16::from_le_bytes(
+            proof[count_start..c1_start].try_into().unwrap(),
+        ))
+    }
+
+    fn encoded_claim(claim: &aspis_core::EvaluationClaim) -> (Vec<[u8; 16]>, [u8; 16]) {
+        let claim_z = claim
+            .z
+            .iter()
+            .map(|coordinate| {
+                let mut bytes = [0u8; 16];
+                coordinate.write_le_bytes(&mut bytes);
+                bytes
+            })
+            .collect();
+        let mut claim_v = [0u8; 16];
+        claim.v.write_le_bytes(&mut claim_v);
+        (claim_z, claim_v)
+    }
+
+    fn simulate_claim(
+        rpc: &Rpc,
+        payer: &Keypair,
+        proof_account: &Pubkey,
+        statement_digest: [u8; 32],
+        claim: &aspis_core::EvaluationClaim,
+        diagnostic: bool,
+    ) -> Result<(u64, Option<String>)> {
+        let (claim_z, claim_v) = encoded_claim(claim);
+        let instruction = if diagnostic {
+            AspisInstruction::VerifyExactWideV4Scaffold {
+                statement_digest,
+                claim_z,
+                claim_v,
+            }
+        } else {
+            AspisInstruction::VerifyWithClaim {
+                statement_digest,
+                claim_z,
+                claim_v,
+            }
+        };
+        let blockhash = rpc.latest_blockhash()?;
+        let transaction = Transaction::new_signed_with_payer(
+            &[
+                ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+                ComputeBudgetInstruction::request_heap_frame(HEAP_FRAME_BYTES),
+                proof_instruction(&payer.pubkey(), proof_account, &instruction)?,
+            ],
+            Some(&payer.pubkey()),
+            &[payer],
+            blockhash,
+        );
+        let (units, error) = rpc.simulate(&transaction)?;
+        Ok((
+            units.context("simulation did not report compute units")?,
+            error,
+        ))
+    }
+
+    fn compute_budget_exhausted(error: &str) -> bool {
+        error.contains("ProgramFailedToComplete") && error.contains("exceeded CUs meter")
+    }
+
+    fn accepted_threshold_outcome(units: u64, threshold: u64) -> String {
+        if units <= threshold {
+            format!(
+                "accepted at {units} CU; {} CU below the {threshold}-CU threshold",
+                threshold - units
+            )
+        } else {
+            format!(
+                "accepted at {units} CU; {} CU above the {threshold}-CU threshold",
+                units - threshold
+            )
+        }
+    }
+
+    let root = workspace_root()?;
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), 40 * LAMPORTS_PER_SOL)?;
+
+    let profile = &PROFILE_CAPACITY_LR10_Q36_G16;
+    let options = ProveOptions {
+        fold_payload: FoldPayload::RawFibers,
+        merkle_mode: MerkleMode::Radix4MinimalSubtree,
+    };
+    let mut measurements = Vec::with_capacity(SEEDS as usize);
+    let mut seed1 = None;
+    let mut production_tag6_seed1_sbf = None;
+
+    for seed in 1..=SEEDS {
+        let statement_digest = crate::host_statement_digest(seed.wrapping_add(22_000));
+        let coeffs = seeded_coeffs(profile.log_rows, seed.wrapping_add(22_000));
+        let claim_z = (0..profile.log_rows)
+            .map(|coordinate| {
+                aspis_core::field::QM31::from_cm31(aspis_core::field::CM31::from_m31(
+                    aspis_core::field::M31(22_000 + (seed as u32).wrapping_mul(53) + coordinate),
+                ))
+            })
+            .collect::<Vec<_>>();
+        let claim = aspis_core::EvaluationClaim {
+            v: multilinear_eval(&coeffs, &claim_z),
+            z: claim_z,
+        };
+        let proof = prove_exact_wide_v4_scaffold_for_measurement(
+            profile,
+            &coeffs,
+            &statement_digest,
+            &claim,
+            &options,
+            HOST_HASH,
+        );
+        let header = aspis_core::proof::Header::parse(&proof)
+            .with_context(|| format!("seed {seed} exact-wide header"))?;
+        ensure!(
+            header.has_exact_wide_c1()
+                && header.version == aspis_core::proof::VERSION_V4_S2
+                && header.second_phase_helper_count() == 2,
+            "seed {seed} did not produce the exact-wide v4/two-helper shape"
+        );
+        ensure!(
+            aspis_core::verify::verify_exact_wide_v4_scaffold_for_measurement(
+                &proof,
+                &statement_digest,
+                Some(&claim),
+                HOST_HASH,
+            )
+            .is_ok(),
+            "seed {seed} failed diagnostic host verification"
+        );
+        let production_host_error =
+            aspis_core::verify_with_claim(&proof, &statement_digest, Some(&claim), HOST_HASH)
+                .expect_err("production host verifier accepted exact-wide scaffold flag");
+        ensure!(
+            production_host_error == aspis_core::VerifyError::BadHeader,
+            "seed {seed} production host rejection drifted: {production_host_error:?}"
+        );
+
+        let unique = layer0_unique_fibers(&proof)?;
+        let proof_account = Keypair::new();
+        upload_proof(&rpc, &payer, &proof_account, &proof, true)?;
+        let (observed_cu_or_cap, simulation_error) = simulate_claim(
+            &rpc,
+            &payer,
+            &proof_account.pubkey(),
+            statement_digest,
+            &claim,
+            true,
+        )?;
+        let accepted = simulation_error.is_none();
+        let exhausted = simulation_error
+            .as_deref()
+            .map(compute_budget_exhausted)
+            .unwrap_or(false);
+        ensure!(
+            accepted || exhausted,
+            "seed {seed} failed for a non-budget reason: {simulation_error:?}"
+        );
+        if exhausted {
+            ensure!(
+                observed_cu_or_cap == ABSOLUTE_EXECUTION_CAP_CU,
+                "seed {seed} budget failure reported {observed_cu_or_cap}, expected cap {ABSOLUTE_EXECUTION_CAP_CU}"
+            );
+        }
+        let required_lower_bound = exhausted.then_some(ABSOLUTE_EXECUTION_CAP_CU + 1);
+        let outcome_vs_1_190_000 = if accepted {
+            accepted_threshold_outcome(observed_cu_or_cap, STRICT_PROJECT_THRESHOLD_CU)
+        } else {
+            format!(
+                "compute meter exhausted at {ABSOLUTE_EXECUTION_CAP_CU} CU; requires at least {} CU, at least {} CU above the {STRICT_PROJECT_THRESHOLD_CU}-CU threshold",
+                ABSOLUTE_EXECUTION_CAP_CU + 1,
+                ABSOLUTE_EXECUTION_CAP_CU + 1 - STRICT_PROJECT_THRESHOLD_CU
+            )
+        };
+        let outcome_vs_1_400_000 = if accepted {
+            accepted_threshold_outcome(observed_cu_or_cap, ABSOLUTE_EXECUTION_CAP_CU)
+        } else {
+            format!(
+                "compute meter exhausted at {ABSOLUTE_EXECUTION_CAP_CU} CU; requires more than the execution cap (lower bound {} CU)",
+                ABSOLUTE_EXECUTION_CAP_CU + 1
+            )
+        };
+
+        measurements.push(ReconciledExactWideSeedMeasurement {
+            seed,
+            proof_bytes: proof.len(),
+            proof_sha256: hex(&HOST_HASH(&[&proof])),
+            layer0_unique_fibers: unique,
+            authenticated_c1_opening_bytes: usize::from(unique)
+                * aspis_core::proof::EXACT_WIDE_C1_FIBER_LEN,
+            authenticated_c2_opening_bytes: usize::from(unique)
+                * aspis_core::proof::SECOND_PHASE_LEAF_LEN_V4_S2,
+            diagnostic_host_accepted: true,
+            production_host_rejected_bad_header: true,
+            observed_cu_or_cap,
+            simulation_error: simulation_error.clone(),
+            accepted_at_1_400_000_limit: accepted,
+            compute_budget_exhausted: exhausted,
+            exact_cu_if_accepted: accepted.then_some(observed_cu_or_cap),
+            required_cu_lower_bound_if_exhausted: required_lower_bound,
+            signed_headroom_vs_1_190_000_if_accepted: accepted
+                .then_some(STRICT_PROJECT_THRESHOLD_CU as i64 - observed_cu_or_cap as i64),
+            signed_headroom_vs_1_400_000_if_accepted: accepted
+                .then_some(ABSOLUTE_EXECUTION_CAP_CU as i64 - observed_cu_or_cap as i64),
+            minimum_breach_vs_1_190_000_if_exhausted: required_lower_bound
+                .map(|lower| lower - STRICT_PROJECT_THRESHOLD_CU),
+            minimum_breach_vs_1_400_000_if_exhausted: required_lower_bound
+                .map(|lower| lower - ABSOLUTE_EXECUTION_CAP_CU),
+            outcome_vs_1_190_000,
+            outcome_vs_1_400_000,
+        });
+
+        if seed == 1 {
+            let (units, error) = simulate_claim(
+                &rpc,
+                &payer,
+                &proof_account.pubkey(),
+                statement_digest,
+                &claim,
+                false,
+            )?;
+            let error = error.context("production tag 6 unexpectedly accepted wide flag on SBF")?;
+            ensure!(
+                !compute_budget_exhausted(&error),
+                "production tag 6 reached the wide work instead of rejecting the flag"
+            );
+            production_tag6_seed1_sbf = Some((units, error));
+            seed1 = Some((statement_digest, claim, proof));
+        }
+
+        eprintln!(
+            "stage2-v4-exact-wide-reconciled: seed {seed}/{SEEDS} unique={unique} cu_or_cap={observed_cu_or_cap} accepted={accepted} exhausted={exhausted}"
+        );
+    }
+
+    let (corruption_digest, corruption_claim, proof) =
+        seed1.context("seed-1 exact-wide corruption source missing")?;
+    let c1_start = aspis_core::proof::first_layer_first_phase_opening_offset(&proof)
+        .context("locate seed-1 C1 opening")?;
+    let c2_start = aspis_core::proof::first_layer_second_phase_opening_offset(&proof)
+        .context("locate seed-1 C2 opening")?;
+    let mut corrupted_proofs = Vec::with_capacity(4);
+
+    let mut canonical_c1 = proof.clone();
+    let limb = u32::from_le_bytes(canonical_c1[c1_start..c1_start + 4].try_into().unwrap());
+    let changed = if limb + 1 == aspis_core::field::P {
+        0
+    } else {
+        limb + 1
+    };
+    canonical_c1[c1_start..c1_start + 4].copy_from_slice(&changed.to_le_bytes());
+    corrupted_proofs.push((
+        "first_c1_leaf",
+        "canonical_committed_mutation",
+        c1_start,
+        canonical_c1,
+    ));
+
+    let mut canonical_c2 = proof.clone();
+    let limb = u32::from_le_bytes(canonical_c2[c2_start..c2_start + 4].try_into().unwrap());
+    let changed = if limb + 1 == aspis_core::field::P {
+        0
+    } else {
+        limb + 1
+    };
+    canonical_c2[c2_start..c2_start + 4].copy_from_slice(&changed.to_le_bytes());
+    corrupted_proofs.push((
+        "first_c2_leaf",
+        "canonical_committed_mutation",
+        c2_start,
+        canonical_c2,
+    ));
+
+    let mut noncanonical_c1 = proof.clone();
+    noncanonical_c1[c1_start..c1_start + 4].copy_from_slice(&aspis_core::field::P.to_le_bytes());
+    corrupted_proofs.push((
+        "first_c1_limb",
+        "noncanonical_field_limb",
+        c1_start,
+        noncanonical_c1,
+    ));
+
+    let mut noncanonical_c2 = proof.clone();
+    noncanonical_c2[c2_start..c2_start + 4].copy_from_slice(&aspis_core::field::P.to_le_bytes());
+    corrupted_proofs.push((
+        "first_c2_limb",
+        "noncanonical_field_limb",
+        c2_start,
+        noncanonical_c2,
+    ));
+
+    let mut corruption_cases = Vec::with_capacity(corrupted_proofs.len());
+    for (target, kind, proof_byte_offset, corrupted) in corrupted_proofs {
+        let host_error = aspis_core::verify::verify_exact_wide_v4_scaffold_for_measurement(
+            &corrupted,
+            &corruption_digest,
+            Some(&corruption_claim),
+            HOST_HASH,
+        )
+        .expect_err("exact-wide corruption unexpectedly passed host verification");
+        if kind == "noncanonical_field_limb" {
+            ensure!(
+                host_error == aspis_core::VerifyError::NonCanonicalValue,
+                "{target} host rejection was not NonCanonicalValue: {host_error:?}"
+            );
+        }
+        let account = Keypair::new();
+        upload_proof(&rpc, &payer, &account, &corrupted, true)?;
+        let (_, sbf_error) = simulate_claim(
+            &rpc,
+            &payer,
+            &account.pubkey(),
+            corruption_digest,
+            &corruption_claim,
+            true,
+        )?;
+        let sbf_error = sbf_error.context("corruption unexpectedly passed on SBF")?;
+        let sbf_compute_budget_exhausted = compute_budget_exhausted(&sbf_error);
+        let sbf_rejection_conclusive = !sbf_compute_budget_exhausted;
+        if kind == "noncanonical_field_limb" {
+            ensure!(
+                sbf_rejection_conclusive,
+                "{target} hit the compute cap before its noncanonical check"
+            );
+        }
+        corruption_cases.push(ReconciledExactWideCorruptionCase {
+            target,
+            kind,
+            proof_byte_offset,
+            host_rejected: true,
+            host_error: format!("{host_error:?}"),
+            sbf_error,
+            sbf_compute_budget_exhausted,
+            sbf_rejection_conclusive,
+        });
+    }
+
+    let accepted_seed_count = measurements
+        .iter()
+        .filter(|row| row.accepted_at_1_400_000_limit)
+        .count();
+    let compute_budget_exhausted_seed_count = measurements
+        .iter()
+        .filter(|row| row.compute_budget_exhausted)
+        .count();
+    let accepted_units = measurements
+        .iter()
+        .filter_map(|row| row.exact_cu_if_accepted)
+        .collect::<Vec<_>>();
+    let exact_accepted_cu_mean = (!accepted_units.is_empty())
+        .then(|| accepted_units.iter().sum::<u64>() as f64 / accepted_units.len() as f64);
+    let threshold_1_190_000_observation = if compute_budget_exhausted_seed_count > 0 {
+        format!(
+            "{compute_budget_exhausted_seed_count}/{SEEDS} seeds exhausted the 1,400,000-CU meter; each therefore requires at least 1,400,001 CU, at least 210,001 CU above 1,190,000"
+        )
+    } else {
+        format!(
+            "all {SEEDS} seeds returned exact CU under the execution cap; see per-seed signed headroom versus 1,190,000"
+        )
+    };
+    let threshold_1_400_000_observation = if compute_budget_exhausted_seed_count > 0 {
+        format!(
+            "{compute_budget_exhausted_seed_count}/{SEEDS} seeds exhausted the 1,400,000-CU meter and have a per-seed required-CU lower bound of 1,400,001"
+        )
+    } else {
+        format!("all {SEEDS} seeds accepted at the 1,400,000-CU limit")
+    };
+    let (production_tag6_seed1_sbf_cu, production_tag6_seed1_sbf_error) =
+        production_tag6_seed1_sbf.context("seed-1 production tag-6 check missing")?;
+
+    Ok(ReconciledExactWideSummary {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command: "cargo run --release -p aspis-xtask -- stage2-v4-exact-wide-reconciled",
+        validator_version: validator_version(),
+        profile: profile.name,
+        statement_kind: "diagnostic exact-wide PCS scaffold: honest column 0, authenticated zero columns 1..48, two synthetic nonzero C2 helpers",
+        is_payment_proof: false,
+        diagnostic_verify_instruction_wire_ordinal: DIAGNOSTIC_WIRE_ORDINAL,
+        production_verify_with_claim_wire_ordinal: PRODUCTION_WIRE_ORDINAL,
+        production_verify_with_claim_accepts_wide_flag: false,
+        compute_unit_limit: VERIFY_CU_LIMIT,
+        heap_frame_bytes: HEAP_FRAME_BYTES,
+        strict_project_threshold_cu: STRICT_PROJECT_THRESHOLD_CU,
+        absolute_execution_cap_cu: ABSOLUTE_EXECUTION_CAP_CU,
+        transaction_envelope: "set_compute_unit_limit(1,400,000) + request_heap_frame(262,144) + diagnostic tag 22 exact-wide scaffold verifier",
+        merkle_mode: "radix4_minimal_subtree",
+        seeds: SEEDS,
+        c1_columns: aspis_core::proof::EXACT_WIDE_C1_COLUMNS,
+        c1_leaf_bytes: aspis_core::proof::EXACT_WIDE_C1_FIBER_LEN,
+        c2_columns: 2,
+        c2_leaf_bytes: aspis_core::proof::SECOND_PHASE_LEAF_LEN_V4_S2,
+        auxiliary_c1_columns: "columns 1..48 are committed zero columns; every canonical byte is authenticated, parsed and processed by the 49-lane kernel",
+        observed_cu_or_cap_min: measurements
+            .iter()
+            .map(|row| row.observed_cu_or_cap)
+            .min()
+            .context("empty exact-wide measurements")?,
+        observed_cu_or_cap_max: measurements
+            .iter()
+            .map(|row| row.observed_cu_or_cap)
+            .max()
+            .context("empty exact-wide measurements")?,
+        measurements,
+        accepted_seed_count,
+        compute_budget_exhausted_seed_count,
+        all_seed_outcomes_classified: accepted_seed_count + compute_budget_exhausted_seed_count
+            == SEEDS as usize,
+        exact_accepted_cu_mean,
+        threshold_1_190_000_observation,
+        threshold_1_400_000_observation,
+        production_tag6_seed1_sbf_rejected: true,
+        production_tag6_seed1_sbf_cu,
+        production_tag6_seed1_sbf_error,
+        canonical_mutations_rejected_host: corruption_cases
+            .iter()
+            .filter(|case| case.kind == "canonical_committed_mutation")
+            .all(|case| case.host_rejected),
+        noncanonical_limbs_rejected_host_and_sbf_conclusively: corruption_cases
+            .iter()
+            .filter(|case| case.kind == "noncanonical_field_limb")
+            .all(|case| case.host_rejected && case.sbf_rejection_conclusive),
+        corruption_cases,
+        owner_ruling_made: false,
+        overlap_replacement: vec![
+            "retained: v4/s2 transcript, relation sumchecks, query derivation, C2 authentication, deeper-layer Merkle/folds, final polynomial, and grinding".to_string(),
+            "removed in the flagged branch: scalar 32-byte C1 parse/hash plus C1 + gamma*C2[0] + gamma^2*C2[1] materialization".to_string(),
+            "inserted at the same layer-zero seam: 1,568-byte C1 authentication and once-prepared canonical-byte 49-CM31 + 2-QM31 combination at gamma powers 0..50".to_string(),
+            "no CU total from v4_s2_pcs_scaffold_g16.json or exact_wide_v4_diagnostic.json is arithmetically added to this measurement".to_string(),
+        ],
+        excluded_work: vec![
+            "the second statement point and all 102 pre-gamma C1/C2 evaluation values".to_string(),
+            "randomized ConstraintId registry, payment constraint composition, and LogUp payment semantics".to_string(),
+            "masking/hiding, pool/nullifier/output transition, and proof-account sealing".to_string(),
+            "final q36/g32 grinding profile; this uses the registered q36/g16 variance population".to_string(),
+            "the pending M31-column alternative; this artifact measures only the reviewed 49-CM31 basis".to_string(),
+        ],
+        notes: vec![
+            "This is a reconciled in-place PCS-scaffold measurement, not a full payment integration and not a product/architecture ruling.".to_string(),
+            "Production VerifyWithClaim tag 6 rejects FLAG_EXACT_WIDE_C1 with BadHeader. Append-only diagnostic tag 22 is the only SBF dispatch that enables the scaffold until final 102-value semantics land.".to_string(),
+            "Proof generation and proof-account upload occur outside the measured transaction. Every measured simulation uses the same 1,400,000-CU limit and 262,144-byte heap request.".to_string(),
+            "A compute-budget failure reports the exact 1,400,000-CU meter observation and a required-CU lower bound of 1,400,001; it does not invent an exact total above the cap.".to_string(),
+            "Canonical committed-leaf mutations are conclusive on host; when SBF reaches the cap before Merkle rejection, the case is labeled non-conclusive rather than credited. Noncanonical C1/C2 limbs must reject conclusively on both host and SBF.".to_string(),
+        ],
+    })
+}
+
+/// Decision-packet-only arithmetic and first-fold controls for the alternative
+/// M31-valued circle-polynomial basis. This does not reinterpret an Aspis
+/// proof or select a protocol architecture.
+pub fn run_stage2_m31_circle_basis_probe() -> Result<M31CircleBasisSummary> {
+    use aspis_core::field::{
+        m31_batch_inverse, qm31_circle_to_line_fold4, qm31_m31_dot, qm31_m31_dot4,
+        qm31_m31_dot4_prepared_bytes, qm31_power_table, CM31, M31, P, QM31,
+    };
+    use aspis_core::verify::{domain_point, layer_geometry};
+
+    const REPETITIONS: usize = 5;
+    const STRICT_TARGET: i64 = 1_190_000;
+    const ABSOLUTE_CAP: i64 = 1_400_000;
+    const GAMMA_BYTES: usize = 16;
+    const RLC_FIBER_BYTES: usize = M31_CIRCLE_BASIS_C1_LEAF_BYTES + M31_CIRCLE_BASIS_C2_LEAF_BYTES;
+    const FOLD_RECORD_BYTES: usize = 2 + 4 * 4 + 4 * 16;
+    const SEED: u64 = 0x4d33_3143_4952_434c;
+
+    fn next_m31(state: &mut u64) -> M31 {
+        *state ^= *state >> 12;
+        *state ^= *state << 25;
+        *state ^= *state >> 27;
+        M31((state.wrapping_mul(0x2545_f491_4f6c_dd1d) as u32) % P)
+    }
+
+    fn next_qm31(state: &mut u64) -> QM31 {
+        QM31 {
+            c0: aspis_core::field::CM31::new(next_m31(state), next_m31(state)),
+            c1: aspis_core::field::CM31::new(next_m31(state), next_m31(state)),
+        }
+    }
+
+    fn hex(bytes: &[u8]) -> String {
+        bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+    }
+
+    fn build_rlc_fixture(mut state: u64) -> Vec<u8> {
+        let gamma = next_qm31(&mut state);
+        let mut fixture = vec![0u8; M31_CIRCLE_BASIS_RLC_FIXTURE_BYTES];
+        gamma.write_le_bytes(&mut fixture[..GAMMA_BYTES]);
+        for fiber in 0..M31_CIRCLE_BASIS_DIAGNOSTIC_FIBERS {
+            let start = GAMMA_BYTES + fiber * RLC_FIBER_BYTES;
+            for value in fixture[start..start + M31_CIRCLE_BASIS_C1_LEAF_BYTES].chunks_exact_mut(4)
+            {
+                value.copy_from_slice(&next_m31(&mut state).to_le_bytes());
+            }
+            let c2_start = start + M31_CIRCLE_BASIS_C1_LEAF_BYTES;
+            for value in
+                fixture[c2_start..c2_start + M31_CIRCLE_BASIS_C2_LEAF_BYTES].chunks_exact_mut(16)
+            {
+                next_qm31(&mut state).write_le_bytes(value);
+            }
+        }
+        fixture
+    }
+
+    fn host_rlc_sink(fixture: &[u8], mode: M31CircleBasisDiagnosticMode) -> Result<[u8; 32]> {
+        ensure!(
+            fixture.len() == M31_CIRCLE_BASIS_RLC_FIXTURE_BYTES,
+            "bad M31 RLC fixture length"
+        );
+        let gamma = QM31::from_le_bytes(&fixture[..GAMMA_BYTES]).context("M31 gamma")?;
+        let powers = qm31_power_table::<51>(gamma);
+        let weights: &[QM31; M31_CIRCLE_BASIS_C1_COLUMNS] =
+            powers[..M31_CIRCLE_BASIS_C1_COLUMNS].try_into().unwrap();
+        let mut decoded = vec![M31::ZERO; 4 * M31_CIRCLE_BASIS_C1_COLUMNS];
+        let mut streaming = [M31::ZERO; M31_CIRCLE_BASIS_C1_COLUMNS];
+        let mut accumulator = [QM31::ZERO; 4];
+        for fiber in 0..M31_CIRCLE_BASIS_DIAGNOSTIC_FIBERS {
+            let start = GAMMA_BYTES + fiber * RLC_FIBER_BYTES;
+            let c2_start = start + M31_CIRCLE_BASIS_C1_LEAF_BYTES;
+            let c1 = &fixture[start..c2_start];
+            for (index, bytes) in c1.chunks_exact(4).enumerate() {
+                decoded[index] =
+                    M31::from_le_bytes(bytes.try_into().unwrap()).context("noncanonical M31 C1")?;
+            }
+            let typed = [
+                &decoded[0..49],
+                &decoded[49..98],
+                &decoded[98..147],
+                &decoded[147..196],
+            ];
+            let reference = core::array::from_fn(|slot| qm31_m31_dot(weights, typed[slot]));
+            let four_slot = qm31_m31_dot4(weights, typed);
+            ensure!(reference == four_slot, "typed M31 dot4 differential failed");
+            let mut combined = match mode {
+                M31CircleBasisDiagnosticMode::RlcStructuredFourDots => reference,
+                M31CircleBasisDiagnosticMode::RlcFusedCanonicalBytes => {
+                    qm31_m31_dot4_prepared_bytes(weights, c1).context("canonical-byte M31 dot4")?
+                }
+                M31CircleBasisDiagnosticMode::RlcDecodedFusedDot4 => four_slot,
+                M31CircleBasisDiagnosticMode::RlcStreamingFourDots => {
+                    let mut result = [QM31::ZERO; 4];
+                    let slot_bytes = M31_CIRCLE_BASIS_C1_COLUMNS * 4;
+                    for (slot, result_slot) in result.iter_mut().enumerate() {
+                        for (index, bytes) in c1[slot * slot_bytes..(slot + 1) * slot_bytes]
+                            .chunks_exact(4)
+                            .enumerate()
+                        {
+                            streaming[index] = M31::from_le_bytes(bytes.try_into().unwrap())
+                                .context("noncanonical streaming M31 C1")?;
+                        }
+                        *result_slot = qm31_m31_dot(weights, &streaming);
+                    }
+                    result
+                }
+                _ => bail!("non-RLC mode passed to host M31 RLC sink"),
+            };
+            ensure!(combined == reference, "M31 RLC mode differential failed");
+            let c2 = &fixture[c2_start..c2_start + M31_CIRCLE_BASIS_C2_LEAF_BYTES];
+            for helper in 0..2 {
+                for (slot, combined_slot) in combined.iter_mut().enumerate() {
+                    let offset = (helper * 4 + slot) * 16;
+                    let helper_value = QM31::from_le_bytes(&c2[offset..offset + 16])
+                        .context("noncanonical QM31 C2")?;
+                    *combined_slot = combined_slot.add(powers[49 + helper].mul(helper_value));
+                }
+            }
+            for slot in 0..4 {
+                accumulator[slot] = accumulator[slot].add(combined[slot]);
+            }
+        }
+        let mut encoded = [0u8; 64];
+        for (slot, value) in accumulator.iter().enumerate() {
+            value.write_le_bytes(&mut encoded[slot * 16..(slot + 1) * 16]);
+        }
+        Ok(HOST_HASH(&[
+            b"aspis-m31-circle-basis-rlc-shape-v1",
+            &encoded,
+        ]))
+    }
+
+    fn build_fold_fixture(mut state: u64) -> Result<(Vec<u8>, [u8; 32])> {
+        let alpha = next_qm31(&mut state);
+        let geometry = layer_geometry(&PROFILE_CAPACITY_LR10_Q36_G16, 0);
+        let mut fixture = vec![0u8; M31_CIRCLE_FOLD_FIXTURE_BYTES];
+        alpha.write_le_bytes(&mut fixture[..16]);
+        let mut reference = QM31::ZERO;
+        for fiber in 0..M31_CIRCLE_BASIS_DIAGNOSTIC_FIBERS {
+            let index = fiber as u16;
+            let point = domain_point(&geometry, u32::from(index));
+            ensure!(point.a != M31::ZERO && point.b != M31::ZERO);
+            let coefficients = core::array::from_fn::<_, 4, _>(|_| next_qm31(&mut state));
+            let evaluate = |x: M31, y: M31| {
+                coefficients[0]
+                    .add(coefficients[1].mul_m31(y))
+                    .add(coefficients[2].mul_m31(x))
+                    .add(coefficients[3].mul_m31(x.mul(y)))
+            };
+            let minus_x = M31::ZERO.sub(point.a);
+            let minus_y = M31::ZERO.sub(point.b);
+            let values = [
+                evaluate(point.a, point.b),
+                evaluate(point.a, minus_y),
+                evaluate(minus_x, minus_y),
+                evaluate(minus_x, point.b),
+            ];
+            let expected = coefficients[0]
+                .add(alpha.mul(coefficients[1]))
+                .add(alpha.square().mul(coefficients[2]))
+                .add(alpha.square().mul(alpha).mul(coefficients[3]));
+            ensure!(
+                qm31_circle_to_line_fold4(
+                    values,
+                    alpha,
+                    point.a.double().inv(),
+                    point.b.double().inv(),
+                ) == expected,
+                "circle-fold cubic differential failed"
+            );
+            reference = reference.add(expected);
+            let start = 16 + fiber * FOLD_RECORD_BYTES;
+            fixture[start..start + 2].copy_from_slice(&index.to_le_bytes());
+            fixture[start + 2..start + 6].copy_from_slice(&point.a.to_le_bytes());
+            fixture[start + 6..start + 10].copy_from_slice(&point.b.to_le_bytes());
+            fixture[start + 10..start + 14].copy_from_slice(&point.a.inv().to_le_bytes());
+            fixture[start + 14..start + 18].copy_from_slice(&point.b.inv().to_le_bytes());
+            for (slot, value) in values.iter().enumerate() {
+                value.write_le_bytes(&mut fixture[start + 18 + slot * 16..][..16]);
+            }
+        }
+        let mut encoded = [0u8; 16];
+        reference.write_le_bytes(&mut encoded);
+        Ok((
+            fixture,
+            HOST_HASH(&[b"aspis-m31-circle-basis-fold-control-v1", &encoded]),
+        ))
+    }
+
+    fn host_fold_sink(
+        fixture: &[u8],
+        derive_coordinates: bool,
+        batch_invert: bool,
+    ) -> Result<[u8; 32]> {
+        ensure!(fixture.len() == M31_CIRCLE_FOLD_FIXTURE_BYTES);
+        let alpha = QM31::from_le_bytes(&fixture[..16]).context("fold alpha")?;
+        let geometry = layer_geometry(&PROFILE_CAPACITY_LR10_Q36_G16, 0);
+        let mut omega_powers = [CM31::ONE; aspis_core::params::CIRCLE_LOG_ORDER as usize];
+        omega_powers[0] = geometry.omega;
+        for bit in 1..omega_powers.len() {
+            omega_powers[bit] = omega_powers[bit - 1].square();
+        }
+        let cached_point = |mut index: u32| {
+            let mut point = geometry.offset;
+            let mut bit = 0usize;
+            while index != 0 {
+                if index & 1 != 0 {
+                    point = point.mul(omega_powers[bit]);
+                }
+                index >>= 1;
+                bit += 1;
+            }
+            point
+        };
+        let mut coords = vec![M31::ZERO; 2 * M31_CIRCLE_BASIS_DIAGNOSTIC_FIBERS];
+        let mut inverses = vec![M31::ZERO; 2 * M31_CIRCLE_BASIS_DIAGNOSTIC_FIBERS];
+        let mut all_values = vec![[QM31::ZERO; 4]; M31_CIRCLE_BASIS_DIAGNOSTIC_FIBERS];
+        let mut previous = None;
+        for fiber in 0..M31_CIRCLE_BASIS_DIAGNOSTIC_FIBERS {
+            let start = 16 + fiber * FOLD_RECORD_BYTES;
+            let index = u16::from_le_bytes(fixture[start..start + 2].try_into().unwrap());
+            ensure!(previous.is_none_or(|value| index > value));
+            previous = Some(index);
+            let x = M31::from_le_bytes(fixture[start + 2..start + 6].try_into().unwrap())
+                .context("fold x")?;
+            let y = M31::from_le_bytes(fixture[start + 6..start + 10].try_into().unwrap())
+                .context("fold y")?;
+            if derive_coordinates {
+                let point = cached_point(u32::from(index));
+                ensure!(point.a == x && point.b == y && x != M31::ZERO && y != M31::ZERO);
+                coords[2 * fiber] = x;
+                coords[2 * fiber + 1] = y;
+            }
+            if !batch_invert {
+                let inv_x = M31::from_le_bytes(fixture[start + 10..start + 14].try_into().unwrap())
+                    .context("fold inv x")?;
+                let inv_y = M31::from_le_bytes(fixture[start + 14..start + 18].try_into().unwrap())
+                    .context("fold inv y")?;
+                inverses[2 * fiber] = inv_x;
+                inverses[2 * fiber + 1] = inv_y;
+            }
+            for slot in 0..4 {
+                all_values[fiber][slot] = QM31::from_le_bytes(
+                    &fixture[start + 18 + slot * 16..start + 18 + (slot + 1) * 16],
+                )
+                .context("fold value")?;
+            }
+        }
+        if batch_invert {
+            m31_batch_inverse(&coords, &mut inverses);
+        }
+        let mut accumulator = QM31::ZERO;
+        for fiber in 0..M31_CIRCLE_BASIS_DIAGNOSTIC_FIBERS {
+            accumulator = accumulator.add(qm31_circle_to_line_fold4(
+                all_values[fiber],
+                alpha,
+                inverses[2 * fiber].half(),
+                inverses[2 * fiber + 1].half(),
+            ));
+        }
+        let mut encoded = [0u8; 16];
+        accumulator.write_le_bytes(&mut encoded);
+        Ok(HOST_HASH(&[
+            b"aspis-m31-circle-basis-fold-control-v1",
+            &encoded,
+        ]))
+    }
+
+    fn mean(values: &[u64]) -> f64 {
+        values.iter().sum::<u64>() as f64 / values.len() as f64
+    }
+
+    let rlc_fixture = build_rlc_fixture(SEED);
+    let structured_sink = host_rlc_sink(
+        &rlc_fixture,
+        M31CircleBasisDiagnosticMode::RlcStructuredFourDots,
+    )?;
+    let fused_sink = host_rlc_sink(
+        &rlc_fixture,
+        M31CircleBasisDiagnosticMode::RlcFusedCanonicalBytes,
+    )?;
+    let decoded_fused_sink = host_rlc_sink(
+        &rlc_fixture,
+        M31CircleBasisDiagnosticMode::RlcDecodedFusedDot4,
+    )?;
+    let streaming_sink = host_rlc_sink(
+        &rlc_fixture,
+        M31CircleBasisDiagnosticMode::RlcStreamingFourDots,
+    )?;
+    ensure!(structured_sink == fused_sink);
+    ensure!(structured_sink == decoded_fused_sink);
+    ensure!(structured_sink == streaming_sink);
+    let empty_leaf_sink = aspis_core::merkle::leaf_hash(HOST_HASH, 0, &[]);
+    let c1_leaf_sink = aspis_core::merkle::leaf_hash(
+        HOST_HASH,
+        0,
+        &rlc_fixture[GAMMA_BYTES..GAMMA_BYTES + M31_CIRCLE_BASIS_C1_LEAF_BYTES],
+    );
+    let (fold_fixture, fold_reference_sink) = build_fold_fixture(SEED ^ 0x464f_4c44)?;
+    let fold_prevalidated_sink = host_fold_sink(&fold_fixture, false, false)?;
+    let fold_cached_sink = host_fold_sink(&fold_fixture, true, false)?;
+    let fold_derived_sink = host_fold_sink(&fold_fixture, true, true)?;
+    ensure!(fold_reference_sink == fold_prevalidated_sink);
+    ensure!(fold_prevalidated_sink == fold_cached_sink);
+    ensure!(fold_prevalidated_sink == fold_derived_sink);
+
+    let root = workspace_root()?;
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), 30 * LAMPORTS_PER_SOL)?;
+    let rlc_account = Keypair::new();
+    upload_proof(&rpc, &payer, &rlc_account, &rlc_fixture, true)?;
+    let fold_account = Keypair::new();
+    upload_proof(&rpc, &payer, &fold_account, &fold_fixture, true)?;
+
+    let run_mode = |account: &Pubkey,
+                    mode: M31CircleBasisDiagnosticMode,
+                    sink: [u8; 32]|
+     -> Result<(Vec<u64>, Vec<Option<String>>)> {
+        let mut units = Vec::with_capacity(REPETITIONS);
+        let mut errors = Vec::with_capacity(REPETITIONS);
+        for _ in 0..REPETITIONS {
+            let instruction = proof_instruction(
+                &payer.pubkey(),
+                account,
+                &AspisInstruction::M31CircleBasisDiagnostic {
+                    mode,
+                    expected_sink: sink,
+                },
+            )?;
+            let transaction = Transaction::new_signed_with_payer(
+                &[
+                    ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+                    ComputeBudgetInstruction::request_heap_frame(HEAP_FRAME_BYTES),
+                    instruction,
+                ],
+                Some(&payer.pubkey()),
+                &[&payer],
+                rpc.latest_blockhash()?,
+            );
+            let (observed, error) = rpc.simulate(&transaction)?;
+            units.push(observed.context("M31 diagnostic did not report CU")?);
+            errors.push(error);
+        }
+        Ok((units, errors))
+    };
+
+    let mode_specs = [
+        (
+            "rlc_structured_four_independent_qm31_m31_dot",
+            &rlc_account,
+            M31CircleBasisDiagnosticMode::RlcStructuredFourDots,
+            structured_sink,
+        ),
+        (
+            "rlc_fused_canonical_bytes_qm31_m31_dot4",
+            &rlc_account,
+            M31CircleBasisDiagnosticMode::RlcFusedCanonicalBytes,
+            fused_sink,
+        ),
+        (
+            "empty_leaf_hash_control",
+            &rlc_account,
+            M31CircleBasisDiagnosticMode::EmptyLeafHashControl,
+            empty_leaf_sink,
+        ),
+        (
+            "c1_leaf_hash_784_bytes",
+            &rlc_account,
+            M31CircleBasisDiagnosticMode::C1LeafHash784,
+            c1_leaf_sink,
+        ),
+        (
+            "fold_prevalidated_coordinates_control",
+            &fold_account,
+            M31CircleBasisDiagnosticMode::FoldPrevalidatedCoordinates,
+            fold_prevalidated_sink,
+        ),
+        (
+            "fold_cached_coordinates_prevalidated_inverses_control",
+            &fold_account,
+            M31CircleBasisDiagnosticMode::FoldCachedCoordinatesPrevalidatedInverses,
+            fold_cached_sink,
+        ),
+        (
+            "fold_cached_coordinates_batch_inverse_syscall",
+            &fold_account,
+            M31CircleBasisDiagnosticMode::FoldDerivedCoordinatesBatchInverse,
+            fold_derived_sink,
+        ),
+        (
+            "rlc_decoded_then_typed_fused_qm31_m31_dot4",
+            &rlc_account,
+            M31CircleBasisDiagnosticMode::RlcDecodedFusedDot4,
+            decoded_fused_sink,
+        ),
+        (
+            "rlc_streaming_one_slot_four_independent_qm31_m31_dot",
+            &rlc_account,
+            M31CircleBasisDiagnosticMode::RlcStreamingFourDots,
+            streaming_sink,
+        ),
+    ];
+    let mut variants = Vec::with_capacity(mode_specs.len());
+    for (name, account, mode, sink) in mode_specs {
+        let (simulation_cu, errors) = run_mode(&account.pubkey(), mode, sink)?;
+        ensure!(
+            errors.iter().all(Option::is_none),
+            "{name} failed: {errors:?}"
+        );
+        let simulation_cu_mean = mean(&simulation_cu);
+        variants.push(M31CircleBasisVariant {
+            mode: name,
+            expected_host_sink_hex: hex(&sink),
+            accepted_all: true,
+            simulation_cu,
+            simulation_cu_mean,
+            signed_headroom_vs_1_190_000_cu: STRICT_TARGET - simulation_cu_mean.round() as i64,
+            signed_headroom_vs_1_400_000_cu: ABSOLUTE_CAP - simulation_cu_mean.round() as i64,
+        });
+    }
+
+    let mut corruptions = Vec::new();
+    let mut noncanonical_c1 = rlc_fixture.clone();
+    noncanonical_c1[GAMMA_BYTES..GAMMA_BYTES + 4].copy_from_slice(&P.to_le_bytes());
+    let noncanonical_c1_decoded_fused = noncanonical_c1.clone();
+    let noncanonical_c1_streaming = noncanonical_c1.clone();
+    let mut noncanonical_c2 = rlc_fixture.clone();
+    let c2_offset = GAMMA_BYTES + M31_CIRCLE_BASIS_C1_LEAF_BYTES;
+    noncanonical_c2[c2_offset..c2_offset + 4].copy_from_slice(&P.to_le_bytes());
+    let mut wrong_coordinate = fold_fixture.clone();
+    let coordinate_offset = 16 + 2;
+    let coordinate = u32::from_le_bytes(
+        wrong_coordinate[coordinate_offset..coordinate_offset + 4]
+            .try_into()
+            .unwrap(),
+    );
+    wrong_coordinate[coordinate_offset..coordinate_offset + 4]
+        .copy_from_slice(&((coordinate + 1) % P).to_le_bytes());
+    let mut wrong_slot_order = fold_fixture.clone();
+    let slot_start = 16 + 18;
+    for byte in 0..16 {
+        wrong_slot_order.swap(slot_start + byte, slot_start + 16 + byte);
+    }
+
+    let corruption_specs = [
+        (
+            "noncanonical_c1_m31",
+            "rlc",
+            GAMMA_BYTES,
+            noncanonical_c1,
+            M31CircleBasisDiagnosticMode::RlcFusedCanonicalBytes,
+            fused_sink,
+        ),
+        (
+            "noncanonical_c2_qm31",
+            "rlc",
+            c2_offset,
+            noncanonical_c2,
+            M31CircleBasisDiagnosticMode::RlcFusedCanonicalBytes,
+            fused_sink,
+        ),
+        (
+            "mutated_domain_coordinate",
+            "fold",
+            coordinate_offset,
+            wrong_coordinate,
+            M31CircleBasisDiagnosticMode::FoldDerivedCoordinatesBatchInverse,
+            fold_derived_sink,
+        ),
+        (
+            "wrong_four_slot_order",
+            "fold",
+            slot_start,
+            wrong_slot_order,
+            M31CircleBasisDiagnosticMode::FoldDerivedCoordinatesBatchInverse,
+            fold_derived_sink,
+        ),
+        (
+            "noncanonical_c1_m31_decoded_fused",
+            "rlc",
+            GAMMA_BYTES,
+            noncanonical_c1_decoded_fused,
+            M31CircleBasisDiagnosticMode::RlcDecodedFusedDot4,
+            decoded_fused_sink,
+        ),
+        (
+            "noncanonical_c1_m31_streaming",
+            "rlc",
+            GAMMA_BYTES,
+            noncanonical_c1_streaming,
+            M31CircleBasisDiagnosticMode::RlcStreamingFourDots,
+            streaming_sink,
+        ),
+    ];
+    for (target, fixture_name, offset, corrupted, mode, expected) in corruption_specs {
+        let host_rejected = match fixture_name {
+            "rlc" => host_rlc_sink(&corrupted, mode).map_or(true, |sink| sink != expected),
+            "fold" => host_fold_sink(&corrupted, true, true).map_or(true, |sink| sink != expected),
+            _ => unreachable!(),
+        };
+        ensure!(host_rejected, "{target} lacked host teeth");
+        let account = Keypair::new();
+        upload_proof(&rpc, &payer, &account, &corrupted, true)?;
+        let (_, errors) = run_mode(&account.pubkey(), mode, expected)?;
+        let sbf_rejected = errors.iter().all(Option::is_some);
+        ensure!(sbf_rejected, "{target} accepted on SBF");
+        corruptions.push(M31CircleBasisCorruptionCase {
+            target,
+            fixture: fixture_name,
+            fixture_byte_offset: offset,
+            host_rejected,
+            sbf_rejected,
+            sbf_error: errors.into_iter().flatten().next().unwrap(),
+        });
+    }
+
+    let structured = variants[0].simulation_cu_mean;
+    let fused = variants[1].simulation_cu_mean;
+    let empty_leaf = variants[2].simulation_cu_mean;
+    let c1_leaf = variants[3].simulation_cu_mean;
+    let fold_control = variants[4].simulation_cu_mean;
+    let fold_cached = variants[5].simulation_cu_mean;
+    let fold_derived = variants[6].simulation_cu_mean;
+    let decoded_fused = variants[7].simulation_cu_mean;
+    let streaming = variants[8].simulation_cu_mean;
+    let winning_rlc_variant = variants
+        .iter()
+        .filter(|variant| variant.mode.starts_with("rlc_"))
+        .min_by(|left, right| left.simulation_cu_mean.total_cmp(&right.simulation_cu_mean))
+        .context("missing M31 RLC variant")?;
+    let winning_rlc_mode = winning_rlc_variant.mode;
+    let winning_rlc_cu_mean = winning_rlc_variant.simulation_cu_mean;
+    Ok(M31CircleBasisSummary {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command: "cargo run --release -p aspis-xtask -- stage2-m31-circle-basis-probe",
+        validator_version: validator_version(),
+        status: "decision_packet_only_provisional_shape_probe",
+        diagnostic_instruction_wire_ordinal: 23,
+        repetitions: REPETITIONS,
+        compute_unit_limit: VERIFY_CU_LIMIT,
+        heap_frame_bytes: HEAP_FRAME_BYTES,
+        transaction_envelope: "set_compute_unit_limit(1,400,000) + request_heap_frame(262,144) + diagnostic tag 23",
+        structural_fibers: M31_CIRCLE_BASIS_DIAGNOSTIC_FIBERS,
+        c1_field: "M31 candidate circle-polynomial code symbols",
+        c1_columns: M31_CIRCLE_BASIS_C1_COLUMNS,
+        c1_leaf_bytes: M31_CIRCLE_BASIS_C1_LEAF_BYTES,
+        c2_field: "QM31 helpers, unchanged shape",
+        c2_columns: 2,
+        c2_leaf_bytes: M31_CIRCLE_BASIS_C2_LEAF_BYTES,
+        gamma_powers: "0..50 prepared exactly once per measured instruction; helpers use 49 and 50",
+        rlc_fixture_bytes: M31_CIRCLE_BASIS_RLC_FIXTURE_BYTES,
+        fold_fixture_bytes: M31_CIRCLE_FOLD_FIXTURE_BYTES,
+        host_structured_equals_fused: true,
+        host_all_rlc_modes_equal: true,
+        host_normalized_fold_matches_cubic_reference: true,
+        variants,
+        fused_rlc_savings_cu: (structured - fused).round() as i64,
+        fused_rlc_savings_percent: (structured - fused) / structured * 100.0,
+        decoded_fused_rlc_savings_vs_structured_cu: (structured - decoded_fused).round() as i64,
+        decoded_fused_rlc_savings_vs_structured_percent: (structured - decoded_fused) / structured
+            * 100.0,
+        streaming_rlc_savings_vs_structured_cu: (structured - streaming).round() as i64,
+        streaming_rlc_savings_vs_structured_percent: (structured - streaming) / structured * 100.0,
+        winning_rlc_mode,
+        winning_rlc_cu_mean,
+        winning_rlc_savings_vs_structured_cu: (structured - winning_rlc_cu_mean).round() as i64,
+        winning_rlc_savings_vs_structured_percent: (structured - winning_rlc_cu_mean) / structured
+            * 100.0,
+        c1_leaf_hash_incremental_over_empty_cu: (c1_leaf - empty_leaf).round() as i64,
+        fold_cached_coordinate_derivation_increment_cu: (fold_cached - fold_control).round() as i64,
+        fold_batch_inverse_syscall_increment_cu: (fold_derived - fold_cached).round() as i64,
+        fold_coordinate_and_batch_inverse_increment_cu: (fold_derived - fold_control).round() as i64,
+        fold_batch_inverse_backend: "one sol_big_mod_exp M31 inverse for 72 denominators, with Montgomery prefix/suffix products; host differential uses software M31::inv",
+        all_corruptions_rejected: corruptions
+            .iter()
+            .all(|case| case.host_rejected && case.sbf_rejected),
+        corruption_cases: corruptions,
+        current_aspis_serialization: false,
+        genuine_circle_pcs_integration_implemented: false,
+        protocol_or_architecture_ruling_made: false,
+        included_work: vec![
+            "RLC control: 36 structural fibers, 4x49 canonical M31 C1 values, 2x4 canonical QM31 C2 helpers, and gamma powers 0..50 prepared once".to_string(),
+            "fold control: normalized circle-to-line then line fold over 36 already-combined four-QM31 fibers".to_string(),
+            "bookable fold row includes public-domain coordinate derivation and one 72-element M31 batch inversion; the prevalidated row is a separately labeled control".to_string(),
+            "append-only RLC separation rows isolate canonical decode plus typed dot4 from a one-slot fixed-buffer streaming decode plus four independent dots".to_string(),
+        ],
+        excluded_work: vec![
+            "no current Aspis proof parsing, serialization, root, Merkle frontier, or authentication".to_string(),
+            "no circle FFT encoder, bit-reversed trace-to-codeword conformance, query sampling, or later line-FRI layers".to_string(),
+            "no OOD relation, statement sumcheck, final polynomial, payment constraints, hiding, pool transition, or proof-account sealing".to_string(),
+            "RLC and fold rows are disjoint controls and must not be added as an integrated-v4 total".to_string(),
+        ],
+        notes: vec![
+            "M31 C1 is valid only under a genuine circle-polynomial PCS; dropping the imaginary CM31 limb from the current ordinary-univariate Aspis PCS would be unsound".to_string(),
+            "The fold slot order is (x,y),(x,-y),(-x,-y),(-x,y); normalization is mechanically checked against c0+alpha*c1+alpha^2*c2+alpha^3*c3".to_string(),
+            "This artifact supplies costs and headrooms to a decision packet. It adopts neither a one-transaction M31 architecture nor a split architecture and changes no production verifier".to_string(),
+            "The legacy fused_rlc_savings fields compare the original canonical-byte fused row with the original structured row; the explicitly named decoded-fused, streaming, and winner fields carry the reopened separation result".to_string(),
+        ],
+    })
+}
+
+/// Account-backed measurement of the exact candidate v4 layer-zero width.
+/// Fixture generation and upload happen before every measured simulation.
+pub fn run_stage2_exact_wide_v4_diagnostic() -> Result<ExactWideV4DiagnosticSummary> {
+    use aspis_core::field::{qm31_power_table, CM31, M31, P, QM31};
+    use aspis_statement::wide_v4::{
+        ExactWideFiber, C1_COLUMNS, C1_FIBER_BYTES, C2_COLUMNS, C2_FIBER_BYTES, FIBER_SLOTS,
+        TOTAL_COLUMNS,
+    };
+
+    const REPETITIONS: usize = 5;
+    const FIXTURE_SEED: u64 = 0x4558_4143_5457_5634;
+    const GAMMA_BYTES: usize = 16;
+    const FIXTURE_BYTES: usize = GAMMA_BYTES + C1_FIBER_BYTES + C2_FIBER_BYTES;
+
+    fn next_m31(state: &mut u64) -> M31 {
+        *state ^= *state >> 12;
+        *state ^= *state << 25;
+        *state ^= *state >> 27;
+        M31((state.wrapping_mul(0x2545_f491_4f6c_dd1d) as u32) % P)
+    }
+
+    fn next_cm31(state: &mut u64) -> CM31 {
+        CM31::new(next_m31(state), next_m31(state))
+    }
+
+    fn next_qm31(state: &mut u64) -> QM31 {
+        QM31 {
+            c0: next_cm31(state),
+            c1: next_cm31(state),
+        }
+    }
+
+    fn build_fixture(seed: u64) -> (Vec<u8>, QM31, ExactWideFiber) {
+        let mut state = seed;
+        let gamma = next_qm31(&mut state);
+        let fiber = ExactWideFiber {
+            c1: core::array::from_fn(|_| core::array::from_fn(|_| next_cm31(&mut state))),
+            c2: core::array::from_fn(|_| core::array::from_fn(|_| next_qm31(&mut state))),
+        };
+        let mut encoded = vec![0u8; FIXTURE_BYTES];
+        gamma.write_le_bytes(&mut encoded[..GAMMA_BYTES]);
+        let c1_start = GAMMA_BYTES;
+        for slot in 0..FIBER_SLOTS {
+            for column in 0..C1_COLUMNS {
+                let offset = c1_start + (slot * C1_COLUMNS + column) * 8;
+                fiber.c1[slot][column].write_le_bytes(&mut encoded[offset..offset + 8]);
+            }
+        }
+        // Canonical v4 C2 wire order is helper-major, while the arithmetic
+        // seam is slot-major.
+        let c2_start = c1_start + C1_FIBER_BYTES;
+        for helper in 0..C2_COLUMNS {
+            for slot in 0..FIBER_SLOTS {
+                let offset = c2_start + (helper * FIBER_SLOTS + slot) * 16;
+                fiber.c2[slot][helper].write_le_bytes(&mut encoded[offset..offset + 16]);
+            }
+        }
+        (encoded, gamma, fiber)
+    }
+
+    fn build_batch_fixture(seed: u64, fibers: usize) -> (Vec<u8>, QM31, Vec<ExactWideFiber>) {
+        let mut state = seed;
+        let gamma = next_qm31(&mut state);
+        let values = (0..fibers)
+            .map(|_| ExactWideFiber {
+                c1: core::array::from_fn(|_| core::array::from_fn(|_| next_cm31(&mut state))),
+                c2: core::array::from_fn(|_| core::array::from_fn(|_| next_qm31(&mut state))),
+            })
+            .collect::<Vec<_>>();
+        let fiber_bytes = C1_FIBER_BYTES + C2_FIBER_BYTES;
+        let mut encoded = vec![0u8; GAMMA_BYTES + fibers * fiber_bytes];
+        gamma.write_le_bytes(&mut encoded[..GAMMA_BYTES]);
+        for (index, fiber) in values.iter().enumerate() {
+            let base = GAMMA_BYTES + index * fiber_bytes;
+            for slot in 0..FIBER_SLOTS {
+                for column in 0..C1_COLUMNS {
+                    let offset = base + (slot * C1_COLUMNS + column) * 8;
+                    fiber.c1[slot][column].write_le_bytes(&mut encoded[offset..offset + 8]);
+                }
+            }
+            let c2_start = base + C1_FIBER_BYTES;
+            for helper in 0..C2_COLUMNS {
+                for slot in 0..FIBER_SLOTS {
+                    let offset = c2_start + (helper * FIBER_SLOTS + slot) * 16;
+                    fiber.c2[slot][helper].write_le_bytes(&mut encoded[offset..offset + 16]);
+                }
+            }
+        }
+        (encoded, gamma, values)
+    }
+
+    fn decode_fixture(bytes: &[u8]) -> Result<(QM31, ExactWideFiber)> {
+        ensure!(
+            bytes.len() == FIXTURE_BYTES,
+            "bad exact-wide fixture length"
+        );
+        let gamma =
+            QM31::from_le_bytes(&bytes[..GAMMA_BYTES]).context("decode exact-wide gamma")?;
+        let mut fiber = ExactWideFiber {
+            c1: [[CM31::ZERO; C1_COLUMNS]; FIBER_SLOTS],
+            c2: [[QM31::ZERO; C2_COLUMNS]; FIBER_SLOTS],
+        };
+        let c1_start = GAMMA_BYTES;
+        let c2_start = c1_start + C1_FIBER_BYTES;
+        for slot in 0..FIBER_SLOTS {
+            for column in 0..C1_COLUMNS {
+                let offset = c1_start + (slot * C1_COLUMNS + column) * 8;
+                fiber.c1[slot][column] = CM31::from_le_bytes(&bytes[offset..offset + 8])
+                    .context("decode exact-wide C1 value")?;
+            }
+        }
+        for helper in 0..C2_COLUMNS {
+            for slot in 0..FIBER_SLOTS {
+                let offset = c2_start + (helper * FIBER_SLOTS + slot) * 16;
+                fiber.c2[slot][helper] = QM31::from_le_bytes(&bytes[offset..offset + 16])
+                    .context("decode exact-wide C2 value")?;
+            }
+        }
+        Ok((gamma, fiber))
+    }
+
+    fn host_sink(mode: ExactWideV4DiagnosticMode, fixture: &[u8]) -> Result<[u8; 32]> {
+        let c1_start = GAMMA_BYTES;
+        let c2_start = c1_start + C1_FIBER_BYTES;
+        Ok(match mode {
+            ExactWideV4DiagnosticMode::BaselineFourDots | ExactWideV4DiagnosticMode::FusedDot4 => {
+                let (gamma, fiber) = decode_fixture(fixture)?;
+                let combined = match mode {
+                    ExactWideV4DiagnosticMode::BaselineFourDots => {
+                        aspis_statement::wide_v4::combine_exact_wide_fiber_baseline(&fiber, gamma)
+                    }
+                    ExactWideV4DiagnosticMode::FusedDot4 => {
+                        aspis_statement::wide_v4::combine_exact_wide_fiber(&fiber, gamma)
+                    }
+                    _ => unreachable!(),
+                };
+                let mut encoded = [0u8; FIBER_SLOTS * 16];
+                for (slot, value) in combined.iter().enumerate() {
+                    value.write_le_bytes(&mut encoded[slot * 16..(slot + 1) * 16]);
+                }
+                HOST_HASH(&[b"aspis-exact-wide-v4-combined", &encoded])
+            }
+            ExactWideV4DiagnosticMode::EmptyLeafHashControl => {
+                aspis_core::merkle::leaf_hash(HOST_HASH, 0, &[])
+            }
+            ExactWideV4DiagnosticMode::C1LeafHash => {
+                aspis_core::merkle::leaf_hash(HOST_HASH, 0, &fixture[c1_start..c2_start])
+            }
+            ExactWideV4DiagnosticMode::C2LeafHash => aspis_core::merkle::leaf_hash(
+                HOST_HASH,
+                aspis_core::proof::SECOND_PHASE_LAYER_TAG,
+                &fixture[c2_start..],
+            ),
+            ExactWideV4DiagnosticMode::GammaPowersControl
+            | ExactWideV4DiagnosticMode::GammaPowers0To50 => {
+                let gamma = QM31::from_le_bytes(&fixture[..GAMMA_BYTES])
+                    .context("decode gamma for host power sink")?;
+                let mut encoded = [0u8; TOTAL_COLUMNS * 16];
+                match mode {
+                    ExactWideV4DiagnosticMode::GammaPowersControl => {
+                        for chunk in encoded.chunks_exact_mut(16) {
+                            QM31::ONE.write_le_bytes(chunk);
+                        }
+                    }
+                    ExactWideV4DiagnosticMode::GammaPowers0To50 => {
+                        let powers = qm31_power_table::<TOTAL_COLUMNS>(gamma);
+                        for (power, chunk) in powers.iter().zip(encoded.chunks_exact_mut(16)) {
+                            power.write_le_bytes(chunk);
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+                HOST_HASH(&[b"aspis-exact-wide-v4-powers", &encoded])
+            }
+            ExactWideV4DiagnosticMode::FusedBatch36Unprepared
+            | ExactWideV4DiagnosticMode::FusedBatch36Prepared
+            | ExactWideV4DiagnosticMode::FusedBatch36PreparedBytes => {
+                let fiber_bytes = C1_FIBER_BYTES + C2_FIBER_BYTES;
+                ensure!(
+                    fixture.len()
+                        == GAMMA_BYTES
+                            + aspis_verifier::EXACT_WIDE_V4_DIAGNOSTIC_BATCH_FIBERS * fiber_bytes,
+                    "bad exact-wide batch fixture length"
+                );
+                let gamma = QM31::from_le_bytes(&fixture[..GAMMA_BYTES])
+                    .context("decode exact-wide batch gamma")?;
+                let prepared = if matches!(
+                    mode,
+                    ExactWideV4DiagnosticMode::FusedBatch36Prepared
+                        | ExactWideV4DiagnosticMode::FusedBatch36PreparedBytes
+                ) {
+                    Some(aspis_statement::wide_v4::prepare_exact_wide_weights(gamma))
+                } else {
+                    None
+                };
+                let bytes_mode =
+                    matches!(mode, ExactWideV4DiagnosticMode::FusedBatch36PreparedBytes);
+                let mut accumulator = [QM31::ZERO; FIBER_SLOTS];
+                for index in 0..aspis_verifier::EXACT_WIDE_V4_DIAGNOSTIC_BATCH_FIBERS {
+                    let start = GAMMA_BYTES + index * fiber_bytes;
+                    let combined = if bytes_mode {
+                        let c2_start = start + C1_FIBER_BYTES;
+                        aspis_statement::wide_v4::combine_exact_wide_bytes_prepared(
+                            &fixture[start..c2_start],
+                            &fixture[c2_start..c2_start + C2_FIBER_BYTES],
+                            prepared.as_ref().unwrap(),
+                        )
+                        .context("decode exact-wide prepared byte fiber")?
+                    } else {
+                        let mut single = Vec::with_capacity(FIXTURE_BYTES);
+                        single.extend_from_slice(&fixture[..GAMMA_BYTES]);
+                        single.extend_from_slice(&fixture[start..start + fiber_bytes]);
+                        let (_, fiber) = decode_fixture(&single)?;
+                        if let Some(weights) = prepared.as_ref() {
+                            aspis_statement::wide_v4::combine_exact_wide_fiber_prepared(
+                                &fiber, weights,
+                            )
+                        } else {
+                            aspis_statement::wide_v4::combine_exact_wide_fiber(&fiber, gamma)
+                        }
+                    };
+                    for slot in 0..FIBER_SLOTS {
+                        accumulator[slot] = accumulator[slot].add(combined[slot]);
+                    }
+                }
+                let mut encoded = [0u8; FIBER_SLOTS * 16];
+                for (slot, value) in accumulator.iter().enumerate() {
+                    value.write_le_bytes(&mut encoded[slot * 16..(slot + 1) * 16]);
+                }
+                HOST_HASH(&[b"aspis-exact-wide-v4-batch36", &encoded])
+            }
+        })
+    }
+
+    fn mode_name(mode: ExactWideV4DiagnosticMode) -> &'static str {
+        match mode {
+            ExactWideV4DiagnosticMode::BaselineFourDots => "baseline_four_qm31_cm31_dot_49",
+            ExactWideV4DiagnosticMode::FusedDot4 => "optimized_fused_qm31_cm31_dot4_49",
+            ExactWideV4DiagnosticMode::EmptyLeafHashControl => "empty_leaf_hash_control",
+            ExactWideV4DiagnosticMode::C1LeafHash => "c1_leaf_hash_1568_bytes",
+            ExactWideV4DiagnosticMode::C2LeafHash => "c2_leaf_hash_128_bytes",
+            ExactWideV4DiagnosticMode::GammaPowersControl => {
+                "gamma_power_serialization_hash_control"
+            }
+            ExactWideV4DiagnosticMode::GammaPowers0To50 => "gamma_powers_0_through_50",
+            ExactWideV4DiagnosticMode::FusedBatch36Unprepared => {
+                "q36_structural_max_36_fibers_fused_unprepared"
+            }
+            ExactWideV4DiagnosticMode::FusedBatch36Prepared => {
+                "q36_structural_max_36_fibers_fused_prepared_once"
+            }
+            ExactWideV4DiagnosticMode::FusedBatch36PreparedBytes => {
+                "q36_structural_max_36_fibers_prepared_bytes"
+            }
+        }
+    }
+
+    fn hex(bytes: &[u8]) -> String {
+        bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+    }
+
+    fn simulate_diagnostic(
+        rpc: &Rpc,
+        payer: &Keypair,
+        fixture_account: &Pubkey,
+        mode: ExactWideV4DiagnosticMode,
+        expected_sink: [u8; 32],
+    ) -> Result<(Option<u64>, Option<String>)> {
+        let instruction = Instruction {
+            program_id: aspis_verifier::id(),
+            accounts: vec![AccountMeta::new_readonly(*fixture_account, false)],
+            data: to_vec(&AspisInstruction::ExactWideV4Diagnostic {
+                mode,
+                expected_sink,
+            })?,
+        };
+        let blockhash = rpc.latest_blockhash()?;
+        let transaction = Transaction::new_signed_with_payer(
+            &[
+                ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+                ComputeBudgetInstruction::request_heap_frame(HEAP_FRAME_BYTES),
+                instruction,
+            ],
+            Some(&payer.pubkey()),
+            &[payer],
+            blockhash,
+        );
+        rpc.simulate(&transaction)
+    }
+
+    let (fixture, gamma, fiber) = build_fixture(FIXTURE_SEED);
+    ensure!(
+        fixture.len() == FIXTURE_BYTES,
+        "fixture encoder length drifted"
+    );
+    let host_baseline = aspis_statement::wide_v4::combine_exact_wide_fiber_baseline(&fiber, gamma);
+    let host_fused = aspis_statement::wide_v4::combine_exact_wide_fiber(&fiber, gamma);
+    ensure!(
+        host_baseline == host_fused,
+        "host exact-wide baseline/fused differential failed"
+    );
+    let (batch_fixture, batch_gamma, batch_fibers) = build_batch_fixture(
+        FIXTURE_SEED,
+        aspis_verifier::EXACT_WIDE_V4_DIAGNOSTIC_BATCH_FIBERS,
+    );
+    ensure!(
+        batch_gamma == gamma && batch_fibers.first() == Some(&fiber),
+        "single and batch fixture prefixes diverged"
+    );
+    let host_batch_unprepared = host_sink(
+        ExactWideV4DiagnosticMode::FusedBatch36Unprepared,
+        &batch_fixture,
+    )?;
+    let host_batch_prepared = host_sink(
+        ExactWideV4DiagnosticMode::FusedBatch36Prepared,
+        &batch_fixture,
+    )?;
+    let host_batch_prepared_bytes = host_sink(
+        ExactWideV4DiagnosticMode::FusedBatch36PreparedBytes,
+        &batch_fixture,
+    )?;
+    ensure!(
+        host_batch_unprepared == host_batch_prepared
+            && host_batch_prepared == host_batch_prepared_bytes,
+        "host unprepared/structured-prepared/byte-prepared batch differential failed"
+    );
+
+    let root = workspace_root()?;
+    let so = build_sbf(&root)?;
+    let validator = start_validator(&root, &so)?;
+    let rpc = Rpc {
+        url: validator.rpc_url.clone(),
+        http: reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?,
+    };
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), 5 * LAMPORTS_PER_SOL)?;
+    let fixture_account = Keypair::new();
+    let (fixture_upload_chunks, fixture_upload_cu_excluded) =
+        upload_proof(&rpc, &payer, &fixture_account, &fixture, true)?;
+    let batch_fixture_account = Keypair::new();
+    let (batch_fixture_upload_chunks, batch_fixture_upload_cu_excluded) =
+        upload_proof(&rpc, &payer, &batch_fixture_account, &batch_fixture, true)?;
+
+    let modes = [
+        ExactWideV4DiagnosticMode::BaselineFourDots,
+        ExactWideV4DiagnosticMode::FusedDot4,
+        ExactWideV4DiagnosticMode::EmptyLeafHashControl,
+        ExactWideV4DiagnosticMode::C1LeafHash,
+        ExactWideV4DiagnosticMode::C2LeafHash,
+        ExactWideV4DiagnosticMode::GammaPowersControl,
+        ExactWideV4DiagnosticMode::GammaPowers0To50,
+        ExactWideV4DiagnosticMode::FusedBatch36Unprepared,
+        ExactWideV4DiagnosticMode::FusedBatch36Prepared,
+        ExactWideV4DiagnosticMode::FusedBatch36PreparedBytes,
+    ];
+    let mut variants = Vec::with_capacity(modes.len());
+    for mode in modes {
+        let batch_mode = matches!(
+            mode,
+            ExactWideV4DiagnosticMode::FusedBatch36Unprepared
+                | ExactWideV4DiagnosticMode::FusedBatch36Prepared
+                | ExactWideV4DiagnosticMode::FusedBatch36PreparedBytes
+        );
+        let selected_fixture = if batch_mode { &batch_fixture } else { &fixture };
+        let selected_account = if batch_mode {
+            batch_fixture_account.pubkey()
+        } else {
+            fixture_account.pubkey()
+        };
+        let expected_sink = host_sink(mode, selected_fixture)?;
+        let mut simulation_cu = Vec::with_capacity(REPETITIONS);
+        let mut simulation_errors = Vec::with_capacity(REPETITIONS);
+        for _ in 0..REPETITIONS {
+            let (units, error) =
+                simulate_diagnostic(&rpc, &payer, &selected_account, mode, expected_sink)?;
+            simulation_cu.push(units.context("exact-wide diagnostic did not report CU")?);
+            simulation_errors.push(error);
+        }
+        ensure!(
+            simulation_cu.windows(2).all(|pair| pair[0] == pair[1]),
+            "{} was not deterministic: {simulation_cu:?}",
+            mode_name(mode)
+        );
+        ensure!(
+            simulation_errors.windows(2).all(|pair| pair[0] == pair[1]),
+            "{} error result was not deterministic: {simulation_errors:?}",
+            mode_name(mode)
+        );
+        let accepted_all = simulation_errors.iter().all(Option::is_none);
+        if !matches!(mode, ExactWideV4DiagnosticMode::FusedBatch36Unprepared) {
+            ensure!(
+                accepted_all,
+                "{} failed on SBF: {simulation_errors:?}",
+                mode_name(mode)
+            );
+        }
+        let simulation_cu_mean =
+            simulation_cu.iter().sum::<u64>() as f64 / simulation_cu.len() as f64;
+        variants.push(ExactWideV4DiagnosticVariant {
+            mode: mode_name(mode),
+            expected_host_sink_hex: hex(&expected_sink),
+            sbf_matched_host_sink: accepted_all,
+            accepted_all,
+            simulation_cu,
+            simulation_errors,
+            simulation_cu_mean,
+        });
+    }
+
+    fn mutate_canonical_m31(bytes: &mut [u8], offset: usize) {
+        let value = u32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap());
+        let changed = if value + 1 == P { 0 } else { value + 1 };
+        bytes[offset..offset + 4].copy_from_slice(&changed.to_le_bytes());
+    }
+
+    let c1_offset = GAMMA_BYTES;
+    let c2_offset = GAMMA_BYTES + C1_FIBER_BYTES;
+    let mut corrupted_c1 = fixture.clone();
+    mutate_canonical_m31(&mut corrupted_c1, c1_offset);
+    let mut corrupted_c2 = fixture.clone();
+    mutate_canonical_m31(&mut corrupted_c2, c2_offset);
+    let corrupted_inputs = [
+        (
+            "c1_first_cm31_limb",
+            c1_offset,
+            &corrupted_c1,
+            ExactWideV4DiagnosticMode::BaselineFourDots,
+        ),
+        (
+            "c1_first_cm31_limb",
+            c1_offset,
+            &corrupted_c1,
+            ExactWideV4DiagnosticMode::FusedDot4,
+        ),
+        (
+            "c1_first_cm31_limb",
+            c1_offset,
+            &corrupted_c1,
+            ExactWideV4DiagnosticMode::C1LeafHash,
+        ),
+        (
+            "c2_first_qm31_limb",
+            c2_offset,
+            &corrupted_c2,
+            ExactWideV4DiagnosticMode::FusedDot4,
+        ),
+        (
+            "c2_first_qm31_limb",
+            c2_offset,
+            &corrupted_c2,
+            ExactWideV4DiagnosticMode::C2LeafHash,
+        ),
+    ];
+    let mut corruption_cases = Vec::with_capacity(corrupted_inputs.len());
+    for (target, offset, corrupted, mode) in corrupted_inputs {
+        let canonical_sink = host_sink(mode, &fixture)?;
+        let corrupted_sink = host_sink(mode, corrupted)?;
+        ensure!(
+            canonical_sink != corrupted_sink,
+            "{target} did not change {} host sink",
+            mode_name(mode)
+        );
+        let corrupt_account = Keypair::new();
+        upload_proof(&rpc, &payer, &corrupt_account, corrupted, true)?;
+        let (_, error) = simulate_diagnostic(
+            &rpc,
+            &payer,
+            &corrupt_account.pubkey(),
+            mode,
+            canonical_sink,
+        )?;
+        ensure!(
+            error.is_some(),
+            "{target} unexpectedly matched canonical {} sink on SBF",
+            mode_name(mode)
+        );
+        corruption_cases.push(ExactWideV4CorruptionCase {
+            target,
+            mode: mode_name(mode),
+            fixture_byte_offset: offset,
+            host_corrupted_sink_differs: true,
+            host_rejected_malformed: false,
+            sbf_rejected_canonical_sink: true,
+            sbf_error: error.unwrap(),
+        });
+    }
+
+    let malformed_batch_inputs = [
+        ("noncanonical_c1_m31_limb", GAMMA_BYTES, {
+            let mut bytes = batch_fixture.clone();
+            bytes[GAMMA_BYTES..GAMMA_BYTES + 4].copy_from_slice(&P.to_le_bytes());
+            bytes
+        }),
+        ("noncanonical_c2_m31_limb", GAMMA_BYTES + C1_FIBER_BYTES, {
+            let mut bytes = batch_fixture.clone();
+            let offset = GAMMA_BYTES + C1_FIBER_BYTES;
+            bytes[offset..offset + 4].copy_from_slice(&P.to_le_bytes());
+            bytes
+        }),
+    ];
+    for (target, offset, malformed) in malformed_batch_inputs {
+        ensure!(
+            host_sink(
+                ExactWideV4DiagnosticMode::FusedBatch36PreparedBytes,
+                &malformed,
+            )
+            .is_err(),
+            "{target} unexpectedly decoded on host"
+        );
+        let malformed_account = Keypair::new();
+        upload_proof(&rpc, &payer, &malformed_account, &malformed, true)?;
+        let (_, error) = simulate_diagnostic(
+            &rpc,
+            &payer,
+            &malformed_account.pubkey(),
+            ExactWideV4DiagnosticMode::FusedBatch36PreparedBytes,
+            host_batch_prepared_bytes,
+        )?;
+        let sbf_error = error.context(format!("{target} unexpectedly accepted on SBF"))?;
+        ensure!(
+            sbf_error.contains("InvalidAccountData"),
+            "{target} rejected for the wrong SBF reason: {sbf_error}"
+        );
+        corruption_cases.push(ExactWideV4CorruptionCase {
+            target,
+            mode: mode_name(ExactWideV4DiagnosticMode::FusedBatch36PreparedBytes),
+            fixture_byte_offset: offset,
+            host_corrupted_sink_differs: false,
+            host_rejected_malformed: true,
+            sbf_rejected_canonical_sink: true,
+            sbf_error,
+        });
+    }
+
+    let baseline_mean = variants[0].simulation_cu_mean;
+    let fused_mean = variants[1].simulation_cu_mean;
+    let empty_hash_mean = variants[2].simulation_cu_mean;
+    let fused_dot4_savings_cu = (baseline_mean - fused_mean).round() as i64;
+    let batch_unprepared_accepted = variants[7].accepted_all;
+    let batch_unprepared_compute_budget_exhausted = !batch_unprepared_accepted
+        && variants[7].simulation_errors.iter().all(|error| {
+            error.as_ref().is_some_and(|text| {
+                text.contains("ComputationalBudgetExceeded")
+                    || (text.contains("ProgramFailedToComplete")
+                        && text.contains("exceeded CUs meter"))
+            })
+        });
+    ensure!(
+        batch_unprepared_accepted || batch_unprepared_compute_budget_exhausted,
+        "unprepared q36 batch failed for a reason other than compute-budget exhaustion: {:?}",
+        variants[7].simulation_errors
+    );
+    let batch_prepared_accepted = variants[8].accepted_all;
+    let batch_unprepared_cu_mean_or_cap = variants[7].simulation_cu_mean;
+    let batch_prepared_cu_mean = variants[8].simulation_cu_mean;
+    let batch_prepared_bytes_accepted = variants[9].accepted_all;
+    let batch_prepared_bytes_cu_mean = variants[9].simulation_cu_mean;
+    let batch_prepared_savings_cu_if_exact = batch_unprepared_accepted
+        .then_some((batch_unprepared_cu_mean_or_cap - batch_prepared_cu_mean).round() as i64);
+    Ok(ExactWideV4DiagnosticSummary {
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        command: "cargo run --release -p aspis-xtask -- stage2-exact-wide-v4-diagnostic"
+            .to_string(),
+        validator_version: validator_version(),
+        diagnostic_instruction_wire_ordinal: 21,
+        final_payment_kat_reserved_wire_ordinal: 20,
+        final_payment_kat_implemented: false,
+        repetitions: REPETITIONS,
+        fixture_seed: FIXTURE_SEED,
+        fixture_payload_bytes: FIXTURE_BYTES,
+        fixture_upload_chunks,
+        fixture_upload_cu_excluded,
+        batch_fixture_payload_bytes: batch_fixture.len(),
+        batch_fixture_upload_chunks,
+        batch_fixture_upload_cu_excluded,
+        fixture_generation_in_measured_instruction: false,
+        c1_columns: C1_COLUMNS,
+        c2_columns: C2_COLUMNS,
+        total_gamma_powers: TOTAL_COLUMNS,
+        c1_leaf_bytes: C1_FIBER_BYTES,
+        c2_leaf_bytes: C2_FIBER_BYTES,
+        c1_layout: "slot-major: 4 slots x 49 CM31 x 8 bytes",
+        c2_layout: "helper-major wire order: 2 helpers x 4 slots x 16 bytes",
+        host_baseline_equals_fused: true,
+        fused_dot4_savings_cu,
+        fused_dot4_savings_percent: fused_dot4_savings_cu as f64 / baseline_mean * 100.0,
+        c1_leaf_hash_incremental_over_empty_cu: (variants[3].simulation_cu_mean
+            - empty_hash_mean)
+            .round() as i64,
+        c2_leaf_hash_incremental_over_empty_cu: (variants[4].simulation_cu_mean
+            - empty_hash_mean)
+            .round() as i64,
+        gamma_powers_incremental_over_control_cu: (variants[6].simulation_cu_mean
+            - variants[5].simulation_cu_mean)
+            .round() as i64,
+        gate_q36_batch_unique_fibers:
+            aspis_verifier::EXACT_WIDE_V4_DIAGNOSTIC_BATCH_FIBERS,
+        gate_batch_count_provenance: "structural collision-free q36 maximum; verifier cost cannot rely on transcript collisions".to_string(),
+        frozen_q36_fixture_unique_fibers: [35, 35],
+        theoretical_q36_unique_fibers_max: 36,
+        transaction_compute_limit_cu: VERIFY_CU_LIMIT,
+        strict_transaction_target_cu: 1_190_000,
+        heap_frame_bytes: HEAP_FRAME_BYTES,
+        transaction_envelope: "set_compute_unit_limit(1,400,000) + request_heap_frame(262,144) + ExactWideV4Diagnostic",
+        batch_unprepared_accepted,
+        batch_unprepared_compute_budget_exhausted,
+        batch_prepared_accepted,
+        batch_unprepared_cu_mean_or_cap,
+        batch_prepared_cu_mean,
+        batch_prepared_headroom_vs_compute_cap_cu: VERIFY_CU_LIMIT as i64
+            - batch_prepared_cu_mean.round() as i64,
+        batch_prepared_headroom_vs_strict_target_cu: 1_190_000
+            - batch_prepared_cu_mean.round() as i64,
+        batch_prepared_bytes_accepted,
+        batch_prepared_bytes_cu_mean,
+        batch_prepared_bytes_headroom_vs_compute_cap_cu: VERIFY_CU_LIMIT as i64
+            - batch_prepared_bytes_cu_mean.round() as i64,
+        batch_prepared_bytes_headroom_vs_strict_target_cu: 1_190_000
+            - batch_prepared_bytes_cu_mean.round() as i64,
+        batch_prepared_bytes_savings_vs_structured_cu: (batch_prepared_cu_mean
+            - batch_prepared_bytes_cu_mean)
+            .round() as i64,
+        batch_prepared_bytes_savings_vs_structured_percent: (batch_prepared_cu_mean
+            - batch_prepared_bytes_cu_mean)
+            / batch_prepared_cu_mean
+            * 100.0,
+        batch_prepared_savings_cu_if_exact,
+        batch_prepared_savings_lower_bound_cu: (batch_unprepared_cu_mean_or_cap
+            - batch_prepared_cu_mean)
+            .round() as i64,
+        batch_prepared_bytes_savings_lower_bound_cu: (batch_unprepared_cu_mean_or_cap
+            - batch_prepared_bytes_cu_mean)
+            .round() as i64,
+        variants,
+        all_corruptions_rejected_sbf: corruption_cases
+            .iter()
+            .all(|case| case.sbf_rejected_canonical_sink),
+        corruption_cases,
+        included_work: vec![
+            "account borrow, canonical field decoding, gamma powers 0..50, four independent 49-term QM31-by-CM31 dots, gamma^49/gamma^50 helper products, result serialization, and observable sink hash in baseline mode".to_string(),
+            "the identical path with fused qm31_cm31_dot4 in optimized mode; the paired delta isolates the arithmetic-kernel change".to_string(),
+            "Merkle leaf_hash domain framing plus SHA-256 syscall over exactly 1,568 C1 bytes or 128 C2 bytes; empty-leaf control is reported".to_string(),
+            "standalone gamma power-table construction with matched 816-byte serialization/hash control".to_string(),
+            "gate-relevant q36 structural maximum of 36 distinct account-backed fibers: unprepared fused setup per fiber versus one prepared gamma/weight table reused across all fibers".to_string(),
+            "prepared-byte batch over the same 36 fibers: canonical CM31/QM31 parsing is fused into the dot kernel without materializing a 1,696-byte ExactWideFiber matrix".to_string(),
+        ],
+        excluded_work: vec![
+            "fixture generation, account creation, upload transactions, rent, and upload CU".to_string(),
+            "Merkle frontier/node hashing, query derivation, proof parsing beyond the fixture account envelope, and full PCS verification".to_string(),
+            "102-value two-point statement framing (49 C1 + 2 C2 at z and XOR-11(z)), LogUp/payment constraints, composition, masking/hiding, and g32 grinding".to_string(),
+        ],
+        notes: vec![
+            "This is an exact-width SBF diagnostic, not a proof and not the final payment-v4 KAT. ABI tag 20 remains reserved/inactive; this diagnostic is append-only tag 21.".to_string(),
+            "All five simulations per mode are asserted bit-for-bit deterministic. Acceptance means the SBF sink equals the independently computed host sink.".to_string(),
+            "C1 arithmetic is 49 CM31 values per slot because this diagnostic prices Aspis's current custom CM31-coset PCS; the two C2 helpers are QM31 terms weighted by gamma^49 and gamma^50. An M31 circle-polynomial PCS is a separate candidate protocol measured separately, not a reinterpretation of these bytes.".to_string(),
+            "Absolute transaction CU includes compute-budget dispatch, program/account dispatch, fixture framing, and sink comparison. Use the paired/control deltas for kernel attribution.".to_string(),
+            "Headroom fields name their denominator explicitly: the 1.4M execution cap and the separate 1.19M project target. They apply to this diagnostic transaction alone, not a composed payment proof.".to_string(),
+            "The gate batch uses the collision-free q36 maximum of 36. Both checked-in q36/g32 v3 fixtures happen to encode 35 unique layer-0 fibers; sampling luck does not lower the fixed verifier requirement.".to_string(),
+            "If the unprepared batch exhausts the transaction budget, its reported CU is a cap/failure observation and the prepared savings field is a lower bound, not an exact total delta.".to_string(),
+            "The prepared-byte parser is differential-tested against the structured path and explicitly rejects noncanonical C1 and C2 M31 limbs on both host and SBF.".to_string(),
+            "The corruption matrix changes canonical C1/C2 field bytes in uploaded accounts and proves both arithmetic implementations and exact leaf hashes consume those bytes.".to_string(),
         ],
     })
 }

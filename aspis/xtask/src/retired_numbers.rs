@@ -58,6 +58,30 @@ fn discover_markdown(dir: &Path, root: &Path, paths: &mut Vec<String>) -> Result
     Ok(())
 }
 
+fn contains_needle(haystack: &str, needle: &str) -> bool {
+    haystack.match_indices(needle).any(|(start, _)| {
+        let end = start + needle.len();
+        let starts_alphanumeric = needle
+            .chars()
+            .next()
+            .is_some_and(|character| character.is_ascii_alphanumeric());
+        let ends_alphanumeric = needle
+            .chars()
+            .next_back()
+            .is_some_and(|character| character.is_ascii_alphanumeric());
+        let left_is_alphanumeric = haystack[..start]
+            .chars()
+            .next_back()
+            .is_some_and(|character| character.is_ascii_alphanumeric());
+        let right_is_alphanumeric = haystack[end..]
+            .chars()
+            .next()
+            .is_some_and(|character| character.is_ascii_alphanumeric());
+        (!starts_alphanumeric || !left_is_alphanumeric)
+            && (!ends_alphanumeric || !right_is_alphanumeric)
+    })
+}
+
 pub(crate) fn lint_retired_numbers() -> Result<LintSummary> {
     let root = workspace_root()?;
     let allowlist_path = root.join("results/stage1/retired_numbers_allowlist.json");
@@ -80,7 +104,11 @@ pub(crate) fn lint_retired_numbers() -> Result<LintSummary> {
             .with_context(|| format!("read quote-facing file {}", full.display()))?;
         for (line_index, line) in text.lines().enumerate() {
             for pattern in &allowlist.patterns {
-                if !pattern.needles.iter().any(|needle| line.contains(needle)) {
+                if !pattern
+                    .needles
+                    .iter()
+                    .any(|needle| contains_needle(line, needle))
+                {
                     continue;
                 }
                 let matching_allowances = allowlist.allowed_occurrences.iter().filter(|entry| {
@@ -122,6 +150,16 @@ pub(crate) fn lint_retired_numbers() -> Result<LintSummary> {
 
 #[cfg(test)]
 mod tests {
+    use super::contains_needle;
+
+    #[test]
+    fn retired_number_match_respects_numeric_token_boundaries() {
+        assert!(contains_needle("the 104 bits line", "104 bits"));
+        assert!(contains_needle("2^-104 + epsilon", "2^-104"));
+        assert!(!contains_needle("T6 is 110.7104 bits", "104 bits"));
+        assert!(!contains_needle("q450 is different", "q45"));
+    }
+
     #[test]
     fn quote_facing_retired_numbers_are_scoped() {
         super::lint_retired_numbers().unwrap();

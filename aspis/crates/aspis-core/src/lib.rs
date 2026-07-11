@@ -15,6 +15,7 @@
 
 extern crate alloc;
 
+pub mod circle;
 pub mod field;
 pub mod merkle;
 pub mod params;
@@ -25,6 +26,8 @@ pub mod verify;
 
 pub use params::{FoldPayload, MerkleMode, Profile, PROFILES};
 pub use transcript::HashFn;
+#[cfg(feature = "insecure-test-framing")]
+pub use verify::verify_with_insecure_m31_circle_as_legacy_for_tests;
 pub use verify::{
     verify, verify_with_claim, verify_with_claim_and_trace, verify_with_claim_trace_and_inverse,
     verify_with_trace, EvaluationClaim, M31InverseFn, TraceEvent, TraceFn, VerifyError,

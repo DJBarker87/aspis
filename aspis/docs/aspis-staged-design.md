@@ -343,11 +343,29 @@ accumulation, and fixed-width power/value tables. A six-limb 10-bit lookup
 candidate reduces composition from 176,844 to 120,275 CU and now replays the
 full economic corpus plus two lookup teeth vectors. A fresh radix-4 q36/g32
 proof verifies at 678,407 CU, 35,704 below optimized binary, with its changed
-roots/proof digest ledgered and corruption-tested. Their combined projection
-is 1,041,944 CU, 29,056 below the strict 1.071M slack ceiling. Because LogUp
-and the wide RLC are not integrated into one payment proof, the product gate
-remains open and the split receipt stays as fallback. See
-`docs/solmath-zk-candidates.md`.
+roots/proof digest ledgered and corruption-tested. That first r4/k80 package's
+1,041,944-CU projection is historical: the measured shrink hunt subsequently
+froze r2/k'=51 at 974,112 central / 1,047,561 registered for s1. The isolated
+s2 line measures +49,099 CU, but its derived q36 1,096,660 and q34 1,052,181
+totals are historical component arithmetic, not live product projections.
+The corrected two-helper scaffold overlaps part of that work and still omits
+the exact-wide statement, so the product gate is red and unpriced; q34 remains
+held and the split receipt stays as fallback. See
+`docs/solmath-zk-candidates.md` and `docs/stage2-shrink-hunt.md`.
+
+**Exact-shape integration gate (`2026-07-10`).** The r2/k'=51 projection
+used an isolated raw-M31 seam, not the representation a real PCS opening
+authenticates. The frozen count is 49 C1 columns total (48 state/interface +
+one multiplicity), plus h1/h2 in C2. A layer-zero fiber is therefore 1,568
+bytes of CM31 C1 data plus a 128-byte QM31 C2 leaf, and the query RLC uses
+gamma powers 0..50. That exact seam must be measured before the 10% projection
+is cited again. The statement composition also needs verifier-randomized
+batching over a stable `ConstraintId` registry; a deterministic accumulator
+permits residual cancellation. Final T8' is `(J+2)/|F|`, not the provisional
+eight-claim value, until that registry freezes. The separate
+`stage2-column-basis-audit.md` records that M31 C1 is valid under a genuine
+circle-polynomial PCS but is not a wire-only change to this custom CM31 PCS;
+both bases must be measured without treating a limb ratio as a verdict.
 
 ## 10. Stage 3 - Hiding Layer
 

@@ -5,9 +5,9 @@
   "status": {
     "quotable_security_value": false,
     "only_quotable_floor_bits": 65.5,
-    "reason": "93.73 is a provisional known-Table-4-coefficient sensitivity: c1=c2=1 is a stronger pinned assumption, Conjecture 2 supplies no finite-n bound for o(n), and the circle-code/Table-4 mapping is not a theorem.",
+    "reason": "93.73 is a provisional known-Table-4-coefficient sensitivity: c1=c2=1 is a stronger pinned assumption, Conjecture 2 supplies no finite-n bound for o(n), the circle-code/Table-4 mapping is not a theorem, and final T8' awaits the randomized ConstraintId count J.",
     "provisional_value_label": "provisional_known_table4_sensitivity_pending_finite_length_assumption",
-    "provisional_q36_g32_s2_bits": 93.72628064294923
+    "provisional_q36_g32_s2_bits": 93.72626702815845
   },
   "inputs": {
     "rho": 0.25,
@@ -107,15 +107,20 @@
     "recorded_anchor_system_bits": 102.9752
   },
   "amended_term_set": {
-    "label": "r2_kprime51_m534_frozen_shape",
+    "label": "r2_kprime51_constraint_registry_open_m_le1024",
     "t3_bits_nu14_d7": 117.38529015319756,
     "t4_bits_nu10": 120.6780719024254,
     "t5_prime_bits_kprime51": 118.35614380753805,
-    "t6_bits_frozen_m534_w17": 110.85184122437488,
-    "t6_historical_worst_case_bits": 109.91253715606243,
-    "t7_prime_bits_frozen_m534_8m_union": 111.93930406562521,
-    "t8_prime_bits_eight_claim_bound": 120.99999999731277,
-    "note": "T6=110.85 is the current frozen m=534 line; 109.9 is retained only as the historical worst-layout bound. T8' uses the exact eight-claim expression 4*log2(2^31-1)-3 (approximately 121)."
+    "t6_current_bits_worst_m1024_w17": 109.91253715606243,
+    "t6_trace_layout_m589_sensitivity_bits": 110.71041333223197,
+    "t6_state_only_m534_sensitivity_bits": 110.85184122437488,
+    "t7_prime_current_bits_mcopy1024_range1024_union": 110.99999999731277,
+    "t7_prime_trace_m589_range_m1024_sensitivity_bits": 111.34446927415712,
+    "t7_prime_historical_8m534_superseded_bits": 111.93930406562521,
+    "t8_prime_bits_eight_claim_preintegration_sensitivity": 120.99999999731277,
+    "final_constraint_id_count": null,
+    "constraint_batching_status": "OPEN: final T8' is (J+2)/|F|; freeze the randomized ConstraintId registry before quoting a payment-proof union",
+    "note": "The endpoint-local trace foundation contains 589 copy links, including committed absorption sources, and gives a 110.71-bit T6 sensitivity. The final randomized constraint registry has not yet wired those endpoints, so T6/T7 retain m_copy<=1024 with the fixed 1024-row range table (109.91/111.00 bits). At m_copy=589, T7' is 4*(589+1024)/|F| = 111.34 bits; 8*589 would incorrectly shrink the independent range term. The m=534 T6 state-continuity reading and historical 8*534 T7 arithmetic are retained only as explicitly superseded provenance. The approximately-121 T8' row is an eight-claim preintegration sensitivity, not the final statement-batching term."
   },
   "optimizer": {
     "eta_min": 0.003,
@@ -143,9 +148,9 @@
       "query_bits": 90.93593686402903,
       "t1_prime_bits": 100.24406186594244,
       "t2_prime_bits": 91.90176414371118,
-      "unchanged_union_bits": 110.27761936214897,
-      "algebraic_union_bits": 91.8973215355712,
-      "system_bits": 90.33798740547644
+      "unchanged_union_bits": 109.34681903198519,
+      "algebraic_union_bits": 91.89731770343538,
+      "system_bits": 90.33798610520229
     },
     {
       "label": "q36_g32_s2",
@@ -161,9 +166,9 @@
       "query_bits": 94.5134519342418,
       "t1_prime_bits": 95.39743292426624,
       "t2_prime_bits": 196.52406793095054,
-      "unchanged_union_bits": 110.27761936214897,
-      "algebraic_union_bits": 95.39738508495927,
-      "system_bits": 93.88875387392066
+      "unchanged_union_bits": 109.34681903198519,
+      "algebraic_union_bits": 95.39734172797581,
+      "system_bits": 93.88873863619872
     },
     {
       "label": "q40_g32_s2",
@@ -179,9 +184,9 @@
       "query_bits": 98.82816607589939,
       "t1_prime_bits": 98.93416406181262,
       "t2_prime_bits": 203.5975302060433,
-      "unchanged_union_bits": 110.27761936214897,
-      "algebraic_union_bits": 98.933608962505,
-      "system_bits": 97.87992441471027
+      "unchanged_union_bits": 109.34681903198519,
+      "algebraic_union_bits": 98.93310604199898,
+      "system_bits": 97.87968211777638
     },
     {
       "label": "q43_g32_s2",
@@ -197,9 +202,9 @@
       "query_bits": 101.43833943397323,
       "t1_prime_bits": 100.98566625778771,
       "t2_prime_bits": 207.70053459799348,
-      "unchanged_union_bits": 110.27761936214897,
-      "algebraic_union_bits": 100.98336655479456,
-      "system_bits": 100.19299161617464
+      "unchanged_union_bits": 109.34681903198519,
+      "algebraic_union_bits": 100.98128541965362,
+      "system_bits": 100.19178795066678
     },
     {
       "label": "q44_g32_s2",
@@ -215,9 +220,9 @@
       "query_bits": 102.20344334242407,
       "t1_prime_bits": 101.56244930271855,
       "t2_prime_bits": 208.85410068785515,
-      "unchanged_union_bits": 110.27761936214897,
-      "algebraic_union_bits": 101.55902059267763,
-      "system_bits": 100.8455458479378
+      "unchanged_union_bits": 109.34681903198519,
+      "algebraic_union_bits": 101.55592006269829,
+      "system_bits": 100.84365419855627
     },
     {
       "label": "q45_g32_s2_historical_menu_only",
@@ -233,9 +238,9 @@
       "query_bits": 102.90268978078565,
       "t1_prime_bits": 102.10197602656534,
       "t2_prime_bits": 209.93315413554873,
-      "unchanged_union_bits": 110.27761936214897,
-      "algebraic_union_bits": 102.09699509310362,
-      "system_bits": 101.44431445385133
+      "unchanged_union_bits": 109.34681903198519,
+      "algebraic_union_bits": 102.09249551570748,
+      "system_bits": 101.44145066106208
     }
   ],
   "table4_known_coefficient_sensitivity": [
@@ -253,9 +258,9 @@
       "query_bits": 90.93593686402903,
       "t1_prime_bits": 99.78308808249673,
       "t2_prime_bits": 91.90176414371118,
-      "unchanged_union_bits": 110.27761936214897,
-      "algebraic_union_bits": 91.89565415246952,
-      "system_bits": 90.33742143360217
+      "unchanged_union_bits": 109.34681903198519,
+      "algebraic_union_bits": 91.8956503247601,
+      "system_bits": 90.33742013383804
     },
     {
       "label": "q36_g32_s2_known_table4_conservative_t1",
@@ -271,9 +276,9 @@
       "query_bits": 94.35792588448587,
       "t1_prime_bits": 95.22222107264832,
       "t2_prime_bits": 196.37488865819077,
-      "unchanged_union_bits": 110.27761936214897,
-      "algebraic_union_bits": 95.22217870428574,
-      "system_bits": 93.72628064294923
+      "unchanged_union_bits": 109.34681903198519,
+      "algebraic_union_bits": 95.2221403055055,
+      "system_bits": 93.72626702815845
     },
     {
       "label": "q40_g32_s2_known_table4_conservative_t1",
@@ -289,9 +294,9 @@
       "query_bits": 98.62642240372293,
       "t1_prime_bits": 98.68671925841751,
       "t2_prime_bits": 203.30388502972914,
-      "unchanged_union_bits": 110.27761936214897,
-      "algebraic_union_bits": 98.68625163576088,
-      "system_bits": 97.65602689871575
+      "unchanged_union_bits": 109.34681903198519,
+      "algebraic_union_bits": 98.68582794470638,
+      "system_bits": 97.6558194296781
     },
     {
       "label": "q43_g32_s2_known_table4_conservative_t1",
@@ -307,9 +312,9 @@
       "query_bits": 101.1918263393496,
       "t1_prime_bits": 100.7018958887945,
       "t2_prime_bits": 207.3342382904831,
-      "unchanged_union_bits": 110.27761936214897,
-      "algebraic_union_bits": 100.7000065487121,
-      "system_bits": 99.92505926292688
+      "unchanged_union_bits": 109.34681903198519,
+      "algebraic_union_bits": 100.69829631186482,
+      "system_bits": 99.92405953726441
     },
     {
       "label": "q44_g32_s2_known_table4_conservative_t1",
@@ -325,9 +330,9 @@
       "query_bits": 101.93543928172639,
       "t1_prime_bits": 101.27206389912507,
       "t2_prime_bits": 208.47457431114427,
-      "unchanged_union_bits": 110.27761936214897,
-      "algebraic_union_bits": 101.26925969209726,
-      "system_bits": 100.56423439796923
+      "unchanged_union_bits": 109.34681903198519,
+      "algebraic_union_bits": 101.26672284622116,
+      "system_bits": 100.56267768737314
     },
     {
       "label": "q45_g32_s2_historical_menu_only_known_table4_conservative_t1",
@@ -343,9 +348,9 @@
       "query_bits": 102.63234498924615,
       "t1_prime_bits": 101.79386859810758,
       "t2_prime_bits": 209.51818370910928,
-      "unchanged_union_bits": 110.27761936214897,
-      "algebraic_union_bits": 101.78984416044939,
-      "system_bits": 101.15044895047468
+      "unchanged_union_bits": 109.34681903198519,
+      "algebraic_union_bits": 101.78620635178864,
+      "system_bits": 101.14811248883498
     }
   ],
   "t2_variant_comparison_q36_s2": [
@@ -363,9 +368,9 @@
       "query_bits": 94.5134519342418,
       "t1_prime_bits": 95.39743292426624,
       "t2_prime_bits": 196.52406793095054,
-      "unchanged_union_bits": 110.27761936214897,
-      "algebraic_union_bits": 95.39738508495927,
-      "system_bits": 93.88875387392066
+      "unchanged_union_bits": 109.34681903198519,
+      "algebraic_union_bits": 95.39734172797581,
+      "system_bits": 93.88873863619872
     },
     {
       "label": "q36_g32_s2_conservative_square_of_sum_t2",
@@ -381,9 +386,9 @@
       "query_bits": 94.5134519342418,
       "t1_prime_bits": 95.39743292426624,
       "t2_prime_bits": 195.80336479453518,
-      "unchanged_union_bits": 110.27761936214897,
-      "algebraic_union_bits": 95.39738508495927,
-      "system_bits": 93.88875387392066
+      "unchanged_union_bits": 109.34681903198519,
+      "algebraic_union_bits": 95.39734172797581,
+      "system_bits": 93.88873863619872
     }
   ],
   "q34_g36_earmark": {
@@ -401,9 +406,9 @@
       "query_bits": 94.35792588448587,
       "t1_prime_bits": 95.22222107264832,
       "t2_prime_bits": 196.37488865819077,
-      "unchanged_union_bits": 110.27761936214897,
-      "algebraic_union_bits": 95.22217870428574,
-      "system_bits": 93.72628064294923
+      "unchanged_union_bits": 109.34681903198519,
+      "algebraic_union_bits": 95.2221403055055,
+      "system_bits": 93.72626702815845
     },
     "earmark": {
       "label": "q34_g36_s2_earmark",
@@ -419,11 +424,11 @@
       "query_bits": 94.69843076907708,
       "t1_prime_bits": 95.58790875552376,
       "t2_prime_bits": 197.10626402394163,
-      "unchanged_union_bits": 110.27761936214897,
-      "algebraic_union_bits": 95.58785416430351,
-      "system_bits": 94.07565984477147
+      "unchanged_union_bits": 109.34681903198519,
+      "algebraic_union_bits": 95.58780468825077,
+      "system_bits": 94.07564249938301
     },
-    "computed_system_gain_bits": 0.3493792018222308,
+    "computed_system_gain_bits": 0.3493754712245618,
     "measured_pcs_saving_cu": 36629,
     "q_linear_statement_saving_cu": 7850,
     "total_projected_saving_cu": 44479,
@@ -431,6 +436,7 @@
     "disposition": "superseded: deterministic optimizer gives approximately 0.35 bits under the provisional known-Table-4-coefficient sensitivity"
   },
   "gate_economics": {
+    "status": "HISTORICAL COMPONENT ARITHMETIC ONLY: retired as a live product projection; the exact-wide diagnostic overlaps the scalar scaffold path, so a product ruling waits on in-place reconciliation and the M31/CM31 basis audit",
     "gate_cu": 1190000,
     "strict_gate_cu": 1071000,
     "r2_kprime51_central_cu": 974112,
@@ -458,6 +464,6 @@
     "q43_anchor_corrected_sensitivity_margin_cu": -10436,
     "q44_registered_combined_worst_cu": 1259316,
     "q44_anchor_corrected_sensitivity_cu": 1220768,
-    "verdict": "q36/s2 keeps t=90 but fails the binding registered strict projection by 25,660 CU; anchor-corrected draw clears strict only as sensitivity. q34/g36/s2 is the named strict-line recovery lever (18,819 CU registered margin) but is a deliberate second transcript knob, not the current v4 profile. q43/q44 exceed 1.19M under both draw readings and remain dead by ruling."
+    "verdict": "These q36/q34 values are historical component sensitivities, not current product totals. q34/g36 remains a held second transcript knob. The q43/q44 security-menu ruling remains historical provenance; no one-transaction or transport-split product ruling is emitted by this optimizer."
   }
 }

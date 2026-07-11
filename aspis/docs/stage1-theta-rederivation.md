@@ -40,7 +40,7 @@ at q43. Both correction layers are retained below rather than collapsed.
 | S_T2 = sum(degree_r - 1) | 1,356 = 2^10.41 | §3 T2 (STIR Lemma 4.5 shape) |
 | S_T2sq = sum((degree_r - 1)^2) | 2^20.09 | tighter s=2 per-round union |
 | grinding | g = 32 bits, query round only | §6 rule, unchanged |
-| unchanged terms at frozen r2/k'=51/m=534 | T3 117.3853, T4 120.6781, T5' 118.3561, T6 110.8518, T7' 111.9393, T8' 120.9999999973 (`4log2(p)-3`) | §3/§8; T6's historical 109.9 worst-layout bound is provenance only |
+| unchanged terms at frozen r2/k'=51, constraint registry open | T3 117.3853, T4 120.6781, T5' 118.3561, **T6 109.9125 and T7' 111.0000 at m_copy<=1024**; the endpoint-local m_copy=589 trace gives T6 110.7104 and T7' 4(589+1024)/\|F\| = 111.3445 sensitivities; T8' uses the preintegration eight-claim sensitivity 120.9999999973 | §3/§8; final m waits on randomized `ConstraintId` wiring, and final T8' is `(J+2)/|F|` until that registry freezes |
 | measured PCS CU/query | 16,418 | query_trade_g16.json, 8-seed means |
 | all-in CU/query (PCS + RLC + leaf at k'=51) | 20,332 | 16,418 + (131,759 + 9,143)/36 |
 | draw-spread proxy | range 55,786 / half 27,893 | variance_g16.json, 16 seeds |
@@ -51,7 +51,10 @@ at q43. Both correction layers are retained below rather than collapsed.
 ## 2. The adopted conjecture and the term mapping
 
 Source statement (note §9.3): S-two Conjectures 1-2 (ePrint 2026/532
-App. A.5), transported to circle codes by the scaled-RS isometry. At
+App. A.5). This sensitivity assumes their transport to the exact Aspis circle
+protocol; the scaled-RS isometry identifies the underlying full code but does
+not by itself prove the candidate's grouped folds, custom MLE binding, OOD
+sample denominator, or BCS accounting. At
 proximity parameter theta = 1 - rho - eta, Conjecture 1 states
 
     l(theta) <= c1 * 2^(c2 * H(rho)/eta), c1,c2 >= 1.
@@ -191,7 +194,7 @@ No source constant is now implicit:
 | finite-length remainder in `a=l*n+o(n)` | S-two App. A.5, Conjecture 2 | omitted | **unbounded at our n by the source; blocks quotation** |
 | fold coefficient `3*2^-(k+1)` | S-two Table 4, FRI-folding row | k=0 retains 3/2; k=1,2,3 are clamped upward from 3/4,3/8,3/16 to one | conservative-known numerator 7,488 |
 | old capacity/list claim | Crites–Stewart ePrint 2025/2046, Theorem 2 | no numerical constant imported | refutation anchor only; historical form remains dead |
-| circle-code transport | S-two §1.4 scaled-RS isometry | assumed to carry the conjectured statement | domain-specific conjectural step |
+| circle-code transport | S-two §1.4 scaled-RS isometry plus `stage2-circle-soundness-transport.md` | full-code/subcode Johnson facts identified; grouped-fold, MLE-binding, OOD-domain and BCS protocol transport still assumed | domain-specific conjectural step; blocks quotation |
 
 Thus 93.7263 is conditional on `c1=c2=1`, zero finite-length remainder,
 and the stated Table-4 mapping. It is a **provisional sensitivity**, not a
@@ -209,10 +212,17 @@ an algebraic round; and the registered q36 16-seed full range is applied
 unchanged to costlier shapes. The smaller anchor-corrected draw is emitted
 only as sensitivity.
 
-## 6. Option economics at the r=2/k'=51 base (974,112 central) — corrected
+## 6. Historical option arithmetic at the r=2/k'=51 component base
 
 All-in deltas: `dq * 16,418` (PCS) + `(131,759 + 9,143) * dq/36`
 (statement q-scaling) + **49,099 measured s2 transcript/relation CU**.
+
+This table is retained as the note-first security-menu ruling input, not as a
+live product projection. The corrected two-helper PCS scaffold subsequently
+measured +113,876.5 CU mean and still excludes the exact 49-column C1 seam,
+k'=51 recombination, payment constraints, hiding, and g32. Because it overlaps
+different partial components, it cannot be added to these rows; exact-wide
+integration must establish a new product total.
 
 The binding budget statistic is the registered conservative
 `central + 17,663 stress + 55,786 full draw range`. The 17,238
@@ -221,8 +231,8 @@ supersedes the entire 5-12K estimate; it is added exactly once.
 
 | option | provisional system sensitivity | central with measured s2 | registered stress+full-range | anchor-corrected sensitivity | verdict |
 | --- | ---: | ---: | ---: | ---: | --- |
-| 1: q36/s2, t=90 ruling | **93.73** | **1,023,211** | **1,096,660** | 1,058,112 | registered strict fails by 25,660; anchor sensitivity clears strict by 12,888; 1.19M clears |
-| strict-line recovery lever: q34/g36/s2 | 94.08 | **978,732** | **1,052,181** | 1,013,633 | registered strict clears by 18,819; deliberate second transcript knob, not current v4 |
+| 1: q36/s2, t=90 ruling | **93.73** | **1,023,211** | **1,096,660** | 1,058,112 | historical component sensitivity; retired as a live product total |
+| strict-line recovery lever: q34/g36/s2 | 94.08 | **978,732** | **1,052,181** | 1,013,633 | historical recovery sensitivity; deliberate second transcript knob, not priced exact-wide v4 |
 | 2: q40/s2 | 97.66 | 1,104,539 | 1,177,988 | 1,139,440 | strict dead; 1.19M registered clears by 12,012; if chosen, state t=95 |
 | q43/s2 old unit-coefficient crossing comparison | 99.93 under binding coefficients | 1,165,535 | **1,238,984** | **1,200,436** | 1.19M fails under both draw readings |
 | 3: first provisional t=100 crossing, q44/s2 | 100.56 | 1,185,867 | **1,259,316** | **1,220,768** | 1.19M fails under both draw readings |
@@ -231,12 +241,12 @@ supersedes the entire 5-12K estimate; it is added exactly once.
 also exceeds 1.19M under both registered and anchor-corrected draw readings.
 The measured s2 line removes the earlier gate-marginal ambiguity.
 
-The stated t=90 security ruling survives, but its current q36 product
-projection is strict-red. The named recovery lever is q34/g36/s2: it saves
-44,479 CU and restores 18,819 CU of registered strict margin while gaining
-0.3494 provisional bits. It remains held because changing q/g is a second
-transcript knob with a deliberate proof/KAT re-pin, not a number silently
-substituted into the current v4 profile.
+The stated t=90 security ruling survives. Product feasibility is now red and
+unpriced until exact-wide integration. q34/g36/s2 remains the named recovery
+lever because it saved 44,479 CU in the old component model while gaining
+0.3494 provisional bits, but that margin is no longer asserted. It remains
+held because changing q/g is a second transcript knob with a deliberate
+proof/KAT re-pin, not a number silently substituted into the current profile.
 
 Historical provenance: the factor-of-rho run put the crossing at q45 and
 about +191K; the corrected unit-coefficient run put it at q43/+150K. Both

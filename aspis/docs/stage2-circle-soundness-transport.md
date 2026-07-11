@@ -1,0 +1,288 @@
+# Stage 2 M31 circle-PCS soundness transport audit
+
+Date: `2026-07-11`
+
+Status: **code-level circle/RS transport identified; protocol-level transport
+open. This document ratifies no security number, proof version, product gate,
+or transaction architecture. Under the existing quotation rule, the only
+security figure that may be quoted is the approximately 65.5-bit proven
+floor. This audit does not promote a conjectural sensitivity or re-price that
+floor for the candidate protocol.**
+
+## 1. Scope and primary sources
+
+This audit asks a deliberately narrower question than the column-basis and
+production-plan documents: if Aspis replaces the current multiplicative-CM31
+PCS with the proposed M31 circle encoder, which existing soundness arguments
+actually transport?
+
+The primary paper source is Carmon--Goldberg--Habock--Lerer--Lesokhin--Papini--
+Samocha, *S-two* (IACR ePrint 2026/532). Equation, theorem, and section numbers
+below refer to that version. The implementation source is official Stwo commit
+`5d10e6b4baa559766e7bbae133b918121211a9c5`. Code is evidence about the exact
+basis, domains, and folds; it is not a soundness theorem.
+
+The relevant paper anchors are:
+
+- Lemma 1 and equations (3)--(5): the rational parameterization of the circle;
+- Theorem 5 and equations (19)--(22): the circle FFT tensor basis `B_n`, its
+  `2^n`-dimensional FFT space `L'_n`, and the one-dimensional gap to `L_n`;
+- Definition 6, equations (23)--(25), and Theorem 7: circle codes as scaled
+  generalized Reed--Solomon codes, their distance, and Johnson-regime list
+  decoding over an arbitrary circle domain;
+- Protocols 2--3, equations (55)--(70), and Theorem 19: the binary
+  circle-to-line/line FRI cascade, batching, folding, and query errors;
+- Protocol 4, equations (75)--(80), and Theorem 21: a degree-corrected
+  single-circle-point batch evaluation proof;
+- Section 4.5 and equations (81)--(84): the release's conjugate two-point
+  quotient, the consequences of omitting degree correction, and an explicit
+  list-regime proof gap for a release-specific domain-sampling change;
+- Theorem 22 and equations (89)--(90): the BCS/ROM accounting; and
+- Table 4 plus Appendix A.5, Conjectures 1--2: the conjectural folding shape,
+  existential list constants, and the unbounded finite-length `o(n)` term.
+
+The implementation anchors at the pinned commit are:
+
+- `crates/stwo/src/core/circle.rs:163-181,184-218` for the secure-circle
+  rational map and the M31/secure circle generators;
+- `crates/stwo/src/core/poly/circle/domain.rs:14-65` for the conjugate-coset
+  `CircleDomain`;
+- `crates/stwo/src/prover/poly/circle/poly.rs:10-65` for coefficients in the
+  bit-reversed tensor basis `[y,x,pi(x),...]`, extension, and evaluation;
+- `crates/stwo/src/prover/poly/circle/secure_poly.rs:14-50,76-102` for
+  coordinatewise secure-field polynomials/evaluations over base-field columns;
+- `crates/stwo/src/prover/backend/cpu/fri.rs:64-120` and
+  `crates/stwo/src/prover/fri.rs:26-85,137-195` for the circle-to-line fold,
+  line folds, and repeated-squared fold challenges; and
+- `crates/stwo/src/prover/pcs/mod.rs:229-241,359-416` for quotient generation,
+  FRI invocation, and Merkle commitments to base-field evaluation columns.
+
+The exact Aspis candidate anchors are
+`crates/aspis-core/src/circle.rs:27-65`,
+`crates/aspis-prover/tests/m31_circle_conformance.rs:139-281`, and sections
+2--6 of `stage2-m31-production-plan.md`. They pin the CM31-excluding rational
+sampler, direct MLE-message interpretation, 49-column circle encoding, late
+gamma recombination, tensor OOD identity, and grouped normalized folds. Those
+fixtures establish algebraic/representation conformance only.
+
+## 2. What the scaled-RS isometry does transport
+
+The exact direct-message code used by the candidate is identifiable, rather
+than merely analogous to a circle code.
+
+Let `F_q = M31`, `F = QM31`, and let `D = G'_12` be the 4,096-point canonical
+circle domain. A candidate C1 message is a vector of 1,024 M31 coefficients in
+the Stwo tensor basis. The basis formula in S-two (19)--(20) shows that indices
+`0..2^10` span `L'_10`; zero-extending that vector in the same nested basis
+before evaluating on `G'_12` does not change its polynomial. This is also the
+meaning of Stwo's `CircleCoefficients::extend`, and its pinned test checks that
+point evaluation is unchanged after extension
+(`prover/poly/circle/poly.rs:46-49,111-120`). The two QM31 C2 messages are the
+same construction over the extension alphabet, implemented coordinatewise as
+four M31 circle polynomials.
+
+Therefore each committed candidate column belongs to
+
+```text
+C'_10(F,D) = { p|D : p in L'_10(F) }
+           subset C_10(F,D).
+```
+
+S-two section 1.4 identifies the full code `C_10(F,D)` with a coordinate-scaled
+generalized RS code on `phi^-1(D)`. Coordinate scaling and the bijection of
+evaluation positions preserve Hamming distance. Restricting a code to the
+subcode generated by `L'_10` cannot increase a received word's list of nearby
+codewords. Consequently the full-code Johnson list bound is a valid
+conservative code-level bound for this exact direct tensor subcode. This part
+does not require interpreting the trace as AIR evaluations or applying a circle
+IFFT first; doing either would define a different message.
+
+That positive result has four boundaries:
+
+1. `L'_10` has exactly 1,024 basis coefficients, whereas the full `L_10` in
+   Definition 6 has the extra vanishing-polynomial direction in (22). A proof
+   may conservatively embed the subcode in the full code, but it must not switch
+   silently between the exact FFT-space rate and the full-code `(N+1)/|D|`
+   rate when substituting a radius or list size.
+2. Theorem 7 is a Johnson-regime theorem. It does not prove the Appendix A.5
+   conjectures at the candidate's finite length.
+3. Conjecture 1 is stated for RS codes over a prime field. Conjecture 2
+   explicitly says its line-decoding statement also holds for an extension
+   alphabet. The paper uses extension-field circle words in its examples, but
+   it does not separately prove that Conjecture 1's claimed list-size constants
+   hold for the exact QM31 alphabet/subcode here. That bridge must be stated as
+   an assumption or proved; it is not supplied by the scaled-RS isometry alone.
+4. The external values at `z` and `xor11(z)` are evaluations of the original
+   multilinear message in Aspis's Boolean tensor coordinates. They are not
+   values of the circle polynomial at a point of `C(QM31)`. Code membership
+   therefore transports, but binding those MLE claims requires Aspis's custom
+   relation/sumcheck argument. Protocol 4 cannot be cited for them by changing
+   notation.
+
+The conclusion is thus **yes at the code/isometry layer, no at the complete PCS
+protocol layer**.
+
+## 3. Rational sampler and degree normalization
+
+S-two Lemma 1 gives a bijection from the projective line to the projective
+circle through
+
+```text
+phi(t) = ((1-t^2)/(1+t^2), 2t/(1+t^2)).
+```
+
+The candidate layer-zero sampler draws an exact-uniform `t in QM31`, rejects
+`t in CM31` (which includes the two singular parameters), and applies this map.
+For finite affine points the inverse is `t = y/(1+x)`. Hence the accepted map
+is a bijection
+
+```text
+QM31 \ CM31  <-->  C(QM31) \ C(CM31).
+```
+
+Fresh independent retries followed by conditioning on acceptance preserve the
+uniform distribution on that stated set. Exhausting the bounded retry count is
+a completeness event. It is not statistical distance in an accepted proof.
+
+This does **not** make the existing T2 denominator or degree convention
+automatic:
+
+- S-two Theorem 15 samples from `C(F) \ C(F_q)`, while the candidate samples
+  from the smaller set `C(QM31) \ C(CM31)`. Any root/SZ calculation must use
+  the cardinality of the actual accepted set, not replace it by `|QM31|` and
+  not cite Theorem 15 verbatim.
+- Under the scaled-RS representation, a circle polynomial of total circle
+  degree at most `d` becomes a rational function whose numerator has
+  univariate degree at most `2d`. For `L'_m`, the convenient RS-order/message
+  symbol is `N=2^m`: circle degree is at most `N/2`, while the univariate
+  numerator/root bound is `N`. Thus the rational map introduces no additional
+  factor if a ledger's `degree_r` already means this RS order `N`; it does
+  introduce a factor-of-two error if `degree_r` is read as total circle degree.
+  The final transport lemma must name one convention and use it everywhere.
+- A bijective sampler does not establish the current STIR/WHIR
+  `C(L,2)*((degree-1)/|F|)^s` list-collision formula, nor does it establish that
+  two sequential samples square an error against this custom transcript. Those
+  are protocol statements, not consequences of the parameterization.
+
+The two public statement points are unrelated to this sampler. `z` and
+`xor11(z)` are ten-coordinate MLE points. They are also not the conjugate pair
+from S-two section 4.5: that pair is a circle point `Q` and its Frobenius
+conjugate, with the second value derived from base-field polynomial
+coefficients. Aspis must not use section 4.5 as the two-point proof for its MLE
+claims.
+
+## 4. Term-by-term transport matrix
+
+The status labels below mean:
+
+- **supported**: the cited source applies to the exact object after the stated
+  identification;
+- **local**: the term is an Aspis algebraic argument unaffected by the code
+  basis, but still depends on its own open registry/integration conditions; and
+- **open**: an additional lemma or protocol change is required before the term
+  can enter a computed union.
+
+| item | current Aspis role | strongest circle-source match | candidate status |
+| --- | --- | --- | --- |
+| Code distance/list decoding | rate-one-quarter direct message encoded on the canonical circle domain | S-two Theorem 5, §1.4, Theorem 7 | **supported in the Johnson regime** through `L'_10 subset L_10` and the scaled-GRS isometry; beyond-Johnson constants and finite length remain open |
+| Query term | random traced query plus query-only grinding | Theorem 19 query error `(1-theta)^s`; Theorem 22 for ROM accounting | **open as a protocol transport.** A uniform fiber opens all four circle symbols, so a disagreement set occupying a `theta` fraction of symbols necessarily touches at least a `theta` fraction of fibers. That preserves the elementary one-round miss bound, but the full correlated-agreement, later-layer query map, and BCS accounting still need a proof for the exact transcript |
+| T1 / T1' proximity gathering | four current arity-4 commitment rounds, with the provisional Table-4/list multiplier mapping | Theorem 19 folding errors; Remark 20 in unique decoding; conjectural Table 4 beyond Johnson | **open.** Protocol 3 proves a binary circle-to-line fold followed by binary line folds. The candidate compresses eight binary folds into four committed arity-4 rounds using one `alpha` and its square per round. Pinned Stwo code implements repeated-squared challenges, but the paper does not give the exact list-regime error for this grouped schedule. The current four-factor Table-4 substitution therefore is not a theorem for the candidate; derive an arity-4 lemma or enumerate the actual binary reductions and commitments before retaining any numerator |
+| FRI batch/correlated agreement | 49 C1 and two challenge-dependent C2 columns combined after both roots | Theorem 19 batching error, or its unique-decoding simplification | **open.** `M=51` is the relevant ensemble width if Protocol 3 is used. Its batching error contains domain/list-agreement factors and is not automatically subsumed by the scalar `50/|F|` T5' claim check. The second phase is committed before gamma, which is the necessary ordering, but a two-phase correlated-agreement reduction for the exact roots and relation accumulator is still required |
+| T2 / T2' OOD list binding | two sequential per-layer OOD samples and a custom tensor-relation sumcheck; current sensitivity imports the STIR/WHIR list-collision shape | Protocol 4 and Theorem 21 for a degree-corrected circle-point quotient proof | **open and not source-equivalent.** The candidate does not currently commit both `f` and `(f-v)/v_Q` as in (77), and its MLE claims are not circle-point evaluations. Section 4.5's uncorrected release variant moves to `L^+`, changes the effective rate/list bound in (82)--(84), and itself has a stated list-regime implementation gap. The rational sampler does not close any of these differences |
+| T3 relation/fused sumchecks | local SZ degree/round bound for the payment relations | S-two Theorem 15 composition is a different flat-AIR reduction | **local, not transported from S-two.** A linear change of encoding basis does not raise the degree of the underlying payment identities. The two MLE point weights are each multilinear, and a verifier-random linear combination remains within the same per-identity degree. The actual number of batched lanes/rounds must nevertheless be recounted from the final relation and constraint registry |
+| T4 zerocheck `eq` reduction | local random-point reduction | no needed circle-code substitution | **local.** The circle encoder does not change the Boolean `eq` polynomial, but the circle-to-line weight accumulator must mechanically preserve its boundary identity through every fold |
+| T5' gamma RLC | column/claim compression after all claims | scalar SZ; related, but not identical, to Theorem 19 batching | **local degree 50, plus an open correlated-agreement obligation.** There are 51 values per point and powers `gamma^0..gamma^50`. Reusing those powers at the second point does not make degree 101: if both point equations are enforced and at least one difference polynomial is nonzero, the gamma event still has degree at most 50. Changing C1 from CM31 symbols to M31 symbols does not change this count |
+| Two-point batching | combine the two gamma-compressed MLE equations | no S-two conjugate-pair match | **open new event.** If the provisional rule checks `e_0 + kappa*e_1 = 0`, a nonzero error pair gives an affine polynomial in `kappa`, hence a separate degree-one field event. It does not alter T5's gamma degree and must receive its own ledger line (or be charged to a deliberately named existing line), absorption order, and teeth vector. Checking both equations independently would remove this batching event but is a different verifier |
+| T6 tuple compression | copy-argument tuple compression under `lambda` | Aspis's UFD/SZ lemma, not S-two circle FRI | **local and basis-independent.** Neither 51 PCS columns nor two MLE points changes `(m,w)`. The final endpoint/constraint registry remains the authority for `m` |
+| T7' copy/range poles | two separate log-derivative identities sharing `chi` | Aspis's pole/SZ lemmas; S-two's LogUp row is structurally different | **local and basis-independent.** The independent range-table contribution remains in the numerator. Circle encoding does not merge the two identities or change the below-characteristic condition |
+| T8' statement/claim batching | verifier-random batching of `J` constraint residuals and two helper total-sum lanes | Aspis's local SZ reduction | **local count still open.** The 102 serialized PCS values do not become 102 `ConstraintId` lanes. The existing `J+2` means `J` residual families plus `sum(h1)` and `sum(h2)`. A `kappa` two-point event is additional unless the final note explicitly and correctly assigns it here |
+| T9 sampling distance | exact rejection sampling | S-two uses uniform field/circle challenges but does not prove the candidate bounded sampler | **supported only for the sampler's stated set, pending production wiring.** Conditional accepted samples are uniform; bounded exhaustion is completeness. The smaller CM31-excluded set must still be used in algebraic denominators |
+| Fiat--Shamir/Merkle layer | union/success-per-work ledger, SHA-256 radix-4 commitments | Theorem 22, equations (89)--(90), plus Remark 23 | **open.** S-two's BCS statement uses the maximum round error, attacker-query factor, and hash-collision term. Aspis's per-attempt union plus query-work normalization needs an explicit reduction to that model. Stwo's source uses a different tree/schedule, and host arithmetic conformance does not prove binding or state-restoration security for the candidate radix-4 transcript |
+
+## 5. Exact effect of 49 C1, two C2, and two points
+
+The counts must be separated because they enter different polynomials.
+
+| object | exact count | soundness consequence |
+| --- | ---: | --- |
+| C1 columns | 49 | gamma powers `0..48` |
+| C2 helper columns | 2 | gamma powers `49..50`; total per-point width is 51 |
+| MLE statement points | 2 | two degree-at-most-50 gamma equations, not one degree-101 equation |
+| serialized statement values | 102 | transcript/proof-byte count only; not a polynomial-degree count |
+| provisional point-batching challenge | 1 | a separate affine challenge event if the two equations are reduced to one |
+| helper total-sum lanes | 2 | the `+2` in T8'; unrelated to the number of MLE points |
+
+The circle basis also requires a degree vocabulary fix. A 1,024-coefficient
+`L'_10` message has circle total degree at most 512, while its scaled-RS
+univariate numerator has degree at most 1,024. These are two descriptions of
+the same code, not two error factors. Any future T1/T2 derivation must use
+`circle_degree`, `rs_order`, and `domain_size` as separate named variables.
+
+## 6. Finite-length and exact-domain obligations
+
+The following items block a circle-PCS computed union even if all arithmetic
+and transcript conformance tests pass:
+
+1. **Finite-length conjecture.** Appendix A.5 leaves `c1,c2 >= 1`
+   existential and gives the line-decoding threshold as
+   `a = l(theta)*n + o(n)` without a finite-`n` upper bound. The direct code
+   identification above does not bound that remainder.
+2. **Extension alphabet.** Pin whether Conjecture 1 is assumed for the exact
+   QM31 alphabet or derive the necessary list bound by coordinate/base-field
+   reduction. Conjecture 2's extension-alphabet sentence does not fill an
+   unstated Conjecture 1 hypothesis.
+3. **FFT-subspace/rate convention.** State whether each reduction uses the
+   exact `L'_m` space or embeds it in `L_m`, and carry the resulting rate,
+   distance, and one-dimensional gap consistently.
+4. **Grouped-fold theorem.** Prove the four committed arity-4 rounds, including
+   the `alpha,alpha^2` dependence, from an eight-binary-reduction statement or
+   provide a direct correlated-agreement lemma. A source-code match is not a
+   theorem.
+5. **Batching across phases.** Prove correlated agreement when 49 M31 C1
+   words are committed, `lambda/chi` create two QM31 C2 words, a second root is
+   committed, and only then gamma is sampled. Identify exactly where the
+   Theorem 19 batching term or an Aspis replacement is charged.
+6. **MLE-evaluation reduction.** Prove that the per-layer tensor relation and
+   sumcheck bind both Boolean-tensor claims to the circle-encoded message.
+   Protocol 4's circle-point quotient is not that proof.
+7. **Degree correction and small domains.** If Protocol 4 is adopted, check
+   condition (80), `1-theta > (1-delta)(1+2/N_i)`, for every nonzero batch.
+   If degree correction is omitted, use the enlarged `L^+` spaces and
+   equations (82)--(84); do not retain the old rate/list size. The final small
+   line domains make this a real finite-domain check, not an asymptotic note.
+8. **Actual OOD domains.** Use `C(QM31) \ C(CM31)` at layer zero and
+   `QM31 \ CM31` on later lines. Prove root counts with the explicit
+   RS-order convention and prove any two-sample product bound for the exact
+   adaptive transcript.
+9. **Fiber queries.** Lift the elementary bad-fiber counting observation into
+   the full multi-round correlated-agreement proof with the candidate's
+   consecutive four-slot leaves and `q -> q>>2` transitions.
+10. **BCS/ROM and commitment binding.** Reconcile the Aspis ledger with
+    Theorem 22 (or state and prove another transform theorem) for SHA-256,
+    separate C1/C2 roots, later combined roots, radix-4 minimal subtrees,
+    grinding position, and the exact number of state-restorable rounds.
+11. **Open local counts.** Freeze `J`, the copy endpoint registry, the two-point
+    batching rule, and every transcript absorption before evaluating T3--T8'.
+
+S-two section 4.5 is especially important precedent: it explicitly separates
+an implementation that appears algebraically natural from a list-regime proof
+for its exact domain sampling. Aspis should hold its grouped folds and custom
+MLE evaluation reduction to the same standard.
+
+## 7. Audit conclusion
+
+The M31 candidate is a genuine circle-code construction at the message and
+codeword layer. The exact direct tensor code is a subcode to which S-two's
+scaled-GRS isometry and Johnson-regime code facts conservatively apply. The
+rational parameterization is likewise an exact uniform bijection on the
+candidate's stated accepted set.
+
+Neither fact closes the protocol transport. The current T1' four-factor
+mapping, the imported T2' list-collision formula, the two-point MLE binding,
+and the BCS accounting all require exact-candidate lemmas. T3--T8' mostly keep
+their local algebraic shapes, but their final counts and the provisional
+two-point batching event remain open. Arithmetic conformance and an SBF CU
+measurement can proceed as engineering evidence, but neither may be labeled a
+circle-FRI soundness result.
+
+No architecture ruling follows from this audit.

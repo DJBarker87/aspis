@@ -11,11 +11,11 @@ pub const RANGE_LIMB_BITS: u32 = 10;
 pub const RANGE_LIMB_LIMIT: u16 = 1 << RANGE_LIMB_BITS;
 pub const RANGE_LIMBS_PER_VALUE: usize = 3;
 
-const DOMAIN_OWNER_KEY: M31 = M31(0x4153_0001);
-const DOMAIN_NULLIFIER: M31 = M31(0x4153_0002);
-const DOMAIN_NOTE: M31 = M31(0x4153_0003);
-const DOMAIN_OUTPUT: M31 = M31(0x4153_0004);
-const DOMAIN_MERKLE_NODE: M31 = M31(0x4153_0005);
+pub(crate) const DOMAIN_OWNER_KEY: M31 = M31(0x4153_0001);
+pub(crate) const DOMAIN_NULLIFIER: M31 = M31(0x4153_0002);
+pub(crate) const DOMAIN_NOTE: M31 = M31(0x4153_0003);
+pub(crate) const DOMAIN_OUTPUT: M31 = M31(0x4153_0004);
+pub(crate) const DOMAIN_MERKLE_NODE: M31 = M31(0x4153_0005);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MerklePath {
@@ -116,53 +116,103 @@ fn append_digest(output: &mut Vec<M31>, digest: &Digest) {
 }
 
 pub fn derive_owner_key(nullifier_key: &Digest) -> Digest {
-    hash_fields(DOMAIN_OWNER_KEY, nullifier_key)
+    derive_owner_key_with(nullifier_key, &mut hash_fields)
 }
 
 pub fn derive_nullifier(nullifier_key: &Digest, salt: &Digest) -> Digest {
+    derive_nullifier_with(nullifier_key, salt, &mut hash_fields)
+}
+
+fn derive_owner_key_with<H>(nullifier_key: &Digest, hash: &mut H) -> Digest
+where
+    H: FnMut(M31, &[M31]) -> Digest,
+{
+    hash(DOMAIN_OWNER_KEY, nullifier_key)
+}
+
+fn derive_nullifier_with<H>(nullifier_key: &Digest, salt: &Digest, hash: &mut H) -> Digest
+where
+    H: FnMut(M31, &[M31]) -> Digest,
+{
     let mut input = Vec::with_capacity(16);
     append_digest(&mut input, nullifier_key);
     append_digest(&mut input, salt);
-    hash_fields(DOMAIN_NULLIFIER, &input)
+    hash(DOMAIN_NULLIFIER, &input)
 }
 
 pub fn note_commitment(owner_key: &Digest, value: u32, asset_id: M31, salt: &Digest) -> Digest {
+    note_commitment_with(owner_key, value, asset_id, salt, &mut hash_fields)
+}
+
+fn note_commitment_with<H>(
+    owner_key: &Digest,
+    value: u32,
+    asset_id: M31,
+    salt: &Digest,
+    hash: &mut H,
+) -> Digest
+where
+    H: FnMut(M31, &[M31]) -> Digest,
+{
     debug_assert!(value < P);
     let mut input = Vec::with_capacity(18);
     append_digest(&mut input, owner_key);
     input.push(M31(value));
     input.push(asset_id);
     append_digest(&mut input, salt);
-    hash_fields(DOMAIN_NOTE, &input)
+    hash(DOMAIN_NOTE, &input)
 }
 
 pub fn output_commitment(owner_key: &Digest, value: u32, asset_id: M31, salt: &Digest) -> Digest {
+    output_commitment_with(owner_key, value, asset_id, salt, &mut hash_fields)
+}
+
+fn output_commitment_with<H>(
+    owner_key: &Digest,
+    value: u32,
+    asset_id: M31,
+    salt: &Digest,
+    hash: &mut H,
+) -> Digest
+where
+    H: FnMut(M31, &[M31]) -> Digest,
+{
     debug_assert!(value < P);
     let mut input = Vec::with_capacity(18);
     append_digest(&mut input, owner_key);
     input.push(M31(value));
     input.push(asset_id);
     append_digest(&mut input, salt);
-    hash_fields(DOMAIN_OUTPUT, &input)
+    hash(DOMAIN_OUTPUT, &input)
 }
 
-fn merkle_parent(left: &Digest, right: &Digest) -> Digest {
+fn merkle_parent_with<H>(left: &Digest, right: &Digest, hash: &mut H) -> Digest
+where
+    H: FnMut(M31, &[M31]) -> Digest,
+{
     let mut input = Vec::with_capacity(16);
     append_digest(&mut input, left);
     append_digest(&mut input, right);
-    hash_fields(DOMAIN_MERKLE_NODE, &input)
+    hash(DOMAIN_MERKLE_NODE, &input)
 }
 
 pub fn merkle_root(leaf: Digest, path: &MerklePath) -> Result<Digest, SpendError> {
+    merkle_root_with(leaf, path, &mut hash_fields)
+}
+
+fn merkle_root_with<H>(leaf: Digest, path: &MerklePath, hash: &mut H) -> Result<Digest, SpendError>
+where
+    H: FnMut(M31, &[M31]) -> Digest,
+{
     if path.siblings.len() < 32 && path.index >> path.siblings.len() != 0 {
         return Err(SpendError::MerkleIndexOutOfRange);
     }
     let mut current = leaf;
     for (level, sibling) in path.siblings.iter().enumerate() {
         current = if (path.index >> level) & 1 == 0 {
-            merkle_parent(&current, sibling)
+            merkle_parent_with(&current, sibling, hash)
         } else {
-            merkle_parent(sibling, &current)
+            merkle_parent_with(sibling, &current, hash)
         };
     }
     Ok(current)
@@ -190,6 +240,18 @@ fn evaluate_spend_after_value_checks(
     witness: &SpendWitness,
     context: EvaluationContext<'_>,
 ) -> Result<(), SpendError> {
+    evaluate_spend_after_value_checks_with(public, witness, context, &mut hash_fields)
+}
+
+fn evaluate_spend_after_value_checks_with<H>(
+    public: &SpendPublic,
+    witness: &SpendWitness,
+    context: EvaluationContext<'_>,
+    hash: &mut H,
+) -> Result<(), SpendError>
+where
+    H: FnMut(M31, &[M31]) -> Digest,
+{
     if public.fee >= VALUE_LIMIT {
         return Err(SpendError::FeeOutOfRange);
     }
@@ -197,25 +259,28 @@ fn evaluate_spend_after_value_checks(
         return Err(SpendError::BalanceMismatch);
     }
 
-    let owner_key = derive_owner_key(&witness.nullifier_key);
-    let note = note_commitment(
+    let owner_key = derive_owner_key_with(&witness.nullifier_key, hash);
+    let note = note_commitment_with(
         &owner_key,
         witness.value,
         witness.input_asset_id,
         &witness.input_salt,
+        hash,
     );
-    if merkle_root(note, &witness.merkle_path)? != public.anchor {
+    if merkle_root_with(note, &witness.merkle_path, hash)? != public.anchor {
         return Err(SpendError::AnchorMismatch);
     }
 
-    if derive_nullifier(&witness.nullifier_key, &witness.input_salt) != public.nullifier {
+    if derive_nullifier_with(&witness.nullifier_key, &witness.input_salt, hash) != public.nullifier
+    {
         return Err(SpendError::NullifierMismatch);
     }
-    if output_commitment(
+    if output_commitment_with(
         &witness.output_owner_key,
         witness.value_out,
         public.asset_id,
         &witness.output_salt,
+        hash,
     ) != public.output_commitment
     {
         return Err(SpendError::OutputCommitmentMismatch);
@@ -263,6 +328,26 @@ pub fn evaluate_spend_with_range_lookup(
     verify_10bit_range_lookup(witness.value, &range_witness.input_value_limbs)?;
     verify_10bit_range_lookup(witness.value_out, &range_witness.output_value_limbs)?;
     evaluate_spend_after_value_checks(public, witness, context)
+}
+
+/// Internal evaluator seam used by the trace builder. It executes the same
+/// shape, range, economic, and public-binding checks as
+/// [`evaluate_spend_with_range_lookup`], while routing every hash invocation
+/// through the supplied implementation.
+pub(crate) fn evaluate_spend_with_range_lookup_and_hasher<H>(
+    public: &SpendPublic,
+    witness: &SpendWitness,
+    range_witness: &RangeLookupWitness,
+    context: EvaluationContext<'_>,
+    hash: &mut H,
+) -> Result<(), SpendError>
+where
+    H: FnMut(M31, &[M31]) -> Digest,
+{
+    validate_shape_and_asset(public, witness, context)?;
+    verify_10bit_range_lookup(witness.value, &range_witness.input_value_limbs)?;
+    verify_10bit_range_lookup(witness.value_out, &range_witness.output_value_limbs)?;
+    evaluate_spend_after_value_checks_with(public, witness, context, hash)
 }
 
 #[cfg(test)]

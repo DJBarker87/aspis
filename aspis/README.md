@@ -6,8 +6,8 @@ a program on Solana. This subrepo contains the native WHIR-style M31 PCS
 substrate ("native v0") and its staged hardening, with the measured Phase 2
 kernel winners built in from the first line.
 
-**Status**: Stage 1 PCS milestone **closed; Stage 2 one-transaction feasibility
-reopened by measured math kernels**. Stage 0 closed conditionally and the
+**Status**: Stage 1 PCS milestone **closed; Stage 2 product ruling blocked on
+reconciled integration and the column-basis audit**. Stage 0 closed conditionally and the
 soundness review retired q32/g32 in favor of q36/g32. The upstream T1/T2
 constants are pinned, the challenge sampler is exact-uniform, and external
 evaluation claims plus one OOD value per round are transcript-bound and
@@ -46,14 +46,34 @@ showed the 30,000-CU allowance was really 83,849 — so the shrink hunt ran
 with a pre-registered close condition and closed on measured arithmetic:
 the r=2 / k'=51 layout re-freeze (RLC 131,759, leaf 9,143, composition
 70,954) projects **974,112 CU central and 1,047,561 combined-worst, both
-under the strict 1,071,000 ceiling at s1**. The measured s2 delta is
-49,099 CU: current q36 becomes 1,096,660 registered and strict-red;
-q34/g36 is the named recovery lever at 1,052,181 (18,819 strict margin),
-but remains a deliberate second transcript knob. LogUp-GKR and STIR were
-priced and rejected. The LogUp proof and wide RLC are still not
-integrated into one payment proof, so split verification remains the
-fallback; see `docs/stage2-shrink-hunt.md`, `docs/stage2-feasibility.md`,
-and `docs/aspis-soundness-note.md` §8.
+under the strict 1,071,000 ceiling at s1**. The +49,099-CU s2 result is an
+isolated OOD/transcript probe; its historical 1,096,660 q36 arithmetic is
+not a live product projection. The two-helper v4 PCS scaffold explicitly
+excludes the exact 49-column C1 opening, k'=51 recombination, LogUp payment
+constraints, hiding, and final g32 profile. The omitted q36 exact-wide seam is
+now measured under the standard 262,144-byte heap: unprepared exhausts 1.4M
+CU, one prepared factor table accepts at 1,125,266 CU, and the canonical-byte
+kernel accepts at **1,066,396 CU** (58,870 CU / 5.23% below structured;
+at least 333,604 CU reclaimed from the unprepared cap). This diagnostic alone
+leaves 123,604 CU against 1.19M and excludes PCS/payment work. It also replaces
+scalar C1/C2/per-query work inside the scaffold, so adding those artifacts is
+forbidden in either direction. q34/g36 remains a deliberate second transcript
+knob, not a claimed recovery. LogUp-GKR and STIR were priced and rejected;
+one-transaction, proof-sealed split, and proven-regime options are separated in
+the neutral owner packet; no option is adopted. See
+`docs/stage2-shrink-hunt.md`, `docs/stage2-feasibility.md`, and
+`docs/stage2-column-basis-audit.md`, `docs/stage2-owner-decision-packet.md`,
+plus `docs/aspis-soundness-note.md` §8.
+The non-additive current-CM31 verifier now exhausts the 1.4M meter in 8/8
+q36/g16 draws. Separately, the genuine-circle M31 candidate is source-audited
+and host-conformant for message/first-fold arithmetic, secure-circle tensor
+weights, and the later-line order/normalization bridge; its winning standard-
+heap RLC shape is 552,289 CU. Production C2/transcript wiring, authenticated
+circle/line FRI, soundness transport, and the in-place verifier remain
+unimplemented. No architecture is selected.
+The append-only tag-24 wire allocation now validates the exact diagnostic
+header and ten canonical public coordinates, then rejects by design; it is not
+a circle-PCS acceptance path.
 
 ## What this is (and is not)
 
@@ -121,7 +141,7 @@ results/stage0,stage1/   raw artifacts backing every number quoted anywhere
 | --- | --- | --- |
 | Stage 0 | Consolidate the native WHIR-style M31 PCS substrate | **CLOSED/CONDITIONAL (historical)**: admitted q32/g32 as a hypothesis; Stage 1 has since retired it |
 | Stage 1 | Harden and budget the PCS soundness argument | **REOPENED / FINITE-LENGTH CONSTANTS GATE**: t=90 ruling retained at q36/g32/s2; 93.73 is provisional sensitivity only; 65.5 is the only quotable floor; measurements and teeth tests stand |
-| Stage 2 | Build the direct spend evaluator and statement layer | **IN PROGRESS / CURRENT q36 STRICT-RED**: measured s2 moves q36 registered to 1,096,660; q34/g36 recovery projects 1,052,181 but is not silently adopted; LogUp/RLC/full-proof integration pending; split receipt retained |
+| Stage 2 | Build the direct spend evaluator and statement layer | **IN PROGRESS / RULING OPEN**: current-CM31 in-place scaffold exhausts 1.4M in 8/8 draws; genuine-circle M31 host conformance and 552,289-CU isolated RLC shape pass, while production circle-FRI/in-place measurement remains open; split is specified, not adopted |
 | Stage 3 | Add commitment and sumcheck/evaluation hiding | future |
 | Stage 4 | Split verifier crate seam and demo shielded pool | future |
 | Stage 5 | Freeze, devnet n=100 measurement, novelty re-check, writeup | future |

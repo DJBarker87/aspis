@@ -7,14 +7,23 @@
 //! transcript-derived per-round OOD points and an interleaved degree-6
 //! sumcheck that enforces the OOD and external evaluation relations against
 //! the explicit final coefficients. Version 3 also authenticates a
-//! post-challenge C2 and folds its gamma-RLC with C1. It is not paper WHIR;
-//! the soundness note states the exact assumption and remaining statement
-//! layer delta.
+//! post-challenge C2 and folds its gamma-RLC with C1. Version 4 executes two
+//! complete, sequential `(beta, y, mu)` OOD samples before each round's
+//! sumcheck/fold challenge; its C2 leaf jointly authenticates two helper
+//! columns. Scalar v4 folds `C1 + gamma*C2[0] + gamma^2*C2[1]`; the flagged
+//! exact-wide PCS scaffold authenticates 49 CM31 C1 columns and replaces that
+//! scalar layer-zero operation in place with powers 0..50. It is not paper
+//! WHIR; the soundness note states the exact assumption and remaining
+//! statement-layer delta.
 
+use alloc::boxed::Box;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use crate::field::{cm31_batch_inverse_with, CM31, M31, M31_QUARTER, QM31};
+use crate::field::{
+    cm31_batch_inverse_with, qm31_cm31_dot4_prepared_bytes, PreparedQm31Cm31Weights, CM31, M31,
+    M31_QUARTER, QM31,
+};
 use crate::merkle::{
     leaf_hash, verify_minimal_subtree_bytes, verify_radix4_minimal_subtree_bytes,
     verify_single_path_bytes,
@@ -24,7 +33,8 @@ use crate::params::{
     FINAL_POLY_LOG_LEN, FOLD_VARS,
 };
 use crate::proof::{
-    fiber_value_bytes, Cursor, Header, HEADER_LEN, OOD_VALUE_LEN, SECOND_PHASE_LAYER_TAG,
+    fiber_value_bytes, Cursor, Header, EXACT_WIDE_C1_COLUMNS, HEADER_LEN, OOD_VALUE_LEN,
+    SECOND_PHASE_LAYER_TAG,
 };
 use crate::sumcheck::{
     boundary_sum as sumcheck_boundary, evaluate as evaluate_sumcheck, SumcheckPolynomial,
@@ -98,6 +108,20 @@ enum DenominatorBackend {
     CircleConjugate,
     /// Retained for literal SBF comparisons and non-circle callers.
     BatchInverse(M31InverseFn),
+}
+
+#[derive(Clone, Copy)]
+struct VerificationMode {
+    ordering: OrderingPolicy,
+    denominator_backend: DenominatorBackend,
+    /// The exact-wide flag is deliberately unavailable to canonical
+    /// production entrypoints until the two-point/102-value statement lands.
+    allow_exact_wide_scaffold: bool,
+    /// Deliberately weakened teeth mode: reinterpret the diagnostic M31 flag
+    /// using the legacy scalar CM31 leaf parser. Production always sets this
+    /// false, and the field exists solely to demonstrate the classification
+    /// guard rejects a proof an unfixed verifier would accept.
+    allow_m31_circle_as_legacy: bool,
 }
 
 #[inline(always)]
@@ -266,17 +290,70 @@ fn parse_extension_fiber(bytes: &[u8]) -> Result<[QM31; 4], VerifyError> {
     Ok(values)
 }
 
+fn parse_double_extension_fiber(bytes: &[u8]) -> Result<([QM31; 4], [QM31; 4]), VerifyError> {
+    if bytes.len() != 8 * OOD_VALUE_LEN {
+        return Err(VerifyError::BadLength);
+    }
+    Ok((
+        parse_extension_fiber(&bytes[..4 * OOD_VALUE_LEN])?,
+        parse_extension_fiber(&bytes[4 * OOD_VALUE_LEN..])?,
+    ))
+}
+
 fn combine_first_phase_fibers(
     main: &Fiber,
-    helper: [QM31; 4],
+    helper_1: [QM31; 4],
+    helper_2: Option<[QM31; 4]>,
     gamma: QM31,
 ) -> Result<Fiber, VerifyError> {
     let Fiber::Base(main) = main else {
         return Err(VerifyError::BadHeader);
     };
     let mut combined = [QM31::ZERO; 4];
+    let gamma_2 = gamma.square();
     for index in 0..4 {
-        combined[index] = QM31::from_cm31(main[index]).add(gamma.mul(helper[index]));
+        combined[index] = QM31::from_cm31(main[index]).add(gamma.mul(helper_1[index]));
+        if let Some(helper_2) = helper_2 {
+            combined[index] = combined[index].add(gamma_2.mul(helper_2[index]));
+        }
+    }
+    Ok(Fiber::Ext(combined))
+}
+
+/// Once-prepared challenge factors for the exact 49-CM31 + 2-QM31 v4
+/// layer-zero replacement path. This lives in core so the production
+/// verifier does not depend on the higher-level statement crate.
+struct ExactWideCombinationWeights {
+    c1: PreparedQm31Cm31Weights<EXACT_WIDE_C1_COLUMNS>,
+    helpers: [QM31; 2],
+}
+
+fn prepare_exact_wide_combination(gamma: QM31) -> ExactWideCombinationWeights {
+    let (c1, gamma_49) = PreparedQm31Cm31Weights::geometric(gamma);
+    ExactWideCombinationWeights {
+        c1,
+        helpers: [gamma_49, gamma_49.mul(gamma)],
+    }
+}
+
+fn combine_exact_wide_sections(
+    c1_bytes: &[u8],
+    c2_bytes: &[u8],
+    weights: &ExactWideCombinationWeights,
+) -> Result<Fiber, VerifyError> {
+    if c2_bytes.len() != 8 * OOD_VALUE_LEN {
+        return Err(VerifyError::BadLength);
+    }
+    let mut combined = qm31_cm31_dot4_prepared_bytes(&weights.c1, c1_bytes)
+        .ok_or(VerifyError::NonCanonicalValue)?;
+    // C2 wire order is helper-major: helper 0's four slots, then helper 1.
+    for helper in 0..2 {
+        for (slot, value) in combined.iter_mut().enumerate() {
+            let offset = (helper * 4 + slot) * OOD_VALUE_LEN;
+            let helper_value = QM31::from_le_bytes(&c2_bytes[offset..offset + OOD_VALUE_LEN])
+                .ok_or(VerifyError::NonCanonicalValue)?;
+            *value = value.add(weights.helpers[helper].mul(helper_value));
+        }
     }
     Ok(Fiber::Ext(combined))
 }
@@ -686,8 +763,37 @@ pub fn verify_with_claim_and_trace(
         claim,
         hash,
         trace_fn,
-        OrderingPolicy::Canonical,
-        DenominatorBackend::CircleConjugate,
+        VerificationMode {
+            ordering: OrderingPolicy::Canonical,
+            denominator_backend: DenominatorBackend::CircleConjugate,
+            allow_exact_wide_scaffold: false,
+            allow_m31_circle_as_legacy: false,
+        },
+    )
+}
+
+/// Diagnostic-only verifier for the exact-wide v4 PCS scaffold. Production
+/// entrypoints intentionally reject the wide flag until the final 102-value,
+/// two-point statement semantics are implemented. The append-only SBF
+/// measurement instruction is the sole intended caller.
+pub fn verify_exact_wide_v4_scaffold_for_measurement(
+    proof: &[u8],
+    statement_digest: &[u8; 32],
+    claim: Option<&EvaluationClaim>,
+    hash: HashFn,
+) -> Result<(), VerifyError> {
+    verify_inner(
+        proof,
+        statement_digest,
+        claim,
+        hash,
+        None,
+        VerificationMode {
+            ordering: OrderingPolicy::Canonical,
+            denominator_backend: DenominatorBackend::CircleConjugate,
+            allow_exact_wide_scaffold: true,
+            allow_m31_circle_as_legacy: false,
+        },
     )
 }
 
@@ -709,8 +815,12 @@ pub fn verify_with_claim_trace_and_inverse(
         claim,
         hash,
         trace_fn,
-        OrderingPolicy::Canonical,
-        DenominatorBackend::BatchInverse(inverse),
+        VerificationMode {
+            ordering: OrderingPolicy::Canonical,
+            denominator_backend: DenominatorBackend::BatchInverse(inverse),
+            allow_exact_wide_scaffold: false,
+            allow_m31_circle_as_legacy: false,
+        },
     )
 }
 
@@ -722,7 +832,13 @@ pub fn verify_with_claim_trace_and_inverse(
 pub enum InsecureOrdering {
     ChiBeforeC1,
     GammaBeforeClaims,
+    /// V4-only teeth schedule: helper claim 1 is absorbed, gamma is squeezed,
+    /// then helper claim 2 is absorbed.
+    GammaBeforeSecondHelperClaim,
     OodAfterFoldChallenge,
+    /// V4-only teeth schedule: the first OOD triple is canonical, but alpha
+    /// is squeezed between the second beta and its y/mu absorption.
+    SecondOodAfterFoldChallenge,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -733,7 +849,11 @@ enum OrderingPolicy {
     #[cfg(feature = "insecure-test-ordering")]
     GammaBeforeClaims,
     #[cfg(feature = "insecure-test-ordering")]
+    GammaBeforeSecondHelperClaim,
+    #[cfg(feature = "insecure-test-ordering")]
     OodAfterFoldChallenge,
+    #[cfg(feature = "insecure-test-ordering")]
+    SecondOodAfterFoldChallenge,
 }
 
 impl OrderingPolicy {
@@ -753,9 +873,25 @@ impl OrderingPolicy {
         false
     }
 
+    fn gamma_before_second_helper_claim(self) -> bool {
+        #[cfg(feature = "insecure-test-ordering")]
+        if self == Self::GammaBeforeSecondHelperClaim {
+            return true;
+        }
+        false
+    }
+
     fn ood_after_fold_challenge(self) -> bool {
         #[cfg(feature = "insecure-test-ordering")]
         if self == Self::OodAfterFoldChallenge {
+            return true;
+        }
+        false
+    }
+
+    fn second_ood_after_fold_challenge(self) -> bool {
+        #[cfg(feature = "insecure-test-ordering")]
+        if self == Self::SecondOodAfterFoldChallenge {
             return true;
         }
         false
@@ -773,7 +909,13 @@ pub fn verify_with_insecure_ordering(
     let policy = match ordering {
         InsecureOrdering::ChiBeforeC1 => OrderingPolicy::ChiBeforeC1,
         InsecureOrdering::GammaBeforeClaims => OrderingPolicy::GammaBeforeClaims,
+        InsecureOrdering::GammaBeforeSecondHelperClaim => {
+            OrderingPolicy::GammaBeforeSecondHelperClaim
+        }
         InsecureOrdering::OodAfterFoldChallenge => OrderingPolicy::OodAfterFoldChallenge,
+        InsecureOrdering::SecondOodAfterFoldChallenge => {
+            OrderingPolicy::SecondOodAfterFoldChallenge
+        }
     };
     verify_inner(
         proof,
@@ -781,8 +923,38 @@ pub fn verify_with_insecure_ordering(
         claim,
         hash,
         None,
-        policy,
-        DenominatorBackend::CircleConjugate,
+        VerificationMode {
+            ordering: policy,
+            denominator_backend: DenominatorBackend::CircleConjugate,
+            allow_exact_wide_scaffold: false,
+            allow_m31_circle_as_legacy: false,
+        },
+    )
+}
+
+/// Deliberately weakened framing used only by the adversarial proof-format
+/// test. It accepts the new M31 discriminator but parses layer zero exactly
+/// like the legacy scalar CM31 PCS, recreating the misclassification that the
+/// production guard is intended to make impossible.
+#[cfg(feature = "insecure-test-framing")]
+pub fn verify_with_insecure_m31_circle_as_legacy_for_tests(
+    proof: &[u8],
+    statement_digest: &[u8; 32],
+    claim: Option<&EvaluationClaim>,
+    hash: HashFn,
+) -> Result<(), VerifyError> {
+    verify_inner(
+        proof,
+        statement_digest,
+        claim,
+        hash,
+        None,
+        VerificationMode {
+            ordering: OrderingPolicy::Canonical,
+            denominator_backend: DenominatorBackend::CircleConjugate,
+            allow_exact_wide_scaffold: false,
+            allow_m31_circle_as_legacy: true,
+        },
     )
 }
 
@@ -792,11 +964,16 @@ fn verify_inner(
     claim: Option<&EvaluationClaim>,
     hash: HashFn,
     trace_fn: Option<TraceFn>,
-    ordering: OrderingPolicy,
-    denominator_backend: DenominatorBackend,
+    mode: VerificationMode,
 ) -> Result<(), VerifyError> {
     trace(trace_fn, TraceEvent::Start);
     let header = Header::parse(proof).ok_or(VerifyError::BadHeader)?;
+    if header.has_exact_wide_c1() && !mode.allow_exact_wide_scaffold {
+        return Err(VerifyError::BadHeader);
+    }
+    if header.has_m31_circle_c1_diagnostic() && !mode.allow_m31_circle_as_legacy {
+        return Err(VerifyError::BadHeader);
+    }
     let profile = profile_by_id(header.profile_id).ok_or(VerifyError::UnknownProfile)?;
     if header.log_rows != profile.log_rows
         || header.log_blowup != profile.log_blowup
@@ -810,8 +987,8 @@ fn verify_inner(
     let fold_payload = FoldPayload::from_u8(header.fold_payload).ok_or(VerifyError::BadHeader)?;
     let merkle_mode = MerkleMode::from_u8(header.merkle_mode).ok_or(VerifyError::BadHeader)?;
     // Claim flag and supplied claim must agree, and the point dimension must
-    // match the profile — before anything is derived. Version 3 requires C2
-    // for claim-carrying proofs so gamma can bind both evaluations.
+    // match the profile — before anything is derived. Claim-carrying proofs
+    // require C2 so gamma can bind v3's one or v4's two helper evaluations.
     match (header.has_claim(), claim) {
         (false, None) => {}
         (true, Some(claim)) => {
@@ -841,7 +1018,7 @@ fn verify_inner(
     // The insecure chi-before-C1 policy deliberately squeezes these values
     // before C1. Canonical verification takes the same two squeezes only
     // after the first root has been absorbed.
-    if header.has_second_phase() && ordering.chi_before_c1() {
+    if header.has_second_phase() && mode.ordering.chi_before_c1() {
         transcript
             .challenge_qm31()
             .map_err(|_| VerifyError::ChallengeSampleExhausted)?;
@@ -856,13 +1033,14 @@ fn verify_inner(
     let mut relation_value = QM31::ZERO;
     let mut second_phase_root = None;
     let mut gamma = None;
+    let mut exact_wide_weights: Option<Box<ExactWideCombinationWeights>> = None;
     for layer in 0..num_rounds {
         let root = cursor.take_hash().ok_or(VerifyError::BadLength)?;
         transcript.absorb(label::ROOT, &root);
         roots.push(root);
 
         if layer == 0 && header.has_second_phase() {
-            if !ordering.chi_before_c1() {
+            if !mode.ordering.chi_before_c1() {
                 // lambda and chi: both are verifier-derived only after C1.
                 transcript
                     .challenge_qm31()
@@ -876,7 +1054,7 @@ fn verify_inner(
             transcript.absorb(label::SECOND_PHASE_ROOT, &c2_root);
             second_phase_root = Some(c2_root);
 
-            let early_gamma = if ordering.gamma_before_claims() {
+            let mut early_gamma = if mode.ordering.gamma_before_claims() {
                 Some(
                     transcript
                         .challenge_qm31()
@@ -886,15 +1064,30 @@ fn verify_inner(
                 None
             };
 
-            let second_phase_claim = if let Some(main_claim) = claim {
+            let mut helper_claims = [None; 2];
+            if let Some(main_claim) = claim {
                 transcript.absorb(label::CLAIM, &main_claim.to_bytes());
-                let bytes = cursor.take(OOD_VALUE_LEN).ok_or(VerifyError::BadLength)?;
-                let value = QM31::from_le_bytes(bytes).ok_or(VerifyError::NonCanonicalValue)?;
-                transcript.absorb(label::SECOND_PHASE_CLAIM, bytes);
-                Some(value)
-            } else {
-                None
-            };
+                for (helper_index, helper_claim) in helper_claims
+                    .iter_mut()
+                    .take(header.second_phase_claim_count())
+                    .enumerate()
+                {
+                    let bytes = cursor.take(OOD_VALUE_LEN).ok_or(VerifyError::BadLength)?;
+                    let value = QM31::from_le_bytes(bytes).ok_or(VerifyError::NonCanonicalValue)?;
+                    transcript.absorb(label::SECOND_PHASE_CLAIM, bytes);
+                    *helper_claim = Some(value);
+                    if helper_index == 0
+                        && header.second_phase_claim_count() == 2
+                        && mode.ordering.gamma_before_second_helper_claim()
+                    {
+                        early_gamma = Some(
+                            transcript
+                                .challenge_qm31()
+                                .map_err(|_| VerifyError::ChallengeSampleExhausted)?,
+                        );
+                    }
+                }
+            }
 
             let sampled_gamma = match early_gamma {
                 Some(value) => value,
@@ -903,49 +1096,70 @@ fn verify_inner(
                     .map_err(|_| VerifyError::ChallengeSampleExhausted)?,
             };
             gamma = Some(sampled_gamma);
+            let helper_weights = if header.has_exact_wide_c1() {
+                let prepared = Box::new(prepare_exact_wide_combination(sampled_gamma));
+                let helper_weights = prepared.helpers;
+                exact_wide_weights = Some(prepared);
+                helper_weights
+            } else {
+                [sampled_gamma, sampled_gamma.square()]
+            };
 
-            if let (Some(main_claim), Some(helper_claim)) = (claim, second_phase_claim) {
+            if let Some(main_claim) = claim {
                 relation_weights = WeightAccumulator::from_claim(profile.log_rows, claim);
-                relation_value = main_claim.v.add(sampled_gamma.mul(helper_claim));
+                relation_value = main_claim
+                    .v
+                    .add(helper_weights[0].mul(helper_claims[0].ok_or(VerifyError::BadHeader)?));
+                if header.second_phase_claim_count() == 2 {
+                    relation_value = relation_value.add(
+                        helper_weights[1].mul(helper_claims[1].ok_or(VerifyError::BadHeader)?),
+                    );
+                }
             }
         }
 
-        // Canonical schedule: beta -> y -> mu. The deliberately weakened
-        // test-only policy inserts alpha after beta and before y; both paths
-        // share the exact y/mu relation-and-weight kernel.
-        let early_alpha = if ordering.ood_after_fold_challenge() {
-            let point = sample_ood_point(&mut transcript)?;
-            let alpha = transcript
-                .challenge_qm31()
-                .map_err(|_| VerifyError::ChallengeSampleExhausted)?;
-            let bytes: &[u8; OOD_VALUE_LEN] = cursor
-                .take(OOD_VALUE_LEN)
-                .ok_or(VerifyError::BadLength)?
-                .try_into()
-                .map_err(|_| VerifyError::BadLength)?;
-            absorb_ood_value_and_accumulate(
-                &mut transcript,
-                point,
-                bytes,
-                &mut relation_value,
-                &mut relation_weights,
-            )?;
-            Some(alpha)
-        } else {
-            let bytes: &[u8; OOD_VALUE_LEN] = cursor
-                .take(OOD_VALUE_LEN)
-                .ok_or(VerifyError::BadLength)?
-                .try_into()
-                .map_err(|_| VerifyError::BadLength)?;
-            accumulate_canonical_ood_sample(
-                &mut transcript,
-                bytes,
-                &mut relation_value,
-                &mut relation_weights,
-            )?;
-            None
-        };
-        // This marker now denotes the complete beta/y/mu relation sample.
+        // Canonical v3 schedule: (beta_1, y_1, mu_1). Canonical v4 appends a
+        // complete second triple before the shared sumcheck and alpha. The
+        // deliberately weakened schedules insert alpha after the selected
+        // beta and before its y/mu; all paths share the exact y/mu kernel.
+        let mut early_alpha = None;
+        for sample in 0..header.ood_samples_per_round() {
+            let weaken_this_sample = (sample == 0 && mode.ordering.ood_after_fold_challenge())
+                || (sample == 1 && mode.ordering.second_ood_after_fold_challenge());
+            if weaken_this_sample {
+                let point = sample_ood_point(&mut transcript)?;
+                early_alpha = Some(
+                    transcript
+                        .challenge_qm31()
+                        .map_err(|_| VerifyError::ChallengeSampleExhausted)?,
+                );
+                let bytes: &[u8; OOD_VALUE_LEN] = cursor
+                    .take(OOD_VALUE_LEN)
+                    .ok_or(VerifyError::BadLength)?
+                    .try_into()
+                    .map_err(|_| VerifyError::BadLength)?;
+                absorb_ood_value_and_accumulate(
+                    &mut transcript,
+                    point,
+                    bytes,
+                    &mut relation_value,
+                    &mut relation_weights,
+                )?;
+            } else {
+                let bytes: &[u8; OOD_VALUE_LEN] = cursor
+                    .take(OOD_VALUE_LEN)
+                    .ok_or(VerifyError::BadLength)?
+                    .try_into()
+                    .map_err(|_| VerifyError::BadLength)?;
+                accumulate_canonical_ood_sample(
+                    &mut transcript,
+                    bytes,
+                    &mut relation_value,
+                    &mut relation_weights,
+                )?;
+            }
+        }
+        // This marker denotes all complete beta/y/mu relation samples.
         trace(trace_fn, TraceEvent::LayerOodDone(layer as u8));
 
         let sumcheck_bytes = cursor.take(SUMCHECK_BYTES).ok_or(VerifyError::BadLength)?;
@@ -1008,7 +1222,7 @@ fn verify_inner(
     let mut slot: Vec<u32> = Vec::with_capacity(query_count);
     let mut unique: Vec<u32> = Vec::with_capacity(query_count);
     let mut fibers: Vec<Fiber> = Vec::with_capacity(query_count);
-    let mut helper_fibers: Vec<[QM31; 4]> = Vec::with_capacity(query_count);
+    let mut helper_fibers: Vec<([QM31; 4], Option<[QM31; 4]>)> = Vec::with_capacity(query_count);
     let mut carried: Vec<(QM31, QM31)> = Vec::with_capacity(query_count);
     let mut entries: Vec<(u32, [u8; 32])> = Vec::with_capacity(query_count);
     let mut merkle_level: Vec<(u32, [u8; 32])> = Vec::with_capacity(query_count);
@@ -1041,36 +1255,68 @@ fn verify_inner(
         if unique_count != unique.len() {
             return Err(VerifyError::UniqueCountMismatch { layer: layer as u8 });
         }
-        let value_bytes = fiber_value_bytes(layer);
+        let exact_wide_layer_zero = layer == 0 && header.has_exact_wide_c1();
+        let value_bytes = if layer == 0
+            && header.has_m31_circle_c1_diagnostic()
+            && mode.allow_m31_circle_as_legacy
+        {
+            fiber_value_bytes(layer)
+        } else {
+            header.first_phase_leaf_len(layer)
+        };
         let values_section = cursor
             .take(unique_count * value_bytes)
             .ok_or(VerifyError::BadLength)?;
         fibers.clear();
-        for k in 0..unique_count {
-            fibers.push(parse_fiber(
-                &values_section[k * value_bytes..(k + 1) * value_bytes],
-                layer,
-            )?);
+        if !exact_wide_layer_zero {
+            for k in 0..unique_count {
+                fibers.push(parse_fiber(
+                    &values_section[k * value_bytes..(k + 1) * value_bytes],
+                    layer,
+                )?);
+            }
         }
 
-        // C2 is opened only in the first layer. Authenticate its QM31
-        // fibers separately, then form exactly the gamma-RLC polynomial that
-        // the transcript relation and all later folds refer to.
+        // C2 is opened only in the first layer. V3 authenticates one helper
+        // fiber; v4 authenticates two helpers in one combined leaf. Scalar
+        // v4 materializes those helper fibers. Exact-wide v4 instead replaces
+        // the scalar layer-zero operation in place: the once-prepared byte
+        // kernel consumes each 1,568-byte C1 leaf and matching 128-byte C2
+        // leaf directly, then supplies the same four extension slots to the
+        // unchanged fold path.
         let second_phase_values_section = if layer == 0 && header.has_second_phase() {
-            let helper_value_bytes = 4 * 16;
+            let helper_value_bytes = header.second_phase_leaf_len();
             let section = cursor
                 .take(unique_count * helper_value_bytes)
                 .ok_or(VerifyError::BadLength)?;
-            helper_fibers.clear();
-            for index in 0..unique_count {
-                helper_fibers.push(parse_extension_fiber(
-                    &section[index * helper_value_bytes..(index + 1) * helper_value_bytes],
-                )?);
-            }
-            let gamma = gamma.ok_or(VerifyError::BadHeader)?;
-            for index in 0..unique_count {
-                fibers[index] =
-                    combine_first_phase_fibers(&fibers[index], helper_fibers[index], gamma)?;
+            if exact_wide_layer_zero {
+                let weights = exact_wide_weights
+                    .as_deref()
+                    .ok_or(VerifyError::BadHeader)?;
+                for index in 0..unique_count {
+                    let c1_leaf = &values_section[index * value_bytes..(index + 1) * value_bytes];
+                    let c2_leaf =
+                        &section[index * helper_value_bytes..(index + 1) * helper_value_bytes];
+                    fibers.push(combine_exact_wide_sections(c1_leaf, c2_leaf, weights)?);
+                }
+            } else {
+                helper_fibers.clear();
+                for index in 0..unique_count {
+                    let leaf =
+                        &section[index * helper_value_bytes..(index + 1) * helper_value_bytes];
+                    helper_fibers.push(if header.second_phase_helper_count() == 1 {
+                        (parse_extension_fiber(leaf)?, None)
+                    } else {
+                        let (helper_1, helper_2) = parse_double_extension_fiber(leaf)?;
+                        (helper_1, Some(helper_2))
+                    });
+                }
+                let gamma = gamma.ok_or(VerifyError::BadHeader)?;
+                for index in 0..unique_count {
+                    let (helper_1, helper_2) = helper_fibers[index];
+                    fibers[index] =
+                        combine_first_phase_fibers(&fibers[index], helper_1, helper_2, gamma)?;
+                }
             }
             Some(section)
         } else {
@@ -1120,7 +1366,7 @@ fn verify_inner(
                 depth,
                 &unique,
                 section,
-                4 * 16,
+                header.second_phase_leaf_len(),
                 SECOND_PHASE_LAYER_TAG,
                 SECOND_PHASE_LAYER_TAG,
                 &mut entries,
@@ -1163,7 +1409,7 @@ fn verify_inner(
         match fold_payload {
             FoldPayload::RawFibers => {
                 invs.clear();
-                match denominator_backend {
+                match mode.denominator_backend {
                     DenominatorBackend::CircleConjugate => {
                         // Every s is derived from the unit circle, hence
                         // s^-1 = conjugate(s). The constant iota is -i, so
