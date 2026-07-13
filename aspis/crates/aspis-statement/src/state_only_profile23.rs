@@ -409,8 +409,8 @@ pub fn verify_atomic_state_only_profile23_v3<'a>(
 
 /// Production verifier with an injected base-field inversion backend.  The
 /// dynamic-coordinate feature uses it once for the complete public query
-/// forest; SBF callers can supply `sol_big_mod_exp`, while host callers keep
-/// [`M31::inv`].
+/// forest; callers select an inversion implementation supported by their
+/// runtime.
 pub fn verify_atomic_state_only_profile23_v3_with_inverse<'a>(
     proof: &'a [u8],
     statement: &AtomicPaymentStatementV3,

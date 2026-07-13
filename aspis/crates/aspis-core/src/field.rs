@@ -297,9 +297,8 @@ impl CM31 {
         self.inv_with(M31::inv)
     }
 
-    /// Inverse with an injected base-field inversion backend. On SBF this
-    /// lets the caller use `sol_big_mod_exp` without coupling the no_std
-    /// verifier core to the Solana SDK.
+    /// Inverse with an injected base-field inversion backend, without
+    /// coupling the no_std verifier core to a particular runtime.
     pub fn inv_with(self, inverse: fn(M31) -> M31) -> CM31 {
         let norm = self.a.mul(self.a).add(self.b.mul(self.b));
         let inv_norm = inverse(norm);
@@ -1802,8 +1801,8 @@ pub fn m31_batch_inverse(values: &[M31], out: &mut [M31]) {
 }
 
 /// M31 batch inversion with an injected single-inverse backend. This keeps
-/// the prefix/suffix multiplication schedule identical while allowing SBF to
-/// use its modular-exponentiation syscall once for the whole batch.
+/// the prefix/suffix multiplication schedule identical while allowing the
+/// caller to select a cluster-compatible inversion implementation.
 pub fn m31_batch_inverse_with(values: &[M31], out: &mut [M31], inverse: fn(M31) -> M31) {
     assert_eq!(values.len(), out.len());
     if values.is_empty() {
