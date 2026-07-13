@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-07-13T21:06:06.856926+00:00",
+  "generated_at_utc": "2026-07-13T22:28:26.398467+00:00",
   "command": "ASPIS_PROFILE23_PROOF=/Users/dominic/ZK/aspis/results/stage2/proofs/atomic_state_only_profile23_v3_mined.bin NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-profile23-mutation",
   "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
   "production_instruction_wire_ordinal": 60,
@@ -14,6 +14,12 @@
   "proof_bytes": 61599,
   "proof_sha256": "35c4e79316bf4a2af1951e5d2f41b6ebb4ebb7bd1e91a3ba93c52e549bfe7949",
   "proof_unmined": false,
+  "statement_path": null,
+  "statement_source_override": false,
+  "statement_sha256": null,
+  "statement_pool_hex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+  "statement_sequence": 73,
+  "canonical_public_input_digest": "52e96f99756fe8fd2d8b7a700019b143d7eb549af1bf1ae987e99a75cadcd4c9",
   "production_pow_bypass_exposed": false,
   "default_tag60_fail_closed_host": true,
   "candidate_tag60_rejects_unmined_sbf": false,
@@ -241,8 +247,8 @@
   "production_only_sbf_features": [
     "profile23-production"
   ],
-  "production_only_sbf_bytes": 915232,
-  "production_only_sbf_sha256": "b31f656510a4d3748995d443428a4ae3cad25329f2a5f2cd89056e9bc7c9f3b9",
+  "production_only_sbf_bytes": 915520,
+  "production_only_sbf_sha256": "3203c3f23cb67ec9ddcd4da1ee68b96e1f92de5eb04fe130c95e2d8129d5146e",
   "production_only_mined_override_exercised": true,
   "production_only_unmined_tag59_rejected": true,
   "production_only_unmined_tag60_rejected": true,
@@ -268,15 +274,15 @@
     {
       "marker_path": "program_owned_zeroed",
       "proof_accounts_finalized_before_production_verification": true,
-      "literal_tag59_simulation_cu": 1251938,
-      "literal_tag60_simulation_cu": 1253831,
-      "headroom_under_1_4m_cu": 146169,
+      "literal_tag59_simulation_cu": 1252819,
+      "literal_tag60_simulation_cu": 1254712,
+      "headroom_under_1_4m_cu": 145288,
       "ledger": {
-        "production_read_only_tag59_cu": 1251938,
+        "production_read_only_tag59_cu": 1252819,
         "production_tag60_increment_over_tag59_cu": 1893,
-        "production_tag60_total_cu": 1253831,
-        "reconciled_total_cu": 1253831,
-        "formula": "1251938 + (1893)"
+        "production_tag60_total_cu": 1254712,
+        "reconciled_total_cu": 1254712,
+        "formula": "1252819 + (1893)"
       },
       "production_unmined_tag59_rejected": true,
       "production_unmined_tag59_error": "{\"InstructionError\":[2,\"InvalidInstructionData\"]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue invoke [1]\",\"Program log: aspis-cu:atomic59_instruction_start\",\"Program consumption: 1399028 units remaining\",\"Program log: aspis-cu:atomic59_proof_loaded\",\"Program consumption: 1398463 units remaining\",\"Program log: aspis-cu:atomic59_parsed\",\"Program consumption: 1396473 units remaining\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue consumed 131883 of 1399700 compute units\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue failed: invalid instruction data\"]",
@@ -297,15 +303,15 @@
     {
       "marker_path": "canonical_system_owned_create",
       "proof_accounts_finalized_before_production_verification": true,
-      "literal_tag59_simulation_cu": 1251938,
-      "literal_tag60_simulation_cu": 1256162,
-      "headroom_under_1_4m_cu": 143838,
+      "literal_tag59_simulation_cu": 1252819,
+      "literal_tag60_simulation_cu": 1257043,
+      "headroom_under_1_4m_cu": 142957,
       "ledger": {
-        "production_read_only_tag59_cu": 1251938,
+        "production_read_only_tag59_cu": 1252819,
         "production_tag60_increment_over_tag59_cu": 4224,
-        "production_tag60_total_cu": 1256162,
-        "reconciled_total_cu": 1256162,
-        "formula": "1251938 + (4224)"
+        "production_tag60_total_cu": 1257043,
+        "reconciled_total_cu": 1257043,
+        "formula": "1252819 + (4224)"
       },
       "production_unmined_tag59_rejected": true,
       "production_unmined_tag59_error": "{\"InstructionError\":[2,\"InvalidInstructionData\"]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue invoke [1]\",\"Program log: aspis-cu:atomic59_instruction_start\",\"Program consumption: 1399028 units remaining\",\"Program log: aspis-cu:atomic59_proof_loaded\",\"Program consumption: 1398463 units remaining\",\"Program log: aspis-cu:atomic59_parsed\",\"Program consumption: 1396473 units remaining\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue consumed 131883 of 1399700 compute units\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue failed: invalid instruction data\"]",
@@ -330,6 +336,7 @@
   "notes": [
     "Tag60 has no diagnostic selector and calls the exact tag59 parser/verifier with production PoW before the first CPI or account write. Its simulated outcome is required to match the host mined/unmined classification. Default builds remain fail-closed.",
     "ASPIS_PROFILE23_PROOF supplied mined bytes: the command additionally built with the isolated feature set profile23-production, proved tag59's diagnostic bit and tag61 unavailable, and ran exact production tags59/60 on both marker paths.",
+    "No statement sidecar was supplied; this artifact uses the unchanged built-in Profile23 fixture statement.",
     "Both marker paths emit single-instruction, overlap-free ledgers. Corruption rollback, exact pool/marker images, duplicate rejection, and a two-signer System-path race are tested.",
     "The production-only paths load the committed unmined KAT into a second proof account, require production tags59/60 to reject it (with a landed failed tag60 transaction and exact rollback), submit a separately corrupted mined tag60 transaction to prove rollback, commit mined tag60 on both marker paths, and reconcile each exact tag60 total as same-binary tag59 plus the net mutation wrapper increment.",
     "The explicit profile23-production KAT additionally compile-failed every diagnostic and legacy Profile20/21/22 candidate union, both individually and as one grouped feature-unification tooth, with the dedicated isolation marker.",

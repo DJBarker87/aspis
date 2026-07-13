@@ -234,8 +234,8 @@ pub enum AspisInstruction {
     // (0..=8). New diagnostics are append-only below.
     /// Compatibility alias for the optimized verifier.
     VerifyFast { statement_digest: [u8; 32] },
-    /// Legacy batch-denominator verifier with `sol_big_mod_exp` supplying its
-    /// one M31 inverse per round. Measurement-only comparison path.
+    /// Legacy batch-denominator verifier using the cluster-portable software
+    /// inverse backend. Measurement-only comparison path.
     VerifySyscallInverse { statement_digest: [u8; 32] },
     /// The same permutation using lazy M31 linear layers and power-of-two
     /// shifts. Kept as a separate instruction so the SBF delta is literal.
@@ -836,46 +836,9 @@ fn run_constraint_composition_probe(
     }
 }
 
-#[allow(unexpected_cfgs)]
 #[inline(always)]
-fn m31_inverse_syscall(value: aspis_core::field::M31) -> aspis_core::field::M31 {
-    #[cfg(target_os = "solana")]
-    {
-        #[repr(C)]
-        struct BigModExpParams {
-            base: *const u8,
-            base_len: u64,
-            exponent: *const u8,
-            exponent_len: u64,
-            modulus: *const u8,
-            modulus_len: u64,
-        }
-
-        let base = value.0.to_be_bytes();
-        let exponent = (aspis_core::field::P - 2).to_be_bytes();
-        let modulus = aspis_core::field::P.to_be_bytes();
-        let mut output = [0u8; 4];
-        let params = BigModExpParams {
-            base: base.as_ptr(),
-            base_len: base.len() as u64,
-            exponent: exponent.as_ptr(),
-            exponent_len: exponent.len() as u64,
-            modulus: modulus.as_ptr(),
-            modulus_len: modulus.len() as u64,
-        };
-        #[allow(deprecated)]
-        unsafe {
-            solana_program::syscalls::sol_big_mod_exp(
-                &params as *const _ as *const u8,
-                output.as_mut_ptr(),
-            );
-        }
-        aspis_core::field::M31(u32::from_be_bytes(output))
-    }
-    #[cfg(not(target_os = "solana"))]
-    {
-        value.inv()
-    }
+fn m31_inverse_cluster_portable(value: aspis_core::field::M31) -> aspis_core::field::M31 {
+    value.inv()
 }
 
 fn run_zk_kernel_probe(kind: ZkKernelKind, iterations: u16) -> ProgramResult {
@@ -898,7 +861,7 @@ fn run_zk_kernel_probe(kind: ZkKernelKind, iterations: u16) -> ProgramResult {
                 scalar = scalar.add(step).inv();
             }
             ZkKernelKind::M31InverseSyscall => {
-                scalar = m31_inverse_syscall(scalar.add(step));
+                scalar = m31_inverse_cluster_portable(scalar.add(step));
             }
             ZkKernelKind::Qm31SquareGeneric => {
                 extension.c0.a = extension.c0.a.add(step);
@@ -3279,7 +3242,7 @@ fn m31_circle_basis_fold_sink(
         }
     }
     if batch_invert {
-        m31_batch_inverse_with(&coordinates, &mut inverses, m31_inverse_syscall);
+        m31_batch_inverse_with(&coordinates, &mut inverses, m31_inverse_cluster_portable);
     }
 
     let mut accumulator = QM31::ZERO;
@@ -3508,7 +3471,7 @@ fn verify_uploaded_proof(
             claim,
             sbf_hashv,
             trace_fn,
-            m31_inverse_syscall,
+            m31_inverse_cluster_portable,
         )
     } else if denominator_mode == 1 {
         aspis_core::verify_with_claim_and_trace(
@@ -4726,7 +4689,7 @@ fn verify_atomic_profile23_proof_bytes_v3(
             statement,
             sbf_hashv,
             trace,
-            m31_inverse_syscall,
+            m31_inverse_cluster_portable,
         )
         .map_err(|_| ProgramError::InvalidInstructionData)?;
         #[cfg(not(feature = "profile23-dynamic-rate512"))]
