@@ -1,0 +1,35 @@
+{
+  "generated_at_utc": "2026-07-13T06:12:00Z",
+  "status": "retired_pre_tau_seam_fixture_not_parseable_by_current_profile21",
+  "valid_for_current_profile21": false,
+  "command": "cargo run --release -p aspis-prover --example profile21_fixture --features insecure-profile21-fixture -- results/stage2/proofs/atomic_state_only_profile21_v3_unmined.bin",
+  "profile_id": 21,
+  "rho": "1/512",
+  "query_count": 16,
+  "proof_path": "results/stage2/proofs/atomic_state_only_profile21_v3_unmined.bin",
+  "proof_bytes": 62214,
+  "proof_sha256": "a81bc7e2a89b37a799217314fd7b50d6ca05d665d4f6bcf0375436d2e79fa2c2",
+  "prefix_bytes": 7336,
+  "profile21_extension_bytes": 600,
+  "private_tree_order": ["C1", "C2_X_F", "W1", "W2", "W3"],
+  "private_section_bytes": [16710, 14150, 9542, 8006, 6470],
+  "private_frontier_nodes": [298, 298, 250, 202, 154],
+  "host_unmined_full_verifier_accepted": true,
+  "host_production_verifier_rejected_unmined": true,
+  "host_corruption_teeth": [
+    "source_target",
+    "logical_U",
+    "shared_C2_X_F_leaf",
+    "translated_W1_leaf",
+    "trailing_byte"
+  ],
+  "diagnostic_entropy_feature": "insecure-profile21-fixture",
+  "diagnostic_entropy_available_in_default_build": false,
+  "notes": [
+    "RETIRED: this 7,336-byte-prefix fixture predates the post-delta tau seam. The current parser expects a 7,320-byte prefix, so no current CU, privacy, or acceptance claim may cite this SHA.",
+    "This is the literal beta-free direct-query profile-21 proof, not the older isolated switch diagnostic or a bridge estimate.",
+    "The fixture uses fixed private entropy and unmined zero nonces only through an explicitly insecure diagnostic Cargo feature. The production attempt API uses OS entropy and durable nonce reservation.",
+    "The verifier authenticates five salted private trees and checks F(q)+delta*X(q)=Enc(phi(U))(q)=W1(q)-Fold_alpha0(W0)(q) at all transcript-derived q16 positions.",
+    "No SBF CU claim is made by this host fixture artifact; tag-50 integration measurement must supply that number."
+  ]
+}

@@ -1,0 +1,504 @@
+{
+  "generated_at_utc": "2026-07-13T02:10:37.789461+00:00",
+  "command": "NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-hvzk-whir-mask-probe",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "upstream_commit": "Plonky3/Plonky3@6b6a3b4d40fca2187d368c9dc1fca417c84ae8c3",
+  "instruction_wire_ordinal": 41,
+  "internal_carried_groups": [
+    2,
+    1,
+    2,
+    1,
+    2,
+    1,
+    2
+  ],
+  "internal_mask_codewords": 11,
+  "external_zerocheck_group_width": 10,
+  "source_padding": {
+    "dimensions": [
+      285,
+      93,
+      45,
+      33
+    ],
+    "current_domains": [
+      8192,
+      2048,
+      512,
+      128
+    ],
+    "padded_domains": [
+      16384,
+      4096,
+      2048,
+      2048
+    ],
+    "padded_actual_rates": [
+      0.01739501953125,
+      0.022705078125,
+      0.02197265625,
+      0.01611328125
+    ],
+    "every_padded_rate_at_most_one_over_32": true,
+    "query_count": 29,
+    "current_merkle_cu": 197512,
+    "padded_merkle_cu": 235719,
+    "padded_minus_current_merkle_cu": 38207,
+    "padded_minus_current_frontier_bytes": 12032,
+    "source_base_spot_reencode_cu": 393740,
+    "source_base_spot_reencode_incremental_cu": 392979,
+    "fresh_main_merkle_cu": 22387,
+    "fresh_main_merkle_incremental_cu": 21626,
+    "total_new_source_side_incremental_cu": 452812,
+    "q29_g36_johnson_shape_survives_rate_check": true
+  },
+  "direct_cm31_rs_decision": {
+    "state_only_columns": 16,
+    "query_count": 29,
+    "circle_m31_leaf_bytes": 256,
+    "direct_cm31_leaf_bytes": 512,
+    "incremental_opened_leaf_bytes": 7424,
+    "measured_double_limb_arithmetic_proxy_cu": 95470,
+    "derived_leaf_hash_proxy_cu": 3693,
+    "combined_verifier_delta_proxy_cu": 99163,
+    "arithmetic_proxy_source": "layer0_dot_width_probe q36 width17->33 delta, scaled by 29/36; conservative separate-M31-limb proxy",
+    "hash_proxy_source": "m31_circle_basis_probe 382 CU over twelve extra SHA-256 blocks; direct CM31 adds four blocks/query",
+    "theorem_transfer_status": "ordinary multiplicative-subgroup RS is the upstream theorem family, but exact QM31/CM31 domain, code-switch, and state-only adapter instantiation remains a proof obligation"
+  },
+  "minimal_one_switch": {
+    "message_len": 31,
+    "randomness_len": 29,
+    "domain_size": 2048,
+    "domain_depth": 11,
+    "query_count": 29,
+    "johnson_query_bits": 70.45870949114945,
+    "positioned_work_bits": 36,
+    "combined_query_work_bits": 106.45870949114945,
+    "reaches_104_bits": true,
+    "roots_fixed_before_work_required": true,
+    "scalar_merkle_cu": 85237,
+    "scalar_spot_cu": 720057,
+    "optimized_single_word_spot_cu": 659669,
+    "target_identity_cu": 18323,
+    "transcript_cu": 2431,
+    "scalar_reconciled_cu": 825307,
+    "optimized_reconciled_cu": 764919,
+    "incremental_proof_bytes": 17136,
+    "shared_root_leaf_hash_delta_cu_per_lane": 233,
+    "shared_root_transcript_cu": 1857,
+    "shared_root_lower_bound_cu": 680315,
+    "shared_root_lower_bound_proof_bytes": 1904,
+    "shared_root_conditions": "carried lane must be committed inside an already-required later-fold root at the same causal point; fresh lane must share a base root committed before gamma; both existing trees must expose the same q29 mask-domain rows; otherwise use the standalone 17,136-byte/two-tree row",
+    "optional_source_reencode_incremental_cu": 392979,
+    "source_reencode_required_for_isolated_switch_identity": false,
+    "soundness_status": "q29 plus the existing correctly positioned g36 reaches 106.46 Johnson bits only if both roots, the reveal, and the target claim are fixed before the nonce and shared query-position squeeze"
+  },
+  "rows": [
+    {
+      "mask_log_inv_rate": 4,
+      "soundness_model": "conditional_polynomial_root_bound",
+      "mask_queries": 26,
+      "bits_per_query": 4.0,
+      "mask_domain_depths": [
+        10,
+        10,
+        10
+      ],
+      "conditional_root_bound": true,
+      "control_cu": 761,
+      "upstream_merkle_cu": 636641,
+      "timing_batched_merkle_cu": 299544,
+      "scalar_one_query_cu": 404429,
+      "scalar_spot_checks_reconciled_cu": 10496129,
+      "batched_setup_cu": 509531,
+      "batched_one_query_cu": 553408,
+      "batched_spot_checks_reconciled_cu": 1650333,
+      "target_identity_cu": 255330,
+      "upstream_transcript_cu": 22557,
+      "timing_batched_transcript_cu": 20370,
+      "upstream_reconciled_mask_verifier_cu": 11408374,
+      "timing_batched_reconciled_mask_verifier_cu": 2223294,
+      "upstream_incremental_proof_bytes": 126176,
+      "timing_batched_incremental_proof_bytes": 63872,
+      "optional_pow": [
+        {
+          "bits": 20,
+          "root_bound_queries": 21,
+          "johnson_queries": 44,
+          "verifier_incremental_cu": 138,
+          "proof_bytes": 8,
+          "honest_expected_trials": "2^20",
+          "johnson_timing_batched_mask_verifier_cu": 3720867,
+          "johnson_timing_batched_incremental_proof_bytes": 106664
+        },
+        {
+          "bits": 40,
+          "root_bound_queries": 16,
+          "johnson_queries": 34,
+          "verifier_incremental_cu": 138,
+          "proof_bytes": 8,
+          "honest_expected_trials": "2^40",
+          "johnson_timing_batched_mask_verifier_cu": 2870250,
+          "johnson_timing_batched_incremental_proof_bytes": 86664
+        }
+      ]
+    },
+    {
+      "mask_log_inv_rate": 4,
+      "soundness_model": "upstream_johnson_proven",
+      "mask_queries": 54,
+      "bits_per_query": 1.929610672108602,
+      "mask_domain_depths": [
+        10,
+        11,
+        11
+      ],
+      "conditional_root_bound": false,
+      "control_cu": 761,
+      "upstream_merkle_cu": 1323049,
+      "timing_batched_merkle_cu": 639493,
+      "scalar_one_query_cu": 640479,
+      "scalar_spot_checks_reconciled_cu": 34545533,
+      "batched_setup_cu": 807184,
+      "batched_one_query_cu": 861388,
+      "batched_spot_checks_reconciled_cu": 3734200,
+      "target_identity_cu": 255330,
+      "upstream_transcript_cu": 27261,
+      "timing_batched_transcript_cu": 25074,
+      "upstream_reconciled_mask_verifier_cu": 36148890,
+      "timing_batched_reconciled_mask_verifier_cu": 4651814,
+      "upstream_incremental_proof_bytes": 247840,
+      "timing_batched_incremental_proof_bytes": 126656,
+      "optional_pow": [
+        {
+          "bits": 20,
+          "root_bound_queries": 21,
+          "johnson_queries": 44,
+          "verifier_incremental_cu": 138,
+          "proof_bytes": 8,
+          "honest_expected_trials": "2^20",
+          "johnson_timing_batched_mask_verifier_cu": 3720867,
+          "johnson_timing_batched_incremental_proof_bytes": 106664
+        },
+        {
+          "bits": 40,
+          "root_bound_queries": 16,
+          "johnson_queries": 34,
+          "verifier_incremental_cu": 138,
+          "proof_bytes": 8,
+          "honest_expected_trials": "2^40",
+          "johnson_timing_batched_mask_verifier_cu": 2870250,
+          "johnson_timing_batched_incremental_proof_bytes": 86664
+        }
+      ]
+    },
+    {
+      "mask_log_inv_rate": 5,
+      "soundness_model": "conditional_polynomial_root_bound",
+      "mask_queries": 21,
+      "bits_per_query": 5.0,
+      "mask_domain_depths": [
+        10,
+        11,
+        11
+      ],
+      "conditional_root_bound": true,
+      "control_cu": 761,
+      "upstream_merkle_cu": 557021,
+      "timing_batched_merkle_cu": 265869,
+      "scalar_one_query_cu": 362305,
+      "scalar_spot_checks_reconciled_cu": 7593185,
+      "batched_setup_cu": 456356,
+      "batched_one_query_cu": 498386,
+      "batched_spot_checks_reconciled_cu": 1338986,
+      "target_identity_cu": 255330,
+      "upstream_transcript_cu": 21717,
+      "timing_batched_transcript_cu": 19530,
+      "upstream_reconciled_mask_verifier_cu": 8424970,
+      "timing_batched_reconciled_mask_verifier_cu": 1877432,
+      "upstream_incremental_proof_bytes": 117040,
+      "timing_batched_incremental_proof_bytes": 60752,
+      "optional_pow": [
+        {
+          "bits": 20,
+          "root_bound_queries": 17,
+          "johnson_queries": 35,
+          "verifier_incremental_cu": 138,
+          "proof_bytes": 8,
+          "honest_expected_trials": "2^20",
+          "johnson_timing_batched_mask_verifier_cu": 2987436,
+          "johnson_timing_batched_incremental_proof_bytes": 99352
+        },
+        {
+          "bits": 40,
+          "root_bound_queries": 13,
+          "johnson_queries": 27,
+          "verifier_incremental_cu": 138,
+          "proof_bytes": 8,
+          "honest_expected_trials": "2^40",
+          "johnson_timing_batched_mask_verifier_cu": 2321081,
+          "johnson_timing_batched_incremental_proof_bytes": 72088
+        }
+      ]
+    },
+    {
+      "mask_log_inv_rate": 5,
+      "soundness_model": "upstream_johnson_proven",
+      "mask_queries": 43,
+      "bits_per_query": 2.429610672108602,
+      "mask_domain_depths": [
+        11,
+        12,
+        12
+      ],
+      "conditional_root_bound": false,
+      "control_cu": 761,
+      "upstream_merkle_cu": 1168533,
+      "timing_batched_merkle_cu": 554220,
+      "scalar_one_query_cu": 547755,
+      "scalar_spot_checks_reconciled_cu": 23521503,
+      "batched_setup_cu": 690274,
+      "batched_one_query_cu": 740402,
+      "batched_spot_checks_reconciled_cu": 2845778,
+      "target_identity_cu": 255330,
+      "upstream_transcript_cu": 25413,
+      "timing_batched_transcript_cu": 23226,
+      "upstream_reconciled_mask_verifier_cu": 24968496,
+      "timing_batched_reconciled_mask_verifier_cu": 3676271,
+      "upstream_incremental_proof_bytes": 239312,
+      "timing_batched_incremental_proof_bytes": 117168,
+      "optional_pow": [
+        {
+          "bits": 20,
+          "root_bound_queries": 17,
+          "johnson_queries": 35,
+          "verifier_incremental_cu": 138,
+          "proof_bytes": 8,
+          "honest_expected_trials": "2^20",
+          "johnson_timing_batched_mask_verifier_cu": 2987436,
+          "johnson_timing_batched_incremental_proof_bytes": 99352
+        },
+        {
+          "bits": 40,
+          "root_bound_queries": 13,
+          "johnson_queries": 27,
+          "verifier_incremental_cu": 138,
+          "proof_bytes": 8,
+          "honest_expected_trials": "2^40",
+          "johnson_timing_batched_mask_verifier_cu": 2321081,
+          "johnson_timing_batched_incremental_proof_bytes": 72088
+        }
+      ]
+    },
+    {
+      "mask_log_inv_rate": 6,
+      "soundness_model": "conditional_polynomial_root_bound",
+      "mask_queries": 18,
+      "bits_per_query": 6.0,
+      "mask_domain_depths": [
+        11,
+        12,
+        12
+      ],
+      "conditional_root_bound": true,
+      "control_cu": 761,
+      "upstream_merkle_cu": 537545,
+      "timing_batched_merkle_cu": 246270,
+      "scalar_one_query_cu": 337029,
+      "scalar_spot_checks_reconciled_cu": 6053585,
+      "batched_setup_cu": 424452,
+      "batched_one_query_cu": 465385,
+      "batched_spot_checks_reconciled_cu": 1161246,
+      "target_identity_cu": 255330,
+      "upstream_transcript_cu": 21213,
+      "timing_batched_transcript_cu": 19026,
+      "upstream_reconciled_mask_verifier_cu": 6865390,
+      "timing_batched_reconciled_mask_verifier_cu": 1679589,
+      "upstream_incremental_proof_bytes": 120928,
+      "timing_batched_incremental_proof_bytes": 59488,
+      "optional_pow": [
+        {
+          "bits": 20,
+          "root_bound_queries": 14,
+          "johnson_queries": 29,
+          "verifier_incremental_cu": 138,
+          "proof_bytes": 8,
+          "honest_expected_trials": "2^20",
+          "johnson_timing_batched_mask_verifier_cu": 2504978,
+          "johnson_timing_batched_incremental_proof_bytes": 86104
+        },
+        {
+          "bits": 40,
+          "root_bound_queries": 11,
+          "johnson_queries": 22,
+          "verifier_incremental_cu": 138,
+          "proof_bytes": 8,
+          "honest_expected_trials": "2^40",
+          "johnson_timing_batched_mask_verifier_cu": 1971731,
+          "johnson_timing_batched_incremental_proof_bytes": 70088
+        }
+      ]
+    },
+    {
+      "mask_log_inv_rate": 6,
+      "soundness_model": "upstream_johnson_proven",
+      "mask_queries": 36,
+      "bits_per_query": 2.929610672108602,
+      "mask_domain_depths": [
+        12,
+        13,
+        12
+      ],
+      "conditional_root_bound": false,
+      "control_cu": 761,
+      "upstream_merkle_cu": 1080263,
+      "timing_batched_merkle_cu": 490534,
+      "scalar_one_query_cu": 488840,
+      "scalar_spot_checks_reconciled_cu": 17571605,
+      "batched_setup_cu": 615871,
+      "batched_one_query_cu": 663421,
+      "batched_spot_checks_reconciled_cu": 2327671,
+      "target_identity_cu": 255330,
+      "upstream_transcript_cu": 24237,
+      "timing_batched_transcript_cu": 22050,
+      "upstream_reconciled_mask_verifier_cu": 18929152,
+      "timing_batched_reconciled_mask_verifier_cu": 3093302,
+      "upstream_incremental_proof_bytes": 233088,
+      "timing_batched_incremental_proof_bytes": 108512,
+      "optional_pow": [
+        {
+          "bits": 20,
+          "root_bound_queries": 14,
+          "johnson_queries": 29,
+          "verifier_incremental_cu": 138,
+          "proof_bytes": 8,
+          "honest_expected_trials": "2^20",
+          "johnson_timing_batched_mask_verifier_cu": 2504978,
+          "johnson_timing_batched_incremental_proof_bytes": 86104
+        },
+        {
+          "bits": 40,
+          "root_bound_queries": 11,
+          "johnson_queries": 22,
+          "verifier_incremental_cu": 138,
+          "proof_bytes": 8,
+          "honest_expected_trials": "2^40",
+          "johnson_timing_batched_mask_verifier_cu": 1971731,
+          "johnson_timing_batched_incremental_proof_bytes": 70088
+        }
+      ]
+    },
+    {
+      "mask_log_inv_rate": 8,
+      "soundness_model": "conditional_polynomial_root_bound",
+      "mask_queries": 13,
+      "bits_per_query": 8.0,
+      "mask_domain_depths": [
+        13,
+        14,
+        14
+      ],
+      "conditional_root_bound": true,
+      "control_cu": 761,
+      "upstream_merkle_cu": 464389,
+      "timing_batched_merkle_cu": 202935,
+      "scalar_one_query_cu": 294863,
+      "scalar_spot_checks_reconciled_cu": 3824087,
+      "batched_setup_cu": 371298,
+      "batched_one_query_cu": 410388,
+      "batched_spot_checks_reconciled_cu": 879468,
+      "target_identity_cu": 255330,
+      "upstream_transcript_cu": 20373,
+      "timing_batched_transcript_cu": 18186,
+      "upstream_reconciled_mask_verifier_cu": 4561896,
+      "timing_batched_reconciled_mask_verifier_cu": 1353636,
+      "upstream_incremental_proof_bytes": 113072,
+      "timing_batched_incremental_proof_bytes": 53328,
+      "optional_pow": [
+        {
+          "bits": 20,
+          "root_bound_queries": 11,
+          "johnson_queries": 22,
+          "verifier_incremental_cu": 138,
+          "proof_bytes": 8,
+          "honest_expected_trials": "2^20",
+          "johnson_timing_batched_mask_verifier_cu": 2004711,
+          "johnson_timing_batched_incremental_proof_bytes": 79688
+        },
+        {
+          "bits": 40,
+          "root_bound_queries": 8,
+          "johnson_queries": 17,
+          "verifier_incremental_cu": 138,
+          "proof_bytes": 8,
+          "honest_expected_trials": "2^40",
+          "johnson_timing_batched_mask_verifier_cu": 1634357,
+          "johnson_timing_batched_incremental_proof_bytes": 64888
+        }
+      ]
+    },
+    {
+      "mask_log_inv_rate": 8,
+      "soundness_model": "upstream_johnson_proven",
+      "mask_queries": 27,
+      "bits_per_query": 3.929610672108602,
+      "mask_domain_depths": [
+        14,
+        14,
+        14
+      ],
+      "conditional_root_bound": false,
+      "control_cu": 761,
+      "upstream_merkle_cu": 949421,
+      "timing_batched_merkle_cu": 401217,
+      "scalar_one_query_cu": 412942,
+      "scalar_spot_checks_reconciled_cu": 11129648,
+      "batched_setup_cu": 520163,
+      "batched_one_query_cu": 564402,
+      "batched_spot_checks_reconciled_cu": 1714616,
+      "target_identity_cu": 255330,
+      "upstream_transcript_cu": 22725,
+      "timing_batched_transcript_cu": 20538,
+      "upstream_reconciled_mask_verifier_cu": 12354841,
+      "timing_batched_reconciled_mask_verifier_cu": 2389418,
+      "upstream_incremental_proof_bytes": 220368,
+      "timing_batched_incremental_proof_bytes": 94000,
+      "optional_pow": [
+        {
+          "bits": 20,
+          "root_bound_queries": 11,
+          "johnson_queries": 22,
+          "verifier_incremental_cu": 138,
+          "proof_bytes": 8,
+          "honest_expected_trials": "2^20",
+          "johnson_timing_batched_mask_verifier_cu": 2004711,
+          "johnson_timing_batched_incremental_proof_bytes": 79688
+        },
+        {
+          "bits": 40,
+          "root_bound_queries": 8,
+          "johnson_queries": 17,
+          "verifier_incremental_cu": 138,
+          "proof_bytes": 8,
+          "honest_expected_trials": "2^40",
+          "johnson_timing_batched_mask_verifier_cu": 1634357,
+          "johnson_timing_batched_incremental_proof_bytes": 64888
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "The seven internal carried groups and eleven mask codewords are read from upstream ZkWhirConfig::mask_groups for three switch rounds and arity-four folding.",
+    "PCS-internal sumcheck masks use ell_zk=7 (degree-six relation); the separate state-only external zerocheck uses width ten and ell_zk=28; switch messages are q29+two OOD pads=31.",
+    "Raw root-bound rows are conditional on every committed mask oracle already being a valid RS codeword. Upstream Merkle commitments do not establish that invariant, so only Johnson rows are labeled proven.",
+    "Timing batching precommits only challenge-independent sumcheck masks, keeps all three switch masks sequential, uses a common padded mask domain, groups fresh base-case masks, and samples eta after reveals but before shared positions.",
+    "The eta batch has an additional at-most 20/|QM31| identity-collision term. It is not included in the query exponent and must be unioned in the full soundness ledger.",
+    "CU totals are overlap-subtracted isolated models: control + each phase-minus-control. Per-query arithmetic is one measured query extrapolated by exact loop count; it is not an integrated production verifier measurement.",
+    "Proof bytes exclude the source-oracle opening already required by the plain PCS and exclude serializer framing; they include new roots, reveals, mask/fresh rows, and deterministic-query radix-four frontiers.",
+    "Dedicated PoW rows are optional new transcript moves after eta/reveals and before positions. Their verifier delta is one hash; 20/40-bit honest grinding is 2^20/2^40 expected trials and is not free.",
+    "The separate source-padding row compares leaf-domain sizes [8192,2048,512,128] with [16384,4096,2048,2048] for dimensions [285,93,45,33]. The padded rates are all <=1/32, which preserves the q29/g36 Johnson rate premise but is not by itself a full soundness proof.",
+    "The direct-CM31 RS decision row is a conservative arithmetic/hash delta only. It prices the second limb as 16 additional M31 columns; a dedicated mixed QM31xCM31 kernel may reduce that delta. Ordinary subgroup RS is closer to upstream theorem scope, but transfer is not claimed complete.",
+    "The minimal one-switch row prices one width-one ell31 mask at rate1/32 with the main q29 positions. Existing g36 work is credited only under the pinned pre-work binding order; the isolated switch identity does not require Construction7.2's fresh-main/source re-encoding."
+  ]
+}

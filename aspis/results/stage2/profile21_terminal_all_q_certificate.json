@@ -1,0 +1,60 @@
+{
+  "artifact": "profile21_terminal_all_q_certificate",
+  "date": "2026-07-13",
+  "status": "q_uniform_terminal_nonzero_polynomial_closed",
+  "scope": "common semantic-mask rows 896..1023; q64 circle openings plus the 12 M31 coordinates of terminal MLE values at z, successor(z), xor12(z)",
+  "field": "F=M31; L=QM31=F[i,u] with i^2=-1 and u^2=2+i",
+  "kernel": {
+    "coordinate": "t=T_2(x)",
+    "sector_decomposition": "{1,x,y,xy} times 32 natural t coefficients",
+    "characterization": "K_q = g_q(t) * h, with 16 natural t coefficients per sector",
+    "g_q": "product over the 16 distinct queried fibers of (t-t_i); monic degree 16",
+    "dimension": 64,
+    "hyperplane": "K_q intersect H corresponds to h(1)=0 because g_q(1)!=0",
+    "hyperplane_adjustment": "set one low h coefficient to minus the sum of the selected high coefficients; its product has t-degree at most 16 and cannot affect output blocks 28..31"
+  },
+  "query_independent_minor": {
+    "input_natural_degrees": "12..15 in each of four sectors",
+    "output_natural_blocks": "28..31 in each of four sectors",
+    "dimension": 16,
+    "shape": "triangular under descending degree",
+    "diagonal": "lead(B_l)/lead(B_(16+l)), repeated once per sector",
+    "depends_on_lower_coefficients_of_g_q": false,
+    "nonzero_for_every_q16": true
+  },
+  "terminal_witness_assignment": {
+    "z": "[1,1,1,1,1,1,0,1,i,u]",
+    "z_support": "natural block 29",
+    "xor12_support": "natural block 30",
+    "successor_support": "natural blocks 28..31",
+    "successor_carry": "a=i*u",
+    "successor_block31_scale": "a*(1-a), nonzero",
+    "successor_sector_parameters": "v=i+u-2*i*u; w=1-u",
+    "z_sector_basis": "{1,i,u,i*u}",
+    "successor_sector_basis": "{1,v,w,v*w}; equivalently det{1,v,u,v*u}=-5 mod M31",
+    "terminal_rank_m31": 12
+  },
+  "conclusion": {
+    "q64_rank_m31": 64,
+    "terminal_schur_rank_m31_at_witness_assignment": 12,
+    "combined_rank_m31": 76,
+    "terminal_minor_nonzero_polynomial_in_z_for_every_discrete_q": true,
+    "discrete_q_retry_term_required_for_this_block": false,
+    "rank_full_for_every_z": false,
+    "remaining_role": "ordinary mixed-M31 field-challenge degree/Schwartz-Zippel term"
+  },
+  "executable_guard": {
+    "path": "crates/aspis-prover/tests/profile21_hvzk_privacy.rs",
+    "test": "all_q_semantic_kernel_terminal12_has_a_query_independent_certificate",
+    "command": "NO_DNA=1 cargo test -q -p aspis-prover --test profile21_hvzk_privacy all_q_semantic_kernel_terminal12_has_a_query_independent_certificate",
+    "result": "1 passed",
+    "pins": [
+      "q-independent triangular leading-coefficient determinant",
+      "frozen QM31 tower bases for z and successor",
+      "binary-successor and xor12 coordinate identities",
+      "nonzero successor block31 scale"
+    ]
+  },
+  "non_authoritative_cross_check": "terminal rank 12/12 for the selected z on ten independently generated arbitrary monic degree-16 g polynomials",
+  "carry_source_files_modified_by_this_certificate": false
+}

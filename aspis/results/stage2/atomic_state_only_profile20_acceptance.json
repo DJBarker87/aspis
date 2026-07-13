@@ -1,0 +1,172 @@
+{
+  "generated_at_utc": "2026-07-13T12:27:41.761796+00:00",
+  "command": "NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-profile20-acceptance",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "instruction_wire_ordinal": 46,
+  "profile_id": 20,
+  "rho": "1/512",
+  "query_count": 16,
+  "proof_bytes": 56044,
+  "proof_sha256": "fdd1097f702b411b6bcd26d0e195322d7683ff93ec4cb70828b9459fe7cef007",
+  "statement_digest_sha256": "52e96f99756fe8fd2d8b7a700019b143d7eb549af1bf1ae987e99a75cadcd4c9",
+  "proof_path": "results/stage2/proofs/atomic_state_only_profile20_v3_unmined.bin",
+  "host_read_only_acceptance": true,
+  "host_public_field_teeth": 8,
+  "host_corruption_teeth": 8,
+  "literal_simulation_cu": 1150189,
+  "literal_simulation_error": null,
+  "literal_markers": [
+    {
+      "label": "atomic46_instruction_start",
+      "remaining": 1398433,
+      "delta_from_previous": null
+    },
+    {
+      "label": "atomic46_proof_loaded",
+      "remaining": 1397949,
+      "delta_from_previous": 484
+    },
+    {
+      "label": "atomic46_parse_done",
+      "remaining": 1396118,
+      "delta_from_previous": 1831
+    },
+    {
+      "label": "atomic46_transcript_done",
+      "remaining": 1244151,
+      "delta_from_previous": 151967
+    },
+    {
+      "label": "atomic46_terminal_prepared",
+      "remaining": 1208650,
+      "delta_from_previous": 35501
+    },
+    {
+      "label": "atomic46_terminal_poseidon",
+      "remaining": 1114559,
+      "delta_from_previous": 94091
+    },
+    {
+      "label": "atomic46_terminal_semantic_initial",
+      "remaining": 1104987,
+      "delta_from_previous": 9572
+    },
+    {
+      "label": "atomic46_terminal_semantic_absorption",
+      "remaining": 1096828,
+      "delta_from_previous": 8159
+    },
+    {
+      "label": "atomic46_terminal_semantic_merkle",
+      "remaining": 1096614,
+      "delta_from_previous": 214
+    },
+    {
+      "label": "atomic46_terminal_semantic_range",
+      "remaining": 1072898,
+      "delta_from_previous": 23716
+    },
+    {
+      "label": "atomic46_terminal_semantic_public",
+      "remaining": 1061586,
+      "delta_from_previous": 11312
+    },
+    {
+      "label": "atomic46_terminal_copy_patterns",
+      "remaining": 1040258,
+      "delta_from_previous": 21328
+    },
+    {
+      "label": "atomic46_terminal_copy_routing",
+      "remaining": 932348,
+      "delta_from_previous": 107910
+    },
+    {
+      "label": "atomic46_terminal_copy_algebra",
+      "remaining": 906406,
+      "delta_from_previous": 25942
+    },
+    {
+      "label": "atomic46_terminal_composition_equality",
+      "remaining": 887932,
+      "delta_from_previous": 18474
+    },
+    {
+      "label": "atomic46_terminal_mask",
+      "remaining": 861183,
+      "delta_from_previous": 26749
+    },
+    {
+      "label": "atomic46_terminal_final",
+      "remaining": 860951,
+      "delta_from_previous": 232
+    },
+    {
+      "label": "atomic46_terminal_done",
+      "remaining": 859435,
+      "delta_from_previous": 1516
+    },
+    {
+      "label": "atomic46_relation_done",
+      "remaining": 675922,
+      "delta_from_previous": 183513
+    },
+    {
+      "label": "atomic46_openings_parse_done",
+      "remaining": 490148,
+      "delta_from_previous": 185774
+    },
+    {
+      "label": "atomic46_queries_done",
+      "remaining": 250144,
+      "delta_from_previous": 240004
+    },
+    {
+      "label": "atomic46_done",
+      "remaining": 249870,
+      "delta_from_previous": 274
+    }
+  ],
+  "literal_ledger": {
+    "transaction_setup_and_public_decode_cu": 1567,
+    "proof_load_cu": 484,
+    "parse_cu": 1831,
+    "transcript_cu": 151967,
+    "atomic_terminal_cu": 384716,
+    "relation_cu": 183513,
+    "merkle_openings_cu": 185774,
+    "query_arithmetic_cu": 240004,
+    "verifier_return_cu": 274,
+    "post_last_marker_cu": 59,
+    "overlap_reconciled_total_cu": 1150189,
+    "formula": "1567 + 484 + 1831 + 151967 + 384716 + 183513 + 185774 + 240004 + 274 + 59",
+    "source": "single literal tag-46 acceptance-complete read-only instruction; no segmented or cross-artifact substitution"
+  },
+  "headroom_under_1_4m_cu": 249811,
+  "pre_rewrite_literal_simulation_cu": 1279180,
+  "pre_rewrite_atomic_terminal_cu": 484442,
+  "pre_rewrite_copy_patterns_cu": 82582,
+  "optimized_copy_patterns_cu": 21328,
+  "pre_rewrite_prepared_cu": 66973,
+  "selected_shared_prepared_cu": 35501,
+  "pre_rewrite_copy_routing_cu": 108007,
+  "rank74_lazy_copy_routing_cu": 79334,
+  "selected_shared_copy_routing_cu": 107910,
+  "post_pattern_literal_simulation_cu": 1217906,
+  "rank74_lazy_literal_simulation_cu": 1189233,
+  "literal_savings_vs_pre_rewrite_cu": 128991,
+  "random_qm31_pattern_identity_points": 64,
+  "wrong_public_field_rejected_sbf": true,
+  "production_pow_mined": false,
+  "read_only_acceptance_complete": true,
+  "live_mutation_enabled": false,
+  "atomic_hiding_rank_complete": false,
+  "notes": [
+    "Tag46 verifies the actual 56,044-byte atomic-v3 profile20 proof, including its transcript-bound masked terminal, exact 183-link atomic copy polynomial, relation, Merkle openings, and every q16 query. No expected terminal is supplied out of band.",
+    "The CU number is the literal single-instruction simulation and its marker ledger reconciles exactly; no segmented, overlap-subtracted, or cross-artifact phase is substituted.",
+    "Five shared QM31 dots reconstruct all fifteen generated patterns, four M31 coefficient products are lazily reduced per routing limb, and the selected rank-103 routing partition reuses the semantic selector tensor. Together these exact rewrites cut tag46 by 99,729 CU; the generated minimum-rank rank-74 path remains an independent reference.",
+    "Seven terminal guards cover 64 fresh random-QM31 pattern identities, semantic-tensor/selected-partition identity, all 1,024 active/inactive rows, rank-74 routing versus the independent 183-link walk, diagnostic/production terminal identity, constants provenance, and every compiled-copy corruption tooth.",
+    "The diagnostic fixture is intentionally unmined: nonce absorption and all downstream Fiat-Shamir challenges execute, but production acceptance rejects it at the PoW predicate.",
+    "This instruction is read-only and rejects writable proof accounts. Pool/nullifier mutation remains disabled until the atomic complete-view hiding-rank artifact and live account-transition teeth are green."
+  ]
+}

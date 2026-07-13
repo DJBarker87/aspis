@@ -1,0 +1,36 @@
+{
+  "schema": "aspis.profile22.private_profile20.host_kat.v1",
+  "generated_at_utc": "2026-07-13T12:47:01Z",
+  "profile_id": 22,
+  "rate": "1/512",
+  "query_count": 16,
+  "batch_grinding_bits": 38,
+  "fold_grinding_bits": [39, 35, 31, 27],
+  "final_grinding_bits": 38,
+  "soundness_bits_factor31": 102.4649,
+  "soundness_bits_factor40": 102.0972,
+  "proof_path": "results/stage2/proofs/atomic_state_only_profile22_v3_unmined.bin",
+  "proof_bytes": 56686,
+  "proof_sha256": "77736f0ea30ae9e2516537213e7dce386c9be69e3c772e5b50f03c57892136f8",
+  "section_bytes": [16134, 11526, 8966, 7430, 5894],
+  "frontier_nodes": [280, 280, 232, 184, 136],
+  "private_value_widths": [416, 128, 64, 64, 64],
+  "private_binary_depths": [17, 17, 15, 13, 11],
+  "host_roundtrip": true,
+  "production_rejects_unmined": true,
+  "corruption_teeth": {
+    "c1_root": true,
+    "c1_value": true,
+    "c1_salt": true,
+    "c1_frontier": true,
+    "c2_value": true,
+    "c2_salt": true,
+    "w1_value": true,
+    "w3_salt": true,
+    "trailing_bytes": true
+  },
+  "notes": [
+    "The deterministic fixture uses test-only fixed entropy and an unmined zero nonce.",
+    "Private Merkle salting is authenticated here but is not by itself a complete-view HVZK theorem."
+  ]
+}

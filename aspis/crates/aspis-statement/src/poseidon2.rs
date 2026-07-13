@@ -186,6 +186,111 @@ fn internal_linear_lazy(state: &mut [M31; 16]) {
     }
 }
 
+/// Evaluate the two consecutive Poseidon2 rounds assigned to one active
+/// trace row. `local_row` is in `0..11`; row zero also applies the
+/// permutation's leading external linear layer. This is the single
+/// row-algebra source used by both trace replay and the payment constraint
+/// registry.
+pub(crate) fn evaluate_trace_round_pair(
+    mut state: [M31; POSEIDON2_WIDTH],
+    local_row: usize,
+) -> Option<([M31; POSEIDON2_WIDTH], [M31; POSEIDON2_WIDTH])> {
+    if local_row >= POSEIDON2_ROUNDS / 2 {
+        return None;
+    }
+    if local_row == 0 {
+        external_linear_lazy(&mut state);
+    }
+    let first_round = 2 * local_row;
+    apply_round_by_index(&mut state, first_round)?;
+    let first = state;
+    apply_round_by_index(&mut state, first_round + 1)?;
+    Some((first, state))
+}
+
+pub(crate) fn evaluate_trace_round(
+    mut state: [M31; POSEIDON2_WIDTH],
+    round: usize,
+    apply_leading_external: bool,
+) -> Option<[M31; POSEIDON2_WIDTH]> {
+    if apply_leading_external {
+        external_linear_lazy(&mut state);
+    }
+    apply_round_by_index(&mut state, round)?;
+    Some(state)
+}
+
+fn apply_round_by_index(state: &mut [M31; POSEIDON2_WIDTH], round: usize) -> Option<()> {
+    if round < EXTERNAL_INITIAL.len() {
+        let constants = &EXTERNAL_INITIAL[round];
+        for lane in 0..POSEIDON2_WIDTH {
+            state[lane] = pow5(state[lane].add(M31(constants[lane])));
+        }
+        external_linear_lazy(state);
+    } else if round < EXTERNAL_INITIAL.len() + INTERNAL.len() {
+        let constant = INTERNAL[round - EXTERNAL_INITIAL.len()];
+        state[0] = pow5(state[0].add(M31(constant)));
+        internal_linear_lazy(state);
+    } else if round < POSEIDON2_ROUNDS {
+        let constants = &EXTERNAL_FINAL[round - EXTERNAL_INITIAL.len() - INTERNAL.len()];
+        for lane in 0..POSEIDON2_WIDTH {
+            state[lane] = pow5(state[lane].add(M31(constants[lane])));
+        }
+        external_linear_lazy(state);
+    } else {
+        return None;
+    }
+    Some(())
+}
+
+/// Fixed round constants and the full/internal selector used by the
+/// extension-field terminal evaluator. Internal rounds expose their single
+/// lane-zero constant and zeroes elsewhere.
+pub(crate) fn trace_round_descriptor(round: usize) -> Option<([M31; POSEIDON2_WIDTH], bool)> {
+    if round < EXTERNAL_INITIAL.len() {
+        Some((EXTERNAL_INITIAL[round].map(M31), true))
+    } else if round < EXTERNAL_INITIAL.len() + INTERNAL.len() {
+        let mut constants = [M31::ZERO; POSEIDON2_WIDTH];
+        constants[0] = M31(INTERNAL[round - EXTERNAL_INITIAL.len()]);
+        Some((constants, false))
+    } else if round < POSEIDON2_ROUNDS {
+        Some((
+            EXTERNAL_FINAL[round - EXTERNAL_INITIAL.len() - INTERNAL.len()].map(M31),
+            true,
+        ))
+    } else {
+        None
+    }
+}
+
+/// One pinned trace-round constant without materializing the full 16-lane
+/// descriptor.  The extension-field terminal uses this accessor to evaluate
+/// several selector-weighted constant columns with lazy fixed-size dots.
+pub(crate) fn trace_round_constant(round: usize, lane: usize) -> Option<(M31, bool)> {
+    if lane >= POSEIDON2_WIDTH {
+        return None;
+    }
+    if round < EXTERNAL_INITIAL.len() {
+        Some((M31(EXTERNAL_INITIAL[round][lane]), true))
+    } else if round < EXTERNAL_INITIAL.len() + INTERNAL.len() {
+        Some((
+            if lane == 0 {
+                M31(INTERNAL[round - EXTERNAL_INITIAL.len()])
+            } else {
+                M31::ZERO
+            },
+            false,
+        ))
+    } else if round < POSEIDON2_ROUNDS {
+        Some((
+            M31(EXTERNAL_FINAL[round - EXTERNAL_INITIAL.len() - INTERNAL.len()][lane]),
+            true,
+        ))
+    } else {
+        None
+    }
+}
+
 /// Apply the pinned Poseidon2-M31 permutation in place.
 pub fn permute(state: &mut [M31; 16]) {
     external_linear(state);
@@ -266,6 +371,46 @@ pub fn hash_fields(domain: M31, input: &[M31]) -> Digest {
     hash_fields_with_trace(domain, input, |_, _| {})
 }
 
+pub const MERKLE_NODE_DOMAIN_V2: M31 = M31(0x4153_0005);
+pub const MERKLE_NODE_COMPRESSION_V3_TWEAK: M31 = M31(0x4153_1005);
+pub const MERKLE_NODE_COMPRESSION_V3_KAT: Digest = [
+    M31(1_586_466_362),
+    M31(2_103_727_270),
+    M31(1_374_732_293),
+    M31(1_933_136_693),
+    M31(1_396_290_158),
+    M31(1_930_786_489),
+    M31(128_900_489),
+    M31(1_701_436_969),
+];
+
+/// Retired two-permutation node sponge, retained as a v3 migration reference.
+pub fn merkle_node_sponge_v2(left: &Digest, right: &Digest) -> Digest {
+    let mut input = [M31::ZERO; DIGEST_ELEMS * 2];
+    input[..DIGEST_ELEMS].copy_from_slice(left);
+    input[DIGEST_ELEMS..].copy_from_slice(right);
+    hash_fields(MERKLE_NODE_DOMAIN_V2, &input)
+}
+
+/// Candidate v3 fixed-purpose Merkle-node compression.
+///
+/// The ordered pair `(left, right)` fills the complete width-16 permutation
+/// state and the first eight limbs are retained. Unlike the v2 rate-8 sponge,
+/// this costs one permutation rather than two. Domain separation is provided
+/// by using this compression only for internal nodes; leaves remain the
+/// length-committing `DOMAIN_NOTE` sponge and the statement/tree version is
+/// changed whenever this primitive is selected.
+pub fn merkle_node_compress_v3(left: &Digest, right: &Digest) -> Digest {
+    let mut state = [M31::ZERO; POSEIDON2_WIDTH];
+    state[..DIGEST_ELEMS].copy_from_slice(left);
+    state[DIGEST_ELEMS..].copy_from_slice(right);
+    // Fixed node-domain tweak. This construction is never reused for leaves
+    // or variable-length inputs; the ordered 16-limb input is the full state.
+    state[POSEIDON2_WIDTH - 1] = state[POSEIDON2_WIDTH - 1].add(MERKLE_NODE_COMPRESSION_V3_TWEAK);
+    permute_optimized_with_trace(&mut state, |_| {});
+    core::array::from_fn(|index| state[index])
+}
+
 /// The exact sponge path used by [`hash_fields`], with a permutation-local
 /// index and every round transition exposed to the caller.
 pub fn hash_fields_with_trace<F>(domain: M31, input: &[M31], mut trace: F) -> Digest
@@ -293,6 +438,57 @@ mod tests {
     use alloc::vec::Vec;
 
     use super::*;
+
+    #[test]
+    fn v3_merkle_compression_is_one_permutation_and_order_binding() {
+        let left = core::array::from_fn(|index| M31(100 + index as u32 * 17));
+        let right = core::array::from_fn(|index| M31(700 + index as u32 * 19));
+        assert_eq!(
+            merkle_node_compress_v3(&left, &right),
+            MERKLE_NODE_COMPRESSION_V3_KAT
+        );
+        let mut reference = [M31::ZERO; POSEIDON2_WIDTH];
+        reference[..DIGEST_ELEMS].copy_from_slice(&left);
+        reference[DIGEST_ELEMS..].copy_from_slice(&right);
+        reference[POSEIDON2_WIDTH - 1] =
+            reference[POSEIDON2_WIDTH - 1].add(MERKLE_NODE_COMPRESSION_V3_TWEAK);
+        permute(&mut reference);
+        assert_eq!(
+            merkle_node_compress_v3(&left, &right),
+            reference[..DIGEST_ELEMS]
+        );
+        assert_ne!(
+            merkle_node_compress_v3(&left, &right),
+            merkle_node_compress_v3(&right, &left)
+        );
+        assert_ne!(
+            merkle_node_compress_v3(&left, &right),
+            merkle_node_sponge_v2(&left, &right),
+            "v2 and v3 tree roots must be statement-version separated"
+        );
+        let mut changed = right;
+        changed[7] = changed[7].add(M31::ONE);
+        assert_ne!(
+            merkle_node_compress_v3(&left, &right),
+            merkle_node_compress_v3(&left, &changed)
+        );
+    }
+
+    #[test]
+    fn scalar_trace_round_constants_match_full_descriptors() {
+        for round in 0..POSEIDON2_ROUNDS {
+            let (descriptor, expected_full) = trace_round_descriptor(round).unwrap();
+            for (lane, expected) in descriptor.into_iter().enumerate() {
+                assert_eq!(
+                    trace_round_constant(round, lane),
+                    Some((expected, expected_full)),
+                    "round={round} lane={lane}",
+                );
+            }
+        }
+        assert_eq!(trace_round_constant(POSEIDON2_ROUNDS, 0), None);
+        assert_eq!(trace_round_constant(0, POSEIDON2_WIDTH), None);
+    }
 
     fn hash_fields_canonical(domain: M31, input: &[M31]) -> Digest {
         let mut state = [M31::ZERO; 16];

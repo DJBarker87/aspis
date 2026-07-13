@@ -26,6 +26,29 @@ pub struct LogUpMainRow {
     pub consumer_weight: M31,
 }
 
+/// Three row-local range queries plus one fixed-table consumer. The six
+/// private 10-bit limbs occupy two rows, keeping the cleared local identity
+/// at degree five (degree six after the zerocheck equality factor).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RangeLogUpRow {
+    pub producer_values: [QM31; 3],
+    pub producer_weights: [M31; 3],
+    pub consumer_value: QM31,
+    pub consumer_weight: M31,
+}
+
+/// Up to two tagged copy producers and two consumers on one trace row. The
+/// frozen v4 layout currently reaches two producers only for the balance
+/// bridge; the symmetric shape keeps the verifier rule stable if a future
+/// row also receives two consumers.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CopyLogUpRow {
+    pub producer_values: [QM31; 2],
+    pub producer_weights: [M31; 2],
+    pub consumer_values: [QM31; 2],
+    pub consumer_weights: [M31; 2],
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LogUpSide {
     Producer,
@@ -128,6 +151,170 @@ pub fn build_logup_helper(rows: &[LogUpMainRow], chi: QM31) -> Result<Vec<QM31>,
         helper.push(value);
     }
     Ok(helper)
+}
+
+/// Construct the post-chi helper for the two-row, three-query range layout.
+pub fn build_range_logup_helper(
+    rows: &[RangeLogUpRow],
+    chi: QM31,
+) -> Result<Vec<QM31>, LogUpError> {
+    let mut helper = Vec::with_capacity(rows.len());
+    for (row_index, row) in rows.iter().enumerate() {
+        let mut value = QM31::ZERO;
+        for (producer_value, weight) in row.producer_values.into_iter().zip(row.producer_weights) {
+            if weight != M31::ZERO {
+                let inverse = chi
+                    .sub(producer_value)
+                    .try_inv()
+                    .ok_or(LogUpError::ActivePole {
+                        row: row_index,
+                        side: LogUpSide::Producer,
+                    })?;
+                value = value.add(inverse.mul_m31(weight));
+            }
+        }
+        if row.consumer_weight != M31::ZERO {
+            let inverse = chi
+                .sub(row.consumer_value)
+                .try_inv()
+                .ok_or(LogUpError::ActivePole {
+                    row: row_index,
+                    side: LogUpSide::Consumer,
+                })?;
+            value = value.sub(inverse.mul_m31(row.consumer_weight));
+        }
+        helper.push(value);
+    }
+    Ok(helper)
+}
+
+/// Construct the copy helper for the bounded multi-endpoint row layout.
+pub fn build_copy_logup_helper(rows: &[CopyLogUpRow], chi: QM31) -> Result<Vec<QM31>, LogUpError> {
+    let mut helper = Vec::with_capacity(rows.len());
+    for (row_index, row) in rows.iter().enumerate() {
+        let mut value = QM31::ZERO;
+        for (producer_value, weight) in row.producer_values.into_iter().zip(row.producer_weights) {
+            if weight != M31::ZERO {
+                value = value.add(
+                    chi.sub(producer_value)
+                        .try_inv()
+                        .ok_or(LogUpError::ActivePole {
+                            row: row_index,
+                            side: LogUpSide::Producer,
+                        })?
+                        .mul_m31(weight),
+                );
+            }
+        }
+        for (consumer_value, weight) in row.consumer_values.into_iter().zip(row.consumer_weights) {
+            if weight != M31::ZERO {
+                value = value.sub(
+                    chi.sub(consumer_value)
+                        .try_inv()
+                        .ok_or(LogUpError::ActivePole {
+                            row: row_index,
+                            side: LogUpSide::Consumer,
+                        })?
+                        .mul_m31(weight),
+                );
+            }
+        }
+        helper.push(value);
+    }
+    Ok(helper)
+}
+
+/// Division-free degree-five copy identity (degree six with zerocheck eq).
+pub fn copy_logup_residual(row: CopyLogUpRow, helper: QM31, chi: QM31) -> QM31 {
+    let denominators = [
+        chi.sub(row.producer_values[0]),
+        chi.sub(row.producer_values[1]),
+        chi.sub(row.consumer_values[0]),
+        chi.sub(row.consumer_values[1]),
+    ];
+    let product_without = |excluded: usize| {
+        (0..4)
+            .filter(|&index| index != excluded)
+            .fold(QM31::ONE, |product, index| product.mul(denominators[index]))
+    };
+    let all = denominators
+        .into_iter()
+        .fold(QM31::ONE, |product, denominator| product.mul(denominator));
+    let mut residual = helper.mul(all);
+    for producer in 0..2 {
+        residual = residual.sub(product_without(producer).mul_m31(row.producer_weights[producer]));
+    }
+    for consumer in 0..2 {
+        residual =
+            residual.add(product_without(2 + consumer).mul_m31(row.consumer_weights[consumer]));
+    }
+    residual
+}
+
+pub fn verify_copy_logup_constraints(
+    rows: &[CopyLogUpRow],
+    helper: &[QM31],
+    chi: QM31,
+) -> Result<(), LogUpError> {
+    if rows.len() != helper.len() {
+        return Err(LogUpError::LengthMismatch);
+    }
+    let mut total = QM31::ZERO;
+    for (row_index, (&row, &h)) in rows.iter().zip(helper).enumerate() {
+        if copy_logup_residual(row, h, chi) != QM31::ZERO {
+            return Err(LogUpError::RowRelationMismatch { row: row_index });
+        }
+        total = total.add(h);
+    }
+    if total != QM31::ZERO {
+        return Err(LogUpError::TotalSumMismatch);
+    }
+    Ok(())
+}
+
+/// Division-free degree-five local identity for [`RangeLogUpRow`].
+/// Inactive producer weights are zero, but their base-field denominators are
+/// retained as harmless common factors. Because `chi` is sampled in QM31
+/// outside M31, those factors cannot vanish on Boolean trace rows.
+pub fn range_logup_residual(row: RangeLogUpRow, helper: QM31, chi: QM31) -> QM31 {
+    let producer_denominators = row.producer_values.map(|value| chi.sub(value));
+    let consumer_denominator = chi.sub(row.consumer_value);
+    let producer_product = producer_denominators[0]
+        .mul(producer_denominators[1])
+        .mul(producer_denominators[2]);
+    let mut residual = helper.mul(consumer_denominator).mul(producer_product);
+    for producer in 0..3 {
+        let other_product = producer_denominators[(producer + 1) % 3]
+            .mul(producer_denominators[(producer + 2) % 3]);
+        residual = residual.sub(
+            consumer_denominator
+                .mul(other_product)
+                .mul_m31(row.producer_weights[producer]),
+        );
+    }
+    residual.add(producer_product.mul_m31(row.consumer_weight))
+}
+
+/// Check the range helper's cleared local identities and global zero sum.
+pub fn verify_range_logup_constraints(
+    rows: &[RangeLogUpRow],
+    helper: &[QM31],
+    chi: QM31,
+) -> Result<(), LogUpError> {
+    if rows.len() != helper.len() {
+        return Err(LogUpError::LengthMismatch);
+    }
+    let mut total = QM31::ZERO;
+    for (row_index, (&row, &h)) in rows.iter().zip(helper).enumerate() {
+        if range_logup_residual(row, h, chi) != QM31::ZERO {
+            return Err(LogUpError::RowRelationMismatch { row: row_index });
+        }
+        total = total.add(h);
+    }
+    if total != QM31::ZERO {
+        return Err(LogUpError::TotalSumMismatch);
+    }
+    Ok(())
 }
 
 /// Check the degree-3 row relation and the global `sum(h) = 0` claim.

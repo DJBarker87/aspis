@@ -1,0 +1,112 @@
+{
+  "artifact": "state-only-hiding-rank",
+  "status": "inactive_helper_repair_integrated_engineering_gate_green",
+  "layout": {
+    "semantic_c1_columns": 16,
+    "selected_mask_only_c1_columns": 10,
+    "c2_columns": ["h1", "G"],
+    "selected_generator_width": 28,
+    "opening_order": "semantic_c1[0..16], mask_only_c1[0..10], h1, G",
+    "relation_free_mask_cells": 5374,
+    "relation_free_mask_fingerprint": "0x1420cb9210f52636",
+    "layout_factor_fingerprint": "0x12672251efe5eafb"
+  },
+  "production_diagonal": {
+    "z_equals_sumcheck_challenges": true,
+    "terminal_points": ["z", "succ(z)", "xor12(z)"],
+    "sumcheck_m31_coordinates": 1084,
+    "terminal_quotient_maximum": 1080,
+    "rate16_q36": {
+      "domain_log": 14,
+      "c1_raw_m31_per_column": 156,
+      "g_raw_qm31": 147,
+      "semantic_plus_g_rank": 1040,
+      "rank_after_0_to_10_m31_mask_columns": [1040, 1044, 1048, 1052, 1056, 1060, 1064, 1068, 1072, 1076, 1080],
+      "sampled_schedules": 3
+    },
+    "rate32_q29": {
+      "domain_log": 15,
+      "c1_raw_m31_per_column": 128,
+      "g_raw_qm31": 119,
+      "semantic_plus_g_rank": 1040,
+      "rank_after_0_to_10_m31_mask_columns": [1040, 1044, 1048, 1052, 1056, 1060, 1064, 1068, 1072, 1076, 1080],
+      "sampled_schedules": 3
+    }
+  },
+  "copy_activity_registry": {
+    "active_rows": 170,
+    "inactive_rows": 854,
+    "inactive_qm31_degrees_of_freedom": 853,
+    "active_rows_fingerprint": "0xdfba37ae14a1a2cc",
+    "provenance": "generated independently from the frozen copy layout"
+  },
+  "original_containment_counterexample": {
+    "selected_width28_without_h1_padding": "failed",
+    "reason": "all originally selected masks have zero projection on separately opened witness-dependent h1",
+    "projected_mask_rank": 0,
+    "projected_augmented_rank": 1,
+    "valid_fixture_differences_tested_per_rate": 3
+  },
+  "h1_repair": {
+    "ordinary_helper_affine_kernel": 0,
+    "maximum_copy_endpoint_row": 866,
+    "pair_mask": {
+      "status": "rejected",
+      "rate16_q36_rank": 75,
+      "rate32_q29_rank": 61
+    },
+    "retired_suffix_zero_sum_padding": {
+      "status": "rejected_by_complete_pcs_view",
+      "rows": [868, 1024],
+      "qm31_degrees_of_freedom": 155,
+      "rate16_q36_complete_view": {
+        "outputs": 587,
+        "mask_rank": 155,
+        "witness_augmented_rank": 156
+      },
+      "rate32_q29_complete_view": {
+        "outputs": 487,
+        "mask_rank": 136,
+        "witness_augmented_rank": 137
+      }
+    },
+    "all_copy_inactive_zero_sum_padding": {
+      "status": "integrated_engineering_gate_green",
+      "qm31_degrees_of_freedom": 853,
+      "width_delta": 0,
+      "production_relation": "one dense public copy-inactive indicator with zero gamma-combined inner product",
+      "rate16_q36_complete_view": {
+        "outputs": 539,
+        "mask_rank": 292,
+        "witness_augmented_rank": 292,
+        "universal_active_zero_sum_augmented_rank": 292
+      },
+      "rate32_q29_complete_view": {
+        "outputs": 487,
+        "mask_rank": 256,
+        "witness_augmented_rank": 256,
+        "universal_active_zero_sum_augmented_rank": 256
+      },
+      "complete_view_components": [
+        "authenticated h1 layer-zero openings",
+        "three terminal point claims",
+        "all later-fold openings",
+        "relation OOD values",
+        "relation sumcheck coefficients",
+        "final coefficients"
+      ],
+      "gamma_collision_bound": "27/|QM31|",
+      "serialized_roundtrip": {
+        "rate16_q36_corruption_teeth": "green",
+        "rate32_q29": "green"
+      }
+    }
+  },
+  "qm31_packing_ab": {
+    "scalar_factor_ranks_for_0_to_3_oracles": [1040, 1044, 1048, 1052],
+    "coordinate_factored_ranks_for_0_to_3_oracles": [1040, 1068, 1084, 1084],
+    "coordinate_factored_status": "rejected_not_terminal_computable",
+    "reason": "rank 1084 exceeds terminal quotient 1080; one QM31 opening does not reveal four independent QM31 coordinate MLEs"
+  },
+  "claim": "No FS-HVZK claim. The complete h1 PCS-view containment and serialized proof tests are engineering gates at fixed actual-shaped schedules. A production exact complete-mask rank rejection gate, bad-schedule probability/termination proof, and code-switch/HVZK transport remain proof obligations."
+}

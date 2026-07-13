@@ -10,6 +10,10 @@ description = "No-proof SpendV0 evaluator and constraint-composition kernels for
 # for adversarial teeth/evaluation builds. The verifier program does not
 # forward this feature; enabling it requires an explicit dependency feature.
 insecure-test-logup-compression = []
+# Derive only the public RATE512 circle/line coordinates touched by Profile23
+# queries. This preserves the proof and verifier equations while allowing a
+# deployment build to dead-strip the six complete RATE512 lookup tables.
+profile23-dynamic-rate512 = []
 
 [dependencies]
 aspis-core.workspace = true
@@ -18,3 +22,4 @@ aspis-core.workspace = true
 p3-field = "=0.6.1"
 p3-mersenne-31 = "=0.6.1"
 p3-symmetric = "=0.6.1"
+sha2.workspace = true

@@ -1,0 +1,123 @@
+{
+  "artifact": "profile21_soundness_hvzk_audit",
+  "date": "2026-07-13",
+  "complete_system_claim_quotable": false,
+  "verdict": "selected_direct_q_and_pre_delta_target_reduction_numeric_ledger_green_but_combo_check_integrated_profile21_hvzk_simulator_mined_work_and_live_mutation_open",
+  "field": {
+    "name": "QM31",
+    "size_formula": "(2^31-1)^4",
+    "bits": 123.99999999731277
+  },
+  "main_code": {
+    "rho": 0.001953125,
+    "line_domain": 131072,
+    "agreement_fraction": 0.04640388251536719,
+    "agreement_cap": 6082,
+    "queries": 16,
+    "pre_gamma_work_bits": 38,
+    "final_work_bits": 38
+  },
+  "source_code": {
+    "dimension": 35,
+    "line_domain": 131072,
+    "pre_delta_work_bits": 38,
+    "standalone_agreement_cap": 2248,
+    "standalone_list_parameter": 642.55490037817,
+    "standalone_mca_bits_after_work": 110.81729986201675,
+    "standalone_query_bits_after_work": 131.9250478006797,
+    "common_set_list_parameter": 214.18496679272334,
+    "common_set_mca_bits_after_work": 116.74210856236162,
+    "ruling": "literal Enc(U)(q) closes the disjoint-agreement fork; the post-delta combo check plus pre-delta targets binds the production covector with the existing degree-one delta event"
+  },
+  "source_target_binding": {
+    "reduction_proved": true,
+    "relation_primitive_implemented": true,
+    "profile21_acceptance_integrated": false,
+    "diagnostic_target": "powers of eta",
+    "production_target": "first_later_weights at natural indices [1,0,2,...,18], depending on z, kappa, both round-zero OOD mixers, and alpha0",
+    "required_equation": "L(U_message) = muF + delta*tX; U is serialized in the frozen logical basis and phi(U) is injected/evaluated as the source polynomial",
+    "reduction": "Let D=Enc(phi(U))-(F+delta*X). If D!=0, charge the selected source MCA/q event. If D=0, target errors eF=muF-L(F) and eX=tX-L(X) satisfy eF+delta*eX=0; because both errors precede uniform nonzero delta, any nonzero pair has at most one root.",
+    "soundness_term": "1/(|QM31|-1), already represented by delta_identity_degree1",
+    "new_pcs_required": false,
+    "combo_check_cu_in_bridge": false,
+    "tests": {
+      "basis_fingerprint_inverse_and_32_off_domain_points": "3 passed",
+      "verifier_target_sign_tx_muf_coordinate_randomness_and_fingerprint_teeth": "1 passed",
+      "prover_verifier_covector_full_injection_and_later_fold_terminal_parity": "1 passed"
+    }
+  },
+  "selected_direct_binding_g38": {
+    "terms_bits": {
+      "main_batch_g38": 108.36848753424952,
+      "standalone_source_mca_g38": 110.81729986201675,
+      "four_fold_union": 112.07979078853677,
+      "main_q16_g38": 108.90188659724066,
+      "standalone_source_q16_g38": 131.9250478006797,
+      "ordinary_ood_list_union": 213.10001839489215,
+      "relation_sumchecks_and_ood_mixers": 119.41503749659161,
+      "gamma_and_three_point_batching": 119.1420190021852,
+      "copy_inactive_gamma": 119.2451124951493,
+      "atomic_copy_tuple_m183_w17": 112.39683731777839,
+      "atomic_copy_range_poles": 111.76279003655775,
+      "atomic_theta_degree24": 119.41503749659161,
+      "ten_round_degree27_zerocheck": 115.92318440026193,
+      "delta_identity_degree1": 123.99999999731277,
+      "poseidon2_assumption": 124.0,
+      "sha256_rom_assumption": 128.0
+    },
+    "union_bits": 107.28835414607816,
+    "bcs_factor": 33.0,
+    "after_bcs_factor_bits": 102.2439600267197,
+    "factor_40_sensitivity_bits": 101.9664260511908,
+    "quotable": false,
+    "reason": "the direct-q/pre-delta-target reduction is closed numerically, but the exact production-covector combo check and its CU, profile21 acceptance wire, mined work, computational HVZK simulator, and live atomic mutation are not yet all integrated"
+  },
+  "rejected_no_direct_attached_function_sensitivity": {
+    "source_mca_bits_after_work": 116.74210856236162,
+    "separate_source_query_credit": false,
+    "union_bits": 105.5597194785923,
+    "bcs_factor": 33.0,
+    "after_bcs_factor_bits": 100.51532535923384,
+    "not_selected_because": [
+      "X and F are attached functions in the same S-two reduction as W0 and W1",
+      "the q16 transition authenticates X and F from the pre-delta root",
+      "the two beta equations bind disclosed U to the same joint ordinary-FRI list element",
+      "Theorem 31 set-specific correlated agreement and Lemma 4 common-set transport are instantiated for the exact subcodes"
+    ]
+  },
+  "transcript_order": [
+    "ordinary roots and external zerocheck settled",
+    "shared C2/XF root fixed before every round-zero challenge defining the production covector L",
+    "tX and muF fixed and absorbed",
+    "source g38 check and absorption",
+    "nonzero delta",
+    "logical U disclosure and translated W1 root",
+    "ordinary later OOD samples, roots, and folds with full phi(U) relation injection; no profile21 beta cross-equation",
+    "final polynomial and final g38",
+    "distinct q16",
+    "authenticated X/F co-openings and the two literal equalities W1-Fold(W0)=Enc(phi(U))=F+deltaX"
+  ],
+  "beta_cross_equation": {
+    "selected": false,
+    "reason": "the isolated beta values authenticated only an evaluation of disclosed U and had no authenticated Fold(W0)(beta) operand; the existing relation injection plus direct q equalities are the binding handoff"
+  },
+  "hvzk": {
+    "profile20_non_atomic_field_rank_green": true,
+    "atomic_profile21_fixed_schedule_affine_view_rank_green": true,
+    "atomic_profile21_all_schedule_containment_green": false,
+    "fiat_shamir_conditioning_proved": false,
+    "private_merkle_epro_simulator_proved": false,
+    "receipt_view_covered": false,
+    "mutation_public_data_ruling": "public-statement deterministic, but proof-account view remains unproved"
+  },
+  "atomic": {
+    "copy_terms": 183,
+    "tuple_width": 17,
+    "theta_degree": 24,
+    "zerocheck_individual_degree": 27,
+    "read_only_acceptance_integrated": true,
+    "profile20_live_mutation_kernel_integrated": true,
+    "profile21_live_mutation_integrated": false
+  },
+  "source_note": "docs/stage2-profile21-soundness-hvzk-audit.md"
+}

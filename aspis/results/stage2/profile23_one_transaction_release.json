@@ -1,0 +1,260 @@
+{
+  "artifact": "profile23_one_transaction_release",
+  "generated_at_utc": "2026-07-13T20:20:30.668097+00:00",
+  "command": "NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-profile23-one-transaction-release",
+  "status": "released_all_required_gates_green",
+  "released": true,
+  "scope": {
+    "included": "one atomic Solana transaction that verifies the finalized Profile23 proof and commits the nullifier marker plus pool-state mutation",
+    "proof_account_precondition": "the transaction consumes a finalized, pre-uploaded proof account",
+    "excluded": [
+      "proof-account creation",
+      "proof-account chunk-upload transactions and their compute/fees"
+    ]
+  },
+  "compute_unit_limit": 1400000,
+  "max_literal_production_tag60_cu": 1207123,
+  "exact_headroom_under_1_4m_cu": 192877,
+  "selected_soundness_floor_bits": 101.30230658283052,
+  "coarse_whole_soundness_floor_bits": 100.80652861422747,
+  "computational_hiding_real_vs_simulator_bound_bits": 104.11238518950232,
+  "computational_hiding_pairwise_witness_bound_bits": 103.11238518950232,
+  "proof": {
+    "sha256": "35c4e79316bf4a2af1951e5d2f41b6ebb4ebb7bd1e91a3ba93c52e549bfe7949",
+    "bytes": 61599,
+    "actual_path": "results/stage2/proofs/atomic_state_only_profile23_v3_mined.bin",
+    "acceptance_path": "results/stage2/proofs/atomic_state_only_profile23_v3_mined.bin",
+    "mutation_path": "results/stage2/proofs/atomic_state_only_profile23_v3_mined.bin",
+    "hvzk_complete_public_view_path": "complete_public_view.{proof_sha256_production,proof_bytes_production}"
+  },
+  "default_production_sbf": {
+    "path": "target/deploy/aspis_verifier.so",
+    "build_command": "NO_DNA=1 cargo-build-sbf --manifest-path programs/aspis-verifier/Cargo.toml",
+    "freshly_built_by_release_command": true,
+    "bytes": 6870048,
+    "sha256": "6b64baf559dcddbd6f9b1af1205effeb6afae6a5746a44421e8826251fe4cffb",
+    "mutation_recorded_bytes": 6870048,
+    "mutation_recorded_sha256": "6b64baf559dcddbd6f9b1af1205effeb6afae6a5746a44421e8826251fe4cffb"
+  },
+  "source_artifacts": [
+    {
+      "label": "acceptance",
+      "path": "results/stage2/atomic_state_only_profile23_acceptance_production_mined.json",
+      "bytes": 3649,
+      "sha256": "288c532d627f10967e058d86ebc6d9f62c8ccb8bd0e77c598717fa53f0911acc"
+    },
+    {
+      "label": "mutation",
+      "path": "results/stage2/atomic_state_only_profile23_mutation_production_mined.json",
+      "bytes": 15108,
+      "sha256": "d900491e1fcb2de3c3db2ebaf63180eea2e147585a97b4b05f0be4d6fb033429"
+    },
+    {
+      "label": "soundness",
+      "path": "results/stage2/profile23_d_after_g_soundness_epro.json",
+      "bytes": 10146,
+      "sha256": "33b3b533e6fe9d68a97e317b88fa606cba8baa461d91c530ca933a4c3d1bea53"
+    },
+    {
+      "label": "complete_good",
+      "path": "results/stage2/profile23_complete_good_product.json",
+      "bytes": 5192,
+      "sha256": "0068d5fa396307a9464a79c1acb08c9e1d7b99fa93ae2ccd93c7897fe43a0f3e"
+    },
+    {
+      "label": "computational_hvzk",
+      "path": "results/stage2/profile23_computational_hvzk_closure.json",
+      "bytes": 11056,
+      "sha256": "69a16c164f891f368ebd8e463f07086dd471006527934be4ea5096e7fe700280"
+    },
+    {
+      "label": "program_manifest",
+      "path": "programs/aspis-verifier/Cargo.toml",
+      "bytes": 3211,
+      "sha256": "27b1ba909c264c62e914f517d27290be1530407486f6cdeb52a110f4941b15c6"
+    },
+    {
+      "label": "workspace_manifest",
+      "path": "Cargo.toml",
+      "bytes": 1025,
+      "sha256": "9c9a3948723bfcab692c012a26df34d88352e359f90affd0759097287cb2c832"
+    },
+    {
+      "label": "xtask_manifest",
+      "path": "xtask/Cargo.toml",
+      "bytes": 636,
+      "sha256": "e0a544349962ecc686a1836ce45af1eb3126d2e91f76872bc0b87067a81e06eb"
+    },
+    {
+      "label": "production_proof",
+      "path": "results/stage2/proofs/atomic_state_only_profile23_v3_mined.bin",
+      "bytes": 61599,
+      "sha256": "35c4e79316bf4a2af1951e5d2f41b6ebb4ebb7bd1e91a3ba93c52e549bfe7949"
+    },
+    {
+      "label": "default_production_sbf",
+      "path": "target/deploy/aspis_verifier.so",
+      "bytes": 6870048,
+      "sha256": "6b64baf559dcddbd6f9b1af1205effeb6afae6a5746a44421e8826251fe4cffb"
+    }
+  ],
+  "gates": [
+    {
+      "name": "production_mined_artifact_pair_selected",
+      "passed": true,
+      "evidence": "acceptance_path=Some(\"results/stage2/atomic_state_only_profile23_acceptance_production_mined.json\"), mutation_path=Some(\"results/stage2/atomic_state_only_profile23_mutation_production_mined.json\")"
+    },
+    {
+      "name": "production_proof_identity_matches",
+      "passed": true,
+      "evidence": "actual=(\"results/stage2/proofs/atomic_state_only_profile23_v3_mined.bin\",35c4e79316bf4a2af1951e5d2f41b6ebb4ebb7bd1e91a3ba93c52e549bfe7949,61599), acceptance=(Some(\"results/stage2/proofs/atomic_state_only_profile23_v3_mined.bin\"),Some(\"35c4e79316bf4a2af1951e5d2f41b6ebb4ebb7bd1e91a3ba93c52e549bfe7949\"),Some(61599)), mutation=(Some(\"results/stage2/proofs/atomic_state_only_profile23_v3_mined.bin\"),Some(\"35c4e79316bf4a2af1951e5d2f41b6ebb4ebb7bd1e91a3ba93c52e549bfe7949\"),Some(61599)), hvzk=(Some(\"35c4e79316bf4a2af1951e5d2f41b6ebb4ebb7bd1e91a3ba93c52e549bfe7949\"),Some(61599))"
+    },
+    {
+      "name": "proof_is_mined",
+      "passed": true,
+      "evidence": "acceptance.proof_unmined=Some(false), mutation.proof_unmined=Some(false)"
+    },
+    {
+      "name": "production_only_mined_override_exercised",
+      "passed": true,
+      "evidence": "acceptance_override=Some(true), mutation_override=Some(true), production_only_exercised=Some(true)"
+    },
+    {
+      "name": "production_host_and_sbf_tag59_accepted",
+      "passed": true,
+      "evidence": "host_production_classification_mined=true, acceptance_sbf=Some(true), production_path_sbf_all=true"
+    },
+    {
+      "name": "no_default_host_dependencies_fail_closed",
+      "passed": true,
+      "evidence": "tag59_no-default=Some(true), tag60_no-default=Some(true)"
+    },
+    {
+      "name": "production_committed_unmined_negative_controls",
+      "passed": true,
+      "evidence": "tag59_rejected=Some(true), tag60_rejected=Some(true), tag60_rollback=Some(true), pow_bypass_exposed=Some(false)"
+    },
+    {
+      "name": "exactly_two_production_tag60_marker_paths",
+      "passed": true,
+      "evidence": "count=2, marker_paths=[\"canonical_system_owned_create\", \"program_owned_zeroed\"]"
+    },
+    {
+      "name": "production_proof_accounts_irreversibly_finalized",
+      "passed": true,
+      "evidence": "finalize_wire=Some(62), acceptance_finalized=Some(true), all production paths finalized=true"
+    },
+    {
+      "name": "production_tag60_acceptance_teeth",
+      "passed": true,
+      "evidence": "candidate_accepts=Some(true), all tag59/tag60 path acceptances=true"
+    },
+    {
+      "name": "production_tag60_rollback_teeth",
+      "passed": true,
+      "evidence": "all corrupt-proof transaction rollbacks=true"
+    },
+    {
+      "name": "production_tag60_commit_teeth",
+      "passed": true,
+      "evidence": "all transition/pool/anchor/nullifier commit teeth=true"
+    },
+    {
+      "name": "production_tag60_duplicate_teeth",
+      "passed": true,
+      "evidence": "all duplicate rejection teeth=true"
+    },
+    {
+      "name": "production_tag60_race_tooth",
+      "passed": true,
+      "evidence": "exercised_races=[(Some(\"canonical_system_owned_create\"), true)]"
+    },
+    {
+      "name": "production_diagnostic_unavailable_teeth",
+      "passed": true,
+      "evidence": "tag59_diagnostic_bit_unavailable=Some(true), tag61_unavailable=Some(true)"
+    },
+    {
+      "name": "mined_acceptance_cu_ledger_reconciles",
+      "passed": true,
+      "evidence": "literal=Some(1202920), bucket_sum=Some(1202920), reconciled=Some(1202920), headroom=Some(197080)"
+    },
+    {
+      "name": "diagnostic_mutation_ledgers_link_to_mined_acceptance",
+      "passed": true,
+      "evidence": "acceptance_tag59=Some(1202920), diagnostic_path_count=2, all bucket/reconciled/headroom/increment identities=true"
+    },
+    {
+      "name": "production_tag60_cu_ledgers_reconcile",
+      "passed": true,
+      "evidence": "all exact tag59/tag60/increment/reconciled/headroom identities=true"
+    },
+    {
+      "name": "production_tag60_under_1_4m_cu",
+      "passed": true,
+      "evidence": "max_literal_production_tag60_cu=Some(1207123), limit=1400000"
+    },
+    {
+      "name": "production_measurement_context_matches",
+      "passed": true,
+      "evidence": "validator_equal=true, wires=(Some(59),Some(60),Some(61),Some(62)), acceptance_tag59=Some(1202920), production_tag59_baselines=[1202939, 1202939]"
+    },
+    {
+      "name": "profile23_default_enabled_and_host_dependencies_isolated",
+      "passed": true,
+      "evidence": "program_default=Some([\"profile23-production\"]), production_alias=Some([\"profile23-mutation-candidate\"]), workspace_default_features_false=true, xtask_default_features_false=true"
+    },
+    {
+      "name": "production_only_kat_used_explicit_production_alias",
+      "passed": true,
+      "evidence": "production_only_sbf_features=Some([\"profile23-production\"])"
+    },
+    {
+      "name": "production_alias_forbidden_feature_unions_compile_fail",
+      "passed": true,
+      "evidence": "rejected=Some(true), tested=[\"profile23-production+all-forbidden\", \"profile23-production+diagnostic-unmined-mutation\", \"profile23-production+diagnostic-unmined-profile21-mutation\", \"profile23-production+diagnostic-unmined-profile22-acceptance\", \"profile23-production+diagnostic-unmined-profile22-mutation\", \"profile23-production+diagnostic-unmined-profile23-acceptance\", \"profile23-production+diagnostic-unmined-profile23-mutation\", \"profile23-production+profile20-mutation-candidate\", \"profile23-production+profile21-integrated-candidate\", \"profile23-production+profile21-mutation-candidate\", \"profile23-production+profile22-integrated-candidate\", \"profile23-production+profile22-mutation-candidate\"], expected=[\"profile23-production+all-forbidden\", \"profile23-production+diagnostic-unmined-mutation\", \"profile23-production+diagnostic-unmined-profile21-mutation\", \"profile23-production+diagnostic-unmined-profile22-acceptance\", \"profile23-production+diagnostic-unmined-profile22-mutation\", \"profile23-production+diagnostic-unmined-profile23-acceptance\", \"profile23-production+diagnostic-unmined-profile23-mutation\", \"profile23-production+profile20-mutation-candidate\", \"profile23-production+profile21-integrated-candidate\", \"profile23-production+profile21-mutation-candidate\", \"profile23-production+profile22-integrated-candidate\", \"profile23-production+profile22-mutation-candidate\"]"
+    },
+    {
+      "name": "default_sbf_matches_production_only_kat_binary",
+      "passed": true,
+      "evidence": "default=(6870048,6b64baf559dcddbd6f9b1af1205effeb6afae6a5746a44421e8826251fe4cffb) mutation=(Some(6870048),Some(\"6b64baf559dcddbd6f9b1af1205effeb6afae6a5746a44421e8826251fe4cffb\"))"
+    },
+    {
+      "name": "johnson_soundness_selected_and_coarse_floors_at_least_100_bits",
+      "passed": true,
+      "evidence": "selected_floor=Some(101.30230658283052), coarse_sensitivity=Some(100.80652861422747), theorem_bookable=Some(true), acceptance_bookable=Some(true), mutation_bookable=Some(true), complete_good_bookable=Some(true)"
+    },
+    {
+      "name": "proven_johnson_parameter_regime",
+      "passed": true,
+      "evidence": "q=Some(16), inverse_rate=Some(512), selectors=Some(3), cap=Some(16), regime=Some(\"inherited rate-1/512 Johnson/MCA numeric regime; profile-23 deltas are enumerated below\")"
+    },
+    {
+      "name": "complete_good_theorem_product_bound",
+      "passed": true,
+      "evidence": "soundness_minor=Some(\"0xb7472b1f2b1d03e7\"), complete_good_minor=Some(\"0xb7472b1f2b1d03e7\"), complete_product=Some(true)"
+    },
+    {
+      "name": "layout_and_good23_fingerprints_match_live_code",
+      "passed": true,
+      "evidence": "good expected=0x9cdd6a6c14b796760c8dd73329effbfc734a048ccecc4ce10f214bdae3a6af2a, artifact=Some(\"0x9cdd6a6c14b796760c8dd73329effbfc734a048ccecc4ce10f214bdae3a6af2a\"); layout expected=0x233ba2ca68f94148, artifact=Some(\"0x233ba2ca68f94148\"); D factors=(Some(0),Some(0))"
+    },
+    {
+      "name": "q3_cap16_fixed_release_gates",
+      "passed": true,
+      "evidence": "selectors=Some(3), cap=Some(16), abort_bits=Some(105.41017865405836), selection=Some(\"least Good23 selector\")"
+    },
+    {
+      "name": "computational_hiding_at_least_100_bits_in_declared_model",
+      "passed": true,
+      "evidence": "real_vs_simulator=Some(104.11238518950232), pairwise_witness=Some(103.11238518950232), triangle_factor=Some(2), complete_view=Some(true), complete_system=Some(true), mined_tag60_hvzk_repin=Some(true)"
+    }
+  ],
+  "failed_gates": [],
+  "notes": [
+    "This certificate is fail-closed: released=true only when every listed gate passes in one evaluation.",
+    "Soundness and complete-Good are proof-independent theorem artifacts; their exact files are bound by SHA-256 and their layout/Good identities are checked against live code.",
+    "The production proof file is read directly and its identity is required to agree across acceptance, mutation and the HVZK complete-public-view production repin.",
+    "The release command removes and freshly rebuilds the plain manifest-default SBF before comparing it with the explicit production-alias KAT; proof-account creation and chunk uploads remain outside this one-transaction CU claim."
+  ]
+}

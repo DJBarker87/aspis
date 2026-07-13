@@ -1,0 +1,82 @@
+{
+  "label": "atomic profile-21 q16 upper-G/H oracle rank scan",
+  "status": "red_semantic_containment",
+  "generated_at_utc": "2026-07-13T09:14:54Z",
+  "production_acceptance_enabled": false,
+  "fixture": "results/stage2/proofs/atomic_state_only_profile21_v3_unmined.bin",
+  "schedule": {
+    "profile_id": 21,
+    "tag": 37,
+    "queries": 16,
+    "query_indices": [93639, 54546, 123325, 32023, 14842, 43771, 112422, 59949, 59550, 124581, 101914, 70499, 122059, 110296, 58525, 41927]
+  },
+  "literal_geometry": {
+    "message_log": 11,
+    "message_coefficients_qm31": 2048,
+    "codeword_domain_log": 19,
+    "codeword_length": 524288,
+    "rate": "1/256",
+    "codeword_length_required_for_rate_1_512": 1048576,
+    "fold_rounds": 4,
+    "final_coefficients_qm31": 8,
+    "layer0_opened_m31_per_oracle": 64,
+    "later_opened_qm31_per_oracle": 192,
+    "ood_qm31_per_oracle": 8,
+    "relation_coefficients_qm31_per_oracle": 28,
+    "pcs_tail_qm31_per_oracle": 236,
+    "joint_pcs_m31": 1212
+  },
+  "baseline": {
+    "masked_sumcheck_rank_m31": 1080,
+    "pcs_rank_m31": 712,
+    "semantic_augmented_rank_m31": 716,
+    "semantic_pivots_m31": [1084, 1085, 1086, 1087],
+    "semantic_sources": [5, 1025, 2049, 3073],
+    "semantic_minor_fingerprint": "0x1cd18a38f9c573e1",
+    "legal_sumcheck_augmented_rank_m31": 716,
+    "legal_sumcheck_new_pivots_m31": [],
+    "legal_sumcheck_minor_fingerprint": "0xd2f775b89802930b"
+  },
+  "variants": [
+    {
+      "support": "upper_g_only",
+      "pcs_rank_m31": 808,
+      "new_rank_m31": 96,
+      "semantic_augmented_rank_m31": 812,
+      "semantic_new_pivots_m31": [1084, 1085, 1086, 1087],
+      "legal_sumcheck_augmented_rank_m31": 812,
+      "contains_conservative_semantic_and_legal_sumcheck": false,
+      "minor_fingerprint": "0x918c2eb84d4176de"
+    },
+    {
+      "support": "upper_h_only",
+      "pcs_rank_m31": 808,
+      "new_rank_m31": 96,
+      "semantic_augmented_rank_m31": 812,
+      "semantic_new_pivots_m31": [1084, 1085, 1086, 1087],
+      "legal_sumcheck_augmented_rank_m31": 812,
+      "contains_conservative_semantic_and_legal_sumcheck": false,
+      "minor_fingerprint": "0x245d9ec15975d760"
+    },
+    {
+      "support": "upper_g_and_h",
+      "pcs_rank_m31": 808,
+      "new_rank_m31": 96,
+      "semantic_augmented_rank_m31": 812,
+      "semantic_new_pivots_m31": [1084, 1085, 1086, 1087],
+      "legal_sumcheck_augmented_rank_m31": 812,
+      "contains_conservative_semantic_and_legal_sumcheck": false,
+      "g_and_h_incremental_spans_are_equal": true,
+      "minor_fingerprint": "0xa44357704645655f"
+    }
+  ],
+  "decision": {
+    "upper_g_only": "red",
+    "upper_h_only": "red",
+    "upper_g_and_h": "red",
+    "q18_scan_required": false,
+    "reason": "The literal q16 image misses the same four conservative semantic directions in every variant; upper G and upper H are mutually redundant."
+  },
+  "elapsed_millis": 119153,
+  "command": "cargo run --release -p aspis-prover --example profile21_upper_oracle_rank -- results/stage2/proofs/atomic_state_only_profile21_v3_unmined.bin"
+}

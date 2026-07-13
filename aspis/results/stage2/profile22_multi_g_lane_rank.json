@@ -1,0 +1,75 @@
+{
+  "artifact": "profile22_multi_g_lane_rank",
+  "date": "2026-07-13",
+  "status": "host_only_rank_green_at_26_lanes_production_cost_screen_red",
+  "production_wire_changed": false,
+  "production_verifier_changed": false,
+  "soundness_claim": false,
+  "search": {
+    "combinatorial": false,
+    "maximum_lanes": 27,
+    "selected_family": "L_17^e for e=0..26 in ascending order",
+    "selected_factor_max_degree": 26,
+    "gamma_exponents": "28..54",
+    "first_complete_prefix_lanes": 26,
+    "selected_prefix_factors": "L_17^0..L_17^25",
+    "selected_prefix_gamma_exponents": "28..53"
+  },
+  "affine_degenerate": {
+    "gamma_nonzero": true,
+    "z": ["-(32+i)/9", "1", "1", "1", "1", "1", "0", "1", "i", "u"],
+    "degree26_varying_family_prefix_ranks_m31": [916, 928, 940, 952, 964, 976, 980, 980, 980, 980, 980, 980, 980, 980, 980, 980, 980],
+    "complete_degree_prefix_ranks_m31": [916, 922, 928, 934, 940, 946, 952, 958, 964, 970, 976, 982, 988, 996, 1004, 1010, 1016, 1022, 1028, 1034, 1040, 1046, 1052, 1060, 1068, 1076, 1080, 1080],
+    "selected_26_lane_replay": {
+      "masked_sumcheck_rank_m31": 1080,
+      "masked_sumcheck_target_m31": 1080,
+      "joint_pcs_rank_m31": 712,
+      "joint_pcs_declared_rank_m31": 780,
+      "physical_augmented_rank_m31": 712,
+      "legal_augmented_rank_m31": 712,
+      "physical_contained": true,
+      "legal_contained": true,
+      "elapsed_millis": 104741
+    },
+    "complete_27_lane_elapsed_millis": 108679
+  },
+  "frozen_schedule_26_lane_replay": {
+    "prefix_ranks_m31": [1080, 1080, 1080, 1080, 1080, 1080, 1080, 1080, 1080, 1080, 1080, 1080, 1080, 1080, 1080, 1080, 1080, 1080, 1080, 1080, 1080, 1080, 1080, 1080, 1080, 1080, 1080],
+    "joint_pcs_rank_m31": 712,
+    "joint_pcs_declared_rank_m31": 780,
+    "physical_augmented_rank_m31": 712,
+    "legal_augmented_rank_m31": 712,
+    "physical_contained": true,
+    "legal_contained": true,
+    "elapsed_millis": 200965
+  },
+  "hypothetical_wire_delta_at_26_lanes": {
+    "c2_value_width_before_bytes": 128,
+    "c2_value_width_after_bytes": 1792,
+    "opened_value_bytes_per_lane_q16": 1024,
+    "claimed_evaluation_bytes_per_lane": 48,
+    "proof_increment_bytes": 27872,
+    "current_proof_bytes": 56686,
+    "projected_proof_bytes": 84558,
+    "outer_generator_width_before": 28,
+    "outer_generator_width_after": 54,
+    "soundness_recompile_required": true
+  },
+  "cu_screen": {
+    "measured_system_create_total_cu": 1169714,
+    "exact_recorded_headroom_cu": 230286,
+    "task_planning_headroom_cu": 232000,
+    "measured_entire_fused_three_lane_q16_helper_kernel_cu": 60968,
+    "measured_shared_c2_widening_128_bytes_q16_cu": 1027,
+    "measured_entire_current_parser_cu": 1832,
+    "optimistic_amortized_increment_cu": 543573,
+    "optimistic_excess_vs_task_headroom_cu": 311573,
+    "conservative_increment_cu": 1776151,
+    "conservative_projected_system_create_total_cu": 2945865,
+    "conservative_excess_vs_task_headroom_cu": 1544151,
+    "integrated_measurement": false,
+    "bookable": false
+  },
+  "verdict": "exact two-schedule diagnostic rank and containment are green only at 26 added lanes in the complete ordered degree family; both favorable and conservative CU screens exceed the one-transaction headroom; retire as a production fallback",
+  "note": "docs/stage2-profile22-multi-g-lane-rank.md"
+}

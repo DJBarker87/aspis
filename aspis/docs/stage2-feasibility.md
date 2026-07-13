@@ -20,12 +20,14 @@ scaffold, so the two diagnostics cannot be added. The held q34/g36 lever is not
 silently adopted. The non-additive current-CM31 reconciliation now exhausts
 the 1.4M meter on all eight q36/g16 draws. The basis audit proves that M31 C1
 is valid only as a genuine circle-polynomial PCS; its pinned host math
-conformance passes, and the best isolated standard-heap RLC shape is 552,289
-CU. Host conformance now also pins the secure-circle sampler/tensor weights
-and the later-line Stwo storage bridge, including its explicit raw `4^r`
-scale. Production circle/C2/transcript wiring, authenticated line-FRI layers,
-soundness transport, and an in-place eight-seed verifier remain open. No
-product architecture is ruled or adopted.**
+conformance passes, and the best isolated standard-heap RLC shape is 501,989
+CU. Host conformance now also pins the secure-circle sampler/tensor weights,
+the later-line Stwo storage bridge including its explicit raw `4^r` scale,
+the exact prefix schedule and both comparison tails. Fresh kappa is now
+note-selected, and its 57,668-byte host proof composes transcript, relation,
+authenticated openings, and every derived query. SBF acceptance/measurement,
+payment-derived C2, soundness transport, and the complete economic transition
+remain open. The engineering target is one transaction.**
 
 The first teeth-first production-plan slice is now landed without enabling
 acceptance. Header parsing reserves flag `0x08` only as the exact v4/C2/claim
@@ -35,6 +37,64 @@ Production tag 6 rejects those same flagged proof bytes with `BadHeader`, while
 the feature-gated legacy-basis weakened verifier accepts them. Existing v3/v4
 KATs remain unchanged; the full circle transcript KAT is still pending.
 
+The next host-only prefix slice is also complete without enabling acceptance.
+Its exact 2,456-byte zero-copy parser exposes the C1/C2 roots, 102 statement
+values, four two-OOD/seven-coefficient round records, natural final four, and
+nonce; all 142 QM31 values are canonical-checked and every truncation or exact-
+parser trailing byte rejects. The schedule binds the header, basis, statement,
+distinct roots, external `z || xor11(z)`, and all 102 values before gamma, then
+stops before selecting a two-point rule. Eight paired weakened schedules cover
+early gamma, 51/101-value prefixes, swapped/unlabeled roots, omitted h2, and
+swapped helper order. No expected digest or KAT was pinned, no opening is
+authenticated, and no instruction consumes this parser.
+
+The same host module now continues that transcript for both unselected
+one-lane alternatives, fresh kappa and disjoint `gamma^51`, through the full
+fixed tail. It samples two secure-circle points at layer zero, six exact-
+uniform later-line values, absorbs every layer/sample-tagged Y before mu,
+binds each sumcheck before alpha, then binds natural final4 before verifying
+and absorbing a 16-bit grinding nonce and deriving 36 queries in `[0,1024)`.
+Nine weakened schedules accept their paired vectors where the canonical run
+rejects or differs. This remains comparison provenance; fresh kappa is the
+selected production shape and disjoint `gamma^51` is rejected.
+
+A sequential host builder now goes beyond that schedule-only artifact for both
+one-lane alternatives: it causally produces encoding roots, statement values,
+OOD values, sumchecks, fold roots, final4, grinding, and q36, then exact-replays
+the prefix and independently validates the relation. The two candidate prefix
+hashes and a stale-statement rebuild are pinned in
+`results/stage2/m31_circle_sequential_candidate_prefix.json`. Separately, the
+exact 48,124-byte opening suffix composes layer-zero and later Merkle
+authentication with every query transition and terminal check, pinned in
+`results/stage2/m31_circle_composed_openings.json`. The deliberate remaining
+seam is now closed on host for fresh kappa. The selected full proof has
+SHA-256 `68a53608...50505ca`. Append-only tag 26 now accepts that exact path on
+SBF in five identical runs at **1,112,605 CU** after replacing repeated domain
+exponentiation/inversion with exhaustively checked fixed tables, checking each
+unique later transition once, and hoisting alpha squares. This leaves only
+287,395 CU below 1.4M and is 77,395 CU below the 1.19M project threshold before
+payment-derived C2, hiding, or the economic transition.
+
+Ledger reconciliation is by in-place replacement, not addition: the
+**1,112,605-CU total already contains the 501,989-CU exact-49 RLC seam**. The
+naive 1,614,594-CU sum double-counts that work and is not a valid projection.
+
+The fixed-rate Johnson falsification and the low-rate recovery are now both
+literal. At rho=1/4, q74/g32 reaches 100.791 query-round bits but reconciles to
+**1,873,746 CU** (70/64/41/16 unique indices); its monolithic run exhausts at
+1.4M. At rho=1/16, q36/g32 reaches 101.466 query-round bits and the complete
+73,620-byte proof accepts directly at **1,237,877 CU in 5/5 runs**, with
+36/36/35/29 unique indices and 162,123 CU of platform headroom. Its independent
+segment ledger gives 1,237,884 CU, only 7 CU above the direct instruction,
+validating the overlap-subtraction method used for q74.
+
+The rate-1/16 result reopens one-transaction PCS feasibility but is not yet a
+product or 100-bit-system result. The pinned Johnson T1 union becomes 66.6534
+bits without per-fold PoW; exact circle transport, constraint composition,
+hiding, and the transition remain open. Adding the measured central r2
+composition increment (70,954 CU) is a planning row of 1,308,831 CU, not an
+integrated total, leaving 91,169 CU for all remaining verifier work.
+
 The primary-source soundness transport audit now separates the positive code
 fact from the open protocol claim. The exact direct tensor message space is a
 subcode of S-two's full circle code, so the scaled-GRS isometry and Johnson
@@ -43,6 +103,38 @@ correlated-agreement lemma, two-phase C1/C2 batching reduction, Boolean-MLE
 binding proof, actual rational-sampler denominator, or BCS/ROM accounting.
 Accordingly no T1/T2 value or computed circle-PCS security number is promoted;
 65.5 remains the sole quotable floor under the existing project rule.
+
+Host implementation has advanced beyond selected-position conformance: the
+candidate encoder now matches the independent reference for all 49x4096 C1
+and 2x4096 C2 symbols, every layer-zero leaf, and both candidate-tagged
+radix-4 roots. Eight representation bug families also have paired weakened
+acceptance and canonical rejection. These are still host-only roots and teeth,
+not an authenticated proof or CU result.
+Verifier-side domain, normalized-fold, storage-bridge, query-transition, and
+final-tensor primitives now pass exhaustive fixed-profile host tests as well;
+no production acceptance path or SBF instruction invokes them yet.
+
+The adjacent per-query arithmetic chain now passes independently on all 1,024
+queries of the committed candidate fixture. It canonical-decodes one
+784-byte C1 leaf, one 128-byte C2 leaf, and three 64-byte later leaves,
+gamma-combines powers 0..50, follows the normalized folds through the
+`q>>2/q>>4/q>>6` slots, and checks the natural final-four tensor. Seven
+same-input helper-power, query-map, alpha-reuse, and final-order weakened
+vectors accept only under their weakened rule and reject canonically with
+explicit offsets. This arithmetic checker does not authenticate its supplied
+leaves or indices and is not yet composed with the Merkle opening parsers,
+tag 24, a transcript KAT, SBF, or any CU/product projection.
+
+The isolated tag-25 two-point relation diagnostic is also complete. On the
+same embedded four-round fixture, five identical standard-heap SBF runs measure
+51,052 CU for the explicitly insecure one-point baseline, 68,380 for one lane
+with fresh kappa, 92,923 for two independent lanes, and 70,981 for one lane
+using disjoint gamma powers. Relation payloads are 448/448/896/448 bytes and
+the corresponding transcript hash counts are 19/21/23/19. Host/SBF sinks match,
+and weakened cancellation, ordering, lane-omission, and shifted-power fixtures
+show acceptance where canonical checks reject. This is a same-build isolated
+relation-kernel comparison, not a PCS or product total; no rule, soundness term,
+projection, or transaction architecture is selected.
 
 ## Executable statement oracle
 
@@ -318,21 +410,25 @@ totals and remains part of the owner decision packet.
 
 The next gate is deliberately teeth-first:
 
-1. integrate the host-tested circle-tensor OOD accumulator and later-line
-   storage bridge with the two-sample/C2 transcript, authenticated line-FRI
-   layers, new envelope/root/KAT teeth, and soundness transport;
-2. measure that conforming M31 PCS scaffold in place across at least eight
-   q36/g16 draws; never add its isolated RLC/fold controls to another total;
-3. specify and price proof-account sealing and v4 receipt mutation/mix-and-
+1. re-derive T1/T2/BCS at rho=1/16 and price a transcript-correct per-fold-PoW
+   schedule; do not infer 100-bit system soundness from the query term;
+2. splice the measured r2 constraint composition into tag 28 in place and
+   preserve the direct/segment reconciliation check;
+3. integrate payment-derived C2, hiding, and the atomic economic transition
+   within the measured 162,123-CU PCS margin;
+4. retain proof-account sealing only as a measured fallback, with mutation/mix-and-
    match/reordering/expiry/replay teeth as the split option;
-4. integrate the tested `[0,1024)` LogUp main/helper columns and `sum(h)=0`
+5. integrate the tested `[0,1024)` LogUp main/helper columns and `sum(h)=0`
    claim into the C1/C2 statement proof;
-5. update the neutral one-transaction, transport-split, and proven-regime
-   packet with the in-place result for the project-owner ruling; then measure
-   the selected full architecture with economic, receipt where applicable,
-   and proof-corruption attacks.
+6. measure the selected full architecture with economic, hiding, PoW, receipt
+   fallback, and proof-corruption attacks; retain N=2 if any one-tx gate fails.
 
 The machine-readable ledger is `results/stage2/feasibility_decision.json`.
 The source-level M31/CM31 result and its conformance gate are recorded in
 `docs/stage2-column-basis-audit.md`; the unfilled owner fields are in
-`docs/stage2-owner-decision-packet.md`.
+`docs/stage2-owner-decision-packet.md`; the candidate-only prefix evidence is
+`results/stage2/m31_circle_prefix_candidate.json`, and the unselected full-tail
+evidence is `results/stage2/m31_circle_transcript_tail_candidate.json`. The
+causal candidate pins and separately composed opening suffix are recorded in
+`results/stage2/m31_circle_sequential_candidate_prefix.json` and
+`results/stage2/m31_circle_composed_openings.json`.

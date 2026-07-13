@@ -1,0 +1,44 @@
+{
+  "generated_at_utc": "2026-07-13T07:11:44.639595+00:00",
+  "command": "NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-state-only-helper-dot3-probe",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "instruction_wire_ordinal": 54,
+  "query_count": 16,
+  "fiber_slots": 4,
+  "qm31_helper_lanes": 3,
+  "rows": [
+    {
+      "fused_helpers": false,
+      "label": "independent_products",
+      "simulation_cu": [
+        99746,
+        99746,
+        99746,
+        99746,
+        99746
+      ],
+      "simulation_cu_mean": 99746.0
+    },
+    {
+      "fused_helpers": true,
+      "label": "lazy_dot3",
+      "simulation_cu": [
+        60968,
+        60968,
+        60968,
+        60968,
+        60968
+      ],
+      "simulation_cu_mean": 60968.0
+    }
+  ],
+  "measured_savings_cu": 38778,
+  "host_outputs_equal": true,
+  "noncanonical_qm31_rejected_both": true,
+  "soundness_neutral": true,
+  "notes": [
+    "Both arms canonically decode the identical sixteen four-slot, three-QM31-lane fibers and use the same prepared gamma^26, gamma^27, and gamma^28 factors.",
+    "The candidate retains all 27 M31 products per slot but reduces the nine Karatsuba channels once for the three-product dot instead of once per QM31 product.",
+    "This is an isolated arithmetic A/B for the pending repaired main-RLC shape. It does not implement, price, or assert the X carry repair itself."
+  ]
+}

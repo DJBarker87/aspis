@@ -1,0 +1,142 @@
+{
+  "schema": "aspis.profile21.zero_slice_embedding_scan.v1",
+  "production_neutral": true,
+  "complete": true,
+  "query_count": 16,
+  "message_embedding": "old 10-bit row at inserted bit 0; fresh full-QM31 G helper mask at inserted bit 1",
+  "claim_embedding": "z, successor(z), xor12(z), and inactive-row functional extended with inserted coordinate zero",
+  "codeword_domain_log": 19,
+  "rate_denominator": 256,
+  "b0_reference_equivalence": {
+    "expected_ranks_m31": [712, 808, 812, 812],
+    "expected_semantic_pivots_m31": [1084, 1085, 1086, 1087],
+    "passed": true
+  },
+  "variants": [
+    {
+      "insertion_coordinate_msb_first": 0,
+      "baseline_pcs_rank_m31": 712,
+      "mask_augmented_pcs_rank_m31": 808,
+      "mask_new_pivots_m31": [780, 781, 782, 783, 1052, 1053, 1054, 1055, 1056, 1057, 1058, 1059, 1120, 1121, 1122, 1123, 784, 785, 786, 787, 1124, 1125, 1126, 1127, 1128, 1129, 1130, 1131, 1132, 1133, 1134, 1135, 788, 789, 790, 791, 1136, 1137, 1138, 1139, 1144, 1145, 1146, 1147, 796, 797, 798, 799, 804, 805, 806, 807, 808, 809, 810, 811, 816, 817, 818, 819, 820, 821, 822, 823, 824, 825, 826, 827, 828, 829, 830, 831, 832, 833, 834, 835, 836, 837, 838, 839, 844, 845, 846, 847, 852, 853, 854, 855, 856, 857, 858, 859, 860, 861, 862, 863],
+      "semantic_augmented_rank_m31": 812,
+      "semantic_new_pivots_m31": [1084, 1085, 1086, 1087],
+      "legal_sumcheck_augmented_rank_m31": 812,
+      "legal_sumcheck_new_pivots_m31": [],
+      "contains_conservative_semantic_and_legal_sumcheck": false,
+      "elapsed_millis": 122016
+    },
+    {
+      "insertion_coordinate_msb_first": 1,
+      "baseline_pcs_rank_m31": 712,
+      "mask_augmented_pcs_rank_m31": 808,
+      "mask_new_pivots_m31": [780, 781, 782, 783, 1052, 1053, 1054, 1055, 1056, 1057, 1058, 1059, 1120, 1121, 1122, 1123, 784, 785, 786, 787, 1124, 1125, 1126, 1127, 1128, 1129, 1130, 1131, 1132, 1133, 1134, 1135, 788, 789, 790, 791, 1136, 1137, 1138, 1139, 1144, 1145, 1146, 1147, 796, 797, 798, 799, 804, 805, 806, 807, 808, 809, 810, 811, 816, 817, 818, 819, 820, 821, 822, 823, 824, 825, 826, 827, 828, 829, 830, 831, 832, 833, 834, 835, 836, 837, 838, 839, 844, 845, 846, 847, 852, 853, 854, 855, 856, 857, 858, 859, 860, 861, 862, 863],
+      "semantic_augmented_rank_m31": 812,
+      "semantic_new_pivots_m31": [1084, 1085, 1086, 1087],
+      "legal_sumcheck_augmented_rank_m31": 812,
+      "legal_sumcheck_new_pivots_m31": [],
+      "contains_conservative_semantic_and_legal_sumcheck": false,
+      "elapsed_millis": 119930
+    },
+    {
+      "insertion_coordinate_msb_first": 2,
+      "baseline_pcs_rank_m31": 712,
+      "mask_augmented_pcs_rank_m31": 808,
+      "mask_new_pivots_m31": [780, 781, 782, 783, 1052, 1053, 1054, 1055, 1056, 1057, 1058, 1059, 1120, 1121, 1122, 1123, 784, 785, 786, 787, 1124, 1125, 1126, 1127, 1128, 1129, 1130, 1131, 1132, 1133, 1134, 1135, 788, 789, 790, 791, 1136, 1137, 1138, 1139, 1144, 1145, 1146, 1147, 796, 797, 798, 799, 804, 805, 806, 807, 808, 809, 810, 811, 816, 817, 818, 819, 820, 821, 822, 823, 824, 825, 826, 827, 828, 829, 830, 831, 832, 833, 834, 835, 836, 837, 838, 839, 844, 845, 846, 847, 852, 853, 854, 855, 856, 857, 858, 859, 860, 861, 862, 863],
+      "semantic_augmented_rank_m31": 812,
+      "semantic_new_pivots_m31": [1084, 1085, 1086, 1087],
+      "legal_sumcheck_augmented_rank_m31": 812,
+      "legal_sumcheck_new_pivots_m31": [],
+      "contains_conservative_semantic_and_legal_sumcheck": false,
+      "elapsed_millis": 122455
+    },
+    {
+      "insertion_coordinate_msb_first": 3,
+      "baseline_pcs_rank_m31": 712,
+      "mask_augmented_pcs_rank_m31": 808,
+      "mask_new_pivots_m31": [780, 781, 782, 783, 1052, 1053, 1054, 1055, 1056, 1057, 1058, 1059, 1120, 1121, 1122, 1123, 784, 785, 786, 787, 1124, 1125, 1126, 1127, 1128, 1129, 1130, 1131, 1132, 1133, 1134, 1135, 788, 789, 790, 791, 1136, 1137, 1138, 1139, 1144, 1145, 1146, 1147, 796, 797, 798, 799, 804, 805, 806, 807, 808, 809, 810, 811, 816, 817, 818, 819, 820, 821, 822, 823, 824, 825, 826, 827, 828, 829, 830, 831, 832, 833, 834, 835, 836, 837, 838, 839, 844, 845, 846, 847, 852, 853, 854, 855, 856, 857, 858, 859, 860, 861, 862, 863],
+      "semantic_augmented_rank_m31": 812,
+      "semantic_new_pivots_m31": [1084, 1085, 1086, 1087],
+      "legal_sumcheck_augmented_rank_m31": 812,
+      "legal_sumcheck_new_pivots_m31": [],
+      "contains_conservative_semantic_and_legal_sumcheck": false,
+      "elapsed_millis": 120866
+    },
+    {
+      "insertion_coordinate_msb_first": 4,
+      "baseline_pcs_rank_m31": 712,
+      "mask_augmented_pcs_rank_m31": 808,
+      "mask_new_pivots_m31": [780, 781, 782, 783, 1052, 1053, 1054, 1055, 1056, 1057, 1058, 1059, 1120, 1121, 1122, 1123, 784, 785, 786, 787, 1124, 1125, 1126, 1127, 1128, 1129, 1130, 1131, 1132, 1133, 1134, 1135, 788, 789, 790, 791, 1136, 1137, 1138, 1139, 1144, 1145, 1146, 1147, 796, 797, 798, 799, 804, 805, 806, 807, 808, 809, 810, 811, 816, 817, 818, 819, 820, 821, 822, 823, 824, 825, 826, 827, 828, 829, 830, 831, 832, 833, 834, 835, 836, 837, 838, 839, 844, 845, 846, 847, 852, 853, 854, 855, 856, 857, 858, 859, 860, 861, 862, 863],
+      "semantic_augmented_rank_m31": 812,
+      "semantic_new_pivots_m31": [1084, 1085, 1086, 1087],
+      "legal_sumcheck_augmented_rank_m31": 812,
+      "legal_sumcheck_new_pivots_m31": [],
+      "contains_conservative_semantic_and_legal_sumcheck": false,
+      "elapsed_millis": 209509
+    },
+    {
+      "insertion_coordinate_msb_first": 5,
+      "baseline_pcs_rank_m31": 672,
+      "mask_augmented_pcs_rank_m31": 808,
+      "mask_new_pivots_m31": [528, 529, 530, 531, 536, 537, 538, 539, 548, 549, 550, 551, 552, 553, 554, 555, 564, 565, 566, 567, 568, 569, 570, 571, 576, 577, 578, 579, 584, 585, 586, 587, 596, 597, 598, 599, 600, 601, 602, 603, 608, 609, 610, 611, 612, 613, 614, 615, 624, 625, 626, 627, 628, 629, 630, 631, 640, 641, 642, 643, 644, 645, 646, 647, 660, 661, 662, 663, 664, 665, 666, 667, 676, 677, 678, 679, 680, 681, 682, 683, 688, 689, 690, 691, 696, 697, 698, 699, 704, 705, 706, 707, 712, 713, 714, 715, 724, 725, 726, 727, 728, 729, 730, 731, 736, 737, 738, 739, 744, 745, 746, 747, 752, 753, 754, 755, 756, 757, 758, 759, 772, 773, 774, 775, 776, 777, 778, 779, 1136, 1137, 1138, 1139, 1144, 1145, 1146, 1147],
+      "semantic_augmented_rank_m31": 812,
+      "semantic_new_pivots_m31": [1084, 1085, 1086, 1087],
+      "legal_sumcheck_augmented_rank_m31": 812,
+      "legal_sumcheck_new_pivots_m31": [],
+      "contains_conservative_semantic_and_legal_sumcheck": false,
+      "elapsed_millis": 203544
+    },
+    {
+      "insertion_coordinate_msb_first": 6,
+      "baseline_pcs_rank_m31": 672,
+      "mask_augmented_pcs_rank_m31": 808,
+      "mask_new_pivots_m31": [528, 529, 530, 531, 536, 537, 538, 539, 540, 541, 542, 543, 552, 553, 554, 555, 556, 557, 558, 559, 568, 569, 570, 571, 576, 577, 578, 579, 584, 585, 586, 587, 592, 593, 594, 595, 600, 601, 602, 603, 608, 609, 610, 611, 612, 613, 614, 615, 624, 625, 626, 627, 628, 629, 630, 631, 640, 641, 642, 643, 644, 645, 646, 647, 656, 657, 658, 659, 664, 665, 666, 667, 668, 669, 670, 671, 680, 681, 682, 683, 688, 689, 690, 691, 696, 697, 698, 699, 704, 705, 706, 707, 712, 713, 714, 715, 716, 717, 718, 719, 728, 729, 730, 731, 736, 737, 738, 739, 744, 745, 746, 747, 752, 753, 754, 755, 756, 757, 758, 759, 764, 765, 766, 767, 776, 777, 778, 779, 1132, 1133, 1134, 1135, 1144, 1145, 1146, 1147],
+      "semantic_augmented_rank_m31": 812,
+      "semantic_new_pivots_m31": [1084, 1085, 1086, 1087],
+      "legal_sumcheck_augmented_rank_m31": 812,
+      "legal_sumcheck_new_pivots_m31": [],
+      "contains_conservative_semantic_and_legal_sumcheck": false,
+      "elapsed_millis": 203571
+    },
+    {
+      "insertion_coordinate_msb_first": 7,
+      "baseline_pcs_rank_m31": 672,
+      "mask_augmented_pcs_rank_m31": 808,
+      "mask_new_pivots_m31": [272, 273, 274, 275, 280, 281, 282, 283, 288, 289, 290, 291, 292, 293, 294, 295, 304, 305, 306, 307, 308, 309, 310, 311, 320, 321, 322, 323, 324, 325, 326, 327, 336, 337, 338, 339, 344, 345, 346, 347, 356, 357, 358, 359, 360, 361, 362, 363, 368, 369, 370, 371, 376, 377, 378, 379, 388, 389, 390, 391, 392, 393, 394, 395, 400, 401, 402, 403, 404, 405, 406, 407, 416, 417, 418, 419, 420, 421, 422, 423, 432, 433, 434, 435, 440, 441, 442, 443, 452, 453, 454, 455, 456, 457, 458, 459, 464, 465, 466, 467, 472, 473, 474, 475, 480, 481, 482, 483, 484, 485, 486, 487, 500, 501, 502, 503, 504, 505, 506, 507, 516, 517, 518, 519, 520, 521, 522, 523, 1116, 1117, 1118, 1119, 1120, 1121, 1122, 1123],
+      "semantic_augmented_rank_m31": 812,
+      "semantic_new_pivots_m31": [1084, 1085, 1086, 1087],
+      "legal_sumcheck_augmented_rank_m31": 812,
+      "legal_sumcheck_new_pivots_m31": [],
+      "contains_conservative_semantic_and_legal_sumcheck": false,
+      "elapsed_millis": 195611
+    },
+    {
+      "insertion_coordinate_msb_first": 8,
+      "baseline_pcs_rank_m31": 676,
+      "mask_augmented_pcs_rank_m31": 808,
+      "mask_new_pivots_m31": [272, 273, 274, 275, 280, 281, 282, 283, 288, 289, 290, 291, 292, 293, 294, 295, 304, 305, 306, 307, 308, 309, 310, 311, 320, 321, 322, 323, 324, 325, 326, 327, 336, 337, 338, 339, 344, 345, 346, 347, 348, 349, 350, 351, 360, 361, 362, 363, 368, 369, 370, 371, 376, 377, 378, 379, 380, 381, 382, 383, 392, 393, 394, 395, 400, 401, 402, 403, 404, 405, 406, 407, 416, 417, 418, 419, 420, 421, 422, 423, 432, 433, 434, 435, 440, 441, 442, 443, 448, 449, 450, 451, 456, 457, 458, 459, 464, 465, 466, 467, 472, 473, 474, 475, 480, 481, 482, 483, 484, 485, 486, 487, 492, 493, 494, 495, 504, 505, 506, 507, 508, 509, 510, 511, 520, 521, 522, 523, 1120, 1121, 1122, 1123],
+      "semantic_augmented_rank_m31": 812,
+      "semantic_new_pivots_m31": [1084, 1085, 1086, 1087],
+      "legal_sumcheck_augmented_rank_m31": 812,
+      "legal_sumcheck_new_pivots_m31": [],
+      "contains_conservative_semantic_and_legal_sumcheck": false,
+      "elapsed_millis": 154168
+    }
+  ],
+  "failures": [
+    {
+      "insertion_coordinate_msb_first": 9,
+      "stage": "raw_c1_rank",
+      "column": 0,
+      "got_rank_m31": 44,
+      "want_rank_m31": 76
+    },
+    {
+      "insertion_coordinate_msb_first": 10,
+      "stage": "raw_c1_rank",
+      "column": 0,
+      "got_rank_m31": 44,
+      "want_rank_m31": 76
+    }
+  ],
+  "elapsed_millis": 506910
+}

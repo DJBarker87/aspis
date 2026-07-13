@@ -18,9 +18,28 @@ cost from an isolated kernel.
 - [Provisional M31 circle-basis probe](../results/stage2/m31_circle_basis_probe.json)
 - [M31 host conformance and conjugate audit](../results/stage2/m31_circle_conformance.json)
 - [M31 later-line host conformance](../results/stage2/m31_line_fri_conformance.json)
+- [M31 candidate encoder and root differential](../results/stage2/m31_circle_candidate_encoder.json)
+- [M31 combined fold commitments and terminal tensor](../results/stage2/m31_circle_fold_commitments.json)
+- [M31 layer-zero C1/C2 Merkle opening conformance and teeth](../results/stage2/m31_circle_merkle_opening.json)
+- [M31 later-line Merkle opening conformance and teeth](../results/stage2/m31_circle_line_merkle_opening.json)
+- [Official Stwo full-circle digest anchor](../results/stage2/m31_circle_official_stwo_anchor.json)
+- [Verifier-side circle-FRI arithmetic primitives](../results/stage2/m31_circle_fri_core_primitives.json)
+- [Fixed per-query circle arithmetic consistency](../results/stage2/m31_circle_query_consistency.json)
+- [Still-rejecting fixed prefix and through-gamma transcript teeth](../results/stage2/m31_circle_prefix_candidate.json)
+- [Still-unselected full transcript-tail ordering teeth](../results/stage2/m31_circle_transcript_tail_candidate.json)
+- [Host prefix-writer/core-parser byte round trip](../results/stage2/m31_circle_prefix_serializer.json)
+- [Two-point 102-value statement-block conformance](../results/stage2/m31_circle_statement_evaluations.json)
+- [Four-round circle/line relation builder conformance](../results/stage2/m31_circle_relation_builder.json)
+- [Sequential causal candidate prefixes](../results/stage2/m31_circle_sequential_candidate_prefix.json)
+- [Composed authenticated openings and query arithmetic](../results/stage2/m31_circle_composed_openings.json)
+- [Selected fresh-kappa full host PCS candidate](../results/stage2/m31_circle_fresh_kappa_candidate.json)
+- [Selected fresh-kappa SBF measurement](../results/stage2/m31_circle_fresh_kappa_sbf.json)
+- [M31 representation teeth](../results/stage2/m31_representation_teeth.json)
 - [C1 column-basis source audit](stage2-column-basis-audit.md)
 - [Production-candidate implementation plan](stage2-m31-production-plan.md)
 - [Circle-PCS soundness transport audit](stage2-circle-soundness-transport.md)
+- [Two-point MLE batching options](stage2-two-point-batching-options.md)
+- [Two-point MLE batching same-build diagnostic](../results/stage2/two_point_batching_probe.json)
 - [SolMath ZK extraction record](solmath-zk-candidates.md)
 - [Stage 2 feasibility note](stage2-feasibility.md)
 - [Soundness note and cryptographic contingency](aspis-soundness-note.md)
@@ -128,27 +147,54 @@ production verifier. Its currently checked-in rows are useful shape evidence:
 
 | provisional tag-23 row | CU |
 | --- | ---: |
-| four independent structured QM31-by-M31 dots | 556,482 |
-| fused canonical-byte QM31-by-M31 dot4 | 684,081 |
-| decoded typed four-slot dot4 | 734,395 |
-| one-slot streaming decode plus independent dots | **552,289** |
-| empty-leaf hash control | 1,229 |
-| 784-byte M31 C1 leaf hash | 1,613 |
-| normalized fold, prevalidated coordinates/inverses | 93,170 |
-| fold with cached coordinate derivation | 103,866 |
-| fold with cached coordinates and batch-inverse syscall | 107,996 |
+| four independent structured QM31-by-M31 dots | 556,596 |
+| fused canonical-byte QM31-by-M31 dot4 | 644,816 |
+| decoded typed four-slot dot4 | 734,512 |
+| one-slot streaming decode plus independent dots | 552,405 |
+| exact-49 prepared-limb canonical-byte dot4 | **501,989** |
+| empty-leaf hash control | 1,344 |
+| 784-byte M31 C1 leaf hash | 1,726 |
+| normalized fold, prevalidated coordinates/inverses | 93,284 |
+| fold with cached coordinate derivation | 103,981 |
+| fold with cached coordinates and batch-inverse syscall | 108,111 |
 
 These rows are not additive to tag 22 or any PCS measurement. The frozen
-tag-23 winner is the one-slot streaming path at **552,289 CU**. It is 4,193
-CU (0.7535%) below the same-build structured control. Both sixteen-accumulator
-four-slot paths lose on SBF, so the candidate keeps four independent lazy dots
-and reduces memory pressure instead. All four RLC implementations produce the
+tag-23 winner is the exact-49 prepared-limb path at **501,989 CU**. It is 54,607
+CU (9.8109%) below the same-build structured control and 50,416 CU below the
+one-slot streaming path. Both generic sixteen-accumulator four-slot paths lose
+on SBF; exact production bounds and one-time weight decomposition reverse that
+result. All five prior RLC implementations plus the new specialization produce the
 same host sink; noncanonical C1 inputs reject on host and SBF for the winning,
 typed-fused, and original fused-byte paths. The candidate remains a diagnostic
 shape, not a PCS or product total. Its protocol-neutral streaming M31 dot,
 normalized first fold, and checked/prevalidated batch-inversion APIs are frozen
 in the separate SolMath repository at commit `dabc471`; that extraction does
 not select the Aspis PCS.
+
+## Two-point MLE batching diagnostic
+
+Append-only tag 25 compares the three unselected two-point binding candidates
+against an explicitly insecure one-point cost baseline on one identical
+relation fixture. Every row absorbs the same two ten-coordinate points and the
+same 102 canonical values before gamma, checks four degree-six relation rounds,
+folds verifier weights, and executes the terminal dot. Only fresh-kappa adds an
+extra transcript squeeze; independent lanes alone duplicate the relation
+messages. Five local-validator repetitions are identical in each row, use the
+default heap, and agree with the pinned host sink.
+
+| isolated tag-25 mode | CU | delta vs insecure baseline | relation bytes | transcript hashes |
+| --- | ---: | ---: | ---: | ---: |
+| one-point baseline | 51,052 | 0 | 448 | 19 |
+| fresh kappa, one lane | 68,380 | +17,328 | 448 | 21 |
+| two independent lanes | 92,923 | +41,871 | 896 | 23 |
+| disjoint gamma powers, one lane | 70,981 | +19,929 | 448 | 19 |
+
+The paired cancellation, challenge-order, lane-omission, and gamma-shift teeth
+demonstrate weakened acceptance and canonical rejection. These rows are a
+same-build isolated relation-kernel comparison. They exclude the proof roots,
+Merkle openings, circle encoding, query work, statement composition, hiding,
+payment semantics, and pool transition; they are not additive to another
+artifact and do not select a rule or update a product projection.
 
 ## Conformance gate before any M31 production integration
 
@@ -161,8 +207,22 @@ shape probe to PCS candidate:
 | normalized first fold matches coefficient fold for tested fibers | `HOST PASS: p/Jp/Ap/JAp, alpha then alpha^2` |
 | secure-circle OOD relation and two-sample transcript agree end to end | `CORE MATH PASS: non-panicking rational point, [...,pi(x),x,y] tensor, circle-to-line tail, two-sample fixture; complete production C1/C2 absorption pending` |
 | later line-FRI coefficient/evaluation/query order matches pinned Stwo | `HOST PASS: 48 cases, 108 radix-4 rounds, explicit bitreverse bridge and raw 4^r scale; Merkle/transcript/SBF integration pending` |
+| fixed-profile verifier domain/fold/query/final-tensor primitives match official/raw anchors | `HOST PASS: exhaustive 4096 circle points, 1360 line points, 1360 factor4 folds, 1024 query/final paths; explicit bounds/zero-denominator errors; authenticated integration/SBF pending` |
+| fixed C1/C2 and later-leaf arithmetic query chain | `HOST PASS: all 1024 q paths canonically decode powers 0..50, match layers 1/2/3 at q>>2/4/6, and reach the natural final4 tensor; 7 same-input gamma-shift/query-map/alpha-reuse/final-order teeth reject canonically. Leaves are caller-supplied; Merkle composition, tag 24, KAT, and SBF remain open` |
+| fixed candidate prefix, canonical fields, and pre-batching transcript order | `HOST PASS, STILL REJECTING: exact 2,456-byte zero-copy prefix, all 142 QM31 fields, labels 11..19, C1/C2 roots, external z/xor11(z), and all 102 values through gamma; 8 paired early/partial/root/C2 weakened schedules differ canonically; no KAT, batching rule, openings, or acceptance` |
+| selected complete candidate transcript/relation | `HOST PASS: fresh kappa now builds encoding/roots, statement claims, OOD/sumcheck/folds, final/grinding/q36 in order and independently validates the relation; disjoint-gamma51 is comparison provenance only` |
+| selected composed authenticated proof | `HOST PASS: exact 57,668-byte fresh-kappa proof SHA256 68a53608...50505ca joins transcript-derived challenges to layer-zero/later authentication and all query arithmetic; matching SBF PCS row is below` |
+| selected full PCS on SBF | `PASS 5/5: tag 26 accepts at 1,112,605 CU under 1.4M/262,144; stale statement rejects; +287,395 vs platform cap, +77,395 vs project threshold. Fixture C2/payment/hiding/transition excluded` |
+| fixed-rate Johnson query target | `FAIL: literal rho=1/4 q74/g32 reconciles to 1,873,746 CU; monolithic run exhausts at 1.4M` |
+| low-rate Johnson query target | `PASS 5/5: literal rho=1/16 q36/g32 tag 28 accepts directly at 1,237,877 CU; +162,123 vs platform cap; 73,620-byte proof; query term 101.466 bits only` |
+
+The selected row is already overlap-subtracted by literal in-place execution.
+Its 501,989-CU RLC seam is included; adding it again to obtain 1,614,594 CU is
+forbidden by the ledger rule.
+| all 49 C1 + two C2 direct messages, exact leaves, and layer-zero roots match independent host references | `HOST PASS: every 49x4096 M31 and 2x4096 QM31 symbol, all 1024 leaves, both radix-4 roots; official Stwo roots c6a93117...ad4f / c764cdff...30b3; production proof/transcript/SBF pending` |
+| representation bug classes demonstrate weakened acceptance and canonical rejection | `HOST PASS: 8 encoding/fold pairs, 8 fixed-prefix pairs, and 9 full-tail ordering pairs; authenticated composition, exceptional sampler failure paths, and the selected-two-point production family remain` |
 | late gamma recombination commutes with separately encoded C1 columns | `HOST PASS through encoding, first fold, and OOD; C2/production wiring pending` |
-| new version/basis discriminator and transcript KAT pinned with teeth | `FRAMING PASS: exact flag 0x08/word 0x0b and append-only tag 24; canonical/tag6 reject the feature-gated legacy-basis vector that weakened framing accepts. Candidate fixture 95ca0bc...15d588 remains non-production; roots/downstream KAT pending` |
+| new version/basis discriminator and transcript KAT pinned with teeth | `FRAMING/PREFIX PASS: exact flag 0x08/word 0x0b, append-only tag 24, labels 11..19, and through-gamma ordering teeth. Tag 24 and production remain rejecting; candidate fixture 95ca0bc...15d588 remains non-production; no expected transcript digest was pinned and the downstream KAT remains pending` |
 | circle-FRI/S-two soundness transport and finite-length ledger updated | `AUDITED OPEN: exact L'_10 subcode/Johnson code facts identified; grouped folds, two-phase batching, MLE binding, actual OOD denominator, BCS accounting, extension constants and finite-n remainder remain unproved` |
 | in-place q36/g16 verifier, at least eight seeds | `PENDING` |
 | selected final q36/g32 measurement | `PENDING OWNER SELECTION AND INTEGRATION` |
@@ -297,13 +357,14 @@ above close.
 | decision field | owner entry |
 | --- | --- |
 | evidence freeze commit | `TBD` |
-| final tag-23 winning RLC mode/CU | `measured: one-slot streaming decode + four independent dots, 552,289 CU; owner acknowledgment TBD` |
+| final tag-23 winning RLC mode/CU | `measured: exact-49 prepared-limb canonical-byte dot4, 501,989 CU; owner acknowledgment TBD` |
 | M31 conformance gate | `TBD: pass / fail / incomplete` |
 | final `ConstraintId` count J and T8 | `TBD` |
-| selected cryptographic regime | `TBD: current conjectured / revised / proven-regime / none` |
-| selected PCS/basis | `TBD: current custom CM31 / genuine-circle M31 / other / none` |
-| selected transport | `TBD: one transaction / split across N / none` |
-| selected q/g/s profile | `TBD` |
+| selected cryptographic regime | `TBD: rho=1/16 Johnson candidate; T1/per-fold-PoW/BCS derivation still open` |
+| selected PCS/basis | `genuine-circle M31 engineering target; production approval waits on transport/SBF gates` |
+| selected two-point MLE binding | `fresh kappa, one lane; ruled 2026-07-12; 51/|QM31| charged to T5'` |
+| selected transport | `one transaction low-rate candidate; receipt-bound N=2 remains fallback` |
+| selected q/g/s profile | `candidate: rho=1/16, q36/g32/s2; not production-selected until full soundness ledger closes` |
 | applicable transaction count N | `TBD; do not assume` |
 | treatment of 1.19M project threshold | `TBD: retain / explicitly amend with reason` |
 | treatment of 1.4M execution cap | `fixed platform limit unless platform evidence changes` |
@@ -312,5 +373,8 @@ above close.
 
 ## Current packet outcome
 
-**No architecture is selected. No PCS migration is authorized. No transport
-split is adopted. No proven-regime retreat is activated. q34 remains held.**
+**The engineering direction is now the one-transaction rate-1/16 M31 candidate
+with fresh-kappa one-lane binding. The direct PCS fits at 1,237,877 CU, but this
+is not production approval: rho=1/16 T1/per-fold-PoW/BCS, payment composition,
+hiding, transition, and exact transport remain open. Receipt-bound N=2 remains
+the measured fallback.**

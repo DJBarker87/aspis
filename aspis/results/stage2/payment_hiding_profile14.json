@@ -1,0 +1,683 @@
+{
+  "generated_at_utc": "2026-07-12T18:38:57.201135+00:00",
+  "command": "cargo run --release -p aspis-xtask -- stage2-payment-hiding-profile14",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "instruction_wire_ordinal": 34,
+  "profile_id": 14,
+  "rho": "1/16",
+  "query_count": 36,
+  "grinding_bits": 36,
+  "fold_pow_bits": [
+    39,
+    35,
+    31,
+    27
+  ],
+  "proof_bytes": 86660,
+  "proof_sha256": "5251d0dc13d9f47f64d3b54880574ce6f6ae18373deb870840d5637a128a35a3",
+  "proof_path": "results/stage2/proofs/payment_hiding_profile14_unmined.bin",
+  "fixture_pow_valid": false,
+  "upload_chunks": 136,
+  "unique_layer0_queries": 36,
+  "phases": [
+    {
+      "label": "prepared_base",
+      "phase": "PreparedBase",
+      "start": 0,
+      "end": 0,
+      "simulation_cu": [
+        1020772,
+        1020772,
+        1020772,
+        1020772,
+        1020772
+      ],
+      "simulation_errors": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "selected_cu": 1020772,
+      "markers": [
+        {
+          "label": "h14_start",
+          "remaining": 1398710,
+          "delta_from_previous": null
+        },
+        {
+          "label": "h14_parsed",
+          "remaining": 1393662,
+          "delta_from_previous": 5048
+        },
+        {
+          "label": "h14_transcript_done",
+          "remaining": 1305142,
+          "delta_from_previous": 88520
+        },
+        {
+          "label": "h14_relation_done",
+          "remaining": 1140310,
+          "delta_from_previous": 164832
+        },
+        {
+          "label": "h14_merkle_done",
+          "remaining": 913722,
+          "delta_from_previous": 226588
+        },
+        {
+          "label": "h14_queries_done",
+          "remaining": 877463,
+          "delta_from_previous": 36259
+        },
+        {
+          "label": "h14_statement_start",
+          "remaining": 877146,
+          "delta_from_previous": 317
+        },
+        {
+          "label": "h14_statement_phase=0",
+          "remaining": 825113,
+          "delta_from_previous": 52033
+        },
+        {
+          "label": "h14_statement_phase=1",
+          "remaining": 709646,
+          "delta_from_previous": 115467
+        },
+        {
+          "label": "h14_statement_phase=2",
+          "remaining": 633793,
+          "delta_from_previous": 75853
+        },
+        {
+          "label": "h14_statement_phase=3",
+          "remaining": 474550,
+          "delta_from_previous": 159243
+        },
+        {
+          "label": "h14_statement_phase=4",
+          "remaining": 429029,
+          "delta_from_previous": 45521
+        },
+        {
+          "label": "h14_statement_phase=5",
+          "remaining": 381097,
+          "delta_from_previous": 47932
+        },
+        {
+          "label": "h14_statement_done",
+          "remaining": 379490,
+          "delta_from_previous": 1607
+        },
+        {
+          "label": "h14_done",
+          "remaining": 379286,
+          "delta_from_previous": 204
+        }
+      ]
+    },
+    {
+      "label": "layer0_quarter_0",
+      "phase": "Layer0Range",
+      "start": 0,
+      "end": 9,
+      "simulation_cu": [
+        1202631,
+        1202631,
+        1202631,
+        1202631,
+        1202631
+      ],
+      "simulation_errors": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "selected_cu": 1202631,
+      "markers": [
+        {
+          "label": "h14_start",
+          "remaining": 1398702,
+          "delta_from_previous": null
+        },
+        {
+          "label": "h14_parsed",
+          "remaining": 1393654,
+          "delta_from_previous": 5048
+        },
+        {
+          "label": "h14_transcript_done",
+          "remaining": 1305134,
+          "delta_from_previous": 88520
+        },
+        {
+          "label": "h14_relation_done",
+          "remaining": 1140302,
+          "delta_from_previous": 164832
+        },
+        {
+          "label": "h14_merkle_done",
+          "remaining": 913714,
+          "delta_from_previous": 226588
+        },
+        {
+          "label": "h14_queries_done",
+          "remaining": 695604,
+          "delta_from_previous": 218110
+        },
+        {
+          "label": "h14_statement_start",
+          "remaining": 695287,
+          "delta_from_previous": 317
+        },
+        {
+          "label": "h14_statement_phase=0",
+          "remaining": 643254,
+          "delta_from_previous": 52033
+        },
+        {
+          "label": "h14_statement_phase=1",
+          "remaining": 527787,
+          "delta_from_previous": 115467
+        },
+        {
+          "label": "h14_statement_phase=2",
+          "remaining": 451934,
+          "delta_from_previous": 75853
+        },
+        {
+          "label": "h14_statement_phase=3",
+          "remaining": 292691,
+          "delta_from_previous": 159243
+        },
+        {
+          "label": "h14_statement_phase=4",
+          "remaining": 247170,
+          "delta_from_previous": 45521
+        },
+        {
+          "label": "h14_statement_phase=5",
+          "remaining": 199238,
+          "delta_from_previous": 47932
+        },
+        {
+          "label": "h14_statement_done",
+          "remaining": 197631,
+          "delta_from_previous": 1607
+        },
+        {
+          "label": "h14_done",
+          "remaining": 197427,
+          "delta_from_previous": 204
+        }
+      ]
+    },
+    {
+      "label": "layer0_quarter_1",
+      "phase": "Layer0Range",
+      "start": 9,
+      "end": 18,
+      "simulation_cu": [
+        1202695,
+        1202695,
+        1202695,
+        1202695,
+        1202695
+      ],
+      "simulation_errors": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "selected_cu": 1202695,
+      "markers": [
+        {
+          "label": "h14_start",
+          "remaining": 1398702,
+          "delta_from_previous": null
+        },
+        {
+          "label": "h14_parsed",
+          "remaining": 1393654,
+          "delta_from_previous": 5048
+        },
+        {
+          "label": "h14_transcript_done",
+          "remaining": 1305134,
+          "delta_from_previous": 88520
+        },
+        {
+          "label": "h14_relation_done",
+          "remaining": 1140302,
+          "delta_from_previous": 164832
+        },
+        {
+          "label": "h14_merkle_done",
+          "remaining": 913714,
+          "delta_from_previous": 226588
+        },
+        {
+          "label": "h14_queries_done",
+          "remaining": 695540,
+          "delta_from_previous": 218174
+        },
+        {
+          "label": "h14_statement_start",
+          "remaining": 695223,
+          "delta_from_previous": 317
+        },
+        {
+          "label": "h14_statement_phase=0",
+          "remaining": 643190,
+          "delta_from_previous": 52033
+        },
+        {
+          "label": "h14_statement_phase=1",
+          "remaining": 527723,
+          "delta_from_previous": 115467
+        },
+        {
+          "label": "h14_statement_phase=2",
+          "remaining": 451870,
+          "delta_from_previous": 75853
+        },
+        {
+          "label": "h14_statement_phase=3",
+          "remaining": 292627,
+          "delta_from_previous": 159243
+        },
+        {
+          "label": "h14_statement_phase=4",
+          "remaining": 247106,
+          "delta_from_previous": 45521
+        },
+        {
+          "label": "h14_statement_phase=5",
+          "remaining": 199174,
+          "delta_from_previous": 47932
+        },
+        {
+          "label": "h14_statement_done",
+          "remaining": 197567,
+          "delta_from_previous": 1607
+        },
+        {
+          "label": "h14_done",
+          "remaining": 197363,
+          "delta_from_previous": 204
+        }
+      ]
+    },
+    {
+      "label": "layer0_quarter_2",
+      "phase": "Layer0Range",
+      "start": 18,
+      "end": 27,
+      "simulation_cu": [
+        1202733,
+        1202733,
+        1202733,
+        1202733,
+        1202733
+      ],
+      "simulation_errors": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "selected_cu": 1202733,
+      "markers": [
+        {
+          "label": "h14_start",
+          "remaining": 1398702,
+          "delta_from_previous": null
+        },
+        {
+          "label": "h14_parsed",
+          "remaining": 1393654,
+          "delta_from_previous": 5048
+        },
+        {
+          "label": "h14_transcript_done",
+          "remaining": 1305134,
+          "delta_from_previous": 88520
+        },
+        {
+          "label": "h14_relation_done",
+          "remaining": 1140302,
+          "delta_from_previous": 164832
+        },
+        {
+          "label": "h14_merkle_done",
+          "remaining": 913714,
+          "delta_from_previous": 226588
+        },
+        {
+          "label": "h14_queries_done",
+          "remaining": 695502,
+          "delta_from_previous": 218212
+        },
+        {
+          "label": "h14_statement_start",
+          "remaining": 695185,
+          "delta_from_previous": 317
+        },
+        {
+          "label": "h14_statement_phase=0",
+          "remaining": 643152,
+          "delta_from_previous": 52033
+        },
+        {
+          "label": "h14_statement_phase=1",
+          "remaining": 527685,
+          "delta_from_previous": 115467
+        },
+        {
+          "label": "h14_statement_phase=2",
+          "remaining": 451832,
+          "delta_from_previous": 75853
+        },
+        {
+          "label": "h14_statement_phase=3",
+          "remaining": 292589,
+          "delta_from_previous": 159243
+        },
+        {
+          "label": "h14_statement_phase=4",
+          "remaining": 247068,
+          "delta_from_previous": 45521
+        },
+        {
+          "label": "h14_statement_phase=5",
+          "remaining": 199136,
+          "delta_from_previous": 47932
+        },
+        {
+          "label": "h14_statement_done",
+          "remaining": 197529,
+          "delta_from_previous": 1607
+        },
+        {
+          "label": "h14_done",
+          "remaining": 197325,
+          "delta_from_previous": 204
+        }
+      ]
+    },
+    {
+      "label": "layer0_quarter_3",
+      "phase": "Layer0Range",
+      "start": 27,
+      "end": 36,
+      "simulation_cu": [
+        1202766,
+        1202766,
+        1202766,
+        1202766,
+        1202766
+      ],
+      "simulation_errors": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "selected_cu": 1202766,
+      "markers": [
+        {
+          "label": "h14_start",
+          "remaining": 1398702,
+          "delta_from_previous": null
+        },
+        {
+          "label": "h14_parsed",
+          "remaining": 1393654,
+          "delta_from_previous": 5048
+        },
+        {
+          "label": "h14_transcript_done",
+          "remaining": 1305134,
+          "delta_from_previous": 88520
+        },
+        {
+          "label": "h14_relation_done",
+          "remaining": 1140302,
+          "delta_from_previous": 164832
+        },
+        {
+          "label": "h14_merkle_done",
+          "remaining": 913714,
+          "delta_from_previous": 226588
+        },
+        {
+          "label": "h14_queries_done",
+          "remaining": 695469,
+          "delta_from_previous": 218245
+        },
+        {
+          "label": "h14_statement_start",
+          "remaining": 695152,
+          "delta_from_previous": 317
+        },
+        {
+          "label": "h14_statement_phase=0",
+          "remaining": 643119,
+          "delta_from_previous": 52033
+        },
+        {
+          "label": "h14_statement_phase=1",
+          "remaining": 527652,
+          "delta_from_previous": 115467
+        },
+        {
+          "label": "h14_statement_phase=2",
+          "remaining": 451799,
+          "delta_from_previous": 75853
+        },
+        {
+          "label": "h14_statement_phase=3",
+          "remaining": 292556,
+          "delta_from_previous": 159243
+        },
+        {
+          "label": "h14_statement_phase=4",
+          "remaining": 247035,
+          "delta_from_previous": 45521
+        },
+        {
+          "label": "h14_statement_phase=5",
+          "remaining": 199103,
+          "delta_from_previous": 47932
+        },
+        {
+          "label": "h14_statement_done",
+          "remaining": 197496,
+          "delta_from_previous": 1607
+        },
+        {
+          "label": "h14_done",
+          "remaining": 197292,
+          "delta_from_previous": 204
+        }
+      ]
+    },
+    {
+      "label": "later_all",
+      "phase": "LaterAll",
+      "start": 0,
+      "end": 0,
+      "simulation_cu": [
+        1236176,
+        1236176,
+        1236176,
+        1236176,
+        1236176
+      ],
+      "simulation_errors": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "selected_cu": 1236176,
+      "markers": [
+        {
+          "label": "h14_start",
+          "remaining": 1398709,
+          "delta_from_previous": null
+        },
+        {
+          "label": "h14_parsed",
+          "remaining": 1393661,
+          "delta_from_previous": 5048
+        },
+        {
+          "label": "h14_transcript_done",
+          "remaining": 1305141,
+          "delta_from_previous": 88520
+        },
+        {
+          "label": "h14_relation_done",
+          "remaining": 1140309,
+          "delta_from_previous": 164832
+        },
+        {
+          "label": "h14_merkle_done",
+          "remaining": 913721,
+          "delta_from_previous": 226588
+        },
+        {
+          "label": "h14_queries_done",
+          "remaining": 662059,
+          "delta_from_previous": 251662
+        },
+        {
+          "label": "h14_statement_start",
+          "remaining": 661742,
+          "delta_from_previous": 317
+        },
+        {
+          "label": "h14_statement_phase=0",
+          "remaining": 609709,
+          "delta_from_previous": 52033
+        },
+        {
+          "label": "h14_statement_phase=1",
+          "remaining": 494242,
+          "delta_from_previous": 115467
+        },
+        {
+          "label": "h14_statement_phase=2",
+          "remaining": 418389,
+          "delta_from_previous": 75853
+        },
+        {
+          "label": "h14_statement_phase=3",
+          "remaining": 259146,
+          "delta_from_previous": 159243
+        },
+        {
+          "label": "h14_statement_phase=4",
+          "remaining": 213625,
+          "delta_from_previous": 45521
+        },
+        {
+          "label": "h14_statement_phase=5",
+          "remaining": 165693,
+          "delta_from_previous": 47932
+        },
+        {
+          "label": "h14_statement_done",
+          "remaining": 164086,
+          "delta_from_previous": 1607
+        },
+        {
+          "label": "h14_done",
+          "remaining": 163882,
+          "delta_from_previous": 204
+        }
+      ]
+    },
+    {
+      "label": "full",
+      "phase": "Full",
+      "start": 0,
+      "end": 0,
+      "simulation_cu": [
+        1400000,
+        1400000,
+        1400000,
+        1400000,
+        1400000
+      ],
+      "simulation_errors": [
+        "\"{\\\"InstructionError\\\":[2,\\\"ProgramFailedToComplete\\\"]} logs=[\\\"Program ComputeBudget111111111111111111111111111111 invoke [1]\\\",\\\"Program ComputeBudget111111111111111111111111111111 success\\\",\\\"Program ComputeBudget111111111111111111111111111111 invoke [1]\\\",\\\"Program ComputeBudget111111111111111111111111111111 success\\\",\\\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD invoke [1]\\\",\\\"Program log: aspis-cu:h14_start\\\",\\\"Program consumption: 1398708 units remaining\\\",\\\"Program log: aspis-cu:h14_parsed\\\",\\\"Program consumption: 1393660 units remaining\\\",\\\"Program log: aspis-cu:h14_transcript_done\\\",\\\"Program consumption: 1305140 units remaining\\\",\\\"Program log: aspis-cu:h14_relation_done\\\",\\\"Program consumption: 1140308 units remaining\\\",\\\"Program log: aspis-cu:h14_merkle_done\\\",\\\"Program consumption: 913720 units remaining\\\",\\\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD consumed 1399644 of 1399700 compute units\\\",\\\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD failed: exceeded CUs meter at BPF instruction\\\"]\"",
+        "\"{\\\"InstructionError\\\":[2,\\\"ProgramFailedToComplete\\\"]} logs=[\\\"Program ComputeBudget111111111111111111111111111111 invoke [1]\\\",\\\"Program ComputeBudget111111111111111111111111111111 success\\\",\\\"Program ComputeBudget111111111111111111111111111111 invoke [1]\\\",\\\"Program ComputeBudget111111111111111111111111111111 success\\\",\\\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD invoke [1]\\\",\\\"Program log: aspis-cu:h14_start\\\",\\\"Program consumption: 1398708 units remaining\\\",\\\"Program log: aspis-cu:h14_parsed\\\",\\\"Program consumption: 1393660 units remaining\\\",\\\"Program log: aspis-cu:h14_transcript_done\\\",\\\"Program consumption: 1305140 units remaining\\\",\\\"Program log: aspis-cu:h14_relation_done\\\",\\\"Program consumption: 1140308 units remaining\\\",\\\"Program log: aspis-cu:h14_merkle_done\\\",\\\"Program consumption: 913720 units remaining\\\",\\\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD consumed 1399644 of 1399700 compute units\\\",\\\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD failed: exceeded CUs meter at BPF instruction\\\"]\"",
+        "\"{\\\"InstructionError\\\":[2,\\\"ProgramFailedToComplete\\\"]} logs=[\\\"Program ComputeBudget111111111111111111111111111111 invoke [1]\\\",\\\"Program ComputeBudget111111111111111111111111111111 success\\\",\\\"Program ComputeBudget111111111111111111111111111111 invoke [1]\\\",\\\"Program ComputeBudget111111111111111111111111111111 success\\\",\\\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD invoke [1]\\\",\\\"Program log: aspis-cu:h14_start\\\",\\\"Program consumption: 1398708 units remaining\\\",\\\"Program log: aspis-cu:h14_parsed\\\",\\\"Program consumption: 1393660 units remaining\\\",\\\"Program log: aspis-cu:h14_transcript_done\\\",\\\"Program consumption: 1305140 units remaining\\\",\\\"Program log: aspis-cu:h14_relation_done\\\",\\\"Program consumption: 1140308 units remaining\\\",\\\"Program log: aspis-cu:h14_merkle_done\\\",\\\"Program consumption: 913720 units remaining\\\",\\\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD consumed 1399644 of 1399700 compute units\\\",\\\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD failed: exceeded CUs meter at BPF instruction\\\"]\"",
+        "\"{\\\"InstructionError\\\":[2,\\\"ProgramFailedToComplete\\\"]} logs=[\\\"Program ComputeBudget111111111111111111111111111111 invoke [1]\\\",\\\"Program ComputeBudget111111111111111111111111111111 success\\\",\\\"Program ComputeBudget111111111111111111111111111111 invoke [1]\\\",\\\"Program ComputeBudget111111111111111111111111111111 success\\\",\\\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD invoke [1]\\\",\\\"Program log: aspis-cu:h14_start\\\",\\\"Program consumption: 1398708 units remaining\\\",\\\"Program log: aspis-cu:h14_parsed\\\",\\\"Program consumption: 1393660 units remaining\\\",\\\"Program log: aspis-cu:h14_transcript_done\\\",\\\"Program consumption: 1305140 units remaining\\\",\\\"Program log: aspis-cu:h14_relation_done\\\",\\\"Program consumption: 1140308 units remaining\\\",\\\"Program log: aspis-cu:h14_merkle_done\\\",\\\"Program consumption: 913720 units remaining\\\",\\\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD consumed 1399644 of 1399700 compute units\\\",\\\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD failed: exceeded CUs meter at BPF instruction\\\"]\"",
+        "\"{\\\"InstructionError\\\":[2,\\\"ProgramFailedToComplete\\\"]} logs=[\\\"Program ComputeBudget111111111111111111111111111111 invoke [1]\\\",\\\"Program ComputeBudget111111111111111111111111111111 success\\\",\\\"Program ComputeBudget111111111111111111111111111111 invoke [1]\\\",\\\"Program ComputeBudget111111111111111111111111111111 success\\\",\\\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD invoke [1]\\\",\\\"Program log: aspis-cu:h14_start\\\",\\\"Program consumption: 1398708 units remaining\\\",\\\"Program log: aspis-cu:h14_parsed\\\",\\\"Program consumption: 1393660 units remaining\\\",\\\"Program log: aspis-cu:h14_transcript_done\\\",\\\"Program consumption: 1305140 units remaining\\\",\\\"Program log: aspis-cu:h14_relation_done\\\",\\\"Program consumption: 1140308 units remaining\\\",\\\"Program log: aspis-cu:h14_merkle_done\\\",\\\"Program consumption: 913720 units remaining\\\",\\\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD consumed 1399644 of 1399700 compute units\\\",\\\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD failed: exceeded CUs meter at BPF instruction\\\"]\""
+      ],
+      "selected_cu": null,
+      "markers": [
+        {
+          "label": "h14_start",
+          "remaining": 1398708,
+          "delta_from_previous": null
+        },
+        {
+          "label": "h14_parsed",
+          "remaining": 1393660,
+          "delta_from_previous": 5048
+        },
+        {
+          "label": "h14_transcript_done",
+          "remaining": 1305140,
+          "delta_from_previous": 88520
+        },
+        {
+          "label": "h14_relation_done",
+          "remaining": 1140308,
+          "delta_from_previous": 164832
+        },
+        {
+          "label": "h14_merkle_done",
+          "remaining": 913720,
+          "delta_from_previous": 226588
+        }
+      ]
+    }
+  ],
+  "overlap_subtracted_integrated_cu": 1963913,
+  "full_measured_cu": null,
+  "full_minus_reconciled_cu": null,
+  "headroom_under_1_4m": -563913,
+  "stale_statement_rejected": true,
+  "changed_public_rejected": true,
+  "included_work": [
+    "profile-14 parser and full hiding Fiat-Shamir schedule",
+    "masked ten-round degree-10 payment zerocheck transcript",
+    "nested 49 C1 + h1 + six-mask rate-1/16 PCS relation",
+    "both layer-zero Merkle trees, three later trees, and q36 folds",
+    "direct-range payment terminal and masked-terminal equality"
+  ],
+  "excluded_work": [
+    "PoW search is prover work; the diagnostic absorbs zero nonce records but skips only their difficulty predicates",
+    "atomic account mutation/nullifier insertion is not yet in this measurement tag",
+    "formal HVZK and Johnson circle-transport lemmas remain separate proof obligations"
+  ],
+  "notes": [
+    "The integrated total is base + both disjoint layer0 increments + the later-layer increment; repeated parser/transcript/relation/Merkle/statement work is retained once.",
+    "The full row, when it fits, is the authoritative same-instruction measurement and should agree with the overlap-subtracted reconstruction.",
+    "This instruction is measurement-only and cannot authorize state because its PoW predicates are disabled by construction."
+  ]
+}

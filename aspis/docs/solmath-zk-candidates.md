@@ -91,8 +91,9 @@ has zero runtime dependencies, passes 12 unit/differential tests, and passes
 | per-query Horner RLC | exclude | over 1.09M CU at q36/k80 |
 | once-prepared exact 49-CM31 four-slot RLC | include API; protocol decision separate | unprepared q36 exhausts 1.4M; prepared structured diagnostic accepts at 1,125,266 CU |
 | canonical-byte exact CM31 dot | include API | 1,066,396 CU, saving 58,870 CU / 5.23% versus prepared structured decoding |
-| one-slot streaming four-row `QM31 x M31` dot | include API; protocol decision separate | tag23 winner 552,289 CU, 4,193 CU / 0.7535% below same-build full-matrix structured decode |
+| exact-49 prepared-limb four-row `QM31 x M31` dot | include fixed-shape API; protocol decision separate | tag23 winner 501,989 CU, 54,607 CU / 9.8109% below same-build structured decode and 50,416 CU below one-slot streaming |
 | typed sixteen-accumulator `QM31 x M31` dot4 | exclude from chosen SBF path | 734,395 CU, substantially slower from register pressure |
+| exact-49 two-row/eight-accumulator byte dot | exclude from chosen SBF path | 504,004 CU at q36, 2,017 CU slower than the 501,987-CU one-row prepared-limb kernel |
 | normalized M31-circle first fold and prevalidated batch inverse | include arithmetic APIs; protocol decision separate | tag23 fold control 107,996 CU, including 4,130 CU for one prevalidated 72-denominator syscall-backed batch inverse |
 
 The exact-wide and circle rows are isolated arithmetic diagnostics, not an integrated

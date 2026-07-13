@@ -1,0 +1,94 @@
+{
+  "artifact": "profile21_lean_affine_multiplier_soundness",
+  "date": "2026-07-13",
+  "status": "sensitivity_only_pending_exact_rank_integration_and_epro",
+  "field": {
+    "name": "QM31",
+    "size_formula": "(2^31-1)^4",
+    "bits": 123.99999999731277
+  },
+  "geometry": {
+    "rate": "1/512",
+    "honest_x_dimension_candidate": 255,
+    "affine_product_dimension": 256,
+    "maximum_product_root_row": 1020,
+    "conditional_entropy_floor_qm31_after_q16_and_one_target": 238,
+    "query_fibers": 131072,
+    "query_count": 16,
+    "agreement_fraction": 0.04640388251536719,
+    "maximum_agreement_fibers": 6082,
+    "gs_list_parameter": 237.58787847867995
+  },
+  "theorem_pins": {
+    "s_two": {
+      "title": "S-two Whitepaper",
+      "eprint": "2026/532",
+      "pdf_date": "2026-03-24",
+      "sha256": "e3b0132ec598ca16835c1de3c85d0c8b07c41b5f063f1d88b5a9628c22252c3f",
+      "results": [
+        "Theorem 31",
+        "Corollary 1",
+        "Lemma 3",
+        "Lemma 4",
+        "Theorem 19 items 1-2"
+      ]
+    },
+    "bcgm": {
+      "title": "All Polynomial Generators Preserve Distance with Mutual Correlated Agreement",
+      "revision": "2026-05-19",
+      "sha256": "23519c2d5d6541ee53e635b10c22d5f5964301b79a853d9394da267062e520a6",
+      "results": [
+        "Definition 3.19",
+        "Lemma 4.1",
+        "Lemma 4.4",
+        "Theorem 8.2",
+        "Definition 9.1",
+        "Theorem 9.2",
+        "Lemma 9.3"
+      ]
+    },
+    "subcode_rule": "Use the exact-circle degree-one base case from S-two and only the code-agnostic BCGM tensor/linear-image transformations; do not infer Johnson MCA for the circle subcode solely from ambient-RS Theorem 9.2."
+  },
+  "mca_rows_bits": {
+    "inner_semantic_width16_unground": 71.21648444080448,
+    "inner_semantic_width16_after_g38": 109.21648444080448,
+    "inner_aux_width12_unground": 71.6639434177757,
+    "inner_aux_width12_after_g38": 109.6639434177757,
+    "inner_two_group_union_after_g38": 108.42293531827191,
+    "outer_one_degree1_unground": 75.123375036413,
+    "outer_one_degree1_after_g38": 113.123375036413,
+    "outer_multivariate_arity3_union_after_g38": 112.123375036413,
+    "four_fold_union": 112.07979078853677,
+    "main_q16_after_final_g38": 108.90188659724066
+  },
+  "outer_generator": {
+    "formula": "G(delta,epsilon)=(delta,1,epsilon)",
+    "individual_degrees": [1, 1],
+    "derivation": "full-column-rank selection from (1,delta) tensor (1,epsilon)",
+    "work_position": "post-tX g38 before consecutive delta,epsilon",
+    "no_intervening_prover_message": true
+  },
+  "local_binding": {
+    "target": "tX=L_tau((t-zeta)X), including compact [tau,kappa,kappa^2] and copy-inactive functional",
+    "conditional_false_target_bound": "1/(|QM31|-1)",
+    "conservative_compact_plus_target_bound": "3/|QM31|"
+  },
+  "conservative_union": {
+    "event_union_bits": 107.39164994466977,
+    "bcs_factor": 34,
+    "after_bcs_factor_bits": 102.30418710341942,
+    "factor40_sensitivity_bits": 102.0697218497824,
+    "deleted_terms": [
+      "standalone source MCA",
+      "standalone source q16"
+    ],
+    "not_quotable": true
+  },
+  "remaining_gates": [
+    "exact complete-View d255 pX multiplier rank",
+    "challenge-universal containment or witness-independent retry",
+    "EPRO/private-Merkle simulator",
+    "integrated verifier and mutation",
+    "SBF measurement below the transaction cap"
+  ]
+}

@@ -690,12 +690,17 @@ protocol).**
 
 | # | term | shape | bits |
 | --- | --- | --- | ---: |
-| T5' | gamma-RLC batching, PARAMETRIC: (k'-1) / \|F\| = 124 - log2(k'-1) bits | frozen k' = 51 (pin <= 52) -> 118.36; historical readings: k'=83 -> 117.62, k'=82 -> 117.66 | 118.36 |
+| T5' | selected joint gamma/fresh-kappa column + two-point batching: k' / \|F\| = 124 - log2(k') bits | frozen k' = 51 (pin <= 52) -> 118.3276; the prior 50/\|F\| value was column-only before the two-point rule froze | 118.3276 |
 | T7' | copy pole/SZ (E2) + range pole/SZ (E4), shared chi, union | 4(m_copy + 1024) / \|F\|; current m_copy <= 2^10 worst case. The endpoint-local m_copy=589 trace sensitivity is 111.3445 bits | 111 |
 | T8' | statement/claim batching | `(J + 2) / \|F\|`, where `J` is the frozen `ConstraintId` residual count and the two extra lanes are `sum(h1)=0`, `sum(h2)=0` | **OPEN until the constraint registry freezes**; the earlier eight-claim value `4log2(p)-3 = 120.9999999973` is a preintegration sensitivity only |
 
-T5' is now stated parametrically after three rewrites; any future layout
-change instantiates the formula and does not rewrite the line.
+T5' is now stated parametrically after the `2026-07-12` fresh-kappa ruling;
+any future layout change instantiates the formula and does not rewrite the
+line. Both 51 column evaluations at both points are absorbed before gamma;
+kappa is sampled after gamma. For fixed false claims,
+`E0(gamma) + kappa E1(gamma)` is a nonzero bivariate polynomial of total
+degree at most 51, so Schwartz--Zippel contributes `51/|F|`. The extra
+`1/|F|` is explicit here and is not charged again to T8.
 
 The k' recount that forced the first T5' rewrite: the 80-column candidate
 main trace did not reserve the lookup's committed columns, so k' = 80
@@ -726,10 +731,11 @@ carries two values **at each statement evaluation point**. The row-local
 absorption layout requires the ordinary terminal point `z` plus the fixed
 low-bit-shifted point `z xor 11`; therefore the final statement framing
 absorbs 49 C1 + 2 C2 values at each point (102 field values total) before
-gamma. This does not double T5': for any fixed false transcript, at least one
-of the two claim-vector difference polynomials in gamma is nonzero and has
-degree at most 50, so simultaneous acceptance is still bounded by
-`50/|F|`. It does make the current single-point scalar-C1 PCS scaffold KAT
+gamma. Fresh kappa does not double T5': for any fixed false transcript, at
+least one of the two claim-vector difference polynomials in gamma is nonzero,
+and the selected `E0(gamma) + kappa E1(gamma)` polynomial has total degree at
+most 51, so acceptance is bounded by `51/|F|`. It does make the current
+single-point scalar-C1 PCS scaffold KAT
 explicitly non-final. That is a fixed-layout change: the payment envelope
 bumps to **v4** and v3 remains the frozen Stage 1 format. The gamma
 combination generalizes to `w* = sum_i gamma^i w_i + gamma^k1 h1 +
@@ -809,7 +815,8 @@ code lands:
   row.** A dead row leaking into the producer multiset, or an absorption row
   escaping its witness/public binding, is a silent soundness hole; both
   classes require executable vectors before the constraint registry freezes.
-- **T5' instantiation:** 124 - log2(50) = 118.36 bits; amended union
+- **T5' instantiation (fresh-kappa ruling, `2026-07-12`):**
+  4log2(p) - log2(51) = **118.3276 bits**; amended union
   unchanged at 103.9453 algebraic / 102.9724 total (T5' is invisible at
   four decimals next to T2).
 - **Freeze confirmation (condition iv):** multi-seed g16 means (>= 8
@@ -1078,6 +1085,630 @@ priced as a separate product decision. The same cryptographic ladder applies
 if the S-two conjectures are tightened (larger c1/c2) rather than broken.
 This paragraph goes into the paper's limitations section verbatim alongside
 the §9.3 disclosure.
+
+## 10. Wide-leaf seam — M31-value recombination under a CM31 commitment is refuted (`2026-07-11`)
+
+**The lever tested.** The wide-leaf + gamma-RLC seam is the dominant
+reconciliation cost (measured 1,066,396 CU on the direct-canonical-byte path;
+~69% of the integrated q36/g16 total, which exhausts the 1.4M meter on all
+eight draws). Its per-query fiber is four slots x 49 CM31 C1 symbols = 392 M31
+limbs (plus two QM31 C2 helpers x four slots), recombined per query across 36+
+queries. The prior "fixed51" model priced one row of 51 M31 values per query — a
+392/51 = 7.686x limb undercount (§ column-basis-audit calibration entry). The
+question: can the gamma-RLC **recombination arithmetic** fold M31-valued witness
+message-values while the **leaf commitment stays CM31** (correlated agreement
+intact), separating the two?
+
+**Verdict: NO. Recombination-basis and commitment-basis are welded by the
+batched-opening argument; they are not two independent operations.** The one
+assumption of this note (§2, capacity conjecture for folded RS **over the CM31
+circle-coset domain**) states proximity gathering and query soundness for the
+CM31 code. The batched opening forms `w* = sum gamma^i w_i` and runs ONE
+proximity proof; correlated agreement is what binds all k columns to that one
+opening. For that lemma to bind, the object (a) committed in the leaf, (b)
+folded in the RLC, and (c) proven-close by FRI must be the **same** object.
+
+**Trace (what the actual v4 path consumes — leaf-encoding, intrinsically CM31).**
+`verify.rs::combine_exact_wide_sections` is fed `c1_leaf =
+&values_section[..]` (call site verify.rs L1297-1300) — the authenticated
+1,568-byte CM31 leaf bytes themselves, `value_bytes = first_phase_leaf_len(0) =
+EXACT_WIDE_C1_FIBER_LEN = 49*4*8` — and folds them via
+`qm31_cm31_dot4_prepared_bytes`, decoding each symbol as CM31 (8 bytes,
+field.rs L741-744). It consumes leaf-encoding values, not a separate message
+representation. Those symbols are **intrinsically CM31**: the encoder
+`aspis-prover::coset_evaluate` lifts M31 coeffs, scales by a NON-real CM31 coset
+offset (`CIRCLE_GEN`, nonzero b-limb), and runs a CM31 NTT (`ntt_cm31`), output
+`Vec<CM31>`; for `f(T)=T` the codeword symbol is the non-real coset point
+itself, `offset*omega^k = domain_point(geom,k)` — its second M31 limb is data,
+not padding. There is no lossless M31 representation of the committed C1
+symbols. The two C2 columns (gamma powers 49,50) are intrinsically QM31 (LogUp
+helpers h1,h2, §5) — unfoldable as M31 regardless.
+
+**Broken lemma.** The change voids the proximity-gathering / correlated-
+agreement clause of the §2 capacity conjecture (over the CM31 code). Four
+independent adversarial constructions (a-limb projection, native-M31 + CM31
+wrapper, checkable derivation, conjugate-pair repack) each fail: they either
+break binding, provide no recombination saving, or collapse to the raw-M31-leaf
+PCS (the settled correlated-agreement break, with open circle-FRI transport).
+The change does NOT lighten §5's LogUp terms (basis-independent, transport-doc
+§4 T6/T7).
+
+**Teeth vector (probability-1 forge of the CM31-commit / real-fold hybrid).**
+Weakened verifier: keep the CM31 leaf and its radix-4 tree byte-identical
+(1,568 B, both limbs canonical-checked and Merkle-bound), but replace the
+gamma-RLC kernel with a real-only fold reading bytes `[offset..offset+4]` (the
+a-limb) of each 8-byte symbol: `w*_a = sum gamma^i * a_i + gamma^49 h1 +
+gamma^50 h2`. Adversary commits (before the C1 root, hence before gamma) each
+`a_i(.)` = a genuine low-degree M31 circle codeword and each `b_i(.)` = a fixed
+non-codeword pattern (e.g. all-ones column, canonical since 1<P). Then `w*_a`
+is a codeword for every gamma, so FRI, per-fiber query consistency, and the
+OOD/two-point binding of `w*_a(z)` accept with probability 1; the b-limbs are
+canonical-checked but never read by the fold, never pushed into any FRI layer,
+never OOD-evaluated. The committed CM31 word `W_i = a_i + b_i*i` is ~1-far from
+the CM31 circle code (imaginary limbs are noise at ~every one of 4096 domain
+points), and b is genuine message data, so the prover free-sets the CM31
+OOD/sumcheck-terminal evaluations at z. Canonical (full-CM31) fold rejects:
+`value_b` enters at field.rs L751-755. Same collapse class as the
+gamma-before-claims bug (§2) — invisible in every honest-prover test, fatal
+against a real one.
+
+**Consequence.** No sound seam is cheaper than the CM31 recombination while
+keeping the CM31 commitment. The measured 1,066,396-CU seam stands; the
+non-additive current-CM31 reconciliation exhausts the 1.4M meter. The
+**one-transaction full-depth 100-bit conjunction is measured-dead at the 1.4M
+cap on this lever.** The separate native-M31 circle PCS (isolated best RLC
+501,989 CU, § feasibility) is a genuinely different PCS with raw-M31 leaves and
+an OPEN circle-FRI soundness transport (stage2-circle-soundness-transport.md
+§4/§6) — it is NOT this lever and is not blessed here. No measurement probe is
+written: a NO at the soundness gate is terminal (a cheaper seam that breaks the
+opening soundness is worthless).
+
+## 11. Wide-leaf seam — Avenue 1 (real-basis fold) column classification (`2026-07-11`)
+
+**What was tested.** A research analysis proposed two levers on the ~1,066,396-CU
+gamma-RLC seam: Avenue 3 (decompose the QM31 challenge action so recombination
+accumulates in CM31 — representation-only, all columns) and Avenue 1 (fold the
+RLC on real/imaginary components in an M31 basis, ~2x fewer ops — valid only for
+columns whose witness is real-valued on the circle, i.e. conjugate-symmetric).
+The report assumed all columns qualify for Avenue 1. This entry measures that.
+
+**Column classification (semantic, from producers — not storage).**
+- **49 C1 columns — REAL at the message level.** `SpendTraceV4.c1 = [Vec<M31>;
+  49]` (trace_v4.rs). Cols 0-15 interface/state, 16-31 first-round output, 32-47
+  second-round output are Poseidon2-over-M31 chains (poseidon2.rs: width-16,
+  pow5 M31 S-box, M31 linear layers — no CM31/QM31 anywhere); Merkle-path,
+  nullifier and key-schedule values are these same Poseidon2 columns at
+  different rows. Col 48 is the M31 fixed-table multiplicity count. All C1 are
+  committed BEFORE lambda/chi/gamma (prover lib.rs: absorb C1 root, then squeeze
+  lambda/chi, then build C2), so none can be challenge-dependent or lifted.
+  Their message polynomials have real M31 coefficients.
+- **2 C2 columns — COMPLEX.** LogUp helpers h1 (copy), h2 (range):
+  `build_logup_helper -> Vec<QM31>`, `h = sel/(chi - phi)` with chi a QM31
+  challenge (logup.rs). Genuinely extension-field; no real representation.
+- **0 UNCERTAIN.** No C1 column is genuinely CM31/QM31.
+
+**Limb-weighted fraction (message level).** The 392 C1 seam limbs (49 x 4 slots
+x 2 CM31 limbs) are 100% in message-REAL columns; the 2 QM31 C2 helpers add 32
+COMPLEX limbs, so 392/424 = 92.45% REAL across the full 424-limb fiber.
+
+**BUT the message-REAL fraction does NOT convert to Avenue-1 CU on the current
+PCS. Avenue-1-exploitable fraction = 0%.** This is the storage-vs-semantic
+distinction at the SYMBOL level, which the report missed in the opposite
+direction. The gamma-RLC folds committed codeword SYMBOLS, not messages. The
+current ordinary-univariate encoder evaluates each real-M31-coefficient message
+over a NON-REAL CM31 coset (`coset_evaluate`/`ntt_cm31`, offset = CIRCLE_GEN
+with nonzero b-limb), so every committed symbol f(offset*omega^k) is genuinely
+COMPLEX; its imaginary limb is data, not padding (§10, column-basis-audit). The
+message realness appears only as a GLOBAL symmetry conj(f(s_i)) = f(s_{N-1-i})
+whose partner lives in the STRIDED partner fiber f_bar = F-1-f, not in the
+queried leaf. Consequently, on the current CM31-leaf seam:
+1. **Both limbs are unavoidable.** With CM31 leaves fixed (settled), the
+   verifier parses, canonical-checks and Merkle-hashes all 392 M31 limbs/query
+   regardless of fold basis. Avenue 1 cannot touch the parse/hash cost — the
+   bulk of the 1,066->502 gap versus the M31-leaf candidate. The measured
+   501,989-CU anchor combines the byte/type change with exact-49 loop bounds and
+   one-time challenge-limb preparation; it must not be decomposed into a claimed
+   pure-decode percentage. Avenue 1 with CM31 leaves still captures none of the
+   mandatory imaginary-limb parse/hash work.
+2. **Dropping the imaginary limb is invalid.** Owner-decision-packet fact 2:
+   "Dropping the imaginary CM31 limb from the current ordinary-univariate Aspis
+   PCS is not valid." Proximity binds to the full CM31 coset code, not the real
+   subcode; a malicious prover commits a non-conjugate-symmetric word and the
+   real-basis fold accepts it (the §10 probability-1 forge). The imaginary limbs
+   are load-bearing.
+3. **The real fold needs a different PCS.** Owner fact 1: M31 real symbols are
+   valid ONLY under a genuine circle-polynomial PCS (circle FFT, M31 LEAVES,
+   conjugate-adjacent slots, re-derived transport) — "not a serialization-only
+   optimization." That changes the commitment (violates the CM31-leaf premise)
+   and is the separate open-transport candidate, not a seam optimization.
+
+**Avenue 3 is already realized; Avenue 1's arithmetic is counterproductive.**
+`qm31_cm31_dot4_prepared_bytes` never does a full QM31 multiply in the hot loop:
+gamma powers are pre-decomposed into six M31 Karatsuba components, the inner
+loop does six M31 muls/symbol accumulating in M31 lanes (`sums[slot][6]`),
+reconstructing QM31 once. That IS Avenue 3 — so its marginal reclaim over the
+already-optimized seam is ~0. Avenue 1's naive real/imag split costs EIGHT
+muls/symbol (worse than six) because the imaginary limb is a genuine nonzero
+M31, not a structural zero. A ~2x mul count needs a structural-zero limb (fact 2
+forbids) or a real M31 leaf (different PCS).
+
+**Blended seam and integrated total.**
+- Blended seam ~ 1,066,396 CU (MEASURED, unchanged): Avenue 1 = 0% exploitable
+  on CM31 leaves; Avenue 3 ~ 0 marginal (already realized).
+- Integrated q36/g16: >= 1,400,000 CU (MEASURED — the non-additive current-CM31
+  reconciliation exhausts the 1.4M meter on all eight draws; the isolated seam
+  alone leaves only 123,604 CU against 1.19M).
+- Integrated q43/s=2: seam alone scales ~ 1,066,396 x 43/36 = 1,273,362 CU
+  (PROJECTED) plus the second OOD sample and non-PCS terms — well above 1.4M.
+- Against 1,190,000 and 1,400,000: fails at q36 and q43/s=2.
+
+**Verdict: DEAD.** Not because the REAL fraction is low (it is ~100% at the
+message level) but because the message-realness is inaccessible to the
+symbol-folding seam on the current CM31-coset PCS: all 49 C1 codeword symbols
+are irreducibly COMPLEX under the non-real coset, proximity binds to the full
+CM31 code, and conjugate partners are strided out of the queried leaf — so the
+imaginary limbs cannot be soundly dropped (owner fact 2); the 2 C2 helpers are
+genuinely COMPLEX (QM31). The one-transaction full-depth 100-bit conjunction is
+measured-dead at the 1.4M cap on the Avenue-1/3 levers.
+
+**Soundness obligation for the REAL columns (note-first, NOT implemented — a
+claim requiring external line-by-line review, stated with its gaps).** For a
+real-basis fold to preserve the batched-opening binding, ALL of the following
+must be established; none is proven here:
+- (O1) The PCS must be the genuine circle-polynomial code with conjugate-adjacent
+  slots (circle FFT, M31 leaves) so the real M31 value is the native symbol —
+  NOT the current ordinary-univariate CM31 coset PCS. [Gap: full protocol change,
+  owner fact 1; abandons the current CM31-leaf seam; OPEN circle-FRI transport,
+  stage2-circle-soundness-transport §4/§6.]
+- (O2) The batched-opening correlated agreement must be re-derived for the REAL
+  (conjugate-symmetric) subcode C_real, binding the committed word into C_real
+  rather than the full code. [Gap: this is the §2 capacity-conjecture
+  proximity-gathering clause restated over C_real. It must rest on
+  proven-Johnson accounting or a POST-CS25 revised-capacity form — NOT the
+  refuted up-to-capacity form (§2 refutation notice, §9). The Johnson-vs-revised
+  choice and constants are unverified.]
+- (O3) The split-basis opening (C1 real M31 basis, C2 QM31 helpers complex)
+  under one gamma-RLC must still bind h1,h2 to the same PCS opening that §5's
+  copy argument relies on. [Modified lemma: the primary object is the §2
+  capacity-conjecture proximity term; §5's E1/E2/E3 are basis-independent and
+  unchanged (transport-doc §4 T6/T7), but §5's soundness DEPENDS on the joint
+  gamma-RLC opening whose correlated agreement O2 revises — so §5 holds only if
+  O2 holds for the split-basis fold. Unproven.]
+Because O1 removes the current CM31-leaf seam entirely, this obligation does not
+rescue the current path; it describes the separate circle-polynomial PCS whose
+transport is already OPEN. Recorded so no future integration treats "the columns
+are REAL" as sufficient for Avenue 1 on the current seam.
+
+## 12. M31-leaf circle PCS transport — effort scope for the one-transaction claim (`2026-07-11`)
+
+**Question scoped.** If the current CM31-coset seam is measured-dead (§11), the
+only route to a one-transaction full-depth verifier under 1.4M is the genuine
+circle-polynomial PCS with M31 leaves (seam 501,989 CU measured). What must its
+soundness transport prove, what is already discharged, and is closing it an
+afternoon or a multi-session effort?
+
+**Two facts settled first, so soundness is the whole question.**
+- **CU remains linear in the columns, but the implementation floor moved.** There is no sublinear-in-columns RLC (Stwo precedent:
+  hoisted challenge-dependent constants and dedicated QM31xCM31 products give
+  tower specialization but not sub-O(k) column folding). So the seam is
+  fundamentally O(k'=51) columns, while exact-49 bounds and prepared limbs moved
+  the measured implementation from 552,289 to 501,989 CU. Further arithmetic
+  savings require literal SBF evidence; no sublinear claim is made.
+- **The hardest CA primitive is now proven at Johnson.** Mutual correlated
+  agreement is Haböck's theorem to the Johnson radius (2026; §9.5), and the 2026
+  polynomial-generator MCA result makes acceptance-equivalent rewrites
+  unconditional there. The scariest historical open item is discharged — but
+  only up to Johnson.
+
+**Correction to §11 phrasing.** "Raw-M31 leaves break correlated agreement" was
+about GRAFTING M31 leaves onto the current ordinary-univariate CM31-coset PCS.
+For the GENUINE circle-polynomial code, M31 leaves are the native commitment
+(Stwo commits base-field columns) and their CA is the S-two circle-code MCA. So
+M31 leaves are not an inherent blocker here; the blocker is the transport below.
+
+**Tier 0 — schedulable proof work (multi-session, weeks; now tail-winded).**
+These wire the S-two circle-code facts to Aspis's exact protocol shape; each
+consumes the now-proven MCA primitive and becomes a bounded lemma AT JOHNSON.
+(transport-audit stage2-circle-soundness-transport.md §6 obligations.)
+- Grouped-fold theorem (obl 4): four committed arity-4 rounds with (alpha,
+  alpha^2) from an 8-binary-reduction. [days]
+- Two-phase batching CA (obl 5): 49 M31 C1 + 2 QM31 C2, second root, then gamma
+  — the heterogeneous real/complex batch; dischargeable at Johnson via MCA.
+  [days]
+- MLE-evaluation reduction (obl 6): tensor relation + sumcheck bind both Boolean
+  claims to the circle message (Protocol 4 insufficient). [days-weeks]
+- Fiber-query CA (obl 9): consecutive four-slot leaves + q>>2 multi-round
+  agreement. [days]
+- OOD domains + degree correction (obl 7,8): C(QM31)\C(CM31), RS-order
+  convention, two-sample product, condition (80) or L^+ (82)-(84). [days]
+- BCS/ROM binding (obl 10): SHA-256, separate roots, radix-4, grinding position,
+  state-restorable rounds vs S-two Theorem 22. [days]
+- Local counts (obl 11): freeze J, copy endpoint registry, two-point rule,
+  absorptions. [ongoing]
+Realistic total: several weeks of real proof work; bounded, with the CA core
+external-proven.
+
+**Tier 1 — the 100-bit-class gate (NOT Aspis-schedulable).** Tier 0 is
+unconditional only up to Johnson, and Johnson caps the level well below 100:
+- Tier-0-only proven level ~ **67.5-68.0 bits** at q36/g32 (§9.5; proven floor
+  65.5, lifted by MCA + BCHKS zero-loss Johnson CA at n=2^12; ~70 with q34/g36).
+  The §3 field ceiling (~104-112 algebraic, ~102.98 total worst-case) makes 100
+  UNREACHABLE in the proven regime.
+- 100-bit-class requires the revised-capacity conjecture (S-two Conjectures 1&2,
+  c1=c2=1, o(n)=0), which is "domain-specific, refutation-adjacent, open on our
+  exact domain family" (§9.3): our circle group is fully 2-adic and inside KKH's
+  dimensional envelope, and whether a KKH-style construction exists on
+  circle-group cosets is an open question no paper addresses. It reaches t=100
+  only at q44 (§9.4, costlier than q43), and its finite-n o(n) remainder for
+  n<=2^12 is unbounded (must not be set to zero). This is a bet on external
+  cryptography currently moving the wrong way — not an effort Aspis can drive.
+
+**Tier 2 — quotation gate (folds into Tier 0/1).** Even the conjectural numbers
+do NOT transfer verbatim: §9.3 — "no T1 or T2 value transfers verbatim to the
+M31 candidate." The circle subcode identification, fold/list-decoding
+correspondence, and rational-sample degree term must be re-derived for the exact
+candidate before any value (proven or conjectural) may be quoted; until then the
+finite-length/circle-transport quotation gate stays open.
+
+**Verdict.** Not an afternoon. The effort bifurcates by the security label:
+- **Proven ~67-bit one-transaction M31-leaf PCS: schedulable, ~weeks of Tier-0
+  lemma work**, tractable because the MCA core is now proven. This is the §9.7
+  terminal cryptographic retreat instantiated on the 501,989-CU seam — a
+  conjecture-free "one transaction, full depth, ~67-bit proven, at 1.4M."
+- **100-bit-class one-transaction: not schedulable** — gated on a
+  refutation-adjacent conjecture Aspis cannot close, needing q44. Do not stake
+  the headline on it.
+Hiding and q43-seam measurement are worth an afternoon only AFTER Tier 0 closes
+and the proven-~67 label is chosen; that is the only label where the seam fits
+and the number is ours to keep.
+
+## 13. External-report reconciliation — the conjugate-pair rewrite and §11 (`2026-07-11`)
+
+An external expert analysis refined §11. It agrees on every strategic point
+(392 serialized limbs compress to 196 INDEPENDENT M31 coordinates by conjugacy,
+not to 49; the ~51-M31-mul target is dead; the packed-QM31 ~51 route needs a new
+MCA/list-decoding proof; dropping any component is unsound; the regime must be
+proven-Johnson or a revised list-decoding-capacity conjecture, never the refuted
+up-to-capacity form). It makes ONE new claim and one correction to §11. Both are
+verified against source below (workflow, high confidence).
+
+**The correction to §11 (accepted).** §11 stated the real/imag split "costs
+EIGHT muls/symbol, worse than six." That op-count is correct for splitting an
+ARBITRARY CM31 symbol (two independent M31 limbs) — but it answers the wrong
+question. The report's construction acts on a CONJUGATE PAIR of slots
+`x=a+ib, xbar=a-ib`, which carries only TWO independent M31 values (a,b): then
+`c+*x + c-*xbar = (c+ + c-)*a + i*(c+ - c-)*b` folds two reals at two L*F
+products = 8 muls for the pair, versus two CM31 symbols at 6 = 12 — a real ~1/3
+saving (`24(k-1) -> 16(k-1)`), soundness-neutral, leaves unchanged. So the
+conjugate-pair rewrite is a VALID technique; §11's "worse" reasoning analyzed
+arbitrary symbols, not conjugate pairs. §11's CONCLUSION nonetheless stands, for
+the sharper reason below.
+
+**The load-bearing precondition FAILS for the measured seam.** The rewrite
+requires the four leaf slots to be two CM31-conjugate pairs (a+ib, a-ib) AT THE
+RLC INPUT (the report's own falsifiers #1, #3). They are not. The measured
+exact-wide path is an ordinary-univariate CM31 MULTIPLICATIVE-coset PCS: the
+query decomposition (verify.rs `slot = i >> log_fiber_count`, L1245-1247) places
+the four slots of fiber f at domain indices f, f+N/4, f+N/2, f+3N/4 — points
+`{s, iota*s, iota^2*s, iota^3*s} = {s, is, -s, -is}` (iota = -i, order 4), a
+multiplicative order-4 coset. Because offset has order 2N, s has order exactly
+2N > 8, so s^2 is never in {1,-1,+-i} and conj(s)=s^-1 is NOT among the four
+slots — the conjugate coset {+-s^-1, +-is^-1} lives in the PARTNER fiber
+f_bar=F-1-f (column-basis-audit L200-217). Moreover the RLC kernel
+(`qm31_cm31_dot4_prepared_bytes`) computes FOUR independent per-slot dot products
+over the 49 COLUMNS (6 M31 muls/(col,slot), corroborating the 24(k-1) baseline)
+and NEVER combines slots; the only slot-mixing stage, `fold_fiber` (verify.rs
+L460-482), pairs ANTIPODES {s,-s}/{is,-is}, not conjugates. So there is no
+`c+*x + c-*xbar` conjugate-pair operation anywhere to rewrite. Co-locating
+conjugate pairs would require re-laying-out leaves (a two-to-one query map with
+renewed soundness) — i.e. NOT "leaves unchanged."
+
+**The report's 16(k-1) target is just the cost of M31 leaves.** Two conjugate
+CM31 slots carry only 4 independent M31 values, folded at 4 muls = 16(k-1) — the
+same count the M31-leaf circle candidate already computes (`qm31_m31_dot4`,
+4 muls/symbol, 196 M31 leaf values), but with M31 leaves, which CHANGE the
+commitment (§11/§12). And the report's `a+ib/a-ib` identity does not even
+literally match that candidate: its leaves are two INDEPENDENT M31 reals
+`f(P), f(conjP)` (the "conjugate" is a coordinate reflection (x,-y), not a
+real/imag split of one CM31), so there is no imaginary part to factor out — the
+candidate reaches 16(k-1) simply by committing M31 leaves. So the report's
+saving, where it is real, is the CM31->M31-leaf commitment change, reachable on
+NEITHER path as a leaves-unchanged rewrite. Same conclusion as §11/§12, by a
+different route.
+
+**Even hypothetically, it is marginal, not a rescue.** With CM31 leaves kept,
+the verifier still decodes both limbs of all 392 M31 limbs/query — and byte
+decode is ~89% of the reducible seam (§12 structural estimate, not a profiled
+SBF probe). The rewrite touches only the ~11% multiply arithmetic, so ~1/3 of
+that is ~39K CU on the 1,066,396 base — BELOW the report's own ~49K gap to 1.4M.
+Only the most favorable reading (11% of the larger ~1.449M estimate) barely
+exceeds 49K, and it requires both the multiply fraction to scale AND the rewrite
+to apply. Since the precondition fails, the measured saving is 0.
+
+**Net.** §11's verdict is UNCHANGED (DEAD for the measured exact-wide CM31 seam).
+The report's contribution is a cleaner articulation of WHY (conjugate pairs carry
+half the information) and a correction to §11's op-count framing — both recorded.
+No soundness-neutral, leaves-unchanged saving exists on the current seam; the
+report's 16(k-1) is the M31-leaf commitment change (§11/§12 route).
+
+## 14. Johnson rate/query redesign — literal rate-1/16 result (`2026-07-12`)
+
+The q74/g32 falsification measurement closes only the fixed rho=1/4
+implementation fork. At the pinned eta=sqrt(rho)/20=0.025, the Johnson query
+term needs q74 and the literal M31 proof reconciles to **1,873,746 CU**. The
+monolithic instruction exhausts at 1.4M; the five-segment overlap ledger is
+validated by the low-rate direct run below to within 7 CU.
+
+The radix-4-compatible alternative rho=1/16 keeps the 1,024-coefficient
+message, four arity-4 folds, and final four coefficients, while enlarging only
+the evaluation/Merkle domains. With eta=0.0125,
+`-log2(sqrt(rho)+eta)=1.929610672` bits/query, so q36/g32 gives **101.465984
+query-round bits**. The literal 73,620-byte proof
+`98697f1c...3982e2` accepts in 5/5 Agave simulations at **1,237,877 CU**,
+leaving **162,123 CU** below the platform cap. Its independent segmented
+reconciliation is 1,237,884 CU, a 7-CU calibration delta.
+
+This reopens the PERFORMANCE fork; it does not close the SOUNDNESS fork. Under
+the existing pinned Johnson formulas at rho=1/16:
+
+| term | rate-1/16 result |
+| --- | ---: |
+| Johnson T1 rounds | 66.7465 / 70.7465 / 74.7465 / 78.7465 bits |
+| Johnson T1 union, no per-fold PoW | **66.6534 bits** |
+| T2 union, two OOD samples, L=160 | 214.2756 bits |
+| q36/g32 query round | 101.4660 bits |
+
+Thus the current no-per-fold-PoW protocol is still T1-bound near 66.65 bits.
+The upstream-style per-fold-PoW illustration `[36,32,28,24]` would place each
+T1 round at 102.7465 bits, their union at 100.7465, and the T1+q36 query union
+at only 100.0618 bits before the remaining ledger. This vector is NOT adopted:
+its state-restoration/BCS composition must be proved for the exact transcript,
+its prover work is material, and the remaining terms leave essentially no
+soundness slack. q37 or stronger per-fold work is the first sensible audit
+row, and its verifier CU must be measured rather than assumed.
+
+CU consequence: adding the measured central r2 constraint-composition delta
+70,954 to the direct PCS gives 1,308,831 CU, leaving 91,169 CU before hiding,
+PoW checks, and the atomic transition. That is a planning row, not an
+integrated total, because composition has not yet been spliced into tag 28.
+The one-transaction direction is therefore alive but narrow; receipt-bound N=2
+remains the fallback until the rate-1/16 soundness and hiding gates close.
+
+## 15. Payment-terminal algebra and generated copy routing (`2026-07-12`)
+
+The production payment prefix now derives its ten-coordinate PCS point from
+the payment zerocheck transcript. The verifier no longer accepts a
+caller-supplied point. The frozen source registry has 252 constraints. The
+first 250 have M31 values on Boolean trace rows and are packed four at a time
+in the QM31 basis `(1,i,u,iu)`. This map is injective over M31, so a packed
+Boolean-row residual is zero exactly when its four source residuals are zero.
+The generic copy and range LogUp residuals remain separate because they are
+already QM31-valued. Consequently its theta randomizes 65 polynomials and its
+two helper-sum claims make 67 randomized claims, rather than the former 254.
+The selected direct-range profile has a distinct exact shape: the range LogUp
+is absent, its 30 bitness and three reconstruction residuals pack injectively
+into nine QM31 lanes, and theta randomizes `63 + 1 + 9 = 73` lanes. Its one
+surviving helper makes 74 claims. This is a protocol registry change, not an
+implementation-only recount; the statement crate exposes the new constants,
+but the Fiat--Shamir registry still requires a deliberate version/KAT repin.
+
+The exceptional-copy terminal uses 48 fixed selector matrices: for each of
+four endpoint slots, one weight matrix, one tag matrix, and ten tuple-pattern
+matrices. If `h in QM31^64` and `l in QM31^16` are the tensor selector halves,
+one table evaluates as
+
+`h^T A_m l`.
+
+The checked-in const generator derives every `A_m` from the independent
+102-link exceptional layout, then repeatedly removes an exact rank-one outer
+product. For
+
+`A_m = sum_t u_{m,t} v_{m,t}^T`,
+
+the SBF evaluator computes
+
+`h^T A_m l = sum_t (h . u_{m,t}) (v_{m,t} . l)`.
+
+Nineteen matrices are nonzero, their total M31 rank is 47, and the generated
+factors have 674 nonzero scalar coefficients. No factor is hand-transcribed:
+`build_copy_routing_factorization` is evaluated at compile time from
+`EXCEPTIONAL_COPY_TERMINAL_LINKS`. The reference path independently walks the
+full 592-link registry. The link fields and all ten column patterns are bound
+to FNV-1a fingerprint `0x77973120f60be58b`; a const assertion fails the build
+if the layout changes without an explicit review and repin. Because the
+factorization regenerates from the frozen layout, adding hiding columns cannot
+silently reuse stale factors.
+
+Polynomial-identity guard: each test run reads uniform rejection-sampled M31
+coordinates from `/dev/urandom` and compares the compiled evaluator with the
+independent full-link walk at 50 fresh random QM31 points, random openings,
+and random lambda values. The difference has total degree at most 27 in this
+test surface, so 50 independent agreements have Schwartz--Zippel false-pass
+probability below `2^-5900` if the implementations differ. A separate fixed
+corpus covers lambda zero and one, single-column basis vectors, coupled
+cross-column residuals, and Boolean padding rows. Boolean-only agreement is
+not treated as an identity test.
+
+The first fully labelled SBF run reports these verifier components (diagnostic
+logging included): parse/decode 7,952 CU; prefix transcript/challenges 7,526;
+ten-round sumcheck verification 54,019; point/evaluation absorption and gamma
+2,495; opening assembly 568; selector tensor 48,865; Poseidon 125,583; fixed
+relations 134,233; generated copy routing plus LogUp 146,168; range LogUp
+7,552; packed theta batching 47,899; terminal wrapper 1,728; and unmarked
+transaction/dispatch/return 1,547. Their sum is the measured 586,135 CU. The
+six added pre-terminal markers account for the small increase over the
+previously dark overhead; this row is a statement diagnostic, not an
+overlap-subtracted PCS-plus-statement total.
+
+## 16. Profile 15 rate-1/16 soundness reconciliation (`2026-07-12`)
+
+Status: **not closed and not quotable.** This section audits the selected
+one-mask profile against the implemented verifier. It supersedes §14's
+planning arithmetic where the two disagree, but it does not turn the numeric
+target in `results/stage2/rate16_hardened_soundness.json` into a theorem.
+
+### 16.1 Do not conflate q36/g16 with the implemented profile
+
+Profile 15 is `rho=1/16`, q36, final-query grinding g36, and four additional
+fold-work checks `[39,35,31,27]`. It is not q36/g16. The relevant Johnson
+query factors, at the pinned slacks, are:
+
+| schedule | query-work term | immediate consequence |
+| --- | ---: | --- |
+| old `rho=1/4`, q36/g16 | 49.4660 bits | the old capacity-shaped q36/g16 measurement cannot support a Johnson claim above this |
+| `rho=1/16`, q36/g16 | 85.4660 bits | still bounded by the no-fold-work T1 union below |
+| `rho=1/16`, q36/g32 | 101.4660 bits | §14's unhardened Johnson-query row |
+| **profile 15: `rho=1/16`, q36/g36** | **105.4660 bits** | current final-query target, before all other terms |
+
+For the implemented arity-four generator, the MCA numerator carries the
+factor `ell-1=3`. With no per-fold work this makes the four-round T1 union
+**65.0685 bits**, not §14's 66.6534. With profile 15's fold-work vector, every
+round is 104.1615 work-normalized bits and their union is **102.1615 bits**.
+The correction is already present in `xtask/src/stage2_rate16_soundness.rs`;
+the older §14 row omitted `log2(3)`.
+
+The historical capacity calculation is not an alternative way to price these
+rows. Its general up-to-capacity premise is refuted (§9), and the revised
+circle/finite-length conjecture is still uninstantiated. At Johnson, the
+profile-15 numbers remain conditional on the exact-candidate transport in
+§16.4.
+Even under the retired `rho=1/4` capacity arithmetic, q36/g16 contributes
+only `36*2+16 = 88` query-work bits, so that measured schedule was never a
+100-bit row.
+
+### 16.2 Corrected local ledger for the one-mask construction
+
+The current `aspis-rate16-hardened-soundness-v1` artifact is a useful target,
+but it is stale with respect to profile 15. In particular, it omits the
+degree-ten payment sumcheck, the zerocheck reduction, and the nonzero `eta`
+binding event; it retains a two-helper/range-LogUp count that the direct-range
+profile no longer has; and its `hiding/code-switch reserve` predates the
+one-mask construction. The implemented local shapes are:
+
+| item | profile-15 shape | bits | status |
+| --- | --- | ---: | --- |
+| T1 grouped-fold MCA | hardened artifact formula with generator factor 3 and fold work `[39,35,31,27]` | 102.1615 | **open exact circle/fold/BCS transport** |
+| T2 two-sample OOD binding | current `L=160` target | 214.2756 | root bound only after the committed-list and exact accepted-domain invariant is proved |
+| PCS relation sumchecks and eight OOD mixers | `32/|QM31|` | 119.0000 | local SZ shape; exact protocol reduction still belongs in the transport theorem |
+| masked payment sumcheck | `10 rounds * degree 10 / |QM31|` | 117.3561 | local sumcheck bound; missing from the current artifact |
+| zerocheck random point | `10/|QM31|` | 120.6781 | local multilinear identity bound; missing from the current artifact |
+| constraint/helper batching | `(72+1)/|QM31|` | 117.8102 | 73 outer lanes give theta degree 72; the surviving `h1` helper adds an independent mu degree-1 event |
+| mask/original binding | `1/|QM31|` in nonzero `eta` | 124.0000 | committed `H` and initial claim precede eta; add this affine event |
+| gamma column batching | `50/|QM31|` | 118.3561 | 49 C1 + `h1` + `G`, ordinary powers 0..50 |
+| two-point batching | `1/|QM31|` | 124.0000 | `second_point_scale` remains a separate generic challenge despite removal of mask kappa/delta/tau |
+| copy tuple compression | `(594*17)/|QM31|` | 110.6982 | 592 base links plus the two direct-range reconstruction links, replacing the old 589/1024 placeholders |
+| copy pole bound | `(4*594)/|QM31|` | 112.7857 | the direct-range profile has no range LogUp helper; its bit/reconstruction residuals are in theta |
+| traced queries + final work | `(.25+.0125)^36 / 2^36` | 105.4660 | **open exact fiber-query/BCS transport** |
+
+The selected direct-range constraint code packs the first 250 source residuals
+into 63 tower coordinates, retains the extension-valued copy LogUp as lane 63,
+and injectively packs the 30 M31 bitness plus three M31 reconstruction
+residuals into nine consecutive lanes 64..72. The bitness formula is
+`b^2-b`. One outer Horner evaluation therefore has exact theta degree **72**;
+there is no nested 33-term theta polynomial and no degree-96 endpoint. The
+profile-15 terminal then adds only `mu*h1`, under an independently sampled
+challenge.
+
+The statement metadata pins this as 284 total direct-profile source residuals
+(250 base-field residuals, one copy-LogUp residual, and 33 direct-range
+residuals), nine direct-range packed lanes, 73 constraint lanes, one helper,
+theta degree 72, and 74 claims including `h1`.
+The transcript still absorbs the legacy global `(version=2, sources=252,
+claims=67, two zero helpers)` registry. That mismatch does not change the
+algebra implemented here, but it must be resolved by a dedicated registry
+version/count/helper framing and transcript KAT repin before profile 15 is
+frozen or quoted. The global profile identifier is deliberately not bumped by
+this intermediate optimization.
+
+The previous **102.1567-bit** provisional union used the superseded degree-96
+batching row and is stale pending regeneration of the complete local ledger.
+Adding the 105.4660 query term and the 124/128-bit hash assumptions gives
+**102.0180 bits before privacy failure**. This is a corrected parameter
+sensitivity only. T1, T2, the query term, and BCS composition are not yet
+transported, so 102.0180 is not a security claim.
+
+The one-mask construction adds no separate code-switch or mask-proximity
+protocol: `G` is the fifty-first ordinary column in the same scalar powers
+generator. Its false-accept contribution is the `eta` line above plus the
+unchanged PCS binding terms. A rank-deficient masking view is a privacy event,
+not an argument-soundness event, and must not be hidden inside an invented
+110-bit `code-switch reserve`.
+
+### 16.3 The hiding rank event has no probability bound yet
+
+The current test
+`one_explicit_mask_and_c1_padding_remain_surjective_after_all_openings`
+passes three fixed schedules. It proves that a full-rank minor exists at those
+points; it does not prove a bad-point probability. Two concrete gaps prevent
+turning it into the reserved `2^-110` line:
+
+1. The test samples 36 **distinct** fibers. Production
+   `Transcript::challenge_queries` samples with replacement. At 36 draws from
+   4,096 fibers, the probability of at least one duplicate is approximately
+   **0.142946**. Duplicates do not themselves imply leakage--the public view
+   then has fewer independent coordinates--but the rank test must quotient
+   repeated observations or the sampler must deliberately change to
+   without-replacement sampling. The present test models neither exact case.
+2. No explicit minor, determinant polynomial, or degree has been pinned. A
+   generic Schwartz--Zippel argument over M31 can provide at most about 31
+   bits before its degree loss, so it cannot justify a 110-bit privacy term.
+   A valid closure needs either a structural full-rank proof for every allowed
+   schedule, or an explicit QM31-defined minor of degree at most about `2^14`
+   together with a proof that its variables are fresh uniform QM31 challenges.
+   The M31-only C1 padding makes that field-of-definition step nonautomatic.
+
+The tested view also omits the complete public transcript: later-layer sibling
+slots, all OOD values and relation messages, final polynomial coefficients,
+proof-account/log bytes, and Fiat--Shamir adaptivity. These are additional
+linear observations even when the one path value is locally determined by a
+layer-zero fiber. The mandatory next artifact is one exact-view matrix (with
+duplicate-query quotienting) plus either a universal-rank proof or the explicit
+minor/degree bound. Until then there is no numeric hiding-failure term to add.
+
+### 16.4 Exact missing transport theorem and production check
+
+The missing theorem is not merely "circle code is a scaled GRS code." The
+required exact-candidate statement is:
+
+> For the `L'_10` subcode on the 2^14 circle domain, with 49 M31 words embedded
+> in QM31 and the two QM31 words `(h1,G)` committed under a second root before
+> gamma, the generator `(1,gamma,...,gamma^50)` and each grouped fold
+> `(1,alpha,alpha^2,alpha^3)` preserve Johnson-radius disagreement through the
+> four actual circle/line subcodes; folding commutes with the relevant lists;
+> the two adaptive OOD samples over `C(QM31) minus C(CM31)` and
+> `QM31 minus CM31` bind the MLE relation; a four-slot fiber query has the claimed
+> miss probability; and the exact radix-four SHA-256 Fiat--Shamir transcript
+> with fold work and final work satisfies the stated state-restoration/BCS
+> bound.
+
+The scaled-GRS isometry establishes only the starting code/list fact. The
+polynomial-generator MCA result supplies a core Johnson primitive, but the
+grouped-fold/list-commutation, two-phase heterogeneous batching, custom MLE
+relation/OOD invariant, fiber sampling, and BCS composition above are still
+unwritten reductions. These are precisely why the artifact correctly keeps
+`quotable_complete_system_claim=false`.
+
+There is also a code-level gate: the only integrated profile-15 program tag is
+`MeasurePaymentHidingProfile15`. It calls
+`verify_payment_hiding_candidate_unmined_for_diagnostics_with_trace`, which
+absorbs nonce bytes but deliberately skips all five PoW predicates. No spend
+authorization path currently calls `verify_payment_hiding_candidate_segment`,
+and no atomic state transition follows it. A closure run must use a genuinely
+mined proof through the production verifier, corrupt each fold/final nonce in
+teeth tests, and mutate the nullifier/state only after complete verification.
+The diagnostic CU result is not that code check.
+
+### 16.5 Closure order
+
+1. Correct and regenerate the soundness artifact with every §16.2 term, the
+   exact accepted OOD-domain sizes, registry version/count, and `m=594`.
+2. Write the exact-candidate Johnson transport theorem in §16.4 and encode each
+   premise as a conformance or adversarial test; do not promote isolated MCA.
+3. Expand the rank artifact to the complete public view and close §16.3 with a
+   universal-rank or explicit determinant-degree proof.
+4. Add the production profile-15 instruction, mined-nonce corpus, final KAT,
+   leakage inventory, and atomic-spend transition.
+5. Only then quote the recomputed union and the one-instruction CU result.
 
 ---
 

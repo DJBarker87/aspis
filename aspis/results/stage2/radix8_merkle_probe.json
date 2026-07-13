@@ -1,0 +1,61 @@
+{
+  "generated_at_utc": "2026-07-12T21:17:46.770857+00:00",
+  "command": "cargo run --release -p aspis-xtask -- stage2-radix8-merkle-probe",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "repetitions": 5,
+  "depth": 12,
+  "distinct_queries": 36,
+  "variants": [
+    {
+      "arity": 4,
+      "parent_hash_calls": 112,
+      "frontier_hashes": 301,
+      "frontier_bytes": 9632,
+      "opened_digest_entry_bytes": 1296,
+      "synthetic_minimal_subtree_bytes": 10928,
+      "parent_preimage_bytes": 14448,
+      "sha256_compression_blocks": 336,
+      "simulation_cu": [
+        44888,
+        44888,
+        44888,
+        44888,
+        44888
+      ],
+      "simulation_cu_mean": 44888.0,
+      "corrupted_frontier_probe_cu": 44889,
+      "corrupted_frontier_rejected": true
+    },
+    {
+      "arity": 8,
+      "parent_hash_calls": 72,
+      "frontier_hashes": 469,
+      "frontier_bytes": 15008,
+      "opened_digest_entry_bytes": 1296,
+      "synthetic_minimal_subtree_bytes": 16304,
+      "parent_preimage_bytes": 18504,
+      "sha256_compression_blocks": 360,
+      "simulation_cu": [
+        43003,
+        43003,
+        43003,
+        43003,
+        43003
+      ],
+      "simulation_cu_mean": 43003.0,
+      "corrupted_frontier_probe_cu": 43004,
+      "corrupted_frontier_rejected": true
+    }
+  ],
+  "radix8_minus_radix4_cu": -1885,
+  "two_layer0_tree_projection_cu": -3770,
+  "two_layer0_tree_frontier_byte_delta": 10752,
+  "notes": [
+    "Append-only tag 35 hashes the same 36 sorted depth-12 leaf digests under both arities; production roots, proof framing, transcript, and profile remain radix-4.",
+    "The frontier is embedded read-only and leaf hashing is excluded equally. The measured object is minimal-subtree verification/traversal, not proof construction or a whole PCS.",
+    "Synthetic minimal-subtree bytes count (u32 index + 32-byte opened digest) per query plus frontier hashes. Real Aspis leaves are larger but identical across this A/B, so the exact arity-dependent proof delta is the frontier-byte delta.",
+    "The corruption instruction flips one built-in frontier bit and returns success only if the selected verifier rejects; host tests separately cover truncation, extension, malformed hashes, leaf/root mutations, duplicate/order/range failures, and invalid depths.",
+    "Pure radix-8 directly supports depths divisible by three. Current later trees at depths 10 and 8 require a separately specified hybrid-arity commitment; this artifact does not project or authorize one.",
+    "The two-layer0 projection multiplies only the isolated same-shape delta for C1 and C2. It is overlap-safe for those two calls but is not an integrated verifier total."
+  ]
+}
