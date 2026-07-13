@@ -17,7 +17,7 @@ use std::{
 use anyhow::{anyhow, bail, ensure, Context, Result};
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use borsh::to_vec;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use solana_sdk::{
     compute_budget::ComputeBudgetInstruction,
@@ -879,6 +879,12 @@ pub struct AtomicProfile23AcceptanceSummary {
     pub proof_bytes: usize,
     pub proof_sha256: String,
     pub proof_unmined: bool,
+    pub statement_path: Option<String>,
+    pub statement_source_override: bool,
+    pub statement_sha256: Option<String>,
+    pub statement_pool_hex: String,
+    pub statement_sequence: u64,
+    pub canonical_public_input_digest: String,
     pub batch_grinding_bits: u8,
     pub final_grinding_bits: u8,
     pub fold_grinding_bits: [u8; 4],
@@ -986,6 +992,12 @@ pub struct AtomicProfile23MutationSummary {
     pub proof_bytes: usize,
     pub proof_sha256: String,
     pub proof_unmined: bool,
+    pub statement_path: Option<String>,
+    pub statement_source_override: bool,
+    pub statement_sha256: Option<String>,
+    pub statement_pool_hex: String,
+    pub statement_sequence: u64,
+    pub canonical_public_input_digest: String,
     pub production_pow_bypass_exposed: bool,
     pub default_tag60_fail_closed_host: bool,
     pub candidate_tag60_rejects_unmined_sbf: bool,
@@ -1507,6 +1519,410 @@ fn profile23_proof_path(root: &Path) -> (PathBuf, bool) {
             root.join("results/stage2/proofs/atomic_state_only_profile23_v3_unmined.bin"),
             false,
         ),
+    }
+}
+
+const PROFILE23_STATEMENT_ARTIFACT: &str = "profile23_production_statement";
+const PROFILE23_STATEMENT_SELECTION_RULE: &str =
+    "least Good23 selector from three post-final branches";
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Profile23StatementSidecar {
+    artifact: String,
+    pool_hex: String,
+    sequence: u64,
+    current_anchor_hex: String,
+    nullifier_hex: String,
+    output_commitment_hex: String,
+    output_anchor_hex: String,
+    asset_id: u32,
+    fee: u32,
+    selection_rule: String,
+    witness_independent_public_metadata: bool,
+}
+
+#[derive(Debug)]
+struct Profile23StatementSelection {
+    statement: aspis_statement::AtomicPaymentStatementV3,
+    path: Option<PathBuf>,
+    source_override: bool,
+    sha256: Option<String>,
+    canonical_public_input_digest: String,
+}
+
+fn profile23_hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
+fn decode_profile23_hex_32(field: &str, value: &str) -> Result<[u8; 32]> {
+    let bytes = value.as_bytes();
+    ensure!(
+        bytes.len() == 64,
+        "Profile23 statement sidecar {field} must contain exactly 64 lowercase hex characters"
+    );
+    ensure!(
+        bytes
+            .iter()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(byte)),
+        "Profile23 statement sidecar {field} is not canonical lowercase hex"
+    );
+    let mut decoded = [0u8; 32];
+    for (index, output) in decoded.iter_mut().enumerate() {
+        let high = match bytes[index * 2] {
+            b'0'..=b'9' => bytes[index * 2] - b'0',
+            byte => byte - b'a' + 10,
+        };
+        let low = match bytes[index * 2 + 1] {
+            b'0'..=b'9' => bytes[index * 2 + 1] - b'0',
+            byte => byte - b'a' + 10,
+        };
+        *output = (high << 4) | low;
+    }
+    Ok(decoded)
+}
+
+fn profile23_statement_from_sidecar(
+    sidecar: Profile23StatementSidecar,
+) -> Result<aspis_statement::AtomicPaymentStatementV3> {
+    ensure!(
+        sidecar.artifact == PROFILE23_STATEMENT_ARTIFACT,
+        "Profile23 statement sidecar artifact must be {PROFILE23_STATEMENT_ARTIFACT}"
+    );
+    ensure!(
+        sidecar.selection_rule == PROFILE23_STATEMENT_SELECTION_RULE,
+        "Profile23 statement sidecar selection_rule drift"
+    );
+    ensure!(
+        sidecar.witness_independent_public_metadata,
+        "Profile23 statement sidecar must declare witness-independent public metadata"
+    );
+
+    let current_anchor_bytes =
+        decode_profile23_hex_32("current_anchor_hex", &sidecar.current_anchor_hex)?;
+    let nullifier_bytes = decode_profile23_hex_32("nullifier_hex", &sidecar.nullifier_hex)?;
+    let output_commitment_bytes =
+        decode_profile23_hex_32("output_commitment_hex", &sidecar.output_commitment_hex)?;
+    let output_anchor_bytes =
+        decode_profile23_hex_32("output_anchor_hex", &sidecar.output_anchor_hex)?;
+    let statement = aspis_statement::AtomicPaymentStatementV3 {
+        pool: decode_profile23_hex_32("pool_hex", &sidecar.pool_hex)?,
+        sequence: sidecar.sequence,
+        spend: aspis_statement::SpendPublic {
+            anchor: aspis_statement::decode_digest_canonical(&current_anchor_bytes).map_err(
+                |_| anyhow!("Profile23 statement sidecar current_anchor_hex is noncanonical"),
+            )?,
+            nullifier: aspis_statement::decode_digest_canonical(&nullifier_bytes).map_err(
+                |_| anyhow!("Profile23 statement sidecar nullifier_hex is noncanonical"),
+            )?,
+            output_commitment: aspis_statement::decode_digest_canonical(&output_commitment_bytes)
+                .map_err(|_| {
+                anyhow!("Profile23 statement sidecar output_commitment_hex is noncanonical")
+            })?,
+            asset_id: aspis_statement::decode_asset_id_canonical(sidecar.asset_id)
+                .map_err(|_| anyhow!("Profile23 statement sidecar asset_id is noncanonical"))?,
+            fee: sidecar.fee,
+        },
+        output_anchor: aspis_statement::decode_digest_canonical(&output_anchor_bytes).map_err(
+            |_| anyhow!("Profile23 statement sidecar output_anchor_hex is noncanonical"),
+        )?,
+    };
+    aspis_statement::encode_atomic_payment_statement_v3(&statement)
+        .map_err(|error| anyhow!("Profile23 statement sidecar is noncanonical: {error:?}"))?;
+    Ok(statement)
+}
+
+fn decode_profile23_statement_sidecar(
+    bytes: &[u8],
+) -> Result<aspis_statement::AtomicPaymentStatementV3> {
+    let sidecar: Profile23StatementSidecar =
+        serde_json::from_slice(bytes).context("decode canonical Profile23 statement sidecar")?;
+    profile23_statement_from_sidecar(sidecar)
+}
+
+fn profile23_fixture_statement() -> Result<aspis_statement::AtomicPaymentStatementV3> {
+    use aspis_core::field::M31;
+    use aspis_statement::atomic_state_only_trace::atomic_merkle_root_v3;
+    use aspis_statement::{
+        derive_nullifier, derive_owner_key, note_commitment, output_commitment, Digest, MerklePath,
+        SpendPublic,
+    };
+
+    fn digest(seed: u32) -> Digest {
+        core::array::from_fn(|index| M31(seed + 17 * index as u32))
+    }
+
+    let nullifier_key = digest(101);
+    let input_salt = digest(301);
+    let output_salt = digest(501);
+    let output_owner_key = digest(701);
+    let asset_id = M31(17);
+    let value = 1_000_000;
+    let value_out = 999_999;
+    let path = MerklePath {
+        siblings: (0..20).map(|level| digest(1_000 + 31 * level)).collect(),
+        index: 0x5_a5a5,
+    };
+    let input = note_commitment(
+        &derive_owner_key(&nullifier_key),
+        value,
+        asset_id,
+        &input_salt,
+    );
+    let output = output_commitment(&output_owner_key, value_out, asset_id, &output_salt);
+    Ok(aspis_statement::AtomicPaymentStatementV3 {
+        pool: [0x5a; 32],
+        sequence: 73,
+        spend: SpendPublic {
+            anchor: atomic_merkle_root_v3(input, &path)
+                .map_err(|error| anyhow!("atomic input root: {error:?}"))?,
+            nullifier: derive_nullifier(&nullifier_key, &input_salt),
+            output_commitment: output,
+            asset_id,
+            fee: 1,
+        },
+        output_anchor: atomic_merkle_root_v3(output, &path)
+            .map_err(|error| anyhow!("atomic output root: {error:?}"))?,
+    })
+}
+
+fn profile23_statement_selection_from_path(
+    root: &Path,
+    proof_source_override: bool,
+    statement_path: Option<PathBuf>,
+) -> Result<Profile23StatementSelection> {
+    use sha2::Digest as _;
+
+    let (statement, path, source_override, sha256) = match statement_path {
+        Some(path) => {
+            ensure!(
+                proof_source_override,
+                "ASPIS_PROFILE23_STATEMENT requires ASPIS_PROFILE23_PROOF"
+            );
+            let path = if path.is_absolute() {
+                path
+            } else {
+                root.join(path)
+            };
+            let path = fs::canonicalize(&path).with_context(|| {
+                format!("resolve Profile23 statement sidecar {}", path.display())
+            })?;
+            let bytes = fs::read(&path)
+                .with_context(|| format!("read Profile23 statement sidecar {}", path.display()))?;
+            let statement = decode_profile23_statement_sidecar(&bytes).with_context(|| {
+                format!(
+                    "decode canonical Profile23 statement sidecar {}",
+                    path.display()
+                )
+            })?;
+            let sha256 = profile23_hex(&sha2::Sha256::digest(&bytes));
+            (statement, Some(path), true, Some(sha256))
+        }
+        None => (profile23_fixture_statement()?, None, false, None),
+    };
+    let canonical_public_input_digest = profile23_hex(
+        &aspis_statement::atomic_payment_statement_digest_v3(&statement, HOST_HASH)
+            .map_err(|error| anyhow!("canonical Profile23 public-input digest: {error:?}"))?,
+    );
+    Ok(Profile23StatementSelection {
+        statement,
+        path,
+        source_override,
+        sha256,
+        canonical_public_input_digest,
+    })
+}
+
+fn profile23_statement_selection(
+    root: &Path,
+    proof_source_override: bool,
+) -> Result<Profile23StatementSelection> {
+    profile23_statement_selection_from_path(
+        root,
+        proof_source_override,
+        std::env::var_os("ASPIS_PROFILE23_STATEMENT").map(PathBuf::from),
+    )
+}
+
+fn profile23_recorded_path(root: &Path, path: &Path) -> String {
+    path.strip_prefix(root)
+        .unwrap_or(path)
+        .display()
+        .to_string()
+}
+
+#[cfg(test)]
+mod profile23_statement_sidecar_tests {
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    use serde_json::{json, Value};
+    use sha2::Digest as _;
+
+    use super::*;
+
+    static NEXT_TEMP: AtomicU64 = AtomicU64::new(0);
+
+    struct TempRoot(PathBuf);
+
+    impl TempRoot {
+        fn new() -> Self {
+            let suffix = NEXT_TEMP.fetch_add(1, Ordering::Relaxed);
+            let path = std::env::temp_dir().join(format!(
+                "aspis-profile23-statement-{}-{suffix}",
+                std::process::id()
+            ));
+            fs::create_dir_all(&path).unwrap();
+            Self(path)
+        }
+    }
+
+    impl Drop for TempRoot {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn sidecar(statement: &aspis_statement::AtomicPaymentStatementV3) -> Value {
+        json!({
+            "artifact": PROFILE23_STATEMENT_ARTIFACT,
+            "pool_hex": profile23_hex(&statement.pool),
+            "sequence": statement.sequence,
+            "current_anchor_hex": profile23_hex(
+                &aspis_statement::encode_digest_canonical(&statement.spend.anchor)
+            ),
+            "nullifier_hex": profile23_hex(
+                &aspis_statement::encode_digest_canonical(&statement.spend.nullifier)
+            ),
+            "output_commitment_hex": profile23_hex(
+                &aspis_statement::encode_digest_canonical(&statement.spend.output_commitment)
+            ),
+            "output_anchor_hex": profile23_hex(
+                &aspis_statement::encode_digest_canonical(&statement.output_anchor)
+            ),
+            "asset_id": statement.spend.asset_id.0,
+            "fee": statement.spend.fee,
+            "selection_rule": PROFILE23_STATEMENT_SELECTION_RULE,
+            "witness_independent_public_metadata": true,
+        })
+    }
+
+    #[test]
+    fn canonical_sidecar_reconstructs_every_public_field() {
+        let mut expected = profile23_fixture_statement().unwrap();
+        expected.pool = [0x42; 32];
+        expected.sequence = 91;
+        let bytes = serde_json::to_vec_pretty(&sidecar(&expected)).unwrap();
+
+        let decoded = decode_profile23_statement_sidecar(&bytes).unwrap();
+        assert_eq!(decoded, expected);
+        let digest =
+            aspis_statement::atomic_payment_statement_digest_v3(&decoded, HOST_HASH).unwrap();
+        assert_eq!(profile23_hex(&digest).len(), 64);
+    }
+
+    #[test]
+    fn sidecar_rejects_noncanonical_fields_and_schema_drift() {
+        let statement = profile23_fixture_statement().unwrap();
+
+        let mut uppercase = sidecar(&statement);
+        uppercase["pool_hex"] = Value::String("AA".repeat(32));
+        let error = decode_profile23_statement_sidecar(&serde_json::to_vec(&uppercase).unwrap())
+            .unwrap_err();
+        assert!(error.to_string().contains("canonical lowercase hex"));
+
+        let mut noncanonical_digest = sidecar(&statement);
+        let mut digest = [0u8; 32];
+        digest[..4].copy_from_slice(&aspis_core::field::P.to_le_bytes());
+        noncanonical_digest["current_anchor_hex"] = Value::String(profile23_hex(&digest));
+        let error =
+            decode_profile23_statement_sidecar(&serde_json::to_vec(&noncanonical_digest).unwrap())
+                .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("current_anchor_hex is noncanonical"));
+
+        let mut invalid_fee = sidecar(&statement);
+        invalid_fee["fee"] = Value::from(aspis_statement::VALUE_LIMIT);
+        let error = decode_profile23_statement_sidecar(&serde_json::to_vec(&invalid_fee).unwrap())
+            .unwrap_err();
+        assert!(error.to_string().contains("FeeOutOfRange"));
+
+        let mut unknown_field = sidecar(&statement);
+        unknown_field["unreviewed"] = Value::Bool(true);
+        let error =
+            decode_profile23_statement_sidecar(&serde_json::to_vec(&unknown_field).unwrap())
+                .unwrap_err();
+        assert!(format!("{error:#}").contains("unknown field"));
+    }
+
+    #[test]
+    fn explicit_sidecar_requires_proof_override_and_records_exact_identity() {
+        let root = TempRoot::new();
+        let mut expected = profile23_fixture_statement().unwrap();
+        expected.pool = [0x24; 32];
+        expected.sequence = 107;
+        let bytes = serde_json::to_vec_pretty(&sidecar(&expected)).unwrap();
+        let relative = PathBuf::from("statement.json");
+        fs::write(root.0.join(&relative), &bytes).unwrap();
+
+        let error = profile23_statement_selection_from_path(&root.0, false, Some(relative.clone()))
+            .unwrap_err();
+        assert!(error.to_string().contains("requires ASPIS_PROFILE23_PROOF"));
+
+        let selected =
+            profile23_statement_selection_from_path(&root.0, true, Some(relative)).unwrap();
+        assert_eq!(selected.statement, expected);
+        assert!(selected.source_override);
+        assert_eq!(
+            selected.path.as_deref(),
+            Some(
+                fs::canonicalize(root.0.join("statement.json"))
+                    .unwrap()
+                    .as_path()
+            )
+        );
+        assert_eq!(
+            selected.sha256.as_deref(),
+            Some(profile23_hex(&sha2::Sha256::digest(&bytes)).as_str())
+        );
+        let expected_digest =
+            aspis_statement::atomic_payment_statement_digest_v3(&selected.statement, HOST_HASH)
+                .unwrap();
+        assert_eq!(
+            selected.canonical_public_input_digest,
+            profile23_hex(&expected_digest)
+        );
+
+        let default = profile23_statement_selection_from_path(&root.0, false, None).unwrap();
+        assert_eq!(default.statement, profile23_fixture_statement().unwrap());
+        assert!(!default.source_override);
+        assert!(default.path.is_none());
+        assert!(default.sha256.is_none());
+        assert_eq!(
+            default.canonical_public_input_digest,
+            "52e96f99756fe8fd2d8b7a700019b143d7eb549af1bf1ae987e99a75cadcd4c9"
+        );
+    }
+
+    #[test]
+    fn built_in_fixture_preserves_committed_unmined_negative_kat() {
+        use aspis_statement::state_only_profile23::{
+            verify_atomic_state_only_profile23_unmined_for_diagnostics_v3,
+            verify_atomic_state_only_profile23_v3,
+        };
+
+        let root = workspace_root().unwrap();
+        let proof =
+            fs::read(root.join("results/stage2/proofs/atomic_state_only_profile23_v3_unmined.bin"))
+                .unwrap();
+        let statement = profile23_fixture_statement().unwrap();
+        verify_atomic_state_only_profile23_unmined_for_diagnostics_v3(
+            &proof, &statement, HOST_HASH, None,
+        )
+        .unwrap();
+        assert!(
+            verify_atomic_state_only_profile23_v3(&proof, &statement, HOST_HASH, None).is_err()
+        );
     }
 }
 
@@ -12391,62 +12807,18 @@ pub fn run_stage2_atomic_profile22_acceptance() -> Result<AtomicProfile22Accepta
 
 pub fn run_stage2_atomic_profile23_acceptance() -> Result<AtomicProfile23AcceptanceSummary> {
     use aspis_core::circle_prefix::RATE16_HARDENED_FOLD_POW_BITS;
-    use aspis_core::field::M31;
     use aspis_core::state_only_prefix::{
         STATE_ONLY_PROFILE23_BATCH_GRINDING_BITS, STATE_ONLY_PROFILE23_GRINDING_BITS,
     };
-    use aspis_statement::atomic_state_only_trace::atomic_merkle_root_v3;
     use aspis_statement::state_only_profile23::{
         verify_atomic_state_only_profile23_unmined_for_diagnostics_v3,
         verify_atomic_state_only_profile23_v3,
     };
-    use aspis_statement::{
-        derive_nullifier, derive_owner_key, encode_digest_canonical, note_commitment,
-        output_commitment, AtomicPaymentStatementV3, Digest, MerklePath, SpendPublic,
-    };
+    use aspis_statement::{encode_digest_canonical, AtomicPaymentStatementV3, SpendPublic};
     use sha2::{Digest as _, Sha256};
 
     const PROOF_BYTES: usize = 59_679;
     const PROOF_SHA256: &str = "07f8258f9297bd19d007b5bebdfbb710e8e9e44dcc2277f8cf7a6148db6ce902";
-
-    fn digest(seed: u32) -> Digest {
-        core::array::from_fn(|index| M31(seed + 17 * index as u32))
-    }
-
-    fn statement() -> Result<AtomicPaymentStatementV3> {
-        let nullifier_key = digest(101);
-        let input_salt = digest(301);
-        let output_salt = digest(501);
-        let output_owner_key = digest(701);
-        let asset_id = M31(17);
-        let value = 1_000_000;
-        let value_out = 999_999;
-        let path = MerklePath {
-            siblings: (0..20).map(|level| digest(1_000 + 31 * level)).collect(),
-            index: 0x5_a5a5,
-        };
-        let input = note_commitment(
-            &derive_owner_key(&nullifier_key),
-            value,
-            asset_id,
-            &input_salt,
-        );
-        let output = output_commitment(&output_owner_key, value_out, asset_id, &output_salt);
-        Ok(AtomicPaymentStatementV3 {
-            pool: [0x5a; 32],
-            sequence: 73,
-            spend: SpendPublic {
-                anchor: atomic_merkle_root_v3(input, &path)
-                    .map_err(|error| anyhow!("atomic input root: {error:?}"))?,
-                nullifier: derive_nullifier(&nullifier_key, &input_salt),
-                output_commitment: output,
-                asset_id,
-                fee: 1,
-            },
-            output_anchor: atomic_merkle_root_v3(output, &path)
-                .map_err(|error| anyhow!("atomic output root: {error:?}"))?,
-        })
-    }
 
     fn public_bytes(public: &SpendPublic) -> [u8; 104] {
         let mut output = [0u8; 104];
@@ -12541,8 +12913,9 @@ pub fn run_stage2_atomic_profile23_acceptance() -> Result<AtomicProfile23Accepta
     }
 
     let root = workspace_root()?;
-    let statement = statement()?;
     let (proof_path, proof_source_override) = profile23_proof_path(&root);
+    let statement_selection = profile23_statement_selection(&root, proof_source_override)?;
+    let statement = &statement_selection.statement;
     let proof = fs::read(&proof_path)
         .with_context(|| format!("read profile23 proof {}", proof_path.display()))?;
     let proof_sha256 = Sha256::digest(&proof)
@@ -12554,11 +12927,11 @@ pub fn run_stage2_atomic_profile23_acceptance() -> Result<AtomicProfile23Accepta
         ensure!(proof_sha256 == PROOF_SHA256, "profile23 proof KAT drift");
     }
     verify_atomic_state_only_profile23_unmined_for_diagnostics_v3(
-        &proof, &statement, HOST_HASH, None,
+        &proof, statement, HOST_HASH, None,
     )
     .map_err(|error| anyhow!("profile23 host replay: {error:?}"))?;
     let proof_unmined =
-        verify_atomic_state_only_profile23_v3(&proof, &statement, HOST_HASH, None).is_err();
+        verify_atomic_state_only_profile23_v3(&proof, statement, HOST_HASH, None).is_err();
 
     let default_data = to_vec(&AspisInstruction::VerifyAtomicStateOnlyProfile23V3 {
         pool: statement.pool,
@@ -12599,7 +12972,7 @@ pub fn run_stage2_atomic_profile23_acceptance() -> Result<AtomicProfile23Accepta
             &[
                 ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
                 ComputeBudgetInstruction::request_heap_frame(HEAP_FRAME_BYTES),
-                instruction(proof_account.pubkey(), &statement, diagnostic_unmined)?,
+                instruction(proof_account.pubkey(), statement, diagnostic_unmined)?,
             ],
             Some(&payer.pubkey()),
             &[&payer],
@@ -12632,10 +13005,18 @@ pub fn run_stage2_atomic_profile23_acceptance() -> Result<AtomicProfile23Accepta
     Ok(AtomicProfile23AcceptanceSummary {
         generated_at_utc: chrono::Utc::now().to_rfc3339(),
         command: if proof_source_override {
-            format!(
-                "ASPIS_PROFILE23_PROOF={} NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-profile23-acceptance",
-                proof_path.display()
-            )
+            if let Some(statement_path) = statement_selection.path.as_ref() {
+                format!(
+                    "ASPIS_PROFILE23_PROOF={} ASPIS_PROFILE23_STATEMENT={} NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-profile23-acceptance",
+                    proof_path.display(),
+                    statement_path.display()
+                )
+            } else {
+                format!(
+                    "ASPIS_PROFILE23_PROOF={} NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-profile23-acceptance",
+                    proof_path.display()
+                )
+            }
         } else {
             "NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-profile23-acceptance".to_string()
         },
@@ -12650,6 +13031,17 @@ pub fn run_stage2_atomic_profile23_acceptance() -> Result<AtomicProfile23Accepta
         proof_bytes: proof.len(),
         proof_sha256,
         proof_unmined,
+        statement_path: statement_selection
+            .path
+            .as_deref()
+            .map(|path| profile23_recorded_path(&root, path)),
+        statement_source_override: statement_selection.source_override,
+        statement_sha256: statement_selection.sha256.clone(),
+        statement_pool_hex: profile23_hex(&statement.pool),
+        statement_sequence: statement.sequence,
+        canonical_public_input_digest: statement_selection
+            .canonical_public_input_digest
+            .clone(),
         batch_grinding_bits: STATE_ONLY_PROFILE23_BATCH_GRINDING_BITS,
         final_grinding_bits: STATE_ONLY_PROFILE23_GRINDING_BITS,
         fold_grinding_bits: RATE16_HARDENED_FOLD_POW_BITS,
@@ -12673,6 +13065,11 @@ pub fn run_stage2_atomic_profile23_acceptance() -> Result<AtomicProfile23Accepta
                 "The selected proof is unmined. The diagnostic arm bypasses only PoW; both host and SBF production entrypoints reject those same bytes.".to_string()
             } else {
                 "The ASPIS_PROFILE23_PROOF override supplied a mined proof; production host and SBF tag59 both accepted it without a PoW bypass.".to_string()
+            },
+            if statement_selection.source_override {
+                "ASPIS_PROFILE23_STATEMENT supplied an exact-schema canonical public-statement sidecar; its path, byte SHA-256, pool, sequence, and transcript public-input digest are pinned in this artifact.".to_string()
+            } else {
+                "No statement sidecar was supplied; this artifact uses the unchanged built-in Profile23 fixture statement.".to_string()
             },
             "Tags60/61 remain feature-gated; production mutation stays disabled until the complete-view HVZK audit and mined tag60 KAT are green.".to_string(),
         ],
@@ -13918,16 +14315,11 @@ pub fn run_stage2_atomic_profile22_mutation() -> Result<AtomicProfile22MutationS
 }
 
 pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationSummary> {
-    use aspis_core::field::M31;
-    use aspis_statement::atomic_state_only_trace::atomic_merkle_root_v3;
     use aspis_statement::state_only_profile23::{
         verify_atomic_state_only_profile23_unmined_for_diagnostics_v3,
         verify_atomic_state_only_profile23_v3,
     };
-    use aspis_statement::{
-        derive_nullifier, derive_owner_key, encode_digest_canonical, note_commitment,
-        output_commitment, AtomicPaymentStatementV3, Digest, MerklePath, SpendPublic,
-    };
+    use aspis_statement::{encode_digest_canonical, AtomicPaymentStatementV3, SpendPublic};
     use aspis_verifier::atomic_payment::{
         atomic_nullifier_address, AtomicPaymentPublicInputs, AtomicPoolStateV1,
         ATOMIC_ERROR_VERIFIER_NOT_INTEGRATED, ATOMIC_NULLIFIER_MAGIC, ATOMIC_NULLIFIER_MARKER_LEN,
@@ -13943,45 +14335,6 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
     const COMMITTED_UNMINED_PROOF_BYTES: usize = 59_679;
     const COMMITTED_UNMINED_PROOF_SHA256: &str =
         "07f8258f9297bd19d007b5bebdfbb710e8e9e44dcc2277f8cf7a6148db6ce902";
-    fn digest(seed: u32) -> Digest {
-        core::array::from_fn(|index| M31(seed + 17 * index as u32))
-    }
-
-    fn statement() -> Result<AtomicPaymentStatementV3> {
-        let nullifier_key = digest(101);
-        let input_salt = digest(301);
-        let output_salt = digest(501);
-        let output_owner_key = digest(701);
-        let asset_id = M31(17);
-        let value = 1_000_000;
-        let value_out = 999_999;
-        let path = MerklePath {
-            siblings: (0..20).map(|level| digest(1_000 + 31 * level)).collect(),
-            index: 0x5_a5a5,
-        };
-        let input = note_commitment(
-            &derive_owner_key(&nullifier_key),
-            value,
-            asset_id,
-            &input_salt,
-        );
-        let output = output_commitment(&output_owner_key, value_out, asset_id, &output_salt);
-        Ok(AtomicPaymentStatementV3 {
-            pool: [0x5a; 32],
-            sequence: 73,
-            spend: SpendPublic {
-                anchor: atomic_merkle_root_v3(input, &path)
-                    .map_err(|error| anyhow!("atomic input root: {error:?}"))?,
-                nullifier: derive_nullifier(&nullifier_key, &input_salt),
-                output_commitment: output,
-                asset_id,
-                fee: 1,
-            },
-            output_anchor: atomic_merkle_root_v3(output, &path)
-                .map_err(|error| anyhow!("atomic output root: {error:?}"))?,
-        })
-    }
-
     fn public_inputs(statement: &AtomicPaymentStatementV3) -> AtomicPaymentPublicInputs {
         AtomicPaymentPublicInputs {
             current_anchor: encode_digest_canonical(&statement.spend.anchor),
@@ -14870,6 +15223,8 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
         "committed unmined profile23 proof KAT drift"
     );
     let (proof_path, proof_source_override) = profile23_proof_path(&root);
+    let statement_selection = profile23_statement_selection(&root, proof_source_override)?;
+    let statement = &statement_selection.statement;
     let proof = fs::read(&proof_path)
         .with_context(|| format!("read integrated profile23 proof {}", proof_path.display()))?;
     let proof_sha256 = Sha256::digest(&proof)
@@ -14886,16 +15241,16 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
             "integrated profile23 proof KAT drift"
         );
     }
-    let statement = statement()?;
     verify_atomic_state_only_profile23_unmined_for_diagnostics_v3(
-        &proof, &statement, HOST_HASH, None,
+        &proof, statement, HOST_HASH, None,
     )
     .map_err(|error| anyhow!("profile23 mutation host replay: {error:?}"))?;
     let proof_unmined =
-        verify_atomic_state_only_profile23_v3(&proof, &statement, HOST_HASH, None).is_err();
+        verify_atomic_state_only_profile23_v3(&proof, statement, HOST_HASH, None).is_err();
+    let committed_unmined_statement = profile23_fixture_statement()?;
     verify_atomic_state_only_profile23_unmined_for_diagnostics_v3(
         &committed_unmined_proof,
-        &statement,
+        &committed_unmined_statement,
         HOST_HASH,
         None,
     )
@@ -14903,7 +15258,7 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
     ensure!(
         verify_atomic_state_only_profile23_v3(
             &committed_unmined_proof,
-            &statement,
+            &committed_unmined_statement,
             HOST_HASH,
             None,
         )
@@ -14930,6 +15285,36 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
     ensure!(
         acceptance["proof_unmined"].as_bool() == Some(proof_unmined),
         "tag59/tag61 PoW classification mismatch"
+    );
+    let recorded_statement_path = statement_selection
+        .path
+        .as_deref()
+        .map(|path| profile23_recorded_path(&root, path));
+    ensure!(
+        acceptance["statement_source_override"].as_bool()
+            == Some(statement_selection.source_override),
+        "tag59/tag61 statement-source classification mismatch"
+    );
+    ensure!(
+        match recorded_statement_path.as_deref() {
+            Some(path) => acceptance["statement_path"].as_str() == Some(path),
+            None => acceptance["statement_path"].is_null(),
+        },
+        "tag59/tag61 statement path mismatch; run acceptance with the same ASPIS_PROFILE23_STATEMENT"
+    );
+    ensure!(
+        match statement_selection.sha256.as_deref() {
+            Some(sha256) => acceptance["statement_sha256"].as_str() == Some(sha256),
+            None => acceptance["statement_sha256"].is_null(),
+        },
+        "tag59/tag61 statement sidecar SHA-256 mismatch"
+    );
+    ensure!(
+        acceptance["statement_pool_hex"].as_str() == Some(profile23_hex(&statement.pool).as_str())
+            && acceptance["statement_sequence"].as_u64() == Some(statement.sequence)
+            && acceptance["canonical_public_input_digest"].as_str()
+                == Some(statement_selection.canonical_public_input_digest.as_str()),
+        "tag59/tag61 canonical public statement binding mismatch"
     );
     let read_only_tag59_cu = acceptance["literal_simulation_cu"]
         .as_u64()
@@ -15007,7 +15392,7 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
         "profile23 HVZK closure must not independently authorize production"
     );
 
-    let default_tag60 = instruction_data(&public_inputs(&statement), false)?;
+    let default_tag60 = instruction_data(&public_inputs(statement), false)?;
     let default_tag60_fail_closed_host =
         aspis_verifier::process_instruction(&aspis_verifier::id(), &[], &default_tag60)
             == Err(solana_sdk::program_error::ProgramError::Custom(
@@ -15032,7 +15417,7 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
         &root,
         &diagnostic_so,
         &proof,
-        &statement,
+        statement,
         read_only_tag59_cu,
         true,
         true,
@@ -15043,7 +15428,7 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
         &root,
         &diagnostic_so,
         &proof,
-        &statement,
+        statement,
         read_only_tag59_cu,
         false,
         false,
@@ -15094,7 +15479,7 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
             &production_so,
             &proof,
             &committed_unmined_proof,
-            &statement,
+            statement,
             true,
             false,
         )?;
@@ -15103,7 +15488,7 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
             &production_so,
             &proof,
             &committed_unmined_proof,
-            &statement,
+            statement,
             false,
             true,
         )?;
@@ -15130,10 +15515,18 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
     Ok(AtomicProfile23MutationSummary {
         generated_at_utc: chrono::Utc::now().to_rfc3339(),
         command: if proof_source_override {
-            format!(
-                "ASPIS_PROFILE23_PROOF={} NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-profile23-mutation",
-                proof_path.display()
-            )
+            if let Some(statement_path) = statement_selection.path.as_ref() {
+                format!(
+                    "ASPIS_PROFILE23_PROOF={} ASPIS_PROFILE23_STATEMENT={} NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-profile23-mutation",
+                    proof_path.display(),
+                    statement_path.display()
+                )
+            } else {
+                format!(
+                    "ASPIS_PROFILE23_PROOF={} NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-profile23-mutation",
+                    proof_path.display()
+                )
+            }
         } else {
             "NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-profile23-mutation".to_string()
         },
@@ -15151,6 +15544,14 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
         proof_bytes: proof.len(),
         proof_sha256,
         proof_unmined,
+        statement_path: recorded_statement_path,
+        statement_source_override: statement_selection.source_override,
+        statement_sha256: statement_selection.sha256.clone(),
+        statement_pool_hex: profile23_hex(&statement.pool),
+        statement_sequence: statement.sequence,
+        canonical_public_input_digest: statement_selection
+            .canonical_public_input_digest
+            .clone(),
         production_pow_bypass_exposed: false,
         default_tag60_fail_closed_host,
         candidate_tag60_rejects_unmined_sbf,
@@ -15183,6 +15584,11 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
                     "ASPIS_PROFILE23_PROOF supplied mined bytes: the command additionally built with the isolated feature set {}, proved tag59's diagnostic bit and tag61 unavailable, and ran exact production tags59/60 on both marker paths.",
                     PRODUCTION_ONLY_FEATURES.join(",")
                 )
+            },
+            if statement_selection.source_override {
+                "ASPIS_PROFILE23_STATEMENT supplied the canonical public statement used by host, diagnostic SBF, and production SBF paths; its exact file and canonical transcript digest match the tag59 acceptance artifact.".to_string()
+            } else {
+                "No statement sidecar was supplied; this artifact uses the unchanged built-in Profile23 fixture statement.".to_string()
             },
             "Both marker paths emit single-instruction, overlap-free ledgers. Corruption rollback, exact pool/marker images, duplicate rejection, and a two-signer System-path race are tested.".to_string(),
             if production_only_mined_override_exercised {
