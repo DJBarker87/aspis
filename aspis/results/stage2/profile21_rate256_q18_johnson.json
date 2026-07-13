@@ -1,0 +1,34 @@
+{
+  "schema": "aspis.profile21.rate256_q18_johnson.v1",
+  "complete_system_claim_quotable": false,
+  "theorem_scope": "S-two Corollary 1, Theorem 19, and Lemma 4; Johnson regime",
+  "exact_code": "L'_11(QM31) subset L_11(QM31) on G'_19",
+  "rho": 0.00390625,
+  "codeword_symbols": 524288,
+  "query_fibers": 131072,
+  "query_count": 18,
+  "batch_work_bits": 38,
+  "query_work_bits": 38,
+  "johnson_multiplicity": 10,
+  "johnson_agreement_fraction": 0.065625000000000,
+  "maximum_agreement_fibers": 8601,
+  "batching_bits_after_g38": 109.868487186522458,
+  "query_bits_after_g38": 108.758800441940721,
+  "fold_rounds": [
+    {"round":0,"output_symbols":131072,"output_dimension":512,"multiplicity":10,"list_parameter":168.164303217752860,"unground_bits":77.034181410729516,"work_bits":39,"normalized_bits":116.034181410729516},
+    {"round":1,"output_symbols":32768,"output_dimension":128,"multiplicity":10,"list_parameter":168.660120421137009,"unground_bits":79.021439223556257,"work_bits":35,"normalized_bits":114.021439223556257},
+    {"round":2,"output_symbols":8192,"output_dimension":32,"multiplicity":8,"list_parameter":138.176138176207274,"unground_bits":82.493978687862963,"work_bits":31,"normalized_bits":113.493978687862963},
+    {"round":3,"output_symbols":2048,"output_dimension":8,"multiplicity":5,"list_parameter":94.075957153173391,"unground_bits":87.413866204038996,"work_bits":27,"normalized_bits":114.413866204038996}
+  ],
+  "fold_union_bits": 112.234408709511115,
+  "ood_union_bits": 211.099587700890623,
+  "conservative_round_union_bits": 107.936721322488211,
+  "after_bcs_factor31_bits": 102.982525012101334,
+  "after_bcs_factor33_bits": 102.892327203129753,
+  "after_bcs_factor40_bits": 102.614793227600842,
+  "promotion_gates": [
+    "exact affine q18 containment",
+    "production wire and transcript KAT",
+    "integrated verifier and mutation tests"
+  ]
+}

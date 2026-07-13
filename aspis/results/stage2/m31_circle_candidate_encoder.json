@@ -1,0 +1,60 @@
+{
+  "status": "HOST_CANDIDATE_ENCODER_PASS_ONLY",
+  "sources": {
+    "candidate_module": "crates/aspis-prover/src/circle_candidate.rs",
+    "differential_test": "crates/aspis-prover/tests/m31_circle_candidate.rs",
+    "independent_reference": "crates/aspis-prover/tests/support/m31_circle_reference.rs",
+    "stwo_commit": "5d10e6b4baa559766e7bbae133b918121211a9c5"
+  },
+  "commands": {
+    "integration": "cargo test -p aspis-prover --test m31_circle_candidate",
+    "module": "cargo test -p aspis-prover circle_candidate --lib",
+    "strict_lint": "cargo clippy -p aspis-prover --all-targets --all-features -- -D warnings"
+  },
+  "test_results": {
+    "integration_passed": 3,
+    "module_passed": 1,
+    "failed": 0,
+    "strict_lint_passed": true
+  },
+  "exact_shape": {
+    "trace_log_size": 10,
+    "message_values_per_column": 1024,
+    "domain_log_size": 12,
+    "codeword_symbols_per_column": 4096,
+    "fiber_count": 1024,
+    "slots_per_fiber": 4,
+    "c1_columns": 49,
+    "c1_leaf_bytes": 784,
+    "c1_layer_tag": 64,
+    "c2_helpers": 2,
+    "c2_leaf_bytes": 128,
+    "c2_layer_tag": 192,
+    "c1_leaf_order": "slot-major then column-minor",
+    "c2_leaf_order": "helper-major then slot-minor",
+    "gamma_powers": "C1 0..48, h1 49, h2 50"
+  },
+  "differential_scope": {
+    "full_c1_codeword_digest": "all 49 by 4096 M31 symbols compared with the independent scalar Stwo port",
+    "full_c2_codeword_digest": "both 4096-symbol QM31 helpers compared coordinatewise with four independent M31 reference encodings",
+    "leaf_digest": "all 1024 C1 and C2 leaves compared with test-local independent assembly",
+    "root_digest": "candidate roots compared with test-local raw SHA-256 leaf/node domain separation and radix-4 traversal",
+    "sampled_positions": "fixed boundary positions plus deterministic randomized codeword indices and fibers",
+    "corruptions": [
+      "authenticated C1 symbol changes root",
+      "canonical C1 leaf mutation changes gamma combination",
+      "C2 helper swap changes gamma combination",
+      "non-canonical M31 and QM31 leaf limbs reject",
+      "wrong message, column, codeword, leaf, and fiber shapes reject",
+      "C1 and C2 leaf tags produce distinct roots"
+    ]
+  },
+  "production_wire_integrated": false,
+  "proof_parser_integrated": false,
+  "transcript_integrated": false,
+  "production_verifier_acceptance_enabled": false,
+  "sbf_built_or_measured": false,
+  "soundness_transport_closed": false,
+  "payment_semantics_proven": false,
+  "protocol_or_architecture_ruling_made": false
+}

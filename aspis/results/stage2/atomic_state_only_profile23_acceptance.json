@@ -1,0 +1,111 @@
+{
+  "generated_at_utc": "2026-07-13T16:55:15.095924+00:00",
+  "command": "NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-profile23-acceptance",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "instruction_wire_ordinal": 59,
+  "proof_path": "results/stage2/proofs/atomic_state_only_profile23_v3_unmined.bin",
+  "proof_source_override": false,
+  "proof_bytes": 59679,
+  "proof_sha256": "07f8258f9297bd19d007b5bebdfbb710e8e9e44dcc2277f8cf7a6148db6ce902",
+  "proof_unmined": true,
+  "batch_grinding_bits": 38,
+  "final_grinding_bits": 38,
+  "fold_grinding_bits": [
+    39,
+    35,
+    31,
+    27
+  ],
+  "query_selector_candidates": 3,
+  "rank_exhaustion_cap16_bits": 105.41017865405837,
+  "selected_soundness_floor_bits": 101.30230658283051,
+  "whole_soundness_bits_after_selector": 100.80652861422749,
+  "whole_soundness_field_semantics": "Profile-23-own whole-ledger-times-three/BCS32 coarse sensitivity",
+  "soundness_bookable": true,
+  "default_tag59_fail_closed_host": true,
+  "production_api_rejected_unmined_sbf": true,
+  "production_api_accepted_mined_sbf": false,
+  "literal_simulation_cu": 1195306,
+  "headroom_under_1_4m_cu": 204694,
+  "markers": [
+    {
+      "label": "atomic59_instruction_start",
+      "remaining": 1398429,
+      "delta_from_previous": null
+    },
+    {
+      "label": "atomic59_proof_loaded",
+      "remaining": 1397944,
+      "delta_from_previous": 485
+    },
+    {
+      "label": "atomic59_parsed",
+      "remaining": 1395966,
+      "delta_from_previous": 1978
+    },
+    {
+      "label": "atomic59_transcript",
+      "remaining": 1243796,
+      "delta_from_previous": 152170
+    },
+    {
+      "label": "atomic59_terminal",
+      "remaining": 861616,
+      "delta_from_previous": 382180
+    },
+    {
+      "label": "atomic59_relation",
+      "remaining": 674201,
+      "delta_from_previous": 187415
+    },
+    {
+      "label": "atomic59_openings",
+      "remaining": 481211,
+      "delta_from_previous": 192990
+    },
+    {
+      "label": "atomic59_layer0_queries",
+      "remaining": 298576,
+      "delta_from_previous": 182635
+    },
+    {
+      "label": "atomic59_later_queries",
+      "remaining": 205241,
+      "delta_from_previous": 93335
+    },
+    {
+      "label": "atomic59_core_complete",
+      "remaining": 205023,
+      "delta_from_previous": 218
+    },
+    {
+      "label": "atomic59_done",
+      "remaining": 204753,
+      "delta_from_previous": 270
+    }
+  ],
+  "ledger": {
+    "transaction_setup_cu": 1571,
+    "proof_load_cu": 485,
+    "parsed_cu": 1978,
+    "transcript_cu": 152170,
+    "terminal_cu": 382180,
+    "relation_cu": 187415,
+    "openings_cu": 192990,
+    "layer0_queries_cu": 182635,
+    "later_queries_cu": 93335,
+    "completion_cu": 218,
+    "wrapper_return_cu": 270,
+    "post_last_marker_cu": 59,
+    "reconciled_total_cu": 1195306,
+    "formula": "1571 + 485 + 1978 + 152170 + 382180 + 187415 + 192990 + 182635 + 93335 + 218 + 270 + 59"
+  },
+  "production_mutation_enabled": false,
+  "notes": [
+    "Tag59 is one integrated parse/transcript/terminal/relation/private-opening/q16 call. The phase ledger is overlap-free and reconciles exactly to the literal simulation total.",
+    "All five Merkle sections authenticate value||salt32 records. Salts are not transcript messages; their roots bind them before downstream challenges.",
+    "The committed fixture is unmined. The diagnostic arm bypasses only PoW; both host and SBF production entrypoints reject those same bytes.",
+    "The complete-Good/q3/cap16 soundness theorem is now wired and bookable; the selected floor is 101.30230658283051 bits and the Profile-23-own coarse whole-ledger-times-three/BCS32 sensitivity is 100.80652861422749 bits, without changing this measured CU ledger.",
+    "Tags60/61 remain feature-gated; production mutation stays disabled until the complete-view HVZK audit and mined tag60 KAT are green."
+  ]
+}

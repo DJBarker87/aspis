@@ -333,6 +333,311 @@ pub struct QM31 {
     pub c1: CM31,
 }
 
+/// One fixed QM31 multiplicand with both Karatsuba sum coordinates cached.
+/// Reusing this across PCS queries preserves the nine M31 products per
+/// multiplication while removing repeated decomposition of transcript
+/// challenges.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PreparedQm31Multiplier {
+    components: [[M31; 3]; 3],
+}
+
+impl PreparedQm31Multiplier {
+    #[inline(always)]
+    pub fn new(value: QM31) -> Self {
+        let prepare = |component: CM31| [component.a, component.b, component.a.add(component.b)];
+        Self {
+            components: [
+                prepare(value.c0),
+                prepare(value.c1),
+                prepare(value.c0.add(value.c1)),
+            ],
+        }
+    }
+
+    #[inline(always)]
+    pub fn mul(self, rhs: QM31) -> QM31 {
+        let multiply = |left: [M31; 3], right: CM31| {
+            let m0 = left[0].mul(right.a);
+            let m1 = left[1].mul(right.b);
+            let m2 = left[2].mul(right.a.add(right.b));
+            CM31 {
+                a: m0.sub(m1),
+                b: m2.sub(m0).sub(m1),
+            }
+        };
+        let m0 = multiply(self.components[0], rhs.c0);
+        let m1 = multiply(self.components[1], rhs.c1);
+        let m2 = multiply(self.components[2], rhs.c0.add(rhs.c1));
+        QM31 {
+            c0: m0.add(mul_by_r(m1)),
+            c1: m2.sub(m0).sub(m1),
+        }
+    }
+}
+
+#[inline(always)]
+fn qm31_from_karatsuba_channel_sums(sums: [[u64; 3]; 3]) -> QM31 {
+    let reconstruct = |channels: [u64; 3]| {
+        let m0 = M31::reduce_u64(channels[0]);
+        let m1 = M31::reduce_u64(channels[1]);
+        let m2 = M31::reduce_u64(channels[2]);
+        CM31 {
+            a: m0.sub(m1),
+            b: m2.sub(m0).sub(m1),
+        }
+    };
+    let m0 = reconstruct(sums[0]);
+    let m1 = reconstruct(sums[1]);
+    let m2 = reconstruct(sums[2]);
+    QM31 {
+        c0: m0.add(mul_by_r(m1)),
+        c1: m2.sub(m0).sub(m1),
+    }
+}
+
+/// Sum up to four QM31 products with one M31 reduction per Karatsuba channel.
+///
+/// Each canonical M31 factor is at most `P - 1`, so four products satisfy
+/// `4 * (P - 1)^2 < 2^64`.  Accumulating the nine product channels before
+/// reconstructing CM31/QM31 is exact because reconstruction is M31-linear.
+/// The fixed public arities below keep that overflow bound local and auditable.
+#[inline(always)]
+fn qm31_sum_products_small<const N: usize>(left: [QM31; N], right: [QM31; N]) -> QM31 {
+    debug_assert!(N >= 2 && N <= 4);
+    // [quadratic-extension component][CM31 Karatsuba channel].
+    let mut sums = [[0u64; 3]; 3];
+    for index in 0..N {
+        let left_sum = left[index].c0.add(left[index].c1);
+        let right_sum = right[index].c0.add(right[index].c1);
+        let left_components = [
+            [
+                left[index].c0.a,
+                left[index].c0.b,
+                left[index].c0.a.add(left[index].c0.b),
+            ],
+            [
+                left[index].c1.a,
+                left[index].c1.b,
+                left[index].c1.a.add(left[index].c1.b),
+            ],
+            [left_sum.a, left_sum.b, left_sum.a.add(left_sum.b)],
+        ];
+        let right_components = [
+            [
+                right[index].c0.a,
+                right[index].c0.b,
+                right[index].c0.a.add(right[index].c0.b),
+            ],
+            [
+                right[index].c1.a,
+                right[index].c1.b,
+                right[index].c1.a.add(right[index].c1.b),
+            ],
+            [right_sum.a, right_sum.b, right_sum.a.add(right_sum.b)],
+        ];
+        for component in 0..3 {
+            for channel in 0..3 {
+                sums[component][channel] += left_components[component][channel].0 as u64
+                    * right_components[component][channel].0 as u64;
+            }
+        }
+    }
+
+    qm31_from_karatsuba_channel_sums(sums)
+}
+
+/// Exact `a[0] * b[0] + a[1] * b[1]` with 18 M31 products and 9 reductions.
+#[inline(always)]
+pub fn qm31_sum_products2(left: [QM31; 2], right: [QM31; 2]) -> QM31 {
+    qm31_sum_products_small(left, right)
+}
+
+/// Exact three-product sum with 27 M31 products and 9 reductions.
+#[inline(always)]
+pub fn qm31_sum_products3(left: [QM31; 3], right: [QM31; 3]) -> QM31 {
+    qm31_sum_products_small(left, right)
+}
+
+/// Exact four-product sum with 36 M31 products and 9 reductions.
+#[inline(always)]
+pub fn qm31_sum_products4(left: [QM31; 4], right: [QM31; 4]) -> QM31 {
+    qm31_sum_products_small(left, right)
+}
+
+/// Exact two-product sum with both left multiplicands pre-decomposed.
+///
+/// This is the WeightAccumulator candidate form: the round's `alpha^2`
+/// multiplier can be prepared once, while the component-specific second
+/// multiplier is prepared beside it.  It keeps the same 18 products and 9
+/// reductions as [`qm31_sum_products2`] while avoiding repeated decomposition
+/// of a challenge-derived factor across tensor components.
+#[inline(always)]
+pub fn qm31_sum_products2_prepared(left: &[PreparedQm31Multiplier; 2], right: &[QM31; 2]) -> QM31 {
+    let mut sums = [[0u64; 3]; 3];
+    for index in 0..2 {
+        let right_sum = right[index].c0.add(right[index].c1);
+        let right_components = [
+            [
+                right[index].c0.a,
+                right[index].c0.b,
+                right[index].c0.a.add(right[index].c0.b),
+            ],
+            [
+                right[index].c1.a,
+                right[index].c1.b,
+                right[index].c1.a.add(right[index].c1.b),
+            ],
+            [right_sum.a, right_sum.b, right_sum.a.add(right_sum.b)],
+        ];
+        for component in 0..3 {
+            for channel in 0..3 {
+                sums[component][channel] += left[index].components[component][channel].0 as u64
+                    * right_components[component][channel].0 as u64;
+            }
+        }
+    }
+    qm31_from_karatsuba_channel_sums(sums)
+}
+
+/// Exact three-product sum with all left multiplicands pre-decomposed.
+///
+/// This is the three-lane analogue of [`qm31_sum_products2_prepared`].  It
+/// retains all 27 M31 products while reducing the nine Karatsuba channels
+/// once for the whole dot instead of once per QM31 product.  Three canonical
+/// products fit in each `u64` channel because
+/// `3 * (P - 1)^2 < 2^64`.
+#[inline(always)]
+pub fn qm31_sum_products3_prepared(left: &[PreparedQm31Multiplier; 3], right: &[QM31; 3]) -> QM31 {
+    let mut sums = [[0u64; 3]; 3];
+    for index in 0..3 {
+        let right_sum = right[index].c0.add(right[index].c1);
+        let right_components = [
+            [
+                right[index].c0.a,
+                right[index].c0.b,
+                right[index].c0.a.add(right[index].c0.b),
+            ],
+            [
+                right[index].c1.a,
+                right[index].c1.b,
+                right[index].c1.a.add(right[index].c1.b),
+            ],
+            [right_sum.a, right_sum.b, right_sum.a.add(right_sum.b)],
+        ];
+        for component in 0..3 {
+            for channel in 0..3 {
+                sums[component][channel] += left[index].components[component][channel].0 as u64
+                    * right_components[component][channel].0 as u64;
+            }
+        }
+    }
+    qm31_from_karatsuba_channel_sums(sums)
+}
+
+/// Sum six products by accumulating the nine Karatsuba product channels in
+/// two groups of three before reducing them modulo M31.
+///
+/// Every factor is canonical and therefore below `P`. Three products are
+/// strictly below `3 * (P - 1)^2 < 2^64`, so the grouped accumulators cannot
+/// overflow. Reconstructing CM31 and QM31 only after reduction is exact
+/// because every reconstruction step is linear over M31. This is the
+/// profile-14 mask-oracle kernel; the fixed arity makes the accumulator bound
+/// auditable and avoids expensive `u128` arithmetic on SBF.
+#[inline(always)]
+pub fn qm31_dot6_prepared(weights: &[PreparedQm31Multiplier; 6], values: &[QM31; 6]) -> QM31 {
+    // [quadratic component][CM31 Karatsuba channel][three-product group].
+    let mut sums = [[[0u64; 2]; 3]; 3];
+    for index in 0..6 {
+        let rhs = values[index];
+        let rhs_c0 = [rhs.c0.a, rhs.c0.b, rhs.c0.a.add(rhs.c0.b)];
+        let rhs_c1 = [rhs.c1.a, rhs.c1.b, rhs.c1.a.add(rhs.c1.b)];
+        let rhs_sum = rhs.c0.add(rhs.c1);
+        let rhs_components = [
+            rhs_c0,
+            rhs_c1,
+            [rhs_sum.a, rhs_sum.b, rhs_sum.a.add(rhs_sum.b)],
+        ];
+        let group = index / 3;
+        for component in 0..3 {
+            for channel in 0..3 {
+                sums[component][channel][group] += weights[index].components[component][channel].0
+                    as u64
+                    * rhs_components[component][channel].0 as u64;
+            }
+        }
+    }
+
+    let reduce_groups =
+        |groups: [u64; 2]| M31::reduce_u64(groups[0]).add(M31::reduce_u64(groups[1]));
+    let reconstruct = |channels: [[u64; 2]; 3]| {
+        let m0 = reduce_groups(channels[0]);
+        let m1 = reduce_groups(channels[1]);
+        let m2 = reduce_groups(channels[2]);
+        CM31 {
+            a: m0.sub(m1),
+            b: m2.sub(m0).sub(m1),
+        }
+    };
+    let m0 = reconstruct(sums[0]);
+    let m1 = reconstruct(sums[1]);
+    let m2 = reconstruct(sums[2]);
+    QM31 {
+        c0: m0.add(mul_by_r(m1)),
+        c1: m2.sub(m0).sub(m1),
+    }
+}
+
+/// Fixed seven-product lazy dot used by the radix-eight polynomial evaluator.
+///
+/// The first four products and the final three products are accumulated in
+/// separate `u64` Karatsuba channels.  Both groups are below `2^64`, so each
+/// channel needs two Mersenne reductions regardless of the seven inputs.  The
+/// prepared weights are reused across every coefficient block.
+#[inline(always)]
+fn qm31_dot7_prepared(weights: &[PreparedQm31Multiplier; 7], values: &[QM31; 7]) -> QM31 {
+    // [quadratic component][CM31 Karatsuba channel][four/three-product group].
+    let mut sums = [[[0u64; 2]; 3]; 3];
+    for index in 0..7 {
+        let rhs = values[index];
+        let rhs_c0 = [rhs.c0.a, rhs.c0.b, rhs.c0.a.add(rhs.c0.b)];
+        let rhs_c1 = [rhs.c1.a, rhs.c1.b, rhs.c1.a.add(rhs.c1.b)];
+        let rhs_sum = rhs.c0.add(rhs.c1);
+        let rhs_components = [
+            rhs_c0,
+            rhs_c1,
+            [rhs_sum.a, rhs_sum.b, rhs_sum.a.add(rhs_sum.b)],
+        ];
+        let group = index / 4;
+        for component in 0..3 {
+            for channel in 0..3 {
+                sums[component][channel][group] += weights[index].components[component][channel].0
+                    as u64
+                    * rhs_components[component][channel].0 as u64;
+            }
+        }
+    }
+
+    let reduce_groups =
+        |groups: [u64; 2]| M31::reduce_u64(groups[0]).add(M31::reduce_u64(groups[1]));
+    let reconstruct = |channels: [[u64; 2]; 3]| {
+        let m0 = reduce_groups(channels[0]);
+        let m1 = reduce_groups(channels[1]);
+        let m2 = reduce_groups(channels[2]);
+        CM31 {
+            a: m0.sub(m1),
+            b: m2.sub(m0).sub(m1),
+        }
+    };
+    let m0 = reconstruct(sums[0]);
+    let m1 = reconstruct(sums[1]);
+    let m2 = reconstruct(sums[2]);
+    QM31 {
+        c0: m0.add(mul_by_r(m1)),
+        c1: m2.sub(m0).sub(m1),
+    }
+}
+
 /// The non-residue R = 2 + i used to define QM31.
 #[inline(always)]
 fn mul_by_r(x: CM31) -> CM31 {
@@ -493,6 +798,51 @@ impl QM31 {
     }
 }
 
+/// Pack up to four QM31 values against the M31 tower basis `(1, i, u, i*u)`.
+///
+/// This is the fixed linear map
+///
+/// `values[0] + i*values[1] + u*values[2] + i*u*values[3]`.
+///
+/// The direct limb form accumulates each signed linear combination in `u64`
+/// and reduces it once.  Padding a short input with zero is exact because the
+/// added multiples of `P` disappear during reduction.  Every accumulator is
+/// below `8*P`, so the bound is substantially tighter than `reduce_u62`'s
+/// contract.  Statement constraint packing invokes this map dozens of times
+/// at one off-domain point, making the four-reduction form preferable to a
+/// chain of canonical extension additions.
+#[inline(always)]
+pub fn qm31_pack_base4(values: &[QM31]) -> QM31 {
+    assert!(values.len() <= 4);
+    let mut padded = [QM31::ZERO; 4];
+    padded[..values.len()].copy_from_slice(values);
+    let [v0, v1, v2, v3] = padded;
+    let p = u64::from(P);
+    let limb = |value: M31| u64::from(value.0);
+
+    // Multiplication by u sends (c0,c1) to ((2+i)c1,c0), while
+    // multiplication by i sends (a,b) to (-b,a).
+    let c0_a = limb(v0.c0.a)
+        + (p - limb(v1.c0.b))
+        + 2 * limb(v2.c1.a)
+        + (p - limb(v2.c1.b))
+        + (p - limb(v3.c1.a))
+        + (2 * p - 2 * limb(v3.c1.b));
+    let c0_b = limb(v0.c0.b)
+        + limb(v1.c0.a)
+        + limb(v2.c1.a)
+        + 2 * limb(v2.c1.b)
+        + 2 * limb(v3.c1.a)
+        + (p - limb(v3.c1.b));
+    let c1_a = limb(v0.c1.a) + (p - limb(v1.c1.b)) + limb(v2.c0.a) + (p - limb(v3.c0.b));
+    let c1_b = limb(v0.c1.b) + limb(v1.c1.a) + limb(v2.c0.b) + limb(v3.c0.a);
+
+    QM31 {
+        c0: CM31::new(M31::reduce_u64(c0_a), M31::reduce_u64(c0_b)),
+        c1: CM31::new(M31::reduce_u64(c1_a), M31::reduce_u64(c1_b)),
+    }
+}
+
 /// Precompute `[1, gamma, ..., gamma^(N-1)]` into a fixed-width table.
 ///
 /// Const-sized storage lets SBF callers keep protocol-fixed RLC bases in one
@@ -502,11 +852,62 @@ impl QM31 {
 pub fn qm31_power_table<const N: usize>(gamma: QM31) -> [QM31; N] {
     let mut table = [QM31::ZERO; N];
     let mut power = QM31::ONE;
-    for entry in &mut table {
+    for (index, entry) in table.iter_mut().enumerate() {
         *entry = power;
-        power = power.mul(gamma);
+        if index + 1 != N {
+            power = power.mul(gamma);
+        }
     }
     table
+}
+
+/// Reference evaluation of a degree-at-most-72 QM31 polynomial.
+///
+/// Coefficients are in ascending monomial order.  Starting from the leading
+/// coefficient avoids the redundant multiply-by-`x` of a zero accumulator,
+/// so this executes exactly 72 prepared QM31 multiplications.
+pub fn qm31_evaluate_degree72_horner(coefficients: &[QM31; 73], x: QM31) -> QM31 {
+    let prepared_x = PreparedQm31Multiplier::new(x);
+    coefficients[..72]
+        .iter()
+        .rev()
+        .copied()
+        .fold(coefficients[72], |accumulator, coefficient| {
+            prepared_x.mul(accumulator).add(coefficient)
+        })
+}
+
+/// Radix-eight evaluation of a degree-at-most-72 QM31 polynomial.
+///
+/// The nine complete blocks are
+/// `c[8j] + x*c[8j+1] + ... + x^7*c[8j+7]`.  Their seven nonconstant
+/// products use the fixed lazy dot above.  Starting with the tail `c[72]`,
+/// the block values are then combined by ordinary Horner evaluation at
+/// `x^8`.  This is exactly the same polynomial as
+/// [`qm31_evaluate_degree72_horner`]; it changes only the reduction schedule.
+#[inline(never)]
+pub fn qm31_evaluate_degree72_radix8(coefficients: &[QM31; 73], x: QM31) -> QM31 {
+    // Four specialized squares and three generic products produce every
+    // nonconstant block power while keeping the multiplication chain short.
+    let prepared_x = PreparedQm31Multiplier::new(x);
+    let x2 = x.square();
+    let x3 = prepared_x.mul(x2);
+    let x4 = x2.square();
+    let x5 = prepared_x.mul(x4);
+    let x6 = x3.square();
+    let x7 = prepared_x.mul(x6);
+    let x8 = x4.square();
+    let prepared_powers = [x, x2, x3, x4, x5, x6, x7].map(PreparedQm31Multiplier::new);
+    let prepared_x8 = PreparedQm31Multiplier::new(x8);
+
+    let mut accumulator = coefficients[72];
+    for block in (0..9).rev() {
+        let start = 8 * block;
+        let values: [QM31; 7] = core::array::from_fn(|offset| coefficients[start + 1 + offset]);
+        let block_value = coefficients[start].add(qm31_dot7_prepared(&prepared_powers, &values));
+        accumulator = prepared_x8.mul(accumulator).add(block_value);
+    }
+    accumulator
 }
 
 /// Dot product between QM31 weights and CM31 values. Six base-field dot
@@ -811,6 +1212,24 @@ pub fn qm31_m31_dot_eager_outer(weights: &[QM31], values: &[M31]) -> QM31 {
 /// removes 76 canonical additions without widening the hot product loop.
 pub fn qm31_m31_dot(weights: &[QM31], values: &[M31]) -> QM31 {
     assert_eq!(weights.len(), values.len());
+    // One block of at most four products fits in each u64 limb.  Return it
+    // directly instead of reducing into a second outer accumulator and then
+    // reducing the same four limbs again.  Poseidon constant interpolation
+    // uses this fixed 3/4-term shape heavily.
+    if weights.len() <= 4 {
+        let mut raw = [0u64; 4];
+        for (weight, value) in weights.iter().zip(values) {
+            let value = u64::from(value.0);
+            raw[0] += u64::from(weight.c0.a.0) * value;
+            raw[1] += u64::from(weight.c0.b.0) * value;
+            raw[2] += u64::from(weight.c1.a.0) * value;
+            raw[3] += u64::from(weight.c1.b.0) * value;
+        }
+        return QM31 {
+            c0: CM31::new(M31::reduce_u64(raw[0]), M31::reduce_u64(raw[1])),
+            c1: CM31::new(M31::reduce_u64(raw[2]), M31::reduce_u64(raw[3])),
+        };
+    }
     let mut sums = [0u64; 4];
     for start in (0..weights.len()).step_by(4) {
         let end = core::cmp::min(start + 4, weights.len());
@@ -903,47 +1322,349 @@ pub fn qm31_m31_dot4_prepared_bytes<const N: usize>(
     weights: &[QM31; N],
     bytes: &[u8],
 ) -> Option<[QM31; 4]> {
+    let limbs = weights.map(|weight| [weight.c0.a.0, weight.c0.b.0, weight.c1.a.0, weight.c1.b.0]);
+    qm31_m31_dot4_prepared_limbs_bytes(&limbs, bytes)
+}
+
+/// Four QM31-by-M31 dots using challenge limbs prepared once by the caller.
+///
+/// This is the repeated-query form of [`qm31_m31_dot4_prepared_bytes`]. The
+/// limb table is in `(c0.a, c0.b, c1.a, c1.b)` order and must contain
+/// canonical M31 values. Input values are still canonical-decoded and checked
+/// directly from their slot-major wire bytes.
+pub fn qm31_m31_dot4_prepared_limbs_bytes<const N: usize>(
+    weight_limbs: &[[u32; 4]; N],
+    bytes: &[u8],
+) -> Option<[QM31; 4]> {
     if bytes.len() != 4 * N * 4 {
         return None;
     }
 
-    const OUTER_COLUMNS: usize = 256;
     let mut invalid = 0u32;
-    let mut sums = [[0u64; 4]; 4];
-    for outer_start in (0..N).step_by(OUTER_COLUMNS) {
-        let outer_end = core::cmp::min(outer_start + OUTER_COLUMNS, N);
-        let mut outer = [[0u64; 4]; 4];
-        for start in (outer_start..outer_end).step_by(4) {
-            let end = core::cmp::min(start + 4, outer_end);
-            let mut raw = [[0u64; 4]; 4];
-            for (relative, weight) in weights[start..end].iter().enumerate() {
+    let mut result = [QM31::ZERO; 4];
+    for (slot, result_slot) in result.iter_mut().enumerate() {
+        let mut sums = [0u64; 4];
+        for start in (0..N).step_by(4) {
+            let end = core::cmp::min(start + 4, N);
+            let mut raw = [0u64; 4];
+            for (relative, limbs) in weight_limbs[start..end].iter().enumerate() {
                 let index = start + relative;
-                let limbs = [weight.c0.a, weight.c0.b, weight.c1.a, weight.c1.b];
-                for (slot, raw_slot) in raw.iter_mut().enumerate() {
-                    let offset = (slot * N + index) * 4;
-                    let value = u32::from_le_bytes(bytes[offset..offset + 4].try_into().ok()?);
+                let offset = (slot * N + index) * 4;
+                let value = u32::from_le_bytes(bytes[offset..offset + 4].try_into().ok()?);
+                invalid |= u32::from(value >= P);
+                let value = (value & P) as u64;
+                for limb in 0..4 {
+                    raw[limb] += limbs[limb] as u64 * value;
+                }
+            }
+            for limb in 0..4 {
+                sums[limb] += M31::reduce_u64(raw[limb]).0 as u64;
+            }
+        }
+        *result_slot = QM31 {
+            c0: CM31::new(M31::reduce_u64(sums[0]), M31::reduce_u64(sums[1])),
+            c1: CM31::new(M31::reduce_u64(sums[2]), M31::reduce_u64(sums[3])),
+        };
+    }
+
+    if invalid == 0 {
+        Some(result)
+    } else {
+        None
+    }
+}
+
+/// Fixed-width four-slot canonical-byte dot for widths `N = 4b + 1`.
+///
+/// Unlike [`qm31_m31_dot4_prepared_limbs_bytes`], this form exposes the exact
+/// complete-block count and one-element tail to the compiler. It is useful
+/// for comparing protocol-fixed state widths without generic slice/minimum
+/// machinery. The established 49-column production function remains
+/// separate and unchanged; this append-only primitive is diagnostic until a
+/// caller's protocol semantics justify a different width.
+pub fn qm31_m31_dot4_prepared_limbs_4b1_bytes<const N: usize>(
+    weight_limbs: &[[u32; 4]; N],
+    bytes: &[u8],
+) -> Option<[QM31; 4]> {
+    if N == 0 || N % 4 != 1 || bytes.len() != 4 * N * 4 {
+        return None;
+    }
+
+    let mut invalid = 0u32;
+    let mut result = [QM31::ZERO; 4];
+    for (slot, result_slot) in result.iter_mut().enumerate() {
+        let mut sums = [0u64; 4];
+        for block in 0..(N / 4) {
+            let start = block * 4;
+            let mut raw = [0u64; 4];
+            for index in start..start + 4 {
+                let offset = (slot * N + index) * 4;
+                let value = u32::from_le_bytes(bytes[offset..offset + 4].try_into().ok()?);
+                invalid |= u32::from(value >= P);
+                let value = u64::from(value & P);
+                for limb in 0..4 {
+                    raw[limb] += u64::from(weight_limbs[index][limb]) * value;
+                }
+            }
+            for limb in 0..4 {
+                sums[limb] += u64::from(M31::reduce_u64(raw[limb]).0);
+            }
+        }
+
+        let tail = N - 1;
+        let offset = (slot * N + tail) * 4;
+        let value = u32::from_le_bytes(bytes[offset..offset + 4].try_into().ok()?);
+        invalid |= u32::from(value >= P);
+        let value = u64::from(value & P);
+        for limb in 0..4 {
+            sums[limb] += u64::from(M31::reduce_u64(u64::from(weight_limbs[tail][limb]) * value).0);
+        }
+
+        *result_slot = QM31 {
+            c0: CM31::new(M31::reduce_u64(sums[0]), M31::reduce_u64(sums[1])),
+            c1: CM31::new(M31::reduce_u64(sums[2]), M31::reduce_u64(sums[3])),
+        };
+    }
+
+    if invalid == 0 {
+        Some(result)
+    } else {
+        None
+    }
+}
+
+/// Fixed-width four-slot canonical-byte dot for widths `N = 4b`.
+///
+/// This is the no-tail companion to
+/// [`qm31_m31_dot4_prepared_limbs_4b1_bytes`]. Every input is consumed by a
+/// literal complete four-product block after monomorphization. It is an
+/// append-only diagnostic primitive; production's exact 49-column entrypoint
+/// remains unchanged.
+pub fn qm31_m31_dot4_prepared_limbs_4b_bytes<const N: usize>(
+    weight_limbs: &[[u32; 4]; N],
+    bytes: &[u8],
+) -> Option<[QM31; 4]> {
+    if N == 0 || N % 4 != 0 || bytes.len() != 4 * N * 4 {
+        return None;
+    }
+
+    let mut invalid = 0u32;
+    let mut result = [QM31::ZERO; 4];
+    for (slot, result_slot) in result.iter_mut().enumerate() {
+        let mut sums = [0u64; 4];
+        for block in 0..(N / 4) {
+            let start = block * 4;
+            let mut raw = [0u64; 4];
+            for index in start..start + 4 {
+                let offset = (slot * N + index) * 4;
+                let value = u32::from_le_bytes(bytes[offset..offset + 4].try_into().ok()?);
+                invalid |= u32::from(value >= P);
+                let value = u64::from(value & P);
+                for limb in 0..4 {
+                    raw[limb] += u64::from(weight_limbs[index][limb]) * value;
+                }
+            }
+            for limb in 0..4 {
+                sums[limb] += u64::from(M31::reduce_u64(raw[limb]).0);
+            }
+        }
+
+        *result_slot = QM31 {
+            c0: CM31::new(M31::reduce_u64(sums[0]), M31::reduce_u64(sums[1])),
+            c1: CM31::new(M31::reduce_u64(sums[2]), M31::reduce_u64(sums[3])),
+        };
+    }
+
+    if invalid == 0 {
+        Some(result)
+    } else {
+        None
+    }
+}
+
+/// Fixed-width four-slot canonical-byte dot for widths `N = 4b + 2`.
+///
+/// The production state-only hiding layout has 26 M31 columns.  Keeping the
+/// two-element tail explicit avoids the generic slice/minimum path while
+/// preserving the same canonical decoding and four-fiber arithmetic.
+pub fn qm31_m31_dot4_prepared_limbs_4b2_bytes<const N: usize>(
+    weight_limbs: &[[u32; 4]; N],
+    bytes: &[u8],
+) -> Option<[QM31; 4]> {
+    if N < 2 || N % 4 != 2 || bytes.len() != 4 * N * 4 {
+        return None;
+    }
+
+    let mut invalid = 0u32;
+    let mut result = [QM31::ZERO; 4];
+    for (slot, result_slot) in result.iter_mut().enumerate() {
+        let mut sums = [0u64; 4];
+        for block in 0..(N / 4) {
+            let start = block * 4;
+            let mut raw = [0u64; 4];
+            for index in start..start + 4 {
+                let offset = (slot * N + index) * 4;
+                let value = u32::from_le_bytes(bytes[offset..offset + 4].try_into().ok()?);
+                invalid |= u32::from(value >= P);
+                let value = u64::from(value & P);
+                for limb in 0..4 {
+                    raw[limb] += u64::from(weight_limbs[index][limb]) * value;
+                }
+            }
+            for limb in 0..4 {
+                sums[limb] += u64::from(M31::reduce_u64(raw[limb]).0);
+            }
+        }
+
+        let tail = N - 2;
+        let mut raw = [0u64; 4];
+        for index in tail..N {
+            let offset = (slot * N + index) * 4;
+            let value = u32::from_le_bytes(bytes[offset..offset + 4].try_into().ok()?);
+            invalid |= u32::from(value >= P);
+            let value = u64::from(value & P);
+            for limb in 0..4 {
+                raw[limb] += u64::from(weight_limbs[index][limb]) * value;
+            }
+        }
+        for limb in 0..4 {
+            sums[limb] += u64::from(M31::reduce_u64(raw[limb]).0);
+        }
+
+        *result_slot = QM31 {
+            c0: CM31::new(M31::reduce_u64(sums[0]), M31::reduce_u64(sums[1])),
+            c1: CM31::new(M31::reduce_u64(sums[2]), M31::reduce_u64(sums[3])),
+        };
+    }
+
+    if invalid == 0 {
+        Some(result)
+    } else {
+        None
+    }
+}
+
+/// Exact 49-column form of [`qm31_m31_dot4_prepared_limbs_bytes`].
+///
+/// The production shape is twelve complete four-product blocks and one tail.
+/// Keeping those bounds literal avoids generic slice/minimum machinery in the
+/// verifier's dominant loop.
+pub fn qm31_m31_dot4_prepared_limbs49_bytes(
+    weight_limbs: &[[u32; 4]; 49],
+    bytes: &[u8],
+) -> Option<[QM31; 4]> {
+    if bytes.len() != 4 * 49 * 4 {
+        return None;
+    }
+
+    let mut invalid = 0u32;
+    let mut result = [QM31::ZERO; 4];
+    for (slot, result_slot) in result.iter_mut().enumerate() {
+        let mut sums = [0u64; 4];
+        for block in 0..12 {
+            let start = block * 4;
+            let mut raw = [0u64; 4];
+            for index in start..start + 4 {
+                let offset = (slot * 49 + index) * 4;
+                let value = u32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap());
+                invalid |= u32::from(value >= P);
+                let value = (value & P) as u64;
+                for limb in 0..4 {
+                    raw[limb] += weight_limbs[index][limb] as u64 * value;
+                }
+            }
+            for limb in 0..4 {
+                sums[limb] += M31::reduce_u64(raw[limb]).0 as u64;
+            }
+        }
+
+        let offset = (slot * 49 + 48) * 4;
+        let value = u32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap());
+        invalid |= u32::from(value >= P);
+        let value = (value & P) as u64;
+        for limb in 0..4 {
+            sums[limb] += M31::reduce_u64(weight_limbs[48][limb] as u64 * value).0 as u64;
+        }
+
+        *result_slot = QM31 {
+            c0: CM31::new(M31::reduce_u64(sums[0]), M31::reduce_u64(sums[1])),
+            c1: CM31::new(M31::reduce_u64(sums[2]), M31::reduce_u64(sums[3])),
+        };
+    }
+
+    if invalid == 0 {
+        Some(result)
+    } else {
+        None
+    }
+}
+
+/// Exact 49-column byte dot evaluated two slots at a time.
+///
+/// The one-slot production kernel above minimizes live accumulators but
+/// reloads every prepared challenge limb four times.  The older four-slot
+/// fused kernel kept sixteen product accumulators live and spilled badly on
+/// SBF.  This midpoint shares each prepared-limb load across a pair of rows
+/// while keeping only eight raw and eight outer accumulators live.  It is a
+/// protocol-neutral arithmetic candidate until an instruction-level A/B
+/// establishes which register-pressure tradeoff wins for the linked SBF
+/// program.
+pub fn qm31_m31_dot4_prepared_limbs49_bytes_two_rows(
+    weight_limbs: &[[u32; 4]; 49],
+    bytes: &[u8],
+) -> Option<[QM31; 4]> {
+    if bytes.len() != 4 * 49 * 4 {
+        return None;
+    }
+
+    let mut invalid = 0u32;
+    let mut result = [QM31::ZERO; 4];
+    for pair in 0..2 {
+        let first_slot = 2 * pair;
+        let mut sums = [[0u64; 4]; 2];
+        for block in 0..12 {
+            let start = block * 4;
+            let mut raw = [[0u64; 4]; 2];
+            for index in start..start + 4 {
+                let limbs = weight_limbs[index];
+                for row in 0..2 {
+                    let slot = first_slot + row;
+                    let offset = (slot * 49 + index) * 4;
+                    let value = u32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap());
                     invalid |= u32::from(value >= P);
-                    let value = (value & P) as u64;
+                    let value = u64::from(value & P);
                     for limb in 0..4 {
-                        raw_slot[limb] += limbs[limb].0 as u64 * value;
+                        raw[row][limb] += u64::from(limbs[limb]) * value;
                     }
                 }
             }
-            for slot in 0..4 {
+            for row in 0..2 {
                 for limb in 0..4 {
-                    outer[slot][limb] += M31::reduce_u64(raw[slot][limb]).0 as u64;
+                    sums[row][limb] += u64::from(M31::reduce_u64(raw[row][limb]).0);
                 }
             }
         }
-        for slot in 0..4 {
+
+        let limbs = weight_limbs[48];
+        for row in 0..2 {
+            let slot = first_slot + row;
+            let offset = (slot * 49 + 48) * 4;
+            let value = u32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap());
+            invalid |= u32::from(value >= P);
+            let value = u64::from(value & P);
             for limb in 0..4 {
-                sums[slot][limb] += M31::reduce_u64(outer[slot][limb]).0 as u64;
+                sums[row][limb] += u64::from(M31::reduce_u64(u64::from(limbs[limb]) * value).0);
             }
+
+            result[slot] = QM31 {
+                c0: CM31::new(M31::reduce_u64(sums[row][0]), M31::reduce_u64(sums[row][1])),
+                c1: CM31::new(M31::reduce_u64(sums[row][2]), M31::reduce_u64(sums[row][3])),
+            };
         }
     }
 
     if invalid == 0 {
-        Some(finish_qm31_m31_dot4(sums))
+        Some(result)
     } else {
         None
     }
@@ -989,33 +1710,76 @@ pub fn qm31_m31_dot_u128(weights: &[QM31], values: &[M31]) -> QM31 {
     }
 }
 
-/// QM31 dot product with the same four-products-per-reduction strategy. This
-/// is the packed-four-column RLC kernel: four M31 trace columns embed
-/// injectively into one QM31 value, then twenty packed values batch eighty
-/// raw columns.
+/// QM31 dot product with two-level lazy accumulation.
+///
+/// Four Karatsuba-channel products fit in one `u64`, so each inner block is
+/// reduced once per channel.  Up to 64 canonical block results are then
+/// accumulated in a second `u64` window and reduced once, avoiding a
+/// canonical field addition after every four inputs.  This is exact for
+/// arbitrary slice lengths because each 256-input window is folded into the
+/// canonical outer accumulator before the next window begins.
 pub fn qm31_dot(weights: &[QM31], values: &[QM31]) -> QM31 {
     assert_eq!(weights.len(), values.len());
     let mut sums = [M31::ZERO; 9];
-    for start in (0..weights.len()).step_by(4) {
-        let end = core::cmp::min(start + 4, weights.len());
-        let mut raw = [0u64; 9];
-        for index in start..end {
-            let weight = weights[index];
-            let value = values[index];
-            let pairs = [
-                (weight.c0, value.c0),
-                (weight.c1, value.c1),
-                (weight.c0.add(weight.c1), value.c0.add(value.c1)),
-            ];
-            for (component, (left, right)) in pairs.into_iter().enumerate() {
-                let offset = component * 3;
-                raw[offset] += left.a.0 as u64 * right.a.0 as u64;
-                raw[offset + 1] += left.b.0 as u64 * right.b.0 as u64;
-                raw[offset + 2] += left.a.add(left.b).0 as u64 * right.a.add(right.b).0 as u64;
+    // One extra outer reduction costs more than the handful of canonical
+    // additions it replaces for the verifier's short 3..16 term dots.  Keep
+    // the original one-level schedule there; the 51-term relation dots take
+    // the two-level path below.
+    if weights.len() <= 16 {
+        for start in (0..weights.len()).step_by(4) {
+            let end = core::cmp::min(start + 4, weights.len());
+            let mut raw = [0u64; 9];
+            for index in start..end {
+                let weight = weights[index];
+                let value = values[index];
+                let pairs = [
+                    (weight.c0, value.c0),
+                    (weight.c1, value.c1),
+                    (weight.c0.add(weight.c1), value.c0.add(value.c1)),
+                ];
+                for (component, (left, right)) in pairs.into_iter().enumerate() {
+                    let offset = component * 3;
+                    raw[offset] += u64::from(left.a.0) * u64::from(right.a.0);
+                    raw[offset + 1] += u64::from(left.b.0) * u64::from(right.b.0);
+                    raw[offset + 2] +=
+                        u64::from(left.a.add(left.b).0) * u64::from(right.a.add(right.b).0);
+                }
+            }
+            for index in 0..9 {
+                sums[index] = sums[index].add(M31::reduce_u64(raw[index]));
             }
         }
-        for index in 0..9 {
-            sums[index] = sums[index].add(M31::reduce_u64(raw[index]));
+    } else {
+        const OUTER_COLUMNS: usize = 256;
+        for outer_start in (0..weights.len()).step_by(OUTER_COLUMNS) {
+            let outer_end = core::cmp::min(outer_start + OUTER_COLUMNS, weights.len());
+            let mut outer = [0u64; 9];
+            for start in (outer_start..outer_end).step_by(4) {
+                let end = core::cmp::min(start + 4, outer_end);
+                let mut raw = [0u64; 9];
+                for index in start..end {
+                    let weight = weights[index];
+                    let value = values[index];
+                    let pairs = [
+                        (weight.c0, value.c0),
+                        (weight.c1, value.c1),
+                        (weight.c0.add(weight.c1), value.c0.add(value.c1)),
+                    ];
+                    for (component, (left, right)) in pairs.into_iter().enumerate() {
+                        let offset = component * 3;
+                        raw[offset] += u64::from(left.a.0) * u64::from(right.a.0);
+                        raw[offset + 1] += u64::from(left.b.0) * u64::from(right.b.0);
+                        raw[offset + 2] +=
+                            u64::from(left.a.add(left.b).0) * u64::from(right.a.add(right.b).0);
+                    }
+                }
+                for index in 0..9 {
+                    outer[index] += u64::from(M31::reduce_u64(raw[index]).0);
+                }
+            }
+            for index in 0..9 {
+                sums[index] = sums[index].add(M31::reduce_u64(outer[index]));
+            }
         }
     }
     let component = |offset: usize| CM31 {
@@ -1090,6 +1854,19 @@ pub fn cm31_batch_inverse_with(values: &[CM31], out: &mut [CM31], inverse: fn(M3
 mod tests {
     use super::*;
 
+    fn next_random_qm31(state: &mut u64) -> QM31 {
+        let mut limb = || {
+            *state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            M31((*state % u64::from(P)) as u32)
+        };
+        QM31 {
+            c0: CM31::new(limb(), limb()),
+            c1: CM31::new(limb(), limb()),
+        }
+    }
+
     #[test]
     fn m31_reduction_edges() {
         assert_eq!(M31(P - 1).add(M31(1)), M31(0));
@@ -1126,6 +1903,39 @@ mod tests {
         let lazy_sum = M31::reduce_u62(values.iter().map(|value| value.0 as u64).sum());
         let canonical_sum = values.iter().copied().fold(M31::ZERO, M31::add);
         assert_eq!(lazy_sum, canonical_sum);
+    }
+
+    #[test]
+    fn direct_qm31_base4_pack_matches_generic_tower_linear_map() {
+        let i = QM31 {
+            c0: CM31::new(M31::ZERO, M31::ONE),
+            c1: CM31::ZERO,
+        };
+        let u = QM31 {
+            c0: CM31::ZERO,
+            c1: CM31::ONE,
+        };
+        let basis = [QM31::ONE, i, u, i.mul(u)];
+        let mut state = 0x6c8e_9cf5_7093_2bd1u64;
+        for len in 0..=4 {
+            for _ in 0..64 {
+                let values: [QM31; 4] = core::array::from_fn(|_| next_random_qm31(&mut state));
+                let expected = values[..len]
+                    .iter()
+                    .zip(&basis)
+                    .fold(QM31::ZERO, |sum, (value, basis)| sum.add(value.mul(*basis)));
+                assert_eq!(qm31_pack_base4(&values[..len]), expected, "len={len}");
+            }
+        }
+
+        let edge = QM31 {
+            c0: CM31::new(M31(P - 1), M31(P - 1)),
+            c1: CM31::new(M31(P - 1), M31(P - 1)),
+        };
+        let expected = basis
+            .iter()
+            .fold(QM31::ZERO, |sum, basis| sum.add(edge.mul(*basis)));
+        assert_eq!(qm31_pack_base4(&[edge; 4]), expected);
     }
 
     #[test]
@@ -1426,6 +2236,56 @@ mod tests {
     }
 
     #[test]
+    fn grouped_qm31_dot6_matches_six_independent_products() {
+        fn next(state: &mut u64) -> M31 {
+            *state ^= *state >> 12;
+            *state ^= *state << 25;
+            *state ^= *state >> 27;
+            M31((state.wrapping_mul(0x2545_f491_4f6c_dd1d) as u32) % P)
+        }
+
+        fn qm31(state: &mut u64) -> QM31 {
+            QM31 {
+                c0: CM31::new(next(state), next(state)),
+                c1: CM31::new(next(state), next(state)),
+            }
+        }
+
+        for seed in 1..=64u64 {
+            let mut state = seed.wrapping_mul(0x9e37_79b9_7f4a_7c15);
+            let weights = core::array::from_fn(|_| qm31(&mut state));
+            let prepared = weights.map(PreparedQm31Multiplier::new);
+            let values = core::array::from_fn(|_| qm31(&mut state));
+            let expected = weights
+                .iter()
+                .zip(&values)
+                .fold(QM31::ZERO, |sum, (weight, value)| {
+                    sum.add(weight.mul(*value))
+                });
+            assert_eq!(
+                qm31_dot6_prepared(&prepared, &values),
+                expected,
+                "seed={seed}"
+            );
+        }
+
+        let maximal = QM31 {
+            c0: CM31::new(M31(P - 1), M31(P - 1)),
+            c1: CM31::new(M31(P - 1), M31(P - 1)),
+        };
+        let weights = [maximal; 6];
+        let values = [maximal; 6];
+        let prepared = weights.map(PreparedQm31Multiplier::new);
+        let expected = weights
+            .iter()
+            .zip(&values)
+            .fold(QM31::ZERO, |sum, (weight, value)| {
+                sum.add(weight.mul(*value))
+            });
+        assert_eq!(qm31_dot6_prepared(&prepared, &values), expected);
+    }
+
+    #[test]
     fn fused_qm31_m31_dot4_matches_independent_and_naive_dots() {
         fn next(state: &mut u64) -> M31 {
             *state ^= *state >> 12;
@@ -1496,6 +2356,20 @@ mod tests {
             qm31_m31_dot4_prepared_bytes(&weights, &bytes),
             Some(expected)
         );
+        let limbs =
+            weights.map(|weight| [weight.c0.a.0, weight.c0.b.0, weight.c1.a.0, weight.c1.b.0]);
+        assert_eq!(
+            qm31_m31_dot4_prepared_limbs49_bytes(&limbs, &bytes),
+            Some(expected)
+        );
+        assert_eq!(
+            qm31_m31_dot4_prepared_limbs_4b1_bytes(&limbs, &bytes),
+            Some(expected)
+        );
+        assert_eq!(
+            qm31_m31_dot4_prepared_limbs49_bytes_two_rows(&limbs, &bytes),
+            Some(expected)
+        );
         assert_eq!(
             qm31_m31_dot4_prepared_bytes(&weights, &bytes[..bytes.len() - 1]),
             None
@@ -1508,6 +2382,11 @@ mod tests {
                 None,
                 "noncanonical limb at byte {offset} accepted"
             );
+            assert_eq!(
+                qm31_m31_dot4_prepared_limbs49_bytes_two_rows(&limbs, &corrupted),
+                None,
+                "two-row kernel accepted noncanonical limb at byte {offset}"
+            );
         }
         let mut high_bit = bytes;
         high_bit[4..8].copy_from_slice(&u32::MAX.to_le_bytes());
@@ -1515,6 +2394,134 @@ mod tests {
             qm31_m31_dot4_prepared_bytes(&weights, &high_bit),
             None,
             "high-bit noncanonical M31 accepted"
+        );
+    }
+
+    #[test]
+    fn fixed_4b1_m31_byte_dot4_matches_reference_at_state_width_candidates() {
+        fn check<const N: usize>() {
+            fn next(state: &mut u64) -> M31 {
+                *state ^= *state >> 12;
+                *state ^= *state << 25;
+                *state ^= *state >> 27;
+                M31((state.wrapping_mul(0x2545_f491_4f6c_dd1d) as u32) % P)
+            }
+            let mut state = 0x4b31_0000_0000_0000u64.wrapping_add(N as u64);
+            let weights: [QM31; N] = core::array::from_fn(|_| QM31 {
+                c0: CM31::new(next(&mut state), next(&mut state)),
+                c1: CM31::new(next(&mut state), next(&mut state)),
+            });
+            let values: [[M31; N]; 4] =
+                core::array::from_fn(|_| core::array::from_fn(|_| next(&mut state)));
+            let limbs =
+                weights.map(|weight| [weight.c0.a.0, weight.c0.b.0, weight.c1.a.0, weight.c1.b.0]);
+            let mut bytes = alloc::vec![0u8; 4 * N * 4];
+            for slot in 0..4 {
+                for index in 0..N {
+                    let offset = (slot * N + index) * 4;
+                    bytes[offset..offset + 4].copy_from_slice(&values[slot][index].to_le_bytes());
+                }
+            }
+            let expected =
+                qm31_m31_dot4(&weights, [&values[0], &values[1], &values[2], &values[3]]);
+            assert_eq!(
+                qm31_m31_dot4_prepared_limbs_4b1_bytes(&limbs, &bytes),
+                Some(expected),
+                "N={N}"
+            );
+            let last = bytes.len() - 4;
+            bytes[last..].copy_from_slice(&P.to_le_bytes());
+            assert_eq!(
+                qm31_m31_dot4_prepared_limbs_4b1_bytes(&limbs, &bytes),
+                None,
+                "N={N} noncanonical tail accepted"
+            );
+        }
+
+        check::<17>();
+        check::<33>();
+        check::<49>();
+        assert_eq!(
+            qm31_m31_dot4_prepared_limbs_4b1_bytes(&[[0u32; 4]; 4], &[0u8; 64]),
+            None
+        );
+    }
+
+    #[test]
+    fn fixed_4b_m31_byte_dot4_matches_reference_at_state_only_width16() {
+        const N: usize = 16;
+        fn next(state: &mut u64) -> M31 {
+            *state ^= *state >> 12;
+            *state ^= *state << 25;
+            *state ^= *state >> 27;
+            M31((state.wrapping_mul(0x2545_f491_4f6c_dd1d) as u32) % P)
+        }
+        let mut state = 0x4b00_0010_0000_0000u64;
+        let weights: [QM31; N] = core::array::from_fn(|_| QM31 {
+            c0: CM31::new(next(&mut state), next(&mut state)),
+            c1: CM31::new(next(&mut state), next(&mut state)),
+        });
+        let values: [[M31; N]; 4] =
+            core::array::from_fn(|_| core::array::from_fn(|_| next(&mut state)));
+        let limbs =
+            weights.map(|weight| [weight.c0.a.0, weight.c0.b.0, weight.c1.a.0, weight.c1.b.0]);
+        let mut bytes = alloc::vec![0u8; 4 * N * 4];
+        for slot in 0..4 {
+            for index in 0..N {
+                let offset = (slot * N + index) * 4;
+                bytes[offset..offset + 4].copy_from_slice(&values[slot][index].to_le_bytes());
+            }
+        }
+        let expected = qm31_m31_dot4(&weights, [&values[0], &values[1], &values[2], &values[3]]);
+        assert_eq!(
+            qm31_m31_dot4_prepared_limbs_4b_bytes(&limbs, &bytes),
+            Some(expected)
+        );
+        let last = bytes.len() - 4;
+        bytes[last..].copy_from_slice(&P.to_le_bytes());
+        assert_eq!(qm31_m31_dot4_prepared_limbs_4b_bytes(&limbs, &bytes), None);
+        assert_eq!(
+            qm31_m31_dot4_prepared_limbs_4b_bytes(&[[0u32; 4]; 17], &[0u8; 272]),
+            None
+        );
+    }
+
+    #[test]
+    fn fixed_4b2_m31_byte_dot4_matches_reference_at_state_only_width26() {
+        const N: usize = 26;
+        fn next(state: &mut u64) -> M31 {
+            *state ^= *state >> 12;
+            *state ^= *state << 25;
+            *state ^= *state >> 27;
+            M31((state.wrapping_mul(0x2545_f491_4f6c_dd1d) as u32) % P)
+        }
+        let mut state = 0x4b02_001a_0000_0000u64;
+        let weights: [QM31; N] = core::array::from_fn(|_| QM31 {
+            c0: CM31::new(next(&mut state), next(&mut state)),
+            c1: CM31::new(next(&mut state), next(&mut state)),
+        });
+        let values: [[M31; N]; 4] =
+            core::array::from_fn(|_| core::array::from_fn(|_| next(&mut state)));
+        let limbs =
+            weights.map(|weight| [weight.c0.a.0, weight.c0.b.0, weight.c1.a.0, weight.c1.b.0]);
+        let mut bytes = alloc::vec![0u8; 4 * N * 4];
+        for slot in 0..4 {
+            for index in 0..N {
+                let offset = (slot * N + index) * 4;
+                bytes[offset..offset + 4].copy_from_slice(&values[slot][index].to_le_bytes());
+            }
+        }
+        let expected = qm31_m31_dot4(&weights, [&values[0], &values[1], &values[2], &values[3]]);
+        assert_eq!(
+            qm31_m31_dot4_prepared_limbs_4b2_bytes(&limbs, &bytes),
+            Some(expected)
+        );
+        let last = bytes.len() - 4;
+        bytes[last..].copy_from_slice(&P.to_le_bytes());
+        assert_eq!(qm31_m31_dot4_prepared_limbs_4b2_bytes(&limbs, &bytes), None);
+        assert_eq!(
+            qm31_m31_dot4_prepared_limbs_4b2_bytes(&[[0u32; 4]; 24], &[0u8; 384]),
+            None
         );
     }
 
@@ -1576,8 +2583,149 @@ mod tests {
     }
 
     #[test]
+    fn prepared_qm31_multiplier_matches_generic_multiplication() {
+        let q = |seed: u32| QM31 {
+            c0: CM31::new(M31(seed % P), M31((seed * 3 + 1) % P)),
+            c1: CM31::new(M31((seed * 5 + 2) % P), M31((seed * 7 + 3) % P)),
+        };
+        for left_seed in 1..=16u32 {
+            let left = q(left_seed * 17);
+            let prepared = PreparedQm31Multiplier::new(left);
+            for right_seed in 1..=16u32 {
+                let right = q(right_seed * 29);
+                assert_eq!(prepared.mul(right), left.mul(right));
+            }
+        }
+    }
+
+    #[test]
+    fn small_qm31_product_sums_match_canonical_arithmetic() {
+        fn canonical<const N: usize>(left: [QM31; N], right: [QM31; N]) -> QM31 {
+            left.iter()
+                .zip(&right)
+                .fold(QM31::ZERO, |sum, (left, right)| sum.add(left.mul(*right)))
+        }
+
+        let mut state = 0x51a1_1f0d_d1ff_5eed;
+        for case in 0..512 {
+            let left: [QM31; 4] = core::array::from_fn(|_| next_random_qm31(&mut state));
+            let right: [QM31; 4] = core::array::from_fn(|_| next_random_qm31(&mut state));
+            assert_eq!(
+                qm31_sum_products2([left[0], left[1]], [right[0], right[1]]),
+                canonical([left[0], left[1]], [right[0], right[1]]),
+                "two-product random case {case}"
+            );
+            assert_eq!(
+                qm31_sum_products3([left[0], left[1], left[2]], [right[0], right[1], right[2]],),
+                canonical([left[0], left[1], left[2]], [right[0], right[1], right[2]],),
+                "three-product random case {case}"
+            );
+            assert_eq!(
+                qm31_sum_products4(left, right),
+                canonical(left, right),
+                "four-product random case {case}"
+            );
+            let prepared = [left[0], left[1]].map(PreparedQm31Multiplier::new);
+            assert_eq!(
+                qm31_sum_products2_prepared(&prepared, &[right[0], right[1]]),
+                canonical([left[0], left[1]], [right[0], right[1]]),
+                "prepared two-product random case {case}"
+            );
+            let prepared3 = [left[0], left[1], left[2]].map(PreparedQm31Multiplier::new);
+            assert_eq!(
+                qm31_sum_products3_prepared(&prepared3, &[right[0], right[1], right[2]]),
+                canonical([left[0], left[1], left[2]], [right[0], right[1], right[2]]),
+                "prepared three-product random case {case}"
+            );
+        }
+
+        // This is the exact worst-case bound relied on by the u64 channels.
+        assert!(4u128 * u128::from(P - 1).pow(2) <= u128::from(u64::MAX));
+        let maximal = QM31 {
+            c0: CM31::new(M31(P - 1), M31(P - 1)),
+            c1: CM31::new(M31(P - 1), M31(P - 1)),
+        };
+        let alternating = QM31 {
+            c0: CM31::new(M31(P - 1), M31::ZERO),
+            c1: CM31::new(M31::ONE, M31(P - 2)),
+        };
+        let edges = [QM31::ZERO, QM31::ONE, maximal, alternating];
+        for rotation in 0..edges.len() {
+            let left: [QM31; 4] =
+                core::array::from_fn(|index| edges[(index + rotation) % edges.len()]);
+            let right: [QM31; 4] =
+                core::array::from_fn(|index| edges[(edges.len() + rotation - index) % edges.len()]);
+            assert_eq!(qm31_sum_products4(left, right), canonical(left, right));
+            assert_eq!(
+                qm31_sum_products3([left[0], left[1], left[2]], [right[0], right[1], right[2]],),
+                canonical([left[0], left[1], left[2]], [right[0], right[1], right[2]],)
+            );
+            let prepared3 = [left[0], left[1], left[2]].map(PreparedQm31Multiplier::new);
+            assert_eq!(
+                qm31_sum_products3_prepared(&prepared3, &[right[0], right[1], right[2]]),
+                canonical([left[0], left[1], left[2]], [right[0], right[1], right[2]],)
+            );
+            assert_eq!(
+                qm31_sum_products2([left[0], left[1]], [right[0], right[1]]),
+                canonical([left[0], left[1]], [right[0], right[1]])
+            );
+        }
+    }
+
+    #[test]
+    fn prepared_two_product_sum_matches_tensor_fold_factor() {
+        fn reference(alpha: QM31, high: QM31, low: QM31) -> QM31 {
+            let alpha2 = alpha.square();
+            let alpha3 = alpha2.mul(alpha);
+            QM31::ONE
+                .add(alpha2.mul(high))
+                .add(low.mul(alpha3.add(alpha.mul(high))))
+                .half()
+                .half()
+        }
+
+        fn candidate(alpha: QM31, high: QM31, low: QM31) -> QM31 {
+            let alpha2 = alpha.square();
+            let alpha3 = alpha2.mul(alpha);
+            let prepared = [
+                PreparedQm31Multiplier::new(alpha2),
+                PreparedQm31Multiplier::new(low),
+            ];
+            let products =
+                qm31_sum_products2_prepared(&prepared, &[high, alpha3.add(alpha.mul(high))]);
+            QM31::ONE.add(products).half().half()
+        }
+
+        let minus_one = QM31::from_cm31(CM31::from_m31(M31(P - 1)));
+        let maximal = QM31 {
+            c0: CM31::new(M31(P - 1), M31(P - 1)),
+            c1: CM31::new(M31(P - 1), M31(P - 1)),
+        };
+        let edges = [QM31::ZERO, QM31::ONE, minus_one, maximal];
+        for alpha in edges {
+            for high in edges {
+                for low in edges {
+                    assert_eq!(candidate(alpha, high, low), reference(alpha, high, low));
+                }
+            }
+        }
+
+        let mut state = 0xacc0_001a_5bf0_1d5u64;
+        for case in 0..512 {
+            let alpha = next_random_qm31(&mut state);
+            let high = next_random_qm31(&mut state);
+            let low = next_random_qm31(&mut state);
+            assert_eq!(
+                candidate(alpha, high, low),
+                reference(alpha, high, low),
+                "tensor factor random case {case}"
+            );
+        }
+    }
+
+    #[test]
     fn lazy_qm31_dot_matches_naive() {
-        for len in [0usize, 1, 3, 4, 5, 20, 80] {
+        for len in [0usize, 1, 3, 4, 5, 20, 80, 257, 513] {
             let values_for = |salt: u32| {
                 (0..len)
                     .map(|index| QM31 {
@@ -1601,6 +2749,90 @@ mod tests {
                     sum.add(weight.mul(*value))
                 });
             assert_eq!(qm31_dot(&weights, &values), naive);
+        }
+
+        let maximal = QM31 {
+            c0: CM31::new(M31(P - 1), M31(P - 1)),
+            c1: CM31::new(M31(P - 1), M31(P - 1)),
+        };
+        let weights = [maximal; 257];
+        let values = [maximal; 257];
+        let naive = weights
+            .iter()
+            .zip(&values)
+            .fold(QM31::ZERO, |sum, (weight, value)| {
+                sum.add(weight.mul(*value))
+            });
+        assert_eq!(qm31_dot(&weights, &values), naive);
+    }
+
+    #[test]
+    fn degree72_radix8_matches_horner_randomly_and_at_challenge_edges() {
+        let mut state = 0x72_08_d1ff_e7e1_5eed;
+        for case in 0..256 {
+            let coefficients = core::array::from_fn(|_| next_random_qm31(&mut state));
+            let x = next_random_qm31(&mut state);
+            assert_eq!(
+                qm31_evaluate_degree72_radix8(&coefficients, x),
+                qm31_evaluate_degree72_horner(&coefficients, x),
+                "random case {case}"
+            );
+        }
+
+        let coefficients = core::array::from_fn(|_| next_random_qm31(&mut state));
+        let minus_one = QM31::from_cm31(CM31::from_m31(M31(P - 1)));
+        for x in [QM31::ZERO, QM31::ONE, minus_one] {
+            assert_eq!(
+                qm31_evaluate_degree72_radix8(&coefficients, x),
+                qm31_evaluate_degree72_horner(&coefficients, x),
+                "challenge edge {x:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn degree72_radix8_matches_every_single_coefficient_polynomial() {
+        let x = QM31 {
+            c0: CM31::new(M31(1_234_567), M31(89_012_345)),
+            c1: CM31::new(M31(678_901_234), M31(1_345_678_901)),
+        };
+        for degree in 0..=72usize {
+            let mut coefficients = [QM31::ZERO; 73];
+            coefficients[degree] = QM31::ONE;
+            let expected = x.pow(degree as u64);
+            assert_eq!(
+                qm31_evaluate_degree72_radix8(&coefficients, x),
+                expected,
+                "unit coefficient at degree {degree}"
+            );
+            assert_eq!(
+                qm31_evaluate_degree72_horner(&coefficients, x),
+                expected,
+                "reference unit coefficient at degree {degree}"
+            );
+        }
+    }
+
+    #[test]
+    fn degree72_radix8_matches_horner_at_maximal_limbs() {
+        let maximal = QM31 {
+            c0: CM31::new(M31(P - 1), M31(P - 1)),
+            c1: CM31::new(M31(P - 1), M31(P - 1)),
+        };
+        let coefficients = [maximal; 73];
+        assert_eq!(
+            qm31_evaluate_degree72_radix8(&coefficients, maximal),
+            qm31_evaluate_degree72_horner(&coefficients, maximal)
+        );
+
+        for degree in 0..=72usize {
+            let mut single = [QM31::ZERO; 73];
+            single[degree] = maximal;
+            assert_eq!(
+                qm31_evaluate_degree72_radix8(&single, maximal),
+                qm31_evaluate_degree72_horner(&single, maximal),
+                "maximal single coefficient at degree {degree}"
+            );
         }
     }
 }

@@ -1,9 +1,13 @@
 mod host;
 mod onchain;
+mod profile23_devnet;
+mod profile23_mainnet;
+mod profile23_release;
 mod retired_numbers;
 mod stage1;
 mod stage1_theta;
 mod stage2;
+mod stage2_rate16_soundness;
 
 use std::fs;
 use std::path::PathBuf;
@@ -190,6 +194,78 @@ fn main() -> Result<()> {
             );
             Ok(())
         }
+        Some("stage2-two-point-batching-probe") => {
+            let summary = onchain::run_stage2_two_point_batching_probe()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("two_point_batching_probe.json");
+            fs::write(&path, format!("{}\n", serde_json::to_string_pretty(&summary)?))?;
+            eprintln!(
+                "stage2-two-point-batching-probe: measured {} neutral modes; wrote {}",
+                summary.variants.len(),
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-m31-fresh-kappa-sbf") => {
+            let summary = onchain::run_stage2_m31_fresh_kappa_sbf()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("m31_circle_fresh_kappa_sbf.json");
+            fs::write(&path, format!("{}\n", serde_json::to_string_pretty(&summary)?))?;
+            eprintln!(
+                "stage2-m31-fresh-kappa-sbf: mean={} CU over {} runs; wrote {}",
+                summary.simulation_cu_mean,
+                summary.simulation_cu.len(),
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-m31-johnson-sbf") => {
+            let summary = onchain::run_stage2_m31_johnson_sbf()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("m31_circle_johnson_q74_g32_sbf.json");
+            fs::write(&path, format!("{}\n", serde_json::to_string_pretty(&summary)?))?;
+            eprintln!(
+                "stage2-m31-johnson-sbf: reconciled={} CU (headroom={}); wrote {}",
+                summary.reconciled_integrated_cu,
+                summary.headroom_vs_1_4m_cu,
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-m31-rate16-sbf") => {
+            let summary = onchain::run_stage2_m31_rate16_sbf()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("m31_circle_johnson_b4_q36_g32_sbf.json");
+            fs::write(&path, format!("{}\n", serde_json::to_string_pretty(&summary)?))?;
+            eprintln!(
+                "stage2-m31-rate16-sbf: selected={} CU (headroom={}); wrote {}",
+                summary.selected_integrated_cu,
+                summary.headroom_vs_1_4m_cu,
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-m31-rate16-hardened-sbf") => {
+            let summary = onchain::run_stage2_m31_rate16_hardened_sbf()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("m31_circle_johnson_b4_q36_g36_foldpow_sbf.json");
+            fs::write(&path, format!("{}\n", serde_json::to_string_pretty(&summary)?))?;
+            eprintln!(
+                "stage2-m31-rate16-hardened-sbf: selected={} CU (headroom={}); wrote {}",
+                summary.selected_integrated_cu,
+                summary.headroom_vs_1_4m_cu,
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-rate16-soundness") => {
+            let artifact = stage2_rate16_soundness::rate16_soundness_artifact();
+            let dir = stage2_results_dir()?;
+            let path = dir.join("rate16_hardened_soundness.json");
+            fs::write(&path, format!("{}\n", serde_json::to_string_pretty(&artifact)?))?;
+            eprintln!("stage2-rate16-soundness: wrote {}", path.display());
+            Ok(())
+        }
         Some("stage2-v4-s2-pcs-scaffold-kat") => {
             let summary = onchain::run_transcript_kat_v4_s2_pcs_scaffold()?;
             anyhow::ensure!(
@@ -203,6 +279,18 @@ fn main() -> Result<()> {
                 "stage2-v4-s2-pcs-scaffold-kat: matched; wrote {}",
                 path.display()
             );
+            Ok(())
+        }
+        Some("stage2-final-payment-v4-kat") => {
+            let summary = onchain::run_final_payment_transcript_kat_v4()?;
+            anyhow::ensure!(
+                summary.matched_on_sbf,
+                "final payment-v4 transcript KAT MISMATCH on SBF"
+            );
+            let dir = stage2_results_dir()?;
+            let path = dir.join("transcript_kat_final_payment_v4.json");
+            fs::write(&path, format!("{}\n", serde_json::to_string_pretty(&summary)?))?;
+            eprintln!("stage2-final-payment-v4-kat: matched; wrote {}", path.display());
             Ok(())
         }
         Some("stage2-v4-s2-pcs-scaffold") => {
@@ -305,6 +393,372 @@ fn main() -> Result<()> {
             eprintln!("stage2-merkle-arity-probe: wrote {}", path.display());
             Ok(())
         }
+        Some("stage2-hvzk-whir-mask-probe") => {
+            let summary = onchain::run_stage2_hvzk_whir_mask_probe()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("hvzk_whir_mask_probe.json");
+            fs::write(&path, format!("{}\n", serde_json::to_string_pretty(&summary)?))?;
+            eprintln!(
+                "stage2-hvzk-whir-mask-probe: measured {} rows; wrote {}",
+                summary.rows.len(),
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-radix8-merkle-probe") => {
+            let summary = onchain::run_stage2_radix8_merkle_probe()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("radix8_merkle_probe.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!("stage2-radix8-merkle-probe: wrote {}", path.display());
+            Ok(())
+        }
+        Some("stage2-merkle-forest-probe") => {
+            let summary = onchain::run_stage2_merkle_forest_probe()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("merkle_forest_probe.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!("stage2-merkle-forest-probe: wrote {}", path.display());
+            Ok(())
+        }
+        Some("stage2-layer0-dot-width-probe") => {
+            let summary = onchain::run_stage2_layer0_dot_width_probe()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("layer0_dot_width_probe.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!("stage2-layer0-dot-width-probe: wrote {}", path.display());
+            Ok(())
+        }
+        Some("stage2-state-only-helper-dot2-probe") => {
+            let summary = onchain::run_stage2_state_only_helper_dot2_probe()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("state_only_helper_dot2_probe.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!(
+                "stage2-state-only-helper-dot2-probe: savings={} CU; wrote {}",
+                summary.measured_savings_cu,
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-state-only-helper-dot3-probe") => {
+            let summary = onchain::run_stage2_state_only_helper_dot3_probe()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("state_only_helper_dot3_probe.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!(
+                "stage2-state-only-helper-dot3-probe: savings={} CU; wrote {}",
+                summary.measured_savings_cu,
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-state-only-fold-polynomial-probe") => {
+            let summary = onchain::run_stage2_state_only_fold_polynomial_probe()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("state_only_fold_polynomial_probe.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!(
+                "stage2-state-only-fold-polynomial-probe: savings={} CU; wrote {}",
+                summary.measured_savings_cu,
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-atomic-routing-partition-probe") => {
+            let summary = onchain::run_stage2_atomic_routing_partition_probe()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("atomic_routing_partition_probe.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!(
+                "stage2-atomic-routing-partition-probe: savings={} CU; wrote {}",
+                summary.optimized_savings_cu,
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-atomic-profile20-cost") => {
+            let summary = onchain::run_stage2_atomic_profile20_cost_candidate()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("atomic_state_only_profile20_cost.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!(
+                "stage2-atomic-profile20-cost: overlap={} CU; wrote {}",
+                summary.overlap_substituted_ledger.overlap_reconciled_total_cu,
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-atomic-profile20-acceptance") => {
+            let summary = onchain::run_stage2_atomic_profile20_acceptance()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("atomic_state_only_profile20_acceptance.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!(
+                "stage2-atomic-profile20-acceptance: literal={:?} CU; wrote {}",
+                summary.literal_simulation_cu,
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-atomic-profile20-mutation") => {
+            let summary = onchain::run_stage2_atomic_profile20_mutation()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("atomic_state_only_profile20_mutation.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!(
+                "stage2-atomic-profile20-mutation: paths={} CU; wrote {}",
+                summary
+                    .paths
+                    .iter()
+                    .map(|path| path.literal_simulation_cu.to_string())
+                    .collect::<Vec<_>>()
+                    .join(","),
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-atomic-profile21-acceptance") => {
+            let summary = onchain::run_stage2_atomic_profile21_acceptance()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("atomic_state_only_profile21_acceptance.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!(
+                "stage2-atomic-profile21-acceptance: literal={} CU; wrote {}",
+                summary.literal_simulation_cu,
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-atomic-profile21-mutation") => {
+            let summary = onchain::run_stage2_atomic_profile21_mutation()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("atomic_state_only_profile21_mutation.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!(
+                "stage2-atomic-profile21-mutation: paths={} CU; wrote {}",
+                summary
+                    .paths
+                    .iter()
+                    .map(|path| path.literal_simulation_cu.to_string())
+                    .collect::<Vec<_>>()
+                    .join(","),
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-atomic-profile22-acceptance") => {
+            let summary = onchain::run_stage2_atomic_profile22_acceptance()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("atomic_state_only_profile22_acceptance.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!(
+                "stage2-atomic-profile22-acceptance: literal={} CU; wrote {}",
+                summary.literal_simulation_cu,
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-atomic-profile22-mutation") => {
+            let summary = onchain::run_stage2_atomic_profile22_mutation()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("atomic_state_only_profile22_mutation.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!(
+                "stage2-atomic-profile22-mutation: paths={} CU; wrote {}",
+                summary
+                    .paths
+                    .iter()
+                    .map(|path| path.literal_simulation_cu.to_string())
+                    .collect::<Vec<_>>()
+                    .join(","),
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-atomic-profile23-acceptance") => {
+            let summary = onchain::run_stage2_atomic_profile23_acceptance()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join(if summary.proof_source_override {
+                "atomic_state_only_profile23_acceptance_production_mined.json"
+            } else {
+                "atomic_state_only_profile23_acceptance.json"
+            });
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!(
+                "stage2-atomic-profile23-acceptance: literal={} CU; wrote {}",
+                summary.literal_simulation_cu,
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-atomic-profile23-mutation") => {
+            let summary = onchain::run_stage2_atomic_profile23_mutation()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join(if summary.proof_source_override {
+                "atomic_state_only_profile23_mutation_production_mined.json"
+            } else {
+                "atomic_state_only_profile23_mutation.json"
+            });
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            let diagnostic_paths = summary
+                .paths
+                .iter()
+                .map(|path| path.literal_simulation_cu.to_string())
+                .collect::<Vec<_>>()
+                .join(",");
+            let production_paths = summary
+                .production_paths
+                .iter()
+                .map(|path| path.literal_tag60_simulation_cu.to_string())
+                .collect::<Vec<_>>()
+                .join(",");
+            eprintln!(
+                "stage2-atomic-profile23-mutation: diagnostic_tag61_paths={} CU; production_tag60_paths={} CU; wrote {}",
+                diagnostic_paths,
+                if production_paths.is_empty() {
+                    "not-run"
+                } else {
+                    &production_paths
+                },
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-profile23-one-transaction-release") => {
+            let dir = stage2_results_dir()?;
+            let workspace_root = dir
+                .parent()
+                .and_then(|results| results.parent())
+                .ok_or_else(|| anyhow!("no workspace root above stage2 results"))?;
+            let summary = profile23_release::evaluate(workspace_root)?;
+            let path = dir.join("profile23_one_transaction_release.json");
+            fs::write(
+                &path,
+                format!("{}\n", serde_json::to_string_pretty(&summary)?),
+            )?;
+            if !summary.released {
+                bail!(
+                    "stage2-profile23-one-transaction-release: fail-closed; failed gates: {}; wrote {}",
+                    summary.failed_gates.join(", "),
+                    path.display()
+                );
+            }
+            eprintln!(
+                "stage2-profile23-one-transaction-release: released at {} CU ({} CU headroom); wrote {}",
+                summary.max_literal_production_tag60_cu.unwrap_or_default(),
+                summary.exact_headroom_under_1_4m_cu.unwrap_or_default(),
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-profile23-mainnet-readiness") => {
+            let arguments = args.collect::<Vec<_>>();
+            let dir = stage2_results_dir()?;
+            let workspace_root = dir
+                .parent()
+                .and_then(|results| results.parent())
+                .ok_or_else(|| anyhow!("no workspace root above stage2 results"))?;
+            let summary = profile23_mainnet::evaluate(workspace_root, &arguments);
+            let path = dir.join("profile23_mainnet_beta_readiness.json");
+            fs::write(
+                &path,
+                format!("{}\n", serde_json::to_string_pretty(&summary)?),
+            )?;
+            if !summary.ready_for_reviewed_live_executor {
+                bail!(
+                    "stage2-profile23-mainnet-readiness: fail-closed; blockers: {}; wrote {}",
+                    summary.blockers.join(", "),
+                    path.display()
+                );
+            }
+            eprintln!(
+                "stage2-profile23-mainnet-readiness: all readiness gates green; wrote {}",
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-profile23-devnet-readiness") => {
+            let arguments = args.collect::<Vec<_>>();
+            let dir = stage2_results_dir()?;
+            let workspace_root = dir
+                .parent()
+                .and_then(|results| results.parent())
+                .ok_or_else(|| anyhow!("no workspace root above stage2 results"))?;
+            let summary = profile23_devnet::readiness(workspace_root, &arguments)?;
+            let path = dir.join("profile23_devnet_readiness.json");
+            fs::write(
+                &path,
+                format!("{}\n", serde_json::to_string_pretty(&summary)?),
+            )?;
+            if !summary.ready {
+                bail!(
+                    "stage2-profile23-devnet-readiness: fail-closed; blockers: {}; wrote {}",
+                    summary.blockers.join(", "),
+                    path.display()
+                );
+            }
+            eprintln!(
+                "stage2-profile23-devnet-readiness: all read-only gates green; wrote {}",
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-profile23-devnet-execute") => {
+            let arguments = args.collect::<Vec<_>>();
+            let dir = stage2_results_dir()?;
+            let workspace_root = dir
+                .parent()
+                .and_then(|results| results.parent())
+                .ok_or_else(|| anyhow!("no workspace root above stage2 results"))?;
+            let evidence = profile23_devnet::execute(workspace_root, &arguments)?;
+            eprintln!(
+                "stage2-profile23-devnet-execute: finalized {} at slot {}; immutable evidence {}",
+                evidence.final_transaction.signature,
+                evidence.final_transaction.finalized_slot,
+                evidence.evidence_path
+            );
+            Ok(())
+        }
+        Some("stage2-state-only-relation-structural-probe") => {
+            let summary = onchain::run_stage2_state_only_relation_structural_probe()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("state_only_relation_structural_probe.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!(
+                "stage2-state-only-relation-structural-probe: savings={} CU; wrote {}",
+                summary.optimized_savings_cu,
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-state-only-masked-switch-profile21-probe") => {
+            let summary =
+                onchain::run_stage2_state_only_masked_switch_profile21_probe()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("state_only_masked_switch_profile21_probe.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!(
+                "stage2-state-only-masked-switch-profile21-probe: mean={} CU; wrote {}",
+                summary.simulation_cu_mean,
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-state-only-private-merkle-salt-probe") => {
+            let summary = onchain::run_stage2_state_only_private_merkle_salt_probe()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("state_only_private_merkle_salt_probe.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!(
+                "stage2-state-only-private-merkle-salt-probe: widening={} CU salt={} CU net={} CU; wrote {}",
+                summary.shared_c2_leaf_widening_delta_cu,
+                summary.all_five_tree_private_salt_delta_cu,
+                summary.shared_root_net_saving_after_salts_cu,
+                path.display()
+            );
+            Ok(())
+        }
         Some("stage2-radix4-g16") => {
             let summary = onchain::run_stage2_radix4_g16()?;
             let dir = stage2_results_dir()?;
@@ -334,6 +788,73 @@ fn main() -> Result<()> {
             );
             Ok(())
         }
+        Some("stage2-payment-statement-v4") => {
+            let summary = onchain::run_stage2_payment_statement_v4()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("payment_statement_v4.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!(
+                "stage2-payment-statement-v4: mean={:.0} CU; wrote {}",
+                summary.simulation_cu_mean,
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-payment-hiding-placement-v4") => {
+            let summary = onchain::run_stage2_payment_hiding_placement_v4()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("payment_hiding_placement_v4.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!(
+                "stage2-payment-hiding-placement-v4: separate-in_batch={} CU; wrote {}",
+                summary.separate_minus_in_batch_cu,
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-payment-hiding-aggregate-v4") => {
+            let summary = onchain::run_stage2_payment_hiding_aggregate_v4()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("payment_hiding_aggregate_v4.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!(
+                "stage2-payment-hiding-aggregate-v4: mean={:.0} CU; wrote {}",
+                summary.simulation_cu_mean,
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-payment-hiding-profile15") => {
+            let summary = onchain::run_stage2_payment_hiding_profile15()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("payment_hiding_profile15.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            eprintln!(
+                "stage2-payment-hiding-profile15: reconciled={} CU (headroom={}); wrote {}",
+                summary.overlap_subtracted_integrated_cu,
+                summary.headroom_under_1_4m,
+                path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-state-only-width28") => {
+            let summary = onchain::run_stage2_state_only_width28()?;
+            let dir = stage2_results_dir()?;
+            let path = dir.join("state_only_width28_global_inactive.json");
+            fs::write(&path, serde_json::to_string_pretty(&summary)?)?;
+            for row in &summary.rows {
+                eprintln!(
+                    "stage2-state-only-width28: {} q{} proof={} CU={:?} error={:?}",
+                    row.rho,
+                    row.query_count,
+                    row.proof_bytes,
+                    row.simulation_cu,
+                    row.simulation_error,
+                );
+            }
+            eprintln!("stage2-state-only-width28: wrote {}", path.display());
+            Ok(())
+        }
         Some("stage2-query-trade-g16") => {
             let summary = onchain::run_stage2_query_trade_g16()?;
             let dir = stage2_results_dir()?;
@@ -360,7 +881,7 @@ fn main() -> Result<()> {
             Ok(())
         }
         other => bail!(
-            "usage: cargo run -p aspis-xtask -- stage0-host | stage0-onchain | stage0-onchain-gate | stage0-onchain-g32 | stage0-onchain-layout-target | stage0-onchain-profile | stage0-layout-sweep | stage0-transcript-kat | stage1-soundness-pin | stage1-theta-optimize | stage1-retired-number-lint | stage1-onchain-hardening | stage2-evaluator | stage2-logup-compression-kat | stage2-s2-ood-probe | stage2-v4-s2-pcs-scaffold-kat | stage2-v4-s2-pcs-scaffold | stage2-exact-wide-v4-diagnostic | stage2-m31-circle-basis-probe | stage2-composition-probe | stage2-layout-probe | stage2-poseidon2-probe | stage2-zk-kernel-probe | stage2-wide-rlc-probe | stage2-merkle-arity-probe | stage2-radix4-g16 | stage2-radix4-g32 | stage2-variance-g16 | stage2-sumcheck-probe | stage2-query-trade-g16 (got {:?})",
+            "usage: cargo run -p aspis-xtask -- stage0-host | stage0-onchain | stage0-onchain-gate | stage0-onchain-g32 | stage0-onchain-layout-target | stage0-onchain-profile | stage0-layout-sweep | stage0-transcript-kat | stage1-soundness-pin | stage1-theta-optimize | stage1-retired-number-lint | stage1-onchain-hardening | stage2-evaluator | stage2-logup-compression-kat | stage2-s2-ood-probe | stage2-v4-s2-pcs-scaffold-kat | stage2-v4-s2-pcs-scaffold | stage2-exact-wide-v4-diagnostic | stage2-m31-circle-basis-probe | stage2-m31-fresh-kappa-sbf | stage2-m31-johnson-sbf | stage2-m31-rate16-sbf | stage2-m31-rate16-hardened-sbf | stage2-rate16-soundness | stage2-composition-probe | stage2-layout-probe | stage2-poseidon2-probe | stage2-zk-kernel-probe | stage2-wide-rlc-probe | stage2-merkle-arity-probe | stage2-hvzk-whir-mask-probe | stage2-radix8-merkle-probe | stage2-merkle-forest-probe | stage2-layer0-dot-width-probe | stage2-state-only-helper-dot2-probe | stage2-state-only-helper-dot3-probe | stage2-state-only-fold-polynomial-probe | stage2-atomic-routing-partition-probe | stage2-atomic-profile20-cost | stage2-atomic-profile20-acceptance | stage2-atomic-profile20-mutation | stage2-atomic-profile21-acceptance | stage2-atomic-profile21-mutation | stage2-atomic-profile22-acceptance | stage2-atomic-profile22-mutation | stage2-atomic-profile23-acceptance | stage2-atomic-profile23-mutation | stage2-profile23-one-transaction-release | stage2-profile23-mainnet-readiness | stage2-profile23-devnet-readiness | stage2-profile23-devnet-execute | stage2-state-only-relation-structural-probe | stage2-state-only-masked-switch-profile21-probe | stage2-state-only-private-merkle-salt-probe | stage2-radix4-g16 | stage2-radix4-g32 | stage2-variance-g16 | stage2-sumcheck-probe | stage2-payment-statement-v4 | stage2-payment-hiding-profile15 | stage2-state-only-width28 | stage2-query-trade-g16 (got {:?})",
             other
         ),
     }

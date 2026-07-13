@@ -1,0 +1,112 @@
+{
+  "generated_at_utc": "2026-07-13T04:51:08.462039+00:00",
+  "command": "NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-state-only-private-merkle-salt-probe",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "instruction_wire_ordinal": 49,
+  "query_count": 16,
+  "distinct_opened_leaves_per_tree": 16,
+  "rows": [
+    {
+      "mode": 0,
+      "label": "existing_c2_128",
+      "opened_leaf_lengths": [
+        128
+      ],
+      "salted": false,
+      "leaf_hash_calls": 16,
+      "expected_sink_hex": "6532d71d920755aa865483e52bbf52a215eced5ec9f35b4c8b309e670609bfd1",
+      "simulation_cu": [
+        20290,
+        20290,
+        20290,
+        20290,
+        20290
+      ],
+      "simulation_cu_mean": 20290.0
+    },
+    {
+      "mode": 1,
+      "label": "shared_c2_256",
+      "opened_leaf_lengths": [
+        256
+      ],
+      "salted": false,
+      "leaf_hash_calls": 16,
+      "expected_sink_hex": "c11c01ea2fc67b0326aaa4925e2ddf884c35361d6b04d0c6ff43b7e4ed20d144",
+      "simulation_cu": [
+        21317,
+        21317,
+        21317,
+        21317,
+        21317
+      ],
+      "simulation_cu_mean": 21317.0
+    },
+    {
+      "mode": 2,
+      "label": "five_shared_trees_unsalted",
+      "opened_leaf_lengths": [
+        416,
+        256,
+        64,
+        64,
+        64
+      ],
+      "salted": false,
+      "leaf_hash_calls": 80,
+      "expected_sink_hex": "809849dc1db969feb66660e66bddc507e470242b6251b9625d14b39cb9214286",
+      "simulation_cu": [
+        82266,
+        82266,
+        82266,
+        82266,
+        82266
+      ],
+      "simulation_cu_mean": 82266.0
+    },
+    {
+      "mode": 3,
+      "label": "five_shared_trees_salted",
+      "opened_leaf_lengths": [
+        416,
+        256,
+        64,
+        64,
+        64
+      ],
+      "salted": true,
+      "leaf_hash_calls": 80,
+      "expected_sink_hex": "b69a9fa44f7db074a3805145518eaee873a5f2a7af96b6fdc89bc1df45abecde",
+      "simulation_cu": [
+        81066,
+        81066,
+        81066,
+        81066,
+        81066
+      ],
+      "simulation_cu_mean": 81066.0
+    }
+  ],
+  "shared_c2_leaf_widening_delta_cu": 1027,
+  "all_five_tree_private_salt_delta_cu": -1200,
+  "conservative_booked_private_salt_delta_cu": 0,
+  "dedicated_xf_tree_measured_bucket_cu": 31930,
+  "shared_root_net_saving_before_salts_cu": 30903,
+  "literal_micro_shared_root_net_saving_after_salts_cu": 32103,
+  "shared_root_net_saving_after_salts_cu": 30903,
+  "salt_wire_delta_bytes": 2560,
+  "shared_c2_opened_value_wire_delta_bytes": 2048,
+  "measured_micro_salted_leaf_hash": "SHA256([0x10, tree_tag] || salt32 || leaf); this ordering was used only by tag49 to price the same total SHA input length",
+  "production_salted_leaf_hash": "SHA256([0x10, tree_tag] || fixed_width_leaf || salt32), implemented by aspis_core::state_only_private_merkle::private_leaf_hash_record over the contiguous value||salt record with exactly two hashv slices; independent concatenation KAT and tag/value/salt teeth are green",
+  "explicit_nonclaims": [
+    "This tag measures only leaf rehashing; radix-four frontier traversal and transcript absorption are intentionally identical or removed by the shared-root substitution.",
+    "Private-Merkle salts hide unopened leaf preimages but do not replace the full-field WHIR masks required for transcript HVZK.",
+    "The net saving is an overlap-safe isolated substitution, not an integrated profile-21 verifier total."
+  ],
+  "notes": [
+    "The 31,930-CU dedicated-X/F bucket is the exact switch45_xf_merkle_done marker delta from the same q16/depth15 tag45 artifact; sharing root0 removes that entire tree and retains only the measured 128-to-256-byte C2 leaf-hash delta.",
+    "All five production trees use exactly 16 distinct opened logical leaves: C1=416 bytes, widened C2=256, and W1/W2/W3=64 each. U replaces W1 and X/F share C2, so neither introduces another salt or tree.",
+    "Tag49 salted and unsalted arms both use two SHA syscall slices and measured domain || salt || leaf. The selected production primitive freezes domain || value || salt; both have the same byte length, while the production KAT—not tag49's digest—defines consensus bytes.",
+    "A negative isolated salt delta is not booked as one-transaction headroom. The conservative salt charge is max(0, measured delta) until the integrated parser plus leaf-hash path confirms the complete effect."
+  ]
+}

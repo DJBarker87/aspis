@@ -1,0 +1,152 @@
+{
+  "artifact": "profile22_universal_affine_privacy",
+  "date": "2026-07-13",
+  "status": "universal_root_neutral_sumcheck_refuted_good22_selected_not_integrated",
+  "production_acceptance_enabled": false,
+  "physical_module": {
+    "active_source": "e_r, excluding fixed row zero",
+    "inactive_source": "e_r-e_d_c, excluding d_c",
+    "invariant": "zero sum on the atomic-v3 copy-inactive registry",
+    "sparse_dense_guard": "same source applied to raw, terminal and complete PCS continuation"
+  },
+  "schedule_independent_blocks": {
+    "physical_source_in_v0": true,
+    "pcs_continuation_k_linear": true,
+    "distinct_q16_query_rank_m31": 64,
+    "terminal_residual_nonzero_polynomial_for_every_distinct_q16": true,
+    "discrete_query_retry_term": false
+  },
+  "true_physical_witness_pair_counterexample_found": false,
+  "true_conservative_legal_wire_counterexample_found": true,
+  "boolean_zero_classification": {
+    "mask_raw_rank_m31": 64,
+    "physical_target_raw_rank_m31": 64,
+    "privacy_counterexample": false,
+    "reason": "all three terminal functionals vanish on B_c; full ambient rank is not the containment predicate"
+  },
+  "stress_replays": [
+    {
+      "schedule": "frozen_q16",
+      "masked_sumcheck_rank_m31": 1080,
+      "pcs_rank_m31": 712,
+      "pcs_declared_rank_m31": 780,
+      "physical_rank_transition_m31": "712_to_712",
+      "legal_sumcheck_transition_m31": "712_to_712"
+    },
+    {
+      "schedule": "consecutive_q16",
+      "masked_sumcheck_rank_m31": 1080,
+      "pcs_rank_m31": 416,
+      "pcs_declared_rank_m31": 484,
+      "physical_rank_transition_m31": "416_to_416",
+      "legal_sumcheck_transition_m31": "416_to_416",
+      "elapsed_millis": 77846
+    },
+    {
+      "schedule": "eta_gamma_kappa_one",
+      "masked_sumcheck_rank_m31": 1080,
+      "pcs_rank_m31": 712,
+      "pcs_declared_rank_m31": 780,
+      "physical_rank_transition_m31": "712_to_712",
+      "legal_sumcheck_transition_m31": "712_to_712",
+      "unbalanced_nonphysical_transition_m31": "712_to_713",
+      "elapsed_millis": 126759
+    },
+    {
+      "schedule": "eta_gamma_kappa_alpha_mu_one",
+      "masked_sumcheck_rank_m31": 1080,
+      "pre_helper_rank_m31": 442,
+      "pcs_rank_m31": 712,
+      "pcs_declared_rank_m31": 780,
+      "physical_rank_transition_m31": "712_to_712",
+      "legal_sumcheck_transition_m31": "712_to_712",
+      "unbalanced_nonphysical_transition_m31": "712_to_713",
+      "elapsed_millis": 110942
+    }
+  ],
+  "universal_lemma": {
+    "name": "root_neutral_sumcheck_surjectivity",
+    "statement": "for every distinct q16 schedule and accepted nonzero eta,gamma, (raw, masked-sumcheck, gamma-combined-root) of the frozen mask module contains the physical B_c plus legal-sumcheck target",
+    "consequence": "complete PCS/fold/OOD containment follows without a 712-row determinant",
+    "closed": true,
+    "refuted": true,
+    "reduced_frozen_rank_m31": 1076,
+    "reduced_affine_degenerate_rank_m31": 912,
+    "target_rank_m31": 1080
+  },
+  "affine_degenerate_counterexample": {
+    "z": ["-(32+i)/9", "1", "1", "1", "1", "1", "0", "1", "i", "u"],
+    "equation": "sum_(v=0)^8 (9-v) z_v = 0",
+    "last_round_identity": "201*C16 - 1625*C0 = 5600*sum_(v=0)^8 (9-v)z_v",
+    "consequence": "L16=(1625/201)L0 and 1+L16^26 is in span{1,L0^26}",
+    "direct_complete_gate_rank_m31": 916,
+    "direct_complete_gate_target_m31": 1080,
+    "guard": "final_round_affine_degeneracy_drops_masked_sumcheck_rank_to_916",
+    "known_family_probability_under_uniform_independent_qm31_z": "1/|QM31| ~= 2^-124",
+    "overall_good22_failure_bound": "unproved"
+  },
+  "repair_scan": {
+    "replace_g_with_shared_l0_pow23": {
+      "frozen_rank_m31": 1066,
+      "affine_degenerate_rank_m31": 886,
+      "target_m31": 1080
+    },
+    "additive_g2": [
+      {
+        "factor": "shared_family0_l23",
+        "frozen_rank_m31": 1080,
+        "frozen_physical_transition_m31": "712_to_712",
+        "frozen_legal_transition_m31": "712_to_712",
+        "affine_degenerate_rank_m31": 928
+      },
+      {
+        "factor": "independent_family17_l23",
+        "affine_degenerate_rank_m31": 928
+      },
+      {
+        "factor": "independent_family17_1_plus_l26",
+        "affine_degenerate_rank_m31": 928
+      }
+    ],
+    "verdict": "one additional full-QM31 factor restores only 12 of 164 missing M31 directions at the counterexample"
+  },
+  "selected_gate": "Good22(s) iff rank(A_s)=rank([A_s|D_phys,s]) for the complete canonical non-hash field view",
+  "termination_bounds": {
+    "raw_only_retired_after_universal_refutation": {
+      "mixed_m31_degree": 3240,
+      "per_attempt_failure_upper_bound": "3240/(2^31-1) < 2^-19.33",
+      "retry_cap_100_bits": 6,
+      "retry_cap_128_bits": 7,
+      "usable": false,
+      "reason": "does not bound the selected complete Good22 containment gate"
+    },
+    "raw_plus_sumcheck_conditional": {
+      "mixed_m31_degree": 41040,
+      "per_attempt_failure_upper_bound": "41040/(2^31-1) < 2^-15.67",
+      "retry_cap_100_bits": 7,
+      "retry_cap_128_bits": 9,
+      "usable": false,
+      "missing_premise": "every-q nonzero polynomial for the canonical root-neutral sumcheck minor"
+    },
+    "raw_sumcheck_pcs_conditional": {
+      "mixed_m31_degree": 6085920,
+      "per_attempt_failure_upper_bound": "6085920/(2^31-1) < 2^-8.46",
+      "retry_cap_100_bits": 12,
+      "retry_cap_128_bits": 16,
+      "usable": false,
+      "missing_premise": "every-q nonzero polynomial for residual sumcheck/PCS containment"
+    }
+  },
+  "guards": [
+    "all_q_semantic_kernel_terminal12_has_a_query_independent_certificate",
+    "boolean_zero_terminal_collapse_is_not_a_physical_containment_counterexample",
+    "final_round_mask_linear_forms_have_an_explicit_affine_degeneracy",
+    "final_round_affine_degeneracy_drops_masked_sumcheck_rank_to_916",
+    "one_additive_g2_lane_does_not_repair_the_affine_degeneracy",
+    "g2shared23-last-round-affine-degenerate",
+    "witness-consecutive",
+    "witness-unit-front",
+    "witness-unit-folds"
+  ],
+  "note": "docs/stage2-profile22-universal-affine-privacy.md"
+}

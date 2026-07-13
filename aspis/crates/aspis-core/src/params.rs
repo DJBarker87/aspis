@@ -237,6 +237,63 @@ pub const PROFILE_CAPACITY_LR10_Q34_G16: Profile = Profile {
         "heuristic diagnostic (query/grinding trade measurement; production pairing is q34/g36)",
 };
 
+/// Literal Johnson-query diagnostic for the M31-leaf candidate. At the
+/// pinned rho=1/4, eta=0.025 radius, q74 plus g32 is the first integer query
+/// count whose query-round work factor exceeds 100 bits. This profile is a
+/// measurement target, not a claim that every other soundness-ledger term
+/// reaches 100 bits.
+pub const PROFILE_JOHNSON_LR10_Q74_G32: Profile = Profile {
+    id: 10,
+    name: "johnson_lr10_q74_g32",
+    log_rows: 10,
+    log_blowup: 2,
+    query_count: 74,
+    grinding_bits: 32,
+    soundness_label: "proven Johnson query-radius target; full-system ledger still required",
+};
+
+/// Natural radix-4-compatible low-rate Johnson diagnostic. With rho=1/16
+/// and eta=sqrt(rho)/20=0.0125, q36/g32 gives 101.466 query-round bits while
+/// preserving the four-fold, four-coefficient terminal shape.
+pub const PROFILE_JOHNSON_LR10_B4_Q36_G32: Profile = Profile {
+    id: 11,
+    name: "johnson_lr10_b4_q36_g32",
+    log_rows: 10,
+    log_blowup: 4,
+    query_count: 36,
+    grinding_bits: 32,
+    soundness_label:
+        "proven Johnson query-radius target at rate 1/16; full-system ledger still required",
+};
+
+/// Hardened low-rate Johnson profile. The four fold-challenge work factors
+/// are protocol constants carried by `RATE16_HARDENED_CANDIDATE_SHAPE`; this
+/// header field records the independent final query-grinding difficulty.
+pub const PROFILE_JOHNSON_LR10_B4_Q36_G36_POW: Profile = Profile {
+    id: 12,
+    name: "johnson_lr10_b4_q36_g36_foldpow",
+    log_rows: 10,
+    log_blowup: 4,
+    query_count: 36,
+    grinding_bits: 36,
+    soundness_label:
+        "proven Johnson parameter candidate with per-fold work; full transport ledger required",
+};
+
+/// Production payment profile. It shares the hardened rate-1/16 PCS
+/// parameters but has a distinct id so an external-point diagnostic proof
+/// can never be replayed as a payment-linked proof.
+pub const PROFILE_PAYMENT_LR10_B4_Q36_G36_POW: Profile = Profile {
+    id: 13,
+    name: "payment_lr10_b4_q36_g36_foldpow",
+    log_rows: 10,
+    log_blowup: 4,
+    query_count: 36,
+    grinding_bits: 36,
+    soundness_label:
+        "payment-linked rate-1/16 Johnson candidate with per-fold work; full transport and hiding required",
+};
+
 pub const PROFILES: &[Profile] = &[
     PROFILE_CAPACITY,
     PROFILE_JOHNSON,
@@ -248,6 +305,10 @@ pub const PROFILES: &[Profile] = &[
     PROFILE_CAPACITY_LR10_Q32_G16,
     PROFILE_CAPACITY_LR10_Q36_G32,
     PROFILE_CAPACITY_LR10_Q34_G16,
+    PROFILE_JOHNSON_LR10_Q74_G32,
+    PROFILE_JOHNSON_LR10_B4_Q36_G32,
+    PROFILE_JOHNSON_LR10_B4_Q36_G36_POW,
+    PROFILE_PAYMENT_LR10_B4_Q36_G36_POW,
 ];
 
 pub fn profile_by_id(id: u8) -> Option<&'static Profile> {

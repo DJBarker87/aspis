@@ -1,0 +1,104 @@
+{
+  "generated_at_utc": "2026-07-13T12:50:55.320136+00:00",
+  "command": "NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-profile22-acceptance",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "instruction_wire_ordinal": 56,
+  "proof_path": "results/stage2/proofs/atomic_state_only_profile22_v3_unmined.bin",
+  "proof_bytes": 56686,
+  "proof_sha256": "77736f0ea30ae9e2516537213e7dce386c9be69e3c772e5b50f03c57892136f8",
+  "proof_unmined": true,
+  "batch_grinding_bits": 38,
+  "final_grinding_bits": 38,
+  "fold_grinding_bits": [
+    39,
+    35,
+    31,
+    27
+  ],
+  "soundness_bits_factor31": 102.4649,
+  "soundness_bits_factor40": 102.0972,
+  "default_tag56_fail_closed_host": true,
+  "production_api_rejected_unmined_sbf": true,
+  "literal_simulation_cu": 1157676,
+  "headroom_under_1_4m_cu": 242324,
+  "markers": [
+    {
+      "label": "atomic56_instruction_start",
+      "remaining": 1398431,
+      "delta_from_previous": null
+    },
+    {
+      "label": "atomic56_proof_loaded",
+      "remaining": 1397946,
+      "delta_from_previous": 485
+    },
+    {
+      "label": "atomic56_parsed",
+      "remaining": 1396117,
+      "delta_from_previous": 1829
+    },
+    {
+      "label": "atomic56_transcript",
+      "remaining": 1244079,
+      "delta_from_previous": 152038
+    },
+    {
+      "label": "atomic56_terminal",
+      "remaining": 861901,
+      "delta_from_previous": 382178
+    },
+    {
+      "label": "atomic56_relation",
+      "remaining": 678252,
+      "delta_from_previous": 183649
+    },
+    {
+      "label": "atomic56_openings",
+      "remaining": 493324,
+      "delta_from_previous": 184928
+    },
+    {
+      "label": "atomic56_layer0_queries",
+      "remaining": 336351,
+      "delta_from_previous": 156973
+    },
+    {
+      "label": "atomic56_later_queries",
+      "remaining": 242874,
+      "delta_from_previous": 93477
+    },
+    {
+      "label": "atomic56_core_complete",
+      "remaining": 242655,
+      "delta_from_previous": 219
+    },
+    {
+      "label": "atomic56_done",
+      "remaining": 242383,
+      "delta_from_previous": 272
+    }
+  ],
+  "ledger": {
+    "transaction_setup_cu": 1569,
+    "proof_load_cu": 485,
+    "parsed_cu": 1829,
+    "transcript_cu": 152038,
+    "terminal_cu": 382178,
+    "relation_cu": 183649,
+    "openings_cu": 184928,
+    "layer0_queries_cu": 156973,
+    "later_queries_cu": 93477,
+    "completion_cu": 219,
+    "wrapper_return_cu": 272,
+    "post_last_marker_cu": 59,
+    "reconciled_total_cu": 1157676,
+    "formula": "1569 + 485 + 1829 + 152038 + 382178 + 183649 + 184928 + 156973 + 93477 + 219 + 272 + 59"
+  },
+  "production_mutation_enabled": false,
+  "notes": [
+    "Tag56 is one integrated parse/transcript/terminal/relation/private-opening/q16 call. The phase ledger reconciles to the literal simulation total without overlap substitution.",
+    "All five Merkle sections authenticate value||salt32 records. Salts are not transcript messages; their roots bind them before downstream challenges.",
+    "The committed fixture is unmined. The diagnostic arm bypasses only PoW; both host and SBF production entrypoints reject those same bytes.",
+    "Tags57/58 remain feature-gated; production mutation stays disabled until the complete-view HVZK audit and mined KAT are green."
+  ]
+}

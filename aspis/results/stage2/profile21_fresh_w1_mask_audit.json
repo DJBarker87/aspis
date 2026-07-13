@@ -1,0 +1,148 @@
+{
+  "artifact": "profile21_fresh_w1_mask_audit",
+  "date": "2026-07-13",
+  "status": "argument_soundness_conditionally_viable_at_johnson_complete_ambient_hvzk_refuted_by_early_p0",
+  "production_edited": false,
+  "complete_system_claim_quotable": false,
+  "field": {
+    "base": "M31",
+    "secure": "QM31",
+    "m31_modulus": 2147483647,
+    "qm31_cardinality": "21267647892944572736998860269687930881",
+    "log2_qm31": 123.99999999731277,
+    "nonzero_beta_affine_term_bits": 123.99999999731277,
+    "three_zero_beta_abort_bits": 371.9999999919383
+  },
+  "candidate": {
+    "placement": "after alpha0 and before every round1 OOD challenge",
+    "widened_root_lanes": [
+      "base_W1_equals_normalized_Fold_alpha0_W0",
+      "independent_same_line_code_M"
+    ],
+    "public_tau": "tau_M=L(M), where L is the exact post-alpha first_later_weights functional",
+    "virtual_word": "C1=W1+beta*M",
+    "virtual_target": "r1=r+beta*tau_M",
+    "seam_equation": "e0+beta*eM=0, e0=r-L(W1), eM=tau_M-L(M)",
+    "wrong_tau_when_base_seam_correct": "rejects for every nonzero beta",
+    "general_false_pair_roots_in_qm31_star": 1
+  },
+  "mandatory_transcript_order": [
+    "bind W0; complete round0 OOD and relation message; check round0 fold work",
+    "sample alpha0 and compute literal normalized Fold_alpha0(W0)",
+    "commit and absorb widened salted root(W1,M)",
+    "serialize and absorb canonical tau_M",
+    "check and absorb retained dedicated g38 nonce against root-and-tau transcript state",
+    "consume at most three fresh exact-uniform QM31 words and select first nonzero beta",
+    "derive C1 and carried target before the first line OOD challenge",
+    "bind all later roots and final polynomial; check final work; derive q",
+    "co-open W0,W1,M; authenticate both widened lanes; check W1=Fold(W0); derive C1; check ordinary continuation"
+  ],
+  "nonzero_beta_sampling": {
+    "attempts": 3,
+    "attempt_words_are_distinct": true,
+    "conditional_distribution": "exact uniform QM31*",
+    "all_zero_action": "abort",
+    "honest_abort_probability": "|QM31|^-3",
+    "honest_abort_probability_bits": 371.9999999919383
+  },
+  "positioned_work": {
+    "bits": 38,
+    "must_follow": [
+      "widened_W1_M_root",
+      "tau_M"
+    ],
+    "must_precede": "beta",
+    "why": "each fresh beta obtained by changing root, tau or valid nonce costs expected 2^38 ROM hashes",
+    "affine_seam_raw_work_bits": 161.99999999731278,
+    "system_cap": "separate SHA-256/ROM assumption",
+    "current_profile21_source_work_order_reusable_verbatim": false,
+    "current_order_problem": "current source g38 precedes the disclosed source and translated root"
+  },
+  "adaptive_counterexamples": {
+    "tau_after_beta": "for beta!=0 set tau_M=L(M)-e0/beta; false base seam cancels with probability one",
+    "root_after_beta": "choose M and tau_M after beta to cancel the committed discrepancy",
+    "no_pair_mca": "for far M, codeword c and desired beta0, choose W1=c-beta0*M; at beta0 the tested C1 is exactly c",
+    "unauthenticated_components": "opening only C1 permits substitution of W1 and M while preserving their sum"
+  },
+  "johnson_mca": {
+    "generator": "(1,beta)",
+    "challenge_domain": "QM31*",
+    "restriction_adjustment": "epsilon over QM31 becomes at most epsilon/(1-1/|QM31|)",
+    "required_conclusion": "common agreement for W1 and M with line-code words, then C1 linearity and list-fold commutation",
+    "new_circle_code_switch_for_M_required": false,
+    "reason_no_circle_switch": "M is introduced after the circle-to-line fold",
+    "exact_aspis_attached_function_transport_required": true,
+    "existing_transport_status": "open",
+    "capacity_conjecture_required": false,
+    "verdict": "conditionally_viable_at_johnson_not_yet_a_repository_theorem"
+  },
+  "wrong_tau_binding": {
+    "direct_full_word_L_M_check_required": false,
+    "conditions": [
+      "root and canonical tau precede g38 and beta",
+      "beta is exact-uniform nonzero",
+      "relation coefficients are literal W1+beta*M",
+      "carried target is literal r+beta*tau_M",
+      "ordinary relation proof binds those coefficients to that target"
+    ],
+    "standalone_per_attempt_error": "1/(|QM31|-1)",
+    "must_not_be_conflated_with_MCA_event": true
+  },
+  "ledger_delta": [
+    "degree-one (W1,M) powers-generator MCA numerator over |QM31|-1 with pre-beta g38",
+    "fresh-W1 affine target-combo 1/(|QM31|-1) with pre-beta g38",
+    "three-zero beta completeness abort |QM31|^-3",
+    "widened private-Merkle root SHA/EPRO label and byte update",
+    "existing common-q W0-to-W1 miss event without a second independent q credit",
+    "later FRI/OOD/relation rows applied to C1 under exact transport",
+    "literal BCS/state-restoration round-factor recount",
+    "widened leaves, tau, nonce, beta and derived-C1 CU/proof bytes"
+  ],
+  "simulator_public_view": [
+    "widened salted W1/M root",
+    "tau_M",
+    "valid pre-beta g38 nonce",
+    "three-attempt beta schedule and selected beta",
+    "all later C1 OOD, relation, fold, root and terminal messages",
+    "raw authenticated W1 and M q symbols, salts and multiproof frontier",
+    "derived C1 q symbols",
+    "proof-account bytes, logs, abort/retry metadata and atomic mutation or receipt"
+  ],
+  "simulator_obstacles": {
+    "tau_consumes_mask_rank": true,
+    "M_query_openings_consume_mask_rank": true,
+    "M_hides_queried_W1_when_both_are_open": false,
+    "identity": "W1(q)=C1(q)-beta*M(q)",
+    "fixed_schedule_affine_rank_sufficient_for_fs_hvzk": false,
+    "private_merkle_epro_extension_required": true,
+    "all_q_certificate_required": true
+  },
+  "privacy": {
+    "strict_root1_rank_m31": 1140,
+    "strict_root1_target_m31": 1144,
+    "deficit_m31": 4,
+    "deficit_qm31": 1,
+    "deficit_location": "already transmitted round-zero relation polynomial p0",
+    "fresh_M_image_in_p0": "zero by causal placement after alpha0",
+    "standalone_complete_ambient_hvzk": false,
+    "standalone_refutation": "two affine centers separated in the residual p0 quotient remain distinguishable because every M column has zero projection there",
+    "with_separately_bound_pre_alpha_mask": "conditional on exact joint full-view containment",
+    "exact_language_semantic_hvzk": "open pending proof that every valid same-statement witness difference has zero residual p0 projection"
+  },
+  "implementation_gates": [
+    "exact line-code attached-function Johnson/MCA theorem and list numerator",
+    "root/tau/g38/beta transcript KAT and weakening teeth",
+    "wrong-tau and false-base-seam adversarial corpus",
+    "complete-view rank replay including p0, tau, later transcript, q and atomic public data",
+    "all-q certificate",
+    "widened-root private-Merkle/EPRO simulator",
+    "labelled CU and proof-byte measurement"
+  ],
+  "source_anchors": [
+    "crates/aspis-prover/src/state_only_circle_relation.rs",
+    "crates/aspis-prover/src/state_only_profile21.rs",
+    "crates/aspis-core/src/state_only_prefix.rs",
+    "docs/stage2-mask-code-alternatives.md",
+    "docs/aspis-soundness-note.md#164-exact-missing-transport-theorem"
+  ]
+}

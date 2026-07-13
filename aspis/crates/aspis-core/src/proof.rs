@@ -95,6 +95,10 @@ pub const EXACT_WIDE_C1_COLUMNS: usize = 49;
 pub const EXACT_WIDE_C1_FIBER_LEN: usize = EXACT_WIDE_C1_COLUMNS * 4 * 8;
 pub const M31_CIRCLE_C1_COLUMNS: usize = 49;
 pub const M31_CIRCLE_C1_FIBER_LEN: usize = M31_CIRCLE_C1_COLUMNS * 4 * 4;
+/// Candidate leaf tags shared by the host encoder and eventual verifier.
+/// C1 uses the base at layer zero and base+1..base+3 on later combined layers.
+pub const M31_CIRCLE_COMBINED_LAYER_TAG_BASE: u8 = 0x40;
+pub const M31_CIRCLE_C2_LAYER_TAG: u8 = 0xc0;
 pub const SECOND_PHASE_LAYER_TAG: u8 = 0x80;
 
 #[derive(Clone, Copy, Debug)]

@@ -1,0 +1,72 @@
+{
+  "artifact": "profile22_q4_selector_ledger",
+  "date": "2026-07-13",
+  "status": "conditional_arithmetic_and_mixed_polynomial_minor_green_complete_view_continuation_red_not_bookable",
+  "production_enabled": false,
+  "proof_wire_changed": false,
+  "selector_design": {
+    "count": 4,
+    "position": "after final polynomial and final g38 nonce",
+    "honest_prover": "clone the pre-selector transcript, absorb a distinct candidate-domain label plus selector byte, derive q16, and choose the least Good candidate",
+    "verifier": "parse selector in 0..4, absorb the same label and byte, derive only the selected q16 tuple, and verify only selected openings",
+    "malicious_selector_union": 4
+  },
+  "conditional_minor_ledger": {
+    "m31_modulus": 2147483647,
+    "query_fibers": 131072,
+    "query_count": 16,
+    "continuous_degree": 41040,
+    "query_degree": 30864,
+    "rho_query": 0.23550058371548258,
+    "beta_attempt": 0.003094980564788099,
+    "bits_per_attempt": 8.335853934728805,
+    "cap16_rank_exhaustion_bits": 133.37366295566088,
+    "bookable": false
+  },
+  "failed_minor_witness": {
+    "basis": "common-tail g_q(t)h(t) basis used for every semantic, mask-only and G scalar lane",
+    "source_columns_m31": 1890,
+    "target_rows_m31": 1404,
+    "measured_rank_m31": 1271,
+    "deficit_m31": 133,
+    "fingerprint_u64_decimal": "9652738155560395726",
+    "consequence": "the stated degree ledger is arithmetic-only; this red basis does not supply its required nonzero minor"
+  },
+  "mixed_polynomial_minor_witness": {
+    "status": "green_numeric_nonzero_witness_with_rational_balance_cleared",
+    "semantic_common_tail_columns_selected": 880,
+    "full_domain_balanced_columns_selected": 524,
+    "joint_rank_m31": 1404,
+    "joint_target_m31": 1404,
+    "terminal_projection_rank_m31": 324,
+    "terminal_plus_initial_projection_rank_m31": 328,
+    "initial_and_terminal_conditioned_sumcheck_rank_m31": 1076,
+    "minor_fingerprint": "0x1dcd3d4b85eb20bc",
+    "q_numerator_degree": 30848,
+    "q_shared_denominator_degree": 16,
+    "warning": "initial/terminal neutrality is not pointwise gamma-combined-root neutrality and does not imply the current PCS/helper continuation gate"
+  },
+  "soundness_if_premise_is_repaired": {
+    "query_term_only_event_union_bits": 106.36702336314075,
+    "after_bcs31_bits": 101.41282705275387,
+    "after_factor40_bits": 101.04509526825338,
+    "whole_ledger_times_four_conservative_bits": 100.4647288576847,
+    "bookable": false
+  },
+  "epro_if_premise_is_repaired": {
+    "transcript_inputs": 653,
+    "total_input_inventory": 961817,
+    "attempts": 16,
+    "qh_log2": 128,
+    "leading_bits": 104.12459709966258,
+    "four_tuple_sampler_cap16_union_bits": 588.3816392171567,
+    "bookable": false
+  },
+  "remaining_gates": [
+    "proof that the mixed minor or a stronger root-neutral minor implies the entire Good22 complete-view predicate",
+    "degree and denominator-clearing checker",
+    "selector transcript and parser integration",
+    "production host/SBF CU measurement and full soundness/EPRO repin"
+  ],
+  "guard": "NO_DNA=1 cargo run -q -p aspis-prover --example profile22_q4_selector_ledger"
+}

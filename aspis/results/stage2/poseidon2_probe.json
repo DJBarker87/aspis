@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-07-10T14:29:55.708523+00:00",
+  "generated_at_utc": "2026-07-12T23:56:42.889085+00:00",
   "command": "cargo run --release -p aspis-xtask -- stage2-poseidon2-probe",
   "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
   "repetitions": 5,
@@ -8,11 +8,11 @@
       "implementation": "canonical",
       "permutations": 0,
       "simulation_cu": [
-        401,
-        401,
-        401,
-        401,
-        401
+        561,
+        561,
+        561,
+        561,
+        561
       ],
       "simulation_errors": [
         null,
@@ -22,18 +22,18 @@
         null
       ],
       "accepted_all": true,
-      "mean_cu_if_accepted": 401.0,
+      "mean_cu_if_accepted": 561.0,
       "incremental_cu_over_zero_if_accepted": 0
     },
     {
       "implementation": "canonical",
       "permutations": 1,
       "simulation_cu": [
-        24498,
-        24498,
-        24498,
-        24498,
-        24498
+        24661,
+        24661,
+        24661,
+        24661,
+        24661
       ],
       "simulation_errors": [
         null,
@@ -43,18 +43,18 @@
         null
       ],
       "accepted_all": true,
-      "mean_cu_if_accepted": 24498.0,
-      "incremental_cu_over_zero_if_accepted": 24097
+      "mean_cu_if_accepted": 24661.0,
+      "incremental_cu_over_zero_if_accepted": 24100
     },
     {
       "implementation": "canonical",
       "permutations": 8,
       "simulation_cu": [
-        192783,
-        192783,
-        192783,
-        192783,
-        192783
+        192953,
+        192953,
+        192953,
+        192953,
+        192953
       ],
       "simulation_errors": [
         null,
@@ -64,18 +64,60 @@
         null
       ],
       "accepted_all": true,
-      "mean_cu_if_accepted": 192783.0,
-      "incremental_cu_over_zero_if_accepted": 192382
+      "mean_cu_if_accepted": 192953.0,
+      "incremental_cu_over_zero_if_accepted": 192392
+    },
+    {
+      "implementation": "canonical",
+      "permutations": 20,
+      "simulation_cu": [
+        481777,
+        481777,
+        481777,
+        481777,
+        481777
+      ],
+      "simulation_errors": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "accepted_all": true,
+      "mean_cu_if_accepted": 481777.0,
+      "incremental_cu_over_zero_if_accepted": 481216
+    },
+    {
+      "implementation": "canonical",
+      "permutations": 40,
+      "simulation_cu": [
+        963110,
+        963110,
+        963110,
+        963110,
+        963110
+      ],
+      "simulation_errors": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "accepted_all": true,
+      "mean_cu_if_accepted": 963110.0,
+      "incremental_cu_over_zero_if_accepted": 962549
     },
     {
       "implementation": "canonical",
       "permutations": 49,
       "simulation_cu": [
-        1179687,
-        1179687,
-        1179687,
-        1179687,
-        1179687
+        1179898,
+        1179898,
+        1179898,
+        1179898,
+        1179898
       ],
       "simulation_errors": [
         null,
@@ -85,8 +127,8 @@
         null
       ],
       "accepted_all": true,
-      "mean_cu_if_accepted": 1179687.0,
-      "incremental_cu_over_zero_if_accepted": 1179286
+      "mean_cu_if_accepted": 1179898.0,
+      "incremental_cu_over_zero_if_accepted": 1179337
     },
     {
       "implementation": "canonical",
@@ -113,11 +155,11 @@
       "implementation": "lazy_m31",
       "permutations": 0,
       "simulation_cu": [
-        403,
-        403,
-        403,
-        403,
-        403
+        558,
+        558,
+        558,
+        558,
+        558
       ],
       "simulation_errors": [
         null,
@@ -127,18 +169,18 @@
         null
       ],
       "accepted_all": true,
-      "mean_cu_if_accepted": 403.0,
+      "mean_cu_if_accepted": 558.0,
       "incremental_cu_over_zero_if_accepted": 0
     },
     {
       "implementation": "lazy_m31",
       "permutations": 1,
       "simulation_cu": [
-        23120,
-        23120,
-        23120,
-        23120,
-        23120
+        23718,
+        23718,
+        23718,
+        23718,
+        23718
       ],
       "simulation_errors": [
         null,
@@ -148,18 +190,18 @@
         null
       ],
       "accepted_all": true,
-      "mean_cu_if_accepted": 23120.0,
-      "incremental_cu_over_zero_if_accepted": 22717
+      "mean_cu_if_accepted": 23718.0,
+      "incremental_cu_over_zero_if_accepted": 23160
     },
     {
       "implementation": "lazy_m31",
       "permutations": 8,
       "simulation_cu": [
-        182045,
-        182045,
-        182045,
-        182045,
-        182045
+        185737,
+        185737,
+        185737,
+        185737,
+        185737
       ],
       "simulation_errors": [
         null,
@@ -169,18 +211,60 @@
         null
       ],
       "accepted_all": true,
-      "mean_cu_if_accepted": 182045.0,
-      "incremental_cu_over_zero_if_accepted": 181642
+      "mean_cu_if_accepted": 185737.0,
+      "incremental_cu_over_zero_if_accepted": 185179
+    },
+    {
+      "implementation": "lazy_m31",
+      "permutations": 20,
+      "simulation_cu": [
+        463451,
+        463451,
+        463451,
+        463451,
+        463451
+      ],
+      "simulation_errors": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "accepted_all": true,
+      "mean_cu_if_accepted": 463451.0,
+      "incremental_cu_over_zero_if_accepted": 462893
+    },
+    {
+      "implementation": "lazy_m31",
+      "permutations": 40,
+      "simulation_cu": [
+        926356,
+        926356,
+        926356,
+        926356,
+        926356
+      ],
+      "simulation_errors": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "accepted_all": true,
+      "mean_cu_if_accepted": 926356.0,
+      "incremental_cu_over_zero_if_accepted": 925798
     },
     {
       "implementation": "lazy_m31",
       "permutations": 49,
       "simulation_cu": [
-        1112859,
-        1112859,
-        1112859,
-        1112859,
-        1112859
+        1134673,
+        1134673,
+        1134673,
+        1134673,
+        1134673
       ],
       "simulation_errors": [
         null,
@@ -190,8 +274,8 @@
         null
       ],
       "accepted_all": true,
-      "mean_cu_if_accepted": 1112859.0,
-      "incremental_cu_over_zero_if_accepted": 1112456
+      "mean_cu_if_accepted": 1134673.0,
+      "incremental_cu_over_zero_if_accepted": 1134115
     },
     {
       "implementation": "lazy_m31",
@@ -215,11 +299,11 @@
       "incremental_cu_over_zero_if_accepted": null
     }
   ],
-  "measured_incremental_cu_per_permutation_from_8": 22705.25,
+  "measured_incremental_cu_per_permutation_from_8": 23147.375,
   "notes": [
     "Canonical and lazy-M31 software Poseidon2 width-16 permutations use the exact p3-mersenne-31 0.6.1 constants; differential tests require identical outputs.",
     "The lazy-M31 candidate reduces each linear-layer output once and replaces partial-round power-of-two multiplications with shifts. It is the first measured solmath-zk kernel candidate.",
-    "49 permutations is the depth-20 SpendV0 evaluator schedule; 73 is the depth-32 sensitivity. A capped run is recorded as a failure, not extrapolated into an accepted measurement.",
+    "20 and 40 permutations price the v3 one-per-level node compression and the retired two-per-level sponge walk exactly. 49 is the current depth-20 SpendV0 evaluator schedule; 73 is the depth-32 sensitivity. A capped run is recorded as a failure, not extrapolated into an accepted measurement.",
     "This is deposit/direct-evaluator cost evidence, not proof-verifier constraint-composition cost."
   ]
 }

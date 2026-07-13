@@ -1,0 +1,62 @@
+{
+  "generated_at_utc": "2026-07-13T06:15:00Z",
+  "command": "NO_DNA=1 cargo build --release -p aspis-prover --example state_only_hiding_rank_gate && target/release/examples/state_only_hiding_rank_gate results/stage2/proofs/atomic_state_only_profile20_v3_unmined.bin 52e96f99756fe8fd2d8b7a700019b143d7eb549af1bf1ae987e99a75cadcd4c9 atomic-{baseline-full-shared,switch-masked-joint}",
+  "proof_path": "results/stage2/proofs/atomic_state_only_profile20_v3_unmined.bin",
+  "proof_bytes": 56044,
+  "proof_sha256": "fdd1097f702b411b6bcd26d0e195322d7683ff93ec4cb70828b9459fe7cef007",
+  "statement_digest_sha256": "52e96f99756fe8fd2d8b7a700019b143d7eb549af1bf1ae987e99a75cadcd4c9",
+  "layout": {
+    "relation_free_mask_cells": 5262,
+    "relation_free_mask_cells_fingerprint": "0x0fdabd401816cc99",
+    "copy_active_rows": 210,
+    "copy_active_rows_fingerprint": "0xfc90f89be110b6f5",
+    "inactive_mask_registry": "atomic_state_only_copy_inactive_row_masks_v3"
+  },
+  "baseline": {
+    "masked_sumcheck_serialized_m31": 1084,
+    "masked_sumcheck_quotient_rank_m31": 1080,
+    "pcs_declared_rank_m31": 780,
+    "pcs_rank_m31": 712,
+    "pcs_deficit_m31": 68,
+    "valid_witness_containment": true,
+    "complete_ambient_rank": false,
+    "elapsed_millis": 24906
+  },
+  "selected_external_switch": {
+    "complete_ambient_rank": true,
+    "pcs_rank_m31": 780,
+    "pcs_declared_rank_m31": 780,
+    "later_query_pivots_m31": 64,
+    "relation_pivots_m31": 4,
+    "ood_pivots_m31": 0,
+    "final_pivots_m31": 0,
+    "variables_qm31": 70,
+    "universal_mds_basis": true,
+    "generated_code_basis_rank_m31": 35,
+    "generated_code_basis_fingerprint": "0xceb35dd3ee50e051",
+    "production_query_abscissae_distinct": true,
+    "honest_prover_rank_retry_required": false,
+    "public_observation_rank_qm31": 52,
+    "conditioned_kernel_qm31": 18,
+    "q_randomness_rank_qm31": 16,
+    "q_coopening_rank_qm31": 16,
+    "u_rank_qm31": 35,
+    "u_plus_beta_rank_qm31": 35,
+    "shared_c2_public_observation_rank_qm31": 52,
+    "shared_c2_kernel_qm31": 18,
+    "shared_c2_randomness_rank_qm31": 16,
+    "otp_rank_qm31": 35,
+    "source_rows": [4, 0, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72],
+    "raw_one_value_leaf_frontier_nodes": 292,
+    "elapsed_millis": 24931
+  },
+  "production_geometry_full_view_closes": false,
+  "atomic_hiding_rank_complete": false,
+  "exact_residual": "The field-View rank closes on the exact atomic-v3 mask/copy inventory, but the measured 292-node frontier belongs to the retired one-value depth-17 diagnostic. Production uses four line values per leaf at binary depth 15. The X/F commitment, translated W1 root, direct Enc(U)(q) batch-evaluation proof, W0/W1 relation splice, and ROM/HVZK simulator are not yet acceptance-integrated.",
+  "notes": [
+    "The q16 basis is the compile-time-generated core object M=span{x,1,x^18,...,x^34}, R=(x^2+1)P_<16, pinned by fingerprint 0xceb35dd3ee50e051. Because M31 is 3 mod 4 and q abscissae are distinct, the q randomness minor is universally invertible and requires no honest-prover rank retry.",
+    "The probe now passes the atomic-v3 inactive masks to every incremental relation; the earlier replay accidentally retained the state-only-v4 masks and failed before rank elimination.",
+    "The four serialized M31 coordinates omitted from the 1080-dimensional masked-sumcheck quotient are the one QM31 terminal relation, not an untracked hiding deficit.",
+    "Do not enable mutation or mark atomic hiding complete from this artifact alone."
+  ]
+}

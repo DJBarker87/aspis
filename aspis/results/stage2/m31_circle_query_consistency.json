@@ -1,0 +1,85 @@
+{
+  "generated_at_utc": "2026-07-11T07:40:54Z",
+  "status": "HOST_ARITHMETIC_QUERY_CHAIN_PASS; INTEGRATION_AND_MEASUREMENT_OPEN",
+  "module": "aspis_core::circle_query",
+  "host_test": "crates/aspis-prover/tests/m31_circle_query.rs",
+  "fixed_shape": {
+    "query_count": 1024,
+    "c1_leaf_bytes": 784,
+    "c1_layout": "four slots, each containing 49 canonical M31 columns; gamma powers 0..48",
+    "c2_leaf_bytes": 128,
+    "c2_layout": "two helpers, each containing four canonical QM31 slots; gamma powers 49 and 50",
+    "later_leaf_bytes": [64, 64, 64],
+    "later_leaf_indices": ["q>>2", "q>>4", "q>>6"],
+    "round_challenges": 4,
+    "fold_rule": "normalized arity-4; each internal binary pair uses alpha and the second fold uses alpha^2",
+    "final_coefficients": 4,
+    "final_order": "natural [1,x,pi(x),x*pi(x)] tensor order",
+    "final_index": "q>>6"
+  },
+  "honest_candidate_paths": {
+    "checked": 1024,
+    "passed": 1024,
+    "fixture_source": "the full 49-C1/two-C2 candidate encoder and build_fold_commitments path",
+    "checks_per_path": [
+      "canonical C1/C2 decode and powers 0..50",
+      "normalized circle-to-line fold equals the selected layer-1 slot",
+      "three normalized line folds equal the selected layer-2, layer-3, and terminal values",
+      "terminal value equals the natural four-coefficient tensor at q>>6"
+    ]
+  },
+  "explicit_error_evidence": [
+    "exact C1, C2, and each later-leaf length",
+    "first noncanonical C1 M31 byte offset",
+    "leaf identity and byte offset for noncanonical C2/later QM31",
+    "layer identity and selected slot byte offset for a value mismatch",
+    "terminal q>>6 index for a final mismatch",
+    "query outside [0,1024)"
+  ],
+  "same_input_teeth": [
+    {
+      "class": "C2 helper gamma powers shifted from 49/50 to 50/51",
+      "input_identity": "weakened and canonical validators receive the same original raw C1/C2 leaves and the same later/final bytes; only the weakened decoder's exponent rule differs",
+      "weakened_accepts": true,
+      "canonical_rejects": "layer 1 mismatch"
+    },
+    {
+      "class": "stale q&3 slot reused where the layer-2 q>>2 chunk is required",
+      "weakened_accepts": true,
+      "canonical_rejects": "layer 2 mismatch at its exact slot offset"
+    },
+    {
+      "class": "stale q&3 slot reused where the layer-3 q>>4 chunk is required",
+      "weakened_accepts": true,
+      "canonical_rejects": "layer 3 mismatch at its exact slot offset"
+    },
+    {
+      "class": "terminal propagation uses q>>4 instead of q>>6",
+      "weakened_accepts": true,
+      "canonical_rejects": "terminal mismatch at the canonical final index"
+    },
+    {
+      "class": "circle fold reuses alpha instead of alpha^2 for its second binary fold",
+      "weakened_accepts": true,
+      "canonical_rejects": "layer 1 mismatch"
+    },
+    {
+      "class": "later line fold reuses alpha instead of alpha^2 for its second binary fold",
+      "weakened_accepts": true,
+      "canonical_rejects": "layer 2 mismatch"
+    },
+    {
+      "class": "final four values interpreted as Stwo bit-reversed storage instead of natural relation order",
+      "weakened_accepts": true,
+      "canonical_rejects": "terminal mismatch"
+    }
+  ],
+  "merkle_authentication_performed": false,
+  "transcript_or_tag24_integrated": false,
+  "transcript_kat_updated": false,
+  "sbf_measured": false,
+  "compute_units_reported": false,
+  "product_projection_updated": false,
+  "architecture_or_owner_ruling_made": false,
+  "caveat": "This artifact proves only fixed per-query arithmetic consistency for caller-supplied leaves. It does not authenticate those leaves or their indices, parse a circle proof, bind the transcript or two-point claims, enable tag 24, supply an SBF/CU result, prove circle-FRI soundness, or select a product architecture."
+}

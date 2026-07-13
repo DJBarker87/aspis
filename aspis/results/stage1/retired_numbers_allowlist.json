@@ -60,6 +60,7 @@
     {"path":"docs/aspis-soundness-note.md","pattern_id":"retired_capacity_query_104","line_contains":"2^-103.9453 + 2^-104","reason":"historical integrated-statement capacity reproduction"},
     {"path":"docs/aspis-soundness-note.md","pattern_id":"retired_capacity_total_102_9752","line_contains":"2^-102.9752","reason":"historical integrated-statement comparison"},
     {"path":"docs/aspis-soundness-note.md","pattern_id":"retired_capacity_query_104","line_contains":"104-112-bit algebraic band","reason":"explicit refutation scope"},
+    {"path":"docs/aspis-soundness-note.md","pattern_id":"retired_capacity_query_104","line_contains":"field ceiling (~104-112 algebraic","reason":"historical field-ceiling comparison inside the M31 transport gate; explicitly says 100 is unreachable in the proven regime"},
     {"path":"docs/aspis-soundness-note.md","pattern_id":"retired_theta_93_2","line_contains":"93.2 and put","reason":"line is inside the marked historical ruling trail"},
     {"path":"docs/aspis-soundness-note.md","pattern_id":"retired_q45_menu","line_contains":"q45/+191K","reason":"line is inside the marked historical ruling trail"},
 

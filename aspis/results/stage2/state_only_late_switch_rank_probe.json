@@ -1,0 +1,95 @@
+{
+  "artifact": "state-only-late-switch-rank-probe",
+  "status": "exact_affine_rank_green_protocol_hvzk_open",
+  "date": "2026-07-13",
+  "schedule": {
+    "main_rate": "1/32",
+    "query_count": 29,
+    "proof_bytes": 61516,
+    "proof_sha256": "7ff880a69bc43ec2c37c00217603b3cf64a49e69f814799abe31f975661520f1",
+    "field": "QM31 over M31",
+    "complete_view_m31": 1980
+  },
+  "baseline": {
+    "masked_sumcheck_rank_m31": 1080,
+    "masked_sumcheck_target_m31": 1080,
+    "pre_helper_pcs_rank_m31": 548,
+    "post_inactive_helper_pcs_rank_m31": 1024,
+    "ambient_combined_rank_m31": 668,
+    "ambient_complete_rank_m31": 1144,
+    "ambient_deficit_m31": 120,
+    "ambient_deficit_qm31": 30,
+    "concrete_valid_witness_difference_containment": "retained from state_only_hiding test",
+    "universal_active_zero_sum_helper_containment": "1024_to_1024"
+  },
+  "late_switch_structural_probe": {
+    "source_rows_independent": [1, 2, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80, 84, 88, 92, 96, 100, 104, 108, 112],
+    "source_row_dependent": 3,
+    "structured_support": "{1,2,3} union {4*j: 1<=j<=28}",
+    "min_row": 1,
+    "max_row": 112,
+    "variables_qm31": 31,
+    "dense_switch_identities_qm31": 1,
+    "conditioned_kernel_qm31": 30,
+    "conditioned_rank_m31": 1144,
+    "remaining_ambient_deficit_m31": 0,
+    "complement_pivots": {
+      "later_query_openings_m31": 116,
+      "ood_m31": 0,
+      "relation_coefficients_m31": 4,
+      "final_coefficients_m31": 0
+    },
+    "prefix_restricted_incremental_ranks_m31": {
+      "first_31_rows": 36,
+      "first_64_rows": 68,
+      "first_96_rows": 100,
+      "first_112_rows": 116,
+      "through_row_112": 120
+    },
+    "abstract_q29_plus_two_pad_evaluation_rank_qm31": 31,
+    "abstract_one_identity_conditioned_rank_qm31": 30
+  },
+  "full_shared_factor_probe": {
+    "status": "complete_ambient_rank_green",
+    "shared_linear_forms": 1,
+    "semantic_exponents": [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 13, 25],
+    "mask_only_exponents": [1, 3, 5, 7, 9, 11, 15, 17, 19, 21],
+    "mask_only_tower_rotation": "column mod 4",
+    "explicit_g": "retains one independent dense degree-26 factor",
+    "maximum_factor_degree": 26,
+    "masked_sumcheck_rank_m31": 1080,
+    "masked_sumcheck_target_m31": 1080,
+    "baseline_pcs_rank_m31": 1024,
+    "late_switch_pcs_rank_m31": 1144,
+    "ambient_target_m31": 1144,
+    "complete_ambient_rank": true,
+    "rejected_controls": {
+      "one_shared_linear_including_g_original_mask_exponents_rank_m31": 1052,
+      "one_shared_linear_including_g_unused_odd_mask_exponents_rank_m31": 1076
+    }
+  },
+  "materialized_coordinate_factored_probe": {
+    "status": "rejected",
+    "reason": "ordinary M31 C1 materialization adds four M31 sumcheck ranks per column; the old 28-rank jump depended on joint four-coordinate raw conditioning and does not survive materialization",
+    "prefix_columns": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+    "sumcheck_ranks_m31": [1040, 1044, 1048, 1052, 1056, 1060, 1064, 1068, 1072],
+    "pcs_ranks_m31": [1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024],
+    "sumcheck_target_m31": 1080,
+    "seven_columns_complete": false,
+    "late_switch_repairs_sumcheck": false
+  },
+  "claim_boundary": {
+    "hvzk_claim": false,
+    "production_integration": false,
+    "cu_claim": false,
+    "causal_order_required": "sample mask entropy and commit the late mask before the fresh dense switch challenge",
+    "open_obligations": [
+      "map the sparse tail re-randomization to the exact circle code-switch commitment and opening equations",
+      "include the new mask commitment, its openings, and receipt bytes in the complete simulated View",
+      "hide or carry the switch mask through a base-case one-time pad so opening it does not cancel privacy",
+      "prove arity-four masked-sumcheck and circle fold/code-switch commutation",
+      "derive Fiat-Shamir ordering, bad-schedule probability, and termination",
+      "measure the integrated verifier and Merkle cost"
+    ]
+  }
+}

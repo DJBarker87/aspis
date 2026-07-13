@@ -12,6 +12,42 @@
 //! divergence is caught by the parity tests (10/10 accept on host must equal
 //! accept on SBF for identical bytes).
 
+pub mod circle_candidate;
+pub mod circle_candidate_openings;
+pub mod circle_candidate_prefix;
+pub mod circle_relation;
+pub mod mask_oracle_relation;
+pub mod payment_hiding_candidate_prefix;
+pub mod pow;
+pub mod state_only_batch_eval;
+pub mod state_only_candidate;
+pub mod state_only_candidate_prefix;
+pub mod state_only_circle_relation;
+pub mod state_only_entropy;
+pub mod state_only_good22;
+pub mod state_only_good23;
+pub mod state_only_hiding;
+pub mod state_only_hiding_rank;
+pub mod state_only_masked_switch;
+pub mod state_only_private_openings;
+pub mod state_only_profile21;
+pub mod state_only_profile21_openings;
+pub mod state_only_profile22;
+pub mod state_only_profile22_openings;
+pub mod state_only_profile22_release;
+pub mod state_only_profile23;
+pub mod state_only_profile23_candidate;
+pub mod state_only_profile23_openings;
+pub mod state_only_profile23_release;
+pub mod state_only_proof;
+pub mod state_only_zerocheck;
+pub mod statement_zerocheck;
+
+#[cfg(test)]
+mod state_only_profile22_privacy_regressions;
+#[cfg(test)]
+mod state_only_profile23_privacy_regressions;
+
 use aspis_core::field::{cm31_batch_inverse, CM31, M31, QM31};
 use aspis_core::merkle::{leaf_hash, node_hash, node_hash4};
 use aspis_core::params::{FoldPayload, MerkleMode, Profile, FINAL_POLY_LOG_LEN};
@@ -26,8 +62,6 @@ use aspis_core::sumcheck::{
 use aspis_core::transcript::{label, Transcript};
 use aspis_core::verify::{domain_point, layer_geometry, EvaluationClaim};
 use aspis_core::HashFn;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::Arc;
 
 /// sha2-backed hashv, byte-compatible with the Solana SHA-256 syscall.
 pub fn host_hashv(inputs: &[&[u8]]) -> [u8; 32] {
@@ -42,43 +76,7 @@ pub fn host_hashv(inputs: &[&[u8]]) -> [u8; 32] {
 pub const HOST_HASH: HashFn = host_hashv;
 
 fn find_grinding_nonce(transcript: &Transcript, bits: u8) -> u64 {
-    if bits <= 20 {
-        let mut nonce = 0u64;
-        while !transcript.grinding_ok(nonce, bits) {
-            nonce += 1;
-        }
-        return nonce;
-    }
-
-    let workers = std::thread::available_parallelism()
-        .map(|n| n.get())
-        .unwrap_or(1)
-        .max(1);
-    let found = Arc::new(AtomicBool::new(false));
-    let result = Arc::new(AtomicU64::new(0));
-
-    std::thread::scope(|scope| {
-        for worker in 0..workers {
-            let found = Arc::clone(&found);
-            let result = Arc::clone(&result);
-            let transcript = transcript.clone();
-            scope.spawn(move || {
-                let mut nonce = worker as u64;
-                let stride = workers as u64;
-                while !found.load(Ordering::Relaxed) {
-                    if transcript.grinding_ok(nonce, bits) {
-                        if !found.swap(true, Ordering::AcqRel) {
-                            result.store(nonce, Ordering::Release);
-                        }
-                        break;
-                    }
-                    nonce = nonce.wrapping_add(stride);
-                }
-            });
-        }
-    });
-
-    result.load(Ordering::Acquire)
+    pow::find_grinding_nonce(transcript, bits)
 }
 
 /// Radix-2 DIT NTT over CM31 using root `omega` of order `values.len()`.

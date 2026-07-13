@@ -67,7 +67,8 @@ pub fn secure_ood_circle_point_from_parameter(
 /// Circle/line basis map `pi(x) = 2x^2 - 1`.
 #[inline(always)]
 pub fn double_x(x: QM31) -> QM31 {
-    x.square().add(x.square()).sub(QM31::ONE)
+    let square = x.square();
+    square.add(square).sub(QM31::ONE)
 }
 
 #[cfg(test)]

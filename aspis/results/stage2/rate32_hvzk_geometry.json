@@ -1,0 +1,194 @@
+{
+  "schema": "aspis-rate32-hvzk-geometry-v1",
+  "status": "geometry-only; no circle-HVZK theorem or integration claim",
+  "upstream": {
+    "repository": "https://github.com/Plonky3/Plonky3",
+    "commit": "6b6a3b4d40fca2187d368c9dc1fca417c84ae8c3",
+    "paper": "https://eprint.iacr.org/2026/391",
+    "source": "whir/src/pcs/zk/{committer,code_switch,config,prover,verifier,base_case}"
+  },
+  "profile": {
+    "trace_variables": 10,
+    "fold_variables_per_batch": 2,
+    "fold_width": 4,
+    "fold_batches": 4,
+    "code_switch_rounds": 3,
+    "log_inverse_rate": 5,
+    "oracle_queries_per_round": 29,
+    "ood_samples_per_switch": 2
+  },
+  "oracles": [
+    {
+      "stage": 0,
+      "source_message": 1024,
+      "limb_message": 256,
+      "randomness_per_limb": 29,
+      "randomness_total": 116,
+      "leaf_rows": 8192,
+      "padded_dimension": 285,
+      "effective_rate": "285/8192",
+      "q29_johnson_bits_before_work": 68.21384690989395,
+      "limb_degree": 284,
+      "folded_message": 256
+    },
+    {
+      "stage": 1,
+      "source_message": 256,
+      "limb_message": 64,
+      "randomness_per_limb": 29,
+      "randomness_total": 116,
+      "leaf_rows": 2048,
+      "padded_dimension": 93,
+      "effective_rate": "93/2048",
+      "q29_johnson_bits_before_work": 62.640906730083,
+      "limb_degree": 92,
+      "folded_message": 64
+    },
+    {
+      "stage": 2,
+      "source_message": 64,
+      "limb_message": 16,
+      "randomness_per_limb": 29,
+      "randomness_total": 116,
+      "leaf_rows": 512,
+      "padded_dimension": 45,
+      "effective_rate": "45/512",
+      "q29_johnson_bits_before_work": 48.82683959436917,
+      "limb_degree": 44,
+      "folded_message": 16
+    },
+    {
+      "stage": 3,
+      "source_message": 16,
+      "limb_message": 4,
+      "randomness_per_limb": 29,
+      "randomness_total": 116,
+      "leaf_rows": 128,
+      "padded_dimension": 33,
+      "effective_rate": "33/128",
+      "q29_johnson_bits_before_work": 26.314994760451885,
+      "limb_degree": 32,
+      "folded_message": 4
+    }
+  ],
+  "final_virtual_source": {
+    "message_len": 4,
+    "randomness_len": 29,
+    "domain_size": 128,
+    "degree": 32
+  },
+  "source_rate_warning": "1/32 is the unmasked message-row rate. Soundness and base-case spot checks must use the padded dimensions above; the final virtual source is 33/128, not 1/32.",
+  "source_query_fixed_point_with_one_g36": {
+    "rule": "the number of direct source queries is also the appended-randomness length; solve q*(-log2(1.05*sqrt((message+q)/domain)))+36 >= target",
+    "branch_target_103": [29, 32, 47, null],
+    "branch_target_104": [29, 32, 48, null],
+    "null_meaning": "no legal q reaches the target on the 128-point final source",
+    "expanded_final_domain_512": {
+      "branch_target_103": 40,
+      "branch_target_104": 41
+    },
+    "four_stage_union_target_104": {
+      "per_branch_target": 106,
+      "domains": [8192, 2048, 512, 512],
+      "stage_queries": [30, 33, 50, 42]
+    }
+  },
+  "padded_rate_preserving_candidate": {
+    "status": "geometry passes; code-switch/fold theorem and implementation unproved",
+    "padded_dimensions": [285, 93, 45, 33],
+    "leaf_domains": [16384, 4096, 2048, 2048],
+    "interleaved_symbol_counts": [65536, 16384, 8192, 8192],
+    "effective_rates": ["285/16384", "93/4096", "45/2048", "33/2048"],
+    "q29_plus_g36_johnson_bits": [
+      118.71384690989395,
+      113.140906730083,
+      113.82683959436918,
+      120.31499476045188
+    ],
+    "coarse_rate_at_most_1_over_32_branch_bits": 106.45870949114946,
+    "coarse_four_stage_union_bits": 104.45870949114946,
+    "sequential_per_stage_work_for_106_bit_branches": [24, 29, 29, 22],
+    "sequential_branch_bits": [
+      106.71384690989395,
+      106.140906730083,
+      106.82683959436918,
+      106.31499476045188
+    ],
+    "sequential_four_stage_union_bits_lower_bound": 104.140906730083,
+    "binary_leaf_depths": [14, 12, 11, 11],
+    "binary_depth_deltas_from_fixed_unmasked_domains": [1, 1, 2, 4],
+    "circle_support": "initial full circle codeword has 65536 symbols (log16), within the order-2^31 circle domain; later objects are four interleaved line columns. Existing fixed /4 fold code does not implement this schedule."
+  },
+  "mask_security": {
+    "regime": "JohnsonBound",
+    "target_bits": 100,
+    "union_bits": 3,
+    "spot_check_target_bits": 103,
+    "mask_log_inverse_rate": 5,
+    "spot_checks_per_group": 43,
+    "formula": "ceil(103 / -log2((1+1/20)/sqrt(32)))"
+  },
+  "mask_groups": {
+    "chronological_widths": [2, 1, 2, 1, 2, 1, 2],
+    "groups": 7,
+    "flat_mask_codewords": 11,
+    "sumcheck_groups": 4,
+    "switch_groups": 3,
+    "switch_message_len": 31,
+    "switch_message": "29 folded source-randomness coordinates plus 2 fresh OOD pads"
+  },
+  "upstream_implementation_mask_shape": {
+    "plain_sumcheck_degree": 2,
+    "ell_zk": 3,
+    "sumcheck_mask_domain": 2048,
+    "switch_mask_domain": 4096
+  },
+  "aspis_internal_pcs_candidate_shape": {
+    "plain_sumcheck_degree": 6,
+    "ell_zk": 7,
+    "sumcheck_mask_domain": 2048,
+    "switch_mask_domain": 4096,
+    "warning": "the Plonky3 implementation and its cited instantiation are quadratic; degree-six masking needs a generalized masked-sumcheck lemma and implementation"
+  },
+  "aspis_external_zerocheck_candidate_shape": {
+    "plain_sumcheck_degree": 27,
+    "ell_zk": 28,
+    "group_width": 10,
+    "sumcheck_mask_domain": 4096,
+    "warning": "separate from the seven Hiding-WHIR PCS groups; needs a generalized degree-27 masked-sumcheck lemma and an explicit composition/handoff proof"
+  },
+  "base_case_internal_pcs_geometry": {
+    "fresh_main_commitments": 1,
+    "fresh_mask_group_commitments": 7,
+    "source_reveal_elements": 33,
+    "mask_reveal_elements": 622,
+    "total_reveal_elements_excluding_masked_claim": 655,
+    "source_multiproofs_including_switch_rounds": 5,
+    "mask_multiproofs": 14,
+    "total_multiproofs": 19
+  },
+  "whole_system_candidate_with_external_zerocheck_group": {
+    "groups": 8,
+    "flat_mask_codewords": 21,
+    "additional_external_reveal_elements": 710,
+    "total_reveal_elements_excluding_masked_claim": 1365,
+    "total_multiproofs": 21,
+    "whole_system_union_bits": 4,
+    "whole_system_spot_check_target_bits": 104,
+    "rate32_spot_checks_per_group": 43,
+    "status": "cost geometry only"
+  },
+  "mask_rate_tradeoff_degree27": [
+    {"log_inverse_rate": 1, "queries": 240, "sumcheck_domain": 1024, "switch_domain": 1024},
+    {"log_inverse_rate": 2, "queries": 111, "sumcheck_domain": 1024, "switch_domain": 1024},
+    {"log_inverse_rate": 3, "queries": 73, "sumcheck_domain": 1024, "switch_domain": 1024},
+    {"log_inverse_rate": 4, "queries": 54, "sumcheck_domain": 2048, "switch_domain": 2048},
+    {"log_inverse_rate": 5, "queries": 43, "sumcheck_domain": 4096, "switch_domain": 4096},
+    {"log_inverse_rate": 6, "queries": 36, "sumcheck_domain": 4096, "switch_domain": 8192}
+  ],
+  "verification": {
+    "direct": "rustc --edition=2021 --test crates/aspis-prover/tests/rate32_hvzk_geometry.rs -o /tmp/rate32_hvzk_geometry && /tmp/rate32_hvzk_geometry --nocapture",
+    "result": "4 passed",
+    "cargo": "blocked by concurrent unrelated type-inference errors in crates/aspis-statement/src/state_only_terminal.rs"
+  }
+}

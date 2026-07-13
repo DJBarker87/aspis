@@ -6,8 +6,44 @@ a program on Solana. This subrepo contains the native WHIR-style M31 PCS
 substrate ("native v0") and its staged hardening, with the measured Phase 2
 kernel winners built in from the first line.
 
-**Status**: Stage 1 PCS milestone **closed; Stage 2 product ruling blocked on
-reconciled integration and the column-basis audit**. Stage 0 closed conditionally and the
+**Current Profile23 release (`2026-07-13`)**: the fail-closed release
+certificate is green on all 30 gates. A canonically mined 61,599-byte proof is
+verified and the nullifier/pool state is atomically mutated in one Solana
+transaction at **1,207,123 CU worst case**, leaving **192,877 CU** below the
+1.4M cap. Parameters are rate 1/512, q16, three post-final schedules and a
+cap-16 first-Good retry law. The selected proven-Johnson soundness floor is
+**101.302307 bits**; the Profile-23-own whole-ledger-times-three/BCS32 coarse
+sensitivity remains **100.806529 bits**. Complete-public-view pairwise-witness
+computational hiding is **103.112385 bits** in the declared SHA-256
+programmable-ROM/EPRO and fixed Proof-or-Abort channel model; the corresponding
+real-vs-simulator bound is **104.112385 bits**. Statistical HVZK and a
+standard-model SHA-256 PRG claim are not made. `epsilon_side=0` is solely a
+model exclusion: filesystem and burned-nonce inspection, scheduler/process
+timing, power/thermal/memory channels, and remote-prover/miner traffic are not
+covered. The CU scope consumes a finalized, pre-uploaded proof
+account; account creation, chunk upload, and finalization are separate
+transactions. Production proof accounts are irreversibly sealed by append-only
+tag 62 before tags 59/60 can consume them; append-only tag 63 initializes a
+live pool. The manifest-default 6,870,048-byte SBF (SHA-256
+`6b64baf559dcddbd6f9b1af1205effeb6afae6a5746a44421e8826251fe4cffb`) is
+byte-identical to the fully exercised production KAT and declares program id
+`7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue`. See
+`results/stage2/profile23_one_transaction_release.json` and
+`docs/stage2-profile23-one-transaction-release.md`.
+
+**Historical staging record**: Stage 1 security accounting was reopened. The selected genuine-circle
+M31/fresh-kappa PCS accepts its capacity-shaped q36/g16 fixture on SBF at
+**1,112,605 CU in 5/5 runs**, leaving 287,395 CU below 1.4M and 77,395 CU below
+the 1.19M project threshold before payment-derived C2, hiding, or the economic
+transition. At the same rate 1/4, the literal pinned-Johnson query-round target
+q74/g32 reconciles to **1,873,746 CU**, 473,746 over the hard cap. The clean
+rate/query redesign is now measured too: rate-1/16 q36/g32 accepts directly at
+**1,237,877 CU in 5/5 runs**, reclaiming 635,869 CU and leaving 162,123 CU
+below 1.4M. This reopens the one-transaction PCS engineering fork; composition,
+hiding, and the economic transition still have to fit that margin. Neither CU
+result is a 100-bit full-system soundness claim: rate-1/16 reaches 101.466 bits
+for the Johnson query round, but its T1/T2/transport/BCS ledger requires a new
+rho=1/16 derivation and exact circle transport remains open. Stage 0 closed conditionally and the
 soundness review retired q32/g32 in favor of q36/g32. The upstream T1/T2
 constants are pinned, the challenge sampler is exact-uniform, and external
 evaluation claims plus one OOD value per round are transcript-bound and
@@ -68,9 +104,19 @@ The non-additive current-CM31 verifier now exhausts the 1.4M meter in 8/8
 q36/g16 draws. Separately, the genuine-circle M31 candidate is source-audited
 and host-conformant for message/first-fold arithmetic, secure-circle tensor
 weights, and the later-line order/normalization bridge; its winning standard-
-heap RLC shape is 552,289 CU. Production C2/transcript wiring, authenticated
+heap RLC shape is 501,989 CU with exact-49 prepared limbs. Production C2/transcript wiring, authenticated
 circle/line FRI, soundness transport, and the in-place verifier remain
 unimplemented. No architecture is selected.
+All 49 C1 and two C2 host codewords, exact layer-zero leaves, and both
+candidate roots now match independent references; eight representation
+classes have paired weakened-accept/canonical-reject teeth. These are not SBF
+or product measurements.
+The combined codeword also passes four normalized folds, three later Merkle
+roots, and the 16-point terminal tensor check. A fixed 2,456-byte prefix now
+canonical-decodes 142 QM31 values and has eight paired weakened transcript
+schedules through gamma. The unselected two-point relation probe measures
+68,380 CU for fresh kappa, 70,981 CU for disjoint gamma powers, and 92,923 CU
+for independent lanes on SBF; those isolated rows are not product totals.
 The append-only tag-24 wire allocation now validates the exact diagnostic
 header and ten canonical public coordinates, then rejects by design; it is not
 a circle-PCS acceptance path.
@@ -100,13 +146,14 @@ a circle-PCS acceptance path.
 
 Verbatim from the staged design (this section ships with every artifact):
 
-> **Strongest defensible positive claim.** For one pinned code revision, one
-> pinned proof configuration, and one pinned Solana runtime setup, this repo
-> implements a hiding, transparent, hash-based proof of a shielded-spend
+> **Strongest defensible positive claim.** For the frozen Profile 23 source,
+> proof, default SBF binary, and local Agave runtime, this repo implements a
+> transparent, computationally hiding, hash-based proof of a shielded-spend
 > statement (Merkle membership under a public anchor, nullifier derivation,
-> value range, public binding), generates and locally verifies those proofs,
-> and accepts them on Solana devnet within the documented 1.4M CU
-> per-transaction cap, with raw n = 100 devnet measurements published.
+> value range, and public binding). One instruction verifies the proof from a
+> finalized, pre-uploaded proof account and atomically records its nullifier and
+> pool transition below Solana's 1.4M-CU transaction limit, with more than 100
+> bits in the proven Johnson/MCA soundness regime and declared hiding model.
 >
 > **Strongest defensible negative claim.** After implementing and
 > adversarially testing the statement layer on the hardened multilinear PCS,
@@ -114,22 +161,24 @@ Verbatim from the staged design (this section ships with every artifact):
 > exceed the stated Solana constraints; a transparent shielded-spend atom is
 > therefore not feasible within this pinned stack.
 >
-> **Explicitly out of scope**: production readiness, audits, mainnet
-> deployment; relayer infrastructure, fee privacy, wallet UX; multi-asset
+> **Explicitly out of scope**: production readiness, audits, and any mainnet
+> claim before a finalized public signature; relayer infrastructure, fee
+> privacy, wallet UX; multi-asset
 > pools, swaps, private DeFi composition; compliance / viewing-key machinery;
 > recursion, aggregation, batching of spends; any claim of equivalence to
-> paper WHIR; any "first" claim without the Stage 5 novelty re-check.
+> paper WHIR; any "first" claim without a day-of novelty re-check and finalized
+> public chain evidence.
 
-The current substrate still realizes none of the full positive spend claim;
-its claims are limited to the PCS/soundness artifacts under `results/stage0/`
-and `results/stage1/`.
+The current local release realizes the scoped Profile 23 claim above. It does
+not yet establish a mainnet-beta event, audit, production readiness, or broad
+historical priority.
 
 ## Layout
 
 ```text
 crates/aspis-core        no_std verifier core, byte-exact host + SBF (the seam artifact)
 crates/aspis-prover      host-only prover
-programs/aspis-verifier  SBF program: staged upload + verify; knows nothing about spends
+programs/aspis-verifier  SBF program: sealed upload, verify, atomic spend transition
 xtask                    stage0-host / stage0-onchain measurement runners
 docs/                    staged design, stage 0 gate note, audit notes, divergence note
 results/stage0,stage1/   raw artifacts backing every number quoted anywhere
@@ -141,10 +190,10 @@ results/stage0,stage1/   raw artifacts backing every number quoted anywhere
 | --- | --- | --- |
 | Stage 0 | Consolidate the native WHIR-style M31 PCS substrate | **CLOSED/CONDITIONAL (historical)**: admitted q32/g32 as a hypothesis; Stage 1 has since retired it |
 | Stage 1 | Harden and budget the PCS soundness argument | **REOPENED / FINITE-LENGTH CONSTANTS GATE**: t=90 ruling retained at q36/g32/s2; 93.73 is provisional sensitivity only; 65.5 is the only quotable floor; measurements and teeth tests stand |
-| Stage 2 | Build the direct spend evaluator and statement layer | **IN PROGRESS / RULING OPEN**: current-CM31 in-place scaffold exhausts 1.4M in 8/8 draws; genuine-circle M31 host conformance and 552,289-CU isolated RLC shape pass, while production circle-FRI/in-place measurement remains open; split is specified, not adopted |
-| Stage 3 | Add commitment and sumcheck/evaluation hiding | future |
-| Stage 4 | Split verifier crate seam and demo shielded pool | future |
-| Stage 5 | Freeze, devnet n=100 measurement, novelty re-check, writeup | future |
+| Stage 2 | Build the direct spend evaluator and statement layer | **RELEASED AS PROFILE 23**: rate 1/512, q16, complete statement, proven-Johnson ledger, hiding, and atomic mutation integrated |
+| Stage 3 | Add commitment and sumcheck/evaluation hiding | **INTEGRATED**: Good23/Sim23 and complete-view ROM/EPRO closure |
+| Stage 4 | Split verifier crate seam and demo shielded pool | **LOCAL RELEASE GREEN**: sealed proof accounts and both atomic marker paths exercised |
+| Stage 5 | Freeze, public-chain measurement, novelty re-check, writeup | **IN PROGRESS**: local artifacts frozen; mainnet signature and paper publication remain gated |
 
 ## Commands
 
@@ -158,6 +207,8 @@ cargo run --release -p aspis-xtask -- stage0-onchain-g32     # g32 query/grindin
 cargo run --release -p aspis-xtask -- stage0-onchain-layout-target # literal lr10 q36/g32 + g16 diagnostics
 cargo run --release -p aspis-xtask -- stage1-soundness-pin # pinned upstream T1/T2 artifact
 cargo run --release -p aspis-xtask -- stage1-onchain-hardening # literal enforced q36/g32 + cached proof
+cargo run --release -p aspis-xtask -- stage2-m31-johnson-sbf # literal q74/g32 proof + overlap-subtracted Johnson CU ledger
+cargo run --release -p aspis-xtask -- stage2-m31-rate16-sbf # literal rate-1/16 q36/g32 full SBF measurement
 cargo test -p aspis-prover --features insecure-test-ordering --test stage1_ordering # teeth proof against weakened schedules
 cargo run --release -p aspis-xtask -- stage2-evaluator # economic corpus + real statement shape
 cargo run --release -p aspis-xtask -- stage2-composition-probe # naive + structured SBF bracket
@@ -182,14 +233,17 @@ state is a program-owned account with:
 ```text
 [0..4]   magic "ASPU"
 [4..8]   proof_len u32 LE
-[8..40]  upload authority pubkey
+[8..40]  upload authority pubkey, or all-zero finalized sentinel
 [40..]   proof bytes
 ```
 
 `InitProof` requires both the proof account signer (first initialization only)
 and the upload authority signer. `UploadChunk` requires the stored authority
-signer. `Verify` only reads the uploaded proof and statement digest; it does
-not know about spends and does not require the upload authority.
+signer. `FinalizeProof` is append-only: it requires that same stored authority
+signer and zeroes bytes `8..40` without changing the 40-byte header or proof
+payload. Production verification tags 59 and 60 require this all-zero sentinel
+and reject an unfinalized account. Finalization is a deterministic public
+transition, so it adds no hidden simulator input or EPRO term.
 
 ## Working rules (inherited from the staged design)
 

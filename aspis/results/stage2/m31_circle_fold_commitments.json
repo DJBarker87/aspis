@@ -1,0 +1,69 @@
+{
+  "artifact": "stage2_m31_circle_fold_commitments",
+  "date": "2026-07-11",
+  "status": "host_only_candidate_primitive",
+  "protocol_selection": false,
+  "architecture_ruling": false,
+  "profile": {
+    "trace_log_size": 10,
+    "circle_domain_log_size": 12,
+    "arity4_rounds": 4,
+    "c1_columns": 49,
+    "c2_helpers": 2,
+    "gamma_powers": "C1 0..48, h1 49, h2 50"
+  },
+  "committed_layers": [
+    {
+      "layer": 1,
+      "evaluations": 1024,
+      "leaf_bytes": 64,
+      "leaves": 256,
+      "tag": "0x41"
+    },
+    {
+      "layer": 2,
+      "evaluations": 256,
+      "leaf_bytes": 64,
+      "leaves": 64,
+      "tag": "0x42"
+    },
+    {
+      "layer": 3,
+      "evaluations": 64,
+      "leaf_bytes": 64,
+      "leaves": 16,
+      "tag": "0x43"
+    }
+  ],
+  "terminal": {
+    "final_domain_evaluations": 16,
+    "natural_tensor_coefficients": 4,
+    "checked_at_all_final_domain_points": true
+  },
+  "normalization": {
+    "circle_to_line": "two normalized binary folds; one arity-4 round",
+    "later_line": "two normalized binary folds; second challenge alpha^2",
+    "coefficient_relation_order": "adjacent natural MLE order, no in-place bit reversal",
+    "terminal_basis": "[1, x, pi(x), x*pi(x)]"
+  },
+  "deterministic_fixture_digest": {
+    "sha256": "0a8be4ac361d87678ae34b08ca68e5fb43efd11bcf659a089184711bcc20c8af",
+    "preimage": "root_1 || root_2 || root_3 || 16 final QM31 evaluations || 4 final QM31 coefficients"
+  },
+  "tests": {
+    "full_opened_fiber_vs_combined_codeword_samples": true,
+    "independent_radix4_root_reconstruction_all_three_layers": true,
+    "every_leaf_matches_four_consecutive_symbols": true,
+    "all_16_terminal_evaluations_match_folded_coefficients": true,
+    "changed_alpha_changes_downstream_root_and_terminal": true,
+    "command": "cargo test -p aspis-prover --test m31_circle_candidate"
+  },
+  "not_proved": [
+    "No proof parser or transcript consumes these layers yet.",
+    "No Merkle opening is verified by an accepted instruction yet.",
+    "No two-point batching option is selected.",
+    "No SBF or integrated transaction CU is measured by this artifact.",
+    "No circle-FRI or S-two soundness headline is inferred; 65.5 bits remains the only quotable floor.",
+    "This artifact cannot be added to any scaffold or isolated-kernel CU row."
+  ]
+}

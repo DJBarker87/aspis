@@ -1,0 +1,41 @@
+{
+  "status": "OFFICIAL_STWO_HOST_ANCHOR_PASS_ONLY",
+  "stwo": {
+    "repository": "https://github.com/starkware-libs/stwo",
+    "commit": "5d10e6b4baa559766e7bbae133b918121211a9c5",
+    "generator": "reference/stwo-circle-candidate/aspis_circle_candidate_digests.rs",
+    "instructions": "reference/stwo-circle-candidate/README.md",
+    "method": "official CpuCirclePoly::evaluate on CanonicCoset::new(12).circle_domain(); QM31 helpers encoded as four official M31 coordinate polynomials"
+  },
+  "fixture": {
+    "seed": "0x434952434c454332",
+    "c1_shape": "49 x 1024 direct M31 messages -> 49 x 4096 symbols",
+    "c2_shape": "2 x 1024 QM31 messages -> 2 x 4096 symbols",
+    "c1_leaf": "1024 leaves x 784 bytes, slot-major then column-minor, tag 0x40",
+    "c2_leaf": "1024 leaves x 128 bytes, helper-major then slot-minor, tag 0xc0",
+    "node": "SHA256(0x12 || ordered child0 || child1 || child2 || child3)"
+  },
+  "digests": {
+    "c1_codewords_sha256": "eb398b5bf27587d3d4abb693287530dc8aacc4f8ed0470b3e9133d331d2694ea",
+    "c2_codewords_sha256": "7badaace498a8a1837b9f018dffe193ba1cb3528646578439391aecffbcc34a2",
+    "c1_leaves_sha256": "2f0dc5ce5f7bdc604e544bc01c9d42b8d24bc8caf15625bd6e2336324c4adb69",
+    "c2_leaves_sha256": "1be451ce4ff8a8a7ece496eb6ec05ead3de4645238d02c35a5b75ca1050c90c5",
+    "c1_root": "c6a93117eb8ccd3e0e9c3ff9598ce6f34682f82c430a955da1c0f799c6c2ad4f",
+    "c2_root": "c764cdff2474ee79b56fe9baeaa3c7cc5e62c2ae3b1f0ed470c00c28f83930b3",
+    "fixture_sha256": "a130a5cb2bb8055423d5db9bc0ebbf563ef00e651efd6ee989816178bdc3c671",
+    "generator_stdout_sha256": "3fd2d6a5ad480ef9e34fc8f5ac5b10101c86ddf4c1938f87afe076bbd49c29c7"
+  },
+  "aspis_pin_test": {
+    "file": "crates/aspis-prover/tests/m31_circle_official_anchor.rs",
+    "command": "cargo test -p aspis-prover --test m31_circle_official_anchor",
+    "passed": 1,
+    "failed": 0
+  },
+  "production_wire_integrated": false,
+  "proof_parser_integrated": false,
+  "transcript_integrated": false,
+  "sbf_built_or_measured": false,
+  "soundness_transport_closed": false,
+  "payment_semantics_proven": false,
+  "protocol_or_architecture_ruling_made": false
+}

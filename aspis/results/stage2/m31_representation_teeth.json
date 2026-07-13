@@ -1,0 +1,142 @@
+{
+  "status": "HOST_REPRESENTATION_TEETH_PASS_CANDIDATE_ONLY",
+  "date": "2026-07-11",
+  "command": "cargo test -p aspis-prover --test m31_representation_teeth",
+  "test_result": {
+    "passed": 8,
+    "failed": 0
+  },
+  "reference": {
+    "stwo_commit": "5d10e6b4baa559766e7bbae133b918121211a9c5",
+    "production_plan": "docs/stage2-m31-production-plan.md section 7",
+    "test": "crates/aspis-prover/tests/m31_representation_teeth.rs",
+    "support": "crates/aspis-prover/tests/support/m31_representation_teeth_reference.rs",
+    "existing_circle_reference": "crates/aspis-prover/tests/support/m31_circle_reference.rs",
+    "existing_line_reference": "crates/aspis-prover/tests/support/m31_line_fri_reference.rs"
+  },
+  "paired_teeth": [
+    {
+      "class": "AIR_IFFT_REINTERPRETATION",
+      "fixture": "nontrivial SpendTraceV4 C1 column 0, 1024 M31 rows",
+      "weakened_behavior": "treat the message table as trace-domain evaluations, invert the log10 circle encoder, then encode the resulting coefficients at log12",
+      "weakened_accepts_paired_vector": true,
+      "canonical_behavior": "encode the original multilinear message vector directly at log12",
+      "canonical_rejects_paired_vector": true,
+      "additional_checks": [
+        "test-only AIR IFFT round-trips through the pinned log10 circle encoder",
+        "direct-message and AIR-IFFT log12 codeword digests differ",
+        "the two coefficient vectors give different MLE claims at a fixed ten-coordinate point"
+      ]
+    },
+    {
+      "class": "MLE_ENDIAN_BASIS_REVERSAL",
+      "fixture": "six one-hot length-16 messages plus one nonsymmetric message",
+      "vectors": 7,
+      "weakened_behavior": "bit-reverse the direct coefficient/message vector before multilinear evaluation",
+      "weakened_accepts_paired_vector": true,
+      "canonical_behavior": "big-endian Boolean index order with the final coordinate selected by bit zero",
+      "canonical_rejects_paired_vector": true
+    },
+    {
+      "class": "CIRCLE_SLOT_ORDER_LEGACY_STRIDED",
+      "fixture": "deterministic log12 codeword at boundary and interior fibers 0, 1, 137, 511, and 1023",
+      "fibers": 5,
+      "adversarial_variants_per_fiber": 2,
+      "weakened_behaviors": [
+        "legacy strided slots f+sF",
+        "additional middle-slot permutation proxy [0,2,1,3] (explicitly not claimed as Stwo's exact internal twiddle-coset accessor)"
+      ],
+      "weakened_accepts_paired_vector": true,
+      "canonical_behavior": "four consecutive bit-reversed codeword slots p,Jp,Ap,JAp",
+      "canonical_rejects_paired_vector": true,
+      "scope_caveat": "the legacy strided accessor is the exact plan-listed wrong accessor covered here; a distinct exact Stwo internal twiddle-coset accessor vector remains future work"
+    },
+    {
+      "class": "SECOND_FOLD_ALPHA_SQUARED",
+      "random_cases": 24,
+      "weakened_behavior": "reuse alpha for the second inverse butterfly",
+      "weakened_accepts_paired_vector": true,
+      "canonical_behavior": "use alpha for the first fold and alpha^2 for the second",
+      "canonical_rejects_paired_vector": true,
+      "covered_layers": [
+        "circle-to-line first layer",
+        "later line-FRI layer"
+      ],
+      "boundary_checks": "alpha=0 and alpha=1 intentionally coincide with alpha^2 and are asserted separately"
+    },
+    {
+      "class": "RAW_VS_NORMALIZED_FACTOR_FOUR",
+      "cases": 24,
+      "alphas": "zero, one, and deterministic random QM31",
+      "weakened_behavior": "accept the two raw Stwo inverse butterflies without normalization",
+      "weakened_accepts_paired_vector": true,
+      "canonical_behavior": "divide the complete arity-4 fold by four",
+      "canonical_rejects_paired_vector": true,
+      "identity_checked": "raw == 4 * normalized and normalized == raw / 4 in every case"
+    },
+    {
+      "class": "OOD_FACTOR_ORDER_AND_RETAINED_Y",
+      "coefficient_cases": 16,
+      "ood_samples_per_case": 2,
+      "sample_points": 32,
+      "adversarial_variants_per_point": 2,
+      "weakened_behaviors": [
+        "swap the low y and x tensor factors",
+        "retain y as the line factor after the first circle fold"
+      ],
+      "weakened_accepts_paired_vector": true,
+      "canonical_behavior": "stored factors [...,pi(x),x,y], then remove y and continue on the doubled-x line tail",
+      "canonical_rejects_paired_vector": true
+    },
+    {
+      "class": "LATER_FOLDED_STORAGE_BITREVERSE",
+      "cases": 24,
+      "weakened_behavior": "encode natural R_(r+1) directly without the one required storage-order bit reversal",
+      "weakened_accepts_paired_vector": true,
+      "canonical_behavior": "set S_(r+1)=bitreverse(R_(r+1)) before line encoding",
+      "canonical_rejects_paired_vector": true,
+      "independent_anchor": "canonical next codeword equals the official raw two-line-fold codeword divided by four"
+    },
+    {
+      "class": "FINAL_NATURAL_VS_STORAGE_ORDER",
+      "cases": 32,
+      "weakened_behavior": "serialize storage order, skip the query-evaluation storage copy bit reversal, and dot the reversed vector against natural weights",
+      "weakened_accepts_paired_vector": true,
+      "canonical_behavior": "serialize and relation-dot natural R4, while evaluating queries against a separate S4=bitreverse(R4) copy",
+      "canonical_rejects_paired_vector": true,
+      "reverse_direction_check": "canonical candidates reject under the weakened validator in every case"
+    }
+  ],
+  "deterministic_seeds": {
+    "circle_slots": "0x434952434c45534c",
+    "alpha_squared": "0x414c504841325445",
+    "factor_four": "0x464143544f523454",
+    "ood_factors": "0x4f4f44464143544f",
+    "storage_bridge": "0x4252494447455445",
+    "final_basis": "0x46494e414c424153"
+  },
+  "scope": {
+    "host_only": true,
+    "test_support_only": true,
+    "production_acceptance_path_added": false,
+    "sbf_code_changed": false,
+    "sbf_feature_added": false,
+    "proof_parser_integrated": false,
+    "merkle_authentication_integrated": false,
+    "transcript_kat_repinned": false,
+    "production_circle_pcs_integrated": false,
+    "payment_semantics_proved": false,
+    "soundness_transport_rederived": false,
+    "architecture_or_gate_ruling_made": false
+  },
+  "remaining_matrix_classes": [
+    "exceptional rational sampler proof-level vector",
+    "gamma-before-claims and partial-102-value transcript vectors",
+    "C2 omission, power, and slot-order proof vectors",
+    "root mix-and-match proof vectors",
+    "query mapping with authenticated openings",
+    "leaf/frontier framing",
+    "two-point cancellation under the eventual note-ratified batching rule",
+    "noncanonical field bytes through the eventual diagnostic parser"
+  ]
+}

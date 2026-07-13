@@ -14,7 +14,10 @@ pub const RANGE_LIMBS_PER_VALUE: usize = 3;
 pub(crate) const DOMAIN_OWNER_KEY: M31 = M31(0x4153_0001);
 pub(crate) const DOMAIN_NULLIFIER: M31 = M31(0x4153_0002);
 pub(crate) const DOMAIN_NOTE: M31 = M31(0x4153_0003);
-pub(crate) const DOMAIN_OUTPUT: M31 = M31(0x4153_0004);
+/// Retired pre-v2 output domain. A commitment made with this domain is not a
+/// leaf accepted by input-note membership and must never enter the pool.
+#[cfg(test)]
+const DOMAIN_OUTPUT_LEGACY: M31 = M31(0x4153_0004);
 pub(crate) const DOMAIN_MERKLE_NODE: M31 = M31(0x4153_0005);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -167,7 +170,42 @@ pub fn output_commitment(owner_key: &Digest, value: u32, asset_id: M31, salt: &D
     output_commitment_with(owner_key, value, asset_id, salt, &mut hash_fields)
 }
 
+/// Legacy, unspendable output-domain commitment retained only for migration
+/// diagnostics. Production SpendV0 uses [`output_commitment`].
+#[cfg(test)]
+fn output_commitment_legacy(
+    owner_key: &Digest,
+    value: u32,
+    asset_id: M31,
+    salt: &Digest,
+) -> Digest {
+    output_commitment_with_domain(
+        DOMAIN_OUTPUT_LEGACY,
+        owner_key,
+        value,
+        asset_id,
+        salt,
+        &mut hash_fields,
+    )
+}
+
 fn output_commitment_with<H>(
+    owner_key: &Digest,
+    value: u32,
+    asset_id: M31,
+    salt: &Digest,
+    hash: &mut H,
+) -> Digest
+where
+    H: FnMut(M31, &[M31]) -> Digest,
+{
+    // V2 outputs are ordinary spendable note leaves. Domain-separating an
+    // output from a future input makes the output permanently unspendable.
+    output_commitment_with_domain(DOMAIN_NOTE, owner_key, value, asset_id, salt, hash)
+}
+
+fn output_commitment_with_domain<H>(
+    domain: M31,
     owner_key: &Digest,
     value: u32,
     asset_id: M31,
@@ -183,7 +221,7 @@ where
     input.push(M31(value));
     input.push(asset_id);
     append_digest(&mut input, salt);
-    hash(DOMAIN_OUTPUT, &input)
+    hash(domain, &input)
 }
 
 fn merkle_parent_with<H>(left: &Digest, right: &Digest, hash: &mut H) -> Digest
@@ -575,6 +613,22 @@ mod tests {
                 },
             ),
             Err(SpendError::NullifierAlreadySpent)
+        );
+    }
+
+    #[test]
+    fn v2_output_is_exactly_the_next_spend_note_leaf() {
+        let owner = digest(7_001);
+        let salt = digest(8_001);
+        let value = 123_456;
+        let asset = M31(91);
+        assert_eq!(
+            output_commitment(&owner, value, asset, &salt),
+            note_commitment(&owner, value, asset, &salt)
+        );
+        assert_ne!(
+            output_commitment_legacy(&owner, value, asset, &salt),
+            note_commitment(&owner, value, asset, &salt)
         );
     }
 

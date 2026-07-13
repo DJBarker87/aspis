@@ -27,6 +27,8 @@ Normative host anchors are:
   `results/stage2/m31_line_fri_conformance.json`;
 - the retained official-source corpus generator and reproduction command in
   `reference/stwo-line-fri/`;
+- the retained full-circle candidate generator and pinned official roots in
+  `reference/stwo-circle-candidate/`;
 - `stage2-circle-soundness-transport.md`, whose code-level Johnson transport
   is positive but whose grouped-fold, OOD, MLE-binding, and BCS protocol
   obligations remain open;
@@ -49,12 +51,166 @@ that proof only by misclassifying it as the legacy CM31 basis. Tags 0 through
 24 are serialization-pinned, existing transcript KATs are unchanged, and the
 weak feature is absent from the SBF dependency graph.
 
-This implements one teeth-first framing sub-slice of implementation-order
-steps 2 and 3; it does **not** mark either full step complete. The remaining
-AIR-IFFT, endian, slot, fold, OOD, C2, root, and query adversarial families
-must still demonstrate weakened acceptance before their canonical fixes land.
-The real circle proof prefix, roots, 102 values, transcript KAT, authenticated
-folds, SBF acceptance, and soundness transport remain unimplemented.
+This framing slice alone does **not** complete implementation-order steps 2
+and 3. The AIR-IFFT, endian, slot, fold, OOD, C2, root, frontier, and query
+families now have independent host teeth below; composing them into one proof
+path, exceptional sampler failures, and the selected-rule production vectors
+remain open.
+The fixed candidate prefix and its pre-batching transcript slice are now
+implemented: a zero-copy exact parser exposes all offsets, canonical-checks
+all 142 QM31 fields, and derives lambda, chi, and gamma only after the two
+distinct roots, external points, and all 102 statement values. Eight paired
+weakened schedules cover early gamma, partial value blocks, root labeling and
+swapping, and C2 omission/order; each accepts its own vector while the
+canonical schedule differs. This slice deliberately stops after gamma and
+does not pin an expected digest. Independent openings and fold checks now
+exist below, but the two-point rule, their composed proof path, transcript KAT,
+SBF acceptance, and soundness transport remain open. The candidate-only evidence is
+`results/stage2/m31_circle_prefix_candidate.json`.
+
+A separate host-only continuation exercises the complete fixed transcript
+tail for the two comparison shapes: fresh kappa and disjoint
+gamma powers beginning at `gamma^51`. It continues the same transcript through
+the layer-specific circle/line OOD samplers, both `(point,Y,mu)` triples,
+layer-tagged sumchecks and alphas, natural final four, grinding, and 36 queries.
+Nine paired weakened schedules cover later-root, OOD, sampler/label, alpha,
+final, nonce, and query ordering. The comparison deliberately offers no
+independent-lane fixed-prefix mode, pins no expected digest, verifies no
+algebra or opening. Fresh kappa is now selected; disjoint gamma powers remain
+rejected comparison provenance. Its evidence is
+`results/stage2/m31_circle_transcript_tail_candidate.json`.
+The matching host writer round-trips every root and all 142 QM31 fields through
+that parser, with a pinned full-prefix digest. Its OOD and sumcheck values are
+canonical fixtures only; this catches writer/parser drift without claiming the
+relations or pinning a transcript KAT.
+The fixed 102-value block is also generated at external `z` and derived
+`xor11(z)` in point-major/column-major order. At both points, gamma-combining
+the 51 individual evaluations equals evaluating the gamma-combined natural
+message, including helper powers 49 and 50. This establishes the statement
+block's linear wiring; the selected two-point rule is fresh kappa.
+
+The host relation builder now accepts two explicit point scales without naming
+or selecting their batching rule, adds two secure-circle OOD tensors in round
+zero and two line tensors in each later round, constructs all four degree-six
+sumcheck messages, folds natural coefficients and dual weights together, and
+checks the terminal dot on final4. Independent fully materialized vectors
+match every boundary, coefficient, alpha evaluation, and fold for two
+nontrivial scale pairs. It receives the full message and explicit challenges,
+so it is relation-conformance evidence—not a commitment verifier or transcript
+integration.
+
+The host encoder portion of step 5 is also implemented without a proof
+acceptance path. All 49 direct M31 C1 messages and both coordinatewise QM31 C2
+messages are differentially encoded over the full log-12 codeword; all 1,024
+784-byte C1 leaves, 128-byte C2 leaves, and both candidate-tagged radix-4 roots
+match independent test assembly. Eight representation classes now have paired
+weakened acceptance and canonical rejection in
+`results/stage2/m31_representation_teeth.json`. This does not yet build later
+roots, openings, a transcript, or an SBF verifier inside the encoder artifact;
+the later independent slices below consume its outputs.
+The same full fixture now reproduces against official Stwo itself: C1 root
+`c6a93117...ad4f`, C2 root `c764cdff...30b3`, with every codeword/leaf digest
+and the generator stdout pinned by the retained example.
+
+The verifier-side arithmetic portion of steps 4, 7, and 8 is host-tested in
+`aspis-core::circle_fri`: fixed circle/line domain access, normalized first and
+later folds, the later-`LinePoly`-only bit-reversal bridge, query mapping, and
+final tensor evaluation. Exhaustive fixed-profile tests cover every public
+domain point/fiber/query and return explicit errors for invalid shapes or zero
+denominators. The host query checker now calls them, but no accepting SBF path
+does.
+
+The host commitment path now gamma-combines all 51 encoded codewords, applies
+four normalized arity-4 folds, commits the intervening line layers under tags
+`0x41..0x43`, and checks every one of the 16 terminal-domain evaluations
+against the four natural tensor coefficients. Independent radix-4 root
+assembly and a pinned aggregate digest cover all three later layers. This is
+still a host-only consistency path: its explicit inputs are not themselves a
+transcript or authenticated proof, it selects no two-point rule, and it
+contributes no CU number.
+
+The sequential host candidate builder now joins the previously separate
+encoder, transcript-tail, OOD/sumcheck relation, fold-root, terminal, grinding,
+and query slices in their actual causal order for both comparison
+alternatives. It exact-parses and replays each 2,456-byte result and
+independently validates the completed relation. Candidate hashes
+`8df40160...152b8e` (fresh kappa) and `8b17d07d...327296` (disjoint
+`gamma^51`) are pinned; flipping the external statement-digest bit produces
+the separately pinned `2596c4cc...f7ee5f` stale fixture and changes gamma and
+the post-query transcript state. This is host candidate evidence, not the
+downstream production KAT. Fresh kappa is selected and now attaches to the
+opening suffix in the 57,668-byte fixture. Append-only tag 26 accepts the exact
+PCS path on SBF at 1,112,605 CU in 5/5 identical standard-envelope runs, with
+stale-statement rejection. C2 remains fixture data, and this instruction cannot
+authorize a payment or pool transition. The 287,395-CU platform headroom is not
+yet product headroom; the path is 77,395 CU below the project threshold before
+payment work.
+
+This is the overlap-subtracted in-place PCS measurement. The isolated
+501,989-CU tag-23 RLC row is contained inside 1,112,605 CU and must never be
+added to it; 1,614,594 CU is a deliberate naive-sum anti-vector.
+
+The Johnson rate/query fork is now measured. The fixed rho=1/4 q74/g32 proof
+costs 1,873,746 CU after overlap subtraction and cannot fit one transaction.
+The natural rho=1/16 q36/g32 redesign keeps four folds/final4 and accepts its
+complete 73,620-byte PCS proof directly at **1,237,877 CU in 5/5 runs**. Its
+segmented control is 1,237,884 CU (7 CU above direct), and it leaves 162,123 CU
+against the platform cap. This is the active one-transaction engineering
+candidate. It is not production-selected until the rho=1/16 T1/T2/per-fold-
+PoW/BCS derivation, payment composition, hiding, and transition gates close.
+
+The layer-zero opening verifier now parses and authenticates separately framed
+C1 and C2 radix-4 minimal-subtree proofs against the official roots, with
+canonical M31/QM31 decoding and externally derived sorted query indices.
+Column/slot layout, tag swap, sibling order, and C1-frontier-reuse attacks all
+have unchanged adversarial bytes accepted by explicit weakened test helpers
+and rejected canonically. The composed host fixture described below now joins
+this parser to the arithmetic query checker.
+
+The three later 64-byte line layers now have their own exact sequential
+opening parser and radix-4 verifier at depths 8/6/4 under tags
+`0x41/0x42/0x43`. Query-derived indices are fixed to unique `q>>2`, `q>>4`,
+and `q>>6`, and borrowed leaf/slot lookup exposes the intervening two-bit
+chunks. Wrong tags, shifts, slot order, frontier reuse, truncation, and
+trailing bytes all have same-vector weakened acceptance and canonical
+rejection. The composed host fixture described below now joins these layers to
+the arithmetic query checker.
+
+The fixed per-query arithmetic checker now takes one exact 784-byte C1 leaf,
+one 128-byte C2 leaf, and the three 64-byte later leaves supplied by the
+opening layer. It canonical-decodes and gamma-combines powers 0..50, checks the
+normalized circle fold against layer 1, the next two line folds against layers
+2 and 3, and the last line fold against the natural final-four tensor at
+`q>>6`. The full committed candidate passes all 1,024 query paths. Seven
+same-input weakened vectors cover helper-power shift, the `q>>2/q>>4/q>>6`
+chunks, circle and line alpha reuse, and final storage order; each rejects at
+the canonical layer/terminal boundary with an explicit leaf offset or final
+index. This is the host-only arithmetic artifact
+`results/stage2/m31_circle_query_consistency.json`. It does not authenticate a
+leaf or index, connect to tag 24, pin a transcript KAT, run on SBF, report CU,
+or make a protocol or architecture ruling in isolation.
+
+The composed host opening fixture now authenticates the layer-zero C1/C2 and
+all three later-line sections before borrowing the exact leaves into the query
+checker. Its 36 raw queries produce 34 layer-zero indices and exactly
+21/18/15 later indices; the 48,124-byte suffix has SHA-256
+`2775983d...0c780d`. Mutations distinguish layer-zero authentication,
+later-layer authentication, and terminal arithmetic failures, while count,
+trailing-byte, mixed-alpha, query-count, and range attacks reject at their
+canonical boundaries. This closes host composition for explicit gamma/alpha
+inputs. Attaching it to one selected sequential transcript tail, and then SBF,
+remains open.
+
+The append-only tag-25 diagnostic now supplies the previously missing neutral
+cost comparison among the two-point rules on an identical relation fixture:
+51,052 CU for the insecure one-point baseline, 68,380 for fresh kappa,
+92,923 for two independent lanes, and 70,981 for disjoint gamma powers. Each
+row has five identical standard-heap local-validator repetitions, host/SBF sink
+parity, and pinned relation bytes/hash counts. Cancellation, ordering,
+lane-omission, and shifted-power weakened validators provide teeth. The artifact is
+`results/stage2/two_point_batching_probe.json`. It is isolated from tag 24 and
+the production circle proof, cannot be added to a PCS total, and does not
+ratify a rule, amend a soundness term, or authorize a transcript change.
 
 ## 1. Append-only diagnostic wire allocation
 
@@ -192,13 +348,11 @@ V[p] = sum(c=0..48, gamma^c * lift(C1[c](p)))
      + gamma^50 * C2[h2](p).
 ```
 
-The two point claims require a non-cancelling batching rule. The candidate rule
-in this plan is a separate transcript challenge `kappa` with scales `1` and
-`kappa`. Its status is **provisional, note-first approval required**: before it
-enters code, the soundness note must either ratify and ledger this challenge or
-identify the already-ratified two-point batching rule that replaces it. The
-implementation and KAT then use exactly that recorded rule. This plan does not
-silently introduce kappa or charge its soundness term to an existing term.
+The two point claims use the note-selected fresh exact-uniform `kappa`, sampled
+after gamma, with scales `1` and `kappa`. The soundness ledger charges
+`51/|QM31|` to T5'. The rejected alternatives and measurement provenance are
+retained in `stage2-two-point-batching-options.md`. The next append-only SBF
+path must implement exactly this order and selected rule.
 
 ## 3. Circle domains, leaves, roots, and openings
 
@@ -616,9 +770,10 @@ The dependency order is intentionally teeth-first.
    digests against the Stwo reference rather than only selected positions.
 6. **Implement the two-point prefix.** Parse/derive the points, canonical-decode
    all 102 values, verify the instruction digest, derive gamma, and stop until
-   the note-first two-point batching rule is ratified. Then implement exactly
-   that challenge/rule. No zero filler or synthetic helper may appear in the
-   measurement path.
+   the note-first two-point batching rule is ratified. The isolated tag-25
+   comparison is decision evidence only and does not satisfy that ratification
+   gate. Then implement exactly the selected challenge/rule. No zero filler or
+   synthetic helper may appear in the integrated measurement path.
 7. **Implement normalized folds and final tensor evaluation.** First circle
    fold, later Stwo line folds, natural-relation-to-bit-reversed-storage bridges,
    coefficient/weight folding, natural final serialization, the query-only

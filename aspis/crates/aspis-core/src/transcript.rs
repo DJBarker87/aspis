@@ -33,6 +33,14 @@ pub const TRANSCRIPT_KAT_V4_S2_PCS_SCAFFOLD_EXPECTED: [u8; 32] = [
     0xd0, 0xf7, 0x31, 0x8e, 0x78, 0x6a, 0x44, 0xec, 0x16, 0x53, 0x04, 0x98, 0x0f, 0x8b, 0x5f, 0x07,
 ];
 
+/// Pinned profile-15 payment transcript, including the round-specific batch
+/// work record inserted immediately before gamma.  Wire tag 20 recomputes
+/// this vector with the Solana SHA-256 syscall backend.
+pub const TRANSCRIPT_KAT_FINAL_PAYMENT_V4_EXPECTED: [u8; 32] = [
+    0x76, 0x0b, 0xff, 0x52, 0x4d, 0x28, 0x3a, 0xdf, 0x2a, 0xa1, 0xa9, 0xdb, 0x38, 0xf2, 0x13, 0x7d,
+    0x38, 0xdb, 0xd4, 0x19, 0xdf, 0xdd, 0xd4, 0x36, 0xe1, 0x32, 0x25, 0x52, 0xed, 0x76, 0x15, 0xfc,
+];
+
 /// hashv-shaped backend: hash the concatenation of the input slices.
 pub type HashFn = fn(&[&[u8]]) -> [u8; 32];
 
@@ -58,6 +66,109 @@ pub mod label {
     /// Proof-carried helper evaluation at the public claim point. It and the
     /// main claim are both absorbed before gamma.
     pub const SECOND_PHASE_CLAIM: u8 = 10;
+    /// Fixed genuine-circle C1 basis discriminator.
+    pub const M31_CIRCLE_BASIS: u8 = 11;
+    /// `layer_u8 || root32` for C1 at layer zero and later combined roots.
+    pub const M31_CIRCLE_ROUND_ROOT: u8 = 12;
+    /// Dedicated combined C2 helper root.
+    pub const M31_CIRCLE_C2_ROOT: u8 = 13;
+    /// External `z || xor11(z)` MLE points.
+    pub const M31_CIRCLE_STATEMENT_POINTS: u8 = 14;
+    /// Fixed point-major, column-major block of 102 statement values.
+    pub const M31_CIRCLE_STATEMENT_EVALUATIONS: u8 = 15;
+    /// `layer || sample || value` for the layer-zero circle OOD relation.
+    pub const M31_CIRCLE_OOD_VALUE: u8 = 16;
+    /// `layer || sample || value` for later line OOD relations.
+    pub const M31_LINE_OOD_VALUE: u8 = 17;
+    /// `layer || seven QM31 coefficients` for the candidate relation sumcheck.
+    pub const M31_CIRCLE_RELATION_SUMCHECK: u8 = 18;
+    /// Four natural-order terminal line-tensor coefficients.
+    pub const M31_CIRCLE_FINAL_TENSOR_POLY: u8 = 19;
+    /// `layer || nonce_le` work witness checked after the layer sumcheck and
+    /// before sampling that layer's powers-generator fold challenge.
+    pub const M31_CIRCLE_FOLD_POW_NONCE: u8 = 20;
+    /// Version/count framing for the frozen 252-entry payment constraint
+    /// registry, absorbed after C2 and before its batching challenge.
+    pub const M31_PAYMENT_CONSTRAINT_REGISTRY: u8 = 21;
+    /// The two public zero claims `sum(h1)=sum(h2)=0`.
+    pub const M31_PAYMENT_HELPER_SUMS: u8 = 22;
+    /// `round || c0 || c2 || ... || c10` for the ten-round payment
+    /// zerocheck. Its ten challenges become the PCS MLE point `z`.
+    pub const M31_PAYMENT_ZEROCHECK_SUMCHECK: u8 = 23;
+    /// Initial degree-10 sumcheck mask claim. A dedicated hiding profile
+    /// absorbs every mask-oracle root before this field, then samples the
+    /// nonzero affine-combination challenge.
+    pub const M31_PAYMENT_HIDING_MASK_CLAIM: u8 = 24;
+    /// Fixed mask-oracle count/degree framing followed by the nonzero lane
+    /// batching challenge kappa. Every mask root is absorbed before this.
+    pub const M31_PAYMENT_HIDING_MASK_ORACLES: u8 = 25;
+    /// Mask-column powers-generator challenge delta, sampled after the same
+    /// roots and independently from kappa.
+    pub const M31_PAYMENT_HIDING_MASK_DELTA: u8 = 26;
+    /// Two-point `(delta aggregate, H_z aggregate)` claims, followed by tau
+    /// and the outer gamma challenge for the single-codeword merge.
+    pub const M31_PAYMENT_HIDING_MASK_AGGREGATES: u8 = 27;
+    /// `nonce_le` work witness checked after every statement-evaluation row
+    /// and before the powers-generator batching challenge gamma.  This work
+    /// belongs to the batching BCS round; later fold/query nonces cannot be
+    /// credited to it.
+    pub const M31_PAYMENT_BATCH_POW_NONCE: u8 = 28;
+    /// `round || c0 || ... || c27` for the production-neutral state-only
+    /// degree-27 zerocheck scaffold.  This label is deliberately distinct
+    /// from the frozen degree-10 payment transcript (label 23).
+    pub const M31_STATE_ONLY_ZEROCHECK_SUMCHECK: u8 = 29;
+    /// Public state-only hiding context, including the statement digest,
+    /// fresh proof nonce, and both layout fingerprints. It is absorbed before
+    /// either masked C1/C2 commitment; private mask entropy is never absorbed.
+    pub const M31_STATE_ONLY_HIDING_PRECOMMIT: u8 = 30;
+    /// Initial state-only mask claim and fixed degree framing. This is
+    /// absorbed only after every masked commitment, then the nonzero affine
+    /// combination challenge is sampled.
+    pub const M31_STATE_ONLY_HIDING_MASK_CLAIM: u8 = 31;
+    /// Frozen state-only lane/copy/layout registry, absorbed after C2 and
+    /// before theta, the zerocheck equality point, and mu are sampled.
+    pub const M31_STATE_ONLY_CONSTRAINT_REGISTRY: u8 = 32;
+    /// The single public state-only copy-helper sum claim `sum(h1)=0`.
+    pub const M31_STATE_ONLY_HELPER_SUM: u8 = 33;
+    /// Profile-21 diagnostic: dedicated two-lane natural-line commitment to
+    /// the pre-delta source words X and F. This root precedes every challenge
+    /// used to form their target functionals or affine combination.
+    pub const M31_STATE_ONLY_SWITCH_XF_ROOT: u8 = 34;
+    /// Profile-21 diagnostic: the ordered pair `(tX, muF)` after the target
+    /// covector is fixed and before the source-code powers work witness.
+    pub const M31_STATE_ONLY_SWITCH_TARGETS: u8 = 35;
+    /// Profile-21 diagnostic: dedicated source-code powers-generator work
+    /// nonce, checked and absorbed before delta. Final-round work cannot be
+    /// credited to this earlier BCS round.
+    pub const M31_STATE_ONLY_SWITCH_SOURCE_POW_NONCE: u8 = 36;
+    /// Profile-21 diagnostic: forced natural coefficients
+    /// `U = F + delta X`, absorbed immediately after delta.
+    pub const M31_STATE_ONLY_SWITCH_U: u8 = 37;
+    /// Profile-21 diagnostic: translated root-one commitment, fixed before
+    /// its two OOD samples and the final query work witness.
+    pub const M31_STATE_ONLY_SWITCH_TRANSLATED_ROOT: u8 = 38;
+    /// Profile-21 diagnostic: final positioned work witness before q16 is
+    /// sampled without replacement.
+    pub const M31_STATE_ONLY_SWITCH_FINAL_POW_NONCE: u8 = 39;
+    /// Profile-21 direct-binding guard: sorted transcript-derived line
+    /// positions and their authenticated translated-word values. A fresh
+    /// batching scalar is sampled only after this record is fixed.
+    pub const M31_STATE_ONLY_SWITCH_QUERY_VALUES: u8 = 40;
+    /// `round || c0 || c1 || c2` for the eight-round degree-two batch
+    /// evaluation sumcheck binding disclosed U coefficients to all q values.
+    pub const M31_STATE_ONLY_SWITCH_BATCH_EVAL_SUMCHECK: u8 = 41;
+    /// Profile-21 complete post-delta relation seam target tau, absorbed after
+    /// disclosed U and before the translated W1 root. Literal q16 binding
+    /// ties this claimed scalar to the authenticated W1/U difference word.
+    pub const M31_STATE_ONLY_SWITCH_TAU: u8 = 42;
+    /// Profile-23's three evaluations of the committed zero-factor D lane.
+    /// They are logically absorbed beside the ordinary statement evaluations,
+    /// before batch grinding and gamma, even though the append-only wire puts
+    /// them in the profile extension.
+    pub const M31_STATE_ONLY_ZERO_FACTOR_D_CLAIMS: u8 = 43;
+    /// Domain-separate the selected post-final-nonce q16 candidate.  The
+    /// canonical profile-23 selector range is 0..3 (three candidates).
+    pub const M31_STATE_ONLY_QUERY_CANDIDATE: u8 = 44;
 }
 
 const DOM_ABSORB: u8 = 0x00;
@@ -68,6 +179,11 @@ const DOM_GRIND: u8 = 0x03;
 /// Maximum candidate draws per QM31 limb before the transcript is declared
 /// exhausted. Per-limb exhaustion probability (2^-31)^8 = 2^-248.
 pub const CHALLENGE_RETRY_LIMIT: u32 = 8;
+
+/// Maximum exact-uniform QM31 draws used when a protocol challenge must be
+/// nonzero. Exhaustion has probability `|QM31|^-3` apart from the separately
+/// bounded per-limb rejection event.
+pub const NONZERO_QM31_RETRY_LIMIT: u32 = 3;
 
 /// Maximum field draws used to obtain a point outside the CM31 subfield.
 /// A random QM31 point lands in CM31 with probability 1/|CM31| ~= 2^-62;
@@ -84,6 +200,18 @@ pub const CIRCLE_POINT_RETRY_LIMIT: u32 = 3;
 /// completeness event). The verifier maps this to proof rejection.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct ChallengeSampleExhausted;
+
+/// Failure of bounded exact-uniform query sampling without replacement.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum QuerySampleError {
+    /// Masking is exact only when the domain size is a nonzero power of two.
+    BoundNotPowerOfTwo { bound: u32 },
+    /// A without-replacement sample cannot contain more points than its domain.
+    CountExceedsBound { count: usize, bound: u32 },
+    /// The configured candidate-draw cap was reached before `count` distinct
+    /// positions were accepted. This is an explicit completeness abort.
+    DrawLimitExhausted { accepted: usize, max_draws: usize },
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum OodSampleError {
@@ -118,6 +246,12 @@ impl Transcript {
 
     pub fn absorb(&mut self, label: u8, data: &[u8]) {
         self.state = (self.hash)(&[&self.state, &[DOM_ABSORB, label], data]);
+    }
+
+    /// Internal evidence hook for candidate schedule teeth. This is not a
+    /// transcript challenge, wire field, or production KAT surface.
+    pub const fn diagnostic_state(&self) -> [u8; 32] {
+        self.state
     }
 
     /// Squeeze one 32-byte block and advance the state.
@@ -185,6 +319,19 @@ impl Transcript {
         })
     }
 
+    /// Sample exactly uniformly from `QM31 ∖ {0}` with a bounded
+    /// rejection loop. Every rejected zero consumes fresh transcript blocks;
+    /// exhaustion is a completeness rejection, never a zero fallback.
+    pub fn challenge_nonzero_qm31(&mut self) -> Result<QM31, ChallengeSampleExhausted> {
+        for _ in 0..NONZERO_QM31_RETRY_LIMIT {
+            let value = self.challenge_qm31()?;
+            if value != QM31::ZERO {
+                return Ok(value);
+            }
+        }
+        Err(ChallengeSampleExhausted)
+    }
+
     /// Sample exactly uniformly from QM31 \ CM31. Since every evaluation
     /// domain used by Aspis lies in CM31, this makes the point genuinely
     /// out-of-domain by construction instead of relying on a negligible
@@ -241,6 +388,58 @@ impl Transcript {
             }
         }
         out
+    }
+
+    /// Derive an ordered exact-uniform sample without replacement from
+    /// `[0, bound)`, where `bound` is a power of two.
+    ///
+    /// Candidate words use the same mask and block stream as
+    /// [`Self::challenge_queries`]. Duplicate candidates are rejected while
+    /// preserving the order of first occurrence. Consequently, whenever the
+    /// first `count` candidates are already distinct, this method returns the
+    /// same query bytes and leaves the transcript in exactly the same state as
+    /// the legacy with-replacement method. The bounded draw cap turns an
+    /// exceptionally collision-heavy transcript into an explicit proof
+    /// rejection instead of an unmetered loop.
+    pub fn challenge_queries_without_replacement(
+        &mut self,
+        count: usize,
+        bound: u32,
+        max_draws: usize,
+    ) -> Result<alloc::vec::Vec<u32>, QuerySampleError> {
+        if !bound.is_power_of_two() {
+            return Err(QuerySampleError::BoundNotPowerOfTwo { bound });
+        }
+        if count > bound as usize {
+            return Err(QuerySampleError::CountExceedsBound { count, bound });
+        }
+        if count == 0 {
+            return Ok(alloc::vec::Vec::new());
+        }
+        let mask = bound - 1;
+        let mut out = alloc::vec::Vec::with_capacity(count);
+        let mut draws = 0usize;
+        'outer: while draws < max_draws {
+            let block = self.squeeze_block();
+            for word in block.chunks_exact(4) {
+                if out.len() == count || draws == max_draws {
+                    break 'outer;
+                }
+                draws += 1;
+                let candidate = u32::from_le_bytes(word.try_into().unwrap()) & mask;
+                if !out.contains(&candidate) {
+                    out.push(candidate);
+                }
+            }
+        }
+        if out.len() == count {
+            Ok(out)
+        } else {
+            Err(QuerySampleError::DrawLimitExhausted {
+                accepted: out.len(),
+                max_draws,
+            })
+        }
     }
 
     /// Grinding check: hash(state, DOM_GRIND, nonce) must have
@@ -403,6 +602,175 @@ pub fn transcript_kat_v4_s2_pcs_scaffold(hash: HashFn) -> [u8; 32] {
     acc
 }
 
+/// Full payment-v4 schedule KAT.
+///
+/// The byte payloads are deterministic fixtures, while every challenge and
+/// query uses the production sampler.  The KAT's purpose is schedule and
+/// host/SBF parity: it pins C1 -> lambda/chi -> C2 -> payment zerocheck -> all
+/// statement rows -> batch work -> gamma, followed by the exact two-OOD,
+/// per-fold-work, final-work, distinct-query tail.
+pub fn transcript_kat_final_payment_v4(hash: HashFn) -> [u8; 32] {
+    fn fold_value(hash: HashFn, acc: &mut [u8; 32], value: QM31) {
+        let mut bytes = [0u8; 16];
+        value.write_le_bytes(&mut bytes);
+        *acc = hash(&[acc, &bytes]);
+    }
+
+    let mut t = Transcript::new(hash);
+    let mut acc = [0u8; 32];
+
+    t.absorb(label::PROFILE, b"aspis-payment-v4-kat");
+    t.absorb(label::M31_CIRCLE_BASIS, b"aspis:c1:m31-circle:v0");
+    t.absorb(label::STATEMENT, &[0xa5; 32]);
+    let mut root_record = [0x11u8; 33];
+    root_record[0] = 0;
+    t.absorb(label::M31_CIRCLE_ROUND_ROOT, &root_record);
+    for _ in 0..2 {
+        fold_value(
+            hash,
+            &mut acc,
+            t.challenge_qm31().expect("payment KAT phase sampler"),
+        );
+    }
+    t.absorb(label::M31_CIRCLE_C2_ROOT, &[0x22; 32]);
+
+    let registry = [2u8, 252, 0, 67, 0, 10, 10, 10];
+    t.absorb(label::M31_PAYMENT_CONSTRAINT_REGISTRY, &registry);
+    t.absorb(label::M31_PAYMENT_HELPER_SUMS, &[0u8; 32]);
+    fold_value(
+        hash,
+        &mut acc,
+        t.challenge_qm31().expect("payment KAT theta sampler"),
+    );
+    for _ in 0..10 {
+        fold_value(
+            hash,
+            &mut acc,
+            t.challenge_qm31().expect("payment KAT zero-point sampler"),
+        );
+    }
+    fold_value(
+        hash,
+        &mut acc,
+        t.challenge_qm31().expect("payment KAT mu sampler"),
+    );
+
+    t.absorb(label::M31_PAYMENT_HIDING_MASK_CLAIM, &[0x31; 16]);
+    fold_value(
+        hash,
+        &mut acc,
+        t.challenge_qm31().expect("payment KAT eta sampler"),
+    );
+    let mut z = [QM31::ZERO; 10];
+    for round in 0..10usize {
+        let mut record = [0u8; 161];
+        record[0] = round as u8;
+        record[1..].fill(0x40 + round as u8);
+        t.absorb(label::M31_PAYMENT_ZEROCHECK_SUMCHECK, &record);
+        z[round] = t.challenge_qm31().expect("payment KAT sumcheck sampler");
+        fold_value(hash, &mut acc, z[round]);
+    }
+
+    let mut points = [0u8; 320];
+    for (point, mut coordinates) in [z, z].into_iter().enumerate() {
+        if point == 1 {
+            for coordinate in [6usize, 8, 9] {
+                coordinates[coordinate] = QM31::ONE.sub(coordinates[coordinate]);
+            }
+        }
+        for (coordinate, value) in coordinates.into_iter().enumerate() {
+            value.write_le_bytes(&mut points[(point * 10 + coordinate) * 16..][..16]);
+        }
+    }
+    t.absorb(label::M31_CIRCLE_STATEMENT_POINTS, &points);
+    t.absorb(label::M31_CIRCLE_STATEMENT_EVALUATIONS, &[0x52; 1_632]);
+
+    let batch_nonce = 0x6261_7463_685f_706fu64;
+    let batch_ok = t.grinding_ok(batch_nonce, 8);
+    acc = hash(&[&acc, &[batch_ok as u8]]);
+    t.absorb(
+        label::M31_PAYMENT_BATCH_POW_NONCE,
+        &batch_nonce.to_le_bytes(),
+    );
+    fold_value(
+        hash,
+        &mut acc,
+        t.challenge_qm31().expect("payment KAT gamma sampler"),
+    );
+    fold_value(
+        hash,
+        &mut acc,
+        t.challenge_qm31().expect("payment KAT point-scale sampler"),
+    );
+
+    for layer in 0..4usize {
+        if layer > 0 {
+            let mut record = [0x60 + layer as u8; 33];
+            record[0] = layer as u8;
+            t.absorb(label::M31_CIRCLE_ROUND_ROOT, &record);
+        }
+        for sample in 0..2usize {
+            if layer == 0 {
+                let point = t
+                    .challenge_secure_circle_point()
+                    .expect("payment KAT circle sampler");
+                fold_value(hash, &mut acc, point.x);
+                fold_value(hash, &mut acc, point.y);
+            } else {
+                fold_value(
+                    hash,
+                    &mut acc,
+                    t.challenge_ood_qm31().expect("payment KAT line sampler"),
+                );
+            }
+            let mut record = [0x70 + (2 * layer + sample) as u8; 18];
+            record[0] = layer as u8;
+            record[1] = sample as u8;
+            t.absorb(
+                if layer == 0 {
+                    label::M31_CIRCLE_OOD_VALUE
+                } else {
+                    label::M31_LINE_OOD_VALUE
+                },
+                &record,
+            );
+            fold_value(
+                hash,
+                &mut acc,
+                t.challenge_qm31().expect("payment KAT OOD mix sampler"),
+            );
+        }
+        let mut sumcheck = [0x80 + layer as u8; 113];
+        sumcheck[0] = layer as u8;
+        t.absorb(label::M31_CIRCLE_RELATION_SUMCHECK, &sumcheck);
+        let fold_nonce = 0x666f_6c64_0000_0000u64 | layer as u64;
+        let fold_ok = t.grinding_ok(fold_nonce, 8);
+        acc = hash(&[&acc, &[fold_ok as u8]]);
+        let mut record = [0u8; 9];
+        record[0] = layer as u8;
+        record[1..].copy_from_slice(&fold_nonce.to_le_bytes());
+        t.absorb(label::M31_CIRCLE_FOLD_POW_NONCE, &record);
+        fold_value(
+            hash,
+            &mut acc,
+            t.challenge_qm31().expect("payment KAT fold sampler"),
+        );
+    }
+
+    t.absorb(label::M31_CIRCLE_FINAL_TENSOR_POLY, &[0x91; 64]);
+    let final_nonce = 0x7175_6572_795f_706fu64;
+    let final_ok = t.grinding_ok(final_nonce, 8);
+    acc = hash(&[&acc, &[final_ok as u8]]);
+    t.absorb(label::GRIND_NONCE, &final_nonce.to_le_bytes());
+    for query in t
+        .challenge_queries_without_replacement(36, 1 << 12, 64)
+        .expect("payment KAT distinct-query sampler")
+    {
+        acc = hash(&[&acc, &query.to_le_bytes()]);
+    }
+    acc
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -451,6 +819,20 @@ mod tests {
         );
     }
 
+    #[test]
+    fn transcript_kat_final_payment_v4_pinned() {
+        let digest = transcript_kat_final_payment_v4(test_hash);
+        let mut hex = alloc::string::String::new();
+        for byte in digest {
+            use core::fmt::Write;
+            let _ = write!(hex, "{byte:02x}");
+        }
+        assert_eq!(
+            digest, TRANSCRIPT_KAT_FINAL_PAYMENT_V4_EXPECTED,
+            "final payment-v4 transcript KAT drifted; computed {hex}"
+        );
+    }
+
     /// Adversarial backend: every squeezed word masks to P, so every draw is
     /// rejected and the bounded loop must exhaust with an error, not spin.
     fn all_p_hash(_inputs: &[&[u8]]) -> [u8; 32] {
@@ -461,6 +843,143 @@ mod tests {
     fn sampler_exhaustion_is_bounded_error() {
         let mut t = Transcript::new(all_p_hash);
         assert_eq!(t.challenge_qm31(), Err(ChallengeSampleExhausted));
+    }
+
+    #[test]
+    fn ordered_queries_without_replacement_are_unique_bounded_and_deterministic() {
+        let mut first = Transcript::new(test_hash);
+        first.absorb(label::PROFILE, b"ordered-query-sampler-v1");
+        let mut second = first.clone();
+        let first_queries = first
+            .challenge_queries_without_replacement(36, 1 << 12, 64)
+            .unwrap();
+        let second_queries = second
+            .challenge_queries_without_replacement(36, 1 << 12, 64)
+            .unwrap();
+        assert_eq!(first_queries, second_queries);
+        assert_eq!(first.diagnostic_state(), second.diagnostic_state());
+        assert_eq!(first_queries.len(), 36);
+        assert!(first_queries.iter().all(|query| *query < 1 << 12));
+        for (index, query) in first_queries.iter().enumerate() {
+            assert!(!first_queries[..index].contains(query));
+        }
+    }
+
+    #[test]
+    fn no_collision_without_replacement_sampling_is_legacy_byte_and_state_identical() {
+        let mut legacy = Transcript::new(test_hash);
+        legacy.absorb(label::PROFILE, b"query-sampler-no-collision-kat-v1");
+        let mut distinct = legacy.clone();
+        let legacy_queries = legacy.challenge_queries(36, 1 << 12);
+        for (index, query) in legacy_queries.iter().enumerate() {
+            assert!(
+                !legacy_queries[..index].contains(query),
+                "fixture unexpectedly contains a collision at {index}"
+            );
+        }
+        let distinct_queries = distinct
+            .challenge_queries_without_replacement(36, 1 << 12, 64)
+            .unwrap();
+        assert_eq!(distinct_queries, legacy_queries);
+        assert_eq!(distinct.diagnostic_state(), legacy.diagnostic_state());
+    }
+
+    /// Adversarial query stream whose first two candidates collide. The
+    /// sampler must skip the duplicate, consume the next block, and retain
+    /// the order of the first occurrence of every accepted position.
+    fn duplicate_query_prefix_hash(inputs: &[&[u8]]) -> [u8; 32] {
+        if inputs.len() == 2 && inputs[1] == [DOM_SQUEEZE] {
+            let first = inputs[0][0] == 0;
+            let words = if first {
+                [7u32, 7, 8, 9, 10, 11, 12, 13]
+            } else {
+                [14u32, 15, 16, 17, 18, 19, 20, 21]
+            };
+            let mut block = [0u8; 32];
+            for (index, word) in words.into_iter().enumerate() {
+                block[index * 4..index * 4 + 4].copy_from_slice(&word.to_le_bytes());
+            }
+            block
+        } else if inputs.len() == 2 && inputs[1] == [DOM_ADVANCE] {
+            let mut state: [u8; 32] = inputs[0].try_into().unwrap();
+            state[0] = state[0].wrapping_add(1);
+            state
+        } else {
+            test_hash(inputs)
+        }
+    }
+
+    #[test]
+    fn without_replacement_sampler_skips_an_adversarial_duplicate_prefix() {
+        let mut transcript = Transcript::new(duplicate_query_prefix_hash);
+        let queries = transcript
+            .challenge_queries_without_replacement(8, 1 << 12, 16)
+            .unwrap();
+        assert_eq!(queries, [7, 8, 9, 10, 11, 12, 13, 14]);
+        assert_eq!(transcript.diagnostic_state()[0], 2);
+    }
+
+    fn all_zero_hash(_inputs: &[&[u8]]) -> [u8; 32] {
+        [0u8; 32]
+    }
+
+    fn zero_then_nonzero_hash(inputs: &[&[u8]]) -> [u8; 32] {
+        if inputs.len() == 2 && inputs[1] == [DOM_SQUEEZE] {
+            let mut block = [0u8; 32];
+            if inputs[0][0] != 0 {
+                for (word, chunk) in block.chunks_exact_mut(4).enumerate() {
+                    chunk.copy_from_slice(&(word as u32 + 1).to_le_bytes());
+                }
+            }
+            block
+        } else if inputs.len() == 2 && inputs[1] == [DOM_ADVANCE] {
+            let mut state: [u8; 32] = inputs[0].try_into().unwrap();
+            state[0] = state[0].wrapping_add(1);
+            state
+        } else {
+            test_hash(inputs)
+        }
+    }
+
+    #[test]
+    fn nonzero_qm31_sampler_rejects_zero_with_fresh_state_and_is_bounded() {
+        let mut accepts_second = Transcript::new(zero_then_nonzero_hash);
+        let value = accepts_second.challenge_nonzero_qm31().unwrap();
+        assert_eq!(
+            value,
+            QM31 {
+                c0: CM31::new(M31(1), M31(2)),
+                c1: CM31::new(M31(3), M31(4)),
+            }
+        );
+        assert_eq!(accepts_second.diagnostic_state()[0], 2);
+
+        let mut exhausts = Transcript::new(all_zero_hash);
+        assert_eq!(
+            exhausts.challenge_nonzero_qm31(),
+            Err(ChallengeSampleExhausted)
+        );
+    }
+
+    #[test]
+    fn without_replacement_query_sampler_has_explicit_bounded_exhaustion() {
+        let mut transcript = Transcript::new(all_zero_hash);
+        assert_eq!(
+            transcript.challenge_queries_without_replacement(2, 8, 8),
+            Err(QuerySampleError::DrawLimitExhausted {
+                accepted: 1,
+                max_draws: 8,
+            })
+        );
+        let mut invalid = Transcript::new(test_hash);
+        assert_eq!(
+            invalid.challenge_queries_without_replacement(1, 7, 8),
+            Err(QuerySampleError::BoundNotPowerOfTwo { bound: 7 })
+        );
+        assert_eq!(
+            invalid.challenge_queries_without_replacement(9, 8, 16),
+            Err(QuerySampleError::CountExceedsBound { count: 9, bound: 8 })
+        );
     }
 
     fn cm31_only_hash(inputs: &[&[u8]]) -> [u8; 32] {

@@ -15,8 +15,7 @@ use crate::poseidon2::{
 };
 use crate::spend::{
     evaluate_spend_with_range_lookup_and_hasher, EvaluationContext, RangeLookupWitness, SpendError,
-    SpendPublic, SpendWitness, DOMAIN_MERKLE_NODE, DOMAIN_NOTE, DOMAIN_NULLIFIER, DOMAIN_OUTPUT,
-    DOMAIN_OWNER_KEY,
+    SpendPublic, SpendWitness, DOMAIN_MERKLE_NODE, DOMAIN_NOTE, DOMAIN_NULLIFIER, DOMAIN_OWNER_KEY,
 };
 use crate::wide_v4::C1_COLUMNS;
 
@@ -37,12 +36,23 @@ pub const ALLOCATED_PERMUTATION_ROWS: usize = PERMUTATION_COUNT * BLOCK_ROWS;
 pub const MERKLE_LEVEL_BOUNDARIES: usize = 19;
 pub const AUX_WITNESS_ROW_START: usize = ALLOCATED_PERMUTATION_ROWS;
 pub const AUX_ABSORPTION_PRODUCER_ROW_START: usize = 808;
+/// Row-local three-limb decomposition of the private input value. Column 3
+/// carries a reconstruction mirror which is copy-bound to the hashed value.
+pub const INPUT_VALUE_RANGE_ROW: usize = AUX_WITNESS_ROW_START;
+/// Row-local three-limb decomposition of the private output value.
+pub const OUTPUT_VALUE_RANGE_ROW: usize = AUX_WITNESS_ROW_START + 1;
+pub const VALUE_RECONSTRUCTION_COLUMN: usize = 3;
 
 pub const STATE_COPY_LINK_COUNT: usize = 490 + 25 + 19;
 pub const SEMANTIC_INGRESS_COPY_LINK_COUNT: usize = 6;
 pub const ABSORPTION_COPY_LINK_COUNT: usize = PERMUTATION_COUNT;
-pub const COPY_LINK_COUNT: usize =
-    STATE_COPY_LINK_COUNT + SEMANTIC_INGRESS_COPY_LINK_COUNT + ABSORPTION_COPY_LINK_COUNT;
+pub const VALUE_RECONSTRUCTION_COPY_LINK_COUNT: usize = 2;
+pub const BALANCE_COPY_LINK_COUNT: usize = 1;
+pub const COPY_LINK_COUNT: usize = STATE_COPY_LINK_COUNT
+    + SEMANTIC_INGRESS_COPY_LINK_COUNT
+    + ABSORPTION_COPY_LINK_COUNT
+    + VALUE_RECONSTRUCTION_COPY_LINK_COUNT
+    + BALANCE_COPY_LINK_COUNT;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HashInvocationKind {
@@ -96,6 +106,16 @@ pub struct MerkleBoundaryBinding {
     pub right_permutation_block: u8,
 }
 
+/// One verifier-fixed equality between two cells on a semantic source row.
+/// Keeping this layout explicit prevents the replay validator and the
+/// randomized constraint registry from drifting apart.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SourceEqualityBinding {
+    pub block: u8,
+    pub left_column: u8,
+    pub right_column: u8,
+}
+
 /// Fixed committed cells for private inputs and lookup limbs. Hashed values
 /// occupy row-local source rows; only path-index and range limbs use the
 /// separate scalar area.
@@ -113,6 +133,9 @@ pub struct WitnessAuxLayout {
     pub merkle_path_bits: [TraceCell; 20],
     pub input_value_limbs: [TraceCell; 3],
     pub output_value_limbs: [TraceCell; 3],
+    pub input_value_reconstruction: TraceCell,
+    pub output_value_reconstruction: TraceCell,
+    pub output_value_for_balance: TraceCell,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -141,6 +164,8 @@ pub enum TraceValidationError {
     SourceRelation { block: u8, limb: u8 },
     MerkleSelection { level: u8, limb: u8 },
     PublicBinding,
+    FeeOutOfRange,
+    BalanceMismatch,
     CopyMismatch { link: u16 },
 }
 
@@ -163,6 +188,7 @@ struct RecordedHashCall {
 struct TraceRecorder {
     calls: Vec<RecordedHashCall>,
     merkle_level: u8,
+    note_seen: bool,
 }
 
 impl TraceRecorder {
@@ -170,15 +196,19 @@ impl TraceRecorder {
         if domain == DOMAIN_OWNER_KEY {
             Some(HashInvocationKind::OwnerKey)
         } else if domain == DOMAIN_NOTE {
-            Some(HashInvocationKind::Note)
+            let kind = if self.note_seen {
+                HashInvocationKind::Output
+            } else {
+                HashInvocationKind::Note
+            };
+            self.note_seen = true;
+            Some(kind)
         } else if domain == DOMAIN_MERKLE_NODE {
             let level = self.merkle_level;
             self.merkle_level = self.merkle_level.checked_add(1)?;
             Some(HashInvocationKind::MerkleLevel(level))
         } else if domain == DOMAIN_NULLIFIER {
             Some(HashInvocationKind::Nullifier)
-        } else if domain == DOMAIN_OUTPUT {
-            Some(HashInvocationKind::Output)
         } else {
             None
         }
@@ -261,6 +291,7 @@ pub enum CopyLinkKind {
     MerkleLevel,
     SemanticIngress,
     Absorption,
+    ValueReconstruction,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -274,22 +305,629 @@ pub struct CopyLink {
     pub consumer: CopyTuple,
 }
 
+pub const COPY_TERMINAL_PATTERN_COUNT: usize = 10;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CopyTerminalLink {
+    pub id: u16,
+    pub tag: M31,
+    pub producer_row: u16,
+    pub consumer_row: u16,
+    pub producer_pattern: u8,
+    pub consumer_pattern: u8,
+    pub producer_slot: u8,
+}
+
+/// Column pattern for a compact terminal endpoint. `-1` is a zero limb.
+pub const fn copy_terminal_pattern(index: usize) -> [i8; POSEIDON2_WIDTH] {
+    let mut pattern = [-1i8; POSEIDON2_WIDTH];
+    let mut limb = 0usize;
+    while limb < POSEIDON2_WIDTH {
+        pattern[limb] = match index {
+            0 => (SECOND_ROUND_OUTPUT_COLUMN_START + limb) as i8,
+            1 => (INTERFACE_COLUMN_START + limb) as i8,
+            2 if limb < DIGEST_ELEMS => (SECOND_ROUND_OUTPUT_COLUMN_START + limb) as i8,
+            3 if limb < DIGEST_ELEMS => (FIRST_ROUND_OUTPUT_COLUMN_START + limb) as i8,
+            4 if limb < DIGEST_ELEMS => (RATE + limb) as i8,
+            5 if limb < RATE => limb as i8,
+            5 => (limb + RATE) as i8,
+            6 if limb < RATE => limb as i8,
+            7 if limb == 0 => VALUE_RECONSTRUCTION_COLUMN as i8,
+            8 if limb == 0 => 33,
+            9 if limb == 0 => (VALUE_RECONSTRUCTION_COLUMN + 1) as i8,
+            _ => -1,
+        };
+        limb += 1;
+    }
+    pattern
+}
+
+/// Compact, allocation-free copy routing used only by the extension-point
+/// terminal. It is tested against the full [`visit_copy_links`] stream.
+pub fn visit_copy_terminal_links<F>(mut visitor: F)
+where
+    F: FnMut(CopyTerminalLink),
+{
+    let mut next_id = 0u16;
+    let mut emit = |producer_row: usize,
+                    consumer_row: usize,
+                    producer_pattern: u8,
+                    consumer_pattern: u8,
+                    producer_slot: u8| {
+        let id = next_id;
+        next_id += 1;
+        visitor(CopyTerminalLink {
+            id,
+            tag: M31(u32::from(id) + 1),
+            producer_row: producer_row as u16,
+            consumer_row: consumer_row as u16,
+            producer_pattern,
+            consumer_pattern,
+            producer_slot,
+        });
+    };
+    for block in 0..PERMUTATION_COUNT {
+        let base = block * BLOCK_ROWS;
+        for local in 0..ACTIVE_ROWS_PER_BLOCK - 1 {
+            emit(base + local, base + local + 1, 0, 1, 0);
+        }
+    }
+    for (producer, consumer) in [(1usize, 2usize), (2, 3)] {
+        emit(
+            producer * BLOCK_ROWS + ACTIVE_ROWS_PER_BLOCK - 1,
+            consumer * BLOCK_ROWS,
+            0,
+            1,
+            0,
+        );
+    }
+    for level in 0..20usize {
+        let producer = 4 + 2 * level;
+        emit(
+            producer * BLOCK_ROWS + ACTIVE_ROWS_PER_BLOCK - 1,
+            (producer + 1) * BLOCK_ROWS,
+            0,
+            1,
+            0,
+        );
+    }
+    for (producer, consumer) in [(44usize, 45usize), (46, 47), (47, 48)] {
+        emit(
+            producer * BLOCK_ROWS + ACTIVE_ROWS_PER_BLOCK - 1,
+            consumer * BLOCK_ROWS,
+            0,
+            1,
+            0,
+        );
+    }
+    for level in 0..MERKLE_LEVEL_BOUNDARIES {
+        let producer = 5 + 2 * level;
+        emit(
+            producer * BLOCK_ROWS + ACTIVE_ROWS_PER_BLOCK - 1,
+            AUX_ABSORPTION_PRODUCER_ROW_START + 6 + 2 * level,
+            2,
+            3,
+            0,
+        );
+    }
+    for index in 0..6usize {
+        let (producer_row, consumer_row) = match index {
+            0 => (
+                ACTIVE_ROWS_PER_BLOCK - 1,
+                AUX_ABSORPTION_PRODUCER_ROW_START + 1,
+            ),
+            1 => (
+                3 * BLOCK_ROWS + ACTIVE_ROWS_PER_BLOCK - 1,
+                AUX_ABSORPTION_PRODUCER_ROW_START + 4,
+            ),
+            2 => (
+                ABSORPTION_ROW_IN_BLOCK,
+                AUX_ABSORPTION_PRODUCER_ROW_START + 44,
+            ),
+            3 => (
+                2 * BLOCK_ROWS + ABSORPTION_ROW_IN_BLOCK,
+                AUX_ABSORPTION_PRODUCER_ROW_START + 3,
+            ),
+            4 => (
+                3 * BLOCK_ROWS + ABSORPTION_ROW_IN_BLOCK,
+                AUX_ABSORPTION_PRODUCER_ROW_START + 45,
+            ),
+            _ => (
+                47 * BLOCK_ROWS + ABSORPTION_ROW_IN_BLOCK,
+                AUX_ABSORPTION_PRODUCER_ROW_START + 48,
+            ),
+        };
+        emit(
+            producer_row,
+            consumer_row,
+            if index < 2 { 2 } else { 4 },
+            3,
+            0,
+        );
+    }
+    for block in 0..PERMUTATION_COUNT {
+        let consumer = block * BLOCK_ROWS + ABSORPTION_ROW_IN_BLOCK;
+        if is_merkle_right_block(block) {
+            emit(
+                (block - 1) * BLOCK_ROWS + ABSORPTION_ROW_IN_BLOCK,
+                consumer,
+                4,
+                6,
+                0,
+            );
+        } else {
+            let pattern = if is_merkle_left_block(block) {
+                1
+            } else if has_carry_payload(block) {
+                5
+            } else {
+                6
+            };
+            emit(
+                AUX_ABSORPTION_PRODUCER_ROW_START + block,
+                consumer,
+                pattern,
+                1,
+                0,
+            );
+        }
+    }
+    let aux = witness_aux_layout();
+    emit(
+        usize::from(aux.input_value_reconstruction.row),
+        usize::from(aux.value.row),
+        7,
+        8,
+        0,
+    );
+    emit(
+        usize::from(aux.output_value_reconstruction.row),
+        usize::from(aux.value_out.row),
+        7,
+        8,
+        0,
+    );
+    emit(
+        usize::from(aux.value_out.row),
+        usize::from(aux.output_value_for_balance.row),
+        8,
+        9,
+        1,
+    );
+    debug_assert_eq!(next_id as usize, COPY_LINK_COUNT);
+}
+
+/// Visit only the 102 non-rectangular copy links. The terminal evaluator
+/// handles the leading 49-by-10 intra-permutation rectangle by a closed-form
+/// tensor identity, so emitting those 490 descriptors on SBF is wasted work.
+const EMPTY_TERMINAL_LINK: CopyTerminalLink = CopyTerminalLink {
+    id: 0,
+    tag: M31::ZERO,
+    producer_row: 0,
+    consumer_row: 0,
+    producer_pattern: 0,
+    consumer_pattern: 0,
+    producer_slot: 0,
+};
+
+const fn exceptional_terminal_link(
+    offset: usize,
+    producer_row: usize,
+    consumer_row: usize,
+    producer_pattern: u8,
+    consumer_pattern: u8,
+    producer_slot: u8,
+) -> CopyTerminalLink {
+    let id = (PERMUTATION_COUNT * (ACTIVE_ROWS_PER_BLOCK - 1) + offset) as u16;
+    CopyTerminalLink {
+        id,
+        tag: M31(id as u32 + 1),
+        producer_row: producer_row as u16,
+        consumer_row: consumer_row as u16,
+        producer_pattern,
+        consumer_pattern,
+        producer_slot,
+    }
+}
+
+const fn build_exceptional_copy_terminal_links() -> [CopyTerminalLink; 102] {
+    let mut links = [EMPTY_TERMINAL_LINK; 102];
+    let mut count = 0usize;
+    let sponge_pairs = [(1usize, 2usize), (2, 3), (44, 45), (46, 47), (47, 48)];
+    let mut pair = 0usize;
+    while pair < 2 {
+        let (producer, consumer) = sponge_pairs[pair];
+        links[count] = exceptional_terminal_link(
+            count,
+            producer * BLOCK_ROWS + ACTIVE_ROWS_PER_BLOCK - 1,
+            consumer * BLOCK_ROWS,
+            0,
+            1,
+            0,
+        );
+        count += 1;
+        pair += 1;
+    }
+    let mut level = 0usize;
+    while level < 20 {
+        let producer = 4 + 2 * level;
+        links[count] = exceptional_terminal_link(
+            count,
+            producer * BLOCK_ROWS + ACTIVE_ROWS_PER_BLOCK - 1,
+            (producer + 1) * BLOCK_ROWS,
+            0,
+            1,
+            0,
+        );
+        count += 1;
+        level += 1;
+    }
+    pair = 2;
+    while pair < sponge_pairs.len() {
+        let (producer, consumer) = sponge_pairs[pair];
+        links[count] = exceptional_terminal_link(
+            count,
+            producer * BLOCK_ROWS + ACTIVE_ROWS_PER_BLOCK - 1,
+            consumer * BLOCK_ROWS,
+            0,
+            1,
+            0,
+        );
+        count += 1;
+        pair += 1;
+    }
+    level = 0;
+    while level < MERKLE_LEVEL_BOUNDARIES {
+        let producer = 5 + 2 * level;
+        links[count] = exceptional_terminal_link(
+            count,
+            producer * BLOCK_ROWS + ACTIVE_ROWS_PER_BLOCK - 1,
+            AUX_ABSORPTION_PRODUCER_ROW_START + 6 + 2 * level,
+            2,
+            3,
+            0,
+        );
+        count += 1;
+        level += 1;
+    }
+    let semantic_rows = [
+        (
+            ACTIVE_ROWS_PER_BLOCK - 1,
+            AUX_ABSORPTION_PRODUCER_ROW_START + 1,
+        ),
+        (
+            3 * BLOCK_ROWS + ACTIVE_ROWS_PER_BLOCK - 1,
+            AUX_ABSORPTION_PRODUCER_ROW_START + 4,
+        ),
+        (
+            ABSORPTION_ROW_IN_BLOCK,
+            AUX_ABSORPTION_PRODUCER_ROW_START + 44,
+        ),
+        (
+            2 * BLOCK_ROWS + ABSORPTION_ROW_IN_BLOCK,
+            AUX_ABSORPTION_PRODUCER_ROW_START + 3,
+        ),
+        (
+            3 * BLOCK_ROWS + ABSORPTION_ROW_IN_BLOCK,
+            AUX_ABSORPTION_PRODUCER_ROW_START + 45,
+        ),
+        (
+            47 * BLOCK_ROWS + ABSORPTION_ROW_IN_BLOCK,
+            AUX_ABSORPTION_PRODUCER_ROW_START + 48,
+        ),
+    ];
+    let mut index = 0usize;
+    while index < semantic_rows.len() {
+        let (producer, consumer) = semantic_rows[index];
+        links[count] = exceptional_terminal_link(
+            count,
+            producer,
+            consumer,
+            if index < 2 { 2 } else { 4 },
+            3,
+            0,
+        );
+        count += 1;
+        index += 1;
+    }
+    let mut block = 0usize;
+    while block < PERMUTATION_COUNT {
+        let consumer = block * BLOCK_ROWS + ABSORPTION_ROW_IN_BLOCK;
+        let merkle_right = block >= 5 && block <= 43 && block & 1 == 1;
+        if merkle_right {
+            links[count] = exceptional_terminal_link(
+                count,
+                (block - 1) * BLOCK_ROWS + ABSORPTION_ROW_IN_BLOCK,
+                consumer,
+                4,
+                6,
+                0,
+            );
+        } else {
+            let merkle_left = block >= 4 && block <= 42 && block & 1 == 0;
+            let carry = block == 0 || block == 2 || block == 3 || block == 47 || merkle_left;
+            links[count] = exceptional_terminal_link(
+                count,
+                AUX_ABSORPTION_PRODUCER_ROW_START + block,
+                consumer,
+                if merkle_left {
+                    1
+                } else if carry {
+                    5
+                } else {
+                    6
+                },
+                1,
+                0,
+            );
+        }
+        count += 1;
+        block += 1;
+    }
+    links[count] = exceptional_terminal_link(
+        count,
+        INPUT_VALUE_RANGE_ROW,
+        AUX_ABSORPTION_PRODUCER_ROW_START + 2,
+        7,
+        8,
+        0,
+    );
+    count += 1;
+    links[count] = exceptional_terminal_link(
+        count,
+        OUTPUT_VALUE_RANGE_ROW,
+        AUX_ABSORPTION_PRODUCER_ROW_START + 47,
+        7,
+        8,
+        0,
+    );
+    count += 1;
+    links[count] = exceptional_terminal_link(
+        count,
+        AUX_ABSORPTION_PRODUCER_ROW_START + 47,
+        INPUT_VALUE_RANGE_ROW,
+        8,
+        9,
+        1,
+    );
+    count += 1;
+    assert!(count == links.len());
+    links
+}
+
+pub(crate) const EXCEPTIONAL_COPY_TERMINAL_LINKS: [CopyTerminalLink; 102] =
+    build_exceptional_copy_terminal_links();
+
+pub fn visit_copy_exceptional_terminal_links<F>(mut visitor: F)
+where
+    F: FnMut(CopyTerminalLink),
+{
+    for link in EXCEPTIONAL_COPY_TERMINAL_LINKS {
+        visitor(link);
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CopyLayout {
     pub links: Vec<CopyLink>,
-    producer_by_row: Vec<Option<u16>>,
-    consumer_by_row: Vec<Option<u16>>,
+    producer_by_row: Vec<[Option<u16>; 2]>,
+    consumer_by_row: Vec<[Option<u16>; 2]>,
+}
+
+/// Visit the frozen copy links in canonical `ConstraintId` order without
+/// allocating the 592-link descriptor table. This is the production verifier
+/// path; [`copy_layout`] collects the same stream for host diagnostics.
+pub fn visit_copy_links<F>(mut visitor: F)
+where
+    F: FnMut(CopyLink),
+{
+    let mut next_id = 0u16;
+    let mut emit = |kind: CopyLinkKind,
+                    producer_row: usize,
+                    consumer_row: usize,
+                    producer: CopyTuple,
+                    consumer: CopyTuple| {
+        let id = next_id;
+        next_id += 1;
+        visitor(CopyLink {
+            id,
+            tag: M31(u32::from(id) + 1),
+            kind,
+            producer_row: producer_row as u16,
+            consumer_row: consumer_row as u16,
+            producer,
+            consumer,
+        });
+    };
+
+    for block in 0..PERMUTATION_COUNT {
+        let base = block * BLOCK_ROWS;
+        for local_row in 0..ACTIVE_ROWS_PER_BLOCK - 1 {
+            let producer_row = base + local_row;
+            let consumer_row = producer_row + 1;
+            emit(
+                CopyLinkKind::IntraPermutation,
+                producer_row,
+                consumer_row,
+                state_tuple(producer_row, SECOND_ROUND_OUTPUT_COLUMN_START),
+                state_tuple(consumer_row, INTERFACE_COLUMN_START),
+            );
+        }
+    }
+
+    for (producer_block, consumer_block) in [(1usize, 2usize), (2, 3)] {
+        let producer_row = producer_block * BLOCK_ROWS + ACTIVE_ROWS_PER_BLOCK - 1;
+        let consumer_row = consumer_block * BLOCK_ROWS;
+        emit(
+            CopyLinkKind::SpongeContinuation,
+            producer_row,
+            consumer_row,
+            state_tuple(producer_row, SECOND_ROUND_OUTPUT_COLUMN_START),
+            state_tuple(consumer_row, INTERFACE_COLUMN_START),
+        );
+    }
+    for level in 0..20usize {
+        let producer_block = 4 + 2 * level;
+        let consumer_block = producer_block + 1;
+        let producer_row = producer_block * BLOCK_ROWS + ACTIVE_ROWS_PER_BLOCK - 1;
+        let consumer_row = consumer_block * BLOCK_ROWS;
+        emit(
+            CopyLinkKind::SpongeContinuation,
+            producer_row,
+            consumer_row,
+            state_tuple(producer_row, SECOND_ROUND_OUTPUT_COLUMN_START),
+            state_tuple(consumer_row, INTERFACE_COLUMN_START),
+        );
+    }
+    for (producer_block, consumer_block) in [(44usize, 45usize), (46, 47), (47, 48)] {
+        let producer_row = producer_block * BLOCK_ROWS + ACTIVE_ROWS_PER_BLOCK - 1;
+        let consumer_row = consumer_block * BLOCK_ROWS;
+        emit(
+            CopyLinkKind::SpongeContinuation,
+            producer_row,
+            consumer_row,
+            state_tuple(producer_row, SECOND_ROUND_OUTPUT_COLUMN_START),
+            state_tuple(consumer_row, INTERFACE_COLUMN_START),
+        );
+    }
+
+    for level in 0..MERKLE_LEVEL_BOUNDARIES {
+        let producer_block = 5 + 2 * level;
+        let producer_row = producer_block * BLOCK_ROWS + ACTIVE_ROWS_PER_BLOCK - 1;
+        let consumer_row = AUX_ABSORPTION_PRODUCER_ROW_START + 6 + 2 * level;
+        emit(
+            CopyLinkKind::MerkleLevel,
+            producer_row,
+            consumer_row,
+            digest_tuple(producer_row, SECOND_ROUND_OUTPUT_COLUMN_START),
+            digest_tuple(consumer_row, FIRST_ROUND_OUTPUT_COLUMN_START),
+        );
+    }
+
+    for (producer_row, producer_column, consumer_row, consumer_column) in [
+        (
+            ACTIVE_ROWS_PER_BLOCK - 1,
+            SECOND_ROUND_OUTPUT_COLUMN_START,
+            AUX_ABSORPTION_PRODUCER_ROW_START + 1,
+            FIRST_ROUND_OUTPUT_COLUMN_START,
+        ),
+        (
+            3 * BLOCK_ROWS + ACTIVE_ROWS_PER_BLOCK - 1,
+            SECOND_ROUND_OUTPUT_COLUMN_START,
+            AUX_ABSORPTION_PRODUCER_ROW_START + 4,
+            FIRST_ROUND_OUTPUT_COLUMN_START,
+        ),
+        (
+            ABSORPTION_ROW_IN_BLOCK,
+            RATE,
+            AUX_ABSORPTION_PRODUCER_ROW_START + 44,
+            FIRST_ROUND_OUTPUT_COLUMN_START,
+        ),
+        (
+            2 * BLOCK_ROWS + ABSORPTION_ROW_IN_BLOCK,
+            RATE,
+            AUX_ABSORPTION_PRODUCER_ROW_START + 3,
+            FIRST_ROUND_OUTPUT_COLUMN_START,
+        ),
+        (
+            3 * BLOCK_ROWS + ABSORPTION_ROW_IN_BLOCK,
+            RATE,
+            AUX_ABSORPTION_PRODUCER_ROW_START + 45,
+            FIRST_ROUND_OUTPUT_COLUMN_START,
+        ),
+        (
+            47 * BLOCK_ROWS + ABSORPTION_ROW_IN_BLOCK,
+            RATE,
+            AUX_ABSORPTION_PRODUCER_ROW_START + 48,
+            FIRST_ROUND_OUTPUT_COLUMN_START,
+        ),
+    ] {
+        emit(
+            CopyLinkKind::SemanticIngress,
+            producer_row,
+            consumer_row,
+            digest_tuple(producer_row, producer_column),
+            digest_tuple(consumer_row, consumer_column),
+        );
+    }
+
+    for block in 0..PERMUTATION_COUNT {
+        let consumer_row = block * BLOCK_ROWS + ABSORPTION_ROW_IN_BLOCK;
+        if is_merkle_right_block(block) {
+            let producer_row = (block - 1) * BLOCK_ROWS + ABSORPTION_ROW_IN_BLOCK;
+            emit(
+                CopyLinkKind::Absorption,
+                producer_row,
+                consumer_row,
+                digest_tuple(producer_row, RATE),
+                digest_tuple(consumer_row, INTERFACE_COLUMN_START),
+            );
+        } else {
+            let producer_row = AUX_ABSORPTION_PRODUCER_ROW_START + block;
+            emit(
+                CopyLinkKind::Absorption,
+                producer_row,
+                consumer_row,
+                absorption_source_tuple(block),
+                state_tuple(consumer_row, INTERFACE_COLUMN_START),
+            );
+        }
+    }
+
+    let aux = witness_aux_layout();
+    for (producer, consumer) in [
+        (aux.input_value_reconstruction, aux.value),
+        (aux.output_value_reconstruction, aux.value_out),
+    ] {
+        emit(
+            CopyLinkKind::ValueReconstruction,
+            usize::from(producer.row),
+            usize::from(consumer.row),
+            scalar_tuple(usize::from(producer.row), usize::from(producer.column)),
+            scalar_tuple(usize::from(consumer.row), usize::from(consumer.column)),
+        );
+    }
+    emit(
+        CopyLinkKind::ValueReconstruction,
+        usize::from(aux.value_out.row),
+        usize::from(aux.output_value_for_balance.row),
+        scalar_tuple(
+            usize::from(aux.value_out.row),
+            usize::from(aux.value_out.column),
+        ),
+        scalar_tuple(
+            usize::from(aux.output_value_for_balance.row),
+            usize::from(aux.output_value_for_balance.column),
+        ),
+    );
+    debug_assert_eq!(next_id as usize, COPY_LINK_COUNT);
 }
 
 impl CopyLayout {
     pub fn producer_link(&self, row: usize) -> Option<&CopyLink> {
-        let id = usize::from(*self.producer_by_row.get(row)?.as_ref()?);
+        let id = usize::from(self.producer_by_row.get(row)?[0]?);
         self.links.get(id)
     }
 
     pub fn consumer_link(&self, row: usize) -> Option<&CopyLink> {
-        let id = usize::from(*self.consumer_by_row.get(row)?.as_ref()?);
+        let id = usize::from(self.consumer_by_row.get(row)?[0]?);
         self.links.get(id)
+    }
+
+    pub fn producer_links(&self, row: usize) -> impl Iterator<Item = &CopyLink> {
+        self.producer_by_row
+            .get(row)
+            .into_iter()
+            .flat_map(|ids| ids.iter().flatten())
+            .filter_map(|id| self.links.get(usize::from(*id)))
+    }
+
+    pub fn consumer_links(&self, row: usize) -> impl Iterator<Item = &CopyLink> {
+        self.consumer_by_row
+            .get(row)
+            .into_iter()
+            .flat_map(|ids| ids.iter().flatten())
+            .filter_map(|id| self.links.get(usize::from(*id)))
     }
 }
 
@@ -319,6 +957,21 @@ fn digest_tuple(row: usize, column_start: usize) -> CopyTuple {
     }
 }
 
+fn scalar_tuple(row: usize, column: usize) -> CopyTuple {
+    CopyTuple {
+        limbs: core::array::from_fn(|limb| {
+            if limb == 0 {
+                TupleLimb::Cell(TraceCell {
+                    row: row as u16,
+                    column: column as u8,
+                })
+            } else {
+                TupleLimb::Zero
+            }
+        }),
+    }
+}
+
 fn final_digest_cells(block: usize) -> [TraceCell; DIGEST_ELEMS] {
     let row = block * BLOCK_ROWS + ACTIVE_ROWS_PER_BLOCK - 1;
     core::array::from_fn(|limb| TraceCell {
@@ -331,7 +984,7 @@ fn is_merkle_left_block(block: usize) -> bool {
     (4..=42).contains(&block) && block & 1 == 0
 }
 
-fn has_carry_payload(block: usize) -> bool {
+pub(crate) fn has_carry_payload(block: usize) -> bool {
     matches!(block, 0 | 2 | 3 | 47) || is_merkle_left_block(block)
 }
 
@@ -370,13 +1023,19 @@ fn append_link(
     consumer: CopyTuple,
 ) {
     let id = layout.links.len() as u16;
-    debug_assert!(layout.producer_by_row[producer_row].is_none());
-    debug_assert!(layout.consumer_by_row[consumer_row].is_none());
-    layout.producer_by_row[producer_row] = Some(id);
-    layout.consumer_by_row[consumer_row] = Some(id);
+    let producer_slot = layout.producer_by_row[producer_row]
+        .iter_mut()
+        .find(|slot| slot.is_none())
+        .expect("copy layout has more than two producer endpoints on one row");
+    let consumer_slot = layout.consumer_by_row[consumer_row]
+        .iter_mut()
+        .find(|slot| slot.is_none())
+        .expect("copy layout has more than two consumer endpoints on one row");
+    *producer_slot = Some(id);
+    *consumer_slot = Some(id);
     layout.links.push(CopyLink {
         id,
-        tag: M31(producer_row as u32 + 1),
+        tag: M31(u32::from(id) + 1),
         kind,
         producer_row: producer_row as u16,
         consumer_row: consumer_row as u16,
@@ -527,20 +1186,60 @@ fn append_absorption_links(layout: &mut CopyLayout) {
     }
 }
 
+#[inline(never)]
+fn append_value_reconstruction_links(layout: &mut CopyLayout) {
+    let aux = witness_aux_layout();
+    for (producer, consumer) in [
+        (aux.input_value_reconstruction, aux.value),
+        (aux.output_value_reconstruction, aux.value_out),
+    ] {
+        append_link(
+            layout,
+            CopyLinkKind::ValueReconstruction,
+            usize::from(producer.row),
+            usize::from(consumer.row),
+            scalar_tuple(usize::from(producer.row), usize::from(producer.column)),
+            scalar_tuple(usize::from(consumer.row), usize::from(consumer.column)),
+        );
+    }
+    append_link(
+        layout,
+        CopyLinkKind::ValueReconstruction,
+        usize::from(aux.value_out.row),
+        usize::from(aux.output_value_for_balance.row),
+        scalar_tuple(
+            usize::from(aux.value_out.row),
+            usize::from(aux.value_out.column),
+        ),
+        scalar_tuple(
+            usize::from(aux.output_value_for_balance.row),
+            usize::from(aux.output_value_for_balance.column),
+        ),
+    );
+}
+
 /// Deterministic copy layout. It depends only on the frozen block schedule,
 /// never on witness values or Fiat-Shamir challenges.
 pub fn copy_layout() -> CopyLayout {
     let mut layout = CopyLayout {
         links: Vec::with_capacity(COPY_LINK_COUNT),
-        producer_by_row: vec![None; TRACE_ROWS],
-        consumer_by_row: vec![None; TRACE_ROWS],
+        producer_by_row: vec![[None; 2]; TRACE_ROWS],
+        consumer_by_row: vec![[None; 2]; TRACE_ROWS],
     };
 
-    append_intra_permutation_links(&mut layout);
-    append_sponge_continuation_links(&mut layout);
-    append_merkle_level_links(&mut layout);
-    append_semantic_ingress_links(&mut layout);
-    append_absorption_links(&mut layout);
+    visit_copy_links(|link| {
+        let producer_slot = layout.producer_by_row[usize::from(link.producer_row)]
+            .iter_mut()
+            .find(|slot| slot.is_none())
+            .expect("copy layout producer arity");
+        let consumer_slot = layout.consumer_by_row[usize::from(link.consumer_row)]
+            .iter_mut()
+            .find(|slot| slot.is_none())
+            .expect("copy layout consumer arity");
+        *producer_slot = Some(link.id);
+        *consumer_slot = Some(link.id);
+        layout.links.push(link);
+    });
 
     debug_assert_eq!(layout.links.len(), COPY_LINK_COUNT);
     layout
@@ -574,10 +1273,28 @@ pub fn witness_aux_layout() -> WitnessAuxLayout {
     let merkle_siblings = core::array::from_fn(|level| {
         core::array::from_fn(|limb| source_cell(4 + 2 * level, 24 + limb))
     });
-    let merkle_path_index = witness_aux_cell(0);
+    let merkle_path_index = witness_aux_cell(2 * STATE_AND_INTERFACE_COLUMNS);
     let merkle_path_bits = core::array::from_fn(|level| source_cell(4 + 2 * level, 32));
-    let input_value_limbs = core::array::from_fn(|index| witness_aux_cell(1 + index));
-    let output_value_limbs = core::array::from_fn(|index| witness_aux_cell(4 + index));
+    let input_value_limbs = core::array::from_fn(|index| TraceCell {
+        row: INPUT_VALUE_RANGE_ROW as u16,
+        column: index as u8,
+    });
+    let output_value_limbs = core::array::from_fn(|index| TraceCell {
+        row: OUTPUT_VALUE_RANGE_ROW as u16,
+        column: index as u8,
+    });
+    let input_value_reconstruction = TraceCell {
+        row: INPUT_VALUE_RANGE_ROW as u16,
+        column: VALUE_RECONSTRUCTION_COLUMN as u8,
+    };
+    let output_value_reconstruction = TraceCell {
+        row: OUTPUT_VALUE_RANGE_ROW as u16,
+        column: VALUE_RECONSTRUCTION_COLUMN as u8,
+    };
+    let output_value_for_balance = TraceCell {
+        row: INPUT_VALUE_RANGE_ROW as u16,
+        column: (VALUE_RECONSTRUCTION_COLUMN + 1) as u8,
+    };
     WitnessAuxLayout {
         nullifier_key,
         input_salt,
@@ -591,6 +1308,9 @@ pub fn witness_aux_layout() -> WitnessAuxLayout {
         merkle_path_bits,
         input_value_limbs,
         output_value_limbs,
+        input_value_reconstruction,
+        output_value_reconstruction,
+        output_value_for_balance,
     }
 }
 
@@ -639,7 +1359,7 @@ const fn invocation_domain_and_input_len(kind: HashInvocationKind) -> (M31, usiz
         HashInvocationKind::Note => (DOMAIN_NOTE, 18),
         HashInvocationKind::MerkleLevel(_) => (DOMAIN_MERKLE_NODE, 16),
         HashInvocationKind::Nullifier => (DOMAIN_NULLIFIER, 16),
-        HashInvocationKind::Output => (DOMAIN_OUTPUT, 18),
+        HashInvocationKind::Output => (DOMAIN_NOTE, 18),
     }
 }
 
@@ -870,6 +1590,17 @@ pub fn build_spend_trace_v4(
     {
         write_cell(&mut c1, cell, M31(u32::from(limb)));
     }
+    write_cell(&mut c1, aux.input_value_reconstruction, M31(witness.value));
+    write_cell(
+        &mut c1,
+        aux.output_value_reconstruction,
+        M31(witness.value_out),
+    );
+    write_cell(
+        &mut c1,
+        aux.output_value_for_balance,
+        M31(witness.value_out),
+    );
     for (cell, limb) in aux
         .output_value_limbs
         .into_iter()
@@ -1078,8 +1809,16 @@ fn validate_equal_source_cells(
     Ok(())
 }
 
-#[inline(never)]
-fn validate_source_relations(trace: &SpendTraceV4) -> Result<(), TraceValidationError> {
+/// All 60 source-cell equalities in stable constraint order.
+pub fn source_relation_layout() -> Vec<SourceEqualityBinding> {
+    let mut bindings = Vec::with_capacity(60);
+    let mut append = |block: usize, pairs: &[(usize, usize)]| {
+        bindings.extend(pairs.iter().map(|&(left, right)| SourceEqualityBinding {
+            block: block as u8,
+            left_column: left as u8,
+            right_column: right as u8,
+        }));
+    };
     let full_digest_pairs = [
         (0, 16),
         (1, 17),
@@ -1091,10 +1830,9 @@ fn validate_source_relations(trace: &SpendTraceV4) -> Result<(), TraceValidation
         (7, 23),
     ];
     for block in [0usize, 1, 44, 45, 46] {
-        validate_equal_source_cells(trace, block, &full_digest_pairs)?;
+        append(block, &full_digest_pairs);
     }
-    validate_equal_source_cells(
-        trace,
+    append(
         2,
         &[
             (0, 33),
@@ -1106,10 +1844,9 @@ fn validate_source_relations(trace: &SpendTraceV4) -> Result<(), TraceValidation
             (6, 20),
             (7, 21),
         ],
-    )?;
-    validate_equal_source_cells(trace, 3, &[(0, 22), (1, 23)])?;
-    validate_equal_source_cells(
-        trace,
+    );
+    append(3, &[(0, 22), (1, 23)]);
+    append(
         47,
         &[
             (0, 33),
@@ -1121,8 +1858,24 @@ fn validate_source_relations(trace: &SpendTraceV4) -> Result<(), TraceValidation
             (6, 20),
             (7, 21),
         ],
-    )?;
-    validate_equal_source_cells(trace, 48, &[(0, 22), (1, 23)])?;
+    );
+    append(48, &[(0, 22), (1, 23)]);
+    debug_assert_eq!(bindings.len(), 60);
+    bindings
+}
+
+#[inline(never)]
+fn validate_source_relations(trace: &SpendTraceV4) -> Result<(), TraceValidationError> {
+    for binding in source_relation_layout() {
+        validate_equal_source_cells(
+            trace,
+            usize::from(binding.block),
+            &[(
+                usize::from(binding.left_column),
+                usize::from(binding.right_column),
+            )],
+        )?;
+    }
 
     for binding in merkle_boundary_layout() {
         let bit = read_cell(trace, binding.path_bit);
@@ -1163,8 +1916,8 @@ fn validate_aux_values(trace: &SpendTraceV4) -> Result<(), TraceValidationError>
     }
 
     for (limbs, target) in [
-        (aux.input_value_limbs, aux.value),
-        (aux.output_value_limbs, aux.value_out),
+        (aux.input_value_limbs, aux.input_value_reconstruction),
+        (aux.output_value_limbs, aux.output_value_reconstruction),
     ] {
         let mut reconstructed = 0u32;
         for (index, cell) in limbs.into_iter().enumerate() {
@@ -1228,6 +1981,14 @@ fn validate_public_bindings(
     outputs: &TracePublicOutputs,
 ) -> Result<(), TraceValidationError> {
     let aux = witness_aux_layout();
+    if public.fee >= crate::spend::VALUE_LIMIT {
+        return Err(TraceValidationError::FeeOutOfRange);
+    }
+    if read_cell(trace, aux.input_value_reconstruction)
+        != read_cell(trace, aux.output_value_for_balance).add(M31(public.fee))
+    {
+        return Err(TraceValidationError::BalanceMismatch);
+    }
     if outputs.anchor != public.anchor
         || outputs.nullifier != public.nullifier
         || outputs.output_commitment != public.output_commitment
@@ -1410,12 +2171,12 @@ mod tests {
     }
 
     #[test]
-    fn copy_layout_recounts_all_589_row_local_explicit_endpoints() {
+    fn copy_layout_recounts_all_592_row_local_explicit_endpoints() {
         let (public, witness) = fixture();
         let trace = build_spend_trace_v4(&public, &witness).unwrap();
         let layout = copy_layout();
         assert_eq!(layout.links.len(), COPY_LINK_COUNT);
-        assert_eq!(COPY_LINK_COUNT, 589);
+        assert_eq!(COPY_LINK_COUNT, 592);
         assert_eq!(
             layout
                 .links
@@ -1456,15 +2217,23 @@ mod tests {
                 .count(),
             49
         );
-        let mut producer_rows = [false; TRACE_ROWS];
+        assert_eq!(
+            layout
+                .links
+                .iter()
+                .filter(|link| link.kind == CopyLinkKind::ValueReconstruction)
+                .count(),
+            3
+        );
+        let mut producer_rows = [0u8; TRACE_ROWS];
         for link in layout.links {
             assert_eq!(
                 tuple_value(&trace, link.producer),
                 tuple_value(&trace, link.consumer)
             );
-            assert!(!producer_rows[usize::from(link.producer_row)]);
-            producer_rows[usize::from(link.producer_row)] = true;
-            assert_eq!(link.tag, M31(u32::from(link.producer_row) + 1));
+            producer_rows[usize::from(link.producer_row)] += 1;
+            assert!(producer_rows[usize::from(link.producer_row)] <= 2);
+            assert_eq!(link.tag, M31(u32::from(link.id) + 1));
             for limb in link.producer.limbs {
                 if let TupleLimb::Cell(cell) = limb {
                     assert_eq!(cell.row, link.producer_row);
@@ -1475,6 +2244,43 @@ mod tests {
                     assert_eq!(cell.row, link.consumer_row);
                 }
             }
+        }
+    }
+
+    #[test]
+    fn compact_terminal_copy_stream_matches_full_endpoints() {
+        let full = copy_layout().links;
+        let mut compact = Vec::new();
+        visit_copy_terminal_links(|link| compact.push(link));
+        assert_eq!(compact.len(), full.len());
+        let tuple_pattern = |tuple: CopyTuple| {
+            tuple.limbs.map(|limb| match limb {
+                TupleLimb::Cell(cell) => cell.column as i8,
+                TupleLimb::Zero => -1,
+            })
+        };
+        let mut producer_counts = [0u8; TRACE_ROWS];
+        for (full, compact) in full.into_iter().zip(compact) {
+            let producer_row = usize::from(full.producer_row);
+            let expected_slot = producer_counts[producer_row];
+            producer_counts[producer_row] += 1;
+            assert_eq!(compact.id, full.id);
+            assert_eq!(compact.tag, full.tag);
+            assert_eq!(compact.producer_row, full.producer_row);
+            assert_eq!(compact.consumer_row, full.consumer_row);
+            assert_eq!(compact.producer_slot, expected_slot);
+            assert_eq!(
+                copy_terminal_pattern(usize::from(compact.producer_pattern)),
+                tuple_pattern(full.producer),
+                "producer pattern at link {}",
+                full.id
+            );
+            assert_eq!(
+                copy_terminal_pattern(usize::from(compact.consumer_pattern)),
+                tuple_pattern(full.consumer),
+                "consumer pattern at link {}",
+                full.id
+            );
         }
     }
 
