@@ -15,16 +15,57 @@
 
 extern crate alloc;
 
+pub mod circle;
+pub mod circle_candidate_verify;
+pub mod circle_fri;
+pub mod circle_hiding_prefix;
+pub mod circle_hiding_query;
+pub mod circle_hiding_verify;
+pub mod circle_line_merkle;
+pub mod circle_merkle;
+pub mod circle_openings;
+pub mod circle_prefix;
+pub mod circle_query;
 pub mod field;
 pub mod merkle;
+pub mod merkle_forest;
+pub mod merkle_radix8;
 pub mod params;
 pub mod proof;
+mod relation_dot_candidate;
+pub mod state_only_batch_eval;
+pub mod state_only_hiding;
+pub mod state_only_masked_switch;
+pub mod state_only_masked_switch_basis;
+pub mod state_only_prefix;
+pub mod state_only_private_merkle;
+pub mod state_only_private_openings;
+pub mod state_only_profile21_openings;
+pub mod state_only_profile22_openings;
+pub mod state_only_profile23_openings;
+pub mod state_only_profile23_query;
+pub mod state_only_profile23_relation;
+pub mod state_only_query;
+pub mod state_only_relation;
+pub mod state_only_sumcheck;
+pub mod statement_hiding;
+pub mod statement_sumcheck;
+pub mod sumcheck;
 pub mod transcript;
+pub mod two_point;
+mod two_point_fixtures;
 pub mod verify;
 
 pub use params::{FoldPayload, MerkleMode, Profile, PROFILES};
 pub use transcript::HashFn;
-pub use verify::{verify, verify_with_trace, TraceEvent, TraceFn, VerifyError};
+#[cfg(feature = "insecure-test-framing")]
+pub use verify::verify_with_insecure_m31_circle_as_legacy_for_tests;
+pub use verify::{
+    verify, verify_with_claim, verify_with_claim_and_trace, verify_with_claim_trace_and_inverse,
+    verify_with_trace, EvaluationClaim, M31InverseFn, TraceEvent, TraceFn, VerifyError,
+};
+#[cfg(feature = "insecure-test-ordering")]
+pub use verify::{verify_with_insecure_ordering, InsecureOrdering};
 
 #[cfg(test)]
 mod tests {

@@ -1,0 +1,70 @@
+{
+  "artifact": "profile21_no_switch_source_audit",
+  "date": "2026-07-13",
+  "status": "counterexample_to_inactive_helper_deficit_hypothesis_semantic_containment_open",
+  "scope": "atomic-v3 q16/rate-1/512 no-switch affine field view",
+  "fixture": {
+    "path": "results/stage2/proofs/atomic_state_only_profile20_v3_unmined.bin",
+    "bytes": 56044,
+    "sha256": "fdd1097f702b411b6bcd26d0e195322d7683ff93ec4cb70828b9459fe7cef007",
+    "statement_digest": "52e96f99756fe8fd2d8b7a700019b143d7eb549af1bf1ae987e99a75cadcd4c9",
+    "command": "NO_DNA=1 target/release/examples/state_only_hiding_rank_gate results/stage2/proofs/atomic_state_only_profile20_v3_unmined.bin 52e96f99756fe8fd2d8b7a700019b143d7eb549af1bf1ae987e99a75cadcd4c9 atomic-baseline-full-shared"
+  },
+  "exact_rank_decomposition_m31": {
+    "pre_helper_selected": 444,
+    "declared_combined_message": 512,
+    "deficit_before_helper": 68,
+    "inactive_helper_increment_selected": 268,
+    "inactive_helper_increment_declared": 268,
+    "selected_after_inactive_helper": 712,
+    "declared_after_inactive_helper": 780,
+    "active_zero_sum_helper_increment_selected": 0,
+    "deficit_after_all_helper_classes": 68,
+    "deficit_qm31": 17,
+    "deficit_pivot_classes": {
+      "later_openings": 64,
+      "relation_polynomial": 4,
+      "ood": 0,
+      "final_coefficients": 0
+    }
+  },
+  "source_classification": {
+    "semantic_c1": {
+      "witness_dependent": true,
+      "invariant": "each committed/rebalanced M31 column has zero sum over atomic copy-inactive rows",
+      "covered_by_baseline_valid_witness_containment_flag": false
+    },
+    "mask_only_c1": {
+      "witness_dependent": false,
+      "invariant": "full-domain M31 randomness with zero inactive sum",
+      "selected_mask_source": true
+    },
+    "explicit_g": {
+      "witness_dependent": false,
+      "invariant": "full-domain QM31 randomness with zero inactive sum",
+      "selected_mask_source": true
+    },
+    "copy_helper_base": {
+      "witness_dependent": true,
+      "invariant": "zero on inactive rows and total sum zero; differences are active zero-sum",
+      "universally_contained_by_current_tooth": true
+    },
+    "copy_helper_padding": {
+      "witness_dependent": false,
+      "invariant": "inactive zero-sum QM31",
+      "selected_mask_source": true
+    }
+  },
+  "implemented_flag_theorem": "complete-public-view containment of every active zero-sum H difference",
+  "implemented_flag_does_not_prove": "containment of semantic trace/zerocheck/gamma-combined PCS differences for every honest same-statement witness pair",
+  "source_space_counterexample": {
+    "statement": "because declared_combined_rank - pre_helper_selected_rank = 68, there exists w in the zero-inactive combined-message space whose PCS-tail image is not selected-mask-contained; placing w in abstract Delta C0 respects the relation and is not an H direction",
+    "exhibited_valid_witness_pair": false,
+    "role": "refutes the inactive-helper explanation; does not by itself refute a future language-specific semantic-containment theorem"
+  },
+  "required_no_switch_theorem": "for every public statement, every valid same-statement witness pair and every accepted schedule, the complete coupled semantic C1/original-zerocheck/helper/PCS field-view difference lies in the selected mask image",
+  "x_f_u_tau_removable_now": false,
+  "x_f_u_tau_removable_if_required_theorem_is_proved": true,
+  "production_or_carry_sources_modified": false,
+  "note": "docs/stage2-profile21-no-switch-source-audit.md"
+}

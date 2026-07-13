@@ -1,0 +1,102 @@
+{
+  "generated_at_utc": "2026-07-12T21:56:51.064780+00:00",
+  "command": "cargo run --release -p aspis-xtask -- stage2-sumcheck-probe",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "repetitions": 5,
+  "baseline_cu_mean": 1642.0,
+  "synthetic_allowance_cu": 30000,
+  "variants": [
+    {
+      "name": "optimistic",
+      "rounds": 10,
+      "coefficients": 7,
+      "claims": 3,
+      "selector_terms": 16,
+      "selector_exceptions": 3,
+      "simulation_cu": [
+        70971,
+        70971,
+        70971,
+        70971,
+        70971
+      ],
+      "simulation_cu_mean": 70971.0,
+      "incremental_cu_over_baseline": 69329
+    },
+    {
+      "name": "central",
+      "rounds": 10,
+      "coefficients": 8,
+      "claims": 3,
+      "selector_terms": 24,
+      "selector_exceptions": 5,
+      "simulation_cu": [
+        89364,
+        89364,
+        89364,
+        89364,
+        89364
+      ],
+      "simulation_cu_mean": 89364.0,
+      "incremental_cu_over_baseline": 87722
+    },
+    {
+      "name": "pessimistic",
+      "rounds": 14,
+      "coefficients": 8,
+      "claims": 4,
+      "selector_terms": 48,
+      "selector_exceptions": 8,
+      "simulation_cu": [
+        150729,
+        150729,
+        150729,
+        150729,
+        150729
+      ],
+      "simulation_cu_mean": 150729.0,
+      "incremental_cu_over_baseline": 149087
+    },
+    {
+      "name": "payment_degree10",
+      "rounds": 10,
+      "coefficients": 11,
+      "claims": 2,
+      "selector_terms": 24,
+      "selector_exceptions": 5,
+      "simulation_cu": [
+        104035,
+        104035,
+        104035,
+        104035,
+        104035
+      ],
+      "simulation_cu_mean": 104035.0,
+      "incremental_cu_over_baseline": 102393
+    },
+    {
+      "name": "two_round_fused_degree27",
+      "rounds": 10,
+      "coefficients": 28,
+      "claims": 2,
+      "selector_terms": 24,
+      "selector_exceptions": 5,
+      "simulation_cu": [
+        192119,
+        192119,
+        192119,
+        192119,
+        192119
+      ],
+      "simulation_cu_mean": 192119.0,
+      "incremental_cu_over_baseline": 190477
+    }
+  ],
+  "central_replaces_allowance_cu": 87722,
+  "allowance_error_cu": 57722,
+  "notes": [
+    "Prices mu-batched zero claims, transcript-absorbed round messages with boundary checks and Horner terminal evaluation, and block-periodic selector evaluation with enumerated exception rows.",
+    "eq(r,z) and the composition C(v_1..v_k) are deliberately excluded: the constraint-composition probe already prices them; adding them here would double-count the seam.",
+    "The central incremental value REPLACES the synthetic 30,000-CU statement-sumcheck allowance in every projection from this artifact onward."
+  ]
+}

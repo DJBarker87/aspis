@@ -1,0 +1,52 @@
+{
+  "generated_at_utc": "2026-07-10T17:01:41.720137+00:00",
+  "command": "cargo run --release -p aspis-xtask -- stage2-radix4-g16",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "profile": "capacity_lr10_q36_g16",
+  "repetitions": 5,
+  "second_phase_enabled": true,
+  "variants": [
+    {
+      "merkle_mode": "binary_minimal_subtree",
+      "proof_bytes": 21876,
+      "proof_sha256": "a1a2dce10087d844e4be00c3617e3e4bad4cf1fde37f130ec9cbe0daec48951a",
+      "verify_cu": [
+        734230,
+        734230,
+        734230,
+        734230,
+        734230
+      ],
+      "verify_cu_mean": 734230.0,
+      "host_corruption_cases": 12,
+      "host_corruption_all_rejected": true
+    },
+    {
+      "merkle_mode": "radix4_minimal_subtree",
+      "proof_bytes": 26484,
+      "proof_sha256": "deeb5b4c5db804d9f16f0dcd5990b0e5a4b329cc2ba083ae9fb8f90b3707d1f9",
+      "verify_cu": [
+        657643,
+        657643,
+        657643,
+        657643,
+        657643
+      ],
+      "verify_cu_mean": 657643.0,
+      "host_corruption_cases": 12,
+      "host_corruption_all_rejected": true
+    }
+  ],
+  "radix4_savings_cu": 76587,
+  "radix4_savings_percent": 10.430927638478407,
+  "radix4_proof_bytes_delta": 4608,
+  "radix4_frontier_corruption_rejected_host": true,
+  "radix4_frontier_corruption_rejected_sbf": true,
+  "notes": [
+    "Both rows are real claim-free Stage-1 synthetic-C2 proofs over identical coefficients and statement bytes; only the transcript-bound Merkle mode differs.",
+    "Production Verify uses the cached-domain and unit-circle-conjugate verifier kernels selected by the Stage-2 kernel probe; VerifyFast remains a wire-compatible alias of the same path.",
+    "The radix-4 root uses domain byte 0x12 and one SHA-256 input containing four ordered child hashes. It is not a reinterpretation of a binary root.",
+    "A layer-0 radix-4 frontier hash is deliberately corrupted after proof construction and must reject both on host and SBF.",
+    "This g16 checkpoint does not re-pin the frozen g32 proof or transcript KAT; that happens only after this comparison is accepted."
+  ]
+}

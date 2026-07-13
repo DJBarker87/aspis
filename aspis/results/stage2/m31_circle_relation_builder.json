@@ -1,0 +1,51 @@
+{
+  "artifact": "stage2_m31_circle_relation_builder",
+  "date": "2026-07-11",
+  "status": "host_only_candidate_primitive",
+  "protocol_selection": false,
+  "architecture_ruling": false,
+  "shape": {
+    "message": "1,024 natural-order QM31 coefficients",
+    "statement_points": "z and caller-supplied xor11(z), with the latter checked coordinate by coordinate",
+    "point_components": 2,
+    "point_scales": "explicit caller inputs; no batching-mode enum or rule is selected",
+    "rounds": 4,
+    "ood_samples_per_round": 2,
+    "layer_0_ood_basis": "two secure-circle tensor evaluations",
+    "layers_1_through_3_ood_basis": "two line-x tensor evaluations per layer",
+    "sumcheck_degree": 6,
+    "fold_order": "adjacent natural coefficients, arity 4, alpha powers 0..3",
+    "terminal": "four natural QM31 coefficients and an exact relation-weight dot"
+  },
+  "returned_evidence": [
+    "two honest unscaled point claims",
+    "eight honest OOD values",
+    "four boundary claims",
+    "four seven-coefficient sumcheck polynomials",
+    "initial plus four post-alpha running claims",
+    "four final natural coefficients",
+    "terminal relation claim"
+  ],
+  "tests": {
+    "command": "cargo test -p aspis-prover --test m31_circle_relation",
+    "result": "2 passed; 0 failed",
+    "independent_materialization": "two distinct nontrivial explicit point-scale pairs; direct MLE and circle/line tensor vectors; every OOD dot, degree-6 coefficient, boundary, alpha evaluation, dual weight fold, coefficient fold, and terminal dot across all four rounds",
+    "negative_vectors": [
+      "changed z with a consistently re-derived xor11(z) rejects the old point claim",
+      "inconsistent xor11(z) rejects before relation construction",
+      "mutated OOD claim rejects",
+      "mutated sumcheck boundary rejects",
+      "off-circle layer-zero point rejects",
+      "CM31-subfield layer-zero circle point rejects",
+      "CM31-subfield later line point rejects"
+    ],
+    "strict_clippy_command": "cargo clippy -p aspis-prover --all-targets --all-features -- -D warnings"
+  },
+  "not_proved": [
+    "No transcript challenge or two-point batching rule is selected.",
+    "No proof bytes, KAT, Merkle path, root, query, parser, or tag-24 acceptance path is changed.",
+    "The validator receives the complete message and is arithmetic conformance code, not a commitment verifier.",
+    "No SBF execution or CU result is produced.",
+    "No security headline, payment claim, hiding claim, or product architecture conclusion follows from this artifact."
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "generated_at_utc": "2026-07-10T17:02:48.306473+00:00",
+  "command": "cargo run --release -p aspis-xtask -- stage2-radix4-g32",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "profile": "capacity_lr10_q36_g32",
+  "repetitions": 5,
+  "binary_proof_source": "/Users/dominic/ZK/aspis/results/stage1/proofs/capacity_lr10_q36_g32_v3_c2.bin",
+  "radix4_proof_source": "reused host-verified cache /Users/dominic/ZK/aspis/results/stage2/proofs/capacity_lr10_q36_g32_v3_c2_radix4.bin",
+  "radix4_generation_seconds": null,
+  "binary_first_root": "8fc966e462df7ce5a81b2e04b22c9450367e816b5ed2b73355a1c3bd881d17fe",
+  "radix4_first_root": "209020c5732c9d37f8298a7ee82d4899412f5213546972a2df72d7200fbaed08",
+  "root_changed": true,
+  "transcript_kat_unchanged": true,
+  "variants": [
+    {
+      "merkle_mode": "binary_minimal_subtree",
+      "proof_bytes": 21364,
+      "proof_sha256": "1557b82d4e4a35117104951e3e026d423b57e46c462bb314f4f701408ef2f805",
+      "verify_cu": [
+        714111,
+        714111,
+        714111,
+        714111,
+        714111
+      ],
+      "verify_cu_mean": 714111.0,
+      "host_corruption_cases": 12,
+      "host_corruption_all_rejected": true
+    },
+    {
+      "merkle_mode": "radix4_minimal_subtree",
+      "proof_bytes": 26420,
+      "proof_sha256": "e43661315a5e4f027770d2831c2af59ee4848d74929a4c2eebd0c144e0057c55",
+      "verify_cu": [
+        678407,
+        678407,
+        678407,
+        678407,
+        678407
+      ],
+      "verify_cu_mean": 678407.0,
+      "host_corruption_cases": 12,
+      "host_corruption_all_rejected": true
+    }
+  ],
+  "radix4_savings_cu": 35704,
+  "radix4_savings_percent": 4.999782946908813,
+  "radix4_proof_bytes_delta": 5056,
+  "radix4_frontier_corruption_rejected_host": true,
+  "radix4_frontier_corruption_rejected_sbf": true,
+  "notes": [
+    "Both proofs use the literal q36/g32 profile, synthetic C2, identical coefficients, and identical statement bytes. Production Verify selects the optimized denominator/domain path.",
+    "The Merkle-mode header byte is transcript-absorbed, so roots, challenges, grinding nonce, query positions, proof digest, and proof bytes are all freshly generated for radix-4.",
+    "TRANSCRIPT_KAT_EXPECTED intentionally does not move: radix-4 changes a transcript input, not the schedule or sampler that the standalone KAT pins.",
+    "A real radix-4 layer-0 frontier node is corrupted and must reject on both host and SBF."
+  ]
+}

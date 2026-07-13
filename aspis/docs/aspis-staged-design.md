@@ -169,6 +169,18 @@ Stage 2 constraint-composition costs. q32/g32 is a Stage 1 soundness
 hypothesis, not a public claim. Stage 0 is therefore a conditional GO to Stage
 1 for that target, RED for lr14 and Johnson q80.
 
+Stage 1 amendment (`2026-07-10`, frozen): the soundness note retired q32/g32
+and ruled q36/g32. Upstream T1/T2 constants are pinned; the v3 envelope
+enforces external and per-round OOD evaluations through an interleaved
+degree-6 relation sumcheck and implements the canonical two-phase PCS
+boundary `C1 -> (lambda,chi) -> C2 -> claims -> gamma`. The literal
+lr10/q36/g32 verifier is `943,972` CU and the current combined projection is
+`1,175,086` CU, leaving only `14,914` CU against the 1.19M target before
+unpriced constraint composition. Stage 1 is closed as a PCS milestone, but
+the 10% product-feasibility slack gate is red. These figures supersede the
+Stage 0 continuation projection; they do not retroactively alter the Stage 0
+gate.
+
 Do not trust the Phase 1 additive model's per-op coefficients for the
 statement layer. Constraint-evaluation cost is measured directly on SBF or not
 believed at all.
@@ -227,6 +239,16 @@ Audit checklist:
 - evaluation-claim binding for externally supplied `(z, v)`
 - batched-opening soundness for the `gamma` RLC argument and its
   Fiat-Shamir order
+- copy-argument soundness (LogUp multiset term per amended §13.8): tuple
+  compression and pole-collision terms, challenge ordering (interfaces
+  committed before `lambda`, `z`), and the second commitment phase this
+  forces on the PCS interface
+- per-round proximity recomputation for the implemented fold schedule (the
+  native v0 schedule at lr10 is 4 committed arity-4 rounds with domain and
+  degree both shrinking 4x per round — the rate does NOT improve across
+  rounds as WHIR's domain-halving schedule assumes; the per-round query
+  budget table must be computed for the schedule as implemented, not the
+  Phase 2 two-round shape)
 
 Deliverables:
 
@@ -235,8 +257,12 @@ Deliverables:
    frozen profile.
 2. Missing checks implemented in host + SBF verifier, re-measured.
 3. Adversarial vector suite beyond bit flips: wrong-evaluation claims,
-   off-domain openings, round-skipping, grinding-forgery attempts, and
-   mixed-profile replay.
+   off-domain openings, round-skipping, grinding-forgery attempts,
+   mixed-profile replay, and **challenge-order attacks** (gamma sampled
+   before the claimed column evaluations are absorbed; chi sampled before
+   the interface commitment C1) — the gamma-before-claims ordering was
+   caught in soundness-note review as a full statement-layer bypass and the
+   ordering must be enforced by failing tests, not prose (soundness-note §2).
 
 Gate: soundness note complete, checks implemented, adversarial suite rejecting
 `100%`, hardened verifier CU recorded. Stop if the hardened verifier exceeds
@@ -274,8 +300,13 @@ plausibly `2^13`-`2^14`, sumcheck degree roughly `<= 6-7` with `eq`.
 
 Discipline:
 
-1. Build the no-proof direct evaluator first, with valid and invalid vectors
-   and differential tests against an independent Poseidon2-M31 implementation.
+1. Build the no-proof direct evaluator first. Its first test corpus is the
+   economic attack surface, not happy-path proof plumbing: field-wrap
+   inflation (`fee > value` and unconstrained `value_out`), wrong asset/public
+   binding, wrong anchor/path, forged ownership/nullifier, double-spend
+   replay, and boundary values at `0`, `2^30-1`, and `2^30`. Add valid vectors
+   and differential tests against an independent Poseidon2-M31
+   implementation in the same evaluator milestone.
 2. Measure real witness size and constraint counts from the evaluator.
 3. Measure constraint-composition evaluation cost on SBF in isolation.
 4. Measure software Poseidon2-M31 permutation cost on SBF.
@@ -284,6 +315,57 @@ Discipline:
 Gate: evaluator vector-complete; host proof verifies end to end; projected
 on-chain total under `1.19M` CU with at least `10%` slack. Stop if the
 projection exceeds the budget after one explicit shrink attempt.
+
+**Stage 2 checkpoint (`2026-07-10`).** The evaluator-first milestone is
+complete: 13/13 economic vectors pass against a Plonky3-0.6.1-pinned
+Poseidon2-M31 implementation. Isolated SBF probes tied to the evaluator's
+k'=80/four-round-row candidate measured +312,103 CU for the naive low
+composition. The explicit structured/Horner shrink reduces that to +185,462
+CU (126,641 saved), but the corrected one-transaction low projection remains
+1,415,268 CU after the measured k80 layout delta—225,268 above the 1.19M
+target and 15,268 above the absolute 1.4M cap. The one-transaction gate is
+therefore RED after its required shrink; a slack waiver is insufficient.
+At that checkpoint the named continuation was three-transaction split
+verification (statement receipt -> PCS receipt -> pool consume), and any
+positive claim based on that checkpoint must say "across three transactions."
+The optimization update below supersedes the claim that a split is mandatory,
+but not the recorded negative or the fallback. Evidence and caveats:
+`docs/stage2-feasibility.md` and `results/stage2/`.
+
+**Stage 2 optimization update (`2026-07-10`).** The negative above has been
+reopened, not erased. SolMath-style specialization cut the real frozen binary
+PCS from 943,972 to 714,111 CU with identical proof bytes: cached circle powers,
+specialized squares/halves, unit-circle conjugate denominators, final-domain
+caching, and packed SHA inputs. The historical layout RLC was found to use the
+same gamma for every column and is deprecated; the correct q36/k80 gamma-power
+kernel measures 202,031 CU after four-product inner reduction, lazy outer
+accumulation, and fixed-width power/value tables. A six-limb 10-bit lookup
+candidate reduces composition from 176,844 to 120,275 CU and now replays the
+full economic corpus plus two lookup teeth vectors. A fresh radix-4 q36/g32
+proof verifies at 678,407 CU, 35,704 below optimized binary, with its changed
+roots/proof digest ledgered and corruption-tested. That first r4/k80 package's
+1,041,944-CU projection is historical: the measured shrink hunt subsequently
+froze r2/k'=51 at 974,112 central / 1,047,561 registered for s1. The isolated
+s2 line measures +49,099 CU, but its derived q36 1,096,660 and q34 1,052,181
+totals are historical component arithmetic, not live product projections.
+The corrected two-helper scaffold overlaps part of that work and still omits
+the exact-wide statement, so the product gate is red and unpriced; q34 remains
+held and the split receipt stays as fallback. See
+`docs/solmath-zk-candidates.md` and `docs/stage2-shrink-hunt.md`.
+
+**Exact-shape integration gate (`2026-07-10`).** The r2/k'=51 projection
+used an isolated raw-M31 seam, not the representation a real PCS opening
+authenticates. The frozen count is 49 C1 columns total (48 state/interface +
+one multiplicity), plus h1/h2 in C2. A layer-zero fiber is therefore 1,568
+bytes of CM31 C1 data plus a 128-byte QM31 C2 leaf, and the query RLC uses
+gamma powers 0..50. That exact seam must be measured before the 10% projection
+is cited again. The statement composition also needs verifier-randomized
+batching over a stable `ConstraintId` registry; a deterministic accumulator
+permits residual cancellation. Final T8' is `(J+2)/|F|`, not the provisional
+eight-claim value, until that registry freezes. The separate
+`stage2-column-basis-audit.md` records that M31 C1 is valid under a genuine
+circle-polynomial PCS but is not a wire-only change to this custom CM31 PCS;
+both bases must be measured without treating a limb ratio as a verdict.
 
 ## 10. Stage 3 - Hiding Layer
 
@@ -350,7 +432,32 @@ claim boundary and soundness labels present in README and paper.
 1. Tree depth `32` vs `20` for the demo pool.
 2. Poseidon2-M31 instance: width, round numbers, digest limbs, and source of
    parameter analysis.
-3. Soundness regime targeted for the headline claim.
+3. Soundness regime targeted for the headline claim. **Decided `2026-07-04`:
+   headline frozen at `t = 100` bits, capacity-conjectured. SUPERSEDED
+   `2026-07-10` (soundness-note §9, `stage1-theta-rederivation.md`): the
+   up-to-capacity conjecture family was refuted (ePrint 2025/2046,
+   2026/782). The ruling keeps `t = 90` stated at q36/g32/s2, but the
+   source-constant audit makes `93.73` only a provisional sensitivity:
+   S-two App. A.5 leaves existential `c1,c2` and an unbounded finite-n
+   `o(n)` remainder. No computed conjectured value is quotable until that
+   gate is pinned; the 65.5 proven floor remains quotable. The
+   `~102.98`/`L <= 40` arithmetic below is historical.**
+   Original rationale (the
+   field-ceiling lemma, soundness-note §3): `|QM31| = p^4 ~ 2^124`, and every
+   algebraic soundness term in the system — proximity-gathering terms per fold
+   round, OOD binding, sumcheck Schwartz-Zippel, `gamma`-RLC batching, the
+   copy-argument terms — carries a `2^124` denominator that grinding does not
+   offset (grinding buys back query-sampling error only). The `2026-07-10`
+   upstream pin resolves the algebraic union to `~103.95` bits at the ruled
+   `L <= 40` capacity-conjecture clause, and combining it with the 104-bit
+   query term yields `~102.98` system bits; `128` bits was never reachable on
+   M31/CM31/QM31, consistent with
+   upstream evidence (WHIR-JB needing Goldilocks3 for 128-bit settings; the
+   M31 circle-STARK ecosystem targeting `~96-100` bits). Changing field towers
+   is a different project. The `~124`-bit field ceiling and the `~124`-bit
+   8-limb Poseidon2 digest land the whole system on one coherent
+   conjectured label with no weakest-link asymmetry (the direction of this
+   sentence survives the refutation; the specific `100` does not).
 4. `proof_carried_round_local` in or out of the frozen profile. Stage 0
    measurement says **out** for native v0.
 5. Nullifier key schedule; cite a standard shape rather than inventing one.
@@ -358,7 +465,29 @@ claim boundary and soundness labels present in README and paper.
    on-chain.
 7. Range width (`2^30` fits one M31 limb cleanly).
 8. Witness column layout: number of columns `k`, wide-leaf packing format, and
-   `gamma` RLC batching parameters.
+   `gamma` RLC batching parameters. **Amended `2026-07-04`: the lr10/k64
+   cost-freeze is not constraint-realizable as originally shaped, and the
+   layout freeze becomes "lr10, `k ~ 64-80`, rounds-per-row blocks, boundary
+   interface columns, LogUp-style multiset copy check".** Why: the spend
+   witness is dominated by sequential Poseidon2 chains (32 Merkle levels where
+   permutation i's output is permutation i+1's input), and row-locality forces
+   one of three shapes. (a) Fully self-contained rows — one permutation per
+   row — needs `k ~ 352` columns, and the measured RLC scaling (`192,127` CU
+   at `k = 64`, linear in `k`) prices that at `~1.1M` CU of recombination
+   alone: dead. (b) Chaining across rows is exactly the shifted operand this
+   design bans, and multilinear shifts are not the univariate `g*z` trick — a
+   shifted polynomial's evaluation is not a point-opening of the original.
+   (c) The adopted shape: pack a block of rounds per row, commit the chain
+   interface state as boundary columns, and prove multiset equality between
+   chain-outputs and chain-inputs with a LogUp-style logarithmic-derivative
+   argument fused into the statement sumcheck. Consequences the later stages
+   must absorb: the copy argument brings its own soundness terms (all with
+   `/|QM31|` denominators — folded into the §3 ceiling budget) and requires a
+   **second commitment phase** (the LogUp helper column depends on a
+   challenge sampled after the interface columns are committed), which is a
+   PCS interface change of the same kind as the external `(z, v)` claim.
+   Stage 1's soundness note must be written for THIS layout — a note written
+   for a layout Stage 2 cannot build is wasted work.
 
 ## 14. Risk Register
 

@@ -1,0 +1,40 @@
+{
+  "schema": "aspis.m31_circle_sequential_candidate_prefix.v1",
+  "status": "HOST_CAUSAL_BUILD_PASS; BOTH_ONE_LANE_ALTERNATIVES_PINNED; OWNER_SELECTION_AND_PRODUCTION_KAT_OPEN",
+  "test": "crates/aspis-prover/tests/m31_circle_candidate_prefix_sequential.rs",
+  "scope": {
+    "prefix_bytes": 2456,
+    "c1_messages": "49 x 1024 M31",
+    "c2_fixture_messages": "2 x 1024 QM31; fixture-only, not payment LogUp derivation",
+    "rounds": 4,
+    "ood_samples_per_round": 2,
+    "queries": 36,
+    "grinding_bits": 16,
+    "causal_path": "encode -> C1/C2 roots -> statement values -> gamma and alternative scale -> OOD values/mixes -> sumcheck -> alpha -> fold/root -> final4 -> nonce -> queries -> exact parse/replay -> independent relation validation"
+  },
+  "fresh_kappa": {
+    "prefix_sha256": "8df40160314199a667225dcffd23ef8b04929e050e74235bc9aeabbbe5152b8e",
+    "nonce": 20677,
+    "kappa_present": true
+  },
+  "disjoint_gamma51": {
+    "prefix_sha256": "8b17d07daf9e259c7c7787e949e12215d13eda13fb80a9e49045ba2200327296",
+    "nonce": 54739,
+    "kappa_present": false,
+    "second_point_scale": "gamma^51"
+  },
+  "stale_statement_tooth": {
+    "mutation": "flip bit 0 of the external statement digest, rebuild fresh-kappa",
+    "prefix_sha256": "2596c4ccd5873a14c490acb3521aaf0aab2fa6f91646d2440d0819a1a6f7ee5f",
+    "nonce": 65871,
+    "assertions": "prefix, gamma, and post-query transcript state all differ from the canonical fresh-kappa fixture"
+  },
+  "explicit_nonclaims": [
+    "neither batching mode is selected",
+    "these are host candidate pins, not the downstream production host/SBF KAT",
+    "no Merkle opening suffix is constructed or authenticated in this artifact",
+    "no SBF instruction accepts the candidate",
+    "no CU or product-headroom claim is made",
+    "the C2 fixture does not claim payment LogUp semantics"
+  ]
+}

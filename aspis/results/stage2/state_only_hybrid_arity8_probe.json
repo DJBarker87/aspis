@@ -1,0 +1,79 @@
+{
+  "generated_at_utc": "2026-07-13T02:49:25Z",
+  "status": "host_algebra_green_complete_view_hvzk_rejected_soundness_and_cu_open",
+  "candidate": {
+    "schedule": "arity4_then_arity8_final32",
+    "message_dimensions": [1024, 256, 32],
+    "rate32_codeword_dimensions": [32768, 8192, 1024],
+    "authenticated_symbols_per_query": [4, 8],
+    "authenticated_symbols_per_query_total": 12,
+    "later_roots": 1,
+    "relation_degrees": [6, 14],
+    "relation_coefficients": [7, 15],
+    "final_coefficients_qm31": 32
+  },
+  "pure_arity16_comparison": {
+    "status": "rejected_before_production_prototype",
+    "authenticated_symbols_per_query": [16, 16],
+    "authenticated_symbols_per_query_total": 32,
+    "current_arity4_total": 16,
+    "reason": "layer0 grows from 4 to 16 symbols and the measured current layer0 query block is already 295209 CU"
+  },
+  "host_algebra": {
+    "arity8_primal": "sum_i beta^i*a_i",
+    "arity8_dual": "(b0+beta^7*b1+beta^6*b2+...+beta*b7)/8",
+    "boundary": "8*(p0+p8)",
+    "internal_line_challenges": ["beta", "beta^2", "beta^4"],
+    "actual_circle_encoder_basis_rows_checked": 1024,
+    "result": "pass"
+  },
+  "opening_surface_q29": {
+    "distinct_later_leaves": 29,
+    "later_values_qm31": 232,
+    "ood_values_qm31": 4,
+    "relation_values_qm31": 22,
+    "final_values_qm31": 32,
+    "pcs_tail_qm31": 290
+  },
+  "complete_view_rank": {
+    "joint_serialized_m31": 1636,
+    "declared_valid_image_rank_m31": 1512,
+    "selected_mask_image_rank_m31": 1392,
+    "helper_augmented_rank_m31": 1392,
+    "valid_witness_containment": true,
+    "ambient_deficit_m31": 120,
+    "ambient_deficit_qm31": 30,
+    "complete_ambient_rank": false,
+    "conclusion": "collapsing later roots does not close the hiding deficit; final32 carries the missing directions"
+  },
+  "current_measured_anchors_not_hybrid_measurements": {
+    "artifact": "results/stage2/state_only_width28_global_inactive.json",
+    "rate32_q29_query_shared_setup_cu": 2219,
+    "rate32_q29_query_layer0_only_cu": 295209,
+    "rate32_q29_query_later_all_only_cu": 175069,
+    "rate32_q29_query_full_cu": 472497,
+    "rate32_q29_merkle_all_cu": 187681
+  },
+  "operation_count_only_not_cu_measurement": {
+    "all_authenticated_symbols_change": "16_to_12",
+    "later_authenticated_symbols_change": "12_to_8",
+    "binary_fold_steps_change": "12_to_10",
+    "later_binary_fold_steps_change": "9_to_7",
+    "relation_convolution_products_change": "5440_to_6144",
+    "later_query_anchor_projection_cu_range": [38904, 58356],
+    "projection_warning": "percentage applied to a measured old block; not a hybrid or integrated measurement"
+  },
+  "soundness": {
+    "polynomial_generator_mca_core_at_johnson": "available_in_eprint_2025_2051",
+    "s_two_cross_domain_circle_ca_at_johnson": "available_for_the_source_protocol_in_eprint_2026_532",
+    "exact_aspis_hybrid_transport": "open",
+    "fold_list_commutation": "open",
+    "bcs_and_pow_reledger": "open",
+    "production_claim": false
+  },
+  "tests": [
+    "NO_DNA=1 cargo test -p aspis-core materialized_arity8_dual_preserves_the_folded_dot",
+    "NO_DNA=1 cargo test --release -p aspis-prover --test state_only_full_proof rate32_q29_hybrid_arity4_arity8_complete_view_rank_probe -- --ignored --nocapture"
+  ],
+  "note": "docs/stage2-state-only-hybrid-arity8-probe.md"
+}

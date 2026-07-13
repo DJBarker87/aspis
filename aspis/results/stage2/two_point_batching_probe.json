@@ -1,0 +1,137 @@
+{
+  "generated_at_utc": "2026-07-11T07:27:15.117046+00:00",
+  "command": "cargo run --release -p aspis-xtask -- stage2-two-point-batching-probe",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "instruction_wire_ordinal": 25,
+  "repetitions": 5,
+  "compute_unit_limit": 1400000,
+  "heap_frame": "default runtime heap; no request_heap_frame instruction",
+  "log_rows": 10,
+  "rounds": 4,
+  "statement_points": 2,
+  "statement_values": 102,
+  "pre_gamma_point_bytes": 320,
+  "pre_gamma_value_bytes": 1632,
+  "variants": [
+    {
+      "mode": "one_point_baseline",
+      "mode_ordinal": 0,
+      "expected_sink_hex": "defb4252e7b4cd608f41ec684e1b3f53",
+      "host_sink_hex": "defb4252e7b4cd608f41ec684e1b3f53",
+      "host_sink_matched": true,
+      "sbf_sink_matched": true,
+      "simulation_cu": [
+        51052,
+        51052,
+        51052,
+        51052,
+        51052
+      ],
+      "simulation_cu_mean": 51052.0,
+      "simulation_cu_delta_vs_one_point": 0,
+      "relation_lanes": 1,
+      "point_components": 1,
+      "relation_polynomials": 4,
+      "relation_proof_bytes": 448,
+      "relation_proof_bytes_delta_vs_one_point": 0,
+      "instruction_data_bytes": 18,
+      "transcript_hash_calls_no_retry": 19,
+      "transcript_hash_calls_delta_vs_one_point": 0
+    },
+    {
+      "mode": "fresh_kappa_single_lane",
+      "mode_ordinal": 1,
+      "expected_sink_hex": "0736f92837d98b4769ba224946dd9160",
+      "host_sink_hex": "0736f92837d98b4769ba224946dd9160",
+      "host_sink_matched": true,
+      "sbf_sink_matched": true,
+      "simulation_cu": [
+        68380,
+        68380,
+        68380,
+        68380,
+        68380
+      ],
+      "simulation_cu_mean": 68380.0,
+      "simulation_cu_delta_vs_one_point": 17328,
+      "relation_lanes": 1,
+      "point_components": 2,
+      "relation_polynomials": 4,
+      "relation_proof_bytes": 448,
+      "relation_proof_bytes_delta_vs_one_point": 0,
+      "instruction_data_bytes": 18,
+      "transcript_hash_calls_no_retry": 21,
+      "transcript_hash_calls_delta_vs_one_point": 2
+    },
+    {
+      "mode": "two_independent_relation_lanes",
+      "mode_ordinal": 2,
+      "expected_sink_hex": "96e17c1fc42d7368e1fd2a19a525130c",
+      "host_sink_hex": "96e17c1fc42d7368e1fd2a19a525130c",
+      "host_sink_matched": true,
+      "sbf_sink_matched": true,
+      "simulation_cu": [
+        92923,
+        92923,
+        92923,
+        92923,
+        92923
+      ],
+      "simulation_cu_mean": 92923.0,
+      "simulation_cu_delta_vs_one_point": 41871,
+      "relation_lanes": 2,
+      "point_components": 2,
+      "relation_polynomials": 8,
+      "relation_proof_bytes": 896,
+      "relation_proof_bytes_delta_vs_one_point": 448,
+      "instruction_data_bytes": 18,
+      "transcript_hash_calls_no_retry": 23,
+      "transcript_hash_calls_delta_vs_one_point": 4
+    },
+    {
+      "mode": "disjoint_gamma51_single_lane",
+      "mode_ordinal": 3,
+      "expected_sink_hex": "548183499118c213ddf03320b734537c",
+      "host_sink_hex": "548183499118c213ddf03320b734537c",
+      "host_sink_matched": true,
+      "sbf_sink_matched": true,
+      "simulation_cu": [
+        70981,
+        70981,
+        70981,
+        70981,
+        70981
+      ],
+      "simulation_cu_mean": 70981.0,
+      "simulation_cu_delta_vs_one_point": 19929,
+      "relation_lanes": 1,
+      "point_components": 2,
+      "relation_polynomials": 4,
+      "relation_proof_bytes": 448,
+      "relation_proof_bytes_delta_vs_one_point": 0,
+      "instruction_data_bytes": 18,
+      "transcript_hash_calls_no_retry": 19,
+      "transcript_hash_calls_delta_vs_one_point": 0
+    }
+  ],
+  "production_rule_selected": false,
+  "product_projection_updated": false,
+  "architecture_ruling_made": false,
+  "included_work": [
+    "the same two 10-coordinate MLE points and the same 102-value/1632-byte block are transcript-absorbed before gamma in every mode",
+    "canonical decoding of embedded initial claims, degree-6 relation messages, and terminal four coefficients; no prover polynomial construction runs on SBF",
+    "four rounds of relation boundary/evaluation checks, shared transcript fold challenges, scaled WeightAccumulator folds, and terminal dots",
+    "fresh-kappa alone performs one extra exact-uniform challenge squeeze after gamma; independent lanes alone absorb/check a second relation polynomial per round"
+  ],
+  "excluded_work": [
+    "proof roots, Merkle openings, circle encoding, query work, statement composition, hiding, and payment semantics",
+    "prover-side degree-6 polynomial construction and full 1024-coefficient relation dots",
+    "any soundness-ledger amendment, KAT re-pin, product CU projection, option selection, or transaction-architecture ruling"
+  ],
+  "notes": [
+    "Raw CU rows are same-build local-validator simulations with five identical repetitions and a 1,400,000-CU limit; no custom heap request is present.",
+    "relation_proof_bytes counts only the four-round degree-6 relation-message payload (7 canonical QM31 values per lane per round). It is not a full proof-size projection.",
+    "transcript_hash_calls_no_retry counts SHA-256 backend calls in this diagnostic schedule, including absorb and squeeze-state advance calls; exact-uniform rejection retries would add calls but do not occur in the pinned fixture.",
+    "The one-point row is a cost baseline and is explicitly insecure for two-point binding; all four rows remain owner-decision inputs only."
+  ]
+}

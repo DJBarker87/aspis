@@ -1,0 +1,143 @@
+//! Layer-zero recombination for quarantined profile 23.
+//!
+//! C1 and H/G retain their frozen indices.  One QM31 D lane is appended at
+//! generator 28, so the C2 leaf is `H[4] || G[4] || D[4]` (192 bytes).
+
+use crate::circle_query::{CircleQueryError, CircleQueryLeaf};
+use crate::field::{qm31_power_table, PreparedQm31Multiplier, QM31};
+use crate::state_only_query::{
+    gamma_combine_state_only_layer0_prepared, StateOnlyQueryPowers, STATE_ONLY_C1_LEAF_BYTES,
+    STATE_ONLY_C2_LEAF_BYTES, STATE_ONLY_FIBER_SLOTS, STATE_ONLY_TOTAL_COLUMNS,
+};
+
+pub const PROFILE23_C2_COLUMNS: usize = 3;
+pub const PROFILE23_TOTAL_COLUMNS: usize = STATE_ONLY_TOTAL_COLUMNS + 1;
+pub const PROFILE23_C2_LEAF_BYTES: usize = PROFILE23_C2_COLUMNS * STATE_ONLY_FIBER_SLOTS * 16;
+pub const PROFILE23_D_GENERATOR_INDEX: usize = PROFILE23_TOTAL_COLUMNS - 1;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct StateOnlyProfile23QueryPowers {
+    pub base: StateOnlyQueryPowers,
+    pub d: PreparedQm31Multiplier,
+}
+
+impl StateOnlyProfile23QueryPowers {
+    pub fn new(gamma: QM31) -> Self {
+        let powers = qm31_power_table::<PROFILE23_TOTAL_COLUMNS>(gamma);
+        let base_powers: [QM31; STATE_ONLY_TOTAL_COLUMNS] =
+            core::array::from_fn(|index| powers[index]);
+        Self {
+            base: StateOnlyQueryPowers::from_full_table(&base_powers),
+            d: PreparedQm31Multiplier::new(powers[PROFILE23_D_GENERATOR_INDEX]),
+        }
+    }
+
+    pub fn from_base_and_d(base: StateOnlyQueryPowers, d_power: QM31) -> Self {
+        Self {
+            base,
+            d: PreparedQm31Multiplier::new(d_power),
+        }
+    }
+}
+
+pub const fn profile23_d_symbol_offset(slot: usize) -> Option<usize> {
+    if slot < STATE_ONLY_FIBER_SLOTS {
+        Some(STATE_ONLY_C2_LEAF_BYTES + slot * 16)
+    } else {
+        None
+    }
+}
+
+pub fn gamma_combine_state_only_profile23_layer0_prepared(
+    c1_leaf: &[u8],
+    c2_leaf: &[u8],
+    powers: &StateOnlyProfile23QueryPowers,
+) -> Result<[QM31; STATE_ONLY_FIBER_SLOTS], CircleQueryError> {
+    if c1_leaf.len() != STATE_ONLY_C1_LEAF_BYTES {
+        return Err(CircleQueryError::LeafLength {
+            leaf: CircleQueryLeaf::C1,
+            expected: STATE_ONLY_C1_LEAF_BYTES,
+            actual: c1_leaf.len(),
+        });
+    }
+    if c2_leaf.len() != PROFILE23_C2_LEAF_BYTES {
+        return Err(CircleQueryError::LeafLength {
+            leaf: CircleQueryLeaf::C2,
+            expected: PROFILE23_C2_LEAF_BYTES,
+            actual: c2_leaf.len(),
+        });
+    }
+    let mut combined = gamma_combine_state_only_layer0_prepared(
+        c1_leaf,
+        &c2_leaf[..STATE_ONLY_C2_LEAF_BYTES],
+        &powers.base,
+    )?;
+    for (slot, output) in combined.iter_mut().enumerate() {
+        let offset = profile23_d_symbol_offset(slot).unwrap();
+        let value = QM31::from_le_bytes(&c2_leaf[offset..offset + 16]).ok_or(
+            CircleQueryError::NonCanonicalQm31 {
+                leaf: CircleQueryLeaf::C2,
+                offset,
+            },
+        )?;
+        *output = output.add(powers.d.mul(value));
+    }
+    Ok(combined)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::field::{CM31, M31, P};
+
+    fn next_m31(state: &mut u64) -> M31 {
+        *state = state
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        M31((*state % u64::from(P)) as u32)
+    }
+
+    fn next_qm31(state: &mut u64) -> QM31 {
+        QM31 {
+            c0: CM31::new(next_m31(state), next_m31(state)),
+            c1: CM31::new(next_m31(state), next_m31(state)),
+        }
+    }
+
+    #[test]
+    fn appended_d_matches_literal_twenty_ninth_term() {
+        let mut state = 0x2300_d00d_5100_1ee7;
+        for _ in 0..32 {
+            let gamma = next_qm31(&mut state);
+            let powers = qm31_power_table::<PROFILE23_TOTAL_COLUMNS>(gamma);
+            let mut c1 = [0u8; STATE_ONLY_C1_LEAF_BYTES];
+            let mut c2 = [0u8; PROFILE23_C2_LEAF_BYTES];
+            let mut expected = [QM31::ZERO; STATE_ONLY_FIBER_SLOTS];
+            for slot in 0..STATE_ONLY_FIBER_SLOTS {
+                for column in 0..crate::state_only_query::STATE_ONLY_C1_COLUMNS {
+                    let value = next_m31(&mut state);
+                    let offset =
+                        (slot * crate::state_only_query::STATE_ONLY_C1_COLUMNS + column) * 4;
+                    c1[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+                    expected[slot] = expected[slot].add(powers[column].mul_m31(value));
+                }
+                for helper in 0..PROFILE23_C2_COLUMNS {
+                    let value = next_qm31(&mut state);
+                    let offset = (helper * STATE_ONLY_FIBER_SLOTS + slot) * 16;
+                    value.write_le_bytes(&mut c2[offset..offset + 16]);
+                    expected[slot] = expected[slot].add(
+                        powers[crate::state_only_query::STATE_ONLY_C1_COLUMNS + helper].mul(value),
+                    );
+                }
+            }
+            assert_eq!(
+                gamma_combine_state_only_profile23_layer0_prepared(
+                    &c1,
+                    &c2,
+                    &StateOnlyProfile23QueryPowers::new(gamma),
+                ),
+                Ok(expected)
+            );
+        }
+    }
+}

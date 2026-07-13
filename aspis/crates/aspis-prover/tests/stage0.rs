@@ -6,7 +6,7 @@
 //! half of the accept/reject parity gate item.
 
 use aspis_core::params::{PROFILE_CAPACITY, PROFILE_CAPACITY_LR14, PROFILE_JOHNSON};
-use aspis_core::proof::HEADER_LEN;
+use aspis_core::proof::{HEADER_LEN, ROUND_COMMITMENT_LEN};
 use aspis_core::{verify, FoldPayload, MerkleMode, Profile, VerifyError};
 use aspis_prover::{prove, seeded_coeffs, ProveOptions, HOST_HASH};
 
@@ -72,6 +72,48 @@ fn statement_sized_profile_lr14() {
     assert_eq!(verify(&proof, &d, HOST_HASH), Ok(()));
 }
 
+#[test]
+fn radix4_minimal_subtree_roundtrip_and_frontier_corruption() {
+    let profile = &PROFILE_CAPACITY;
+    let (radix4_proof, d) = prove_one(
+        profile,
+        11,
+        FoldPayload::RawFibers,
+        MerkleMode::Radix4MinimalSubtree,
+    );
+    assert_eq!(verify(&radix4_proof, &d, HOST_HASH), Ok(()));
+
+    let (binary_proof, _) = prove_one(
+        profile,
+        11,
+        FoldPayload::RawFibers,
+        MerkleMode::MinimalSubtree,
+    );
+    assert_ne!(
+        &radix4_proof[HEADER_LEN..HEADER_LEN + 32],
+        &binary_proof[HEADER_LEN..HEADER_LEN + 32],
+        "radix-4 commitment must be domain-separated from the binary tree"
+    );
+
+    let body = HEADER_LEN
+        + profile.num_rounds() as usize * ROUND_COMMITMENT_LEN
+        + profile.final_poly_len() as usize * 16
+        + 8;
+    let unique_count = u16::from_le_bytes(radix4_proof[body..body + 2].try_into().unwrap());
+    let node_count_offset = body + 2 + usize::from(unique_count) * 32;
+    let node_count = u32::from_le_bytes(
+        radix4_proof[node_count_offset..node_count_offset + 4]
+            .try_into()
+            .unwrap(),
+    );
+    assert!(node_count > 0);
+    let corrupted = corrupt_at(&radix4_proof, node_count_offset + 4);
+    assert!(matches!(
+        verify(&corrupted, &d, HOST_HASH),
+        Err(VerifyError::MerkleMismatch { layer: 0 })
+    ));
+}
+
 fn corrupt_at(proof: &[u8], offset: usize) -> Vec<u8> {
     let mut v = proof.to_vec();
     v[offset] ^= 1;
@@ -100,7 +142,7 @@ fn corruption_class_2_fold_payload() {
         MerkleMode::MinimalSubtree,
     );
     let body = HEADER_LEN
-        + profile.num_rounds() as usize * 32
+        + profile.num_rounds() as usize * ROUND_COMMITMENT_LEN
         + profile.final_poly_len() as usize * 16
         + 8;
     // inside layer 0's first opened fiber (skip the u16 unique count)
@@ -117,7 +159,7 @@ fn corruption_class_3_final_poly() {
         FoldPayload::RawFibers,
         MerkleMode::MinimalSubtree,
     );
-    let final_off = HEADER_LEN + profile.num_rounds() as usize * 32;
+    let final_off = HEADER_LEN + profile.num_rounds() as usize * ROUND_COMMITMENT_LEN;
     let bad = corrupt_at(&proof, final_off + 1);
     assert!(verify(&bad, &d, HOST_HASH).is_err());
 }
@@ -131,8 +173,9 @@ fn corruption_class_4_grinding() {
         FoldPayload::RawFibers,
         MerkleMode::MinimalSubtree,
     );
-    let nonce_off =
-        HEADER_LEN + profile.num_rounds() as usize * 32 + profile.final_poly_len() as usize * 16;
+    let nonce_off = HEADER_LEN
+        + profile.num_rounds() as usize * ROUND_COMMITMENT_LEN
+        + profile.final_poly_len() as usize * 16;
     let bad = corrupt_at(&proof, nonce_off);
     let outcome = verify(&bad, &d, HOST_HASH);
     assert!(matches!(
@@ -217,7 +260,7 @@ fn degree_overflow_rejects() {
         MerkleMode::MinimalSubtree,
     );
     // strip the last final-poly coefficient and splice the sections back
-    let final_off = HEADER_LEN + profile.num_rounds() as usize * 32;
+    let final_off = HEADER_LEN + profile.num_rounds() as usize * ROUND_COMMITMENT_LEN;
     let final_len = profile.final_poly_len() as usize * 16;
     let mut shortened = Vec::new();
     shortened.extend_from_slice(&proof[..final_off]);

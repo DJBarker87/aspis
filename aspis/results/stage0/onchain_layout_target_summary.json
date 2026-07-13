@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-07-04T13:23:54.940576+00:00",
+  "generated_at_utc": "2026-07-10T12:35:43.357919+00:00",
   "command": "cargo run -p aspis-xtask -- stage0-onchain-layout-target",
   "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
   "verify_cu_limit": 1400000,
@@ -7,27 +7,93 @@
   "gate_matrix_only": true,
   "variants": [
     {
+      "profile": "capacity_lr10_q36_g32",
+      "soundness_label": "conjectured (capacity) schedule; Stage 1 evaluation-relation enforcement pending",
+      "fold_payload": "raw_fibers",
+      "merkle_mode": "minimal_subtree",
+      "status": "accepted",
+      "verify_error": null,
+      "proof_bytes": 14832,
+      "upload_chunks": 24,
+      "upload_cu_total": 18245,
+      "verify_cu": [
+        743060,
+        743060,
+        743060,
+        743060,
+        743060
+      ],
+      "verify_cu_mean": 743060.0,
+      "verify_repetitions_requested": 5,
+      "corruption_rejected_onchain": [
+        [
+          "root_corruption",
+          true
+        ],
+        [
+          "ood_value_corruption",
+          true
+        ],
+        [
+          "payload_corruption",
+          true
+        ],
+        [
+          "final_value_corruption",
+          true
+        ],
+        [
+          "grinding_corruption",
+          true
+        ],
+        [
+          "statement_digest_mismatch",
+          true
+        ],
+        [
+          "trailing_byte",
+          true
+        ],
+        [
+          "truncation",
+          true
+        ],
+        [
+          "mode_flag_replay",
+          true
+        ],
+        [
+          "profile_swap",
+          true
+        ]
+      ]
+    },
+    {
       "profile": "capacity_lr10_q40_g16",
       "soundness_label": "heuristic diagnostic (lower-row layout target; Stage 1 budget pending)",
       "fold_payload": "raw_fibers",
       "merkle_mode": "minimal_subtree",
       "status": "accepted",
       "verify_error": null,
-      "proof_bytes": 14768,
-      "upload_chunks": 24,
-      "upload_cu_total": 15969,
+      "proof_bytes": 14704,
+      "upload_chunks": 23,
+      "upload_cu_total": 18245,
       "verify_cu": [
-        773668,
-        773668,
-        773668,
-        773668,
-        773668
+        792971,
+        792971,
+        792971,
+        792971,
+        792971
       ],
-      "verify_cu_mean": 773668.0,
+      "verify_cu_mean": 792971.0,
       "verify_repetitions_requested": 5,
       "corruption_rejected_onchain": [
         [
           "root_corruption",
+          true
+        ],
+        [
+          "ood_value_corruption",
           true
         ],
         [
@@ -71,21 +137,25 @@
       "merkle_mode": "minimal_subtree",
       "status": "accepted",
       "verify_error": null,
-      "proof_bytes": 14512,
+      "proof_bytes": 14416,
       "upload_chunks": 23,
-      "upload_cu_total": 13662,
+      "upload_cu_total": 14055,
       "verify_cu": [
-        742795,
-        742795,
-        742795,
-        742795,
-        742795
+        737522,
+        737522,
+        737522,
+        737522,
+        737522
       ],
-      "verify_cu_mean": 742795.0,
+      "verify_cu_mean": 737522.0,
       "verify_repetitions_requested": 5,
       "corruption_rejected_onchain": [
         [
           "root_corruption",
+          true
+        ],
+        [
+          "ood_value_corruption",
           true
         ],
         [
@@ -129,21 +199,25 @@
       "merkle_mode": "minimal_subtree",
       "status": "accepted",
       "verify_error": null,
-      "proof_bytes": 12560,
-      "upload_chunks": 20,
-      "upload_cu_total": 14431,
+      "proof_bytes": 13200,
+      "upload_chunks": 21,
+      "upload_cu_total": 12570,
       "verify_cu": [
-        656662,
-        656662,
-        656662,
-        656662,
-        656662
+        636704,
+        636704,
+        636704,
+        636704,
+        636704
       ],
-      "verify_cu_mean": 656662.0,
+      "verify_cu_mean": 636704.0,
       "verify_repetitions_requested": 5,
       "corruption_rejected_onchain": [
         [
           "root_corruption",
+          true
+        ],
+        [
+          "ood_value_corruption",
           true
         ],
         [
@@ -184,7 +258,9 @@
   "notes": [
     "Lower-row diagnostic for the wide-row statement layout decision; not a frozen profile until Stage 1 soundness accounting and the Stage 2 direct evaluator exist.",
     "Only raw_fibers/minimal_subtree is measured because proof_carried_round_local lost on both bytes and CU in the gate artifact.",
-    "This runner uses g16 to avoid prover-side grinding variance; verifier-side g32 overhead is one grinding hash and was measured separately in onchain_g32_summary.json.",
+    "The first row is the literal ruled q36/g32 Stage 1 profile and performs the real prover-side 32-bit nonce search; the remaining g16 rows are comparison diagnostics.",
+    "Although the verifier's grinding threshold check is constant-cost, changing g16 to g32 changes the transcript-bound header and therefore the sampled query collisions and minimal-subtree shape. Use the literal g32 row, not a g16 CU proxy, for the ruled profile.",
+    "Envelope version 2 carries one transcript-bound OOD value per round. The OOD relation itself remains pending the sumcheck/fold interleaving; ood_value_corruption nevertheless rejects on-chain because the value is challenge-bound.",
     "Combine these PCS verifier costs with layout_sweep RLC/wide-leaf deltas; do not add the full synthetic Merkle loop or path hashing is double-counted."
   ]
 }

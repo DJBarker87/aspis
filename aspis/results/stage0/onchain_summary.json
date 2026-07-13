@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-07-04T10:47:56.487833+00:00",
+  "generated_at_utc": "2026-07-04T17:22:05.609533+00:00",
   "command": "cargo run -p aspis-xtask -- stage0-onchain-gate",
   "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
   "verify_cu_limit": 1400000,
@@ -15,15 +15,15 @@
       "verify_error": null,
       "proof_bytes": 24694,
       "upload_chunks": 39,
-      "upload_cu_total": 22036,
+      "upload_cu_total": 19866,
       "verify_cu": [
-        1063093,
-        1063093,
-        1063093,
-        1063093,
-        1063093
+        1064509,
+        1064509,
+        1064509,
+        1064509,
+        1064509
       ],
-      "verify_cu_mean": 1063093.0,
+      "verify_cu_mean": 1064509.0,
       "verify_repetitions_requested": 5,
       "corruption_rejected_onchain": [
         [
@@ -73,15 +73,15 @@
       "verify_error": null,
       "proof_bytes": 30230,
       "upload_chunks": 48,
-      "upload_cu_total": 25780,
+      "upload_cu_total": 24672,
       "verify_cu": [
-        1078628,
-        1078628,
-        1078628,
-        1078628,
-        1078628
+        1078940,
+        1078940,
+        1078940,
+        1078940,
+        1078940
       ],
-      "verify_cu_mean": 1078628.0,
+      "verify_cu_mean": 1078940.0,
       "verify_repetitions_requested": 5,
       "corruption_rejected_onchain": [
         [
@@ -131,7 +131,7 @@
       "verify_error": "{\"InstructionError\":[2,\"ProgramFailedToComplete\"]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD invoke [1]\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD consumed 1399644 of 1399700 compute units\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD failed: exceeded CUs meter at BPF instruction\"]",
       "proof_bytes": 39478,
       "upload_chunks": 62,
-      "upload_cu_total": 30502,
+      "upload_cu_total": 35466,
       "verify_cu": [
         1400000
       ],
@@ -148,7 +148,7 @@
       "verify_error": "{\"InstructionError\":[2,\"ProgramFailedToComplete\"]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD invoke [1]\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD consumed 1399644 of 1399700 compute units\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD failed: exceeded CUs meter at BPF instruction\"]",
       "proof_bytes": 49366,
       "upload_chunks": 78,
-      "upload_cu_total": 37776,
+      "upload_cu_total": 46080,
       "verify_cu": [
         1400000
       ],
@@ -165,7 +165,7 @@
       "verify_error": "{\"InstructionError\":[2,\"ProgramFailedToComplete\"]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD invoke [1]\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD consumed 1399644 of 1399700 compute units\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD failed: exceeded CUs meter at BPF instruction\"]",
       "proof_bytes": 37308,
       "upload_chunks": 59,
-      "upload_cu_total": 32076,
+      "upload_cu_total": 37599,
       "verify_cu": [
         1400000
       ],

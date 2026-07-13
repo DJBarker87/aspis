@@ -1,0 +1,88 @@
+{
+  "artifact": "profile20_compact_bound_coefficient18_rank",
+  "date": "2026-07-13",
+  "status": "red",
+  "geometry": {
+    "message_log": 10,
+    "domain_log": 19,
+    "rate_denominator": 512,
+    "query_count": 16
+  },
+  "command": "RUSTFLAGS=-Awarnings cargo run --release -q -p aspis-prover --example profile20_compact_claim_rank -- results/stage2/proofs/atomic_state_only_profile20_v3_unmined.bin 1+u i+u switch-high18 1+i+iu",
+  "fixture": {
+    "path": "results/stage2/proofs/atomic_state_only_profile20_v3_unmined.bin",
+    "sha256": "fdd1097f702b411b6bcd26d0e195322d7683ff93ec4cb70828b9459fe7cef007"
+  },
+  "source_hashes_git_blob": {
+    "state_only_claim_aggregation_rank.rs": "11901fc7f2678fa21eeb3bf8b2e1f6784cc4c444",
+    "state_only_circle_relation.rs": "c2f22f9fb51ca1c8f546e18c11485f832889a7c4",
+    "profile20_compact_claim_rank.rs": "c5804f6f22359a9794153bf56ec92ec2bc6b78b7"
+  },
+  "challenges": {
+    "tau_coordinates_m31": [1, 0, 1, 0],
+    "delta_coordinates_m31": [0, 1, 1, 0],
+    "epsilon_coordinates_m31": [1, 1, 0, 1]
+  },
+  "construction": {
+    "source_words": "X,F in the natural coefficient basis P_<19",
+    "disclosed_otp": "U=F+epsilon X",
+    "authenticated_source_view": "all four root-zero C2 symbols of X and F at every q16 query",
+    "ideal_binding_assumption": "the root-zero carry scalar is exactly natural coefficient 18 of the decoded low-degree X polynomial",
+    "carried_old_view": "only X[18] through unbalanced root-zero row 72",
+    "carry_scale": "epsilon*gamma^28",
+    "coefficient_functional_is_implemented_verifier_check": false,
+    "rank_result_must_not_be_promoted_without_source_pcs_functional_proof": true
+  },
+  "compact_baseline": {
+    "old_claims_qm31": 84,
+    "compact_claims_qm31": 61,
+    "saved_claims_qm31": 23,
+    "saved_claim_bytes": 368,
+    "shared_unused_raw_rank_m31": 1204,
+    "shared_unused_raw_rows_m31": 1204,
+    "shared_unused_raw_kernel_m31": 16370,
+    "masked_sumcheck_rank_m31": 1080,
+    "baseline_pcs_rank_m31": 444,
+    "helper_augmented_rank_m31": 444
+  },
+  "source_view": {
+    "message_qm31": 19,
+    "randomness_qm31": 0,
+    "code_dimension_qm31": 19,
+    "variables_qm31": 38,
+    "code_basis_rank_qm31": 19,
+    "code_basis_fingerprint": "0xc84e519cb7240674",
+    "folded_opening_rank_qm31": 16,
+    "raw_four_symbol_opening_rank_qm31": 16,
+    "raw_contains_folded_openings": true,
+    "u_plus_folded_rank_qm31": 35,
+    "u_plus_raw_rank_qm31": 35,
+    "conditioned_kernel_qm31": 3
+  },
+  "tail_guard": {
+    "compact_relation_weights": ["tau", "kappa", "kappa^2"],
+    "unbalanced_copy_inactive_target_carried": true,
+    "all_19_sparse_tails_equal_independent_dense_reference": true,
+    "gamma_exponent": 28,
+    "exact_p0_later_ood_relation_final_tail": true
+  },
+  "rank_result": {
+    "pcs_before_m31": 444,
+    "pcs_after_selective_coefficient18_m31": 448,
+    "selective_new_pivots_m31": [4, 5, 6, 7],
+    "selective_pivots_later_m31": 4,
+    "selective_pivots_ood_m31": 0,
+    "selective_pivots_relation_m31": 0,
+    "selective_pivots_final_m31": 0,
+    "semantic_augmented_rank_m31": 452,
+    "semantic_new_pivots_after_selective_carry_m31": [21, 20, 22, 23],
+    "legal_sumcheck_augmented_rank_m31": 452,
+    "contains_semantic_and_legal_sumcheck": false,
+    "switch_minor_fingerprint": "0x1921984729a90aeb",
+    "helper_minor_fingerprint": "0x3102aa235208c13a",
+    "semantic_minor_fingerprint": "0xe241e2d65cb2d867",
+    "legal_sumcheck_minor_fingerprint": "0x0f47a1c230582f0d",
+    "elapsed_millis": 109894
+  },
+  "ruling": "Even an ideal, perfectly sound coefficient-18 binding rotates the compact PCS quotient: it adds [4,5,6,7], after which the same-statement semantic audit adds the independent group [21,20,22,23]. It therefore cannot close the semantic deficit, and no coefficient-functional verifier proof should be purchased for this construction."
+}

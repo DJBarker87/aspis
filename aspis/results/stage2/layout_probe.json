@@ -1,0 +1,243 @@
+{
+  "generated_at_utc": "2026-07-10T17:23:51.905834+00:00",
+  "command": "cargo run --release -p aspis-xtask -- stage2-layout-probe",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "log_rows": 10,
+  "query_count": 36,
+  "repetitions": 5,
+  "variants": [
+    {
+      "columns": 51,
+      "leaf_bytes": 204,
+      "simulation_cu": [
+        262233,
+        262233,
+        262233,
+        262233,
+        262233
+      ],
+      "simulation_cu_mean": 262233.0,
+      "delta_vs_k64_cu": 0,
+      "diagnostic_markers": [
+        {
+          "label": "start log_rows=10 columns=51 queries=36 leaf_bytes=204",
+          "remaining": 1398240,
+          "delta_from_previous": null
+        },
+        {
+          "label": "leaf_hash_done",
+          "remaining": 1389097,
+          "delta_from_previous": 9143
+        },
+        {
+          "label": "merkle_done",
+          "remaining": 1321566,
+          "delta_from_previous": 67531
+        },
+        {
+          "label": "rlc_done",
+          "remaining": 1137948,
+          "delta_from_previous": 183618
+        }
+      ],
+      "wide_leaf_hash_cu": 9143,
+      "synthetic_merkle_cu": 67531,
+      "obsolete_same_gamma_rlc_cu": 183618
+    },
+    {
+      "columns": 64,
+      "leaf_bytes": 256,
+      "simulation_cu": [
+        309501,
+        309501,
+        309501,
+        309501,
+        309501
+      ],
+      "simulation_cu_mean": 309501.0,
+      "delta_vs_k64_cu": 47268,
+      "diagnostic_markers": [
+        {
+          "label": "start log_rows=10 columns=64 queries=36 leaf_bytes=256",
+          "remaining": 1398240,
+          "delta_from_previous": null
+        },
+        {
+          "label": "leaf_hash_done",
+          "remaining": 1388161,
+          "delta_from_previous": 10079
+        },
+        {
+          "label": "merkle_done",
+          "remaining": 1320630,
+          "delta_from_previous": 67531
+        },
+        {
+          "label": "rlc_done",
+          "remaining": 1090680,
+          "delta_from_previous": 229950
+        }
+      ],
+      "wide_leaf_hash_cu": 10079,
+      "synthetic_merkle_cu": 67531,
+      "obsolete_same_gamma_rlc_cu": 229950
+    },
+    {
+      "columns": 67,
+      "leaf_bytes": 268,
+      "simulation_cu": [
+        320409,
+        320409,
+        320409,
+        320409,
+        320409
+      ],
+      "simulation_cu_mean": 320409.0,
+      "delta_vs_k64_cu": 58176,
+      "diagnostic_markers": [
+        {
+          "label": "start log_rows=10 columns=67 queries=36 leaf_bytes=268",
+          "remaining": 1398240,
+          "delta_from_previous": null
+        },
+        {
+          "label": "leaf_hash_done",
+          "remaining": 1387945,
+          "delta_from_previous": 10295
+        },
+        {
+          "label": "merkle_done",
+          "remaining": 1320414,
+          "delta_from_previous": 67531
+        },
+        {
+          "label": "rlc_done",
+          "remaining": 1079772,
+          "delta_from_previous": 240642
+        }
+      ],
+      "wide_leaf_hash_cu": 10295,
+      "synthetic_merkle_cu": 67531,
+      "obsolete_same_gamma_rlc_cu": 240642
+    },
+    {
+      "columns": 80,
+      "leaf_bytes": 320,
+      "simulation_cu": [
+        367677,
+        367677,
+        367677,
+        367677,
+        367677
+      ],
+      "simulation_cu_mean": 367677.0,
+      "delta_vs_k64_cu": 105444,
+      "diagnostic_markers": [
+        {
+          "label": "start log_rows=10 columns=80 queries=36 leaf_bytes=320",
+          "remaining": 1398240,
+          "delta_from_previous": null
+        },
+        {
+          "label": "leaf_hash_done",
+          "remaining": 1387009,
+          "delta_from_previous": 11231
+        },
+        {
+          "label": "merkle_done",
+          "remaining": 1319478,
+          "delta_from_previous": 67531
+        },
+        {
+          "label": "rlc_done",
+          "remaining": 1032504,
+          "delta_from_previous": 286974
+        }
+      ],
+      "wide_leaf_hash_cu": 11231,
+      "synthetic_merkle_cu": 67531,
+      "obsolete_same_gamma_rlc_cu": 286974
+    },
+    {
+      "columns": 82,
+      "leaf_bytes": 328,
+      "simulation_cu": [
+        374949,
+        374949,
+        374949,
+        374949,
+        374949
+      ],
+      "simulation_cu_mean": 374949.0,
+      "delta_vs_k64_cu": 112716,
+      "diagnostic_markers": [
+        {
+          "label": "start log_rows=10 columns=82 queries=36 leaf_bytes=328",
+          "remaining": 1398240,
+          "delta_from_previous": null
+        },
+        {
+          "label": "leaf_hash_done",
+          "remaining": 1386865,
+          "delta_from_previous": 11375
+        },
+        {
+          "label": "merkle_done",
+          "remaining": 1319334,
+          "delta_from_previous": 67531
+        },
+        {
+          "label": "rlc_done",
+          "remaining": 1025232,
+          "delta_from_previous": 294102
+        }
+      ],
+      "wide_leaf_hash_cu": 11375,
+      "synthetic_merkle_cu": 67531,
+      "obsolete_same_gamma_rlc_cu": 294102
+    },
+    {
+      "columns": 84,
+      "leaf_bytes": 336,
+      "simulation_cu": [
+        382221,
+        382221,
+        382221,
+        382221,
+        382221
+      ],
+      "simulation_cu_mean": 382221.0,
+      "delta_vs_k64_cu": 119988,
+      "diagnostic_markers": [
+        {
+          "label": "start log_rows=10 columns=84 queries=36 leaf_bytes=336",
+          "remaining": 1398240,
+          "delta_from_previous": null
+        },
+        {
+          "label": "leaf_hash_done",
+          "remaining": 1386721,
+          "delta_from_previous": 11519
+        },
+        {
+          "label": "merkle_done",
+          "remaining": 1319190,
+          "delta_from_previous": 67531
+        },
+        {
+          "label": "rlc_done",
+          "remaining": 1017960,
+          "delta_from_previous": 301230
+        }
+      ],
+      "wide_leaf_hash_cu": 11519,
+      "synthetic_merkle_cu": 67531,
+      "obsolete_same_gamma_rlc_cu": 301230
+    }
+  ],
+  "notes": [
+    "The leaf-hash and synthetic path markers remain useful for k80/q36 geometry. The historical RLC marker is explicitly obsolete because that loop multiplies every column by the same gamma rather than gamma powers.",
+    "Use results/stage2/wide_rlc_probe.json for the correct q-by-k RLC; lazy_dot4 is the measured winner. Do not quote the old k80-minus-k64 total as an RLC projection.",
+    "This is still not an integrated wide-row PCS measurement."
+  ]
+}
