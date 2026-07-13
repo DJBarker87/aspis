@@ -3,6 +3,7 @@ mod onchain;
 mod profile23_devnet;
 mod profile23_mainnet;
 mod profile23_release;
+mod profile23_statement;
 mod retired_numbers;
 mod stage1;
 mod stage1_theta;

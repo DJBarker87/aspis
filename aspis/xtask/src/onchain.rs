@@ -17,7 +17,7 @@ use std::{
 use anyhow::{anyhow, bail, ensure, Context, Result};
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use borsh::to_vec;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::{json, Value};
 use solana_sdk::{
     compute_budget::ComputeBudgetInstruction,
@@ -48,6 +48,11 @@ use aspis_verifier::{
     ZkKernelKind, M31_CIRCLE_BASIS_C1_COLUMNS, M31_CIRCLE_BASIS_C1_LEAF_BYTES,
     M31_CIRCLE_BASIS_C2_LEAF_BYTES, M31_CIRCLE_BASIS_DIAGNOSTIC_FIBERS,
     M31_CIRCLE_BASIS_RLC_FIXTURE_BYTES, M31_CIRCLE_FOLD_FIXTURE_BYTES, PROOF_ACCOUNT_HEADER_LEN,
+};
+
+use crate::profile23_statement::{
+    canonical_profile23_public_input_digest, load_profile23_statement_file, profile23_hex,
+    profile23_recorded_path,
 };
 
 const UPLOAD_CHUNK_BYTES: usize = 640;
@@ -1522,26 +1527,6 @@ fn profile23_proof_path(root: &Path) -> (PathBuf, bool) {
     }
 }
 
-const PROFILE23_STATEMENT_ARTIFACT: &str = "profile23_production_statement";
-const PROFILE23_STATEMENT_SELECTION_RULE: &str =
-    "least Good23 selector from three post-final branches";
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Profile23StatementSidecar {
-    artifact: String,
-    pool_hex: String,
-    sequence: u64,
-    current_anchor_hex: String,
-    nullifier_hex: String,
-    output_commitment_hex: String,
-    output_anchor_hex: String,
-    asset_id: u32,
-    fee: u32,
-    selection_rule: String,
-    witness_independent_public_metadata: bool,
-}
-
 #[derive(Debug)]
 struct Profile23StatementSelection {
     statement: aspis_statement::AtomicPaymentStatementV3,
@@ -1549,95 +1534,6 @@ struct Profile23StatementSelection {
     source_override: bool,
     sha256: Option<String>,
     canonical_public_input_digest: String,
-}
-
-fn profile23_hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
-}
-
-fn decode_profile23_hex_32(field: &str, value: &str) -> Result<[u8; 32]> {
-    let bytes = value.as_bytes();
-    ensure!(
-        bytes.len() == 64,
-        "Profile23 statement sidecar {field} must contain exactly 64 lowercase hex characters"
-    );
-    ensure!(
-        bytes
-            .iter()
-            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(byte)),
-        "Profile23 statement sidecar {field} is not canonical lowercase hex"
-    );
-    let mut decoded = [0u8; 32];
-    for (index, output) in decoded.iter_mut().enumerate() {
-        let high = match bytes[index * 2] {
-            b'0'..=b'9' => bytes[index * 2] - b'0',
-            byte => byte - b'a' + 10,
-        };
-        let low = match bytes[index * 2 + 1] {
-            b'0'..=b'9' => bytes[index * 2 + 1] - b'0',
-            byte => byte - b'a' + 10,
-        };
-        *output = (high << 4) | low;
-    }
-    Ok(decoded)
-}
-
-fn profile23_statement_from_sidecar(
-    sidecar: Profile23StatementSidecar,
-) -> Result<aspis_statement::AtomicPaymentStatementV3> {
-    ensure!(
-        sidecar.artifact == PROFILE23_STATEMENT_ARTIFACT,
-        "Profile23 statement sidecar artifact must be {PROFILE23_STATEMENT_ARTIFACT}"
-    );
-    ensure!(
-        sidecar.selection_rule == PROFILE23_STATEMENT_SELECTION_RULE,
-        "Profile23 statement sidecar selection_rule drift"
-    );
-    ensure!(
-        sidecar.witness_independent_public_metadata,
-        "Profile23 statement sidecar must declare witness-independent public metadata"
-    );
-
-    let current_anchor_bytes =
-        decode_profile23_hex_32("current_anchor_hex", &sidecar.current_anchor_hex)?;
-    let nullifier_bytes = decode_profile23_hex_32("nullifier_hex", &sidecar.nullifier_hex)?;
-    let output_commitment_bytes =
-        decode_profile23_hex_32("output_commitment_hex", &sidecar.output_commitment_hex)?;
-    let output_anchor_bytes =
-        decode_profile23_hex_32("output_anchor_hex", &sidecar.output_anchor_hex)?;
-    let statement = aspis_statement::AtomicPaymentStatementV3 {
-        pool: decode_profile23_hex_32("pool_hex", &sidecar.pool_hex)?,
-        sequence: sidecar.sequence,
-        spend: aspis_statement::SpendPublic {
-            anchor: aspis_statement::decode_digest_canonical(&current_anchor_bytes).map_err(
-                |_| anyhow!("Profile23 statement sidecar current_anchor_hex is noncanonical"),
-            )?,
-            nullifier: aspis_statement::decode_digest_canonical(&nullifier_bytes).map_err(
-                |_| anyhow!("Profile23 statement sidecar nullifier_hex is noncanonical"),
-            )?,
-            output_commitment: aspis_statement::decode_digest_canonical(&output_commitment_bytes)
-                .map_err(|_| {
-                anyhow!("Profile23 statement sidecar output_commitment_hex is noncanonical")
-            })?,
-            asset_id: aspis_statement::decode_asset_id_canonical(sidecar.asset_id)
-                .map_err(|_| anyhow!("Profile23 statement sidecar asset_id is noncanonical"))?,
-            fee: sidecar.fee,
-        },
-        output_anchor: aspis_statement::decode_digest_canonical(&output_anchor_bytes).map_err(
-            |_| anyhow!("Profile23 statement sidecar output_anchor_hex is noncanonical"),
-        )?,
-    };
-    aspis_statement::encode_atomic_payment_statement_v3(&statement)
-        .map_err(|error| anyhow!("Profile23 statement sidecar is noncanonical: {error:?}"))?;
-    Ok(statement)
-}
-
-fn decode_profile23_statement_sidecar(
-    bytes: &[u8],
-) -> Result<aspis_statement::AtomicPaymentStatementV3> {
-    let sidecar: Profile23StatementSidecar =
-        serde_json::from_slice(bytes).context("decode canonical Profile23 statement sidecar")?;
-    profile23_statement_from_sidecar(sidecar)
 }
 
 fn profile23_fixture_statement() -> Result<aspis_statement::AtomicPaymentStatementV3> {
@@ -1691,39 +1587,28 @@ fn profile23_statement_selection_from_path(
     proof_source_override: bool,
     statement_path: Option<PathBuf>,
 ) -> Result<Profile23StatementSelection> {
-    use sha2::Digest as _;
-
-    let (statement, path, source_override, sha256) = match statement_path {
-        Some(path) => {
-            ensure!(
-                proof_source_override,
-                "ASPIS_PROFILE23_STATEMENT requires ASPIS_PROFILE23_PROOF"
-            );
-            let path = if path.is_absolute() {
-                path
-            } else {
-                root.join(path)
-            };
-            let path = fs::canonicalize(&path).with_context(|| {
-                format!("resolve Profile23 statement sidecar {}", path.display())
-            })?;
-            let bytes = fs::read(&path)
-                .with_context(|| format!("read Profile23 statement sidecar {}", path.display()))?;
-            let statement = decode_profile23_statement_sidecar(&bytes).with_context(|| {
-                format!(
-                    "decode canonical Profile23 statement sidecar {}",
-                    path.display()
+    let (statement, path, source_override, sha256, canonical_public_input_digest) =
+        match statement_path {
+            Some(path) => {
+                ensure!(
+                    proof_source_override,
+                    "ASPIS_PROFILE23_STATEMENT requires ASPIS_PROFILE23_PROOF"
+                );
+                let loaded = load_profile23_statement_file(root, &path)?;
+                (
+                    loaded.statement,
+                    Some(loaded.path),
+                    true,
+                    Some(loaded.sha256),
+                    loaded.canonical_public_input_digest,
                 )
-            })?;
-            let sha256 = profile23_hex(&sha2::Sha256::digest(&bytes));
-            (statement, Some(path), true, Some(sha256))
-        }
-        None => (profile23_fixture_statement()?, None, false, None),
-    };
-    let canonical_public_input_digest = profile23_hex(
-        &aspis_statement::atomic_payment_statement_digest_v3(&statement, HOST_HASH)
-            .map_err(|error| anyhow!("canonical Profile23 public-input digest: {error:?}"))?,
-    );
+            }
+            None => {
+                let statement = profile23_fixture_statement()?;
+                let digest = canonical_profile23_public_input_digest(&statement)?;
+                (statement, None, false, None, digest)
+            }
+        };
     Ok(Profile23StatementSelection {
         statement,
         path,
@@ -1744,13 +1629,6 @@ fn profile23_statement_selection(
     )
 }
 
-fn profile23_recorded_path(root: &Path, path: &Path) -> String {
-    path.strip_prefix(root)
-        .unwrap_or(path)
-        .display()
-        .to_string()
-}
-
 #[cfg(test)]
 mod profile23_statement_sidecar_tests {
     use std::sync::atomic::{AtomicU64, Ordering};
@@ -1759,6 +1637,10 @@ mod profile23_statement_sidecar_tests {
     use sha2::Digest as _;
 
     use super::*;
+    use crate::profile23_statement::{
+        decode_profile23_statement_sidecar, PROFILE23_STATEMENT_ARTIFACT,
+        PROFILE23_STATEMENT_SELECTION_RULE,
+    };
 
     static NEXT_TEMP: AtomicU64 = AtomicU64::new(0);
 

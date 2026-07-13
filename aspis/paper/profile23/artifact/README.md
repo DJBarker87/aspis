@@ -42,7 +42,7 @@ Before release, fill and machine-generate:
 
 | tier | purpose | must produce | expected resources | command |
 | --- | --- | --- | --- | --- |
-| 0 | cached bundle and stale-claim audit | hashes, 30/30 gate result, cross-link report, generated-paper-macro diff | TODO | `TODO: artifact verify --tier 0` |
+| 0 | cached bundle and stale-claim audit | hashes, complete live-evaluation-matched gate result, cross-link report, generated-paper-macro diff | TODO | `TODO: artifact verify --tier 0` |
 | 1 | fast semantic/teeth tests | relation/parser/transcript/finalization/rollback/privacy report | TODO | `TODO: artifact verify --tier 1` |
 | 2 | clean default SBF rebuild | byte-equality, length/hash, features and configured-address report | TODO | `TODO: artifact verify --tier 2` |
 | 3 | pinned local Agave replay | raw transactions/RPC/logs, literal CU, exact pre/post account images, failures | TODO | `TODO: artifact verify --tier 3` |
