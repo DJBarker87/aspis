@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-07-13T20:59:11.048209+00:00",
+  "generated_at_utc": "2026-07-13T22:20:37.558067+00:00",
   "command": "ASPIS_PROFILE23_PROOF=/Users/dominic/ZK/aspis/results/stage2/proofs/atomic_state_only_profile23_v3_mined.bin NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-profile23-acceptance",
   "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
   "instruction_wire_ordinal": 59,
@@ -8,6 +8,12 @@
   "proof_bytes": 61599,
   "proof_sha256": "35c4e79316bf4a2af1951e5d2f41b6ebb4ebb7bd1e91a3ba93c52e549bfe7949",
   "proof_unmined": false,
+  "statement_path": null,
+  "statement_source_override": false,
+  "statement_sha256": null,
+  "statement_pool_hex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+  "statement_sequence": 73,
+  "canonical_public_input_digest": "52e96f99756fe8fd2d8b7a700019b143d7eb549af1bf1ae987e99a75cadcd4c9",
   "batch_grinding_bits": 38,
   "final_grinding_bits": 38,
   "fold_grinding_bits": [
@@ -104,6 +110,7 @@
     "Tag59 is one integrated parse/transcript/terminal/relation/private-opening/q16 call. The phase ledger is overlap-free and reconciles exactly to the literal simulation total.",
     "All five Merkle sections authenticate value||salt32 records. Salts are not transcript messages; their roots bind them before downstream challenges.",
     "The ASPIS_PROFILE23_PROOF override supplied a mined proof; production host and SBF tag59 both accepted it without a PoW bypass.",
+    "No statement sidecar was supplied; this artifact uses the unchanged built-in Profile23 fixture statement.",
     "Tags60/61 remain feature-gated; production mutation stays disabled until the complete-view HVZK audit and mined tag60 KAT are green."
   ]
 }
