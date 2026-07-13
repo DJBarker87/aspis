@@ -1,2 +1,4 @@
 /target
 /.stage0-validator
+/.stage2-validator-account-fixtures
+/results/stage2/profile23-mask-nonce-ledger

@@ -1,0 +1,228 @@
+{
+  "generated_at_utc": "2026-07-10T20:48:52.046093+00:00",
+  "command": "cargo run --release -p aspis-xtask -- stage2-evaluator",
+  "poseidon2_pin": {
+    "upstream": "https://github.com/Plonky3/Plonky3",
+    "crate_version": "p3-mersenne-31=0.6.1",
+    "width": 16,
+    "rate": 8,
+    "digest_elements": 8,
+    "sbox_degree": 5,
+    "full_rounds": 8,
+    "partial_rounds": 14,
+    "upstream_kat_passed": true,
+    "differential_test_states": 16
+  },
+  "statement_shape": {
+    "layout_status": "FROZEN r2/kprime51 by review ruling 2026-07-10",
+    "merkle_depth": 20,
+    "poseidon2_permutations_per_spend": 49,
+    "poseidon2_rounds_per_permutation": 22,
+    "total_poseidon2_rounds": 1078,
+    "total_poseidon2_sbox_relations": 6958,
+    "frozen_rounds_per_wide_row": 2,
+    "frozen_poseidon_constraint_rows": 539,
+    "frozen_poseidon_allocated_rows": 784,
+    "frozen_opened_values_k_prime": 51,
+    "frozen_max_sbox_terms_per_row": 32,
+    "frozen_linear_term_bracket_per_row": [
+      32,
+      64
+    ],
+    "frozen_logup_degree3_terms": 2,
+    "frozen_range_bit_terms": 0,
+    "frozen_range_lookup_limb_bits": 10,
+    "frozen_range_lookup_limbs": 6,
+    "frozen_range_reconstruction_terms": 6,
+    "zerocheck_eq_variables": 10,
+    "witness_m31_elements_before_layout_padding": 196,
+    "public_m31_elements": 26
+  },
+  "vectors": [
+    {
+      "name": "valid_spend",
+      "expected": "accept",
+      "direct_observed": "Ok(())",
+      "lookup_observed": "Ok(())",
+      "direct_passed": true,
+      "lookup_passed": true,
+      "passed": true
+    },
+    {
+      "name": "field_wrap_inflation",
+      "expected": "reject",
+      "direct_observed": "Err(OutputValueOutOfRange)",
+      "lookup_observed": "Err(RangeLookupReconstructionMismatch)",
+      "direct_passed": true,
+      "lookup_passed": true,
+      "passed": true
+    },
+    {
+      "name": "wrong_asset_binding",
+      "expected": "reject",
+      "direct_observed": "Err(AssetMismatch)",
+      "lookup_observed": "Err(AssetMismatch)",
+      "direct_passed": true,
+      "lookup_passed": true,
+      "passed": true
+    },
+    {
+      "name": "wrong_anchor",
+      "expected": "reject",
+      "direct_observed": "Err(AnchorMismatch)",
+      "lookup_observed": "Err(AnchorMismatch)",
+      "direct_passed": true,
+      "lookup_passed": true,
+      "passed": true
+    },
+    {
+      "name": "wrong_merkle_path",
+      "expected": "reject",
+      "direct_observed": "Err(AnchorMismatch)",
+      "lookup_observed": "Err(AnchorMismatch)",
+      "direct_passed": true,
+      "lookup_passed": true,
+      "passed": true
+    },
+    {
+      "name": "forged_ownership_key",
+      "expected": "reject",
+      "direct_observed": "Err(AnchorMismatch)",
+      "lookup_observed": "Err(AnchorMismatch)",
+      "direct_passed": true,
+      "lookup_passed": true,
+      "passed": true
+    },
+    {
+      "name": "wrong_nullifier",
+      "expected": "reject",
+      "direct_observed": "Err(NullifierMismatch)",
+      "lookup_observed": "Err(NullifierMismatch)",
+      "direct_passed": true,
+      "lookup_passed": true,
+      "passed": true
+    },
+    {
+      "name": "wrong_output_commitment",
+      "expected": "reject",
+      "direct_observed": "Err(OutputCommitmentMismatch)",
+      "lookup_observed": "Err(OutputCommitmentMismatch)",
+      "direct_passed": true,
+      "lookup_passed": true,
+      "passed": true
+    },
+    {
+      "name": "double_spend_replay",
+      "expected": "reject",
+      "direct_observed": "Err(NullifierAlreadySpent)",
+      "lookup_observed": "Err(NullifierAlreadySpent)",
+      "direct_passed": true,
+      "lookup_passed": true,
+      "passed": true
+    },
+    {
+      "name": "boundary_zero",
+      "expected": "accept",
+      "direct_observed": "Ok(())",
+      "lookup_observed": "Ok(())",
+      "direct_passed": true,
+      "lookup_passed": true,
+      "passed": true
+    },
+    {
+      "name": "boundary_value_2pow30_minus_1",
+      "expected": "accept",
+      "direct_observed": "Ok(())",
+      "lookup_observed": "Ok(())",
+      "direct_passed": true,
+      "lookup_passed": true,
+      "passed": true
+    },
+    {
+      "name": "boundary_value_2pow30",
+      "expected": "reject",
+      "direct_observed": "Err(InputValueOutOfRange)",
+      "lookup_observed": "Err(RangeLookupReconstructionMismatch)",
+      "direct_passed": true,
+      "lookup_passed": true,
+      "passed": true
+    },
+    {
+      "name": "balance_mismatch",
+      "expected": "reject",
+      "direct_observed": "Err(BalanceMismatch)",
+      "lookup_observed": "Err(BalanceMismatch)",
+      "direct_passed": true,
+      "lookup_passed": true,
+      "passed": true
+    }
+  ],
+  "lookup_attack_vectors": [
+    {
+      "name": "lookup_limb_1024",
+      "expected": "Err(RangeLookupLimbOutOfRange)",
+      "observed": "Err(RangeLookupLimbOutOfRange)",
+      "passed": true
+    },
+    {
+      "name": "lookup_reconstruction_corruption",
+      "expected": "Err(RangeLookupReconstructionMismatch)",
+      "observed": "Err(RangeLookupReconstructionMismatch)",
+      "passed": true
+    }
+  ],
+  "logup_constraint_vectors": [
+    {
+      "name": "logup_honest_range_multiset",
+      "expected": "Ok(())",
+      "observed": "Ok(())",
+      "passed": true
+    },
+    {
+      "name": "logup_helper_corruption",
+      "expected": "Err(RowRelationMismatch { row: 17 })",
+      "observed": "Err(RowRelationMismatch { row: 17 })",
+      "passed": true
+    },
+    {
+      "name": "logup_multiplicity_corruption",
+      "expected": "Err(TotalSumMismatch)",
+      "observed": "Err(TotalSumMismatch)",
+      "passed": true
+    },
+    {
+      "name": "logup_nonmember_1024",
+      "expected": "Err(RangeValueOutOfTable { query: 0, value: 1024 })",
+      "observed": "Err(RangeValueOutOfTable { query: 0, value: 1024 })",
+      "passed": true
+    },
+    {
+      "name": "logup_total_sum_has_teeth",
+      "expected": "Err(TotalSumMismatch)",
+      "observed": "Err(TotalSumMismatch)",
+      "passed": true
+    },
+    {
+      "name": "logup_active_pole",
+      "expected": "Err(ActivePole { row: 0, side: Producer })",
+      "observed": "Err(ActivePole { row: 0, side: Producer })",
+      "passed": true
+    },
+    {
+      "name": "logup_multiplicity_after_chi_weakened_order_accepts",
+      "expected": "Ok(())",
+      "observed": "Ok(())",
+      "passed": true
+    }
+  ],
+  "all_vectors_passed": true,
+  "notes": [
+    "The evaluator proves no statement; it is the executable semantic oracle the future constraints must match.",
+    "The corpus starts with economic failures: wraparound inflation, public binding, ownership, membership, nullifier replay, output binding, balance, and range boundaries.",
+    "The lookup evaluator uses six exact 10-bit limbs, checks fixed-table membership, and enforces reconstruction. It is a semantic oracle; the LogUp proof relation is not integrated yet.",
+    "The LogUp oracle now constructs the post-chi helper, checks the degree-3 local identity, and separately checks sum(h)=0. Its teeth corpus shows that local rows alone do not reject an unmatched nonmember.",
+    "logup_multiplicity_after_chi_weakened_order_accepts is an attack demonstration: expected Ok means the forged fractional multiplicities defeat every check when the multiplicity column is chosen after chi. The canonical order commits multiplicities in C1 before chi; the vector is the teeth behind that ordering line in the soundness note.",
+    "The statement shape is synchronized to the frozen r=2/k'=51 layout: 49 Poseidon2 permutations use 539 constraint-active rows inside 49 aligned 16-row blocks (784 allocated rows).",
+    "Depth 20 is the explicit demo choice. Moving to depth 32 adds 24 Poseidon2 permutations because each 8+8 digest compression needs two rate-8 sponge permutations."
+  ]
+}

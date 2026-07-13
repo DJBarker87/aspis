@@ -1,0 +1,354 @@
+{
+  "generated_at_utc": "2026-07-13T04:54:39.464049+00:00",
+  "command": "NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-profile20-mutation",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "production_instruction_wire_ordinal": 47,
+  "diagnostic_instruction_wire_ordinal": 48,
+  "diagnostic_sbf_features": [
+    "diagnostic-unmined-mutation",
+    "profile20-mutation-candidate"
+  ],
+  "proof_path": "results/stage2/proofs/atomic_state_only_profile20_v3_unmined.bin",
+  "proof_sha256": "fdd1097f702b411b6bcd26d0e195322d7683ff93ec4cb70828b9459fe7cef007",
+  "proof_unmined": true,
+  "production_pow_bypass_exposed": false,
+  "default_tag47_fail_closed_host": true,
+  "candidate_tag47_rejects_unmined_sbf": true,
+  "candidate_tag47_rollback_green": true,
+  "paths": [
+    {
+      "marker_path": "program_owned_zeroed",
+      "literal_simulation_cu": 1189180,
+      "headroom_under_1_4m_cu": 210820,
+      "incremental_over_tag46_cu": 9729,
+      "markers": [
+        {
+          "label": "atomic48_instruction_start",
+          "remaining": 1398012,
+          "delta_from_previous": null
+        },
+        {
+          "label": "atomic48_accounts_validated_program_owned",
+          "remaining": 1390754,
+          "delta_from_previous": 7258
+        },
+        {
+          "label": "atomic48_statement_digest_done",
+          "remaining": 1389860,
+          "delta_from_previous": 894
+        },
+        {
+          "label": "atomic48_proof_loaded",
+          "remaining": 1389614,
+          "delta_from_previous": 246
+        },
+        {
+          "label": "atomic46_parse_done",
+          "remaining": 1387804,
+          "delta_from_previous": 1810
+        },
+        {
+          "label": "atomic46_transcript_done",
+          "remaining": 1235852,
+          "delta_from_previous": 151952
+        },
+        {
+          "label": "atomic46_terminal_prepared",
+          "remaining": 1200351,
+          "delta_from_previous": 35501
+        },
+        {
+          "label": "atomic46_terminal_poseidon",
+          "remaining": 1106260,
+          "delta_from_previous": 94091
+        },
+        {
+          "label": "atomic46_terminal_semantic_initial",
+          "remaining": 1096688,
+          "delta_from_previous": 9572
+        },
+        {
+          "label": "atomic46_terminal_semantic_absorption",
+          "remaining": 1088529,
+          "delta_from_previous": 8159
+        },
+        {
+          "label": "atomic46_terminal_semantic_merkle",
+          "remaining": 1088315,
+          "delta_from_previous": 214
+        },
+        {
+          "label": "atomic46_terminal_semantic_range",
+          "remaining": 1064599,
+          "delta_from_previous": 23716
+        },
+        {
+          "label": "atomic46_terminal_semantic_public",
+          "remaining": 1053287,
+          "delta_from_previous": 11312
+        },
+        {
+          "label": "atomic46_terminal_copy_patterns",
+          "remaining": 1031959,
+          "delta_from_previous": 21328
+        },
+        {
+          "label": "atomic46_terminal_copy_routing",
+          "remaining": 924049,
+          "delta_from_previous": 107910
+        },
+        {
+          "label": "atomic46_terminal_copy_algebra",
+          "remaining": 898107,
+          "delta_from_previous": 25942
+        },
+        {
+          "label": "atomic46_terminal_composition_equality",
+          "remaining": 879633,
+          "delta_from_previous": 18474
+        },
+        {
+          "label": "atomic46_terminal_mask",
+          "remaining": 852884,
+          "delta_from_previous": 26749
+        },
+        {
+          "label": "atomic46_terminal_final",
+          "remaining": 852652,
+          "delta_from_previous": 232
+        },
+        {
+          "label": "atomic46_terminal_done",
+          "remaining": 851136,
+          "delta_from_previous": 1516
+        },
+        {
+          "label": "atomic46_relation_done",
+          "remaining": 667655,
+          "delta_from_previous": 183481
+        },
+        {
+          "label": "atomic46_openings_parse_done",
+          "remaining": 481881,
+          "delta_from_previous": 185774
+        },
+        {
+          "label": "atomic46_queries_done",
+          "remaining": 212515,
+          "delta_from_previous": 269366
+        },
+        {
+          "label": "atomic48_proof_verified",
+          "remaining": 212233,
+          "delta_from_previous": 282
+        },
+        {
+          "label": "atomic48_program_marker_ready",
+          "remaining": 212027,
+          "delta_from_previous": 206
+        },
+        {
+          "label": "atomic48_state_rechecked",
+          "remaining": 211286,
+          "delta_from_previous": 741
+        },
+        {
+          "label": "atomic48_state_applied",
+          "remaining": 211007,
+          "delta_from_previous": 279
+        }
+      ],
+      "ledger": {
+        "transaction_setup_cu": 1988,
+        "account_validation_cu": 7258,
+        "statement_decode_and_digest_cu": 894,
+        "exact_profile20_verifier_cu": 1177627,
+        "marker_prepare_or_cpi_cu": 206,
+        "mutable_state_recheck_cu": 741,
+        "final_account_writes_cu": 279,
+        "post_last_marker_cu": 187,
+        "reconciled_total_cu": 1189180,
+        "formula": "1988 + 7258 + 894 + 1177627 + 206 + 741 + 279 + 187"
+      },
+      "clean_simulation_accepted": true,
+      "corrupt_proof_rejected_without_mutation": true,
+      "committed_transition_succeeded": true,
+      "pool_sequence_advanced_once": true,
+      "pool_anchor_replaced": true,
+      "nullifier_marker_written": true,
+      "duplicate_rejected_without_second_mutation": true,
+      "concurrent_exactly_one_committed": null
+    },
+    {
+      "marker_path": "canonical_system_owned_create",
+      "literal_simulation_cu": 1191513,
+      "headroom_under_1_4m_cu": 208487,
+      "incremental_over_tag46_cu": 12062,
+      "markers": [
+        {
+          "label": "atomic48_instruction_start",
+          "remaining": 1398012,
+          "delta_from_previous": null
+        },
+        {
+          "label": "atomic48_accounts_validated_system_owned",
+          "remaining": 1391206,
+          "delta_from_previous": 6806
+        },
+        {
+          "label": "atomic48_statement_digest_done",
+          "remaining": 1390312,
+          "delta_from_previous": 894
+        },
+        {
+          "label": "atomic48_proof_loaded",
+          "remaining": 1390066,
+          "delta_from_previous": 246
+        },
+        {
+          "label": "atomic46_parse_done",
+          "remaining": 1388256,
+          "delta_from_previous": 1810
+        },
+        {
+          "label": "atomic46_transcript_done",
+          "remaining": 1236304,
+          "delta_from_previous": 151952
+        },
+        {
+          "label": "atomic46_terminal_prepared",
+          "remaining": 1200803,
+          "delta_from_previous": 35501
+        },
+        {
+          "label": "atomic46_terminal_poseidon",
+          "remaining": 1106712,
+          "delta_from_previous": 94091
+        },
+        {
+          "label": "atomic46_terminal_semantic_initial",
+          "remaining": 1097140,
+          "delta_from_previous": 9572
+        },
+        {
+          "label": "atomic46_terminal_semantic_absorption",
+          "remaining": 1088981,
+          "delta_from_previous": 8159
+        },
+        {
+          "label": "atomic46_terminal_semantic_merkle",
+          "remaining": 1088767,
+          "delta_from_previous": 214
+        },
+        {
+          "label": "atomic46_terminal_semantic_range",
+          "remaining": 1065051,
+          "delta_from_previous": 23716
+        },
+        {
+          "label": "atomic46_terminal_semantic_public",
+          "remaining": 1053739,
+          "delta_from_previous": 11312
+        },
+        {
+          "label": "atomic46_terminal_copy_patterns",
+          "remaining": 1032411,
+          "delta_from_previous": 21328
+        },
+        {
+          "label": "atomic46_terminal_copy_routing",
+          "remaining": 924501,
+          "delta_from_previous": 107910
+        },
+        {
+          "label": "atomic46_terminal_copy_algebra",
+          "remaining": 898559,
+          "delta_from_previous": 25942
+        },
+        {
+          "label": "atomic46_terminal_composition_equality",
+          "remaining": 880085,
+          "delta_from_previous": 18474
+        },
+        {
+          "label": "atomic46_terminal_mask",
+          "remaining": 853336,
+          "delta_from_previous": 26749
+        },
+        {
+          "label": "atomic46_terminal_final",
+          "remaining": 853104,
+          "delta_from_previous": 232
+        },
+        {
+          "label": "atomic46_terminal_done",
+          "remaining": 851588,
+          "delta_from_previous": 1516
+        },
+        {
+          "label": "atomic46_relation_done",
+          "remaining": 668107,
+          "delta_from_previous": 183481
+        },
+        {
+          "label": "atomic46_openings_parse_done",
+          "remaining": 482333,
+          "delta_from_previous": 185774
+        },
+        {
+          "label": "atomic46_queries_done",
+          "remaining": 212967,
+          "delta_from_previous": 269366
+        },
+        {
+          "label": "atomic48_proof_verified",
+          "remaining": 212685,
+          "delta_from_previous": 282
+        },
+        {
+          "label": "atomic48_system_marker_created",
+          "remaining": 209694,
+          "delta_from_previous": 2991
+        },
+        {
+          "label": "atomic48_state_rechecked",
+          "remaining": 208953,
+          "delta_from_previous": 741
+        },
+        {
+          "label": "atomic48_state_applied",
+          "remaining": 208674,
+          "delta_from_previous": 279
+        }
+      ],
+      "ledger": {
+        "transaction_setup_cu": 1988,
+        "account_validation_cu": 6806,
+        "statement_decode_and_digest_cu": 894,
+        "exact_profile20_verifier_cu": 1177627,
+        "marker_prepare_or_cpi_cu": 2991,
+        "mutable_state_recheck_cu": 741,
+        "final_account_writes_cu": 279,
+        "post_last_marker_cu": 187,
+        "reconciled_total_cu": 1191513,
+        "formula": "1988 + 6806 + 894 + 1177627 + 2991 + 741 + 279 + 187"
+      },
+      "clean_simulation_accepted": true,
+      "corrupt_proof_rejected_without_mutation": true,
+      "committed_transition_succeeded": true,
+      "pool_sequence_advanced_once": true,
+      "pool_anchor_replaced": true,
+      "nullifier_marker_written": true,
+      "duplicate_rejected_without_second_mutation": true,
+      "concurrent_exactly_one_committed": true
+    }
+  ],
+  "production_profile21_mutation_enabled": false,
+  "atomic_complete_view_hiding_closed": false,
+  "notes": [
+    "Default SBF builds keep tag47 fail-closed while atomic complete-view hiding is red. Its nondefault candidate arm has no diagnostic selector and rejects the committed unmined proof through the exact production PoW verifier before any CPI or write.",
+    "Tag48 exists only in the nondefault diagnostic-unmined-mutation build. It uses the same proof bytes, parser, transcript, terminal, relation, openings, and q16 verifier core as tag46, then executes the exact account-transition kernel for CU measurement.",
+    "Program-owned-zeroed and canonical zero-lamport System-owned PDA creation are measured separately. Each literal marker ledger reconciles to its single simulation total; no overlap substitution is used.",
+    "Rollback, duplicate, and writable-lock concurrency teeth inspect exact pool and nullifier account images. The System-owned path races two differently signed transactions and requires exactly one commit."
+  ]
+}

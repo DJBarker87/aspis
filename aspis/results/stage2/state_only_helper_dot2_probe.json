@@ -1,0 +1,45 @@
+{
+  "generated_at_utc": "2026-07-13T07:05:13.148342+00:00",
+  "command": "NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-state-only-helper-dot2-probe",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "instruction_wire_ordinal": 53,
+  "query_count": 16,
+  "c1_columns": 26,
+  "qm31_helper_lanes": 2,
+  "rows": [
+    {
+      "fused_helpers": false,
+      "label": "independent_products",
+      "simulation_cu": [
+        156637,
+        156637,
+        156637,
+        156637,
+        156637
+      ],
+      "simulation_cu_mean": 156637.0
+    },
+    {
+      "fused_helpers": true,
+      "label": "lazy_dot2",
+      "simulation_cu": [
+        138658,
+        138658,
+        138658,
+        138658,
+        138658
+      ],
+      "simulation_cu_mean": 138658.0
+    }
+  ],
+  "measured_savings_cu": 17979,
+  "host_outputs_equal": true,
+  "c1_noncanonical_rejected_both": true,
+  "c2_noncanonical_rejected_both": true,
+  "soundness_neutral": true,
+  "notes": [
+    "Both arms execute the identical 26-column C1 canonical byte dot and sixteen varied four-slot fibers. Only the two helper products' reduction schedule changes.",
+    "The candidate retains all 18 helper M31 products but reduces their nine Karatsuba channels once per slot instead of once per product.",
+    "This is an isolated arithmetic A/B. If the pending soundness repair adds X as a third main QM31 lane, the same construction must be remeasured as an exact prepared dot3 before integration."
+  ]
+}

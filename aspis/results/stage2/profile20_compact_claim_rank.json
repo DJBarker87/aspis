@@ -1,0 +1,80 @@
+{
+  "status": "red",
+  "promotion_status": "rejected_by_exact_rank_gate",
+  "geometry": {
+    "profile": 20,
+    "message_log": 10,
+    "query_count": 16,
+    "rate": "1/512",
+    "proof_path": "results/stage2/proofs/atomic_state_only_profile20_v3_unmined.bin",
+    "proof_sha256": "fdd1097f702b411b6bcd26d0e195322d7683ff93ec4cb70828b9459fe7cef007"
+  },
+  "candidate": {
+    "semantic_columns_with_three_terminal_claims": 16,
+    "joint_unused_columns_with_z_only": [
+      "M0",
+      "M1",
+      "M2",
+      "M3",
+      "M4",
+      "M5",
+      "M6",
+      "M7",
+      "M8",
+      "M9",
+      "H",
+      "G"
+    ],
+    "shared_tail_claim": "A = kappa * sum_U gamma^j f_j(successor(z)) + kappa^2 * sum_U gamma^j f_j(xor12(z))",
+    "combined_word": "F* = delta * S_gamma + U_gamma",
+    "relation_point_weights": [
+      "tau",
+      "kappa",
+      "kappa^2"
+    ],
+    "discrepancy_polynomial": "delta*tau*Z_S + delta*T_S + tau*Z_U + e_A",
+    "old_claims_qm31": 84,
+    "compact_claims_qm31": 61,
+    "saved_claims_qm31": 23,
+    "saved_claim_bytes": 368
+  },
+  "diagnostic_scalars": {
+    "tau_label": "1+u",
+    "tau_coordinates_m31": [1, 0, 1, 0],
+    "delta_label": "i+u",
+    "delta_coordinates_m31": [0, 1, 1, 0],
+    "note": "Generic independent nonzero scalars for the exact linear map; not a promoted Fiat-Shamir schedule."
+  },
+  "exact_ranks_m31": {
+    "shared_unused_raw_rank": 1204,
+    "shared_unused_raw_rows": 1204,
+    "shared_unused_raw_kernel": 16370,
+    "masked_sumcheck_rank": 1080,
+    "baseline_pcs_rank": 444,
+    "helper_augmented_rank": 444,
+    "helper_new_pivots": [],
+    "semantic_augmented_rank": 448,
+    "semantic_new_pivots": [5, 4, 6, 7],
+    "legal_sumcheck_augmented_rank": 448,
+    "legal_sumcheck_new_pivots": [],
+    "contains_helper_semantic_and_legal_sumcheck": false
+  },
+  "minor_fingerprints": {
+    "helper": "0x3102aa235208c13a",
+    "semantic": "0xd3523923b64c20c7",
+    "legal_sumcheck": "0x0f47a1c230582f0d"
+  },
+  "elapsed_millis": 182952,
+  "command": "RUSTFLAGS=-Awarnings cargo run --release -q -p aspis-prover --example profile20_compact_claim_rank",
+  "soundness_schedule_if_rank_had_passed": [
+    "raw commitments and z",
+    "kappa",
+    "main g38",
+    "gamma",
+    "A",
+    "tau",
+    "group g38",
+    "delta"
+  ],
+  "soundness_note": "The post-A degree-2 correlated-agreement term was estimated near 75.12 ungrounded bits and requires the separate group g38 to reach about 113.12 bits. This rank result is red independently, so no production soundness claim is made."
+}

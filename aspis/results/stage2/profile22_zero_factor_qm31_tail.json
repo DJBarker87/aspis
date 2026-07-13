@@ -1,0 +1,121 @@
+{
+  "artifact": "profile22_zero_factor_qm31_tail",
+  "date": "2026-07-13",
+  "status": "frozen_conditional_rank_green_universal_controls_red_not_integrated",
+  "production_enabled": false,
+  "construction": {
+    "generator_order": {
+      "c1": [0, 25],
+      "H": 26,
+      "G": 27,
+      "D": 28
+    },
+    "D_field": "QM31",
+    "D_domain": "full 1024-row message",
+    "D_factor": "0",
+    "root_neutral_pairing": "delta_G=-gamma*delta_D",
+    "root_identity": "gamma^27*delta_G+gamma^28*delta_D=0",
+    "effective_sumcheck_image": "-gamma*F_G*D",
+    "changes_H1_direct_image": false,
+    "requires_gamma_nonzero": true
+  },
+  "conditional_target": {
+    "compressed_wire_m31": 1084,
+    "fixed_initial_m31": 4,
+    "fixed_terminal_m31": 4,
+    "kernel_initial_terminal_m31": 1076
+  },
+  "schedules": [
+    {
+      "name": "frozen_profile22_fixture",
+      "baseline_rank_m31": 1072,
+      "with_D_rank_m31": 1076,
+      "target_m31": 1076,
+      "D_raw_rank_m31": 268,
+      "H1_inactive_padding_raw_rank_m31": 268,
+      "terminal_zero_sources_checked_m31": 17324,
+      "every_post_raw_source_terminal_zero": true,
+      "conditional_minor_fingerprint_u64_hex": "cc3e3f3feeac0dbb",
+      "complete": true,
+      "elapsed_ms": 12457
+    },
+    {
+      "name": "terminal_certificate",
+      "z": ["1", "1", "1", "1", "1", "1", "0", "1", "i", "u"],
+      "baseline_rank_m31": 748,
+      "with_D_rank_m31": 786,
+      "target_m31": 1076,
+      "D_raw_rank_m31": 268,
+      "H1_inactive_padding_raw_rank_m31": 268,
+      "terminal_zero_sources_checked_m31": 17324,
+      "every_post_raw_source_terminal_zero": true,
+      "conditional_minor_fingerprint_u64_hex": "42e4e7e860fa7ad0",
+      "complete": false,
+      "elapsed_ms": 7260
+    },
+    {
+      "name": "last_round_affine_degenerate",
+      "z": ["-(32+i)/9", "1", "1", "1", "1", "1", "0", "1", "i", "u"],
+      "baseline_rank_m31": 900,
+      "with_D_rank_m31": 912,
+      "target_m31": 1076,
+      "D_raw_rank_m31": 268,
+      "H1_inactive_padding_raw_rank_m31": 268,
+      "terminal_zero_sources_checked_m31": 17324,
+      "every_post_raw_source_terminal_zero": true,
+      "conditional_minor_fingerprint_u64_hex": "fe338a9a49ff661d",
+      "complete": false,
+      "elapsed_ms": 11129
+    }
+  ],
+  "m31_before_hg_control": {
+    "frozen_prefix_ranks_m31": [1072, 1076, 1076, 1076, 1076],
+    "terminal_certificate_prefix_ranks_m31": [748, 750, 750, 750, 750],
+    "verdict": "frozen green but shifts H/G and is strictly weaker than one QM31 D tail"
+  },
+  "physical_h1_translation_guard": {
+    "source": "inactive H1 padding rows balanced against global dependent over four tower coordinates",
+    "q_limbs_m31": 256,
+    "terminal_limbs_m31": 12,
+    "target_rank_m31": 268,
+    "measured_rank_m31": 268,
+    "old_304_row_allocation_retired": true
+  },
+  "wire_projection": {
+    "c2_leaf_bytes_before": 128,
+    "c2_leaf_bytes_after": 192,
+    "q16_values_delta_bytes": 1024,
+    "three_terminal_delta_bytes": 48,
+    "proof_delta_bytes": 1072,
+    "fixture_proof_bytes_before": 56686,
+    "fixture_proof_bytes_after": 57758,
+    "generator_width_before": 28,
+    "generator_width_after": 29
+  },
+  "cu_screen": {
+    "integrated_measurement": false,
+    "measured_three_lane_q16_helper_cu": 60968,
+    "measured_128_byte_c2_widening_cu": 1027,
+    "measured_current_parser_cu": 1832,
+    "handling_reserve_cu": 5000,
+    "optimistic_increment_proxy_cu": 27668,
+    "conservative_increment_proxy_cu": 68827,
+    "exact_system_create_headroom_cu": 230286,
+    "bookable": false
+  },
+  "theorem_status": {
+    "frozen_minor_nonzero": true,
+    "all_parser_valid_z_rank_theorem": false,
+    "terminal_certificate_counterexample": true,
+    "affine_degenerate_counterexample": true,
+    "old_41040_degree_ledger_transferable": false,
+    "requires_new_joint_minor_and_soundness_repin": true
+  },
+  "implementation": {
+    "rank_probe": "crates/aspis-prover/src/state_only_hiding_rank/profile22_zero_factor_root_neutral.rs",
+    "example": "crates/aspis-prover/examples/profile22_zero_factor_root_neutral.rs",
+    "test": "crates/aspis-prover/tests/profile22_zero_factor_qm31_tail.rs",
+    "production_wire_changed": false
+  },
+  "note": "docs/stage2-profile22-zero-factor-qm31-tail.md"
+}

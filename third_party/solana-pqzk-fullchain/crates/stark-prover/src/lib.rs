@@ -1,5 +1,7 @@
 //! Minimal STARK prover for the demo.
 //! Derives seed and inc from the first 16 bytes of SHA256 of the cipher and proves the affine counter x_{t+1} = x_t + inc.
+//! A zero increment is canonically mapped to one because Winterfell's DEEP composer requires at
+//! least one full-degree trace polynomial and panics on a constant trace.
 //! Uses Sha2_256 and Winterfell 0.12, uses trace length 8, and uses FRI options that target about 128 bit security.
 
 use winter_utils::Serializable;
@@ -130,6 +132,7 @@ pub fn generate_proof_with_config(
         (0u64, 1u64)
     };
     let seed = BaseElement::from(seed_u64);
+    let inc_u64 = inc_u64.max(1);
     let inc = BaseElement::from(inc_u64);
 
     let mut trace = TraceTable::new(1, trace_len);

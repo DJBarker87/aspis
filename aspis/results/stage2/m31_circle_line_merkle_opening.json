@@ -1,0 +1,93 @@
+{
+  "status": "HOST_CIRCLE_LINE_MERKLE_PRIMITIVE_PASS_ONLY",
+  "sources": {
+    "core_module": "crates/aspis-core/src/circle_line_merkle.rs",
+    "host_builder_and_teeth": "crates/aspis-prover/tests/m31_circle_line_merkle.rs",
+    "layer0_official_anchor": "results/stage2/m31_circle_official_stwo_anchor.json",
+    "fold_arithmetic": "crates/aspis-core/src/circle_fri.rs"
+  },
+  "commands": {
+    "parser": "cargo test -p aspis-core circle_line_merkle --lib",
+    "builder_and_teeth": "cargo test -p aspis-prover --test m31_circle_line_merkle",
+    "strict_lint": "cargo clippy -p aspis-core -p aspis-prover --all-targets --all-features -- -D warnings"
+  },
+  "test_results": {
+    "core_parser_passed": 2,
+    "host_builder_and_teeth_passed": 4,
+    "failed": 0
+  },
+  "fixed_layers": [
+    {
+      "layer": 1,
+      "tag": "0x41",
+      "binary_depth": 8,
+      "leaf_count": 256,
+      "expected_indices": "unique q>>2",
+      "incoming_slot": "q&3"
+    },
+    {
+      "layer": 2,
+      "tag": "0x42",
+      "binary_depth": 6,
+      "leaf_count": 64,
+      "expected_indices": "unique q>>4",
+      "incoming_slot": "(q>>2)&3"
+    },
+    {
+      "layer": 3,
+      "tag": "0x43",
+      "binary_depth": 4,
+      "leaf_count": 16,
+      "expected_indices": "unique q>>6",
+      "incoming_slot": "(q>>4)&3"
+    }
+  ],
+  "section_contract": {
+    "per_layer": "u16 count || count*64-byte QM31 leaves || u32 frontier_count || frontier",
+    "sequence": "layer1 || layer2 || layer3",
+    "layer0_queries": "range-checked, sorted, deduplicated before shifts",
+    "canonical_qm31_required": true,
+    "trailing_bytes_rejected": true,
+    "borrowed_leaf_and_slot_lookup": true,
+    "lookup_requires_exact_original_query": true,
+    "prefix_roots_used": "CandidatePrefix rounds 1, 2, and 3"
+  },
+  "committed_fold_fixture": {
+    "kind": "deterministic host commitment fixture derived from the exact official layer-zero 49+2 encoder fixture; these are not claimed as independent official Stwo roots",
+    "gamma": [17, 29, 43, 71],
+    "alphas": [
+      [101, 307, 401, 809],
+      [131, 313, 419, 811],
+      [151, 331, 431, 821]
+    ],
+    "symbol_counts": [1024, 256, 64],
+    "root_builder": "test-local raw SHA256 leaf 0x10/tag and ordered node4 0x12 implementation",
+    "roots": [
+      "660a1222ffb15265f3aa4e8750532e3bed26baff63245cfec4023148a8906ef7",
+      "aa9e50e4f6e8556fc9825d204ab22f6c1e9faf66f34c54042b092025ae460317",
+      "1a68889bf89fc3eddfcade024d9f7c30e637c256b77234e00939b05b0398168d"
+    ],
+    "prefix_round_roots_verified": true,
+    "query_chain_values_verified": true
+  },
+  "adversarial_teeth": {
+    "same_adversarial_bytes_rule": true,
+    "wrong_layer_tag": "canonical rejects; test-local parameterized-tag verifier accepts unchanged bytes",
+    "wrong_query_shift": "canonical q>>2/q>>4/q>>6 verifier rejects; test-local q>>1/q>>3/q>>5 verifier accepts unchanged bytes",
+    "slot_transpose": "canonical rejects independently at every layer; test-local transposed-slot verifier accepts unchanged bytes",
+    "frontier_reuse": "canonical rejects empty layer-2 frontier; test-local reuse of layer-1 frontier accepts unchanged bytes under the explicitly constructed malicious root",
+    "truncation": "canonical rejects; test-local zero-padding parser accepts unchanged truncated bytes under the explicitly constructed malicious root",
+    "trailing_byte": "canonical rejects; test-local ignore-one-byte parser accepts unchanged bytes",
+    "noncanonical_qm31": "canonical rejects before Merkle verification"
+  },
+  "proof_prefix_semantics_changed": false,
+  "transcript_or_kat_integrated": false,
+  "tag24_acceptance_enabled": false,
+  "two_point_mode_selected": false,
+  "complete_proof_acceptance_enabled": false,
+  "sbf_built_or_measured": false,
+  "cu_projection_added": false,
+  "soundness_transport_closed": false,
+  "payment_semantics_proven": false,
+  "protocol_or_architecture_ruling_made": false
+}

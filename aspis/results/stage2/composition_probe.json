@@ -1,0 +1,467 @@
+{
+  "generated_at_utc": "2026-07-10T17:23:49.734775+00:00",
+  "command": "cargo run --release -p aspis-xtask -- stage2-composition-probe",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "repetitions": 5,
+  "baseline_cu": [
+    2243,
+    2243,
+    2243,
+    2243,
+    2243
+  ],
+  "baseline_cu_mean": 2243.0,
+  "frozen_k64_rlc_only_cu": [
+    52147,
+    52147,
+    52147,
+    52147,
+    52147
+  ],
+  "frozen_k64_rlc_only_cu_mean": 52147.0,
+  "pre_composition_projection_cu": 1175086,
+  "transaction_target_cu": 1190000,
+  "ten_percent_slack_maximum_cu": 1071000,
+  "variants": [
+    {
+      "name": "freehand_optimistic",
+      "kernel": "naive",
+      "parameters": {
+        "opened_values": 80,
+        "poseidon_sbox_terms": 32,
+        "poseidon_linear_terms": 64,
+        "logup_degree3_terms": 1,
+        "range_bit_terms": 32,
+        "eq_variables": 10
+      },
+      "host_qm31_multiplications": 582,
+      "host_qm31_by_cm31_multiplications": 288,
+      "host_additions_or_subtractions": 736,
+      "simulation_cu": [
+        274009,
+        274009,
+        274009,
+        274009,
+        274009
+      ],
+      "simulation_cu_mean": 274009.0,
+      "matching_rlc_only_cu": [
+        64789,
+        64789,
+        64789,
+        64789,
+        64789
+      ],
+      "matching_rlc_only_cu_mean": 64789.0,
+      "composition_incremental_cu_over_matching_rlc": 209220,
+      "rlc_delta_from_frozen_k64_cu": 12642,
+      "projected_total_cu": 1396948,
+      "headroom_vs_1_19m_cu": -206948,
+      "meets_10_percent_slack": false
+    },
+    {
+      "name": "evaluator_confirmed_low",
+      "kernel": "naive",
+      "parameters": {
+        "opened_values": 80,
+        "poseidon_sbox_terms": 64,
+        "poseidon_linear_terms": 64,
+        "logup_degree3_terms": 1,
+        "range_bit_terms": 64,
+        "eq_variables": 10
+      },
+      "host_qm31_multiplications": 838,
+      "host_qm31_by_cm31_multiplications": 320,
+      "host_additions_or_subtractions": 960,
+      "simulation_cu": [
+        376892,
+        376892,
+        376892,
+        376892,
+        376892
+      ],
+      "simulation_cu_mean": 376892.0,
+      "matching_rlc_only_cu": [
+        64789,
+        64789,
+        64789,
+        64789,
+        64789
+      ],
+      "matching_rlc_only_cu_mean": 64789.0,
+      "composition_incremental_cu_over_matching_rlc": 312103,
+      "rlc_delta_from_frozen_k64_cu": 12642,
+      "projected_total_cu": 1499831,
+      "headroom_vs_1_19m_cu": -309831,
+      "meets_10_percent_slack": false
+    },
+    {
+      "name": "evaluator_confirmed_low_optimized",
+      "kernel": "structured_horner",
+      "parameters": {
+        "opened_values": 80,
+        "poseidon_sbox_terms": 64,
+        "poseidon_linear_terms": 64,
+        "logup_degree3_terms": 1,
+        "range_bit_terms": 64,
+        "eq_variables": 10
+      },
+      "host_qm31_multiplications": 501,
+      "host_qm31_by_cm31_multiplications": 64,
+      "host_additions_or_subtractions": 736,
+      "simulation_cu": [
+        211374,
+        211374,
+        211374,
+        211374,
+        211374
+      ],
+      "simulation_cu_mean": 211374.0,
+      "matching_rlc_only_cu": [
+        34530,
+        34530,
+        34530,
+        34530,
+        34530
+      ],
+      "matching_rlc_only_cu_mean": 34530.0,
+      "composition_incremental_cu_over_matching_rlc": 176844,
+      "rlc_delta_from_frozen_k64_cu": -17617,
+      "projected_total_cu": 1334313,
+      "headroom_vs_1_19m_cu": -144313,
+      "meets_10_percent_slack": false
+    },
+    {
+      "name": "evaluator_low_lookup_range_optimized",
+      "kernel": "structured_horner",
+      "parameters": {
+        "opened_values": 80,
+        "poseidon_sbox_terms": 64,
+        "poseidon_linear_terms": 70,
+        "logup_degree3_terms": 2,
+        "range_bit_terms": 0,
+        "eq_variables": 10
+      },
+      "host_qm31_multiplications": 383,
+      "host_qm31_by_cm31_multiplications": 0,
+      "host_additions_or_subtractions": 515,
+      "simulation_cu": [
+        154805,
+        154805,
+        154805,
+        154805,
+        154805
+      ],
+      "simulation_cu_mean": 154805.0,
+      "matching_rlc_only_cu": [
+        34530,
+        34530,
+        34530,
+        34530,
+        34530
+      ],
+      "matching_rlc_only_cu_mean": 34530.0,
+      "composition_incremental_cu_over_matching_rlc": 120275,
+      "rlc_delta_from_frozen_k64_cu": -17617,
+      "projected_total_cu": 1277744,
+      "headroom_vs_1_19m_cu": -87744,
+      "meets_10_percent_slack": false
+    },
+    {
+      "name": "evaluator_lookup_range_stress_linear128",
+      "kernel": "structured_horner",
+      "parameters": {
+        "opened_values": 80,
+        "poseidon_sbox_terms": 64,
+        "poseidon_linear_terms": 128,
+        "logup_degree3_terms": 2,
+        "range_bit_terms": 0,
+        "eq_variables": 10
+      },
+      "host_qm31_multiplications": 441,
+      "host_qm31_by_cm31_multiplications": 0,
+      "host_additions_or_subtractions": 805,
+      "simulation_cu": [
+        186829,
+        186829,
+        186829,
+        186829,
+        186829
+      ],
+      "simulation_cu_mean": 186829.0,
+      "matching_rlc_only_cu": [
+        34530,
+        34530,
+        34530,
+        34530,
+        34530
+      ],
+      "matching_rlc_only_cu_mean": 34530.0,
+      "composition_incremental_cu_over_matching_rlc": 152299,
+      "rlc_delta_from_frozen_k64_cu": -17617,
+      "projected_total_cu": 1309768,
+      "headroom_vs_1_19m_cu": -119768,
+      "meets_10_percent_slack": false
+    },
+    {
+      "name": "r3_lookup_range_optimized",
+      "kernel": "structured_horner",
+      "parameters": {
+        "opened_values": 67,
+        "poseidon_sbox_terms": 48,
+        "poseidon_linear_terms": 54,
+        "logup_degree3_terms": 2,
+        "range_bit_terms": 0,
+        "eq_variables": 10
+      },
+      "host_qm31_multiplications": 306,
+      "host_qm31_by_cm31_multiplications": 0,
+      "host_additions_or_subtractions": 414,
+      "simulation_cu": [
+        124643,
+        124643,
+        124643,
+        124643,
+        124643
+      ],
+      "simulation_cu_mean": 124643.0,
+      "matching_rlc_only_cu": [
+        29042,
+        29042,
+        29042,
+        29042,
+        29042
+      ],
+      "matching_rlc_only_cu_mean": 29042.0,
+      "composition_incremental_cu_over_matching_rlc": 95601,
+      "rlc_delta_from_frozen_k64_cu": -23105,
+      "projected_total_cu": 1247582,
+      "headroom_vs_1_19m_cu": -57582,
+      "meets_10_percent_slack": false
+    },
+    {
+      "name": "r3_lookup_range_stress_linear102",
+      "kernel": "structured_horner",
+      "parameters": {
+        "opened_values": 67,
+        "poseidon_sbox_terms": 48,
+        "poseidon_linear_terms": 102,
+        "logup_degree3_terms": 2,
+        "range_bit_terms": 0,
+        "eq_variables": 10
+      },
+      "host_qm31_multiplications": 354,
+      "host_qm31_by_cm31_multiplications": 0,
+      "host_additions_or_subtractions": 654,
+      "simulation_cu": [
+        151144,
+        151144,
+        151144,
+        151144,
+        151144
+      ],
+      "simulation_cu_mean": 151144.0,
+      "matching_rlc_only_cu": [
+        29042,
+        29042,
+        29042,
+        29042,
+        29042
+      ],
+      "matching_rlc_only_cu_mean": 29042.0,
+      "composition_incremental_cu_over_matching_rlc": 122102,
+      "rlc_delta_from_frozen_k64_cu": -23105,
+      "projected_total_cu": 1274083,
+      "headroom_vs_1_19m_cu": -84083,
+      "meets_10_percent_slack": false
+    },
+    {
+      "name": "r2_lookup_range_optimized",
+      "kernel": "structured_horner",
+      "parameters": {
+        "opened_values": 51,
+        "poseidon_sbox_terms": 32,
+        "poseidon_linear_terms": 38,
+        "logup_degree3_terms": 2,
+        "range_bit_terms": 0,
+        "eq_variables": 10
+      },
+      "host_qm31_multiplications": 226,
+      "host_qm31_by_cm31_multiplications": 0,
+      "host_additions_or_subtractions": 310,
+      "simulation_cu": [
+        93208,
+        93208,
+        93208,
+        93208,
+        93208
+      ],
+      "simulation_cu_mean": 93208.0,
+      "matching_rlc_only_cu": [
+        22254,
+        22254,
+        22254,
+        22254,
+        22254
+      ],
+      "matching_rlc_only_cu_mean": 22254.0,
+      "composition_incremental_cu_over_matching_rlc": 70954,
+      "rlc_delta_from_frozen_k64_cu": -29893,
+      "projected_total_cu": 1216147,
+      "headroom_vs_1_19m_cu": -26147,
+      "meets_10_percent_slack": false
+    },
+    {
+      "name": "r2_lookup_range_stress_linear70",
+      "kernel": "structured_horner",
+      "parameters": {
+        "opened_values": 51,
+        "poseidon_sbox_terms": 32,
+        "poseidon_linear_terms": 70,
+        "logup_degree3_terms": 2,
+        "range_bit_terms": 0,
+        "eq_variables": 10
+      },
+      "host_qm31_multiplications": 258,
+      "host_qm31_by_cm31_multiplications": 0,
+      "host_additions_or_subtractions": 470,
+      "simulation_cu": [
+        110871,
+        110871,
+        110871,
+        110871,
+        110871
+      ],
+      "simulation_cu_mean": 110871.0,
+      "matching_rlc_only_cu": [
+        22254,
+        22254,
+        22254,
+        22254,
+        22254
+      ],
+      "matching_rlc_only_cu_mean": 22254.0,
+      "composition_incremental_cu_over_matching_rlc": 88617,
+      "rlc_delta_from_frozen_k64_cu": -29893,
+      "projected_total_cu": 1233810,
+      "headroom_vs_1_19m_cu": -43810,
+      "meets_10_percent_slack": false
+    },
+    {
+      "name": "realistic",
+      "kernel": "naive",
+      "parameters": {
+        "opened_values": 80,
+        "poseidon_sbox_terms": 64,
+        "poseidon_linear_terms": 128,
+        "logup_degree3_terms": 1,
+        "range_bit_terms": 64,
+        "eq_variables": 10
+      },
+      "host_qm31_multiplications": 966,
+      "host_qm31_by_cm31_multiplications": 576,
+      "host_additions_or_subtractions": 1344,
+      "simulation_cu": [
+        467110,
+        467110,
+        467110,
+        467110,
+        467110
+      ],
+      "simulation_cu_mean": 467110.0,
+      "matching_rlc_only_cu": [
+        64789,
+        64789,
+        64789,
+        64789,
+        64789
+      ],
+      "matching_rlc_only_cu_mean": 64789.0,
+      "composition_incremental_cu_over_matching_rlc": 402321,
+      "rlc_delta_from_frozen_k64_cu": 12642,
+      "projected_total_cu": 1590049,
+      "headroom_vs_1_19m_cu": -400049,
+      "meets_10_percent_slack": false
+    },
+    {
+      "name": "realistic_optimized",
+      "kernel": "structured_horner",
+      "parameters": {
+        "opened_values": 80,
+        "poseidon_sbox_terms": 64,
+        "poseidon_linear_terms": 128,
+        "logup_degree3_terms": 1,
+        "range_bit_terms": 64,
+        "eq_variables": 10
+      },
+      "host_qm31_multiplications": 565,
+      "host_qm31_by_cm31_multiplications": 64,
+      "host_additions_or_subtractions": 1056,
+      "simulation_cu": [
+        246686,
+        246686,
+        246686,
+        246686,
+        246686
+      ],
+      "simulation_cu_mean": 246686.0,
+      "matching_rlc_only_cu": [
+        34530,
+        34530,
+        34530,
+        34530,
+        34530
+      ],
+      "matching_rlc_only_cu_mean": 34530.0,
+      "composition_incremental_cu_over_matching_rlc": 212156,
+      "rlc_delta_from_frozen_k64_cu": -17617,
+      "projected_total_cu": 1369625,
+      "headroom_vs_1_19m_cu": -179625,
+      "meets_10_percent_slack": false
+    },
+    {
+      "name": "pessimistic",
+      "kernel": "naive",
+      "parameters": {
+        "opened_values": 82,
+        "poseidon_sbox_terms": 96,
+        "poseidon_linear_terms": 192,
+        "logup_degree3_terms": 2,
+        "range_bit_terms": 96,
+        "eq_variables": 10
+      },
+      "host_qm31_multiplications": 1360,
+      "host_qm31_by_cm31_multiplications": 864,
+      "host_additions_or_subtractions": 1960,
+      "simulation_cu": [
+        664324,
+        664324,
+        664324,
+        664324,
+        664324
+      ],
+      "simulation_cu_mean": 664324.0,
+      "matching_rlc_only_cu": [
+        66371,
+        66371,
+        66371,
+        66371,
+        66371
+      ],
+      "matching_rlc_only_cu_mean": 66371.0,
+      "composition_incremental_cu_over_matching_rlc": 597953,
+      "rlc_delta_from_frozen_k64_cu": 14224,
+      "projected_total_cu": 1787263,
+      "headroom_vs_1_19m_cu": -597263,
+      "meets_10_percent_slack": false
+    }
+  ],
+  "notes": [
+    "Synthetic bracket only: runtime term counts are explicit and must be replaced/confirmed by the evaluator-derived layout.",
+    "Composition deltas subtract a matching RLC-only run so the gamma RLC already represented in the frozen 201,114-CU layout allowance is not double-counted. Projected totals add the measured k64-to-k' RLC delta and composition-only delta to 1,175,086 CU.",
+    "Wide-leaf hashing for k'=80 is not updated by this arithmetic-only probe; it is measured separately before a final product decision.",
+    "The lookup-range candidate replaces 64 Boolean terms with six 10-bit limbs, one additional LogUp relation, and six reconstruction terms. It is an isolated cost candidate, not yet a frozen statement rule.",
+    "The stress row prices the lookup candidate at linear_terms=128, the top of the evaluator's per-row bracket. If only the 70-term reading fits the slack ceiling, candidate-green is bracket-conditional and the gate note must say so.",
+    "The 10% slack maximum is 1,071,000 CU. The frozen pre-composition projection already exceeds it by 104,086 CU, so no positive composition result can pass that gate without a named reclaim or rule change."
+  ]
+}

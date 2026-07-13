@@ -1,0 +1,127 @@
+{
+  "generated_at_utc": "2026-07-12T11:57:43.743948+00:00",
+  "command": "cargo run --release -p aspis-xtask -- stage2-m31-johnson-sbf",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "instruction_wire_ordinal": 27,
+  "profile": "johnson_lr10_q74_g32",
+  "query_count": 74,
+  "grinding_bits": 32,
+  "johnson_rho": 0.25,
+  "johnson_eta": 0.025,
+  "bits_per_query": 0.929610672108602,
+  "query_round_bits": 100.79118973603656,
+  "proof_bytes": 98516,
+  "proof_sha256": "c21727c9b534e02e44d6390b62876013817dda0b412662b96732df3514e92637",
+  "proof_cache": "/Users/dominic/ZK/aspis/results/stage2/proofs/m31_circle_fresh_kappa_johnson_q74_g32.bin",
+  "proof_source": "reused host-verified literal q74/g32 cache",
+  "grinding_generation_seconds": null,
+  "upload_chunks": 154,
+  "unique_layer_indices": [
+    70,
+    64,
+    41,
+    16
+  ],
+  "shared_base_cu": 472917,
+  "phase_runs": [
+    {
+      "label": "shared_prefix_transcript_relation_merkle_and_query_setup",
+      "phase": "PreparedBase",
+      "start": 0,
+      "end": 0,
+      "simulation_cu": [
+        472917,
+        472917,
+        472917,
+        472917,
+        472917
+      ],
+      "selected_cu": 472917
+    },
+    {
+      "label": "layer0_unique_ordinals_0_20",
+      "phase": "Layer0Range",
+      "start": 0,
+      "end": 20,
+      "simulation_cu": [
+        797750,
+        797750,
+        797750,
+        797750,
+        797750
+      ],
+      "selected_cu": 797750
+    },
+    {
+      "label": "layer0_unique_ordinals_20_40",
+      "phase": "Layer0Range",
+      "start": 20,
+      "end": 40,
+      "simulation_cu": [
+        797907,
+        797907,
+        797907,
+        797907,
+        797907
+      ],
+      "selected_cu": 797907
+    },
+    {
+      "label": "layer0_unique_ordinals_40_60",
+      "phase": "Layer0Range",
+      "start": 40,
+      "end": 60,
+      "simulation_cu": [
+        797985,
+        797985,
+        797985,
+        797985,
+        797985
+      ],
+      "selected_cu": 797985
+    },
+    {
+      "label": "layer0_unique_ordinals_60_70",
+      "phase": "Layer0Range",
+      "start": 60,
+      "end": 70,
+      "simulation_cu": [
+        635580,
+        635580,
+        635580,
+        635580,
+        635580
+      ],
+      "selected_cu": 635580
+    },
+    {
+      "label": "all_unique_later_layer_transitions",
+      "phase": "LaterAll",
+      "start": 0,
+      "end": 0,
+      "simulation_cu": [
+        736192,
+        736192,
+        736192,
+        736192,
+        736192
+      ],
+      "selected_cu": 736192
+    }
+  ],
+  "reconciliation_formula": "sum(5 segment totals) - (4 repeated bases * 472917 CU); each segment already includes the prefix/transcript/relation/Merkle/query-setup base",
+  "reconciled_integrated_cu": 1873746,
+  "headroom_vs_1_4m_cu": -473746,
+  "full_simulation_cu_at_cap": 1400000,
+  "full_simulation_error": "{\"InstructionError\":[2,\"ProgramFailedToComplete\"]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD invoke [1]\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD consumed 1399644 of 1399700 compute units\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD failed: exceeded CUs meter at BPF instruction\"]",
+  "full_host_verifier_accepted": true,
+  "stale_statement_rejected": true,
+  "compute_unit_limit": 1400000,
+  "heap_frame_bytes": 262144,
+  "soundness_caveat": "q74/g32 closes only the pinned Johnson query-round term (100.791 bits). The repository's existing Johnson T1 union remains 73.6534 bits without per-fold PoW, and the exact circle/S-two transport theorem scope must still be closed before claiming 100-bit full-system soundness.",
+  "explicit_nonclaims": [
+    "the reconciled number is PCS-only: composition, payment semantics, hiding, and state transition remain excluded",
+    "the diagnostic phase instructions are not production acceptance tags",
+    "the Johnson query-radius measurement does not promote the capacity-shaped q36/g16 result to proven soundness"
+  ]
+}

@@ -1,0 +1,959 @@
+{
+  "schema": "aspis-johnson-bcs-ledger-v3",
+  "generated_by": "cargo run --release -p aspis-xtask -- stage2-rate16-soundness",
+  "theorem_regime": "Johnson bound; S-two Thm.19/Lem.4/Thm.22 plus WHIR Lem.4.13",
+  "transport_status": "closed for scalar circle FFT subcode; implementation conformance remains tested",
+  "complete_system_claim_quotable": false,
+  "target_bits": 100.0,
+  "field_bits": 123.99999999731277,
+  "scenarios": [
+    {
+      "name": "profile15-rate16-width51-q36-g36-batch25",
+      "rho": 0.0625,
+      "scalar_columns": 51,
+      "codeword_symbols": 16384,
+      "query_fibers": 4096,
+      "maximum_agreement_fibers": 1075,
+      "johnson_agreement_fraction": 0.2625,
+      "agreement_formula": "(1+1/(2m))*sqrt(rho), m=10; A=floor(fraction*fibers)",
+      "gs_list_parameter": 42.0,
+      "ood_list_cap": 160,
+      "ood_root_caps": [
+        1024,
+        255,
+        63,
+        15
+      ],
+      "ood_sample_space": 2.1267647892944573e+37,
+      "query_count": 36,
+      "query_work_bits": 36,
+      "batch_work_bits": 25,
+      "batching_bits_before_work": 81.9795080671385,
+      "batching_bits_after_work": 106.9795080671385,
+      "query_bits_after_work": 106.10805330030138,
+      "fold_rounds": [
+        {
+          "round": 0,
+          "output_symbols": 4096,
+          "output_dimension": 256,
+          "gs_multiplicity": 10.0,
+          "gs_list_parameter": 42.08227236092205,
+          "unground_bits": 88.02993195494591,
+          "work_bits": 39,
+          "normalized_bits": 127.02993195494591
+        },
+        {
+          "round": 1,
+          "output_symbols": 1024,
+          "output_dimension": 64,
+          "gs_multiplicity": 9.0,
+          "gs_list_parameter": 38.30039993160169,
+          "unground_bits": 90.72626596941944,
+          "work_bits": 35,
+          "normalized_bits": 125.72626596941944
+        },
+        {
+          "round": 2,
+          "output_symbols": 256,
+          "output_dimension": 16,
+          "gs_multiplicity": 6.0,
+          "gs_list_parameter": 26.852684533704757,
+          "unground_bits": 95.35806626819496,
+          "work_bits": 31,
+          "normalized_bits": 126.35806626819496
+        },
+        {
+          "round": 3,
+          "output_symbols": 64,
+          "output_dimension": 4,
+          "gs_multiplicity": 3.0,
+          "gs_list_parameter": 16.165807537309522,
+          "unground_bits": 101.33999331478284,
+          "work_bits": 27,
+          "normalized_bits": 128.33999331478284
+        }
+      ],
+      "terms": [
+        {
+          "name": "powers-generator batching",
+          "probability_shape": "S-two Thm.19 single-domain bound / 2^batch_work",
+          "bits": 106.9795080671385,
+          "status": "proven at Johnson; dedicated nonce must precede gamma"
+        },
+        {
+          "name": "four arity-four fold rounds",
+          "probability_shape": "union of S-two Lemma 4 round bounds / 2^fold_work",
+          "bits": 124.57971330530667,
+          "status": "proven at Johnson; WHIR list/fold commutation applied"
+        },
+        {
+          "name": "two-sample OOD list binding",
+          "probability_shape": "sum_i C(L_ood,2)*(R_i/(|QM31|-|CM31|))^2; L_ood is scenario-pinned",
+          "bits": 214.27296474830968,
+          "status": "proven root/list calculation"
+        },
+        {
+          "name": "relation sumchecks and OOD mixers",
+          "probability_shape": "24/|QM31|",
+          "bits": 119.41503749659161,
+          "status": "local Schwartz-Zippel"
+        },
+        {
+          "name": "gamma plus point-claim collision",
+          "probability_shape": "((scalar_columns-1)+2)/|QM31| for gamma and (1,kappa,kappa^2)",
+          "bits": 118.29956027917167,
+          "status": "local multivariate Schwartz-Zippel"
+        },
+        {
+          "name": "copy-inactive combined zero claim",
+          "probability_shape": "(scalar_columns-1)/|QM31| for a nonzero gamma polynomial",
+          "bits": 118.35614380753805,
+          "status": "local Schwartz-Zippel; commitments and complete inactive-row sums precede gamma"
+        },
+        {
+          "name": "copy tuple compression",
+          "probability_shape": "m*17/|QM31|",
+          "bits": 109.91253715606243,
+          "status": "local UFD/SZ; exact state-only m is layout-bound"
+        },
+        {
+          "name": "copy/range pole reserve",
+          "probability_shape": "8*1024/|QM31|",
+          "bits": 110.99999999731277,
+          "status": "conservative local reserve"
+        },
+        {
+          "name": "constraint registry reserve",
+          "probability_shape": "258/|QM31|",
+          "bits": 115.98877274188952,
+          "status": "replace by frozen state-only registry count"
+        },
+        {
+          "name": "payment zerocheck",
+          "probability_shape": "sum of per-round individual degrees / |QM31|",
+          "bits": 115.92318440026193,
+          "status": "local Schwartz-Zippel"
+        },
+        {
+          "name": "distinct-fiber query miss",
+          "probability_shape": "C(A,q)/(C(N,q)*2^query_work)",
+          "bits": 106.10805330030138,
+          "status": "exact hypergeometric Johnson block count"
+        },
+        {
+          "name": "Poseidon2 public digest collision",
+          "probability_shape": "assumed 124-bit target",
+          "bits": 124.0,
+          "status": "hash assumption"
+        },
+        {
+          "name": "SHA-256 Merkle/transcript collision",
+          "probability_shape": "generic 128-bit collision target",
+          "bits": 128.0,
+          "status": "hash/ROM assumption"
+        },
+        {
+          "name": "hiding/code-switch reserve",
+          "probability_shape": "implementation must instantiate <=2^-110",
+          "bits": 110.0,
+          "status": "reserved; privacy rank/FS proof not yet frozen"
+        }
+      ],
+      "conservative_round_union_bits": 105.32404905798843,
+      "bcs_round_factor": 31.0,
+      "work_normalized_bcs_bits": 100.36985274760156,
+      "margin_over_target_bits": 0.3698527476015556
+    },
+    {
+      "name": "state-only-rate16-width18-q36-g36-batch24",
+      "rho": 0.0625,
+      "scalar_columns": 18,
+      "codeword_symbols": 16384,
+      "query_fibers": 4096,
+      "maximum_agreement_fibers": 1075,
+      "johnson_agreement_fraction": 0.2625,
+      "agreement_formula": "(1+1/(2m))*sqrt(rho), m=10; A=floor(fraction*fibers)",
+      "gs_list_parameter": 42.0,
+      "ood_list_cap": 160,
+      "ood_root_caps": [
+        1024,
+        255,
+        63,
+        15
+      ],
+      "ood_sample_space": 2.1267647892944573e+37,
+      "query_count": 36,
+      "query_work_bits": 36,
+      "batch_work_bits": 24,
+      "batching_bits_before_work": 83.53590141566288,
+      "batching_bits_after_work": 107.53590141566288,
+      "query_bits_after_work": 106.10805330030138,
+      "fold_rounds": [
+        {
+          "round": 0,
+          "output_symbols": 4096,
+          "output_dimension": 256,
+          "gs_multiplicity": 10.0,
+          "gs_list_parameter": 42.08227236092205,
+          "unground_bits": 88.02993195494591,
+          "work_bits": 39,
+          "normalized_bits": 127.02993195494591
+        },
+        {
+          "round": 1,
+          "output_symbols": 1024,
+          "output_dimension": 64,
+          "gs_multiplicity": 9.0,
+          "gs_list_parameter": 38.30039993160169,
+          "unground_bits": 90.72626596941944,
+          "work_bits": 35,
+          "normalized_bits": 125.72626596941944
+        },
+        {
+          "round": 2,
+          "output_symbols": 256,
+          "output_dimension": 16,
+          "gs_multiplicity": 6.0,
+          "gs_list_parameter": 26.852684533704757,
+          "unground_bits": 95.35806626819496,
+          "work_bits": 31,
+          "normalized_bits": 126.35806626819496
+        },
+        {
+          "round": 3,
+          "output_symbols": 64,
+          "output_dimension": 4,
+          "gs_multiplicity": 3.0,
+          "gs_list_parameter": 16.165807537309522,
+          "unground_bits": 101.33999331478284,
+          "work_bits": 27,
+          "normalized_bits": 128.33999331478284
+        }
+      ],
+      "terms": [
+        {
+          "name": "powers-generator batching",
+          "probability_shape": "S-two Thm.19 single-domain bound / 2^batch_work",
+          "bits": 107.53590141566288,
+          "status": "proven at Johnson; dedicated nonce must precede gamma"
+        },
+        {
+          "name": "four arity-four fold rounds",
+          "probability_shape": "union of S-two Lemma 4 round bounds / 2^fold_work",
+          "bits": 124.57971330530667,
+          "status": "proven at Johnson; WHIR list/fold commutation applied"
+        },
+        {
+          "name": "two-sample OOD list binding",
+          "probability_shape": "sum_i C(L_ood,2)*(R_i/(|QM31|-|CM31|))^2; L_ood is scenario-pinned",
+          "bits": 214.27296474830968,
+          "status": "proven root/list calculation"
+        },
+        {
+          "name": "relation sumchecks and OOD mixers",
+          "probability_shape": "24/|QM31|",
+          "bits": 119.41503749659161,
+          "status": "local Schwartz-Zippel"
+        },
+        {
+          "name": "gamma plus point-claim collision",
+          "probability_shape": "((scalar_columns-1)+2)/|QM31| for gamma and (1,kappa,kappa^2)",
+          "bits": 119.75207248386918,
+          "status": "local multivariate Schwartz-Zippel"
+        },
+        {
+          "name": "copy-inactive combined zero claim",
+          "probability_shape": "(scalar_columns-1)/|QM31| for a nonzero gamma polynomial",
+          "bits": 119.91253715606243,
+          "status": "local Schwartz-Zippel; commitments and complete inactive-row sums precede gamma"
+        },
+        {
+          "name": "copy tuple compression",
+          "probability_shape": "m*17/|QM31|",
+          "bits": 113.24011181409094,
+          "status": "local UFD/SZ; exact state-only m is layout-bound"
+        },
+        {
+          "name": "copy/range pole reserve",
+          "probability_shape": "8*1024/|QM31|",
+          "bits": 110.99999999731277,
+          "status": "conservative local reserve"
+        },
+        {
+          "name": "constraint registry reserve",
+          "probability_shape": "258/|QM31|",
+          "bits": 115.98877274188952,
+          "status": "replace by frozen state-only registry count"
+        },
+        {
+          "name": "payment zerocheck",
+          "probability_shape": "sum of per-round individual degrees / |QM31|",
+          "bits": 115.92318440026193,
+          "status": "local Schwartz-Zippel"
+        },
+        {
+          "name": "distinct-fiber query miss",
+          "probability_shape": "C(A,q)/(C(N,q)*2^query_work)",
+          "bits": 106.10805330030138,
+          "status": "exact hypergeometric Johnson block count"
+        },
+        {
+          "name": "Poseidon2 public digest collision",
+          "probability_shape": "assumed 124-bit target",
+          "bits": 124.0,
+          "status": "hash assumption"
+        },
+        {
+          "name": "SHA-256 Merkle/transcript collision",
+          "probability_shape": "generic 128-bit collision target",
+          "bits": 128.0,
+          "status": "hash/ROM assumption"
+        },
+        {
+          "name": "hiding/code-switch reserve",
+          "probability_shape": "implementation must instantiate <=2^-110",
+          "bits": 110.0,
+          "status": "reserved; privacy rank/FS proof not yet frozen"
+        }
+      ],
+      "conservative_round_union_bits": 105.54023547210554,
+      "bcs_round_factor": 31.0,
+      "work_normalized_bcs_bits": 100.58603916171866,
+      "margin_over_target_bits": 0.5860391617186593
+    },
+    {
+      "name": "state-only-rate32-width18-q29-g36-batch26",
+      "rho": 0.03125,
+      "scalar_columns": 18,
+      "codeword_symbols": 32768,
+      "query_fibers": 8192,
+      "maximum_agreement_fibers": 1520,
+      "johnson_agreement_fraction": 0.18561553006146875,
+      "agreement_formula": "(1+1/(2m))*sqrt(rho), m=10; A=floor(fraction*fibers)",
+      "gs_list_parameter": 59.39696961966999,
+      "ood_list_cap": 160,
+      "ood_root_caps": [
+        1024,
+        255,
+        63,
+        15
+      ],
+      "ood_sample_space": 2.1267647892944573e+37,
+      "query_count": 29,
+      "query_work_bits": 36,
+      "batch_work_bits": 26,
+      "batching_bits_before_work": 81.0359069792656,
+      "batching_bits_after_work": 107.0359069792656,
+      "query_bits_after_work": 106.7903862559032,
+      "fold_rounds": [
+        {
+          "round": 0,
+          "output_symbols": 8192,
+          "output_dimension": 256,
+          "gs_multiplicity": 10.0,
+          "gs_list_parameter": 59.513320308294404,
+          "unground_bits": 85.52993749681595,
+          "work_bits": 39,
+          "normalized_bits": 124.52993749681595
+        },
+        {
+          "round": 1,
+          "output_symbols": 2048,
+          "output_dimension": 64,
+          "gs_multiplicity": 9.0,
+          "gs_list_parameter": 54.16494502758467,
+          "unground_bits": 88.22627414235893,
+          "work_bits": 35,
+          "normalized_bits": 123.22627414235893
+        },
+        {
+          "round": 2,
+          "output_symbols": 512,
+          "output_dimension": 16,
+          "gs_multiplicity": 6.0,
+          "gs_list_parameter": 37.97543065369152,
+          "unground_bits": 92.85810178367036,
+          "work_bits": 31,
+          "normalized_bits": 123.85810178367036
+        },
+        {
+          "round": 3,
+          "output_symbols": 128,
+          "output_dimension": 4,
+          "gs_multiplicity": 3.0,
+          "gs_list_parameter": 22.86190426597633,
+          "unground_bits": 98.84033118687141,
+          "work_bits": 27,
+          "normalized_bits": 125.84033118687141
+        }
+      ],
+      "terms": [
+        {
+          "name": "powers-generator batching",
+          "probability_shape": "S-two Thm.19 single-domain bound / 2^batch_work",
+          "bits": 107.0359069792656,
+          "status": "proven at Johnson; dedicated nonce must precede gamma"
+        },
+        {
+          "name": "four arity-four fold rounds",
+          "probability_shape": "union of S-two Lemma 4 round bounds / 2^fold_work",
+          "bits": 122.0797532961316,
+          "status": "proven at Johnson; WHIR list/fold commutation applied"
+        },
+        {
+          "name": "two-sample OOD list binding",
+          "probability_shape": "sum_i C(L_ood,2)*(R_i/(|QM31|-|CM31|))^2; L_ood is scenario-pinned",
+          "bits": 214.27296474830968,
+          "status": "proven root/list calculation"
+        },
+        {
+          "name": "relation sumchecks and OOD mixers",
+          "probability_shape": "24/|QM31|",
+          "bits": 119.41503749659161,
+          "status": "local Schwartz-Zippel"
+        },
+        {
+          "name": "gamma plus point-claim collision",
+          "probability_shape": "((scalar_columns-1)+2)/|QM31| for gamma and (1,kappa,kappa^2)",
+          "bits": 119.75207248386918,
+          "status": "local multivariate Schwartz-Zippel"
+        },
+        {
+          "name": "copy-inactive combined zero claim",
+          "probability_shape": "(scalar_columns-1)/|QM31| for a nonzero gamma polynomial",
+          "bits": 119.91253715606243,
+          "status": "local Schwartz-Zippel; commitments and complete inactive-row sums precede gamma"
+        },
+        {
+          "name": "copy tuple compression",
+          "probability_shape": "m*17/|QM31|",
+          "bits": 113.24011181409094,
+          "status": "local UFD/SZ; exact state-only m is layout-bound"
+        },
+        {
+          "name": "copy/range pole reserve",
+          "probability_shape": "8*1024/|QM31|",
+          "bits": 110.99999999731277,
+          "status": "conservative local reserve"
+        },
+        {
+          "name": "constraint registry reserve",
+          "probability_shape": "258/|QM31|",
+          "bits": 115.98877274188952,
+          "status": "replace by frozen state-only registry count"
+        },
+        {
+          "name": "payment zerocheck",
+          "probability_shape": "sum of per-round individual degrees / |QM31|",
+          "bits": 115.92318440026193,
+          "status": "local Schwartz-Zippel"
+        },
+        {
+          "name": "distinct-fiber query miss",
+          "probability_shape": "C(A,q)/(C(N,q)*2^query_work)",
+          "bits": 106.7903862559032,
+          "status": "exact hypergeometric Johnson block count"
+        },
+        {
+          "name": "Poseidon2 public digest collision",
+          "probability_shape": "assumed 124-bit target",
+          "bits": 124.0,
+          "status": "hash assumption"
+        },
+        {
+          "name": "SHA-256 Merkle/transcript collision",
+          "probability_shape": "generic 128-bit collision target",
+          "bits": 128.0,
+          "status": "hash/ROM assumption"
+        },
+        {
+          "name": "hiding/code-switch reserve",
+          "probability_shape": "implementation must instantiate <=2^-110",
+          "bits": 110.0,
+          "status": "reserved; privacy rank/FS proof not yet frozen"
+        }
+      ],
+      "conservative_round_union_bits": 105.77531181273413,
+      "bcs_round_factor": 31.0,
+      "work_normalized_bcs_bits": 100.82111550234725,
+      "margin_over_target_bits": 0.8211155023472543
+    },
+    {
+      "name": "state-only-rate16-width28-q36-g36-batch24",
+      "rho": 0.0625,
+      "scalar_columns": 28,
+      "codeword_symbols": 16384,
+      "query_fibers": 4096,
+      "maximum_agreement_fibers": 1075,
+      "johnson_agreement_fraction": 0.2625,
+      "agreement_formula": "(1+1/(2m))*sqrt(rho), m=10; A=floor(fraction*fibers)",
+      "gs_list_parameter": 42.0,
+      "ood_list_cap": 160,
+      "ood_root_caps": [
+        1024,
+        255,
+        63,
+        15
+      ],
+      "ood_sample_space": 2.1267647892944573e+37,
+      "query_count": 36,
+      "query_work_bits": 36,
+      "batch_work_bits": 24,
+      "batching_bits_before_work": 82.86847675474975,
+      "batching_bits_after_work": 106.86847675474975,
+      "query_bits_after_work": 106.10805330030138,
+      "fold_rounds": [
+        {
+          "round": 0,
+          "output_symbols": 4096,
+          "output_dimension": 256,
+          "gs_multiplicity": 10.0,
+          "gs_list_parameter": 42.08227236092205,
+          "unground_bits": 88.02993195494591,
+          "work_bits": 39,
+          "normalized_bits": 127.02993195494591
+        },
+        {
+          "round": 1,
+          "output_symbols": 1024,
+          "output_dimension": 64,
+          "gs_multiplicity": 9.0,
+          "gs_list_parameter": 38.30039993160169,
+          "unground_bits": 90.72626596941944,
+          "work_bits": 35,
+          "normalized_bits": 125.72626596941944
+        },
+        {
+          "round": 2,
+          "output_symbols": 256,
+          "output_dimension": 16,
+          "gs_multiplicity": 6.0,
+          "gs_list_parameter": 26.852684533704757,
+          "unground_bits": 95.35806626819496,
+          "work_bits": 31,
+          "normalized_bits": 126.35806626819496
+        },
+        {
+          "round": 3,
+          "output_symbols": 64,
+          "output_dimension": 4,
+          "gs_multiplicity": 3.0,
+          "gs_list_parameter": 16.165807537309522,
+          "unground_bits": 101.33999331478284,
+          "work_bits": 27,
+          "normalized_bits": 128.33999331478284
+        }
+      ],
+      "terms": [
+        {
+          "name": "powers-generator batching",
+          "probability_shape": "S-two Thm.19 single-domain bound / 2^batch_work",
+          "bits": 106.86847675474975,
+          "status": "proven at Johnson; dedicated nonce must precede gamma"
+        },
+        {
+          "name": "four arity-four fold rounds",
+          "probability_shape": "union of S-two Lemma 4 round bounds / 2^fold_work",
+          "bits": 124.57971330530667,
+          "status": "proven at Johnson; WHIR list/fold commutation applied"
+        },
+        {
+          "name": "two-sample OOD list binding",
+          "probability_shape": "sum_i C(L_ood,2)*(R_i/(|QM31|-|CM31|))^2; L_ood is scenario-pinned",
+          "bits": 214.27296474830968,
+          "status": "proven root/list calculation"
+        },
+        {
+          "name": "relation sumchecks and OOD mixers",
+          "probability_shape": "24/|QM31|",
+          "bits": 119.41503749659161,
+          "status": "local Schwartz-Zippel"
+        },
+        {
+          "name": "gamma plus point-claim collision",
+          "probability_shape": "((scalar_columns-1)+2)/|QM31| for gamma and (1,kappa,kappa^2)",
+          "bits": 119.1420190021852,
+          "status": "local multivariate Schwartz-Zippel"
+        },
+        {
+          "name": "copy-inactive combined zero claim",
+          "probability_shape": "(scalar_columns-1)/|QM31| for a nonzero gamma polynomial",
+          "bits": 119.2451124951493,
+          "status": "local Schwartz-Zippel; commitments and complete inactive-row sums precede gamma"
+        },
+        {
+          "name": "copy tuple compression",
+          "probability_shape": "m*17/|QM31|",
+          "bits": 113.24011181409094,
+          "status": "local UFD/SZ; exact state-only m is layout-bound"
+        },
+        {
+          "name": "copy/range pole reserve",
+          "probability_shape": "8*1024/|QM31|",
+          "bits": 110.99999999731277,
+          "status": "conservative local reserve"
+        },
+        {
+          "name": "constraint registry reserve",
+          "probability_shape": "258/|QM31|",
+          "bits": 115.98877274188952,
+          "status": "replace by frozen state-only registry count"
+        },
+        {
+          "name": "payment zerocheck",
+          "probability_shape": "sum of per-round individual degrees / |QM31|",
+          "bits": 115.92318440026193,
+          "status": "local Schwartz-Zippel"
+        },
+        {
+          "name": "distinct-fiber query miss",
+          "probability_shape": "C(A,q)/(C(N,q)*2^query_work)",
+          "bits": 106.10805330030138,
+          "status": "exact hypergeometric Johnson block count"
+        },
+        {
+          "name": "Poseidon2 public digest collision",
+          "probability_shape": "assumed 124-bit target",
+          "bits": 124.0,
+          "status": "hash assumption"
+        },
+        {
+          "name": "SHA-256 Merkle/transcript collision",
+          "probability_shape": "generic 128-bit collision target",
+          "bits": 128.0,
+          "status": "hash/ROM assumption"
+        },
+        {
+          "name": "hiding/code-switch reserve",
+          "probability_shape": "implementation must instantiate <=2^-110",
+          "bits": 110.0,
+          "status": "reserved; privacy rank/FS proof not yet frozen"
+        }
+      ],
+      "conservative_round_union_bits": 105.34166997548758,
+      "bcs_round_factor": 31.0,
+      "work_normalized_bcs_bits": 100.3874736651007,
+      "margin_over_target_bits": 0.3874736651006998
+    },
+    {
+      "name": "state-only-rate32-width28-q29-g36-batch26",
+      "rho": 0.03125,
+      "scalar_columns": 28,
+      "codeword_symbols": 32768,
+      "query_fibers": 8192,
+      "maximum_agreement_fibers": 1520,
+      "johnson_agreement_fraction": 0.18561553006146875,
+      "agreement_formula": "(1+1/(2m))*sqrt(rho), m=10; A=floor(fraction*fibers)",
+      "gs_list_parameter": 59.39696961966999,
+      "ood_list_cap": 160,
+      "ood_root_caps": [
+        1024,
+        255,
+        63,
+        15
+      ],
+      "ood_sample_space": 2.1267647892944573e+37,
+      "query_count": 29,
+      "query_work_bits": 36,
+      "batch_work_bits": 26,
+      "batching_bits_before_work": 80.36848231835248,
+      "batching_bits_after_work": 106.36848231835248,
+      "query_bits_after_work": 106.7903862559032,
+      "fold_rounds": [
+        {
+          "round": 0,
+          "output_symbols": 8192,
+          "output_dimension": 256,
+          "gs_multiplicity": 10.0,
+          "gs_list_parameter": 59.513320308294404,
+          "unground_bits": 85.52993749681595,
+          "work_bits": 39,
+          "normalized_bits": 124.52993749681595
+        },
+        {
+          "round": 1,
+          "output_symbols": 2048,
+          "output_dimension": 64,
+          "gs_multiplicity": 9.0,
+          "gs_list_parameter": 54.16494502758467,
+          "unground_bits": 88.22627414235893,
+          "work_bits": 35,
+          "normalized_bits": 123.22627414235893
+        },
+        {
+          "round": 2,
+          "output_symbols": 512,
+          "output_dimension": 16,
+          "gs_multiplicity": 6.0,
+          "gs_list_parameter": 37.97543065369152,
+          "unground_bits": 92.85810178367036,
+          "work_bits": 31,
+          "normalized_bits": 123.85810178367036
+        },
+        {
+          "round": 3,
+          "output_symbols": 128,
+          "output_dimension": 4,
+          "gs_multiplicity": 3.0,
+          "gs_list_parameter": 22.86190426597633,
+          "unground_bits": 98.84033118687141,
+          "work_bits": 27,
+          "normalized_bits": 125.84033118687141
+        }
+      ],
+      "terms": [
+        {
+          "name": "powers-generator batching",
+          "probability_shape": "S-two Thm.19 single-domain bound / 2^batch_work",
+          "bits": 106.36848231835248,
+          "status": "proven at Johnson; dedicated nonce must precede gamma"
+        },
+        {
+          "name": "four arity-four fold rounds",
+          "probability_shape": "union of S-two Lemma 4 round bounds / 2^fold_work",
+          "bits": 122.0797532961316,
+          "status": "proven at Johnson; WHIR list/fold commutation applied"
+        },
+        {
+          "name": "two-sample OOD list binding",
+          "probability_shape": "sum_i C(L_ood,2)*(R_i/(|QM31|-|CM31|))^2; L_ood is scenario-pinned",
+          "bits": 214.27296474830968,
+          "status": "proven root/list calculation"
+        },
+        {
+          "name": "relation sumchecks and OOD mixers",
+          "probability_shape": "24/|QM31|",
+          "bits": 119.41503749659161,
+          "status": "local Schwartz-Zippel"
+        },
+        {
+          "name": "gamma plus point-claim collision",
+          "probability_shape": "((scalar_columns-1)+2)/|QM31| for gamma and (1,kappa,kappa^2)",
+          "bits": 119.1420190021852,
+          "status": "local multivariate Schwartz-Zippel"
+        },
+        {
+          "name": "copy-inactive combined zero claim",
+          "probability_shape": "(scalar_columns-1)/|QM31| for a nonzero gamma polynomial",
+          "bits": 119.2451124951493,
+          "status": "local Schwartz-Zippel; commitments and complete inactive-row sums precede gamma"
+        },
+        {
+          "name": "copy tuple compression",
+          "probability_shape": "m*17/|QM31|",
+          "bits": 113.24011181409094,
+          "status": "local UFD/SZ; exact state-only m is layout-bound"
+        },
+        {
+          "name": "copy/range pole reserve",
+          "probability_shape": "8*1024/|QM31|",
+          "bits": 110.99999999731277,
+          "status": "conservative local reserve"
+        },
+        {
+          "name": "constraint registry reserve",
+          "probability_shape": "258/|QM31|",
+          "bits": 115.98877274188952,
+          "status": "replace by frozen state-only registry count"
+        },
+        {
+          "name": "payment zerocheck",
+          "probability_shape": "sum of per-round individual degrees / |QM31|",
+          "bits": 115.92318440026193,
+          "status": "local Schwartz-Zippel"
+        },
+        {
+          "name": "distinct-fiber query miss",
+          "probability_shape": "C(A,q)/(C(N,q)*2^query_work)",
+          "bits": 106.7903862559032,
+          "status": "exact hypergeometric Johnson block count"
+        },
+        {
+          "name": "Poseidon2 public digest collision",
+          "probability_shape": "assumed 124-bit target",
+          "bits": 124.0,
+          "status": "hash assumption"
+        },
+        {
+          "name": "SHA-256 Merkle/transcript collision",
+          "probability_shape": "generic 128-bit collision target",
+          "bits": 128.0,
+          "status": "hash/ROM assumption"
+        },
+        {
+          "name": "hiding/code-switch reserve",
+          "probability_shape": "implementation must instantiate <=2^-110",
+          "bits": 110.0,
+          "status": "reserved; privacy rank/FS proof not yet frozen"
+        }
+      ],
+      "conservative_round_union_bits": 105.45849635128272,
+      "bcs_round_factor": 31.0,
+      "work_normalized_bcs_bits": 100.50430004089584,
+      "margin_over_target_bits": 0.504300040895842
+    },
+    {
+      "name": "state-only-rate512-width28-q16-g36-batch36",
+      "rho": 0.001953125,
+      "scalar_columns": 28,
+      "codeword_symbols": 524288,
+      "query_fibers": 131072,
+      "maximum_agreement_fibers": 6082,
+      "johnson_agreement_fraction": 0.04640388251536719,
+      "agreement_formula": "(1+1/(2m))*sqrt(rho), m=10; A=floor(fraction*fibers)",
+      "gs_list_parameter": 237.58787847867995,
+      "ood_list_cap": 240,
+      "ood_root_caps": [
+        1024,
+        255,
+        63,
+        15
+      ],
+      "ood_sample_space": 2.1267647892944573e+37,
+      "query_count": 16,
+      "query_work_bits": 36,
+      "batch_work_bits": 36,
+      "batching_bits_before_work": 70.36848753424952,
+      "batching_bits_after_work": 106.36848753424952,
+      "query_bits_after_work": 106.90188659724066,
+      "fold_rounds": [
+        {
+          "round": 0,
+          "output_symbols": 131072,
+          "output_dimension": 256,
+          "gs_multiplicity": 10.0,
+          "gs_list_parameter": 238.05328123317761,
+          "unground_bits": 75.52994269233842,
+          "work_bits": 39,
+          "normalized_bits": 114.52994269233842
+        },
+        {
+          "round": 1,
+          "output_symbols": 32768,
+          "output_dimension": 64,
+          "gs_multiplicity": 9.0,
+          "gs_list_parameter": 216.6597801103387,
+          "unground_bits": 78.22628180453175,
+          "work_bits": 35,
+          "normalized_bits": 113.22628180453175
+        },
+        {
+          "round": 2,
+          "output_symbols": 8192,
+          "output_dimension": 16,
+          "gs_multiplicity": 6.0,
+          "gs_list_parameter": 151.90172261476607,
+          "unground_bits": 82.85813508022261,
+          "work_bits": 31,
+          "normalized_bits": 113.85813508022261
+        },
+        {
+          "round": 3,
+          "output_symbols": 2048,
+          "output_dimension": 4,
+          "gs_multiplicity": 3.0,
+          "gs_list_parameter": 91.44761706390533,
+          "unground_bits": 88.84064801383485,
+          "work_bits": 27,
+          "normalized_bits": 115.84064801383485
+        }
+      ],
+      "terms": [
+        {
+          "name": "powers-generator batching",
+          "probability_shape": "S-two Thm.19 single-domain bound / 2^batch_work",
+          "bits": 106.36848753424952,
+          "status": "proven at Johnson; dedicated nonce must precede gamma"
+        },
+        {
+          "name": "four arity-four fold rounds",
+          "probability_shape": "union of S-two Lemma 4 round bounds / 2^fold_work",
+          "bits": 112.07979078853677,
+          "status": "proven at Johnson; WHIR list/fold commutation applied"
+        },
+        {
+          "name": "two-sample OOD list binding",
+          "probability_shape": "sum_i C(L_ood,2)*(R_i/(|QM31|-|CM31|))^2; L_ood is scenario-pinned",
+          "bits": 213.10001839489215,
+          "status": "proven root/list calculation"
+        },
+        {
+          "name": "relation sumchecks and OOD mixers",
+          "probability_shape": "24/|QM31|",
+          "bits": 119.41503749659161,
+          "status": "local Schwartz-Zippel"
+        },
+        {
+          "name": "gamma plus point-claim collision",
+          "probability_shape": "((scalar_columns-1)+2)/|QM31| for gamma and (1,kappa,kappa^2)",
+          "bits": 119.1420190021852,
+          "status": "local multivariate Schwartz-Zippel"
+        },
+        {
+          "name": "copy-inactive combined zero claim",
+          "probability_shape": "(scalar_columns-1)/|QM31| for a nonzero gamma polynomial",
+          "bits": 119.2451124951493,
+          "status": "local Schwartz-Zippel; commitments and complete inactive-row sums precede gamma"
+        },
+        {
+          "name": "copy tuple compression",
+          "probability_shape": "m*17/|QM31|",
+          "bits": 113.24011181409094,
+          "status": "local UFD/SZ; exact state-only m is layout-bound"
+        },
+        {
+          "name": "copy/range pole reserve",
+          "probability_shape": "8*1024/|QM31|",
+          "bits": 110.99999999731277,
+          "status": "conservative local reserve"
+        },
+        {
+          "name": "constraint registry reserve",
+          "probability_shape": "258/|QM31|",
+          "bits": 115.98877274188952,
+          "status": "replace by frozen state-only registry count"
+        },
+        {
+          "name": "payment zerocheck",
+          "probability_shape": "sum of per-round individual degrees / |QM31|",
+          "bits": 115.92318440026193,
+          "status": "local Schwartz-Zippel"
+        },
+        {
+          "name": "distinct-fiber query miss",
+          "probability_shape": "C(A,q)/(C(N,q)*2^query_work)",
+          "bits": 106.90188659724066,
+          "status": "exact hypergeometric Johnson block count"
+        },
+        {
+          "name": "Poseidon2 public digest collision",
+          "probability_shape": "assumed 124-bit target",
+          "bits": 124.0,
+          "status": "hash assumption"
+        },
+        {
+          "name": "SHA-256 Merkle/transcript collision",
+          "probability_shape": "generic 128-bit collision target",
+          "bits": 128.0,
+          "status": "hash/ROM assumption"
+        },
+        {
+          "name": "hiding/code-switch reserve",
+          "probability_shape": "implementation must instantiate <=2^-110",
+          "bits": 110.0,
+          "status": "reserved; privacy rank/FS proof not yet frozen"
+        }
+      ],
+      "conservative_round_union_bits": 105.48675899588125,
+      "bcs_round_factor": 31.0,
+      "work_normalized_bcs_bits": 100.53256268549437,
+      "margin_over_target_bits": 0.5325626854943692
+    }
+  ],
+  "remaining_gates": [
+    "freeze the redesigned state-only semantic/copy registry and replace conservative caps",
+    "instantiate the 110-bit hiding reserve with complete-view rank and Fiat-Shamir ZK",
+    "pin the new batch-nonce and state-only transcript KAT on host and SBF"
+  ],
+  "source_note": "docs/stage2-johnson-transport-closure-2026-07-12.md"
+}

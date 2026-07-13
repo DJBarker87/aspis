@@ -5,6 +5,13 @@ Date: `2026-07-04`
 Status: **CONDITIONAL GO to Stage 1** for one measured target; RED for the
 old narrow-layout lr14 target and for Johnson q80.
 
+> **Stage 1 supersession (`2026-07-10`):** this is a historical gate record.
+> Stage 1 retired q32/g32, ruled q36/g32, enforced external/OOD relations,
+> implemented the v3 C2 boundary, and measured the literal profile at
+> 943,972 CU (1,175,086-CU combined projection; 14,914 CU left before
+> unpriced constraint composition). See
+> `aspis-soundness-note.md`; the numbers below remain the Stage 0 evidence.
+
 ## Conclusion
 
 Stage 0 has a real continuation target:
@@ -69,6 +76,22 @@ The q32 target is the only one with enough headroom to plausibly absorb Stage
 falling back to split verification. q36 remains a reserve target if Stage 1
 does not accept q32. q40 fits only on paper and is too tight for the current
 statement plan.
+
+**The 302K headroom is not margin — it is a budget already spoken for three
+times over.** The projection above prices the PCS, the gamma-RLC
+recombination, and the sumcheck rounds. It does not price:
+
+1. **Stage 1 hardening itself**: OOD absorptions, external `(z, v)`
+   evaluation-claim binding, the second commitment phase required by the copy
+   argument (design §13.8 as amended), and the added transcript work.
+2. **Constraint-composition evaluation at the opened point**: with `k = 64`
+   columns and Poseidon2's degree-5 relations this is hundreds to low
+   thousands of QM31 operations — plausibly `50-150K` CU, unmeasured (the
+   Stage 2 isolated-SBF measurement item).
+3. **eq / public-input work**: small, but nonzero and currently unpriced.
+
+Any Stage 1 or Stage 2 artifact quoting the q32 projection must call the
+`302,224` CU figure a budget for these three unpriced items, not slack.
 
 ## Stage 1 Entry Condition
 

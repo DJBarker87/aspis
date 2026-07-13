@@ -1,0 +1,109 @@
+{
+  "generated_at_utc": "2026-07-13T20:59:11.048209+00:00",
+  "command": "ASPIS_PROFILE23_PROOF=/Users/dominic/ZK/aspis/results/stage2/proofs/atomic_state_only_profile23_v3_mined.bin NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-profile23-acceptance",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "instruction_wire_ordinal": 59,
+  "proof_path": "results/stage2/proofs/atomic_state_only_profile23_v3_mined.bin",
+  "proof_source_override": true,
+  "proof_bytes": 61599,
+  "proof_sha256": "35c4e79316bf4a2af1951e5d2f41b6ebb4ebb7bd1e91a3ba93c52e549bfe7949",
+  "proof_unmined": false,
+  "batch_grinding_bits": 38,
+  "final_grinding_bits": 38,
+  "fold_grinding_bits": [
+    39,
+    35,
+    31,
+    27
+  ],
+  "query_selector_candidates": 3,
+  "rank_exhaustion_cap16_bits": 105.41017865405837,
+  "whole_soundness_bits_after_selector": 101.30230658283051,
+  "soundness_bookable": true,
+  "proof_account_finalized_before_verification": true,
+  "default_tag59_fail_closed_host": true,
+  "production_api_rejected_unmined_sbf": false,
+  "production_api_accepted_mined_sbf": true,
+  "literal_simulation_cu": 1202920,
+  "headroom_under_1_4m_cu": 197080,
+  "markers": [
+    {
+      "label": "atomic59_instruction_start",
+      "remaining": 1398445,
+      "delta_from_previous": null
+    },
+    {
+      "label": "atomic59_proof_loaded",
+      "remaining": 1397893,
+      "delta_from_previous": 552
+    },
+    {
+      "label": "atomic59_parsed",
+      "remaining": 1395915,
+      "delta_from_previous": 1978
+    },
+    {
+      "label": "atomic59_transcript",
+      "remaining": 1243870,
+      "delta_from_previous": 152045
+    },
+    {
+      "label": "atomic59_terminal",
+      "remaining": 861864,
+      "delta_from_previous": 382006
+    },
+    {
+      "label": "atomic59_relation",
+      "remaining": 674279,
+      "delta_from_previous": 187585
+    },
+    {
+      "label": "atomic59_openings",
+      "remaining": 473700,
+      "delta_from_previous": 200579
+    },
+    {
+      "label": "atomic59_layer0_queries",
+      "remaining": 290990,
+      "delta_from_previous": 182710
+    },
+    {
+      "label": "atomic59_later_queries",
+      "remaining": 197626,
+      "delta_from_previous": 93364
+    },
+    {
+      "label": "atomic59_core_complete",
+      "remaining": 197408,
+      "delta_from_previous": 218
+    },
+    {
+      "label": "atomic59_done",
+      "remaining": 197139,
+      "delta_from_previous": 269
+    }
+  ],
+  "ledger": {
+    "transaction_setup_cu": 1555,
+    "proof_load_cu": 552,
+    "parsed_cu": 1978,
+    "transcript_cu": 152045,
+    "terminal_cu": 382006,
+    "relation_cu": 187585,
+    "openings_cu": 200579,
+    "layer0_queries_cu": 182710,
+    "later_queries_cu": 93364,
+    "completion_cu": 218,
+    "wrapper_return_cu": 269,
+    "post_last_marker_cu": 59,
+    "reconciled_total_cu": 1202920,
+    "formula": "1555 + 552 + 1978 + 152045 + 382006 + 187585 + 200579 + 182710 + 93364 + 218 + 269 + 59"
+  },
+  "production_mutation_enabled": false,
+  "notes": [
+    "Tag59 is one integrated parse/transcript/terminal/relation/private-opening/q16 call. The phase ledger is overlap-free and reconciles exactly to the literal simulation total.",
+    "All five Merkle sections authenticate value||salt32 records. Salts are not transcript messages; their roots bind them before downstream challenges.",
+    "The ASPIS_PROFILE23_PROOF override supplied a mined proof; production host and SBF tag59 both accepted it without a PoW bypass.",
+    "Tags60/61 remain feature-gated; production mutation stays disabled until the complete-view HVZK audit and mined tag60 KAT are green."
+  ]
+}

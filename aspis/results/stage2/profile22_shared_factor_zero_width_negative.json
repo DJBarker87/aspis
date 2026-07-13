@@ -1,0 +1,63 @@
+{
+  "schema": "aspis.profile22.shared-factor-zero-width-negative.v1",
+  "date": "2026-07-13",
+  "status": "negative_host_only",
+  "production_changed": false,
+  "fixture": {
+    "proof": "results/stage2/proofs/atomic_state_only_profile22_v3_unmined.bin",
+    "statement_digest": "52e96f99756fe8fd2d8b7a700019b143d7eb549af1bf1ae987e99a75cadcd4c9",
+    "query_count": 16
+  },
+  "inventory": {
+    "semantic_m31_lanes": 16,
+    "mask_only_m31_lanes": 10,
+    "qm31_g_lanes": 1,
+    "added_lanes": 0,
+    "leaf_width_changed": false,
+    "generator_width_changed": false,
+    "wire_changed": false,
+    "fingerprint_changed": false
+  },
+  "shared_degree_cover": {
+    "change": "semantic lane 13 exponent 26 to 23",
+    "m31_restricted_line_degrees": "0..=25 exactly",
+    "g_factor": "1+L_16^26",
+    "raw_opening_rank": 2244,
+    "masked_sumcheck_rank": 1080,
+    "masked_sumcheck_target": 1080,
+    "joint_pcs_rank": 712,
+    "joint_pcs_declared_rank": 780,
+    "mask_direct_sum_view_rank": 4036,
+    "physical_augmented_rank": 4040,
+    "physical_contained": false,
+    "legal_augmented_rank": 4040,
+    "legal_contained": false,
+    "root_neutral_mask_only_rank": 976,
+    "root_neutral_rank": 1072,
+    "root_neutral_target": 1080,
+    "root_neutral_complete": false,
+    "idealized_h1_root_neutral_rank": 1076,
+    "containment_elapsed_millis_contended": 81104,
+    "root_neutral_elapsed_millis_contended": 16053,
+    "stress_schedules_run": false
+  },
+  "same_lane_g_shared_power_scan": {
+    "factor_template": "1+L_16^26+L_0^d",
+    "coefficient": 1,
+    "exponents": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26],
+    "root_neutral_ranks": [1072, 1072, 1072, 1072, 1072, 1072, 1072, 1072, 1072, 1072, 1072, 1072, 1072, 1072, 1072, 1072, 1072, 1072, 1072, 1072, 1072, 1072, 1072, 1072, 1072, 1072, 1072],
+    "root_neutral_target": 1080,
+    "mask_only_ranks": [976, 976, 976, 976, 976, 976, 976, 976, 976, 976, 976, 976, 976, 976, 976, 976, 976, 976, 976, 976, 976, 976, 976, 976, 976, 976, 976],
+    "elapsed_millis_four_way_contended": [30322, 30037, 30385, 29636, 31678, 32311, 32407, 31818, 37219, 35446, 35434, 35480, 38981, 38913, 39155, 39525, 38317, 38258, 37995, 37845, 32299, 32305, 32237, 32212, 26385, 26403, 26338],
+    "predeclared_d23_solo_elapsed_millis": 16113,
+    "successful_exponents": [],
+    "literal_containment_runs": 0
+  },
+  "cu": {
+    "integrated_measurement": false,
+    "shared_degree_cover_possible_delta": "at most one fewer QM31 multiplication per factor-evaluation point if the L0 chain stops at degree 25",
+    "same_lane_g_add_shared_power_delta": "one extra QM31 addition per G-factor evaluation; shared power already exists",
+    "adoption_blocked_by_rank": true
+  },
+  "note": "docs/stage2-profile22-shared-factor-zero-width-negative.md"
+}

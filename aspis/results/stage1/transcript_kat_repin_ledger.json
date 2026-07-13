@@ -1,0 +1,64 @@
+{
+  "purpose": "Audit ledger for every transcript KAT pin touched by the Stage 1 hardening and Stage 2 PCS-scaffold diffs. Each new pin was first observed as the expected failing host KAT, then pinned deliberately, then checked through the SBF SHA-256 syscall path.",
+  "repository_state": "The first entry is the branch baseline. The remaining entries are named protocol revisions; they are not silent suite-green edits. The v4 entries are explicitly PCS-scaffold evidence, not the final payment-v4 transcript KAT.",
+  "proof_serialization_anchors": [
+    "v3_serialization_kat.json"
+  ],
+  "entries": [
+    {
+      "revision": "v1_branch_baseline",
+      "digest_hex": "16eb0cabdd02fabec91cace95d2db1a69fd9d8e665109152f1ac01f46a9ce9a9",
+      "sbf_simulation_cu": 10792,
+      "reason": "Committed pre-Stage-1 transcript: profile, statement, roots/fold challenges, final polynomial, grinding nonce, queries."
+    },
+    {
+      "revision": "v2_ood_binding",
+      "digest_hex": "bef9b05d512b4c0550f82df8e9487da5c2a06c3241272d5892005872cbff52e2",
+      "sbf_simulation_cu": 16809,
+      "reason": "Deliberate OOD-binding protocol change: every round adds a root-bound OOD point and absorbs its claimed value before the fold challenge. Exact-uniform rejection sampling also replaced the biased limb map.",
+      "host_kat_failed_before_repin": true,
+      "matched_on_sbf_after_repin": true
+    },
+    {
+      "revision": "v2_interleaved_relation",
+      "digest_hex": "e00bd5c8e2abbb5055df211856d508f9d11bb7b865499ee654d14211087b3e5b",
+      "sbf_simulation_cu": 23153,
+      "reason": "Deliberate relation-enforcement protocol change: each OOD value is followed by a claim-mixing challenge and an absorbed degree-6 relation-sumcheck polynomial before alpha.",
+      "host_kat_failed_before_repin": true,
+      "matched_on_sbf_after_repin": true
+    },
+    {
+      "revision": "v3_two_phase_canonical_order",
+      "digest_hex": "26f09171a59680c065273ac57b20bf918b69ebb40e645f2f67ad63e62065c591",
+      "sbf_simulation_cu": 25426,
+      "reason": "Deliberate C2 protocol change and envelope-version bump: C1 is absorbed before lambda/chi; C2 is then absorbed; main and helper claimed evaluations are absorbed before gamma; the KAT includes every new squeeze.",
+      "host_kat_failed_before_repin": true,
+      "matched_on_sbf_after_repin": true,
+      "current_artifact": "../stage0/transcript_kat.json"
+    },
+    {
+      "revision": "v4_s2_one_helper_pcs_scaffold_superseded",
+      "digest_hex": "e6d998ede7eb2bb1566f84ea6d311370de0a3fd708907bdccc8d408a4028b681",
+      "sbf_simulation_cu": 35943,
+      "reason": "First deliberate v4/s=2 PCS-scaffold pin: two sequential beta/y/mu triples per round, but only one C2 helper and one carried helper claim. This exposed the versioned schedule and was then superseded when the normative second helper was added.",
+      "host_kat_failed_before_repin": true,
+      "matched_on_sbf_after_repin": true,
+      "v3_pin_unchanged": true,
+      "status": "SUPERSEDED: incomplete one-helper scaffold; never a payment-v4 KAT",
+      "artifact": "../stage2/v4_s2_pcs_scaffold_one_helper_superseded.json"
+    },
+    {
+      "revision": "v4_s2_two_helper_pcs_scaffold",
+      "digest_hex": "74b65c825a6feec2850b3056a16cc2b6d0f7318e786a44ec165304980f8b5f07",
+      "sbf_simulation_cu": 36111,
+      "reason": "Deliberate two-helper scaffold re-pin: one C2 root commits combined 128-byte h1/h2 leaves; both helper evaluations are absorbed before gamma; every round carries two complete sequential beta/y/mu triples. The superseded e6d998... expectation failed after the second helper absorption while the frozen v3 KAT still passed.",
+      "host_kat_failed_before_repin": true,
+      "matched_on_sbf_after_repin": true,
+      "v3_pin_unchanged": true,
+      "status": "CURRENT PCS SCAFFOLD ONLY: excludes the 102 pre-gamma values across z and z xor 11 (49 C1 + 2 C2 at each point), randomized statement constraints, hiding, and final g32 profile",
+      "current_artifact": "../stage2/transcript_kat_v4_s2_pcs_scaffold.json",
+      "wire_ordinal": 19,
+      "final_payment_kat_wire_ordinal_reserved": 20
+    }
+  ]
+}

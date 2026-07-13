@@ -33,7 +33,9 @@ pub const FINAL_POLY_LOG_LEN: u32 = 2;
 pub enum FoldPayload {
     /// Proof carries only the committed raw fiber values; the verifier
     /// recomputes local folds using batched denominator inversions
-    /// (`round_batch_inversion`).
+    /// (`round_batch_inversion`). "Raw" describes payload packaging, not
+    /// the field basis: in the current custom PCS, layer-zero wire symbols
+    /// are CM31 coset evaluations of M31 coefficient vectors.
     RawFibers = 0,
     /// Proof additionally carries the two intra-round folded values per query
     /// per round; the verifier checks cross-multiplied fold relations with
@@ -60,6 +62,9 @@ pub enum MerkleMode {
     /// Deduplicated multiproof: shared subtree nodes shipped once
     /// (`minimal_subtree`).
     MinimalSubtree = 1,
+    /// Domain-separated radix-4 tree with a deduplicated minimal-subtree
+    /// opening. Two binary levels become one four-child SHA-256 compression.
+    Radix4MinimalSubtree = 2,
 }
 
 impl MerkleMode {
@@ -67,6 +72,7 @@ impl MerkleMode {
         match v {
             0 => Some(MerkleMode::SinglePaths),
             1 => Some(MerkleMode::MinimalSubtree),
+            2 => Some(MerkleMode::Radix4MinimalSubtree),
             _ => None,
         }
     }
@@ -202,6 +208,92 @@ pub const PROFILE_CAPACITY_LR10_Q32_G16: Profile = Profile {
     soundness_label: "heuristic diagnostic (lower-row layout target; q32 verifier cost)",
 };
 
+/// The literal ruled Stage 1 schedule (soundness-note §4): q36 with g32
+/// grinding at the lr10 layout target. Exists so the §4 "measured" column can
+/// be a measurement of THIS profile rather than a g16 verifier-cost proxy.
+pub const PROFILE_CAPACITY_LR10_Q36_G32: Profile = Profile {
+    id: 8,
+    name: "capacity_lr10_q36_g32",
+    log_rows: 10,
+    log_blowup: 2,
+    query_count: 36,
+    grinding_bits: 32,
+    soundness_label:
+        "conjectured (capacity); external/OOD relations and Stage 1 C2 plumbing enforced",
+};
+
+/// Query/grinding-trade diagnostic (shrink hunt, `2026-07-10`): q34 at g16
+/// for multi-seed verifier-cost measurement of the q36 -> q34 step. The
+/// sound production pairing holds 2q + g = 104 (q34/g36); g16 here is the
+/// affordable measurement proxy, exactly as in the variance study.
+pub const PROFILE_CAPACITY_LR10_Q34_G16: Profile = Profile {
+    id: 9,
+    name: "capacity_lr10_q34_g16",
+    log_rows: 10,
+    log_blowup: 2,
+    query_count: 34,
+    grinding_bits: 16,
+    soundness_label:
+        "heuristic diagnostic (query/grinding trade measurement; production pairing is q34/g36)",
+};
+
+/// Literal Johnson-query diagnostic for the M31-leaf candidate. At the
+/// pinned rho=1/4, eta=0.025 radius, q74 plus g32 is the first integer query
+/// count whose query-round work factor exceeds 100 bits. This profile is a
+/// measurement target, not a claim that every other soundness-ledger term
+/// reaches 100 bits.
+pub const PROFILE_JOHNSON_LR10_Q74_G32: Profile = Profile {
+    id: 10,
+    name: "johnson_lr10_q74_g32",
+    log_rows: 10,
+    log_blowup: 2,
+    query_count: 74,
+    grinding_bits: 32,
+    soundness_label: "proven Johnson query-radius target; full-system ledger still required",
+};
+
+/// Natural radix-4-compatible low-rate Johnson diagnostic. With rho=1/16
+/// and eta=sqrt(rho)/20=0.0125, q36/g32 gives 101.466 query-round bits while
+/// preserving the four-fold, four-coefficient terminal shape.
+pub const PROFILE_JOHNSON_LR10_B4_Q36_G32: Profile = Profile {
+    id: 11,
+    name: "johnson_lr10_b4_q36_g32",
+    log_rows: 10,
+    log_blowup: 4,
+    query_count: 36,
+    grinding_bits: 32,
+    soundness_label:
+        "proven Johnson query-radius target at rate 1/16; full-system ledger still required",
+};
+
+/// Hardened low-rate Johnson profile. The four fold-challenge work factors
+/// are protocol constants carried by `RATE16_HARDENED_CANDIDATE_SHAPE`; this
+/// header field records the independent final query-grinding difficulty.
+pub const PROFILE_JOHNSON_LR10_B4_Q36_G36_POW: Profile = Profile {
+    id: 12,
+    name: "johnson_lr10_b4_q36_g36_foldpow",
+    log_rows: 10,
+    log_blowup: 4,
+    query_count: 36,
+    grinding_bits: 36,
+    soundness_label:
+        "proven Johnson parameter candidate with per-fold work; full transport ledger required",
+};
+
+/// Production payment profile. It shares the hardened rate-1/16 PCS
+/// parameters but has a distinct id so an external-point diagnostic proof
+/// can never be replayed as a payment-linked proof.
+pub const PROFILE_PAYMENT_LR10_B4_Q36_G36_POW: Profile = Profile {
+    id: 13,
+    name: "payment_lr10_b4_q36_g36_foldpow",
+    log_rows: 10,
+    log_blowup: 4,
+    query_count: 36,
+    grinding_bits: 36,
+    soundness_label:
+        "payment-linked rate-1/16 Johnson candidate with per-fold work; full transport and hiding required",
+};
+
 pub const PROFILES: &[Profile] = &[
     PROFILE_CAPACITY,
     PROFILE_JOHNSON,
@@ -211,6 +303,12 @@ pub const PROFILES: &[Profile] = &[
     PROFILE_CAPACITY_LR10_Q40_G16,
     PROFILE_CAPACITY_LR10_Q36_G16,
     PROFILE_CAPACITY_LR10_Q32_G16,
+    PROFILE_CAPACITY_LR10_Q36_G32,
+    PROFILE_CAPACITY_LR10_Q34_G16,
+    PROFILE_JOHNSON_LR10_Q74_G32,
+    PROFILE_JOHNSON_LR10_B4_Q36_G32,
+    PROFILE_JOHNSON_LR10_B4_Q36_G36_POW,
+    PROFILE_PAYMENT_LR10_B4_Q36_G36_POW,
 ];
 
 pub fn profile_by_id(id: u8) -> Option<&'static Profile> {

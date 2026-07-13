@@ -1,0 +1,53 @@
+name: Profile23 integration
+
+on:
+  push:
+    paths:
+      - "aspis/crates/aspis-core/**"
+      - "aspis/crates/aspis-prover/**"
+      - "aspis/crates/aspis-statement/**"
+      - "aspis/programs/aspis-verifier/**"
+      - "aspis/xtask/**"
+      - ".github/workflows/profile23-integration.yml"
+  pull_request:
+    paths:
+      - "aspis/crates/aspis-core/**"
+      - "aspis/crates/aspis-prover/**"
+      - "aspis/crates/aspis-statement/**"
+      - "aspis/programs/aspis-verifier/**"
+      - "aspis/xtask/**"
+      - ".github/workflows/profile23-integration.yml"
+
+jobs:
+  profile23:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: aspis
+    env:
+      NO_DNA: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Core fail-closed and transcript tests
+        run: cargo test -q -p aspis-core profile23
+
+      - name: Good23 and bounded-manager tests
+        run: |
+          cargo test -q -p aspis-prover --lib state_only_good23::tests
+          cargo test -q -p aspis-prover --lib state_only_profile23_release::tests
+
+      - name: Profile23 wire and privacy regressions
+        run: |
+          cargo test --release -q -p aspis-prover --test profile23_zero_factor_integration --features insecure-profile23-fixture profile23_d_tail_roundtrip_and_corruption_teeth
+          cargo test -q -p aspis-prover --lib state_only_profile23_privacy_regressions
+
+      - name: Exact q3 complete-Good replay
+        run: cargo test --release -q -p aspis-prover --lib state_only_good23::tests::frozen_profile23_fixture_runs_exact_good23_on_all_selectors -- --ignored
+
+      - name: Build and verify every valid selector
+        run: cargo test --release -q -p aspis-prover --test profile23_zero_factor_integration --features insecure-profile23-fixture profile23_all_three_selectors_build_and_verify -- --ignored
+
+      - name: Harness schema and proof override compile
+        run: cargo check -q -p aspis-xtask

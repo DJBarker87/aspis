@@ -1,0 +1,351 @@
+{
+  "artifact": "profile23_novelty_rescan_2026_07_13",
+  "artifact_generated_at_local": "2026-07-13T20:36:31+01:00",
+  "artifact_generated_at_utc": "2026-07-13T19:36:31Z",
+  "search_cutoff_local": "2026-07-13T20:35:53+01:00",
+  "search_cutoff_utc": "2026-07-13T19:35:53Z",
+  "timezone": "Europe/London",
+  "status": "exact_conjunction_unrefuted_but_first_claim_blocked_pending_public_mainnet_signature",
+  "mainnet_signature_required_before_first_claim": true,
+  "mainnet_signature": null,
+  "mainnet_event_asserted_by_this_artifact": false,
+  "first_claim_currently_allowed": false,
+  "conclusions": {
+    "broad_first_claim": {
+      "status": "falsified_by_public_prior_art",
+      "claim_family": "first transparent trusted-setup-free private-payment verifier running as a Solana program",
+      "reason": "Protocol 01 publicly exposes a transparent STARK/FRI shielded-payment verifier and pool on Solana devnet, while solana-pqzk-fullchain independently predates any generic first-transparent-verifier formulation."
+    },
+    "exact_conjunction": {
+      "status": "not_falsified_by_this_dated_public_evidence_search",
+      "absolute_first_proven": false,
+      "qualification_required": [
+        "to our knowledge",
+        "following a search completed 13 July 2026",
+        "publicly evidenced",
+        "exact conjunction only"
+      ],
+      "claim_not_yet_quotable": true,
+      "blocking_gate": "public finalized mainnet-beta signature and evidence bundle"
+    }
+  },
+  "exact_object": {
+    "network": "Solana mainnet-beta",
+    "event": "one successful finalized verification/state-transition transaction",
+    "proof_account_scope": "finalized pre-uploaded proof account; account creation and chunk uploads are prior transactions",
+    "direct_verification": "the Solana program itself verifies the complete transparent proof in the claimed transaction",
+    "privacy": "computationally hiding shielded-spend proof in the declared SHA-256 programmable-random-oracle/EPRO fixed Proof-or-Abort channel model",
+    "atomic_mutation": [
+      "nullifier marker recorded",
+      "pool state mutated"
+    ],
+    "compute_unit_cap": 1400000,
+    "soundness": "whole-ledger lower bound exceeding 100 bits in a proven Johnson/MCA regime",
+    "public_evidence_required": true
+  },
+  "broad_claims_rejected": [
+    "first private payment on Solana",
+    "first shielded pool on Solana",
+    "first on-chain zero-knowledge verifier on Solana",
+    "first transparent or STARK verifier on Solana",
+    "first transparent shielded-payment project on Solana",
+    "entire proof lifecycle in one transaction"
+  ],
+  "search_scope": {
+    "sources": [
+      "GitHub repository search",
+      "GitHub code search",
+      "IACR ePrint",
+      "arXiv",
+      "official project sites and documentation",
+      "project whitepapers and design documents",
+      "Solana Explorer and read-only mainnet-beta/devnet RPC",
+      "Google Patents",
+      "WIPO PATENTSCOPE"
+    ],
+    "web_and_paper_query_families": [
+      "Solana transparent shielded spend STARK on-chain verifier nullifier one transaction",
+      "Solana privacy protocol shielded pool nullifier on-chain proof verification mainnet",
+      "Solana STARK verifier mainnet compute units transparent zero knowledge proof",
+      "Solana mainnet STARK shielded transfer on-chain verifier nullifier 1.4M CU",
+      "Solana mainnet transparent zero knowledge shielded spend STARK atomic transaction",
+      "site:github.com Solana shielded spend nullifier STARK verifier",
+      "site:eprint.iacr.org Solana shielded STARK privacy",
+      "site:arxiv.org Solana private payments STARK shielded",
+      "site:patents.google.com Solana STARK shielded transaction nullifier",
+      "site:patents.google.com Solana transparent zero knowledge proof private payment",
+      "site:patentscope.wipo.int Solana STARK privacy nullifier"
+    ],
+    "github_code_query_families": [
+      "stark nullifier language:Rust",
+      "fri nullifier language:Rust",
+      "Winterfell Solana language:Rust",
+      "shielded solana_program language:Rust",
+      "verify_stark solana language:Rust",
+      "transparent shielded language:Rust"
+    ],
+    "targeted_projects": [
+      "Protocol 01",
+      "solana-pqzk-fullchain",
+      "Sombra",
+      "Hush",
+      "Cloak",
+      "Privacy Cash",
+      "Light Protocol",
+      "Elusiv",
+      "Otter Cash",
+      "Poseidon Cash",
+      "Solana Confidential Transfer",
+      "Bonsol",
+      "SP1 Solana",
+      "Helius Privacy",
+      "Styx",
+      "Zul",
+      "Noctura"
+    ],
+    "limitations": [
+      "Private or unindexed source and deployments cannot be excluded.",
+      "Dynamic project pages may change after the cutoff.",
+      "Project self-reports were not treated as stronger than pinned source, papers, or chain evidence.",
+      "No finite search proves an absolute historical negative; the claim must retain a knowledge qualifier and date."
+    ]
+  },
+  "nearest_priors": [
+    {
+      "name": "Protocol 01",
+      "classification": "strongest_near_prior_and_broad_claim_falsifier",
+      "satisfies": [
+        "transparent STARK/FRI verifier implemented as a Solana program",
+        "shielded-payment and nullifier state machinery",
+        "publicly deployed program IDs on devnet"
+      ],
+      "misses": [
+        "mainnet-beta deployment in the public evidence inspected",
+        "complete proof verification and shielded state mutation in one transaction",
+        "published proven-Johnson/MCA whole-ledger certificate"
+      ],
+      "network_observation": {
+        "checked_at_local": "2026-07-13T20:27:33+01:00",
+        "verifier_program_id": "DGY37k3Jt7cbrfNa9rxyLZVcFB7S7A2NqtVpkh9fWQvs",
+        "pool_program_id": "GbVM5yvetrSD194Hnn1BXnR56F8ZWNKnij7DoVP9j27c",
+        "devnet": "both accounts returned executable BPF-loader program accounts",
+        "mainnet_beta": "both account lookups returned AccountNotFound",
+        "authority": "transient corroboration only; pinned README labels the programs devnet"
+      },
+      "primary_evidence": [
+        {
+          "description": "pinned README labels verifier and pool as devnet programs and describes on-chain FRI verification",
+          "url": "https://github.com/IsSlashy/Protocol-01/blob/790dbff34ac96302fc6336d411fac14f683f5be9/README.md#L126-L154",
+          "commit": "790dbff34ac96302fc6336d411fac14f683f5be9"
+        },
+        {
+          "description": "pinned verifier source requires a separate DEEP-ALI phase after phase 1 because phase 1 approaches or exceeds the 1.4M-CU cap",
+          "url": "https://github.com/IsSlashy/Protocol-01/blob/790dbff34ac96302fc6336d411fac14f683f5be9/programs/p01_stark_verifier/src/lib.rs#L222-L239",
+          "commit": "790dbff34ac96302fc6336d411fac14f683f5be9"
+        },
+        {
+          "description": "pinned transfer source consumes verified and deep_ali_verified flags before commitment/root mutation",
+          "url": "https://github.com/IsSlashy/Protocol-01/blob/790dbff34ac96302fc6336d411fac14f683f5be9/programs/zk_shielded/src/instructions/transfer_stark.rs#L169-L214",
+          "commit": "790dbff34ac96302fc6336d411fac14f683f5be9"
+        },
+        {
+          "description": "phase-split commit records the CU-driven split and separate phase-2 measurements",
+          "url": "https://github.com/IsSlashy/Protocol-01/commit/2f08e830fcf3d0ac59e1ff4925a2b684b3557386",
+          "commit": "2f08e830fcf3d0ac59e1ff4925a2b684b3557386",
+          "date_utc": "2026-04-17T18:48:56Z"
+        }
+      ]
+    },
+    {
+      "name": "solana-pqzk-fullchain",
+      "classification": "direct_transparent_verifier_prior",
+      "satisfies": [
+        "direct on-chain Winterfell STARK verification",
+        "public reproducible repository",
+        "paper reports devnet verifier cost below 1.19M CU maximum"
+      ],
+      "misses": [
+        "shielded-spend statement",
+        "atomic nullifier and pool-state mutation",
+        "mainnet-beta"
+      ],
+      "primary_evidence": [
+        {
+          "description": "measurement paper",
+          "url": "https://eprint.iacr.org/2025/1741"
+        },
+        {
+          "description": "pinned repository; minimal affine-counter AIR and devnet program",
+          "url": "https://github.com/pqzk-labs/solana-pqzk-fullchain/tree/2c888111e2f9c83252d9e019a99f19fe078e6428",
+          "commit": "2c888111e2f9c83252d9e019a99f19fe078e6428"
+        }
+      ]
+    },
+    {
+      "name": "Cloak",
+      "classification": "mainnet_shielded_spend_prior",
+      "satisfies": [
+        "official site reports live mainnet shielded UTXO transfers",
+        "nullifier-based double-spend prevention",
+        "on-Solana proof verification"
+      ],
+      "misses": [
+        "transparent proof system; official site specifies Groth16"
+      ],
+      "primary_evidence": [
+        {
+          "url": "https://www.cloak.ag/",
+          "retrieved_at_local": "2026-07-13T20:27:33+01:00"
+        },
+        {
+          "description": "published program ID returned an executable account on mainnet-beta at the cutoff",
+          "url": "https://explorer.solana.com/address/zh1eLd6rSphLejbFfJEneUwzHRfMKxgzrgkfwA6qRkW",
+          "program_id": "zh1eLd6rSphLejbFfJEneUwzHRfMKxgzrgkfwA6qRkW"
+        }
+      ]
+    },
+    {
+      "name": "Privacy Cash",
+      "classification": "mainnet_shielded_pool_prior",
+      "satisfies": [
+        "public Solana shielded-pool implementation"
+      ],
+      "misses": [
+        "transparent proof system; repository documents a four-party trusted setup"
+      ],
+      "primary_evidence": [
+        {
+          "url": "https://github.com/Privacy-Cash/privacy-cash/blob/aa6818b76b23edcf05b8b9829a9cd900fdb1d241/artifacts/circuits/TRUSTED_SETUP.MD",
+          "commit": "aa6818b76b23edcf05b8b9829a9cd900fdb1d241"
+        },
+        {
+          "description": "published program ID returned an executable account on mainnet-beta at the cutoff",
+          "url": "https://explorer.solana.com/address/9fhQBbumKEFuXtMBDw8AaQyAjCorLGJQiS3skWZdQyQD",
+          "program_id": "9fhQBbumKEFuXtMBDw8AaQyAjCorLGJQiS3skWZdQyQD"
+        }
+      ]
+    },
+    {
+      "name": "Sombra",
+      "classification": "transparent_shielded_design_prior",
+      "satisfies": [
+        "transparent STARK shielded-UTXO design",
+        "nullifiers and atomic single Solana finalization transaction"
+      ],
+      "misses": [
+        "direct Solana-program STARK verification; finalization commits batch attestation and an aggregated attesting-node vote",
+        "public measured mainnet-beta event satisfying the exact conjunction"
+      ],
+      "primary_evidence": [
+        {
+          "url": "https://sombra.tech/whitepaper.pdf",
+          "retrieved_sha256": "3e58a8c4675b6beae3be978c7e20e31a8b861635a7bc701461632a9c1c91cbd6",
+          "retrieved_bytes": 396730
+        }
+      ]
+    },
+    {
+      "name": "Hush",
+      "classification": "transparent_shielded_cross_chain_prior",
+      "satisfies": [
+        "Miden STARK shielded-transfer and unshield proofs",
+        "nullifier-based state"
+      ],
+      "misses": [
+        "direct proof verification by the Solana program; published flow verifies on zrchain before a Solana transaction is built and signed"
+      ],
+      "primary_evidence": [
+        {
+          "url": "https://hushprotocol.xyz/",
+          "retrieved_at_local": "2026-07-13T20:27:33+01:00"
+        }
+      ]
+    },
+    {
+      "name": "Solana Confidential Transfer",
+      "classification": "native_confidential_transfer_prior",
+      "satisfies": [
+        "native confidential token balances and transfer amounts"
+      ],
+      "misses": [
+        "shielded note/nullifier spend; official documentation says token account addresses remain public"
+      ],
+      "primary_evidence": [
+        {
+          "url": "https://solana.com/docs/tokens/extensions/confidential-transfer"
+        }
+      ]
+    },
+    {
+      "name": "Bonsol",
+      "classification": "recursive_verification_prior",
+      "satisfies": [
+        "general verifiable computation composable with Solana",
+        "RISC Zero STARK execution upstream"
+      ],
+      "misses": [
+        "end-to-end transparency; documentation says the STARK is wrapped in Groth16 using a one-time trusted setup"
+      ],
+      "primary_evidence": [
+        {
+          "url": "https://docs.bonsol.org/core-concepts/introduction"
+        }
+      ]
+    },
+    {
+      "name": "Light Protocol published proving stack",
+      "classification": "large_solana_zk_prior",
+      "satisfies": [
+        "deployed Solana ZK infrastructure precedent"
+      ],
+      "misses": [
+        "transparent proof system; published setup repository specifies Gnark Groth16 and a two-phase trusted setup"
+      ],
+      "primary_evidence": [
+        {
+          "url": "https://github.com/Lightprotocol/gnark-mt-setup/tree/85243034a19b98952440f5823f1a5ab139e52ca3",
+          "commit": "85243034a19b98952440f5823f1a5ab139e52ca3"
+        }
+      ]
+    }
+  ],
+  "retrieval_pins": [
+    {
+      "name": "Sombra whitepaper",
+      "url": "https://sombra.tech/whitepaper.pdf",
+      "sha256": "3e58a8c4675b6beae3be978c7e20e31a8b861635a7bc701461632a9c1c91cbd6",
+      "bytes": 396730
+    },
+    {
+      "name": "Protocol 01 design document",
+      "url": "https://protocol-01.vercel.app/protocol-01-design-document.pdf",
+      "sha256": "cdc77b34136046fd1b89c85a85932d93ba37a24a8353b4ee41c036c11a0c8f60",
+      "bytes": 1463760
+    }
+  ],
+  "mainnet_evidence_gate": {
+    "required": true,
+    "satisfied": false,
+    "signature": null,
+    "requirements": [
+      "public explorer or RPC signature is on mainnet-beta",
+      "transaction is successful and finalized",
+      "invoked program ID is bound to the released default SBF identity",
+      "transaction consumes the finalized proof account bound to the released proof SHA-256",
+      "complete proof verification occurs in this transaction",
+      "nullifier marker and pool-state mutation occur atomically in this transaction",
+      "compute units consumed are at most 1400000",
+      "signature, program ID, proof-account address, release-certificate hash, proof hash, and source revision are public"
+    ],
+    "local_release_artifact_is_not_mainnet_evidence": true
+  },
+  "conditional_claim_template": "To our knowledge, following a search completed 13 July 2026, Aspis provides the first publicly evidenced Solana mainnet-beta transaction in which a Solana program itself verifies a transparent, computationally hiding shielded-spend proof from a finalized pre-uploaded proof account and atomically records its nullifier and pool-state transition in that same transaction under the 1.4M-CU cap, with a whole-ledger soundness lower bound exceeding 100 bits in a proven Johnson/MCA regime.",
+  "required_adjacent_scope_note": "Proof-account creation and chunk uploads occurred in prior transactions. Hiding is computational in the declared SHA-256 programmable-random-oracle/EPRO and fixed public Proof-or-Abort channel model; this is not a statistical-HVZK or standard-model claim. The result is not an audit, a production-readiness claim, or a claim to be the first private-payment system on Solana.",
+  "claim_rules": [
+    "Do not quote the conditional claim until mainnet_evidence_gate.satisfied is true.",
+    "Keep both the knowledge qualifier and the dated-search qualifier.",
+    "Keep the pre-uploaded-proof-account scope adjacent to the claim.",
+    "Do not generalize first from the exact conjunction to any individual component.",
+    "Do not claim statistical HVZK, standard-model hiding, audit, production readiness, or whole-lifecycle one-transaction execution."
+  ]
+}

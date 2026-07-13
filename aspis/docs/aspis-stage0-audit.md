@@ -4,6 +4,9 @@ Date: 2026-07-04
 Scope: `aspis/` workspace after the Stage 0 bootstrap pull.
 Design reference: `docs/aspis-staged-design.md`.
 
+> Historical audit: Stage 1 retired the q32/g32 hypothesis on `2026-07-10`.
+> Current status and measurements live in `aspis-soundness-note.md`.
+
 ## Summary
 
 Stage 0 is substantially implemented as a bootstrap native WHIR-style M31 PCS

@@ -1,0 +1,134 @@
+{
+  "schema": "aspis-stage1-upstream-soundness-pin-v1",
+  "source": {
+    "repository": "https://github.com/WizardOfMenlo/whir",
+    "commit": "10aa7d0bae3663fd149b6b88b6eff2209b867970",
+    "commit_date": "2026-07-07T06:17:17+02:00",
+    "source": "src/protocols/irs_commit.rs:251-288,574-596",
+    "permalink": "https://github.com/WizardOfMenlo/whir/blob/10aa7d0bae3663fd149b6b88b6eff2209b867970/src/protocols/irs_commit.rs#L251-L288"
+  },
+  "profile": {
+    "name": "capacity_lr10_q36_g32",
+    "log_rows": 10,
+    "log_inverse_rate": 2,
+    "fold_variables_per_round": 2,
+    "rounds": 4,
+    "degree_bounds": [
+      1024,
+      256,
+      64,
+      16
+    ],
+    "qm31_field_bits": 123.99999999731277,
+    "johnson_slack": 0.025,
+    "johnson_list_size": 40.0
+  },
+  "t1_proximity_gaps": {
+    "upstream_unique_formula": "bits = log2(|F|) - (log2(k) + log2(1/rho))",
+    "upstream_list_decoding_formula": "bits = log2(|F|) - (7*log2(10) + 3.5*log2(1/rho) + 2*log2(k))",
+    "unique_shaped_per_round": [
+      {
+        "round": 0,
+        "degree_bound": 1024,
+        "bits": 111.99999999731277
+      },
+      {
+        "round": 1,
+        "degree_bound": 256,
+        "bits": 113.99999999731277
+      },
+      {
+        "round": 2,
+        "degree_bound": 64,
+        "bits": 115.99999999731277
+      },
+      {
+        "round": 3,
+        "degree_bound": 16,
+        "bits": 117.99999999731277
+      }
+    ],
+    "unique_shaped_union_bits": 111.59060906117507,
+    "johnson_per_round": [
+      {
+        "round": 0,
+        "degree_bound": 1024,
+        "bits": 73.74650333310123
+      },
+      {
+        "round": 1,
+        "degree_bound": 256,
+        "bits": 77.74650333310123
+      },
+      {
+        "round": 2,
+        "degree_bound": 64,
+        "bits": 81.74650333310123
+      },
+      {
+        "round": 3,
+        "degree_bound": 16,
+        "bits": 85.74650333310123
+      }
+    ],
+    "johnson_union_bits": 73.65341594265702,
+    "interpretation": "The pinned upstream has unique- and Johnson-decoding branches, but no capacity-conjecture branch. Aspis may cite the unique-shaped values only as part of its explicit capacity conjecture; they are not an upstream proof of capacity soundness. The Johnson branch is much lower and upstream compensates it with per-fold PoW, which Aspis does not implement."
+  },
+  "t2_ood_binding": {
+    "upstream_formula": "(L choose 2) * (((degree - 1) / |F|)^samples)",
+    "resolved_shape": "quadratic in list size: (L choose 2), not linear in L",
+    "samples_per_round": 1,
+    "johnson_per_round": [
+      {
+        "round": 0,
+        "degree_bound": 1024,
+        "bits": 104.39407925381782
+      },
+      {
+        "round": 1,
+        "degree_bound": 256,
+        "bits": 106.3983162467043
+      },
+      {
+        "round": 2,
+        "degree_bound": 64,
+        "bits": 108.41538976006323
+      },
+      {
+        "round": 3,
+        "degree_bound": 16,
+        "bits": 110.48577908795464
+      }
+    ],
+    "johnson_union_bits": 103.98752822042681,
+    "list_size_sensitivity": [
+      {
+        "list_size": 2,
+        "union_bits": 113.59485853417642
+      },
+      {
+        "list_size": 4,
+        "union_bits": 111.00989603345526
+      },
+      {
+        "list_size": 8,
+        "union_bits": 108.78750361211883
+      },
+      {
+        "list_size": 16,
+        "union_bits": 106.68796793856791
+      },
+      {
+        "list_size": 40,
+        "union_bits": 103.98752822042681
+      }
+    ],
+    "interpretation": "At rho=1/4 the pinned Johnson choice gives eta=0.025 and L=40. One OOD sample in each of Aspis's four rounds must be unioned with the shrinking degree bounds; this resolves the draft's T2 shape question without treating the capacity list size as proven."
+  },
+  "conclusion": [
+    "T2's exact pinned-upstream shape is the L-choose-2 form.",
+    "The capacity conjecture must state an effective list-size bound; query-radius behavior alone is insufficient to instantiate T2.",
+    "The pinned upstream does not prove Aspis's capacity-shaped T1 constants.",
+    "Any Stage 1 headline must keep capacity soundness explicitly conjectural and must not relabel the unique-shaped T1 branch as proven."
+  ]
+}

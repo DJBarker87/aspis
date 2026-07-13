@@ -1,0 +1,73 @@
+{
+  "generated_at_utc": "2026-07-12T15:00:41.082568+00:00",
+  "command": "cargo run --release -p aspis-xtask -- stage2-payment-statement-v4",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "instruction_wire_ordinal": 31,
+  "constraint_count": 252,
+  "randomized_claim_count": 67,
+  "sumcheck_rounds": 10,
+  "sumcheck_degree": 10,
+  "fixture_bytes": 3453,
+  "upload_chunks": 6,
+  "simulation_cu": [
+    515952,
+    515952,
+    515952,
+    515952,
+    515952
+  ],
+  "simulation_cu_mean": 515952.0,
+  "first_simulation_remaining_cu_markers": [
+    1398562,
+    1390610,
+    1383084,
+    1329065,
+    1326570,
+    1326002,
+    1277406,
+    1151824,
+    1075943,
+    941335,
+    933784,
+    885885,
+    884157
+  ],
+  "first_simulation_phase_cu": [
+    7952,
+    7526,
+    54019,
+    2495,
+    568,
+    48596,
+    125582,
+    75881,
+    134608,
+    7551,
+    47899,
+    1728
+  ],
+  "first_simulation_pre_terminal_phase_cu": [
+    7952,
+    7526,
+    54019,
+    2495,
+    568
+  ],
+  "first_simulation_terminal_phase_cu": [
+    48596,
+    125582,
+    75881,
+    134608,
+    7551,
+    47899,
+    1728
+  ],
+  "first_simulation_unmarked_transaction_cu": 1547,
+  "corruption_rejected": true,
+  "notes": [
+    "Runs the exact 252-constraint terminal, two helper-sum claims, and ten transcript-bound degree-10 sumcheck messages derived from a real depth-20 spend trace.",
+    "The 102 values are fixture-account inputs in this diagnostic. The integrated PCS must authenticate the identical values before this work can authorize a spend.",
+    "Pre-terminal phase order: fixture parse/decode; prefix transcript and challenge derivation; ten-round sumcheck verification; point/evaluation absorption plus gamma; opening assembly. Terminal phase order: selector tensor; Poseidon; fixed relations; copy routing/LogUp; range LogUp; packed theta batching; terminal equality wrapper.",
+    "Unmarked transaction CU includes both ComputeBudget instructions, instruction dispatch before the entry marker, marker logging overhead outside measured windows, and return bookkeeping after the final marker."
+  ]
+}

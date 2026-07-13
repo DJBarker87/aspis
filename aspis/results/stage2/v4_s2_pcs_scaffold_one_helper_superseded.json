@@ -1,0 +1,173 @@
+{
+  "status": "superseded_one_helper_claim_free_baseline",
+  "generated_at_utc": "2026-07-10T21:02:23.623294+00:00",
+  "command": "cargo run --release -p aspis-xtask -- stage2-v4-s2-integration",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "profile": "capacity_lr10_q36_g16",
+  "statement_kind": "claim-free synthetic-C2 polynomial relation",
+  "is_payment_proof": false,
+  "production_verify_instruction_wire_ordinal": 2,
+  "merkle_mode": "radix4_minimal_subtree",
+  "seeds": 8,
+  "repetitions_per_proof": 1,
+  "v3_samples_per_round": 1,
+  "v4_samples_per_round": 2,
+  "transcript_kat_v4_s2_wire_ordinal": 19,
+  "transcript_kat_v4_s2_expected_hex": "e6d998ede7eb2bb1566f84ea6d311370de0a3fd708907bdccc8d408a4028b681",
+  "transcript_kat_v4_s2_host_matched": true,
+  "transcript_kat_v4_s2_sbf_matched": true,
+  "transcript_kat_v4_s2_simulation_cu": 35943,
+  "transcript_kat_v3_unchanged": true,
+  "measurements": [
+    {
+      "seed": 1,
+      "v3_proof_bytes": 25940,
+      "v4_proof_bytes": 27988,
+      "proof_bytes_delta": 2048,
+      "v3_proof_sha256": "b6cb094e06e1f3a18ca793592fb6618a214d443ac8183db2c10831653b5bcf72",
+      "v4_proof_sha256": "a4375863107a85067cd0dee9ebd790c26baf9e6b8818fa4951e5fa268cecc423",
+      "v3_verify_cu": 677246,
+      "v4_verify_cu": 744841,
+      "verify_cu_delta": 67595
+    },
+    {
+      "seed": 2,
+      "v3_proof_bytes": 26708,
+      "v4_proof_bytes": 26772,
+      "proof_bytes_delta": 64,
+      "v3_proof_sha256": "2cfbb0c85d16b70f2f40c2db77847807c29617c1e6c9012577e2ac3c729a5a69",
+      "v4_proof_sha256": "343ab7caa4ecd43231485dc937f62ddd9c6a0438b779d526496be3699cc7459a",
+      "v3_verify_cu": 688046,
+      "v4_verify_cu": 743554,
+      "verify_cu_delta": 55508
+    },
+    {
+      "seed": 3,
+      "v3_proof_bytes": 25588,
+      "v4_proof_bytes": 27060,
+      "proof_bytes_delta": 1472,
+      "v3_proof_sha256": "3ded9b4016df479d2ba7914634f13ab4849b2916ba13cc1f818310a91d8d87fc",
+      "v4_proof_sha256": "ba936e95a8539cea40cac3d962d04755fe10b3d7454d67cb404ce7af3d21ac33",
+      "v3_verify_cu": 670178,
+      "v4_verify_cu": 729675,
+      "verify_cu_delta": 59497
+    },
+    {
+      "seed": 4,
+      "v3_proof_bytes": 28084,
+      "v4_proof_bytes": 28276,
+      "proof_bytes_delta": 192,
+      "v3_proof_sha256": "ff56ecb19c7810012530c4ed1c6063e5f5a3d4ab64ba79758848bd1a0f8bac9c",
+      "v4_proof_sha256": "dcf5bd21e96c021939e8c0536a1d049cc44d67f2ae4644ca416055bee9052d00",
+      "v3_verify_cu": 692624,
+      "v4_verify_cu": 754875,
+      "verify_cu_delta": 62251
+    },
+    {
+      "seed": 5,
+      "v3_proof_bytes": 28244,
+      "v4_proof_bytes": 26676,
+      "proof_bytes_delta": -1568,
+      "v3_proof_sha256": "beb3e11255d3738058d39c490d651d5ba1cc188f0dd3782290d36a1abab9045e",
+      "v4_proof_sha256": "e21120bfbda0db83e52da1712bfc189623cceca00f81e04e295d8ec26a90294c",
+      "v3_verify_cu": 694266,
+      "v4_verify_cu": 733223,
+      "verify_cu_delta": 38957
+    },
+    {
+      "seed": 6,
+      "v3_proof_bytes": 26932,
+      "v4_proof_bytes": 26996,
+      "proof_bytes_delta": 64,
+      "v3_proof_sha256": "aa45bd1aad446c1fb20cb3ebc9dd3f617413ae704b756c04f45c9b9fd7362aa9",
+      "v4_proof_sha256": "1f928ed8097167170ed0a1142164bb6d7387fc921281ee24410ac65b48967d52",
+      "v3_verify_cu": 666988,
+      "v4_verify_cu": 721203,
+      "verify_cu_delta": 54215
+    },
+    {
+      "seed": 7,
+      "v3_proof_bytes": 25716,
+      "v4_proof_bytes": 26260,
+      "proof_bytes_delta": 544,
+      "v3_proof_sha256": "e2c6e5b310a2c3f2dd59097c7e4d6356f8000d09ce50a6108b92ae0124b833db",
+      "v4_proof_sha256": "4f10f98367bb6164cf6a6553599239a72a7b379ef7ffc7817fedf9c934a559c2",
+      "v3_verify_cu": 671613,
+      "v4_verify_cu": 712247,
+      "verify_cu_delta": 40634
+    },
+    {
+      "seed": 8,
+      "v3_proof_bytes": 26612,
+      "v4_proof_bytes": 27092,
+      "proof_bytes_delta": 480,
+      "v3_proof_sha256": "8feaa54cbf8d16568e0b0eccdcac3cae5a588756ffd80e2e8b8f6286f0782c8a",
+      "v4_proof_sha256": "c9ce763d402462e529ae0c6651202183c1a76d029f0e8607709a70e0445350af",
+      "v3_verify_cu": 680882,
+      "v4_verify_cu": 738215,
+      "verify_cu_delta": 57333
+    }
+  ],
+  "v3_verify_cu_mean": 680230.375,
+  "v4_verify_cu_mean": 734729.125,
+  "paired_verify_cu_delta_mean": 54498.75,
+  "paired_verify_cu_delta_min": 38957,
+  "paired_verify_cu_delta_max": 67595,
+  "paired_verify_cu_delta_range": 28638,
+  "proof_bytes_delta_min": -1568,
+  "proof_bytes_delta_max": 2048,
+  "second_ood_corruptions": [
+    {
+      "seed": 1,
+      "layer": 0,
+      "sample_index": 1,
+      "proof_byte_offset": 96,
+      "host_rejected": true,
+      "host_error": "SumcheckBoundaryMismatch { layer: 0 }",
+      "sbf_rejected": true,
+      "sbf_error": "{\"InstructionError\":[1,{\"Custom\":18}]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD invoke [1]\",\"Program log: aspis: proof rejected\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD consumed 7063 of 1399850 compute units\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD failed: custom program error: 0x12\"]"
+    },
+    {
+      "seed": 1,
+      "layer": 1,
+      "sample_index": 1,
+      "proof_byte_offset": 272,
+      "host_rejected": true,
+      "host_error": "SumcheckBoundaryMismatch { layer: 1 }",
+      "sbf_rejected": true,
+      "sbf_error": "{\"InstructionError\":[1,{\"Custom\":18}]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD invoke [1]\",\"Program log: aspis: proof rejected\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD consumed 19633 of 1399850 compute units\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD failed: custom program error: 0x12\"]"
+    },
+    {
+      "seed": 1,
+      "layer": 2,
+      "sample_index": 1,
+      "proof_byte_offset": 448,
+      "host_rejected": true,
+      "host_error": "SumcheckBoundaryMismatch { layer: 2 }",
+      "sbf_rejected": true,
+      "sbf_error": "{\"InstructionError\":[1,{\"Custom\":18}]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD invoke [1]\",\"Program log: aspis: proof rejected\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD consumed 37161 of 1399850 compute units\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD failed: custom program error: 0x12\"]"
+    },
+    {
+      "seed": 1,
+      "layer": 3,
+      "sample_index": 1,
+      "proof_byte_offset": 624,
+      "host_rejected": true,
+      "host_error": "SumcheckBoundaryMismatch { layer: 3 }",
+      "sbf_rejected": true,
+      "sbf_error": "{\"InstructionError\":[1,{\"Custom\":18}]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD invoke [1]\",\"Program log: aspis: proof rejected\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD consumed 59305 of 1399850 compute units\",\"Program 2Ao6ThT7qABozK7zD7UwSsAC64zyZY34TfSB8TAYPxTD failed: custom program error: 0x12\"]"
+    }
+  ],
+  "every_second_ood_rejected_host": true,
+  "every_second_ood_rejected_sbf": true,
+  "notes": [
+    "SUPERSEDED: this pre-correction run used one 64-byte synthetic C2 helper and carried no helper claimed evaluations. The committed scaffold uses two helper columns, 128-byte C2 leaves, two helper claims, and production VerifyWithClaim.",
+    "The e6d998... PCS-scaffold KAT pin in this artifact is retired by the deliberate two-helper re-pin. It is not the normative payment-v4 KAT.",
+    "Every row is a real v3/s=1 versus v4/s=2 pair over identical profile, coefficients, statement digest, synthetic C2 builder, and radix-4 mode. The changed transcript deliberately produces fresh roots, nonce, queries, and frontiers.",
+    "The measured transaction invokes production AspisInstruction::Verify (Borsh tag 2); no measurement-only verifier instruction or new wire tag is involved.",
+    "This proves and measures only the repository's claim-free synthetic-C2 polynomial relation. It is not LogUp, does not prove a payment, and is not hiding.",
+    "One simulation per proof is enough within a seed because Solana simulation CU is deterministic for fixed account data; the eight independently generated transcripts are the variance population.",
+    "The seed-1 corruption suite flips one byte in each of the four second OOD values and requires rejection by both the host verifier and the same production Verify path on SBF.",
+    "This g16 result is an integrated delta checkpoint, not the final q36/g32 strict-gate measurement. A cached or freshly ground v4/g32 fixture remains a separate publication artifact."
+  ]
+}

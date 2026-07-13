@@ -1,0 +1,137 @@
+{
+  "artifact": "profile23_complete_good_product",
+  "date": "2026-07-13",
+  "status": "complete_good_product_runtime_gate_and_declared_model_computational_hvzk_green_and_profile23_one_transaction_released",
+  "production_enabled": true,
+  "production_wire_changed_by_this_artifact": false,
+  "fixture": "results/stage2/proofs/atomic_state_only_profile22_v3_unmined.bin",
+  "statement_digest": "52e96f99756fe8fd2d8b7a700019b143d7eb549af1bf1ae987e99a75cadcd4c9",
+  "source_id_scheme": "tower_coordinate*1024+trace_row",
+  "root_neutral_minor": {
+    "rank_m31": 1404,
+    "fingerprint": "0xb7472b1f2b1d03e7",
+    "complete": true
+  },
+  "remaining_gd_terminal_schur": {
+    "query_rank_m31": 256,
+    "terminal_rank_m31": 12,
+    "source_columns": [65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76],
+    "pivot_rows": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+    "pivot_values_m31": [
+      1303599219,
+      1519079287,
+      750085525,
+      843209746,
+      1219806404,
+      1623270512,
+      1992307512,
+      182271447,
+      2115920734,
+      350232569,
+      77280322,
+      1136761264
+    ],
+    "all_pivot_values_nonzero": true,
+    "z_degree_bound": 120,
+    "fingerprint": "0x0a2dbf8f1a9059c0"
+  },
+  "h1_inactive_padding_terminal_schur": {
+    "query_rank_m31": 256,
+    "terminal_rank_m31": 12,
+    "source_columns": [66, 69, 70, 73, 74, 77, 78, 81, 82, 85, 86, 87],
+    "pivot_rows": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+    "pivot_values_m31": [
+      766225191,
+      318447798,
+      1477015540,
+      1383147404,
+      768930608,
+      1200510041,
+      361026191,
+      407882482,
+      560584336,
+      969510184,
+      1808217394,
+      2138331066
+    ],
+    "all_pivot_values_nonzero": true,
+    "z_degree_bound": 120,
+    "fingerprint": "0x5c61aee383dff271"
+  },
+  "bound_product": {
+    "component_fingerprints": [
+      "0xb7472b1f2b1d03e7",
+      "0x0a2dbf8f1a9059c0",
+      "0x5c61aee383dff271"
+    ],
+    "q_total_degree_bound": 28544,
+    "root_neutral_z_degree_bound": 41040,
+    "remaining_gd_terminal_z_degree_bound": 120,
+    "h1_inactive_padding_terminal_z_degree_bound": 120,
+    "complete_good_z_degree_bound": 41280,
+    "gamma_coordinate_total_degree_bound": 92436,
+    "continuous_total_degree_bound": 133716,
+    "fingerprint": "0x1d6697447b7a1448",
+    "complete": true
+  },
+  "production_certificate_transfer": {
+    "certificate_fixture": "results/stage2/proofs/atomic_state_only_profile22_v3_unmined.bin",
+    "rank_dependency": "frozen layout and schedule, not witness bytes",
+    "layout_factor_fingerprint_matches_live_code": true,
+    "good23_definition_fingerprint_matches_live_code": true,
+    "production_all_three_selector_branches_audited_green": true,
+    "production_proof_byte_equality_to_fixture_assumed": false
+  },
+  "liveness_bound_bookable_for_prospective_profile23": true,
+  "profile23_soundness_bookable": true,
+  "profile23_default_production_enabled": true,
+  "computational_hvzk": {
+    "complete_view_closed_in_declared_model": true,
+    "model": "SHA-256 programmable random oracle/EPRO with fixed public Proof-or-Abort channel",
+    "eps_aff": 0,
+    "simulator_witness_free": true,
+    "real_vs_simulator_bound_bits": 104.11238518950232,
+    "pairwise_witness_bound_bits": 103.11238518950232,
+    "pairwise_triangle_factor": 2,
+    "statistical_hvzk_claimed": false,
+    "standard_model_sha256_prg_claimed": false,
+    "local_side_channel_claimed": false,
+    "eps_side_zero_only_by_excluding_filesystem_timing_power_thermal_memory_and_remote_prover_traffic": true,
+    "artifact": "results/stage2/profile23_computational_hvzk_closure.json"
+  },
+  "current_release": {
+    "released": true,
+    "release_certificate": "results/stage2/profile23_one_transaction_release.json",
+    "gates_green": 30,
+    "gates_total": 30,
+    "proof": {
+      "path": "results/stage2/proofs/atomic_state_only_profile23_v3_mined.bin",
+      "bytes": 61599,
+      "sha256": "35c4e79316bf4a2af1951e5d2f41b6ebb4ebb7bd1e91a3ba93c52e549bfe7949"
+    },
+    "default_sbf": {
+      "bytes": 6870048,
+      "sha256": "6b64baf559dcddbd6f9b1af1205effeb6afae6a5746a44421e8826251fe4cffb"
+    },
+    "production_tag60_cu": {
+      "diagnostic_tag59": 1202920,
+      "tag59_same_binary": 1202939,
+      "tag59_measurement_context_delta": 19,
+      "program_owned_zeroed": 1204792,
+      "canonical_system_owned_create": 1207123,
+      "worst_case_headroom_under_1400000": 192877
+    },
+    "johnson_selected_soundness_bits": 101.30230658283051,
+    "johnson_coarse_soundness_bits": 100.80652861422749,
+    "computational_hiding_real_vs_simulator_bits_declared_model": 104.11238518950232,
+    "computational_hiding_pairwise_witness_bits_declared_model": 103.11238518950232,
+    "proof_account_precondition": "finalized 40-byte header with all-zero authority sentinel",
+    "production_proof_accounts_sealed": true,
+    "proof_finalize_wire_tag": 62,
+    "pool_initialize_wire_tag": 63,
+    "program_id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue"
+  },
+  "remaining_production_gates": [],
+  "guard": "NO_DNA=1 cargo run --release -q -p aspis-prover --example profile23_complete_good_product",
+  "note": "docs/stage2-profile23-complete-good-product.md"
+}
