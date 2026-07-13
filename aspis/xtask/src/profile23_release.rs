@@ -9,6 +9,10 @@ use serde::Serialize;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
+use crate::profile23_statement::{
+    load_profile23_statement_file, profile23_hex, profile23_recorded_path, Profile23StatementFile,
+};
+
 const CU_LIMIT: u64 = 1_400_000;
 const MIN_SECURITY_BITS: f64 = 100.0;
 
@@ -68,7 +72,42 @@ pub struct ReleaseProofIdentity {
     pub actual_path: Option<String>,
     pub acceptance_path: Option<String>,
     pub mutation_path: Option<String>,
-    pub hvzk_complete_public_view_path: &'static str,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct ReleaseGood23Branch {
+    pub selector: u8,
+    pub accepted: bool,
+    pub rejection: Option<String>,
+    pub root_neutral_rank_m31: usize,
+    pub remaining_gd_query_rank_m31: usize,
+    pub remaining_gd_terminal_rank_m31: usize,
+    pub h1_query_rank_m31: usize,
+    pub h1_terminal_rank_m31: usize,
+    pub dynamic_root_minor_fingerprint: String,
+    pub dynamic_remaining_gd_minor_fingerprint: String,
+    pub dynamic_h1_minor_fingerprint: String,
+    pub dynamic_product_fingerprint: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct ReleaseInstance {
+    pub proof_path: String,
+    pub proof_bytes: u64,
+    pub proof_sha256: String,
+    pub statement_path: String,
+    pub statement_bytes: u64,
+    pub statement_sha256: String,
+    pub statement_pool_hex: String,
+    pub statement_sequence: u64,
+    pub canonical_public_input_digest: String,
+    pub selector_candidates: u8,
+    pub serialized_selector: Option<u8>,
+    pub least_good_selector: Option<u8>,
+    pub good23_branches: Vec<ReleaseGood23Branch>,
+    pub good23_definition_fingerprint: String,
+    pub production_host_verification_green: bool,
+    pub evaluation_error: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -105,11 +144,12 @@ pub struct Profile23OneTransactionRelease {
     /// publication number and the value gated at 100 bits.
     pub computational_hiding_pairwise_witness_bound_bits: Option<f64>,
     pub proof: ReleaseProofIdentity,
+    pub release_instance: ReleaseInstance,
     pub default_production_sbf: DefaultProductionSbfIdentity,
     pub source_artifacts: Vec<SourceArtifact>,
     pub gates: Vec<ReleaseGate>,
     pub failed_gates: Vec<&'static str>,
-    pub notes: [&'static str; 4],
+    pub notes: [&'static str; 5],
 }
 
 #[derive(Clone)]
@@ -126,6 +166,7 @@ struct LoadedArtifacts {
     actual_proof_path: String,
     actual_proof_bytes: u64,
     actual_proof_sha256: String,
+    release_instance: ReleaseInstance,
     default_sbf_bytes: u64,
     default_sbf_sha256: String,
 }
@@ -178,7 +219,7 @@ fn load_raw_source(
 fn load_selected_proof(
     workspace_root: &Path,
     acceptance: &Value,
-) -> Result<(SourceArtifact, String, u64, String)> {
+) -> Result<(SourceArtifact, String, Vec<u8>, String)> {
     let acceptance_path = str_at(acceptance, "/proof_path")
         .context("selected Profile23 acceptance artifact omitted proof_path")?;
     let relative = Path::new(acceptance_path);
@@ -212,9 +253,202 @@ fn load_selected_proof(
             sha256: sha256.clone(),
         },
         acceptance_path.to_string(),
-        bytes.len() as u64,
+        bytes,
         sha256,
     ))
+}
+
+fn load_selected_statement(
+    workspace_root: &Path,
+    acceptance: &Value,
+) -> Result<(SourceArtifact, String, Profile23StatementFile)> {
+    let acceptance_path = str_at(acceptance, "/statement_path")
+        .context("selected Profile23 acceptance artifact omitted statement_path")?;
+    let relative = Path::new(acceptance_path);
+    ensure!(
+        !relative.is_absolute()
+            && relative
+                .components()
+                .all(|component| matches!(component, Component::Normal(_))),
+        "selected Profile23 statement path must be a workspace-relative normal path: {acceptance_path}"
+    );
+    let workspace_root = workspace_root
+        .canonicalize()
+        .with_context(|| format!("canonicalize {}", workspace_root.display()))?;
+    let expected_path = workspace_root
+        .join(relative)
+        .canonicalize()
+        .with_context(|| {
+            format!(
+                "canonicalize selected Profile23 statement {}",
+                workspace_root.join(relative).display()
+            )
+        })?;
+    ensure!(
+        expected_path.starts_with(&workspace_root),
+        "selected Profile23 statement resolves outside the workspace: {}",
+        expected_path.display()
+    );
+    let statement_file = load_profile23_statement_file(&workspace_root, relative)?;
+    ensure!(
+        statement_file.path == expected_path,
+        "shared Profile23 statement loader resolved a different file"
+    );
+    let recorded_path = profile23_recorded_path(&workspace_root, &statement_file.path);
+    ensure!(
+        recorded_path == acceptance_path,
+        "selected Profile23 statement path is not canonical: recorded={recorded_path}, acceptance={acceptance_path}"
+    );
+    Ok((
+        SourceArtifact {
+            label: "production_statement".to_string(),
+            path: recorded_path.clone(),
+            bytes: statement_file.bytes,
+            sha256: statement_file.sha256.clone(),
+        },
+        recorded_path,
+        statement_file,
+    ))
+}
+
+fn release_good23_branch(
+    selector: usize,
+    decision: &aspis_prover::state_only_good23::Profile23GoodScheduleDecision,
+) -> ReleaseGood23Branch {
+    ReleaseGood23Branch {
+        selector: selector as u8,
+        accepted: decision.accepted,
+        rejection: decision.rejection.map(|rejection| format!("{rejection:?}")),
+        root_neutral_rank_m31: decision.root_neutral_rank_m31,
+        remaining_gd_query_rank_m31: decision.remaining_gd_query_rank_m31,
+        remaining_gd_terminal_rank_m31: decision.remaining_gd_terminal_rank_m31,
+        h1_query_rank_m31: decision.h1_query_rank_m31,
+        h1_terminal_rank_m31: decision.h1_terminal_rank_m31,
+        dynamic_root_minor_fingerprint: format!(
+            "0x{:016x}",
+            decision.dynamic_root_minor_fingerprint
+        ),
+        dynamic_remaining_gd_minor_fingerprint: format!(
+            "0x{:016x}",
+            decision.dynamic_remaining_gd_minor_fingerprint
+        ),
+        dynamic_h1_minor_fingerprint: format!("0x{:016x}", decision.dynamic_h1_minor_fingerprint),
+        dynamic_product_fingerprint: format!("0x{:016x}", decision.dynamic_product_fingerprint),
+    }
+}
+
+fn build_release_instance(
+    proof_path: String,
+    proof_sha256: String,
+    proof: &[u8],
+    statement_path: String,
+    statement_file: &Profile23StatementFile,
+) -> ReleaseInstance {
+    let mut errors = Vec::new();
+    let host_result = aspis_statement::state_only_profile23::verify_atomic_state_only_profile23_v3(
+        proof,
+        &statement_file.statement,
+        aspis_prover::HOST_HASH,
+        None,
+    );
+    let production_host_verification_green = host_result.is_ok();
+    if let Err(error) = host_result {
+        errors.push(format!("production host verification failed: {error:?}"));
+    }
+
+    let parsed_prefix =
+        match aspis_core::state_only_prefix::StateOnlyProfile23Prefix::parse_from_proof(proof) {
+            Ok((prefix, suffix)) if !suffix.is_empty() => Some(prefix),
+            Ok(_) => {
+                errors.push("Profile23 proof has no private-opening suffix".to_string());
+                None
+            }
+            Err(error) => {
+                errors.push(format!("Profile23 prefix parse failed: {error:?}"));
+                None
+            }
+        };
+    let serialized_selector = parsed_prefix.map(|prefix| prefix.query_selector);
+    let mut least_good_selector = None;
+    let mut good23_branches = Vec::new();
+
+    if production_host_verification_green {
+        if let Some(prefix) = parsed_prefix {
+            match aspis_statement::atomic_payment_statement_digest_v3(
+                &statement_file.statement,
+                aspis_prover::HOST_HASH,
+            ) {
+                Ok(statement_digest) => {
+                    match aspis_prover::state_only_good23::evaluate_profile23_query_candidates_host(
+                        aspis_prover::HOST_HASH,
+                        &prefix,
+                        &statement_digest,
+                    ) {
+                        Ok(evaluation) => {
+                            least_good_selector = evaluation.selected_selector;
+                            good23_branches = evaluation
+                                .decisions
+                                .iter()
+                                .enumerate()
+                                .map(|(selector, decision)| {
+                                    release_good23_branch(selector, decision)
+                                })
+                                .collect();
+                        }
+                        Err(error) => {
+                            errors.push(format!("complete-Good23 replay failed: {error:?}"));
+                        }
+                    }
+                }
+                Err(error) => errors.push(format!("statement digest failed: {error:?}")),
+            }
+        }
+    } else {
+        errors.push("complete-Good23 replay skipped after host rejection".to_string());
+    }
+
+    ReleaseInstance {
+        proof_path,
+        proof_bytes: proof.len() as u64,
+        proof_sha256,
+        statement_path,
+        statement_bytes: statement_file.bytes as u64,
+        statement_sha256: statement_file.sha256.clone(),
+        statement_pool_hex: profile23_hex(&statement_file.statement.pool),
+        statement_sequence: statement_file.statement.sequence,
+        canonical_public_input_digest: statement_file.canonical_public_input_digest.clone(),
+        selector_candidates:
+            aspis_core::state_only_prefix::STATE_ONLY_PROFILE23_QUERY_CANDIDATE_COUNT,
+        serialized_selector,
+        least_good_selector,
+        good23_branches,
+        good23_definition_fingerprint: expected_good23_fingerprint(),
+        production_host_verification_green,
+        evaluation_error: (!errors.is_empty()).then(|| errors.join("; ")),
+    }
+}
+
+fn release_instance_selector_is_least_good(instance: &ReleaseInstance) -> bool {
+    let candidate_count = usize::from(instance.selector_candidates);
+    if candidate_count != 3
+        || instance.good23_branches.len() != candidate_count
+        || instance
+            .good23_branches
+            .iter()
+            .enumerate()
+            .any(|(selector, branch)| usize::from(branch.selector) != selector)
+    {
+        return false;
+    }
+    let recomputed_least_good = instance
+        .good23_branches
+        .iter()
+        .find(|branch| branch.accepted)
+        .map(|branch| branch.selector);
+    instance.evaluation_error.is_none()
+        && recomputed_least_good.is_some()
+        && instance.least_good_selector == recomputed_least_good
+        && instance.serialized_selector == recomputed_least_good
 }
 
 fn load_artifacts(workspace_root: &Path) -> Result<LoadedArtifacts> {
@@ -245,8 +479,18 @@ fn load_artifacts(workspace_root: &Path) -> Result<LoadedArtifacts> {
     )?;
     let (xtask_manifest_source, xtask_manifest) =
         load_raw_source(workspace_root, "xtask_manifest", XTASK_MANIFEST_PATH)?;
-    let (proof_source, actual_proof_path, actual_proof_bytes, actual_proof_sha256) =
+    let (proof_source, actual_proof_path, proof_bytes, actual_proof_sha256) =
         load_selected_proof(workspace_root, &acceptance)?;
+    let actual_proof_bytes = proof_bytes.len() as u64;
+    let (statement_source, actual_statement_path, statement_file) =
+        load_selected_statement(workspace_root, &acceptance)?;
+    let release_instance = build_release_instance(
+        actual_proof_path.clone(),
+        actual_proof_sha256.clone(),
+        &proof_bytes,
+        actual_statement_path,
+        &statement_file,
+    );
     let (default_sbf_source, default_sbf) =
         load_raw_source(workspace_root, "default_production_sbf", DEFAULT_SBF_PATH)?;
     Ok(LoadedArtifacts {
@@ -260,6 +504,7 @@ fn load_artifacts(workspace_root: &Path) -> Result<LoadedArtifacts> {
             workspace_manifest_source,
             xtask_manifest_source,
             proof_source,
+            statement_source,
             default_sbf_source.clone(),
         ],
         acceptance,
@@ -275,6 +520,7 @@ fn load_artifacts(workspace_root: &Path) -> Result<LoadedArtifacts> {
         actual_proof_path,
         actual_proof_bytes,
         actual_proof_sha256,
+        release_instance,
         default_sbf_bytes: default_sbf.len() as u64,
         default_sbf_sha256: default_sbf_source.sha256,
     })
@@ -303,6 +549,15 @@ fn str_at<'a>(value: &'a Value, pointer: &str) -> Option<&'a str> {
 fn valid_sha256(value: Option<&str>) -> bool {
     value.is_some_and(|value| {
         value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
+    })
+}
+
+fn valid_lower_hex_32(value: Option<&str>) -> bool {
+    value.is_some_and(|value| {
+        value.len() == 64
+            && value
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
     })
 }
 
@@ -441,6 +696,7 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> Profile23OneTransactionRelease {
     let soundness = &loaded.soundness;
     let complete_good = &loaded.complete_good;
     let hvzk = &loaded.hvzk;
+    let release_instance = &loaded.release_instance;
     let mut gates = Vec::new();
 
     let production_artifact_pair =
@@ -471,31 +727,113 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> Profile23OneTransactionRelease {
 
     let acceptance_sha = str_at(acceptance, "/proof_sha256");
     let mutation_sha = str_at(mutation, "/proof_sha256");
-    let hvzk_sha = str_at(hvzk, "/complete_public_view/proof_sha256_production");
     let acceptance_proof_path = str_at(acceptance, "/proof_path");
     let mutation_proof_path = str_at(mutation, "/proof_path");
     let acceptance_bytes = u64_at(acceptance, "/proof_bytes");
     let mutation_bytes = u64_at(mutation, "/proof_bytes");
-    let hvzk_bytes = u64_at(hvzk, "/complete_public_view/proof_bytes_production");
     let proof_identity_matches = valid_sha256(acceptance_sha)
         && acceptance_proof_path == mutation_proof_path
         && acceptance_proof_path == Some(loaded.actual_proof_path.as_str())
+        && acceptance_proof_path == Some(release_instance.proof_path.as_str())
         && acceptance_sha == mutation_sha
-        && acceptance_sha == hvzk_sha
         && acceptance_sha == Some(loaded.actual_proof_sha256.as_str())
+        && acceptance_sha == Some(release_instance.proof_sha256.as_str())
         && acceptance_bytes.is_some()
         && acceptance_bytes == mutation_bytes
-        && acceptance_bytes == hvzk_bytes
-        && acceptance_bytes == Some(loaded.actual_proof_bytes);
+        && acceptance_bytes == Some(loaded.actual_proof_bytes)
+        && acceptance_bytes == Some(release_instance.proof_bytes);
     add_gate(
         &mut gates,
         "production_proof_identity_matches",
         proof_identity_matches,
         format!(
-            "actual=({:?},{},{}), acceptance=({acceptance_proof_path:?},{acceptance_sha:?},{acceptance_bytes:?}), mutation=({mutation_proof_path:?},{mutation_sha:?},{mutation_bytes:?}), hvzk=({hvzk_sha:?},{hvzk_bytes:?})",
+            "actual=({:?},{},{}), acceptance=({acceptance_proof_path:?},{acceptance_sha:?},{acceptance_bytes:?}), mutation=({mutation_proof_path:?},{mutation_sha:?},{mutation_bytes:?}), release_instance=({},{},{})",
             loaded.actual_proof_path,
             loaded.actual_proof_sha256,
             loaded.actual_proof_bytes,
+            release_instance.proof_path,
+            release_instance.proof_sha256,
+            release_instance.proof_bytes,
+        ),
+    );
+
+    let acceptance_statement_path = str_at(acceptance, "/statement_path");
+    let mutation_statement_path = str_at(mutation, "/statement_path");
+    let acceptance_statement_sha = str_at(acceptance, "/statement_sha256");
+    let mutation_statement_sha = str_at(mutation, "/statement_sha256");
+    let acceptance_statement_pool = str_at(acceptance, "/statement_pool_hex");
+    let mutation_statement_pool = str_at(mutation, "/statement_pool_hex");
+    let acceptance_statement_sequence = u64_at(acceptance, "/statement_sequence");
+    let mutation_statement_sequence = u64_at(mutation, "/statement_sequence");
+    let acceptance_statement_digest = str_at(acceptance, "/canonical_public_input_digest");
+    let mutation_statement_digest = str_at(mutation, "/canonical_public_input_digest");
+    let statement_identity_matches = bool_at(acceptance, "/statement_source_override")
+        == Some(true)
+        && bool_at(mutation, "/statement_source_override") == Some(true)
+        && acceptance_statement_path == mutation_statement_path
+        && acceptance_statement_path == Some(release_instance.statement_path.as_str())
+        && valid_sha256(acceptance_statement_sha)
+        && acceptance_statement_sha == mutation_statement_sha
+        && acceptance_statement_sha == Some(release_instance.statement_sha256.as_str())
+        && valid_lower_hex_32(acceptance_statement_pool)
+        && acceptance_statement_pool == mutation_statement_pool
+        && acceptance_statement_pool == Some(release_instance.statement_pool_hex.as_str())
+        && acceptance_statement_sequence.is_some()
+        && acceptance_statement_sequence == mutation_statement_sequence
+        && acceptance_statement_sequence == Some(release_instance.statement_sequence)
+        && valid_lower_hex_32(acceptance_statement_digest)
+        && acceptance_statement_digest == mutation_statement_digest
+        && acceptance_statement_digest
+            == Some(release_instance.canonical_public_input_digest.as_str());
+    add_gate(
+        &mut gates,
+        "production_statement_identity_matches",
+        statement_identity_matches,
+        format!(
+            "actual=({},{},{},{},{},{}), acceptance=({acceptance_statement_path:?},{acceptance_statement_sha:?},{acceptance_statement_pool:?},{acceptance_statement_sequence:?},{acceptance_statement_digest:?},override={:?}), mutation=({mutation_statement_path:?},{mutation_statement_sha:?},{mutation_statement_pool:?},{mutation_statement_sequence:?},{mutation_statement_digest:?},override={:?})",
+            release_instance.statement_path,
+            release_instance.statement_bytes,
+            release_instance.statement_sha256,
+            release_instance.statement_pool_hex,
+            release_instance.statement_sequence,
+            release_instance.canonical_public_input_digest,
+            bool_at(acceptance, "/statement_source_override"),
+            bool_at(mutation, "/statement_source_override"),
+        ),
+    );
+
+    add_gate(
+        &mut gates,
+        "release_instance_production_host_verification_green",
+        release_instance.production_host_verification_green,
+        format!(
+            "proof={} statement={} host_green={} evaluation_error={:?}",
+            release_instance.proof_path,
+            release_instance.statement_path,
+            release_instance.production_host_verification_green,
+            release_instance.evaluation_error,
+        ),
+    );
+
+    let selector_is_least_good = release_instance_selector_is_least_good(release_instance)
+        && release_instance.good23_definition_fingerprint == expected_good23_fingerprint();
+    add_gate(
+        &mut gates,
+        "release_instance_serialized_selector_is_least_good23",
+        selector_is_least_good,
+        format!(
+            "candidates={}, serialized={:?}, least_good={:?}, branch_acceptance={:?}, definition_fingerprint={}, expected_fingerprint={}, evaluation_error={:?}",
+            release_instance.selector_candidates,
+            release_instance.serialized_selector,
+            release_instance.least_good_selector,
+            release_instance
+                .good23_branches
+                .iter()
+                .map(|branch| (branch.selector, branch.accepted))
+                .collect::<Vec<_>>(),
+            release_instance.good23_definition_fingerprint,
+            expected_good23_fingerprint(),
+            release_instance.evaluation_error,
         ),
     );
 
@@ -1118,17 +1456,13 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> Profile23OneTransactionRelease {
         && bool_at(
             complete_good,
             "/computational_hvzk/complete_view_closed_in_declared_model",
-        ) == Some(true)
-        && bool_at(
-            hvzk,
-            "/production_release/canonically_mined_tag60_host_sbf_kat_green",
         ) == Some(true);
     add_gate(
         &mut gates,
         "computational_hiding_at_least_100_bits_in_declared_model",
         declared_model_hiding,
         format!(
-            "real_vs_simulator={real_vs_simulator_hiding_bits:?}, pairwise_witness={pairwise_hiding_bits:?}, triangle_factor={:?}, complete_view={:?}, complete_system={:?}, mined_tag60_hvzk_repin={:?}",
+            "proof-independent theorem evidence: real_vs_simulator={real_vs_simulator_hiding_bits:?}, pairwise_witness={pairwise_hiding_bits:?}, triangle_factor={:?}, complete_view={:?}, complete_system={:?}; concrete release applicability is gated separately by exact proof+statement host/SBF/Good checks",
             u64_at(hvzk, "/epro/pairwise_triangle_factor"),
             bool_at(
                 hvzk,
@@ -1137,10 +1471,6 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> Profile23OneTransactionRelease {
             bool_at(
                 hvzk,
                 "/claim/complete_system_computational_privacy_quotable_in_declared_model"
-            ),
-            bool_at(
-                hvzk,
-                "/production_release/canonically_mined_tag60_host_sbf_kat_green"
             )
         ),
     );
@@ -1184,9 +1514,8 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> Profile23OneTransactionRelease {
             actual_path: Some(loaded.actual_proof_path.clone()),
             acceptance_path: str_at(acceptance, "/proof_path").map(ToOwned::to_owned),
             mutation_path: str_at(mutation, "/proof_path").map(ToOwned::to_owned),
-            hvzk_complete_public_view_path:
-                "complete_public_view.{proof_sha256_production,proof_bytes_production}",
         },
+        release_instance: loaded.release_instance.clone(),
         default_production_sbf: DefaultProductionSbfIdentity {
             path: DEFAULT_SBF_PATH,
             build_command:
@@ -1203,7 +1532,8 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> Profile23OneTransactionRelease {
         notes: [
             "This certificate is fail-closed: released=true only when every listed gate passes in one evaluation.",
             "Soundness and complete-Good are proof-independent theorem artifacts; their exact files are bound by SHA-256 and their layout/Good identities are checked against live code.",
-            "The production proof file is read directly and its identity is required to agree across acceptance, mutation and the HVZK complete-public-view production repin.",
+            "The production proof and canonical public-statement sidecar are read directly; their identities must agree with both acceptance and mutation, and the exact pair must pass the production host verifier plus the live three-branch least-Good replay.",
+            "Historical concrete-proof fields under the static HVZK artifact's complete_public_view and production_release objects are retained only as non-authorizing regression metadata; they are not theorem assumptions and cannot authorize this release instance.",
             "The release command removes and freshly rebuilds the plain manifest-default SBF before comparing it with the explicit production-alias KAT; proof-account creation and chunk uploads remain outside this one-transaction CU claim.",
         ],
     }
@@ -1238,10 +1568,21 @@ pub fn evaluate(workspace_root: &Path) -> Result<Profile23OneTransactionRelease>
     Ok(evaluate_loaded(load_artifacts(workspace_root)?))
 }
 
+/// Re-evaluate the complete release certificate against the files currently
+/// present in the workspace without rebuilding or writing anything.
+///
+/// The devnet preflight uses this read-only path to prove that a supplied
+/// certificate is the output of the live release policy, rather than trusting
+/// an arbitrary JSON document whose self-declared gates happen to be green.
+pub(crate) fn evaluate_existing(workspace_root: &Path) -> Result<Profile23OneTransactionRelease> {
+    Ok(evaluate_loaded(load_artifacts(workspace_root)?))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
+    use std::sync::OnceLock;
 
     fn workspace_root() -> std::path::PathBuf {
         Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -1254,10 +1595,63 @@ mod tests {
         report.gates.iter().find(|gate| gate.name == name).unwrap()
     }
 
+    fn loaded_artifacts() -> LoadedArtifacts {
+        static LOADED: OnceLock<LoadedArtifacts> = OnceLock::new();
+        LOADED
+            .get_or_init(|| load_artifacts(&workspace_root()).unwrap())
+            .clone()
+    }
+
+    fn good_branch(selector: u8, accepted: bool) -> ReleaseGood23Branch {
+        ReleaseGood23Branch {
+            selector,
+            accepted,
+            rejection: (!accepted).then(|| "RootNeutralIncomplete".to_string()),
+            root_neutral_rank_m31: accepted as usize,
+            remaining_gd_query_rank_m31: accepted as usize,
+            remaining_gd_terminal_rank_m31: accepted as usize,
+            h1_query_rank_m31: accepted as usize,
+            h1_terminal_rank_m31: accepted as usize,
+            dynamic_root_minor_fingerprint: "0x0000000000000000".to_string(),
+            dynamic_remaining_gd_minor_fingerprint: "0x0000000000000000".to_string(),
+            dynamic_h1_minor_fingerprint: "0x0000000000000000".to_string(),
+            dynamic_product_fingerprint: "0x0000000000000000".to_string(),
+        }
+    }
+
+    fn selector_instance(accepted: [bool; 3], serialized_selector: Option<u8>) -> ReleaseInstance {
+        let branches = accepted
+            .into_iter()
+            .enumerate()
+            .map(|(selector, accepted)| good_branch(selector as u8, accepted))
+            .collect::<Vec<_>>();
+        let least_good_selector = branches
+            .iter()
+            .find(|branch| branch.accepted)
+            .map(|branch| branch.selector);
+        ReleaseInstance {
+            proof_path: "proof.bin".to_string(),
+            proof_bytes: 1,
+            proof_sha256: "00".repeat(32),
+            statement_path: "statement.json".to_string(),
+            statement_bytes: 1,
+            statement_sha256: "11".repeat(32),
+            statement_pool_hex: "22".repeat(32),
+            statement_sequence: 1,
+            canonical_public_input_digest: "33".repeat(32),
+            selector_candidates: 3,
+            serialized_selector,
+            least_good_selector,
+            good23_branches: branches,
+            good23_definition_fingerprint: expected_good23_fingerprint(),
+            production_host_verification_green: true,
+            evaluation_error: None,
+        }
+    }
+
     #[test]
     fn current_artifacts_evaluate_to_their_mined_or_unmined_status() {
-        let root = workspace_root();
-        let loaded = load_artifacts(&root).unwrap();
+        let loaded = loaded_artifacts();
         let currently_unmined = bool_at(&loaded.acceptance, "/proof_unmined") == Some(true)
             || bool_at(&loaded.mutation, "/proof_unmined") == Some(true);
         let report = evaluate_loaded(loaded);
@@ -1272,13 +1666,16 @@ mod tests {
             assert!(report.failed_gates.is_empty());
             assert!(report.gates.iter().all(|gate| gate.passed));
         }
-        assert_eq!(report.source_artifacts.len(), 10);
+        assert_eq!(report.source_artifacts.len(), 11);
+        assert!(report
+            .source_artifacts
+            .iter()
+            .any(|source| source.label == "production_statement"));
     }
 
     #[test]
     fn an_unmined_classification_can_never_release() {
-        let root = workspace_root();
-        let mut loaded = load_artifacts(&root).unwrap();
+        let mut loaded = loaded_artifacts();
         loaded.acceptance["proof_unmined"] = Value::Bool(true);
         loaded.mutation["proof_unmined"] = Value::Bool(true);
         loaded.acceptance["production_api_accepted_mined_sbf"] = Value::Bool(true);
@@ -1291,16 +1688,13 @@ mod tests {
 
     #[test]
     fn actual_proof_bytes_are_part_of_the_identity_gate() {
-        let root = workspace_root();
-        let mut loaded = load_artifacts(&root).unwrap();
+        let mut loaded = loaded_artifacts();
         let sha256 = loaded.actual_proof_sha256.clone();
         let bytes = loaded.actual_proof_bytes;
         loaded.acceptance["proof_sha256"] = Value::String(sha256.clone());
         loaded.mutation["proof_sha256"] = Value::String(sha256.clone());
-        loaded.hvzk["complete_public_view"]["proof_sha256_production"] = Value::String(sha256);
         loaded.acceptance["proof_bytes"] = Value::from(bytes);
         loaded.mutation["proof_bytes"] = Value::from(bytes);
-        loaded.hvzk["complete_public_view"]["proof_bytes_production"] = Value::from(bytes);
         assert!(
             gate(
                 &evaluate_loaded(loaded.clone()),
@@ -1331,9 +1725,176 @@ mod tests {
     }
 
     #[test]
+    fn exact_statement_sidecar_identity_is_required() {
+        let loaded = loaded_artifacts();
+        assert!(
+            gate(
+                &evaluate_loaded(loaded.clone()),
+                "production_statement_identity_matches"
+            )
+            .passed
+        );
+
+        let mut path_mismatch = loaded.clone();
+        path_mismatch.mutation["statement_path"] =
+            Value::String("results/stage2/statements/different.json".to_string());
+        assert!(
+            !gate(
+                &evaluate_loaded(path_mismatch),
+                "production_statement_identity_matches"
+            )
+            .passed
+        );
+
+        let mut digest_mismatch = loaded.clone();
+        digest_mismatch.mutation["canonical_public_input_digest"] = Value::String("00".repeat(32));
+        assert!(
+            !gate(
+                &evaluate_loaded(digest_mismatch),
+                "production_statement_identity_matches"
+            )
+            .passed
+        );
+
+        let mut implicit_fixture = loaded;
+        implicit_fixture.acceptance["statement_source_override"] = Value::Bool(false);
+        assert!(
+            !gate(
+                &evaluate_loaded(implicit_fixture),
+                "production_statement_identity_matches"
+            )
+            .passed
+        );
+    }
+
+    #[test]
+    fn release_statement_path_must_be_workspace_relative_and_normal() {
+        let loaded = loaded_artifacts();
+        for invalid in [
+            "/tmp/profile23-statement.json",
+            "../profile23-statement.json",
+            "./results/stage2/profile23-statement.json",
+        ] {
+            let mut acceptance = loaded.acceptance.clone();
+            acceptance["statement_path"] = Value::String(invalid.to_string());
+            let error = load_selected_statement(&workspace_root(), &acceptance).unwrap_err();
+            assert!(error.to_string().contains("workspace-relative normal path"));
+        }
+    }
+
+    #[test]
+    fn selector_policy_chooses_the_least_good_without_requiring_all_good() {
+        for (accepted, selected) in [
+            ([true, true, true], Some(0)),
+            ([false, true, true], Some(1)),
+            ([false, false, true], Some(2)),
+        ] {
+            assert!(release_instance_selector_is_least_good(&selector_instance(
+                accepted, selected
+            )));
+        }
+        assert!(!release_instance_selector_is_least_good(
+            &selector_instance([false, false, false], None)
+        ));
+        assert!(!release_instance_selector_is_least_good(
+            &selector_instance([false, true, true], Some(2))
+        ));
+        let mut malformed = selector_instance([false, true, true], Some(1));
+        malformed.good23_branches.swap(0, 1);
+        assert!(!release_instance_selector_is_least_good(&malformed));
+    }
+
+    #[test]
+    fn exact_host_and_good_replay_fail_closed_under_mutation() {
+        let loaded = loaded_artifacts();
+        assert!(
+            gate(
+                &evaluate_loaded(loaded.clone()),
+                "release_instance_production_host_verification_green"
+            )
+            .passed
+        );
+        assert!(
+            gate(
+                &evaluate_loaded(loaded.clone()),
+                "release_instance_serialized_selector_is_least_good23"
+            )
+            .passed
+        );
+
+        let mut host_failure = loaded.clone();
+        host_failure
+            .release_instance
+            .production_host_verification_green = false;
+        assert!(
+            !gate(
+                &evaluate_loaded(host_failure),
+                "release_instance_production_host_verification_green"
+            )
+            .passed
+        );
+
+        let mut selector_failure = loaded;
+        selector_failure.release_instance.serialized_selector = Some(
+            selector_failure
+                .release_instance
+                .least_good_selector
+                .unwrap()
+                .wrapping_add(1)
+                % 3,
+        );
+        assert!(
+            !gate(
+                &evaluate_loaded(selector_failure),
+                "release_instance_serialized_selector_is_least_good23"
+            )
+            .passed
+        );
+    }
+
+    #[test]
+    fn corrupted_exact_proof_is_rejected_by_direct_host_replay() {
+        let loaded = loaded_artifacts();
+        let (_, proof_path, mut proof, _) =
+            load_selected_proof(&workspace_root(), &loaded.acceptance).unwrap();
+        proof[0] ^= 1;
+        let (_, statement_path, statement_file) =
+            load_selected_statement(&workspace_root(), &loaded.acceptance).unwrap();
+        let instance = build_release_instance(
+            proof_path,
+            hex_sha256(&proof),
+            &proof,
+            statement_path,
+            &statement_file,
+        );
+        assert!(!instance.production_host_verification_green);
+        assert!(instance.evaluation_error.is_some());
+        assert!(instance.good23_branches.is_empty());
+        assert!(!release_instance_selector_is_least_good(&instance));
+    }
+
+    #[test]
+    fn historical_hvzk_fixture_fields_do_not_authorize_the_instance() {
+        let mut loaded = loaded_artifacts();
+        loaded.hvzk["complete_public_view"]["proof_sha256_production"] =
+            Value::String("00".repeat(32));
+        loaded.hvzk["complete_public_view"]["proof_bytes_production"] = Value::from(0);
+        loaded.hvzk["production_release"]["canonically_mined_tag60_host_sbf_kat_green"] =
+            Value::Bool(false);
+        let report = evaluate_loaded(loaded);
+        assert!(gate(&report, "production_proof_identity_matches").passed);
+        assert!(
+            gate(
+                &report,
+                "computational_hiding_at_least_100_bits_in_declared_model"
+            )
+            .passed
+        );
+    }
+
+    #[test]
     fn acceptance_ledger_is_recomputed_from_every_bucket() {
-        let root = workspace_root();
-        let mut loaded = load_artifacts(&root).unwrap();
+        let mut loaded = loaded_artifacts();
         assert!(
             gate(
                 &evaluate_loaded(loaded.clone()),
@@ -1355,8 +1916,7 @@ mod tests {
 
     #[test]
     fn production_ledgers_bind_tag59_tag60_and_the_signed_increment() {
-        let root = workspace_root();
-        let mut loaded = load_artifacts(&root).unwrap();
+        let mut loaded = loaded_artifacts();
         let path = |marker_path: &str| {
             json!({
                 "marker_path": marker_path,
@@ -1396,8 +1956,7 @@ mod tests {
 
     #[test]
     fn diagnostic_mutation_increment_is_bound_to_the_acceptance_tag59_total() {
-        let root = workspace_root();
-        let mut loaded = load_artifacts(&root).unwrap();
+        let mut loaded = loaded_artifacts();
         assert!(
             gate(
                 &evaluate_loaded(loaded.clone()),

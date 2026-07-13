@@ -10,7 +10,7 @@ use std::{
     fs::{self, OpenOptions},
     io::Write,
     os::unix::fs::PermissionsExt,
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
     process::Command,
     str::FromStr,
     thread,
@@ -43,6 +43,10 @@ use aspis_verifier::{
         ATOMIC_POOL_STATE_LEN,
     },
     AspisInstruction, PROOF_ACCOUNT_HEADER_LEN,
+};
+
+use crate::profile23_statement::{
+    canonical_profile23_public_input_digest, decode_profile23_statement_sidecar, profile23_hex,
 };
 
 const DEVNET_GENESIS_HASH: &str = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1";
@@ -153,6 +157,34 @@ pub struct AccountEvidence {
 }
 
 #[derive(Clone, Debug, Serialize)]
+pub struct UpgradeableProgramSnapshotEvidence {
+    pub program_account: AccountEvidence,
+    pub programdata_address: String,
+    pub programdata_account: AccountEvidence,
+    pub programdata_slot: u64,
+    pub upgrade_authority_address: String,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+pub struct UpgradeableProgramContinuityChecks {
+    pub programdata_address_unchanged: bool,
+    pub program_raw_account_image_unchanged: bool,
+    pub program_data_unchanged: bool,
+    pub programdata_raw_account_image_unchanged: bool,
+    pub programdata_data_unchanged: bool,
+}
+
+impl UpgradeableProgramContinuityChecks {
+    fn all_unchanged(self) -> bool {
+        self.programdata_address_unchanged
+            && self.program_raw_account_image_unchanged
+            && self.program_data_unchanged
+            && self.programdata_raw_account_image_unchanged
+            && self.programdata_data_unchanged
+    }
+}
+
+#[derive(Clone, Debug, Serialize)]
 pub struct Profile23DevnetEvidence {
     pub artifact: &'static str,
     pub generated_at_utc: String,
@@ -162,6 +194,16 @@ pub struct Profile23DevnetEvidence {
     pub release_certificate_path: String,
     pub release_certificate_sha256: String,
     pub release_gate_count: usize,
+    pub release_instance_proof_identity_exact: bool,
+    pub release_instance_statement_identity_exact: bool,
+    pub release_instance_selector_binding_exact: bool,
+    pub release_instance_good23_fingerprint_exact: bool,
+    pub release_instance_declared_host_verification_green: bool,
+    pub production_host_verification_green: bool,
+    pub canonical_public_input_digest: String,
+    pub serialized_selector: u8,
+    pub least_good_selector: u8,
+    pub good23_definition_fingerprint: String,
     pub sbf_path: String,
     pub sbf_bytes: usize,
     pub sbf_sha256: String,
@@ -171,6 +213,14 @@ pub struct Profile23DevnetEvidence {
     pub statement_path: String,
     pub statement_sha256: String,
     pub program_max_len: usize,
+    pub upgradeable_program_before_setup: UpgradeableProgramSnapshotEvidence,
+    pub upgradeable_program_before_setup_exact_release_sbf_max_len_authority: bool,
+    pub upgradeable_program_before_final_simulation: UpgradeableProgramSnapshotEvidence,
+    pub upgradeable_program_before_final_simulation_exact_release_sbf_max_len_authority: bool,
+    pub upgradeable_program_before_final_simulation_continuity: UpgradeableProgramContinuityChecks,
+    pub upgradeable_program_after_finality: UpgradeableProgramSnapshotEvidence,
+    pub upgradeable_program_after_finality_exact_release_sbf_max_len_authority: bool,
+    pub upgradeable_program_after_finality_continuity: UpgradeableProgramContinuityChecks,
     pub deployment: Option<TransactionEvidence>,
     pub setup_transactions: Vec<TransactionEvidence>,
     pub final_transaction: TransactionEvidence,
@@ -194,45 +244,73 @@ pub struct Profile23DevnetEvidence {
     pub explicit_scope: Vec<&'static str>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
-struct StatementSidecar {
-    artifact: String,
-    pool_hex: String,
-    sequence: u64,
-    current_anchor_hex: String,
-    nullifier_hex: String,
-    output_commitment_hex: String,
-    output_anchor_hex: String,
-    asset_id: u32,
-    fee: u32,
-    witness_independent_public_metadata: bool,
+fn statement_public_inputs(
+    statement: &aspis_statement::AtomicPaymentStatementV3,
+) -> AtomicPaymentPublicInputs {
+    AtomicPaymentPublicInputs {
+        current_anchor: aspis_statement::encode_digest_canonical(&statement.spend.anchor),
+        nullifier: aspis_statement::encode_digest_canonical(&statement.spend.nullifier),
+        output_commitment: aspis_statement::encode_digest_canonical(
+            &statement.spend.output_commitment,
+        ),
+        output_anchor: aspis_statement::encode_digest_canonical(&statement.output_anchor),
+        asset_id: statement.spend.asset_id.0,
+        fee: statement.spend.fee,
+    }
 }
 
-impl StatementSidecar {
-    fn pool(&self) -> Result<Pubkey> {
-        Ok(Pubkey::new_from_array(decode_hex_32(&self.pool_hex)?))
-    }
+#[derive(Clone, Debug, Deserialize)]
+struct ReleaseGood23Branch {
+    selector: u8,
+    accepted: bool,
+}
 
-    fn public(&self) -> Result<AtomicPaymentPublicInputs> {
-        let public = AtomicPaymentPublicInputs {
-            current_anchor: decode_hex_32(&self.current_anchor_hex)?,
-            nullifier: decode_hex_32(&self.nullifier_hex)?,
-            output_commitment: decode_hex_32(&self.output_commitment_hex)?,
-            output_anchor: decode_hex_32(&self.output_anchor_hex)?,
-            asset_id: self.asset_id,
-            fee: self.fee,
-        };
-        aspis_statement::decode_digest_canonical(&public.current_anchor)
-            .map_err(|_| anyhow!("sidecar current anchor is noncanonical"))?;
-        aspis_statement::decode_digest_canonical(&public.nullifier)
-            .map_err(|_| anyhow!("sidecar nullifier is noncanonical"))?;
-        aspis_statement::decode_digest_canonical(&public.output_commitment)
-            .map_err(|_| anyhow!("sidecar output commitment is noncanonical"))?;
-        aspis_statement::decode_digest_canonical(&public.output_anchor)
-            .map_err(|_| anyhow!("sidecar output anchor is noncanonical"))?;
-        aspis_statement::decode_asset_id_canonical(public.asset_id)
-            .map_err(|_| anyhow!("sidecar asset id is noncanonical"))?;
-        Ok(public)
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ReleaseInstance {
+    proof_path: String,
+    proof_bytes: u64,
+    proof_sha256: String,
+    statement_path: String,
+    statement_bytes: u64,
+    statement_sha256: String,
+    statement_pool_hex: String,
+    statement_sequence: u64,
+    canonical_public_input_digest: String,
+    selector_candidates: u8,
+    serialized_selector: Option<u8>,
+    least_good_selector: Option<u8>,
+    good23_branches: Vec<ReleaseGood23Branch>,
+    good23_definition_fingerprint: String,
+    production_host_verification_green: bool,
+    evaluation_error: Option<String>,
+}
+
+#[derive(Debug)]
+struct ReleaseInstanceValidation {
+    instance: ReleaseInstance,
+    statement: aspis_statement::AtomicPaymentStatementV3,
+    actual_proof_path: String,
+    actual_statement_path: String,
+    actual_proof_sha256: String,
+    actual_statement_sha256: String,
+    proof_identity_exact: bool,
+    statement_identity_exact: bool,
+    selector_binding_exact: bool,
+    good23_fingerprint_exact: bool,
+    declared_host_verification_green: bool,
+    host_verification_green: bool,
+    host_verification_error: Option<String>,
+}
+
+impl ReleaseInstanceValidation {
+    fn all_green(&self) -> bool {
+        self.proof_identity_exact
+            && self.statement_identity_exact
+            && self.selector_binding_exact
+            && self.good23_fingerprint_exact
+            && self.declared_host_verification_green
+            && self.host_verification_green
     }
 }
 
@@ -259,6 +337,38 @@ impl RpcAccount {
             data_len: self.data.len(),
             data_sha256: sha256(&self.data),
             raw_account_image_sha256: sha256(&raw),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct UpgradeableProgramSnapshot {
+    program_id: Pubkey,
+    program: RpcAccount,
+    programdata_address: Pubkey,
+    programdata: RpcAccount,
+    programdata_slot: u64,
+    upgrade_authority_address: Pubkey,
+}
+
+impl UpgradeableProgramSnapshot {
+    fn evidence(&self) -> UpgradeableProgramSnapshotEvidence {
+        UpgradeableProgramSnapshotEvidence {
+            program_account: self.program.evidence(self.program_id),
+            programdata_address: self.programdata_address.to_string(),
+            programdata_account: self.programdata.evidence(self.programdata_address),
+            programdata_slot: self.programdata_slot,
+            upgrade_authority_address: self.upgrade_authority_address.to_string(),
+        }
+    }
+
+    fn continuity_from(&self, baseline: &Self) -> UpgradeableProgramContinuityChecks {
+        UpgradeableProgramContinuityChecks {
+            programdata_address_unchanged: self.programdata_address == baseline.programdata_address,
+            program_raw_account_image_unchanged: self.program == baseline.program,
+            program_data_unchanged: self.program.data == baseline.program.data,
+            programdata_raw_account_image_unchanged: self.programdata == baseline.programdata,
+            programdata_data_unchanged: self.programdata.data == baseline.programdata.data,
         }
     }
 }
@@ -543,16 +653,6 @@ fn sha256(bytes: &[u8]) -> String {
         .collect()
 }
 
-fn decode_hex_32(value: &str) -> Result<[u8; 32]> {
-    ensure!(value.len() == 64, "expected 64 hexadecimal characters");
-    let mut decoded = [0u8; 32];
-    for (index, byte) in decoded.iter_mut().enumerate() {
-        *byte = u8::from_str_radix(&value[2 * index..2 * index + 2], 16)
-            .context("invalid hexadecimal byte")?;
-    }
-    Ok(decoded)
-}
-
 fn parse_args(arguments: &[String], mode: CommandMode) -> Result<DevnetConfig> {
     let mut values = BTreeMap::<String, String>::new();
     let mut execute_interlock = false;
@@ -683,6 +783,10 @@ fn release_artifacts_exact(release: &Value, workspace_root: &Path) -> Result<()>
     let artifacts = release["source_artifacts"]
         .as_array()
         .context("release source_artifacts missing")?;
+    ensure!(
+        !artifacts.is_empty(),
+        "release source_artifacts must be nonempty"
+    );
     for artifact in artifacts {
         let path = artifact["path"]
             .as_str()
@@ -713,6 +817,181 @@ fn release_artifacts_exact(release: &Value, workspace_root: &Path) -> Result<()>
     Ok(())
 }
 
+fn release_certificate_green_gate_count(release: &Value) -> Option<usize> {
+    let gates = release["gates"].as_array()?;
+    let failed_gates = release["failed_gates"].as_array()?;
+    (release["artifact"].as_str() == Some("profile23_one_transaction_release")
+        && release["released"].as_bool() == Some(true)
+        && release["status"].as_str() == Some("released_all_required_gates_green")
+        && !gates.is_empty()
+        && gates
+            .iter()
+            .all(|gate| gate["passed"].as_bool() == Some(true))
+        && failed_gates.is_empty())
+    .then_some(gates.len())
+}
+
+fn release_without_generation_time(release: &Value) -> Result<Value> {
+    let mut release = release.clone();
+    let object = release
+        .as_object_mut()
+        .context("release certificate must be a JSON object")?;
+    ensure!(
+        object
+            .remove("generated_at_utc")
+            .is_some_and(|value| value.is_string()),
+        "release certificate omitted a string generated_at_utc"
+    );
+    Ok(release)
+}
+
+fn release_matches_live_evaluation(
+    supplied: &Value,
+    live: &crate::profile23_release::Profile23OneTransactionRelease,
+) -> Result<bool> {
+    let live = serde_json::to_value(live).context("serialize live release evaluation")?;
+    release_values_match_ignoring_generation_time(supplied, &live)
+}
+
+fn release_values_match_ignoring_generation_time(left: &Value, right: &Value) -> Result<bool> {
+    Ok(release_without_generation_time(left)? == release_without_generation_time(right)?)
+}
+
+fn is_normal_workspace_relative(path: &str) -> bool {
+    let path = Path::new(path);
+    !path.is_absolute()
+        && path.components().next().is_some()
+        && path
+            .components()
+            .all(|component| matches!(component, Component::Normal(_)))
+}
+
+fn recorded_workspace_path(workspace_root: &Path, path: &Path) -> Result<String> {
+    let workspace_root = workspace_root
+        .canonicalize()
+        .with_context(|| format!("canonicalize workspace {}", workspace_root.display()))?;
+    let path = path
+        .canonicalize()
+        .with_context(|| format!("canonicalize release-instance input {}", path.display()))?;
+    let relative = path.strip_prefix(&workspace_root).with_context(|| {
+        format!(
+            "release-instance input resolves outside workspace: {}",
+            path.display()
+        )
+    })?;
+    ensure!(
+        relative.components().next().is_some()
+            && relative
+                .components()
+                .all(|component| matches!(component, Component::Normal(_))),
+        "release-instance input is not a normal workspace-relative path: {}",
+        relative.display()
+    );
+    Ok(relative.display().to_string())
+}
+
+fn decode_release_instance(release: &Value) -> Result<ReleaseInstance> {
+    serde_json::from_value(
+        release
+            .get("release_instance")
+            .context("release certificate omitted release_instance")?
+            .clone(),
+    )
+    .context("decode exact release_instance schema")
+}
+
+fn live_good23_definition_fingerprint() -> String {
+    format!(
+        "0x{}",
+        profile23_hex(
+            &aspis_prover::state_only_good23::profile23_good_schedule_definition_fingerprint(
+                aspis_prover::HOST_HASH,
+            )
+        )
+    )
+}
+
+fn validate_release_instance(
+    release: &Value,
+    workspace_root: &Path,
+    proof_path: &Path,
+    proof: &[u8],
+    statement_path: &Path,
+    statement_bytes: &[u8],
+) -> Result<ReleaseInstanceValidation> {
+    let instance = decode_release_instance(release)?;
+    let actual_proof_path = recorded_workspace_path(workspace_root, proof_path)?;
+    let actual_statement_path = recorded_workspace_path(workspace_root, statement_path)?;
+    let actual_proof_sha256 = sha256(proof);
+    let actual_statement_sha256 = sha256(statement_bytes);
+    let statement = decode_profile23_statement_sidecar(statement_bytes)?;
+    let statement_digest = canonical_profile23_public_input_digest(&statement)?;
+
+    let proof_identity_exact = is_normal_workspace_relative(&instance.proof_path)
+        && instance.proof_path == actual_proof_path
+        && instance.proof_bytes == proof.len() as u64
+        && instance.proof_sha256 == actual_proof_sha256;
+    let statement_identity_exact = is_normal_workspace_relative(&instance.statement_path)
+        && instance.statement_path == actual_statement_path
+        && instance.statement_bytes == statement_bytes.len() as u64
+        && instance.statement_sha256 == actual_statement_sha256
+        && instance.statement_pool_hex == profile23_hex(&statement.pool)
+        && instance.statement_sequence == statement.sequence
+        && instance.canonical_public_input_digest == statement_digest;
+
+    let candidate_count = usize::from(instance.selector_candidates);
+    let recomputed_least_good = instance
+        .good23_branches
+        .iter()
+        .find(|branch| branch.accepted)
+        .map(|branch| branch.selector);
+    let parsed_proof_selector =
+        aspis_core::state_only_prefix::StateOnlyProfile23Prefix::parse_from_proof(proof)
+            .ok()
+            .and_then(|(prefix, suffix)| (!suffix.is_empty()).then_some(prefix.query_selector));
+    let selector_binding_exact = candidate_count
+        == usize::from(aspis_core::state_only_prefix::STATE_ONLY_PROFILE23_QUERY_CANDIDATE_COUNT)
+        && candidate_count == 3
+        && instance.good23_branches.len() == candidate_count
+        && instance
+            .good23_branches
+            .iter()
+            .enumerate()
+            .all(|(selector, branch)| usize::from(branch.selector) == selector)
+        && recomputed_least_good.is_some()
+        && instance.least_good_selector == recomputed_least_good
+        && instance.serialized_selector == recomputed_least_good
+        && parsed_proof_selector == instance.serialized_selector
+        && instance.evaluation_error.is_none();
+    let good23_fingerprint_exact =
+        instance.good23_definition_fingerprint == live_good23_definition_fingerprint();
+    let declared_host_verification_green = instance.production_host_verification_green;
+    let host_result = aspis_statement::state_only_profile23::verify_atomic_state_only_profile23_v3(
+        proof,
+        &statement,
+        aspis_prover::HOST_HASH,
+        None,
+    );
+    let host_verification_green = host_result.is_ok();
+    let host_verification_error = host_result.err().map(|error| format!("{error:?}"));
+
+    Ok(ReleaseInstanceValidation {
+        instance,
+        statement,
+        actual_proof_path,
+        actual_statement_path,
+        actual_proof_sha256,
+        actual_statement_sha256,
+        proof_identity_exact,
+        statement_identity_exact,
+        selector_binding_exact,
+        good23_fingerprint_exact,
+        declared_host_verification_green,
+        host_verification_green,
+        host_verification_error,
+    })
+}
+
 fn parse_program(account: &RpcAccount) -> Result<Pubkey> {
     ensure!(
         account.owner == bpf_loader_upgradeable::id() && account.executable,
@@ -732,9 +1011,9 @@ fn deployed_program_exact(
     expected_sbf: &[u8],
     expected_max_len: usize,
     expected_authority: &Pubkey,
-) -> Result<bool> {
+) -> Result<Option<UpgradeableProgramSnapshot>> {
     let Some(program) = rpc.account(program_id)? else {
-        return Ok(false);
+        return Ok(None);
     };
     let programdata_address = parse_program(&program)?;
     let programdata = rpc
@@ -743,14 +1022,16 @@ fn deployed_program_exact(
     ensure!(programdata.owner == bpf_loader_upgradeable::id());
     let state: UpgradeableLoaderState = bincode::deserialize(&programdata.data)?;
     let UpgradeableLoaderState::ProgramData {
+        slot: programdata_slot,
         upgrade_authority_address,
-        ..
     } = state
     else {
         bail!("linked account is not ProgramData")
     };
+    let upgrade_authority_address = upgrade_authority_address
+        .context("devnet rehearsal ProgramData has no upgrade authority")?;
     ensure!(
-        upgrade_authority_address == Some(*expected_authority),
+        upgrade_authority_address == *expected_authority,
         "devnet rehearsal upgrade authority does not equal explicit payer"
     );
     let code = programdata
@@ -769,7 +1050,14 @@ fn deployed_program_exact(
         code[expected_sbf.len()..].iter().all(|byte| *byte == 0),
         "deployed ProgramData padding is nonzero"
     );
-    Ok(true)
+    Ok(Some(UpgradeableProgramSnapshot {
+        program_id: *program_id,
+        program,
+        programdata_address,
+        programdata,
+        programdata_slot,
+        upgrade_authority_address,
+    }))
 }
 
 fn nullifier_compatible(account: Option<&RpcAccount>, program_id: &Pubkey) -> bool {
@@ -879,23 +1167,35 @@ fn inspect(workspace_root: &Path, config: &DevnetConfig) -> Result<Profile23Devn
         .as_deref()
         .and_then(|bytes| serde_json::from_slice::<Value>(bytes).ok());
     let release_gates = release.as_ref().and_then(|value| value["gates"].as_array());
-    let release_green = release.as_ref().is_some_and(|value| {
-        value["released"].as_bool() == Some(true)
-            && value["status"].as_str() == Some("released_all_required_gates_green")
-    }) && release_gates.is_some_and(|items| {
-        items.len() == 30
-            && items
-                .iter()
-                .all(|item| item["passed"].as_bool() == Some(true))
-    });
+    let release_green_gate_count = release
+        .as_ref()
+        .and_then(release_certificate_green_gate_count);
+    let release_green = release_green_gate_count.is_some();
     gate(
         &mut gates,
-        "release_certificate_exactly_30_green_gates",
+        "release_certificate_nonempty_all_declared_gates_green",
         release_green,
         format!(
-            "gate_count={:?}, released={release_green}",
-            release_gates.map(Vec::len)
+            "gate_count={:?}, green_gate_count={release_green_gate_count:?}, released={release_green}",
+            release_gates.map(Vec::len),
         ),
+    );
+    let live_release_evaluation = crate::profile23_release::evaluate_existing(workspace_root);
+    let live_release_error = live_release_evaluation
+        .as_ref()
+        .err()
+        .map(|error| format!("{error:#}"));
+    let release_matches_live = release
+        .as_ref()
+        .zip(live_release_evaluation.as_ref().ok())
+        .is_some_and(|(release, live)| {
+            release_matches_live_evaluation(release, live).unwrap_or(false)
+        });
+    gate(
+        &mut gates,
+        "release_certificate_matches_live_read_only_evaluation",
+        release_matches_live,
+        format!("error={live_release_error:?}"),
     );
     let source_exact = release
         .as_ref()
@@ -913,10 +1213,27 @@ fn inspect(workspace_root: &Path, config: &DevnetConfig) -> Result<Profile23Devn
     let proof_sha = proof.as_deref().map(sha256);
     let sbf_sha = sbf.as_deref().map(sha256);
     let statement_sha = statement_bytes.as_deref().map(sha256);
-    let release_proof_exact = release.as_ref().is_some_and(|release| {
-        release["proof"]["bytes"].as_u64() == proof.as_ref().map(|bytes| bytes.len() as u64)
-            && release["proof"]["sha256"].as_str() == proof_sha.as_deref()
-    });
+    let release_instance_validation = match (
+        release.as_ref(),
+        proof.as_deref(),
+        statement_bytes.as_deref(),
+    ) {
+        (Some(release), Some(proof), Some(statement_bytes)) => validate_release_instance(
+            release,
+            workspace_root,
+            &config.proof,
+            proof,
+            &config.statement,
+            statement_bytes,
+        ),
+        _ => Err(anyhow!(
+            "release certificate, proof, or statement sidecar unavailable"
+        )),
+    };
+    let release_instance_error = release_instance_validation
+        .as_ref()
+        .err()
+        .map(|error| format!("{error:#}"));
     let release_sbf_exact = release.as_ref().is_some_and(|release| {
         release["default_production_sbf"]["bytes"].as_u64()
             == sbf.as_ref().map(|bytes| bytes.len() as u64)
@@ -924,9 +1241,106 @@ fn inspect(workspace_root: &Path, config: &DevnetConfig) -> Result<Profile23Devn
     });
     gate(
         &mut gates,
-        "explicit_proof_matches_release",
-        release_proof_exact,
-        format!("sha256={proof_sha:?}"),
+        "explicit_proof_matches_release_instance",
+        release_instance_validation
+            .as_ref()
+            .is_ok_and(|validation| validation.proof_identity_exact),
+        release_instance_validation.as_ref().map_or_else(
+            |_| format!("error={release_instance_error:?}, sha256={proof_sha:?}"),
+            |validation| {
+                format!(
+                    "path={}, bytes={:?}, sha256={}",
+                    validation.actual_proof_path,
+                    proof.as_ref().map(Vec::len),
+                    validation.actual_proof_sha256
+                )
+            },
+        ),
+    );
+    gate(
+        &mut gates,
+        "explicit_statement_matches_release_instance",
+        release_instance_validation
+            .as_ref()
+            .is_ok_and(|validation| validation.statement_identity_exact),
+        release_instance_validation.as_ref().map_or_else(
+            |_| format!("error={release_instance_error:?}, sha256={statement_sha:?}"),
+            |validation| {
+                format!(
+                    "path={}, bytes={:?}, sha256={}, pool={}, sequence={}, digest={}",
+                    validation.actual_statement_path,
+                    statement_bytes.as_ref().map(Vec::len),
+                    validation.actual_statement_sha256,
+                    profile23_hex(&validation.statement.pool),
+                    validation.statement.sequence,
+                    canonical_profile23_public_input_digest(&validation.statement)
+                        .unwrap_or_else(|_| "unavailable".to_owned())
+                )
+            },
+        ),
+    );
+    gate(
+        &mut gates,
+        "release_instance_selector_is_live_least_good",
+        release_instance_validation
+            .as_ref()
+            .is_ok_and(|validation| validation.selector_binding_exact),
+        release_instance_validation.as_ref().map_or_else(
+            |_| format!("error={release_instance_error:?}"),
+            |validation| {
+                format!(
+                    "candidates={}, serialized={:?}, least={:?}, branches={}",
+                    validation.instance.selector_candidates,
+                    validation.instance.serialized_selector,
+                    validation.instance.least_good_selector,
+                    validation.instance.good23_branches.len()
+                )
+            },
+        ),
+    );
+    gate(
+        &mut gates,
+        "release_instance_good23_fingerprint_matches_live_code",
+        release_instance_validation
+            .as_ref()
+            .is_ok_and(|validation| validation.good23_fingerprint_exact),
+        release_instance_validation.as_ref().map_or_else(
+            |_| format!("error={release_instance_error:?}"),
+            |validation| {
+                format!(
+                    "release={}, live={}",
+                    validation.instance.good23_definition_fingerprint,
+                    live_good23_definition_fingerprint()
+                )
+            },
+        ),
+    );
+    gate(
+        &mut gates,
+        "release_instance_declares_production_host_verification_green",
+        release_instance_validation
+            .as_ref()
+            .is_ok_and(|validation| validation.declared_host_verification_green),
+        release_instance_validation.as_ref().map_or_else(
+            |_| format!("error={release_instance_error:?}"),
+            |validation| {
+                format!(
+                    "declared={}",
+                    validation.instance.production_host_verification_green
+                )
+            },
+        ),
+    );
+    gate(
+        &mut gates,
+        "production_host_verifies_exact_proof_and_statement",
+        release_instance_validation
+            .as_ref()
+            .is_ok_and(|validation| validation.host_verification_green),
+        release_instance_validation.as_ref().map_or_else(
+            |_| format!("error={release_instance_error:?}"),
+            |validation| format!("error={:?}", validation.host_verification_error),
+        ),
     );
     gate(
         &mut gates,
@@ -946,16 +1360,13 @@ fn inspect(workspace_root: &Path, config: &DevnetConfig) -> Result<Profile23Devn
         ),
     );
 
-    let statement = statement_bytes
-        .as_deref()
-        .and_then(|bytes| serde_json::from_slice::<StatementSidecar>(bytes).ok());
+    let statement = release_instance_validation
+        .as_ref()
+        .ok()
+        .map(|validation| &validation.statement);
     let pool_pubkey = pool.as_ref().map(Signer::pubkey);
-    let sidecar_valid = statement.as_ref().is_some_and(|statement| {
-        statement.artifact == "profile23_production_statement"
-            && statement.witness_independent_public_metadata
-            && statement.public().is_ok()
-            && statement.pool().ok() == pool_pubkey
-    });
+    let sidecar_valid = statement
+        .is_some_and(|statement| Some(Pubkey::new_from_array(statement.pool)) == pool_pubkey);
     gate(
         &mut gates,
         "fresh_pool_known_before_proof_and_release",
@@ -976,7 +1387,7 @@ fn inspect(workspace_root: &Path, config: &DevnetConfig) -> Result<Profile23Devn
             config.program_max_len,
             &payer.pubkey(),
         )
-        .unwrap_or(false),
+        .is_ok_and(|snapshot| snapshot.is_some()),
         _ => false,
     };
     gate(
@@ -1007,8 +1418,7 @@ fn inspect(workspace_root: &Path, config: &DevnetConfig) -> Result<Profile23Devn
     );
 
     let nullifier_address = statement
-        .as_ref()
-        .and_then(|statement| statement.public().ok())
+        .map(statement_public_inputs)
         .map(|public| atomic_nullifier_address(&declared_program, &public.nullifier).0);
     let nullifier_state = nullifier_address
         .and_then(|address| rpc.account(&address).ok())
@@ -1228,7 +1638,9 @@ fn deploy_if_needed(
         sbf,
         config.program_max_len,
         &payer.pubkey(),
-    )? {
+    )?
+    .is_some()
+    {
         return Ok(None);
     }
     ensure!(
@@ -1267,7 +1679,8 @@ fn deploy_if_needed(
             sbf,
             config.program_max_len,
             &payer.pubkey(),
-        )?,
+        )?
+        .is_some(),
         "finalized deployed program did not match release bytes/max-len/authority"
     );
     let (wire_sha256, message_sha256) = rpc.transaction_wire_and_message_hash(&signature)?;
@@ -1403,19 +1816,81 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
     }));
     let release_bytes = exact_regular_file(&config.release)?;
     let release: Value = serde_json::from_slice(&release_bytes)?;
-    ensure!(release["gates"]
-        .as_array()
-        .is_some_and(|gates| gates.len() == 30
-            && gates
-                .iter()
-                .all(|gate| gate["passed"].as_bool() == Some(true))));
+    let release_gate_count = release_certificate_green_gate_count(&release)
+        .context("release certificate is not nonempty/all-declared-green")?;
+    let live_release = crate::profile23_release::evaluate_existing(workspace_root)
+        .context("read-only live release re-evaluation before first write")?;
+    ensure!(
+        release_matches_live_evaluation(&release, &live_release)?,
+        "release certificate ceased to match the complete live release evaluation"
+    );
     release_artifacts_exact(&release, workspace_root)?;
     let sbf = exact_regular_file(&config.sbf)?;
     let proof = exact_regular_file(&config.proof)?;
     let statement_bytes = exact_regular_file(&config.statement)?;
-    let statement: StatementSidecar = serde_json::from_slice(&statement_bytes)?;
-    let public = statement.public()?;
-    ensure!(statement.pool()? == pool.pubkey());
+    let sbf_sha256 = sha256(&sbf);
+    ensure!(
+        release["default_production_sbf"]["bytes"].as_u64() == Some(sbf.len() as u64)
+            && release["default_production_sbf"]["sha256"].as_str() == Some(sbf_sha256.as_str()),
+        "explicit SBF ceased to match release certificate"
+    );
+    let release_instance = validate_release_instance(
+        &release,
+        workspace_root,
+        &config.proof,
+        &proof,
+        &config.statement,
+        &statement_bytes,
+    )?;
+    ensure!(
+        release_instance.all_green(),
+        "release-instance recheck failed before first write: proof_identity={}, statement_identity={}, selector_binding={}, good23_fingerprint={}, declared_host={}, direct_host={}, host_error={:?}",
+        release_instance.proof_identity_exact,
+        release_instance.statement_identity_exact,
+        release_instance.selector_binding_exact,
+        release_instance.good23_fingerprint_exact,
+        release_instance.declared_host_verification_green,
+        release_instance.host_verification_green,
+        release_instance.host_verification_error
+    );
+    let canonical_public_input_digest =
+        canonical_profile23_public_input_digest(&release_instance.statement)?;
+    let serialized_selector = release_instance
+        .instance
+        .serialized_selector
+        .context("green release instance omitted serialized selector")?;
+    let least_good_selector = release_instance
+        .instance
+        .least_good_selector
+        .context("green release instance omitted least-Good selector")?;
+    let good23_definition_fingerprint = release_instance
+        .instance
+        .good23_definition_fingerprint
+        .clone();
+    let release_instance_proof_identity_exact = release_instance.proof_identity_exact;
+    let release_instance_statement_identity_exact = release_instance.statement_identity_exact;
+    let release_instance_selector_binding_exact = release_instance.selector_binding_exact;
+    let release_instance_good23_fingerprint_exact = release_instance.good23_fingerprint_exact;
+    let release_instance_declared_host_verification_green =
+        release_instance.declared_host_verification_green;
+    let production_host_verification_green = release_instance.host_verification_green;
+    let statement = release_instance.statement;
+    let public = statement_public_inputs(&statement);
+    ensure!(Pubkey::new_from_array(statement.pool) == pool.pubkey());
+
+    if rpc.account(&aspis_verifier::id())?.is_some() {
+        ensure!(
+            deployed_program_exact(
+                &rpc,
+                &aspis_verifier::id(),
+                &sbf,
+                config.program_max_len,
+                &payer.pubkey(),
+            )?
+            .is_some(),
+            "already-deployed program ceased to match release bytes/max-len/authority"
+        );
+    }
 
     // Recheck all fresh-account predicates immediately before the first write.
     ensure!(
@@ -1439,6 +1914,18 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
     let evidence_reservation = EvidenceReservation::reserve(&config.evidence)?;
 
     let deployment = deploy_if_needed(&rpc, &config, &payer, &sbf)?;
+    // This is the baseline for the exact executable that all subsequent setup
+    // and the final atomic transition are intended to exercise. The snapshot
+    // comes from the same finalized RPC reads that passed byte/max-len/authority
+    // validation, so the evidence does not have a validation/refetch gap.
+    let upgradeable_program_before_setup = deployed_program_exact(
+        &rpc,
+        &aspis_verifier::id(),
+        &sbf,
+        config.program_max_len,
+        &payer.pubkey(),
+    )?
+    .context("exact deployed program missing immediately before rehearsal setup")?;
     let mut setup_transactions = Vec::new();
 
     let pool_rent = rpc.rent(ATOMIC_POOL_STATE_LEN)?;
@@ -1596,6 +2083,24 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
     let final_wire = bincode::serialize(&final_tx)?;
     let final_message_hash = sha256(&bincode::serialize(&final_tx.message)?);
     let final_wire_hash = sha256(&final_wire);
+    // No RPC call may intervene between this exact executable recheck and the
+    // tag60 simulation. In particular, an upgrade that preserves the program
+    // address but changes ProgramData cannot inherit the baseline evidence.
+    let upgradeable_program_before_final_simulation = deployed_program_exact(
+        &rpc,
+        &aspis_verifier::id(),
+        &sbf,
+        config.program_max_len,
+        &payer.pubkey(),
+    )?
+    .context("exact deployed program missing immediately before tag60 simulation")?;
+    let upgradeable_program_before_final_simulation_continuity =
+        upgradeable_program_before_final_simulation
+            .continuity_from(&upgradeable_program_before_setup);
+    ensure!(
+        upgradeable_program_before_final_simulation_continuity.all_unchanged(),
+        "upgradeable program or ProgramData identity changed between setup baseline and tag60 simulation"
+    );
     let simulation = rpc.simulate_exact(&final_wire)?;
     ensure!(
         simulation.error.is_none(),
@@ -1619,6 +2124,23 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
         "tag60_atomic_verify_and_apply",
         final_message_hash.clone(),
     )?;
+    // `submit_wire` returns only after finality. Revalidate both exact release
+    // identity and byte-for-byte account continuity before inspecting the
+    // resulting state accounts.
+    let upgradeable_program_after_finality = deployed_program_exact(
+        &rpc,
+        &aspis_verifier::id(),
+        &sbf,
+        config.program_max_len,
+        &payer.pubkey(),
+    )?
+    .context("exact deployed program missing after finalized tag60 transaction")?;
+    let upgradeable_program_after_finality_continuity =
+        upgradeable_program_after_finality.continuity_from(&upgradeable_program_before_setup);
+    ensure!(
+        upgradeable_program_after_finality_continuity.all_unchanged(),
+        "upgradeable program or ProgramData identity changed between setup baseline and tag60 finality"
+    );
     ensure!(final_transaction.serialized_transaction_sha256 == final_wire_hash);
     let landed_cu = final_transaction
         .compute_units_consumed
@@ -1678,7 +2200,17 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
         program_id: aspis_verifier::id().to_string(),
         release_certificate_path: config.release.display().to_string(),
         release_certificate_sha256: sha256(&release_bytes),
-        release_gate_count: 30,
+        release_gate_count,
+        release_instance_proof_identity_exact,
+        release_instance_statement_identity_exact,
+        release_instance_selector_binding_exact,
+        release_instance_good23_fingerprint_exact,
+        release_instance_declared_host_verification_green,
+        production_host_verification_green,
+        canonical_public_input_digest,
+        serialized_selector,
+        least_good_selector,
+        good23_definition_fingerprint,
         sbf_path: config.sbf.display().to_string(),
         sbf_bytes: sbf.len(),
         sbf_sha256: sha256(&sbf),
@@ -1688,6 +2220,15 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
         statement_path: config.statement.display().to_string(),
         statement_sha256: sha256(&statement_bytes),
         program_max_len: config.program_max_len,
+        upgradeable_program_before_setup: upgradeable_program_before_setup.evidence(),
+        upgradeable_program_before_setup_exact_release_sbf_max_len_authority: true,
+        upgradeable_program_before_final_simulation:
+            upgradeable_program_before_final_simulation.evidence(),
+        upgradeable_program_before_final_simulation_exact_release_sbf_max_len_authority: true,
+        upgradeable_program_before_final_simulation_continuity,
+        upgradeable_program_after_finality: upgradeable_program_after_finality.evidence(),
+        upgradeable_program_after_finality_exact_release_sbf_max_len_authority: true,
+        upgradeable_program_after_finality_continuity,
         deployment,
         setup_transactions,
         final_transaction,
@@ -1722,7 +2263,107 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
 
 #[cfg(test)]
 mod tests {
+    use aspis_core::field::M31;
+
     use super::*;
+    use crate::profile23_statement::{
+        PROFILE23_STATEMENT_ARTIFACT, PROFILE23_STATEMENT_SELECTION_RULE,
+    };
+
+    struct TempRoot(PathBuf);
+
+    impl TempRoot {
+        fn new() -> Self {
+            let path = std::env::temp_dir().join(format!(
+                "aspis-profile23-devnet-release-instance-{}-{}",
+                std::process::id(),
+                chrono::Utc::now().timestamp_nanos_opt().unwrap()
+            ));
+            fs::create_dir_all(&path).unwrap();
+            Self(fs::canonicalize(path).unwrap())
+        }
+    }
+
+    impl Drop for TempRoot {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn statement(seed: u32) -> aspis_statement::AtomicPaymentStatementV3 {
+        let digest =
+            |offset: u32| core::array::from_fn(|index| M31(seed + offset + 17 * index as u32));
+        aspis_statement::AtomicPaymentStatementV3 {
+            pool: [seed as u8; 32],
+            sequence: u64::from(seed) + 7,
+            spend: aspis_statement::SpendPublic {
+                anchor: digest(11),
+                nullifier: digest(101),
+                output_commitment: digest(201),
+                asset_id: M31(17),
+                fee: 1,
+            },
+            output_anchor: digest(301),
+        }
+    }
+
+    fn sidecar(statement: &aspis_statement::AtomicPaymentStatementV3) -> Vec<u8> {
+        serde_json::to_vec_pretty(&json!({
+            "artifact": PROFILE23_STATEMENT_ARTIFACT,
+            "pool_hex": profile23_hex(&statement.pool),
+            "sequence": statement.sequence,
+            "current_anchor_hex": profile23_hex(
+                &aspis_statement::encode_digest_canonical(&statement.spend.anchor)
+            ),
+            "nullifier_hex": profile23_hex(
+                &aspis_statement::encode_digest_canonical(&statement.spend.nullifier)
+            ),
+            "output_commitment_hex": profile23_hex(
+                &aspis_statement::encode_digest_canonical(&statement.spend.output_commitment)
+            ),
+            "output_anchor_hex": profile23_hex(
+                &aspis_statement::encode_digest_canonical(&statement.output_anchor)
+            ),
+            "asset_id": statement.spend.asset_id.0,
+            "fee": statement.spend.fee,
+            "selection_rule": PROFILE23_STATEMENT_SELECTION_RULE,
+            "witness_independent_public_metadata": true,
+        }))
+        .unwrap()
+    }
+
+    fn release_for(
+        proof_path: &str,
+        proof: &[u8],
+        statement_path: &str,
+        statement_bytes: &[u8],
+    ) -> Value {
+        let statement = decode_profile23_statement_sidecar(statement_bytes).unwrap();
+        json!({
+            "release_instance": {
+                "proof_path": proof_path,
+                "proof_bytes": proof.len(),
+                "proof_sha256": sha256(proof),
+                "statement_path": statement_path,
+                "statement_bytes": statement_bytes.len(),
+                "statement_sha256": sha256(statement_bytes),
+                "statement_pool_hex": profile23_hex(&statement.pool),
+                "statement_sequence": statement.sequence,
+                "canonical_public_input_digest": canonical_profile23_public_input_digest(&statement).unwrap(),
+                "selector_candidates": 3,
+                "serialized_selector": 0,
+                "least_good_selector": 0,
+                "good23_branches": [
+                    {"selector": 0, "accepted": true},
+                    {"selector": 1, "accepted": false},
+                    {"selector": 2, "accepted": true}
+                ],
+                "good23_definition_fingerprint": live_good23_definition_fingerprint(),
+                "production_host_verification_green": true,
+                "evaluation_error": null
+            }
+        })
+    }
 
     fn complete_args() -> Vec<String> {
         vec![
@@ -1782,6 +2423,234 @@ mod tests {
     }
 
     #[test]
+    fn release_gate_count_is_flexible_but_never_empty_or_partially_green() {
+        let release = |gates: Vec<Value>, failed_gates: Vec<Value>| {
+            json!({
+                "artifact": "profile23_one_transaction_release",
+                "released": true,
+                "status": "released_all_required_gates_green",
+                "gates": gates,
+                "failed_gates": failed_gates,
+            })
+        };
+        assert_eq!(
+            release_certificate_green_gate_count(&release(
+                vec![json!({"name": "one", "passed": true})],
+                Vec::new(),
+            )),
+            Some(1)
+        );
+        assert_eq!(
+            release_certificate_green_gate_count(&release(
+                (0..37)
+                    .map(|index| json!({"name": format!("gate_{index}"), "passed": true}))
+                    .collect(),
+                Vec::new(),
+            )),
+            Some(37)
+        );
+        assert_eq!(
+            release_certificate_green_gate_count(&release(Vec::new(), Vec::new())),
+            None
+        );
+        assert_eq!(
+            release_certificate_green_gate_count(&release(
+                vec![json!({"name": "bad", "passed": false})],
+                Vec::new(),
+            )),
+            None
+        );
+        assert_eq!(
+            release_certificate_green_gate_count(&release(
+                vec![json!({"name": "claimed", "passed": true})],
+                vec![json!("claimed")],
+            )),
+            None
+        );
+        let mut wrong_artifact =
+            release(vec![json!({"name": "claimed", "passed": true})], Vec::new());
+        wrong_artifact["artifact"] = Value::String("unrelated_release".to_owned());
+        assert_eq!(release_certificate_green_gate_count(&wrong_artifact), None);
+    }
+
+    #[test]
+    fn live_release_comparison_ignores_only_generation_time() {
+        let left = json!({
+            "artifact": "profile23_one_transaction_release",
+            "generated_at_utc": "2026-07-13T20:00:00Z",
+            "gates": [{"name": "required", "passed": true}],
+            "released": true,
+        });
+        let mut right = left.clone();
+        right["generated_at_utc"] = Value::String("2026-07-13T20:00:01Z".to_owned());
+        assert!(release_values_match_ignoring_generation_time(&left, &right).unwrap());
+
+        right["gates"][0]["passed"] = Value::Bool(false);
+        assert!(!release_values_match_ignoring_generation_time(&left, &right).unwrap());
+
+        let mut missing_time = left.clone();
+        missing_time
+            .as_object_mut()
+            .unwrap()
+            .remove("generated_at_utc");
+        assert!(release_values_match_ignoring_generation_time(&left, &missing_time).is_err());
+    }
+
+    #[test]
+    fn whole_live_release_comparison_rejects_truncated_gates_branch_drift_and_source_drift() {
+        let live = json!({
+            "artifact": "profile23_one_transaction_release",
+            "generated_at_utc": "2026-07-13T20:00:00Z",
+            "status": "released_all_required_gates_green",
+            "released": true,
+            "gates": [
+                {"name": "soundness", "passed": true, "evidence": "live"},
+                {"name": "hiding", "passed": true, "evidence": "live"}
+            ],
+            "failed_gates": [],
+            "source_artifacts": [
+                {
+                    "label": "soundness",
+                    "path": "results/stage2/soundness.json",
+                    "bytes": 17,
+                    "sha256": "11".repeat(32)
+                },
+                {
+                    "label": "production_proof",
+                    "path": "results/stage2/proofs/profile23.bin",
+                    "bytes": 61_599,
+                    "sha256": "22".repeat(32)
+                }
+            ],
+            "release_instance": {
+                "serialized_selector": 1,
+                "least_good_selector": 1,
+                "good23_branches": [
+                    {"selector": 0, "accepted": false},
+                    {"selector": 1, "accepted": true},
+                    {"selector": 2, "accepted": true}
+                ]
+            }
+        });
+
+        let mut fabricated_one_gate = live.clone();
+        fabricated_one_gate["gates"] = json!([
+            {"name": "soundness", "passed": true, "evidence": "live"}
+        ]);
+        assert!(
+            !release_values_match_ignoring_generation_time(&fabricated_one_gate, &live).unwrap()
+        );
+
+        let mut mutated_good23_branch = live.clone();
+        mutated_good23_branch["release_instance"]["good23_branches"][0]["accepted"] =
+            Value::Bool(true);
+        assert!(
+            !release_values_match_ignoring_generation_time(&mutated_good23_branch, &live).unwrap()
+        );
+
+        let mut arbitrary_source_list = live.clone();
+        arbitrary_source_list["source_artifacts"] = json!([{
+            "label": "unrelated",
+            "path": "/tmp/unrelated.json",
+            "bytes": 1,
+            "sha256": "33".repeat(32)
+        }]);
+        assert!(
+            !release_values_match_ignoring_generation_time(&arbitrary_source_list, &live).unwrap()
+        );
+    }
+
+    #[test]
+    fn release_instance_rejects_swapped_or_tampered_proof_and_sidecar() {
+        let root = TempRoot::new();
+        let proof_a = b"profile23-proof-a".to_vec();
+        let proof_b = b"profile23-proof-b".to_vec();
+        let statement_a = sidecar(&statement(11));
+        let statement_b = sidecar(&statement(29));
+        let proof_a_path = root.0.join("proof-a.bin");
+        let proof_b_path = root.0.join("proof-b.bin");
+        let statement_a_path = root.0.join("statement-a.json");
+        let statement_b_path = root.0.join("statement-b.json");
+        fs::write(&proof_a_path, &proof_a).unwrap();
+        fs::write(&proof_b_path, &proof_b).unwrap();
+        fs::write(&statement_a_path, &statement_a).unwrap();
+        fs::write(&statement_b_path, &statement_b).unwrap();
+        let release = release_for("proof-a.bin", &proof_a, "statement-a.json", &statement_a);
+
+        let baseline = validate_release_instance(
+            &release,
+            &root.0,
+            &proof_a_path,
+            &proof_a,
+            &statement_a_path,
+            &statement_a,
+        )
+        .unwrap();
+        assert!(baseline.proof_identity_exact);
+        assert!(baseline.statement_identity_exact);
+
+        let swapped_proof = validate_release_instance(
+            &release,
+            &root.0,
+            &proof_b_path,
+            &proof_b,
+            &statement_a_path,
+            &statement_a,
+        )
+        .unwrap();
+        assert!(!swapped_proof.proof_identity_exact);
+        assert!(swapped_proof.statement_identity_exact);
+
+        let mut tampered_proof = proof_a.clone();
+        tampered_proof[0] ^= 1;
+        let tampered_proof = validate_release_instance(
+            &release,
+            &root.0,
+            &proof_a_path,
+            &tampered_proof,
+            &statement_a_path,
+            &statement_a,
+        )
+        .unwrap();
+        assert!(!tampered_proof.proof_identity_exact);
+
+        let swapped_statement = validate_release_instance(
+            &release,
+            &root.0,
+            &proof_a_path,
+            &proof_a,
+            &statement_b_path,
+            &statement_b,
+        )
+        .unwrap();
+        assert!(swapped_statement.proof_identity_exact);
+        assert!(!swapped_statement.statement_identity_exact);
+
+        let same_path_tampered_statement = validate_release_instance(
+            &release,
+            &root.0,
+            &proof_a_path,
+            &proof_a,
+            &statement_a_path,
+            &statement_b,
+        )
+        .unwrap();
+        assert!(!same_path_tampered_statement.statement_identity_exact);
+
+        let mut schema_tampered: Value = serde_json::from_slice(&statement_a).unwrap();
+        schema_tampered["unreviewed"] = Value::Bool(true);
+        assert!(validate_release_instance(
+            &release,
+            &root.0,
+            &proof_a_path,
+            &proof_a,
+            &statement_a_path,
+            &serde_json::to_vec(&schema_tampered).unwrap(),
+        )
+        .is_err());
+    }
+
+    #[test]
     fn nullifier_accepts_only_absent_or_supported_prefunding_shapes() {
         let program_id = Pubkey::new_unique();
         assert!(nullifier_compatible(None, &program_id));
@@ -1803,6 +2672,87 @@ mod tests {
             }),
             &program_id
         ));
+    }
+
+    fn upgradeable_program_snapshot(seed: u8) -> UpgradeableProgramSnapshot {
+        UpgradeableProgramSnapshot {
+            program_id: Pubkey::new_unique(),
+            program: RpcAccount {
+                lamports: 11,
+                owner: bpf_loader_upgradeable::id(),
+                executable: true,
+                data: vec![seed, 1, 2],
+            },
+            programdata_address: Pubkey::new_unique(),
+            programdata: RpcAccount {
+                lamports: 29,
+                owner: bpf_loader_upgradeable::id(),
+                executable: false,
+                data: vec![seed, 3, 4, 5],
+            },
+            programdata_slot: 73,
+            upgrade_authority_address: Pubkey::new_unique(),
+        }
+    }
+
+    #[test]
+    fn upgradeable_program_continuity_distinguishes_raw_and_data_drift() {
+        let baseline = upgradeable_program_snapshot(7);
+        assert!(baseline.continuity_from(&baseline).all_unchanged());
+
+        let mut programdata_lamports_changed = baseline.clone();
+        programdata_lamports_changed.programdata.lamports += 1;
+        let checks = programdata_lamports_changed.continuity_from(&baseline);
+        assert!(!checks.programdata_raw_account_image_unchanged);
+        assert!(checks.programdata_data_unchanged);
+        assert!(checks.programdata_address_unchanged);
+
+        let mut programdata_bytes_changed = baseline.clone();
+        programdata_bytes_changed.programdata.data[0] ^= 1;
+        let checks = programdata_bytes_changed.continuity_from(&baseline);
+        assert!(!checks.programdata_raw_account_image_unchanged);
+        assert!(!checks.programdata_data_unchanged);
+        assert!(checks.program_raw_account_image_unchanged);
+        assert!(checks.program_data_unchanged);
+
+        let mut linked_address_changed = baseline.clone();
+        linked_address_changed.programdata_address = Pubkey::new_unique();
+        assert!(
+            !linked_address_changed
+                .continuity_from(&baseline)
+                .programdata_address_unchanged
+        );
+
+        let mut program_bytes_changed = baseline.clone();
+        program_bytes_changed.program.data[0] ^= 1;
+        let checks = program_bytes_changed.continuity_from(&baseline);
+        assert!(!checks.program_raw_account_image_unchanged);
+        assert!(!checks.program_data_unchanged);
+        assert!(checks.programdata_raw_account_image_unchanged);
+        assert!(checks.programdata_data_unchanged);
+    }
+
+    #[test]
+    fn upgradeable_program_snapshot_evidence_binds_both_account_addresses() {
+        let snapshot = upgradeable_program_snapshot(19);
+        let evidence = snapshot.evidence();
+        assert_eq!(
+            evidence.program_account.address,
+            snapshot.program_id.to_string()
+        );
+        assert_eq!(
+            evidence.programdata_address,
+            snapshot.programdata_address.to_string()
+        );
+        assert_eq!(
+            evidence.programdata_account.address,
+            snapshot.programdata_address.to_string()
+        );
+        assert_eq!(evidence.programdata_slot, snapshot.programdata_slot);
+        assert_eq!(
+            evidence.upgrade_authority_address,
+            snapshot.upgrade_authority_address.to_string()
+        );
     }
 
     #[test]

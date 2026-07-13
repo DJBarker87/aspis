@@ -1,9 +1,10 @@
 # Profile 23 publication plan
 
 Status: authoring plan, not a mainnet claim. The canonical local Profile 23
-release certificate is 30/30 after the proof-account-finalization and
-live-pool changes. Local finalized proof-account fixtures are sealed. The
-configured program address in the frozen local build is
+release certificate must match the complete live read-only release evaluation,
+including its nonempty dynamically sized all-green gate set, after the
+proof-account-finalization and live-pool changes. Local finalized proof-account
+fixtures are sealed. The configured program address in the frozen local build is
 `7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue`; that address is not evidence
 of deployment. This plan does not assert a mainnet-beta event, an audit,
 production readiness, or any historical “first.”
@@ -606,7 +607,8 @@ cores, memory, disk, network access, nondeterminism, and its exact output:
 
 1. **Tier 0: immutable-bundle audit.** Rehash cached source metadata, proof,
    SBF, JSON, generated constants, and paper macros; verify all cross-links,
-   the 30/30 certificate, and stale-claim guards without compiling.
+   the complete live-evaluation-matched release certificate, and stale-claim
+   guards without compiling.
 2. **Tier 1: fast semantic and teeth suite.** Run parser, transcript, relation,
    corruption, finalization, rollback, and privacy regression tests against
    cached fixtures. State which tests are deterministic and why.
@@ -900,9 +902,10 @@ and optionally reruns slow rank/KAT jobs.
 5. **Write the implementation refinement.** Have a Solana reviewer check
    account ownership, finalization, instruction order, rollback, race, upgrade
    authority, and the exact one-transaction boundary.
-6. **Validate the frozen local release.** The finalization-aware KAT,
-   30/30 release certificate, proof, and default SBF now agree; generate paper
-   macros from those artifacts and fail on any later drift.
+6. **Validate the frozen local release.** The finalization-aware KAT, complete
+   live-evaluation-matched release certificate, proof, and default SBF now
+   agree; generate paper macros from those artifacts and fail on any later
+   drift.
 7. **Close mainnet evidence.** Deploy and execute only through the separate
    release checklist; capture finalized evidence. If it remains blocked,
    publish the local result without mainnet or novelty language.
