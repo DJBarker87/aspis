@@ -1,11 +1,12 @@
 # Profile 23 computational HVZK closure
 
-**Status (`2026-07-13`): complete-view computational hiding is closed in the
-declared SHA-256 ROM/EPRO and fixed public release-channel model. This is not
-statistical HVZK, not a standard-model SHA-256 PRG claim, and not a local
-hardware/OS side-channel claim. Profile 23 is now the manifest-default
-production path, the mined tag-60 host/SBF KAT is green, and the fail-closed
-one-transaction release certificate passes all 30/30 gates.**
+**Status (`2026-07-14`): q18 complete-view computational hiding is closed in
+the declared SHA-256 ROM/EPRO and fixed public release-channel model. This is
+not statistical HVZK, not a standard-model SHA-256 PRG claim, and not a local
+hardware/OS side-channel claim. The proof-independent closure, canonically
+mined q18 production repin, tag-59/tag-60 host/SBF KATs, and local
+one-transaction release are green with `35/35` gates. The `2026-07-13`
+q16/cap16 release is superseded historical evidence.**
 
 ## Exact claim
 
@@ -31,7 +32,7 @@ conditioned on successful proving. Assume:
    oracle with the implemented rigid domain separation;
 2. the distinguisher makes at most `Q_H = 2^128` adaptive oracle queries,
    including queries after seeing the output;
-3. every one of at most `A=16` attempts starts with fresh independent OS
+3. every one of at most `A=17` attempts starts with fresh independent OS
    entropy and a fresh durably burned public nonce;
 4. the local honest prover and canonical-minimum miner keep rejected attempts
    private; and
@@ -56,12 +57,12 @@ C = 969,993.
 At the declared bounds, the terms are respectively at most
 
 ```text
-2^-104.11238518950232
-2^-209.22477047196247
-2^-48,408,806.06128344.
+2^-104.02492234825198
+2^-209.04984478399368
+2^-96,817,618.62006654.
 ```
 
-The first term dominates, giving `104.11238518950232` bits for real versus
+The first term dominates, giving `104.02492234825198` bits for real versus
 simulator. For any two valid witnesses `w0,w1`, the written reduction is
 
 ```text
@@ -74,7 +75,7 @@ so the triangle inequality gives
 epsilon_pairwise <= 2*epsilon_real_vs_sim
 ```
 
-and a pairwise-witness floor of `103.11238518950232` bits. Both forms are
+and a pairwise-witness floor of `103.02492234825198` bits. Both forms are
 above 100 bits in the declared model. No direct real-to-real hybrid with a
 single copy of the EPRO bad-event ledger is assumed. The standard conditional
 expressions are
@@ -124,33 +125,33 @@ maps and requires all of the following:
 | existing semantic/mask/G raw builders | separately visible C1/C2 query and three-terminal values have the canonical translation ranks |
 | D raw block | rank `268/268` for 64 queried QM31 symbols plus three terminal QM31 values |
 | inactive-balanced H1 padding | rank `268/268` on the exact physical H1 raw target |
-| remaining G/D raw Schur complement | query rank `256`, terminal rank `12` |
-| H1 raw Schur complement | query rank `256`, terminal rank `12` |
+| remaining G/D raw Schur complement | query rank `288`, terminal rank `12` |
+| H1 raw Schur complement | query rank `288`, terminal rank `12` |
 | root-neutral product | joint rank `1,404/1,404`, terminal rank `324`, terminal-plus-initial rank `328`, and all `1,076` coordinates of `ker(initial,T_z)` |
 | source guards | every selected source has compressed terminal zero and pointwise `Gamma_gamma`-root difference zero |
 
 There is no unchecked semantic-raw assumption hidden in this table. For each
 semantic lane, the common relation-free block `896..=1023` has structurally
-surjective rank 64 on the 64 q limbs for every distinct q16 tuple. Its
-balanced q kernel has dimension 63, and the root-neutral certificate selects
-all 63 directions in every one of the sixteen semantic lanes while the
-lane-separated terminal projection reaches its full rank. Together those are
-the complete q-plus-three-terminal semantic raw map. The independent
-remaining G/D and H1 terminal pieces are exactly the two additional Schur
-certificates in Good23.
+surjective rank 72 on the 72 q limbs for every distinct q18 tuple. Its
+balanced q kernel and the minimum-q-degree root-neutral certificate supply the
+certified semantic directions while the lane-separated terminal projection
+reaches full rank. Together those are the complete
+q-plus-three-terminal semantic raw map. The independent remaining G/D and H1
+terminal pieces are exactly the two additional Schur certificates in Good23.
 
-The static gate also pins q16, rate `1/512`, nonzero gamma, generator order
+The static gate also pins q18, rate `1/512`, nonzero gamma, generator order
 `semantic0..15,mask16..25,H26,G27,D28`, `factor(D)=0`, the atomic-v3 layout
 fingerprint `0x233ba2ca68f94148`, and the complete degree tuple. Builder or
 schema drift is fatal, not retryable.
 
-The root-neutral rank certificate is computed on the frozen Profile-22
-fixture and transfers to production through an explicit chain. These ranks
-depend on the frozen layout and schedule rather than the witness; the release
-gate requires the layout fingerprint and Good23 definition fingerprint to
-match live code; and the production selector audit is green for all three
-Good23 branches. The production proof is not assumed byte-equal to the rank
-fixture.
+The root-neutral rank certificate is pinned to the frozen 67,327-byte q18
+fixture and transfers to the production proof through an explicit chain.
+These ranks depend on the frozen layout and schedule rather than the witness;
+the release gate requires the layout fingerprint and Good23 definition
+fingerprint to match live code; and the production selector audit must be
+green for all three Good23 branches. The released production audit is green
+for all three branches. The production proof is not assumed byte-equal to the
+rank fixture.
 
 These checks match the fixed-schedule complete-view implication exactly:
 
@@ -204,7 +205,7 @@ consume a witness, realized mask, salt, root as opaque data, opened value,
 retry counter or prover-selected minor. Although the schedule structure also
 stores proof-carried claims, those claims are not inputs to the rank decision.
 
-## q3 and cap-16 conditioning
+## q3 and cap-17 conditioning
 
 One retained attempt clones the state after the final nonce into three
 independent label-44 branches. It absorbs exactly one selector byte in each
@@ -220,11 +221,11 @@ and the all-bad bit therefore have one witness-independent joint law. The
 first-good theorem applies to this whole q3 experiment, not to only the
 selected schedule.
 
-Consequently the cap-16 all-bad probability is an availability term, not a
+Consequently the cap-17 all-bad probability is an availability term, not a
 privacy term. Its proved bound is
 
 ```text
-Pr[public Abort from Good exhaustion] <= 2^-105.41017865405837
+Pr[public Abort from Good exhaustion] <= 2^-105.21398677941983
 ```
 
 up to the separately negligible bounded-sampler/build aborts. Including
@@ -288,19 +289,29 @@ mutation likewise adds no private field: conditional on the public statement
 and public account branch it is a deterministic function of the simulated
 proof. There is no receipt in the selected one-transaction path.
 
-The canonically mined production proof is 61,599 bytes with SHA-256
-`35c4e79316bf4a2af1951e5d2f41b6ebb4ebb7bd1e91a3ba93c52e549bfe7949`.
-Its size differs from the 59,679-byte unmined regression fixture because the
-minimal-subtree frontier geometry depends on the Fiat–Shamir query schedule;
-the public witness-independent selector law makes that schedule-dependent
-length part of the simulated complete view, not a witness-dependent leak. An
-independent host audit accepts all three Good23 selector branches and
-confirms that the serialized selector `0` is the required least Good branch.
+The active q18 unmined fixture is 67,327 bytes with SHA-256
+`a5ed698a32d815ffd95f8d3e0be62d16620d32e216a087a350852726fb6ca238`.
+Its minimal-subtree frontier geometry depends on the Fiat–Shamir query
+schedule; the public witness-independent selector law makes
+schedule-dependent length part of the simulated complete view, not a
+witness-dependent leak. The fixture audit accepts all three Good23 selector
+branches and confirms that serialized selector `0` is the required least Good
+branch.
+
+The released canonically mined q18 production proof is 63,487 bytes with
+SHA-256
+`0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb`.
+Its canonical statement sidecar has SHA-256
+`520a0a86e1d1918a5270622ac27182b1f5b6df2b624d68bbd2a2b6f927eebb14`.
+The production replay likewise accepts all three Good23 branches and confirms
+serialized and least-Good selector `0`.
 
 ## Regression evidence and limits
 
-The committed 59,679-byte unmined fixture has a gap- and overlap-free public
-byte inventory:
+The committed 67,327-byte q18 unmined fixture has a gap- and overlap-free
+public byte inventory. The exact executable inventory is pinned by the privacy
+regression and all five opening sections bind their roots, values, salts, and
+frontiers. For comparison, the superseded q16 fixture's inventory was:
 
 ```text
 header 16; nonce 32; roots 160; initial claim 16;
@@ -310,20 +321,19 @@ D claims 48; selector 1; counts 30;
 opened values 12,800; opened salts 2,560; frontiers 37,504.
 ```
 
-All five sections reject mutations to roots, values, salts and frontiers.
-Transcript teeth bind D claims, work and selector before their dependent
-challenges. The literal-witness scan is green. Four fast privacy regressions
-pass. The explicit fresh-attempt run also passes: more than half the proof
-positions change, all roots change, opened salt sets are disjoint, and nonce
-reuse fails closed (`1 passed in 141.00 s` on the final rerun). These tests are regression teeth,
-not substitutes for the affine/EPRO theorem.
+For q18, all five sections reject mutations to roots, values, salts and
+frontiers. Transcript teeth bind D claims, work and selector before their
+dependent challenges. The literal-witness scan and nonce-reuse guard are
+green. The q18 fresh-attempt rerandomization run remains pending; the
+`141.00 s` fresh-attempt result belongs to q16 and does not transfer. These
+tests are regression teeth, not substitutes for the affine/EPRO theorem.
 
 There is intentionally no “two concrete witnesses for the same spend
 statement” byte test: producing such a pair for the frozen statement would
 require breaking its binding commitments. Same-statement witness differences
 are covered by the universal physical source/containment argument above.
 
-## Claim boundary and released integration
+## Claim boundary and local q18 integration
 
 The following statements are now accurate:
 
@@ -333,38 +343,44 @@ Profile23 computational complete-view hiding       green in declared ROM/EPRO
 statistical HVZK                                    not claimed
 standard-model SHA-256 PRG security                not claimed
 filesystem/timing/power/thermal/memory/remote traffic ZK  not claimed
-default production tag/mutation                    enabled and released
+q18 default production tag/mutation                green in local 35/35 release
 ```
 
-The mined tag-60 host/SBF release KAT is now green on both atomic marker paths.
-The isolated production binary measures 1,204,792 CU for a program-owned
-zeroed marker and 1,207,123 CU for canonical System-account creation, leaving
-192,877 CU of worst-path headroom. Corrupt-proof transaction rollback,
-duplicate rejection, the System-path two-signer race, rejection of the
-committed unmined fixture, and production/diagnostic feature isolation are all
-green. This closes the engineering KAT that connects the literal mined wire,
-production PoW path and atomic transition to the simulator theorem. The HVZK
-artifact did not by itself enable production; the subsequent release step
-made the isolated `profile23-production` alias the manifest default,
-fresh-built it, and required byte identity with the measured production KAT
-binary. That default SBF is 6,870,048 bytes with SHA-256
-`6b64baf559dcddbd6f9b1af1205effeb6afae6a5746a44421e8826251fe4cffb`.
+The q18 theorem artifact does not enable production by itself. The separate
+engineering gates now bind the mined proof and statement above, production
+tag-59/tag-60 host and SBF acceptance/mutation replay on both marker paths,
+fresh default-SBF identity, and exact CU reconciliation.
+`results/stage2/profile23_one_transaction_release.json` records
+`released=true`, `status=released_all_required_gates_green`, and `35/35`
+passing gates. Its fresh 915,656-byte default SBF has SHA-256
+`da66a51b1f3ce95e907a87fca15fb9dc0cce66fd47646875ce2dff94879fd254`.
+Tag 59 costs `1,299,012 CU`; tag 60 costs `1,300,905 CU` on the program-owned
+marker path and `1,303,236 CU` on canonical System creation, leaving `96,764
+CU` of worst-path headroom below 1.4M. The same certificate binds the
+conservative soundness floor at `100.16144938287455` bits, alongside the
+declared-model hiding floors proved
+above.
 
-The release certificate
-`results/stage2/profile23_one_transaction_release.json` reports
-`released=true` with 30/30 gates green. It pins the 61,599-byte mined proof
-(`35c4e79316bf4a2af1951e5d2f41b6ebb4ebb7bd1e91a3ba93c52e549bfe7949`),
-pairwise-witness computational-hiding floor `103.11238518950232` bits; the
-corresponding real-vs-simulator bound is `104.11238518950232` bits. Same-binary
-production tag 59 is 1,202,939 CU. Tag 60 costs 1,204,792 CU on the
-program-owned-zeroed path and 1,207,123 CU on canonical System creation,
-leaving 192,877 CU on the worst path. The release
-scope is one atomic transaction consuming a finalized, pre-uploaded proof
-account whose unchanged 40-byte header contains the all-zero authority sentinel;
-proof-account creation, chunk upload, and `FinalizeProof` are not part of that
-transaction. Append-only tag 62 seals proof accounts, append-only tag 63
-initializes pools, and the frozen program id is
-`7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue`.
+The intended release scope remains one atomic transaction consuming a
+finalized, pre-uploaded proof account whose unchanged 40-byte header contains
+the all-zero authority sentinel. Proof-account creation, chunk upload, and
+`FinalizeProof` are not part of that transaction. Append-only tag 62 seals
+proof accounts, append-only tag 63 initializes pools, and the configured local
+program id is `7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue`; this address is
+not deployment evidence. The green certificate is local release evidence, not
+a mainnet deployment or an external security audit; those remain separate
+blockers. The q18 fresh-attempt rerandomization regression remains pending as
+stated above and is not inferred from the release KATs.
+
+## Superseded q16 integration evidence (`2026-07-13`)
+
+The q16 release passed 30/30 gates using a 61,599-byte mined proof, a
+6,870,048-byte default SBF, and tag-60 costs of `1,204,792 CU` on the
+program-owned marker path and `1,207,123 CU` on canonical System creation. It
+left `192,877 CU` of worst-path headroom and pinned declared-model
+pairwise/one-sided hiding floors of `103.11238518950232` and
+`104.11238518950232` bits. Those proof, binary, CU, and hiding values are
+retained only as historical evidence and do not transfer to q18.
 
 ## Guards
 

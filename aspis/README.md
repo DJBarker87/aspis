@@ -6,30 +6,40 @@ a program on Solana. This subrepo contains the native WHIR-style M31 PCS
 substrate ("native v0") and its staged hardening, with the measured Phase 2
 kernel winners built in from the first line.
 
-**Current Profile23 release (`2026-07-13`)**: the fail-closed release
-certificate is green on all 30 gates. A canonically mined 61,599-byte proof is
-verified and the nullifier/pool state is atomically mutated in one Solana
-transaction at **1,207,123 CU worst case**, leaving **192,877 CU** below the
-1.4M cap. Parameters are rate 1/512, q16, three post-final schedules and a
-cap-16 first-Good retry law. The selected proven-Johnson soundness floor is
-**101.302307 bits**; the Profile-23-own whole-ledger-times-three/BCS32 coarse
-sensitivity remains **100.806529 bits**. Complete-public-view pairwise-witness
-computational hiding is **103.112385 bits** in the declared SHA-256
-programmable-ROM/EPRO and fixed Proof-or-Abort channel model; the corresponding
-real-vs-simulator bound is **104.112385 bits**. Statistical HVZK and a
-standard-model SHA-256 PRG claim are not made. `epsilon_side=0` is solely a
-model exclusion: filesystem and burned-nonce inspection, scheduler/process
-timing, power/thermal/memory channels, and remote-prover/miner traffic are not
-covered. The CU scope consumes a finalized, pre-uploaded proof
-account; account creation, chunk upload, and finalization are separate
-transactions. Production proof accounts are irreversibly sealed by append-only
-tag 62 before tags 59/60 can consume them; append-only tag 63 initializes a
-live pool. The manifest-default 6,870,048-byte SBF (SHA-256
-`6b64baf559dcddbd6f9b1af1205effeb6afae6a5746a44421e8826251fe4cffb`) is
-byte-identical to the fully exercised production KAT and declares program id
-`7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue`. See
-`results/stage2/profile23_one_transaction_release.json` and
-`docs/stage2-profile23-one-transaction-release.md`.
+**Current Profile23 q18 local release (`2026-07-14`)**: the fail-closed release
+certificate is green at **35/35 gates**. It binds a canonically mined
+63,487-byte q18 proof with SHA-256
+`0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb`,
+a 915,656-byte manifest-default SBF with SHA-256
+`da66a51b1f3ce95e907a87fca15fb9dc0cce66fd47646875ce2dff94879fd254`,
+and a worst literal tag-60 path of **1,303,236 CU**, leaving **96,764 CU**
+below Solana's 1.4M limit. The previous q16 production certificate is
+historical evidence; it is not a q18 authorization artifact. The frozen q18
+schedule uses rate
+1/512, batch grinding g37, fold grinding `[34,33,30,25]`, final grinding g32,
+three post-final query schedules, and a cap-17 first-Good retry law. Its exact
+complete-Good certificate has root-neutral rank `1,404`, degree-one/degree-two
+basis split `1,068/336`, both raw query ranks `288`, and both terminal Schur
+ranks `12`. The degree tuple `(q,z,gamma,continuous)` is
+`(31,320,41,280,80,688,121,968)`. The conservative, authorizing
+proven-Johnson/BCS soundness floor is **100.161449 bits**.
+The fresh production proof published successfully in **480.42 seconds** on
+an eight-minute fixed boundary; the exact post-release host audit took 40.64
+seconds. The measured runtime record is
+`results/stage2/profile23_q18_g37_runtime.json`.
+Complete-public-view computational hiding is
+**103.024922 bits** pairwise-witness and **104.024922 bits**
+real-vs-simulator in the declared SHA-256 programmable-ROM/EPRO and fixed
+Proof-or-Abort channel model. The deterministic unmined q18 regression fixture
+is 67,327 bytes with SHA-256
+`a5ed698a32d815ffd95f8d3e0be62d16620d32e216a087a350852726fb6ca238`;
+it is not the released production proof.
+Statistical HVZK and a standard-model SHA-256 PRG claim are not made.
+`epsilon_side=0` is solely a model exclusion: filesystem and burned-nonce
+inspection, scheduler/process timing, power/thermal/memory channels, and
+remote-prover/miner traffic are not covered. See
+`docs/stage2-profile23-good-schedule-host.md` and the released q18 artifacts in
+`results/stage2/`.
 
 **Historical staging record**: Stage 1 security accounting was reopened. The selected genuine-circle
 M31/fresh-kappa PCS accepts its capacity-shaped q36/g16 fixture on SBF at
@@ -169,9 +179,11 @@ Verbatim from the staged design (this section ships with every artifact):
 > paper WHIR; any "first" claim without a day-of novelty re-check and finalized
 > public chain evidence.
 
-The current local release realizes the scoped Profile 23 claim above. It does
-not yet establish a mainnet-beta event, audit, production readiness, or broad
-historical priority.
+The q18 local release satisfies the soundness, declared hiding, and scoped
+one-transaction portions of the Profile 23 claim above, including mined-proof
+host/SBF acceptance and mutation/rollback measurements. It does not establish
+a mainnet-beta event, audit, production readiness, or broad historical
+priority.
 
 ## Layout
 
@@ -190,9 +202,9 @@ results/stage0,stage1/   raw artifacts backing every number quoted anywhere
 | --- | --- | --- |
 | Stage 0 | Consolidate the native WHIR-style M31 PCS substrate | **CLOSED/CONDITIONAL (historical)**: admitted q32/g32 as a hypothesis; Stage 1 has since retired it |
 | Stage 1 | Harden and budget the PCS soundness argument | **REOPENED / FINITE-LENGTH CONSTANTS GATE**: t=90 ruling retained at q36/g32/s2; 93.73 is provisional sensitivity only; 65.5 is the only quotable floor; measurements and teeth tests stand |
-| Stage 2 | Build the direct spend evaluator and statement layer | **RELEASED AS PROFILE 23**: rate 1/512, q16, complete statement, proven-Johnson ledger, hiding, and atomic mutation integrated |
+| Stage 2 | Build the direct spend evaluator and statement layer | **Q18 LOCAL RELEASE GREEN**: rate 1/512, q18, complete statement/theorem ledger, mined proof, production KAT, and 35/35 certificate integrated |
 | Stage 3 | Add commitment and sumcheck/evaluation hiding | **INTEGRATED**: Good23/Sim23 and complete-view ROM/EPRO closure |
-| Stage 4 | Split verifier crate seam and demo shielded pool | **LOCAL RELEASE GREEN**: sealed proof accounts and both atomic marker paths exercised |
+| Stage 4 | Split verifier crate seam and demo shielded pool | **Q18 LOCAL REVALIDATION GREEN**: sealed-account and atomic-marker host/SBF evidence is bound to the q18 certificate; the q16 release is archival |
 | Stage 5 | Freeze, public-chain measurement, novelty re-check, writeup | **IN PROGRESS**: local artifacts frozen; mainnet signature and paper publication remain gated |
 
 ## Commands

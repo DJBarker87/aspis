@@ -1,6 +1,6 @@
 {
-  "generated_at_utc": "2026-07-13T22:28:26.398467+00:00",
-  "command": "ASPIS_PROFILE23_PROOF=/Users/dominic/ZK/aspis/results/stage2/proofs/atomic_state_only_profile23_v3_mined.bin NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-profile23-mutation",
+  "generated_at_utc": "2026-07-14T13:31:06.467865+00:00",
+  "command": "ASPIS_PROFILE23_PROOF=/Users/dominic/ZK/aspis/results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.bin ASPIS_PROFILE23_STATEMENT=/Users/dominic/ZK/aspis/results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.statement.json NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-profile23-mutation",
   "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
   "production_instruction_wire_ordinal": 60,
   "diagnostic_instruction_wire_ordinal": 61,
@@ -9,17 +9,26 @@
     "diagnostic-unmined-profile23-mutation",
     "profile23-mutation-candidate"
   ],
-  "proof_path": "results/stage2/proofs/atomic_state_only_profile23_v3_mined.bin",
+  "proof_path": "results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.bin",
   "proof_source_override": true,
-  "proof_bytes": 61599,
-  "proof_sha256": "35c4e79316bf4a2af1951e5d2f41b6ebb4ebb7bd1e91a3ba93c52e549bfe7949",
+  "proof_bytes": 63487,
+  "proof_sha256": "0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb",
   "proof_unmined": false,
-  "statement_path": null,
-  "statement_source_override": false,
-  "statement_sha256": null,
+  "statement_path": "results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.statement.json",
+  "statement_source_override": true,
+  "statement_sha256": "520a0a86e1d1918a5270622ac27182b1f5b6df2b624d68bbd2a2b6f927eebb14",
   "statement_pool_hex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
   "statement_sequence": 73,
   "canonical_public_input_digest": "52e96f99756fe8fd2d8b7a700019b143d7eb549af1bf1ae987e99a75cadcd4c9",
+  "query_count": 18,
+  "batch_grinding_bits": 37,
+  "final_grinding_bits": 32,
+  "fold_grinding_bits": [
+    34,
+    33,
+    30,
+    25
+  ],
   "production_pow_bypass_exposed": false,
   "default_tag60_fail_closed_host": true,
   "candidate_tag60_rejects_unmined_sbf": false,
@@ -29,8 +38,8 @@
   "paths": [
     {
       "marker_path": "program_owned_zeroed",
-      "literal_simulation_cu": 1208057,
-      "headroom_under_1_4m_cu": 191943,
+      "literal_simulation_cu": 1248054,
+      "headroom_under_1_4m_cu": 151946,
       "incremental_over_tag59_cu": 5137,
       "markers": [
         {
@@ -60,57 +69,57 @@
         },
         {
           "label": "atomic61_transcript",
-          "remaining": 1240096,
-          "delta_from_previous": 152046
+          "remaining": 1239720,
+          "delta_from_previous": 152422
         },
         {
           "label": "atomic61_terminal",
-          "remaining": 858090,
-          "delta_from_previous": 382006
+          "remaining": 857606,
+          "delta_from_previous": 382114
         },
         {
           "label": "atomic61_relation",
-          "remaining": 670505,
-          "delta_from_previous": 187585
+          "remaining": 670119,
+          "delta_from_previous": 187487
         },
         {
           "label": "atomic61_openings",
-          "remaining": 469926,
-          "delta_from_previous": 200579
+          "remaining": 464451,
+          "delta_from_previous": 205668
         },
         {
           "label": "atomic61_layer0_queries",
-          "remaining": 287216,
-          "delta_from_previous": 182710
+          "remaining": 259248,
+          "delta_from_previous": 205203
         },
         {
           "label": "atomic61_later_queries",
-          "remaining": 193852,
-          "delta_from_previous": 93364
+          "remaining": 153855,
+          "delta_from_previous": 105393
         },
         {
           "label": "atomic61_core_complete",
-          "remaining": 193634,
+          "remaining": 153637,
           "delta_from_previous": 218
         },
         {
           "label": "atomic61_proof_verified",
-          "remaining": 193356,
+          "remaining": 153359,
           "delta_from_previous": 278
         },
         {
           "label": "atomic61_program_marker_ready",
-          "remaining": 193150,
+          "remaining": 153153,
           "delta_from_previous": 206
         },
         {
           "label": "atomic61_state_rechecked",
-          "remaining": 192409,
+          "remaining": 152412,
           "delta_from_previous": 741
         },
         {
           "label": "atomic61_state_applied",
-          "remaining": 192130,
+          "remaining": 152133,
           "delta_from_previous": 279
         }
       ],
@@ -118,13 +127,13 @@
         "transaction_setup_cu": 1979,
         "account_validation_cu": 2758,
         "statement_decode_and_digest_cu": 894,
-        "exact_profile23_verifier_cu": 1201013,
+        "exact_profile23_verifier_cu": 1241010,
         "marker_prepare_or_cpi_cu": 206,
         "mutable_state_recheck_cu": 741,
         "final_account_writes_cu": 279,
         "post_last_marker_cu": 187,
-        "reconciled_total_cu": 1208057,
-        "formula": "1979 + 2758 + 894 + 1201013 + 206 + 741 + 279 + 187"
+        "reconciled_total_cu": 1248054,
+        "formula": "1979 + 2758 + 894 + 1241010 + 206 + 741 + 279 + 187"
       },
       "clean_simulation_accepted": true,
       "corrupt_proof_rejected_without_mutation": true,
@@ -137,8 +146,8 @@
     },
     {
       "marker_path": "canonical_system_owned_create",
-      "literal_simulation_cu": 1210390,
-      "headroom_under_1_4m_cu": 189610,
+      "literal_simulation_cu": 1250387,
+      "headroom_under_1_4m_cu": 149613,
       "incremental_over_tag59_cu": 7470,
       "markers": [
         {
@@ -168,57 +177,57 @@
         },
         {
           "label": "atomic61_transcript",
-          "remaining": 1240548,
-          "delta_from_previous": 152046
+          "remaining": 1240172,
+          "delta_from_previous": 152422
         },
         {
           "label": "atomic61_terminal",
-          "remaining": 858542,
-          "delta_from_previous": 382006
+          "remaining": 858058,
+          "delta_from_previous": 382114
         },
         {
           "label": "atomic61_relation",
-          "remaining": 670957,
-          "delta_from_previous": 187585
+          "remaining": 670571,
+          "delta_from_previous": 187487
         },
         {
           "label": "atomic61_openings",
-          "remaining": 470378,
-          "delta_from_previous": 200579
+          "remaining": 464903,
+          "delta_from_previous": 205668
         },
         {
           "label": "atomic61_layer0_queries",
-          "remaining": 287668,
-          "delta_from_previous": 182710
+          "remaining": 259700,
+          "delta_from_previous": 205203
         },
         {
           "label": "atomic61_later_queries",
-          "remaining": 194304,
-          "delta_from_previous": 93364
+          "remaining": 154307,
+          "delta_from_previous": 105393
         },
         {
           "label": "atomic61_core_complete",
-          "remaining": 194086,
+          "remaining": 154089,
           "delta_from_previous": 218
         },
         {
           "label": "atomic61_proof_verified",
-          "remaining": 193808,
+          "remaining": 153811,
           "delta_from_previous": 278
         },
         {
           "label": "atomic61_system_marker_created",
-          "remaining": 190817,
+          "remaining": 150820,
           "delta_from_previous": 2991
         },
         {
           "label": "atomic61_state_rechecked",
-          "remaining": 190076,
+          "remaining": 150079,
           "delta_from_previous": 741
         },
         {
           "label": "atomic61_state_applied",
-          "remaining": 189797,
+          "remaining": 149800,
           "delta_from_previous": 279
         }
       ],
@@ -226,13 +235,13 @@
         "transaction_setup_cu": 1979,
         "account_validation_cu": 2306,
         "statement_decode_and_digest_cu": 894,
-        "exact_profile23_verifier_cu": 1201013,
+        "exact_profile23_verifier_cu": 1241010,
         "marker_prepare_or_cpi_cu": 2991,
         "mutable_state_recheck_cu": 741,
         "final_account_writes_cu": 279,
         "post_last_marker_cu": 187,
-        "reconciled_total_cu": 1210390,
-        "formula": "1979 + 2306 + 894 + 1201013 + 2991 + 741 + 279 + 187"
+        "reconciled_total_cu": 1250387,
+        "formula": "1979 + 2306 + 894 + 1241010 + 2991 + 741 + 279 + 187"
       },
       "clean_simulation_accepted": true,
       "corrupt_proof_rejected_without_mutation": true,
@@ -247,8 +256,8 @@
   "production_only_sbf_features": [
     "profile23-production"
   ],
-  "production_only_sbf_bytes": 915520,
-  "production_only_sbf_sha256": "3203c3f23cb67ec9ddcd4da1ee68b96e1f92de5eb04fe130c95e2d8129d5146e",
+  "production_only_sbf_bytes": 915656,
+  "production_only_sbf_sha256": "da66a51b1f3ce95e907a87fca15fb9dc0cce66fd47646875ce2dff94879fd254",
   "production_only_mined_override_exercised": true,
   "production_only_unmined_tag59_rejected": true,
   "production_only_unmined_tag60_rejected": true,
@@ -274,18 +283,18 @@
     {
       "marker_path": "program_owned_zeroed",
       "proof_accounts_finalized_before_production_verification": true,
-      "literal_tag59_simulation_cu": 1252819,
-      "literal_tag60_simulation_cu": 1254712,
-      "headroom_under_1_4m_cu": 145288,
+      "literal_tag59_simulation_cu": 1299012,
+      "literal_tag60_simulation_cu": 1300905,
+      "headroom_under_1_4m_cu": 99095,
       "ledger": {
-        "production_read_only_tag59_cu": 1252819,
+        "production_read_only_tag59_cu": 1299012,
         "production_tag60_increment_over_tag59_cu": 1893,
-        "production_tag60_total_cu": 1254712,
-        "reconciled_total_cu": 1254712,
-        "formula": "1252819 + (1893)"
+        "production_tag60_total_cu": 1300905,
+        "reconciled_total_cu": 1300905,
+        "formula": "1299012 + (1893)"
       },
       "production_unmined_tag59_rejected": true,
-      "production_unmined_tag59_error": "{\"InstructionError\":[2,\"InvalidInstructionData\"]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue invoke [1]\",\"Program log: aspis-cu:atomic59_instruction_start\",\"Program consumption: 1399028 units remaining\",\"Program log: aspis-cu:atomic59_proof_loaded\",\"Program consumption: 1398463 units remaining\",\"Program log: aspis-cu:atomic59_parsed\",\"Program consumption: 1396473 units remaining\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue consumed 131883 of 1399700 compute units\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue failed: invalid instruction data\"]",
+      "production_unmined_tag59_error": "{\"InstructionError\":[2,\"InvalidInstructionData\"]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue invoke [1]\",\"Program log: aspis-cu:atomic59_instruction_start\",\"Program consumption: 1399028 units remaining\",\"Program log: aspis-cu:atomic59_proof_loaded\",\"Program consumption: 1398463 units remaining\",\"Program log: aspis-cu:atomic59_parsed\",\"Program consumption: 1396473 units remaining\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue consumed 131727 of 1399700 compute units\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue failed: invalid instruction data\"]",
       "production_unmined_tag60_rejected": true,
       "production_unmined_tag60_rollback_green": true,
       "production_unmined_tag60_landed_error": "{\"InstructionError\":[2,\"InvalidInstructionData\"]}",
@@ -303,18 +312,18 @@
     {
       "marker_path": "canonical_system_owned_create",
       "proof_accounts_finalized_before_production_verification": true,
-      "literal_tag59_simulation_cu": 1252819,
-      "literal_tag60_simulation_cu": 1257043,
-      "headroom_under_1_4m_cu": 142957,
+      "literal_tag59_simulation_cu": 1299012,
+      "literal_tag60_simulation_cu": 1303236,
+      "headroom_under_1_4m_cu": 96764,
       "ledger": {
-        "production_read_only_tag59_cu": 1252819,
+        "production_read_only_tag59_cu": 1299012,
         "production_tag60_increment_over_tag59_cu": 4224,
-        "production_tag60_total_cu": 1257043,
-        "reconciled_total_cu": 1257043,
-        "formula": "1252819 + (4224)"
+        "production_tag60_total_cu": 1303236,
+        "reconciled_total_cu": 1303236,
+        "formula": "1299012 + (4224)"
       },
       "production_unmined_tag59_rejected": true,
-      "production_unmined_tag59_error": "{\"InstructionError\":[2,\"InvalidInstructionData\"]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue invoke [1]\",\"Program log: aspis-cu:atomic59_instruction_start\",\"Program consumption: 1399028 units remaining\",\"Program log: aspis-cu:atomic59_proof_loaded\",\"Program consumption: 1398463 units remaining\",\"Program log: aspis-cu:atomic59_parsed\",\"Program consumption: 1396473 units remaining\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue consumed 131883 of 1399700 compute units\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue failed: invalid instruction data\"]",
+      "production_unmined_tag59_error": "{\"InstructionError\":[2,\"InvalidInstructionData\"]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue invoke [1]\",\"Program log: aspis-cu:atomic59_instruction_start\",\"Program consumption: 1399028 units remaining\",\"Program log: aspis-cu:atomic59_proof_loaded\",\"Program consumption: 1398463 units remaining\",\"Program log: aspis-cu:atomic59_parsed\",\"Program consumption: 1396473 units remaining\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue consumed 131727 of 1399700 compute units\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue failed: invalid instruction data\"]",
       "production_unmined_tag60_rejected": true,
       "production_unmined_tag60_rollback_green": true,
       "production_unmined_tag60_landed_error": "{\"InstructionError\":[2,\"InvalidInstructionData\"]}",
@@ -336,7 +345,7 @@
   "notes": [
     "Tag60 has no diagnostic selector and calls the exact tag59 parser/verifier with production PoW before the first CPI or account write. Its simulated outcome is required to match the host mined/unmined classification. Default builds remain fail-closed.",
     "ASPIS_PROFILE23_PROOF supplied mined bytes: the command additionally built with the isolated feature set profile23-production, proved tag59's diagnostic bit and tag61 unavailable, and ran exact production tags59/60 on both marker paths.",
-    "No statement sidecar was supplied; this artifact uses the unchanged built-in Profile23 fixture statement.",
+    "ASPIS_PROFILE23_STATEMENT supplied the canonical public statement used by host, diagnostic SBF, and production SBF paths; its exact file and canonical transcript digest match the tag59 acceptance artifact.",
     "Both marker paths emit single-instruction, overlap-free ledgers. Corruption rollback, exact pool/marker images, duplicate rejection, and a two-signer System-path race are tested.",
     "The production-only paths load the committed unmined KAT into a second proof account, require production tags59/60 to reject it (with a landed failed tag60 transaction and exact rollback), submit a separately corrupted mined tag60 transaction to prove rollback, commit mined tag60 on both marker paths, and reconcile each exact tag60 total as same-binary tag59 plus the net mutation wrapper increment.",
     "The explicit profile23-production KAT additionally compile-failed every diagnostic and legacy Profile20/21/22 candidate union, both individually and as one grouped feature-unification tooth, with the dedicated isolation marker.",

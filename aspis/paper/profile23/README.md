@@ -4,6 +4,13 @@ This directory is the future source root for the Profile 23 paper. It contains
 no publication claim yet. The authoritative writing and release rules are in
 `docs/profile23-paper-plan.md`.
 
+**Current profile status (`2026-07-14`):** the active q18/cap17 local release
+is green at 35/35 gates. It binds the Good23, soundness, declared-model
+computational-hiding, canonically mined proof, and production host/SBF KAT
+artifacts into one certificate. The `2026-07-13` q16/cap16 certificate is
+retained as superseded historical evidence and must not be cited as the
+current Profile-23 release.
+
 ## Working title
 
 **Aspis: Transparent, Computationally Hiding Shielded-Spend Verification and
@@ -18,23 +25,23 @@ title unless their separate release gates are green.
 
 1. Solana's 1.4M-CU execution limit makes direct transparent verification of a
    complete shielded-spend statement difficult.
-2. We describe Profile 23, a rate-1/512, q16 WHIR-style multilinear-PCS
+2. We describe Profile 23, a rate-1/512, q18 WHIR-style multilinear-PCS
    construction whose accepting instruction consumes a finalized,
    pre-uploaded proof account and atomically records the nullifier and pool
    transition.
 3. In the random-oracle model under the stated hash and code-transport
-   assumptions, the frozen profile's proven-Johnson/MCA-based soundness ledger
-   is 101.302 bits and remains 100.807 bits under a coarse whole-ledger
-   sensitivity; an explicit witness-free simulator gives 104.112 bits for a
-   real view versus simulation and 103.112 bits for two-witness pairwise
+   assumptions, the q18 proof-independent proven-Johnson/MCA-based
+   conservative release floor is 100.161 bits; an explicit witness-free
+   simulator gives 104.025 bits for a
+   real view versus simulation and 103.025 bits for two-witness pairwise
    computational hiding in the declared SHA-256 programmable-random-oracle,
    fixed Proof-or-Abort channel model.
-4. The frozen local Agave artifact is a 61,599-byte proof, a 6,870,048-byte
-   default SBF with SHA-256
-   `6b64baf559dcddbd6f9b1af1205effeb6afae6a5746a44421e8826251fe4cffb`,
-   and a 1,207,123-CU canonical System-create path with 192,877 CU of headroom;
-   these measurements are from the pinned local Agave environment and are not
-   a mainnet deployment claim.
+4. The 35/35 local release binds a 63,487-byte mined q18 proof, a 915,656-byte
+   manifest-default SBF, and a worst literal tag-60 System-create path of
+   1,303,236 CU, leaving 96,764 CU below the 1.4M cap. These are local
+   evaluation results, not deployment or mainnet evidence. The 61,599-byte
+   proof, 6,870,048-byte SBF, and 1,207,123-CU System-create path belong to
+   the superseded q16 certificate and do not transfer to q18.
 
 The abstract must also carry the pre-upload qualifier. The body must state that
 the hiding claim is neither statistical HVZK nor a local-side-channel result.
@@ -101,20 +108,22 @@ gate, or a missing mainnet signature when mainnet language is enabled.
 
 ## Hard editorial guards
 
-- Headline soundness: selected `101.30230658283051`; coarse sensitivity
-  `100.80652861422749`. Never print inherited `100.87976635696354`.
-- Headline hiding: pairwise `103.11238518950232`; real-versus-simulator
-  `104.11238518950232` is separately labeled.
+- Current q18 headline soundness: conservative authorizing floor
+  `100.16144938287455`. Never substitute the superseded q16
+  values `101.30230658283051` and `100.80652861422749`, or the inherited
+  `100.87976635696354`, into a current claim.
+- Current q18 headline hiding: pairwise `103.02492234825198`;
+  real-versus-simulator `104.02492234825198` is separately labeled.
 - `epsilon_side=0` means excluded observables are absent from the declared
   channel, not that physical side channels were proved secure.
-- State that the rank certificate originates from a Profile 22 fixture and
-  transfers through layout/Good23 fingerprint checks plus all-selector live
-  schedule audits.
+- State that the active minimum-q-degree rank certificate is pinned to the q18
+  fixture and transfers through layout/Good23 fingerprint checks plus exact
+  all-selector schedule audits; it is not a q16 proof-byte transfer.
 - Name the diagnostic/production tag-59 measurement-context difference; do
   not guess its cause.
-- The final frozen diagnostic/production tag-59 context is 1,202,920 versus
-  1,202,939 CU, a 19-CU difference. The earlier 8-CU comparison is superseded
-  history, not a current measurement.
+- The q16 diagnostic/production tag-59 context was 1,202,920 versus 1,202,939
+  CU, a 19-CU difference. Both that comparison and the earlier 8-CU comparison
+  are superseded history, not current q18 measurements.
 - Explain schedule-dependent proof length as part of the simulated view.
 - Bind the frozen local object to configured program address
   `7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue`, sealed proof accounts,
@@ -135,13 +144,14 @@ gate, or a missing mainnet signature when mainnet language is enabled.
 - The soundness theorem is argument soundness unless the manuscript supplies
   an extractor. Its ROM game quantifies the adversary, chosen statement and
   pre-state, `Q_H`, 32 BCS boundaries, q3 selector, and accepted false
-  relation event.
+  relation event. The active work-normalized BCS statement checks both
+  `T=1` and `T=2^128`; at `T=1` the multiplier on the round error is 33.
 - Pairwise hiding quantifies a fixed `x`, valid `w0,w1 in R23(x)`, auxiliary
-  input, adaptive post-output oracle queries, `Q_H <= 2^128`, `A <= 16`, exact
+  input, adaptive post-output oracle queries, `Q_H <= 2^128`, `A <= 17`, exact
   variable-length declared view, and `Abort`.
 - Selector correctness/soundness and selector-distribution hiding are separate
   lemmas. The former fixes commitments before q3 and justifies the factor-three
-  q16 term; the latter proves the first-Good/Abort law witness-independent.
+  q18 term; the latter proves the first-Good/Abort law witness-independent.
 - Good23 must prove image equality and constant-cardinality mask preimages. A
   checker independent of the certificate generator reconstructs public maps
   and verifies dimensions, ranks, kernels, pivots, and minors.

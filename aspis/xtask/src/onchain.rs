@@ -890,12 +890,14 @@ pub struct AtomicProfile23AcceptanceSummary {
     pub statement_pool_hex: String,
     pub statement_sequence: u64,
     pub canonical_public_input_digest: String,
+    pub query_count: u16,
     pub batch_grinding_bits: u8,
     pub final_grinding_bits: u8,
     pub fold_grinding_bits: [u8; 4],
     pub query_selector_candidates: u8,
-    pub rank_exhaustion_cap16_bits: f64,
-    pub whole_soundness_bits_after_selector: f64,
+    pub rank_exhaustion_cap17_bits: f64,
+    pub selected_soundness_floor_bits: f64,
+    pub coarse_whole_ledger_soundness_floor_bits: f64,
     pub soundness_bookable: bool,
     pub proof_account_finalized_before_verification: bool,
     pub default_tag59_fail_closed_host: bool,
@@ -1003,6 +1005,10 @@ pub struct AtomicProfile23MutationSummary {
     pub statement_pool_hex: String,
     pub statement_sequence: u64,
     pub canonical_public_input_digest: String,
+    pub query_count: u16,
+    pub batch_grinding_bits: u8,
+    pub final_grinding_bits: u8,
+    pub fold_grinding_bits: [u8; 4],
     pub production_pow_bypass_exposed: bool,
     pub default_tag60_fail_closed_host: bool,
     pub candidate_tag60_rejects_unmined_sbf: bool,
@@ -12688,9 +12694,9 @@ pub fn run_stage2_atomic_profile22_acceptance() -> Result<AtomicProfile22Accepta
 }
 
 pub fn run_stage2_atomic_profile23_acceptance() -> Result<AtomicProfile23AcceptanceSummary> {
-    use aspis_core::circle_prefix::RATE16_HARDENED_FOLD_POW_BITS;
     use aspis_core::state_only_prefix::{
-        STATE_ONLY_PROFILE23_BATCH_GRINDING_BITS, STATE_ONLY_PROFILE23_GRINDING_BITS,
+        STATE_ONLY_PROFILE23_BATCH_GRINDING_BITS, STATE_ONLY_PROFILE23_FOLD_GRINDING_BITS,
+        STATE_ONLY_PROFILE23_GRINDING_BITS, STATE_ONLY_PROFILE23_QUERY_COUNT,
     };
     use aspis_statement::state_only_profile23::{
         verify_atomic_state_only_profile23_unmined_for_diagnostics_v3,
@@ -12699,8 +12705,8 @@ pub fn run_stage2_atomic_profile23_acceptance() -> Result<AtomicProfile23Accepta
     use aspis_statement::{encode_digest_canonical, AtomicPaymentStatementV3, SpendPublic};
     use sha2::{Digest as _, Sha256};
 
-    const PROOF_BYTES: usize = 59_679;
-    const PROOF_SHA256: &str = "07f8258f9297bd19d007b5bebdfbb710e8e9e44dcc2277f8cf7a6148db6ce902";
+    const PROOF_BYTES: usize = 67_327;
+    const PROOF_SHA256: &str = "a5ed698a32d815ffd95f8d3e0be62d16620d32e216a087a350852726fb6ca238";
 
     fn public_bytes(public: &SpendPublic) -> [u8; 104] {
         let mut output = [0u8; 104];
@@ -12924,12 +12930,14 @@ pub fn run_stage2_atomic_profile23_acceptance() -> Result<AtomicProfile23Accepta
         canonical_public_input_digest: statement_selection
             .canonical_public_input_digest
             .clone(),
+        query_count: STATE_ONLY_PROFILE23_QUERY_COUNT,
         batch_grinding_bits: STATE_ONLY_PROFILE23_BATCH_GRINDING_BITS,
         final_grinding_bits: STATE_ONLY_PROFILE23_GRINDING_BITS,
-        fold_grinding_bits: RATE16_HARDENED_FOLD_POW_BITS,
+        fold_grinding_bits: STATE_ONLY_PROFILE23_FOLD_GRINDING_BITS,
         query_selector_candidates: 3,
-        rank_exhaustion_cap16_bits: 105.41017865405837,
-        whole_soundness_bits_after_selector: 101.30230658283051,
+        rank_exhaustion_cap17_bits: 105.21398677941984,
+        selected_soundness_floor_bits: 101.38010539241553,
+        coarse_whole_ledger_soundness_floor_bits: 100.16144938287455,
         soundness_bookable: true,
         proof_account_finalized_before_verification: true,
         default_tag59_fail_closed_host,
@@ -12941,7 +12949,7 @@ pub fn run_stage2_atomic_profile23_acceptance() -> Result<AtomicProfile23Accepta
         ledger,
         production_mutation_enabled: false,
         notes: vec![
-            "Tag59 is one integrated parse/transcript/terminal/relation/private-opening/q16 call. The phase ledger is overlap-free and reconciles exactly to the literal simulation total.".to_string(),
+            "Tag59 is one integrated parse/transcript/terminal/relation/private-opening/q18 call. The phase ledger is overlap-free and reconciles exactly to the literal simulation total.".to_string(),
             "All five Merkle sections authenticate value||salt32 records. Salts are not transcript messages; their roots bind them before downstream challenges.".to_string(),
             if proof_unmined {
                 "The selected proof is unmined. The diagnostic arm bypasses only PoW; both host and SBF production entrypoints reject those same bytes.".to_string()
@@ -14197,6 +14205,10 @@ pub fn run_stage2_atomic_profile22_mutation() -> Result<AtomicProfile22MutationS
 }
 
 pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationSummary> {
+    use aspis_core::state_only_prefix::{
+        STATE_ONLY_PROFILE23_BATCH_GRINDING_BITS, STATE_ONLY_PROFILE23_FOLD_GRINDING_BITS,
+        STATE_ONLY_PROFILE23_GRINDING_BITS, STATE_ONLY_PROFILE23_QUERY_COUNT,
+    };
     use aspis_statement::state_only_profile23::{
         verify_atomic_state_only_profile23_unmined_for_diagnostics_v3,
         verify_atomic_state_only_profile23_v3,
@@ -14214,9 +14226,9 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
         "profile23-mutation-candidate",
     ];
     const PRODUCTION_ONLY_FEATURES: [&str; 1] = ["profile23-production"];
-    const COMMITTED_UNMINED_PROOF_BYTES: usize = 59_679;
+    const COMMITTED_UNMINED_PROOF_BYTES: usize = 67_327;
     const COMMITTED_UNMINED_PROOF_SHA256: &str =
-        "07f8258f9297bd19d007b5bebdfbb710e8e9e44dcc2277f8cf7a6148db6ce902";
+        "a5ed698a32d815ffd95f8d3e0be62d16620d32e216a087a350852726fb6ca238";
     fn public_inputs(statement: &AtomicPaymentStatementV3) -> AtomicPaymentPublicInputs {
         AtomicPaymentPublicInputs {
             current_anchor: encode_digest_canonical(&statement.spend.anchor),
@@ -15198,12 +15210,33 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
                 == Some(statement_selection.canonical_public_input_digest.as_str()),
         "tag59/tag61 canonical public statement binding mismatch"
     );
+    ensure!(
+        acceptance["query_count"].as_u64() == Some(u64::from(STATE_ONLY_PROFILE23_QUERY_COUNT))
+            && acceptance["batch_grinding_bits"].as_u64()
+                == Some(u64::from(STATE_ONLY_PROFILE23_BATCH_GRINDING_BITS))
+            && acceptance["final_grinding_bits"].as_u64()
+                == Some(u64::from(STATE_ONLY_PROFILE23_GRINDING_BITS))
+            && acceptance["fold_grinding_bits"]
+                == serde_json::json!(STATE_ONLY_PROFILE23_FOLD_GRINDING_BITS),
+        "tag59/tag61 q18 and work schedule mismatch; rerun acceptance with the current Profile23 verifier"
+    );
     let read_only_tag59_cu = acceptance["literal_simulation_cu"]
         .as_u64()
         .context("profile23 acceptance artifact omitted literal CU")?;
     let soundness_audit: Value = serde_json::from_slice(&fs::read(
         root.join("results/stage2/profile23_d_after_g_soundness_epro.json"),
     )?)?;
+    ensure!(
+        soundness_audit["candidate"]["query_count"].as_u64()
+            == Some(u64::from(STATE_ONLY_PROFILE23_QUERY_COUNT))
+            && soundness_audit["candidate"]["batch_work_bits"].as_u64()
+                == Some(u64::from(STATE_ONLY_PROFILE23_BATCH_GRINDING_BITS))
+            && soundness_audit["candidate"]["final_work_bits"].as_u64()
+                == Some(u64::from(STATE_ONLY_PROFILE23_GRINDING_BITS))
+            && soundness_audit["candidate"]["fold_work_bits"]
+                == serde_json::json!(STATE_ONLY_PROFILE23_FOLD_GRINDING_BITS),
+        "profile23 soundness q18/work schedule does not match live code"
+    );
     let soundness_bookable = soundness_audit["bookable"].as_bool().unwrap_or(false);
     let hvzk_closure: Value = serde_json::from_slice(&fs::read(
         root.join("results/stage2/profile23_computational_hvzk_closure.json"),
@@ -15434,6 +15467,10 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
         canonical_public_input_digest: statement_selection
             .canonical_public_input_digest
             .clone(),
+        query_count: STATE_ONLY_PROFILE23_QUERY_COUNT,
+        batch_grinding_bits: STATE_ONLY_PROFILE23_BATCH_GRINDING_BITS,
+        final_grinding_bits: STATE_ONLY_PROFILE23_GRINDING_BITS,
+        fold_grinding_bits: STATE_ONLY_PROFILE23_FOLD_GRINDING_BITS,
         production_pow_bypass_exposed: false,
         default_tag60_fail_closed_host,
         candidate_tag60_rejects_unmined_sbf,

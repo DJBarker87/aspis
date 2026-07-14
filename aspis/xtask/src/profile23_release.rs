@@ -15,6 +15,38 @@ use crate::profile23_statement::{
 
 const CU_LIMIT: u64 = 1_400_000;
 const MIN_SECURITY_BITS: f64 = 100.0;
+const PROFILE23_NUMERIC_TOLERANCE: f64 = 1.0e-9;
+const PROFILE23_SOUNDNESS_RECONSTRUCTION_GATE: &str =
+    "profile23_q18_soundness_liveness_epro_reconstructed";
+
+const PROFILE23_Q18_TERM_PINS: [(&str, f64); 16] = [
+    ("polynomial_batch_width_29", 107.316_020_114_355_38),
+    ("four_fold_union", 108.985_432_265_750_69),
+    ("final_q18_miss_times_3", 110.183_739_133_643_48),
+    ("two_sample_ood_list_union", 213.100_018_394_892_15),
+    ("relation_ood_mixers_24", 119.415_037_496_591_61),
+    (
+        "nonzero_gamma_and_three_point_batch_30",
+        119.093_109_401_704_25,
+    ),
+    ("copy_inactive_nonzero_gamma_28", 119.192_645_075_255_17),
+    ("atomic_tuple_compression", 112.396_837_317_778_39),
+    ("atomic_copy_range_poles", 111.762_790_036_557_75),
+    ("atomic_theta_collision", 119.415_037_496_591_61),
+    ("zerocheck_equality_point", 120.678_071_902_425_4),
+    ("zero_sum_h1_helper", 123.999_999_997_312_77),
+    ("mask_original_nonzero_eta", 123.999_999_997_312_77),
+    ("ten_degree_27_zerocheck_rounds", 115.923_184_400_261_93),
+    ("poseidon2_assumption", 124.0),
+    ("sha256_rom_assumption", 128.0),
+];
+
+const PROFILE23_Q18_FOLD_ROW_PINS: [f64; 4] = [
+    109.529_942_692_338_42,
+    111.226_281_804_531_75,
+    112.858_135_080_222_61,
+    113.840_648_013_834_85,
+];
 
 const ACCEPTANCE_PATH: &str = "results/stage2/atomic_state_only_profile23_acceptance.json";
 const MUTATION_PATH: &str = "results/stage2/atomic_state_only_profile23_mutation.json";
@@ -29,6 +61,11 @@ const PROGRAM_MANIFEST_PATH: &str = "programs/aspis-verifier/Cargo.toml";
 const WORKSPACE_MANIFEST_PATH: &str = "Cargo.toml";
 const XTASK_MANIFEST_PATH: &str = "xtask/Cargo.toml";
 const DEFAULT_SBF_PATH: &str = "target/deploy/aspis_verifier.so";
+const PROFILE23_PRODUCTION_ALIAS_FEATURES: [&str; 3] = [
+    "profile23-mutation-candidate",
+    "profile23-minimal-dispatch",
+    "profile23-dynamic-rate512",
+];
 const PRODUCTION_FORBIDDEN_FEATURES: [&str; 11] = [
     "diagnostic-unmined-mutation",
     "diagnostic-unmined-profile21-mutation",
@@ -135,8 +172,9 @@ pub struct Profile23OneTransactionRelease {
     /// The selected Profile23 union ledger after the factor-40 release
     /// sensitivity. This is the primary soundness number.
     pub selected_soundness_floor_bits: Option<f64>,
-    /// A deliberately coarser sensitivity that applies the Profile23-owned
-    /// BCS-32 boundary count and a whole-ledger factor of three.
+    /// A deliberately coarser sensitivity that applies the explicit
+    /// work-normalized BCS R=32 endpoint bound and a whole-ledger factor of
+    /// three.
     pub coarse_whole_soundness_floor_bits: Option<f64>,
     /// One real execution versus the common witness-independent simulator.
     pub computational_hiding_real_vs_simulator_bound_bits: Option<f64>,
@@ -546,6 +584,15 @@ fn str_at<'a>(value: &'a Value, pointer: &str) -> Option<&'a str> {
     value.pointer(pointer).and_then(Value::as_str)
 }
 
+fn u64_array_at(value: &Value, pointer: &str) -> Option<Vec<u64>> {
+    value
+        .pointer(pointer)?
+        .as_array()?
+        .iter()
+        .map(Value::as_u64)
+        .collect()
+}
+
 fn valid_sha256(value: Option<&str>) -> bool {
     value.is_some_and(|value| {
         value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
@@ -658,6 +705,27 @@ fn manifest_string_array(value: &str) -> Option<Vec<String>> {
     Some(values)
 }
 
+fn profile23_program_defaults_match(
+    manifest: &str,
+) -> (Option<Vec<String>>, Option<Vec<String>>, bool) {
+    let default_features = manifest_section(manifest, "features")
+        .and_then(|section| manifest_assignment(section, "default"))
+        .and_then(|value| manifest_string_array(&value));
+    let production_alias = manifest_section(manifest, "features")
+        .and_then(|section| manifest_assignment(section, "profile23-production"))
+        .and_then(|value| manifest_string_array(&value));
+    let matches = default_features
+        .as_deref()
+        .is_some_and(|features| features == ["profile23-production".to_string()])
+        && production_alias.as_deref().is_some_and(|features| {
+            features
+                .iter()
+                .map(String::as_str)
+                .eq(PROFILE23_PRODUCTION_ALIAS_FEATURES)
+        });
+    (default_features, production_alias, matches)
+}
+
 fn manifest_dependency_disables_defaults(manifest: &str, section: &str, key: &str) -> bool {
     manifest_section(manifest, section)
         .and_then(|section| manifest_assignment(section, key))
@@ -688,6 +756,715 @@ fn expected_layout_fingerprint() -> String {
         "0x{:016x}",
         aspis_core::state_only_hiding::state_only_profile23_hiding_layout_factor_fingerprint_v3()
     )
+}
+
+fn require_u64(value: &Value, pointer: &str, expected: u64) -> Result<()> {
+    let actual = u64_at(value, pointer);
+    ensure!(
+        actual == Some(expected),
+        "{pointer}: expected {expected}, got {actual:?}"
+    );
+    Ok(())
+}
+
+fn require_bool(value: &Value, pointer: &str, expected: bool) -> Result<()> {
+    let actual = bool_at(value, pointer);
+    ensure!(
+        actual == Some(expected),
+        "{pointer}: expected {expected}, got {actual:?}"
+    );
+    Ok(())
+}
+
+fn require_str(value: &Value, pointer: &str, expected: &str) -> Result<()> {
+    let actual = str_at(value, pointer);
+    ensure!(
+        actual == Some(expected),
+        "{pointer}: expected {expected:?}, got {actual:?}"
+    );
+    Ok(())
+}
+
+fn require_close(actual: f64, expected: f64, label: &str) -> Result<()> {
+    ensure!(actual.is_finite(), "{label}: non-finite value {actual}");
+    ensure!(
+        (actual - expected).abs() < PROFILE23_NUMERIC_TOLERANCE,
+        "{label}: expected {expected:.15}, got {actual:.15}"
+    );
+    Ok(())
+}
+
+fn require_f64(value: &Value, pointer: &str, expected: f64) -> Result<()> {
+    let actual = f64_at(value, pointer).with_context(|| format!("{pointer}: missing f64"))?;
+    require_close(actual, expected, pointer)
+}
+
+fn probability_union_bits(bits: impl IntoIterator<Item = f64>) -> f64 {
+    -bits
+        .into_iter()
+        .map(|bits| 2.0_f64.powf(-bits))
+        .sum::<f64>()
+        .log2()
+}
+
+fn bcs_work_normalized_bits(round_bits: f64, boundaries: f64, queries: f64) -> f64 {
+    let epsilon_round = 2.0_f64.powf(-round_bits);
+    let epsilon = (1.0 + boundaries / queries) * epsilon_round
+        + 3.0 * (queries + queries.recip()) * 2.0_f64.powi(-256);
+    -epsilon.log2()
+}
+
+fn reconstruct_profile23_q18_ledger(
+    soundness: &Value,
+    complete_good: &Value,
+    hvzk: &Value,
+) -> Result<String> {
+    use aspis_prover::state_only_good23::{
+        profile23_selector_scope_definition_fingerprint, verify_profile23_selector_scope_lemma,
+        PROFILE23_GOOD_SCHEDULE_COMPLETE_Z_DEGREE, PROFILE23_GOOD_SCHEDULE_CONTINUOUS_DEGREE,
+        PROFILE23_GOOD_SCHEDULE_DOMAIN_LOG, PROFILE23_GOOD_SCHEDULE_GAMMA_DEGREE,
+        PROFILE23_GOOD_SCHEDULE_GD_ANCHOR_FINGERPRINT,
+        PROFILE23_GOOD_SCHEDULE_H1_ANCHOR_FINGERPRINT, PROFILE23_GOOD_SCHEDULE_INVERSE_RATE,
+        PROFILE23_GOOD_SCHEDULE_MAX_ATTEMPTS, PROFILE23_GOOD_SCHEDULE_PRODUCT_ANCHOR_FINGERPRINT,
+        PROFILE23_GOOD_SCHEDULE_QUERY_CANDIDATES, PROFILE23_GOOD_SCHEDULE_QUERY_COUNT,
+        PROFILE23_GOOD_SCHEDULE_QUERY_FIBERS, PROFILE23_GOOD_SCHEDULE_Q_DEGREE,
+        PROFILE23_GOOD_SCHEDULE_RAW_QUERY_RANK_M31, PROFILE23_GOOD_SCHEDULE_RAW_TERMINAL_RANK_M31,
+        PROFILE23_GOOD_SCHEDULE_ROOT_ANCHOR_FINGERPRINT,
+        PROFILE23_GOOD_SCHEDULE_ROOT_NEUTRAL_RANK_M31, PROFILE23_GOOD_SCHEDULE_ROOT_Z_DEGREE,
+        PROFILE23_SELECTOR_SCOPE_PROPOSITIONAL_CASES,
+    };
+
+    let query_count = PROFILE23_GOOD_SCHEDULE_QUERY_COUNT as u64;
+    let selectors = PROFILE23_GOOD_SCHEDULE_QUERY_CANDIDATES as u64;
+    let attempt_cap = PROFILE23_GOOD_SCHEDULE_MAX_ATTEMPTS as u64;
+    ensure!(query_count == 18, "live Good23 query count is not q18");
+    ensure!(selectors == 3, "live Good23 selector count is not three");
+    ensure!(attempt_cap == 17, "live Good23 attempt cap is not 17");
+    let selector_scope_cases = verify_profile23_selector_scope_lemma();
+    ensure!(
+        selector_scope_cases == PROFILE23_SELECTOR_SCOPE_PROPOSITIONAL_CASES,
+        "live selector-scope propositional proof did not cover 48 cases"
+    );
+    require_bool(soundness, "/selector_scope_proof/lemma_proved", true)?;
+    require_bool(
+        soundness,
+        "/selector_scope_proof/release_authorizing",
+        false,
+    )?;
+    require_bool(
+        soundness,
+        "/selector_scope_proof/only_final_query_miss_receives_factor_three",
+        true,
+    )?;
+    require_u64(
+        soundness,
+        "/selector_scope_proof/propositional_cases_checked",
+        selector_scope_cases as u64,
+    )?;
+    require_str(
+        soundness,
+        "/selector_scope_proof/scope",
+        "arbitrary selector correlated with all three q18 schedules",
+    )?;
+    let selector_scope_fingerprint = hex_sha256_bytes(
+        &profile23_selector_scope_definition_fingerprint(aspis_prover::HOST_HASH),
+    );
+    require_str(
+        soundness,
+        "/selector_scope_proof/definition_fingerprint",
+        &selector_scope_fingerprint,
+    )?;
+    require_u64(soundness, "/candidate/query_count", query_count)?;
+    require_u64(
+        soundness,
+        "/candidate/inverse_rate",
+        PROFILE23_GOOD_SCHEDULE_INVERSE_RATE as u64,
+    )?;
+    require_u64(soundness, "/candidate/query_candidates", selectors)?;
+    require_u64(soundness, "/candidate/attempt_cap", attempt_cap)?;
+    require_u64(
+        soundness,
+        "/host_first_good_release_integration/attempt_cap",
+        attempt_cap,
+    )?;
+
+    let terms = soundness
+        .pointer("/soundness/terms_bits")
+        .and_then(Value::as_array)
+        .context("/soundness/terms_bits: missing array")?;
+    ensure!(
+        terms.len() == PROFILE23_Q18_TERM_PINS.len(),
+        "/soundness/terms_bits: expected exactly 16 terms, got {}",
+        terms.len()
+    );
+    let mut term_bits = Vec::with_capacity(terms.len());
+    for (index, (term, (expected_name, expected_bits))) in
+        terms.iter().zip(PROFILE23_Q18_TERM_PINS).enumerate()
+    {
+        let name = str_at(term, "/name");
+        ensure!(
+            name == Some(expected_name),
+            "/soundness/terms_bits/{index}/name: expected {expected_name:?}, got {name:?}"
+        );
+        let bits = f64_at(term, "/bits")
+            .with_context(|| format!("/soundness/terms_bits/{index}/bits: missing f64"))?;
+        require_close(
+            bits,
+            expected_bits,
+            &format!("/soundness/terms_bits/{index}/bits"),
+        )?;
+        require_str(
+            term,
+            "/selector_scope",
+            if index == 2 {
+                "selector_dependent_final_query"
+            } else {
+                "common_preselector"
+            },
+        )?;
+        term_bits.push(bits);
+    }
+
+    let fold_rows = terms[1]
+        .pointer("/rows")
+        .and_then(Value::as_array)
+        .context("/soundness/terms_bits/1/rows: missing array")?;
+    ensure!(
+        fold_rows.len() == PROFILE23_Q18_FOLD_ROW_PINS.len(),
+        "/soundness/terms_bits/1/rows: expected four rows"
+    );
+    let mut parsed_fold_rows = Vec::with_capacity(fold_rows.len());
+    for (index, (row, expected)) in fold_rows
+        .iter()
+        .zip(PROFILE23_Q18_FOLD_ROW_PINS)
+        .enumerate()
+    {
+        let actual = row
+            .as_f64()
+            .with_context(|| format!("/soundness/terms_bits/1/rows/{index}: missing f64"))?;
+        require_close(
+            actual,
+            expected,
+            &format!("/soundness/terms_bits/1/rows/{index}"),
+        )?;
+        parsed_fold_rows.push(actual);
+    }
+    require_close(
+        probability_union_bits(parsed_fold_rows),
+        term_bits[1],
+        "four-fold row union",
+    )?;
+
+    let raw_final_bits =
+        f64_at(&terms[2], "/raw_bits").context("/soundness/terms_bits/2/raw_bits: missing f64")?;
+    require_close(
+        raw_final_bits,
+        111.768_701_634_364_65,
+        "/soundness/terms_bits/2/raw_bits",
+    )?;
+    require_close(
+        raw_final_bits - (selectors as f64).log2(),
+        term_bits[2],
+        "selected q18 term",
+    )?;
+
+    let event_union_bits = probability_union_bits(term_bits.iter().copied());
+    require_close(
+        event_union_bits,
+        106.702_033_487_302_9,
+        "reconstructed selected event union",
+    )?;
+    require_f64(soundness, "/soundness/event_union_bits", event_union_bits)?;
+
+    let factor40_bits = event_union_bits - 40.0_f64.log2();
+    require_close(
+        factor40_bits,
+        101.380_105_392_415_53,
+        "reconstructed factor-40 floor",
+    )?;
+    require_f64(soundness, "/soundness/after_factor40_bits", factor40_bits)?;
+    require_f64(soundness, "/soundness/selected_floor_bits", factor40_bits)?;
+
+    let coarse_event_union_bits =
+        probability_union_bits(term_bits.iter().enumerate().map(|(index, bits)| {
+            if index == 2 {
+                raw_final_bits
+            } else {
+                *bits
+            }
+        }));
+    require_close(
+        coarse_event_union_bits,
+        106.790_806_002_954_17,
+        "reconstructed unselected event union",
+    )?;
+    require_f64(
+        soundness,
+        "/soundness/coarse_unselected_event_union_bits",
+        coarse_event_union_bits,
+    )?;
+
+    let bcs = soundness
+        .pointer("/soundness/bcs_work_normalized")
+        .context("/soundness/bcs_work_normalized: missing object")?;
+    require_str(
+        bcs,
+        "/metric",
+        "success probability per random-oracle query",
+    )?;
+    require_u64(bcs, "/message_boundaries_r", 32)?;
+    require_u64(bcs, "/lambda", 256)?;
+    require_u64(bcs, "/query_budget_min", 1)?;
+    require_str(bcs, "/query_budget_max", "2^128")?;
+    require_str(
+        bcs,
+        "/formula",
+        "epsilon_BCS(T)/T <= (1+R/T)*epsilon_round + 3*(T+1/T)/2^lambda",
+    )?;
+    let t_min = 1.0_f64;
+    let t_max = 2.0_f64.powi(128);
+    let selected_t1_bits = bcs_work_normalized_bits(event_union_bits, 32.0, t_min);
+    let selected_t2p128_bits = bcs_work_normalized_bits(event_union_bits, 32.0, t_max);
+    let selected_bcs_worst_bits = selected_t1_bits.min(selected_t2p128_bits);
+    let coarse_t1_bits = bcs_work_normalized_bits(coarse_event_union_bits, 32.0, t_min);
+    let coarse_t2p128_bits = bcs_work_normalized_bits(coarse_event_union_bits, 32.0, t_max);
+    let coarse_bcs_worst_bits = coarse_t1_bits.min(coarse_t2p128_bits);
+    for (pointer, actual, expected) in [
+        (
+            "/selected_t1_bits",
+            selected_t1_bits,
+            101.657_639_367_944_44,
+        ),
+        (
+            "/selected_t2p128_bits",
+            selected_t2p128_bits,
+            106.702_031_808_619_58,
+        ),
+        (
+            "/selected_worst_endpoint_bits",
+            selected_bcs_worst_bits,
+            101.657_639_367_944_44,
+        ),
+        ("/coarse_t1_bits", coarse_t1_bits, 101.746_411_883_595_71),
+        (
+            "/coarse_t2p128_bits",
+            coarse_t2p128_bits,
+            106.790_804_217_733_32,
+        ),
+        (
+            "/coarse_worst_endpoint_bits",
+            coarse_bcs_worst_bits,
+            101.746_411_883_595_71,
+        ),
+    ] {
+        require_close(actual, expected, &format!("reconstructed BCS {pointer}"))?;
+        require_f64(bcs, pointer, actual)?;
+    }
+    let coarse_whole_bits = coarse_bcs_worst_bits - (selectors as f64).log2();
+    require_close(
+        coarse_whole_bits,
+        100.161_449_382_874_55,
+        "reconstructed coarse BCS-times-three floor",
+    )?;
+    require_f64(
+        soundness,
+        "/soundness/coarse_whole_ledger_times_three_bits",
+        coarse_whole_bits,
+    )?;
+
+    require_u64(
+        soundness,
+        "/query_domain_guard/implemented_log_domain",
+        PROFILE23_GOOD_SCHEDULE_DOMAIN_LOG as u64,
+    )?;
+    require_u64(
+        soundness,
+        "/query_domain_guard/fibers_exhaustively_checked",
+        PROFILE23_GOOD_SCHEDULE_QUERY_FIBERS as u64,
+    )?;
+    require_str(
+        soundness,
+        "/query_domain_guard/fiber_to_root_map",
+        "t=2*x^2-1",
+    )?;
+    require_u64(
+        soundness,
+        "/query_domain_guard/distinct_roots",
+        PROFILE23_GOOD_SCHEDULE_QUERY_FIBERS as u64,
+    )?;
+    require_bool(soundness, "/query_domain_guard/injective", true)?;
+    require_u64(soundness, "/query_domain_guard/root_one_count", 0)?;
+
+    let q_degree = PROFILE23_GOOD_SCHEDULE_Q_DEGREE as u64;
+    let root_z_degree = PROFILE23_GOOD_SCHEDULE_ROOT_Z_DEGREE as u64;
+    let complete_z_degree = PROFILE23_GOOD_SCHEDULE_COMPLETE_Z_DEGREE as u64;
+    let gamma_degree = PROFILE23_GOOD_SCHEDULE_GAMMA_DEGREE as u64;
+    let continuous_degree = PROFILE23_GOOD_SCHEDULE_CONTINUOUS_DEGREE as u64;
+    require_u64(
+        soundness,
+        "/root_neutral_polynomial_minor/joint_rank_m31",
+        PROFILE23_GOOD_SCHEDULE_ROOT_NEUTRAL_RANK_M31 as u64,
+    )?;
+    require_u64(
+        soundness,
+        "/root_neutral_polynomial_minor/joint_target_rank_m31",
+        PROFILE23_GOOD_SCHEDULE_ROOT_NEUTRAL_RANK_M31 as u64,
+    )?;
+    require_u64(
+        soundness,
+        "/root_neutral_polynomial_minor/q_individual_degree_bound",
+        q_degree / query_count,
+    )?;
+    require_u64(
+        soundness,
+        "/root_neutral_polynomial_minor/q_total_degree_bound",
+        q_degree,
+    )?;
+    require_u64(
+        soundness,
+        "/root_neutral_polynomial_minor/root_neutral_minor_z_degree_bound",
+        root_z_degree,
+    )?;
+    require_u64(
+        soundness,
+        "/root_neutral_polynomial_minor/complete_good_remaining_gd_terminal_z_degree_addition",
+        120,
+    )?;
+    require_u64(
+        soundness,
+        "/root_neutral_polynomial_minor/complete_good_h1_padding_z_degree_addition",
+        120,
+    )?;
+    ensure!(
+        complete_z_degree == root_z_degree + 120 + 120,
+        "live complete-Good z degree does not reconstruct"
+    );
+    require_u64(
+        soundness,
+        "/root_neutral_polynomial_minor/complete_good_z_degree_bound",
+        complete_z_degree,
+    )?;
+    require_u64(
+        soundness,
+        "/root_neutral_polynomial_minor/gamma_coordinate_total_degree_bound",
+        gamma_degree,
+    )?;
+    ensure!(
+        continuous_degree == complete_z_degree + gamma_degree,
+        "live continuous degree does not reconstruct"
+    );
+
+    let fingerprint = |value: u64| format!("0x{value:016x}");
+    let root_fingerprint = fingerprint(PROFILE23_GOOD_SCHEDULE_ROOT_ANCHOR_FINGERPRINT);
+    let gd_fingerprint = fingerprint(PROFILE23_GOOD_SCHEDULE_GD_ANCHOR_FINGERPRINT);
+    let h1_fingerprint = fingerprint(PROFILE23_GOOD_SCHEDULE_H1_ANCHOR_FINGERPRINT);
+    let product_fingerprint = fingerprint(PROFILE23_GOOD_SCHEDULE_PRODUCT_ANCHOR_FINGERPRINT);
+    require_str(
+        soundness,
+        "/root_neutral_polynomial_minor/minor_fingerprint",
+        &root_fingerprint,
+    )?;
+    require_bool(soundness, "/root_neutral_polynomial_minor/complete", true)?;
+    require_u64(
+        soundness,
+        "/complete_good_product/remaining_gd_query_rank_m31",
+        PROFILE23_GOOD_SCHEDULE_RAW_QUERY_RANK_M31 as u64,
+    )?;
+    require_u64(
+        soundness,
+        "/complete_good_product/remaining_gd_terminal_schur_rank_m31",
+        PROFILE23_GOOD_SCHEDULE_RAW_TERMINAL_RANK_M31 as u64,
+    )?;
+    require_str(
+        soundness,
+        "/complete_good_product/remaining_gd_terminal_schur_fingerprint",
+        &gd_fingerprint,
+    )?;
+    require_u64(
+        soundness,
+        "/complete_good_product/h1_query_rank_m31",
+        PROFILE23_GOOD_SCHEDULE_RAW_QUERY_RANK_M31 as u64,
+    )?;
+    require_u64(
+        soundness,
+        "/complete_good_product/h1_terminal_schur_rank_m31",
+        PROFILE23_GOOD_SCHEDULE_RAW_TERMINAL_RANK_M31 as u64,
+    )?;
+    require_str(
+        soundness,
+        "/complete_good_product/h1_terminal_schur_fingerprint",
+        &h1_fingerprint,
+    )?;
+    require_str(
+        soundness,
+        "/complete_good_product/product_fingerprint",
+        &product_fingerprint,
+    )?;
+    require_u64(
+        soundness,
+        "/complete_good_product/continuous_degree_bound",
+        continuous_degree,
+    )?;
+    require_bool(soundness, "/complete_good_product/complete", true)?;
+
+    for (pointer, expected) in [
+        ("/root_neutral_minor/fingerprint", root_fingerprint.as_str()),
+        (
+            "/remaining_gd_terminal_schur/fingerprint",
+            gd_fingerprint.as_str(),
+        ),
+        (
+            "/h1_inactive_padding_terminal_schur/fingerprint",
+            h1_fingerprint.as_str(),
+        ),
+        ("/bound_product/fingerprint", product_fingerprint.as_str()),
+    ] {
+        require_str(complete_good, pointer, expected)?;
+    }
+    for (pointer, expected) in [
+        ("/bound_product/q_total_degree_bound", q_degree),
+        ("/bound_product/root_neutral_z_degree_bound", root_z_degree),
+        (
+            "/bound_product/complete_good_z_degree_bound",
+            complete_z_degree,
+        ),
+        (
+            "/bound_product/gamma_coordinate_total_degree_bound",
+            gamma_degree,
+        ),
+        (
+            "/bound_product/continuous_total_degree_bound",
+            continuous_degree,
+        ),
+    ] {
+        require_u64(complete_good, pointer, expected)?;
+    }
+    require_bool(complete_good, "/bound_product/complete", true)?;
+
+    let query_denominator = PROFILE23_GOOD_SCHEDULE_QUERY_FIBERS as u64 - (query_count - 1);
+    let rho_query = q_degree as f64 / query_denominator as f64;
+    let m31_modulus = aspis_core::field::P as f64;
+    let beta_attempt = continuous_degree as f64 / m31_modulus + rho_query.powi(selectors as i32);
+    let bits_per_attempt = -beta_attempt.log2();
+    let rank_exhaustion_bits = attempt_cap as f64 * bits_per_attempt;
+    let build_abort = 128.0 / m31_modulus.powi(6);
+    let public_abort_probability =
+        attempt_cap as f64 * build_abort + beta_attempt.powi(attempt_cap as i32);
+    let public_abort_bits = -public_abort_probability.log2();
+    for (pointer, expected) in [
+        ("/liveness/query_degree", q_degree as f64),
+        (
+            "/liveness/query_sampling_denominator",
+            query_denominator as f64,
+        ),
+        ("/liveness/rho_query", rho_query),
+        ("/liveness/continuous_degree", continuous_degree as f64),
+        ("/liveness/selectors", selectors as f64),
+        ("/liveness/beta_per_attempt", beta_attempt),
+        ("/liveness/bits_per_attempt", bits_per_attempt),
+        ("/liveness/rank_exhaustion_cap17_bits", rank_exhaustion_bits),
+        ("/liveness/public_abort_bits", public_abort_bits),
+    ] {
+        require_f64(soundness, pointer, expected)?;
+    }
+    require_close(rho_query, 0.238_983_632_825_912_78, "live rho_query")?;
+    require_close(
+        beta_attempt,
+        0.013_705_910_239_932_412,
+        "live beta_per_attempt",
+    )?;
+    require_close(
+        bits_per_attempt,
+        6.189_058_045_848_226,
+        "live bits_per_attempt",
+    )?;
+    require_close(
+        rank_exhaustion_bits,
+        105.213_986_779_419_84,
+        "live cap-17 exhaustion bits",
+    )?;
+    require_close(
+        public_abort_bits,
+        105.213_986_779_419_83,
+        "live public abort bits",
+    )?;
+    require_str(
+        soundness,
+        "/liveness/build_abort_per_attempt",
+        "128/(2^31-1)^6",
+    )?;
+    require_str(
+        soundness,
+        "/liveness/public_abort_formula",
+        &format!("{attempt_cap}*epsilon_build + beta_per_attempt^{attempt_cap}"),
+    )?;
+    require_u64(hvzk, "/q3_cap17_release/attempt_cap", attempt_cap)?;
+    require_f64(
+        hvzk,
+        "/q3_cap17_release/rank_exhaustion_abort_bits",
+        rank_exhaustion_bits,
+    )?;
+
+    let draw_limit =
+        u64::try_from(aspis_core::circle_hiding_prefix::PAYMENT_HIDING_QUERY_DRAW_LIMIT)
+            .context("Profile23 query draw limit does not fit u64")?;
+    let max_unique_on_failure = query_count - 1;
+    let duplicate_draws = draw_limit - max_unique_on_failure;
+    ensure!(
+        (draw_limit, max_unique_on_failure, duplicate_draws) == (64, 17, 47),
+        "live q18 sampler inventory drifted"
+    );
+    let log2_binomial = (1..=duplicate_draws)
+        .map(|i| ((draw_limit - duplicate_draws + i) as f64 / i as f64).log2())
+        .sum::<f64>();
+    let sampler_one_bits = -(log2_binomial
+        + duplicate_draws as f64
+            * (max_unique_on_failure as f64 / PROFILE23_GOOD_SCHEDULE_QUERY_FIBERS as f64).log2());
+    let sampler_union_bits = sampler_one_bits - (attempt_cap as f64 * selectors as f64).log2();
+    require_close(
+        sampler_union_bits,
+        550.923_890_017_650_6,
+        "live q18 sampler cap-17 selector union",
+    )?;
+    require_f64(
+        soundness,
+        "/liveness/q18_sampler_cap17_m3_union_bits",
+        sampler_union_bits,
+    )?;
+
+    let leaves = 305_152u64;
+    let field_expander_inputs = 53_892u64;
+    let programmed_squeeze_inputs = 292u64;
+    let programmed_advance_inputs = 292u64;
+    let literal_absorb_inputs = 47u64;
+    let work_predicate_inputs =
+        aspis_core::state_only_prefix::STATE_ONLY_PROFILE23_FOLD_GRINDING_BITS.len() as u64 + 2;
+    let transcript_inputs = literal_absorb_inputs
+        + programmed_squeeze_inputs
+        + programmed_advance_inputs
+        + work_predicate_inputs;
+    let total_c = 3 * leaves + field_expander_inputs + 8 + transcript_inputs;
+    let qh_log2 = 128u64;
+    for (pointer, expected) in [
+        ("/epro/attempts", attempt_cap),
+        ("/epro/qh_log2", qh_log2),
+        ("/epro/tree_leaves", leaves),
+        ("/epro/field_expander_inputs", field_expander_inputs),
+        ("/epro/programmed_squeeze_inputs", programmed_squeeze_inputs),
+        ("/epro/programmed_advance_inputs", programmed_advance_inputs),
+        ("/epro/literal_absorb_inputs", literal_absorb_inputs),
+        ("/epro/work_predicate_inputs", work_predicate_inputs),
+        ("/epro/transcript_inputs", transcript_inputs),
+        ("/epro/total_c", total_c),
+    ] {
+        require_u64(soundness, pointer, expected)?;
+    }
+    ensure!(
+        (transcript_inputs, total_c) == (637, 969_993),
+        "live EPRO inventory reconstruction drifted"
+    );
+    let programmed_inputs = attempt_cap as f64 * total_c as f64;
+    let leading_epro_bits = 256.0 - qh_log2 as f64 - programmed_inputs.log2();
+    let pairwise_epro_bits = leading_epro_bits - 1.0;
+    let collision_bits = 256.0 - (programmed_inputs * (programmed_inputs - 1.0) / 2.0).log2();
+    let max_work_bits = aspis_core::state_only_prefix::STATE_ONLY_PROFILE23_FOLD_GRINDING_BITS
+        .into_iter()
+        .chain([
+            aspis_core::state_only_prefix::STATE_ONLY_PROFILE23_BATCH_GRINDING_BITS,
+            aspis_core::state_only_prefix::STATE_ONLY_PROFILE23_GRINDING_BITS,
+        ])
+        .max()
+        .context("empty Profile23 work schedule")?;
+    let expected_hits_exponent = 64 - i32::from(max_work_bits);
+    let work_exhaustion_bits = 2.0_f64.powi(expected_hits_exponent) / std::f64::consts::LN_2
+        - (work_predicate_inputs as f64 * attempt_cap as f64).log2();
+    for (pointer, expected) in [
+        ("/epro/leading_no_prequery_bits", leading_epro_bits),
+        ("/epro/pairwise_witness_bits", pairwise_epro_bits),
+        (
+            "/epro/programming_collision_bits_lower_bound",
+            collision_bits,
+        ),
+        (
+            "/epro/six_work_nonce_exhaustion_bits_lower_bound",
+            work_exhaustion_bits,
+        ),
+        (
+            "/computational_hvzk/real_vs_simulator_bound_bits",
+            leading_epro_bits,
+        ),
+        (
+            "/computational_hvzk/pairwise_witness_bound_bits",
+            pairwise_epro_bits,
+        ),
+    ] {
+        require_f64(soundness, pointer, expected)?;
+    }
+    require_close(
+        leading_epro_bits,
+        104.024_922_348_251_98,
+        "live EPRO real-vs-simulator bound",
+    )?;
+    require_close(
+        pairwise_epro_bits,
+        103.024_922_348_251_98,
+        "live EPRO pairwise bound",
+    )?;
+    require_close(
+        collision_bits,
+        209.049_844_783_993_68,
+        "live EPRO programming-collision bound",
+    )?;
+    require_close(
+        work_exhaustion_bits,
+        193_635_243.912_558_44,
+        "live EPRO work-exhaustion bound",
+    )?;
+    for (pointer, expected) in [
+        ("/epro/attempts", attempt_cap),
+        ("/epro/qh_log2", qh_log2),
+        ("/epro/tree_leaves", leaves),
+        (
+            "/epro/field_expander_inputs_including_d",
+            field_expander_inputs,
+        ),
+        ("/epro/distinct_transcript_inputs", transcript_inputs),
+        ("/epro/total_c", total_c),
+    ] {
+        require_u64(hvzk, pointer, expected)?;
+    }
+    for (pointer, expected) in [
+        ("/epro/leading_no_prequery_bits", leading_epro_bits),
+        (
+            "/epro/programming_collision_bits_lower_bound",
+            collision_bits,
+        ),
+        (
+            "/epro/six_work_nonce_exhaustion_bits_lower_bound",
+            work_exhaustion_bits,
+        ),
+        (
+            "/epro/complete_view_real_vs_simulator_bound_bits",
+            leading_epro_bits,
+        ),
+        (
+            "/epro/complete_view_pairwise_witness_bound_bits",
+            pairwise_epro_bits,
+        ),
+    ] {
+        require_f64(hvzk, pointer, expected)?;
+    }
+
+    ensure!(
+        coarse_whole_bits >= MIN_SECURITY_BITS
+            && rank_exhaustion_bits >= MIN_SECURITY_BITS
+            && public_abort_bits >= MIN_SECURITY_BITS
+            && pairwise_epro_bits >= MIN_SECURITY_BITS,
+        "reconstructed q18 conservative whole-ledger floor is below 100 bits"
+    );
+    Ok(format!(
+        "terms=16, selected_factor40={factor40_bits:.15}, selected_bcs_worst={selected_bcs_worst_bits:.15}, conservative_coarse_bcs_times3={coarse_whole_bits:.15}, selector_scope_diagnostic_cases={selector_scope_cases}, cap={attempt_cap}, public_abort={public_abort_bits:.15}, epro_pairwise={pairwise_epro_bits:.15}"
+    ))
 }
 
 fn evaluate_loaded(loaded: LoadedArtifacts) -> Profile23OneTransactionRelease {
@@ -1200,18 +1977,8 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> Profile23OneTransactionRelease {
         ),
     );
 
-    let default_features = manifest_section(&loaded.program_manifest, "features")
-        .and_then(|section| manifest_assignment(section, "default"))
-        .and_then(|value| manifest_string_array(&value));
-    let production_alias = manifest_section(&loaded.program_manifest, "features")
-        .and_then(|section| manifest_assignment(section, "profile23-production"))
-        .and_then(|value| manifest_string_array(&value));
-    let program_default_enabled = default_features
-        .as_deref()
-        .is_some_and(|features| features == ["profile23-production".to_string()])
-        && production_alias
-            .as_deref()
-            .is_some_and(|features| features == ["profile23-mutation-candidate".to_string()]);
+    let (default_features, production_alias, program_default_enabled) =
+        profile23_program_defaults_match(&loaded.program_manifest);
     let workspace_host_defaults_disabled = manifest_dependency_disables_defaults(
         &loaded.workspace_manifest,
         "workspace.dependencies",
@@ -1316,10 +2083,10 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> Profile23OneTransactionRelease {
         && coarse_soundness.is_some_and(|bits| bits >= MIN_SECURITY_BITS);
     add_gate(
         &mut gates,
-        "johnson_soundness_selected_and_coarse_floors_at_least_100_bits",
+        "johnson_selected_and_conservative_coarse_floors_at_least_100_bits",
         soundness_bookable,
         format!(
-            "selected_floor={selected_soundness:?}, coarse_sensitivity={coarse_soundness:?}, theorem_bookable={:?}, acceptance_bookable={:?}, mutation_bookable={:?}, complete_good_bookable={:?}",
+            "selected_floor={selected_soundness:?}, conservative_coarse_floor={coarse_soundness:?}, theorem_bookable={:?}, acceptance_bookable={:?}, mutation_bookable={:?}, complete_good_bookable={:?}",
             bool_at(soundness, "/bookable"),
             bool_at(acceptance, "/soundness_bookable"),
             bool_at(mutation, "/soundness_bookable"),
@@ -1327,10 +2094,74 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> Profile23OneTransactionRelease {
         ),
     );
 
-    let johnson_parameters = u64_at(soundness, "/candidate/query_count") == Some(16)
+    let expected_query_count =
+        u64::from(aspis_core::state_only_prefix::STATE_ONLY_PROFILE23_QUERY_COUNT);
+    let expected_attempt_cap =
+        aspis_prover::state_only_good23::PROFILE23_GOOD_SCHEDULE_MAX_ATTEMPTS as u64;
+    let expected_batch_bits =
+        u64::from(aspis_core::state_only_prefix::STATE_ONLY_PROFILE23_BATCH_GRINDING_BITS);
+    let expected_final_bits =
+        u64::from(aspis_core::state_only_prefix::STATE_ONLY_PROFILE23_GRINDING_BITS);
+    let expected_fold_bits = aspis_core::state_only_prefix::STATE_ONLY_PROFILE23_FOLD_GRINDING_BITS
+        .into_iter()
+        .map(u64::from)
+        .collect::<Vec<_>>();
+    let query_and_work_schedule_match = u64_at(acceptance, "/query_count")
+        == Some(expected_query_count)
+        && u64_at(mutation, "/query_count") == Some(expected_query_count)
+        && u64_at(soundness, "/candidate/query_count") == Some(expected_query_count)
+        && u64_at(acceptance, "/batch_grinding_bits") == Some(expected_batch_bits)
+        && u64_at(mutation, "/batch_grinding_bits") == Some(expected_batch_bits)
+        && u64_at(soundness, "/candidate/batch_work_bits") == Some(expected_batch_bits)
+        && u64_at(acceptance, "/final_grinding_bits") == Some(expected_final_bits)
+        && u64_at(mutation, "/final_grinding_bits") == Some(expected_final_bits)
+        && u64_at(soundness, "/candidate/final_work_bits") == Some(expected_final_bits)
+        && u64_array_at(acceptance, "/fold_grinding_bits") == Some(expected_fold_bits.clone())
+        && u64_array_at(mutation, "/fold_grinding_bits") == Some(expected_fold_bits.clone())
+        && u64_array_at(soundness, "/candidate/fold_work_bits") == Some(expected_fold_bits.clone())
+        && release_instance.production_host_verification_green;
+    add_gate(
+        &mut gates,
+        "profile23_q18_and_work_schedule_match_live_proof",
+        query_and_work_schedule_match,
+        format!(
+            "expected q={expected_query_count}, batch={expected_batch_bits}, folds={expected_fold_bits:?}, final={expected_final_bits}; acceptance=({:?},{:?},{:?},{:?}), mutation=({:?},{:?},{:?},{:?}), soundness=({:?},{:?},{:?},{:?}), parsed_proof_host_green={}",
+            u64_at(acceptance, "/query_count"),
+            u64_at(acceptance, "/batch_grinding_bits"),
+            u64_array_at(acceptance, "/fold_grinding_bits"),
+            u64_at(acceptance, "/final_grinding_bits"),
+            u64_at(mutation, "/query_count"),
+            u64_at(mutation, "/batch_grinding_bits"),
+            u64_array_at(mutation, "/fold_grinding_bits"),
+            u64_at(mutation, "/final_grinding_bits"),
+            u64_at(soundness, "/candidate/query_count"),
+            u64_at(soundness, "/candidate/batch_work_bits"),
+            u64_array_at(soundness, "/candidate/fold_work_bits"),
+            u64_at(soundness, "/candidate/final_work_bits"),
+            release_instance.production_host_verification_green,
+        ),
+    );
+
+    let reconstructed_ledger = reconstruct_profile23_q18_ledger(soundness, complete_good, hvzk);
+    let (reconstructed_ledger_passed, reconstructed_ledger_evidence) = match reconstructed_ledger {
+        Ok(evidence) => (true, evidence),
+        Err(error) => (
+            false,
+            format!("fail-closed reconstruction error: {error:#}"),
+        ),
+    };
+    add_gate(
+        &mut gates,
+        PROFILE23_SOUNDNESS_RECONSTRUCTION_GATE,
+        reconstructed_ledger_passed,
+        reconstructed_ledger_evidence,
+    );
+
+    let johnson_parameters = u64_at(soundness, "/candidate/query_count")
+        == Some(expected_query_count)
         && u64_at(soundness, "/candidate/inverse_rate") == Some(512)
         && u64_at(soundness, "/candidate/query_candidates") == Some(3)
-        && u64_at(soundness, "/candidate/attempt_cap") == Some(16)
+        && u64_at(soundness, "/candidate/attempt_cap") == Some(expected_attempt_cap)
         && str_at(soundness, "/soundness/regime").is_some_and(|regime| regime.contains("Johnson"))
         && bool_at(soundness, "/query_domain_guard/injective") == Some(true)
         && u64_at(soundness, "/query_domain_guard/root_one_count") == Some(0);
@@ -1392,23 +2223,23 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> Profile23OneTransactionRelease {
         ),
     );
 
-    let cap16_bits = f64_at(hvzk, "/q3_cap16_release/rank_exhaustion_abort_bits");
-    let cap16_fixed_release = all_true(
+    let cap17_bits = f64_at(hvzk, "/q3_cap17_release/rank_exhaustion_abort_bits");
+    let cap17_fixed_release = all_true(
         hvzk,
         &[
-            "/q3_cap16_release/independent_post_final_branches_from_common_prefix",
-            "/q3_cap16_release/all_three_evaluated_before_selection",
-            "/q3_cap16_release/only_selected_openings_serialized",
-            "/q3_cap16_release/all_bad_attempt_retryable",
-            "/q3_cap16_release/other_gate_build_errors_fatal_and_opaque",
-            "/q3_cap16_release/abort_joint_law_witness_independent_in_epro_hybrid",
-            "/q3_cap16_release/fixed_release_controller_implemented",
-            "/q3_cap16_release/production_example_keeps_boundary_live_while_worker_runs",
+            "/q3_cap17_release/independent_post_final_branches_from_common_prefix",
+            "/q3_cap17_release/all_three_evaluated_before_selection",
+            "/q3_cap17_release/only_selected_openings_serialized",
+            "/q3_cap17_release/all_bad_attempt_retryable",
+            "/q3_cap17_release/other_gate_build_errors_fatal_and_opaque",
+            "/q3_cap17_release/abort_joint_law_witness_independent_in_epro_hybrid",
+            "/q3_cap17_release/fixed_release_controller_implemented",
+            "/q3_cap17_release/production_example_keeps_boundary_live_while_worker_runs",
         ],
-    ) && u64_at(hvzk, "/q3_cap16_release/query_candidates") == Some(3)
-        && u64_at(hvzk, "/q3_cap16_release/attempt_cap") == Some(16)
-        && str_at(hvzk, "/q3_cap16_release/selection_rule") == Some("least Good23 selector")
-        && cap16_bits.is_some_and(|bits| bits >= MIN_SECURITY_BITS)
+    ) && u64_at(hvzk, "/q3_cap17_release/query_candidates") == Some(3)
+        && u64_at(hvzk, "/q3_cap17_release/attempt_cap") == Some(expected_attempt_cap)
+        && str_at(hvzk, "/q3_cap17_release/selection_rule") == Some("least Good23 selector")
+        && cap17_bits.is_some_and(|bits| bits >= MIN_SECURITY_BITS)
         && all_true(
             soundness,
             &[
@@ -1422,13 +2253,13 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> Profile23OneTransactionRelease {
         );
     add_gate(
         &mut gates,
-        "q3_cap16_fixed_release_gates",
-        cap16_fixed_release,
+        "q3_cap17_fixed_release_gates",
+        cap17_fixed_release,
         format!(
-            "selectors={:?}, cap={:?}, abort_bits={cap16_bits:?}, selection={:?}",
-            u64_at(hvzk, "/q3_cap16_release/query_candidates"),
-            u64_at(hvzk, "/q3_cap16_release/attempt_cap"),
-            str_at(hvzk, "/q3_cap16_release/selection_rule")
+            "selectors={:?}, cap={:?}, abort_bits={cap17_bits:?}, selection={:?}",
+            u64_at(hvzk, "/q3_cap17_release/query_candidates"),
+            u64_at(hvzk, "/q3_cap17_release/attempt_cap"),
+            str_at(hvzk, "/q3_cap17_release/selection_rule")
         ),
     );
 
@@ -1602,6 +2433,52 @@ mod tests {
             .clone()
     }
 
+    const PROFILE23_SCHEDULE_GATE: &str = "profile23_q18_and_work_schedule_match_live_proof";
+
+    fn live_q18_schedule_artifacts() -> LoadedArtifacts {
+        let mut loaded = loaded_artifacts();
+        let query_count =
+            u64::from(aspis_core::state_only_prefix::STATE_ONLY_PROFILE23_QUERY_COUNT);
+        let batch_work_bits =
+            u64::from(aspis_core::state_only_prefix::STATE_ONLY_PROFILE23_BATCH_GRINDING_BITS);
+        let fold_work_bits = aspis_core::state_only_prefix::STATE_ONLY_PROFILE23_FOLD_GRINDING_BITS
+            .into_iter()
+            .map(u64::from)
+            .collect::<Vec<_>>();
+        let final_work_bits =
+            u64::from(aspis_core::state_only_prefix::STATE_ONLY_PROFILE23_GRINDING_BITS);
+
+        for artifact in [&mut loaded.acceptance, &mut loaded.mutation] {
+            artifact["query_count"] = Value::from(query_count);
+            artifact["batch_grinding_bits"] = Value::from(batch_work_bits);
+            artifact["fold_grinding_bits"] = json!(fold_work_bits);
+            artifact["final_grinding_bits"] = Value::from(final_work_bits);
+        }
+        loaded.soundness["candidate"]["query_count"] = Value::from(query_count);
+        loaded.soundness["candidate"]["batch_work_bits"] = Value::from(batch_work_bits);
+        loaded.soundness["candidate"]["fold_work_bits"] = json!(fold_work_bits);
+        loaded.soundness["candidate"]["final_work_bits"] = Value::from(final_work_bits);
+        loaded.release_instance.production_host_verification_green = true;
+        loaded
+    }
+
+    fn assert_live_schedule_gate(loaded: &LoadedArtifacts, expected: bool) {
+        assert_eq!(
+            gate(&evaluate_loaded(loaded.clone()), PROFILE23_SCHEDULE_GATE).passed,
+            expected
+        );
+    }
+
+    fn assert_reconstruction_gate(loaded: &LoadedArtifacts, expected: bool) {
+        let report = evaluate_loaded(loaded.clone());
+        let reconstruction = gate(&report, PROFILE23_SOUNDNESS_RECONSTRUCTION_GATE);
+        assert_eq!(
+            reconstruction.passed, expected,
+            "{}",
+            reconstruction.evidence
+        );
+    }
+
     fn good_branch(selector: u8, accepted: bool) -> ReleaseGood23Branch {
         ReleaseGood23Branch {
             selector,
@@ -1650,6 +2527,100 @@ mod tests {
     }
 
     #[test]
+    fn q18_schedule_gate_rejects_stale_query_count() {
+        let mut loaded = live_q18_schedule_artifacts();
+        assert_live_schedule_gate(&loaded, true);
+
+        loaded.soundness["candidate"]["query_count"] = Value::from(16);
+        assert_live_schedule_gate(&loaded, false);
+    }
+
+    #[test]
+    fn q18_schedule_gate_rejects_tampered_batch_work_bits() {
+        let mut loaded = live_q18_schedule_artifacts();
+        assert_live_schedule_gate(&loaded, true);
+
+        let expected =
+            u64::from(aspis_core::state_only_prefix::STATE_ONLY_PROFILE23_BATCH_GRINDING_BITS);
+        loaded.soundness["candidate"]["batch_work_bits"] = Value::from(expected + 1);
+        assert_live_schedule_gate(&loaded, false);
+    }
+
+    #[test]
+    fn q18_schedule_gate_rejects_tampered_fold_work_bits() {
+        let mut loaded = live_q18_schedule_artifacts();
+        assert_live_schedule_gate(&loaded, true);
+
+        let mut tampered =
+            aspis_core::state_only_prefix::STATE_ONLY_PROFILE23_FOLD_GRINDING_BITS.map(u64::from);
+        tampered[2] += 1;
+        loaded.soundness["candidate"]["fold_work_bits"] = json!(tampered);
+        assert_live_schedule_gate(&loaded, false);
+    }
+
+    #[test]
+    fn q18_schedule_gate_rejects_tampered_final_work_bits() {
+        let mut loaded = live_q18_schedule_artifacts();
+        assert_live_schedule_gate(&loaded, true);
+
+        let expected = u64::from(aspis_core::state_only_prefix::STATE_ONLY_PROFILE23_GRINDING_BITS);
+        loaded.soundness["candidate"]["final_work_bits"] = Value::from(expected + 1);
+        assert_live_schedule_gate(&loaded, false);
+    }
+
+    #[test]
+    fn q18_reconstruction_gate_rejects_changed_named_term() {
+        let mut loaded = live_q18_schedule_artifacts();
+        assert_reconstruction_gate(&loaded, true);
+
+        loaded.soundness["soundness"]["terms_bits"][7]["bits"] =
+            Value::from(112.396_837_317_778_39 + 0.01);
+        assert_reconstruction_gate(&loaded, false);
+    }
+
+    #[test]
+    fn q18_reconstruction_gate_rejects_selector_scope_drift() {
+        let mut loaded = live_q18_schedule_artifacts();
+        assert_reconstruction_gate(&loaded, true);
+
+        loaded.soundness["soundness"]["terms_bits"][0]["selector_scope"] =
+            Value::String("selector_dependent_final_query".to_string());
+        assert_reconstruction_gate(&loaded, false);
+
+        let mut loaded = live_q18_schedule_artifacts();
+        loaded.soundness["selector_scope_proof"]["definition_fingerprint"] =
+            Value::String("00".repeat(32));
+        assert_reconstruction_gate(&loaded, false);
+    }
+
+    #[test]
+    fn q18_reconstruction_gate_rejects_changed_derived_floor() {
+        let mut loaded = live_q18_schedule_artifacts();
+        assert_reconstruction_gate(&loaded, true);
+
+        loaded.soundness["soundness"]["coarse_whole_ledger_times_three_bits"] = Value::from(100.8);
+        assert_reconstruction_gate(&loaded, false);
+    }
+
+    #[test]
+    fn q18_reconstruction_gate_rejects_changed_liveness_value() {
+        let mut loaded = live_q18_schedule_artifacts();
+        assert_reconstruction_gate(&loaded, true);
+
+        loaded.soundness["liveness"]["beta_per_attempt"] = Value::from(0.02);
+        assert_reconstruction_gate(&loaded, false);
+    }
+
+    #[test]
+    fn q18_reconstruction_gate_rejects_changed_epro_inventory() {
+        let mut loaded = live_q18_schedule_artifacts();
+        assert_reconstruction_gate(&loaded, true);
+
+        loaded.soundness["epro"]["total_c"] = Value::from(969_994);
+        assert_reconstruction_gate(&loaded, false);
+    }
+
+    #[test]
     fn current_artifacts_evaluate_to_their_mined_or_unmined_status() {
         let loaded = loaded_artifacts();
         let currently_unmined = bool_at(&loaded.acceptance, "/proof_unmined") == Some(true)
@@ -1671,6 +2642,19 @@ mod tests {
             .source_artifacts
             .iter()
             .any(|source| source.label == "production_statement"));
+    }
+
+    #[test]
+    fn production_feature_alias_is_exact_and_fails_closed_if_incomplete() {
+        let manifest = fs::read_to_string(workspace_root().join(PROGRAM_MANIFEST_PATH)).unwrap();
+        assert!(profile23_program_defaults_match(&manifest).2);
+
+        for feature in PROFILE23_PRODUCTION_ALIAS_FEATURES {
+            let manifest_line = format!("    \"{feature}\",\n");
+            assert!(manifest.contains(&manifest_line));
+            let tampered = manifest.replace(&manifest_line, "");
+            assert!(!profile23_program_defaults_match(&tampered).2);
+        }
     }
 
     #[test]

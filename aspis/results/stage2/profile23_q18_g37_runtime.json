@@ -1,0 +1,53 @@
+{
+  "artifact": "profile23_q18_g37_runtime",
+  "generated_at_utc": "2026-07-14T13:37:26Z",
+  "schedule": {
+    "query_count": 18,
+    "batch_grinding_bits": 37,
+    "fold_grinding_bits": [34, 33, 30, 25],
+    "final_grinding_bits": 32,
+    "conservative_soundness_floor_bits": 100.16144938287455
+  },
+  "metal_miner": {
+    "path": "target/release/aspis-pow-metal",
+    "sha256": "8cfc664c6bc36ddd044068d77c6b88c469bb0e79f104eac81fa2385f24e10b12",
+    "predecessor_median_mhash_per_second": 317.14,
+    "optimized_samples_mhash_per_second": [440.37, 432.62, 428.69],
+    "optimized_median_mhash_per_second": 432.62,
+    "median_speedup_percent": 36.4,
+    "canonical_rust_metal_kat": true,
+    "canonical_kat_minimum_nonce": 100214
+  },
+  "prover": {
+    "statement_evaluations_before": 180,
+    "statement_evaluations_after": 84,
+    "discarded_evaluations_removed": 96,
+    "old_unmined_build_verify_wall_seconds_range": [167.0, 194.0],
+    "optimized_unmined_build_verify_wall_seconds": 44.09,
+    "minimum_end_to_end_speedup": 3.78,
+    "proof_bytes_unchanged": 67327,
+    "proof_sha256_unchanged": "a5ed698a32d815ffd95f8d3e0be62d16620d32e216a087a350852726fb6ca238",
+    "old_new_equivalence_test": true
+  },
+  "production_run": {
+    "fixed_release_boundary_seconds": 480,
+    "wall_seconds": 480.42,
+    "user_seconds": 195.22,
+    "system_seconds": 3.04,
+    "published": "Proof",
+    "proof_path": "results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.bin",
+    "proof_bytes": 63487,
+    "proof_sha256": "0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb",
+    "statement_path": "results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.statement.json",
+    "statement_sha256": "520a0a86e1d1918a5270622ac27182b1f5b6df2b624d68bbd2a2b6f927eebb14"
+  },
+  "post_release_audit": {
+    "wall_seconds": 40.64,
+    "user_seconds": 116.19,
+    "system_seconds": 0.85,
+    "production_pow_and_full_verifier": true,
+    "serialized_selector": 0,
+    "least_good_selector": 0,
+    "all_three_good23_branches_accepted": true
+  }
+}

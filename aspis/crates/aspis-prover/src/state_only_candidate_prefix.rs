@@ -4,7 +4,9 @@ use aspis_core::circle_prefix::{
     CandidatePrefixError, CANDIDATE_FINAL_POLY_LEN, CANDIDATE_NONCE_LEN, CANDIDATE_OOD_SAMPLES,
     CANDIDATE_ROUND_COUNT,
 };
-use aspis_core::field::{CM31, M31, QM31};
+#[cfg(test)]
+use aspis_core::field::CM31;
+use aspis_core::field::{M31, QM31};
 use aspis_core::params::{FoldPayload, MerkleMode};
 use aspis_core::proof::{Header, HEADER_LEN, M31_CIRCLE_BASIS_DISCRIMINATOR, VERSION_V4_S2};
 use aspis_core::state_only_hiding::{
@@ -27,9 +29,10 @@ use aspis_statement::{
     atomic_payment_statement_digest_v3,
     atomic_state_only_registry::build_atomic_state_only_copy_helper_v3,
     atomic_state_only_terminal::atomic_state_only_selected_unmasked_terminal_value_compiled_v3,
-    build_state_only_copy_helper_v4, state_only_copy_helper_sum, state_only_point_openings,
-    state_only_unmasked_terminal_value, AtomicPaymentStatementV3, SpendPublic,
-    StateOnlyConstraintError, StateOnlySemanticError, StateOnlyTraceFoundation,
+    build_state_only_copy_helper_v4, multilinear_evaluate, multilinear_evaluate_qm31,
+    state_only_copy_helper_sum, state_only_point_openings, state_only_unmasked_terminal_value,
+    AtomicPaymentStatementV3, SpendPublic, StateOnlyConstraintError, StateOnlySemanticError,
+    StateOnlyTraceFoundation,
 };
 
 use crate::circle_candidate::{CircleCandidateError, CircleEncoder};
@@ -242,28 +245,6 @@ pub fn serialize_state_only_prefix(material: &StateOnlyPrefixMaterial) -> Vec<u8
     bytes
 }
 
-fn evaluate_m31_table(
-    table: &[M31],
-    point: &[QM31; 10],
-) -> Result<QM31, StateOnlyPrefixBuildError> {
-    if table.len() != 1024 {
-        return Err(StateOnlyPrefixBuildError::Shape);
-    }
-    let mut layer = table
-        .iter()
-        .copied()
-        .map(|value| QM31::from_cm31(CM31::from_m31(value)))
-        .collect::<Vec<_>>();
-    for coordinate in point.iter().rev() {
-        for index in 0..layer.len() / 2 {
-            let left = layer[2 * index];
-            layer[index] = left.add(coordinate.mul(layer[2 * index + 1].sub(left)));
-        }
-        layer.truncate(layer.len() / 2);
-    }
-    Ok(layer[0])
-}
-
 pub(crate) fn statement_evaluations(
     trace: &StateOnlyTraceFoundation,
     mask_only_c1: &[Vec<M31>; STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS],
@@ -274,11 +255,59 @@ pub(crate) fn statement_evaluations(
     let points = [*z, successor_point(z), xor12_point(z)];
     let mut output = [QM31::ZERO; STATE_ONLY_STATEMENT_VALUE_COUNT];
     for (point_index, point) in points.iter().enumerate() {
+        let base = point_index * STATE_ONLY_VALUES_PER_POINT;
+        for column in 0..16 {
+            output[base + column] = multilinear_evaluate(&trace.c1[column], point)
+                .ok_or(StateOnlyPrefixBuildError::Shape)?;
+        }
+        for column in 0..STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS {
+            output[base + 16 + column] = multilinear_evaluate(&mask_only_c1[column], point)
+                .ok_or(StateOnlyPrefixBuildError::Shape)?;
+        }
+        output[base + 26] =
+            multilinear_evaluate_qm31(h1, point).ok_or(StateOnlyPrefixBuildError::Shape)?;
+        output[base + 27] =
+            multilinear_evaluate_qm31(g, point).ok_or(StateOnlyPrefixBuildError::Shape)?;
+    }
+    Ok(output)
+}
+
+#[cfg(test)]
+fn statement_evaluations_reference(
+    trace: &StateOnlyTraceFoundation,
+    mask_only_c1: &[Vec<M31>; STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS],
+    h1: &[QM31],
+    g: &[QM31],
+    z: &[QM31; 10],
+) -> Result<[QM31; STATE_ONLY_STATEMENT_VALUE_COUNT], StateOnlyPrefixBuildError> {
+    fn dense_m31(table: &[M31], point: &[QM31; 10]) -> Option<QM31> {
+        if table.len() != 1024 {
+            return None;
+        }
+        let mut layer = table
+            .iter()
+            .copied()
+            .map(|value| QM31::from_cm31(CM31::from_m31(value)))
+            .collect::<Vec<_>>();
+        for coordinate in point.iter().rev() {
+            for index in 0..layer.len() / 2 {
+                let left = layer[2 * index];
+                layer[index] = left.add(coordinate.mul(layer[2 * index + 1].sub(left)));
+            }
+            layer.truncate(layer.len() / 2);
+        }
+        Some(layer[0])
+    }
+
+    let points = [*z, successor_point(z), xor12_point(z)];
+    let mut output = [QM31::ZERO; STATE_ONLY_STATEMENT_VALUE_COUNT];
+    for (point_index, point) in points.iter().enumerate() {
         let openings = state_only_point_openings(trace, h1, g, point)?;
         let base = point_index * STATE_ONLY_VALUES_PER_POINT;
         output[base..base + 16].copy_from_slice(&openings.semantic.c1.z);
         for column in 0..STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS {
-            output[base + 16 + column] = evaluate_m31_table(&mask_only_c1[column], point)?;
+            output[base + 16 + column] =
+                dense_m31(&mask_only_c1[column], point).ok_or(StateOnlyPrefixBuildError::Shape)?;
         }
         output[base + 26] = openings.semantic.h1_z;
         output[base + 27] = openings.g_z;
@@ -604,4 +633,74 @@ fn build_state_only_prefix_front_selected_with_h1_padding_mode(
         transcript_after_gamma: transcript,
         batch_pow_valid,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn q(seed: u32) -> QM31 {
+        QM31 {
+            c0: CM31::new(M31(seed * 17 + 1), M31(seed * 19 + 3)),
+            c1: CM31::new(M31(seed * 23 + 5), M31(seed * 29 + 7)),
+        }
+    }
+
+    #[test]
+    fn direct_statement_evaluations_match_the_previous_nested_opening_path() {
+        let trace = StateOnlyTraceFoundation {
+            c1: core::array::from_fn(|column| {
+                (0..1024)
+                    .map(|row| M31((row * 131 + column * 17 + 1) as u32))
+                    .collect()
+            }),
+        };
+        let mask_only_c1 = core::array::from_fn(|column| {
+            (0..1024)
+                .map(|row| M31((row * 43 + column * 211 + 9) as u32))
+                .collect()
+        });
+        let h1 = (0..1024)
+            .map(|row| q(row as u32 + 1_000))
+            .collect::<Vec<_>>();
+        let g = (0..1024)
+            .map(|row| q(row as u32 + 3_000))
+            .collect::<Vec<_>>();
+
+        let points = [
+            core::array::from_fn(|coordinate| q(coordinate as u32 + 11)),
+            core::array::from_fn(|coordinate| {
+                if coordinate == 0 {
+                    q(101)
+                } else if coordinate & 1 == 0 {
+                    QM31::ZERO
+                } else {
+                    QM31::ONE
+                }
+            }),
+            core::array::from_fn(|coordinate| {
+                if coordinate < 5 {
+                    q(coordinate as u32 + 211)
+                } else if coordinate & 1 == 0 {
+                    QM31::ONE
+                } else {
+                    QM31::ZERO
+                }
+            }),
+            core::array::from_fn(|coordinate| {
+                if coordinate & 1 == 0 {
+                    QM31::ZERO
+                } else {
+                    QM31::ONE
+                }
+            }),
+        ];
+
+        for point in points {
+            assert_eq!(
+                statement_evaluations(&trace, &mask_only_c1, &h1, &g, &point).unwrap(),
+                statement_evaluations_reference(&trace, &mask_only_c1, &h1, &g, &point).unwrap(),
+            );
+        }
+    }
 }

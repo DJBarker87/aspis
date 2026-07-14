@@ -51,6 +51,9 @@ pub const STATE_ONLY_RATE512_LOG_BLOWUP: u32 = 9;
 pub const STATE_ONLY_RATE16_QUERY_COUNT: u16 = 36;
 pub const STATE_ONLY_RATE32_QUERY_COUNT: u16 = 29;
 pub const STATE_ONLY_RATE512_QUERY_COUNT: u16 = 16;
+/// Profile 23 spends two additional queries to reduce the honest-prover PoW
+/// schedule without changing the frozen Profile 20/21/22 rate-1/512 wires.
+pub const STATE_ONLY_PROFILE23_QUERY_COUNT: u16 = 18;
 pub const STATE_ONLY_MAX_QUERY_COUNT: usize = STATE_ONLY_RATE16_QUERY_COUNT as usize;
 pub const STATE_ONLY_GRINDING_BITS: u8 = 36;
 pub const STATE_ONLY_RATE16_BATCH_GRINDING_BITS: u8 = 24;
@@ -63,8 +66,11 @@ pub const STATE_ONLY_PROFILE21_BATCH_GRINDING_BITS: u8 = 38;
 /// The frozen profile-22 ledger uses g38 for both batch and final work.
 pub const STATE_ONLY_PROFILE22_GRINDING_BITS: u8 = 38;
 pub const STATE_ONLY_PROFILE22_BATCH_GRINDING_BITS: u8 = 38;
-pub const STATE_ONLY_PROFILE23_GRINDING_BITS: u8 = 38;
-pub const STATE_ONLY_PROFILE23_BATCH_GRINDING_BITS: u8 = 38;
+pub const STATE_ONLY_PROFILE23_GRINDING_BITS: u8 = 32;
+/// g37 is the lowest batch work factor that keeps the conservative
+/// whole-ledger-times-three q18 soundness floor above 100 bits.
+pub const STATE_ONLY_PROFILE23_BATCH_GRINDING_BITS: u8 = 37;
+pub const STATE_ONLY_PROFILE23_FOLD_GRINDING_BITS: [u8; CANDIDATE_ROUND_COUNT] = [34, 33, 30, 25];
 pub const STATE_ONLY_VALUES_PER_POINT: usize = STATE_ONLY_HIDING_SELECTED_TOTAL_GENERATOR_WIDTH;
 pub const STATE_ONLY_STATEMENT_POINT_COUNT: usize = 3;
 pub const STATE_ONLY_STATEMENT_VALUE_COUNT: usize =
@@ -115,9 +121,18 @@ pub const STATE_ONLY_PROFILE22_PRIVATE_SHAPE: StateOnlyProfileShape = StateOnlyP
 pub const STATE_ONLY_PROFILE23_ZERO_FACTOR_SHAPE: StateOnlyProfileShape = StateOnlyProfileShape {
     profile_id: STATE_ONLY_PROFILE23_ZERO_FACTOR_PROFILE_ID,
     log_blowup: STATE_ONLY_RATE512_LOG_BLOWUP,
-    query_count: STATE_ONLY_RATE512_QUERY_COUNT,
+    query_count: STATE_ONLY_PROFILE23_QUERY_COUNT,
     batch_grinding_bits: STATE_ONLY_PROFILE23_BATCH_GRINDING_BITS,
 };
+
+pub const fn state_only_fold_grinding_bits(
+    shape: StateOnlyProfileShape,
+) -> [u8; CANDIDATE_ROUND_COUNT] {
+    match shape.profile_id {
+        STATE_ONLY_PROFILE23_ZERO_FACTOR_PROFILE_ID => STATE_ONLY_PROFILE23_FOLD_GRINDING_BITS,
+        _ => RATE16_HARDENED_FOLD_POW_BITS,
+    }
+}
 
 pub const fn state_only_final_grinding_bits(shape: StateOnlyProfileShape) -> u8 {
     match shape.profile_id {
@@ -898,7 +913,7 @@ fn run_full_with_context(
         }
         let fold_ok = transcript.grinding_ok(
             prefix.fold_nonces[round],
-            RATE16_HARDENED_FOLD_POW_BITS[round],
+            state_only_fold_grinding_bits(prefix.shape)[round],
         );
         if check_pow && !fold_ok {
             return Err(CandidateTranscriptScheduleError::FoldGrindingRejected { round }.into());
@@ -1217,6 +1232,23 @@ mod tests {
         assert_eq!(STATE_ONLY_PREFIX_OFFSETS.batch_nonce_start, 6_728);
         assert_eq!(STATE_ONLY_PROFILE22_PRIVATE_SHAPE.batch_grinding_bits, 38);
         assert_eq!(header(STATE_ONLY_PROFILE22_PRIVATE_SHAPE).grinding_bits, 38);
+        assert_eq!(STATE_ONLY_PROFILE23_ZERO_FACTOR_SHAPE.query_count, 18);
+        assert_eq!(
+            STATE_ONLY_PROFILE23_ZERO_FACTOR_SHAPE.batch_grinding_bits,
+            37
+        );
+        assert_eq!(
+            header(STATE_ONLY_PROFILE23_ZERO_FACTOR_SHAPE).grinding_bits,
+            32
+        );
+        assert_eq!(
+            state_only_fold_grinding_bits(STATE_ONLY_PROFILE23_ZERO_FACTOR_SHAPE),
+            [34, 33, 30, 25]
+        );
+        assert_eq!(
+            state_only_fold_grinding_bits(STATE_ONLY_PROFILE22_PRIVATE_SHAPE),
+            RATE16_HARDENED_FOLD_POW_BITS
+        );
         for shape in [
             STATE_ONLY_RATE16_SHAPE,
             STATE_ONLY_RATE32_SHAPE,
@@ -1462,7 +1494,19 @@ mod tests {
                 test_hash, &parsed, &statement,
             )
             .unwrap();
-        assert_eq!(schedule.query_count, 16);
+        assert_eq!(schedule.query_count, 18);
+
+        // A legacy Profile23 q16 header is rejected even when every other
+        // header field uses the current q18 profile values. This isolates the
+        // hard-cutover query-count tooth from the separate final-work change.
+        let mut legacy_q16 = bytes;
+        let mut legacy_header = header(STATE_ONLY_PROFILE23_ZERO_FACTOR_SHAPE);
+        legacy_header.query_count = STATE_ONLY_RATE512_QUERY_COUNT;
+        legacy_header.write(&mut legacy_q16[..HEADER_LEN]);
+        assert_eq!(
+            StateOnlyProfile23Prefix::parse_exact(&legacy_q16).unwrap_err(),
+            CandidatePrefixError::BadHeader
+        );
 
         // The generic p22-style prefix and full replay APIs must not accept a
         // p23 base while silently omitting the dedicated D-claim absorb.
@@ -1515,18 +1559,39 @@ mod tests {
             .unwrap();
         assert_ne!(d_schedule.prefix.gamma, schedule.prefix.gamma);
 
-        let selector_bytes = profile23_zero_fixture(1);
-        let selector = StateOnlyProfile23Prefix::parse_exact(&selector_bytes).unwrap();
-        let selector_schedule =
-            run_atomic_state_only_profile23_transcript_schedule_host_unmined_for_diagnostics_v3(
-                test_hash, &selector, &statement,
-            )
-            .unwrap();
-        assert_eq!(selector_schedule.prefix.gamma, schedule.prefix.gamma);
-        assert_ne!(
-            selector_schedule.queries[..selector_schedule.query_count],
-            schedule.queries[..schedule.query_count]
-        );
+        for selector in 1..STATE_ONLY_PROFILE23_QUERY_CANDIDATE_COUNT {
+            let selector_bytes = profile23_zero_fixture(selector);
+            let selector = StateOnlyProfile23Prefix::parse_exact(&selector_bytes).unwrap();
+            let selector_schedule =
+                run_atomic_state_only_profile23_transcript_schedule_host_unmined_for_diagnostics_v3(
+                    test_hash, &selector, &statement,
+                )
+                .unwrap();
+
+            // The selector is absorbed only after the final polynomial and
+            // nonce.  Freeze the complete schedule prefix used by every
+            // non-query soundness event, not merely gamma.
+            assert_eq!(selector_schedule.prefix, schedule.prefix);
+            assert_eq!(
+                selector_schedule.circle_ood_points,
+                schedule.circle_ood_points
+            );
+            assert_eq!(selector_schedule.line_ood_points, schedule.line_ood_points);
+            assert_eq!(selector_schedule.mu, schedule.mu);
+            assert_eq!(selector_schedule.alpha, schedule.alpha);
+            assert_eq!(
+                selector_schedule.state_before_grinding,
+                schedule.state_before_grinding
+            );
+            assert_ne!(
+                selector_schedule.queries[..selector_schedule.query_count],
+                schedule.queries[..schedule.query_count]
+            );
+            assert_ne!(
+                selector_schedule.state_after_queries,
+                schedule.state_after_queries
+            );
+        }
         assert_eq!(
             StateOnlyProfile23Prefix::parse_exact(&profile23_zero_fixture(3)).unwrap_err(),
             CandidatePrefixError::BadHeader

@@ -1,21 +1,21 @@
 # Profile 23: D-after-G root-neutral liveness, soundness and EPRO ledger
 
-**Status (`2026-07-13`): the fixed root-neutral polynomial minor, complete
-Good23 predicate, cap-16/q3 builder, fixed-release path, numeric soundness,
-complete-view computational hiding in the declared SHA-256 ROM/EPRO fixed-
-channel model, and production KATs are green. Profile 23 is now released as
-the default one-transaction production path after all `30/30` release gates
-passed. This earlier soundness/EPRO artifact did not itself change or enable
-the production wire.**
+**Status (`2026-07-14`): the q18 minimum-q-degree root-neutral polynomial
+minor, complete Good23 predicate, cap17/q3 builder, proof-independent numeric
+soundness ledger, and complete-view computational hiding in the declared
+SHA-256 ROM/EPRO fixed-channel model are green. The canonically mined q18
+proof, production host/SBF KATs, and local one-transaction release certificate
+are also green with `35/35` gates. The `2026-07-13` q16/cap16 release is
+superseded historical evidence.**
 
 The candidate generator order is fixed as
 
 ```text
-semantic[0..16], mask-only[16..26], H[26], G[27], D[28].
+semantic[0..15], mask-only[16..25], H[26], G[27], D[28].
 ```
 
 `D` is one new full-domain QM31 lane with the zero factor. Three post-final-
-nonce q16 candidates are tried inside each of at most sixteen public attempts.
+nonce q18 candidates are tried inside each of at most seventeen public attempts.
 The verifier receives one selector byte and verifies only the selected tuple.
 
 ## Exact root neutrality
@@ -39,7 +39,7 @@ Delta G = -gamma V.
 ```
 
 Both pairs make `Delta R(gamma)` identically zero. The executable checks this
-pointwise for all 10,617 processed sources, not only for the 1,404 columns
+pointwise for all 10,610 candidate sources, not only for the 1,404 columns
 eventually selected into the minor.
 
 The frozen result is:
@@ -52,13 +52,18 @@ The frozen result is:
 | terminal-conditioned sumcheck rank | 1,080 |
 | root-neutral conditioned sumcheck rank | 1,076 / 1,076 |
 | joint rank | 1,404 / 1,404 |
-| degree-one q columns | 1,024 |
-| degree-two q columns | 380 |
-| q total degree | 28,544 |
-| gamma inverse exponent sum | 23,105 |
-| safe gamma-coordinate degree | 92,436 |
+| degree-one q columns | 1,068 |
+| degree-two q columns | 336 |
+| q total degree | 31,320 |
+| safe gamma-coordinate degree | 80,688 |
 | root-neutral z degree | 41,040 |
-| minor fingerprint | `0xb7472b1f2b1d03e7` |
+| minor fingerprint | `0x6b3838662fbf34db` |
+
+The q18 basis is selected in minimum-degree order: all semantic and D
+degree-one candidates precede mask-only degree-two candidates. The 1,100
+degree-one candidates have exact rank 1,068, so no alternate basis in this
+source family restores the cap16 liveness bound; cap17 is the smallest proved
+fix.
 
 The gamma degree deliberately uses the safe M31 scalar clearing rule. A
 coordinate of `gamma^-e` is written over `Norm(gamma)^e`, and the whole M31
@@ -92,33 +97,33 @@ fiber sampling already gives distinct polynomial roots, and the probe's
 `root != 1` precondition is automatic on this coset. No extra degree-16 anchor
 guard is booked.
 
-With `p=2^31-1`, `N=131072`, `q=16`, and three candidates,
+With `p=2^31-1`, `N=131072`, `q=18`, and three candidates,
 
 ```text
-rho_q = 28544 / (131072 - 15)
-      = 0.21779836254454168
+rho_q = 31320 / (131072 - 17)
+      = 0.23898363282591278
 
-d_cont = 41280 + 92436 = 133716
+d_cont = 41280 + 80688 = 121968
 
 beta = d_cont/p + rho_q^3
-     = 0.010393777091336816.
+     = 0.013705910239932412.
 ```
 
-One attempt therefore has `6.588136165878648` bits of failure probability.
-Sixteen independent public attempts give
+One attempt therefore has `6.189058045848226` bits of failure probability.
+Seventeen independent public attempts give
 
 ```text
--log2(beta^16) = 105.41017865405837 bits.
+-log2(beta^17) = 105.21398677941984 bits.
 ```
 
 Including the bounded construction abort gives
 
 ```text
-Pr[public abort] <= 16*(128/p^6) + beta^16,
+Pr[public abort] <= 17*(128/p^6) + beta^17,
 ```
 
-which rounds to the same `105.41017865405837`-bit floor. The bounded q16
-sampler's cap-16/q3 union is separately `588.7966767164355` bits and is not
+which gives a `105.21398677941983`-bit public-abort floor. The bounded q18
+sampler's cap17/q3 union is separately `550.9238900176506` bits and is not
 the limiting term.
 
 ## Term-by-term soundness changes
@@ -128,8 +133,8 @@ terms:
 
 | term | Profile 23 change | bits |
 |---|---|---:|
-| polynomial batch | degree `27 -> 28` for width 29 | 108.31602011435538 |
-| final q16 miss | multiply only this event by 3 | 107.31692409651947 |
+| polynomial batch | degree `27 -> 28` for width 29 | 107.31602011435538 |
+| final q18 miss | multiply only this event by 3 | 110.18373913364348 |
 | nonzero gamma / three-point batch | numerator `29 -> 30` | 119.09310940170425 |
 | inactive-copy gamma claim | numerator `27 -> 28` | 119.19264507525517 |
 
@@ -137,24 +142,33 @@ Every other event is inherited unchanged and is listed individually in the
 JSON artifact. Their exact union is
 
 ```text
-event union                         106.62423467771788 bits
-after BCS boundary factor 32        101.62423467771788 bits
-after conservative factor 40        101.30230658283051 bits
+selected event union                106.70203348730290 bits
+BCS at T=1                          101.65763936794444 bits
+BCS at T=2^128                      106.70203180861958 bits
+selected factor-40 diagnostic       101.38010539241553 bits
 ```
 
-The refined analysis above applies the factor three only to the final q16
-miss and retains `101.30230658283051` bits after factor 40. The acceptance
-artifact also pins the coarser whole-ledger-times-three sensitivity floor,
-recomputed from Profile 23's own terms and 32 BCS boundaries, at
-`100.80652861422749` bits. The selected `101.30230658283051`-bit result is the
-headline; the coarse result is a deliberately pessimistic sensitivity. The
-`105.41017865405837` figure is only the cap-16
-rank-exhaustion subterm and must not be presented as whole-protocol soundness.
+The refined selector calculation is retained as a diagnostic. The
+conservative unselected event union is `106.79080600295417` bits;
+reconstructing the same work-normalized BCS endpoints and then applying a
+whole-ledger factor three gives the authorizing release floor
+`100.16144938287455` bits. The
+`105.21398677941984` figure is only the cap17 rank-exhaustion subterm and must
+not be presented as whole-protocol soundness.
 
-The BCS factor is 32 rather than Profile 22's 31. The prover-selected selector
-byte is a new message boundary after the final nonce and before q16. It may be
-merged away only by a compiler theorem for a combined final-nonce/selector
-record; the current ledger does not assume that theorem.
+The work-normalized BCS statement is explicit:
+
+```text
+epsilon_BCS(T)/T
+  <= (1 + R/T)*epsilon_round + 3*(T + 1/T)/2^lambda,
+R = 32, lambda = 256, 1 <= T <= 2^128.
+```
+
+Both interval endpoints are checked. In particular, at `T=1` the round-error
+multiplier is `1+R=33`, not 32. For the conservative ledger the endpoint floors are
+`101.74641188359571` bits at `T=1` and `106.79080421773332` bits at
+`T=2^128`. The prover-selected selector byte is a new message boundary after
+the final nonce and before q18; the current ledger does not merge it away.
 
 The factor-3 union applies only to the final query-miss event. Multiplying the
 whole soundness ledger by three is a valid but needlessly pessimistic bound.
@@ -194,13 +208,13 @@ Thus
 C = 3*305152 + 53892 + 8 + 637 = 969993.
 ```
 
-At `Q_H <= 2^128` and sixteen attempts:
+At `Q_H <= 2^128` and seventeen attempts:
 
 | EPRO term | bits |
 |---|---:|
-| one-sided real-vs-simulator leading no-prequery term | 104.11238518950232 |
-| programming collision lower bound | 209.22477047196247 |
-| six-work-nonce exhaustion lower bound | 48,408,806.06128344 |
+| one-sided real-vs-simulator leading no-prequery term | 104.02492234825198 |
+| programming collision lower bound | 209.04984478399368 |
+| six-work-nonce exhaustion lower bound | 96,817,618.62006654 |
 
 These are the numeric EPRO terms only. The inherited affine and PRG hybrids
 retain their separately stated assumptions.
@@ -210,9 +224,9 @@ computational model: Good23 gives an exact complete non-hash field simulator
 with `epsilon_aff=0`; SHA-256 expansion is inside the same programmable random
 oracle; and the fixed-boundary controller gives the declared one-event public
 channel. The one-sided real-vs-simulator complete-view bound is dominated by
-`2^-104.11238518950232`. The written two-witness reduction passes through that
+`2^-104.02492234825198`. The written two-witness reduction passes through that
 simulator and therefore has the conservative pairwise floor
-`103.11238518950232` bits. This is not statistical HVZK, a standard-model
+`103.02492234825198` bits. This is not statistical HVZK, a standard-model
 SHA-256 PRG claim, or protection for filesystem/timing/power/thermal/memory
 channels or remote-prover traffic; `epsilon_side=0` excludes them. The exact
 statement and
@@ -228,76 +242,67 @@ liveness, Johnson-event, BCS-factor and EPRO arithmetic. The formerly
 quarantined typed `D`/q3 prover-verifier path is integrated. The host worker
 now retains one common attempt, evaluates all three post-final schedules with
 the exact complete-`Good` predicate, serializes only the least good branch,
-retries only an exact all-bad result up to cap 16, and exposes one opaque
+retries only an exact all-bad result up to cap 17, and exposes one opaque
 candidate or one opaque failure. A distinct Profile-23 fixed-release edge
 publishes exactly one proof/abort result at the selected boundary. Valid
 end-to-end proofs for
 selectors 0, 1 and 2 now build and verify.
 
 This soundness/EPRO artifact did not by itself enable a default production
-tag. Its overlap-free unmined diagnostic measurements remain historical
-evidence: `1,195,306 CU` for read-only tag 59, `1,205,006 CU` for a
-program-owned mutation marker, and `1,207,339 CU` for canonical System marker
-creation. The fresh-attempt privacy regression is green in `141.00 s`, and
-the declared computational-HVZK theorem is closed.
+tag. The separate fail-closed release evaluation now records `released=true`,
+`status=released_all_required_gates_green`, and `35/35` passing gates in
+`results/stage2/profile23_one_transaction_release.json`. It binds a
+63,487-byte q18 proof with SHA-256
+`0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb`,
+a canonical statement sidecar with SHA-256
+`520a0a86e1d1918a5270622ac27182b1f5b6df2b624d68bbd2a2b6f927eebb14`,
+and a fresh 915,656-byte default SBF with SHA-256
+`da66a51b1f3ce95e907a87fca15fb9dc0cce66fd47646875ce2dff94879fd254`.
+Production tag 59 is `1,299,012 CU`; tag 60 is `1,300,905 CU` on the
+program-owned path and `1,303,236 CU` on canonical System creation, leaving
+`96,764 CU` of maximum-path headroom.
 
-The later production integration completed the gates that were outside this
-artifact's scope. `results/stage2/profile23_one_transaction_release.json`
-records `released=true` with all `30/30` required gates green. The
-certificate's one-transaction scope is atomic verification and mutation using
-a finalized, pre-uploaded proof account. Production tags 59 and 60 require the
+The authorizing conservative soundness floor is
+`100.16144938287455` bits. The q18 complete-view
+pairwise-witness floor is `103.02492234825198` bits in the declared SHA-256
+ROM/EPRO fixed-release-channel model; the corresponding real-vs-simulator
+bound is `104.02492234825198` bits. These theorem facts do not broaden the
+claim beyond their assumptions or side-channel exclusions.
+
+The intended certificate scope is atomic verification and mutation using a
+finalized, pre-uploaded proof account. Production tags 59 and 60 require the
 all-zero authority sentinel in bytes `8..40` of the unchanged 40-byte header;
 proof-account creation, chunk upload, and `FinalizeProof` are excluded.
-Append-only tag 62 seals the proof account, append-only tag 63 initializes the
-pool, and the frozen program id is
-`7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue`. The
-released mined proof is
-`results/stage2/proofs/atomic_state_only_profile23_v3_mined.bin`, `61,599`
-bytes, SHA-256
-`35c4e79316bf4a2af1951e5d2f41b6ebb4ebb7bd1e91a3ba93c52e549bfe7949`.
-The manifest-default production SBF is `6,870,048` bytes, SHA-256
-`6b64baf559dcddbd6f9b1af1205effeb6afae6a5746a44421e8826251fe4cffb`.
+Append-only tag 62 seals proof accounts and tag 63 initializes pools.
+The certificate is local release evidence, not a mainnet deployment or an
+external security audit; those remain separate blockers.
 
-Same-binary production tag 59 is `1,202,939 CU`. Literal production tag 60
-measures `1,204,792 CU` for the program-owned zeroed mutation account and
-`1,207,123 CU` for canonical System-owned account creation. The worst measured
-production path therefore has `192,877 CU` of
-headroom under the `1,400,000 CU` cap. The release certificate pins the
-selected Johnson soundness floor at `101.30230658283051` bits and records the
-Profile-23-own whole-ledger-times-three/BCS32 sensitivity at
-`100.80652861422749` bits. It also pins the complete-view pairwise-witness
-computational-hiding floor at `103.11238518950232` bits in the declared
-SHA-256 ROM/EPRO fixed-release-channel model. The corresponding
-real-vs-simulator bound is `104.11238518950232` bits. These release facts do
-not broaden either theorem beyond its stated assumptions or
-local-side-channel exclusions.
+## Superseded q16 production evidence (`2026-07-13`)
 
-The xtask acceptance and mutation commands accept `ASPIS_PROFILE23_PROOF` so
-the released mined bytes can be tested without replacing the committed
-historical unmined KAT.
+The earlier q16 release passed 30/30 gates. Its 61,599-byte mined proof,
+6,870,048-byte default SBF, and `1,207,123 CU` worst production path with
+`192,877 CU` headroom are retained as historical engineering evidence only.
+Its selected Johnson floor was `101.30230658283051` bits. The q16 unmined
+diagnostic CU rows (`1,195,306`, `1,205,006`, and `1,207,339 CU`) and its
+`141.00 s` fresh-attempt privacy run are likewise historical. None transfers
+to q18.
+
+The xtask acceptance and mutation commands accept both
+`ASPIS_PROFILE23_PROOF` and `ASPIS_PROFILE23_STATEMENT` so q18 mined bytes can
+be retested without replacing the committed unmined theorem fixture.
 
 ## Reproduction
 
 ```bash
 NO_DNA=1 cargo run -q -p aspis-prover \
-  --example profile23_soundness_epro_ledger
-
-NO_DNA=1 cargo run -q --release -p aspis-prover \
-  --example profile22_root_neutral_polynomial_kernel_rank -- \
-  results/stage2/proofs/atomic_state_only_profile22_v3_unmined.bin \
-  52e96f99756fe8fd2d8b7a700019b143d7eb549af1bf1ae987e99a75cadcd4c9
+  --example profile23_soundness_epro_ledger -- --calculation-only
 
 NO_DNA=1 cargo run -q --release -p aspis-prover \
   --example profile23_complete_good_product
 
-NO_DNA=1 cargo test -q -p aspis-prover --lib \
-  state_only_good23::tests
-
-NO_DNA=1 cargo test -q -p aspis-prover --lib \
-  state_only_profile22_release::tests
-
-NO_DNA=1 cargo check -q -p aspis-prover \
-  --example profile23_production_miner
+NO_DNA=1 cargo test --release -p aspis-prover --lib \
+  state_only_good23::tests::frozen_profile23_fixture_runs_exact_good23_on_all_selectors \
+  -- --ignored --nocapture
 ```
 
 Machine-readable result:
