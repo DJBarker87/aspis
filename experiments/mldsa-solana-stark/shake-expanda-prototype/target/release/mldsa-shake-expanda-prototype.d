@@ -1,1 +1,0 @@
-/Users/dominic/zk/experiments/mldsa-solana-stark/shake-expanda-prototype/target/release/mldsa-shake-expanda-prototype: /Users/dominic/zk/experiments/mldsa-solana-stark/shake-expanda-prototype/src/main.rs

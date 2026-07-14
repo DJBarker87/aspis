@@ -1,9 +1,0 @@
-[workspace]
-members = ["programs/stark-pqc-verifier"]
-
-[programs.devnet]
-stark_pqc_verifier = "CECNRbDxFQVfWiQwvG8qcSGPGSk8eLWraBCERcdL5DKT"
-
-[provider]
-cluster = "devnet"
-wallet  = "~/.config/solana/id.json"

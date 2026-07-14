@@ -1,5 +1,0 @@
-profile,stage,success,elapsed_ns,proof_bytes,error
-whir-m31-dev-v0,prove,true,2336500,4108,
-whir-m31-dev-v0,verify,true,,4108,
-whir-m31-solana-v0,prove,true,25789500,18316,
-whir-m31-solana-v0,verify,true,,18316,
