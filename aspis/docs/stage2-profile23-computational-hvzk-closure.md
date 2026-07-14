@@ -49,7 +49,7 @@ computationally indistinguishable with one-sided advantage at most
 epsilon_real_vs_sim
   <= A*C*Q_H / 2^256
      + binom(A*C,2) / 2^256
-     + 6*A*exp(-2^25),
+     + 6*A*exp(-2^27),
 
 C = 969,993.
 ```
@@ -59,7 +59,7 @@ At the declared bounds, the terms are respectively at most
 ```text
 2^-104.02492234825198
 2^-209.04984478399368
-2^-96,817,618.62006654.
+2^-193635243.91255844.
 ```
 
 The first term dominates, giving `104.02492234825198` bits for real versus
@@ -85,7 +85,7 @@ epsilon_real_vs_sim <= epsilon_aff
                     + epsilon_field_prg + epsilon_salt_prg
                     + A*C*Q_H/2^256
                     + binom(A*C,2)/2^256
-                    + 6*A*exp(-2^25)
+                    + 6*A*exp(-2^27)
                     + epsilon_side,
 
 epsilon_pairwise <= 2*epsilon_real_vs_sim.
@@ -298,11 +298,13 @@ witness-dependent leak. The fixture audit accepts all three Good23 selector
 branches and confirms that serialized selector `0` is the required least Good
 branch.
 
-The released canonically mined q18 production proof is 63,487 bytes with
+The released canonically mined q18 production proof is 66,367 bytes with
 SHA-256
-`0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb`.
+`f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53`.
 Its canonical statement sidecar has SHA-256
-`520a0a86e1d1918a5270622ac27182b1f5b6df2b624d68bbd2a2b6f927eebb14`.
+`976e9a7e001382025eaf81cfcb28ac609db966d4a9912511f54e2b702077b6de`.
+Its canonical public-input digest is
+`21d73e39be93112f986f52c7d683f2ab478890360a306af81110852ffb16a30a`.
 The production replay likewise accepts all three Good23 branches and confirms
 serialized and least-Good selector `0`.
 
@@ -354,8 +356,8 @@ fresh default-SBF identity, and exact CU reconciliation.
 `released=true`, `status=released_all_required_gates_green`, and `35/35`
 passing gates. Its fresh 915,656-byte default SBF has SHA-256
 `da66a51b1f3ce95e907a87fca15fb9dc0cce66fd47646875ce2dff94879fd254`.
-Tag 59 costs `1,299,012 CU`; tag 60 costs `1,300,905 CU` on the program-owned
-marker path and `1,303,236 CU` on canonical System creation, leaving `96,764
+Tag 59 costs `1,310,162 CU`; tag 60 costs `1,312,055 CU` on the program-owned
+marker path and `1,314,386 CU` on canonical System creation, leaving `85,614
 CU` of worst-path headroom below 1.4M. The same certificate binds the
 conservative soundness floor at `100.16144938287455` bits, alongside the
 declared-model hiding floors proved

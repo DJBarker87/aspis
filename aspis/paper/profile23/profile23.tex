@@ -1,0 +1,101 @@
+\documentclass[11pt]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
+\usepackage[capitalise,noabbrev]{cleveref}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{game}[theorem]{Game}
+\newtheorem{assumption}[theorem]{Assumption}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\Profile}{\textsc{Profile~23}}
+\newcommand{\RProfile}{R_{23}}
+\newcommand{\Fbase}{\mathbb{F}_{2^{31}-1}}
+\newcommand{\Qfield}{\mathbb{K}}
+\newcommand{\bits}{\,\mathrm{bits}}
+\newcommand{\RO}{\mathcal{H}}
+
+\input{macros-generated}
+
+\title{Aspis \Profile: Transparent Shielded-Spend Verification and\\
+Atomic State Update from a Pre-Uploaded Proof Account on Solana}
+\author{Anonymous Authors}
+\date{}
+\hypersetup{
+  pdftitle={Aspis Profile 23: Transparent Shielded-Spend Verification and Atomic State Update from a Pre-Uploaded Proof Account on Solana},
+  pdfauthor={Anonymous Authors},
+  pdfsubject={Transparent arguments and atomic Solana state transitions},
+  pdfkeywords={zero knowledge, transparent arguments, circle codes, Solana, shielded state}
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This paper presents \Profile, a transparent argument for a depth-20,
+one-input/one-output shielded-spend relation together with a Solana program
+that verifies the argument and atomically records the corresponding nullifier
+and pool-state transition.  The accepting instruction consumes a finalized,
+pre-uploaded proof account; proof-account creation, chunk upload, and
+finalization are separate setup transactions.  The polynomial-commitment
+layer is a custom circle-domain, WHIR-style multilinear protocol at rate
+$1/512$, with \ProfileQueryCount{} sampled query fibers and batch-work
+parameter $g=\ProfileBatchWork$.  Under the stated finite-parameter and
+boundary-state-restoration premises, the frozen event ledger and its
+32-boundary Fiat--Shamir reduction give a conservative
+\ProfileSoundnessBits-bit floor for work-normalized false acceptance per
+random-oracle query.  Under the stated affine-image premise, an explicit simulator gives
+\ProfileSimulationBits{} bits for a real view versus simulation and
+\ProfilePairwiseBits{} bits for pairwise witness hiding in the declared
+programmable-SHA-256 random-oracle, fixed Proof-or-Abort view.  The pinned
+implementation artifact contains a \ProfileProofBytes-byte proof and a
+\ProfileSbfBytes-byte Solana bytecode format (SBF) binary.  In the pinned
+local runtime configuration,
+the complete verification-and-mutation instruction consumes
+\ProfileComputeUnits{} compute units, leaving \ProfileComputeHeadroom{} below
+the \ProfileComputeLimit-unit transaction limit.  The security statements are
+argument soundness and computational hiding for the exact relation and
+declared view; they do not assert knowledge soundness or a standard-model
+zero-knowledge result.
+\end{abstract}
+
+\input{sections/introduction}
+\input{sections/background}
+
+\input{sections/relation}
+\input{sections/construction}
+
+\input{sections/soundness}
+\input{sections/hiding}
+
+\input{sections/implementation}
+\input{sections/evaluation}
+\input{sections/limitations}
+
+\input{sections/conclusion}
+
+\appendix
+\input{sections/appendices}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}

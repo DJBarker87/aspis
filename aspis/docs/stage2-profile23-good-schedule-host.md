@@ -148,17 +148,19 @@ bytes, SHA-256
 `a5ed698a32d815ffd95f8d3e0be62d16620d32e216a087a350852726fb6ca238`.
 It is not a production proof and cannot authorize release.
 
-The released production proof is 63,487 bytes with SHA-256
-`0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb`;
+The released production proof is 66,367 bytes with SHA-256
+`f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53`;
 its canonical statement sidecar has SHA-256
-`520a0a86e1d1918a5270622ac27182b1f5b6df2b624d68bbd2a2b6f927eebb14`.
+`976e9a7e001382025eaf81cfcb28ac609db966d4a9912511f54e2b702077b6de`.
+Its canonical public-input digest is
+`21d73e39be93112f986f52c7d683f2ab478890360a306af81110852ffb16a30a`.
 All three production Good23 branches accept and serialized selector `0` is
 the least Good branch. The freshly built default SBF is 915,656 bytes with
 SHA-256
 `da66a51b1f3ce95e907a87fca15fb9dc0cce66fd47646875ce2dff94879fd254`.
-Production tag 59 costs `1,299,012 CU`; tag 60 costs `1,300,905 CU` on the
-program-owned marker path and `1,303,236 CU` on canonical System creation.
-The maximum leaves `96,764 CU` below 1.4M.
+Production tag 59 costs `1,310,162 CU`; tag 60 costs `1,312,055 CU` on the
+program-owned marker path and `1,314,386 CU` on canonical System creation.
+The maximum leaves `85,614 CU` below 1.4M.
 
 `results/stage2/profile23_one_transaction_release.json` records
 `released=true`, `status=released_all_required_gates_green`, and `35/35`

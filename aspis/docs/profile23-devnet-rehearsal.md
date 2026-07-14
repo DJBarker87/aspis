@@ -1,7 +1,8 @@
 # Profile23 devnet rehearsal
 
-Status: implemented and compile-tested, but not executed. This workflow is
-strictly devnet rehearsal evidence; it cannot create a mainnet-beta claim.
+Status: executed successfully on Solana devnet on 2026-07-14. The final tag-60
+transaction was finalized at slot `476231605`; this remains strictly devnet
+rehearsal evidence and does not create a mainnet-beta claim.
 
 The command surfaces are deliberately separate:
 
@@ -37,7 +38,7 @@ NO_DNA=1 cargo run --release -p aspis-xtask -- \
 ```
 
 Readiness pins the exact devnet genesis
-`EtWTRABZaYq6iMfeYKouRu166VU2xqa1`, a nonempty entirely green declared release
+`EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG`, a nonempty entirely green declared release
 gate set with no failed gates, an exact read-only reconstruction of the complete
 release report from live code (ignoring only its generation timestamp), all
 release source hashes, exact proof/SBF and statement-sidecar release-instance
@@ -90,3 +91,39 @@ final signature is refetched from devnet to derive the finalized wire and
 message hashes. A future mainnet executor still needs independent handling and
 evidence for any auxiliary deployment-buffer transactions hidden inside the
 CLI workflow, plus the separately selected mainnet upgrade-authority policy.
+
+## Finalized q18/g37 rehearsal
+
+The released 66,367-byte proof and 915,656-byte SBF were exercised against
+program `7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue`. The fresh proof
+account used 104 uploads and the complete prerequisite lifecycle contained
+109 setup transactions. The successful invocation resumed from an explicit
+checkpoint only after the executor reconstructed three finalized signed
+transactions and validated the exact account state; recovered transactions
+were not resent.
+
+The final transaction is:
+
+```text
+signature: 3ofPbzRkqMEJZCM9vwKz96rLqRFtSg4d1GyqqVBEbogtwzmJodsWb2f7V4X83BLvuPXFsT6Yyf87PC1ZbLf1R7bx
+slot:      476231605
+CU:        1314332 simulated, 1314332 landed
+retry:     none
+```
+
+It advanced the pool sequence from 0 to 1, created the canonical nullifier
+marker, preserved the sealed proof-account image, and left duplicate
+simulation rejected. Post-finalization upload and second-finalization
+simulations also rejected. The Program and linked ProgramData account images
+were unchanged between the immediately-before-simulation and after-finality
+checkpoints. The program remained upgradeable under the recorded rehearsal
+authority.
+
+The completed mode-`0444` evidence file is 61,342 bytes and has SHA-256:
+
+```text
+360e38fc5db3b644586c29e7a872203e8f9507c9ddef52add776fefb5d300275
+```
+
+The public transaction can be inspected at
+`https://explorer.solana.com/tx/3ofPbzRkqMEJZCM9vwKz96rLqRFtSg4d1GyqqVBEbogtwzmJodsWb2f7V4X83BLvuPXFsT6Yyf87PC1ZbLf1R7bx?cluster=devnet`.

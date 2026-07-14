@@ -79,8 +79,8 @@ the rank maps depend on the frozen q18 layout and schedule, not the witness;
 the release gate must match the layout fingerprint and Good23 definition
 fingerprint to live code; and the production selector audit must be green on
 all three branches. The fixture replay and mined-proof all-selector repin are
-green. The released 63,487-byte production proof has SHA-256
-`0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb`;
+green. The released 66,367-byte production proof has SHA-256
+`f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53`;
 it is not assumed byte-equal to the theorem fixture.
 
 The superseded q16 unmined diagnostic SBF path was measured at `1,195,306 CU`
@@ -92,14 +92,16 @@ transfer to the q18 wire.
 
 `results/stage2/profile23_one_transaction_release.json` currently records
 `released=true`, `status=released_all_required_gates_green`, and `35/35`
-passing gates. It binds the 63,487-byte proof above and its statement sidecar,
+passing gates. It binds the 66,367-byte proof above and its statement sidecar,
 whose SHA-256 is
-`520a0a86e1d1918a5270622ac27182b1f5b6df2b624d68bbd2a2b6f927eebb14`.
+`976e9a7e001382025eaf81cfcb28ac609db966d4a9912511f54e2b702077b6de`.
+The canonical public-input digest is
+`21d73e39be93112f986f52c7d683f2ab478890360a306af81110852ffb16a30a`.
 The fresh default SBF is 915,656 bytes with SHA-256
 `da66a51b1f3ce95e907a87fca15fb9dc0cce66fd47646875ce2dff94879fd254`.
-Production tag 59 costs `1,299,012 CU`; tag 60 costs `1,300,905 CU` on the
-program-owned path and `1,303,236 CU` on canonical System creation. The
-maximum leaves `96,764 CU` below 1.4M.
+Production tag 59 costs `1,310,162 CU`; tag 60 costs `1,312,055 CU` on the
+program-owned path and `1,314,386 CU` on canonical System creation. The
+maximum leaves `85,614 CU` below 1.4M.
 
 The proof-independent conservative Johnson/BCS release floor is
 `100.16144938287455` bits. The

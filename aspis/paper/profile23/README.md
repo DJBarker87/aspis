@@ -1,15 +1,14 @@
-# Profile 23 manuscript skeleton
+# Profile 23 manuscript
 
-This directory is the future source root for the Profile 23 paper. It contains
-no publication claim yet. The authoritative writing and release rules are in
-`docs/profile23-paper-plan.md`.
+This directory contains the standalone Profile 23 LaTeX manuscript, its
+bibliography, claim-to-evidence matrix, and artifact notes. Build the paper
+from `profile23.tex`.
 
-**Current profile status (`2026-07-14`):** the active q18/cap17 local release
-is green at 35/35 gates. It binds the Good23, soundness, declared-model
-computational-hiding, canonically mined proof, and production host/SBF KAT
-artifacts into one certificate. The `2026-07-13` q16/cap16 certificate is
-retained as superseded historical evidence and must not be cited as the
-current Profile-23 release.
+**Current profile status (`2026-07-14`):** the active q18/cap17 release is
+green at 35/35 gates and the exact released proof/program pair has completed a
+finalized devnet rehearsal. The final tag-60 transaction landed at slot
+`476231605` with 1,314,332 CU. The `2026-07-13` q16/cap16 certificate is
+superseded historical evidence and is not the current Profile-23 release.
 
 ## Working title
 
@@ -36,10 +35,11 @@ title unless their separate release gates are green.
    real view versus simulation and 103.025 bits for two-witness pairwise
    computational hiding in the declared SHA-256 programmable-random-oracle,
    fixed Proof-or-Abort channel model.
-4. The 35/35 local release binds a 63,487-byte mined q18 proof, a 915,656-byte
+4. The 35/35 local release binds a 66,367-byte mined q18 proof, a 915,656-byte
    manifest-default SBF, and a worst literal tag-60 System-create path of
-   1,303,236 CU, leaving 96,764 CU below the 1.4M cap. These are local
-   evaluation results, not deployment or mainnet evidence. The 61,599-byte
+   1,314,386 CU, leaving 85,614 CU below the 1.4M cap. The same identities
+   completed a finalized devnet tag-60 transaction at 1,314,332 CU; neither
+   result is mainnet evidence. The 61,599-byte
    proof, 6,870,048-byte SBF, and 1,207,123-CU System-create path belong to
    the superseded q16 certificate and do not transfer to q18.
 
@@ -64,7 +64,7 @@ the hiding claim is neither statistical HVZK nor a local-side-channel result.
 
 ```text
 paper/profile23/
-  manuscript.tex
+  profile23.tex
   macros-generated.tex       # generated only from frozen JSON artifacts
   references.bib
   claim-evidence-matrix.md

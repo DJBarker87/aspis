@@ -1,6 +1,6 @@
 # Profile 23 claim-to-evidence matrix
 
-Status: manuscript scaffold. This matrix is not itself evidence and must not
+Status: manuscript draft. This matrix is not itself evidence and must not
 be cited as a proof. The canonical numeric source is
 `results/stage2/profile23_one_transaction_release.json`; generated paper
 macros must read that file and reject any cross-artifact mismatch.
@@ -17,7 +17,8 @@ Status vocabulary:
 - `experiment-required`: the paper artifact still needs the named run/data;
 - `local-release-green`: the pinned q18 local release certificate reports all
   required gates green; this is not deployment, audit, or mainnet evidence;
-  and
+- `devnet-evidence-green`: the exact released proof/program transaction and
+  post-state are bound by the immutable finalized devnet evidence object; and
 - `blocked`: public claim prohibited until the stated external gate closes.
 
 <!-- markdownlint-disable MD013 -->
@@ -35,20 +36,21 @@ Status vocabulary:
 | C09 | selector and Abort do not leak the witness | Joint schedule/Good/least-selector/all-bad law is witness-independent; privacy theorem includes Abort | `lem:selection-hiding-abort` | hiding-closure q3/cap17 artifact | proof-required |
 | C10 | Good23 gives exact affine simulation | Image equality, dimensions/rank/kernel cardinality, constant-size mask preimages, uniform induced image distribution | `lem:good23-product`; `lem:complete-affine-image`; `lem:uniform-mask-preimages` | Good23 product and rank-transfer artifacts | proof-required; independent checker required |
 | C11 | EPRO/private-Merkle/work simulation | Explicit adjacent hybrids, distinct-input inventory, prequeries, collisions, adaptive later queries, canonical work, serialization/finalization/mutation | `lem:epro-complete-view` | hiding-closure and soundness/EPRO artifacts | proof-required |
-| C12 | canonical proof identity and size | The released canonical q18 mined local proof is 63,487 bytes; schedule-dependent length is public | generated artifact table | release JSON `proof` object and proof bytes | local-release-green; q16 identity is historical only |
-| C13 | default SBF identity and size | Released 915,656-byte q18 manifest-default local build; not a deployed-program statement | generated artifact table and Tier-2 byte rebuild | release JSON `default_production_sbf` object | local-release-green; clean reproduction required |
-| C14 | verifier fits the CU cap locally | Worst literal q18 tag-60 path in the pinned local Agave/runtime/heap/account context; evaluated, not theorem-derived | integrated CU reconciliation and Tier-3 replay | release JSON CU/headroom fields and production mutation KAT | local-release-green; independent replay required |
+| C12 | canonical proof identity and size | The released canonical q18 mined proof is 66,367 bytes; schedule-dependent length is public | generated artifact table | release JSON `proof` object and proof bytes | local-release-green; devnet-evidence-green; q16 identity is historical only |
+| C13 | default SBF identity and size | Released 915,656-byte q18 manifest-default build, byte-bound to the devnet ProgramData snapshot | generated artifact table, release rebuild, devnet continuity checks | release JSON `default_production_sbf` object; finalized devnet evidence | local-release-green; devnet-evidence-green |
+| C14 | verifier fits the CU cap | Worst literal local tag-60 path is 1,314,386 CU; the finalized devnet transaction used 1,314,332 CU under the 1.4M limit | integrated CU reconciliation and finalized transaction replay | release JSON CU/headroom fields; finalized devnet evidence | local-release-green; devnet-evidence-green |
 | C15 | one transaction | Exactly verification plus nullifier/pool mutation consuming a finalized, pre-uploaded proof account | transaction-scope definition and raw transaction | release JSON `scope` object | local-release-green; title/abstract qualifier mandatory |
 | C16 | finalized proof account is required | Zero-sentinel and ownership checks in the frozen program; no intrinsic chain-level immutability claim | `lem:finalized-account-state-machine`; mutation/finalization matrix | source, release gates, Tier-1/Tier-3 tests | proof-required |
 | C17 | atomic nullifier and pool transition | Verify-before-write order, precondition recheck, exact post-images, rollback and lock assumptions | `prop:atomic-refinement`; raw validator account images | q18 production mutation KAT and adversarial tests | local-release-green; proposition/replay required |
-| C18 | configured local program address | Address belongs to the frozen local configuration only | generated artifact table | source/build configuration | artifact-green; never use as deployment evidence |
+| C18 | configured program address | The address is the frozen configuration and the observed devnet deployment; it is not a mainnet address | generated artifact table and Program/ProgramData snapshots | source/build configuration; finalized devnet evidence | devnet-evidence-green |
 | C19 | deployed/mainnet result | Successful finalized transaction bound to exact ProgramData/SBF/proof/accounts/CU | immutable mainnet evidence object | none yet | blocked |
 | C20 | historical priority or “first” | Exact qualified claim only after mainnet gate and publication-day rescan | dated novelty method and evidence | novelty artifact plus future mainnet evidence | blocked |
 | C21 | audited or production-ready | Requires independent audit and operational readiness evidence beyond tests | external reports | none | blocked |
-| C22 | setup lifecycle cost | Account creation, chunks, readback, finalization, transactions, CU, fees, rent/storage, latency | lifecycle experiment table | new raw Tier-3/Tier-5 artifacts | experiment-required |
+| C22 | setup lifecycle cost | Fresh release instance uses 109 setup transactions including 104 uploads; evidence records signatures, slots, CU and rent allocation | lifecycle experiment table | finalized devnet evidence | devnet-evidence-green; wall-clock distribution remains future work |
 | C23 | prover/miner cost | Wall time, memory, q3 attempts, Abort rate, PoW mining, complete time-to-spend | prover/miner experiment table | new raw Tier-5 artifacts | experiment-required |
 | C24 | throughput and contention | Same/different nullifier and pool workloads; writable locks, per-slot throughput and DoS limitations | contention experiment table | new raw validator artifacts | experiment-required |
 | C25 | program immutability | Requires Program/ProgramData linkage, byte identity, capacity, finalized slot, and no upgrade authority | finalized-account theorem assumption plus deployment evidence | none for a deployment | blocked; local paper must state upgrade assumption |
+| C26 | finalized devnet rehearsal | Exact release proof/SBF, 109 setup transactions, byte-identical signed simulation/submission, slot 476231605, sequence 0-to-1, nullifier creation, post-state and negative replay checks | evaluation section and raw transaction | mode-0444 devnet evidence SHA-256 `360e38fc5db3b644586c29e7a872203e8f9507c9ddef52add776fefb5d300275` | devnet-evidence-green; not mainnet or audit evidence |
 
 <!-- markdownlint-enable MD013 -->
 

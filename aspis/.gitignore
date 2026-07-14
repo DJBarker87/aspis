@@ -4,3 +4,12 @@
 /results/stage2/profile23-mask-nonce-ledger*
 /results/stage2/proofs/*guarded_private*
 /results/stage2/proofs/atomic_state_only_profile23_v3_q18_mined.*
+
+# LaTeX build intermediates (keep publication PDFs explicit).
+paper/profile23/*.aux
+paper/profile23/*.bbl
+paper/profile23/*.blg
+paper/profile23/*.fdb_latexmk
+paper/profile23/*.fls
+paper/profile23/*.log
+paper/profile23/*.out

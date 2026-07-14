@@ -1,0 +1,298 @@
+\section{Implementation}
+\label{sec:implementation}
+
+The implementation is a Rust workspace containing the prover, the native
+verifier, the release evaluator, and a Solana SBF verifier program.  The
+on-chain program uses a deliberately small production dispatcher; legacy and
+diagnostic entry points are not linked into the release binary.  This section
+specifies the byte formats and state transition implemented by that binary.
+
+\subsection{Canonical public statement}
+\label{sec:implementation-statement}
+
+The atomic public statement is
+\[
+  x=(P,s,A,\nu,C_{\mathsf{out}},A',a,f),
+\]
+where \(P\) is the pool account address, \(s\) is its sequence number, \(A\)
+and \(A'\) are the current and next anchors, \(\nu\) is the nullifier,
+\(C_{\mathsf{out}}\) is the output commitment, \(a\) is the asset identifier,
+and \(f\) is the fee.  Table~\ref{tab:statement-wire} gives the complete
+184-byte encoding.  All multibyte integers are little endian.  Each 32-byte
+digest is eight canonical M31 limbs, each encoded as a four-byte integer less
+than \(2^{31}-1\).  The asset identifier is also required to be canonical in
+M31, and the fee is required to be less than \(2^{30}\).
+
+\begin{table}[t]
+  \centering
+  \small
+  \caption{Canonical atomic-payment statement payload.}
+  \label{tab:statement-wire}
+  \begin{tabular}{r r l}
+    \toprule
+    Offset & Bytes & Field \\
+    \midrule
+    0   & 1  & version \(=3\) \\
+    1   & 1  & private Merkle depth \(=20\) \\
+    2   & 6  & reserved, all zero \\
+    8   & 32 & pool address \(P\) \\
+    40  & 8  & sequence \(s\) \\
+    48  & 32 & current anchor \(A\) \\
+    80  & 32 & nullifier \(\nu\) \\
+    112 & 32 & output commitment \(C_{\mathsf{out}}\) \\
+    144 & 32 & output anchor \(A'\) \\
+    176 & 4  & asset identifier \(a\) \\
+    180 & 4  & fee \(f\) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The transcript binding is
+\[
+  d_x=\operatorname{SHA256}(
+  \mathtt{aspis/atomic-payment-statement/v3}\mathbin\|\mathsf{encode}(x)).
+\]
+On chain, \(P\) is taken from the supplied pool account and \(s\) from the
+decoded pool state.  They are not accepted as caller-provided instruction
+fields.  This ensures that the statement checked by the proof is the statement
+for the state account that the transaction will mutate.
+
+\subsection{Proof serialization}
+\label{sec:implementation-proof-wire}
+
+\Profile{} has a fixed 6,785-byte prefix followed by five authenticated opening
+sections.  The first 6,736 bytes retain the base state-only layout; \Profile{}
+appends three evaluations of the zero-factor \(D\) lane and one selector byte.
+Table~\ref{tab:proof-prefix} is the normative prefix map.
+
+\begin{table}[t]
+  \centering
+  \small
+  \caption{\Profile{} fixed proof prefix.}
+  \label{tab:proof-prefix}
+  \begin{tabular}{r r l}
+    \toprule
+    Byte range & Bytes & Contents \\
+    \midrule
+    0--15       & 16   & versioned proof header \\
+    16--47      & 32   & mask nonce \\
+    48--79      & 32   & first-phase commitment root \\
+    80--111     & 32   & second-phase commitment root \\
+    112--127    & 16   & initial mask claim \\
+    128--4607   & 4480 & masked sumcheck \\
+    4608--5951  & 1344 & 84 statement evaluations in QM31 \\
+    5952--6623  & 672  & four fold-round records \\
+    6624--6687  & 64   & final polynomial \\
+    6688--6695  & 8    & final work nonce \\
+    6696--6727  & 32   & four fold work nonces \\
+    6728--6735  & 8    & batch work nonce \\
+    6736--6783  & 48   & three \(D\)-lane claims in QM31 \\
+    6784         & 1    & query-branch selector \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Physical position and transcript position are intentionally distinct for the
+append-only extension.  The three \(D\)-lane claims are read from offsets
+6736--6783 but absorbed with the other statement claims, before batch work and
+the layer-combination challenge.  The selector is absorbed after the final
+work nonce.  The parser checks canonical field encodings and the complete
+profile header before replaying the transcript.
+
+After the prefix, the proof contains the five sections in
+Table~\ref{tab:opening-geometry}.  For a section with value width \(w\), the
+wire format is
+\[
+  n_{16}\;\mathbin\|\;
+  \bigl(\mathsf{value}_{w}\mathbin\|\mathsf{salt}_{32}\bigr)^n
+  \;\mathbin\|\;m_{32}\;\mathbin\|\;
+  \mathsf{frontier}_{32m},
+\]
+where \(n_{16}\) and \(m_{32}\) are little-endian counters.  Query indices are
+derived from the transcript and are not serialized.  The parser requires the
+records to match the sorted, de-duplicated derived indices, authenticates each
+\(\mathsf{value}\mathbin\|\mathsf{salt}\) record against its commitment root,
+and rejects any byte remaining after the fifth section.
+
+\begin{table}[t]
+  \centering
+  \small
+  \caption{Authenticated opening geometry.  Widths exclude the 32-byte leaf
+  salt.}
+  \label{tab:opening-geometry}
+  \begin{tabular}{l r r}
+    \toprule
+    Tree & Binary depth & Value width (bytes) \\
+    \midrule
+    first phase, layer zero  & 17 & 416 \\
+    second phase, layer zero & 17 & 192 \\
+    later layer 0            & 15 & 64  \\
+    later layer 1            & 13 & 64  \\
+    later layer 2            & 11 & 64  \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The common transcript state is cloned into three post-final branches.  Branch
+\(b\in\{0,1,2\}\) absorbs its branch label, derives an 18-query schedule, and
+evaluates \(\mathsf{Good}_{23}\).  The prover and release evaluator serialize the
+least-index successful branch and only that branch's openings.  The on-chain
+verifier checks the serialized branch completely; least-\(\mathsf{Good}_{23}\)
+selection is additionally enforced when the concrete proof is admitted by the
+release evaluator.
+
+\subsection{Accounts and proof lifecycle}
+\label{sec:implementation-accounts}
+
+Solana accounts provide persistent byte arrays with explicit ownership and
+writable locking~\cite{SolanaAccounts,SolanaTransactions}.  \Profile{} uses a
+proof account, a pool account, and a nullifier-marker account.
+
+\paragraph{Proof account.}
+The proof-account image is
+\[
+  \mathtt{ASPU}\;\mathbin\|\;
+  \mathsf{proof\_len}_{32}\;\mathbin\|\;
+  \mathsf{upload\_authority}_{32}\;\mathbin\|\;
+  \mathsf{proof}[\mathsf{proof\_len}].
+\]
+The 40-byte header is followed immediately by the proof.  Tag~0 initializes a
+zeroed, program-owned account; tag~1 writes an in-range chunk after checking
+the upload authority.  The lifecycle deliberately permits authorized
+overwrites before sealing.  It does not maintain a chunk bitmap, so the
+executor compares the complete uploaded account image with the expected image
+before invoking tag~62.  Tag~62 seals the account by replacing the authority
+with 32 zero bytes.  Production verification requires this zero-authority
+sentinel, and subsequent upload or finalization calls fail the authority
+check.
+
+For the 66,367-byte release proof, the exact account allocation is 66,407
+bytes.  With 640-byte uploads, the fresh setup uses 104 upload transactions:
+103 full chunks and one 447-byte final chunk.  Excluding program deployment,
+the deterministic fresh-account schedule is therefore:
+\begin{enumerate}
+  \item create the 48-byte pool account and initialize it with tag~63;
+  \item create the 66,407-byte proof account and initialize it with tag~0;
+  \item submit 104 tag~1 upload transactions; and
+  \item seal the proof account with tag~62.
+\end{enumerate}
+The two system-account creations, the two initialization calls, the uploads,
+and finalization total 109 setup transactions.  The subsequent tag~60 call is
+a separate, single transaction.
+
+\paragraph{Pool account.}
+The 48-byte pool image is
+\[
+  \mathtt{ASPS}\mathbin\|1\mathbin\|0^3
+  \mathbin\|s_{64}\mathbin\|A_{32}.
+\]
+Tag~63 accepts only a zeroed, program-owned, writable account that also signs
+the initialization transaction.  It checks the anchor encoding and that
+\(s+1\) does not overflow before writing the initial state.
+
+\paragraph{Nullifier marker.}
+The canonical marker address is the program-derived address with seeds
+\[
+  (\mathtt{aspis-nullifier-v1},\nu).
+\]
+The pool address is intentionally not a PDA seed.  It is recorded in the
+72-byte marker image
+\[
+  \mathtt{ASPN}\mathbin\|1\mathbin\|0^3
+  \mathbin\|P_{32}\mathbin\|\nu_{32}.
+\]
+Consequently one nullifier has one canonical marker address for the deployed
+program, while the marker contents retain the pool to which it was applied.
+
+\subsection{Production instruction surface}
+\label{sec:implementation-dispatch}
+
+The release binary accepts only the six lifecycle and verification tags in
+Table~\ref{tab:production-tags}.  The same table includes tag~61, which is
+retained as an explicit fixed failure for the former diagnostic mutation path;
+all other tags are rejected before account processing.  Fixed-width fields are
+decoded directly, without linking the historical generic instruction
+dispatcher.
+
+\begin{table}[t]
+  \centering
+  \small
+  \caption{Minimal \Profile{} production instruction surface.}
+  \label{tab:production-tags}
+  \begin{tabular}{r r l}
+    \toprule
+    Tag & Data bytes & Operation \\
+    \midrule
+    0  & 5       & initialize proof account \\
+    1  & \(9+n\) & upload \(n\)-byte proof chunk \\
+    59 & 178     & read-only production verification \\
+    60 & 137     & verify and apply atomic transition \\
+    61 & 1       & explicit fail-closed diagnostic tag \\
+    62 & 1       & finalize proof account \\
+    63 & 41      & initialize pool account \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The 137-byte tag~60 payload consists of the tag byte, four 32-byte digests
+\((A,\nu,C_{\mathsf{out}},A')\), a four-byte asset identifier, and a four-byte
+fee.  The transaction supplies the five accounts in
+Table~\ref{tab:tag60-accounts} in exactly that order.
+
+\begin{table}[t]
+  \centering
+  \small
+  \caption{Tag~60 account interface.}
+  \label{tab:tag60-accounts}
+  \begin{tabular}{r l l}
+    \toprule
+    Index & Access & Account \\
+    \midrule
+    0 & read only       & finalized program-owned proof account \\
+    1 & writable        & program-owned pool account \\
+    2 & writable        & canonical nullifier PDA \\
+    3 & signer, writable& system-owned fee payer \\
+    4 & read only       & executable System Program \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Atomic tag~60 transition}
+\label{sec:implementation-atomic}
+
+The tag~60 implementation uses the following order.
+\begin{enumerate}
+  \item It validates ownership, signer and writable flags, account
+  distinctness, the canonical nullifier PDA, the current pool anchor, and
+  sequence non-overflow.  A program-owned marker must be exactly 72 zero
+  bytes; alternatively, the canonical PDA may be an empty System
+  Program-owned account.
+  \item It constructs the canonical statement using the actual pool address
+  and decoded sequence, then computes the statement digest.
+  \item It loads the finalized proof and runs the complete production
+  \Profile{} verifier.  No cross-program invocation (CPI) and no account-data
+  write occurs before this
+  verifier returns success.
+  \item If the marker account is absent, it is created at the canonical PDA\@.
+  A prefunded empty PDA is topped up, allocated, and assigned as necessary.
+  The alternative program-owned-zero path requires no System Program CPI\@.
+  \item It reacquires mutable borrows, decodes and rechecks both state
+  preconditions, constructs both final account images, writes
+  \((P,\nu)\) to the marker, and replaces \((s,A)\) in the pool with
+  \((s+1,A')\).
+\end{enumerate}
+
+The final transaction contains two Compute Budget instructions---a
+1,400,000-CU limit and a 262,144-byte heap request---followed by one tag~60
+application instruction.  Solana transaction rollback covers both direct
+writes and the marker-creation CPI, while writable locks on the pool and
+canonical marker serialize conflicting spends~\cite{SolanaTransactions,
+SolanaComputeBudget}.  A duplicate therefore observes either the existing
+marker or the advanced pool state and is rejected.
+
+The term \emph{one transaction} refers precisely to this verification and
+state transition from a previously finalized proof account.  Program
+deployment, pool initialization, proof-account creation, proof upload, and
+proof finalization are setup operations.  Tag~60 updates commitment and
+nullifier state; it does not invoke a Solana Program Library (SPL) token
+program or transfer user funds.

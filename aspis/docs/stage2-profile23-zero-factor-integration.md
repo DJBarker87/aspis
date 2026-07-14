@@ -98,15 +98,16 @@ The fresh q18 build and production-mined tag-59/tag-60 KAT are green:
 
 | q18 release item | value |
 |---|---:|
-| mined proof bytes | 63,487 |
-| mined proof SHA-256 | `0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb` |
-| statement SHA-256 | `520a0a86e1d1918a5270622ac27182b1f5b6df2b624d68bbd2a2b6f927eebb14` |
+| mined proof bytes | 66,367 |
+| mined proof SHA-256 | `f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53` |
+| statement SHA-256 | `976e9a7e001382025eaf81cfcb28ac609db966d4a9912511f54e2b702077b6de` |
+| canonical public-input digest | `21d73e39be93112f986f52c7d683f2ab478890360a306af81110852ffb16a30a` |
 | default SBF bytes | 915,656 |
 | default SBF SHA-256 | `da66a51b1f3ce95e907a87fca15fb9dc0cce66fd47646875ce2dff94879fd254` |
-| production tag 59 | 1,299,012 CU |
-| tag 60, program-owned zeroed marker | 1,300,905 CU |
-| tag 60, canonical System creation | 1,303,236 CU |
-| worst-path headroom below 1.4M | 96,764 CU |
+| production tag 59 | 1,310,162 CU |
+| tag 60, program-owned zeroed marker | 1,312,055 CU |
+| tag 60, canonical System creation | 1,314,386 CU |
+| worst-path headroom below 1.4M | 85,614 CU |
 
 The verifier's boxed-phase stack fix remains in the active code. The q16
 values below are retained only as historical evidence and are not repinned to
@@ -171,9 +172,9 @@ simulated public view rather than a witness-dependent release channel.
 The harness reads a q18 mined proof from `ASPIS_PROFILE23_PROOF` and its
 statement from `ASPIS_PROFILE23_STATEMENT` without replacing the committed
 unmined fixture. The booked release used
-`results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.bin` and its
-`.statement.json` sidecar. Run acceptance first so mutation can require the
-same hash, statement, and PoW classification:
+`results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.bin`
+and its `.statement.json` sidecar. Run acceptance first so mutation can
+require the same hash, statement, and PoW classification:
 
 ```bash
 ASPIS_PROFILE23_PROOF=/absolute/path/profile23-q18-mined.bin \
