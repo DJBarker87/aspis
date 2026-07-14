@@ -182,16 +182,16 @@ fn profile23_d_tail_roundtrip_and_corruption_teeth() {
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect::<String>();
-    assert_eq!(built.bytes.len(), 59_679);
+    assert_eq!(built.bytes.len(), 67_327);
     assert_eq!(
         sha256,
-        "07f8258f9297bd19d007b5bebdfbb710e8e9e44dcc2277f8cf7a6148db6ce902"
+        "a5ed698a32d815ffd95f8d3e0be62d16620d32e216a087a350852726fb6ca238"
     );
     assert_eq!(
         built.openings.section_bytes,
-        [16_518, 12_934, 9_350, 7_814, 6_278]
+        [18_790, 14_758, 10_726, 8_998, 7_270]
     );
-    assert_eq!(built.openings.frontier_nodes, [292, 292, 244, 196, 148]);
+    assert_eq!(built.openings.frontier_nodes, [335, 335, 281, 227, 173]);
     eprintln!("profile23_len={} sha256={sha256}", built.bytes.len());
 }
 
@@ -226,6 +226,6 @@ fn profile23_all_three_selectors_build_and_verify() {
         )
         .unwrap();
         assert_eq!(verified.schedule.queries, built.schedule.queries);
-        assert_eq!(verified.schedule.query_count, 16);
+        assert_eq!(verified.schedule.query_count, 18);
     }
 }

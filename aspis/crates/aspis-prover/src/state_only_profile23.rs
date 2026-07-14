@@ -11,7 +11,7 @@ use aspis_core::circle_line_merkle::CIRCLE_LINE_TAGS;
 use aspis_core::circle_merkle::{CIRCLE_C1_LAYER0_TAG, CIRCLE_C2_LAYER0_TAG};
 use aspis_core::circle_prefix::{
     CandidatePrefixError, CANDIDATE_FINAL_POLY_LEN, CANDIDATE_NONCE_LEN, CANDIDATE_OOD_SAMPLES,
-    CANDIDATE_ROUND_COUNT, RATE16_HARDENED_FOLD_POW_BITS,
+    CANDIDATE_ROUND_COUNT,
 };
 use aspis_core::field::QM31;
 use aspis_core::proof::{HEADER_LEN, M31_CIRCLE_BASIS_DISCRIMINATOR};
@@ -20,8 +20,10 @@ use aspis_core::state_only_prefix::{
     run_atomic_state_only_profile23_prefix_schedule_host_v3,
     run_atomic_state_only_profile23_transcript_schedule_host_unmined_for_diagnostics_v3,
     StateOnlyProfile23Prefix, StateOnlyTranscriptError, StateOnlyTranscriptScheduleResult,
-    STATE_ONLY_LOG_ROWS, STATE_ONLY_PROFILE23_D_CLAIMS_LEN, STATE_ONLY_PROFILE23_GRINDING_BITS,
-    STATE_ONLY_PROFILE23_PREFIX_LEN, STATE_ONLY_PROFILE23_ZERO_FACTOR_SHAPE,
+    STATE_ONLY_LOG_ROWS, STATE_ONLY_PROFILE23_D_CLAIMS_LEN,
+    STATE_ONLY_PROFILE23_FOLD_GRINDING_BITS, STATE_ONLY_PROFILE23_GRINDING_BITS,
+    STATE_ONLY_PROFILE23_PREFIX_LEN, STATE_ONLY_PROFILE23_QUERY_COUNT,
+    STATE_ONLY_PROFILE23_ZERO_FACTOR_SHAPE,
 };
 use aspis_core::state_only_private_merkle::STATE_ONLY_PRIVATE_LEAF_SALT_BYTES;
 use aspis_core::state_only_profile23_openings::StateOnlyProfile23OpeningRoots;
@@ -825,10 +827,15 @@ where
         }
         let polynomial = relation.polynomial()?;
         absorb_relation_sumcheck(&mut transcript, round, &polynomial);
-        fold_nonces[round] =
-            pow_nonce(&transcript, RATE16_HARDENED_FOLD_POW_BITS[round], pow_mode)?;
-        pow_valid &=
-            transcript.grinding_ok(fold_nonces[round], RATE16_HARDENED_FOLD_POW_BITS[round]);
+        fold_nonces[round] = pow_nonce(
+            &transcript,
+            STATE_ONLY_PROFILE23_FOLD_GRINDING_BITS[round],
+            pow_mode,
+        )?;
+        pow_valid &= transcript.grinding_ok(
+            fold_nonces[round],
+            STATE_ONLY_PROFILE23_FOLD_GRINDING_BITS[round],
+        );
         absorb_fold_pow(&mut transcript, round, fold_nonces[round]);
         alphas[round] = transcript
             .challenge_qm31()
@@ -897,7 +904,9 @@ where
                 &parsed,
                 &statement_digest,
             )?;
-        if schedule.alpha != alphas || schedule.query_count != 16 {
+        if schedule.alpha != alphas
+            || schedule.query_count != usize::from(STATE_ONLY_PROFILE23_QUERY_COUNT)
+        {
             return Err(StateOnlyProfile23BuildError::Consistency(
                 "profile23 candidate replay",
             ));
@@ -1012,7 +1021,7 @@ pub fn build_hiding_atomic_state_only_profile23_proof_v3(
 /// single common commitment/fold transcript, derives all three independent
 /// post-final selector schedules, evaluates the complete frozen Good23
 /// product on every branch, and serializes only the least good branch. At
-/// most sixteen complete locally-mined attempts are made. Rejected candidate
+/// most seventeen complete locally-mined attempts are made. Rejected candidate
 /// buffers are scrubbed and every controlled failure is collapsed to one
 /// opaque error.
 pub fn build_hiding_atomic_state_only_profile23_first_good_v3(

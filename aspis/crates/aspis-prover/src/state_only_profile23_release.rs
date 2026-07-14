@@ -3,7 +3,7 @@
 //! The common controller is shared with Profile22 so timing, exact-boundary
 //! tie handling, single-publication, generic abort, and drop-time scrubbing
 //! have one implementation. The candidate type remains distinct and opaque:
-//! only the mined cap-16 Good23 worker can construct it. Profile23 exposes
+//! only the mined cap-17 Good23 worker can construct it. Profile23 exposes
 //! distinct channel/result types so a wallet cannot accidentally route its
 //! proof through a Profile22-tagged publication edge.
 

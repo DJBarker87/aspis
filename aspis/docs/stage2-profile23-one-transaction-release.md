@@ -1,9 +1,11 @@
 # Profile 23 one-transaction release gate
 
-Status on 2026-07-13: **released, 30/30 fail-closed gates green.** The frozen
-61,599-byte mined proof is consumed only from a sealed proof account, and the
-manifest-default production binary is the exact binary exercised by the
-production KAT.
+Status on 2026-07-14: **the local q18/cap17 release is green with `35/35`
+gates.** The certificate binds the proof-independent Good23, soundness, and
+declared-model hiding artifacts to a canonically mined q18 proof, production
+host/SBF acceptance and mutation KATs, and a fresh default SBF. The 2026-07-13
+q16/cap16 `30/30` certificate is superseded historical evidence, not the
+current Profile-23 release.
 
 Run:
 
@@ -12,11 +14,14 @@ NO_DNA=1 cargo run --release -p aspis-xtask -- \
   stage2-profile23-one-transaction-release
 ```
 
-The command always writes
-`results/stage2/profile23_one_transaction_release.json` after successfully
-reading the five source artifacts. It exits nonzero when any release tooth is
-false or absent; a stale proof, binary, source hash, mutable proof account, or
-missing gate therefore cannot silently retain the released status.
+The command writes
+`results/stage2/profile23_one_transaction_release.json` only from the required
+source artifacts and exits nonzero when a release tooth is false or absent. A
+stale q16 proof, binary, source hash, mutable proof account, or missing q18 gate
+therefore cannot silently retain released status. The current JSON records
+`released=true`, `status=released_all_required_gates_green`, and no failed
+gates. Any retained q16 fields are historical only and must not be read as q18
+evidence.
 
 ## Exact scope
 
@@ -33,7 +38,7 @@ and this release artifact does not describe them as free.
 
 ## Source artifacts
 
-The released gate requires:
+The released q18 gate consumes current q18 instances of:
 
 - `results/stage2/atomic_state_only_profile23_acceptance_production_mined.json`;
 - `results/stage2/atomic_state_only_profile23_mutation_production_mined.json`;
@@ -53,8 +58,8 @@ artifacts. They are bound into the release certificate by those hashes, by the
 shared root-minor/product identities, and by checking the HVZK artifact's
 layout and Good23 fingerprints against live code.
 
-The concrete production proof is bound independently. Its exact SHA-256 and
-byte length must agree across acceptance, mutation, and these required HVZK
+The concrete q18 production proof is bound independently. Its exact SHA-256
+and byte length agree across acceptance, mutation, and these required HVZK
 fields:
 
 ```text
@@ -62,7 +67,7 @@ complete_public_view.proof_sha256_production
 complete_public_view.proof_bytes_production
 ```
 
-The old `proof_sha256_unmined_fixture` field is never accepted as a production
+The `proof_sha256_unmined_fixture` field is never accepted as a production
 identity. The gate also resolves the shared acceptance/mutation `proof_path`
 inside the workspace, reads and hashes those actual bytes, and records the
 proof itself as a source artifact. Matching metadata for a missing, changed,
@@ -111,11 +116,10 @@ or path-escaped proof cannot release.
 - the byte length and SHA-256 of the release-command-built plain default
   `target/deploy/aspis_verifier.so` exactly match the production-only SBF
   identity recorded by the mined mutation KAT;
-- the proof-independent Johnson soundness artifact is bookable with its
-  selected floor at least 100 bits, while its separately reported
-  Profile-23-own whole-ledger-times-three/BCS32 coarse sensitivity is also at
-  least 100 bits;
-- complete-Good, q3, cap16, opaque failure, and fixed-boundary release gates
+- the proof-independent Johnson soundness artifact is bookable only when its
+  conservative whole-ledger-times-three/BCS32 release floor is at least 100
+  bits;
+- complete-Good, q3, cap17, opaque failure, and fixed-boundary release gates
   are green; and
 - complete-view computational hiding is at least 100 bits in its explicitly
   declared SHA-256 programmable-random-oracle/EPRO and fixed public
@@ -129,27 +133,56 @@ The exact release CU is the maximum of the two literal production tag-60
 measurements. Headroom is computed as `1,400,000 - max_tag60_cu`; diagnostic
 tag-61 measurements are not substituted into that number.
 
-The mined diagnostic acceptance artifact records `1,202,920 CU` for tag 59,
-while the final production-mutation run records a same-binary tag-59 baseline
-of `1,202,939 CU`. This named 19-CU measurement-context distinction is
-retained: acceptance
-reconciles its twelve-bucket ledger internally, and each mutation path prices
-its tag-60 increment from its own same-binary baseline. No causal explanation
-for the 19 CU is assumed, and it is not booked as headroom. The earlier
-`1,202,868` versus `1,202,876` comparison (8 CU) is superseded history from a
-prior build, not the released measurement.
+## Green local q18 result
 
-The 59,679-byte diagnostic fixture and 61,599-byte production proof have
-different public query schedules and therefore different minimal-subtree
-frontier sizes. The public selector law is witness-independent; schedule-
-dependent serialization length is included in the complete-view simulator.
+The release command reconstructed all theorem ledgers, directly hashed and
+verified the mined proof and canonical statement, rebuilt the plain default
+SBF, replayed the production KATs, and passed `35/35` gates:
 
-## Frozen release result
+| q18 release item | value |
+|---|---:|
+| mined proof bytes | 63,487 |
+| mined proof SHA-256 | `0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb` |
+| statement SHA-256 | `520a0a86e1d1918a5270622ac27182b1f5b6df2b624d68bbd2a2b6f927eebb14` |
+| default SBF bytes | 915,656 |
+| default SBF SHA-256 | `da66a51b1f3ce95e907a87fca15fb9dc0cce66fd47646875ce2dff94879fd254` |
+| production tag 59 | 1,299,012 CU |
+| tag 60, program-owned marker | 1,300,905 CU |
+| tag 60, canonical System creation | 1,303,236 CU |
+| worst-path headroom below 1.4M | 96,764 CU |
+| fixed production release boundary | 480 s |
+| measured production wall time | 480.42 s |
+| exact post-release host audit | 40.64 s |
+| conservative authorizing soundness floor | 100.16144938287455 bits |
+| declared-model real-vs-simulator hiding floor | 104.02492234825198 bits |
+| declared-model pairwise-witness hiding floor | 103.02492234825198 bits |
 
-The frozen default SBF is 6,870,048 bytes with SHA-256
+The active unmined q18 theorem fixture is 67,327 bytes with SHA-256
+`a5ed698a32d815ffd95f8d3e0be62d16620d32e216a087a350852726fb6ca238`.
+It is not production-mined and cannot satisfy the release proof gate.
+
+This is a local one-transaction release certificate. It is not evidence of a
+mainnet deployment or a substitute for an external security audit; those
+remain separate blockers. Its scope still excludes proof-account creation,
+chunk uploads, and `FinalizeProof`, as stated above.
+
+## Superseded q16 release result (`2026-07-13`)
+
+The q16 mined diagnostic acceptance artifact recorded `1,202,920 CU` for tag
+59, while its final production-mutation run recorded a same-binary baseline of
+`1,202,939 CU`. The 19-CU difference was retained as a measurement-context
+distinction, without assigning a cause or booking it as headroom. The even
+earlier `1,202,868` versus `1,202,876` comparison was already superseded.
+
+The q16 59,679-byte diagnostic fixture and 61,599-byte production proof had
+different public query schedules and minimal-subtree frontier sizes. That
+historical observation remains relevant to the simulator's treatment of
+schedule-dependent serialization, but those sizes are not q18 identities.
+
+The q16 frozen default SBF was 6,870,048 bytes with SHA-256
 `6b64baf559dcddbd6f9b1af1205effeb6afae6a5746a44421e8826251fe4cffb`.
-Same-binary tag 59 is 1,202,939 CU. Production tag 60 is 1,204,792 CU on the
+Same-binary tag 59 was 1,202,939 CU. Production tag 60 was 1,204,792 CU on the
 program-owned marker path and 1,207,123 CU on canonical System creation; the
-worst path leaves 192,877 CU below 1.4M. The negative release tests still force
-unmined and unsealed classifications, so the fail-closed invariant remains
-covered after release.
+worst path left 192,877 CU below 1.4M. The negative release tests forced
+unmined and unsealed classifications in that historical artifact. None of its
+proof, SBF, CU, or soundness values transfers to q18.

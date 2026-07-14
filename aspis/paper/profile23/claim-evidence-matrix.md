@@ -5,11 +5,19 @@ be cited as a proof. The canonical numeric source is
 `results/stage2/profile23_one_transaction_release.json`; generated paper
 macros must read that file and reject any cross-artifact mismatch.
 
+Current status (`2026-07-14`): the q18/cap17 local release is green at 35/35
+gates and binds the mined proof, production KATs, theorem artifacts, and
+release certificate. The `2026-07-13` q16/cap16 certificate is explicitly
+superseded; its proof, SBF, and CU measurements are historical evidence only.
+
 Status vocabulary:
 
 - `artifact-green`: the pinned local artifact reports the condition green;
 - `proof-required`: the manuscript still needs a complete theorem and review;
 - `experiment-required`: the paper artifact still needs the named run/data;
+- `local-release-green`: the pinned q18 local release certificate reports all
+  required gates green; this is not deployment, audit, or mainnet evidence;
+  and
 - `blocked`: public claim prohibited until the stated external gate closes.
 
 <!-- markdownlint-disable MD013 -->
@@ -18,21 +26,21 @@ Status vocabulary:
 | --- | --- | --- | --- | --- | --- |
 | C01 | Profile 23 proves a shielded spend relation | Atomic-v3, one input, one output, depth-20 same-private-path replacement only | `def:profile23-relation`; executable semantic oracle and trace correspondence | `crates/aspis-statement/src/spend.rs`; `crates/aspis-statement/src/atomic_statement.rs` | proof-required |
 | C02 | transparent setup | No structured reference string, secret trapdoor, or trusted setup; ROM and stated hash/code assumptions remain | `def:profile23-transparent-parameters`; assumption table | frozen source, generated constants, imported theorem pins | proof-required |
-| C03 | over-100-bit proven-Johnson/MCA soundness | Classical ROM argument soundness for `R23`; not knowledge soundness or a standard-model theorem | `lem:circle-grs-transport` through `thm:bcs-soundness` | release JSON soundness fields and `profile23_d_after_g_soundness_epro.json` | artifact-green; proof-required |
-| C04 | no capacity-conjecture reliance | Exact rate-1/512/q16 instantiation stays in the stated Johnson/MCA regime | imported-theorem hypothesis table and local transport/fold proofs | soundness ledger plus pinned theorem versions | proof-required |
-| C05 | real-view versus simulator hiding | Complete declared verifier view, classical SHA-256 programmable ROM, `Q_H <= 2^128`, `A <= 16`, fixed Proof-or-Abort channel | `alg:sim23`; `thm:real-vs-sim23` | release JSON real/simulator field and hiding-closure JSON | artifact-green; proof-required |
-| C06 | two-witness pairwise hiding | Fixed `x`; any valid `w0,w1 in R23(x)`; auxiliary input and post-output queries; triangle-inequality loss retained | `cor:pairwise-hiding` | release JSON pairwise field and hiding-closure JSON | artifact-green; proof-required |
+| C03 | over-100-bit proven-Johnson/MCA soundness | Active q18 classical ROM argument soundness for `R23`; work-normalized BCS endpoints and factor-40 sensitivity included; not knowledge soundness or a standard-model theorem | `lem:circle-grs-transport` through `thm:bcs-soundness` | `profile23_d_after_g_soundness_epro.json`; released certificate JSON | local-release-green; proof-required |
+| C04 | no capacity-conjecture reliance | Exact rate-1/512/q18 instantiation stays in the stated Johnson/MCA regime | imported-theorem hypothesis table and local transport/fold proofs | soundness ledger plus pinned theorem versions | proof-required |
+| C05 | real-view versus simulator hiding | Complete declared verifier view, classical SHA-256 programmable ROM, `Q_H <= 2^128`, `A <= 17`, fixed Proof-or-Abort channel | `alg:sim23`; `thm:real-vs-sim23` | hiding-closure JSON; released certificate JSON | local-release-green; proof-required |
+| C06 | two-witness pairwise hiding | Fixed `x`; any valid `w0,w1 in R23(x)`; auxiliary input and post-output queries; triangle-inequality loss retained | `cor:pairwise-hiding` | hiding-closure JSON; released certificate JSON | local-release-green; proof-required |
 | C07 | complete declared view | Proof account, proof length, roots/openings/frontiers, transcript/work, selector/Abort, framing/logs, deterministic mutation; excludes network/account-graph/local/physical observables | `def:profile23-complete-view` | hiding-closure view inventory | proof-required |
 | C08 | q3 selector is soundness-safe | Commitments fixed before domain-separated q3 schedules; least Good selected; factor three applies only as justified in ledger | `lem:selector-soundness` | soundness/EPRO ledger and transcript KAT | proof-required |
-| C09 | selector and Abort do not leak the witness | Joint schedule/Good/least-selector/all-bad law is witness-independent; privacy theorem includes Abort | `lem:selection-hiding-abort` | hiding-closure q3/cap16 artifact | proof-required |
+| C09 | selector and Abort do not leak the witness | Joint schedule/Good/least-selector/all-bad law is witness-independent; privacy theorem includes Abort | `lem:selection-hiding-abort` | hiding-closure q3/cap17 artifact | proof-required |
 | C10 | Good23 gives exact affine simulation | Image equality, dimensions/rank/kernel cardinality, constant-size mask preimages, uniform induced image distribution | `lem:good23-product`; `lem:complete-affine-image`; `lem:uniform-mask-preimages` | Good23 product and rank-transfer artifacts | proof-required; independent checker required |
 | C11 | EPRO/private-Merkle/work simulation | Explicit adjacent hybrids, distinct-input inventory, prequeries, collisions, adaptive later queries, canonical work, serialization/finalization/mutation | `lem:epro-complete-view` | hiding-closure and soundness/EPRO artifacts | proof-required |
-| C12 | canonical proof identity and size | Canonical mined local proof only; schedule-dependent length is public | generated artifact table | release JSON `proof` object and proof bytes | artifact-green |
-| C13 | default SBF identity and size | Fresh manifest-default local build; not a deployed-program statement | generated artifact table and Tier-2 byte rebuild | release JSON `default_production_sbf` object | artifact-green; clean reproduction required |
-| C14 | verifier fits the CU cap locally | Worst literal tag-60 path in the pinned local Agave/runtime/heap/account context; evaluated, not theorem-derived | integrated CU reconciliation and Tier-3 replay | release JSON CU/headroom fields and production mutation KAT | artifact-green; independent replay required |
-| C15 | one transaction | Exactly verification plus nullifier/pool mutation consuming a finalized, pre-uploaded proof account | transaction-scope definition and raw transaction | release JSON `scope` object | artifact-green locally; title/abstract qualifier mandatory |
+| C12 | canonical proof identity and size | The released canonical q18 mined local proof is 63,487 bytes; schedule-dependent length is public | generated artifact table | release JSON `proof` object and proof bytes | local-release-green; q16 identity is historical only |
+| C13 | default SBF identity and size | Released 915,656-byte q18 manifest-default local build; not a deployed-program statement | generated artifact table and Tier-2 byte rebuild | release JSON `default_production_sbf` object | local-release-green; clean reproduction required |
+| C14 | verifier fits the CU cap locally | Worst literal q18 tag-60 path in the pinned local Agave/runtime/heap/account context; evaluated, not theorem-derived | integrated CU reconciliation and Tier-3 replay | release JSON CU/headroom fields and production mutation KAT | local-release-green; independent replay required |
+| C15 | one transaction | Exactly verification plus nullifier/pool mutation consuming a finalized, pre-uploaded proof account | transaction-scope definition and raw transaction | release JSON `scope` object | local-release-green; title/abstract qualifier mandatory |
 | C16 | finalized proof account is required | Zero-sentinel and ownership checks in the frozen program; no intrinsic chain-level immutability claim | `lem:finalized-account-state-machine`; mutation/finalization matrix | source, release gates, Tier-1/Tier-3 tests | proof-required |
-| C17 | atomic nullifier and pool transition | Verify-before-write order, precondition recheck, exact post-images, rollback and lock assumptions | `prop:atomic-refinement`; raw validator account images | production mutation KAT and adversarial tests | artifact-green; proposition/replay required |
+| C17 | atomic nullifier and pool transition | Verify-before-write order, precondition recheck, exact post-images, rollback and lock assumptions | `prop:atomic-refinement`; raw validator account images | q18 production mutation KAT and adversarial tests | local-release-green; proposition/replay required |
 | C18 | configured local program address | Address belongs to the frozen local configuration only | generated artifact table | source/build configuration | artifact-green; never use as deployment evidence |
 | C19 | deployed/mainnet result | Successful finalized transaction bound to exact ProgramData/SBF/proof/accounts/CU | immutable mainnet evidence object | none yet | blocked |
 | C20 | historical priority or “first” | Exact qualified claim only after mainnet gate and publication-day rescan | dated novelty method and evidence | novelty artifact plus future mainnet evidence | blocked |

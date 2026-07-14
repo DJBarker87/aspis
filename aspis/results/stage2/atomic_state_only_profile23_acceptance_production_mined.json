@@ -1,37 +1,39 @@
 {
-  "generated_at_utc": "2026-07-13T22:20:37.558067+00:00",
-  "command": "ASPIS_PROFILE23_PROOF=/Users/dominic/ZK/aspis/results/stage2/proofs/atomic_state_only_profile23_v3_mined.bin NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-profile23-acceptance",
+  "generated_at_utc": "2026-07-14T13:21:04.617888+00:00",
+  "command": "ASPIS_PROFILE23_PROOF=/Users/dominic/ZK/aspis/results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.bin ASPIS_PROFILE23_STATEMENT=/Users/dominic/ZK/aspis/results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.statement.json NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-profile23-acceptance",
   "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
   "instruction_wire_ordinal": 59,
-  "proof_path": "results/stage2/proofs/atomic_state_only_profile23_v3_mined.bin",
+  "proof_path": "results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.bin",
   "proof_source_override": true,
-  "proof_bytes": 61599,
-  "proof_sha256": "35c4e79316bf4a2af1951e5d2f41b6ebb4ebb7bd1e91a3ba93c52e549bfe7949",
+  "proof_bytes": 63487,
+  "proof_sha256": "0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb",
   "proof_unmined": false,
-  "statement_path": null,
-  "statement_source_override": false,
-  "statement_sha256": null,
+  "statement_path": "results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.statement.json",
+  "statement_source_override": true,
+  "statement_sha256": "520a0a86e1d1918a5270622ac27182b1f5b6df2b624d68bbd2a2b6f927eebb14",
   "statement_pool_hex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
   "statement_sequence": 73,
   "canonical_public_input_digest": "52e96f99756fe8fd2d8b7a700019b143d7eb549af1bf1ae987e99a75cadcd4c9",
-  "batch_grinding_bits": 38,
-  "final_grinding_bits": 38,
+  "query_count": 18,
+  "batch_grinding_bits": 37,
+  "final_grinding_bits": 32,
   "fold_grinding_bits": [
-    39,
-    35,
-    31,
-    27
+    34,
+    33,
+    30,
+    25
   ],
   "query_selector_candidates": 3,
-  "rank_exhaustion_cap16_bits": 105.41017865405837,
-  "whole_soundness_bits_after_selector": 101.30230658283051,
+  "rank_exhaustion_cap17_bits": 105.21398677941984,
+  "selected_soundness_floor_bits": 101.38010539241553,
+  "coarse_whole_ledger_soundness_floor_bits": 100.16144938287455,
   "soundness_bookable": true,
   "proof_account_finalized_before_verification": true,
   "default_tag59_fail_closed_host": true,
   "production_api_rejected_unmined_sbf": false,
   "production_api_accepted_mined_sbf": true,
-  "literal_simulation_cu": 1202920,
-  "headroom_under_1_4m_cu": 197080,
+  "literal_simulation_cu": 1242917,
+  "headroom_under_1_4m_cu": 157083,
   "markers": [
     {
       "label": "atomic59_instruction_start",
@@ -50,42 +52,42 @@
     },
     {
       "label": "atomic59_transcript",
-      "remaining": 1243870,
-      "delta_from_previous": 152045
+      "remaining": 1243494,
+      "delta_from_previous": 152421
     },
     {
       "label": "atomic59_terminal",
-      "remaining": 861864,
-      "delta_from_previous": 382006
+      "remaining": 861380,
+      "delta_from_previous": 382114
     },
     {
       "label": "atomic59_relation",
-      "remaining": 674279,
-      "delta_from_previous": 187585
+      "remaining": 673893,
+      "delta_from_previous": 187487
     },
     {
       "label": "atomic59_openings",
-      "remaining": 473700,
-      "delta_from_previous": 200579
+      "remaining": 468225,
+      "delta_from_previous": 205668
     },
     {
       "label": "atomic59_layer0_queries",
-      "remaining": 290990,
-      "delta_from_previous": 182710
+      "remaining": 263022,
+      "delta_from_previous": 205203
     },
     {
       "label": "atomic59_later_queries",
-      "remaining": 197626,
-      "delta_from_previous": 93364
+      "remaining": 157629,
+      "delta_from_previous": 105393
     },
     {
       "label": "atomic59_core_complete",
-      "remaining": 197408,
+      "remaining": 157411,
       "delta_from_previous": 218
     },
     {
       "label": "atomic59_done",
-      "remaining": 197139,
+      "remaining": 157142,
       "delta_from_previous": 269
     }
   ],
@@ -93,24 +95,24 @@
     "transaction_setup_cu": 1555,
     "proof_load_cu": 552,
     "parsed_cu": 1978,
-    "transcript_cu": 152045,
-    "terminal_cu": 382006,
-    "relation_cu": 187585,
-    "openings_cu": 200579,
-    "layer0_queries_cu": 182710,
-    "later_queries_cu": 93364,
+    "transcript_cu": 152421,
+    "terminal_cu": 382114,
+    "relation_cu": 187487,
+    "openings_cu": 205668,
+    "layer0_queries_cu": 205203,
+    "later_queries_cu": 105393,
     "completion_cu": 218,
     "wrapper_return_cu": 269,
     "post_last_marker_cu": 59,
-    "reconciled_total_cu": 1202920,
-    "formula": "1555 + 552 + 1978 + 152045 + 382006 + 187585 + 200579 + 182710 + 93364 + 218 + 269 + 59"
+    "reconciled_total_cu": 1242917,
+    "formula": "1555 + 552 + 1978 + 152421 + 382114 + 187487 + 205668 + 205203 + 105393 + 218 + 269 + 59"
   },
   "production_mutation_enabled": false,
   "notes": [
-    "Tag59 is one integrated parse/transcript/terminal/relation/private-opening/q16 call. The phase ledger is overlap-free and reconciles exactly to the literal simulation total.",
+    "Tag59 is one integrated parse/transcript/terminal/relation/private-opening/q18 call. The phase ledger is overlap-free and reconciles exactly to the literal simulation total.",
     "All five Merkle sections authenticate value||salt32 records. Salts are not transcript messages; their roots bind them before downstream challenges.",
     "The ASPIS_PROFILE23_PROOF override supplied a mined proof; production host and SBF tag59 both accepted it without a PoW bypass.",
-    "No statement sidecar was supplied; this artifact uses the unchanged built-in Profile23 fixture statement.",
+    "ASPIS_PROFILE23_STATEMENT supplied an exact-schema canonical public-statement sidecar; its path, byte SHA-256, pool, sequence, and transcript public-input digest are pinned in this artifact.",
     "Tags60/61 remain feature-gated; production mutation stays disabled until the complete-view HVZK audit and mined tag60 KAT are green."
   ]
 }

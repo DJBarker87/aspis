@@ -1,7 +1,7 @@
 //! Local production-path miner for the frozen Profile23 proof.
 //!
 //! This example uses fresh OS entropy, a durable burned-nonce ledger, the
-//! exact cap-16 q3 Good23 worker, canonical minimum PoW, and the fixed public
+//! exact cap-17 q3 Good23 worker, canonical minimum PoW, and the fixed public
 //! release controller. It never exposes a partial attempt or retry detail.
 
 use std::fs;

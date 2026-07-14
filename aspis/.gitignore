@@ -1,4 +1,6 @@
 /target
 /.stage0-validator
 /.stage2-validator-account-fixtures
-/results/stage2/profile23-mask-nonce-ledger
+/results/stage2/profile23-mask-nonce-ledger*
+/results/stage2/proofs/*guarded_private*
+/results/stage2/proofs/atomic_state_only_profile23_v3_q18_mined.*

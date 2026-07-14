@@ -27,7 +27,7 @@ use aspis_core::state_only_masked_switch_basis::{
 };
 use aspis_core::state_only_prefix::{
     StateOnlyProfile21TranscriptScheduleResult, StateOnlyTranscriptScheduleResult,
-    STATE_ONLY_LOG_ROWS,
+    STATE_ONLY_LOG_ROWS, STATE_ONLY_PROFILE23_QUERY_COUNT,
 };
 use aspis_core::sumcheck::{
     boundary_sum, evaluate as evaluate_relation, polynomial_for_extension, WeightAccumulator,

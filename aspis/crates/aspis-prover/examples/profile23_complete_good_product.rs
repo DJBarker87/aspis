@@ -4,8 +4,8 @@
 use std::{env, fs};
 
 use aspis_core::state_only_prefix::{
-    run_atomic_state_only_transcript_schedule_host_unmined_for_diagnostics_v3,
-    StateOnlyCandidatePrefix,
+    run_atomic_state_only_profile23_transcript_schedule_host_unmined_for_diagnostics_v3,
+    StateOnlyProfile23Prefix,
 };
 use aspis_prover::state_only_hiding_rank::{
     bind_profile23_complete_good_product_provenance,
@@ -21,40 +21,66 @@ const STATEMENT_DIGEST: [u8; 32] = [
 
 fn main() {
     let proof_path = env::args().nth(1).unwrap_or_else(|| {
-        "results/stage2/proofs/atomic_state_only_profile22_v3_unmined.bin".to_owned()
+        "results/stage2/proofs/atomic_state_only_profile23_v3_unmined.bin".to_owned()
     });
-    let proof = fs::read(proof_path).expect("read profile-22 fixture");
+    let proof = fs::read(proof_path).expect("read profile-23 fixture");
     let (prefix, _) =
-        StateOnlyCandidatePrefix::parse_from_proof(&proof).expect("profile-22 prefix");
-    let schedule = run_atomic_state_only_transcript_schedule_host_unmined_for_diagnostics_v3(
-        HOST_HASH,
-        &prefix,
-        &STATEMENT_DIGEST,
-    )
-    .expect("profile-22 schedule");
+        StateOnlyProfile23Prefix::parse_from_proof(&proof).expect("profile-23 prefix");
+    let schedule =
+        run_atomic_state_only_profile23_transcript_schedule_host_unmined_for_diagnostics_v3(
+            HOST_HASH,
+            &prefix,
+            &STATEMENT_DIGEST,
+        )
+        .expect("profile-23 schedule");
 
     let root = probe_profile22_root_neutral_polynomial_kernel_rank(&schedule)
         .expect("root-neutral polynomial-kernel rank probe");
+    eprintln!(
+        "root_summary={{query_count:{}, rank:{}, fingerprint:0x{:016x}, degree_one:{}, degree_two:{}, q_individual:{}, q_total:{}, gamma_degree:{}, z_degree:{}, minimum_selectors:{}, complete:{}}}",
+        root.query_count,
+        root.joint_rank_m31,
+        root.minor.fingerprint,
+        root.selected_degree_one_q_columns,
+        root.selected_degree_two_q_columns,
+        root.q_individual_degree_bound,
+        root.q_total_degree_bound,
+        root.gamma_coordinate_total_degree_bound,
+        root.z_total_degree_bound,
+        root.minimum_selector_count_for_cap16_over_100_bits,
+        root.complete,
+    );
     let raw = probe_atomic_state_only_profile22_zero_factor_qm31_tail_root_neutral(&schedule)
         .expect("raw terminal Schur probes");
+    eprintln!(
+        "raw_summary={{query_count:{}, gd_query_rank:{}, gd_terminal_rank:{}, gd_fingerprint:0x{:016x}, h1_query_rank:{}, h1_terminal_rank:{}, h1_fingerprint:0x{:016x}, complete:{}}}",
+        raw.query_count,
+        raw.remaining_gd_query_rank_m31,
+        raw.remaining_gd_terminal_schur_rank_m31,
+        raw.remaining_gd_terminal_schur_minor.fingerprint,
+        raw.h1_inactive_padding_query_rank_m31,
+        raw.h1_inactive_padding_terminal_schur_rank_m31,
+        raw.h1_inactive_padding_terminal_schur_minor.fingerprint,
+        raw.complete,
+    );
     let product = bind_profile23_complete_good_product_provenance(&root, &raw)
         .expect("complete Good product provenance");
 
-    assert_eq!(root.minor.fingerprint, 0xb747_2b1f_2b1d_03e7);
     assert_eq!(root.minor.source_columns.len(), 1_404);
+    assert_eq!(root.minor.fingerprint, 0x6b38_3866_2fbf_34db);
     assert_eq!(raw.remaining_gd_terminal_schur_rank_m31, 12);
     assert_eq!(raw.h1_inactive_padding_terminal_schur_rank_m31, 12);
-    assert_eq!(raw.remaining_gd_query_rank_m31, 256);
-    assert_eq!(raw.h1_inactive_padding_query_rank_m31, 256);
+    assert_eq!(raw.remaining_gd_query_rank_m31, 288);
+    assert_eq!(raw.h1_inactive_padding_query_rank_m31, 288);
     assert_eq!(raw.remaining_gd_terminal_schur_z_degree, 120);
     assert_eq!(raw.h1_inactive_padding_terminal_schur_z_degree, 120);
     assert_eq!(
         raw.remaining_gd_terminal_schur_minor.fingerprint,
-        0x0a2d_bf8f_1a90_59c0
+        0x1f34_525d_b611_d292
     );
     assert_eq!(
         raw.h1_inactive_padding_terminal_schur_minor.fingerprint,
-        0x5c61_aee3_83df_f271
+        0xe702_15f0_b479_5f52
     );
     assert_eq!(
         raw.remaining_gd_terminal_schur_minor.pivot_rows,
@@ -74,11 +100,11 @@ fn main() {
         .pivot_values_m31
         .iter()
         .all(|&value| value != 0));
-    assert_eq!(product.q_total_degree_bound, 28_544);
+    assert_eq!(product.q_total_degree_bound, 31_320);
     assert_eq!(product.complete_good_z_degree_bound, 41_280);
-    assert_eq!(product.gamma_coordinate_total_degree_bound, 92_436);
-    assert_eq!(product.continuous_total_degree_bound, 133_716);
-    assert_eq!(product.product_fingerprint, 0x1d66_9744_7b7a_1448);
+    assert_eq!(product.gamma_coordinate_total_degree_bound, 80_688);
+    assert_eq!(product.continuous_total_degree_bound, 121_968);
+    assert_eq!(product.product_fingerprint, 0xfc07_06f3_a304_ae26);
     assert!(product.complete);
 
     println!(

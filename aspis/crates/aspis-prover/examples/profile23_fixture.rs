@@ -103,10 +103,10 @@ fn main() {
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect::<String>();
-    assert_eq!(built.bytes.len(), 59_679);
+    assert_eq!(built.bytes.len(), 67_327);
     assert_eq!(
         sha256,
-        "07f8258f9297bd19d007b5bebdfbb710e8e9e44dcc2277f8cf7a6148db6ce902"
+        "a5ed698a32d815ffd95f8d3e0be62d16620d32e216a087a350852726fb6ca238"
     );
     fs::write(&output, &built.bytes).expect("write profile-23 fixture");
     println!("proof={output}");

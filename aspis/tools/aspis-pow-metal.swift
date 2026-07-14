@@ -21,6 +21,46 @@ constant uint K[64] = {
 
 inline uint rotr(uint x, uint n) { return (x >> n) | (x << (32 - n)); }
 
+inline uint small_sigma0(uint x) { return rotr(x, 7) ^ rotr(x, 18) ^ (x >> 3); }
+inline uint small_sigma1(uint x) { return rotr(x, 17) ^ rotr(x, 19) ^ (x >> 10); }
+inline uint big_sigma0(uint x) { return rotr(x, 2) ^ rotr(x, 13) ^ rotr(x, 22); }
+inline uint big_sigma1(uint x) { return rotr(x, 6) ^ rotr(x, 11) ^ rotr(x, 25); }
+inline uint choose(uint x, uint y, uint z) { return z ^ (x & (y ^ z)); }
+inline uint majority(uint x, uint y, uint z) { return (x & y) | (z & (x | y)); }
+
+// Rotating the variable names between invocations makes one compression
+// round require only the two state writes mandated by SHA-256. Eight rounds
+// restore the a...h orientation. The 16-word scalar schedule avoids the
+// private-memory traffic of a 64-word per-thread array.
+#define SHA_ROUND(A,B,C,D,E,F,G,H,I,W) do {                            \
+    uint t1 = (H) + big_sigma1(E) + choose((E),(F),(G)) + K[(I)] + (W); \
+    uint t2 = big_sigma0(A) + majority((A),(B),(C));                   \
+    (D) += t1;                                                         \
+    (H) = t1 + t2;                                                     \
+} while (0)
+
+#define EXPAND(W0,W1,W9,W14) \
+    (W0) += small_sigma0(W1) + (W9) + small_sigma1(W14)
+
+#define EXPAND_AND_COMPRESS_16(BASE) do { \
+    EXPAND(w0,w1,w9,w14);    SHA_ROUND(a,b,c,d,e,f,g,h,(BASE)+0,w0);  \
+    EXPAND(w1,w2,w10,w15);   SHA_ROUND(h,a,b,c,d,e,f,g,(BASE)+1,w1);  \
+    EXPAND(w2,w3,w11,w0);    SHA_ROUND(g,h,a,b,c,d,e,f,(BASE)+2,w2);  \
+    EXPAND(w3,w4,w12,w1);    SHA_ROUND(f,g,h,a,b,c,d,e,(BASE)+3,w3);  \
+    EXPAND(w4,w5,w13,w2);    SHA_ROUND(e,f,g,h,a,b,c,d,(BASE)+4,w4);  \
+    EXPAND(w5,w6,w14,w3);    SHA_ROUND(d,e,f,g,h,a,b,c,(BASE)+5,w5);  \
+    EXPAND(w6,w7,w15,w4);    SHA_ROUND(c,d,e,f,g,h,a,b,(BASE)+6,w6);  \
+    EXPAND(w7,w8,w0,w5);     SHA_ROUND(b,c,d,e,f,g,h,a,(BASE)+7,w7);  \
+    EXPAND(w8,w9,w1,w6);     SHA_ROUND(a,b,c,d,e,f,g,h,(BASE)+8,w8);  \
+    EXPAND(w9,w10,w2,w7);    SHA_ROUND(h,a,b,c,d,e,f,g,(BASE)+9,w9);  \
+    EXPAND(w10,w11,w3,w8);   SHA_ROUND(g,h,a,b,c,d,e,f,(BASE)+10,w10); \
+    EXPAND(w11,w12,w4,w9);   SHA_ROUND(f,g,h,a,b,c,d,e,(BASE)+11,w11); \
+    EXPAND(w12,w13,w5,w10);  SHA_ROUND(e,f,g,h,a,b,c,d,(BASE)+12,w12); \
+    EXPAND(w13,w14,w6,w11);  SHA_ROUND(d,e,f,g,h,a,b,c,(BASE)+13,w13); \
+    EXPAND(w14,w15,w7,w12);  SHA_ROUND(c,d,e,f,g,h,a,b,(BASE)+14,w14); \
+    EXPAND(w15,w0,w8,w13);   SHA_ROUND(b,c,d,e,f,g,h,a,(BASE)+15,w15); \
+} while (0)
+
 inline bool valid_head(uint h0, uint h1, uint bits) {
     if (bits == 0) return true;
     if (bits <= 32) return (h0 >> (32 - bits)) == 0;
@@ -34,50 +74,58 @@ kernel void mine_pow(
     constant uint &bits [[buffer(3)]],
     constant uint &gridWidth [[buffer(4)]],
     device ulong *results [[buffer(5)]],
+    constant uint *prestate [[buffer(6)]],
     uint gid [[thread_position_in_grid]]) {
     results[gid] = ~ulong(0);
+    // Keep the hot-loop nonce as two 32-bit limbs. Apple GPUs execute the
+    // increment and byte extraction more cheaply than a 64-bit multiply/add
+    // plus eight 64-bit shifts for every candidate.
+    if (ulong(gid) > ~ulong(0) - base) return;
+    ulong firstNonce = base + ulong(gid);
+    uint nonceLo = uint(firstNonce);
+    uint nonceHi = uint(firstNonce >> 32);
     for (uint trial = 0; trial < trials; ++trial) {
-        ulong offset = ulong(gid) + ulong(trial) * ulong(gridWidth);
-        // The host normally dispatches full contiguous chunks.  This guard
-        // makes the final partial u64 chunk exact instead of wrapping to
-        // nonce zero if the entire nonce space contains no success.
-        if (offset > ~ulong(0) - base) return;
-        ulong nonce = base + offset;
-        uint w[64];
-        for (uint i = 0; i < 8; ++i) w[i] = state[i];
-        w[8] = 0x03000000u | uint((nonce      ) & 0xffu) << 16
-                              | uint((nonce >>  8) & 0xffu) << 8
-                              | uint((nonce >> 16) & 0xffu);
-        w[9] = uint((nonce >> 24) & 0xffu) << 24
-             | uint((nonce >> 32) & 0xffu) << 16
-             | uint((nonce >> 40) & 0xffu) << 8
-             | uint((nonce >> 48) & 0xffu);
-        w[10] = uint((nonce >> 56) & 0xffu) << 24 | 0x00800000u;
-        w[11] = 0; w[12] = 0; w[13] = 0; w[14] = 0; w[15] = 328;
-        for (uint i = 16; i < 64; ++i) {
-            uint s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >> 3);
-            uint s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >> 10);
-            w[i] = w[i - 16] + s0 + w[i - 7] + s1;
-        }
-        uint a=0x6a09e667, b=0xbb67ae85, c=0x3c6ef372, d=0xa54ff53a;
-        uint e=0x510e527f, f=0x9b05688c, g=0x1f83d9ab, h=0x5be0cd19;
-        for (uint i = 0; i < 64; ++i) {
-            uint S1 = rotr(e,6) ^ rotr(e,11) ^ rotr(e,25);
-            uint ch = (e & f) ^ ((~e) & g);
-            uint temp1 = h + S1 + ch + K[i] + w[i];
-            uint S0 = rotr(a,2) ^ rotr(a,13) ^ rotr(a,22);
-            uint maj = (a & b) ^ (a & c) ^ (b & c);
-            uint temp2 = S0 + maj;
-            h=g; g=f; f=e; e=d+temp1; d=c; c=b; b=a; a=temp1+temp2;
-        }
+        uint w0=state[0], w1=state[1], w2=state[2], w3=state[3];
+        uint w4=state[4], w5=state[5], w6=state[6], w7=state[7];
+        uint w8 = 0x03000000u | (nonceLo & 0xffu) << 16
+                                   | ((nonceLo >> 8) & 0xffu) << 8
+                                   | ((nonceLo >> 16) & 0xffu);
+        uint w9 = (nonceLo >> 24) << 24
+                  | (nonceHi & 0xffu) << 16
+                  | ((nonceHi >> 8) & 0xffu) << 8
+                  | ((nonceHi >> 16) & 0xffu);
+        uint w10 = (nonceHi >> 24) << 24 | 0x00800000u;
+        uint w11=0, w12=0, w13=0, w14=0, w15=328;
+        uint a=prestate[0], b=prestate[1], c=prestate[2], d=prestate[3];
+        uint e=prestate[4], f=prestate[5], g=prestate[6], h=prestate[7];
+        SHA_ROUND(a,b,c,d,e,f,g,h,8,w8);
+        SHA_ROUND(h,a,b,c,d,e,f,g,9,w9);
+        SHA_ROUND(g,h,a,b,c,d,e,f,10,w10);
+        SHA_ROUND(f,g,h,a,b,c,d,e,11,w11);
+        SHA_ROUND(e,f,g,h,a,b,c,d,12,w12);
+        SHA_ROUND(d,e,f,g,h,a,b,c,13,w13);
+        SHA_ROUND(c,d,e,f,g,h,a,b,14,w14);
+        SHA_ROUND(b,c,d,e,f,g,h,a,15,w15);
+        EXPAND_AND_COMPRESS_16(16);
+        EXPAND_AND_COMPRESS_16(32);
+        EXPAND_AND_COMPRESS_16(48);
         uint h0 = a + 0x6a09e667u;
         uint h1 = b + 0xbb67ae85u;
         if (valid_head(h0, h1, bits)) {
             // Each gid visits candidates in increasing order. The host takes
             // the minimum across gids after the fixed chunk completes, so
             // the emitted nonce is independent of GPU scheduling.
-            results[gid] = nonce;
+            results[gid] = (ulong(nonceHi) << 32) | ulong(nonceLo);
             return;
+        }
+        if (trial + 1u < trials) {
+            uint nextLo = nonceLo + gridWidth;
+            uint carry = uint(nextLo < nonceLo);
+            // Preserve the old exact end-of-u64 behavior: a lane terminates
+            // instead of wrapping to nonce zero.
+            if (carry != 0u && nonceHi == 0xffffffffu) return;
+            nonceLo = nextLo;
+            nonceHi += carry;
         }
     }
 }
@@ -87,8 +135,12 @@ struct Options {
     var state: [UInt8] = []
     var bits: UInt32 = 0
     var start: UInt64 = 0
-    var threads: UInt32 = 1 << 20
-    var trials: UInt32 = 512
+    // 65,536 long-lived lanes keep Apple GPUs saturated without the large
+    // result buffer and scheduling overhead of the old one-million-lane
+    // default.  More trials amortize dispatch while retaining a small chunk
+    // relative to the high-difficulty production searches.
+    var threads: UInt32 = 1 << 16
+    var trials: UInt32 = 4096
     var maxHashes: UInt64? = nil
     var checkpoint: String? = nil
     var resume = false
@@ -164,6 +216,40 @@ func validDigest(state: [UInt8], nonce: UInt64, bits: UInt32) -> Bool {
     return bits == 0 || head < (UInt64(1) << (64 - bits))
 }
 
+private let sha256FirstEightK: [UInt32] = [
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
+    0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+]
+
+func rotateRight(_ value: UInt32, _ count: UInt32) -> UInt32 {
+    (value >> count) | (value << (32 - count))
+}
+
+// SHA-256 rounds 0...7 consume only the 32-byte transcript state.  Compute
+// that nonce-independent prefix once on the CPU and pass it through constant
+// memory, leaving the GPU kernel with rounds 8...63 for every candidate.
+func sha256PrestateAfterEightRounds(_ words: [UInt32]) -> [UInt32] {
+    var a: UInt32 = 0x6a09e667
+    var b: UInt32 = 0xbb67ae85
+    var c: UInt32 = 0x3c6ef372
+    var d: UInt32 = 0xa54ff53a
+    var e: UInt32 = 0x510e527f
+    var f: UInt32 = 0x9b05688c
+    var g: UInt32 = 0x1f83d9ab
+    var h: UInt32 = 0x5be0cd19
+    for i in 0..<8 {
+        let bigSigma1 = rotateRight(e, 6) ^ rotateRight(e, 11) ^ rotateRight(e, 25)
+        let choice = (e & f) ^ ((~e) & g)
+        let temp1 = h &+ bigSigma1 &+ choice &+ sha256FirstEightK[i] &+ words[i]
+        let bigSigma0 = rotateRight(a, 2) ^ rotateRight(a, 13) ^ rotateRight(a, 22)
+        let majority = (a & b) ^ (a & c) ^ (b & c)
+        let temp2 = bigSigma0 &+ majority
+        h = g; g = f; f = e; e = d &+ temp1
+        d = c; c = b; b = a; a = temp1 &+ temp2
+    }
+    return [a, b, c, d, e, f, g, h]
+}
+
 func writeCheckpoint(_ path: String, next: UInt64) {
     let url = URL(fileURLWithPath: path)
     do {
@@ -190,7 +276,9 @@ for i in 0..<8 {
     words[i] = UInt32(options.state[4*i]) << 24 | UInt32(options.state[4*i+1]) << 16
              | UInt32(options.state[4*i+2]) << 8 | UInt32(options.state[4*i+3])
 }
+let prestate = sha256PrestateAfterEightRounds(words)
 guard let stateBuffer = device.makeBuffer(bytes: words, length: 32, options: .storageModeShared),
+      let prestateBuffer = device.makeBuffer(bytes: prestate, length: 32, options: .storageModeShared),
       let baseBuffer = device.makeBuffer(length: 8, options: .storageModeShared),
       let trialsBuffer = device.makeBuffer(length: 4, options: .storageModeShared),
       let bitsBuffer = device.makeBuffer(length: 4, options: .storageModeShared),
@@ -228,7 +316,8 @@ while true {
     encoder.setBuffer(bitsBuffer, offset: 0, index: 3)
     encoder.setBuffer(widthBuffer, offset: 0, index: 4)
     encoder.setBuffer(resultBuffer, offset: 0, index: 5)
-    let groupWidth = min(pipeline.maxTotalThreadsPerThreadgroup, 256)
+    encoder.setBuffer(prestateBuffer, offset: 0, index: 6)
+    let groupWidth = min(pipeline.maxTotalThreadsPerThreadgroup, 32)
     encoder.dispatchThreads(MTLSize(width: Int(options.threads), height: 1, depth: 1),
                             threadsPerThreadgroup: MTLSize(width: groupWidth, height: 1, depth: 1))
     encoder.endEncoding()

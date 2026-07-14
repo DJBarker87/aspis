@@ -206,14 +206,15 @@ fn query_root(
 fn balanced_query_kernel_sources(
     roots: &[M31],
 ) -> Result<Vec<Vec<M31>>, StateOnlyHidingRankGateError> {
-    if roots.len() != Q_KERNEL_DEGREE {
+    let query_degree = roots.len();
+    if query_degree == 0 || query_degree >= COMMON_NATURAL_BLOCKS {
         return Err(StateOnlyHidingRankGateError::Shape);
     }
     let mut g = vec![M31::ONE];
     for &root in roots {
-        g = polynomial_mul(&g, &[M31::ZERO.sub(root), M31::ONE], Q_KERNEL_DEGREE + 1);
+        g = polynomial_mul(&g, &[M31::ZERO.sub(root), M31::ONE], query_degree + 1);
     }
-    if g.len() != Q_KERNEL_DEGREE + 1 || g[Q_KERNEL_DEGREE] != M31::ONE {
+    if g.len() != query_degree + 1 || g[query_degree] != M31::ONE {
         return Err(StateOnlyHidingRankGateError::Relation);
     }
     let g_at_one = g.iter().copied().fold(M31::ZERO, M31::add);
@@ -221,11 +222,12 @@ fn balanced_query_kernel_sources(
         return Err(StateOnlyHidingRankGateError::Relation);
     }
     let natural_polynomials = natural_t_polynomials(COMMON_NATURAL_BLOCKS);
+    let h_degree_bound = COMMON_NATURAL_BLOCKS - query_degree;
     let h_sources = (0..SECTORS)
         .flat_map(|sector| {
             let natural_polynomials = &natural_polynomials;
             let g = &g;
-            (0..Q_KERNEL_DEGREE).map(move |degree| {
+            (0..h_degree_bound).map(move |degree| {
                 let mut ordinary = vec![M31::ZERO; COMMON_NATURAL_BLOCKS];
                 ordinary[degree..degree + g.len()].copy_from_slice(g);
                 let natural = ordinary_to_natural(&ordinary, natural_polynomials);
@@ -237,7 +239,7 @@ fn balanced_query_kernel_sources(
             })
         })
         .collect::<Vec<_>>();
-    if h_sources.len() != SECTORS * Q_KERNEL_DEGREE {
+    if h_sources.len() != SECTORS * h_degree_bound {
         return Err(StateOnlyHidingRankGateError::Shape);
     }
     let reference = h_sources
@@ -253,7 +255,7 @@ fn balanced_query_kernel_sources(
                 .collect::<Vec<_>>()
         })
         .collect::<Vec<_>>();
-    if balanced.len() != BALANCED_SOURCES_PER_LANE
+    if balanced.len() + 1 != SECTORS * h_degree_bound
         || balanced
             .iter()
             .any(|source| source.iter().copied().fold(M31::ZERO, M31::add) != M31::ZERO)
@@ -267,18 +269,19 @@ fn full_domain_balanced_query_kernel_sources(
     roots: &[M31],
     active: &[bool; TRACE_ROWS],
 ) -> Result<(Vec<Vec<M31>>, usize, M31), StateOnlyHidingRankGateError> {
-    if roots.len() != Q_KERNEL_DEGREE {
+    let query_degree = roots.len();
+    if query_degree == 0 || query_degree >= FULL_NATURAL_BLOCKS {
         return Err(StateOnlyHidingRankGateError::Shape);
     }
     let mut g = vec![M31::ONE];
     for &root in roots {
-        g = polynomial_mul(&g, &[M31::ZERO.sub(root), M31::ONE], Q_KERNEL_DEGREE + 1);
+        g = polynomial_mul(&g, &[M31::ZERO.sub(root), M31::ONE], query_degree + 1);
     }
-    if g.len() != Q_KERNEL_DEGREE + 1 || g[Q_KERNEL_DEGREE] != M31::ONE {
+    if g.len() != query_degree + 1 || g[query_degree] != M31::ONE {
         return Err(StateOnlyHidingRankGateError::Relation);
     }
     let natural_polynomials = natural_t_polynomials(FULL_NATURAL_BLOCKS);
-    let h_degree_bound = FULL_NATURAL_BLOCKS - Q_KERNEL_DEGREE;
+    let h_degree_bound = FULL_NATURAL_BLOCKS - query_degree;
     let raw_kernel = (0..SECTORS)
         .flat_map(|sector| {
             let natural_polynomials = &natural_polynomials;
@@ -781,10 +784,10 @@ pub fn probe_profile22_root_neutral_polynomial_kernel_rank(
     const ROOT_INITIAL_TARGET_M31: usize = MASK_SUMCHECK_QUOTIENT_M31 - 4;
 
     let started = Instant::now();
-    if schedule.query_count != Q_KERNEL_DEGREE || schedule.prefix.gamma == QM31::ZERO {
+    if !matches!(schedule.query_count, 16 | 18) || schedule.prefix.gamma == QM31::ZERO {
         return Err(StateOnlyHidingRankGateError::Shape);
     }
-    let roots = (0..Q_KERNEL_DEGREE)
+    let roots = (0..schedule.query_count)
         .map(|query| query_root(schedule, query))
         .collect::<Result<Vec<_>, _>>()?;
     let mut distinct = roots.clone();
@@ -962,6 +965,44 @@ pub fn probe_profile22_root_neutral_polynomial_kernel_rank(
         }
     }
 
+    // q18 books the deterministic minimum-q-degree basis: all degree-one
+    // semantic and D sources are offered before any degree-two full-domain
+    // mask-only source. This is the standard greedy minimum-weight basis for
+    // the represented column matroid. q16 retains its frozen legacy order
+    // below so this q18 refinement cannot change Profile22 evidence.
+    if schedule.query_count == 18 {
+        'd_q18: for coordinate in 0..4 {
+            let basis = state_only_mask_tower_basis(coordinate);
+            let g_scale = QM31::ZERO.sub(gamma.mul(basis));
+            let d_observations = g_observations[COMMON_TAIL_START..]
+                .iter()
+                .map(|row| {
+                    row.iter()
+                        .map(|&value| g_scale.mul(value))
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>();
+            let root_zero = gamma_d.mul(basis).add(gamma_g.mul(g_scale)) == QM31::ZERO;
+            for source in &common_sources {
+                if insert(
+                    2,
+                    coordinate,
+                    D_TERMINAL_LANE,
+                    basis,
+                    g_scale,
+                    1,
+                    0,
+                    root_zero,
+                    source,
+                    &tail_terminal_rows,
+                    &d_observations,
+                ) {
+                    break 'd_q18;
+                }
+            }
+        }
+    }
+
     'mask_only: for mask_lane in 0..STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS {
         let generator = STATE_ONLY_HIDING_C1_COLUMNS + mask_lane;
         let inverse_exponent = G_GENERATOR - generator;
@@ -1004,36 +1045,41 @@ pub fn probe_profile22_root_neutral_polynomial_kernel_rank(
         }
     }
 
-    'd: for coordinate in 0..4 {
-        let basis = state_only_mask_tower_basis(coordinate);
-        let g_scale = QM31::ZERO.sub(gamma.mul(basis));
-        let d_observations = g_observations[COMMON_TAIL_START..]
-            .iter()
-            .map(|row| {
-                row.iter()
-                    .map(|&value| g_scale.mul(value))
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
-        let root_zero = gamma_d.mul(basis).add(gamma_g.mul(g_scale)) == QM31::ZERO;
-        for source in &common_sources {
-            if insert(
-                2,
-                coordinate,
-                D_TERMINAL_LANE,
-                basis,
-                g_scale,
-                1,
-                0,
-                root_zero,
-                source,
-                &tail_terminal_rows,
-                &d_observations,
-            ) {
-                break 'd;
+    // Preserve the Profile22 q16 source ordering and therefore its frozen
+    // minor provenance: semantic, mask-only, then D.
+    if schedule.query_count == 16 {
+        'd_q16: for coordinate in 0..4 {
+            let basis = state_only_mask_tower_basis(coordinate);
+            let g_scale = QM31::ZERO.sub(gamma.mul(basis));
+            let d_observations = g_observations[COMMON_TAIL_START..]
+                .iter()
+                .map(|row| {
+                    row.iter()
+                        .map(|&value| g_scale.mul(value))
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>();
+            let root_zero = gamma_d.mul(basis).add(gamma_g.mul(g_scale)) == QM31::ZERO;
+            for source in &common_sources {
+                if insert(
+                    2,
+                    coordinate,
+                    D_TERMINAL_LANE,
+                    basis,
+                    g_scale,
+                    1,
+                    0,
+                    root_zero,
+                    source,
+                    &tail_terminal_rows,
+                    &d_observations,
+                ) {
+                    break 'd_q16;
+                }
             }
         }
     }
+
     drop(insert);
 
     if joint.rank > ROOT_JOINT_TARGET_M31
@@ -1047,9 +1093,9 @@ pub fn probe_profile22_root_neutral_polynomial_kernel_rank(
         .rank
         .saturating_sub(terminal_and_initial_projection.rank);
     let q_individual_degree = selected_degree_one + 2 * selected_degree_two;
-    let q_total_degree = Q_KERNEL_DEGREE * q_individual_degree;
+    let q_total_degree = schedule.query_count * q_individual_degree;
     let z_degree = 41_040usize;
-    let rho = q_total_degree as f64 / (131_072usize - 15) as f64;
+    let rho = q_total_degree as f64 / (131_072usize - (schedule.query_count - 1)) as f64;
     let continuous = (z_degree + gamma_degree) as f64 / 2_147_483_647f64;
     let minimum_selectors = (1usize..=16)
         .find(|&selectors| {

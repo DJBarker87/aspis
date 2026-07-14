@@ -18,7 +18,6 @@ const PROFILE23_RAW_TERMINAL_SCHUR_ROWS_M31: usize = 12;
 const PROFILE23_RAW_TERMINAL_ENTRY_Z_DEGREE: usize = 10;
 const PROFILE23_RAW_TERMINAL_SCHUR_Z_DEGREE: usize =
     PROFILE23_RAW_TERMINAL_SCHUR_ROWS_M31 * PROFILE23_RAW_TERMINAL_ENTRY_Z_DEGREE;
-const PROFILE23_GAMMA_COORDINATE_DEGREE: usize = 92_436;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Profile22ZeroFactorRootNeutralPrefix {
@@ -197,9 +196,11 @@ pub fn bind_profile23_complete_good_product_provenance(
         && h1_rank == PROFILE23_RAW_TERMINAL_SCHUR_ROWS_M31
         && raw.remaining_gd_terminal_schur_rank_m31 == gd_rank
         && raw.h1_inactive_padding_terminal_schur_rank_m31 == h1_rank
-        && root.q_total_degree_bound == 28_544
+        && root.query_count == usize::from(STATE_ONLY_PROFILE23_QUERY_COUNT)
+        && root.q_total_degree_bound == root.query_count * root.q_individual_degree_bound
+        && root.q_total_degree_bound != 0
         && root.z_total_degree_bound == PROFILE23_ROOT_NEUTRAL_Z_DEGREE
-        && root.gamma_coordinate_total_degree_bound == PROFILE23_GAMMA_COORDINATE_DEGREE
+        && root.gamma_coordinate_total_degree_bound != 0
         && raw.remaining_gd_terminal_schur_z_degree == PROFILE23_RAW_TERMINAL_SCHUR_Z_DEGREE
         && raw.h1_inactive_padding_terminal_schur_z_degree == PROFILE23_RAW_TERMINAL_SCHUR_Z_DEGREE;
     if !shape_ok {
@@ -207,7 +208,7 @@ pub fn bind_profile23_complete_good_product_provenance(
     }
     let complete_good_z_degree =
         PROFILE23_ROOT_NEUTRAL_Z_DEGREE + 2 * PROFILE23_RAW_TERMINAL_SCHUR_Z_DEGREE;
-    let continuous_degree = complete_good_z_degree + PROFILE23_GAMMA_COORDINATE_DEGREE;
+    let continuous_degree = complete_good_z_degree + root.gamma_coordinate_total_degree_bound;
     let product_fingerprint = profile23_complete_good_product_fingerprint(&[
         root.minor.fingerprint,
         raw.remaining_gd_terminal_schur_minor.fingerprint,
@@ -220,7 +221,7 @@ pub fn bind_profile23_complete_good_product_provenance(
         PROFILE23_RAW_TERMINAL_SCHUR_Z_DEGREE as u64,
         PROFILE23_RAW_TERMINAL_SCHUR_Z_DEGREE as u64,
         complete_good_z_degree as u64,
-        PROFILE23_GAMMA_COORDINATE_DEGREE as u64,
+        root.gamma_coordinate_total_degree_bound as u64,
         continuous_degree as u64,
     ]);
     Ok(Profile23CompleteGoodProductProvenance {
@@ -239,7 +240,7 @@ pub fn bind_profile23_complete_good_product_provenance(
         remaining_gd_terminal_schur_z_degree_bound: PROFILE23_RAW_TERMINAL_SCHUR_Z_DEGREE,
         h1_inactive_padding_terminal_schur_z_degree_bound: PROFILE23_RAW_TERMINAL_SCHUR_Z_DEGREE,
         complete_good_z_degree_bound: complete_good_z_degree,
-        gamma_coordinate_total_degree_bound: PROFILE23_GAMMA_COORDINATE_DEGREE,
+        gamma_coordinate_total_degree_bound: root.gamma_coordinate_total_degree_bound,
         continuous_total_degree_bound: continuous_degree,
         product_fingerprint,
         complete: true,
@@ -599,7 +600,7 @@ pub fn probe_atomic_state_only_profile22_zero_factor_qm31_tail_root_neutral(
     schedule: &StateOnlyTranscriptScheduleResult,
 ) -> Result<Profile22ZeroFactorQm31TailRootNeutralReport, StateOnlyHidingRankGateError> {
     let started = Instant::now();
-    if schedule.query_count != 16
+    if !matches!(schedule.query_count, 16 | 18)
         || schedule.query_count > schedule.queries.len()
         || schedule.prefix.gamma == QM31::ZERO
     {

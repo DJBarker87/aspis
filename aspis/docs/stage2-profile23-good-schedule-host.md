@@ -1,29 +1,34 @@
 # Profile 23 host Good predicate and q3 selector
 
-**Status (`2026-07-13`): exact host predicate, q3 selector, cap-16
-first-good builder, fixed-boundary proof/abort release, and complete-view
-computational hiding are green in the declared SHA-256 ROM/EPRO fixed-channel
-model. Profile 23 is now released as the default one-transaction production
-path after all `30/30` release gates passed. This earlier host-schedule
-artifact did not itself change or enable the production wire.**
+**Status (`2026-07-14`): the exact q18 host predicate, q3 selector, cap-17
+first-Good builder, fixed-boundary proof/abort controller, complete-Good
+product, and complete-view computational hiding are green in the declared
+SHA-256 ROM/EPRO fixed-channel model. The canonically mined q18 proof,
+tag-59/tag-60 host/SBF evidence, and local one-transaction release are green
+with `35/35` gates. The previous q16 certificate is historical evidence and
+does not authorize q18.**
 
 `crates/aspis-prover/src/state_only_good23.rs` turns the frozen complete-Good
 product into a strict schedule-only host API. A schedule is good only when all
 three required blocks pass:
 
 1. D-after-G root-neutral rank `1,404 / 1,404`;
-2. remaining G/D raw query rank `256` and terminal Schur rank `12`; and
-3. inactive-balanced H1 raw query rank `256` and terminal Schur rank `12`.
+2. remaining G/D raw query rank `288` and terminal Schur rank `12`; and
+3. inactive-balanced H1 raw query rank `288` and terminal Schur rank `12`.
 
 The runtime echelon minor fingerprints are diagnostic and may vary with the
 schedule. They are not compared to the frozen anchor fingerprints. The
-definition instead pins the schema/layout, width `29`, D index `28`, q16,
-rate `1/512`, domain log `19`, q3/cap16, and the complete degree tuple
-`(q,z,gamma,continuous)=(28544,41280,92436,133716)`. The definition
+definition instead pins the schema/layout, width `29`, D index `28`, q18,
+rate `1/512`, domain log `19`, batch grinding g37, fold grinding
+`[34,33,30,25]`, final grinding g32, q3/cap17, and the complete degree tuple
+`(q,z,gamma,continuous)=(31320,41280,80688,121968)`. The root-neutral
+minimum-degree basis contains exactly `1,068` degree-one and `336` degree-two
+columns, so its q-individual degree is `1,740` and its q-total degree is
+`31,320`. The definition
 fingerprint is
 
 ```text
-0x9cdd6a6c14b796760c8dd73329effbfc734a048ccecc4ce10f214bdae3a6af2a
+0x927920b10ba31373c1909ef9bfb7ae7cb9570c7e2536d294347834b3c83dcb26
 ```
 
 ## Public API
@@ -64,19 +69,23 @@ are good and the least selector is `0`:
 
 | selector | root rank | G/D Schur | H1 Schur | dynamic product fingerprint |
 |---:|---:|---:|---:|---:|
-| 0 | 1,404 | 12 | 12 | `0xc73e789daa54c8dd` |
-| 1 | 1,404 | 12 | 12 | `0xd5e21e461ef4e5d2` |
-| 2 | 1,404 | 12 | 12 | `0x9d1bcf6c743771ff` |
+| 0 | 1,404 | 12 | 12 | `0xfc0706f3a304ae26` |
+| 1 | 1,404 | 12 | 12 | `0x1eb7a0d4a2b3f79f` |
+| 2 | 1,404 | 12 | 12 | `0xa8e5683ced1e2d1c` |
 
-The optimized release test took `60.89 s` for the three predicates, about
-`20.30 s` per branch. A cap-16 worst case is therefore roughly 16.2 minutes of
-Good-gate time before counting proof construction. This is a host-latency
-concern, not verifier CU. The likely remedy is to cache the common encoder,
-row maps and continuous schedule work across the three q branches.
+The deterministic q18 fixture is `67,327` bytes, SHA-256
+`a5ed698a32d815ffd95f8d3e0be62d16620d32e216a087a350852726fb6ca238`.
+The three predicates now run in parallel and retain fixed selector ordering.
+The exact post-release audit of the mined proof took `40.64 s` wall time and
+confirmed that all three branches are good and selector `0` is least. The
+sumcheck opening path also stopped computing 96 values that it discarded:
+the exact unmined build-plus-verify path fell from `167–194 s` to `44.09 s`
+while reproducing the same 67,327-byte proof and SHA-256.
 
-Separately, the ignored selector integration test built and verified three
-complete unmined proofs—one for each valid selector—in `237.52 s`. That is
-proof construction plus opening verification, not Good-gate latency.
+With the optimized Metal miner, the q18/g37 production proof published
+successfully at `480.42 s` on its configured 480-second fixed boundary. The
+complete runtime record is
+`results/stage2/profile23_q18_g37_runtime.json`.
 
 ## Integrated production boundary
 
@@ -86,7 +95,8 @@ only for the least good branch. An all-bad triple is retryable; schema,
 transcript, layout and internal gate errors are fatal and collapse to the same
 opaque public error. Every complete rejected attempt has already burned its
 durable mask nonce and its scratch buffers are scrubbed. The attempt cap is
-exactly 16.
+exactly 17. The complete-Good rank-exhaustion and public-abort floors are
+respectively `105.21398677941984` and `105.21398677941983` bits.
 
 The builder returns an opaque `Profile23FirstGoodCandidate`. The only public
 edge is the shared fixed-release controller: at the caller-selected boundary
@@ -100,12 +110,12 @@ release controller.
 
 Good23 is the runtime premise that makes the complete non-hash field simulator
 exact on every emitted schedule: `epsilon_aff=0`. Combined with the final
-Profile-23 EPRO inventory `C=969,993`, cap 16, and `Q_H <= 2^128`, the declared
+Profile-23 EPRO inventory `C=969,993`, cap 17, and `Q_H <= 2^128`, the declared
 SHA-256 programmable-random-oracle real-vs-simulator bound is dominated by
-`2^-104.11238518950232`. Passing through that simulator gives the conservative
-pairwise-witness floor `103.11238518950232` bits. The fresh-attempt regression
-also passes in `141.00 s`: more than half the public bytes change, every root
-changes, opened salt sets are disjoint, and nonce reuse fails closed.
+`2^-104.02492234825198`. Passing through that simulator gives the conservative
+pairwise-witness floor `103.02492234825198` bits. The q18 public-byte inventory
+is gap-free and overlap-free across all `67,327` bytes, all five sections bind
+roots, values, salts and frontiers, and nonce reuse fails closed.
 
 This is computational hiding in the explicitly declared ROM/EPRO and fixed
 public `Proof`/`Abort` channel model. It is not statistical HVZK, not a
@@ -115,37 +125,56 @@ filesystem/timing/power/thermal/memory or remote-prover/miner observables;
 `docs/stage2-profile23-computational-hvzk-closure.md` and
 `results/stage2/profile23_computational_hvzk_closure.json`.
 
-## Current production release
+## Exact q18 soundness ledger
 
-The later production integration completed the gates outside this schedule
-artifact's scope. `results/stage2/profile23_one_transaction_release.json`
-records `released=true` with all `30/30` required gates green. The
-certificate's one-transaction scope is atomic verification and mutation using
-a finalized, pre-uploaded proof account. Production tags 59 and 60 require the
-all-zero authority sentinel in bytes `8..40` of the unchanged 40-byte header;
-proof-account creation, chunk upload, and `FinalizeProof` are excluded.
-Append-only tag 62 seals the proof account, append-only tag 63 initializes the
-pool, and the frozen program id is
-`7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue`. The
-released mined proof is
-`results/stage2/proofs/atomic_state_only_profile23_v3_mined.bin`, `61,599`
+The q18 proven-Johnson anchors are `107.31602011435538` bits for the batch,
+`108.98543226575069` bits for the union of folds g34/g33/g30/g25, and
+`110.18373913364348` bits for the g32 final check after the three-branch
+selector union. Their event union is `106.7020334873029` bits. The explicit
+work-normalized BCS formula uses `R=32`, `lambda=256`, and checks both
+`T=1` and `T=2^128`; its selected endpoint floors are
+`101.65763936794444` and `106.70203180861958` bits. The selected factor-40
+diagnostic is `101.38010539241553` bits. Reconstructing the unselected event
+union and applying the same BCS endpoint check followed by the whole-ledger
+factor three gives the authorizing release floor `100.16144938287455` bits. The cap-17
+three-candidate sampler term is far below these errors at
+`550.9238900176506` bits.
+
+## Local q18 production release
+
+The deterministic unmined theorem fixture remains
+`results/stage2/proofs/atomic_state_only_profile23_v3_unmined.bin`, `67,327`
 bytes, SHA-256
-`35c4e79316bf4a2af1951e5d2f41b6ebb4ebb7bd1e91a3ba93c52e549bfe7949`.
-The manifest-default production SBF is `6,870,048` bytes, SHA-256
-`6b64baf559dcddbd6f9b1af1205effeb6afae6a5746a44421e8826251fe4cffb`.
+`a5ed698a32d815ffd95f8d3e0be62d16620d32e216a087a350852726fb6ca238`.
+It is not a production proof and cannot authorize release.
 
-Same-binary production tag 59 is `1,202,939 CU`. Literal production tag 60
-measures `1,204,792 CU` for the program-owned zeroed mutation account and
-`1,207,123 CU` for canonical System-owned account
-creation. The latter leaves the worst-case measured headroom of exactly
-`192,877 CU` below the `1,400,000 CU` cap. The released ledger's selected
-Johnson soundness floor is `101.30230658283051` bits, with a Profile-23-own
-whole-ledger-times-three/BCS32 sensitivity of `100.80652861422749` bits; the
-complete-view pairwise-witness computational-hiding floor is
-`103.11238518950232` bits in
-the declared SHA-256 ROM/EPRO fixed-release-channel model, with a
-`104.11238518950232`-bit real-vs-simulator bound. Release does not weaken or
-broaden the theorem and model caveats above.
+The released production proof is 63,487 bytes with SHA-256
+`0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb`;
+its canonical statement sidecar has SHA-256
+`520a0a86e1d1918a5270622ac27182b1f5b6df2b624d68bbd2a2b6f927eebb14`.
+All three production Good23 branches accept and serialized selector `0` is
+the least Good branch. The freshly built default SBF is 915,656 bytes with
+SHA-256
+`da66a51b1f3ce95e907a87fca15fb9dc0cce66fd47646875ce2dff94879fd254`.
+Production tag 59 costs `1,299,012 CU`; tag 60 costs `1,300,905 CU` on the
+program-owned marker path and `1,303,236 CU` on canonical System creation.
+The maximum leaves `96,764 CU` below 1.4M.
+
+`results/stage2/profile23_one_transaction_release.json` records
+`released=true`, `status=released_all_required_gates_green`, and `35/35`
+passing gates. It binds the conservative release soundness floor
+`100.16144938287455` bits and the declared-model
+real-vs-simulator/pairwise hiding floors
+`104.02492234825198`/`103.02492234825198` bits.
+
+Production tags 59 and 60 continue to require the all-zero authority sentinel
+in bytes `8..40` of the unchanged 40-byte finalized proof-account header;
+proof-account creation, chunk upload, and `FinalizeProof` are outside the
+one-transaction measurement. Append-only tag 62 seals the proof account and
+append-only tag 63 initializes the pool. None of the old q16 proof size, CU,
+SBF hash, or `30/30` release results is transferred to q18. The green q18
+certificate is local release evidence, not a mainnet deployment or an
+external security audit; those remain separate blockers.
 
 ## Tests
 
@@ -163,9 +192,10 @@ NO_DNA=1 cargo test --release -p aspis-prover \
   profile23_all_three_selectors_build_and_verify -- --ignored --nocapture
 ```
 
-The Good23 suite is `5` fast tests plus `1` ignored exact-q3 test. The exact
-q3 run is all-good/least-0 in `60.89 s`; the separate three-proof selector run
-passes in `237.52 s`.
+The Good23 suite includes the fixed-order parallel manager and its
+panic-collapse gate. The production post-release audit is all-good/least-0 in
+`40.64 s`; the opening-equivalence test reproduces the unchanged unmined
+proof after the `44.09 s` optimized build-plus-verify path.
 
 Machine-readable result:
 `results/stage2/profile23_good_schedule_host.json`.

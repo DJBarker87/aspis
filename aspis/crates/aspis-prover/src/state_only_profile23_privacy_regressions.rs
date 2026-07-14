@@ -301,7 +301,7 @@ fn profile23_public_proof_byte_inventory_is_gap_and_overlap_free() {
         inventory_opening(&mut coverage, &mut totals, opening);
     }
 
-    assert_eq!(ACTUAL_PROFILE23_PROOF.len(), 59_679);
+    assert_eq!(ACTUAL_PROFILE23_PROOF.len(), 67_327);
     assert!(coverage.iter().all(Option::is_some));
     assert_eq!(totals[PublicByteKind::Header as usize], 16);
     assert_eq!(totals[PublicByteKind::MaskNonce as usize], 32);
@@ -316,9 +316,9 @@ fn profile23_public_proof_byte_inventory_is_gap_and_overlap_free() {
     assert_eq!(totals[PublicByteKind::DClaims as usize], 48);
     assert_eq!(totals[PublicByteKind::QuerySelector as usize], 1);
     assert_eq!(totals[PublicByteKind::OpeningCounts as usize], 30);
-    assert_eq!(totals[PublicByteKind::OpenedValues as usize], 12_800);
-    assert_eq!(totals[PublicByteKind::OpenedSalts as usize], 2_560);
-    assert_eq!(totals[PublicByteKind::MerkleFrontier as usize], 37_504);
+    assert_eq!(totals[PublicByteKind::OpenedValues as usize], 14_400);
+    assert_eq!(totals[PublicByteKind::OpenedSalts as usize], 2_880);
+    assert_eq!(totals[PublicByteKind::MerkleFrontier as usize], 43_232);
     assert_eq!(totals.iter().sum::<usize>(), ACTUAL_PROFILE23_PROOF.len());
 }
 
