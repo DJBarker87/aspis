@@ -41,6 +41,11 @@ Local and devnet compute measurements are separate:
 
 <!-- markdownlint-enable MD013 -->
 
+Path fields inside the frozen JSON records preserve the original release and
+devnet execution environment. The bundle locations in the table above are the
+authoritative checkout paths; `verify.sh` checks their identities without
+following the recorded provenance paths.
+
 The statement sidecar binds pool bytes
 `504c9d4be70ef96a37d9aff3d9fd1b5080726efd6596c54a12817fd2e2d9c67a`,
 sequence 0, and canonical public-input digest
@@ -247,6 +252,7 @@ FRESH_LEDGER="artifact-output/profile23-fresh-$RUN_ID-nonce-ledger"
 
 ASPIS_PROFILE23_POOL_HEX=504c9d4be70ef96a37d9aff3d9fd1b5080726efd6596c54a12817fd2e2d9c67a \
 ASPIS_PROFILE23_SEQUENCE=0 \
+ASPIS_PROFILE23_FIXTURE_SEED=0 \
 NO_DNA=1 cargo run --release -p aspis-prover -- \
   --example profile23_production_miner -- \
   "$FRESH_PROOF" "$FRESH_LEDGER" 480
@@ -254,7 +260,9 @@ NO_DNA=1 cargo run --release -p aspis-prover -- \
 
 At the fixed 480-second release boundary this command publishes exactly one
 `Proof` or `Abort`. It never emits a partial proof. A successful run also
-creates the matching `.statement.json` sidecar.
+creates the matching `.statement.json` sidecar. Repeated devnet rehearsals
+must use a fresh public `ASPIS_PROFILE23_FIXTURE_SEED` so that the sample
+witness derives a new nullifier; seed zero is the frozen release fixture.
 
 ## Expected broad costs
 
@@ -267,7 +275,8 @@ creates the matching `.statement.json` sidecar.
 | complete-Good products and all-selector replay | tens of seconds to several minutes, CPU dependent |
 | acceptance/mutation/release replay | several minutes plus first-build cost; uses local validator/SBF tooling and rewrites generated results |
 | fresh q18/g37 proof | 480-second public boundary plus compilation and follow-up verification; allow roughly ten minutes on the recorded class of machine |
-| devnet lifecycle | 109 setup transactions, including 104 sequential uploads; public-RPC finality dominates and the run can take tens of minutes |
+| frozen devnet lifecycle | 109 setup transactions, including 104 sequential uploads; the recorded upload interval was 24 minutes 44 seconds |
+| current devnet uploader | 70 uploads in five 16-transaction finality windows; the recorded public-RPC timing projects roughly 80--120 seconds for upload |
 
 <!-- markdownlint-enable MD013 -->
 

@@ -6,7 +6,7 @@
 //! configuration is never consulted.
 
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     fs::{self, OpenOptions},
     io::Write,
     os::unix::fs::PermissionsExt,
@@ -55,7 +55,15 @@ const EXECUTE_ACK: &str =
     "I_ACKNOWLEDGE_PROFILE23_DEVNET_REHEARSAL_MUTATES_DEVNET_AND_SPENDS_DEVNET_SOL";
 const CU_LIMIT: u32 = 1_400_000;
 const HEAP_FRAME_BYTES: u32 = 262_144;
-const UPLOAD_CHUNK_BYTES: usize = 640;
+// A legacy UploadChunk transaction is `chunk.len() + 213` bytes with the
+// current account layout. 960 therefore serializes to 1,173 bytes: comfortably
+// below Solana's 1,232-byte packet cap while reducing the frozen 66,367-byte
+// proof from 104 upload transactions to 70.
+const UPLOAD_CHUNK_BYTES: usize = 960;
+const UPLOAD_WINDOW_TRANSACTIONS: usize = 16;
+const UPLOAD_MAX_IDENTICAL_RETRIES: u8 = 3;
+const UPLOAD_REBROADCAST_INTERVAL: Duration = Duration::from_secs(6);
+const MAX_TRANSACTION_WIRE_BYTES: usize = 1_232;
 const PROOF_MAGIC: &[u8; 4] = b"ASPU";
 const PROOF_AUTHORITY_OFFSET: usize = 8;
 const PROGRAMDATA_METADATA_BYTES: usize = 45;
@@ -218,6 +226,10 @@ pub struct Profile23DevnetEvidence {
     pub proof_path: String,
     pub proof_bytes: usize,
     pub proof_sha256: String,
+    pub proof_upload_chunk_bytes: usize,
+    pub proof_upload_window_transactions: usize,
+    pub proof_upload_transaction_count: usize,
+    pub proof_upload_finality_windows: usize,
     pub statement_path: String,
     pub statement_sha256: String,
     pub program_max_len: usize,
@@ -396,6 +408,232 @@ struct Simulation {
     error: Option<Value>,
 }
 
+#[derive(Clone, Copy, Debug)]
+struct RecentBlockhash {
+    hash: Hash,
+    last_valid_block_height: u64,
+}
+
+#[derive(Clone, Debug)]
+struct PendingTransaction {
+    label: String,
+    signature: Signature,
+    wire: Vec<u8>,
+    message_sha256: String,
+    serialized_transaction_sha256: String,
+    identical_wire_retries: u8,
+    max_identical_wire_retries: u8,
+}
+
+impl PendingTransaction {
+    fn into_evidence(self, finalized_slot: u64, compute_units: Option<u64>) -> TransactionEvidence {
+        TransactionEvidence {
+            label: self.label,
+            signature: self.signature.to_string(),
+            finalized_slot,
+            message_sha256: self.message_sha256,
+            serialized_transaction_sha256: self.serialized_transaction_sha256,
+            compute_units_consumed: compute_units,
+            identical_wire_retries: self.identical_wire_retries,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ConfirmationProgress {
+    Processed,
+    Confirmed,
+    Finalized,
+}
+
+impl ConfirmationProgress {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Processed => "processed",
+            Self::Confirmed => "confirmed",
+            Self::Finalized => "finalized",
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct SignatureStatusObservation {
+    slot: u64,
+    error: Option<Value>,
+    progress: ConfirmationProgress,
+}
+
+fn parse_signature_status_batch(
+    result: &Value,
+    expected_len: usize,
+) -> Result<Vec<Option<SignatureStatusObservation>>> {
+    let values = result["value"]
+        .as_array()
+        .context("signature-status batch omitted value array")?;
+    ensure!(
+        values.len() == expected_len,
+        "signature-status batch length drift: expected {expected_len}, got {}",
+        values.len()
+    );
+    values
+        .iter()
+        .map(|value| {
+            if value.is_null() {
+                return Ok(None);
+            }
+            let confirmation_status = value
+                .get("confirmationStatus")
+                .context("signature status omitted confirmationStatus")?;
+            let progress = match confirmation_status.as_str() {
+                Some("processed") => ConfirmationProgress::Processed,
+                Some("confirmed") => ConfirmationProgress::Confirmed,
+                Some("finalized") => ConfirmationProgress::Finalized,
+                Some(other) => bail!("unknown signature confirmation status {other:?}"),
+                None if confirmation_status.is_null() => {
+                    let confirmations = value
+                        .get("confirmations")
+                        .context("nullable confirmationStatus omitted confirmations")?;
+                    if confirmations.is_null() {
+                        ConfirmationProgress::Finalized
+                    } else {
+                        confirmations.as_u64().context(
+                            "nullable confirmationStatus had invalid confirmations field",
+                        )?;
+                        ConfirmationProgress::Processed
+                    }
+                }
+                None => bail!("signature confirmationStatus was not string or null"),
+            };
+            Ok(Some(SignatureStatusObservation {
+                slot: value["slot"]
+                    .as_u64()
+                    .context("signature status omitted slot")?,
+                error: (!value["err"].is_null()).then(|| value["err"].clone()),
+                progress,
+            }))
+        })
+        .collect()
+}
+
+#[derive(Clone, Copy, Debug)]
+struct TrackedFinalization {
+    slot: u64,
+    progress: ConfirmationProgress,
+}
+
+/// Fail-closed, order-preserving state machine for submitted writes.
+///
+/// The caller may observe the signatures in any finalization order, but a
+/// successful result is available only after every signature is finalized. A
+/// load-balanced RPC may transiently report pre-finality fork regressions, so
+/// only finalized observations are latched; response-shape drift and on-chain
+/// errors still abort the batch.
+struct FinalizationTracker {
+    signatures: Vec<Signature>,
+    observations: Vec<Option<TrackedFinalization>>,
+}
+
+impl FinalizationTracker {
+    fn new(signatures: Vec<Signature>) -> Result<Self> {
+        ensure!(
+            !signatures.is_empty(),
+            "finalization batch must not be empty"
+        );
+        let unique = signatures
+            .iter()
+            .map(ToString::to_string)
+            .collect::<BTreeSet<_>>();
+        ensure!(
+            unique.len() == signatures.len(),
+            "finalization batch contains duplicate signatures"
+        );
+        let observations = vec![None; signatures.len()];
+        Ok(Self {
+            signatures,
+            observations,
+        })
+    }
+
+    fn observe(&mut self, statuses: Vec<Option<SignatureStatusObservation>>) -> Result<bool> {
+        ensure!(
+            statuses.len() == self.signatures.len(),
+            "signature-status observation length drift"
+        );
+        for (index, status) in statuses.into_iter().enumerate() {
+            let signature = &self.signatures[index];
+            let Some(status) = status else {
+                if !self.observations[index]
+                    .is_some_and(|previous| previous.progress == ConfirmationProgress::Finalized)
+                {
+                    self.observations[index] = None;
+                }
+                continue;
+            };
+            if let Some(error) = status.error {
+                bail!("transaction {signature} failed: {error}");
+            }
+            if self.observations[index]
+                .is_some_and(|previous| previous.progress == ConfirmationProgress::Finalized)
+            {
+                continue;
+            }
+            self.observations[index] = Some(TrackedFinalization {
+                slot: status.slot,
+                progress: status.progress,
+            });
+        }
+        Ok(self.observations.iter().all(|observation| {
+            observation.is_some_and(|status| status.progress == ConfirmationProgress::Finalized)
+        }))
+    }
+
+    fn ensure_unseen_not_expired(
+        &self,
+        current_block_height: u64,
+        last_valid_block_height: u64,
+    ) -> Result<()> {
+        if current_block_height > last_valid_block_height {
+            let unseen = self
+                .observations
+                .iter()
+                .enumerate()
+                .filter_map(|(index, observation)| {
+                    observation
+                        .is_none()
+                        .then_some(self.signatures[index].to_string())
+                })
+                .collect::<Vec<_>>();
+            ensure!(
+                unseen.is_empty(),
+                "blockhash expired with {} unobserved transaction(s): {}",
+                unseen.len(),
+                unseen.join(", ")
+            );
+        }
+        Ok(())
+    }
+
+    fn unobserved_indices(&self) -> Vec<usize> {
+        self.observations
+            .iter()
+            .enumerate()
+            .filter_map(|(index, observation)| observation.is_none().then_some(index))
+            .collect()
+    }
+
+    fn finalized_slots_in_submission_order(&self) -> Result<Vec<u64>> {
+        self.observations
+            .iter()
+            .map(|observation| match observation {
+                Some(status) if status.progress == ConfirmationProgress::Finalized => {
+                    Ok(status.slot)
+                }
+                _ => bail!("finalization batch is incomplete"),
+            })
+            .collect()
+    }
+}
+
 fn rpc_read_retryable(error: &anyhow::Error) -> bool {
     let rendered = format!("{error:#}");
     rendered.contains("\"code\":429")
@@ -460,13 +698,29 @@ impl Rpc {
             .context("getGenesisHash result was not a string")
     }
 
+    fn latest_blockhash_with_expiry(&self) -> Result<RecentBlockhash> {
+        let result = self.call_read("getLatestBlockhash", json!([{"commitment":"finalized"}]))?;
+        let value = &result["value"];
+        Ok(RecentBlockhash {
+            hash: value["blockhash"]
+                .as_str()
+                .context("latest blockhash missing")?
+                .parse()
+                .context("latest blockhash invalid")?,
+            last_valid_block_height: value["lastValidBlockHeight"]
+                .as_u64()
+                .context("latest blockhash omitted lastValidBlockHeight")?,
+        })
+    }
+
     fn latest_blockhash(&self) -> Result<Hash> {
-        self.call_read("getLatestBlockhash", json!([{"commitment":"finalized"}]))?["value"]
-            ["blockhash"]
-            .as_str()
-            .context("latest blockhash missing")?
-            .parse()
-            .context("latest blockhash invalid")
+        Ok(self.latest_blockhash_with_expiry()?.hash)
+    }
+
+    fn block_height(&self) -> Result<u64> {
+        self.call_read("getBlockHeight", json!([{"commitment":"finalized"}]))?
+            .as_u64()
+            .context("block height was not u64")
     }
 
     fn account(&self, address: &Pubkey) -> Result<Option<RpcAccount>> {
@@ -533,30 +787,39 @@ impl Rpc {
         })
     }
 
+    fn signature_statuses(
+        &self,
+        signatures: &[Signature],
+    ) -> Result<Vec<Option<SignatureStatusObservation>>> {
+        ensure!(
+            !signatures.is_empty() && signatures.len() <= 256,
+            "signature-status batch must contain 1..=256 signatures"
+        );
+        let result = self.call_read(
+            "getSignatureStatuses",
+            json!([
+                signatures.iter().map(ToString::to_string).collect::<Vec<_>>(),
+                {"searchTransactionHistory":true}
+            ]),
+        )?;
+        parse_signature_status_batch(&result, signatures.len())
+    }
+
     fn signature_status(
         &self,
         signature: &Signature,
     ) -> Result<Option<(u64, Option<Value>, String)>> {
-        let result = self.call_read(
-            "getSignatureStatuses",
-            json!([[signature.to_string()], {"searchTransactionHistory":true}]),
-        )?;
-        let status = &result["value"][0];
-        if status.is_null() {
-            return Ok(None);
-        }
-        Ok(Some((
-            status["slot"].as_u64().context("signature slot missing")?,
-            if status["err"].is_null() {
-                None
-            } else {
-                Some(status["err"].clone())
-            },
-            status["confirmationStatus"]
-                .as_str()
-                .unwrap_or("unknown")
-                .to_owned(),
-        )))
+        let status = self
+            .signature_statuses(&[*signature])?
+            .pop()
+            .context("single-signature status parser returned no entry")?;
+        Ok(status.map(|status| {
+            (
+                status.slot,
+                status.error,
+                status.progress.as_str().to_owned(),
+            )
+        }))
     }
 
     fn wait_finalized(&self, signature: &Signature) -> Result<u64> {
@@ -616,28 +879,28 @@ impl Rpc {
         ))
     }
 
-    fn submit_wire(
+    fn send_wire_once(&self, wire: &[u8]) -> Result<Value> {
+        self.call(
+            "sendTransaction",
+            json!([BASE64.encode(wire), {
+                "encoding":"base64",
+                "skipPreflight":false,
+                "preflightCommitment":"finalized",
+                "maxRetries":0
+            }]),
+        )
+    }
+
+    fn submit_wire_pending(
         &self,
         wire: &[u8],
         expected_signature: Signature,
-        allow_one_identical_retry: bool,
+        max_identical_retries: u8,
         label: &str,
         message_sha256: String,
-    ) -> Result<TransactionEvidence> {
-        let encoded = BASE64.encode(wire);
-        let send = || {
-            self.call(
-                "sendTransaction",
-                json!([encoded, {
-                    "encoding":"base64",
-                    "skipPreflight":false,
-                    "preflightCommitment":"finalized",
-                    "maxRetries":0
-                }]),
-            )
-        };
+    ) -> Result<PendingTransaction> {
         let mut retries = 0u8;
-        let first = send();
+        let first = self.send_wire_once(wire);
         match first {
             Ok(value) => {
                 ensure!(
@@ -648,32 +911,138 @@ impl Rpc {
             Err(first_error) => {
                 let observed = self.signature_status(&expected_signature)?;
                 if observed.is_none() {
-                    if !allow_one_identical_retry || !rpc_read_retryable(&first_error) {
+                    if max_identical_retries == 0 || !rpc_read_retryable(&first_error) {
                         return Err(first_error).with_context(|| format!("submit {label}"));
                     }
                     retries = 1;
-                    let value = send().with_context(|| {
-                        format!(
-                            "identical-wire retry failed after ambiguous first submit: {first_error}"
-                        )
-                    })?;
-                    ensure!(
-                        value.as_str() == Some(expected_signature.to_string().as_str()),
-                        "RPC returned a different signature on identical retry"
-                    );
+                    match self.send_wire_once(wire) {
+                        Ok(value) => ensure!(
+                            value.as_str() == Some(expected_signature.to_string().as_str()),
+                            "RPC returned a different signature on identical retry"
+                        ),
+                        Err(retry_error) => {
+                            let observed_after_retry =
+                                self.signature_status(&expected_signature)?;
+                            if observed_after_retry.is_none()
+                                && (!rpc_read_retryable(&retry_error)
+                                    || retries >= max_identical_retries)
+                            {
+                                return Err(retry_error).with_context(|| {
+                                    format!(
+                                        "identical-wire retry failed after ambiguous first submit: {first_error}"
+                                    )
+                                });
+                            }
+                        }
+                    }
                 }
             }
         }
-        let slot = self.wait_finalized(&expected_signature)?;
-        Ok(TransactionEvidence {
+        Ok(PendingTransaction {
             label: label.to_owned(),
-            signature: expected_signature.to_string(),
-            finalized_slot: slot,
+            signature: expected_signature,
+            wire: wire.to_vec(),
             message_sha256,
             serialized_transaction_sha256: sha256(wire),
-            compute_units_consumed: self.transaction_cu(&expected_signature)?,
             identical_wire_retries: retries,
+            max_identical_wire_retries: max_identical_retries,
         })
+    }
+
+    fn wait_finalized_batch(
+        &self,
+        mut pending: Vec<PendingTransaction>,
+        last_valid_block_height: u64,
+    ) -> Result<Vec<TransactionEvidence>> {
+        let signatures = pending
+            .iter()
+            .map(|transaction| transaction.signature)
+            .collect::<Vec<_>>();
+        let mut tracker = FinalizationTracker::new(signatures.clone())?;
+        let started = Instant::now();
+        let mut next_rebroadcast = UPLOAD_REBROADCAST_INTERVAL;
+        loop {
+            if tracker.observe(self.signature_statuses(&signatures)?)? {
+                break;
+            }
+            tracker.ensure_unseen_not_expired(self.block_height()?, last_valid_block_height)?;
+            if started.elapsed() >= next_rebroadcast {
+                for index in tracker.unobserved_indices() {
+                    let transaction = &mut pending[index];
+                    if transaction.identical_wire_retries >= transaction.max_identical_wire_retries
+                    {
+                        continue;
+                    }
+                    transaction.identical_wire_retries += 1;
+                    match self.send_wire_once(&transaction.wire) {
+                        Ok(value) => ensure!(
+                            value.as_str() == Some(transaction.signature.to_string().as_str()),
+                            "RPC returned a different signature while rebroadcasting {}",
+                            transaction.label
+                        ),
+                        Err(error) if rpc_read_retryable(&error) => {}
+                        Err(error) => {
+                            ensure!(
+                                self.signature_status(&transaction.signature)?.is_some(),
+                                "non-retryable identical-wire rebroadcast failed for {}: {error}",
+                                transaction.label
+                            );
+                        }
+                    }
+                }
+                next_rebroadcast += UPLOAD_REBROADCAST_INTERVAL;
+            }
+            ensure!(
+                started.elapsed() < DEFAULT_CONFIRM_TIMEOUT,
+                "transaction batch did not finalize before timeout"
+            );
+            thread::sleep(SIGNATURE_POLL_INTERVAL);
+        }
+        let slots = tracker.finalized_slots_in_submission_order()?;
+        pending
+            .into_iter()
+            .zip(slots)
+            .map(|(transaction, slot)| {
+                let compute_units = self.transaction_cu(&transaction.signature)?;
+                Ok(transaction.into_evidence(slot, compute_units))
+            })
+            .collect()
+    }
+
+    fn submit_wire(
+        &self,
+        wire: &[u8],
+        expected_signature: Signature,
+        allow_one_identical_retry: bool,
+        label: &str,
+        message_sha256: String,
+    ) -> Result<TransactionEvidence> {
+        let pending = self.submit_wire_pending(
+            wire,
+            expected_signature,
+            u8::from(allow_one_identical_retry),
+            label,
+            message_sha256,
+        )?;
+        let slot = self.wait_finalized(&pending.signature)?;
+        let compute_units = self.transaction_cu(&pending.signature)?;
+        Ok(pending.into_evidence(slot, compute_units))
+    }
+
+    fn submit_transaction_pending(
+        &self,
+        transaction: &Transaction,
+        label: &str,
+        max_identical_retries: u8,
+    ) -> Result<PendingTransaction> {
+        let wire = bincode::serialize(transaction)?;
+        self.submit_wire_pending(
+            &wire,
+            transaction.signatures[0],
+            max_identical_retries,
+            label,
+            sha256(&bincode::serialize(&transaction.message)?),
+        )
     }
 
     fn submit_transaction(
@@ -2444,18 +2813,52 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
         "compute-budgeted InitProof simulation omitted or exceeded its CU limit"
     );
     setup_transactions.push(rpc.submit_transaction(&init_tx, "init_proof_account")?);
-    for (index, chunk) in proof.chunks(UPLOAD_CHUNK_BYTES).enumerate() {
-        let upload = proof_instruction(
-            payer.pubkey(),
-            proof_account.pubkey(),
-            &AspisInstruction::UploadChunk {
-                offset: (index * UPLOAD_CHUNK_BYTES) as u32,
-                chunk: chunk.to_vec(),
-            },
-        )?;
-        let upload_tx = signed_transaction(&payer, &[], &[upload], rpc.latest_blockhash()?);
+    let upload_chunks = proof
+        .chunks(UPLOAD_CHUNK_BYTES)
+        .enumerate()
+        .collect::<Vec<_>>();
+    let proof_upload_transaction_count = upload_chunks.len();
+    let proof_upload_finality_windows =
+        proof_upload_transaction_count.div_ceil(UPLOAD_WINDOW_TRANSACTIONS);
+    for (window_index, window) in upload_chunks.chunks(UPLOAD_WINDOW_TRANSACTIONS).enumerate() {
+        eprintln!(
+            "proof upload window {}/{}: submitting {} transaction(s)",
+            window_index + 1,
+            proof_upload_finality_windows,
+            window.len()
+        );
+        let recent_blockhash = rpc.latest_blockhash_with_expiry()?;
+        let mut pending = Vec::with_capacity(window.len());
+        for &(index, chunk) in window {
+            let upload = proof_instruction(
+                payer.pubkey(),
+                proof_account.pubkey(),
+                &AspisInstruction::UploadChunk {
+                    offset: (index * UPLOAD_CHUNK_BYTES) as u32,
+                    chunk: chunk.to_vec(),
+                },
+            )?;
+            let upload_tx = signed_transaction(&payer, &[], &[upload], recent_blockhash.hash);
+            let wire = bincode::serialize(&upload_tx)?;
+            ensure!(
+                wire.len() <= MAX_TRANSACTION_WIRE_BYTES,
+                "upload transaction {index} is {} bytes, above the {}-byte packet cap",
+                wire.len(),
+                MAX_TRANSACTION_WIRE_BYTES
+            );
+            pending.push(rpc.submit_transaction_pending(
+                &upload_tx,
+                &format!("upload_proof_chunk_{index}"),
+                UPLOAD_MAX_IDENTICAL_RETRIES,
+            )?);
+        }
         setup_transactions
-            .push(rpc.submit_transaction(&upload_tx, &format!("upload_proof_chunk_{index}"))?);
+            .extend(rpc.wait_finalized_batch(pending, recent_blockhash.last_valid_block_height)?);
+        eprintln!(
+            "proof upload window {}/{} finalized",
+            window_index + 1,
+            proof_upload_finality_windows
+        );
     }
     let uploaded = rpc
         .account(&proof_account.pubkey())?
@@ -2680,6 +3083,10 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
         proof_path: config.proof.display().to_string(),
         proof_bytes: proof.len(),
         proof_sha256: sha256(&proof),
+        proof_upload_chunk_bytes: UPLOAD_CHUNK_BYTES,
+        proof_upload_window_transactions: UPLOAD_WINDOW_TRANSACTIONS,
+        proof_upload_transaction_count,
+        proof_upload_finality_windows,
         statement_path: config.statement.display().to_string(),
         statement_sha256: sha256(&statement_bytes),
         program_max_len: config.program_max_len,
@@ -2868,6 +3275,187 @@ mod tests {
         .into_iter()
         .map(str::to_owned)
         .collect()
+    }
+
+    fn test_signature(label: &[u8]) -> Signature {
+        Keypair::new().sign_message(label)
+    }
+
+    fn status(slot: u64, progress: &str) -> Option<SignatureStatusObservation> {
+        Some(SignatureStatusObservation {
+            slot,
+            error: None,
+            progress: match progress {
+                "processed" => ConfirmationProgress::Processed,
+                "confirmed" => ConfirmationProgress::Confirmed,
+                "finalized" => ConfirmationProgress::Finalized,
+                _ => panic!("unsupported test progress"),
+            },
+        })
+    }
+
+    fn upload_wire_len(chunk_len: usize) -> usize {
+        let payer = Keypair::new();
+        let proof_account = Keypair::new();
+        let upload = proof_instruction(
+            payer.pubkey(),
+            proof_account.pubkey(),
+            &AspisInstruction::UploadChunk {
+                offset: 0,
+                chunk: vec![0x5a; chunk_len],
+            },
+        )
+        .unwrap();
+        bincode::serialize(&signed_transaction(&payer, &[], &[upload], Hash::default()))
+            .unwrap()
+            .len()
+    }
+
+    #[test]
+    fn upload_geometry_fits_packet_cap_and_uses_five_finality_windows() {
+        assert_eq!(upload_wire_len(UPLOAD_CHUNK_BYTES), 1_173);
+        assert_eq!(upload_wire_len(1_019), MAX_TRANSACTION_WIRE_BYTES);
+        assert_eq!(upload_wire_len(1_020), MAX_TRANSACTION_WIRE_BYTES + 1);
+
+        let proof_len = 66_367usize;
+        let chunk_lengths = (0..proof_len)
+            .step_by(UPLOAD_CHUNK_BYTES)
+            .map(|offset| (proof_len - offset).min(UPLOAD_CHUNK_BYTES))
+            .collect::<Vec<_>>();
+        assert_eq!(chunk_lengths.len(), 70);
+        assert_eq!(chunk_lengths.last(), Some(&127));
+        assert_eq!(
+            chunk_lengths
+                .chunks(UPLOAD_WINDOW_TRANSACTIONS)
+                .map(<[usize]>::len)
+                .collect::<Vec<_>>(),
+            vec![16, 16, 16, 16, 6]
+        );
+    }
+
+    #[test]
+    fn signature_status_batch_parser_is_shape_and_state_strict() {
+        let parsed = parse_signature_status_batch(
+            &json!({
+                "value": [
+                    null,
+                    {
+                        "slot": 71,
+                        "confirmations": null,
+                        "err": null,
+                        "confirmationStatus": "finalized"
+                    }
+                ]
+            }),
+            2,
+        )
+        .unwrap();
+        assert!(parsed[0].is_none());
+        assert_eq!(parsed[1].as_ref().unwrap().slot, 71);
+        assert_eq!(
+            parsed[1].as_ref().unwrap().progress,
+            ConfirmationProgress::Finalized
+        );
+
+        let nullable = parse_signature_status_batch(
+            &json!({
+                "value": [
+                    {"slot": 72, "confirmations": null, "err": null, "confirmationStatus": null},
+                    {"slot": 73, "confirmations": 2, "err": null, "confirmationStatus": null}
+                ]
+            }),
+            2,
+        )
+        .unwrap();
+        assert_eq!(
+            nullable[0].as_ref().unwrap().progress,
+            ConfirmationProgress::Finalized
+        );
+        assert_eq!(
+            nullable[1].as_ref().unwrap().progress,
+            ConfirmationProgress::Processed
+        );
+
+        assert!(parse_signature_status_batch(&json!({"value": [null]}), 2).is_err());
+        assert!(parse_signature_status_batch(
+            &json!({"value": [{
+                "slot": 1,
+                "err": null,
+                "confirmationStatus": "optimistic"
+            }]}),
+            1,
+        )
+        .is_err());
+        assert!(parse_signature_status_batch(
+            &json!({"value": [{"err": null, "confirmationStatus": "confirmed"}]}),
+            1,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn finalization_tracker_accepts_out_of_order_progress_and_preserves_submission_order() {
+        let first = test_signature(b"first");
+        let second = test_signature(b"second");
+        let mut tracker =
+            FinalizationTracker::new(vec![first, second]).expect("unique nonempty batch");
+
+        assert!(!tracker
+            .observe(vec![status(31, "confirmed"), status(29, "finalized")])
+            .unwrap());
+        assert!(tracker
+            .observe(vec![status(31, "finalized"), status(29, "finalized")])
+            .unwrap());
+        assert_eq!(
+            tracker.finalized_slots_in_submission_order().unwrap(),
+            vec![31, 29]
+        );
+    }
+
+    #[test]
+    fn finalization_tracker_fails_on_transaction_error_and_tolerates_prefinality_forks() {
+        let signature = test_signature(b"partial-failure");
+        assert!(FinalizationTracker::new(Vec::new()).is_err());
+        assert!(FinalizationTracker::new(vec![signature, signature]).is_err());
+
+        let mut failed = FinalizationTracker::new(vec![signature]).unwrap();
+        assert!(failed
+            .observe(vec![Some(SignatureStatusObservation {
+                slot: 17,
+                error: Some(json!({"InstructionError": [0, "InvalidAccountData"]})),
+                progress: ConfirmationProgress::Confirmed,
+            })])
+            .is_err());
+
+        let mut disappeared = FinalizationTracker::new(vec![signature]).unwrap();
+        assert!(!disappeared.observe(vec![status(17, "processed")]).unwrap());
+        assert!(!disappeared.observe(vec![None]).unwrap());
+        assert!(disappeared.ensure_unseen_not_expired(18, 17).is_err());
+
+        let mut regressed = FinalizationTracker::new(vec![signature]).unwrap();
+        assert!(!regressed.observe(vec![status(17, "confirmed")]).unwrap());
+        assert!(!regressed.observe(vec![status(17, "processed")]).unwrap());
+
+        let mut moved = FinalizationTracker::new(vec![signature]).unwrap();
+        assert!(!moved.observe(vec![status(17, "confirmed")]).unwrap());
+        assert!(moved.observe(vec![status(18, "finalized")]).unwrap());
+        assert!(moved.observe(vec![None]).unwrap());
+        assert_eq!(
+            moved.finalized_slots_in_submission_order().unwrap(),
+            vec![18]
+        );
+    }
+
+    #[test]
+    fn blockhash_expiry_rejects_never_observed_transactions() {
+        let signature = test_signature(b"expiry");
+        let mut unseen = FinalizationTracker::new(vec![signature]).unwrap();
+        unseen.ensure_unseen_not_expired(100, 100).unwrap();
+        assert!(unseen.ensure_unseen_not_expired(101, 100).is_err());
+        assert!(unseen.finalized_slots_in_submission_order().is_err());
+
+        assert!(!unseen.observe(vec![status(41, "processed")]).unwrap());
+        unseen.ensure_unseen_not_expired(101, 100).unwrap();
     }
 
     #[test]

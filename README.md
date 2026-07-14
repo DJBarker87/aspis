@@ -29,6 +29,12 @@ The finalized devnet transaction verified the released proof, advanced the
 pool sequence from 0 to 1, and created the nullifier marker. Its signed
 simulation and landed execution both consumed 1,314,332 CU.
 
+The recorded rehearsal used 104 serial proof uploads and spent 24 minutes 44
+seconds in that upload interval. The current executor uses 960-byte chunks and
+16-transaction finality windows: the same 66,367-byte proof requires 70 upload
+transactions and five upload-finality waves. The full finalized account image
+is still checked byte-for-byte before sealing.
+
 ## Verify the frozen release
 
 The publication bundle contains the exact proof, public statement, SBF

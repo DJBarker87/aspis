@@ -30,16 +30,28 @@ fn digest(seed: u32) -> Digest {
     core::array::from_fn(|index| M31(seed + 17 * index as u32))
 }
 
-fn fixture(pool: [u8; 32], sequence: u64) -> (AtomicPaymentStatementV3, SpendWitness) {
-    let nullifier_key = digest(101);
-    let input_salt = digest(301);
-    let output_salt = digest(501);
-    let output_owner_key = digest(701);
+fn fixture(
+    pool: [u8; 32],
+    sequence: u64,
+    fixture_seed: u32,
+) -> (AtomicPaymentStatementV3, SpendWitness) {
+    let seeded_digest = |base: u32| {
+        digest(
+            base.checked_add(fixture_seed)
+                .expect("ASPIS_PROFILE23_FIXTURE_SEED overflow"),
+        )
+    };
+    let nullifier_key = seeded_digest(101);
+    let input_salt = seeded_digest(301);
+    let output_salt = seeded_digest(501);
+    let output_owner_key = seeded_digest(701);
     let asset_id = M31(17);
     let value = 1_000_000;
     let value_out = 999_999;
     let merkle_path = MerklePath {
-        siblings: (0..20).map(|level| digest(1_000 + 31 * level)).collect(),
+        siblings: (0..20)
+            .map(|level| seeded_digest(1_000 + 31 * level))
+            .collect(),
         index: 0x5_a5a5,
     };
     let witness = SpendWitness {
@@ -151,11 +163,18 @@ fn main() {
     let sequence = std::env::var("ASPIS_PROFILE23_SEQUENCE")
         .map(|value| value.parse::<u64>().expect("ASPIS_PROFILE23_SEQUENCE"))
         .unwrap_or(73);
+    let fixture_seed = std::env::var("ASPIS_PROFILE23_FIXTURE_SEED")
+        .map(|value| {
+            value
+                .parse::<u32>()
+                .expect("ASPIS_PROFILE23_FIXTURE_SEED")
+        })
+        .unwrap_or(0);
     let boundary = SystemTime::now()
         .checked_add(Duration::from_secs(boundary_seconds))
         .expect("release boundary overflow");
     let mut controller = Profile23FixedReleaseController::new(boundary);
-    let (statement, mut witness) = fixture(pool, sequence);
+    let (statement, mut witness) = fixture(pool, sequence, fixture_seed);
     let statement_sidecar = serde_json::json!({
         "artifact": "profile23_production_statement",
         "pool_hex": hex(&statement.pool),
@@ -244,6 +263,7 @@ fn main() {
             println!("statement={}", statement_path.display());
             println!("bytes={}", proof.len());
             println!("sha256={}", hex(&HOST_HASH(&[&proof])));
+            println!("fixture_seed={fixture_seed}");
         }
         Profile23PublicRelease::Abort => {
             println!("abort");
