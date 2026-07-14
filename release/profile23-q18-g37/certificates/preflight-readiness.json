@@ -1,0 +1,175 @@
+{
+  "artifact": "profile23_devnet_readiness",
+  "generated_at_utc": "2026-07-14T15:14:11.239806+00:00",
+  "mode": "read_only",
+  "mutations_performed": false,
+  "ready": true,
+  "expected_genesis_hash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "observed_genesis_hash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "rpc_origin_redacted": "https://api.devnet.solana.com/<redacted>",
+  "program_id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+  "payer_pubkey": "8AFmGcC2azHYGJz1VrDb8qJbCYdhVBTM5GE6TTSY3W2k",
+  "pool_pubkey": "6QTNhChQjQpzL32gdtzR9RBdjZUSR3bQhNS3eTkgM6Fj",
+  "proof_account_pubkey": "HTSueSgUJxDbzjjtbeYJcLUzFajb2U3w1SNN25SWiknh",
+  "proof_sha256": "f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53",
+  "sbf_sha256": "da66a51b1f3ce95e907a87fca15fb9dc0cce66fd47646875ce2dff94879fd254",
+  "release_sha256": "b02eae619f685449a84095243f5d07be78f91ca7df67b435fb2c12aef8f39fcf",
+  "statement_sha256": "976e9a7e001382025eaf81cfcb28ac609db966d4a9912511f54e2b702077b6de",
+  "nullifier_address": "AbWC9vKT7mxRNLeCnFrfi9HFsncF73XfG9TnbJS2jXHy",
+  "program_already_deployed": true,
+  "rent_budget": {
+    "program_buffer_lamports": 6444438000,
+    "programdata_lamports": 6444493680,
+    "program_account_lamports": 1141440,
+    "pool_account_lamports": 1224960,
+    "proof_account_lamports": 463083600,
+    "nullifier_account_lamports": 1392000,
+    "fee_reserve_lamports": 100000000,
+    "conservative_required_lamports": 565700560,
+    "payer_balance_lamports": 18760794196,
+    "surplus_lamports": 18195093636
+  },
+  "gates": [
+    {
+      "name": "explicit_https_rpc",
+      "passed": true,
+      "evidence": "redacted_origin=Some(\"https://api.devnet.solana.com/<redacted>\")"
+    },
+    {
+      "name": "exact_devnet_genesis",
+      "passed": true,
+      "evidence": "observed=Some(\"EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG\"), expected=EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG"
+    },
+    {
+      "name": "payer_keypair_secure",
+      "passed": true,
+      "evidence": "explicit secure keypair"
+    },
+    {
+      "name": "program_keypair_secure",
+      "passed": true,
+      "evidence": "explicit secure keypair"
+    },
+    {
+      "name": "pool_keypair_secure",
+      "passed": true,
+      "evidence": "explicit secure keypair"
+    },
+    {
+      "name": "proof_account_keypair_secure",
+      "passed": true,
+      "evidence": "explicit secure keypair"
+    },
+    {
+      "name": "program_keypair_matches_declared_id",
+      "passed": true,
+      "evidence": "declared=7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue, explicit=Some(7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue)"
+    },
+    {
+      "name": "payer_program_pool_and_proof_keys_distinct",
+      "passed": true,
+      "evidence": "all four explicit signer identities are pairwise distinct"
+    },
+    {
+      "name": "release_certificate_nonempty_all_declared_gates_green",
+      "passed": true,
+      "evidence": "gate_count=Some(35), green_gate_count=Some(35), released=true"
+    },
+    {
+      "name": "release_certificate_matches_live_read_only_evaluation",
+      "passed": true,
+      "evidence": "error=None"
+    },
+    {
+      "name": "release_source_hashes_exact",
+      "passed": true,
+      "evidence": "all release-pinned source artifacts rehashed"
+    },
+    {
+      "name": "explicit_proof_matches_release_instance",
+      "passed": true,
+      "evidence": "path=results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.bin, bytes=Some(66367), sha256=f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53"
+    },
+    {
+      "name": "explicit_statement_matches_release_instance",
+      "passed": true,
+      "evidence": "path=results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.statement.json, bytes=Some(667), sha256=976e9a7e001382025eaf81cfcb28ac609db966d4a9912511f54e2b702077b6de, pool=504c9d4be70ef96a37d9aff3d9fd1b5080726efd6596c54a12817fd2e2d9c67a, sequence=0, digest=21d73e39be93112f986f52c7d683f2ab478890360a306af81110852ffb16a30a"
+    },
+    {
+      "name": "release_instance_selector_is_live_least_good",
+      "passed": true,
+      "evidence": "candidates=3, serialized=Some(0), least=Some(0), branches=3"
+    },
+    {
+      "name": "release_instance_good23_fingerprint_matches_live_code",
+      "passed": true,
+      "evidence": "release=0x927920b10ba31373c1909ef9bfb7ae7cb9570c7e2536d294347834b3c83dcb26, live=0x927920b10ba31373c1909ef9bfb7ae7cb9570c7e2536d294347834b3c83dcb26"
+    },
+    {
+      "name": "release_instance_declares_production_host_verification_green",
+      "passed": true,
+      "evidence": "declared=true"
+    },
+    {
+      "name": "production_host_verifies_exact_proof_and_statement",
+      "passed": true,
+      "evidence": "error=None"
+    },
+    {
+      "name": "explicit_sbf_matches_release",
+      "passed": true,
+      "evidence": "sha256=Some(\"da66a51b1f3ce95e907a87fca15fb9dc0cce66fd47646875ce2dff94879fd254\")"
+    },
+    {
+      "name": "program_max_len_explicit_and_sufficient",
+      "passed": true,
+      "evidence": "max_len=925760, sbf_len=Some(915656)"
+    },
+    {
+      "name": "fresh_pool_known_before_proof_and_release",
+      "passed": true,
+      "evidence": "pool_pubkey=Some(6QTNhChQjQpzL32gdtzR9RBdjZUSR3bQhNS3eTkgM6Fj), sidecar_sha256=Some(\"976e9a7e001382025eaf81cfcb28ac609db966d4a9912511f54e2b702077b6de\")"
+    },
+    {
+      "name": "program_absent_or_exact_release_deployment",
+      "passed": true,
+      "evidence": "already_deployed=Some(true)"
+    },
+    {
+      "name": "fresh_pool_account_absent_or_exact_explicit_resume",
+      "passed": true,
+      "evidence": "pool=Some(6QTNhChQjQpzL32gdtzR9RBdjZUSR3bQhNS3eTkgM6Fj), resume=true, checkpoint=Some(\"pool_initialized_proof_account_created_zeroed\"), resume_error=None"
+    },
+    {
+      "name": "fresh_proof_account_absent_or_exact_explicit_resume",
+      "passed": true,
+      "evidence": "proof_account=Some(HTSueSgUJxDbzjjtbeYJcLUzFajb2U3w1SNN25SWiknh), resume=true, resume_error=None"
+    },
+    {
+      "name": "canonical_nullifier_absent_or_prefunded_compatible",
+      "passed": true,
+      "evidence": "address=Some(AbWC9vKT7mxRNLeCnFrfi9HFsncF73XfG9TnbJS2jXHy), observed=false"
+    },
+    {
+      "name": "explicit_solana_cli_executable",
+      "passed": true,
+      "evidence": "path=/Users/dominic/.local/share/solana/install/active_release/bin/solana"
+    },
+    {
+      "name": "evidence_path_fresh_or_exact_explicit_resume_marker",
+      "passed": true,
+      "evidence": "path=/Users/dominic/.config/solana/aspis-profile23-devnet-20260713T223212Z/profile23-devnet-q18-g37-finalized.json, resume=true"
+    },
+    {
+      "name": "payer_covers_conservative_rent_and_fees",
+      "passed": true,
+      "evidence": "balance=Some(18760794196), required=Some(565700560), surplus=Some(18195093636)"
+    }
+  ],
+  "blockers": [],
+  "explicit_nonclaims": [
+    "Readiness never signs, deploys, creates accounts, uploads proof bytes, or submits transactions.",
+    "A devnet rehearsal is not mainnet-beta evidence.",
+    "Proof upload/finalization and pool initialization are setup transactions, not the one-transaction verification/state-transition claim."
+  ]
+}

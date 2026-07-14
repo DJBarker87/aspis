@@ -1,30 +1,21 @@
 [package]
-name = "xtask"
+name = "aspis-xtask"
 edition.workspace = true
 license.workspace = true
 version.workspace = true
 
 [dependencies]
+aspis-core = { path = "../crates/aspis-core" }
+aspis-prover = { path = "../crates/aspis-prover" }
+aspis-statement = { path = "../crates/aspis-statement" }
+aspis-verifier = { path = "../programs/aspis-verifier", default-features = false, features = ["no-entrypoint"] }
 anyhow.workspace = true
-bincode.workspace = true
 base64.workspace = true
+bincode.workspace = true
+borsh.workspace = true
 chrono.workspace = true
-circle-p3-core = { path = "../crates/circle-p3-core" }
-csv.workspace = true
-phase1-probe = { path = "../programs/phase1-probe", features = ["no-entrypoint", "phase2-instrumentation"] }
-whir-jb-host = { path = "../crates/whir-jb-host" }
-whir-ud-host = { path = "../crates/whir-ud-host" }
-whir-m31-host = { path = "../crates/whir-m31-host" }
-whir-m31-core = { path = "../crates/whir-m31-core" }
-whir-m31-verifier = { path = "../programs/whir-m31-verifier", features = ["no-entrypoint"] }
-stark-prover = { path = "../third_party/solana-pqzk-fullchain/crates/stark-prover" }
-winter-fri = "0.12"
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-serde_yaml.workspace = true
-solana-program.workspace = true
+sha2.workspace = true
 solana-sdk.workspace = true
-svm-cost-model = { path = "../crates/svm-cost-model" }
-tempfile.workspace = true
-winterfell.workspace = true

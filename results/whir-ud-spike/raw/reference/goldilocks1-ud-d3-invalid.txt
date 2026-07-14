@@ -1,8 +1,0 @@
-    Blocking waiting for file lock on package cache
-    Blocking waiting for file lock on package cache
-    Finished `release` profile [optimized + debuginfo] target(s) in 0.08s
-     Running `/tmp/whir-ref/target/release/main --unique-decoding -l 100 -d 3 -e 1 -r 1 -i 4 -k 4 -f Goldilocks1 --hash Blake3 --reps 1`
-
-thread 'main' (6998347) panicked at /private/tmp/whir-ref/src/protocols/irs_commit.rs:137:9:
-assertion failed: vector_size.is_multiple_of(interleaving_depth)
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

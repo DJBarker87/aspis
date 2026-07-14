@@ -1,7 +1,0 @@
-scenario_name,whir_fold_mode,merkle_proof_mode,security_target_bits,soundness_assumption,total_explicit_query_count,total_sbf_mean_cu,total_sbf_stddev_cu,proof_bytes,total_classified_multiplies,general,zero_one_negone,square,sparse_const,twiddle,bary_weight,challenge_power,cm31_structured,qm31_structured,general_extension,structured_share
-whir_t100_capacity_full,raw_fibers,minimal_subtree,100.0,whir_capacity_full,28,702910.0,0.0,5668,3190,2073,0,589,0,0,18,250,72,18,170,0.29686520376175546
-whir_t100_capacity_full,local_interpolant,minimal_subtree,100.0,whir_capacity_full,28,706656.0,0.0,5668,3262,2033,0,589,0,0,18,362,72,18,170,0.3246474555487431
-whir_t128_capacity_full,raw_fibers,minimal_subtree,128.0,whir_capacity_full,39,927227.0,0.0,5932,4414,2877,0,813,0,0,25,338,100,25,236,0.2947439963751699
-whir_t128_capacity_full,local_interpolant,minimal_subtree,128.0,whir_capacity_full,39,932436.0,0.0,5932,4514,2821,0,813,0,0,25,494,100,25,236,0.32277359326539656
-whir_t128_johnson_full,raw_fibers,minimal_subtree,128.0,whir_johnson_full,78,1420420.0,0.0,9896,8776,5741,0,1613,0,0,50,650,200,50,472,0.2920464904284412
-whir_t128_johnson_full,local_interpolant,minimal_subtree,128.0,whir_johnson_full,78,1420420.0,0.0,9896,8976,5629,0,1613,0,0,50,962,200,50,472,0.3202985739750446

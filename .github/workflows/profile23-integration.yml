@@ -1,34 +1,51 @@
 name: Profile23 integration
 
+permissions:
+  contents: read
+
 on:
   push:
     paths:
-      - "aspis/crates/aspis-core/**"
-      - "aspis/crates/aspis-prover/**"
-      - "aspis/crates/aspis-statement/**"
-      - "aspis/programs/aspis-verifier/**"
-      - "aspis/xtask/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".cargo/**"
+      - "crates/aspis-core/**"
+      - "crates/aspis-prover/**"
+      - "crates/aspis-statement/**"
+      - "programs/aspis-verifier/**"
+      - "xtask/**"
+      - "tools/**"
+      - "results/stage2/**"
+      - "release/profile23-q18-g37/**"
+      - "paper/profile23/**"
       - ".github/workflows/profile23-integration.yml"
   pull_request:
     paths:
-      - "aspis/crates/aspis-core/**"
-      - "aspis/crates/aspis-prover/**"
-      - "aspis/crates/aspis-statement/**"
-      - "aspis/programs/aspis-verifier/**"
-      - "aspis/xtask/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".cargo/**"
+      - "crates/aspis-core/**"
+      - "crates/aspis-prover/**"
+      - "crates/aspis-statement/**"
+      - "programs/aspis-verifier/**"
+      - "xtask/**"
+      - "tools/**"
+      - "results/stage2/**"
+      - "release/profile23-q18-g37/**"
+      - "paper/profile23/**"
       - ".github/workflows/profile23-integration.yml"
 
 jobs:
   profile23:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: aspis
     env:
       NO_DNA: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+
+      - name: Formatting
+        run: cargo fmt --all -- --check
 
       - name: Core fail-closed and transcript tests
         run: cargo test -q -p aspis-core profile23
@@ -51,3 +68,15 @@ jobs:
 
       - name: Harness schema and proof override compile
         run: cargo check -q -p aspis-xtask
+
+      - name: Devnet executor invariants
+        run: cargo test -q -p aspis-xtask profile23_devnet
+
+  release-bundle:
+    name: Frozen Profile23 release bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify q18/g37 bundle
+        run: bash release/profile23-q18-g37/verify.sh

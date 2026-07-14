@@ -1,9 +1,0 @@
-    Blocking waiting for file lock on package cache
-    Blocking waiting for file lock on package cache
-    Blocking waiting for file lock on package cache
-    Finished `release` profile [optimized + debuginfo] target(s) in 1.93s
-     Running `/tmp/whir-ref/target/release/main -l 128 -d 20 -e 1 -r 1 -i 4 -k 4 -f Goldilocks2 --hash Blake3 --reps 1`
-
-thread 'main' (7049643) panicked at src/protocols/proof_of_work.rs:30:5:
-assertion failed: (0.0..=60.0).contains(&difficulty.into())
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

@@ -1,1 +1,0 @@
-650580148b85013c3142f4348d10b0e30b5488dd16521763b496851b9f4e1ce0  /tmp/circle-ref-eval/Plonky3/uni-stark/tests/fixtures/uni_stark_circle_v1.postcard

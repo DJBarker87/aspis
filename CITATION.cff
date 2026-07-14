@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use Aspis, please cite the software and accompanying Profile 23 manuscript."
+title: "Aspis Profile 23: Transparent Shielded-Spend Verification and Atomic State Update on Solana"
+type: software
+authors:
+  - name: "DJBarker87"
+    website: "https://github.com/DJBarker87"
+repository-code: "https://github.com/DJBarker87/zk"
+url: "https://github.com/DJBarker87/zk"
+version: "profile23-q18-g37"
+date-released: 2026-07-14
+license: "Apache-2.0 OR MIT"

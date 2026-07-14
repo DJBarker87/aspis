@@ -1,0 +1,65 @@
+{
+  "artifact": "aspis_profile23_q18_g37_publication_bundle",
+  "version": 1,
+  "release_id": "profile23-q18-g37",
+  "profile": {
+    "name": "Profile23",
+    "queries": 18,
+    "batch_grinding_bits": 37,
+    "release_gates_passed": 35,
+    "release_gates_total": 35,
+    "conservative_soundness_floor_bits": 100.16144938287457,
+    "pairwise_witness_hiding_bits": 103.02492234825198,
+    "real_vs_simulator_hiding_bits": 104.02492234825198
+  },
+  "parameters": {
+    "query_count": 18,
+    "batch_grinding_bits": 37,
+    "fold_grinding_bits": [34, 33, 30, 25],
+    "final_grinding_bits": 32
+  },
+  "source": {
+    "repository": "https://github.com/DJBarker87/zk",
+    "commit": "020f8f87238435dc2e1dc8cb41df90670fcb94f6",
+    "research_archive_tag": "research-archive-2026-07-14"
+  },
+  "devnet": {
+    "network": "solana-devnet",
+    "program_id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+    "programdata_address": "cdRqe7MGCEJ2Z6iZfWuXtuymRiAhXtyfDgT47sKZr69",
+    "upgrade_authority": "8AFmGcC2azHYGJz1VrDb8qJbCYdhVBTM5GE6TTSY3W2k",
+    "signature": "3ofPbzRkqMEJZCM9vwKz96rLqRFtSg4d1GyqqVBEbogtwzmJodsWb2f7V4X83BLvuPXFsT6Yyf87PC1ZbLf1R7bx",
+    "finalized_slot": 476231605,
+    "compute_units": 1314332
+  },
+  "objects": {
+    "certificates/release.json": {
+      "bytes": 20073,
+      "sha256": "b02eae619f685449a84095243f5d07be78f91ca7df67b435fb2c12aef8f39fcf"
+    },
+    "certificates/preflight-readiness.json": {
+      "bytes": 7216,
+      "sha256": "ddbe026884875f62b215277ec2028b4531bb6933a969c46dbd540a57a538f8aa"
+    },
+    "evidence/devnet-finalized.raw.json": {
+      "bytes": 61342,
+      "sha256": "360e38fc5db3b644586c29e7a872203e8f9507c9ddef52add776fefb5d300275"
+    },
+    "paper/profile23.pdf": {
+      "bytes": 588517,
+      "sha256": "c42433cfbfe7cca618a0d240187665ac610cb78f5dcb172e5e5f2634e1fd1abf"
+    },
+    "program/aspis_verifier.so": {
+      "bytes": 915656,
+      "sha256": "da66a51b1f3ce95e907a87fca15fb9dc0cce66fd47646875ce2dff94879fd254"
+    },
+    "proof/profile23-q18-g37.bin": {
+      "bytes": 66367,
+      "sha256": "f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53"
+    },
+    "proof/statement.json": {
+      "bytes": 667,
+      "sha256": "976e9a7e001382025eaf81cfcb28ac609db966d4a9912511f54e2b702077b6de"
+    }
+  }
+}
