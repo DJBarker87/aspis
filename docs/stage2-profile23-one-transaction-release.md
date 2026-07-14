@@ -4,8 +4,9 @@ Status on 2026-07-14: **the local q18/cap17 release is green with `35/35`
 gates.** The certificate binds the proof-independent Good23, soundness, and
 declared-model hiding artifacts to a canonically mined q18 proof, production
 host/SBF acceptance and mutation KATs, and a fresh default SBF. The 2026-07-13
-q16/cap16 `30/30` certificate is superseded historical evidence, not the
-current Profile-23 release.
+parameter search and superseded certificates are preserved in the
+[`research-archive-2026-07-14`](https://github.com/DJBarker87/zk/tree/research-archive-2026-07-14)
+tag.
 
 Run:
 
@@ -17,11 +18,10 @@ NO_DNA=1 cargo run --release -p aspis-xtask -- \
 The command writes
 `results/stage2/profile23_one_transaction_release.json` only from the required
 source artifacts and exits nonzero when a release tooth is false or absent. A
-stale q16 proof, binary, source hash, mutable proof account, or missing q18 gate
-therefore cannot silently retain released status. The current JSON records
+stale proof, mismatched binary, source hash, mutable proof account, or missing
+gate therefore cannot silently retain released status. The current JSON records
 `released=true`, `status=released_all_required_gates_green`, and no failed
-gates. Any retained q16 fields are historical only and must not be read as q18
-evidence.
+gates.
 
 ## Exact scope
 
@@ -177,24 +177,3 @@ and consumed `1,314,332 CU`. The immutable execution evidence has SHA-256
 This is devnet-only execution evidence; it is not a mainnet deployment or an
 external security audit. Proof-account creation, upload, and finalization
 remain outside the one-transaction claim.
-
-## Superseded q16 release result (`2026-07-13`)
-
-The q16 mined diagnostic acceptance artifact recorded `1,202,920 CU` for tag
-59, while its final production-mutation run recorded a same-binary baseline of
-`1,202,939 CU`. The 19-CU difference was retained as a measurement-context
-distinction, without assigning a cause or booking it as headroom. The even
-earlier `1,202,868` versus `1,202,876` comparison was already superseded.
-
-The q16 59,679-byte diagnostic fixture and 61,599-byte production proof had
-different public query schedules and minimal-subtree frontier sizes. That
-historical observation remains relevant to the simulator's treatment of
-schedule-dependent serialization, but those sizes are not q18 identities.
-
-The q16 frozen default SBF was 6,870,048 bytes with SHA-256
-`6b64baf559dcddbd6f9b1af1205effeb6afae6a5746a44421e8826251fe4cffb`.
-Same-binary tag 59 was 1,202,939 CU. Production tag 60 was 1,204,792 CU on the
-program-owned marker path and 1,207,123 CU on canonical System creation; the
-worst path left 192,877 CU below 1.4M. The negative release tests forced
-unmined and unsealed classifications in that historical artifact. None of its
-proof, SBF, CU, or soundness values transfers to q18.

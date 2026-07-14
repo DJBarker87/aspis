@@ -49,9 +49,11 @@ PDA's absent or supported prefunded shape, an absent or byte-exact upgradeable
 program, explicit maximum length, and conservative rent plus fee funding.
 
 Generate the pool keypair first, mine with its 32-byte public key in
-`ASPIS_PROFILE23_POOL_HEX`, and regenerate the release certificate against the
-resulting proof before running readiness. A proof or sidecar bound to the old
-fixture pool cannot pass the pool/proof/release conjunction.
+`ASPIS_PROFILE23_POOL_HEX`, choose a fresh public sample-witness seed in
+`ASPIS_PROFILE23_FIXTURE_SEED`, and regenerate the release certificate against
+the resulting proof before running readiness. A proof or sidecar bound to the
+old fixture pool, or a nullifier consumed by an earlier rehearsal, cannot pass
+the pool/proof/release conjunction.
 
 Execution repeats every check and additionally requires both:
 
@@ -91,6 +93,26 @@ final signature is refetched from devnet to derive the finalized wire and
 message hashes. A future mainnet executor still needs independent handling and
 evidence for any auxiliary deployment-buffer transactions hidden inside the
 CLI workflow, plus the separately selected mainnet upgrade-authority policy.
+
+## Current upload pipeline
+
+The frozen rehearsal below used 640-byte chunks and waited for each upload to
+reach finality before sending the next. Its 104 uploads spanned 3,987 slots and
+24 minutes 44 seconds on the public devnet RPC.
+
+The current executor uses 960-byte chunks. A full chunk produces a 1,173-byte
+legacy transaction, leaving 59 bytes below Solana's 1,232-byte packet cap. For
+the 66,367-byte release proof this gives 70 uploads, submitted in windows of
+16 with batched status polling for each window. The resulting upload
+schedule has five finality waves: 16, 16, 16, 16, and 6 transactions.
+
+Every transaction in a window uses the same fresh blockhash but has a distinct
+signed message. The executor retains that exact wire and may rebroadcast the
+same signature up to three times when it remains unseen; it never re-signs.
+It preserves the transaction ledger in chunk order, aborts on expiry or any
+landed error, and does not submit tag 62 until every upload is finalized and a
+finalized RPC read matches the complete expected account image. The recorded
+public-RPC timings project an upload phase of roughly 80--120 seconds.
 
 ## Finalized q18/g37 rehearsal
 
