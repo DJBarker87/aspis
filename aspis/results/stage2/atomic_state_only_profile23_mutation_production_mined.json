@@ -1,6 +1,6 @@
 {
-  "generated_at_utc": "2026-07-14T13:31:06.467865+00:00",
-  "command": "ASPIS_PROFILE23_PROOF=/Users/dominic/ZK/aspis/results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.bin ASPIS_PROFILE23_STATEMENT=/Users/dominic/ZK/aspis/results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.statement.json NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-profile23-mutation",
+  "generated_at_utc": "2026-07-14T14:43:22.180586+00:00",
+  "command": "ASPIS_PROFILE23_PROOF=/Users/dominic/ZK/aspis/results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.bin ASPIS_PROFILE23_STATEMENT=/Users/dominic/ZK/aspis/results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.statement.json NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-profile23-mutation",
   "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
   "production_instruction_wire_ordinal": 60,
   "diagnostic_instruction_wire_ordinal": 61,
@@ -9,17 +9,17 @@
     "diagnostic-unmined-profile23-mutation",
     "profile23-mutation-candidate"
   ],
-  "proof_path": "results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.bin",
+  "proof_path": "results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.bin",
   "proof_source_override": true,
-  "proof_bytes": 63487,
-  "proof_sha256": "0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb",
+  "proof_bytes": 66367,
+  "proof_sha256": "f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53",
   "proof_unmined": false,
-  "statement_path": "results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.statement.json",
+  "statement_path": "results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.statement.json",
   "statement_source_override": true,
-  "statement_sha256": "520a0a86e1d1918a5270622ac27182b1f5b6df2b624d68bbd2a2b6f927eebb14",
-  "statement_pool_hex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
-  "statement_sequence": 73,
-  "canonical_public_input_digest": "52e96f99756fe8fd2d8b7a700019b143d7eb549af1bf1ae987e99a75cadcd4c9",
+  "statement_sha256": "976e9a7e001382025eaf81cfcb28ac609db966d4a9912511f54e2b702077b6de",
+  "statement_pool_hex": "504c9d4be70ef96a37d9aff3d9fd1b5080726efd6596c54a12817fd2e2d9c67a",
+  "statement_sequence": 0,
+  "canonical_public_input_digest": "21d73e39be93112f986f52c7d683f2ab478890360a306af81110852ffb16a30a",
   "query_count": 18,
   "batch_grinding_bits": 37,
   "final_grinding_bits": 32,
@@ -38,8 +38,8 @@
   "paths": [
     {
       "marker_path": "program_owned_zeroed",
-      "literal_simulation_cu": 1248054,
-      "headroom_under_1_4m_cu": 151946,
+      "literal_simulation_cu": 1259566,
+      "headroom_under_1_4m_cu": 140434,
       "incremental_over_tag59_cu": 5137,
       "markers": [
         {
@@ -69,57 +69,57 @@
         },
         {
           "label": "atomic61_transcript",
-          "remaining": 1239720,
-          "delta_from_previous": 152422
+          "remaining": 1239939,
+          "delta_from_previous": 152203
         },
         {
           "label": "atomic61_terminal",
-          "remaining": 857606,
-          "delta_from_previous": 382114
+          "remaining": 857809,
+          "delta_from_previous": 382130
         },
         {
           "label": "atomic61_relation",
-          "remaining": 670119,
-          "delta_from_previous": 187487
+          "remaining": 670212,
+          "delta_from_previous": 187597
         },
         {
           "label": "atomic61_openings",
-          "remaining": 464451,
-          "delta_from_previous": 205668
+          "remaining": 453016,
+          "delta_from_previous": 217196
         },
         {
           "label": "atomic61_layer0_queries",
-          "remaining": 259248,
-          "delta_from_previous": 205203
+          "remaining": 247774,
+          "delta_from_previous": 205242
         },
         {
           "label": "atomic61_later_queries",
-          "remaining": 153855,
-          "delta_from_previous": 105393
+          "remaining": 142343,
+          "delta_from_previous": 105431
         },
         {
           "label": "atomic61_core_complete",
-          "remaining": 153637,
+          "remaining": 142125,
           "delta_from_previous": 218
         },
         {
           "label": "atomic61_proof_verified",
-          "remaining": 153359,
+          "remaining": 141847,
           "delta_from_previous": 278
         },
         {
           "label": "atomic61_program_marker_ready",
-          "remaining": 153153,
+          "remaining": 141641,
           "delta_from_previous": 206
         },
         {
           "label": "atomic61_state_rechecked",
-          "remaining": 152412,
+          "remaining": 140900,
           "delta_from_previous": 741
         },
         {
           "label": "atomic61_state_applied",
-          "remaining": 152133,
+          "remaining": 140621,
           "delta_from_previous": 279
         }
       ],
@@ -127,13 +127,13 @@
         "transaction_setup_cu": 1979,
         "account_validation_cu": 2758,
         "statement_decode_and_digest_cu": 894,
-        "exact_profile23_verifier_cu": 1241010,
+        "exact_profile23_verifier_cu": 1252522,
         "marker_prepare_or_cpi_cu": 206,
         "mutable_state_recheck_cu": 741,
         "final_account_writes_cu": 279,
         "post_last_marker_cu": 187,
-        "reconciled_total_cu": 1248054,
-        "formula": "1979 + 2758 + 894 + 1241010 + 206 + 741 + 279 + 187"
+        "reconciled_total_cu": 1259566,
+        "formula": "1979 + 2758 + 894 + 1252522 + 206 + 741 + 279 + 187"
       },
       "clean_simulation_accepted": true,
       "corrupt_proof_rejected_without_mutation": true,
@@ -146,8 +146,8 @@
     },
     {
       "marker_path": "canonical_system_owned_create",
-      "literal_simulation_cu": 1250387,
-      "headroom_under_1_4m_cu": 149613,
+      "literal_simulation_cu": 1261899,
+      "headroom_under_1_4m_cu": 138101,
       "incremental_over_tag59_cu": 7470,
       "markers": [
         {
@@ -177,57 +177,57 @@
         },
         {
           "label": "atomic61_transcript",
-          "remaining": 1240172,
-          "delta_from_previous": 152422
+          "remaining": 1240391,
+          "delta_from_previous": 152203
         },
         {
           "label": "atomic61_terminal",
-          "remaining": 858058,
-          "delta_from_previous": 382114
+          "remaining": 858261,
+          "delta_from_previous": 382130
         },
         {
           "label": "atomic61_relation",
-          "remaining": 670571,
-          "delta_from_previous": 187487
+          "remaining": 670664,
+          "delta_from_previous": 187597
         },
         {
           "label": "atomic61_openings",
-          "remaining": 464903,
-          "delta_from_previous": 205668
+          "remaining": 453468,
+          "delta_from_previous": 217196
         },
         {
           "label": "atomic61_layer0_queries",
-          "remaining": 259700,
-          "delta_from_previous": 205203
+          "remaining": 248226,
+          "delta_from_previous": 205242
         },
         {
           "label": "atomic61_later_queries",
-          "remaining": 154307,
-          "delta_from_previous": 105393
+          "remaining": 142795,
+          "delta_from_previous": 105431
         },
         {
           "label": "atomic61_core_complete",
-          "remaining": 154089,
+          "remaining": 142577,
           "delta_from_previous": 218
         },
         {
           "label": "atomic61_proof_verified",
-          "remaining": 153811,
+          "remaining": 142299,
           "delta_from_previous": 278
         },
         {
           "label": "atomic61_system_marker_created",
-          "remaining": 150820,
+          "remaining": 139308,
           "delta_from_previous": 2991
         },
         {
           "label": "atomic61_state_rechecked",
-          "remaining": 150079,
+          "remaining": 138567,
           "delta_from_previous": 741
         },
         {
           "label": "atomic61_state_applied",
-          "remaining": 149800,
+          "remaining": 138288,
           "delta_from_previous": 279
         }
       ],
@@ -235,13 +235,13 @@
         "transaction_setup_cu": 1979,
         "account_validation_cu": 2306,
         "statement_decode_and_digest_cu": 894,
-        "exact_profile23_verifier_cu": 1241010,
+        "exact_profile23_verifier_cu": 1252522,
         "marker_prepare_or_cpi_cu": 2991,
         "mutable_state_recheck_cu": 741,
         "final_account_writes_cu": 279,
         "post_last_marker_cu": 187,
-        "reconciled_total_cu": 1250387,
-        "formula": "1979 + 2306 + 894 + 1241010 + 2991 + 741 + 279 + 187"
+        "reconciled_total_cu": 1261899,
+        "formula": "1979 + 2306 + 894 + 1252522 + 2991 + 741 + 279 + 187"
       },
       "clean_simulation_accepted": true,
       "corrupt_proof_rejected_without_mutation": true,
@@ -283,18 +283,18 @@
     {
       "marker_path": "program_owned_zeroed",
       "proof_accounts_finalized_before_production_verification": true,
-      "literal_tag59_simulation_cu": 1299012,
-      "literal_tag60_simulation_cu": 1300905,
-      "headroom_under_1_4m_cu": 99095,
+      "literal_tag59_simulation_cu": 1310162,
+      "literal_tag60_simulation_cu": 1312055,
+      "headroom_under_1_4m_cu": 87945,
       "ledger": {
-        "production_read_only_tag59_cu": 1299012,
+        "production_read_only_tag59_cu": 1310162,
         "production_tag60_increment_over_tag59_cu": 1893,
-        "production_tag60_total_cu": 1300905,
-        "reconciled_total_cu": 1300905,
-        "formula": "1299012 + (1893)"
+        "production_tag60_total_cu": 1312055,
+        "reconciled_total_cu": 1312055,
+        "formula": "1310162 + (1893)"
       },
       "production_unmined_tag59_rejected": true,
-      "production_unmined_tag59_error": "{\"InstructionError\":[2,\"InvalidInstructionData\"]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue invoke [1]\",\"Program log: aspis-cu:atomic59_instruction_start\",\"Program consumption: 1399028 units remaining\",\"Program log: aspis-cu:atomic59_proof_loaded\",\"Program consumption: 1398463 units remaining\",\"Program log: aspis-cu:atomic59_parsed\",\"Program consumption: 1396473 units remaining\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue consumed 131727 of 1399700 compute units\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue failed: invalid instruction data\"]",
+      "production_unmined_tag59_error": "{\"InstructionError\":[2,\"InvalidInstructionData\"]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue invoke [1]\",\"Program log: aspis-cu:atomic59_instruction_start\",\"Program consumption: 1399028 units remaining\",\"Program log: aspis-cu:atomic59_proof_loaded\",\"Program consumption: 1398463 units remaining\",\"Program log: aspis-cu:atomic59_parsed\",\"Program consumption: 1396473 units remaining\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue consumed 24589 of 1399700 compute units\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue failed: invalid instruction data\"]",
       "production_unmined_tag60_rejected": true,
       "production_unmined_tag60_rollback_green": true,
       "production_unmined_tag60_landed_error": "{\"InstructionError\":[2,\"InvalidInstructionData\"]}",
@@ -312,18 +312,18 @@
     {
       "marker_path": "canonical_system_owned_create",
       "proof_accounts_finalized_before_production_verification": true,
-      "literal_tag59_simulation_cu": 1299012,
-      "literal_tag60_simulation_cu": 1303236,
-      "headroom_under_1_4m_cu": 96764,
+      "literal_tag59_simulation_cu": 1310162,
+      "literal_tag60_simulation_cu": 1314386,
+      "headroom_under_1_4m_cu": 85614,
       "ledger": {
-        "production_read_only_tag59_cu": 1299012,
+        "production_read_only_tag59_cu": 1310162,
         "production_tag60_increment_over_tag59_cu": 4224,
-        "production_tag60_total_cu": 1303236,
-        "reconciled_total_cu": 1303236,
-        "formula": "1299012 + (4224)"
+        "production_tag60_total_cu": 1314386,
+        "reconciled_total_cu": 1314386,
+        "formula": "1310162 + (4224)"
       },
       "production_unmined_tag59_rejected": true,
-      "production_unmined_tag59_error": "{\"InstructionError\":[2,\"InvalidInstructionData\"]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue invoke [1]\",\"Program log: aspis-cu:atomic59_instruction_start\",\"Program consumption: 1399028 units remaining\",\"Program log: aspis-cu:atomic59_proof_loaded\",\"Program consumption: 1398463 units remaining\",\"Program log: aspis-cu:atomic59_parsed\",\"Program consumption: 1396473 units remaining\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue consumed 131727 of 1399700 compute units\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue failed: invalid instruction data\"]",
+      "production_unmined_tag59_error": "{\"InstructionError\":[2,\"InvalidInstructionData\"]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue invoke [1]\",\"Program log: aspis-cu:atomic59_instruction_start\",\"Program consumption: 1399028 units remaining\",\"Program log: aspis-cu:atomic59_proof_loaded\",\"Program consumption: 1398463 units remaining\",\"Program log: aspis-cu:atomic59_parsed\",\"Program consumption: 1396473 units remaining\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue consumed 24589 of 1399700 compute units\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue failed: invalid instruction data\"]",
       "production_unmined_tag60_rejected": true,
       "production_unmined_tag60_rollback_green": true,
       "production_unmined_tag60_landed_error": "{\"InstructionError\":[2,\"InvalidInstructionData\"]}",

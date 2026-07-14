@@ -141,15 +141,16 @@ SBF, replayed the production KATs, and passed `35/35` gates:
 
 | q18 release item | value |
 |---|---:|
-| mined proof bytes | 63,487 |
-| mined proof SHA-256 | `0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb` |
-| statement SHA-256 | `520a0a86e1d1918a5270622ac27182b1f5b6df2b624d68bbd2a2b6f927eebb14` |
+| mined proof bytes | 66,367 |
+| mined proof SHA-256 | `f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53` |
+| statement SHA-256 | `976e9a7e001382025eaf81cfcb28ac609db966d4a9912511f54e2b702077b6de` |
+| canonical public-input digest | `21d73e39be93112f986f52c7d683f2ab478890360a306af81110852ffb16a30a` |
 | default SBF bytes | 915,656 |
 | default SBF SHA-256 | `da66a51b1f3ce95e907a87fca15fb9dc0cce66fd47646875ce2dff94879fd254` |
-| production tag 59 | 1,299,012 CU |
-| tag 60, program-owned marker | 1,300,905 CU |
-| tag 60, canonical System creation | 1,303,236 CU |
-| worst-path headroom below 1.4M | 96,764 CU |
+| production tag 59 | 1,310,162 CU |
+| tag 60, program-owned marker | 1,312,055 CU |
+| tag 60, canonical System creation | 1,314,386 CU |
+| worst-path headroom below 1.4M | 85,614 CU |
 | fixed production release boundary | 480 s |
 | measured production wall time | 480.42 s |
 | exact post-release host audit | 40.64 s |
@@ -165,6 +166,17 @@ This is a local one-transaction release certificate. It is not evidence of a
 mainnet deployment or a substitute for an external security audit; those
 remain separate blockers. Its scope still excludes proof-account creation,
 chunk uploads, and `FinalizeProof`, as stated above.
+
+## Finalized devnet execution (`2026-07-14`)
+
+The exact q18 tag-60 transaction finalized on Solana devnet at slot
+`476231605` with signature
+`3ofPbzRkqMEJZCM9vwKz96rLqRFtSg4d1GyqqVBEbogtwzmJodsWb2f7V4X83BLvuPXFsT6Yyf87PC1ZbLf1R7bx`
+and consumed `1,314,332 CU`. The immutable execution evidence has SHA-256
+`360e38fc5db3b644586c29e7a872203e8f9507c9ddef52add776fefb5d300275`.
+This is devnet-only execution evidence; it is not a mainnet deployment or an
+external security audit. Proof-account creation, upload, and finalization
+remain outside the one-transaction claim.
 
 ## Superseded q16 release result (`2026-07-13`)
 

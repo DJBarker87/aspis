@@ -1,0 +1,193 @@
+\section{Statement, relation, and state transition}
+\label{sec:relation}
+
+This section fixes the object proved by Profile~23.  The distinction between
+the arithmetic relation and the on-chain state preconditions is important:
+the proof claim is satisfiability of the former, while the
+accepting instruction checks the latter directly before changing any account.
+
+\subsection{Fields, digests, and domain-separated hashes}
+
+Let
+\[
+  p=2^{31}-1,\qquad \mathbb F=\mathbb F_p,
+\]
+and fix the tower
+\[
+  \mathbb F_1=\mathbb F[i]/(i^2+1),\qquad
+  \mathbb K=\mathbb F_1[u]/(u^2-(2+i)).
+\]
+Thus \(|\mathbb K|=p^4\); the implementation denotes this fixed
+quadratic-over-quadratic representation by \textsf{QM31}.  A payment digest is an element of
+\(\mathbb F^8\).  All field elements have canonical little-endian encodings;
+an encoding of an integer greater than or equal to \(p\) is rejected.
+
+The arithmetic relation uses a fixed width-16 Poseidon2 permutation over
+\(\mathbb F\)~\cite{GrassiKhovratovichSchofnegger2023}.  We write
+\(H_{\mathsf{own}}\), \(H_{\mathsf{nul}}\), and \(H_{\mathsf{note}}\) for
+the corresponding domain-separated sponge calls, and
+\(H_{\mathsf{node}}\) for the width-16 two-to-one compression used by the
+atomic payment tree.  The domains are part of the relation, rather than
+metadata supplied by a prover.  In particular, an output note and a future
+input note use the same \(H_{\mathsf{note}}\) domain.  For digests
+\(L,R\in\mathbb F^8\), the atomic node compressor places \(L\|R\) in the
+permutation state, adds the fixed atomic-v3 tweak in the final lane, applies
+the permutation, and returns the first eight lanes.
+
+For a bit \(b\), define
+\[
+  \operatorname{Parent}_b(X,S)=
+  \begin{cases}
+     H_{\mathsf{node}}(X,S),&b=0,\\
+     H_{\mathsf{node}}(S,X),&b=1.
+  \end{cases}
+\]
+For \(i=\sum_{j=0}^{19}i_j2^j\) and
+\(\boldsymbol\sigma=(\sigma_0,\ldots,\sigma_{19})\), set
+\[
+  \operatorname{Root}(L;i,\boldsymbol\sigma)
+   =X_{20},\quad X_0=L,\quad
+   X_{j+1}=\operatorname{Parent}_{i_j}(X_j,\sigma_j).
+\]
+
+\subsection{Public statement and witness}
+
+\begin{definition}[Profile~23 public statement]
+\label{def:profile23-statement}
+A public statement is
+\[
+ x=(P,s,A,\nu,C_{\mathrm{out}},A',a,f),
+\]
+where \(P\in\{0,1\}^{256}\) is the pool account address,
+\(s\in\{0,\ldots,2^{64}-1\}\) is its sequence number,
+\(A,\nu,C_{\mathrm{out}},A'\in\mathbb F^8\),
+\(a\in\mathbb F\) is an asset identifier, and
+\(f\in\{0,\ldots,2^{30}-1\}\) is the public fee.
+The canonical 184-byte encoding is
+\[
+ \mathtt{version}\|\mathtt{depth}\|0^6\|P\|s_{\rm le}\|A\|\nu\|
+ C_{\mathrm{out}}\|A'\|a_{\rm le}\|f_{\rm le},
+\]
+with version \(3\), depth \(20\), 32 bytes per digest, and four bytes for
+each of \(a\) and \(f\).  SHA-256 with the fixed statement domain hashes
+this encoding into the Fiat--Shamir transcript.
+\end{definition}
+
+\begin{definition}[Profile~23 witness]
+\label{def:profile23-witness}
+A witness is
+\[
+ w=(k_\nu,r_{\mathrm{in}},r_{\mathrm{out}},pk_{\mathrm{out}},
+    a_{\mathrm{in}},v,v',i,
+    \sigma_0,\ldots,\sigma_{19},
+    \boldsymbol\ell_{\mathrm{in}},
+    \boldsymbol\ell_{\mathrm{out}}),
+\]
+where each of \(k_\nu\), \(r_{\mathrm{in}}\),
+\(r_{\mathrm{out}}\), \(pk_{\mathrm{out}}\), and
+\(\sigma_0,\ldots,\sigma_{19}\) lies in \(\mathbb F^8\),
+\(a_{\mathrm{in}}\in\mathbb F\),
+\(v,v'\in\{0,\ldots,2^{30}-1\}\),
+\(i\in\{0,\ldots,2^{20}-1\}\), and each range vector belongs to
+\(\{0,\ldots,2^{10}-1\}^3\).
+\end{definition}
+
+\begin{definition}[Atomic same-path relation]
+\label{def:profile23-relation}
+The relation \(R_{23}(x,w)=1\) holds exactly when all of the following
+equations hold over the indicated integer or field domain:
+\begin{align}
+ pk_{\mathrm{in}}
+   &=H_{\mathsf{own}}(k_\nu),                                                   \label{eq:owner-key}\\
+ L_{\mathrm{in}}
+   &=H_{\mathsf{note}}(pk_{\mathrm{in}},v,a_{\mathrm{in}},r_{\mathrm{in}}),    \label{eq:input-note}\\
+ \nu
+   &=H_{\mathsf{nul}}(k_\nu,r_{\mathrm{in}}),                                  \label{eq:nullifier}\\
+ C_{\mathrm{out}}
+   &=H_{\mathsf{note}}(pk_{\mathrm{out}},v',a,r_{\mathrm{out}}),               \label{eq:output-note}\\
+ A
+   &=\operatorname{Root}(L_{\mathrm{in}};i,\boldsymbol\sigma),                  \label{eq:input-root}\\
+ A'
+   &=\operatorname{Root}(C_{\mathrm{out}};i,\boldsymbol\sigma),                \label{eq:output-root}\\
+ a_{\mathrm{in}}&=a,                                                            \label{eq:asset-equality}\\
+ v' + f&=v,                                                                      \label{eq:balance}\tag{integer}\\
+ v&=\ell_{\mathrm{in},0}+2^{10}\ell_{\mathrm{in},1}
+       +2^{20}\ell_{\mathrm{in},2},                                             \label{eq:range-in}\\
+ v'&=\ell_{\mathrm{out},0}+2^{10}\ell_{\mathrm{out},1}
+       +2^{20}\ell_{\mathrm{out},2}.                                            \label{eq:range-out}
+\end{align}
+Each of the six limbs in \eqref{eq:range-in}--\eqref{eq:range-out} is
+proved to be a member of the exact 10-bit lookup table.  Equation
+\eqref{eq:balance} is an integer equality after the 30-bit range checks; it
+is not an equality modulo \(p\).
+\end{definition}
+
+The same \(i\) and the same twenty siblings occur in
+\eqref{eq:input-root} and \eqref{eq:output-root}.  Thus the relation replaces
+one private leaf along one private path.  It does not prove a public append,
+a multi-input or multi-output transfer, or a statement about an otherwise
+general shielded pool.  The fields \(P\) and \(s\) are transcript-bound public
+context.  Their correspondence to live state is checked by the instruction,
+not inferred from the Merkle equations; in particular, \(s\) is a pool
+revision and is not the private path index \(i\).
+
+\subsection{Trace realization}
+
+The arithmetic trace has \(2^{10}=1024\) rows.  Its 49 Poseidon blocks comprise
+one owner-key block, three input-note sponge blocks, twenty input-path
+compressions, twenty output-path compressions, two nullifier sponge blocks,
+and three output-note sponge blocks.  The two
+path computations share the physical direction-bit and sibling sources at
+every level.  Tagged copy constraints enforce this sharing, while the
+Poseidon2, lookup, balance, public-binding, and terminal constraints enforce
+Equations~\eqref{eq:owner-key}--\eqref{eq:range-out}.  The generated atomic-v3
+registry contains 183 copy terms and fixes the trace layout independently of
+the witness.
+
+\begin{proposition}[Relation realization]
+\label{prop:relation-realization}
+For every canonically encoded \((x,w)\), the Profile~23 trace builder produces
+an accepting arithmetic trace if and only if \(R_{23}(x,w)=1\).
+\end{proposition}
+
+\begin{proof}
+The forward direction follows block by block.  The owner, note, nullifier,
+and output-note blocks enforce the four domain-separated hash equations.  At
+each Merkle level, the tagged two-item selection relation enforces the ordered
+pair \((X_j,\sigma_j)\) or \((\sigma_j,X_j)\) according to a Boolean copy of
+\(i_j\); copy aliases force the input path, output path, and sibling row to use
+the same bit and sibling.  The two terminal root bindings yield
+\eqref{eq:input-root} and \eqref{eq:output-root}.  Lookup membership and the
+two reconstruction constraints give the 30-bit ranges, after which the
+balance constraint is the integer equality \eqref{eq:balance}.  The remaining
+public terminals enforce \eqref{eq:nullifier}, \eqref{eq:output-note}, and
+\eqref{eq:asset-equality}.
+
+Conversely, given a witness satisfying the displayed equations, fill each
+hash block with the deterministic Poseidon2 execution, place the common path
+bits and siblings in their registry cells, and use the stated 10-bit limbs.
+Every local, copy, lookup, and terminal constraint then vanishes.  This
+argument concerns the algebraic trace definition; the polynomial argument
+that binds a proof to such a trace is given in Section~\ref{sec:soundness}.
+\end{proof}
+
+\subsection{Live-state preconditions and atomic effect}
+
+For an accepting state-changing instruction, the verifier additionally
+requires the following public pre-state: (i) the supplied pool account has
+the expected owner, type, 48-byte length, key \(P\), sequence
+\(s<2^{64}-1\), and anchor
+\(A\); (ii) the proof account has the expected owner and a finalized
+all-zero authority sentinel; and (iii) the nullifier marker is the canonical
+program-derived address with seeds
+\(\mathtt{aspis\mbox{-}nullifier\mbox{-}v1}\) and \(\nu\), is unspent, and
+has one of the accepted pre-state shapes.  Its 72-byte post-state stores and
+checks both \(P\) and \(\nu\).  The instruction
+constructs \(x\) from these accounts and its public arguments, verifies the
+entire proof, reborrows and rechecks writable state, and only then commits
+\[
+   (s,A)\longmapsto(s+1,A')
+\]
+and the marker for \((P,\nu)\).  A failure before the final commit leaves both
+objects unchanged.  These account checks prevent a valid proof for one pool,
+revision, anchor, or nullifier from authorizing a different transition.

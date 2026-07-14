@@ -1,6 +1,6 @@
 {
   "artifact": "profile23_one_transaction_release",
-  "generated_at_utc": "2026-07-14T13:34:16.444819+00:00",
+  "generated_at_utc": "2026-07-14T14:45:47.991641+00:00",
   "command": "NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-profile23-one-transaction-release",
   "status": "released_all_required_gates_green",
   "released": true,
@@ -13,29 +13,29 @@
     ]
   },
   "compute_unit_limit": 1400000,
-  "max_literal_production_tag60_cu": 1303236,
-  "exact_headroom_under_1_4m_cu": 96764,
+  "max_literal_production_tag60_cu": 1314386,
+  "exact_headroom_under_1_4m_cu": 85614,
   "selected_soundness_floor_bits": 101.38010539241552,
   "coarse_whole_soundness_floor_bits": 100.16144938287457,
   "computational_hiding_real_vs_simulator_bound_bits": 104.02492234825198,
   "computational_hiding_pairwise_witness_bound_bits": 103.02492234825198,
   "proof": {
-    "sha256": "0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb",
-    "bytes": 63487,
-    "actual_path": "results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.bin",
-    "acceptance_path": "results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.bin",
-    "mutation_path": "results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.bin"
+    "sha256": "f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53",
+    "bytes": 66367,
+    "actual_path": "results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.bin",
+    "acceptance_path": "results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.bin",
+    "mutation_path": "results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.bin"
   },
   "release_instance": {
-    "proof_path": "results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.bin",
-    "proof_bytes": 63487,
-    "proof_sha256": "0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb",
-    "statement_path": "results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.statement.json",
-    "statement_bytes": 668,
-    "statement_sha256": "520a0a86e1d1918a5270622ac27182b1f5b6df2b624d68bbd2a2b6f927eebb14",
-    "statement_pool_hex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
-    "statement_sequence": 73,
-    "canonical_public_input_digest": "52e96f99756fe8fd2d8b7a700019b143d7eb549af1bf1ae987e99a75cadcd4c9",
+    "proof_path": "results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.bin",
+    "proof_bytes": 66367,
+    "proof_sha256": "f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53",
+    "statement_path": "results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.statement.json",
+    "statement_bytes": 667,
+    "statement_sha256": "976e9a7e001382025eaf81cfcb28ac609db966d4a9912511f54e2b702077b6de",
+    "statement_pool_hex": "504c9d4be70ef96a37d9aff3d9fd1b5080726efd6596c54a12817fd2e2d9c67a",
+    "statement_sequence": 0,
+    "canonical_public_input_digest": "21d73e39be93112f986f52c7d683f2ab478890360a306af81110852ffb16a30a",
     "selector_candidates": 3,
     "serialized_selector": 0,
     "least_good_selector": 0,
@@ -49,10 +49,10 @@
         "remaining_gd_terminal_rank_m31": 12,
         "h1_query_rank_m31": 288,
         "h1_terminal_rank_m31": 12,
-        "dynamic_root_minor_fingerprint": "0x1fea1f082d31422b",
-        "dynamic_remaining_gd_minor_fingerprint": "0x31cc1a81f8e4e437",
-        "dynamic_h1_minor_fingerprint": "0x61e09e7b4a24bfed",
-        "dynamic_product_fingerprint": "0x05c83935e90a4461"
+        "dynamic_root_minor_fingerprint": "0xbfec95cd87221fb3",
+        "dynamic_remaining_gd_minor_fingerprint": "0x634fe2cc494729fc",
+        "dynamic_h1_minor_fingerprint": "0x21cbab2b65bfa20f",
+        "dynamic_product_fingerprint": "0x2620073cfa4013f1"
       },
       {
         "selector": 1,
@@ -63,10 +63,10 @@
         "remaining_gd_terminal_rank_m31": 12,
         "h1_query_rank_m31": 288,
         "h1_terminal_rank_m31": 12,
-        "dynamic_root_minor_fingerprint": "0x74057f7004e3c7a6",
-        "dynamic_remaining_gd_minor_fingerprint": "0xf5401bd125a46f3b",
-        "dynamic_h1_minor_fingerprint": "0x02822efbaba08dbd",
-        "dynamic_product_fingerprint": "0xa438427491c20c43"
+        "dynamic_root_minor_fingerprint": "0x893044bd3cd593df",
+        "dynamic_remaining_gd_minor_fingerprint": "0xcb8e0ec94c2c8569",
+        "dynamic_h1_minor_fingerprint": "0x5e6b95a3604e589e",
+        "dynamic_product_fingerprint": "0xfbd5bead1093f545"
       },
       {
         "selector": 2,
@@ -77,10 +77,10 @@
         "remaining_gd_terminal_rank_m31": 12,
         "h1_query_rank_m31": 288,
         "h1_terminal_rank_m31": 12,
-        "dynamic_root_minor_fingerprint": "0x36d00a225fd3c83d",
-        "dynamic_remaining_gd_minor_fingerprint": "0xc05f30c283ec2c68",
-        "dynamic_h1_minor_fingerprint": "0xb39d753d56744e54",
-        "dynamic_product_fingerprint": "0x41a7c033c9932390"
+        "dynamic_root_minor_fingerprint": "0x973c0b1c863a441f",
+        "dynamic_remaining_gd_minor_fingerprint": "0x5fcfc102a0de7fa6",
+        "dynamic_h1_minor_fingerprint": "0x8f76cfa0db3cb107",
+        "dynamic_product_fingerprint": "0x3b5d5ede1ae949d9"
       }
     ],
     "good23_definition_fingerprint": "0x927920b10ba31373c1909ef9bfb7ae7cb9570c7e2536d294347834b3c83dcb26",
@@ -100,14 +100,14 @@
     {
       "label": "acceptance",
       "path": "results/stage2/atomic_state_only_profile23_acceptance_production_mined.json",
-      "bytes": 4534,
-      "sha256": "26117a29ad57e36b3aedb66ea46cada8103e1ee0fba5a45071a61c68b1c89b39"
+      "bytes": 4649,
+      "sha256": "556708fd6f209f764fd137d0af2ce149a7d409f2abe7050264159c9b2ece0586"
     },
     {
       "label": "mutation",
       "path": "results/stage2/atomic_state_only_profile23_mutation_production_mined.json",
-      "bytes": 16064,
-      "sha256": "dbd716e669494819badd9dee6ab09a0816454e8d013714c41d778e847be17d59"
+      "bytes": 16177,
+      "sha256": "1848b35bc771b26f649a2bb27b716e915ed9a2b0e3fb92b72dd58dc6b04711cf"
     },
     {
       "label": "soundness",
@@ -125,7 +125,7 @@
       "label": "computational_hvzk",
       "path": "results/stage2/profile23_computational_hvzk_closure.json",
       "bytes": 8978,
-      "sha256": "b4b22c4770e0ef288bebd279426376df1b6e4556b6be5f2edd0f4f352f5d6455"
+      "sha256": "3d17473bc7fee827ea1c762a873199de3f988e47167fff4795d5b7a549f229cc"
     },
     {
       "label": "program_manifest",
@@ -147,15 +147,15 @@
     },
     {
       "label": "production_proof",
-      "path": "results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.bin",
-      "bytes": 63487,
-      "sha256": "0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb"
+      "path": "results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.bin",
+      "bytes": 66367,
+      "sha256": "f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53"
     },
     {
       "label": "production_statement",
-      "path": "results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.statement.json",
-      "bytes": 668,
-      "sha256": "520a0a86e1d1918a5270622ac27182b1f5b6df2b624d68bbd2a2b6f927eebb14"
+      "path": "results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.statement.json",
+      "bytes": 667,
+      "sha256": "976e9a7e001382025eaf81cfcb28ac609db966d4a9912511f54e2b702077b6de"
     },
     {
       "label": "default_production_sbf",
@@ -173,17 +173,17 @@
     {
       "name": "production_proof_identity_matches",
       "passed": true,
-      "evidence": "actual=(\"results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.bin\",0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb,63487), acceptance=(Some(\"results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.bin\"),Some(\"0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb\"),Some(63487)), mutation=(Some(\"results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.bin\"),Some(\"0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb\"),Some(63487)), release_instance=(results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.bin,0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb,63487)"
+      "evidence": "actual=(\"results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.bin\",f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53,66367), acceptance=(Some(\"results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.bin\"),Some(\"f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53\"),Some(66367)), mutation=(Some(\"results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.bin\"),Some(\"f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53\"),Some(66367)), release_instance=(results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.bin,f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53,66367)"
     },
     {
       "name": "production_statement_identity_matches",
       "passed": true,
-      "evidence": "actual=(results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.statement.json,668,520a0a86e1d1918a5270622ac27182b1f5b6df2b624d68bbd2a2b6f927eebb14,5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a,73,52e96f99756fe8fd2d8b7a700019b143d7eb549af1bf1ae987e99a75cadcd4c9), acceptance=(Some(\"results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.statement.json\"),Some(\"520a0a86e1d1918a5270622ac27182b1f5b6df2b624d68bbd2a2b6f927eebb14\"),Some(\"5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a\"),Some(73),Some(\"52e96f99756fe8fd2d8b7a700019b143d7eb549af1bf1ae987e99a75cadcd4c9\"),override=Some(true)), mutation=(Some(\"results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.statement.json\"),Some(\"520a0a86e1d1918a5270622ac27182b1f5b6df2b624d68bbd2a2b6f927eebb14\"),Some(\"5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a\"),Some(73),Some(\"52e96f99756fe8fd2d8b7a700019b143d7eb549af1bf1ae987e99a75cadcd4c9\"),override=Some(true))"
+      "evidence": "actual=(results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.statement.json,667,976e9a7e001382025eaf81cfcb28ac609db966d4a9912511f54e2b702077b6de,504c9d4be70ef96a37d9aff3d9fd1b5080726efd6596c54a12817fd2e2d9c67a,0,21d73e39be93112f986f52c7d683f2ab478890360a306af81110852ffb16a30a), acceptance=(Some(\"results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.statement.json\"),Some(\"976e9a7e001382025eaf81cfcb28ac609db966d4a9912511f54e2b702077b6de\"),Some(\"504c9d4be70ef96a37d9aff3d9fd1b5080726efd6596c54a12817fd2e2d9c67a\"),Some(0),Some(\"21d73e39be93112f986f52c7d683f2ab478890360a306af81110852ffb16a30a\"),override=Some(true)), mutation=(Some(\"results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.statement.json\"),Some(\"976e9a7e001382025eaf81cfcb28ac609db966d4a9912511f54e2b702077b6de\"),Some(\"504c9d4be70ef96a37d9aff3d9fd1b5080726efd6596c54a12817fd2e2d9c67a\"),Some(0),Some(\"21d73e39be93112f986f52c7d683f2ab478890360a306af81110852ffb16a30a\"),override=Some(true))"
     },
     {
       "name": "release_instance_production_host_verification_green",
       "passed": true,
-      "evidence": "proof=results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.bin statement=results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.statement.json host_green=true evaluation_error=None"
+      "evidence": "proof=results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.bin statement=results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.statement.json host_green=true evaluation_error=None"
     },
     {
       "name": "release_instance_serialized_selector_is_least_good23",
@@ -258,12 +258,12 @@
     {
       "name": "mined_acceptance_cu_ledger_reconciles",
       "passed": true,
-      "evidence": "literal=Some(1242917), bucket_sum=Some(1242917), reconciled=Some(1242917), headroom=Some(157083)"
+      "evidence": "literal=Some(1254429), bucket_sum=Some(1254429), reconciled=Some(1254429), headroom=Some(145571)"
     },
     {
       "name": "diagnostic_mutation_ledgers_link_to_mined_acceptance",
       "passed": true,
-      "evidence": "acceptance_tag59=Some(1242917), diagnostic_path_count=2, all bucket/reconciled/headroom/increment identities=true"
+      "evidence": "acceptance_tag59=Some(1254429), diagnostic_path_count=2, all bucket/reconciled/headroom/increment identities=true"
     },
     {
       "name": "production_tag60_cu_ledgers_reconcile",
@@ -273,12 +273,12 @@
     {
       "name": "production_tag60_under_1_4m_cu",
       "passed": true,
-      "evidence": "max_literal_production_tag60_cu=Some(1303236), limit=1400000"
+      "evidence": "max_literal_production_tag60_cu=Some(1314386), limit=1400000"
     },
     {
       "name": "production_measurement_context_matches",
       "passed": true,
-      "evidence": "validator_equal=true, wires=(Some(59),Some(60),Some(61),Some(62)), acceptance_tag59=Some(1242917), production_tag59_baselines=[1299012, 1299012]"
+      "evidence": "validator_equal=true, wires=(Some(59),Some(60),Some(61),Some(62)), acceptance_tag59=Some(1254429), production_tag59_baselines=[1310162, 1310162]"
     },
     {
       "name": "profile23_default_enabled_and_host_dependencies_isolated",

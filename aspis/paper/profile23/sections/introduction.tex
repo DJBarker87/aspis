@@ -1,0 +1,126 @@
+\section{Introduction}\label{sec:introduction}
+
+Transparent arguments remove the structured reference string and secret
+trapdoor required by many succinct proof systems.  FRI and subsequent STARK
+constructions showed how low-degree testing and hash-based commitments can
+support transparent verification of large computations
+\cite{BenSassonBentovHoreshRiabzev2018FRI,
+BenSassonBentovHoreshRiabzev2018STARK}.  Deploying such a verifier inside a
+blockchain transaction creates a second constraint: the verifier must fit the
+runtime's transaction budget while preserving the state-transition semantics
+of the application.  Solana meters program execution in compute units and
+stores persistent application state in explicitly addressed accounts
+\cite{SolanaComputeBudget,SolanaAccounts}.  A proof that is inexpensive to verify
+on a workstation is therefore not, by itself, an on-chain construction.
+
+This work studies one deliberately narrow application atom.  A valid spend
+replaces one note by one output note at the same private path in a depth-20
+tree, preserves the asset identifier, enforces value conservation including a
+public fee, derives a nullifier, and advances a public pool anchor and sequence
+number.  The program accepts only if the proof verifies against that public
+state.  In the same transaction it creates the nullifier marker and changes
+the pool state.  This follows the commitment-and-nullifier structure used by
+shielded payment systems \cite{BenSassonEtAl2014Zerocash}, but it is not a general
+wallet protocol, multi-input transaction, or public append operation.
+
+The central systems choice is to separate proof transport from proof use.  A
+proof is first written to a program-owned account and finalized.  A later
+instruction reads the finalized bytes, verifies the complete proof, and
+performs the state mutation atomically.  Thus, ``one transaction'' throughout
+this paper means the verification and state update from a finalized,
+pre-uploaded proof account.  It does not include account creation, upload, or
+finalization.  The separation keeps proof bytes available to the verifier
+without implying that the full proof lifecycle fits in one transaction.
+
+\paragraph{Protocol.}
+\Profile{} uses arithmetic over $\Fbase$ and a degree-four extension field.
+Its commitment layer is a custom, circle-domain, WHIR-style multilinear
+protocol.  The term \emph{WHIR-style} identifies the use of batched
+Reed--Solomon proximity testing, out-of-domain checks, recursive folding, and
+query openings in the lineage of WHIR
+\cite{ArnonChiesaFenziYogev2025WHIR}; it does not assert
+protocol equivalence.  The frozen instance has rate $1/512$,
+$q=\ProfileQueryCount$ sampled query fibers, a batch-work parameter
+$g=\ProfileBatchWork$, two commitment layers, and four arity-four folds.  A
+three-branch selector chooses the least schedule satisfying the exact
+\(\mathsf{Good}_{23}\) rank conditions.  The transcript, selector rule,
+serialization,
+and boundary count are part of the protocol definition rather than prover
+heuristics.
+
+\paragraph{Security.}
+The soundness argument is stated in the random-oracle model (ROM) and begins
+with an explicit interactive event ledger.  It
+specializes proven Reed--Solomon proximity and mutual-correlated-agreement
+results to the circle code, batching map, folds, out-of-domain checks, and
+query schedule used by the implementation.  It then applies a 32-boundary
+Fiat--Shamir accounting rule for a classical random-oracle adversary.  For
+$1\leq T\leq 2^{128}$ random-oracle queries, the released metric is false
+acceptance probability divided by $T$; after the conservative whole-ledger
+three-selector union, its minimum floor is \ProfileSoundnessBits{} bits.  The
+claim is argument soundness for the exact relation.  No extractor or knowledge
+soundness claim is made.
+
+The hiding statement is likewise tied to a precise experiment.  It compares
+the complete declared verifier-visible Proof-or-Abort view with an explicit
+simulator in a programmable SHA-256 random oracle.  The view includes the
+variable-length proof bytes, opened records, transcript and work values,
+selector or Abort result, serialization, program logs, and deterministic
+public mutation.  It excludes network metadata, payer linkage, timing, local
+worker state, and physical side channels.  With at most $2^{128}$ adaptive
+oracle queries, including post-output queries, and at most 17 proving
+attempts, the real-versus-simulator floor is \ProfileSimulationBits{} bits.
+The triangle inequality gives a \ProfilePairwiseBits-bit bound between the
+views of any two valid witnesses for the same public statement.  This is a
+computational hiding result in the stated model, not statistical honest-verifier
+zero knowledge or a standard-model theorem.
+
+\paragraph{Implementation and evidence.}
+The verifier is implemented as a Solana SBF program.  Its proof account has an
+application-level state machine: bytes may be uploaded before finalization,
+whereas the spend instruction requires the finalized state.  Verification
+precedes every write, and the pool pre-state, sequence number, anchor,
+nullifier address, account ownership, and proof finalization state are checked
+at the instruction boundary.  The frozen local artifact binds a
+\ProfileProofBytes-byte proof to a \ProfileSbfBytes-byte SBF binary.  In the
+pinned local runtime and account configuration, the literal
+verification-and-mutation path consumes \ProfileComputeUnits{} of the
+\ProfileComputeLimit{} compute units available to the transaction.  These
+figures are measurements of a specified artifact and runtime, not asymptotic
+claims.
+
+\paragraph{Contributions.}
+The paper makes the following contributions.
+
+\begin{enumerate}[leftmargin=*,itemsep=0.45em]
+  \item It specifies the exact relation $\RProfile$, public account pre-state,
+  deterministic post-state, proof-account state machine, and byte-level
+  transcript consumed by the program.
+
+  \item It gives a finite-parameter soundness derivation for the
+  $q=\ProfileQueryCount$, rate-$1/512$ circle-domain instance, including the
+  event union, selector loss, work schedule, and 32-boundary random-oracle
+  reduction.
+
+  \item It constructs a witness-free simulator for the complete declared
+  Proof-or-Abort view and states both the real-versus-simulator and pairwise
+  witness-hiding games with their concrete bounds.
+
+  \item It connects the mathematical verifier to an SBF implementation and an
+  atomic account transition, and reports the proof identity, program identity,
+  instruction compute consumption, and setup lifecycle separately.
+
+  \item It provides machine-readable ledgers, rank certificates, known-answer
+  tests, proof and binary hashes, negative tests, and transaction evidence from
+  which the quantitative claims can be regenerated.
+\end{enumerate}
+
+\paragraph{Organization.}
+\Cref{sec:background} introduces the coding, transcript, and Solana concepts
+used in the construction.  \Cref{sec:relation} defines the statement, relation,
+and account model.  \Cref{sec:construction} specifies the protocol and wire
+format.  \Cref{sec:soundness,sec:hiding} prove soundness and computational
+hiding.
+\Cref{sec:implementation} gives the implementation refinement and atomicity
+argument, and \Cref{sec:evaluation} reports the measurements and reproduction
+procedure.  \Cref{sec:limitations} states the scope of the result.

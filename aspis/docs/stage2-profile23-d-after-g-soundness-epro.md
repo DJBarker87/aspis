@@ -214,7 +214,7 @@ At `Q_H <= 2^128` and seventeen attempts:
 |---|---:|
 | one-sided real-vs-simulator leading no-prequery term | 104.02492234825198 |
 | programming collision lower bound | 209.04984478399368 |
-| six-work-nonce exhaustion lower bound | 96,817,618.62006654 |
+| six-work-nonce exhaustion lower bound | 193635243.91255844 |
 
 These are the numeric EPRO terms only. The inherited affine and PRG hybrids
 retain their separately stated assumptions.
@@ -252,15 +252,17 @@ This soundness/EPRO artifact did not by itself enable a default production
 tag. The separate fail-closed release evaluation now records `released=true`,
 `status=released_all_required_gates_green`, and `35/35` passing gates in
 `results/stage2/profile23_one_transaction_release.json`. It binds a
-63,487-byte q18 proof with SHA-256
-`0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb`,
+66,367-byte q18 proof with SHA-256
+`f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53`,
 a canonical statement sidecar with SHA-256
-`520a0a86e1d1918a5270622ac27182b1f5b6df2b624d68bbd2a2b6f927eebb14`,
+`976e9a7e001382025eaf81cfcb28ac609db966d4a9912511f54e2b702077b6de`,
+canonical public-input digest
+`21d73e39be93112f986f52c7d683f2ab478890360a306af81110852ffb16a30a`,
 and a fresh 915,656-byte default SBF with SHA-256
 `da66a51b1f3ce95e907a87fca15fb9dc0cce66fd47646875ce2dff94879fd254`.
-Production tag 59 is `1,299,012 CU`; tag 60 is `1,300,905 CU` on the
-program-owned path and `1,303,236 CU` on canonical System creation, leaving
-`96,764 CU` of maximum-path headroom.
+Production tag 59 is `1,310,162 CU`; tag 60 is `1,312,055 CU` on the
+program-owned path and `1,314,386 CU` on canonical System creation, leaving
+`85,614 CU` of maximum-path headroom.
 
 The authorizing conservative soundness floor is
 `100.16144938287455` bits. The q18 complete-view

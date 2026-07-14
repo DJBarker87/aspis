@@ -110,8 +110,8 @@
   "complete_public_view": {
     "proof_bytes": 67327,
     "proof_sha256_unmined_fixture": "a5ed698a32d815ffd95f8d3e0be62d16620d32e216a087a350852726fb6ca238",
-    "proof_bytes_production": 63487,
-    "proof_sha256_production": "0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb",
+    "proof_bytes_production": 66367,
+    "proof_sha256_production": "f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53",
     "production_proof_canonically_mined": true,
     "production_host_selector_audit_green": true,
     "production_serialized_selector": 0,

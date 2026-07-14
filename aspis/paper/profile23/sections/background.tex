@@ -1,0 +1,158 @@
+\section{Background and related work}\label{sec:background}
+
+\subsection{Shielded state transitions}
+
+A shielded payment system commonly represents an unspent note by a commitment
+inside an authenticated set and represents its consumption by a public,
+unique nullifier.  A proof relates the nullifier and new commitment to a
+private opening and membership path without revealing the spent note.
+Zerocash gives an early complete treatment of this pattern in a decentralized
+payment system \cite{BenSassonEtAl2014Zerocash}.  \Profile{} retains only the
+cryptographic state-transition atom needed here: one input, one output, one
+asset, a public fee, and a same-path replacement in a depth-20 private tree.
+Wallet behavior, note discovery, transaction-origin privacy, and multi-party
+payment protocols are outside the relation.
+
+It is useful to separate two statements that are sometimes conflated.  The
+proof relation establishes that private note data are consistent with public
+inputs.  The account transition establishes that the program consumed the
+expected public pre-state and wrote the specified post-state.  The latter also
+depends on the host runtime's account-ownership, rollback, and locking rules;
+it is not a consequence of polynomial-commitment soundness.
+
+\subsection{IOPs of proximity and transparent arguments}
+
+An interactive oracle proof (IOP) lets a verifier query committed oracle
+messages instead of reading them in full
+\cite{BenSassonChiesaSpooner2016}.  The Fast Reed--Solomon IOP of Proximity
+(FRI) tests
+proximity to a Reed--Solomon code through recursive folding and a small number
+of authenticated queries
+\cite{BenSassonBentovHoreshRiabzev2018FRI}.  This approach underlies
+transparent STARK systems
+\cite{BenSassonBentovHoreshRiabzev2018STARK}.  DEEP-FRI strengthens the
+analysis by sampling outside the evaluation domain
+\cite{BenSassonGoldbergKoppartySaraf2020}.  WHIR combines multilinear-polynomial evaluation
+with Reed--Solomon proximity testing and is designed for very fast
+verification \cite{ArnonChiesaFenziYogev2025WHIR}.
+
+The protocol in this paper belongs to that lineage but has its own transcript
+and proof format.  It uses a circle-group evaluation domain, rate $1/512$, two
+commitment layers, two out-of-domain/layer steps, four arity-four folds, and a
+degree-four final polynomial.  Query positions address four-slot fibers.  The
+transcript also includes a three-branch \(\mathsf{Good}_{23}\) selector and explicit
+work nonces.  Consequently, WHIR's parameters, proof grammar, and theorem
+statements are not imported by name; each lemma used here is specialized to
+the custom schedule.
+
+\subsection{Circle-domain Reed--Solomon codes}
+
+The base field is $\Fbase$, often called M31.  Its multiplicative group does
+not directly provide the large smooth domains used by conventional radix-two
+fast Fourier transform (FFT) constructions.  Reed--Solomon codes over a
+norm-one circle group provide
+smooth evaluation domains in this setting
+\cite{HaboeckLubarovNabaglo2023}.
+Circle STARKs develop the corresponding arithmetization and proximity-testing
+machinery for Mersenne-prime fields
+\cite{HaboeckLevitPapini2024}.  The S-two
+construction provides a closely related concrete circle-code transcript and
+soundness development \cite{CarmonEtAl2026Stwo}.
+
+\Profile{} uses the circle domain as a code domain while retaining a
+multilinear claim at the protocol boundary.  The construction section defines
+the resulting ordering, fiber map, extension-field arithmetic, and fold maps
+explicitly.  This distinction matters because an isomorphism of domains alone
+does not establish that a proximity theorem, batching argument, or query
+bound transfers to a different transcript.
+
+\subsection{Proximity gaps and correlated agreement}
+
+Soundness for a folded proximity protocol requires more than the distance of
+an individual Reed--Solomon word.  The analysis must control lists of nearby
+codewords and show that correlated linear combinations do not allow
+inconsistent candidates to survive successive folds.  Proximity-gap results
+formalize the first issue
+\cite{BenSassonCarmonIshaiKoppartySaraf2023}.  Mutual correlated
+agreement (MCA) formalizes the second.  Recent results establish MCA
+preservation for polynomial generators and give Reed--Solomon MCA theorems in
+the Johnson regime
+\cite{BordageChiesaGuanManzur2025,Haboeck2025MCA}.
+
+The distinction between a proved Johnson-regime statement and a conjectural
+capacity-regime statement is material.  Crites and Stewart give counterexamples
+to Reed--Solomon proximity-gap conjectures used in earlier capacity-level
+analyses \cite{CritesStewart2025}.  The \Profile{} parameter proof therefore does
+not extrapolate a constant list bound to capacity.  It instantiates only the
+proved proximity and MCA premises, then records every finite-field,
+out-of-domain, folding, query, hash, and selector failure event in a single
+ledger.  The exact specialization is given in
+\Cref{sec:soundness,sec:hiding}.
+
+\subsection{Fiat--Shamir compilation and hiding}
+
+The implementation is non-interactive: verifier challenges and query indices
+are derived from a domain-separated SHA-256 transcript using the
+Fiat--Shamir transformation \cite{FiatShamir1987}.  Security of this
+transformation is not captured by adding independent per-round errors.  The
+BCS IOP framework gives a random-oracle compilation and treats private oracle
+commitments \cite{BenSassonChiesaSpooner2016}; later work analyzes Fiat--Shamir security
+for FRI and related SNARKs against bounded-query adversaries
+\cite{BlockGarretaKatzThalerTiwariZajac2023}.  In \Profile{}, the interactive event union and
+the random-oracle reduction are stated separately.  The latter counts 32
+prover-message boundaries and normalizes false-acceptance probability by the
+adversary's oracle-query work.
+
+Hiding also depends on the complete transcript rather than only on the
+arithmetic trace.  Full-field masks induce affine families of committed words,
+private Merkle salts hide unopened leaf preimages in the declared oracle
+model, and a simulator programs the transcript at fresh oracle inputs.  The
+\(\mathsf{Good}_{23}\) condition is designed to make the public affine image and mask
+fiber cardinality independent of the witness for every selectable schedule.
+The security theorem includes the selector, variable proof length, work
+nonces, serialization, program-visible logs, deterministic state mutation,
+and the possibility that all bounded attempts abort.  This use of affine
+masking and constrained codewords is related to zero-knowledge IOPPs for
+constrained interleaved codes \cite{ChiesaFenziWeissenberg2026}; the concrete
+\Profile{} simulator is specialized to its own fixed transcript and view.
+
+\subsection{Hash functions and concrete arithmetic}
+
+Arithmetic constraints and public note digests use Poseidon2 over M31;
+Poseidon2 is a sponge-friendly permutation designed for efficient algebraic
+implementations \cite{GrassiKhovratovichSchofnegger2023}.  Commitments, transcript
+challenges, private-Merkle nodes, and work tests use domain-separated SHA-256.
+These uses have different roles.  Poseidon2 collision resistance binds the
+public arithmetic digests, while SHA-256 is modeled as the programmable random
+oracle in the soundness and hiding games; SHA-256 itself is specified by
+FIPS~180-4 \cite{NISTFIPS1804}.  The implementation pins the
+concrete M31 Poseidon2 constants and arithmetic code to a specified Plonky3
+revision \cite{Plonky3M31Poseidon2Version061}; the security section lists the corresponding
+assumptions rather than treating a software dependency as a theorem.
+
+\subsection{Solana execution and account state}
+
+Solana transactions invoke programs over an explicit account list.  Accounts
+carry an owner and arbitrary program data, and only the owning program may
+modify that data under the runtime rules \cite{SolanaAccounts}.  Programs are
+metered in compute units drawn from a transaction-wide budget
+\cite{SolanaComputeBudget}.  A transaction either commits its account changes or
+rolls them back on error \cite{SolanaTransactions,SolanaTransactionPipeline},
+which makes verify-before-write control flow suitable for an atomic
+proof-authorized transition.
+
+Large proof transport is nevertheless distinct from verification.  \Profile{}
+stores proof bytes in a program-owned account through a sequence of setup
+transactions, then changes the account to an application-finalized state.  A
+spend instruction refuses an unfinalized account and does not expose an upload
+operation after finalization.  ``Finalized'' here describes this
+application-level state machine; it is not a claim that account data are
+intrinsically immutable at the protocol layer.  Likewise, a deployed SBF
+program remains upgradeable while its loader-v3 upgrade authority is present
+\cite{SolanaProgramDeployment}.  Deployment identity and authority state are
+therefore recorded separately from the cryptographic proof identity.
+
+Network observations use Solana's commitment levels.  In particular,
+``finalized'' transaction evidence refers to a block recognized at the RPC
+interface's finalized commitment level \cite{SolanaRPC}, which is
+separate from the proof account's application-finalization bit.

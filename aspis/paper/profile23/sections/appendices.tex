@@ -1,0 +1,311 @@
+\section{Canonical encodings and wire format}
+\label{app:wire}
+
+\subsection{Arithmetic hash domains}
+
+The Poseidon2 sponge domains for owner derivation, nullifiers, and notes are,
+respectively,
+\[
+ \mathtt{0x41530001},\qquad
+ \mathtt{0x41530002},\qquad
+ \mathtt{0x41530003}
+ \quad\text{in }\mathbb F.
+\]
+The atomic-v3 Merkle compressor uses the width-16 state
+\(L\|R\), adds \(\mathtt{0x41531005}\) to lane 15, applies the fixed
+Poseidon2 permutation, and returns lanes 0 through 7.  The statement digest is
+\[
+ \operatorname{SHA256}(
+   \mathtt{aspis/atomic\mbox{-}payment\mbox{-}statement/v3}\|\mathsf{payload}).
+\]
+
+\subsection{Public statement payload}
+
+\begin{table}[ht]
+\centering
+\caption{Canonical atomic-v3 statement payload.}
+\label{tab:statement-wire-appendix}
+\begin{tabular}{@{}rrll@{}}
+\toprule
+offset & bytes & field & encoding \\
+\midrule
+0 & 1 & version & \(3\) \\
+1 & 1 & tree depth & \(20\) \\
+2 & 6 & reserved & all zero \\
+8 & 32 & pool address \(P\) & raw public key \\
+40 & 8 & sequence \(s\) & little-endian \(u64\) \\
+48 & 32 & current anchor \(A\) & eight canonical M31 limbs \\
+80 & 32 & nullifier \(\nu\) & eight canonical M31 limbs \\
+112 & 32 & output commitment \(C_{\rm out}\) & eight canonical M31 limbs \\
+144 & 32 & output anchor \(A'\) & eight canonical M31 limbs \\
+176 & 4 & asset \(a\) & canonical little-endian M31 \\
+180 & 4 & fee \(f\) & little-endian \(u32<2^{30}\) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Changing any field changes the statement digest.  The six reserved bytes,
+version, and depth are checked rather than ignored.
+
+\subsection{Proof prefix}
+
+The fixed portion of a Profile~23 proof has 6785 bytes.  Its physical order
+is listed in Table~\ref{tab:proof-prefix-wire}.  The transcript absorbs fields
+in the logical order of Section~\ref{sec:construction}; in particular, the
+batch and fold work records are logically positioned before dependent
+challenges even though the three work arrays occupy a compact suffix.
+
+\begin{table}[ht]
+\centering
+\small
+\caption{Profile~23 fixed proof prefix.  End offsets are exclusive.}
+\label{tab:proof-prefix-wire}
+\begin{tabular}{@{}rrrl@{}}
+\toprule
+start & end & bytes & object \\
+\midrule
+0 & 16 & 16 & canonical v4-s2 header \\
+16 & 48 & 32 & public mask nonce \\
+48 & 80 & 32 & \(C_1\) root \\
+80 & 112 & 32 & \(C_2\) root \\
+112 & 128 & 16 & initial masked claim \\
+128 & 4608 & 4480 & ten-round masked sumcheck \\
+4608 & 5952 & 1344 & 84 statement-point evaluations \\
+5952 & 6096 & 144 & round-0 OOD values and relation sumcheck \\
+6096 & 6272 & 176 & round-1 root, OOD values, and sumcheck \\
+6272 & 6448 & 176 & round-2 root, OOD values, and sumcheck \\
+6448 & 6624 & 176 & round-3 root, OOD values, and sumcheck \\
+6624 & 6688 & 64 & four final-polynomial coefficients \\
+6688 & 6696 & 8 & final-work nonce \\
+6696 & 6728 & 32 & four fold-work nonces \\
+6728 & 6736 & 8 & batch-work nonce \\
+6736 & 6784 & 48 & three \(D\)-lane claims \\
+6784 & 6785 & 1 & query selector in \(\{0,1,2\}\) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The header fixes profile 23, \(\log_2\) message size 10, blowup logarithm 9,
+18 queries, four rounds, raw-fiber fold payloads, radix-four minimal-subtree
+Merkle mode, final polynomial logarithmic length 2, and the exact flag set.
+All field encodings in the prefix are canonical.
+
+\subsection{Private opening sections}
+
+The suffix consists of five sections in the order \(C_1,C_2,W_1,W_2,W_3\).
+Their Merkle depths and fixed opened-value widths are
+\[
+ (17,17,15,13,11),\qquad
+ (416,192,64,64,64)\ \text{bytes}.
+\]
+Each section is encoded as
+\[
+ \mathtt{count}_{u16}\ \|
+ (\mathtt{value}_{\rm fixed}\|\mathtt{salt}_{32})^{\mathtt{count}}\ \|
+ \mathtt{frontier\_count}_{u32}\ \|
+ \mathtt{frontier}_{32}^{\mathtt{frontier\_count}}.
+\]
+The transcript-derived indices are not serialized.  The parser derives the
+layer-zero indices and their successive right shifts, requires their
+canonical order, authenticates every value--salt record and frontier, and
+rejects trailing bytes.  Consequently proof length varies with the minimal
+frontier induced by the public schedule.
+
+\subsection{Proof-account frame}
+
+The exact account image before finalization is
+\[
+ \mathtt{ASPU}\|\mathtt{proof\_len}_{u32,\rm le}
+ \|\mathtt{upload\_authority}_{32}\|\mathtt{proof}.
+\]
+Authorized chunk writes affect only the declared proof payload.  The
+\textsf{FinalizeProof} instruction (wire tag 62) replaces bytes 8 through 39
+with zero and preserves the payload.  Production verification accepts only
+the all-zero sentinel.  The atomic pool is initialized separately by wire tag
+63.  The state-changing verifier is wire tag 60.
+
+\section{Transcript boundary and imported-theorem checks}
+\label{app:transcript-hypotheses}
+
+The soundness evaluator treats the transcript as 32 prover-message
+boundaries for the BCS transform.  These boundaries are fixed by the parser;
+changing the prefix shape, sumcheck round count, OOD records, commitment
+rounds, or selector position invalidates the parameter fingerprint rather
+than silently changing \(R\).
+
+The imported list-decoding/MCA step is instantiated only after the following
+local checks.
+\begin{enumerate}
+  \item The layer-zero domain contains \(2^{19}\) circle symbols and its
+        \(2^{17}\) arity-four fibers map injectively to line roots under
+        \(t=2x^2-1\); no root is one.
+  \item The message has \(2^{10}\) coefficients, giving rate \(1/512\), and
+        the selected proximity threshold lies in the proven Johnson regime.
+  \item The width-29 \(\gamma\)-batch is a polynomial-generator family over
+        the fixed extension field, with \(\gamma\ne0\).
+  \item The two commitment phases and four arity-four folds use the same
+        coordinate scaling as the circle-to-GRS transport.
+  \item Queries are an ordered sample of 18 distinct fibers; the verifier and
+        numerical ledger use without-replacement probabilities.
+  \item Two OOD samples and the relation sumcheck are present at every fold
+        layer, and the final object has exactly four coefficients.
+\end{enumerate}
+These checks supply the hypotheses of the polynomial-generator MCA and circle
+transport results used in
+Lemma~\ref{lem:johnson-mca-batch}~\cite{BordageChiesaGuanManzur2025,CarmonEtAl2026Stwo}.
+
+\section{Complete soundness arithmetic}
+\label{app:soundness-ledger}
+
+The four individual fold-event bounds are
+\[
+ 109.52994269233842,\quad
+ 111.22628180453175,\quad
+ 112.85813508022261,\quad
+ 113.84064801383485
+\]
+bits.  Their union is the 108.98543226575069-bit row in
+Table~\ref{tab:soundness-events}.  For one query branch, replacing the
+selector-local final-miss row by 111.76870163436465 bits and unioning all
+sixteen rows gives
+\[
+ -\log_2\varepsilon_{\rm round}^{(0)}
+ =106.79080600295417.
+\]
+The endpoint reconstruction is
+\begin{align*}
+ b(1)
+  &=33\,\varepsilon_{\rm round}^{(0)}+6\cdot2^{-256},\\
+ b(2^{128})
+  &=\left(1+2^{-123}\right)\varepsilon_{\rm round}^{(0)}
+    +3(2^{128}+2^{-128})2^{-256}.
+\end{align*}
+This yields 101.74641188359571 and 106.79080421773332 bits.  Applying the
+release's whole-ledger factor three subtracts \(\log_2 3\) from each endpoint,
+giving
+\[
+ 100.16144938287455\quad\text{and}\quad105.20584171701216
+\]
+bits.  The first is the published floor.
+
+The selector-local containment in Lemma~\ref{lem:selector-soundness} gives a
+strictly sharper diagnostic calculation by applying the factor three only to
+the final query-miss row.  It is not used to raise the theorem's conservative
+headline value.
+
+\section{\texorpdfstring{\(\mathsf{Good}_{23}\)}{Good23} certificate structure}
+\label{app:good23-certificate}
+
+The complete product consists of the following three nonzero minors.
+\begin{table}[ht]
+\centering
+\caption{\(\mathsf{Good}_{23}\) provenance anchors.}
+\label{tab:good23-fingerprints}
+\begin{tabular}{@{}lrl@{}}
+\toprule
+component & rank & fingerprint \\
+\midrule
+root-neutral joint minor & 1404 & \texttt{0x6b3838662fbf34db} \\
+remaining \(G/D\) terminal Schur minor & 12 & \texttt{0x1f34525db611d292} \\
+inactive-balanced \(H_1\) terminal Schur minor & 12 & \texttt{0xe70215f0b4795f52} \\
+bound product & --- & \texttt{0xfc0706f3a304ae26} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The first minor is selected from 10610 candidate \(\mathbb F\)-sources in
+minimum query-degree order.  It contains 1068 degree-one query columns and
+336 degree-two columns.  Its query, root-neutral \(z\), and
+\(\gamma\)-coordinate degree bounds are 31320, 41040, and 80688.  Each Schur
+minor contributes 120 to the \(z\)-degree, producing the complete bounds
+\[
+ d_q=31320,\qquad d_z=41280,\qquad
+ d_\gamma=80688,\qquad d_{\rm cont}=121968.
+\]
+
+For a candidate schedule, the runtime checker performs the following steps:
+\begin{enumerate}
+  \item verify the static profile, layout, generator order, nonzero
+        \(\gamma\), query count, query distinctness, and degree schema;
+  \item reconstruct every source column and target coordinate from the public
+        layout and schedule;
+  \item verify pointwise root-neutrality and compressed-terminal-zero source
+        guards;
+  \item eliminate the raw query blocks, compute the two terminal Schur
+        complements, and require the ranks in
+        Table~\ref{tab:good23-ranks};
+  \item construct the root-neutral initial/terminal/kernel map, recompute its
+        pivots and nonzero minor, and require rank 1404; and
+  \item bind the dynamic component reports into the complete degree/product
+        report.
+\end{enumerate}
+The frozen fingerprints are reproducibility anchors for one known set of
+pivots.  Runtime elimination may select different full-rank minors and does
+not accept a supplied fingerprint in place of rank.  Transfer to another
+proof instance depends on the common frozen layout and public schedule maps,
+not equality of witness or proof bytes.
+
+\section{Complete EPRO arithmetic}
+\label{app:epro-ledger}
+
+The field expander count is
+\[
+ 2(22850+4\cdot1024)=53892.
+\]
+The transcript cap is
+\[
+ 292=67\cdot4+3\cdot8
+\]
+possible squeeze inputs: 67 bounded extension-field challenges use at most
+four blocks each, and each of the three q18 branches uses at most eight query
+blocks.  Accounting for a matching state advance at every squeeze gives
+\[
+ 637=47+2\cdot292+6.
+\]
+Thus the full per-attempt inventory is
+\[
+ C=3\cdot305152+53892+8+637=969993.
+\]
+
+At \(A=17\) and \(Q_H=2^{128}\),
+\begin{align*}
+ -\log_2\left(\frac{ACQ_H}{2^{256}}\right)
+    &=104.02492234825198,\\
+ -\log_2\left(\frac{\binom{AC}{2}}{2^{256}}\right)
+    &=209.04984478399368,\\
+ -\log_2\left(6A e^{-2^{27}}\right)
+    &=193635243.91255844.
+\end{align*}
+The pairwise game traverses the simulator twice and therefore loses exactly
+one bit under the triangle inequality.
+
+\section{Security games at a glance}
+\label{app:security-games}
+
+\begin{table}[ht]
+\centering
+\small
+\caption{Quantifiers and outputs of the three security statements.}
+\label{tab:security-games}
+\begin{tabular}{@{}
+  >{\raggedright\arraybackslash}p{0.19\linewidth}
+  >{\raggedright\arraybackslash}p{0.20\linewidth}
+  >{\raggedright\arraybackslash}p{0.31\linewidth}
+  >{\raggedright\arraybackslash}p{0.18\linewidth}@{}}
+\toprule
+game & quantified witnesses & output/view & bound \\
+\midrule
+argument soundness & no witness for chosen \(x\) & accepting proof &
+100.161 bits per random-oracle query \\
+real versus simulator & one valid \(w\) for fixed \(x\) & complete Proof/Abort &
+104.025 bits \\
+pairwise hiding & valid \(w_0,w_1\) for fixed \(x\) & complete Proof/Abort &
+103.025 bits \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The hiding games allow arbitrary auxiliary input and adaptive post-output
+queries within \(Q_H\le2^{128}\).  The soundness game is classical and uses
+the same query ceiling.  The exact environmental scope of these games is
+collected in Section~\ref{sec:limitations}.

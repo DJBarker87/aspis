@@ -30,6 +30,7 @@ use solana_sdk::{
     compute_budget::ComputeBudgetInstruction,
     hash::Hash,
     instruction::{AccountMeta, Instruction},
+    message::VersionedMessage,
     pubkey::Pubkey,
     signature::{read_keypair_file, Keypair, Signature, Signer},
     system_program,
@@ -49,7 +50,7 @@ use crate::profile23_statement::{
     canonical_profile23_public_input_digest, decode_profile23_statement_sidecar, profile23_hex,
 };
 
-const DEVNET_GENESIS_HASH: &str = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1";
+const DEVNET_GENESIS_HASH: &str = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
 const EXECUTE_ACK: &str =
     "I_ACKNOWLEDGE_PROFILE23_DEVNET_REHEARSAL_MUTATES_DEVNET_AND_SPENDS_DEVNET_SOL";
 const CU_LIMIT: u32 = 1_400_000;
@@ -61,6 +62,9 @@ const PROGRAMDATA_METADATA_BYTES: usize = 45;
 const PROGRAM_ACCOUNT_BYTES: usize = 36;
 const BUFFER_METADATA_BYTES: usize = 37;
 const DEFAULT_CONFIRM_TIMEOUT: Duration = Duration::from_secs(180);
+const READ_ONLY_RPC_RATE_LIMIT_RETRIES: u8 = 12;
+const SIGNATURE_POLL_INTERVAL: Duration = Duration::from_secs(2);
+const IN_PROGRESS_WARNING: &str = "If this file remains in_progress, execution did not reach the finalized evidence commit. Inspect chain state by recorded signer history before retrying.";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum CommandMode {
@@ -84,6 +88,10 @@ struct DevnetConfig {
     program_max_len: usize,
     fee_reserve_lamports: u64,
     execute_interlock: bool,
+    resume_in_progress: bool,
+    resume_pool_create_signature: Option<Signature>,
+    resume_pool_init_signature: Option<Signature>,
+    resume_proof_create_signature: Option<Signature>,
     acknowledgement: Option<String>,
 }
 
@@ -213,6 +221,10 @@ pub struct Profile23DevnetEvidence {
     pub statement_path: String,
     pub statement_sha256: String,
     pub program_max_len: usize,
+    pub resumed_from_in_progress: bool,
+    pub resume_checkpoint: Option<String>,
+    pub preexisting_pool_before_resume: Option<AccountEvidence>,
+    pub preexisting_proof_account_before_resume: Option<AccountEvidence>,
     pub upgradeable_program_before_setup: UpgradeableProgramSnapshotEvidence,
     pub upgradeable_program_before_setup_exact_release_sbf_max_len_authority: bool,
     pub upgradeable_program_before_final_simulation: UpgradeableProgramSnapshotEvidence,
@@ -384,6 +396,17 @@ struct Simulation {
     error: Option<Value>,
 }
 
+fn rpc_read_retryable(error: &anyhow::Error) -> bool {
+    let rendered = format!("{error:#}");
+    rendered.contains("\"code\":429")
+        || rendered.contains("HTTP 429")
+        || rendered.contains("Too Many Requests")
+        || rendered.contains("transport failure")
+        || rendered.contains("HTTP 502")
+        || rendered.contains("HTTP 503")
+        || rendered.contains("HTTP 504")
+}
+
 impl Rpc {
     fn new(endpoint: String) -> Result<Self> {
         Ok(Self {
@@ -401,9 +424,10 @@ impl Rpc {
             .json(&json!({"jsonrpc":"2.0","id":1,"method":method,"params":params}))
             .send()
             .map_err(|_| anyhow!("RPC {method} transport failure (endpoint redacted)"))?;
-        let value: Value = response
-            .json()
-            .with_context(|| format!("RPC {method} non-JSON response"))?;
+        let status = response.status();
+        let value: Value = response.json().with_context(|| {
+            format!("RPC {method} non-JSON response (HTTP {})", status.as_u16())
+        })?;
         if let Some(error) = value.get("error") {
             bail!("RPC {method} error: {error}");
         }
@@ -413,15 +437,32 @@ impl Rpc {
             .ok_or_else(|| anyhow!("RPC {method} omitted result"))
     }
 
+    fn call_read(&self, method: &str, params: Value) -> Result<Value> {
+        let mut retries = 0u8;
+        loop {
+            match self.call(method, params.clone()) {
+                Ok(value) => return Ok(value),
+                Err(error)
+                    if retries < READ_ONLY_RPC_RATE_LIMIT_RETRIES && rpc_read_retryable(&error) =>
+                {
+                    retries += 1;
+                    thread::sleep(Duration::from_secs(2));
+                }
+                Err(error) => return Err(error),
+            }
+        }
+    }
+
     fn genesis_hash(&self) -> Result<String> {
-        self.call("getGenesisHash", json!([]))?
+        self.call_read("getGenesisHash", json!([]))?
             .as_str()
             .map(ToOwned::to_owned)
             .context("getGenesisHash result was not a string")
     }
 
     fn latest_blockhash(&self) -> Result<Hash> {
-        self.call("getLatestBlockhash", json!([{"commitment":"finalized"}]))?["value"]["blockhash"]
+        self.call_read("getLatestBlockhash", json!([{"commitment":"finalized"}]))?["value"]
+            ["blockhash"]
             .as_str()
             .context("latest blockhash missing")?
             .parse()
@@ -429,7 +470,7 @@ impl Rpc {
     }
 
     fn account(&self, address: &Pubkey) -> Result<Option<RpcAccount>> {
-        let result = self.call(
+        let result = self.call_read(
             "getAccountInfo",
             json!([address.to_string(), {"encoding":"base64","commitment":"finalized"}]),
         )?;
@@ -457,13 +498,13 @@ impl Rpc {
     }
 
     fn rent(&self, bytes: usize) -> Result<u64> {
-        self.call("getMinimumBalanceForRentExemption", json!([bytes]))?
+        self.call_read("getMinimumBalanceForRentExemption", json!([bytes]))?
             .as_u64()
             .context("rent result was not u64")
     }
 
     fn balance(&self, address: &Pubkey) -> Result<u64> {
-        self.call(
+        self.call_read(
             "getBalance",
             json!([address.to_string(), {"commitment":"finalized"}]),
         )?["value"]
@@ -472,7 +513,7 @@ impl Rpc {
     }
 
     fn simulate_exact(&self, wire: &[u8]) -> Result<Simulation> {
-        let result = self.call(
+        let result = self.call_read(
             "simulateTransaction",
             json!([BASE64.encode(wire), {
                 "encoding":"base64",
@@ -496,7 +537,7 @@ impl Rpc {
         &self,
         signature: &Signature,
     ) -> Result<Option<(u64, Option<Value>, String)>> {
-        let result = self.call(
+        let result = self.call_read(
             "getSignatureStatuses",
             json!([[signature.to_string()], {"searchTransactionHistory":true}]),
         )?;
@@ -533,12 +574,12 @@ impl Rpc {
                 started.elapsed() < DEFAULT_CONFIRM_TIMEOUT,
                 "transaction {signature} did not finalize before timeout"
             );
-            thread::sleep(Duration::from_millis(500));
+            thread::sleep(SIGNATURE_POLL_INTERVAL);
         }
     }
 
     fn transaction_cu(&self, signature: &Signature) -> Result<Option<u64>> {
-        let result = self.call(
+        let result = self.call_read(
             "getTransaction",
             json!([signature.to_string(), {
                 "encoding":"json",
@@ -549,8 +590,8 @@ impl Rpc {
         Ok(result["meta"]["computeUnitsConsumed"].as_u64())
     }
 
-    fn transaction_wire_and_message_hash(&self, signature: &Signature) -> Result<(String, String)> {
-        let result = self.call(
+    fn transaction_wire(&self, signature: &Signature) -> Result<(Vec<u8>, VersionedTransaction)> {
+        let result = self.call_read(
             "getTransaction",
             json!([signature.to_string(), {
                 "encoding":"base64",
@@ -564,6 +605,11 @@ impl Rpc {
         let wire = BASE64.decode(encoded)?;
         let transaction: VersionedTransaction =
             bincode::deserialize(&wire).context("decode finalized versioned transaction")?;
+        Ok((wire, transaction))
+    }
+
+    fn transaction_wire_and_message_hash(&self, signature: &Signature) -> Result<(String, String)> {
+        let (wire, transaction) = self.transaction_wire(signature)?;
         Ok((
             sha256(&wire),
             sha256(&bincode::serialize(&transaction.message)?),
@@ -600,9 +646,11 @@ impl Rpc {
                 );
             }
             Err(first_error) => {
-                if self.signature_status(&expected_signature)?.is_none()
-                    && allow_one_identical_retry
-                {
+                let observed = self.signature_status(&expected_signature)?;
+                if observed.is_none() {
+                    if !allow_one_identical_retry || !rpc_read_retryable(&first_error) {
+                        return Err(first_error).with_context(|| format!("submit {label}"));
+                    }
                     retries = 1;
                     let value = send().with_context(|| {
                         format!(
@@ -613,8 +661,6 @@ impl Rpc {
                         value.as_str() == Some(expected_signature.to_string().as_str()),
                         "RPC returned a different signature on identical retry"
                     );
-                } else if self.signature_status(&expected_signature)?.is_none() {
-                    return Err(first_error).with_context(|| format!("submit {label}"));
                 }
             }
         }
@@ -639,7 +685,7 @@ impl Rpc {
         self.submit_wire(
             &wire,
             transaction.signatures[0],
-            false,
+            true,
             label,
             sha256(&bincode::serialize(&transaction.message)?),
         )
@@ -656,12 +702,19 @@ fn sha256(bytes: &[u8]) -> String {
 fn parse_args(arguments: &[String], mode: CommandMode) -> Result<DevnetConfig> {
     let mut values = BTreeMap::<String, String>::new();
     let mut execute_interlock = false;
+    let mut resume_in_progress = false;
     let mut index = 0usize;
     while index < arguments.len() {
         let key = &arguments[index];
         if key == "--execute-devnet" {
             ensure!(!execute_interlock, "duplicate --execute-devnet");
             execute_interlock = true;
+            index += 1;
+            continue;
+        }
+        if key == "--resume-in-progress" {
+            ensure!(!resume_in_progress, "duplicate --resume-in-progress");
+            resume_in_progress = true;
             index += 1;
             continue;
         }
@@ -693,6 +746,9 @@ fn parse_args(arguments: &[String], mode: CommandMode) -> Result<DevnetConfig> {
         "--program-max-len",
         "--fee-reserve-lamports",
         "--acknowledgement",
+        "--resume-pool-create-signature",
+        "--resume-pool-init-signature",
+        "--resume-proof-create-signature",
     ];
     for key in values.keys() {
         ensure!(allowed.contains(&key.as_str()), "unknown argument {key}");
@@ -703,6 +759,20 @@ fn parse_args(arguments: &[String], mode: CommandMode) -> Result<DevnetConfig> {
             "readiness refuses execution interlocks"
         );
     }
+    ensure!(
+        resume_in_progress == values.contains_key("--resume-pool-create-signature"),
+        "--resume-in-progress and --resume-pool-create-signature must be supplied together"
+    );
+    let has_pool_init_signature = values.contains_key("--resume-pool-init-signature");
+    let has_proof_create_signature = values.contains_key("--resume-proof-create-signature");
+    ensure!(
+        has_pool_init_signature == has_proof_create_signature,
+        "resume pool-init and proof-create signatures must be supplied together"
+    );
+    ensure!(
+        !has_pool_init_signature || resume_in_progress,
+        "resume checkpoint signatures require --resume-in-progress"
+    );
     let required = |key: &str| {
         values
             .get(key)
@@ -733,6 +803,21 @@ fn parse_args(arguments: &[String], mode: CommandMode) -> Result<DevnetConfig> {
             .parse()
             .context("--fee-reserve-lamports is not u64")?,
         execute_interlock,
+        resume_in_progress,
+        resume_pool_create_signature: values
+            .get("--resume-pool-create-signature")
+            .map(|value| Signature::from_str(value).context("invalid resume pool signature"))
+            .transpose()?,
+        resume_pool_init_signature: values
+            .get("--resume-pool-init-signature")
+            .map(|value| Signature::from_str(value).context("invalid resume pool-init signature"))
+            .transpose()?,
+        resume_proof_create_signature: values
+            .get("--resume-proof-create-signature")
+            .map(|value| {
+                Signature::from_str(value).context("invalid resume proof-create signature")
+            })
+            .transpose()?,
         acknowledgement: values.get("--acknowledgement").cloned(),
     })
 }
@@ -1400,21 +1485,88 @@ fn inspect(workspace_root: &Path, config: &DevnetConfig) -> Result<Profile23Devn
     let pool_absent = pool_pubkey
         .and_then(|key| rpc.account(&key).ok())
         .is_some_and(|account| account.is_none());
+    let resume_validation = if config.resume_in_progress {
+        Some(
+            match (
+                payer.as_ref(),
+                pool.as_ref(),
+                proof_account.as_ref(),
+                config.resume_pool_create_signature.as_ref(),
+                statement,
+                proof.as_ref(),
+            ) {
+                (
+                    Some(payer),
+                    Some(pool),
+                    Some(proof_account),
+                    Some(pool_create_signature),
+                    Some(statement),
+                    Some(proof),
+                ) => {
+                    let public = statement_public_inputs(statement);
+                    recover_resume_state(
+                        &rpc,
+                        payer,
+                        pool,
+                        proof_account,
+                        pool_create_signature,
+                        config.resume_pool_init_signature.as_ref(),
+                        config.resume_proof_create_signature.as_ref(),
+                        statement.sequence,
+                        public.current_anchor,
+                        proof.len(),
+                    )
+                    .map(|state| state.checkpoint)
+                }
+                _ => Err(anyhow!("resume inputs unavailable")),
+            },
+        )
+    } else {
+        None
+    };
+    let resume_error = resume_validation
+        .as_ref()
+        .and_then(|result| result.as_ref().err())
+        .map(|error| format!("{error:#}"));
+    let pool_ready = if config.resume_in_progress {
+        resume_validation
+            .as_ref()
+            .is_some_and(|result| result.is_ok())
+    } else {
+        pool_absent
+    };
     let proof_account_pubkey = proof_account.as_ref().map(Signer::pubkey);
     let proof_account_absent = proof_account_pubkey
         .and_then(|key| rpc.account(&key).ok())
         .is_some_and(|account| account.is_none());
+    let proof_account_ready = if config.resume_in_progress {
+        resume_validation
+            .as_ref()
+            .is_some_and(|result| result.is_ok())
+    } else {
+        proof_account_absent
+    };
     gate(
         &mut gates,
-        "fresh_pool_account_absent",
-        pool_absent,
-        format!("pool={pool_pubkey:?}"),
+        "fresh_pool_account_absent_or_exact_explicit_resume",
+        pool_ready,
+        format!(
+            "pool={pool_pubkey:?}, resume={}, checkpoint={:?}, resume_error={resume_error:?}",
+            config.resume_in_progress,
+            resume_validation
+                .as_ref()
+                .and_then(|result| result.as_ref().ok())
+                .map(|checkpoint| checkpoint.label()),
+        ),
     );
     gate(
         &mut gates,
-        "fresh_proof_account_absent",
-        proof_account_absent,
-        format!("proof_account={proof_account_pubkey:?}"),
+        "fresh_proof_account_absent_or_exact_explicit_resume",
+        proof_account_ready,
+        format!(
+            "proof_account={proof_account_pubkey:?}, resume={}, resume_error={resume_error:?}",
+            config.resume_in_progress
+        ),
     );
 
     let nullifier_address = statement
@@ -1448,9 +1600,14 @@ fn inspect(workspace_root: &Path, config: &DevnetConfig) -> Result<Profile23Devn
     );
     gate(
         &mut gates,
-        "evidence_path_does_not_exist",
-        !config.evidence.exists(),
-        format!("path={}", config.evidence.display()),
+        "evidence_path_fresh_or_exact_explicit_resume_marker",
+        (!config.resume_in_progress && !config.evidence.exists())
+            || (config.resume_in_progress && exact_in_progress_evidence_marker(&config.evidence)),
+        format!(
+            "path={}, resume={}",
+            config.evidence.display(),
+            config.resume_in_progress
+        ),
     );
 
     let mut rent_budget = DevnetRentBudget {
@@ -1718,6 +1875,232 @@ fn expected_nullifier_marker(pool: Pubkey, nullifier: [u8; 32]) -> Vec<u8> {
     expected
 }
 
+fn exact_in_progress_evidence_marker(path: &Path) -> bool {
+    let Ok(metadata) = fs::symlink_metadata(path) else {
+        return false;
+    };
+    if !metadata.file_type().is_file()
+        || metadata.file_type().is_symlink()
+        || metadata.permissions().mode() & 0o022 != 0
+    {
+        return false;
+    }
+    let Ok(bytes) = fs::read(path) else {
+        return false;
+    };
+    let Ok(value) = serde_json::from_slice::<Value>(&bytes) else {
+        return false;
+    };
+    value.as_object().is_some_and(|object| object.len() == 4)
+        && value["artifact"] == "profile23_devnet_finalized_rehearsal"
+        && value["status"] == "in_progress_no_claim"
+        && value["reserved_at_utc"].as_str().is_some()
+        && value["warning"] == IN_PROGRESS_WARNING
+}
+
+fn zeroed_pool_account_exact(account: &RpcAccount, pool_rent: u64) -> bool {
+    account.lamports == pool_rent
+        && account.owner == aspis_verifier::id()
+        && !account.executable
+        && account.data.len() == ATOMIC_POOL_STATE_LEN
+        && account.data.iter().all(|byte| *byte == 0)
+}
+
+fn zeroed_proof_account_exact(account: &RpcAccount, proof_rent: u64, proof_len: usize) -> bool {
+    account.lamports == proof_rent
+        && account.owner == aspis_verifier::id()
+        && !account.executable
+        && account.data.len() == PROOF_ACCOUNT_HEADER_LEN + proof_len
+        && account.data.iter().all(|byte| *byte == 0)
+}
+
+fn initialized_pool_account_exact(
+    account: &RpcAccount,
+    pool_rent: u64,
+    sequence: u64,
+    anchor: [u8; 32],
+) -> bool {
+    let mut expected = vec![0u8; ATOMIC_POOL_STATE_LEN];
+    AtomicPoolStateV1 { sequence, anchor }
+        .encode(&mut expected)
+        .is_ok()
+        && account.lamports == pool_rent
+        && account.owner == aspis_verifier::id()
+        && !account.executable
+        && account.data == expected
+}
+
+fn recover_exact_transaction_evidence(
+    rpc: &Rpc,
+    payer: &Keypair,
+    signers: &[&Keypair],
+    instructions: &[Instruction],
+    signature: &Signature,
+    label: &str,
+) -> Result<TransactionEvidence> {
+    let (slot, error, confirmation) = rpc
+        .signature_status(signature)?
+        .with_context(|| format!("resume {label} signature missing from history"))?;
+    ensure!(error.is_none(), "resume {label} transaction failed");
+    ensure!(
+        confirmation == "finalized",
+        "resume {label} transaction is not finalized"
+    );
+    let (wire, transaction) = rpc.transaction_wire(signature)?;
+    ensure!(
+        transaction.signatures.first() == Some(signature),
+        "resume {label} signature is not the transaction identifier"
+    );
+    let VersionedMessage::Legacy(message) = &transaction.message else {
+        bail!("resume {label} transaction is not legacy format");
+    };
+    let expected_transaction =
+        signed_transaction(payer, signers, instructions, message.recent_blockhash);
+    ensure!(
+        wire == bincode::serialize(&expected_transaction)?,
+        "resume {label} transaction is not byte-identical to the reconstructed transaction"
+    );
+    let message_sha256 = sha256(&bincode::serialize(&transaction.message)?);
+    Ok(TransactionEvidence {
+        label: label.to_owned(),
+        signature: signature.to_string(),
+        finalized_slot: slot,
+        message_sha256,
+        serialized_transaction_sha256: sha256(&wire),
+        compute_units_consumed: rpc.transaction_cu(signature)?,
+        identical_wire_retries: 0,
+    })
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ResumeCheckpoint {
+    PoolCreated,
+    ProofAccountCreated,
+}
+
+impl ResumeCheckpoint {
+    fn label(self) -> &'static str {
+        match self {
+            Self::PoolCreated => "pool_created_zeroed",
+            Self::ProofAccountCreated => "pool_initialized_proof_account_created_zeroed",
+        }
+    }
+}
+
+struct RecoveredResumeState {
+    checkpoint: ResumeCheckpoint,
+    pool: RpcAccount,
+    proof_account: Option<RpcAccount>,
+    setup_transactions: Vec<TransactionEvidence>,
+}
+
+#[allow(clippy::too_many_arguments)]
+fn recover_resume_state(
+    rpc: &Rpc,
+    payer: &Keypair,
+    pool: &Keypair,
+    proof_account: &Keypair,
+    pool_create_signature: &Signature,
+    pool_init_signature: Option<&Signature>,
+    proof_create_signature: Option<&Signature>,
+    sequence: u64,
+    current_anchor: [u8; 32],
+    proof_len: usize,
+) -> Result<RecoveredResumeState> {
+    let pool_rent = rpc.rent(ATOMIC_POOL_STATE_LEN)?;
+    let proof_rent = rpc.rent(PROOF_ACCOUNT_HEADER_LEN + proof_len)?;
+    let pool_create = system_instruction::create_account(
+        &payer.pubkey(),
+        &pool.pubkey(),
+        pool_rent,
+        ATOMIC_POOL_STATE_LEN as u64,
+        &aspis_verifier::id(),
+    );
+    let mut setup_transactions = vec![recover_exact_transaction_evidence(
+        rpc,
+        payer,
+        &[pool],
+        &[pool_create],
+        pool_create_signature,
+        "create_pool_account",
+    )?];
+    let pool_state = rpc
+        .account(&pool.pubkey())?
+        .context("resume pool account missing")?;
+
+    let (checkpoint, proof_state) = match (pool_init_signature, proof_create_signature) {
+        (None, None) => {
+            ensure!(
+                zeroed_pool_account_exact(&pool_state, pool_rent),
+                "pool-created resume checkpoint has unexpected pool image"
+            );
+            ensure!(
+                rpc.account(&proof_account.pubkey())?.is_none(),
+                "pool-created resume checkpoint requires an absent proof account"
+            );
+            (ResumeCheckpoint::PoolCreated, None)
+        }
+        (Some(pool_init_signature), Some(proof_create_signature)) => {
+            ensure!(
+                initialized_pool_account_exact(&pool_state, pool_rent, sequence, current_anchor,),
+                "proof-created resume checkpoint has unexpected initialized pool image"
+            );
+            let initialize_pool = Instruction {
+                program_id: aspis_verifier::id(),
+                accounts: vec![AccountMeta::new(pool.pubkey(), true)],
+                data: to_vec(&AspisInstruction::InitializeAtomicPool {
+                    sequence,
+                    anchor: current_anchor,
+                })?,
+            };
+            setup_transactions.push(recover_exact_transaction_evidence(
+                rpc,
+                payer,
+                &[pool],
+                &[initialize_pool],
+                pool_init_signature,
+                "tag63_initialize_pool",
+            )?);
+            let proof_create = system_instruction::create_account(
+                &payer.pubkey(),
+                &proof_account.pubkey(),
+                proof_rent,
+                (PROOF_ACCOUNT_HEADER_LEN + proof_len) as u64,
+                &aspis_verifier::id(),
+            );
+            setup_transactions.push(recover_exact_transaction_evidence(
+                rpc,
+                payer,
+                &[proof_account],
+                &[proof_create],
+                proof_create_signature,
+                "create_proof_account",
+            )?);
+            let proof_state = rpc
+                .account(&proof_account.pubkey())?
+                .context("proof-created resume checkpoint is missing proof account")?;
+            ensure!(
+                zeroed_proof_account_exact(&proof_state, proof_rent, proof_len),
+                "proof-created resume checkpoint has unexpected proof account image"
+            );
+            (ResumeCheckpoint::ProofAccountCreated, Some(proof_state))
+        }
+        _ => bail!("resume pool-init and proof-create signatures must be supplied together"),
+    };
+    ensure!(
+        setup_transactions
+            .windows(2)
+            .all(|pair| pair[0].finalized_slot <= pair[1].finalized_slot),
+        "recovered setup transaction slots are out of order"
+    );
+    Ok(RecoveredResumeState {
+        checkpoint,
+        pool: pool_state,
+        proof_account: proof_state,
+        setup_transactions,
+    })
+}
+
 struct EvidenceReservation {
     file: fs::File,
     path: PathBuf,
@@ -1738,12 +2121,28 @@ impl EvidenceReservation {
             "artifact": "profile23_devnet_finalized_rehearsal",
             "status": "in_progress_no_claim",
             "reserved_at_utc": chrono::Utc::now().to_rfc3339(),
-            "warning": "If this file remains in_progress, execution did not reach the finalized evidence commit. Inspect chain state by recorded signer history before retrying."
+            "warning": IN_PROGRESS_WARNING
         });
         let mut bytes = serde_json::to_vec_pretty(&placeholder)?;
         bytes.push(b'\n');
         file.write_all(&bytes)?;
         file.sync_all()?;
+        Ok(Self {
+            file,
+            path: path.to_path_buf(),
+        })
+    }
+
+    fn resume(path: &Path) -> Result<Self> {
+        ensure!(
+            exact_in_progress_evidence_marker(path),
+            "resume evidence path is not the exact in-progress marker"
+        );
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(path)
+            .with_context(|| format!("open in-progress evidence {}", path.display()))?;
         Ok(Self {
             file,
             path: path.to_path_buf(),
@@ -1893,14 +2292,41 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
     }
 
     // Recheck all fresh-account predicates immediately before the first write.
-    ensure!(
-        rpc.account(&pool.pubkey())?.is_none(),
-        "pool account ceased to be fresh"
-    );
-    ensure!(
-        rpc.account(&proof_account.pubkey())?.is_none(),
-        "proof account ceased to be fresh"
-    );
+    // Resume checkpoints are reconstructed from explicit finalized signatures
+    // and exact account images; no prior transaction is resent.
+    let recovered_resume = if config.resume_in_progress {
+        let pool_create_signature = config
+            .resume_pool_create_signature
+            .as_ref()
+            .context("resume pool creation signature omitted")?;
+        Some(recover_resume_state(
+            &rpc,
+            &payer,
+            &pool,
+            &proof_account,
+            pool_create_signature,
+            config.resume_pool_init_signature.as_ref(),
+            config.resume_proof_create_signature.as_ref(),
+            statement.sequence,
+            public.current_anchor,
+            proof.len(),
+        )?)
+    } else {
+        ensure!(
+            rpc.account(&pool.pubkey())?.is_none(),
+            "pool account ceased to be fresh"
+        );
+        ensure!(
+            rpc.account(&proof_account.pubkey())?.is_none(),
+            "proof account ceased to be fresh"
+        );
+        None
+    };
+    let resume_checkpoint = recovered_resume.as_ref().map(|state| state.checkpoint);
+    let preexisting_pool_snapshot = recovered_resume.as_ref().map(|state| state.pool.clone());
+    let preexisting_proof_snapshot = recovered_resume
+        .as_ref()
+        .and_then(|state| state.proof_account.clone());
     let (nullifier_address, _) = atomic_nullifier_address(&aspis_verifier::id(), &public.nullifier);
     let nullifier_before_snapshot = rpc.account(&nullifier_address)?;
     ensure!(nullifier_compatible(
@@ -1911,7 +2337,11 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
     // Reserve the evidence filename before the first network mutation. If the
     // process fails later, a synced `in_progress_no_claim` record remains and
     // prevents a blind rerun from reusing the same setup identities.
-    let evidence_reservation = EvidenceReservation::reserve(&config.evidence)?;
+    let evidence_reservation = if config.resume_in_progress {
+        EvidenceReservation::resume(&config.evidence)?
+    } else {
+        EvidenceReservation::reserve(&config.evidence)?
+    };
 
     let deployment = deploy_if_needed(&rpc, &config, &payer, &sbf)?;
     // This is the baseline for the exact executable that all subsequent setup
@@ -1926,35 +2356,46 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
         &payer.pubkey(),
     )?
     .context("exact deployed program missing immediately before rehearsal setup")?;
-    let mut setup_transactions = Vec::new();
+    let mut setup_transactions = recovered_resume
+        .as_ref()
+        .map(|state| state.setup_transactions.clone())
+        .unwrap_or_default();
 
     let pool_rent = rpc.rent(ATOMIC_POOL_STATE_LEN)?;
-    setup_transactions.push(create_account_transaction(
-        &rpc,
-        &payer,
-        &pool,
-        pool_rent,
-        ATOMIC_POOL_STATE_LEN,
-        "create_pool_account",
-    )?);
-    let initialize_pool = Instruction {
-        program_id: aspis_verifier::id(),
-        accounts: vec![AccountMeta::new(pool.pubkey(), true)],
-        data: to_vec(&AspisInstruction::InitializeAtomicPool {
-            sequence: statement.sequence,
-            anchor: public.current_anchor,
-        })?,
+    if resume_checkpoint.is_none() {
+        setup_transactions.push(create_account_transaction(
+            &rpc,
+            &payer,
+            &pool,
+            pool_rent,
+            ATOMIC_POOL_STATE_LEN,
+            "create_pool_account",
+        )?);
+    }
+    let pool_before_snapshot = if resume_checkpoint == Some(ResumeCheckpoint::ProofAccountCreated) {
+        preexisting_pool_snapshot
+            .clone()
+            .context("proof-created resume checkpoint omitted pool snapshot")?
+    } else {
+        let initialize_pool = Instruction {
+            program_id: aspis_verifier::id(),
+            accounts: vec![AccountMeta::new(pool.pubkey(), true)],
+            data: to_vec(&AspisInstruction::InitializeAtomicPool {
+                sequence: statement.sequence,
+                anchor: public.current_anchor,
+            })?,
+        };
+        let initialize_pool_tx = signed_transaction(
+            &payer,
+            &[&pool],
+            &[initialize_pool],
+            rpc.latest_blockhash()?,
+        );
+        setup_transactions
+            .push(rpc.submit_transaction(&initialize_pool_tx, "tag63_initialize_pool")?);
+        rpc.account(&pool.pubkey())?
+            .context("initialized pool missing")?
     };
-    let initialize_pool_tx = signed_transaction(
-        &payer,
-        &[&pool],
-        &[initialize_pool],
-        rpc.latest_blockhash()?,
-    );
-    setup_transactions.push(rpc.submit_transaction(&initialize_pool_tx, "tag63_initialize_pool")?);
-    let pool_before_snapshot = rpc
-        .account(&pool.pubkey())?
-        .context("initialized pool missing")?;
     ensure!(pool_before_snapshot.owner == aspis_verifier::id());
     let pool_before_state = AtomicPoolStateV1::decode(&pool_before_snapshot.data)
         .map_err(|error| anyhow!("decode initialized pool: {error:?}"))?;
@@ -1964,14 +2405,16 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
     );
 
     let proof_rent = rpc.rent(PROOF_ACCOUNT_HEADER_LEN + proof.len())?;
-    setup_transactions.push(create_account_transaction(
-        &rpc,
-        &payer,
-        &proof_account,
-        proof_rent,
-        PROOF_ACCOUNT_HEADER_LEN + proof.len(),
-        "create_proof_account",
-    )?);
+    if resume_checkpoint != Some(ResumeCheckpoint::ProofAccountCreated) {
+        setup_transactions.push(create_account_transaction(
+            &rpc,
+            &payer,
+            &proof_account,
+            proof_rent,
+            PROOF_ACCOUNT_HEADER_LEN + proof.len(),
+            "create_proof_account",
+        )?);
+    }
     let init = proof_instruction(
         payer.pubkey(),
         proof_account.pubkey(),
@@ -1979,7 +2422,27 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
             total_len: proof.len() as u32,
         },
     )?;
-    let init_tx = signed_transaction(&payer, &[&proof_account], &[init], rpc.latest_blockhash()?);
+    let init_tx = signed_transaction(
+        &payer,
+        &[&proof_account],
+        &[
+            ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT),
+            init,
+        ],
+        rpc.latest_blockhash()?,
+    );
+    let init_simulation = rpc.simulate_exact(&bincode::serialize(&init_tx)?)?;
+    ensure!(
+        init_simulation.error.is_none(),
+        "compute-budgeted InitProof simulation rejected: {:?}",
+        init_simulation.error
+    );
+    ensure!(
+        init_simulation
+            .units
+            .is_some_and(|units| units < u64::from(CU_LIMIT)),
+        "compute-budgeted InitProof simulation omitted or exceeded its CU limit"
+    );
     setup_transactions.push(rpc.submit_transaction(&init_tx, "init_proof_account")?);
     for (index, chunk) in proof.chunks(UPLOAD_CHUNK_BYTES).enumerate() {
         let upload = proof_instruction(
@@ -2220,6 +2683,14 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
         statement_path: config.statement.display().to_string(),
         statement_sha256: sha256(&statement_bytes),
         program_max_len: config.program_max_len,
+        resumed_from_in_progress: config.resume_in_progress,
+        resume_checkpoint: resume_checkpoint.map(|checkpoint| checkpoint.label().to_owned()),
+        preexisting_pool_before_resume: preexisting_pool_snapshot
+            .as_ref()
+            .map(|account| account.evidence(pool.pubkey())),
+        preexisting_proof_account_before_resume: preexisting_proof_snapshot
+            .as_ref()
+            .map(|account| account.evidence(proof_account.pubkey())),
         upgradeable_program_before_setup: upgradeable_program_before_setup.evidence(),
         upgradeable_program_before_setup_exact_release_sbf_max_len_authority: true,
         upgradeable_program_before_final_simulation:
@@ -2412,6 +2883,24 @@ mod tests {
         let parsed = parse_args(&args, CommandMode::Execute).unwrap();
         assert!(!parsed.execute_interlock);
         assert_ne!(parsed.acknowledgement.as_deref(), Some(EXECUTE_ACK));
+    }
+
+    #[test]
+    fn explicit_resume_requires_and_parses_creation_signature() {
+        let mut missing_signature = complete_args();
+        missing_signature.push("--resume-in-progress".to_owned());
+        assert!(parse_args(&missing_signature, CommandMode::Execute).is_err());
+
+        let mut args = complete_args();
+        args.push("--resume-in-progress".to_owned());
+        args.push("--resume-pool-create-signature".to_owned());
+        args.push(Signature::default().to_string());
+        let parsed = parse_args(&args, CommandMode::Readiness).unwrap();
+        assert!(parsed.resume_in_progress);
+        assert_eq!(
+            parsed.resume_pool_create_signature,
+            Some(Signature::default())
+        );
     }
 
     #[test]
