@@ -60,6 +60,9 @@ const PROGRAM_MANIFEST_PATH: &str = "programs/aspis-verifier/Cargo.toml";
 const WORKSPACE_MANIFEST_PATH: &str = "Cargo.toml";
 const XTASK_MANIFEST_PATH: &str = "xtask/Cargo.toml";
 const DEFAULT_SBF_PATH: &str = "target/deploy/aspis_verifier.so";
+const DEVNET_REHEARSAL_PROOF_PATH: &str = "crates/aspis-prover/fixtures/spend_devnet_q18_g37.bin";
+const DEVNET_REHEARSAL_STATEMENT_PATH: &str =
+    "crates/aspis-prover/fixtures/spend_devnet_q18_g37.statement.json";
 const SPEND_PRODUCTION_ALIAS_FEATURES: [&str; 2] =
     ["spend-minimal-dispatch", "spend-dynamic-rate512"];
 const PRODUCTION_FORBIDDEN_FEATURES: [&str; 6] = [
@@ -138,6 +141,28 @@ pub struct ReleaseInstance {
     pub evaluation_error: Option<String>,
 }
 
+/// The devnet-bound rehearsal proof/statement pair under the
+/// deployment-domain protocol. The release certificate binds this second
+/// instance so the devnet rehearsal can match its explicit inputs against a
+/// pair the release policy has verified end-to-end, while the mainnet
+/// executor keeps matching `release_instance`.
+#[derive(Clone, Debug, Serialize)]
+pub struct DevnetRehearsalInstance {
+    pub proof_path: String,
+    pub proof_bytes: u64,
+    pub proof_sha256: String,
+    pub statement_path: String,
+    pub statement_bytes: u64,
+    pub statement_sha256: String,
+    pub statement_pool_hex: String,
+    pub statement_sequence: u64,
+    pub canonical_public_input_digest: String,
+    pub deployment_domain_hex: String,
+    pub serialized_selector: Option<u8>,
+    pub host_verification_green: bool,
+    pub evaluation_error: Option<String>,
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub struct DefaultProductionSbfIdentity {
     pub path: &'static str,
@@ -174,6 +199,7 @@ pub struct SpendOneTransactionRelease {
     pub computational_hiding_pairwise_witness_bound_bits: Option<f64>,
     pub proof: ReleaseProofIdentity,
     pub release_instance: ReleaseInstance,
+    pub devnet_rehearsal_instance: DevnetRehearsalInstance,
     pub default_production_sbf: DefaultProductionSbfIdentity,
     pub source_artifacts: Vec<SourceArtifact>,
     pub gates: Vec<ReleaseGate>,
@@ -196,6 +222,7 @@ struct LoadedArtifacts {
     actual_proof_bytes: u64,
     actual_proof_sha256: String,
     release_instance: ReleaseInstance,
+    devnet_rehearsal_instance: DevnetRehearsalInstance,
     default_sbf_bytes: u64,
     default_sbf_sha256: String,
 }
@@ -479,6 +506,89 @@ fn release_instance_selector_is_least_good(instance: &ReleaseInstance) -> bool {
         && instance.serialized_selector == recomputed_least_good
 }
 
+fn build_devnet_rehearsal_instance(
+    proof_path: String,
+    proof_sha256: String,
+    proof: &[u8],
+    statement_path: String,
+    statement_file: &SpendStatementFile,
+) -> DevnetRehearsalInstance {
+    let mut errors = Vec::new();
+    let host_result = aspis_statement::state_only_spend::verify_atomic_state_only_spend_v4(
+        proof,
+        &statement_file.statement,
+        aspis_prover::HOST_HASH,
+        None,
+    );
+    let host_verification_green = host_result.is_ok();
+    if let Err(error) = host_result {
+        errors.push(format!(
+            "devnet rehearsal host verification failed: {error:?}"
+        ));
+    }
+    let serialized_selector =
+        match aspis_core::state_only_prefix::StateOnlySpendPrefix::parse_from_proof(proof) {
+            Ok((prefix, suffix)) if !suffix.is_empty() => Some(prefix.query_selector),
+            Ok(_) => {
+                errors.push("devnet rehearsal proof has no private-opening suffix".to_string());
+                None
+            }
+            Err(error) => {
+                errors.push(format!("devnet rehearsal prefix parse failed: {error:?}"));
+                None
+            }
+        };
+    DevnetRehearsalInstance {
+        proof_path,
+        proof_bytes: proof.len() as u64,
+        proof_sha256,
+        statement_path,
+        statement_bytes: statement_file.bytes as u64,
+        statement_sha256: statement_file.sha256.clone(),
+        statement_pool_hex: spend_hex(&statement_file.statement.pool),
+        statement_sequence: statement_file.statement.sequence,
+        canonical_public_input_digest: statement_file.canonical_public_input_digest.clone(),
+        deployment_domain_hex: spend_hex(&statement_file.statement.deployment_domain),
+        serialized_selector,
+        host_verification_green,
+        evaluation_error: (!errors.is_empty()).then(|| errors.join("; ")),
+    }
+}
+
+fn load_devnet_rehearsal_instance(
+    workspace_root: &Path,
+) -> Result<(SourceArtifact, SourceArtifact, DevnetRehearsalInstance)> {
+    let (proof_source, proof_bytes) = load_raw_source(
+        workspace_root,
+        "devnet_rehearsal_proof",
+        DEVNET_REHEARSAL_PROOF_PATH,
+    )?;
+    let workspace_root = workspace_root
+        .canonicalize()
+        .with_context(|| format!("canonicalize {}", workspace_root.display()))?;
+    let statement_file =
+        load_spend_statement_file(&workspace_root, Path::new(DEVNET_REHEARSAL_STATEMENT_PATH))?;
+    let recorded_statement_path = spend_recorded_path(&workspace_root, &statement_file.path);
+    ensure!(
+        recorded_statement_path == DEVNET_REHEARSAL_STATEMENT_PATH,
+        "devnet rehearsal statement path is not canonical: {recorded_statement_path}"
+    );
+    let statement_source = SourceArtifact {
+        label: "devnet_rehearsal_statement".to_string(),
+        path: recorded_statement_path.clone(),
+        bytes: statement_file.bytes,
+        sha256: statement_file.sha256.clone(),
+    };
+    let instance = build_devnet_rehearsal_instance(
+        DEVNET_REHEARSAL_PROOF_PATH.to_string(),
+        proof_source.sha256.clone(),
+        &proof_bytes,
+        recorded_statement_path,
+        &statement_file,
+    );
+    Ok((proof_source, statement_source, instance))
+}
+
 fn load_artifacts(workspace_root: &Path) -> Result<LoadedArtifacts> {
     let use_production_pair = workspace_root.join(PRODUCTION_ACCEPTANCE_PATH).is_file()
         && workspace_root.join(PRODUCTION_MUTATION_PATH).is_file();
@@ -519,6 +629,8 @@ fn load_artifacts(workspace_root: &Path) -> Result<LoadedArtifacts> {
         actual_statement_path,
         &statement_file,
     );
+    let (devnet_proof_source, devnet_statement_source, devnet_rehearsal_instance) =
+        load_devnet_rehearsal_instance(workspace_root)?;
     let (default_sbf_source, default_sbf) =
         load_raw_source(workspace_root, "default_production_sbf", DEFAULT_SBF_PATH)?;
     Ok(LoadedArtifacts {
@@ -533,6 +645,8 @@ fn load_artifacts(workspace_root: &Path) -> Result<LoadedArtifacts> {
             xtask_manifest_source,
             proof_source,
             statement_source,
+            devnet_proof_source,
+            devnet_statement_source,
             default_sbf_source.clone(),
         ],
         acceptance,
@@ -549,6 +663,7 @@ fn load_artifacts(workspace_root: &Path) -> Result<LoadedArtifacts> {
         actual_proof_bytes,
         actual_proof_sha256,
         release_instance,
+        devnet_rehearsal_instance,
         default_sbf_bytes: default_sbf.len() as u64,
         default_sbf_sha256: default_sbf_source.sha256,
     })
@@ -1599,6 +1714,27 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> SpendOneTransactionRelease {
         ),
     );
 
+    let devnet_rehearsal_instance = &loaded.devnet_rehearsal_instance;
+    let devnet_rehearsal_verifies = devnet_rehearsal_instance.host_verification_green
+        && devnet_rehearsal_instance.serialized_selector.is_some()
+        && devnet_rehearsal_instance.evaluation_error.is_none();
+    add_gate(
+        &mut gates,
+        "devnet_rehearsal_instance_verifies",
+        devnet_rehearsal_verifies,
+        format!(
+            "proof={} statement={} host_green={} selector={:?} deployment_domain={} pool={} sequence={} evaluation_error={:?}",
+            devnet_rehearsal_instance.proof_path,
+            devnet_rehearsal_instance.statement_path,
+            devnet_rehearsal_instance.host_verification_green,
+            devnet_rehearsal_instance.serialized_selector,
+            devnet_rehearsal_instance.deployment_domain_hex,
+            devnet_rehearsal_instance.statement_pool_hex,
+            devnet_rehearsal_instance.statement_sequence,
+            devnet_rehearsal_instance.evaluation_error,
+        ),
+    );
+
     let proof_is_mined = bool_at(acceptance, "/proof_unmined") == Some(false)
         && bool_at(mutation, "/proof_unmined") == Some(false);
     add_gate(
@@ -2383,6 +2519,7 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> SpendOneTransactionRelease {
             mutation_path: str_at(mutation, "/proof_path").map(ToOwned::to_owned),
         },
         release_instance: loaded.release_instance.clone(),
+        devnet_rehearsal_instance: loaded.devnet_rehearsal_instance.clone(),
         default_production_sbf: DefaultProductionSbfIdentity {
             path: DEFAULT_SBF_PATH,
             build_command:
@@ -2561,6 +2698,52 @@ mod tests {
         }
     }
 
+    /// The committed devnet rehearsal pair's exact identity, with the slow
+    /// host verification frozen to its recorded green outcome. The ignored
+    /// full-replay test below recomputes the complete instance, including the
+    /// host verification, from the committed fixture bytes.
+    fn frozen_devnet_rehearsal_instance(
+    ) -> (SourceArtifact, SourceArtifact, DevnetRehearsalInstance) {
+        let workspace_root = workspace_root();
+        let (proof_source, proof_bytes) = load_raw_source(
+            &workspace_root,
+            "devnet_rehearsal_proof",
+            DEVNET_REHEARSAL_PROOF_PATH,
+        )
+        .unwrap();
+        let statement_file = load_spend_statement_file(
+            &workspace_root.canonicalize().unwrap(),
+            Path::new(DEVNET_REHEARSAL_STATEMENT_PATH),
+        )
+        .unwrap();
+        let statement_source = SourceArtifact {
+            label: "devnet_rehearsal_statement".to_string(),
+            path: DEVNET_REHEARSAL_STATEMENT_PATH.to_string(),
+            bytes: statement_file.bytes,
+            sha256: statement_file.sha256.clone(),
+        };
+        let (prefix, suffix) =
+            aspis_core::state_only_prefix::StateOnlySpendPrefix::parse_from_proof(&proof_bytes)
+                .unwrap();
+        assert!(!suffix.is_empty());
+        let instance = DevnetRehearsalInstance {
+            proof_path: DEVNET_REHEARSAL_PROOF_PATH.to_string(),
+            proof_bytes: proof_bytes.len() as u64,
+            proof_sha256: proof_source.sha256.clone(),
+            statement_path: DEVNET_REHEARSAL_STATEMENT_PATH.to_string(),
+            statement_bytes: statement_file.bytes as u64,
+            statement_sha256: statement_file.sha256.clone(),
+            statement_pool_hex: spend_hex(&statement_file.statement.pool),
+            statement_sequence: statement_file.statement.sequence,
+            canonical_public_input_digest: statement_file.canonical_public_input_digest.clone(),
+            deployment_domain_hex: spend_hex(&statement_file.statement.deployment_domain),
+            serialized_selector: Some(prefix.query_selector),
+            host_verification_green: true,
+            evaluation_error: None,
+        };
+        (proof_source, statement_source, instance)
+    }
+
     fn build_fixture_artifacts() -> LoadedArtifacts {
         let (acceptance_source, acceptance) = fixture_json(
             "spend_acceptance_production_mined.json",
@@ -2603,6 +2786,8 @@ mod tests {
         let (statement_source, _, statement_file) =
             load_selected_statement(&workspace_root, &acceptance).unwrap();
         let release_instance = frozen_release_instance(&acceptance);
+        let (devnet_proof_source, devnet_statement_source, devnet_rehearsal_instance) =
+            frozen_devnet_rehearsal_instance();
         let default_sbf_source = SourceArtifact {
             label: "default_production_sbf".to_string(),
             path: DEFAULT_SBF_PATH.to_string(),
@@ -2622,6 +2807,8 @@ mod tests {
                 xtask_manifest_source,
                 proof_source,
                 statement_source,
+                devnet_proof_source,
+                devnet_statement_source,
                 default_sbf_source.clone(),
             ],
             acceptance,
@@ -2636,6 +2823,7 @@ mod tests {
             actual_proof_bytes: proof_bytes.len() as u64,
             actual_proof_sha256,
             release_instance,
+            devnet_rehearsal_instance,
             default_sbf_bytes: SYNTHETIC_DEFAULT_SBF.len() as u64,
             default_sbf_sha256: hex_sha256(SYNTHETIC_DEFAULT_SBF),
         }
@@ -2706,6 +2894,52 @@ mod tests {
             );
         }
         assert!(release_instance_selector_is_least_good(&replayed));
+    }
+
+    /// Full-strength devnet rehearsal replay over the committed devnet-bound
+    /// fixture pair: complete production host verification recomputed from the
+    /// exact bytes, compared field-for-field against the frozen instance the
+    /// gate-logic tests use.
+    #[test]
+    #[ignore = "slow exact host verification replay; run in --release"]
+    fn committed_devnet_rehearsal_fixture_replays_the_recorded_instance_exactly() {
+        let (frozen_proof_source, frozen_statement_source, frozen) =
+            frozen_devnet_rehearsal_instance();
+        let (proof_source, statement_source, replayed) =
+            load_devnet_rehearsal_instance(&workspace_root()).unwrap();
+        assert!(replayed.host_verification_green);
+        assert_eq!(replayed.evaluation_error, None);
+        assert_eq!(proof_source.sha256, frozen_proof_source.sha256);
+        assert_eq!(statement_source.sha256, frozen_statement_source.sha256);
+        assert_eq!(
+            serde_json::to_value(&replayed).unwrap(),
+            serde_json::to_value(&frozen).unwrap()
+        );
+    }
+
+    #[test]
+    fn devnet_rehearsal_instance_gate_fails_closed() {
+        const GATE: &str = "devnet_rehearsal_instance_verifies";
+        let loaded = loaded_artifacts();
+        assert!(gate(&evaluate_loaded(loaded.clone()), GATE).passed);
+
+        let mut host_red = loaded.clone();
+        host_red.devnet_rehearsal_instance.host_verification_green = false;
+        let report = evaluate_loaded(host_red);
+        assert!(!gate(&report, GATE).passed);
+        assert!(!report.released);
+        assert!(report.failed_gates.contains(&GATE));
+
+        let mut selector_missing = loaded.clone();
+        selector_missing
+            .devnet_rehearsal_instance
+            .serialized_selector = None;
+        assert!(!gate(&evaluate_loaded(selector_missing), GATE).passed);
+
+        let mut evaluation_error = loaded;
+        evaluation_error.devnet_rehearsal_instance.evaluation_error =
+            Some("devnet rehearsal prefix parse failed".to_string());
+        assert!(!gate(&evaluate_loaded(evaluation_error), GATE).passed);
     }
 
     const SPEND_SCHEDULE_GATE: &str = "spend_q18_and_work_schedule_match_live_proof";
@@ -2911,11 +3145,19 @@ mod tests {
             assert!(report.failed_gates.is_empty());
             assert!(report.gates.iter().all(|gate| gate.passed));
         }
-        assert_eq!(report.source_artifacts.len(), 11);
+        assert_eq!(report.source_artifacts.len(), 13);
         assert!(report
             .source_artifacts
             .iter()
             .any(|source| source.label == "production_statement"));
+        assert!(report
+            .source_artifacts
+            .iter()
+            .any(|source| source.label == "devnet_rehearsal_proof"));
+        assert!(report
+            .source_artifacts
+            .iter()
+            .any(|source| source.label == "devnet_rehearsal_statement"));
     }
 
     #[test]

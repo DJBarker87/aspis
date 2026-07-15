@@ -1153,7 +1153,7 @@ mod tests {
         let run = root.run();
         let mut journal = RecoveryJournal::create(&run, "mainnet_run_1").unwrap();
         journal
-            .record_checkpoint("preflight_green", serde_json::json!({"gates": 36}))
+            .record_checkpoint("preflight_green", serde_json::json!({"gates": 37}))
             .unwrap();
         assert_eq!(journal.next_sequence(), 2);
         assert_eq!(journal.state().run_id.as_deref(), Some("mainnet_run_1"));

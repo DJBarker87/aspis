@@ -126,6 +126,17 @@ impl ClusterPolicy {
     fn requires_explicit_recovery_signers(self) -> bool {
         self == Self::MainnetBeta
     }
+
+    /// The release-certificate instance block the explicit `--proof` and
+    /// `--statement` inputs must match under the deployment-domain protocol.
+    /// The devnet rehearsal executes the certificate's devnet-bound pair; the
+    /// mainnet executor keeps matching the mainnet-target release instance.
+    fn certified_instance_key(self) -> &'static str {
+        match self {
+            Self::Devnet => "devnet_rehearsal_instance",
+            Self::MainnetBeta => "release_instance",
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -475,9 +486,47 @@ struct ReleaseInstance {
     evaluation_error: Option<String>,
 }
 
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DevnetRehearsalInstance {
+    proof_path: String,
+    proof_bytes: u64,
+    proof_sha256: String,
+    statement_path: String,
+    statement_bytes: u64,
+    statement_sha256: String,
+    statement_pool_hex: String,
+    statement_sequence: u64,
+    canonical_public_input_digest: String,
+    deployment_domain_hex: String,
+    serialized_selector: Option<u8>,
+    host_verification_green: bool,
+    evaluation_error: Option<String>,
+}
+
+/// The identity of the exact proof/statement pair the release certificate
+/// binds for the selected cluster policy: the devnet-bound rehearsal pair on
+/// devnet, and the mainnet-target release instance on mainnet-beta.
+#[derive(Clone, Debug)]
+struct CertifiedInstanceIdentity {
+    source: &'static str,
+    proof_path: String,
+    proof_bytes: u64,
+    proof_sha256: String,
+    statement_path: String,
+    statement_bytes: u64,
+    statement_sha256: String,
+    statement_pool_hex: String,
+    statement_sequence: u64,
+    canonical_public_input_digest: String,
+    deployment_domain_hex: Option<String>,
+    serialized_selector: Option<u8>,
+}
+
 #[derive(Debug)]
 struct ReleaseInstanceValidation {
     instance: ReleaseInstance,
+    expected: CertifiedInstanceIdentity,
     statement: aspis_statement::AtomicPaymentStatementV4,
     actual_proof_path: String,
     actual_statement_path: String,
@@ -1779,6 +1828,62 @@ fn decode_release_instance(release: &Value) -> Result<ReleaseInstance> {
     .context("decode exact release_instance schema")
 }
 
+fn decode_devnet_rehearsal_instance(release: &Value) -> Result<DevnetRehearsalInstance> {
+    serde_json::from_value(
+        release
+            .get("devnet_rehearsal_instance")
+            .context("release certificate omitted devnet_rehearsal_instance")?
+            .clone(),
+    )
+    .context("decode exact devnet_rehearsal_instance schema")
+}
+
+fn certified_instance_identity(
+    release: &Value,
+    instance: &ReleaseInstance,
+    policy: ClusterPolicy,
+) -> Result<CertifiedInstanceIdentity> {
+    match policy {
+        ClusterPolicy::MainnetBeta => Ok(CertifiedInstanceIdentity {
+            source: policy.certified_instance_key(),
+            proof_path: instance.proof_path.clone(),
+            proof_bytes: instance.proof_bytes,
+            proof_sha256: instance.proof_sha256.clone(),
+            statement_path: instance.statement_path.clone(),
+            statement_bytes: instance.statement_bytes,
+            statement_sha256: instance.statement_sha256.clone(),
+            statement_pool_hex: instance.statement_pool_hex.clone(),
+            statement_sequence: instance.statement_sequence,
+            canonical_public_input_digest: instance.canonical_public_input_digest.clone(),
+            deployment_domain_hex: None,
+            serialized_selector: instance.serialized_selector,
+        }),
+        ClusterPolicy::Devnet => {
+            let rehearsal = decode_devnet_rehearsal_instance(release)?;
+            ensure!(
+                rehearsal.host_verification_green && rehearsal.evaluation_error.is_none(),
+                "certificate devnet_rehearsal_instance is not host-verified green: host_green={}, evaluation_error={:?}",
+                rehearsal.host_verification_green,
+                rehearsal.evaluation_error
+            );
+            Ok(CertifiedInstanceIdentity {
+                source: policy.certified_instance_key(),
+                proof_path: rehearsal.proof_path,
+                proof_bytes: rehearsal.proof_bytes,
+                proof_sha256: rehearsal.proof_sha256,
+                statement_path: rehearsal.statement_path,
+                statement_bytes: rehearsal.statement_bytes,
+                statement_sha256: rehearsal.statement_sha256,
+                statement_pool_hex: rehearsal.statement_pool_hex,
+                statement_sequence: rehearsal.statement_sequence,
+                canonical_public_input_digest: rehearsal.canonical_public_input_digest,
+                deployment_domain_hex: Some(rehearsal.deployment_domain_hex),
+                serialized_selector: rehearsal.serialized_selector,
+            })
+        }
+    }
+}
+
 fn live_good_spend_definition_fingerprint() -> String {
     format!(
         "0x{}",
@@ -1797,8 +1902,10 @@ fn validate_release_instance(
     proof: &[u8],
     statement_path: &Path,
     statement_bytes: &[u8],
+    policy: ClusterPolicy,
 ) -> Result<ReleaseInstanceValidation> {
     let instance = decode_release_instance(release)?;
+    let expected = certified_instance_identity(release, &instance, policy)?;
     let actual_proof_path = recorded_workspace_path(workspace_root, proof_path)?;
     let actual_statement_path = recorded_workspace_path(workspace_root, statement_path)?;
     let actual_proof_sha256 = sha256(proof);
@@ -1806,17 +1913,21 @@ fn validate_release_instance(
     let statement = decode_spend_statement_sidecar(statement_bytes)?;
     let statement_digest = canonical_spend_public_input_digest(&statement)?;
 
-    let proof_identity_exact = is_normal_workspace_relative(&instance.proof_path)
-        && instance.proof_path == actual_proof_path
-        && instance.proof_bytes == proof.len() as u64
-        && instance.proof_sha256 == actual_proof_sha256;
-    let statement_identity_exact = is_normal_workspace_relative(&instance.statement_path)
-        && instance.statement_path == actual_statement_path
-        && instance.statement_bytes == statement_bytes.len() as u64
-        && instance.statement_sha256 == actual_statement_sha256
-        && instance.statement_pool_hex == spend_hex(&statement.pool)
-        && instance.statement_sequence == statement.sequence
-        && instance.canonical_public_input_digest == statement_digest;
+    let proof_identity_exact = is_normal_workspace_relative(&expected.proof_path)
+        && expected.proof_path == actual_proof_path
+        && expected.proof_bytes == proof.len() as u64
+        && expected.proof_sha256 == actual_proof_sha256;
+    let statement_identity_exact = is_normal_workspace_relative(&expected.statement_path)
+        && expected.statement_path == actual_statement_path
+        && expected.statement_bytes == statement_bytes.len() as u64
+        && expected.statement_sha256 == actual_statement_sha256
+        && expected.statement_pool_hex == spend_hex(&statement.pool)
+        && expected.statement_sequence == statement.sequence
+        && expected.canonical_public_input_digest == statement_digest
+        && expected
+            .deployment_domain_hex
+            .as_deref()
+            .is_none_or(|domain| domain == spend_hex(&statement.deployment_domain));
 
     let candidate_count = usize::from(instance.selector_candidates);
     let recomputed_least_good = instance
@@ -1840,7 +1951,8 @@ fn validate_release_instance(
         && recomputed_least_good.is_some()
         && instance.least_good_selector == recomputed_least_good
         && instance.serialized_selector == recomputed_least_good
-        && parsed_proof_selector == instance.serialized_selector
+        && expected.serialized_selector.is_some()
+        && parsed_proof_selector == expected.serialized_selector
         && instance.evaluation_error.is_none();
     let good_spend_fingerprint_exact =
         instance.good_spend_definition_fingerprint == live_good_spend_definition_fingerprint();
@@ -1856,6 +1968,7 @@ fn validate_release_instance(
 
     Ok(ReleaseInstanceValidation {
         instance,
+        expected,
         statement,
         actual_proof_path,
         actual_statement_path,
@@ -2185,6 +2298,7 @@ fn inspect_with_policy(
             proof,
             &config.statement,
             statement_bytes,
+            policy,
         ),
         _ => Err(anyhow!(
             "release certificate, proof, or statement sidecar unavailable"
@@ -2206,10 +2320,16 @@ fn inspect_with_policy(
             .as_ref()
             .is_ok_and(|validation| validation.proof_identity_exact),
         release_instance_validation.as_ref().map_or_else(
-            |_| format!("error={release_instance_error:?}, sha256={proof_sha:?}"),
+            |_| {
+                format!(
+                    "instance={}, error={release_instance_error:?}, sha256={proof_sha:?}",
+                    policy.certified_instance_key()
+                )
+            },
             |validation| {
                 format!(
-                    "path={}, bytes={:?}, sha256={}",
+                    "instance={}, path={}, bytes={:?}, sha256={}",
+                    validation.expected.source,
                     validation.actual_proof_path,
                     proof.as_ref().map(Vec::len),
                     validation.actual_proof_sha256
@@ -2224,17 +2344,24 @@ fn inspect_with_policy(
             .as_ref()
             .is_ok_and(|validation| validation.statement_identity_exact),
         release_instance_validation.as_ref().map_or_else(
-            |_| format!("error={release_instance_error:?}, sha256={statement_sha:?}"),
+            |_| {
+                format!(
+                    "instance={}, error={release_instance_error:?}, sha256={statement_sha:?}",
+                    policy.certified_instance_key()
+                )
+            },
             |validation| {
                 format!(
-                    "path={}, bytes={:?}, sha256={}, pool={}, sequence={}, digest={}",
+                    "instance={}, path={}, bytes={:?}, sha256={}, pool={}, sequence={}, digest={}, deployment_domain={}",
+                    validation.expected.source,
                     validation.actual_statement_path,
                     statement_bytes.as_ref().map(Vec::len),
                     validation.actual_statement_sha256,
                     spend_hex(&validation.statement.pool),
                     validation.statement.sequence,
                     canonical_spend_public_input_digest(&validation.statement)
-                        .unwrap_or_else(|_| "unavailable".to_owned())
+                        .unwrap_or_else(|_| "unavailable".to_owned()),
+                    spend_hex(&validation.statement.deployment_domain)
                 )
             },
         ),
@@ -2249,11 +2376,13 @@ fn inspect_with_policy(
             |_| format!("error={release_instance_error:?}"),
             |validation| {
                 format!(
-                    "candidates={}, serialized={:?}, least={:?}, branches={}",
+                    "candidates={}, serialized={:?}, least={:?}, branches={}, executed_instance={}, executed_selector={:?}",
                     validation.instance.selector_candidates,
                     validation.instance.serialized_selector,
                     validation.instance.least_good_selector,
-                    validation.instance.good_spend_branches.len()
+                    validation.instance.good_spend_branches.len(),
+                    validation.expected.source,
+                    validation.expected.serialized_selector
                 )
             },
         ),
@@ -3660,10 +3789,12 @@ fn execute_with_policy(
         &proof,
         &config.statement,
         &statement_bytes,
+        policy,
     )?;
     ensure!(
         release_instance.all_green(),
-        "release-instance recheck failed before first write: proof_identity={}, statement_identity={}, selector_binding={}, good_spend_fingerprint={}, declared_host={}, direct_host={}, host_error={:?}",
+        "release-instance recheck failed before first write: instance={}, proof_identity={}, statement_identity={}, selector_binding={}, good_spend_fingerprint={}, declared_host={}, direct_host={}, host_error={:?}",
+        release_instance.expected.source,
         release_instance.proof_identity_exact,
         release_instance.statement_identity_exact,
         release_instance.selector_binding_exact,
@@ -3675,9 +3806,9 @@ fn execute_with_policy(
     let canonical_public_input_digest =
         canonical_spend_public_input_digest(&release_instance.statement)?;
     let serialized_selector = release_instance
-        .instance
+        .expected
         .serialized_selector
-        .context("green release instance omitted serialized selector")?;
+        .context("green certified instance omitted serialized selector")?;
     let least_good_selector = release_instance
         .instance
         .least_good_selector
@@ -4620,6 +4751,30 @@ mod tests {
         .unwrap()
     }
 
+    fn devnet_rehearsal_instance_for(
+        proof_path: &str,
+        proof: &[u8],
+        statement_path: &str,
+        statement_bytes: &[u8],
+    ) -> Value {
+        let statement = decode_spend_statement_sidecar(statement_bytes).unwrap();
+        json!({
+            "proof_path": proof_path,
+            "proof_bytes": proof.len(),
+            "proof_sha256": sha256(proof),
+            "statement_path": statement_path,
+            "statement_bytes": statement_bytes.len(),
+            "statement_sha256": sha256(statement_bytes),
+            "statement_pool_hex": spend_hex(&statement.pool),
+            "statement_sequence": statement.sequence,
+            "canonical_public_input_digest": canonical_spend_public_input_digest(&statement).unwrap(),
+            "deployment_domain_hex": spend_hex(&statement.deployment_domain),
+            "serialized_selector": 0,
+            "host_verification_green": true,
+            "evaluation_error": null
+        })
+    }
+
     fn release_for(
         proof_path: &str,
         proof: &[u8],
@@ -4649,7 +4804,13 @@ mod tests {
                 "good_spend_definition_fingerprint": live_good_spend_definition_fingerprint(),
                 "production_host_verification_green": true,
                 "evaluation_error": null
-            }
+            },
+            "devnet_rehearsal_instance": devnet_rehearsal_instance_for(
+                proof_path,
+                proof,
+                statement_path,
+                statement_bytes,
+            )
         })
     }
 
@@ -5491,75 +5652,229 @@ mod tests {
         fs::write(&statement_b_path, &statement_b).unwrap();
         let release = release_for("proof-a.bin", &proof_a, "statement-a.json", &statement_a);
 
-        let baseline = validate_release_instance(
+        for policy in [ClusterPolicy::Devnet, ClusterPolicy::MainnetBeta] {
+            let baseline = validate_release_instance(
+                &release,
+                &root.0,
+                &proof_a_path,
+                &proof_a,
+                &statement_a_path,
+                &statement_a,
+                policy,
+            )
+            .unwrap();
+            assert!(baseline.proof_identity_exact);
+            assert!(baseline.statement_identity_exact);
+            assert_eq!(baseline.expected.source, policy.certified_instance_key());
+
+            let swapped_proof = validate_release_instance(
+                &release,
+                &root.0,
+                &proof_b_path,
+                &proof_b,
+                &statement_a_path,
+                &statement_a,
+                policy,
+            )
+            .unwrap();
+            assert!(!swapped_proof.proof_identity_exact);
+            assert!(swapped_proof.statement_identity_exact);
+
+            let mut tampered_proof = proof_a.clone();
+            tampered_proof[0] ^= 1;
+            let tampered_proof = validate_release_instance(
+                &release,
+                &root.0,
+                &proof_a_path,
+                &tampered_proof,
+                &statement_a_path,
+                &statement_a,
+                policy,
+            )
+            .unwrap();
+            assert!(!tampered_proof.proof_identity_exact);
+
+            let swapped_statement = validate_release_instance(
+                &release,
+                &root.0,
+                &proof_a_path,
+                &proof_a,
+                &statement_b_path,
+                &statement_b,
+                policy,
+            )
+            .unwrap();
+            assert!(swapped_statement.proof_identity_exact);
+            assert!(!swapped_statement.statement_identity_exact);
+
+            let same_path_tampered_statement = validate_release_instance(
+                &release,
+                &root.0,
+                &proof_a_path,
+                &proof_a,
+                &statement_a_path,
+                &statement_b,
+                policy,
+            )
+            .unwrap();
+            assert!(!same_path_tampered_statement.statement_identity_exact);
+
+            let mut schema_tampered: Value = serde_json::from_slice(&statement_a).unwrap();
+            schema_tampered["unreviewed"] = Value::Bool(true);
+            assert!(validate_release_instance(
+                &release,
+                &root.0,
+                &proof_a_path,
+                &proof_a,
+                &statement_a_path,
+                &serde_json::to_vec(&schema_tampered).unwrap(),
+                policy,
+            )
+            .is_err());
+        }
+    }
+
+    #[test]
+    fn devnet_matches_the_rehearsal_instance_and_mainnet_matches_the_release_instance() {
+        let root = TempRoot::new();
+        let mainnet_proof = b"spend-proof-mainnet".to_vec();
+        let devnet_proof = b"spend-proof-devnet".to_vec();
+        let mainnet_statement = sidecar(&statement(11));
+        let devnet_statement = sidecar(&statement(29));
+        let mainnet_proof_path = root.0.join("mainnet.bin");
+        let devnet_proof_path = root.0.join("devnet.bin");
+        let mainnet_statement_path = root.0.join("mainnet.statement.json");
+        let devnet_statement_path = root.0.join("devnet.statement.json");
+        fs::write(&mainnet_proof_path, &mainnet_proof).unwrap();
+        fs::write(&devnet_proof_path, &devnet_proof).unwrap();
+        fs::write(&mainnet_statement_path, &mainnet_statement).unwrap();
+        fs::write(&devnet_statement_path, &devnet_statement).unwrap();
+        let mut release = release_for(
+            "mainnet.bin",
+            &mainnet_proof,
+            "mainnet.statement.json",
+            &mainnet_statement,
+        );
+        release["devnet_rehearsal_instance"] = devnet_rehearsal_instance_for(
+            "devnet.bin",
+            &devnet_proof,
+            "devnet.statement.json",
+            &devnet_statement,
+        );
+
+        let devnet_pair_under_devnet_policy = validate_release_instance(
             &release,
             &root.0,
-            &proof_a_path,
-            &proof_a,
-            &statement_a_path,
-            &statement_a,
+            &devnet_proof_path,
+            &devnet_proof,
+            &devnet_statement_path,
+            &devnet_statement,
+            ClusterPolicy::Devnet,
         )
         .unwrap();
-        assert!(baseline.proof_identity_exact);
-        assert!(baseline.statement_identity_exact);
+        assert!(devnet_pair_under_devnet_policy.proof_identity_exact);
+        assert!(devnet_pair_under_devnet_policy.statement_identity_exact);
 
-        let swapped_proof = validate_release_instance(
+        let mainnet_pair_under_devnet_policy = validate_release_instance(
             &release,
             &root.0,
-            &proof_b_path,
-            &proof_b,
-            &statement_a_path,
-            &statement_a,
+            &mainnet_proof_path,
+            &mainnet_proof,
+            &mainnet_statement_path,
+            &mainnet_statement,
+            ClusterPolicy::Devnet,
         )
         .unwrap();
-        assert!(!swapped_proof.proof_identity_exact);
-        assert!(swapped_proof.statement_identity_exact);
+        assert!(!mainnet_pair_under_devnet_policy.proof_identity_exact);
+        assert!(!mainnet_pair_under_devnet_policy.statement_identity_exact);
 
-        let mut tampered_proof = proof_a.clone();
-        tampered_proof[0] ^= 1;
-        let tampered_proof = validate_release_instance(
+        let mainnet_pair_under_mainnet_policy = validate_release_instance(
             &release,
             &root.0,
-            &proof_a_path,
-            &tampered_proof,
-            &statement_a_path,
-            &statement_a,
+            &mainnet_proof_path,
+            &mainnet_proof,
+            &mainnet_statement_path,
+            &mainnet_statement,
+            ClusterPolicy::MainnetBeta,
         )
         .unwrap();
-        assert!(!tampered_proof.proof_identity_exact);
+        assert!(mainnet_pair_under_mainnet_policy.proof_identity_exact);
+        assert!(mainnet_pair_under_mainnet_policy.statement_identity_exact);
 
-        let swapped_statement = validate_release_instance(
+        let devnet_pair_under_mainnet_policy = validate_release_instance(
             &release,
             &root.0,
-            &proof_a_path,
-            &proof_a,
-            &statement_b_path,
-            &statement_b,
+            &devnet_proof_path,
+            &devnet_proof,
+            &devnet_statement_path,
+            &devnet_statement,
+            ClusterPolicy::MainnetBeta,
         )
         .unwrap();
-        assert!(swapped_statement.proof_identity_exact);
-        assert!(!swapped_statement.statement_identity_exact);
+        assert!(!devnet_pair_under_mainnet_policy.proof_identity_exact);
+        assert!(!devnet_pair_under_mainnet_policy.statement_identity_exact);
 
-        let same_path_tampered_statement = validate_release_instance(
-            &release,
-            &root.0,
-            &proof_a_path,
-            &proof_a,
-            &statement_a_path,
-            &statement_b,
-        )
-        .unwrap();
-        assert!(!same_path_tampered_statement.statement_identity_exact);
-
-        let mut schema_tampered: Value = serde_json::from_slice(&statement_a).unwrap();
-        schema_tampered["unreviewed"] = Value::Bool(true);
+        // A certificate without the devnet-bound block fails closed on devnet
+        // and remains valid for the mainnet executor.
+        let mut missing_devnet_block = release.clone();
+        missing_devnet_block
+            .as_object_mut()
+            .unwrap()
+            .remove("devnet_rehearsal_instance");
         assert!(validate_release_instance(
-            &release,
+            &missing_devnet_block,
             &root.0,
-            &proof_a_path,
-            &proof_a,
-            &statement_a_path,
-            &serde_json::to_vec(&schema_tampered).unwrap(),
+            &devnet_proof_path,
+            &devnet_proof,
+            &devnet_statement_path,
+            &devnet_statement,
+            ClusterPolicy::Devnet,
+        )
+        .is_err());
+        assert!(
+            validate_release_instance(
+                &missing_devnet_block,
+                &root.0,
+                &mainnet_proof_path,
+                &mainnet_proof,
+                &mainnet_statement_path,
+                &mainnet_statement,
+                ClusterPolicy::MainnetBeta,
+            )
+            .unwrap()
+            .proof_identity_exact
+        );
+
+        // A devnet block whose recorded deployment domain disagrees with the
+        // explicit sidecar fails the statement identity.
+        let mut domain_drift = release.clone();
+        domain_drift["devnet_rehearsal_instance"]["deployment_domain_hex"] =
+            Value::String("00".repeat(32));
+        assert!(
+            !validate_release_instance(
+                &domain_drift,
+                &root.0,
+                &devnet_proof_path,
+                &devnet_proof,
+                &devnet_statement_path,
+                &devnet_statement,
+                ClusterPolicy::Devnet,
+            )
+            .unwrap()
+            .statement_identity_exact
+        );
+
+        // A devnet block that was not host-verified green fails closed.
+        let mut unverified = release;
+        unverified["devnet_rehearsal_instance"]["host_verification_green"] = Value::Bool(false);
+        assert!(validate_release_instance(
+            &unverified,
+            &root.0,
+            &devnet_proof_path,
+            &devnet_proof,
+            &devnet_statement_path,
+            &devnet_statement,
+            ClusterPolicy::Devnet,
         )
         .is_err());
     }

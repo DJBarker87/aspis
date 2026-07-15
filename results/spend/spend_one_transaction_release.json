@@ -1,6 +1,6 @@
 {
   "artifact": "spend_one_transaction_release",
-  "generated_at_utc": "2026-07-15T19:48:20.757189+00:00",
+  "generated_at_utc": "2026-07-15T20:32:30.574325+00:00",
   "command": "NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-spend-one-transaction-release",
   "status": "released_all_required_gates_green",
   "released": true,
@@ -87,6 +87,21 @@
     "production_host_verification_green": true,
     "evaluation_error": null
   },
+  "devnet_rehearsal_instance": {
+    "proof_path": "crates/aspis-prover/fixtures/spend_devnet_q18_g37.bin",
+    "proof_bytes": 63999,
+    "proof_sha256": "da5e8c305c0dbde30fc2edf064b620aafb1104362bb2d2e90393373cec254827",
+    "statement_path": "crates/aspis-prover/fixtures/spend_devnet_q18_g37.statement.json",
+    "statement_bytes": 767,
+    "statement_sha256": "3920aa059ca7eb62870b3b962c53c5ca4df757240da3a73dbf6930d4255cd924",
+    "statement_pool_hex": "a0e3c0f1c6c10baec8fc98c47fd56256d4c89827dbfc495febef2a13741f3db4",
+    "statement_sequence": 0,
+    "canonical_public_input_digest": "a20240721caf5675da70d5653111fa55a0c1d4ce250770a40076c2a1b6490d13",
+    "deployment_domain_hex": "50b77813faf4df58226a1c6972952c21be88912701d881977b5eeab7ac8b6b46",
+    "serialized_selector": 0,
+    "host_verification_green": true,
+    "evaluation_error": null
+  },
   "default_production_sbf": {
     "path": "target/deploy/aspis_verifier.so",
     "build_command": "NO_DNA=1 cargo-build-sbf --manifest-path programs/aspis-verifier/Cargo.toml",
@@ -113,7 +128,7 @@
       "label": "soundness",
       "path": "results/spend/spend_d_after_g_soundness_epro.json",
       "bytes": 11500,
-      "sha256": "02969903204c498ab698521ca435ab7109ebb75a26774d723726dff7d1e148ce"
+      "sha256": "b3c0e5c30d7ecd27823d125be97159ebf3d1e36283e62779c959c649a76391af"
     },
     {
       "label": "complete_good",
@@ -158,6 +173,18 @@
       "sha256": "c35f6152ce4ffbfa6edeba68b4a6d2738e19b1420181c9500ba73f0c717c8699"
     },
     {
+      "label": "devnet_rehearsal_proof",
+      "path": "crates/aspis-prover/fixtures/spend_devnet_q18_g37.bin",
+      "bytes": 63999,
+      "sha256": "da5e8c305c0dbde30fc2edf064b620aafb1104362bb2d2e90393373cec254827"
+    },
+    {
+      "label": "devnet_rehearsal_statement",
+      "path": "crates/aspis-prover/fixtures/spend_devnet_q18_g37.statement.json",
+      "bytes": 767,
+      "sha256": "3920aa059ca7eb62870b3b962c53c5ca4df757240da3a73dbf6930d4255cd924"
+    },
+    {
       "label": "default_production_sbf",
       "path": "target/deploy/aspis_verifier.so",
       "bytes": 924344,
@@ -189,6 +216,11 @@
       "name": "release_instance_serialized_selector_is_least_good_spend",
       "passed": true,
       "evidence": "candidates=3, serialized=Some(0), least_good=Some(0), branch_acceptance=[(0, true), (1, true), (2, true)], definition_fingerprint=0xf4dfc0a490333eb52e0ce334de5ed1267be103baf0160421a90883c280276b1d, expected_fingerprint=0xf4dfc0a490333eb52e0ce334de5ed1267be103baf0160421a90883c280276b1d, evaluation_error=None"
+    },
+    {
+      "name": "devnet_rehearsal_instance_verifies",
+      "passed": true,
+      "evidence": "proof=crates/aspis-prover/fixtures/spend_devnet_q18_g37.bin statement=crates/aspis-prover/fixtures/spend_devnet_q18_g37.statement.json host_green=true selector=Some(0) deployment_domain=50b77813faf4df58226a1c6972952c21be88912701d881977b5eeab7ac8b6b46 pool=a0e3c0f1c6c10baec8fc98c47fd56256d4c89827dbfc495febef2a13741f3db4 sequence=0 evaluation_error=None"
     },
     {
       "name": "proof_is_mined",
