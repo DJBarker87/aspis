@@ -1,7 +1,8 @@
 # Aspis
 
 Aspis is a shielded payment system whose spend proofs are verified directly
-on Solana L1 — no trusted setup, no off-chain verifier. Solana caps every
+on Solana L1 — no trusted setup, no off-chain verifier, nothing to trust but
+hash functions. Transparent proofs are large, and Solana caps every
 transaction at 1.4 million compute units, which has kept transparent proof
 verification on L1 out of reach. On 14 July 2026, Aspis verified a full
 shielded-spend proof, advanced the pool state, and recorded the nullifier in
@@ -56,6 +57,25 @@ reconstructs the deployed program byte-for-byte from the chain's own loader
 history. After the spend, a sealed replay probe against the spent nullifier
 was simulated and rejected with the exact expected double-spend error, then
 closed with its rent refunded.
+
+## No trusted setup
+
+A ceremony-based SNARK proof is a few hundred bytes and cheap to verify —
+but its soundness rests on a multi-party setup ceremony. If the ceremony's
+secret randomness was ever retained, counterfeit spends become possible and
+are undetectable inside the pool. The shielded pools that were live on
+Solana mainnet at the time of the July 2026 search verify exactly such
+ceremony-based Groth16 proofs, or delegate proof verification to off-chain
+systems that attest results back to the chain
+([comparison table](docs/profile23-novelty-rescan-2026-07-13.md)).
+
+Aspis removes that class of risk rather than accepting it. There is no
+structured reference string, no trapdoor, and no ceremony transcript to
+audit: every parameter derives from public constants, and soundness rests on
+hash functions alone. The price of transparency is a 64,447-byte proof —
+roughly 250× the size of a Groth16 proof — which is precisely why direct
+transparent verification had not reached L1, and why the design below
+exists.
 
 ## One transaction
 
