@@ -1,6 +1,3 @@
 # Frozen release bundles are byte-addressed artifacts. Disable checkout-time
 # line-ending conversion so their SHA-256 manifests verify on every platform.
-/release/profile23-q18-g37-mainnet-v1/** -text
-/tools/reconstruct_profile23_mainnet_sbf.py -text
-/results/stage2/profile23_mainnet_sbf_and_instruction_reconstruction.json -text
 /crates/aspis-prover/fixtures/** -text
