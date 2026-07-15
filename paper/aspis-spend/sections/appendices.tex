@@ -49,7 +49,7 @@ version, and depth are checked rather than ignored.
 
 \subsection{Proof prefix}
 
-The fixed portion of a Profile~23 proof has 6785 bytes.  Its physical order
+The fixed portion of a \Profile{} proof has 6785 bytes.  Its physical order
 is listed in Table~\ref{tab:proof-prefix-wire}.  The transcript absorbs fields
 in the logical order of Section~\ref{sec:construction}; in particular, the
 batch and fold work records are logically positioned before dependent
@@ -58,7 +58,7 @@ challenges even though the three work arrays occupy a compact suffix.
 \begin{table}[ht]
 \centering
 \small
-\caption{Profile~23 fixed proof prefix.  End offsets are exclusive.}
+\caption{\Profile{} fixed proof prefix.  End offsets are exclusive.}
 \label{tab:proof-prefix-wire}
 \begin{tabular}{@{}rrrl@{}}
 \toprule

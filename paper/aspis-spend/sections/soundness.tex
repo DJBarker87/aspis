@@ -2,7 +2,7 @@
 \label{sec:soundness}
 
 This section gives a concrete classical random-oracle argument-soundness
-bound for the relation in Definition~\ref{def:profile23-relation}.  The
+bound for the relation in Definition~\ref{def:spend-relation}.  The
 finite-parameter code reduction and the state-restoration property needed by
 the Fiat--Shamir compiler are stated explicitly as premises below.  No
 extractor is constructed, so the result is not a knowledge-soundness claim.
@@ -53,7 +53,7 @@ to \(\mathcal C'\) can only shrink a decoding list.
 
 \begin{lemma}[Circle-to-GRS transport]
 \label{lem:circle-grs-transport}
-For the \(2^{10}\)-coefficient, \(2^{19}\)-symbol Profile~23 circle code,
+For the \(2^{10}\)-coefficient, \(2^{19}\)-symbol \Profile{} circle code,
 the implemented circle-to-line map identifies each relevant affine code
 slice with a scaled GRS slice having the same relative distance and the same
 agreement sets.  The four implemented arity-four fiber folds commute with
@@ -89,7 +89,7 @@ polynomial generator
 Suppose the polynomial-batching, OOD, and local algebraic bad events listed in
 Table~\ref{tab:soundness-events} do not occur.  Then the two layer-zero
 commitments and their \(\gamma\)-batch in
-Equation~\eqref{eq:profile23-batch} determine one member of the transported
+Equation~\eqref{eq:spend-batch} determine one member of the transported
 rate-\(1/512\) code list, and every accepted fold and terminal value belongs
 to the corresponding folded list.
 \end{lemma}
@@ -202,7 +202,7 @@ The 32-bit final work predicate raises the corresponding one-branch row to
 \begin{table}[t]
 \centering
 \small
-\caption{Profile~23 interactive soundness ledger.  Entries are
+\caption{\Profile{} interactive soundness ledger.  Entries are
 \(-\log_2\) upper bounds on the named event or conservative policy reserve.}
 \label{tab:soundness-events}
 \begin{tabular}{@{}lr@{}}
@@ -321,7 +321,7 @@ SHA-256 modeled as a 256-bit random oracle.  For every classical adversary makin
  \operatorname{Adv}^{\mathsf{snd}}_{23}(T)
  \le 3b(T)\le 2^{-100.16144938287455}.
 \]
-Thus Profile~23 has a conservative 100.161-bit argument-soundness floor in
+Thus \Profile{} has a conservative 100.161-bit argument-soundness floor in
 the work-normalized metric.
 \end{theorem}
 

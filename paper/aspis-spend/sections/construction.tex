@@ -1,18 +1,18 @@
-\section{Profile 23 construction}
+\section{\Profile{} construction}
 \label{sec:construction}
 
-Profile~23 is a transparent, WHIR-style polynomial argument over a circle
+\Profile{} is a transparent, WHIR-style polynomial argument over a circle
 evaluation domain.  It uses the circle-code machinery developed for Circle
 STARKs~\cite{HaboeckLevitPapini2024} and an arity-four folding protocol in the
 lineage of FRI and WHIR~\cite{BenSassonBentovHoreshRiabzev2018FRI,ArnonChiesaFenziYogev2025WHIR}.
 The transcript, oracle layout, masking system, and relation checks described
-below are specific to Profile~23; the construction is not an invocation of an
+below are specific to \Profile{}; the construction is not an invocation of an
 unmodified WHIR parameter set.
 
 \subsection{Transparent parameters}
 
 \begin{definition}[Transparent parameters]
-\label{def:profile23-transparent-parameters}
+\label{def:spend-transparent-parameters}
 The public parameters \(\mathsf{pp}_{23}\) consist of the field tower,
 Poseidon2 constants, circle-domain generators, fixed radix-four fold tables,
 the atomic-v3 constraint and copy registries, the 10-bit lookup table, Merkle
@@ -21,8 +21,8 @@ domain tags, transcript labels, and the following shape.
 
 \begin{table}[t]
 \centering
-\caption{Frozen Profile~23 polynomial and transcript parameters.}
-\label{tab:profile23-parameters}
+\caption{Frozen \Profile{} polynomial and transcript parameters.}
+\label{tab:spend-parameters}
 \begin{tabular}{@{}ll@{}}
 \toprule
 quantity & value \\
@@ -67,7 +67,7 @@ the 29 lanes as
 \begin{equation}
  R_\gamma=\sum_{j=0}^{25}\gamma^j C_j
               +\gamma^{26}H+\gamma^{27}G+\gamma^{28}D.
- \label{eq:profile23-batch}
+ \label{eq:spend-batch}
 \end{equation}
 The zero-factor lane is designed to add hiding directions without moving the
 committed batched word.  For example,
@@ -89,7 +89,7 @@ more folds reduce through authenticated line layers of depths 15, 13, and 11
 to a four-coefficient terminal polynomial.  Each round contains two
 out-of-domain evaluations and a relation sumcheck.  At a queried layer-zero
 fiber, the verifier decodes the \(C_1\) and \(C_2\) leaves, evaluates
-\eqref{eq:profile23-batch}, and checks the first fold.  It then checks the
+\eqref{eq:spend-batch}, and checks the first fold.  It then checks the
 three authenticated line transitions and the terminal polynomial.
 
 \subsection{Fiat--Shamir schedule}
@@ -127,7 +127,7 @@ from the same pre-branch state; they are not chained.
 \subsection{The complete \texorpdfstring{\(\mathsf{Good}_{23}\)}{Good23} predicate}
 
 \begin{definition}[Public schedule]
-\label{def:profile23-schedule}
+\label{def:spend-schedule}
 A \Profile{} schedule \(s_{\rm fs}\) comprises the fixed layout identifiers,
 all public transcript challenges and OOD points, fold data, and one ordered
 18-tuple of distinct query fibers.  It excludes the witness, realized masks,

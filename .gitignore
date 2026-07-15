@@ -19,16 +19,15 @@ __pycache__/
 
 # The superseded devnet paper is preserved in the archive tag; ignore any
 # local build remnants left at its former default-branch path.
-/paper/profile23/
 
 # LaTeX build intermediates (publication PDFs are committed explicitly).
-/paper/profile23-mainnet-v1/*.aux
-/paper/profile23-mainnet-v1/*.bbl
-/paper/profile23-mainnet-v1/*.blg
-/paper/profile23-mainnet-v1/*.fdb_latexmk
-/paper/profile23-mainnet-v1/*.fls
-/paper/profile23-mainnet-v1/*.log
-/paper/profile23-mainnet-v1/*.out
+/paper/aspis-spend/*.aux
+/paper/aspis-spend/*.bbl
+/paper/aspis-spend/*.blg
+/paper/aspis-spend/*.fdb_latexmk
+/paper/aspis-spend/*.fls
+/paper/aspis-spend/*.log
+/paper/aspis-spend/*.out
 
 # Local review context and unsanitized network-run diagnostics. Publication
 # copies with local paths and signed wires removed live in the release bundle.
