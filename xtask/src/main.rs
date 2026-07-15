@@ -4,6 +4,7 @@ mod spend_mainnet;
 mod spend_mainnet_cleanup;
 mod spend_mainnet_journal;
 mod spend_mainnet_loader;
+mod spend_measure;
 mod spend_release;
 mod spend_statement;
 
@@ -26,6 +27,19 @@ fn stage2_results_dir() -> Result<PathBuf> {
 fn main() -> Result<()> {
     let mut args = std::env::args().skip(1);
     match args.next().as_deref() {
+        Some("spend-measure") => {
+            let dir = stage2_results_dir()?;
+            let outcome = spend_measure::run_spend_measure(&dir)?;
+            eprintln!(
+                "spend-measure: production tag59 {} CU, worst-case production tag65 {} CU ({} CU headroom under 1.4M); wrote {} and {}",
+                outcome.acceptance_tag59_cu,
+                outcome.max_production_tag65_cu,
+                1_400_000_i64 - outcome.max_production_tag65_cu as i64,
+                outcome.acceptance_path.display(),
+                outcome.mutation_path.display(),
+            );
+            Ok(())
+        }
         Some("spend-release") => {
             let dir = stage2_results_dir()?;
             let workspace_root = dir
@@ -221,7 +235,7 @@ fn main() -> Result<()> {
             Ok(())
         }
         other => bail!(
-            "usage: cargo run -p aspis-xtask -- spend-release | spend-mainnet-readiness | spend-mainnet-execute | spend-mainnet-cleanup | spend-devnet-readiness | spend-devnet-execute | spend-devnet-upload-smoke | spend-devnet-close-smoke (got {:?})",
+            "usage: cargo run -p aspis-xtask -- spend-measure | spend-release | spend-mainnet-readiness | spend-mainnet-execute | spend-mainnet-cleanup | spend-devnet-readiness | spend-devnet-execute | spend-devnet-upload-smoke | spend-devnet-close-smoke (got {:?})",
             other
         ),
     }

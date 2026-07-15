@@ -2,6 +2,8 @@ target/
 /.phase1-validator
 /.stage0-validator
 /.stage2-validator-account-fixtures
+/.spend-validator
+/.spend-validator-account-fixtures
 .DS_Store
 __pycache__/
 *.py[cod]
