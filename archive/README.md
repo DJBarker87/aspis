@@ -5,7 +5,7 @@ its supporting release machinery. Earlier experiments are retained in Git,
 not copied into this directory.
 
 The immutable
-[`research-archive-2026-07-14`](https://github.com/DJBarker87/zk/tree/research-archive-2026-07-14)
+[`research-archive-2026-07-14`](https://github.com/DJBarker87/aspis/tree/research-archive-2026-07-14)
 tag contains these historical categories:
 
 - rejected parameter profiles and superseded release certificates;

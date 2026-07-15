@@ -17,7 +17,7 @@ documented by:
 
 The complete relation and account model are specified in the paper. Supporting
 derivations, superseded work, and failed design branches are preserved in the
-[`research-archive-2026-07-14`](https://github.com/DJBarker87/zk/tree/research-archive-2026-07-14)
+[`research-archive-2026-07-14`](https://github.com/DJBarker87/aspis/tree/research-archive-2026-07-14)
 tag. See [design history](design-history.md) for the repository split.
 The dated [2026-07-13 novelty scan](profile23-novelty-rescan-2026-07-13.md)
 is a point-in-time literature and public-evidence search, not a live deployment

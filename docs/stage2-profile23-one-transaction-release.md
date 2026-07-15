@@ -5,7 +5,7 @@ gates.** The certificate binds the proof-independent Good23, soundness, and
 declared-model hiding artifacts to a canonically mined q18 proof, production
 host/SBF acceptance and mutation KATs, and a fresh default SBF. The 2026-07-13
 parameter search and superseded certificates are preserved in the
-[`research-archive-2026-07-14`](https://github.com/DJBarker87/zk/tree/research-archive-2026-07-14)
+[`research-archive-2026-07-14`](https://github.com/DJBarker87/aspis/tree/research-archive-2026-07-14)
 tag.
 
 Run:

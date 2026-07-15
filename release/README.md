@@ -5,8 +5,8 @@
   byte-level deployment reconstruction, cleanup receipt, and refund receipt.
 
 The superseded devnet paper and bundle remain available in the immutable
-[`profile23-q18-g37-devnet-v1`](https://github.com/DJBarker87/zk/tree/profile23-q18-g37-devnet-v1)
+[`profile23-q18-g37-devnet-v1`](https://github.com/DJBarker87/aspis/tree/profile23-q18-g37-devnet-v1)
 tag and the complete research history in
-[`research-archive-2026-07-14`](https://github.com/DJBarker87/zk/tree/research-archive-2026-07-14).
+[`research-archive-2026-07-14`](https://github.com/DJBarker87/aspis/tree/research-archive-2026-07-14).
 
 The current bundle has its own manifest, checksums, and offline verifier.
