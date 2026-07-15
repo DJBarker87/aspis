@@ -14,5 +14,15 @@ tag contains these historical categories:
 - earlier workspace layouts and one-off research tooling; and
 - regression fixtures that were not required on the public release surface.
 
-Use the tag when reproducing research history. Use the default branch for the
-current implementation. Git history is the authoritative per-change record.
+The immutable
+[`research-archive-2026-07-15`](https://github.com/DJBarker87/aspis/tree/research-archive-2026-07-15)
+tag is the working tree immediately before the production-surface strip. It
+contains the diagnostic measurement harness removed from `xtask` (the stage
+0–2 measurement subcommands and the local-validator measurement module) and
+the superseded-profile and diagnostic feature code removed from
+`programs/aspis-verifier`. The measurement commands recorded in the stage-2
+documents and certificates run from that tag.
+
+Use the tags when reproducing research history. Use the default branch for
+the current implementation. Git history is the authoritative per-change
+record.

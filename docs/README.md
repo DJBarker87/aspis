@@ -8,8 +8,11 @@ documented by:
 - [one-transaction release](stage2-profile23-one-transaction-release.md)
 - [finalized mainnet execution](profile23-mainnet-demo.md)
 - [finalized devnet rehearsal](profile23-devnet-rehearsal.md)
-- [prepublication security review](reviews/profile23-prepublication-security-review.html)
+- [prepublication security review](reviews/profile23-prepublication-security-review.md)
+  (frozen HTML artifact of record:
+  [.html](reviews/profile23-prepublication-security-review.html))
 - [deployment cost and refund model](profile23-demo-cost-refund.md)
+- [cross-cluster compute-unit reconciliation](profile23-cu-reconciliation.md)
 - [q18 soundness and EPRO ledger](stage2-profile23-d-after-g-soundness-epro.md)
 - [complete-Good product](stage2-profile23-complete-good-product.md)
 - [computational hiding closure](stage2-profile23-computational-hvzk-closure.md)

@@ -3,7 +3,7 @@ name = "aspis-verifier"
 edition.workspace = true
 license.workspace = true
 version.workspace = true
-description = "Aspis on-chain verifier program: PCS verification plus isolated Stage 2 statement-cost probes"
+description = "Aspis on-chain verifier program: Profile23 production verification and proof-account lifecycle"
 
 [lib]
 crate-type = ["cdylib", "lib"]
@@ -13,43 +13,13 @@ default = ["profile23-production"]
 no-entrypoint = []
 custom-heap = []
 custom-panic = []
-# Local-validator-only build used to price the exact mutation kernel with the
-# committed unmined diagnostic proof. The default/production SBF binary does
-# not compile the bypassing dispatch arm.
-diagnostic-unmined-mutation = []
-# Sound-but-not-yet-private profile-20 mutation candidate. Default builds keep
-# tag 47 fail-closed until the profile-21 complete-view hiding splice lands.
-profile20-mutation-candidate = []
-# Final shared-X/F/private-Merkle profile-21 read-only integration candidate.
-# Default builds keep append-only tag 50 fail-closed until the complete parser,
-# soundness reduction, and simulator gate are all present.
-profile21-integrated-candidate = []
-# Exact profile-21 mutation wrapper. The production instruction has no
-# diagnostic bit and remains absent from default builds until every
-# soundness/privacy gate and production PoW are green.
-profile21-mutation-candidate = ["profile21-integrated-candidate"]
-# Local-validator-only profile-21 mutation measurement. It reuses the exact
-# tag-50 verifier and bypasses only the transcript-bound PoW predicate.
-diagnostic-unmined-profile21-mutation = ["profile21-integrated-candidate"]
-# Private-salted, no-switch profile-22 candidate. Append-only tags 56--58 are
-# fail-closed in default builds; the diagnostic features bypass only PoW.
-profile22-integrated-candidate = []
-profile22-mutation-candidate = ["profile22-integrated-candidate"]
-# Diagnostic proof-of-work bypasses are deliberately disjoint from the
-# production candidate. A production mutation build must reject an unmined
-# proof on every instruction, including the read-only tag 56 surface.
-diagnostic-unmined-profile22-acceptance = ["profile22-integrated-candidate"]
-diagnostic-unmined-profile22-mutation = [
-    "profile22-integrated-candidate",
-    "diagnostic-unmined-profile22-acceptance",
-]
-# Quarantined H26/G27/D28 profile. Append-only tags 59--61 are fail-closed
-# unless one of these explicit nondefault features is selected.
+# Quarantined H26/G27/D28 profile. Diagnostic and superseded Profile20/21/22
+# feature definitions were removed with their code; those wire tags fail
+# closed in every build.
 profile23-integrated-candidate = []
 profile23-mutation-candidate = ["profile23-integrated-candidate"]
 # Reviewed production closure. The mined host/SBF mutation KAT exercised this
-# exact alias before it became the package default; diagnostic builds remain
-# explicit no-default builds and are forbidden from unifying with it.
+# exact alias before it became the package default.
 profile23-production = [
     "profile23-mutation-candidate",
     "profile23-minimal-dispatch",
@@ -63,11 +33,6 @@ profile23-minimal-dispatch = []
 # Production derives only the 18 authenticated Rate-1/512 query paths instead
 # of linking six full-domain coordinate tables into the deployed ELF.
 profile23-dynamic-rate512 = ["aspis-statement/profile23-dynamic-rate512"]
-diagnostic-unmined-profile23-acceptance = ["profile23-integrated-candidate"]
-diagnostic-unmined-profile23-mutation = [
-    "profile23-integrated-candidate",
-    "diagnostic-unmined-profile23-acceptance",
-]
 
 [dependencies]
 aspis-core = { path = "../../crates/aspis-core" }
