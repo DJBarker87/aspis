@@ -1,10 +1,10 @@
 # Aspis
 
 Aspis is a shielded payment system whose spend proofs are verified directly
-on Solana L1 — no trusted setup, no off-chain verifier, nothing to trust but
-hash functions. Transparent proofs are large, and Solana caps every
-transaction at 1.4 million compute units, which has kept transparent proof
-verification on L1 out of reach. On 14 July 2026, Aspis verified a full
+on Solana L1 — no trusted setup, no off-chain verifier. Transparent proofs
+are large, and Solana caps every transaction at 1.4 million compute units,
+which has kept transparent proof verification on L1 out of reach. On
+14 July 2026, Aspis verified a full
 shielded-spend proof, advanced the pool state, and recorded the nullifier in
 one finalized mainnet-beta transaction at 1,343,749 CU:
 [`4Er5afhx…E4q9Fo`](https://explorer.solana.com/tx/4Er5afhxfcFmpeTuFqEeNQEbCBri3pkc6ymx7ST5wfNpSBYwQDHA9DtCuDBpD5WuEDXs7ozL3sK5msc6QWE4q9Fo?cluster=mainnet-beta).
@@ -48,7 +48,7 @@ batch-grinding parameter — was executed on Solana mainnet-beta on
 [Official Explorer (mainnet-beta)](https://explorer.solana.com/tx/4Er5afhxfcFmpeTuFqEeNQEbCBri3pkc6ymx7ST5wfNpSBYwQDHA9DtCuDBpD5WuEDXs7ozL3sK5msc6QWE4q9Fo?cluster=mainnet-beta) ·
 [Solscan (mainnet)](https://solscan.io/tx/4Er5afhxfcFmpeTuFqEeNQEbCBri3pkc6ymx7ST5wfNpSBYwQDHA9DtCuDBpD5WuEDXs7ozL3sK5msc6QWE4q9Fo?cluster=mainnet)
 
-Every number above is independently checkable. The program log commits to
+The program log commits to
 the released proof SHA-256; the official Solana RPC and an independent
 PublicNode endpoint agree on the transaction, lifecycle records, and final
 accounts; and an archival replay
@@ -60,29 +60,27 @@ closed with its rent refunded.
 
 ## No trusted setup
 
-A ceremony-based SNARK proof is a few hundred bytes and cheap to verify —
-but its soundness rests on a multi-party setup ceremony. If the ceremony's
-secret randomness was ever retained, counterfeit spends become possible and
-are undetectable inside the pool. The shielded pools that were live on
-Solana mainnet at the time of the July 2026 search verify exactly such
-ceremony-based Groth16 proofs, or delegate proof verification to off-chain
-systems that attest results back to the chain
+Groth16 proofs are a few hundred bytes and cheap to verify, but their
+soundness depends on a multi-party setup ceremony: a participant who
+retained the ceremony's secret randomness could forge proofs, and a forged
+spend inside a shielded pool is not detectable. The shielded pools that were
+live on Solana mainnet at the July 2026 search date verify ceremony-based
+Groth16 proofs or delegate proof verification to off-chain systems
 ([comparison table](docs/profile23-novelty-rescan-2026-07-13.md)).
 
-Aspis removes that class of risk rather than accepting it. There is no
-structured reference string, no trapdoor, and no ceremony transcript to
-audit: every parameter derives from public constants, and soundness rests on
-hash functions alone. The price of transparency is a 64,447-byte proof —
-roughly 250× the size of a Groth16 proof — which is precisely why direct
-transparent verification had not reached L1, and why the design below
-exists.
+Aspis has no ceremony. Its parameters are public constants, and its security
+reductions rest on the hash assumptions stated in the paper — a concrete
+Poseidon2 assumption and SHA-256 modeled as a random oracle — rather than on
+a reference string with a trapdoor. The cost is proof size: 64,447 bytes
+against a few hundred for Groth16. That size gap is the obstacle the
+transaction design below addresses.
 
 ## One transaction
 
 ![Proof upload, sealing, and one-transaction verification with atomic state transition](docs/assets/transaction-flow.svg)
 
-A 64,447-byte proof cannot ride inside a 1,232-byte Solana transaction, so
-the proof travels once and is verified in place:
+A 64,447-byte proof exceeds Solana's 1,232-byte transaction packet limit, so
+it is uploaded once and verified in place:
 
 1. The prover uploads the proof in 68 chunks to a program-owned account.
 2. The account is sealed after its complete byte image is checked against
@@ -93,8 +91,8 @@ the proof travels once and is verified in place:
 
 ## Construction
 
-Every parameter is chosen for one target: complete transparent verification
-under Solana's compute-unit cap.
+The parameters are chosen to fit complete verification under Solana's
+compute-unit cap.
 
 - **Field.** M31 (p = 2³¹ − 1) with its circle group as the evaluation
   domain; Mersenne arithmetic is cheap on the 32-bit SBF target, and the
