@@ -3,64 +3,78 @@
 Aspis is a shielded payment system whose spend proofs are verified directly
 on Solana L1 — no trusted setup, no off-chain verifier. Solana caps every
 transaction at 1.4 million compute units, which has kept transparent proof
-verification on L1 out of reach. Aspis verifies a full shielded-spend proof,
-advances the pool state, and records the nullifier in one finalized
-mainnet-beta transaction at 1,343,749 CU:
+verification on L1 out of reach. On 14 July 2026, Aspis verified a full
+shielded-spend proof, advanced the pool state, and recorded the nullifier in
+one finalized mainnet-beta transaction at 1,343,749 CU:
 [`4Er5afhx…E4q9Fo`](https://explorer.solana.com/tx/4Er5afhxfcFmpeTuFqEeNQEbCBri3pkc6ymx7ST5wfNpSBYwQDHA9DtCuDBpD5WuEDXs7ozL3sK5msc6QWE4q9Fo?cluster=mainnet-beta).
+
+To our knowledge, following a public search completed 13 July 2026, this is
+the first publicly evidenced Solana mainnet-beta transaction in which a
+Solana program itself verifies a transparent, computationally hiding
+shielded-spend proof from a finalized pre-uploaded proof account and
+atomically records its nullifier and pool-state transition in that same
+transaction under the 1.4M-CU cap, with a whole-ledger soundness lower bound
+exceeding 100 bits in a proven Johnson/MCA regime
+([search record](docs/profile23-novelty-rescan-2026-07-13.md)).
+Scope: proof-account creation and chunk uploads occurred in prior
+transactions; hiding is computational in the declared SHA-256
+programmable-random-oracle/EPRO and fixed public Proof-or-Abort channel
+model, not a statistical-HVZK or standard-model claim; and this is a research
+release — not an audit, a production-readiness claim, or a claim to be the
+first private-payment system on Solana.
 
 [Paper](paper/profile23-mainnet-v1/profile23.pdf) ·
 [Mainnet release](release/profile23-q18-g37-mainnet-v1/) ·
 [Mainnet evidence](docs/profile23-mainnet-demo.md) ·
 [Prepublication review](docs/reviews/profile23-prepublication-security-review.html)
 
-## Transaction flow
-
-![Proof upload, sealing, and one-transaction verification with atomic state transition](docs/assets/transaction-flow.svg)
-
-1. The prover creates a transparent argument for the exact shielded-spend
-   statement and uploads it in chunks to a program-owned account.
-2. The account is sealed after its complete byte image is checked against the
-   released proof.
-3. One transaction verifies the sealed proof, closes and refunds that
-   account, advances the pool, and creates the nullifier marker atomically.
-
-## Mainnet result
+## Headline numbers
 
 The release — q18/g37, for its 18 queries per fold branch and 37-bit
 batch-grinding parameter — was executed on Solana mainnet-beta on
 14 July 2026:
 
-| Released result | Value |
+| Result | Value |
 | --- | ---: |
-| Finalized mainnet verification cost | 1,343,749 of 1,400,000 requested CU |
+| One-transaction verification and state transition | 1,343,749 of the 1,400,000-CU cap |
 | Proof | 64,447 bytes |
-| Conditional work-normalized soundness floor | 100.16 bits |
-| Pairwise-witness hiding | 103.02 bits |
-| Real-versus-simulator hiding | 104.02 bits |
-| Maximum local verification cost | 1,340,803 CU |
-| SBF program | 921,848 bytes |
-| Finalized slot | `432933949` |
+| Soundness floor (work-normalized, proven Johnson/MCA regime) | 100.16 bits |
+| Witness hiding | 103.02 bits pairwise, 104.02 bits versus simulator |
+| End-to-end demo cost after refunds | 0.0149 SOL (≈ USD 1.15) |
 | Release certificate | [36/36 gates](results/stage2/profile23_one_transaction_release.json) |
-| Mainnet proof-account refund | 0.449720400 SOL |
-| Demo payer cost after refunds | 0.014883400 SOL |
+| Finalized slot | `432933949` |
 
 [Official Explorer (mainnet-beta)](https://explorer.solana.com/tx/4Er5afhxfcFmpeTuFqEeNQEbCBri3pkc6ymx7ST5wfNpSBYwQDHA9DtCuDBpD5WuEDXs7ozL3sK5msc6QWE4q9Fo?cluster=mainnet-beta) ·
 [Solscan (mainnet)](https://solscan.io/tx/4Er5afhxfcFmpeTuFqEeNQEbCBri3pkc6ymx7ST5wfNpSBYwQDHA9DtCuDBpD5WuEDXs7ozL3sK5msc6QWE4q9Fo?cluster=mainnet)
 
-The transaction advanced the pool sequence from 0 to 1, created the canonical
-nullifier marker, and refunded the proof account's 449,720,400 lamports. The
-proof digest emitted by the program matches the released proof SHA-256,
-`d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d`.
-The official Solana mainnet RPC and an independent PublicNode endpoint agree
-on the transaction, lifecycle records, and final accounts; the same signature
-is absent on devnet and testnet. See the
-[public reconciliation](results/stage2/profile23_mainnet_independent_rpc_reconciliation.json).
-An archival replay also reconstructs the deployed SBF byte-for-byte from all
-1,067 loader writes and decodes the exact tag-65 instruction; see the
-[reconstruction result](results/stage2/profile23_mainnet_sbf_and_instruction_reconstruction.json)
-and [stdlib-only replay script](tools/reconstruct_profile23_mainnet_sbf.py).
+Every number above is independently checkable. The program log commits to
+the released proof SHA-256; the official Solana RPC and an independent
+PublicNode endpoint agree on the transaction, lifecycle records, and final
+accounts; and an archival replay
+([stdlib-only script](tools/reconstruct_profile23_mainnet_sbf.py))
+reconstructs the deployed program byte-for-byte from the chain's own loader
+history. After the spend, a sealed replay probe against the spent nullifier
+was simulated and rejected with the exact expected double-spend error, then
+closed with its rent refunded.
+
+## One transaction
+
+![Proof upload, sealing, and one-transaction verification with atomic state transition](docs/assets/transaction-flow.svg)
+
+A 64,447-byte proof cannot ride inside a 1,232-byte Solana transaction, so
+the proof travels once and is verified in place:
+
+1. The prover uploads the proof in 68 chunks to a program-owned account.
+2. The account is sealed after its complete byte image is checked against
+   the released proof digest.
+3. One transaction then verifies the sealed proof, advances the pool,
+   records the nullifier, and refunds the proof account — atomically. If
+   any step fails, no state changes.
 
 ## Construction
+
+Every parameter is chosen for one target: complete transparent verification
+under Solana's compute-unit cap.
 
 - **Field.** M31 (p = 2³¹ − 1) with its circle group as the evaluation
   domain; Mersenne arithmetic is cheap on the 32-bit SBF target, and the
@@ -143,20 +157,6 @@ relation, transcript, and security reductions. Its abstract:
 > security statements are argument soundness and computational hiding for
 > the exact relation and declared view; they do not assert knowledge
 > soundness or a standard-model zero-knowledge result.
-
-## Limitations
-
-- This is an unaudited research release with one independently reconciled
-  mainnet execution.
-- The one-transaction claim covers proof verification, the pool-state
-  transition, nullifier creation, and the proof-account refund. Program
-  deployment, pool and proof-account setup, the 68 chunk-upload
-  transactions, and proof finalization are separate setup transactions.
-- The relation is fixed: depth-20 Merkle membership, one input note, one
-  output note.
-- The security statements are argument soundness and computational hiding
-  for the exact relation and declared random-oracle view; they do not
-  assert knowledge soundness or a standard-model zero-knowledge result.
 
 ## Repository map
 
