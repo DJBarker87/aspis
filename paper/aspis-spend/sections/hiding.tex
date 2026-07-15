@@ -8,7 +8,7 @@ event; it does not condition on successful proving.
 \subsection{Declared view and games}
 
 \begin{definition}[Complete declared view]
-\label{def:profile23-complete-view}
+\label{def:spend-complete-view}
 For public input \(x\), the declared output is either
 \[
  \mathsf{Proof}(V)\qquad\text{or}\qquad \mathsf{Abort}.
@@ -39,7 +39,7 @@ expansion, salt expansion, Merkle, statement, and work uses.  In the real
 experiment \(\mathsf{Real}_{23}^{\mathcal H}(x,w)\), the honest prover uses
 fresh attempt secrets, chooses the least good of three schedules, retries at
 most 17 completed attempts, and emits
-Definition~\ref{def:profile23-complete-view}.  The
+Definition~\ref{def:spend-complete-view}.  The
 simulator experiment \(\mathsf{Sim}_{23}^{\mathcal H}(x)\) has no witness and
 may program \(\mathcal H\) at fresh inputs.
 
@@ -64,7 +64,7 @@ where each quantified witness satisfies \(R_{23}(x,w)=1\).
 The programming experiment follows the explicitly programmable random-oracle
 (EPRO) compilation framework of
 Ben-Sasson, Chiesa, and Spooner~\cite{BenSassonChiesaSpooner2016}, specialized
-below to the concrete Profile~23 transcript and private-Merkle wire.
+below to the concrete \Profile{} transcript and private-Merkle wire.
 
 \subsection{Affine field view}
 
@@ -117,7 +117,7 @@ same support and mass function.
 
 \begin{assumption}[Complete affine-image and rank coverage]
 \label{lem:complete-affine-image}
-For the frozen Profile~23 prover, verifier, layout, and serialization, let
+For the frozen \Profile{} prover, verifier, layout, and serialization, let
 \(Y_{s_{\rm fs}}\) include every non-hash field coordinate in the declared
 view.  For every valid \((x,w)\) and every schedule accepted by
 \(\mathsf{Good}_{23}\), Equation~\eqref{eq:affine-field-view} is an exact
@@ -330,7 +330,7 @@ Under Assumption~\ref{lem:complete-affine-image}, let \(A\le17\) be the
 number of completed attempts.  Assume each attempt begins with
 fresh independent 256-bit field entropy and leaf-salt seed and a fresh,
 durably burned public nonce, and that only the fixed-boundary output in
-Definition~\ref{def:profile23-complete-view} is public.  Assume also the
+Definition~\ref{def:spend-complete-view} is public.  Assume also the
 ideal-completion or witness-independent external-truncation boundary model
 stated above.  Then
 \begin{equation}

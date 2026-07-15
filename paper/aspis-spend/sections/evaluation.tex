@@ -232,15 +232,15 @@ funding source and are not the fee of the single verification transition.
 
 The source snapshot, frozen publication bundle, and paper are available under
 the immutable tag
-\href{https://github.com/DJBarker87/zk/tree/profile23-q18-g37-mainnet-v1}{\texttt{profile23-q18-g37-mainnet-v1}}.
+\href{https://github.com/DJBarker87/zk/tree/aspis-spend-q18-g37-mainnet-v1}{\texttt{spend-q18-g37-mainnet-v1}}.
 From that checkout, the bundle's offline verifier is
-\path{release/profile23-q18-g37-mainnet-v1/verify.sh}; it authenticates every
+\path{release/aspis-spend-q18-g37-mainnet-v1/verify.sh}; it authenticates every
 bundled object and checks the certificate lineage, proof and statement
 identities, deployed ProgramData image, finalized transaction observations,
 and cost equations.
 
 The public reconciliation file
-\path{results/stage2/profile23_mainnet_independent_rpc_reconciliation.json}
+\path{results/spend/spend_mainnet_independent_rpc_reconciliation.json}
 has SHA-256
 \nolinkurl{fae0afb3b7286bf61da5dd7b2f54ab988e21fa207a8911704bb98dc8cdd42f0a}.
 It records sanitized raw \texttt{getTransaction} responses from the official
@@ -255,7 +255,7 @@ machine-readable reconciliation, rather than an explorer rendering, is the
 source for the network claims in this section.
 
 The archival reproducer
-\path{tools/reconstruct_profile23_mainnet_sbf.py} independently obtains the
+\path{tools/reconstruct_spend_mainnet_sbf.py} independently obtains the
 same finalized 1,069-signature buffer history and raw transaction bodies from
 both providers.  It binds each of 1,067 loader writes to the pinned buffer and
 authority and reconstructs all 921,848 SBF bytes without gaps or overlaps.
@@ -266,10 +266,10 @@ equal to the bundled SBF.  Applying the loader-v3 ProgramData header gives
 equal to the pre-close account-data digest.  The same replay checks the
 deployment identities and decodes the landed 137-byte tag-65 payload, account
 order, proof-digest log, and refund equation.  Its frozen output is
-\path{results/stage2/profile23_mainnet_sbf_and_instruction_reconstruction.json}.
+\path{results/spend/spend_mainnet_sbf_and_instruction_reconstruction.json}.
 
 The public finalized manifest is
-\path{results/stage2/profile23_mainnet_finalized_manifest.json}, with SHA-256
+\path{results/spend/spend_mainnet_finalized_manifest.json}, with SHA-256
 \nolinkurl{bb7c71278e7b66093a84a895ecfa0bb29ed648529088666855d2a0612617cf60}.
 It contains no local absolute or operational filesystem paths or key material
 and binds the release certificate,
@@ -279,9 +279,9 @@ all principal signatures, the rent refunds, and the final cost equations.
 The release certificate can be reevaluated from the repository root with:
 \begin{verbatim}
 NO_DNA=1 cargo run -q -p aspis-prover --example \
-  profile23_soundness_epro_ledger -- --calculation-only
+  spend_soundness_epro_ledger -- --calculation-only
 NO_DNA=1 cargo run --release -p aspis-xtask -- \
-  stage2-profile23-one-transaction-release
+  spend-release
 \end{verbatim}
 The release command rebuilds the manifest-default SBF before comparing it
 with the production-only binary and evaluating all 36 gates.  Reproduction

@@ -1,20 +1,22 @@
 # Design history
 
-The default branch is the public Profile 23 release surface. It keeps the
-current implementation, the source modules still required by q18, the paper,
-and the evidence needed to audit the published result.
+The default branch is the public Aspis Spend release surface. It keeps the
+current implementation, the source modules required by the q18/g37 release,
+the paper source, and the tooling that certifies and executes a release.
 
-The complete pre-publication research tree is preserved by the immutable
-[`research-archive-2026-07-14`](https://github.com/DJBarker87/aspis/tree/research-archive-2026-07-14)
-tag at commit `020f8f87238435dc2e1dc8cb41df90670fcb94f6`. It contains the earlier
-root workspace, rejected parameter profiles, superseded certificates,
-negative experiments, and the full sequence of failed or abandoned designs.
+The pre-publication research tree is preserved by two immutable tags:
 
-The archive is a Git tag rather than a copied directory. This keeps the
-default checkout focused and avoids duplicating hundreds of megabytes of old
-build products. Git history remains the authoritative record for individual
-changes and their chronology.
+- [`research-archive-2026-07-14`](https://github.com/DJBarker87/aspis/tree/research-archive-2026-07-14)
+  (commit `020f8f87238435dc2e1dc8cb41df90670fcb94f6`) — the earlier root
+  workspace, rejected parameter iterations, superseded certificates, negative
+  experiments, and the full sequence of failed or abandoned designs.
+- [`research-archive-2026-07-15`](https://github.com/DJBarker87/aspis/tree/research-archive-2026-07-15)
+  — the working tree immediately before the production-surface strip,
+  including the local-validator measurement harness and the superseded
+  design-iteration modules later removed from the default branch.
 
-Profile 20--22 modules that remain on the default branch are dependencies or
-regression fixtures used by Profile 23. Their presence does not make them
-current releases.
+The archive is a set of Git tags rather than copied directories. This keeps
+the default checkout focused; Git history remains the authoritative record
+for individual changes and their chronology. During research the release now
+named Aspis Spend was tracked under an internal iteration number, which
+appears throughout the archived trees and their file names.

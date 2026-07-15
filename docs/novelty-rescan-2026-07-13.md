@@ -1,4 +1,4 @@
-# Profile 23 day-of novelty re-scan
+# Aspis Spend day-of novelty re-scan
 
 > **Dated snapshot.** This document records only the public-evidence search at
 > the cutoff below. Its conditional deployment language is historical and
@@ -13,7 +13,7 @@ is not yet quotable. A public, finalized mainnet-beta signature is a mandatory
 remaining claim gate.**
 
 Machine-readable companion:
-`results/stage2/profile23_novelty_rescan_2026_07_13.json`.
+[`novelty-rescan-2026-07-13.json`](novelty-rescan-2026-07-13.json).
 
 ```text
 mainnet_signature_required_before_first_claim=true

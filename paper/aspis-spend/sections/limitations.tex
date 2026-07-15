@@ -1,8 +1,8 @@
 \section{Scope and limitations}
 \label{sec:limitations}
 
-The results have a deliberately narrow interpretation.  Profile~23 proves the
-atomic-v3 relation in Definition~\ref{def:profile23-relation}: one input note
+The results have a deliberately narrow interpretation.  \Profile{} proves the
+atomic-v3 relation in Definition~\ref{def:spend-relation}: one input note
 is replaced by one output note along the same depth-20 private path.  It does
 not provide multiple inputs or outputs, a public append, recursion, proof
 aggregation, a wallet protocol, a relayer, or a general private application
@@ -17,7 +17,7 @@ hiding results use the stronger programmable-random-oracle experiment; they
 do not instantiate a standard-model pseudorandom-generator theorem or a
 statistical zero-knowledge theorem.
 
-The hiding view is exactly Definition~\ref{def:profile23-complete-view}.  The
+The hiding view is exactly Definition~\ref{def:spend-complete-view}.  The
 equality \(\epsilon_{\rm side}=0\) is by definition of that fixed public
 \(\mathsf{Proof}\)-or-\(\mathsf{Abort}\) channel.  Local filesystem access,
 the burned-nonce ledger, scheduler and process timing outside the release

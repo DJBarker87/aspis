@@ -1,7 +1,7 @@
 \section{Statement, relation, and state transition}
 \label{sec:relation}
 
-This section fixes the object proved by Profile~23.  The distinction between
+This section fixes the object proved by \Profile{}.  The distinction between
 the arithmetic relation and the on-chain state preconditions is important:
 the proof claim is satisfiability of the former, while the
 accepting instruction checks the latter directly before changing any account.
@@ -52,8 +52,8 @@ For \(i=\sum_{j=0}^{19}i_j2^j\) and
 
 \subsection{Public statement and witness}
 
-\begin{definition}[Profile~23 public statement]
-\label{def:profile23-statement}
+\begin{definition}[\Profile{} public statement]
+\label{def:spend-statement}
 A public statement is
 \[
  x=(P,s,A,\nu,C_{\mathrm{out}},A',a,f),
@@ -73,8 +73,8 @@ each of \(a\) and \(f\).  SHA-256 with the fixed statement domain hashes
 this encoding into the Fiat--Shamir transcript.
 \end{definition}
 
-\begin{definition}[Profile~23 witness]
-\label{def:profile23-witness}
+\begin{definition}[\Profile{} witness]
+\label{def:spend-witness}
 A witness is
 \[
  w=(k_\nu,r_{\mathrm{in}},r_{\mathrm{out}},pk_{\mathrm{out}},
@@ -93,7 +93,7 @@ where each of \(k_\nu\), \(r_{\mathrm{in}}\),
 \end{definition}
 
 \begin{definition}[Atomic same-path relation]
-\label{def:profile23-relation}
+\label{def:spend-relation}
 The relation \(R_{23}(x,w)=1\) holds exactly when all of the following
 equations hold over the indicated integer or field domain:
 \begin{align}
@@ -146,7 +146,7 @@ the witness.
 
 \begin{proposition}[Relation realization]
 \label{prop:relation-realization}
-For every canonically encoded \((x,w)\), the Profile~23 trace builder produces
+For every canonically encoded \((x,w)\), the \Profile{} trace builder produces
 an accepting arithmetic trace if and only if \(R_{23}(x,w)=1\).
 \end{proposition}
 

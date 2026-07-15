@@ -1,0 +1,216 @@
+\begin{thebibliography}{25}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Arnon et~al.(2025)Arnon, Chiesa, Fenzi, and
+  Yogev]{ArnonChiesaFenziYogev2025WHIR}
+Gal Arnon, Alessandro Chiesa, Giacomo Fenzi, and Eylon Yogev.
+\newblock {WHIR}: {Reed--Solomon} proximity testing with super-fast
+  verification.
+\newblock In Serge Fehr and Pierre-Alain Fouque, editors, \emph{Advances in
+  Cryptology--EUROCRYPT 2025, Part IV}, volume 15604 of \emph{Lecture Notes in
+  Computer Science}, pages 214--243. Springer, 2025.
+\newblock \doi{10.1007/978-3-031-91134-7_8}.
+\newblock URL \url{https://doi.org/10.1007/978-3-031-91134-7_8}.
+\newblock Cryptology ePrint Archive, Report 2024/1586.
+
+\bibitem[Ben-Sasson et~al.(2014)Ben-Sasson, Chiesa, Garman, Green, Miers,
+  Tromer, and Virza]{BenSassonEtAl2014Zerocash}
+Eli Ben-Sasson, Alessandro Chiesa, Christina Garman, Matthew Green, Ian Miers,
+  Eran Tromer, and Madars Virza.
+\newblock Zerocash: Decentralized anonymous payments from {Bitcoin}.
+\newblock In \emph{2014 IEEE Symposium on Security and Privacy}, pages
+  459--474. IEEE, 2014.
+\newblock \doi{10.1109/SP.2014.36}.
+\newblock URL \url{https://doi.org/10.1109/SP.2014.36}.
+
+\bibitem[Ben-Sasson et~al.(2016)Ben-Sasson, Chiesa, and
+  Spooner]{BenSassonChiesaSpooner2016}
+Eli Ben-Sasson, Alessandro Chiesa, and Nicholas Spooner.
+\newblock Interactive oracle proofs.
+\newblock In Martin Hirt and Adam~D. Smith, editors, \emph{Theory of
+  Cryptography---TCC 2016-B, Part II}, volume 9986 of \emph{Lecture Notes in
+  Computer Science}, pages 31--60. Springer, 2016.
+\newblock \doi{10.1007/978-3-662-53644-5_2}.
+\newblock URL \url{https://doi.org/10.1007/978-3-662-53644-5_2}.
+
+\bibitem[Ben-Sasson et~al.(2018{\natexlab{a}})Ben-Sasson, Bentov, Horesh, and
+  Riabzev]{BenSassonBentovHoreshRiabzev2018FRI}
+Eli Ben-Sasson, Iddo Bentov, Yinon Horesh, and Michael Riabzev.
+\newblock Fast {Reed--Solomon} interactive oracle proofs of proximity.
+\newblock In \emph{45th International Colloquium on Automata, Languages, and
+  Programming (ICALP 2018)}, volume 107 of \emph{Leibniz International
+  Proceedings in Informatics (LIPIcs)}, pages 14:1--14:17. Schloss
+  Dagstuhl--Leibniz-Zentrum f{\"u}r Informatik, 2018{\natexlab{a}}.
+\newblock \doi{10.4230/LIPIcs.ICALP.2018.14}.
+\newblock URL \url{https://doi.org/10.4230/LIPIcs.ICALP.2018.14}.
+
+\bibitem[Ben-Sasson et~al.(2018{\natexlab{b}})Ben-Sasson, Bentov, Horesh, and
+  Riabzev]{BenSassonBentovHoreshRiabzev2018STARK}
+Eli Ben-Sasson, Iddo Bentov, Yinon Horesh, and Michael Riabzev.
+\newblock Scalable, transparent, and post-quantum secure computational
+  integrity.
+\newblock Cryptology ePrint Archive, Report 2018/046, 2018{\natexlab{b}}.
+\newblock URL \url{https://eprint.iacr.org/2018/046}.
+
+\bibitem[Ben-Sasson et~al.(2020)Ben-Sasson, Goldberg, Kopparty, and
+  Saraf]{BenSassonGoldbergKoppartySaraf2020}
+Eli Ben-Sasson, Lior Goldberg, Swastik Kopparty, and Shubhangi Saraf.
+\newblock {DEEP-FRI}: Sampling outside the box improves soundness.
+\newblock In \emph{11th Innovations in Theoretical Computer Science Conference
+  (ITCS 2020)}, volume 151 of \emph{Leibniz International Proceedings in
+  Informatics (LIPIcs)}, pages 5:1--5:32. Schloss Dagstuhl--Leibniz-Zentrum
+  f{\"u}r Informatik, 2020.
+\newblock \doi{10.4230/LIPIcs.ITCS.2020.5}.
+\newblock URL \url{https://doi.org/10.4230/LIPIcs.ITCS.2020.5}.
+
+\bibitem[Ben-Sasson et~al.(2023)Ben-Sasson, Carmon, Ishai, Kopparty, and
+  Saraf]{BenSassonCarmonIshaiKoppartySaraf2023}
+Eli Ben-Sasson, Dan Carmon, Yuval Ishai, Swastik Kopparty, and Shubhangi Saraf.
+\newblock Proximity gaps for {Reed--Solomon} codes.
+\newblock \emph{Journal of the ACM}, 70\penalty0 (5):\penalty0 1--57, 2023.
+\newblock \doi{10.1145/3614423}.
+\newblock URL \url{https://doi.org/10.1145/3614423}.
+
+\bibitem[Block et~al.(2023)Block, Garreta, Katz, Thaler, Tiwari, and
+  Zaj{\k{a}}c]{BlockGarretaKatzThalerTiwariZajac2023}
+Alexander~R. Block, Albert Garreta, Jonathan Katz, Justin Thaler,
+  Pratyush~Ranjan Tiwari, and Micha{\l} Zaj{\k{a}}c.
+\newblock {Fiat--Shamir} security of {FRI} and related {SNARKs}.
+\newblock In Jian Guo and Ron Steinfeld, editors, \emph{Advances in
+  Cryptology--ASIACRYPT 2023, Part II}, volume 14439 of \emph{Lecture Notes in
+  Computer Science}, pages 3--40. Springer, 2023.
+\newblock \doi{10.1007/978-981-99-8724-5_1}.
+\newblock URL \url{https://doi.org/10.1007/978-981-99-8724-5_1}.
+
+\bibitem[Bordage et~al.(2025)Bordage, Chiesa, Guan, and
+  Manzur]{BordageChiesaGuanManzur2025}
+Sarah Bordage, Alessandro Chiesa, Ziyi Guan, and Ignacio Manzur.
+\newblock All polynomial generators preserve distance with mutual correlated
+  agreement.
+\newblock Cryptology ePrint Archive, Report 2025/2051, 2025.
+\newblock URL \url{https://eprint.iacr.org/2025/2051}.
+
+\bibitem[Carmon et~al.(2026)Carmon, Goldberg, Hab{\"o}ck, Lerer, Lesokhin,
+  Papini, and Samocha]{CarmonEtAl2026Stwo}
+Dan Carmon, Lior Goldberg, Ulrich Hab{\"o}ck, Leonardo Lerer, Ilya Lesokhin,
+  Shahar Papini, and Shahar Samocha.
+\newblock S-two whitepaper.
+\newblock Cryptology ePrint Archive, Report 2026/532, 2026.
+\newblock URL \url{https://eprint.iacr.org/2026/532}.
+
+\bibitem[Chiesa et~al.(2026)Chiesa, Fenzi, and
+  Weissenberg]{ChiesaFenziWeissenberg2026}
+Alessandro Chiesa, Giacomo Fenzi, and Guy Weissenberg.
+\newblock Zero-knowledge {IOPPs} for constrained interleaved codes.
+\newblock Cryptology ePrint Archive, Report 2026/391, 2026.
+\newblock URL \url{https://eprint.iacr.org/2026/391}.
+
+\bibitem[Crites and Stewart(2025)]{CritesStewart2025}
+Elizabeth Crites and Alistair Stewart.
+\newblock On {Reed--Solomon} proximity gaps conjectures.
+\newblock Cryptology ePrint Archive, Report 2025/2046, 2025.
+\newblock URL \url{https://eprint.iacr.org/2025/2046}.
+
+\bibitem[Fiat and Shamir(1987)]{FiatShamir1987}
+Amos Fiat and Adi Shamir.
+\newblock How to prove yourself: Practical solutions to identification and
+  signature problems.
+\newblock In \emph{Advances in Cryptology--CRYPTO '86}, volume 263 of
+  \emph{Lecture Notes in Computer Science}, pages 186--194. Springer, 1987.
+\newblock \doi{10.1007/3-540-47721-7_12}.
+\newblock URL \url{https://doi.org/10.1007/3-540-47721-7_12}.
+
+\bibitem[Grassi et~al.(2023)Grassi, Khovratovich, and
+  Schofnegger]{GrassiKhovratovichSchofnegger2023}
+Lorenzo Grassi, Dmitry Khovratovich, and Markus Schofnegger.
+\newblock {Poseidon2}: A faster version of the {Poseidon} hash function.
+\newblock In Nadia~El Mrabet, Luca~De Feo, and Sylvain Duquesne, editors,
+  \emph{Progress in Cryptology--AFRICACRYPT 2023}, volume 14064 of
+  \emph{Lecture Notes in Computer Science}, pages 177--203. Springer, 2023.
+\newblock \doi{10.1007/978-3-031-37679-5_8}.
+\newblock URL \url{https://doi.org/10.1007/978-3-031-37679-5_8}.
+
+\bibitem[Hab{\"o}ck(2025)]{Haboeck2025MCA}
+Ulrich Hab{\"o}ck.
+\newblock A note on mutual correlated agreement for {Reed--Solomon} codes.
+\newblock Cryptology ePrint Archive, Report 2025/2110, 2025.
+\newblock URL \url{https://eprint.iacr.org/2025/2110}.
+
+\bibitem[Hab{\"o}ck et~al.(2023)Hab{\"o}ck, Lubarov, and
+  Nabaglo]{HaboeckLubarovNabaglo2023}
+Ulrich Hab{\"o}ck, Daniel Lubarov, and Jacqueline Nabaglo.
+\newblock {Reed--Solomon} codes over the circle group.
+\newblock Cryptology ePrint Archive, Report 2023/824, 2023.
+\newblock URL \url{https://eprint.iacr.org/2023/824}.
+
+\bibitem[Hab{\"o}ck et~al.(2024)Hab{\"o}ck, Levit, and
+  Papini]{HaboeckLevitPapini2024}
+Ulrich Hab{\"o}ck, David Levit, and Shahar Papini.
+\newblock Circle {STARKs}.
+\newblock Cryptology ePrint Archive, Report 2024/278, 2024.
+\newblock URL \url{https://eprint.iacr.org/2024/278}.
+
+\bibitem[{National Institute of Standards and Technology}(2015)]{NISTFIPS1804}
+{National Institute of Standards and Technology}.
+\newblock Secure hash standard ({SHS}).
+\newblock Technical Report FIPS PUB 180-4, National Institute of Standards and
+  Technology, 2015.
+\newblock URL \url{https://doi.org/10.6028/NIST.FIPS.180-4}.
+
+\bibitem[{Plonky3 contributors}(2026)]{Plonky3M31Poseidon2Version061}
+{Plonky3 contributors}.
+\newblock Plonky3 {M31} and {Poseidon2}, version 0.6.1.
+\newblock Source code, commit
+  \texttt{c5c6b17763e5fd4c6f793d9c42ce768f388dff72}, 2026.
+\newblock URL
+  \url{https://github.com/Plonky3/Plonky3/tree/c5c6b17763e5fd4c6f793d9c42ce768f388dff72}.
+\newblock Accessed 2026-07-14.
+
+\bibitem[{Solana Foundation}(2026{\natexlab{a}})]{SolanaAccounts}
+{Solana Foundation}.
+\newblock Accounts.
+\newblock Solana documentation, 2026{\natexlab{a}}.
+\newblock URL \url{https://solana.com/docs/core/accounts}.
+\newblock Accessed 2026-07-14.
+
+\bibitem[{Solana Foundation}(2026{\natexlab{b}})]{SolanaComputeBudget}
+{Solana Foundation}.
+\newblock Compute budget.
+\newblock Solana documentation, 2026{\natexlab{b}}.
+\newblock URL \url{https://solana.com/docs/core/fees/compute-budget}.
+\newblock Accessed 2026-07-14.
+
+\bibitem[{Solana Foundation}(2026{\natexlab{c}})]{SolanaProgramDeployment}
+{Solana Foundation}.
+\newblock Program deployment.
+\newblock Solana documentation, 2026{\natexlab{c}}.
+\newblock URL \url{https://solana.com/docs/core/programs/program-deployment}.
+\newblock Accessed 2026-07-14.
+
+\bibitem[{Solana Foundation}(2026{\natexlab{d}})]{SolanaRPC}
+{Solana Foundation}.
+\newblock Solana {RPC} methods and documentation.
+\newblock Solana documentation, 2026{\natexlab{d}}.
+\newblock URL \url{https://solana.com/docs/rpc}.
+\newblock Accessed 2026-07-14.
+
+\bibitem[{Solana Foundation}(2026{\natexlab{e}})]{SolanaTransactionPipeline}
+{Solana Foundation}.
+\newblock Transaction pipeline.
+\newblock Solana documentation, 2026{\natexlab{e}}.
+\newblock URL
+  \url{https://solana.com/docs/core/transactions/transaction-pipeline}.
+\newblock Accessed 2026-07-14.
+
+\bibitem[{Solana Foundation}(2026{\natexlab{f}})]{SolanaTransactions}
+{Solana Foundation}.
+\newblock Transactions.
+\newblock Solana documentation, 2026{\natexlab{f}}.
+\newblock URL \url{https://solana.com/docs/core/transactions}.
+\newblock Accessed 2026-07-14.
+
+\end{thebibliography}

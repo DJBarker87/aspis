@@ -1,27 +1,15 @@
 # Documentation
 
-Start with the [mainnet paper](../paper/profile23-mainnet-v1/profile23.pdf),
-the [frozen release bundle](../release/profile23-q18-g37-mainnet-v1/), and the
-[finalized mainnet evidence](profile23-mainnet-demo.md). The current release is
-documented by:
+Start with the [paper source](../paper/aspis-spend/) and the repository
+[README](../README.md). Current documents:
 
-- [one-transaction release](stage2-profile23-one-transaction-release.md)
-- [finalized mainnet execution](profile23-mainnet-demo.md)
-- [finalized devnet rehearsal](profile23-devnet-rehearsal.md)
-- [prepublication security review](reviews/profile23-prepublication-security-review.md)
-  (frozen HTML artifact of record:
-  [.html](reviews/profile23-prepublication-security-review.html))
-- [deployment cost and refund model](profile23-demo-cost-refund.md)
-- [cross-cluster compute-unit reconciliation](profile23-cu-reconciliation.md)
-- [q18 soundness and EPRO ledger](stage2-profile23-d-after-g-soundness-epro.md)
-- [complete-Good product](stage2-profile23-complete-good-product.md)
-- [computational hiding closure](stage2-profile23-computational-hvzk-closure.md)
-- [supported release commands](../xtask/README.md)
+- [novelty re-scan, 2026-07-13](novelty-rescan-2026-07-13.md) — dated
+  public-evidence search for the claim shape; machine-readable companion
+  alongside it
+- [design history](design-history.md) — what the default branch keeps and
+  where the research archive tags live
 
-The complete relation and account model are specified in the paper. Supporting
-derivations, superseded work, and failed design branches are preserved in the
-[`research-archive-2026-07-14`](https://github.com/DJBarker87/aspis/tree/research-archive-2026-07-14)
-tag. See [design history](design-history.md) for the repository split.
-The dated [2026-07-13 novelty scan](profile23-novelty-rescan-2026-07-13.md)
-is a point-in-time literature and public-evidence search, not a live deployment
-status page.
+Release evidence, certificates, and the frozen publication bundle are
+generated when a release executes and land under `results/spend/` and
+`release/`. The complete relation and account model are specified in the
+paper.
