@@ -14,6 +14,7 @@ different SBF fails the release's byte-identity gate.
 
 | Command | Purpose | Network effect |
 |---|---|---|
+| `spend-measure` | Measure the production tag59/tag65 compute and run the production acceptance/mutation KATs against a local validator, writing the release-certificate measurement inputs. | Local test validator only |
 | `spend-release` | Reconstruct the fail-closed q18 release certificate from source artifacts. | None |
 | `spend-devnet-readiness` | Validate an exact release instance, keys, accounts, funding, and devnet genesis. | Read-only |
 | `spend-devnet-execute` | Deploy and exercise the exact tag65 proof-verification and state-transition path on devnet. | Mutates devnet; explicit interlock required |
