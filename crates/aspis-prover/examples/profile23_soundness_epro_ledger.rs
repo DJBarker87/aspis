@@ -629,7 +629,7 @@ fn main() {
     let release_bookable = release["failed_gates"]
         .as_array()
         .is_some_and(Vec::is_empty)
-        && release["max_literal_production_tag60_cu"]
+        && release["max_literal_production_tag65_cu"]
             .as_u64()
             .is_some_and(|cu| cu <= 1_400_000)
         && release_selected_soundness >= 100.0

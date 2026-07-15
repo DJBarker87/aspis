@@ -1,5 +1,9 @@
 # Profile 23 day-of novelty re-scan
 
+> **Dated snapshot.** This document records only the public-evidence search at
+> the cutoff below. Its conditional deployment language is historical and
+> must not be used as the current launch or chain-status record.
+
 Search cutoff: `2026-07-13T20:35:53+01:00` (`Europe/London`,
 `2026-07-13T19:35:53Z`).
 

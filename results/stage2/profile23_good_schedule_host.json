@@ -1,7 +1,7 @@
 {
   "artifact": "profile23_good_schedule_host",
   "date": "2026-07-13",
-  "status": "q18_good23_q3_cap17_green_and_profile23_one_transaction_released_35_of_35",
+  "status": "q18_good23_q3_cap17_green",
   "production_enabled_by_this_artifact": false,
   "definition_fingerprint": "0x927920b10ba31373c1909ef9bfb7ae7cb9570c7e2536d294347834b3c83dcb26",
   "pinned_definition": {
@@ -92,20 +92,33 @@
       }
     ]
   },
-  "runtime": {
+  "performance_benchmarks": {
     "parallel_good23_branches": true,
-    "post_release_full_audit_seconds": 40.64,
-    "optimized_unmined_build_and_verify_seconds": 44.09,
-    "fixed_production_boundary_seconds": 480,
-    "production_wall_seconds": 480.42,
-    "record": "results/stage2/profile23_q18_g37_runtime.json"
+    "unmined_fixture_build_and_verify": {
+      "wall_seconds": 44.09,
+      "proof_bytes": 67327,
+      "proof_sha256": "a5ed698a32d815ffd95f8d3e0be62d16620d32e216a087a350852726fb6ca238"
+    },
+    "historical_predecessor_release": {
+      "proof_bytes": 63487,
+      "proof_sha256": "0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb",
+      "full_audit_wall_seconds": 40.64,
+      "fixed_boundary_seconds": 480,
+      "fixed_boundary_run_wall_seconds": 480.42,
+      "record": "results/stage2/profile23_q18_g37_predecessor_runtime.json"
+    },
+    "current_release": {
+      "proof_bytes": 64447,
+      "proof_sha256": "d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d",
+      "timing_recorded": false
+    }
   },
   "tests": {
     "fast": "NO_DNA=1 cargo test -p aspis-prover --lib state_only_good23::tests -- --skip frozen_profile23_fixture_runs_exact_good23_on_all_selectors",
     "exact": "NO_DNA=1 cargo test --release -p aspis-prover --lib state_only_good23::tests::frozen_profile23_fixture_runs_exact_good23_on_all_selectors -- --ignored --nocapture",
     "selector_builds": "NO_DNA=1 cargo test --release -p aspis-prover --test profile23_zero_factor_integration --features insecure-profile23-fixture profile23_all_three_selectors_build_and_verify -- --ignored --nocapture",
     "fast_result": "parallel manager ordering and panic-collapse tests passed",
-    "exact_result": "production post-release audit passed in 40.64s; all three good; least selector 0",
+    "exact_result": "the historical 63,487-byte predecessor proof passed the all-three-Good, least-selector-0 audit in 40.64 s; this is not a current-release timing",
     "selector_builds_result": "opening-evaluation equivalence and unchanged unmined proof SHA-256 passed"
   },
   "production_integration": {
@@ -134,39 +147,10 @@
     "eps_side_zero_only_by_excluding_filesystem_timing_power_thermal_memory_and_remote_prover_traffic": true,
     "artifact": "results/stage2/profile23_computational_hvzk_closure.json"
   },
-  "current_release": {
-    "released": true,
-    "release_certificate": "results/stage2/profile23_one_transaction_release.json",
-    "gates_green": 35,
-    "gates_total": 35,
-    "proof": {
-      "path": "results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.bin",
-      "bytes": 63487,
-      "sha256": "0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb"
-    },
-    "statement": {
-      "path": "results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.statement.json",
-      "sha256": "520a0a86e1d1918a5270622ac27182b1f5b6df2b624d68bbd2a2b6f927eebb14"
-    },
-    "default_sbf": {
-      "bytes": 915656,
-      "sha256": "da66a51b1f3ce95e907a87fca15fb9dc0cce66fd47646875ce2dff94879fd254"
-    },
-    "production_tag60_cu": {
-      "tag59_same_binary": 1299012,
-      "program_owned_zeroed": 1300905,
-      "canonical_system_owned_create": 1303236,
-      "worst_case_headroom_under_1400000": 96764
-    },
-    "johnson_selected_soundness_bits": 101.38010539241553,
-    "johnson_coarse_soundness_bits": 100.16144938287455,
-    "computational_hiding_real_vs_simulator_bits_declared_model": 104.02492234825198,
-    "computational_hiding_pairwise_witness_bits_declared_model": 103.02492234825198,
-    "proof_account_precondition": "finalized 40-byte header with all-zero authority sentinel",
-    "production_proof_accounts_sealed": true,
-    "proof_finalize_wire_tag": 62,
-    "pool_initialize_wire_tag": 63,
-    "program_id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue"
+  "release_reference": {
+    "authorizing": false,
+    "certificate": "results/stage2/profile23_one_transaction_release.json",
+    "note": "Concrete proof, statement, SBF, CU, and gate status are intentionally not duplicated in this Good-schedule artifact."
   },
   "remaining_release_gates": [],
   "note": "docs/stage2-profile23-good-schedule-host.md"

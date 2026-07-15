@@ -1,7 +1,7 @@
 # Profile23 devnet rehearsal
 
-Status: executed successfully on Solana devnet on 2026-07-14. The final tag-60
-transaction was finalized at slot `476231605`; this remains strictly devnet
+Status: executed successfully on Solana devnet on 2026-07-14. The final tag65
+transaction was finalized at slot `476282685`; this remains strictly devnet
 rehearsal evidence and does not create a mainnet-beta claim.
 
 The command surfaces are deliberately separate:
@@ -67,13 +67,13 @@ initializes the fresh pool; creates, initializes, chunk-uploads, fully refetches
 and tag-62 finalizes the proof account; verifies that upload and repeated
 finalization reject afterwards; derives the canonical nullifier PDA; and
 captures the exact upgradeable Program plus linked ProgramData account image
-before setup. Immediately before simulating the fully signed tag-60 wire, it
+before setup. Immediately before simulating the fully signed tag65 wire, it
 rechecks release SBF bytes, maximum length, upgrade authority, ProgramData
 address, and byte-for-byte Program/ProgramData continuity. No other RPC call
 intervenes between that recheck and simulation. The simulation uses signature
 verification and no blockhash replacement, and execution submits those
 identical bytes. An ambiguous submission may retry that same byte string once
-and may never reconstruct a different transaction. Immediately after tag-60
+and may never reconstruct a different transaction. Immediately after tag65
 finality it repeats the exact deployment and continuity checks, then checks the
 exact pool and nullifier images, proof-account immutability, and duplicate
 rejection.
@@ -102,9 +102,9 @@ reach finality before sending the next. Its 104 uploads spanned 3,987 slots and
 
 The current executor uses 960-byte chunks. A full chunk produces a 1,173-byte
 legacy transaction, leaving 59 bytes below Solana's 1,232-byte packet cap. For
-the 66,367-byte release proof this gives 70 uploads, submitted in windows of
+the 64,447-byte release proof this gives 68 uploads, submitted in windows of
 16 with batched status polling for each window. The resulting upload
-schedule has five finality waves: 16, 16, 16, 16, and 6 transactions.
+schedule has five finality waves: 16, 16, 16, 16, and 4 transactions.
 
 Every transaction in a window uses the same fresh blockhash but has a distinct
 signed message. The executor retains that exact wire and may rebroadcast the
@@ -116,20 +116,18 @@ public-RPC timings project an upload phase of roughly 80--120 seconds.
 
 ## Finalized q18/g37 rehearsal
 
-The released 66,367-byte proof and 915,656-byte SBF were exercised against
+The released 64,447-byte proof and 921,848-byte SBF were exercised against
 program `7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue`. The fresh proof
-account used 104 uploads and the complete prerequisite lifecycle contained
-109 setup transactions. The successful invocation resumed from an explicit
-checkpoint only after the executor reconstructed three finalized signed
-transactions and validated the exact account state; recovered transactions
-were not resent.
+account used 68 uploads and the recorded setup lifecycle contained 73
+transactions. The executor validated the exact finalized account state before
+submitting tag65.
 
 The final transaction is:
 
 ```text
-signature: 3ofPbzRkqMEJZCM9vwKz96rLqRFtSg4d1GyqqVBEbogtwzmJodsWb2f7V4X83BLvuPXFsT6Yyf87PC1ZbLf1R7bx
-slot:      476231605
-CU:        1314332 simulated, 1314332 landed
+signature: 4HRnTBPqSh9HW4Nw52rJgnd36fzR6CiKgiaL29WkeH4Gk4xLJVhGEt9CAStyUTpuajo9sw4iDLXQHWwFFQALWmto
+slot:      476282685
+CU:        1340749 simulated, 1340749 landed
 retry:     none
 ```
 
@@ -141,11 +139,11 @@ were unchanged between the immediately-before-simulation and after-finality
 checkpoints. The program remained upgradeable under the recorded rehearsal
 authority.
 
-The completed mode-`0444` evidence file is 61,342 bytes and has SHA-256:
+The completed mode-`0444` evidence file is 48,131 bytes and has SHA-256:
 
 ```text
-360e38fc5db3b644586c29e7a872203e8f9507c9ddef52add776fefb5d300275
+e761782d6067a667bd36fff24322d199400382e2b869aa78a54e92b18ce3f440
 ```
 
 The public transaction can be inspected at
-`https://explorer.solana.com/tx/3ofPbzRkqMEJZCM9vwKz96rLqRFtSg4d1GyqqVBEbogtwzmJodsWb2f7V4X83BLvuPXFsT6Yyf87PC1ZbLf1R7bx?cluster=devnet`.
+`https://explorer.solana.com/tx/4HRnTBPqSh9HW4Nw52rJgnd36fzR6CiKgiaL29WkeH4Gk4xLJVhGEt9CAStyUTpuajo9sw4iDLXQHWwFFQALWmto?cluster=devnet`.

@@ -1,7 +1,7 @@
 {
   "artifact": "profile23_complete_good_product",
   "date": "2026-07-14",
-  "status": "q18_complete_good_product_green_and_profile23_one_transaction_released_35_of_35",
+  "status": "q18_complete_good_product_green",
   "production_enabled": true,
   "production_wire_changed_by_this_artifact": true,
   "fixture": "results/stage2/proofs/atomic_state_only_profile23_v3_unmined.bin",
@@ -74,39 +74,10 @@
     "pairwise_witness_bound_bits": 103.02492234825198,
     "pairwise_triangle_factor": 2
   },
-  "current_release": {
-    "released": true,
-    "release_certificate": "results/stage2/profile23_one_transaction_release.json",
-    "gates_green": 35,
-    "gates_total": 35,
-    "proof": {
-      "path": "results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.bin",
-      "bytes": 63487,
-      "sha256": "0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb"
-    },
-    "statement": {
-      "path": "results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.statement.json",
-      "sha256": "520a0a86e1d1918a5270622ac27182b1f5b6df2b624d68bbd2a2b6f927eebb14"
-    },
-    "default_sbf": {
-      "bytes": 915656,
-      "sha256": "da66a51b1f3ce95e907a87fca15fb9dc0cce66fd47646875ce2dff94879fd254"
-    },
-    "production_tag60_cu": {
-      "tag59_same_binary": 1299012,
-      "program_owned_zeroed": 1300905,
-      "canonical_system_owned_create": 1303236,
-      "worst_case_headroom_under_1400000": 96764
-    },
-    "johnson_selected_soundness_bits": 101.38010539241553,
-    "johnson_coarse_soundness_bits": 100.16144938287455,
-    "computational_hiding_real_vs_simulator_bits_declared_model": 104.02492234825198,
-    "computational_hiding_pairwise_witness_bits_declared_model": 103.02492234825198,
-    "proof_account_precondition": "finalized 40-byte header with all-zero authority sentinel",
-    "production_proof_accounts_sealed": true,
-    "proof_finalize_wire_tag": 62,
-    "pool_initialize_wire_tag": 63,
-    "program_id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue"
+  "release_reference": {
+    "authorizing": false,
+    "certificate": "results/stage2/profile23_one_transaction_release.json",
+    "note": "Concrete proof, statement, SBF, CU, and gate status are intentionally not duplicated in this proof-independent theorem artifact."
   },
   "remaining_production_gates": [],
   "guard": "NO_DNA=1 cargo run --release -q -p aspis-prover --example profile23_complete_good_product",

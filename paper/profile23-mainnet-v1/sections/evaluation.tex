@@ -1,0 +1,277 @@
+\section{Evaluation}
+\label{sec:evaluation}
+
+The evaluation separates three objects that have different scopes.  The
+release certificate binds the proof, statement, verifier binary, and concrete
+security calculations.  Local validator runs measure both supported account
+paths and exercise adversarial cases.  A mainnet-beta run records one
+finalized verification-and-state-transition transaction for that exact
+release.  Deployment and application setup precede the measured transition;
+resource recovery and the treasury sweep follow it.
+
+\subsection{Release instance}
+\label{sec:evaluation-release}
+
+The fail-closed release evaluator rebuilt the manifest-default SBF binary,
+verified the concrete proof with the production host verifier, reconstructed
+all three selector branches, reconciled the local compute ledger, and checked
+36 required gates.  All gates passed and the failed-gate set was empty.  The
+release-authorizing soundness value is the conservative whole-ledger,
+three-branch floor of 100.16144938287457 bits.  The sharper selector-scoped
+calculation, 101.38010539241552 bits, is retained as a diagnostic and is not
+used for the headline claim.
+
+\begin{table}[t]
+  \centering
+  \small
+  \caption{Concrete \Profile{} release instance.}
+  \label{tab:release-schedule}
+  \begin{tabular}{l l}
+    \toprule
+    Item & Value \\
+    \midrule
+    trace rows / code rate & $2^{10}$ / $1/512$ \\
+    query fibers & $q=18$ \\
+    batch work & 37 bits \\
+    fold work & $(34,33,30,25)$ bits \\
+    final work & 32 bits \\
+    selector candidates / selected & 3 / 0 \\
+    proving-attempt cap & 17 \\
+    release gates & 36 / 36 \\
+    conservative soundness floor & 100.161449 bits \\
+    real-versus-simulator floor & 104.024922 bits \\
+    pairwise-witness floor & 103.024922 bits \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The content identities used throughout the evaluation are:
+\begin{description}
+  \item[Proof.] \ProfileProofBytes{} bytes; SHA-256
+  \nolinkurl{d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d}.
+  \item[Statement sidecar.] 667 bytes; SHA-256
+  \nolinkurl{947a608c93487a634f37119bead8d61fe29e9cb6883493465d6fb35af27883c2}.
+  \item[Canonical public-input digest.] SHA-256
+  \nolinkurl{b2d150dfcb6432c1b6f2e3892ee45a9aa5f393809d97c8292fea975b3da35fa3}.
+  \item[Production SBF.] \ProfileSbfBytes{} bytes; SHA-256
+  \nolinkurl{97c45a9abef97607a2fc6ed245829210046b234044b6738599d2bce0c367d04a}.
+  \item[Release certificate.] SHA-256
+  \nolinkurl{4ace42c0954bee74382520bbb0818da86e570ec9b212c61cb21130dc644a2725}.
+\end{description}
+
+The statement has sequence zero, asset identifier 17, and fee 1.  Each of the
+three reconstructed schedules met the required $\mathsf{Good}_{23}$ ranks,
+so selector zero was both serialized and the least accepted selector.  The
+proof, statement, and SBF identities were required to agree across host
+acceptance, local mutation, release, and mainnet preflight artifacts.
+The execution-time preflight used certificate
+\nolinkurl{d83f6df645a00f28090e78f8648974ec94afd35f4677f5d84525ba6af7a2688f}.
+The publication certificate was regenerated after correcting stale,
+non-authorizing release metadata in its soundness source, removing duplicated
+release snapshots from the proof-independent complete-Good and HVZK sources,
+replacing local absolute command paths in the acceptance and mutation sources
+with repository-relative paths, and correcting a q18 comment in the program
+manifest.  The explanatory certificate note was updated to describe that
+non-authorizing metadata boundary.  A machine diff is limited to that note,
+the generation timestamp, byte lengths and digests for the five corrected
+JSON sources, and the program-manifest digest.  The proof, statement, SBF,
+security values, compute values, and all 36 gate outcomes are identical.  The
+release bundle retains both certificates.
+
+\subsection{Local compute and functional tests}
+\label{sec:evaluation-local}
+
+Local compute was measured by transaction simulation on
+\texttt{solana-test-validator 2.3.0} (Agave source identifier
+\texttt{a2e21dda}, feature set \texttt{3640012085}).  The frozen SBF was built
+with \nolinkurl{solana-cargo-build-sbf} version \texttt{2.3.0}, platform-tools
+\texttt{v1.48}, and its bundled Rust \texttt{1.84.1}; a build producing
+different bytes fails the release identity gate.  Each transaction
+requested a 1,400,000-CU limit and a 262,144-byte heap.  The read-only tag~59
+baseline and both tag~65 paths used the same uninstrumented release binary.
+Table~\ref{tab:production-cu} reports literal transaction totals.
+
+\begin{table}[t]
+  \centering
+  \small
+  \caption{Production-binary local compute consumption.}
+  \label{tab:production-cu}
+  \begin{tabular}{l r r r}
+    \toprule
+    Marker path & Tag~59 CU & Tag~65 CU & Headroom \\
+    \midrule
+    program-owned zero marker & 1,303,642 & 1,338,471 & 61,529 \\
+    System-owned marker creation & 1,303,642 & 1,340,803 & 59,197 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The local production matrix also admitted only the intended feature set and
+rejected combinations with diagnostic and superseded profiles.  It accepted
+the mined proof on tags 59 and 65, rejected a separately committed unmined
+proof, and submitted corrupted-proof transactions to check rollback.  Both
+marker paths produced the expected pool and nullifier images; a duplicate was
+rejected without a second mutation.  A two-signer race on the canonical
+System-owned marker path produced exactly one commit.  Successful tag~65 runs
+closed the proof account and reconciled its complete lamport refund.
+
+\subsection{Mainnet-beta method}
+\label{sec:evaluation-mainnet-method}
+
+The mainnet run used the Solana genesis hash
+\begin{center}
+  \small\ttfamily
+  5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d.
+\end{center}
+A read-only finalized snapshot first required the disposable Program,
+ProgramData, pool, and nullifier addresses to be absent.  The executor then
+deployed the exact release binary under program
+\begin{center}
+  \small\ttfamily
+  9kPpUknrRicMvaGa6zPNERGUYDj6fMvMR8PwMS3iFR6Z
+\end{center}
+with loader-derived ProgramData address
+\begin{center}
+  \small\ttfamily
+  G7XHkv6riJ8TQJ6R8o31wAUMaoL8Q5UyHGExpQ51ntp1.
+\end{center}
+The finalized deployment transaction was recorded at slot 432,933,454.  The
+executor checked the deployed code hash, exact maximum data length, loader
+ownership, Program--ProgramData linkage, and the dedicated upgrade authority
+before application setup, immediately before verification simulation, and
+after verification finality.
+
+Application setup comprised \ProfileMainnetSetupTransactions{} transactions:
+pool creation and initialization, combined proof-account creation and tag~0
+initialization, \ProfileUploadTransactions{} 960-byte-or-smaller upload
+transactions, and tag~62 finalization.  Uploads were submitted in five
+finality windows of at most 16 transactions.  The complete 64,487-byte proof
+account image was compared with the expected image before sealing.  Simulated
+post-finalization upload and second-finalization attempts were rejected.
+Program deployment and these application-setup transactions are not part of
+the one-transaction verification claim.
+
+The executor constructed one tag~65 transaction with a fresh blockhash,
+simulated the exact signed bytes with signature verification and without
+blockhash replacement, and submitted those same bytes.  It allowed no changed
+transaction after signing and used no identical-wire retry.  Finalized
+account images, transaction metadata, program continuity, and the program-log
+proof digest were checked before the run was recorded as successful.
+
+\subsection{Finalized mainnet-beta verification transition}
+\label{sec:evaluation-mainnet-result}
+
+The tag~65 transaction finalized at slot \ProfileMainnetSlot{} on 14 July
+2026 at 21:40:36 UTC.  Its signature is
+\begin{center}
+  \scriptsize\ttfamily
+  \href{https://explorer.solana.com/tx/4Er5afhxfcFmpeTuFqEeNQEbCBri3pkc6ymx7ST5wfNpSBYwQDHA9DtCuDBpD5WuEDXs7ozL3sK5msc6QWE4q9Fo?cluster=mainnet-beta}{4Er5afhxfcFmpeTuFqEeNQEbCBri3pkc6ymx7ST5wfNpSBYwQDHA9DtCuDBpD5WuEDXs7ozL3sK5msc6QWE4q9Fo}.
+\end{center}
+The signed wire had SHA-256
+\nolinkurl{09183f6b5e95872b884cf549e7dc5fecd1862b0c7c5b77ed8eb7f57dcbf5f5db};
+its message had SHA-256
+\nolinkurl{7565f8cbe265d4be73c3f79d73b4bcc9c48d59a13f1ef15a031054a0f8836670}.
+Simulation and the finalized record both reported
+\ProfileMainnetComputeUnits{} CU.  This is 95.9821\% of the requested limit
+and leaves \ProfileMainnetComputeHeadroom{} CU.  The transaction fee was
+10,000 lamports and the metadata reported no error.
+
+The program emitted the domain-separated proof-digest log
+\texttt{aspis-proof-sha256-v1}.  Decoding its value gives exactly the release
+proof SHA-256 listed in Section~\ref{sec:evaluation-release}; the executor
+required this equality in both simulation and finalized logs.  The pool at
+\nolinkurl{B1z4gQ82xerghDKZ68HuP2Tehx5ER5mfVHq74y4ew3kk} advanced from sequence
+zero to one and its data hash changed from
+\nolinkurl{3cad0b60e8a697c28f7c16657ed19142893f2eb5513dc0bc1382942d1789d11e}
+to
+\nolinkurl{3d259b401a8f6c5cb49713707a7108b4097e35873e893cea1a93bc46a5d78ea4}.
+The previously absent canonical nullifier marker
+\nolinkurl{2CnUJycxkinN3XtpWH5bCYVDEuMx42BTnFU9WXsymAu3} was created with the
+expected 72-byte image.
+
+The proof account held \ProfileProofRentLamports{} lamports immediately before
+the transition and zero afterward.  The payer increased by the full proof
+balance, less the 1,392,000 lamports used to fund the new nullifier and the
+10,000-lamport transaction fee.  The evidence reconciles this equation from
+the finalized pre- and post-balances.  Proof verification, proof-account
+refund, nullifier creation, and pool mutation therefore occurred in the same
+transaction; none of the preceding setup transactions is included in that
+statement.
+
+After finality, a duplicate-spend simulation used a separately created and
+sealed replay-probe account.  It returned the exact nullifier-already-spent
+error and left the pool, nullifier, and replay-probe images unchanged.  The
+probe was then closed with tag~64 and its 1,176,240-lamport balance was
+refunded.  These replay-probe transactions are post-transition tests, not part
+of the verification transaction.
+
+\subsection{Resource recovery and cost accounting}
+\label{sec:evaluation-cleanup}
+
+The deployment was deliberately disposable.  After the execution evidence
+had been made read-only, a separate loader-v3 close transaction finalized at
+slot 432,934,227.  It removed ProgramData and refunded
+\ProfileProgramDataRefundLamports{} lamports; the exact refund equation and
+10,000-lamport fee were reconciled from the landed transaction.  The small
+loader Program account, pool, and nullifier marker remained.  Closing
+ProgramData disabled the disposable deployment after the measured
+verification; it did not alter the already finalized transaction record.
+
+The later transfer of the remaining payer balance back to the funding source
+is treasury cleanup and is not a protocol result.  Its separate finalized
+receipt records 6,985,137,600 lamports returned at slot 432,934,316 and a zero
+post-sweep payer balance.  Of the demo payer's balance, 0.0148834 SOL was not
+returned: 0.0037584 SOL remained as rent in the Program, pool, and nullifier
+accounts, and 0.0111250 SOL was paid as aggregate payer transaction fees.
+These figures include deployment and every payer-funded setup and cleanup
+transaction; they exclude the inbound funding transaction fee paid by the
+funding source and are not the fee of the single verification transition.
+
+\subsection{Independent reconciliation and reproducibility}
+\label{sec:evaluation-reproduction}
+
+The source snapshot, frozen publication bundle, and paper are available under
+the immutable tag
+\href{https://github.com/DJBarker87/zk/tree/profile23-q18-g37-mainnet-v1}{\texttt{profile23-q18-g37-mainnet-v1}}.
+From that checkout, the bundle's offline verifier is
+\path{release/profile23-q18-g37-mainnet-v1/verify.sh}; it authenticates every
+bundled object and checks the certificate lineage, proof and statement
+identities, deployed ProgramData image, finalized transaction observations,
+and cost equations.
+
+The public reconciliation file
+\path{results/stage2/profile23_mainnet_independent_rpc_reconciliation.json}
+has SHA-256
+\nolinkurl{fae0afb3b7286bf61da5dd7b2f54ab988e21fa207a8911704bb98dc8cdd42f0a}.
+It records sanitized raw \texttt{getTransaction} responses from the official
+Solana mainnet endpoint and an independent PublicNode endpoint.  Both report
+the same mainnet genesis, signature, slot, block time, error status, fee,
+compute consumption, balances, proof-digest log, and success log for the
+verification transaction.  Both also agree on the funding, deployment,
+replay-probe close, ProgramData close, and treasury-sweep records and on the
+final account snapshot.  Queries for the verification signature on official
+devnet and testnet returned null, which disambiguates the cluster.  This
+machine-readable reconciliation, rather than an explorer rendering, is the
+source for the network claims in this section.
+
+The public finalized manifest is
+\path{results/stage2/profile23_mainnet_finalized_manifest.json}, with SHA-256
+\nolinkurl{bb7c71278e7b66093a84a895ecfa0bb29ed648529088666855d2a0612617cf60}.
+It contains no local absolute or operational filesystem paths or key material
+and binds the release certificate,
+the immutable execution and cleanup receipts, the independent reconciliation,
+all principal signatures, the rent refunds, and the final cost equations.
+
+The release certificate can be reevaluated from the repository root with:
+\begin{verbatim}
+NO_DNA=1 cargo run -q -p aspis-prover --example \
+  profile23_soundness_epro_ledger -- --calculation-only
+NO_DNA=1 cargo run --release -p aspis-xtask -- \
+  stage2-profile23-one-transaction-release
+\end{verbatim}
+The release command rebuilds the manifest-default SBF before comparing it
+with the production-only binary and evaluating all 36 gates.  Reproduction
+requires the proof and statement bytes; their hashes are identifiers, not
+substitutes.  The evaluator records its current generation time, so a later
+reevaluation reproduces the substantive fields and gate outcomes but not the
+frozen certificate's byte identity or SHA-256.

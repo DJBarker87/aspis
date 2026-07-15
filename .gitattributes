@@ -1,0 +1,5 @@
+# Frozen release bundles are byte-addressed artifacts. Disable checkout-time
+# line-ending conversion so their SHA-256 manifests verify on every platform.
+/release/profile23-q18-g37-mainnet-v1/** -text
+/results/stage2/proofs/profile23_devnet_b1z_sequence0_q18_g37_production_authorizing_guarded_private.bin -text
+/results/stage2/proofs/profile23_devnet_b1z_sequence0_q18_g37_production_authorizing_guarded_private.statement.json -text

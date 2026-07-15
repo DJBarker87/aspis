@@ -5,7 +5,7 @@ minor, complete Good23 predicate, cap17/q3 builder, proof-independent numeric
 soundness ledger, and complete-view computational hiding in the declared
 SHA-256 ROM/EPRO fixed-channel model are green. The canonically mined q18
 proof, production host/SBF KATs, and local one-transaction release certificate
-are also green with `35/35` gates. The `2026-07-13` q16/cap16 release is
+are also green with `36/36` gates. The `2026-07-13` q16/cap16 release is
 superseded historical evidence.**
 
 The candidate generator order is fixed as
@@ -250,19 +250,19 @@ selectors 0, 1 and 2 now build and verify.
 
 This soundness/EPRO artifact did not by itself enable a default production
 tag. The separate fail-closed release evaluation now records `released=true`,
-`status=released_all_required_gates_green`, and `35/35` passing gates in
+`status=released_all_required_gates_green`, and `36/36` passing gates in
 `results/stage2/profile23_one_transaction_release.json`. It binds a
-66,367-byte q18 proof with SHA-256
-`f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53`,
+64,447-byte q18 proof with SHA-256
+`d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d`,
 a canonical statement sidecar with SHA-256
-`976e9a7e001382025eaf81cfcb28ac609db966d4a9912511f54e2b702077b6de`,
+`947a608c93487a634f37119bead8d61fe29e9cb6883493465d6fb35af27883c2`,
 canonical public-input digest
-`21d73e39be93112f986f52c7d683f2ab478890360a306af81110852ffb16a30a`,
-and a fresh 915,656-byte default SBF with SHA-256
-`da66a51b1f3ce95e907a87fca15fb9dc0cce66fd47646875ce2dff94879fd254`.
-Production tag 59 is `1,310,162 CU`; tag 60 is `1,312,055 CU` on the
-program-owned path and `1,314,386 CU` on canonical System creation, leaving
-`85,614 CU` of maximum-path headroom.
+`b2d150dfcb6432c1b6f2e3892ee45a9aa5f393809d97c8292fea975b3da35fa3`,
+and a fresh 921,848-byte default SBF with SHA-256
+`97c45a9abef97607a2fc6ed245829210046b234044b6738599d2bce0c367d04a`.
+Production tag59 is `1,303,642 CU`; tag65 is `1,338,471 CU` on the
+program-owned path and `1,340,803 CU` on canonical System creation, leaving
+`59,197 CU` of maximum-path headroom.
 
 The authorizing conservative soundness floor is
 `100.16144938287455` bits. The q18 complete-view
@@ -272,12 +272,15 @@ bound is `104.02492234825198` bits. These theorem facts do not broaden the
 claim beyond their assumptions or side-channel exclusions.
 
 The intended certificate scope is atomic verification and mutation using a
-finalized, pre-uploaded proof account. Production tags 59 and 60 require the
+finalized, pre-uploaded proof account. Production tag59 and tag65 require the
 all-zero authority sentinel in bytes `8..40` of the unchanged 40-byte header;
 proof-account creation, chunk upload, and `FinalizeProof` are excluded.
 Append-only tag 62 seals proof accounts and tag 63 initializes pools.
-The certificate is local release evidence, not a mainnet deployment or an
-external security audit; those remain separate blockers.
+The certificate is local release evidence, not mainnet or external-audit
+evidence. The finalized mainnet execution and current audit status are
+recorded separately in
+[`profile23-mainnet-demo.md`](profile23-mainnet-demo.md) and the
+[prepublication security review](reviews/profile23-prepublication-security-review.html).
 
 ## Superseded q16 production evidence (`2026-07-13`)
 

@@ -1,0 +1,90 @@
+{
+  "_publication_provenance": {
+    "derived_public_copy": true,
+    "source_artifact_sha256": "559a7be08bb109ba9b307e843e33ca92324f1e752ada75622b722ea91f5c6b7e",
+    "source_mode": "0444",
+    "transformations": [
+      "replaced operational filesystem locations with bundle-relative locations",
+      "omitted serialized cleanup transaction bytes"
+    ]
+  },
+  "artifact": "profile23_programdata_cleanup_preclose",
+  "compute_unit_price_micro_lamports": 0,
+  "disposable_program_id": "9kPpUknrRicMvaGa6zPNERGUYDj6fMvMR8PwMS3iFR6Z",
+  "exact_program_and_programdata_validated": true,
+  "expected_signature": "3ZsVsjAP4wtA6KM6PygR272Wy1tuxMR9c4Zy4A4YAnTNekuTpQeUCXa8DKnpyEY52bRL8HUjz5AcQpBk4Pw9vwNk",
+  "generated_at_utc": "2026-07-14T21:42:30.339757+00:00",
+  "last_valid_block_height": 411002271,
+  "maximum_cleanup_fee_lamports": 1000000,
+  "message_sha256": "70a2ad99ca1653901c1b530647576b91a8c7ecc6a1959db9c64fed9338ec0546",
+  "network_genesis_hash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+  "payer_pubkey": "6JLAQb2om9yxMru6KW7NeNxhpsoth9Ah3iTQHkTD67oc",
+  "postclose_evidence_path": "evidence/mainnet-cleanup.raw.public.json",
+  "prestate": {
+    "accounts": [
+      {
+        "address": "6JLAQb2om9yxMru6KW7NeNxhpsoth9Ah3iTQHkTD67oc",
+        "data_len": 0,
+        "data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "executable": false,
+        "lamports": 567886440,
+        "owner": "11111111111111111111111111111111",
+        "present": true,
+        "raw_account_image_sha256": "1f8ca2a8f4e58ea3358d7dfc9520d20f0bc79e540d8aa307952d6e607e0f156a"
+      },
+      {
+        "address": "9kPpUknrRicMvaGa6zPNERGUYDj6fMvMR8PwMS3iFR6Z",
+        "data_len": 36,
+        "data_sha256": "61a237891fff832b00917ee073aef1c6e3847c32f2cfb2c8a88b016ab694363c",
+        "executable": true,
+        "lamports": 1141440,
+        "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+        "present": true,
+        "raw_account_image_sha256": "12be3ac9ed5eae1a7326fb73693bbc943c2deb5189655954b10512b8d0372fc4"
+      },
+      {
+        "address": "G7XHkv6riJ8TQJ6R8o31wAUMaoL8Q5UyHGExpQ51ntp1",
+        "data_len": 921893,
+        "data_sha256": "7fe4c7352f19ed00a3ba72b3dc6038943db3e5311c23cd5c1b0f8dbb15c4cda2",
+        "executable": false,
+        "lamports": 6417266160,
+        "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+        "present": true,
+        "raw_account_image_sha256": "cdee0fb57bbb6577a9b380603508a2ddb7d1566de520afb203cdaff8960dc8ab"
+      },
+      {
+        "address": "nKPUvz9bj3XxxpmouXuiXj1DEv33zcVBk41ffJFGqhy",
+        "data_len": null,
+        "data_sha256": null,
+        "executable": null,
+        "lamports": null,
+        "owner": null,
+        "present": false,
+        "raw_account_image_sha256": null
+      }
+    ],
+    "context_slot": 432934194
+  },
+  "program_max_len": 921848,
+  "programdata_address": "G7XHkv6riJ8TQJ6R8o31wAUMaoL8Q5UyHGExpQ51ntp1",
+  "programdata_lamports": 6417266160,
+  "quoted_fee_lamports": 10000,
+  "recent_blockhash": "7y4J6jSTrBRHpX1GiqY5VTvifoGvPnWUse2D3Gb7wqDf",
+  "rpc_origin_redacted": "https://api.mainnet-beta.solana.com/<redacted>",
+  "sbf_bytes": 921848,
+  "sbf_path": "program/aspis_verifier.so",
+  "sbf_sha256": "97c45a9abef97607a2fc6ed245829210046b234044b6738599d2bce0c367d04a",
+  "signed_wire_bytes": 381,
+  "signed_wire_sha256": "6620213f14b54644f399cfcc5f8cef63ef0f9c759eab2f2a7aab766fe8dd48ab",
+  "simulation": {
+    "compute_units_consumed": 2520,
+    "context_slot": 432934194,
+    "error": null,
+    "exact_signed_wire_simulated": true,
+    "log_count": 5,
+    "logs_sha256": "c881875fe9e995b66b480a8319cdd3aac07e51cba871d9b0a2a49f1f05d84d94"
+  },
+  "submission_performed_when_written": false,
+  "top_level_instruction_count": 2,
+  "upgrade_authority": "nKPUvz9bj3XxxpmouXuiXj1DEv33zcVBk41ffJFGqhy"
+}

@@ -1,19 +1,19 @@
 {
-  "generated_at_utc": "2026-07-14T14:30:55.395292+00:00",
-  "command": "ASPIS_PROFILE23_PROOF=/Users/dominic/ZK/aspis/results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.bin ASPIS_PROFILE23_STATEMENT=/Users/dominic/ZK/aspis/results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.statement.json NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-profile23-acceptance",
+  "generated_at_utc": "2026-07-14T20:17:45.912715+00:00",
+  "command": "ASPIS_PROFILE23_PROOF=results/stage2/proofs/profile23_devnet_b1z_sequence0_q18_g37_production_authorizing_guarded_private.bin ASPIS_PROFILE23_STATEMENT=results/stage2/proofs/profile23_devnet_b1z_sequence0_q18_g37_production_authorizing_guarded_private.statement.json NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-profile23-acceptance",
   "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
   "instruction_wire_ordinal": 59,
-  "proof_path": "results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.bin",
+  "proof_path": "results/stage2/proofs/profile23_devnet_b1z_sequence0_q18_g37_production_authorizing_guarded_private.bin",
   "proof_source_override": true,
-  "proof_bytes": 66367,
-  "proof_sha256": "f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53",
+  "proof_bytes": 64447,
+  "proof_sha256": "d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d",
   "proof_unmined": false,
-  "statement_path": "results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.statement.json",
+  "statement_path": "results/stage2/proofs/profile23_devnet_b1z_sequence0_q18_g37_production_authorizing_guarded_private.statement.json",
   "statement_source_override": true,
-  "statement_sha256": "976e9a7e001382025eaf81cfcb28ac609db966d4a9912511f54e2b702077b6de",
-  "statement_pool_hex": "504c9d4be70ef96a37d9aff3d9fd1b5080726efd6596c54a12817fd2e2d9c67a",
+  "statement_sha256": "947a608c93487a634f37119bead8d61fe29e9cb6883493465d6fb35af27883c2",
+  "statement_pool_hex": "94d5641ee2e3891341b7f738f6b36087c184d828ea07463fe5e70d8c332d1051",
   "statement_sequence": 0,
-  "canonical_public_input_digest": "21d73e39be93112f986f52c7d683f2ab478890360a306af81110852ffb16a30a",
+  "canonical_public_input_digest": "b2d150dfcb6432c1b6f2e3892ee45a9aa5f393809d97c8292fea975b3da35fa3",
   "query_count": 18,
   "batch_grinding_bits": 37,
   "final_grinding_bits": 32,
@@ -32,80 +32,80 @@
   "default_tag59_fail_closed_host": true,
   "production_api_rejected_unmined_sbf": false,
   "production_api_accepted_mined_sbf": true,
-  "literal_simulation_cu": 1254429,
-  "headroom_under_1_4m_cu": 145571,
+  "literal_simulation_cu": 1246980,
+  "headroom_under_1_4m_cu": 153020,
   "markers": [
     {
       "label": "atomic59_instruction_start",
-      "remaining": 1398445,
+      "remaining": 1398452,
       "delta_from_previous": null
     },
     {
       "label": "atomic59_proof_loaded",
-      "remaining": 1397893,
-      "delta_from_previous": 552
+      "remaining": 1397887,
+      "delta_from_previous": 565
     },
     {
       "label": "atomic59_parsed",
-      "remaining": 1395915,
+      "remaining": 1395909,
       "delta_from_previous": 1978
     },
     {
       "label": "atomic59_transcript",
-      "remaining": 1243713,
-      "delta_from_previous": 152202
+      "remaining": 1243602,
+      "delta_from_previous": 152307
     },
     {
       "label": "atomic59_terminal",
-      "remaining": 861583,
-      "delta_from_previous": 382130
+      "remaining": 861370,
+      "delta_from_previous": 382232
     },
     {
       "label": "atomic59_relation",
-      "remaining": 673986,
-      "delta_from_previous": 187597
+      "remaining": 673797,
+      "delta_from_previous": 187573
     },
     {
       "label": "atomic59_openings",
-      "remaining": 456790,
-      "delta_from_previous": 217196
+      "remaining": 464270,
+      "delta_from_previous": 209527
     },
     {
       "label": "atomic59_layer0_queries",
-      "remaining": 251548,
-      "delta_from_previous": 205242
+      "remaining": 259043,
+      "delta_from_previous": 205227
     },
     {
       "label": "atomic59_later_queries",
-      "remaining": 146117,
-      "delta_from_previous": 105431
+      "remaining": 153566,
+      "delta_from_previous": 105477
     },
     {
       "label": "atomic59_core_complete",
-      "remaining": 145899,
+      "remaining": 153348,
       "delta_from_previous": 218
     },
     {
       "label": "atomic59_done",
-      "remaining": 145630,
+      "remaining": 153079,
       "delta_from_previous": 269
     }
   ],
   "ledger": {
-    "transaction_setup_cu": 1555,
-    "proof_load_cu": 552,
+    "transaction_setup_cu": 1548,
+    "proof_load_cu": 565,
     "parsed_cu": 1978,
-    "transcript_cu": 152202,
-    "terminal_cu": 382130,
-    "relation_cu": 187597,
-    "openings_cu": 217196,
-    "layer0_queries_cu": 205242,
-    "later_queries_cu": 105431,
+    "transcript_cu": 152307,
+    "terminal_cu": 382232,
+    "relation_cu": 187573,
+    "openings_cu": 209527,
+    "layer0_queries_cu": 205227,
+    "later_queries_cu": 105477,
     "completion_cu": 218,
     "wrapper_return_cu": 269,
     "post_last_marker_cu": 59,
-    "reconciled_total_cu": 1254429,
-    "formula": "1555 + 552 + 1978 + 152202 + 382130 + 187597 + 217196 + 205242 + 105431 + 218 + 269 + 59"
+    "reconciled_total_cu": 1246980,
+    "formula": "1548 + 565 + 1978 + 152307 + 382232 + 187573 + 209527 + 205227 + 105477 + 218 + 269 + 59"
   },
   "production_mutation_enabled": false,
   "notes": [
@@ -113,6 +113,6 @@
     "All five Merkle sections authenticate value||salt32 records. Salts are not transcript messages; their roots bind them before downstream challenges.",
     "The ASPIS_PROFILE23_PROOF override supplied a mined proof; production host and SBF tag59 both accepted it without a PoW bypass.",
     "ASPIS_PROFILE23_STATEMENT supplied an exact-schema canonical public-statement sidecar; its path, byte SHA-256, pool, sequence, and transcript public-input digest are pinned in this artifact.",
-    "Tags60/61 remain feature-gated; production mutation stays disabled until the complete-view HVZK audit and mined tag60 KAT are green."
+    "Tags60/61 remain feature-gated; production mutation stays disabled until the complete-view HVZK audit and mined tag65 KAT are green."
   ]
 }

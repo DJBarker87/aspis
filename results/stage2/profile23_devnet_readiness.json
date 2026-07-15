@@ -1,6 +1,6 @@
 {
   "artifact": "profile23_devnet_readiness",
-  "generated_at_utc": "2026-07-14T15:14:11.239806+00:00",
+  "generated_at_utc": "2026-07-14T20:47:36.633278+00:00",
   "mode": "read_only",
   "mutations_performed": false,
   "ready": true,
@@ -9,25 +9,25 @@
   "rpc_origin_redacted": "https://api.devnet.solana.com/<redacted>",
   "program_id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
   "payer_pubkey": "8AFmGcC2azHYGJz1VrDb8qJbCYdhVBTM5GE6TTSY3W2k",
-  "pool_pubkey": "6QTNhChQjQpzL32gdtzR9RBdjZUSR3bQhNS3eTkgM6Fj",
-  "proof_account_pubkey": "HTSueSgUJxDbzjjtbeYJcLUzFajb2U3w1SNN25SWiknh",
-  "proof_sha256": "f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53",
-  "sbf_sha256": "da66a51b1f3ce95e907a87fca15fb9dc0cce66fd47646875ce2dff94879fd254",
-  "release_sha256": "b02eae619f685449a84095243f5d07be78f91ca7df67b435fb2c12aef8f39fcf",
-  "statement_sha256": "976e9a7e001382025eaf81cfcb28ac609db966d4a9912511f54e2b702077b6de",
-  "nullifier_address": "AbWC9vKT7mxRNLeCnFrfi9HFsncF73XfG9TnbJS2jXHy",
+  "pool_pubkey": "B1z4gQ82xerghDKZ68HuP2Tehx5ER5mfVHq74y4ew3kk",
+  "proof_account_pubkey": "8ejYPvDfVQFK7u2LfFAHw1xvZh2Dwpep1dRxvt5kqHB6",
+  "proof_sha256": "d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d",
+  "sbf_sha256": "97c45a9abef97607a2fc6ed245829210046b234044b6738599d2bce0c367d04a",
+  "release_sha256": "d83f6df645a00f28090e78f8648974ec94afd35f4677f5d84525ba6af7a2688f",
+  "statement_sha256": "947a608c93487a634f37119bead8d61fe29e9cb6883493465d6fb35af27883c2",
+  "nullifier_address": "HCzyHWuraY4VZvY82GmbfRz6q4BhvdfXBGL1bj54ffhi",
   "program_already_deployed": true,
   "rent_budget": {
     "program_buffer_lamports": 6444438000,
     "programdata_lamports": 6444493680,
     "program_account_lamports": 1141440,
     "pool_account_lamports": 1224960,
-    "proof_account_lamports": 463083600,
+    "proof_account_lamports": 449720400,
     "nullifier_account_lamports": 1392000,
     "fee_reserve_lamports": 100000000,
-    "conservative_required_lamports": 565700560,
-    "payer_balance_lamports": 18760794196,
-    "surplus_lamports": 18195093636
+    "conservative_required_lamports": 552337360,
+    "payer_balance_lamports": 18289978596,
+    "surplus_lamports": 17737641236
   },
   "gates": [
     {
@@ -73,7 +73,7 @@
     {
       "name": "release_certificate_nonempty_all_declared_gates_green",
       "passed": true,
-      "evidence": "gate_count=Some(35), green_gate_count=Some(35), released=true"
+      "evidence": "gate_count=Some(36), green_gate_count=Some(36), released=true"
     },
     {
       "name": "release_certificate_matches_live_read_only_evaluation",
@@ -88,12 +88,12 @@
     {
       "name": "explicit_proof_matches_release_instance",
       "passed": true,
-      "evidence": "path=results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.bin, bytes=Some(66367), sha256=f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53"
+      "evidence": "path=results/stage2/proofs/profile23_devnet_b1z_sequence0_q18_g37_production_authorizing_guarded_private.bin, bytes=Some(64447), sha256=d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d"
     },
     {
       "name": "explicit_statement_matches_release_instance",
       "passed": true,
-      "evidence": "path=results/stage2/proofs/profile23_devnet_sequence0_q18_g37_production_authorizing_guarded_private.statement.json, bytes=Some(667), sha256=976e9a7e001382025eaf81cfcb28ac609db966d4a9912511f54e2b702077b6de, pool=504c9d4be70ef96a37d9aff3d9fd1b5080726efd6596c54a12817fd2e2d9c67a, sequence=0, digest=21d73e39be93112f986f52c7d683f2ab478890360a306af81110852ffb16a30a"
+      "evidence": "path=results/stage2/proofs/profile23_devnet_b1z_sequence0_q18_g37_production_authorizing_guarded_private.statement.json, bytes=Some(667), sha256=947a608c93487a634f37119bead8d61fe29e9cb6883493465d6fb35af27883c2, pool=94d5641ee2e3891341b7f738f6b36087c184d828ea07463fe5e70d8c332d1051, sequence=0, digest=b2d150dfcb6432c1b6f2e3892ee45a9aa5f393809d97c8292fea975b3da35fa3"
     },
     {
       "name": "release_instance_selector_is_live_least_good",
@@ -118,17 +118,17 @@
     {
       "name": "explicit_sbf_matches_release",
       "passed": true,
-      "evidence": "sha256=Some(\"da66a51b1f3ce95e907a87fca15fb9dc0cce66fd47646875ce2dff94879fd254\")"
+      "evidence": "sha256=Some(\"97c45a9abef97607a2fc6ed245829210046b234044b6738599d2bce0c367d04a\")"
     },
     {
       "name": "program_max_len_explicit_and_sufficient",
       "passed": true,
-      "evidence": "max_len=925760, sbf_len=Some(915656)"
+      "evidence": "max_len=925760, sbf_len=Some(921848)"
     },
     {
       "name": "fresh_pool_known_before_proof_and_release",
       "passed": true,
-      "evidence": "pool_pubkey=Some(6QTNhChQjQpzL32gdtzR9RBdjZUSR3bQhNS3eTkgM6Fj), sidecar_sha256=Some(\"976e9a7e001382025eaf81cfcb28ac609db966d4a9912511f54e2b702077b6de\")"
+      "evidence": "pool_pubkey=Some(B1z4gQ82xerghDKZ68HuP2Tehx5ER5mfVHq74y4ew3kk), sidecar_sha256=Some(\"947a608c93487a634f37119bead8d61fe29e9cb6883493465d6fb35af27883c2\")"
     },
     {
       "name": "program_absent_or_exact_release_deployment",
@@ -138,32 +138,32 @@
     {
       "name": "fresh_pool_account_absent_or_exact_explicit_resume",
       "passed": true,
-      "evidence": "pool=Some(6QTNhChQjQpzL32gdtzR9RBdjZUSR3bQhNS3eTkgM6Fj), resume=true, checkpoint=Some(\"pool_initialized_proof_account_created_zeroed\"), resume_error=None"
+      "evidence": "pool=Some(B1z4gQ82xerghDKZ68HuP2Tehx5ER5mfVHq74y4ew3kk), resume=false, checkpoint=None, resume_error=None"
     },
     {
       "name": "fresh_proof_account_absent_or_exact_explicit_resume",
       "passed": true,
-      "evidence": "proof_account=Some(HTSueSgUJxDbzjjtbeYJcLUzFajb2U3w1SNN25SWiknh), resume=true, resume_error=None"
+      "evidence": "proof_account=Some(8ejYPvDfVQFK7u2LfFAHw1xvZh2Dwpep1dRxvt5kqHB6), resume=false, resume_error=None"
     },
     {
       "name": "canonical_nullifier_absent_or_prefunded_compatible",
       "passed": true,
-      "evidence": "address=Some(AbWC9vKT7mxRNLeCnFrfi9HFsncF73XfG9TnbJS2jXHy), observed=false"
+      "evidence": "address=Some(HCzyHWuraY4VZvY82GmbfRz6q4BhvdfXBGL1bj54ffhi), observed=false"
     },
     {
       "name": "explicit_solana_cli_executable",
       "passed": true,
-      "evidence": "path=/Users/dominic/.local/share/solana/install/active_release/bin/solana"
+      "evidence": "path=<redacted-local-solana-cli>/solana"
     },
     {
       "name": "evidence_path_fresh_or_exact_explicit_resume_marker",
       "passed": true,
-      "evidence": "path=/Users/dominic/.config/solana/aspis-profile23-devnet-20260713T223212Z/profile23-devnet-q18-g37-finalized.json, resume=true"
+      "evidence": "path=results/stage2/profile23_devnet_tag65_fresh_20260714.json, resume=false"
     },
     {
       "name": "payer_covers_conservative_rent_and_fees",
       "passed": true,
-      "evidence": "balance=Some(18760794196), required=Some(565700560), surplus=Some(18195093636)"
+      "evidence": "balance=Some(18289978596), required=Some(552337360), surplus=Some(17737641236)"
     }
   ],
   "blockers": [],

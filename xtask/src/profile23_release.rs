@@ -167,7 +167,7 @@ pub struct Profile23OneTransactionRelease {
     pub released: bool,
     pub scope: ReleaseScope,
     pub compute_unit_limit: u64,
-    pub max_literal_production_tag60_cu: Option<u64>,
+    pub max_literal_production_tag65_cu: Option<u64>,
     pub exact_headroom_under_1_4m_cu: Option<i64>,
     /// The selected Profile23 union ledger after the factor-40 release
     /// sensitivity. This is the primary soundness number.
@@ -1664,34 +1664,34 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> Profile23OneTransactionRelease {
     );
 
     let baseline_fail_closed = bool_at(acceptance, "/default_tag59_fail_closed_host") == Some(true)
-        && bool_at(mutation, "/default_tag60_fail_closed_host") == Some(true);
+        && bool_at(mutation, "/default_tag65_fail_closed_host") == Some(true);
     add_gate(
         &mut gates,
         "no_default_host_dependencies_fail_closed",
         baseline_fail_closed,
         format!(
-            "tag59_no-default={:?}, tag60_no-default={:?}",
+            "tag59_no-default={:?}, tag65_no-default={:?}",
             bool_at(acceptance, "/default_tag59_fail_closed_host"),
-            bool_at(mutation, "/default_tag60_fail_closed_host")
+            bool_at(mutation, "/default_tag65_fail_closed_host")
         ),
     );
 
     let committed_unmined_controls = bool_at(mutation, "/production_only_unmined_tag59_rejected")
         == Some(true)
-        && bool_at(mutation, "/production_only_unmined_tag60_rejected") == Some(true)
-        && bool_at(mutation, "/production_only_unmined_tag60_rollback_green") == Some(true)
+        && bool_at(mutation, "/production_only_unmined_tag65_rejected") == Some(true)
+        && bool_at(mutation, "/production_only_unmined_tag65_rollback_green") == Some(true)
         && bool_at(mutation, "/production_pow_bypass_exposed") == Some(false);
     add_gate(
         &mut gates,
         "production_committed_unmined_negative_controls",
         committed_unmined_controls,
         format!(
-            "tag59_rejected={:?}, tag60_rejected={:?}, tag60_rollback={:?}, pow_bypass_exposed={:?}",
+            "tag59_rejected={:?}, tag65_rejected={:?}, tag65_rollback={:?}, pow_bypass_exposed={:?}",
             bool_at(mutation, "/production_only_unmined_tag59_rejected"),
-            bool_at(mutation, "/production_only_unmined_tag60_rejected"),
+            bool_at(mutation, "/production_only_unmined_tag65_rejected"),
             bool_at(
                 mutation,
-                "/production_only_unmined_tag60_rollback_green"
+                "/production_only_unmined_tag65_rollback_green"
             ),
             bool_at(mutation, "/production_pow_bypass_exposed")
         ),
@@ -1706,7 +1706,7 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> Profile23OneTransactionRelease {
         marker_paths == vec!["canonical_system_owned_create", "program_owned_zeroed"];
     add_gate(
         &mut gates,
-        "exactly_two_production_tag60_marker_paths",
+        "exactly_two_production_tag65_marker_paths",
         production_paths.len() == 2 && exact_marker_paths,
         format!(
             "count={}, marker_paths={marker_paths:?}",
@@ -1734,18 +1734,59 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> Profile23OneTransactionRelease {
         ),
     );
 
+    let legacy_tag60 = mutation.pointer("/production_legacy_tag60_compatibility");
+    let legacy_tag60_compatibility = legacy_tag60.is_some_and(|legacy| {
+        u64_at(legacy, "/instruction_wire_ordinal") == Some(60)
+            && all_true(
+                legacy,
+                &[
+                    "/isolated_local_validator_lifecycle",
+                    "/proof_meta_read_only",
+                    "/proof_meta_non_signer",
+                    "/proof_finalized_before_transition",
+                    "/committed_transition_succeeded",
+                    "/pool_sequence_advanced_exactly_once",
+                    "/pool_anchor_replaced",
+                    "/nullifier_marker_absent_before",
+                    "/nullifier_marker_written_exactly",
+                    "/duplicate_rejected_as_already_spent",
+                    "/duplicate_rejected_without_second_mutation",
+                    "/proof_owner_retained",
+                    "/proof_data_retained_bit_for_bit",
+                    "/proof_lamports_retained",
+                    "/proof_account_retained_exactly",
+                ],
+            )
+            && str_at(legacy, "/proof_owner_before") == str_at(legacy, "/proof_owner_after")
+            && str_at(legacy, "/proof_data_sha256_before")
+                == str_at(legacy, "/proof_data_sha256_after")
+            && u64_at(legacy, "/proof_lamports_before") == u64_at(legacy, "/proof_lamports_after")
+    });
+    add_gate(
+        &mut gates,
+        "legacy_tag60_readonly_proof_abi_and_retention",
+        legacy_tag60_compatibility,
+        format!(
+            "legacy tag60 artifact present={}, exact readonly/non-signer ABI and proof retention={legacy_tag60_compatibility}",
+            legacy_tag60.is_some()
+        ),
+    );
+
     let path_acceptance = production_paths.iter().all(|path| {
         bool_at(path, "/production_tag59_accepted_mined_sbf") == Some(true)
-            && bool_at(path, "/production_tag60_clean_simulation_accepted") == Some(true)
-    }) && bool_at(mutation, "/candidate_tag60_accepts_mined_sbf")
+            && bool_at(path, "/production_tag65_clean_simulation_accepted") == Some(true)
+            && bool_at(path, "/production_tag65_simulation_proof_sha256_log_exact") == Some(true)
+            && str_at(path, "/production_tag65_simulation_logged_proof_sha256")
+                == str_at(mutation, "/proof_sha256")
+    }) && bool_at(mutation, "/candidate_tag65_accepts_mined_sbf")
         == Some(true);
     add_gate(
         &mut gates,
-        "production_tag60_acceptance_teeth",
+        "production_tag65_acceptance_teeth",
         production_paths.len() == 2 && path_acceptance,
         format!(
-            "candidate_accepts={:?}, all tag59/tag60 path acceptances={path_acceptance}",
-            bool_at(mutation, "/candidate_tag60_accepts_mined_sbf")
+            "candidate_accepts={:?}, all tag59/tag65 path acceptances={path_acceptance}",
+            bool_at(mutation, "/candidate_tag65_accepts_mined_sbf")
         ),
     );
 
@@ -1754,7 +1795,7 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> Profile23OneTransactionRelease {
     });
     add_gate(
         &mut gates,
-        "production_tag60_rollback_teeth",
+        "production_tag65_rollback_teeth",
         production_paths.len() == 2 && rollback_teeth,
         format!("all corrupt-proof transaction rollbacks={rollback_teeth}"),
     );
@@ -1764,6 +1805,7 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> Profile23OneTransactionRelease {
             path,
             &[
                 "/committed_transition_succeeded",
+                "/proof_account_absent_after_success",
                 "/pool_sequence_advanced_once",
                 "/pool_anchor_replaced",
                 "/nullifier_marker_written",
@@ -1772,7 +1814,7 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> Profile23OneTransactionRelease {
     });
     add_gate(
         &mut gates,
-        "production_tag60_commit_teeth",
+        "production_tag65_commit_teeth",
         production_paths.len() == 2 && commit_teeth,
         format!("all transition/pool/anchor/nullifier commit teeth={commit_teeth}"),
     );
@@ -1782,7 +1824,7 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> Profile23OneTransactionRelease {
         .all(|path| bool_at(path, "/duplicate_rejected_without_second_mutation") == Some(true));
     add_gate(
         &mut gates,
-        "production_tag60_duplicate_teeth",
+        "production_tag65_duplicate_teeth",
         production_paths.len() == 2 && duplicate_teeth,
         format!("all duplicate rejection teeth={duplicate_teeth}"),
     );
@@ -1801,7 +1843,7 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> Profile23OneTransactionRelease {
             .any(|(path, green)| *path == Some("canonical_system_owned_create") && *green);
     add_gate(
         &mut gates,
-        "production_tag60_race_tooth",
+        "production_tag65_race_tooth",
         race_teeth,
         format!("exercised_races={exercised_races:?}"),
     );
@@ -1911,40 +1953,40 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> Profile23OneTransactionRelease {
         ),
     );
 
-    let max_tag60_cu = production_paths
+    let max_tag65_cu = production_paths
         .iter()
-        .filter_map(|path| u64_at(path, "/literal_tag60_simulation_cu"))
+        .filter_map(|path| u64_at(path, "/literal_tag65_simulation_cu"))
         .max();
     let cu_ledgers_reconcile = production_paths.iter().all(|path| {
         let literal_tag59 = u64_at(path, "/literal_tag59_simulation_cu");
-        let literal_tag60 = u64_at(path, "/literal_tag60_simulation_cu");
+        let literal_tag65 = u64_at(path, "/literal_tag65_simulation_cu");
         let ledger_tag59 = u64_at(path, "/ledger/production_read_only_tag59_cu");
-        let ledger_increment = i64_at(path, "/ledger/production_tag60_increment_over_tag59_cu");
+        let ledger_increment = i64_at(path, "/ledger/production_tag65_increment_over_tag59_cu");
         let expected_increment = literal_tag59
-            .zip(literal_tag60)
-            .and_then(|(tag59, tag60)| i64::try_from(i128::from(tag60) - i128::from(tag59)).ok());
+            .zip(literal_tag65)
+            .and_then(|(tag59, tag65)| i64::try_from(i128::from(tag65) - i128::from(tag59)).ok());
         literal_tag59.is_some()
-            && literal_tag60.is_some()
+            && literal_tag65.is_some()
             && literal_tag59 == ledger_tag59
             && ledger_increment == expected_increment
-            && literal_tag60 == u64_at(path, "/ledger/production_tag60_total_cu")
-            && literal_tag60 == u64_at(path, "/ledger/reconciled_total_cu")
+            && literal_tag65 == u64_at(path, "/ledger/production_tag65_total_cu")
+            && literal_tag65 == u64_at(path, "/ledger/reconciled_total_cu")
             && i64_at(path, "/headroom_under_1_4m_cu")
-                == literal_tag60.map(|cu| CU_LIMIT as i64 - cu as i64)
+                == literal_tag65.map(|cu| CU_LIMIT as i64 - cu as i64)
     });
     add_gate(
         &mut gates,
-        "production_tag60_cu_ledgers_reconcile",
+        "production_tag65_cu_ledgers_reconcile",
         production_paths.len() == 2 && cu_ledgers_reconcile,
         format!(
-            "all exact tag59/tag60/increment/reconciled/headroom identities={cu_ledgers_reconcile}"
+            "all exact tag59/tag65/increment/reconciled/headroom identities={cu_ledgers_reconcile}"
         ),
     );
     add_gate(
         &mut gates,
-        "production_tag60_under_1_4m_cu",
-        max_tag60_cu.is_some_and(|cu| cu <= CU_LIMIT),
-        format!("max_literal_production_tag60_cu={max_tag60_cu:?}, limit={CU_LIMIT}"),
+        "production_tag65_under_1_4m_cu",
+        max_tag65_cu.is_some_and(|cu| cu <= CU_LIMIT),
+        format!("max_literal_production_tag65_cu={max_tag65_cu:?}, limit={CU_LIMIT}"),
     );
 
     let production_tag59_baselines = production_paths
@@ -1958,7 +2000,7 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> Profile23OneTransactionRelease {
     let same_measurement_context = str_at(acceptance, "/validator_version")
         == str_at(mutation, "/validator_version")
         && u64_at(acceptance, "/instruction_wire_ordinal") == Some(59)
-        && u64_at(mutation, "/production_instruction_wire_ordinal") == Some(60)
+        && u64_at(mutation, "/production_instruction_wire_ordinal") == Some(65)
         && u64_at(mutation, "/diagnostic_instruction_wire_ordinal") == Some(61)
         && u64_at(mutation, "/finalize_proof_instruction_wire_ordinal") == Some(62)
         && production_tag59_baseline_matches;
@@ -2332,8 +2374,8 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> Profile23OneTransactionRelease {
             ],
         },
         compute_unit_limit: CU_LIMIT,
-        max_literal_production_tag60_cu: max_tag60_cu,
-        exact_headroom_under_1_4m_cu: max_tag60_cu
+        max_literal_production_tag65_cu: max_tag65_cu,
+        exact_headroom_under_1_4m_cu: max_tag65_cu
             .map(|cu| CU_LIMIT as i64 - cu as i64),
         selected_soundness_floor_bits: selected_soundness,
         coarse_whole_soundness_floor_bits: coarse_soundness,
@@ -2364,7 +2406,7 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> Profile23OneTransactionRelease {
             "This certificate is fail-closed: released=true only when every listed gate passes in one evaluation.",
             "Soundness and complete-Good are proof-independent theorem artifacts; their exact files are bound by SHA-256 and their layout/Good identities are checked against live code.",
             "The production proof and canonical public-statement sidecar are read directly; their identities must agree with both acceptance and mutation, and the exact pair must pass the production host verifier plus the live three-branch least-Good replay.",
-            "Historical concrete-proof fields under the static HVZK artifact's complete_public_view and production_release objects are retained only as non-authorizing regression metadata; they are not theorem assumptions and cannot authorize this release instance.",
+            "Concrete-proof KAT fields under the static HVZK artifact's complete_public_view object are non-authorizing regression metadata; production_release explicitly omits duplicated concrete identities, and neither object can authorize this release instance.",
             "The release command removes and freshly rebuilds the plain manifest-default SBF before comparing it with the explicit production-alias KAT; proof-account creation and chunk uploads remain outside this one-transaction CU claim.",
         ],
     }
@@ -2858,12 +2900,12 @@ mod tests {
     }
 
     #[test]
-    fn historical_hvzk_fixture_fields_do_not_authorize_the_instance() {
+    fn non_authorizing_hvzk_fixture_fields_do_not_authorize_the_instance() {
         let mut loaded = loaded_artifacts();
         loaded.hvzk["complete_public_view"]["proof_sha256_production"] =
             Value::String("00".repeat(32));
         loaded.hvzk["complete_public_view"]["proof_bytes_production"] = Value::from(0);
-        loaded.hvzk["production_release"]["canonically_mined_tag60_host_sbf_kat_green"] =
+        loaded.hvzk["production_release"]["canonically_mined_tag65_host_sbf_kat_green"] =
             Value::Bool(false);
         let report = evaluate_loaded(loaded);
         assert!(gate(&report, "production_proof_identity_matches").passed);
@@ -2899,18 +2941,18 @@ mod tests {
     }
 
     #[test]
-    fn production_ledgers_bind_tag59_tag60_and_the_signed_increment() {
+    fn production_ledgers_bind_tag59_tag65_and_the_signed_increment() {
         let mut loaded = loaded_artifacts();
         let path = |marker_path: &str| {
             json!({
                 "marker_path": marker_path,
                 "literal_tag59_simulation_cu": 1_200_000,
-                "literal_tag60_simulation_cu": 1_210_000,
+                "literal_tag65_simulation_cu": 1_210_000,
                 "headroom_under_1_4m_cu": 190_000,
                 "ledger": {
                     "production_read_only_tag59_cu": 1_200_000,
-                    "production_tag60_increment_over_tag59_cu": 10_000,
-                    "production_tag60_total_cu": 1_210_000,
+                    "production_tag65_increment_over_tag59_cu": 10_000,
+                    "production_tag65_total_cu": 1_210_000,
                     "reconciled_total_cu": 1_210_000
                 }
             })
@@ -2922,17 +2964,17 @@ mod tests {
         assert!(
             gate(
                 &evaluate_loaded(loaded.clone()),
-                "production_tag60_cu_ledgers_reconcile"
+                "production_tag65_cu_ledgers_reconcile"
             )
             .passed
         );
 
         loaded.mutation["production_paths"][0]["ledger"]
-            ["production_tag60_increment_over_tag59_cu"] = Value::from(9_999);
+            ["production_tag65_increment_over_tag59_cu"] = Value::from(9_999);
         assert!(
             !gate(
                 &evaluate_loaded(loaded),
-                "production_tag60_cu_ledgers_reconcile"
+                "production_tag65_cu_ledgers_reconcile"
             )
             .passed
         );

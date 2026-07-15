@@ -4,8 +4,8 @@
 the declared SHA-256 ROM/EPRO and fixed public release-channel model. This is
 not statistical HVZK, not a standard-model SHA-256 PRG claim, and not a local
 hardware/OS side-channel claim. The proof-independent closure, canonically
-mined q18 production repin, tag-59/tag-60 host/SBF KATs, and local
-one-transaction release are green with `35/35` gates. The `2026-07-13`
+mined q18 production repin, tag59/tag65 host/SBF KATs, and local
+one-transaction release are green with `36/36` gates. The `2026-07-13`
 q16/cap16 release is superseded historical evidence.**
 
 ## Exact claim
@@ -282,7 +282,7 @@ The exact finalized proof-account frame is
 
 The unchanged 40-byte header carries the upload authority before finalization.
 `FinalizeProof`, authorized by that stored authority, replaces bytes `8..40`
-with the all-zero finalized sentinel. Production tags 59 and 60 require that
+with the all-zero finalized sentinel. Production tag59 and tag65 require that
 sentinel. This is a deterministic public transition on the simulated proof
 account, so it adds no hidden input and no EPRO term. Successful atomic
 mutation likewise adds no private field: conditional on the public statement
@@ -298,13 +298,13 @@ witness-dependent leak. The fixture audit accepts all three Good23 selector
 branches and confirms that serialized selector `0` is the required least Good
 branch.
 
-The released canonically mined q18 production proof is 66,367 bytes with
+The released canonically mined q18 production proof is 64,447 bytes with
 SHA-256
-`f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53`.
+`d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d`.
 Its canonical statement sidecar has SHA-256
-`976e9a7e001382025eaf81cfcb28ac609db966d4a9912511f54e2b702077b6de`.
+`947a608c93487a634f37119bead8d61fe29e9cb6883493465d6fb35af27883c2`.
 Its canonical public-input digest is
-`21d73e39be93112f986f52c7d683f2ab478890360a306af81110852ffb16a30a`.
+`b2d150dfcb6432c1b6f2e3892ee45a9aa5f393809d97c8292fea975b3da35fa3`.
 The production replay likewise accepts all three Good23 branches and confirms
 serialized and least-Good selector `0`.
 
@@ -345,19 +345,19 @@ Profile23 computational complete-view hiding       green in declared ROM/EPRO
 statistical HVZK                                    not claimed
 standard-model SHA-256 PRG security                not claimed
 filesystem/timing/power/thermal/memory/remote traffic ZK  not claimed
-q18 default production tag/mutation                green in local 35/35 release
+q18 default production tag/mutation                green in local 36/36 release
 ```
 
 The q18 theorem artifact does not enable production by itself. The separate
 engineering gates now bind the mined proof and statement above, production
-tag-59/tag-60 host and SBF acceptance/mutation replay on both marker paths,
+tag59/tag65 host and SBF acceptance/mutation replay on both marker paths,
 fresh default-SBF identity, and exact CU reconciliation.
 `results/stage2/profile23_one_transaction_release.json` records
-`released=true`, `status=released_all_required_gates_green`, and `35/35`
-passing gates. Its fresh 915,656-byte default SBF has SHA-256
-`da66a51b1f3ce95e907a87fca15fb9dc0cce66fd47646875ce2dff94879fd254`.
-Tag 59 costs `1,310,162 CU`; tag 60 costs `1,312,055 CU` on the program-owned
-marker path and `1,314,386 CU` on canonical System creation, leaving `85,614
+`released=true`, `status=released_all_required_gates_green`, and `36/36`
+passing gates. Its fresh 921,848-byte default SBF has SHA-256
+`97c45a9abef97607a2fc6ed245829210046b234044b6738599d2bce0c367d04a`.
+Tag59 costs `1,303,642 CU`; tag65 costs `1,338,471 CU` on the program-owned
+marker path and `1,340,803 CU` on canonical System creation, leaving `59,197
 CU` of worst-path headroom below 1.4M. The same certificate binds the
 conservative soundness floor at `100.16144938287455` bits, alongside the
 declared-model hiding floors proved
@@ -370,9 +370,12 @@ the all-zero authority sentinel. Proof-account creation, chunk upload, and
 proof accounts, append-only tag 63 initializes pools, and the configured local
 program id is `7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue`; this address is
 not deployment evidence. The green certificate is local release evidence, not
-a mainnet deployment or an external security audit; those remain separate
-blockers. The q18 fresh-attempt rerandomization regression remains pending as
-stated above and is not inferred from the release KATs.
+mainnet or external-audit evidence. The finalized mainnet execution and audit
+status are recorded separately in
+[`profile23-mainnet-demo.md`](profile23-mainnet-demo.md) and the
+[prepublication security review](reviews/profile23-prepublication-security-review.html).
+The q18 fresh-attempt rerandomization regression remains pending as stated
+above and is not inferred from the release KATs.
 
 ## Superseded q16 integration evidence (`2026-07-13`)
 

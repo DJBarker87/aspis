@@ -1,0 +1,31 @@
+{
+  "artifact": "profile23_mainnet_refund_sweep_finalized_receipt_v1",
+  "generated_at_utc": "2026-07-14T21:53:27Z",
+  "network": "mainnet-beta",
+  "genesis_hash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+  "signature": "2o49MBB2GHRe3ECrDpnrUpmk3DwpfsFHJ7AuTJXp1BcV9EJMGdYFUEeQrxi7yYiehreP8RUa8tiKZQUNAigjwygZ",
+  "finalized_slot": 432934316,
+  "block_time_unix": 1784065386,
+  "block_time_utc": "2026-07-14T21:43:06Z",
+  "status": "finalized_success",
+  "payer": "6JLAQb2om9yxMru6KW7NeNxhpsoth9Ah3iTQHkTD67oc",
+  "refund_destination": "Dni6HwfsjJ3sQFTEtKVGL6RgE7zAXnKA7K8MLBBm2RZp",
+  "transfer_lamports": 6985137600,
+  "fee_lamports": 5000,
+  "payer_pre_lamports": 6985142600,
+  "payer_post_lamports": 0,
+  "refund_destination_pre_lamports": 427901051258,
+  "refund_destination_post_lamports": 434886188858,
+  "payer_pre_equals_transfer_plus_fee": true,
+  "destination_delta_equals_transfer": true,
+  "compute_units_consumed": 450,
+  "compute_unit_price_micro_lamports": 0,
+  "independent_finalized_reconciliation": {
+    "official_solana_rpc": true,
+    "publicnode_rpc": true,
+    "first_signature_matches_requested_signature": true,
+    "slot_and_block_time_match": true,
+    "balances_and_fee_match": true
+  },
+  "payer_absent_at_publicnode_finalized_context_slot_432935278": true
+}

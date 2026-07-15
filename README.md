@@ -1,51 +1,63 @@
 # Aspis
 
-Aspis is a transparent, trusted-setup-free proof system for a shielded-spend
-statement on Solana. Profile 23 verifies a finalized, pre-uploaded proof and
-atomically advances pool state and records the nullifier in one transaction.
+Aspis is a transparent, trusted-setup-free argument system for a shielded-spend
+relation on Solana. Profile 23 verifies a finalized, pre-uploaded proof and, in
+the same transaction, advances the pool state, records the nullifier, and
+refunds the proof-account rent.
 
-[Paper](paper/profile23/profile23.pdf) ·
-[Frozen release](release/profile23-q18-g37/) ·
-[Reproduction guide](paper/profile23/artifact/README.md) ·
-[Devnet transaction](https://explorer.solana.com/tx/3ofPbzRkqMEJZCM9vwKz96rLqRFtSg4d1GyqqVBEbogtwzmJodsWb2f7V4X83BLvuPXFsT6Yyf87PC1ZbLf1R7bx?cluster=devnet)
+[Paper](paper/profile23-mainnet-v1/profile23.pdf) ·
+[Mainnet release](release/profile23-q18-g37-mainnet-v1/) ·
+[Mainnet evidence](docs/profile23-mainnet-demo.md) ·
+[Prepublication review](docs/reviews/profile23-prepublication-security-review.html) ·
+[Devnet rehearsal](docs/profile23-devnet-rehearsal.md)
 
-## Profile 23 result
+## Mainnet result
 
-| Result | Value |
+The exact q18/g37 release was executed successfully on Solana mainnet-beta on
+14 July 2026. The verification transaction finalized at slot `432933949`,
+consumed `1,343,749` of `1,400,000` requested compute units, advanced the pool
+sequence from 0 to 1, created the canonical nullifier marker, and refunded the
+proof account's `449,720,400` lamports.
+
+[Official Explorer (mainnet-beta)](https://explorer.solana.com/tx/4Er5afhxfcFmpeTuFqEeNQEbCBri3pkc6ymx7ST5wfNpSBYwQDHA9DtCuDBpD5WuEDXs7ozL3sK5msc6QWE4q9Fo?cluster=mainnet-beta) ·
+[Solscan (mainnet)](https://solscan.io/tx/4Er5afhxfcFmpeTuFqEeNQEbCBri3pkc6ymx7ST5wfNpSBYwQDHA9DtCuDBpD5WuEDXs7ozL3sK5msc6QWE4q9Fo?cluster=mainnet)
+
+| Released result | Value |
 | --- | ---: |
-| Release certificate | [35/35 gates](results/stage2/profile23_one_transaction_release.json) |
+| Release certificate | [36/36 gates](results/stage2/profile23_one_transaction_release.json) |
 | Query and grinding profile | q18, batch g37 |
-| Conservative soundness floor | 100.161449 bits |
+| Conditional work-normalized soundness floor | 100.161449 bits |
 | Pairwise-witness hiding | 103.024922 bits |
 | Real-versus-simulator hiding | 104.024922 bits |
-| Proof size | 66,367 bytes |
-| SBF program size | 915,656 bytes |
-| Maximum local verification cost | 1,314,386 of 1,400,000 CU |
-| Local compute headroom | 85,614 CU |
-| Finalized devnet cost | 1,314,332 CU |
-| Finalized devnet slot | 476,231,605 |
+| Proof | 64,447 bytes |
+| SBF program | 921,848 bytes |
+| Maximum local verification cost | 1,340,803 CU |
+| Finalized mainnet verification cost | 1,343,749 CU |
+| Mainnet proof-account refund | 0.449720400 SOL |
+| Demo payer cost after refunds | 0.014883400 SOL |
 
-The finalized devnet transaction verified the released proof, advanced the
-pool sequence from 0 to 1, and created the nullifier marker. Its signed
-simulation and landed execution both consumed 1,314,332 CU.
+The proof digest emitted by the program matches the released proof SHA-256,
+`d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d`.
+The official Solana mainnet RPC and an independent PublicNode endpoint agree
+on the transaction, lifecycle records, and final accounts; the same signature
+is absent on devnet and testnet. See the
+[public reconciliation](results/stage2/profile23_mainnet_independent_rpc_reconciliation.json).
 
-The recorded rehearsal used 104 serial proof uploads and spent 24 minutes 44
-seconds in that upload interval. The current executor uses 960-byte chunks and
-16-transaction finality windows: the same 66,367-byte proof requires 70 upload
-transactions and five upload-finality waves. The full finalized account image
-is still checked byte-for-byte before sealing.
+Program deployment, proof upload, and proof finalization are setup operations;
+the one-transaction claim concerns proof verification, state transition,
+nullifier creation, and proof-account refund. The uploader uses 68 chunks in
+five finality windows instead of waiting for every chunk sequentially.
 
-## Verify the frozen release
+## Verify the release
 
-The publication bundle contains the exact proof, public statement, SBF
-binary, release certificate, finalized devnet evidence, paper, and their
-SHA-256 identities.
+The versioned bundle freezes the proof, statement, SBF binary, certificates,
+network evidence, paper, and SHA-256 manifest:
 
 ```bash
-./release/profile23-q18-g37/verify.sh
+./release/profile23-q18-g37-mainnet-v1/verify.sh
 ```
 
-For source-level checks:
+Source-level checks:
 
 ```bash
 NO_DNA=1 cargo fmt --all -- --check
@@ -55,34 +67,35 @@ NO_DNA=1 cargo run -q -p aspis-prover \
   --example profile23_soundness_epro_ledger -- --calculation-only
 ```
 
-The [artifact guide](paper/profile23/artifact/README.md) documents complete
-regeneration, local acceptance and mutation replay, fresh-proof generation,
-and read-only recovery of the sealed proof from devnet.
+## Protocol outline
+
+1. The prover creates a transparent argument for the exact shielded-spend
+   statement and uploads it to a program-owned account.
+2. The account is sealed after its complete byte image is checked against the
+   released proof.
+3. Tag 65 verifies the sealed proof, closes and refunds that account, advances
+   the pool, and creates the nullifier marker atomically.
 
 ## Repository map
 
 | Path | Contents |
 | --- | --- |
 | `crates/aspis-core/` | `no_std`, byte-exact host and SBF verifier core |
-| `crates/aspis-prover/` | Host prover, grinding, security calculators, and regression fixtures |
-| `crates/aspis-statement/` | Shielded-spend relation and public statement encoding |
-| `programs/aspis-verifier/` | Proof upload, sealing, verification, and atomic Solana state transition |
+| `crates/aspis-prover/` | Prover, grinding, security calculators, and fixtures |
+| `crates/aspis-statement/` | Shielded-spend relation and statement encoding |
+| `programs/aspis-verifier/` | Upload, sealing, verification, refund, and atomic state transition |
 | `xtask/` | Release generation, validator execution, and measurement tooling |
-| `paper/profile23/` | LaTeX paper, generated PDF, and artifact guide |
-| `release/profile23-q18-g37/` | Self-contained frozen publication bundle |
-| `results/stage2/` | Machine-readable release certificates and measurement records |
-| `docs/` | Protocol, implementation, and security design notes |
+| `paper/profile23-mainnet-v1/` | Publication source, build instructions, and PDF |
+| `release/profile23-q18-g37-mainnet-v1/` | Frozen mainnet publication bundle |
+| `results/stage2/` | Machine-readable certificates and network records |
+| `docs/` | Protocol, implementation, security, and deployment notes |
+| `archive/` | Index of superseded and failed research retained in Git |
 
-## Design history
-
-The default branch contains the current Profile 23 implementation and its
-release evidence. Earlier prototypes, rejected parameter sets, measurements,
-and failed design branches remain available in the
+Earlier prototypes, rejected parameters, and failed designs are preserved in
+the immutable
 [`research-archive-2026-07-14`](https://github.com/DJBarker87/zk/tree/research-archive-2026-07-14)
-tag. [Design history](docs/design-history.md) explains the split.
+tag rather than presented as the current release.
 
-Profile 23 is a finalized devnet research release. It has not been audited or
-deployed to mainnet.
-
-Licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE). Citation
-metadata is provided in [CITATION.cff](CITATION.cff).
+Profile 23 is an unaudited research implementation with one independently
+reconciled mainnet execution. Licensed under [MIT](LICENSE-MIT) or
+[Apache-2.0](LICENSE-APACHE); citation metadata is in [CITATION.cff](CITATION.cff).

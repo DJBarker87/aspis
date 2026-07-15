@@ -30,6 +30,7 @@ pub const ATOMIC_NULLIFIER_MAGIC: [u8; 4] = *b"ASPN";
 pub const ATOMIC_NULLIFIER_VERSION: u8 = 1;
 pub const ATOMIC_NULLIFIER_MARKER_LEN: usize = 72;
 pub const ATOMIC_NULLIFIER_SEED: &[u8] = b"aspis-nullifier-v1";
+pub const PROOF_ACCOUNT_CLOSED_MAGIC: [u8; 4] = *b"ASPC";
 
 pub const ATOMIC_ERROR_ANCHOR_MISMATCH: u32 = 0x4153_1001;
 pub const ATOMIC_ERROR_NULLIFIER_ALREADY_SPENT: u32 = 0x4153_1002;
@@ -194,6 +195,12 @@ enum MarkerPreparation {
     CreateSystemOwned,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ProofAccountDisposition {
+    Retain,
+    RefundToPayer,
+}
+
 /// CU/account-transition boundaries for the exact atomic mutation kernel.
 /// The production wrapper supplies a no-op callback; the callback is exposed
 /// so a feature-gated diagnostic SBF build can price the same ordering without
@@ -222,11 +229,19 @@ fn validate_accounts_and_state(
     payer: &AccountInfo,
     system_program_account: &AccountInfo,
     public: &AtomicPaymentPublicInputs,
+    proof_disposition: ProofAccountDisposition,
 ) -> Result<(AtomicPoolStateV1, u8, MarkerPreparation), ProgramError> {
     if proof_account.owner != program_id || pool_account.owner != program_id {
         return Err(ProgramError::IncorrectProgramId);
     }
-    if proof_account.is_writable
+    if proof_disposition == ProofAccountDisposition::RefundToPayer && !proof_account.is_signer {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+    let proof_access_invalid = match proof_disposition {
+        ProofAccountDisposition::Retain => proof_account.is_writable,
+        ProofAccountDisposition::RefundToPayer => !proof_account.is_writable,
+    };
+    if proof_access_invalid
         || !pool_account.is_writable
         || !nullifier_account.is_writable
         || !payer.is_writable
@@ -244,6 +259,7 @@ fn validate_accounts_and_state(
     }
     if proof_account.key == pool_account.key
         || proof_account.key == nullifier_account.key
+        || proof_account.key == payer.key
         || pool_account.key == nullifier_account.key
         || payer.key == pool_account.key
         || payer.key == nullifier_account.key
@@ -280,6 +296,54 @@ fn validate_accounts_and_state(
     };
 
     Ok((pool, bump, preparation))
+}
+
+/// Drain a program-owned proof account into its signer-selected System
+/// account. A zero-lamport account is purged by the runtime at transaction
+/// commit. Requiring the proof account itself to sign prevents a third party
+/// from stealing the refundable rent after the upload authority is erased.
+pub fn refund_program_owned_proof_account(
+    program_id: &Pubkey,
+    proof_account: &AccountInfo,
+    refund_account: &AccountInfo,
+) -> ProgramResult {
+    if proof_account.owner != program_id {
+        return Err(ProgramError::IncorrectProgramId);
+    }
+    if !proof_account.is_signer || !refund_account.is_signer {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+    if !proof_account.is_writable || !refund_account.is_writable {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    if proof_account.key == refund_account.key {
+        return Err(ProgramError::InvalidArgument);
+    }
+    if refund_account.owner != &system_program::id() {
+        return Err(ProgramError::IncorrectProgramId);
+    }
+
+    let refundable = proof_account.lamports();
+    if refundable == 0 {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let refunded_balance = refund_account
+        .lamports()
+        .checked_add(refundable)
+        .ok_or(ProgramError::ArithmeticOverflow)?;
+    let mut proof_data = proof_account.try_borrow_mut_data()?;
+    if proof_data.len() < 4 {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let mut proof_lamports = proof_account.try_borrow_mut_lamports()?;
+    let mut refund_lamports = refund_account.try_borrow_mut_lamports()?;
+    // Invalidate the account before draining it so a later instruction in the
+    // same transaction cannot revive a valid sealed proof merely by crediting
+    // lamports back to this address.
+    proof_data[..4].copy_from_slice(&PROOF_ACCOUNT_CLOSED_MAGIC);
+    **refund_lamports = refunded_balance;
+    **proof_lamports = 0;
+    Ok(())
 }
 
 fn create_nullifier_marker<'a>(
@@ -378,6 +442,29 @@ where
     )
 }
 
+/// Profile23 production form of [`verify_and_apply_atomic_payment_state`].
+/// Account 0 must additionally be writable and sign the transaction. After
+/// proof verification and every mutable-state recheck succeed, its complete
+/// lamport balance is atomically refunded to account 3.
+pub fn verify_and_apply_atomic_payment_state_with_proof_refund<'a, F>(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'a>],
+    public: &AtomicPaymentPublicInputs,
+    verify_complete_proof: F,
+) -> ProgramResult
+where
+    F: FnOnce(&AccountInfo<'a>, &AtomicPaymentStatementV3, &[u8; 32]) -> ProgramResult,
+{
+    verify_and_apply_atomic_payment_state_traced_inner(
+        program_id,
+        accounts,
+        public,
+        verify_complete_proof,
+        ProofAccountDisposition::RefundToPayer,
+        |_| {},
+    )
+}
+
 /// The traced form of [`verify_and_apply_atomic_payment_state`].  It executes
 /// the identical validation, statement, proof, CPI, recheck, and final-copy
 /// path. Trace callbacks are observational only and return no error.
@@ -386,6 +473,51 @@ pub fn verify_and_apply_atomic_payment_state_traced<'a, F, T>(
     accounts: &[AccountInfo<'a>],
     public: &AtomicPaymentPublicInputs,
     verify_complete_proof: F,
+    trace: T,
+) -> ProgramResult
+where
+    F: FnOnce(&AccountInfo<'a>, &AtomicPaymentStatementV3, &[u8; 32]) -> ProgramResult,
+    T: FnMut(AtomicPaymentTransitionTraceEvent),
+{
+    verify_and_apply_atomic_payment_state_traced_inner(
+        program_id,
+        accounts,
+        public,
+        verify_complete_proof,
+        ProofAccountDisposition::Retain,
+        trace,
+    )
+}
+
+/// Traced counterpart of
+/// [`verify_and_apply_atomic_payment_state_with_proof_refund`].
+pub fn verify_and_apply_atomic_payment_state_traced_with_proof_refund<'a, F, T>(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'a>],
+    public: &AtomicPaymentPublicInputs,
+    verify_complete_proof: F,
+    trace: T,
+) -> ProgramResult
+where
+    F: FnOnce(&AccountInfo<'a>, &AtomicPaymentStatementV3, &[u8; 32]) -> ProgramResult,
+    T: FnMut(AtomicPaymentTransitionTraceEvent),
+{
+    verify_and_apply_atomic_payment_state_traced_inner(
+        program_id,
+        accounts,
+        public,
+        verify_complete_proof,
+        ProofAccountDisposition::RefundToPayer,
+        trace,
+    )
+}
+
+fn verify_and_apply_atomic_payment_state_traced_inner<'a, F, T>(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'a>],
+    public: &AtomicPaymentPublicInputs,
+    verify_complete_proof: F,
+    proof_disposition: ProofAccountDisposition,
     mut trace: T,
 ) -> ProgramResult
 where
@@ -409,6 +541,7 @@ where
         payer,
         system_program_account,
         public,
+        proof_disposition,
     )?;
     trace(match preparation {
         MarkerPreparation::ProgramOwnedZeroed => {
@@ -475,6 +608,12 @@ where
     next_pool.encode(&mut next_pool_bytes)?;
     marker.encode(&mut marker_bytes)?;
 
+    if proof_disposition == ProofAccountDisposition::RefundToPayer {
+        // This is the final fallible operation. Once the refund succeeds, the
+        // two fixed-size state copies below cannot fail, preserving direct-test
+        // and transaction-level atomicity.
+        refund_program_owned_proof_account(program_id, proof_account, payer)?;
+    }
     nullifier_data.copy_from_slice(&marker_bytes);
     pool_data.copy_from_slice(&next_pool_bytes);
     trace(AtomicPaymentTransitionTraceEvent::StateApplied);
@@ -604,14 +743,26 @@ mod tests {
         }
 
         fn accounts(&mut self) -> Vec<AccountInfo<'_>> {
+            self.accounts_with_proof_access(false, false)
+        }
+
+        fn refund_accounts(&mut self) -> Vec<AccountInfo<'_>> {
+            self.accounts_with_proof_access(true, true)
+        }
+
+        fn accounts_with_proof_access(
+            &mut self,
+            proof_is_signer: bool,
+            proof_is_writable: bool,
+        ) -> Vec<AccountInfo<'_>> {
             vec![
                 make_account(
                     &self.proof_key,
                     &self.program_id,
                     &mut self.proof_lamports,
                     &mut self.proof_data,
-                    false,
-                    false,
+                    proof_is_signer,
+                    proof_is_writable,
                     false,
                 ),
                 make_account(
@@ -661,6 +812,24 @@ mod tests {
             let accounts = self.accounts();
             verify_and_apply_atomic_payment_state(&program_id, &accounts, public, verify)
         }
+
+        fn apply_with_refund<F>(
+            &mut self,
+            public: &AtomicPaymentPublicInputs,
+            verify: F,
+        ) -> ProgramResult
+        where
+            F: FnOnce(&AccountInfo, &AtomicPaymentStatementV3, &[u8; 32]) -> ProgramResult,
+        {
+            let program_id = self.program_id;
+            let accounts = self.refund_accounts();
+            verify_and_apply_atomic_payment_state_with_proof_refund(
+                &program_id,
+                &accounts,
+                public,
+                verify,
+            )
+        }
     }
 
     #[test]
@@ -704,6 +873,8 @@ mod tests {
         let mut fixture = Fixture::new(&public, public.current_anchor);
         let pool_before = fixture.pool_data;
         let marker_before = fixture.nullifier_data;
+        let proof_lamports_before = fixture.proof_lamports;
+        let payer_lamports_before = fixture.payer_lamports;
         let verifier_called = Cell::new(false);
         assert_eq!(
             fixture.apply(&public, |_, statement, digest| {
@@ -733,6 +904,8 @@ mod tests {
         assert!(verifier_called.get());
         assert_eq!(fixture.pool_data, pool_before);
         assert_eq!(fixture.nullifier_data, marker_before);
+        assert_eq!(fixture.proof_lamports, proof_lamports_before);
+        assert_eq!(fixture.payer_lamports, payer_lamports_before);
     }
 
     #[test]
@@ -782,6 +955,112 @@ mod tests {
         assert!(!verifier_called.get());
         assert_eq!(fixture.pool_data, pool_after_first);
         assert_eq!(fixture.nullifier_data, marker_after_first);
+    }
+
+    #[test]
+    fn successful_profile23_transition_refunds_and_tombstones_proof() {
+        let public = valid_public(425, 525);
+        let mut fixture = Fixture::new(&public, public.current_anchor);
+        fixture.proof_lamports = 463_083_600;
+        fixture.payer_lamports = 10_000;
+        let refundable = fixture.proof_lamports;
+        let payer_before = fixture.payer_lamports;
+
+        assert_eq!(fixture.apply_with_refund(&public, |_, _, _| Ok(())), Ok(()));
+        assert_eq!(fixture.proof_lamports, 0);
+        assert_eq!(fixture.payer_lamports, payer_before + refundable);
+        assert_eq!(
+            fixture.proof_data[..4],
+            PROOF_ACCOUNT_CLOSED_MAGIC,
+            "closed proof must retain a nonzero tombstone"
+        );
+        assert_eq!(
+            AtomicPoolStateV1::decode(&fixture.pool_data)
+                .unwrap()
+                .sequence,
+            1
+        );
+        assert!(NullifierMarkerV1::decode(&fixture.nullifier_data)
+            .unwrap()
+            .is_some());
+    }
+
+    #[test]
+    fn failed_profile23_transition_preserves_proof_and_refund_balances() {
+        let public = valid_public(430, 530);
+        let mut fixture = Fixture::new(&public, public.current_anchor);
+        let proof_before = fixture.proof_data;
+        let pool_before = fixture.pool_data;
+        let marker_before = fixture.nullifier_data;
+        let proof_lamports_before = fixture.proof_lamports;
+        let payer_lamports_before = fixture.payer_lamports;
+
+        assert_eq!(
+            fixture.apply_with_refund(&public, |_, _, _| {
+                Err(ProgramError::InvalidInstructionData)
+            }),
+            Err(ProgramError::InvalidInstructionData)
+        );
+        assert_eq!(fixture.proof_data, proof_before);
+        assert_eq!(fixture.pool_data, pool_before);
+        assert_eq!(fixture.nullifier_data, marker_before);
+        assert_eq!(fixture.proof_lamports, proof_lamports_before);
+        assert_eq!(fixture.payer_lamports, payer_lamports_before);
+    }
+
+    #[test]
+    fn profile23_refund_requires_writable_proof_signer_and_checked_balance() {
+        let public = valid_public(435, 535);
+
+        let mut unsigned = Fixture::new(&public, public.current_anchor);
+        let unsigned_program = unsigned.program_id;
+        let unsigned_accounts = unsigned.accounts_with_proof_access(false, true);
+        assert_eq!(
+            verify_and_apply_atomic_payment_state_with_proof_refund(
+                &unsigned_program,
+                &unsigned_accounts,
+                &public,
+                |_, _, _| Ok(())
+            ),
+            Err(ProgramError::MissingRequiredSignature)
+        );
+
+        let mut readonly = Fixture::new(&public, public.current_anchor);
+        let readonly_program = readonly.program_id;
+        let readonly_accounts = readonly.accounts_with_proof_access(true, false);
+        assert_eq!(
+            verify_and_apply_atomic_payment_state_with_proof_refund(
+                &readonly_program,
+                &readonly_accounts,
+                &public,
+                |_, _, _| Ok(())
+            ),
+            Err(ProgramError::InvalidAccountData)
+        );
+
+        let mut overflow = Fixture::new(&public, public.current_anchor);
+        overflow.payer_lamports = u64::MAX;
+        let proof_before = overflow.proof_data;
+        let pool_before = overflow.pool_data;
+        let marker_before = overflow.nullifier_data;
+        let proof_lamports_before = overflow.proof_lamports;
+        let overflow_program = overflow.program_id;
+        let overflow_accounts = overflow.refund_accounts();
+        assert_eq!(
+            verify_and_apply_atomic_payment_state_with_proof_refund(
+                &overflow_program,
+                &overflow_accounts,
+                &public,
+                |_, _, _| Ok(())
+            ),
+            Err(ProgramError::ArithmeticOverflow)
+        );
+        drop(overflow_accounts);
+        assert_eq!(overflow.proof_data, proof_before);
+        assert_eq!(overflow.pool_data, pool_before);
+        assert_eq!(overflow.nullifier_data, marker_before);
+        assert_eq!(overflow.proof_lamports, proof_lamports_before);
+        assert_eq!(overflow.payer_lamports, u64::MAX);
     }
 
     #[test]

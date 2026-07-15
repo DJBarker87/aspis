@@ -4,8 +4,8 @@
 first-Good builder, fixed-boundary proof/abort controller, complete-Good
 product, and complete-view computational hiding are green in the declared
 SHA-256 ROM/EPRO fixed-channel model. The canonically mined q18 proof,
-tag-59/tag-60 host/SBF evidence, and local one-transaction release are green
-with `35/35` gates. The previous q16 certificate is historical evidence and
+tag59/tag65 host/SBF evidence, and local one-transaction release are green
+with `36/36` gates. The previous q16 certificate is historical evidence and
 does not authorize q18.**
 
 `crates/aspis-prover/src/state_only_good23.rs` turns the frozen complete-Good
@@ -76,16 +76,18 @@ are good and the least selector is `0`:
 The deterministic q18 fixture is `67,327` bytes, SHA-256
 `a5ed698a32d815ffd95f8d3e0be62d16620d32e216a087a350852726fb6ca238`.
 The three predicates now run in parallel and retain fixed selector ordering.
-The exact post-release audit of the mined proof took `40.64 s` wall time and
-confirmed that all three branches are good and selector `0` is least. The
-sumcheck opening path also stopped computing 96 values that it discarded:
-the exact unmined build-plus-verify path fell from `167–194 s` to `44.09 s`
-while reproducing the same 67,327-byte proof and SHA-256.
-
-With the optimized Metal miner, the q18/g37 production proof published
-successfully at `480.42 s` on its configured 480-second fixed boundary. The
-complete runtime record is
-`results/stage2/profile23_q18_g37_runtime.json`.
+A historical isolated audit of the 63,487-byte predecessor mined proof
+(SHA-256
+`0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb`)
+took `40.64 s` and found all three branches good with selector 0 least. For
+that same predecessor artifact, an optimized-Metal fixed-boundary run returned
+`Proof` at `480.42 s` under the configured 480-second schedule. Neither figure
+is a timing for the current 64,447-byte release proof (SHA-256
+`d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d`);
+this artifact records no current-proof wall time. The separate unmined-fixture
+build-plus-verify benchmark is `44.09 s` for the 67,327-byte fixture above.
+The complete predecessor benchmark record is
+`results/stage2/profile23_q18_g37_predecessor_runtime.json`.
 
 ## Integrated production boundary
 
@@ -148,35 +150,37 @@ bytes, SHA-256
 `a5ed698a32d815ffd95f8d3e0be62d16620d32e216a087a350852726fb6ca238`.
 It is not a production proof and cannot authorize release.
 
-The released production proof is 66,367 bytes with SHA-256
-`f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53`;
+The released production proof is 64,447 bytes with SHA-256
+`d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d`;
 its canonical statement sidecar has SHA-256
-`976e9a7e001382025eaf81cfcb28ac609db966d4a9912511f54e2b702077b6de`.
+`947a608c93487a634f37119bead8d61fe29e9cb6883493465d6fb35af27883c2`.
 Its canonical public-input digest is
-`21d73e39be93112f986f52c7d683f2ab478890360a306af81110852ffb16a30a`.
+`b2d150dfcb6432c1b6f2e3892ee45a9aa5f393809d97c8292fea975b3da35fa3`.
 All three production Good23 branches accept and serialized selector `0` is
-the least Good branch. The freshly built default SBF is 915,656 bytes with
+the least Good branch. The freshly built default SBF is 921,848 bytes with
 SHA-256
-`da66a51b1f3ce95e907a87fca15fb9dc0cce66fd47646875ce2dff94879fd254`.
-Production tag 59 costs `1,310,162 CU`; tag 60 costs `1,312,055 CU` on the
-program-owned marker path and `1,314,386 CU` on canonical System creation.
-The maximum leaves `85,614 CU` below 1.4M.
+`97c45a9abef97607a2fc6ed245829210046b234044b6738599d2bce0c367d04a`.
+Production tag59 costs `1,303,642 CU`; tag65 costs `1,338,471 CU` on the
+program-owned marker path and `1,340,803 CU` on canonical System creation.
+The maximum leaves `59,197 CU` below 1.4M.
 
 `results/stage2/profile23_one_transaction_release.json` records
-`released=true`, `status=released_all_required_gates_green`, and `35/35`
+`released=true`, `status=released_all_required_gates_green`, and `36/36`
 passing gates. It binds the conservative release soundness floor
 `100.16144938287455` bits and the declared-model
 real-vs-simulator/pairwise hiding floors
 `104.02492234825198`/`103.02492234825198` bits.
 
-Production tags 59 and 60 continue to require the all-zero authority sentinel
+Production tag59 and tag65 continue to require the all-zero authority sentinel
 in bytes `8..40` of the unchanged 40-byte finalized proof-account header;
 proof-account creation, chunk upload, and `FinalizeProof` are outside the
 one-transaction measurement. Append-only tag 62 seals the proof account and
 append-only tag 63 initializes the pool. None of the old q16 proof size, CU,
 SBF hash, or `30/30` release results is transferred to q18. The green q18
-certificate is local release evidence, not a mainnet deployment or an
-external security audit; those remain separate blockers.
+certificate is local release evidence, not mainnet or external-audit evidence.
+The finalized mainnet execution and current audit status are recorded
+separately in [`profile23-mainnet-demo.md`](profile23-mainnet-demo.md) and the
+[prepublication security review](reviews/profile23-prepublication-security-review.html).
 
 ## Tests
 
@@ -195,9 +199,10 @@ NO_DNA=1 cargo test --release -p aspis-prover \
 ```
 
 The Good23 suite includes the fixed-order parallel manager and its
-panic-collapse gate. The production post-release audit is all-good/least-0 in
-`40.64 s`; the opening-equivalence test reproduces the unchanged unmined
-proof after the `44.09 s` optimized build-plus-verify path.
+panic-collapse gate. The retained historical predecessor-audit result is
+all-good/least-0 in `40.64 s`; no current-release timing is inferred from it.
+The opening-equivalence test reproduces the unchanged 67,327-byte unmined
+fixture after the `44.09 s` optimized build-plus-verify path.
 
 Machine-readable result:
 `results/stage2/profile23_good_schedule_host.json`.

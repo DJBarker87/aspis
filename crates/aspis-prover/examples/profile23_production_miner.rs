@@ -164,11 +164,7 @@ fn main() {
         .map(|value| value.parse::<u64>().expect("ASPIS_PROFILE23_SEQUENCE"))
         .unwrap_or(73);
     let fixture_seed = std::env::var("ASPIS_PROFILE23_FIXTURE_SEED")
-        .map(|value| {
-            value
-                .parse::<u32>()
-                .expect("ASPIS_PROFILE23_FIXTURE_SEED")
-        })
+        .map(|value| value.parse::<u32>().expect("ASPIS_PROFILE23_FIXTURE_SEED"))
         .unwrap_or(0);
     let boundary = SystemTime::now()
         .checked_add(Duration::from_secs(boundary_seconds))

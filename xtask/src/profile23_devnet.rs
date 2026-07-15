@@ -7,6 +7,7 @@
 
 use std::{
     collections::{BTreeMap, BTreeSet},
+    ffi::OsString,
     fs::{self, OpenOptions},
     io::Write,
     os::unix::fs::PermissionsExt,
@@ -40,8 +41,8 @@ use solana_sdk::{
 use aspis_verifier::{
     atomic_payment::{
         atomic_nullifier_address, AtomicPaymentPublicInputs, AtomicPoolStateV1,
-        ATOMIC_NULLIFIER_MAGIC, ATOMIC_NULLIFIER_MARKER_LEN, ATOMIC_NULLIFIER_VERSION,
-        ATOMIC_POOL_STATE_LEN,
+        ATOMIC_ERROR_NULLIFIER_ALREADY_SPENT, ATOMIC_NULLIFIER_MAGIC, ATOMIC_NULLIFIER_MARKER_LEN,
+        ATOMIC_NULLIFIER_VERSION, ATOMIC_POOL_STATE_LEN,
     },
     AspisInstruction, PROOF_ACCOUNT_HEADER_LEN,
 };
@@ -51,20 +52,26 @@ use crate::profile23_statement::{
 };
 
 const DEVNET_GENESIS_HASH: &str = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
+const MAINNET_BETA_GENESIS_HASH: &str = "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d";
 const EXECUTE_ACK: &str =
     "I_ACKNOWLEDGE_PROFILE23_DEVNET_REHEARSAL_MUTATES_DEVNET_AND_SPENDS_DEVNET_SOL";
+const MAINNET_EXECUTE_ACK: &str =
+    "I_ACKNOWLEDGE_PROFILE23_MAINNET_DEMO_MUTATES_MAINNET_AND_SPENDS_CAPPED_SOL";
+const UPLOAD_SMOKE_ACK: &str =
+    "I_ACKNOWLEDGE_PROFILE23_DEVNET_UPLOAD_SMOKE_MUTATES_DEVNET_AND_SPENDS_DEVNET_SOL";
 const CU_LIMIT: u32 = 1_400_000;
 const HEAP_FRAME_BYTES: u32 = 262_144;
 // A legacy UploadChunk transaction is `chunk.len() + 213` bytes with the
 // current account layout. 960 therefore serializes to 1,173 bytes: comfortably
-// below Solana's 1,232-byte packet cap while reducing the frozen 66,367-byte
-// proof from 104 upload transactions to 70.
+// below Solana's 1,232-byte packet cap while reducing the frozen 64,447-byte
+// proof to 68 upload transactions.
 const UPLOAD_CHUNK_BYTES: usize = 960;
 const UPLOAD_WINDOW_TRANSACTIONS: usize = 16;
 const UPLOAD_MAX_IDENTICAL_RETRIES: u8 = 3;
 const UPLOAD_REBROADCAST_INTERVAL: Duration = Duration::from_secs(6);
 const MAX_TRANSACTION_WIRE_BYTES: usize = 1_232;
 const PROOF_MAGIC: &[u8; 4] = b"ASPU";
+const PROOF_SHA256_LOG_MARKER: &[u8] = b"aspis-proof-sha256-v1";
 const PROOF_AUTHORITY_OFFSET: usize = 8;
 const PROGRAMDATA_METADATA_BYTES: usize = 45;
 const PROGRAM_ACCOUNT_BYTES: usize = 36;
@@ -78,6 +85,47 @@ const IN_PROGRESS_WARNING: &str = "If this file remains in_progress, execution d
 enum CommandMode {
     Readiness,
     Execute,
+    ExecuteMainnet,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ClusterPolicy {
+    Devnet,
+    MainnetBeta,
+}
+
+impl ClusterPolicy {
+    fn expected_genesis_hash(self) -> &'static str {
+        match self {
+            Self::Devnet => DEVNET_GENESIS_HASH,
+            Self::MainnetBeta => MAINNET_BETA_GENESIS_HASH,
+        }
+    }
+
+    fn execution_acknowledgement(self) -> &'static str {
+        match self {
+            Self::Devnet => EXECUTE_ACK,
+            Self::MainnetBeta => MAINNET_EXECUTE_ACK,
+        }
+    }
+
+    fn evidence_artifact(self) -> &'static str {
+        match self {
+            Self::Devnet => "profile23_devnet_finalized_rehearsal",
+            Self::MainnetBeta => "profile23_mainnet_beta_finalized_demo",
+        }
+    }
+
+    fn network(self) -> &'static str {
+        match self {
+            Self::Devnet => "devnet",
+            Self::MainnetBeta => "mainnet-beta",
+        }
+    }
+
+    fn requires_explicit_recovery_signers(self) -> bool {
+        self == Self::MainnetBeta
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -87,6 +135,10 @@ struct DevnetConfig {
     program_keypair: PathBuf,
     pool_keypair: PathBuf,
     proof_account_keypair: PathBuf,
+    replay_probe_keypair: Option<PathBuf>,
+    upgrade_authority_keypair: Option<PathBuf>,
+    deployment_buffer_keypair: Option<PathBuf>,
+    use_tpu_client: bool,
     release: PathBuf,
     sbf: PathBuf,
     proof: PathBuf,
@@ -100,6 +152,20 @@ struct DevnetConfig {
     resume_pool_create_signature: Option<Signature>,
     resume_pool_init_signature: Option<Signature>,
     resume_proof_create_signature: Option<Signature>,
+    acknowledgement: Option<String>,
+}
+
+#[derive(Clone, Debug)]
+struct UploadSmokeConfig {
+    rpc_url: String,
+    payer_keypair: PathBuf,
+    proof_account_keypair: PathBuf,
+    sbf: PathBuf,
+    proof: PathBuf,
+    evidence: PathBuf,
+    program_max_len: usize,
+    fee_reserve_lamports: u64,
+    execute_interlock: bool,
     acknowledgement: Option<String>,
 }
 
@@ -170,6 +236,45 @@ pub struct AccountEvidence {
     pub data_len: usize,
     pub data_sha256: String,
     pub raw_account_image_sha256: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct RefundBalanceEvidence {
+    pub fee_lamports: u64,
+    pub payer_account_index: usize,
+    pub proof_account_index: usize,
+    pub nullifier_account_index: usize,
+    pub payer_pre_lamports: u64,
+    pub payer_post_lamports: u64,
+    pub proof_pre_lamports: u64,
+    pub proof_post_lamports: u64,
+    pub nullifier_pre_lamports: u64,
+    pub nullifier_post_lamports: u64,
+    pub proof_refund_lamports: u64,
+    pub nullifier_funding_lamports: u64,
+    pub exact_balance_equation_reconciled: bool,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct ProgramProofDigestLogEvidence {
+    pub marker: &'static str,
+    pub raw_log_line: String,
+    pub logged_proof_sha256: String,
+    pub release_proof_sha256: String,
+    pub exact_release_proof_digest: bool,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct ReplayProbeRefundEvidence {
+    pub fee_lamports: u64,
+    pub payer_account_index: usize,
+    pub replay_probe_account_index: usize,
+    pub payer_pre_lamports: u64,
+    pub payer_post_lamports: u64,
+    pub replay_probe_pre_lamports: u64,
+    pub replay_probe_post_lamports: u64,
+    pub replay_probe_refund_lamports: u64,
+    pub exact_balance_equation_reconciled: bool,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -249,11 +354,16 @@ pub struct Profile23DevnetEvidence {
     pub setup_transactions: Vec<TransactionEvidence>,
     pub final_transaction: TransactionEvidence,
     pub final_transaction_simulation_cu: u64,
+    pub final_transaction_simulation_proof_digest_log: ProgramProofDigestLogEvidence,
+    pub final_transaction_finalized_proof_digest_log: ProgramProofDigestLogEvidence,
+    pub final_transaction_proof_digest_logs_both_exact: bool,
     pub final_transaction_wire_sha256: String,
     pub final_transaction_message_sha256: String,
     pub final_transaction_submitted_identically_to_simulation: bool,
-    pub proof_account: AccountEvidence,
-    pub proof_account_finalized: bool,
+    pub proof_account_before_refund: AccountEvidence,
+    pub proof_account_finalized_before_refund: bool,
+    pub proof_account_absent_after_refund: bool,
+    pub final_transaction_refund_balances: RefundBalanceEvidence,
     pub post_finalize_upload_rejected: bool,
     pub post_finalize_second_finalize_rejected: bool,
     pub pool_before: AccountEvidence,
@@ -263,9 +373,63 @@ pub struct Profile23DevnetEvidence {
     pub nullifier_before: Option<AccountEvidence>,
     pub nullifier_after: AccountEvidence,
     pub duplicate_simulation_rejected: bool,
+    pub duplicate_simulation_error: Value,
+    pub duplicate_simulation_expected_nullifier_error_exact: bool,
+    pub duplicate_simulation_pool_unchanged: bool,
+    pub duplicate_simulation_nullifier_unchanged: bool,
+    pub duplicate_simulation_replay_probe_unchanged: bool,
+    pub replay_probe_pubkey: String,
+    pub replay_probe_payload_bytes: usize,
+    pub replay_probe_rent_lamports: u64,
+    pub replay_probe_setup_transactions: Vec<TransactionEvidence>,
+    pub replay_probe_before_close: AccountEvidence,
+    pub replay_probe_close_transaction: TransactionEvidence,
+    pub replay_probe_absent_after_close: bool,
+    pub replay_probe_refund_balances: ReplayProbeRefundEvidence,
     pub evidence_path: String,
     pub evidence_file_mode: u32,
     pub explicit_scope: Vec<&'static str>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct Profile23DevnetUploadSmokeEvidence {
+    pub artifact: &'static str,
+    pub generated_at_utc: String,
+    pub network: &'static str,
+    pub genesis_hash: String,
+    pub rpc_origin_redacted: String,
+    pub program_id: String,
+    pub payer_pubkey: String,
+    pub proof_account_pubkey: String,
+    pub sbf_path: String,
+    pub sbf_bytes: usize,
+    pub sbf_sha256: String,
+    pub proof_path: String,
+    pub proof_bytes: usize,
+    pub proof_sha256: String,
+    pub program_max_len: usize,
+    pub upgradeable_program_before: UpgradeableProgramSnapshotEvidence,
+    pub upgradeable_program_after: UpgradeableProgramSnapshotEvidence,
+    pub upgradeable_program_continuity: UpgradeableProgramContinuityChecks,
+    pub proof_upload_chunk_bytes: usize,
+    pub proof_upload_window_transactions: usize,
+    pub proof_upload_transaction_count: usize,
+    pub proof_upload_finality_windows: usize,
+    pub upload_wall_milliseconds: u64,
+    pub total_wall_milliseconds: u64,
+    pub upload_first_finalized_slot: u64,
+    pub upload_last_finalized_slot: u64,
+    pub upload_identical_wire_retries: u64,
+    pub setup_transactions: Vec<TransactionEvidence>,
+    pub proof_account: AccountEvidence,
+    pub full_unsealed_image_verified: bool,
+    pub sealed_image_verified: bool,
+    pub post_finalize_upload_rejected: bool,
+    pub post_finalize_upload_error: Value,
+    pub post_finalize_second_finalize_rejected: bool,
+    pub post_finalize_second_finalize_error: Value,
+    pub evidence_path: String,
+    pub evidence_file_mode: u32,
 }
 
 fn statement_public_inputs(
@@ -406,6 +570,15 @@ struct Rpc {
 struct Simulation {
     units: Option<u64>,
     error: Option<Value>,
+    logs: Vec<String>,
+}
+
+fn invalid_account_data_simulation_error(instruction_index: u64) -> Value {
+    json!({"InstructionError": [instruction_index, "InvalidAccountData"]})
+}
+
+fn custom_simulation_error(instruction_index: u64, code: u32) -> Value {
+    json!({"InstructionError": [instruction_index, {"Custom": code}]})
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -781,9 +954,20 @@ impl Rpc {
         } else {
             Some(result["value"]["err"].clone())
         };
+        let logs = result["value"]["logs"]
+            .as_array()
+            .context("simulation omitted logs")?
+            .iter()
+            .map(|line| {
+                line.as_str()
+                    .map(ToOwned::to_owned)
+                    .context("simulation log was not a string")
+            })
+            .collect::<Result<Vec<_>>>()?;
         Ok(Simulation {
             units: result["value"]["unitsConsumed"].as_u64(),
             error,
+            logs,
         })
     }
 
@@ -851,6 +1035,55 @@ impl Rpc {
             }]),
         )?;
         Ok(result["meta"]["computeUnitsConsumed"].as_u64())
+    }
+
+    fn transaction_fee_balances_and_logs(
+        &self,
+        signature: &Signature,
+    ) -> Result<(u64, Vec<u64>, Vec<u64>, Vec<String>)> {
+        let result = self.call_read(
+            "getTransaction",
+            json!([signature.to_string(), {
+                "encoding":"json",
+                "commitment":"finalized",
+                "maxSupportedTransactionVersion":0
+            }]),
+        )?;
+        ensure!(
+            result["meta"]["err"].is_null(),
+            "finalized transaction failed"
+        );
+        let fee = result["meta"]["fee"]
+            .as_u64()
+            .context("finalized transaction omitted fee")?;
+        let parse_balances = |field: &str| -> Result<Vec<u64>> {
+            result["meta"][field]
+                .as_array()
+                .with_context(|| format!("finalized transaction omitted {field}"))?
+                .iter()
+                .map(|value| {
+                    value
+                        .as_u64()
+                        .with_context(|| format!("{field} contained a non-u64 balance"))
+                })
+                .collect()
+        };
+        let logs = result["meta"]["logMessages"]
+            .as_array()
+            .context("finalized transaction omitted logMessages")?
+            .iter()
+            .map(|line| {
+                line.as_str()
+                    .map(ToOwned::to_owned)
+                    .context("finalized transaction log was not a string")
+            })
+            .collect::<Result<Vec<_>>>()?;
+        Ok((
+            fee,
+            parse_balances("preBalances")?,
+            parse_balances("postBalances")?,
+            logs,
+        ))
     }
 
     fn transaction_wire(&self, signature: &Signature) -> Result<(Vec<u8>, VersionedTransaction)> {
@@ -1068,16 +1301,80 @@ fn sha256(bytes: &[u8]) -> String {
         .collect()
 }
 
+fn require_program_proof_digest_log(
+    logs: &[String],
+    release_proof_sha256: &str,
+) -> Result<ProgramProofDigestLogEvidence> {
+    let mut matching = Vec::new();
+    for line in logs {
+        let Some(encoded) = line.strip_prefix("Program data: ") else {
+            continue;
+        };
+        let chunks = encoded
+            .split_ascii_whitespace()
+            .map(|chunk| {
+                BASE64
+                    .decode(chunk)
+                    .context("decode Program data log chunk")
+            })
+            .collect::<Result<Vec<_>>>()?;
+        if chunks.first().map(Vec::as_slice) != Some(PROOF_SHA256_LOG_MARKER) {
+            continue;
+        }
+        ensure!(
+            chunks.len() == 2 && chunks[1].len() == 32,
+            "proof-digest Program data log had malformed framing"
+        );
+        matching.push((line.clone(), chunks[1].clone()));
+    }
+    ensure!(
+        matching.len() == 1,
+        "expected exactly one aspis-proof-sha256-v1 log, observed {}",
+        matching.len()
+    );
+    let (raw_log_line, digest) = matching.pop().unwrap();
+    let logged_proof_sha256 = digest
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    let exact_release_proof_digest = logged_proof_sha256 == release_proof_sha256;
+    ensure!(
+        exact_release_proof_digest,
+        "program-logged proof digest differs from the release proof digest"
+    );
+    Ok(ProgramProofDigestLogEvidence {
+        marker: "aspis-proof-sha256-v1",
+        raw_log_line,
+        logged_proof_sha256,
+        release_proof_sha256: release_proof_sha256.to_owned(),
+        exact_release_proof_digest,
+    })
+}
+
 fn parse_args(arguments: &[String], mode: CommandMode) -> Result<DevnetConfig> {
     let mut values = BTreeMap::<String, String>::new();
-    let mut execute_interlock = false;
+    let mut execute_devnet_interlock = false;
+    let mut execute_mainnet_interlock = false;
+    let mut use_tpu_client = false;
     let mut resume_in_progress = false;
     let mut index = 0usize;
     while index < arguments.len() {
         let key = &arguments[index];
         if key == "--execute-devnet" {
-            ensure!(!execute_interlock, "duplicate --execute-devnet");
-            execute_interlock = true;
+            ensure!(!execute_devnet_interlock, "duplicate --execute-devnet");
+            execute_devnet_interlock = true;
+            index += 1;
+            continue;
+        }
+        if key == "--execute-mainnet" {
+            ensure!(!execute_mainnet_interlock, "duplicate --execute-mainnet");
+            execute_mainnet_interlock = true;
+            index += 1;
+            continue;
+        }
+        if key == "--use-tpu-client" {
+            ensure!(!use_tpu_client, "duplicate --use-tpu-client");
+            use_tpu_client = true;
             index += 1;
             continue;
         }
@@ -1106,6 +1403,9 @@ fn parse_args(arguments: &[String], mode: CommandMode) -> Result<DevnetConfig> {
         "--program-keypair",
         "--pool-keypair",
         "--proof-account-keypair",
+        "--replay-probe-keypair",
+        "--upgrade-authority-keypair",
+        "--deployment-buffer-keypair",
         "--release",
         "--sbf",
         "--proof",
@@ -1122,11 +1422,21 @@ fn parse_args(arguments: &[String], mode: CommandMode) -> Result<DevnetConfig> {
     for key in values.keys() {
         ensure!(allowed.contains(&key.as_str()), "unknown argument {key}");
     }
-    if mode == CommandMode::Readiness {
-        ensure!(
-            !execute_interlock && !values.contains_key("--acknowledgement"),
+    match mode {
+        CommandMode::Readiness => ensure!(
+            !execute_devnet_interlock
+                && !execute_mainnet_interlock
+                && !values.contains_key("--acknowledgement"),
             "readiness refuses execution interlocks"
-        );
+        ),
+        CommandMode::Execute => ensure!(
+            !execute_mainnet_interlock,
+            "devnet execution refuses --execute-mainnet"
+        ),
+        CommandMode::ExecuteMainnet => ensure!(
+            !execute_devnet_interlock,
+            "mainnet execution refuses --execute-devnet"
+        ),
     }
     ensure!(
         resume_in_progress == values.contains_key("--resume-pool-create-signature"),
@@ -1153,12 +1463,26 @@ fn parse_args(arguments: &[String], mode: CommandMode) -> Result<DevnetConfig> {
         ensure!(path.is_absolute(), "{key} must be an absolute path");
         Ok(path)
     };
+    let optional_absolute = |key: &str| -> Result<Option<PathBuf>> {
+        values
+            .get(key)
+            .map(|value| {
+                let path = PathBuf::from(value);
+                ensure!(path.is_absolute(), "{key} must be an absolute path");
+                Ok(path)
+            })
+            .transpose()
+    };
     Ok(DevnetConfig {
         rpc_url: required("--rpc-url")?,
         payer_keypair: absolute("--payer-keypair")?,
         program_keypair: absolute("--program-keypair")?,
         pool_keypair: absolute("--pool-keypair")?,
         proof_account_keypair: absolute("--proof-account-keypair")?,
+        replay_probe_keypair: optional_absolute("--replay-probe-keypair")?,
+        upgrade_authority_keypair: optional_absolute("--upgrade-authority-keypair")?,
+        deployment_buffer_keypair: optional_absolute("--deployment-buffer-keypair")?,
+        use_tpu_client,
         release: absolute("--release")?,
         sbf: absolute("--sbf")?,
         proof: absolute("--proof")?,
@@ -1171,7 +1495,11 @@ fn parse_args(arguments: &[String], mode: CommandMode) -> Result<DevnetConfig> {
         fee_reserve_lamports: required("--fee-reserve-lamports")?
             .parse()
             .context("--fee-reserve-lamports is not u64")?,
-        execute_interlock,
+        execute_interlock: match mode {
+            CommandMode::Readiness => false,
+            CommandMode::Execute => execute_devnet_interlock,
+            CommandMode::ExecuteMainnet => execute_mainnet_interlock,
+        },
         resume_in_progress,
         resume_pool_create_signature: values
             .get("--resume-pool-create-signature")
@@ -1187,6 +1515,102 @@ fn parse_args(arguments: &[String], mode: CommandMode) -> Result<DevnetConfig> {
                 Signature::from_str(value).context("invalid resume proof-create signature")
             })
             .transpose()?,
+        acknowledgement: values.get("--acknowledgement").cloned(),
+    })
+}
+
+fn validate_execution_policy(config: &DevnetConfig, policy: ClusterPolicy) -> Result<()> {
+    ensure!(
+        config.execute_interlock,
+        "missing exact execution interlock"
+    );
+    ensure!(
+        config.acknowledgement.as_deref() == Some(policy.execution_acknowledgement()),
+        "missing exact {} mutation acknowledgement",
+        policy.network()
+    );
+    if policy.requires_explicit_recovery_signers() {
+        ensure!(
+            config.replay_probe_keypair.is_some(),
+            "mainnet requires --replay-probe-keypair"
+        );
+        ensure!(
+            config.upgrade_authority_keypair.is_some(),
+            "mainnet requires --upgrade-authority-keypair"
+        );
+        ensure!(
+            config.deployment_buffer_keypair.is_some(),
+            "mainnet requires --deployment-buffer-keypair"
+        );
+        ensure!(config.use_tpu_client, "mainnet requires --use-tpu-client");
+    }
+    Ok(())
+}
+
+fn parse_upload_smoke_args(arguments: &[String]) -> Result<UploadSmokeConfig> {
+    let mut values = BTreeMap::<String, String>::new();
+    let mut execute_interlock = false;
+    let mut index = 0usize;
+    while index < arguments.len() {
+        let key = &arguments[index];
+        if key == "--execute-devnet" {
+            ensure!(!execute_interlock, "duplicate --execute-devnet");
+            execute_interlock = true;
+            index += 1;
+            continue;
+        }
+        ensure!(
+            key.starts_with("--"),
+            "unexpected positional argument {key}"
+        );
+        let value = arguments
+            .get(index + 1)
+            .ok_or_else(|| anyhow!("missing value for {key}"))?;
+        ensure!(
+            values.insert(key.clone(), value.clone()).is_none(),
+            "duplicate argument {key}"
+        );
+        index += 2;
+    }
+    let allowed = [
+        "--rpc-url",
+        "--payer-keypair",
+        "--proof-account-keypair",
+        "--sbf",
+        "--proof",
+        "--evidence",
+        "--program-max-len",
+        "--fee-reserve-lamports",
+        "--acknowledgement",
+    ];
+    for key in values.keys() {
+        ensure!(allowed.contains(&key.as_str()), "unknown argument {key}");
+    }
+    let required = |key: &str| {
+        values
+            .get(key)
+            .cloned()
+            .ok_or_else(|| anyhow!("missing required explicit argument {key}"))
+    };
+    let absolute = |key: &str| -> Result<PathBuf> {
+        let path = PathBuf::from(required(key)?);
+        ensure!(path.is_absolute(), "{key} must be an absolute path");
+        Ok(path)
+    };
+    Ok(UploadSmokeConfig {
+        rpc_url: required("--rpc-url")?,
+        payer_keypair: absolute("--payer-keypair")?,
+        proof_account_keypair: absolute("--proof-account-keypair")?,
+        sbf: absolute("--sbf")?,
+        proof: absolute("--proof")?,
+        evidence: absolute("--evidence")?,
+        program_max_len: required("--program-max-len")?
+            .parse()
+            .context("--program-max-len is not usize")?,
+        fee_reserve_lamports: required("--fee-reserve-lamports")?
+            .parse()
+            .context("--fee-reserve-lamports is not u64")?,
+        execute_interlock,
         acknowledgement: values.get("--acknowledgement").cloned(),
     })
 }
@@ -1537,7 +1961,11 @@ fn gate(gates: &mut Vec<DevnetGate>, name: &str, passed: bool, evidence: impl In
     });
 }
 
-fn inspect(workspace_root: &Path, config: &DevnetConfig) -> Result<Profile23DevnetReadiness> {
+fn inspect_with_policy(
+    workspace_root: &Path,
+    config: &DevnetConfig,
+    policy: ClusterPolicy,
+) -> Result<Profile23DevnetReadiness> {
     let mut gates = Vec::new();
     let rpc_origin = rpc_origin(&config.rpc_url).ok();
     gate(
@@ -1550,15 +1978,31 @@ fn inspect(workspace_root: &Path, config: &DevnetConfig) -> Result<Profile23Devn
     let observed_genesis = rpc.genesis_hash().ok();
     gate(
         &mut gates,
-        "exact_devnet_genesis",
-        observed_genesis.as_deref() == Some(DEVNET_GENESIS_HASH),
-        format!("observed={observed_genesis:?}, expected={DEVNET_GENESIS_HASH}"),
+        "exact_cluster_genesis",
+        observed_genesis.as_deref() == Some(policy.expected_genesis_hash()),
+        format!(
+            "network={}, observed={observed_genesis:?}, expected={}",
+            policy.network(),
+            policy.expected_genesis_hash()
+        ),
     );
 
     let payer = secure_keypair(&config.payer_keypair).ok();
     let program = secure_keypair(&config.program_keypair).ok();
     let pool = secure_keypair(&config.pool_keypair).ok();
     let proof_account = secure_keypair(&config.proof_account_keypair).ok();
+    let replay_probe = config
+        .replay_probe_keypair
+        .as_ref()
+        .and_then(|path| secure_keypair(path).ok());
+    let upgrade_authority = config
+        .upgrade_authority_keypair
+        .as_ref()
+        .and_then(|path| secure_keypair(path).ok());
+    let deployment_buffer = config
+        .deployment_buffer_keypair
+        .as_ref()
+        .and_then(|path| secure_keypair(path).ok());
     gate(
         &mut gates,
         "payer_keypair_secure",
@@ -1583,14 +2027,66 @@ fn inspect(workspace_root: &Path, config: &DevnetConfig) -> Result<Profile23Devn
         proof_account.is_some(),
         "explicit secure keypair",
     );
-    let declared_program = aspis_verifier::id();
+    let runtime_program_id = program.as_ref().map(Signer::pubkey);
     gate(
         &mut gates,
-        "program_keypair_matches_declared_id",
-        program.as_ref().map(Signer::pubkey) == Some(declared_program),
+        "runtime_program_id_from_explicit_program_keypair",
+        runtime_program_id.is_some(),
+        format!("runtime_program_id={runtime_program_id:?}"),
+    );
+    let replay_probe_ready = replay_probe.is_some()
+        || (!policy.requires_explicit_recovery_signers() && config.replay_probe_keypair.is_none());
+    gate(
+        &mut gates,
+        "replay_probe_keypair_secure_or_devnet_ephemeral_fallback",
+        replay_probe_ready,
         format!(
-            "declared={declared_program}, explicit={:?}",
-            program.as_ref().map(Signer::pubkey)
+            "explicit={}, pubkey={:?}, devnet_ephemeral_fallback={}",
+            config.replay_probe_keypair.is_some(),
+            replay_probe.as_ref().map(Signer::pubkey),
+            config.replay_probe_keypair.is_none(),
+        ),
+    );
+    let expected_upgrade_authority = upgrade_authority
+        .as_ref()
+        .map(Signer::pubkey)
+        .or_else(|| payer.as_ref().map(Signer::pubkey));
+    let upgrade_authority_ready = upgrade_authority.is_some()
+        || (!policy.requires_explicit_recovery_signers()
+            && config.upgrade_authority_keypair.is_none()
+            && payer.is_some());
+    gate(
+        &mut gates,
+        "upgrade_authority_secure_and_policy_compliant",
+        upgrade_authority_ready,
+        format!(
+            "explicit={}, expected={expected_upgrade_authority:?}, mainnet_required={}",
+            config.upgrade_authority_keypair.is_some(),
+            policy.requires_explicit_recovery_signers(),
+        ),
+    );
+    let deployment_buffer_ready = deployment_buffer.is_some()
+        || (!policy.requires_explicit_recovery_signers()
+            && config.deployment_buffer_keypair.is_none());
+    gate(
+        &mut gates,
+        "deployment_buffer_secure_and_policy_compliant",
+        deployment_buffer_ready,
+        format!(
+            "explicit={}, pubkey={:?}, mainnet_required={}",
+            config.deployment_buffer_keypair.is_some(),
+            deployment_buffer.as_ref().map(Signer::pubkey),
+            policy.requires_explicit_recovery_signers(),
+        ),
+    );
+    gate(
+        &mut gates,
+        "direct_tpu_loader_policy",
+        config.use_tpu_client || !policy.requires_explicit_recovery_signers(),
+        format!(
+            "use_tpu_client={}, mainnet_required={}",
+            config.use_tpu_client,
+            policy.requires_explicit_recovery_signers(),
         ),
     );
     let distinct_keys = payer
@@ -1599,20 +2095,29 @@ fn inspect(workspace_root: &Path, config: &DevnetConfig) -> Result<Profile23Devn
         .zip(pool.as_ref())
         .zip(proof_account.as_ref())
         .is_some_and(|(((payer, program), pool), proof_account)| {
-            let keys = [
+            let mut keys = vec![
                 payer.pubkey(),
                 program.pubkey(),
                 pool.pubkey(),
                 proof_account.pubkey(),
             ];
+            if let Some(replay_probe) = replay_probe.as_ref() {
+                keys.push(replay_probe.pubkey());
+            }
+            if let Some(upgrade_authority) = upgrade_authority.as_ref() {
+                keys.push(upgrade_authority.pubkey());
+            }
+            if let Some(deployment_buffer) = deployment_buffer.as_ref() {
+                keys.push(deployment_buffer.pubkey());
+            }
             (0..keys.len())
                 .all(|left| (left + 1..keys.len()).all(|right| keys[left] != keys[right]))
         });
     gate(
         &mut gates,
-        "payer_program_pool_and_proof_keys_distinct",
+        "all_explicit_signer_roles_distinct",
         distinct_keys,
-        "all four explicit signer identities are pairwise distinct",
+        "all explicit signer identities are pairwise distinct",
     );
 
     let release_bytes = exact_regular_file(&config.release).ok();
@@ -1828,20 +2333,26 @@ fn inspect(workspace_root: &Path, config: &DevnetConfig) -> Result<Profile23Devn
         format!("pool_pubkey={pool_pubkey:?}, sidecar_sha256={statement_sha:?}"),
     );
 
-    let program_already_deployed = rpc
-        .account(&declared_program)
-        .ok()
+    let program_already_deployed = runtime_program_id
+        .and_then(|program_id| rpc.account(&program_id).ok())
         .map(|value| value.is_some());
-    let program_ready = match (program_already_deployed, sbf.as_ref(), payer.as_ref()) {
-        (Some(false), Some(_), Some(_)) => true,
-        (Some(true), Some(sbf), Some(payer)) => deployed_program_exact(
-            &rpc,
-            &declared_program,
-            sbf,
-            config.program_max_len,
-            &payer.pubkey(),
-        )
-        .is_ok_and(|snapshot| snapshot.is_some()),
+    let program_ready = match (
+        runtime_program_id,
+        program_already_deployed,
+        sbf.as_ref(),
+        expected_upgrade_authority,
+    ) {
+        (Some(_), Some(false), Some(_), Some(_)) => true,
+        (Some(program_id), Some(true), Some(sbf), Some(expected_upgrade_authority)) => {
+            deployed_program_exact(
+                &rpc,
+                &program_id,
+                sbf,
+                config.program_max_len,
+                &expected_upgrade_authority,
+            )
+            .is_ok_and(|snapshot| snapshot.is_some())
+        }
         _ => false,
     };
     gate(
@@ -1875,6 +2386,7 @@ fn inspect(workspace_root: &Path, config: &DevnetConfig) -> Result<Profile23Devn
                     let public = statement_public_inputs(statement);
                     recover_resume_state(
                         &rpc,
+                        &runtime_program_id.context("runtime program id unavailable")?,
                         payer,
                         pool,
                         proof_account,
@@ -1940,12 +2452,14 @@ fn inspect(workspace_root: &Path, config: &DevnetConfig) -> Result<Profile23Devn
 
     let nullifier_address = statement
         .map(statement_public_inputs)
-        .map(|public| atomic_nullifier_address(&declared_program, &public.nullifier).0);
+        .zip(runtime_program_id)
+        .map(|(public, program_id)| atomic_nullifier_address(&program_id, &public.nullifier).0);
     let nullifier_state = nullifier_address
         .and_then(|address| rpc.account(&address).ok())
         .flatten();
     let nullifier_ready = nullifier_address.is_some()
-        && nullifier_compatible(nullifier_state.as_ref(), &declared_program);
+        && runtime_program_id
+            .is_some_and(|program_id| nullifier_compatible(nullifier_state.as_ref(), &program_id));
     gate(
         &mut gates,
         "canonical_nullifier_absent_or_prefunded_compatible",
@@ -2008,7 +2522,9 @@ fn inspect(workspace_root: &Path, config: &DevnetConfig) -> Result<Profile23Devn
         let fresh = rent_budget
             .program_buffer_lamports
             .zip(rent_budget.programdata_lamports)
-            .and_then(|(buffer, data)| buffer.checked_add(data))
+            // Loader-v3 drains the temporary buffer back to the payer before
+            // creating ProgramData, so one rent deposit funds both in turn.
+            .map(|(buffer, data)| buffer.max(data))
             .and_then(|sum| {
                 rent_budget
                     .program_account_lamports
@@ -2052,10 +2568,12 @@ fn inspect(workspace_root: &Path, config: &DevnetConfig) -> Result<Profile23Devn
         mode: "read_only",
         mutations_performed: false,
         ready: blockers.is_empty(),
-        expected_genesis_hash: DEVNET_GENESIS_HASH,
+        expected_genesis_hash: policy.expected_genesis_hash(),
         observed_genesis_hash: observed_genesis,
         rpc_origin_redacted: rpc_origin,
-        program_id: declared_program.to_string(),
+        program_id: runtime_program_id
+            .map(|program_id| program_id.to_string())
+            .unwrap_or_else(|| "unavailable".to_owned()),
         payer_pubkey: payer.as_ref().map(|key| key.pubkey().to_string()),
         pool_pubkey: pool_pubkey.map(|key| key.to_string()),
         proof_account_pubkey: proof_account_pubkey.map(|key| key.to_string()),
@@ -2078,7 +2596,7 @@ fn inspect(workspace_root: &Path, config: &DevnetConfig) -> Result<Profile23Devn
 
 pub fn readiness(workspace_root: &Path, arguments: &[String]) -> Result<Profile23DevnetReadiness> {
     let config = parse_args(arguments, CommandMode::Readiness)?;
-    inspect(workspace_root, &config)
+    inspect_with_policy(workspace_root, &config, ClusterPolicy::Devnet)
 }
 
 fn signed_transaction(
@@ -2098,12 +2616,13 @@ fn signed_transaction(
 }
 
 fn proof_instruction(
+    program_id: &Pubkey,
     payer: Pubkey,
     proof_account: Pubkey,
     instruction: &AspisInstruction,
 ) -> Result<Instruction> {
     Ok(Instruction {
-        program_id: aspis_verifier::id(),
+        program_id: *program_id,
         accounts: vec![
             AccountMeta::new(
                 proof_account,
@@ -2117,6 +2636,7 @@ fn proof_instruction(
 
 fn create_account_transaction(
     rpc: &Rpc,
+    program_id: &Pubkey,
     payer: &Keypair,
     account: &Keypair,
     lamports: u64,
@@ -2128,11 +2648,150 @@ fn create_account_transaction(
         &account.pubkey(),
         lamports,
         space as u64,
-        &aspis_verifier::id(),
+        program_id,
     );
     let transaction =
         signed_transaction(payer, &[account], &[instruction], rpc.latest_blockhash()?);
     rpc.submit_transaction(&transaction, label)
+}
+
+fn create_and_init_proof_instructions(
+    program_id: &Pubkey,
+    payer: Pubkey,
+    proof_account: Pubkey,
+    proof_rent_lamports: u64,
+    proof_len: usize,
+) -> Result<Vec<Instruction>> {
+    let total_len = u32::try_from(proof_len).context("proof length exceeds tag0 u32 encoding")?;
+    let account_len = PROOF_ACCOUNT_HEADER_LEN
+        .checked_add(proof_len)
+        .context("proof account length overflow")?;
+    let create = system_instruction::create_account(
+        &payer,
+        &proof_account,
+        proof_rent_lamports,
+        u64::try_from(account_len).context("proof account length exceeds u64")?,
+        program_id,
+    );
+    let init = proof_instruction(
+        program_id,
+        payer,
+        proof_account,
+        &AspisInstruction::InitProof { total_len },
+    )?;
+    Ok(vec![
+        ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT),
+        create,
+        init,
+    ])
+}
+
+fn create_and_init_proof_transaction(
+    program_id: &Pubkey,
+    payer: &Keypair,
+    proof_account: &Keypair,
+    proof_rent_lamports: u64,
+    proof_len: usize,
+    blockhash: Hash,
+) -> Result<Transaction> {
+    let instructions = create_and_init_proof_instructions(
+        program_id,
+        payer.pubkey(),
+        proof_account.pubkey(),
+        proof_rent_lamports,
+        proof_len,
+    )?;
+    Ok(signed_transaction(
+        payer,
+        &[proof_account],
+        &instructions,
+        blockhash,
+    ))
+}
+
+pub(crate) fn finalize_and_close_partial_proof_transaction(
+    program_id: &Pubkey,
+    payer: &Keypair,
+    proof_account: &Keypair,
+    blockhash: Hash,
+) -> Result<Transaction> {
+    let finalize = proof_instruction(
+        program_id,
+        payer.pubkey(),
+        proof_account.pubkey(),
+        &AspisInstruction::FinalizeProof,
+    )?;
+    let close = Instruction {
+        program_id: *program_id,
+        accounts: vec![
+            AccountMeta::new(proof_account.pubkey(), true),
+            AccountMeta::new(payer.pubkey(), true),
+        ],
+        data: to_vec(&AspisInstruction::CloseFinalizedProof)?,
+    };
+    Ok(signed_transaction(
+        payer,
+        &[proof_account],
+        &[finalize, close],
+        blockhash,
+    ))
+}
+
+fn upload_proof_chunks(
+    rpc: &Rpc,
+    program_id: &Pubkey,
+    payer: &Keypair,
+    proof_account: &Keypair,
+    proof: &[u8],
+) -> Result<Vec<TransactionEvidence>> {
+    let upload_chunks = proof
+        .chunks(UPLOAD_CHUNK_BYTES)
+        .enumerate()
+        .collect::<Vec<_>>();
+    let finality_windows = upload_chunks.len().div_ceil(UPLOAD_WINDOW_TRANSACTIONS);
+    let mut evidence = Vec::with_capacity(upload_chunks.len());
+    for (window_index, window) in upload_chunks.chunks(UPLOAD_WINDOW_TRANSACTIONS).enumerate() {
+        eprintln!(
+            "proof upload window {}/{}: submitting {} transaction(s)",
+            window_index + 1,
+            finality_windows,
+            window.len()
+        );
+        let recent_blockhash = rpc.latest_blockhash_with_expiry()?;
+        let mut pending = Vec::with_capacity(window.len());
+        for &(index, chunk) in window {
+            let upload = proof_instruction(
+                program_id,
+                payer.pubkey(),
+                proof_account.pubkey(),
+                &AspisInstruction::UploadChunk {
+                    offset: (index * UPLOAD_CHUNK_BYTES) as u32,
+                    chunk: chunk.to_vec(),
+                },
+            )?;
+            let upload_tx = signed_transaction(payer, &[], &[upload], recent_blockhash.hash);
+            let wire = bincode::serialize(&upload_tx)?;
+            ensure!(
+                wire.len() <= MAX_TRANSACTION_WIRE_BYTES,
+                "upload transaction {index} is {} bytes, above the {}-byte packet cap",
+                wire.len(),
+                MAX_TRANSACTION_WIRE_BYTES
+            );
+            pending.push(rpc.submit_transaction_pending(
+                &upload_tx,
+                &format!("upload_proof_chunk_{index}"),
+                UPLOAD_MAX_IDENTICAL_RETRIES,
+            )?);
+        }
+        evidence
+            .extend(rpc.wait_finalized_batch(pending, recent_blockhash.last_valid_block_height)?);
+        eprintln!(
+            "proof upload window {}/{} finalized",
+            window_index + 1,
+            finality_windows
+        );
+    }
+    Ok(evidence)
 }
 
 fn extract_deploy_signature(stdout: &[u8]) -> Result<Signature> {
@@ -2152,43 +2811,89 @@ fn extract_deploy_signature(stdout: &[u8]) -> Result<Signature> {
     bail!("Solana CLI deployment output omitted a parseable signature")
 }
 
+fn deploy_cli_args(config: &DevnetConfig, policy: ClusterPolicy) -> Result<Vec<OsString>> {
+    if policy == ClusterPolicy::MainnetBeta {
+        ensure!(
+            config.upgrade_authority_keypair.is_some(),
+            "mainnet deploy requires --upgrade-authority-keypair"
+        );
+        ensure!(
+            config.deployment_buffer_keypair.is_some(),
+            "mainnet deploy requires --deployment-buffer-keypair"
+        );
+        ensure!(
+            config.use_tpu_client,
+            "mainnet deploy requires --use-tpu-client"
+        );
+    }
+    let upgrade_authority = config
+        .upgrade_authority_keypair
+        .as_ref()
+        .unwrap_or(&config.payer_keypair);
+    let mut arguments = vec![
+        OsString::from("--url"),
+        config.rpc_url.clone().into(),
+        OsString::from("--keypair"),
+        config.payer_keypair.as_os_str().to_owned(),
+        OsString::from("--output"),
+        OsString::from("json"),
+    ];
+    if policy == ClusterPolicy::MainnetBeta {
+        arguments.extend([OsString::from("--commitment"), OsString::from("finalized")]);
+    }
+    arguments.extend([
+        OsString::from("program"),
+        OsString::from("deploy"),
+        config.sbf.as_os_str().to_owned(),
+        OsString::from("--program-id"),
+        config.program_keypair.as_os_str().to_owned(),
+        OsString::from("--upgrade-authority"),
+        upgrade_authority.as_os_str().to_owned(),
+        OsString::from("--max-len"),
+        config.program_max_len.to_string().into(),
+    ]);
+    if let Some(buffer) = config.deployment_buffer_keypair.as_ref() {
+        arguments.extend([OsString::from("--buffer"), buffer.as_os_str().to_owned()]);
+    }
+    if config.use_tpu_client {
+        arguments.push(OsString::from("--use-tpu-client"));
+    }
+    if policy == ClusterPolicy::MainnetBeta {
+        arguments.extend([
+            OsString::from("--max-sign-attempts"),
+            OsString::from("1"),
+            OsString::from("--with-compute-unit-price"),
+            OsString::from("0"),
+        ]);
+    }
+    Ok(arguments)
+}
+
 fn deploy_if_needed(
     rpc: &Rpc,
+    program_id: &Pubkey,
+    expected_upgrade_authority: &Pubkey,
+    policy: ClusterPolicy,
     config: &DevnetConfig,
-    payer: &Keypair,
     sbf: &[u8],
 ) -> Result<Option<TransactionEvidence>> {
     if deployed_program_exact(
         rpc,
-        &aspis_verifier::id(),
+        program_id,
         sbf,
         config.program_max_len,
-        &payer.pubkey(),
+        expected_upgrade_authority,
     )?
     .is_some()
     {
         return Ok(None);
     }
     ensure!(
-        rpc.account(&aspis_verifier::id())?.is_none(),
+        rpc.account(program_id)?.is_none(),
         "program address exists but does not match the exact release"
     );
     let output = Command::new(&config.solana_cli)
-        .arg("--url")
-        .arg(&config.rpc_url)
-        .arg("--keypair")
-        .arg(&config.payer_keypair)
-        .arg("--output")
-        .arg("json")
-        .arg("program")
-        .arg("deploy")
-        .arg(&config.sbf)
-        .arg("--program-id")
-        .arg(&config.program_keypair)
-        .arg("--upgrade-authority")
-        .arg(&config.payer_keypair)
-        .arg("--max-len")
-        .arg(config.program_max_len.to_string())
+        .args(deploy_cli_args(config, policy)?)
         .output()
         .context("run explicit Solana CLI deploy")?;
     ensure!(
@@ -2201,10 +2906,10 @@ fn deploy_if_needed(
     ensure!(
         deployed_program_exact(
             rpc,
-            &aspis_verifier::id(),
+            program_id,
             sbf,
             config.program_max_len,
-            &payer.pubkey(),
+            expected_upgrade_authority,
         )?
         .is_some(),
         "finalized deployed program did not match release bytes/max-len/authority"
@@ -2267,24 +2972,50 @@ fn exact_in_progress_evidence_marker(path: &Path) -> bool {
         && value["warning"] == IN_PROGRESS_WARNING
 }
 
-fn zeroed_pool_account_exact(account: &RpcAccount, pool_rent: u64) -> bool {
+fn zeroed_pool_account_exact(account: &RpcAccount, program_id: &Pubkey, pool_rent: u64) -> bool {
     account.lamports == pool_rent
-        && account.owner == aspis_verifier::id()
+        && account.owner == *program_id
         && !account.executable
         && account.data.len() == ATOMIC_POOL_STATE_LEN
         && account.data.iter().all(|byte| *byte == 0)
 }
 
-fn zeroed_proof_account_exact(account: &RpcAccount, proof_rent: u64, proof_len: usize) -> bool {
+fn zeroed_proof_account_exact(
+    account: &RpcAccount,
+    program_id: &Pubkey,
+    proof_rent: u64,
+    proof_len: usize,
+) -> bool {
     account.lamports == proof_rent
-        && account.owner == aspis_verifier::id()
+        && account.owner == *program_id
         && !account.executable
         && account.data.len() == PROOF_ACCOUNT_HEADER_LEN + proof_len
         && account.data.iter().all(|byte| *byte == 0)
 }
 
+fn resumed_proof_checkpoint(
+    account: &RpcAccount,
+    program_id: &Pubkey,
+    proof_rent: u64,
+    proof_len: usize,
+    authority: Pubkey,
+) -> Option<ResumeCheckpoint> {
+    if zeroed_proof_account_exact(account, program_id, proof_rent, proof_len) {
+        Some(ResumeCheckpoint::ProofAccountCreated)
+    } else if account.lamports == proof_rent
+        && account.owner == *program_id
+        && !account.executable
+        && account.data == expected_proof_account(&vec![0u8; proof_len], authority, false)
+    {
+        Some(ResumeCheckpoint::ProofInitialized)
+    } else {
+        None
+    }
+}
+
 fn initialized_pool_account_exact(
     account: &RpcAccount,
+    program_id: &Pubkey,
     pool_rent: u64,
     sequence: u64,
     anchor: [u8; 32],
@@ -2294,7 +3025,7 @@ fn initialized_pool_account_exact(
         .encode(&mut expected)
         .is_ok()
         && account.lamports == pool_rent
-        && account.owner == aspis_verifier::id()
+        && account.owner == *program_id
         && !account.executable
         && account.data == expected
 }
@@ -2344,7 +3075,11 @@ fn recover_exact_transaction_evidence(
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum ResumeCheckpoint {
     PoolCreated,
+    /// Historical checkpoint produced by the old separate create-account
+    /// transaction, before tag0 initialization.
     ProofAccountCreated,
+    /// Current checkpoint produced by atomic create-account + tag0.
+    ProofInitialized,
 }
 
 impl ResumeCheckpoint {
@@ -2352,6 +3087,7 @@ impl ResumeCheckpoint {
         match self {
             Self::PoolCreated => "pool_created_zeroed",
             Self::ProofAccountCreated => "pool_initialized_proof_account_created_zeroed",
+            Self::ProofInitialized => "pool_initialized_proof_account_tag0_initialized",
         }
     }
 }
@@ -2366,6 +3102,7 @@ struct RecoveredResumeState {
 #[allow(clippy::too_many_arguments)]
 fn recover_resume_state(
     rpc: &Rpc,
+    program_id: &Pubkey,
     payer: &Keypair,
     pool: &Keypair,
     proof_account: &Keypair,
@@ -2383,7 +3120,7 @@ fn recover_resume_state(
         &pool.pubkey(),
         pool_rent,
         ATOMIC_POOL_STATE_LEN as u64,
-        &aspis_verifier::id(),
+        program_id,
     );
     let mut setup_transactions = vec![recover_exact_transaction_evidence(
         rpc,
@@ -2400,7 +3137,7 @@ fn recover_resume_state(
     let (checkpoint, proof_state) = match (pool_init_signature, proof_create_signature) {
         (None, None) => {
             ensure!(
-                zeroed_pool_account_exact(&pool_state, pool_rent),
+                zeroed_pool_account_exact(&pool_state, program_id, pool_rent),
                 "pool-created resume checkpoint has unexpected pool image"
             );
             ensure!(
@@ -2411,11 +3148,17 @@ fn recover_resume_state(
         }
         (Some(pool_init_signature), Some(proof_create_signature)) => {
             ensure!(
-                initialized_pool_account_exact(&pool_state, pool_rent, sequence, current_anchor,),
+                initialized_pool_account_exact(
+                    &pool_state,
+                    program_id,
+                    pool_rent,
+                    sequence,
+                    current_anchor,
+                ),
                 "proof-created resume checkpoint has unexpected initialized pool image"
             );
             let initialize_pool = Instruction {
-                program_id: aspis_verifier::id(),
+                program_id: *program_id,
                 accounts: vec![AccountMeta::new(pool.pubkey(), true)],
                 data: to_vec(&AspisInstruction::InitializeAtomicPool {
                     sequence,
@@ -2435,24 +3178,46 @@ fn recover_resume_state(
                 &proof_account.pubkey(),
                 proof_rent,
                 (PROOF_ACCOUNT_HEADER_LEN + proof_len) as u64,
-                &aspis_verifier::id(),
+                program_id,
             );
-            setup_transactions.push(recover_exact_transaction_evidence(
-                rpc,
-                payer,
-                &[proof_account],
-                &[proof_create],
-                proof_create_signature,
-                "create_proof_account",
-            )?);
             let proof_state = rpc
                 .account(&proof_account.pubkey())?
                 .context("proof-created resume checkpoint is missing proof account")?;
-            ensure!(
-                zeroed_proof_account_exact(&proof_state, proof_rent, proof_len),
-                "proof-created resume checkpoint has unexpected proof account image"
-            );
-            (ResumeCheckpoint::ProofAccountCreated, Some(proof_state))
+            let checkpoint = resumed_proof_checkpoint(
+                &proof_state,
+                program_id,
+                proof_rent,
+                proof_len,
+                payer.pubkey(),
+            )
+            .context("proof-created resume checkpoint has unexpected proof account image")?;
+            if checkpoint == ResumeCheckpoint::ProofAccountCreated {
+                setup_transactions.push(recover_exact_transaction_evidence(
+                    rpc,
+                    payer,
+                    &[proof_account],
+                    &[proof_create],
+                    proof_create_signature,
+                    "create_proof_account",
+                )?);
+            } else {
+                let create_and_init = create_and_init_proof_instructions(
+                    program_id,
+                    payer.pubkey(),
+                    proof_account.pubkey(),
+                    proof_rent,
+                    proof_len,
+                )?;
+                setup_transactions.push(recover_exact_transaction_evidence(
+                    rpc,
+                    payer,
+                    &[proof_account],
+                    &create_and_init,
+                    proof_create_signature,
+                    "create_and_init_proof_account",
+                )?);
+            }
+            (checkpoint, Some(proof_state))
         }
         _ => bail!("resume pool-init and proof-create signatures must be supplied together"),
     };
@@ -2476,7 +3241,7 @@ struct EvidenceReservation {
 }
 
 impl EvidenceReservation {
-    fn reserve(path: &Path) -> Result<Self> {
+    fn reserve(path: &Path, artifact: &'static str) -> Result<Self> {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
         }
@@ -2487,7 +3252,7 @@ impl EvidenceReservation {
             .open(path)
             .with_context(|| format!("reserve evidence path {}", path.display()))?;
         let placeholder = json!({
-            "artifact": "profile23_devnet_finalized_rehearsal",
+            "artifact": artifact,
             "status": "in_progress_no_claim",
             "reserved_at_utc": chrono::Utc::now().to_rfc3339(),
             "warning": IN_PROGRESS_WARNING
@@ -2546,17 +3311,269 @@ impl EvidenceReservation {
 }
 
 #[allow(clippy::too_many_lines)]
-pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23DevnetEvidence> {
-    let config = parse_args(arguments, CommandMode::Execute)?;
+pub fn upload_smoke(arguments: &[String]) -> Result<Profile23DevnetUploadSmokeEvidence> {
+    let config = parse_upload_smoke_args(arguments)?;
     ensure!(
         config.execute_interlock,
-        "missing --execute-devnet interlock"
+        "upload smoke requires --execute-devnet"
     );
     ensure!(
-        config.acknowledgement.as_deref() == Some(EXECUTE_ACK),
-        "missing exact devnet mutation acknowledgement"
+        config.acknowledgement.as_deref() == Some(UPLOAD_SMOKE_ACK),
+        "upload smoke acknowledgement mismatch"
     );
-    let readiness = inspect(workspace_root, &config)?;
+
+    let rpc_origin_redacted = rpc_origin(&config.rpc_url)?;
+    let rpc = Rpc::new(config.rpc_url.clone())?;
+    ensure!(
+        rpc.genesis_hash()? == DEVNET_GENESIS_HASH,
+        "upload smoke requires the pinned devnet genesis"
+    );
+    let payer = secure_keypair(&config.payer_keypair)?;
+    let proof_account = secure_keypair(&config.proof_account_keypair)?;
+    let program_id = aspis_verifier::id();
+    ensure!(
+        payer.pubkey() != proof_account.pubkey(),
+        "payer and proof-account keypairs must differ"
+    );
+    let sbf = exact_regular_file(&config.sbf)?;
+    let proof = exact_regular_file(&config.proof)?;
+    ensure!(!proof.is_empty(), "upload smoke proof must not be empty");
+    ensure!(
+        u32::try_from(proof.len()).is_ok(),
+        "upload smoke proof exceeds u32 framing"
+    );
+    let upgradeable_program_before = deployed_program_exact(
+        &rpc,
+        &program_id,
+        &sbf,
+        config.program_max_len,
+        &payer.pubkey(),
+    )?
+    .context("deployed program does not match the supplied SBF/max-len/authority")?;
+    ensure!(
+        rpc.account(&proof_account.pubkey())?.is_none(),
+        "upload-smoke proof account is not fresh"
+    );
+    let proof_rent = rpc.rent(PROOF_ACCOUNT_HEADER_LEN + proof.len())?;
+    let required_balance = proof_rent
+        .checked_add(config.fee_reserve_lamports)
+        .context("upload-smoke balance requirement overflow")?;
+    ensure!(
+        rpc.balance(&payer.pubkey())? >= required_balance,
+        "payer balance is below proof rent plus fee reserve"
+    );
+
+    let evidence_reservation =
+        EvidenceReservation::reserve(&config.evidence, "profile23_devnet_upload_smoke")?;
+    ensure!(
+        rpc.account(&proof_account.pubkey())?.is_none(),
+        "upload-smoke proof account ceased to be fresh"
+    );
+    let total_started = Instant::now();
+    let mut setup_transactions = Vec::new();
+    setup_transactions.push(create_account_transaction(
+        &rpc,
+        &program_id,
+        &payer,
+        &proof_account,
+        proof_rent,
+        PROOF_ACCOUNT_HEADER_LEN + proof.len(),
+        "create_proof_account",
+    )?);
+
+    let init = proof_instruction(
+        &program_id,
+        payer.pubkey(),
+        proof_account.pubkey(),
+        &AspisInstruction::InitProof {
+            total_len: proof.len() as u32,
+        },
+    )?;
+    let init_tx = signed_transaction(
+        &payer,
+        &[&proof_account],
+        &[
+            ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT),
+            init,
+        ],
+        rpc.latest_blockhash()?,
+    );
+    let init_simulation = rpc.simulate_exact(&bincode::serialize(&init_tx)?)?;
+    ensure!(
+        init_simulation.error.is_none()
+            && init_simulation
+                .units
+                .is_some_and(|units| units < u64::from(CU_LIMIT)),
+        "upload-smoke InitProof simulation failed or exceeded its CU limit"
+    );
+    setup_transactions.push(rpc.submit_transaction(&init_tx, "init_proof_account")?);
+
+    let upload_started = Instant::now();
+    let upload_transactions =
+        upload_proof_chunks(&rpc, &program_id, &payer, &proof_account, &proof)?;
+    let upload_wall_milliseconds = u64::try_from(upload_started.elapsed().as_millis())
+        .context("upload-smoke duration overflow")?;
+    let upload_first_finalized_slot = upload_transactions
+        .iter()
+        .map(|transaction| transaction.finalized_slot)
+        .min()
+        .context("upload smoke produced no upload transaction")?;
+    let upload_last_finalized_slot = upload_transactions
+        .iter()
+        .map(|transaction| transaction.finalized_slot)
+        .max()
+        .context("upload smoke produced no upload transaction")?;
+    let upload_identical_wire_retries = upload_transactions
+        .iter()
+        .map(|transaction| u64::from(transaction.identical_wire_retries))
+        .sum();
+    let proof_upload_transaction_count = upload_transactions.len();
+    setup_transactions.extend(upload_transactions);
+
+    let uploaded = rpc
+        .account(&proof_account.pubkey())?
+        .context("uploaded proof account missing")?;
+    ensure!(
+        uploaded.data == expected_proof_account(&proof, payer.pubkey(), false),
+        "full pre-finalization proof account bytes differ"
+    );
+    let finalize = proof_instruction(
+        &program_id,
+        payer.pubkey(),
+        proof_account.pubkey(),
+        &AspisInstruction::FinalizeProof,
+    )?;
+    let finalize_tx = signed_transaction(&payer, &[], &[finalize], rpc.latest_blockhash()?);
+    setup_transactions.push(rpc.submit_transaction(&finalize_tx, "tag62_finalize_proof")?);
+    let finalized_proof = rpc
+        .account(&proof_account.pubkey())?
+        .context("finalized proof account missing")?;
+    ensure!(
+        finalized_proof.data == expected_proof_account(&proof, payer.pubkey(), true),
+        "finalized proof bytes/header drift"
+    );
+
+    let forbidden_upload = proof_instruction(
+        &program_id,
+        payer.pubkey(),
+        proof_account.pubkey(),
+        &AspisInstruction::UploadChunk {
+            offset: 0,
+            chunk: vec![proof[0] ^ 1],
+        },
+    )?;
+    let forbidden_upload_tx =
+        signed_transaction(&payer, &[], &[forbidden_upload], rpc.latest_blockhash()?);
+    let post_finalize_upload_error = rpc
+        .simulate_exact(&bincode::serialize(&forbidden_upload_tx)?)?
+        .error
+        .context("sealed proof account accepted a forbidden upload simulation")?;
+    let post_finalize_upload_rejected =
+        post_finalize_upload_error == invalid_account_data_simulation_error(0);
+    let second_finalize = proof_instruction(
+        &program_id,
+        payer.pubkey(),
+        proof_account.pubkey(),
+        &AspisInstruction::FinalizeProof,
+    )?;
+    let second_finalize_tx =
+        signed_transaction(&payer, &[], &[second_finalize], rpc.latest_blockhash()?);
+    let post_finalize_second_finalize_error = rpc
+        .simulate_exact(&bincode::serialize(&second_finalize_tx)?)?
+        .error
+        .context("sealed proof account accepted a second-finalize simulation")?;
+    let post_finalize_second_finalize_rejected =
+        post_finalize_second_finalize_error == invalid_account_data_simulation_error(0);
+    ensure!(
+        post_finalize_upload_rejected && post_finalize_second_finalize_rejected,
+        "sealed proof account returned an unexpected rejection: upload={post_finalize_upload_error}, second_finalize={post_finalize_second_finalize_error}"
+    );
+    ensure!(
+        rpc.account(&proof_account.pubkey())?.as_ref() == Some(&finalized_proof),
+        "negative simulations changed the sealed proof account"
+    );
+
+    let upgradeable_program_after = deployed_program_exact(
+        &rpc,
+        &program_id,
+        &sbf,
+        config.program_max_len,
+        &payer.pubkey(),
+    )?
+    .context("exact deployed program missing after upload smoke")?;
+    let upgradeable_program_continuity =
+        upgradeable_program_after.continuity_from(&upgradeable_program_before);
+    ensure!(
+        upgradeable_program_continuity.all_unchanged(),
+        "deployed program changed during upload smoke"
+    );
+
+    let mut evidence = Profile23DevnetUploadSmokeEvidence {
+        artifact: "profile23_devnet_upload_smoke",
+        generated_at_utc: chrono::Utc::now().to_rfc3339(),
+        network: "devnet",
+        genesis_hash: DEVNET_GENESIS_HASH.to_owned(),
+        rpc_origin_redacted,
+        program_id: program_id.to_string(),
+        payer_pubkey: payer.pubkey().to_string(),
+        proof_account_pubkey: proof_account.pubkey().to_string(),
+        sbf_path: config.sbf.display().to_string(),
+        sbf_bytes: sbf.len(),
+        sbf_sha256: sha256(&sbf),
+        proof_path: config.proof.display().to_string(),
+        proof_bytes: proof.len(),
+        proof_sha256: sha256(&proof),
+        program_max_len: config.program_max_len,
+        upgradeable_program_before: upgradeable_program_before.evidence(),
+        upgradeable_program_after: upgradeable_program_after.evidence(),
+        upgradeable_program_continuity,
+        proof_upload_chunk_bytes: UPLOAD_CHUNK_BYTES,
+        proof_upload_window_transactions: UPLOAD_WINDOW_TRANSACTIONS,
+        proof_upload_transaction_count,
+        proof_upload_finality_windows: proof_upload_transaction_count
+            .div_ceil(UPLOAD_WINDOW_TRANSACTIONS),
+        upload_wall_milliseconds,
+        total_wall_milliseconds: u64::try_from(total_started.elapsed().as_millis())
+            .context("upload-smoke total duration overflow")?,
+        upload_first_finalized_slot,
+        upload_last_finalized_slot,
+        upload_identical_wire_retries,
+        setup_transactions,
+        proof_account: finalized_proof.evidence(proof_account.pubkey()),
+        full_unsealed_image_verified: true,
+        sealed_image_verified: true,
+        post_finalize_upload_rejected,
+        post_finalize_upload_error,
+        post_finalize_second_finalize_rejected,
+        post_finalize_second_finalize_error,
+        evidence_path: config.evidence.display().to_string(),
+        evidence_file_mode: 0o444,
+    };
+    evidence.evidence_file_mode = evidence_reservation.commit(&evidence)?;
+    Ok(evidence)
+}
+
+pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23DevnetEvidence> {
+    let config = parse_args(arguments, CommandMode::Execute)?;
+    validate_execution_policy(&config, ClusterPolicy::Devnet)?;
+    execute_with_policy(workspace_root, config, ClusterPolicy::Devnet)
+}
+
+pub fn execute_mainnet(
+    workspace_root: &Path,
+    arguments: &[String],
+) -> Result<Profile23DevnetEvidence> {
+    let config = parse_args(arguments, CommandMode::ExecuteMainnet)?;
+    validate_execution_policy(&config, ClusterPolicy::MainnetBeta)?;
+    execute_with_policy(workspace_root, config, ClusterPolicy::MainnetBeta)
+}
+
+fn execute_with_policy(
+    workspace_root: &Path,
+    config: DevnetConfig,
+    policy: ClusterPolicy,
+) -> Result<Profile23DevnetEvidence> {
+    let readiness = inspect_with_policy(workspace_root, &config, policy)?;
     ensure!(
         readiness.ready,
         "devnet readiness blocked: {}",
@@ -2565,20 +3582,41 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
 
     let rpc = Rpc::new(config.rpc_url.clone())?;
     ensure!(
-        rpc.genesis_hash()? == DEVNET_GENESIS_HASH,
-        "devnet genesis changed after readiness"
+        rpc.genesis_hash()? == policy.expected_genesis_hash(),
+        "{} genesis changed after readiness",
+        policy.network()
     );
     let payer = secure_keypair(&config.payer_keypair)?;
     let program = secure_keypair(&config.program_keypair)?;
     let pool = secure_keypair(&config.pool_keypair)?;
     let proof_account = secure_keypair(&config.proof_account_keypair)?;
-    ensure!(program.pubkey() == aspis_verifier::id());
-    let signer_keys = [
+    let replay_probe = match config.replay_probe_keypair.as_ref() {
+        Some(path) => secure_keypair(path)?,
+        None => Keypair::new(),
+    };
+    let expected_upgrade_authority = match config.upgrade_authority_keypair.as_ref() {
+        Some(path) => secure_keypair(path)?.pubkey(),
+        None => payer.pubkey(),
+    };
+    let deployment_buffer = config
+        .deployment_buffer_keypair
+        .as_ref()
+        .map(|path| secure_keypair(path))
+        .transpose()?;
+    let program_id = program.pubkey();
+    let mut signer_keys = vec![
         payer.pubkey(),
         program.pubkey(),
         pool.pubkey(),
         proof_account.pubkey(),
+        replay_probe.pubkey(),
     ];
+    if config.upgrade_authority_keypair.is_some() {
+        signer_keys.push(expected_upgrade_authority);
+    }
+    if let Some(buffer) = deployment_buffer.as_ref() {
+        signer_keys.push(buffer.pubkey());
+    }
     ensure!((0..signer_keys.len()).all(|left| {
         (left + 1..signer_keys.len()).all(|right| signer_keys[left] != signer_keys[right])
     }));
@@ -2595,6 +3633,7 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
     release_artifacts_exact(&release, workspace_root)?;
     let sbf = exact_regular_file(&config.sbf)?;
     let proof = exact_regular_file(&config.proof)?;
+    let release_proof_sha256 = sha256(&proof);
     let statement_bytes = exact_regular_file(&config.statement)?;
     let sbf_sha256 = sha256(&sbf);
     ensure!(
@@ -2646,14 +3685,14 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
     let public = statement_public_inputs(&statement);
     ensure!(Pubkey::new_from_array(statement.pool) == pool.pubkey());
 
-    if rpc.account(&aspis_verifier::id())?.is_some() {
+    if rpc.account(&program_id)?.is_some() {
         ensure!(
             deployed_program_exact(
                 &rpc,
-                &aspis_verifier::id(),
+                &program_id,
                 &sbf,
                 config.program_max_len,
-                &payer.pubkey(),
+                &expected_upgrade_authority,
             )?
             .is_some(),
             "already-deployed program ceased to match release bytes/max-len/authority"
@@ -2670,6 +3709,7 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
             .context("resume pool creation signature omitted")?;
         Some(recover_resume_state(
             &rpc,
+            &program_id,
             &payer,
             &pool,
             &proof_account,
@@ -2696,11 +3736,11 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
     let preexisting_proof_snapshot = recovered_resume
         .as_ref()
         .and_then(|state| state.proof_account.clone());
-    let (nullifier_address, _) = atomic_nullifier_address(&aspis_verifier::id(), &public.nullifier);
+    let (nullifier_address, _) = atomic_nullifier_address(&program_id, &public.nullifier);
     let nullifier_before_snapshot = rpc.account(&nullifier_address)?;
     ensure!(nullifier_compatible(
         nullifier_before_snapshot.as_ref(),
-        &aspis_verifier::id()
+        &program_id
     ));
 
     // Reserve the evidence filename before the first network mutation. If the
@@ -2709,20 +3749,27 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
     let evidence_reservation = if config.resume_in_progress {
         EvidenceReservation::resume(&config.evidence)?
     } else {
-        EvidenceReservation::reserve(&config.evidence)?
+        EvidenceReservation::reserve(&config.evidence, policy.evidence_artifact())?
     };
 
-    let deployment = deploy_if_needed(&rpc, &config, &payer, &sbf)?;
+    let deployment = deploy_if_needed(
+        &rpc,
+        &program_id,
+        &expected_upgrade_authority,
+        policy,
+        &config,
+        &sbf,
+    )?;
     // This is the baseline for the exact executable that all subsequent setup
     // and the final atomic transition are intended to exercise. The snapshot
     // comes from the same finalized RPC reads that passed byte/max-len/authority
     // validation, so the evidence does not have a validation/refetch gap.
     let upgradeable_program_before_setup = deployed_program_exact(
         &rpc,
-        &aspis_verifier::id(),
+        &program_id,
         &sbf,
         config.program_max_len,
-        &payer.pubkey(),
+        &expected_upgrade_authority,
     )?
     .context("exact deployed program missing immediately before rehearsal setup")?;
     let mut setup_transactions = recovered_resume
@@ -2734,6 +3781,7 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
     if resume_checkpoint.is_none() {
         setup_transactions.push(create_account_transaction(
             &rpc,
+            &program_id,
             &payer,
             &pool,
             pool_rent,
@@ -2741,13 +3789,16 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
             "create_pool_account",
         )?);
     }
-    let pool_before_snapshot = if resume_checkpoint == Some(ResumeCheckpoint::ProofAccountCreated) {
+    let pool_before_snapshot = if matches!(
+        resume_checkpoint,
+        Some(ResumeCheckpoint::ProofAccountCreated | ResumeCheckpoint::ProofInitialized)
+    ) {
         preexisting_pool_snapshot
             .clone()
             .context("proof-created resume checkpoint omitted pool snapshot")?
     } else {
         let initialize_pool = Instruction {
-            program_id: aspis_verifier::id(),
+            program_id,
             accounts: vec![AccountMeta::new(pool.pubkey(), true)],
             data: to_vec(&AspisInstruction::InitializeAtomicPool {
                 sequence: statement.sequence,
@@ -2765,7 +3816,7 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
         rpc.account(&pool.pubkey())?
             .context("initialized pool missing")?
     };
-    ensure!(pool_before_snapshot.owner == aspis_verifier::id());
+    ensure!(pool_before_snapshot.owner == program_id);
     let pool_before_state = AtomicPoolStateV1::decode(&pool_before_snapshot.data)
         .map_err(|error| anyhow!("decode initialized pool: {error:?}"))?;
     ensure!(
@@ -2774,92 +3825,76 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
     );
 
     let proof_rent = rpc.rent(PROOF_ACCOUNT_HEADER_LEN + proof.len())?;
-    if resume_checkpoint != Some(ResumeCheckpoint::ProofAccountCreated) {
-        setup_transactions.push(create_account_transaction(
-            &rpc,
-            &payer,
-            &proof_account,
-            proof_rent,
-            PROOF_ACCOUNT_HEADER_LEN + proof.len(),
-            "create_proof_account",
-        )?);
-    }
-    let init = proof_instruction(
-        payer.pubkey(),
-        proof_account.pubkey(),
-        &AspisInstruction::InitProof {
-            total_len: proof.len() as u32,
-        },
-    )?;
-    let init_tx = signed_transaction(
-        &payer,
-        &[&proof_account],
-        &[
-            ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT),
-            init,
-        ],
-        rpc.latest_blockhash()?,
-    );
-    let init_simulation = rpc.simulate_exact(&bincode::serialize(&init_tx)?)?;
-    ensure!(
-        init_simulation.error.is_none(),
-        "compute-budgeted InitProof simulation rejected: {:?}",
-        init_simulation.error
-    );
-    ensure!(
-        init_simulation
-            .units
-            .is_some_and(|units| units < u64::from(CU_LIMIT)),
-        "compute-budgeted InitProof simulation omitted or exceeded its CU limit"
-    );
-    setup_transactions.push(rpc.submit_transaction(&init_tx, "init_proof_account")?);
-    let upload_chunks = proof
-        .chunks(UPLOAD_CHUNK_BYTES)
-        .enumerate()
-        .collect::<Vec<_>>();
-    let proof_upload_transaction_count = upload_chunks.len();
-    let proof_upload_finality_windows =
-        proof_upload_transaction_count.div_ceil(UPLOAD_WINDOW_TRANSACTIONS);
-    for (window_index, window) in upload_chunks.chunks(UPLOAD_WINDOW_TRANSACTIONS).enumerate() {
-        eprintln!(
-            "proof upload window {}/{}: submitting {} transaction(s)",
-            window_index + 1,
-            proof_upload_finality_windows,
-            window.len()
-        );
-        let recent_blockhash = rpc.latest_blockhash_with_expiry()?;
-        let mut pending = Vec::with_capacity(window.len());
-        for &(index, chunk) in window {
-            let upload = proof_instruction(
+    if resume_checkpoint != Some(ResumeCheckpoint::ProofInitialized) {
+        let (init_tx, label) = if resume_checkpoint == Some(ResumeCheckpoint::ProofAccountCreated) {
+            let init = proof_instruction(
+                &program_id,
                 payer.pubkey(),
                 proof_account.pubkey(),
-                &AspisInstruction::UploadChunk {
-                    offset: (index * UPLOAD_CHUNK_BYTES) as u32,
-                    chunk: chunk.to_vec(),
+                &AspisInstruction::InitProof {
+                    total_len: proof.len() as u32,
                 },
             )?;
-            let upload_tx = signed_transaction(&payer, &[], &[upload], recent_blockhash.hash);
-            let wire = bincode::serialize(&upload_tx)?;
-            ensure!(
-                wire.len() <= MAX_TRANSACTION_WIRE_BYTES,
-                "upload transaction {index} is {} bytes, above the {}-byte packet cap",
-                wire.len(),
-                MAX_TRANSACTION_WIRE_BYTES
-            );
-            pending.push(rpc.submit_transaction_pending(
-                &upload_tx,
-                &format!("upload_proof_chunk_{index}"),
-                UPLOAD_MAX_IDENTICAL_RETRIES,
-            )?);
-        }
-        setup_transactions
-            .extend(rpc.wait_finalized_batch(pending, recent_blockhash.last_valid_block_height)?);
-        eprintln!(
-            "proof upload window {}/{} finalized",
-            window_index + 1,
-            proof_upload_finality_windows
+            (
+                signed_transaction(
+                    &payer,
+                    &[&proof_account],
+                    &[
+                        ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT),
+                        init,
+                    ],
+                    rpc.latest_blockhash()?,
+                ),
+                "init_historical_zeroed_proof_account",
+            )
+        } else {
+            (
+                create_and_init_proof_transaction(
+                    &program_id,
+                    &payer,
+                    &proof_account,
+                    proof_rent,
+                    proof.len(),
+                    rpc.latest_blockhash()?,
+                )?,
+                "create_and_init_proof_account",
+            )
+        };
+        let init_simulation = rpc.simulate_exact(&bincode::serialize(&init_tx)?)?;
+        ensure!(
+            init_simulation.error.is_none(),
+            "compute-budgeted proof create/init simulation rejected: {:?}",
+            init_simulation.error
         );
+        ensure!(
+            init_simulation
+                .units
+                .is_some_and(|units| units < u64::from(CU_LIMIT)),
+            "compute-budgeted proof create/init simulation omitted or exceeded its CU limit"
+        );
+        setup_transactions.push(rpc.submit_transaction(&init_tx, label)?);
     }
+    let initialized_proof = rpc
+        .account(&proof_account.pubkey())?
+        .context("initialized proof account missing")?;
+    ensure!(
+        initialized_proof.lamports == proof_rent
+            && initialized_proof.owner == program_id
+            && !initialized_proof.executable
+            && initialized_proof.data
+                == expected_proof_account(&vec![0u8; proof.len()], payer.pubkey(), false),
+        "tag0-initialized proof account image differs before upload"
+    );
+    let proof_upload_transaction_count = proof.len().div_ceil(UPLOAD_CHUNK_BYTES);
+    let proof_upload_finality_windows =
+        proof_upload_transaction_count.div_ceil(UPLOAD_WINDOW_TRANSACTIONS);
+    setup_transactions.extend(upload_proof_chunks(
+        &rpc,
+        &program_id,
+        &payer,
+        &proof_account,
+        &proof,
+    )?);
     let uploaded = rpc
         .account(&proof_account.pubkey())?
         .context("uploaded proof account missing")?;
@@ -2868,6 +3903,7 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
         "full pre-finalization proof account bytes differ"
     );
     let finalize = proof_instruction(
+        &program_id,
         payer.pubkey(),
         proof_account.pubkey(),
         &AspisInstruction::FinalizeProof,
@@ -2884,6 +3920,7 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
 
     let post_finalize_before = finalized_proof.clone();
     let forbidden_upload = proof_instruction(
+        &program_id,
         payer.pubkey(),
         proof_account.pubkey(),
         &AspisInstruction::UploadChunk {
@@ -2893,56 +3930,63 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
     )?;
     let forbidden_upload_tx =
         signed_transaction(&payer, &[], &[forbidden_upload], rpc.latest_blockhash()?);
-    let post_finalize_upload_rejected = rpc
+    let post_finalize_upload_error = rpc
         .simulate_exact(&bincode::serialize(&forbidden_upload_tx)?)?
         .error
-        .is_some();
+        .context("sealed proof accepted an upload simulation")?;
+    let post_finalize_upload_rejected =
+        post_finalize_upload_error == invalid_account_data_simulation_error(0);
     ensure!(
         post_finalize_upload_rejected,
-        "sealed proof accepted an upload simulation"
+        "sealed proof upload returned an unexpected rejection: {post_finalize_upload_error}"
     );
     let second_finalize = proof_instruction(
+        &program_id,
         payer.pubkey(),
         proof_account.pubkey(),
         &AspisInstruction::FinalizeProof,
     )?;
     let second_finalize_tx =
         signed_transaction(&payer, &[], &[second_finalize], rpc.latest_blockhash()?);
-    let post_finalize_second_finalize_rejected = rpc
+    let post_finalize_second_finalize_error = rpc
         .simulate_exact(&bincode::serialize(&second_finalize_tx)?)?
         .error
-        .is_some();
+        .context("sealed proof accepted second finalization")?;
+    let post_finalize_second_finalize_rejected =
+        post_finalize_second_finalize_error == invalid_account_data_simulation_error(0);
     ensure!(
         post_finalize_second_finalize_rejected,
-        "sealed proof accepted second finalization"
+        "sealed proof second finalization returned an unexpected rejection: {post_finalize_second_finalize_error}"
     );
     ensure!(rpc.account(&proof_account.pubkey())?.as_ref() == Some(&post_finalize_before));
 
-    let tag60 = Instruction {
-        program_id: aspis_verifier::id(),
+    let tag65 = Instruction {
+        program_id,
         accounts: vec![
-            AccountMeta::new_readonly(proof_account.pubkey(), false),
+            AccountMeta::new(proof_account.pubkey(), true),
             AccountMeta::new(pool.pubkey(), false),
             AccountMeta::new(nullifier_address, false),
             AccountMeta::new(payer.pubkey(), true),
             AccountMeta::new_readonly(system_program::id(), false),
         ],
-        data: to_vec(&AspisInstruction::ApplyAtomicStateOnlyProfile23V3 {
-            current_anchor: public.current_anchor,
-            nullifier: public.nullifier,
-            output_commitment: public.output_commitment,
-            output_anchor: public.output_anchor,
-            asset_id: public.asset_id,
-            fee: public.fee,
-        })?,
+        data: to_vec(
+            &AspisInstruction::ApplyAtomicStateOnlyProfile23V3WithProofRefund {
+                current_anchor: public.current_anchor,
+                nullifier: public.nullifier,
+                output_commitment: public.output_commitment,
+                output_anchor: public.output_anchor,
+                asset_id: public.asset_id,
+                fee: public.fee,
+            },
+        )?,
     };
     let final_tx = signed_transaction(
         &payer,
-        &[],
+        &[&proof_account],
         &[
             ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT),
             ComputeBudgetInstruction::request_heap_frame(HEAP_FRAME_BYTES),
-            tag60.clone(),
+            tag65.clone(),
         ],
         rpc.latest_blockhash()?,
     );
@@ -2950,36 +3994,39 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
     let final_message_hash = sha256(&bincode::serialize(&final_tx.message)?);
     let final_wire_hash = sha256(&final_wire);
     // No RPC call may intervene between this exact executable recheck and the
-    // tag60 simulation. In particular, an upgrade that preserves the program
+    // tag65 simulation. In particular, an upgrade that preserves the program
     // address but changes ProgramData cannot inherit the baseline evidence.
     let upgradeable_program_before_final_simulation = deployed_program_exact(
         &rpc,
-        &aspis_verifier::id(),
+        &program_id,
         &sbf,
         config.program_max_len,
-        &payer.pubkey(),
+        &expected_upgrade_authority,
     )?
-    .context("exact deployed program missing immediately before tag60 simulation")?;
+    .context("exact deployed program missing immediately before tag65 simulation")?;
     let upgradeable_program_before_final_simulation_continuity =
         upgradeable_program_before_final_simulation
             .continuity_from(&upgradeable_program_before_setup);
     ensure!(
         upgradeable_program_before_final_simulation_continuity.all_unchanged(),
-        "upgradeable program or ProgramData identity changed between setup baseline and tag60 simulation"
+        "upgradeable program or ProgramData identity changed between setup baseline and tag65 simulation"
     );
     let simulation = rpc.simulate_exact(&final_wire)?;
     ensure!(
         simulation.error.is_none(),
-        "exact signed tag60 simulation rejected: {:?}",
+        "exact signed tag65 simulation rejected: {:?}",
         simulation.error
     );
-    let simulation_cu = simulation.units.context("tag60 simulation omitted CU")?;
+    let simulation_cu = simulation.units.context("tag65 simulation omitted CU")?;
     ensure!(
         simulation_cu < u64::from(CU_LIMIT),
-        "tag60 simulation exceeded CU limit"
+        "tag65 simulation exceeded CU limit"
     );
+    let final_transaction_simulation_proof_digest_log =
+        require_program_proof_digest_log(&simulation.logs, &release_proof_sha256)?;
     ensure!(rpc.account(&pool.pubkey())?.as_ref() == Some(&pool_before_snapshot));
     ensure!(rpc.account(&nullifier_address)? == nullifier_before_snapshot);
+    ensure!(rpc.account(&proof_account.pubkey())?.as_ref() == Some(&finalized_proof));
 
     // Submit the exact byte string that was simulated. On an ambiguous RPC
     // response only that same byte string may be retried once.
@@ -2987,7 +4034,7 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
         &final_wire,
         final_tx.signatures[0],
         true,
-        "tag60_atomic_verify_and_apply",
+        "tag65_atomic_verify_and_apply",
         final_message_hash.clone(),
     )?;
     // `submit_wire` returns only after finality. Revalidate both exact release
@@ -2995,29 +4042,29 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
     // resulting state accounts.
     let upgradeable_program_after_finality = deployed_program_exact(
         &rpc,
-        &aspis_verifier::id(),
+        &program_id,
         &sbf,
         config.program_max_len,
-        &payer.pubkey(),
+        &expected_upgrade_authority,
     )?
-    .context("exact deployed program missing after finalized tag60 transaction")?;
+    .context("exact deployed program missing after finalized tag65 transaction")?;
     let upgradeable_program_after_finality_continuity =
         upgradeable_program_after_finality.continuity_from(&upgradeable_program_before_setup);
     ensure!(
         upgradeable_program_after_finality_continuity.all_unchanged(),
-        "upgradeable program or ProgramData identity changed between setup baseline and tag60 finality"
+        "upgradeable program or ProgramData identity changed between setup baseline and tag65 finality"
     );
     ensure!(final_transaction.serialized_transaction_sha256 == final_wire_hash);
     let landed_cu = final_transaction
         .compute_units_consumed
-        .context("finalized tag60 transaction omitted computeUnitsConsumed")?;
+        .context("finalized tag65 transaction omitted computeUnitsConsumed")?;
     ensure!(
         landed_cu < u64::from(CU_LIMIT),
-        "finalized tag60 exceeded CU limit"
+        "finalized tag65 exceeded CU limit"
     );
     let pool_after_snapshot = rpc
         .account(&pool.pubkey())?
-        .context("pool missing after tag60")?;
+        .context("pool missing after tag65")?;
     let pool_after_state = AtomicPoolStateV1::decode(&pool_after_snapshot.data)
         .map_err(|error| anyhow!("decode poststate pool: {error:?}"))?;
     ensure!(
@@ -3030,40 +4077,312 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
     ensure!(pool_after_state.anchor == public.output_anchor);
     let nullifier_after_snapshot = rpc
         .account(&nullifier_address)?
-        .context("nullifier missing after tag60")?;
-    ensure!(nullifier_after_snapshot.owner == aspis_verifier::id());
+        .context("nullifier missing after tag65")?;
+    ensure!(nullifier_after_snapshot.owner == program_id);
     ensure!(
         nullifier_after_snapshot.data == expected_nullifier_marker(pool.pubkey(), public.nullifier)
     );
-    ensure!(rpc.account(&proof_account.pubkey())?.as_ref() == Some(&finalized_proof));
+    ensure!(
+        rpc.account(&proof_account.pubkey())?.is_none(),
+        "proof account still exists after successful tag65 refund"
+    );
 
-    let duplicate_tx = signed_transaction(
+    let account_index = |key: Pubkey| -> Result<usize> {
+        final_tx
+            .message
+            .account_keys
+            .iter()
+            .position(|candidate| *candidate == key)
+            .with_context(|| format!("final tag65 message omitted account {key}"))
+    };
+    let payer_account_index = account_index(payer.pubkey())?;
+    let proof_account_index = account_index(proof_account.pubkey())?;
+    let nullifier_account_index = account_index(nullifier_address)?;
+    let (final_fee_lamports, pre_balances, post_balances, final_transaction_logs) =
+        rpc.transaction_fee_balances_and_logs(&final_tx.signatures[0])?;
+    let final_transaction_finalized_proof_digest_log =
+        require_program_proof_digest_log(&final_transaction_logs, &release_proof_sha256)?;
+    let final_transaction_proof_digest_logs_both_exact =
+        final_transaction_simulation_proof_digest_log.exact_release_proof_digest
+            && final_transaction_finalized_proof_digest_log.exact_release_proof_digest;
+    ensure!(
+        final_transaction_proof_digest_logs_both_exact,
+        "simulation/finalized program proof-digest logs were not both exact"
+    );
+    ensure!(pre_balances.len() == final_tx.message.account_keys.len());
+    ensure!(post_balances.len() == final_tx.message.account_keys.len());
+    let payer_pre_lamports = pre_balances[payer_account_index];
+    let payer_post_lamports = post_balances[payer_account_index];
+    let proof_pre_lamports = pre_balances[proof_account_index];
+    let proof_post_lamports = post_balances[proof_account_index];
+    let nullifier_pre_lamports = pre_balances[nullifier_account_index];
+    let nullifier_post_lamports = post_balances[nullifier_account_index];
+    let proof_refund_lamports = proof_pre_lamports
+        .checked_sub(proof_post_lamports)
+        .context("proof balance increased during refund")?;
+    let nullifier_funding_lamports = nullifier_post_lamports
+        .checked_sub(nullifier_pre_lamports)
+        .context("nullifier balance decreased during tag65")?;
+    ensure!(proof_pre_lamports == finalized_proof.lamports);
+    ensure!(proof_post_lamports == 0);
+    ensure!(proof_refund_lamports == finalized_proof.lamports);
+    let exact_balance_equation_reconciled = i128::from(payer_post_lamports)
+        - i128::from(payer_pre_lamports)
+        + i128::from(final_fee_lamports)
+        + i128::from(nullifier_funding_lamports)
+        == i128::from(proof_refund_lamports);
+    ensure!(
+        exact_balance_equation_reconciled,
+        "final tag65 payer/proof/nullifier balances do not reconcile"
+    );
+    let final_transaction_refund_balances = RefundBalanceEvidence {
+        fee_lamports: final_fee_lamports,
+        payer_account_index,
+        proof_account_index,
+        nullifier_account_index,
+        payer_pre_lamports,
+        payer_post_lamports,
+        proof_pre_lamports,
+        proof_post_lamports,
+        nullifier_pre_lamports,
+        nullifier_post_lamports,
+        proof_refund_lamports,
+        nullifier_funding_lamports,
+        exact_balance_equation_reconciled,
+    };
+
+    // The successful tag65 transaction closed its proof account. Exercise the
+    // replay/nullifier path with a distinct, minimally sized sealed proof so
+    // the rejection cannot be an artifact of referring to the closed account.
+    // The already-spent nullifier is checked before proof parsing, while the
+    // post-success anchor keeps the replay on that exact validation branch.
+    let replay_probe_payload = [0u8];
+    let replay_probe_rent_lamports =
+        rpc.rent(PROOF_ACCOUNT_HEADER_LEN + replay_probe_payload.len())?;
+    let mut replay_probe_setup_transactions = vec![create_account_transaction(
+        &rpc,
+        &program_id,
         &payer,
-        &[],
+        &replay_probe,
+        replay_probe_rent_lamports,
+        PROOF_ACCOUNT_HEADER_LEN + replay_probe_payload.len(),
+        "create_replay_probe_account",
+    )?];
+    let replay_probe_init = proof_instruction(
+        &program_id,
+        payer.pubkey(),
+        replay_probe.pubkey(),
+        &AspisInstruction::InitProof {
+            total_len: replay_probe_payload.len() as u32,
+        },
+    )?;
+    let replay_probe_upload = proof_instruction(
+        &program_id,
+        payer.pubkey(),
+        replay_probe.pubkey(),
+        &AspisInstruction::UploadChunk {
+            offset: 0,
+            chunk: replay_probe_payload.to_vec(),
+        },
+    )?;
+    let replay_probe_finalize = proof_instruction(
+        &program_id,
+        payer.pubkey(),
+        replay_probe.pubkey(),
+        &AspisInstruction::FinalizeProof,
+    )?;
+    let seal_replay_probe_tx = signed_transaction(
+        &payer,
+        &[&replay_probe],
         &[
-            ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT),
-            ComputeBudgetInstruction::request_heap_frame(HEAP_FRAME_BYTES),
-            tag60,
+            replay_probe_init,
+            replay_probe_upload,
+            replay_probe_finalize,
         ],
         rpc.latest_blockhash()?,
     );
-    let duplicate_simulation_rejected = rpc
+    let seal_replay_probe_simulation =
+        rpc.simulate_exact(&bincode::serialize(&seal_replay_probe_tx)?)?;
+    ensure!(
+        seal_replay_probe_simulation.error.is_none(),
+        "replay-probe sealing simulation rejected: {:?}",
+        seal_replay_probe_simulation.error
+    );
+    replay_probe_setup_transactions
+        .push(rpc.submit_transaction(&seal_replay_probe_tx, "seal_replay_probe_account")?);
+    let replay_probe_before_close = rpc
+        .account(&replay_probe.pubkey())?
+        .context("sealed replay-probe account missing")?;
+    ensure!(
+        replay_probe_before_close.lamports == replay_probe_rent_lamports
+            && replay_probe_before_close.owner == program_id
+            && !replay_probe_before_close.executable
+            && replay_probe_before_close.data
+                == expected_proof_account(&replay_probe_payload, payer.pubkey(), true),
+        "sealed replay-probe account image differs"
+    );
+
+    let mut replay_public = public;
+    replay_public.current_anchor = pool_after_state.anchor;
+    let replay_tag65 = Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(replay_probe.pubkey(), true),
+            AccountMeta::new(pool.pubkey(), false),
+            AccountMeta::new(nullifier_address, false),
+            AccountMeta::new(payer.pubkey(), true),
+            AccountMeta::new_readonly(system_program::id(), false),
+        ],
+        data: to_vec(
+            &AspisInstruction::ApplyAtomicStateOnlyProfile23V3WithProofRefund {
+                current_anchor: replay_public.current_anchor,
+                nullifier: replay_public.nullifier,
+                output_commitment: replay_public.output_commitment,
+                output_anchor: replay_public.output_anchor,
+                asset_id: replay_public.asset_id,
+                fee: replay_public.fee,
+            },
+        )?,
+    };
+    let duplicate_tx = signed_transaction(
+        &payer,
+        &[&replay_probe],
+        &[
+            ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT),
+            ComputeBudgetInstruction::request_heap_frame(HEAP_FRAME_BYTES),
+            replay_tag65,
+        ],
+        rpc.latest_blockhash()?,
+    );
+    let duplicate_simulation_error = rpc
         .simulate_exact(&bincode::serialize(&duplicate_tx)?)?
         .error
-        .is_some();
+        .context("duplicate tag65 simulation unexpectedly accepted")?;
+    let duplicate_simulation_expected_nullifier_error_exact = duplicate_simulation_error
+        == custom_simulation_error(2, ATOMIC_ERROR_NULLIFIER_ALREADY_SPENT);
     ensure!(
-        duplicate_simulation_rejected,
-        "duplicate tag60 simulation unexpectedly accepted"
+        duplicate_simulation_expected_nullifier_error_exact,
+        "duplicate tag65 returned an unexpected rejection: {duplicate_simulation_error}"
     );
-    ensure!(rpc.account(&pool.pubkey())?.as_ref() == Some(&pool_after_snapshot));
-    ensure!(rpc.account(&nullifier_address)?.as_ref() == Some(&nullifier_after_snapshot));
+    let duplicate_simulation_rejected = true;
+    let duplicate_simulation_pool_unchanged =
+        rpc.account(&pool.pubkey())?.as_ref() == Some(&pool_after_snapshot);
+    let duplicate_simulation_nullifier_unchanged =
+        rpc.account(&nullifier_address)?.as_ref() == Some(&nullifier_after_snapshot);
+    let duplicate_simulation_replay_probe_unchanged =
+        rpc.account(&replay_probe.pubkey())?.as_ref() == Some(&replay_probe_before_close);
+    ensure!(
+        duplicate_simulation_pool_unchanged
+            && duplicate_simulation_nullifier_unchanged
+            && duplicate_simulation_replay_probe_unchanged,
+        "duplicate tag65 simulation changed pool, nullifier, or replay-probe state"
+    );
+
+    // Close the replay probe through append-only tag64 and prove the exact
+    // rent flow from finalized transaction metadata.
+    let close_replay_probe = Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(replay_probe.pubkey(), true),
+            AccountMeta::new(payer.pubkey(), true),
+        ],
+        data: to_vec(&AspisInstruction::CloseFinalizedProof)?,
+    };
+    let close_replay_probe_tx = signed_transaction(
+        &payer,
+        &[&replay_probe],
+        &[close_replay_probe],
+        rpc.latest_blockhash()?,
+    );
+    let close_replay_probe_wire = bincode::serialize(&close_replay_probe_tx)?;
+    let close_replay_probe_simulation = rpc.simulate_exact(&close_replay_probe_wire)?;
+    ensure!(
+        close_replay_probe_simulation.error.is_none(),
+        "tag64 replay-probe close simulation rejected: {:?}",
+        close_replay_probe_simulation.error
+    );
+    ensure!(
+        rpc.account(&replay_probe.pubkey())?.as_ref() == Some(&replay_probe_before_close),
+        "tag64 close simulation changed the replay probe"
+    );
+    let replay_probe_close_transaction = rpc.submit_wire(
+        &close_replay_probe_wire,
+        close_replay_probe_tx.signatures[0],
+        true,
+        "tag64_close_replay_probe",
+        sha256(&bincode::serialize(&close_replay_probe_tx.message)?),
+    )?;
+    ensure!(
+        replay_probe_close_transaction.serialized_transaction_sha256
+            == sha256(&close_replay_probe_wire),
+        "submitted tag64 close wire differed from its simulation"
+    );
+    let close_account_index = |key: Pubkey| -> Result<usize> {
+        close_replay_probe_tx
+            .message
+            .account_keys
+            .iter()
+            .position(|candidate| *candidate == key)
+            .with_context(|| format!("tag64 close message omitted account {key}"))
+    };
+    let close_payer_account_index = close_account_index(payer.pubkey())?;
+    let close_replay_probe_account_index = close_account_index(replay_probe.pubkey())?;
+    let (close_fee_lamports, close_pre_balances, close_post_balances, _) =
+        rpc.transaction_fee_balances_and_logs(&close_replay_probe_tx.signatures[0])?;
+    ensure!(
+        close_pre_balances.len() == close_replay_probe_tx.message.account_keys.len()
+            && close_post_balances.len() == close_replay_probe_tx.message.account_keys.len(),
+        "tag64 close balance-vector length drift"
+    );
+    let close_payer_pre_lamports = close_pre_balances[close_payer_account_index];
+    let close_payer_post_lamports = close_post_balances[close_payer_account_index];
+    let close_replay_probe_pre_lamports = close_pre_balances[close_replay_probe_account_index];
+    let close_replay_probe_post_lamports = close_post_balances[close_replay_probe_account_index];
+    let replay_probe_refund_lamports = close_replay_probe_pre_lamports
+        .checked_sub(close_replay_probe_post_lamports)
+        .context("replay-probe balance increased during tag64 close")?;
+    ensure!(
+        close_replay_probe_pre_lamports == replay_probe_before_close.lamports
+            && close_replay_probe_post_lamports == 0
+            && replay_probe_refund_lamports == replay_probe_rent_lamports,
+        "tag64 did not refund the replay probe's exact rent balance"
+    );
+    let replay_probe_refund_exact_balance_equation = i128::from(close_payer_post_lamports)
+        - i128::from(close_payer_pre_lamports)
+        + i128::from(close_fee_lamports)
+        == i128::from(replay_probe_refund_lamports);
+    ensure!(
+        replay_probe_refund_exact_balance_equation,
+        "tag64 replay-probe payer/refund balances do not reconcile"
+    );
+    let replay_probe_absent_after_close = rpc.account(&replay_probe.pubkey())?.is_none();
+    ensure!(
+        replay_probe_absent_after_close,
+        "replay-probe account still exists after finalized tag64 close"
+    );
+    ensure!(
+        rpc.account(&pool.pubkey())?.as_ref() == Some(&pool_after_snapshot)
+            && rpc.account(&nullifier_address)?.as_ref() == Some(&nullifier_after_snapshot),
+        "tag64 replay-probe cleanup changed pool or nullifier state"
+    );
+    let replay_probe_refund_balances = ReplayProbeRefundEvidence {
+        fee_lamports: close_fee_lamports,
+        payer_account_index: close_payer_account_index,
+        replay_probe_account_index: close_replay_probe_account_index,
+        payer_pre_lamports: close_payer_pre_lamports,
+        payer_post_lamports: close_payer_post_lamports,
+        replay_probe_pre_lamports: close_replay_probe_pre_lamports,
+        replay_probe_post_lamports: close_replay_probe_post_lamports,
+        replay_probe_refund_lamports,
+        exact_balance_equation_reconciled: replay_probe_refund_exact_balance_equation,
+    };
 
     let mut evidence = Profile23DevnetEvidence {
-        artifact: "profile23_devnet_finalized_rehearsal",
+        artifact: policy.evidence_artifact(),
         generated_at_utc: chrono::Utc::now().to_rfc3339(),
-        network: "devnet",
-        genesis_hash: DEVNET_GENESIS_HASH.to_owned(),
-        program_id: aspis_verifier::id().to_string(),
+        network: policy.network(),
+        genesis_hash: policy.expected_genesis_hash().to_owned(),
+        program_id: program_id.to_string(),
         release_certificate_path: config.release.display().to_string(),
         release_certificate_sha256: sha256(&release_bytes),
         release_gate_count,
@@ -3082,7 +4401,7 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
         sbf_sha256: sha256(&sbf),
         proof_path: config.proof.display().to_string(),
         proof_bytes: proof.len(),
-        proof_sha256: sha256(&proof),
+        proof_sha256: release_proof_sha256,
         proof_upload_chunk_bytes: UPLOAD_CHUNK_BYTES,
         proof_upload_window_transactions: UPLOAD_WINDOW_TRANSACTIONS,
         proof_upload_transaction_count,
@@ -3111,11 +4430,16 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
         setup_transactions,
         final_transaction,
         final_transaction_simulation_cu: simulation_cu,
+        final_transaction_simulation_proof_digest_log,
+        final_transaction_finalized_proof_digest_log,
+        final_transaction_proof_digest_logs_both_exact,
         final_transaction_wire_sha256: final_wire_hash,
         final_transaction_message_sha256: final_message_hash,
         final_transaction_submitted_identically_to_simulation: true,
-        proof_account: finalized_proof.evidence(proof_account.pubkey()),
-        proof_account_finalized: true,
+        proof_account_before_refund: finalized_proof.evidence(proof_account.pubkey()),
+        proof_account_finalized_before_refund: true,
+        proof_account_absent_after_refund: true,
+        final_transaction_refund_balances,
         post_finalize_upload_rejected,
         post_finalize_second_finalize_rejected,
         pool_before: pool_before_snapshot.evidence(pool.pubkey()),
@@ -3125,13 +4449,33 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
         nullifier_before: nullifier_before_snapshot.map(|account| account.evidence(nullifier_address)),
         nullifier_after: nullifier_after_snapshot.evidence(nullifier_address),
         duplicate_simulation_rejected,
+        duplicate_simulation_error,
+        duplicate_simulation_expected_nullifier_error_exact,
+        duplicate_simulation_pool_unchanged,
+        duplicate_simulation_nullifier_unchanged,
+        duplicate_simulation_replay_probe_unchanged,
+        replay_probe_pubkey: replay_probe.pubkey().to_string(),
+        replay_probe_payload_bytes: replay_probe_payload.len(),
+        replay_probe_rent_lamports,
+        replay_probe_setup_transactions,
+        replay_probe_before_close: replay_probe_before_close.evidence(replay_probe.pubkey()),
+        replay_probe_close_transaction,
+        replay_probe_absent_after_close,
+        replay_probe_refund_balances,
         evidence_path: config.evidence.display().to_string(),
         evidence_file_mode: 0,
         explicit_scope: vec![
-            "Devnet rehearsal only; this is not mainnet-beta evidence.",
-            "The single tag60 transaction consumes a previously finalized proof account and atomically mutates pool/nullifier state.",
+            match policy {
+                ClusterPolicy::Devnet => "Devnet rehearsal only; this is not mainnet-beta evidence.",
+                ClusterPolicy::MainnetBeta => "Finalized mainnet-beta demo evidence under the pinned mainnet genesis.",
+            },
+            "The single tag65 transaction verifies and closes a previously finalized proof account, refunds its full rent, and atomically mutates pool/nullifier state.",
             "Deployment, pool initialization, proof-account creation, uploads, and finalization are setup transactions.",
-            "The deployment is left upgradeable under the explicit payer for rehearsal; the mainnet executor must independently enforce its selected authority policy.",
+            match (policy, config.upgrade_authority_keypair.is_some()) {
+                (ClusterPolicy::Devnet, false) => "The rehearsal deployment remains upgradeable under the explicit payer.",
+                (ClusterPolicy::Devnet, true) => "The rehearsal deployment remains upgradeable under the explicit dedicated upgrade authority.",
+                (ClusterPolicy::MainnetBeta, _) => "The mainnet deployment remains upgradeable under the explicit dedicated upgrade authority retained for ProgramData recovery.",
+            },
         ],
     };
     evidence.evidence_file_mode = 0o444;
@@ -3142,6 +4486,7 @@ pub fn execute(workspace_root: &Path, arguments: &[String]) -> Result<Profile23D
 #[cfg(test)]
 mod tests {
     use aspis_core::field::M31;
+    use solana_sdk::{account_info::AccountInfo, clock::Epoch};
 
     use super::*;
     use crate::profile23_statement::{
@@ -3166,6 +4511,40 @@ mod tests {
         fn drop(&mut self) {
             let _ = fs::remove_dir_all(&self.0);
         }
+    }
+
+    #[test]
+    fn proof_digest_log_requires_one_exact_release_digest() {
+        let digest = [7u8; 32];
+        let expected = digest
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>();
+        let line = format!(
+            "Program data: {} {}",
+            BASE64.encode(PROOF_SHA256_LOG_MARKER),
+            BASE64.encode(digest)
+        );
+        let evidence = require_program_proof_digest_log(&[line.clone()], &expected).unwrap();
+        assert_eq!(evidence.raw_log_line, line);
+        assert_eq!(evidence.logged_proof_sha256, expected);
+        assert!(evidence.exact_release_proof_digest);
+        assert!(
+            require_program_proof_digest_log(&[line.clone(), line], &expected).is_err(),
+            "duplicate proof-digest logs must fail closed"
+        );
+        assert!(
+            require_program_proof_digest_log(
+                &[format!(
+                    "Program data: {} {}",
+                    BASE64.encode(PROOF_SHA256_LOG_MARKER),
+                    BASE64.encode([8u8; 32])
+                )],
+                &expected,
+            )
+            .is_err(),
+            "a different logged proof digest must fail closed"
+        );
     }
 
     fn statement(seed: u32) -> aspis_statement::AtomicPaymentStatementV3 {
@@ -3277,6 +4656,66 @@ mod tests {
         .collect()
     }
 
+    fn complete_mainnet_args() -> Vec<String> {
+        let mut arguments = complete_args();
+        let rpc = arguments
+            .iter()
+            .position(|argument| argument == "--rpc-url")
+            .unwrap();
+        arguments[rpc + 1] = "https://api.mainnet-beta.solana.com".to_owned();
+        arguments.extend(
+            [
+                "--replay-probe-keypair",
+                "/tmp/replay-probe.json",
+                "--upgrade-authority-keypair",
+                "/tmp/upgrade-authority.json",
+                "--deployment-buffer-keypair",
+                "/tmp/deployment-buffer.json",
+                "--use-tpu-client",
+                "--execute-mainnet",
+                "--acknowledgement",
+                MAINNET_EXECUTE_ACK,
+            ]
+            .into_iter()
+            .map(str::to_owned),
+        );
+        arguments
+    }
+
+    fn string_arguments(arguments: Vec<OsString>) -> Vec<String> {
+        arguments
+            .into_iter()
+            .map(|argument| argument.into_string().unwrap())
+            .collect()
+    }
+
+    fn complete_upload_smoke_args() -> Vec<String> {
+        vec![
+            "--rpc-url",
+            "https://api.devnet.solana.com",
+            "--payer-keypair",
+            "/tmp/payer.json",
+            "--proof-account-keypair",
+            "/tmp/proof-account.json",
+            "--sbf",
+            "/tmp/program.so",
+            "--proof",
+            "/tmp/proof.bin",
+            "--evidence",
+            "/tmp/upload-smoke.json",
+            "--program-max-len",
+            "925760",
+            "--fee-reserve-lamports",
+            "100000000",
+            "--execute-devnet",
+            "--acknowledgement",
+            UPLOAD_SMOKE_ACK,
+        ]
+        .into_iter()
+        .map(str::to_owned)
+        .collect()
+    }
+
     fn test_signature(label: &[u8]) -> Signature {
         Keypair::new().sign_message(label)
     }
@@ -3297,7 +4736,9 @@ mod tests {
     fn upload_wire_len(chunk_len: usize) -> usize {
         let payer = Keypair::new();
         let proof_account = Keypair::new();
+        let program_id = Pubkey::new_unique();
         let upload = proof_instruction(
+            &program_id,
             payer.pubkey(),
             proof_account.pubkey(),
             &AspisInstruction::UploadChunk {
@@ -3317,20 +4758,173 @@ mod tests {
         assert_eq!(upload_wire_len(1_019), MAX_TRANSACTION_WIRE_BYTES);
         assert_eq!(upload_wire_len(1_020), MAX_TRANSACTION_WIRE_BYTES + 1);
 
-        let proof_len = 66_367usize;
+        let proof_len = 64_447usize;
         let chunk_lengths = (0..proof_len)
             .step_by(UPLOAD_CHUNK_BYTES)
             .map(|offset| (proof_len - offset).min(UPLOAD_CHUNK_BYTES))
             .collect::<Vec<_>>();
-        assert_eq!(chunk_lengths.len(), 70);
+        assert_eq!(chunk_lengths.len(), 68);
         assert_eq!(chunk_lengths.last(), Some(&127));
         assert_eq!(
             chunk_lengths
                 .chunks(UPLOAD_WINDOW_TRANSACTIONS)
                 .map(<[usize]>::len)
                 .collect::<Vec<_>>(),
-            vec![16, 16, 16, 16, 6]
+            vec![16, 16, 16, 16, 4]
         );
+    }
+
+    #[test]
+    fn primary_create_and_tag0_use_the_explicit_runtime_program_id_atomically() {
+        let payer = Keypair::new();
+        let proof_account = Keypair::new();
+        let program_id = Pubkey::new_unique();
+        assert_ne!(program_id, aspis_verifier::id());
+        let transaction = create_and_init_proof_transaction(
+            &program_id,
+            &payer,
+            &proof_account,
+            123_456,
+            64_447,
+            Hash::new_unique(),
+        )
+        .unwrap();
+        transaction.verify().unwrap();
+        assert_eq!(transaction.signatures.len(), 2);
+        assert_eq!(transaction.message.instructions.len(), 3);
+        let create = &transaction.message.instructions[1];
+        let init = &transaction.message.instructions[2];
+        assert_eq!(
+            transaction.message.account_keys[create.program_id_index as usize],
+            system_program::id()
+        );
+        let create: system_instruction::SystemInstruction =
+            bincode::deserialize(&create.data).unwrap();
+        assert!(matches!(
+            create,
+            system_instruction::SystemInstruction::CreateAccount {
+                owner,
+                space,
+                ..
+            } if owner == program_id && space == (PROOF_ACCOUNT_HEADER_LEN + 64_447) as u64
+        ));
+        assert_eq!(
+            transaction.message.account_keys[init.program_id_index as usize],
+            program_id
+        );
+        assert_eq!(
+            init.data.first(),
+            Some(&0),
+            "tag0 must follow create-account"
+        );
+    }
+
+    #[test]
+    fn resume_classifier_preserves_legacy_zeroed_and_atomic_tag0_checkpoints() {
+        let program_id = Pubkey::new_unique();
+        let authority = Pubkey::new_unique();
+        let rent = 99_000;
+        let proof_len = 11;
+        let legacy = RpcAccount {
+            lamports: rent,
+            owner: program_id,
+            executable: false,
+            data: vec![0u8; PROOF_ACCOUNT_HEADER_LEN + proof_len],
+        };
+        assert_eq!(
+            resumed_proof_checkpoint(&legacy, &program_id, rent, proof_len, authority),
+            Some(ResumeCheckpoint::ProofAccountCreated)
+        );
+        let initialized = RpcAccount {
+            data: expected_proof_account(&vec![0u8; proof_len], authority, false),
+            ..legacy.clone()
+        };
+        assert_eq!(
+            resumed_proof_checkpoint(&initialized, &program_id, rent, proof_len, authority),
+            Some(ResumeCheckpoint::ProofInitialized)
+        );
+        let mut drifted = initialized;
+        drifted.data[PROOF_ACCOUNT_HEADER_LEN] = 1;
+        assert_eq!(
+            resumed_proof_checkpoint(&drifted, &program_id, rent, proof_len, authority),
+            None
+        );
+    }
+
+    #[test]
+    fn partial_proof_cleanup_is_one_ordered_tag62_tag64_transaction() {
+        let payer = Keypair::new();
+        let proof_account = Keypair::new();
+        let program_id = Pubkey::new_unique();
+        let transaction = finalize_and_close_partial_proof_transaction(
+            &program_id,
+            &payer,
+            &proof_account,
+            Hash::new_unique(),
+        )
+        .unwrap();
+        transaction.verify().unwrap();
+        assert_eq!(transaction.signatures.len(), 2);
+        assert_eq!(transaction.message.instructions.len(), 2);
+        for (instruction, tag) in transaction.message.instructions.iter().zip([62, 64]) {
+            assert_eq!(
+                transaction.message.account_keys[instruction.program_id_index as usize],
+                program_id
+            );
+            assert_eq!(instruction.data.first(), Some(&tag));
+        }
+
+        let proof_key = proof_account.pubkey();
+        let payer_key = payer.pubkey();
+        let system_owner = system_program::id();
+        let mut proof_lamports = 777_000;
+        let mut payer_lamports = 12_000;
+        let original_total = proof_lamports + payer_lamports;
+        let mut proof_data = expected_proof_account(&[0u8; 8], payer_key, false);
+        proof_data[PROOF_ACCOUNT_HEADER_LEN..PROOF_ACCOUNT_HEADER_LEN + 3]
+            .copy_from_slice(&[0xa1, 0xb2, 0xc3]);
+        let mut payer_data = [];
+        {
+            let proof_info = AccountInfo::new(
+                &proof_key,
+                true,
+                true,
+                &mut proof_lamports,
+                &mut proof_data,
+                &program_id,
+                false,
+                Epoch::default(),
+            );
+            let payer_info = AccountInfo::new(
+                &payer_key,
+                true,
+                true,
+                &mut payer_lamports,
+                &mut payer_data,
+                &system_owner,
+                false,
+                Epoch::default(),
+            );
+            let accounts = [proof_info, payer_info];
+            aspis_verifier::process_instruction(
+                &program_id,
+                &accounts,
+                &transaction.message.instructions[0].data,
+            )
+            .unwrap();
+            assert!(accounts[0].try_borrow_data().unwrap()
+                [PROOF_AUTHORITY_OFFSET..PROOF_AUTHORITY_OFFSET + 32]
+                .iter()
+                .all(|byte| *byte == 0));
+            aspis_verifier::process_instruction(
+                &program_id,
+                &accounts,
+                &transaction.message.instructions[1].data,
+            )
+            .unwrap();
+        }
+        assert_eq!(proof_lamports, 0);
+        assert_eq!(payer_lamports, original_total);
     }
 
     #[test]
@@ -3474,6 +5068,197 @@ mod tests {
     }
 
     #[test]
+    fn cluster_policies_pin_genesis_acknowledgement_and_evidence_identity() {
+        assert_eq!(
+            ClusterPolicy::Devnet.expected_genesis_hash(),
+            DEVNET_GENESIS_HASH
+        );
+        assert_eq!(ClusterPolicy::Devnet.network(), "devnet");
+        assert_eq!(
+            ClusterPolicy::Devnet.evidence_artifact(),
+            "profile23_devnet_finalized_rehearsal"
+        );
+        assert_eq!(
+            ClusterPolicy::MainnetBeta.expected_genesis_hash(),
+            MAINNET_BETA_GENESIS_HASH
+        );
+        assert_eq!(ClusterPolicy::MainnetBeta.network(), "mainnet-beta");
+        assert_eq!(
+            ClusterPolicy::MainnetBeta.evidence_artifact(),
+            "profile23_mainnet_beta_finalized_demo"
+        );
+        assert_eq!(
+            ClusterPolicy::MainnetBeta.execution_acknowledgement(),
+            MAINNET_EXECUTE_ACK
+        );
+    }
+
+    #[test]
+    fn mainnet_execution_policy_requires_every_exact_interlock_and_recovery_role() {
+        let complete = complete_mainnet_args();
+        let parsed = parse_args(&complete, CommandMode::ExecuteMainnet).unwrap();
+        validate_execution_policy(&parsed, ClusterPolicy::MainnetBeta).unwrap();
+
+        for required_pair in [
+            "--replay-probe-keypair",
+            "--upgrade-authority-keypair",
+            "--deployment-buffer-keypair",
+        ] {
+            let mut incomplete = complete.clone();
+            let index = incomplete
+                .iter()
+                .position(|argument| argument == required_pair)
+                .unwrap();
+            incomplete.drain(index..=index + 1);
+            let parsed = parse_args(&incomplete, CommandMode::ExecuteMainnet).unwrap();
+            assert!(
+                validate_execution_policy(&parsed, ClusterPolicy::MainnetBeta).is_err(),
+                "mainnet policy accepted missing {required_pair}"
+            );
+        }
+
+        for required_flag in ["--use-tpu-client", "--execute-mainnet"] {
+            let mut incomplete = complete.clone();
+            let index = incomplete
+                .iter()
+                .position(|argument| argument == required_flag)
+                .unwrap();
+            incomplete.remove(index);
+            let parsed = parse_args(&incomplete, CommandMode::ExecuteMainnet).unwrap();
+            assert!(
+                validate_execution_policy(&parsed, ClusterPolicy::MainnetBeta).is_err(),
+                "mainnet policy accepted missing {required_flag}"
+            );
+        }
+
+        let mut wrong_acknowledgement = complete.clone();
+        let acknowledgement = wrong_acknowledgement
+            .iter()
+            .position(|argument| argument == "--acknowledgement")
+            .unwrap();
+        wrong_acknowledgement[acknowledgement + 1] = EXECUTE_ACK.to_owned();
+        let parsed = parse_args(&wrong_acknowledgement, CommandMode::ExecuteMainnet).unwrap();
+        assert!(validate_execution_policy(&parsed, ClusterPolicy::MainnetBeta).is_err());
+
+        let mut wrong_cluster = complete;
+        let interlock = wrong_cluster
+            .iter()
+            .position(|argument| argument == "--execute-mainnet")
+            .unwrap();
+        wrong_cluster[interlock] = "--execute-devnet".to_owned();
+        assert!(parse_args(&wrong_cluster, CommandMode::ExecuteMainnet).is_err());
+    }
+
+    #[test]
+    fn devnet_policy_and_deploy_cli_defaults_remain_backward_compatible() {
+        let readiness_config = parse_args(&complete_args(), CommandMode::Readiness).unwrap();
+        assert_eq!(
+            string_arguments(deploy_cli_args(&readiness_config, ClusterPolicy::Devnet).unwrap()),
+            vec![
+                "--url",
+                "https://api.devnet.solana.com",
+                "--keypair",
+                "/tmp/payer.json",
+                "--output",
+                "json",
+                "program",
+                "deploy",
+                "/tmp/program.so",
+                "--program-id",
+                "/tmp/program.json",
+                "--upgrade-authority",
+                "/tmp/payer.json",
+                "--max-len",
+                "7000000",
+            ]
+        );
+
+        let mut execute_arguments = complete_args();
+        execute_arguments.extend(
+            ["--execute-devnet", "--acknowledgement", EXECUTE_ACK]
+                .into_iter()
+                .map(str::to_owned),
+        );
+        let parsed = parse_args(&execute_arguments, CommandMode::Execute).unwrap();
+        validate_execution_policy(&parsed, ClusterPolicy::Devnet).unwrap();
+        assert!(parsed.replay_probe_keypair.is_none());
+        assert!(parsed.upgrade_authority_keypair.is_none());
+        assert!(parsed.deployment_buffer_keypair.is_none());
+        assert!(!parsed.use_tpu_client);
+    }
+
+    #[test]
+    fn mainnet_deploy_cli_is_finalized_direct_tpu_single_attempt_and_zero_price() {
+        let config = parse_args(&complete_mainnet_args(), CommandMode::ExecuteMainnet).unwrap();
+        assert_eq!(
+            string_arguments(deploy_cli_args(&config, ClusterPolicy::MainnetBeta).unwrap()),
+            vec![
+                "--url",
+                "https://api.mainnet-beta.solana.com",
+                "--keypair",
+                "/tmp/payer.json",
+                "--output",
+                "json",
+                "--commitment",
+                "finalized",
+                "program",
+                "deploy",
+                "/tmp/program.so",
+                "--program-id",
+                "/tmp/program.json",
+                "--upgrade-authority",
+                "/tmp/upgrade-authority.json",
+                "--max-len",
+                "7000000",
+                "--buffer",
+                "/tmp/deployment-buffer.json",
+                "--use-tpu-client",
+                "--max-sign-attempts",
+                "1",
+                "--with-compute-unit-price",
+                "0",
+            ]
+        );
+
+        let incomplete = parse_args(&complete_args(), CommandMode::Readiness).unwrap();
+        assert!(deploy_cli_args(&incomplete, ClusterPolicy::MainnetBeta).is_err());
+    }
+
+    #[test]
+    fn upload_smoke_parser_requires_explicit_safe_arguments() {
+        let parsed = parse_upload_smoke_args(&complete_upload_smoke_args()).unwrap();
+        assert!(parsed.execute_interlock);
+        assert_eq!(parsed.acknowledgement.as_deref(), Some(UPLOAD_SMOKE_ACK));
+        assert_eq!(parsed.program_max_len, 925_760);
+
+        let mut relative = complete_upload_smoke_args();
+        let proof = relative.iter().position(|arg| arg == "--proof").unwrap();
+        relative[proof + 1] = "relative.bin".to_owned();
+        assert!(parse_upload_smoke_args(&relative).is_err());
+
+        let mut duplicate = complete_upload_smoke_args();
+        duplicate.push("--execute-devnet".to_owned());
+        assert!(parse_upload_smoke_args(&duplicate).is_err());
+
+        let mut unknown = complete_upload_smoke_args();
+        unknown.push("--unexpected".to_owned());
+        unknown.push("value".to_owned());
+        assert!(parse_upload_smoke_args(&unknown).is_err());
+    }
+
+    #[test]
+    fn exact_negative_simulation_error_is_pinned() {
+        assert_eq!(
+            invalid_account_data_simulation_error(0),
+            json!({"InstructionError": [0, "InvalidAccountData"]})
+        );
+        assert_ne!(
+            invalid_account_data_simulation_error(0),
+            json!({"InstructionError": [1, "InvalidAccountData"]})
+        );
+    }
+
+    #[test]
     fn explicit_resume_requires_and_parses_creation_signature() {
         let mut missing_signature = complete_args();
         missing_signature.push("--resume-in-progress".to_owned());
@@ -3497,6 +5282,26 @@ mod tests {
         let index = args.iter().position(|arg| arg == "--proof").unwrap();
         args[index + 1] = "relative.bin".to_owned();
         assert!(parse_args(&args, CommandMode::Readiness).is_err());
+    }
+
+    #[test]
+    fn replay_probe_keypair_is_optional_on_devnet_but_explicit_paths_are_absolute() {
+        let parsed = parse_args(&complete_args(), CommandMode::Readiness).unwrap();
+        assert!(parsed.replay_probe_keypair.is_none());
+
+        let mut explicit = complete_args();
+        explicit.push("--replay-probe-keypair".to_owned());
+        explicit.push("/tmp/replay-probe.json".to_owned());
+        let parsed = parse_args(&explicit, CommandMode::Readiness).unwrap();
+        assert_eq!(
+            parsed.replay_probe_keypair,
+            Some(PathBuf::from("/tmp/replay-probe.json"))
+        );
+
+        let mut relative = complete_args();
+        relative.push("--replay-probe-keypair".to_owned());
+        relative.push("replay-probe.json".to_owned());
+        assert!(parse_args(&relative, CommandMode::Readiness).is_err());
     }
 
     #[test]
@@ -3839,8 +5644,10 @@ mod tests {
             std::process::id(),
             chrono::Utc::now().timestamp_nanos_opt().unwrap()
         ));
-        let reservation = EvidenceReservation::reserve(&path).unwrap();
+        let reservation =
+            EvidenceReservation::reserve(&path, "profile23_devnet_upload_smoke").unwrap();
         let in_progress: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        assert_eq!(in_progress["artifact"], "profile23_devnet_upload_smoke");
         assert_eq!(in_progress["status"], "in_progress_no_claim");
         reservation
             .commit(&json!({"status":"finalized_evidence"}))
