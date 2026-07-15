@@ -81,8 +81,28 @@ jobs:
       - name: Harness schema and proof override compile
         run: cargo check -q -p aspis-xtask
 
+      - name: Provision frozen deployed-SBF fixture
+        run: |
+          set -euo pipefail
+          release/profile23-q18-g37-mainnet-v1/verify.sh
+          src=release/profile23-q18-g37-mainnet-v1/program/aspis_verifier.so
+          dst=target/deploy/aspis_verifier.so
+          expected=97c45a9abef97607a2fc6ed245829210046b234044b6738599d2bce0c367d04a
+          test -f "$src" && test ! -L "$src"
+          test "$(wc -c < "$src" | tr -d '[:space:]')" = 921848
+          test "$(sha256sum "$src" | awk '{print $1}')" = "$expected"
+          mkdir -p target/deploy
+          rm -f -- "$dst"
+          install -m 0644 -- "$src" "$dst"
+          test ! -L "$dst"
+          cmp -- "$src" "$dst"
+          test "$(sha256sum "$dst" | awk '{print $1}')" = "$expected"
+
       - name: Release evaluator fail-closed tests
-        run: cargo test --release -q -p aspis-xtask profile23_release
+        run: |
+          cargo test --release -q -p aspis-xtask profile23_release
+          cmp -- release/profile23-q18-g37-mainnet-v1/program/aspis_verifier.so target/deploy/aspis_verifier.so
+          test "$(sha256sum target/deploy/aspis_verifier.so | awk '{print $1}')" = 97c45a9abef97607a2fc6ed245829210046b234044b6738599d2bce0c367d04a
 
       - name: Mainnet executor invariants
         run: cargo test -q -p aspis-xtask 'profile23_mainnet::tests'
