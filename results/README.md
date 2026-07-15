@@ -17,6 +17,13 @@ The self-contained mainnet publication is in
 `verify.sh` checks the release certificate, evidence, proof, program, and
 paper together.
 
+The archival chain reconstruction is
+[`stage2/profile23_mainnet_sbf_and_instruction_reconstruction.json`](stage2/profile23_mainnet_sbf_and_instruction_reconstruction.json).
+It records a complete replay of the finalized buffer-write history, exact SBF
+and ProgramData reconstruction, and byte-level decoding of the landed tag-65
+instruction. The corresponding stdlib-only tool is
+[`tools/reconstruct_profile23_mainnet_sbf.py`](../tools/reconstruct_profile23_mainnet_sbf.py).
+
 The remaining `stage2/` records are source artifacts, measurements, and four
 regression proof fixtures consumed by the current release machinery. The
 complete Stage 0/1 record, rejected profiles, and superseded measurements are

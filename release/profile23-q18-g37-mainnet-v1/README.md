@@ -3,7 +3,8 @@
 This immutable bundle contains the exact Profile23 q18/g37 proof, public
 statement, SBF verifier, 36/36 release certificates, finalized devnet and
 mainnet evidence, independent mainnet RPC reconciliation, cleanup and refund
-receipts, the publication paper, and the prepublication security review at
+receipts, a byte-level archival reconstruction of the deployed SBF and landed
+instruction, the publication paper, and the prepublication security review at
 `review/prepublication-security-review.html`.
 
 `certificates/release-execution-time.json` is the exact certificate bound by
@@ -42,6 +43,25 @@ It requires Bash, `jq`, and either `sha256sum` or `shasum`. It checks every
 published byte plus the critical identities, hashes, signatures, slots,
 compute use, state transition, cleanup, independent-provider agreement, and
 cost equations.
+
+The offline verifier authenticates the frozen reconstruction result. To
+repeat its live archival RPC replay from this directory, run:
+
+```bash
+python3 tools/reconstruct_profile23_mainnet_sbf.py \
+  --sbf-path program/aspis_verifier.so \
+  --proof-path proof/profile23-q18-g37.bin \
+  --statement-path proof/statement.json \
+  --output /tmp/profile23-mainnet-reconstruction.json \
+  --compare-substantive \
+  evidence/mainnet-sbf-and-instruction-reconstruction.json
+```
+
+The live replay is network-bound by archival Solana JSON-RPC access. It
+compares two providers' finalized 1,069-transaction buffer histories and raw
+transaction bodies, binds every loader write to the exact buffer and
+authority, reconstructs the 921,848-byte SBF, and checks the deployment,
+tag-65 instruction, proof log, and refund equation.
 
 The `*.raw.public.json` files are derived public copies of the immutable
 executor records. Operator-specific filesystem locations were replaced with

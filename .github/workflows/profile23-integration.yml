@@ -82,7 +82,7 @@ jobs:
         run: cargo check -q -p aspis-xtask
 
       - name: Release evaluator fail-closed tests
-        run: cargo test -q -p aspis-xtask profile23_release
+        run: cargo test --release -q -p aspis-xtask profile23_release
 
       - name: Mainnet executor invariants
         run: cargo test -q -p aspis-xtask 'profile23_mainnet::tests'
@@ -107,8 +107,11 @@ jobs:
 
       - name: Verify repository-to-bundle identity
         run: |
+          python3 -m py_compile tools/reconstruct_profile23_mainnet_sbf.py
           cmp results/stage2/profile23_one_transaction_release.json release/profile23-q18-g37-mainnet-v1/certificates/release.json
           cmp results/stage2/profile23_mainnet_finalized_manifest.json release/profile23-q18-g37-mainnet-v1/evidence/mainnet-finalized-manifest.json
+          cmp results/stage2/profile23_mainnet_sbf_and_instruction_reconstruction.json release/profile23-q18-g37-mainnet-v1/evidence/mainnet-sbf-and-instruction-reconstruction.json
+          cmp tools/reconstruct_profile23_mainnet_sbf.py release/profile23-q18-g37-mainnet-v1/tools/reconstruct_profile23_mainnet_sbf.py
           cmp results/stage2/proofs/profile23_devnet_b1z_sequence0_q18_g37_production_authorizing_guarded_private.bin release/profile23-q18-g37-mainnet-v1/proof/profile23-q18-g37.bin
           cmp results/stage2/proofs/profile23_devnet_b1z_sequence0_q18_g37_production_authorizing_guarded_private.statement.json release/profile23-q18-g37-mainnet-v1/proof/statement.json
           cmp paper/profile23-mainnet-v1/profile23.pdf release/profile23-q18-g37-mainnet-v1/paper/profile23.pdf

@@ -42,6 +42,10 @@ The official Solana mainnet RPC and an independent PublicNode endpoint agree
 on the transaction, lifecycle records, and final accounts; the same signature
 is absent on devnet and testnet. See the
 [public reconciliation](results/stage2/profile23_mainnet_independent_rpc_reconciliation.json).
+An archival replay also reconstructs the deployed SBF byte-for-byte from all
+1,067 loader writes and decodes the exact tag-65 instruction; see the
+[reconstruction result](results/stage2/profile23_mainnet_sbf_and_instruction_reconstruction.json)
+and [stdlib-only replay script](tools/reconstruct_profile23_mainnet_sbf.py).
 
 Program deployment, proof upload, and proof finalization are setup operations;
 the one-transaction claim concerns proof verification, state transition,
@@ -62,9 +66,20 @@ Source-level checks:
 ```bash
 NO_DNA=1 cargo fmt --all -- --check
 NO_DNA=1 cargo check -q -p aspis-xtask
+NO_DNA=1 cargo test --release -q -p aspis-xtask profile23_release
 NO_DNA=1 cargo test -q -p aspis-xtask profile23_devnet
 NO_DNA=1 cargo run -q -p aspis-prover \
   --example profile23_soundness_epro_ledger -- --calculation-only
+```
+
+The optional live chain reconstruction uses archival JSON-RPC history and is
+network-rate-limited independently of proof generation:
+
+```bash
+python3 tools/reconstruct_profile23_mainnet_sbf.py \
+  --output /tmp/profile23-mainnet-reconstruction.json \
+  --compare-substantive \
+  results/stage2/profile23_mainnet_sbf_and_instruction_reconstruction.json
 ```
 
 ## Protocol outline

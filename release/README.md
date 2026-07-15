@@ -2,7 +2,7 @@
 
 - `profile23-q18-g37-mainnet-v1/` is the finalized Profile23 q18/g37 mainnet
   publication bundle, including its paper, independent RPC reconciliation,
-  cleanup receipt, and refund receipt.
+  byte-level deployment reconstruction, cleanup receipt, and refund receipt.
 
 The superseded devnet paper and bundle remain available in the immutable
 [`profile23-q18-g37-devnet-v1`](https://github.com/DJBarker87/zk/tree/profile23-q18-g37-devnet-v1)

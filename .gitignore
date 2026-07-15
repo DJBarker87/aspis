@@ -3,6 +3,8 @@ target/
 /.stage0-validator
 /.stage2-validator-account-fixtures
 .DS_Store
+__pycache__/
+*.py[cod]
 
 # Local remnants from the workspace preserved by the research archive tag.
 /aspis/
