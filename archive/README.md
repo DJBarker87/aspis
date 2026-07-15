@@ -1,6 +1,6 @@
 # Research archive
 
-The public default branch contains the current Profile 23 implementation and
+The public default branch contains the current release implementation and
 its supporting release machinery. Earlier experiments are retained in Git,
 not copied into this directory.
 

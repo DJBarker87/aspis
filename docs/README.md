@@ -1,6 +1,6 @@
 # Documentation
 
-Start with the [Profile 23 mainnet paper](../paper/profile23-mainnet-v1/profile23.pdf),
+Start with the [mainnet paper](../paper/profile23-mainnet-v1/profile23.pdf),
 the [frozen release bundle](../release/profile23-q18-g37-mainnet-v1/), and the
 [finalized mainnet evidence](profile23-mainnet-demo.md). The current release is
 documented by:
@@ -13,7 +13,7 @@ documented by:
 - [q18 soundness and EPRO ledger](stage2-profile23-d-after-g-soundness-epro.md)
 - [complete-Good product](stage2-profile23-complete-good-product.md)
 - [computational hiding closure](stage2-profile23-computational-hvzk-closure.md)
-- [supported Profile 23 commands](../xtask/README.md)
+- [supported release commands](../xtask/README.md)
 
 The complete relation and account model are specified in the paper. Supporting
 derivations, superseded work, and failed design branches are preserved in the

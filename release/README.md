@@ -1,6 +1,6 @@
 # Versioned release bundles
 
-- `profile23-q18-g37-mainnet-v1/` is the finalized Profile23 q18/g37 mainnet
+- `profile23-q18-g37-mainnet-v1/` is the finalized q18/g37 mainnet
   publication bundle, including its paper, independent RPC reconciliation,
   byte-level deployment reconstruction, cleanup receipt, and refund receipt.
 
