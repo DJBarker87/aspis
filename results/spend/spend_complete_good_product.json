@@ -1,17 +1,17 @@
 {
   "artifact": "spend_complete_good_product",
-  "date": "2026-07-14",
+  "date": "2026-07-15",
   "status": "q18_complete_good_product_green",
   "production_enabled": true,
   "production_wire_changed_by_this_artifact": true,
-  "fixture": "crates/aspis-prover/fixtures/atomic_state_only_spend_v3_unmined.bin",
-  "fixture_bytes": 67327,
-  "fixture_sha256": "a5ed698a32d815ffd95f8d3e0be62d16620d32e216a087a350852726fb6ca238",
-  "statement_digest": "52e96f99756fe8fd2d8b7a700019b143d7eb549af1bf1ae987e99a75cadcd4c9",
+  "fixture": "crates/aspis-prover/fixtures/atomic_state_only_spend_v4_unmined.bin",
+  "fixture_bytes": 64447,
+  "fixture_sha256": "cf3ba127153e726e0e6eb5e4f546b6562a9c57d1ae6ee6a0df6b25aac0863b3b",
+  "statement_digest": "f69ef3bc5428475f13889be77a5d0a9be24b9d78d18d93177b3721fc51f76471",
   "source_id_scheme": "minimum-q-degree represented-matroid basis: all semantic and D degree-one sources before mask-only degree-two sources",
   "root_neutral_minor": {
     "rank_m31": 1404,
-    "fingerprint": "0x6b3838662fbf34db",
+    "fingerprint": "0xc1e23e3acec55fc9",
     "selected_degree_one_q_columns": 1068,
     "selected_degree_two_q_columns": 336,
     "q_individual_degree_bound": 1740,
@@ -23,20 +23,20 @@
     "terminal_rank_m31": 12,
     "all_pivot_values_nonzero": true,
     "z_degree_bound": 120,
-    "fingerprint": "0x1f34525db611d292"
+    "fingerprint": "0x7ca257aca211584a"
   },
   "h1_inactive_padding_terminal_schur": {
     "query_rank_m31": 288,
     "terminal_rank_m31": 12,
     "all_pivot_values_nonzero": true,
     "z_degree_bound": 120,
-    "fingerprint": "0xe70215f0b4795f52"
+    "fingerprint": "0x2b09c8e0f643b2bf"
   },
   "bound_product": {
     "component_fingerprints": [
-      "0x6b3838662fbf34db",
-      "0x1f34525db611d292",
-      "0xe70215f0b4795f52"
+      "0xc1e23e3acec55fc9",
+      "0x7ca257aca211584a",
+      "0x2b09c8e0f643b2bf"
     ],
     "q_total_degree_bound": 31320,
     "root_neutral_z_degree_bound": 41040,
@@ -45,11 +45,11 @@
     "complete_good_z_degree_bound": 41280,
     "gamma_coordinate_total_degree_bound": 80688,
     "continuous_total_degree_bound": 121968,
-    "fingerprint": "0xfc0706f3a304ae26",
+    "fingerprint": "0xb1af7cc08b30847d",
     "complete": true
   },
   "production_certificate_transfer": {
-    "certificate_fixture": "crates/aspis-prover/fixtures/atomic_state_only_spend_v3_unmined.bin",
+    "certificate_fixture": "crates/aspis-prover/fixtures/atomic_state_only_spend_v4_unmined.bin",
     "rank_dependency": "frozen q18 layout and transcript schedule, not witness bytes",
     "layout_factor_fingerprint_matches_live_code": true,
     "good_spend_definition_fingerprint_matches_live_code": true,

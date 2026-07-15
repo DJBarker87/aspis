@@ -1,10 +1,10 @@
 //! Frozen nonzero witness for the joint `(q,z)` liveness route.
 //!
-//! This module (and its `profile22_*` file/identifier names) is live spend
-//! code: the GoodSpend predicate's root-neutral polynomial-kernel rank probe
-//! lives here. The historical names are retained because the rank-minor
-//! block labels in this file are hashed into frozen provenance anchors that
-//! the release certificates and known-answer tests pin.
+//! This module is live spend code: the GoodSpend predicate's root-neutral
+//! polynomial-kernel rank probe lives here. The rank-minor block labels in
+//! this file are hashed into frozen provenance anchors that the release
+//! certificates and known-answer tests pin; renaming them requires a full
+//! regrind.
 //!
 //! This diagnostic uses only the common natural-basis tail `896..=1023`.
 //! For a distinct q16 tuple its query kernel is parameterized without
@@ -30,7 +30,7 @@ const JOINT_ROWS_M31: usize = RAW_TERMINAL_M31 + FULL_SC_M31;
 const EXPECTED_JOINT_RANK_M31: usize = RAW_TERMINAL_M31 + MASK_SUMCHECK_QUOTIENT_M31;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Profile22PolynomialKernelRankReport {
+pub struct SpendPolynomialKernelRankReport {
     pub query_count: usize,
     pub query_roots_distinct: bool,
     pub query_root_one_excluded: bool,
@@ -56,7 +56,7 @@ pub struct Profile22PolynomialKernelRankReport {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Profile22MixedPolynomialKernelRankReport {
+pub struct SpendMixedPolynomialKernelRankReport {
     pub query_count: usize,
     pub query_roots_distinct: bool,
     pub query_root_one_excluded: bool,
@@ -93,7 +93,7 @@ pub struct Profile22MixedPolynomialKernelRankReport {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Profile22RootNeutralPolynomialKernelRankReport {
+pub struct SpendRootNeutralPolynomialKernelRankReport {
     pub query_count: usize,
     pub gamma_nonzero: bool,
     pub generator_order: &'static str,
@@ -390,9 +390,9 @@ fn combined_observations(source: &[M31], observations: &[Vec<QM31>], scale: QM31
 /// a nonzero polynomial in the sixteen query roots and forty M31 coordinates
 /// of `z`.  It is not an all-q theorem and it does not prove the later PCS
 /// continuation implication used by the strong Good22 gate.
-pub fn probe_profile22_common_tail_polynomial_kernel_rank(
+pub fn probe_spend_common_tail_polynomial_kernel_rank(
     schedule: &StateOnlyTranscriptScheduleResult,
-) -> Result<Profile22PolynomialKernelRankReport, StateOnlyHidingRankGateError> {
+) -> Result<SpendPolynomialKernelRankReport, StateOnlyHidingRankGateError> {
     let started = Instant::now();
     if schedule.query_count != Q_KERNEL_DEGREE {
         return Err(StateOnlyHidingRankGateError::Shape);
@@ -498,12 +498,12 @@ pub fn probe_profile22_common_tail_polynomial_kernel_rank(
         return Err(StateOnlyHidingRankGateError::Relation);
     }
     let minor = RankMinorProvenance::from_parts(
-        "profile22_common_tail_terminal324_sc1080",
+        "spend_common_tail_terminal324_sc1080",
         minor_sources,
         minor_rows,
         minor_values,
     );
-    Ok(Profile22PolynomialKernelRankReport {
+    Ok(SpendPolynomialKernelRankReport {
         query_count: schedule.query_count,
         query_roots_distinct,
         query_root_one_excluded,
@@ -538,9 +538,9 @@ pub fn probe_profile22_common_tail_polynomial_kernel_rank(
 /// The full-domain intersection uses the explicitly cleared polynomial frame
 /// `s_ref*v - s_v*v_ref`, of degree at most two in each q root.  A green
 /// numeric result is still not, by itself, a Good22 continuation theorem.
-pub fn probe_profile22_mixed_polynomial_kernel_rank(
+pub fn probe_spend_mixed_polynomial_kernel_rank(
     schedule: &StateOnlyTranscriptScheduleResult,
-) -> Result<Profile22MixedPolynomialKernelRankReport, StateOnlyHidingRankGateError> {
+) -> Result<SpendMixedPolynomialKernelRankReport, StateOnlyHidingRankGateError> {
     let started = Instant::now();
     if schedule.query_count != Q_KERNEL_DEGREE {
         return Err(StateOnlyHidingRankGateError::Shape);
@@ -723,13 +723,13 @@ pub fn probe_profile22_mixed_polynomial_kernel_rank(
         .saturating_sub(terminal_and_initial_projection.rank);
     let initial_neutral_target = MASK_SUMCHECK_QUOTIENT_M31 - 4;
     let minor = RankMinorProvenance::from_parts(
-        "profile22_mixed_polynomial_kernel_terminal324_sc1080",
+        "spend_mixed_polynomial_kernel_terminal324_sc1080",
         minor_sources,
         minor_rows,
         minor_values,
     );
     let q_numerator_individual_degree_bound = selected_semantic + 2 * selected_full;
-    Ok(Profile22MixedPolynomialKernelRankReport {
+    Ok(SpendMixedPolynomialKernelRankReport {
         query_count: schedule.query_count,
         query_roots_distinct,
         query_root_one_excluded,
@@ -776,9 +776,9 @@ pub fn probe_profile22_mixed_polynomial_kernel_rank(
 /// `Delta G = -gamma^(j-27) Delta C_j`; D sources use
 /// `Delta G = -gamma Delta D`.  Hence the gamma-combined root message is
 /// identically zero before any PCS continuation.
-pub fn probe_profile22_root_neutral_polynomial_kernel_rank(
+pub fn probe_spend_root_neutral_polynomial_kernel_rank(
     schedule: &StateOnlyTranscriptScheduleResult,
-) -> Result<Profile22RootNeutralPolynomialKernelRankReport, StateOnlyHidingRankGateError> {
+) -> Result<SpendRootNeutralPolynomialKernelRankReport, StateOnlyHidingRankGateError> {
     const G_GENERATOR: usize = 27;
     const D_GENERATOR: usize = 28;
     const G_TERMINAL_LANE: usize = 26;
@@ -1110,12 +1110,12 @@ pub fn probe_profile22_root_neutral_polynomial_kernel_rank(
         })
         .unwrap_or(17);
     let minor = RankMinorProvenance::from_parts(
-        "profile22_d_after_g_root_neutral_terminal336_sc1080",
+        "spend_d_after_g_root_neutral_terminal336_sc1080",
         minor_sources,
         minor_rows,
         minor_values,
     );
-    Ok(Profile22RootNeutralPolynomialKernelRankReport {
+    Ok(SpendRootNeutralPolynomialKernelRankReport {
         query_count: schedule.query_count,
         gamma_nonzero: true,
         generator_order: "semantic0..15,mask-only16..25,H26,G27,D28",

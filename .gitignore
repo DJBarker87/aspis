@@ -18,6 +18,10 @@ __pycache__/
 *-keypair.json
 *nonce-ledger*
 
+# Disposable local deployment key material (program ids and pools for the
+# aspis-spend grinds). Never commit key material.
+/.spend-keys/
+
 
 # The superseded devnet paper is preserved in the archive tag; ignore any
 # local build remnants left at its former default-branch path.

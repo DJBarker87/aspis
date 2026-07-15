@@ -13,7 +13,7 @@ use aspis_core::state_only_hiding::{
     state_only_selected_mask_value, STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS,
 };
 
-use crate::atomic_statement::AtomicPaymentStatementV3;
+use crate::atomic_statement::AtomicPaymentStatementV4;
 use crate::poseidon2::DIGEST_ELEMS;
 use crate::spend::VALUE_LIMIT;
 use crate::state_only_poseidon::{
@@ -666,7 +666,7 @@ fn atomic_accumulate<const N: usize>(
 
 #[inline(never)]
 fn atomic_semantic_packed_impl<F>(
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     openings: &StateOnlyPoseidonOpenings,
     selectors: &AtomicSemanticSelectors,
     mut trace: F,
@@ -812,7 +812,7 @@ where
 
 #[inline(never)]
 fn atomic_semantic_packed(
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     openings: &StateOnlyPoseidonOpenings,
     selectors: &AtomicSemanticSelectors,
 ) -> [QM31; ATOMIC_PACKED_SEMANTIC_LANES] {
@@ -829,7 +829,7 @@ fn atomic_equality_value(left: &[QM31; 10], right: &[QM31; 10]) -> QM31 {
 #[allow(clippy::too_many_arguments)]
 #[inline(never)]
 fn atomic_state_only_composition_parts_compiled_v3(
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     claims: &[QM31; ATOMIC_SELECTED_TERMINAL_CLAIMS],
     point: &[QM31; 10],
     lambda: QM31,
@@ -888,7 +888,7 @@ fn atomic_state_only_composition_parts_compiled_v3(
 /// zerocheck equality and helper-sum term.  Host tests use this to require
 /// every honest Boolean row to vanish, preventing cancellation-only fixtures.
 pub fn atomic_state_only_selected_constraint_composition_compiled_v3(
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     claims: &[QM31; ATOMIC_SELECTED_TERMINAL_CLAIMS],
     point: &[QM31; 10],
     lambda: QM31,
@@ -904,7 +904,7 @@ pub fn atomic_state_only_selected_constraint_composition_compiled_v3(
 #[allow(clippy::too_many_arguments)]
 #[inline(never)]
 fn atomic_state_only_terminal_parts_compiled_v3(
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     claims: &[QM31; ATOMIC_SELECTED_TERMINAL_CLAIMS],
     point: &[QM31; 10],
     lambda: QM31,
@@ -935,7 +935,7 @@ fn atomic_state_only_terminal_parts_compiled_v3(
 /// checks its masked affine combination against the transcript-bound claim.
 #[allow(clippy::too_many_arguments)]
 pub fn atomic_state_only_selected_unmasked_terminal_value_compiled_v3(
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     claims: &[QM31; ATOMIC_SELECTED_TERMINAL_CLAIMS],
     point: &[QM31; 10],
     lambda: QM31,
@@ -962,7 +962,7 @@ pub fn atomic_state_only_selected_unmasked_terminal_value_compiled_v3(
 #[allow(clippy::too_many_arguments)]
 #[inline(never)]
 pub fn atomic_state_only_selected_masked_terminal_value_compiled_v3(
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     claims: &[QM31; ATOMIC_SELECTED_TERMINAL_CLAIMS],
     point: &[QM31; 10],
     lambda: QM31,
@@ -992,7 +992,7 @@ pub fn atomic_state_only_selected_masked_terminal_value_compiled_v3(
 #[allow(clippy::too_many_arguments)]
 #[inline(never)]
 pub fn atomic_state_only_selected_masked_terminal_value_compiled_with_diagnostic_trace_v3<F>(
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     claims: &[QM31; ATOMIC_SELECTED_TERMINAL_CLAIMS],
     point: &[QM31; 10],
     lambda: QM31,
@@ -1339,7 +1339,7 @@ mod tests {
     #[test]
     fn diagnostic_terminal_is_the_same_polynomial_at_random_qm31_points() {
         let mut rng = Rng(0x4154_4f4d_4449_4147);
-        let statement = AtomicPaymentStatementV3 {
+        let statement = AtomicPaymentStatementV4 {
             pool: [0x5a; 32],
             sequence: 73,
             spend: SpendPublic {
@@ -1350,6 +1350,7 @@ mod tests {
                 fee: 1,
             },
             output_anchor: core::array::from_fn(|_| rng.m31()),
+            deployment_domain: [0x5d; 32],
         };
         for _ in 0..64 {
             let claims = core::array::from_fn(|_| rng.qm31());
@@ -1412,7 +1413,7 @@ mod tests {
     #[test]
     fn zero_theta_and_mu_remove_every_h1_sumcheck_contribution() {
         let mut rng = Rng(0x4831_5a45_524f_4d55);
-        let statement = AtomicPaymentStatementV3 {
+        let statement = AtomicPaymentStatementV4 {
             pool: [0x5a; 32],
             sequence: 73,
             spend: SpendPublic {
@@ -1423,6 +1424,7 @@ mod tests {
                 fee: 1,
             },
             output_anchor: core::array::from_fn(|_| rng.m31()),
+            deployment_domain: [0x5d; 32],
         };
         for _ in 0..64 {
             let claims = core::array::from_fn(|_| rng.qm31());

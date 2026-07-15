@@ -13,18 +13,18 @@ use aspis_statement::atomic_state_only_terminal::{
 };
 use aspis_statement::atomic_state_only_trace::atomic_merkle_root_v3;
 use aspis_statement::state_only_spend::{
-    verify_atomic_state_only_spend_unmined_for_diagnostics_v3, SpendVerifyError,
+    verify_atomic_state_only_spend_unmined_for_diagnostics_v4, SpendVerifyError,
 };
 use aspis_statement::{
     derive_nullifier, derive_owner_key, note_commitment, output_commitment,
-    AtomicPaymentStatementV3, Digest, MerklePath, SpendPublic, SpendWitness,
+    AtomicPaymentStatementV4, Digest, MerklePath, SpendPublic, SpendWitness,
 };
 
 fn digest(seed: u32) -> Digest {
     core::array::from_fn(|index| M31(seed + 17 * index as u32))
 }
 
-fn fixture() -> (AtomicPaymentStatementV3, SpendWitness) {
+fn fixture() -> (AtomicPaymentStatementV4, SpendWitness) {
     let nullifier_key = digest(101);
     let input_salt = digest(301);
     let output_salt = digest(501);
@@ -53,7 +53,7 @@ fn fixture() -> (AtomicPaymentStatementV3, SpendWitness) {
         &input_salt,
     );
     let output = output_commitment(&output_owner_key, value_out, asset_id, &output_salt);
-    let statement = AtomicPaymentStatementV3 {
+    let statement = AtomicPaymentStatementV4 {
         pool: [0x5a; 32],
         sequence: 73,
         spend: SpendPublic {
@@ -64,12 +64,13 @@ fn fixture() -> (AtomicPaymentStatementV3, SpendWitness) {
             fee: 1,
         },
         output_anchor: atomic_merkle_root_v3(output, &witness.merkle_path).unwrap(),
+        deployment_domain: [0x5d; 32],
     };
     (statement, witness)
 }
 
-fn rejects(proof: &[u8], statement: &AtomicPaymentStatementV3) {
-    assert!(verify_atomic_state_only_spend_unmined_for_diagnostics_v3(
+fn rejects(proof: &[u8], statement: &AtomicPaymentStatementV4) {
+    assert!(verify_atomic_state_only_spend_unmined_for_diagnostics_v4(
         proof, statement, HOST_HASH, None,
     )
     .is_err());
@@ -104,7 +105,7 @@ fn spend_d_tail_roundtrip_and_corruption_teeth() {
         .0;
     assert_eq!(parsed.d_claims_bytes.len(), STATE_ONLY_SPEND_D_CLAIMS_LEN);
     assert_eq!(parsed.query_selector, 0);
-    let verified = verify_atomic_state_only_spend_unmined_for_diagnostics_v3(
+    let verified = verify_atomic_state_only_spend_unmined_for_diagnostics_v4(
         &built.bytes,
         &statement,
         HOST_HASH,
@@ -140,7 +141,7 @@ fn spend_d_tail_roundtrip_and_corruption_teeth() {
     let mut invalid_selector = built.bytes.clone();
     invalid_selector[selector_offset] = 3;
     assert!(matches!(
-        verify_atomic_state_only_spend_unmined_for_diagnostics_v3(
+        verify_atomic_state_only_spend_unmined_for_diagnostics_v4(
             &invalid_selector,
             &statement,
             HOST_HASH,
@@ -164,16 +165,16 @@ fn spend_d_tail_roundtrip_and_corruption_teeth() {
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect::<String>();
-    assert_eq!(built.bytes.len(), 67_327);
+    assert_eq!(built.bytes.len(), 64_447);
     assert_eq!(
         sha256,
-        "a5ed698a32d815ffd95f8d3e0be62d16620d32e216a087a350852726fb6ca238"
+        "cf3ba127153e726e0e6eb5e4f546b6562a9c57d1ae6ee6a0df6b25aac0863b3b"
     );
     assert_eq!(
         built.openings.section_bytes,
-        [18_790, 14_758, 10_726, 8_998, 7_270]
+        [18_214, 14_182, 10_150, 8_422, 6_694]
     );
-    assert_eq!(built.openings.frontier_nodes, [335, 335, 281, 227, 173]);
+    assert_eq!(built.openings.frontier_nodes, [317, 317, 263, 209, 155]);
     eprintln!("spend_len={} sha256={sha256}", built.bytes.len());
 }
 
@@ -200,7 +201,7 @@ fn spend_all_three_selectors_build_and_verify() {
 
         let (parsed, _) = StateOnlySpendPrefix::parse_from_proof(&built.bytes).unwrap();
         assert_eq!(parsed.query_selector, selector);
-        let verified = verify_atomic_state_only_spend_unmined_for_diagnostics_v3(
+        let verified = verify_atomic_state_only_spend_unmined_for_diagnostics_v4(
             &built.bytes,
             &statement,
             HOST_HASH,

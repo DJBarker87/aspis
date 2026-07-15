@@ -10,7 +10,7 @@ use alloc::vec::Vec;
 use aspis_core::field::M31;
 
 use crate::atomic_state_only_registry::atomic_state_only_path_aux_layout_v3;
-use crate::atomic_statement::{AtomicPaymentStatementV3, ATOMIC_PAYMENT_TREE_DEPTH};
+use crate::atomic_statement::{AtomicPaymentStatementV4, ATOMIC_PAYMENT_TREE_DEPTH};
 use crate::poseidon2::{
     merkle_node_compress_v3, permute_optimized_with_trace, Digest, DIGEST_ELEMS,
     MERKLE_NODE_COMPRESSION_V3_TWEAK, POSEIDON2_ROUNDS, POSEIDON2_WIDTH, RATE,
@@ -222,7 +222,7 @@ fn write_cell(trace: &mut StateOnlyTraceFoundation, cell: TraceCell, value: M31)
 }
 
 fn build_unvalidated(
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     witness: &SpendWitness,
 ) -> Result<AtomicStateOnlyTraceV3, AtomicStateOnlyTraceV3Error> {
     if witness.merkle_path.siblings.len() != ATOMIC_PAYMENT_TREE_DEPTH {
@@ -365,7 +365,7 @@ fn build_unvalidated(
 }
 
 pub fn build_atomic_state_only_trace_v3(
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     witness: &SpendWitness,
 ) -> Result<AtomicStateOnlyTraceV3, AtomicStateOnlyTraceV3Error> {
     let foundation = build_unvalidated(statement, witness)?;
@@ -377,7 +377,7 @@ pub fn build_atomic_state_only_trace_v3(
 /// compiled copy/terminal constants: it rebuilds from the public statement
 /// and the one private path, then compares every cell and alias descriptor.
 pub fn validate_atomic_state_only_trace_v3(
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     witness: &SpendWitness,
     candidate: &AtomicStateOnlyTraceV3,
 ) -> Result<(), AtomicStateOnlyTraceV3Error> {

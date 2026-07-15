@@ -47,7 +47,7 @@ use crate::state_only_terminal::{StateOnlyTerminalError, STATE_ONLY_SELECTED_TER
 use crate::state_only_verify::{
     verify_state_only_relation_with_inactive_masks, StateOnlyRelationVerifyError,
 };
-use crate::{atomic_payment_statement_digest_v3, AtomicPaymentStatementV3};
+use crate::{atomic_payment_statement_digest_v4, AtomicPaymentStatementV4};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SpendTraceEvent {
@@ -335,7 +335,7 @@ fn boxed_spend_schedule(
 fn verify_terminal(
     prefix: &StateOnlySpendPrefix<'_>,
     schedule: &StateOnlyTranscriptScheduleResult,
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
 ) -> Result<(), SpendVerifyError> {
     let values = statement_values(prefix)?;
     let terminal = atomic_state_only_selected_masked_terminal_value_compiled_v3(
@@ -395,9 +395,9 @@ fn boxed_spend_openings<'a>(
     )?))
 }
 
-pub fn verify_atomic_state_only_spend_v3<'a>(
+pub fn verify_atomic_state_only_spend_v4<'a>(
     proof: &'a [u8],
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     hash: HashFn,
     trace: Option<SpendTrace>,
 ) -> Result<VerifiedAtomicSpend<'a>, SpendVerifyError> {
@@ -408,9 +408,9 @@ pub fn verify_atomic_state_only_spend_v3<'a>(
 /// dynamic-coordinate feature uses it once for the complete public query
 /// forest; callers select an inversion implementation supported by their
 /// runtime.
-pub fn verify_atomic_state_only_spend_v3_with_inverse<'a>(
+pub fn verify_atomic_state_only_spend_v4_with_inverse<'a>(
     proof: &'a [u8],
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     hash: HashFn,
     trace: Option<SpendTrace>,
     inverse: fn(M31) -> M31,
@@ -418,18 +418,18 @@ pub fn verify_atomic_state_only_spend_v3_with_inverse<'a>(
     verify_inner(proof, statement, hash, true, trace, inverse)
 }
 
-pub fn verify_atomic_state_only_spend_unmined_for_diagnostics_v3<'a>(
+pub fn verify_atomic_state_only_spend_unmined_for_diagnostics_v4<'a>(
     proof: &'a [u8],
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     hash: HashFn,
     trace: Option<SpendTrace>,
 ) -> Result<VerifiedAtomicSpend<'a>, SpendVerifyError> {
     verify_inner(proof, statement, hash, false, trace, M31::inv)
 }
 
-pub fn verify_atomic_state_only_spend_unmined_for_diagnostics_v3_with_inverse<'a>(
+pub fn verify_atomic_state_only_spend_unmined_for_diagnostics_v4_with_inverse<'a>(
     proof: &'a [u8],
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     hash: HashFn,
     trace: Option<SpendTrace>,
     inverse: fn(M31) -> M31,
@@ -439,13 +439,13 @@ pub fn verify_atomic_state_only_spend_unmined_for_diagnostics_v3_with_inverse<'a
 
 fn verify_inner<'a>(
     proof: &'a [u8],
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     hash: HashFn,
     check_pow: bool,
     trace: Option<SpendTrace>,
     inverse: fn(M31) -> M31,
 ) -> Result<VerifiedAtomicSpend<'a>, SpendVerifyError> {
-    let statement_digest = atomic_payment_statement_digest_v3(statement, hash)
+    let statement_digest = atomic_payment_statement_digest_v4(statement, hash)
         .map_err(|_| SpendVerifyError::StatementDigest)?;
     let (prefix, suffix) = StateOnlySpendPrefix::parse_from_proof(proof)?;
     if prefix.base.shape != STATE_ONLY_SPEND_ZERO_FACTOR_SHAPE {

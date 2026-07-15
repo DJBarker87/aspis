@@ -22,10 +22,10 @@ use aspis_core::sumcheck::{SumcheckPolynomial, SUMCHECK_COEFFICIENTS};
 use aspis_core::transcript::{label, QuerySampleError, Transcript};
 use aspis_core::HashFn;
 use aspis_statement::{
-    atomic_payment_statement_digest_v3,
+    atomic_payment_statement_digest_v4,
     atomic_state_only_trace::{build_atomic_state_only_trace_v3, AtomicStateOnlyTraceV3Error},
     verify_atomic_state_only_candidate_unmined_for_diagnostics_v3,
-    verify_state_only_candidate_unmined_for_diagnostics, AtomicPaymentStatementV3,
+    verify_state_only_candidate_unmined_for_diagnostics, AtomicPaymentStatementV4,
     AtomicStatementError, SpendPublic, SpendWitness, StateOnlyCandidateVerifyError,
 };
 
@@ -210,7 +210,7 @@ pub fn build_hiding_state_only_proof(
 /// outside this API.
 #[allow(clippy::too_many_arguments)]
 pub fn build_hiding_atomic_state_only_proof_v3(
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     witness: &SpendWitness,
     mask_nonce: [u8; 32],
     private_entropy: [u8; 32],
@@ -221,7 +221,7 @@ pub fn build_hiding_atomic_state_only_proof_v3(
 ) -> Result<BuiltStateOnlyProof, StateOnlyProofBuildError> {
     let mut atomic = build_atomic_state_only_trace_v3(statement, witness)?;
     let mut trace = core::mem::take(&mut atomic.trace);
-    let statement_digest = atomic_payment_statement_digest_v3(statement, hash)?;
+    let statement_digest = atomic_payment_statement_digest_v4(statement, hash)?;
     let context = StateOnlyHidingContext::atomic_v3(statement_digest, mask_nonce);
     let mut header_bytes = [0u8; HEADER_LEN];
     state_only_header(shape).write(&mut header_bytes);
@@ -276,7 +276,7 @@ pub fn complete_state_only_proof(
 }
 
 pub fn complete_atomic_state_only_proof_v3(
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     statement_digest: [u8; 32],
     front: BuiltStateOnlyPrefixFront,
     hash: HashFn,
@@ -301,7 +301,7 @@ fn complete_state_only_proof_with_registry(
     hash: HashFn,
     pow_mode: StateOnlyPowMode,
     inactive_masks: [u16; 64],
-    atomic_statement: Option<&AtomicPaymentStatementV3>,
+    atomic_statement: Option<&AtomicPaymentStatementV4>,
 ) -> Result<BuiltStateOnlyProof, StateOnlyProofBuildError> {
     let domain_log = STATE_ONLY_LOG_ROWS + front.material.shape.log_blowup;
     let encoder = CircleEncoder::new_for_domain_log(domain_log);

@@ -1,19 +1,19 @@
 {
-  "generated_at_utc": "2026-07-15T17:39:41.681986+00:00",
+  "generated_at_utc": "2026-07-15T19:37:40.504478+00:00",
   "command": "ASPIS_SPEND_PROOF=crates/aspis-prover/fixtures/spend_q18_g37_release.bin ASPIS_SPEND_STATEMENT=crates/aspis-prover/fixtures/spend_q18_g37_release.statement.json NO_DNA=1 cargo run --release -p aspis-xtask -- spend-measure",
   "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
   "instruction_wire_ordinal": 59,
   "proof_path": "crates/aspis-prover/fixtures/spend_q18_g37_release.bin",
   "proof_source_override": true,
-  "proof_bytes": 64447,
-  "proof_sha256": "d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d",
+  "proof_bytes": 65407,
+  "proof_sha256": "32eb419e0c5c3ef4fa2db0d32579e88f1207547d8fb010279efeb6c05981b529",
   "proof_unmined": false,
   "statement_path": "crates/aspis-prover/fixtures/spend_q18_g37_release.statement.json",
   "statement_source_override": true,
-  "statement_sha256": "947a608c93487a634f37119bead8d61fe29e9cb6883493465d6fb35af27883c2",
-  "statement_pool_hex": "94d5641ee2e3891341b7f738f6b36087c184d828ea07463fe5e70d8c332d1051",
+  "statement_sha256": "c35f6152ce4ffbfa6edeba68b4a6d2738e19b1420181c9500ba73f0c717c8699",
+  "statement_pool_hex": "2605b65c88655a479c2bd504ae207556acd0d42c49a8eeaed8cdbca5a256ca70",
   "statement_sequence": 0,
-  "canonical_public_input_digest": "b2d150dfcb6432c1b6f2e3892ee45a9aa5f393809d97c8292fea975b3da35fa3",
+  "canonical_public_input_digest": "f022136a00af841abf2ffcff08969847e9490d1cef9b4dc1ae48f978d58a2bd8",
   "query_count": 18,
   "batch_grinding_bits": 37,
   "final_grinding_bits": 32,
@@ -32,80 +32,80 @@
   "default_tag59_fail_closed_host": true,
   "production_api_rejected_unmined_sbf": false,
   "production_api_accepted_mined_sbf": true,
-  "literal_simulation_cu": 1303625,
-  "headroom_under_1_4m_cu": 96375,
+  "literal_simulation_cu": 1306464,
+  "headroom_under_1_4m_cu": 93536,
   "markers": [
     {
       "label": "atomic59_instruction_start",
-      "remaining": 1399029,
+      "remaining": 1398712,
       "delta_from_previous": null
     },
     {
       "label": "atomic59_proof_loaded",
-      "remaining": 1398528,
-      "delta_from_previous": 501
+      "remaining": 1398204,
+      "delta_from_previous": 508
     },
     {
       "label": "atomic59_parsed",
-      "remaining": 1396546,
-      "delta_from_previous": 1982
+      "remaining": 1396193,
+      "delta_from_previous": 2011
     },
     {
       "label": "atomic59_transcript",
-      "remaining": 1244239,
-      "delta_from_previous": 152307
+      "remaining": 1243922,
+      "delta_from_previous": 152271
     },
     {
       "label": "atomic59_terminal",
-      "remaining": 862007,
-      "delta_from_previous": 382232
+      "remaining": 861668,
+      "delta_from_previous": 382254
     },
     {
       "label": "atomic59_relation",
-      "remaining": 674434,
-      "delta_from_previous": 187573
+      "remaining": 674070,
+      "delta_from_previous": 187598
     },
     {
       "label": "atomic59_openings",
-      "remaining": 464907,
-      "delta_from_previous": 209527
+      "remaining": 460586,
+      "delta_from_previous": 213484
     },
     {
       "label": "atomic59_layer0_queries",
-      "remaining": 201774,
-      "delta_from_previous": 263133
+      "remaining": 198891,
+      "delta_from_previous": 261695
     },
     {
       "label": "atomic59_later_queries",
-      "remaining": 96953,
-      "delta_from_previous": 104821
+      "remaining": 94145,
+      "delta_from_previous": 104746
     },
     {
       "label": "atomic59_core_complete",
-      "remaining": 96694,
+      "remaining": 93886,
       "delta_from_previous": 259
     },
     {
       "label": "atomic59_done",
-      "remaining": 96425,
+      "remaining": 93617,
       "delta_from_previous": 269
     }
   ],
   "ledger": {
-    "transaction_setup_cu": 971,
-    "proof_load_cu": 501,
-    "parsed_cu": 1982,
-    "transcript_cu": 152307,
-    "terminal_cu": 382232,
-    "relation_cu": 187573,
-    "openings_cu": 209527,
-    "layer0_queries_cu": 263133,
-    "later_queries_cu": 104821,
+    "transaction_setup_cu": 1288,
+    "proof_load_cu": 508,
+    "parsed_cu": 2011,
+    "transcript_cu": 152271,
+    "terminal_cu": 382254,
+    "relation_cu": 187598,
+    "openings_cu": 213484,
+    "layer0_queries_cu": 261695,
+    "later_queries_cu": 104746,
     "completion_cu": 259,
     "wrapper_return_cu": 269,
-    "post_last_marker_cu": 50,
-    "reconciled_total_cu": 1303625,
-    "formula": "971 + 501 + 1982 + 152307 + 382232 + 187573 + 209527 + 263133 + 104821 + 259 + 269 + 50"
+    "post_last_marker_cu": 81,
+    "reconciled_total_cu": 1306464,
+    "formula": "1288 + 508 + 2011 + 152271 + 382254 + 187598 + 213484 + 261695 + 104746 + 259 + 269 + 81"
   },
   "production_mutation_enabled": false,
   "notes": [

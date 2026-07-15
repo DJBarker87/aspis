@@ -10,7 +10,7 @@ use aspis_statement::atomic_state_only_trace::atomic_merkle_root_v3;
 use aspis_statement::{
     derive_nullifier, derive_owner_key, note_commitment, output_commitment,
     verify_atomic_state_only_candidate_unmined_for_diagnostics_v3,
-    verify_atomic_state_only_candidate_v3, AtomicPaymentStatementV3, Digest, MerklePath,
+    verify_atomic_state_only_candidate_v3, AtomicPaymentStatementV4, Digest, MerklePath,
     SpendPublic, SpendWitness,
 };
 
@@ -18,7 +18,7 @@ fn digest(seed: u32) -> Digest {
     core::array::from_fn(|index| M31(seed + 17 * index as u32))
 }
 
-fn fixture() -> (AtomicPaymentStatementV3, SpendWitness) {
+fn fixture() -> (AtomicPaymentStatementV4, SpendWitness) {
     let nullifier_key = digest(101);
     let input_salt = digest(301);
     let output_salt = digest(501);
@@ -47,7 +47,7 @@ fn fixture() -> (AtomicPaymentStatementV3, SpendWitness) {
         &input_salt,
     );
     let output = output_commitment(&output_owner_key, value_out, asset_id, &output_salt);
-    let statement = AtomicPaymentStatementV3 {
+    let statement = AtomicPaymentStatementV4 {
         pool: [0x5a; 32],
         sequence: 73,
         spend: SpendPublic {
@@ -58,12 +58,13 @@ fn fixture() -> (AtomicPaymentStatementV3, SpendWitness) {
             fee: 1,
         },
         output_anchor: atomic_merkle_root_v3(output, &witness.merkle_path).unwrap(),
+        deployment_domain: [0x5d; 32],
     };
     (statement, witness)
 }
 
-fn built() -> &'static (AtomicPaymentStatementV3, Vec<u8>) {
-    static BUILT: OnceLock<(AtomicPaymentStatementV3, Vec<u8>)> = OnceLock::new();
+fn built() -> &'static (AtomicPaymentStatementV4, Vec<u8>) {
+    static BUILT: OnceLock<(AtomicPaymentStatementV4, Vec<u8>)> = OnceLock::new();
     BUILT.get_or_init(|| {
         let (statement, witness) = fixture();
         let mut nonces = InMemoryStateOnlyMaskNonceStore::default();
@@ -92,7 +93,7 @@ fn atomic_profile20_roundtrip_binds_the_sumcheck_terminal() {
     .unwrap();
     assert_eq!(verified.prefix.shape, STATE_ONLY_RATE512_SHAPE);
     assert_eq!(verified.schedule.query_count, 16);
-    assert_eq!(proof.len(), 56_044);
+    assert_eq!(proof.len(), 54_604);
     assert!(verify_atomic_state_only_candidate_v3(proof, statement, HOST_HASH).is_err());
 }
 

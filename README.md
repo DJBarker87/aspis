@@ -24,7 +24,7 @@ before a finalized mainnet signature exists.
 
 | Result | Value |
 | --- | ---: |
-| Proof | 64,447 bytes (fixed layout) |
+| Proof | 65,407 bytes |
 | Soundness floor (work-normalized, proven Johnson/MCA regime) | 100.16 bits |
 | Witness hiding | 103.02 bits pairwise, 104.02 bits versus simulator |
 | Verification budget | fits Solana's 1,400,000-CU transaction cap |
@@ -48,7 +48,7 @@ to off-chain systems
 Aspis has no ceremony. Its parameters are public constants, and its security
 reductions rest on the hash assumptions stated in the paper — a concrete
 Poseidon2 assumption and SHA-256 modeled as a random oracle — rather than on
-a reference string with a trapdoor. The cost is proof size: 64,447 bytes
+a reference string with a trapdoor. The cost is proof size: 65,407 bytes
 against a few hundred for Groth16. That size gap is the obstacle the
 transaction design below addresses.
 
@@ -56,17 +56,17 @@ transaction design below addresses.
 
 ![Proof upload, sealing, and one-transaction verification with atomic state transition](docs/assets/transaction-flow.svg)
 
-A 64,447-byte proof exceeds Solana's 1,232-byte transaction packet limit, so
+A 65,407-byte proof exceeds Solana's 1,232-byte transaction packet limit, so
 it is uploaded once and verified in place:
 
-1. The prover uploads the proof in 68 chunks to a program-owned account.
+1. The prover uploads the proof in 69 chunks to a program-owned account.
 2. The account is sealed after its complete byte image is checked against
    the released proof digest.
 3. One transaction then verifies the sealed proof, advances the pool,
    records the nullifier, and refunds the proof account — atomically. If
    any step fails, no state changes.
 
-A spend therefore costs 70 setup transactions (proof-account create, 68
+A spend therefore costs 71 setup transactions (proof-account create, 69
 chunk uploads, finalize) before the verification transaction, plus 2 per
 pool (create, initialize). Spends within one pool are strictly sequential:
 each proof binds the pool's current sequence number. The proof account's
@@ -110,11 +110,15 @@ Each limitation is recorded in the paper's limitations section.
   produce an accepting spend. Knowledge soundness, and with it a
   theft-resistance theorem for a deployed pool, is outside this release's
   claims.
-- **Cross-deployment proof portability.** The statement binds the pool key,
-  state, and public spend fields, but not cluster genesis or program
-  identity; the identical proof is valid on any deployment that clones the
-  statement-bound values. Economically linked deployments require a
-  deployment-domain field absorbed into the transcript.
+- **Deployment-domain residual.** The statement binds a deployment domain,
+  `sha256("aspis-spend-deployment-domain-v1" || runtime_program_id ||
+  domain_tag)`, stored by the pool at initialization and compared, with a
+  distinct error code, before any proof byte is interpreted. A proof ground
+  for one deployment is rejected by every pool storing another domain. The
+  residual is keyholder-shaped: the holder of the program-id keypair can
+  redeploy the same program id with the same domain tag on another cluster
+  and reproduce the domain. Independent observers can recompute the domain
+  from the public program id and tag and verify the binding.
 - **Compute-unit repricing.** Runtime CU pricing differs across clusters and
   changes over time. A repricing past the cap halts spends at these
   parameters — the executor's same-cluster preflight simulation fails closed

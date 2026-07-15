@@ -22,7 +22,7 @@ use aspis_prover::HOST_HASH;
 use aspis_statement::atomic_state_only_trace::atomic_merkle_root_v3;
 use aspis_statement::{
     derive_nullifier, derive_owner_key, encode_digest_canonical, note_commitment,
-    output_commitment, AtomicPaymentStatementV3, Digest, MerklePath, SpendPublic, SpendWitness,
+    output_commitment, AtomicPaymentStatementV4, Digest, MerklePath, SpendPublic, SpendWitness,
 };
 
 fn digest(seed: u32) -> Digest {
@@ -32,8 +32,9 @@ fn digest(seed: u32) -> Digest {
 fn fixture(
     pool: [u8; 32],
     sequence: u64,
+    deployment_domain: [u8; 32],
     fixture_seed: u32,
-) -> (AtomicPaymentStatementV3, SpendWitness) {
+) -> (AtomicPaymentStatementV4, SpendWitness) {
     let seeded_digest = |base: u32| {
         digest(
             base.checked_add(fixture_seed)
@@ -70,7 +71,7 @@ fn fixture(
         &input_salt,
     );
     let output = output_commitment(&output_owner_key, value_out, asset_id, &output_salt);
-    let statement = AtomicPaymentStatementV3 {
+    let statement = AtomicPaymentStatementV4 {
         pool,
         sequence,
         spend: SpendPublic {
@@ -81,22 +82,40 @@ fn fixture(
             fee: 1,
         },
         output_anchor: atomic_merkle_root_v3(output, &witness.merkle_path).unwrap(),
+        deployment_domain,
     };
     (statement, witness)
 }
 
-fn decode_hex_32(value: &str) -> [u8; 32] {
-    assert_eq!(
-        value.len(),
-        64,
-        "ASPIS_SPEND_POOL_HEX must be 64 hex characters"
-    );
-    let mut result = [0u8; 32];
-    for (index, byte) in result.iter_mut().enumerate() {
-        *byte = u8::from_str_radix(&value[2 * index..2 * index + 2], 16)
-            .expect("ASPIS_SPEND_POOL_HEX contains non-hex characters");
+/// Decode one base58 Solana public key into its 32 raw bytes.
+fn decode_base58_32(role: &str, value: &str) -> [u8; 32] {
+    const ALPHABET: &[u8] = b"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+    let mut bytes: Vec<u8> = Vec::with_capacity(32);
+    for symbol in value.bytes() {
+        let mut carry = ALPHABET
+            .iter()
+            .position(|&candidate| candidate == symbol)
+            .unwrap_or_else(|| panic!("{role} is not base58"));
+        for byte in bytes.iter_mut() {
+            carry += usize::from(*byte) * 58;
+            *byte = (carry & 0xff) as u8;
+            carry >>= 8;
+        }
+        while carry != 0 {
+            bytes.push((carry & 0xff) as u8);
+            carry >>= 8;
+        }
     }
-    result
+    for symbol in value.bytes() {
+        if symbol == b'1' {
+            bytes.push(0);
+        } else {
+            break;
+        }
+    }
+    assert_eq!(bytes.len(), 32, "{role} must decode to exactly 32 bytes");
+    bytes.reverse();
+    bytes.try_into().unwrap()
 }
 
 #[derive(Default)]
@@ -142,6 +161,15 @@ fn scrub_witness(witness: &mut SpendWitness) {
 
 fn main() {
     let mut args = std::env::args().skip(1);
+    let cluster_tag = args
+        .next()
+        .expect("usage: spend_production_miner <cluster-tag> <program-id> <pool-pubkey> [output] [ledger] [boundary-seconds]");
+    assert!(
+        !cluster_tag.is_empty() && cluster_tag.len() <= 64,
+        "cluster tag must be a short nonempty name such as mainnet-beta or devnet"
+    );
+    let program_id = decode_base58_32("program id", &args.next().expect("program id argument"));
+    let pool = decode_base58_32("pool pubkey", &args.next().expect("pool pubkey argument"));
     let output = PathBuf::from(
         args.next()
             .unwrap_or_else(|| "artifact-output/spend-production-mined.bin".to_owned()),
@@ -156,22 +184,21 @@ fn main() {
         .unwrap_or(3_600);
     assert!(args.next().is_none(), "too many arguments");
 
-    let pool = std::env::var("ASPIS_SPEND_POOL_HEX")
-        .map(|value| decode_hex_32(&value))
-        .unwrap_or([0x5a; 32]);
-    let sequence = std::env::var("ASPIS_SPEND_SEQUENCE")
-        .map(|value| value.parse::<u64>().expect("ASPIS_SPEND_SEQUENCE"))
-        .unwrap_or(73);
+    // The production statement is always sequence 0 of a freshly initialized
+    // pool, bound to the deployment domain the pool stores at init.
+    let sequence = 0u64;
     let fixture_seed = std::env::var("ASPIS_SPEND_FIXTURE_SEED")
         .map(|value| value.parse::<u32>().expect("ASPIS_SPEND_FIXTURE_SEED"))
         .unwrap_or(0);
+    let deployment_domain =
+        aspis_statement::atomic_deployment_domain(HOST_HASH, &program_id, cluster_tag.as_bytes());
     let boundary = SystemTime::now()
         .checked_add(Duration::from_secs(boundary_seconds))
         .expect("release boundary overflow");
     let mut controller = SpendFixedReleaseController::new(boundary);
-    let (statement, mut witness) = fixture(pool, sequence, fixture_seed);
+    let (statement, mut witness) = fixture(pool, sequence, deployment_domain, fixture_seed);
     let statement_sidecar = serde_json::json!({
-        "artifact": "profile23_production_statement",
+        "artifact": "aspis_spend_production_statement",
         "pool_hex": hex(&statement.pool),
         "sequence": statement.sequence,
         "current_anchor_hex": hex(&encode_digest_canonical(&statement.spend.anchor)),
@@ -180,7 +207,8 @@ fn main() {
         "output_anchor_hex": hex(&encode_digest_canonical(&statement.output_anchor)),
         "asset_id": statement.spend.asset_id.0,
         "fee": statement.spend.fee,
-        "selection_rule": "least Good23 selector from three post-final branches",
+        "deployment_domain_hex": hex(&statement.deployment_domain),
+        "selection_rule": "least GoodSpend selector from three post-final branches",
         "witness_independent_public_metadata": true,
     });
     if let Some(parent) = ledger.parent() {
@@ -258,6 +286,8 @@ fn main() {
             println!("statement={}", statement_path.display());
             println!("bytes={}", proof.len());
             println!("sha256={}", hex(&HOST_HASH(&[&proof])));
+            println!("cluster_tag={cluster_tag}");
+            println!("deployment_domain={}", hex(&deployment_domain));
             println!("fixture_seed={fixture_seed}");
         }
         SpendPublicRelease::Abort => {

@@ -14,7 +14,7 @@ use crate::atomic_state_only_trace::{
     ATOMIC_STATE_ONLY_INPUT_ROOT_BLOCK, ATOMIC_STATE_ONLY_OUTPUT_PATH_BLOCK_START,
     ATOMIC_STATE_ONLY_OUTPUT_ROOT_BLOCK,
 };
-use crate::atomic_statement::{AtomicPaymentStatementV3, ATOMIC_PAYMENT_TREE_DEPTH};
+use crate::atomic_statement::{AtomicPaymentStatementV4, ATOMIC_PAYMENT_TREE_DEPTH};
 use crate::logup::{
     build_copy_logup_helper, compress_tagged_tuple, verify_copy_logup_constraints, CopyLogUpRow,
 };
@@ -714,7 +714,7 @@ pub fn verify_atomic_state_only_copy_registry_v3(
 }
 
 pub fn verify_atomic_state_only_public_roots_v3(
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     trace: &AtomicStateOnlyTraceV3,
 ) -> Result<(), AtomicStateOnlyRegistryErrorV3> {
     let digest = |block: usize| {

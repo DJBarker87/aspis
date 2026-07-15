@@ -1,9 +1,9 @@
 {
   "artifact": "spend_one_transaction_release",
-  "generated_at_utc": "2026-07-15T17:48:37.971503+00:00",
+  "generated_at_utc": "2026-07-15T19:48:20.757189+00:00",
   "command": "NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-spend-one-transaction-release",
-  "status": "blocked_fail_closed",
-  "released": false,
+  "status": "released_all_required_gates_green",
+  "released": true,
   "scope": {
     "included": "one atomic Solana transaction that verifies the finalized Spend proof and commits the nullifier marker plus pool-state mutation",
     "proof_account_precondition": "the transaction consumes a finalized, pre-uploaded proof account",
@@ -13,29 +13,29 @@
     ]
   },
   "compute_unit_limit": 1400000,
-  "max_literal_production_tag65_cu": 1340851,
-  "exact_headroom_under_1_4m_cu": 59149,
+  "max_literal_production_tag65_cu": 1344057,
+  "exact_headroom_under_1_4m_cu": 55943,
   "selected_soundness_floor_bits": 101.38010539241552,
   "coarse_whole_soundness_floor_bits": 100.16144938287457,
   "computational_hiding_real_vs_simulator_bound_bits": 104.02492234825198,
   "computational_hiding_pairwise_witness_bound_bits": 103.02492234825198,
   "proof": {
-    "sha256": "d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d",
-    "bytes": 64447,
+    "sha256": "32eb419e0c5c3ef4fa2db0d32579e88f1207547d8fb010279efeb6c05981b529",
+    "bytes": 65407,
     "actual_path": "crates/aspis-prover/fixtures/spend_q18_g37_release.bin",
     "acceptance_path": "crates/aspis-prover/fixtures/spend_q18_g37_release.bin",
     "mutation_path": "crates/aspis-prover/fixtures/spend_q18_g37_release.bin"
   },
   "release_instance": {
     "proof_path": "crates/aspis-prover/fixtures/spend_q18_g37_release.bin",
-    "proof_bytes": 64447,
-    "proof_sha256": "d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d",
+    "proof_bytes": 65407,
+    "proof_sha256": "32eb419e0c5c3ef4fa2db0d32579e88f1207547d8fb010279efeb6c05981b529",
     "statement_path": "crates/aspis-prover/fixtures/spend_q18_g37_release.statement.json",
-    "statement_bytes": 667,
-    "statement_sha256": "947a608c93487a634f37119bead8d61fe29e9cb6883493465d6fb35af27883c2",
-    "statement_pool_hex": "94d5641ee2e3891341b7f738f6b36087c184d828ea07463fe5e70d8c332d1051",
+    "statement_bytes": 767,
+    "statement_sha256": "c35f6152ce4ffbfa6edeba68b4a6d2738e19b1420181c9500ba73f0c717c8699",
+    "statement_pool_hex": "2605b65c88655a479c2bd504ae207556acd0d42c49a8eeaed8cdbca5a256ca70",
     "statement_sequence": 0,
-    "canonical_public_input_digest": "b2d150dfcb6432c1b6f2e3892ee45a9aa5f393809d97c8292fea975b3da35fa3",
+    "canonical_public_input_digest": "f022136a00af841abf2ffcff08969847e9490d1cef9b4dc1ae48f978d58a2bd8",
     "selector_candidates": 3,
     "serialized_selector": 0,
     "least_good_selector": 0,
@@ -49,10 +49,10 @@
         "remaining_gd_terminal_rank_m31": 12,
         "h1_query_rank_m31": 288,
         "h1_terminal_rank_m31": 12,
-        "dynamic_root_minor_fingerprint": "0x27451822f70ae5fe",
-        "dynamic_remaining_gd_minor_fingerprint": "0xd97eb238d190337b",
-        "dynamic_h1_minor_fingerprint": "0xcd22764ab20fdc0d",
-        "dynamic_product_fingerprint": "0xe4adfd047a3e60d4"
+        "dynamic_root_minor_fingerprint": "0x5a2f5acd02246d75",
+        "dynamic_remaining_gd_minor_fingerprint": "0x3eda3a0ca1f69161",
+        "dynamic_h1_minor_fingerprint": "0xc93dc240cebd8de2",
+        "dynamic_product_fingerprint": "0x9e4ed9793b22724c"
       },
       {
         "selector": 1,
@@ -63,10 +63,10 @@
         "remaining_gd_terminal_rank_m31": 12,
         "h1_query_rank_m31": 288,
         "h1_terminal_rank_m31": 12,
-        "dynamic_root_minor_fingerprint": "0x3190ca43dd066084",
-        "dynamic_remaining_gd_minor_fingerprint": "0x3c997cac9023f78e",
-        "dynamic_h1_minor_fingerprint": "0x758322d3d3364461",
-        "dynamic_product_fingerprint": "0x06a59be5e60405f2"
+        "dynamic_root_minor_fingerprint": "0xdbc0b98028536659",
+        "dynamic_remaining_gd_minor_fingerprint": "0x91de71ee39ef727d",
+        "dynamic_h1_minor_fingerprint": "0x5fab1419924e1e76",
+        "dynamic_product_fingerprint": "0x85f68d6019c06a7b"
       },
       {
         "selector": 2,
@@ -77,13 +77,13 @@
         "remaining_gd_terminal_rank_m31": 12,
         "h1_query_rank_m31": 288,
         "h1_terminal_rank_m31": 12,
-        "dynamic_root_minor_fingerprint": "0x893eacc696013984",
-        "dynamic_remaining_gd_minor_fingerprint": "0x3e6aae68b979de07",
-        "dynamic_h1_minor_fingerprint": "0x61b5bb2aef00279d",
-        "dynamic_product_fingerprint": "0x3c9a370ae24cd841"
+        "dynamic_root_minor_fingerprint": "0x0a96f53988a87997",
+        "dynamic_remaining_gd_minor_fingerprint": "0x1cd9241f4e4703c4",
+        "dynamic_h1_minor_fingerprint": "0x10e79da529c574ed",
+        "dynamic_product_fingerprint": "0x690e5657f3587507"
       }
     ],
-    "good_spend_definition_fingerprint": "0x927920b10ba31373c1909ef9bfb7ae7cb9570c7e2536d294347834b3c83dcb26",
+    "good_spend_definition_fingerprint": "0xf4dfc0a490333eb52e0ce334de5ed1267be103baf0160421a90883c280276b1d",
     "production_host_verification_green": true,
     "evaluation_error": null
   },
@@ -91,41 +91,41 @@
     "path": "target/deploy/aspis_verifier.so",
     "build_command": "NO_DNA=1 cargo-build-sbf --manifest-path programs/aspis-verifier/Cargo.toml",
     "freshly_built_by_release_command": true,
-    "bytes": 921896,
-    "sha256": "47a5689de8cd00b9468073f30c038ce358ae7ea6cc3ca233a3f65fed0a2e7cf7",
-    "mutation_recorded_bytes": 921896,
-    "mutation_recorded_sha256": "47a5689de8cd00b9468073f30c038ce358ae7ea6cc3ca233a3f65fed0a2e7cf7"
+    "bytes": 924344,
+    "sha256": "e289faf85fe4773880794d5d4356461bb9cb94077b68711f99348efe19707d7e",
+    "mutation_recorded_bytes": 924344,
+    "mutation_recorded_sha256": "e289faf85fe4773880794d5d4356461bb9cb94077b68711f99348efe19707d7e"
   },
   "source_artifacts": [
     {
       "label": "acceptance",
       "path": "results/spend/atomic_state_only_spend_acceptance_production_mined.json",
-      "bytes": 4637,
-      "sha256": "fab62d689fe8d88aa2beec56e5245b4471e0af96045ac60618220ec8b541157e"
+      "bytes": 4639,
+      "sha256": "c250a493739ffab2a027333402d236b600e9f182aec9577cbf255808c3c331bb"
     },
     {
       "label": "mutation",
       "path": "results/spend/atomic_state_only_spend_mutation_production_mined.json",
-      "bytes": 12234,
-      "sha256": "5a1ffdbec09f9ce7ae6739ce96a9a43be1dbe8210dfcdf5fcee6629db1ba2a7f"
+      "bytes": 12488,
+      "sha256": "8d49eae00e5510c6a8995f5268107b4c883b17a9404cd8741762609750efa03a"
     },
     {
       "label": "soundness",
       "path": "results/spend/spend_d_after_g_soundness_epro.json",
-      "bytes": 11491,
-      "sha256": "5fbf7aa0e3e3fe44108e618322abf2b433ceac155272f158655629c52195f070"
+      "bytes": 11500,
+      "sha256": "02969903204c498ab698521ca435ab7109ebb75a26774d723726dff7d1e148ce"
     },
     {
       "label": "complete_good",
       "path": "results/spend/spend_complete_good_product.json",
-      "bytes": 3471,
-      "sha256": "aa0793a3e0a2b639c7669721606b40fca5a6827ff3db2f7736fcf811957e30dc"
+      "bytes": 3472,
+      "sha256": "6f2b9e2cda59938ff966f621ba33b6487dab6f3173e2d98fbb50cedf39127167"
     },
     {
       "label": "computational_hvzk",
       "path": "results/spend/spend_computational_hvzk_closure.json",
-      "bytes": 7751,
-      "sha256": "f7552f784b056891f48e11fc486a934c4d7fd2d1c290657bff2ae50664da02c5"
+      "bytes": 7758,
+      "sha256": "fe54406420c99a7a422427763fe9697094c25cbe48c2374a41328c7958cf4e8c"
     },
     {
       "label": "program_manifest",
@@ -148,20 +148,20 @@
     {
       "label": "production_proof",
       "path": "crates/aspis-prover/fixtures/spend_q18_g37_release.bin",
-      "bytes": 64447,
-      "sha256": "d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d"
+      "bytes": 65407,
+      "sha256": "32eb419e0c5c3ef4fa2db0d32579e88f1207547d8fb010279efeb6c05981b529"
     },
     {
       "label": "production_statement",
       "path": "crates/aspis-prover/fixtures/spend_q18_g37_release.statement.json",
-      "bytes": 667,
-      "sha256": "947a608c93487a634f37119bead8d61fe29e9cb6883493465d6fb35af27883c2"
+      "bytes": 767,
+      "sha256": "c35f6152ce4ffbfa6edeba68b4a6d2738e19b1420181c9500ba73f0c717c8699"
     },
     {
       "label": "default_production_sbf",
       "path": "target/deploy/aspis_verifier.so",
-      "bytes": 921896,
-      "sha256": "47a5689de8cd00b9468073f30c038ce358ae7ea6cc3ca233a3f65fed0a2e7cf7"
+      "bytes": 924344,
+      "sha256": "e289faf85fe4773880794d5d4356461bb9cb94077b68711f99348efe19707d7e"
     }
   ],
   "gates": [
@@ -173,12 +173,12 @@
     {
       "name": "production_proof_identity_matches",
       "passed": true,
-      "evidence": "actual=(\"crates/aspis-prover/fixtures/spend_q18_g37_release.bin\",d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d,64447), acceptance=(Some(\"crates/aspis-prover/fixtures/spend_q18_g37_release.bin\"),Some(\"d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d\"),Some(64447)), mutation=(Some(\"crates/aspis-prover/fixtures/spend_q18_g37_release.bin\"),Some(\"d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d\"),Some(64447)), release_instance=(crates/aspis-prover/fixtures/spend_q18_g37_release.bin,d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d,64447)"
+      "evidence": "actual=(\"crates/aspis-prover/fixtures/spend_q18_g37_release.bin\",32eb419e0c5c3ef4fa2db0d32579e88f1207547d8fb010279efeb6c05981b529,65407), acceptance=(Some(\"crates/aspis-prover/fixtures/spend_q18_g37_release.bin\"),Some(\"32eb419e0c5c3ef4fa2db0d32579e88f1207547d8fb010279efeb6c05981b529\"),Some(65407)), mutation=(Some(\"crates/aspis-prover/fixtures/spend_q18_g37_release.bin\"),Some(\"32eb419e0c5c3ef4fa2db0d32579e88f1207547d8fb010279efeb6c05981b529\"),Some(65407)), release_instance=(crates/aspis-prover/fixtures/spend_q18_g37_release.bin,32eb419e0c5c3ef4fa2db0d32579e88f1207547d8fb010279efeb6c05981b529,65407)"
     },
     {
       "name": "production_statement_identity_matches",
       "passed": true,
-      "evidence": "actual=(crates/aspis-prover/fixtures/spend_q18_g37_release.statement.json,667,947a608c93487a634f37119bead8d61fe29e9cb6883493465d6fb35af27883c2,94d5641ee2e3891341b7f738f6b36087c184d828ea07463fe5e70d8c332d1051,0,b2d150dfcb6432c1b6f2e3892ee45a9aa5f393809d97c8292fea975b3da35fa3), acceptance=(Some(\"crates/aspis-prover/fixtures/spend_q18_g37_release.statement.json\"),Some(\"947a608c93487a634f37119bead8d61fe29e9cb6883493465d6fb35af27883c2\"),Some(\"94d5641ee2e3891341b7f738f6b36087c184d828ea07463fe5e70d8c332d1051\"),Some(0),Some(\"b2d150dfcb6432c1b6f2e3892ee45a9aa5f393809d97c8292fea975b3da35fa3\"),override=Some(true)), mutation=(Some(\"crates/aspis-prover/fixtures/spend_q18_g37_release.statement.json\"),Some(\"947a608c93487a634f37119bead8d61fe29e9cb6883493465d6fb35af27883c2\"),Some(\"94d5641ee2e3891341b7f738f6b36087c184d828ea07463fe5e70d8c332d1051\"),Some(0),Some(\"b2d150dfcb6432c1b6f2e3892ee45a9aa5f393809d97c8292fea975b3da35fa3\"),override=Some(true))"
+      "evidence": "actual=(crates/aspis-prover/fixtures/spend_q18_g37_release.statement.json,767,c35f6152ce4ffbfa6edeba68b4a6d2738e19b1420181c9500ba73f0c717c8699,2605b65c88655a479c2bd504ae207556acd0d42c49a8eeaed8cdbca5a256ca70,0,f022136a00af841abf2ffcff08969847e9490d1cef9b4dc1ae48f978d58a2bd8), acceptance=(Some(\"crates/aspis-prover/fixtures/spend_q18_g37_release.statement.json\"),Some(\"c35f6152ce4ffbfa6edeba68b4a6d2738e19b1420181c9500ba73f0c717c8699\"),Some(\"2605b65c88655a479c2bd504ae207556acd0d42c49a8eeaed8cdbca5a256ca70\"),Some(0),Some(\"f022136a00af841abf2ffcff08969847e9490d1cef9b4dc1ae48f978d58a2bd8\"),override=Some(true)), mutation=(Some(\"crates/aspis-prover/fixtures/spend_q18_g37_release.statement.json\"),Some(\"c35f6152ce4ffbfa6edeba68b4a6d2738e19b1420181c9500ba73f0c717c8699\"),Some(\"2605b65c88655a479c2bd504ae207556acd0d42c49a8eeaed8cdbca5a256ca70\"),Some(0),Some(\"f022136a00af841abf2ffcff08969847e9490d1cef9b4dc1ae48f978d58a2bd8\"),override=Some(true))"
     },
     {
       "name": "release_instance_production_host_verification_green",
@@ -188,7 +188,7 @@
     {
       "name": "release_instance_serialized_selector_is_least_good_spend",
       "passed": true,
-      "evidence": "candidates=3, serialized=Some(0), least_good=Some(0), branch_acceptance=[(0, true), (1, true), (2, true)], definition_fingerprint=0x927920b10ba31373c1909ef9bfb7ae7cb9570c7e2536d294347834b3c83dcb26, expected_fingerprint=0x927920b10ba31373c1909ef9bfb7ae7cb9570c7e2536d294347834b3c83dcb26, evaluation_error=None"
+      "evidence": "candidates=3, serialized=Some(0), least_good=Some(0), branch_acceptance=[(0, true), (1, true), (2, true)], definition_fingerprint=0xf4dfc0a490333eb52e0ce334de5ed1267be103baf0160421a90883c280276b1d, expected_fingerprint=0xf4dfc0a490333eb52e0ce334de5ed1267be103baf0160421a90883c280276b1d, evaluation_error=None"
     },
     {
       "name": "proof_is_mined",
@@ -263,12 +263,12 @@
     {
       "name": "mined_acceptance_cu_ledger_reconciles",
       "passed": true,
-      "evidence": "literal=Some(1303625), bucket_sum=Some(1303625), reconciled=Some(1303625), headroom=Some(96375)"
+      "evidence": "literal=Some(1306464), bucket_sum=Some(1306464), reconciled=Some(1306464), headroom=Some(93536)"
     },
     {
-      "name": "diagnostic_mutation_ledgers_link_to_mined_acceptance",
-      "passed": false,
-      "evidence": "acceptance_tag59=Some(1303625), diagnostic_path_count=0, all bucket/reconciled/headroom/increment identities=false"
+      "name": "production_teeth_unmined_duplicate_race_refund_domain_green",
+      "passed": true,
+      "evidence": "unmined=true, duplicate=true, race(exercised,green)=(true, true), refund_equation(exercised,exact)=(true, true), deployment_domain=true"
     },
     {
       "name": "production_tag65_cu_ledgers_reconcile",
@@ -278,12 +278,12 @@
     {
       "name": "production_tag65_under_1_4m_cu",
       "passed": true,
-      "evidence": "max_literal_production_tag65_cu=Some(1340851), limit=1400000"
+      "evidence": "max_literal_production_tag65_cu=Some(1344057), limit=1400000"
     },
     {
       "name": "production_measurement_context_matches",
       "passed": true,
-      "evidence": "validator_equal=true, wires=(Some(59),Some(65),Some(61),Some(62)), acceptance_tag59=Some(1303625), production_tag59_baselines=[1303625, 1303625]"
+      "evidence": "validator_equal=true, wires=(Some(59),Some(65),Some(61),Some(62)), acceptance_tag59=Some(1306464), production_tag59_baselines=[1306464, 1306464]"
     },
     {
       "name": "spend_default_enabled_and_host_dependencies_isolated",
@@ -298,12 +298,12 @@
     {
       "name": "production_alias_forbidden_feature_unions_compile_fail",
       "passed": true,
-      "evidence": "rejected=Some(true), tested=[\"spend-production+all-forbidden\", \"spend-production+diagnostic-unmined-mutation\", \"spend-production+diagnostic-unmined-profile21-mutation\", \"spend-production+diagnostic-unmined-profile22-acceptance\", \"spend-production+diagnostic-unmined-profile22-mutation\", \"spend-production+diagnostic-unmined-spend-acceptance\", \"spend-production+diagnostic-unmined-spend-mutation\", \"spend-production+profile20-mutation-candidate\", \"spend-production+profile21-integrated-candidate\", \"spend-production+profile21-mutation-candidate\", \"spend-production+profile22-integrated-candidate\", \"spend-production+profile22-mutation-candidate\"], expected=[\"spend-production+all-forbidden\", \"spend-production+diagnostic-unmined-mutation\", \"spend-production+diagnostic-unmined-profile21-mutation\", \"spend-production+diagnostic-unmined-profile22-acceptance\", \"spend-production+diagnostic-unmined-profile22-mutation\", \"spend-production+diagnostic-unmined-spend-acceptance\", \"spend-production+diagnostic-unmined-spend-mutation\", \"spend-production+profile20-mutation-candidate\", \"spend-production+profile21-integrated-candidate\", \"spend-production+profile21-mutation-candidate\", \"spend-production+profile22-integrated-candidate\", \"spend-production+profile22-mutation-candidate\"]"
+      "evidence": "rejected=Some(true), tested=[\"spend-production+all-forbidden\", \"spend-production+diagnostic-unmined-spend-acceptance\", \"spend-production+diagnostic-unmined-spend-mutation\", \"spend-production+insecure-spend-fixture\", \"spend-production+insecure-test-framing\", \"spend-production+insecure-test-logup-compression\", \"spend-production+insecure-test-ordering\"], expected=[\"spend-production+all-forbidden\", \"spend-production+diagnostic-unmined-spend-acceptance\", \"spend-production+diagnostic-unmined-spend-mutation\", \"spend-production+insecure-spend-fixture\", \"spend-production+insecure-test-framing\", \"spend-production+insecure-test-logup-compression\", \"spend-production+insecure-test-ordering\"]"
     },
     {
       "name": "default_sbf_matches_production_only_kat_binary",
       "passed": true,
-      "evidence": "default=(921896,47a5689de8cd00b9468073f30c038ce358ae7ea6cc3ca233a3f65fed0a2e7cf7) mutation=(Some(921896),Some(\"47a5689de8cd00b9468073f30c038ce358ae7ea6cc3ca233a3f65fed0a2e7cf7\"))"
+      "evidence": "default=(924344,e289faf85fe4773880794d5d4356461bb9cb94077b68711f99348efe19707d7e) mutation=(Some(924344),Some(\"e289faf85fe4773880794d5d4356461bb9cb94077b68711f99348efe19707d7e\"))"
     },
     {
       "name": "johnson_selected_and_conservative_coarse_floors_at_least_100_bits",
@@ -328,17 +328,17 @@
     {
       "name": "complete_good_theorem_product_bound",
       "passed": true,
-      "evidence": "soundness_minor=Some(\"0x6b3838662fbf34db\"), complete_good_minor=Some(\"0x6b3838662fbf34db\"), complete_product=Some(true)"
+      "evidence": "soundness_minor=Some(\"0xc1e23e3acec55fc9\"), complete_good_minor=Some(\"0xc1e23e3acec55fc9\"), complete_product=Some(true)"
     },
     {
       "name": "layout_and_good_spend_fingerprints_match_live_code",
       "passed": true,
-      "evidence": "good expected=0x927920b10ba31373c1909ef9bfb7ae7cb9570c7e2536d294347834b3c83dcb26, artifact=Some(\"0x927920b10ba31373c1909ef9bfb7ae7cb9570c7e2536d294347834b3c83dcb26\"); layout expected=0x233ba2ca68f94148, artifact=Some(\"0x233ba2ca68f94148\"); D factors=(Some(0),Some(0))"
+      "evidence": "good expected=0xf4dfc0a490333eb52e0ce334de5ed1267be103baf0160421a90883c280276b1d, artifact=Some(\"0xf4dfc0a490333eb52e0ce334de5ed1267be103baf0160421a90883c280276b1d\"); layout expected=0x10fe8a502c4cdd02, artifact=Some(\"0x10fe8a502c4cdd02\"); D factors=(Some(0),Some(0))"
     },
     {
       "name": "q3_cap17_fixed_release_gates",
       "passed": true,
-      "evidence": "selectors=Some(3), cap=Some(17), abort_bits=Some(105.21398677941984), selection=Some(\"least Good23 selector\")"
+      "evidence": "selectors=Some(3), cap=Some(17), abort_bits=Some(105.21398677941984), selection=Some(\"least GoodSpend selector\")"
     },
     {
       "name": "computational_hiding_at_least_100_bits_in_declared_model",
@@ -346,9 +346,7 @@
       "evidence": "proof-independent theorem evidence: real_vs_simulator=Some(104.02492234825198), pairwise_witness=Some(103.02492234825198), triangle_factor=Some(2), complete_view=Some(true), complete_system=Some(true); concrete release applicability is gated separately by exact proof+statement host/SBF/Good checks"
     }
   ],
-  "failed_gates": [
-    "diagnostic_mutation_ledgers_link_to_mined_acceptance"
-  ],
+  "failed_gates": [],
   "notes": [
     "This certificate is fail-closed: released=true only when every listed gate passes in one evaluation.",
     "Soundness and complete-Good are proof-independent theorem artifacts; their exact files are bound by SHA-256 and their layout/Good identities are checked against live code.",

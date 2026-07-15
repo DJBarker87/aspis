@@ -1,13 +1,11 @@
 //! Host-only integration-valid zero-factor C1 repair for the conditional
 //! root-neutral sumcheck fiber.
 //!
-//! This module (and its `profile22_*` file/identifier names) is live spend
-//! code: the GoodSpend predicate's raw Schur probes and the complete-good
-//! product binding live here. The historical names are retained because the
-//! rank-minor block labels and the complete-good-product domain separator in
-//! this file are hashed into frozen provenance anchors that the release
-//! certificates and known-answer tests pin; renaming them would silently
-//! change those anchors.
+//! This module is live spend code: the GoodSpend predicate's raw Schur
+//! probes and the complete-good product binding live here. The rank-minor
+//! block labels and the complete-good-product domain separator in this file
+//! are hashed into frozen provenance anchors that the release certificates
+//! and known-answer tests pin; renaming them requires a full regrind.
 //!
 //! For a prefix of `m <= 4` new full-domain M31 C1 lanes, the exact generator
 //! order is
@@ -19,7 +17,7 @@
 
 use super::*;
 
-pub const PROFILE22_ZERO_FACTOR_MAX_LANES: usize = 4;
+pub const SPEND_ZERO_FACTOR_MAX_LANES: usize = 4;
 const CONDITIONAL_SUMCHECK_TARGET_M31: usize = MASK_SUMCHECK_QUOTIENT_M31 - 4;
 const SPEND_ROOT_NEUTRAL_Z_DEGREE: usize = 41_040;
 const SPEND_RAW_TERMINAL_SCHUR_ROWS_M31: usize = 12;
@@ -28,7 +26,7 @@ const SPEND_RAW_TERMINAL_SCHUR_Z_DEGREE: usize =
     SPEND_RAW_TERMINAL_SCHUR_ROWS_M31 * SPEND_RAW_TERMINAL_ENTRY_Z_DEGREE;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Profile22ZeroFactorRootNeutralPrefix {
+pub struct SpendZeroFactorRootNeutralPrefix {
     pub added_lanes: usize,
     pub h_generator_index: usize,
     pub g_generator_index: usize,
@@ -46,7 +44,7 @@ pub struct Profile22ZeroFactorRootNeutralPrefix {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Profile22ZeroFactorRootNeutralReport {
+pub struct SpendZeroFactorRootNeutralReport {
     pub query_count: usize,
     pub gamma_nonzero: bool,
     pub integration_order: &'static str,
@@ -55,13 +53,13 @@ pub struct Profile22ZeroFactorRootNeutralReport {
     pub c1_leaf_delta_bytes_per_lane: usize,
     pub serialized_opening_delta_bytes_per_lane_q16: usize,
     pub generator_width_before: usize,
-    pub prefixes: Vec<Profile22ZeroFactorRootNeutralPrefix>,
+    pub prefixes: Vec<SpendZeroFactorRootNeutralPrefix>,
     pub minimum_complete_lanes: Option<usize>,
     pub elapsed_millis: u128,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Profile22ZeroFactorQm31TailRootNeutralReport {
+pub struct SpendZeroFactorQm31TailRootNeutralReport {
     pub query_count: usize,
     pub gamma_nonzero: bool,
     pub production_h_generator_index: usize,
@@ -173,7 +171,7 @@ fn raw_terminal_schur_minor(
 
 fn spend_complete_good_product_fingerprint(values: &[u64]) -> u64 {
     let mut hash = 0xcbf2_9ce4_8422_2325u64;
-    for &byte in b"aspis/profile23/complete-good-product/v1" {
+    for &byte in b"aspis/spend/complete-good-product/v1" {
         hash ^= u64::from(byte);
         hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
     }
@@ -187,8 +185,8 @@ fn spend_complete_good_product_fingerprint(values: &[u64]) -> u64 {
 }
 
 pub fn bind_spend_complete_good_product_provenance(
-    root: &Profile22RootNeutralPolynomialKernelRankReport,
-    raw: &Profile22ZeroFactorQm31TailRootNeutralReport,
+    root: &SpendRootNeutralPolynomialKernelRankReport,
+    raw: &SpendZeroFactorQm31TailRootNeutralReport,
 ) -> Result<SpendCompleteGoodProductProvenance, StateOnlyHidingRankGateError> {
     let root_rank = root.minor.source_columns.len();
     let gd_rank = raw.remaining_gd_terminal_schur_minor.source_columns.len();
@@ -288,9 +286,9 @@ fn insert_conditional_image(
 fn probe_prefix(
     schedule: &StateOnlyTranscriptScheduleResult,
     added_lanes: usize,
-) -> Result<Profile22ZeroFactorRootNeutralPrefix, StateOnlyHidingRankGateError> {
+) -> Result<SpendZeroFactorRootNeutralPrefix, StateOnlyHidingRankGateError> {
     let started = Instant::now();
-    if added_lanes > PROFILE22_ZERO_FACTOR_MAX_LANES
+    if added_lanes > SPEND_ZERO_FACTOR_MAX_LANES
         || schedule.query_count != 16
         || schedule.query_count > schedule.queries.len()
         || schedule.prefix.gamma == QM31::ZERO
@@ -537,7 +535,7 @@ fn probe_prefix(
         minor_rows,
         minor_values,
     );
-    Ok(Profile22ZeroFactorRootNeutralPrefix {
+    Ok(SpendZeroFactorRootNeutralPrefix {
         added_lanes,
         h_generator_index,
         g_generator_index,
@@ -565,19 +563,19 @@ fn probe_prefix(
     })
 }
 
-pub fn probe_atomic_state_only_profile22_zero_factor_root_neutral_prefixes(
+pub fn probe_atomic_state_only_spend_zero_factor_root_neutral_prefixes(
     schedule: &StateOnlyTranscriptScheduleResult,
-) -> Result<Profile22ZeroFactorRootNeutralReport, StateOnlyHidingRankGateError> {
+) -> Result<SpendZeroFactorRootNeutralReport, StateOnlyHidingRankGateError> {
     let started = Instant::now();
-    let mut prefixes = Vec::with_capacity(PROFILE22_ZERO_FACTOR_MAX_LANES + 1);
-    for added_lanes in 0..=PROFILE22_ZERO_FACTOR_MAX_LANES {
+    let mut prefixes = Vec::with_capacity(SPEND_ZERO_FACTOR_MAX_LANES + 1);
+    for added_lanes in 0..=SPEND_ZERO_FACTOR_MAX_LANES {
         prefixes.push(probe_prefix(schedule, added_lanes)?);
     }
     let minimum_complete_lanes = prefixes
         .iter()
         .find(|prefix| prefix.complete)
         .map(|prefix| prefix.added_lanes);
-    Ok(Profile22ZeroFactorRootNeutralReport {
+    Ok(SpendZeroFactorRootNeutralReport {
         query_count: schedule.query_count,
         gamma_nonzero: schedule.prefix.gamma != QM31::ZERO,
         integration_order: "semantic16,mask-only10,zero-factor-prefix,H,G",
@@ -604,9 +602,9 @@ pub fn probe_atomic_state_only_profile22_zero_factor_root_neutral_prefixes(
 /// indices `0..=27`; D is generator 28 and the source restriction is
 /// `delta_G = -gamma * delta_D`, hence
 /// `gamma^27 delta_G + gamma^28 delta_D = 0` pointwise.
-pub fn probe_atomic_state_only_profile22_zero_factor_qm31_tail_root_neutral(
+pub fn probe_atomic_state_only_spend_zero_factor_qm31_tail_root_neutral(
     schedule: &StateOnlyTranscriptScheduleResult,
-) -> Result<Profile22ZeroFactorQm31TailRootNeutralReport, StateOnlyHidingRankGateError> {
+) -> Result<SpendZeroFactorQm31TailRootNeutralReport, StateOnlyHidingRankGateError> {
     let started = Instant::now();
     if !matches!(schedule.query_count, 16 | 18)
         || schedule.query_count > schedule.queries.len()
@@ -822,7 +820,7 @@ pub fn probe_atomic_state_only_profile22_zero_factor_qm31_tail_root_neutral(
     }
     let (h1_inactive_padding_query_rank_m31, h1_inactive_padding_terminal_schur_minor) =
         raw_terminal_schur_minor(
-            "profile23_h1_inactive_padding_terminal_schur_12",
+            "spend_h1_inactive_padding_terminal_schur_12",
             &rows,
             &active,
             global_dependent,
@@ -877,7 +875,7 @@ pub fn probe_atomic_state_only_profile22_zero_factor_qm31_tail_root_neutral(
     }
     let (remaining_gd_query_rank_m31, remaining_gd_terminal_schur_minor) =
         raw_terminal_schur_minor(
-            "profile23_remaining_gd_terminal_schur_12",
+            "spend_remaining_gd_terminal_schur_12",
             &rows,
             &active,
             global_dependent,
@@ -896,7 +894,7 @@ pub fn probe_atomic_state_only_profile22_zero_factor_qm31_tail_root_neutral(
     );
     let c2_leaf_delta_bytes = FIBER_SLOTS * 16;
     let serialized_opening_delta_bytes_q16 = schedule.query_count * c2_leaf_delta_bytes + 3 * 16;
-    Ok(Profile22ZeroFactorQm31TailRootNeutralReport {
+    Ok(SpendZeroFactorQm31TailRootNeutralReport {
         query_count: schedule.query_count,
         gamma_nonzero: schedule.prefix.gamma != QM31::ZERO,
         production_h_generator_index: h_generator_index,

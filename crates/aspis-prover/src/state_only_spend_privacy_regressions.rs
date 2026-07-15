@@ -21,11 +21,11 @@ use aspis_core::state_only_spend_openings::{
 };
 use aspis_statement::atomic_state_only_trace::atomic_merkle_root_v3;
 use aspis_statement::state_only_spend::{
-    verify_atomic_state_only_spend_unmined_for_diagnostics_v3, VerifiedAtomicSpend,
+    verify_atomic_state_only_spend_unmined_for_diagnostics_v4, VerifiedAtomicSpend,
 };
 use aspis_statement::{
-    atomic_payment_statement_digest_v3, derive_nullifier, derive_owner_key, note_commitment,
-    output_commitment, AtomicPaymentStatementV3, Digest, MerklePath, SpendPublic, SpendWitness,
+    atomic_payment_statement_digest_v4, derive_nullifier, derive_owner_key, note_commitment,
+    output_commitment, AtomicPaymentStatementV4, Digest, MerklePath, SpendPublic, SpendWitness,
 };
 
 use crate::state_only_candidate_prefix::StateOnlyPowMode;
@@ -38,14 +38,14 @@ use crate::HOST_HASH;
 
 const ACTUAL_SPEND_PROOF: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/fixtures/atomic_state_only_spend_v3_unmined.bin"
+    "/fixtures/atomic_state_only_spend_v4_unmined.bin"
 ));
 
 fn digest(seed: u32) -> Digest {
     core::array::from_fn(|index| M31(seed + 17 * index as u32))
 }
 
-fn fixture() -> (AtomicPaymentStatementV3, SpendWitness) {
+fn fixture() -> (AtomicPaymentStatementV4, SpendWitness) {
     let nullifier_key = digest(101);
     let input_salt = digest(301);
     let output_salt = digest(501);
@@ -74,7 +74,7 @@ fn fixture() -> (AtomicPaymentStatementV3, SpendWitness) {
         &input_salt,
     );
     let output = output_commitment(&output_owner_key, value_out, asset_id, &output_salt);
-    let statement = AtomicPaymentStatementV3 {
+    let statement = AtomicPaymentStatementV4 {
         pool: [0x5a; 32],
         sequence: 73,
         spend: SpendPublic {
@@ -85,13 +85,14 @@ fn fixture() -> (AtomicPaymentStatementV3, SpendWitness) {
             fee: 1,
         },
         output_anchor: atomic_merkle_root_v3(output, &witness.merkle_path).unwrap(),
+        deployment_domain: [0x5d; 32],
     };
     (statement, witness)
 }
 
 fn actual_verified() -> VerifiedAtomicSpend<'static> {
     let (statement, _) = fixture();
-    verify_atomic_state_only_spend_unmined_for_diagnostics_v3(
+    verify_atomic_state_only_spend_unmined_for_diagnostics_v4(
         ACTUAL_SPEND_PROOF,
         &statement,
         HOST_HASH,
@@ -301,7 +302,7 @@ fn spend_public_proof_byte_inventory_is_gap_and_overlap_free() {
         inventory_opening(&mut coverage, &mut totals, opening);
     }
 
-    assert_eq!(ACTUAL_SPEND_PROOF.len(), 67_327);
+    assert_eq!(ACTUAL_SPEND_PROOF.len(), 64_447);
     assert!(coverage.iter().all(Option::is_some));
     assert_eq!(totals[PublicByteKind::Header as usize], 16);
     assert_eq!(totals[PublicByteKind::MaskNonce as usize], 32);
@@ -318,7 +319,7 @@ fn spend_public_proof_byte_inventory_is_gap_and_overlap_free() {
     assert_eq!(totals[PublicByteKind::OpeningCounts as usize], 30);
     assert_eq!(totals[PublicByteKind::OpenedValues as usize], 14_400);
     assert_eq!(totals[PublicByteKind::OpenedSalts as usize], 2_880);
-    assert_eq!(totals[PublicByteKind::MerkleFrontier as usize], 43_232);
+    assert_eq!(totals[PublicByteKind::MerkleFrontier as usize], 40_352);
     assert_eq!(totals.iter().sum::<usize>(), ACTUAL_SPEND_PROOF.len());
 }
 
@@ -407,7 +408,7 @@ fn spend_all_five_sections_bind_roots_values_salts_and_frontiers() {
 
 fn replay(proof: &[u8]) -> StateOnlyTranscriptScheduleResult {
     let (statement, _) = fixture();
-    let statement_digest = atomic_payment_statement_digest_v3(&statement, HOST_HASH).unwrap();
+    let statement_digest = atomic_payment_statement_digest_v4(&statement, HOST_HASH).unwrap();
     let (prefix, _) = StateOnlySpendPrefix::parse_from_proof(proof).unwrap();
     run_atomic_state_only_spend_transcript_schedule_host_unmined_for_diagnostics_v3(
         HOST_HASH,

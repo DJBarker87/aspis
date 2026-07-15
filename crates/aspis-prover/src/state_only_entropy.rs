@@ -32,15 +32,15 @@ const PROFILE22_PRIVATE_ATTEMPT_BINDING_DOMAIN: &[u8] =
     b"aspis:state-only:profile22-private:attempt-binding:v1";
 const PROFILE22_PRIVATE_WIRE_DESCRIPTOR: &[u8] =
     b"profile=22;depths=17,17,15,13,11;widths=416,128,64,64,64;trees=c1,c2,w1,w2,w3";
-// The domain-separator byte strings below keep the release's original
-// working-name spelling: they are hashed into deterministic-fixture entropy
-// derivation, and the committed unmined fixture (and its pinned regression
-// values) must stay reproducible byte-for-byte.
+// The domain-separator byte strings below are hashed into deterministic
+// fixture entropy derivation; the committed unmined fixture (and its pinned
+// regression values) must stay reproducible byte-for-byte against exactly
+// these aspis-spend spellings.
 const SPEND_PRIVATE_ATTEMPT_BINDING_DOMAIN: &[u8] =
-    b"aspis:state-only:profile23-zero-factor:attempt-binding:v1";
+    b"aspis:state-only:spend-zero-factor:attempt-binding:v1";
 const SPEND_PRIVATE_WIRE_DESCRIPTOR: &[u8] =
-    b"profile=23;generators=H26,G27,D28;factorD=0;selector=3;depths=17,17,15,13,11;widths=416,192,64,64,64;trees=c1,c2,w1,w2,w3";
-const SPEND_D_SEED_DOMAIN: &[u8] = b"aspis:state-only:profile23:zero-factor-d-seed:v1";
+    b"profile=spend;generators=H26,G27,D28;factorD=0;selector=3;depths=17,17,15,13,11;widths=416,192,64,64,64;trees=c1,c2,w1,w2,w3";
+const SPEND_D_SEED_DOMAIN: &[u8] = b"aspis:state-only:spend:zero-factor-d-seed:v1";
 const PROFILE21_SOURCE_SEED_DOMAIN: &[u8] = b"aspis:state-only:profile21:source-seed:v1";
 const PROFILE21_SOURCE_EXPAND_DOMAIN: &[u8] = b"aspis:state-only:profile21:source-expand:v1";
 const LEAF_SALT_DOMAIN: &[u8] = b"aspis:state-only:private-leaf-salt:v1";

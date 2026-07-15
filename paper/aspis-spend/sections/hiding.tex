@@ -36,11 +36,11 @@ have the same public encoding.
 Let \(\mathcal H:\{0,1\}^*\rightarrow\{0,1\}^{256}\) be one programmable
 random oracle.  Rigid domain encodings separate its transcript, field
 expansion, salt expansion, Merkle, statement, and work uses.  In the real
-experiment \(\mathsf{Real}_{23}^{\mathcal H}(x,w)\), the honest prover uses
+experiment \(\mathsf{Real}_{\mathrm{spend}}^{\mathcal H}(x,w)\), the honest prover uses
 fresh attempt secrets, chooses the least good of three schedules, retries at
 most 17 completed attempts, and emits
 Definition~\ref{def:spend-complete-view}.  The
-simulator experiment \(\mathsf{Sim}_{23}^{\mathcal H}(x)\) has no witness and
+simulator experiment \(\mathsf{Sim}_{\mathrm{spend}}^{\mathcal H}(x)\) has no witness and
 may program \(\mathcal H\) at fresh inputs.
 
 A classical distinguisher receives arbitrary auxiliary input, observes the
@@ -50,17 +50,17 @@ output.  Its total budget is \(Q_H\le2^{128}\).  Define
  \epsilon_{\rm RS}
    &=\sup_{x,w,\mathcal D}
        \left|\Pr[\mathcal D^{\mathcal H}
-          (\mathsf{Real}_{23}^{\mathcal H}(x,w))=1]
+          (\mathsf{Real}_{\mathrm{spend}}^{\mathcal H}(x,w))=1]
        -\Pr[\mathcal D^{\mathcal H}
-          (\mathsf{Sim}_{23}^{\mathcal H}(x))=1]\right|,\\
+          (\mathsf{Sim}_{\mathrm{spend}}^{\mathcal H}(x))=1]\right|,\\
  \epsilon_{\rm pair}
    &=\sup_{x,w_0,w_1,\mathcal D}
        \left|\Pr[\mathcal D^{\mathcal H}
-          (\mathsf{Real}_{23}^{\mathcal H}(x,w_0))=1]
+          (\mathsf{Real}_{\mathrm{spend}}^{\mathcal H}(x,w_0))=1]
        -\Pr[\mathcal D^{\mathcal H}
-          (\mathsf{Real}_{23}^{\mathcal H}(x,w_1))=1]\right|,
+          (\mathsf{Real}_{\mathrm{spend}}^{\mathcal H}(x,w_1))=1]\right|,
 \end{align*}
-where each quantified witness satisfies \(R_{23}(x,w)=1\).
+where each quantified witness satisfies \(\RProfile(x,w)=1\).
 The programming experiment follows the explicitly programmable random-oracle
 (EPRO) compilation framework of
 Ben-Sasson, Chiesa, and Spooner~\cite{BenSassonChiesaSpooner2016}, specialized
@@ -120,10 +120,10 @@ same support and mass function.
 For the frozen \Profile{} prover, verifier, layout, and serialization, let
 \(Y_{s_{\rm fs}}\) include every non-hash field coordinate in the declared
 view.  For every valid \((x,w)\) and every schedule accepted by
-\(\mathsf{Good}_{23}\), Equation~\eqref{eq:affine-field-view} is an exact
+\(\mathsf{Good}_{\mathrm{spend}}\), Equation~\eqref{eq:affine-field-view} is an exact
 representation of that complete vector, with independent uniform mask
 coordinates \(R\) and no omitted witness-dependent coordinate.  Moreover, the
-production matrices have all eight ranks in Table~\ref{tab:good23-ranks},
+production matrices have all eight ranks in Table~\ref{tab:goodspend-ranks},
 satisfy their source guards, and their semantic, \(G/D\), inactive-balanced
 \(H_1\), terminal, and root-neutral blocks cover the full homogeneous
 verifier space.  Consequently,
@@ -156,7 +156,7 @@ masked-sumcheck coordinates after fixing the initial and terminal claims.
 The structural semantic maps cover every queried raw semantic coordinate;
 their balanced kernels and lane-separated terminal projections cover the
 remaining semantic terminals.  The two 288-rank query maps and 12-rank Schur
-complements in Table~\ref{tab:good23-ranks} cover the remaining \(G/D\) and
+complements in Table~\ref{tab:goodspend-ranks} cover the remaining \(G/D\) and
 inactive-balanced \(H_1\) raw coordinates.  After these raw values are fixed,
 the remaining sumcheck difference belongs to
 \(\ker(\mathrm{initial},T_z)\).  The root-neutral product has rank 1404, of
@@ -187,7 +187,7 @@ dimensions, source guards, pivots, and nonzero minors, and rejects definition
 drift.  The published component fingerprints record provenance; they are not
 substituted for matrix reconstruction.  The certificate fixture supplies
 frozen witnesses for the nonzero minors, while the production transfer uses
-layout and \(\mathsf{Good}_{23}\)-definition fingerprints and a fresh replay
+layout and \(\mathsf{Good}_{\mathrm{spend}}\)-definition fingerprints and a fresh replay
 of all three
 public schedules.  It does not assume that production proof bytes equal the
 certificate fixture.
@@ -208,10 +208,10 @@ the premise.
 The simulator uses Equation~\eqref{eq:image-equality} directly.
 
 \begin{description}
-\item[\(\mathsf{Sim}_{23}(x)\).]
+\item[\(\mathsf{Sim}_{\mathrm{spend}}(x)\).]
 For each of at most 17 attempts, create a fresh common transcript state and
 three label-44 branches using lazy random-oracle programming.  Evaluate the
-public predicate \(\mathsf{Good}_{23}\) on all three schedules.  If none is
+public predicate \(\mathsf{Good}_{\mathrm{spend}}\) on all three schedules.  If none is
 good, continue; if the cap is exhausted, output \(\mathsf{Abort}\).  Otherwise
 select the least good schedule \(s_{\rm fs}\).  Reconstruct the public affine
 system, compute its canonical origin \(y_{x,s_{\rm fs}}\), and row-reduce
@@ -229,14 +229,14 @@ proof-account frame, and append the deterministic public execution view.
 \end{description}
 
 Every input to this algorithm is public.  In particular,
-\(\mathsf{Good}_{23}\) consumes no witness, realized mask, private salt, or
+\(\mathsf{Good}_{\mathrm{spend}}\) consumes no witness, realized mask, private salt, or
 retry-derived hidden value.
 
 \begin{lemma}[Selection and cap-exhaustion law]
 \label{lem:selection-hiding-abort}
 Conditioned on no adversarial prequery of a programmed input and no
 programmed-state collision, the three branch schedules, their
-\(\mathsf{Good}_{23}\) bits,
+\(\mathsf{Good}_{\mathrm{spend}}\) bits,
 the least-good selector, and the all-bad bit have a witness-independent joint
 distribution.  The same holds for the first good completed attempt and the
 internal cap-17 \(\mathsf{Abort}\) event.  This event does not include
@@ -246,7 +246,7 @@ truncation caused by a wall-clock deadline.
 \begin{proof}
 The three typed label-44 inputs extend one common state by distinct bytes.
 At fresh random-oracle inputs their outputs are independent and uniform,
-conditioned on the common prefix.  \(\mathsf{Good}_{23}\) is a deterministic function of the
+conditioned on the common prefix.  \(\mathsf{Good}_{\mathrm{spend}}\) is a deterministic function of the
 resulting public schedule, so the Good bits and least-good selector inherit
 this witness-independent law.  Fresh attempt entropy and a fresh burned nonce
 make attempts independent.  Iterating the same coupling through the first
@@ -291,7 +291,7 @@ The adjacent hybrids are:
         canonical-minimum laws;
   \item \(H_7\): serialize the schedule-dependent proof and append proof-
         account finalization, logs, framing, and deterministic state change;
-  \item \(H_8\): the output of \(\mathsf{Sim}_{23}(x)\).
+  \item \(H_8\): the output of \(\mathsf{Sim}_{\mathrm{spend}}(x)\).
 \end{enumerate}
 The first step is perfect under
 Assumption~\ref{lem:complete-affine-image}.  The
@@ -380,8 +380,8 @@ SHA-256 random-oracle model with ideal completion before the fixed boundary,
 or with the witness-independent external truncation defined above, for
 \(Q_H\le2^{128}\), every valid \((x,w)\), and arbitrary auxiliary input,
 \[
- \mathsf{Real}_{23}(x,w)\approx_{\epsilon_{\rm RS}}
- \mathsf{Sim}_{23}(x),
+ \mathsf{Real}_{\mathrm{spend}}(x,w)\approx_{\epsilon_{\rm RS}}
+ \mathsf{Sim}_{\mathrm{spend}}(x),
  \qquad
  -\log_2\epsilon_{\rm RS}>104.0249223482519.
 \]
@@ -399,7 +399,7 @@ identically and therefore adds no distinguishing advantage.
 \begin{corollary}[Pairwise-witness hiding]
 \label{cor:pairwise-hiding}
 Under the same affine-image premise and boundary model, for any fixed \(x\)
-and any \(w_0,w_1\) satisfying \(R_{23}(x,w_i)=1\),
+and any \(w_0,w_1\) satisfying \(\RProfile(x,w_i)=1\),
 \[
  \epsilon_{\rm pair}\le2\epsilon_{\rm RS},
  \qquad
@@ -411,8 +411,8 @@ A three-decimal conservative pairwise floor is 103.024 bits.
 \begin{proof}
 Apply the triangle inequality along
 \(
- \mathsf{Real}_{23}(x,w_0)\rightarrow
- \mathsf{Sim}_{23}(x)\rightarrow
- \mathsf{Real}_{23}(x,w_1)
+ \mathsf{Real}_{\mathrm{spend}}(x,w_0)\rightarrow
+ \mathsf{Sim}_{\mathrm{spend}}(x)\rightarrow
+ \mathsf{Real}_{\mathrm{spend}}(x,w_1)
 \).
 \end{proof}

@@ -85,6 +85,7 @@ pub fn process_spend_production_instruction(
             let sequence = production_u64(&mut wire)?;
             let public_input = production_take::<104>(&mut wire)?;
             let output_anchor = production_take::<32>(&mut wire)?;
+            let deployment_domain = production_take::<32>(&mut wire)?;
             let diagnostic_unmined = production_take::<1>(&mut wire)?[0];
             production_require_empty(wire)?;
             if diagnostic_unmined != 0 {
@@ -94,12 +95,27 @@ pub fn process_spend_production_instruction(
             if proof_account.owner != program_id || proof_account.is_writable {
                 return Err(ProgramError::IncorrectProgramId);
             }
-            verify::verify_uploaded_atomic_spend_acceptance_v3(
+            let pool_account = accounts.get(1).ok_or(ProgramError::NotEnoughAccountKeys)?;
+            if pool_account.owner != program_id || pool_account.is_writable {
+                return Err(ProgramError::IncorrectProgramId);
+            }
+            if pool_account.key.to_bytes() != pool {
+                return Err(ProgramError::InvalidArgument);
+            }
+            let pool_state =
+                atomic_payment::AtomicPoolStateV2::decode(&pool_account.try_borrow_data()?)?;
+            if pool_state.deployment_domain != deployment_domain {
+                return Err(ProgramError::Custom(
+                    atomic_payment::ATOMIC_ERROR_DEPLOYMENT_DOMAIN_MISMATCH,
+                ));
+            }
+            verify::verify_uploaded_atomic_spend_acceptance_v4(
                 proof_account,
                 pool,
                 sequence,
                 &public_input,
                 output_anchor,
+                deployment_domain,
             )
         }
         60 => {
@@ -109,6 +125,7 @@ pub fn process_spend_production_instruction(
             let output_anchor = production_take::<32>(&mut wire)?;
             let asset_id = production_u32(&mut wire)?;
             let fee = production_u32(&mut wire)?;
+            let deployment_domain = production_take::<32>(&mut wire)?;
             production_require_empty(wire)?;
             let public = atomic_payment::AtomicPaymentPublicInputs {
                 current_anchor,
@@ -117,13 +134,14 @@ pub fn process_spend_production_instruction(
                 output_anchor,
                 asset_id,
                 fee,
+                deployment_domain,
             };
             atomic_payment::verify_and_apply_atomic_payment_state(
                 program_id,
                 accounts,
                 &public,
                 |proof_account, statement, _statement_digest| {
-                    verify::verify_uploaded_atomic_spend_production_statement_v3(
+                    verify::verify_uploaded_atomic_spend_production_statement_v4(
                         proof_account,
                         statement,
                     )
@@ -144,8 +162,11 @@ pub fn process_spend_production_instruction(
         63 => {
             let sequence = production_u64(&mut wire)?;
             let anchor = production_take::<32>(&mut wire)?;
-            production_require_empty(wire)?;
-            lifecycle::initialize_atomic_pool(program_id, accounts, sequence, anchor)
+            let domain_tag_len = production_u32(&mut wire)? as usize;
+            if wire.len() != domain_tag_len {
+                return Err(ProgramError::InvalidInstructionData);
+            }
+            lifecycle::initialize_atomic_pool(program_id, accounts, sequence, anchor, wire)
         }
         64 => {
             production_require_empty(wire)?;
@@ -158,6 +179,7 @@ pub fn process_spend_production_instruction(
             let output_anchor = production_take::<32>(&mut wire)?;
             let asset_id = production_u32(&mut wire)?;
             let fee = production_u32(&mut wire)?;
+            let deployment_domain = production_take::<32>(&mut wire)?;
             production_require_empty(wire)?;
             let public = atomic_payment::AtomicPaymentPublicInputs {
                 current_anchor,
@@ -166,13 +188,14 @@ pub fn process_spend_production_instruction(
                 output_anchor,
                 asset_id,
                 fee,
+                deployment_domain,
             };
             atomic_payment::verify_and_apply_atomic_payment_state_with_proof_refund(
                 program_id,
                 accounts,
                 &public,
                 |proof_account, statement, _statement_digest| {
-                    verify::verify_uploaded_atomic_spend_production_statement_v3(
+                    verify::verify_uploaded_atomic_spend_production_statement_v4(
                         proof_account,
                         statement,
                     )?;
@@ -199,34 +222,38 @@ mod tests {
                 offset: 17,
                 chunk: vec![1, 2, 3, 4],
             },
-            AspisInstruction::VerifyAtomicStateOnlySpendV3 {
+            AspisInstruction::VerifyAtomicStateOnlySpendV4 {
                 pool: [1u8; 32],
                 sequence: 73,
                 public_input: [2u8; 104],
                 output_anchor: [3u8; 32],
+                deployment_domain: [5u8; 32],
                 diagnostic_unmined: false,
             },
-            AspisInstruction::ApplyAtomicStateOnlySpendV3 {
+            AspisInstruction::ApplyAtomicStateOnlySpendV4 {
                 current_anchor: [1u8; 32],
                 nullifier: [2u8; 32],
                 output_commitment: [3u8; 32],
                 output_anchor: [4u8; 32],
                 asset_id: 17,
                 fee: 1,
+                deployment_domain: [5u8; 32],
             },
             AspisInstruction::FinalizeProof,
             AspisInstruction::InitializeAtomicPool {
                 sequence: 0,
                 anchor: [0u8; 32],
+                domain_tag: b"devnet".to_vec(),
             },
             AspisInstruction::CloseFinalizedProof,
-            AspisInstruction::ApplyAtomicStateOnlySpendV3WithProofRefund {
+            AspisInstruction::ApplyAtomicStateOnlySpendV4WithProofRefund {
                 current_anchor: [1u8; 32],
                 nullifier: [2u8; 32],
                 output_commitment: [3u8; 32],
                 output_anchor: [4u8; 32],
                 asset_id: 17,
                 fee: 1,
+                deployment_domain: [5u8; 32],
             },
         ];
 
@@ -257,11 +284,12 @@ mod tests {
             Err(ProgramError::InvalidInstructionData)
         );
 
-        let diagnostic = borsh::to_vec(&AspisInstruction::VerifyAtomicStateOnlySpendV3 {
+        let diagnostic = borsh::to_vec(&AspisInstruction::VerifyAtomicStateOnlySpendV4 {
             pool: [1u8; 32],
             sequence: 73,
             public_input: [2u8; 104],
             output_anchor: [3u8; 32],
+            deployment_domain: [5u8; 32],
             diagnostic_unmined: true,
         })
         .unwrap();

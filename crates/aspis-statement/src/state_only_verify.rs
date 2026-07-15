@@ -42,7 +42,7 @@ use crate::state_only_terminal::{
     state_only_selected_unmasked_terminal_value_compiled, StateOnlyTerminalDiagnosticPhase,
     StateOnlyTerminalError, STATE_ONLY_SELECTED_TERMINAL_CLAIMS,
 };
-use crate::{AtomicPaymentStatementV3, SpendPublic};
+use crate::{AtomicPaymentStatementV4, SpendPublic};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StateOnlyRelationVerifyError {
@@ -714,7 +714,7 @@ pub fn verify_state_only_candidate_unmined_for_diagnostics_traced<'a>(
 /// executing the old terminal.
 pub fn verify_state_only_atomic_terminal_cost_candidate_unmined_traced<'a>(
     proof: &'a [u8],
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     statement_digest: &[u8; 32],
     expected_atomic_terminal: QM31,
     hash: HashFn,
@@ -771,7 +771,7 @@ pub fn verify_state_only_atomic_terminal_cost_candidate_unmined_traced<'a>(
 /// before the atomic hiding context, roots, and sumcheck challenges are drawn.
 pub fn verify_atomic_state_only_candidate_v3<'a>(
     proof: &'a [u8],
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     hash: HashFn,
 ) -> Result<VerifiedStateOnlyCandidate<'a>, StateOnlyCandidateVerifyError> {
     verify_atomic_state_only_candidate_inner_v3(proof, statement, hash, true, None)
@@ -779,7 +779,7 @@ pub fn verify_atomic_state_only_candidate_v3<'a>(
 
 pub fn verify_atomic_state_only_candidate_unmined_for_diagnostics_v3<'a>(
     proof: &'a [u8],
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     hash: HashFn,
     trace: Option<StateOnlyVerifyTrace>,
 ) -> Result<VerifiedStateOnlyCandidate<'a>, StateOnlyCandidateVerifyError> {
@@ -788,12 +788,12 @@ pub fn verify_atomic_state_only_candidate_unmined_for_diagnostics_v3<'a>(
 
 fn verify_atomic_state_only_candidate_inner_v3<'a>(
     proof: &'a [u8],
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     hash: HashFn,
     check_pow: bool,
     trace: Option<StateOnlyVerifyTrace>,
 ) -> Result<VerifiedStateOnlyCandidate<'a>, StateOnlyCandidateVerifyError> {
-    let statement_digest = crate::atomic_payment_statement_digest_v3(statement, hash)
+    let statement_digest = crate::atomic_payment_statement_digest_v4(statement, hash)
         .map_err(|_| StateOnlyCandidateVerifyError::StatementValues)?;
     let (prefix, suffix) = StateOnlyCandidatePrefix::parse_from_proof(proof)?;
     if prefix.shape != STATE_ONLY_RATE512_SHAPE {

@@ -40,7 +40,7 @@ use solana_sdk::{
 
 use aspis_verifier::{
     atomic_payment::{
-        atomic_nullifier_address, AtomicPaymentPublicInputs, AtomicPoolStateV1,
+        atomic_nullifier_address, AtomicPaymentPublicInputs, AtomicPoolStateV2,
         ATOMIC_ERROR_NULLIFIER_ALREADY_SPENT, ATOMIC_NULLIFIER_MAGIC, ATOMIC_NULLIFIER_MARKER_LEN,
         ATOMIC_NULLIFIER_VERSION, ATOMIC_POOL_STATE_LEN,
     },
@@ -433,9 +433,10 @@ pub struct SpendDevnetUploadSmokeEvidence {
 }
 
 fn statement_public_inputs(
-    statement: &aspis_statement::AtomicPaymentStatementV3,
+    statement: &aspis_statement::AtomicPaymentStatementV4,
 ) -> AtomicPaymentPublicInputs {
     AtomicPaymentPublicInputs {
+        deployment_domain: statement.deployment_domain,
         current_anchor: aspis_statement::encode_digest_canonical(&statement.spend.anchor),
         nullifier: aspis_statement::encode_digest_canonical(&statement.spend.nullifier),
         output_commitment: aspis_statement::encode_digest_canonical(
@@ -477,7 +478,7 @@ struct ReleaseInstance {
 #[derive(Debug)]
 struct ReleaseInstanceValidation {
     instance: ReleaseInstance,
-    statement: aspis_statement::AtomicPaymentStatementV3,
+    statement: aspis_statement::AtomicPaymentStatementV4,
     actual_proof_path: String,
     actual_statement_path: String,
     actual_proof_sha256: String,
@@ -1844,7 +1845,7 @@ fn validate_release_instance(
     let good_spend_fingerprint_exact =
         instance.good_spend_definition_fingerprint == live_good_spend_definition_fingerprint();
     let declared_host_verification_green = instance.production_host_verification_green;
-    let host_result = aspis_statement::state_only_spend::verify_atomic_state_only_spend_v3(
+    let host_result = aspis_statement::state_only_spend::verify_atomic_state_only_spend_v4(
         proof,
         &statement,
         aspis_prover::HOST_HASH,
@@ -2395,6 +2396,7 @@ fn inspect_with_policy(
                         config.resume_proof_create_signature.as_ref(),
                         statement.sequence,
                         public.current_anchor,
+                        policy.network().as_bytes(),
                         proof.len(),
                     )
                     .map(|state| state.checkpoint)
@@ -3019,11 +3021,16 @@ fn initialized_pool_account_exact(
     pool_rent: u64,
     sequence: u64,
     anchor: [u8; 32],
+    deployment_domain: [u8; 32],
 ) -> bool {
     let mut expected = vec![0u8; ATOMIC_POOL_STATE_LEN];
-    AtomicPoolStateV1 { sequence, anchor }
-        .encode(&mut expected)
-        .is_ok()
+    AtomicPoolStateV2 {
+        sequence,
+        anchor,
+        deployment_domain,
+    }
+    .encode(&mut expected)
+    .is_ok()
         && account.lamports == pool_rent
         && account.owner == *program_id
         && !account.executable
@@ -3111,8 +3118,14 @@ fn recover_resume_state(
     proof_create_signature: Option<&Signature>,
     sequence: u64,
     current_anchor: [u8; 32],
+    domain_tag: &[u8],
     proof_len: usize,
 ) -> Result<RecoveredResumeState> {
+    let deployment_domain = aspis_statement::atomic_deployment_domain(
+        aspis_prover::HOST_HASH,
+        &program_id.to_bytes(),
+        domain_tag,
+    );
     let pool_rent = rpc.rent(ATOMIC_POOL_STATE_LEN)?;
     let proof_rent = rpc.rent(PROOF_ACCOUNT_HEADER_LEN + proof_len)?;
     let pool_create = system_instruction::create_account(
@@ -3154,6 +3167,7 @@ fn recover_resume_state(
                     pool_rent,
                     sequence,
                     current_anchor,
+                    deployment_domain,
                 ),
                 "proof-created resume checkpoint has unexpected initialized pool image"
             );
@@ -3163,6 +3177,7 @@ fn recover_resume_state(
                 data: to_vec(&AspisInstruction::InitializeAtomicPool {
                     sequence,
                     anchor: current_anchor,
+                    domain_tag: domain_tag.to_vec(),
                 })?,
             };
             setup_transactions.push(recover_exact_transaction_evidence(
@@ -3716,6 +3731,7 @@ fn execute_with_policy(
             config.resume_proof_create_signature.as_ref(),
             statement.sequence,
             public.current_anchor,
+            policy.network().as_bytes(),
             proof.len(),
         )?)
     } else {
@@ -3795,12 +3811,27 @@ fn execute_with_policy(
             .clone()
             .context("proof-created resume checkpoint omitted pool snapshot")?
     } else {
+        // The statement must have been ground for exactly the deployment
+        // domain this pool will store: sha256(separator || runtime program
+        // id || cluster network tag).
+        let expected_deployment_domain = aspis_statement::atomic_deployment_domain(
+            aspis_prover::HOST_HASH,
+            &program_id.to_bytes(),
+            policy.network().as_bytes(),
+        );
+        ensure!(
+            statement.deployment_domain == expected_deployment_domain,
+            "statement deployment domain does not match {} program {}",
+            policy.network(),
+            program_id,
+        );
         let initialize_pool = Instruction {
             program_id,
             accounts: vec![AccountMeta::new(pool.pubkey(), true)],
             data: to_vec(&AspisInstruction::InitializeAtomicPool {
                 sequence: statement.sequence,
                 anchor: public.current_anchor,
+                domain_tag: policy.network().as_bytes().to_vec(),
             })?,
         };
         let initialize_pool_tx = signed_transaction(
@@ -3815,7 +3846,7 @@ fn execute_with_policy(
             .context("initialized pool missing")?
     };
     ensure!(pool_before_snapshot.owner == program_id);
-    let pool_before_state = AtomicPoolStateV1::decode(&pool_before_snapshot.data)
+    let pool_before_state = AtomicPoolStateV2::decode(&pool_before_snapshot.data)
         .map_err(|error| anyhow!("decode initialized pool: {error:?}"))?;
     ensure!(
         pool_before_state.sequence == statement.sequence
@@ -3968,13 +3999,14 @@ fn execute_with_policy(
             AccountMeta::new_readonly(system_program::id(), false),
         ],
         data: to_vec(
-            &AspisInstruction::ApplyAtomicStateOnlySpendV3WithProofRefund {
+            &AspisInstruction::ApplyAtomicStateOnlySpendV4WithProofRefund {
                 current_anchor: public.current_anchor,
                 nullifier: public.nullifier,
                 output_commitment: public.output_commitment,
                 output_anchor: public.output_anchor,
                 asset_id: public.asset_id,
                 fee: public.fee,
+                deployment_domain: public.deployment_domain,
             },
         )?,
     };
@@ -4063,7 +4095,7 @@ fn execute_with_policy(
     let pool_after_snapshot = rpc
         .account(&pool.pubkey())?
         .context("pool missing after tag65")?;
-    let pool_after_state = AtomicPoolStateV1::decode(&pool_after_snapshot.data)
+    let pool_after_state = AtomicPoolStateV2::decode(&pool_after_snapshot.data)
         .map_err(|error| anyhow!("decode poststate pool: {error:?}"))?;
     ensure!(
         pool_after_state.sequence
@@ -4232,13 +4264,14 @@ fn execute_with_policy(
             AccountMeta::new_readonly(system_program::id(), false),
         ],
         data: to_vec(
-            &AspisInstruction::ApplyAtomicStateOnlySpendV3WithProofRefund {
+            &AspisInstruction::ApplyAtomicStateOnlySpendV4WithProofRefund {
                 current_anchor: replay_public.current_anchor,
                 nullifier: replay_public.nullifier,
                 output_commitment: replay_public.output_commitment,
                 output_anchor: replay_public.output_anchor,
                 asset_id: replay_public.asset_id,
                 fee: replay_public.fee,
+                deployment_domain: replay_public.deployment_domain,
             },
         )?,
     };
@@ -4543,10 +4576,10 @@ mod tests {
         );
     }
 
-    fn statement(seed: u32) -> aspis_statement::AtomicPaymentStatementV3 {
+    fn statement(seed: u32) -> aspis_statement::AtomicPaymentStatementV4 {
         let digest =
             |offset: u32| core::array::from_fn(|index| M31(seed + offset + 17 * index as u32));
-        aspis_statement::AtomicPaymentStatementV3 {
+        aspis_statement::AtomicPaymentStatementV4 {
             pool: [seed as u8; 32],
             sequence: u64::from(seed) + 7,
             spend: aspis_statement::SpendPublic {
@@ -4557,10 +4590,11 @@ mod tests {
                 fee: 1,
             },
             output_anchor: digest(301),
+            deployment_domain: [0x5d; 32],
         }
     }
 
-    fn sidecar(statement: &aspis_statement::AtomicPaymentStatementV3) -> Vec<u8> {
+    fn sidecar(statement: &aspis_statement::AtomicPaymentStatementV4) -> Vec<u8> {
         serde_json::to_vec_pretty(&json!({
             "artifact": SPEND_STATEMENT_ARTIFACT,
             "pool_hex": spend_hex(&statement.pool),
@@ -4579,6 +4613,7 @@ mod tests {
             ),
             "asset_id": statement.spend.asset_id.0,
             "fee": statement.spend.fee,
+            "deployment_domain_hex": spend_hex(&statement.deployment_domain),
             "selection_rule": SPEND_STATEMENT_SELECTION_RULE,
             "witness_independent_public_metadata": true,
         }))

@@ -58,13 +58,13 @@ fn trace_atomic_spend_acceptance_phase(event: aspis_statement::state_only_spend:
 }
 
 #[inline(never)]
-fn verify_atomic_spend_proof_bytes_v3(
+fn verify_atomic_spend_proof_bytes_v4(
     proof: &[u8],
-    statement: &aspis_statement::AtomicPaymentStatementV3,
+    statement: &aspis_statement::AtomicPaymentStatementV4,
     trace: Option<aspis_statement::state_only_spend::SpendTrace>,
 ) -> ProgramResult {
     #[cfg(feature = "spend-dynamic-rate512")]
-    aspis_statement::state_only_spend::verify_atomic_state_only_spend_v3_with_inverse(
+    aspis_statement::state_only_spend::verify_atomic_state_only_spend_v4_with_inverse(
         proof,
         statement,
         sbf_hashv,
@@ -73,7 +73,7 @@ fn verify_atomic_spend_proof_bytes_v3(
     )
     .map_err(|_| ProgramError::InvalidInstructionData)?;
     #[cfg(not(feature = "spend-dynamic-rate512"))]
-    aspis_statement::state_only_spend::verify_atomic_state_only_spend_v3(
+    aspis_statement::state_only_spend::verify_atomic_state_only_spend_v4(
         proof, statement, sbf_hashv, trace,
     )
     .map_err(|_| ProgramError::InvalidInstructionData)?;
@@ -83,23 +83,25 @@ fn verify_atomic_spend_proof_bytes_v3(
 /// Wire tag 59: read-only production verification of the uploaded proof
 /// against the wire-supplied public statement.
 #[inline(never)]
-pub(crate) fn verify_uploaded_atomic_spend_acceptance_v3(
+pub(crate) fn verify_uploaded_atomic_spend_acceptance_v4(
     proof_account: &AccountInfo,
     pool: [u8; 32],
     sequence: u64,
     public_input: &[u8; 104],
     output_anchor: [u8; 32],
+    deployment_domain: [u8; 32],
 ) -> ProgramResult {
     msg!("aspis-cu:atomic59_instruction_start");
     sol_log_compute_units();
     let public = decode_spend_public(public_input)?;
     let output_anchor = aspis_statement::decode_digest_canonical(&output_anchor)
         .map_err(|_| ProgramError::InvalidInstructionData)?;
-    let statement = aspis_statement::AtomicPaymentStatementV3 {
+    let statement = aspis_statement::AtomicPaymentStatementV4 {
         pool,
         sequence,
         spend: public,
         output_anchor,
+        deployment_domain,
     };
     let data = proof_account.try_borrow_data()?;
     if !proof_account_finalized(&data) {
@@ -108,7 +110,7 @@ pub(crate) fn verify_uploaded_atomic_spend_acceptance_v3(
     let (proof_start, proof_end) = uploaded_proof_bounds(&data)?;
     msg!("aspis-cu:atomic59_proof_loaded");
     sol_log_compute_units();
-    verify_atomic_spend_proof_bytes_v3(
+    verify_atomic_spend_proof_bytes_v4(
         &data[proof_start..proof_end],
         &statement,
         Some(trace_atomic_spend_acceptance_phase),
@@ -121,16 +123,16 @@ pub(crate) fn verify_uploaded_atomic_spend_acceptance_v3(
 /// Wire tags 60/65: production verification inside the atomic
 /// state-transition wrapper.
 #[inline(never)]
-pub(crate) fn verify_uploaded_atomic_spend_production_statement_v3(
+pub(crate) fn verify_uploaded_atomic_spend_production_statement_v4(
     proof_account: &AccountInfo,
-    statement: &aspis_statement::AtomicPaymentStatementV3,
+    statement: &aspis_statement::AtomicPaymentStatementV4,
 ) -> ProgramResult {
     let data = proof_account.try_borrow_data()?;
     if !proof_account_finalized(&data) {
         return Err(ProgramError::InvalidAccountData);
     }
     let (proof_start, proof_end) = uploaded_proof_bounds(&data)?;
-    verify_atomic_spend_proof_bytes_v3(&data[proof_start..proof_end], statement, None)
+    verify_atomic_spend_proof_bytes_v4(&data[proof_start..proof_end], statement, None)
 }
 
 #[cfg(test)]
@@ -153,7 +155,7 @@ mod tests {
         proof_data[AUTHORITY_OFFSET..AUTHORITY_OFFSET + 32].copy_from_slice(authority_key.as_ref());
 
         let public_input = [0u8; 104];
-        let statement = aspis_statement::AtomicPaymentStatementV3 {
+        let statement = aspis_statement::AtomicPaymentStatementV4 {
             pool: [0u8; 32],
             sequence: 0,
             spend: aspis_statement::SpendPublic {
@@ -164,6 +166,7 @@ mod tests {
                 fee: 0,
             },
             output_anchor: [aspis_core::field::M31::ZERO; 8],
+            deployment_domain: [0u8; 32],
         };
 
         for finalized in [false, true] {
@@ -185,11 +188,12 @@ mod tests {
                     false,
                 );
                 assert_eq!(
-                    verify_uploaded_atomic_spend_acceptance_v3(
+                    verify_uploaded_atomic_spend_acceptance_v4(
                         &proof,
                         [0u8; 32],
                         0,
                         &public_input,
+                        [0u8; 32],
                         [0u8; 32],
                     ),
                     expected
@@ -205,7 +209,7 @@ mod tests {
                     false,
                 );
                 assert_eq!(
-                    verify_uploaded_atomic_spend_production_statement_v3(&proof, &statement),
+                    verify_uploaded_atomic_spend_production_statement_v4(&proof, &statement),
                     expected
                 );
             }
