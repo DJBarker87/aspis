@@ -147,6 +147,9 @@ when a release executes.
 
 ## Repository map
 
+Concept-to-file navigation: [docs/code-map.md](docs/code-map.md). Each crate
+carries a README naming its production entry points.
+
 | Path | Contents |
 | --- | --- |
 | `crates/aspis-core/` | `no_std`, byte-exact host and SBF verifier core |
