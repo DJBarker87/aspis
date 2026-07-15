@@ -62,8 +62,8 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     declare_id,
     entrypoint::ProgramResult,
-    hash::hashv,
-    log::sol_log_compute_units,
+    hash::{hash, hashv},
+    log::{sol_log_compute_units, sol_log_data},
     msg,
     program_error::ProgramError,
     pubkey::Pubkey,
@@ -690,6 +690,22 @@ pub enum AspisInstruction {
     /// account. The pool key must sign, the exact 48-byte account must still
     /// be all zero, and the initial anchor must be canonically encoded.
     InitializeAtomicPool { sequence: u64, anchor: [u8; 32] },
+    /// Append-only tag 64. Close a sealed proof account and refund every
+    /// lamport to a writable System account. Both accounts must sign, so only
+    /// the holder of the proof-account key can reclaim its rent.
+    CloseFinalizedProof,
+    /// Append-only tag 65. Production-PoW Profile23 mutation wrapper with an
+    /// atomic proof-rent refund. This preserves tag 60's original read-only,
+    /// proof-retaining ABI while allowing a proof holder to opt into closure
+    /// by supplying the proof and refund accounts as writable signers.
+    ApplyAtomicStateOnlyProfile23V3WithProofRefund {
+        current_anchor: [u8; 32],
+        nullifier: [u8; 32],
+        output_commitment: [u8; 32],
+        output_anchor: [u8; 32],
+        asset_id: u32,
+        fee: u32,
+    },
 }
 
 fn trace_payment_hiding_profile15_cu(
@@ -3514,6 +3530,28 @@ fn proof_account_finalized(data: &[u8]) -> bool {
             .all(|byte| *byte == 0)
 }
 
+fn close_finalized_proof_account(
+    program_id: &Pubkey,
+    proof_account: &AccountInfo,
+    refund_account: &AccountInfo,
+) -> ProgramResult {
+    let data = proof_account.try_borrow_data()?;
+    uploaded_proof_bounds(&data)?;
+    if !proof_account_finalized(&data) {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    drop(data);
+    atomic_payment::refund_program_owned_proof_account(program_id, proof_account, refund_account)
+}
+
+fn log_uploaded_proof_sha256(proof_account: &AccountInfo) -> ProgramResult {
+    let data = proof_account.try_borrow_data()?;
+    let (start, end) = uploaded_proof_bounds(&data)?;
+    let digest = hash(&data[start..end]);
+    sol_log_data(&[b"aspis-proof-sha256-v1", digest.as_ref()]);
+    Ok(())
+}
+
 fn proof_len(data: &[u8]) -> Result<usize, ProgramError> {
     if data.len() < PROOF_ACCOUNT_HEADER_LEN || data[0..4] != PROOF_ACCOUNT_MAGIC {
         return Err(ProgramError::InvalidAccountData);
@@ -5007,7 +5045,7 @@ entrypoint!(process_instruction);
 /// The historical Borsh enum is intentionally not referenced by the minimal
 /// entrypoint.  Avoiding that reference lets the SBF linker discard every
 /// diagnostic and superseded verifier arm while retaining byte-for-byte wire
-/// compatibility for the six lifecycle tags used by Profile23.
+/// compatibility for the eight lifecycle tags used by Profile23.
 #[cfg(feature = "profile23-minimal-dispatch")]
 fn production_take<const N: usize>(input: &mut &[u8]) -> Result<[u8; N], ProgramError> {
     let (head, tail) = input
@@ -5234,6 +5272,42 @@ pub fn process_profile23_production_instruction(
                 return Err(ProgramError::InvalidAccountData);
             }
             atomic_payment::AtomicPoolStateV1 { sequence, anchor }.encode(&mut data)
+        }
+        64 => {
+            production_require_empty(wire)?;
+            let account_iter = &mut accounts.iter();
+            let proof_account = next_account_info(account_iter)?;
+            let refund_account = next_account_info(account_iter)?;
+            close_finalized_proof_account(program_id, proof_account, refund_account)
+        }
+        65 => {
+            let current_anchor = production_take::<32>(&mut wire)?;
+            let nullifier = production_take::<32>(&mut wire)?;
+            let output_commitment = production_take::<32>(&mut wire)?;
+            let output_anchor = production_take::<32>(&mut wire)?;
+            let asset_id = production_u32(&mut wire)?;
+            let fee = production_u32(&mut wire)?;
+            production_require_empty(wire)?;
+            let public = atomic_payment::AtomicPaymentPublicInputs {
+                current_anchor,
+                nullifier,
+                output_commitment,
+                output_anchor,
+                asset_id,
+                fee,
+            };
+            atomic_payment::verify_and_apply_atomic_payment_state_with_proof_refund(
+                program_id,
+                accounts,
+                &public,
+                |proof_account, statement, _statement_digest| {
+                    verify_uploaded_atomic_profile23_production_statement_v3(
+                        proof_account,
+                        statement,
+                    )?;
+                    log_uploaded_proof_sha256(proof_account)
+                },
+            )
         }
         _ => Err(ProgramError::InvalidInstructionData),
     }
@@ -6197,6 +6271,53 @@ pub fn process_instruction(
             ));
         }
     }
+    if let AspisInstruction::ApplyAtomicStateOnlyProfile23V3WithProofRefund {
+        current_anchor,
+        nullifier,
+        output_commitment,
+        output_anchor,
+        asset_id,
+        fee,
+    } = &instruction
+    {
+        #[cfg(feature = "profile23-mutation-candidate")]
+        {
+            let public = atomic_payment::AtomicPaymentPublicInputs {
+                current_anchor: *current_anchor,
+                nullifier: *nullifier,
+                output_commitment: *output_commitment,
+                output_anchor: *output_anchor,
+                asset_id: *asset_id,
+                fee: *fee,
+            };
+            return atomic_payment::verify_and_apply_atomic_payment_state_with_proof_refund(
+                program_id,
+                accounts,
+                &public,
+                |proof_account, statement, _statement_digest| {
+                    verify_uploaded_atomic_profile23_production_statement_v3(
+                        proof_account,
+                        statement,
+                    )?;
+                    log_uploaded_proof_sha256(proof_account)
+                },
+            );
+        }
+        #[cfg(not(feature = "profile23-mutation-candidate"))]
+        {
+            let _ = (
+                current_anchor,
+                nullifier,
+                output_commitment,
+                output_anchor,
+                asset_id,
+                fee,
+            );
+            return Err(ProgramError::Custom(
+                atomic_payment::ATOMIC_ERROR_VERIFIER_NOT_INTEGRATED,
+            ));
+        }
+    }
     if let AspisInstruction::MeasureAtomicStateOnlyProfile23MutationV3 {
         current_anchor,
         nullifier,
@@ -6319,6 +6440,10 @@ pub fn process_instruction(
             require_upload_authority(&data, authority)?;
             data[AUTHORITY_OFFSET..AUTHORITY_OFFSET + 32].fill(0);
             Ok(())
+        }
+        AspisInstruction::CloseFinalizedProof => {
+            let refund_account = next_account_info(account_iter)?;
+            close_finalized_proof_account(program_id, proof_account, refund_account)
         }
         AspisInstruction::InitializeAtomicPool { sequence, anchor } => {
             if !proof_account.is_signer {
@@ -6459,6 +6584,7 @@ pub fn process_instruction(
         AspisInstruction::VerifyAtomicStateOnlyProfile23V3 { .. } => unreachable!(),
         AspisInstruction::ApplyAtomicStateOnlyProfile23V3 { .. } => unreachable!(),
         AspisInstruction::MeasureAtomicStateOnlyProfile23MutationV3 { .. } => unreachable!(),
+        AspisInstruction::ApplyAtomicStateOnlyProfile23V3WithProofRefund { .. } => unreachable!(),
         AspisInstruction::MeasurePaymentStatementV4 => {
             measure_uploaded_payment_statement_v4(proof_account)
         }
@@ -6499,11 +6625,20 @@ mod tests {
                 sequence: 0,
                 anchor: [0u8; 32],
             },
+            AspisInstruction::CloseFinalizedProof,
+            AspisInstruction::ApplyAtomicStateOnlyProfile23V3WithProofRefund {
+                current_anchor: [1u8; 32],
+                nullifier: [2u8; 32],
+                output_commitment: [3u8; 32],
+                output_anchor: [4u8; 32],
+                asset_id: 17,
+                fee: 1,
+            },
         ];
 
         for instruction in required {
             let wire = borsh::to_vec(&instruction).unwrap();
-            assert!(matches!(wire[0], 0 | 1 | 59 | 60 | 62 | 63));
+            assert!(matches!(wire[0], 0 | 1 | 59 | 60 | 62 | 63 | 64 | 65));
             assert_eq!(
                 process_profile23_production_instruction(&id(), &[], &wire),
                 Err(ProgramError::NotEnoughAccountKeys),
@@ -7019,11 +7154,25 @@ mod tests {
             anchor: [0u8; 32],
         })
         .unwrap();
+        let close = borsh::to_vec(&AspisInstruction::CloseFinalizedProof).unwrap();
+        let production_with_refund = borsh::to_vec(
+            &AspisInstruction::ApplyAtomicStateOnlyProfile23V3WithProofRefund {
+                current_anchor: [1u8; 32],
+                nullifier: [2u8; 32],
+                output_commitment: [3u8; 32],
+                output_anchor: [4u8; 32],
+                asset_id: 17,
+                fee: 1,
+            },
+        )
+        .unwrap();
         assert_eq!(verify[0], 59);
         assert_eq!(production[0], 60);
         assert_eq!(diagnostic[0], 61);
         assert_eq!(finalize[0], 62);
         assert_eq!(initialize_pool[0], 63);
+        assert_eq!(close[0], 64);
+        assert_eq!(production_with_refund[0], 65);
         #[cfg(not(feature = "profile23-integrated-candidate"))]
         assert_eq!(
             process_instruction(&id(), &[], &verify),
@@ -7051,6 +7200,19 @@ mod tests {
             process_instruction(&id(), &[], &production),
             Err(ProgramError::NotEnoughAccountKeys),
             "an enabled Profile23 production build did not dispatch tag60 into the atomic wrapper"
+        );
+        #[cfg(not(feature = "profile23-mutation-candidate"))]
+        assert_eq!(
+            process_instruction(&id(), &[], &production_with_refund),
+            Err(ProgramError::Custom(
+                atomic_payment::ATOMIC_ERROR_VERIFIER_NOT_INTEGRATED
+            ))
+        );
+        #[cfg(feature = "profile23-mutation-candidate")]
+        assert_eq!(
+            process_instruction(&id(), &[], &production_with_refund),
+            Err(ProgramError::NotEnoughAccountKeys),
+            "an enabled Profile23 production build did not dispatch tag65 into the refunding atomic wrapper"
         );
         #[cfg(not(feature = "diagnostic-unmined-profile23-mutation"))]
         assert_eq!(
@@ -8076,6 +8238,256 @@ mod tests {
                 process_instruction(&program_id, &[proof, authority], &finalize),
                 Err(ProgramError::InvalidAccountData)
             );
+        }
+    }
+
+    #[test]
+    fn close_finalized_proof_refunds_exact_balance_and_tombstones_overallocation() {
+        let program_id = id();
+        let proof_key = Pubkey::new_unique();
+        let refund_key = Pubkey::new_unique();
+        let refund_owner = solana_program::system_program::id();
+        let mut proof_lamports = 463_083_600;
+        let mut refund_lamports = 25_000;
+        let mut proof_data = [0u8; PROOF_ACCOUNT_HEADER_LEN + 12];
+        proof_data[..4].copy_from_slice(&PROOF_ACCOUNT_MAGIC);
+        proof_data[4..8].copy_from_slice(&8u32.to_le_bytes());
+        proof_data[PROOF_ACCOUNT_HEADER_LEN..PROOF_ACCOUNT_HEADER_LEN + 8].fill(0x5a);
+        let mut refund_data = [];
+        let close = borsh::to_vec(&AspisInstruction::CloseFinalizedProof).unwrap();
+
+        {
+            let proof = make_account(
+                &proof_key,
+                &program_id,
+                &mut proof_lamports,
+                &mut proof_data,
+                true,
+                true,
+            );
+            let refund = make_account(
+                &refund_key,
+                &refund_owner,
+                &mut refund_lamports,
+                &mut refund_data,
+                true,
+                true,
+            );
+            assert_eq!(
+                process_instruction(&program_id, &[proof, refund], &close),
+                Ok(())
+            );
+        }
+        assert_eq!(proof_lamports, 0);
+        assert_eq!(refund_lamports, 463_108_600);
+        assert_eq!(proof_data[..4], atomic_payment::PROOF_ACCOUNT_CLOSED_MAGIC);
+        assert!(!proof_account_finalized(&proof_data));
+    }
+
+    #[test]
+    fn close_finalized_proof_rejects_unsealed_unsigned_and_overflow_without_mutation() {
+        let program_id = id();
+        let proof_key = Pubkey::new_unique();
+        let refund_key = Pubkey::new_unique();
+        let refund_owner = solana_program::system_program::id();
+        let close = borsh::to_vec(&AspisInstruction::CloseFinalizedProof).unwrap();
+
+        for (sealed, signed, refund_balance, expected) in [
+            (false, true, 7u64, ProgramError::InvalidAccountData),
+            (true, false, 7u64, ProgramError::MissingRequiredSignature),
+            (true, true, u64::MAX, ProgramError::ArithmeticOverflow),
+        ] {
+            let mut proof_lamports = 11u64;
+            let mut refund_lamports = refund_balance;
+            let mut proof_data = [0u8; PROOF_ACCOUNT_HEADER_LEN + 8];
+            proof_data[..4].copy_from_slice(&PROOF_ACCOUNT_MAGIC);
+            proof_data[4..8].copy_from_slice(&8u32.to_le_bytes());
+            if !sealed {
+                proof_data[AUTHORITY_OFFSET] = 1;
+            }
+            let proof_before = proof_data;
+            let mut refund_data = [];
+            {
+                let proof = make_account(
+                    &proof_key,
+                    &program_id,
+                    &mut proof_lamports,
+                    &mut proof_data,
+                    signed,
+                    true,
+                );
+                let refund = make_account(
+                    &refund_key,
+                    &refund_owner,
+                    &mut refund_lamports,
+                    &mut refund_data,
+                    true,
+                    true,
+                );
+                assert_eq!(
+                    process_instruction(&program_id, &[proof, refund], &close),
+                    Err(expected)
+                );
+            }
+            assert_eq!(proof_lamports, 11);
+            assert_eq!(refund_lamports, refund_balance);
+            assert_eq!(proof_data, proof_before);
+        }
+    }
+
+    #[test]
+    fn close_finalized_proof_rejects_every_unsafe_account_shape_without_mutation() {
+        let program_id = id();
+        let system_id = solana_program::system_program::id();
+        let proof_key = Pubkey::new_unique();
+        let refund_key = Pubkey::new_unique();
+        let close = borsh::to_vec(&AspisInstruction::CloseFinalizedProof).unwrap();
+
+        // proof owner, proof signer, proof writable, refund owner, refund
+        // signer, refund writable, aliased keys, proof lamports, declared
+        // proof bytes, expected error
+        for (
+            proof_owner,
+            proof_signer,
+            proof_writable,
+            refund_owner,
+            refund_signer,
+            refund_writable,
+            aliased,
+            initial_proof_lamports,
+            declared_len,
+            expected,
+        ) in [
+            (
+                system_id,
+                true,
+                true,
+                system_id,
+                true,
+                true,
+                false,
+                11,
+                8,
+                ProgramError::IncorrectProgramId,
+            ),
+            (
+                program_id,
+                true,
+                true,
+                program_id,
+                true,
+                true,
+                false,
+                11,
+                8,
+                ProgramError::IncorrectProgramId,
+            ),
+            (
+                program_id,
+                true,
+                true,
+                system_id,
+                false,
+                true,
+                false,
+                11,
+                8,
+                ProgramError::MissingRequiredSignature,
+            ),
+            (
+                program_id,
+                true,
+                false,
+                system_id,
+                true,
+                true,
+                false,
+                11,
+                8,
+                ProgramError::InvalidAccountData,
+            ),
+            (
+                program_id,
+                true,
+                true,
+                system_id,
+                true,
+                false,
+                false,
+                11,
+                8,
+                ProgramError::InvalidAccountData,
+            ),
+            (
+                program_id,
+                true,
+                true,
+                system_id,
+                true,
+                true,
+                true,
+                11,
+                8,
+                ProgramError::InvalidArgument,
+            ),
+            (
+                program_id,
+                true,
+                true,
+                system_id,
+                true,
+                true,
+                false,
+                0,
+                8,
+                ProgramError::InvalidAccountData,
+            ),
+            (
+                program_id,
+                true,
+                true,
+                system_id,
+                true,
+                true,
+                false,
+                11,
+                100,
+                ProgramError::InvalidAccountData,
+            ),
+        ] {
+            let mut proof_lamports = initial_proof_lamports;
+            let mut refund_lamports = 7u64;
+            let mut proof_data = [0u8; PROOF_ACCOUNT_HEADER_LEN + 8];
+            proof_data[..4].copy_from_slice(&PROOF_ACCOUNT_MAGIC);
+            proof_data[4..8].copy_from_slice(&(declared_len as u32).to_le_bytes());
+            let proof_before = proof_data;
+            let mut refund_data = [];
+            {
+                let proof = make_account(
+                    &proof_key,
+                    &proof_owner,
+                    &mut proof_lamports,
+                    &mut proof_data,
+                    proof_signer,
+                    proof_writable,
+                );
+                let effective_refund_key = if aliased { &proof_key } else { &refund_key };
+                let refund = make_account(
+                    effective_refund_key,
+                    &refund_owner,
+                    &mut refund_lamports,
+                    &mut refund_data,
+                    refund_signer,
+                    refund_writable,
+                );
+                assert_eq!(
+                    process_instruction(&program_id, &[proof, refund], &close),
+                    Err(expected)
+                );
+            }
+            assert_eq!(proof_lamports, initial_proof_lamports);
+            assert_eq!(refund_lamports, 7);
+            assert_eq!(proof_data, proof_before);
         }
     }
 

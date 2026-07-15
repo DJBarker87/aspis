@@ -166,7 +166,7 @@ pub mod label {
     /// before batch grinding and gamma, even though the append-only wire puts
     /// them in the profile extension.
     pub const M31_STATE_ONLY_ZERO_FACTOR_D_CLAIMS: u8 = 43;
-    /// Domain-separate the selected post-final-nonce q16 candidate.  The
+    /// Domain-separate the selected post-final-nonce q18 candidate.  The
     /// canonical profile-23 selector range is 0..3 (three candidates).
     pub const M31_STATE_ONLY_QUERY_CANDIDATE: u8 = 44;
 }

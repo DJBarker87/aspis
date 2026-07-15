@@ -1,0 +1,29 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+Profile~23 combines a narrowly defined private-state relation, a
+circle-domain transparent argument, and a Solana account transition whose
+proof verification and public-state mutation occur atomically.  For the
+frozen (q=18,g=37) instance, the conservative classical-ROM analysis gives
+a 100.161-bit work-normalized argument-soundness floor under the stated
+finite-parameter and state-restoration premises.  Under the affine-image
+premise, the declared programmable-ROM Proof-or-Abort view has a witness-free
+simulator with a 104.024-bit real-versus-simulator floor and a 103.024-bit
+pairwise-witness floor.
+
+The released \ProfileProofBytes-byte proof verifies under a
+\ProfileSbfBytes-byte SBF program.  The maximum measured local tag~65 path is
+\ProfileComputeUnits{} CU.  The exact release subsequently executed on
+mainnet-beta: transaction
+\nolinkurl{4Er5afhxfcFmpeTuFqEeNQEbCBri3pkc6ymx7ST5wfNpSBYwQDHA9DtCuDBpD5WuEDXs7ozL3sK5msc6QWE4q9Fo}
+consumed \ProfileMainnetComputeUnits{} CU, advanced the pool sequence,
+created the canonical nullifier marker, and refunded the finalized proof
+account.  Independent finalized RPC records agree on the transaction and
+post-state.  Program deployment, proof transport, and finalization were
+separate setup operations; ProgramData recovery and the treasury sweep were
+separate cleanup operations.
+
+The result establishes feasibility for this one-input, one-output same-path
+transition under the measured Solana limit.  Broader transaction relations,
+lower prover latency, independent security review, and sustained deployment
+engineering remain separate work.

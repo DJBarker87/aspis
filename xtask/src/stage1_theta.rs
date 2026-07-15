@@ -555,8 +555,7 @@ pub(crate) fn theta_optimizer_artifact() -> ThetaArtifact {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
-    use std::path::Path;
+    use sha2::{Digest, Sha256};
 
     #[test]
     fn reproduces_historical_anchor_and_bug_signature() {
@@ -602,15 +601,24 @@ mod tests {
     }
 
     #[test]
-    fn checked_in_artifact_matches_the_runner() {
-        let expected = format!(
+    fn archived_artifact_matches_the_runner() {
+        let generated = format!(
             "{}\n",
             serde_json::to_string_pretty(&theta_optimizer_artifact()).unwrap()
         );
-        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .unwrap()
-            .join("results/stage1/theta_optimizer.json");
-        assert_eq!(fs::read_to_string(path).unwrap(), expected);
+        let digest = Sha256::digest(generated.as_bytes())
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>();
+
+        // The full historical artifact is intentionally retained only at
+        // research-archive-2026-07-14:aspis/results/stage1/theta_optimizer.json.
+        // Keep an exact commitment here so the still-available reproduction
+        // command cannot drift silently without republishing Stage 1 as a
+        // current release artifact.
+        assert_eq!(
+            digest,
+            "fbcf80d63636b7dbc675e2d538b13e0667611d80b205099445a4d0d99a34520f"
+        );
     }
 }

@@ -4,7 +4,7 @@
 theorem gate are green, and the product is used by the closed complete-view
 computational-hiding theorem in the declared SHA-256 ROM/EPRO fixed-channel
 model. The local q18 release is green: the canonically mined production proof,
-production host/SBF KATs, and one-transaction certificate pass all `35/35`
+production host/SBF KATs, and one-transaction certificate pass all `36/36`
 gates. The `2026-07-13` q16/cap16 certificate is superseded historical
 evidence.**
 
@@ -56,11 +56,19 @@ This closes the executable premise in the q3/cap17 liveness bound. The runtime
 gate evaluates all three branches of one retained attempt, selects the least
 good selector, retries only an all-bad triple, and feeds an opaque candidate
 to the fixed-boundary release controller. Selectors 0, 1 and 2 have each built
-and verified as complete q18 proofs. The Good branches now run in parallel;
-the exact mined-proof audit took `40.64 s`. The optimized unmined
-build-plus-verify path took `44.09 s` and reproduced the same proof bytes and
-SHA-256. The q18/g37 production proof published at `480.42 s` on its
-480-second boundary; see `results/stage2/profile23_q18_g37_runtime.json`.
+and verified as complete q18 proofs. The Good branches now run in parallel.
+On the historical 63,487-byte predecessor proof (SHA-256
+`0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb`),
+the isolated all-selector audit took `40.64 s`, and a fixed-boundary run
+returned `Proof` at `480.42 s` under the configured 480-second schedule.
+These are predecessor-only engineering benchmarks; no corresponding wall time
+is recorded for the current 64,447-byte release proof (SHA-256
+`d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d`).
+Separately, the optimized unmined build-plus-verify path took `44.09 s` for the
+67,327-byte fixture (SHA-256
+`a5ed698a32d815ffd95f8d3e0be62d16620d32e216a087a350852726fb6ca238`)
+and reproduced that fixture exactly. The benchmark record is
+`results/stage2/profile23_q18_g37_predecessor_runtime.json`.
 
 The complete field-view simulator is exact on every schedule accepted by this
 product (`epsilon_aff=0`). With the fixed release channel and EPRO inventory,
@@ -79,8 +87,8 @@ the rank maps depend on the frozen q18 layout and schedule, not the witness;
 the release gate must match the layout fingerprint and Good23 definition
 fingerprint to live code; and the production selector audit must be green on
 all three branches. The fixture replay and mined-proof all-selector repin are
-green. The released 66,367-byte production proof has SHA-256
-`f4e1e81f4a35b6b23f18430598ff98ec1f0db1146fabb4efd3c6715bcc847b53`;
+green. The released 64,447-byte production proof has SHA-256
+`d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d`;
 it is not assumed byte-equal to the theorem fixture.
 
 The superseded q16 unmined diagnostic SBF path was measured at `1,195,306 CU`
@@ -91,17 +99,17 @@ transfer to the q18 wire.
 ## Current local q18 release state
 
 `results/stage2/profile23_one_transaction_release.json` currently records
-`released=true`, `status=released_all_required_gates_green`, and `35/35`
-passing gates. It binds the 66,367-byte proof above and its statement sidecar,
+`released=true`, `status=released_all_required_gates_green`, and `36/36`
+passing gates. It binds the 64,447-byte proof above and its statement sidecar,
 whose SHA-256 is
-`976e9a7e001382025eaf81cfcb28ac609db966d4a9912511f54e2b702077b6de`.
+`947a608c93487a634f37119bead8d61fe29e9cb6883493465d6fb35af27883c2`.
 The canonical public-input digest is
-`21d73e39be93112f986f52c7d683f2ab478890360a306af81110852ffb16a30a`.
-The fresh default SBF is 915,656 bytes with SHA-256
-`da66a51b1f3ce95e907a87fca15fb9dc0cce66fd47646875ce2dff94879fd254`.
-Production tag 59 costs `1,310,162 CU`; tag 60 costs `1,312,055 CU` on the
-program-owned path and `1,314,386 CU` on canonical System creation. The
-maximum leaves `85,614 CU` below 1.4M.
+`b2d150dfcb6432c1b6f2e3892ee45a9aa5f393809d97c8292fea975b3da35fa3`.
+The fresh default SBF is 921,848 bytes with SHA-256
+`97c45a9abef97607a2fc6ed245829210046b234044b6738599d2bce0c367d04a`.
+Production tag59 costs `1,303,642 CU`; tag65 costs `1,338,471 CU` on the
+program-owned path and `1,340,803 CU` on canonical System creation. The
+maximum leaves `59,197 CU` below 1.4M.
 
 The proof-independent conservative Johnson/BCS release floor is
 `100.16144938287455` bits. The
@@ -110,14 +118,17 @@ declared-model pairwise-witness computational-hiding floor is
 `104.02492234825198` bits.
 
 The intended one-transaction scope remains atomic verification and mutation
-using a finalized, pre-uploaded proof account. Production tags 59 and 60
+using a finalized, pre-uploaded proof account. Production tag59 and tag65
 require the all-zero authority sentinel in bytes `8..40` of the unchanged
 40-byte header; proof-account creation, chunk upload, and `FinalizeProof` are
 excluded. Append-only tag 62 seals the proof account, append-only tag 63
 initializes the pool, and the configured local program id is
 `7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue`. That configured address is not
-deployment evidence. This is a local release certificate, not a mainnet
-deployment or an external security audit; those remain separate blockers.
+deployment evidence. This is a local release certificate, not mainnet or
+external-audit evidence. The finalized mainnet execution and current audit
+status are recorded separately in
+[`profile23-mainnet-demo.md`](profile23-mainnet-demo.md) and the
+[prepublication security review](reviews/profile23-prepublication-security-review.html).
 
 ## Superseded q16 release evidence (`2026-07-13`)
 

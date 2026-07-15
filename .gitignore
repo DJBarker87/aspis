@@ -16,13 +16,26 @@ target/
 
 /results/stage2/profile23-mask-nonce-ledger*
 /results/stage2/proofs/*guarded_private*
+!/results/stage2/proofs/profile23_devnet_b1z_sequence0_q18_g37_production_authorizing_guarded_private.bin
+!/results/stage2/proofs/profile23_devnet_b1z_sequence0_q18_g37_production_authorizing_guarded_private.statement.json
 /results/stage2/proofs/atomic_state_only_profile23_v3_q18_mined.*
 
+# The superseded devnet paper is preserved in the archive tag; ignore any
+# local build remnants left at its former default-branch path.
+/paper/profile23/
+
 # LaTeX build intermediates (publication PDFs are committed explicitly).
-/paper/profile23/*.aux
-/paper/profile23/*.bbl
-/paper/profile23/*.blg
-/paper/profile23/*.fdb_latexmk
-/paper/profile23/*.fls
-/paper/profile23/*.log
-/paper/profile23/*.out
+/paper/profile23-mainnet-v1/*.aux
+/paper/profile23-mainnet-v1/*.bbl
+/paper/profile23-mainnet-v1/*.blg
+/paper/profile23-mainnet-v1/*.fdb_latexmk
+/paper/profile23-mainnet-v1/*.fls
+/paper/profile23-mainnet-v1/*.log
+/paper/profile23-mainnet-v1/*.out
+
+# Local review context and unsanitized network-run diagnostics. Publication
+# copies with local paths and signed wires removed live in the release bundle.
+/.superstack/
+/results/stage2/profile23_devnet_upload_smoke.json
+/results/stage2/profile23_devnet_tag64_close_8ej_20260714.json
+/results/stage2/profile23_devnet_tag65_fresh_20260714.json

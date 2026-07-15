@@ -6,6 +6,11 @@ permissions:
 on:
   push:
     paths:
+      - "README.md"
+      - "SECURITY.md"
+      - "CITATION.cff"
+      - "archive/**"
+      - "docs/**"
       - "Cargo.toml"
       - "Cargo.lock"
       - ".cargo/**"
@@ -16,11 +21,17 @@ on:
       - "xtask/**"
       - "tools/**"
       - "results/stage2/**"
-      - "release/profile23-q18-g37/**"
-      - "paper/profile23/**"
+      - "release/profile23-q18-g37-mainnet-v1/**"
+      - "release/README.md"
+      - "paper/profile23-mainnet-v1/**"
       - ".github/workflows/profile23-integration.yml"
   pull_request:
     paths:
+      - "README.md"
+      - "SECURITY.md"
+      - "CITATION.cff"
+      - "archive/**"
+      - "docs/**"
       - "Cargo.toml"
       - "Cargo.lock"
       - ".cargo/**"
@@ -31,8 +42,9 @@ on:
       - "xtask/**"
       - "tools/**"
       - "results/stage2/**"
-      - "release/profile23-q18-g37/**"
-      - "paper/profile23/**"
+      - "release/profile23-q18-g37-mainnet-v1/**"
+      - "release/README.md"
+      - "paper/profile23-mainnet-v1/**"
       - ".github/workflows/profile23-integration.yml"
 
 jobs:
@@ -41,8 +53,8 @@ jobs:
     env:
       NO_DNA: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable, pinned 2026-07-15
 
       - name: Formatting
         run: cargo fmt --all -- --check
@@ -69,14 +81,34 @@ jobs:
       - name: Harness schema and proof override compile
         run: cargo check -q -p aspis-xtask
 
+      - name: Release evaluator fail-closed tests
+        run: cargo test -q -p aspis-xtask profile23_release
+
+      - name: Mainnet executor invariants
+        run: cargo test -q -p aspis-xtask 'profile23_mainnet::tests'
+
       - name: Devnet executor invariants
         run: cargo test -q -p aspis-xtask profile23_devnet
+
+      - name: Offline mainnet recovery invariants
+        run: |
+          cargo test -q -p aspis-xtask profile23_mainnet_cleanup
+          cargo test -q -p aspis-xtask profile23_mainnet_journal
+          cargo test -q -p aspis-xtask profile23_mainnet_loader
 
   release-bundle:
     name: Frozen Profile23 release bundle
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Verify q18/g37 bundle
-        run: bash release/profile23-q18-g37/verify.sh
+      - name: Verify q18/g37 mainnet bundle
+        run: bash release/profile23-q18-g37-mainnet-v1/verify.sh
+
+      - name: Verify repository-to-bundle identity
+        run: |
+          cmp results/stage2/profile23_one_transaction_release.json release/profile23-q18-g37-mainnet-v1/certificates/release.json
+          cmp results/stage2/profile23_mainnet_finalized_manifest.json release/profile23-q18-g37-mainnet-v1/evidence/mainnet-finalized-manifest.json
+          cmp results/stage2/proofs/profile23_devnet_b1z_sequence0_q18_g37_production_authorizing_guarded_private.bin release/profile23-q18-g37-mainnet-v1/proof/profile23-q18-g37.bin
+          cmp results/stage2/proofs/profile23_devnet_b1z_sequence0_q18_g37_production_authorizing_guarded_private.statement.json release/profile23-q18-g37-mainnet-v1/proof/statement.json
+          cmp paper/profile23-mainnet-v1/profile23.pdf release/profile23-q18-g37-mainnet-v1/paper/profile23.pdf

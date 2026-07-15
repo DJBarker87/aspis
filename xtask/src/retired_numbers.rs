@@ -84,7 +84,7 @@ fn contains_needle(haystack: &str, needle: &str) -> bool {
 
 pub(crate) fn lint_retired_numbers() -> Result<LintSummary> {
     let root = workspace_root()?;
-    let allowlist_path = root.join("results/stage1/retired_numbers_allowlist.json");
+    let allowlist_path = root.join("xtask/fixtures/retired_numbers_allowlist.json");
     let allowlist: Allowlist = serde_json::from_str(
         &fs::read_to_string(&allowlist_path)
             .with_context(|| format!("read {}", allowlist_path.display()))?,

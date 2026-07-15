@@ -945,7 +945,7 @@ pub struct AtomicProfile23MutationPathSummary {
 
 /// Overlap-subtracted ledger for the production-only Profile-23 binary.
 ///
-/// Tag 60 deliberately has no diagnostic CU markers.  Its exact transaction
+/// Tag 65 deliberately has no diagnostic CU markers. Its exact transaction
 /// total is therefore reconciled against the exact read-only tag-59 total
 /// measured in the same binary and validator configuration.  The signed
 /// increment contains account validation, statement reconstruction, marker
@@ -954,8 +954,8 @@ pub struct AtomicProfile23MutationPathSummary {
 #[derive(Serialize)]
 pub struct AtomicProfile23ProductionMutationLedger {
     pub production_read_only_tag59_cu: u64,
-    pub production_tag60_increment_over_tag59_cu: i64,
-    pub production_tag60_total_cu: u64,
+    pub production_tag65_increment_over_tag59_cu: i64,
+    pub production_tag65_total_cu: u64,
     pub reconciled_total_cu: u64,
     pub formula: String,
 }
@@ -965,24 +965,63 @@ pub struct AtomicProfile23ProductionMutationPathSummary {
     pub marker_path: &'static str,
     pub proof_accounts_finalized_before_production_verification: bool,
     pub literal_tag59_simulation_cu: u64,
-    pub literal_tag60_simulation_cu: u64,
+    pub literal_tag65_simulation_cu: u64,
     pub headroom_under_1_4m_cu: i64,
     pub ledger: AtomicProfile23ProductionMutationLedger,
     pub production_unmined_tag59_rejected: bool,
     pub production_unmined_tag59_error: String,
-    pub production_unmined_tag60_rejected: bool,
-    pub production_unmined_tag60_rollback_green: bool,
-    pub production_unmined_tag60_landed_error: String,
+    pub production_unmined_tag65_rejected: bool,
+    pub production_unmined_tag65_rollback_green: bool,
+    pub production_unmined_tag65_landed_error: String,
     pub production_tag59_accepted_mined_sbf: bool,
-    pub production_tag60_clean_simulation_accepted: bool,
+    pub production_tag65_clean_simulation_accepted: bool,
+    pub production_tag65_simulation_proof_sha256_log_exact: bool,
+    pub production_tag65_simulation_logged_proof_sha256: String,
     pub corrupt_proof_rejected_with_transaction_rollback: bool,
     pub corrupt_transaction_landed_error: String,
     pub committed_transition_succeeded: bool,
+    pub proof_account_absent_after_success: bool,
     pub pool_sequence_advanced_once: bool,
     pub pool_anchor_replaced: bool,
     pub nullifier_marker_written: bool,
     pub duplicate_rejected_without_second_mutation: bool,
     pub concurrent_exactly_one_committed: Option<bool>,
+}
+
+#[derive(Serialize)]
+pub struct AtomicProfile23LegacyTag60CompatibilitySummary {
+    pub isolated_local_validator_lifecycle: bool,
+    pub instruction_wire_ordinal: u8,
+    pub proof_account: String,
+    pub pool_account: String,
+    pub nullifier_account: String,
+    pub proof_meta_read_only: bool,
+    pub proof_meta_non_signer: bool,
+    pub proof_finalized_before_transition: bool,
+    pub committed_transition_succeeded: bool,
+    pub committed_transaction_cu: u64,
+    pub pool_sequence_before: u64,
+    pub pool_sequence_after: u64,
+    pub pool_sequence_advanced_exactly_once: bool,
+    pub pool_anchor_before_hex: String,
+    pub pool_anchor_after_hex: String,
+    pub pool_anchor_replaced: bool,
+    pub nullifier_marker_absent_before: bool,
+    pub nullifier_marker_written_exactly: bool,
+    pub duplicate_landed_error: String,
+    pub duplicate_rejected_as_already_spent: bool,
+    pub duplicate_rejected_without_second_mutation: bool,
+    pub proof_owner_before: String,
+    pub proof_owner_after: String,
+    pub proof_owner_retained: bool,
+    pub proof_data_bytes: usize,
+    pub proof_data_sha256_before: String,
+    pub proof_data_sha256_after: String,
+    pub proof_data_retained_bit_for_bit: bool,
+    pub proof_lamports_before: u64,
+    pub proof_lamports_after: u64,
+    pub proof_lamports_retained: bool,
+    pub proof_account_retained_exactly: bool,
 }
 
 #[derive(Serialize)]
@@ -1010,23 +1049,25 @@ pub struct AtomicProfile23MutationSummary {
     pub final_grinding_bits: u8,
     pub fold_grinding_bits: [u8; 4],
     pub production_pow_bypass_exposed: bool,
-    pub default_tag60_fail_closed_host: bool,
-    pub candidate_tag60_rejects_unmined_sbf: bool,
-    pub candidate_tag60_accepts_mined_sbf: bool,
-    pub candidate_tag60_outcome_matches_pow: bool,
-    pub candidate_tag60_rollback_green: bool,
+    pub default_tag65_fail_closed_host: bool,
+    pub candidate_tag65_rejects_unmined_sbf: bool,
+    pub candidate_tag65_accepts_mined_sbf: bool,
+    pub candidate_tag65_outcome_matches_pow: bool,
+    pub candidate_tag65_rollback_green: bool,
     pub paths: Vec<AtomicProfile23MutationPathSummary>,
     pub production_only_sbf_features: Vec<&'static str>,
     pub production_only_sbf_bytes: Option<usize>,
     pub production_only_sbf_sha256: Option<String>,
     pub production_only_mined_override_exercised: bool,
     pub production_only_unmined_tag59_rejected: Option<bool>,
-    pub production_only_unmined_tag60_rejected: Option<bool>,
-    pub production_only_unmined_tag60_rollback_green: Option<bool>,
+    pub production_only_unmined_tag65_rejected: Option<bool>,
+    pub production_only_unmined_tag65_rollback_green: Option<bool>,
     pub production_only_tag59_diagnostic_bit_unavailable: Option<bool>,
     pub production_only_tag61_unavailable: Option<bool>,
     pub production_alias_forbidden_feature_unions_rejected: Option<bool>,
     pub production_alias_forbidden_feature_unions_tested: Vec<String>,
+    pub production_legacy_tag60_compatibility:
+        Option<AtomicProfile23LegacyTag60CompatibilitySummary>,
     pub production_paths: Vec<AtomicProfile23ProductionMutationPathSummary>,
     pub soundness_bookable: bool,
     pub complete_view_hvzk_simulator_complete: bool,
@@ -12961,7 +13002,7 @@ pub fn run_stage2_atomic_profile23_acceptance() -> Result<AtomicProfile23Accepta
             } else {
                 "No statement sidecar was supplied; this artifact uses the unchanged built-in Profile23 fixture statement.".to_string()
             },
-            "Tags60/61 remain feature-gated; production mutation stays disabled until the complete-view HVZK audit and mined tag60 KAT are green.".to_string(),
+            "Tags60/61 remain feature-gated; production mutation stays disabled until the complete-view HVZK audit and mined tag65 KAT are green.".to_string(),
         ],
     })
 }
@@ -14285,7 +14326,7 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
                 fee: public.fee,
             }
         } else {
-            AspisInstruction::ApplyAtomicStateOnlyProfile23V3 {
+            AspisInstruction::ApplyAtomicStateOnlyProfile23V3WithProofRefund {
                 current_anchor: public.current_anchor,
                 nullifier: public.nullifier,
                 output_commitment: public.output_commitment,
@@ -14297,13 +14338,12 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
         Ok(to_vec(&instruction)?)
     }
 
-    fn transition_instruction(
+    fn legacy_tag60_transition_instruction(
         proof: Pubkey,
         pool: Pubkey,
         marker: Pubkey,
         payer: Pubkey,
         public: &AtomicPaymentPublicInputs,
-        diagnostic: bool,
     ) -> Result<Instruction> {
         Ok(Instruction {
             program_id: aspis_verifier::id(),
@@ -14314,11 +14354,44 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
                 AccountMeta::new(payer, true),
                 AccountMeta::new_readonly(solana_sdk::system_program::id(), false),
             ],
+            data: to_vec(&AspisInstruction::ApplyAtomicStateOnlyProfile23V3 {
+                current_anchor: public.current_anchor,
+                nullifier: public.nullifier,
+                output_commitment: public.output_commitment,
+                output_anchor: public.output_anchor,
+                asset_id: public.asset_id,
+                fee: public.fee,
+            })?,
+        })
+    }
+
+    fn transition_instruction(
+        proof: Pubkey,
+        pool: Pubkey,
+        marker: Pubkey,
+        payer: Pubkey,
+        public: &AtomicPaymentPublicInputs,
+        diagnostic: bool,
+    ) -> Result<Instruction> {
+        let proof_meta = if diagnostic {
+            AccountMeta::new_readonly(proof, false)
+        } else {
+            AccountMeta::new(proof, true)
+        };
+        Ok(Instruction {
+            program_id: aspis_verifier::id(),
+            accounts: vec![
+                proof_meta,
+                AccountMeta::new(pool, false),
+                AccountMeta::new(marker, false),
+                AccountMeta::new(payer, true),
+                AccountMeta::new_readonly(solana_sdk::system_program::id(), false),
+            ],
             data: instruction_data(public, diagnostic)?,
         })
     }
 
-    fn signed_transition(
+    fn signed_read_only(
         payer: &Keypair,
         instruction: Instruction,
         blockhash: solana_sdk::hash::Hash,
@@ -14333,6 +14406,37 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
             &[payer],
             blockhash,
         )
+    }
+
+    fn signed_transition(
+        payer: &Keypair,
+        proof_account: &Keypair,
+        instruction: Instruction,
+        blockhash: solana_sdk::hash::Hash,
+    ) -> Transaction {
+        Transaction::new_signed_with_payer(
+            &[
+                ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+                ComputeBudgetInstruction::request_heap_frame(HEAP_FRAME_BYTES),
+                instruction,
+            ],
+            Some(&payer.pubkey()),
+            &[payer, proof_account],
+            blockhash,
+        )
+    }
+
+    fn upload_finalized_proof_account(
+        rpc: &Rpc,
+        payer: &Keypair,
+        proof: &[u8],
+    ) -> Result<(Keypair, RpcAccountSnapshot)> {
+        let proof_account = Keypair::new();
+        upload_proof(rpc, payer, &proof_account, proof, true)?;
+        finalize_proof(rpc, payer, &proof_account.pubkey())?;
+        let snapshot = rpc_account_snapshot(rpc, &proof_account.pubkey())?
+            .context("finalized profile23 proof account missing")?;
+        Ok((proof_account, snapshot))
     }
 
     fn patch_proof_byte(
@@ -14445,7 +14549,7 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
         statement: &AtomicPaymentStatementV3,
         read_only_tag59_cu: u64,
         preowned_marker: bool,
-        exercise_candidate_tag60: bool,
+        exercise_candidate_tag65: bool,
         exercise_concurrency: bool,
         proof_unmined: bool,
     ) -> Result<(AtomicProfile23MutationPathSummary, bool, bool, bool)> {
@@ -14492,6 +14596,8 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
         rpc.airdrop_and_wait(&payer.pubkey(), 2 * LAMPORTS_PER_SOL)?;
         let proof_account = Keypair::new();
         upload_proof(&rpc, &payer, &proof_account, proof, true)?;
+        let proof_before_clean = rpc_account_snapshot(&rpc, &proof_account.pubkey())?
+            .context("uploaded profile23 proof account missing")?;
 
         let clean_instruction = transition_instruction(
             proof_account.pubkey(),
@@ -14501,8 +14607,18 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
             &public,
             true,
         )?;
-        let clean_tx =
-            signed_transition(&payer, clean_instruction.clone(), rpc.latest_blockhash()?);
+        ensure!(
+            clean_instruction
+                .accounts
+                .first()
+                .is_some_and(|meta| !meta.is_writable && !meta.is_signer),
+            "diagnostic tag61 proof meta must remain read-only and non-signer"
+        );
+        let clean_tx = signed_read_only(&payer, clean_instruction.clone(), rpc.latest_blockhash()?);
+        ensure!(
+            clean_tx.signatures.len() == 1,
+            "diagnostic tag61 transaction must be signed only by its payer"
+        );
         let clean = rpc.simulate_verbose(&clean_tx)?;
         ensure!(
             clean.err.is_none(),
@@ -14513,6 +14629,11 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
                 "system-owned"
             },
             clean.err
+        );
+        ensure!(
+            rpc_account_snapshot(&rpc, &proof_account.pubkey())?.as_ref()
+                == Some(&proof_before_clean),
+            "clean profile23 simulation changed proof account"
         );
         let total = clean
             .units
@@ -14555,7 +14676,9 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
             corruption_offset,
             original_byte ^ 1,
         )?;
-        let corrupt_tx = signed_transition(
+        let corrupt_proof_before = rpc_account_snapshot(&rpc, &proof_account.pubkey())?
+            .context("corrupted profile23 proof account missing")?;
+        let corrupt_tx = signed_read_only(
             &payer,
             transition_instruction(
                 proof_account.pubkey(),
@@ -14570,7 +14693,9 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
         let corrupt = rpc.simulate_verbose(&corrupt_tx)?;
         let corrupt_rejected = corrupt.err.is_some()
             && rpc_account_snapshot(&rpc, &pool_key)?.as_ref() == Some(&pool_before)
-            && rpc_account_snapshot(&rpc, &marker_key)? == marker_before;
+            && rpc_account_snapshot(&rpc, &marker_key)? == marker_before
+            && rpc_account_snapshot(&rpc, &proof_account.pubkey())?.as_ref()
+                == Some(&corrupt_proof_before);
         ensure!(
             corrupt_rejected,
             "corrupt profile23 proof changed atomic state"
@@ -14584,15 +14709,18 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
         )?;
         // The diagnostic corruption tooth must run while the upload authority
         // is still live. Restore the canonical bytes, then seal once before
-        // exercising any production tag-60 surface or committing state.
+        // exercising the production tag-65 surface or committing state.
         finalize_proof(&rpc, &payer, &proof_account.pubkey())?;
+        let sealed_proof_before = rpc_account_snapshot(&rpc, &proof_account.pubkey())?
+            .context("sealed profile23 proof account missing")?;
 
         let mut candidate_rejects_unmined = false;
         let mut candidate_accepts_mined = false;
         let mut candidate_rollback = true;
-        if exercise_candidate_tag60 {
+        if exercise_candidate_tag65 {
             let candidate_tx = signed_transition(
                 &payer,
+                &proof_account,
                 transition_instruction(
                     proof_account.pubkey(),
                     pool_key,
@@ -14608,13 +14736,15 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
             candidate_accepts_mined = !proof_unmined && candidate.err.is_none();
             candidate_rollback = rpc_account_snapshot(&rpc, &pool_key)?.as_ref()
                 == Some(&pool_before)
-                && rpc_account_snapshot(&rpc, &marker_key)? == marker_before;
+                && rpc_account_snapshot(&rpc, &marker_key)? == marker_before
+                && rpc_account_snapshot(&rpc, &proof_account.pubkey())?.as_ref()
+                    == Some(&sealed_proof_before);
             ensure!(
                 candidate_rejects_unmined || candidate_accepts_mined,
-                "tag60 outcome disagreed with host PoW classification: proof_unmined={proof_unmined}, error={:?}",
+                "tag65 outcome disagreed with host PoW classification: proof_unmined={proof_unmined}, error={:?}",
                 candidate.err
             );
-            ensure!(candidate_rollback, "tag60 simulation changed state");
+            ensure!(candidate_rollback, "tag65 simulation changed state");
         }
 
         let concurrent_exactly_one = if exercise_concurrency {
@@ -14637,8 +14767,8 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
                 true,
             )?;
             let blockhash = rpc.latest_blockhash()?;
-            let first_tx = signed_transition(&payer, first_instruction, blockhash);
-            let second_tx = signed_transition(&second_payer, second_instruction, blockhash);
+            let first_tx = signed_read_only(&payer, first_instruction, blockhash);
+            let second_tx = signed_read_only(&second_payer, second_instruction, blockhash);
             let rpc_a = Rpc {
                 url: validator.rpc_url.clone(),
                 http: reqwest::blocking::Client::builder()
@@ -14661,9 +14791,23 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
                 exactly_one,
                 "concurrent profile23 spends did not commit exactly once"
             );
+            ensure!(
+                rpc_account_snapshot(&rpc, &proof_account.pubkey())?.as_ref()
+                    == Some(&sealed_proof_before),
+                "diagnostic profile23 race changed its retained proof account"
+            );
             Some(exactly_one)
         } else {
-            rpc.send_and_confirm(&clean_tx)?;
+            rpc.send_and_confirm(&signed_read_only(
+                &payer,
+                clean_instruction,
+                rpc.latest_blockhash()?,
+            ))?;
+            ensure!(
+                rpc_account_snapshot(&rpc, &proof_account.pubkey())?.as_ref()
+                    == Some(&sealed_proof_before),
+                "diagnostic profile23 transition changed its retained proof account"
+            );
             None
         };
 
@@ -14677,12 +14821,16 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
         let marker_written = marker_is_exact(&marker_after, pool_key, &public.nullifier);
         ensure!(sequence_advanced && anchor_replaced && marker_written);
 
+        // A distinct sealed replay probe keeps the duplicate tooth independent
+        // of the main proof-retention assertion.
+        let (duplicate_proof_account, duplicate_proof_before) =
+            upload_finalized_proof_account(&rpc, &payer, &[0u8])?;
         let mut duplicate_public = public;
         duplicate_public.current_anchor = duplicate_public.output_anchor;
-        let duplicate_tx = signed_transition(
+        let duplicate_tx = signed_read_only(
             &payer,
             transition_instruction(
-                proof_account.pubkey(),
+                duplicate_proof_account.pubkey(),
                 pool_key,
                 marker_key,
                 payer.pubkey(),
@@ -14691,10 +14839,16 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
             )?,
             rpc.latest_blockhash()?,
         );
-        let duplicate_rejected = rpc.send_and_confirm(&duplicate_tx).is_err();
-        let duplicate_no_mutation = duplicate_rejected
+        let duplicate_error = rpc.send_and_confirm_failure(&duplicate_tx)?;
+        let expected_duplicate_error = format!(
+            "\"Custom\":{}",
+            aspis_verifier::atomic_payment::ATOMIC_ERROR_NULLIFIER_ALREADY_SPENT
+        );
+        let duplicate_no_mutation = duplicate_error.contains(&expected_duplicate_error)
             && rpc_account_snapshot(&rpc, &pool_key)?.as_ref() == Some(&pool_after)
-            && rpc_account_snapshot(&rpc, &marker_key)?.as_ref() == Some(&marker_after);
+            && rpc_account_snapshot(&rpc, &marker_key)?.as_ref() == Some(&marker_after)
+            && rpc_account_snapshot(&rpc, &duplicate_proof_account.pubkey())?.as_ref()
+                == Some(&duplicate_proof_before);
         ensure!(
             duplicate_no_mutation,
             "duplicate profile23 spend changed state"
@@ -14728,9 +14882,213 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
         ))
     }
 
-    /// Run the exact production-only binary. Only production tags 59 and 60
-    /// are exercised as accepting surfaces; neither diagnostic feature is
-    /// present in `so`.
+    /// Pin the original tag-60 account ABI and proof-retention postcondition
+    /// against the exact production SBF. This intentionally owns a separate
+    /// validator lifecycle from every tag-65 path.
+    fn run_legacy_tag60_compatibility(
+        root: &Path,
+        so: &Path,
+        proof: &[u8],
+        statement: &AtomicPaymentStatementV3,
+    ) -> Result<AtomicProfile23LegacyTag60CompatibilitySummary> {
+        let public = public_inputs(statement);
+        let pool_key = Pubkey::new_from_array(statement.pool);
+        let (marker_key, _) = atomic_nullifier_address(&aspis_verifier::id(), &public.nullifier);
+        let mut pool_bytes = [0u8; ATOMIC_POOL_STATE_LEN];
+        AtomicPoolStateV1 {
+            sequence: statement.sequence,
+            anchor: public.current_anchor,
+        }
+        .encode(&mut pool_bytes)?;
+        let pool_fixture = write_validator_account_fixture(
+            root,
+            "atomic-profile23-production-legacy-tag60-pool",
+            pool_key,
+            aspis_verifier::id(),
+            &pool_bytes,
+        )?;
+
+        let validator = start_validator_with_accounts(root, so, &[(pool_key, pool_fixture)])?;
+        let rpc = Rpc {
+            url: validator.rpc_url.clone(),
+            http: reqwest::blocking::Client::builder()
+                .timeout(Duration::from_secs(30))
+                .build()?,
+        };
+        let payer = Keypair::new();
+        rpc.airdrop_and_wait(&payer.pubkey(), 2 * LAMPORTS_PER_SOL)?;
+        let proof_account = Keypair::new();
+        upload_proof(&rpc, &payer, &proof_account, proof, true)?;
+        finalize_proof(&rpc, &payer, &proof_account.pubkey())?;
+
+        let proof_before = rpc_account_snapshot(&rpc, &proof_account.pubkey())?
+            .context("sealed legacy tag60 proof account missing")?;
+        let proof_finalized_before_transition = proof_before.data.len() >= PROOF_ACCOUNT_HEADER_LEN
+            && proof_before.data[8..PROOF_ACCOUNT_HEADER_LEN]
+                .iter()
+                .all(|byte| *byte == 0);
+        ensure!(
+            proof_finalized_before_transition,
+            "legacy tag60 compatibility proof was not sealed"
+        );
+        let pool_before =
+            rpc_account_snapshot(&rpc, &pool_key)?.context("legacy tag60 pool fixture missing")?;
+        let decoded_pool_before = AtomicPoolStateV1::decode(&pool_before.data)?;
+        let marker_before = rpc_account_snapshot(&rpc, &marker_key)?;
+        let nullifier_marker_absent_before = marker_before.is_none();
+        ensure!(
+            nullifier_marker_absent_before,
+            "legacy tag60 nullifier marker unexpectedly existed"
+        );
+
+        let legacy_instruction = legacy_tag60_transition_instruction(
+            proof_account.pubkey(),
+            pool_key,
+            marker_key,
+            payer.pubkey(),
+            &public,
+        )?;
+        let proof_meta = legacy_instruction
+            .accounts
+            .first()
+            .context("legacy tag60 instruction omitted proof meta")?;
+        let proof_meta_read_only = !proof_meta.is_writable;
+        let proof_meta_non_signer = !proof_meta.is_signer;
+        ensure!(
+            legacy_instruction.data.first() == Some(&60),
+            "legacy Profile23 transition discriminator drifted from tag60"
+        );
+        ensure!(
+            proof_meta_read_only && proof_meta_non_signer,
+            "legacy tag60 proof meta must remain read-only and non-signer"
+        );
+
+        let committed_transaction_cu = rpc.send_and_confirm(&signed_read_only(
+            &payer,
+            legacy_instruction,
+            rpc.latest_blockhash()?,
+        ))?;
+        let proof_after_commit = rpc_account_snapshot(&rpc, &proof_account.pubkey())?
+            .context("legacy tag60 consumed its retained proof account")?;
+        ensure!(
+            proof_after_commit == proof_before,
+            "legacy tag60 changed proof owner, data, or lamports"
+        );
+        let pool_after = rpc_account_snapshot(&rpc, &pool_key)?
+            .context("legacy tag60 pool disappeared after commit")?;
+        let marker_after = rpc_account_snapshot(&rpc, &marker_key)?
+            .context("legacy tag60 nullifier marker missing after commit")?;
+        let decoded_pool_after = AtomicPoolStateV1::decode(&pool_after.data)?;
+        let expected_sequence = decoded_pool_before
+            .sequence
+            .checked_add(1)
+            .context("legacy tag60 fixture sequence overflow")?;
+        let pool_sequence_advanced_exactly_once = decoded_pool_after.sequence == expected_sequence;
+        let pool_anchor_replaced = decoded_pool_after.anchor == public.output_anchor;
+        let nullifier_marker_written_exactly =
+            marker_is_exact(&marker_after, pool_key, &public.nullifier);
+        ensure!(
+            pool_sequence_advanced_exactly_once
+                && pool_anchor_replaced
+                && nullifier_marker_written_exactly,
+            "legacy tag60 did not commit the exact atomic transition"
+        );
+
+        let mut duplicate_public = public;
+        duplicate_public.current_anchor = duplicate_public.output_anchor;
+        let duplicate_instruction = legacy_tag60_transition_instruction(
+            proof_account.pubkey(),
+            pool_key,
+            marker_key,
+            payer.pubkey(),
+            &duplicate_public,
+        )?;
+        ensure!(
+            duplicate_instruction
+                .accounts
+                .first()
+                .is_some_and(|meta| !meta.is_writable && !meta.is_signer),
+            "legacy tag60 duplicate changed the proof meta ABI"
+        );
+        let duplicate_landed_error = rpc.send_and_confirm_failure(&signed_read_only(
+            &payer,
+            duplicate_instruction,
+            rpc.latest_blockhash()?,
+        ))?;
+        let expected_duplicate_error = format!(
+            "\"Custom\":{}",
+            aspis_verifier::atomic_payment::ATOMIC_ERROR_NULLIFIER_ALREADY_SPENT
+        );
+        let duplicate_rejected_as_already_spent =
+            duplicate_landed_error.contains(&expected_duplicate_error);
+        let proof_after = rpc_account_snapshot(&rpc, &proof_account.pubkey())?
+            .context("legacy tag60 duplicate consumed its retained proof account")?;
+        let pool_after_duplicate = rpc_account_snapshot(&rpc, &pool_key)?
+            .context("legacy tag60 duplicate removed the pool")?;
+        let marker_after_duplicate = rpc_account_snapshot(&rpc, &marker_key)?
+            .context("legacy tag60 duplicate removed the marker")?;
+        let duplicate_rejected_without_second_mutation = duplicate_rejected_as_already_spent
+            && pool_after_duplicate == pool_after
+            && marker_after_duplicate == marker_after
+            && proof_after == proof_before;
+        ensure!(
+            duplicate_rejected_without_second_mutation,
+            "legacy tag60 duplicate mutated state or its retained proof"
+        );
+
+        let proof_owner_retained = proof_after.owner == proof_before.owner;
+        let proof_data_retained_bit_for_bit = proof_after.data == proof_before.data;
+        let proof_lamports_retained = proof_after.lamports == proof_before.lamports;
+        let proof_account_retained_exactly = proof_after == proof_before;
+        let proof_data_sha256_before = Sha256::digest(&proof_before.data)
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>();
+        let proof_data_sha256_after = Sha256::digest(&proof_after.data)
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>();
+
+        drop(validator);
+        Ok(AtomicProfile23LegacyTag60CompatibilitySummary {
+            isolated_local_validator_lifecycle: true,
+            instruction_wire_ordinal: 60,
+            proof_account: proof_account.pubkey().to_string(),
+            pool_account: pool_key.to_string(),
+            nullifier_account: marker_key.to_string(),
+            proof_meta_read_only,
+            proof_meta_non_signer,
+            proof_finalized_before_transition,
+            committed_transition_succeeded: true,
+            committed_transaction_cu,
+            pool_sequence_before: decoded_pool_before.sequence,
+            pool_sequence_after: decoded_pool_after.sequence,
+            pool_sequence_advanced_exactly_once,
+            pool_anchor_before_hex: profile23_hex(&decoded_pool_before.anchor),
+            pool_anchor_after_hex: profile23_hex(&decoded_pool_after.anchor),
+            pool_anchor_replaced,
+            nullifier_marker_absent_before,
+            nullifier_marker_written_exactly,
+            duplicate_landed_error,
+            duplicate_rejected_as_already_spent,
+            duplicate_rejected_without_second_mutation,
+            proof_owner_before: proof_before.owner.to_string(),
+            proof_owner_after: proof_after.owner.to_string(),
+            proof_owner_retained,
+            proof_data_bytes: proof_before.data.len(),
+            proof_data_sha256_before,
+            proof_data_sha256_after,
+            proof_data_retained_bit_for_bit,
+            proof_lamports_before: proof_before.lamports,
+            proof_lamports_after: proof_after.lamports,
+            proof_lamports_retained,
+            proof_account_retained_exactly,
+        })
+    }
+
+    /// Run the exact production-only binary. Production tags 59, legacy 60,
+    /// and refunding 65 are the only accepting surfaces; neither diagnostic
+    /// feature is present in `so`.
     #[allow(clippy::too_many_lines)]
     fn run_production_path(
         root: &Path,
@@ -14787,9 +15145,13 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
         let proof_account = Keypair::new();
         upload_proof(&rpc, &payer, &proof_account, proof, true)?;
         finalize_proof(&rpc, &payer, &proof_account.pubkey())?;
+        let production_proof_before = rpc_account_snapshot(&rpc, &proof_account.pubkey())?
+            .context("sealed production profile23 proof account missing")?;
         let unmined_proof_account = Keypair::new();
         upload_proof(&rpc, &payer, &unmined_proof_account, unmined_proof, true)?;
         finalize_proof(&rpc, &payer, &unmined_proof_account.pubkey())?;
+        let unmined_proof_before = rpc_account_snapshot(&rpc, &unmined_proof_account.pubkey())?
+            .context("sealed production unmined profile23 proof account missing")?;
 
         let pool_before = rpc_account_snapshot(&rpc, &pool_key)?
             .context("preloaded production profile23 pool account missing")?;
@@ -14812,7 +15174,7 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
         // Retain the negative production-PoW tooth in the mined artifact.
         // The committed unmined KAT lives in a distinct proof account, so
         // both outcomes are measured against the same production-only SBF.
-        let production_unmined_tag59 = rpc.simulate_verbose(&signed_transition(
+        let production_unmined_tag59 = rpc.simulate_verbose(&signed_read_only(
             &payer,
             read_only_instruction(unmined_proof_account.pubkey(), statement, false)?,
             rpc.latest_blockhash()?,
@@ -14823,8 +15185,9 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
             .context("production-only tag59 accepted the committed unmined KAT")?;
         let production_unmined_tag59_rejected = true;
 
-        let production_unmined_tag60 = signed_transition(
+        let production_unmined_tag65 = signed_transition(
             &payer,
+            &unmined_proof_account,
             transition_instruction(
                 unmined_proof_account.pubkey(),
                 pool_key,
@@ -14835,20 +15198,22 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
             )?,
             rpc.latest_blockhash()?,
         );
-        let production_unmined_tag60_landed_error =
-            rpc.send_and_confirm_failure(&production_unmined_tag60)?;
-        let production_unmined_tag60_rejected = true;
-        let production_unmined_tag60_rollback = rpc_account_snapshot(&rpc, &pool_key)?.as_ref()
+        let production_unmined_tag65_landed_error =
+            rpc.send_and_confirm_failure(&production_unmined_tag65)?;
+        let production_unmined_tag65_rejected = true;
+        let production_unmined_tag65_rollback = rpc_account_snapshot(&rpc, &pool_key)?.as_ref()
             == Some(&pool_before)
-            && rpc_account_snapshot(&rpc, &marker_key)? == marker_before;
+            && rpc_account_snapshot(&rpc, &marker_key)? == marker_before
+            && rpc_account_snapshot(&rpc, &unmined_proof_account.pubkey())?.as_ref()
+                == Some(&unmined_proof_before);
         ensure!(
-            production_unmined_tag60_rollback,
-            "unmined production tag60 changed state"
+            production_unmined_tag65_rollback,
+            "unmined production tag65 changed state"
         );
 
         // Negative feature-surface teeth. The same mined bytes must succeed
-        // on production tags 59/60 immediately afterwards.
-        let diagnostic_tag59 = rpc.simulate_verbose(&signed_transition(
+        // on production tags 59/65 immediately afterwards.
+        let diagnostic_tag59 = rpc.simulate_verbose(&signed_read_only(
             &payer,
             read_only_instruction(proof_account.pubkey(), statement, true)?,
             rpc.latest_blockhash()?,
@@ -14862,7 +15227,7 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
             "production-only SBF exposed tag59 diagnostic_unmined or returned the wrong error: {:?}",
             diagnostic_tag59.err
         );
-        let unavailable_tag61 = rpc.simulate_verbose(&signed_transition(
+        let unavailable_tag61 = rpc.simulate_verbose(&signed_read_only(
             &payer,
             transition_instruction(
                 proof_account.pubkey(),
@@ -14893,11 +15258,13 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
         );
         ensure!(
             rpc_account_snapshot(&rpc, &pool_key)?.as_ref() == Some(&pool_before)
-                && rpc_account_snapshot(&rpc, &marker_key)? == marker_before,
+                && rpc_account_snapshot(&rpc, &marker_key)? == marker_before
+                && rpc_account_snapshot(&rpc, &proof_account.pubkey())?.as_ref()
+                    == Some(&production_proof_before),
             "unavailable diagnostic surface changed state"
         );
 
-        let production_tag59 = rpc.simulate_verbose(&signed_transition(
+        let production_tag59 = rpc.simulate_verbose(&signed_read_only(
             &payer,
             read_only_instruction(proof_account.pubkey(), statement, false)?,
             rpc.latest_blockhash()?,
@@ -14921,28 +15288,54 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
         )?;
         let clean = rpc.simulate_verbose(&signed_transition(
             &payer,
+            &proof_account,
             clean_instruction.clone(),
             rpc.latest_blockhash()?,
         ))?;
         ensure!(
             clean.err.is_none(),
-            "production-only tag60 rejected mined proof on {} marker path: {:?}",
+            "production-only tag65 rejected mined proof on {} marker path: {:?}",
             if preowned_marker { "program" } else { "System" },
             clean.err
         );
-        let tag60_total = clean.units.context("production-only tag60 omitted CU")?;
-        let increment = tag60_total as i64 - tag59_total as i64;
+        let expected_proof_sha256 = Sha256::digest(proof);
+        let expected_proof_log = format!(
+            "Program data: {} {}",
+            BASE64.encode(b"aspis-proof-sha256-v1"),
+            BASE64.encode(expected_proof_sha256)
+        );
+        let proof_log_count = clean
+            .logs
+            .iter()
+            .filter(|line| line.as_str() == expected_proof_log)
+            .count();
+        let production_tag65_simulation_proof_sha256_log_exact = proof_log_count == 1;
+        ensure!(
+            production_tag65_simulation_proof_sha256_log_exact,
+            "production tag65 simulation omitted or duplicated the exact proof SHA-256 log: count={proof_log_count}"
+        );
+        let production_tag65_simulation_logged_proof_sha256 = expected_proof_sha256
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>();
+        ensure!(
+            rpc_account_snapshot(&rpc, &proof_account.pubkey())?.as_ref()
+                == Some(&production_proof_before),
+            "production tag65 simulation changed proof account"
+        );
+        let tag65_total = clean.units.context("production-only tag65 omitted CU")?;
+        let increment = tag65_total as i64 - tag59_total as i64;
         let reconciled: u64 = (tag59_total as i128 + i128::from(increment))
             .try_into()
             .context("production-only profile23 CU reconciliation overflow")?;
         ensure!(
-            reconciled == tag60_total,
-            "production tag60 ledger mismatch"
+            reconciled == tag65_total,
+            "production tag65 ledger mismatch"
         );
         let ledger = AtomicProfile23ProductionMutationLedger {
             production_read_only_tag59_cu: tag59_total,
-            production_tag60_increment_over_tag59_cu: increment,
-            production_tag60_total_cu: tag60_total,
+            production_tag65_increment_over_tag59_cu: increment,
+            production_tag65_total_cu: tag65_total,
             reconciled_total_cu: reconciled,
             formula: format!("{tag59_total} + ({increment})"),
         };
@@ -14957,8 +15350,11 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
         let corrupt_proof_account = Keypair::new();
         upload_proof(&rpc, &payer, &corrupt_proof_account, &corrupt_proof, true)?;
         finalize_proof(&rpc, &payer, &corrupt_proof_account.pubkey())?;
+        let corrupt_proof_before = rpc_account_snapshot(&rpc, &corrupt_proof_account.pubkey())?
+            .context("sealed corrupt production profile23 proof account missing")?;
         let corrupt = signed_transition(
             &payer,
+            &corrupt_proof_account,
             transition_instruction(
                 corrupt_proof_account.pubkey(),
                 pool_key,
@@ -14972,8 +15368,10 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
         let corrupt_landed_error = rpc.send_and_confirm_failure(&corrupt)?;
         let corrupt_rollback = rpc_account_snapshot(&rpc, &pool_key)?.as_ref()
             == Some(&pool_before)
-            && rpc_account_snapshot(&rpc, &marker_key)? == marker_before;
-        ensure!(corrupt_rollback, "corrupt production tag60 failed rollback");
+            && rpc_account_snapshot(&rpc, &marker_key)? == marker_before
+            && rpc_account_snapshot(&rpc, &corrupt_proof_account.pubkey())?.as_ref()
+                == Some(&corrupt_proof_before);
+        ensure!(corrupt_rollback, "corrupt production tag65 failed rollback");
 
         let concurrent_exactly_one = if exercise_concurrency {
             let second_payer = Keypair::new();
@@ -14995,8 +15393,8 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
                 false,
             )?;
             let blockhash = rpc.latest_blockhash()?;
-            let first = signed_transition(&payer, first, blockhash);
-            let second = signed_transition(&second_payer, second, blockhash);
+            let first = signed_transition(&payer, &proof_account, first, blockhash);
+            let second = signed_transition(&second_payer, &proof_account, second, blockhash);
             let rpc_a = Rpc {
                 url: validator.rpc_url.clone(),
                 http: reqwest::blocking::Client::builder()
@@ -15017,34 +15415,46 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
             let exactly_one = a.is_ok() ^ b.is_ok();
             ensure!(
                 exactly_one,
-                "production tag60 race did not commit exactly once"
+                "production tag65 race did not commit exactly once"
+            );
+            ensure!(
+                rpc_account_snapshot(&rpc, &proof_account.pubkey())?.is_none(),
+                "successful production tag65 race did not close proof account"
             );
             Some(exactly_one)
         } else {
             rpc.send_and_confirm(&signed_transition(
                 &payer,
+                &proof_account,
                 clean_instruction,
                 rpc.latest_blockhash()?,
             ))?;
+            ensure!(
+                rpc_account_snapshot(&rpc, &proof_account.pubkey())?.is_none(),
+                "successful production tag65 did not close proof account"
+            );
             None
         };
 
         let pool_after = rpc_account_snapshot(&rpc, &pool_key)?
-            .context("production profile23 pool missing after tag60")?;
+            .context("production profile23 pool missing after tag65")?;
         let marker_after = rpc_account_snapshot(&rpc, &marker_key)?
-            .context("production profile23 marker missing after tag60")?;
+            .context("production profile23 marker missing after tag65")?;
         let decoded_pool = AtomicPoolStateV1::decode(&pool_after.data)?;
         let sequence_advanced = decoded_pool.sequence == statement.sequence + 1;
         let anchor_replaced = decoded_pool.anchor == public.output_anchor;
         let marker_written = marker_is_exact(&marker_after, pool_key, &public.nullifier);
         ensure!(sequence_advanced && anchor_replaced && marker_written);
 
+        let (duplicate_proof_account, duplicate_proof_before) =
+            upload_finalized_proof_account(&rpc, &payer, &[0u8])?;
         let mut duplicate_public = public;
         duplicate_public.current_anchor = duplicate_public.output_anchor;
         let duplicate = signed_transition(
             &payer,
+            &duplicate_proof_account,
             transition_instruction(
-                proof_account.pubkey(),
+                duplicate_proof_account.pubkey(),
                 pool_key,
                 marker_key,
                 payer.pubkey(),
@@ -15053,12 +15463,19 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
             )?,
             rpc.latest_blockhash()?,
         );
-        let duplicate_no_mutation = rpc.send_and_confirm(&duplicate).is_err()
+        let duplicate_error = rpc.send_and_confirm_failure(&duplicate)?;
+        let expected_duplicate_error = format!(
+            "\"Custom\":{}",
+            aspis_verifier::atomic_payment::ATOMIC_ERROR_NULLIFIER_ALREADY_SPENT
+        );
+        let duplicate_no_mutation = duplicate_error.contains(&expected_duplicate_error)
             && rpc_account_snapshot(&rpc, &pool_key)?.as_ref() == Some(&pool_after)
-            && rpc_account_snapshot(&rpc, &marker_key)?.as_ref() == Some(&marker_after);
+            && rpc_account_snapshot(&rpc, &marker_key)?.as_ref() == Some(&marker_after)
+            && rpc_account_snapshot(&rpc, &duplicate_proof_account.pubkey())?.as_ref()
+                == Some(&duplicate_proof_before);
         ensure!(
             duplicate_no_mutation,
-            "duplicate production tag60 changed state"
+            "duplicate production tag65 changed state"
         );
 
         drop(validator);
@@ -15071,19 +15488,22 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
                 },
                 proof_accounts_finalized_before_production_verification: true,
                 literal_tag59_simulation_cu: tag59_total,
-                literal_tag60_simulation_cu: tag60_total,
-                headroom_under_1_4m_cu: i64::from(VERIFY_CU_LIMIT) - tag60_total as i64,
+                literal_tag65_simulation_cu: tag65_total,
+                headroom_under_1_4m_cu: i64::from(VERIFY_CU_LIMIT) - tag65_total as i64,
                 ledger,
                 production_unmined_tag59_rejected,
                 production_unmined_tag59_error,
-                production_unmined_tag60_rejected,
-                production_unmined_tag60_rollback_green: production_unmined_tag60_rollback,
-                production_unmined_tag60_landed_error,
+                production_unmined_tag65_rejected,
+                production_unmined_tag65_rollback_green: production_unmined_tag65_rollback,
+                production_unmined_tag65_landed_error,
                 production_tag59_accepted_mined_sbf: true,
-                production_tag60_clean_simulation_accepted: true,
+                production_tag65_clean_simulation_accepted: true,
+                production_tag65_simulation_proof_sha256_log_exact,
+                production_tag65_simulation_logged_proof_sha256,
                 corrupt_proof_rejected_with_transaction_rollback: corrupt_rollback,
                 corrupt_transaction_landed_error: corrupt_landed_error,
                 committed_transition_succeeded: true,
+                proof_account_absent_after_success: true,
                 pool_sequence_advanced_once: sequence_advanced,
                 pool_anchor_replaced: anchor_replaced,
                 nullifier_marker_written: marker_written,
@@ -15307,15 +15727,15 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
         "profile23 HVZK closure must not independently authorize production"
     );
 
-    let default_tag60 = instruction_data(&public_inputs(statement), false)?;
-    let default_tag60_fail_closed_host =
-        aspis_verifier::process_instruction(&aspis_verifier::id(), &[], &default_tag60)
+    let default_tag65 = instruction_data(&public_inputs(statement), false)?;
+    let default_tag65_fail_closed_host =
+        aspis_verifier::process_instruction(&aspis_verifier::id(), &[], &default_tag65)
             == Err(solana_sdk::program_error::ProgramError::Custom(
                 ATOMIC_ERROR_VERIFIER_NOT_INTEGRATED,
             ));
     ensure!(
-        default_tag60_fail_closed_host,
-        "default tag60 is not fail-closed"
+        default_tag65_fail_closed_host,
+        "default tag65 is not fail-closed"
     );
 
     let diagnostic_so = build_sbf_with_features(
@@ -15325,9 +15745,9 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
     )?;
     let (
         program_path,
-        candidate_tag60_rejects_unmined_sbf,
-        candidate_tag60_accepts_mined_sbf,
-        candidate_tag60_rollback_green,
+        candidate_tag65_rejects_unmined_sbf,
+        candidate_tag65_accepts_mined_sbf,
+        candidate_tag65_rollback_green,
     ) = run_path(
         &root,
         &diagnostic_so,
@@ -15368,9 +15788,10 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
         production_paths,
         production_only_sbf_bytes,
         production_only_sbf_sha256,
+        production_legacy_tag60_compatibility,
         production_only_unmined_tag59_rejected,
-        production_only_unmined_tag60_rejected,
-        production_only_unmined_tag60_rollback_green,
+        production_only_unmined_tag65_rejected,
+        production_only_unmined_tag65_rollback_green,
         production_only_tag59_diagnostic_bit_unavailable,
         production_only_tag61_unavailable,
     ) = if production_only_mined_override_exercised {
@@ -15407,25 +15828,29 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
             false,
             true,
         )?;
+        let legacy_tag60_compatibility =
+            run_legacy_tag60_compatibility(&root, &production_so, &proof, statement)?;
         let unmined_tag59_rejected =
             program.production_unmined_tag59_rejected && system.production_unmined_tag59_rejected;
-        let unmined_tag60_rejected =
-            program.production_unmined_tag60_rejected && system.production_unmined_tag60_rejected;
-        let unmined_tag60_rollback = program.production_unmined_tag60_rollback_green
-            && system.production_unmined_tag60_rollback_green;
+        let unmined_tag65_rejected =
+            program.production_unmined_tag65_rejected && system.production_unmined_tag65_rejected;
+        let unmined_tag65_rollback = program.production_unmined_tag65_rollback_green
+            && system.production_unmined_tag65_rollback_green;
         (
             vec![program, system],
             Some(production_so_bytes.len()),
             Some(production_so_sha256),
+            Some(legacy_tag60_compatibility),
             Some(unmined_tag59_rejected),
-            Some(unmined_tag60_rejected),
-            Some(unmined_tag60_rollback),
+            Some(unmined_tag65_rejected),
+            Some(unmined_tag65_rollback),
             Some(program_tag59_closed && system_tag59_closed),
             Some(program_tag61_closed && system_tag61_closed),
         )
     } else {
-        (Vec::new(), None, None, None, None, None, None, None)
+        (Vec::new(), None, None, None, None, None, None, None, None)
     };
+    let legacy_tag60_compatibility_exercised = production_legacy_tag60_compatibility.is_some();
 
     Ok(AtomicProfile23MutationSummary {
         generated_at_utc: chrono::Utc::now().to_rfc3339(),
@@ -15446,7 +15871,7 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
             "NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-profile23-mutation".to_string()
         },
         validator_version: validator_version(),
-        production_instruction_wire_ordinal: 60,
+        production_instruction_wire_ordinal: 65,
         diagnostic_instruction_wire_ordinal: 61,
         finalize_proof_instruction_wire_ordinal: 62,
         diagnostic_sbf_features: DIAGNOSTIC_FEATURES.to_vec(),
@@ -15472,35 +15897,41 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
         final_grinding_bits: STATE_ONLY_PROFILE23_GRINDING_BITS,
         fold_grinding_bits: STATE_ONLY_PROFILE23_FOLD_GRINDING_BITS,
         production_pow_bypass_exposed: false,
-        default_tag60_fail_closed_host,
-        candidate_tag60_rejects_unmined_sbf,
-        candidate_tag60_accepts_mined_sbf,
-        candidate_tag60_outcome_matches_pow: candidate_tag60_rejects_unmined_sbf
-            || candidate_tag60_accepts_mined_sbf,
-        candidate_tag60_rollback_green,
+        default_tag65_fail_closed_host,
+        candidate_tag65_rejects_unmined_sbf,
+        candidate_tag65_accepts_mined_sbf,
+        candidate_tag65_outcome_matches_pow: candidate_tag65_rejects_unmined_sbf
+            || candidate_tag65_accepts_mined_sbf,
+        candidate_tag65_rollback_green,
         paths: vec![program_path, system_path],
         production_only_sbf_features: PRODUCTION_ONLY_FEATURES.to_vec(),
         production_only_sbf_bytes,
         production_only_sbf_sha256,
         production_only_mined_override_exercised,
         production_only_unmined_tag59_rejected,
-        production_only_unmined_tag60_rejected,
-        production_only_unmined_tag60_rollback_green,
+        production_only_unmined_tag65_rejected,
+        production_only_unmined_tag65_rollback_green,
         production_only_tag59_diagnostic_bit_unavailable,
         production_only_tag61_unavailable,
         production_alias_forbidden_feature_unions_rejected,
         production_alias_forbidden_feature_unions_tested,
+        production_legacy_tag60_compatibility,
         production_paths,
         soundness_bookable,
         complete_view_hvzk_simulator_complete,
         production_profile23_mutation_enabled: false,
         notes: vec![
-            "Tag60 has no diagnostic selector and calls the exact tag59 parser/verifier with production PoW before the first CPI or account write. Its simulated outcome is required to match the host mined/unmined classification. Default builds remain fail-closed.".to_string(),
+            "Tag65 has no diagnostic selector and calls the exact tag59 parser/verifier with production PoW before the first CPI or account write. Its simulated outcome is required to match the host mined/unmined classification. Default builds remain fail-closed.".to_string(),
+            if legacy_tag60_compatibility_exercised {
+                "The same production SBF is exercised in a separate local-validator lifecycle through legacy tag60 with a sealed read-only, non-signer proof. The landed transition advances the pool and writes the marker exactly once, a landed duplicate reaches the nullifier-already-spent error, and the proof owner, bytes, and lamports remain exactly unchanged.".to_string()
+            } else {
+                "The successful legacy-tag60 compatibility KAT is intentionally dormant until mined proof bytes are supplied; tag65 remains the production release ordinal.".to_string()
+            },
             if proof_unmined {
                 "Tag61 exists only in a nondefault local-validator build and reuses the same integrated unmined proof bytes. Its sole acceptance difference is bypassing the transcript-bound PoW predicate.".to_string()
             } else {
                 format!(
-                    "ASPIS_PROFILE23_PROOF supplied mined bytes: the command additionally built with the isolated feature set {}, proved tag59's diagnostic bit and tag61 unavailable, and ran exact production tags59/60 on both marker paths.",
+                    "ASPIS_PROFILE23_PROOF supplied mined bytes: the command additionally built with the isolated feature set {}, proved tag59's diagnostic bit and tag61 unavailable, and ran exact production tags59/65 on both marker paths.",
                     PRODUCTION_ONLY_FEATURES.join(",")
                 )
             },
@@ -15511,9 +15942,9 @@ pub fn run_stage2_atomic_profile23_mutation() -> Result<AtomicProfile23MutationS
             },
             "Both marker paths emit single-instruction, overlap-free ledgers. Corruption rollback, exact pool/marker images, duplicate rejection, and a two-signer System-path race are tested.".to_string(),
             if production_only_mined_override_exercised {
-                "The production-only paths load the committed unmined KAT into a second proof account, require production tags59/60 to reject it (with a landed failed tag60 transaction and exact rollback), submit a separately corrupted mined tag60 transaction to prove rollback, commit mined tag60 on both marker paths, and reconcile each exact tag60 total as same-binary tag59 plus the net mutation wrapper increment.".to_string()
+                "The production-only paths load the committed unmined KAT into a second proof account, require production tags59/65 to reject it (with a landed failed tag65 transaction and exact rollback), submit a separately corrupted mined tag65 transaction to prove rollback, commit mined tag65 on both marker paths, and reconcile each exact tag65 total as same-binary tag59 plus the net mutation wrapper increment.".to_string()
             } else {
-                "Production-only tag60 execution is intentionally skipped for the default unmined fixture; supply a mined ASPIS_PROFILE23_PROOF override to populate production_paths.".to_string()
+                "Production-only tag65 execution is intentionally skipped for the default unmined fixture; supply a mined ASPIS_PROFILE23_PROOF override to populate production_paths.".to_string()
             },
             if production_alias_forbidden_feature_unions_rejected == Some(true) {
                 "The explicit profile23-production KAT additionally compile-failed every diagnostic and legacy Profile20/21/22 candidate union, both individually and as one grouped feature-unification tooth, with the dedicated isolation marker.".to_string()

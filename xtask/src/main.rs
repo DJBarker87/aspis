@@ -1,7 +1,11 @@
 mod host;
 mod onchain;
 mod profile23_devnet;
+mod profile23_devnet_close;
 mod profile23_mainnet;
+mod profile23_mainnet_cleanup;
+mod profile23_mainnet_journal;
+mod profile23_mainnet_loader;
 mod profile23_release;
 mod profile23_statement;
 mod retired_numbers;
@@ -611,11 +615,11 @@ fn main() -> Result<()> {
             let production_paths = summary
                 .production_paths
                 .iter()
-                .map(|path| path.literal_tag60_simulation_cu.to_string())
+                .map(|path| path.literal_tag65_simulation_cu.to_string())
                 .collect::<Vec<_>>()
                 .join(",");
             eprintln!(
-                "stage2-atomic-profile23-mutation: diagnostic_tag61_paths={} CU; production_tag60_paths={} CU; wrote {}",
+                "stage2-atomic-profile23-mutation: diagnostic_tag61_paths={} CU; production_tag65_paths={} CU; wrote {}",
                 diagnostic_paths,
                 if production_paths.is_empty() {
                     "not-run"
@@ -647,7 +651,7 @@ fn main() -> Result<()> {
             }
             eprintln!(
                 "stage2-profile23-one-transaction-release: released at {} CU ({} CU headroom); wrote {}",
-                summary.max_literal_production_tag60_cu.unwrap_or_default(),
+                summary.max_literal_production_tag65_cu.unwrap_or_default(),
                 summary.exact_headroom_under_1_4m_cu.unwrap_or_default(),
                 path.display()
             );
@@ -666,7 +670,7 @@ fn main() -> Result<()> {
                 &path,
                 format!("{}\n", serde_json::to_string_pretty(&summary)?),
             )?;
-            if !summary.ready_for_reviewed_live_executor {
+            if !summary.read_only_preflight_green {
                 bail!(
                     "stage2-profile23-mainnet-readiness: fail-closed; blockers: {}; wrote {}",
                     summary.blockers.join(", "),
@@ -676,6 +680,81 @@ fn main() -> Result<()> {
             eprintln!(
                 "stage2-profile23-mainnet-readiness: all readiness gates green; wrote {}",
                 path.display()
+            );
+            Ok(())
+        }
+        Some("stage2-profile23-mainnet-execute") => {
+            let arguments = args.collect::<Vec<_>>();
+            let dir = stage2_results_dir()?;
+            let workspace_root = dir
+                .parent()
+                .and_then(|results| results.parent())
+                .ok_or_else(|| anyhow!("no workspace root above stage2 results"))?;
+
+            // Re-run the independent, read-only policy immediately before the
+            // executor revalidates the same release instance and first write.
+            let readiness = profile23_mainnet::evaluate(workspace_root, &[]);
+            if !readiness.read_only_preflight_green {
+                bail!(
+                    "stage2-profile23-mainnet-execute: preflight blocked: {}",
+                    readiness.blockers.join(", ")
+                );
+            }
+
+            let run_directory = std::env::var("ASPIS_PROFILE23_MAINNET_RUN_DIR")
+                .map(PathBuf::from)
+                .map_err(|_| anyhow!("ASPIS_PROFILE23_MAINNET_RUN_DIR is required"))?;
+            let mut journal = if run_directory.exists() {
+                profile23_mainnet_journal::RecoveryJournal::reopen(&run_directory)?
+            } else {
+                let run_id = format!(
+                    "profile23-mainnet-{}",
+                    chrono::Utc::now().format("%Y%m%dT%H%M%SZ")
+                );
+                profile23_mainnet_journal::RecoveryJournal::create(&run_directory, run_id)?
+            };
+            if journal.state().completed_outcome.is_some() {
+                bail!("stage2-profile23-mainnet-execute: recovery journal is already complete");
+            }
+            journal.record_checkpoint(
+                "immediate_read_only_preflight_green",
+                serde_json::to_value(&readiness)?,
+            )?;
+
+            let evidence = profile23_devnet::execute_mainnet(workspace_root, &arguments)?;
+            journal.record_checkpoint(
+                "tag65_and_replay_probe_finalized",
+                serde_json::json!({
+                    "network": evidence.network,
+                    "program_id": evidence.program_id,
+                    "tag65_signature": evidence.final_transaction.signature,
+                    "tag65_finalized_slot": evidence.final_transaction.finalized_slot,
+                    "replay_close_signature": evidence.replay_probe_close_transaction.signature,
+                    "replay_close_finalized_slot": evidence.replay_probe_close_transaction.finalized_slot,
+                    "evidence_path": evidence.evidence_path,
+                }),
+            )?;
+            journal.complete("tag65_and_replay_probe_finalized")?;
+            eprintln!(
+                "stage2-profile23-mainnet-execute: finalized {} at slot {}; immutable evidence {}; completed top-level run checkpoint journal {} (not per-wire recovery)",
+                evidence.final_transaction.signature,
+                evidence.final_transaction.finalized_slot,
+                evidence.evidence_path,
+                journal.journal_path().display(),
+            );
+            Ok(())
+        }
+        Some("stage2-profile23-mainnet-cleanup") => {
+            let arguments = args.collect::<Vec<_>>();
+            let outcome = profile23_mainnet_cleanup::execute(&arguments)?;
+            eprintln!(
+                "stage2-profile23-mainnet-cleanup: finalized {} at slot {}; refunded {} lamports; fee {} lamports; immutable evidence {} and {}",
+                outcome.signature,
+                outcome.finalized_slot,
+                outcome.refund_lamports,
+                outcome.fee_lamports,
+                outcome.preclose_evidence.path,
+                outcome.postclose_evidence.path,
             );
             Ok(())
         }
@@ -717,6 +796,30 @@ fn main() -> Result<()> {
                 "stage2-profile23-devnet-execute: finalized {} at slot {}; immutable evidence {}",
                 evidence.final_transaction.signature,
                 evidence.final_transaction.finalized_slot,
+                evidence.evidence_path
+            );
+            Ok(())
+        }
+        Some("stage2-profile23-devnet-upload-smoke") => {
+            let arguments = args.collect::<Vec<_>>();
+            let evidence = profile23_devnet::upload_smoke(&arguments)?;
+            eprintln!(
+                "stage2-profile23-devnet-upload-smoke: sealed {} bytes in {} uploads/{} ms; immutable evidence {}",
+                evidence.proof_bytes,
+                evidence.proof_upload_transaction_count,
+                evidence.upload_wall_milliseconds,
+                evidence.evidence_path
+            );
+            Ok(())
+        }
+        Some("stage2-profile23-devnet-close-smoke") => {
+            let arguments = args.collect::<Vec<_>>();
+            let evidence = profile23_devnet_close::execute(&arguments)?;
+            eprintln!(
+                "stage2-profile23-devnet-close-smoke: finalized {} at slot {}; refunded {} lamports; immutable evidence {}",
+                evidence.signature,
+                evidence.finalized_slot,
+                evidence.refund_lamports,
                 evidence.evidence_path
             );
             Ok(())
@@ -882,7 +985,7 @@ fn main() -> Result<()> {
             Ok(())
         }
         other => bail!(
-            "usage: cargo run -p aspis-xtask -- stage0-host | stage0-onchain | stage0-onchain-gate | stage0-onchain-g32 | stage0-onchain-layout-target | stage0-onchain-profile | stage0-layout-sweep | stage0-transcript-kat | stage1-soundness-pin | stage1-theta-optimize | stage1-retired-number-lint | stage1-onchain-hardening | stage2-evaluator | stage2-logup-compression-kat | stage2-s2-ood-probe | stage2-v4-s2-pcs-scaffold-kat | stage2-v4-s2-pcs-scaffold | stage2-exact-wide-v4-diagnostic | stage2-m31-circle-basis-probe | stage2-m31-fresh-kappa-sbf | stage2-m31-johnson-sbf | stage2-m31-rate16-sbf | stage2-m31-rate16-hardened-sbf | stage2-rate16-soundness | stage2-composition-probe | stage2-layout-probe | stage2-poseidon2-probe | stage2-zk-kernel-probe | stage2-wide-rlc-probe | stage2-merkle-arity-probe | stage2-hvzk-whir-mask-probe | stage2-radix8-merkle-probe | stage2-merkle-forest-probe | stage2-layer0-dot-width-probe | stage2-state-only-helper-dot2-probe | stage2-state-only-helper-dot3-probe | stage2-state-only-fold-polynomial-probe | stage2-atomic-routing-partition-probe | stage2-atomic-profile20-cost | stage2-atomic-profile20-acceptance | stage2-atomic-profile20-mutation | stage2-atomic-profile21-acceptance | stage2-atomic-profile21-mutation | stage2-atomic-profile22-acceptance | stage2-atomic-profile22-mutation | stage2-atomic-profile23-acceptance | stage2-atomic-profile23-mutation | stage2-profile23-one-transaction-release | stage2-profile23-mainnet-readiness | stage2-profile23-devnet-readiness | stage2-profile23-devnet-execute | stage2-state-only-relation-structural-probe | stage2-state-only-masked-switch-profile21-probe | stage2-state-only-private-merkle-salt-probe | stage2-radix4-g16 | stage2-radix4-g32 | stage2-variance-g16 | stage2-sumcheck-probe | stage2-payment-statement-v4 | stage2-payment-hiding-profile15 | stage2-state-only-width28 | stage2-query-trade-g16 (got {:?})",
+            "usage: cargo run -p aspis-xtask -- stage0-host | stage0-onchain | stage0-onchain-gate | stage0-onchain-g32 | stage0-onchain-layout-target | stage0-onchain-profile | stage0-layout-sweep | stage0-transcript-kat | stage1-soundness-pin | stage1-theta-optimize | stage1-retired-number-lint | stage1-onchain-hardening | stage2-evaluator | stage2-logup-compression-kat | stage2-s2-ood-probe | stage2-v4-s2-pcs-scaffold-kat | stage2-v4-s2-pcs-scaffold | stage2-exact-wide-v4-diagnostic | stage2-m31-circle-basis-probe | stage2-m31-fresh-kappa-sbf | stage2-m31-johnson-sbf | stage2-m31-rate16-sbf | stage2-m31-rate16-hardened-sbf | stage2-rate16-soundness | stage2-composition-probe | stage2-layout-probe | stage2-poseidon2-probe | stage2-zk-kernel-probe | stage2-wide-rlc-probe | stage2-merkle-arity-probe | stage2-hvzk-whir-mask-probe | stage2-radix8-merkle-probe | stage2-merkle-forest-probe | stage2-layer0-dot-width-probe | stage2-state-only-helper-dot2-probe | stage2-state-only-helper-dot3-probe | stage2-state-only-fold-polynomial-probe | stage2-atomic-routing-partition-probe | stage2-atomic-profile20-cost | stage2-atomic-profile20-acceptance | stage2-atomic-profile20-mutation | stage2-atomic-profile21-acceptance | stage2-atomic-profile21-mutation | stage2-atomic-profile22-acceptance | stage2-atomic-profile22-mutation | stage2-atomic-profile23-acceptance | stage2-atomic-profile23-mutation | stage2-profile23-one-transaction-release | stage2-profile23-mainnet-readiness | stage2-profile23-mainnet-execute | stage2-profile23-mainnet-cleanup | stage2-profile23-devnet-readiness | stage2-profile23-devnet-execute | stage2-profile23-devnet-upload-smoke | stage2-profile23-devnet-close-smoke | stage2-state-only-relation-structural-probe | stage2-state-only-masked-switch-profile21-probe | stage2-state-only-private-merkle-salt-probe | stage2-radix4-g16 | stage2-radix4-g32 | stage2-variance-g16 | stage2-sumcheck-probe | stage2-payment-statement-v4 | stage2-payment-hiding-profile15 | stage2-state-only-width28 | stage2-query-trade-g16 (got {:?})",
             other
         ),
     }

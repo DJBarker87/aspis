@@ -1,0 +1,418 @@
+\section{Complete-view computational hiding}
+\label{sec:hiding}
+
+The hiding statement compares witnesses for one fixed valid public statement.
+It includes the proof's variable-length serialization and the public abort
+event; it does not condition on successful proving.
+
+\subsection{Declared view and games}
+
+\begin{definition}[Complete declared view]
+\label{def:profile23-complete-view}
+For public input \(x\), the declared output is either
+\[
+ \mathsf{Proof}(V)\qquad\text{or}\qquad \mathsf{Abort}.
+\]
+The value \(V\) contains the complete finalized proof-account bytes, all
+commitment roots, opened \(\mathsf{value}\|\mathsf{salt}\) records and
+minimal-subtree frontiers, Fiat--Shamir and work nonces, the branch selector,
+proof length, program-visible application-instruction framing and logs, and
+the deterministic public pool and nullifier transition.  It does not include
+the fee-payer signature or identity, recent blockhash, transaction origin,
+account-graph linkage outside the statement, or network metadata.  The proof
+length is allowed to depend on the public query schedule.  The output occurs
+at one fixed public release boundary.
+\end{definition}
+
+The cryptographic games below do not use elapsed prover time as a random
+variable.  They assume that each permitted attempt completes before the
+release boundary.  Equivalently, they may be composed with an external cutoff
+flag that is independent of the witness, masks, oracle answers, attempt state,
+and private execution time: the same flag is coupled in both games, and a set
+flag maps either output to \(\mathsf{Abort}\).  The internal cap-exhaustion
+event and this external truncation are analytically distinct even though they
+have the same public encoding.
+
+Let \(\mathcal H:\{0,1\}^*\rightarrow\{0,1\}^{256}\) be one programmable
+random oracle.  Rigid domain encodings separate its transcript, field
+expansion, salt expansion, Merkle, statement, and work uses.  In the real
+experiment \(\mathsf{Real}_{23}^{\mathcal H}(x,w)\), the honest prover uses
+fresh attempt secrets, chooses the least good of three schedules, retries at
+most 17 completed attempts, and emits
+Definition~\ref{def:profile23-complete-view}.  The
+simulator experiment \(\mathsf{Sim}_{23}^{\mathcal H}(x)\) has no witness and
+may program \(\mathcal H\) at fresh inputs.
+
+A classical distinguisher receives arbitrary auxiliary input, observes the
+output, and may make adaptive oracle queries both before and after that
+output.  Its total budget is \(Q_H\le2^{128}\).  Define
+\begin{align*}
+ \epsilon_{\rm RS}
+   &=\sup_{x,w,\mathcal D}
+       \left|\Pr[\mathcal D^{\mathcal H}
+          (\mathsf{Real}_{23}^{\mathcal H}(x,w))=1]
+       -\Pr[\mathcal D^{\mathcal H}
+          (\mathsf{Sim}_{23}^{\mathcal H}(x))=1]\right|,\\
+ \epsilon_{\rm pair}
+   &=\sup_{x,w_0,w_1,\mathcal D}
+       \left|\Pr[\mathcal D^{\mathcal H}
+          (\mathsf{Real}_{23}^{\mathcal H}(x,w_0))=1]
+       -\Pr[\mathcal D^{\mathcal H}
+          (\mathsf{Real}_{23}^{\mathcal H}(x,w_1))=1]\right|,
+\end{align*}
+where each quantified witness satisfies \(R_{23}(x,w)=1\).
+The programming experiment follows the explicitly programmable random-oracle
+(EPRO) compilation framework of
+Ben-Sasson, Chiesa, and Spooner~\cite{BenSassonChiesaSpooner2016}, specialized
+below to the concrete Profile~23 transcript and private-Merkle wire.
+
+\subsection{Affine field view}
+
+Split every \(\mathbb K\) element into four \(\mathbb F\) coordinates.  Fix
+a public schedule \(s_{\rm fs}\), and quotient the verifier's exact public
+linear identities.  The complete non-hash field view of an honest prover has
+the form
+\begin{equation}
+  Y_{s_{\rm fs}}(w,R)=A_{s_{\rm fs}}R+b_{s_{\rm fs}}(w),
+  \label{eq:affine-field-view}
+\end{equation}
+where \(R\in\mathbb F^m\) consists of ideal independent mask coordinates and
+\(A_{s_{\rm fs}}\) is a public matrix determined by the frozen layout and
+schedule.  Let the public verifier identities be
+\[
+ L_{x,s_{\rm fs}}y=c_{x,s_{\rm fs}},\qquad
+ \mathcal S_{x,s_{\rm fs}}
+   =\{y:L_{x,s_{\rm fs}}y=c_{x,s_{\rm fs}}\},
+ \quad
+ \mathcal W_{s_{\rm fs}}=\ker L_{x,s_{\rm fs}}.
+\]
+The homogeneous space is independent of the witness and, after public values
+are moved to the right-hand side, of \(x\).
+
+\begin{lemma}[Uniform image and constant fibers]
+\label{lem:uniform-mask-preimages}
+Let \(A:\mathbb F^m\rightarrow\mathbb F^n\) be linear, with rank \(r\) and
+image \(V\).  Every \(v\in V\) has exactly
+\(
+ |\ker A|=p^{m-r}
+\)
+preimages.  Consequently, if \(R\) is uniform in \(\mathbb F^m\), then
+\(AR\) is uniform in \(V\).  If, in addition,
+\(b(w_1)-b(w_0)\in V\), then
+\(AR+b(w_0)\) and \(AR+b(w_1)\) are identically distributed.
+\end{lemma}
+
+\begin{proof}
+For any \(v\in V\), choose \(r_v\) with \(Ar_v=v\).  The full preimage is
+the coset \(r_v+\ker A\), hence has \(p^{m-r}\) elements by rank--nullity.
+It follows that
+\(
+ \Pr[AR=v]=p^{m-r}/p^m=p^{-r}
+\)
+for each of the \(p^r\) elements of \(V\).  Finally,
+\(b(w_1)-b(w_0)\in V\) implies
+\(b(w_0)+V=b(w_1)+V\), so both translated uniform distributions have the
+same support and mass function.
+\end{proof}
+
+\begin{assumption}[Complete affine-image and rank coverage]
+\label{lem:complete-affine-image}
+For the frozen Profile~23 prover, verifier, layout, and serialization, let
+\(Y_{s_{\rm fs}}\) include every non-hash field coordinate in the declared
+view.  For every valid \((x,w)\) and every schedule accepted by
+\(\mathsf{Good}_{23}\), Equation~\eqref{eq:affine-field-view} is an exact
+representation of that complete vector, with independent uniform mask
+coordinates \(R\) and no omitted witness-dependent coordinate.  Moreover, the
+production matrices have all eight ranks in Table~\ref{tab:good23-ranks},
+satisfy their source guards, and their semantic, \(G/D\), inactive-balanced
+\(H_1\), terminal, and root-neutral blocks cover the full homogeneous
+verifier space.  Consequently,
+\begin{equation}
+ \operatorname{im}A_{s_{\rm fs}}=\mathcal W_{s_{\rm fs}},
+ \qquad
+ \mathcal S_{x,s_{\rm fs}}
+ =y_{x,s_{\rm fs}}+\operatorname{im}A_{s_{\rm fs}}
+ \label{eq:image-equality}
+\end{equation}
+for a canonical public origin \(y_{x,s_{\rm fs}}\) computable by row
+reduction.  In particular, for any two valid witnesses for \(x\),
+\[
+b_{s_{\rm fs}}(w_1)-b_{s_{\rm fs}}(w_0)
+   \in\operatorname{im}A_{s_{\rm fs}}.
+\]
+Writing \(r_s=\dim\mathcal W_{s_{\rm fs}}\), the equality also gives
+\(\operatorname{rank}A_{s_{\rm fs}}=r_s\) and
+\(|\ker A_{s_{\rm fs}}|=p^{m-r_s}\).
+\end{assumption}
+
+The release supplies executable evidence for this premise.  Every
+reconstructed mask direction satisfies the homogeneous public identities, so
+\(\operatorname{im}A_{s_{\rm fs}}\subseteq\mathcal W_{s_{\rm fs}}\).
+For the reverse-coverage check, it decomposes a homogeneous field view into
+(i) the separately authenticated semantic raw coordinates, (ii) the physical
+\(H_1,G,D\) raw coordinates and their three terminal values, and (iii) the
+masked-sumcheck coordinates after fixing the initial and terminal claims.
+
+The structural semantic maps cover every queried raw semantic coordinate;
+their balanced kernels and lane-separated terminal projections cover the
+remaining semantic terminals.  The two 288-rank query maps and 12-rank Schur
+complements in Table~\ref{tab:good23-ranks} cover the remaining \(G/D\) and
+inactive-balanced \(H_1\) raw coordinates.  After these raw values are fixed,
+the remaining sumcheck difference belongs to
+\(\ker(\mathrm{initial},T_z)\).  The root-neutral product has rank 1404, of
+which 328 coordinates cover the terminal-plus-initial projection and 1076
+cover that kernel.  Hence every homogeneous solution is a sum of legal mask
+directions in the reconstructed system, yielding
+\(\mathcal W_{s_{\rm fs}}\subseteq\operatorname{im}A_{s_{\rm fs}}\).
+
+The same decomposition gives a constructive translation.  Translate the
+semantic one-time pads to match their raw view; use inactive-balanced
+\(H_1\) padding for the physical \(H_1\) difference; pair \(D\) and source
+changes with \(G\) so that
+\(\Delta G=-\gamma\Delta D\) and the batched word is unchanged; then use the
+1076 root-neutral directions to cancel the remaining sumcheck difference.
+The combined message is now identically zero, so the linear encoder, OOD
+maps, folds, later queried values, and final polynomial also agree.
+
+Finally, row reduction of the public affine identities selects a canonical
+solution by setting free coordinates to zero.  This computes
+\(y_{x,s_{\rm fs}}\) without a witness and checks the second equality in
+\eqref{eq:image-equality}.
+
+The rank equalities used in this coverage argument are finite,
+machine-checked statements over \(\mathbb F\).  The executable checker
+reconstructs the matrices from
+the frozen layout and public schedule, performs elimination, verifies target
+dimensions, source guards, pivots, and nonzero minors, and rejects definition
+drift.  The published component fingerprints record provenance; they are not
+substituted for matrix reconstruction.  The certificate fixture supplies
+frozen witnesses for the nonzero minors, while the production transfer uses
+layout and \(\mathsf{Good}_{23}\)-definition fingerprints and a fresh replay
+of all three
+public schedules.  It does not assume that production proof bytes equal the
+certificate fixture.
+
+This evidence binds the premise to the release, but it is not an independent
+verification of the completeness of the reconstructed affine model.  The
+hiding theorems therefore remain conditional on
+Assumption~\ref{lem:complete-affine-image} until such a verifier is published.
+
+By Lemma~\ref{lem:uniform-mask-preimages} and
+Assumption~\ref{lem:complete-affine-image}, uniform ideal masks give exactly the
+uniform distribution on \(\mathcal S_{x,s_{\rm fs}}\).  The affine replacement
+therefore has error \(\epsilon_{\rm aff}=0\) on every emitted schedule under
+the premise.
+
+\subsection{Witness-free simulator}
+
+The simulator uses Equation~\eqref{eq:image-equality} directly.
+
+\begin{description}
+\item[\(\mathsf{Sim}_{23}(x)\).]
+For each of at most 17 attempts, create a fresh common transcript state and
+three label-44 branches using lazy random-oracle programming.  Evaluate the
+public predicate \(\mathsf{Good}_{23}\) on all three schedules.  If none is
+good, continue; if the cap is exhausted, output \(\mathsf{Abort}\).  Otherwise
+select the least good schedule \(s_{\rm fs}\).  Reconstruct the public affine
+system, compute its canonical origin \(y_{x,s_{\rm fs}}\), and row-reduce
+\(A_{s_{\rm fs}}\) to a canonical basis
+\(v_1,\ldots,v_r\) of its image.  Sample
+\(c_1,\ldots,c_r\leftarrow\mathbb F\) and set
+\[
+ y=y_{x,s_{\rm fs}}+\sum_{j=1}^r c_j\,v_j.
+\]
+Use \(y\) as the complete non-hash field view.  Simulate the five salted
+Merkle trees and their minimal frontiers, program the remaining transcript
+states lazily, sample the six canonical-minimum work nonces with their exact
+conditional laws, serialize the selected variable-length proof, finalize its
+proof-account frame, and append the deterministic public execution view.
+\end{description}
+
+Every input to this algorithm is public.  In particular,
+\(\mathsf{Good}_{23}\) consumes no witness, realized mask, private salt, or
+retry-derived hidden value.
+
+\begin{lemma}[Selection and cap-exhaustion law]
+\label{lem:selection-hiding-abort}
+Conditioned on no adversarial prequery of a programmed input and no
+programmed-state collision, the three branch schedules, their
+\(\mathsf{Good}_{23}\) bits,
+the least-good selector, and the all-bad bit have a witness-independent joint
+distribution.  The same holds for the first good completed attempt and the
+internal cap-17 \(\mathsf{Abort}\) event.  This event does not include
+truncation caused by a wall-clock deadline.
+\end{lemma}
+
+\begin{proof}
+The three typed label-44 inputs extend one common state by distinct bytes.
+At fresh random-oracle inputs their outputs are independent and uniform,
+conditioned on the common prefix.  \(\mathsf{Good}_{23}\) is a deterministic function of the
+resulting public schedule, so the Good bits and least-good selector inherit
+this witness-independent law.  Fresh attempt entropy and a fresh burned nonce
+make attempts independent.  Iterating the same coupling through the first
+good attempt, or through all 17 failures, proves the claim.  Since Abort is
+retained in the output space, no conditioning or division by a success
+probability occurs.
+\end{proof}
+
+\subsection{Private-Merkle and EPRO hybrids}
+
+For each opened leaf, the simulator samples the public 32-byte salt and
+computes the typed leaf hash.  It assigns independent uniform labels to the
+maximal unopened frontier subtrees and hashes upward to the public root.  A
+bounded distinguisher detects this replacement only by querying a hidden
+preimage or a programmed state, or through a collision.  The same lazy
+programming method handles mask and salt expansion, transcript challenges,
+and adaptive queries after output.
+
+For a work predicate with \(g\) leading work bits, the honest miner publishes
+the least successful 64-bit nonce.  The simulator samples the exact
+truncated-geometric minimum, answers earlier nonces as failures, the minimum
+as a success, and later queries lazily.  Across the six work states, the
+hardest predicate has \(g=37\); failure of the 64-bit search space is at most
+\(6\exp(-2^{27})\) per attempt.
+
+The adjacent hybrids are:
+\begin{enumerate}
+  \item \(H_0\): the honest prover with real mask, salt, transcript, branch,
+        retry, and work randomness;
+  \item \(H_1\): replace the non-hash view by the exact affine-image sample;
+  \item \(H_2\): replace hidden expander inputs and salted-leaf preimages,
+        preserving all opened value--salt records;
+  \item \(H_3\): sample unopened Merkle frontiers and program roots and
+        transcript challenges at fresh typed inputs;
+  \item \(H_4\): replace remaining hidden oracle states lazily, charge
+        programmed-state collisions, and retain consistent post-output
+        answers;
+  \item \(H_5\): generate three schedules, Good bits, least-good selection,
+        retries, and internal cap-exhaustion Abort using
+        Lemma~\ref{lem:selection-hiding-abort};
+  \item \(H_6\): replace the six work searches by their exact
+        canonical-minimum laws;
+  \item \(H_7\): serialize the schedule-dependent proof and append proof-
+        account finalization, logs, framing, and deterministic state change;
+  \item \(H_8\): the output of \(\mathsf{Sim}_{23}(x)\).
+\end{enumerate}
+The first step is perfect under
+Assumption~\ref{lem:complete-affine-image}.  The
+distribution changes in \(H_2\)--\(H_4\) are covered by one distinct-input
+inventory rather than by counting repeated SHA-256 invocations.
+
+\begin{table}[t]
+\centering
+\caption{Conservative distinct programmable-oracle input inventory per
+attempt.}
+\label{tab:epro-inventory}
+\begin{tabular}{@{}lr@{}}
+\toprule
+family & count \\
+\midrule
+salted-leaf preimages over five trees & 305152 \\
+hidden leaf-salt derivations & 305152 \\
+hidden Merkle-node forest upper bound & 305152 \\
+field expander, including \(D\) & 53892 \\
+seed and attempt binding & 8 \\
+distinct transcript inputs & 637 \\
+\midrule
+total \(C\) & 969993 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The transcript row comprises 47 typed absorbs, 292 possible challenge
+squeeze inputs, 292 matching advance inputs, and six work-predicate inputs.
+It includes the dedicated \(D\)-claim absorb and all three branch absorbs.
+Replaying a common prefix does not create new distinct inputs.
+
+\begin{lemma}[EPRO complete-view bound]
+\label{lem:epro-complete-view}
+Under Assumption~\ref{lem:complete-affine-image}, let \(A\le17\) be the
+number of completed attempts.  Assume each attempt begins with
+fresh independent 256-bit field entropy and leaf-salt seed and a fresh,
+durably burned public nonce, and that only the fixed-boundary output in
+Definition~\ref{def:profile23-complete-view} is public.  Assume also the
+ideal-completion or witness-independent external-truncation boundary model
+stated above.  Then
+\begin{equation}
+ \epsilon_{\rm RS}
+ \le
+ \frac{ACQ_H}{2^{256}}
+ +\frac{\binom{AC}{2}}{2^{256}}
+ +6A\exp(-2^{27}),
+ \qquad C=969993.
+ \label{eq:epro-bound}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Before a program point is exposed, the probability that at most \(Q_H\)
+adaptive oracle queries contain any of the \(AC\) hidden inputs is at most
+\(ACQ_H/2^{256}\).  This argument includes queries made after earlier public
+messages because the still-hidden program points retain uniform 256-bit
+states.  A union bound over pairs of programmed inputs gives
+\(\binom{AC}{2}/2^{256}\) for internal or cross-family state collisions.
+Outside those events, lazy programming makes every opened Merkle record,
+frontier, root, transcript answer, and later oracle query identically
+distributed in adjacent hybrids.  Lemma~\ref{lem:selection-hiding-abort}
+handles the branch and retry law.  The canonical-work coupling is exact
+unless one of the six 64-bit nonce spaces contains no solution; the hardest
+37-bit predicate contributes at most \(\exp(-2^{64-37})\), yielding the last
+term.  Proof-account framing and account mutation are deterministic functions
+of the simulated proof, statement, and public account branch and therefore
+add no error.
+\end{proof}
+
+At \(A=17\) and \(Q_H=2^{128}\), the three terms in
+Equation~\eqref{eq:epro-bound} have respectively
+\[
+ 104.02492234825198,\qquad
+ 209.04984478399368,\qquad
+ 193635243.91255844
+\]
+bits.  The first dominates; the sum has more than
+104.0249223482519 bits at the displayed precision.
+
+\begin{theorem}[Real view versus simulation]
+\label{thm:real-vs-sim23}
+Assume the complete affine-image and rank-coverage premise in
+Assumption~\ref{lem:complete-affine-image}.  In the declared programmable
+SHA-256 random-oracle model with ideal completion before the fixed boundary,
+or with the witness-independent external truncation defined above, for
+\(Q_H\le2^{128}\), every valid \((x,w)\), and arbitrary auxiliary input,
+\[
+ \mathsf{Real}_{23}(x,w)\approx_{\epsilon_{\rm RS}}
+ \mathsf{Sim}_{23}(x),
+ \qquad
+ -\log_2\epsilon_{\rm RS}>104.0249223482519.
+\]
+Equivalently, a three-decimal conservative floor is 104.024 bits.
+\end{theorem}
+
+\begin{proof}
+Compose Assumption~\ref{lem:complete-affine-image}, the hybrid sequence, and
+Lemma~\ref{lem:epro-complete-view}.  The simulator is witness-free by its
+construction, and both experiments include the same Abort outcome rather
+than conditioning on success.  An independent external cutoff is coupled
+identically and therefore adds no distinguishing advantage.
+\end{proof}
+
+\begin{corollary}[Pairwise-witness hiding]
+\label{cor:pairwise-hiding}
+Under the same affine-image premise and boundary model, for any fixed \(x\)
+and any \(w_0,w_1\) satisfying \(R_{23}(x,w_i)=1\),
+\[
+ \epsilon_{\rm pair}\le2\epsilon_{\rm RS},
+ \qquad
+ -\log_2\epsilon_{\rm pair}>103.0249223482519.
+\]
+A three-decimal conservative pairwise floor is 103.024 bits.
+\end{corollary}
+
+\begin{proof}
+Apply the triangle inequality along
+\(
+ \mathsf{Real}_{23}(x,w_0)\rightarrow
+ \mathsf{Sim}_{23}(x)\rightarrow
+ \mathsf{Real}_{23}(x,w_1)
+\).
+\end{proof}

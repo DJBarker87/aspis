@@ -1,7 +1,7 @@
 {
   "artifact": "profile23_d_after_g_soundness_epro",
   "date": "2026-07-14",
-  "status": "q18_complete_good_soundness_epro_green_and_profile23_one_transaction_released_35_of_35",
+  "status": "q18_complete_good_soundness_epro_green_and_profile23_one_transaction_released_36_of_36",
   "production_enabled": true,
   "production_wire_changed": true,
   "candidate": {
@@ -176,26 +176,27 @@
   "current_release": {
     "released": true,
     "release_certificate": "results/stage2/profile23_one_transaction_release.json",
-    "gates_green": 35,
-    "gates_total": 35,
+    "gates_green": 36,
+    "gates_total": 36,
     "proof": {
-      "path": "results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.bin",
-      "bytes": 63487,
-      "sha256": "0e6d33cec0e18842b37b5f3ec1883a6a9f8b52a8be774e10386400508c8708cb"
+      "path": "results/stage2/proofs/profile23_devnet_b1z_sequence0_q18_g37_production_authorizing_guarded_private.bin",
+      "bytes": 64447,
+      "sha256": "d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d"
     },
     "statement": {
-      "path": "results/stage2/proofs/atomic_state_only_profile23_v3_q18_g37_mined.statement.json",
-      "sha256": "520a0a86e1d1918a5270622ac27182b1f5b6df2b624d68bbd2a2b6f927eebb14"
+      "path": "results/stage2/proofs/profile23_devnet_b1z_sequence0_q18_g37_production_authorizing_guarded_private.statement.json",
+      "bytes": 667,
+      "sha256": "947a608c93487a634f37119bead8d61fe29e9cb6883493465d6fb35af27883c2"
     },
     "default_sbf": {
-      "bytes": 915656,
-      "sha256": "da66a51b1f3ce95e907a87fca15fb9dc0cce66fd47646875ce2dff94879fd254"
+      "bytes": 921848,
+      "sha256": "97c45a9abef97607a2fc6ed245829210046b234044b6738599d2bce0c367d04a"
     },
-    "production_tag60_cu": {
-      "tag59_same_binary": 1299012,
-      "program_owned_zeroed": 1300905,
-      "canonical_system_owned_create": 1303236,
-      "worst_case_headroom_under_1400000": 96764
+    "production_tag65_cu": {
+      "tag59_same_binary": 1303642,
+      "program_owned_zeroed": 1338471,
+      "canonical_system_owned_create": 1340803,
+      "worst_case_headroom_under_1400000": 59197
     },
     "johnson_selected_soundness_bits": 101.38010539241553,
     "johnson_coarse_soundness_bits": 100.16144938287455,
@@ -205,6 +206,7 @@
     "production_proof_accounts_sealed": true,
     "proof_finalize_wire_tag": 62,
     "pool_initialize_wire_tag": 63,
+    "proof_refund_wire_tag": 65,
     "program_id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue"
   },
   "remaining_gates": [],

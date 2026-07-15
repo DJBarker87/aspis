@@ -55,12 +55,12 @@ profile23-production = [
     "profile23-minimal-dispatch",
     "profile23-dynamic-rate512",
 ]
-# Production-only entrypoint. It accepts only the six wire tags
-# required by the finalized Profile23 lifecycle (0, 1, 59, 60, 62, 63) and
-# deliberately avoids rooting the historical diagnostic dispatcher in the
+# Production-only entrypoint. It accepts only the eight wire tags
+# required by the finalized Profile23 lifecycle (0, 1, 59, 60, 62, 63, 64, 65)
+# and deliberately avoids rooting the historical diagnostic dispatcher in the
 # deployed ELF. Full lifecycle and mutation KATs pin the resulting SBF.
 profile23-minimal-dispatch = []
-# Production derives only the 16 authenticated Rate-1/512 query paths instead
+# Production derives only the 18 authenticated Rate-1/512 query paths instead
 # of linking six full-domain coordinate tables into the deployed ELF.
 profile23-dynamic-rate512 = ["aspis-statement/profile23-dynamic-rate512"]
 diagnostic-unmined-profile23-acceptance = ["profile23-integrated-candidate"]
