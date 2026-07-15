@@ -252,8 +252,8 @@
   "current_release": {
     "released": true,
     "release_certificate": "results/spend/spend_one_transaction_release.json",
-    "gates_green": 36,
-    "gates_total": 36,
+    "gates_green": 37,
+    "gates_total": 37,
     "proof": {
       "path": "crates/aspis-prover/fixtures/spend_q18_g37_release.bin",
       "bytes": 65407,

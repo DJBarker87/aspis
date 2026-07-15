@@ -1,0 +1,197 @@
+{
+  "artifact": "spend_devnet_readiness",
+  "generated_at_utc": "2026-07-15T20:33:23.988424+00:00",
+  "mode": "read_only",
+  "mutations_performed": false,
+  "ready": false,
+  "expected_genesis_hash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "observed_genesis_hash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "rpc_origin_redacted": "https://api.devnet.solana.com/<redacted>",
+  "program_id": "9TLMUHsDo9gCU5gTk4DkXXwV3E5YDa4yYFa7fk6kW95C",
+  "payer_pubkey": "6xf6m4fJGCAQ5eXAn4L437ijXQtywRXwteJqJheJRUbZ",
+  "pool_pubkey": "Bq3fB3jx7SbyX8xfPquwimiChDK1wjdPkgwJRqKpSCqq",
+  "proof_account_pubkey": "7hLgA94ucy1ZdxTmd8L7znDXgpQxdcojS6JjLF196qhk",
+  "proof_sha256": "da5e8c305c0dbde30fc2edf064b620aafb1104362bb2d2e90393373cec254827",
+  "sbf_sha256": "e289faf85fe4773880794d5d4356461bb9cb94077b68711f99348efe19707d7e",
+  "release_sha256": "6efecd8cc00a4e52b111fb3dfb8775ce018fae089d4e309652269faf2dd4b740",
+  "statement_sha256": "3920aa059ca7eb62870b3b962c53c5ca4df757240da3a73dbf6930d4255cd924",
+  "nullifier_address": "J1wHmpVwpyWZXdKh5LonJB7NDbAXVHwBXjZ8oVa8csxL",
+  "program_already_deployed": false,
+  "rent_budget": {
+    "program_buffer_lamports": 6434582640,
+    "programdata_lamports": 6434638320,
+    "program_account_lamports": 1141440,
+    "pool_account_lamports": 1447680,
+    "proof_account_lamports": 446602320,
+    "nullifier_account_lamports": 1392000,
+    "fee_reserve_lamports": 50000000,
+    "conservative_required_lamports": 6935221760,
+    "payer_balance_lamports": 0,
+    "surplus_lamports": -6935221760
+  },
+  "gates": [
+    {
+      "name": "explicit_https_rpc",
+      "passed": true,
+      "evidence": "redacted_origin=Some(\"https://api.devnet.solana.com/<redacted>\")"
+    },
+    {
+      "name": "exact_cluster_genesis",
+      "passed": true,
+      "evidence": "network=devnet, observed=Some(\"EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG\"), expected=EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG"
+    },
+    {
+      "name": "payer_keypair_secure",
+      "passed": true,
+      "evidence": "explicit secure keypair"
+    },
+    {
+      "name": "program_keypair_secure",
+      "passed": true,
+      "evidence": "explicit secure keypair"
+    },
+    {
+      "name": "pool_keypair_secure",
+      "passed": true,
+      "evidence": "explicit secure keypair"
+    },
+    {
+      "name": "proof_account_keypair_secure",
+      "passed": true,
+      "evidence": "explicit secure keypair"
+    },
+    {
+      "name": "runtime_program_id_from_explicit_program_keypair",
+      "passed": true,
+      "evidence": "runtime_program_id=Some(9TLMUHsDo9gCU5gTk4DkXXwV3E5YDa4yYFa7fk6kW95C)"
+    },
+    {
+      "name": "replay_probe_keypair_secure_or_devnet_ephemeral_fallback",
+      "passed": true,
+      "evidence": "explicit=true, pubkey=Some(2vmGe5DT9BCaekNhT2RFPytnk9J6N3J5XWM9BFBCpHJT), devnet_ephemeral_fallback=false"
+    },
+    {
+      "name": "upgrade_authority_secure_and_policy_compliant",
+      "passed": true,
+      "evidence": "explicit=true, expected=Some(9Q3FdNJFL7KY5zvLocJNvpA8Gtfipb2WxCH6ErdhRnrC), mainnet_required=false"
+    },
+    {
+      "name": "deployment_buffer_secure_and_policy_compliant",
+      "passed": true,
+      "evidence": "explicit=true, pubkey=Some(FQ4LV29JBovCzAyV3Jgtz5XmDapBcz53xVyhHcFFGUsE), mainnet_required=false"
+    },
+    {
+      "name": "direct_tpu_loader_policy",
+      "passed": true,
+      "evidence": "use_tpu_client=false, mainnet_required=false"
+    },
+    {
+      "name": "all_explicit_signer_roles_distinct",
+      "passed": true,
+      "evidence": "all explicit signer identities are pairwise distinct"
+    },
+    {
+      "name": "release_certificate_nonempty_all_declared_gates_green",
+      "passed": true,
+      "evidence": "gate_count=Some(37), green_gate_count=Some(37), released=true"
+    },
+    {
+      "name": "release_certificate_matches_live_read_only_evaluation",
+      "passed": true,
+      "evidence": "error=None"
+    },
+    {
+      "name": "release_source_hashes_exact",
+      "passed": true,
+      "evidence": "all release-pinned source artifacts rehashed"
+    },
+    {
+      "name": "explicit_proof_matches_release_instance",
+      "passed": true,
+      "evidence": "instance=devnet_rehearsal_instance, path=crates/aspis-prover/fixtures/spend_devnet_q18_g37.bin, bytes=Some(63999), sha256=da5e8c305c0dbde30fc2edf064b620aafb1104362bb2d2e90393373cec254827"
+    },
+    {
+      "name": "explicit_statement_matches_release_instance",
+      "passed": true,
+      "evidence": "instance=devnet_rehearsal_instance, path=crates/aspis-prover/fixtures/spend_devnet_q18_g37.statement.json, bytes=Some(767), sha256=3920aa059ca7eb62870b3b962c53c5ca4df757240da3a73dbf6930d4255cd924, pool=a0e3c0f1c6c10baec8fc98c47fd56256d4c89827dbfc495febef2a13741f3db4, sequence=0, digest=a20240721caf5675da70d5653111fa55a0c1d4ce250770a40076c2a1b6490d13, deployment_domain=50b77813faf4df58226a1c6972952c21be88912701d881977b5eeab7ac8b6b46"
+    },
+    {
+      "name": "release_instance_selector_is_live_least_good",
+      "passed": true,
+      "evidence": "candidates=3, serialized=Some(0), least=Some(0), branches=3, executed_instance=devnet_rehearsal_instance, executed_selector=Some(0)"
+    },
+    {
+      "name": "release_instance_good_spend_fingerprint_matches_live_code",
+      "passed": true,
+      "evidence": "release=0xf4dfc0a490333eb52e0ce334de5ed1267be103baf0160421a90883c280276b1d, live=0xf4dfc0a490333eb52e0ce334de5ed1267be103baf0160421a90883c280276b1d"
+    },
+    {
+      "name": "release_instance_declares_production_host_verification_green",
+      "passed": true,
+      "evidence": "declared=true"
+    },
+    {
+      "name": "production_host_verifies_exact_proof_and_statement",
+      "passed": true,
+      "evidence": "error=None"
+    },
+    {
+      "name": "explicit_sbf_matches_release",
+      "passed": true,
+      "evidence": "sha256=Some(\"e289faf85fe4773880794d5d4356461bb9cb94077b68711f99348efe19707d7e\")"
+    },
+    {
+      "name": "program_max_len_explicit_and_sufficient",
+      "passed": true,
+      "evidence": "max_len=924344, sbf_len=Some(924344)"
+    },
+    {
+      "name": "fresh_pool_known_before_proof_and_release",
+      "passed": true,
+      "evidence": "pool_pubkey=Some(Bq3fB3jx7SbyX8xfPquwimiChDK1wjdPkgwJRqKpSCqq), sidecar_sha256=Some(\"3920aa059ca7eb62870b3b962c53c5ca4df757240da3a73dbf6930d4255cd924\")"
+    },
+    {
+      "name": "program_absent_or_exact_release_deployment",
+      "passed": true,
+      "evidence": "already_deployed=Some(false)"
+    },
+    {
+      "name": "fresh_pool_account_absent_or_exact_explicit_resume",
+      "passed": true,
+      "evidence": "pool=Some(Bq3fB3jx7SbyX8xfPquwimiChDK1wjdPkgwJRqKpSCqq), resume=false, checkpoint=None, resume_error=None"
+    },
+    {
+      "name": "fresh_proof_account_absent_or_exact_explicit_resume",
+      "passed": true,
+      "evidence": "proof_account=Some(7hLgA94ucy1ZdxTmd8L7znDXgpQxdcojS6JjLF196qhk), resume=false, resume_error=None"
+    },
+    {
+      "name": "canonical_nullifier_absent_or_prefunded_compatible",
+      "passed": true,
+      "evidence": "address=Some(J1wHmpVwpyWZXdKh5LonJB7NDbAXVHwBXjZ8oVa8csxL), observed=false"
+    },
+    {
+      "name": "explicit_solana_cli_executable",
+      "passed": true,
+      "evidence": "path=/Users/dominic/.local/share/solana/install/active_release/bin/solana"
+    },
+    {
+      "name": "evidence_path_fresh_or_exact_explicit_resume_marker",
+      "passed": true,
+      "evidence": "path=/Users/dominic/ZK/results/spend/evidence, resume=false"
+    },
+    {
+      "name": "payer_covers_conservative_rent_and_fees",
+      "passed": false,
+      "evidence": "balance=Some(0), required=Some(6935221760), surplus=Some(-6935221760)"
+    }
+  ],
+  "blockers": [
+    "payer_covers_conservative_rent_and_fees"
+  ],
+  "explicit_nonclaims": [
+    "Readiness never signs, deploys, creates accounts, uploads proof bytes, or submits transactions.",
+    "A devnet rehearsal is not mainnet-beta evidence.",
+    "Proof upload/finalization and pool initialization are setup transactions, not the one-transaction verification/state-transition claim."
+  ]
+}
