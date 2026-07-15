@@ -13,10 +13,6 @@ mainnet-beta transaction at 1,343,749 CU:
 [Mainnet evidence](docs/profile23-mainnet-demo.md) ·
 [Prepublication review](docs/reviews/profile23-prepublication-security-review.html)
 
-Throughout, "the release" means the q18/g37 release — 18 queries per fold
-branch and a 37-bit batch-grinding parameter. Internal paths and certificates
-version it as `profile23`.
-
 ## Transaction flow
 
 ![Proof upload, sealing, and one-transaction verification with atomic state transition](docs/assets/transaction-flow.svg)
@@ -30,7 +26,8 @@ version it as `profile23`.
 
 ## Mainnet result
 
-The exact q18/g37 release was executed on Solana mainnet-beta on
+The release — q18/g37, for its 18 queries per fold branch and 37-bit
+batch-grinding parameter — was executed on Solana mainnet-beta on
 14 July 2026:
 
 | Released result | Value |
@@ -121,7 +118,7 @@ python3 tools/reconstruct_profile23_mainnet_sbf.py \
 [The paper](paper/profile23-mainnet-v1/profile23.pdf) states the exact
 relation, transcript, and security reductions. Its abstract:
 
-> This paper presents Profile 23, a transparent argument for a depth-20,
+> This paper presents [Aspis], a transparent argument for a depth-20,
 > one-input/one-output shielded-spend relation together with a Solana program
 > that verifies the argument and atomically records the corresponding
 > nullifier and pool-state transition. The accepting instruction consumes a
@@ -175,6 +172,10 @@ relation, transcript, and security reductions. Its abstract:
 | `results/stage2/` | Machine-readable certificates and network records |
 | `docs/` | Protocol, implementation, security, and deployment notes |
 | `archive/` | Index of superseded and failed research retained in Git |
+
+The `profile23` in file and certificate names is the internal working name
+for this release. It stays in paths because the frozen SHA-256 manifests and
+the on-chain evidence pin those exact filenames.
 
 Earlier prototypes, rejected parameters, and failed designs are preserved in
 the immutable
