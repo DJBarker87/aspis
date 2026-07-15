@@ -48,19 +48,19 @@ used for the headline claim.
 The content identities used throughout the evaluation are:
 \begin{description}
   \item[Proof.] \ProfileProofBytes{} bytes; SHA-256
-  \nolinkurl{d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d}.
-  \item[Statement sidecar.] 667 bytes; SHA-256
-  \nolinkurl{947a608c93487a634f37119bead8d61fe29e9cb6883493465d6fb35af27883c2}.
+  \nolinkurl{32eb419e0c5c3ef4fa2db0d32579e88f1207547d8fb010279efeb6c05981b529}.
+  \item[Statement sidecar.] 767 bytes; SHA-256
+  \nolinkurl{c35f6152ce4ffbfa6edeba68b4a6d2738e19b1420181c9500ba73f0c717c8699}.
   \item[Canonical public-input digest.] SHA-256
-  \nolinkurl{b2d150dfcb6432c1b6f2e3892ee45a9aa5f393809d97c8292fea975b3da35fa3}.
+  \nolinkurl{f022136a00af841abf2ffcff08969847e9490d1cef9b4dc1ae48f978d58a2bd8}.
   \item[Production SBF.] \ProfileSbfBytes{} bytes; SHA-256
-  \nolinkurl{97c45a9abef97607a2fc6ed245829210046b234044b6738599d2bce0c367d04a}.
+  \nolinkurl{e289faf85fe4773880794d5d4356461bb9cb94077b68711f99348efe19707d7e}.
   \item[Release certificate.] SHA-256
-  \nolinkurl{4ace42c0954bee74382520bbb0818da86e570ec9b212c61cb21130dc644a2725}.
+  \nolinkurl{9522b2b36b73e326ab89a23c3a23cd3ac1a96ac8da2760593ed58c07ce0bbf96}.
 \end{description}
 
 The statement has sequence zero, asset identifier 17, and fee 1.  Each of the
-three reconstructed schedules met the required $\mathsf{Good}_{23}$ ranks,
+three reconstructed schedules met the required $\mathsf{Good}_{\mathrm{spend}}$ ranks,
 so selector zero was both serialized and the least accepted selector.  The
 proof, statement, and SBF identities were required to agree across host
 acceptance, local mutation, release, and mainnet preflight artifacts.
@@ -100,23 +100,35 @@ Table~\ref{tab:production-cu} reports literal transaction totals.
     \toprule
     Marker path & Tag~59 CU & Tag~65 CU & Headroom \\
     \midrule
-    program-owned zero marker & 1,303,642 & 1,338,471 & 61,529 \\
-    System-owned marker creation & 1,303,642 & 1,340,803 & 59,197 \\
+    program-owned zero marker & 1,306,464 & 1,341,724 & 58,276 \\
+    System-owned marker creation & 1,306,464 & 1,344,057 & 55,943 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
 The local production matrix also admitted only the intended feature set and
-rejected combinations with diagnostic and superseded profiles.  It accepted
+rejected every union with the workspace's insecure diagnostic and test
+features.  It accepted
 the mined proof on tags 59 and 65, rejected a separately committed unmined
 proof, and submitted corrupted-proof transactions to check rollback.  Both
 marker paths produced the expected pool and nullifier images; a duplicate was
 rejected without a second mutation.  A two-signer race on the canonical
-System-owned marker path produced exactly one commit.  Successful tag~65 runs
-closed the proof account and reconciled its complete lamport refund.
+System-owned marker path produced exactly one commit.  On each path a second
+pool was initialized through the real tag~63 instruction with a different
+domain tag; running the valid mined proof against it landed as a failure
+with exactly the deployment-domain mismatch error and changed no account.
+Successful tag~65 runs closed the proof account and reconciled its complete
+lamport refund.
 
 \subsection{Mainnet-beta method}
 \label{sec:evaluation-mainnet-method}
+
+The mainnet execution recorded below was performed with the release
+immediately preceding the v4 statement: its statement carried no deployment
+domain, and its proof and program identities differ from the current
+fixtures.  The execution method and its checks are unchanged by the v4
+statement; the transaction remains finalized on-chain evidence for the
+prior release's exact bytes.
 
 The mainnet run used the Solana genesis hash
 \begin{center}
@@ -177,9 +189,10 @@ and leaves \ProfileMainnetComputeHeadroom{} CU.  The transaction fee was
 10,000 lamports and the metadata reported no error.
 
 The program emitted the domain-separated proof-digest log
-\texttt{aspis-proof-sha256-v1}.  Decoding its value gives exactly the release
-proof SHA-256 listed in Section~\ref{sec:evaluation-release}; the executor
-required this equality in both simulation and finalized logs.  The pool at
+\texttt{aspis-proof-sha256-v1}.  Decoding its value gives exactly the prior
+release proof's SHA-256,
+\nolinkurl{d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d};
+the executor required this equality in both simulation and finalized logs.  The pool at
 \nolinkurl{B1z4gQ82xerghDKZ68HuP2Tehx5ER5mfVHq74y4ew3kk} advanced from sequence
 zero to one and its data hash changed from
 \nolinkurl{3cad0b60e8a697c28f7c16657ed19142893f2eb5513dc0bc1382942d1789d11e}
@@ -261,7 +274,7 @@ both providers.  It binds each of 1,067 loader writes to the pinned buffer and
 authority and reconstructs all 921,848 SBF bytes without gaps or overlaps.
 The recovered SHA-256 is
 \nolinkurl{97c45a9abef97607a2fc6ed245829210046b234044b6738599d2bce0c367d04a},
-equal to the bundled SBF.  Applying the loader-v3 ProgramData header gives
+equal to the SBF frozen by that run's release certificate.  Applying the loader-v3 ProgramData header gives
 \nolinkurl{7fe4c7352f19ed00a3ba72b3dc6038943db3e5311c23cd5c1b0f8dbb15c4cda2},
 equal to the pre-close account-data digest.  The same replay checks the
 deployment identities and decodes the landed 137-byte tag-65 payload, account

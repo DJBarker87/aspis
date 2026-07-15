@@ -33,7 +33,7 @@ state.  The implementation instead accepts a caller-selected deadline
 (3,600 seconds by default) and publishes \(\mathsf{Abort}\) when no candidate
 is ready.  No wall time or selected boundary is recorded for the current
 release proof.  The algebraic bound in
-Lemma~\ref{lem:good23-product} excludes the wall-clock event and therefore is
+Lemma~\ref{lem:goodspend-product} excludes the wall-clock event and therefore is
 not a bound on the total deployed Abort probability.  Applying the hiding
 theorem to a concrete deadline requires either a witness-independent readiness
 argument or a padded scheduling mechanism.
@@ -53,21 +53,27 @@ and authority were checked through verification finality, after which a
 separate close transaction removed ProgramData.  The recorded transaction is
 therefore execution evidence, not a continuously available mainnet service.
 
-The statement binds the pool public key, pool sequence and anchors, and spend
-fields.  The release certificate separately binds the frozen SBF digest.  The
-statement itself does not bind the cluster genesis, runtime program address, or
-SBF identity.  A proof is therefore portable to another deployment that
-deliberately recreates the identical pool identity, state, and public input
-under a compatible verifier.  This property enabled exact-proof devnet
-rehearsal followed by the mainnet demonstration.  Economically linked
-deployments must use independent pool identities or add an explicit deployment
-domain to the relation; otherwise the same proof can be accepted once by each
-cloned state machine.  The released demonstration pool represented no
-redeemable asset.
+The statement binds the pool public key, pool sequence and anchors, the spend
+fields, and the pool's deployment domain
+\(\Delta=\operatorname{SHA-256}(\mathrm{sep}\,\|\,\mathrm{pid}\,\|\,\tau)\),
+where \(\mathrm{pid}\) is the runtime program id and \(\tau\) the domain tag
+stored at pool initialization.  The release certificate separately binds the
+frozen SBF digest.  A proof ground for one deployment domain is rejected by
+any pool storing another, with a distinct error code, before proof bytes are
+interpreted; cross-deployment replay against an honestly initialized pool is
+therefore excluded by the statement itself rather than by operational
+discipline.  The residual is keyholder-shaped: the holder of the program-id
+keypair can redeploy the same program id on another cluster and initialize a
+pool there with the same domain tag, reproducing an identical \(\Delta\).
+The binding is nevertheless independently checkable: any observer can
+recompute \(\Delta\) from the public program id and domain tag and confirm
+which deployment a statement commits to.  Economically linked deployments
+under distinct program ids or distinct domain tags cannot accept each
+other's proofs.
 
 The hiding theorems are conditional on the complete affine-image and
 rank-coverage premise in Assumption~\ref{lem:complete-affine-image}.  The
-\(\mathsf{Good}_{23}\) checker supplies release-bound evidence by reconstructing
+\(\mathsf{Good}_{\mathrm{spend}}\) checker supplies release-bound evidence by reconstructing
 and eliminating the relevant finite-field matrices from the frozen layout.
 The fingerprints and regression tests detect drift, but no independent
 verifier of the reconstruction and implementation binding is presently

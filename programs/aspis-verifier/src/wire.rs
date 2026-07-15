@@ -563,22 +563,24 @@ pub enum AspisInstruction {
     /// Append-only tag 59. Complete read-only Spend H26/G27/D28
     /// verifier. The diagnostic selector bypasses only PoW in an explicitly
     /// nondefault build; default binaries reject before proof interpretation.
-    VerifyAtomicStateOnlySpendV3 {
+    VerifyAtomicStateOnlySpendV4 {
         pool: [u8; 32],
         sequence: u64,
         public_input: [u8; 104],
         output_anchor: [u8; 32],
+        deployment_domain: [u8; 32],
         diagnostic_unmined: bool,
     },
     /// Append-only tag 60. Production-PoW Spend mutation wrapper. This
     /// remains feature-gated and has no unmined selector on its wire.
-    ApplyAtomicStateOnlySpendV3 {
+    ApplyAtomicStateOnlySpendV4 {
         current_anchor: [u8; 32],
         nullifier: [u8; 32],
         output_commitment: [u8; 32],
         output_anchor: [u8; 32],
         asset_id: u32,
         fee: u32,
+        deployment_domain: [u8; 32],
     },
     /// Append-only tag 61. Local-validator-only mutation measurement that
     /// reuses tag 59's parser and bypasses transcript PoW only.
@@ -595,9 +597,16 @@ pub enum AspisInstruction {
     /// Production Spend tags 59/60 accept only sealed accounts.
     FinalizeProof,
     /// Append-only tag 63. Initializes a newly created, program-owned pool
-    /// account. The pool key must sign, the exact 48-byte account must still
-    /// be all zero, and the initial anchor must be canonically encoded.
-    InitializeAtomicPool { sequence: u64, anchor: [u8; 32] },
+    /// account. The pool key must sign, the exact 80-byte account must still
+    /// be all zero, and the initial anchor must be canonically encoded. The
+    /// program derives and stores the pool's deployment domain as
+    /// `sha256("aspis-spend-deployment-domain-v1" || runtime_program_id ||
+    /// domain_tag)`.
+    InitializeAtomicPool {
+        sequence: u64,
+        anchor: [u8; 32],
+        domain_tag: Vec<u8>,
+    },
     /// Append-only tag 64. Close a sealed proof account and refund every
     /// lamport to a writable System account. Both accounts must sign, so only
     /// the holder of the proof-account key can reclaim its rent.
@@ -606,13 +615,14 @@ pub enum AspisInstruction {
     /// atomic proof-rent refund. This preserves tag 60's original read-only,
     /// proof-retaining ABI while allowing a proof holder to opt into closure
     /// by supplying the proof and refund accounts as writable signers.
-    ApplyAtomicStateOnlySpendV3WithProofRefund {
+    ApplyAtomicStateOnlySpendV4WithProofRefund {
         current_anchor: [u8; 32],
         nullifier: [u8; 32],
         output_commitment: [u8; 32],
         output_anchor: [u8; 32],
         asset_id: u32,
         fee: u32,
+        deployment_domain: [u8; 32],
     },
 }
 
@@ -1130,23 +1140,25 @@ mod tests {
                 58,
             ),
             (
-                AspisInstruction::VerifyAtomicStateOnlySpendV3 {
+                AspisInstruction::VerifyAtomicStateOnlySpendV4 {
                     pool: [0u8; 32],
                     sequence: 0,
                     public_input: [0u8; 104],
                     output_anchor: [0u8; 32],
+                    deployment_domain: [0u8; 32],
                     diagnostic_unmined: false,
                 },
                 59,
             ),
             (
-                AspisInstruction::ApplyAtomicStateOnlySpendV3 {
+                AspisInstruction::ApplyAtomicStateOnlySpendV4 {
                     current_anchor,
                     nullifier,
                     output_commitment,
                     output_anchor,
                     asset_id,
                     fee,
+                    deployment_domain: [0u8; 32],
                 },
                 60,
             ),
@@ -1166,18 +1178,20 @@ mod tests {
                 AspisInstruction::InitializeAtomicPool {
                     sequence: 0,
                     anchor: [0u8; 32],
+                    domain_tag: b"mainnet-beta".to_vec(),
                 },
                 63,
             ),
             (AspisInstruction::CloseFinalizedProof, 64),
             (
-                AspisInstruction::ApplyAtomicStateOnlySpendV3WithProofRefund {
+                AspisInstruction::ApplyAtomicStateOnlySpendV4WithProofRefund {
                     current_anchor,
                     nullifier,
                     output_commitment,
                     output_anchor,
                     asset_id,
                     fee,
+                    deployment_domain: [0u8; 32],
                 },
                 65,
             ),

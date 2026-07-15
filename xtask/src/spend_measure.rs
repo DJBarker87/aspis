@@ -51,10 +51,10 @@ use solana_sdk::system_instruction;
 
 use aspis_prover::HOST_HASH;
 use aspis_verifier::atomic_payment::{
-    atomic_nullifier_address, AtomicPaymentPublicInputs, AtomicPoolStateV1,
-    ATOMIC_ERROR_NULLIFIER_ALREADY_SPENT, ATOMIC_ERROR_VERIFIER_NOT_INTEGRATED,
-    ATOMIC_NULLIFIER_MAGIC, ATOMIC_NULLIFIER_MARKER_LEN, ATOMIC_NULLIFIER_VERSION,
-    ATOMIC_POOL_STATE_LEN,
+    atomic_nullifier_address, AtomicPaymentPublicInputs, AtomicPoolStateV2,
+    ATOMIC_ERROR_DEPLOYMENT_DOMAIN_MISMATCH, ATOMIC_ERROR_NULLIFIER_ALREADY_SPENT,
+    ATOMIC_ERROR_VERIFIER_NOT_INTEGRATED, ATOMIC_NULLIFIER_MAGIC, ATOMIC_NULLIFIER_MARKER_LEN,
+    ATOMIC_NULLIFIER_VERSION, ATOMIC_POOL_STATE_LEN,
 };
 use aspis_verifier::{AspisInstruction, PROOF_ACCOUNT_HEADER_LEN};
 
@@ -73,29 +73,26 @@ const RELEASE_STATEMENT_PATH: &str =
 /// fixture, preserved so the production PoW rejection teeth need no
 /// diagnostic build.
 const COMMITTED_UNMINED_PROOF_PATH: &str =
-    "crates/aspis-prover/fixtures/atomic_state_only_spend_v3_unmined.bin";
-const COMMITTED_UNMINED_PROOF_BYTES: usize = 67_327;
+    "crates/aspis-prover/fixtures/atomic_state_only_spend_v4_unmined.bin";
+const COMMITTED_UNMINED_PROOF_BYTES: usize = 64_447;
 const COMMITTED_UNMINED_PROOF_SHA256: &str =
-    "a5ed698a32d815ffd95f8d3e0be62d16620d32e216a087a350852726fb6ca238";
+    "cf3ba127153e726e0e6eb5e4f546b6562a9c57d1ae6ee6a0df6b25aac0863b3b";
 
 const PRODUCTION_ONLY_FEATURES: [&str; 1] = ["spend-production"];
 
 /// The forbidden feature list pinned by the release evaluator. Every union of
 /// the production alias with one of these (and with all of them at once) must
-/// fail to build. The features were deleted from the program manifest with
-/// the research tree, so each union now fails at Cargo feature resolution.
-const PRODUCTION_FORBIDDEN_FEATURES: [&str; 11] = [
-    "diagnostic-unmined-mutation",
-    "diagnostic-unmined-profile21-mutation",
-    "diagnostic-unmined-profile22-acceptance",
-    "diagnostic-unmined-profile22-mutation",
+/// fail to build. The list names the insecure diagnostic/test features that
+/// still exist elsewhere in the workspace (prover fixture entropy, weakened
+/// Fiat-Shamir schedules, broken compression, unmined diagnostics); none may
+/// ever become resolvable features of the deployed program crate.
+const PRODUCTION_FORBIDDEN_FEATURES: [&str; 6] = [
     "diagnostic-unmined-spend-acceptance",
     "diagnostic-unmined-spend-mutation",
-    "profile20-mutation-candidate",
-    "profile21-integrated-candidate",
-    "profile21-mutation-candidate",
-    "profile22-integrated-candidate",
-    "profile22-mutation-candidate",
+    "insecure-spend-fixture",
+    "insecure-test-framing",
+    "insecure-test-logup-compression",
+    "insecure-test-ordering",
 ];
 
 #[derive(Serialize)]
@@ -197,6 +194,10 @@ pub struct SpendProductionMutationPathSummary {
     pub production_tag65_simulation_logged_proof_sha256: String,
     pub corrupt_proof_rejected_with_transaction_rollback: bool,
     pub corrupt_transaction_landed_error: String,
+    pub deployment_domain_second_pool_initialized_via_tag63: bool,
+    pub deployment_domain_mismatch_rejected_exact: bool,
+    pub deployment_domain_mismatch_landed_error: String,
+    pub deployment_domain_mismatch_rollback_green: bool,
     pub committed_transition_succeeded: bool,
     pub proof_account_absent_after_success: bool,
     pub proof_refund_lamports: Option<u64>,
@@ -859,11 +860,11 @@ fn build_spend_production_sbf(root: &Path) -> Result<PathBuf> {
 }
 
 /// Prove that the production alias cannot be feature-unified with a PoW
-/// bypass or a superseded-profile candidate. The forbidden features were
-/// deleted from the program manifest with the research tree, so every union
-/// must now fail Cargo feature resolution before any code is compiled. Each
-/// union is checked independently so one working guard cannot hide a missing
-/// guard, plus one grouped invocation.
+/// bypass or an insecure test/fixture feature. None of the forbidden names
+/// is a feature of the program crate, so every union must fail Cargo
+/// feature resolution before any code is compiled. Each union is checked
+/// independently so one working guard cannot hide a missing guard, plus one
+/// grouped invocation.
 fn check_spend_production_feature_isolation(root: &Path) -> Result<Vec<String>> {
     const PRODUCTION_ALIAS: &str = "spend-production";
 
@@ -921,7 +922,7 @@ fn check_spend_production_feature_isolation(root: &Path) -> Result<Vec<String>> 
 /// The committed unmined KAT's own public statement. The fixture proof was
 /// generated against this exact synthetic statement; the constants are frozen
 /// with the fixture bytes.
-fn committed_unmined_kat_statement() -> Result<aspis_statement::AtomicPaymentStatementV3> {
+fn committed_unmined_kat_statement() -> Result<aspis_statement::AtomicPaymentStatementV4> {
     use aspis_core::field::M31;
     use aspis_statement::atomic_state_only_trace::atomic_merkle_root_v3;
     use aspis_statement::{
@@ -951,7 +952,7 @@ fn committed_unmined_kat_statement() -> Result<aspis_statement::AtomicPaymentSta
         &input_salt,
     );
     let output = output_commitment(&output_owner_key, value_out, asset_id, &output_salt);
-    Ok(aspis_statement::AtomicPaymentStatementV3 {
+    Ok(aspis_statement::AtomicPaymentStatementV4 {
         pool: [0x5a; 32],
         sequence: 73,
         spend: SpendPublic {
@@ -964,6 +965,7 @@ fn committed_unmined_kat_statement() -> Result<aspis_statement::AtomicPaymentSta
         },
         output_anchor: atomic_merkle_root_v3(output, &path)
             .map_err(|error| anyhow!("atomic output root: {error:?}"))?,
+        deployment_domain: [0x5d; 32],
     })
 }
 
@@ -984,7 +986,7 @@ fn spend_public_bytes(public: &aspis_statement::SpendPublic) -> [u8; 104] {
 }
 
 fn public_inputs(
-    statement: &aspis_statement::AtomicPaymentStatementV3,
+    statement: &aspis_statement::AtomicPaymentStatementV4,
 ) -> AtomicPaymentPublicInputs {
     use aspis_statement::encode_digest_canonical;
     AtomicPaymentPublicInputs {
@@ -994,23 +996,28 @@ fn public_inputs(
         output_anchor: encode_digest_canonical(&statement.output_anchor),
         asset_id: statement.spend.asset_id.0,
         fee: statement.spend.fee,
+        deployment_domain: statement.deployment_domain,
     }
 }
 
 /// Wire tag 59: read-only production verification.
 fn read_only_instruction(
     proof: Pubkey,
-    statement: &aspis_statement::AtomicPaymentStatementV3,
+    statement: &aspis_statement::AtomicPaymentStatementV4,
     diagnostic_unmined: bool,
 ) -> Result<Instruction> {
     Ok(Instruction {
         program_id: aspis_verifier::id(),
-        accounts: vec![AccountMeta::new_readonly(proof, false)],
-        data: to_vec(&AspisInstruction::VerifyAtomicStateOnlySpendV3 {
+        accounts: vec![
+            AccountMeta::new_readonly(proof, false),
+            AccountMeta::new_readonly(Pubkey::new_from_array(statement.pool), false),
+        ],
+        data: to_vec(&AspisInstruction::VerifyAtomicStateOnlySpendV4 {
             pool: statement.pool,
             sequence: statement.sequence,
             public_input: spend_public_bytes(&statement.spend),
             output_anchor: aspis_statement::encode_digest_canonical(&statement.output_anchor),
+            deployment_domain: statement.deployment_domain,
             diagnostic_unmined,
         })?,
     })
@@ -1033,26 +1040,28 @@ fn legacy_tag60_transition_instruction(
             AccountMeta::new(payer, true),
             AccountMeta::new_readonly(solana_sdk::system_program::id(), false),
         ],
-        data: to_vec(&AspisInstruction::ApplyAtomicStateOnlySpendV3 {
+        data: to_vec(&AspisInstruction::ApplyAtomicStateOnlySpendV4 {
             current_anchor: public.current_anchor,
             nullifier: public.nullifier,
             output_commitment: public.output_commitment,
             output_anchor: public.output_anchor,
             asset_id: public.asset_id,
             fee: public.fee,
+            deployment_domain: public.deployment_domain,
         })?,
     })
 }
 
 fn tag65_wire(public: &AtomicPaymentPublicInputs) -> Result<Vec<u8>> {
     Ok(to_vec(
-        &AspisInstruction::ApplyAtomicStateOnlySpendV3WithProofRefund {
+        &AspisInstruction::ApplyAtomicStateOnlySpendV4WithProofRefund {
             current_anchor: public.current_anchor,
             nullifier: public.nullifier,
             output_commitment: public.output_commitment,
             output_anchor: public.output_anchor,
             asset_id: public.asset_id,
             fee: public.fee,
+            deployment_domain: public.deployment_domain,
         },
     )?)
 }
@@ -1164,7 +1173,7 @@ struct SelectedInstance {
     proof: Vec<u8>,
     proof_sha256: String,
     recorded_statement_path: String,
-    statement: aspis_statement::AtomicPaymentStatementV3,
+    statement: aspis_statement::AtomicPaymentStatementV4,
     statement_sha256: String,
     canonical_public_input_digest: String,
     command: String,
@@ -1295,9 +1304,10 @@ fn run_production_path(
     let pool_key = Pubkey::new_from_array(statement.pool);
     let (marker_key, _) = atomic_nullifier_address(&aspis_verifier::id(), &public.nullifier);
     let mut pool_bytes = [0u8; ATOMIC_POOL_STATE_LEN];
-    AtomicPoolStateV1 {
+    AtomicPoolStateV2 {
         sequence: statement.sequence,
         anchor: public.current_anchor,
+        deployment_domain: statement.deployment_domain,
     }
     .encode(&mut pool_bytes)
     .map_err(|error| anyhow!("encode Spend pool fixture: {error:?}"))?;
@@ -1544,6 +1554,86 @@ fn run_production_path(
             == Some(&corrupt_proof_before);
     ensure!(corrupt_rollback, "corrupt production tag65 failed rollback");
 
+    // Deployment-domain tooth: initialize a second pool through the real
+    // tag-63 instruction with a different domain tag (so its on-chain
+    // derived deployment domain differs from the statement's), then run the
+    // valid mined proof against it via tag 65. The transaction must land as
+    // a failure with exactly ATOMIC_ERROR_DEPLOYMENT_DOMAIN_MISMATCH and
+    // change no account.
+    let second_pool = Keypair::new();
+    let second_pool_rent = rpc
+        .call(
+            "getMinimumBalanceForRentExemption",
+            json!([ATOMIC_POOL_STATE_LEN]),
+        )?
+        .as_u64()
+        .context("bad second-pool rent")?;
+    let second_pool_setup = Transaction::new_signed_with_payer(
+        &[
+            system_instruction::create_account(
+                &payer.pubkey(),
+                &second_pool.pubkey(),
+                second_pool_rent,
+                ATOMIC_POOL_STATE_LEN as u64,
+                &aspis_verifier::id(),
+            ),
+            Instruction {
+                program_id: aspis_verifier::id(),
+                accounts: vec![AccountMeta::new(second_pool.pubkey(), true)],
+                data: to_vec(&AspisInstruction::InitializeAtomicPool {
+                    sequence: statement.sequence,
+                    anchor: public.current_anchor,
+                    domain_tag: b"aspis-domain-tooth-other-cluster".to_vec(),
+                })?,
+            },
+        ],
+        Some(&payer.pubkey()),
+        &[&payer, &second_pool],
+        rpc.latest_blockhash()?,
+    );
+    rpc.send_and_confirm(&second_pool_setup)?;
+    let second_pool_before = rpc_account_snapshot(&rpc, &second_pool.pubkey())?
+        .context("tag63-initialized second pool missing")?;
+    let deployment_domain_second_pool_initialized_via_tag63 = second_pool_before.owner
+        == aspis_verifier::id()
+        && second_pool_before.data.len() == ATOMIC_POOL_STATE_LEN
+        && second_pool_before.data[48..80] != statement.deployment_domain;
+    ensure!(
+        deployment_domain_second_pool_initialized_via_tag63,
+        "tag63 second pool image drift: expected a different stored deployment domain"
+    );
+    let cross_domain = signed_transition(
+        &payer,
+        &proof_account,
+        transition_instruction(
+            proof_account.pubkey(),
+            second_pool.pubkey(),
+            marker_key,
+            payer.pubkey(),
+            &public,
+            false,
+        )?,
+        rpc.latest_blockhash()?,
+    );
+    let deployment_domain_mismatch_landed_error = rpc.send_and_confirm_failure(&cross_domain)?;
+    let expected_domain_error = format!("\"Custom\":{ATOMIC_ERROR_DEPLOYMENT_DOMAIN_MISMATCH}");
+    let deployment_domain_mismatch_rejected_exact =
+        deployment_domain_mismatch_landed_error.contains(&expected_domain_error);
+    ensure!(
+        deployment_domain_mismatch_rejected_exact,
+        "cross-deployment tag65 did not fail with ATOMIC_ERROR_DEPLOYMENT_DOMAIN_MISMATCH: {deployment_domain_mismatch_landed_error}"
+    );
+    let deployment_domain_mismatch_rollback_green =
+        rpc_account_snapshot(&rpc, &second_pool.pubkey())?.as_ref() == Some(&second_pool_before)
+            && rpc_account_snapshot(&rpc, &pool_key)?.as_ref() == Some(&pool_before)
+            && rpc_account_snapshot(&rpc, &marker_key)? == marker_before
+            && rpc_account_snapshot(&rpc, &proof_account.pubkey())?.as_ref()
+                == Some(&production_proof_before);
+    ensure!(
+        deployment_domain_mismatch_rollback_green,
+        "cross-deployment tag65 rejection changed state"
+    );
+
     let mut proof_refund_lamports = None;
     let mut refund_transaction_fee_lamports = None;
     let mut nullifier_funding_lamports = None;
@@ -1641,7 +1731,7 @@ fn run_production_path(
         .context("production Spend pool missing after tag65")?;
     let marker_after = rpc_account_snapshot(&rpc, &marker_key)?
         .context("production Spend marker missing after tag65")?;
-    let decoded_pool = AtomicPoolStateV1::decode(&pool_after.data)
+    let decoded_pool = AtomicPoolStateV2::decode(&pool_after.data)
         .map_err(|error| anyhow!("decode Spend pool after tag65: {error:?}"))?;
     let sequence_advanced = decoded_pool.sequence == statement.sequence + 1;
     let anchor_replaced = decoded_pool.anchor == public.output_anchor;
@@ -1706,6 +1796,10 @@ fn run_production_path(
             production_tag65_simulation_logged_proof_sha256,
             corrupt_proof_rejected_with_transaction_rollback: corrupt_rollback,
             corrupt_transaction_landed_error: corrupt_landed_error,
+            deployment_domain_second_pool_initialized_via_tag63,
+            deployment_domain_mismatch_rejected_exact,
+            deployment_domain_mismatch_landed_error,
+            deployment_domain_mismatch_rollback_green,
             committed_transition_succeeded: true,
             proof_account_absent_after_success: true,
             proof_refund_lamports,
@@ -1736,9 +1830,10 @@ fn run_legacy_tag60_compatibility(
     let pool_key = Pubkey::new_from_array(statement.pool);
     let (marker_key, _) = atomic_nullifier_address(&aspis_verifier::id(), &public.nullifier);
     let mut pool_bytes = [0u8; ATOMIC_POOL_STATE_LEN];
-    AtomicPoolStateV1 {
+    AtomicPoolStateV2 {
         sequence: statement.sequence,
         anchor: public.current_anchor,
+        deployment_domain: statement.deployment_domain,
     }
     .encode(&mut pool_bytes)
     .map_err(|error| anyhow!("encode legacy tag60 pool fixture: {error:?}"))?;
@@ -1766,7 +1861,7 @@ fn run_legacy_tag60_compatibility(
     );
     let pool_before =
         rpc_account_snapshot(&rpc, &pool_key)?.context("legacy tag60 pool fixture missing")?;
-    let decoded_pool_before = AtomicPoolStateV1::decode(&pool_before.data)
+    let decoded_pool_before = AtomicPoolStateV2::decode(&pool_before.data)
         .map_err(|error| anyhow!("decode legacy tag60 pool: {error:?}"))?;
     let marker_before = rpc_account_snapshot(&rpc, &marker_key)?;
     let nullifier_marker_absent_before = marker_before.is_none();
@@ -1812,7 +1907,7 @@ fn run_legacy_tag60_compatibility(
         .context("legacy tag60 pool disappeared after commit")?;
     let marker_after = rpc_account_snapshot(&rpc, &marker_key)?
         .context("legacy tag60 nullifier marker missing after commit")?;
-    let decoded_pool_after = AtomicPoolStateV1::decode(&pool_after.data)
+    let decoded_pool_after = AtomicPoolStateV2::decode(&pool_after.data)
         .map_err(|error| anyhow!("decode legacy tag60 pool after commit: {error:?}"))?;
     let expected_sequence = decoded_pool_before
         .sequence
@@ -1922,12 +2017,12 @@ fn run_spend_acceptance(
         STATE_ONLY_SPEND_BATCH_GRINDING_BITS, STATE_ONLY_SPEND_FOLD_GRINDING_BITS,
         STATE_ONLY_SPEND_GRINDING_BITS, STATE_ONLY_SPEND_QUERY_COUNT,
     };
-    use aspis_statement::state_only_spend::verify_atomic_state_only_spend_v3;
+    use aspis_statement::state_only_spend::verify_atomic_state_only_spend_v4;
 
     let statement = &instance.statement;
     let proof = instance.proof.as_slice();
 
-    let host_result = verify_atomic_state_only_spend_v3(proof, statement, HOST_HASH, None);
+    let host_result = verify_atomic_state_only_spend_v4(proof, statement, HOST_HASH, None);
     let proof_unmined = host_result.is_err();
     ensure!(
         !proof_unmined,
@@ -1937,11 +2032,12 @@ fn run_spend_acceptance(
 
     // The default (production) host dispatch must reject the tag-59
     // diagnostic selector before any account access.
-    let diagnostic_bit_data = to_vec(&AspisInstruction::VerifyAtomicStateOnlySpendV3 {
+    let diagnostic_bit_data = to_vec(&AspisInstruction::VerifyAtomicStateOnlySpendV4 {
         pool: statement.pool,
         sequence: statement.sequence,
         public_input: spend_public_bytes(&statement.spend),
         output_anchor: aspis_statement::encode_digest_canonical(&statement.output_anchor),
+        deployment_domain: statement.deployment_domain,
         diagnostic_unmined: true,
     })?;
     let default_tag59_fail_closed_host =
@@ -1969,7 +2065,25 @@ fn run_spend_acceptance(
         .context("HVZK artifact omitted rank_exhaustion_abort_bits")?;
     let soundness_bookable = soundness["bookable"].as_bool() == Some(true);
 
-    let validator = start_validator_with_accounts(root, so, &[])?;
+    // Tag 59 reads the pool account to enforce the deployment-domain
+    // equality, so the acceptance validator seeds the statement's pool.
+    let pool_key = Pubkey::new_from_array(statement.pool);
+    let mut pool_bytes = [0u8; ATOMIC_POOL_STATE_LEN];
+    AtomicPoolStateV2 {
+        sequence: statement.sequence,
+        anchor: aspis_statement::encode_digest_canonical(&statement.spend.anchor),
+        deployment_domain: statement.deployment_domain,
+    }
+    .encode(&mut pool_bytes)
+    .map_err(|error| anyhow!("encode Spend acceptance pool fixture: {error:?}"))?;
+    let pool_fixture = write_validator_account_fixture(
+        root,
+        "atomic-spend-acceptance-pool",
+        pool_key,
+        aspis_verifier::id(),
+        &pool_bytes,
+    )?;
+    let validator = start_validator_with_accounts(root, so, &[(pool_key, pool_fixture)])?;
     let rpc = Rpc::for_validator(&validator)?;
     let payer = Keypair::new();
     rpc.airdrop_and_wait(&payer.pubkey(), LAMPORTS_PER_SOL)?;
@@ -2052,8 +2166,8 @@ fn run_spend_mutation(
         STATE_ONLY_SPEND_GRINDING_BITS, STATE_ONLY_SPEND_QUERY_COUNT,
     };
     use aspis_statement::state_only_spend::{
-        verify_atomic_state_only_spend_unmined_for_diagnostics_v3,
-        verify_atomic_state_only_spend_v3,
+        verify_atomic_state_only_spend_unmined_for_diagnostics_v4,
+        verify_atomic_state_only_spend_v4,
     };
 
     let statement = &instance.statement;
@@ -2078,7 +2192,7 @@ fn run_spend_mutation(
         "committed unmined Spend proof KAT drift"
     );
     let committed_unmined_statement = committed_unmined_kat_statement()?;
-    verify_atomic_state_only_spend_unmined_for_diagnostics_v3(
+    verify_atomic_state_only_spend_unmined_for_diagnostics_v4(
         &committed_unmined_proof,
         &committed_unmined_statement,
         HOST_HASH,
@@ -2086,7 +2200,7 @@ fn run_spend_mutation(
     )
     .map_err(|error| anyhow!("committed unmined Spend host replay: {error:?}"))?;
     ensure!(
-        verify_atomic_state_only_spend_v3(
+        verify_atomic_state_only_spend_v4(
             &committed_unmined_proof,
             &committed_unmined_statement,
             HOST_HASH,

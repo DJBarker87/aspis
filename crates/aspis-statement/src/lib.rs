@@ -37,11 +37,12 @@ pub mod trace_v4;
 pub mod wide_v4;
 
 pub use atomic_statement::{
-    atomic_append_chain_anchor, atomic_payment_statement_digest_v3, decode_asset_id_canonical,
-    decode_digest_canonical, encode_atomic_payment_statement_v3, encode_digest_canonical,
-    insertion_root, verify_output_insertion, AtomicPaymentStatementV3, AtomicStatementError,
-    ATOMIC_APPEND_CHAIN_DOMAIN, ATOMIC_PAYMENT_EMPTY_LEAF, ATOMIC_PAYMENT_STATEMENT_DOMAIN,
-    ATOMIC_PAYMENT_STATEMENT_PAYLOAD_BYTES, ATOMIC_PAYMENT_STATEMENT_V3_KAT_EXPECTED,
+    atomic_append_chain_anchor, atomic_deployment_domain, atomic_payment_statement_digest_v4,
+    decode_asset_id_canonical, decode_digest_canonical, encode_atomic_payment_statement_v4,
+    encode_digest_canonical, insertion_root, verify_output_insertion, AtomicPaymentStatementV4,
+    AtomicStatementError, ATOMIC_APPEND_CHAIN_DOMAIN, ATOMIC_DEPLOYMENT_DOMAIN_SEPARATOR,
+    ATOMIC_PAYMENT_EMPTY_LEAF, ATOMIC_PAYMENT_STATEMENT_DOMAIN,
+    ATOMIC_PAYMENT_STATEMENT_PAYLOAD_BYTES, ATOMIC_PAYMENT_STATEMENT_V4_KAT_EXPECTED,
     ATOMIC_PAYMENT_STATEMENT_VERSION, ATOMIC_PAYMENT_TREE_DEPTH,
 };
 pub use constraints_v4::{

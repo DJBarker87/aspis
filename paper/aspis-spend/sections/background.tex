@@ -40,7 +40,7 @@ The protocol in this paper belongs to that lineage but has its own transcript
 and proof format.  It uses a circle-group evaluation domain, rate $1/512$, two
 commitment layers, two out-of-domain/layer steps, four arity-four folds, and a
 degree-four final polynomial.  Query positions address four-slot fibers.  The
-transcript also includes a three-branch \(\mathsf{Good}_{23}\) selector and explicit
+transcript also includes a three-branch \(\mathsf{Good}_{\mathrm{spend}}\) selector and explicit
 work nonces.  Consequently, WHIR's parameters, proof grammar, and theorem
 statements are not imported by name; each lemma used here is specialized to
 the custom schedule.
@@ -107,7 +107,7 @@ Hiding also depends on the complete transcript rather than only on the
 arithmetic trace.  Full-field masks induce affine families of committed words,
 private Merkle salts hide unopened leaf preimages in the declared oracle
 model, and a simulator programs the transcript at fresh oracle inputs.  The
-\(\mathsf{Good}_{23}\) condition is designed to make the public affine image and mask
+\(\mathsf{Good}_{\mathrm{spend}}\) condition is designed to make the public affine image and mask
 fiber cardinality independent of the witness for every selectable schedule.
 The security theorem includes the selector, variable proof length, work
 nonces, serialization, program-visible logs, deterministic state mutation,

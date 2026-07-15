@@ -56,22 +56,41 @@ For \(i=\sum_{j=0}^{19}i_j2^j\) and
 \label{def:spend-statement}
 A public statement is
 \[
- x=(P,s,A,\nu,C_{\mathrm{out}},A',a,f),
+ x=(P,s,A,\nu,C_{\mathrm{out}},A',a,f,\Delta),
 \]
 where \(P\in\{0,1\}^{256}\) is the pool account address,
 \(s\in\{0,\ldots,2^{64}-1\}\) is its sequence number,
 \(A,\nu,C_{\mathrm{out}},A'\in\mathbb F^8\),
-\(a\in\mathbb F\) is an asset identifier, and
-\(f\in\{0,\ldots,2^{30}-1\}\) is the public fee.
-The canonical 184-byte encoding is
+\(a\in\mathbb F\) is an asset identifier,
+\(f\in\{0,\ldots,2^{30}-1\}\) is the public fee, and
+\(\Delta\in\{0,1\}^{256}\) is the pool's deployment domain.
+The canonical 216-byte encoding is
 \[
  \mathtt{version}\|\mathtt{depth}\|0^6\|P\|s_{\rm le}\|A\|\nu\|
- C_{\mathrm{out}}\|A'\|a_{\rm le}\|f_{\rm le},
+ C_{\mathrm{out}}\|A'\|a_{\rm le}\|f_{\rm le}\|\Delta,
 \]
-with version \(3\), depth \(20\), 32 bytes per digest, and four bytes for
+with version \(4\), depth \(20\), 32 bytes per digest, and four bytes for
 each of \(a\) and \(f\).  SHA-256 with the fixed statement domain hashes
 this encoding into the Fiat--Shamir transcript.
 \end{definition}
+
+The deployment domain binds each statement to one program deployment on one
+named cluster.  At pool initialization the program computes
+\[
+ \Delta=\operatorname{SHA-256}(
+   \mathtt{aspis\mbox{-}spend\mbox{-}deployment\mbox{-}domain\mbox{-}v1}
+   \,\|\,\mathrm{pid}\,\|\,\tau),
+\]
+where \(\mathrm{pid}\) is the runtime program id observed by the executing
+instruction and \(\tau\) is a nonempty domain tag of at most 64 bytes
+(for example \texttt{mainnet-beta} or \texttt{devnet}) supplied on the
+initialization wire, and stores \(\Delta\) in the pool account.  Every
+state-affecting verification requires the statement's \(\Delta\) to equal
+the pool's stored value before any other precondition involving proof bytes
+is evaluated.  Because the statement digest is already absorbed into the
+Fiat--Shamir transcript, \(\Delta\) is transcript-bound without a separate
+absorb step: a proof ground for one deployment domain cannot satisfy the
+transcript schedule of any statement carrying another.
 
 \begin{definition}[\Profile{} witness]
 \label{def:spend-witness}
@@ -94,7 +113,7 @@ where each of \(k_\nu\), \(r_{\mathrm{in}}\),
 
 \begin{definition}[Atomic same-path relation]
 \label{def:spend-relation}
-The relation \(R_{23}(x,w)=1\) holds exactly when all of the following
+The relation \(\RProfile(x,w)=1\) holds exactly when all of the following
 equations hold over the indicated integer or field domain:
 \begin{align}
  pk_{\mathrm{in}}
@@ -147,7 +166,7 @@ the witness.
 \begin{proposition}[Relation realization]
 \label{prop:relation-realization}
 For every canonically encoded \((x,w)\), the \Profile{} trace builder produces
-an accepting arithmetic trace if and only if \(R_{23}(x,w)=1\).
+an accepting arithmetic trace if and only if \(\RProfile(x,w)=1\).
 \end{proposition}
 
 \begin{proof}
@@ -175,9 +194,11 @@ that binds a proof to such a trace is given in Section~\ref{sec:soundness}.
 
 For an accepting state-changing instruction, the verifier additionally
 requires the following public pre-state: (i) the supplied pool account has
-the expected owner, type, 48-byte length, key \(P\), sequence
-\(s<2^{64}-1\), and anchor
-\(A\); (ii) the proof account has the expected owner and a finalized
+the expected owner, type, 80-byte length, key \(P\), sequence
+\(s<2^{64}-1\), anchor
+\(A\), and stored deployment domain equal to the statement's \(\Delta\),
+with a distinct error code for a domain mismatch checked before the anchor
+comparison; (ii) the proof account has the expected owner and a finalized
 all-zero authority sentinel; and (iii) the nullifier marker is the canonical
 program-derived address with seeds
 \(\mathtt{aspis\mbox{-}nullifier\mbox{-}v1}\) and \(\nu\), is unspent, and
@@ -190,4 +211,5 @@ entire proof, reborrows and rechecks writable state, and only then commits
 \]
 and the marker for \((P,\nu)\).  A failure before the final commit leaves both
 objects unchanged.  These account checks prevent a valid proof for one pool,
-revision, anchor, or nullifier from authorizing a different transition.
+revision, anchor, deployment domain, or nullifier from authorizing a
+different transition.

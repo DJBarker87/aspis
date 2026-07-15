@@ -1,13 +1,14 @@
 {
-  "artifact": "profile23_production_statement",
+  "artifact": "aspis_spend_production_statement",
   "asset_id": 17,
-  "current_anchor_hex": "86f3434393b57a1b13f18016bf5b0b0e9d95692e521b500b64b6f9240479cd42",
+  "current_anchor_hex": "90bc3005a8029b06072f386dc6b1ee4e9b4ba513b126d033a96ecc49829cab5a",
+  "deployment_domain_hex": "ba43feb01d7d7f5ee3f57a6481b202066c83c6c3e76020a619c1611abbd08c8f",
   "fee": 1,
-  "nullifier_hex": "aca93a77007946734dc0a906c77dd5323f10c97a13903a7d4615f9227c32dc74",
-  "output_anchor_hex": "c4eb0c53a79a4a205fb27d48a44a3c5d2467335cfbca636b9746ef08b446d82b",
-  "output_commitment_hex": "c9d48a3c5b67db47a7bf5168e5bd7761fd0c5c10345e651101e10e75f83a7562",
-  "pool_hex": "94d5641ee2e3891341b7f738f6b36087c184d828ea07463fe5e70d8c332d1051",
-  "selection_rule": "least Good23 selector from three post-final branches",
+  "nullifier_hex": "890266278df8f3073cab562c6c7d89471363c46841748a1ef3b0432acd0afd5f",
+  "output_anchor_hex": "9f5b8c2dc991e401f3538941af35fd29e00aa319edca8013c7260c61c2e7486e",
+  "output_commitment_hex": "69517012bd98fe78bef9b076069520614ef27f2fc7a0854f72e65055a2edc319",
+  "pool_hex": "2605b65c88655a479c2bd504ae207556acd0d42c49a8eeaed8cdbca5a256ca70",
+  "selection_rule": "least GoodSpend selector from three post-final branches",
   "sequence": 0,
   "witness_independent_public_metadata": true
 }

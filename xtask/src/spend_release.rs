@@ -62,18 +62,13 @@ const XTASK_MANIFEST_PATH: &str = "xtask/Cargo.toml";
 const DEFAULT_SBF_PATH: &str = "target/deploy/aspis_verifier.so";
 const SPEND_PRODUCTION_ALIAS_FEATURES: [&str; 2] =
     ["spend-minimal-dispatch", "spend-dynamic-rate512"];
-const PRODUCTION_FORBIDDEN_FEATURES: [&str; 11] = [
-    "diagnostic-unmined-mutation",
-    "diagnostic-unmined-profile21-mutation",
-    "diagnostic-unmined-profile22-acceptance",
-    "diagnostic-unmined-profile22-mutation",
+const PRODUCTION_FORBIDDEN_FEATURES: [&str; 6] = [
     "diagnostic-unmined-spend-acceptance",
     "diagnostic-unmined-spend-mutation",
-    "profile20-mutation-candidate",
-    "profile21-integrated-candidate",
-    "profile21-mutation-candidate",
-    "profile22-integrated-candidate",
-    "profile22-mutation-candidate",
+    "insecure-spend-fixture",
+    "insecure-test-framing",
+    "insecure-test-logup-compression",
+    "insecure-test-ordering",
 ];
 
 #[derive(Clone, Debug, Serialize)]
@@ -379,7 +374,7 @@ fn build_release_instance(
     statement_file: &SpendStatementFile,
 ) -> ReleaseInstance {
     let mut errors = Vec::new();
-    let host_result = aspis_statement::state_only_spend::verify_atomic_state_only_spend_v3(
+    let host_result = aspis_statement::state_only_spend::verify_atomic_state_only_spend_v4(
         proof,
         &statement_file.statement,
         aspis_prover::HOST_HASH,
@@ -408,7 +403,7 @@ fn build_release_instance(
 
     if production_host_verification_green {
         if let Some(prefix) = parsed_prefix {
-            match aspis_statement::atomic_payment_statement_digest_v3(
+            match aspis_statement::atomic_payment_statement_digest_v4(
                 &statement_file.statement,
                 aspis_prover::HOST_HASH,
             ) {
@@ -1899,47 +1894,56 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> SpendOneTransactionRelease {
         ),
     );
 
-    let diagnostic_mutation_paths = mutation
-        .pointer("/paths")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-    let diagnostic_ledgers_link_to_acceptance = acceptance_literal_cu.is_some()
-        && diagnostic_mutation_paths.len() == 2
-        && diagnostic_mutation_paths.iter().all(|path| {
-            let literal = u64_at(path, "/literal_simulation_cu");
-            let bucket_sum = checked_sum_at(
-                path,
-                &[
-                    "/ledger/transaction_setup_cu",
-                    "/ledger/account_validation_cu",
-                    "/ledger/statement_decode_and_digest_cu",
-                    "/ledger/exact_spend_verifier_cu",
-                    "/ledger/marker_prepare_or_cpi_cu",
-                    "/ledger/mutable_state_recheck_cu",
-                    "/ledger/final_account_writes_cu",
-                    "/ledger/post_last_marker_cu",
-                ],
-            );
-            let expected_increment = acceptance_literal_cu.zip(literal).and_then(
-                |(acceptance_tag59, diagnostic_tag61)| {
-                    i64::try_from(i128::from(diagnostic_tag61) - i128::from(acceptance_tag59)).ok()
-                },
-            );
-            literal.is_some()
-                && literal == bucket_sum
-                && literal == u64_at(path, "/ledger/reconciled_total_cu")
-                && i64_at(path, "/headroom_under_1_4m_cu")
-                    == literal.map(|cu| CU_LIMIT as i64 - cu as i64)
-                && i64_at(path, "/incremental_over_tag59_cu") == expected_increment
-        });
+    // Every production tooth exercised against the live validator must be
+    // green on every path: the committed-unmined PoW rejections, the sealed
+    // duplicate rejection, the concurrency race, the exact refund balance
+    // equation, and the cross-deployment-domain rejection with rollback.
+    let production_unmined_teeth = production_paths.iter().all(|path| {
+        all_true(
+            path,
+            &[
+                "/production_unmined_tag59_rejected",
+                "/production_unmined_tag65_rejected",
+                "/production_unmined_tag65_rollback_green",
+            ],
+        )
+    });
+    let production_duplicate_teeth = production_paths
+        .iter()
+        .all(|path| bool_at(path, "/duplicate_rejected_without_second_mutation") == Some(true));
+    let production_race_teeth = production_paths
+        .iter()
+        .filter_map(|path| bool_at(path, "/concurrent_exactly_one_committed"))
+        .fold((false, true), |(_, all), green| (true, all && green));
+    // The refund equation is measured on the landed-commit path; the race
+    // path commits through the concurrency probe instead. Require it to be
+    // exercised at least once and exact wherever it was measured.
+    let production_refund_equation_teeth = production_paths
+        .iter()
+        .filter_map(|path| bool_at(path, "/refund_balance_equation_exact"))
+        .fold((false, true), |(_, all), exact| (true, all && exact));
+    let production_deployment_domain_teeth = production_paths.iter().all(|path| {
+        all_true(
+            path,
+            &[
+                "/deployment_domain_second_pool_initialized_via_tag63",
+                "/deployment_domain_mismatch_rejected_exact",
+                "/deployment_domain_mismatch_rollback_green",
+            ],
+        )
+    });
+    let production_teeth_green = production_paths.len() == 2
+        && production_unmined_teeth
+        && production_duplicate_teeth
+        && production_race_teeth == (true, true)
+        && production_refund_equation_teeth == (true, true)
+        && production_deployment_domain_teeth;
     add_gate(
         &mut gates,
-        "diagnostic_mutation_ledgers_link_to_mined_acceptance",
-        diagnostic_ledgers_link_to_acceptance,
+        "production_teeth_unmined_duplicate_race_refund_domain_green",
+        production_teeth_green,
         format!(
-            "acceptance_tag59={acceptance_literal_cu:?}, diagnostic_path_count={}, all bucket/reconciled/headroom/increment identities={diagnostic_ledgers_link_to_acceptance}",
-            diagnostic_mutation_paths.len()
+            "unmined={production_unmined_teeth}, duplicate={production_duplicate_teeth}, race(exercised,green)={production_race_teeth:?}, refund_equation(exercised,exact)={production_refund_equation_teeth:?}, deployment_domain={production_deployment_domain_teeth}"
         ),
     );
 
@@ -2270,7 +2274,7 @@ fn evaluate_loaded(loaded: LoadedArtifacts) -> SpendOneTransactionRelease {
         ],
     ) && u64_at(hvzk, "/q3_cap17_release/query_candidates") == Some(3)
         && u64_at(hvzk, "/q3_cap17_release/attempt_cap") == Some(expected_attempt_cap)
-        && str_at(hvzk, "/q3_cap17_release/selection_rule") == Some("least Good23 selector")
+        && str_at(hvzk, "/q3_cap17_release/selection_rule") == Some("least GoodSpend selector")
         && cap17_bits.is_some_and(|bits| bits >= MIN_SECURITY_BITS)
         && all_true(
             soundness,
@@ -2516,7 +2520,7 @@ mod tests {
             proof_bytes: u64_at(acceptance, "/proof_bytes").unwrap(),
             proof_sha256: str_at(acceptance, "/proof_sha256").unwrap().to_string(),
             statement_path: str_at(acceptance, "/statement_path").unwrap().to_string(),
-            statement_bytes: 667,
+            statement_bytes: 767,
             statement_sha256: str_at(acceptance, "/statement_sha256").unwrap().to_string(),
             statement_pool_hex: str_at(acceptance, "/statement_pool_hex")
                 .unwrap()
@@ -2531,24 +2535,24 @@ mod tests {
             good_spend_branches: vec![
                 branch(
                     0,
-                    "0x27451822f70ae5fe",
-                    "0xd97eb238d190337b",
-                    "0xcd22764ab20fdc0d",
-                    "0xe4adfd047a3e60d4",
+                    "0x5a2f5acd02246d75",
+                    "0x3eda3a0ca1f69161",
+                    "0xc93dc240cebd8de2",
+                    "0x9e4ed9793b22724c",
                 ),
                 branch(
                     1,
-                    "0x3190ca43dd066084",
-                    "0x3c997cac9023f78e",
-                    "0x758322d3d3364461",
-                    "0x06a59be5e60405f2",
+                    "0xdbc0b98028536659",
+                    "0x91de71ee39ef727d",
+                    "0x5fab1419924e1e76",
+                    "0x85f68d6019c06a7b",
                 ),
                 branch(
                     2,
-                    "0x893eacc696013984",
-                    "0x3e6aae68b979de07",
-                    "0x61b5bb2aef00279d",
-                    "0x3c9a370ae24cd841",
+                    "0x0a96f53988a87997",
+                    "0x1cd9241f4e4703c4",
+                    "0x10e79da529c574ed",
+                    "0x690e5657f3587507",
                 ),
             ],
             good_spend_definition_fingerprint: expected_good_spend_fingerprint(),
@@ -3209,26 +3213,38 @@ mod tests {
     }
 
     #[test]
-    fn diagnostic_mutation_increment_is_bound_to_the_acceptance_tag59_total() {
-        let mut loaded = loaded_artifacts();
-        assert!(
-            gate(
-                &evaluate_loaded(loaded.clone()),
-                "diagnostic_mutation_ledgers_link_to_mined_acceptance"
-            )
-            .passed
-        );
+    fn production_teeth_gate_requires_every_negative_tooth_on_every_path() {
+        const GATE: &str = "production_teeth_unmined_duplicate_race_refund_domain_green";
+        let loaded = loaded_artifacts();
+        assert!(gate(&evaluate_loaded(loaded.clone()), GATE).passed);
 
-        let increment = loaded.mutation["paths"][0]["incremental_over_tag59_cu"]
-            .as_i64()
-            .unwrap();
-        loaded.mutation["paths"][0]["incremental_over_tag59_cu"] = Value::from(increment + 1);
-        assert!(
-            !gate(
-                &evaluate_loaded(loaded),
-                "diagnostic_mutation_ledgers_link_to_mined_acceptance"
-            )
-            .passed
-        );
+        for pointer in [
+            "production_unmined_tag59_rejected",
+            "production_unmined_tag65_rejected",
+            "production_unmined_tag65_rollback_green",
+            "duplicate_rejected_without_second_mutation",
+            "concurrent_exactly_one_committed",
+            "refund_balance_equation_exact",
+            "deployment_domain_second_pool_initialized_via_tag63",
+            "deployment_domain_mismatch_rejected_exact",
+            "deployment_domain_mismatch_rollback_green",
+        ] {
+            let mut broken = loaded.clone();
+            broken.mutation["production_paths"][0][pointer] = Value::Bool(false);
+            assert!(
+                !gate(&evaluate_loaded(broken), GATE).passed,
+                "tooth {pointer} did not bite"
+            );
+        }
+
+        // A race that was never exercised on any path must fail the gate.
+        let mut unexercised = loaded;
+        for path in unexercised.mutation["production_paths"]
+            .as_array_mut()
+            .unwrap()
+        {
+            path["concurrent_exactly_one_committed"] = Value::Null;
+        }
+        assert!(!gate(&evaluate_loaded(unexercised), GATE).passed);
     }
 }

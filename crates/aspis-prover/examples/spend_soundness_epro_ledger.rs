@@ -79,10 +79,10 @@ const SPEND_Q18_GOOD_LIVENESS_PINS: Option<SpendGoodLivenessPins> = Some(SpendGo
     bits_per_attempt: 6.189_058_045_848_226,
     rank_exhaustion_cap17_bits: 105.213_986_779_419_84,
     public_abort_bits: 105.213_986_779_419_83,
-    root_minor_fingerprint: 0x6b38_3866_2fbf_34db,
-    remaining_gd_minor_fingerprint: 0x1f34_525d_b611_d292,
-    h1_minor_fingerprint: 0xe702_15f0_b479_5f52,
-    product_fingerprint: 0xfc07_06f3_a304_ae26,
+    root_minor_fingerprint: 0xc1e2_3e3a_cec5_5fc9,
+    remaining_gd_minor_fingerprint: 0x7ca2_57ac_a211_584a,
+    h1_minor_fingerprint: 0x2b09_c8e0_f643_b2bf,
+    product_fingerprint: 0xb1af_7cc0_8b30_847d,
 });
 
 fn union_bits(bits: impl IntoIterator<Item = f64>) -> f64 {

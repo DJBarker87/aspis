@@ -492,7 +492,7 @@ fn certified_statement_from_release(root: &Path, release: &Value) -> Result<Cert
     }
     let statement: Value =
         serde_json::from_slice(&bytes).context("release-certified statement is not JSON")?;
-    if statement["artifact"].as_str() != Some("profile23_production_statement") {
+    if statement["artifact"].as_str() != Some("aspis_spend_production_statement") {
         return Err(anyhow!(
             "release-certified statement has the wrong artifact identifier"
         ));
@@ -1761,7 +1761,7 @@ mod tests {
         let pool = [7u8; 32];
         let nullifier = [9u8; 32];
         let statement = serde_json::to_vec(&json!({
-            "artifact": "profile23_production_statement",
+            "artifact": "aspis_spend_production_statement",
             "pool_hex": lower_hex_32(&pool),
             "nullifier_hex": lower_hex_32(&nullifier),
             "sequence": 3,

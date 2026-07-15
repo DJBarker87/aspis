@@ -12,13 +12,13 @@ specifies the byte formats and state transition implemented by that binary.
 
 The atomic public statement is
 \[
-  x=(P,s,A,\nu,C_{\mathsf{out}},A',a,f),
+  x=(P,s,A,\nu,C_{\mathsf{out}},A',a,f,\Delta),
 \]
 where \(P\) is the pool account address, \(s\) is its sequence number, \(A\)
 and \(A'\) are the current and next anchors, \(\nu\) is the nullifier,
 \(C_{\mathsf{out}}\) is the output commitment, \(a\) is the asset identifier,
-and \(f\) is the fee.  Table~\ref{tab:statement-wire} gives the complete
-184-byte encoding.  All multibyte integers are little endian.  Each 32-byte
+\(f\) is the fee, and \(\Delta\) is the deployment domain.
+Table~\ref{tab:statement-wire} gives the complete 216-byte encoding.  All multibyte integers are little endian.  Each 32-byte
 digest is eight canonical M31 limbs, each encoded as a four-byte integer less
 than \(2^{31}-1\).  The asset identifier is also required to be canonical in
 M31, and the fee is required to be less than \(2^{30}\).
@@ -32,7 +32,7 @@ M31, and the fee is required to be less than \(2^{30}\).
     \toprule
     Offset & Bytes & Field \\
     \midrule
-    0   & 1  & version \(=3\) \\
+    0   & 1  & version \(=4\) \\
     1   & 1  & private Merkle depth \(=20\) \\
     2   & 6  & reserved, all zero \\
     8   & 32 & pool address \(P\) \\
@@ -43,6 +43,7 @@ M31, and the fee is required to be less than \(2^{30}\).
     144 & 32 & output anchor \(A'\) \\
     176 & 4  & asset identifier \(a\) \\
     180 & 4  & fee \(f\) \\
+    184 & 32 & deployment domain \(\Delta\) \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -50,11 +51,12 @@ M31, and the fee is required to be less than \(2^{30}\).
 The transcript binding is
 \[
   d_x=\operatorname{SHA256}(
-  \mathtt{aspis/atomic-payment-statement/v3}\mathbin\|\mathsf{encode}(x)).
+  \mathtt{aspis/atomic-payment-statement/v4}\mathbin\|\mathsf{encode}(x)).
 \]
 On chain, \(P\) is taken from the supplied pool account and \(s\) from the
 decoded pool state.  They are not accepted as caller-provided instruction
-fields.  This ensures that the statement checked by the proof is the statement
+fields.  The caller-supplied \(\Delta\) must equal the pool's stored
+deployment domain before verification proceeds.  This ensures that the statement checked by the proof is the statement
 for the state account that the transaction will mutate.
 
 \subsection{Proof serialization}
@@ -135,9 +137,9 @@ and rejects any byte remaining after the fifth section.
 
 The common transcript state is cloned into three post-final branches.  Branch
 \(b\in\{0,1,2\}\) absorbs its branch label, derives an 18-query schedule, and
-evaluates \(\mathsf{Good}_{23}\).  The prover and release evaluator serialize the
+evaluates \(\mathsf{Good}_{\mathrm{spend}}\).  The prover and release evaluator serialize the
 least-index successful branch and only that branch's openings.  The on-chain
-verifier checks the serialized branch completely; least-\(\mathsf{Good}_{23}\)
+verifier checks the serialized branch completely; least-\(\mathsf{Good}_{\mathrm{spend}}\)
 selection is additionally enforced when the concrete proof is admitted by the
 release evaluator.
 

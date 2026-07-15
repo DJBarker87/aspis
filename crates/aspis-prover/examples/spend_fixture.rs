@@ -17,17 +17,17 @@ use aspis_prover::state_only_hiding::InMemoryStateOnlyMaskNonceStore;
 use aspis_prover::state_only_spend::build_hiding_atomic_state_only_spend_proof_v3;
 use aspis_prover::HOST_HASH;
 use aspis_statement::atomic_state_only_trace::atomic_merkle_root_v3;
-use aspis_statement::state_only_spend::verify_atomic_state_only_spend_unmined_for_diagnostics_v3;
+use aspis_statement::state_only_spend::verify_atomic_state_only_spend_unmined_for_diagnostics_v4;
 use aspis_statement::{
     derive_nullifier, derive_owner_key, note_commitment, output_commitment,
-    AtomicPaymentStatementV3, Digest, MerklePath, SpendPublic, SpendWitness,
+    AtomicPaymentStatementV4, Digest, MerklePath, SpendPublic, SpendWitness,
 };
 
 fn digest(seed: u32) -> Digest {
     core::array::from_fn(|index| M31(seed + 17 * index as u32))
 }
 
-fn fixture() -> (AtomicPaymentStatementV3, SpendWitness) {
+fn fixture() -> (AtomicPaymentStatementV4, SpendWitness) {
     let nullifier_key = digest(101);
     let input_salt = digest(301);
     let output_salt = digest(501);
@@ -56,7 +56,7 @@ fn fixture() -> (AtomicPaymentStatementV3, SpendWitness) {
         &input_salt,
     );
     let output = output_commitment(&output_owner_key, value_out, asset_id, &output_salt);
-    let statement = AtomicPaymentStatementV3 {
+    let statement = AtomicPaymentStatementV4 {
         pool: [0x5a; 32],
         sequence: 73,
         spend: SpendPublic {
@@ -67,13 +67,14 @@ fn fixture() -> (AtomicPaymentStatementV3, SpendWitness) {
             fee: 1,
         },
         output_anchor: atomic_merkle_root_v3(output, &witness.merkle_path).unwrap(),
+        deployment_domain: [0x5d; 32],
     };
     (statement, witness)
 }
 
 fn main() {
     let output = env::args().nth(1).unwrap_or_else(|| {
-        "crates/aspis-prover/fixtures/atomic_state_only_spend_v3_unmined.bin".into()
+        "crates/aspis-prover/fixtures/atomic_state_only_spend_v4_unmined.bin".into()
     });
     let (statement, witness) = fixture();
     let attempt =
@@ -90,7 +91,7 @@ fn main() {
     )
     .expect("build deterministic spend fixture");
 
-    verify_atomic_state_only_spend_unmined_for_diagnostics_v3(
+    verify_atomic_state_only_spend_unmined_for_diagnostics_v4(
         &built.bytes,
         &statement,
         HOST_HASH,
@@ -102,15 +103,22 @@ fn main() {
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect::<String>();
-    assert_eq!(built.bytes.len(), 67_327);
-    assert_eq!(
-        sha256,
-        "a5ed698a32d815ffd95f8d3e0be62d16620d32e216a087a350852726fb6ca238"
-    );
+    let statement_digest =
+        aspis_statement::atomic_payment_statement_digest_v4(&statement, HOST_HASH)
+            .expect("canonical fixture statement digest")
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>();
     fs::write(&output, &built.bytes).expect("write spend fixture");
     println!("proof={output}");
     println!("bytes={}", built.bytes.len());
     println!("sha256={sha256}");
+    println!("statement_digest={statement_digest}");
+    assert_eq!(built.bytes.len(), 64_447);
+    assert_eq!(
+        sha256,
+        "cf3ba127153e726e0e6eb5e4f546b6562a9c57d1ae6ee6a0df6b25aac0863b3b"
+    );
     println!("section_bytes={:?}", built.openings.section_bytes);
     println!("frontier_nodes={:?}", built.openings.frontier_nodes);
 }

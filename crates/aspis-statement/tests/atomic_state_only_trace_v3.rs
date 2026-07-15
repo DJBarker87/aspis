@@ -11,7 +11,7 @@ use aspis_statement::trace_v4::BLOCK_ROWS;
 use aspis_statement::{
     build_spend_trace_v4, derive_nullifier, derive_owner_key, evaluate_state_only_poseidon_oracle,
     merkle_root, note_commitment, output_commitment, project_state_only_trace_v4,
-    AtomicPaymentStatementV3, Digest, MerklePath, SpendPublic, SpendWitness,
+    AtomicPaymentStatementV4, Digest, MerklePath, SpendPublic, SpendWitness,
     StateOnlyPoseidonOpenings, StateOnlyPoseidonSelectors, MERKLE_NODE_COMPRESSION_V3_TWEAK,
     STATE_ONLY_ABSORPTION_ROW_IN_BLOCK, STATE_ONLY_FINAL_ROW_IN_BLOCK, STATE_ONLY_POSEIDON_BLOCKS,
     STATE_ONLY_POSEIDON_TRACE_ROWS,
@@ -21,7 +21,7 @@ fn digest(seed: u32) -> Digest {
     core::array::from_fn(|index| M31(seed + index as u32 * 17))
 }
 
-fn fixture() -> (AtomicPaymentStatementV3, SpendWitness) {
+fn fixture() -> (AtomicPaymentStatementV4, SpendWitness) {
     let nullifier_key = digest(101);
     let input_salt = digest(301);
     let output_salt = digest(501);
@@ -51,7 +51,7 @@ fn fixture() -> (AtomicPaymentStatementV3, SpendWitness) {
     };
     let current_anchor = atomic_merkle_root_v3(input_leaf, &witness.merkle_path).unwrap();
     let output_anchor = atomic_merkle_root_v3(output_leaf, &witness.merkle_path).unwrap();
-    let statement = AtomicPaymentStatementV3 {
+    let statement = AtomicPaymentStatementV4 {
         pool: [0x5a; 32],
         sequence: 73,
         spend: SpendPublic {
@@ -62,6 +62,7 @@ fn fixture() -> (AtomicPaymentStatementV3, SpendWitness) {
             fee,
         },
         output_anchor,
+        deployment_domain: [0x5d; 32],
     };
     (statement, witness)
 }

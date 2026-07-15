@@ -26,8 +26,8 @@ use aspis_core::HashFn;
 
 use crate::state_only_hiding_rank::{
     bind_spend_complete_good_product_provenance,
-    probe_atomic_state_only_profile22_zero_factor_qm31_tail_root_neutral,
-    probe_profile22_root_neutral_polynomial_kernel_rank, StateOnlyHidingRankGateError,
+    probe_atomic_state_only_spend_zero_factor_qm31_tail_root_neutral,
+    probe_spend_root_neutral_polynomial_kernel_rank, StateOnlyHidingRankGateError,
 };
 
 pub const SPEND_GOOD_SCHEDULE_MAX_ATTEMPTS: usize = 17;
@@ -47,13 +47,12 @@ pub const SPEND_GOOD_SCHEDULE_CONTINUOUS_DEGREE: usize = 121_968;
 /// Number of exhaustive Boolean/selector cases in the arbitrary-selector
 /// containment proof: 2^4 assignments for B,M0,M1,M2 times three selectors.
 pub const SPEND_SELECTOR_SCOPE_PROPOSITIONAL_CASES: usize = 48;
-// The fingerprint domain separators and descriptors below keep the
-// release's original working-name spelling: they are hashed into the frozen
-// predicate-definition fingerprints that the release certificates,
-// evaluator, and known-answer tests pin. Rewriting them would silently
-// change those anchors.
-const SPEND_SELECTOR_SCOPE_FINGERPRINT_DOMAIN: &[u8] = b"aspis:profile23:selector-scope-proof:v1";
-const SPEND_SELECTOR_SCOPE_DESCRIPTOR: &[u8] = b"profile=23;q=18;batch=37;folds=34,33,30,25;final=32;selectors=3;selector_label=44;order=final_poly,final_nonce,label44,query_sample;scope=15_common_preselector+1_final_query_miss;lemma=B_or_M_selected_subset_B_or_M0_or_M1_or_M2;cases=48";
+// The fingerprint domain separators and descriptors below are hashed into
+// the frozen predicate-definition fingerprints that the release
+// certificates, evaluator, and known-answer tests pin. Rewriting them
+// silently changes those anchors, so any respelling requires a full regrind.
+const SPEND_SELECTOR_SCOPE_FINGERPRINT_DOMAIN: &[u8] = b"aspis:spend:selector-scope-proof:v1";
+const SPEND_SELECTOR_SCOPE_DESCRIPTOR: &[u8] = b"profile=spend;q=18;batch=37;folds=34,33,30,25;final=32;selectors=3;selector_label=44;order=final_poly,final_nonce,label44,query_sample;scope=15_common_preselector+1_final_query_miss;lemma=B_or_M_selected_subset_B_or_M0_or_M1_or_M2;cases=48";
 
 pub fn spend_selector_scope_definition_fingerprint(hash: HashFn) -> [u8; 32] {
     assert_eq!(STATE_ONLY_SPEND_QUERY_COUNT, 18);
@@ -100,13 +99,13 @@ pub fn verify_spend_selector_scope_lemma() -> usize {
 /// Frozen witnesses used to prove the bad-schedule probability bound.  The
 /// runtime echelon replay may select different full-rank minors, so these are
 /// provenance anchors and are deliberately not runtime equality predicates.
-pub const SPEND_GOOD_SCHEDULE_ROOT_ANCHOR_FINGERPRINT: u64 = 0x6b38_3866_2fbf_34db;
-pub const SPEND_GOOD_SCHEDULE_GD_ANCHOR_FINGERPRINT: u64 = 0x1f34_525d_b611_d292;
-pub const SPEND_GOOD_SCHEDULE_H1_ANCHOR_FINGERPRINT: u64 = 0xe702_15f0_b479_5f52;
-pub const SPEND_GOOD_SCHEDULE_PRODUCT_ANCHOR_FINGERPRINT: u64 = 0xfc07_06f3_a304_ae26;
+pub const SPEND_GOOD_SCHEDULE_ROOT_ANCHOR_FINGERPRINT: u64 = 0xc1e2_3e3a_cec5_5fc9;
+pub const SPEND_GOOD_SCHEDULE_GD_ANCHOR_FINGERPRINT: u64 = 0x7ca2_57ac_a211_584a;
+pub const SPEND_GOOD_SCHEDULE_H1_ANCHOR_FINGERPRINT: u64 = 0x2b09_c8e0_f643_b2bf;
+pub const SPEND_GOOD_SCHEDULE_PRODUCT_ANCHOR_FINGERPRINT: u64 = 0xb1af_7cc0_8b30_847d;
 
-const SPEND_GOOD_SCHEDULE_FINGERPRINT_DOMAIN: &[u8] = b"aspis:profile23:good-schedule-gate:v1";
-const SPEND_GOOD_SCHEDULE_DESCRIPTOR: &[u8] = b"profile=23;version=v4_s2;atomic_layout=v3;rows=1024;rate=1/512;domain_log=19;q=18;query_fibers=131072;query_candidates=3;attempt_cap=17;generator_order=semantic0..15,mask16..25,H26,G27,D28;basis_selection=minimum_q_degree_semantic_then_D_then_mask;layout_fp=0x233ba2ca68f94148;predicate=root_neutral1404+remaining_gd_schur12+h1_inactive_schur12;q_degree=31320;z_degree=41280;gamma_degree=80688;continuous_degree=121968;selector=three_independent_post_final_label44_clones_choose_least;runtime_minor_fingerprint=dynamic;anchor_product=0xfc0706f3a304ae26";
+const SPEND_GOOD_SCHEDULE_FINGERPRINT_DOMAIN: &[u8] = b"aspis:spend:good-schedule-gate:v1";
+const SPEND_GOOD_SCHEDULE_DESCRIPTOR: &[u8] = b"profile=spend;version=v4_s2;atomic_layout=v3;rows=1024;rate=1/512;domain_log=19;q=18;query_fibers=131072;query_candidates=3;attempt_cap=17;generator_order=semantic0..15,mask16..25,H26,G27,D28;basis_selection=minimum_q_degree_semantic_then_D_then_mask;layout_fp=0x10fe8a502c4cdd02;predicate=root_neutral1404+remaining_gd_schur12+h1_inactive_schur12;q_degree=31320;z_degree=41280;gamma_degree=80688;continuous_degree=121968;selector=three_independent_post_final_label44_clones_choose_least;runtime_minor_fingerprint=dynamic;anchor_product=0xb1af7cc08b30847d";
 
 pub fn spend_good_schedule_definition_fingerprint(hash: HashFn) -> [u8; 32] {
     hash(&[
@@ -208,7 +207,7 @@ fn strict_static_definition() -> Result<(), SpendGoodScheduleGateError> {
         || STATE_ONLY_SPEND_D_GENERATOR_INDEX != 28
         || STATE_ONLY_SPEND_D_FACTOR_IDENTIFIER != 0
         || STATE_ONLY_SPEND_C2_COLUMNS != 3
-        || PINNED_ATOMIC_STATE_ONLY_SPEND_LAYOUT_FACTOR_FINGERPRINT_V3 != 0x233b_a2ca_68f9_4148
+        || PINNED_ATOMIC_STATE_ONLY_SPEND_LAYOUT_FACTOR_FINGERPRINT_V3 != 0x10fe_8a50_2c4c_dd02
     {
         return Err(SpendGoodScheduleGateError::DefinitionDrift(
             "spend static shape, layout or cap",
@@ -253,7 +252,7 @@ pub fn evaluate_spend_strong_good_schedule(
     strict_static_definition()?;
     validate_schedule_queries(schedule)?;
 
-    let root = match probe_profile22_root_neutral_polynomial_kernel_rank(schedule) {
+    let root = match probe_spend_root_neutral_polynomial_kernel_rank(schedule) {
         Ok(report) => report,
         Err(error @ StateOnlyHidingRankGateError::Relation) => {
             return Ok(SpendGoodScheduleDecision::rejected(
@@ -283,7 +282,7 @@ pub fn evaluate_spend_strong_good_schedule(
         ));
     }
 
-    let raw = match probe_atomic_state_only_profile22_zero_factor_qm31_tail_root_neutral(schedule) {
+    let raw = match probe_atomic_state_only_spend_zero_factor_qm31_tail_root_neutral(schedule) {
         Ok(report) => report,
         Err(
             error @ (StateOnlyHidingRankGateError::RawC1Rank { .. }
@@ -598,12 +597,12 @@ mod tests {
 
     const SPEND_FIXTURE: &[u8] = include_bytes!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/fixtures/atomic_state_only_spend_v3_unmined.bin"
+        "/fixtures/atomic_state_only_spend_v4_unmined.bin"
     ));
     const STATEMENT_DIGEST: [u8; 32] = [
-        0x52, 0xe9, 0x6f, 0x99, 0x75, 0x6f, 0xe8, 0xfd, 0x2d, 0x8b, 0x7a, 0x70, 0x00, 0x19, 0xb1,
-        0x43, 0xd7, 0xeb, 0x54, 0x9a, 0xf1, 0xbf, 0x1a, 0xe9, 0x87, 0xe9, 0x9a, 0x75, 0xca, 0xdc,
-        0xd4, 0xc9,
+        0xf6, 0x9e, 0xf3, 0xbc, 0x54, 0x28, 0x47, 0x5f, 0x13, 0x88, 0x9b, 0xe7, 0x7a, 0x5d, 0x0a,
+        0x9b, 0xe2, 0x4b, 0x9d, 0x78, 0xd1, 0x8d, 0x93, 0x17, 0x7b, 0x37, 0x21, 0xfc, 0x51, 0xf7,
+        0x64, 0x71,
     ];
 
     fn decision(accepted: bool) -> SpendGoodScheduleDecision {
@@ -644,9 +643,9 @@ mod tests {
         assert_eq!(
             spend_good_schedule_definition_fingerprint(crate::HOST_HASH),
             [
-                0x92, 0x79, 0x20, 0xb1, 0x0b, 0xa3, 0x13, 0x73, 0xc1, 0x90, 0x9e, 0xf9, 0xbf, 0xb7,
-                0xae, 0x7c, 0xb9, 0x57, 0x0c, 0x7e, 0x25, 0x36, 0xd2, 0x94, 0x34, 0x78, 0x34, 0xb3,
-                0xc8, 0x3d, 0xcb, 0x26,
+                0xf4, 0xdf, 0xc0, 0xa4, 0x90, 0x33, 0x3e, 0xb5, 0x2e, 0x0c, 0xe3, 0x34, 0xde, 0x5e,
+                0xd1, 0x26, 0x7b, 0xe1, 0x03, 0xba, 0xf0, 0x16, 0x04, 0x21, 0xa9, 0x08, 0x83, 0xc2,
+                0x80, 0x27, 0x6b, 0x1d,
             ]
         );
         assert_eq!(
@@ -656,9 +655,9 @@ mod tests {
         assert_eq!(
             spend_selector_scope_definition_fingerprint(crate::HOST_HASH),
             [
-                0xb9, 0x1e, 0x10, 0x08, 0xf4, 0x92, 0x0c, 0x51, 0x2a, 0x63, 0x9e, 0x29, 0x1b, 0x31,
-                0xcc, 0x07, 0x33, 0x8d, 0xf1, 0xbf, 0x16, 0x77, 0x5a, 0x1e, 0xe1, 0x26, 0xcb, 0xda,
-                0x7b, 0x34, 0xa1, 0x93,
+                0xa8, 0xb0, 0xd0, 0xb2, 0x0b, 0xd9, 0xa5, 0xc0, 0xd4, 0x63, 0xaf, 0x70, 0x3f, 0xa5,
+                0x12, 0xb1, 0x3e, 0x8e, 0x7c, 0x6b, 0xfa, 0x8c, 0xfa, 0x26, 0x43, 0xd7, 0x30, 0xe8,
+                0x52, 0x68, 0x8d, 0x60,
             ]
         );
         strict_static_definition().unwrap();
@@ -843,9 +842,9 @@ mod tests {
                 .decisions
                 .map(|decision| decision.dynamic_product_fingerprint),
             [
-                0xfc07_06f3_a304_ae26,
-                0x1eb7_a0d4_a2b3_f79f,
-                0xa8e5_683c_ed1e_2d1c,
+                0xb1af_7cc0_8b30_847d,
+                0x904a_ff76_ed0a_93de,
+                0x1c6b_5888_98d9_8ee8,
             ]
         );
     }

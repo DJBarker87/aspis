@@ -1,16 +1,17 @@
 //! Frozen release-proof known-answer tests.
 //!
 //! The fixture pair `spend_q18_g37_release.{bin,statement.json}` is the exact
-//! deployment payload: the finalized production proof and its public
-//! statement sidecar. The upcoming re-deployment reuses these bytes without a
-//! re-grind, so every transcript label, domain separator, Merkle tag,
-//! Poseidon2 constant, params table, statement encoding, proof grammar, and
-//! grinding predicate must keep verifying these exact bytes. These tests are
-//! the consensus gate for that property: they pin the fixture bytes by
-//! SHA-256 and run them through the full production host verifier.
+//! deployment payload: the finalized production proof and its public v4
+//! statement sidecar, ground for the mainnet-target deployment domain. The
+//! deployment reuses these bytes without a re-grind, so every transcript
+//! label, domain separator, Merkle tag, Poseidon2 constant, params table,
+//! statement encoding, proof grammar, and grinding predicate must keep
+//! verifying these exact bytes. These tests are the consensus gate for that
+//! property: they pin the fixture bytes by SHA-256 and run them through the
+//! full production host verifier.
 
 use aspis_prover::HOST_HASH;
-use aspis_statement::{AtomicPaymentStatementV3, SpendPublic};
+use aspis_statement::{AtomicPaymentStatementV4, SpendPublic};
 use serde_json::Value;
 use sha2::{Digest as _, Sha256};
 
@@ -23,18 +24,16 @@ const RELEASE_STATEMENT_SIDECAR: &[u8] = include_bytes!(concat!(
     "/fixtures/spend_q18_g37_release.statement.json"
 ));
 
-const RELEASE_PROOF_LEN: usize = 64_447;
+const RELEASE_PROOF_LEN: usize = 65_407;
 const RELEASE_PROOF_SHA256: &str =
-    "d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d";
+    "32eb419e0c5c3ef4fa2db0d32579e88f1207547d8fb010279efeb6c05981b529";
 const RELEASE_STATEMENT_SHA256: &str =
-    "947a608c93487a634f37119bead8d61fe29e9cb6883493465d6fb35af27883c2";
+    "c35f6152ce4ffbfa6edeba68b4a6d2738e19b1420181c9500ba73f0c717c8699";
 
-// Frozen sidecar schema values. The sidecar file bytes are frozen evidence,
-// so the expected `artifact` and `selection_rule` values intentionally keep
-// the release's original working-name spelling.
-const RELEASE_STATEMENT_ARTIFACT: &str = "profile23_production_statement";
+// Frozen sidecar schema values for the aspis-spend release epoch.
+const RELEASE_STATEMENT_ARTIFACT: &str = "aspis_spend_production_statement";
 const RELEASE_STATEMENT_SELECTION_RULE: &str =
-    "least Good23 selector from three post-final branches";
+    "least GoodSpend selector from three post-final branches";
 
 fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
@@ -49,7 +48,7 @@ fn decode_hex_32(value: &str) -> [u8; 32] {
     decoded
 }
 
-fn release_statement() -> AtomicPaymentStatementV3 {
+fn release_statement() -> AtomicPaymentStatementV4 {
     let sidecar: Value = serde_json::from_slice(RELEASE_STATEMENT_SIDECAR).unwrap();
     assert_eq!(
         sidecar["artifact"].as_str().unwrap(),
@@ -66,7 +65,7 @@ fn release_statement() -> AtomicPaymentStatementV3 {
         let bytes = decode_hex_32(sidecar[field].as_str().unwrap());
         aspis_statement::decode_digest_canonical(&bytes).unwrap()
     };
-    AtomicPaymentStatementV3 {
+    AtomicPaymentStatementV4 {
         pool: decode_hex_32(sidecar["pool_hex"].as_str().unwrap()),
         sequence: sidecar["sequence"].as_u64().unwrap(),
         spend: SpendPublic {
@@ -80,6 +79,7 @@ fn release_statement() -> AtomicPaymentStatementV3 {
             fee: u32::try_from(sidecar["fee"].as_u64().unwrap()).unwrap(),
         },
         output_anchor: digest_field("output_anchor_hex"),
+        deployment_domain: decode_hex_32(sidecar["deployment_domain_hex"].as_str().unwrap()),
     }
 }
 
@@ -95,7 +95,7 @@ fn frozen_spend_release_fixture_verifies_end_to_end() {
     );
 
     let statement = release_statement();
-    aspis_statement::state_only_spend::verify_atomic_state_only_spend_v3(
+    aspis_statement::state_only_spend::verify_atomic_state_only_spend_v4(
         RELEASE_PROOF,
         &statement,
         HOST_HASH,
@@ -112,7 +112,7 @@ fn frozen_spend_release_fixture_verifies_end_to_end() {
 fn frozen_spend_release_fixture_replays_least_good_selector_with_pow() {
     let statement = release_statement();
     let statement_digest =
-        aspis_statement::atomic_payment_statement_digest_v3(&statement, HOST_HASH).unwrap();
+        aspis_statement::atomic_payment_statement_digest_v4(&statement, HOST_HASH).unwrap();
     let (prefix, suffix) =
         aspis_core::state_only_prefix::StateOnlySpendPrefix::parse_from_proof(RELEASE_PROOF)
             .unwrap();

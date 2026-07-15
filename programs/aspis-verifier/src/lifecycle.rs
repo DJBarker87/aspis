@@ -171,14 +171,21 @@ pub(crate) fn finalize_proof(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     Ok(())
 }
 
+/// The maximum accepted deployment-domain tag length. Tags are short cluster
+/// names (`b"mainnet-beta"`, `b"devnet"`), never structured payloads.
+pub const DEPLOYMENT_DOMAIN_TAG_MAX_LEN: usize = 64;
+
 /// Wire tag 63: initialize a newly created, program-owned pool account. The
-/// pool key must sign, the exact 48-byte account must still be all zero, and
-/// the initial anchor must be canonically encoded.
+/// pool key must sign, the exact 80-byte account must still be all zero, and
+/// the initial anchor must be canonically encoded. The pool's deployment
+/// domain is derived on-chain from the runtime program id and the supplied
+/// nonempty domain tag, so no client can bind a pool to a foreign deployment.
 pub(crate) fn initialize_atomic_pool(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     sequence: u64,
     anchor: [u8; 32],
+    domain_tag: &[u8],
 ) -> ProgramResult {
     let pool_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
     if pool_account.owner != program_id {
@@ -190,16 +197,29 @@ pub(crate) fn initialize_atomic_pool(
     if !pool_account.is_writable {
         return Err(ProgramError::InvalidAccountData);
     }
+    if domain_tag.is_empty() || domain_tag.len() > DEPLOYMENT_DOMAIN_TAG_MAX_LEN {
+        return Err(ProgramError::InvalidInstructionData);
+    }
     aspis_statement::decode_digest_canonical(&anchor)
         .map_err(|_| ProgramError::InvalidInstructionData)?;
     sequence
         .checked_add(1)
         .ok_or(ProgramError::ArithmeticOverflow)?;
+    let deployment_domain = aspis_statement::atomic_deployment_domain(
+        crate::verify::sbf_hashv,
+        &program_id.to_bytes(),
+        domain_tag,
+    );
     let mut data = pool_account.try_borrow_mut_data()?;
     if data.len() != atomic_payment::ATOMIC_POOL_STATE_LEN || !data.iter().all(|byte| *byte == 0) {
         return Err(ProgramError::InvalidAccountData);
     }
-    atomic_payment::AtomicPoolStateV1 { sequence, anchor }.encode(&mut data)
+    atomic_payment::AtomicPoolStateV2 {
+        sequence,
+        anchor,
+        deployment_domain,
+    }
+    .encode(&mut data)
 }
 
 /// Wire tag 64: close a sealed proof account and refund every lamport to a
@@ -413,6 +433,7 @@ mod tests {
         let initialize_pool = borsh::to_vec(&AspisInstruction::InitializeAtomicPool {
             sequence: 0,
             anchor: [0u8; 32],
+            domain_tag: b"devnet".to_vec(),
         })
         .unwrap();
         {
@@ -836,6 +857,7 @@ mod tests {
         let initialize = borsh::to_vec(&AspisInstruction::InitializeAtomicPool {
             sequence: 73,
             anchor,
+            domain_tag: b"devnet".to_vec(),
         })
         .unwrap();
 
@@ -868,12 +890,44 @@ mod tests {
             );
         }
         assert_eq!(
-            atomic_payment::AtomicPoolStateV1::decode(&pool_data).unwrap(),
-            atomic_payment::AtomicPoolStateV1 {
+            atomic_payment::AtomicPoolStateV2::decode(&pool_data).unwrap(),
+            atomic_payment::AtomicPoolStateV2 {
                 sequence: 73,
                 anchor,
+                deployment_domain: aspis_statement::atomic_deployment_domain(
+                    crate::verify::sbf_hashv,
+                    &program_id.to_bytes(),
+                    b"devnet",
+                ),
             }
         );
+
+        // Rejected domain tags: empty and oversized both fail before any
+        // account write.
+        for bad_tag in [Vec::new(), vec![0x61u8; DEPLOYMENT_DOMAIN_TAG_MAX_LEN + 1]] {
+            let bad_pool_key = Pubkey::new_unique();
+            let mut bad_pool_lamports = 0;
+            let mut bad_pool_data = [0u8; atomic_payment::ATOMIC_POOL_STATE_LEN];
+            let bad_initialize = borsh::to_vec(&AspisInstruction::InitializeAtomicPool {
+                sequence: 0,
+                anchor,
+                domain_tag: bad_tag,
+            })
+            .unwrap();
+            let bad_pool = make_account(
+                &bad_pool_key,
+                &program_id,
+                &mut bad_pool_lamports,
+                &mut bad_pool_data,
+                true,
+                true,
+            );
+            assert_eq!(
+                process_instruction(&program_id, &[bad_pool], &bad_initialize),
+                Err(ProgramError::InvalidInstructionData)
+            );
+            assert!(bad_pool_data.iter().all(|byte| *byte == 0));
+        }
 
         let pool = make_account(
             &pool_key,
@@ -919,6 +973,7 @@ mod tests {
         let overflow_initialize = borsh::to_vec(&AspisInstruction::InitializeAtomicPool {
             sequence: u64::MAX,
             anchor,
+            domain_tag: b"devnet".to_vec(),
         })
         .unwrap();
         let overflow_pool = make_account(

@@ -1,11 +1,11 @@
 {
   "artifact": "spend_d_after_g_soundness_epro",
-  "date": "2026-07-14",
+  "date": "2026-07-15",
   "status": "q18_complete_good_soundness_epro_green_and_spend_one_transaction_released_36_of_36",
   "production_enabled": true,
   "production_wire_changed": true,
   "candidate": {
-    "profile_id": 23,
+    "profile": "aspis-spend",
     "generator_order": "semantic[0..16], mask-only[16..26], H[26], G[27], D[28]",
     "basis_selection": "minimum-q-degree greedy order: semantic, D, mask-only",
     "generator_width": 29,
@@ -24,8 +24,8 @@
     "final_work_bits": 32
   },
   "root_neutral_polynomial_minor": {
-    "fixture": "crates/aspis-prover/fixtures/atomic_state_only_spend_v3_unmined.bin",
-    "statement_digest": "52e96f99756fe8fd2d8b7a700019b143d7eb549af1bf1ae987e99a75cadcd4c9",
+    "fixture": "crates/aspis-prover/fixtures/atomic_state_only_spend_v4_unmined.bin",
+    "statement_digest": "f69ef3bc5428475f13889be77a5d0a9be24b9d78d18d93177b3721fc51f76471",
     "potential_sources_m31": 10610,
     "serialized_terminal_rows_m31": 336,
     "terminal_projection_rank_m31": 324,
@@ -44,18 +44,18 @@
     "complete_good_remaining_gd_terminal_z_degree_addition": 120,
     "complete_good_h1_padding_z_degree_addition": 120,
     "complete_good_z_degree_bound": 41280,
-    "minor_fingerprint": "0x6b3838662fbf34db",
+    "minor_fingerprint": "0xc1e23e3acec55fc9",
     "complete": true,
     "minimum_degree_note": "All 1100 degree-one candidates are processed before degree-two candidates; their exact rank is 1068, so no alternate basis in this source family can restore the q18 cap-16 bound. Cap 17 is the smallest proved fix."
   },
   "complete_good_product": {
     "remaining_gd_query_rank_m31": 288,
     "remaining_gd_terminal_schur_rank_m31": 12,
-    "remaining_gd_terminal_schur_fingerprint": "0x1f34525db611d292",
+    "remaining_gd_terminal_schur_fingerprint": "0x7ca257aca211584a",
     "h1_query_rank_m31": 288,
     "h1_terminal_schur_rank_m31": 12,
-    "h1_terminal_schur_fingerprint": "0xe70215f0b4795f52",
-    "product_fingerprint": "0xfc0706f3a304ae26",
+    "h1_terminal_schur_fingerprint": "0x2b09c8e0f643b2bf",
+    "product_fingerprint": "0xb1af7cc08b30847d",
     "continuous_degree_bound": 121968,
     "complete": true
   },
@@ -70,7 +70,7 @@
   "selector_scope_proof": {
     "lemma_proved": true,
     "scope": "arbitrary selector correlated with all three q18 schedules",
-    "definition_fingerprint": "b91e1008f4920c512a639e291b31cc07338df1bf16775a1ee126cbda7b34a193",
+    "definition_fingerprint": "a8b0d0b20bd9a5c0d463af703fa512b13e8e7c6bfa8cfa2643d730e852688d60",
     "propositional_cases_checked": 48,
     "pointwise_containment": "B or M[selected] implies B or M[0] or M[1] or M[2]",
     "only_final_query_miss_receives_factor_three": true,
@@ -256,23 +256,23 @@
     "gates_total": 36,
     "proof": {
       "path": "crates/aspis-prover/fixtures/spend_q18_g37_release.bin",
-      "bytes": 64447,
-      "sha256": "d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d"
+      "bytes": 65407,
+      "sha256": "32eb419e0c5c3ef4fa2db0d32579e88f1207547d8fb010279efeb6c05981b529"
     },
     "statement": {
       "path": "crates/aspis-prover/fixtures/spend_q18_g37_release.statement.json",
-      "bytes": 667,
-      "sha256": "947a608c93487a634f37119bead8d61fe29e9cb6883493465d6fb35af27883c2"
+      "bytes": 767,
+      "sha256": "c35f6152ce4ffbfa6edeba68b4a6d2738e19b1420181c9500ba73f0c717c8699"
     },
     "default_sbf": {
-      "bytes": 921848,
-      "sha256": "97c45a9abef97607a2fc6ed245829210046b234044b6738599d2bce0c367d04a"
+      "bytes": 924344,
+      "sha256": "e289faf85fe4773880794d5d4356461bb9cb94077b68711f99348efe19707d7e"
     },
     "production_tag65_cu": {
-      "tag59_same_binary": 1303642,
-      "program_owned_zeroed": 1338471,
-      "canonical_system_owned_create": 1340803,
-      "worst_case_headroom_under_1400000": 59197
+      "tag59_same_binary": 1306464,
+      "program_owned_zeroed": 1341724,
+      "canonical_system_owned_create": 1344057,
+      "worst_case_headroom_under_1400000": 55943
     },
     "johnson_selected_soundness_bits": 101.38010539241553,
     "johnson_coarse_soundness_bits": 100.16144938287455,
@@ -283,7 +283,7 @@
     "proof_finalize_wire_tag": 62,
     "pool_initialize_wire_tag": 63,
     "proof_refund_wire_tag": 65,
-    "program_id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue"
+    "program_id": "GQPNqfYF17Nj2dGsf6Q2AtiouyM67YxFZPh9LxBk2Ye3"
   },
   "remaining_gates": [],
   "guards": [

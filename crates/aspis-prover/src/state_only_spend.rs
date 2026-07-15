@@ -33,14 +33,14 @@ use aspis_core::transcript::{label, Transcript};
 use aspis_core::HashFn;
 use aspis_statement::state_only_poseidon::{successor_point, xor12_point};
 use aspis_statement::{
-    atomic_payment_statement_digest_v3,
+    atomic_payment_statement_digest_v4,
     atomic_state_only_registry::build_atomic_state_only_copy_helper_v3,
     atomic_state_only_terminal::{
         atomic_state_only_copy_inactive_row_masks_v3,
         atomic_state_only_selected_unmasked_terminal_value_compiled_v3,
     },
     atomic_state_only_trace::{build_atomic_state_only_trace_v3, AtomicStateOnlyTraceV3Error},
-    state_only_copy_helper_sum, AtomicPaymentStatementV3, AtomicStatementError, SpendWitness,
+    state_only_copy_helper_sum, AtomicPaymentStatementV4, AtomicStatementError, SpendWitness,
     StateOnlyConstraintError,
 };
 use zeroize::{Zeroize, Zeroizing};
@@ -532,7 +532,7 @@ fn serialize_spend_prefix(
 
 #[allow(clippy::too_many_lines)]
 fn build_one_attempt<Select>(
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     witness: &SpendWitness,
     attempt: StateOnlyAttemptSecrets,
     nonce_store: &mut impl StateOnlyMaskNonceStore,
@@ -545,7 +545,7 @@ where
         &[StateOnlyTranscriptScheduleResult; 3],
     ) -> Result<Option<usize>, SpendGoodSelectionError>,
 {
-    let statement_digest = atomic_payment_statement_digest_v3(statement, hash)?;
+    let statement_digest = atomic_payment_statement_digest_v4(statement, hash)?;
     let mask_nonce = attempt.mask_nonce();
     let context = StateOnlyHidingContext::atomic_spend_v3(statement_digest, mask_nonce);
     let mut header_bytes = [0u8; HEADER_LEN];
@@ -971,7 +971,7 @@ where
 
 #[cfg(any(test, feature = "insecure-spend-fixture"))]
 pub fn build_hiding_atomic_state_only_spend_proof_v3(
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     witness: &SpendWitness,
     attempt: StateOnlyAttemptSecrets,
     nonce_store: &mut impl StateOnlyMaskNonceStore,
@@ -1001,7 +1001,7 @@ pub fn build_hiding_atomic_state_only_spend_proof_v3(
 /// buffers are scrubbed and every controlled failure is collapsed to one
 /// opaque error.
 pub fn build_hiding_atomic_state_only_spend_first_good_v3(
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     witness: &SpendWitness,
     nonce_store: &mut DurableStateOnlyMaskNonceStore,
 ) -> Result<SpendFirstGoodCandidate, SpendAttemptsExhausted> {

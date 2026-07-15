@@ -62,7 +62,7 @@ pub const PINNED_ATOMIC_STATE_ONLY_HIDING_LAYOUT_FACTOR_FINGERPRINT_V3: u64 = 0x
 /// Spend preserves the atomic-v3 semantic mask-cell registry but binds
 /// the appended third C2 lane, its zero mask factor, and the three-candidate
 /// post-nonce query selector into a distinct precommit context.
-pub const PINNED_ATOMIC_STATE_ONLY_SPEND_LAYOUT_FACTOR_FINGERPRINT_V3: u64 = 0x233b_a2ca_68f9_4148;
+pub const PINNED_ATOMIC_STATE_ONLY_SPEND_LAYOUT_FACTOR_FINGERPRINT_V3: u64 = 0x10fe_8a50_2c4c_dd02;
 pub const STATE_ONLY_SPEND_TOTAL_GENERATOR_WIDTH: usize = 29;
 pub const STATE_ONLY_SPEND_C2_COLUMNS: usize = 3;
 pub const STATE_ONLY_SPEND_H_GENERATOR_INDEX: usize = 26;
@@ -193,11 +193,10 @@ pub fn state_only_spend_hiding_layout_factor_fingerprint_v3() -> u64 {
         hash ^= u64::from(byte);
         hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
     };
-    // Frozen consensus bytes: this domain separator keeps the release's
-    // original working-name spelling because it feeds the pinned layout
-    // factor fingerprint checked fail-closed by the verifying schedule; the
-    // frozen release proof must keep verifying without a re-grind.
-    for byte in b"aspis-state-only-profile23-zero-factor-d-v1" {
+    // Frozen consensus bytes: this domain separator feeds the pinned layout
+    // factor fingerprint checked fail-closed by the verifying schedule. The
+    // aspis-spend release proofs are ground against exactly these bytes.
+    for byte in b"aspis-state-only-spend-zero-factor-d-v1" {
         absorb(*byte);
     }
     for value in [

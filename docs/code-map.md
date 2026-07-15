@@ -12,7 +12,7 @@ Where each concept lives. File names are stable; functions are named so
 | Proof-account lifecycle (create, upload, finalize, close) | `programs/aspis-verifier/src/lifecycle.rs` |
 | Verify-and-apply (tag 65): ordering, atomicity, refund | `programs/aspis-verifier/src/atomic_payment.rs` — `verify_and_apply_atomic_payment_state_with_proof_refund`; validation and complete proof verification precede every write |
 | Statement decode and verify closures (tags 59/60/65) | `programs/aspis-verifier/src/verify.rs` |
-| Complete proof verifier | `crates/aspis-statement/src/state_only_spend.rs` — `verify_atomic_state_only_spend_v3_with_inverse` |
+| Complete proof verifier | `crates/aspis-statement/src/state_only_spend.rs` — `verify_atomic_state_only_spend_v4_with_inverse` |
 
 ## Cryptographic core (`crates/aspis-core`)
 
@@ -34,7 +34,8 @@ Where each concept lives. File names are stable; functions are named so
 
 | Concept | Code |
 | --- | --- |
-| Public statement binding | `atomic_statement.rs` — `AtomicPaymentStatementV3`, `atomic_payment_statement_digest_v3` |
+| Public statement binding | `atomic_statement.rs` — `AtomicPaymentStatementV4`, `atomic_payment_statement_digest_v4` |
+| Deployment-domain derivation | `atomic_statement.rs` — `atomic_deployment_domain`; stored per pool at tag-63 init, compared fail-closed by tags 59/60/65 |
 | Spend semantics: commitments, nullifiers, value limit | `spend.rs` |
 | Poseidon2 permutation (width 16, 22 rounds) | `poseidon2.rs` |
 | Generated terminal/routing evaluators and constants | `state_only_terminal.rs`, `atomic_state_only_terminal.rs` and their `*_constants` includes |
@@ -68,7 +69,8 @@ Where each concept lives. File names are stable; functions are named so
 - **state_only** — the relation family that proves the atomic public state
   transition (anchor, nullifier, sequence) under a shared private Merkle
   path.
-- **v3** — the third and current atomic statement layout.
+- **v4** — the current atomic statement layout (v3 plus the
+  deployment-domain field).
 - **GoodSpend** — the machine-checked public predicate over the Fiat–Shamir
   schedule whose rank conditions certify the hiding simulator.
 - **q18 / g37** — 18 queries per fold branch; 37-bit batch grinding.

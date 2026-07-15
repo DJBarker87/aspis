@@ -48,8 +48,8 @@ use crate::circle_candidate::{
 };
 use crate::state_only_circle_relation::StateOnlyIncrementalRelation;
 
-mod profile22_polynomial_kernel_rank;
-mod profile22_zero_factor_root_neutral;
+mod spend_polynomial_kernel_rank;
+mod spend_zero_factor_root_neutral;
 mod state_only_affine_slice_rank;
 mod state_only_claim_aggregation_rank;
 mod state_only_complete_shared_mask_rank;
@@ -59,19 +59,18 @@ mod state_only_native_full_x_affine_rank;
 mod state_only_reduced_high_switch_rank;
 mod state_only_two_variable_slice_rank;
 mod state_only_variable_permutation_rank;
-pub use profile22_polynomial_kernel_rank::{
-    probe_profile22_common_tail_polynomial_kernel_rank,
-    probe_profile22_mixed_polynomial_kernel_rank,
-    probe_profile22_root_neutral_polynomial_kernel_rank, Profile22MixedPolynomialKernelRankReport,
-    Profile22PolynomialKernelRankReport, Profile22RootNeutralPolynomialKernelRankReport,
+pub use spend_polynomial_kernel_rank::{
+    probe_spend_common_tail_polynomial_kernel_rank, probe_spend_mixed_polynomial_kernel_rank,
+    probe_spend_root_neutral_polynomial_kernel_rank, SpendMixedPolynomialKernelRankReport,
+    SpendPolynomialKernelRankReport, SpendRootNeutralPolynomialKernelRankReport,
 };
-pub use profile22_zero_factor_root_neutral::{
+pub use spend_zero_factor_root_neutral::{
     bind_spend_complete_good_product_provenance,
-    probe_atomic_state_only_profile22_zero_factor_qm31_tail_root_neutral,
-    probe_atomic_state_only_profile22_zero_factor_root_neutral_prefixes,
-    Profile22ZeroFactorQm31TailRootNeutralReport, Profile22ZeroFactorRootNeutralPrefix,
-    Profile22ZeroFactorRootNeutralReport, SpendCompleteGoodProductProvenance,
-    PROFILE22_ZERO_FACTOR_MAX_LANES,
+    probe_atomic_state_only_spend_zero_factor_qm31_tail_root_neutral,
+    probe_atomic_state_only_spend_zero_factor_root_neutral_prefixes,
+    SpendCompleteGoodProductProvenance, SpendZeroFactorQm31TailRootNeutralReport,
+    SpendZeroFactorRootNeutralPrefix, SpendZeroFactorRootNeutralReport,
+    SPEND_ZERO_FACTOR_MAX_LANES,
 };
 pub use state_only_affine_slice_rank::{
     probe_atomic_state_only_profile21_affine_extension_slice_lift_rank_variant,

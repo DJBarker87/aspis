@@ -1,7 +1,7 @@
 //! Canonical public binding for the atomic same-private-path SpendV0 state
 //! transition.
 //!
-//! Atomic-v3 proves that the spent input leaf and the output commitment use
+//! Atomic-v4 proves that the spent input leaf and the output commitment use
 //! one private Merkle path, taking `spend.anchor` to `output_anchor`. `sequence`
 //! is the public pool-account revision checked by the eventual mutation path;
 //! it is not the private leaf index. The public append-index construction
@@ -18,22 +18,44 @@ use crate::{
 };
 
 pub const ATOMIC_PAYMENT_TREE_DEPTH: usize = 20;
-pub const ATOMIC_PAYMENT_STATEMENT_VERSION: u8 = 3;
-pub const ATOMIC_PAYMENT_STATEMENT_PAYLOAD_BYTES: usize = 184;
-pub const ATOMIC_PAYMENT_STATEMENT_DOMAIN: &[u8] = b"aspis/atomic-payment-statement/v3";
+pub const ATOMIC_PAYMENT_STATEMENT_VERSION: u8 = 4;
+pub const ATOMIC_PAYMENT_STATEMENT_PAYLOAD_BYTES: usize = 216;
+pub const ATOMIC_PAYMENT_STATEMENT_DOMAIN: &[u8] = b"aspis/atomic-payment-statement/v4";
 pub const ATOMIC_PAYMENT_EMPTY_LEAF: Digest = [M31::ZERO; DIGEST_ELEMS];
-pub const ATOMIC_PAYMENT_STATEMENT_V3_KAT_EXPECTED: [u8; 32] = [
-    0xa1, 0x64, 0x19, 0xa3, 0x3e, 0xaf, 0xc6, 0x9c, 0xd9, 0xb9, 0x23, 0xae, 0x8f, 0xb1, 0xd5, 0x40,
-    0x0c, 0xf9, 0x69, 0xb0, 0xc8, 0x16, 0x56, 0xa3, 0x39, 0xec, 0x31, 0xf6, 0x68, 0x8d, 0xca, 0x86,
+pub const ATOMIC_PAYMENT_STATEMENT_V4_KAT_EXPECTED: [u8; 32] = [
+    0x47, 0x61, 0x3b, 0xf7, 0x1c, 0xb5, 0x3e, 0x9d, 0x99, 0xbf, 0x56, 0x48, 0x72, 0xde, 0xd5, 0xeb,
+    0x38, 0x5b, 0x99, 0x59, 0x95, 0xde, 0xf6, 0x69, 0xfd, 0x5b, 0xe1, 0x29, 0x8e, 0x68, 0x90, 0x4f,
 ];
 pub const ATOMIC_APPEND_CHAIN_DOMAIN: &[u8] = b"aspis/atomic-append-chain/v1";
 
+/// Domain separator for the pool deployment-domain derivation:
+/// `deployment_domain = sha256(DOMAIN || runtime_program_id || domain_tag)`.
+pub const ATOMIC_DEPLOYMENT_DOMAIN_SEPARATOR: &[u8] = b"aspis-spend-deployment-domain-v1";
+
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AtomicPaymentStatementV3 {
+pub struct AtomicPaymentStatementV4 {
     pub pool: [u8; 32],
     pub sequence: u64,
     pub spend: SpendPublic,
     pub output_anchor: Digest,
+    /// The pool's deployment domain, `sha256(separator || runtime_program_id
+    /// || domain_tag)`. Binding it into the statement digest makes every
+    /// proof specific to one program deployment on one named cluster.
+    pub deployment_domain: [u8; 32],
+}
+
+/// Compute the deployment domain bound by both the pool account and every
+/// v4 statement: `sha256(separator || runtime_program_id || domain_tag)`.
+pub fn atomic_deployment_domain(
+    hash: HashFn,
+    runtime_program_id: &[u8; 32],
+    domain_tag: &[u8],
+) -> [u8; 32] {
+    hash(&[
+        ATOMIC_DEPLOYMENT_DOMAIN_SEPARATOR,
+        runtime_program_id,
+        domain_tag,
+    ])
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -103,7 +125,7 @@ pub fn insertion_root(
 }
 
 /// Rejected public-append candidate: check that `sequence` addresses an empty
-/// leaf and replace it with `output_commitment`. Atomic-v3 does not call this;
+/// leaf and replace it with `output_commitment`. Atomic-v4 does not call this;
 /// its proof constrains a private same-path replacement instead.
 pub fn verify_output_insertion(
     current_anchor: &Digest,
@@ -124,9 +146,10 @@ pub fn verify_output_insertion(
 /// Fixed-width, canonical encoding hashed into the proof transcript.
 ///
 /// Layout: `version || depth || zero[6] || pool || sequence_le || anchor ||
-/// nullifier || output_commitment || output_anchor || asset_id_le || fee_le`.
-pub fn encode_atomic_payment_statement_v3(
-    statement: &AtomicPaymentStatementV3,
+/// nullifier || output_commitment || output_anchor || asset_id_le || fee_le
+/// || deployment_domain`.
+pub fn encode_atomic_payment_statement_v4(
+    statement: &AtomicPaymentStatementV4,
 ) -> Result<[u8; ATOMIC_PAYMENT_STATEMENT_PAYLOAD_BYTES], AtomicStatementError> {
     if statement.spend.asset_id.0 >= P {
         return Err(AtomicStatementError::NonCanonicalAssetId);
@@ -145,14 +168,15 @@ pub fn encode_atomic_payment_statement_v3(
     output[144..176].copy_from_slice(&encode_digest_canonical(&statement.output_anchor));
     output[176..180].copy_from_slice(&statement.spend.asset_id.to_le_bytes());
     output[180..184].copy_from_slice(&statement.spend.fee.to_le_bytes());
+    output[184..216].copy_from_slice(&statement.deployment_domain);
     Ok(output)
 }
 
-pub fn atomic_payment_statement_digest_v3(
-    statement: &AtomicPaymentStatementV3,
+pub fn atomic_payment_statement_digest_v4(
+    statement: &AtomicPaymentStatementV4,
     hash: HashFn,
 ) -> Result<[u8; 32], AtomicStatementError> {
-    let payload = encode_atomic_payment_statement_v3(statement)?;
+    let payload = encode_atomic_payment_statement_v4(statement)?;
     Ok(hash(&[ATOMIC_PAYMENT_STATEMENT_DOMAIN, &payload]))
 }
 
@@ -191,8 +215,8 @@ mod tests {
         core::array::from_fn(|index| M31(seed + index as u32 * 17))
     }
 
-    fn statement() -> AtomicPaymentStatementV3 {
-        AtomicPaymentStatementV3 {
+    fn statement() -> AtomicPaymentStatementV4 {
+        AtomicPaymentStatementV4 {
             pool: [9u8; 32],
             sequence: 7,
             spend: SpendPublic {
@@ -203,6 +227,7 @@ mod tests {
                 fee: 50,
             },
             output_anchor: digest(60),
+            deployment_domain: [70u8; 32],
         }
     }
 
@@ -224,8 +249,8 @@ mod tests {
     #[test]
     fn every_public_field_changes_the_statement_digest() {
         let original = statement();
-        let expected = atomic_payment_statement_digest_v3(&original, sha256).unwrap();
-        assert_eq!(expected, ATOMIC_PAYMENT_STATEMENT_V3_KAT_EXPECTED);
+        let expected = atomic_payment_statement_digest_v4(&original, sha256).unwrap();
+        assert_eq!(expected, ATOMIC_PAYMENT_STATEMENT_V4_KAT_EXPECTED);
         let mut variants = alloc::vec::Vec::new();
 
         let mut changed = original.clone();
@@ -248,13 +273,16 @@ mod tests {
         let mut changed = original.clone();
         changed.spend.asset_id = changed.spend.asset_id.add(M31::ONE);
         variants.push(changed);
-        let mut changed = original;
+        let mut changed = original.clone();
         changed.spend.fee += 1;
+        variants.push(changed);
+        let mut changed = original;
+        changed.deployment_domain[0] ^= 1;
         variants.push(changed);
 
         for variant in variants {
             assert_ne!(
-                atomic_payment_statement_digest_v3(&variant, sha256).unwrap(),
+                atomic_payment_statement_digest_v4(&variant, sha256).unwrap(),
                 expected
             );
         }

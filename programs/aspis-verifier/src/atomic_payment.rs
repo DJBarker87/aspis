@@ -18,13 +18,13 @@ use solana_program::{
 };
 
 use aspis_statement::{
-    atomic_payment_statement_digest_v3, decode_asset_id_canonical, decode_digest_canonical,
-    AtomicPaymentStatementV3, AtomicStatementError, SpendPublic,
+    atomic_payment_statement_digest_v4, decode_asset_id_canonical, decode_digest_canonical,
+    AtomicPaymentStatementV4, AtomicStatementError, SpendPublic,
 };
 
 pub const ATOMIC_POOL_STATE_MAGIC: [u8; 4] = *b"ASPS";
-pub const ATOMIC_POOL_STATE_VERSION: u8 = 1;
-pub const ATOMIC_POOL_STATE_LEN: usize = 48;
+pub const ATOMIC_POOL_STATE_VERSION: u8 = 2;
+pub const ATOMIC_POOL_STATE_LEN: usize = 80;
 
 pub const ATOMIC_NULLIFIER_MAGIC: [u8; 4] = *b"ASPN";
 pub const ATOMIC_NULLIFIER_VERSION: u8 = 1;
@@ -36,9 +36,11 @@ pub const ATOMIC_ERROR_ANCHOR_MISMATCH: u32 = 0x4153_1001;
 pub const ATOMIC_ERROR_NULLIFIER_ALREADY_SPENT: u32 = 0x4153_1002;
 pub const ATOMIC_ERROR_VERIFIER_NOT_INTEGRATED: u32 = 0x4153_1003;
 pub const ATOMIC_ERROR_OUTPUT_INSERTION_MISMATCH: u32 = 0x4153_1004;
+pub const ATOMIC_ERROR_DEPLOYMENT_DOMAIN_MISMATCH: u32 = 0x4153_1005;
 
 const POOL_SEQUENCE_OFFSET: usize = 8;
 const POOL_ANCHOR_OFFSET: usize = 16;
+const POOL_DEPLOYMENT_DOMAIN_OFFSET: usize = 48;
 const NULLIFIER_POOL_OFFSET: usize = 8;
 const NULLIFIER_VALUE_OFFSET: usize = 40;
 
@@ -53,6 +55,7 @@ pub struct AtomicPaymentPublicInputs {
     pub output_anchor: [u8; 32],
     pub asset_id: u32,
     pub fee: u32,
+    pub deployment_domain: [u8; 32],
 }
 
 fn sbf_sha256(inputs: &[&[u8]]) -> [u8; 32] {
@@ -77,7 +80,7 @@ fn checked_statement(
     pool_key: &Pubkey,
     sequence: u64,
     public: &AtomicPaymentPublicInputs,
-) -> Result<(AtomicPaymentStatementV3, [u8; 32]), ProgramError> {
+) -> Result<(AtomicPaymentStatementV4, [u8; 32]), ProgramError> {
     let current_anchor =
         decode_digest_canonical(&public.current_anchor).map_err(map_statement_error)?;
     let nullifier = decode_digest_canonical(&public.nullifier).map_err(map_statement_error)?;
@@ -86,7 +89,7 @@ fn checked_statement(
     let output_anchor =
         decode_digest_canonical(&public.output_anchor).map_err(map_statement_error)?;
     let asset_id = decode_asset_id_canonical(public.asset_id).map_err(map_statement_error)?;
-    let statement = AtomicPaymentStatementV3 {
+    let statement = AtomicPaymentStatementV4 {
         pool: pool_key.to_bytes(),
         sequence,
         spend: SpendPublic {
@@ -97,19 +100,21 @@ fn checked_statement(
             fee: public.fee,
         },
         output_anchor,
+        deployment_domain: public.deployment_domain,
     };
     let digest =
-        atomic_payment_statement_digest_v3(&statement, sbf_sha256).map_err(map_statement_error)?;
+        atomic_payment_statement_digest_v4(&statement, sbf_sha256).map_err(map_statement_error)?;
     Ok((statement, digest))
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct AtomicPoolStateV1 {
+pub struct AtomicPoolStateV2 {
     pub sequence: u64,
     pub anchor: [u8; 32],
+    pub deployment_domain: [u8; 32],
 }
 
-impl AtomicPoolStateV1 {
+impl AtomicPoolStateV2 {
     pub fn decode(data: &[u8]) -> Result<Self, ProgramError> {
         if data.len() != ATOMIC_POOL_STATE_LEN
             || data[0..4] != ATOMIC_POOL_STATE_MAGIC
@@ -124,7 +129,10 @@ impl AtomicPoolStateV1 {
                     .try_into()
                     .unwrap(),
             ),
-            anchor: data[POOL_ANCHOR_OFFSET..ATOMIC_POOL_STATE_LEN]
+            anchor: data[POOL_ANCHOR_OFFSET..POOL_DEPLOYMENT_DOMAIN_OFFSET]
+                .try_into()
+                .unwrap(),
+            deployment_domain: data[POOL_DEPLOYMENT_DOMAIN_OFFSET..ATOMIC_POOL_STATE_LEN]
                 .try_into()
                 .unwrap(),
         })
@@ -139,7 +147,9 @@ impl AtomicPoolStateV1 {
         data[4] = ATOMIC_POOL_STATE_VERSION;
         data[POOL_SEQUENCE_OFFSET..POOL_ANCHOR_OFFSET]
             .copy_from_slice(&self.sequence.to_le_bytes());
-        data[POOL_ANCHOR_OFFSET..ATOMIC_POOL_STATE_LEN].copy_from_slice(&self.anchor);
+        data[POOL_ANCHOR_OFFSET..POOL_DEPLOYMENT_DOMAIN_OFFSET].copy_from_slice(&self.anchor);
+        data[POOL_DEPLOYMENT_DOMAIN_OFFSET..ATOMIC_POOL_STATE_LEN]
+            .copy_from_slice(&self.deployment_domain);
         Ok(())
     }
 }
@@ -230,7 +240,7 @@ fn validate_accounts_and_state(
     system_program_account: &AccountInfo,
     public: &AtomicPaymentPublicInputs,
     proof_disposition: ProofAccountDisposition,
-) -> Result<(AtomicPoolStateV1, u8, MarkerPreparation), ProgramError> {
+) -> Result<(AtomicPoolStateV2, u8, MarkerPreparation), ProgramError> {
     if proof_account.owner != program_id || pool_account.owner != program_id {
         return Err(ProgramError::IncorrectProgramId);
     }
@@ -272,7 +282,15 @@ fn validate_accounts_and_state(
         return Err(ProgramError::InvalidSeeds);
     }
 
-    let pool = AtomicPoolStateV1::decode(&pool_account.try_borrow_data()?)?;
+    let pool = AtomicPoolStateV2::decode(&pool_account.try_borrow_data()?)?;
+    // A proof/statement ground for another deployment domain must fail with
+    // this exact error before any anchor comparison: a cross-deployment
+    // replay is a domain error even when the tree states happen to align.
+    if pool.deployment_domain != public.deployment_domain {
+        return Err(ProgramError::Custom(
+            ATOMIC_ERROR_DEPLOYMENT_DOMAIN_MISMATCH,
+        ));
+    }
     if pool.anchor != public.current_anchor {
         return Err(ProgramError::Custom(ATOMIC_ERROR_ANCHOR_MISMATCH));
     }
@@ -431,7 +449,7 @@ pub fn verify_and_apply_atomic_payment_state<'a, F>(
     verify_complete_proof: F,
 ) -> ProgramResult
 where
-    F: FnOnce(&AccountInfo<'a>, &AtomicPaymentStatementV3, &[u8; 32]) -> ProgramResult,
+    F: FnOnce(&AccountInfo<'a>, &AtomicPaymentStatementV4, &[u8; 32]) -> ProgramResult,
 {
     verify_and_apply_atomic_payment_state_traced(
         program_id,
@@ -453,7 +471,7 @@ pub fn verify_and_apply_atomic_payment_state_with_proof_refund<'a, F>(
     verify_complete_proof: F,
 ) -> ProgramResult
 where
-    F: FnOnce(&AccountInfo<'a>, &AtomicPaymentStatementV3, &[u8; 32]) -> ProgramResult,
+    F: FnOnce(&AccountInfo<'a>, &AtomicPaymentStatementV4, &[u8; 32]) -> ProgramResult,
 {
     verify_and_apply_atomic_payment_state_traced_inner(
         program_id,
@@ -476,7 +494,7 @@ pub fn verify_and_apply_atomic_payment_state_traced<'a, F, T>(
     trace: T,
 ) -> ProgramResult
 where
-    F: FnOnce(&AccountInfo<'a>, &AtomicPaymentStatementV3, &[u8; 32]) -> ProgramResult,
+    F: FnOnce(&AccountInfo<'a>, &AtomicPaymentStatementV4, &[u8; 32]) -> ProgramResult,
     T: FnMut(AtomicPaymentTransitionTraceEvent),
 {
     verify_and_apply_atomic_payment_state_traced_inner(
@@ -499,7 +517,7 @@ pub fn verify_and_apply_atomic_payment_state_traced_with_proof_refund<'a, F, T>(
     trace: T,
 ) -> ProgramResult
 where
-    F: FnOnce(&AccountInfo<'a>, &AtomicPaymentStatementV3, &[u8; 32]) -> ProgramResult,
+    F: FnOnce(&AccountInfo<'a>, &AtomicPaymentStatementV4, &[u8; 32]) -> ProgramResult,
     T: FnMut(AtomicPaymentTransitionTraceEvent),
 {
     verify_and_apply_atomic_payment_state_traced_inner(
@@ -521,7 +539,7 @@ fn verify_and_apply_atomic_payment_state_traced_inner<'a, F, T>(
     mut trace: T,
 ) -> ProgramResult
 where
-    F: FnOnce(&AccountInfo<'a>, &AtomicPaymentStatementV3, &[u8; 32]) -> ProgramResult,
+    F: FnOnce(&AccountInfo<'a>, &AtomicPaymentStatementV4, &[u8; 32]) -> ProgramResult,
     T: FnMut(AtomicPaymentTransitionTraceEvent),
 {
     if accounts.len() != 5 {
@@ -586,7 +604,7 @@ where
     // can fail, which also keeps direct host tests mutation-atomic.
     let mut pool_data = pool_account.try_borrow_mut_data()?;
     let mut nullifier_data = nullifier_account.try_borrow_mut_data()?;
-    let observed_pool = AtomicPoolStateV1::decode(&pool_data)?;
+    let observed_pool = AtomicPoolStateV2::decode(&pool_data)?;
     if observed_pool != pool || observed_pool.anchor != public.current_anchor {
         return Err(ProgramError::Custom(ATOMIC_ERROR_ANCHOR_MISMATCH));
     }
@@ -595,9 +613,10 @@ where
     }
     trace(AtomicPaymentTransitionTraceEvent::MutableStateRechecked);
 
-    let next_pool = AtomicPoolStateV1 {
+    let next_pool = AtomicPoolStateV2 {
         sequence: pool.sequence + 1,
         anchor: public.output_anchor,
+        deployment_domain: pool.deployment_domain,
     };
     let marker = NullifierMarkerV1 {
         pool: *pool_account.key,
@@ -624,7 +643,7 @@ where
 /// integration uses the real closure above through a new append-only tag.
 pub fn verifier_not_integrated(
     _proof_account: &AccountInfo,
-    _statement: &AtomicPaymentStatementV3,
+    _statement: &AtomicPaymentStatementV4,
     _statement_digest: &[u8; 32],
 ) -> ProgramResult {
     Err(ProgramError::Custom(ATOMIC_ERROR_VERIFIER_NOT_INTEGRATED))
@@ -687,6 +706,7 @@ mod tests {
             output_anchor: aspis_statement::encode_digest_canonical(&output_anchor),
             asset_id: 17,
             fee: 1,
+            deployment_domain: [0x0d; 32],
         }
     }
 
@@ -715,9 +735,10 @@ mod tests {
             let program_id = crate::id();
             let (nullifier_key, _) = atomic_nullifier_address(&program_id, &public.nullifier);
             let mut pool_data = [0u8; ATOMIC_POOL_STATE_LEN];
-            AtomicPoolStateV1 {
+            AtomicPoolStateV2 {
                 sequence: 0,
                 anchor: stored_anchor,
+                deployment_domain: public.deployment_domain,
             }
             .encode(&mut pool_data)
             .unwrap();
@@ -806,7 +827,7 @@ mod tests {
 
         fn apply<F>(&mut self, public: &AtomicPaymentPublicInputs, verify: F) -> ProgramResult
         where
-            F: FnOnce(&AccountInfo, &AtomicPaymentStatementV3, &[u8; 32]) -> ProgramResult,
+            F: FnOnce(&AccountInfo, &AtomicPaymentStatementV4, &[u8; 32]) -> ProgramResult,
         {
             let program_id = self.program_id;
             let accounts = self.accounts();
@@ -819,7 +840,7 @@ mod tests {
             verify: F,
         ) -> ProgramResult
         where
-            F: FnOnce(&AccountInfo, &AtomicPaymentStatementV3, &[u8; 32]) -> ProgramResult,
+            F: FnOnce(&AccountInfo, &AtomicPaymentStatementV4, &[u8; 32]) -> ProgramResult,
         {
             let program_id = self.program_id;
             let accounts = self.refund_accounts();
@@ -833,23 +854,28 @@ mod tests {
     }
 
     #[test]
-    fn exact_v1_account_layouts_are_pinned() {
+    fn exact_account_layouts_are_pinned() {
         let anchor = [7u8; 32];
+        let deployment_domain = [11u8; 32];
         let mut pool = [0u8; ATOMIC_POOL_STATE_LEN];
-        AtomicPoolStateV1 {
+        AtomicPoolStateV2 {
             sequence: 9,
             anchor,
+            deployment_domain,
         }
         .encode(&mut pool)
         .unwrap();
         assert_eq!(&pool[0..4], &ATOMIC_POOL_STATE_MAGIC);
         assert_eq!(pool[4], ATOMIC_POOL_STATE_VERSION);
         assert_eq!(&pool[5..8], &[0u8; 3]);
+        assert_eq!(&pool[16..48], &anchor);
+        assert_eq!(&pool[48..80], &deployment_domain);
         assert_eq!(
-            AtomicPoolStateV1::decode(&pool).unwrap(),
-            AtomicPoolStateV1 {
+            AtomicPoolStateV2::decode(&pool).unwrap(),
+            AtomicPoolStateV2 {
                 sequence: 9,
                 anchor,
+                deployment_domain,
             }
         );
 
@@ -894,7 +920,7 @@ mod tests {
                 assert_eq!(statement.spend.asset_id.0, public.asset_id);
                 assert_eq!(statement.spend.fee, public.fee);
                 assert_eq!(
-                    atomic_payment_statement_digest_v3(statement, sbf_sha256).unwrap(),
+                    atomic_payment_statement_digest_v4(statement, sbf_sha256).unwrap(),
                     *digest
                 );
                 Err(ProgramError::InvalidInstructionData)
@@ -918,7 +944,7 @@ mod tests {
                 assert_eq!(statement.pool, expected_pool);
                 assert_eq!(statement.sequence, 0);
                 assert_eq!(
-                    atomic_payment_statement_digest_v3(statement, sbf_sha256).unwrap(),
+                    atomic_payment_statement_digest_v4(statement, sbf_sha256).unwrap(),
                     *digest
                 );
                 Ok(())
@@ -926,10 +952,11 @@ mod tests {
             Ok(())
         );
         assert_eq!(
-            AtomicPoolStateV1::decode(&fixture.pool_data).unwrap(),
-            AtomicPoolStateV1 {
+            AtomicPoolStateV2::decode(&fixture.pool_data).unwrap(),
+            AtomicPoolStateV2 {
                 sequence: 1,
                 anchor: first.output_anchor,
+                deployment_domain: first.deployment_domain,
             }
         );
         assert_eq!(
@@ -975,7 +1002,7 @@ mod tests {
             "closed proof must retain a nonzero tombstone"
         );
         assert_eq!(
-            AtomicPoolStateV1::decode(&fixture.pool_data)
+            AtomicPoolStateV2::decode(&fixture.pool_data)
                 .unwrap()
                 .sequence,
             1
@@ -1093,6 +1120,71 @@ mod tests {
         );
     }
 
+    /// Host deployment-domain tooth: a proof/statement ground for domain A is
+    /// rejected by a pool initialized with domain B, with the exact new error
+    /// code, before the verifier runs and without any state change.
+    #[test]
+    fn cross_deployment_domain_rejects_without_verification_or_mutation() {
+        let mut public_domain_a = valid_public(640, 740);
+        public_domain_a.deployment_domain = aspis_statement::atomic_deployment_domain(
+            sbf_sha256,
+            &crate::id().to_bytes(),
+            b"mainnet-beta",
+        );
+        // The pool below is initialized with domain B (same program id,
+        // different domain tag), while the statement carries domain A.
+        let mut fixture = Fixture::new(&public_domain_a, public_domain_a.current_anchor);
+        let domain_b = aspis_statement::atomic_deployment_domain(
+            sbf_sha256,
+            &crate::id().to_bytes(),
+            b"devnet",
+        );
+        assert_ne!(public_domain_a.deployment_domain, domain_b);
+        AtomicPoolStateV2 {
+            sequence: 0,
+            anchor: public_domain_a.current_anchor,
+            deployment_domain: domain_b,
+        }
+        .encode(&mut fixture.pool_data)
+        .unwrap();
+
+        let pool_before = fixture.pool_data;
+        let marker_before = fixture.nullifier_data;
+        let verifier_called = Cell::new(false);
+        assert_eq!(
+            fixture.apply(&public_domain_a, |_, _, _| {
+                verifier_called.set(true);
+                Ok(())
+            }),
+            Err(ProgramError::Custom(
+                ATOMIC_ERROR_DEPLOYMENT_DOMAIN_MISMATCH
+            ))
+        );
+        assert!(!verifier_called.get());
+        assert_eq!(fixture.pool_data, pool_before);
+        assert_eq!(fixture.nullifier_data, marker_before);
+
+        // The refund path must reject identically without touching balances.
+        let mut refund_fixture = Fixture::new(&public_domain_a, public_domain_a.current_anchor);
+        AtomicPoolStateV2 {
+            sequence: 0,
+            anchor: public_domain_a.current_anchor,
+            deployment_domain: domain_b,
+        }
+        .encode(&mut refund_fixture.pool_data)
+        .unwrap();
+        let proof_lamports_before = refund_fixture.proof_lamports;
+        let payer_lamports_before = refund_fixture.payer_lamports;
+        assert_eq!(
+            refund_fixture.apply_with_refund(&public_domain_a, |_, _, _| Ok(())),
+            Err(ProgramError::Custom(
+                ATOMIC_ERROR_DEPLOYMENT_DOMAIN_MISMATCH
+            ))
+        );
+        assert_eq!(refund_fixture.proof_lamports, proof_lamports_before);
+        assert_eq!(refund_fixture.payer_lamports, payer_lamports_before);
+    }
+
     #[test]
     fn anchor_mismatch_rejects_without_verification_or_mutation() {
         let public = valid_public(600, 700);
@@ -1135,6 +1227,9 @@ mod tests {
         let mut changed = original;
         changed.fee += 1;
         variants.push(("fee", changed));
+        let mut changed = original;
+        changed.deployment_domain[0] ^= 1;
+        variants.push(("deployment_domain", changed));
 
         for (field, changed) in variants {
             let mut fixture = Fixture::new(&original, original.current_anchor);

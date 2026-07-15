@@ -17,14 +17,14 @@ use aspis_statement::atomic_state_only_trace::{
 use aspis_statement::{
     atomic_state_only_terminal::atomic_state_only_selected_constraint_composition_compiled_v3,
     derive_nullifier, derive_owner_key, note_commitment, output_commitment,
-    AtomicPaymentStatementV3, Digest, MerklePath, SpendPublic, SpendWitness,
+    AtomicPaymentStatementV4, Digest, MerklePath, SpendPublic, SpendWitness,
 };
 
 fn digest(seed: u32) -> Digest {
     core::array::from_fn(|index| M31(seed + index as u32 * 17))
 }
 
-fn fixture() -> (AtomicPaymentStatementV3, SpendWitness) {
+fn fixture() -> (AtomicPaymentStatementV4, SpendWitness) {
     let nullifier_key = digest(101);
     let input_salt = digest(301);
     let output_salt = digest(501);
@@ -51,7 +51,7 @@ fn fixture() -> (AtomicPaymentStatementV3, SpendWitness) {
         value_out,
         merkle_path,
     };
-    let statement = AtomicPaymentStatementV3 {
+    let statement = AtomicPaymentStatementV4 {
         pool: [0x5a; 32],
         sequence: 73,
         spend: SpendPublic {
@@ -62,6 +62,7 @@ fn fixture() -> (AtomicPaymentStatementV3, SpendWitness) {
             fee: 1,
         },
         output_anchor: atomic_merkle_root_v3(output_leaf, &witness.merkle_path).unwrap(),
+        deployment_domain: [0x5d; 32],
     };
     (statement, witness)
 }

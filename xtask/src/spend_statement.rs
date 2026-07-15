@@ -13,11 +13,11 @@ use serde::Deserialize;
 use sha2::{Digest as _, Sha256};
 
 use aspis_prover::HOST_HASH;
-use aspis_statement::{AtomicPaymentStatementV3, SpendPublic};
+use aspis_statement::{AtomicPaymentStatementV4, SpendPublic};
 
-pub(crate) const SPEND_STATEMENT_ARTIFACT: &str = "profile23_production_statement";
+pub(crate) const SPEND_STATEMENT_ARTIFACT: &str = "aspis_spend_production_statement";
 pub(crate) const SPEND_STATEMENT_SELECTION_RULE: &str =
-    "least Good23 selector from three post-final branches";
+    "least GoodSpend selector from three post-final branches";
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -31,6 +31,7 @@ struct SpendStatementSidecar {
     output_anchor_hex: String,
     asset_id: u32,
     fee: u32,
+    deployment_domain_hex: String,
     selection_rule: String,
     witness_independent_public_metadata: bool,
 }
@@ -39,7 +40,7 @@ struct SpendStatementSidecar {
 /// Spend artifacts.
 #[derive(Clone, Debug)]
 pub(crate) struct SpendStatementFile {
-    pub(crate) statement: AtomicPaymentStatementV3,
+    pub(crate) statement: AtomicPaymentStatementV4,
     pub(crate) path: PathBuf,
     pub(crate) bytes: usize,
     pub(crate) sha256: String,
@@ -77,7 +78,7 @@ fn decode_spend_hex_32(field: &str, value: &str) -> Result<[u8; 32]> {
     Ok(decoded)
 }
 
-fn statement_from_sidecar(sidecar: SpendStatementSidecar) -> Result<AtomicPaymentStatementV3> {
+fn statement_from_sidecar(sidecar: SpendStatementSidecar) -> Result<AtomicPaymentStatementV4> {
     ensure!(
         sidecar.artifact == SPEND_STATEMENT_ARTIFACT,
         "Spend statement sidecar artifact must be {SPEND_STATEMENT_ARTIFACT}"
@@ -97,7 +98,7 @@ fn statement_from_sidecar(sidecar: SpendStatementSidecar) -> Result<AtomicPaymen
     let output_commitment_bytes =
         decode_spend_hex_32("output_commitment_hex", &sidecar.output_commitment_hex)?;
     let output_anchor_bytes = decode_spend_hex_32("output_anchor_hex", &sidecar.output_anchor_hex)?;
-    let statement = AtomicPaymentStatementV3 {
+    let statement = AtomicPaymentStatementV4 {
         pool: decode_spend_hex_32("pool_hex", &sidecar.pool_hex)?,
         sequence: sidecar.sequence,
         spend: SpendPublic {
@@ -116,23 +117,27 @@ fn statement_from_sidecar(sidecar: SpendStatementSidecar) -> Result<AtomicPaymen
         },
         output_anchor: aspis_statement::decode_digest_canonical(&output_anchor_bytes)
             .map_err(|_| anyhow!("Spend statement sidecar output_anchor_hex is noncanonical"))?,
+        deployment_domain: decode_spend_hex_32(
+            "deployment_domain_hex",
+            &sidecar.deployment_domain_hex,
+        )?,
     };
-    aspis_statement::encode_atomic_payment_statement_v3(&statement)
+    aspis_statement::encode_atomic_payment_statement_v4(&statement)
         .map_err(|error| anyhow!("Spend statement sidecar is noncanonical: {error:?}"))?;
     Ok(statement)
 }
 
-pub(crate) fn decode_spend_statement_sidecar(bytes: &[u8]) -> Result<AtomicPaymentStatementV3> {
+pub(crate) fn decode_spend_statement_sidecar(bytes: &[u8]) -> Result<AtomicPaymentStatementV4> {
     let sidecar: SpendStatementSidecar =
         serde_json::from_slice(bytes).context("decode canonical Spend statement sidecar")?;
     statement_from_sidecar(sidecar)
 }
 
 pub(crate) fn canonical_spend_public_input_digest(
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
 ) -> Result<String> {
     Ok(spend_hex(
-        &aspis_statement::atomic_payment_statement_digest_v3(statement, HOST_HASH)
+        &aspis_statement::atomic_payment_statement_digest_v4(statement, HOST_HASH)
             .map_err(|error| anyhow!("canonical Spend public-input digest: {error:?}"))?,
     ))
 }
@@ -206,9 +211,9 @@ mod tests {
         }
     }
 
-    fn statement() -> AtomicPaymentStatementV3 {
+    fn statement() -> AtomicPaymentStatementV4 {
         let digest = |seed: u32| core::array::from_fn(|index| M31(seed + index as u32));
-        AtomicPaymentStatementV3 {
+        AtomicPaymentStatementV4 {
             pool: [0x42; 32],
             sequence: 91,
             spend: SpendPublic {
@@ -219,10 +224,11 @@ mod tests {
                 fee: 1,
             },
             output_anchor: digest(71),
+            deployment_domain: [0x4b; 32],
         }
     }
 
-    fn sidecar(statement: &AtomicPaymentStatementV3) -> Value {
+    fn sidecar(statement: &AtomicPaymentStatementV4) -> Value {
         json!({
             "artifact": SPEND_STATEMENT_ARTIFACT,
             "pool_hex": spend_hex(&statement.pool),
@@ -241,6 +247,7 @@ mod tests {
             ),
             "asset_id": statement.spend.asset_id.0,
             "fee": statement.spend.fee,
+            "deployment_domain_hex": spend_hex(&statement.deployment_domain),
             "selection_rule": SPEND_STATEMENT_SELECTION_RULE,
             "witness_independent_public_metadata": true,
         })

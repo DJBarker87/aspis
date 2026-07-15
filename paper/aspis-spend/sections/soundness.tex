@@ -9,22 +9,31 @@ extractor is constructed, so the result is not a knowledge-soundness claim.
 
 \subsection{Security experiment and metric}
 
-Let \(\Pi_{23}\) denote the interactive public-coin protocol obtained by
+Let \(\Pi_{\mathrm{spend}}\) denote the interactive public-coin protocol obtained by
 replacing each Fiat--Shamir challenge with an independent verifier message.
 The adversary may choose the public pre-state and statement \(x\), receive the
 verifier messages adaptively, and return all oracle messages and openings.  It
 wins if the verifier accepts while
 \(
-  \{w:R_{23}(x,w)=1\}=\varnothing
+  \{w:\RProfile(x,w)=1\}=\varnothing
 \).
 Account-state rejection can only reduce this event, so the algebraic analysis
 may conservatively omit the direct pre-state checks.
+
+\begin{remark}[Statement-encoding change]
+The v4 statement encoding extends the statement-digest preimage by the
+32-byte deployment domain of Definition~\ref{def:spend-statement}.  The
+digest remains one 32-byte SHA-256 value absorbed at the same transcript
+position, so the Fiat--Shamir event ledger below is unchanged: no absorb
+boundary, challenge, or grinding predicate is added or moved by the new
+field.
+\end{remark}
 
 For the Fiat--Shamir protocol, let a classical adversary make
 \(T\in[1,2^{128}]\) queries to the 256-bit random oracle, including queries
 made after it has produced candidate proof bytes.  We report
 \begin{equation}
- \operatorname{Adv}^{\mathsf{snd}}_{23}(T)
+ \operatorname{Adv}^{\mathsf{snd}}_{\mathrm{spend}}(T)
  =\frac{\Pr[\text{the adversary produces an accepting false statement}]}{T},
  \label{eq:work-normalized-soundness}
 \end{equation}
@@ -233,7 +242,7 @@ Rows 1--14 are the algebraic-event partition in
 Assumption~\ref{ass:pinned-finite-reduction}.  Rows 15--16 are release-policy
 slack, not collision probabilities derived for an adversary making
 \(2^{128}\) queries.  Argument soundness for the exact relation treats the
-Poseidon2 gates as part of \(R_{23}\), while the theorem below treats
+Poseidon2 gates as part of \(\RProfile\), while the theorem below treats
 \(\mathcal H\) as an ideal random oracle.  Omitting these two positive reserve
 terms would only strengthen the numerical bound.  Collision resistance of
 Poseidon2 is instead needed when a note commitment is interpreted as a
@@ -248,7 +257,7 @@ Using the one-branch final-miss row and unioning all 16 events gives
 \end{equation}
 Under Assumption~\ref{ass:pinned-finite-reduction}, the complement of this
 union and Lemmas~\ref{lem:johnson-mca-batch}
-and~\ref{lem:local-algebraic-binding} imply that \(R_{23}\) is satisfiable.
+and~\ref{lem:local-algebraic-binding} imply that \(\RProfile\) is satisfiable.
 
 \subsection{Fiat--Shamir instantiation}
 
@@ -318,7 +327,7 @@ state-restoration property (Assumption~\ref{ass:boundary-restoration}), and
 SHA-256 modeled as a 256-bit random oracle.  For every classical adversary making
 \(1\le T\le2^{128}\) oracle queries,
 \[
- \operatorname{Adv}^{\mathsf{snd}}_{23}(T)
+ \operatorname{Adv}^{\mathsf{snd}}_{\mathrm{spend}}(T)
  \le 3b(T)\le 2^{-100.16144938287455}.
 \]
 Thus \Profile{} has a conservative 100.161-bit argument-soundness floor in

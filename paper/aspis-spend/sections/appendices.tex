@@ -85,7 +85,7 @@ start & end & bytes & object \\
 \end{tabular}
 \end{table}
 
-The header fixes profile 23, \(\log_2\) message size 10, blowup logarithm 9,
+The header fixes the spend proof profile, \(\log_2\) message size 10, blowup logarithm 9,
 18 queries, four rounds, raw-fiber fold payloads, radix-four minimal-subtree
 Merkle mode, final polynomial logarithmic length 2, and the exact flag set.
 All field encodings in the prefix are canonical.
@@ -196,22 +196,22 @@ strictly sharper diagnostic calculation by applying the factor three only to
 the final query-miss row.  It is not used to raise the theorem's conservative
 headline value.
 
-\section{\texorpdfstring{\(\mathsf{Good}_{23}\)}{Good23} certificate structure}
-\label{app:good23-certificate}
+\section{\texorpdfstring{\(\mathsf{Good}_{\mathrm{spend}}\)}{GoodSpend} certificate structure}
+\label{app:goodspend-certificate}
 
 The complete product consists of the following three nonzero minors.
 \begin{table}[ht]
 \centering
-\caption{\(\mathsf{Good}_{23}\) provenance anchors.}
-\label{tab:good23-fingerprints}
+\caption{\(\mathsf{Good}_{\mathrm{spend}}\) provenance anchors.}
+\label{tab:goodspend-fingerprints}
 \begin{tabular}{@{}lrl@{}}
 \toprule
 component & rank & fingerprint \\
 \midrule
-root-neutral joint minor & 1404 & \texttt{0x6b3838662fbf34db} \\
-remaining \(G/D\) terminal Schur minor & 12 & \texttt{0x1f34525db611d292} \\
-inactive-balanced \(H_1\) terminal Schur minor & 12 & \texttt{0xe70215f0b4795f52} \\
-bound product & --- & \texttt{0xfc0706f3a304ae26} \\
+root-neutral joint minor & 1404 & \texttt{0xc1e23e3acec55fc9} \\
+remaining \(G/D\) terminal Schur minor & 12 & \texttt{0x7ca257aca211584a} \\
+inactive-balanced \(H_1\) terminal Schur minor & 12 & \texttt{0x2b09c8e0f643b2bf} \\
+bound product & --- & \texttt{0xb1af7cc08b30847d} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -236,7 +236,7 @@ For a candidate schedule, the runtime checker performs the following steps:
         guards;
   \item eliminate the raw query blocks, compute the two terminal Schur
         complements, and require the ranks in
-        Table~\ref{tab:good23-ranks};
+        Table~\ref{tab:goodspend-ranks};
   \item construct the root-neutral initial/terminal/kernel map, recompute its
         pivots and nonzero minor, and require rank 1404; and
   \item bind the dynamic component reports into the complete degree/product

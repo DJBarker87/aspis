@@ -26,12 +26,12 @@ use aspis_core::sumcheck::SUMCHECK_COEFFICIENTS;
 use aspis_core::transcript::{label, ChallengeSampleExhausted, HashFn, Transcript};
 use aspis_statement::state_only_poseidon::{successor_point, xor12_point};
 use aspis_statement::{
-    atomic_payment_statement_digest_v3,
+    atomic_payment_statement_digest_v4,
     atomic_state_only_registry::build_atomic_state_only_copy_helper_v3,
     atomic_state_only_terminal::atomic_state_only_selected_unmasked_terminal_value_compiled_v3,
     build_state_only_copy_helper_v4, multilinear_evaluate, multilinear_evaluate_qm31,
     state_only_copy_helper_sum, state_only_point_openings, state_only_unmasked_terminal_value,
-    AtomicPaymentStatementV3, SpendPublic, StateOnlyConstraintError, StateOnlySemanticError,
+    AtomicPaymentStatementV4, SpendPublic, StateOnlyConstraintError, StateOnlySemanticError,
     StateOnlyTraceFoundation,
 };
 
@@ -393,7 +393,7 @@ pub fn build_state_only_prefix_front_selected_with_h1_padding(
 }
 
 pub fn build_atomic_state_only_prefix_front_selected_with_h1_padding_v3(
-    statement: &AtomicPaymentStatementV3,
+    statement: &AtomicPaymentStatementV4,
     trace: &StateOnlyTraceFoundation,
     mask_only_c1: &[Vec<M31>; STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS],
     g: &[QM31],
@@ -405,7 +405,7 @@ pub fn build_atomic_state_only_prefix_front_selected_with_h1_padding_v3(
     pow_mode: StateOnlyPowMode,
 ) -> Result<BuiltStateOnlyPrefixFront, StateOnlyPrefixBuildError> {
     if shape != STATE_ONLY_RATE512_SHAPE
-        || atomic_payment_statement_digest_v3(statement, hash)
+        || atomic_payment_statement_digest_v4(statement, hash)
             .map_err(|_| StateOnlyPrefixBuildError::Shape)?
             != statement_digest
     {
@@ -428,7 +428,7 @@ pub fn build_atomic_state_only_prefix_front_selected_with_h1_padding_v3(
 #[derive(Clone, Copy)]
 enum StateOnlyFrontMode<'a> {
     Base(&'a SpendPublic),
-    Atomic(&'a AtomicPaymentStatementV3),
+    Atomic(&'a AtomicPaymentStatementV4),
 }
 
 #[allow(clippy::too_many_arguments)]
