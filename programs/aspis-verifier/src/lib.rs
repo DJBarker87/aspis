@@ -1,10 +1,11 @@
-//! Aspis on-chain verifier (Stage 0 slice).
+//! Aspis on-chain verifier.
 //!
-//! The program is the crate seam the design cares about: it parses and
-//! verifies proof envelopes against a statement digest and knows nothing
-//! about spends. Staged upload follows the Yano pattern: a proof account is
-//! populated chunk by chunk, then `Verify` runs `aspis_core::verify` over it
-//! with the SHA-256 syscall as the hash backend.
+//! The production surface is the Profile23 minimal-dispatch entrypoint, the
+//! `atomic_payment` state-transition module, and the `profile23-production`
+//! feature chain. Superseded-profile and diagnostic feature definitions were
+//! removed and their wire tags fail closed; the pre-strip research tree is
+//! preserved at the git tag `research-archive-2026-07-14` and in git
+//! history.
 //!
 //! Proof account layout:
 //! [0..4] magic "ASPU", [4..8] proof_len u32 LE, [8..40] upload authority,
@@ -14,9 +15,9 @@
 // check-cfg list does not know that SBF target even though cargo-build-sbf does.
 #![allow(unexpected_cfgs)]
 
-// Production must never be feature-unified with a PoW bypass or an older
-// statement candidate. The stable marker is checked by the release harness so
-// an unrelated compiler failure cannot masquerade as this isolation tooth.
+// The diagnostic and legacy-profile feature names below are no longer
+// declared in the manifest. Redeclaring any of them alongside
+// profile23-production must fail the build instead of unifying with it.
 #[cfg(all(
     feature = "profile23-production",
     any(
@@ -68,16 +69,16 @@ use solana_program::{
     program_error::ProgramError,
     pubkey::Pubkey,
 };
-
-// Bound to the checked-in deployment keypair. Release artifacts pin the
-// resulting SBF hash; changing this identifier requires a full rebuild and
-// release-certificate regeneration.
+// Bound to the checked-in deployment keypair; release artifacts pin the
+// resulting SBF hash. The mainnet demonstration deployed the byte-identical
+// binary under the disposable program id
+// 9kPpUknrRicMvaGa6zPNERGUYDj6fMvMR8PwMS3iFR6Z. Every PDA derives from the
+// runtime program_id parameter, so the constant is the canonical code
+// identity, not a deployment binding.
 declare_id!("7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue");
-
 const PROOF_ACCOUNT_MAGIC: [u8; 4] = *b"ASPU";
 pub const PROOF_ACCOUNT_HEADER_LEN: usize = 40;
 const AUTHORITY_OFFSET: usize = 8;
-
 #[derive(Clone, Copy, Debug, BorshSerialize, BorshDeserialize)]
 pub enum ZkKernelKind {
     M31InverseSoftware,
@@ -121,9 +122,8 @@ pub enum M31CircleBasisDiagnosticMode {
     RlcPreparedLimbs49TwoRows,
 }
 
-/// Neutral, measurement-only two-point relation shapes. The ordinals are
-/// pinned inside append-only instruction tag 25 and select no production
-/// batching or soundness rule.
+/// Neutral, measurement-only two-point relation shapes; the ordinals are
+/// pinned inside append-only instruction tag 25.
 #[derive(Clone, Copy, Debug, BorshSerialize, BorshDeserialize)]
 pub enum TwoPointBatchingDiagnosticMode {
     OnePointBaseline,
@@ -184,7 +184,10 @@ impl TwoPointBatchingDiagnosticMode {
         }
     }
 }
-
+/// Frozen wire format: the Borsh enum discriminant is the variant index and
+/// on-chain accounts and recorded release evidence pin these tags, so the
+/// variant order must never change. The deployed entrypoint accepts only tags
+/// 0, 1, 59, 60, 62, 63, 64, and 65; superseded profile tags fail closed.
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize)]
 pub enum AspisInstruction {
     /// Set the proof length header. Account must be pre-created with owner =
@@ -726,7 +729,6 @@ fn trace_payment_hiding_statement_cu(event: u8) {
     msg!("aspis-cu:h15_statement_phase={}", event);
     sol_log_compute_units();
 }
-
 fn run_payment_hiding_placement_v4(placement: u8, expected_sink: [u8; 16]) -> ProgramResult {
     let placement = match placement {
         0 => aspis_core::statement_hiding::PaymentHidingPlacement::InBatch,
@@ -743,7 +745,6 @@ fn run_payment_hiding_placement_v4(placement: u8, expected_sink: [u8; 16]) -> Pr
         Err(ProgramError::InvalidInstructionData)
     }
 }
-
 fn run_payment_hiding_aggregate_relation_v4(phase: u8, expected_sink: [u8; 16]) -> ProgramResult {
     let phase = match phase {
         0 => aspis_core::statement_hiding::PaymentHidingAggregatePhase::EmptyControl,
@@ -766,7 +767,6 @@ fn run_payment_hiding_aggregate_relation_v4(phase: u8, expected_sink: [u8; 16]) 
         Err(ProgramError::InvalidInstructionData)
     }
 }
-
 fn run_ood_sample_relation_probe(samples_per_round: u8, expected_sink: [u8; 16]) -> ProgramResult {
     if samples_per_round != 1 && samples_per_round != 2 {
         return Err(ProgramError::InvalidInstructionData);
@@ -4221,6 +4221,10 @@ const _: () = assert!(
         == ATOMIC_PROFILE21_MASKED_SWITCH_BASIS_FINGERPRINT
 );
 
+// Functions gated on feature names that the manifest no longer declares are
+// compiled by no build; their tags fail closed. The released SBF binary
+// (release/profile23-q18-g37-mainnet-v1) embeds panic-location line numbers
+// for the live code below, so deleting these lines changes a rebuild's bytes.
 #[cfg(feature = "profile21-integrated-candidate")]
 fn trace_atomic_profile21_acceptance_phase(
     event: aspis_statement::state_only_profile21::Profile21TraceEvent,
@@ -4244,7 +4248,6 @@ fn trace_atomic_profile21_acceptance_phase(
     }
     sol_log_compute_units();
 }
-
 #[cfg(feature = "diagnostic-unmined-profile21-mutation")]
 fn trace_atomic_profile21_mutation_phase(
     event: aspis_statement::state_only_profile21::Profile21TraceEvent,
@@ -4268,7 +4271,6 @@ fn trace_atomic_profile21_mutation_phase(
     }
     sol_log_compute_units();
 }
-
 #[cfg(feature = "diagnostic-unmined-profile21-mutation")]
 fn trace_atomic_profile21_mutation_event(event: atomic_payment::AtomicPaymentTransitionTraceEvent) {
     use atomic_payment::AtomicPaymentTransitionTraceEvent;
@@ -4300,7 +4302,6 @@ fn trace_atomic_profile21_mutation_event(event: atomic_payment::AtomicPaymentTra
     }
     sol_log_compute_units();
 }
-
 #[cfg(feature = "profile22-integrated-candidate")]
 fn trace_atomic_profile22_acceptance_phase(
     event: aspis_statement::state_only_profile22::Profile22TraceEvent,
@@ -4318,7 +4319,6 @@ fn trace_atomic_profile22_acceptance_phase(
     }
     sol_log_compute_units();
 }
-
 #[cfg(feature = "diagnostic-unmined-profile22-mutation")]
 fn trace_atomic_profile22_mutation_phase(
     event: aspis_statement::state_only_profile22::Profile22TraceEvent,
@@ -5054,17 +5054,14 @@ fn production_take<const N: usize>(input: &mut &[u8]) -> Result<[u8; N], Program
     *input = tail;
     Ok(*head)
 }
-
 #[cfg(feature = "profile23-minimal-dispatch")]
 fn production_u32(input: &mut &[u8]) -> Result<u32, ProgramError> {
     Ok(u32::from_le_bytes(production_take::<4>(input)?))
 }
-
 #[cfg(feature = "profile23-minimal-dispatch")]
 fn production_u64(input: &mut &[u8]) -> Result<u64, ProgramError> {
     Ok(u64::from_le_bytes(production_take::<8>(input)?))
 }
-
 #[cfg(feature = "profile23-minimal-dispatch")]
 fn production_require_empty(input: &[u8]) -> ProgramResult {
     if input.is_empty() {
@@ -5082,13 +5079,16 @@ fn production_require_empty(input: &[u8]) -> ProgramResult {
 /// - 1: upload one proof chunk;
 /// - 59: production read-only verification;
 /// - 60: production verification plus atomic state transition;
-/// - 62: irreversibly finalize the proof account; and
-/// - 63: initialize a fresh atomic pool.
+/// - 62: irreversibly finalize the proof account;
+/// - 63: initialize a fresh atomic pool;
+/// - 64: close a sealed proof account and refund every lamport; and
+/// - 65: production verification plus the atomic state transition and an
+///   atomic proof-account close and rent refund.
 ///
-/// Every other historical or diagnostic tag fails before account access.  The
-/// implementation duplicates the small account-lifecycle shell on purpose:
-/// calling the generic Borsh dispatcher would retain its entire code and
-/// constant graph in the deployed ELF.
+/// Every other historical or diagnostic tag fails before account access. The
+/// lifecycle shell is duplicated on purpose: calling the generic Borsh
+/// dispatcher would root its entire code and constant graph in the deployed
+/// ELF.
 #[cfg(feature = "profile23-minimal-dispatch")]
 pub fn process_profile23_production_instruction(
     program_id: &Pubkey,
@@ -5749,33 +5749,6 @@ pub fn process_instruction(
         fee,
     } = &instruction
     {
-        #[cfg(feature = "profile20-mutation-candidate")]
-        {
-            let public = atomic_payment::AtomicPaymentPublicInputs {
-                current_anchor: *current_anchor,
-                nullifier: *nullifier,
-                output_commitment: *output_commitment,
-                output_anchor: *output_anchor,
-                asset_id: *asset_id,
-                fee: *fee,
-            };
-            return atomic_payment::verify_and_apply_atomic_payment_state(
-                program_id,
-                accounts,
-                &public,
-                |proof_account, statement, _statement_digest| {
-                    // No diagnostic selector reaches this closure. The
-                    // candidate verifier checks every configured PoW
-                    // predicate. Default builds never reach this arm while
-                    // complete-view hiding remains open.
-                    verify_uploaded_atomic_profile20_production_statement_v3(
-                        proof_account,
-                        statement,
-                    )
-                },
-            );
-        }
-        #[cfg(not(feature = "profile20-mutation-candidate"))]
         {
             let _ = (
                 current_anchor,
@@ -5799,32 +5772,6 @@ pub fn process_instruction(
         fee,
     } = &instruction
     {
-        #[cfg(feature = "diagnostic-unmined-mutation")]
-        {
-            msg!("aspis-cu:atomic48_instruction_start");
-            sol_log_compute_units();
-            let public = atomic_payment::AtomicPaymentPublicInputs {
-                current_anchor: *current_anchor,
-                nullifier: *nullifier,
-                output_commitment: *output_commitment,
-                output_anchor: *output_anchor,
-                asset_id: *asset_id,
-                fee: *fee,
-            };
-            return atomic_payment::verify_and_apply_atomic_payment_state_traced(
-                program_id,
-                accounts,
-                &public,
-                |proof_account, statement, _statement_digest| {
-                    verify_uploaded_atomic_profile20_mutation_diagnostic_v3(
-                        proof_account,
-                        statement,
-                    )
-                },
-                trace_atomic_profile20_mutation_event,
-            );
-        }
-        #[cfg(not(feature = "diagnostic-unmined-mutation"))]
         {
             let _ = (
                 current_anchor,
@@ -5920,22 +5867,6 @@ pub fn process_instruction(
         diagnostic_unmined,
     } = &instruction
     {
-        #[cfg(feature = "profile21-integrated-candidate")]
-        {
-            let proof_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
-            if proof_account.owner != program_id || proof_account.is_writable {
-                return Err(ProgramError::IncorrectProgramId);
-            }
-            return verify_uploaded_atomic_profile21_acceptance_v3(
-                proof_account,
-                *pool,
-                *sequence,
-                public_input,
-                *output_anchor,
-                *diagnostic_unmined,
-            );
-        }
-        #[cfg(not(feature = "profile21-integrated-candidate"))]
         {
             let _ = (
                 pool,
@@ -5958,31 +5889,6 @@ pub fn process_instruction(
         fee,
     } = &instruction
     {
-        #[cfg(feature = "profile21-mutation-candidate")]
-        {
-            let public = atomic_payment::AtomicPaymentPublicInputs {
-                current_anchor: *current_anchor,
-                nullifier: *nullifier,
-                output_commitment: *output_commitment,
-                output_anchor: *output_anchor,
-                asset_id: *asset_id,
-                fee: *fee,
-            };
-            return atomic_payment::verify_and_apply_atomic_payment_state(
-                program_id,
-                accounts,
-                &public,
-                |proof_account, statement, _statement_digest| {
-                    // No bypass selector reaches tag 51. This calls the same
-                    // integrated proof parser as tag 50 with production PoW.
-                    verify_uploaded_atomic_profile21_production_statement_v3(
-                        proof_account,
-                        statement,
-                    )
-                },
-            );
-        }
-        #[cfg(not(feature = "profile21-mutation-candidate"))]
         {
             let _ = (
                 current_anchor,
@@ -6006,32 +5912,6 @@ pub fn process_instruction(
         fee,
     } = &instruction
     {
-        #[cfg(feature = "diagnostic-unmined-profile21-mutation")]
-        {
-            msg!("aspis-cu:atomic52_instruction_start");
-            sol_log_compute_units();
-            let public = atomic_payment::AtomicPaymentPublicInputs {
-                current_anchor: *current_anchor,
-                nullifier: *nullifier,
-                output_commitment: *output_commitment,
-                output_anchor: *output_anchor,
-                asset_id: *asset_id,
-                fee: *fee,
-            };
-            return atomic_payment::verify_and_apply_atomic_payment_state_traced(
-                program_id,
-                accounts,
-                &public,
-                |proof_account, statement, _statement_digest| {
-                    verify_uploaded_atomic_profile21_mutation_diagnostic_v3(
-                        proof_account,
-                        statement,
-                    )
-                },
-                trace_atomic_profile21_mutation_event,
-            );
-        }
-        #[cfg(not(feature = "diagnostic-unmined-profile21-mutation"))]
         {
             let _ = (
                 current_anchor,
@@ -6054,28 +5934,6 @@ pub fn process_instruction(
         diagnostic_unmined,
     } = &instruction
     {
-        #[cfg(feature = "profile22-integrated-candidate")]
-        {
-            #[cfg(not(feature = "diagnostic-unmined-profile22-acceptance"))]
-            if *diagnostic_unmined {
-                // Never let a production-capable binary expose the local
-                // unmined verifier through the read-only/CPI surface.
-                return Err(ProgramError::InvalidInstructionData);
-            }
-            let proof_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
-            if proof_account.owner != program_id || proof_account.is_writable {
-                return Err(ProgramError::IncorrectProgramId);
-            }
-            return verify_uploaded_atomic_profile22_acceptance_v3(
-                proof_account,
-                *pool,
-                *sequence,
-                public_input,
-                *output_anchor,
-                *diagnostic_unmined,
-            );
-        }
-        #[cfg(not(feature = "profile22-integrated-candidate"))]
         {
             let _ = (
                 pool,
@@ -6098,29 +5956,6 @@ pub fn process_instruction(
         fee,
     } = &instruction
     {
-        #[cfg(feature = "profile22-mutation-candidate")]
-        {
-            let public = atomic_payment::AtomicPaymentPublicInputs {
-                current_anchor: *current_anchor,
-                nullifier: *nullifier,
-                output_commitment: *output_commitment,
-                output_anchor: *output_anchor,
-                asset_id: *asset_id,
-                fee: *fee,
-            };
-            return atomic_payment::verify_and_apply_atomic_payment_state(
-                program_id,
-                accounts,
-                &public,
-                |proof_account, statement, _statement_digest| {
-                    verify_uploaded_atomic_profile22_production_statement_v3(
-                        proof_account,
-                        statement,
-                    )
-                },
-            );
-        }
-        #[cfg(not(feature = "profile22-mutation-candidate"))]
         {
             let _ = (
                 current_anchor,
@@ -6144,32 +5979,6 @@ pub fn process_instruction(
         fee,
     } = &instruction
     {
-        #[cfg(feature = "diagnostic-unmined-profile22-mutation")]
-        {
-            msg!("aspis-cu:atomic58_instruction_start");
-            sol_log_compute_units();
-            let public = atomic_payment::AtomicPaymentPublicInputs {
-                current_anchor: *current_anchor,
-                nullifier: *nullifier,
-                output_commitment: *output_commitment,
-                output_anchor: *output_anchor,
-                asset_id: *asset_id,
-                fee: *fee,
-            };
-            return atomic_payment::verify_and_apply_atomic_payment_state_traced(
-                program_id,
-                accounts,
-                &public,
-                |proof_account, statement, _statement_digest| {
-                    verify_uploaded_atomic_profile22_mutation_diagnostic_v3(
-                        proof_account,
-                        statement,
-                    )
-                },
-                trace_atomic_profile22_mutation_event,
-            );
-        }
-        #[cfg(not(feature = "diagnostic-unmined-profile22-mutation"))]
         {
             let _ = (
                 current_anchor,
@@ -6194,7 +6003,6 @@ pub fn process_instruction(
     {
         #[cfg(feature = "profile23-integrated-candidate")]
         {
-            #[cfg(not(feature = "diagnostic-unmined-profile23-acceptance"))]
             if *diagnostic_unmined {
                 return Err(ProgramError::InvalidInstructionData);
             }
@@ -6327,32 +6135,6 @@ pub fn process_instruction(
         fee,
     } = &instruction
     {
-        #[cfg(feature = "diagnostic-unmined-profile23-mutation")]
-        {
-            msg!("aspis-cu:atomic61_instruction_start");
-            sol_log_compute_units();
-            let public = atomic_payment::AtomicPaymentPublicInputs {
-                current_anchor: *current_anchor,
-                nullifier: *nullifier,
-                output_commitment: *output_commitment,
-                output_anchor: *output_anchor,
-                asset_id: *asset_id,
-                fee: *fee,
-            };
-            return atomic_payment::verify_and_apply_atomic_payment_state_traced(
-                program_id,
-                accounts,
-                &public,
-                |proof_account, statement, _statement_digest| {
-                    verify_uploaded_atomic_profile23_mutation_diagnostic_v3(
-                        proof_account,
-                        statement,
-                    )
-                },
-                trace_atomic_profile23_mutation_event,
-            );
-        }
-        #[cfg(not(feature = "diagnostic-unmined-profile23-mutation"))]
         {
             let _ = (
                 current_anchor,
@@ -6954,14 +6736,12 @@ mod tests {
         assert_eq!(production_encoded[0], 47);
         let encoded = borsh::to_vec(&diagnostic).unwrap();
         assert_eq!(encoded[0], 48);
-        #[cfg(not(feature = "profile20-mutation-candidate"))]
         assert_eq!(
             process_instruction(&id(), &[], &production_encoded),
             Err(ProgramError::Custom(
                 atomic_payment::ATOMIC_ERROR_VERIFIER_NOT_INTEGRATED
             ))
         );
-        #[cfg(not(feature = "diagnostic-unmined-mutation"))]
         assert_eq!(
             process_instruction(&id(), &[], &encoded),
             Err(ProgramError::Custom(
@@ -7006,7 +6786,6 @@ mod tests {
         };
         let encoded = borsh::to_vec(&instruction).unwrap();
         assert_eq!(encoded[0], 50);
-        #[cfg(not(feature = "profile21-integrated-candidate"))]
         assert_eq!(
             process_instruction(&id(), &[], &encoded),
             Err(ProgramError::Custom(
@@ -7037,14 +6816,12 @@ mod tests {
         let diagnostic = borsh::to_vec(&diagnostic).unwrap();
         assert_eq!(production[0], 51);
         assert_eq!(diagnostic[0], 52);
-        #[cfg(not(feature = "profile21-mutation-candidate"))]
         assert_eq!(
             process_instruction(&id(), &[], &production),
             Err(ProgramError::Custom(
                 atomic_payment::ATOMIC_ERROR_VERIFIER_NOT_INTEGRATED
             ))
         );
-        #[cfg(not(feature = "diagnostic-unmined-profile21-mutation"))]
         assert_eq!(
             process_instruction(&id(), &[], &diagnostic),
             Err(ProgramError::Custom(
@@ -7086,30 +6863,18 @@ mod tests {
         assert_eq!(verify[0], 56);
         assert_eq!(production[0], 57);
         assert_eq!(diagnostic[0], 58);
-        #[cfg(not(feature = "profile22-integrated-candidate"))]
         assert_eq!(
             process_instruction(&id(), &[], &verify),
             Err(ProgramError::Custom(
                 atomic_payment::ATOMIC_ERROR_VERIFIER_NOT_INTEGRATED
             ))
         );
-        #[cfg(all(
-            feature = "profile22-integrated-candidate",
-            not(feature = "diagnostic-unmined-profile22-acceptance")
-        ))]
-        assert_eq!(
-            process_instruction(&id(), &[], &verify),
-            Err(ProgramError::InvalidInstructionData),
-            "a production-capable profile22 build exposed the unmined tag56 bypass"
-        );
-        #[cfg(not(feature = "profile22-mutation-candidate"))]
         assert_eq!(
             process_instruction(&id(), &[], &production),
             Err(ProgramError::Custom(
                 atomic_payment::ATOMIC_ERROR_VERIFIER_NOT_INTEGRATED
             ))
         );
-        #[cfg(not(feature = "diagnostic-unmined-profile22-mutation"))]
         assert_eq!(
             process_instruction(&id(), &[], &diagnostic),
             Err(ProgramError::Custom(
@@ -7180,10 +6945,7 @@ mod tests {
                 atomic_payment::ATOMIC_ERROR_VERIFIER_NOT_INTEGRATED
             ))
         );
-        #[cfg(all(
-            feature = "profile23-integrated-candidate",
-            not(feature = "diagnostic-unmined-profile23-acceptance")
-        ))]
+        #[cfg(feature = "profile23-integrated-candidate")]
         assert_eq!(
             process_instruction(&id(), &[], &verify),
             Err(ProgramError::InvalidInstructionData)
@@ -7214,7 +6976,6 @@ mod tests {
             Err(ProgramError::NotEnoughAccountKeys),
             "an enabled Profile23 production build did not dispatch tag65 into the refunding atomic wrapper"
         );
-        #[cfg(not(feature = "diagnostic-unmined-profile23-mutation"))]
         assert_eq!(
             process_instruction(&id(), &[], &diagnostic),
             Err(ProgramError::Custom(

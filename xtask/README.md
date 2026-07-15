@@ -3,7 +3,7 @@
 Run commands from the repository root with:
 
 ```text
-NO_DNA=1 cargo run --release -p aspis-xtask -- <command> [arguments]
+cargo run --release -p aspis-xtask -- <command> [arguments]
 ```
 
 Exact release-certificate regeneration uses `solana-cargo-build-sbf 2.3.0`,
@@ -44,11 +44,11 @@ Its local worst-case tag65 measurement is 1,340,803 CU. The finalized devnet
 tag65 rehearsal landed at slot `476282685` with 1,340,749 CU; see
 [`docs/profile23-devnet-rehearsal.md`](../docs/profile23-devnet-rehearsal.md).
 
-## Internal research and regression tooling
+## Removed research tooling
 
-All other `stage0-*`, `stage1-*`, and `stage2-*` commands in
-[`src/main.rs`](src/main.rs) are internal measurement, KAT, migration, or
-regression surfaces. They remain available because the current release gates
-or tests depend on some of them; they are not separate supported releases.
-Historical experiments removed from the default branch are indexed by
+The commands above are the complete surface. The historical `stage0-*`,
+`stage1-*`, and other `stage2-*` measurement, KAT, and migration commands were
+removed from the working tree; they are preserved at the git tag
+`research-archive-2026-07-14` and in git history. Historical experiments
+removed from the default branch are indexed by
 [`archive/README.md`](../archive/README.md).
