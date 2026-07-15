@@ -1,9 +1,9 @@
 {
   "artifact": "spend_devnet_readiness",
-  "generated_at_utc": "2026-07-15T20:33:23.988424+00:00",
+  "generated_at_utc": "2026-07-15T21:39:01.875415+00:00",
   "mode": "read_only",
   "mutations_performed": false,
-  "ready": false,
+  "ready": true,
   "expected_genesis_hash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
   "observed_genesis_hash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
   "rpc_origin_redacted": "https://api.devnet.solana.com/<redacted>",
@@ -26,8 +26,8 @@
     "nullifier_account_lamports": 1392000,
     "fee_reserve_lamports": 50000000,
     "conservative_required_lamports": 6935221760,
-    "payer_balance_lamports": 0,
-    "surplus_lamports": -6935221760
+    "payer_balance_lamports": 10000000000,
+    "surplus_lamports": 3064778240
   },
   "gates": [
     {
@@ -182,13 +182,11 @@
     },
     {
       "name": "payer_covers_conservative_rent_and_fees",
-      "passed": false,
-      "evidence": "balance=Some(0), required=Some(6935221760), surplus=Some(-6935221760)"
+      "passed": true,
+      "evidence": "balance=Some(10000000000), required=Some(6935221760), surplus=Some(3064778240)"
     }
   ],
-  "blockers": [
-    "payer_covers_conservative_rent_and_fees"
-  ],
+  "blockers": [],
   "explicit_nonclaims": [
     "Readiness never signs, deploys, creates accounts, uploads proof bytes, or submits transactions.",
     "A devnet rehearsal is not mainnet-beta evidence.",
