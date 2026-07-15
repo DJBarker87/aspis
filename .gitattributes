@@ -3,5 +3,4 @@
 /release/profile23-q18-g37-mainnet-v1/** -text
 /tools/reconstruct_profile23_mainnet_sbf.py -text
 /results/stage2/profile23_mainnet_sbf_and_instruction_reconstruction.json -text
-/results/stage2/proofs/profile23_devnet_b1z_sequence0_q18_g37_production_authorizing_guarded_private.bin -text
-/results/stage2/proofs/profile23_devnet_b1z_sequence0_q18_g37_production_authorizing_guarded_private.statement.json -text
+/crates/aspis-prover/fixtures/** -text

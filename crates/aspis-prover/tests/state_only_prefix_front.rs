@@ -79,7 +79,10 @@ fn honest_state_only_prefix_front_replays_byte_exact() {
         StateOnlyPowMode::UnminedZero,
     )
     .unwrap();
-    assert_eq!(front.bytes.len(), 6_256);
+    // Repinned 2026-07-15 for the spend epoch: the pre-strip pin predated
+    // the current front layout while this suite was outside the per-suite CI
+    // filters.
+    assert_eq!(front.bytes.len(), 6_736);
     assert_eq!(front.schedule.z, front.zerocheck.challenges);
     assert_eq!(
         front.schedule.masked_terminal_claim,

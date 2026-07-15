@@ -1,6 +1,14 @@
 //! Host-only integration-valid zero-factor C1 repair for the conditional
 //! root-neutral sumcheck fiber.
 //!
+//! This module (and its `profile22_*` file/identifier names) is live spend
+//! code: the GoodSpend predicate's raw Schur probes and the complete-good
+//! product binding live here. The historical names are retained because the
+//! rank-minor block labels and the complete-good-product domain separator in
+//! this file are hashed into frozen provenance anchors that the release
+//! certificates and known-answer tests pin; renaming them would silently
+//! change those anchors.
+//!
 //! For a prefix of `m <= 4` new full-domain M31 C1 lanes, the exact generator
 //! order is
 //!
@@ -13,11 +21,11 @@ use super::*;
 
 pub const PROFILE22_ZERO_FACTOR_MAX_LANES: usize = 4;
 const CONDITIONAL_SUMCHECK_TARGET_M31: usize = MASK_SUMCHECK_QUOTIENT_M31 - 4;
-const PROFILE23_ROOT_NEUTRAL_Z_DEGREE: usize = 41_040;
-const PROFILE23_RAW_TERMINAL_SCHUR_ROWS_M31: usize = 12;
-const PROFILE23_RAW_TERMINAL_ENTRY_Z_DEGREE: usize = 10;
-const PROFILE23_RAW_TERMINAL_SCHUR_Z_DEGREE: usize =
-    PROFILE23_RAW_TERMINAL_SCHUR_ROWS_M31 * PROFILE23_RAW_TERMINAL_ENTRY_Z_DEGREE;
+const SPEND_ROOT_NEUTRAL_Z_DEGREE: usize = 41_040;
+const SPEND_RAW_TERMINAL_SCHUR_ROWS_M31: usize = 12;
+const SPEND_RAW_TERMINAL_ENTRY_Z_DEGREE: usize = 10;
+const SPEND_RAW_TERMINAL_SCHUR_Z_DEGREE: usize =
+    SPEND_RAW_TERMINAL_SCHUR_ROWS_M31 * SPEND_RAW_TERMINAL_ENTRY_Z_DEGREE;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Profile22ZeroFactorRootNeutralPrefix {
@@ -87,13 +95,13 @@ pub struct Profile22ZeroFactorQm31TailRootNeutralReport {
     pub elapsed_millis: u128,
 }
 
-/// Executable provenance for the complete prospective profile-23 Good
+/// Executable provenance for the complete prospective spend Good
 /// polynomial.  The product is the root-neutral 1,404-row minor times the
 /// two independent 12-row raw-terminal Schur minors.  The fingerprint binds
 /// the three component fingerprints and every degree used by the liveness
 /// ledger; it is not a production-enable flag.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Profile23CompleteGoodProductProvenance {
+pub struct SpendCompleteGoodProductProvenance {
     pub root_neutral_minor_fingerprint: u64,
     pub remaining_gd_terminal_schur_minor_fingerprint: u64,
     pub h1_inactive_padding_terminal_schur_minor_fingerprint: u64,
@@ -120,7 +128,7 @@ fn raw_terminal_schur_minor(
 ) -> Result<(usize, RankMinorProvenance), StateOnlyHidingRankGateError> {
     let query_rows_m31 = 4 * rows[0].layer0_m31.len();
     let mut query = CarryEchelon::new(query_rows_m31);
-    let mut terminal = ColumnEchelon::new(PROFILE23_RAW_TERMINAL_SCHUR_ROWS_M31);
+    let mut terminal = ColumnEchelon::new(SPEND_RAW_TERMINAL_SCHUR_ROWS_M31);
     let mut minor_sources = Vec::new();
     let mut minor_rows = Vec::new();
     let mut minor_values = Vec::new();
@@ -151,10 +159,10 @@ fn raw_terminal_schur_minor(
         }
     }
 
-    if query.rank != query_rows_m31 || terminal.rank != PROFILE23_RAW_TERMINAL_SCHUR_ROWS_M31 {
+    if query.rank != query_rows_m31 || terminal.rank != SPEND_RAW_TERMINAL_SCHUR_ROWS_M31 {
         return Err(StateOnlyHidingRankGateError::RawGRank {
             got: query.rank + terminal.rank,
-            want: query_rows_m31 + PROFILE23_RAW_TERMINAL_SCHUR_ROWS_M31,
+            want: query_rows_m31 + SPEND_RAW_TERMINAL_SCHUR_ROWS_M31,
         });
     }
     Ok((
@@ -163,7 +171,7 @@ fn raw_terminal_schur_minor(
     ))
 }
 
-fn profile23_complete_good_product_fingerprint(values: &[u64]) -> u64 {
+fn spend_complete_good_product_fingerprint(values: &[u64]) -> u64 {
     let mut hash = 0xcbf2_9ce4_8422_2325u64;
     for &byte in b"aspis/profile23/complete-good-product/v1" {
         hash ^= u64::from(byte);
@@ -178,10 +186,10 @@ fn profile23_complete_good_product_fingerprint(values: &[u64]) -> u64 {
     hash
 }
 
-pub fn bind_profile23_complete_good_product_provenance(
+pub fn bind_spend_complete_good_product_provenance(
     root: &Profile22RootNeutralPolynomialKernelRankReport,
     raw: &Profile22ZeroFactorQm31TailRootNeutralReport,
-) -> Result<Profile23CompleteGoodProductProvenance, StateOnlyHidingRankGateError> {
+) -> Result<SpendCompleteGoodProductProvenance, StateOnlyHidingRankGateError> {
     let root_rank = root.minor.source_columns.len();
     let gd_rank = raw.remaining_gd_terminal_schur_minor.source_columns.len();
     let h1_rank = raw
@@ -192,24 +200,24 @@ pub fn bind_profile23_complete_good_product_provenance(
         && raw.complete
         && root.query_count == raw.query_count
         && root_rank == root.joint_target_rank_m31
-        && gd_rank == PROFILE23_RAW_TERMINAL_SCHUR_ROWS_M31
-        && h1_rank == PROFILE23_RAW_TERMINAL_SCHUR_ROWS_M31
+        && gd_rank == SPEND_RAW_TERMINAL_SCHUR_ROWS_M31
+        && h1_rank == SPEND_RAW_TERMINAL_SCHUR_ROWS_M31
         && raw.remaining_gd_terminal_schur_rank_m31 == gd_rank
         && raw.h1_inactive_padding_terminal_schur_rank_m31 == h1_rank
-        && root.query_count == usize::from(STATE_ONLY_PROFILE23_QUERY_COUNT)
+        && root.query_count == usize::from(STATE_ONLY_SPEND_QUERY_COUNT)
         && root.q_total_degree_bound == root.query_count * root.q_individual_degree_bound
         && root.q_total_degree_bound != 0
-        && root.z_total_degree_bound == PROFILE23_ROOT_NEUTRAL_Z_DEGREE
+        && root.z_total_degree_bound == SPEND_ROOT_NEUTRAL_Z_DEGREE
         && root.gamma_coordinate_total_degree_bound != 0
-        && raw.remaining_gd_terminal_schur_z_degree == PROFILE23_RAW_TERMINAL_SCHUR_Z_DEGREE
-        && raw.h1_inactive_padding_terminal_schur_z_degree == PROFILE23_RAW_TERMINAL_SCHUR_Z_DEGREE;
+        && raw.remaining_gd_terminal_schur_z_degree == SPEND_RAW_TERMINAL_SCHUR_Z_DEGREE
+        && raw.h1_inactive_padding_terminal_schur_z_degree == SPEND_RAW_TERMINAL_SCHUR_Z_DEGREE;
     if !shape_ok {
         return Err(StateOnlyHidingRankGateError::Relation);
     }
     let complete_good_z_degree =
-        PROFILE23_ROOT_NEUTRAL_Z_DEGREE + 2 * PROFILE23_RAW_TERMINAL_SCHUR_Z_DEGREE;
+        SPEND_ROOT_NEUTRAL_Z_DEGREE + 2 * SPEND_RAW_TERMINAL_SCHUR_Z_DEGREE;
     let continuous_degree = complete_good_z_degree + root.gamma_coordinate_total_degree_bound;
-    let product_fingerprint = profile23_complete_good_product_fingerprint(&[
+    let product_fingerprint = spend_complete_good_product_fingerprint(&[
         root.minor.fingerprint,
         raw.remaining_gd_terminal_schur_minor.fingerprint,
         raw.h1_inactive_padding_terminal_schur_minor.fingerprint,
@@ -217,14 +225,14 @@ pub fn bind_profile23_complete_good_product_provenance(
         gd_rank as u64,
         h1_rank as u64,
         root.q_total_degree_bound as u64,
-        PROFILE23_ROOT_NEUTRAL_Z_DEGREE as u64,
-        PROFILE23_RAW_TERMINAL_SCHUR_Z_DEGREE as u64,
-        PROFILE23_RAW_TERMINAL_SCHUR_Z_DEGREE as u64,
+        SPEND_ROOT_NEUTRAL_Z_DEGREE as u64,
+        SPEND_RAW_TERMINAL_SCHUR_Z_DEGREE as u64,
+        SPEND_RAW_TERMINAL_SCHUR_Z_DEGREE as u64,
         complete_good_z_degree as u64,
         root.gamma_coordinate_total_degree_bound as u64,
         continuous_degree as u64,
     ]);
-    Ok(Profile23CompleteGoodProductProvenance {
+    Ok(SpendCompleteGoodProductProvenance {
         root_neutral_minor_fingerprint: root.minor.fingerprint,
         remaining_gd_terminal_schur_minor_fingerprint: raw
             .remaining_gd_terminal_schur_minor
@@ -236,9 +244,9 @@ pub fn bind_profile23_complete_good_product_provenance(
         remaining_gd_terminal_schur_rank_m31: gd_rank,
         h1_inactive_padding_terminal_schur_rank_m31: h1_rank,
         q_total_degree_bound: root.q_total_degree_bound,
-        root_neutral_z_degree_bound: PROFILE23_ROOT_NEUTRAL_Z_DEGREE,
-        remaining_gd_terminal_schur_z_degree_bound: PROFILE23_RAW_TERMINAL_SCHUR_Z_DEGREE,
-        h1_inactive_padding_terminal_schur_z_degree_bound: PROFILE23_RAW_TERMINAL_SCHUR_Z_DEGREE,
+        root_neutral_z_degree_bound: SPEND_ROOT_NEUTRAL_Z_DEGREE,
+        remaining_gd_terminal_schur_z_degree_bound: SPEND_RAW_TERMINAL_SCHUR_Z_DEGREE,
+        h1_inactive_padding_terminal_schur_z_degree_bound: SPEND_RAW_TERMINAL_SCHUR_Z_DEGREE,
         complete_good_z_degree_bound: complete_good_z_degree,
         gamma_coordinate_total_degree_bound: root.gamma_coordinate_total_degree_bound,
         continuous_total_degree_bound: continuous_degree,
@@ -904,11 +912,11 @@ pub fn probe_atomic_state_only_profile22_zero_factor_qm31_tail_root_neutral(
         qm31_raw_target_m31: qm31_raw_m31,
         remaining_gd_query_rank_m31,
         remaining_gd_terminal_schur_rank_m31,
-        remaining_gd_terminal_schur_z_degree: PROFILE23_RAW_TERMINAL_SCHUR_Z_DEGREE,
+        remaining_gd_terminal_schur_z_degree: SPEND_RAW_TERMINAL_SCHUR_Z_DEGREE,
         remaining_gd_terminal_schur_minor,
         h1_inactive_padding_query_rank_m31,
         h1_inactive_padding_terminal_schur_rank_m31,
-        h1_inactive_padding_terminal_schur_z_degree: PROFILE23_RAW_TERMINAL_SCHUR_Z_DEGREE,
+        h1_inactive_padding_terminal_schur_z_degree: SPEND_RAW_TERMINAL_SCHUR_Z_DEGREE,
         h1_inactive_padding_terminal_schur_minor,
         terminal_zero_sources_checked_m31: terminal_zero_sources_checked,
         every_post_raw_source_terminal_zero: terminal_guard,

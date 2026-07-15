@@ -11,9 +11,7 @@ insecure-test-framing = ["aspis-core/insecure-test-framing"]
 # Diagnostic fixture generation only. This is intentionally not enabled by
 # any production crate or aggregate feature: it exposes fixed attempt entropy
 # so that an expensive full-profile proof can be reproduced byte-for-byte.
-insecure-profile21-fixture = []
-insecure-profile22-fixture = []
-insecure-profile23-fixture = []
+insecure-spend-fixture = []
 
 [dependencies]
 aspis-core = { path = "../aspis-core" }
@@ -23,18 +21,14 @@ sha2.workspace = true
 serde_json.workspace = true
 zeroize.workspace = true
 
-[[example]]
-name = "profile21_fixture"
-required-features = ["insecure-profile21-fixture"]
+[dev-dependencies]
+serde_json.workspace = true
+sha2.workspace = true
 
 [[example]]
-name = "profile22_fixture"
-required-features = ["insecure-profile22-fixture"]
-
-[[example]]
-name = "profile23_fixture"
-required-features = ["insecure-profile23-fixture"]
+name = "spend_fixture"
+required-features = ["insecure-spend-fixture"]
 
 [[test]]
-name = "profile23_zero_factor_integration"
-required-features = ["insecure-profile23-fixture"]
+name = "spend_zero_factor_integration"
+required-features = ["insecure-spend-fixture"]

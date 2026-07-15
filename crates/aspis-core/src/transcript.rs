@@ -161,13 +161,13 @@ pub mod label {
     /// disclosed U and before the translated W1 root. Literal q16 binding
     /// ties this claimed scalar to the authenticated W1/U difference word.
     pub const M31_STATE_ONLY_SWITCH_TAU: u8 = 42;
-    /// Profile-23's three evaluations of the committed zero-factor D lane.
+    /// Spend's three evaluations of the committed zero-factor D lane.
     /// They are logically absorbed beside the ordinary statement evaluations,
     /// before batch grinding and gamma, even though the append-only wire puts
     /// them in the profile extension.
     pub const M31_STATE_ONLY_ZERO_FACTOR_D_CLAIMS: u8 = 43;
     /// Domain-separate the selected post-final-nonce q18 candidate.  The
-    /// canonical profile-23 selector range is 0..3 (three candidates).
+    /// canonical spend selector range is 0..3 (three candidates).
     pub const M31_STATE_ONLY_QUERY_CANDIDATE: u8 = 44;
 }
 

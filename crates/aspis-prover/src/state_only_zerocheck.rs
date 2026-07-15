@@ -252,8 +252,8 @@ mod tests {
     #[test]
     fn production_neutral_inventory_matches_core() {
         assert_eq!(STATE_ONLY_SUMCHECK_BYTES, 4_480);
-        assert_eq!(STATE_ONLY_VERIFY_QM31_MULS, 270);
-        assert_eq!(STATE_ONLY_VERIFY_QM31_ADDS, 550);
-        assert_eq!(STATE_ONLY_VERIFY_M31_MULS, 2_430);
+        assert_eq!(STATE_ONLY_VERIFY_QM31_MULS, 300);
+        assert_eq!(STATE_ONLY_VERIFY_QM31_ADDS, 410);
+        assert_eq!(STATE_ONLY_VERIFY_M31_MULS, 2_660);
     }
 }

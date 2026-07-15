@@ -32,11 +32,15 @@ const PROFILE22_PRIVATE_ATTEMPT_BINDING_DOMAIN: &[u8] =
     b"aspis:state-only:profile22-private:attempt-binding:v1";
 const PROFILE22_PRIVATE_WIRE_DESCRIPTOR: &[u8] =
     b"profile=22;depths=17,17,15,13,11;widths=416,128,64,64,64;trees=c1,c2,w1,w2,w3";
-const PROFILE23_PRIVATE_ATTEMPT_BINDING_DOMAIN: &[u8] =
+// The domain-separator byte strings below keep the release's original
+// working-name spelling: they are hashed into deterministic-fixture entropy
+// derivation, and the committed unmined fixture (and its pinned regression
+// values) must stay reproducible byte-for-byte.
+const SPEND_PRIVATE_ATTEMPT_BINDING_DOMAIN: &[u8] =
     b"aspis:state-only:profile23-zero-factor:attempt-binding:v1";
-const PROFILE23_PRIVATE_WIRE_DESCRIPTOR: &[u8] =
+const SPEND_PRIVATE_WIRE_DESCRIPTOR: &[u8] =
     b"profile=23;generators=H26,G27,D28;factorD=0;selector=3;depths=17,17,15,13,11;widths=416,192,64,64,64;trees=c1,c2,w1,w2,w3";
-const PROFILE23_D_SEED_DOMAIN: &[u8] = b"aspis:state-only:profile23:zero-factor-d-seed:v1";
+const SPEND_D_SEED_DOMAIN: &[u8] = b"aspis:state-only:profile23:zero-factor-d-seed:v1";
 const PROFILE21_SOURCE_SEED_DOMAIN: &[u8] = b"aspis:state-only:profile21:source-seed:v1";
 const PROFILE21_SOURCE_EXPAND_DOMAIN: &[u8] = b"aspis:state-only:profile21:source-expand:v1";
 const LEAF_SALT_DOMAIN: &[u8] = b"aspis:state-only:private-leaf-salt:v1";
@@ -127,9 +131,9 @@ impl StateOnlyAttemptSecrets {
     }
 
     /// Construct fixed attempt secrets for a byte-exact, nondefault
-    /// profile-23 fixture. This API is never present in a production build.
-    #[cfg(any(test, feature = "insecure-profile23-fixture"))]
-    pub fn deterministic_profile23_fixture(
+    /// spend fixture. This API is never present in a production build.
+    #[cfg(any(test, feature = "insecure-spend-fixture"))]
+    pub fn deterministic_spend_fixture(
         mask_nonce: [u8; 32],
         field_mask_entropy: [u8; 32],
         leaf_salt_seed: [u8; 32],
@@ -299,9 +303,9 @@ impl ReservedStateOnlyAttemptSecrets {
         ]))
     }
 
-    /// Profile-23 salt binding includes the widened C2 descriptor and the
+    /// Spend salt binding includes the widened C2 descriptor and the
     /// q3 selector envelope, so no private opening can be replayed as p22.
-    pub fn derive_profile23_leaf_salt(
+    pub fn derive_spend_leaf_salt(
         &self,
         hash: HashFn,
         context: StateOnlyHidingContext,
@@ -311,8 +315,7 @@ impl ReservedStateOnlyAttemptSecrets {
         if context.mask_nonce != self.mask_nonce {
             return Err(StateOnlyMaskBuildError::Layout);
         }
-        let attempt_binding =
-            profile23_private_attempt_binding(hash, &self.precommit_binding, context);
+        let attempt_binding = spend_private_attempt_binding(hash, &self.precommit_binding, context);
         Ok(hash(&[
             LEAF_SALT_DOMAIN,
             &attempt_binding,
@@ -327,23 +330,22 @@ impl ReservedStateOnlyAttemptSecrets {
     /// Values on copy-inactive rows have zero sum, matching the raw-block
     /// balancing convention used by G/H1 while leaving every active row and
     /// all four tower coordinates private. D is not passed to the H oracle.
-    pub fn derive_profile23_zero_factor_d(
+    pub fn derive_spend_zero_factor_d(
         &self,
         hash: HashFn,
         context: StateOnlyHidingContext,
     ) -> Result<Vec<aspis_core::field::QM31>, StateOnlyMaskBuildError> {
         if context.mask_nonce != self.mask_nonce
             || context.layout_factor_fingerprint
-                != aspis_core::state_only_hiding::PINNED_ATOMIC_STATE_ONLY_PROFILE23_LAYOUT_FACTOR_FINGERPRINT_V3
+                != aspis_core::state_only_hiding::PINNED_ATOMIC_STATE_ONLY_SPEND_LAYOUT_FACTOR_FINGERPRINT_V3
         {
             return Err(StateOnlyMaskBuildError::Layout);
         }
-        let attempt_binding =
-            profile23_private_attempt_binding(hash, &self.precommit_binding, context);
+        let attempt_binding = spend_private_attempt_binding(hash, &self.precommit_binding, context);
         let mut expander = Profile21SourceExpander::new(
             hash,
             hash(&[
-                PROFILE23_D_SEED_DOMAIN,
+                SPEND_D_SEED_DOMAIN,
                 &attempt_binding,
                 self.source_mask_seed.as_ref(),
             ]),
@@ -493,16 +495,16 @@ pub fn profile22_private_attempt_binding(
     ])
 }
 
-pub fn profile23_private_attempt_binding(
+pub fn spend_private_attempt_binding(
     hash: HashFn,
     precommit_binding: &[u8; 32],
     context: StateOnlyHidingContext,
 ) -> [u8; 32] {
     hash(&[
-        PROFILE23_PRIVATE_ATTEMPT_BINDING_DOMAIN,
+        SPEND_PRIVATE_ATTEMPT_BINDING_DOMAIN,
         precommit_binding,
         &context.encode(),
-        PROFILE23_PRIVATE_WIRE_DESCRIPTOR,
+        SPEND_PRIVATE_WIRE_DESCRIPTOR,
     ])
 }
 

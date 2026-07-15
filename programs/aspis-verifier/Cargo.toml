@@ -3,42 +3,32 @@ name = "aspis-verifier"
 edition.workspace = true
 license.workspace = true
 version.workspace = true
-description = "Aspis on-chain verifier program: Profile23 production verification and proof-account lifecycle"
+description = "Aspis on-chain verifier program: Spend production verification and proof-account lifecycle"
 
 [lib]
 crate-type = ["cdylib", "lib"]
 
 [features]
-default = ["profile23-production"]
+default = ["spend-production"]
 no-entrypoint = []
 custom-heap = []
 custom-panic = []
-# Quarantined H26/G27/D28 profile. Diagnostic and superseded Profile20/21/22
-# feature definitions were removed with their code; those wire tags fail
-# closed in every build.
-profile23-integrated-candidate = []
-profile23-mutation-candidate = ["profile23-integrated-candidate"]
-# Reviewed production closure. The mined host/SBF mutation KAT exercised this
-# exact alias before it became the package default.
-profile23-production = [
-    "profile23-mutation-candidate",
-    "profile23-minimal-dispatch",
-    "profile23-dynamic-rate512",
+# The reviewed production closure: the minimal wire surface plus query-local
+# public RATE512 coordinates.
+spend-production = [
+    "spend-minimal-dispatch",
+    "spend-dynamic-rate512",
 ]
-# Production-only entrypoint. It accepts only the eight wire tags
-# required by the finalized Profile23 lifecycle (0, 1, 59, 60, 62, 63, 64, 65)
-# and deliberately avoids rooting the historical diagnostic dispatcher in the
-# deployed ELF. Full lifecycle and mutation KATs pin the resulting SBF.
-profile23-minimal-dispatch = []
+# Production-only entrypoint registration. The deployed entrypoint accepts
+# only the eight wire tags of the finalized lifecycle (0, 1, 59, 60, 62, 63,
+# 64, 65); every other tag fails closed before account access.
+spend-minimal-dispatch = []
 # Production derives only the 18 authenticated Rate-1/512 query paths instead
 # of linking six full-domain coordinate tables into the deployed ELF.
-profile23-dynamic-rate512 = ["aspis-statement/profile23-dynamic-rate512"]
+spend-dynamic-rate512 = ["aspis-statement/spend-dynamic-rate512"]
 
 [dependencies]
 aspis-core = { path = "../../crates/aspis-core" }
 aspis-statement = { path = "../../crates/aspis-statement" }
 borsh.workspace = true
 solana-program.workspace = true
-
-[dev-dependencies]
-aspis-prover = { path = "../../crates/aspis-prover", features = ["insecure-test-framing"] }

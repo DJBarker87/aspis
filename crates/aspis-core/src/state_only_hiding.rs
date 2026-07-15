@@ -59,18 +59,17 @@ pub const PINNED_STATE_ONLY_RELATION_FREE_MASK_FINGERPRINT: u64 = 0x1420_cb92_10
 pub const PINNED_ATOMIC_STATE_ONLY_COPY_ACTIVE_ROWS_FINGERPRINT_V3: u64 = 0xfc90_f89b_e110_b6f5;
 pub const PINNED_ATOMIC_STATE_ONLY_RELATION_FREE_MASK_FINGERPRINT_V3: u64 = 0x0fda_bd40_1816_cc99;
 pub const PINNED_ATOMIC_STATE_ONLY_HIDING_LAYOUT_FACTOR_FINGERPRINT_V3: u64 = 0x9e4d_2fcd_4cf9_fe01;
-/// Profile 23 preserves the atomic-v3 semantic mask-cell registry but binds
+/// Spend preserves the atomic-v3 semantic mask-cell registry but binds
 /// the appended third C2 lane, its zero mask factor, and the three-candidate
 /// post-nonce query selector into a distinct precommit context.
-pub const PINNED_ATOMIC_STATE_ONLY_PROFILE23_LAYOUT_FACTOR_FINGERPRINT_V3: u64 =
-    0x233b_a2ca_68f9_4148;
-pub const STATE_ONLY_PROFILE23_TOTAL_GENERATOR_WIDTH: usize = 29;
-pub const STATE_ONLY_PROFILE23_C2_COLUMNS: usize = 3;
-pub const STATE_ONLY_PROFILE23_H_GENERATOR_INDEX: usize = 26;
-pub const STATE_ONLY_PROFILE23_G_GENERATOR_INDEX: usize = 27;
-pub const STATE_ONLY_PROFILE23_D_GENERATOR_INDEX: usize = 28;
-pub const STATE_ONLY_PROFILE23_D_FACTOR_IDENTIFIER: u8 = 0;
-pub const STATE_ONLY_PROFILE23_QUERY_CANDIDATES: usize = 3;
+pub const PINNED_ATOMIC_STATE_ONLY_SPEND_LAYOUT_FACTOR_FINGERPRINT_V3: u64 = 0x233b_a2ca_68f9_4148;
+pub const STATE_ONLY_SPEND_TOTAL_GENERATOR_WIDTH: usize = 29;
+pub const STATE_ONLY_SPEND_C2_COLUMNS: usize = 3;
+pub const STATE_ONLY_SPEND_H_GENERATOR_INDEX: usize = 26;
+pub const STATE_ONLY_SPEND_G_GENERATOR_INDEX: usize = 27;
+pub const STATE_ONLY_SPEND_D_GENERATOR_INDEX: usize = 28;
+pub const STATE_ONLY_SPEND_D_FACTOR_IDENTIFIER: u8 = 0;
+pub const STATE_ONLY_SPEND_QUERY_CANDIDATES: usize = 3;
 pub const STATE_ONLY_HIDING_CONTEXT_VERSION: u8 = 1;
 pub const STATE_ONLY_HIDING_CONTEXT_BYTES: usize = 1 + 32 + 32 + 8 + 8;
 
@@ -102,16 +101,15 @@ impl StateOnlyHidingContext {
         }
     }
 
-    /// Nondefault profile-23 context.  The semantic masks and H oracle remain
+    /// Nondefault spend context.  The semantic masks and H oracle remain
     /// atomic-v3; only the committed zero-factor D tail and query-selection
     /// envelope are new.
-    pub const fn atomic_profile23_v3(statement_digest: [u8; 32], mask_nonce: [u8; 32]) -> Self {
+    pub const fn atomic_spend_v3(statement_digest: [u8; 32], mask_nonce: [u8; 32]) -> Self {
         Self {
             statement_digest,
             mask_nonce,
             mask_layout_fingerprint: PINNED_ATOMIC_STATE_ONLY_RELATION_FREE_MASK_FINGERPRINT_V3,
-            layout_factor_fingerprint:
-                PINNED_ATOMIC_STATE_ONLY_PROFILE23_LAYOUT_FACTOR_FINGERPRINT_V3,
+            layout_factor_fingerprint: PINNED_ATOMIC_STATE_ONLY_SPEND_LAYOUT_FACTOR_FINGERPRINT_V3,
         }
     }
 
@@ -166,11 +164,11 @@ pub fn begin_state_only_hiding_precommit(
         copy_active_rows_fingerprint,
         true,
     );
-    let profile23_factor = context.mask_layout_fingerprint
+    let spend_factor = context.mask_layout_fingerprint
         == PINNED_ATOMIC_STATE_ONLY_RELATION_FREE_MASK_FINGERPRINT_V3
         && context.layout_factor_fingerprint
-            == state_only_profile23_hiding_layout_factor_fingerprint_v3();
-    if (context.layout_factor_fingerprint != ordinary_factor && !profile23_factor)
+            == state_only_spend_hiding_layout_factor_fingerprint_v3();
+    if (context.layout_factor_fingerprint != ordinary_factor && !spend_factor)
         || (context.mask_layout_fingerprint == PINNED_STATE_ONLY_RELATION_FREE_MASK_FINGERPRINT
             && context.layout_factor_fingerprint
                 != PINNED_STATE_ONLY_HIDING_LAYOUT_FACTOR_FINGERPRINT)
@@ -178,7 +176,7 @@ pub fn begin_state_only_hiding_precommit(
             == PINNED_ATOMIC_STATE_ONLY_RELATION_FREE_MASK_FINGERPRINT_V3
             && context.layout_factor_fingerprint
                 != PINNED_ATOMIC_STATE_ONLY_HIDING_LAYOUT_FACTOR_FINGERPRINT_V3
-            && !profile23_factor)
+            && !spend_factor)
     {
         return Err(StateOnlyHidingScheduleError::LayoutFactorFingerprint);
     }
@@ -186,15 +184,19 @@ pub fn begin_state_only_hiding_precommit(
     Ok(transcript.diagnostic_state())
 }
 
-/// Fingerprint the profile-23-only commitment/generator extension without
+/// Fingerprint the spend-only commitment/generator extension without
 /// pretending that D participates in the H mask oracle.  The final byte is
 /// the exact candidate count, so q3 and the retired q4 draft cannot collide.
-pub fn state_only_profile23_hiding_layout_factor_fingerprint_v3() -> u64 {
+pub fn state_only_spend_hiding_layout_factor_fingerprint_v3() -> u64 {
     let mut hash = 0xcbf2_9ce4_8422_2325u64;
     let mut absorb = |byte: u8| {
         hash ^= u64::from(byte);
         hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
     };
+    // Frozen consensus bytes: this domain separator keeps the release's
+    // original working-name spelling because it feeds the pinned layout
+    // factor fingerprint checked fail-closed by the verifying schedule; the
+    // frozen release proof must keep verifying without a re-grind.
     for byte in b"aspis-state-only-profile23-zero-factor-d-v1" {
         absorb(*byte);
     }
@@ -208,13 +210,13 @@ pub fn state_only_profile23_hiding_layout_factor_fingerprint_v3() -> u64 {
         }
     }
     for byte in [
-        STATE_ONLY_PROFILE23_TOTAL_GENERATOR_WIDTH as u8,
-        STATE_ONLY_PROFILE23_C2_COLUMNS as u8,
-        STATE_ONLY_PROFILE23_H_GENERATOR_INDEX as u8,
-        STATE_ONLY_PROFILE23_G_GENERATOR_INDEX as u8,
-        STATE_ONLY_PROFILE23_D_GENERATOR_INDEX as u8,
-        STATE_ONLY_PROFILE23_D_FACTOR_IDENTIFIER,
-        STATE_ONLY_PROFILE23_QUERY_CANDIDATES as u8,
+        STATE_ONLY_SPEND_TOTAL_GENERATOR_WIDTH as u8,
+        STATE_ONLY_SPEND_C2_COLUMNS as u8,
+        STATE_ONLY_SPEND_H_GENERATOR_INDEX as u8,
+        STATE_ONLY_SPEND_G_GENERATOR_INDEX as u8,
+        STATE_ONLY_SPEND_D_GENERATOR_INDEX as u8,
+        STATE_ONLY_SPEND_D_FACTOR_IDENTIFIER,
+        STATE_ONLY_SPEND_QUERY_CANDIDATES as u8,
     ] {
         absorb(byte);
     }
@@ -704,12 +706,12 @@ mod tests {
     }
 
     #[test]
-    fn profile23_zero_factor_fingerprint_is_hard_pinned() {
+    fn spend_zero_factor_fingerprint_is_hard_pinned() {
         assert_eq!(
-            state_only_profile23_hiding_layout_factor_fingerprint_v3(),
-            PINNED_ATOMIC_STATE_ONLY_PROFILE23_LAYOUT_FACTOR_FINGERPRINT_V3,
+            state_only_spend_hiding_layout_factor_fingerprint_v3(),
+            PINNED_ATOMIC_STATE_ONLY_SPEND_LAYOUT_FACTOR_FINGERPRINT_V3,
         );
-        let context = StateOnlyHidingContext::atomic_profile23_v3([0x23; 32], [0x42; 32]);
+        let context = StateOnlyHidingContext::atomic_spend_v3([0x23; 32], [0x42; 32]);
         let mut transcript = Transcript::new(host_hash);
         assert!(begin_state_only_hiding_precommit(&mut transcript, context).is_ok());
     }

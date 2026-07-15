@@ -17,22 +17,18 @@ pub mod atomic_state_only_terminal;
 #[cfg(not(target_os = "solana"))]
 pub mod atomic_state_only_trace;
 pub mod atomic_statement;
-pub mod composition;
 pub mod constraints_v4;
 pub mod direct_range_hiding_v4;
 pub mod hiding_v4;
 pub mod logup;
 pub mod poseidon2;
 pub mod spend;
-pub mod split;
 #[cfg(not(target_os = "solana"))]
 pub mod state_only_constraints;
 pub mod state_only_poseidon;
-pub mod state_only_profile21;
-pub mod state_only_profile22;
-pub mod state_only_profile23;
 #[cfg(not(target_os = "solana"))]
 pub mod state_only_semantic;
+pub mod state_only_spend;
 pub mod state_only_terminal;
 #[cfg(not(target_os = "solana"))]
 pub mod state_only_trace;
@@ -47,10 +43,6 @@ pub use atomic_statement::{
     ATOMIC_APPEND_CHAIN_DOMAIN, ATOMIC_PAYMENT_EMPTY_LEAF, ATOMIC_PAYMENT_STATEMENT_DOMAIN,
     ATOMIC_PAYMENT_STATEMENT_PAYLOAD_BYTES, ATOMIC_PAYMENT_STATEMENT_V3_KAT_EXPECTED,
     ATOMIC_PAYMENT_STATEMENT_VERSION, ATOMIC_PAYMENT_TREE_DEPTH,
-};
-pub use composition::{
-    evaluate_composition_probe, evaluate_composition_probe_optimized, CompositionProbe,
-    CompositionProbeResult,
 };
 pub use constraints_v4::{
     build_payment_helpers_v4, constraint_registry, direct_range_hiding_masked_terminal_value,
@@ -117,9 +109,6 @@ pub use spend::{
     verify_10bit_range_lookup, EvaluationContext, MerklePath, RangeLookupWitness, SpendError,
     SpendPublic, SpendWitness, RANGE_LIMBS_PER_VALUE, RANGE_LIMB_BITS, RANGE_LIMB_LIMIT,
     VALUE_LIMIT,
-};
-pub use split::{
-    ReceiptBinding, ReceiptError, ReceiptStatus, SplitVerificationReceipt, TERMINAL_POINT_LEN,
 };
 #[cfg(not(target_os = "solana"))]
 pub use state_only_constraints::*;
