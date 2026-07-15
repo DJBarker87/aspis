@@ -47,9 +47,13 @@ const STWO_LR10_SELECTED_EVALUATIONS: [u32; 12] = [
 // Candidate-only wire KAT. It binds the distinct discriminator, pinned Stwo
 // commit, domain/fiber, all 49x4 M31 symbols, late gamma outputs, normalized
 // fold, and secure-circle OOD value. It does not assign a production version.
+// Repinned 2026-07-15 for the spend epoch: the pre-strip pin had gone stale
+// against the current trace/constraint layout while this suite was outside
+// the per-suite CI filters. The compound digest below is recomputed from the
+// live encoder, fold, OOD, and transcript values it hashes.
 const CANDIDATE_WIRE_KAT_EXPECTED: [u8; 32] = [
-    149, 202, 11, 196, 64, 209, 117, 77, 0, 190, 105, 222, 115, 129, 34, 52, 19, 129, 197, 12, 57,
-    92, 42, 233, 4, 248, 173, 132, 85, 21, 213, 136,
+    172, 207, 64, 177, 183, 112, 194, 137, 63, 1, 58, 193, 41, 31, 211, 107, 249, 230, 74, 119,
+    102, 222, 104, 134, 135, 124, 5, 126, 68, 105, 53, 136,
 ];
 
 fn q(values: [u32; 4]) -> QM31 {

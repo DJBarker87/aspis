@@ -1,0 +1,90 @@
+name: Spend integration
+
+permissions:
+  contents: read
+
+on:
+  push:
+    paths:
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".cargo/**"
+      - "crates/aspis-core/**"
+      - "crates/aspis-prover/**"
+      - "crates/aspis-statement/**"
+      - "programs/aspis-verifier/**"
+      - "xtask/**"
+      - ".github/workflows/spend-integration.yml"
+  pull_request:
+    paths:
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".cargo/**"
+      - "crates/aspis-core/**"
+      - "crates/aspis-prover/**"
+      - "crates/aspis-statement/**"
+      - "programs/aspis-verifier/**"
+      - "xtask/**"
+      - ".github/workflows/spend-integration.yml"
+
+jobs:
+  spend:
+    runs-on: ubuntu-latest
+    env:
+      NO_DNA: "1"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable, pinned 2026-07-15
+
+      - name: Formatting
+        run: cargo fmt --all -- --check
+
+      - name: Core fail-closed and transcript tests
+        run: cargo test -q -p aspis-core spend
+
+      - name: GoodSpend and bounded-manager tests
+        run: |
+          cargo test -q -p aspis-prover --lib state_only_good_spend::tests
+          cargo test -q -p aspis-prover --lib state_only_spend_release::tests
+
+      - name: Spend wire and privacy regressions
+        run: |
+          cargo test --release -q -p aspis-prover --test spend_zero_factor_integration --features insecure-spend-fixture spend_d_tail_roundtrip_and_corruption_teeth
+          cargo test -q -p aspis-prover --lib state_only_spend_privacy_regressions
+
+      - name: Frozen release-proof KAT (full production verifier)
+        run: |
+          cargo test --release -q -p aspis-prover --test spend_release_kat
+          cargo test --release -q -p aspis-prover --test spend_release_kat -- --ignored
+
+      - name: Exact q3 complete-Good replay
+        run: cargo test --release -q -p aspis-prover --lib state_only_good_spend::tests::frozen_spend_fixture_runs_exact_good_spend_on_all_selectors -- --ignored
+
+      - name: Build and verify every valid selector
+        run: cargo test --release -q -p aspis-prover --test spend_zero_factor_integration --features insecure-spend-fixture spend_all_three_selectors_build_and_verify -- --ignored
+
+      - name: Statement tests
+        run: cargo test -q -p aspis-statement
+
+      - name: Program crate tests
+        run: cargo test -q -p aspis-verifier
+
+      - name: Harness schema and proof override compile
+        run: cargo check -q -p aspis-xtask
+
+      - name: Release evaluator fail-closed tests
+        run: |
+          cargo test --release -q -p aspis-xtask spend_release
+          cargo test --release -q -p aspis-xtask spend_release::tests::frozen_release_fixture_replays_the_recorded_instance_exactly -- --ignored
+
+      - name: Mainnet executor invariants
+        run: cargo test -q -p aspis-xtask 'spend_mainnet::tests'
+
+      - name: Devnet executor invariants
+        run: cargo test -q -p aspis-xtask spend_devnet
+
+      - name: Offline mainnet recovery invariants
+        run: |
+          cargo test -q -p aspis-xtask spend_mainnet_cleanup
+          cargo test -q -p aspis-xtask spend_mainnet_journal
+          cargo test -q -p aspis-xtask spend_mainnet_loader

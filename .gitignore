@@ -16,11 +16,6 @@ __pycache__/
 *-keypair.json
 *nonce-ledger*
 
-/results/stage2/profile23-mask-nonce-ledger*
-/results/stage2/proofs/*guarded_private*
-!/results/stage2/proofs/profile23_devnet_b1z_sequence0_q18_g37_production_authorizing_guarded_private.bin
-!/results/stage2/proofs/profile23_devnet_b1z_sequence0_q18_g37_production_authorizing_guarded_private.statement.json
-/results/stage2/proofs/atomic_state_only_profile23_v3_q18_mined.*
 
 # The superseded devnet paper is preserved in the archive tag; ignore any
 # local build remnants left at its former default-branch path.

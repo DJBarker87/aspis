@@ -43,7 +43,7 @@ pub const STATE_ONLY_PROFILE21_PROFILE_ID: u8 = 21;
 pub const STATE_ONLY_PROFILE22_PRIVATE_PROFILE_ID: u8 = 22;
 /// Quarantined zero-factor-D successor. It is never selected by the frozen
 /// profile-22 entry points or program tags.
-pub const STATE_ONLY_PROFILE23_ZERO_FACTOR_PROFILE_ID: u8 = 23;
+pub const STATE_ONLY_SPEND_ZERO_FACTOR_PROFILE_ID: u8 = 23;
 pub const STATE_ONLY_LOG_ROWS: u32 = 10;
 pub const STATE_ONLY_RATE16_LOG_BLOWUP: u32 = 4;
 pub const STATE_ONLY_RATE32_LOG_BLOWUP: u32 = 5;
@@ -51,9 +51,9 @@ pub const STATE_ONLY_RATE512_LOG_BLOWUP: u32 = 9;
 pub const STATE_ONLY_RATE16_QUERY_COUNT: u16 = 36;
 pub const STATE_ONLY_RATE32_QUERY_COUNT: u16 = 29;
 pub const STATE_ONLY_RATE512_QUERY_COUNT: u16 = 16;
-/// Profile 23 spends two additional queries to reduce the honest-prover PoW
+/// Spend spends two additional queries to reduce the honest-prover PoW
 /// schedule without changing the frozen Profile 20/21/22 rate-1/512 wires.
-pub const STATE_ONLY_PROFILE23_QUERY_COUNT: u16 = 18;
+pub const STATE_ONLY_SPEND_QUERY_COUNT: u16 = 18;
 pub const STATE_ONLY_MAX_QUERY_COUNT: usize = STATE_ONLY_RATE16_QUERY_COUNT as usize;
 pub const STATE_ONLY_GRINDING_BITS: u8 = 36;
 pub const STATE_ONLY_RATE16_BATCH_GRINDING_BITS: u8 = 24;
@@ -66,11 +66,11 @@ pub const STATE_ONLY_PROFILE21_BATCH_GRINDING_BITS: u8 = 38;
 /// The frozen profile-22 ledger uses g38 for both batch and final work.
 pub const STATE_ONLY_PROFILE22_GRINDING_BITS: u8 = 38;
 pub const STATE_ONLY_PROFILE22_BATCH_GRINDING_BITS: u8 = 38;
-pub const STATE_ONLY_PROFILE23_GRINDING_BITS: u8 = 32;
+pub const STATE_ONLY_SPEND_GRINDING_BITS: u8 = 32;
 /// g37 is the lowest batch work factor that keeps the conservative
 /// whole-ledger-times-three q18 soundness floor above 100 bits.
-pub const STATE_ONLY_PROFILE23_BATCH_GRINDING_BITS: u8 = 37;
-pub const STATE_ONLY_PROFILE23_FOLD_GRINDING_BITS: [u8; CANDIDATE_ROUND_COUNT] = [34, 33, 30, 25];
+pub const STATE_ONLY_SPEND_BATCH_GRINDING_BITS: u8 = 37;
+pub const STATE_ONLY_SPEND_FOLD_GRINDING_BITS: [u8; CANDIDATE_ROUND_COUNT] = [34, 33, 30, 25];
 pub const STATE_ONLY_VALUES_PER_POINT: usize = STATE_ONLY_HIDING_SELECTED_TOTAL_GENERATOR_WIDTH;
 pub const STATE_ONLY_STATEMENT_POINT_COUNT: usize = 3;
 pub const STATE_ONLY_STATEMENT_VALUE_COUNT: usize =
@@ -118,18 +118,18 @@ pub const STATE_ONLY_PROFILE22_PRIVATE_SHAPE: StateOnlyProfileShape = StateOnlyP
     query_count: STATE_ONLY_RATE512_QUERY_COUNT,
     batch_grinding_bits: STATE_ONLY_PROFILE22_BATCH_GRINDING_BITS,
 };
-pub const STATE_ONLY_PROFILE23_ZERO_FACTOR_SHAPE: StateOnlyProfileShape = StateOnlyProfileShape {
-    profile_id: STATE_ONLY_PROFILE23_ZERO_FACTOR_PROFILE_ID,
+pub const STATE_ONLY_SPEND_ZERO_FACTOR_SHAPE: StateOnlyProfileShape = StateOnlyProfileShape {
+    profile_id: STATE_ONLY_SPEND_ZERO_FACTOR_PROFILE_ID,
     log_blowup: STATE_ONLY_RATE512_LOG_BLOWUP,
-    query_count: STATE_ONLY_PROFILE23_QUERY_COUNT,
-    batch_grinding_bits: STATE_ONLY_PROFILE23_BATCH_GRINDING_BITS,
+    query_count: STATE_ONLY_SPEND_QUERY_COUNT,
+    batch_grinding_bits: STATE_ONLY_SPEND_BATCH_GRINDING_BITS,
 };
 
 pub const fn state_only_fold_grinding_bits(
     shape: StateOnlyProfileShape,
 ) -> [u8; CANDIDATE_ROUND_COUNT] {
     match shape.profile_id {
-        STATE_ONLY_PROFILE23_ZERO_FACTOR_PROFILE_ID => STATE_ONLY_PROFILE23_FOLD_GRINDING_BITS,
+        STATE_ONLY_SPEND_ZERO_FACTOR_PROFILE_ID => STATE_ONLY_SPEND_FOLD_GRINDING_BITS,
         _ => RATE16_HARDENED_FOLD_POW_BITS,
     }
 }
@@ -138,7 +138,7 @@ pub const fn state_only_final_grinding_bits(shape: StateOnlyProfileShape) -> u8 
     match shape.profile_id {
         STATE_ONLY_PROFILE21_PROFILE_ID => STATE_ONLY_PROFILE21_GRINDING_BITS,
         STATE_ONLY_PROFILE22_PRIVATE_PROFILE_ID => STATE_ONLY_PROFILE22_GRINDING_BITS,
-        STATE_ONLY_PROFILE23_ZERO_FACTOR_PROFILE_ID => STATE_ONLY_PROFILE23_GRINDING_BITS,
+        STATE_ONLY_SPEND_ZERO_FACTOR_PROFILE_ID => STATE_ONLY_SPEND_GRINDING_BITS,
         _ => STATE_ONLY_GRINDING_BITS,
     }
 }
@@ -155,19 +155,18 @@ pub const STATE_ONLY_PROFILE21_EXTENSION_LEN: usize =
 pub const STATE_ONLY_PROFILE21_PREFIX_LEN: usize =
     STATE_ONLY_PREFIX_LEN + STATE_ONLY_PROFILE21_EXTENSION_LEN;
 
-/// Append-only profile-23 extension. D's three point claims are physically
+/// Append-only spend extension. D's three point claims are physically
 /// after the frozen 6,736-byte base prefix but are absorbed logically beside
 /// the base statement claims, before batch grinding and gamma. The selector
 /// byte is physically last and is absorbed after the final nonce.
-pub const STATE_ONLY_PROFILE23_D_CLAIM_COUNT: usize = 3;
-pub const STATE_ONLY_PROFILE23_D_CLAIMS_LEN: usize =
-    STATE_ONLY_PROFILE23_D_CLAIM_COUNT * ENCODED_QM31_LEN;
-pub const STATE_ONLY_PROFILE23_QUERY_SELECTOR_LEN: usize = 1;
-pub const STATE_ONLY_PROFILE23_QUERY_CANDIDATE_COUNT: u8 = 3;
-pub const STATE_ONLY_PROFILE23_EXTENSION_LEN: usize =
-    STATE_ONLY_PROFILE23_D_CLAIMS_LEN + STATE_ONLY_PROFILE23_QUERY_SELECTOR_LEN;
-pub const STATE_ONLY_PROFILE23_PREFIX_LEN: usize =
-    STATE_ONLY_PREFIX_LEN + STATE_ONLY_PROFILE23_EXTENSION_LEN;
+pub const STATE_ONLY_SPEND_D_CLAIM_COUNT: usize = 3;
+pub const STATE_ONLY_SPEND_D_CLAIMS_LEN: usize = STATE_ONLY_SPEND_D_CLAIM_COUNT * ENCODED_QM31_LEN;
+pub const STATE_ONLY_SPEND_QUERY_SELECTOR_LEN: usize = 1;
+pub const STATE_ONLY_SPEND_QUERY_CANDIDATE_COUNT: u8 = 3;
+pub const STATE_ONLY_SPEND_EXTENSION_LEN: usize =
+    STATE_ONLY_SPEND_D_CLAIMS_LEN + STATE_ONLY_SPEND_QUERY_SELECTOR_LEN;
+pub const STATE_ONLY_SPEND_PREFIX_LEN: usize =
+    STATE_ONLY_PREFIX_LEN + STATE_ONLY_SPEND_EXTENSION_LEN;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct StateOnlyPrefixOffsets {
@@ -275,7 +274,7 @@ fn shape_from_header(header: &Header) -> Option<StateOnlyProfileShape> {
         STATE_ONLY_RATE512_SHAPE,
         STATE_ONLY_PROFILE21_SHAPE,
         STATE_ONLY_PROFILE22_PRIVATE_SHAPE,
-        STATE_ONLY_PROFILE23_ZERO_FACTOR_SHAPE,
+        STATE_ONLY_SPEND_ZERO_FACTOR_SHAPE,
     ]
     .into_iter()
     .find(|shape| {
@@ -462,15 +461,15 @@ impl<'a> StateOnlyProfile21Prefix<'a> {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct StateOnlyProfile23Prefix<'a> {
+pub struct StateOnlySpendPrefix<'a> {
     pub base: StateOnlyCandidatePrefix<'a>,
-    pub d_claims_bytes: &'a [u8; STATE_ONLY_PROFILE23_D_CLAIMS_LEN],
+    pub d_claims_bytes: &'a [u8; STATE_ONLY_SPEND_D_CLAIMS_LEN],
     pub query_selector: u8,
 }
 
-impl<'a> StateOnlyProfile23Prefix<'a> {
+impl<'a> StateOnlySpendPrefix<'a> {
     pub fn parse_exact(bytes: &'a [u8]) -> Result<Self, CandidatePrefixError> {
-        match bytes.len().cmp(&STATE_ONLY_PROFILE23_PREFIX_LEN) {
+        match bytes.len().cmp(&STATE_ONLY_SPEND_PREFIX_LEN) {
             core::cmp::Ordering::Less => return Err(CandidatePrefixError::Truncated),
             core::cmp::Ordering::Greater => return Err(CandidatePrefixError::TrailingBytes),
             core::cmp::Ordering::Equal => {}
@@ -479,22 +478,22 @@ impl<'a> StateOnlyProfile23Prefix<'a> {
     }
 
     pub fn parse_from_proof(bytes: &'a [u8]) -> Result<(Self, &'a [u8]), CandidatePrefixError> {
-        if bytes.len() < STATE_ONLY_PROFILE23_PREFIX_LEN {
+        if bytes.len() < STATE_ONLY_SPEND_PREFIX_LEN {
             return Err(CandidatePrefixError::Truncated);
         }
-        let (prefix, openings) = bytes.split_at(STATE_ONLY_PROFILE23_PREFIX_LEN);
+        let (prefix, openings) = bytes.split_at(STATE_ONLY_SPEND_PREFIX_LEN);
         Ok((Self::parse_prefix(prefix)?, openings))
     }
 
     fn parse_prefix(bytes: &'a [u8]) -> Result<Self, CandidatePrefixError> {
         let base = StateOnlyCandidatePrefix::parse_exact(&bytes[..STATE_ONLY_PREFIX_LEN])?;
-        if base.shape != STATE_ONLY_PROFILE23_ZERO_FACTOR_SHAPE {
+        if base.shape != STATE_ONLY_SPEND_ZERO_FACTOR_SHAPE {
             return Err(CandidatePrefixError::BadHeader);
         }
         let d_claims_start = STATE_ONLY_PREFIX_LEN;
-        validate_field_block(bytes, d_claims_start, STATE_ONLY_PROFILE23_D_CLAIM_COUNT)?;
-        let selector = bytes[d_claims_start + STATE_ONLY_PROFILE23_D_CLAIMS_LEN];
-        if selector >= STATE_ONLY_PROFILE23_QUERY_CANDIDATE_COUNT {
+        validate_field_block(bytes, d_claims_start, STATE_ONLY_SPEND_D_CLAIM_COUNT)?;
+        let selector = bytes[d_claims_start + STATE_ONLY_SPEND_D_CLAIMS_LEN];
+        if selector >= STATE_ONLY_SPEND_QUERY_CANDIDATE_COUNT {
             return Err(CandidatePrefixError::BadHeader);
         }
         Ok(Self {
@@ -505,7 +504,7 @@ impl<'a> StateOnlyProfile23Prefix<'a> {
     }
 
     pub fn d_claim(&self, point: usize) -> Option<QM31> {
-        if point >= STATE_ONLY_PROFILE23_D_CLAIM_COUNT {
+        if point >= STATE_ONLY_SPEND_D_CLAIM_COUNT {
             return None;
         }
         let start = point * ENCODED_QM31_LEN;
@@ -618,7 +617,7 @@ fn begin_schedule_with_context(
     statement_digest: &[u8; 32],
     check_pow: bool,
     hiding_context: StateOnlyHidingContext,
-    profile23_d_claims: Option<&[u8; STATE_ONLY_PROFILE23_D_CLAIMS_LEN]>,
+    spend_d_claims: Option<&[u8; STATE_ONLY_SPEND_D_CLAIMS_LEN]>,
 ) -> Result<(Transcript, StateOnlyPrefixScheduleResult), StateOnlyTranscriptError> {
     let mut transcript = Transcript::new(hash);
     transcript.absorb(label::PROFILE, prefix.header_bytes);
@@ -651,7 +650,7 @@ fn begin_schedule_with_context(
         label::M31_CIRCLE_STATEMENT_EVALUATIONS,
         prefix.statement_evaluations_bytes,
     );
-    if let Some(d_claims) = profile23_d_claims {
+    if let Some(d_claims) = spend_d_claims {
         transcript.absorb(label::M31_STATE_ONLY_ZERO_FACTOR_D_CLAIMS, d_claims);
     }
     let batch_ok = transcript.grinding_ok(prefix.batch_nonce, prefix.shape.batch_grinding_bits);
@@ -667,7 +666,7 @@ fn begin_schedule_with_context(
     // raw and masked-sumcheck blocks retain full rank. Older frozen profiles
     // keep their original sampler.
     let gamma = if prefix.shape == STATE_ONLY_PROFILE22_PRIVATE_SHAPE
-        || prefix.shape == STATE_ONLY_PROFILE23_ZERO_FACTOR_SHAPE
+        || prefix.shape == STATE_ONLY_SPEND_ZERO_FACTOR_SHAPE
     {
         transcript.challenge_nonzero_qm31()
     } else {
@@ -701,10 +700,10 @@ fn begin_schedule(
     statement_digest: &[u8; 32],
     check_pow: bool,
 ) -> Result<(Transcript, StateOnlyPrefixScheduleResult), StateOnlyTranscriptError> {
-    // Profile 23 has three additional D claims before the batching challenge.
+    // Spend has three additional D claims before the batching challenge.
     // A caller holding only the base prefix cannot replay that transcript and
-    // must use the typed profile-23 API instead.
-    if prefix.shape == STATE_ONLY_PROFILE23_ZERO_FACTOR_SHAPE {
+    // must use the typed spend API instead.
+    if prefix.shape == STATE_ONLY_SPEND_ZERO_FACTOR_SHAPE {
         return Err(StateOnlyTranscriptError::ProfileMismatch);
     }
     begin_schedule_with_context(
@@ -723,7 +722,7 @@ fn begin_atomic_schedule_v3(
     statement_digest: &[u8; 32],
     check_pow: bool,
 ) -> Result<(Transcript, StateOnlyPrefixScheduleResult), StateOnlyTranscriptError> {
-    if prefix.shape == STATE_ONLY_PROFILE23_ZERO_FACTOR_SHAPE {
+    if prefix.shape == STATE_ONLY_SPEND_ZERO_FACTOR_SHAPE {
         return Err(StateOnlyTranscriptError::ProfileMismatch);
     }
     begin_schedule_with_context(
@@ -736,13 +735,13 @@ fn begin_atomic_schedule_v3(
     )
 }
 
-fn begin_atomic_profile23_schedule_v3(
+fn begin_atomic_spend_schedule_v3(
     hash: HashFn,
-    prefix: &StateOnlyProfile23Prefix<'_>,
+    prefix: &StateOnlySpendPrefix<'_>,
     statement_digest: &[u8; 32],
     check_pow: bool,
 ) -> Result<(Transcript, StateOnlyPrefixScheduleResult), StateOnlyTranscriptError> {
-    if prefix.base.shape != STATE_ONLY_PROFILE23_ZERO_FACTOR_SHAPE {
+    if prefix.base.shape != STATE_ONLY_SPEND_ZERO_FACTOR_SHAPE {
         return Err(StateOnlyTranscriptError::ProfileMismatch);
     }
     begin_schedule_with_context(
@@ -750,7 +749,7 @@ fn begin_atomic_profile23_schedule_v3(
         &prefix.base,
         statement_digest,
         check_pow,
-        StateOnlyHidingContext::atomic_profile23_v3(*statement_digest, *prefix.base.mask_nonce),
+        StateOnlyHidingContext::atomic_spend_v3(*statement_digest, *prefix.base.mask_nonce),
         Some(prefix.d_claims_bytes),
     )
 }
@@ -771,12 +770,12 @@ pub fn run_atomic_state_only_prefix_schedule_host_v3(
     Ok(begin_atomic_schedule_v3(hash, prefix, statement_digest, false)?.1)
 }
 
-pub fn run_atomic_state_only_profile23_prefix_schedule_host_v3(
+pub fn run_atomic_state_only_spend_prefix_schedule_host_v3(
     hash: HashFn,
-    prefix: &StateOnlyProfile23Prefix<'_>,
+    prefix: &StateOnlySpendPrefix<'_>,
     statement_digest: &[u8; 32],
 ) -> Result<StateOnlyPrefixScheduleResult, StateOnlyTranscriptError> {
-    Ok(begin_atomic_profile23_schedule_v3(hash, prefix, statement_digest, false)?.1)
+    Ok(begin_atomic_spend_schedule_v3(hash, prefix, statement_digest, false)?.1)
 }
 
 fn absorb_ood(
@@ -850,19 +849,19 @@ fn run_full_with_context(
     statement_digest: &[u8; 32],
     check_pow: bool,
     atomic_v3: bool,
-    profile23: Option<&StateOnlyProfile23Prefix<'_>>,
+    spend: Option<&StateOnlySpendPrefix<'_>>,
 ) -> Result<StateOnlyTranscriptScheduleResult, StateOnlyTranscriptError> {
     if prefix.shape == STATE_ONLY_PROFILE21_SHAPE
-        || (prefix.shape == STATE_ONLY_PROFILE23_ZERO_FACTOR_SHAPE && profile23.is_none())
-        || (profile23.is_some() && !atomic_v3)
+        || (prefix.shape == STATE_ONLY_SPEND_ZERO_FACTOR_SHAPE && spend.is_none())
+        || (spend.is_some() && !atomic_v3)
     {
         return Err(StateOnlyTranscriptError::ProfileMismatch);
     }
-    let (mut transcript, prefix_result) = if let Some(profile23) = profile23 {
-        if profile23.base.shape != prefix.shape {
+    let (mut transcript, prefix_result) = if let Some(spend) = spend {
+        if spend.base.shape != prefix.shape {
             return Err(StateOnlyTranscriptError::ProfileMismatch);
         }
-        begin_atomic_profile23_schedule_v3(hash, profile23, statement_digest, check_pow)?
+        begin_atomic_spend_schedule_v3(hash, spend, statement_digest, check_pow)?
     } else if atomic_v3 {
         begin_atomic_schedule_v3(hash, prefix, statement_digest, check_pow)?
     } else {
@@ -937,10 +936,10 @@ fn run_full_with_context(
         return Err(CandidateTranscriptScheduleError::GrindingRejected.into());
     }
     transcript.absorb(label::GRIND_NONCE, &prefix.nonce.to_le_bytes());
-    if let Some(profile23) = profile23 {
+    if let Some(spend) = spend {
         transcript.absorb(
             label::M31_STATE_ONLY_QUERY_CANDIDATE,
-            &[profile23.query_selector],
+            &[spend.query_selector],
         );
     }
     let (queries, query_count) = sample_queries(&mut transcript, prefix.shape)?;
@@ -1164,9 +1163,9 @@ pub fn run_atomic_state_only_transcript_schedule_host_unmined_for_diagnostics_v3
     run_full_with_context(hash, prefix, statement_digest, false, true, None)
 }
 
-pub fn run_atomic_state_only_profile23_transcript_schedule_host_v3(
+pub fn run_atomic_state_only_spend_transcript_schedule_host_v3(
     hash: HashFn,
-    prefix: &StateOnlyProfile23Prefix<'_>,
+    prefix: &StateOnlySpendPrefix<'_>,
     statement_digest: &[u8; 32],
 ) -> Result<StateOnlyTranscriptScheduleResult, StateOnlyTranscriptError> {
     run_full_with_context(
@@ -1179,9 +1178,9 @@ pub fn run_atomic_state_only_profile23_transcript_schedule_host_v3(
     )
 }
 
-pub fn run_atomic_state_only_profile23_transcript_schedule_host_unmined_for_diagnostics_v3(
+pub fn run_atomic_state_only_spend_transcript_schedule_host_unmined_for_diagnostics_v3(
     hash: HashFn,
-    prefix: &StateOnlyProfile23Prefix<'_>,
+    prefix: &StateOnlySpendPrefix<'_>,
     statement_digest: &[u8; 32],
 ) -> Result<StateOnlyTranscriptScheduleResult, StateOnlyTranscriptError> {
     run_full_with_context(
@@ -1232,17 +1231,11 @@ mod tests {
         assert_eq!(STATE_ONLY_PREFIX_OFFSETS.batch_nonce_start, 6_728);
         assert_eq!(STATE_ONLY_PROFILE22_PRIVATE_SHAPE.batch_grinding_bits, 38);
         assert_eq!(header(STATE_ONLY_PROFILE22_PRIVATE_SHAPE).grinding_bits, 38);
-        assert_eq!(STATE_ONLY_PROFILE23_ZERO_FACTOR_SHAPE.query_count, 18);
+        assert_eq!(STATE_ONLY_SPEND_ZERO_FACTOR_SHAPE.query_count, 18);
+        assert_eq!(STATE_ONLY_SPEND_ZERO_FACTOR_SHAPE.batch_grinding_bits, 37);
+        assert_eq!(header(STATE_ONLY_SPEND_ZERO_FACTOR_SHAPE).grinding_bits, 32);
         assert_eq!(
-            STATE_ONLY_PROFILE23_ZERO_FACTOR_SHAPE.batch_grinding_bits,
-            37
-        );
-        assert_eq!(
-            header(STATE_ONLY_PROFILE23_ZERO_FACTOR_SHAPE).grinding_bits,
-            32
-        );
-        assert_eq!(
-            state_only_fold_grinding_bits(STATE_ONLY_PROFILE23_ZERO_FACTOR_SHAPE),
+            state_only_fold_grinding_bits(STATE_ONLY_SPEND_ZERO_FACTOR_SHAPE),
             [34, 33, 30, 25]
         );
         assert_eq!(
@@ -1470,41 +1463,40 @@ mod tests {
         assert_eq!(unique.len(), 18);
     }
 
-    fn profile23_zero_fixture(selector: u8) -> [u8; STATE_ONLY_PROFILE23_PREFIX_LEN] {
-        let mut bytes = [0u8; STATE_ONLY_PROFILE23_PREFIX_LEN];
-        header(STATE_ONLY_PROFILE23_ZERO_FACTOR_SHAPE).write(&mut bytes[..HEADER_LEN]);
-        bytes[STATE_ONLY_PREFIX_OFFSETS.mask_nonce_start] =
-            STATE_ONLY_PROFILE23_ZERO_FACTOR_PROFILE_ID;
-        bytes[STATE_ONLY_PREFIX_LEN + STATE_ONLY_PROFILE23_D_CLAIMS_LEN] = selector;
+    fn spend_zero_fixture(selector: u8) -> [u8; STATE_ONLY_SPEND_PREFIX_LEN] {
+        let mut bytes = [0u8; STATE_ONLY_SPEND_PREFIX_LEN];
+        header(STATE_ONLY_SPEND_ZERO_FACTOR_SHAPE).write(&mut bytes[..HEADER_LEN]);
+        bytes[STATE_ONLY_PREFIX_OFFSETS.mask_nonce_start] = STATE_ONLY_SPEND_ZERO_FACTOR_PROFILE_ID;
+        bytes[STATE_ONLY_PREFIX_LEN + STATE_ONLY_SPEND_D_CLAIMS_LEN] = selector;
         bytes
     }
 
     #[test]
-    fn profile23_extension_and_old_new_replay_paths_fail_closed() {
-        assert_eq!(STATE_ONLY_PROFILE23_EXTENSION_LEN, 49);
-        assert_eq!(STATE_ONLY_PROFILE23_PREFIX_LEN, 6_785);
+    fn spend_extension_and_old_new_replay_paths_fail_closed() {
+        assert_eq!(STATE_ONLY_SPEND_EXTENSION_LEN, 49);
+        assert_eq!(STATE_ONLY_SPEND_PREFIX_LEN, 6_785);
         let statement = [0x73; 32];
-        let bytes = profile23_zero_fixture(0);
-        let parsed = StateOnlyProfile23Prefix::parse_exact(&bytes).unwrap();
-        assert_eq!(parsed.base.shape, STATE_ONLY_PROFILE23_ZERO_FACTOR_SHAPE);
+        let bytes = spend_zero_fixture(0);
+        let parsed = StateOnlySpendPrefix::parse_exact(&bytes).unwrap();
+        assert_eq!(parsed.base.shape, STATE_ONLY_SPEND_ZERO_FACTOR_SHAPE);
         assert_eq!(parsed.d_claim(0), Some(QM31::ZERO));
         assert_eq!(parsed.query_selector, 0);
         let schedule =
-            run_atomic_state_only_profile23_transcript_schedule_host_unmined_for_diagnostics_v3(
+            run_atomic_state_only_spend_transcript_schedule_host_unmined_for_diagnostics_v3(
                 test_hash, &parsed, &statement,
             )
             .unwrap();
         assert_eq!(schedule.query_count, 18);
 
-        // A legacy Profile23 q16 header is rejected even when every other
+        // A legacy Spend q16 header is rejected even when every other
         // header field uses the current q18 profile values. This isolates the
         // hard-cutover query-count tooth from the separate final-work change.
         let mut legacy_q16 = bytes;
-        let mut legacy_header = header(STATE_ONLY_PROFILE23_ZERO_FACTOR_SHAPE);
+        let mut legacy_header = header(STATE_ONLY_SPEND_ZERO_FACTOR_SHAPE);
         legacy_header.query_count = STATE_ONLY_RATE512_QUERY_COUNT;
         legacy_header.write(&mut legacy_q16[..HEADER_LEN]);
         assert_eq!(
-            StateOnlyProfile23Prefix::parse_exact(&legacy_q16).unwrap_err(),
+            StateOnlySpendPrefix::parse_exact(&legacy_q16).unwrap_err(),
             CandidatePrefixError::BadHeader
         );
 
@@ -1530,40 +1522,40 @@ mod tests {
         );
 
         let p22_base = zero_fixture(STATE_ONLY_PROFILE22_PRIVATE_SHAPE);
-        let mut wrong_profile = [0u8; STATE_ONLY_PROFILE23_PREFIX_LEN];
+        let mut wrong_profile = [0u8; STATE_ONLY_SPEND_PREFIX_LEN];
         wrong_profile[..STATE_ONLY_PREFIX_LEN].copy_from_slice(&p22_base);
         assert_eq!(
-            StateOnlyProfile23Prefix::parse_exact(&wrong_profile).unwrap_err(),
+            StateOnlySpendPrefix::parse_exact(&wrong_profile).unwrap_err(),
             CandidatePrefixError::BadHeader
         );
     }
 
     #[test]
-    fn profile23_d_claims_bind_gamma_and_q3_selector_binds_only_queries() {
+    fn spend_d_claims_bind_gamma_and_q3_selector_binds_only_queries() {
         let statement = [0x73; 32];
-        let base_bytes = profile23_zero_fixture(0);
-        let base = StateOnlyProfile23Prefix::parse_exact(&base_bytes).unwrap();
+        let base_bytes = spend_zero_fixture(0);
+        let base = StateOnlySpendPrefix::parse_exact(&base_bytes).unwrap();
         let schedule =
-            run_atomic_state_only_profile23_transcript_schedule_host_unmined_for_diagnostics_v3(
+            run_atomic_state_only_spend_transcript_schedule_host_unmined_for_diagnostics_v3(
                 test_hash, &base, &statement,
             )
             .unwrap();
 
         let mut changed_d = base_bytes;
         changed_d[STATE_ONLY_PREFIX_LEN] = 1;
-        let changed_d = StateOnlyProfile23Prefix::parse_exact(&changed_d).unwrap();
+        let changed_d = StateOnlySpendPrefix::parse_exact(&changed_d).unwrap();
         let d_schedule =
-            run_atomic_state_only_profile23_transcript_schedule_host_unmined_for_diagnostics_v3(
+            run_atomic_state_only_spend_transcript_schedule_host_unmined_for_diagnostics_v3(
                 test_hash, &changed_d, &statement,
             )
             .unwrap();
         assert_ne!(d_schedule.prefix.gamma, schedule.prefix.gamma);
 
-        for selector in 1..STATE_ONLY_PROFILE23_QUERY_CANDIDATE_COUNT {
-            let selector_bytes = profile23_zero_fixture(selector);
-            let selector = StateOnlyProfile23Prefix::parse_exact(&selector_bytes).unwrap();
+        for selector in 1..STATE_ONLY_SPEND_QUERY_CANDIDATE_COUNT {
+            let selector_bytes = spend_zero_fixture(selector);
+            let selector = StateOnlySpendPrefix::parse_exact(&selector_bytes).unwrap();
             let selector_schedule =
-                run_atomic_state_only_profile23_transcript_schedule_host_unmined_for_diagnostics_v3(
+                run_atomic_state_only_spend_transcript_schedule_host_unmined_for_diagnostics_v3(
                     test_hash, &selector, &statement,
                 )
                 .unwrap();
@@ -1593,7 +1585,7 @@ mod tests {
             );
         }
         assert_eq!(
-            StateOnlyProfile23Prefix::parse_exact(&profile23_zero_fixture(3)).unwrap_err(),
+            StateOnlySpendPrefix::parse_exact(&spend_zero_fixture(3)).unwrap_err(),
             CandidatePrefixError::BadHeader
         );
     }

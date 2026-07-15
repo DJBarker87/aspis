@@ -1,0 +1,395 @@
+{
+  "generated_at_utc": "2026-07-14T20:28:05.158793+00:00",
+  "command": "ASPIS_SPEND_PROOF=crates/aspis-prover/fixtures/spend_q18_g37_release.bin ASPIS_SPEND_STATEMENT=crates/aspis-prover/fixtures/spend_q18_g37_release.statement.json NO_DNA=1 cargo run --release -p aspis-xtask -- stage2-atomic-spend-mutation",
+  "validator_version": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+  "production_instruction_wire_ordinal": 65,
+  "diagnostic_instruction_wire_ordinal": 61,
+  "finalize_proof_instruction_wire_ordinal": 62,
+  "diagnostic_sbf_features": [
+    "diagnostic-unmined-spend-mutation",
+    "spend-mutation-candidate"
+  ],
+  "proof_path": "crates/aspis-prover/fixtures/spend_q18_g37_release.bin",
+  "proof_source_override": true,
+  "proof_bytes": 64447,
+  "proof_sha256": "d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d",
+  "proof_unmined": false,
+  "statement_path": "crates/aspis-prover/fixtures/spend_q18_g37_release.statement.json",
+  "statement_source_override": true,
+  "statement_sha256": "947a608c93487a634f37119bead8d61fe29e9cb6883493465d6fb35af27883c2",
+  "statement_pool_hex": "94d5641ee2e3891341b7f738f6b36087c184d828ea07463fe5e70d8c332d1051",
+  "statement_sequence": 0,
+  "canonical_public_input_digest": "b2d150dfcb6432c1b6f2e3892ee45a9aa5f393809d97c8292fea975b3da35fa3",
+  "query_count": 18,
+  "batch_grinding_bits": 37,
+  "final_grinding_bits": 32,
+  "fold_grinding_bits": [
+    34,
+    33,
+    30,
+    25
+  ],
+  "production_pow_bypass_exposed": false,
+  "default_tag65_fail_closed_host": true,
+  "candidate_tag65_rejects_unmined_sbf": false,
+  "candidate_tag65_accepts_mined_sbf": true,
+  "candidate_tag65_outcome_matches_pow": true,
+  "candidate_tag65_rollback_green": true,
+  "paths": [
+    {
+      "marker_path": "program_owned_zeroed",
+      "literal_simulation_cu": 1252135,
+      "headroom_under_1_4m_cu": 147865,
+      "incremental_over_tag59_cu": 5155,
+      "markers": [
+        {
+          "label": "atomic61_instruction_start",
+          "remaining": 1398025,
+          "delta_from_previous": null
+        },
+        {
+          "label": "atomic61_accounts_validated_program_owned",
+          "remaining": 1395239,
+          "delta_from_previous": 2786
+        },
+        {
+          "label": "atomic61_statement_digest_done",
+          "remaining": 1394345,
+          "delta_from_previous": 894
+        },
+        {
+          "label": "atomic61_proof_loaded",
+          "remaining": 1394099,
+          "delta_from_previous": 246
+        },
+        {
+          "label": "atomic61_parsed",
+          "remaining": 1392118,
+          "delta_from_previous": 1981
+        },
+        {
+          "label": "atomic61_transcript",
+          "remaining": 1239810,
+          "delta_from_previous": 152308
+        },
+        {
+          "label": "atomic61_terminal",
+          "remaining": 857578,
+          "delta_from_previous": 382232
+        },
+        {
+          "label": "atomic61_relation",
+          "remaining": 670005,
+          "delta_from_previous": 187573
+        },
+        {
+          "label": "atomic61_openings",
+          "remaining": 460478,
+          "delta_from_previous": 209527
+        },
+        {
+          "label": "atomic61_layer0_queries",
+          "remaining": 255251,
+          "delta_from_previous": 205227
+        },
+        {
+          "label": "atomic61_later_queries",
+          "remaining": 149774,
+          "delta_from_previous": 105477
+        },
+        {
+          "label": "atomic61_core_complete",
+          "remaining": 149556,
+          "delta_from_previous": 218
+        },
+        {
+          "label": "atomic61_proof_verified",
+          "remaining": 149278,
+          "delta_from_previous": 278
+        },
+        {
+          "label": "atomic61_program_marker_ready",
+          "remaining": 149072,
+          "delta_from_previous": 206
+        },
+        {
+          "label": "atomic61_state_rechecked",
+          "remaining": 148331,
+          "delta_from_previous": 741
+        },
+        {
+          "label": "atomic61_state_applied",
+          "remaining": 148052,
+          "delta_from_previous": 279
+        }
+      ],
+      "ledger": {
+        "transaction_setup_cu": 1975,
+        "account_validation_cu": 2786,
+        "statement_decode_and_digest_cu": 894,
+        "exact_spend_verifier_cu": 1245067,
+        "marker_prepare_or_cpi_cu": 206,
+        "mutable_state_recheck_cu": 741,
+        "final_account_writes_cu": 279,
+        "post_last_marker_cu": 187,
+        "reconciled_total_cu": 1252135,
+        "formula": "1975 + 2786 + 894 + 1245067 + 206 + 741 + 279 + 187"
+      },
+      "clean_simulation_accepted": true,
+      "corrupt_proof_rejected_without_mutation": true,
+      "committed_transition_succeeded": true,
+      "pool_sequence_advanced_once": true,
+      "pool_anchor_replaced": true,
+      "nullifier_marker_written": true,
+      "duplicate_rejected_without_second_mutation": true,
+      "concurrent_exactly_one_committed": null
+    },
+    {
+      "marker_path": "canonical_system_owned_create",
+      "literal_simulation_cu": 1254468,
+      "headroom_under_1_4m_cu": 145532,
+      "incremental_over_tag59_cu": 7488,
+      "markers": [
+        {
+          "label": "atomic61_instruction_start",
+          "remaining": 1398025,
+          "delta_from_previous": null
+        },
+        {
+          "label": "atomic61_accounts_validated_system_owned",
+          "remaining": 1395691,
+          "delta_from_previous": 2334
+        },
+        {
+          "label": "atomic61_statement_digest_done",
+          "remaining": 1394797,
+          "delta_from_previous": 894
+        },
+        {
+          "label": "atomic61_proof_loaded",
+          "remaining": 1394551,
+          "delta_from_previous": 246
+        },
+        {
+          "label": "atomic61_parsed",
+          "remaining": 1392570,
+          "delta_from_previous": 1981
+        },
+        {
+          "label": "atomic61_transcript",
+          "remaining": 1240262,
+          "delta_from_previous": 152308
+        },
+        {
+          "label": "atomic61_terminal",
+          "remaining": 858030,
+          "delta_from_previous": 382232
+        },
+        {
+          "label": "atomic61_relation",
+          "remaining": 670457,
+          "delta_from_previous": 187573
+        },
+        {
+          "label": "atomic61_openings",
+          "remaining": 460930,
+          "delta_from_previous": 209527
+        },
+        {
+          "label": "atomic61_layer0_queries",
+          "remaining": 255703,
+          "delta_from_previous": 205227
+        },
+        {
+          "label": "atomic61_later_queries",
+          "remaining": 150226,
+          "delta_from_previous": 105477
+        },
+        {
+          "label": "atomic61_core_complete",
+          "remaining": 150008,
+          "delta_from_previous": 218
+        },
+        {
+          "label": "atomic61_proof_verified",
+          "remaining": 149730,
+          "delta_from_previous": 278
+        },
+        {
+          "label": "atomic61_system_marker_created",
+          "remaining": 146739,
+          "delta_from_previous": 2991
+        },
+        {
+          "label": "atomic61_state_rechecked",
+          "remaining": 145998,
+          "delta_from_previous": 741
+        },
+        {
+          "label": "atomic61_state_applied",
+          "remaining": 145719,
+          "delta_from_previous": 279
+        }
+      ],
+      "ledger": {
+        "transaction_setup_cu": 1975,
+        "account_validation_cu": 2334,
+        "statement_decode_and_digest_cu": 894,
+        "exact_spend_verifier_cu": 1245067,
+        "marker_prepare_or_cpi_cu": 2991,
+        "mutable_state_recheck_cu": 741,
+        "final_account_writes_cu": 279,
+        "post_last_marker_cu": 187,
+        "reconciled_total_cu": 1254468,
+        "formula": "1975 + 2334 + 894 + 1245067 + 2991 + 741 + 279 + 187"
+      },
+      "clean_simulation_accepted": true,
+      "corrupt_proof_rejected_without_mutation": true,
+      "committed_transition_succeeded": true,
+      "pool_sequence_advanced_once": true,
+      "pool_anchor_replaced": true,
+      "nullifier_marker_written": true,
+      "duplicate_rejected_without_second_mutation": true,
+      "concurrent_exactly_one_committed": true
+    }
+  ],
+  "production_only_sbf_features": [
+    "spend-production"
+  ],
+  "production_only_sbf_bytes": 208,
+  "production_only_sbf_sha256": "9e0c59beab3749dafa05a327e8e71233c2bcb20468b823c6453a536bace1936b",
+  "production_only_mined_override_exercised": true,
+  "production_only_unmined_tag59_rejected": true,
+  "production_only_unmined_tag65_rejected": true,
+  "production_only_unmined_tag65_rollback_green": true,
+  "production_only_tag59_diagnostic_bit_unavailable": true,
+  "production_only_tag61_unavailable": true,
+  "production_alias_forbidden_feature_unions_rejected": true,
+  "production_alias_forbidden_feature_unions_tested": [
+    "spend-production+diagnostic-unmined-mutation",
+    "spend-production+diagnostic-unmined-profile21-mutation",
+    "spend-production+diagnostic-unmined-profile22-acceptance",
+    "spend-production+diagnostic-unmined-profile22-mutation",
+    "spend-production+diagnostic-unmined-spend-acceptance",
+    "spend-production+diagnostic-unmined-spend-mutation",
+    "spend-production+profile20-mutation-candidate",
+    "spend-production+profile21-integrated-candidate",
+    "spend-production+profile21-mutation-candidate",
+    "spend-production+profile22-integrated-candidate",
+    "spend-production+profile22-mutation-candidate",
+    "spend-production+all-forbidden"
+  ],
+  "production_legacy_tag60_compatibility": {
+    "isolated_local_validator_lifecycle": true,
+    "instruction_wire_ordinal": 60,
+    "proof_account": "4iefVCWSxhUGZ7Ytnf6QawRMRucPpeGNe5dasyrqdmdT",
+    "pool_account": "B1z4gQ82xerghDKZ68HuP2Tehx5ER5mfVHq74y4ew3kk",
+    "nullifier_account": "HCzyHWuraY4VZvY82GmbfRz6q4BhvdfXBGL1bj54ffhi",
+    "proof_meta_read_only": true,
+    "proof_meta_non_signer": true,
+    "proof_finalized_before_transition": true,
+    "committed_transition_succeeded": true,
+    "committed_transaction_cu": 1307896,
+    "pool_sequence_before": 0,
+    "pool_sequence_after": 1,
+    "pool_sequence_advanced_exactly_once": true,
+    "pool_anchor_before_hex": "86f3434393b57a1b13f18016bf5b0b0e9d95692e521b500b64b6f9240479cd42",
+    "pool_anchor_after_hex": "c4eb0c53a79a4a205fb27d48a44a3c5d2467335cfbca636b9746ef08b446d82b",
+    "pool_anchor_replaced": true,
+    "nullifier_marker_absent_before": true,
+    "nullifier_marker_written_exactly": true,
+    "duplicate_landed_error": "{\"InstructionError\":[2,{\"Custom\":1095962626}]}",
+    "duplicate_rejected_as_already_spent": true,
+    "duplicate_rejected_without_second_mutation": true,
+    "proof_owner_before": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+    "proof_owner_after": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+    "proof_owner_retained": true,
+    "proof_data_bytes": 64487,
+    "proof_data_sha256_before": "f5c3ad76c4d42745e9d793bd4b37c93ca6b8c671c55b477106e2d2cf13f32f07",
+    "proof_data_sha256_after": "f5c3ad76c4d42745e9d793bd4b37c93ca6b8c671c55b477106e2d2cf13f32f07",
+    "proof_data_retained_bit_for_bit": true,
+    "proof_lamports_before": 449720400,
+    "proof_lamports_after": 449720400,
+    "proof_lamports_retained": true,
+    "proof_account_retained_exactly": true
+  },
+  "production_paths": [
+    {
+      "marker_path": "program_owned_zeroed",
+      "proof_accounts_finalized_before_production_verification": true,
+      "literal_tag59_simulation_cu": 1303642,
+      "literal_tag65_simulation_cu": 1338471,
+      "headroom_under_1_4m_cu": 61529,
+      "ledger": {
+        "production_read_only_tag59_cu": 1303642,
+        "production_tag65_increment_over_tag59_cu": 34829,
+        "production_tag65_total_cu": 1338471,
+        "reconciled_total_cu": 1338471,
+        "formula": "1303642 + (34829)"
+      },
+      "production_unmined_tag59_rejected": true,
+      "production_unmined_tag59_error": "{\"InstructionError\":[2,\"InvalidInstructionData\"]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue invoke [1]\",\"Program log: aspis-cu:atomic59_instruction_start\",\"Program consumption: 1399029 units remaining\",\"Program log: aspis-cu:atomic59_proof_loaded\",\"Program consumption: 1398464 units remaining\",\"Program log: aspis-cu:atomic59_parsed\",\"Program consumption: 1396474 units remaining\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue consumed 24638 of 1399700 compute units\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue failed: invalid instruction data\"]",
+      "production_unmined_tag65_rejected": true,
+      "production_unmined_tag65_rollback_green": true,
+      "production_unmined_tag65_landed_error": "{\"InstructionError\":[2,\"InvalidInstructionData\"]}",
+      "production_tag59_accepted_mined_sbf": true,
+      "production_tag65_clean_simulation_accepted": true,
+      "production_tag65_simulation_proof_sha256_log_exact": true,
+      "production_tag65_simulation_logged_proof_sha256": "d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d",
+      "corrupt_proof_rejected_with_transaction_rollback": true,
+      "corrupt_transaction_landed_error": "{\"InstructionError\":[2,\"InvalidInstructionData\"]}",
+      "committed_transition_succeeded": true,
+      "proof_account_absent_after_success": true,
+      "pool_sequence_advanced_once": true,
+      "pool_anchor_replaced": true,
+      "nullifier_marker_written": true,
+      "duplicate_rejected_without_second_mutation": true,
+      "concurrent_exactly_one_committed": null
+    },
+    {
+      "marker_path": "canonical_system_owned_create",
+      "proof_accounts_finalized_before_production_verification": true,
+      "literal_tag59_simulation_cu": 1303642,
+      "literal_tag65_simulation_cu": 1340803,
+      "headroom_under_1_4m_cu": 59197,
+      "ledger": {
+        "production_read_only_tag59_cu": 1303642,
+        "production_tag65_increment_over_tag59_cu": 37161,
+        "production_tag65_total_cu": 1340803,
+        "reconciled_total_cu": 1340803,
+        "formula": "1303642 + (37161)"
+      },
+      "production_unmined_tag59_rejected": true,
+      "production_unmined_tag59_error": "{\"InstructionError\":[2,\"InvalidInstructionData\"]} logs=[\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program ComputeBudget111111111111111111111111111111 invoke [1]\",\"Program ComputeBudget111111111111111111111111111111 success\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue invoke [1]\",\"Program log: aspis-cu:atomic59_instruction_start\",\"Program consumption: 1399029 units remaining\",\"Program log: aspis-cu:atomic59_proof_loaded\",\"Program consumption: 1398464 units remaining\",\"Program log: aspis-cu:atomic59_parsed\",\"Program consumption: 1396474 units remaining\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue consumed 24638 of 1399700 compute units\",\"Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue failed: invalid instruction data\"]",
+      "production_unmined_tag65_rejected": true,
+      "production_unmined_tag65_rollback_green": true,
+      "production_unmined_tag65_landed_error": "{\"InstructionError\":[2,\"InvalidInstructionData\"]}",
+      "production_tag59_accepted_mined_sbf": true,
+      "production_tag65_clean_simulation_accepted": true,
+      "production_tag65_simulation_proof_sha256_log_exact": true,
+      "production_tag65_simulation_logged_proof_sha256": "d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d",
+      "corrupt_proof_rejected_with_transaction_rollback": true,
+      "corrupt_transaction_landed_error": "{\"InstructionError\":[2,\"InvalidInstructionData\"]}",
+      "committed_transition_succeeded": true,
+      "proof_account_absent_after_success": true,
+      "pool_sequence_advanced_once": true,
+      "pool_anchor_replaced": true,
+      "nullifier_marker_written": true,
+      "duplicate_rejected_without_second_mutation": true,
+      "concurrent_exactly_one_committed": true
+    }
+  ],
+  "soundness_bookable": true,
+  "complete_view_hvzk_simulator_complete": true,
+  "production_spend_mutation_enabled": false,
+  "notes": [
+    "Tag65 has no diagnostic selector and calls the exact tag59 parser/verifier with production PoW before the first CPI or account write. Its simulated outcome is required to match the host mined/unmined classification. Default builds remain fail-closed.",
+    "The same production SBF is exercised in a separate local-validator lifecycle through legacy tag60 with a sealed read-only, non-signer proof. The landed transition advances the pool and writes the marker exactly once, a landed duplicate reaches the nullifier-already-spent error, and the proof owner, bytes, and lamports remain exactly unchanged.",
+    "ASPIS_SPEND_PROOF supplied mined bytes: the command additionally built with the isolated feature set spend-production, proved tag59's diagnostic bit and tag61 unavailable, and ran exact production tags59/65 on both marker paths.",
+    "ASPIS_SPEND_STATEMENT supplied the canonical public statement used by host, diagnostic SBF, and production SBF paths; its exact file and canonical transcript digest match the tag59 acceptance artifact.",
+    "Both marker paths emit single-instruction, overlap-free ledgers. Corruption rollback, exact pool/marker images, duplicate rejection, and a two-signer System-path race are tested.",
+    "The production-only paths load the committed unmined KAT into a second proof account, require production tags59/65 to reject it (with a landed failed tag65 transaction and exact rollback), submit a separately corrupted mined tag65 transaction to prove rollback, commit mined tag65 on both marker paths, and reconcile each exact tag65 total as same-binary tag59 plus the net mutation wrapper increment.",
+    "The explicit spend-production KAT additionally compile-failed every diagnostic and legacy Profile20/21/22 candidate union, both individually and as one grouped feature-unification tooth, with the dedicated isolation marker.",
+    "The mutation artifact records, but cannot override, the independent complete-Good/q3 soundness audit and complete-view HVZK release gate."
+  ]
+}

@@ -16,8 +16,8 @@ use aspis_statement::state_only_copy_inactive_row_masks_v4;
 #[cfg(test)]
 use aspis_statement::{state_only_copy_active_rows_v4, state_only_copy_inactive_indicator_v4};
 
+use crate::circle_candidate::CandidatePrefixBuildError;
 use crate::circle_candidate::{fold_adjacent_natural_arity4, TRACE_LEN};
-use crate::circle_candidate_prefix::CandidatePrefixBuildError;
 
 pub const STATE_ONLY_RELATION_POINT_COUNT: usize = 3;
 
@@ -369,7 +369,7 @@ mod tests {
         assert!(matches!(
             StateOnlyIncrementalRelation::new(unbalanced, &points, scales),
             Err(CandidatePrefixBuildError::Consistency(
-                "state-only combined copy-inactive claim is nonzero"
+                "state-only combined copy-inactive claim mismatches its carried target"
             ))
         ));
 
@@ -392,7 +392,7 @@ mod tests {
         assert!(matches!(
             StateOnlyIncrementalRelation::new(cancelled, &points, scales),
             Err(CandidatePrefixBuildError::Consistency(
-                "state-only combined copy-inactive claim is nonzero"
+                "state-only combined copy-inactive claim mismatches its carried target"
             ))
         ));
     }

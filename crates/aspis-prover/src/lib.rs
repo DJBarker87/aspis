@@ -14,39 +14,24 @@
 
 pub mod circle_candidate;
 pub mod circle_candidate_openings;
-pub mod circle_candidate_prefix;
-pub mod circle_relation;
-pub mod mask_oracle_relation;
-pub mod payment_hiding_candidate_prefix;
 pub mod pow;
-pub mod state_only_batch_eval;
 pub mod state_only_candidate;
 pub mod state_only_candidate_prefix;
 pub mod state_only_circle_relation;
 pub mod state_only_entropy;
-pub mod state_only_good22;
-pub mod state_only_good23;
+pub mod state_only_good_spend;
 pub mod state_only_hiding;
 pub mod state_only_hiding_rank;
-pub mod state_only_masked_switch;
 pub mod state_only_private_openings;
-pub mod state_only_profile21;
-pub mod state_only_profile21_openings;
-pub mod state_only_profile22;
-pub mod state_only_profile22_openings;
-pub mod state_only_profile22_release;
-pub mod state_only_profile23;
-pub mod state_only_profile23_candidate;
-pub mod state_only_profile23_openings;
-pub mod state_only_profile23_release;
 pub mod state_only_proof;
+pub mod state_only_spend;
+pub mod state_only_spend_candidate;
+pub mod state_only_spend_openings;
+pub mod state_only_spend_release;
 pub mod state_only_zerocheck;
-pub mod statement_zerocheck;
 
 #[cfg(test)]
-mod state_only_profile22_privacy_regressions;
-#[cfg(test)]
-mod state_only_profile23_privacy_regressions;
+mod state_only_spend_privacy_regressions;
 
 use aspis_core::field::{cm31_batch_inverse, CM31, M31, QM31};
 use aspis_core::merkle::{leaf_hash, node_hash, node_hash4};

@@ -27,7 +27,7 @@ use aspis_core::state_only_masked_switch_basis::{
 };
 use aspis_core::state_only_prefix::{
     StateOnlyProfile21TranscriptScheduleResult, StateOnlyTranscriptScheduleResult,
-    STATE_ONLY_LOG_ROWS, STATE_ONLY_PROFILE23_QUERY_COUNT,
+    STATE_ONLY_LOG_ROWS, STATE_ONLY_SPEND_QUERY_COUNT,
 };
 use aspis_core::sumcheck::{
     boundary_sum, evaluate as evaluate_relation, polynomial_for_extension, WeightAccumulator,
@@ -41,11 +41,11 @@ use aspis_statement::{
     state_only_relation_free_mask_cells_v4, xor12_point,
 };
 
+use crate::circle_candidate::CandidatePrefixBuildError;
 use crate::circle_candidate::{
     fold_adjacent_natural_arity4, fold_candidate_codeword_round_for_domain_log,
     CircleCandidateError, CircleEncoder, FIBER_SLOTS,
 };
-use crate::circle_candidate_prefix::CandidatePrefixBuildError;
 use crate::state_only_circle_relation::StateOnlyIncrementalRelation;
 
 mod profile22_polynomial_kernel_rank;
@@ -66,11 +66,11 @@ pub use profile22_polynomial_kernel_rank::{
     Profile22PolynomialKernelRankReport, Profile22RootNeutralPolynomialKernelRankReport,
 };
 pub use profile22_zero_factor_root_neutral::{
-    bind_profile23_complete_good_product_provenance,
+    bind_spend_complete_good_product_provenance,
     probe_atomic_state_only_profile22_zero_factor_qm31_tail_root_neutral,
     probe_atomic_state_only_profile22_zero_factor_root_neutral_prefixes,
     Profile22ZeroFactorQm31TailRootNeutralReport, Profile22ZeroFactorRootNeutralPrefix,
-    Profile22ZeroFactorRootNeutralReport, Profile23CompleteGoodProductProvenance,
+    Profile22ZeroFactorRootNeutralReport, SpendCompleteGoodProductProvenance,
     PROFILE22_ZERO_FACTOR_MAX_LANES,
 };
 pub use state_only_affine_slice_rank::{

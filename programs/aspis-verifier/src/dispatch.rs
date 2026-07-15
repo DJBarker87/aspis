@@ -1,0 +1,290 @@
+//! The deployment wire surface: entrypoint and minimal production dispatch.
+
+use solana_program::{
+    account_info::AccountInfo, entrypoint::ProgramResult, program_error::ProgramError,
+    pubkey::Pubkey,
+};
+
+use crate::atomic_payment;
+use crate::lifecycle;
+use crate::verify;
+
+#[cfg(all(not(feature = "no-entrypoint"), feature = "spend-minimal-dispatch"))]
+solana_program::entrypoint!(process_spend_production_instruction);
+
+/// Parse exactly one fixed-width byte array from the production wire.
+///
+/// The historical Borsh enum is intentionally not referenced by the minimal
+/// entrypoint.  Avoiding that reference lets the SBF linker discard every
+/// superseded wire arm while retaining byte-for-byte wire compatibility for
+/// the eight lifecycle tags used in production.
+fn production_take<const N: usize>(input: &mut &[u8]) -> Result<[u8; N], ProgramError> {
+    let (head, tail) = input
+        .split_first_chunk::<N>()
+        .ok_or(ProgramError::InvalidInstructionData)?;
+    *input = tail;
+    Ok(*head)
+}
+
+fn production_u32(input: &mut &[u8]) -> Result<u32, ProgramError> {
+    Ok(u32::from_le_bytes(production_take::<4>(input)?))
+}
+
+fn production_u64(input: &mut &[u8]) -> Result<u64, ProgramError> {
+    Ok(u64::from_le_bytes(production_take::<8>(input)?))
+}
+
+fn production_require_empty(input: &[u8]) -> ProgramResult {
+    if input.is_empty() {
+        Ok(())
+    } else {
+        Err(ProgramError::InvalidInstructionData)
+    }
+}
+
+/// The deployment-only wire surface.
+///
+/// Accepted append-only tags:
+///
+/// - 0: initialize a fresh proof account;
+/// - 1: upload one proof chunk;
+/// - 59: production read-only verification;
+/// - 60: production verification plus atomic state transition;
+/// - 62: irreversibly finalize the proof account;
+/// - 63: initialize a fresh atomic pool;
+/// - 64: close a sealed proof account and refund every lamport; and
+/// - 65: production verification plus the atomic state transition and an
+///   atomic proof-account close and rent refund.
+///
+/// Every other historical or diagnostic tag fails before account access.
+pub fn process_spend_production_instruction(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    instruction_data: &[u8],
+) -> ProgramResult {
+    let (&tag, mut wire) = instruction_data
+        .split_first()
+        .ok_or(ProgramError::InvalidInstructionData)?;
+
+    match tag {
+        0 => {
+            let total_len = production_u32(&mut wire)?;
+            production_require_empty(wire)?;
+            lifecycle::init_proof(program_id, accounts, total_len)
+        }
+        1 => {
+            let offset = production_u32(&mut wire)?;
+            let chunk_len = production_u32(&mut wire)? as usize;
+            if wire.len() != chunk_len {
+                return Err(ProgramError::InvalidInstructionData);
+            }
+            lifecycle::upload_chunk(program_id, accounts, offset, wire)
+        }
+        59 => {
+            let pool = production_take::<32>(&mut wire)?;
+            let sequence = production_u64(&mut wire)?;
+            let public_input = production_take::<104>(&mut wire)?;
+            let output_anchor = production_take::<32>(&mut wire)?;
+            let diagnostic_unmined = production_take::<1>(&mut wire)?[0];
+            production_require_empty(wire)?;
+            if diagnostic_unmined != 0 {
+                return Err(ProgramError::InvalidInstructionData);
+            }
+            let proof_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
+            if proof_account.owner != program_id || proof_account.is_writable {
+                return Err(ProgramError::IncorrectProgramId);
+            }
+            verify::verify_uploaded_atomic_spend_acceptance_v3(
+                proof_account,
+                pool,
+                sequence,
+                &public_input,
+                output_anchor,
+            )
+        }
+        60 => {
+            let current_anchor = production_take::<32>(&mut wire)?;
+            let nullifier = production_take::<32>(&mut wire)?;
+            let output_commitment = production_take::<32>(&mut wire)?;
+            let output_anchor = production_take::<32>(&mut wire)?;
+            let asset_id = production_u32(&mut wire)?;
+            let fee = production_u32(&mut wire)?;
+            production_require_empty(wire)?;
+            let public = atomic_payment::AtomicPaymentPublicInputs {
+                current_anchor,
+                nullifier,
+                output_commitment,
+                output_anchor,
+                asset_id,
+                fee,
+            };
+            atomic_payment::verify_and_apply_atomic_payment_state(
+                program_id,
+                accounts,
+                &public,
+                |proof_account, statement, _statement_digest| {
+                    verify::verify_uploaded_atomic_spend_production_statement_v3(
+                        proof_account,
+                        statement,
+                    )
+                },
+            )
+        }
+        // Keep the frozen production API's explicit fail-closed result for
+        // the former diagnostic mutation tag.  Returning the same custom
+        // error preserves the release tooth without rooting a diagnostic
+        // verifier or CU-marker graph in the ELF.
+        61 => Err(ProgramError::Custom(
+            atomic_payment::ATOMIC_ERROR_VERIFIER_NOT_INTEGRATED,
+        )),
+        62 => {
+            production_require_empty(wire)?;
+            lifecycle::finalize_proof(program_id, accounts)
+        }
+        63 => {
+            let sequence = production_u64(&mut wire)?;
+            let anchor = production_take::<32>(&mut wire)?;
+            production_require_empty(wire)?;
+            lifecycle::initialize_atomic_pool(program_id, accounts, sequence, anchor)
+        }
+        64 => {
+            production_require_empty(wire)?;
+            lifecycle::close_proof(program_id, accounts)
+        }
+        65 => {
+            let current_anchor = production_take::<32>(&mut wire)?;
+            let nullifier = production_take::<32>(&mut wire)?;
+            let output_commitment = production_take::<32>(&mut wire)?;
+            let output_anchor = production_take::<32>(&mut wire)?;
+            let asset_id = production_u32(&mut wire)?;
+            let fee = production_u32(&mut wire)?;
+            production_require_empty(wire)?;
+            let public = atomic_payment::AtomicPaymentPublicInputs {
+                current_anchor,
+                nullifier,
+                output_commitment,
+                output_anchor,
+                asset_id,
+                fee,
+            };
+            atomic_payment::verify_and_apply_atomic_payment_state_with_proof_refund(
+                program_id,
+                accounts,
+                &public,
+                |proof_account, statement, _statement_digest| {
+                    verify::verify_uploaded_atomic_spend_production_statement_v3(
+                        proof_account,
+                        statement,
+                    )?;
+                    lifecycle::log_uploaded_proof_sha256(proof_account)
+                },
+            )
+        }
+        _ => Err(ProgramError::InvalidInstructionData),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::atomic_payment;
+    use crate::id;
+    use crate::wire::AspisInstruction;
+
+    #[test]
+    fn spend_minimal_dispatch_preserves_required_borsh_wires_only() {
+        let required = [
+            AspisInstruction::InitProof { total_len: 61_599 },
+            AspisInstruction::UploadChunk {
+                offset: 17,
+                chunk: vec![1, 2, 3, 4],
+            },
+            AspisInstruction::VerifyAtomicStateOnlySpendV3 {
+                pool: [1u8; 32],
+                sequence: 73,
+                public_input: [2u8; 104],
+                output_anchor: [3u8; 32],
+                diagnostic_unmined: false,
+            },
+            AspisInstruction::ApplyAtomicStateOnlySpendV3 {
+                current_anchor: [1u8; 32],
+                nullifier: [2u8; 32],
+                output_commitment: [3u8; 32],
+                output_anchor: [4u8; 32],
+                asset_id: 17,
+                fee: 1,
+            },
+            AspisInstruction::FinalizeProof,
+            AspisInstruction::InitializeAtomicPool {
+                sequence: 0,
+                anchor: [0u8; 32],
+            },
+            AspisInstruction::CloseFinalizedProof,
+            AspisInstruction::ApplyAtomicStateOnlySpendV3WithProofRefund {
+                current_anchor: [1u8; 32],
+                nullifier: [2u8; 32],
+                output_commitment: [3u8; 32],
+                output_anchor: [4u8; 32],
+                asset_id: 17,
+                fee: 1,
+            },
+        ];
+
+        for instruction in required {
+            let wire = borsh::to_vec(&instruction).unwrap();
+            assert!(matches!(wire[0], 0 | 1 | 59 | 60 | 62 | 63 | 64 | 65));
+            assert_eq!(
+                process_spend_production_instruction(&id(), &[], &wire),
+                Err(ProgramError::NotEnoughAccountKeys),
+                "required tag {} was not parsed through the minimal wire",
+                wire[0]
+            );
+        }
+
+        let historical = borsh::to_vec(&AspisInstruction::Verify {
+            statement_digest: [0u8; 32],
+        })
+        .unwrap();
+        assert_eq!(
+            process_spend_production_instruction(&id(), &[], &historical),
+            Err(ProgramError::InvalidInstructionData)
+        );
+
+        let mut trailing = borsh::to_vec(&AspisInstruction::FinalizeProof).unwrap();
+        trailing.push(0);
+        assert_eq!(
+            process_spend_production_instruction(&id(), &[], &trailing),
+            Err(ProgramError::InvalidInstructionData)
+        );
+
+        let diagnostic = borsh::to_vec(&AspisInstruction::VerifyAtomicStateOnlySpendV3 {
+            pool: [1u8; 32],
+            sequence: 73,
+            public_input: [2u8; 104],
+            output_anchor: [3u8; 32],
+            diagnostic_unmined: true,
+        })
+        .unwrap();
+        assert_eq!(
+            process_spend_production_instruction(&id(), &[], &diagnostic),
+            Err(ProgramError::InvalidInstructionData)
+        );
+
+        let diagnostic_mutation =
+            borsh::to_vec(&AspisInstruction::MeasureAtomicStateOnlySpendMutationV3 {
+                current_anchor: [1u8; 32],
+                nullifier: [2u8; 32],
+                output_commitment: [3u8; 32],
+                output_anchor: [4u8; 32],
+                asset_id: 17,
+                fee: 1,
+            })
+            .unwrap();
+        assert_eq!(
+            process_spend_production_instruction(&id(), &[], &diagnostic_mutation),
+            Err(ProgramError::Custom(
+                atomic_payment::ATOMIC_ERROR_VERIFIER_NOT_INTEGRATED
+            ))
+        );
+    }
+}

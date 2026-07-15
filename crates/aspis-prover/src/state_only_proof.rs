@@ -29,12 +29,12 @@ use aspis_statement::{
     AtomicStatementError, SpendPublic, SpendWitness, StateOnlyCandidateVerifyError,
 };
 
+use crate::circle_candidate::CandidatePrefixBuildError;
 use crate::circle_candidate::{
     build_fold_commitments_for_domain_log, combined_candidate_layer_root_for_domain_log,
     fold_candidate_codeword_round_for_domain_log, CircleEncoder,
 };
 use crate::circle_candidate_openings::serialize_candidate_openings_for_fiber_count_with_leaf_bytes;
-use crate::circle_candidate_prefix::CandidatePrefixBuildError;
 use crate::state_only_candidate::{
     gamma_combine_state_only_codewords, gamma_combine_state_only_messages,
 };

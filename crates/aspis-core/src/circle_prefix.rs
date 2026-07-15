@@ -1061,7 +1061,3 @@ pub fn candidate_statement_evaluations_digest(
         statement_evaluations_bytes,
     ])
 }
-
-#[cfg(test)]
-#[path = "circle_prefix_tests.rs"]
-mod tests;

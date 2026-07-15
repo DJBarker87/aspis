@@ -1,4 +1,10 @@
-//! Frozen nonzero witness for the profile-22 joint `(q,z)` liveness route.
+//! Frozen nonzero witness for the joint `(q,z)` liveness route.
+//!
+//! This module (and its `profile22_*` file/identifier names) is live spend
+//! code: the GoodSpend predicate's root-neutral polynomial-kernel rank probe
+//! lives here. The historical names are retained because the rank-minor
+//! block labels in this file are hashed into frozen provenance anchors that
+//! the release certificates and known-answer tests pin.
 //!
 //! This diagnostic uses only the common natural-basis tail `896..=1023`.
 //! For a distinct q16 tuple its query kernel is parameterized without

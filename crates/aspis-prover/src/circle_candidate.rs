@@ -10,8 +10,9 @@ use aspis_core::circle_fri::{
     normalized_line_arity4_at_fiber_for_domain_log, CircleFriError, FIXED_ARITY4_ROUNDS,
 };
 use aspis_core::circle_prefix::{
-    CANDIDATE_FINAL_POLY_LEN, CANDIDATE_FLAGS, CANDIDATE_FOLD_NONCES_LEN, CANDIDATE_LOG_ROWS,
-    CANDIDATE_OOD_SAMPLES, CANDIDATE_PREFIX_LEN, CANDIDATE_PREFIX_OFFSETS, CANDIDATE_ROUND_COUNT,
+    CandidatePrefixError, CandidateTranscriptScheduleError, CANDIDATE_FINAL_POLY_LEN,
+    CANDIDATE_FLAGS, CANDIDATE_FOLD_NONCES_LEN, CANDIDATE_LOG_ROWS, CANDIDATE_OOD_SAMPLES,
+    CANDIDATE_PREFIX_LEN, CANDIDATE_PREFIX_OFFSETS, CANDIDATE_ROUND_COUNT,
     CANDIDATE_STATEMENT_VALUE_COUNT,
 };
 use aspis_core::field::{qm31_power_table, M31, QM31};
@@ -22,8 +23,11 @@ use aspis_core::proof::{
     M31_CIRCLE_C2_LAYER_TAG, M31_CIRCLE_COMBINED_LAYER_TAG_BASE, SECOND_PHASE_LEAF_LEN_V4_S2,
     VERSION_V4_S2,
 };
-use aspis_core::sumcheck::SUMCHECK_COEFFICIENTS;
+use aspis_core::sumcheck::{TensorWeightError, SUMCHECK_COEFFICIENTS};
+use aspis_core::transcript::{ChallengeSampleExhausted, CirclePointSampleError, OodSampleError};
 use aspis_core::HashFn;
+
+use crate::circle_candidate_openings::CandidateOpeningBuildError;
 
 pub const TRACE_LOG_SIZE: u32 = 10;
 pub const DOMAIN_LOG_SIZE: u32 = 12;
@@ -1254,6 +1258,92 @@ pub fn serialize_candidate_prefix_for_shape(
         }
     }
     bytes
+}
+
+/// Shared failure envelope for host candidate-prefix and proof builders.
+/// Inlined from the deleted sequential circle-candidate prefix builder; the
+/// state-only builders still report every controlled failure through it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CandidatePrefixBuildError {
+    Candidate(CircleCandidateError),
+    Prefix(CandidatePrefixError),
+    ChallengeSampleExhausted,
+    CirclePointSample(CirclePointSampleError),
+    LinePointSample(OodSampleError),
+    TranscriptReplay(CandidateTranscriptScheduleError),
+    RelationShape(TensorWeightError),
+    Opening(CandidateOpeningBuildError),
+    Consistency(&'static str),
+}
+
+impl core::fmt::Display for CandidatePrefixBuildError {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::Candidate(error) => write!(formatter, "candidate arithmetic failed: {error}"),
+            Self::Prefix(error) => write!(formatter, "candidate prefix parse failed: {error:?}"),
+            Self::ChallengeSampleExhausted => {
+                write!(formatter, "exact-uniform challenge sampler exhausted")
+            }
+            Self::CirclePointSample(error) => {
+                write!(formatter, "secure circle point sampler failed: {error:?}")
+            }
+            Self::LinePointSample(error) => {
+                write!(formatter, "line OOD sampler failed: {error:?}")
+            }
+            Self::TranscriptReplay(error) => {
+                write!(formatter, "candidate transcript replay failed: {error:?}")
+            }
+            Self::RelationShape(error) => {
+                write!(formatter, "relation tensor shape failed: {error:?}")
+            }
+            Self::Opening(error) => write!(formatter, "opening construction failed: {error:?}"),
+            Self::Consistency(message) => write!(formatter, "candidate consistency: {message}"),
+        }
+    }
+}
+
+impl std::error::Error for CandidatePrefixBuildError {}
+
+impl From<CircleCandidateError> for CandidatePrefixBuildError {
+    fn from(error: CircleCandidateError) -> Self {
+        Self::Candidate(error)
+    }
+}
+
+impl From<CandidatePrefixError> for CandidatePrefixBuildError {
+    fn from(error: CandidatePrefixError) -> Self {
+        Self::Prefix(error)
+    }
+}
+
+impl From<ChallengeSampleExhausted> for CandidatePrefixBuildError {
+    fn from(_: ChallengeSampleExhausted) -> Self {
+        Self::ChallengeSampleExhausted
+    }
+}
+
+impl From<CirclePointSampleError> for CandidatePrefixBuildError {
+    fn from(error: CirclePointSampleError) -> Self {
+        Self::CirclePointSample(error)
+    }
+}
+
+impl From<OodSampleError> for CandidatePrefixBuildError {
+    fn from(error: OodSampleError) -> Self {
+        Self::LinePointSample(error)
+    }
+}
+
+impl From<TensorWeightError> for CandidatePrefixBuildError {
+    fn from(error: TensorWeightError) -> Self {
+        Self::RelationShape(error)
+    }
+}
+
+impl From<CandidateOpeningBuildError> for CandidatePrefixBuildError {
+    fn from(error: CandidateOpeningBuildError) -> Self {
+        Self::Opening(error)
+    }
 }
 
 /// Extract the four base coordinates of a QM31 value. Kept private so the

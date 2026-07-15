@@ -442,7 +442,7 @@ where
     )
 }
 
-/// Profile23 production form of [`verify_and_apply_atomic_payment_state`].
+/// Spend production form of [`verify_and_apply_atomic_payment_state`].
 /// Account 0 must additionally be writable and sign the transaction. After
 /// proof verification and every mutable-state recheck succeed, its complete
 /// lamport balance is atomically refunded to account 3.
@@ -958,7 +958,7 @@ mod tests {
     }
 
     #[test]
-    fn successful_profile23_transition_refunds_and_tombstones_proof() {
+    fn successful_spend_transition_refunds_and_tombstones_proof() {
         let public = valid_public(425, 525);
         let mut fixture = Fixture::new(&public, public.current_anchor);
         fixture.proof_lamports = 463_083_600;
@@ -986,7 +986,7 @@ mod tests {
     }
 
     #[test]
-    fn failed_profile23_transition_preserves_proof_and_refund_balances() {
+    fn failed_spend_transition_preserves_proof_and_refund_balances() {
         let public = valid_public(430, 530);
         let mut fixture = Fixture::new(&public, public.current_anchor);
         let proof_before = fixture.proof_data;
@@ -1009,7 +1009,7 @@ mod tests {
     }
 
     #[test]
-    fn profile23_refund_requires_writable_proof_signer_and_checked_balance() {
+    fn spend_refund_requires_writable_proof_signer_and_checked_balance() {
         let public = valid_public(435, 535);
 
         let mut unsigned = Fixture::new(&public, public.current_anchor);
@@ -1175,8 +1175,8 @@ mod tests {
         let program_id = fixture.program_id;
         let accounts = fixture.accounts();
         assert_eq!(
-            crate::process_instruction(&program_id, &accounts, &encoded),
-            Err(ProgramError::Custom(ATOMIC_ERROR_VERIFIER_NOT_INTEGRATED))
+            crate::dispatch::process_spend_production_instruction(&program_id, &accounts, &encoded),
+            Err(ProgramError::InvalidInstructionData)
         );
         drop(accounts);
         assert_eq!(fixture.pool_data, pool_before);
