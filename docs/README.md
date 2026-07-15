@@ -3,6 +3,8 @@
 Start with the [paper source](../paper/aspis-spend/) and the repository
 [README](../README.md). Current documents:
 
+- [code map](code-map.md) — concept-to-file navigation and the naming
+  conventions
 - [novelty re-scan, 2026-07-13](novelty-rescan-2026-07-13.md) — dated
   public-evidence search for the claim shape; machine-readable companion
   alongside it
