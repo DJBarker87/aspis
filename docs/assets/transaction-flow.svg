@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 190" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#848d97"/>
+    </marker>
+  </defs>
+
+  <!-- Setup label spanning first two boxes -->
+  <text x="255" y="24" text-anchor="middle" font-size="13" fill="#848d97" letter-spacing="1">SETUP TRANSACTIONS</text>
+  <line x1="30" y1="34" x2="480" y2="34" stroke="#848d97" stroke-width="1" stroke-dasharray="4 4" opacity="0.5"/>
+
+  <text x="720" y="24" text-anchor="middle" font-size="13" fill="#4493f8" letter-spacing="1">ONE TRANSACTION</text>
+  <line x1="560" y1="34" x2="890" y2="34" stroke="#4493f8" stroke-width="1" stroke-dasharray="4 4" opacity="0.6"/>
+
+  <!-- Box 1: Upload -->
+  <rect x="30" y="52" width="200" height="108" rx="8" fill="none" stroke="#848d97" stroke-width="1.5"/>
+  <text x="130" y="82" text-anchor="middle" font-size="15" font-weight="600" fill="#848d97">Upload proof</text>
+  <text x="130" y="106" text-anchor="middle" font-size="12.5" fill="#848d97">68 chunk transactions</text>
+  <text x="130" y="124" text-anchor="middle" font-size="12.5" fill="#848d97">into a program-owned</text>
+  <text x="130" y="142" text-anchor="middle" font-size="12.5" fill="#848d97">proof account</text>
+
+  <path d="M 235 106 L 275 106" stroke="#848d97" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Box 2: Seal -->
+  <rect x="280" y="52" width="200" height="108" rx="8" fill="none" stroke="#848d97" stroke-width="1.5"/>
+  <text x="380" y="82" text-anchor="middle" font-size="15" font-weight="600" fill="#848d97">Seal</text>
+  <text x="380" y="106" text-anchor="middle" font-size="12.5" fill="#848d97">complete byte image</text>
+  <text x="380" y="124" text-anchor="middle" font-size="12.5" fill="#848d97">checked against the</text>
+  <text x="380" y="142" text-anchor="middle" font-size="12.5" fill="#848d97">released proof digest</text>
+
+  <path d="M 485 106 L 525 106" stroke="#848d97" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Box 3: Verify + atomic state transition -->
+  <rect x="530" y="52" width="360" height="108" rx="8" fill="none" stroke="#4493f8" stroke-width="2"/>
+  <text x="710" y="80" text-anchor="middle" font-size="15" font-weight="600" fill="#4493f8">Verify + atomic state transition</text>
+  <text x="710" y="103" text-anchor="middle" font-size="12.5" fill="#848d97">verify the sealed proof &#183; advance the pool state</text>
+  <text x="710" y="121" text-anchor="middle" font-size="12.5" fill="#848d97">record the nullifier &#183; refund the proof-account rent</text>
+  <text x="710" y="144" text-anchor="middle" font-size="12.5" font-weight="600" fill="#4493f8">1,343,749 of 1,400,000 CU, finalized on mainnet</text>
+</svg>

@@ -5,7 +5,7 @@ current implementation, the source modules still required by q18, the paper,
 and the evidence needed to audit the published result.
 
 The complete pre-publication research tree is preserved by the immutable
-[`research-archive-2026-07-14`](https://github.com/DJBarker87/zk/tree/research-archive-2026-07-14)
+[`research-archive-2026-07-14`](https://github.com/DJBarker87/aspis/tree/research-archive-2026-07-14)
 tag at commit `020f8f87238435dc2e1dc8cb41df90670fcb94f6`. It contains the earlier
 root workspace, rejected parameter profiles, superseded certificates,
 negative experiments, and the full sequence of failed or abandoned designs.
