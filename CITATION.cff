@@ -9,4 +9,6 @@ repository-code: "https://github.com/DJBarker87/aspis"
 url: "https://github.com/DJBarker87/aspis"
 version: "profile23-q18-g37-mainnet-v1"
 date-released: 2026-07-15
-license: "Apache-2.0 OR MIT"
+license:
+  - Apache-2.0
+  - MIT
