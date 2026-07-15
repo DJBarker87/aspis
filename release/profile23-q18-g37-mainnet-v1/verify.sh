@@ -75,7 +75,7 @@ jq -e '
   .schema_version == 1 and
   .artifact == "aspis_profile23_q18_g37_mainnet_publication_bundle" and
   .release_id == "profile23-q18-g37-mainnet-v1" and
-  .created_at_utc == "2026-07-15T06:48:33Z" and
+  .created_at_utc == "2026-07-15T08:33:48Z" and
   .network == "mainnet-beta" and
   .mainnet_genesis_hash == "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d" and
   .certificate_lineage.publication_certificate_sha256 == "4ace42c0954bee74382520bbb0818da86e570ec9b212c61cb21130dc644a2725" and
@@ -365,6 +365,119 @@ jq -e '
 ' evidence/mainnet-independent-rpc-reconciliation.json >/dev/null
 
 jq -e '
+  .schema_version == 1 and
+  .artifact == "profile23_mainnet_sbf_and_instruction_reconstruction_v1" and
+  .captured_at_utc == "2026-07-15T08:06:03.104587Z" and
+  .network == "mainnet-beta" and
+  .genesis_hash == "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d" and
+  .reproduction.mode == "live_archival_json_rpc" and
+  .reproduction.full_rpc_responses_serialized == false and
+  .reproduction.credential_material_serialized == false and
+  .reproduction.endpoint_hostname_or_origin_serialized == false and
+  .reproduction.deterministic_except == ["captured_at_utc"] and
+  .rpc.provider_labels == ["official_rpc", "independent_rpc"] and
+  .rpc.commitment == "finalized" and
+  .rpc.buffer_signature_history.count == 1069 and
+  .rpc.buffer_signature_history.backward_rpc_page_sizes == [1000, 68] and
+  .rpc.buffer_signature_history.canonical_json_sha256 == "e540856cdf619834f5a01cd0170a0b0f78856831fac198a618301e8b37b7363a" and
+  .rpc.buffer_signature_history.newline_joined_no_trailing_newline_sha256 == "145120d6b04d04bbefaa23a4c02ab0a38c82adc2e8db354985a772150fd15796" and
+  .rpc.buffer_signature_history.provider_complete_signature_records_exactly_equal == true and
+  .rpc.buffer_signature_history.deployment_transaction_and_status_separately_verified == true and
+  .deployment.signature == "3BFmYhQtjWioSLRxUoV1mVCvuaBTLy5cS2S3Gi8LjXz3rFJ1u8t2Lu31kbNYSHTy9VhfrUksEUbs9esZY2PJdd4Q" and
+  .deployment.slot == 432933454 and
+  .deployment.program_id == "9kPpUknrRicMvaGa6zPNERGUYDj6fMvMR8PwMS3iFR6Z" and
+  .deployment.programdata_address == "G7XHkv6riJ8TQJ6R8o31wAUMaoL8Q5UyHGExpQ51ntp1" and
+  .deployment.buffer_address == "VonHY2w4LZUEvZEoB2rYPXBQGeJ9YBFn9FYiBSPyrgd" and
+  .deployment.upgrade_authority == "nKPUvz9bj3XxxpmouXuiXj1DEv33zcVBk41ffJFGqhy" and
+  .deployment.max_data_len == 921848 and
+  .deployment.provider_raw_transaction_and_status_exactly_equal == true and
+  .sbf_reconstruction.transaction_body_provider_labels == ["official_rpc", "independent_rpc"] and
+  .sbf_reconstruction.provider_normalized_raw_transaction_results_exactly_equal == true and
+  .sbf_reconstruction.normalized_raw_transaction_results_sha256 == "47aaea1301618367146b9dffa80c36905e6de736588682b1bc2c06440c32a336" and
+  .sbf_reconstruction.provider_byte_images_and_metrics_exactly_equal == true and
+  .sbf_reconstruction.history_transaction_count == 1069 and
+  .sbf_reconstruction.write_instruction_count == 1067 and
+  .sbf_reconstruction.write_accounts_exact == true and
+  .sbf_reconstruction.write_message_header_exact == true and
+  .sbf_reconstruction.write_static_account_keys_exact == true and
+  .sbf_reconstruction.write_signatures_exact == true and
+  .sbf_reconstruction.write_authority_required_signer == true and
+  .sbf_reconstruction.write_buffer_writable == true and
+  .sbf_reconstruction.write_transactions_legacy == true and
+  .sbf_reconstruction.sum_payload_bytes == 921848 and
+  .sbf_reconstruction.unique_covered_bytes == 921848 and
+  .sbf_reconstruction.gap_bytes == 0 and
+  .sbf_reconstruction.overlap_bytes == 0 and
+  .sbf_reconstruction.conflicting_overlap_bytes == 0 and
+  .sbf_reconstruction.out_of_bounds_writes == 0 and
+  .sbf_reconstruction.reconstructed_sbf_sha256 == "97c45a9abef97607a2fc6ed245829210046b234044b6738599d2bce0c367d04a" and
+  .sbf_reconstruction.byte_for_byte_equal_to_bundle == true and
+  .programdata_reconstruction.header_plus_sbf_bytes == 921893 and
+  .programdata_reconstruction.header_plus_sbf_sha256 == "7fe4c7352f19ed00a3ba72b3dc6038943db3e5311c23cd5c1b0f8dbb15c4cda2" and
+  .programdata_reconstruction.exact == true and
+  .proof.bundle_sha256 == "d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d" and
+  .proof.finalized_program_log_sha256 == .proof.bundle_sha256 and
+  .tag65_instruction.signature == "4Er5afhxfcFmpeTuFqEeNQEbCBri3pkc6ymx7ST5wfNpSBYwQDHA9DtCuDBpD5WuEDXs7ozL3sK5msc6QWE4q9Fo" and
+  .tag65_instruction.slot == 432933949 and
+  .tag65_instruction.block_time_unix == 1784065236 and
+  .tag65_instruction.meta_err == null and
+  .tag65_instruction.transaction_version == "legacy" and
+  .tag65_instruction.message_header == {
+    "numReadonlySignedAccounts": 0,
+    "numReadonlyUnsignedAccounts": 3,
+    "numRequiredSignatures": 2
+  } and
+  .tag65_instruction.static_account_keys == [
+    "6JLAQb2om9yxMru6KW7NeNxhpsoth9Ah3iTQHkTD67oc",
+    "5uZs7W83zZuXbhXYVKMpBiNDd5gF35BoZGjzbzWXa2GN",
+    "2CnUJycxkinN3XtpWH5bCYVDEuMx42BTnFU9WXsymAu3",
+    "B1z4gQ82xerghDKZ68HuP2Tehx5ER5mfVHq74y4ew3kk",
+    "11111111111111111111111111111111",
+    "ComputeBudget111111111111111111111111111111",
+    "9kPpUknrRicMvaGa6zPNERGUYDj6fMvMR8PwMS3iFR6Z"
+  ] and
+  .tag65_instruction.accounts_in_instruction_order == [
+    "5uZs7W83zZuXbhXYVKMpBiNDd5gF35BoZGjzbzWXa2GN",
+    "B1z4gQ82xerghDKZ68HuP2Tehx5ER5mfVHq74y4ew3kk",
+    "2CnUJycxkinN3XtpWH5bCYVDEuMx42BTnFU9WXsymAu3",
+    "6JLAQb2om9yxMru6KW7NeNxhpsoth9Ah3iTQHkTD67oc",
+    "11111111111111111111111111111111"
+  ] and
+  .tag65_instruction.payload_bytes == 137 and
+  .tag65_instruction.payload_sha256 == "c7c2ce8cb4e07e720eb05574c6348814396e3d5fbd595d9aee58a0c1c16f9920" and
+  .tag65_instruction.decoded.tag == 65 and
+  .tag65_instruction.decoded.nullifier_hex == "aca93a77007946734dc0a906c77dd5323f10c97a13903a7d4615f9227c32dc74" and
+  .tag65_instruction.decoded.asset_id_u32_le == 17 and
+  .tag65_instruction.decoded.fee_u32_le == 1 and
+  .tag65_instruction.proof_log.domain == "aspis-proof-sha256-v1" and
+  .tag65_instruction.proof_log.proof_sha256 == .proof.bundle_sha256 and
+  .tag65_instruction.proof_log.inside_program_invocation_success_segment == true and
+  .tag65_instruction.compute_units_consumed == 1343749 and
+  .tag65_instruction.fee_lamports == 10000 and
+  .tag65_instruction.refund.account_indices == {"payer": 0, "proof": 1, "nullifier": 2, "pool": 3} and
+  .tag65_instruction.refund.proof_post_lamports == 0 and
+  .tag65_instruction.refund.proof_refund_lamports == 449720400 and
+  (.tag65_instruction.refund.proof_refund_lamports ==
+    (.tag65_instruction.refund.proof_pre_lamports -
+     .tag65_instruction.refund.proof_post_lamports)) and
+  ((.tag65_instruction.refund.payer_post_lamports +
+    .tag65_instruction.refund.proof_post_lamports +
+    .tag65_instruction.refund.nullifier_post_lamports +
+    .tag65_instruction.fee_lamports) ==
+   (.tag65_instruction.refund.payer_pre_lamports +
+    .tag65_instruction.refund.proof_pre_lamports +
+    .tag65_instruction.refund.nullifier_pre_lamports)) and
+  .tag65_instruction.refund.exact_balance_equation_recomputed == true and
+  .tag65_instruction.confirmation_status == "finalized" and
+  .tag65_instruction.provider_raw_transaction_and_status_exactly_equal == true and
+  .checked_in_evidence_cross_checks.programdata_refund_lamports == 6417266160 and
+  .checked_in_evidence_cross_checks.returned_to_funding_source_lamports == 6985137600 and
+  .checked_in_evidence_cross_checks.total_nonrefundable_cost_lamports == 14883400 and
+  .checked_in_evidence_cross_checks.payer_cost_equation_recomputed == true and
+  .checked_in_evidence_cross_checks.fee_plus_rent_equation_recomputed == true
+' evidence/mainnet-sbf-and-instruction-reconstruction.json >/dev/null
+
+jq -e '
   ._publication_provenance.source_artifact_sha256 == "559a7be08bb109ba9b307e843e33ca92324f1e752ada75622b722ea91f5c6b7e" and
   .artifact == "profile23_programdata_cleanup_preclose" and
   .expected_signature == "3ZsVsjAP4wtA6KM6PygR272Wy1tuxMR9c4Zy4A4YAnTNekuTpQeUCXa8DKnpyEY52bRL8HUjz5AcQpBk4Pw9vwNk" and
@@ -408,13 +521,15 @@ jq -n -e \
   --slurpfile e evidence/mainnet-execution.raw.public.json \
   --slurpfile f evidence/mainnet-finalized-manifest.json \
   --slurpfile i evidence/mainnet-independent-rpc-reconciliation.json \
+  --slurpfile z evidence/mainnet-sbf-and-instruction-reconstruction.json \
   --slurpfile p evidence/mainnet-cleanup-preclose.raw.public.json \
   --slurpfile c evidence/mainnet-cleanup.raw.public.json \
   --slurpfile w evidence/mainnet-sweep.raw.json \
   --slurpfile s proof/statement.json '
     ($m[0]) as $m | ($r[0]) as $r | ($x[0]) as $x | ($q[0]) as $q |
     ($h[0]) as $h | ($d[0]) as $d | ($e[0]) as $e |
-    ($f[0]) as $f | ($i[0]) as $i | ($p[0]) as $p | ($c[0]) as $c |
+    ($f[0]) as $f | ($i[0]) as $i | ($z[0]) as $z |
+    ($p[0]) as $p | ($c[0]) as $c |
     ($w[0]) as $w | ($s[0]) as $s |
     $m.release_instance.proof_sha256 == $r.proof.sha256 and
     $m.release_instance.proof_sha256 == $x.proof.sha256 and
@@ -427,11 +542,30 @@ jq -n -e \
     $m.release_instance.sbf_sha256 == $r.default_production_sbf.sha256 and
     $m.release_instance.sbf_sha256 == $x.default_production_sbf.sha256 and
     $m.release_instance.sbf_sha256 == $e.sbf_sha256 and
+    $m.release_instance.sbf_sha256 == $z.sbf_reconstruction.reconstructed_sbf_sha256 and
+    $m.release_instance.proof_sha256 == $z.proof.finalized_program_log_sha256 and
     $r.release_instance.statement_pool_hex == $s.pool_hex and
+    $s.current_anchor_hex == $z.tag65_instruction.decoded.current_anchor_hex and
+    $s.nullifier_hex == $z.tag65_instruction.decoded.nullifier_hex and
+    $s.output_commitment_hex == $z.tag65_instruction.decoded.output_commitment_hex and
+    $s.output_anchor_hex == $z.tag65_instruction.decoded.output_anchor_hex and
+    $s.asset_id == $z.tag65_instruction.decoded.asset_id_u32_le and
+    $s.fee == $z.tag65_instruction.decoded.fee_u32_le and
+    $z.tag65_instruction.fee_lamports == $e.final_transaction_refund_balances.fee_lamports and
+    $z.tag65_instruction.refund.payer_pre_lamports == $e.final_transaction_refund_balances.payer_pre_lamports and
+    $z.tag65_instruction.refund.proof_pre_lamports == $e.final_transaction_refund_balances.proof_pre_lamports and
+    $z.tag65_instruction.refund.nullifier_pre_lamports == $e.final_transaction_refund_balances.nullifier_pre_lamports and
+    $z.tag65_instruction.refund.payer_post_lamports == $e.final_transaction_refund_balances.payer_post_lamports and
+    $z.tag65_instruction.refund.proof_post_lamports == $e.final_transaction_refund_balances.proof_post_lamports and
+    $z.tag65_instruction.refund.nullifier_post_lamports == $e.final_transaction_refund_balances.nullifier_post_lamports and
+    $z.tag65_instruction.refund.proof_refund_lamports == $e.final_transaction_refund_balances.proof_refund_lamports and
     $m.mainnet.verification_signature == $e.final_transaction.signature and
     $m.mainnet.verification_signature == $f.finalized_transactions.verification.signature and
+    $m.mainnet.verification_signature == $z.tag65_instruction.signature and
     $m.mainnet.verification_finalized_slot == $e.final_transaction.finalized_slot and
+    $m.mainnet.verification_finalized_slot == $z.tag65_instruction.slot and
     $m.mainnet.verification_compute_units == $e.final_transaction.compute_units_consumed and
+    $m.mainnet.verification_compute_units == $z.tag65_instruction.compute_units_consumed and
     $m.mainnet.programdata_close_signature == $p.expected_signature and
     $m.mainnet.programdata_close_signature == $c.signature and
     $m.mainnet.sweep_signature == $w.signature and
@@ -443,7 +577,9 @@ jq -n -e \
     $h.release_certificate_sha256 == $e.release_certificate_sha256 and
     $f.release.certificate_sha256 == $m.certificate_lineage.publication_certificate_sha256 and
     $f.release.execution_time_certificate.sha256 == $m.certificate_lineage.execution_time_certificate_sha256 and
-    $i.comparison.all_predicates_match == true
+    $i.comparison.all_predicates_match == true and
+    $z.sbf_reconstruction.byte_for_byte_equal_to_bundle == true and
+    $z.tag65_instruction.provider_raw_transaction_and_status_exactly_equal == true
   ' >/dev/null
 
 if grep -RIlE '/Users/|"signed_wire_base64"|BEGIN (RSA |OPENSSH |EC )?PRIVATE KEY' \

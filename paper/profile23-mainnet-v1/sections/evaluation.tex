@@ -254,6 +254,20 @@ devnet and testnet returned null, which disambiguates the cluster.  This
 machine-readable reconciliation, rather than an explorer rendering, is the
 source for the network claims in this section.
 
+The archival reproducer
+\path{tools/reconstruct_profile23_mainnet_sbf.py} independently obtains the
+same finalized 1,069-signature buffer history and raw transaction bodies from
+both providers.  It binds each of 1,067 loader writes to the pinned buffer and
+authority and reconstructs all 921,848 SBF bytes without gaps or overlaps.
+The recovered SHA-256 is
+\nolinkurl{97c45a9abef97607a2fc6ed245829210046b234044b6738599d2bce0c367d04a},
+equal to the bundled SBF.  Applying the loader-v3 ProgramData header gives
+\nolinkurl{7fe4c7352f19ed00a3ba72b3dc6038943db3e5311c23cd5c1b0f8dbb15c4cda2},
+equal to the pre-close account-data digest.  The same replay checks the
+deployment identities and decodes the landed 137-byte tag-65 payload, account
+order, proof-digest log, and refund equation.  Its frozen output is
+\path{results/stage2/profile23_mainnet_sbf_and_instruction_reconstruction.json}.
+
 The public finalized manifest is
 \path{results/stage2/profile23_mainnet_finalized_manifest.json}, with SHA-256
 \nolinkurl{bb7c71278e7b66093a84a895ecfa0bb29ed648529088666855d2a0612617cf60}.

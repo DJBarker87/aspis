@@ -92,8 +92,18 @@ cleanup, and sweep records. Both report the demo payer and ProgramData account
 absent after cleanup. Querying the verification signature on the official
 devnet and testnet RPCs returned `null`.
 
+The separate archival reconstruction obtains the same 1,069-entry finalized
+buffer history from both providers, replays 1,067 loader writes, and recovers
+all 921,848 deployed SBF bytes with no gaps or overlaps. It also checks the
+deployment's buffer and ProgramData identities, decodes the exact tag-65
+payload and account order, and recomputes the proof-refund equation.
+
 The publication-grade record is
 [profile23_mainnet_finalized_manifest.json](../results/stage2/profile23_mainnet_finalized_manifest.json).
 The sanitized provider observations are
 [profile23_mainnet_independent_rpc_reconciliation.json](../results/stage2/profile23_mainnet_independent_rpc_reconciliation.json).
-Neither file contains local keypair paths or key material.
+The byte-level reconstruction is
+[profile23_mainnet_sbf_and_instruction_reconstruction.json](../results/stage2/profile23_mainnet_sbf_and_instruction_reconstruction.json),
+and its stdlib-only reproducer is
+[reconstruct_profile23_mainnet_sbf.py](../tools/reconstruct_profile23_mainnet_sbf.py).
+These files contain no local keypair paths or key material.
