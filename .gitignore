@@ -34,6 +34,3 @@ __pycache__/
 # Local review context and unsanitized network-run diagnostics. Publication
 # copies with local paths and signed wires removed live in the release bundle.
 /.superstack/
-/results/stage2/profile23_devnet_upload_smoke.json
-/results/stage2/profile23_devnet_tag64_close_8ej_20260714.json
-/results/stage2/profile23_devnet_tag65_fresh_20260714.json
