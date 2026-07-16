@@ -1,0 +1,85 @@
+{
+  "artifact": "spend_complete_good_product",
+  "date": "2026-07-15",
+  "status": "q18_complete_good_product_green",
+  "production_enabled": true,
+  "production_wire_changed_by_this_artifact": true,
+  "fixture": "crates/aspis-prover/fixtures/atomic_state_only_spend_v4_unmined.bin",
+  "fixture_bytes": 64447,
+  "fixture_sha256": "cf3ba127153e726e0e6eb5e4f546b6562a9c57d1ae6ee6a0df6b25aac0863b3b",
+  "statement_digest": "f69ef3bc5428475f13889be77a5d0a9be24b9d78d18d93177b3721fc51f76471",
+  "source_id_scheme": "minimum-q-degree represented-matroid basis: all semantic and D degree-one sources before mask-only degree-two sources",
+  "root_neutral_minor": {
+    "rank_m31": 1404,
+    "fingerprint": "0xc1e23e3acec55fc9",
+    "selected_degree_one_q_columns": 1068,
+    "selected_degree_two_q_columns": 336,
+    "q_individual_degree_bound": 1740,
+    "q_total_degree_bound": 31320,
+    "complete": true
+  },
+  "remaining_gd_terminal_schur": {
+    "query_rank_m31": 288,
+    "terminal_rank_m31": 12,
+    "all_pivot_values_nonzero": true,
+    "z_degree_bound": 120,
+    "fingerprint": "0x7ca257aca211584a"
+  },
+  "h1_inactive_padding_terminal_schur": {
+    "query_rank_m31": 288,
+    "terminal_rank_m31": 12,
+    "all_pivot_values_nonzero": true,
+    "z_degree_bound": 120,
+    "fingerprint": "0x2b09c8e0f643b2bf"
+  },
+  "bound_product": {
+    "component_fingerprints": [
+      "0xc1e23e3acec55fc9",
+      "0x7ca257aca211584a",
+      "0x2b09c8e0f643b2bf"
+    ],
+    "q_total_degree_bound": 31320,
+    "root_neutral_z_degree_bound": 41040,
+    "remaining_gd_terminal_z_degree_bound": 120,
+    "h1_inactive_padding_terminal_z_degree_bound": 120,
+    "complete_good_z_degree_bound": 41280,
+    "gamma_coordinate_total_degree_bound": 80688,
+    "continuous_total_degree_bound": 121968,
+    "fingerprint": "0xb1af7cc08b30847d",
+    "complete": true
+  },
+  "production_certificate_transfer": {
+    "certificate_fixture": "crates/aspis-prover/fixtures/atomic_state_only_spend_v4_unmined.bin",
+    "rank_dependency": "frozen q18 layout and transcript schedule, not witness bytes",
+    "layout_factor_fingerprint_matches_live_code": true,
+    "good_spend_definition_fingerprint_matches_live_code": true,
+    "production_all_three_selector_branches_audited_green": true,
+    "production_proof_byte_equality_to_fixture_assumed": false
+  },
+  "liveness": {
+    "query_candidates": 3,
+    "attempt_cap": 17,
+    "rank_exhaustion_abort_bits": 105.21398677941984,
+    "public_abort_bits": 105.21398677941983
+  },
+  "liveness_bound_bookable_for_prospective_spend": true,
+  "spend_soundness_bookable": true,
+  "spend_default_production_enabled": true,
+  "computational_hvzk": {
+    "complete_view_closed_in_declared_model": true,
+    "model": "SHA-256 programmable random oracle/EPRO with fixed public Proof-or-Abort channel",
+    "eps_aff": 0,
+    "simulator_witness_free": true,
+    "real_vs_simulator_bound_bits": 104.02492234825198,
+    "pairwise_witness_bound_bits": 103.02492234825198,
+    "pairwise_triangle_factor": 2
+  },
+  "release_reference": {
+    "authorizing": false,
+    "certificate": "results/spend/spend_one_transaction_release.json",
+    "note": "Concrete proof, statement, SBF, CU, and gate status are intentionally not duplicated in this proof-independent theorem artifact."
+  },
+  "remaining_production_gates": [],
+  "guard": "NO_DNA=1 cargo run --release -q -p aspis-prover --example spend_complete_good_product",
+  "note": "docs/stage2-spend-complete-good-product.md"
+}

@@ -1,0 +1,70 @@
+{
+  "artifact": "aspis_spend_q18_g37_mainnet_release_bundle",
+  "deployment_domain_hex": "ba43feb01d7d7f5ee3f57a6481b202066c83c6c3e76020a619c1611abbd08c8f",
+  "finalized_transaction": {
+    "compute_units_consumed": 1344003,
+    "finalized_slot": 433219840,
+    "signature": "3G1voggszvDMGi5PbGM1kuEMYKvh2TNMbH6hHHwndUdRQJNT7ehRFpQpksxLnx5tp2xkS5jGi359rVXk42sRPFcv"
+  },
+  "generated_at_utc": "2026-07-16T06:27:38.909117+00:00",
+  "mainnet_genesis_hash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+  "network": "mainnet-beta",
+  "nullifier": "CFJ5fYPSi4Qn6okBCZS3tXFMw7Lsz4Jy9vEAAGU5kfSU",
+  "objects": {
+    "README.md": {
+      "bytes": 4014,
+      "sha256": "ab9a36e676856f22f5e80db945c14a518c0e63d053d481824f2337be14d24f46"
+    },
+    "certificates/release.json": {
+      "bytes": 20569,
+      "sha256": "6efecd8cc00a4e52b111fb3dfb8775ce018fae089d4e309652269faf2dd4b740"
+    },
+    "certificates/spend_complete_good_product.json": {
+      "bytes": 3472,
+      "sha256": "6f2b9e2cda59938ff966f621ba33b6487dab6f3173e2d98fbb50cedf39127167"
+    },
+    "certificates/spend_computational_hvzk_closure.json": {
+      "bytes": 7758,
+      "sha256": "fe54406420c99a7a422427763fe9697094c25cbe48c2374a41328c7958cf4e8c"
+    },
+    "certificates/spend_d_after_g_soundness_epro.json": {
+      "bytes": 11500,
+      "sha256": "b3c0e5c30d7ecd27823d125be97159ebf3d1e36283e62779c959c649a76391af"
+    },
+    "evidence/mainnet-cleanup.json": {
+      "bytes": 3315,
+      "sha256": "e245e3a767f9ba997abae09d400471cec8df59545c583903ea7fda5e2da404e1"
+    },
+    "evidence/mainnet-execution.json": {
+      "bytes": 48438,
+      "sha256": "8104642199b2679df2383322452615d0315938e541bc7fc7e9cd41edac606cf0"
+    },
+    "paper/aspis-spend.pdf": {
+      "bytes": 628672,
+      "sha256": "9bb103d76b840596104a6a99d122d9f8ae5b5478e89d4637f4824b2041d7b05c"
+    },
+    "program/aspis_verifier.so": {
+      "bytes": 924344,
+      "sha256": "e289faf85fe4773880794d5d4356461bb9cb94077b68711f99348efe19707d7e"
+    },
+    "proof/spend-q18-g37.bin": {
+      "bytes": 65407,
+      "sha256": "32eb419e0c5c3ef4fa2db0d32579e88f1207547d8fb010279efeb6c05981b529"
+    },
+    "proof/statement.json": {
+      "bytes": 767,
+      "sha256": "c35f6152ce4ffbfa6edeba68b4a6d2738e19b1420181c9500ba73f0c717c8699"
+    },
+    "verify.sh": {
+      "bytes": 9594,
+      "sha256": "121932159b2c71227e4c3e216a5ad0f763fa178d75fba4671584715dac8f5c6a"
+    }
+  },
+  "pool": "3ZRYarQZcWJQgzNwLo1Eo7PDmier3rbW41L8ccAddCvb",
+  "program_id": "GQPNqfYF17Nj2dGsf6Q2AtiouyM67YxFZPh9LxBk2Ye3",
+  "proof_sha256": "32eb419e0c5c3ef4fa2db0d32579e88f1207547d8fb010279efeb6c05981b529",
+  "release_id": "aspis-spend-q18-g37-mainnet-v1",
+  "sbf_sha256": "e289faf85fe4773880794d5d4356461bb9cb94077b68711f99348efe19707d7e",
+  "schema_version": 1,
+  "verifier": "verify.sh"
+}

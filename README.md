@@ -203,6 +203,20 @@ end-to-end through the production verifier. The release pipeline
 (`cargo run --release -p aspis-xtask -- spend-release`) regenerates the
 machine-checked certificate gates from fresh local-validator measurements.
 
+## Verify the release
+
+The finalized mainnet-beta execution is frozen in an offline-verifiable
+bundle. From the repository root:
+
+```bash
+./release/aspis-spend-q18-g37-mainnet-v1/verify.sh
+```
+
+It needs only `jq` and `sha256sum` or `shasum`, runs fully offline, and
+checks every published byte against `SHA256SUMS` and `manifest.json`, the
+proof and SBF container magics, the release-certificate gates, and the
+finalized on-chain signature, slot, and compute units.
+
 ## Paper
 
 The [paper source](paper/aspis-spend/) states the exact relation,
