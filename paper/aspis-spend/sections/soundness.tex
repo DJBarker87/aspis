@@ -280,7 +280,9 @@ Assumption~\ref{ass:pinned-finite-reduction}.  Consequently
  \varepsilon_{\rm sr}\le\varepsilon_{\rm round}^{(0)}.
 \]
 This is a round-by-round premise; it is not inferred from standard
-interactive soundness.
+interactive soundness.  Section~\ref{sec:rbr-discharge} discharges the generic
+boundaries of this premise, reducing it to the strictly smaller
+Assumption~\ref{ass:relation-rbr-core}.
 \end{assumption}
 
 We use the BCS Fiat--Shamir analysis for IOPs
@@ -374,6 +376,94 @@ the former is the minimum.  Every accepted false statement is included in
 this event by the preceding lemmas.
 \end{proof}
 
+\subsection{Round-by-round discharge of the generic boundaries}
+\label{sec:rbr-discharge}
+
+Assumption~\ref{ass:boundary-restoration} bundles two different things: the
+generic Fiat--Shamir plumbing of a FRI/WHIR-style compiler --- commitment,
+sumcheck, fold, grinding, query, and selector boundaries --- and the bespoke
+relation binding of the \Profile{} encoding and its zero-factor \(D\) lane.
+The generic part is not specific to Aspis; it is discharged here from imported
+round-by-round soundness, given the pinned finite-parameter reduction.  The
+bespoke part is isolated as a strictly smaller residual.  Throughout, the
+per-boundary doom-persistence error \(\varepsilon_i\) is the maximum, over
+reachable restored doomed prefixes and the false statement, of the probability
+that the next challenge \(c_i\) flips the state function from doomed to
+un-doomed.
+
+\begin{lemma}[Generic-boundary state-restoration soundness]
+\label{lem:generic-boundary-rbr}
+Grant Assumption~\ref{ass:pinned-finite-reduction}.  For the commitment-root,
+masked-sumcheck, fold-challenge, grinding, two-sample out-of-domain, query-draw, and
+three-branch-selector boundaries, \(\varepsilon_i\) is at most the
+corresponding entry of Table~\ref{tab:soundness-events}, uniformly over every
+false statement and reachable saved state.  Concretely: a Merkle root fixes its
+committed vector before its public-coin challenge, giving commit-then-sample
+persistence~\citep{BenSassonChiesaSpooner2016}; the sumcheck rounds are
+round-by-round sound with per-round error \(27/|\mathbb K|\); the arity-four
+circle folds are identified with scaled GRS folds by
+Lemma~\ref{lem:circle-grs-transport} and inherit the folding round-by-round
+soundness of \citet{ArnonChiesaFenziYogev2025WHIR} in the Fiat--Shamir form
+of \citet{BlockGarretaKatzThalerTiwariZajac2023}; each \(b\)-bit grinding
+predicate persists doom except with \(2^{-b}\) per query; the query draw
+inherits the FRI query-phase bound at the transported rate-\(1/512\) Johnson
+agreement cap of Assumption~\ref{ass:pinned-finite-reduction} (agreement
+\(A=6082\)), which is what that bound consumes; and the selector boundary is
+governed by the already-proved Lemma~\ref{lem:selector-soundness}.
+\end{lemma}
+
+\begin{proof}
+Each item instantiates the cited round-by-round result at the pinned
+parameters; the algebraic hypotheses each needs --- the list/MCA regime, the
+circle-to-GRS transport, the agreement cap, the terminal degree --- are the
+content of Assumption~\ref{ass:pinned-finite-reduction}, so the fold, query,
+and out-of-domain items are conditional on that retained premise and are not
+claimed unconditionally.  The circle-code case is reached only through
+Lemma~\ref{lem:circle-grs-transport}, not by a literal instantiation of the
+multiplicative-coset statements.  The selector item is
+Lemma~\ref{lem:selector-soundness}, which is proved, not assumed.  Uniformity
+over restored states holds because each cited state function depends only on
+the committed vectors and public challenges already in the restored prefix.
+\end{proof}
+
+\begin{assumption}[Relation-binding round-by-round core]
+\label{ass:relation-rbr-core}
+Grant Assumption~\ref{ass:pinned-finite-reduction}.  For the residual
+boundaries --- the width-29 \(\gamma\)-batch of the 26 subfield lanes and the
+three extension lanes \(H,G,D\) including the zero-factor \(D\) lane of
+Equation~\eqref{eq:spend-batch}, the three \(D\)-lane claims absorbed beside
+the statement points, the relation out-of-domain mixers, and the atomic
+tuple-compression, copy/range-pole, and \(\theta\) seams --- the
+doom-persistence error is at most the corresponding entry of
+Table~\ref{tab:soundness-events} (rows for the semantic, copy, lookup, range,
+mask, and inactive-copy events, and the \(D\)-lane contributions), uniformly
+over every false statement and reachable saved state.  This residual is not
+covered by Lemma~\ref{lem:generic-boundary-rbr} nor by any imported
+Fiat--Shamir soundness result; it is the irreducible round-by-round premise of
+the \Profile{} relation and its zero-factor \(D\) lane.
+\end{assumption}
+
+\begin{lemma}[Boundary-restoration reduction]
+\label{lem:boundary-restoration-reduction}
+Under Assumptions~\ref{ass:pinned-finite-reduction} and
+\ref{ass:relation-rbr-core} and Lemma~\ref{lem:generic-boundary-rbr}, every
+boundary has doom-persistence error at most its tabulated entry, so
+\(\varepsilon_{\rm sr}\le\varepsilon_{\rm round}^{(0)}\), the conclusion of
+Assumption~\ref{ass:boundary-restoration}.  The two premises may therefore
+replace Assumption~\ref{ass:boundary-restoration} in
+Theorem~\ref{thm:bcs-soundness}, with \(\varepsilon_{\rm round}^{(0)}\) and the
+100.161-bit floor unchanged.
+\end{lemma}
+
+\begin{proof}
+Every boundary of the serialized schedule lies in exactly one class of
+Lemma~\ref{lem:generic-boundary-rbr} or Assumption~\ref{ass:relation-rbr-core};
+summing the per-boundary errors over the whole-transcript state function bounds
+the state-restoration win by the union of the tabulated events, which is
+\(\varepsilon_{\rm round}^{(0)}\) by
+Equation~\eqref{eq:coarse-interactive-error}.
+\end{proof}
+
 \subsection{Value conservation}
 \label{sec:value-conservation}
 
@@ -463,9 +553,68 @@ Theorem~\ref{thm:bcs-soundness}.  It is deliberately heavier than its
 soundness sibling: where Assumption~\ref{ass:boundary-restoration} is a scalar
 probability bound, this premise is existential and algorithmic --- it posits
 both the extractor and its success --- and so is close to the interactive
-knowledge-soundness conclusion itself.  The theorem below performs only the
-Fiat--Shamir transport of that premise; it does not discharge it.
+knowledge-soundness conclusion itself.  Lemma~\ref{lem:sr-knowledge-reduction}
+below discharges its existential and algorithmic content, reducing it to the
+static algebraic Assumption~\ref{ass:relation-knowledge-core}.
 \end{assumption}
+
+\begin{lemma}[Generic straight-line message extraction]
+\label{lem:generic-extraction}
+Grant Assumption~\ref{ass:pinned-finite-reduction} and
+Lemma~\ref{lem:generic-boundary-rbr}.  There is a straight-line extractor
+\(\mathsf{Ext}_0\) that, given a state-restoration prover \(P^\ast\) with its
+random-oracle query--answer transcript, outputs the Merkle-committed layer-zero
+and per-layer oracle messages opened at the sampled query positions whenever
+\(P^\ast\) accepts, using no rewinding and failing only on a Merkle
+second-preimage, of probability at most the SHA-256 reserve.
+\end{lemma}
+
+\begin{proof}
+This is the Fiat--Shamir-of-IOP knowledge extractor of
+\citet{BenSassonChiesaSpooner2016}: the compiled proof is public-coin with
+Merkle-committed oracle messages, so the committed words are read off
+\(P^\ast\)'s query transcript at the parser-fixed boundaries, and recovering a
+value inconsistent with its authenticating path is a second preimage.  The
+generic-boundary soundness of Lemma~\ref{lem:generic-boundary-rbr} supplies the
+state function BCS needs for the extractor to be straight-line.
+\end{proof}
+
+\begin{assumption}[Relation-witness reconstruction core]
+\label{ass:relation-knowledge-core}
+Grant Assumptions~\ref{ass:pinned-finite-reduction} and
+\ref{ass:relation-rbr-core}.  For the messages recovered by \(\mathsf{Ext}_0\)
+(Lemma~\ref{lem:generic-extraction}) from any state-restoration prover
+accepting with probability exceeding \(\varepsilon_{\rm round}^{(0)}\), the
+opened codeword values and the pinned semantic, copy, lookup, range, mask, and
+zero-factor-\(D\) assignments satisfy every event of
+Table~\ref{tab:soundness-events}, and hence
+Proposition~\ref{prop:relation-realization}, except with probability at most
+\(\varepsilon_{\rm round}^{(0)}\).  This is an algebraic reconstruction statement about
+recovered openings; unlike Assumption~\ref{ass:sr-knowledge} it posits neither
+an extractor nor its running time, both of which
+Lemma~\ref{lem:generic-extraction} supplies.
+\end{assumption}
+
+\begin{lemma}[State-restoration knowledge reduction]
+\label{lem:sr-knowledge-reduction}
+Under Assumptions~\ref{ass:pinned-finite-reduction},
+\ref{ass:relation-rbr-core}, and \ref{ass:relation-knowledge-core}, the
+extractor \(\mathsf{Ext}=\Phi\circ\mathsf{Ext}_0\), with \(\Phi\) the pinned
+encoding of Section~\ref{sec:construction}, meets the conclusion of
+Assumption~\ref{ass:sr-knowledge}: it is expected polynomial time and outputs
+codeword openings and constraint assignments satisfying every pinned event
+except with probability at most \(\varepsilon_{\rm round}^{(0)}\).  The three
+premises may therefore replace Assumption~\ref{ass:sr-knowledge} in
+Theorem~\ref{thm:argument-of-knowledge}.
+\end{lemma}
+
+\begin{proof}
+\(\mathsf{Ext}_0\) is straight-line and linear-time in the transcript
+(Lemma~\ref{lem:generic-extraction}), and \(\Phi\) is a fixed deterministic
+map; correctness of the composed output is
+Assumption~\ref{ass:relation-knowledge-core}, and the message-recovery and
+reconstruction failures union to \(\varepsilon_{\rm round}^{(0)}\).
+\end{proof}
 
 \begin{theorem}[Conditional non-interactive argument of knowledge]
 \label{thm:argument-of-knowledge}

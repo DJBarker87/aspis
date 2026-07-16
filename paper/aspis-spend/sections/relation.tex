@@ -190,6 +190,30 @@ argument concerns the algebraic trace definition; the polynomial argument
 that binds a proof to such a trace is given in Section~\ref{sec:soundness}.
 \end{proof}
 
+\begin{lemma}[No double spend]
+\label{lem:no-double-spend}
+Fix a note with secret \(k_\nu\) and input randomness \(r_{\mathrm{in}}\), with
+nullifier \(\nu=H_{\mathsf{nul}}(k_\nu,r_{\mathrm{in}})\) by
+Equation~\eqref{eq:nullifier}.  Two facts bar a second spend of the note.
+\emph{(i) Determinism.}  \(H_{\mathsf{nul}}\) is a function, so the note fixes a
+unique \(\nu\), and the relation accepts only when the public nullifier equals
+\(H_{\mathsf{nul}}(k_\nu,r_{\mathrm{in}})\).  \emph{(ii) Marker (program
+invariant).}  The transition consumes the canonical program-derived account at
+seeds \(\mathtt{aspis\mbox{-}nullifier\mbox{-}v1}\Vert\nu\), creates its
+spent-marker atomically on acceptance, and refuses with a dedicated error any
+transition whose \(\nu\) already carries a marker; so at most one accepting
+transition ever carries a given \(\nu\).  Consequently, for two accepting
+spends of the note, Theorem~\ref{thm:argument-of-knowledge} extracts from each a
+witness \((k,r)\) with \(H_{\mathsf{nul}}(k,r)\) the spend's public nullifier,
+equal to \((k_\nu,r_{\mathrm{in}})\) except with the Poseidon2 reserve
+\(\varepsilon_{\rm cr}\); both then carry \(\nu\), and by~(ii) the second is
+refused.  A spend of the note under a distinct \(\nu'\neq\nu\) requires a second
+preimage of \(H_{\mathsf{nul}}\), again bounded by \(\varepsilon_{\rm cr}\).
+Uniqueness of the accepted nullifier is a program invariant (the canonical
+marker account), not a cryptographic one; collision resistance rules out only
+the distinct-\(\nu'\) route.
+\end{lemma}
+
 \subsection{Live-state preconditions and atomic effect}
 
 For an accepting state-changing instruction, the verifier additionally
@@ -213,3 +237,24 @@ and the marker for \((P,\nu)\).  A failure before the final commit leaves both
 objects unchanged.  These account checks prevent a valid proof for one pool,
 revision, anchor, deployment domain, or nullifier from authorizing a
 different transition.
+
+\begin{lemma}[Deployment-domain separation]
+\label{lem:deployment-domain}
+Let a pool store deployment domain \(\Delta'\) and let a proof carry a
+statement with deployment domain \(\Delta=\mathrm{sha256}(
+\mathtt{aspis\mbox{-}spend\mbox{-}deployment\mbox{-}domain\mbox{-}v1}
+\Vert\mathit{program\_id}\Vert\mathit{domain\_tag})\)
+(Definition~\ref{def:spend-statement}).  If \(\Delta\neq\Delta'\) the
+transition is rejected before the proof is verified and before any account is
+mutated, except with negligible probability.  \(\Delta\) is part of the
+statement-digest preimage, absorbed under the \textsf{Statement} label, so by
+Theorem~\ref{thm:argument-of-knowledge} an accepting proof is sound only for
+the \(\Delta\) in its own statement; independently the program compares the
+statement's \(\Delta\) against the pool's stored \(\Delta'\) fail-closed and
+returns a dedicated mismatch error before verification and before any mutable
+borrow.  The guarantee is separation between pools with distinct stored
+domains, not cross-cluster unforgeability: because \(\mathit{domain\_tag}\) is
+operator-asserted and not bound to cluster genesis, a keyholder can reproduce
+an identical \(\Delta\) elsewhere with the same \(\mathit{program\_id}\) and
+tag.
+\end{lemma}

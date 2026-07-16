@@ -255,6 +255,55 @@ retained in the output space, no conditioning or division by a success
 probability occurs.
 \end{proof}
 
+\begin{lemma}[Deployment-deadline abort is witness-independent]
+\label{lem:deadline-hiding-abort}
+Fix a public boundary offset \(\Delta>0\) (deployed default \(3600\) seconds)
+and a start time independent of the witness.  Let \(T(x,w,\rho)\) be the private
+elapsed time to the first recorded production-ready candidate under fresh
+randomness \(\rho\) (operating-system attempt entropy and random-oracle
+answers), \(T=\infty\) on cap-17 exhaustion.  Assume: \emph{(i) fixed
+schedule}, the count of field operations, hash calls, committed columns, opened
+positions, and mined predicates per attempt is a function of the public layout
+and query schedule only, no control-flow branch or loop bound reads a witness
+coordinate, and the only variable-length loops (uniform field rejection,
+zero-block attempt-entropy rejection, minimum-nonce work search) consume fresh
+entropy and random-oracle outputs over masked data, never raw witness values;
+\emph{(ii) public runtime tail}, there is \(\delta_{\rm dead}(\Delta)\), a
+function of the public difficulty schedule, the attempt cap, and a public
+per-attempt cost ceiling valid for every valid \((x,w)\), with
+\(\Pr_\rho[T(x,w,\rho)\ge\Delta]\le\delta_{\rm dead}(\Delta)\) for every valid
+\((x,w)\).  Then the joint law of the deadline indicator
+\(D=\mathbf 1[T\ge\Delta]\) with the selection, retry, and cap-exhaustion
+variables of Definition~\ref{def:spend-complete-view} is witness-independent up
+to total variation \(\delta_{\rm dead}(\Delta)\); if every executed step has
+operand-independent latency (data-oblivious arithmetic), \(D\) is exactly
+witness-independent.
+\end{lemma}
+
+\begin{proof}
+By Lemma~\ref{lem:selection-hiding-abort} the number of completed attempts and
+the per-attempt public schedule have a witness-independent joint law; by (i) the
+elapsed time of each attempt is a function of that schedule and of \(\rho\), no
+timed loop being indexed by a witness coordinate, and the work search grinds a
+transcript state whose absorbed roots and out-of-domain values are
+random-oracle outputs over freshly masked and salted data.  So the conditional
+law of \(T\) given the completed view depends only on public parameters and
+\(\rho\); two valid witnesses induce boundary-abort probabilities in
+\([0,\delta_{\rm dead}(\Delta)]\), and the coupled \(D\) differs in law by at
+most \(\delta_{\rm dead}(\Delta)\).  On \(\{T<\Delta\}\) the released view is the
+witness-independent completed view of Lemma~\ref{lem:selection-hiding-abort} and
+Lemma~\ref{lem:epro-complete-view}.  Because the channel exposes only the binary
+\(\mathsf{Proof}\)-or-\(\mathsf{Abort}\) symbol at the fixed boundary
+(Definition~\ref{def:spend-complete-view}, \(\epsilon_{\rm side}=0\)), no finer
+timing statistic is available; under data-oblivious latency the per-attempt
+wall-time law is a function of public parameters only, making the inequality an
+equality.  The deployed prover satisfies (i); the per-attempt cost ceiling of
+(ii) is a public, empirically groundable input, and at \(\Delta=3600\) seconds
+against a hardest predicate of \(g=37\) bits over at most 17 attempts,
+\(\delta_{\rm dead}(\Delta)\) is dominated by a difficulty-only mining tail of
+the same order as the terms already in the ledger, hence negligible.
+\end{proof}
+
 \subsection{Private-Merkle and EPRO hybrids}
 
 For each opened leaf, the simulator samples the public 32-byte salt and
@@ -377,19 +426,28 @@ bits.  The first dominates; the sum has more than
 Assume the complete affine-image and rank-coverage premise in
 Assumption~\ref{lem:complete-affine-image}.  In the declared programmable
 SHA-256 random-oracle model with ideal completion before the fixed boundary,
-or with the witness-independent external truncation defined above, for
-\(Q_H\le2^{128}\), every valid \((x,w)\), and arbitrary auxiliary input,
+with the witness-independent external truncation defined above, or with the
+deployed fixed-boundary controller under
+Lemma~\ref{lem:deadline-hiding-abort}, for \(Q_H\le2^{128}\), every valid
+\((x,w)\), and arbitrary auxiliary input,
 \[
- \mathsf{Real}_{\mathrm{spend}}(x,w)\approx_{\varepsilon_{\rm RS}}
+ \mathsf{Real}_{\mathrm{spend}}(x,w)
+ \approx_{\varepsilon_{\rm RS}+\delta_{\rm dead}(\Delta)}
  \mathsf{Sim}_{\mathrm{spend}}(x),
  \qquad
- -\log_2\varepsilon_{\rm RS}>104.0249223482519.
+ -\log_2\varepsilon_{\rm RS}>104.0249223482519,
 \]
+with \(\delta_{\rm dead}(\Delta)=0\) under the first two boundary models and
+negligible under the deployed controller (Lemma~\ref{lem:deadline-hiding-abort}).
 Equivalently, a three-decimal conservative floor is 104.024 bits.
 \end{theorem}
 
 \begin{proof}
-Compose Assumption~\ref{lem:complete-affine-image}, the hybrid sequence, and
+The deployed deadline indicator is coupled identically by
+Lemma~\ref{lem:deadline-hiding-abort} and adds at most
+\(\delta_{\rm dead}(\Delta)\) to the distinguishing advantage, zero under
+data-oblivious execution.  Otherwise
+compose Assumption~\ref{lem:complete-affine-image}, the hybrid sequence, and
 Lemma~\ref{lem:epro-complete-view}.  The simulator is witness-free by its
 construction, and both experiments include the same Abort outcome rather
 than conditioning on success.  An independent external cutoff is coupled
