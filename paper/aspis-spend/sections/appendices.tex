@@ -16,20 +16,23 @@ The atomic-v3 Merkle compressor uses the width-16 state
 Poseidon2 permutation, and returns lanes 0 through 7.  The statement digest is
 \[
  \operatorname{SHA256}(
-   \mathtt{aspis/atomic\mbox{-}payment\mbox{-}statement/v3}\|\mathsf{payload}).
+   \mathtt{aspis/atomic\mbox{-}payment\mbox{-}statement/v4}\|\mathsf{payload}).
 \]
+The digest is a fixed 32 bytes absorbed at one transcript position, so the
+deployment-domain field below extends the preimage without adding a
+Fiat--Shamir boundary.
 
 \subsection{Public statement payload}
 
 \begin{table}[ht]
 \centering
-\caption{Canonical atomic-v3 statement payload.}
+\caption{Canonical atomic-v4 statement payload.}
 \label{tab:statement-wire-appendix}
 \begin{tabular}{@{}rrll@{}}
 \toprule
 offset & bytes & field & encoding \\
 \midrule
-0 & 1 & version & \(3\) \\
+0 & 1 & version & \(4\) \\
 1 & 1 & tree depth & \(20\) \\
 2 & 6 & reserved & all zero \\
 8 & 32 & pool address \(P\) & raw public key \\
@@ -40,12 +43,16 @@ offset & bytes & field & encoding \\
 144 & 32 & output anchor \(A'\) & eight canonical M31 limbs \\
 176 & 4 & asset \(a\) & canonical little-endian M31 \\
 180 & 4 & fee \(f\) & little-endian \(u32<2^{30}\) \\
+184 & 32 & deployment domain \(\Delta\) & raw 32 bytes \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 Changing any field changes the statement digest.  The six reserved bytes,
-version, and depth are checked rather than ignored.
+version, and depth are checked rather than ignored.  The deployment domain
+\(\Delta = \operatorname{SHA256}(\texttt{aspis-spend-deployment-domain-v1}\|
+\mathit{program\_id}\|\mathit{domain\_tag})\) is stored by the pool at
+initialization and compared before any proof byte is interpreted.
 
 \subsection{Proof prefix}
 

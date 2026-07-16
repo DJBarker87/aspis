@@ -169,7 +169,7 @@ sentinel, and subsequent upload or finalization calls fail the authority
 check.
 
 For the \ProfileProofBytes-byte release proof, the 40-byte account header gives
-an exact account allocation of 64,487 bytes.  The mainnet executor uses
+an exact account allocation of 65,447 bytes.  The mainnet executor uses
 960-byte chunks, so a fresh upload
 uses \ProfileUploadTransactions{} transactions: 67 full chunks and one
 127-byte final chunk.  It submits at most 16 uploads before waiting for the
@@ -177,7 +177,7 @@ window to reach finality.  Excluding program deployment, the deterministic
 fresh-account schedule is therefore:
 \begin{enumerate}
   \item create the 48-byte pool account and initialize it with tag~63;
-  \item create the 64,487-byte proof account and initialize it with tag~0;
+  \item create the 65,447-byte proof account and initialize it with tag~0;
   \item submit \ProfileUploadTransactions{} tag~1 upload transactions; and
   \item seal the proof account with tag~62.
 \end{enumerate}
