@@ -31,9 +31,14 @@ of which the \(D\)-claims-before-\(\gamma\) transcript order is security-critica
 is given the pinned finite-parameter reduction.  What remains assumed is
 Assumption~\ref{ass:pinned-finite-reduction} itself --- the imported Johnson/MCA
 list-decoding hypotheses and the \(D\)-free relation-binding lemma
-(Lemma~\ref{lem:local-algebraic-binding}) at the pinned parameters.  The
-separate state-restoration and state-restoration-knowledge premises no longer
-stand as independent assumptions.  Knowledge soundness, theft resistance, and
+(Lemma~\ref{lem:local-algebraic-binding}) at the pinned parameters.  Its
+finite-parameter applicability conditions --- Johnson-regime membership, the
+circle-coset transport conditions, the polynomial-generator hypothesis, and
+every tabulated degree and the resulting floor --- are reproduced independently
+by \path{tools/verify_soundness_params.py}, which re-derives them with its own
+arithmetic and imports no project code; the imported theorems themselves are
+not re-proved.  The separate state-restoration and state-restoration-knowledge
+premises no longer stand as independent assumptions.  Knowledge soundness, theft resistance, and
 the deployed-pool extension remain conditional on that pinned reduction.
 The deployed-pool extension adds no further premise: it proves weak unique
 response (Lemma~\ref{lem:quasi-unique-response}) and invokes the Fiat--Shamir

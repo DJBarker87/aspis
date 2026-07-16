@@ -151,7 +151,16 @@ rate-\(1/512\) Johnson-list and polynomial-generator MCA hypotheses, the two
 OOD samples, all four folds and their list sizes, the terminal condition, and
 the assignment of every semantic, copy, lookup, range, mask, and sumcheck
 constraint to rows 5--14 of the table.  The premise is uniform over every
-false public statement and every reachable public transcript prefix.
+false public statement and every reachable public transcript prefix.  Its
+finite-parameter applicability conditions --- the Johnson agreement cap
+\(A=6082\), the proven-regime membership \(\alpha\ge\sqrt\rho\) at rate
+\(1/512\) (Johnson, not capacity), the circle-to-GRS transport conditions (the
+\(2^{17}\) arity-four fiber roots distinct and none equal to one), the
+polynomial-generator hypothesis, and every tabulated degree and the resulting
+union floor --- are reproduced independently, with its own arithmetic, by
+\path{tools/verify_soundness_params.py}; the imported theorems themselves
+(Stwo Johnson list decoding, Bordage/Habock MCA, WHIR fold-list commutation)
+are taken as stated.
 \end{assumption}
 
 \subsection{Selector scope}
@@ -540,7 +549,17 @@ inside Assumption~\ref{ass:pinned-finite-reduction}; only the generic
 Schwartz--Zippel flip bound at the pinned degree is added.  Each doom-persistence
 error is at most its tabulated entry, uniformly over every false statement,
 reachable saved state, \emph{and} adversarial \((D\)-word\(,d)\) --- the last by
-\textup{(S2)}, since these functionals do not read \(D\).
+\textup{(S2)}, since these functionals do not read \(D\).  This is therefore not
+an assumption independent of Assumption~\ref{ass:pinned-finite-reduction}: its
+nonzero premise is the retained Lemma~\ref{lem:local-algebraic-binding} and the
+remaining content is the coefficient-agnostic Schwartz--Zippel flip bound.  We
+keep it stated as a premise --- not relabelled a theorem --- because the
+bespoke nonzero premise remains assumed inside
+Assumption~\ref{ass:pinned-finite-reduction}, but no assumption beyond
+Assumption~\ref{ass:pinned-finite-reduction} is introduced.  With the generic
+boundaries (Lemma~\ref{lem:generic-boundary-rbr}) and the zero-factor \(D\) lane
+(Lemma~\ref{lem:d-lane-rbr}) discharged, Assumption~\ref{ass:pinned-finite-reduction}
+is the sole irreducible premise of the state-restoration property.
 \end{assumption}
 
 \begin{lemma}[\(D\)-lane round-by-round soundness]
