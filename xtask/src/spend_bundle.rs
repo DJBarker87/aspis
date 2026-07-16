@@ -70,6 +70,18 @@ const COPIES: &[(&str, &str)] = &[
         "results/spend/mainnet-cleanup-evidence.json",
         "evidence/mainnet-cleanup.json",
     ),
+    (
+        "results/spend/spend_mainnet_sbf_and_instruction_reconstruction.json",
+        "evidence/spend_mainnet_sbf_and_instruction_reconstruction.json",
+    ),
+    (
+        "results/spend/spend_mainnet_independent_rpc_reconciliation.json",
+        "evidence/spend_mainnet_independent_rpc_reconciliation.json",
+    ),
+    (
+        "tools/reconstruct_spend_mainnet_sbf.py",
+        "tools/reconstruct_spend_mainnet_sbf.py",
+    ),
     ("paper/aspis-spend/aspis-spend.pdf", "paper/aspis-spend.pdf"),
 ];
 

@@ -44,6 +44,14 @@ Deployment domain: `ba43feb01d7d7f5ee3f57a6481b202066c83c6c3e76020a619c1611abbd0
   verify-and-apply transaction and its lifecycle.
 - `evidence/mainnet-cleanup.json` — the finalized ProgramData cleanup and
   refund receipt.
+- `evidence/spend_mainnet_sbf_and_instruction_reconstruction.json` — the
+  byte-level reconstruction of the deployed SBF from the buffer's archival
+  loader-write history, cross-checked between two independent RPC endpoints.
+- `evidence/spend_mainnet_independent_rpc_reconciliation.json` — the
+  deterministic two-endpoint reconciliation of the deployment, verification,
+  and ProgramData-close records, and the cluster disambiguation.
+- `tools/reconstruct_spend_mainnet_sbf.py` — the stdlib-only archival
+  reproducer that regenerates both files from live RPC.
 - `paper/aspis-spend.pdf` — the publication paper.
 - `manifest.json` — object-by-object byte length and sha256, plus the pinned
   on-chain identities.

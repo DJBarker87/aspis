@@ -1,0 +1,205 @@
+{
+  "schema_version": 1,
+  "artifact": "spend_mainnet_sbf_and_instruction_reconstruction_v1",
+  "captured_at_utc": "2026-07-16T07:49:52.405586Z",
+  "network": "mainnet-beta",
+  "genesis_hash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+  "reproduction": {
+    "mode": "live_archival_json_rpc",
+    "live_rpc_or_equivalent_local_cache_required": true,
+    "full_rpc_responses_serialized": false,
+    "credential_material_serialized": false,
+    "endpoint_hostname_or_origin_serialized": false,
+    "fixed_provider_labels_serialized": true,
+    "deterministic_except": [
+      "captured_at_utc"
+    ]
+  },
+  "rpc": {
+    "provider_labels": [
+      "official_rpc",
+      "independent_rpc"
+    ],
+    "commitment": "finalized",
+    "transaction_encoding": "json",
+    "max_supported_transaction_version": 0,
+    "buffer_signature_history": {
+      "address": "BP5bCWMHQfsmsJBkTyVr1uaWudbrcbfhKEg7fmKRS4EY",
+      "selection": "separately verified deployment record prepended to getSignaturesForAddress(before=deployment) records through buffer initialization; later address reuse cannot affect the selected slice",
+      "ordering": "deployment followed by predeployment records newest-to-oldest through initialization",
+      "backward_rpc_page_sizes": [
+        1000,
+        71
+      ],
+      "page_1_last_signature": "yWSt1VdE7LzagBAZ7b6aVGNBHQqVVDDmS8VssVQbX1kViSxGYDjXx6bwfsrh5K76YSjtz8fQX3vvp3n3x75a9zW",
+      "count": 1072,
+      "failed_count": 0,
+      "non_finalized_count": 0,
+      "newest_signature": "qdeDmK712P3ifnn4hfqtEH3CzW7rssoP9hsJtCceebmAnA5qSrN34v4KE1H6tJbWbUjD7GdaZmLv2CxV823coW8",
+      "oldest_signature": "5HSfC4QsRJZy9uzobRJmiQoDy7RCtR19Ukdo6NTfqapnwNKXCgCEmKPxUxx8prxoohFZLQxYU3gCiroM1Ppy7RBE",
+      "newest_slot": 433219270,
+      "oldest_slot": 433219157,
+      "newest_block_time_unix": 1784182962,
+      "oldest_block_time_unix": 1784182916,
+      "canonicalization": "UTF-8 compact JSON array of selected signature strings, newest-to-oldest, no spaces or trailing newline",
+      "canonical_json_sha256": "0367a72d602cacd1a56df8d8902f0cd7414f8d4f5fbbbe0a91a7d8252af45985",
+      "newline_joined_no_trailing_newline_sha256": "4bd49c69b81a55e5016e0e07217ac5042d572b125d120a621e08860f5b1c2e73",
+      "provider_complete_signature_records_exactly_equal": true,
+      "deployment_transaction_and_status_separately_verified": true
+    }
+  },
+  "deployment": {
+    "signature": "qdeDmK712P3ifnn4hfqtEH3CzW7rssoP9hsJtCceebmAnA5qSrN34v4KE1H6tJbWbUjD7GdaZmLv2CxV823coW8",
+    "slot": 433219270,
+    "block_time_unix": 1784182962,
+    "meta_err": null,
+    "loader_program": "BPFLoaderUpgradeab1e11111111111111111111111",
+    "program_id": "GQPNqfYF17Nj2dGsf6Q2AtiouyM67YxFZPh9LxBk2Ye3",
+    "programdata_address": "GoXXs2juAjmpvcsX7iLdHsGJCwBwB3HHQwvYyfV3RuU",
+    "buffer_address": "BP5bCWMHQfsmsJBkTyVr1uaWudbrcbfhKEg7fmKRS4EY",
+    "upgrade_authority": "78AojysuKLSS1PeifTBy7L38rEZjgsMxsVFRagUxBpNM",
+    "payer": "78u3cwKrso1yW2dwaBmMmvo8F44gvBBGfkfFay1d8HQZ",
+    "max_data_len": 924344,
+    "buffer_create_initialize_signature": "5HSfC4QsRJZy9uzobRJmiQoDy7RCtR19Ukdo6NTfqapnwNKXCgCEmKPxUxx8prxoohFZLQxYU3gCiroM1Ppy7RBE",
+    "buffer_space": 924381,
+    "buffer_lamports": 6434638320,
+    "provider_raw_transaction_and_status_exactly_equal": true
+  },
+  "sbf_reconstruction": {
+    "transaction_body_provider_labels": [
+      "official_rpc",
+      "independent_rpc"
+    ],
+    "provider_normalized_raw_transaction_results_exactly_equal": true,
+    "normalized_raw_transaction_results_sha256": "cfb2c8d1e2cd1653ccd9efa261d0eabffa8e6d5a6831e6d7e1583f6fa83930db",
+    "provider_byte_images_and_metrics_exactly_equal": true,
+    "history_transaction_count": 1072,
+    "history_transactions_meta_err_null": true,
+    "write_accounts_exact": true,
+    "write_message_header_exact": true,
+    "write_static_account_keys_exact": true,
+    "write_signatures_exact": true,
+    "write_authority_required_signer": true,
+    "write_buffer_writable": true,
+    "write_transactions_legacy": true,
+    "loader_write_variant_u32_le": 1,
+    "loader_write_encoding": "u32_le variant || u32_le offset || u64_le payload_len || payload",
+    "write_instruction_count": 1070,
+    "full_chunk_count": 1069,
+    "full_chunk_bytes": 864,
+    "final_chunk_offset": 923616,
+    "final_chunk_bytes": 728,
+    "sum_payload_bytes": 924344,
+    "unique_covered_bytes": 924344,
+    "gap_bytes": 0,
+    "overlap_bytes": 0,
+    "conflicting_overlap_bytes": 0,
+    "out_of_bounds_writes": 0,
+    "reconstructed_sbf_bytes": 924344,
+    "reconstructed_sbf_sha256": "e289faf85fe4773880794d5d4356461bb9cb94077b68711f99348efe19707d7e",
+    "bundle_sbf_bytes": 924344,
+    "bundle_sbf_sha256": "e289faf85fe4773880794d5d4356461bb9cb94077b68711f99348efe19707d7e",
+    "byte_for_byte_equal_to_bundle": true
+  },
+  "programdata_reconstruction": {
+    "programdata_account_closed": true,
+    "loader_v3_header_bytes": 45,
+    "header_hex": "03000000c666d21900000000015afc46570a0cc7b5bdfff16323f54500f18eb187ad8d6fdadb5450fe2c004c92",
+    "encoding": "u32_le ProgramData discriminator 3 || u64_le deployment slot 433219270 || Some tag 1 || 32-byte upgrade-authority pubkey",
+    "header_plus_sbf_bytes": 924389,
+    "header_plus_sbf_sha256": "708c5e5e171942b7b93df4188a564681fe49e476902014e634734b04ad8ade83",
+    "recorded_preclose_programdata_sha256": "708c5e5e171942b7b93df4188a564681fe49e476902014e634734b04ad8ade83",
+    "recorded_preclose_programdata_source": "release/aspis-spend-q18-g37-mainnet-v1/evidence/mainnet-execution.json",
+    "exact": true
+  },
+  "proof": {
+    "bundle_bytes": 65407,
+    "bundle_sha256": "32eb419e0c5c3ef4fa2db0d32579e88f1207547d8fb010279efeb6c05981b529",
+    "finalized_program_log_sha256": "32eb419e0c5c3ef4fa2db0d32579e88f1207547d8fb010279efeb6c05981b529",
+    "log_matches_bundle": true
+  },
+  "tag65_instruction": {
+    "signature": "3G1voggszvDMGi5PbGM1kuEMYKvh2TNMbH6hHHwndUdRQJNT7ehRFpQpksxLnx5tp2xkS5jGi359rVXk42sRPFcv",
+    "slot": 433219840,
+    "block_time_unix": 1784183193,
+    "meta_err": null,
+    "program_id": "GQPNqfYF17Nj2dGsf6Q2AtiouyM67YxFZPh9LxBk2Ye3",
+    "transaction_version": "legacy",
+    "message_header": {
+      "numReadonlySignedAccounts": 0,
+      "numReadonlyUnsignedAccounts": 3,
+      "numRequiredSignatures": 2
+    },
+    "static_account_keys": [
+      "78u3cwKrso1yW2dwaBmMmvo8F44gvBBGfkfFay1d8HQZ",
+      "59PFQsAbnM5Vjhbq7aKkxnd6MqbJ4Akw7GaDWZwAdAsk",
+      "3ZRYarQZcWJQgzNwLo1Eo7PDmier3rbW41L8ccAddCvb",
+      "CFJ5fYPSi4Qn6okBCZS3tXFMw7Lsz4Jy9vEAAGU5kfSU",
+      "11111111111111111111111111111111",
+      "ComputeBudget111111111111111111111111111111",
+      "GQPNqfYF17Nj2dGsf6Q2AtiouyM67YxFZPh9LxBk2Ye3"
+    ],
+    "envelope_signature_count": 2,
+    "envelope_signatures_valid_base58_64_bytes": true,
+    "message_instruction_index_zero_based": 2,
+    "accounts_in_instruction_order": [
+      "59PFQsAbnM5Vjhbq7aKkxnd6MqbJ4Akw7GaDWZwAdAsk",
+      "3ZRYarQZcWJQgzNwLo1Eo7PDmier3rbW41L8ccAddCvb",
+      "CFJ5fYPSi4Qn6okBCZS3tXFMw7Lsz4Jy9vEAAGU5kfSU",
+      "78u3cwKrso1yW2dwaBmMmvo8F44gvBBGfkfFay1d8HQZ",
+      "11111111111111111111111111111111"
+    ],
+    "payload_bytes": 169,
+    "payload_sha256": "c02a5916d0b8b70a7599d4e37c80c61e7de06fa26e2098cab23e1ba5dd2cfc3d",
+    "payload_hex": "4190bc3005a8029b06072f386dc6b1ee4e9b4ba513b126d033a96ecc49829cab5a890266278df8f3073cab562c6c7d89471363c46841748a1ef3b0432acd0afd5f69517012bd98fe78bef9b076069520614ef27f2fc7a0854f72e65055a2edc3199f5b8c2dc991e401f3538941af35fd29e00aa319edca8013c7260c61c2e7486e1100000001000000ba43feb01d7d7f5ee3f57a6481b202066c83c6c3e76020a619c1611abbd08c8f",
+    "decoded": {
+      "tag": 65,
+      "current_anchor_hex": "90bc3005a8029b06072f386dc6b1ee4e9b4ba513b126d033a96ecc49829cab5a",
+      "nullifier_hex": "890266278df8f3073cab562c6c7d89471363c46841748a1ef3b0432acd0afd5f",
+      "output_commitment_hex": "69517012bd98fe78bef9b076069520614ef27f2fc7a0854f72e65055a2edc319",
+      "output_anchor_hex": "9f5b8c2dc991e401f3538941af35fd29e00aa319edca8013c7260c61c2e7486e",
+      "asset_id_u32_le": 17,
+      "fee_u32_le": 1,
+      "deployment_domain_hex": "ba43feb01d7d7f5ee3f57a6481b202066c83c6c3e76020a619c1611abbd08c8f"
+    },
+    "proof_log": {
+      "domain": "aspis-proof-sha256-v1",
+      "proof_sha256": "32eb419e0c5c3ef4fa2db0d32579e88f1207547d8fb010279efeb6c05981b529",
+      "raw_log_line": "Program data: YXNwaXMtcHJvb2Ytc2hhMjU2LXYx MutBngxcPvT6LbDTJXnojxIHVH2PsBAnnv62wFmBtSk=",
+      "inside_program_invocation_success_segment": true,
+      "program_success_log": "Program GQPNqfYF17Nj2dGsf6Q2AtiouyM67YxFZPh9LxBk2Ye3 success"
+    },
+    "compute_units_consumed": 1344003,
+    "fee_lamports": 10000,
+    "refund": {
+      "account_indices": {
+        "payer": 0,
+        "proof": 1,
+        "pool": 2,
+        "nullifier": 3
+      },
+      "payer_pre_lamports": 295286560,
+      "proof_pre_lamports": 456402000,
+      "nullifier_pre_lamports": 0,
+      "payer_post_lamports": 750286560,
+      "proof_post_lamports": 0,
+      "nullifier_post_lamports": 1392000,
+      "proof_refund_lamports": 456402000,
+      "pool_balance_unchanged": true,
+      "exact_balance_equation_recomputed": true
+    },
+    "confirmation_status": "finalized",
+    "provider_raw_transaction_and_status_exactly_equal": true
+  },
+  "checked_in_evidence_cross_checks": {
+    "selected_fact_sources": [
+      "release/aspis-spend-q18-g37-mainnet-v1/evidence/mainnet-execution.json",
+      "release/aspis-spend-q18-g37-mainnet-v1/evidence/mainnet-cleanup.json"
+    ],
+    "selected_facts_sha256": "bfeda53da06a261ecba93be766237dd1d71bc2b0c54c5165b69e5fd34f7f2aad",
+    "programdata_account_closed": true,
+    "preclose_programdata_data_sha256": "708c5e5e171942b7b93df4188a564681fe49e476902014e634734b04ad8ade83",
+    "programdata_refund_lamports": 6434638320,
+    "programdata_refund_equation_reconciled": true
+  }
+}

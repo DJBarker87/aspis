@@ -7,7 +7,7 @@ security calculations.  Local validator runs measure both supported account
 paths and exercise adversarial cases.  A mainnet-beta run records one
 finalized verification-and-state-transition transaction for that exact
 release.  Deployment and application setup precede the measured transition;
-resource recovery and the treasury sweep follow it.
+resource recovery follows it.
 
 \subsection{Release instance}
 \label{sec:evaluation-release}
@@ -15,7 +15,7 @@ resource recovery and the treasury sweep follow it.
 The fail-closed release evaluator rebuilt the manifest-default SBF binary,
 verified the concrete proof with the production host verifier, reconstructed
 all three selector branches, reconciled the local compute ledger, and checked
-36 required gates.  All gates passed and the failed-gate set was empty.  The
+37 required gates.  All gates passed and the failed-gate set was empty.  The
 release-authorizing soundness value is the conservative whole-ledger,
 three-branch floor of 100.16144938287457 bits.  The sharper selector-scoped
 calculation, 101.38010539241552 bits, is retained as a diagnostic and is not
@@ -37,7 +37,7 @@ used for the headline claim.
     final work & 32 bits \\
     selector candidates / selected & 3 / 0 \\
     proving-attempt cap & 17 \\
-    release gates & 36 / 36 \\
+    release gates & 37 / 37 \\
     conservative soundness floor & 100.161449 bits \\
     real-versus-simulator floor & 104.024922 bits \\
     pairwise-witness floor & 103.024922 bits \\
@@ -56,7 +56,7 @@ The content identities used throughout the evaluation are:
   \item[Production SBF.] \ProfileSbfBytes{} bytes; SHA-256
   \nolinkurl{e289faf85fe4773880794d5d4356461bb9cb94077b68711f99348efe19707d7e}.
   \item[Release certificate.] SHA-256
-  \nolinkurl{9522b2b36b73e326ab89a23c3a23cd3ac1a96ac8da2760593ed58c07ce0bbf96}.
+  \nolinkurl{6efecd8cc00a4e52b111fb3dfb8775ce018fae089d4e309652269faf2dd4b740}.
 \end{description}
 
 The statement has sequence zero, asset identifier 17, and fee 1.  Each of the
@@ -75,7 +75,7 @@ manifest.  The explanatory certificate note was updated to describe that
 non-authorizing metadata boundary.  A machine diff is limited to that note,
 the generation timestamp, byte lengths and digests for the five corrected
 JSON sources, and the program-manifest digest.  The proof, statement, SBF,
-security values, compute values, and all 36 gate outcomes are identical.  The
+security values, compute values, and all 37 gate outcomes are identical.  The
 release bundle retains both certificates.
 
 \subsection{Local compute and functional tests}
@@ -220,22 +220,22 @@ of the verification transaction.
 
 The deployment was deliberately disposable.  After the execution evidence
 had been made read-only, a separate loader-v3 close transaction finalized at
-slot 432,934,227.  It removed ProgramData and refunded
+slot 433,220,251.  It removed ProgramData and refunded
 \ProfileProgramDataRefundLamports{} lamports; the exact refund equation and
 10,000-lamport fee were reconciled from the landed transaction.  The small
 loader Program account, pool, and nullifier marker remained.  Closing
 ProgramData disabled the disposable deployment after the measured
 verification; it did not alter the already finalized transaction record.
 
-The later transfer of the remaining payer balance back to the funding source
-is treasury cleanup and is not a protocol result.  Its separate finalized
-receipt records 6,985,137,600 lamports returned at slot 432,934,316 and a zero
-post-sweep payer balance.  Of the demo payer's balance, 0.0148834 SOL was not
-returned: 0.0037584 SOL remained as rent in the Program, pool, and nullifier
-accounts, and 0.0111250 SOL was paid as aggregate payer transaction fees.
-These figures include deployment and every payer-funded setup and cleanup
-transaction; they exclude the inbound funding transaction fee paid by the
-funding source and are not the fee of the single verification transition.
+A later transfer moved the remaining payer balance out in a separate
+finalized transaction, leaving a zero payer balance; this treasury cleanup is
+not a protocol result and its destination is outside the scope of the
+evaluation.  Of the amount that funded the payer, 0.0037584 SOL was retained
+on-chain as rent in the Program, pool, and nullifier accounts, and the
+remainder covered aggregate payer transaction fees across deployment and every
+payer-funded setup and cleanup transaction.  These figures exclude the inbound
+funding transaction fee and are not the fee of the single verification
+transition, which was 10,000 lamports.
 
 \subsection{Independent reconciliation and reproducibility}
 \label{sec:evaluation-reproduction}
@@ -252,39 +252,38 @@ and cost equations.
 The public reconciliation file
 \path{results/spend/spend_mainnet_independent_rpc_reconciliation.json}
 has SHA-256
-\nolinkurl{fae0afb3b7286bf61da5dd7b2f54ab988e21fa207a8911704bb98dc8cdd42f0a}.
-It records sanitized raw \texttt{getTransaction} responses from the official
+\nolinkurl{dca6e0070c4d2ac0406cab2a45c0c5c768315920d81ff63b623830744243beaf}.
+It records the sanitized \texttt{getTransaction} observations from the official
 Solana mainnet endpoint and an independent PublicNode endpoint.  Both report
 the same mainnet genesis, signature, slot, block time, error status, fee,
-compute consumption, balances, proof-digest log, and success log for the
-verification transaction.  Both also agree on the funding, deployment,
-replay-probe close, ProgramData close, and treasury-sweep records and on the
-final account snapshot.  Queries for the verification signature on official
-devnet and testnet returned null, which disambiguates the cluster.  This
-machine-readable reconciliation, rather than an explorer rendering, is the
+compute consumption, balances, and log digest for the verification
+transaction.  Both also agree on the deployment and ProgramData-close records,
+and on the post-close account state in which the ProgramData account is absent
+and the Program account remains.  Queries for the verification signature on
+official devnet and testnet returned null, which disambiguates the cluster.
+This machine-readable reconciliation, rather than an explorer rendering, is the
 source for the network claims in this section.
 
 The archival reproducer
 \path{tools/reconstruct_spend_mainnet_sbf.py} independently obtains the
-same finalized 1,069-signature buffer history and raw transaction bodies from
-both providers.  It binds each of 1,067 loader writes to the pinned buffer and
-authority and reconstructs all 921,848 SBF bytes without gaps or overlaps.
+same finalized 1,072-signature buffer history and raw transaction bodies from
+both providers.  It binds each of 1,070 loader writes to the pinned buffer and
+authority and reconstructs all 924,344 SBF bytes without gaps or overlaps.
 The recovered SHA-256 is
-\nolinkurl{97c45a9abef97607a2fc6ed245829210046b234044b6738599d2bce0c367d04a},
+\nolinkurl{e289faf85fe4773880794d5d4356461bb9cb94077b68711f99348efe19707d7e},
 equal to the SBF frozen by that run's release certificate.  Applying the loader-v3 ProgramData header gives
-\nolinkurl{7fe4c7352f19ed00a3ba72b3dc6038943db3e5311c23cd5c1b0f8dbb15c4cda2},
+\nolinkurl{708c5e5e171942b7b93df4188a564681fe49e476902014e634734b04ad8ade83},
 equal to the pre-close account-data digest.  The same replay checks the
-deployment identities and decodes the landed 137-byte tag-65 payload, account
-order, proof-digest log, and refund equation.  Its frozen output is
+deployment identities and decodes the landed 169-byte tag-65 instruction data
+(the 137-byte core payload with a pinned 32-byte deployment-domain suffix),
+account order, proof-digest log, and refund equation.  Its frozen output is
 \path{results/spend/spend_mainnet_sbf_and_instruction_reconstruction.json}.
 
-The public finalized manifest is
-\path{results/spend/spend_mainnet_finalized_manifest.json}, with SHA-256
-\nolinkurl{bb7c71278e7b66093a84a895ecfa0bb29ed648529088666855d2a0612617cf60}.
-It contains no local absolute or operational filesystem paths or key material
-and binds the release certificate,
-the immutable execution and cleanup receipts, the independent reconciliation,
-all principal signatures, the rent refunds, and the final cost equations.
+Every published object---the release certificate, the immutable execution and
+cleanup receipts, and the independent reconstruction and reconciliation---is
+pinned by the bundle's \path{manifest.json} and \path{SHA256SUMS}.  The
+reconciliation and the receipts record all principal signatures, the rent
+refunds, and the final cost equations, and none contains key material.
 
 The release certificate can be reevaluated from the repository root with:
 \begin{verbatim}
@@ -294,7 +293,7 @@ NO_DNA=1 cargo run --release -p aspis-xtask -- \
   spend-release
 \end{verbatim}
 The release command rebuilds the manifest-default SBF before comparing it
-with the production-only binary and evaluating all 36 gates.  Reproduction
+with the production-only binary and evaluating all 37 gates.  Reproduction
 requires the proof and statement bytes; their hashes are identifiers, not
 substitutes.  The evaluator records its current generation time, so a later
 reevaluation reproduces the substantive fields and gate outcomes but not the
