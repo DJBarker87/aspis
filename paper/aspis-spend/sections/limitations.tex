@@ -12,12 +12,14 @@ commitment, asset identifier, and fee are public.
 Theorem~\ref{thm:bcs-soundness} is classical random-oracle argument soundness
 in the work-normalized metric.  It makes no quantum-random-oracle claim, and
 its concrete ledger includes a 124-bit Poseidon2 assumption and treats SHA-256
-as a 256-bit random oracle.  Knowledge soundness and the theft-resistance
-corollary (Section~\ref{sec:knowledge-soundness}) are conditional on
-Assumption~\ref{ass:sr-knowledge}, a round-by-round knowledge premise that is
-existential and algorithmic and is assumed rather than proved; theft resistance
-against an adversary that also observes honest spends is stated open, pending a
-non-malleability premise (Remark~\ref{rem:sim-extractability}).  The
+as a 256-bit random oracle.  Knowledge soundness, the theft-resistance
+corollary, and its deployed-pool extension (Section~\ref{sec:knowledge-soundness})
+are conditional on Assumption~\ref{ass:sr-knowledge}, a round-by-round knowledge
+premise that is existential and algorithmic and is assumed rather than proved.
+The deployed-pool extension adds no further premise: it proves weak unique
+response (Lemma~\ref{lem:quasi-unique-response}) and invokes the Fiat--Shamir
+simulation-extractability theorem, with extra error terms of the order already
+in the ledger.  The
 hiding results use the stronger programmable-random-oracle experiment; they
 do not instantiate a standard-model pseudorandom-generator theorem or a
 statistical zero-knowledge theorem.

@@ -47,7 +47,7 @@ A classical distinguisher receives arbitrary auxiliary input, observes the
 output, and may make adaptive oracle queries both before and after that
 output.  Its total budget is \(Q_H\le2^{128}\).  Define
 \begin{align*}
- \epsilon_{\rm RS}
+ \varepsilon_{\rm RS}
    &=\sup_{x,w,\mathcal D}
        \left|\Pr[\mathcal D^{\mathcal H}
           (\mathsf{Real}_{\mathrm{spend}}^{\mathcal H}(x,w))=1]
@@ -334,7 +334,7 @@ Definition~\ref{def:spend-complete-view} is public.  Assume also the
 ideal-completion or witness-independent external-truncation boundary model
 stated above.  Then
 \begin{equation}
- \epsilon_{\rm RS}
+ \varepsilon_{\rm RS}
  \le
  \frac{ACQ_H}{2^{256}}
  +\frac{\binom{AC}{2}}{2^{256}}
@@ -380,10 +380,10 @@ SHA-256 random-oracle model with ideal completion before the fixed boundary,
 or with the witness-independent external truncation defined above, for
 \(Q_H\le2^{128}\), every valid \((x,w)\), and arbitrary auxiliary input,
 \[
- \mathsf{Real}_{\mathrm{spend}}(x,w)\approx_{\epsilon_{\rm RS}}
+ \mathsf{Real}_{\mathrm{spend}}(x,w)\approx_{\varepsilon_{\rm RS}}
  \mathsf{Sim}_{\mathrm{spend}}(x),
  \qquad
- -\log_2\epsilon_{\rm RS}>104.0249223482519.
+ -\log_2\varepsilon_{\rm RS}>104.0249223482519.
 \]
 Equivalently, a three-decimal conservative floor is 104.024 bits.
 \end{theorem}
@@ -401,7 +401,7 @@ identically and therefore adds no distinguishing advantage.
 Under the same affine-image premise and boundary model, for any fixed \(x\)
 and any \(w_0,w_1\) satisfying \(\RProfile(x,w_i)=1\),
 \[
- \epsilon_{\rm pair}\le2\epsilon_{\rm RS},
+ \epsilon_{\rm pair}\le2\varepsilon_{\rm RS},
  \qquad
  -\log_2\epsilon_{\rm pair}>103.0249223482519.
 \]
