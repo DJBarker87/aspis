@@ -2,32 +2,37 @@
 
 [![Spend integration](https://github.com/DJBarker87/aspis/actions/workflows/spend-integration.yml/badge.svg)](https://github.com/DJBarker87/aspis/actions/workflows/spend-integration.yml)
 
-Aspis is a transparent shielded-spend verifier for Solana L1: no trusted
-setup, no off-chain verifier. Transparent proofs are large, and Solana caps
-every transaction at 1.4 million compute units, which has kept transparent
-proof verification on L1 out of reach. Aspis Spend, the q18/g37 release in
-this repository, verifies a full shielded-spend proof, advances the pool
-state, and records the nullifier in one transaction under that cap.
+Aspis is my experimental answer to a narrow question: can a transparent,
+trusted-setup-free proof for a shielded-spend state transition be verified
+entirely on Solana L1, inside its 1.4 million compute-unit limit? Transparent
+proofs are large, and that cap has kept them off L1.
 
-This release is the spend-verification primitive, not a complete payment
-system. It proves a one-input/one-output same-path leaf replacement in a
-depth-20 tree and applies the atomic pool and nullifier state transition.
-There is no deposit instruction; notes are assumed already present, and the
-anonymity set does not grow. The mainnet execution below advanced one pool
-from sequence 0 to 1.
-
-On 2026-07-16 Aspis Spend verified a shielded-spend proof, advanced the pool
-state, and recorded the nullifier in one finalized mainnet-beta transaction
-at 1,344,003 CU:
+On 2026-07-16 one finalized mainnet-beta transaction verified a 65,407-byte
+shielded-spend proof, advanced the pool state, and recorded the nullifier in
+one atomic step, at 1,344,003 of the 1,400,000-CU cap:
 [`3G1vogg…sRPFcv`](https://explorer.solana.com/tx/3G1voggszvDMGi5PbGM1kuEMYKvh2TNMbH6hHHwndUdRQJNT7ehRFpQpksxLnx5tp2xkS5jGi359rVXk42sRPFcv?cluster=mainnet-beta).
 The program was a disposable deployment, closed after the run, so there is no
 standing instance to call ([evidence](docs/mainnet-demo.md)).
 
-This is a research release, not an audit or a production service. The exact
-claim, model, and limitations are in the [paper](paper/aspis-spend/) and in
-[Limitations](#limitations). The
-[novelty re-scan](docs/novelty-rescan-2026-07-13.md) is a dated
-public-evidence search for the claim shape.
+This is not a usable shielded-payment system. It is the spend-verification
+primitive only: one input, one output, a same-path leaf replacement in a
+depth-20 tree, with the atomic pool and nullifier state transition. There is no
+deposit path, the anonymity set does not grow (the demonstrated set was one),
+each spend needs 71 preparatory transactions to upload the proof, theft
+resistance rests on an unproved knowledge premise, and none of it has had an
+external audit.
+
+The contribution is the feasibility result: this class of transparent verifier
+and atomic state transition can be made to fit inside one Solana L1 execution.
+The code, proof artifacts, measurements, failed approaches, and the security
+argument are here so others can reproduce, check, or break them. The exact
+claim and model are in the [paper](paper/aspis-spend/) and
+[Limitations](#limitations), and the
+[novelty re-scan](docs/novelty-rescan-2026-07-13.md) is a dated public-evidence
+search for the claim shape.
+
+This is a solo project built with heavy AI assistance. Don't protect real funds
+with it without independent cryptographic and Solana review.
 
 ## Release numbers
 
