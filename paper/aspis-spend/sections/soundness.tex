@@ -334,6 +334,34 @@ Thus \Profile{} has a conservative 100.161-bit argument-soundness floor in
 the work-normalized metric.
 \end{theorem}
 
+The work-normalized floor is a per-query bound.  The cumulative raw advantage
+at a fixed query budget is \(3\varepsilon_{\mathrm{BCS}}(T)\); it grows with
+\(T\) and becomes vacuous as \(T\) approaches the round error, as every
+grinding-based argument does.  Table~\ref{tab:raw-advantage} reports both so
+the metric is not misread as a raw \(2^{-100}\) forgery probability at every
+budget.
+
+\begin{table}[t]
+  \centering
+  \small
+  \caption{Raw false-acceptance advantage \(3\varepsilon_{\mathrm{BCS}}(T)\)
+  by query budget, against the uniform per-query floor.}
+  \label{tab:raw-advantage}
+  \begin{tabular}{r r}
+    \toprule
+    Query budget \(T\) & \(-\log_2\) raw advantage \\
+    \midrule
+    \(2^{40}\) & 65.21 \\
+    \(2^{64}\) & 41.21 \\
+    \(2^{80}\) & 25.21 \\
+    \(2^{100}\) & 5.21 \\
+    \(\gtrsim 2^{105.2}\) & vacuous \\
+    \midrule
+    per-query floor (all \(T\)) & 100.161 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
 \begin{proof}
 Assumptions~\ref{ass:pinned-finite-reduction} and
 \ref{ass:boundary-restoration}, together with

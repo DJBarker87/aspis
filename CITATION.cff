@@ -3,7 +3,8 @@ message: "If you use Aspis, please cite the software and accompanying Aspis Spen
 title: "Aspis Spend: Transparent Shielded-Spend Verification and Atomic State Update from a Pre-Uploaded Proof Account on Solana"
 type: software
 authors:
-  - name: "DJBarker87"
+  - family-names: "Barker"
+    given-names: "D."
     website: "https://github.com/DJBarker87"
 repository-code: "https://github.com/DJBarker87/aspis"
 url: "https://github.com/DJBarker87/aspis"
