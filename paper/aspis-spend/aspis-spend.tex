@@ -78,11 +78,13 @@ atomic transition.  It consumed \ProfileMainnetComputeUnits{} of the
 proof-account setup, proof upload, and proof finalization were separate
 transactions.  The security statements are argument soundness and
 conditional computational zero knowledge for the exact relation and declared
-view; they do not assert knowledge soundness, or a statistical, perfect, or
-standard-model zero-knowledge result.
-Because no extractor is constructed, the results do not by themselves
-establish that a party who does not know a note's spending key cannot produce
-an accepting spend; theft-resistance of a deployed pool is out of scope.  The
+view; they do not assert a statistical, perfect, or standard-model
+zero-knowledge result.  Under an added round-by-round knowledge premise --- the
+knowledge analogue of the state-restoration premise, assumed rather than proved
+--- a straight-line extractor makes the argument an argument of knowledge, and,
+because the relation binds the nullifier and owner key to the spending secret,
+yields conditional theft resistance: no efficient party lacking a note's secret
+produces an accepting spend of it except with the stated soundness error.  The
 relation is a same-path leaf replacement: this release verifies a spend and
 does not include a deposit construction or a growing anonymity set.
 \end{abstract}

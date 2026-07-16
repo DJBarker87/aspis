@@ -69,11 +69,16 @@ bound behind it, published so the metric cannot be misread as a raw 2^−100
 forgery probability at every budget. All three come from the soundness ledger
 and are recomputed by `spend_soundness_epro_ledger`.
 
-This is argument soundness, not knowledge soundness: an accepting proof
-implies a satisfying witness exists, not that the spender knows the note's
-key. The construction therefore does not establish authorization security or
-theft resistance, and no funds should be placed in a pool on the basis of
-this release (see [Limitations](#limitations)).
+The 100.16-bit floor is argument soundness (a satisfying witness exists).
+Under one added premise — a round-by-round *knowledge* analogue of the
+state-restoration premise, assumed rather than proved — a straight-line
+extractor upgrades this to an argument of knowledge, and because the relation
+binds the nullifier and owner key to the spending secret, that gives
+**conditional theft resistance**: no efficient party lacking a note's secret
+produces an accepting spend of it except with the stated soundness error (see
+[Limitations](#limitations)). The premise is not discharged, so this is a
+conditional guarantee, not a cleared production security claim; no funds
+should be placed in a pool on the basis of this release.
 
 ## No trusted setup
 
@@ -162,13 +167,16 @@ the cap prices verifier queries, not prover time.
 
 Each limitation is recorded in the paper's limitations section.
 
-- **Argument soundness, not proof of knowledge.** The soundness theorem
-  establishes that an accepting proof implies a witness exists for the exact
-  relation; no extractor is constructed. It therefore does not by itself
-  establish that a party who does not know a note's spending key cannot
-  produce an accepting spend. Knowledge soundness, and with it a
-  theft-resistance theorem for a deployed pool, is outside this release's
-  claims.
+- **Theft resistance is conditional on an unproved knowledge premise.** The
+  base soundness theorem gives only that a satisfying witness exists. The
+  paper adds a straight-line extractor and a theft-resistance corollary — a
+  party producing an accepting spend must know the note's secret, since the
+  relation binds the nullifier and owner key to it — but these rest on a
+  round-by-round *knowledge* analogue of the state-restoration premise that
+  is assumed, not proved (the same status as the soundness state-restoration
+  premise it mirrors). So theft resistance holds conditionally; it is not a
+  discharged, production-cleared guarantee, and it says nothing about key
+  management or secret-key leakage.
 - **No deposit path; anonymity set does not grow.** This release ships the
   spend verifier only. There is no deposit, mint, or append-leaf
   instruction; the pool's starting anchor is supplied at initialization
