@@ -41,20 +41,31 @@ service.** There is no deposit path, no anonymity-set growth, no
 theft-resistance theorem, and no live callable instance. No external audit was
 performed.
 
-## Scores
+## Assessment
 
-| Dimension | Grade | Justification |
-|---|---|---|
-| Security | C+ | The on-chain authorization, identity, and atomicity checks are strong and well-tested (see hostile checks). The cryptographic floors that matter most for a shielded system are conditional (hiding, R-03), work-normalized rather than raw (soundness, R-04), and carry no extractor / theft-resistance theorem (R-02). A custom Merkle compression is unreviewed (R-08). |
-| Correctness | B | The state transition, digest binding, replay handling, and rent accounting are covered by direct host tests that pin ordering and no-mutation-on-failure. Statement/tree KATs are pinned. Correctness of the underlying hiding reconstruction is asserted, not machine-checked (R-03). |
-| Error handling | B+ | Fail-closed throughout: unknown/superseded tags reject before account access (`dispatch.rs:206`), every account-shape and public-input variant has a rejecting no-mutation test, and all fallible operations precede the first state copy. |
-| Testing | B- | Extensive host-level unit tests and a full mainnet reconciliation. No coverage-guided fuzzing, no property-based testing of the proof parser, and no adversarial prover harness. The security-critical premises are untested by an independent verifier. |
-| Code organization | B+ | Clean separation of wire parsing, lifecycle, atomic mutation, and statement binding. Ordering rules are documented at their call sites and pinned by trace tests (`atomic_payment.rs:1093-1121`). |
-| Documentation | B | The paper states its assumptions and vacuous-bound caveats plainly. This review and `SECURITY.md` now record the gaps. Reader-facing material still leans on numbers whose conditional status is easy to miss without the source sections. |
+The on-chain authorization, identity, and atomicity checks are the strongest
+part of this release. Dispatch is fail-closed (unknown and superseded tags
+reject before any account access, `dispatch.rs:206`), every account-shape and
+public-input variant has a rejecting no-mutation test, and all fallible
+operations precede the first state copy. The state transition, digest binding,
+replay handling, and rent accounting are covered by direct host tests that pin
+ordering and no-mutation-on-failure (`atomic_payment.rs:1093-1121`), and the
+statement and tree known-answer tests are pinned. Wire parsing, lifecycle,
+atomic mutation, and statement binding are cleanly separated.
 
-Overall: **B-**. Solid, honest engineering of a narrow primitive; the grade is
-held down by conditional cryptographic premises and the absence of any external
-review.
+The weaknesses are cryptographic and structural rather than in the on-chain
+glue. The floors that matter most for a shielded system are conditional: hiding
+rests on the affine-image premise (R-03), soundness is work-normalized rather
+than raw (R-04), and theft resistance holds only under an unproved
+round-by-round knowledge premise (R-02). The custom Merkle compression is
+unreviewed (R-08). Testing is extensive at the host level and backed by a full
+mainnet reconciliation, but there is no coverage-guided fuzzing, no
+property-based testing of the proof parser, and no independent verifier of the
+security-critical premises. There has been no external audit.
+
+The honest summary is that this is careful engineering of a narrow primitive,
+held back by the conditional cryptographic premises and the absence of any
+external review.
 
 ## Hostile checks
 

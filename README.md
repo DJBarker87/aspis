@@ -35,51 +35,24 @@ public-evidence search for the claim shape.
 | --- | ---: |
 | One-transaction verification and state transition | 1,344,003 of the 1,400,000-CU cap |
 | Proof | 65,407 bytes |
-| Soundness floor (work-normalized, proven Johnson/MCA regime) | 100.16 bits |
-| Work to forge (expected random-oracle queries) | ≈ 2^106.79 |
-| Zero knowledge (conditional computational, programmable ROM, declared view) | 104.024-bit real-vs-simulator floor; 103.024-bit pairwise witness-indistinguishability floor |
+| Soundness floor (work-normalized, proven Johnson/MCA regime) | ~100 bits |
+| Zero knowledge (conditional computational, programmable ROM, declared view) | ~104-bit real-vs-simulator floor; ~103-bit pairwise witness-indistinguishability |
 | Finalized slot | `433219840` |
 
-Soundness is reported as three numbers rather than one so nothing is hidden
-in the reduction:
+The soundness floor is a per-query figure: after the Fiat–Shamir reduction and
+a conservative whole-ledger factor of three, the false-acceptance probability
+is at most 2^−100.16 per random-oracle query. Like any grinding-based bound the
+cumulative advantage grows with the query budget and goes vacuous past roughly
+2^105 queries. The full event ledger, the per-budget table, and the exact
+reduction are in the [paper](paper/aspis-spend/), recomputed by
+`spend_soundness_epro_ledger`.
 
-1. **Round/event-ledger error** ≈ 2^−106.79, the conservative union of the
-   protocol's per-event error before the Fiat–Shamir reduction.
-2. **Raw false-acceptance advantage as a function of the query budget T.** An
-   adversary making T random-oracle queries falsely accepts with probability
-   at most `3·[(T + 32)·2^−106.79 + 3(T² + 1)/2^256]`. This grows with T and
-   goes vacuous once T approaches the round error, as every grinding-based
-   bound does:
-
-   | Query budget T | Raw false-acceptance bound |
-   | ---: | ---: |
-   | 2^40 | ≤ 2^−65.21 |
-   | 2^64 | ≤ 2^−41.21 |
-   | 2^80 | ≤ 2^−25.21 |
-   | 2^100 | ≤ 2^−5.21 |
-   | ≈ 2^105.2 and beyond | vacuous (no guarantee) |
-
-3. **The 100.16-bit floor**, the per-query bound uniform over 1 ≤ T ≤ 2^128
-   after the 32-boundary BCS reduction and a conservative whole-ledger factor
-   of three: the false-acceptance probability per random-oracle query is at
-   most 2^−100.16.
-
-The floor is a per-query figure, and the table is the cumulative per-budget
-bound behind it; the two measure different things and should not be read as
-a single 2^−100 forgery probability. All three come from the soundness ledger
-and are recomputed by `spend_soundness_epro_ledger`.
-
-The 100.16-bit floor is argument soundness: a satisfying witness exists. Under
-one added premise, a round-by-round *knowledge* analogue of the
-state-restoration premise that posits a straight-line extractor, assumed
-rather than proved, the argument is an argument of knowledge. Because the
-public nullifier binds a note to its spending secret, that gives **conditional
-theft resistance**: any party producing an accepting spend of a note must know
-its secret, except with the stated soundness error, and this holds even
-against an adversary that has seen honest spends (see [Limitations](#limitations)).
-The whole guarantee rests on that one unproved knowledge premise, so it is not
-a cleared production security claim; no funds should be placed in a pool on the
-basis of this release.
+The floor is argument soundness: a satisfying witness exists. It becomes an
+argument of knowledge, and so gives conditional theft resistance (spending a
+note requires knowing its secret), only under an added round-by-round knowledge
+premise that is assumed, not proved. That single premise is load-bearing;
+nothing here is production-cleared, and no funds should sit in a pool on the
+strength of this release. See [Limitations](#limitations).
 
 ## No trusted setup
 
