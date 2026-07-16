@@ -104,7 +104,7 @@ knowledge-sound compiler) and prove theft-resistance against the note
 commitment before any custody of value is contemplated.
 
 ### R-03 — Hiding floors are conditional on an unverified, self-attested premise
-**Severity: High. Status: open.**
+**Severity: High. Status: open; rank premise now independently checkable (see update below).**
 
 The 104-bit hiding floor (`hiding.tex:368-372`; dominant term
 104.0249... bits at Q_H = 2^128) holds only under the *complete affine-image
@@ -119,6 +119,38 @@ self-attested.
 *Fix direction:* publish an independent, reproducible verifier of the rank and
 coverage identities (ideally machine-checked), and treat the hiding floor as
 provisional until a party other than the authors reproduces it.
+
+*Update — independent checker added.* The premise is now independently
+checkable. `tools/verify_hiding_ranks.py` is a standalone, stdlib-only Python
+tool that shares no code with the prover: it uses its own M31/QM31 field
+arithmetic, re-derives the public linear maps directly from the construction's
+masking algebra, masked ten-round sumcheck, circle query-kernel source
+families, and root-neutral gamma pairing (it does not import
+`aspis_prover::state_only_hiding_rank` or call the GoodSpend builder), and
+instantiates them at an independently sampled generic schedule (18 distinct
+query roots, a random sumcheck point, a nonzero batching challenge) rather than
+replaying the prover's transcript. Because every rank in the table is a generic
+(Zariski-open) property of the frozen layout, reproducing each target at an
+independent generic point shows the target is the true generic rank of the
+public construction — the dimension count `im A = W` rests on. It confirms all
+eight ranks in `tab:goodspend-ranks` (root-neutral joint 1404, serialized
+terminal 324, terminal-plus-initial 328, `ker(initial,T_z)` coverage 1076, the
+two remaining-`G/D` and inactive-`H1` query maps 288, and their terminal Schur
+maps 12) against both the frozen certificate
+`results/spend/spend_computational_hvzk_closure.json` and the paper, and prints
+a pass/fail transcript. The root-neutral block (1404/324/328/1076 — the
+substantive coverage claim) is reconstructed exactly from the factor/exponent
+schedule; the two raw-coverage blocks (288/12) reproduce the layer-zero query
+code's column rank and terminal Schur rank using the exact eq terminals and a
+generic distinct-point evaluation-code model of the circle wire (the
+circle-specific twiddles are irrelevant to those column-rank facts), as the
+transcript states. Run it with `python3 tools/verify_hiding_ranks.py` (a heavy
+pure-Python computation, roughly twenty minutes; `--seed` re-runs at a
+different generic point, and a second seed reproduces the same eight ranks).
+This is a second opinion on the rank/coverage dimension count, not a proof of
+the full hybrid argument or of the reconstructed model's completeness; the
+hiding floor remains conditional on Assumption `lem:complete-affine-image`, but
+its rank premise is no longer only self-attested by the prover's own code.
 
 ### R-04 — Soundness floor is work-normalized; the raw bound is vacuous
 **Severity: Medium. Status: documented-constraint.**
