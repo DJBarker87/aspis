@@ -71,14 +71,16 @@ and are recomputed by `spend_soundness_epro_ledger`.
 
 The 100.16-bit floor is argument soundness (a satisfying witness exists).
 Under one added premise — a round-by-round *knowledge* analogue of the
-state-restoration premise, assumed rather than proved — a straight-line
-extractor upgrades this to an argument of knowledge, and because the relation
-binds the nullifier and owner key to the spending secret, that gives
-**conditional theft resistance**: no efficient party lacking a note's secret
-produces an accepting spend of it except with the stated soundness error (see
-[Limitations](#limitations)). The premise is not discharged, so this is a
-conditional guarantee, not a cleared production security claim; no funds
-should be placed in a pool on the basis of this release.
+state-restoration premise that posits a straight-line extractor, assumed
+rather than proved — the argument is an argument of knowledge, and because the
+public nullifier binds a note to its spending secret, that gives
+**conditional theft resistance** against an adversary producing a spend in
+isolation: it must know the note's secret except with the stated soundness
+error. Theft resistance against an adversary that has *also seen honest
+spends* needs a further non-malleability premise and is left open (see
+[Limitations](#limitations)). Nothing here is discharged into a cleared
+production security claim; no funds should be placed in a pool on the basis of
+this release.
 
 ## No trusted setup
 
@@ -167,16 +169,20 @@ the cap prices verifier queries, not prover time.
 
 Each limitation is recorded in the paper's limitations section.
 
-- **Theft resistance is conditional on an unproved knowledge premise.** The
-  base soundness theorem gives only that a satisfying witness exists. The
-  paper adds a straight-line extractor and a theft-resistance corollary — a
-  party producing an accepting spend must know the note's secret, since the
-  relation binds the nullifier and owner key to it — but these rest on a
-  round-by-round *knowledge* analogue of the state-restoration premise that
-  is assumed, not proved (the same status as the soundness state-restoration
-  premise it mirrors). So theft resistance holds conditionally; it is not a
-  discharged, production-cleared guarantee, and it says nothing about key
-  management or secret-key leakage.
+- **Theft resistance is conditional, and the deployed-pool case is open.**
+  The base soundness theorem gives only that a satisfying witness exists. The
+  paper adds a theft-resistance corollary — a party producing an accepting
+  spend must know the note's secret, since the public nullifier binds the note
+  to it — but it rests on a round-by-round *knowledge* premise positing a
+  straight-line extractor, assumed rather than proved (heavier than, but the
+  same epistemic status as, the soundness state-restoration premise it
+  mirrors). The corollary covers an adversary producing a spend in isolation.
+  The deployed-pool setting, where the adversary has also seen honest spends,
+  is **not** covered: reusing a simulated proof component can defeat the
+  straight-line extractor, so closing it needs a further non-malleability
+  premise the paper does not establish. Theft resistance is therefore a
+  conditional, partial guarantee, not a production-cleared one, and says
+  nothing about key management or secret-key leakage.
 - **No deposit path; anonymity set does not grow.** This release ships the
   spend verifier only. There is no deposit, mint, or append-leaf
   instruction; the pool's starting anchor is supplied at initialization
