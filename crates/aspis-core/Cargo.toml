@@ -17,3 +17,7 @@ insecure-test-framing = []
 
 [dev-dependencies]
 sha2 = "0.10.8"
+# Property/fuzz-style harnesses run on the pinned stable toolchain via
+# `cargo test`; cargo-fuzz's nightly+libFuzzer requirement would break the
+# stable pin, so the attack-surface fuzzing is expressed as proptest.
+proptest = "1"

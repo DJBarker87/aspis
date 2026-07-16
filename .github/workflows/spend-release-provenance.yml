@@ -1,0 +1,213 @@
+name: Spend release provenance
+
+# Runs only on release tags of the form `*mainnet-v*` (e.g.
+# `aspis-spend-q18-g37-mainnet-v1`). It records a reproducible transcript of
+# the toolchain, the test suite, the built SBF, the paper, and the offline
+# release verification, and uploads everything as a single `provenance`
+# artifact. It never mutates the repository.
+#
+# This workflow is additive: the day-to-day gate remains spend-integration.yml.
+
+permissions:
+  contents: read
+
+on:
+  push:
+    tags:
+      - "*mainnet-v*"
+
+jobs:
+  provenance:
+    runs-on: ubuntu-latest
+    env:
+      NO_DNA: "1"
+      PROV: provenance
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable, pinned 2026-07-15
+
+      - name: Prepare provenance directory
+        run: |
+          mkdir -p "$PROV"
+          {
+            echo "# Spend release provenance"
+            echo
+            echo "- ref: ${GITHUB_REF}"
+            echo "- sha: ${GITHUB_SHA}"
+            echo "- runner: $(uname -a)"
+            echo "- generated_at_utc: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } | tee "$PROV/transcript.md"
+
+      - name: Record toolchain versions
+        run: |
+          {
+            echo
+            echo "## Toolchain versions"
+            echo '```'
+            echo "rustc: $(rustc --version)"
+            echo "cargo: $(cargo --version)"
+            if command -v cargo-build-sbf >/dev/null 2>&1; then
+              echo "cargo-build-sbf: $(cargo-build-sbf --version 2>&1 | tr '\n' ' ')"
+            else
+              echo "cargo-build-sbf: not installed (SBF build will be skipped)"
+            fi
+            if command -v solana >/dev/null 2>&1; then
+              echo "solana: $(solana --version)"
+            else
+              echo "solana: not installed"
+            fi
+            PT_DIR="$HOME/.cache/solana"
+            if [ -d "$PT_DIR" ]; then
+              echo "platform-tools cache: $(find "$PT_DIR" -maxdepth 3 -iname 'platform-tools*' -print 2>/dev/null | tr '\n' ' ')"
+            else
+              echo "platform-tools cache: none"
+            fi
+            echo '```'
+          } | tee -a "$PROV/transcript.md"
+
+      - name: Fuzz / property attack-surface harnesses
+        run: |
+          {
+            echo
+            echo "## Fuzz / property harnesses (parser, dispatch, lifecycle, field)"
+            echo '```'
+          } | tee -a "$PROV/transcript.md"
+          cargo test --release -q \
+            -p aspis-core --test fuzz_parser --test fuzz_field \
+            2>&1 | tee -a "$PROV/fuzz-harnesses.log"
+          cargo test --release -q \
+            -p aspis-verifier --test fuzz_dispatch --test fuzz_lifecycle \
+            2>&1 | tee -a "$PROV/fuzz-harnesses.log"
+          grep -E 'test result:' "$PROV/fuzz-harnesses.log" | tee -a "$PROV/transcript.md"
+          echo '```' | tee -a "$PROV/transcript.md"
+
+      - name: Frozen release-proof KAT
+        run: |
+          {
+            echo
+            echo "## Frozen release-proof KAT"
+            echo '```'
+          } | tee -a "$PROV/transcript.md"
+          cargo test --release -q -p aspis-prover --test spend_release_kat \
+            2>&1 | tee -a "$PROV/release-kat.log"
+          cargo test --release -q -p aspis-prover --test spend_release_kat -- --ignored \
+            2>&1 | tee -a "$PROV/release-kat.log"
+          grep -E 'test result:' "$PROV/release-kat.log" | tee -a "$PROV/transcript.md"
+          echo '```' | tee -a "$PROV/transcript.md"
+
+      - name: Full workspace test suite with recorded counts
+        run: |
+          {
+            echo
+            echo "## Full workspace test suite"
+            echo '```'
+          } | tee -a "$PROV/transcript.md"
+          cargo test --release --workspace 2>&1 | tee "$PROV/test-suite.log"
+          PASSED=$(grep -Eo '[0-9]+ passed' "$PROV/test-suite.log" | awk '{s+=$1} END {print s+0}')
+          FAILED=$(grep -Eo '[0-9]+ failed'  "$PROV/test-suite.log" | awk '{s+=$1} END {print s+0}')
+          RESULTS=$(grep -Ec 'test result:' "$PROV/test-suite.log")
+          {
+            echo "test-result lines: ${RESULTS}"
+            echo "aggregate passed:  ${PASSED}"
+            echo "aggregate failed:  ${FAILED}"
+            echo '```'
+          } | tee -a "$PROV/transcript.md"
+          if [ "${FAILED}" != "0" ]; then
+            echo "release provenance requires a fully green suite"
+            exit 1
+          fi
+
+      - name: Build SBF and record sha256
+        run: |
+          {
+            echo
+            echo "## SBF build"
+            echo '```'
+          } | tee -a "$PROV/transcript.md"
+          if command -v cargo-build-sbf >/dev/null 2>&1; then
+            echo "cmd: NO_DNA=1 cargo-build-sbf --manifest-path programs/aspis-verifier/Cargo.toml" \
+              | tee -a "$PROV/transcript.md"
+            NO_DNA=1 cargo-build-sbf --manifest-path programs/aspis-verifier/Cargo.toml \
+              2>&1 | tee "$PROV/sbf-build.log"
+            SBF=target/deploy/aspis_verifier.so
+            if [ -f "$SBF" ]; then
+              cp "$SBF" "$PROV/aspis_verifier.so"
+              sha256sum "$SBF" | tee "$PROV/sbf.sha256" | tee -a "$PROV/transcript.md"
+              echo "sbf bytes: $(wc -c < "$SBF" | tr -d ' ')" | tee -a "$PROV/transcript.md"
+            else
+              echo "SBF artifact not produced" | tee -a "$PROV/transcript.md"
+            fi
+          else
+            echo "cargo-build-sbf not on PATH; SBF build skipped gracefully" \
+              | tee -a "$PROV/transcript.md"
+          fi
+          echo '```' | tee -a "$PROV/transcript.md"
+
+      - name: Build paper and record sha256 (skip if no TeX)
+        run: |
+          {
+            echo
+            echo "## Paper build"
+            echo '```'
+          } | tee -a "$PROV/transcript.md"
+          if command -v latexmk >/dev/null 2>&1; then
+            ( cd paper/aspis-spend && latexmk -pdf -interaction=nonstopmode -halt-on-error aspis-spend.tex ) \
+              2>&1 | tee "$PROV/paper-build.log" || echo "latexmk returned nonzero" | tee -a "$PROV/transcript.md"
+            PDF=paper/aspis-spend/aspis-spend.pdf
+            if [ -f "$PDF" ]; then
+              sha256sum "$PDF" | tee "$PROV/paper.sha256" | tee -a "$PROV/transcript.md"
+            else
+              echo "paper PDF not produced" | tee -a "$PROV/transcript.md"
+            fi
+          else
+            echo "latexmk/TeX not available in CI; paper build skipped gracefully" \
+              | tee -a "$PROV/transcript.md"
+          fi
+          echo '```' | tee -a "$PROV/transcript.md"
+
+      - name: Offline release verification (verify.sh)
+        run: |
+          {
+            echo
+            echo "## Offline release bundle verification"
+            echo '```'
+          } | tee -a "$PROV/transcript.md"
+          VERIFY=release/aspis-spend-q18-g37-mainnet-v1/verify.sh
+          if [ -x "$VERIFY" ] || [ -f "$VERIFY" ]; then
+            bash "$VERIFY" 2>&1 | tee "$PROV/verify-sh.log"
+            STATUS=${PIPESTATUS[0]}
+            tail -n 3 "$PROV/verify-sh.log" | tee -a "$PROV/transcript.md"
+            echo "verify.sh exit status: ${STATUS}" | tee -a "$PROV/transcript.md"
+            echo '```' | tee -a "$PROV/transcript.md"
+            if [ "${STATUS}" != "0" ]; then
+              echo "release bundle failed offline verification"
+              exit 1
+            fi
+          else
+            echo "verify.sh not found at ${VERIFY}" | tee -a "$PROV/transcript.md"
+            echo '```' | tee -a "$PROV/transcript.md"
+            exit 1
+          fi
+
+      - name: Record release-certificate digest
+        run: |
+          {
+            echo
+            echo "## Release certificate digest"
+            echo '```'
+          } | tee -a "$PROV/transcript.md"
+          CERT=release/aspis-spend-q18-g37-mainnet-v1/certificates/release.json
+          if [ -f "$CERT" ]; then
+            sha256sum "$CERT" | tee "$PROV/release-certificate.sha256" | tee -a "$PROV/transcript.md"
+          else
+            echo "release certificate not found at ${CERT}" | tee -a "$PROV/transcript.md"
+            exit 1
+          fi
+          echo '```' | tee -a "$PROV/transcript.md"
+
+      - name: Upload provenance artifact
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: provenance
+          path: provenance/
+          if-no-files-found: error
