@@ -851,6 +851,140 @@ mod tests {
                 verify,
             )
         }
+
+        /// Build the five metas with the four caller-chosen keys placed at the
+        /// proof/pool/nullifier/payer positions and run the transition. Only
+        /// the keys move, so two positions can be aliased to the same account
+        /// key to exercise the distinctness matrix; owners/flags stay canonical
+        /// except the explicit proof access controls.
+        #[allow(clippy::too_many_arguments)]
+        fn apply_with_position_keys<F>(
+            &mut self,
+            positions: [Pubkey; 4],
+            proof_is_signer: bool,
+            proof_is_writable: bool,
+            refund_path: bool,
+            public: &AtomicPaymentPublicInputs,
+            verify: F,
+        ) -> ProgramResult
+        where
+            F: FnOnce(&AccountInfo, &AtomicPaymentStatementV4, &[u8; 32]) -> ProgramResult,
+        {
+            let program_id = self.program_id;
+            let accounts = vec![
+                make_account(
+                    &positions[0],
+                    &program_id,
+                    &mut self.proof_lamports,
+                    &mut self.proof_data,
+                    proof_is_signer,
+                    proof_is_writable,
+                    false,
+                ),
+                make_account(
+                    &positions[1],
+                    &program_id,
+                    &mut self.pool_lamports,
+                    &mut self.pool_data,
+                    false,
+                    true,
+                    false,
+                ),
+                make_account(
+                    &positions[2],
+                    &program_id,
+                    &mut self.nullifier_lamports,
+                    &mut self.nullifier_data,
+                    false,
+                    true,
+                    false,
+                ),
+                make_account(
+                    &positions[3],
+                    &self.system_key,
+                    &mut self.payer_lamports,
+                    &mut self.payer_data,
+                    true,
+                    true,
+                    false,
+                ),
+                make_account(
+                    &self.system_key,
+                    &self.system_owner,
+                    &mut self.system_lamports,
+                    &mut self.system_data,
+                    false,
+                    false,
+                    true,
+                ),
+            ];
+            if refund_path {
+                verify_and_apply_atomic_payment_state_with_proof_refund(
+                    &program_id,
+                    &accounts,
+                    public,
+                    verify,
+                )
+            } else {
+                verify_and_apply_atomic_payment_state(&program_id, &accounts, public, verify)
+            }
+        }
+
+        /// The canonical five metas but with the nullifier account owned by
+        /// `nullifier_owner` instead of the program. Used to construct the
+        /// wrong-owner / pre-created hostile nullifier shapes.
+        fn accounts_with_nullifier_owner<'a>(
+            &'a mut self,
+            nullifier_owner: &'a Pubkey,
+        ) -> Vec<AccountInfo<'a>> {
+            vec![
+                make_account(
+                    &self.proof_key,
+                    &self.program_id,
+                    &mut self.proof_lamports,
+                    &mut self.proof_data,
+                    false,
+                    false,
+                    false,
+                ),
+                make_account(
+                    &self.pool_key,
+                    &self.program_id,
+                    &mut self.pool_lamports,
+                    &mut self.pool_data,
+                    false,
+                    true,
+                    false,
+                ),
+                make_account(
+                    &self.nullifier_key,
+                    nullifier_owner,
+                    &mut self.nullifier_lamports,
+                    &mut self.nullifier_data,
+                    false,
+                    true,
+                    false,
+                ),
+                make_account(
+                    &self.payer_key,
+                    &self.system_key,
+                    &mut self.payer_lamports,
+                    &mut self.payer_data,
+                    true,
+                    true,
+                    false,
+                ),
+                make_account(
+                    &self.system_key,
+                    &self.system_owner,
+                    &mut self.system_lamports,
+                    &mut self.system_data,
+                    false,
+                    false,
+                    true,
+                ),
+            ]
+        }
     }
 
     #[test]
@@ -1276,5 +1410,453 @@ mod tests {
         drop(accounts);
         assert_eq!(fixture.pool_data, pool_before);
         assert_eq!(fixture.nullifier_data, marker_before);
+    }
+
+    /// Adversarial account-aliasing / distinctness evidence for the atomic
+    /// verifier. Each test constructs one hostile account arrangement and
+    /// asserts the exact rejecting error together with an unchanged pool and
+    /// nullifier (and, on the refund path, unchanged lamports). The full
+    /// pairwise distinctness matrix over {proof, pool, nullifier, payer} is
+    /// covered by the first six tests; the remainder cover wrong-owner,
+    /// wrong-discriminator, pre-created/pre-seeded nullifier, sequence
+    /// overflow, and mid-verification state mutation caught by the recheck.
+    mod adversarial_account_aliasing {
+        use super::*;
+
+        // --- Pairwise distinctness matrix over the four mutable accounts. ---
+
+        #[test]
+        fn rejects_proof_account_aliased_to_pool_without_mutation() {
+            let public = valid_public(2_100, 2_200);
+            let mut fixture = Fixture::new(&public, public.current_anchor);
+            let pool_before = fixture.pool_data;
+            let marker_before = fixture.nullifier_data;
+            let positions = [
+                fixture.pool_key,
+                fixture.pool_key,
+                fixture.nullifier_key,
+                fixture.payer_key,
+            ];
+            let verifier_called = Cell::new(false);
+            let result = fixture.apply_with_position_keys(
+                positions,
+                false,
+                false,
+                false,
+                &public,
+                |_, _, _| {
+                    verifier_called.set(true);
+                    Ok(())
+                },
+            );
+            assert_eq!(result, Err(ProgramError::InvalidArgument));
+            assert!(!verifier_called.get());
+            assert_eq!(fixture.pool_data, pool_before);
+            assert_eq!(fixture.nullifier_data, marker_before);
+        }
+
+        #[test]
+        fn rejects_proof_account_aliased_to_nullifier_pda_without_mutation() {
+            let public = valid_public(2_110, 2_210);
+            let mut fixture = Fixture::new(&public, public.current_anchor);
+            let pool_before = fixture.pool_data;
+            let marker_before = fixture.nullifier_data;
+            let positions = [
+                fixture.nullifier_key,
+                fixture.pool_key,
+                fixture.nullifier_key,
+                fixture.payer_key,
+            ];
+            let verifier_called = Cell::new(false);
+            let result = fixture.apply_with_position_keys(
+                positions,
+                false,
+                false,
+                false,
+                &public,
+                |_, _, _| {
+                    verifier_called.set(true);
+                    Ok(())
+                },
+            );
+            assert_eq!(result, Err(ProgramError::InvalidArgument));
+            assert!(!verifier_called.get());
+            assert_eq!(fixture.pool_data, pool_before);
+            assert_eq!(fixture.nullifier_data, marker_before);
+        }
+
+        #[test]
+        fn rejects_proof_account_aliased_to_refund_destination_without_mutation() {
+            // On the refund path account 3 (payer) is the rent-refund
+            // recipient; aliasing the proof account to it must reject before
+            // any drain.
+            let public = valid_public(2_120, 2_220);
+            let mut fixture = Fixture::new(&public, public.current_anchor);
+            let pool_before = fixture.pool_data;
+            let marker_before = fixture.nullifier_data;
+            let proof_lamports_before = fixture.proof_lamports;
+            let payer_lamports_before = fixture.payer_lamports;
+            let positions = [
+                fixture.payer_key,
+                fixture.pool_key,
+                fixture.nullifier_key,
+                fixture.payer_key,
+            ];
+            let verifier_called = Cell::new(false);
+            let result = fixture.apply_with_position_keys(
+                positions,
+                true,
+                true,
+                true,
+                &public,
+                |_, _, _| {
+                    verifier_called.set(true);
+                    Ok(())
+                },
+            );
+            assert_eq!(result, Err(ProgramError::InvalidArgument));
+            assert!(!verifier_called.get());
+            assert_eq!(fixture.pool_data, pool_before);
+            assert_eq!(fixture.nullifier_data, marker_before);
+            assert_eq!(fixture.proof_lamports, proof_lamports_before);
+            assert_eq!(fixture.payer_lamports, payer_lamports_before);
+        }
+
+        #[test]
+        fn rejects_pool_state_aliased_to_nullifier_pda_without_mutation() {
+            let public = valid_public(2_130, 2_230);
+            let mut fixture = Fixture::new(&public, public.current_anchor);
+            let pool_before = fixture.pool_data;
+            let marker_before = fixture.nullifier_data;
+            let positions = [
+                fixture.proof_key,
+                fixture.pool_key,
+                fixture.pool_key,
+                fixture.payer_key,
+            ];
+            let verifier_called = Cell::new(false);
+            let result = fixture.apply_with_position_keys(
+                positions,
+                false,
+                false,
+                false,
+                &public,
+                |_, _, _| {
+                    verifier_called.set(true);
+                    Ok(())
+                },
+            );
+            assert_eq!(result, Err(ProgramError::InvalidArgument));
+            assert!(!verifier_called.get());
+            assert_eq!(fixture.pool_data, pool_before);
+            assert_eq!(fixture.nullifier_data, marker_before);
+        }
+
+        #[test]
+        fn rejects_payer_aliased_to_pool_state_without_mutation() {
+            // The payer is a writable signer; aliasing it onto the writable
+            // pool-state account must reject.
+            let public = valid_public(2_140, 2_240);
+            let mut fixture = Fixture::new(&public, public.current_anchor);
+            let pool_before = fixture.pool_data;
+            let marker_before = fixture.nullifier_data;
+            let positions = [
+                fixture.proof_key,
+                fixture.pool_key,
+                fixture.nullifier_key,
+                fixture.pool_key,
+            ];
+            let verifier_called = Cell::new(false);
+            let result = fixture.apply_with_position_keys(
+                positions,
+                false,
+                false,
+                false,
+                &public,
+                |_, _, _| {
+                    verifier_called.set(true);
+                    Ok(())
+                },
+            );
+            assert_eq!(result, Err(ProgramError::InvalidArgument));
+            assert!(!verifier_called.get());
+            assert_eq!(fixture.pool_data, pool_before);
+            assert_eq!(fixture.nullifier_data, marker_before);
+        }
+
+        #[test]
+        fn rejects_payer_aliased_to_nullifier_pda_without_mutation() {
+            let public = valid_public(2_150, 2_250);
+            let mut fixture = Fixture::new(&public, public.current_anchor);
+            let pool_before = fixture.pool_data;
+            let marker_before = fixture.nullifier_data;
+            let positions = [
+                fixture.proof_key,
+                fixture.pool_key,
+                fixture.nullifier_key,
+                fixture.nullifier_key,
+            ];
+            let verifier_called = Cell::new(false);
+            let result = fixture.apply_with_position_keys(
+                positions,
+                false,
+                false,
+                false,
+                &public,
+                |_, _, _| {
+                    verifier_called.set(true);
+                    Ok(())
+                },
+            );
+            assert_eq!(result, Err(ProgramError::InvalidArgument));
+            assert!(!verifier_called.get());
+            assert_eq!(fixture.pool_data, pool_before);
+            assert_eq!(fixture.nullifier_data, marker_before);
+        }
+
+        // --- Wrong owner / wrong discriminator / hostile pre-creation. ---
+
+        #[test]
+        fn rejects_nullifier_pda_with_correct_seeds_but_foreign_owner_without_mutation() {
+            // The nullifier account key is the canonical PDA, but a third party
+            // owns it (neither the program nor the System Program).
+            let public = valid_public(2_300, 2_400);
+            let mut fixture = Fixture::new(&public, public.current_anchor);
+            let pool_before = fixture.pool_data;
+            let marker_before = fixture.nullifier_data;
+            let program_id = fixture.program_id;
+            let foreign_owner = Pubkey::new_unique();
+            assert_ne!(foreign_owner, program_id);
+            assert_ne!(foreign_owner, system_program::id());
+            let verifier_called = Cell::new(false);
+            let accounts = fixture.accounts_with_nullifier_owner(&foreign_owner);
+            let result = verify_and_apply_atomic_payment_state(
+                &program_id,
+                &accounts,
+                &public,
+                |_, _, _| {
+                    verifier_called.set(true);
+                    Ok(())
+                },
+            );
+            assert_eq!(result, Err(ProgramError::IncorrectProgramId));
+            drop(accounts);
+            assert!(!verifier_called.get());
+            assert_eq!(fixture.pool_data, pool_before);
+            assert_eq!(fixture.nullifier_data, marker_before);
+        }
+
+        #[test]
+        fn rejects_nullifier_pda_pre_created_system_owned_with_data_without_mutation() {
+            // A griefer pre-creates the nullifier PDA System-owned but writes
+            // data into it, so it is not the empty account the create path
+            // accepts.
+            let public = valid_public(2_310, 2_410);
+            let mut fixture = Fixture::new(&public, public.current_anchor);
+            fixture.nullifier_data[0] = 0x01;
+            let pool_before = fixture.pool_data;
+            let marker_before = fixture.nullifier_data;
+            let program_id = fixture.program_id;
+            let system_owner = system_program::id();
+            let verifier_called = Cell::new(false);
+            let accounts = fixture.accounts_with_nullifier_owner(&system_owner);
+            let result = verify_and_apply_atomic_payment_state(
+                &program_id,
+                &accounts,
+                &public,
+                |_, _, _| {
+                    verifier_called.set(true);
+                    Ok(())
+                },
+            );
+            assert_eq!(result, Err(ProgramError::IncorrectProgramId));
+            drop(accounts);
+            assert!(!verifier_called.get());
+            assert_eq!(fixture.pool_data, pool_before);
+            assert_eq!(fixture.nullifier_data, marker_before);
+        }
+
+        #[test]
+        fn rejects_pool_state_with_correct_owner_but_wrong_discriminator_without_mutation() {
+            // The pool account is program-owned and 80 bytes, but its magic is
+            // corrupted, so decode must reject before verification.
+            let public = valid_public(2_500, 2_600);
+            let mut fixture = Fixture::new(&public, public.current_anchor);
+            fixture.pool_data[0] ^= 0xff;
+            let pool_before = fixture.pool_data;
+            let marker_before = fixture.nullifier_data;
+            let verifier_called = Cell::new(false);
+            let result = fixture.apply(&public, |_, _, _| {
+                verifier_called.set(true);
+                Ok(())
+            });
+            assert_eq!(result, Err(ProgramError::InvalidAccountData));
+            assert!(!verifier_called.get());
+            assert_eq!(fixture.pool_data, pool_before);
+            assert_eq!(fixture.nullifier_data, marker_before);
+        }
+
+        #[test]
+        fn rejects_nullifier_marker_with_correct_owner_but_wrong_discriminator_without_mutation() {
+            // The nullifier account is program-owned and correctly sized, but
+            // holds non-zero data with the wrong magic.
+            let public = valid_public(2_510, 2_610);
+            let mut fixture = Fixture::new(&public, public.current_anchor);
+            fixture.nullifier_data = [0xab; ATOMIC_NULLIFIER_MARKER_LEN];
+            let pool_before = fixture.pool_data;
+            let marker_before = fixture.nullifier_data;
+            let verifier_called = Cell::new(false);
+            let result = fixture.apply(&public, |_, _, _| {
+                verifier_called.set(true);
+                Ok(())
+            });
+            assert_eq!(result, Err(ProgramError::InvalidAccountData));
+            assert!(!verifier_called.get());
+            assert_eq!(fixture.pool_data, pool_before);
+            assert_eq!(fixture.nullifier_data, marker_before);
+        }
+
+        #[test]
+        fn rejects_nullifier_pda_pre_seeded_with_foreign_marker_without_mutation() {
+            // The program-owned nullifier PDA already holds a valid marker for
+            // a different nullifier value; this is an inconsistent PDA and must
+            // reject rather than being overwritten.
+            let public = valid_public(2_700, 2_800);
+            let mut fixture = Fixture::new(&public, public.current_anchor);
+            let mut foreign_nullifier = public.nullifier;
+            foreign_nullifier[0] ^= 0xff;
+            NullifierMarkerV1 {
+                pool: fixture.pool_key,
+                nullifier: foreign_nullifier,
+            }
+            .encode(&mut fixture.nullifier_data)
+            .unwrap();
+            let pool_before = fixture.pool_data;
+            let marker_before = fixture.nullifier_data;
+            let verifier_called = Cell::new(false);
+            let result = fixture.apply(&public, |_, _, _| {
+                verifier_called.set(true);
+                Ok(())
+            });
+            assert_eq!(result, Err(ProgramError::InvalidAccountData));
+            assert!(!verifier_called.get());
+            assert_eq!(fixture.pool_data, pool_before);
+            assert_eq!(fixture.nullifier_data, marker_before);
+        }
+
+        #[test]
+        fn rejects_pool_sequence_overflow_before_verification_without_mutation() {
+            // A pool already at u64::MAX cannot advance; the transition must
+            // reject before running the verifier.
+            let public = valid_public(2_900, 3_000);
+            let mut fixture = Fixture::new(&public, public.current_anchor);
+            AtomicPoolStateV2 {
+                sequence: u64::MAX,
+                anchor: public.current_anchor,
+                deployment_domain: public.deployment_domain,
+            }
+            .encode(&mut fixture.pool_data)
+            .unwrap();
+            let pool_before = fixture.pool_data;
+            let marker_before = fixture.nullifier_data;
+            let verifier_called = Cell::new(false);
+            let result = fixture.apply(&public, |_, _, _| {
+                verifier_called.set(true);
+                Ok(())
+            });
+            assert_eq!(result, Err(ProgramError::ArithmeticOverflow));
+            assert!(!verifier_called.get());
+            assert_eq!(fixture.pool_data, pool_before);
+            assert_eq!(fixture.nullifier_data, marker_before);
+        }
+
+        // --- Mutable-state changed between snapshot and commit (recheck). ---
+
+        #[test]
+        fn rejects_pool_mutation_during_verification_via_recheck_without_commit() {
+            // A shared handle to the pool account changes its anchor while the
+            // verifier is running (modelling a concurrent/reentrant write
+            // between the validation snapshot and the final commit). The
+            // post-verification recheck must reject and the pool must not be
+            // advanced to `output_anchor`.
+            let public = valid_public(3_100, 3_200);
+            let mut fixture = Fixture::new(&public, public.current_anchor);
+            let program_id = fixture.program_id;
+            let output_anchor = public.output_anchor;
+            let accounts = fixture.accounts();
+            let pool_handle = accounts[1].clone();
+            let result = verify_and_apply_atomic_payment_state(
+                &program_id,
+                &accounts,
+                &public,
+                |_, _, _| {
+                    let mut data = pool_handle.try_borrow_mut_data().unwrap();
+                    data[POOL_ANCHOR_OFFSET..POOL_DEPLOYMENT_DOMAIN_OFFSET]
+                        .copy_from_slice(&[0x5c; 32]);
+                    Ok(())
+                },
+            );
+            assert_eq!(
+                result,
+                Err(ProgramError::Custom(ATOMIC_ERROR_ANCHOR_MISMATCH))
+            );
+            drop(pool_handle);
+            drop(accounts);
+            let observed = AtomicPoolStateV2::decode(&fixture.pool_data).unwrap();
+            assert_eq!(observed.sequence, 0, "pool sequence must not advance");
+            assert_ne!(
+                observed.anchor, output_anchor,
+                "pool must not be advanced to output_anchor"
+            );
+            assert!(NullifierMarkerV1::decode(&fixture.nullifier_data)
+                .unwrap()
+                .is_none());
+        }
+
+        #[test]
+        fn rejects_nullifier_marker_appearing_during_verification_via_recheck_without_commit() {
+            // The nullifier marker for this exact spend appears while the
+            // verifier runs (a concurrent spend of the same note). The recheck
+            // must report the nullifier as already spent and not advance the
+            // pool.
+            let public = valid_public(3_110, 3_210);
+            let mut fixture = Fixture::new(&public, public.current_anchor);
+            let program_id = fixture.program_id;
+            let pool_key = fixture.pool_key;
+            let accounts = fixture.accounts();
+            let nullifier_handle = accounts[2].clone();
+            let result = verify_and_apply_atomic_payment_state(
+                &program_id,
+                &accounts,
+                &public,
+                |_, _, _| {
+                    let mut marker_bytes = [0u8; ATOMIC_NULLIFIER_MARKER_LEN];
+                    NullifierMarkerV1 {
+                        pool: pool_key,
+                        nullifier: public.nullifier,
+                    }
+                    .encode(&mut marker_bytes)
+                    .unwrap();
+                    nullifier_handle
+                        .try_borrow_mut_data()
+                        .unwrap()
+                        .copy_from_slice(&marker_bytes);
+                    Ok(())
+                },
+            );
+            assert_eq!(
+                result,
+                Err(ProgramError::Custom(ATOMIC_ERROR_NULLIFIER_ALREADY_SPENT))
+            );
+            drop(nullifier_handle);
+            drop(accounts);
+            assert_eq!(
+                AtomicPoolStateV2::decode(&fixture.pool_data)
+                    .unwrap()
+                    .sequence,
+                0,
+                "pool sequence must not advance"
+            );
+        }
     }
 }

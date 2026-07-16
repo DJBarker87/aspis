@@ -13,6 +13,38 @@ Where each concept lives. File names are stable; functions are named so
 | Verify-and-apply (tag 65): ordering, atomicity, refund | `programs/aspis-verifier/src/atomic_payment.rs` — `verify_and_apply_atomic_payment_state_with_proof_refund`; validation and complete proof verification precede every write |
 | Statement decode and verify closures (tags 59/60/65) | `programs/aspis-verifier/src/verify.rs` |
 | Complete proof verifier | `crates/aspis-statement/src/state_only_spend.rs` — `verify_atomic_state_only_spend_v4_with_inverse` |
+| Account-distinctness matrix (production guard) | `programs/aspis-verifier/src/atomic_payment.rs` — `validate_accounts_and_state`; pairwise distinctness over {proof, pool, nullifier, payer}, PDA-seed and owner checks, and the post-verification recheck |
+
+### Adversarial account aliasing
+
+Explicit adversarial evidence that the atomic verifier rejects hostile account
+arrangements before any state write lives in
+`programs/aspis-verifier/src/atomic_payment.rs`, test module
+`tests::adversarial_account_aliasing` (`rg adversarial_account_aliasing`). Each
+test builds one hostile arrangement and asserts the exact error with an
+unchanged pool, nullifier, and (on the refund path) lamports. Covered cases:
+
+| Case | Test | Rejecting error |
+| --- | --- | --- |
+| proof == pool | `rejects_proof_account_aliased_to_pool_without_mutation` | `InvalidArgument` |
+| proof == nullifier PDA | `rejects_proof_account_aliased_to_nullifier_pda_without_mutation` | `InvalidArgument` |
+| proof == refund destination (payer) | `rejects_proof_account_aliased_to_refund_destination_without_mutation` | `InvalidArgument` |
+| pool == nullifier PDA | `rejects_pool_state_aliased_to_nullifier_pda_without_mutation` | `InvalidArgument` |
+| payer == pool (writable state) | `rejects_payer_aliased_to_pool_state_without_mutation` | `InvalidArgument` |
+| payer == nullifier PDA | `rejects_payer_aliased_to_nullifier_pda_without_mutation` | `InvalidArgument` |
+| correct PDA seeds, foreign owner | `rejects_nullifier_pda_with_correct_seeds_but_foreign_owner_without_mutation` | `IncorrectProgramId` |
+| nullifier pre-created System-owned with data | `rejects_nullifier_pda_pre_created_system_owned_with_data_without_mutation` | `IncorrectProgramId` |
+| pool: correct owner, wrong discriminator | `rejects_pool_state_with_correct_owner_but_wrong_discriminator_without_mutation` | `InvalidAccountData` |
+| nullifier: correct owner, wrong discriminator | `rejects_nullifier_marker_with_correct_owner_but_wrong_discriminator_without_mutation` | `InvalidAccountData` |
+| nullifier pre-seeded with a foreign marker | `rejects_nullifier_pda_pre_seeded_with_foreign_marker_without_mutation` | `InvalidAccountData` |
+| sequence overflow | `rejects_pool_sequence_overflow_before_verification_without_mutation` | `ArithmeticOverflow` |
+| pool changed between snapshot and commit | `rejects_pool_mutation_during_verification_via_recheck_without_commit` | `ATOMIC_ERROR_ANCHOR_MISMATCH` |
+| nullifier appears between snapshot and commit | `rejects_nullifier_marker_appearing_during_verification_via_recheck_without_commit` | `ATOMIC_ERROR_NULLIFIER_ALREADY_SPENT` |
+
+Refund-recipient substitution after proof sealing is covered separately by
+`tests::spend_refund_requires_writable_proof_signer_and_checked_balance`: a rent
+drain requires the proof account's own signature, so the recipient cannot be
+redirected without it.
 
 ## Cryptographic core (`crates/aspis-core`)
 
