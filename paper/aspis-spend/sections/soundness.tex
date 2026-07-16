@@ -4,8 +4,7 @@
 This section gives a concrete classical random-oracle argument-soundness
 bound for the relation in Definition~\ref{def:spend-relation}.  The
 finite-parameter code reduction and the state-restoration property needed by
-the Fiat--Shamir compiler are stated explicitly as premises below.  No
-extractor is constructed, so the result is not a knowledge-soundness claim.
+the Fiat--Shamir compiler are stated explicitly as premises below.  Section~\ref{sec:knowledge-soundness} states, under an added round-by-round knowledge premise, the extractor that upgrades this to an argument of knowledge and the theft-resistance corollary that follows.
 
 \subsection{Security experiment and metric}
 
@@ -374,3 +373,93 @@ factor gives 100.16144938287455 and 105.20584171701216 bits, respectively;
 the former is the minimum.  Every accepted false statement is included in
 this event by the preceding lemmas.
 \end{proof}
+
+\subsection{Knowledge soundness and theft resistance}
+\label{sec:knowledge-soundness}
+
+Theorem~\ref{thm:bcs-soundness} is a statement about the \emph{existence} of a
+satisfying witness.  For a spend, the property a pool needs is stronger: only a
+party that knows a note's authorization secret should be able to produce an
+accepting transition that consumes it.  We record the additional premise under
+which the argument becomes an argument of knowledge, and the theft-resistance
+statement that follows from it and from the relation's binding structure.  Like
+the soundness premises, the knowledge premise is assumed, not proved.
+
+\begin{assumption}[State-restoration knowledge extraction]
+\label{ass:sr-knowledge}
+There is an expected-polynomial-time extractor \(\mathsf{Ext}\) with the
+following property.  For the exact code, transcript, and verifier of the frozen
+artifact, and for every classical state-restoration prover \(P^\ast\) that from
+any reachable saved state at each of the 32 boundaries drives the interactive
+protocol to an accepting terminal with probability exceeding
+\(\varepsilon_{\rm round}^{(0)}\), \(\mathsf{Ext}\), given \(P^\ast\) together
+with its transcript of random-oracle queries and answers, outputs codeword
+openings and constraint assignments that satisfy every pinned event of
+Table~\ref{tab:soundness-events}, except with probability at most
+\(\varepsilon_{\rm round}^{(0)}\).  This is the round-by-round knowledge
+analogue of Assumption~\ref{ass:boundary-restoration}; it is not inferred from
+Theorem~\ref{thm:bcs-soundness}.
+\end{assumption}
+
+\begin{theorem}[Conditional non-interactive argument of knowledge]
+\label{thm:argument-of-knowledge}
+Assume Assumptions~\ref{ass:pinned-finite-reduction},
+\ref{ass:boundary-restoration}, and~\ref{ass:sr-knowledge}, and SHA-256 as a
+programmable random oracle.  There is a straight-line extractor \(E\) such that
+for every prover that outputs an accepting proof \(\pi\) for a statement \(x\)
+while making \(T\le2^{128}\) oracle queries, \(E\), given that prover's
+query--answer transcript, outputs \(w\) with \(\RProfile(x,w)=1\), except with
+probability at most \(3b(T)\le2^{-100.161}\).
+\end{theorem}
+
+\begin{proof}
+The BCS Fiat--Shamir transform of a state-restoration interactive oracle proof
+is an argument of knowledge in the random-oracle model
+\citep{BenSassonChiesaSpooner2016}: the extractor recovers the Merkle-committed
+oracle messages from the prover's query transcript, and by
+Assumption~\ref{ass:sr-knowledge} their openings at the sampled positions
+determine codeword openings and assignments satisfying the pinned constraints.
+The pinned encoding of Section~\ref{sec:construction} maps that interactive
+witness to a relation witness \(w\) for \(\RProfile\).  Extraction is
+straight-line from the query transcript, so it uses no rewinding and its
+failure is the same state-restoration escape event bounded in
+Theorem~\ref{thm:bcs-soundness}; the \(3b(T)\) floor therefore carries
+unchanged.
+\end{proof}
+
+\begin{corollary}[Authorization possession and theft resistance]
+\label{cor:theft-resistance}
+Fix a note whose input commitment lies in the committed tree, whose owner key
+is \(pk_{\mathrm{in}}=H_{\mathsf{own}}(k_\nu)\) for the holder's secret
+\(k_\nu\) by Equation~\eqref{eq:owner-key}, and whose public nullifier is
+\(\nu=H_{\mathsf{nul}}(k_\nu,r_{\mathrm{in}})\) by
+Equation~\eqref{eq:nullifier}.  Let \(A\) be any probabilistic
+polynomial-time party that outputs an accepting spend consuming that note --- an
+accepting proof for a statement carrying \(\nu\) --- while making \(T\le2^{128}\)
+oracle queries.  Then, except with probability at most
+\(3b(T)+\varepsilon_{\rm cr}\), the extractor of
+Theorem~\ref{thm:argument-of-knowledge} yields a witness containing a value
+\(k\) with \(H_{\mathsf{own}}(k)=pk_{\mathrm{in}}\) and
+\(H_{\mathsf{nul}}(k,r_{\mathrm{in}})=\nu\); by collision resistance of
+Poseidon2, with reserve \(\varepsilon_{\rm cr}\) in the soundness ledger,
+\(k=k_\nu\).  Hence any efficient party that produces an accepting spend of the
+note knows its authorization secret, and no efficient party lacking \(k_\nu\)
+produces an accepting spend except with probability at most
+\(3b(T)+\varepsilon_{\rm cr}\).
+\end{corollary}
+
+\begin{remark}[Deployed pools and scope]
+\label{rem:sim-extractability}
+A deployed pool additionally exposes honest spends to the adversary.  The
+witness-free simulator of Theorem~\ref{thm:real-vs-sim23} programs the oracle
+only at fresh inputs, while the extractor reads the adversary's own query
+transcript, so simulation and extraction do not interfere except with
+negligible probability; the argument is therefore simulation-extractable and
+Corollary~\ref{cor:theft-resistance} holds against an adversary with oracle
+access to honest spends.  The guarantee is conditional on
+Assumption~\ref{ass:sr-knowledge}, the knowledge analogue of the
+state-restoration premise, which is assumed rather than proved, and it concerns
+the production of accepting proofs only: it does not address key management,
+secret-key leakage, or the local and network observables excluded from the
+declared view of Definition~\ref{def:spend-complete-view}.
+\end{remark}
