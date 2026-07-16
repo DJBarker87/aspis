@@ -32,3 +32,8 @@ aspis-core = { path = "../../crates/aspis-core" }
 aspis-statement = { path = "../../crates/aspis-statement" }
 borsh.workspace = true
 solana-program.workspace = true
+
+[dev-dependencies]
+# Dispatch/lifecycle attack-surface fuzzing via proptest on the pinned stable
+# toolchain (cargo-fuzz's nightly requirement would break the stable pin).
+proptest = "1"
