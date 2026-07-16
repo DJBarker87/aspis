@@ -140,4 +140,53 @@ mod tests {
             );
         }
     }
+
+    // Teeth vector for the D-lane discharge (paper: fact (S2) of def:d-coupling,
+    // used by lem:d-lane-rbr). The D word enters the layer-zero recombination
+    // ONLY through the gamma^28 addend: changing only the D symbols shifts each
+    // slot by exactly powers[28] * delta_D and touches nothing else. This is the
+    // "zero coupling" the soundness proof of the zero-factor D lane rests on.
+    #[test]
+    fn d_lane_couples_only_through_gamma_28_addend() {
+        let mut state = 0xd1a1_c0de_0000_d00d;
+        for _ in 0..16 {
+            let gamma = next_qm31(&mut state);
+            let powers = StateOnlySpendQueryPowers::new(gamma);
+            let gamma_28 = qm31_power_table::<SPEND_TOTAL_COLUMNS>(gamma)[SPEND_D_GENERATOR_INDEX];
+
+            let mut c1 = [0u8; STATE_ONLY_C1_LEAF_BYTES];
+            for slot in 0..STATE_ONLY_FIBER_SLOTS {
+                for column in 0..crate::state_only_query::STATE_ONLY_C1_COLUMNS {
+                    let offset =
+                        (slot * crate::state_only_query::STATE_ONLY_C1_COLUMNS + column) * 4;
+                    c1[offset..offset + 4].copy_from_slice(&next_m31(&mut state).to_le_bytes());
+                }
+            }
+            // Two C2 leaves identical except in the D symbols.
+            let mut c2_a = [0u8; SPEND_C2_LEAF_BYTES];
+            for helper in 0..SPEND_C2_COLUMNS {
+                for slot in 0..STATE_ONLY_FIBER_SLOTS {
+                    let offset = (helper * STATE_ONLY_FIBER_SLOTS + slot) * 16;
+                    next_qm31(&mut state).write_le_bytes(&mut c2_a[offset..offset + 16]);
+                }
+            }
+            let mut c2_b = c2_a;
+            let mut delta_d = [QM31::ZERO; STATE_ONLY_FIBER_SLOTS];
+            for slot in 0..STATE_ONLY_FIBER_SLOTS {
+                let offset = spend_d_symbol_offset(slot).unwrap();
+                let old = QM31::from_le_bytes(&c2_a[offset..offset + 16]).unwrap();
+                let new = next_qm31(&mut state);
+                new.write_le_bytes(&mut c2_b[offset..offset + 16]);
+                delta_d[slot] = new.sub(old);
+            }
+
+            let out_a =
+                gamma_combine_state_only_spend_layer0_prepared(&c1, &c2_a, &powers).unwrap();
+            let out_b =
+                gamma_combine_state_only_spend_layer0_prepared(&c1, &c2_b, &powers).unwrap();
+            for slot in 0..STATE_ONLY_FIBER_SLOTS {
+                assert_eq!(out_b[slot].sub(out_a[slot]), gamma_28.mul(delta_d[slot]));
+            }
+        }
+    }
 }
