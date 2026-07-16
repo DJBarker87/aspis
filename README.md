@@ -2,19 +2,26 @@
 
 [![Spend integration](https://github.com/DJBarker87/aspis/actions/workflows/spend-integration.yml/badge.svg)](https://github.com/DJBarker87/aspis/actions/workflows/spend-integration.yml)
 
-Aspis is a shielded payment system whose spend proofs are verified directly
-on Solana L1 — no trusted setup, no off-chain verifier. Transparent proofs
-are large, and Solana caps every transaction at 1.4 million compute units,
-which has kept transparent proof verification on L1 out of reach. Aspis
-Spend, the q18/g37 release in this repository, verifies a full
-shielded-spend proof, advances the pool state, and records the nullifier in
-one transaction under that cap.
+Aspis is a transparent shielded-spend verifier for Solana L1 — no trusted
+setup, no off-chain verifier. Transparent proofs are large, and Solana caps
+every transaction at 1.4 million compute units, which has kept transparent
+proof verification on L1 out of reach. Aspis Spend, the q18/g37 release in
+this repository, verifies a full shielded-spend proof, advances the pool
+state, and records the nullifier in one transaction under that cap.
 
-On 2026-07-16 Aspis Spend verified a full shielded-spend proof, advanced the
-pool state, and recorded the nullifier in one finalized mainnet-beta
-transaction at 1,344,003 CU:
-[`3G1vogg…sRPFcv`](https://explorer.solana.com/tx/3G1voggszvDMGi5PbGM1kuEMYKvh2TNMbH6hHHwndUdRQJNT7ehRFpQpksxLnx5tp2xkS5jGi359rVXk42sRPFcv?cluster=mainnet-beta)
-([evidence](docs/mainnet-demo.md)).
+Scope: this release is the spend-verification primitive, not a complete
+payment system. It proves a one-input/one-output same-path leaf replacement
+in a depth-20 tree and applies the atomic pool and nullifier state
+transition. There is no deposit instruction in this release; notes are
+assumed already present, and the anonymity set does not grow. The mainnet
+execution below advanced one pool from sequence 0 to 1.
+
+On 2026-07-16 Aspis Spend verified a shielded-spend proof, advanced the pool
+state, and recorded the nullifier in one finalized mainnet-beta transaction
+at 1,344,003 CU:
+[`3G1vogg…sRPFcv`](https://explorer.solana.com/tx/3G1voggszvDMGi5PbGM1kuEMYKvh2TNMbH6hHHwndUdRQJNT7ehRFpQpksxLnx5tp2xkS5jGi359rVXk42sRPFcv?cluster=mainnet-beta).
+The program was a disposable deployment, closed after the run; there is no
+standing instance to call ([evidence](docs/mainnet-demo.md)).
 
 This is a research release, not an audit or a production service; the exact
 claim, model, and limitations are stated in the
@@ -29,14 +36,19 @@ public-evidence search for the claim shape.
 | One-transaction verification and state transition | 1,344,003 of the 1,400,000-CU cap |
 | Proof | 65,407 bytes |
 | Soundness floor (work-normalized, proven Johnson/MCA regime) | 100.16 bits |
-| Witness hiding | 103.02 bits pairwise, 104.02 bits versus simulator |
+| Work to forge (raw, random-oracle queries) | ≈ 2^106 |
+| Witness hiding (computational, conditional on the paper's affine-image premise) | 103.02 bits pairwise, 104.02 bits versus simulator |
 | Finalized slot | `433219840` |
 
 The soundness floor is work-normalized: an adversary limited to T
 random-oracle queries, 1 ≤ T ≤ 2^128, falsely accepts with probability at
-most T · 2^−100.16. The raw acceptance bound at large T is not booked as the
-floor; the normalization and both interval endpoints are stated in the
-paper.
+most T · 2^−100.16. In plain terms, forging costs on the order of 2^106
+random-oracle queries; the round-by-round error is about 2^−106.79, and
+100.16 is its conservative per-query restatement after a whole-ledger factor
+of three. The raw acceptance bound is vacuous at T = 2^128 and is not booked
+as the floor. The 100.16-bit figure is argument soundness, not knowledge
+soundness: an accepting proof implies a satisfying witness exists, not that
+the spender knows the note's key (see [Limitations](#limitations)).
 
 ## No trusted setup
 
@@ -71,9 +83,28 @@ it is uploaded once and verified in place:
 
 A spend therefore costs 71 setup transactions (proof-account create, 69
 chunk uploads, finalize) before the verification transaction, plus 2 per
-pool (create, initialize). Spends within one pool are strictly sequential:
-each proof binds the pool's current sequence number. The proof account's
-rent is held until the verification transaction refunds it.
+pool (create, initialize). The proof account's rent is held from creation
+until the verification transaction refunds it.
+
+### Throughput and scaling
+
+Spends within one pool are strictly sequential. Each proof is ground against
+the pool's current sequence number, and the pool account is writable-locked
+during the verification transaction, so one pool processes one spend at a
+time and each spend needs a freshly ground proof against the state the
+previous spend produced. Per-pool throughput is therefore bounded by prove-
+and-grind latency, not by Solana. Horizontal scaling is by running multiple
+independent pools; this fragments the anonymity set across pools, so the
+privacy of a spend is set by the pool it lands in, not by the system as a
+whole. A shared cross-pool state structure (a nullifier queue or tree in
+place of one PDA per spend) is not part of this release.
+
+Each spend also creates one canonical nullifier PDA that persists on-chain at
+its rent minimum; nullifier storage therefore grows linearly with the number
+of spends. The 1,344,003-CU verification leaves 55,997 CU of headroom under
+the cap (about 4%), so the parameters do not survive a runtime compute-unit
+repricing that raises this workload past the cap (see
+[Limitations](#limitations)).
 
 ## Construction
 
@@ -113,15 +144,42 @@ Each limitation is recorded in the paper's limitations section.
   produce an accepting spend. Knowledge soundness, and with it a
   theft-resistance theorem for a deployed pool, is outside this release's
   claims.
+- **No deposit path; anonymity set does not grow.** This release ships the
+  spend verifier only. There is no deposit, mint, or append-leaf
+  instruction; the pool's starting anchor is supplied at initialization
+  rather than accumulated from deposits, and the relation replaces a leaf in
+  place rather than adding one. The demonstrated spend advanced one pool from
+  sequence 0 to 1, so its anonymity set is one. A deposit construction and a
+  growing set are future work.
+- **Single-note, single-pool.** One input, one output, one pool account, one
+  nullifier PDA per spend, strictly sequential (see
+  [Throughput and scaling](#throughput-and-scaling)). Multi-input/output,
+  change/merge, and a shared nullifier structure are not in this release.
 - **Deployment-domain residual.** The statement binds a deployment domain,
   `sha256("aspis-spend-deployment-domain-v1" || runtime_program_id ||
   domain_tag)`, stored by the pool at initialization and compared, with a
   distinct error code, before any proof byte is interpreted. A proof ground
-  for one deployment is rejected by every pool storing another domain. The
-  residual is keyholder-shaped: the holder of the program-id keypair can
-  redeploy the same program id with the same domain tag on another cluster
-  and reproduce the domain. Independent observers can recompute the domain
-  from the public program id and tag and verify the binding.
+  for one deployment is rejected by every pool storing another domain. Two
+  residuals remain. First, the binding is keyholder-shaped: the holder of the
+  program-id keypair can redeploy the same program id with the same domain
+  tag on another cluster and reproduce the domain. Second, the domain tag is
+  an operator-supplied label; the program does not check it against the
+  cluster genesis, so a pool initialized on one cluster with another
+  cluster's tag produces that cluster's domain. Cross-cluster isolation
+  therefore rests on the operator choosing an honest tag, and is verified by
+  the off-chain executor's genesis check, not enforced by the program.
+  Binding the cluster genesis into the domain would remove the second
+  residual; it is not in this release because it would require regenerating
+  the proof.
+- **Hiding is conditional.** The 103/104-bit hiding floors hold under the
+  affine-image rank and coverage premise stated in the paper, whose evidence
+  is a release-time machine check, not an external audit or a
+  proof-assistant development.
+- **No external audit; no live instance.** No third-party security audit or
+  coverage-guided fuzz campaign has been performed
+  ([internal review](docs/reviews/prepublication-security-review.md)). The
+  mainnet program was disposable and is closed; there is no standing
+  deployment to call.
 - **Compute-unit repricing.** Runtime CU pricing differs across clusters and
   changes over time. A repricing past the cap halts spends at these
   parameters — the executor's same-cluster preflight simulation fails closed

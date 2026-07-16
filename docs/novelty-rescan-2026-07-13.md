@@ -171,6 +171,17 @@ replace, the repository's own devnet label.
 
 ## 4. Nearest-prior comparison
 
+This table compares candidates only on the eight-part conjunction of Section
+1 (transparent, on-chain, one-transaction, proven-regime). It is not a
+system comparison. On axes this release does not claim, several of these
+candidates are ahead of Aspis Spend: Cloak, Privacy Cash, and the Light
+Protocol stack are live pools with deposit paths and growing anonymity sets,
+whereas Aspis Spend ships the spend verifier only — no deposit instruction,
+one input and one output, a single sequential pool, and a mainnet execution
+that advanced one pool from sequence 0 to 1. The "Missing from the exact
+conjunction" column records where each candidate falls outside the narrow
+claim, not where it is weaker overall.
+
 | Candidate | What it establishes | Missing from the exact conjunction | Primary evidence |
 |---|---|---|---|
 | Protocol 01 | Transparent STARK/FRI shielded-payment programs deployed on Solana devnet | Mainnet-beta; complete proof verification and state mutation in one transaction; no published proven-Johnson/MCA whole-ledger certificate found | [README](https://github.com/IsSlashy/Protocol-01/blob/790dbff34ac96302fc6336d411fac14f683f5be9/README.md#L126-L154), [phase split](https://github.com/IsSlashy/Protocol-01/blob/790dbff34ac96302fc6336d411fac14f683f5be9/programs/p01_stark_verifier/src/lib.rs#L222-L239), [later transfer](https://github.com/IsSlashy/Protocol-01/blob/790dbff34ac96302fc6336d411fac14f683f5be9/programs/zk_shielded/src/instructions/transfer_stark.rs#L169-L214) |
