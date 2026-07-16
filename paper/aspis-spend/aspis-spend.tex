@@ -79,14 +79,16 @@ proof-account setup, proof upload, and proof finalization were separate
 transactions.  The security statements are argument soundness and
 conditional computational zero knowledge for the exact relation and declared
 view; they do not assert a statistical, perfect, or standard-model
-zero-knowledge result.  Under an added round-by-round knowledge premise --- the
-knowledge analogue of the state-restoration premise, assumed rather than proved
---- a straight-line extractor makes the argument an argument of knowledge, and,
-because the relation binds the nullifier and owner key to the spending secret,
-yields conditional theft resistance: no efficient party lacking a note's secret
-produces an accepting spend of it except with the stated soundness error.  The
-relation is a same-path leaf replacement: this release verifies a spend and
-does not include a deposit construction or a growing anonymity set.
+zero-knowledge result.  Under an added round-by-round knowledge premise that
+posits a straight-line extractor --- the knowledge analogue of the
+state-restoration premise, assumed rather than proved --- the argument is an
+argument of knowledge, and, because the public nullifier binds the note to its
+spending secret, this yields conditional theft resistance against an adversary
+producing a spend in isolation: it knows the note's secret except with the
+stated soundness error.  Theft resistance against an adversary that also
+observes honest spends needs a further non-malleability premise and is left
+open.  The relation is a same-path leaf replacement: this release verifies a
+spend and does not include a deposit construction or a growing anonymity set.
 \end{abstract}
 
 \input{sections/introduction}
