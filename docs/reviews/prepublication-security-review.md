@@ -37,9 +37,10 @@ was subsequently closed. That run advanced the pool from sequence zero to one
 Suitable for publication as a **research result**: a working transparent
 shielded-spend verification transition demonstrated once on L1, with an honest
 and mostly self-attested security argument. **Not cleared as a value-bearing
-service.** There is no deposit path, no anonymity-set growth, no
-theft-resistance theorem, and no live callable instance. No external audit was
-performed.
+service.** There is no deposit path, no anonymity-set growth, only a
+*conditional* theft-resistance theorem (it rests on the round-by-round
+knowledge premise, not yet discharged), and no live callable instance. No
+external audit was performed.
 
 ## Assessment
 
@@ -100,19 +101,26 @@ path there is no set for a spend to hide within.
 committed set on-chain under the same atomicity discipline, and re-evaluate
 hiding against a realistic set size rather than a one-element pool.
 
-### R-02: No knowledge soundness / no theft-resistance theorem
+### R-02: Theft resistance is conditional, not unconditional
 **Severity: High. Status: documented-constraint.**
 
-The soundness result is **argument soundness for the exact relation only**. No
-extractor is constructed and the paper states this outright
-(`soundness.tex:1-8`). There is consequently no theft-resistance theorem: the
-system is not proven to prevent a party who does not know a note's opening from
-producing an accepting spend of it. For a value-bearing shielded system this is
-the theorem that would matter most, and it is absent.
+The base result is argument soundness for the exact relation. The paper now
+also constructs a straight-line extractor (the BCS Fiat--Shamir-of-IOP
+extractor, `lem:generic-extraction`) and proves a conditional argument of
+knowledge (`thm:argument-of-knowledge`) with a theft-resistance corollary: any
+party producing an accepting spend of a note must know its secret, since the
+public nullifier binds the note to it. The deployed-pool case, where the
+adversary has also seen honest spends, is covered by proving weak unique
+response and invoking Fiat--Shamir simulation-extractability. So the theorem
+that matters most is present, but it is conditional: it rests on the
+round-by-round knowledge premise (`ass:sr-knowledge`, reduced to the static
+`ass:relation-knowledge-core`), which is assumed, not proved. It is not an
+unconditional guarantee and says nothing about key management or secret-key
+leakage.
 
-*Fix direction:* construct a witness extractor for the relation (or adopt a
-knowledge-sound compiler) and prove theft-resistance against the note
-commitment before any custody of value is contemplated.
+*Fix direction:* discharge the residual algebraic knowledge core so the theorem
+rests only on cited results, and until then keep it labelled conditional; no
+custody of value on the strength of a conditional premise.
 
 ### R-03: Hiding floors are conditional on an unverified, self-attested premise
 **Severity: High. Status: open; rank premise now independently checkable (see update below).**
@@ -252,7 +260,7 @@ the permutation input rather than by call-site convention.
 | ID | Finding | Severity | Status |
 |---|---|---|---|
 | R-01 | Single-spend primitive; no deposit / no anonymity-set growth | High | documented-constraint |
-| R-02 | No knowledge soundness / no theft-resistance theorem | High | documented-constraint |
+| R-02 | Theft resistance conditional on the round-by-round knowledge premise | High | documented-constraint |
 | R-03 | Hiding floors conditional on self-attested affine-image premise | High | open |
 | R-04 | Soundness floor is work-normalized; raw bound vacuous | Medium | documented-constraint |
 | R-05 | Deployment-domain residual: keyholder-shaped, genesis-unchecked | Medium | documented-constraint |
