@@ -13,8 +13,8 @@ use aspis_core::{
 };
 
 use crate::{
-    poseidon2::{hash_fields, Digest, DIGEST_ELEMS},
-    spend::{SpendPublic, DOMAIN_MERKLE_NODE, VALUE_LIMIT},
+    poseidon2::{hash_merkle_node_sponge, Digest, DIGEST_ELEMS},
+    spend::{SpendPublic, VALUE_LIMIT},
 };
 
 pub const ATOMIC_PAYMENT_TREE_DEPTH: usize = 20;
@@ -99,7 +99,7 @@ fn merkle_parent(left: &Digest, right: &Digest) -> Digest {
     let mut input = [M31::ZERO; DIGEST_ELEMS * 2];
     input[..DIGEST_ELEMS].copy_from_slice(left);
     input[DIGEST_ELEMS..].copy_from_slice(right);
-    hash_fields(DOMAIN_MERKLE_NODE, &input)
+    hash_merkle_node_sponge(&input)
 }
 
 pub fn insertion_root(
