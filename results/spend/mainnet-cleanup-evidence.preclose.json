@@ -1,0 +1,82 @@
+{
+  "artifact": "spend_programdata_cleanup_preclose",
+  "generated_at_utc": "2026-07-16T06:29:26.538627+00:00",
+  "network_genesis_hash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+  "rpc_origin_redacted": "https://api.mainnet-beta.solana.com/<redacted>",
+  "payer_pubkey": "78u3cwKrso1yW2dwaBmMmvo8F44gvBBGfkfFay1d8HQZ",
+  "disposable_program_id": "GQPNqfYF17Nj2dGsf6Q2AtiouyM67YxFZPh9LxBk2Ye3",
+  "programdata_address": "GoXXs2juAjmpvcsX7iLdHsGJCwBwB3HHQwvYyfV3RuU",
+  "upgrade_authority": "78AojysuKLSS1PeifTBy7L38rEZjgsMxsVFRagUxBpNM",
+  "sbf_path": "/Users/dominic/ZK/target/deploy/aspis_verifier.so",
+  "sbf_bytes": 924344,
+  "sbf_sha256": "e289faf85fe4773880794d5d4356461bb9cb94077b68711f99348efe19707d7e",
+  "program_max_len": 924344,
+  "exact_program_and_programdata_validated": true,
+  "prestate": {
+    "context_slot": 433220205,
+    "accounts": [
+      {
+        "address": "78u3cwKrso1yW2dwaBmMmvo8F44gvBBGfkfFay1d8HQZ",
+        "present": true,
+        "lamports": 750256560,
+        "owner": "11111111111111111111111111111111",
+        "executable": false,
+        "data_len": 0,
+        "data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "raw_account_image_sha256": "6e5da5f0a939f7f632ab4826696dc3ae9bf3e0f266091a5e95a71025b7ba6fc8"
+      },
+      {
+        "address": "GQPNqfYF17Nj2dGsf6Q2AtiouyM67YxFZPh9LxBk2Ye3",
+        "present": true,
+        "lamports": 1141440,
+        "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+        "executable": true,
+        "data_len": 36,
+        "data_sha256": "d40f025dba327c87bbd6c2867a7c5838600bb5b8dd544676195e1721dc11a24f",
+        "raw_account_image_sha256": "83bc98af4d4024f7da730ac8e49c433a5fc7564cb11aa9102ea0d1dbe4e5f5d4"
+      },
+      {
+        "address": "GoXXs2juAjmpvcsX7iLdHsGJCwBwB3HHQwvYyfV3RuU",
+        "present": true,
+        "lamports": 6434638320,
+        "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+        "executable": false,
+        "data_len": 924389,
+        "data_sha256": "708c5e5e171942b7b93df4188a564681fe49e476902014e634734b04ad8ade83",
+        "raw_account_image_sha256": "97ea9a3e0e62da8fec5885119be27ff7072cee196f8fa9fc1f74437c5dff9c92"
+      },
+      {
+        "address": "78AojysuKLSS1PeifTBy7L38rEZjgsMxsVFRagUxBpNM",
+        "present": false,
+        "lamports": null,
+        "owner": null,
+        "executable": null,
+        "data_len": null,
+        "data_sha256": null,
+        "raw_account_image_sha256": null
+      }
+    ]
+  },
+  "programdata_lamports": 6434638320,
+  "compute_unit_price_micro_lamports": 0,
+  "top_level_instruction_count": 2,
+  "expected_signature": "3mfD5KEYXJ4ZyC2XeHW4fXKNYUqo46SA1waGeJ3CNz7fBzzxqy4rK6tiniVpx5D4ZpDziCEKgi66KUdEjyLkrVDo",
+  "recent_blockhash": "BxtMejeqCCnDX64KFsjKiB5V79zF6EaoyAYyyEstU1xD",
+  "last_valid_block_height": 411287513,
+  "quoted_fee_lamports": 10000,
+  "maximum_cleanup_fee_lamports": 1000000,
+  "signed_wire_base64": "AoqLx9BV9wjiMR7Uy3hRIM/xqb6qCME2uzuMXI8QwlY/ZDc7NCatAhC2eTivY3fL9XGbRkvUlVDAfpWTSTMBWQ4780phPwTaAjBnPpQ8tG/mMVersD46zMWbbLmsfcQ3DuJR6KZtmvcdtXRPaxIUtMmk3HbmFr3I4PoIc77AMIEIAgECBlssCO3BJxRKTqsqSoD26j7+2C7bBy1GAQitfKZpKfNuWvxGVwoMx7W9//FjI/VFAPGOsYetjW/a21RQ/iwATJIEDFHZT0AR25zTgRq/P4WSoWHs3UCgeQB+GgRfILAvk+Tc9rc1XtHehikFYWPFas4qDyDvObWmhFnD7C0wG9MYAqj2kU6IobDiEBU+92OuKwDCuT0WwSTSwFN6EASAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAKLl4dmvWlDuyNDDCNQ6RlIf6KZxfbHRMXVUGxqJ1GFqAgUACQMAAAAAAAAAAAQEAgABAwQFAAAA",
+  "signed_wire_bytes": 381,
+  "signed_wire_sha256": "4df9a00decacd0b0450e3e604e464366c3697b95124841757b4780c8a0498ec5",
+  "message_sha256": "aee0b4f2d4f6e5593a3b66884ec87f84f116114f1837ceb4c2d7353784e56966",
+  "simulation": {
+    "exact_signed_wire_simulated": true,
+    "context_slot": 433220206,
+    "error": null,
+    "compute_units_consumed": 2520,
+    "log_count": 5,
+    "logs_sha256": "29b0e82dd6dbf54aee211e566f6053ca91e9df23c844d588f774d7fbaf6ceb6d"
+  },
+  "submission_performed_when_written": false,
+  "postclose_evidence_path": "/Users/dominic/ZK/results/spend/mainnet-cleanup-evidence.json"
+}

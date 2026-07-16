@@ -1,3 +1,4 @@
+mod spend_bundle;
 mod spend_devnet;
 mod spend_devnet_close;
 mod spend_mainnet;
@@ -66,6 +67,15 @@ fn main() -> Result<()> {
                 path.display()
             );
             Ok(())
+        }
+        Some("spend-bundle") => {
+            let dir = stage2_results_dir()?;
+            let workspace_root = dir
+                .parent()
+                .and_then(|results| results.parent())
+                .ok_or_else(|| anyhow!("no workspace root above stage2 results"))?
+                .to_path_buf();
+            spend_bundle::run(&workspace_root)
         }
         Some("spend-mainnet-readiness") => {
             let arguments = args.collect::<Vec<_>>();
@@ -235,7 +245,7 @@ fn main() -> Result<()> {
             Ok(())
         }
         other => bail!(
-            "usage: cargo run -p aspis-xtask -- spend-measure | spend-release | spend-mainnet-readiness | spend-mainnet-execute | spend-mainnet-cleanup | spend-devnet-readiness | spend-devnet-execute | spend-devnet-upload-smoke | spend-devnet-close-smoke (got {:?})",
+            "usage: cargo run -p aspis-xtask -- spend-measure | spend-release | spend-bundle | spend-mainnet-readiness | spend-mainnet-execute | spend-mainnet-cleanup | spend-devnet-readiness | spend-devnet-execute | spend-devnet-upload-smoke | spend-devnet-close-smoke (got {:?})",
             other
         ),
     }

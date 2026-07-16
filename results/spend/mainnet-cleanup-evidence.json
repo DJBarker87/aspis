@@ -1,0 +1,84 @@
+{
+  "artifact": "spend_programdata_cleanup_postclose",
+  "generated_at_utc": "2026-07-16T06:29:41.191413+00:00",
+  "network_genesis_hash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+  "rpc_origin_redacted": "https://api.mainnet-beta.solana.com/<redacted>",
+  "preclose_evidence_path": "/Users/dominic/ZK/results/spend/mainnet-cleanup-evidence.preclose.json",
+  "preclose_evidence_sha256": "10997bd64d07025ded17287ee1c1aeb7c1543356b9a5ab4b60e20447f775578d",
+  "preclose_evidence_bytes": 4057,
+  "preclose_evidence_mode": 292,
+  "signature": "3mfD5KEYXJ4ZyC2XeHW4fXKNYUqo46SA1waGeJ3CNz7fBzzxqy4rK6tiniVpx5D4ZpDziCEKgi66KUdEjyLkrVDo",
+  "finalized_slot": 433220251,
+  "block_time": 1784183366,
+  "landed_wire_sha256": "4df9a00decacd0b0450e3e604e464366c3697b95124841757b4780c8a0498ec5",
+  "landed_wire_identical_to_preclose_artifact": true,
+  "landed_compute_units_consumed": 2520,
+  "landed_log_count": 5,
+  "landed_logs_sha256": "29b0e82dd6dbf54aee211e566f6053ca91e9df23c844d588f774d7fbaf6ceb6d",
+  "poststate": {
+    "context_slot": 433220255,
+    "accounts": [
+      {
+        "address": "78u3cwKrso1yW2dwaBmMmvo8F44gvBBGfkfFay1d8HQZ",
+        "present": true,
+        "lamports": 7184884880,
+        "owner": "11111111111111111111111111111111",
+        "executable": false,
+        "data_len": 0,
+        "data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "raw_account_image_sha256": "4c0551f7cf01cb15841acd9d537e5de97e3df60180f0bfb22d67992f9d93b922"
+      },
+      {
+        "address": "GQPNqfYF17Nj2dGsf6Q2AtiouyM67YxFZPh9LxBk2Ye3",
+        "present": true,
+        "lamports": 1141440,
+        "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+        "executable": true,
+        "data_len": 36,
+        "data_sha256": "d40f025dba327c87bbd6c2867a7c5838600bb5b8dd544676195e1721dc11a24f",
+        "raw_account_image_sha256": "83bc98af4d4024f7da730ac8e49c433a5fc7564cb11aa9102ea0d1dbe4e5f5d4"
+      },
+      {
+        "address": "GoXXs2juAjmpvcsX7iLdHsGJCwBwB3HHQwvYyfV3RuU",
+        "present": false,
+        "lamports": null,
+        "owner": null,
+        "executable": null,
+        "data_len": null,
+        "data_sha256": null,
+        "raw_account_image_sha256": null
+      },
+      {
+        "address": "78AojysuKLSS1PeifTBy7L38rEZjgsMxsVFRagUxBpNM",
+        "present": false,
+        "lamports": null,
+        "owner": null,
+        "executable": null,
+        "data_len": null,
+        "data_sha256": null,
+        "raw_account_image_sha256": null
+      }
+    ]
+  },
+  "program_account_remains": true,
+  "program_account_image_unchanged": true,
+  "programdata_account_absent": true,
+  "refund": {
+    "payer_account_index": 0,
+    "program_account_index": 3,
+    "programdata_account_index": 2,
+    "payer_pre_lamports": 750256560,
+    "payer_post_lamports": 7184884880,
+    "program_pre_lamports": 1141440,
+    "program_post_lamports": 1141440,
+    "programdata_pre_lamports": 6434638320,
+    "programdata_post_lamports": 0,
+    "transaction_fee_lamports": 10000,
+    "refund_lamports": 6434638320,
+    "payer_delta_plus_fee_lamports": 6434638320,
+    "exact_refund_equation_reconciled": true,
+    "program_balance_unchanged": true,
+    "every_other_message_account_balance_unchanged": true
+  },
+  "sweep_remaining_to_refund_source_submitted": false
+}

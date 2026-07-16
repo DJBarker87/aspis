@@ -13,7 +13,11 @@ Start with the [paper source](../paper/aspis-spend/) and the repository
 - [design history](design-history.md) — what the default branch keeps and
   where the research archive tags live
 
-Release evidence, certificates, and the frozen publication bundle are
-generated when a release executes and land under `results/spend/` and
-`release/`. The complete relation and account model are specified in the
-paper.
+The release has executed. Its evidence and certificates are frozen in the
+offline-verifiable bundle at
+[`release/aspis-spend-q18-g37-mainnet-v1/`](../release/aspis-spend-q18-g37-mainnet-v1/);
+run its
+[`verify.sh`](../release/aspis-spend-q18-g37-mainnet-v1/verify.sh) to check
+every byte, the release-certificate gates, and the finalized on-chain
+signature, slot, and compute units offline. The complete relation and account
+model are specified in the paper.
