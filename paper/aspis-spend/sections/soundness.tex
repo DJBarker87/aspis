@@ -439,8 +439,11 @@ Table~\ref{tab:soundness-events} (rows for the semantic, copy, lookup, range,
 mask, and inactive-copy events, and the \(D\)-lane contributions), uniformly
 over every false statement and reachable saved state.  This residual is not
 covered by Lemma~\ref{lem:generic-boundary-rbr} nor by any imported
-Fiat--Shamir soundness result; it is the irreducible round-by-round premise of
-the \Profile{} relation and its zero-factor \(D\) lane.
+Fiat--Shamir soundness result.  Its zero-factor \(D\)-lane part is further
+discharged in Section~\ref{sec:d-lane-discharge}, leaving the \(D\)-free
+relation-binding core (Assumption~\ref{ass:relation-rbr-core-dfree}), whose
+nonzero identity premises are Lemma~\ref{lem:local-algebraic-binding} inside
+Assumption~\ref{ass:pinned-finite-reduction}.
 \end{assumption}
 
 \begin{lemma}[Boundary-restoration reduction]
@@ -463,6 +466,172 @@ the state-restoration win by the union of the tabulated events, which is
 \(\varepsilon_{\rm round}^{(0)}\) by
 Equation~\eqref{eq:coarse-interactive-error}.
 \end{proof}
+
+\subsection{Discharging the zero-factor \texorpdfstring{$D$}{D} lane}
+\label{sec:d-lane-discharge}
+
+The zero-factor \(D\)-lane clauses of
+Assumption~\ref{ass:relation-rbr-core} --- the \(\gamma^{28}\) tail of the
+width-29 batch and the three \(D\)-lane claims --- are discharged here from four
+static facts about the frozen verifier plus the width-29 rows already retained
+in Assumption~\ref{ass:pinned-finite-reduction}.  The root-neutral masking
+identity \(\gamma^{27}\Delta G+\gamma^{28}\Delta D=0\) is used only by the
+hiding analysis (Assumption~\ref{lem:complete-affine-image}) and plays no role
+below; Remark~\ref{rem:rn-duality} explains why.
+
+\begin{definition}[\(D\)-lane coupling surface]
+\label{def:d-coupling}
+The frozen verifier and transcript satisfy four properties of the pinned code
+and layout.  \textup{(S1) Ordering:} the \(C_2\) root committing \((H,G,D)\) is
+absorbed at schedule step~2, the three \(D\)-lane claims
+\(d=(d_1,d_2,d_3)\in\mathbb K^3\) at step~4, and the batching challenge
+\(\gamma\) and the point scale \(\kappa\) at step~5, after both.
+\textup{(S2) Zero coupling:} acceptance depends on the committed \(D\)-word and
+on \(d\) only through the addend \(\gamma^{28}\) in the batched word recombined
+at each queried fiber and the addend \(\gamma^{28}d_t\) in each batched
+three-point claim; the masked sumcheck and the masked terminal read exactly the
+\(84=28\times3\) lane evaluations of lanes \(0,\dots,27\) and no \(D\)-derived
+value, the \(D\) masking factor being identically zero.  \textup{(S3) Top
+monomial:} the generator exponents \(0,\dots,28\) are pairwise distinct and
+\(D\) alone carries the top exponent \(28\).  \textup{(S4) Nonzero challenge:}
+\(\gamma\) is sampled from \(\mathbb K^{*}\).  These are verifier-side facts,
+checkable without executing the prover, and pinned by the frozen release; (S1)
+is security-critical (Remark~\ref{rem:d-order-pin}).
+\end{definition}
+
+\begin{lemma}[Top-lane monomial separation]
+\label{lem:d-monomial-separation}
+Fix claim vectors \(a_t\in\mathbb K^{28}\), \(d_t\in\mathbb K\) and references
+\(\hat a_t\in\mathbb K^{28}\), \(\hat d_t\in\mathbb K\), all fixed before
+\(\gamma\) by \textup{(S1)}, and set
+\(e_t(\gamma)=\sum_{j=0}^{27}\gamma^{j}(a_{j,t}-\hat a_{j,t})
++\gamma^{28}(d_t-\hat d_t)\) and
+\(E(\gamma,\kappa)=\sum_{t=1}^{3}\kappa^{t-1}e_t(\gamma)\), the
+\(\kappa\)-batched three-point form used by the verifier.  Then \(E\equiv0\) iff
+\(a_t=\hat a_t\) and \(d_t=\hat d_t\) for every \(t\); in particular no
+\(D\)-lane claim \(d\) makes \(E\equiv0\) while a lane-\(j\le27\) claim differs.
+If \(E\not\equiv0\), for \(\gamma\) uniform in \(\mathbb K^{*}\) and \(\kappa\)
+uniform in \(\mathbb K\),
+\(\Pr[E(\gamma,\kappa)=0]\le 28/(|\mathbb K|-1)+2/|\mathbb K|\).
+\end{lemma}
+
+\begin{proof}
+By \textup{(S1)} the coefficients are fixed before \(\gamma\), so \(E\) is a
+fixed polynomial in \((\gamma,\kappa)\) with coefficients at the \(3\times29\)
+pairwise-distinct monomials \(\kappa^{t-1}\gamma^{j}\), \(j\le28\); by
+\textup{(S3)} the exponent \(28\) is occupied by the \(D\) differences alone.
+A polynomial vanishes identically iff every coefficient does, giving the
+equivalence.  If \(E\not\equiv0\): drawing \(\gamma\in\mathbb K^{*}\), either
+some \(e_t(\gamma)\ne0\), whence \(\Pr_\kappa[E=0]\le\deg_\kappa/|\mathbb K|
+=2/|\mathbb K|\); or all \(e_t(\gamma)=0\), which forces a nonzero
+degree-\(28\) univariate to vanish, of probability \(\le28/(|\mathbb K|-1)\)
+over \(\gamma\ne0\).
+\end{proof}
+
+\begin{assumption}[Relation-binding round-by-round core, \(D\)-free]
+\label{ass:relation-rbr-core-dfree}
+Assumption~\ref{ass:relation-rbr-core} with the two \(D\)-lane clauses removed:
+the residual boundaries are the width-28 sub-batch of lanes \(0,\dots,27\), the
+relation out-of-domain mixers, and the tuple-compression, copy/range-pole, and
+\(\theta\) seams, each functional reading only the 84 lane evaluations, the
+masked sumcheck data, and the batched word, never the \(D\)-word or \(d\).
+Their nonzero identity premises are Lemma~\ref{lem:local-algebraic-binding}
+inside Assumption~\ref{ass:pinned-finite-reduction}; only the generic
+Schwartz--Zippel flip bound at the pinned degree is added.  Each doom-persistence
+error is at most its tabulated entry, uniformly over every false statement,
+reachable saved state, \emph{and} adversarial \((D\)-word\(,d)\) --- the last by
+\textup{(S2)}, since these functionals do not read \(D\).
+\end{assumption}
+
+\begin{lemma}[\(D\)-lane round-by-round soundness]
+\label{lem:d-lane-rbr}
+Grant Assumption~\ref{ass:pinned-finite-reduction},
+Lemma~\ref{lem:generic-boundary-rbr}, and
+Assumption~\ref{ass:relation-rbr-core-dfree}, and facts
+\textup{(S1)--(S4)}.  Then the two \(D\)-lane clauses of
+Assumption~\ref{ass:relation-rbr-core} hold: there is a doomed-state function
+for the width-29 protocol under which the \(D\)-claims boundary has
+doom-persistence error \(0\), the \(\gamma/\kappa\) boundary has error at most
+the sum of the width-29 batch and nonzero-\(\gamma\)/three-point entries of
+Table~\ref{tab:soundness-events} uniformly over adversarial \((D\)-word\(,d)\),
+and every other boundary is unchanged by the \(D\) lane.  Hence
+Assumption~\ref{ass:relation-rbr-core} follows from
+Assumption~\ref{ass:relation-rbr-core-dfree} and \textup{(S1)--(S4)}, and
+Lemma~\ref{lem:boundary-restoration-reduction} holds with the weaker premise,
+\(\varepsilon_{\rm round}^{(0)}\) and the 100.161-bit floor unchanged.
+\end{lemma}
+
+\begin{proof}
+Fix the words bound by the two roots (binding failures are the Merkle reserve
+of Lemma~\ref{lem:generic-boundary-rbr}), the absorbed lane evaluations
+\(a_t\), and the absorbed \(D\)-claims \(d\); by \textup{(S1)} all are fixed
+before \(\gamma\).  Take the doomed-state function of
+Assumption~\ref{ass:relation-rbr-core-dfree} and
+Lemma~\ref{lem:generic-boundary-rbr}, extended to the width-29 prefix by
+ignoring the \(D\)-word and \(d\) --- well defined because by \textup{(S2)} no
+pre-\(\gamma\) functional reads them, so the \(D\)-claims boundary is a
+prover-message boundary that cannot un-doom, error \(0\).  At the
+\(\gamma/\kappa\) boundary, for a false statement, either \textup{(A)} no
+correlated-agreement tuple exists, and the width-29 multicodeword-agreement
+bound of Assumption~\ref{ass:pinned-finite-reduction} --- uniform over all
+committed 29-tuples, hence over the adversarial \(D\)-word, and covering the
+\(\gamma^{28}\) word addend as ordinary lane 28 --- keeps the batched word far,
+doom persisting through the fold/query boundaries; or a tuple exists and either
+\textup{(B)} its claims are false, so the difference polynomial \(E\) of
+Lemma~\ref{lem:d-monomial-separation} is not identically zero and, since the
+batched three-point claim is the only bridge between absorbed claims and
+committed words, the continuation un-dooms only if \(E(\gamma,\kappa)=0\),
+bounded by the tabulated entry and --- the one place \(D\) could act --- unrepairable
+by any pre-\(\gamma\) \(d\) by \textup{(S3)}; or \textup{(C)} its claims are true
+but the \(D\)-free predicate of Assumption~\ref{ass:relation-rbr-core-dfree}
+fails, a deterministic doom whose later escape events are \(D\)-free.  A tuple
+satisfying both would decode a trace realizing
+Proposition~\ref{prop:relation-realization} for a false statement, impossible;
+there is no fourth case.  Summing reproduces the ledger.
+\end{proof}
+
+\begin{lemma}[\(D\)-lane knowledge reduction]
+\label{lem:d-lane-knowledge}
+Grant the premises of Lemma~\ref{lem:d-lane-rbr} and the \(D\)-free restriction
+of Assumption~\ref{ass:relation-knowledge-core}.  Then the zero-factor-\(D\)
+clause of Assumption~\ref{ass:relation-knowledge-core} holds: the relation
+witness contains no \(D\)-coordinate and the encoding \(\Phi\) reads only the
+semantic lanes, so extraction correctness is a property of the \(D\)-free
+projection; by the case analysis of Lemma~\ref{lem:d-lane-rbr} the recovered
+\(D\)-openings satisfy \(d_t=\hat c_{28}(\zeta_t)\), the entire pinned
+\(D\)-lane content, with no rewinding and unchanged failure probability.
+\end{lemma}
+
+\begin{remark}[The security-critical \(D\)-before-\(\gamma\) order]
+\label{rem:d-order-pin}
+Fact \textup{(S1)} --- the three \(D\)-lane claims absorbed strictly before
+\(\gamma\) --- is a soundness invariant on par with committing roots before
+challenges, not incidental scheduling.  Were the \(D\)-claims absorbed after
+\(\gamma\), an adversary knowing \(\gamma\ne0\) could set
+\(\Delta d_t=-e_t(\gamma)/\gamma^{28}\) to drive each batched claim to any
+target, forging a passing claim for a false statement while the \(D\)-free
+terminal is untouched: a complete soundness break, not a degradation.  The
+frozen transcript pins this order, and it is the hypothesis under which
+Lemma~\ref{lem:d-monomial-separation} treats \(E\) as a fixed polynomial in
+\(\gamma\).
+\end{remark}
+
+\begin{remark}[Root-neutrality and the soundness/hiding duality]
+\label{rem:rn-duality}
+The masking identity exhibits a line inside the batch kernel \emph{at the
+realized} \(\gamma\).  The hiding argument may use it because it couples two
+honest executions of one fixed schedule; a malicious prover cannot, because by
+\textup{(S1)} its \(D\)-data are fixed before \(\gamma\), so exploiting a kernel
+direction would require an element of \(\bigcap_\gamma\ker\), which
+Lemma~\ref{lem:d-monomial-separation} shows is zero.  The same freedom is thus
+hiding-useful and soundness-inert for quantifier-order reasons, not
+cancellation.  For the same reason the rank conditions of
+Table~\ref{tab:goodspend-ranks} play no role above: they certify that the
+honest masking image \emph{covers} the homogeneous verifier space (the hiding
+direction), while soundness quantifies over adversaries unconstrained by
+\(\mathsf{Good}_{\mathrm{spend}}\), which the verifier never evaluates.  The
+static facts \textup{(S1)--(S4)} carry the soundness discharge.
+\end{remark}
 
 \subsection{Value conservation}
 \label{sec:value-conservation}
@@ -585,11 +754,12 @@ Grant Assumptions~\ref{ass:pinned-finite-reduction} and
 \ref{ass:relation-rbr-core}.  For the messages recovered by \(\mathsf{Ext}_0\)
 (Lemma~\ref{lem:generic-extraction}) from any state-restoration prover
 accepting with probability exceeding \(\varepsilon_{\rm round}^{(0)}\), the
-opened codeword values and the pinned semantic, copy, lookup, range, mask, and
-zero-factor-\(D\) assignments satisfy every event of
+opened codeword values and the pinned semantic, copy, lookup, range, and mask
+assignments satisfy every event of
 Table~\ref{tab:soundness-events}, and hence
 Proposition~\ref{prop:relation-realization}, except with probability at most
-\(\varepsilon_{\rm round}^{(0)}\).  This is an algebraic reconstruction statement about
+\(\varepsilon_{\rm round}^{(0)}\).  The zero-factor-\(D\) assignment is not
+included: Lemma~\ref{lem:d-lane-knowledge} discharges it.  This is an algebraic reconstruction statement about
 recovered openings; unlike Assumption~\ref{ass:sr-knowledge} it posits neither
 an extractor nor its running time, both of which
 Lemma~\ref{lem:generic-extraction} supplies.

@@ -20,17 +20,21 @@ initial anchor and a deposit construction.
 Theorem~\ref{thm:bcs-soundness} is classical random-oracle argument soundness
 in the work-normalized metric.  It makes no quantum-random-oracle claim, and
 its concrete ledger includes a 124-bit Poseidon2 assumption and treats SHA-256
-as a 256-bit random oracle.  The state-restoration premises are partially discharged in
-Section~\ref{sec:rbr-discharge}: the generic commitment, sumcheck, fold,
-grinding, query, and selector boundaries are proved round-by-round sound (and
-straight-line extractable) from imported Fiat--Shamir soundness of FRI/WHIR-style
-compilers and the paper's own selector lemma, given the pinned finite-parameter
-reduction, leaving strictly smaller residual assumptions
-(Assumptions~\ref{ass:relation-rbr-core} and~\ref{ass:relation-knowledge-core})
-that name only the bespoke \(\gamma\)-batch with its zero-factor \(D\) lane and
-the relation seams.  Knowledge soundness, the theft-resistance corollary, and
-its deployed-pool extension (Section~\ref{sec:knowledge-soundness}) remain
-conditional on that residual, which is assumed rather than proved.
+as a 256-bit random oracle.  The state-restoration premises are largely discharged. The generic
+commitment, sumcheck, fold, grinding, query, and selector boundaries are proved
+round-by-round sound and straight-line extractable from imported Fiat--Shamir
+soundness of FRI/WHIR-style compilers and the paper's own selector lemma
+(Section~\ref{sec:rbr-discharge}), and the zero-factor \(D\) lane --- its batch
+tail and its three claims --- is proved sound from four static verifier facts,
+of which the \(D\)-claims-before-\(\gamma\) transcript order is security-critical
+(Section~\ref{sec:d-lane-discharge}, Remark~\ref{rem:d-order-pin}).  All of this
+is given the pinned finite-parameter reduction.  What remains assumed is
+Assumption~\ref{ass:pinned-finite-reduction} itself --- the imported Johnson/MCA
+list-decoding hypotheses and the \(D\)-free relation-binding lemma
+(Lemma~\ref{lem:local-algebraic-binding}) at the pinned parameters.  The
+separate state-restoration and state-restoration-knowledge premises no longer
+stand as independent assumptions.  Knowledge soundness, theft resistance, and
+the deployed-pool extension remain conditional on that pinned reduction.
 The deployed-pool extension adds no further premise: it proves weak unique
 response (Lemma~\ref{lem:quasi-unique-response}) and invokes the Fiat--Shamir
 simulation-extractability theorem, with extra error terms of the order already
