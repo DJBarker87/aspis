@@ -180,17 +180,24 @@ solution by setting free coordinates to zero.  This computes
 \eqref{eq:image-equality}.
 
 The rank equalities used in this coverage argument are finite,
-machine-checked statements over \(\mathbb F\).  The executable checker
-reconstructs the matrices from
-the frozen layout and public schedule, performs elimination, verifies target
-dimensions, source guards, pivots, and nonzero minors, and rejects definition
-drift.  The published component fingerprints record provenance; they are not
-substituted for matrix reconstruction.  The certificate fixture supplies
-frozen witnesses for the nonzero minors, while the production transfer uses
-layout and \(\mathsf{Good}_{\mathrm{spend}}\)-definition fingerprints and a fresh replay
-of all three
-public schedules.  It does not assume that production proof bytes equal the
-certificate fixture.
+machine-checked statements over \(\mathbb F\).  Two independent checks bound
+them, and they do not cover the same object.  The production
+\(\mathsf{Good}_{\mathrm{spend}}\) gate reconstructs every matrix from the
+frozen layout on the exact circle encoder at the deployed schedule, performs
+elimination, and verifies target dimensions, source guards, pivots, and nonzero
+minors; it is the prover checking its own emitted schedule.  The standalone
+verifier \path{tools/verify_hiding_ranks.py} recomputes the ranks with its own
+field arithmetic at an independently sampled generic schedule, and reproduces
+six of the eight ranks, the root-neutral \(1404/324/328/1076\) block, from the
+exact masking algebra.  The remaining two, the width-\(288\) query maps and
+their rank-\(12\) Schur complements, it reproduces on a generic distinct-point
+evaluation code standing in for the layer-zero circle codeword; this is exact
+for these column and Schur ranks only up to the claim that the circle twiddles
+do not change them.  So the two \(288/12\) pairs are independently reproduced
+only under that twiddle-irrelevance, and on production they rest on the
+\(\mathsf{Good}_{\mathrm{spend}}\) gate.  The published component fingerprints
+record provenance; they are not substituted for matrix reconstruction.  Neither
+check assumes that production proof bytes equal the certificate fixture.
 
 This evidence binds the premise to the release, but it is not an independent
 verification of the completeness of the reconstructed affine model.  The

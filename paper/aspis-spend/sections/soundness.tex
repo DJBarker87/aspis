@@ -141,6 +141,30 @@ imported-theorem hypothesis.  The concrete theorem therefore isolates the
 finite-parameter step rather than silently treating executable agreement as
 a proof.
 
+\begin{remark}[Machine-verified point-form to row-form equivalence]
+\label{rem:point-row-equivalence}
+The verifier evaluates a compiled point-form composition
+(\path{crates/aspis-statement/src/atomic_state_only_terminal.rs}), whereas the
+algebraic reductions above read the per-row residual system.  For the
+copy/lookup lane and its rank-\(74\) routing --- the objects whose equivalence
+to the row form was previously only tested at a handful of points on a fixed
+honest trace --- the two forms are now checked equal as polynomials over the
+full space of \emph{adversarial} openings and challenges, by a soundness-grade
+Schwartz--Zippel battery (test
+\texttt{point\_form\_equals\_row\_form\_at\_soundness\_grade\_over\_adversarial\_openings}).
+With total-degree bounds \(D\le200\) over \(|\mathbb K|=(2^{31}-1)^4\approx2^{124}\),
+each trial fails to detect a nonidentity with probability at most \(2^{-116}\),
+so a single trial already clears \(2^{-100}\); the test runs \(1024\)
+independent trials per family, all openings drawn free rather than from an
+honest trace.  This closes the point-form/row-form gap for the copy and routing
+lanes over free openings.  The Poseidon and semantic-packing lanes are checked
+only as part of the whole-composition refactor identity and, for their row-form
+correspondence, by the Boolean-row tests on well-formed traces; the
+correspondence between the residual formulas written here and the polynomials
+the frozen bytes evaluate remains the modelling residue scoped by
+Assumption~\ref{ass:pinned-finite-reduction}.
+\end{remark}
+
 \begin{assumption}[Pinned finite-parameter reduction]
 \label{ass:pinned-finite-reduction}
 For the exact code, transcript, and verifier serialized by the frozen

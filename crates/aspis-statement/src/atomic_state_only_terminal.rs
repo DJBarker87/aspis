@@ -1517,4 +1517,321 @@ mod tests {
             );
         }
     }
+
+    /// Soundness-grade Schwartz-Zippel equivalence checker.
+    ///
+    /// Every existing equivalence test in this module fixes ~64 random QM31
+    /// draws and asserts the compiled point-form evaluator equals an
+    /// independent row-form reference.  This test upgrades that regression
+    /// witness into a machine-verified polynomial-identity check.
+    ///
+    /// The soundness statement the on-chain verifier relies on quantifies over
+    /// ADVERSARIAL openings: the prover's claimed statement evaluations (the
+    /// `claims`/`openings`/`h1` cells) may be any element of QM31, not the
+    /// values an honest trace would produce.  We therefore fill the entire
+    /// opening space with independent uniform-random QM31 (never an honest
+    /// fixture) and independently randomize every challenge (lambda, chi,
+    /// theta, mu, eta) and both evaluation points (`point`, `zerocheck_point`),
+    /// then assert
+    ///
+    ///     point_form(random_openings, random_challenges)
+    ///         == row_form_MLE(random_openings, random_challenges)
+    ///
+    /// for each evaluator family.  Both sides are polynomials of bounded total
+    /// degree `D` over K = QM31 with |K| = P^4 ~ 2^124.  By Schwartz-Zippel, if
+    /// the two sides were NOT the identical polynomial they would agree at a
+    /// single uniform-random point except with probability <= D/|K|; over `T`
+    /// independent points the escape probability is <= (D/|K|)^T.
+    ///
+    /// The evaluators are fixed, frozen production code chosen independently of
+    /// the PRNG seed, so the deterministic xorshift stream (pinned constants,
+    /// per the workspace no-entropy rule) is an adequate stand-in for uniform
+    /// QM31: a fixed discrepancy cannot be crafted to dodge a seed it never
+    /// saw, and the per-point margin (2^-116 or better) dwarfs any bias in the
+    /// stream.  `T` distinct points give defense-in-depth on top of that.
+    #[test]
+    fn point_form_equals_row_form_at_soundness_grade_over_adversarial_openings() {
+        // Trials per family.  A single trial already drives every family's
+        // escape probability below 2^-100 (see per-family D below); T = 1024
+        // independent points is generous margin, not necessity.
+        const T: u32 = 1024;
+
+        // |K| = |QM31| = P^4, with P = 2^31 - 1.
+        let p = u128::from(P);
+        let field_size = p * p * p * p; // ~2.1268e37 ~ 2^123.9999999.
+        let log2_k = 4.0 * f64::from(P).log2();
+
+        // Report one family's Schwartz-Zippel accounting and return the final
+        // (D/|K|)^T escape bound as a base-2 exponent.
+        let report = |name: &str, degree: u128| -> f64 {
+            let per_trial_log2 = (degree as f64).log2() - log2_k;
+            let final_log2 = per_trial_log2 * f64::from(T);
+            std::println!(
+                "  [{name}] D = {degree}, D/|K| = {degree}/{field_size} <= 2^{per_trial_log2:.2}, \
+                 T = {T}, (D/|K|)^T <= 2^{final_log2:.1}",
+            );
+            // Guard the headline claim: one trial must already beat 2^-100.
+            assert!(
+                per_trial_log2 <= -100.0,
+                "family {name}: single-trial bound 2^{per_trial_log2:.2} does not reach 2^-100",
+            );
+            assert!(
+                final_log2 <= -100.0,
+                "family {name}: T-trial bound 2^{final_log2:.1} does not reach 2^-100",
+            );
+            final_log2
+        };
+
+        std::println!(
+            "Schwartz-Zippel equivalence over K = QM31, |K| = P^4 = {field_size} (~2^{log2_k:.4}); \
+             {T} independent adversarial-opening trials per family:"
+        );
+
+        // --- Family A: rank-74 routing point-form == 183-link direct row walk.
+        // Variables: point (10 QM31 coords).  Both sides are linear
+        // combinations of the multilinear selector tensor, whose monomials have
+        // total degree <= 10 in the point coordinates.  D_A = 10.
+        {
+            const D: u128 = 10;
+            let mut rng = Rng(0x5344_5f52_4f55_5441); // "SD_ROUTA"
+            let mut first: Option<Vec<QM31>> = None;
+            let mut saw_variation = false;
+            for _ in 0..T {
+                let point = core::array::from_fn(|_| rng.qm31());
+                let selectors = AtomicSelectors::at_point(&point);
+                let point_form = evaluate_atomic_copy_routing(&selectors);
+                let row_form = evaluate_routing_direct(&selectors);
+                assert_eq!(point_form, row_form.to_vec());
+                match &first {
+                    None => first = Some(point_form.clone()),
+                    Some(f) => saw_variation |= *f != point_form,
+                }
+            }
+            assert!(
+                saw_variation,
+                "family A appears constant; identity is vacuous"
+            );
+            report("A rank-74 routing == 183-link direct walk", D);
+        }
+
+        // --- Family B: copy/LogUp lane point-form == direct registry row-walk.
+        // This is the central point-form == row-form-MLE identity with FREE
+        // adversarial openings.  `copy_lane_direct` rebuilds the host registry
+        // and sums selector(row) * per-link residual over all 183 links, then
+        // forms the cleared LogUp rational; `atomic_copy_lane_from_routing`
+        // evaluates the compiled rank-74 factoring of the same object.
+        // Variables: openings (16), h1, point (10), lambda, chi.
+        // Degree bound: pattern values are deg 1 in openings times lambda^<=16
+        // (deg <= 17); routing/selector factors are deg <= 10 in point; the
+        // cleared LogUp numerator multiplies two degree-(<=54) denominators
+        // against a degree-(<=55) factor, times the degree-<=10 active
+        // selector, giving total degree <= 119.  D_B = 119.
+        {
+            const D: u128 = 119;
+            let mut rng = Rng(0x5344_5f43_4f50_594c); // "SD_COPYL"
+            let mut first: Option<QM31> = None;
+            let mut saw_variation = false;
+            for _ in 0..T {
+                let openings = core::array::from_fn(|_| rng.qm31());
+                let h1 = rng.qm31();
+                let point = core::array::from_fn(|_| rng.qm31());
+                let lambda = rng.qm31();
+                let chi = rng.qm31();
+                let selectors = AtomicSelectors::at_point(&point);
+                let point_form =
+                    atomic_copy_lane_from_routing(&openings, h1, &selectors, lambda, chi);
+                let row_form = copy_lane_direct(&openings, h1, &selectors, lambda, chi);
+                assert_eq!(point_form, row_form);
+                match first {
+                    None => first = Some(point_form),
+                    Some(f) => saw_variation |= f != point_form,
+                }
+            }
+            assert!(
+                saw_variation,
+                "family B appears constant; identity is vacuous"
+            );
+            report("B copy/LogUp lane point-form == registry row-walk MLE", D);
+        }
+
+        // --- Family C: rank-74 partition == rank-103 legacy partition.
+        // Same copy polynomial evaluated through two independent selector
+        // partitions of the 1024 rows.  Same variables and degree as family B.
+        {
+            const D: u128 = 119;
+            let mut rng = Rng(0x5344_5f50_4152_5449); // "SD_PARTI"
+            let mut first: Option<QM31> = None;
+            let mut saw_variation = false;
+            for _ in 0..T {
+                let openings = core::array::from_fn(|_| rng.qm31());
+                let h1 = rng.qm31();
+                let point = core::array::from_fn(|_| rng.qm31());
+                let lambda = rng.qm31();
+                let chi = rng.qm31();
+                let compiled = atomic_state_only_copy_terminal_lane_compiled_v3(
+                    &openings, h1, &point, lambda, chi,
+                );
+                let legacy = atomic_state_only_copy_terminal_lane_legacy_partition_v3(
+                    &openings, h1, &point, lambda, chi,
+                );
+                assert_eq!(compiled, legacy);
+                match first {
+                    None => first = Some(compiled),
+                    Some(f) => saw_variation |= f != compiled,
+                }
+            }
+            assert!(
+                saw_variation,
+                "family C appears constant; identity is vacuous"
+            );
+            report("C rank-74 partition == rank-103 legacy partition", D);
+        }
+
+        // --- Family D: five-dot pattern compression == 15 generated affine
+        // shapes.  Variables: openings (16), lambda.  Openings appear linearly;
+        // powers span lambda^1..lambda^16, and the highest shape multiplies a
+        // lambda^8 factor into a term already carrying lambda^8 * opening, so
+        // total degree <= 17.  D_D = 17.
+        {
+            const D: u128 = 17;
+            let mut rng = Rng(0x5344_5f50_4154_5442); // "SD_PATTB"
+            let mut first: Option<[QM31; ATOMIC_STATE_ONLY_COMPILED_COPY_PATTERNS]> = None;
+            let mut saw_variation = false;
+            for _ in 0..T {
+                let openings = core::array::from_fn(|_| rng.qm31());
+                let lambda = rng.qm31();
+                let mut powers = [QM31::ZERO; 16];
+                powers[0] = lambda;
+                for index in 1..powers.len() {
+                    powers[index] = powers[index - 1].mul(lambda);
+                }
+                let point_form = atomic_copy_pattern_values(&openings, &powers);
+                let row_form = atomic_copy_pattern_values_generated_reference(&openings, &powers);
+                assert_eq!(point_form, row_form);
+                match &first {
+                    None => first = Some(point_form),
+                    Some(f) => saw_variation |= *f != point_form,
+                }
+            }
+            assert!(
+                saw_variation,
+                "family D appears constant; identity is vacuous"
+            );
+            report("D five-dot pattern == 15 generated affine shapes", D);
+        }
+
+        // --- Family E: shared semantic selector tensor == legacy routing
+        // selector tensor.  Variables: point (10).  Both are the multilinear
+        // selector tensor, total degree <= 10.  D_E = 10.
+        {
+            const D: u128 = 10;
+            let mut rng = Rng(0x5344_5f54_454e_534f); // "SD_TENSO"
+            let mut first: Option<([QM31; 64], [QM31; 16])> = None;
+            let mut saw_variation = false;
+            for _ in 0..T {
+                let point = core::array::from_fn(|_| rng.qm31());
+                let semantic = AtomicSemanticSelectors::at_point(&point);
+                let routing = LegacyAtomicSelectors::at_point(&point);
+                assert_eq!(semantic.high, routing.high);
+                assert_eq!(semantic.low, routing.low);
+                match &first {
+                    None => first = Some((semantic.high, semantic.low)),
+                    Some((h, l)) => {
+                        saw_variation |= *h != semantic.high || *l != semantic.low;
+                    }
+                }
+            }
+            assert!(
+                saw_variation,
+                "family E appears constant; identity is vacuous"
+            );
+            report("E semantic tensor == legacy routing tensor", D);
+        }
+
+        // --- Family F: full masked terminal == diagnostic-trace duplicate.
+        // This is the EXACT composition the on-chain verifier evaluates
+        // (state_only_spend.rs::verify_terminal calls
+        // atomic_state_only_selected_masked_terminal_value_compiled_v3).  We
+        // drive it with 84 free adversarial claim cells plus fully random
+        // challenges/points and a random statement.  Both callees are point-
+        // form; this is a refactor identity (production == its line-by-line
+        // diagnostic-traced duplicate), NOT an independent row-form derivation
+        // for the poseidon/semantic lanes (see the report caveats).
+        //
+        // Degree bound: the copy lane (<=119) is folded through 24 theta lanes
+        // (theta^24 * copy => <=143); the outer zerocheck equality is degree
+        // <=20 (10 in point, 10 in zerocheck_point), giving original <=163;
+        // eta * original plus the mask keeps the whole terminal <=164.  We use
+        // a conservative D_F = 200 (>= 164).  Even at 200, D/|K| <= 2^-116.
+        {
+            const D: u128 = 200;
+            let mut rng = Rng(0x5344_5f54_4552_4d46); // "SD_TERMF"
+            let mut first: Option<QM31> = None;
+            let mut saw_variation = false;
+            for _ in 0..T {
+                let statement = AtomicPaymentStatementV4 {
+                    pool: [0x5a; 32],
+                    sequence: 73,
+                    spend: SpendPublic {
+                        anchor: core::array::from_fn(|_| rng.m31()),
+                        nullifier: core::array::from_fn(|_| rng.m31()),
+                        output_commitment: core::array::from_fn(|_| rng.m31()),
+                        asset_id: rng.m31(),
+                        // fee is a public constant in the residuals; keep it in
+                        // the valid range so the evaluator does not early-return.
+                        fee: (rng.next() % u64::from(crate::spend::VALUE_LIMIT)) as u32,
+                    },
+                    output_anchor: core::array::from_fn(|_| rng.m31()),
+                    deployment_domain: [0x5d; 32],
+                };
+                let claims = core::array::from_fn(|_| rng.qm31());
+                let point = core::array::from_fn(|_| rng.qm31());
+                let zerocheck_point = core::array::from_fn(|_| rng.qm31());
+                let lambda = rng.qm31();
+                let chi = rng.qm31();
+                let theta = rng.qm31();
+                let mu = rng.qm31();
+                let eta = rng.qm31();
+                let production = atomic_state_only_selected_masked_terminal_value_compiled_v3(
+                    &statement,
+                    &claims,
+                    &point,
+                    lambda,
+                    chi,
+                    theta,
+                    &zerocheck_point,
+                    mu,
+                    eta,
+                )
+                .unwrap();
+                let diagnostic =
+                    atomic_state_only_selected_masked_terminal_value_compiled_with_diagnostic_trace_v3(
+                        &statement,
+                        &claims,
+                        &point,
+                        lambda,
+                        chi,
+                        theta,
+                        &zerocheck_point,
+                        mu,
+                        eta,
+                        |_| {},
+                    )
+                    .unwrap();
+                assert_eq!(production, diagnostic);
+                match first {
+                    None => first = Some(production),
+                    Some(f) => saw_variation |= f != production,
+                }
+            }
+            assert!(
+                saw_variation,
+                "family F appears constant; identity is vacuous"
+            );
+            report(
+                "F masked terminal == diagnostic-trace duplicate (full verifier composition)",
+                D,
+            );
+        }
+    }
 }
