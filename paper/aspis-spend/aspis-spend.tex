@@ -77,6 +77,11 @@ proof-account setup, proof upload, and proof finalization were separate
 transactions.  The security statements are argument soundness and
 computational hiding for the exact relation and declared view; they do not
 assert knowledge soundness or a standard-model zero-knowledge result.
+Because no extractor is constructed, the results do not by themselves
+establish that a party who does not know a note's spending key cannot produce
+an accepting spend; theft-resistance of a deployed pool is out of scope.  The
+relation is a same-path leaf replacement: this release verifies a spend and
+does not include a deposit construction or a growing anonymity set.
 \end{abstract}
 
 \input{sections/introduction}
