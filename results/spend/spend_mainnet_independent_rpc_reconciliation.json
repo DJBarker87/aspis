@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "artifact": "spend_mainnet_independent_rpc_reconciliation_v1",
+  "network": "mainnet-beta",
+  "genesis_hash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+  "deterministic": true,
+  "reproduction": {
+    "mode": "live_archival_json_rpc",
+    "full_rpc_responses_serialized": false,
+    "credential_material_serialized": false,
+    "endpoint_hostname_or_origin_serialized": false,
+    "fixed_provider_labels_serialized": true
+  },
+  "rpc": {
+    "provider_labels": [
+      "official_rpc",
+      "independent_rpc"
+    ],
+    "commitment": "finalized",
+    "transaction_encoding": "json",
+    "max_supported_transaction_version": 0,
+    "both_providers_report_mainnet_genesis": true
+  },
+  "records": {
+    "deployment": {
+      "label": "deployment",
+      "signature": "qdeDmK712P3ifnn4hfqtEH3CzW7rssoP9hsJtCceebmAnA5qSrN34v4KE1H6tJbWbUjD7GdaZmLv2CxV823coW8",
+      "slot": 433219270,
+      "block_time_unix": 1784182962,
+      "meta_err": null,
+      "fee_lamports": 15000,
+      "compute_units_consumed": 2970,
+      "transaction_version": "legacy",
+      "account_key_count": 10,
+      "account_keys": [
+        "78u3cwKrso1yW2dwaBmMmvo8F44gvBBGfkfFay1d8HQZ",
+        "GQPNqfYF17Nj2dGsf6Q2AtiouyM67YxFZPh9LxBk2Ye3",
+        "78AojysuKLSS1PeifTBy7L38rEZjgsMxsVFRagUxBpNM",
+        "GoXXs2juAjmpvcsX7iLdHsGJCwBwB3HHQwvYyfV3RuU",
+        "BP5bCWMHQfsmsJBkTyVr1uaWudbrcbfhKEg7fmKRS4EY",
+        "11111111111111111111111111111111",
+        "BPFLoaderUpgradeab1e11111111111111111111111",
+        "ComputeBudget111111111111111111111111111111",
+        "SysvarC1ock11111111111111111111111111111111",
+        "SysvarRent111111111111111111111111111111111"
+      ],
+      "pre_balances": [
+        754672680,
+        0,
+        0,
+        0,
+        6434638320,
+        1,
+        1,
+        1,
+        1169280,
+        1009200
+      ],
+      "post_balances": [
+        753516240,
+        1141440,
+        0,
+        6434638320,
+        0,
+        1,
+        1,
+        1,
+        1169280,
+        1009200
+      ],
+      "log_message_count": 11,
+      "log_messages_sha256": "55a6fd1e97767ac205ca40552770e4092531d52276d467ccbdbe0c48d3044707",
+      "confirmation_status": "finalized",
+      "provider_normalized_raw_transaction_and_status_exactly_equal": true,
+      "normalized_raw_transaction_sha256": "dcd7cb65ee31031b5fd0bf3541ff562e70e25a6375f6cac2d8d23cdd008fc6a7"
+    },
+    "verification": {
+      "label": "verification",
+      "signature": "3G1voggszvDMGi5PbGM1kuEMYKvh2TNMbH6hHHwndUdRQJNT7ehRFpQpksxLnx5tp2xkS5jGi359rVXk42sRPFcv",
+      "slot": 433219840,
+      "block_time_unix": 1784183193,
+      "meta_err": null,
+      "fee_lamports": 10000,
+      "compute_units_consumed": 1344003,
+      "transaction_version": "legacy",
+      "account_key_count": 7,
+      "account_keys": [
+        "78u3cwKrso1yW2dwaBmMmvo8F44gvBBGfkfFay1d8HQZ",
+        "59PFQsAbnM5Vjhbq7aKkxnd6MqbJ4Akw7GaDWZwAdAsk",
+        "3ZRYarQZcWJQgzNwLo1Eo7PDmier3rbW41L8ccAddCvb",
+        "CFJ5fYPSi4Qn6okBCZS3tXFMw7Lsz4Jy9vEAAGU5kfSU",
+        "11111111111111111111111111111111",
+        "ComputeBudget111111111111111111111111111111",
+        "GQPNqfYF17Nj2dGsf6Q2AtiouyM67YxFZPh9LxBk2Ye3"
+      ],
+      "pre_balances": [
+        295286560,
+        456402000,
+        1447680,
+        0,
+        1,
+        1,
+        1141440
+      ],
+      "post_balances": [
+        750286560,
+        0,
+        1447680,
+        1392000,
+        1,
+        1,
+        1141440
+      ],
+      "log_message_count": 10,
+      "log_messages_sha256": "1db1860a61697911464cb5c1d8cf5f18ff72929d5b4ffb2f8b84145e0aed1e4e",
+      "confirmation_status": "finalized",
+      "provider_normalized_raw_transaction_and_status_exactly_equal": true,
+      "normalized_raw_transaction_sha256": "e9066356322d7be66f4c4c94705023b8ddc225bdfcb97d29902472e2eac4ee28"
+    },
+    "programdata_close": {
+      "label": "programdata_close",
+      "signature": "3mfD5KEYXJ4ZyC2XeHW4fXKNYUqo46SA1waGeJ3CNz7fBzzxqy4rK6tiniVpx5D4ZpDziCEKgi66KUdEjyLkrVDo",
+      "slot": 433220251,
+      "block_time_unix": 1784183366,
+      "meta_err": null,
+      "fee_lamports": 10000,
+      "compute_units_consumed": 2520,
+      "transaction_version": "legacy",
+      "account_key_count": 6,
+      "account_keys": [
+        "78u3cwKrso1yW2dwaBmMmvo8F44gvBBGfkfFay1d8HQZ",
+        "78AojysuKLSS1PeifTBy7L38rEZjgsMxsVFRagUxBpNM",
+        "GoXXs2juAjmpvcsX7iLdHsGJCwBwB3HHQwvYyfV3RuU",
+        "GQPNqfYF17Nj2dGsf6Q2AtiouyM67YxFZPh9LxBk2Ye3",
+        "BPFLoaderUpgradeab1e11111111111111111111111",
+        "ComputeBudget111111111111111111111111111111"
+      ],
+      "pre_balances": [
+        750256560,
+        0,
+        6434638320,
+        1141440,
+        1,
+        1
+      ],
+      "post_balances": [
+        7184884880,
+        0,
+        0,
+        1141440,
+        1,
+        1
+      ],
+      "log_message_count": 5,
+      "log_messages_sha256": "09c99ef17f8a6c1797bf6cbf2c1ba0547199ed8a09b3f9539a2d76f3c7809c94",
+      "confirmation_status": "finalized",
+      "provider_normalized_raw_transaction_and_status_exactly_equal": true,
+      "normalized_raw_transaction_sha256": "f97347dcde8a0a2585ff224c7dadcfaec30f17c45d72872db4cef3db48d9a79d"
+    }
+  },
+  "post_close_account_state": {
+    "programdata_address": "GoXXs2juAjmpvcsX7iLdHsGJCwBwB3HHQwvYyfV3RuU",
+    "programdata_account_absent_on_both_providers": true,
+    "program_address": "GQPNqfYF17Nj2dGsf6Q2AtiouyM67YxFZPh9LxBk2Ye3",
+    "program_account_present_on_both_providers": true
+  },
+  "cluster_disambiguation": {
+    "verification_signature": "3G1voggszvDMGi5PbGM1kuEMYKvh2TNMbH6hHHwndUdRQJNT7ehRFpQpksxLnx5tp2xkS5jGi359rVXk42sRPFcv",
+    "mainnet_genesis_hash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+    "devnet_genesis_hash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+    "testnet_genesis_hash": "4uhcVJyU9pJkvQyS88uRDiswHXSCkY3zQawwpjk2NsNY",
+    "verification_signature_present_on_devnet": false,
+    "verification_signature_present_on_testnet": false
+  }
+}

@@ -12,8 +12,8 @@
   "nullifier": "CFJ5fYPSi4Qn6okBCZS3tXFMw7Lsz4Jy9vEAAGU5kfSU",
   "objects": {
     "README.md": {
-      "bytes": 4014,
-      "sha256": "ab9a36e676856f22f5e80db945c14a518c0e63d053d481824f2337be14d24f46"
+      "bytes": 4582,
+      "sha256": "d25bb62791cd383f1f2f34f3583e6d22feb1a73873fdeeeb84dd8a5f67437502"
     },
     "certificates/release.json": {
       "bytes": 20569,
@@ -39,9 +39,17 @@
       "bytes": 48438,
       "sha256": "8104642199b2679df2383322452615d0315938e541bc7fc7e9cd41edac606cf0"
     },
+    "evidence/spend_mainnet_independent_rpc_reconciliation.json": {
+      "bytes": 5986,
+      "sha256": "dca6e0070c4d2ac0406cab2a45c0c5c768315920d81ff63b623830744243beaf"
+    },
+    "evidence/spend_mainnet_sbf_and_instruction_reconstruction.json": {
+      "bytes": 9837,
+      "sha256": "9cb01c4d6a2b868b3c84f0e2323e03d07e2de595b115409ae80dcf392b27f415"
+    },
     "paper/aspis-spend.pdf": {
-      "bytes": 628672,
-      "sha256": "9bb103d76b840596104a6a99d122d9f8ae5b5478e89d4637f4824b2041d7b05c"
+      "bytes": 628392,
+      "sha256": "bb78d51de2b6c5fdc58b62dbc940ff7da0f6ba8e5ba2da924a945335d030c94b"
     },
     "program/aspis_verifier.so": {
       "bytes": 924344,
@@ -54,6 +62,10 @@
     "proof/statement.json": {
       "bytes": 767,
       "sha256": "c35f6152ce4ffbfa6edeba68b4a6d2738e19b1420181c9500ba73f0c717c8699"
+    },
+    "tools/reconstruct_spend_mainnet_sbf.py": {
+      "bytes": 67064,
+      "sha256": "db122d7cd793b54f2f63d0a3993b2ab5c574a45ca50b4108258b3453efc0f666"
     },
     "verify.sh": {
       "bytes": 9594,
