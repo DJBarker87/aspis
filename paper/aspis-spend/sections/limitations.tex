@@ -13,8 +13,8 @@ Value conservation (Theorem~\ref{thm:value-conservation}) is per spend: an
 accepting spend does not mint value, and the total committed value is
 non-increasing relative to what was committed at initialization.  Because the
 initial anchor is a caller-supplied value and this release has no deposit or
-append path, absolute solvency --- that the pool's committed value is externally
-backed --- is out of scope; it would require an honestly-valued (empty-tree)
+append path, absolute solvency, that the pool's committed value is externally
+backed, is out of scope; it would require an honestly-valued (empty-tree)
 initial anchor and a deposit construction.
 
 Theorem~\ref{thm:bcs-soundness} is classical random-oracle argument soundness
@@ -24,17 +24,17 @@ as a 256-bit random oracle.  The state-restoration premises are largely discharg
 commitment, sumcheck, fold, grinding, query, and selector boundaries are proved
 round-by-round sound and straight-line extractable from imported Fiat--Shamir
 soundness of FRI/WHIR-style compilers and the paper's own selector lemma
-(Section~\ref{sec:rbr-discharge}), and the zero-factor \(D\) lane --- its batch
-tail and its three claims --- is proved sound from four static verifier facts,
+(Section~\ref{sec:rbr-discharge}), and the zero-factor \(D\) lane, its batch
+tail and its three claims, is proved sound from four static verifier facts,
 of which the \(D\)-claims-before-\(\gamma\) transcript order is security-critical
 (Section~\ref{sec:d-lane-discharge}, Remark~\ref{rem:d-order-pin}).  All of this
 is given the pinned finite-parameter reduction.  What remains assumed is
-Assumption~\ref{ass:pinned-finite-reduction} itself --- the imported Johnson/MCA
+Assumption~\ref{ass:pinned-finite-reduction} itself, the imported Johnson/MCA
 list-decoding hypotheses and the \(D\)-free relation-binding lemma
 (Lemma~\ref{lem:local-algebraic-binding}) at the pinned parameters.  Its
-finite-parameter applicability conditions --- Johnson-regime membership, the
+finite-parameter applicability conditions (Johnson-regime membership, the
 circle-coset transport conditions, the polynomial-generator hypothesis, and
-every tabulated degree and the resulting floor --- are reproduced independently
+every tabulated degree and the resulting floor) are reproduced independently
 by \path{tools/verify_soundness_params.py}, which re-derives them with its own
 arithmetic and imports no project code; the imported theorems themselves are
 not re-proved.  The separate state-restoration and state-restoration-knowledge
@@ -53,7 +53,7 @@ equality \(\epsilon_{\rm side}=0\) is by definition of that fixed public
 \(\mathsf{Proof}\)-or-\(\mathsf{Abort}\) channel.  Local filesystem access,
 the burned-nonce ledger, scheduler and process timing outside the release
 event, power, thermal and memory observations, and remote prover or miner
-traffic are not in the modeled view.  An implementation that exposes any of
+traffic are not in the modelled view.  An implementation that exposes any of
 those channels requires a new simulator and leakage bound; the present
 deployment model therefore keeps rejected attempts and mining local and
 private.
@@ -110,7 +110,7 @@ The fingerprints and regression tests detect drift, but no independent
 verifier of the reconstruction and implementation binding is presently
 published; the executable evidence is not a formal proof-assistant
 development or an external security audit.
-The finalized mainnet execution establishes behavior for one exact proof,
+The finalized mainnet execution establishes behaviour for one exact proof,
 statement, binary, account pre-state, and transaction.  It is not a throughput
 benchmark, an availability result, or an external audit, and it does not
 establish resistance to denial-of-service or transaction-ordering attacks.

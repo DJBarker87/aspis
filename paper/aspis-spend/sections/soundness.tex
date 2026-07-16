@@ -152,12 +152,12 @@ OOD samples, all four folds and their list sizes, the terminal condition, and
 the assignment of every semantic, copy, lookup, range, mask, and sumcheck
 constraint to rows 5--14 of the table.  The premise is uniform over every
 false public statement and every reachable public transcript prefix.  Its
-finite-parameter applicability conditions --- the Johnson agreement cap
+finite-parameter applicability conditions, the Johnson agreement cap
 \(A=6082\), the proven-regime membership \(\alpha\ge\sqrt\rho\) at rate
 \(1/512\) (Johnson, not capacity), the circle-to-GRS transport conditions (the
 \(2^{17}\) arity-four fiber roots distinct and none equal to one), the
 polynomial-generator hypothesis, and every tabulated degree and the resulting
-union floor --- are reproduced independently, with its own arithmetic, by
+union floor, are reproduced independently, with its own arithmetic, by
 \path{tools/verify_soundness_params.py}; the imported theorems themselves
 (Stwo Johnson list decoding, Bordage/Habock MCA, WHIR fold-list commutation)
 are taken as stated.
@@ -334,7 +334,7 @@ right-hand side is convex for positive \(T\), so its maximum on
 Assume the pinned finite-parameter reduction
 (Assumption~\ref{ass:pinned-finite-reduction}), the 32-boundary
 state-restoration property (Assumption~\ref{ass:boundary-restoration}), and
-SHA-256 modeled as a 256-bit random oracle.  For every classical adversary making
+SHA-256 modelled as a 256-bit random oracle.  For every classical adversary making
 \(1\le T\le2^{128}\) oracle queries,
 \[
  \operatorname{Adv}^{\mathsf{snd}}_{\mathrm{spend}}(T)
@@ -389,8 +389,8 @@ this event by the preceding lemmas.
 \label{sec:rbr-discharge}
 
 Assumption~\ref{ass:boundary-restoration} bundles two different things: the
-generic Fiat--Shamir plumbing of a FRI/WHIR-style compiler --- commitment,
-sumcheck, fold, grinding, query, and selector boundaries --- and the bespoke
+generic Fiat--Shamir plumbing of a FRI/WHIR-style compiler (commitment,
+sumcheck, fold, grinding, query, and selector boundaries) and the bespoke
 relation binding of the \Profile{} encoding and its zero-factor \(D\) lane.
 The generic part is not specific to Aspis; it is discharged here from imported
 round-by-round soundness, given the pinned finite-parameter reduction.  The
@@ -423,8 +423,8 @@ governed by the already-proved Lemma~\ref{lem:selector-soundness}.
 
 \begin{proof}
 Each item instantiates the cited round-by-round result at the pinned
-parameters; the algebraic hypotheses each needs --- the list/MCA regime, the
-circle-to-GRS transport, the agreement cap, the terminal degree --- are the
+parameters; the algebraic hypotheses each needs (the list/MCA regime, the
+circle-to-GRS transport, the agreement cap, the terminal degree) are the
 content of Assumption~\ref{ass:pinned-finite-reduction}, so the fold, query,
 and out-of-domain items are conditional on that retained premise and are not
 claimed unconditionally.  The circle-code case is reached only through
@@ -438,11 +438,11 @@ the committed vectors and public challenges already in the restored prefix.
 \begin{assumption}[Relation-binding round-by-round core]
 \label{ass:relation-rbr-core}
 Grant Assumption~\ref{ass:pinned-finite-reduction}.  For the residual
-boundaries --- the width-29 \(\gamma\)-batch of the 26 subfield lanes and the
+boundaries (the width-29 \(\gamma\)-batch of the 26 subfield lanes and the
 three extension lanes \(H,G,D\) including the zero-factor \(D\) lane of
 Equation~\eqref{eq:spend-batch}, the three \(D\)-lane claims absorbed beside
 the statement points, the relation out-of-domain mixers, and the atomic
-tuple-compression, copy/range-pole, and \(\theta\) seams --- the
+tuple-compression, copy/range-pole, and \(\theta\) seams) the
 doom-persistence error is at most the corresponding entry of
 Table~\ref{tab:soundness-events} (rows for the semantic, copy, lookup, range,
 mask, and inactive-copy events, and the \(D\)-lane contributions), uniformly
@@ -480,8 +480,8 @@ Equation~\eqref{eq:coarse-interactive-error}.
 \label{sec:d-lane-discharge}
 
 The zero-factor \(D\)-lane clauses of
-Assumption~\ref{ass:relation-rbr-core} --- the \(\gamma^{28}\) tail of the
-width-29 batch and the three \(D\)-lane claims --- are discharged here from four
+Assumption~\ref{ass:relation-rbr-core}, the \(\gamma^{28}\) tail of the
+width-29 batch and the three \(D\)-lane claims, are discharged here from four
 static facts about the frozen verifier plus the width-29 rows already retained
 in Assumption~\ref{ass:pinned-finite-reduction}.  The root-neutral masking
 identity \(\gamma^{27}\Delta G+\gamma^{28}\Delta D=0\) is used only by the
@@ -548,12 +548,12 @@ Their nonzero identity premises are Lemma~\ref{lem:local-algebraic-binding}
 inside Assumption~\ref{ass:pinned-finite-reduction}; only the generic
 Schwartz--Zippel flip bound at the pinned degree is added.  Each doom-persistence
 error is at most its tabulated entry, uniformly over every false statement,
-reachable saved state, \emph{and} adversarial \((D\)-word\(,d)\) --- the last by
+reachable saved state, \emph{and} adversarial \((D\)-word\(,d)\), the last by
 \textup{(S2)}, since these functionals do not read \(D\).  This is therefore not
 an assumption independent of Assumption~\ref{ass:pinned-finite-reduction}: its
 nonzero premise is the retained Lemma~\ref{lem:local-algebraic-binding} and the
 remaining content is the coefficient-agnostic Schwartz--Zippel flip bound.  We
-keep it stated as a premise --- not relabelled a theorem --- because the
+keep it stated as a premise, not relabelled a theorem, because the
 bespoke nonzero premise remains assumed inside
 Assumption~\ref{ass:pinned-finite-reduction}, but no assumption beyond
 Assumption~\ref{ass:pinned-finite-reduction} is introduced.  With the generic
@@ -587,20 +587,20 @@ of Lemma~\ref{lem:generic-boundary-rbr}), the absorbed lane evaluations
 before \(\gamma\).  Take the doomed-state function of
 Assumption~\ref{ass:relation-rbr-core-dfree} and
 Lemma~\ref{lem:generic-boundary-rbr}, extended to the width-29 prefix by
-ignoring the \(D\)-word and \(d\) --- well defined because by \textup{(S2)} no
+ignoring the \(D\)-word and \(d\), well defined because by \textup{(S2)} no
 pre-\(\gamma\) functional reads them, so the \(D\)-claims boundary is a
 prover-message boundary that cannot un-doom, error \(0\).  At the
 \(\gamma/\kappa\) boundary, for a false statement, either \textup{(A)} no
 correlated-agreement tuple exists, and the width-29 multicodeword-agreement
-bound of Assumption~\ref{ass:pinned-finite-reduction} --- uniform over all
+bound of Assumption~\ref{ass:pinned-finite-reduction} (uniform over all
 committed 29-tuples, hence over the adversarial \(D\)-word, and covering the
-\(\gamma^{28}\) word addend as ordinary lane 28 --- keeps the batched word far,
+\(\gamma^{28}\) word addend as ordinary lane 28) keeps the batched word far,
 doom persisting through the fold/query boundaries; or a tuple exists and either
 \textup{(B)} its claims are false, so the difference polynomial \(E\) of
 Lemma~\ref{lem:d-monomial-separation} is not identically zero and, since the
 batched three-point claim is the only bridge between absorbed claims and
 committed words, the continuation un-dooms only if \(E(\gamma,\kappa)=0\),
-bounded by the tabulated entry and --- the one place \(D\) could act --- unrepairable
+bounded by the tabulated entry and (the one place \(D\) could act) unrepairable
 by any pre-\(\gamma\) \(d\) by \textup{(S3)}; or \textup{(C)} its claims are true
 but the \(D\)-free predicate of Assumption~\ref{ass:relation-rbr-core-dfree}
 fails, a deterministic doom whose later escape events are \(D\)-free.  A tuple
@@ -623,8 +623,8 @@ projection; by the case analysis of Lemma~\ref{lem:d-lane-rbr} the recovered
 
 \begin{remark}[The security-critical \(D\)-before-\(\gamma\) order]
 \label{rem:d-order-pin}
-Fact \textup{(S1)} --- the three \(D\)-lane claims absorbed strictly before
-\(\gamma\) --- is a soundness invariant on par with committing roots before
+Fact \textup{(S1)}, the three \(D\)-lane claims absorbed strictly before
+\(\gamma\), is a soundness invariant on par with committing roots before
 challenges, not incidental scheduling.  Were the \(D\)-claims absorbed after
 \(\gamma\), an adversary knowing \(\gamma\ne0\) could set
 \(\Delta d_t=-e_t(\gamma)/\gamma^{28}\) to drive each batched claim to any
@@ -739,8 +739,8 @@ Table~\ref{tab:soundness-events}, except with probability at most
 analogue of Assumption~\ref{ass:boundary-restoration}; it is not inferred from
 Theorem~\ref{thm:bcs-soundness}.  It is deliberately heavier than its
 soundness sibling: where Assumption~\ref{ass:boundary-restoration} is a scalar
-probability bound, this premise is existential and algorithmic --- it posits
-both the extractor and its success --- and so is close to the interactive
+probability bound, this premise is existential and algorithmic (it posits
+both the extractor and its success) and so is close to the interactive
 knowledge-soundness conclusion itself.  Lemma~\ref{lem:sr-knowledge-reduction}
 below discharges its existential and algorithmic content, reducing it to the
 static algebraic Assumption~\ref{ass:relation-knowledge-core}.
@@ -830,8 +830,8 @@ determine codeword openings and assignments satisfying the pinned constraints.
 The pinned encoding of Section~\ref{sec:construction} maps that interactive
 witness to a relation witness \(w\) for \(\RProfile\).  Extraction is
 straight-line from the query transcript, so it uses no rewinding.  Its failure
-event --- a satisfiable statement is accepted but \(\mathsf{Ext}\) fails to
-recover the openings --- is logically distinct from the soundness escape event
+event (a satisfiable statement is accepted but \(\mathsf{Ext}\) fails to
+recover the openings) is logically distinct from the soundness escape event
 of Theorem~\ref{thm:bcs-soundness}, in which a false statement is accepted;
 Assumption~\ref{ass:sr-knowledge} bounds it by the same
 \(\varepsilon_{\rm round}^{(0)}\), so the \(3b(T)\) value carries to the
@@ -919,7 +919,7 @@ proof of knowledge in the random-oracle model
 \(A\) be a probabilistic polynomial-time adversary that receives simulated
 proofs for valid statements, produced by the simulator of
 Theorem~\ref{thm:real-vs-sim23}, and outputs a fresh accepting pair
-\((x^\ast,\pi^\ast)\) --- accepting, and not one of the received proofs --- while
+\((x^\ast,\pi^\ast)\) (accepting, and not one of the received proofs) while
 the experiment makes \(T\le2^{128}\) oracle queries and \(A\) receives
 \(q_S\) simulated proofs.  Then there is an extractor that, given \(A\)'s
 query--answer transcript, outputs \(w^\ast\) with

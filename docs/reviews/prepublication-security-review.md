@@ -70,7 +70,7 @@ review.
 
 ## Findings
 
-### R-01 — Single-spend verification primitive; no deposit, no anonymity-set growth
+### R-01: Single-spend verification primitive; no deposit, no anonymity-set growth
 **Severity: High. Status: documented-constraint.**
 
 The release contains no deposit, mint, or leaf-append instruction. The only
@@ -89,7 +89,7 @@ path there is no set for a spend to hide within.
 committed set on-chain under the same atomicity discipline, and re-evaluate
 hiding against a realistic set size rather than a one-element pool.
 
-### R-02 — No knowledge soundness / no theft-resistance theorem
+### R-02: No knowledge soundness / no theft-resistance theorem
 **Severity: High. Status: documented-constraint.**
 
 The soundness result is **argument soundness for the exact relation only**. No
@@ -103,7 +103,7 @@ the theorem that would matter most, and it is absent.
 knowledge-sound compiler) and prove theft-resistance against the note
 commitment before any custody of value is contemplated.
 
-### R-03 — Hiding floors are conditional on an unverified, self-attested premise
+### R-03: Hiding floors are conditional on an unverified, self-attested premise
 **Severity: High. Status: open; rank premise now independently checkable (see update below).**
 
 The 104-bit hiding floor (`hiding.tex:368-372`; dominant term
@@ -120,7 +120,7 @@ self-attested.
 coverage identities (ideally machine-checked), and treat the hiding floor as
 provisional until a party other than the authors reproduces it.
 
-*Update — independent checker added.* The premise is now independently
+*Update: independent checker added.* The premise is now independently
 checkable. `tools/verify_hiding_ranks.py` is a standalone, stdlib-only Python
 tool that shares no code with the prover: it uses its own M31/QM31 field
 arithmetic, re-derives the public linear maps directly from the construction's
@@ -132,13 +132,13 @@ query roots, a random sumcheck point, a nonzero batching challenge) rather than
 replaying the prover's transcript. Because every rank in the table is a generic
 (Zariski-open) property of the frozen layout, reproducing each target at an
 independent generic point shows the target is the true generic rank of the
-public construction — the dimension count `im A = W` rests on. It confirms all
+public construction, the dimension count `im A = W` rests on. It confirms all
 eight ranks in `tab:goodspend-ranks` (root-neutral joint 1404, serialized
 terminal 324, terminal-plus-initial 328, `ker(initial,T_z)` coverage 1076, the
 two remaining-`G/D` and inactive-`H1` query maps 288, and their terminal Schur
 maps 12) against both the frozen certificate
 `results/spend/spend_computational_hvzk_closure.json` and the paper, and prints
-a pass/fail transcript. The root-neutral block (1404/324/328/1076 — the
+a pass/fail transcript. The root-neutral block (1404/324/328/1076, the
 substantive coverage claim) is reconstructed exactly from the factor/exponent
 schedule; the two raw-coverage blocks (288/12) reproduce the layer-zero query
 code's column rank and terminal Schur rank using the exact eq terminals and a
@@ -152,7 +152,7 @@ the full hybrid argument or of the reconstructed model's completeness; the
 hiding floor remains conditional on Assumption `lem:complete-affine-image`, but
 its rank premise is no longer only self-attested by the prover's own code.
 
-### R-04 — Soundness floor is work-normalized; the raw bound is vacuous
+### R-04: Soundness floor is work-normalized; the raw bound is vacuous
 **Severity: Medium. Status: documented-constraint.**
 
 The headline 100.16-bit soundness floor is in a **work-normalized** (per-RO-query)
@@ -167,7 +167,7 @@ easily-misread claim than a raw 100-bit floor.
 floor in all reader-facing material, and tighten the IOP/BCS parameters if a
 raw, non-vacuous bound at the target query budget is desired.
 
-### R-05 — Deployment-domain residual: keyholder-shaped and genesis-unchecked
+### R-05: Deployment-domain residual: keyholder-shaped and genesis-unchecked
 **Severity: Medium. Status: documented-constraint.**
 
 The deployment domain is `sha256(separator || program_id || domain_tag)`
@@ -191,7 +191,7 @@ cluster (e.g. a genesis-hash or slot-hashes sysvar witness) into the domain, so
 that a mismatched cluster cannot reproduce the domain even under the same
 program id.
 
-### R-06 — No scaling or concurrency story
+### R-06: No scaling or concurrency story
 **Severity: Medium. Status: documented-constraint.**
 
 State lives in a single sequential pool account whose sequence is bumped once
@@ -205,12 +205,12 @@ bound in rent-bearing accounts.
 layout and a concurrency model that does not serialize all spends on one
 account before any throughput claim is made.
 
-### R-07 — No live callable instance; thin CU headroom against repricing
+### R-07: No live callable instance; thin CU headroom against repricing
 **Severity: Medium. Status: open.**
 
 The demonstrated program was closed after the single run, so there is currently
 no live, callable deployment to exercise or audit end-to-end. The finalized
-transition consumed 1,344,003 of the requested 1,400,000 CU — 96.0002%, leaving
+transition consumed 1,344,003 of the requested 1,400,000 CU, 96.0002%, leaving
 ~4% headroom (`evaluation.tex:184-185`). A future compute-cost repricing of any
 syscall on the hot path (SHA-256, PDA derivation, CPI) could push the fixed
 verification cost over the limit, which the paper acknowledges as a risk.
@@ -219,16 +219,16 @@ verification cost over the limit, which the paper acknowledges as a risk.
 exercise, and either reduce the hot-path CU or validate behavior against
 plausible repricing before relying on the current margin.
 
-### R-08 — Custom `merkle_node_compress_v3` wants external review
+### R-08: Custom `merkle_node_compress_v3` wants external review
 **Severity: Medium. Status: open.**
 
 Internal Merkle nodes use a bespoke one-permutation 2:1 compression: the ordered
 pair `(left, right)` fills the full width-16 Poseidon2-M31 state, a fixed
 node-domain tweak is added to the last limb, one permutation is applied, and the
 first eight limbs are retained (`poseidon2.rs:403-412`). Separation from the
-length-committing leaf sponge is **by convention** — the primitive is only ever
+length-committing leaf sponge is **by convention** (the primitive is only ever
 called on internal nodes and the statement/tree version is bumped when it is
-selected — rather than by an in-permutation domain tag. This is the binding
+selected) rather than by an in-permutation domain tag. This is the binding
 primitive for every note and tree node and has had no external cryptographic
 review.
 

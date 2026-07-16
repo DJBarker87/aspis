@@ -27,36 +27,36 @@ Deployment domain: `ba43feb01d7d7f5ee3f57a6481b202066c83c6c3e76020a619c1611abbd0
 
 ## Contents
 
-- `proof/spend-q18-g37.bin` — the finalized 65,407-byte proof
+- `proof/spend-q18-g37.bin` : the finalized 65,407-byte proof
   (`ASP0` container), sha256
   `32eb419e0c5c3ef4fa2db0d32579e88f1207547d8fb010279efeb6c05981b529`.
-- `proof/statement.json` — the witness-independent public statement.
-- `program/aspis_verifier.so` — the deployed 924,344-byte SBF verifier
+- `proof/statement.json` : the witness-independent public statement.
+- `program/aspis_verifier.so` : the deployed 924,344-byte SBF verifier
   (ELF), sha256
   `e289faf85fe4773880794d5d4356461bb9cb94077b68711f99348efe19707d7e`.
-- `certificates/release.json` — the release certificate. It reports
+- `certificates/release.json` : the release certificate. It reports
   `released=true` with all release gates green.
 - `certificates/spend_d_after_g_soundness_epro.json`,
   `certificates/spend_complete_good_product.json`,
-  `certificates/spend_computational_hvzk_closure.json` — the three
+  `certificates/spend_computational_hvzk_closure.json`: the three
   proof-independent theorem artifacts referenced by the certificate.
-- `evidence/mainnet-execution.json` — the finalized executor record for the
+- `evidence/mainnet-execution.json` : the finalized executor record for the
   verify-and-apply transaction and its lifecycle.
-- `evidence/mainnet-cleanup.json` — the finalized ProgramData cleanup and
+- `evidence/mainnet-cleanup.json` : the finalized ProgramData cleanup and
   refund receipt.
-- `evidence/spend_mainnet_sbf_and_instruction_reconstruction.json` — the
+- `evidence/spend_mainnet_sbf_and_instruction_reconstruction.json` : the
   byte-level reconstruction of the deployed SBF from the buffer's archival
   loader-write history, cross-checked between two independent RPC endpoints.
-- `evidence/spend_mainnet_independent_rpc_reconciliation.json` — the
+- `evidence/spend_mainnet_independent_rpc_reconciliation.json` : the
   deterministic two-endpoint reconciliation of the deployment, verification,
   and ProgramData-close records, and the cluster disambiguation.
-- `tools/reconstruct_spend_mainnet_sbf.py` — the stdlib-only archival
+- `tools/reconstruct_spend_mainnet_sbf.py` : the stdlib-only archival
   reproducer that regenerates both files from live RPC.
-- `paper/aspis-spend.pdf` — the publication paper.
-- `manifest.json` — object-by-object byte length and sha256, plus the pinned
+- `paper/aspis-spend.pdf` : the publication paper.
+- `manifest.json` : object-by-object byte length and sha256, plus the pinned
   on-chain identities.
-- `SHA256SUMS` — checksums for every file in the bundle.
-- `verify.sh` — the offline verifier.
+- `SHA256SUMS` : checksums for every file in the bundle.
+- `verify.sh` : the offline verifier.
 
 ## Verify
 

@@ -293,8 +293,8 @@ The tag~65 implementation uses the following order.
   controlled by the transaction builder.
 \end{enumerate}
 
-The final transaction contains two Compute Budget instructions---a
-1,400,000-CU limit and a 262,144-byte heap request---followed by one tag~65
+The final transaction contains two Compute Budget instructions, a
+1,400,000-CU limit and a 262,144-byte heap request, followed by one tag~65
 application instruction.  Solana transaction rollback covers both direct
 writes, the proof refund, and the marker-creation CPI, while writable locks on
 the pool and canonical marker serialize conflicting spends

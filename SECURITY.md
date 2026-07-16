@@ -26,7 +26,7 @@ Two conditional premises are load-bearing and most need independent review:
    owner-key derivation `0x4153_0001`, nullifier `0x4153_0002`, note / leaf /
    spendable-output commitment `0x4153_0003`, the retired v2 node sponge
    `0x4153_0005`, and the deployed `merkle_node_compress_v3` two-to-one node
-   compression `0x4153_1005`. Separation is thus a property of the injected
+   compression `0x4153_1005`. Separation is a property of the injected
    bytes, not of call-site convention, and is verified by cross-domain
    non-equality KATs (each domain yields a distinct digest on a shared input)
    plus per-wrapper regression KATs that pin the exact output bytes. The

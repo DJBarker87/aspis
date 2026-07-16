@@ -29,7 +29,7 @@ finalized program log commits to the same proof digest under the domain
 100.16 bits.
 
 The proof is bound to the exact public statement, pool identity, sequence,
-selector, verifier transcript, and — new in this release — the deployment
+selector, verifier transcript, and, new in this release, the deployment
 domain, so the same proof is valid only against a pool that stores the
 matching domain. The mainnet program was the disposable id
 `GQPNqfYF17Nj2dGsf6Q2AtiouyM67YxFZPh9LxBk2Ye3`; the pool was

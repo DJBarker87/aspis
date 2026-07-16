@@ -80,12 +80,12 @@ transactions.  The security statements are argument soundness and
 conditional computational zero knowledge for the exact relation and declared
 view; they do not assert a statistical, perfect, or standard-model
 zero-knowledge result.  Under an added round-by-round knowledge premise that
-posits a straight-line extractor --- the knowledge analogue of the
-state-restoration premise, assumed rather than proved --- the argument is an
-argument of knowledge, and, because the public nullifier binds the note to its
-spending secret, this yields conditional theft resistance: the note's secret is known to any
-party that produces an accepting spend of it, except with the stated soundness
-error.  Establishing weak unique response of the compiled argument and invoking
+posits a straight-line extractor, the knowledge analogue of the
+state-restoration premise and assumed rather than proved, the argument is an
+argument of knowledge; and because the public nullifier binds the note to its
+spending secret, this yields conditional theft resistance, in that the note's
+secret is known to any party that produces an accepting spend of it, except with
+the stated soundness error.  Establishing weak unique response of the compiled argument and invoking
 the Fiat--Shamir simulation-extractability theorem extends this to an adversary
 that also observes honest spends, under the same knowledge premise.  The
 relation is a same-path leaf replacement: this release verifies a

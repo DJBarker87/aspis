@@ -176,7 +176,7 @@ This table compares candidates only on the eight-part conjunction of Section
 system comparison. On axes this release does not claim, several of these
 candidates are ahead of Aspis Spend: Cloak, Privacy Cash, and the Light
 Protocol stack are live pools with deposit paths and growing anonymity sets,
-whereas Aspis Spend ships the spend verifier only — no deposit instruction,
+whereas Aspis Spend ships the spend verifier only; no deposit instruction,
 one input and one output, a single sequential pool, and a mainnet execution
 that advanced one pool from sequence 0 to 1. The "Missing from the exact
 conjunction" column records where each candidate falls outside the narrow

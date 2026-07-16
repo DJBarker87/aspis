@@ -10,7 +10,7 @@ Zerocash gives an early complete treatment of this pattern in a decentralized
 payment system \cite{BenSassonEtAl2014Zerocash}.  \Profile{} retains only the
 cryptographic state-transition atom needed here: one input, one output, one
 asset, a public fee, and a same-path replacement in a depth-20 private tree.
-Wallet behavior, note discovery, transaction-origin privacy, and multi-party
+Wallet behaviour, note discovery, transaction-origin privacy, and multi-party
 payment protocols are outside the relation.
 
 It is useful to separate two statements that are sometimes conflated.  The
@@ -123,7 +123,7 @@ Poseidon2 is a sponge-friendly permutation designed for efficient algebraic
 implementations \cite{GrassiKhovratovichSchofnegger2023}.  Commitments, transcript
 challenges, private-Merkle nodes, and work tests use domain-separated SHA-256.
 These uses have different roles.  Poseidon2 collision resistance binds the
-public arithmetic digests, while SHA-256 is modeled as the programmable random
+public arithmetic digests, while SHA-256 is modelled as the programmable random
 oracle in the soundness and hiding games; SHA-256 itself is specified by
 FIPS~180-4 \cite{NISTFIPS1804}.  The implementation pins the
 concrete M31 Poseidon2 constants and arithmetic code to a specified Plonky3

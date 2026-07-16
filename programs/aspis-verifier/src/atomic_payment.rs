@@ -1,11 +1,10 @@
-//! Isolated atomic payment-state transition candidate.
+//! Atomic payment state transition.
 //!
-//! This module deliberately separates economic mutation from proof selection.
-//! The default instruction table remains fail-closed until profile-21 hiding
-//! is complete; nondefault candidate/diagnostic builds inject the exact
-//! profile-20 verifier to measure the closure. Tests pin the required ordering:
-//! every account/public-input check and complete proof verification happen
-//! before the first CPI or data write.
+//! The economic mutation lives here, kept separate from proof verification: an
+//! accepting spend advances the pool anchor and sequence and writes the
+//! nullifier marker. The ordering is fixed and tested. Every account and
+//! public-input check and full proof verification complete before the first CPI
+//! or data write, so a failed check leaves all state untouched.
 
 use solana_program::{
     account_info::AccountInfo,
@@ -639,8 +638,8 @@ where
     Ok(())
 }
 
-/// Safe placeholder retained by append-only tag 38. Final profile-21
-/// integration uses the real closure above through a new append-only tag.
+/// Fail-closed placeholder for the superseded append-only tag 38. The
+/// production path runs the real state transition above through its own tag.
 pub fn verifier_not_integrated(
     _proof_account: &AccountInfo,
     _statement: &AtomicPaymentStatementV4,
