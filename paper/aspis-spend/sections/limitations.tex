@@ -9,6 +9,14 @@ aggregation, a wallet protocol, a relayer, or a general private application
 interface.  The pool address, sequence, old and new anchors, nullifier, output
 commitment, asset identifier, and fee are public.
 
+Value conservation (Theorem~\ref{thm:value-conservation}) is per spend: an
+accepting spend does not mint value, and the total committed value is
+non-increasing relative to what was committed at initialization.  Because the
+initial anchor is a caller-supplied value and this release has no deposit or
+append path, absolute solvency --- that the pool's committed value is externally
+backed --- is out of scope; it would require an honestly-valued (empty-tree)
+initial anchor and a deposit construction.
+
 Theorem~\ref{thm:bcs-soundness} is classical random-oracle argument soundness
 in the work-normalized metric.  It makes no quantum-random-oracle claim, and
 its concrete ledger includes a 124-bit Poseidon2 assumption and treats SHA-256
