@@ -374,6 +374,67 @@ the former is the minimum.  Every accepted false statement is included in
 this event by the preceding lemmas.
 \end{proof}
 
+\subsection{Value conservation}
+\label{sec:value-conservation}
+
+Theft resistance concerns who may spend a note; value conservation concerns
+whether a spend can create value.  The relation carries the balance constraint
+\eqref{eq:balance} and the two 30-bit range decompositions
+\eqref{eq:range-in}--\eqref{eq:range-out}; the following states their
+consequence as a soundness statement.  Let \(\varepsilon_{\rm bind}\) denote
+the Poseidon2 collision reserve of the ledger for
+Equations~\eqref{eq:input-note} and~\eqref{eq:output-note}.
+
+\begin{theorem}[Value conservation]
+\label{thm:value-conservation}
+For any accepting spend with public fee \(f\in\{0,\dots,2^{30}-1\}\), with
+work-normalized soundness error \(3b(T)\) and additional binding error
+\(\varepsilon_{\rm bind}\), there exist integers \(v,v'\in\{0,\dots,2^{30}-1\}\)
+such that the consumed input note commits to value \(v\), the created output
+note commits to value \(v'\), and
+\[
+ v' + f = v \qquad\text{over the integers.}
+\]
+In particular the balance cannot be met by a modular wraparound, and no
+accepting spend increases value: the output value plus the public fee equals
+the input value.
+\end{theorem}
+
+\begin{proof}
+By Theorem~\ref{thm:bcs-soundness}, with work-normalized error \(3b(T)\) (raw
+failure \(3\varepsilon_{\mathrm{BCS}}(T)=3T\,b(T)\), subject to the
+Table~\ref{tab:raw-advantage} caveat), acceptance implies a witness \(w\) with
+\(\RProfile(x,w)=1\); write \(v,v'\) and the range limbs of \(w\).  Constraints \eqref{eq:range-in}--\eqref{eq:range-out} equate \(v\) and
+\(v'\) to their base-\(2^{10}\) recompositions, and each of the six limbs lies
+in \(\{0,\dots,2^{10}-1\}\) by the 10-bit lookup argument, so
+\(v,v'\in\{0,\dots,2^{30}-1\}\).  Constraint \eqref{eq:balance} gives
+\(v'+f\equiv v \pmod p\) with \(p=2^{31}-1\).  Since
+\(v',f\le2^{30}-1\), we have \(v'+f\le2^{31}-2=p-1<p\), and \(v\le2^{30}-1<p\);
+two residues in \(\{0,\dots,p-1\}\) that are congruent mod \(p\) are equal, so
+\(v'+f=v\) over the integers, with no wraparound.  The bound is tight by
+construction: \(2(2^{30}-1)=p-1\), so the two 30-bit operands leave zero slack,
+and the 30-bit range checks are exactly what force the field balance to be an
+integer balance.  Finally, by collision
+resistance of \(H_{\mathsf{note}}\) (reserve \(\varepsilon_{\rm bind}\)) the
+committed openings \eqref{eq:input-note} and \eqref{eq:output-note} are the
+unique values \(v,v'\), so the input note carries value \(v\) and the output
+note value \(v'=v-f\le v\).
+\end{proof}
+
+\begin{corollary}[No inflation, relative to initialization]
+\label{cor:no-inflation}
+Under the premises of Theorem~\ref{thm:value-conservation}, each spend changes
+exactly one leaf and replaces an in-tree note of value \(v\) by a note of value
+\(v-f\), removing the public fee \(f\) from the shielded set; the total
+committed note value is therefore non-increasing across any sequence of
+accepting spends.  This is relative to the value committed at initialization.
+The pool anchor is a caller-supplied value at initialization and this release
+has no deposit or append operation (Section~\ref{sec:limitations}), so the
+statement is that spends do not mint value, not that the pool's committed value
+is externally backed; establishing an honestly-valued initial anchor, or a
+deposit path, is out of scope.
+\end{corollary}
+
 \subsection{Knowledge soundness and theft resistance}
 \label{sec:knowledge-soundness}
 

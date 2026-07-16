@@ -54,8 +54,8 @@
       "sha256": "9cb01c4d6a2b868b3c84f0e2323e03d07e2de595b115409ae80dcf392b27f415"
     },
     "paper/aspis-spend.pdf": {
-      "bytes": 665484,
-      "sha256": "a4f205a9bea64a6140cc1f2bb2ec0a566f834d30a34d9c99e1b1ca50c61437c3"
+      "bytes": 671708,
+      "sha256": "5b98e938dc7e307145722d52fa585ecd8f9363637277b06e460a328c4a062395"
     },
     "program/aspis_verifier.so": {
       "bytes": 924344,
