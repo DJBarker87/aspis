@@ -10,24 +10,27 @@ Spend, the q18/g37 release in this repository, verifies a full
 shielded-spend proof, advances the pool state, and records the nullifier in
 one transaction under that cap.
 
+On 2026-07-16 Aspis Spend verified a full shielded-spend proof, advanced the
+pool state, and recorded the nullifier in one finalized mainnet-beta
+transaction at 1,344,003 CU:
+[`3G1vogg…sRPFcv`](https://explorer.solana.com/tx/3G1voggszvDMGi5PbGM1kuEMYKvh2TNMbH6hHHwndUdRQJNT7ehRFpQpksxLnx5tp2xkS5jGi359rVXk42sRPFcv?cluster=mainnet-beta)
+([evidence](docs/mainnet-demo.md)).
+
 This is a research release, not an audit or a production service; the exact
 claim, model, and limitations are stated in the
-[paper](paper/aspis-spend/) and in [Limitations](#limitations).
-
-Status: certified locally; mainnet execution pending. This page gains the
-finalized transaction, compute, and cost evidence when it lands. The
+[paper](paper/aspis-spend/) and in [Limitations](#limitations). The
 [novelty re-scan](docs/novelty-rescan-2026-07-13.md) is a dated
-public-evidence search for the claim shape; no first-execution claim is made
-before a finalized mainnet signature exists.
+public-evidence search for the claim shape.
 
 ## Release numbers
 
 | Result | Value |
 | --- | ---: |
+| One-transaction verification and state transition | 1,344,003 of the 1,400,000-CU cap |
 | Proof | 65,407 bytes |
 | Soundness floor (work-normalized, proven Johnson/MCA regime) | 100.16 bits |
 | Witness hiding | 103.02 bits pairwise, 104.02 bits versus simulator |
-| Verification budget | fits Solana's 1,400,000-CU transaction cap |
+| Finalized slot | `433219840` |
 
 The soundness floor is work-normalized: an adversary limited to T
 random-oracle queries, 1 ≤ T ≤ 2^128, falsely accepts with probability at
