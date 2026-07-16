@@ -99,10 +99,11 @@ pub use logup::{
     LOGUP_COMPRESSION_KAT_EXPECTED, RANGE_TABLE_SIZE,
 };
 pub use poseidon2::{
-    hash_fields, hash_fields_with_trace, merkle_node_compress_v3, merkle_node_sponge_v2, permute,
-    permute_optimized_with_trace, Digest, Poseidon2RoundKind, Poseidon2RoundTransition,
-    DIGEST_ELEMS, MERKLE_NODE_COMPRESSION_V3_KAT, MERKLE_NODE_COMPRESSION_V3_TWEAK,
-    MERKLE_NODE_DOMAIN_V2, POSEIDON2_ROUNDS, POSEIDON2_WIDTH, RATE,
+    hash_merkle_node_sponge, hash_note_commitment, hash_nullifier, hash_owner_key,
+    merkle_node_compress_v3, permute, permute_optimized_with_trace, Digest, Poseidon2RoundKind,
+    Poseidon2RoundTransition, DIGEST_ELEMS, MERKLE_NODE_COMPRESSION_V3_KAT,
+    MERKLE_NODE_COMPRESSION_V3_TWEAK, MERKLE_NODE_DOMAIN_V2, POSEIDON2_ROUNDS, POSEIDON2_WIDTH,
+    RATE,
 };
 pub use spend::{
     decompose_10bit_limbs, derive_nullifier, derive_owner_key, evaluate_spend,
