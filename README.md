@@ -36,19 +36,44 @@ public-evidence search for the claim shape.
 | One-transaction verification and state transition | 1,344,003 of the 1,400,000-CU cap |
 | Proof | 65,407 bytes |
 | Soundness floor (work-normalized, proven Johnson/MCA regime) | 100.16 bits |
-| Work to forge (raw, random-oracle queries) | ≈ 2^106 |
-| Witness hiding (computational, conditional on the paper's affine-image premise) | 103.02 bits pairwise, 104.02 bits versus simulator |
+| Work to forge (expected random-oracle queries) | ≈ 2^106.79 |
+| Zero knowledge (conditional computational, programmable ROM, declared view) | 104.024-bit real-vs-simulator floor; 103.024-bit pairwise witness-indistinguishability floor |
 | Finalized slot | `433219840` |
 
-The soundness floor is work-normalized: an adversary limited to T
-random-oracle queries, 1 ≤ T ≤ 2^128, falsely accepts with probability at
-most T · 2^−100.16. In plain terms, forging costs on the order of 2^106
-random-oracle queries; the round-by-round error is about 2^−106.79, and
-100.16 is its conservative per-query restatement after a whole-ledger factor
-of three. The raw acceptance bound is vacuous at T = 2^128 and is not booked
-as the floor. The 100.16-bit figure is argument soundness, not knowledge
-soundness: an accepting proof implies a satisfying witness exists, not that
-the spender knows the note's key (see [Limitations](#limitations)).
+The soundness statement is reported as three numbers so its exact meaning is
+auditable rather than compressed into one figure:
+
+1. **Round/event-ledger error** ≈ 2^−106.79 — the conservative union of the
+   protocol's per-event error before the Fiat–Shamir reduction.
+2. **Raw false-acceptance advantage as a function of the query budget T**: an
+   adversary making T random-oracle queries falsely accepts with probability
+   at most `3·[(T + 32)·2^−106.79 + 3(T² + 1)/2^256]`. It grows with T and is
+   vacuous once T approaches the round error, as every grinding-based argument
+   is:
+
+   | Query budget T | Raw false-acceptance bound |
+   | ---: | ---: |
+   | 2^40 | ≤ 2^−65.21 |
+   | 2^64 | ≤ 2^−41.21 |
+   | 2^80 | ≤ 2^−25.21 |
+   | 2^100 | ≤ 2^−5.21 |
+   | ≈ 2^105.2 and beyond | vacuous (no guarantee) |
+
+3. **Work-normalized headline** 100.16 bits — the per-*query* floor, uniform
+   over 1 ≤ T ≤ 2^128, after the 32-boundary BCS reduction and a conservative
+   whole-ledger factor of three: the false-acceptance probability per
+   random-oracle query is at most 2^−100.16.
+
+The headline is the per-query floor; the table is the cumulative per-budget
+bound behind it, published so the metric cannot be misread as a raw 2^−100
+forgery probability at every budget. All three come from the soundness ledger
+and are recomputed by `spend_soundness_epro_ledger`.
+
+This is argument soundness, not knowledge soundness: an accepting proof
+implies a satisfying witness exists, not that the spender knows the note's
+key. The construction therefore does not establish authorization security or
+theft resistance, and no funds should be placed in a pool on the basis of
+this release (see [Limitations](#limitations)).
 
 ## No trusted setup
 
@@ -171,10 +196,19 @@ Each limitation is recorded in the paper's limitations section.
   Binding the cluster genesis into the domain would remove the second
   residual; it is not in this release because it would require regenerating
   the proof.
-- **Hiding is conditional.** The 103/104-bit hiding floors hold under the
-  affine-image rank and coverage premise stated in the paper, whose evidence
-  is a release-time machine check, not an external audit or a
-  proof-assistant development.
+- **Zero knowledge is conditional and model-scoped.** The paper constructs a
+  witness-free simulator (Theorem "real view versus simulation") whose output
+  is computationally indistinguishable from the real proof view, which is a
+  zero-knowledge statement. It holds only: under the affine-image rank and
+  coverage premise; in the programmable SHA-256 random-oracle model; for the
+  declared complete proof-and-execution view — which explicitly excludes the
+  fee-payer identity, blockhash, account-graph linkage, network metadata, and
+  timing/scheduler/power side channels. It is computational, not statistical,
+  perfect, or standard-model zero knowledge, and it is not transaction-graph
+  or network-layer privacy. The affine-image rank premise is independently
+  checkable with `tools/verify_hiding_ranks.py`, which re-derives the maps
+  with its own field arithmetic and reproduces the eight pinned ranks, rather
+  than being only self-attested by the prover.
 - **No external audit; no live instance.** No third-party security audit or
   coverage-guided fuzz campaign has been performed
   ([internal review](docs/reviews/prepublication-security-review.md)). The

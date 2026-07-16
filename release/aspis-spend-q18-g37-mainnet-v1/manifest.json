@@ -1,6 +1,12 @@
 {
   "artifact": "aspis_spend_q18_g37_mainnet_release_bundle",
-  "deployment_domain_hex": "ba43feb01d7d7f5ee3f57a6481b202066c83c6c3e76020a619c1611abbd08c8f",
+  "deployment_domain": {
+    "derivation": "sha256(separator || base58_decode(program_id) || domain_tag)",
+    "domain_tag": "mainnet-beta",
+    "hex": "ba43feb01d7d7f5ee3f57a6481b202066c83c6c3e76020a619c1611abbd08c8f",
+    "program_id": "GQPNqfYF17Nj2dGsf6Q2AtiouyM67YxFZPh9LxBk2Ye3",
+    "separator": "aspis-spend-deployment-domain-v1"
+  },
   "finalized_transaction": {
     "compute_units_consumed": 1344003,
     "finalized_slot": 433219840,
@@ -48,8 +54,8 @@
       "sha256": "9cb01c4d6a2b868b3c84f0e2323e03d07e2de595b115409ae80dcf392b27f415"
     },
     "paper/aspis-spend.pdf": {
-      "bytes": 628392,
-      "sha256": "bb78d51de2b6c5fdc58b62dbc940ff7da0f6ba8e5ba2da924a945335d030c94b"
+      "bytes": 644611,
+      "sha256": "95d894e002508f54b428e000d06a78fbad750e64708224ddf433404df89381a9"
     },
     "program/aspis_verifier.so": {
       "bytes": 924344,

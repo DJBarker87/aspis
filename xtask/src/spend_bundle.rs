@@ -45,7 +45,10 @@ const COPIES: &[(&str, &str)] = &[
         "crates/aspis-prover/fixtures/spend_q18_g37_release.statement.json",
         "proof/statement.json",
     ),
-    ("target/deploy/aspis_verifier.so", "program/aspis_verifier.so"),
+    (
+        "target/deploy/aspis_verifier.so",
+        "program/aspis_verifier.so",
+    ),
     (
         "results/spend/spend_one_transaction_release.json",
         "certificates/release.json",
@@ -184,8 +187,8 @@ pub fn build(workspace_root: &Path) -> Result<PathBuf> {
 
     for (src_rel, dest_rel) in COPIES {
         let src = workspace_root.join(src_rel);
-        let bytes = fs::read(&src)
-            .with_context(|| format!("reading source artifact {}", src.display()))?;
+        let bytes =
+            fs::read(&src).with_context(|| format!("reading source artifact {}", src.display()))?;
         if *dest_rel == "evidence/mainnet-execution.json" {
             evidence_bytes = bytes.clone();
         }
@@ -245,7 +248,13 @@ pub fn build(workspace_root: &Path) -> Result<PathBuf> {
         "program_id": PROGRAM_ID,
         "pool": POOL,
         "nullifier": NULLIFIER,
-        "deployment_domain_hex": DEPLOY_DOMAIN,
+        "deployment_domain": {
+            "hex": DEPLOY_DOMAIN,
+            "derivation": "sha256(separator || base58_decode(program_id) || domain_tag)",
+            "separator": "aspis-spend-deployment-domain-v1",
+            "program_id": PROGRAM_ID,
+            "domain_tag": "mainnet-beta",
+        },
         "proof_sha256": PROOF_SHA,
         "sbf_sha256": SBF_SHA,
         "verifier": "verify.sh",

@@ -37,11 +37,11 @@
 
 \title{\Profile{}: Transparent Shielded-Spend Verification and\\
 Atomic State Update from a Pre-Uploaded Proof Account on Solana}
-\author{DJBarker87}
+\author{D. Barker}
 \date{15 July 2026}
 \hypersetup{
   pdftitle={Aspis Spend: Transparent Shielded-Spend Verification and Atomic State Update from a Pre-Uploaded Proof Account on Solana},
-  pdfauthor={DJBarker87},
+  pdfauthor={D. Barker},
   pdfsubject={Transparent arguments and atomic Solana state transitions},
   pdfkeywords={zero knowledge, transparent arguments, circle codes, Solana, shielded state}
 }
@@ -63,10 +63,12 @@ parameter $g=\ProfileBatchWork$.  Under the stated finite-parameter and
 boundary-state-restoration premises, the frozen event ledger and its
 32-boundary Fiat--Shamir reduction give a conservative
 \ProfileSoundnessBits-bit floor for work-normalized false acceptance per
-random-oracle query.  Under the stated affine-image premise, an explicit simulator gives
+random-oracle query.  Under the stated affine-image premise, a witness-free simulator gives
 \ProfileSimulationBits{} bits for a real view versus simulation and
-\ProfilePairwiseBits{} bits for pairwise witness hiding in the declared
-programmable-SHA-256 random-oracle, fixed Proof-or-Abort view.  The pinned
+\ProfilePairwiseBits{} bits for pairwise witness-indistinguishability in the
+declared programmable-SHA-256 random-oracle, fixed Proof-or-Abort view; this
+is a conditional computational zero-knowledge statement for that declared
+view.  The pinned
 implementation artifact contains a \ProfileProofBytes-byte proof and a
 \ProfileSbfBytes-byte Solana bytecode format (SBF) binary.  A finalized
 mainnet-beta transaction verified that proof, closed and refunded its proof
@@ -75,8 +77,9 @@ atomic transition.  It consumed \ProfileMainnetComputeUnits{} of the
 \ProfileComputeLimit{} requested compute units.  Program deployment, pool and
 proof-account setup, proof upload, and proof finalization were separate
 transactions.  The security statements are argument soundness and
-computational hiding for the exact relation and declared view; they do not
-assert knowledge soundness or a standard-model zero-knowledge result.
+conditional computational zero knowledge for the exact relation and declared
+view; they do not assert knowledge soundness, or a statistical, perfect, or
+standard-model zero-knowledge result.
 Because no extractor is constructed, the results do not by themselves
 establish that a party who does not know a note's spending key cannot produce
 an accepting spend; theft-resistance of a deployed pool is out of scope.  The
