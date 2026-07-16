@@ -123,13 +123,6 @@ lamport refund.
 \subsection{Mainnet-beta method}
 \label{sec:evaluation-mainnet-method}
 
-The mainnet execution recorded below was performed with the release
-immediately preceding the v4 statement: its statement carried no deployment
-domain, and its proof and program identities differ from the current
-fixtures.  The execution method and its checks are unchanged by the v4
-statement; the transaction remains finalized on-chain evidence for the
-prior release's exact bytes.
-
 The mainnet run used the Solana genesis hash
 \begin{center}
   \small\ttfamily
@@ -140,14 +133,14 @@ ProgramData, pool, and nullifier addresses to be absent.  The executor then
 deployed the exact release binary under program
 \begin{center}
   \small\ttfamily
-  9kPpUknrRicMvaGa6zPNERGUYDj6fMvMR8PwMS3iFR6Z
+  GQPNqfYF17Nj2dGsf6Q2AtiouyM67YxFZPh9LxBk2Ye3
 \end{center}
 with loader-derived ProgramData address
 \begin{center}
   \small\ttfamily
-  G7XHkv6riJ8TQJ6R8o31wAUMaoL8Q5UyHGExpQ51ntp1.
+  GoXXs2juAjmpvcsX7iLdHsGJCwBwB3HHQwvYyfV3RuU.
 \end{center}
-The finalized deployment transaction was recorded at slot 432,933,454.  The
+The finalized deployment transaction was recorded at slot 433,219,270.  The
 executor checked the deployed code hash, exact maximum data length, loader
 ownership, Program--ProgramData linkage, and the dedicated upgrade authority
 before application setup, immediately before verification simulation, and
@@ -156,9 +149,13 @@ after verification finality.
 Application setup comprised \ProfileMainnetSetupTransactions{} transactions:
 pool creation and initialization, combined proof-account creation and tag~0
 initialization, \ProfileUploadTransactions{} 960-byte-or-smaller upload
-transactions, and tag~62 finalization.  Uploads were submitted in five
-finality windows of at most 16 transactions.  The complete 64,487-byte proof
-account image was compared with the expected image before sealing.  Simulated
+transactions, and tag~62 finalization.  Pool initialization stored the
+deployment domain
+\nolinkurl{ba43feb01d7d7f5ee3f57a6481b202066c83c6c3e76020a619c1611abbd08c8f},
+the SHA-256 of the domain separator, the runtime program identity, and the
+cluster tag.  Uploads were submitted in five finality windows of at most 16
+transactions.  The complete 65,447-byte proof account image was compared with
+the expected image before sealing.  Simulated
 post-finalization upload and second-finalization attempts were rejected.
 Program deployment and these application-setup transactions are not part of
 the one-transaction verification claim.
@@ -189,17 +186,17 @@ and leaves \ProfileMainnetComputeHeadroom{} CU.  The transaction fee was
 10,000 lamports and the metadata reported no error.
 
 The program emitted the domain-separated proof-digest log
-\texttt{aspis-proof-sha256-v1}.  Decoding its value gives exactly the prior
-release proof's SHA-256,
-\nolinkurl{d4f529964d1cf9ccd9c5568b694796ba54191c6be38d341c66efa08c830cdc3d};
+\texttt{aspis-proof-sha256-v1}.  Decoding its value gives exactly the released
+proof's SHA-256,
+\nolinkurl{32eb419e0c5c3ef4fa2db0d32579e88f1207547d8fb010279efeb6c05981b529};
 the executor required this equality in both simulation and finalized logs.  The pool at
-\nolinkurl{B1z4gQ82xerghDKZ68HuP2Tehx5ER5mfVHq74y4ew3kk} advanced from sequence
+\nolinkurl{3ZRYarQZcWJQgzNwLo1Eo7PDmier3rbW41L8ccAddCvb} advanced from sequence
 zero to one and its data hash changed from
-\nolinkurl{3cad0b60e8a697c28f7c16657ed19142893f2eb5513dc0bc1382942d1789d11e}
+\nolinkurl{f1a5f7ce79a5d9b88360f0c12d23d2b1bfb18e7d07491e7101eae5a51d8530ea}
 to
-\nolinkurl{3d259b401a8f6c5cb49713707a7108b4097e35873e893cea1a93bc46a5d78ea4}.
+\nolinkurl{f123ccd4f7901c1109c696d9882c5c39e481db749ad37cc0494cd3e617a4e2bf}.
 The previously absent canonical nullifier marker
-\nolinkurl{2CnUJycxkinN3XtpWH5bCYVDEuMx42BTnFU9WXsymAu3} was created with the
+\nolinkurl{CFJ5fYPSi4Qn6okBCZS3tXFMw7Lsz4Jy9vEAAGU5kfSU} was created with the
 expected 72-byte image.
 
 The proof account held \ProfileProofRentLamports{} lamports immediately before
