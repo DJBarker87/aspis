@@ -2,17 +2,28 @@ import Mathlib
 import AspisFormal.CoreHidingPMF
 
 /-!
-# Sumcheck masking by a precommitted random oracle
+# Sumcheck masking by a precommitted low-degree oracle
 
-This file isolates the algebra behind the v5 sumcheck mask. It models a table
-`F : Fin n → K`, a uniformly random mask table `R`, and the challenge mixture
+This file separates two facts that must not be conflated.
+
+The first section models a finite vector `F : Fin n → K`, a uniformly random
+vector `R` of the same dimension, and the challenge mixture
 
 `Q = R + η F`.
 
-The mask oracle and its claimed sum must be fixed before `η` is sampled. This
-is the self-reduction used by the cited zero-knowledge sumcheck constructions;
-it is not the same as sampling ten unrelated zero-sum round polynomials. The
-commitment encoding and hash are deliberately outside this finite model.
+This is the elementary additive self-reduction. Its distribution theorem only
+applies when `R` is uniform over the *entire represented vector*. In particular,
+a uniform 1024-value multilinear table does not mask the degree-2 through
+degree-27 coefficients released by the Aspis sumcheck. No such application is
+claimed here.
+
+The second section models the actual degree-`d` round messages. A mask round is
+a fresh uniform polynomial whose endpoint sum is zero, plus a constant carrier
+equal to half the previous mask claim. The carrier makes consecutive rounds
+chain, while the zero-boundary polynomial supplies all `d` free coefficients
+of a degree-`d` message. The construction is globally consistent: recursively
+summing its terminal values over the Boolean tree returns the initial mask
+claim exactly.
 
 The results below establish the following facts in the Lean kernel.
 
@@ -23,13 +34,13 @@ The results below establish the following facts in the Lean kernel.
 * More generally, for fixed `F`, `R`, and a claimed sum, a false original sum
   can satisfy the mixed sum equation for at most one value of `η`.
 
-The first item covers the serialized sumcheck transcript because Fiat--Shamir
-replay is a deterministic function of `Q` once the hash function and public
-context are fixed. It deliberately does **not** cover a joint view that also
-contains any observation of `R`, including its commitment root or correlated
-PCS openings. Binding those values and the component-(A) masked evaluations to
-a published simulator remains a named v5 wire obligation; no claim about that
-joint view is made here.
+For the degree-`d` construction, the kernel proves the conditional distribution
+of each complete round message is independent of the real round polynomial,
+given its visible incoming claim. It also proves that sampling the `d` tail
+coefficients independently and solving for the constant coefficient is exactly
+uniform over the zero-boundary subspace. Composition into the adaptive
+Fiat--Shamir transcript, and the joint view containing the mask commitment root
+and correlated PCS openings, remain named v5 wire obligations.
 -/
 
 open scoped BigOperators ENNReal
@@ -135,6 +146,280 @@ theorem maskSum_and_observation_pmf_indep
 
 end Distribution
 
+/-! ## Degree-preserving, chained round masks
+
+The deployed state-only sumcheck sends a complete degree-27 polynomial in each
+round. A multilinear mask has only one nonconstant coefficient and therefore
+cannot hide that message. The construction below instead samples a fresh
+degree-`d` polynomial in the kernel of `p ↦ p(0) + p(1)` for every round.
+
+If the incoming mask claim is `s`, the released mask polynomial is
+`s / 2 + p(X)`. Its endpoint sum is `s`, and evaluation at the round challenge
+becomes the next mask claim. Thus the masks chain without the invalid step of
+adding unrelated zero-sum polynomials directly to consecutive messages.
+-/
+
+section RoundTranscript
+
+variable {d : ℕ}
+
+/-- Coefficient vector of a univariate polynomial of degree at most `d`. -/
+abbrev RoundCoeff (K : Type*) (d : ℕ) := Fin (d + 1) → K
+
+/-- `p(0) + p(1)`, written directly in coefficients. -/
+def roundBoundary (coeff : RoundCoeff K d) : K :=
+  coeff 0 + ∑ i, coeff i
+
+/-- The endpoint-sum functional as a linear map. -/
+def roundBoundaryLinear : RoundCoeff K d →ₗ[K] K where
+  toFun := roundBoundary
+  map_add' := by
+    intro a b
+    simp only [Pi.add_apply, roundBoundary, Finset.sum_add_distrib]
+    abel
+  map_smul' := by
+    intro scalar coeff
+    simp only [Pi.smul_apply, smul_eq_mul, roundBoundary]
+    change scalar * coeff 0 + ∑ x, scalar * coeff x =
+      scalar * (coeff 0 + ∑ i, coeff i)
+    rw [mul_add, Finset.mul_sum]
+
+/-- Degree-`d` coefficient vectors with endpoint sum zero. -/
+abbrev ZeroBoundaryCoeff (K : Type*) [Field K] (d : ℕ) :=
+  LinearMap.ker (roundBoundaryLinear (K := K) (d := d))
+
+noncomputable instance [Fintype K] : Fintype (ZeroBoundaryCoeff K d) :=
+  Fintype.ofFinite _
+
+instance : Nonempty (ZeroBoundaryCoeff K d) := ⟨0⟩
+
+/-- Build a zero-boundary polynomial from its `d` freely sampled nonconstant
+coefficients. The constant coefficient is forced to `-∑ tail / 2`. -/
+def zeroBoundaryFromTail (h2 : (2 : K) ≠ 0) (tail : Fin d → K) :
+    ZeroBoundaryCoeff K d :=
+  ⟨Fin.cons (-(∑ i, tail i) / 2) tail, by
+    change roundBoundary (Fin.cons (-(∑ i, tail i) / 2) tail) = 0
+    simp [roundBoundary, Fin.sum_univ_succ]
+    field_simp
+    ring⟩
+
+/-- Recover the freely sampled nonconstant coefficients. -/
+def zeroBoundaryTail (coeff : ZeroBoundaryCoeff K d) : Fin d → K :=
+  fun i => coeff.1 i.succ
+
+theorem zeroBoundaryTail_fromTail (h2 : (2 : K) ≠ 0) (tail : Fin d → K) :
+    zeroBoundaryTail (zeroBoundaryFromTail h2 tail) = tail := by
+  funext i
+  simp [zeroBoundaryTail, zeroBoundaryFromTail]
+
+theorem zeroBoundaryFromTail_tail (h2 : (2 : K) ≠ 0)
+    (coeff : ZeroBoundaryCoeff K d) :
+    zeroBoundaryFromTail h2 (zeroBoundaryTail coeff) = coeff := by
+  apply Subtype.ext
+  funext i
+  refine Fin.cases ?_ (fun j => ?_) i
+  · change -(∑ j : Fin d, coeff.1 j.succ) / 2 = coeff.1 0
+    have hzero : coeff.1 0 + ∑ i, coeff.1 i = 0 := coeff.2
+    rw [Fin.sum_univ_succ] at hzero
+    apply (div_eq_iff h2).2
+    linear_combination -hzero
+  · simp [zeroBoundaryFromTail, zeroBoundaryTail]
+
+/-- The Rust sampler's `d` free coefficients are in bijection with the whole
+zero-boundary coefficient subspace. -/
+def zeroBoundaryEquiv (h2 : (2 : K) ≠ 0) :
+    (Fin d → K) ≃ ZeroBoundaryCoeff K d where
+  toFun := zeroBoundaryFromTail h2
+  invFun := zeroBoundaryTail
+  left_inv := zeroBoundaryTail_fromTail h2
+  right_inv := zeroBoundaryFromTail_tail h2
+
+/-- Mapping a uniform finite type through an equivalence gives the uniform law
+on the target finite type. -/
+theorem map_uniformOfFintype_equiv
+    {A B : Type*} [Fintype A] [Nonempty A] [Fintype B] [Nonempty B]
+    (e : A ≃ B) :
+    (PMF.uniformOfFintype A).map e = PMF.uniformOfFintype B := by
+  classical
+  ext y
+  rw [PMF.map_apply, tsum_eq_single (e.symm y)]
+  · rw [e.apply_symm_apply, if_pos rfl,
+      PMF.uniformOfFintype_apply, PMF.uniformOfFintype_apply,
+      Fintype.card_congr e]
+  · intro b hb
+    have hne : ¬ (y = e b) := fun hy =>
+      hb (e.injective (e.apply_symm_apply y |>.trans hy)).symm
+    rw [if_neg hne]
+
+/-- Independent uniform tail coefficients induce the exact uniform law on
+zero-boundary degree-`d` polynomials. -/
+theorem sampledZeroBoundary_uniform [Fintype K] (h2 : (2 : K) ≠ 0) :
+    (PMF.uniformOfFintype (Fin d → K)).map (zeroBoundaryFromTail h2)
+      = PMF.uniformOfFintype (ZeroBoundaryCoeff K d) :=
+  map_uniformOfFintype_equiv (zeroBoundaryEquiv h2)
+
+/-- Constant polynomial with endpoint sum equal to `claim`. -/
+def roundCarrier (claim : K) : RoundCoeff K d := fun i =>
+  if i = 0 then claim / 2 else 0
+
+theorem roundBoundary_roundCarrier (h2 : (2 : K) ≠ 0) (claim : K) :
+    roundBoundary (roundCarrier (d := d) claim) = claim := by
+  simp [roundBoundary, roundCarrier]
+  field_simp
+  ring
+
+/-- Evaluate a round coefficient vector at a field point. -/
+def coeffEval (coeff : RoundCoeff K d) (x : K) : K :=
+  ∑ i, coeff i * x ^ (i : ℕ)
+
+theorem coeffEval_zero (coeff : RoundCoeff K d) : coeffEval coeff 0 = coeff 0 := by
+  simp [coeffEval, Fin.sum_univ_succ]
+
+theorem coeffEval_one (coeff : RoundCoeff K d) : coeffEval coeff 1 = ∑ i, coeff i := by
+  simp [coeffEval]
+
+theorem roundBoundary_eq_endpoint_sum (coeff : RoundCoeff K d) :
+    roundBoundary coeff = coeffEval coeff 0 + coeffEval coeff 1 := by
+  rw [coeffEval_zero, coeffEval_one]
+  rfl
+
+/-- A chained mask round: half the incoming state plus a fresh zero-boundary
+degree-`d` polynomial. -/
+def maskRoundCoeff (state : K) (mask : ZeroBoundaryCoeff K d) : RoundCoeff K d :=
+  fun i => roundCarrier state i + mask.1 i
+
+theorem roundBoundary_maskRoundCoeff (h2 : (2 : K) ≠ 0) (state : K)
+    (mask : ZeroBoundaryCoeff K d) :
+    roundBoundary (maskRoundCoeff state mask) = state := by
+  rw [show maskRoundCoeff state mask = roundCarrier state + mask.1 by rfl]
+  rw [show roundBoundary (roundCarrier state + mask.1) =
+      roundBoundary (roundCarrier state) + roundBoundary mask.1 by
+        change roundBoundaryLinear (roundCarrier state + mask.1) = _
+        rw [map_add]
+        rfl]
+  rw [roundBoundary_roundCarrier h2]
+  change state + roundBoundaryLinear mask.1 = state
+  rw [mask.2, add_zero]
+
+theorem maskRoundCoeff_endpoint_sum (h2 : (2 : K) ≠ 0) (state : K)
+    (mask : ZeroBoundaryCoeff K d) :
+    coeffEval (maskRoundCoeff state mask) 0 +
+      coeffEval (maskRoundCoeff state mask) 1 = state := by
+  rw [← roundBoundary_eq_endpoint_sum]
+  exact roundBoundary_maskRoundCoeff h2 state mask
+
+/-- Sum of the terminal values over the Boolean tree generated by a fixed
+sequence of zero-boundary round masks. -/
+def telescopingMaskBooleanSum (state : K) :
+    List (ZeroBoundaryCoeff K d) → K
+  | [] => state
+  | mask :: remaining =>
+      telescopingMaskBooleanSum
+          (coeffEval (maskRoundCoeff state mask) 0) remaining
+        + telescopingMaskBooleanSum
+          (coeffEval (maskRoundCoeff state mask) 1) remaining
+
+/-- The globally chained mask oracle sums to its initial claim on the Boolean
+cube, for every fixed sequence of round masks. -/
+theorem telescopingMaskBooleanSum_eq (h2 : (2 : K) ≠ 0)
+    (masks : List (ZeroBoundaryCoeff K d)) (state : K) :
+    telescopingMaskBooleanSum state masks = state := by
+  induction masks generalizing state with
+  | nil => rfl
+  | cons mask remaining ih =>
+      rw [telescopingMaskBooleanSum, ih, ih,
+        maskRoundCoeff_endpoint_sum h2]
+
+/-- Remove a round polynomial's endpoint sum, leaving a zero-boundary vector. -/
+def normalisedRound (h2 : (2 : K) ≠ 0) (coeff : RoundCoeff K d) :
+    ZeroBoundaryCoeff K d :=
+  ⟨coeff - roundCarrier (roundBoundary coeff), by
+    change roundBoundary (coeff - roundCarrier (roundBoundary coeff)) = 0
+    rw [show roundBoundary (coeff - roundCarrier (roundBoundary coeff)) =
+      roundBoundary coeff - roundBoundary (roundCarrier (roundBoundary coeff)) by
+        change roundBoundaryLinear (coeff - roundCarrier (roundBoundary coeff)) = _
+        rw [map_sub]
+        rfl]
+    rw [roundBoundary_roundCarrier h2]
+    exact sub_self _⟩
+
+/-- Complete mixed round, expressed at its visible incoming claim. -/
+def maskedRound (h2 : (2 : K) ≠ 0) (claim eta : K)
+    (real : RoundCoeff K d) (mask : ZeroBoundaryCoeff K d) : RoundCoeff K d :=
+  fun i => roundCarrier claim i + (mask + eta • normalisedRound h2 real :
+    ZeroBoundaryCoeff K d).1 i
+
+/-- The conditional form above equals the operational form: the mask's
+incoming state plus `eta` times the real round polynomial. -/
+theorem maskedRound_eq_mask_plus_real (h2 : (2 : K) ≠ 0) (claim eta : K)
+    (real : RoundCoeff K d) (mask : ZeroBoundaryCoeff K d) :
+    maskedRound h2 claim eta real mask =
+      maskRoundCoeff (claim - eta * roundBoundary real) mask + eta • real := by
+  funext i
+  by_cases hi : i = 0
+  · subst i
+    simp [maskedRound, normalisedRound, maskRoundCoeff, roundCarrier]
+    field_simp
+    ring
+  · simp [maskedRound, normalisedRound, maskRoundCoeff, roundCarrier, hi]
+
+theorem roundBoundary_maskedRound (h2 : (2 : K) ≠ 0) (claim eta : K)
+    (real : RoundCoeff K d) (mask : ZeroBoundaryCoeff K d) :
+    roundBoundary (maskedRound h2 claim eta real mask) = claim := by
+  rw [show maskedRound h2 claim eta real mask =
+      roundCarrier claim + (mask + eta • normalisedRound h2 real).1 by rfl]
+  rw [show roundBoundary
+      (roundCarrier claim + (mask + eta • normalisedRound h2 real).1) =
+      roundBoundary (roundCarrier claim) +
+        roundBoundary (mask + eta • normalisedRound h2 real).1 by
+        change roundBoundaryLinear
+          (roundCarrier claim + (mask + eta • normalisedRound h2 real).1) = _
+        rw [map_add]
+        rfl]
+  rw [roundBoundary_roundCarrier h2]
+  change claim + roundBoundaryLinear
+    (mask + eta • normalisedRound h2 real).1 = claim
+  rw [(mask + eta • normalisedRound h2 real).2, add_zero]
+
+section RoundDistribution
+
+variable [Fintype K]
+
+/-- Given the visible incoming claim, a complete masked degree-`d` round has
+the same distribution for every real round polynomial. This is the exact
+`d`-dimensional affine hyperplane of coefficient vectors with that boundary. -/
+theorem maskedRound_pmf_indep (h2 : (2 : K) ≠ 0) (claim eta : K)
+    (real₁ real₂ : RoundCoeff K d) :
+    (PMF.uniformOfFintype (ZeroBoundaryCoeff K d)).map
+        (maskedRound h2 claim eta real₁)
+      = (PMF.uniformOfFintype (ZeroBoundaryCoeff K d)).map
+          (maskedRound h2 claim eta real₂) := by
+  classical
+  let output : ZeroBoundaryCoeff K d → RoundCoeff K d := fun zero i =>
+    roundCarrier claim i + zero.1 i
+  have hreal : ∀ real : RoundCoeff K d,
+      (PMF.uniformOfFintype (ZeroBoundaryCoeff K d)).map
+          (maskedRound h2 claim eta real)
+        = (PMF.uniformOfFintype (ZeroBoundaryCoeff K d)).map output := by
+    intro real
+    let shift : ZeroBoundaryCoeff K d := eta • normalisedRound h2 real
+    have hshift := map_uniformOfFintype_equiv (Equiv.addRight shift)
+    have hmap := congrArg (fun distribution : PMF (ZeroBoundaryCoeff K d) =>
+      distribution.map output) hshift
+    rw [PMF.map_comp] at hmap
+    have heq : output ∘ (Equiv.addRight shift :
+        ZeroBoundaryCoeff K d → ZeroBoundaryCoeff K d) =
+        maskedRound h2 claim eta real := by
+      funext mask i
+      rfl
+    rw [heq] at hmap
+    exact hmap
+  exact (hreal real₁).trans (hreal real₂).symm
+
+end RoundDistribution
+
+end RoundTranscript
+
 end AspisSumcheckMasking
 
 #print axioms AspisSumcheckMasking.tableSum_maskedOracle
@@ -143,3 +428,9 @@ end AspisSumcheckMasking
 #print axioms AspisSumcheckMasking.maskedOracle_pmf_indep
 #print axioms AspisSumcheckMasking.observed_maskedOracle_pmf_indep
 #print axioms AspisSumcheckMasking.maskSum_and_observation_pmf_indep
+#print axioms AspisSumcheckMasking.sampledZeroBoundary_uniform
+#print axioms AspisSumcheckMasking.maskRoundCoeff_endpoint_sum
+#print axioms AspisSumcheckMasking.telescopingMaskBooleanSum_eq
+#print axioms AspisSumcheckMasking.maskedRound_eq_mask_plus_real
+#print axioms AspisSumcheckMasking.roundBoundary_maskedRound
+#print axioms AspisSumcheckMasking.maskedRound_pmf_indep

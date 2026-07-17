@@ -27,7 +27,7 @@ permutation result.**
 | Hiding for the **concrete circle mask matrix** (not arbitrary `M`) + view interface | `AspisViewBinding.lean` | **Proved** + named interface |
 | Byte-exact released-view model; view completeness arithmetic; sampler uniformity ⟹ `PMF`-level perfect hiding; (a) closure spec | `ViewModel.lean` | **Proved** + named interface |
 | Hiding for the **ideal circle-block** mask matrix `D·circleTMatrix` (diagonal-rescale of the circle-honest Vandermonde) | `CircleTMatrixHiding.lean` | **Proved for the model** (`∏ dᵢ ≠ 0 ∧ det circleTMatrix ≠ 0 ⟹ det ≠ 0`); actual encoder binding remains open |
-| Precommitted random-oracle sumcheck mask: the mask-sum/mixed-oracle transcript is witness-independent; a false sum accepts for at most one mixing challenge | `SumcheckMasking.lean` | **Proved** for the stated finite view; every extra observation of the mask oracle, including its commitment root and PCS openings, remains a named wire obligation |
+| Degree-preserving chained sumcheck mask: uniform zero-boundary sampler, exact round boundaries and Boolean sum, conditional full-round hiding; a false sum accepts for at most one mixing challenge | `SumcheckMasking.lean` | **Proved** per round and for the algebraic self-reduction; adaptive transcript composition and every correlated commitment/PCS observation remain named wire obligations |
 
 ### Soundness
 | Statement | File | Status |
@@ -60,13 +60,19 @@ Substantial progress, but these remain and a reviewer will ask for them:
   finite binding must compare against the encoder's actual basis images (or
   prove the required invertible change of basis), then bind the result to the
   serialized v5 wire. This stays an explicit obligation.
-- **Sumcheck-mask joint view.** `SumcheckMasking.lean` proves the algebraic
-  self-reduction and perfect hiding of `R + ηF`, including any deterministic
-  transcript of that mixed oracle. A real proof additionally exposes a
-  commitment root and correlated openings of `R`; their joint distribution with
-  the transcript must be covered by component (A) and the published simulator.
-  This is not implied by the translation argument and remains open until the v5
-  PCS wire is fixed.
+- **Sumcheck-mask joint view.** `SumcheckMasking.lean` first proves the finite
+  translation lemma for a mask uniform over the entire represented vector. It
+  explicitly rules out applying that lemma to a 1024-value multilinear mask:
+  such a mask cannot hide the higher coefficients of a degree-27 sumcheck
+  message. The degree-preserving construction instead uses ten independent
+  zero-boundary degree-27 polynomials linked by a half-claim carrier. Lean proves
+  the tail sampler is exactly uniform, every boundary chains, the global Boolean
+  sum is the initial mask claim, and each complete round's conditional `PMF` is
+  independent of the real round polynomial. What remains is the adaptive
+  transcript composition and its joint distribution with the commitment root,
+  correlated PCS openings, and component-(A) evaluations. Those need the fixed
+  v5 wire and a published-simulator composition argument; the elementary
+  translation lemma does not supply them.
 - **The `Poseidon2Faithful` interface.** The six Poseidon2/Merkle clauses are
   now *structurally proved* (`HashMerkleModel.lean`) — the whole `SpendRelation`
   closes in-kernel from a gate-residual witness — leaving one code-correspondence
