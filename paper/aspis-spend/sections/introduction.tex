@@ -13,6 +13,15 @@ stores persistent application state in explicitly addressed accounts
 \cite{SolanaComputeBudget,SolanaAccounts}.  A proof that is inexpensive to verify
 on a workstation is therefore not, by itself, an on-chain construction.
 
+Yano's measurement study \cite{Yano2025Measurement} demonstrated that the
+budget is not prohibitive: a minimal Winterfell STARK verifies inside a
+single Solana transaction on devnet.  The present project began by
+reproducing that measurement and modelling its verifier's costs.  The
+question addressed here is the one that study leaves open: whether the same
+budget can hold a complete application statement, a shielded spend with an
+atomic state transition, at deployable soundness parameters, on
+mainnet-beta.
+
 This work studies one deliberately narrow application atom.  A valid spend
 replaces one note by one output note at the same private path in a depth-20
 tree, preserves the asset identifier, enforces value conservation including a

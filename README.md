@@ -31,6 +31,16 @@ claim and model are in the [paper](paper/aspis-spend/) and
 [novelty re-scan](docs/novelty-rescan-2026-07-13.md) is a dated public-evidence
 search for the claim shape.
 
+The starting point was Jotaro Yano's measurement study
+([ePrint 2025/1741](https://eprint.iacr.org/2025/1741),
+[solana-pqzk-fullchain](https://github.com/pqzk-labs/solana-pqzk-fullchain)),
+which verified a minimal Winterfell STARK inside one Solana transaction on
+devnet. This repository began as a cost model calibrated against that
+verifier, and the first commit carries its measured profile. The work then
+asked whether the same budget could hold a real spend statement. The
+construction that answers it shares no components with his prototype, but the
+direction came from his paper.
+
 This is a solo project built with heavy AI assistance. Don't protect real funds
 with it without independent cryptographic and Solana review.
 
