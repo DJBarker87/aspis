@@ -43,6 +43,14 @@
 //!   emitted by the real circle encoder.
 //! * Teeth: the leakage matrix is nonsingular on a sampled valid schedule and
 //!   singular on a deliberately duplicated schedule.
+//! * The wire fibre geometry: one proof opens 18 disjoint four-point fibres,
+//!   i.e. 72 layer-zero positions = 36 x-nodes each with a ±y pair — the
+//!   `circleTMatrix` witness shape. The rectangular 72×96 leakage map has
+//!   full row rank (certified by the 72×72 witness-shape minor), across
+//!   distinct parameter families, and a fibre collision only deletes rows
+//!   (the distinct view keeps full row rank). A square `b = 96`
+//!   point-evaluation schedule CANNOT be instantiated from one proof; the
+//!   square schedule is retained only as an algebraic diagnostic.
 //!
 //! ## What remains PENDING (NOT established here)
 //!
@@ -50,9 +58,11 @@
 //!   coefficient table. `CircleTensorBinding.lean` proves the aligned tensor
 //!   and conversion algebra, while the tests below check the Rust table and
 //!   real encoder; neither alone is a cross-language proof.
-//! * The production query schedule and complete released-view enumeration.
-//!   The square schedule below is an algebraic diagnostic, not a model of the
-//!   current Fiat-Shamir wire.
+//! * The Fiat-Shamir query-index → fibre-position binding and the complete
+//!   released-view enumeration. The fibre schedule below models the wire's
+//!   orbit geometry; which fibre each FS index selects is not modelled here.
+//!   OOD, fold and terminal coordinates are component (C)'s to mask, not
+//!   component (A)'s: they are not point-evaluations of the masked lane.
 //! * The production field-width binding: the current mask coefficients are
 //!   QM31, while semantic C1 columns are M31.
 //! * Component (B)'s commitment and verifier wire. The feature-gated
@@ -636,6 +646,174 @@ pub fn qm31_determinant(matrix: &[Vec<QM31>]) -> QM31 {
     det
 }
 
+// ---------------------------------------------------------------------------
+// Wire fibre geometry: 18 disjoint four-point fibres (72 layer-zero rows).
+//
+// One deployed proof opens `q = 18` query fibres of the 2^19 codeword domain
+// (Johnson fibre count 2^17, so each fibre has exactly 4 positions). The
+// layer-zero point-evaluation leak of a masked lane therefore has at most
+// `18 * 4 = 72` distinct rows: the square `b = 96` schedule above CANNOT be
+// instantiated from one proof, and is retained only as an algebraic
+// diagnostic. The wire-shaped hiding statement is rectangular: the 72 x 96
+// leakage map has full row rank, hence is surjective, hence the fibre-count
+// hiding lemma applies (`CoreHiding` takes surjectivity directly; it never
+// needed a square matrix).
+//
+// The geometry is what makes the rank deterministic rather than
+// probabilistic: a four-point fibre is the orbit {(x,y), (x,-y), (-x,y),
+// (-x,-y)} (on the circle, y^2 = 1 - x^2 is shared by x and -x), so 18
+// disjoint fibres present 36 distinct x-nodes each carrying a +-y pair --
+// exactly the `circleTMatrix` witness shape. Distinctness of the nodes
+// follows from fibre disjointness (the `CircleGroupOrder` same-x criterion),
+// not from a Schwartz-Zippel bound over the schedule.
+// ---------------------------------------------------------------------------
+
+/// Queries per branch on the deployed wire (`queries_per_branch` in the
+/// soundness-parameter manifest).
+pub const V5_QUERY_COUNT: usize = 18;
+
+/// Positions per opened fibre: the 2^19 codeword over 2^17 Johnson fibres.
+pub const V5_FIBRE_SIZE: usize = 4;
+
+/// Distinct layer-zero positions one proof can open: `18 * 4 = 72`.
+pub const V5_LAYER_ZERO_ROWS: usize = V5_QUERY_COUNT * V5_FIBRE_SIZE;
+
+/// Distinct x-nodes those positions occupy: each fibre contributes the pair
+/// `{x, -x}`, so disjoint fibres give `2` nodes each.
+pub const V5_FIBRE_X_NODES: usize = V5_LAYER_ZERO_ROWS / 2;
+
+/// The four-point orbit of a base circle point: `{(x, +-y), (-x, +-y)}`.
+/// All four lie on the circle since `(-x)^2 + (+-y)^2 = x^2 + y^2`.
+pub fn fibre_positions(base: SecureCirclePoint) -> [SecureCirclePoint; V5_FIBRE_SIZE] {
+    let SecureCirclePoint { x, y } = base;
+    [
+        SecureCirclePoint { x, y },
+        SecureCirclePoint { x, y: y.neg() },
+        SecureCirclePoint { x: x.neg(), y },
+        SecureCirclePoint { x: x.neg(), y: y.neg() },
+    ]
+}
+
+/// A layer-zero query schedule in wire geometry: 18 fibre base points, each
+/// expanded to its four-point orbit. This models the ORBIT STRUCTURE of the
+/// deployed schedule; the Fiat-Shamir index -> fibre binding stays a named
+/// obligation.
+#[derive(Clone, Debug)]
+pub struct FibreSchedule {
+    pub bases: Vec<SecureCirclePoint>,
+}
+
+impl FibreSchedule {
+    fn validate(&self) -> Result<(), V5MaskError> {
+        if self.bases.len() != V5_QUERY_COUNT {
+            return Err(V5MaskError::ScheduleLength {
+                expected: V5_QUERY_COUNT,
+                actual: self.bases.len(),
+            });
+        }
+        Ok(())
+    }
+
+    /// The 72 layer-zero positions, fibre by fibre.
+    pub fn positions(&self) -> Vec<SecureCirclePoint> {
+        self.bases
+            .iter()
+            .flat_map(|&base| fibre_positions(base))
+            .collect()
+    }
+}
+
+/// A diagnostic fibre schedule from 18 generic distinct parameters. The
+/// parameter offset keeps it disjoint from the square diagnostic schedule.
+pub fn sampled_fibre_schedule() -> Result<FibreSchedule, V5MaskError> {
+    let mut bases = Vec::with_capacity(V5_QUERY_COUNT);
+    for i in 0..V5_QUERY_COUNT {
+        let base = secure_circle_point_from_parameter(valid_query_parameter(101 + 7 * i))
+            .map_err(V5MaskError::CirclePoint)?;
+        bases.push(base);
+    }
+    Ok(FibreSchedule { bases })
+}
+
+/// A schedule in which one fibre is opened twice (a Fiat-Shamir collision).
+pub fn repeated_fibre_schedule() -> Result<FibreSchedule, V5MaskError> {
+    let mut schedule = sampled_fibre_schedule()?;
+    schedule.bases[1] = schedule.bases[0];
+    Ok(schedule)
+}
+
+/// The rectangular wire leakage matrix: 72 rows (fibre positions, in fibre
+/// order) by `b = 96` columns, row `i` equal to
+/// `B_896(p_i) * [block Vandermonde row at p_i]`.
+pub fn fibre_leakage_matrix(schedule: &FibreSchedule) -> Result<Vec<Vec<QM31>>, V5MaskError> {
+    schedule.validate()?;
+    Ok(schedule
+        .positions()
+        .into_iter()
+        .map(|point| {
+            let factor = aligned_tensor_factor(point);
+            block_vandermonde_row(point)
+                .iter()
+                .map(|entry| factor.mul(*entry))
+                .collect()
+        })
+        .collect())
+}
+
+/// The 72 x 72 minor on the first `V5_FIBRE_X_NODES = 36` columns of each
+/// coefficient block: the `circleTMatrix` witness shape at 36 x-nodes with
+/// +-y pairs. Its nonsingularity certifies full row rank of the rectangular
+/// leakage matrix.
+pub fn fibre_leakage_minor(schedule: &FibreSchedule) -> Result<Vec<Vec<QM31>>, V5MaskError> {
+    let full = fibre_leakage_matrix(schedule)?;
+    Ok(full
+        .into_iter()
+        .map(|row| {
+            let mut minor = Vec::with_capacity(V5_LAYER_ZERO_ROWS);
+            minor.extend_from_slice(&row[0..V5_FIBRE_X_NODES]);
+            minor.extend_from_slice(&row[V5_MASK_M..V5_MASK_M + V5_FIBRE_X_NODES]);
+            minor
+        })
+        .collect())
+}
+
+/// Rank of a rectangular QM31 matrix by Gaussian elimination.
+pub fn qm31_rank(matrix: &[Vec<QM31>]) -> usize {
+    let rows = matrix.len();
+    if rows == 0 {
+        return 0;
+    }
+    let cols = matrix[0].len();
+    let mut work: Vec<Vec<QM31>> = matrix.to_vec();
+    let mut rank = 0usize;
+    for column in 0..cols {
+        let pivot = (rank..rows).find(|&row| !work[row][column].is_zero());
+        let Some(pivot) = pivot else { continue };
+        work.swap(pivot, rank);
+        let pivot_row = work[rank].clone();
+        let pivot_inv = pivot_row[column]
+            .try_inv()
+            .expect("pivot is nonzero by construction");
+        for (row, work_row) in work.iter_mut().enumerate() {
+            if row == rank {
+                continue;
+            }
+            let factor = work_row[column].mul(pivot_inv);
+            if factor.is_zero() {
+                continue;
+            }
+            for (entry, &pivot_entry) in work_row[column..].iter_mut().zip(&pivot_row[column..]) {
+                *entry = entry.sub(factor.mul(pivot_entry));
+            }
+        }
+        rank += 1;
+        if rank == rows {
+            break;
+        }
+    }
+    rank
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -919,5 +1097,105 @@ mod tests {
         assert!(V5_RESERVED_START.is_multiple_of(V5_RESERVED_ALIGNMENT));
         assert_eq!(v5_reserved_p_index(0), 896);
         assert_eq!(v5_reserved_q_index(V5_MASK_M - 1), 991);
+    }
+
+    fn assert_on_circle(point: SecureCirclePoint) {
+        assert_eq!(
+            point.x.mul(point.x).add(point.y.mul(point.y)),
+            QM31::ONE,
+            "point left the circle"
+        );
+    }
+
+    // (i) The design record: one proof opens 72 of 96 -- a square b = 96
+    // point-evaluation schedule cannot be instantiated from one proof, and
+    // the fibre orbit really is 4 distinct on-circle points.
+    #[test]
+    fn one_proof_opens_72_layer_zero_positions_not_96() {
+        assert_eq!(V5_LAYER_ZERO_ROWS, 72);
+        assert!(V5_LAYER_ZERO_ROWS < V5_MASK_B);
+
+        let schedule = sampled_fibre_schedule().unwrap();
+        let positions = schedule.positions();
+        assert_eq!(positions.len(), V5_LAYER_ZERO_ROWS);
+        for &point in &positions {
+            assert_on_circle(point);
+        }
+        // All 72 positions pairwise distinct (disjoint fibres, x != 0, y != 0).
+        for i in 0..positions.len() {
+            for j in (i + 1)..positions.len() {
+                let same = positions[i].x == positions[j].x && positions[i].y == positions[j].y;
+                assert!(!same, "positions {i} and {j} coincide");
+            }
+        }
+        // Whatever the schedule, the layer-zero leakage rank cannot reach 96.
+        let leakage = fibre_leakage_matrix(&schedule).unwrap();
+        assert!(qm31_rank(&leakage) <= V5_LAYER_ZERO_ROWS);
+    }
+
+    // (j) The wire-shaped hiding certificate: full row rank 72, certified by
+    // the 72 x 72 circleTMatrix-witness minor, deterministically across
+    // schedules (three distinct parameter families, not one lucky draw).
+    #[test]
+    fn fibre_leakage_has_full_row_rank() {
+        for offset in [0usize, 1000, 2000] {
+            let mut bases = Vec::with_capacity(V5_QUERY_COUNT);
+            for i in 0..V5_QUERY_COUNT {
+                let base = secure_circle_point_from_parameter(valid_query_parameter(
+                    201 + offset + 11 * i,
+                ))
+                .unwrap();
+                bases.push(base);
+            }
+            let schedule = FibreSchedule { bases };
+            let leakage = fibre_leakage_matrix(&schedule).unwrap();
+            assert_eq!(leakage.len(), V5_LAYER_ZERO_ROWS);
+            assert_eq!(leakage[0].len(), V5_MASK_B);
+            assert_eq!(
+                qm31_rank(&leakage),
+                V5_LAYER_ZERO_ROWS,
+                "leakage lost row rank at offset {offset}"
+            );
+
+            let minor = fibre_leakage_minor(&schedule).unwrap();
+            assert_eq!(minor.len(), V5_LAYER_ZERO_ROWS);
+            assert_eq!(minor[0].len(), V5_LAYER_ZERO_ROWS);
+            assert!(
+                !qm31_determinant(&minor).is_zero(),
+                "witness-shape minor singular at offset {offset}"
+            );
+
+            // The diagonal factor B_896 is nonzero at every schedule point
+            // (numeric mirror of the kernel-checked nonvanishing).
+            for point in schedule.positions() {
+                assert!(!aligned_tensor_factor(point).is_zero());
+            }
+        }
+    }
+
+    // (k) A Fiat-Shamir fibre collision only deletes rows: the distinct view
+    // keeps full row rank, so hiding survives repeats by dedup.
+    #[test]
+    fn repeated_fibre_keeps_full_rank_on_distinct_rows() {
+        let schedule = repeated_fibre_schedule().unwrap();
+        let leakage = fibre_leakage_matrix(&schedule).unwrap();
+        // One duplicated fibre = 4 duplicated rows.
+        assert_eq!(qm31_rank(&leakage), V5_LAYER_ZERO_ROWS - V5_FIBRE_SIZE);
+
+        let positions = schedule.positions();
+        let mut distinct_rows: Vec<Vec<QM31>> = Vec::new();
+        let mut seen: Vec<SecureCirclePoint> = Vec::new();
+        for (row, &point) in leakage.iter().zip(positions.iter()) {
+            if seen
+                .iter()
+                .any(|&prior| prior.x == point.x && prior.y == point.y)
+            {
+                continue;
+            }
+            seen.push(point);
+            distinct_rows.push(row.clone());
+        }
+        assert_eq!(distinct_rows.len(), V5_LAYER_ZERO_ROWS - V5_FIBRE_SIZE);
+        assert_eq!(qm31_rank(&distinct_rows), distinct_rows.len());
     }
 }
