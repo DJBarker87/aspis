@@ -1,0 +1,10 @@
+{
+  "_comment": "Single source of truth for the soundness finite parameters. Rust, Python (tools/verify_soundness_params.py), and Lean (AspisFormal SoundnessParams.lean) must all agree with these values. CI (tools/check_param_binding.py) rejects any disagreement.",
+  "rate_inverse": 512,
+  "codeword_domain_log2": 19,
+  "johnson_fiber_count": 131072,
+  "queries_per_branch": 18,
+  "johnson_multiplicity": 10,
+  "agreement_cap": 6082,
+  "_derivation": "alpha = (1 + 1/(2*johnson_multiplicity)) * sqrt(1/rate_inverse); agreement_cap = floor(alpha * johnson_fiber_count). With multiplicity 10 the slack is 1 + 1/20 = 21/20."
+}

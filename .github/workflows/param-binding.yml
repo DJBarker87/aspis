@@ -1,0 +1,22 @@
+name: param-binding
+
+# Fails the build if the deployed soundness constants in the Rust verifier,
+# the Python second-opinion checker, or the Lean formalization ever diverge
+# from the single source of truth in manifests/soundness-params.json.
+# Grep/parse only -- no cargo or lake, so it is robust to unrelated
+# work-in-progress elsewhere in the tree.
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check-param-binding:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check soundness parameter binding
+        run: python3 tools/check_param_binding.py
