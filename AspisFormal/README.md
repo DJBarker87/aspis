@@ -26,7 +26,8 @@ permutation result.**
 | Circle liveness over the **real circle-point distribution** (`t`-param, poles handled); b=128 ⟹ `≤16640/|K| ≈ 2⁻¹¹⁰` | `CirclePointLiveness.lean` | **Proved** (closes the free-coord gap) |
 | Hiding for the **concrete circle mask matrix** (not arbitrary `M`) + view interface | `AspisViewBinding.lean` | **Proved** + named interface |
 | Byte-exact released-view model; view completeness arithmetic; sampler uniformity ⟹ `PMF`-level perfect hiding; (a) closure spec | `ViewModel.lean` | **Proved** + named interface |
-| Hiding for the **deployed** circle mask matrix `D·circleTMatrix` (diagonal-rescale of the circle-honest Vandermonde), the corrected obligation (a) | `CircleTMatrixHiding.lean` | **Proved** (`∏ dᵢ ≠ 0 ∧ det circleTMatrix ≠ 0 ⟹ det ≠ 0`) |
+| Hiding for the **ideal circle-block** mask matrix `D·circleTMatrix` (diagonal-rescale of the circle-honest Vandermonde) | `CircleTMatrixHiding.lean` | **Proved for the model** (`∏ dᵢ ≠ 0 ∧ det circleTMatrix ≠ 0 ⟹ det ≠ 0`); actual encoder binding remains open |
+| Precommitted random-oracle sumcheck mask: the mask-sum/mixed-oracle transcript is witness-independent; a false sum accepts for at most one mixing challenge | `SumcheckMasking.lean` | **Proved** for the stated finite view; every extra observation of the mask oracle, including its commitment root and PCS openings, remains a named wire obligation |
 
 ### Soundness
 | Statement | File | Status |
@@ -49,15 +50,23 @@ permutation result.**
 
 Substantial progress, but these remain and a reviewer will ask for them:
 
-- **Obligation (a): deployed mask map = circle matrix.** The det≠0 half is now
-  proved for the *deployed* shape: `CircleTMatrixHiding.lean` shows the leakage
-  matrix `D·circleTMatrix` is nonsingular (diagonal-rescale of the circle-honest
-  Vandermonde), and the provisional v5 prover (`crates/aspis-prover/src/v5_mask.rs`,
-  feature `v5-mask`) independently produces exactly `L = diag(Z_{H'}(pᵢ))·V` and
-  checks it entrywise. What remains is the finite `decide` identifying the v5
-  encoder's emitted coefficient tables with `circleTMatrix` — it **awaits the full
-  v5 circle-block-form wire** (components B/C, verifier, `Good_spend`). Left as a
-  named interface field, never faked.
+- **Obligation (a): actual encoder mask map = proved circle matrix.** The
+  determinant half is proved for the ideal matrix: `CircleTMatrixHiding.lean`
+  shows `D·circleTMatrix` is nonsingular. The provisional v5 prover
+  (`crates/aspis-prover/src/v5_mask.rs`, feature `v5-mask`) reproduces that same
+  ideal matrix through a polynomial-evaluation route and checks the two ideal
+  descriptions entrywise. It does **not yet** identify reserved message
+  positions under the deployed `CircleEncoder` with that matrix. The remaining
+  finite binding must compare against the encoder's actual basis images (or
+  prove the required invertible change of basis), then bind the result to the
+  serialized v5 wire. This stays an explicit obligation.
+- **Sumcheck-mask joint view.** `SumcheckMasking.lean` proves the algebraic
+  self-reduction and perfect hiding of `R + ηF`, including any deterministic
+  transcript of that mixed oracle. A real proof additionally exposes a
+  commitment root and correlated openings of `R`; their joint distribution with
+  the transcript must be covered by component (A) and the published simulator.
+  This is not implied by the translation argument and remains open until the v5
+  PCS wire is fixed.
 - **The `Poseidon2Faithful` interface.** The six Poseidon2/Merkle clauses are
   now *structurally proved* (`HashMerkleModel.lean`) — the whole `SpendRelation`
   closes in-kernel from a gate-residual witness — leaving one code-correspondence

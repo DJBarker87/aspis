@@ -7,6 +7,7 @@ import AspisFormal.ValueConservation
 import AspisFormal.CircleVandermondeGeneral
 import AspisFormal.CirclePointLiveness
 import AspisFormal.CoreHidingPMF
+import AspisFormal.SumcheckMasking
 import AspisFormal.SoundnessLedger
 import AspisFormal.ArithmetizationCore
 import AspisFormal.CircleFibreRoots
