@@ -8,6 +8,9 @@ description = "Host-only prover for the Aspis native WHIR-style M31 PCS substrat
 [features]
 insecure-test-ordering = ["aspis-core/insecure-test-ordering"]
 insecure-test-framing = ["aspis-core/insecure-test-framing"]
+# PROVISIONAL Aspis v5 masking component (A): the block-form circle mask.
+# Default OFF. Gates a new module that is not referenced by any v4 code path.
+v5-mask = []
 # Diagnostic fixture generation only. This is intentionally not enabled by
 # any production crate or aggregate feature: it exposes fixed attempt entropy
 # so that an expensive full-profile proof can be reproduced byte-for-byte.

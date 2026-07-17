@@ -30,6 +30,11 @@ pub mod state_only_spend_openings;
 pub mod state_only_spend_release;
 pub mod state_only_zerocheck;
 
+/// Provisional Aspis v5 masking component (A): the block-form circle mask.
+/// Feature-gated (`v5-mask`, default OFF) and entirely outside the v4 path.
+#[cfg(feature = "v5-mask")]
+pub mod v5_mask;
+
 #[cfg(test)]
 mod state_only_spend_privacy_regressions;
 
