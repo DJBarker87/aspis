@@ -38,3 +38,7 @@ __pycache__/
 # Local review context and unsanitized network-run diagnostics. Publication
 # copies with local paths and signed wires removed live in the release bundle.
 /.superstack/
+
+# Lean build artifacts (mathlib cache is multi-GB; keep only sources)
+AspisFormal/.lake/
+AspisFormal/lake-packages/
