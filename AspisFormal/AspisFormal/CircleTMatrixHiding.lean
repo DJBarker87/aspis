@@ -4,7 +4,7 @@ import AspisFormal.CircleVandermondeGeneral
 import AspisFormal.MaskingHiding
 
 /-!
-# Correcting the `circleMatrixGen` → `circleTMatrix` seam: hiding through the ACTUAL deployed mask
+# Correcting the `circleMatrixGen` → `circleTMatrix` seam: hiding through a row-rescaled mask
 
 ## The seam this file corrects
 
@@ -14,30 +14,35 @@ block-form mask-evaluation matrix, whose entries treat each point's `(x_i, y_i)`
 matrix the deployment can certify honest.  The only circle-**honest** liveness / `det ≠ 0`
 proof is `CirclePointLiveness.lean`'s `circleTMatrix` (points constrained to the unit circle
 `x² + y² = 1`, each drawn by a single parameter `t_i ∈ K`, each row scaled by the
-denominator-clearing factor `(1 + t_i²)^m`).  Free coordinates are *not* what Fiat–Shamir
+denominator-clearing factor `(1 + t_i²)^m`). That liveness theorem concerns
+independent field parameters, not the wire's discrete query-index distribution.
+Free coordinates are *not* what Fiat–Shamir
 samples; circle points are.  So binding hiding to `circleMatrixGen` claims `det ≠ 0` over a
 distribution the prover never uses, while the matrix that is actually proved live —
 `circleTMatrix` — is a different matrix.
 
-Moreover the **real deployed leakage matrix** is not `circleTMatrix` bare either: it is
+After rational parametrisation, the candidate leakage matrix is not
+`circleTMatrix` bare either: it has the form
 
 ```
-    Mdeployed  =  D · circleTMatrix(sched),      D = diagonal(d),  d_i ≠ 0,
+    Lcandidate  =  D · circleTMatrix(sched),      D = diagonal(d),  d_i ≠ 0,
 ```
 
-where the nonzero per-row factors `d_i` collect the `(1 + t_i²)^m` clearing factor and the
-mask's per-point `Z_active(p_i)` factor.  Left-multiplying by a nonzero diagonal is a *row
-rescale*: it multiplies the determinant by `∏ d_i` and therefore **cannot** change whether
-the determinant vanishes.
+For the aligned Rust reserve block, after rational circle parametrisation, the
+exact rescale is `d_i = B_896(p_i) / (1 + t_i²)^m`. The denominator appears
+because `circleTMatrix` already contains the denominator-clearing factor. Left-multiplying
+by a nonzero diagonal is a *row rescale*: it multiplies the determinant by `∏ d_i`
+and therefore **cannot** change whether the determinant vanishes.
 
 ## What is corrected here
 
-This file routes hiding through `circleTMatrix` with a nonzero-diagonal rescale — the CORRECT
-deployed statement — rather than through `circleMatrixGen`.  Concretely:
+This file routes the matrix model through `circleTMatrix` with a nonzero-diagonal rescale,
+rather than through `circleMatrixGen`. Concretely:
 
-* the deployed matrix is `D · circleTMatrix`, a nonzero-diagonal rescale of the
+* the candidate matrix is `D · circleTMatrix`, a nonzero-diagonal rescale of the
   circle-**honest** matrix, so `det ≠ 0` (and hence hiding) is **preserved**;
-* the binding is therefore `deployedMap = D · circleTMatrix`, **not** `= circleMatrixGen`.
+* a concrete field-valued binding must therefore use
+  `leakageMap = D · circleTMatrix`, **not** `= circleMatrixGen`.
 
 `det ≠ 0` for the rescaled matrix follows from `circleTMatrix_det_ne_zero` (already proved in
 `CirclePointLiveness`) together with `∏ d_i ≠ 0`, via the diagonal-rescale determinant
@@ -82,8 +87,8 @@ theorem det_diagonal_mul_ne_zero {n : ℕ} {d : Fin n → R} (hd : (∏ i, d i) 
 /-- **`det ≠ 0` is invariant under a nonzero-diagonal rescale (the `↔` form).**  With every
 `d_i ≠ 0`, `det (diagonal d · A) ≠ 0 ↔ det A ≠ 0`.  So routing through `D · circleTMatrix`
 neither creates nor destroys nonsingularity relative to `circleTMatrix`. -/
-theorem det_diagonal_mul_ne_zero_iff {n : ℕ} [Nontrivial R] {d : Fin n → R} (hd : ∀ i, d i ≠ 0)
-    (A : Matrix (Fin n) (Fin n) R) :
+theorem det_diagonal_mul_ne_zero_iff {n : ℕ} [Nontrivial R] {d : Fin n → R}
+    (hd : ∀ i, d i ≠ 0) (A : Matrix (Fin n) (Fin n) R) :
     (Matrix.diagonal d * A).det ≠ 0 ↔ A.det ≠ 0 := by
   have hp : (∏ i, d i) ≠ 0 := Finset.prod_ne_zero_iff.mpr (fun i _ => hd i)
   rw [det_diagonal_mul, mul_ne_zero_iff]
@@ -91,21 +96,21 @@ theorem det_diagonal_mul_ne_zero_iff {n : ℕ} [Nontrivial R] {d : Fin n → R} 
 
 end DiagRescale
 
-/-! ## Part 2 — non-vacuity: the deployed symbolic determinant is nonzero
+/-! ## Part 2 — non-vacuity of a symbolic row rescale
 
 `circleTMatrix_det_ne_zero` (from `CirclePointLiveness`) proves the circle-honest matrix has a
 nonzero symbolic determinant for any circle witness `τ`.  The diagonal-rescale lemma lifts
-this immediately to the deployed matrix `D · circleTMatrix`: its symbolic determinant is
-nonzero whenever the per-row factors have nonzero product.  This is the honest witness that
-the corrected binding is non-vacuous — the *deployed* leakage matrix really is nonsingular,
-not merely the abstract `circleTMatrix`. -/
+this immediately to any polynomial row rescale `D · circleTMatrix`: its symbolic
+determinant is nonzero whenever the per-row factors have nonzero product. This is a
+generic algebraic result, not a claim that the concrete Rust map is itself a
+polynomial matrix in the rational parameters. -/
 
-/-- **The deployed leakage matrix has nonzero symbolic determinant.**  For any circle witness
+/-- **The row-rescaled leakage matrix has nonzero symbolic determinant.**  For any circle witness
 `τ` (distinct nonzero squares, non-pole) over a field with `2 ≠ 0`, and any per-row factor
-family `D : Fin (2m) → MvPolynomial …` with nonzero product, the deployed matrix
+family `D : Fin (2m) → MvPolynomial …` with nonzero product, the rescaled matrix
 `D · circleTMatrix K m` has `det ≠ 0` as a polynomial.  `det ≠ 0` is preserved under the
 nonzero-diagonal rescale. -/
-theorem deployedTMatrix_det_ne_zero {K : Type*} [Field K] (m : ℕ) (τ : Fin m → K)
+theorem rescaledTMatrix_det_ne_zero {K : Type*} [Field K] (m : ℕ) (τ : Fin m → K)
     (D : Fin (2 * m) → MvPolynomial (Fin (2 * m)) K)
     (hD : (∏ i, D i) ≠ 0)
     (hQ : ∀ r, (1 + (τ r) ^ 2 : K) ≠ 0) (hτ0 : ∀ r, τ r ≠ 0)
@@ -113,11 +118,11 @@ theorem deployedTMatrix_det_ne_zero {K : Type*} [Field K] (m : ℕ) (τ : Fin m 
     (Matrix.diagonal D * circleTMatrix K m).det ≠ 0 :=
   det_diagonal_mul_ne_zero hD (circleTMatrix_det_ne_zero K m τ hQ hτ0 hτsq h2)
 
-/-! ## Part 3 — hiding through `D · circleTMatrix` (the CORRECT deployed statement)
+/-! ## Part 3 — hiding through a field-valued `D · circleTMatrix`
 
 The analogue of `MaskingHiding.view_indep_of_det_ne_zero` / `ViewModel`'s hiding result, but
-with the mask matrix `M = D · circleTMatrix(sched)` for a nonzero diagonal `D`.  The released
-view's mask map is `mulVecLin (D · circleTMatrix(sched))`; it is witness-independent given
+with the mask matrix `M = D · circleTMatrix(sched)` for a nonzero diagonal `D`. A view's
+mask map `mulVecLin (D · circleTMatrix(sched))` is witness-independent given
 `det (circleTMatrix(sched)) ≠ 0` and `∏ d_i ≠ 0`.  This replaces the `circleMatrixGen`
 routing. -/
 
@@ -137,12 +142,11 @@ theorem diag_rescale_view_indep {n : ℕ} {d : Fin n → K} (hd : (∏ i, d i) �
   view_indep_of_det_ne_zero (Matrix.diagonal d * A)
     (det_diagonal_mul_ne_zero hd hA) w₁ w₂ y
 
-/-- **Deployed circle-mask hiding (the corrected binding's conclusion).**  The deployed
-leakage matrix `D · circleTMatrix(sched)` — a nonzero-diagonal rescale of the circle-**honest**
+/-- **Row-rescaled circle-mask hiding.** The leakage matrix
+`D · circleTMatrix(sched)` — a nonzero-diagonal rescale of the circle-**honest**
 matrix — hides the witness whenever `circleTMatrix` at the schedule is nonsingular and the
-per-row factors have nonzero product.  This is the statement `ViewModel` should route through,
-in place of the `circleMatrixGen` binding: the mask map is `mulVecLin (D · circleTMatrix)`,
-not `mulVecLin circleMatrixGen`. -/
+per-row factors have nonzero product. A concrete use still has to prove the
+entrywise map identity and every factor's non-vanishing. -/
 theorem circleTMask_hides_witness {m : ℕ} (sched : Fin (2 * m) → K)
     (hsched : ((circleTMatrix K m).map (eval sched)).det ≠ 0)
     {d : Fin (2 * m) → K} (hd : (∏ i, d i) ≠ 0)
@@ -157,26 +161,24 @@ theorem circleTMask_hides_witness {m : ℕ} (sched : Fin (2 * m) → K)
 
 end Hiding
 
-/-! ## Part 4 — the restated obligation (a): binding to `D · circleTMatrix`, not `circleMatrixGen`
+/-! ## Part 4 — a generic symbolic rescale binding
 
-`ViewModel.ClosesObligationA` asserts the (false-for-the-deployment) equality
-`v5.entry = circleMatrixGen`.  The CORRECT binding for the deployed prover is to the
-nonzero-diagonal rescale of the circle-honest matrix.  `ClosesObligationA_T` restates it as a
-finite entrywise identity `deployedMap i j = (D · circleTMatrix K m) i j` — `decide`-shaped
-once the v5 entries and the per-row factors `D` are concrete.  The bridge theorems then show
-this identity (plus `∏ d_i ≠ 0`) supplies exactly the hiding hypothesis, replacing the
-`= circleMatrixGen` route. -/
+`ClosesObligationA_T` is a generic specification for a symbolic map already
+known to have the form `D · circleTMatrix`. Its bridge theorems show that this
+identity and `∏ d_i ≠ 0` supply the hiding hypothesis. It is not the concrete
+v5 binding: the latter is field-valued after rational parametrisation and is
+handled in `CircleTensorBinding.lean`. -/
 
 section ObligationA
 
 variable {K : Type*} [Field K]
 
-/-- **Restated obligation (a).**  Entrywise equality of the deployed prover's symbolic mask
-map to the nonzero-diagonal rescale `D · circleTMatrix` of the circle-**honest** matrix — the
-CORRECT deployed binding, in place of `ViewModel`'s `= circleMatrixGen`.  `D` carries the
-per-row factors (the `(1 + t²)^m` clearing factor and the mask's `Z_active(p_i)` factor).  For
-a concrete `v5` and concrete `D` this is a finite polynomial identity, closable by
-`decide`/`native_decide` on coefficient tables. -/
+/-- **Generic symbolic rescale binding.** Entrywise equality of a symbolic map
+to the nonzero-diagonal rescale `D · circleTMatrix` of the circle-**honest** matrix.
+`D` carries the per-row rescale. This specification does not assert
+that the actual v5 leakage map is polynomial in the rational parameters. The
+field-valued identity for that map instead uses
+`B_896(p_i) / (1 + t_i²)^m` and is proved in `CircleTensorBinding.lean`. -/
 def ClosesObligationA_T {m : ℕ}
     (deployedMap : Matrix (Fin (2 * m)) (Fin (2 * m)) (MvPolynomial (Fin (2 * m)) K))
     (D : Fin (2 * m) → MvPolynomial (Fin (2 * m)) K) : Prop :=
@@ -196,7 +198,8 @@ theorem ClosesObligationA_T.deployed_map_eq {m : ℕ}
   have hEq : deployedMap = Matrix.diagonal D * circleTMatrix K m := Matrix.ext h
   have hmul : (Matrix.diagonal D * circleTMatrix K m).map (eval sched)
       = (Matrix.diagonal D).map (eval sched) * (circleTMatrix K m).map (eval sched) := by
-    rw [← RingHom.mapMatrix_apply, ← RingHom.mapMatrix_apply, ← RingHom.mapMatrix_apply, map_mul]
+    rw [← RingHom.mapMatrix_apply, ← RingHom.mapMatrix_apply,
+      ← RingHom.mapMatrix_apply, map_mul]
   rw [hEq, hmul, Matrix.diagonal_map (map_zero (eval sched))]
 
 /-- **Bridge, step 2: the restated obligation (a) supplies the hiding hypothesis.**  Given the
@@ -222,24 +225,25 @@ end ObligationA
 
 /-! ## Summary — what this file establishes over `ViewModel`
 
-**The seam correction.**  Hiding is routed through `circleTMatrix` (the circle-**honest**
-matrix, the only one with a `det ≠ 0` / liveness proof) with a nonzero-diagonal rescale, not
-through the free-coordinate `circleMatrixGen`.  The deployed leakage matrix is `D ·
-circleTMatrix`; the binding is `deployedMap = D · circleTMatrix`, **not** `= circleMatrixGen`.
+**The seam correction.** Hiding can be routed through `circleTMatrix` (the
+circle-**honest** matrix with a `det ≠ 0` / liveness proof) after an explicitly
+nonzero row rescale. `CircleTensorBinding.lean` proves the exact field-valued
+rescale direction for the aligned candidate map.
 
 **`det ≠ 0` (hence hiding) is preserved under the rescale.**  `det (diagonal d · A) =
-(∏ d_i) · det A` (`det_diagonal_mul`), so `det ≠ 0 ↔ det A ≠ 0` when the diagonal is nonzero
-(`det_diagonal_mul_ne_zero_iff`).  Lifting `circleTMatrix_det_ne_zero` gives the deployed
-symbolic non-vacuity `deployedTMatrix_det_ne_zero`.
+(∏ d_i) · det A` (`det_diagonal_mul`), so `det ≠ 0 ↔ det A ≠ 0` when the
+diagonal is nonzero
+(`det_diagonal_mul_ne_zero_iff`). Lifting `circleTMatrix_det_ne_zero` gives the
+generic symbolic non-vacuity `rescaledTMatrix_det_ne_zero`.
 
 **Proved in-kernel (sorry-free, axioms `[propext, Classical.choice, Quot.sound]`):**
 
 * `det_diagonal_mul`, `det_diagonal_mul_ne_zero`, `det_diagonal_mul_ne_zero_iff` — the
   diagonal-rescale determinant lemma;
-* `deployedTMatrix_det_ne_zero` — the deployed matrix `D · circleTMatrix` is nonsingular;
+* `rescaledTMatrix_det_ne_zero` — a polynomial rescale of `circleTMatrix` is nonsingular;
 * `diag_rescale_view_indep`, `circleTMask_hides_witness` — hiding through `D · circleTMatrix`;
-* `ClosesObligationA_T` and its bridges `deployed_map_eq`, `hides_witness` — the restated
-  obligation (a) bound to `D · circleTMatrix`, supplying the hiding hypothesis.
+* `ClosesObligationA_T` and its bridges `deployed_map_eq`, `hides_witness` — a
+  generic symbolic identity supplies the corresponding hiding hypothesis.
 -/
 
 end AspisCircleTMatrixHiding
@@ -247,7 +251,7 @@ end AspisCircleTMatrixHiding
 #print axioms AspisCircleTMatrixHiding.det_diagonal_mul
 #print axioms AspisCircleTMatrixHiding.det_diagonal_mul_ne_zero
 #print axioms AspisCircleTMatrixHiding.det_diagonal_mul_ne_zero_iff
-#print axioms AspisCircleTMatrixHiding.deployedTMatrix_det_ne_zero
+#print axioms AspisCircleTMatrixHiding.rescaledTMatrix_det_ne_zero
 #print axioms AspisCircleTMatrixHiding.diag_rescale_view_indep
 #print axioms AspisCircleTMatrixHiding.circleTMask_hides_witness
 #print axioms AspisCircleTMatrixHiding.ClosesObligationA_T.deployed_map_eq

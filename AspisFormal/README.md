@@ -23,10 +23,11 @@ permutation result.**
 | `det M ≠ 0` ⟹ surjective ⟹ hidden, for a square matrix `M` | `MaskingHiding.lean` | **Proved** (arbitrary `M`) |
 | Schwartz–Zippel liveness bridge; b=2 to `2/|K|`; b=4 `det≠0` | `CircleVandermonde.lean` | **Proved** |
 | Circle liveness at arbitrary even `b` (free coords `K^{2b}`); b=128 ⟹ `≤8192/|K|` | `CircleVandermondeGeneral.lean` | **Proved** |
-| Circle liveness over the **real circle-point distribution** (`t`-param, poles handled); b=128 ⟹ `≤16640/|K| ≈ 2⁻¹¹⁰` | `CirclePointLiveness.lean` | **Proved** (closes the free-coord gap) |
+| Circle liveness over independent rationally parameterised field points (`t`-param, poles handled); b=96 ⟹ `≤9408/|K|`, b=128 ⟹ `≤16640/|K|` | `CirclePointLiveness.lean` | **Proved for that distribution**; the current wire samples discrete domain indices and still needs its own availability argument |
 | Hiding for the **concrete circle mask matrix** (not arbitrary `M`) + view interface | `AspisViewBinding.lean` | **Proved** + named interface |
 | Byte-exact released-view model; view completeness arithmetic; sampler uniformity ⟹ `PMF`-level perfect hiding; (a) closure spec | `ViewModel.lean` | **Proved** + named interface |
-| Hiding for the **ideal circle-block** mask matrix `D·circleTMatrix` (diagonal-rescale of the circle-honest Vandermonde) | `CircleTMatrixHiding.lean` | **Proved for the model** (`∏ dᵢ ≠ 0 ∧ det circleTMatrix ≠ 0 ⟹ det ≠ 0`); actual encoder binding remains open |
+| Hiding for a row-rescaled circle matrix `D·circleTMatrix` | `CircleTMatrixHiding.lean` | **Proved for the model** (`∏ dᵢ ≠ 0 ∧ det circleTMatrix ≠ 0 ⟹ det ≠ 0`); no concrete-wire claim in this module |
+| Aligned reserve geometry (`896..991`), exact tensor factorisation `B_(896+j)=B_896·B_j`, monomial-to-natural conversion, and the exact rational rescale `diag(B)·V = diag(B/Qᵐ)·circleTMatrix` | `CircleTensorBinding.lean` | **Proved for the algebraic encoder model**, including conditional fibre-count hiding; Rust/table, nonzero-factor availability, and v5-wire correspondence remain explicit obligations |
 | Degree-preserving chained sumcheck mask: uniform zero-boundary sampler, exact round boundaries and Boolean sum, conditional full-round hiding; a false sum accepts for at most one mixing challenge | `SumcheckMasking.lean` | **Proved** per round and for the algebraic self-reduction; adaptive transcript composition and every correlated commitment/PCS observation remain named wire obligations |
 
 ### Soundness
@@ -50,16 +51,23 @@ permutation result.**
 
 Substantial progress, but these remain and a reviewer will ask for them:
 
-- **Obligation (a): actual encoder mask map = proved circle matrix.** The
-  determinant half is proved for the ideal matrix: `CircleTMatrixHiding.lean`
-  shows `D·circleTMatrix` is nonsingular. The provisional v5 prover
-  (`crates/aspis-prover/src/v5_mask.rs`, feature `v5-mask`) reproduces that same
-  ideal matrix through a polynomial-evaluation route and checks the two ideal
-  descriptions entrywise. It does **not yet** identify reserved message
-  positions under the deployed `CircleEncoder` with that matrix. The remaining
-  finite binding must compare against the encoder's actual basis images (or
-  prove the required invertible change of basis), then bind the result to the
-  serialized v5 wire. This stays an explicit obligation.
+- **Obligation (a): actual encoder mask map = proved circle matrix.** The first
+  draft's rows `928..1023` were not one tensor block and have been rejected.
+  `CircleTensorBinding.lean` proves that corrected rows `896..991` share the
+  factor `B_896`, that the lower natural Chebyshev basis is degree-triangular,
+  that its canonical coefficient conversion gives ordinary Vandermonde
+  evaluation, and that the exact rational-parametrised rescale is
+  `B_896(p_i)/(1+t_i²)^m` rather than the clearing factor itself. The
+  feature-gated Rust module now performs that conversion and
+  compares all 96 resulting columns with sparse basis images from the real
+  `CircleEncoder` at representative codeword positions. It also reconstructs
+  all 48 ordinary monomials coefficient-by-coefficient from the concrete
+  conversion table. These are the algebraic pieces of the construction, but
+  tests are not a universal code proof. Remaining
+  obligations are the Rust↔Lean conversion-table correspondence, the exact v5
+  serialized view, the M31/QM31 lane-width split, and an availability argument
+  proving both matrix nonsingularity and `B_896(p_i) ≠ 0` for the wire's actual
+  discrete query-index distribution.
 - **Sumcheck-mask joint view.** `SumcheckMasking.lean` first proves the finite
   translation lemma for a mask uniform over the entire represented vector. It
   explicitly rules out applying that lemma to a 1024-value multilinear mask:
@@ -107,8 +115,9 @@ Substantial progress, but these remain and a reviewer will ask for them:
 - Parameters are now **manifest-bound and CI-enforced** across Rust, Python, and
   Lean (was: "Lean is about intended, not deployed, params").
 - Hiding is now a **distribution-level** statement (was: fibre counts only).
-- The liveness bound now holds over the **real circle-point distribution** (was:
-  free coordinates only).
+- The liveness bound now holds over an independent rational circle-parameter
+  distribution (was: free coordinates only). Binding that distribution to the
+  wire's discrete query indices remains open.
 - The soundness ledger arithmetic and fibre-root distinctness are **in the
   kernel** (were: Python-only).
 - The value-conservation core is proven **from the constraints up** (was:

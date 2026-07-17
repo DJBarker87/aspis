@@ -3,19 +3,23 @@ import AspisFormal.CircleVandermonde
 import AspisFormal.CircleVandermondeGeneral
 
 /-!
-# Layer 2b over the ACTUAL circle-point distribution
+# Layer 2b over independently parametrised circle points
 
 `CircleVandermondeGeneral` proves the `b = 2m` mask-evaluation liveness bound treating
 each schedule point's coordinates `(x_i, y_i)` as *independent free variables* ranging
-over `K^(2b)`.  The real Fiat–Shamir query points do not range freely: they lie on the
-unit circle `x_i^2 + y_i^2 = 1`, a one-dimensional variety.  This file closes that honest
-modeling gap by re-proving the bound over the **circle-parameterized** distribution, where
-each point `i` is drawn by a single free parameter `t_i ∈ K` via the rational
-parameterization
+over `K^(2b)`. Circle query points do not range freely: they lie on the unit
+circle `x_i^2 + y_i^2 = 1`, a one-dimensional variety. This file closes that
+geometric gap by proving the bound for a distribution where each point `i` is
+drawn independently from a free parameter `t_i ∈ K` via the rational
+parametrisation
 
 ```
 x(t) = (1 - t^2)/(1 + t^2),   y(t) = 2t/(1 + t^2),   1 + t^2 ≠ 0.
 ```
+
+This is not yet the production distribution: the current wire derives
+structured circle points from discrete query indices and their fibres. A
+separate availability theorem is required for that schedule.
 
 ## Clearing denominators
 
@@ -33,9 +37,10 @@ is exactly why the circle constraint is a genuine restriction.  The honest circl
 instead takes `m` distinct nodes `x_r = x(τ_r)` and pairs each with the *two* circle points
 `(x_r, ±y_r)` — parameters `±τ_r`.  The evaluated matrix reindexes to
 `fromBlocks (R·V) (R·W·V) (R·V) (R·(-W·V))`, whose determinant is
-`(∏ Q_r^m)^2 · (-2)^m · (∏ y_r) · (det V)^2 ≠ 0` when the nodes are distinct, the parameters
-are nonzero, and `char K ≠ 2`.  (Characteristic `≠ 2` is intrinsic to circle-FFT STARKs; the
-deployed field `QM31` has characteristic `2^31 − 1`.)
+`(∏ Q_r^m)^2 · (-2)^m · (∏ y_r) · (det V)^2 ≠ 0` when the nodes are distinct,
+the parameters are nonzero, and `char K ≠ 2`. (Characteristic `≠ 2` is
+intrinsic to circle-FFT STARKs; the deployed field `QM31` has characteristic
+`2^31 − 1`.)
 
 ## Deliverables
 
@@ -48,7 +53,10 @@ deployed field `QM31` has characteristic `2^31 − 1`.)
 * `circle_pole_fraction_le` — the excluded pole set `{∃ i, 1 + t_i^2 = 0}` has fraction
   `≤ 2·(2m) / |K|`.
 * `circle_point_liveness` — combined: `Pr[singular ∨ pole] ≤ (4·m·m + 2·(2m)) / |K|`.
-* deployed `b = 128` (`m = 64`): `16384 / |K|`, pole `256 / |K|`, combined `16640 / |K|`.
+* reference `b = 128` (`m = 64`): `16384 / |K|`, pole `256 / |K|`, combined
+  `16640 / |K|`;
+* v5 algebraic block `b = 96` (`m = 48`): `9216 / |K|`, pole `192 / |K|`,
+  combined `9408 / |K|`, for this independent-parameter model only.
 
 Everything is `sorry`-free; the witness hypotheses (`τ` with distinct nonzero squares, all
 `1 + τ^2 ≠ 0`, and `2 ≠ 0`) are the circle analogue of the "enough distinct nodes"
@@ -293,13 +301,14 @@ theorem circleTMatrix_det_ne_zero (K : Type*) [Field K] (m : ℕ) (τ : Fin m �
 
 /-! ### The liveness bound over circle points -/
 
-/-- **Layer 2b over the actual circle-point distribution.**
+/-- **Layer 2b over independent rational circle parameters.**
 
 Over any finite field `K` with a circle witness `τ` (distinct nonzero squares, all
 non-pole) and `2 ≠ 0`, the fraction of parameter tuples `t ∈ K^(2m)` on which the circle
 mask-evaluation matrix is singular is at most `4·m·m / |K|`.  Each point is drawn by its
-single circle parameter `t_i`, so this is the bound over the ACTUAL 1-dimensional
-circle-point distribution, not the free `K^(2b)` distribution. -/
+single circle parameter `t_i`, so this is a bound over independent points on
+the one-dimensional circle rather than free `K^(2b)` coordinates. It does not
+describe the wire's discrete query-index distribution. -/
 theorem circle_point_schedule_fail_le (K : Type*) [Field K] [Fintype K] [DecidableEq K]
     (m : ℕ) (τ : Fin m → K)
     (hQ : ∀ r, (1 + (τ r) ^ 2 : K) ≠ 0) (hτ0 : ∀ r, τ r ≠ 0)
@@ -314,9 +323,9 @@ theorem circle_point_schedule_fail_le (K : Type*) [Field K] [Fintype K] [Decidab
   exact_mod_cast circleTMatrix_totalDegree_le K m
 
 /-- **The excluded pole set.**  The parameterization misses the point `(-1, 0)` and is
-undefined where `1 + t_i^2 = 0` (the two "poles" `t = ±i`, when they exist in `K`).  Fiat–
-Shamir never samples these; the fraction of parameter tuples with some coordinate a pole is
-at most `2·(2m) / |K|` (degree of `∏_i (1 + t_i^2)`), hence negligible. -/
+undefined where `1 + t_i^2 = 0` (the two "poles" `t = ±i`, when they exist in `K`).
+The fraction of independent parameter tuples with some coordinate a pole is at
+most `2·(2m) / |K|` (degree of `∏_i (1 + t_i^2)`). -/
 theorem circle_pole_fraction_le (K : Type*) [Field K] [Fintype K] [DecidableEq K] (m : ℕ) :
     (#{f ∈ (Finset.univ : Finset (Fin (2 * m) → K)) | ∃ i, (1 : K) + (f i) ^ 2 = 0} : ℚ≥0)
         / (Fintype.card K ^ (2 * m))
@@ -413,13 +422,14 @@ theorem circle_point_liveness (K : Type*) [Field K] [Fintype K] [DecidableEq K]
   gcongr
   exact_mod_cast hBADdeg
 
-/-! ### Deployed budget `b = 128` (`m = 64`) -/
+/-! ### Numerical specialisations -/
 
-/-- **Deployed circle-point liveness, `b = 128` (`m = 64`).**  `4·64·64 = 16384` and
+/-- **Reference circle-point liveness, `b = 128` (`m = 64`).**  `4·64·64 = 16384` and
 `2·(2·64) = 256`; the combined bad-or-pole fraction over the 128 circle parameters is
-`≤ (16384 + 256) / |K| = 16640 / |K|`.  For `K = QM31` (`|K| = (2³¹−1)⁴ ≈ 2¹²⁴`) this is
-`≈ 2⁻¹¹⁰`, so the resample loop succeeds essentially immediately. -/
-theorem circle_point_liveness_deployed (K : Type*) [Field K] [Fintype K] [DecidableEq K]
+`≤ (16384 + 256) / |K| = 16640 / |K|`. For `K = QM31`
+(`|K| = (2³¹−1)⁴ ≈ 2¹²⁴`) this is
+`≈ 2⁻¹¹⁰` in the independent-parameter model. -/
+theorem circle_point_liveness_b128 (K : Type*) [Field K] [Fintype K] [DecidableEq K]
     (τ : Fin 64 → K)
     (hQ : ∀ r, (1 + (τ r) ^ 2 : K) ≠ 0) (hτ0 : ∀ r, τ r ≠ 0)
     (hτsq : Function.Injective (fun r => (τ r) ^ 2)) (h2 : (2 : K) ≠ 0) :
@@ -430,8 +440,9 @@ theorem circle_point_liveness_deployed (K : Type*) [Field K] [Fintype K] [Decida
       ≤ (4 * 64 * 64 + 2 * (2 * 64)) / Fintype.card K :=
   circle_point_liveness K 64 τ hQ hτ0 hτsq h2
 
-/-- Deployed singular-only bound: `≤ 16384 / |K|` over the 128 circle parameters. -/
-theorem circle_point_schedule_fail_le_deployed (K : Type*) [Field K] [Fintype K] [DecidableEq K]
+/-- Reference singular-only bound: `≤ 16384 / |K|` over 128 independent
+circle parameters. -/
+theorem circle_point_schedule_fail_le_b128 (K : Type*) [Field K] [Fintype K] [DecidableEq K]
     (τ : Fin 64 → K)
     (hQ : ∀ r, (1 + (τ r) ^ 2 : K) ≠ 0) (hτ0 : ∀ r, τ r ≠ 0)
     (hτsq : Function.Injective (fun r => (τ r) ^ 2)) (h2 : (2 : K) ≠ 0) :
@@ -441,16 +452,48 @@ theorem circle_point_schedule_fail_le_deployed (K : Type*) [Field K] [Fintype K]
       ≤ (4 * 64 * 64) / Fintype.card K :=
   circle_point_schedule_fail_le K 64 τ hQ hτ0 hτsq h2
 
+/-- **V5 algebraic-block liveness, `b = 96` (`m = 48`).** The combined
+bad-or-pole fraction over 96 independent circle parameters is
+`≤ (9216 + 192) / |K| = 9408 / |K|`. This is not a production-wire
+availability theorem. -/
+theorem circle_point_liveness_b96 (K : Type*) [Field K] [Fintype K] [DecidableEq K]
+    (τ : Fin 48 → K)
+    (hQ : ∀ r, (1 + (τ r) ^ 2 : K) ≠ 0) (hτ0 : ∀ r, τ r ≠ 0)
+    (hτsq : Function.Injective (fun r => (τ r) ^ 2)) (h2 : (2 : K) ≠ 0) :
+    (#{f ∈ (Finset.univ : Finset (Fin (2 * 48) → K)) |
+          ((circleTMatrix K 48).map (MvPolynomial.eval f)).det = 0 ∨
+            ∃ i, (1 : K) + (f i) ^ 2 = 0} : ℚ≥0)
+        / (Fintype.card K ^ (2 * 48))
+      ≤ (4 * 48 * 48 + 2 * (2 * 48)) / Fintype.card K :=
+  circle_point_liveness K 48 τ hQ hτ0 hτsq h2
+
+/-- V5 algebraic-block singular-only bound: `≤ 9216 / |K|` over 96
+independent circle parameters. -/
+theorem circle_point_schedule_fail_le_b96
+    (K : Type*) [Field K] [Fintype K] [DecidableEq K]
+    (τ : Fin 48 → K)
+    (hQ : ∀ r, (1 + (τ r) ^ 2 : K) ≠ 0) (hτ0 : ∀ r, τ r ≠ 0)
+    (hτsq : Function.Injective (fun r => (τ r) ^ 2)) (h2 : (2 : K) ≠ 0) :
+    (#{f ∈ (Finset.univ : Finset (Fin (2 * 48) → K)) |
+          ((circleTMatrix K 48).map (MvPolynomial.eval f)).det = 0} : ℚ≥0)
+        / (Fintype.card K ^ (2 * 48))
+      ≤ (4 * 48 * 48) / Fintype.card K :=
+  circle_point_schedule_fail_le K 48 τ hQ hτ0 hτsq h2
+
 end AspisCircleLiveness
 
-/-- Numeric sanity: the deployed constants. -/
+/-- Numeric sanity for the two reference widths. -/
 example : (4 * 64 * 64 : ℕ) = 16384 := by norm_num
 example : (2 * (2 * 64) : ℕ) = 256 := by norm_num
 example : (4 * 64 * 64 + 2 * (2 * 64) : ℕ) = 16640 := by norm_num
+example : (4 * 48 * 48 : ℕ) = 9216 := by norm_num
+example : (2 * (2 * 48) : ℕ) = 192 := by norm_num
+example : (4 * 48 * 48 + 2 * (2 * 48) : ℕ) = 9408 := by norm_num
 
 #print axioms AspisCircleLiveness.circleTMatrix_det_ne_zero
 #print axioms AspisCircleLiveness.circleTMatrix_totalDegree_le
 #print axioms AspisCircleLiveness.circle_point_schedule_fail_le
 #print axioms AspisCircleLiveness.circle_pole_fraction_le
 #print axioms AspisCircleLiveness.circle_point_liveness
-#print axioms AspisCircleLiveness.circle_point_liveness_deployed
+#print axioms AspisCircleLiveness.circle_point_liveness_b128
+#print axioms AspisCircleLiveness.circle_point_liveness_b96

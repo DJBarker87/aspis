@@ -3,14 +3,14 @@
 //! # Status: PROVISIONAL — first cut, feature-gated (`v5-mask`), NOT in the v4 path
 //!
 //! This module is a clean-room implementation of the v5 hiding component (A):
-//! the block-form circle mask
+//! an aligned block-form circle mask
 //!
 //! ```text
-//!     T̂ = T + Z_{H'} · R,
+//!     T̂ = T + B_896 · R,
 //! ```
 //!
-//! where `H'` is the active-row sub-domain, `Z_{H'}` is its vanishing
-//! polynomial (so `T̂ = T` on every active row), and
+//! where `B_896` is one fixed nonzero tensor-basis factor on the codeword
+//! domain and
 //!
 //! ```text
 //!     R ∈ V_b = { p(x) + y·q(x) : deg p, deg q ≤ m-1 }
@@ -25,39 +25,34 @@
 //!
 //! * The block-form mask object `R = p(x) + y·q(x)` and its uniform sampler.
 //! * The reserved-row layout: active rows `0..=878`, reserved rows
-//!   `928..=1023` (exactly `b = 96` rows), carrying the mask.
+//!   `896..=991` (exactly `b = 96` rows), carrying the mask. The start is
+//!   aligned to a 128-coordinate tensor block.
 //! * The agreement property `T̂ == T` on every active row.
 //! * Rate preservation: the masked column is a length-`TRACE_LEN` message and
 //!   encodes, through the *real* circle encoder, to a rate-1/512 codeword.
-//! * The ideal polynomial-route leakage matrix at the query points comes out
-//!   exactly as
+//! * The real encoder's basis images satisfy, entry by entry,
 //!
 //!   ```text
-//!       L = diag(Z_{H'}(p_i)) · V
+//!       L = diag(B_896(p_i)) · V,
 //!   ```
 //!
 //!   where `V` is the block-form circle Vandermonde model used by
-//!   `CircleTMatrixHiding`. The test
-//!   `leakage_matrix_is_diag_times_block_vandermonde` checks these two ideal
-//!   descriptions against each other. It does not compare either description
-//!   with basis images emitted by the real circle encoder.
+//!   `CircleTMatrixHiding`. Ordinary monomial coefficients are converted to
+//!   the encoder's natural line-tensor basis before being placed in the
+//!   reserved rows. The tests compare all 96 columns with sparse basis images
+//!   emitted by the real circle encoder.
 //! * Teeth: the leakage matrix is nonsingular on a sampled valid schedule and
-//!   singular on a deliberately degenerate one (a query landing on an active
-//!   row, where `Z_{H'}` vanishes and the mask leaks nothing).
+//!   singular on a deliberately duplicated schedule.
 //!
 //! ## What remains PENDING (NOT established here)
 //!
-//! * The exact coefficient identity between the reserved-row coefficient
-//!   placement used by [`mask_column`] and the circle-FFT coefficients of the
-//!   genuine polynomial product `Z_{H'}·R`. The leakage-matrix structure below
-//!   is built from the genuine-polynomial route (manifestly `diag·V`); binding
-//!   it to the encoder's reserved-coefficient route is the pending Lean
-//!   obligation (a) — "the final Lean `= diag·circleTMatrix` decide".
-//! * The exact circle vanishing polynomial. [`vanishing_active`] uses a
-//!   documented line-coordinate product over distinct active abscissae as a
-//!   provisional stand-in; the production circle vanishing (via the doubling
-//!   structure `π(x)=2x²−1` / coset vanishing) is what Lean pins.
-//! * The production trace-coset binding of rows to circle points.
+//! * A mechanically checked Rust↔Lean correspondence for the concrete
+//!   coefficient table. `CircleTensorBinding.lean` proves the aligned tensor
+//!   and conversion algebra, while the tests below check the Rust table and
+//!   real encoder; neither alone is a cross-language proof.
+//! * The production query schedule and complete released-view enumeration.
+//!   The square schedule below is an algebraic diagnostic, not a model of the
+//!   current Fiat-Shamir wire.
 //! * The production field-width binding: the current mask coefficients are
 //!   QM31, while semantic C1 columns are M31.
 //! * Component (B)'s commitment and verifier wire. The feature-gated
@@ -69,7 +64,9 @@
 //! Nothing in this module is wired into any v4 prover/verifier function; it is
 //! reachable only under `--features v5-mask`.
 
-use aspis_core::circle::{secure_circle_point_from_parameter, CirclePointError, SecureCirclePoint};
+use aspis_core::circle::{
+    double_x, secure_circle_point_from_parameter, CirclePointError, SecureCirclePoint,
+};
 use aspis_core::field::{CM31, M31, QM31};
 
 use crate::circle_candidate::{CircleCandidateError, CircleEncoder};
@@ -93,11 +90,15 @@ pub const V5_ACTIVE_ROW_END: usize = 878;
 /// Number of active rows carrying the real trace: `0..=878` (879 rows, ≤ 879).
 pub const V5_ACTIVE_ROWS: usize = V5_ACTIVE_ROW_END + 1;
 
-/// First reserved row. The reserved set is pinned to the top `b = 96` rows.
-pub const V5_RESERVED_START: usize = 928;
+/// First reserved row. Alignment to 128 coordinates makes every reserved
+/// tensor basis element factor as `B_896 * B_j`, for `0 <= j < 96`.
+pub const V5_RESERVED_START: usize = 896;
 
 /// Inclusive last reserved row.
-pub const V5_RESERVED_END: usize = V5_TRACE_ROWS - 1;
+pub const V5_RESERVED_END: usize = V5_RESERVED_START + V5_MASK_B - 1;
+
+/// Width of the aligned tensor block containing the 96 reserved coordinates.
+pub const V5_RESERVED_ALIGNMENT: usize = 128;
 
 /// Total reserved rows `b = 2m = 96`.
 pub const V5_MASK_B: usize = 96;
@@ -113,14 +114,16 @@ const _: () = assert!(V5_RESERVED_END - V5_RESERVED_START + 1 == V5_MASK_B);
 const _: () = assert!(V5_MASK_B == 2 * V5_MASK_M);
 const _: () = assert!(V5_ACTIVE_ROW_END < V5_RESERVED_START);
 const _: () = assert!(V5_ACTIVE_ROWS <= 879);
-const _: () = assert!(V5_RESERVED_END == V5_TRACE_ROWS - 1);
+const _: () = assert!(V5_RESERVED_START.is_multiple_of(V5_RESERVED_ALIGNMENT));
+const _: () = assert!(V5_MASK_B <= V5_RESERVED_ALIGNMENT);
+const _: () = assert!(V5_RESERVED_END < V5_TRACE_ROWS);
 
 /// The active-row sub-domain `H' = 0..=878`.
 pub const fn v5_active_rows() -> core::ops::RangeInclusive<usize> {
     0..=V5_ACTIVE_ROW_END
 }
 
-/// The reserved index set `928..=1023` (carries the mask).
+/// The reserved index set `896..=991` (carries the mask).
 pub const fn v5_reserved_rows() -> core::ops::RangeInclusive<usize> {
     V5_RESERVED_START..=V5_RESERVED_END
 }
@@ -221,36 +224,139 @@ pub fn sample_block_mask<S: Qm31WordSource>(
 }
 
 // ---------------------------------------------------------------------------
-// Deliverable 3: the active-row vanishing polynomial Z_{H'}.
+// Deliverable 3: the exact aligned tensor basis and coefficient conversion.
 // ---------------------------------------------------------------------------
 
-/// The line abscissa assigned to active row `i`.
+/// Evaluate the natural line tensor basis element
+/// `N_i(x) = product(T_(2^bit)(x), bit in bits(i))`.
 ///
-/// PROVISIONAL: active rows are given distinct line coordinates
-/// `a_i = i + 1 ∈ M31` (`1..=879`, all canonical and distinct). These stand in
-/// for the production active-row circle coordinates; the exact circle-coset
-/// binding is pending in Lean.
-#[inline]
-pub fn v5_active_abscissa(row: usize) -> M31 {
-    debug_assert!(row <= V5_ACTIVE_ROW_END);
-    M31(row as u32 + 1)
+/// The first factor is `x`; subsequent factors use `T_(2n)(x) = 2T_n(x)^2-1`.
+pub fn natural_line_basis_value(mut index: usize, x: QM31) -> QM31 {
+    let mut value = QM31::ONE;
+    let mut factor = x;
+    while index != 0 {
+        if index & 1 == 1 {
+            value = value.mul(factor);
+        }
+        index >>= 1;
+        if index != 0 {
+            factor = double_x(factor);
+        }
+    }
+    value
 }
 
-/// Evaluate the active-row vanishing polynomial
-/// `Z_{H'}(x) = ∏_{i active} (x − a_i)`.
+/// Evaluate the natural circle tensor basis element `B_i(x,y)`.
 ///
-/// PROVISIONAL: implemented as the exact degree-879 line-coordinate product
-/// over the distinct active abscissae. It vanishes precisely when `x` equals an
-/// active abscissa, so `T̂ = T` on active rows. The task's noted efficient
-/// doubling-structure form (`π(x)=2x²−1`) is a pending optimization; the O(|H'|)
-/// product here is correct and adequate for host-side provisional use.
-pub fn vanishing_active(x: QM31) -> QM31 {
-    let mut acc = QM31::ONE;
-    for row in 0..V5_ACTIVE_ROWS {
-        let a = qm31_from_m31(v5_active_abscissa(row));
-        acc = acc.mul(x.sub(a));
+/// Even coordinates are `N_(i/2)(x)` and odd coordinates are
+/// `y * N_(i/2)(x)`, matching the real encoder's bit-zero circle layer.
+pub fn natural_circle_basis_value(index: usize, point: SecureCirclePoint) -> QM31 {
+    let line = natural_line_basis_value(index >> 1, point.x);
+    if index & 1 == 0 {
+        line
+    } else {
+        point.y.mul(line)
     }
-    acc
+}
+
+/// The common tensor factor shared by rows `896..=991`.
+pub fn aligned_tensor_factor(point: SecureCirclePoint) -> QM31 {
+    natural_circle_basis_value(V5_RESERVED_START, point)
+}
+
+/// Ordinary-polynomial expansions of the natural line tensor basis, over M31.
+/// Entry `basis[i][j]` is the coefficient of `x^j` in `N_i(x)`.
+fn natural_line_basis_polynomials(size: usize) -> Vec<Vec<M31>> {
+    let log_size = usize::BITS as usize - (size - 1).leading_zeros() as usize;
+    let mut factors = Vec::with_capacity(log_size);
+    factors.push(vec![M31::ZERO, M31::ONE]);
+    for bit in 1..log_size {
+        let previous = &factors[bit - 1];
+        let mut squared = vec![M31::ZERO; 2 * previous.len() - 1];
+        for (left, &a) in previous.iter().enumerate() {
+            for (right, &b) in previous.iter().enumerate() {
+                squared[left + right] = squared[left + right].add(a.mul(b));
+            }
+        }
+        for value in &mut squared {
+            *value = value.double();
+        }
+        squared[0] = squared[0].sub(M31::ONE);
+        factors.push(squared);
+    }
+
+    let mut basis = Vec::with_capacity(size);
+    basis.push(vec![M31::ONE]);
+    for index in 1..size {
+        let bit = index.trailing_zeros() as usize;
+        let prefix = &basis[index ^ (1usize << bit)];
+        let factor = &factors[bit];
+        let mut polynomial = vec![M31::ZERO; prefix.len() + factor.len() - 1];
+        for (left, &a) in prefix.iter().enumerate() {
+            for (right, &b) in factor.iter().enumerate() {
+                polynomial[left + right] = polynomial[left + right].add(a.mul(b));
+            }
+        }
+        basis.push(polynomial);
+    }
+    basis
+}
+
+/// Express each ordinary monomial `x^degree` in the natural line basis.
+fn ordinary_monomials_in_natural_line_basis(size: usize) -> Vec<Vec<M31>> {
+    let basis = natural_line_basis_polynomials(size);
+    (0..size)
+        .map(|degree| {
+            let mut residual = vec![M31::ZERO; size];
+            residual[degree] = M31::ONE;
+            let mut coefficients = vec![M31::ZERO; size];
+            for pivot in (0..=degree).rev() {
+                let diagonal = basis[pivot][pivot];
+                let scale = residual[pivot].mul(diagonal.inv());
+                coefficients[pivot] = scale;
+                for (monomial, &value) in basis[pivot].iter().enumerate() {
+                    residual[monomial] = residual[monomial].sub(scale.mul(value));
+                }
+            }
+            debug_assert!(residual.iter().all(|value| *value == M31::ZERO));
+            coefficients
+        })
+        .collect()
+}
+
+fn ordinary_to_natural_with_conversion(
+    coefficients: &[QM31; V5_MASK_M],
+    conversion: &[Vec<M31>],
+) -> [QM31; V5_MASK_M] {
+    let mut natural = [QM31::ZERO; V5_MASK_M];
+    for (degree, coefficient) in coefficients.iter().copied().enumerate() {
+        for (index, weight) in conversion[degree].iter().copied().enumerate() {
+            natural[index] = natural[index].add(coefficient.mul_m31(weight));
+        }
+    }
+    natural
+}
+
+fn block_mask_in_natural_basis(mask: &BlockMask) -> ([QM31; V5_MASK_M], [QM31; V5_MASK_M]) {
+    let conversion = ordinary_monomials_in_natural_line_basis(V5_MASK_M);
+    (
+        ordinary_to_natural_with_conversion(&mask.p, &conversion),
+        ordinary_to_natural_with_conversion(&mask.q, &conversion),
+    )
+}
+
+/// Evaluate the exact reserved coefficient representation at a circle point.
+/// This is independent of the compact `B_896 * R` formula used by
+/// [`leakage_apply`].
+pub fn evaluate_aligned_mask_from_message(mask: &BlockMask, point: SecureCirclePoint) -> QM31 {
+    let (natural_p, natural_q) = block_mask_in_natural_basis(mask);
+    let mut value = QM31::ZERO;
+    for k in 0..V5_MASK_M {
+        value = value
+            .add(natural_p[k].mul(natural_circle_basis_value(v5_reserved_p_index(k), point)))
+            .add(natural_q[k].mul(natural_circle_basis_value(v5_reserved_q_index(k), point)));
+    }
+    value
 }
 
 // ---------------------------------------------------------------------------
@@ -276,15 +382,12 @@ impl From<CircleCandidateError> for V5MaskError {
     }
 }
 
-/// Build the masked column `T̂ = T + Z_{H'}·R`.
+/// Build the masked column `T̂ = T + B_896·R`.
 ///
-/// PROVISIONAL coefficient-space realization: the mask occupies exactly the
-/// reserved rows, so `T̂` agrees with `T` on every non-reserved row (in
-/// particular every active row). The `p` block lands on even reserved offsets
-/// and the `q` block on odd reserved offsets, mirroring the circle-FFT bit-0
-/// (`x` vs `y·x`) split. This is the reserved-row image of `Z_{H'}·R`; the
-/// exact circle-FFT coefficient identity with the genuine polynomial product is
-/// the pending Lean obligation documented at the module head.
+/// The mask occupies exactly the aligned reserved rows, so `T̂` agrees with
+/// `T` on every non-reserved row, including every active row. Ordinary
+/// monomial coefficients are converted to natural line-tensor coefficients;
+/// even offsets carry the pure-`x` block and odd offsets the `y` block.
 pub fn mask_column(real: &[QM31], mask: &BlockMask) -> Result<Vec<QM31>, V5MaskError> {
     if real.len() != V5_TRACE_ROWS {
         return Err(V5MaskError::ColumnLength {
@@ -293,9 +396,10 @@ pub fn mask_column(real: &[QM31], mask: &BlockMask) -> Result<Vec<QM31>, V5MaskE
         });
     }
     let mut masked = real.to_vec();
+    let (natural_p, natural_q) = block_mask_in_natural_basis(mask);
     for k in 0..V5_MASK_M {
-        masked[v5_reserved_p_index(k)] = masked[v5_reserved_p_index(k)].add(mask.p[k]);
-        masked[v5_reserved_q_index(k)] = masked[v5_reserved_q_index(k)].add(mask.q[k]);
+        masked[v5_reserved_p_index(k)] = masked[v5_reserved_p_index(k)].add(natural_p[k]);
+        masked[v5_reserved_q_index(k)] = masked[v5_reserved_q_index(k)].add(natural_q[k]);
     }
     Ok(masked)
 }
@@ -315,19 +419,71 @@ pub fn encode_masked_column(
     Ok(encoder.encode_c2_message(masked)?)
 }
 
-/// The flat degree budget of `Z_{H'}·R` in the line coordinate:
-/// `deg Z_{H'} + max(deg p, deg q) = 879 + 47 = 926 < 1024`. Returned so the
-/// rate check can assert the mask never inflates the message degree.
-pub const fn v5_mask_flat_degree_bound() -> usize {
-    V5_ACTIVE_ROWS + (V5_MASK_M - 1)
+/// One row of the actual encoder leakage map, in ordinary block-coefficient
+/// order `(p_0..p_47, q_0..q_47)`.
+///
+/// This evaluates the sparse basis images of every converted reserved
+/// coefficient. It is intentionally separate from the compact factorisation
+/// in [`encoder_factored_leakage_row`].
+pub fn encoder_leakage_row(
+    encoder: &CircleEncoder,
+    codeword_index: usize,
+) -> Result<[QM31; V5_MASK_B], V5MaskError> {
+    let conversion = ordinary_monomials_in_natural_line_basis(V5_MASK_M);
+    let mut row = [QM31::ZERO; V5_MASK_B];
+    for degree in 0..V5_MASK_M {
+        let mut p = M31::ZERO;
+        let mut q = M31::ZERO;
+        for (natural, &weight) in conversion[degree].iter().enumerate() {
+            p =
+                p.add(weight.mul(
+                    encoder.encode_c1_basis_value(v5_reserved_p_index(natural), codeword_index)?,
+                ));
+            q =
+                q.add(weight.mul(
+                    encoder.encode_c1_basis_value(v5_reserved_q_index(natural), codeword_index)?,
+                ));
+        }
+        row[degree] = qm31_from_m31(p);
+        row[V5_MASK_M + degree] = qm31_from_m31(q);
+    }
+    Ok(row)
+}
+
+/// The claimed compact form of [`encoder_leakage_row`]: the common encoder
+/// basis image at row 896 times `[1,x,...,x^47,y,...,yx^47]`.
+pub fn encoder_factored_leakage_row(
+    encoder: &CircleEncoder,
+    codeword_index: usize,
+) -> Result<[QM31; V5_MASK_B], V5MaskError> {
+    let factor = encoder.encode_c1_basis_value(V5_RESERVED_START, codeword_index)?;
+    let x = encoder.encode_c1_basis_value(2, codeword_index)?;
+    let y = encoder.encode_c1_basis_value(1, codeword_index)?;
+    let mut row = [QM31::ZERO; V5_MASK_B];
+    let mut power = M31::ONE;
+    for degree in 0..V5_MASK_M {
+        row[degree] = qm31_from_m31(factor.mul(power));
+        row[V5_MASK_M + degree] = qm31_from_m31(factor.mul(y).mul(power));
+        power = power.mul(x);
+    }
+    Ok(row)
+}
+
+/// Exclusive message-coordinate bound of the aligned mask. It is below the
+/// fixed 1024-coordinate message width, so the rate remains 1/512.
+pub const fn v5_mask_message_bound() -> usize {
+    V5_RESERVED_END + 1
 }
 
 // ---------------------------------------------------------------------------
 // Deliverable 5: the leakage matrix and its diag·block-Vandermonde structure.
 // ---------------------------------------------------------------------------
 
-/// A query schedule: exactly `b = 96` circle points at which the mask codeword
-/// is opened. These are the fold-derived FRI query points.
+/// A square algebraic diagnostic schedule of exactly `b = 96` circle points.
+///
+/// This is not the production Fiat-Shamir schedule or a released-view
+/// enumeration. It exists to test the factorised matrix before that wire is
+/// defined.
 #[derive(Clone, Debug)]
 pub struct MaskQuerySchedule {
     pub points: Vec<SecureCirclePoint>,
@@ -345,9 +501,7 @@ impl MaskQuerySchedule {
     }
 }
 
-/// PROVISIONAL deterministic schedule parameter for query `i`. Chosen with a
-/// nonzero `c1` so the point is never singular and its `x` is never a (pure
-/// M31) active abscissa — hence `Z_{H'}(x_i) ≠ 0` on the valid schedule.
+/// Deterministic diagnostic schedule parameter for row `i`.
 fn valid_query_parameter(i: usize) -> QM31 {
     QM31 {
         c0: CM31::new(M31(i as u32 + 3), M31(2)),
@@ -366,17 +520,10 @@ pub fn sampled_valid_schedule() -> Result<MaskQuerySchedule, V5MaskError> {
     Ok(MaskQuerySchedule { points })
 }
 
-/// A deliberately degenerate schedule: query 0 is moved onto the identity
-/// point `(1, 0)`, whose `x = 1 = a_0` is the first active abscissa. There
-/// `Z_{H'}` vanishes, so the whole leakage row is zero and `L` is singular —
-/// even though the block Vandermonde `V` itself stays nonsingular. This is the
-/// teeth showing the `diag(Z_{H'})` factor carries real weight.
+/// A deliberately degenerate schedule with two identical rows.
 pub fn degenerate_schedule() -> Result<MaskQuerySchedule, V5MaskError> {
     let mut schedule = sampled_valid_schedule()?;
-    schedule.points[0] = SecureCirclePoint {
-        x: QM31::ONE,
-        y: QM31::ZERO,
-    };
+    schedule.points[1] = schedule.points[0];
     Ok(schedule)
 }
 
@@ -404,41 +551,38 @@ pub fn block_vandermonde(schedule: &MaskQuerySchedule) -> Result<Vec<Vec<QM31>>,
         .collect())
 }
 
-/// The per-query diagonal factors `Z_{H'}(x_i)`.
-pub fn vanishing_diagonal(schedule: &MaskQuerySchedule) -> Result<Vec<QM31>, V5MaskError> {
+/// The per-row aligned tensor factors `B_896(p_i)`.
+pub fn aligned_factor_diagonal(schedule: &MaskQuerySchedule) -> Result<Vec<QM31>, V5MaskError> {
     schedule.validate()?;
     Ok(schedule
         .points
         .iter()
-        .map(|point| vanishing_active(point.x))
+        .map(|point| aligned_tensor_factor(*point))
         .collect())
 }
 
 /// The leakage matrix `L`: the map from the `2m` mask coefficients
-/// `(p_0..p_{m-1}, q_0..q_{m-1})` to the query-point evaluations of `Z_{H'}·R`.
+/// `(p_0..p_{m-1}, q_0..q_{m-1})` to evaluations of `B_896·R`.
 ///
-/// Row `i` is `Z_{H'}(x_i) · [block Vandermonde row at p_i]`, i.e.
-/// `L = diag(Z_{H'}(p_i)) · V`. This is the structural deliverable; that the
-/// structure holds exactly is checked by
-/// `leakage_matrix_is_diag_times_block_vandermonde` (evidence for Lean
-/// obligation (a)).
+/// Row `i` is `B_896(p_i) · [block Vandermonde row at p_i]`, i.e.
+/// `L = diag(B_896(p_i)) · V`.
 pub fn leakage_matrix_at(schedule: &MaskQuerySchedule) -> Result<Vec<Vec<QM31>>, V5MaskError> {
     schedule.validate()?;
     Ok(schedule
         .points
         .iter()
         .map(|point| {
-            let z = vanishing_active(point.x);
+            let factor = aligned_tensor_factor(*point);
             block_vandermonde_row(*point)
                 .iter()
-                .map(|entry| z.mul(*entry))
+                .map(|entry| factor.mul(*entry))
                 .collect()
         })
         .collect())
 }
 
 /// Apply the leakage matrix to a block mask: returns the `b` query-point
-/// evaluations of `Z_{H'}·R`. Independent cross-check of `leakage_matrix_at`.
+/// evaluations of `B_896·R`. Independent cross-check of `leakage_matrix_at`.
 pub fn leakage_apply(
     schedule: &MaskQuerySchedule,
     mask: &BlockMask,
@@ -447,7 +591,7 @@ pub fn leakage_apply(
     Ok(schedule
         .points
         .iter()
-        .map(|point| vanishing_active(point.x).mul(mask.evaluate_at(*point)))
+        .map(|point| aligned_tensor_factor(*point).mul(mask.evaluate_at(*point)))
         .collect())
 }
 
@@ -477,14 +621,15 @@ pub fn qm31_determinant(matrix: &[Vec<QM31>]) -> QM31 {
         let pivot_inv = pivot_value
             .try_inv()
             .expect("pivot is nonzero by construction");
-        for row in (column + 1)..n {
-            let factor = work[row][column].mul(pivot_inv);
+        let (pivot_rows, later_rows) = work.split_at_mut(column + 1);
+        let pivot_row = &pivot_rows[column];
+        for work_row in later_rows {
+            let factor = work_row[column].mul(pivot_inv);
             if factor.is_zero() {
                 continue;
             }
-            for col in column..n {
-                let subtract = factor.mul(work[column][col]);
-                work[row][col] = work[row][col].sub(subtract);
+            for (entry, &pivot_entry) in work_row[column..].iter_mut().zip(&pivot_row[column..]) {
+                *entry = entry.sub(factor.mul(pivot_entry));
             }
         }
     }
@@ -535,9 +680,12 @@ mod tests {
         for row in v5_active_rows() {
             assert_eq!(masked[row], real[row], "row {row} disturbed");
         }
-        // And every non-reserved row is untouched (rows 879..=927 too).
-        for row in 0..V5_RESERVED_START {
-            assert_eq!(masked[row], real[row], "non-reserved row {row} disturbed");
+        // Every non-reserved row is untouched, including the gap before the
+        // aligned block and the unused tail after it.
+        for row in 0..V5_TRACE_ROWS {
+            if !v5_reserved_rows().contains(&row) {
+                assert_eq!(masked[row], real[row], "non-reserved row {row} disturbed");
+            }
         }
         // The reserved rows actually changed (mask is nonzero w.h.p.).
         let changed = v5_reserved_rows().any(|row| masked[row] != real[row]);
@@ -558,9 +706,8 @@ mod tests {
         let codeword = encode_masked_column(&encoder, &masked).unwrap();
         assert_eq!(codeword.len(), V5_CODEWORD_LEN);
         assert_eq!(codeword.len(), V5_TRACE_ROWS * 512);
-        // Flat degree budget of Z_{H'}·R fits in the message space.
-        assert!(v5_mask_flat_degree_bound() < V5_TRACE_ROWS);
-        assert_eq!(v5_mask_flat_degree_bound(), 926);
+        assert!(v5_mask_message_bound() <= V5_TRACE_ROWS);
+        assert_eq!(v5_mask_message_bound(), 992);
     }
 
     // (c) Leakage matrix nonsingular on a valid schedule, singular on a
@@ -589,19 +736,19 @@ mod tests {
             qm31_determinant(&degenerate_leakage).is_zero(),
             "degenerate schedule leakage matrix was NOT singular"
         );
-        // ... yet its block Vandermonde stays nonsingular: the vanishing
-        // diagonal is what collapses the rank.
+        // The duplicated point collapses the underlying block Vandermonde too.
         let degenerate_vander = block_vandermonde(&degenerate).unwrap();
         assert!(
-            !qm31_determinant(&degenerate_vander).is_zero(),
-            "degenerate block Vandermonde unexpectedly singular"
+            qm31_determinant(&degenerate_vander).is_zero(),
+            "duplicated block Vandermonde was not singular"
         );
-        assert!(vanishing_active(degenerate.points[0].x).is_zero());
     }
 
-    // (d) Mask coefficients are uniform (sampler check).
+    // (d) The sampler accepts only canonical coordinates and enforces its
+    // rejection budget. The uniformity claim follows from the rejection rule,
+    // not from this finite statistical smoke test.
     #[test]
-    fn sampler_is_canonical_uniform_and_rejects_out_of_range() {
+    fn sampler_is_canonical_and_rejects_out_of_range() {
         let mut source = XorShift(0x9e37_79b9_7f4a_7c15u64);
         let count = 8_000usize;
         let mut sum = 0u128;
@@ -634,15 +781,41 @@ mod tests {
         assert_eq!(sample_block_mask(&mut bad), Err(MaskSampleExhausted));
     }
 
-    // (e) The ideal polynomial-route leakage matrix equals
-    // diag(Z_{H'}(p_i)) · V for the explicit block-form V. This does not bind
-    // the real encoder's basis images.
+    // (e) The concrete conversion table reconstructs every ordinary monomial
+    // coefficient-by-coefficient from the natural basis.
+    #[test]
+    fn monomial_to_natural_table_is_an_exact_inverse() {
+        let basis = natural_line_basis_polynomials(V5_MASK_M);
+        let conversion = ordinary_monomials_in_natural_line_basis(V5_MASK_M);
+        for degree in 0..V5_MASK_M {
+            let mut reconstructed = vec![M31::ZERO; V5_MASK_M];
+            for natural in 0..V5_MASK_M {
+                let weight = conversion[degree][natural];
+                for (monomial, &coefficient) in basis[natural].iter().enumerate() {
+                    reconstructed[monomial] = reconstructed[monomial].add(weight.mul(coefficient));
+                }
+            }
+            for (monomial, coefficient) in reconstructed.into_iter().enumerate() {
+                assert_eq!(
+                    coefficient,
+                    if monomial == degree {
+                        M31::ONE
+                    } else {
+                        M31::ZERO
+                    },
+                    "conversion entry ({monomial}, {degree}) is not the identity"
+                );
+            }
+        }
+    }
+
+    // (f) The aligned polynomial route equals diag(B_896(p_i)) · V.
     #[test]
     fn leakage_matrix_is_diag_times_block_vandermonde() {
         let schedule = sampled_valid_schedule().unwrap();
         let leakage = leakage_matrix_at(&schedule).unwrap();
         let vander = block_vandermonde(&schedule).unwrap();
-        let diag = vanishing_diagonal(&schedule).unwrap();
+        let diag = aligned_factor_diagonal(&schedule).unwrap();
 
         for i in 0..V5_MASK_B {
             assert!(!diag[i].is_zero(), "valid diagonal entry {i} vanished");
@@ -655,8 +828,8 @@ mod tests {
             }
         }
 
-        // Independent path: L applied to a concrete mask equals the direct
-        // per-point evaluation of Z_{H'}·R.
+        // Independent paths: matrix application, compact factorisation, and
+        // the exact reserved coefficient representation all agree.
         let mask = sample_mask(0x0bad_c0de_1337_babeu64);
         let direct = leakage_apply(&schedule, &mask).unwrap();
         let coeffs: Vec<QM31> = mask.p.iter().chain(mask.q.iter()).copied().collect();
@@ -666,6 +839,67 @@ mod tests {
                 acc = acc.add(leakage[i][j].mul(coeffs[j]));
             }
             assert_eq!(acc, direct[i], "matrix-vector row {i} disagreed");
+            assert_eq!(
+                direct[i],
+                evaluate_aligned_mask_from_message(&mask, schedule.points[i]),
+                "reserved coefficient evaluation {i} disagreed"
+            );
+        }
+    }
+
+    // (g) The real encoder basis images equal the factored block matrix.
+    #[test]
+    fn real_encoder_leakage_is_aligned_factor_times_block_vandermonde() {
+        let encoder = v5_encoder();
+        let indices = [
+            0usize,
+            1,
+            2,
+            3,
+            4,
+            7,
+            31,
+            255,
+            1_023,
+            V5_CODEWORD_LEN / 3,
+            V5_CODEWORD_LEN / 2,
+            V5_CODEWORD_LEN - 4,
+            V5_CODEWORD_LEN - 1,
+        ];
+        for index in indices {
+            assert_eq!(
+                encoder_leakage_row(&encoder, index).unwrap(),
+                encoder_factored_leakage_row(&encoder, index).unwrap(),
+                "real encoder factorisation failed at codeword index {index}"
+            );
+        }
+    }
+
+    // (h) Full C2 encoding of a concrete aligned mask agrees with the compact
+    // factorisation at representative codeword positions.
+    #[test]
+    fn encoded_mask_symbols_match_the_aligned_polynomial() {
+        let encoder = v5_encoder();
+        let mask = sample_mask(0x18a4_9c2e_7d31_b605u64);
+        let message = mask_column(&[QM31::ZERO; V5_TRACE_ROWS], &mask).unwrap();
+        let codeword = encoder.encode_c2_message(&message).unwrap();
+        for index in [
+            0usize,
+            1,
+            17,
+            511,
+            65_537,
+            V5_CODEWORD_LEN / 2 + 3,
+            V5_CODEWORD_LEN - 1,
+        ] {
+            let x = qm31_from_m31(encoder.encode_c1_basis_value(2, index).unwrap());
+            let y = qm31_from_m31(encoder.encode_c1_basis_value(1, index).unwrap());
+            let factor = qm31_from_m31(
+                encoder
+                    .encode_c1_basis_value(V5_RESERVED_START, index)
+                    .unwrap(),
+            );
+            assert_eq!(codeword[index], factor.mul(mask.evaluate(x, y)));
         }
     }
 
@@ -675,14 +909,15 @@ mod tests {
         assert_eq!(V5_TRACE_ROWS, 1024);
         assert_eq!(V5_ACTIVE_ROWS, 879);
         assert_eq!(*v5_active_rows().end(), 878);
-        assert_eq!(*v5_reserved_rows().start(), 928);
-        assert_eq!(*v5_reserved_rows().end(), 1023);
+        assert_eq!(*v5_reserved_rows().start(), 896);
+        assert_eq!(*v5_reserved_rows().end(), 991);
         assert_eq!(v5_reserved_rows().count(), V5_MASK_B);
         assert_eq!(V5_MASK_B, 96);
         assert_eq!(V5_MASK_M, 48);
         assert_eq!(V5_CODEWORD_LEN, 1 << 19);
         // p/q blocks exactly tile the reserved rows.
-        assert_eq!(v5_reserved_p_index(0), 928);
-        assert_eq!(v5_reserved_q_index(V5_MASK_M - 1), 1023);
+        assert!(V5_RESERVED_START.is_multiple_of(V5_RESERVED_ALIGNMENT));
+        assert_eq!(v5_reserved_p_index(0), 896);
+        assert_eq!(v5_reserved_q_index(V5_MASK_M - 1), 991);
     }
 }
