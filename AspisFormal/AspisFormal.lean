@@ -14,3 +14,6 @@ import AspisFormal.AspisViewBinding
 import AspisFormal.ViewModel
 import AspisFormal.TheftResistance
 import AspisFormal.HashMerkleModel
+import AspisFormal.CircleGroupOrder
+import AspisFormal.CircleTMatrixHiding
+import AspisFormal.Poseidon2Kat

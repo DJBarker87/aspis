@@ -8,7 +8,13 @@ Build: `lake exe cache get && lake build` (Lean 4, mathlib). CI:
 deployed parameters).
 
 **Every theorem below depends only on `[propext, Classical.choice, Quot.sound]`
-(mathlib's standard base) — no `sorry`, no `native_decide`, no custom axioms.**
+(mathlib's standard base) — no `sorry`, no custom axioms — with a single,
+explicitly-flagged exception: the Poseidon2 KAT theorems (`Poseidon2Kat.lean`)
+use `native_decide` to evaluate the concrete permutation on fixed inputs, so they
+additionally carry `[Lean.ofReduceBool]`. That is the one place a compiled
+computation, not the kernel, checks a numeric equality; a `native_decide`-free
+rewrite was started and interrupted (it is a tactic detail, not a soundness gap).
+Nothing else in the corpus uses it.**
 
 ## Proof-status table — read this honestly
 
@@ -23,6 +29,7 @@ deployed parameters).
 | Circle liveness over the **real circle-point distribution** (`t`-param, poles handled); b=128 ⟹ `≤16640/|K| ≈ 2⁻¹¹⁰` | `CirclePointLiveness.lean` | **Proved** (closes the free-coord gap) |
 | Hiding for the **concrete circle mask matrix** (not arbitrary `M`) + view interface | `AspisViewBinding.lean` | **Proved** + named interface |
 | Byte-exact released-view model; view completeness arithmetic; sampler uniformity ⟹ `PMF`-level perfect hiding; (a) closure spec | `ViewModel.lean` | **Proved** + named interface |
+| Hiding for the **deployed** circle mask matrix `D·circleTMatrix` (diagonal-rescale of the circle-honest Vandermonde), the corrected obligation (a) | `CircleTMatrixHiding.lean` | **Proved** (`∏ dᵢ ≠ 0 ∧ det circleTMatrix ≠ 0 ⟹ det ≠ 0`) |
 
 ### Soundness
 | Statement | File | Status |
@@ -33,6 +40,8 @@ deployed parameters).
 | Johnson threshold `ρ≤α²`; agreement cap `A=⌊αN⌋=6082` (manifest-bound) | `SoundnessParams.lean` | **Proved** |
 | Constants, regime `ρ<√ρ≤α`, every ledger degree, per-event SZ bits, fold/coarse unions, ×3 inflation (`≤2⁻¹⁰⁴`) | `SoundnessLedger.lean` | **Proved** (floor bounds) |
 | Circle fibre-root distinctness / root≠1 (structural, no brute force) | `CircleFibreRoots.lean` | **Proved** (modulo the group-order interface) |
+| Circle group `g` has order exactly `2³¹`; same-x criterion `X(gᵃ)=X(gᵇ) ↔ a≡±b [2³¹]` — **discharges** `CircleFibreRoots`'s `SameXCoord` interface | `CircleGroupOrder.lean` | **Proved** (kernel `decide`, 31-fold squaring, no `native_decide`) |
+| Poseidon2 KATs: the in-Lean permutation / node / owner / note+nullifier sponges equal the deployed `poseidon2.rs` constants on fixed inputs | `Poseidon2Kat.lean` | **Proved** (the one `native_decide` file — see the axioms note above) |
 
 ### Knowledge / theft resistance
 | Statement | File | Status |
@@ -43,16 +52,25 @@ deployed parameters).
 
 Substantial progress, but these remain and a reviewer will ask for them:
 
-- **Obligation (a): deployed mask map = circle matrix.** Provably reduced to a
-  single `decide` against the v5 encoder's coefficient tables — but v4 uses the
-  `H/G/D` masking, so this **awaits the v5 circle-block-form implementation**.
-  Correctly left as a named interface field, never faked.
+- **Obligation (a): deployed mask map = circle matrix.** The det≠0 half is now
+  proved for the *deployed* shape: `CircleTMatrixHiding.lean` shows the leakage
+  matrix `D·circleTMatrix` is nonsingular (diagonal-rescale of the circle-honest
+  Vandermonde), and the provisional v5 prover (`crates/aspis-prover/src/v5_mask.rs`,
+  feature `v5-mask`) independently produces exactly `L = diag(Z_{H'}(pᵢ))·V` and
+  checks it entrywise. What remains is the finite `decide` identifying the v5
+  encoder's emitted coefficient tables with `circleTMatrix` — it **awaits the full
+  v5 circle-block-form wire** (components B/C, verifier, `Good_spend`). Left as a
+  named interface field, never faked.
 - **The `Poseidon2Faithful` interface.** The six Poseidon2/Merkle clauses are
   now *structurally proved* (`HashMerkleModel.lean`) — the whole `SpendRelation`
   closes in-kernel from a gate-residual witness — leaving one code-correspondence
   residue: that the in-Lean Poseidon2 permutation and round constants equal the
-  deployed `poseidon2.rs`. Closing it needs the round-constant/KAT
-  correspondence, exactly like hiding obligation (a).
+  deployed `poseidon2.rs`. `Poseidon2Kat.lean` now **pins this on fixed inputs**
+  (the permutation, node, owner, and note/nullifier sponges all match the deployed
+  constants), and `tools/check_poseidon_binding.py` guards the constant tables in
+  CI. That is KAT-strength, not universal function equality — closing the *all
+  inputs* gap needs a Rust-side verifier (Verus/Creusot) on the straight-line
+  permutation, not more Lean.
 - **Theft resistance** is now a kernel-checked (axiom-free) inference
   (`TheftResistance.lean`); what stays cited is the BCS knowledge extractor and
   the simulation-extractability theorem, plus the nullifier-binding hypotheses
@@ -63,8 +81,11 @@ Substantial progress, but these remain and a reviewer will ask for them:
 - **Serialization faithfulness.** The byte-exact view model matches the paper's
   wire table by `decide`; that it matches the *deployed serializer bytes* is the
   `serialization_complete` interface field.
-- **The circle-group order** (`g` has order exactly `2³¹`) underpinning the
-  fibre-root and node-distinctness facts is a named interface, not yet built.
+- ~~**The circle-group order** (`g` has order exactly `2³¹`)~~ **Now proved**
+  (`CircleGroupOrder.lean`, kernel `decide`): `orderOf g = 2³¹` and the same-x
+  criterion, which discharges `CircleFibreRoots`'s `SameXCoord` interface. The two
+  files are not yet textually merged, but the fact `CircleFibreRoots` assumed is
+  now a kernel theorem.
 - **The published theorems** (Johnson/MCA/WHIR/BCS list decoding, the ZK
   simulator template) are **cited, not formalized**. Intentional and normal, but
   it means the hiding/soundness *arguments* are not end-to-end formal.

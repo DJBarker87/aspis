@@ -1,0 +1,30 @@
+name: poseidon-binding
+
+# Fails the build if the Lean Poseidon2 known-answer-test constants
+# (AspisFormal/AspisFormal/Poseidon2Kat.lean) or the domain tags
+# (AspisFormal/AspisFormal/HashMerkleModel.lean) ever diverge from the deployed
+# permutation source of truth in crates/aspis-statement/src/{poseidon2.rs,
+# spend.rs}. This locks the hand-transcribed `katRC` round constants (and the
+# partial-round diagonal shift schedule and sponge domain tags) that the Lean
+# KAT proves its statement about against the constants that actually ship.
+#
+# Grep/parse only -- no cargo or lake -- so it is robust to unrelated
+# work-in-progress elsewhere in the tree and needs no toolchain installed. The
+# Lean KAT theorems themselves (kat_perm / kat_node / kat_owner / ...) are
+# checked when the Lean project is built; this guard is the cheap, always-on
+# constant-correspondence half.
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check-poseidon-binding:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check Poseidon2 constant binding (Lean katRC == deployed poseidon2.rs)
+        run: python3 tools/check_poseidon_binding.py
