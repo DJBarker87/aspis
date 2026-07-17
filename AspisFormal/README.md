@@ -28,10 +28,16 @@ deployed parameters).
 | Statement | File | Status |
 |---|---|---|
 | No field-wraparound `v'+f=v` over ℤ (no inflation) | `ValueConservation.lean` | **Proved** |
-| Range (both) + balance + asset **from the constraint residuals**; hash/Merkle as interface | `ArithmetizationCore.lean` | **Proved** (5/10 relation clauses) |
+| Range (both) + balance + asset **from the constraint residuals** | `ArithmetizationCore.lean` | **Proved** |
+| The Poseidon2/Merkle clauses (gate ⟹ `output=perm(input)`, domain separation, Merkle same-path) → **closes the whole `SpendRelation`** end-to-end | `HashMerkleModel.lean` | **Proved** (modulo the `Poseidon2Faithful` interface) |
 | Johnson threshold `ρ≤α²`; agreement cap `A=⌊αN⌋=6082` (manifest-bound) | `SoundnessParams.lean` | **Proved** |
 | Constants, regime `ρ<√ρ≤α`, every ledger degree, per-event SZ bits, fold/coarse unions, ×3 inflation (`≤2⁻¹⁰⁴`) | `SoundnessLedger.lean` | **Proved** (floor bounds) |
 | Circle fibre-root distinctness / root≠1 (structural, no brute force) | `CircleFibreRoots.lean` | **Proved** (modulo the group-order interface) |
+
+### Knowledge / theft resistance
+| Statement | File | Status |
+|---|---|---|
+| Cited extractor + nullifier-binding ⟹ any accepting spend's extracted secret = the note's secret (single-shot and deployed-pool) | `TheftResistance.lean` | **Proved** (axiom-free connective; BCS extractor & sim-ext are cited interfaces) |
 
 ## What is NOT (yet) proved — the honest gaps
 
@@ -41,10 +47,16 @@ Substantial progress, but these remain and a reviewer will ask for them:
   single `decide` against the v5 encoder's coefficient tables — but v4 uses the
   `H/G/D` masking, so this **awaits the v5 circle-block-form implementation**.
   Correctly left as a named interface field, never faked.
-- **The hash/Merkle relation clauses (6 of 10).** The four Poseidon2 hash
-  equations and two Merkle same-path roots are stated as the explicit
-  `ArithmetizationModels` interface. Closing them needs a Poseidon2/Merkle model
-  in Lean or an exhaustive symbolic check of the deployed gate bytes.
+- **The `Poseidon2Faithful` interface.** The six Poseidon2/Merkle clauses are
+  now *structurally proved* (`HashMerkleModel.lean`) — the whole `SpendRelation`
+  closes in-kernel from a gate-residual witness — leaving one code-correspondence
+  residue: that the in-Lean Poseidon2 permutation and round constants equal the
+  deployed `poseidon2.rs`. Closing it needs the round-constant/KAT
+  correspondence, exactly like hiding obligation (a).
+- **Theft resistance** is now a kernel-checked (axiom-free) inference
+  (`TheftResistance.lean`); what stays cited is the BCS knowledge extractor and
+  the simulation-extractability theorem, plus the nullifier-binding hypotheses
+  (dischargeable from `HashMerkleModel`'s nullifier hash).
 - **The BCS work-normalized endpoint** (~100.16 bit) needs `Real.logb` + additive
   `2⁻²⁵⁶` terms; we kernel-check the coarse union `≤2⁻¹⁰⁶` and its ×3 `≤2⁻¹⁰⁴`,
   and the endpoint erosion stays Python-verified.

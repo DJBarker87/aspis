@@ -12,3 +12,5 @@ import AspisFormal.ArithmetizationCore
 import AspisFormal.CircleFibreRoots
 import AspisFormal.AspisViewBinding
 import AspisFormal.ViewModel
+import AspisFormal.TheftResistance
+import AspisFormal.HashMerkleModel
