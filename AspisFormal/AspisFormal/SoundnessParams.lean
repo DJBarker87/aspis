@@ -1,19 +1,29 @@
 import Mathlib
 
 /-!
-# Kernel-checked finite-parameter soundness instantiation
+# Kernel-checked Johnson threshold and agreement-cap arithmetic
 
-The soundness argument *cites* published list-decoding theorems (Johnson bound,
-MCA).  Whether those theorems *apply at Aspis's exact parameters* is a finite
-arithmetic check, currently done by `tools/verify_soundness_params.py` (a script
-I wrote — i.e. AI-trusted).  Here that check's load-bearing facts are proved in
-Lean, so the *instantiation* is kernel-verified and only the published theorems
-remain external citations.
+Scope, stated honestly.  `tools/verify_soundness_params.py` performs the full
+finite-parameter check: fibre-root distinctness and root≠1, the circle-to-line
+transport, the width-29 MCA generator condition, every event degree, and the
+union-bound / BCS-endpoint arithmetic.  **This file proves only TWO of those
+facts** — the Johnson-threshold inequality `ρ ≤ α²` and the integer agreement
+cap `A = ⌊αN⌋ = 6082`.  Everything else remains Python-verified, NOT
+kernel-verified.
+
+Two further caveats, so this is not mis-read:
+* The constants below (`rho`, `alpha`, `Nfib`) are Lean literals.  Nothing here
+  proves they equal the constants compiled into the Rust verifier, or that the
+  `1/20` slack comes from the configured multiplicity `m=10`.  Binding Lean to
+  the frozen profile (ideally: generate both from one manifest and let CI reject
+  disagreement) is future work.  So this is math about the *intended*
+  parameters, not verification of the *deployed* ones.
+* The published Johnson/MCA/transport/WHIR theorems themselves are cited, not
+  proved here.
 
 Parameters: rate ρ = 1/512; Johnson slack 1/20 (so α = (1+1/20)·√ρ); layer-zero
-fiber count N = 2¹⁷.  The two facts below are exactly "we are in the proven
-Johnson regime, not the (now-disproven) capacity regime" and "the agreement cap
-is A = ⌊αN⌋ = 6082".
+fiber count N = 2¹⁷.  The two facts are "we are in the proven Johnson regime,
+not the (now-disproven) capacity regime" and "the agreement cap is 6082".
 -/
 
 namespace AspisSoundness

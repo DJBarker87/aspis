@@ -3,17 +3,24 @@ import Mathlib
 /-!
 # Bounded-independence hiding: the kernel-checked core
 
-The masking argument's heart is this: if the linear mask map `A` (mask
+The masking argument's core building block: if the linear mask map `A` (mask
 coefficients → the field coordinates the verifier sees) is **surjective** onto
-the view space, then the released view is uniform and carries **no** information
-about the witness.  We state the witness-independence as a counting identity:
-for any fixed released view `y`, the number of masks producing it is the *same*
-whether the witness shift is `w₁` or `w₂`.  A perfect (honest-verifier)
-simulator that samples the view uniformly is therefore witness-free.
+the view space, then for any fixed released view `y`, the number of masks
+producing it is the *same* whether the witness shift is `w₁` or `w₂`.
 
-Nothing here is trusted because "an AI derived it": the Lean kernel checks the
-proof term.  Surjectivity of the specific circle mask map is the separate
-instantiation lemma (Layer 2); this file is the field-agnostic core (Layer 1).
+**Exactly what is and isn't proved.**  This is an equality of fibre
+*cardinalities* (`Nat.card`), field-agnostic (`[Field K]` only).  Over a finite
+field, equal fibre counts give equal uniform-sampling probabilities and hence a
+witness-free view distribution — but that finite-field / `PMF`-level statement
+is NOT formalized here (no `[Fintype K]`, no `PMF`, no simulator is constructed).
+And `A` is an *arbitrary* linear map: this file says nothing about whether `A`
+is Aspis's actual circle mask, nor whether the view coordinates are the complete
+released view.  Those are the load-bearing obligations, handled (or flagged as
+open) elsewhere.
+
+What this file does buy: the kernel — not an AI — checks that surjectivity
+implies witness-independent fibre counts.  Surjectivity of the specific circle
+mask map is the separate instantiation (Layer 2).
 -/
 
 variable {K : Type*} [Field K] {m b : ℕ}

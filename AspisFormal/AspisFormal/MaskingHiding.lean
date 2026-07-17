@@ -4,16 +4,27 @@ import AspisFormal.CoreHiding
 /-!
 # Layer 2a: hiding from a per-proof determinant check
 
-Layer 1 (`CoreHiding`) proved: a **surjective** mask map hides the witness.
-Here we discharge the surjectivity hypothesis from a concrete, per-proof,
-computable condition: the square mask matrix `M` (mask coefficients → the `b`
-field coordinates the verifier opens) has **nonzero determinant**.
+Layer 1 (`CoreHiding`) proved: a **surjective** mask map gives witness-independent
+fibre counts.  Here we discharge the surjectivity hypothesis from a concrete
+condition: the square mask matrix `M` has **nonzero determinant**.
 
-Consequence: the entire hiding property reduces, *in the kernel*, to
-`det M ≠ 0` at the emitted schedule — a `Good_spend`-style check the prover
-performs per proof, not a theorem anyone has to trust.  What remains (Layer 2b)
-is only that a random schedule satisfies `det M ≠ 0` except with negligible
-probability (the circle-Vandermonde Schwartz–Zippel bound).
+**Scope — what this does NOT yet establish.**  `M` here is an *arbitrary*
+square matrix; this is a general linear-algebra building block.  It does not
+prove that `M` is the matrix Aspis's circle mask actually produces, that it
+captures the *complete* released view, that it matches the deployed fold/DEEP
+schedule and extension-field coordinates, or that it corresponds to the Rust
+implementation.  It also proves equality of fibre *cardinalities*, not equality
+of probability distributions (`CoreHiding` uses only `[Field K]`, with no
+`Fintype`/`PMF`; over a finite field equal counts give the uniform-distribution
+claim, but that upgrade is not yet formalized).  Those obligations — defining
+the real released-view type, defining `M` from the real schedule, and proving
+`M` models the Rust transcript — are what would make this lemma load-bearing
+*for Aspis* rather than merely a correct algebra fact.  They are not done.
+
+Conditional statement, honestly scoped: **given** a finite field and a matrix
+`M` that faithfully represents the complete released affine view, `det M ≠ 0`
+implies witness-independent fibre counts.  Layer 2b bounds how often a random
+schedule fails `det M ≠ 0`.
 -/
 
 variable {K : Type*} [Field K] {b : ℕ}
