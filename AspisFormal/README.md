@@ -8,13 +8,10 @@ Build: `lake exe cache get && lake build` (Lean 4, mathlib). CI:
 deployed parameters).
 
 **Every theorem below depends only on `[propext, Classical.choice, Quot.sound]`
-(mathlib's standard base) — no `sorry`, no custom axioms — with a single,
-explicitly-flagged exception: the Poseidon2 KAT theorems (`Poseidon2Kat.lean`)
-use `native_decide` to evaluate the concrete permutation on fixed inputs, so they
-additionally carry `[Lean.ofReduceBool]`. That is the one place a compiled
-computation, not the kernel, checks a numeric equality; a `native_decide`-free
-rewrite was started and interrupted (it is a tactic detail, not a soundness gap).
-Nothing else in the corpus uses it.**
+(mathlib's standard base), with no `sorry`, custom axioms, `native_decide`, or
+compiled evaluation. The Poseidon2 KATs use kernel `decide` on pinned one-round
+transitions, then an ordinary induction folds the transitions into each full
+permutation result.**
 
 ## Proof-status table — read this honestly
 
@@ -40,8 +37,8 @@ Nothing else in the corpus uses it.**
 | Johnson threshold `ρ≤α²`; agreement cap `A=⌊αN⌋=6082` (manifest-bound) | `SoundnessParams.lean` | **Proved** |
 | Constants, regime `ρ<√ρ≤α`, every ledger degree, per-event SZ bits, fold/coarse unions, ×3 inflation (`≤2⁻¹⁰⁴`) | `SoundnessLedger.lean` | **Proved** (floor bounds) |
 | Circle fibre-root distinctness / root≠1 (structural, no brute force) | `CircleFibreRoots.lean` | **Proved** (modulo the group-order interface) |
-| Circle group `g` has order exactly `2³¹`; same-x criterion `X(gᵃ)=X(gᵇ) ↔ a≡±b [2³¹]` — **discharges** `CircleFibreRoots`'s `SameXCoord` interface | `CircleGroupOrder.lean` | **Proved** (kernel `decide`, 31-fold squaring, no `native_decide`) |
-| Poseidon2 KATs: the in-Lean permutation / node / owner / note+nullifier sponges equal the deployed `poseidon2.rs` constants on fixed inputs | `Poseidon2Kat.lean` | **Proved** (the one `native_decide` file — see the axioms note above) |
+| Circle group `g` has order exactly `2³¹`; same-x criterion `X(gᵃ)=X(gᵇ) ↔ a≡±b [2³¹]` — **discharges** `CircleFibreRoots`'s `SameXCoord` interface | `CircleGroupOrder.lean` | **Proved** (kernel `decide`, 31-fold squaring) |
+| Poseidon2 KATs: the in-Lean permutation / node / owner / note+nullifier sponges equal the deployed `poseidon2.rs` constants on fixed inputs | `Poseidon2Kat.lean` | **Proved** (kernel `decide` on each pinned round transition) |
 
 ### Knowledge / theft resistance
 | Statement | File | Status |

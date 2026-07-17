@@ -37,17 +37,16 @@ owner sponge wrapper; `kat_note_sponge` and `kat_nullifier_sponge` bind the
 length-8 sponge under `DOM_NOTE` / `DOM_NULLIFIER` (the construction
 `noteHash` / `nullifierHash` are built from -- see the residue note below).
 
-## How it is checked (the per-round chain form), and the honest axiom flag
+## How it is checked (the per-round chain form)
 
 The M31 field arithmetic over 22 rounds does not reduce cheaply in the kernel,
-so each KAT is discharged by `native_decide`.  Naively evaluating
-`poseidon2Perm katRC input` under `native_decide` is intractable: the state type
+so evaluating a whole permutation in one reduction is impractical.  The state type
 `State = Fin 16 -> F` makes each intermediate round a `Fin.cons` CLOSURE, not a
 strict array, so forcing the final state at 16 lanes re-evaluates every round
 with a fan-out of ~4 per round -- an exponential re-computation (measured: > 21
 minutes, no result).  To avoid this we supply, for each KAT input, the explicit
 23-state round trajectory as a list of literal states (`*States` below, computed
-offline and pinned) and prove by `native_decide` only the CHEAP per-round
+offline and pinned) and prove by kernel `decide` only the cheap per-round
 transition facts `y (r+1) = gateStep katRC r (y r)` for `r < 22` -- each conjunct
 evaluates exactly ONE round on a literal input, with no cross-round
 re-computation.  The already-in-kernel lemma
@@ -57,15 +56,9 @@ further evaluation.  So the pinned literal states are not trusted: every one of
 the 22 transitions between them is machine-checked, and the fold to the whole
 permutation is an ordinary kernel proof.
 
-Because the transitions are checked by `native_decide`, `#print axioms` on each
-theorem reports native_decide's trusted-compiler evaluation axioms (in this Lean
-toolchain, named `<thm>._native.native_decide.ax_*`; the `Lean.ofReduceBool`
-family) IN ADDITION to `[propext, Classical.choice, Quot.sound]`.  This is
-flagged HONESTLY: it means the evidence rests on the trusted compiler+`Decidable`
-evaluation of concrete finite round computations, a strictly larger trusted base
-than the `native_decide`-free remainder of `HashMerkleModel.lean`.  It is an
-acceptable basis for a finite KAT (each fact is a decidable equality of explicit
-field vectors), but it IS a larger trusted base and is not hidden.
+`#print axioms` on each KAT reports only the standard mathlib base
+`[propext, Classical.choice, Quot.sound]`.  No compiled evaluator or
+`Lean.ofReduceBool` axiom is used.
 
 ## Honest ledger: what is now bound, and the residue that remains
 
@@ -76,8 +69,7 @@ and asserts they are equal element-for-element), these KATs establish:
   * the Lean `katRC` constants and the domain tags are IDENTICAL to the deployed
     ones (the CI guard), and
   * the Lean permutation and hashes AGREE with the deployed code on the pinned
-    KAT input/output points (these theorems, kernel-checked modulo the
-    native_decide compiler-evaluation axioms).
+    KAT input/output points (these theorems, checked by the Lean kernel).
 
 This is strong evidence -- but it is NOT a proof -- that the in-Lean and deployed
 permutations are the same function on ALL inputs.  KAT agreement on finitely many
@@ -146,9 +138,9 @@ def nullOut : Digest := ![324283919, 973130937, 86654669, 313101172, 278144259, 
 Each `*States` list is the explicit sequence `y 0, y 1, ..., y 22` of states the
 gate steps through on the corresponding KAT input.  They are computed offline and
 pinned here as data; nothing trusts them -- the `*_chain` theorems below verify,
-by `native_decide`, that every one of the 22 transitions
+by kernel `decide`, that every one of the 22 transitions
 `y (r+1) = gateStep katRC r (y r)` actually holds, so an incorrect intermediate
-state would make its `native_decide` fail. -/
+state would make its proof fail. -/
 
 def permStates : List State := [
   ![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
@@ -275,7 +267,7 @@ def nullStates : List State := [
   ![1929288695, 1630729060, 1086632373, 662350443, 1246492996, 1503686517, 1353629971, 2074106462, 857189312, 601762944, 202177509, 1279753743, 1971637939, 1334660812, 957767464, 120749019],
   ![324283919, 973130937, 86654669, 313101172, 278144259, 717969121, 177787689, 399850202, 848389615, 168046809, 10307538, 663322131, 870254689, 483620108, 1850720916, 3584207]]
 
-/-! ## The per-round chains (native_decide) and the KAT theorems -/
+/-! ## The per-round chains and the KAT theorems -/
 
 def yPerm  : ℕ → State := fun n => permStates.getD n katPermIn
 def yNode  : ℕ → State := fun n => nodeStates.getD n katPermIn
@@ -284,26 +276,29 @@ def yNote  : ℕ → State := fun n => noteStates.getD n katPermIn
 def yNull  : ℕ → State := fun n => nullStates.getD n katPermIn
 
 /-- Every one of the 22 round transitions on the permutation KAT input holds. -/
-theorem perm_chain : ∀ r, r < 22 → yPerm (r+1) = gateStep katRC r (yPerm r) := by native_decide
-theorem node_chain : ∀ r, r < 22 → yNode (r+1) = gateStep katRC r (yNode r) := by native_decide
-theorem owner_chain : ∀ r, r < 22 → yOwner (r+1) = gateStep katRC r (yOwner r) := by native_decide
-theorem note_chain : ∀ r, r < 22 → yNote (r+1) = gateStep katRC r (yNote r) := by native_decide
-theorem null_chain : ∀ r, r < 22 → yNull (r+1) = gateStep katRC r (yNull r) := by native_decide
+theorem perm_chain : ∀ r, r < 22 → yPerm (r+1) = gateStep katRC r (yPerm r) := by decide
+theorem node_chain : ∀ r, r < 22 → yNode (r+1) = gateStep katRC r (yNode r) := by decide
+theorem owner_chain : ∀ r, r < 22 → yOwner (r+1) = gateStep katRC r (yOwner r) := by decide
+theorem note_chain : ∀ r, r < 22 → yNote (r+1) = gateStep katRC r (yNote r) := by decide
+theorem null_chain : ∀ r, r < 22 → yNull (r+1) = gateStep katRC r (yNull r) := by decide
 
 /-- **Permutation KAT.**  `poseidon2Perm` reproduces the deployed `permute` on
     the pinned `upstream_default_width_16_kat` vector. -/
 theorem kat_perm : poseidon2Perm katRC katPermIn = katPermOut := by
   have h := poseidon_gate_forces_perm katRC yPerm perm_chain
-  have h0 : yPerm 0 = katPermIn := by native_decide
-  have h22 : yPerm 22 = katPermOut := by native_decide
+  have h0 : yPerm 0 = katPermIn := by decide
+  have h22 : yPerm 22 = katPermOut := by decide
   rw [h0, h22] at h; exact h.symm
 
 /-- **Node-hash KAT.**  `nodeHash` (the Merkle-node compression the tree uses)
     reproduces `MERKLE_NODE_COMPRESSION_V3_KAT`. -/
 theorem kat_node : nodeHash katRC nodeLeft nodeRight = nodeOut := by
   have h := poseidon_gate_forces_perm katRC yNode node_chain
-  have h0 : yNode 0 = nodeState NODE_TWEAK nodeLeft nodeRight := by native_decide
-  have h22 : truncate8 (yNode 22) = nodeOut := by native_decide
+  have h0 : yNode 0 = nodeState NODE_TWEAK nodeLeft nodeRight := by
+    funext i
+    fin_cases i <;>
+      norm_num [yNode, nodeStates, nodeState, NODE_TWEAK, nodeLeft, nodeRight]
+  have h22 : truncate8 (yNode 22) = nodeOut := by decide
   rw [h0] at h
   simp only [nodeHash]
   rw [← h]; exact h22
@@ -312,8 +307,11 @@ theorem kat_node : nodeHash katRC nodeLeft nodeRight = nodeOut := by
     regression output. -/
 theorem kat_owner : ownerHash katRC katInput8 = ownerOut := by
   have h := poseidon_gate_forces_perm katRC yOwner owner_chain
-  have h0 : yOwner 0 = absorb (initState DOM_OWNER 8) katInput8 := by native_decide
-  have h22 : truncate8 (yOwner 22) = ownerOut := by native_decide
+  have h0 : yOwner 0 = absorb (initState DOM_OWNER 8) katInput8 := by
+    funext i
+    fin_cases i <;>
+      norm_num [yOwner, ownerStates, absorb, initState, DOM_OWNER, katInput8]
+  have h22 : truncate8 (yOwner 22) = ownerOut := by decide
   rw [h0] at h
   simp only [ownerHash, spongeHash, spongeFold]
   rw [← h]; exact h22
@@ -323,8 +321,11 @@ theorem kat_owner : ownerHash katRC katInput8 = ownerOut := by
     regression output. -/
 theorem kat_note_sponge : spongeHash katRC DOM_NOTE 8 [katInput8] = noteOut := by
   have h := poseidon_gate_forces_perm katRC yNote note_chain
-  have h0 : yNote 0 = absorb (initState DOM_NOTE 8) katInput8 := by native_decide
-  have h22 : truncate8 (yNote 22) = noteOut := by native_decide
+  have h0 : yNote 0 = absorb (initState DOM_NOTE 8) katInput8 := by
+    funext i
+    fin_cases i <;>
+      norm_num [yNote, noteStates, absorb, initState, DOM_NOTE, katInput8]
+  have h22 : truncate8 (yNote 22) = noteOut := by decide
   rw [h0] at h
   simp only [spongeHash, spongeFold]
   rw [← h]; exact h22
@@ -334,17 +335,18 @@ theorem kat_note_sponge : spongeHash katRC DOM_NOTE 8 [katInput8] = noteOut := b
     `hash_nullifier` regression output. -/
 theorem kat_nullifier_sponge : spongeHash katRC DOM_NULLIFIER 8 [katInput8] = nullOut := by
   have h := poseidon_gate_forces_perm katRC yNull null_chain
-  have h0 : yNull 0 = absorb (initState DOM_NULLIFIER 8) katInput8 := by native_decide
-  have h22 : truncate8 (yNull 22) = nullOut := by native_decide
+  have h0 : yNull 0 = absorb (initState DOM_NULLIFIER 8) katInput8 := by
+    funext i
+    fin_cases i <;>
+      norm_num [yNull, nullStates, absorb, initState, DOM_NULLIFIER, katInput8]
+  have h22 : truncate8 (yNull 22) = nullOut := by decide
   rw [h0] at h
   simp only [spongeHash, spongeFold]
   rw [← h]; exact h22
 
 end AspisFormal.Poseidon2Kat
 
--- Axiom ledger: every KAT rests on native_decide's trusted-compiler evaluation
--- axioms (`._native.native_decide.ax_*`, the `Lean.ofReduceBool` family),
--- honestly flagged in the module docstring, IN ADDITION to the usual
+-- Axiom ledger: every KAT rests only on the usual mathlib base
 -- `[propext, Classical.choice, Quot.sound]`.
 #print axioms AspisFormal.Poseidon2Kat.kat_perm
 #print axioms AspisFormal.Poseidon2Kat.kat_node
