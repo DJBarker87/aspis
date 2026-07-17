@@ -35,6 +35,11 @@ pub mod state_only_zerocheck;
 #[cfg(feature = "v5-mask")]
 pub mod v5_mask;
 
+/// Provisional Aspis v5 masking component (B): degree-preserving chained
+/// sumcheck masks. Feature-gated and entirely outside the v4 path.
+#[cfg(feature = "v5-mask")]
+pub mod v5_sumcheck_mask;
+
 #[cfg(test)]
 mod state_only_spend_privacy_regressions;
 

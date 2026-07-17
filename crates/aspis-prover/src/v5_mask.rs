@@ -29,16 +29,18 @@
 //! * The agreement property `T̂ == T` on every active row.
 //! * Rate preservation: the masked column is a length-`TRACE_LEN` message and
 //!   encodes, through the *real* circle encoder, to a rate-1/512 codeword.
-//! * The leakage-matrix structure at the query points comes out **exactly** as
+//! * The ideal polynomial-route leakage matrix at the query points comes out
+//!   exactly as
 //!
 //!   ```text
 //!       L = diag(Z_{H'}(p_i)) · V
 //!   ```
 //!
-//!   where `V` is the block-form circle Vandermonde (the `circleTMatrix` the
-//!   Lean obligation `CircleTMatrixHiding` binds). This is validated in
-//!   `leakage_matrix_is_diag_times_block_vandermonde` and is the evidence for
-//!   Lean obligation (a).
+//!   where `V` is the block-form circle Vandermonde model used by
+//!   `CircleTMatrixHiding`. The test
+//!   `leakage_matrix_is_diag_times_block_vandermonde` checks these two ideal
+//!   descriptions against each other. It does not compare either description
+//!   with basis images emitted by the real circle encoder.
 //! * Teeth: the leakage matrix is nonsingular on a sampled valid schedule and
 //!   singular on a deliberately degenerate one (a query landing on an active
 //!   row, where `Z_{H'}` vanishes and the mask leaks nothing).
@@ -56,7 +58,11 @@
 //!   provisional stand-in; the production circle vanishing (via the doubling
 //!   structure `π(x)=2x²−1` / coset vanishing) is what Lean pins.
 //! * The production trace-coset binding of rows to circle points.
-//! * Component (B): the full-degrees-of-freedom ZK-sumcheck mask.
+//! * The production field-width binding: the current mask coefficients are
+//!   QM31, while semantic C1 columns are M31.
+//! * Component (B)'s commitment and verifier wire. The feature-gated
+//!   degree-preserving arithmetic primitive lives in `v5_sumcheck_mask`, but
+//!   is deliberately not integrated here.
 //! * Component (C): the DEEP mask.
 //! * The verifier / `Good_spend` changes, and the wire re-enumeration.
 //!
@@ -192,7 +198,7 @@ fn sample_m31<S: Qm31WordSource>(source: &mut S) -> Result<M31, MaskSampleExhaus
 }
 
 /// Draw one uniform QM31 as four rejection-sampled M31 coordinates.
-fn sample_qm31<S: Qm31WordSource>(source: &mut S) -> Result<QM31, MaskSampleExhausted> {
+pub(crate) fn sample_qm31<S: Qm31WordSource>(source: &mut S) -> Result<QM31, MaskSampleExhausted> {
     Ok(QM31 {
         c0: CM31::new(sample_m31(source)?, sample_m31(source)?),
         c1: CM31::new(sample_m31(source)?, sample_m31(source)?),
@@ -628,8 +634,9 @@ mod tests {
         assert_eq!(sample_block_mask(&mut bad), Err(MaskSampleExhausted));
     }
 
-    // (e) The leakage matrix equals diag(Z_{H'}(p_i)) · V for the explicit
-    // block-form V. Evidence for Lean obligation (a).
+    // (e) The ideal polynomial-route leakage matrix equals
+    // diag(Z_{H'}(p_i)) · V for the explicit block-form V. This does not bind
+    // the real encoder's basis images.
     #[test]
     fn leakage_matrix_is_diag_times_block_vandermonde() {
         let schedule = sampled_valid_schedule().unwrap();
