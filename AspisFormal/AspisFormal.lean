@@ -4,3 +4,4 @@ import AspisFormal.MaskingHiding
 import AspisFormal.SoundnessParams
 import AspisFormal.CircleVandermonde
 import AspisFormal.ValueConservation
+import AspisFormal.CircleVandermondeGeneral
