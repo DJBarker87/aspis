@@ -251,11 +251,9 @@ end AspisLivenessGeneral
 example : (2 * 64 * 64 : ℕ) = 8192 := by norm_num
 example : (2 * (2 * 64) : ℕ) = 256 := by norm_num
 
-#print axioms AspisLivenessGeneral.circleMatrixGen_totalDegree_le
-#print axioms AspisLivenessGeneral.circleMatrixGen_det_ne_zero
-#print axioms AspisLivenessGeneral.circle_schedule_fail_le
-#print axioms AspisLivenessGeneral.circle_schedule_fail_le_deployed
+
 
 #print axioms AspisLivenessGeneral.circleMatrixGen_det_ne_zero
+#print axioms AspisLivenessGeneral.circleMatrixGen_totalDegree_le
 #print axioms AspisLivenessGeneral.circle_schedule_fail_le
-#print axioms AspisLiveness.circle_schedule_fail_le_deployed
+#print axioms AspisLivenessGeneral.circle_schedule_fail_le_deployed
