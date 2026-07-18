@@ -36,3 +36,4 @@ import AspisFormal.V5ComponentCConditionalDecoupling
 import AspisFormal.V5SumcheckTranscriptBinding
 import AspisFormal.Poseidon2Kat
 import AspisFormal.AtomicThetaRadix8
+import AspisFormal.V5CuArithmeticEquivalences
