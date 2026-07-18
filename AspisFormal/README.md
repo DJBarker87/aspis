@@ -29,6 +29,10 @@ permutation result.**
 | Hiding for a row-rescaled circle matrix `D·circleTMatrix` | `CircleTMatrixHiding.lean` | **Proved for the model** (`∏ dᵢ ≠ 0 ∧ det circleTMatrix ≠ 0 ⟹ det ≠ 0`); no concrete-wire claim in this module |
 | Aligned reserve geometry (`896..991`), exact tensor factorisation `B_(896+j)=B_896·B_j`, monomial-to-natural conversion, and the exact rational rescale `diag(B)·V = diag(B/Qᵐ)·circleTMatrix` | `CircleTensorBinding.lean` | **Proved for the algebraic encoder model**, including conditional fibre-count hiding; Rust/table, nonzero-factor availability, and v5-wire correspondence remain explicit obligations |
 | Degree-preserving chained sumcheck mask: uniform zero-boundary sampler, exact round boundaries and Boolean sum, conditional full-round hiding; a false sum accepts for at most one mixing challenge | `SumcheckMasking.lean` | **Proved** per round and for the algebraic self-reduction; adaptive transcript composition and every correlated commitment/PCS observation remain named wire obligations |
+| Exact pre-C residual projection: semantic lanes use `gamma^0..gamma^15`, Hcopy uses `gamma^16`, B uses `gamma^17`; the deployed interface exposes one combined inactive scalar plus eighteen 76-coordinate `E` views | `V5ComponentCPreCProjection.lean`, `V5ComponentCPreCProjectionMixed.lean` | **Proved for the mathematical projection**, with the Rust decoder/evaluator correspondence explicit |
+| Component-C fixed-schedule evaluator: four exact arity-4 folds, coefficient folds, 36 relation rows, schedule-sized deduplicated output, and the physical 58-field relation-tail extraction | `V5ComponentCConcreteFoldLinearity.lean`, `V5ComponentCRelationRowLinearity.lean`, `V5ComponentCConcreteDownstream.lean` | **Proved linear and composed**; emitted tables, byte decoding, and executable Rust equality remain named interfaces |
+| Component-C sampler: 1023 free field coordinates map bijectively to `ker ell`; conditioning all 4092 bounded 16-word `u32` calls on success gives the exact joint-uniform law and exact abort ratio | `V5ComponentCSamplerKernel.lean`, `V5ComponentCRejectionSampler.lean` | **Proved for the finite preallocated experiment**; CSPRNG, variable-consumption stopping time, low-31 operation, and QM31 codec/order remain named interfaces |
+| Complete direct Component-C joint-view equality using that literal conditioned-`u32` law and pivot encoder | `V5ComponentCDirectHiding.lean`, `V5ComponentCBlockSamplerDirectHiding.lean` | **Proved conditionally on A/H/B hiding and the deployed-shaped residual correspondences**; no C-DEC, rank certificate, or circle-to-GRS/FRI transport premise |
 
 ### Soundness
 | Statement | File | Status |
@@ -38,6 +42,7 @@ permutation result.**
 | The Poseidon2/Merkle clauses (gate ⟹ `output=perm(input)`, domain separation, Merkle same-path) → **closes the whole `SpendRelation`** end-to-end | `HashMerkleModel.lean` | **Proved** (modulo the `Poseidon2Faithful` interface) |
 | Johnson threshold `ρ≤α²`; agreement cap `A=⌊αN⌋=6082` (manifest-bound) | `SoundnessParams.lean` | **Proved** |
 | Constants, regime `ρ<√ρ≤α`, every ledger degree, per-event SZ bits, fold/coarse unions, ×3 inflation (`≤2⁻¹⁰⁴`) | `SoundnessLedger.lean` | **Proved** (floor bounds) |
+| Work-normalized BCS endpoint: for `T` in `[1,2^128]`, `R≤32`, and capacity error `≤2⁻²⁵⁶`, the tight union gives final error `≤2⁻¹⁰⁰` | `SoundnessWorkNormalizedEndpoint.lean` | **Proved**, conditional on the explicitly stated cited BCS error formula; also proves the coarse floors are insufficient |
 | Circle fibre-root distinctness / root≠1 (structural, no brute force) | `CircleFibreRoots.lean` | **Proved** (modulo the group-order interface) |
 | Circle group `g` has order exactly `2³¹`; same-x criterion `X(gᵃ)=X(gᵇ) ↔ a≡±b [2³¹]` — **discharges** `CircleFibreRoots`'s `SameXCoord` interface | `CircleGroupOrder.lean` | **Proved** (kernel `decide`, 31-fold squaring) |
 | Poseidon2 KATs: the in-Lean permutation / node / owner / note+nullifier sponges equal the deployed `poseidon2.rs` constants on fixed inputs | `Poseidon2Kat.lean` | **Proved** (kernel `decide` on each pinned round transition) |
@@ -50,6 +55,23 @@ permutation result.**
 ## What is NOT (yet) proved — the honest gaps
 
 Substantial progress, but these remain and a reviewer will ask for them:
+
+- **Component C is closed as finite direct algebra, not as deployed ZK.** The
+  direct route samples uniformly on `ker ell` and translates by the exact
+  `(gamma^18)^-1`-scaled pre-C difference. This proves the joint law for every
+  fixed linear downstream map and therefore does not need the rejected C-DEC
+  rank-certificate path or a circle-to-GRS fold transport theorem. Deployment
+  still requires universal Rust-to-Lean correspondence for the combined
+  inactive scalar, all eighteen 76-coordinate views, encoder tables, the
+  schedule-sized fold/relation evaluator, physical byte order, and terminal
+  PCS opening. The Rust sampler additionally uses a computational 256-bit
+  expander and variable word consumption, whereas the kernel theorem uses an
+  information-theoretic preallocated uniform-`u32` experiment conditioned on
+  success. The PRG advantage, stopping-time correspondence, low-31 operation,
+  four-limb QM31 codec, joint independence from A/H/B coins, serialization,
+  Fiat--Shamir/RO compiler, and salted-Merkle/hash assumptions remain explicit
+  interfaces. A frozen-schedule KAT is regression evidence, not universal
+  correspondence.
 
 - **Obligation (a): actual encoder mask map = proved circle matrix.** The first
   draft's rows `928..1023` were not one tensor block and have been rejected.
@@ -95,9 +117,14 @@ Substantial progress, but these remain and a reviewer will ask for them:
   (`TheftResistance.lean`); what stays cited is the BCS knowledge extractor and
   the simulation-extractability theorem, plus the nullifier-binding hypotheses
   (dischargeable from `HashMerkleModel`'s nullifier hash).
-- **The BCS work-normalized endpoint** (~100.16 bit) needs `Real.logb` + additive
-  `2⁻²⁵⁶` terms; we kernel-check the coarse union `≤2⁻¹⁰⁶` and its ×3 `≤2⁻¹⁰⁴`,
-  and the endpoint erosion stays Python-verified.
+- **The cited BCS work-normalization theorem.**
+  `SoundnessWorkNormalizedEndpoint.lean` now keeps the additive `2⁻²⁵⁶`
+  terms, re-derives a tight `≤2^(-106.72)` round-error bound, and kernel-checks
+  the release endpoint `≤2⁻¹⁰⁰`. It also proves that the older coarse floors
+  cannot establish 100 bits after work normalization. The functional BCS
+  error formula and constants are still a cited interface; the more precise
+  ~100.16-bit figure remains an external calculation rather than the release
+  claim.
 - **Serialization faithfulness.** The byte-exact view model matches the paper's
   wire table by `decide`; that it matches the *deployed serializer bytes* is the
   `serialization_complete` interface field.
@@ -126,7 +153,9 @@ Substantial progress, but these remain and a reviewer will ask for them:
   obligations**, several with their tractable halves already proved and a
   runnable closure spec for the rest.
 
-The honest bottom line: the finite mathematics is increasingly in the kernel;
-what remains is (i) code-correspondence obligations that need the v5
-implementation or a Poseidon2/Merkle model, and (ii) the cited published
-theorems. None of it is faked; all of it is named.
+The honest bottom line: Component C's finite direct hiding construction is now
+in the kernel and composes with the existing A and B mathematics; this is not a
+restart and it does not certify deployed v5 as zero-knowledge. What remains is
+(i) the named implementation, entropy, transcript, PCS, serialization, and
+hash correspondences, and (ii) the cited published compiler/extractor results.
+None of those edges is silently promoted to a theorem.
