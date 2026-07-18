@@ -47,3 +47,4 @@ import AspisFormal.V5ABToCResidualBridge
 import AspisFormal.V5ComponentCUnconditionedComposition
 import AspisFormal.V5ComponentBTriangularHiding
 import AspisFormal.V5ConditionalHidingCapstoneV3
+import AspisFormal.V5MixedFieldComposition
