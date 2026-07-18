@@ -96,6 +96,21 @@ fn write_array(output: &mut String, name: &str, values: &[u32]) {
     output.push_str("];\n");
 }
 
+fn write_point_array(output: &mut String, name: &str, values: &[Point]) {
+    output.push_str(&format!(
+        "pub const {name}: [[u32; 2]; {}] = [\n",
+        values.len()
+    ));
+    for chunk in values.chunks(6) {
+        output.push_str("    ");
+        for value in chunk {
+            output.push_str(&format!("[{},{}],", value.x, value.y));
+        }
+        output.push('\n');
+    }
+    output.push_str("];\n");
+}
+
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     let mut output = String::new();
@@ -136,6 +151,27 @@ fn main() {
         write_array(&mut output, &format!("{prefix}_LINE3_INV"), &later[2]);
         write_array(&mut output, &format!("{prefix}_FINAL_X"), &final_x);
     }
+
+    // A 6 KiB exact split window for the 17-bit rate-1/512 circle-fiber
+    // natural index.  The low table includes the fixed coset initial point;
+    // the high table is an ordinary step multiple.  Their group sum is
+    // exactly `initial + step * natural` for every one of the 2^17 fibers.
+    let mut low_window = Vec::with_capacity(1 << 8);
+    let mut low = group_point(initial(18));
+    let low_step = group_point(step(18));
+    for _ in 0..1 << 8 {
+        low_window.push(low);
+        low = add(low, low_step);
+    }
+    let mut high_window = Vec::with_capacity(1 << 9);
+    let mut high = Point { x: 1, y: 0 };
+    let high_step = group_point(step(18) << 8);
+    for _ in 0..1 << 9 {
+        high_window.push(high);
+        high = add(high, high_step);
+    }
+    write_point_array(&mut output, "RATE512_CIRCLE_LOW8_WINDOW", &low_window);
+    write_point_array(&mut output, "RATE512_CIRCLE_HIGH9_WINDOW", &high_window);
     let path = PathBuf::from(env::var_os("OUT_DIR").unwrap()).join("circle_tables.rs");
     fs::write(path, output).unwrap();
 }

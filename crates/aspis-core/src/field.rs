@@ -40,6 +40,14 @@ fn reduce_u64(x: u64) -> u32 {
     }
 }
 
+#[inline(always)]
+fn square_n(mut value: M31, count: usize) -> M31 {
+    for _ in 0..count {
+        value = value.mul(value);
+    }
+    value
+}
+
 impl M31 {
     pub const ZERO: M31 = M31(0);
     pub const ONE: M31 = M31(1);
@@ -141,10 +149,24 @@ impl M31 {
         acc
     }
 
-    /// Multiplicative inverse via Fermat. Panics on zero.
+    /// Multiplicative inverse via a fixed addition chain for `P - 2`.
+    /// Panics on zero.
     pub fn inv(self) -> M31 {
         assert!(self.0 != 0, "inverse of zero");
-        self.pow(P as u64 - 2)
+
+        // Build x^(2^k - 1) at k = 2, 4, 8, 16, 24, 28, 29.
+        // The final exponent is 4*(2^29 - 1) + 1 = 2^31 - 3 = P - 2.
+        // This takes 38 M31 multiplications instead of the generic binary
+        // exponentiation's 61 for this fixed exponent.
+        let t2 = self.mul(self).mul(self);
+        let t4 = square_n(t2, 2).mul(t2);
+        let t8 = square_n(t4, 4).mul(t4);
+        let t16 = square_n(t8, 8).mul(t8);
+        let t24 = square_n(t16, 8).mul(t8);
+        let t28 = square_n(t24, 4).mul(t4);
+        let t29 = t28.mul(t28).mul(self);
+        let t30 = t29.mul(t29);
+        t30.mul(t30).mul(self)
     }
 
     #[inline(always)]
@@ -1944,6 +1966,31 @@ mod tests {
             assert_eq!(x.mul(x.inv()), M31::ONE);
         }
         assert_eq!(M31_HALF.double(), M31::ONE);
+    }
+
+    #[test]
+    fn m31_inverse_addition_chain_matches_fermat_pow() {
+        for value in [1, 2, 3, P / 2, P - 2, P - 1] {
+            let x = M31(value);
+            assert_eq!(x.inv(), x.pow(u64::from(P) - 2));
+            assert_eq!(x.mul(x.inv()), M31::ONE);
+        }
+
+        let mut state = 0x243f_6a88_85a3_08d3u64;
+        for _ in 0..4096 {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            let x = M31((state % u64::from(P - 1) + 1) as u32);
+            assert_eq!(x.inv(), x.pow(u64::from(P) - 2));
+            assert_eq!(x.mul(x.inv()), M31::ONE);
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "inverse of zero")]
+    fn m31_inverse_of_zero_still_panics() {
+        let _ = M31::ZERO.inv();
     }
 
     #[test]

@@ -10,7 +10,8 @@
 use alloc::vec::Vec;
 
 use aspis_core::field::{
-    qm31_m31_dot, qm31_pack_base4, qm31_sum_products4, PreparedQm31Multiplier, CM31, M31, P, QM31,
+    qm31_m31_dot, qm31_pack_base4, qm31_sum_products3_prepared, qm31_sum_products4,
+    PreparedQm31Multiplier, CM31, M31, P, QM31,
 };
 
 use crate::poseidon2::{trace_round_constant, trace_round_descriptor, POSEIDON2_WIDTH, RATE};
@@ -173,6 +174,75 @@ fn external_linear_lazy(state: &mut [QM31; POSEIDON2_WIDTH]) {
     }
 }
 
+// Every row of the four-lane external matrix has coefficient sum seven.
+// Canonical input limbs are below P, so every unreduced local output limb is
+// strictly below this multiple of P. Multiples of this bound can therefore
+// serve as zero-mod-P offsets for the signed tower-packing functionals.
+const EXTERNAL_LOCAL_LIMB_MODULUS_BOUND: u64 = 7 * P as u64;
+const _: () = assert!(8 * EXTERNAL_LOCAL_LIMB_MODULUS_BOUND < (1u64 << 62));
+
+/// Apply the local external matrix and the tower-basis packing functional in
+/// one raw-limb pass.
+///
+/// If `t[r,l] = sum_j B[r,j] * input[j,l]`, packing the four local outputs
+/// against `(1, i, u, i*u)` gives exactly
+///
+/// ```text
+/// c0.a = t[0,a] - t[1,b] + 2t[2,c] - t[2,d] - t[3,c] - 2t[3,d]
+/// c0.b = t[0,b] + t[1,a] + t[2,c] + 2t[2,d] + 2t[3,c] - t[3,d]
+/// c1.a = t[0,c] - t[1,d] + t[2,a] - t[3,b]
+/// c1.b = t[0,d] + t[1,c] + t[2,b] + t[3,a]
+/// ```
+///
+/// The signed offsets below are multiples of P and do not change the field
+/// value. The first two raw outputs are below `56P`; the last two are below
+/// `28P`. Thus one final reduction per output limb is sufficient.
+#[inline(always)]
+fn external_local_packed_raw(input: [QM31; 4]) -> [u64; 4] {
+    let input = input.map(extension_limbs);
+    let local: [[u64; 4]; 4] = core::array::from_fn(|output| {
+        core::array::from_fn(|limb| {
+            let a = u64::from(input[0][limb]);
+            let b = u64::from(input[1][limb]);
+            let c = u64::from(input[2][limb]);
+            let d = u64::from(input[3][limb]);
+            match output {
+                0 => 2 * a + 3 * b + c + d,
+                1 => a + 2 * b + 3 * c + d,
+                2 => a + b + 2 * c + 3 * d,
+                3 => 3 * a + b + c + 2 * d,
+                _ => unreachable!(),
+            }
+        })
+    });
+    debug_assert!(local
+        .iter()
+        .flatten()
+        .all(|&limb| limb < EXTERNAL_LOCAL_LIMB_MODULUS_BOUND));
+
+    let bound = EXTERNAL_LOCAL_LIMB_MODULUS_BOUND;
+    let packed = [
+        local[0][0] + 5 * bound - local[1][1] + 2 * local[2][2]
+            - local[2][3]
+            - local[3][2]
+            - 2 * local[3][3],
+        local[0][1] + local[1][0] + local[2][2] + 2 * local[2][3] + 2 * local[3][2] + bound
+            - local[3][3],
+        local[0][2] + 2 * bound - local[1][3] + local[2][0] - local[3][1],
+        local[0][3] + local[1][2] + local[2][1] + local[3][0],
+    ];
+    debug_assert!(packed[0] < 8 * bound);
+    debug_assert!(packed[1] < 8 * bound);
+    debug_assert!(packed[2] < 4 * bound);
+    debug_assert!(packed[3] < 4 * bound);
+    packed
+}
+
+#[inline(always)]
+fn external_local_packed(input: [QM31; 4]) -> QM31 {
+    extension_from_raw_limbs(external_local_packed_raw(input))
+}
+
 /// Apply the final external layer only through the four tower-packed output
 /// functionals consumed by the terminal composition.
 ///
@@ -185,28 +255,11 @@ fn external_linear_lazy(state: &mut [QM31; POSEIDON2_WIDTH]) {
 /// functional.  It avoids materializing and reducing all sixteen final lanes
 /// and introduces no challenge-dependent dot products.
 #[inline(never)]
-fn external_linear_packed(mut state: [QM31; POSEIDON2_WIDTH]) -> [QM31; 4] {
+fn external_linear_packed(state: [QM31; POSEIDON2_WIDTH]) -> [QM31; 4] {
     let mut local_packed = [QM31::ZERO; 4];
-    for (group, values) in state.chunks_exact_mut(4).enumerate() {
+    for (group, values) in state.chunks_exact(4).enumerate() {
         let input: [QM31; 4] = values.try_into().expect("four-lane chunk");
-        let input = input.map(extension_limbs);
-        for output in 0..4 {
-            let raw = core::array::from_fn(|limb| {
-                let a = u64::from(input[0][limb]);
-                let b = u64::from(input[1][limb]);
-                let c = u64::from(input[2][limb]);
-                let d = u64::from(input[3][limb]);
-                match output {
-                    0 => 2 * a + 3 * b + c + d,
-                    1 => a + 2 * b + 3 * c + d,
-                    2 => a + b + 2 * c + 3 * d,
-                    3 => 3 * a + b + c + 2 * d,
-                    _ => unreachable!(),
-                }
-            });
-            values[output] = extension_from_raw_limbs(raw);
-        }
-        local_packed[group] = qm31_pack_base4(values);
+        local_packed[group] = external_local_packed(input);
     }
     let sum = local_packed.iter().copied().fold(QM31::ZERO, QM31::add);
     local_packed.map(|value| value.add(sum))
@@ -425,25 +478,27 @@ pub fn evaluate_state_only_poseidon_oracle_projected(
         .into_iter()
         .fold(QM31::ZERO, |sum, row| sum.add(selectors.local[row]));
     let internal_low = (2usize..=8).fold(QM31::ZERO, |sum, row| sum.add(selectors.local[row]));
-    let active_low = leading_low.add(full_low).add(internal_low);
-
     let leading = leading_pair_packed(openings);
     let full = interpolated_full_pair_packed(openings.z, &selectors.local);
     let internal = interpolated_internal_pair(openings.z, &selectors.local);
-    let weights = [
-        active_low,
-        leading_low.neg(),
-        full_low.neg(),
-        internal_low.neg(),
-    ];
+    let prepared_weights = [leading_low, full_low, internal_low].map(PreparedQm31Multiplier::new);
+    let prepared_block = PreparedQm31Multiplier::new(selectors.block);
 
     core::array::from_fn(|group| {
         let start = 4 * group;
         let target = qm31_pack_base4(&openings.succ_z[start..start + 4]);
         let internal = qm31_pack_base4(&internal[start..start + 4]);
-        selectors.block.mul(qm31_sum_products4(
-            [target, leading[group], full[group], internal],
-            weights,
+        // `active_low = leading_low + full_low + internal_low`, so the
+        // four-product residual is exactly three weighted differences. This
+        // removes one QM31 product per packed group without changing the
+        // polynomial or its selector basis.
+        prepared_block.mul(qm31_sum_products3_prepared(
+            &prepared_weights,
+            &[
+                target.sub(leading[group]),
+                target.sub(full[group]),
+                target.sub(internal),
+            ],
         ))
     })
 }
@@ -758,6 +813,27 @@ mod tests {
         }
     }
 
+    fn external_local_packed_reference(mut values: [QM31; 4]) -> QM31 {
+        let input = values.map(extension_limbs);
+        for output in 0..4 {
+            let raw = core::array::from_fn(|limb| {
+                let a = u64::from(input[0][limb]);
+                let b = u64::from(input[1][limb]);
+                let c = u64::from(input[2][limb]);
+                let d = u64::from(input[3][limb]);
+                match output {
+                    0 => 2 * a + 3 * b + c + d,
+                    1 => a + 2 * b + 3 * c + d,
+                    2 => a + b + 2 * c + 3 * d,
+                    3 => 3 * a + b + c + 2 * d,
+                    _ => unreachable!(),
+                }
+            });
+            values[output] = extension_from_raw_limbs(raw);
+        }
+        qm31_pack_base4(&values)
+    }
+
     fn full_round_reference(mut state: [QM31; 16], constants: [QM31; 16]) -> [QM31; 16] {
         for lane in 0..16 {
             state[lane] = state[lane].add(constants[lane]).pow(5);
@@ -863,6 +939,63 @@ mod tests {
     }
 
     #[test]
+    fn raw_external_adjoint_matches_materialized_local_matrix_and_pack() {
+        let bound = EXTERNAL_LOCAL_LIMB_MODULUS_BOUND;
+        let maximal_limb = u64::from(P - 1);
+        assert_eq!(
+            2 * maximal_limb + 3 * maximal_limb + maximal_limb + maximal_limb,
+            7 * maximal_limb
+        );
+        assert!(7 * maximal_limb < bound);
+        assert!(8 * bound < (1u64 << 62));
+
+        let check = |input: [QM31; 4], kind: &str, index: usize| {
+            let raw = external_local_packed_raw(input);
+            assert!(raw[0] < 8 * bound, "{kind} {index} c0.a bound");
+            assert!(raw[1] < 8 * bound, "{kind} {index} c0.b bound");
+            assert!(raw[2] < 4 * bound, "{kind} {index} c1.a bound");
+            assert!(raw[3] < 4 * bound, "{kind} {index} c1.b bound");
+            assert_eq!(
+                external_local_packed(input),
+                external_local_packed_reference(input),
+                "{kind} {index}"
+            );
+        };
+
+        let mut seed = 0x3f52_9d7a_613b_8ec1;
+        for sample in 0..256 {
+            check(
+                core::array::from_fn(|_| random_qm31(&mut seed)),
+                "random",
+                sample,
+            );
+        }
+
+        let maximal = QM31 {
+            c0: CM31::new(M31(P - 1), M31(P - 1)),
+            c1: CM31::new(M31(P - 1), M31(P - 1)),
+        };
+        let alternating = QM31 {
+            c0: CM31::new(M31(P - 1), M31::ZERO),
+            c1: CM31::new(M31::ZERO, M31(P - 1)),
+        };
+        let reversed = QM31 {
+            c0: CM31::new(M31::ZERO, M31(P - 1)),
+            c1: CM31::new(M31(P - 1), M31::ZERO),
+        };
+        let corpus = [QM31::ZERO, QM31::ONE, maximal, alternating, reversed];
+        for encoded in 0..corpus.len().pow(4) {
+            let mut index = encoded;
+            let input = core::array::from_fn(|_| {
+                let value = corpus[index % corpus.len()];
+                index /= corpus.len();
+                value
+            });
+            check(input, "extreme", encoded);
+        }
+    }
+
+    #[test]
     fn optimized_oracle_matches_independent_reference_at_random_off_domain_points() {
         let mut seed = 0x7bf0_4a19_91cd_e229;
         for sample in 0..64 {
@@ -882,6 +1015,44 @@ mod tests {
                 evaluate_state_only_poseidon_oracle_projected(&openings, &selectors),
                 oracle_reference(&openings, &selectors),
                 "projected sample={sample}"
+            );
+        }
+    }
+
+    #[test]
+    fn factorized_projected_oracle_matches_reference_at_extreme_field_values() {
+        let maximal = QM31 {
+            c0: CM31::new(M31(P - 1), M31(P - 1)),
+            c1: CM31::new(M31(P - 1), M31(P - 1)),
+        };
+        let alternating = QM31 {
+            c0: CM31::new(M31(P - 1), M31::ZERO),
+            c1: CM31::new(M31::ZERO, M31(P - 1)),
+        };
+        let reversed = QM31 {
+            c0: CM31::new(M31::ZERO, M31(P - 1)),
+            c1: CM31::new(M31(P - 1), M31::ZERO),
+        };
+        let corpus = [QM31::ZERO, QM31::ONE, maximal, alternating, reversed];
+
+        for point_seed in 0..corpus.len() {
+            let point = core::array::from_fn(|coordinate| {
+                corpus[(point_seed + 2 * coordinate) % corpus.len()]
+            });
+            let openings = StateOnlyPoseidonOpenings {
+                z: core::array::from_fn(|lane| corpus[(lane + point_seed) % corpus.len()]),
+                succ_z: core::array::from_fn(|lane| {
+                    corpus[(2 * lane + point_seed + 1) % corpus.len()]
+                }),
+                xor12_z: core::array::from_fn(|lane| {
+                    corpus[(3 * lane + point_seed + 2) % corpus.len()]
+                }),
+            };
+            let selectors = StateOnlyPoseidonSelectors::at_point(&point);
+            assert_eq!(
+                evaluate_state_only_poseidon_oracle_projected(&openings, &selectors),
+                oracle_reference(&openings, &selectors),
+                "point_seed={point_seed}"
             );
         }
     }

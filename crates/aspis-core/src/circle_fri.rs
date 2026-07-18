@@ -8,7 +8,7 @@
 use alloc::{vec, vec::Vec};
 
 use crate::field::{
-    m31_batch_inverse_with, qm31_sum_products3_prepared, PreparedQm31Multiplier, M31, QM31,
+    m31_batch_inverse_with, qm31_sum_products3_prepared, PreparedQm31Multiplier, CM31, M31, QM31,
 };
 use crate::params::{CIRCLE_GEN, CIRCLE_LOG_ORDER};
 
@@ -202,6 +202,7 @@ pub enum CircleFriError {
     InvalidBitReverseLength,
     BitReverseIndexOutOfRange,
     ZeroDenominator(FoldDenominator),
+    InvalidInverseBackend,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -251,6 +252,33 @@ fn selected_circle_fiber_points_shared(
         .checked_shl(query_log_size)
         .ok_or(CircleFriError::InvalidBitReverseLength)?;
 
+    if domain_log_size == 19 {
+        let mut points = Vec::with_capacity(fibers.len());
+        for &fiber in fibers {
+            if fiber as usize >= fiber_count {
+                return Err(CircleFriError::CircleFiberOutOfRange);
+            }
+            // `fiber < 2^17` was just checked, so the generic helper's
+            // checked shift and identical range test are redundant here.
+            let natural = (fiber as usize).reverse_bits() >> (usize::BITS - 17);
+            let [low_x, low_y] = RATE512_CIRCLE_LOW8_WINDOW[natural & 0xff];
+            let high_index = natural >> 8;
+            let mut point = BaseCirclePoint {
+                x: M31(low_x),
+                y: M31(low_y),
+            };
+            if high_index != 0 {
+                let [high_x, high_y] = RATE512_CIRCLE_HIGH9_WINDOW[high_index];
+                point = point.add(BaseCirclePoint {
+                    x: M31(high_x),
+                    y: M31(high_y),
+                });
+            }
+            points.push(point);
+        }
+        return Ok(points);
+    }
+
     let initial = point_from_group_index(half_odds_initial_index(domain_log_size - 1));
     let mut step_power = point_from_group_index(half_odds_step_index(domain_log_size - 1));
     let mut step_powers = Vec::with_capacity(query_log_size as usize);
@@ -278,7 +306,13 @@ fn selected_circle_fiber_points_shared(
 
 #[inline(always)]
 fn double_point(point: BaseCirclePoint) -> BaseCirclePoint {
-    point.add(point)
+    // Exact complex squaring.  Specializing the equal operands removes two
+    // redundant M31 products from `point.add(point)`:
+    // (x + y)(x - y) = x^2 - y^2 and 2xy = xy + xy.
+    BaseCirclePoint {
+        x: point.x.add(point.y).mul(point.x.sub(point.y)),
+        y: point.x.mul(point.y).double(),
+    }
 }
 
 /// Remove the order-four rotation identifying a symbol's slot within a
@@ -319,14 +353,20 @@ fn derive_parent_line_points(
         return Err(CircleFriError::QueryOutOfRange);
     }
     let mut parents = Vec::with_capacity(parent_indices.len());
+    let mut child_ordinal = 0usize;
     for &parent in parent_indices {
-        let child_ordinal = child_indices
-            .iter()
-            .position(|&child| child >> 2 == parent)
+        while child_ordinal < child_indices.len() && child_indices[child_ordinal] >> 2 < parent {
+            child_ordinal += 1;
+        }
+        let child_index = *child_indices
+            .get(child_ordinal)
             .ok_or(CircleFriError::QueryOutOfRange)?;
-        let child_index = child_indices[child_ordinal];
-        let mut point = child_points[child_ordinal];
-        for _ in 0..doublings {
+        if child_index >> 2 != parent {
+            return Err(CircleFriError::QueryOutOfRange);
+        }
+        debug_assert!(doublings == 1 || doublings == 2);
+        let mut point = double_point(child_points[child_ordinal]);
+        if doublings == 2 {
             point = double_point(point);
         }
         parents.push(remove_line_slot_rotation(point, child_index & 3));
@@ -387,8 +427,13 @@ pub fn derive_query_fold_inverses_for_circle(
         for &point in points {
             // Adding G^(2^29)=(0,-1) maps the first pair point to the
             // second, so its x-coordinate is the first point's y.
-            let second_fold = double_point(point);
-            let coordinates = [point.x.double(), point.y.double(), second_fold.x.double()];
+            // Only the doubled point's x-coordinate is released here.  On
+            // the circle it is 2*x^2-1, so avoid materializing the unused y.
+            let coordinates = [
+                point.x.double(),
+                point.y.double(),
+                double_x(point.x).double(),
+            ];
             for (coordinate, kind) in coordinates.into_iter().zip([
                 FoldDenominator::LineFirstPairX,
                 FoldDenominator::LineSecondPairX,
@@ -405,6 +450,14 @@ pub fn derive_query_fold_inverses_for_circle(
 
     let mut flat_inverses = vec![M31::ZERO; denominators.len()];
     m31_batch_inverse_with(&denominators, &mut flat_inverses, inverse);
+    if let (Some(denominator), Some(inverse)) = (denominators.first(), flat_inverses.first()) {
+        // Montgomery batch inversion applies one common backend-error factor
+        // to every output, so one nonzero product check validates the single
+        // injected inversion and consequently the complete batch.
+        if denominator.mul(*inverse) != M31::ONE {
+            return Err(CircleFriError::InvalidInverseBackend);
+        }
+    }
     let mut cursor = 0usize;
     let mut circle = Vec::with_capacity(layer0.len());
     for _ in layer0 {
@@ -427,7 +480,7 @@ pub fn derive_query_fold_inverses_for_circle(
 
     let final_x = line3_points
         .iter()
-        .map(|&point| double_point(double_point(point)).x)
+        .map(|point| double_x(double_x(point.x)))
         .collect();
     Ok(DerivedCircleQueryFoldInverses {
         circle,
@@ -744,11 +797,41 @@ pub fn normalized_circle_to_line_arity4_prepared_polynomial_candidate(
     inv_2x: M31,
     inv_2y: M31,
 ) -> QM31 {
+    normalized_circle_to_line_arity4_prepared_polynomial_powers(
+        values,
+        &[alpha, alpha_squared, alpha_cubed],
+        inv_2x,
+        inv_2y,
+    )
+}
+
+/// Borrowed-power form of
+/// [`normalized_circle_to_line_arity4_prepared_polynomial_candidate`].
+/// The arithmetic is identical; callers that reuse one challenge-power table
+/// across many queries avoid transporting three 36-byte prepared values into
+/// every fold.
+pub fn normalized_circle_to_line_arity4_prepared_polynomial_powers(
+    values: [QM31; 4],
+    alpha_powers: &[PreparedQm31Multiplier; 3],
+    inv_2x: M31,
+    inv_2y: M31,
+) -> QM31 {
+    normalized_circle_to_line_arity4_prepared_polynomial_refs(&values, alpha_powers, inv_2x, inv_2y)
+}
+
+/// Fully borrowed form of
+/// [`normalized_circle_to_line_arity4_prepared_polynomial_powers`].
+/// This preserves the same cubic and prepared multipliers while avoiding a
+/// 64-byte value-array copy at each query.
+pub fn normalized_circle_to_line_arity4_prepared_polynomial_refs(
+    values: &[QM31; 4],
+    alpha_powers: &[PreparedQm31Multiplier; 3],
+    inv_2x: M31,
+    inv_2y: M31,
+) -> QM31 {
     normalized_arity4_prepared_polynomial_candidate(
         values,
-        alpha,
-        alpha_squared,
-        alpha_cubed,
+        alpha_powers,
         [inv_2y, inv_2y.neg(), inv_2x],
     )
 }
@@ -835,21 +918,37 @@ pub fn normalized_line_arity4_prepared_polynomial_candidate(
     alpha_cubed: PreparedQm31Multiplier,
     inverses: [M31; 3],
 ) -> QM31 {
-    normalized_arity4_prepared_polynomial_candidate(
+    normalized_line_arity4_prepared_polynomial_powers(
         values,
-        alpha,
-        alpha_squared,
-        alpha_cubed,
+        &[alpha, alpha_squared, alpha_cubed],
         inverses,
     )
 }
 
+/// Borrowed-power form of
+/// [`normalized_line_arity4_prepared_polynomial_candidate`].
+pub fn normalized_line_arity4_prepared_polynomial_powers(
+    values: [QM31; 4],
+    alpha_powers: &[PreparedQm31Multiplier; 3],
+    inverses: [M31; 3],
+) -> QM31 {
+    normalized_line_arity4_prepared_polynomial_refs(&values, alpha_powers, inverses)
+}
+
+/// Fully borrowed form of
+/// [`normalized_line_arity4_prepared_polynomial_powers`].
+pub fn normalized_line_arity4_prepared_polynomial_refs(
+    values: &[QM31; 4],
+    alpha_powers: &[PreparedQm31Multiplier; 3],
+    inverses: [M31; 3],
+) -> QM31 {
+    normalized_arity4_prepared_polynomial_candidate(values, alpha_powers, inverses)
+}
+
 #[inline(always)]
 fn normalized_arity4_prepared_polynomial_candidate(
-    values: [QM31; 4],
-    alpha: PreparedQm31Multiplier,
-    alpha_squared: PreparedQm31Multiplier,
-    alpha_cubed: PreparedQm31Multiplier,
+    values: &[QM31; 4],
+    alpha_powers: &[PreparedQm31Multiplier; 3],
     inverses: [M31; 3],
 ) -> QM31 {
     // Expanding the two nested folds gives
@@ -867,7 +966,7 @@ fn normalized_arity4_prepared_polynomial_candidate(
         .sub(right_scaled_difference)
         .mul_m31(inverses[2]);
     constant.add(qm31_sum_products3_prepared(
-        &[alpha, alpha_squared, alpha_cubed],
+        alpha_powers,
         &[linear, quadratic, cubic],
     ))
 }
@@ -932,11 +1031,49 @@ fn double_x(x: M31) -> M31 {
 /// Evaluate four natural-order line-tensor coefficients against
 /// `[1, x, pi(x), x*pi(x)]`.
 pub fn evaluate_final_line_tensor(coefficients: [QM31; 4], x: M31) -> QM31 {
+    evaluate_final_line_tensor_ref(&coefficients, x)
+}
+
+/// Borrowed-coefficient form of [`evaluate_final_line_tensor`].
+pub fn evaluate_final_line_tensor_ref(coefficients: &[QM31; 4], x: M31) -> QM31 {
     let pi_x = double_x(x);
-    coefficients[0]
-        .add(coefficients[1].mul_m31(x))
-        .add(coefficients[2].mul_m31(pi_x))
-        .add(coefficients[3].mul_m31(x.mul(pi_x)))
+    let x_pi_x = x.mul(pi_x);
+    // Each output limb is a three-term M31 dot.  Three maximal products fit
+    // in u64, so reduce once per limb instead of once per product.  This is
+    // exactly c1*x + c2*pi(x) + c3*x*pi(x), with no polynomial change.
+    let dot = |a: M31, b: M31, c: M31| {
+        M31::reduce_u64(
+            u64::from(a.0) * u64::from(x.0)
+                + u64::from(b.0) * u64::from(pi_x.0)
+                + u64::from(c.0) * u64::from(x_pi_x.0),
+        )
+    };
+    coefficients[0].add(QM31 {
+        c0: CM31::new(
+            dot(
+                coefficients[1].c0.a,
+                coefficients[2].c0.a,
+                coefficients[3].c0.a,
+            ),
+            dot(
+                coefficients[1].c0.b,
+                coefficients[2].c0.b,
+                coefficients[3].c0.b,
+            ),
+        ),
+        c1: CM31::new(
+            dot(
+                coefficients[1].c1.a,
+                coefficients[2].c1.a,
+                coefficients[3].c1.a,
+            ),
+            dot(
+                coefficients[1].c1.b,
+                coefficients[2].c1.b,
+                coefficients[3].c1.b,
+            ),
+        ),
+    })
 }
 
 /// Evaluate natural final coefficients at the final domain point selected by
@@ -1214,11 +1351,97 @@ mod tests {
     }
 
     #[test]
+    fn rate512_tail_precompute_matches_the_formula_exhaustively() {
+        assert_eq!(RATE512_LINE2_INV.len() % 3, 0);
+        assert_eq!(RATE512_LINE3_INV.len() % 3, 0);
+        assert_eq!(RATE512_LINE3_INV.len() / 3, RATE512_FINAL_X.len());
+        for (layer, table) in [(2u8, &RATE512_LINE2_INV[..]), (3, &RATE512_LINE3_INV[..])] {
+            for index in 0..table.len() / 3 {
+                let coordinates = line_fold_coordinates_for_circle(19, layer, index).unwrap();
+                assert_eq!(
+                    [
+                        M31(table[3 * index]),
+                        M31(table[3 * index + 1]),
+                        M31(table[3 * index + 2]),
+                    ],
+                    [
+                        coordinates.first_pair_x.double().inv(),
+                        coordinates.second_pair_x.double().inv(),
+                        coordinates.second_fold_x.double().inv(),
+                    ],
+                    "line{layer} index {index}",
+                );
+            }
+        }
+        for index in 0..RATE512_FINAL_X.len() {
+            assert_eq!(
+                M31(RATE512_FINAL_X[index]),
+                line_domain_x_for_circle(19, FIXED_FINAL_LINE_LAYER, index).unwrap(),
+                "final index {index}",
+            );
+        }
+    }
+
+    #[test]
+    fn rate512_split_window_matches_every_circle_fiber_point() {
+        let query_log_size = 17u32;
+        let fibers = (0..1usize << query_log_size)
+            .map(|natural| bit_reverse_index(natural, query_log_size).unwrap() as u32)
+            .collect::<Vec<_>>();
+        let actual = selected_circle_fiber_points_shared(19, &fibers).unwrap();
+        let mut expected = point_from_group_index(half_odds_initial_index(18));
+        let step = point_from_group_index(half_odds_step_index(18));
+        for (natural, point) in actual.into_iter().enumerate() {
+            assert_eq!(point, expected, "natural index {natural}");
+            assert_eq!(
+                double_point(point),
+                point.add(point),
+                "doubling parity at natural index {natural}",
+            );
+            expected = expected.add(step);
+        }
+    }
+
+    #[test]
     fn query_local_coordinate_derivation_rejects_a_non_parent_forest() {
         assert_eq!(
             derive_query_fold_inverses_for_circle(19, &[7], [&[2], &[0], &[0]], M31::inv),
             Err(CircleFriError::QueryOutOfRange)
         );
+        assert_eq!(
+            derive_query_fold_inverses_for_circle(19, &[7], [&[1], &[0], &[1]], M31::inv),
+            Err(CircleFriError::QueryOutOfRange)
+        );
+        assert_eq!(
+            derive_query_fold_inverses_for_circle(19, &[7], [&[1], &[1], &[0]], M31::inv),
+            Err(CircleFriError::QueryOutOfRange)
+        );
+    }
+
+    #[test]
+    fn query_local_coordinate_derivation_rejects_faulty_inverse_backends() {
+        fn zero_inverse(_: M31) -> M31 {
+            M31::ZERO
+        }
+
+        fn wrong_nonzero_inverse(value: M31) -> M31 {
+            value.inv().add(M31::ONE)
+        }
+
+        let queries = [0u32];
+        let layer1 = [0u32];
+        let layer2 = [0u32];
+        let layer3 = [0u32];
+        let later = [&layer1[..], &layer2[..], &layer3[..]];
+        assert_eq!(
+            derive_query_fold_inverses_for_circle(19, &queries, later, zero_inverse),
+            Err(CircleFriError::InvalidInverseBackend)
+        );
+        assert_eq!(
+            derive_query_fold_inverses_for_circle(19, &queries, later, wrong_nonzero_inverse),
+            Err(CircleFriError::InvalidInverseBackend)
+        );
+        assert!(derive_query_fold_inverses_for_circle(19, &queries, later, M31::inv).is_ok());
     }
     const OFFICIAL_LINE_EVALUATIONS: [[u32; 4]; 8] = [
         [2_050_460_445, 1_621_393_214, 987_369_631, 182_601_986],
@@ -1281,27 +1504,40 @@ mod tests {
             let alpha = PreparedQm31Multiplier::new(alpha);
             let alpha_squared = PreparedQm31Multiplier::new(alpha_squared_value);
             let alpha_cubed = PreparedQm31Multiplier::new(alpha_cubed_value);
+            let alpha_powers = [alpha, alpha_squared, alpha_cubed];
             let inverses = [rng.m31(), rng.m31(), rng.m31()];
+            let line = normalized_line_arity4_prepared_polynomial_candidate(
+                values,
+                alpha,
+                alpha_squared,
+                alpha_cubed,
+                inverses,
+            );
             assert_eq!(
-                normalized_line_arity4_prepared_polynomial_candidate(
-                    values,
-                    alpha,
-                    alpha_squared,
-                    alpha_cubed,
-                    inverses,
-                ),
+                line,
                 normalized_line_arity4_prepared_multipliers(values, alpha, alpha_squared, inverses,),
                 "line case {case}",
             );
             assert_eq!(
-                normalized_circle_to_line_arity4_prepared_polynomial_candidate(
-                    values,
-                    alpha,
-                    alpha_squared,
-                    alpha_cubed,
-                    inverses[2],
-                    inverses[0],
-                ),
+                normalized_line_arity4_prepared_polynomial_powers(values, &alpha_powers, inverses,),
+                line,
+                "borrowed line powers case {case}",
+            );
+            assert_eq!(
+                normalized_line_arity4_prepared_polynomial_refs(&values, &alpha_powers, inverses,),
+                line,
+                "borrowed line values case {case}",
+            );
+            let circle = normalized_circle_to_line_arity4_prepared_polynomial_candidate(
+                values,
+                alpha,
+                alpha_squared,
+                alpha_cubed,
+                inverses[2],
+                inverses[0],
+            );
+            assert_eq!(
+                circle,
                 normalized_circle_to_line_arity4_prepared_multipliers(
                     values,
                     alpha,
@@ -1310,6 +1546,83 @@ mod tests {
                     inverses[0],
                 ),
                 "circle case {case}",
+            );
+            assert_eq!(
+                normalized_circle_to_line_arity4_prepared_polynomial_powers(
+                    values,
+                    &alpha_powers,
+                    inverses[2],
+                    inverses[0],
+                ),
+                circle,
+                "borrowed circle powers case {case}",
+            );
+            assert_eq!(
+                normalized_circle_to_line_arity4_prepared_polynomial_refs(
+                    &values,
+                    &alpha_powers,
+                    inverses[2],
+                    inverses[0],
+                ),
+                circle,
+                "borrowed circle values case {case}",
+            );
+            assert_eq!(
+                evaluate_final_line_tensor_ref(&values, inverses[0]),
+                evaluate_final_line_tensor(values, inverses[0]),
+                "borrowed final tensor case {case}",
+            );
+        }
+    }
+
+    #[test]
+    fn borrowed_fold_inputs_match_value_wrappers_at_field_extremes() {
+        let maximal = QM31 {
+            c0: CM31::new(M31(P - 1), M31(P - 1)),
+            c1: CM31::new(M31(P - 1), M31(P - 1)),
+        };
+        let alternating = QM31 {
+            c0: CM31::new(M31(P - 1), M31::ZERO),
+            c1: CM31::new(M31::ZERO, M31(P - 1)),
+        };
+        let corpus = [QM31::ZERO, QM31::ONE, maximal, alternating];
+        let inverse_corpus = [M31::ZERO, M31::ONE, M31(P - 1)];
+
+        for case in 0..corpus.len() {
+            let values = core::array::from_fn(|slot| corpus[(slot + case) % corpus.len()]);
+            let alpha_value = corpus[case];
+            let alpha_squared = alpha_value.square();
+            let alpha_powers = [
+                PreparedQm31Multiplier::new(alpha_value),
+                PreparedQm31Multiplier::new(alpha_squared),
+                PreparedQm31Multiplier::new(alpha_squared.mul(alpha_value)),
+            ];
+            let inverses =
+                core::array::from_fn(|index| inverse_corpus[(index + case) % inverse_corpus.len()]);
+            assert_eq!(
+                normalized_line_arity4_prepared_polynomial_refs(&values, &alpha_powers, inverses,),
+                normalized_line_arity4_prepared_polynomial_powers(values, &alpha_powers, inverses,),
+                "extreme line case {case}",
+            );
+            assert_eq!(
+                normalized_circle_to_line_arity4_prepared_polynomial_refs(
+                    &values,
+                    &alpha_powers,
+                    inverses[2],
+                    inverses[0],
+                ),
+                normalized_circle_to_line_arity4_prepared_polynomial_powers(
+                    values,
+                    &alpha_powers,
+                    inverses[2],
+                    inverses[0],
+                ),
+                "extreme circle case {case}",
+            );
+            assert_eq!(
+                evaluate_final_line_tensor_ref(&values, inverses[1]),
+                evaluate_final_line_tensor(values, inverses[1]),
+                "extreme final tensor case {case}",
             );
         }
     }

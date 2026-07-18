@@ -3,11 +3,14 @@
 //! C1 and H/G retain their frozen indices.  One QM31 D lane is appended at
 //! generator 28, so the C2 leaf is `H[4] || G[4] || D[4]` (192 bytes).
 
-use crate::circle_query::{CircleQueryError, CircleQueryLeaf};
-use crate::field::{qm31_power_table, PreparedQm31Multiplier, QM31};
+use crate::circle_query::{canonical_m31_leaf_error, CircleQueryError, CircleQueryLeaf};
+use crate::field::{
+    qm31_m31_dot4_prepared_limbs_4b2_bytes, qm31_power_table, qm31_sum_products3_prepared,
+    PreparedQm31Multiplier, QM31,
+};
 use crate::state_only_query::{
-    gamma_combine_state_only_layer0_prepared, StateOnlyQueryPowers, STATE_ONLY_C1_LEAF_BYTES,
-    STATE_ONLY_C2_LEAF_BYTES, STATE_ONLY_FIBER_SLOTS, STATE_ONLY_TOTAL_COLUMNS,
+    StateOnlyQueryPowers, STATE_ONLY_C1_LEAF_BYTES, STATE_ONLY_C2_LEAF_BYTES,
+    STATE_ONLY_FIBER_SLOTS, STATE_ONLY_TOTAL_COLUMNS,
 };
 
 pub const SPEND_C2_COLUMNS: usize = 3;
@@ -48,6 +51,12 @@ pub const fn spend_d_symbol_offset(slot: usize) -> Option<usize> {
     }
 }
 
+/// Combine the 26 M31 state columns and three QM31 helper lanes for one
+/// authenticated Spend layer-zero fibre.
+///
+/// H, G and D are accumulated in one exact three-product kernel. Each of its
+/// nine integer channels is bounded by `3 * (P - 1)^2 < 2^64`, so this changes
+/// only the reduction schedule of the previous two-helper-plus-D expression.
 pub fn gamma_combine_state_only_spend_layer0_prepared(
     c1_leaf: &[u8],
     c2_leaf: &[u8],
@@ -67,20 +76,26 @@ pub fn gamma_combine_state_only_spend_layer0_prepared(
             actual: c2_leaf.len(),
         });
     }
-    let mut combined = gamma_combine_state_only_layer0_prepared(
-        c1_leaf,
-        &c2_leaf[..STATE_ONLY_C2_LEAF_BYTES],
-        &powers.base,
-    )?;
+    let mut combined = qm31_m31_dot4_prepared_limbs_4b2_bytes(&powers.base.c1_limbs, c1_leaf)
+        .ok_or_else(|| canonical_m31_leaf_error(c1_leaf))?;
+    let mut helpers = [[QM31::ZERO; STATE_ONLY_FIBER_SLOTS]; SPEND_C2_COLUMNS];
+    for (helper, symbols) in helpers.iter_mut().enumerate() {
+        for (slot, symbol) in symbols.iter_mut().enumerate() {
+            let offset = (helper * STATE_ONLY_FIBER_SLOTS + slot) * 16;
+            *symbol = QM31::from_le_bytes(&c2_leaf[offset..offset + 16]).ok_or(
+                CircleQueryError::NonCanonicalQm31 {
+                    leaf: CircleQueryLeaf::C2,
+                    offset,
+                },
+            )?;
+        }
+    }
+    let helper_powers = [powers.base.helpers[0], powers.base.helpers[1], powers.d];
     for (slot, output) in combined.iter_mut().enumerate() {
-        let offset = spend_d_symbol_offset(slot).unwrap();
-        let value = QM31::from_le_bytes(&c2_leaf[offset..offset + 16]).ok_or(
-            CircleQueryError::NonCanonicalQm31 {
-                leaf: CircleQueryLeaf::C2,
-                offset,
-            },
-        )?;
-        *output = output.add(powers.d.mul(value));
+        *output = output.add(qm31_sum_products3_prepared(
+            &helper_powers,
+            &[helpers[0][slot], helpers[1][slot], helpers[2][slot]],
+        ));
     }
     Ok(combined)
 }
@@ -88,7 +103,54 @@ pub fn gamma_combine_state_only_spend_layer0_prepared(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::field::{CM31, M31, P};
+    use crate::field::{qm31_sum_products3_prepared, CM31, M31, P};
+
+    fn previous_two_plus_d_reference(
+        c1_leaf: &[u8],
+        c2_leaf: &[u8],
+        powers: &StateOnlySpendQueryPowers,
+    ) -> Result<[QM31; STATE_ONLY_FIBER_SLOTS], CircleQueryError> {
+        if c1_leaf.len() != STATE_ONLY_C1_LEAF_BYTES {
+            return Err(CircleQueryError::LeafLength {
+                leaf: CircleQueryLeaf::C1,
+                expected: STATE_ONLY_C1_LEAF_BYTES,
+                actual: c1_leaf.len(),
+            });
+        }
+        if c2_leaf.len() != SPEND_C2_LEAF_BYTES {
+            return Err(CircleQueryError::LeafLength {
+                leaf: CircleQueryLeaf::C2,
+                expected: SPEND_C2_LEAF_BYTES,
+                actual: c2_leaf.len(),
+            });
+        }
+        let mut combined = crate::state_only_query::gamma_combine_state_only_layer0_prepared(
+            c1_leaf,
+            &c2_leaf[..STATE_ONLY_C2_LEAF_BYTES],
+            &powers.base,
+        )?;
+        for (slot, output) in combined.iter_mut().enumerate() {
+            let offset = spend_d_symbol_offset(slot).unwrap();
+            let value = QM31::from_le_bytes(&c2_leaf[offset..offset + 16]).ok_or(
+                CircleQueryError::NonCanonicalQm31 {
+                    leaf: CircleQueryLeaf::C2,
+                    offset,
+                },
+            )?;
+            *output = output.add(powers.d.mul(value));
+        }
+        Ok(combined)
+    }
+
+    fn literal_helper_sum(
+        powers: &StateOnlySpendQueryPowers,
+        helpers: [QM31; SPEND_C2_COLUMNS],
+    ) -> QM31 {
+        powers.base.helpers[0]
+            .mul(helpers[0])
+            .add(powers.base.helpers[1].mul(helpers[1]))
+            .add(powers.d.mul(helpers[2]))
+    }
 
     fn next_m31(state: &mut u64) -> M31 {
         *state = state
@@ -101,6 +163,44 @@ mod tests {
         QM31 {
             c0: CM31::new(next_m31(state), next_m31(state)),
             c1: CM31::new(next_m31(state), next_m31(state)),
+        }
+    }
+
+    #[test]
+    fn fused_helpers_match_previous_and_literal_per_slot() {
+        let gamma = QM31 {
+            c0: CM31::new(M31(P - 1), M31(17)),
+            c1: CM31::new(M31(23), M31(P - 2)),
+        };
+        let powers = StateOnlySpendQueryPowers::new(gamma);
+        let c1 = [0u8; STATE_ONLY_C1_LEAF_BYTES];
+        let helpers = [
+            [QM31::ZERO, QM31::ONE, gamma, gamma.add(QM31::ONE)],
+            [QM31::ZERO, gamma, QM31::ONE, gamma.mul(gamma)],
+            [QM31::ZERO, QM31::ONE, gamma.mul(gamma), gamma],
+        ];
+        let mut c2 = [0u8; SPEND_C2_LEAF_BYTES];
+        for (helper, symbols) in helpers.iter().enumerate() {
+            for (slot, symbol) in symbols.iter().enumerate() {
+                let offset = (helper * STATE_ONLY_FIBER_SLOTS + slot) * 16;
+                symbol.write_le_bytes(&mut c2[offset..offset + 16]);
+            }
+        }
+
+        let fused = gamma_combine_state_only_spend_layer0_prepared(&c1, &c2, &powers).unwrap();
+        let previous = previous_two_plus_d_reference(&c1, &c2, &powers).unwrap();
+        assert_eq!(fused, previous);
+        for slot in 0..STATE_ONLY_FIBER_SLOTS {
+            let slot_helpers = [helpers[0][slot], helpers[1][slot], helpers[2][slot]];
+            let literal = literal_helper_sum(&powers, slot_helpers);
+            assert_eq!(fused[slot], literal);
+            assert_eq!(
+                qm31_sum_products3_prepared(
+                    &[powers.base.helpers[0], powers.base.helpers[1], powers.d],
+                    &slot_helpers,
+                ),
+                literal
+            );
         }
     }
 
@@ -138,6 +238,32 @@ mod tests {
                 ),
                 Ok(expected)
             );
+            assert_eq!(
+                previous_two_plus_d_reference(&c1, &c2, &StateOnlySpendQueryPowers::new(gamma),),
+                Ok(expected)
+            );
+        }
+    }
+
+    #[test]
+    fn fused_path_preserves_noncanonical_helper_errors() {
+        let c1 = [0u8; STATE_ONLY_C1_LEAF_BYTES];
+        let powers = StateOnlySpendQueryPowers::new(QM31::ONE);
+        for helper in 0..SPEND_C2_COLUMNS {
+            for slot in 0..STATE_ONLY_FIBER_SLOTS {
+                let mut c2 = [0u8; SPEND_C2_LEAF_BYTES];
+                let offset = (helper * STATE_ONLY_FIBER_SLOTS + slot) * 16;
+                c2[offset..offset + 4].copy_from_slice(&P.to_le_bytes());
+                let expected = Err(CircleQueryError::NonCanonicalQm31 {
+                    leaf: CircleQueryLeaf::C2,
+                    offset,
+                });
+                assert_eq!(
+                    gamma_combine_state_only_spend_layer0_prepared(&c1, &c2, &powers),
+                    expected
+                );
+                assert_eq!(previous_two_plus_d_reference(&c1, &c2, &powers), expected);
+            }
         }
     }
 

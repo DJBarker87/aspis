@@ -7,7 +7,7 @@
 use alloc::{boxed::Box, vec, vec::Vec};
 
 use aspis_core::field::{
-    qm31_dot, qm31_m31_dot, qm31_pack_base4, PreparedQm31Multiplier, CM31, M31, QM31,
+    qm31_dot, qm31_m31_dot, qm31_pack_base4, PreparedQm31Multiplier, CM31, M31, P, QM31,
 };
 use aspis_core::state_only_hiding::{
     state_only_selected_mask_value, STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS,
@@ -34,6 +34,7 @@ const ATOMIC_SELECTED_TERMINAL_COLUMNS: usize =
 const ATOMIC_SELECTED_TERMINAL_CLAIMS: usize = 3 * ATOMIC_SELECTED_TERMINAL_COLUMNS;
 const ATOMIC_SELECTED_H1_COLUMN: usize = C1_COLUMNS + STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS;
 const ATOMIC_SELECTED_G_COLUMN: usize = ATOMIC_SELECTED_H1_COLUMN + 1;
+const ATOMIC_RETAINED_INITIAL_BLOCK_INDICES: [usize; 4] = [0, 1, 22, 23];
 
 #[derive(Clone, Copy)]
 struct CompiledAtomicPattern {
@@ -94,6 +95,13 @@ const _: () = assert!(constants::ATOMIC_COPY_ROUTING_LOW_ROW_BITS == 0x03c0);
 const _: () = assert!(legacy_partition_constants::ATOMIC_COPY_ROUTING_LOW_ROW_BITS == 0x000f);
 const _: () = assert!(legacy_partition_constants::ATOMIC_COPY_ROUTING_RANK == 103);
 const _: () = assert!(legacy_partition_constants::ATOMIC_COPY_ROUTING_PAIR_TERMS.len() == 84);
+const _: () = assert!(state_constants::INITIAL_BLOCKS.len() == 24);
+const _: () = assert!(state_constants::INITIAL_BLOCKS[0].0 == 0);
+const _: () = assert!(state_constants::INITIAL_BLOCKS[1].0 == 16);
+const _: () = assert!(state_constants::INITIAL_BLOCKS[2].0 == 64);
+const _: () = assert!(state_constants::INITIAL_BLOCKS[21].0 == 672);
+const _: () = assert!(state_constants::INITIAL_BLOCKS[22].0 == 704);
+const _: () = assert!(state_constants::INITIAL_BLOCKS[23].0 == 736);
 const _: () = assert!(
     legacy_partition_constants::COMPILED_ATOMIC_REGISTRY_FINGERPRINT
         == PINNED_ATOMIC_STATE_ONLY_REGISTRY_FINGERPRINT_V3
@@ -223,21 +231,43 @@ impl LegacyAtomicSelectors {
         legacy_partition_constants::COMPILED_ATOMIC_COPY_ACTIVE_FACTORS
             .iter()
             .copied()
-            .fold(QM31::ZERO, |sum, (high_mask, low_mask)| {
-                let high = self
-                    .high
-                    .iter()
-                    .copied()
-                    .enumerate()
-                    .filter(|(index, _)| high_mask & (1u64 << index) != 0)
-                    .fold(QM31::ZERO, |sum, (_, value)| sum.add(value));
-                let low = self
-                    .low
-                    .iter()
-                    .copied()
-                    .enumerate()
-                    .filter(|(index, _)| low_mask & (1u16 << index) != 0)
-                    .fold(QM31::ZERO, |sum, (_, value)| sum.add(value));
+            .fold(QM31::ZERO, |sum, (mut high_mask, mut low_mask)| {
+                // Both arrays are complete multilinear equality bases, so
+                // each sums to one at every (including off-domain) point.
+                // Evaluate a dense mask through its smaller complement.  In
+                // the deployed six-factor partition this turns the 42-entry
+                // high mask into 22 subtractions.
+                let high = if high_mask.count_ones() > 32 {
+                    high_mask = !high_mask;
+                    let mut high = QM31::ONE;
+                    while high_mask != 0 {
+                        let index = high_mask.trailing_zeros() as usize;
+                        high = high.sub(self.high[index]);
+                        high_mask &= high_mask - 1;
+                    }
+                    high
+                } else {
+                    let mut high = QM31::ZERO;
+                    while high_mask != 0 {
+                        let index = high_mask.trailing_zeros() as usize;
+                        high = high.add(self.high[index]);
+                        high_mask &= high_mask - 1;
+                    }
+                    high
+                };
+                // The final deployed low mask selects all sixteen basis
+                // values, hence is exactly one without a scan.
+                let low = if low_mask == u16::MAX {
+                    QM31::ONE
+                } else {
+                    let mut low = QM31::ZERO;
+                    while low_mask != 0 {
+                        let index = low_mask.trailing_zeros() as usize;
+                        low = low.add(self.low[index]);
+                        low_mask &= low_mask - 1;
+                    }
+                    low
+                };
                 sum.add(high.mul(low))
             })
     }
@@ -353,10 +383,67 @@ fn atomic_copy_pattern_values_generated_reference(
 
 #[inline(always)]
 fn routing_linear_form(entries: &[(u8, u32)], selectors: &[QM31]) -> QM31 {
-    // Every coefficient and selector limb is canonical M31. Four raw
-    // products fit in u64; reduce once per four-entry block and accumulate
-    // the four extension coordinates independently. This is the same field
-    // linear form, with fewer per-entry extension wrappers/reductions.
+    // Keep exact ±1 terms in their own small accumulator. The generated
+    // factors contain at most 52 entries, so even the noncanonical `P - 0`
+    // representative is bounded by `52 * P < 2^64`. Genuine products retain
+    // the audited four-product groups: `4 * (P - 1)^2 < 2^64`.
+    let mut signed = [0u64; 4];
+    let mut products = [0u64; 4];
+    let mut reduced_products = [0u64; 4];
+    let mut product_count = 0usize;
+    for &(index, coefficient) in entries {
+        let selector = selectors[usize::from(index)];
+        let limbs = [
+            selector.c0.a.0,
+            selector.c0.b.0,
+            selector.c1.a.0,
+            selector.c1.b.0,
+        ];
+        match coefficient {
+            1 => {
+                for limb in 0..4 {
+                    signed[limb] += u64::from(limbs[limb]);
+                }
+            }
+            value if value == P - 1 => {
+                for limb in 0..4 {
+                    signed[limb] += u64::from(P) - u64::from(limbs[limb]);
+                }
+            }
+            _ => {
+                for limb in 0..4 {
+                    products[limb] += u64::from(limbs[limb]) * u64::from(coefficient);
+                }
+                product_count += 1;
+                if product_count == 4 {
+                    for limb in 0..4 {
+                        reduced_products[limb] += u64::from(M31::reduce_u64(products[limb]).0);
+                    }
+                    products = [0u64; 4];
+                    product_count = 0;
+                }
+            }
+        }
+    }
+    if product_count != 0 {
+        for limb in 0..4 {
+            reduced_products[limb] += u64::from(M31::reduce_u64(products[limb]).0);
+        }
+    }
+    QM31 {
+        c0: CM31::new(
+            M31::reduce_u64(signed[0] + reduced_products[0]),
+            M31::reduce_u64(signed[1] + reduced_products[1]),
+        ),
+        c1: CM31::new(
+            M31::reduce_u64(signed[2] + reduced_products[2]),
+            M31::reduce_u64(signed[3] + reduced_products[3]),
+        ),
+    }
+}
+
+#[cfg(test)]
+fn routing_linear_form_four_entry_reference(entries: &[(u8, u32)], selectors: &[QM31]) -> QM31 {
     let mut sums = [0u64; 4];
     for block in entries.chunks(4) {
         let mut raw = [0u64; 4];
@@ -368,8 +455,22 @@ fn routing_linear_form(entries: &[(u8, u32)], selectors: &[QM31]) -> QM31 {
                 selector.c1.a.0,
                 selector.c1.b.0,
             ];
-            for limb in 0..4 {
-                raw[limb] += u64::from(limbs[limb]) * u64::from(coefficient);
+            match coefficient {
+                1 => {
+                    for limb in 0..4 {
+                        raw[limb] += u64::from(limbs[limb]);
+                    }
+                }
+                value if value == P - 1 => {
+                    for limb in 0..4 {
+                        raw[limb] += u64::from(P) - u64::from(limbs[limb]);
+                    }
+                }
+                _ => {
+                    for limb in 0..4 {
+                        raw[limb] += u64::from(limbs[limb]) * u64::from(coefficient);
+                    }
+                }
             }
         }
         for limb in 0..4 {
@@ -380,6 +481,40 @@ fn routing_linear_form(entries: &[(u8, u32)], selectors: &[QM31]) -> QM31 {
         c0: CM31::new(M31::reduce_u64(sums[0]), M31::reduce_u64(sums[1])),
         c1: CM31::new(M31::reduce_u64(sums[2]), M31::reduce_u64(sums[3])),
     }
+}
+
+#[cfg(test)]
+fn routing_linear_form_reference(entries: &[(u8, u32)], selectors: &[QM31]) -> QM31 {
+    entries
+        .iter()
+        .copied()
+        .fold(QM31::ZERO, |sum, (index, coefficient)| {
+            sum.add(selectors[usize::from(index)].mul_m31(M31(coefficient)))
+        })
+}
+
+#[cfg(test)]
+fn legacy_copy_active_scanning_reference(selectors: &LegacyAtomicSelectors) -> QM31 {
+    legacy_partition_constants::COMPILED_ATOMIC_COPY_ACTIVE_FACTORS
+        .iter()
+        .copied()
+        .fold(QM31::ZERO, |sum, (high_mask, low_mask)| {
+            let high = selectors
+                .high
+                .iter()
+                .copied()
+                .enumerate()
+                .filter(|(index, _)| high_mask & (1u64 << index) != 0)
+                .fold(QM31::ZERO, |sum, (_, value)| sum.add(value));
+            let low = selectors
+                .low
+                .iter()
+                .copied()
+                .enumerate()
+                .filter(|(index, _)| low_mask & (1u16 << index) != 0)
+                .fold(QM31::ZERO, |sum, (_, value)| sum.add(value));
+            sum.add(high.mul(low))
+        })
 }
 
 fn evaluate_atomic_copy_routing(selectors: &AtomicSelectors) -> Vec<QM31> {
@@ -548,8 +683,9 @@ where
     };
     let mut powers = [QM31::ZERO; 16];
     powers[0] = lambda;
+    let prepared_lambda = PreparedQm31Multiplier::new(lambda);
     for index in 1..powers.len() {
-        powers[index] = powers[index - 1].mul(lambda);
+        powers[index] = prepared_lambda.mul(powers[index - 1]);
     }
     let pattern_values = atomic_copy_pattern_values(openings, &powers);
     trace(StateOnlyTerminalDiagnosticPhase::CopyPatterns);
@@ -664,6 +800,24 @@ fn atomic_accumulate<const N: usize>(
     }
 }
 
+#[inline(always)]
+fn atomic_retained_initial_sums(selectors: &AtomicSemanticSelectors) -> (QM31, QM31, QM31) {
+    let highs = ATOMIC_RETAINED_INITIAL_BLOCK_INDICES.map(|index| {
+        let block = usize::from(state_constants::INITIAL_BLOCKS[index].0) >> 4;
+        selectors.high[block]
+    });
+    let high_sum = highs.iter().copied().fold(QM31::ZERO, QM31::add);
+    let domains = ATOMIC_RETAINED_INITIAL_BLOCK_INDICES
+        .map(|index| M31(state_constants::INITIAL_BLOCKS[index].1));
+    let lengths = ATOMIC_RETAINED_INITIAL_BLOCK_INDICES
+        .map(|index| M31(state_constants::INITIAL_BLOCKS[index].2));
+    (
+        high_sum,
+        qm31_m31_dot(&highs, &domains),
+        qm31_m31_dot(&highs, &lengths),
+    )
+}
+
 #[inline(never)]
 fn atomic_semantic_packed_impl<F>(
     statement: &AtomicPaymentStatementV4,
@@ -681,28 +835,12 @@ where
     // child (including the lane-15 tweak), so only row-0 lanes 0..7 are fixed
     // to zero.  The retained owner/note/nullifier/output blocks keep the
     // original domain/length initial-state constraints.
-    let initial_highs: [QM31; 24] = state_constants::INITIAL_BLOCKS.map(|(row, _, _)| {
-        let block = usize::from(row) >> 4;
-        if (4..=43).contains(&block) {
-            QM31::ZERO
-        } else {
-            selectors.high[block]
-        }
-    });
-    let initial_high_sum = initial_highs.iter().copied().fold(QM31::ZERO, QM31::add);
+    let (initial_high_sum, domain_sum, length_sum) = atomic_retained_initial_sums(selectors);
     let initial_selector = selectors.low[0].mul(initial_high_sum);
     for group in 0..4 {
         packed[group] =
             initial_selector.mul(qm31_pack_base4(&openings.z[4 * group..4 * group + 4]));
     }
-    let domain_sum = qm31_m31_dot(
-        &initial_highs,
-        &state_constants::INITIAL_BLOCKS.map(|(_, domain, _)| M31(domain)),
-    );
-    let length_sum = qm31_m31_dot(
-        &initial_highs,
-        &state_constants::INITIAL_BLOCKS.map(|(_, _, length)| M31(length)),
-    );
     packed[2] = packed[2].sub(selectors.low[0].mul(qm31_pack_base4(&[
         domain_sum,
         length_sum,
@@ -1302,6 +1440,182 @@ mod tests {
             let routing = LegacyAtomicSelectors::at_point(&point);
             assert_eq!(semantic.high, routing.high,);
             assert_eq!(semantic.low, routing.low,);
+        }
+    }
+
+    #[test]
+    fn sparse_atomic_initial_sums_match_dense_zero_weight_reference() {
+        let check = |point: [QM31; 10]| {
+            let selectors = AtomicSemanticSelectors::at_point(&point);
+            let dense_highs: [QM31; 24] = state_constants::INITIAL_BLOCKS.map(|(row, _, _)| {
+                let block = usize::from(row) >> 4;
+                if (4..=43).contains(&block) {
+                    QM31::ZERO
+                } else {
+                    selectors.high[block]
+                }
+            });
+            let expected = (
+                dense_highs.iter().copied().fold(QM31::ZERO, QM31::add),
+                qm31_m31_dot(
+                    &dense_highs,
+                    &state_constants::INITIAL_BLOCKS.map(|(_, domain, _)| M31(domain)),
+                ),
+                qm31_m31_dot(
+                    &dense_highs,
+                    &state_constants::INITIAL_BLOCKS.map(|(_, _, length)| M31(length)),
+                ),
+            );
+            assert_eq!(atomic_retained_initial_sums(&selectors), expected);
+        };
+        check([QM31::ZERO; 10]);
+        check([QM31::ONE; 10]);
+        let mut rng = Rng(0x4154_4f4d_494e_4954);
+        for _ in 0..64 {
+            check(core::array::from_fn(|_| rng.qm31()));
+        }
+    }
+
+    #[test]
+    fn sparse_legacy_active_selector_matches_scanning_reference() {
+        let check = |point: [QM31; 10]| {
+            let selectors = LegacyAtomicSelectors::at_point(&point);
+            assert_eq!(
+                selectors.high.iter().copied().fold(QM31::ZERO, QM31::add),
+                QM31::ONE,
+            );
+            assert_eq!(
+                selectors.low.iter().copied().fold(QM31::ZERO, QM31::add),
+                QM31::ONE,
+            );
+            assert_eq!(
+                selectors.copy_active(),
+                legacy_copy_active_scanning_reference(&selectors),
+            );
+        };
+        check([QM31::ZERO; 10]);
+        check([QM31::ONE; 10]);
+        let maximal = QM31 {
+            c0: CM31::new(M31(P - 1), M31(P - 1)),
+            c1: CM31::new(M31(P - 1), M31(P - 1)),
+        };
+        check([maximal; 10]);
+        check(core::array::from_fn(|index| {
+            if index & 1 == 0 {
+                QM31::ONE
+            } else {
+                maximal
+            }
+        }));
+        let mut rng = Rng(0x4154_4f4d_4143_5449);
+        for _ in 0..64 {
+            check(core::array::from_fn(|_| rng.qm31()));
+        }
+    }
+
+    #[test]
+    fn routing_linear_form_sparse_coefficients_match_reference() {
+        fn check(factors: &[(u16, u8)], entries: &[(u8, u32)], selectors: &[QM31]) {
+            for &(start, len) in factors {
+                let start = usize::from(start);
+                let entries = &entries[start..start + usize::from(len)];
+                assert_eq!(
+                    routing_linear_form(entries, selectors),
+                    routing_linear_form_reference(entries, selectors),
+                );
+                assert_eq!(
+                    routing_linear_form(entries, selectors),
+                    routing_linear_form_four_entry_reference(entries, selectors),
+                );
+            }
+        }
+
+        let check_point = |point: [QM31; 10]| {
+            let rank_74 = AtomicSelectors::at_point(&point);
+            check(
+                &constants::ATOMIC_COPY_ROUTING_LEFT_FACTORS,
+                &constants::ATOMIC_COPY_ROUTING_ENTRIES,
+                &rank_74.high,
+            );
+            check(
+                &constants::ATOMIC_COPY_ROUTING_RIGHT_FACTORS,
+                &constants::ATOMIC_COPY_ROUTING_ENTRIES,
+                &rank_74.low,
+            );
+            let rank_103 = LegacyAtomicSelectors::at_point(&point);
+            check(
+                &legacy_partition_constants::ATOMIC_COPY_ROUTING_LEFT_FACTORS,
+                &legacy_partition_constants::ATOMIC_COPY_ROUTING_ENTRIES,
+                &rank_103.high,
+            );
+            check(
+                &legacy_partition_constants::ATOMIC_COPY_ROUTING_RIGHT_FACTORS,
+                &legacy_partition_constants::ATOMIC_COPY_ROUTING_ENTRIES,
+                &rank_103.low,
+            );
+        };
+        check_point([QM31::ZERO; 10]);
+        check_point([QM31::ONE; 10]);
+
+        let maximal = QM31 {
+            c0: CM31::new(M31(P - 1), M31(P - 1)),
+            c1: CM31::new(M31(P - 1), M31(P - 1)),
+        };
+        let alternating = QM31 {
+            c0: CM31::new(M31(P - 1), M31::ZERO),
+            c1: CM31::new(M31::ONE, M31(P - 2)),
+        };
+        for selectors in [[maximal; 64], [alternating; 64]] {
+            check(
+                &constants::ATOMIC_COPY_ROUTING_LEFT_FACTORS,
+                &constants::ATOMIC_COPY_ROUTING_ENTRIES,
+                &selectors,
+            );
+            check(
+                &legacy_partition_constants::ATOMIC_COPY_ROUTING_LEFT_FACTORS,
+                &legacy_partition_constants::ATOMIC_COPY_ROUTING_ENTRIES,
+                &selectors,
+            );
+        }
+        for selectors in [[maximal; 16], [alternating; 16]] {
+            check(
+                &constants::ATOMIC_COPY_ROUTING_RIGHT_FACTORS,
+                &constants::ATOMIC_COPY_ROUTING_ENTRIES,
+                &selectors,
+            );
+            check(
+                &legacy_partition_constants::ATOMIC_COPY_ROUTING_RIGHT_FACTORS,
+                &legacy_partition_constants::ATOMIC_COPY_ROUTING_ENTRIES,
+                &selectors,
+            );
+        }
+
+        let mut rng = Rng(0x4154_4f4d_5350_4152);
+        for _ in 0..64 {
+            check_point(core::array::from_fn(|_| rng.qm31()));
+        }
+    }
+
+    #[test]
+    fn prepared_lambda_power_chain_matches_direct_multiplication() {
+        let check = |lambda: QM31| {
+            let prepared = PreparedQm31Multiplier::new(lambda);
+            let mut optimized = [QM31::ZERO; 16];
+            let mut reference = [QM31::ZERO; 16];
+            optimized[0] = lambda;
+            reference[0] = lambda;
+            for index in 1..optimized.len() {
+                optimized[index] = prepared.mul(optimized[index - 1]);
+                reference[index] = reference[index - 1].mul(lambda);
+            }
+            assert_eq!(optimized, reference);
+        };
+        check(QM31::ZERO);
+        check(QM31::ONE);
+        check(QM31::ONE.neg());
+        let mut rng = Rng(0x4154_4f4d_4c41_4d42);
+        for _ in 0..64 {
+            check(rng.qm31());
         }
     }
 

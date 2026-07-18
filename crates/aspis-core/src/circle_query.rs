@@ -7,17 +7,19 @@
 //! Merkle path, drive a transcript, enable tag 24, or accept a proof.
 
 use crate::circle_fri::{
-    evaluate_final_line_tensor, fixed_line_domain_x, map_fixed_query,
-    normalized_circle_to_line_arity4_at_fiber, normalized_circle_to_line_arity4_prepared,
+    evaluate_final_line_tensor, evaluate_final_line_tensor_ref, fixed_line_domain_x,
+    map_fixed_query, normalized_circle_to_line_arity4_at_fiber,
+    normalized_circle_to_line_arity4_prepared,
     normalized_circle_to_line_arity4_prepared_multipliers,
     normalized_circle_to_line_arity4_prepared_polynomial_candidate,
     normalized_line_arity4_at_fiber, normalized_line_arity4_prepared,
-    normalized_line_arity4_prepared_multipliers,
-    normalized_line_arity4_prepared_polynomial_candidate, CircleFriError, FixedQueryPath,
-    FIXED_ARITY4_ROUNDS, FIXED_FINAL_LINE_LAYER, FIXED_QUERY_FIBER_COUNT,
+    normalized_line_arity4_prepared_multipliers, normalized_line_arity4_prepared_polynomial_refs,
+    CircleFriError, FixedQueryPath, FIXED_ARITY4_ROUNDS, FIXED_FINAL_LINE_LAYER,
+    FIXED_QUERY_FIBER_COUNT,
 };
 use crate::field::{
-    qm31_m31_dot4_prepared_limbs49_bytes, qm31_power_table, PreparedQm31Multiplier, M31, QM31,
+    qm31_m31_dot4_prepared_limbs49_bytes, qm31_power_table, PreparedQm31Multiplier, CM31, M31, P,
+    QM31,
 };
 use crate::proof::{M31_CIRCLE_C1_COLUMNS, M31_CIRCLE_C1_FIBER_LEN, SECOND_PHASE_LEAF_LEN_V4_S2};
 
@@ -216,10 +218,62 @@ fn decode_later_leaf(leaf: &[u8], layer: u8) -> Result<[QM31; 4], CircleQueryErr
     let mut values = [QM31::ZERO; 4];
     for (slot, value) in values.iter_mut().enumerate() {
         let offset = slot * CIRCLE_QUERY_QM31_BYTES;
-        *value = QM31::from_le_bytes(&leaf[offset..offset + CIRCLE_QUERY_QM31_BYTES])
-            .ok_or(CircleQueryError::NonCanonicalQm31 { leaf: kind, offset })?;
+        let encoded = &leaf[offset..offset + CIRCLE_QUERY_QM31_BYTES];
+        let limbs = [
+            u32::from_le_bytes(encoded[0..4].try_into().unwrap()),
+            u32::from_le_bytes(encoded[4..8].try_into().unwrap()),
+            u32::from_le_bytes(encoded[8..12].try_into().unwrap()),
+            u32::from_le_bytes(encoded[12..16].try_into().unwrap()),
+        ];
+        if limbs.iter().any(|&limb| limb >= P) {
+            return Err(CircleQueryError::NonCanonicalQm31 { leaf: kind, offset });
+        }
+        *value = QM31 {
+            c0: CM31::new(M31(limbs[0]), M31(limbs[1])),
+            c1: CM31::new(M31(limbs[2]), M31(limbs[3])),
+        };
     }
     Ok(values)
+}
+
+/// Validate a complete later leaf in the same slot order as
+/// `decode_later_leaf`, but materialize only the slot consumed by this
+/// transition.  Rejection priority and offsets remain byte-for-byte equal to
+/// the full decoder; the other three canonical values are simply not copied
+/// into a dead array.
+fn decode_selected_later_slot(
+    leaf: &[u8],
+    layer: u8,
+    selected_slot: usize,
+) -> Result<QM31, CircleQueryError> {
+    let kind = CircleQueryLeaf::Later(layer);
+    check_leaf_length(leaf, kind, CIRCLE_QUERY_LATER_LEAF_BYTES)?;
+    if selected_slot >= 4 {
+        return Err(CircleQueryError::QueryOutOfRange {
+            query: selected_slot,
+        });
+    }
+    let mut selected = [0u32; 4];
+    for slot in 0..4 {
+        let offset = slot * CIRCLE_QUERY_QM31_BYTES;
+        let encoded = &leaf[offset..offset + CIRCLE_QUERY_QM31_BYTES];
+        let limbs = [
+            u32::from_le_bytes(encoded[0..4].try_into().unwrap()),
+            u32::from_le_bytes(encoded[4..8].try_into().unwrap()),
+            u32::from_le_bytes(encoded[8..12].try_into().unwrap()),
+            u32::from_le_bytes(encoded[12..16].try_into().unwrap()),
+        ];
+        if limbs.iter().any(|&limb| limb >= P) {
+            return Err(CircleQueryError::NonCanonicalQm31 { leaf: kind, offset });
+        }
+        if slot == selected_slot {
+            selected = limbs;
+        }
+    }
+    Ok(QM31 {
+        c0: CM31::new(M31(selected[0]), M31(selected[1])),
+        c1: CM31::new(M31(selected[2]), M31(selected[3])),
+    })
 }
 
 fn require_layer_value(
@@ -481,21 +535,37 @@ pub fn check_fixed_line_transition_prepared_polynomial(
     alpha_squared: PreparedQm31Multiplier,
     alpha_cubed: PreparedQm31Multiplier,
 ) -> Result<(), CircleQueryError> {
-    let incoming = decode_later_leaf(incoming_leaf, layer)?;
-    let outgoing = decode_later_leaf(outgoing_leaf, layer + 1)?;
-    let folded = normalized_line_arity4_prepared_polynomial_candidate(
-        incoming,
-        alpha,
-        alpha_squared,
-        alpha_cubed,
+    check_fixed_line_transition_prepared_polynomial_powers(
+        incoming_leaf,
+        outgoing_leaf,
+        incoming_leaf_index,
+        layer,
         inverses,
-    );
-    require_layer_value(
-        layer + 1,
-        &outgoing,
-        (incoming_leaf_index & 3) as u8,
-        folded,
+        &[alpha, alpha_squared, alpha_cubed],
     )
+}
+
+/// Borrowed-power form of
+/// [`check_fixed_line_transition_prepared_polynomial`].
+pub fn check_fixed_line_transition_prepared_polynomial_powers(
+    incoming_leaf: &[u8],
+    outgoing_leaf: &[u8],
+    incoming_leaf_index: usize,
+    layer: u8,
+    inverses: [M31; 3],
+    alpha_powers: &[PreparedQm31Multiplier; 3],
+) -> Result<(), CircleQueryError> {
+    let incoming = decode_later_leaf(incoming_leaf, layer)?;
+    let slot = incoming_leaf_index & 3;
+    let outgoing = decode_selected_later_slot(outgoing_leaf, layer + 1, slot)?;
+    let folded = normalized_line_arity4_prepared_polynomial_refs(&incoming, alpha_powers, inverses);
+    if outgoing != folded {
+        return Err(CircleQueryError::LayerValueMismatch {
+            layer: layer + 1,
+            offset: slot * CIRCLE_QUERY_QM31_BYTES,
+        });
+    }
+    Ok(())
 }
 
 pub fn check_fixed_terminal_transition_prepared(
@@ -528,15 +598,50 @@ pub fn check_fixed_terminal_transition_prepared_polynomial(
     alpha_squared: PreparedQm31Multiplier,
     alpha_cubed: PreparedQm31Multiplier,
 ) -> Result<(), CircleQueryError> {
-    let incoming = decode_later_leaf(incoming_leaf, 3)?;
-    let terminal = normalized_line_arity4_prepared_polynomial_candidate(
-        incoming,
-        alpha,
-        alpha_squared,
-        alpha_cubed,
+    check_fixed_terminal_transition_prepared_polynomial_powers(
+        incoming_leaf,
+        final_natural,
+        final_index,
         inverses,
-    );
-    if evaluate_final_line_tensor(final_natural, final_x) != terminal {
+        final_x,
+        &[alpha, alpha_squared, alpha_cubed],
+    )
+}
+
+/// Borrowed-power form of
+/// [`check_fixed_terminal_transition_prepared_polynomial`].
+pub fn check_fixed_terminal_transition_prepared_polynomial_powers(
+    incoming_leaf: &[u8],
+    final_natural: [QM31; 4],
+    final_index: usize,
+    inverses: [M31; 3],
+    final_x: M31,
+    alpha_powers: &[PreparedQm31Multiplier; 3],
+) -> Result<(), CircleQueryError> {
+    check_fixed_terminal_transition_prepared_polynomial_refs(
+        incoming_leaf,
+        &final_natural,
+        final_index,
+        inverses,
+        final_x,
+        alpha_powers,
+    )
+}
+
+/// Fully borrowed form of
+/// [`check_fixed_terminal_transition_prepared_polynomial_powers`].
+pub fn check_fixed_terminal_transition_prepared_polynomial_refs(
+    incoming_leaf: &[u8],
+    final_natural: &[QM31; 4],
+    final_index: usize,
+    inverses: [M31; 3],
+    final_x: M31,
+    alpha_powers: &[PreparedQm31Multiplier; 3],
+) -> Result<(), CircleQueryError> {
+    let incoming = decode_later_leaf(incoming_leaf, 3)?;
+    let terminal =
+        normalized_line_arity4_prepared_polynomial_refs(&incoming, alpha_powers, inverses);
+    if evaluate_final_line_tensor_ref(final_natural, final_x) != terminal {
         return Err(CircleQueryError::TerminalValueMismatch { final_index });
     }
     Ok(())
@@ -567,6 +672,45 @@ mod polynomial_transition_tests {
             value.write_le_bytes(&mut bytes[slot * 16..(slot + 1) * 16]);
         }
         bytes
+    }
+
+    #[test]
+    fn manual_later_decoders_match_qm31_bytes_and_rejection_offsets() {
+        let mut state = 0x4c41_5445_5244_4543u64;
+        for case in 0..128usize {
+            let values = core::array::from_fn(|_| next_qm31(&mut state));
+            let encoded = encode(&values);
+            assert_eq!(decode_later_leaf(&encoded, 2), Ok(values));
+            for selected_slot in 0..4 {
+                assert_eq!(
+                    decode_selected_later_slot(&encoded, 2, selected_slot),
+                    Ok(values[selected_slot]),
+                    "case {case}, selected slot {selected_slot}",
+                );
+            }
+        }
+
+        let canonical = encode(&[QM31::ZERO; 4]);
+        for bad_slot in 0..4 {
+            for bad_limb in 0..4 {
+                let offset = bad_slot * CIRCLE_QUERY_QM31_BYTES;
+                let limb_offset = offset + bad_limb * 4;
+                let mut noncanonical = canonical;
+                noncanonical[limb_offset..limb_offset + 4].copy_from_slice(&P.to_le_bytes());
+                let expected = CircleQueryError::NonCanonicalQm31 {
+                    leaf: CircleQueryLeaf::Later(2),
+                    offset,
+                };
+                assert_eq!(decode_later_leaf(&noncanonical, 2), Err(expected));
+                for selected_slot in 0..4 {
+                    assert_eq!(
+                        decode_selected_later_slot(&noncanonical, 2, selected_slot),
+                        Err(expected),
+                        "bad slot {bad_slot}, limb {bad_limb}, selected slot {selected_slot}",
+                    );
+                }
+            }
+        }
     }
 
     #[test]
@@ -614,12 +758,13 @@ mod polynomial_transition_tests {
             assert_eq!(polynomial, Ok(()));
 
             let final_natural = [folded, QM31::ZERO, QM31::ZERO, QM31::ZERO];
+            let final_x = next_m31(&mut state);
             let nested_terminal = check_fixed_terminal_transition_prepared(
                 &incoming,
                 final_natural,
                 case,
                 inverses,
-                next_m31(&mut state),
+                final_x,
                 alpha,
                 alpha_squared,
             );
@@ -628,12 +773,24 @@ mod polynomial_transition_tests {
                 final_natural,
                 case,
                 inverses,
-                next_m31(&mut state),
+                final_x,
                 alpha,
                 alpha_squared,
                 alpha_cubed,
             );
             assert_eq!(polynomial_terminal, nested_terminal, "terminal case {case}");
+            assert_eq!(
+                check_fixed_terminal_transition_prepared_polynomial_refs(
+                    &incoming,
+                    &final_natural,
+                    case,
+                    inverses,
+                    final_x,
+                    &[alpha, alpha_squared, alpha_cubed],
+                ),
+                polynomial_terminal,
+                "borrowed terminal case {case}",
+            );
 
             let mut noncanonical_incoming = incoming;
             noncanonical_incoming[..4].copy_from_slice(&P.to_le_bytes());
@@ -658,6 +815,34 @@ mod polynomial_transition_tests {
                     alpha_squared,
                 ),
                 "canonical tooth case {case}",
+            );
+
+            let mut noncanonical_outgoing = outgoing;
+            let bad_slot = (case >> 2) & 3;
+            let bad_limb = case & 3;
+            let bad_offset = bad_slot * 16 + bad_limb * 4;
+            noncanonical_outgoing[bad_offset..bad_offset + 4].copy_from_slice(&P.to_le_bytes());
+            assert_eq!(
+                check_fixed_line_transition_prepared_polynomial(
+                    &incoming,
+                    &noncanonical_outgoing,
+                    case,
+                    1,
+                    inverses,
+                    alpha,
+                    alpha_squared,
+                    alpha_cubed,
+                ),
+                check_fixed_line_transition_prepared(
+                    &incoming,
+                    &noncanonical_outgoing,
+                    case,
+                    1,
+                    inverses,
+                    alpha,
+                    alpha_squared,
+                ),
+                "outgoing canonical tooth case {case}",
             );
         }
     }
