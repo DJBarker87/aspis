@@ -16,7 +16,10 @@ the current Rust verifier tree:
 * `LegacyAtomicSelectors::copy_active` evaluates a dense selector mask by
   subtracting its smaller complement from the total equality-basis sum `1`;
 * the atomic copy-power table reuses a prepared multiplier for `lambda` while
-  retaining the ordinary repeated-multiplication recurrence.
+  retaining the ordinary repeated-multiplication recurrence;
+* the Poseidon residual linear combination is factored by selector class; and
+* the one- and two-step FRI parent-doubling branches specialize a single
+  abstract iteration recurrence.
 
 The final section also mirrors the exponent schedule in `M31::inv`.  These are
 pure algebraic statements.  Identifying Rust `M31`/`QM31`, prepared Karatsuba
@@ -145,6 +148,63 @@ theorem prepared_mul_correctness_hypothesis_nonvacuous
     ∃ preparedMul : R → R, ∀ value, preparedMul value = lambda * value := by
   exact ⟨fun value ↦ lambda * value, fun _ ↦ rfl⟩
 
+/-! ## Poseidon residual factorization -/
+
+/-- Factor the residual linear combination by selector class.  The sole
+hypothesis records the exact partition of the active selector into leading,
+full-round, and internal-round selectors; no approximation or field-specific
+identity is involved. -/
+theorem poseidon_residual_factorization
+    {R : Type*} [CommRing R]
+    (active leading full internal target leadingValue fullValue internalValue : R)
+    (hActive : active = leading + full + internal) :
+    active * target - leading * leadingValue - full * fullValue - internal * internalValue =
+      leading * (target - leadingValue) +
+        full * (target - fullValue) +
+          internal * (target - internalValue) := by
+  rw [hActive]
+  ring
+
+/-- The selector-partition premise of `poseidon_residual_factorization` is
+satisfiable for arbitrary selector-class values. -/
+theorem poseidon_active_partition_hypothesis_nonvacuous
+    {R : Type*} [CommRing R] (leading full internal : R) :
+    ∃ active, active = leading + full + internal := by
+  exact ⟨leading + full + internal, rfl⟩
+
+/-! ## FRI parent-doubling control flow -/
+
+/-- Apply an abstract parent-doubling operation exactly `count` times.  This
+models only the control-flow recurrence, not the deployed Rust point type or
+its doubling implementation. -/
+def iterateParentDouble {Point : Type*} (double : Point → Point) :
+    ℕ → Point → Point
+  | 0, point => point
+  | count + 1, point => iterateParentDouble double count (double point)
+
+/-- The direct control-flow spelling: always compute the first parent and
+compute the second parent exactly when the Boolean branch requests it. -/
+def firstThenConditionalSecondParent {Point : Type*}
+    (double : Point → Point) (needsSecond : Bool) (point : Point) : Point :=
+  let firstParent := double point
+  if needsSecond then double firstParent else firstParent
+
+/-- A one-parent iteration is exactly the direct spelling with the second
+doubling branch disabled. -/
+theorem iterate_parent_double_one_eq_direct
+    {Point : Type*} (double : Point → Point) (point : Point) :
+    iterateParentDouble double 1 point =
+      firstThenConditionalSecondParent double false point := by
+  rfl
+
+/-- A two-parent iteration is exactly the direct spelling with the second
+doubling branch enabled. -/
+theorem iterate_parent_double_two_eq_direct
+    {Point : Type*} (double : Point → Point) (point : Point) :
+    iterateParentDouble double 2 point =
+      firstThenConditionalSecondParent double true point := by
+  rfl
+
 /-! ## M31 inverse addition-chain exponent -/
 
 /-- Squaring a value `count` times multiplies its represented exponent by
@@ -215,6 +275,10 @@ theorem m31_inverse_addition_chain_exponent_eq :
 #print axioms total_sum_one_hypothesis_nonvacuous
 #print axioms prepared_repeated_mul_recurrence_eq_ordinary
 #print axioms prepared_mul_correctness_hypothesis_nonvacuous
+#print axioms poseidon_residual_factorization
+#print axioms poseidon_active_partition_hypothesis_nonvacuous
+#print axioms iterate_parent_double_one_eq_direct
+#print axioms iterate_parent_double_two_eq_direct
 #print axioms m31_inverse_addition_chain_schedule_eq
 #print axioms m31_inverse_addition_chain_exponent_eq
 
