@@ -19,7 +19,11 @@ the current Rust verifier tree:
   retaining the ordinary repeated-multiplication recurrence;
 * the Poseidon residual linear combination is factored by selector class; and
 * the one- and two-step FRI parent-doubling branches specialize a single
-  abstract iteration recurrence.
+  abstract iteration recurrence;
+* the fixed four-lane Poseidon matrix is consumed through the adjoint of the
+  four tower-packing functionals; and
+* a pre-grouped public lookup is substituted for its original table only
+  under an explicit pointwise table-equality premise.
 
 The final section also mirrors the exponent schedule in `M31::inv`.  These are
 pure algebraic statements.  Identifying Rust `M31`/`QM31`, prepared Karatsuba
@@ -172,6 +176,85 @@ theorem poseidon_active_partition_hypothesis_nonvacuous
     ∃ active, active = leading + full + internal := by
   exact ⟨leading + full + internal, rfl⟩
 
+/-! ## Fixed external matrix followed by tower packing -/
+
+/-- The deployed four-lane local external matrix. -/
+def externalLocalMatrix (R : Type*) [CommRing R] : Matrix (Fin 4) (Fin 4) R :=
+  !![2, 3, 1, 1;
+     1, 2, 3, 1;
+     1, 1, 2, 3;
+     3, 1, 1, 2]
+
+/-- The four fixed coefficient matrices describing the output limbs of the
+tower pack `(1, i, u, i*u)`.  Rows select a local-matrix output lane and
+columns select one of that lane's four base-field limbs.  For example, row
+zero is the `t[0,*]` contribution and the first matrix encodes
+`t[0,a] - t[1,b] + 2*t[2,c] - t[2,d] - t[3,c] - 2*t[3,d]`. -/
+def towerPackWeight (R : Type*) [CommRing R] :
+    Fin 4 → Matrix (Fin 4) (Fin 4) R :=
+  ![
+    !![1, 0, 0, 0;
+       0, -1, 0, 0;
+       0, 0, 2, -1;
+       0, 0, -1, -2],
+    !![0, 1, 0, 0;
+       1, 0, 0, 0;
+       0, 0, 1, 2;
+       0, 0, 2, -1],
+    !![0, 0, 1, 0;
+       0, 0, 0, -1;
+       1, 0, 0, 0;
+       0, -1, 0, 0],
+    !![0, 0, 0, 1;
+       0, 0, 1, 0;
+       0, 1, 0, 0;
+       1, 0, 0, 0]
+  ]
+
+/-- Frobenius pairing of a coefficient matrix with a four-by-four limb
+matrix. -/
+def matrixFunctional {R : Type*} [CommRing R]
+    (weight value : Matrix (Fin 4) (Fin 4) R) : R :=
+  ∑ row, ∑ limb, weight row limb * value row limb
+
+/-- Applying the local matrix and then any one of the four tower-pack
+functionals is exactly applying the transposed local matrix to that functional
+first.  This is the fixed direct packed-adjoint identity; the proof expands
+all four cases and normalizes the resulting nontrivial ring expressions. -/
+theorem external_local_then_tower_pack_eq_adjoint
+    {R : Type*} [CommRing R]
+    (input : Matrix (Fin 4) (Fin 4) R) (packedLimb : Fin 4) :
+    matrixFunctional (towerPackWeight R packedLimb)
+        (externalLocalMatrix R * input) =
+      matrixFunctional
+        ((externalLocalMatrix R).transpose * towerPackWeight R packedLimb)
+        input := by
+  fin_cases packedLimb <;>
+    simp [matrixFunctional, towerPackWeight, externalLocalMatrix,
+      Matrix.mul_apply, Fin.sum_univ_four] <;>
+    ring
+
+/-- The coarser raw packed-output bound used by the executable implementation
+fits in an unsigned 64-bit accumulator. -/
+theorem external_local_packed_56p_fits_u64 :
+    56 * 2147483647 < 2 ^ 64 := by
+  norm_num
+
+/-- Before adding zero-modulus offsets, a local-matrix output limb is at most
+the row coefficient sum `7` times the largest canonical M31 representative.
+This sharper source bound is strictly below the implementation's `7P`
+modulus bound. -/
+theorem external_local_canonical_source_bound :
+    7 * (2147483647 - 1) < 7 * 2147483647 := by
+  norm_num
+
+/-- Even eight copies of the sharper canonical local-limb maximum fit in a
+`u64`; the executable path uses the slightly looser but simpler `56P` bound
+above. -/
+theorem external_local_sharp_eightfold_fits_u64 :
+    8 * (7 * (2147483647 - 1)) < 2 ^ 64 := by
+  norm_num
+
 /-! ## FRI parent-doubling control flow -/
 
 /-- Apply an abstract parent-doubling operation exactly `count` times.  This
@@ -204,6 +287,40 @@ theorem iterate_parent_double_two_eq_direct
     iterateParentDouble double 2 point =
       firstThenConditionalSecondParent double true point := by
   rfl
+
+/-! ## Exact pre-grouped public lookups -/
+
+/-- Look up a row through a precomputed group assignment and group table. -/
+def preGroupedLookup {Row Group Value : Type*}
+    (rowGroup : Row → Group) (groupTable : Group → Value) (row : Row) : Value :=
+  groupTable (rowGroup row)
+
+/-- A pre-grouped lookup is pointwise identical to the original lookup when
+the supplied public group table is explicitly certified to reproduce every
+original row.  No deployed row-group constants are asserted here. -/
+theorem pre_grouped_lookup_eq_original
+    {Row Group Value : Type*}
+    (original : Row → Value) (rowGroup : Row → Group)
+    (groupTable : Group → Value)
+    (hTable : ∀ row, groupTable (rowGroup row) = original row) :
+    ∀ row, preGroupedLookup rowGroup groupTable row = original row := by
+  intro row
+  exact hTable row
+
+/-- Consequently, replacing the original lookup inside any finite weighted
+linear relation preserves that relation exactly.  This captures the accepted
+pre-grouping optimization while leaving the frozen Rust table equality as an
+explicit executable-correspondence obligation. -/
+theorem pre_grouped_linear_lookup_eq_original
+    {Row Group R : Type*} [Fintype Row] [CommRing R]
+    (original : Row → R) (rowGroup : Row → Group)
+    (groupTable : Group → R) (weight : Row → R)
+    (hTable : ∀ row, groupTable (rowGroup row) = original row) :
+    (∑ row, weight row * preGroupedLookup rowGroup groupTable row) =
+      ∑ row, weight row * original row := by
+  apply Finset.sum_congr rfl
+  intro row _
+  rw [pre_grouped_lookup_eq_original original rowGroup groupTable hTable row]
 
 /-! ## M31 inverse addition-chain exponent -/
 
@@ -277,8 +394,14 @@ theorem m31_inverse_addition_chain_exponent_eq :
 #print axioms prepared_mul_correctness_hypothesis_nonvacuous
 #print axioms poseidon_residual_factorization
 #print axioms poseidon_active_partition_hypothesis_nonvacuous
+#print axioms external_local_then_tower_pack_eq_adjoint
+#print axioms external_local_packed_56p_fits_u64
+#print axioms external_local_canonical_source_bound
+#print axioms external_local_sharp_eightfold_fits_u64
 #print axioms iterate_parent_double_one_eq_direct
 #print axioms iterate_parent_double_two_eq_direct
+#print axioms pre_grouped_lookup_eq_original
+#print axioms pre_grouped_linear_lookup_eq_original
 #print axioms m31_inverse_addition_chain_schedule_eq
 #print axioms m31_inverse_addition_chain_exponent_eq
 
