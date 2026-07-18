@@ -29,12 +29,14 @@ permutation result.**
 | Hiding for a row-rescaled circle matrix `D·circleTMatrix` | `CircleTMatrixHiding.lean` | **Proved for the model** (`∏ dᵢ ≠ 0 ∧ det circleTMatrix ≠ 0 ⟹ det ≠ 0`); no concrete-wire claim in this module |
 | Aligned reserve geometry (`896..991`), exact tensor factorisation `B_(896+j)=B_896·B_j`, monomial-to-natural conversion, and the exact rational rescale `diag(B)·V = diag(B/Qᵐ)·circleTMatrix` | `CircleTensorBinding.lean` | **Proved for the algebraic encoder model**, including conditional fibre-count hiding; Rust/table, nonzero-factor availability, and v5-wire correspondence remain explicit obligations |
 | Degree-preserving chained sumcheck mask: uniform zero-boundary sampler, exact round boundaries and Boolean sum, conditional full-round hiding; a false sum accepts for at most one mixing challenge | `SumcheckMasking.lean` | **Proved** per round and for the algebraic self-reduction; adaptive transcript composition and every correlated commitment/PCS observation remain named wire obligations |
-| Exact pre-C residual projection: semantic lanes use `gamma^0..gamma^15`, Hcopy uses `gamma^16`, B uses `gamma^17`; the deployed interface exposes one combined inactive scalar plus eighteen 76-coordinate `E` views | `V5ComponentCPreCProjection.lean`, `V5ComponentCPreCProjectionMixed.lean` | **Proved for the mathematical projection**, with the Rust decoder/evaluator correspondence explicit |
-| Component-C fixed-schedule evaluator: four exact arity-4 folds, coefficient folds, 36 relation rows, schedule-sized deduplicated output, and the physical 58-field relation-tail extraction | `V5ComponentCConcreteFoldLinearity.lean`, `V5ComponentCRelationRowLinearity.lean`, `V5ComponentCConcreteDownstream.lean` | **Proved linear and composed**; emitted tables, byte decoding, and executable Rust equality remain named interfaces |
+| Exact pre-C residual projection: semantic lanes use `gamma^0..gamma^15`, Hcopy uses `gamma^16`, B uses `gamma^17`; the deployed interface exposes one combined inactive scalar plus eighteen 76-coordinate `E` views | `V5ComponentCPreCProjection.lean`, `V5ComponentCPreCProjectionMixed.lean`, `V5ComponentCPreProjectionDeployed.lean` | **Proved for the mathematical projection and numerically pinned deployed layout** (`72+4`, fibre-major layer zero, point-major `4x19` claims, and the structured `58 -> 36` relation projection); exact Rust parser/evaluator equality remains one named premise |
+| Component-C fixed-schedule evaluator: four exact arity-4 folds, coefficient folds, 36 relation rows, schedule-sized deduplicated output, and the physical 58-field relation-tail extraction | `V5ComponentCConcreteFoldLinearity.lean`, `V5ComponentCRelationRowLinearity.lean`, `V5ComponentCConcreteDownstream.lean`, `V5ComponentCDownstreamDeployed.lean` | **Proved linear and composed for arbitrary supplied schedule records**, including the canonical schedule-sized deduplicated layout; the frozen 256-row layout is proved to be only the `(18,18,18)` no-dedup corner under runtime count bounds. Transcript-to-schedule derivation and exact Rust evaluator refinement remain explicit interfaces |
 | Component-C sampler: 1023 free field coordinates map bijectively to `ker ell`; both the preallocated 4092×16 experiment and the literal shared-stream, first-success, variable-consumption parser give the exact joint-uniform law after conditioning once on whole-run success | `V5ComponentCSamplerKernel.lean`, `V5ComponentCRejectionSampler.lean`, `V5ComponentCStoppingTimeSampler.lean` | **Proved for both finite ideal experiments**; the exact abort ratio is proved for the preallocated experiment, while the production CSPRNG and Rust-control-flow equality remain named interfaces |
-| Component-C `u32`/QM31 representation: `word & 0x7fffffff = word mod 2^31`, canonical M31 rejection, and the 16-byte little-endian `(c0.a,c0.b,c1.a,c1.b)` codec | `V5ComponentCQM31Representation.lean` | **Proved for the mathematical codec and cardinality-level field representation**; Rust function equality and a deployed-tower field isomorphism remain explicit interfaces |
+| Component-C encoder: Rust-shaped off-pivot row enumeration, least-inactive pivot, inactive-row functional, pivot correction, kernel landing, and two-sided inverse | `V5ComponentCEncoderCorrespondence.lean` | **Algebraic encoder seam proved unconditionally**; executable Rust transcription, the atomic-v3 mask-table-to-set identification, and QM31 representation remain explicit code/model interfaces |
+| Component-C `u32`/QM31 representation: `word & 0x7fffffff = word mod 2^31`, canonical M31 rejection, the exact `M31 -> CM31 -> QM31` tower, and the 16-byte little-endian `(c0.a,c0.b,c1.a,c1.b)` codec | `V5ComponentCQM31Representation.lean`, `V5ComponentCQM31TowerExact.lean`, `V5ComponentCExactTowerDeployment.lean`, `V5ComponentCQM31RustFormulaSeam.lean` | **Proved for the exact mathematical tower, codec, Rust-shaped Karatsuba/square/inversion formula graph, and stopping-time sampler specialization**; subtraction and optimized square are load-bearing. Executable Rust equalities, including the totalized adapter for panicking nonzero-domain inversion, remain explicit source-correspondence interfaces |
+| Component-C physical relation tail: `58` QM31 fields, `16` bytes each, exact field/byte flattening, pinned four-limb codec, and the non-contiguous `58 -> 36` witness-dependent projection | `V5ComponentCRelationTailCodec.lean` | **Proved for the exact mathematical serializer/decoder**, with Rust serializer equality and semantic artifact-to-schedule equality kept as two separate named premises |
 | Complete direct Component-C joint-view equality using that literal conditioned-`u32` law and pivot encoder | `V5ComponentCDirectHiding.lean`, `V5ComponentCBlockSamplerDirectHiding.lean` | **Proved conditionally on A/H/B hiding and the deployed-shaped residual correspondences**; no C-DEC, rank certificate, or circle-to-GRS/FRI transport premise |
-| Component-C deployment ledger: decoded fixed-schedule runtime laws and the adaptive FS/RO transcript compiler boundary | `V5ComponentCDeploymentLedger.lean` | **Kernel-checked conditional composition**; Rust/code-model edges, the production-entropy hybrid, PCS/serialization correspondences, and the compiler-supplied hash/RO/FS assumptions are explicit and load-bearing, so this does not assert deployed ZK |
+| Component-C deployment ledger: decoded fixed-schedule runtime laws and the adaptive FS/RO transcript compiler boundary | `V5ComponentCDeploymentLedger.lean` | **Kernel-checked conditional composition**; Rust/code-model edges, both production-entropy hybrids (the C stream and joint A/H/B/C source), PCS/serialization correspondences, and the compiler-supplied hash/RO/FS assumptions are explicit and load-bearing, so this does not assert deployed ZK |
 
 ### Soundness
 | Statement | File | Status |
@@ -70,14 +72,18 @@ Substantial progress, but these remain and a reviewer will ask for them:
   variable-consumption control flow over one shared iid-`u32` prefix and proves
   its conditioned output law equals the earlier preallocated experiment. It
   also proves the low-31 bit operation and mathematical little-endian four-limb
-  codec. Deployment still needs the exact Rust parser equality, the
-  computational 256-bit expander-to-iid hybrid, and a concrete isomorphism
-  binding Rust's QM31 tower arithmetic to the field used in Lean; cardinality
-  alone deliberately does not supply that isomorphism. Joint independence from
-  A/H/B coins, serialization, Fiat--Shamir/RO compiler, and salted-Merkle/hash
-  assumptions remain explicit interfaces. The deployment ledger consumes each
-  edge but does not prove it. A frozen-schedule KAT is regression evidence, not
-  universal correspondence.
+  codec. The concrete field isomorphism is no longer a cardinality placeholder:
+  the literal `M31 -> CM31 -> QM31` tower, limb equivalence, codec, and deployed
+  algebraic formulae are kernel-checked. Deployment still needs the exact Rust
+  parser equality, executable base-primitive and optimized-entry-point
+  correspondence, and the computational 256-bit expander-to-iid hybrid. The
+  physical `928`-byte relation-tail codec and `58 -> 36` projection are likewise
+  pinned mathematically, while equality to the Rust serializer and real host
+  artifact remains explicit. Joint independence from A/H/B coins requires its
+  own production-source hybrid; serialization, Fiat--Shamir/RO compiler, and
+  salted-Merkle/hash assumptions also remain explicit interfaces. The
+  deployment ledger consumes each edge but does not prove it. A frozen-schedule
+  KAT is regression evidence, not universal correspondence.
 
 - **Obligation (a): actual encoder mask map = proved circle matrix.** The first
   draft's rows `928..1023` were not one tensor block and have been rejected.

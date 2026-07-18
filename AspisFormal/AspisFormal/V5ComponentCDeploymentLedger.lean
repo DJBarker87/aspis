@@ -133,6 +133,17 @@ def JointSourceIndependent {Outer Free : Type*}
     (joint : PMF (Outer × Free)) (outer : PMF Outer) (free : PMF Free) : Prop :=
   joint = outer.bind fun x => free.map fun y => (x, y)
 
+/-- Computational hybrid replacing the production, domain-separated joint
+source by the ideal product of the outer A/H/B source and Component C.  The
+finite fixed-schedule theorem below assumes the product law exactly and is
+therefore explicitly post-hybrid. -/
+def ProductionJointSourcePseudorandomness {Outer Free : Type*}
+    (Indist : PMF (Outer × Free) → PMF (Outer × Free) → Prop)
+    (productionJoint : PMF (Outer × Free))
+    (idealOuter : PMF Outer) (idealFree : PMF Free) : Prop :=
+  Indist productionJoint
+    (idealOuter.bind fun x => idealFree.map fun y => (x, y))
+
 section FixedScheduleLedger
 
 variable {F K FA MA MH SB PB VA VH VB TB U : Type*}
@@ -173,16 +184,17 @@ noncomputable def idealFixedScheduleLaw
       (mixedOuterVisible LA wA LH wH terminalB RB AB wBS wBV sample)
       (preCWord gamma (semantic sample) (hcopy sample) (componentB sample))
 
-/-- **Strongest exact post-PRG-hybrid Component-C statement before the
+/-- **Strongest exact post-entropy-hybrid Component-C statement before the
 Fiat--Shamir compiler.**  The conclusion concerns two decoded idealized runtime
 laws, not two restatements of the Lean model.  Replacing the finite-seed
-production expander by the iid stream is a computational step consumed only by
-the adaptive compiler interface below; it cannot be promoted to equality here.
+production expander by the iid stream, and the domain-separated A/H/B/C source
+by an independent product source, are computational steps consumed only by the
+adaptive compiler interface below; neither can be promoted to equality here.
 
 Every implementation edge is consumed through `RuntimeDecodeTransport`.
 In particular the physical reorder and schedule-sized evaluator remain
 separate inputs, and source independence is an equality of joint PMFs. -/
-theorem post_prg_hybrid_fixed_schedule_laws_equal
+theorem post_entropy_hybrid_fixed_schedule_laws_equal
     (schedule : CompleteFixedSchedule F K)
     (enc : CWord K →ₗ[K] Layer0Word K)
     (LA : MA →ₗ[FA] VA) (hLA : Function.Surjective LA)
@@ -331,12 +343,15 @@ along with terminal PCS, injective serialization, the production-entropy
 hybrid, FS and compiler correspondences.  Thus this leaf cannot silently infer
 adaptive FS security from one fixed-schedule PMF equality. -/
 def AdaptiveFSROCompilerTransport
-    {MathView PCSView Bytes Digest Prefix Schedule Query Challenge Transcript :
-      Type*}
+    {MathView PCSView Bytes Digest Prefix Schedule Query Challenge Transcript
+      Outer Free : Type*}
     (Indist : PMF Transcript -> PMF Transcript -> Prop)
     (StreamIndist : PMF ComponentCSequentialRawStream →
       PMF ComponentCSequentialRawStream → Prop)
     (productionStreamLaw : PMF ComponentCSequentialRawStream)
+    (SourceIndist : PMF (Outer × Free) → PMF (Outer × Free) → Prop)
+    (productionJointLaw : PMF (Outer × Free))
+    (idealOuterLaw : PMF Outer) (idealFreeLaw : PMF Free)
     (deployedLeft deployedRight : PMF Transcript)
     (rustPCS modelPCS : MathView -> PCSView)
     (rustSerialize modelSerialize : PCSView -> Bytes)
@@ -349,6 +364,8 @@ def AdaptiveFSROCompilerTransport
     Prop :=
   ProductionSequentialU32StreamPseudorandomness StreamIndist
       productionStreamLaw →
+    ProductionJointSourcePseudorandomness SourceIndist productionJointLaw
+      idealOuterLaw idealFreeLaw →
     ∀ (left right : PMF MathView), left = right ->
     rustPCS = modelPCS ->
     rustSerialize = modelSerialize -> Function.Injective modelSerialize ->
@@ -366,12 +383,15 @@ schedule selection, RO programming, Fiat--Shamir and compiler
 correspondences.  Hash/RO cryptographic security lives in that supplied
 method, not in the equality hypotheses. -/
 theorem deployed_transcripts_indist_of_adaptive_compiler
-    {MathView PCSView Bytes Digest Prefix Schedule Query Challenge Transcript :
-      Type*}
+    {MathView PCSView Bytes Digest Prefix Schedule Query Challenge Transcript
+      Outer Free : Type*}
     (Indist : PMF Transcript → PMF Transcript → Prop)
     (StreamIndist : PMF ComponentCSequentialRawStream →
       PMF ComponentCSequentialRawStream → Prop)
     (productionStreamLaw : PMF ComponentCSequentialRawStream)
+    (SourceIndist : PMF (Outer × Free) → PMF (Outer × Free) → Prop)
+    (productionJointLaw : PMF (Outer × Free))
+    (idealOuterLaw : PMF Outer) (idealFreeLaw : PMF Free)
     (fixedLeft fixedRight : PMF MathView)
     (deployedLeft deployedRight : PMF Transcript)
     (rustPCS modelPCS : MathView → PCSView)
@@ -385,6 +405,8 @@ theorem deployed_transcripts_indist_of_adaptive_compiler
     (hfixed : fixedLeft = fixedRight)
     (hprg : ProductionSequentialU32StreamPseudorandomness StreamIndist
       productionStreamLaw)
+    (hsourceHybrid : ProductionJointSourcePseudorandomness SourceIndist
+      productionJointLaw idealOuterLaw idealFreeLaw)
     (hpcs : TerminalPCSCompatibility rustPCS modelPCS)
     (hserialization : SerializationExactAndInjective
       rustSerialize modelSerialize)
@@ -394,12 +416,13 @@ theorem deployed_transcripts_indist_of_adaptive_compiler
     (hfs : rustFS = modelFS)
     (hcompiler : rustCompiler = modelCompiler)
     (htransport : AdaptiveFSROCompilerTransport Indist
-      StreamIndist productionStreamLaw deployedLeft deployedRight rustPCS modelPCS
+      StreamIndist productionStreamLaw SourceIndist productionJointLaw
+      idealOuterLaw idealFreeLaw deployedLeft deployedRight rustPCS modelPCS
       rustSerialize modelSerialize rustHash modelHash
       rustScheduleSelect modelScheduleSelect rustROProgram modelROProgram
       rustFS modelFS rustCompiler modelCompiler) :
     Indist deployedLeft deployedRight := by
-  exact htransport hprg fixedLeft fixedRight hfixed hpcs
+  exact htransport hprg hsourceHybrid fixedLeft fixedRight hfixed hpcs
     hserialization.1 hserialization.2 hhash hschedule hro hfs hcompiler
 
 /-! ## Non-vacuity and negative teeth -/
@@ -421,12 +444,30 @@ theorem runtimeDecodeTransport_is_loadBearing :
   have hmass := congrArg (fun law : PMF Bool => law false) heq
   simp at hmass
 
+/-- Both production-entropy hybrid interfaces have concrete identity models;
+their antecedents are not made true only by inconsistency. -/
+theorem productionSequentialU32Pseudorandomness_nonvacuous :
+    ProductionSequentialU32StreamPseudorandomness
+      (fun left right => left = right)
+      (PMF.uniformOfFintype ComponentCSequentialRawStream) := by
+  rfl
+
+theorem productionJointSourcePseudorandomness_nonvacuous :
+    ProductionJointSourcePseudorandomness
+      (fun left right : PMF (PUnit × PUnit) => left = right)
+      (PMF.pure (PUnit.unit, PUnit.unit))
+      (PMF.pure PUnit.unit) (PMF.pure PUnit.unit) := by
+  rw [ProductionJointSourcePseudorandomness, PMF.pure_bind, PMF.pure_map]
+
 /-- The adaptive compiler interface itself has a concrete identity model. -/
 theorem adaptiveCompilerTransport_nonvacuous :
     AdaptiveFSROCompilerTransport
       (fun left right : PMF PUnit => left = right)
       (fun left right : PMF ComponentCSequentialRawStream => left = right)
       (PMF.uniformOfFintype ComponentCSequentialRawStream)
+      (fun left right : PMF (PUnit × PUnit) => left = right)
+      (PMF.pure (PUnit.unit, PUnit.unit))
+      (PMF.pure PUnit.unit) (PMF.pure PUnit.unit)
       (PMF.pure PUnit.unit) (PMF.pure PUnit.unit)
       (fun _ : PUnit => PUnit.unit) (fun _ : PUnit => PUnit.unit)
       (fun _ : PUnit => PUnit.unit) (fun _ : PUnit => PUnit.unit)
@@ -435,16 +476,18 @@ theorem adaptiveCompilerTransport_nonvacuous :
       (fun _ : PUnit => PUnit.unit) (fun _ : PUnit => PUnit.unit)
       (fun _ : PUnit => PUnit.unit) (fun _ : PUnit => PUnit.unit)
       (fun _ _ _ => PUnit.unit) (fun _ _ _ => PUnit.unit) := by
-  intro _ left right hleft _ _ _ _ _ _ _ _
+  intro _ _ left right hleft _ _ _ _ _ _ _ _
   rfl
 
 /-! ## Axiom audit -/
 
 #print axioms runtimeSuccessfulFreeLaw_eq_literal_u32_law
-#print axioms post_prg_hybrid_fixed_schedule_laws_equal
+#print axioms post_entropy_hybrid_fixed_schedule_laws_equal
 #print axioms deployed_transcripts_indist_of_adaptive_compiler
 #print axioms runtimeDecodeTransport_nonvacuous
 #print axioms runtimeDecodeTransport_is_loadBearing
+#print axioms productionSequentialU32Pseudorandomness_nonvacuous
+#print axioms productionJointSourcePseudorandomness_nonvacuous
 #print axioms adaptiveCompilerTransport_nonvacuous
 
 end AspisV5ComponentCDeploymentLedger
