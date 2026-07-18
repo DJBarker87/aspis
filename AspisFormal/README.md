@@ -31,8 +31,10 @@ permutation result.**
 | Degree-preserving chained sumcheck mask: uniform zero-boundary sampler, exact round boundaries and Boolean sum, conditional full-round hiding; a false sum accepts for at most one mixing challenge | `SumcheckMasking.lean` | **Proved** per round and for the algebraic self-reduction; adaptive transcript composition and every correlated commitment/PCS observation remain named wire obligations |
 | Exact pre-C residual projection: semantic lanes use `gamma^0..gamma^15`, Hcopy uses `gamma^16`, B uses `gamma^17`; the deployed interface exposes one combined inactive scalar plus eighteen 76-coordinate `E` views | `V5ComponentCPreCProjection.lean`, `V5ComponentCPreCProjectionMixed.lean` | **Proved for the mathematical projection**, with the Rust decoder/evaluator correspondence explicit |
 | Component-C fixed-schedule evaluator: four exact arity-4 folds, coefficient folds, 36 relation rows, schedule-sized deduplicated output, and the physical 58-field relation-tail extraction | `V5ComponentCConcreteFoldLinearity.lean`, `V5ComponentCRelationRowLinearity.lean`, `V5ComponentCConcreteDownstream.lean` | **Proved linear and composed**; emitted tables, byte decoding, and executable Rust equality remain named interfaces |
-| Component-C sampler: 1023 free field coordinates map bijectively to `ker ell`; conditioning all 4092 bounded 16-word `u32` calls on success gives the exact joint-uniform law and exact abort ratio | `V5ComponentCSamplerKernel.lean`, `V5ComponentCRejectionSampler.lean` | **Proved for the finite preallocated experiment**; CSPRNG, variable-consumption stopping time, low-31 operation, and QM31 codec/order remain named interfaces |
+| Component-C sampler: 1023 free field coordinates map bijectively to `ker ell`; both the preallocated 4092×16 experiment and the literal shared-stream, first-success, variable-consumption parser give the exact joint-uniform law after conditioning once on whole-run success | `V5ComponentCSamplerKernel.lean`, `V5ComponentCRejectionSampler.lean`, `V5ComponentCStoppingTimeSampler.lean` | **Proved for both finite ideal experiments**; the exact abort ratio is proved for the preallocated experiment, while the production CSPRNG and Rust-control-flow equality remain named interfaces |
+| Component-C `u32`/QM31 representation: `word & 0x7fffffff = word mod 2^31`, canonical M31 rejection, and the 16-byte little-endian `(c0.a,c0.b,c1.a,c1.b)` codec | `V5ComponentCQM31Representation.lean` | **Proved for the mathematical codec and cardinality-level field representation**; Rust function equality and a deployed-tower field isomorphism remain explicit interfaces |
 | Complete direct Component-C joint-view equality using that literal conditioned-`u32` law and pivot encoder | `V5ComponentCDirectHiding.lean`, `V5ComponentCBlockSamplerDirectHiding.lean` | **Proved conditionally on A/H/B hiding and the deployed-shaped residual correspondences**; no C-DEC, rank certificate, or circle-to-GRS/FRI transport premise |
+| Component-C deployment ledger: decoded fixed-schedule runtime laws and the adaptive FS/RO transcript compiler boundary | `V5ComponentCDeploymentLedger.lean` | **Kernel-checked conditional composition**; Rust/code-model edges, the production-entropy hybrid, PCS/serialization correspondences, and the compiler-supplied hash/RO/FS assumptions are explicit and load-bearing, so this does not assert deployed ZK |
 
 ### Soundness
 | Statement | File | Status |
@@ -64,14 +66,18 @@ Substantial progress, but these remain and a reviewer will ask for them:
   still requires universal Rust-to-Lean correspondence for the combined
   inactive scalar, all eighteen 76-coordinate views, encoder tables, the
   schedule-sized fold/relation evaluator, physical byte order, and terminal
-  PCS opening. The Rust sampler additionally uses a computational 256-bit
-  expander and variable word consumption, whereas the kernel theorem uses an
-  information-theoretic preallocated uniform-`u32` experiment conditioned on
-  success. The PRG advantage, stopping-time correspondence, low-31 operation,
-  four-limb QM31 codec, joint independence from A/H/B coins, serialization,
-  Fiat--Shamir/RO compiler, and salted-Merkle/hash assumptions remain explicit
-  interfaces. A frozen-schedule KAT is regression evidence, not universal
-  correspondence.
+  PCS opening. The finite sampler theorem now covers the literal first-success,
+  variable-consumption control flow over one shared iid-`u32` prefix and proves
+  its conditioned output law equals the earlier preallocated experiment. It
+  also proves the low-31 bit operation and mathematical little-endian four-limb
+  codec. Deployment still needs the exact Rust parser equality, the
+  computational 256-bit expander-to-iid hybrid, and a concrete isomorphism
+  binding Rust's QM31 tower arithmetic to the field used in Lean; cardinality
+  alone deliberately does not supply that isomorphism. Joint independence from
+  A/H/B coins, serialization, Fiat--Shamir/RO compiler, and salted-Merkle/hash
+  assumptions remain explicit interfaces. The deployment ledger consumes each
+  edge but does not prove it. A frozen-schedule KAT is regression evidence, not
+  universal correspondence.
 
 - **Obligation (a): actual encoder mask map = proved circle matrix.** The first
   draft's rows `928..1023` were not one tensor block and have been rejected.

@@ -57,3 +57,6 @@ import AspisFormal.V5ComponentCRejectionSampler
 import AspisFormal.V5ComponentCDirectHiding
 import AspisFormal.V5ComponentCConcreteDownstream
 import AspisFormal.V5ComponentCBlockSamplerDirectHiding
+import AspisFormal.V5ComponentCQM31Representation
+import AspisFormal.V5ComponentCStoppingTimeSampler
+import AspisFormal.V5ComponentCDeploymentLedger
