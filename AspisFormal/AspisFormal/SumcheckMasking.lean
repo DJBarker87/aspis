@@ -225,8 +225,9 @@ theorem zeroBoundaryFromTail_tail (h2 : (2 : K) ≠ 0)
     linear_combination -hzero
   · simp [zeroBoundaryFromTail, zeroBoundaryTail]
 
-/-- The Rust sampler's `d` free coefficients are in bijection with the whole
-zero-boundary coefficient subspace. -/
+/-- The `d` field elements requested for one Rust round are algebraically in
+bijection with the whole zero-boundary coefficient subspace.  This does not
+model the word source or rejection sampler. -/
 def zeroBoundaryEquiv (h2 : (2 : K) ≠ 0) :
     (Fin d → K) ≃ ZeroBoundaryCoeff K d where
   toFun := zeroBoundaryFromTail h2
@@ -258,6 +259,52 @@ theorem sampledZeroBoundary_uniform [Fintype K] (h2 : (2 : K) ≠ 0) :
       = PMF.uniformOfFintype (ZeroBoundaryCoeff K d) :=
   map_uniformOfFintype_equiv (zeroBoundaryEquiv h2)
 
+/-! The Rust sampler requests one initial field element followed by `d` tail
+elements for every round.  Under the ideal input law in which those elements
+are independent and uniform, the next definitions package the single-round
+bijection above into the corresponding finite product.  They do not model the
+word source, rejection sampler, Rust representation, commitment, transcript
+order, or opening scheme. -/
+
+/-- A family of freely sampled polynomial tails, one for each round. -/
+abbrev RoundTailFamily (K : Type*) (rounds d : ℕ) :=
+  Fin rounds → Fin d → K
+
+/-- A family of zero-boundary coefficient vectors, one for each round. -/
+abbrev RoundMaskFamily (K : Type*) [Field K] (rounds d : ℕ) :=
+  Fin rounds → ZeroBoundaryCoeff K d
+
+/-- Applying the exact single-round sampler independently in every coordinate
+is a bijection from all tail words to all round-mask families. -/
+def zeroBoundaryFamilyEquiv (h2 : (2 : K) ≠ 0) (rounds : ℕ) :
+    RoundTailFamily K rounds d ≃ RoundMaskFamily K rounds d where
+  toFun tails round := zeroBoundaryFromTail h2 (tails round)
+  invFun masks round := zeroBoundaryTail (masks round)
+  left_inv tails := by
+    funext round
+    exact zeroBoundaryTail_fromTail h2 (tails round)
+  right_inv masks := by
+    funext round
+    exact zeroBoundaryFromTail_tail h2 (masks round)
+
+/-- The algebraic state shape used by the Rust primitive: one initial claim and
+one zero-boundary polynomial for every round. -/
+def sumcheckMaskStateEquiv (h2 : (2 : K) ≠ 0) (rounds : ℕ) :
+    (K × RoundTailFamily K rounds d) ≃
+      (K × RoundMaskFamily K rounds d) :=
+  Equiv.prodCongr (Equiv.refl K) (zeroBoundaryFamilyEquiv h2 rounds)
+
+/-- Ideal uniform independent field draws induce the exact uniform law on the
+complete finite-dimensional algebraic state.  This is not a theorem about the
+Rust word source or rejection sampler.  A binding commitment and verifier wire
+are also outside the model. -/
+theorem sampledSumcheckMaskState_uniform [Fintype K]
+    (h2 : (2 : K) ≠ 0) (rounds : ℕ) :
+    (PMF.uniformOfFintype (K × RoundTailFamily K rounds d)).map
+        (sumcheckMaskStateEquiv h2 rounds)
+      = PMF.uniformOfFintype (K × RoundMaskFamily K rounds d) :=
+  map_uniformOfFintype_equiv (sumcheckMaskStateEquiv h2 rounds)
+
 /-- Constant polynomial with endpoint sum equal to `claim`. -/
 def roundCarrier (claim : K) : RoundCoeff K d := fun i =>
   if i = 0 then claim / 2 else 0
@@ -282,6 +329,154 @@ theorem roundBoundary_eq_endpoint_sum (coeff : RoundCoeff K d) :
     roundBoundary coeff = coeffEval coeff 0 + coeffEval coeff 1 := by
   rw [coeffEval_zero, coeffEval_one]
   rfl
+
+/-! ## Endpoint data do not authenticate a non-Boolean evaluation
+
+For one univariate sumcheck round, the Boolean data are the two endpoint
+values.  Once degree two is available, those values do not determine an
+evaluation at a non-Boolean Fiat--Shamir point: adding `X * (X - 1)` preserves
+both endpoints and changes every evaluation away from `0` and `1`.
+
+This is a precise obstruction to the proposed independent B-table production
+design if that table supplies only Boolean endpoint data for a degree-27 round.
+It is not an impossibility result for authenticated constructions which bind
+the full round polynomial, or which authenticate the challenged evaluation by
+some other commitment and opening argument.
+-/
+
+/-- A coefficient vector for `X^2 - X`, embedded in every round degree at
+least two. -/
+def endpointKernelQuadratic (hd : 2 ≤ d) : RoundCoeff K d :=
+  Pi.single ⟨2, by omega⟩ 1 - Pi.single ⟨1, by omega⟩ 1
+
+/-- Evaluation of a single coefficient coordinate. -/
+theorem coeffEval_single (j : Fin (d + 1)) (a x : K) :
+    coeffEval (Pi.single j a) x = a * x ^ (j : ℕ) := by
+  classical
+  rw [coeffEval, Finset.sum_eq_single j]
+  · simp
+  · intro b _ hb
+    simp [hb]
+  · simp
+
+theorem coeffEval_sub (a b : RoundCoeff K d) (x : K) :
+    coeffEval (a - b) x = coeffEval a x - coeffEval b x := by
+  simp [coeffEval, sub_mul, Finset.sum_sub_distrib]
+
+theorem coeffEval_endpointKernelQuadratic (hd : 2 ≤ d) (x : K) :
+    coeffEval (endpointKernelQuadratic (K := K) hd) x = x ^ 2 - x := by
+  rw [endpointKernelQuadratic, coeffEval_sub, coeffEval_single,
+    coeffEval_single]
+  norm_num
+
+/-- Two degree-at-most-`d` coefficient vectors can have identical Boolean
+endpoint data but different evaluations at every non-Boolean field point.
+The collision is explicit: zero and `X^2 - X`. -/
+theorem booleanEndpoints_do_not_determine_eval (hd : 2 ≤ d) (x : K)
+    (hx0 : x ≠ 0) (hx1 : x ≠ 1) :
+    ∃ p q : RoundCoeff K d,
+      coeffEval p 0 = coeffEval q 0 ∧
+      coeffEval p 1 = coeffEval q 1 ∧
+      coeffEval p x ≠ coeffEval q x := by
+  refine ⟨0, endpointKernelQuadratic (K := K) hd, ?_, ?_, ?_⟩
+  · rw [coeffEval_endpointKernelQuadratic]
+    simp [coeffEval]
+  · rw [coeffEval_endpointKernelQuadratic]
+    simp [coeffEval]
+  · rw [coeffEval_endpointKernelQuadratic]
+    simp only [coeffEval, Pi.zero_apply, zero_mul, Finset.sum_const_zero]
+    apply Ne.symm
+    rw [show x ^ 2 - x = x * (x - 1) by ring]
+    exact mul_ne_zero hx0 (sub_ne_zero.mpr hx1)
+
+/-- The degree-27 instance at challenge `2`.  The sole extra assumption is
+that `2` is nonzero, which holds in M31 and excludes only characteristic two.
+Thus the witness does not depend on an unsafe characteristic-specific
+coefficient calculation. -/
+theorem degree27_booleanEndpoints_do_not_determine_eval_at_two
+    (h2 : (2 : K) ≠ 0) :
+    ∃ p q : RoundCoeff K 27,
+      coeffEval p 0 = coeffEval q 0 ∧
+      coeffEval p 1 = coeffEval q 1 ∧
+      coeffEval p 2 ≠ coeffEval q 2 := by
+  apply booleanEndpoints_do_not_determine_eval (K := K) (d := 27)
+  · omega
+  · exact h2
+  · intro h21
+    have h10 : (1 : K) = 0 := by
+      linear_combination h21
+    exact one_ne_zero h10
+
+/-- An exact-degree-27 endpoint collision.  Unlike the quadratic witness above,
+this pins the obstruction to a polynomial whose deployed leading coefficient is
+nonzero: `X^27 - X^26`. -/
+def endpointKernelDegree27 : RoundCoeff K 27 :=
+  Pi.single ⟨27, by omega⟩ 1 - Pi.single ⟨26, by omega⟩ 1
+
+theorem coeffEval_endpointKernelDegree27 (x : K) :
+    coeffEval (endpointKernelDegree27 (K := K)) x = x ^ 27 - x ^ 26 := by
+  rw [endpointKernelDegree27, coeffEval_sub, coeffEval_single,
+    coeffEval_single]
+  norm_num
+
+theorem endpointKernelDegree27_leadingCoefficient :
+    endpointKernelDegree27 (K := K) ⟨27, by omega⟩ = 1 := by
+  classical
+  simp [endpointKernelDegree27]
+
+/-- Boundary-only authentication fails at the deployed maximum degree itself,
+not merely because the degree-27 message type also contains quadratics. -/
+theorem exactDegree27_booleanEndpoints_do_not_determine_eval_at_two
+    (h2 : (2 : K) ≠ 0) :
+    ∃ p q : RoundCoeff K 27,
+      coeffEval p 0 = coeffEval q 0 ∧
+      coeffEval p 1 = coeffEval q 1 ∧
+      coeffEval p 2 ≠ coeffEval q 2 ∧
+      q ⟨27, by omega⟩ ≠ 0 := by
+  refine ⟨0, endpointKernelDegree27 (K := K), ?_, ?_, ?_, ?_⟩
+  · rw [coeffEval_endpointKernelDegree27]
+    simp [coeffEval]
+  · rw [coeffEval_endpointKernelDegree27]
+    simp [coeffEval]
+  · rw [coeffEval_endpointKernelDegree27]
+    simp only [coeffEval, Pi.zero_apply, zero_mul, Finset.sum_const_zero]
+    apply Ne.symm
+    rw [show (2 : K) ^ 27 - 2 ^ 26 = 2 ^ 26 * (2 - 1) by ring]
+    exact mul_ne_zero (pow_ne_zero 26 h2) (by norm_num)
+  · rw [endpointKernelDegree27_leadingCoefficient]
+    exact one_ne_zero
+
+/-- The preceding degree-27 collision instantiated in the deployed M31 base
+field.  Both primality and the fact that `2` is nonzero are discharged in the
+kernel; no characteristic assumption remains in the theorem statement. -/
+theorem m31_degree27_booleanEndpoints_do_not_determine_eval_at_two :
+    letI : Fact (Nat.Prime 2147483647) := ⟨by norm_num⟩
+    ∃ p q : RoundCoeff (ZMod 2147483647) 27,
+      coeffEval p 0 = coeffEval q 0 ∧
+      coeffEval p 1 = coeffEval q 1 ∧
+      coeffEval p 2 ≠ coeffEval q 2 := by
+  letI : Fact (Nat.Prime 2147483647) := ⟨by norm_num⟩
+  apply degree27_booleanEndpoints_do_not_determine_eval_at_two
+  have h : ((2 : ℕ) : ZMod 2147483647) ≠ 0 := by
+    rw [Ne, ZMod.natCast_eq_zero_iff]
+    decide
+  simpa using h
+
+/-- The exact-degree-27 witness specialised to M31, including its nonzero
+leading coefficient. -/
+theorem m31_exactDegree27_booleanEndpoints_do_not_determine_eval_at_two :
+    letI : Fact (Nat.Prime 2147483647) := ⟨by norm_num⟩
+    ∃ p q : RoundCoeff (ZMod 2147483647) 27,
+      coeffEval p 0 = coeffEval q 0 ∧
+      coeffEval p 1 = coeffEval q 1 ∧
+      coeffEval p 2 ≠ coeffEval q 2 ∧
+      q ⟨27, by omega⟩ ≠ 0 := by
+  letI : Fact (Nat.Prime 2147483647) := ⟨by norm_num⟩
+  apply exactDegree27_booleanEndpoints_do_not_determine_eval_at_two
+  have h : ((2 : ℕ) : ZMod 2147483647) ≠ 0 := by
+    rw [Ne, ZMod.natCast_eq_zero_iff]
+    decide
+  simpa using h
 
 /-- A chained mask round: half the incoming state plus a fresh zero-boundary
 degree-`d` polynomial. -/
@@ -416,6 +611,81 @@ theorem maskedRound_pmf_indep (h2 : (2 : K) ≠ 0) (claim eta : K)
     exact hmap
   exact (hreal real₁).trans (hreal real₂).symm
 
+/-! A finite-dimensional batch statement is possible without modelling
+Fiat--Shamir: after supplying an external boundary label for every coordinate,
+all round messages are jointly independent of the corresponding real
+polynomial vector.  This is not the conditional law of the coherent protocol
+transcript: later protocol claims are evaluations of earlier messages, whereas
+the labels below are unconstrained external inputs. -/
+
+/-- Apply `maskedRound` coordinatewise to a fixed finite collection of rounds. -/
+def maskedRoundFamily {rounds : ℕ} (h2 : (2 : K) ≠ 0)
+    (claims : Fin rounds → K) (eta : K)
+    (real : Fin rounds → RoundCoeff K d)
+    (masks : RoundMaskFamily K rounds d) :
+    Fin rounds → RoundCoeff K d :=
+  fun round => maskedRound h2 (claims round) eta (real round) (masks round)
+
+/-- With all external boundary labels fixed, fresh independent full-dimensional
+round masks hide a finite vector of real degree-`d` round polynomials jointly.
+
+This batch affine statement does not model a coherent or adaptive transcript.
+In particular it makes no statement about a mask commitment preceding `eta`,
+Fiat--Shamir challenge composition, or authentication of the terminal oracle
+evaluation. -/
+theorem maskedRoundFamily_pmf_indep {rounds : ℕ} (h2 : (2 : K) ≠ 0)
+    (claims : Fin rounds → K) (eta : K)
+    (real₁ real₂ : Fin rounds → RoundCoeff K d) :
+    (PMF.uniformOfFintype (RoundMaskFamily K rounds d)).map
+        (maskedRoundFamily h2 claims eta real₁)
+      = (PMF.uniformOfFintype (RoundMaskFamily K rounds d)).map
+          (maskedRoundFamily h2 claims eta real₂) := by
+  classical
+  let output : RoundMaskFamily K rounds d →
+      (Fin rounds → RoundCoeff K d) := fun masks round i =>
+    roundCarrier (claims round) i + (masks round).1 i
+  have hreal : ∀ real : Fin rounds → RoundCoeff K d,
+      (PMF.uniformOfFintype (RoundMaskFamily K rounds d)).map
+          (maskedRoundFamily h2 claims eta real)
+        = (PMF.uniformOfFintype (RoundMaskFamily K rounds d)).map output := by
+    intro real
+    let shift : RoundMaskFamily K rounds d := fun round =>
+      eta • normalisedRound h2 (real round)
+    have hshift := map_uniformOfFintype_equiv (Equiv.addRight shift)
+    have hmap := congrArg
+      (fun distribution : PMF (RoundMaskFamily K rounds d) =>
+        distribution.map output) hshift
+    rw [PMF.map_comp] at hmap
+    have heq : output ∘
+        (Equiv.addRight shift :
+          RoundMaskFamily K rounds d → RoundMaskFamily K rounds d) =
+        maskedRoundFamily h2 claims eta real := by
+      funext masks round i
+      rfl
+    rw [heq] at hmap
+    exact hmap
+  exact (hreal real₁).trans (hreal real₂).symm
+
+/-- Any deterministic observation of the externally labelled round vector preserves
+the joint witness-independent distribution.  The observer is not a model of
+Fiat--Shamir unless a separate adaptive-composition theorem establishes that
+correspondence. -/
+theorem observed_maskedRoundFamily_pmf_indep {rounds : ℕ}
+    {View : Type*} (observe : (Fin rounds → RoundCoeff K d) → View)
+    (h2 : (2 : K) ≠ 0) (claims : Fin rounds → K) (eta : K)
+    (real₁ real₂ : Fin rounds → RoundCoeff K d) :
+    (PMF.uniformOfFintype (RoundMaskFamily K rounds d)).map
+        (fun masks => observe (maskedRoundFamily h2 claims eta real₁ masks))
+      = (PMF.uniformOfFintype (RoundMaskFamily K rounds d)).map
+          (fun masks => observe
+            (maskedRoundFamily h2 claims eta real₂ masks)) := by
+  classical
+  have h := congrArg
+    (fun distribution : PMF (Fin rounds → RoundCoeff K d) =>
+      distribution.map observe)
+    (maskedRoundFamily_pmf_indep h2 claims eta real₁ real₂)
+  simpa only [PMF.map_comp, Function.comp_def] using h
+
 end RoundDistribution
 
 end RoundTranscript
@@ -429,8 +699,16 @@ end AspisSumcheckMasking
 #print axioms AspisSumcheckMasking.observed_maskedOracle_pmf_indep
 #print axioms AspisSumcheckMasking.maskSum_and_observation_pmf_indep
 #print axioms AspisSumcheckMasking.sampledZeroBoundary_uniform
+#print axioms AspisSumcheckMasking.sampledSumcheckMaskState_uniform
+#print axioms AspisSumcheckMasking.booleanEndpoints_do_not_determine_eval
+#print axioms AspisSumcheckMasking.degree27_booleanEndpoints_do_not_determine_eval_at_two
+#print axioms AspisSumcheckMasking.exactDegree27_booleanEndpoints_do_not_determine_eval_at_two
+#print axioms AspisSumcheckMasking.m31_degree27_booleanEndpoints_do_not_determine_eval_at_two
+#print axioms AspisSumcheckMasking.m31_exactDegree27_booleanEndpoints_do_not_determine_eval_at_two
 #print axioms AspisSumcheckMasking.maskRoundCoeff_endpoint_sum
 #print axioms AspisSumcheckMasking.telescopingMaskBooleanSum_eq
 #print axioms AspisSumcheckMasking.maskedRound_eq_mask_plus_real
 #print axioms AspisSumcheckMasking.roundBoundary_maskedRound
 #print axioms AspisSumcheckMasking.maskedRound_pmf_indep
+#print axioms AspisSumcheckMasking.maskedRoundFamily_pmf_indep
+#print axioms AspisSumcheckMasking.observed_maskedRoundFamily_pmf_indep

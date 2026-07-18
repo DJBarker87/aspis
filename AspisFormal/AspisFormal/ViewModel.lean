@@ -3,70 +3,71 @@ import AspisFormal.AspisViewBinding
 import AspisFormal.CircleVandermondeGeneral
 
 /-!
-# Layer 3 (frontier push): a CONCRETE released-view coordinate model for items 4–6
+# Fixed-prefix inventory and abstract square-view lemmas
 
-`AspisViewBinding` reduced the complete-view hiding frontier to a `structure`
-`FaithfulCircleView` with three opaque, unproved obligation-fields:
+`AspisViewBinding` reduced one square affine-view hiding argument to a
+`FaithfulCircleView` interface with three opaque, unproved obligation fields:
 
-* (a) the *deployed prover's* mask map equals `circleMatrixGen` at the schedule;
-* (b) completeness — the modelled view omits no released witness-dependent
-  coordinate;
-* (c) uniformity of the mask coordinates.
+* (a) a candidate square mask map equals `circleMatrixGen` at the schedule;
+* (b) affine correctness of the chosen square `realView` (older prose called
+  this completeness, but the type does not quantify over the whole wire);
+* (c) uniformity and independence of the mask coordinates.
 
-This file pushes each as far as is honestly possible **without faking the
-code-correspondence**.  It does four things.
+This file predates the concrete v5 encoder work.  Its scope is narrower than
+its original title suggested: it checks the fixed v4 prefix and the two
+layer-zero opening payloads, and proves generic facts about a square affine
+masking map.  It does **not** enumerate the three later fold openings, their
+salts or Merkle frontiers.  `SpendWireView.lean` now supplies a transcription
+of all five suffix sections and their field-payload counts.
 
-1. **Concrete released-view coordinate model (item 4).**  Instead of an abstract
-   width `n`, we ENUMERATE the released non-hash field coordinates of
-   `def:spend-complete-view` from the *exact* wire table
-   (`tab:proof-prefix-wire`) and transcript order (`sec:construction`): the
-   fixed 6785-byte proof prefix is tiled by named `WireSegment`s, each tagged
-   field/non-field with its QM31 count, and the 36 opened layer-zero query
-   fibres (18 in `C₁`, 18 in `C₂`) with their four-slot raw semantic / `H₁,G,D`
-   layout.  This turns obligation (b) — "nothing omitted" — into **machine-checked
-   arithmetic**: contiguity, coverage of `[0,6785)`, and the field-byte /
-   QM31 accounting are all closed by `decide`.
+Within that corrected scope, this file does four things.
+
+1. **Fixed-prefix and layer-zero inventory.**  The 6,785-byte proof prefix is
+   tiled by named `WireSegment`s, each tagged field/non-field with its QM31
+   count.  The 36 opened layer-zero query fibres (18 in `C₁`, 18 in `C₂`) are
+   also counted.  Contiguity, coverage of `[0,6785)`, and the fixed-prefix
+   field-byte accounting are closed by kernel `decide`.  These facts are
+   necessary bookkeeping, not a proof that the complete view is covered.
 
 2. **Split + prove sub-obligations (items 5–6).**  `FaithfulSpendView` refines
    `FaithfulCircleView` into finer fields, separating the *provable* structural
    facts from the *code-dependent* interface hypotheses.  Proved in-kernel:
    * `mask_lane_eq_circle_column` — mask lane `j`'s contribution to the released
      view is **exactly** column `j` of `circleMatrixGen` evaluated at the
-     schedule (the provable half of (a): *if* the deployed map is the circle
+     schedule (the provable half of (a): *if* the candidate map is the circle
      matrix, its columns are these basis evaluations);
    * `view_mask_part_witness_indep` / `view_shift_mask_indep` — the affine
      decomposition is consistent (mask part independent of witness; witness
      shift independent of mask);
    * the coordinate bookkeeping `decide`-lemmas of Part 1.
-   Left as **named interface fields** (never `sorry`): (a) the deployed-map =
-   circle-matrix equality, and (b) that the serialization realizes exactly the
-   enumerated coordinate model.
+   Left as **named interface fields** (never `sorry`): (a) a candidate-map
+   equality and (b) serialization faithfulness for whichever square projection
+   an eventual instantiation supplies.
 
-3. **Uniformity from the pinned sampler (obligation c).**  We model the pinned
-   QM31 rejection sampler of `crates/aspis-prover/src/state_only_entropy.rs`
-   (`Profile21SourceExpander::m31`) and prove:
-   * `reject_window_card` / `uniform_reject_equiv_uniform` — rejection sampling a
-     uniform 31-bit word onto the accept window `{w < P}` is **exactly** uniform
-     on `Fin P = M31` (no modular bias);
-   * `released_view_uniform` — *if* the mask law is `uniformOfFintype` on the
-     mask space, then the released affine view's law **is** `uniformOfFintype`
-     on the view space and is therefore witness-independent — a genuine `PMF`
-     (distributional) upgrade of `AspisViewBinding`'s cardinality-only result.
-   This reduces (c) to the single named property "the OS/expander words are
-   uniform", rather than an unstated assumption.
+3. **Idealised uniformity lemmas.**  For the rejection window used by
+   `Profile21SourceExpander::m31`, and for an abstract uniform mask law, we
+   prove:
+   * `rejectEquiv` / `reject_window_card` — the accepted 31-bit window
+     `{w < P}` is in bijection with `Fin P = M31` and has cardinality `P`;
+   * `released_view_uniform` — *if* the abstract square mask law is
+     `uniformOfFintype`, its affine image is `uniformOfFintype` and therefore
+     witness-independent.
+   These lemmas do not prove that the OS, hash expander, retries, or successive
+   coordinates provide independent uniform words.  The distribution theorem
+   starts from an ideal uniform mask law; connecting the Rust sampler to that
+   law remains a separate code-and-entropy obligation.
 
-4. **Closure specification for (a) (doc-comment + runnable Lean skeleton).**  The
-   `## Closure spec` section states PRECISELY the exhaustive symbolic check that
-   closes obligation (a) once the v5 circle-block-form masking exists: build the
-   v5 prover's mask map on formal indeterminates and assert entrywise equality
-   to `circleMatrixGen` at the deployed schedule — encoded here as an actual
-   `ClosesObligationA` proposition, analogous to the existing point/row-form
-   soundness checkers, not vague prose.
+4. **A free-coordinate closure skeleton.**  `ClosesObligationA` records the
+   entrywise equality needed for a `circleMatrixGen`-shaped model.  The actual
+   component-(A) encoder map is instead a row-rescaled `circleTMatrix`; its
+   corrected specification is `CircleTMatrixHiding.ClosesObligationA_T`, with
+   the aligned encoder algebra in `CircleTensorBinding.lean`.
 
-**Honest ceiling (restated).**  Obligation (a) cannot be *proved* until the v5
-circle-block-form masking is implemented; v4 uses a different `H/G/D` mask.  We
-do NOT close (a).  We make (a)/(b) precise per-coordinate/decidable statements,
-prove the provable sub-parts, and specify the exact check that would close (a).
+**Honest ceiling.**  No `FaithfulSpendView` is instantiated for deployed v4 or
+provisional v5 here.  The square type has only `2m` output coordinates, whereas
+the real wire has many more correlated field payloads.  A proof may use such a
+square projection only after proving that it is sufficient for the complete
+joint view; this file does not supply that proof.
 
 Everything proved here is `sorry`-free with axioms `[propext, Classical.choice,
 Quot.sound]`.
@@ -78,22 +79,23 @@ namespace AspisViewModel
 
 variable {K : Type*} [Field K]
 
-/-! ## Part 1 — Concrete released-view coordinate model (`def:spend-complete-view`)
+/-! ## Part 1 — Fixed-prefix and layer-zero payload inventory
 
 ### 1a. The fixed proof prefix, tiled by wire segments
 
-`tab:proof-prefix-wire` gives the byte-exact layout of the fixed 6785-byte
-`Profile` proof prefix.  We reproduce it as a list of `WireSegment`s, each
+The Rust prefix table gives the intended layout of the fixed 6785-byte
+`Profile` proof prefix.  We transcribe it as a list of `WireSegment`s, each
 marked as a released non-hash **field** segment (carrying its QM31 count) or a
 non-field segment (header, public nonce, commitment/round roots, work nonces,
 selector).  Each `K`-element (`QM31`) occupies 16 bytes = 4 `F`(=`M31`) split
 coordinates.  Rounds `1–3` carry a 32-byte layer root, which we list as its own
-non-field sub-segment so the tiling stays byte-exact. -/
+non-field sub-segment so the transcription has exact byte boundaries.  The
+Lean checks below prove internal arithmetic of this list; they do not by
+themselves prove correspondence with the Rust serializer. -/
 
 /-- One contiguous byte segment of the fixed spend proof prefix.  `stop` is
-exclusive.  `isField` marks the released non-hash field coordinates of
-`def:spend-complete-view`; `qm31` is the number of `K`(=QM31) elements it
-carries (`0` for non-field segments). -/
+exclusive.  `isField` marks a canonical field payload; `qm31` is the number of
+`K`(=QM31) elements it carries (`0` for non-field segments). -/
 structure WireSegment where
   /-- inclusive start byte offset. -/
   start : ℕ
@@ -110,7 +112,7 @@ deriving Repr, DecidableEq
 /-- Bytes spanned by a segment. -/
 def WireSegment.bytes (s : WireSegment) : ℕ := s.stop - s.start
 
-/-- **The exact spend proof prefix**, transcribed from `tab:proof-prefix-wire`.
+/-- The spend proof prefix inventory transcribed from the Rust offset table.
 Field segments carry raw QM31 counts (`bytes = 16·qm31`); rounds `1–3` split off
 their 32-byte layer root as a non-field sub-segment. -/
 def spendPrefix : List WireSegment :=
@@ -143,16 +145,14 @@ def prefixBytes : ℕ := 6785
 def adjacentContiguous (l : List WireSegment) : Bool :=
   (l.zip (l.drop 1)).all (fun p => p.1.stop == p.2.start)
 
-/-- **Completeness check (b), part i: the segments tile `[0, prefixBytes)` with
-no gap and no overlap.**  Encodes "the enumeration covers the whole serialized
-prefix": consecutive segments are end-to-start contiguous, the first starts at
-`0`, the last ends at `prefixBytes`.  Closed by `decide`. -/
+/-- **Fixed-prefix coverage:** the segments tile `[0, prefixBytes)` with no gap
+and no overlap.  This says nothing about the variable opening suffix. -/
 theorem spendPrefix_contiguous :
     spendPrefix.head?.map (·.start) = some 0
     ∧ spendPrefix.getLast?.map (·.stop) = some prefixBytes
     ∧ adjacentContiguous spendPrefix = true := by decide
 
-/-- **Completeness check (b), part ii: every field segment carries exactly
+/-- **Fixed-prefix field framing:** every field segment carries exactly
 `16·qm31` bytes** — i.e. its byte width is an exact whole number of QM31 field
 elements, none split or dropped.  Closed by `decide`. -/
 theorem spendPrefix_field_bytes_exact :
@@ -166,10 +166,10 @@ def prefixFieldBytes : ℕ := (spendPrefix.filter (·.isField)).foldr (·.bytes 
 def prefixNonFieldBytes : ℕ :=
   (spendPrefix.filter (fun s => !s.isField)).foldr (·.bytes + ·) 0
 
-/-- **The enumerated counts (b), part iii.**  The fixed prefix has exactly
+/-- **The fixed-prefix counts.**  The prefix has exactly
 `408` released non-hash field elements = `6528` field bytes, `257` non-field
-bytes, and `6528 + 257 = 6785 = prefixBytes`.  All by `decide`, so the concrete
-enumeration is closed arithmetic, not prose. -/
+bytes, and `6528 + 257 = 6785 = prefixBytes`.  `decide` closes the arithmetic
+of the transcription, not its correspondence with executable code. -/
 theorem spendPrefix_counts :
     prefixFieldQm31 = 408
     ∧ prefixFieldBytes = 6528
@@ -182,13 +182,13 @@ theorem spendPrefix_field_coords : 4 * prefixFieldQm31 = 1632 := by decide
 
 /-! ### 1b. The opened layer-zero query fibres (the variable suffix)
 
-`def:spend-complete-view` also releases, for the selected branch, the opened
-raw fibre values: `q = 18` distinct query fibres, decoded in both commitments.
+The selected branch releases `q = 18` distinct layer-zero query fibres, decoded
+in both commitments.
 `C₁` stores the 26 subfield semantic/mask lanes (four circle symbols per
 416-byte leaf); `C₂` stores the three extension lanes `H,G,D` (192-byte leaf).
-This is the task's "36 queried layer-zero fibres × 4 slots of raw
-semantic/H₁/G/D".  We record the per-leaf structure and check the byte
-accounting. -/
+We record the per-leaf structure and check the byte accounting.  This subsection
+does not count the three later fold layers, salts, framing or authentication
+frontiers; `SpendWireView.lean` does. -/
 
 /-- Queries per branch (`q`, without replacement). -/
 def queriesPerBranch : ℕ := 18
@@ -224,7 +224,7 @@ theorem openedRawFieldCoords_eq : openedRawFieldCoords = 2736 := by decide
 
 ### 2a. In-kernel: mask lanes are the columns of `circleMatrixGen`
 
-The provable half of obligation (a): *given* that the deployed map is
+The provable half of obligation (a): *given* that the candidate map is
 `circleMatrixGen` at the schedule, each mask lane's contribution to the released
 view is exactly the corresponding **column** of the evaluated circle matrix —
 i.e. the circle basis function `x^j` (or `x^{j-m}·y`) sampled across the released
@@ -246,8 +246,8 @@ theorem mask_lane_eq_circle_column {m : ℕ} (f : Fin (2 * (2 * m)) → K)
 /-- **Explicit entry of the circle column (in-kernel).**  The entry hit by lane
 `j` at released coordinate `i` is the monomial basis value: `x_i^j` for `j < m`,
 else `x_i^{j-m}·y_i`, evaluated at the schedule.  This is the per-coordinate
-symbolic content of obligation (a) that the v5 check must reproduce (see the
-closure spec). -/
+symbolic content of the legacy free-coordinate model below.  The aligned
+component-(A) encoder uses a different basis and row rescaling. -/
 theorem circle_column_entry {m : ℕ} (f : Fin (2 * (2 * m)) → K)
     (i j : Fin (2 * m)) :
     ((circleMatrixGen K m).map (eval f)) i j
@@ -281,44 +281,41 @@ theorem view_shift_mask_indep {W : Type*} (V : ReleasedView K W)
 /-! ### 2c. The refined faithfulness interface
 
 `FaithfulSpendView` splits `FaithfulCircleView`'s single opaque
-`view_is_circle_affine` field into the two genuinely distinct obligations, plus
-a *provable* completeness-bookkeeping field that we discharge by `decide`.  The
-still-code-dependent parts are named, never `sorry`. -/
+`view_is_circle_affine` field into two distinct hypotheses, plus a fixed-prefix
+bookkeeping field discharged by `decide`.  It remains an abstract square-view
+interface; no deployed serializer instantiates it in this file. -/
 
 /-- **Refined faithfulness interface.**  For mask budget `2m`, witness type `W`:
 
 * `sched`, `witShift`, `realView`, `good` — as in `FaithfulCircleView`;
-* `deployedMap` — the deployed prover's linear mask map (as it actually appears
-  in the transcript), an arbitrary matrix a priori;
+* `deployedMap` — a candidate square linear mask map, arbitrary a priori;
 * `map_is_circle` — **obligation (a), UNPROVED interface hypothesis.**  the
-  deployed map equals `circleMatrixGen` at the emitted schedule;
+  the candidate map equals `circleMatrixGen` at the emitted schedule;
 * `serialization_complete` — **obligation (b), UNPROVED interface hypothesis.**
-  `realView` is the affine map through `deployedMap` — equality of the *full*
-  vector asserts no released witness-dependent coordinate is omitted (the
-  enumerated model of Part 1 is what "full" means concretely);
-* `coord_bookkeeping` — the concrete released field-coordinate count of the
-  fixed prefix; *provable*, supplied by `spendPrefix_field_coords`.
+  the chosen square projection is the affine map through `deployedMap`;
+* `coord_bookkeeping` — the field-coordinate count of the transcribed fixed
+  prefix; supplied by `spendPrefix_field_coords`.
 
-`map_is_circle` and `serialization_complete` are the only code-dependent fields;
-they compose to `FaithfulCircleView.view_is_circle_affine`. -/
+`map_is_circle` and `serialization_complete` compose to
+`FaithfulCircleView.view_is_circle_affine`.  A separate completeness theorem
+would still be needed to transfer this projection result to the entire wire. -/
 structure FaithfulSpendView (K : Type*) [Field K] (W : Type*) (m : ℕ) where
   /-- emitted Fiat–Shamir circle schedule, evaluated into `K`. -/
   sched : Fin (2 * (2 * m)) → K
   /-- witness-dependent shift `b(w)`. -/
   witShift : W → (Fin (2 * m) → K)
-  /-- the ACTUAL complete released non-hash field view (opaque; Rust transcript). -/
+  /-- An abstract square projection of a released field view. -/
   realView : W → (Fin (2 * m) → K) → (Fin (2 * m) → K)
-  /-- the deployed prover's linear mask map (arbitrary a priori). -/
+  /-- A candidate square linear mask map, arbitrary a priori. -/
   deployedMap : Matrix (Fin (2 * m)) (Fin (2 * m)) K
-  /-- **Obligation (a), UNPROVED.** deployed map = circle matrix at the schedule. -/
+  /-- **Obligation (a), UNPROVED.** candidate map = circle matrix at the schedule. -/
   map_is_circle : deployedMap = ((circleMatrixGen K m).map (eval sched))
-  /-- **Obligation (b), UNPROVED.** `realView` is the affine map through the
-  deployed map (full vector ⇒ nothing omitted). -/
+  /-- **Obligation (b), UNPROVED.** `realView` is affine through the candidate map. -/
   serialization_complete : ∀ (w : W) (R : Fin (2 * m) → K),
       realView w R = witShift w + Matrix.mulVecLin deployedMap R
   /-- **Obligation (c-liveness), UNPROVED for a fixed deployment.** schedule good. -/
   good : ((circleMatrixGen K m).map (eval sched)).det ≠ 0
-  /-- concrete released field-coordinate count of the fixed prefix (PROVABLE). -/
+  /-- field-coordinate count of the transcribed fixed prefix. -/
   coord_bookkeeping : 4 * prefixFieldQm31 = 1632
 
 /-- **The refined interface collapses to the original `FaithfulCircleView`.**
@@ -336,26 +333,27 @@ def FaithfulSpendView.toCircleView {W : Type*} {m : ℕ}
     rw [F.serialization_complete w R, F.map_is_circle]
   good := F.good
 
-/-- **The deployed spend view hides the witness, GIVEN the refined interface.**
-Cardinality-level perfect hiding, routed through `faithful_view_hides_witness`
-of `AspisViewBinding`.  No obligation faked; the composition of the two split
-code-dependent fields is what supplies the circle-affine equality. -/
+/-- **The abstract square view has witness-independent fibre cardinalities,
+GIVEN the refined interface.**  This is routed through
+`faithful_view_hides_witness` of `AspisViewBinding`.  It is not a theorem about
+the complete spend wire unless a separate sufficiency theorem connects this
+projection to that joint view. -/
 theorem spendView_hides_witness {W : Type*} {m : ℕ}
     (F : FaithfulSpendView K W m) (w₁ w₂ : W) (y : Fin (2 * m) → K) :
     Nat.card {R : Fin (2 * m) → K // F.realView w₁ R = y}
       = Nat.card {R : Fin (2 * m) → K // F.realView w₂ R = y} :=
   faithful_view_hides_witness F.toCircleView w₁ w₂ y
 
-/-! ## Part 3 — Uniformity from the pinned QM31 rejection sampler (obligation c)
+/-! ## Part 3 — Idealised uniformity lemmas
 
-### 3a. Rejection sampling is exactly uniform (no modular bias)
+### 3a. Cardinality of the rejection window
 
-`Profile21SourceExpander::m31` draws a 32-bit hash word, masks to 31 bits
-(`& 0x7fff_ffff`, i.e. a uniform draw on `Fin (2^31)`), and accepts iff the
-value is `< P = 2^31 − 1`, retrying otherwise.  We prove the accept window has
-exactly `P` elements and is in canonical bijection with `Fin P = M31`, so the
-accepted value is *exactly* uniform on `M31` — the rejection loop removes the
-one biased residue rather than folding it. -/
+`Profile21SourceExpander::m31` masks a 32-bit hash word to 31 bits and accepts
+iff the value is `< P = 2^31 − 1`, retrying otherwise.  We prove only that the
+accept window has exactly `P` elements and is canonically bijective with
+`Fin P = M31`.  Exact sampler uniformity additionally requires uniform source
+words and the appropriate independence across retries and coordinates; those
+properties are not formalised here. -/
 
 /-- Canonical bijection accept-window ≃ `Fin P` (models the accepted `M31`). -/
 def rejectEquiv (n P : ℕ) (h : P ≤ n) : {w : Fin n // (w : ℕ) < P} ≃ Fin P where
@@ -365,21 +363,21 @@ def rejectEquiv (n P : ℕ) (h : P ≤ n) : {w : Fin n // (w : ℕ) < P} ≃ Fin
   right_inv k := by cases k; rfl
 
 /-- **Accept-window cardinality.**  For `P ≤ n`, the rejection accept window
-`{w : Fin n // w < P}` has exactly `P` elements: the sampler never biases the
-`P` accepted residues. -/
+`{w : Fin n // w < P}` has exactly `P` elements.  This is a cardinality fact;
+it does not assert a probability law for the source words. -/
 theorem reject_window_card (n P : ℕ) (h : P ≤ n) :
     Fintype.card {w : Fin n // (w : ℕ) < P} = P :=
   Fintype.card_congr (rejectEquiv n P h) |>.trans (Fintype.card_fin P)
 
-/-! ### 3b. Uniform mask ⇒ uniform released view (PMF-level hiding)
+/-! ### 3b. Ideal uniform mask ⇒ uniform abstract square view
 
 The affine released view at a `good` schedule is `Y = A·R + b(w)` with `A`
 invertible (`det ≠ 0`).  An invertible linear map followed by a translation is a
 bijection of the mask space onto the view space; the pushforward of the uniform
-distribution through any bijection is uniform.  Hence *if* the mask law is
-uniform, the released-view law is uniform on the whole view space — identically
-for every witness.  This is the distributional (`PMF`) upgrade of
-`AspisViewBinding`'s cardinality-only hiding. -/
+distribution through any bijection is uniform.  Hence *if* the input law is
+the ideal uniform law, the abstract square view is uniform for every witness.
+This does not establish that the implemented sampler has that law, or that the
+square projection determines the complete spend view. -/
 
 /-- Uniform distribution is invariant under any bijection of a finite type. -/
 theorem map_uniformOfFintype_of_bijective {T : Type*} [Fintype T] [Nonempty T]
@@ -409,9 +407,9 @@ theorem mulVec_bijective_of_det_ne_zero {n : ℕ} (M : Matrix (Fin n) (Fin n) K)
     exact ⟨M⁻¹.mulVec y, by
       rw [Matrix.mulVec_mulVec, Matrix.mul_nonsing_inv M hu, Matrix.one_mulVec]⟩
 
-/-- **Released view is uniform (PMF-level, in-kernel).**  At a `good` schedule,
-if the mask law is `uniformOfFintype` on the mask space, the released affine
-view's law is `uniformOfFintype` on the view space, for every witness. -/
+/-- **The abstract square view is uniform under an ideal uniform input law.**
+At a `good` schedule, the affine square view's law is `uniformOfFintype` for
+every witness. -/
 theorem released_view_uniform {W : Type*} {m : ℕ} [Fintype K]
     (F : FaithfulCircleView K W m) (w : W) :
     (PMF.uniformOfFintype (Fin (2 * m) → K)).map (F.realView w)
@@ -427,112 +425,82 @@ theorem released_view_uniform {W : Type*} {m : ℕ} [Fintype K]
     exact h1.comp (mulVec_bijective_of_det_ne_zero _ F.good)
   exact map_uniformOfFintype_of_bijective _ hbij
 
-/-- **PMF-level perfect hiding (in-kernel).**  Under a uniform mask law at a
-`good` schedule, the released-view distributions for any two witnesses are
-*equal* — not merely equal-cardinality.  This is the strongest hiding statement
-a simulator needs; it closes the "distributional upgrade" the earlier layer left
-open, conditional only on the mask law being uniform (obligation c). -/
+/-- **Witness independence for the idealised square projection.**  Under an
+ideal uniform mask law at a `good` schedule, the two projected distributions
+are equal.  Sampler correspondence and sufficiency for the complete joint wire
+remain outside this theorem. -/
 theorem released_view_law_witness_indep {W : Type*} {m : ℕ} [Fintype K]
     (F : FaithfulCircleView K W m) (w₁ w₂ : W) :
     (PMF.uniformOfFintype (Fin (2 * m) → K)).map (F.realView w₁)
       = (PMF.uniformOfFintype (Fin (2 * m) → K)).map (F.realView w₂) := by
   rw [released_view_uniform F w₁, released_view_uniform F w₂]
 
-/-! ## Closure spec — the exhaustive symbolic check that closes obligation (a)
+/-! ## Legacy free-coordinate closure skeleton
 
-**Ceiling.**  Obligation (a) — the *deployed* prover's mask map equals
-`circleMatrixGen` at the schedule — cannot be proved while the deployment uses
-the v4 `H/G/D` mask, which is not the circle block form.  Once the v5
-circle-block-form masking exists, (a) is closed by the following *runnable*
-symbolic check, analogous to the existing point-form/row-form soundness
-checkers (`circleMatrixGen_det_ne_zero`'s eval-at-witness pattern).
+The declarations below predate the aligned component-(A) encoder.  They express
+a conditional fact for a square symbolic map whose entries are literally
+`circleMatrixGen`.  The implemented component-(A) algebra instead uses a
+row-rescaled `circleTMatrix`; its relevant specification is
+`CircleTMatrixHiding.ClosesObligationA_T`, with the encoder-side identities in
+`CircleTensorBinding`.
 
-The check has three ingredients, all mechanical:
+Nothing in this section constructs a map from Rust, proves an entry table, or
+connects a square projection to the five-section spend wire.  The legacy
+`V5MaskMap` name is retained for compatibility.  `ClosesObligationA.deployed_map_eq`
+only says that a supplied polynomial identity remains true after evaluation. -/
 
-1. **A formal model of the v5 mask map.**  The v5 prover assembles, per released
-   coordinate `i` and mask lane `j`, a symbolic entry
-   `v5Entry i j : MvPolynomial (Fin (2·(2m))) K` from the frozen layout — the
-   analogue of `circleMatrixGen` but produced by the *deployment's* code path.
-   In Lean this is a `def v5MaskMap : Matrix (Fin (2m)) (Fin (2m))
-   (MvPolynomial (Fin (2·(2m))) K)` extracted from the v5 encoder.
-
-2. **The entrywise equality proposition** (`ClosesObligationA` below): assert
-   `v5MaskMap i j = circleMatrixGen K m i j` for all `i, j`.  Because both sides
-   are polynomials in the `2·(2m)` schedule indeterminates, this is a *finite*
-   symbolic identity — decidable once the entries are concrete, closed by
-   `decide`/`native_decide` on the coefficient tables (exactly how the deployed
-   `Good_spend` gate reconstructs each matrix "on formal indeterminates" per
-   `hiding.tex` §"machine-checked statements over F").
-
-3. **Discharge at the deployed schedule.**  Specializing the identity by `eval
-   sched` yields `deployedMap = (circleMatrixGen K m).map (eval sched)` — exactly
-   the `FaithfulSpendView.map_is_circle` field — at which point
-   `spendView_hides_witness` (and, with a uniform mask law,
-   `released_view_law_witness_indep`) become unconditional for the spend view.
-
-Below is the actual Lean skeleton: the interface a v5 map must instantiate and
-the proposition whose `decide`-proof closes (a).  It is stated, not proved,
-because `v5MaskMap` does not yet exist. -/
-
-/-- The interface a v5 circle-block-form mask map must present: a symbolic matrix
-over the schedule indeterminates, one entry per (released coordinate, mask lane). -/
+/-- A legacy square symbolic-map interface over schedule indeterminates. -/
 structure V5MaskMap (K : Type*) [Field K] (m : ℕ) where
-  /-- symbolic entry produced by the v5 encoder's frozen layout. -/
+  /-- One symbolic entry per abstract output coordinate and mask coordinate. -/
   entry : Matrix (Fin (2 * m)) (Fin (2 * m)) (MvPolynomial (Fin (2 * (2 * m))) K)
 
-/-- **The exhaustive symbolic check that closes obligation (a).**  Entrywise
-equality of the v5 map to `circleMatrixGen` as polynomials in the schedule
-indeterminates.  For a concrete `v5` this is a finite identity closable by
-`decide`/`native_decide`; it then supplies `map_is_circle` after `eval sched`. -/
+/-- Entrywise equality of an abstract square symbolic map to
+`circleMatrixGen`.  This proposition contains no executable-code
+correspondence. -/
 def ClosesObligationA {m : ℕ} (v5 : V5MaskMap K m) : Prop :=
   ∀ i j, v5.entry i j = circleMatrixGen K m i j
 
-/-- **How the closure discharges the deployed-map field.**  *If* a v5 map passes
-the symbolic check, its evaluation at any schedule equals the evaluated
-`circleMatrixGen` — i.e. it supplies `FaithfulSpendView.map_is_circle`.  Proved
-in-kernel: this is the (short) bridge from the symbolic identity to the deployed
-equality, so only the symbolic `ClosesObligationA` remains for v5. -/
+/-- Evaluation preserves a supplied entrywise polynomial identity.  Calling
+the left-hand side a deployed map requires an additional code-correspondence
+theorem. -/
 theorem ClosesObligationA.deployed_map_eq {m : ℕ} {v5 : V5MaskMap K m}
     (h : ClosesObligationA v5) (sched : Fin (2 * (2 * m)) → K) :
     v5.entry.map (eval sched) = ((circleMatrixGen K m).map (eval sched)) := by
   ext i j
   rw [Matrix.map_apply, Matrix.map_apply, h i j]
 
-/-! ## Summary of what this file adds over `AspisViewBinding`
+/-! ## Scope summary
 
 **Proved in-kernel (sorry-free, axioms `[propext, Classical.choice, Quot.sound]`):**
 
-* *Item 4 — concrete coordinate model.*  `spendPrefix_contiguous`,
+* `spendPrefix_contiguous`,
   `spendPrefix_field_bytes_exact`, `spendPrefix_counts`,
   `spendPrefix_field_coords`, `openedFibres_eq`, `c1_leaf_bytes`, `c2_leaf_bytes`,
-  `openedRawFieldCoords_eq` — the released view is an *enumerated, byte-exact,
-  `decide`-checked* tiling of the 6785-byte prefix (408 QM31 = 1632 F field
-  coords) plus the 36 four-slot opened fibres.  Obligation (b) is now concrete
-  arithmetic, not an opaque `n`.
-* *Items 5–6 — structural sub-obligations.*  `mask_lane_eq_circle_column`,
-  `circle_column_entry` (the provable half of (a): mask lanes = circle basis
-  columns), `view_mask_part_witness_indep`, `view_shift_mask_indep` (affine
-  decomposition consistent), `spendView_hides_witness` (refined interface ⇒
-  hiding).
-* *Obligation c — uniformity.*  `reject_window_card`, `rejectEquiv` (rejection
-  sampler exactly uniform on `M31`), `map_uniformOfFintype_of_bijective`,
+  `openedRawFieldCoords_eq` check the internal arithmetic of a transcribed
+  6,785-byte prefix and the two layer-zero payload widths.  They do not prove
+  Rust correspondence or enumerate the later authenticated openings.
+* `mask_lane_eq_circle_column`, `circle_column_entry`,
+  `view_mask_part_witness_indep`, and `view_shift_mask_indep` are generic
+  algebraic identities.
+* `rejectEquiv` and `reject_window_card` establish only the accepted-window
+  bijection and cardinality.  `map_uniformOfFintype_of_bijective`,
   `mulVec_bijective_of_det_ne_zero`, `released_view_uniform`,
-  `released_view_law_witness_indep` (PMF-level perfect hiding under a uniform
-  mask law — a genuine distributional upgrade).
+  `released_view_law_witness_indep`, and `spendView_hides_witness` concern an
+  idealised square affine view under their explicit hypotheses.
 
-**Tighter interface (named, never `sorry`):**
+**Open obligations:**
 
-* `FaithfulSpendView.map_is_circle` — obligation (a), deployed map =
-  `circleMatrixGen`; blocked by v4≠v5, closed by the `ClosesObligationA` symbolic
-  check once v5 exists.
-* `FaithfulSpendView.serialization_complete` — obligation (b), the serialization
-  realizes exactly the enumerated model.  The *arithmetic* of the enumeration is
-  now proved; what remains is the code-level equality "the bytes are these".
-
-**Still needs v5:** obligation (a) proper.  We supply the exact `ClosesObligationA`
-check and the in-kernel bridge `ClosesObligationA.deployed_map_eq` from it to the
-interface field, so the remaining work is a single `decide` on the v5 encoder's
-coefficient tables. -/
+* the legacy fields `FaithfulSpendView.map_is_circle` and
+  `FaithfulSpendView.serialization_complete` have no deployed instantiation;
+  despite its name, the latter only states affine correctness of a square
+  projection;
+* no theorem here makes that projection sufficient for the complete joint
+  released view;
+* no theorem derives ideal independent uniform masks from the Rust entropy
+  path;
+* no theorem here binds the aligned `circleTMatrix` encoder, the dynamic wire
+  inventory, the sumcheck mask, and the remaining v5 masking components into
+  one verifier theorem. -/
 
 end AspisViewModel
 

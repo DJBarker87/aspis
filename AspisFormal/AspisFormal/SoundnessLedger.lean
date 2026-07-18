@@ -1,4 +1,6 @@
 import Mathlib
+import AspisFormal.CircleFibreRoots
+import AspisFormal.CircleGroupOrder
 
 /-!
 # Kernel-checked soundness ledger arithmetic
@@ -27,11 +29,14 @@ whole-ledger floor.
   `probability ≤ 2^(-k)` for the integer `k = ⌊bits⌋`, which is what the ledger
   is defended on.  These are strictly weaker only in that they drop a fractional
   bit of margin.
-* **Fibre-root distinctness (Check 4) is now kernel-checked elsewhere:** see
-  `CircleFibreRoots.lean`, which proves the `π(x)=2x²−1` ramification and that
-  the deployed exponents `2¹²+2¹⁴j` are pairwise non-±-congruent and nonzero
-  mod `2³¹` — structurally, no brute force.  (This supersedes an earlier note
-  here that called Check 4 intractable.)
+* **Fibre-root distinctness (Check 4) is kernel-checked and bridged below:**
+  `CircleFibreRoots.lean` proves the `π(x)=2x²−1` ramification and that the
+  deployed exponents `2¹²+2¹⁴j` are pairwise non-±-congruent and nonzero mod
+  `2³¹`; `CircleGroupOrder.lean` proves the x-collision criterion and
+  `orderOf g = 2³¹` on the concrete circle group — structurally, no brute
+  force.  Section 4 composes the two into `circle_fibre_root_conditions`,
+  stated on the deployed group itself, with the former `SameXCoord` interface
+  hypothesis discharged by the theorem `sameXCoord_exp`.
 * **Not covered here (remains Python-only):** the exact
   `Real.logb`-based BCS work-normalized endpoints (101.75 / 106.79 / final
   100.16 bits, Check 5b), which mix `Real.logb` with additive `2^(-256)` terms.
@@ -96,15 +101,53 @@ theorem sqrtRho_le_alpha : sqrtRho ≤ alpha := by
 theorem rho_lt_alpha : (1 / 512 : ℝ) < alpha :=
   lt_of_lt_of_le rho_lt_sqrtRho sqrtRho_le_alpha
 
-/-! ## 4. Circle fibre-root conditions — NOT formalized
+/-! ## 4. Circle fibre-root conditions (Check 4) — kernel-checked bridge
 
 The script (Check 4) walks all `2¹⁷ = 131072` arity-four fibre roots
-`t = 2x² − 1` on the order-`2¹⁹` M31 circle coset and checks they are pairwise
-distinct and none equals `1`.  A faithful Lean version needs the M31 circle
-group and an injectivity argument for the exponent walk; this is not tractable
-as a clean structural proof at reasonable cost, and we deliberately do **not**
-brute-force 131072 elements with `native_decide`.  This condition therefore
-remains Python-verified only. -/
+`t = 2x² − 1` on the deployed M31 circle and checks two finite conditions: the
+roots are pairwise distinct and none equals `1`.  Both are now kernel-checked
+structurally (no `native_decide`, no 131072-way enumeration), split across two
+imported files and composed here:
+
+* `CircleGroupOrder.lean` builds the M31 circle group concretely, proves the
+  x-collision criterion `x(P) = x(Q) ⟺ Q = P ∨ Q = P⁻¹`, pins the deployed
+  generator's order (`orderOf_g : orderOf g = 2³¹`, kernel `decide` on a
+  31-fold repeated squaring), and combines the two into `sameXCoord_exp`:
+  `x(g^a) = x(g^b) ⟺ a ≡ ±b (mod 2³¹)`.
+* `CircleFibreRoots.lean` proves by 2-adic valuation (`omega`) that the
+  deployed doubled exponents `dⱼ = 2¹² + 2¹⁴·j`, `j < 2¹⁷`, are pairwise
+  non-`±`-congruent and nonzero mod `2³¹` (`fiber_roots_distinct`,
+  `fiber_root_ne_one`), stated over its `SameXCoord` collision interface.
+
+The bridge theorem composes them: on the deployed circle group itself, the
+fibre-root values `tⱼ = x(g^{dⱼ})` are pairwise distinct field elements and
+none equals `1`.  `sameXCoord_exp` discharges the `SameXCoord` interface
+hypothesis, so no geometric assumption remains in the statement.  Named
+residues, for scope honesty: that `tⱼ` is the verifier's root of the `j`-th
+fibre representative — `π(x(g^{eⱼ})) = x(g^{2eⱼ})`, `eⱼ = 2¹¹ + 2¹³·j` — is
+the circle doubling formula recorded with the deployed walk constants in
+`CircleFibreRoots.lean`'s header, and the exact circle cardinality `|C| = 2³¹`
+remains the named interface `CircleCardInterface` in `CircleGroupOrder.lean`
+(needed by no theorem here). -/
+
+open AspisCircleFibreRoots AspisCircleGroupOrder in
+/-- **Check 4, bridged.**  On the deployed M31 circle group with generator
+`g = (2, 1268011823)`: the `2¹⁷` fibre-root values `x(g^{2¹² + 2¹⁴·j})` are
+pairwise distinct, and none equals `1` (the ramified root value, the
+x-coordinate of the identity).  Proved by composing `fiber_roots_distinct` /
+`fiber_root_ne_one` (exponent arithmetic mod `2³¹`) with the proved x-collision
+criterion `sameXCoord_exp` — no re-derivation, no enumeration. -/
+theorem circle_fibre_root_conditions :
+    (∀ i < 2 ^ 17, ∀ j < 2 ^ 17,
+        X (g ^ fiberRootExp i) = X (g ^ fiberRootExp j) → i = j) ∧
+    ∀ j < 2 ^ 17, X (g ^ fiberRootExp j) ≠ 1 := by
+  constructor
+  · intro i hi j hj hx
+    exact fiber_roots_distinct i j hi hj ((sameXCoord_exp _ _).mp hx)
+  · intro j hj hx
+    have h0 : X (g ^ (0 : ℤ)) = 1 := by rw [zpow_zero]; exact one_re
+    exact fiber_root_ne_one j hj
+      ((sameXCoord_exp (fiberRootExp j) 0).mp (hx.trans h0.symm))
 
 /-! ## 5a. Ledger event degrees (integer identities) -/
 
@@ -316,6 +359,7 @@ end AspisSoundnessLedger
 -- Axiom audit: every theorem must rest only on [propext, Classical.choice, Quot.sound].
 #print axioms AspisSoundnessLedger.johnson_cap
 #print axioms AspisSoundnessLedger.rho_lt_alpha
+#print axioms AspisSoundnessLedger.circle_fibre_root_conditions
 #print axioms AspisSoundnessLedger.deg_tuple
 #print axioms AspisSoundnessLedger.generator_indices
 #print axioms AspisSoundnessLedger.sz_relation_mixers
