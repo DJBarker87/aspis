@@ -37,3 +37,6 @@ import AspisFormal.V5SumcheckTranscriptBinding
 import AspisFormal.Poseidon2Kat
 import AspisFormal.AtomicThetaRadix8
 import AspisFormal.V5CuArithmeticEquivalences
+import AspisFormal.V5ComponentCDeployedCDecAccounting
+import AspisFormal.V5InactiveClaimDeployedTranscriptOrdering
+import AspisFormal.V5ConditionalHidingCapstoneV2
