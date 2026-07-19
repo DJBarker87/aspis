@@ -80,8 +80,9 @@ module transcribes the v5 wire prefix (`AspisSpendWireView` is the v4
 `programs/aspis-verifier/src/v5_wire_skeleton.rs:55`, assert at line 605).
 The deployed positions are: terminal triple at `[5799, 5847)`, carried
 inactive claim at `[5847, 5863)` (`V5_CU_REAL_PREFIX_INACTIVE_CLAIM_OFFSET`,
-`v5_cu_probe.rs:167-168`, pinned by the assert at line 178), reserved tail
-zero-checked at lines 811-813.  Authentication: the triple is absorbed under
+`v5_cu_probe.rs:167-168`, pinned by the assert at line 178).  The next 160
+bytes `[5863, 6023)` carry the five public Fiat--Shamir salts; only the
+remaining tail `[6023, 6423)` is zero-checked.  Authentication: the triple is absorbed under
 `label::CLAIM` before `γ` (`v5_cu_probe.rs:880-886`), the claim bytes under
 `label::SECOND_PHASE_CLAIM` before `κ` (lines 888-894), and the masked half
 of the triple must equal the sumcheck terminal (line 877).  This module
@@ -305,8 +306,9 @@ def v5ReservedOffset : ℕ := v5InactiveClaimOffset + qm31Bytes
 
 /-- The transcribed chain reproduces the pinned Rust offsets
 (`v5_cu_probe.rs:172-180`): claims at 4,583, terminal triple at 5,799, masked
-terminal at 5,831, carried inactive claim at 5,847, reserved tail at 5,863,
-inside the 6,423-byte prefix. -/
+terminal at 5,831, carried inactive claim at 5,847, public-salt reserve at
+5,863, and the total prefix at 6,423.  The post-salt zero tail starts at
+6,023; that later boundary is outside the arithmetic chain needed here. -/
 theorem v5_prefix_offset_chain :
     v5SumcheckOffset = 103 ∧ v5ClaimsOffset = 4583 ∧
       v5TerminalTripleOffset = 5799 ∧ v5MaskedTerminalOffset = 5831 ∧
@@ -337,9 +339,10 @@ def DeployedMaskedTerminalAtWireOffset {Bytes : Type*} (slice : ℕ → ℕ → 
 sits at prefix bytes `[5847, 5863)`.**  Rust content:
 `V5_CU_REAL_PREFIX_INACTIVE_CLAIM_OFFSET` (`v5_cu_probe.rs:167-168`, assert
 line 178), decoded at line 887, written by the prover at
-`v5_real_host_proof.rs:634-635`; the reserved tail beyond 5,863 is
-zero-checked at `v5_cu_probe.rs:811-813`, so no second copy shares the
-prefix. -/
+`v5_real_host_proof.rs:634-635`.  Prefix bytes `[5863, 6023)` are no longer
+zero: they serialize the five 32-byte public Fiat--Shamir salts.  The
+post-salt tail `[6023, 6423)` is zero-checked, so no second inactive-claim
+copy shares the prefix. -/
 def DeployedInactiveClaimAtWireOffset {Bytes : Type*} (slice : ℕ → ℕ → Bytes)
     (encode : K → Bytes) (claim : K) : Prop :=
   slice v5InactiveClaimOffset v5ReservedOffset = encode claim

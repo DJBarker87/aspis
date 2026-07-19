@@ -3,7 +3,7 @@ import Mathlib
 /-!
 # Algebraic equivalences for the retained low-bloat CU rewrites
 
-This leaf module records the ring identities behind five arithmetic rewrites in
+This leaf module records the ring identities behind the arithmetic rewrites in
 the current Rust verifier tree:
 
 * `circle_fri::double_point` uses complex squaring instead of generic point
@@ -15,6 +15,9 @@ the current Rust verifier tree:
   multiplication;
 * `LegacyAtomicSelectors::copy_active` evaluates a dense selector mask by
   subtracting its smaller complement from the total equality-basis sum `1`;
+* the atomic semantic terminal uses specialized square residuals, reverse
+  radix-two Horner reconstruction, frozen selector complements, and common
+  selector factors without changing the represented polynomial;
 * the atomic copy-power table reuses a prepared multiplier for `lambda` while
   retaining the ordinary repeated-multiplication recurrence;
 * the Poseidon residual linear combination is factored by selector class; and
@@ -116,6 +119,63 @@ theorem total_sum_one_hypothesis_nonvacuous
   classical
   refine ⟨fun index ↦ if index = pivot then 1 else 0, ?_⟩
   simp
+
+/-! ## Exact atomic semantic-terminal rewrites -/
+
+/-- The specialized square-and-subtract spelling of a Boolean residual is
+exactly the original `x * (x - 1)` polynomial. -/
+theorem boolean_square_residual_eq_mul_sub_one
+    {R : Type*} [CommRing R] (x : R) :
+    x * x - x = x * (x - 1) := by
+  ring
+
+/-- The exact ten-limb reverse Horner loop used by
+`atomic_state_only_terminal::atomic_reconstruct_10`.  The input function is in
+little-endian order; the loop starts at limb nine and consumes limbs eight
+through zero. -/
+def reverseRadix2Horner10 {R : Type*} [Add R] (bit : Fin 10 → R) : R :=
+  [bit 8, bit 7, bit 6, bit 5, bit 4, bit 3, bit 2, bit 1, bit 0].foldl
+    (fun accumulator next ↦ accumulator + accumulator + next) (bit 9)
+
+/-- Reverse radix-two Horner evaluation is the exact little-endian weighted
+sum used by the arithmetization, for arbitrary (including non-Boolean) field
+values. -/
+theorem reverse_radix2_horner10_eq_little_endian
+    {R : Type*} [CommSemiring R] (bit : Fin 10 → R) :
+    reverseRadix2Horner10 bit =
+      ∑ index : Fin 10, bit index * (2 : R) ^ (index : ℕ) := by
+  simp [reverseRadix2Horner10, Fin.sum_univ_succ]
+  ring
+
+/-- Split a complete equality-basis mass into the four consecutive blocks
+`[0,4)`, `[4,44)`, `[44,49)`, and `[49,64)`.  Subtracting the tail to obtain
+the Poseidon prefix, then subtracting its two side blocks, returns exactly the
+middle path-block mass. -/
+theorem middle_block_eq_one_sub_tail_sub_sides
+    {R : Type*} [CommRing R] (left middle right tail : R)
+    (hTotal : left + middle + right + tail = 1) :
+    1 - tail - left - right = middle := by
+  rw [← hTotal]
+  ring
+
+/-- Two contributions sharing both an outer selector and a packed residual
+may be evaluated with one multiplication by the sum of their inner selectors.
+This is the exact factorization used by the initial and absorption blocks. -/
+theorem common_selector_factorization
+    {R : Type*} [CommRing R] (selector left right packed : R) :
+    (selector * left) * packed + (selector * right) * packed =
+      (selector * (left + right)) * packed := by
+  ring
+
+/-- Fuse two adjacent packed range lanes before applying their common
+selector.  `basis` is the second lane's fixed tower-packing weight; keeping it
+abstract makes clear that this is distributivity, not a property special to a
+chosen field representation. -/
+theorem range_pack_two_lane_fusion
+    {R : Type*} [CommRing R] (selector basis first second : R) :
+    selector * first + basis * (selector * second) =
+      selector * (first + basis * second) := by
+  ring
 
 /-! ## Prepared repeated multiplication -/
 
@@ -381,6 +441,84 @@ theorem m31_inverse_addition_chain_exponent_eq :
     m31InverseAdditionChain.result = m31Prime - 2 := by
   rw [m31_inverse_addition_chain_schedule_eq]
 
+/-! ## Fixed 7-coefficient Horner zero-seed elimination -/
+
+/-- The pre-optimization fixed-width Horner fold with a redundant zero seed:
+`((((((0*x + c6)*x + c5)*x + c4)*x + c3)*x + c2)*x + c1)*x + c0`.  The leading
+`0 * x + c6` step is the one the retained verifier eliminates. -/
+def horner7ZeroSeed {R : Type*} [CommSemiring R] (x : R) (c : Fin 7 → R) : R :=
+  ((((((0 * x + c 6) * x + c 5) * x + c 4) * x + c 3) * x + c 2) * x + c 1) * x + c 0
+
+/-- The retained fold: seed directly at the leading coefficient `c6` and consume
+only `c5 … c0`, saving one multiply-add per evaluation. -/
+def horner7Optimized {R : Type*} [CommSemiring R] (x : R) (c : Fin 7 → R) : R :=
+  (((((c 6 * x + c 5) * x + c 4) * x + c 3) * x + c 2) * x + c 1) * x + c 0
+
+/-- Zero-seed elimination is exact: the two fixed-width folds agree for every
+`CommSemiring R`, every point `x : R`, and every coefficient vector
+`c : Fin 7 → R`. -/
+theorem horner7_zero_seed_eq_optimized {R : Type*} [CommSemiring R]
+    (x : R) (c : Fin 7 → R) :
+    horner7ZeroSeed x c = horner7Optimized x c := by
+  simp only [horner7ZeroSeed, horner7Optimized, zero_mul, zero_add]
+
+/-- The common value of both folds is the represented degree-six polynomial
+`∑ i : Fin 7, c i * x ^ i`. -/
+theorem horner7_eq_poly {R : Type*} [CommSemiring R]
+    (x : R) (c : Fin 7 → R) :
+    horner7Optimized x c = ∑ i : Fin 7, c i * x ^ (i : ℕ) := by
+  simp [horner7Optimized, Fin.sum_univ_seven]
+  ring
+
+/-! ## Degree-27 boundary limb accumulation -/
+
+/-- With `P = 2147483647` and 28 canonical natural limbs (`a i < P`), the boundary
+accumulator `2·a₀ + (a₁ + … + a₂₇)` stays strictly below `2^36`, so the deployed
+`u64` boundary-limb accumulator never overflows.  Stated for arbitrary canonical
+limbs, not only constants. -/
+theorem cu_boundary_accumulator_bound (a : Fin 28 → ℕ)
+    (ha : ∀ i, a i < 2147483647) :
+    2 * a 0 + ∑ i : Fin 27, a i.succ < 2 ^ 36 := by
+  have hsum : ∑ i : Fin 27, a i.succ ≤ 27 * (2147483647 - 1) := by
+    calc ∑ i : Fin 27, a i.succ
+        ≤ ∑ _i : Fin 27, (2147483647 - 1) :=
+          Finset.sum_le_sum (fun i _ => by have := ha i.succ; omega)
+      _ = 27 * (2147483647 - 1) := by
+          rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, smul_eq_mul]
+  have h0 := ha 0
+  rw [show (2 : ℕ) ^ 36 = 68719476736 from by norm_num]
+  omega
+
+/-- The same natural accumulator reduces, in `ZMod P`, to exactly
+`p(0) + p(1) = a₀ + ∑ᵢ aᵢ` — the degree-27 boundary functional the sumcheck
+endpoint compares.  The two naturals are literally equal
+(`2·a₀ + ∑_{i≥1} aᵢ = a₀ + ∑ᵢ aᵢ`), so the residue is exact. -/
+theorem cu_boundary_accumulator_cast (a : Fin 28 → ℕ) :
+    ((2 * a 0 + ∑ i : Fin 27, a i.succ : ℕ) : ZMod 2147483647) =
+      (a 0 : ZMod 2147483647) + ∑ i : Fin 28, ((a i : ℕ) : ZMod 2147483647) := by
+  have hnat : 2 * a 0 + ∑ i : Fin 27, a i.succ = a 0 + ∑ i : Fin 28, a i := by
+    have he : ∑ i : Fin 28, a i = a 0 + ∑ i : Fin 27, a i.succ := by
+      rw [Fin.sum_univ_succ]
+    rw [he]
+    ring
+  rw [hnat]
+  push_cast
+  ring
+
+/-- Sharp tooth: even the worst case (every limb equal to the maximal canonical
+representative `P - 1`) satisfies the accumulator bound, obtained by applying the
+general theorem. -/
+theorem cu_boundary_accumulator_bound_all_max :
+    2 * (2147483647 - 1) + ∑ _i : Fin 27, (2147483647 - 1) < 2 ^ 36 := by
+  exact cu_boundary_accumulator_bound (fun _ : Fin 28 => 2147483647 - 1)
+    (fun _ => by omega)
+
+#print axioms horner7_zero_seed_eq_optimized
+#print axioms horner7_eq_poly
+#print axioms cu_boundary_accumulator_bound
+#print axioms cu_boundary_accumulator_cast
+#print axioms cu_boundary_accumulator_bound_all_max
+
 #print axioms complex_square_real_coordinate
 #print axioms complex_square_imaginary_coordinate
 #print axioms final_tensor_four_term_eq_constant_add_lazy_dot3
@@ -390,6 +528,11 @@ theorem m31_inverse_addition_chain_exponent_eq :
 #print axioms m31_lazy_dot3_fits_u64
 #print axioms selected_sum_eq_one_sub_complement_sum
 #print axioms total_sum_one_hypothesis_nonvacuous
+#print axioms boolean_square_residual_eq_mul_sub_one
+#print axioms reverse_radix2_horner10_eq_little_endian
+#print axioms middle_block_eq_one_sub_tail_sub_sides
+#print axioms common_selector_factorization
+#print axioms range_pack_two_lane_fusion
 #print axioms prepared_repeated_mul_recurrence_eq_ordinary
 #print axioms prepared_mul_correctness_hypothesis_nonvacuous
 #print axioms poseidon_residual_factorization

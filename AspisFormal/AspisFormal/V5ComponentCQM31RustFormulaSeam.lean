@@ -108,6 +108,118 @@ theorem exactM31_tryInv_map (a : M31Value) :
   · simp only [exactM31SourceOps, h, if_false, Option.map_some]
     congr 1
 
+/-! ## Raw `u32` addition graph
+
+The extracted `M31::add` proof needs facts below the abstract source-operation
+bundle.  These definitions mirror the literal Rust graph on natural-number
+representatives: add the two stored words, compare with `P`, and subtract `P`
+once in the high branch.  No field structure is placed on raw words.
+
+The Aeneas proof project is currently pinned to Lean 4.31 while this corpus is
+on Lean 4.32.  Until those toolchains align, the identical explicit `rawM31Add`
+graph is the named compatibility boundary between two separately
+kernel-checked artifacts; it is not yet a single imported theorem chain.
+-/
+
+/-- Canonicality predicate for the stored word of a Rust `M31`. -/
+def CanonicalRawM31 (x : Nat) : Prop := x < P
+
+/-- The natural-number graph of Rust's one-subtraction `M31::add`. -/
+def rawM31Add (x y : Nat) : Nat :=
+  let sum := x + y
+  if P ≤ sum then sum - P else sum
+
+/-- Two canonical M31 representatives add without overflowing Rust's `u32`.
+This closes the potential panic edge in the Aeneas extraction before the
+conditional subtraction is considered. -/
+theorem canonicalRawM31_add_lt_u32
+    {x y : Nat} (hx : CanonicalRawM31 x) (hy : CanonicalRawM31 y) :
+    x + y < rawWordCount := by
+  norm_num [CanonicalRawM31, P, rawWordCount] at hx hy ⊢
+  omega
+
+/-- In the high branch the checked subtraction cannot underflow, and its
+result is already below `P`.  These are the two side conditions needed by the
+extracted scalar subtraction. -/
+theorem rawM31Add_high_branch
+    {x y : Nat} (hx : CanonicalRawM31 x) (hy : CanonicalRawM31 y)
+    (hhigh : P ≤ x + y) :
+    rawM31Add x y = x + y - P ∧ P ≤ x + y ∧ x + y - P < P := by
+  refine ⟨by simp [rawM31Add, hhigh], hhigh, ?_⟩
+  unfold CanonicalRawM31 at hx hy
+  omega
+
+/-- In the low branch the comparison itself supplies the output bound and no
+subtraction is performed. -/
+theorem rawM31Add_low_branch {x y : Nat} (hlow : x + y < P) :
+    rawM31Add x y = x + y ∧ x + y < P := by
+  have hnot : ¬ P ≤ x + y := by omega
+  exact ⟨by simp [rawM31Add, hnot], hlow⟩
+
+/-- One conditional subtraction produces a canonical M31 representative. -/
+theorem rawM31Add_canonical
+    {x y : Nat} (hx : CanonicalRawM31 x) (hy : CanonicalRawM31 y) :
+    CanonicalRawM31 (rawM31Add x y) := by
+  unfold CanonicalRawM31 at hx hy ⊢
+  unfold rawM31Add
+  by_cases hhigh : P ≤ x + y
+  · simp [hhigh]
+    omega
+  · simp [hhigh]
+    omega
+
+/-- The one-subtraction graph is the ordinary remainder because the canonical
+input bounds make the unreduced sum strictly smaller than `2*P`. -/
+theorem rawM31Add_eq_mod
+    {x y : Nat} (hx : CanonicalRawM31 x) (hy : CanonicalRawM31 y) :
+    rawM31Add x y = (x + y) % P := by
+  by_cases hhigh : P ≤ x + y
+  · have hreduced : x + y - P < P := by
+      unfold CanonicalRawM31 at hx hy
+      omega
+    rw [rawM31Add, if_pos hhigh, Nat.mod_eq_sub_mod hhigh,
+      Nat.mod_eq_of_lt hreduced]
+  · have hlow : x + y < P := Nat.lt_of_not_ge hhigh
+    rw [rawM31Add, if_neg hhigh, Nat.mod_eq_of_lt hlow]
+
+/-- The literal Rust addition graph commutes with reduction into the exact
+`ZMod (2^31-1)` model.  Both comparison branches are covered explicitly. -/
+theorem residue_rawM31Add
+    {x y : Nat} (_hx : CanonicalRawM31 x) (_hy : CanonicalRawM31 y) :
+    ((rawM31Add x y : Nat) : M31Exact) =
+      (x : M31Exact) + (y : M31Exact) := by
+  by_cases hhigh : P ≤ x + y
+  · rw [rawM31Add, if_pos hhigh, Nat.cast_sub hhigh, Nat.cast_add,
+      ZMod.natCast_self, sub_zero]
+  · rw [rawM31Add, if_neg hhigh, Nat.cast_add]
+
+/-- Package the raw output as the existing canonical-residue type. -/
+def rawM31AddValue (a b : M31Value) : M31Value :=
+  ⟨rawM31Add a b, by
+    have h := rawM31Add_canonical
+      (x := (a : Nat)) (y := (b : Nat))
+      (by simp [CanonicalRawM31, P, m31Modulus, rawCandidateCount])
+      (by simp [CanonicalRawM31, P, m31Modulus, rawCandidateCount])
+    simpa [CanonicalRawM31, P, m31Modulus, rawCandidateCount] using h⟩
+
+/-- At the existing canonical `Fin P` representation, the raw graph is the
+ordinary inherited addition. -/
+theorem rawM31AddValue_eq_fin_add (a b : M31Value) :
+    rawM31AddValue a b = a + b := by
+  apply Fin.ext
+  rw [Fin.val_add]
+  exact rawM31Add_eq_mod
+    (by simp [CanonicalRawM31, P, m31Modulus, rawCandidateCount])
+    (by simp [CanonicalRawM31, P, m31Modulus, rawCandidateCount])
+
+/-- Consequently the packaged raw graph is exactly the abstract addition
+already consumed by the CM31/QM31 formula proofs. -/
+theorem rawM31AddValue_eq_exactM31_add (a b : M31Value) :
+    rawM31AddValue a b = exactM31SourceOps.add a b := by
+  rw [rawM31AddValue_eq_fin_add]
+  apply m31ResidueEquiv.injective
+  simp [exactM31SourceOps]
+
 /-! ## CM31 source formulas -/
 
 abbrev CM31Limbs := Fin 2 → M31Value
@@ -780,6 +892,10 @@ theorem wrong_square_breaks_qm31_formula_interface :
 /-! ## Axiom audit -/
 
 #print axioms canonicalM31Primitives_nonvacuous
+#print axioms canonicalRawM31_add_lt_u32
+#print axioms rawM31Add_canonical
+#print axioms residue_rawM31Add
+#print axioms rawM31AddValue_eq_exactM31_add
 #print axioms exact_cm31_mul
 #print axioms exact_cm31_square
 #print axioms exact_cm31_mulByR
