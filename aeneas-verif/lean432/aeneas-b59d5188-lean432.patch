@@ -1,0 +1,114 @@
+diff --git a/backends/lean/Aeneas/Tactic/Simproc/ReduceZMod/ReduceZMod.lean b/backends/lean/Aeneas/Tactic/Simproc/ReduceZMod/ReduceZMod.lean
+index 4e63f80b..cfffa0d1 100644
+--- a/backends/lean/Aeneas/Tactic/Simproc/ReduceZMod/ReduceZMod.lean
++++ b/backends/lean/Aeneas/Tactic/Simproc/ReduceZMod/ReduceZMod.lean
+@@ -80,8 +80 @@ simproc reduceZModInv (@Inv.inv _ (ZMod.instInv _) _) := fun e => do
+-simproc reduceZModPow
+-  (@HPow.hPow _ Nat _
+-      (@instHPow _ Nat
+-        (@Monoid.toPow _
+-          (@MonoidWithZero.toMonoid _
+-            (@Semiring.toMonoidWithZero _
+-              (@CommSemiring.toSemiring _ (@CommRing.toCommSemiring _ (ZMod.commRing _)))))))
+-      _ _) := fun e => do
++simproc reduceZModPow ((_ : ZMod _) ^ (_ : Nat)) := fun e => do
+diff --git a/backends/lean/AeneasMeta/BvEnumToBitVec.lean b/backends/lean/AeneasMeta/BvEnumToBitVec.lean
+index 2fadf4bc..bedb2e7d 100644
+--- a/backends/lean/AeneasMeta/BvEnumToBitVec.lean
++++ b/backends/lean/AeneasMeta/BvEnumToBitVec.lean
+@@ -6 +6 @@ import Lean
+-import Lean.Elab.Tactic.BVDecide.Frontend.Normalize.Enums
++import Lean.Meta.Tactic.BVDecide.Normalize.Enums
+@@ -9 +9,12 @@ import Lean.Elab.Tactic.BVDecide.Frontend.Normalize.Enums
+-# Eagerly realizing `bv_decide`'s enum conversion constants
++# Enum marker compatibility for `bv_decide`
++
++## Lean 4.32 scoped compatibility behavior
++
++Lean 4.32 privatized the eager-realization helpers used by this upstream
++module.  The Aspis minimal compatibility target does not invoke Aeneas
++`bv_decide` or `bv_tac`; in this scoped build the command and deriving handler
++validate the enum and register the marker only.  They do **not** eagerly
++realize conversion constants.  The historical rationale below describes the
++upstream Lean 4.31 behavior and is not a claim about this patched build.
++
++## Upstream Lean 4.31 rationale
+@@ -47 +57,0 @@ open Lean Meta Elab
+-open Lean.Elab.Tactic.BVDecide.Frontend.Normalize
+@@ -51,6 +61,3 @@ open Lean.Elab.Tactic.BVDecide.Frontend.Normalize
+-Deriving it (or invoking `#define_bv_decide_toBitVec`) eagerly realises
+-`bv_decide`'s `enumToBitVec` / `enumToBitVec_le` / `eq_iff_enumToBitVec_eq`
+-constants for the type in the current module, so that downstream modules reuse
+-that single copy instead of racing to realise their own (which collides on
+-joint import). The class itself carries no data; it exists only so the
+-`deriving` machinery has a name to resolve. -/
++In this Lean 4.32 scoped compatibility build, deriving validates the enum and
++registers this marker; it does not eagerly realize conversion constants.  The
++class carries no data. -/
+@@ -59,7 +66,4 @@ class BvEnumToBitVec (α : Sort u) : Prop
+-/-- Eagerly realise `bv_decide`'s three enum conversion constants
+-(`enumToBitVec`, `enumToBitVec_le`, `eq_iff_enumToBitVec_eq`) for `declName` in
+-the current environment. `declName` must be an enum inductive (parameter-free,
+-all constructors nullary), otherwise the underlying `bv_decide` realisers throw.
+-
+-Idempotent: if the constants are already present (e.g. realised by an imported
+-module) the realisers reuse them rather than failing. -/
++/-- Validate that `declName` is an enum inductive (parameter-free with only
++nullary constructors).  Lean 4.32 privatized the former eager-realization
++helpers, so this scoped compatibility definition intentionally performs no
++conversion-constant realization. -/
+@@ -71,15 +75,8 @@ def realizeBvEnumToBitVec (declName : Name) : CoreM Unit := do
+-  enableRealizationsForConst declName
+-  let act : MetaM Unit := do
+-    discard <| getEnumToBitVecFor declName
+-    discard <| getEnumToBitVecLeFor declName
+-    discard <| getEqIffEnumToBitVecEqFor declName
+-  discard <| act.run' {} {}
+-
+-/-- `#define_bv_decide_toBitVec T` eagerly realises `bv_decide`'s enum
+-conversion constants for the enum inductive `T` in the current module.
+-
+-Place it in a module that is a common ancestor of every site that runs
+-`bv_decide` on `T`; descendants then reuse the single realised copy instead of
+-each realising their own (which collides on joint import). Use this for types
+-you do not own (e.g. `PUnit`); for enums you are defining, prefer
+-`deriving BvEnumToBitVec`. -/
++  -- Lean 4.32 privatized the three eager-realization helpers used by 4.31.
++  -- This minimal target does not invoke Aeneas bv_decide tactics: enum
++  -- validation and its marker remain, while eager realization is omitted.
++  pure ()
++
++/-- In this Lean 4.32 scoped compatibility build,
++`#define_bv_decide_toBitVec T` validates that `T` is an enum.  It does not
++eagerly realize conversion constants. -/
+@@ -100,2 +97,3 @@ open Lean.Elab.Command in
+-/-- `deriving` handler for `BvEnumToBitVec`: realises `bv_decide`'s enum
+-conversion constants for each derived type and registers a marker instance. -/
++/-- Lean 4.32 scoped `deriving` handler: validate each enum and register its
++`BvEnumToBitVec` marker instance without eager conversion-constant
++realization. -/
+diff --git a/backends/lean/AeneasMeta/Simp/Simp.lean b/backends/lean/AeneasMeta/Simp/Simp.lean
+index 322ea73a..f73485f6 100644
+--- a/backends/lean/AeneasMeta/Simp/Simp.lean
++++ b/backends/lean/AeneasMeta/Simp/Simp.lean
+@@ -119 +119 @@ where
+-      | some (fvars, mvarId) => replaceMainGoal [mvarId]; pure fvars
++      | some (fvars, mvarId) => replaceMainGoal [mvarId]; pure (some fvars)
+@@ -127 +127,2 @@ where
+-        let ldecls := ctx.foldl (fun set decl => set.insert decl.fvarId) Std.HashSet.emptyWithCapacity
++        let ldecls : Std.HashSet FVarId :=
++          ctx.foldl (fun set decl => set.insert decl.fvarId) Std.HashSet.emptyWithCapacity
+diff --git a/backends/lean/lakefile.lean b/backends/lean/lakefile.lean
+index bc2d2901..a1f0ee98 100644
+--- a/backends/lean/lakefile.lean
++++ b/backends/lean/lakefile.lean
+@@ -6 +6 @@ require mathlib from git
+-  "https://github.com/leanprover-community/mathlib4.git" @ "v4.31.0"
++  "https://github.com/leanprover-community/mathlib4.git" @ "v4.32.0"
+diff --git a/backends/lean/lean-toolchain b/backends/lean/lean-toolchain
+index 18640c8b..94b9f495 100644
+--- a/backends/lean/lean-toolchain
++++ b/backends/lean/lean-toolchain
+@@ -1 +1 @@
+-leanprover/lean4:v4.31.0
++leanprover/lean4:v4.32.0

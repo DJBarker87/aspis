@@ -1,0 +1,4 @@
+.lake/
+proof/.lake/
+proof/build/
+target/

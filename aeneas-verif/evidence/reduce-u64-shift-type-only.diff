@@ -1,0 +1,19 @@
+--- reduce_u64 before (field.rs blob d418afc7f2541fa70d5141ac99a2e01cd06885a3)
++++ reduce_u64 after  (field.rs blob 96e8c04efee6a8231adb2723dac9acf975993e06)
+@@ -23,14 +23,14 @@
+         StorageLive(_3);
+         _3 = BitAnd(copy _1, const 2147483647_u64);
+         StorageLive(_4);
+-        _4 = Shr(copy _1, const 31_i32);
++        _4 = Shr(copy _1, const 31_u32);
+         _2 = Add(move _3, move _4);
+         StorageDead(_4);
+         StorageDead(_3);
+         StorageLive(_6);
+         _6 = BitAnd(copy _2, const 2147483647_u64);
+         StorageLive(_7);
+-        _7 = Shr(copy _2, const 31_i32);
++        _7 = Shr(copy _2, const 31_u32);
+         _5 = Add(move _6, move _7);
+         StorageDead(_7);
+         StorageDead(_6);
