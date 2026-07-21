@@ -109,7 +109,7 @@ structure field.QM31 where
   c1 : field.CM31
 
 /-- [aspis_core::field::mul_by_r]:
-    Source: 'crates/aspis-core/src/field.rs', lines 664:0-670:1 -/
+    Source: 'crates/aspis-core/src/field.rs', lines 706:0-712:1 -/
 def field.mul_by_r (x : field.CM31) : Result field.CM31 := do
   let m ← field.M31.double x.a
   let m1 ← field.M31.sub m x.b
@@ -226,10 +226,10 @@ def
     field.qm31_from_karatsuba_channel_sums.closure.Insts.CoreOpsFunctionFnTupleArrayU643CM31.call
 }
 
-/-- [aspis_core::field::qm31_sum_products_small]: loop body 2:
-    Source: 'crates/aspis-core/src/field.rs', lines 461:12-464:13 -/
+/-- [aspis_core::field::qm31_accumulate_product_channels]: loop body 1:
+    Source: 'crates/aspis-core/src/field.rs', lines 445:8-448:9 -/
 @[rust_loop_body]
-def field.qm31_sum_products_small_loop0_loop0_loop0.body
+def field.qm31_accumulate_product_channels_loop0_loop0.body
   (left_components : Array (Array field.M31 3#usize) 3#usize)
   (right_components : Array (Array field.M31 3#usize) 3#usize)
   (component : Std.Usize) (iter : core.ops.range.Range Std.Usize)
@@ -257,10 +257,10 @@ def field.qm31_sum_products_small_loop0_loop0_loop0.body
     let a5 := index_mut_back a4
     ok (cont (iter1, a5))
 
-/-- [aspis_core::field::qm31_sum_products_small]: loop 2:
-    Source: 'crates/aspis-core/src/field.rs', lines 461:12-464:13 -/
+/-- [aspis_core::field::qm31_accumulate_product_channels]: loop 1:
+    Source: 'crates/aspis-core/src/field.rs', lines 445:8-448:9 -/
 @[rust_loop]
-def field.qm31_sum_products_small_loop0_loop0_loop0
+def field.qm31_accumulate_product_channels_loop0_loop0
   (iter : core.ops.range.Range Std.Usize)
   (sums : Array (Array Std.U64 3#usize) 3#usize)
   (left_components : Array (Array field.M31 3#usize) 3#usize)
@@ -269,14 +269,15 @@ def field.qm31_sum_products_small_loop0_loop0_loop0
   Result (Array (Array Std.U64 3#usize) 3#usize)
   := do
   loop
-    (fun (iter1, sums1) => field.qm31_sum_products_small_loop0_loop0_loop0.body
-      left_components right_components component iter1 sums1)
+    (fun (iter1, sums1) =>
+      field.qm31_accumulate_product_channels_loop0_loop0.body left_components
+      right_components component iter1 sums1)
     (iter, sums)
 
-/-- [aspis_core::field::qm31_sum_products_small]: loop body 1:
-    Source: 'crates/aspis-core/src/field.rs', lines 460:8-465:9 -/
+/-- [aspis_core::field::qm31_accumulate_product_channels]: loop body 0:
+    Source: 'crates/aspis-core/src/field.rs', lines 444:4-449:5 -/
 @[rust_loop_body]
-def field.qm31_sum_products_small_loop0_loop0.body
+def field.qm31_accumulate_product_channels_loop0.body
   (left_components : Array (Array field.M31 3#usize) 3#usize)
   (right_components : Array (Array field.M31 3#usize) 3#usize)
   (iter : core.ops.range.Range Std.Usize)
@@ -290,15 +291,15 @@ def field.qm31_sum_products_small_loop0_loop0.body
   | none => ok (done sums)
   | some component =>
     let sums1 ←
-      field.qm31_sum_products_small_loop0_loop0_loop0
+      field.qm31_accumulate_product_channels_loop0_loop0
         { start := 0#usize, «end» := 3#usize } sums left_components
         right_components component
     ok (cont (iter1, sums1))
 
-/-- [aspis_core::field::qm31_sum_products_small]: loop 1:
-    Source: 'crates/aspis-core/src/field.rs', lines 460:8-465:9 -/
+/-- [aspis_core::field::qm31_accumulate_product_channels]: loop 0:
+    Source: 'crates/aspis-core/src/field.rs', lines 444:4-449:5 -/
 @[rust_loop]
-def field.qm31_sum_products_small_loop0_loop0
+def field.qm31_accumulate_product_channels_loop0
   (iter : core.ops.range.Range Std.Usize)
   (sums : Array (Array Std.U64 3#usize) 3#usize)
   (left_components : Array (Array field.M31 3#usize) 3#usize)
@@ -306,79 +307,82 @@ def field.qm31_sum_products_small_loop0_loop0
   Result (Array (Array Std.U64 3#usize) 3#usize)
   := do
   loop
-    (fun (iter1, sums1) => field.qm31_sum_products_small_loop0_loop0.body
+    (fun (iter1, sums1) => field.qm31_accumulate_product_channels_loop0.body
       left_components right_components iter1 sums1)
     (iter, sums)
 
-/-- [aspis_core::field::qm31_sum_products_small]: loop body 0:
-    Source: 'crates/aspis-core/src/field.rs', lines 431:4-466:5 -/
-@[rust_loop_body]
-def field.qm31_sum_products_small_loop0.body
-  {N : Std.Usize} (left : Array field.QM31 N) (right : Array field.QM31 N)
-  (iter : core.ops.range.Range Std.Usize)
-  (sums : Array (Array Std.U64 3#usize) 3#usize) :
-  Result (ControlFlow ((core.ops.range.Range Std.Usize) × (Array (Array
-    Std.U64 3#usize) 3#usize)) (Array (Array Std.U64 3#usize) 3#usize))
+/-- [aspis_core::field::qm31_accumulate_product_channels]:
+    Source: 'crates/aspis-core/src/field.rs', lines 427:0-451:1 -/
+def field.qm31_accumulate_product_channels
+  (sums : Array (Array Std.U64 3#usize) 3#usize) (left : field.QM31)
+  (right : field.QM31) :
+  Result (Array (Array Std.U64 3#usize) 3#usize)
   := do
-  let (o, iter1) ←
-    core.iter.range.IteratorRange.next core.iter.range.StepUsize iter
-  match o with
-  | none => ok (done sums)
-  | some index =>
+  let left_sum ← field.CM31.add left.c0 left.c1
+  let right_sum ← field.CM31.add right.c0 right.c1
+  let m ← field.M31.add left.c0.a left.c0.b
+  let m1 ← field.M31.add left.c1.a left.c1.b
+  let m2 ← field.M31.add left_sum.a left_sum.b
+  let m3 ← field.M31.add right.c0.a right.c0.b
+  let m4 ← field.M31.add right.c1.a right.c1.b
+  let m5 ← field.M31.add right_sum.a right_sum.b
+  field.qm31_accumulate_product_channels_loop0
+    { start := 0#usize, «end» := 3#usize } sums
+    (Array.make 3#usize [
+      Array.make 3#usize [ left.c0.a, left.c0.b, m ],
+      Array.make 3#usize [ left.c1.a, left.c1.b, m1 ],
+      Array.make 3#usize [ left_sum.a, left_sum.b, m2 ]
+      ])
+    (Array.make 3#usize [
+      Array.make 3#usize [ right.c0.a, right.c0.b, m3 ],
+      Array.make 3#usize [ right.c1.a, right.c1.b, m4 ],
+      Array.make 3#usize [ right_sum.a, right_sum.b, m5 ]
+      ])
+
+/-- [aspis_core::field::qm31_sum_products_small]: loop body 0:
+    Source: 'crates/aspis-core/src/field.rs', lines 459:4-462:5 -/
+@[rust_loop_body]
+def field.qm31_sum_products_small_loop.body
+  {N : Std.Usize} (left : Array field.QM31 N) (right : Array field.QM31 N)
+  (sums : Array (Array Std.U64 3#usize) 3#usize) (index : Std.Usize) :
+  Result (ControlFlow ((Array (Array Std.U64 3#usize) 3#usize) × Std.Usize)
+    (Array (Array Std.U64 3#usize) 3#usize))
+  := do
+  if index < N
+  then
     let q ← Array.index_usize left index
-    let left_sum ← field.CM31.add q.c0 q.c1
     let q1 ← Array.index_usize right index
-    let right_sum ← field.CM31.add q1.c0 q1.c1
-    let m ← field.M31.add q.c0.a q.c0.b
-    let m1 ← field.M31.add q.c1.a q.c1.b
-    let m2 ← field.M31.add left_sum.a left_sum.b
-    let m3 ← field.M31.add q1.c0.a q1.c0.b
-    let m4 ← field.M31.add q1.c1.a q1.c1.b
-    let m5 ← field.M31.add right_sum.a right_sum.b
-    let sums1 ←
-      field.qm31_sum_products_small_loop0_loop0
-        { start := 0#usize, «end» := 3#usize } sums
-        (Array.make 3#usize [
-          Array.make 3#usize [ q.c0.a, q.c0.b, m ],
-          Array.make 3#usize [ q.c1.a, q.c1.b, m1 ],
-          Array.make 3#usize [ left_sum.a, left_sum.b, m2 ]
-          ])
-        (Array.make 3#usize [
-          Array.make 3#usize [ q1.c0.a, q1.c0.b, m3 ],
-          Array.make 3#usize [ q1.c1.a, q1.c1.b, m4 ],
-          Array.make 3#usize [ right_sum.a, right_sum.b, m5 ]
-          ])
-    ok (cont (iter1, sums1))
+    let sums1 ← field.qm31_accumulate_product_channels sums q q1
+    let index1 ← lift (Std.Usize.wrapping_add index 1#usize)
+    ok (cont (sums1, index1))
+  else ok (done sums)
 
 /-- [aspis_core::field::qm31_sum_products_small]: loop 0:
-    Source: 'crates/aspis-core/src/field.rs', lines 431:4-466:5 -/
+    Source: 'crates/aspis-core/src/field.rs', lines 459:4-462:5 -/
 @[rust_loop]
-def field.qm31_sum_products_small_loop0
-  {N : Std.Usize} (iter : core.ops.range.Range Std.Usize)
-  (left : Array field.QM31 N) (right : Array field.QM31 N)
-  (sums : Array (Array Std.U64 3#usize) 3#usize) :
+def field.qm31_sum_products_small_loop
+  {N : Std.Usize} (left : Array field.QM31 N) (right : Array field.QM31 N)
+  (sums : Array (Array Std.U64 3#usize) 3#usize) (index : Std.Usize) :
   Result (Array (Array Std.U64 3#usize) 3#usize)
   := do
   loop
-    (fun (iter1, sums1) => field.qm31_sum_products_small_loop0.body left right
-      iter1 sums1)
-    (iter, sums)
+    (fun (sums1, index1) => field.qm31_sum_products_small_loop.body left right
+      sums1 index1)
+    (sums, index)
 
 /-- [aspis_core::field::qm31_sum_products_small]:
-    Source: 'crates/aspis-core/src/field.rs', lines 427:0-469:1 -/
+    Source: 'crates/aspis-core/src/field.rs', lines 454:0-465:1 -/
 def field.qm31_sum_products_small
   {N : Std.Usize} (left : Array field.QM31 N) (right : Array field.QM31 N) :
   Result field.QM31
   := do
   let a := Array.repeat 3#usize 0#u64
   let sums := Array.repeat 3#usize a
-  let sums1 ←
-    field.qm31_sum_products_small_loop0 { start := 0#usize, «end» := N } left
-      right sums
+  let sums1 ← field.qm31_sum_products_small_loop left right sums 0#usize
   field.qm31_from_karatsuba_channel_sums sums1
 
 /-- [aspis_core::field::qm31_sum_products2]:
-    Source: 'crates/aspis-core/src/field.rs', lines 473:0-475:1
+    Source: 'crates/aspis-core/src/field.rs', lines 515:0-517:1
     Visibility: public -/
 def field.qm31_sum_products2
   (left : Array field.QM31 2#usize) (right : Array field.QM31 2#usize) :
@@ -387,7 +391,7 @@ def field.qm31_sum_products2
   field.qm31_sum_products_small left right
 
 /-- [aspis_core::field::qm31_sum_products3]:
-    Source: 'crates/aspis-core/src/field.rs', lines 479:0-481:1
+    Source: 'crates/aspis-core/src/field.rs', lines 521:0-523:1
     Visibility: public -/
 def field.qm31_sum_products3
   (left : Array field.QM31 3#usize) (right : Array field.QM31 3#usize) :
@@ -396,7 +400,7 @@ def field.qm31_sum_products3
   field.qm31_sum_products_small left right
 
 /-- [aspis_core::field::qm31_sum_products4]:
-    Source: 'crates/aspis-core/src/field.rs', lines 485:0-487:1
+    Source: 'crates/aspis-core/src/field.rs', lines 527:0-529:1
     Visibility: public -/
 def field.qm31_sum_products4
   (left : Array field.QM31 4#usize) (right : Array field.QM31 4#usize) :

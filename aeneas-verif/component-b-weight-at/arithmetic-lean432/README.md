@@ -3,12 +3,12 @@
 This directory is the durable Lean 4.32 replay of the source-authentic
 M31/CM31/QM31 arithmetic used by the Component-B `weight_at` extraction.  It
 contains no object files or Lake cache.  `SOURCE_MANIFEST.sha256` authenticates
-all 39 source modules; the manifest itself has SHA-256
-`ce7c974ff7b2272891a24cf294af43c84124eb483b4d2ad01159c9958431d471`.
+all 42 source modules; the manifest itself has SHA-256
+`7832fe9d7ed7ce56aedc2c568d40354330790af6197720edb58a2f6b0e438a01`.
 
 ## What is now checked by the Lean 4.32 kernel
 
-The 24 Lane-5 correspondences that were previously checked only by Lean 4.31
+The Lane-5 correspondences that were previously checked only by Lean 4.31
 are replayed unchanged at the theorem level:
 
 - `mul_by_r`, `QM31::mul`, optimized `QM31::square`, `QM31::mul_m31`, and
@@ -20,7 +20,16 @@ are replayed unchanged at the theorem level:
 - `M31::is_zero`, `CM31::is_zero`, and `QM31::is_zero`;
 - `PreparedQm31Multiplier::new` and `PreparedQm31Multiplier::mul`;
 - `CM31::new`, `CM31::from_m31`, and `QM31::from_cm31`; and
-- `qm31_from_karatsuba_channel_sums`.
+- `qm31_from_karatsuba_channel_sums`; and
+- the extracted `qm31_accumulate_product_channels` helper, generic
+  `qm31_sum_products_small` for every valid `N ≤ 4`, and the public arity-2,
+  arity-3, and arity-4 wrappers.
+
+The small-product capstone is not a finite KAT: it proves the two nested
+channel loops, the three-component helper loop, the outer input-index loop,
+the exact Karatsuba reconstruction, and equality with the ordinary QM31 dot
+product for arbitrary canonical inputs. Separate non-vacuity and
+omit-one-product teeth ensure the outer loop is load-bearing.
 
 The same run also replays the prerequisite M31 reduction/multiplication,
 CM31 multiplication/square/scalar multiplication, M31 inverse, and the full
@@ -36,8 +45,8 @@ axiom, or unsafe declaration.
 ## Normalization boundary
 
 The frozen Rust source is `crates/aspis-core/src/field.rs`, Git blob
-`96e8c04efee6a8231adb2723dac9acf975993e06` and SHA-256
-`b424ea2c70902e477a2580d683279645b3dd0423bfa1c9043494bc6a99dfad1e`.
+`a28ff94de05265102ca819849805a7f73c675800` and SHA-256
+`dadd6bac7c6c44fcb13e1a1ca26e9d2b6f767370bb6e802640948f15fc795836`.
 The extraction tools remain Charon
 `cb50ff16b9f1066b8a97dc06da704de2da2fa41c` and Aeneas
 `b59d5188c082f704a418c7cb4e52ad69328002d1`.
@@ -51,9 +60,9 @@ zero-extending `U8 -> U32` coercions expected by the pinned Aeneas model.
 Their concrete one/31 and arbitrary-u8 facts are kernel checked.
 
 The three newly preserved LLBCs are
-`aspis_core_prepared_qm31.llbc` (SHA-256 `ba87f9ce...6917f1`),
-`aspis_core_tower_embeddings.llbc` (`69718455...e8c2`), and
-`aspis_core_qm31_sum_products_small.llbc` (`e0288da4...6fcc`).  The checker
+`aspis_core_prepared_qm31.llbc` (SHA-256 `c754e053...64e0`),
+`aspis_core_tower_embeddings.llbc` (`61970ab8...21b`), and
+`aspis_core_qm31_sum_products_small.llbc` (`82d8d607...cb37`).  The checker
 validates their complete embedded `field.rs`, declaration counts, start
 patterns, and exact hashes.  It reverse-normalizes each tracked generated
 module and requires the authenticated raw Aeneas output hash.  Prepared and
@@ -81,8 +90,8 @@ report's stronger definition of Level 4, which requires importing the chain
 into maintained `AspisFormal`; this isolated bundle deliberately avoids an
 aggregator edit.  It also does not prove the complete generic
 `WeightAccumulator::weight_at` caller or production dispatch.  In particular,
-`qm31_sum_products_small` and its public arity-2/3/4 wrappers remain Level 2
-because their outer input-index loop has no capstone, while
+`qm31_sum_products_small` and its public arity-2/3/4 wrappers now have their
+Level-3 source-authentic capstone in both kernels, while
 `CM31::{inv,inv_with}` and `QM31::{try_inv,inv}` remain Level 1 because the
 pinned translator does not support the function-pointer dependency.  Their
 presence in a broad generated closure does not promote those functions.
@@ -96,7 +105,7 @@ ASPIS_AENEAS_432_WORK=/private/tmp/aspis-aeneas-lean432-check.example \
   ../check-arithmetic-lean432.sh
 ```
 
-The accepted release replay produces 110 `#print axioms` reports. The checker
+The accepted release replay produces 126 `#print axioms` reports. The checker
 parses them during the run and fails on any token outside the three-item
 allowlist above; build logs and object files are intentionally not retained in
 this source bundle.

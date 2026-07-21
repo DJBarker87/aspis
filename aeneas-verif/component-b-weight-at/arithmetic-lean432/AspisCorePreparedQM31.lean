@@ -245,7 +245,7 @@ def
 }
 
 /-- [aspis_core::field::mul_by_r]:
-    Source: 'crates/aspis-core/src/field.rs', lines 664:0-670:1 -/
+    Source: 'crates/aspis-core/src/field.rs', lines 706:0-712:1 -/
 def field.mul_by_r (x : field.CM31) : Result field.CM31 := do
   let m ← field.M31.double x.a
   let m1 ← field.M31.sub m x.b
@@ -369,7 +369,7 @@ def
 }
 
 /-- [aspis_core::field::{aspis_core::field::QM31}::mul]:
-    Source: 'crates/aspis-core/src/field.rs', lines 733:4-741:5
+    Source: 'crates/aspis-core/src/field.rs', lines 775:4-783:5
     Visibility: public -/
 def field.QM31.mul
   (self : field.QM31) (rhs : field.QM31) : Result field.QM31 := do
@@ -385,13 +385,13 @@ def field.QM31.mul
   ok { c0 := c3, c1 := c5 }
 
 /-- [aspis_core::field::PreparedQm31Cm31Weights]
-    Source: 'crates/aspis-core/src/field.rs', lines 1051:0-1053:1
+    Source: 'crates/aspis-core/src/field.rs', lines 1093:0-1095:1
     Visibility: public -/
 structure field.PreparedQm31Cm31Weights (N : Std.Usize) where
   components : Array (Array field.M31 6#usize) N
 
 /-- [aspis_core::field::{aspis_core::field::PreparedQm31Cm31Weights<N>}::components]:
-    Source: 'crates/aspis-core/src/field.rs', lines 1057:4-1066:5 -/
+    Source: 'crates/aspis-core/src/field.rs', lines 1099:4-1108:5 -/
 def field.PreparedQm31Cm31Weights.impl.components
   (N : Std.Usize) (weight : field.QM31) :
   Result (Array field.M31 6#usize)
@@ -404,13 +404,13 @@ def field.PreparedQm31Cm31Weights.impl.components
       ])
 
 /-- [aspis_core::field::{aspis_core::field::PreparedQm31Cm31Weights<N>}::new::closure]
-    Source: 'crates/aspis-core/src/field.rs', lines 1071:45-1071:85 -/
+    Source: 'crates/aspis-core/src/field.rs', lines 1113:45-1113:85 -/
 @[reducible]
 def field.PreparedQm31Cm31Weights.new.closure (N : Std.Usize) :=
   Slice field.QM31
 
 /-- [aspis_core::field::{aspis_core::field::PreparedQm31Cm31Weights<N>}::new::{impl core::ops::function::FnMut<(usize,), [aspis_core::field::M31; 6usize]> for aspis_core::field::{aspis_core::field::PreparedQm31Cm31Weights<N>}::new::closure<'_0, N>}::call_mut]:
-    Source: 'crates/aspis-core/src/field.rs', lines 1071:45-1071:85 -/
+    Source: 'crates/aspis-core/src/field.rs', lines 1113:45-1113:85 -/
 def
   field.PreparedQm31Cm31Weights.new.closure.Insts.CoreOpsFunctionFnMutTupleUsizeArrayM316.call_mut
   {N : Std.Usize} (c : field.PreparedQm31Cm31Weights.new.closure N)
@@ -423,7 +423,7 @@ def
   ok (a, c)
 
 /-- [aspis_core::field::{aspis_core::field::PreparedQm31Cm31Weights<N>}::new::{impl core::ops::function::FnOnce<(usize,), [aspis_core::field::M31; 6usize]> for aspis_core::field::{aspis_core::field::PreparedQm31Cm31Weights<N>}::new::closure<'_0, N>}::call_once]:
-    Source: 'crates/aspis-core/src/field.rs', lines 1071:45-1071:85 -/
+    Source: 'crates/aspis-core/src/field.rs', lines 1113:45-1113:85 -/
 def
   field.PreparedQm31Cm31Weights.new.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeArrayM316.call_once
   {N : Std.Usize} (c : field.PreparedQm31Cm31Weights.new.closure N)
@@ -436,7 +436,7 @@ def
   ok a
 
 /-- Trait implementation: [aspis_core::field::{aspis_core::field::PreparedQm31Cm31Weights<N>}::new::{impl core::ops::function::FnOnce<(usize,), [aspis_core::field::M31; 6usize]> for aspis_core::field::{aspis_core::field::PreparedQm31Cm31Weights<N>}::new::closure<'_0, N>}]
-    Source: 'crates/aspis-core/src/field.rs', lines 1071:45-1071:85 -/
+    Source: 'crates/aspis-core/src/field.rs', lines 1113:45-1113:85 -/
 @[reducible]
 def
   field.PreparedQm31Cm31Weights.new.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeArrayM316
@@ -448,7 +448,7 @@ def
 }
 
 /-- Trait implementation: [aspis_core::field::{aspis_core::field::PreparedQm31Cm31Weights<N>}::new::{impl core::ops::function::FnMut<(usize,), [aspis_core::field::M31; 6usize]> for aspis_core::field::{aspis_core::field::PreparedQm31Cm31Weights<N>}::new::closure<'_0, N>}]
-    Source: 'crates/aspis-core/src/field.rs', lines 1071:45-1071:85 -/
+    Source: 'crates/aspis-core/src/field.rs', lines 1113:45-1113:85 -/
 @[reducible]
 def
   field.PreparedQm31Cm31Weights.new.closure.Insts.CoreOpsFunctionFnMutTupleUsizeArrayM316
@@ -463,7 +463,7 @@ def
 }
 
 /-- [aspis_core::field::{aspis_core::field::PreparedQm31Cm31Weights<N>}::new]:
-    Source: 'crates/aspis-core/src/field.rs', lines 1068:4-1073:5
+    Source: 'crates/aspis-core/src/field.rs', lines 1110:4-1115:5
     Visibility: public -/
 def field.PreparedQm31Cm31Weights.new
   (N : Std.Usize) (weights : Slice field.QM31) :

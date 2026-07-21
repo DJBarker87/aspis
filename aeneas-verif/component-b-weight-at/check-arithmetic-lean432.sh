@@ -3,15 +3,15 @@ set -euo pipefail
 
 readonly AENEAS_COMMIT="b59d5188c082f704a418c7cb4e52ad69328002d1"
 readonly LEAN_VERSION="4.32.0"
-readonly FIELD_SOURCE_BLOB="96e8c04efee6a8231adb2723dac9acf975993e06"
-readonly FIELD_SOURCE_SHA256="b424ea2c70902e477a2580d683279645b3dd0423bfa1c9043494bc6a99dfad1e"
-readonly SOURCE_MANIFEST_SHA256="ce7c974ff7b2272891a24cf294af43c84124eb483b4d2ad01159c9958431d471"
-readonly PREPARED_LLBC_SHA256="ba87f9ce53ba80b42af963bd97341ff13b854d35734371d42b1d17ac9e6917f1"
-readonly TOWER_LLBC_SHA256="69718455da84b9aa6481151b769f8020451ec2151fea921e9a4900a3da9de8c2"
-readonly SUM_PRODUCTS_LLBC_SHA256="e0288da421919ca118dc08b2766b4664f7bb19626a1a415d8f6e762712656fcc"
-readonly PREPARED_RAW_LEAN_SHA256="9e8a51d7f1069b39b39197732c690b58799fff504eddaf67cb5d48c17b98dec6"
-readonly TOWER_RAW_LEAN_SHA256="a1dfb836699c12a784c2d4e328d300d1f8cc465d4815a097197b90cd24684769"
-readonly SUM_PRODUCTS_RAW_LEAN_SHA256="d6d31be06350c5c87c1139b0b15568271c2d080b331ba5e62f480ddd30da341f"
+readonly FIELD_SOURCE_BLOB="a28ff94de05265102ca819849805a7f73c675800"
+readonly FIELD_SOURCE_SHA256="dadd6bac7c6c44fcb13e1a1ca26e9d2b6f767370bb6e802640948f15fc795836"
+readonly SOURCE_MANIFEST_SHA256="7832fe9d7ed7ce56aedc2c568d40354330790af6197720edb58a2f6b0e438a01"
+readonly PREPARED_LLBC_SHA256="c754e0535a06caa6a823f232c875d2272c994aaddf0c4a330c4db2f534de64e0"
+readonly TOWER_LLBC_SHA256="61970ab875949721360a0f264321487e30eb10cd49594d83be9fcc520de5421b"
+readonly SUM_PRODUCTS_LLBC_SHA256="82d8d607d0df91bf9d74ec12d6214d365230ba5a0fdd9ba6edf82a2efe9bcb37"
+readonly PREPARED_RAW_LEAN_SHA256="18178172eb922ca6794c8d64f827aea24223ca6d1604e8fba1a747be45945e20"
+readonly TOWER_RAW_LEAN_SHA256="242c1bde54ac6dce8ff2504cfb85262e774fe77543dbe207d9063ab60c08e7dd"
+readonly SUM_PRODUCTS_RAW_LEAN_SHA256="08947721b711c814e4b32484f197caa9b169cc06088b5a2c4b9522b38f6e1b7e"
 readonly PREPARED_RETARGET_SHA256="27a2eaa5820a8d3f905ac1633d11b537108111ee3e10ff8011a77f05928ba61b"
 
 readonly script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
@@ -57,6 +57,9 @@ readonly modules=(
   QM31SquareScalarsProof
   AspisCoreQm31SumProductsSmall
   SumProductsArithmetic
+  SumProductsLoop
+  SumProductsComponentLoop
+  SumProductsFullCorrespondence
   AspisCoreIsZero
   IsZeroProof
   AspisCorePow
@@ -145,11 +148,12 @@ authenticate_sources() {
   jq -e '
     .has_errors == false and
     (.translated.type_decls | length) == 48 and
-    (.translated.fun_decls | length) == 155 and
+    (.translated.fun_decls | length) == 156 and
     (.translated.global_decls | length) == 6 and
-    (.translated.ordered_decls | length) == 52 and
+    (.translated.ordered_decls | length) == 53 and
     .translated.options.preset == "Aeneas" and
     .translated.options.start_from == [
+      "aspis_core::field::qm31_accumulate_product_channels",
       "aspis_core::field::qm31_from_karatsuba_channel_sums",
       "aspis_core::field::qm31_sum_products_small",
       "aspis_core::field::qm31_sum_products2",
@@ -429,7 +433,10 @@ perl -0777 -e '
 for proof_file in \
     PreparedQM31NewMulProof.lean \
     TowerEmbeddingsProof.lean \
-    SumProductsArithmetic.lean; do
+    SumProductsArithmetic.lean \
+    SumProductsLoop.lean \
+    SumProductsComponentLoop.lean \
+    SumProductsFullCorrespondence.lean; do
   declared_theorems="$(
     sed -n 's/^theorem \([^ :(]*\).*/\1/p' "$arithmetic_dir/$proof_file" |
       LC_ALL=C sort
@@ -452,6 +459,12 @@ readonly new_level3_reports=(
   AspisAeneasTowerEmbeddings.extracted_cm31_from_m31_corresponds
   AspisAeneasTowerEmbeddings.extracted_qm31_from_cm31_corresponds
   AspisLane5QM31SumProductsProof.extracted_qm31_from_karatsuba_channel_sums_corresponds
+  AspisLane5QM31SumProductsProof.extracted_qm31_accumulate_product_channels_corresponds
+  AspisLane5QM31SumProductsProof.generated_outer_loop_corresponds
+  AspisLane5QM31SumProductsProof.extracted_qm31_sum_products_small_corresponds
+  AspisLane5QM31SumProductsProof.extracted_qm31_sum_products2_corresponds
+  AspisLane5QM31SumProductsProof.extracted_qm31_sum_products3_corresponds
+  AspisLane5QM31SumProductsProof.extracted_qm31_sum_products4_corresponds
 )
 readonly new_negative_and_domain_reports=(
   AspisAeneasPreparedQM31.corrupted_cache_tooth
@@ -462,6 +475,10 @@ readonly new_negative_and_domain_reports=(
   AspisAeneasTowerEmbeddings.nonzero_u_coordinate_from_cm31_tooth
   AspisAeneasTowerEmbeddings.canonical_embedding_domains_nonempty
   AspisLane5QM31SumProductsProof.reconstruct_with_two_minus_i_is_wrong
+  AspisLane5QM31SumProductsProof.five_channel_products_exceed_u64_bound
+  AspisLane5QM31SumProductsProof.generated_component_loop_zero_nonvacuous
+  AspisLane5QM31SumProductsProof.extracted_qm31_sum_products2_nonvacuous
+  AspisLane5QM31SumProductsProof.omitting_second_product_tooth
 )
 for theorem_name in \
     "${new_level3_reports[@]}" "${new_negative_and_domain_reports[@]}"; do
