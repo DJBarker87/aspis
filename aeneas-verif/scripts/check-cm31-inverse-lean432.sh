@@ -13,8 +13,11 @@ readonly SOURCE_HASHES_SHA256="a030daa0cf90263783dbedfe4809a11e9ee409a7a332e06c9
 readonly NORMALIZED_HASHES_SHA256="0a7cdedfa6264f5248da8117384da055150e7db5c6acaa6dfeca7de097c1a0fe"
 readonly PATCHED_AENEAS_HASHES_SHA256="ef18cff71157c665bb92040c261d1a8543a5dfadffa74583ed81b963be4a804b"
 readonly STAGED_HASHES_SHA256="0f8378c55c72645d9c15194f3cd641d716ac52e381785689722a9b8853044654"
-readonly FIELD_SOURCE_BLOB="96e8c04efee6a8231adb2723dac9acf975993e06"
-readonly FIELD_SOURCE_SHA256="b424ea2c70902e477a2580d683279645b3dd0423bfa1c9043494bc6a99dfad1e"
+readonly EXTRACTED_FIELD_SOURCE_BLOB="96e8c04efee6a8231adb2723dac9acf975993e06"
+readonly EXTRACTED_FIELD_SOURCE_SHA256="b424ea2c70902e477a2580d683279645b3dd0423bfa1c9043494bc6a99dfad1e"
+readonly LIVE_FIELD_SOURCE_BLOB="a28ff94de05265102ca819849805a7f73c675800"
+readonly LIVE_FIELD_SOURCE_SHA256="dadd6bac7c6c44fcb13e1a1ca26e9d2b6f767370bb6e802640948f15fc795836"
+readonly FIELD_TRANSITION_SHA256="2d0919b6755e3a0d1d3e7944e42ae908562e031f22ca6ba5fb0d5ae42fd687e4"
 
 readonly script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 readonly verification_dir="$(cd "$script_dir/.." && pwd -P)"
@@ -28,6 +31,7 @@ readonly live_normalized_hashes="$harness_dir/normalized-hashes.sha256"
 readonly live_patched_aeneas_hashes="$harness_dir/patched-aeneas-hashes.sha256"
 readonly live_staged_hashes="$harness_dir/staged-hashes.sha256"
 readonly live_field_source="$workspace_dir/crates/aspis-core/src/field.rs"
+readonly live_field_transition="$verification_dir/evidence/qm31-sum-products-indexed.diff"
 
 readonly modules=(
   AspisCoreFieldReduceU64
@@ -43,7 +47,7 @@ readonly modules=(
   M31InverseProof
 )
 
-for command_name in git jq lake lean perl rg shasum; do
+for command_name in cmp diff git jq lake lean perl rg shasum; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
     echo "missing required command: $command_name" >&2
     exit 2
@@ -57,6 +61,7 @@ for required_file in \
     "$live_normalized_hashes" \
     "$live_patched_aeneas_hashes" \
     "$live_staged_hashes" \
+    "$live_field_transition" \
     "$live_field_source"; do
   if [[ ! -f "$required_file" ]]; then
     echo "missing Lean-4.32 harness file: $required_file" >&2
@@ -79,6 +84,9 @@ readonly normalized_hashes="$snapshot_dir/normalized-hashes.sha256"
 readonly patched_aeneas_hashes="$snapshot_dir/patched-aeneas-hashes.sha256"
 readonly staged_hashes="$snapshot_dir/staged-hashes.sha256"
 readonly field_source_snapshot="$snapshot_dir/field.rs"
+readonly extracted_field_source="$snapshot_dir/field.extracted.rs"
+readonly field_transition="$snapshot_dir/qm31-sum-products-indexed.diff"
+readonly reconstructed_transition="$snapshot_dir/qm31-sum-products-indexed.reconstructed.diff"
 readonly staged_proof="$work_dir/staged-proof"
 readonly olean_dir="$work_dir/olean"
 readonly axiom_log="$work_dir/axioms.log"
@@ -126,11 +134,34 @@ authenticate_snapshot() {
   require_sha256 "$PATCHED_AENEAS_HASHES_SHA256" "$patched_aeneas_hashes" "patched-Aeneas hash manifest"
   require_sha256 "$STAGED_HASHES_SHA256" "$staged_hashes" "final-staged hash manifest"
 
-  if [[ "$(git hash-object "$field_source_snapshot")" != "$FIELD_SOURCE_BLOB" ]]; then
-    echo "snapshotted field.rs is not the source blob authenticated by the extracted modules" >&2
+  if [[ "$(git hash-object "$field_source_snapshot")" != "$LIVE_FIELD_SOURCE_BLOB" ]]; then
+    echo "snapshotted field.rs is not the expected post-refactor source blob" >&2
     exit 1
   fi
-  require_sha256 "$FIELD_SOURCE_SHA256" "$field_source_snapshot" "snapshotted field.rs"
+  require_sha256 "$LIVE_FIELD_SOURCE_SHA256" "$field_source_snapshot" \
+    "snapshotted post-refactor field.rs"
+  if [[ "$(git hash-object "$extracted_field_source")" != \
+      "$EXTRACTED_FIELD_SOURCE_BLOB" ]]; then
+    echo "reconstructed pre-refactor field.rs is not the extraction source" >&2
+    exit 1
+  fi
+  require_sha256 "$EXTRACTED_FIELD_SOURCE_SHA256" "$extracted_field_source" \
+    "reconstructed extraction field.rs"
+  require_sha256 "$FIELD_TRANSITION_SHA256" "$field_transition" \
+    "authenticated field transition"
+  set +e
+  diff -U 0 \
+    --label a/crates/aspis-core/src/field.rs \
+    --label b/crates/aspis-core/src/field.rs \
+    "$extracted_field_source" "$field_source_snapshot" > \
+    "$reconstructed_transition"
+  transition_status=$?
+  set -e
+  if [[ "$transition_status" -ne 1 ]] ||
+      ! cmp -s "$reconstructed_transition" "$field_transition"; then
+    echo "live field.rs does not match the authenticated extraction-to-indexed transition" >&2
+    exit 1
+  fi
 
   # Paths in this manifest are relative to the immutable gate-input snapshot.
   (
@@ -146,7 +177,10 @@ cp "$live_source_hashes" "$source_hashes"
 cp "$live_normalized_hashes" "$normalized_hashes"
 cp "$live_patched_aeneas_hashes" "$patched_aeneas_hashes"
 cp "$live_staged_hashes" "$staged_hashes"
+cp "$live_field_transition" "$field_transition"
 cp "$live_field_source" "$field_source_snapshot"
+git -C "$workspace_dir" cat-file blob "$EXTRACTED_FIELD_SOURCE_BLOB" > \
+  "$extracted_field_source"
 for module_name in "${modules[@]}"; do
   cp "$proof_dir/$module_name.lean" "$snapshot_proof/$module_name.lean"
 done
@@ -430,11 +464,11 @@ done
   shasum -a 256 -c "$staged_hashes"
 )
 authenticate_snapshot
-if [[ "$(git hash-object "$live_field_source")" != "$FIELD_SOURCE_BLOB" ]]; then
-  echo "live field.rs changed from the source blob authenticated by this run" >&2
+if [[ "$(git hash-object "$live_field_source")" != "$LIVE_FIELD_SOURCE_BLOB" ]]; then
+  echo "live field.rs changed from the post-refactor source blob authenticated by this run" >&2
   exit 1
 fi
-require_sha256 "$FIELD_SOURCE_SHA256" "$live_field_source" "live field.rs"
+require_sha256 "$LIVE_FIELD_SOURCE_SHA256" "$live_field_source" "live field.rs"
 
 echo "Lean-4.32 CM31 multiplicative + M31 inverse chain: PASS"
 echo "Aeneas: $AENEAS_COMMIT"
