@@ -141,6 +141,31 @@ theorem select_least {Good : Schedule → Bool} {s : Fin 3 → Schedule} {sel : 
     · exact h1
     · simp at hlt
 
+/-- Checking the selected branch and the strictly earlier prefix is exactly
+equivalent to recomputing the full least-good selector.  In particular, later
+branches are logically irrelevant to verifier acceptance once `sel` is fixed.
+This is the formal justification for the verifier's prefix-only CU path. -/
+theorem select_eq_some_iff_prefix {Good : Schedule → Bool}
+    {s : Fin 3 → Schedule} {sel : Fin 3} :
+    select Good s = some sel ↔
+      Good (s sel) = true ∧
+        ∀ sel' : Fin 3, sel' < sel → Good (s sel') = false := by
+  constructor
+  · intro hsel
+    exact ⟨good_of_select_eq_some hsel,
+      fun _ hlt => select_least hsel hlt⟩
+  · rintro ⟨hgood, hbefore⟩
+    fin_cases sel
+    · have hgood0 : Good (s 0) = true := by simpa using hgood
+      simp [select, hgood0]
+    · have hzero : Good (s 0) = false := hbefore 0 (by decide)
+      have hgood1 : Good (s 1) = true := by simpa using hgood
+      simp [select, hzero, hgood1]
+    · have hzero : Good (s 0) = false := hbefore 0 (by decide)
+      have hone : Good (s 1) = false := hbefore 1 (by decide)
+      have hgood2 : Good (s 2) = true := by simpa using hgood
+      simp [select, hzero, hone, hgood2]
+
 end Selector
 
 /-! ## One attempt: per-good-schedule hiding lifts through least-good selection -/
@@ -691,6 +716,7 @@ end AspisV5SelectionHidingAbort
 #print axioms AspisV5SelectionHidingAbort.good_of_select_eq_some
 #print axioms AspisV5SelectionHidingAbort.select_eq_none_iff
 #print axioms AspisV5SelectionHidingAbort.select_least
+#print axioms AspisV5SelectionHidingAbort.select_eq_some_iff_prefix
 #print axioms AspisV5SelectionHidingAbort.attemptLaw_witness_indep
 #print axioms AspisV5SelectionHidingAbort.composedLaw_witness_indep
 #print axioms AspisV5SelectionHidingAbort.composedLaw_map_publicPart
