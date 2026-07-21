@@ -1,0 +1,116 @@
+# Component-B compact replay curation
+#
+# Format: <bytes><TAB><repo-relative path>
+# File count: 100
+# Total bytes: 3952031
+# The count and total exclude this index file itself.
+#
+# The eight files under generated-deps/current-20260722/{raw,normalized}
+# and the two current evaluator *.raw.lean files are retained because the
+# current replay compares or normalizes them. All other raw duplicates are
+# excluded. Logs, .olean files, build caches, historical/error LLBC, and
+# HostFlowDebug are excluded.
+#
+# The Component-B mask manifest has been narrowed to this replay's live input
+# set. Historical logs, failed LLBC, and unused raw duplicates are no longer
+# part of the authenticated durable bundle.
+14251	AspisFormal/AspisFormal/V5ComponentCQM31TowerExact.lean
+12911	AspisFormal/AspisFormal/V5SumcheckCommitment.lean
+3145	AspisFormal/lake-manifest.json
+362	AspisFormal/lakefile.toml
+25	AspisFormal/lean-toolchain
+24427	crates/aspis-core/src/state_only_sumcheck.rs
+106722	crates/aspis-prover/src/v5_real_host_proof.rs
+18136	crates/aspis-prover/src/v5_sumcheck_mask.rs
+8241	aeneas-verif/component-b-host-flow/REPORT.md
+4016	aeneas-verif/component-b-host-flow/generated/bound-mask-flow/BoundMaskFlow.lean
+298173	aeneas-verif/component-b-host-flow/llbc/bound_mask_flow.llbc
+1948	aeneas-verif/component-b-host-flow/metadata/SHA256SUMS
+4902	aeneas-verif/component-b-host-flow/proof/BoundMaskFlowCorrespondence.lean
+8489	aeneas-verif/component-b-host-flow/proof/ComponentBSamplerHostFlowTerminalCapstone.lean
+8072	aeneas-verif/component-b-host-flow/replay-lean432.sh
+5773	aeneas-verif/component-b-mask/COMMANDS.md
+16534	aeneas-verif/component-b-mask/REPORT.md
+13510	aeneas-verif/component-b-mask/generated-deps/current-20260722/normalized/AspisCoreCm31Multiplicative.lean
+4066	aeneas-verif/component-b-mask/generated-deps/current-20260722/normalized/AspisCoreFieldAddSubNeg.lean
+11618	aeneas-verif/component-b-mask/generated-deps/current-20260722/normalized/AspisCoreFieldMulNamespaced.lean
+1094	aeneas-verif/component-b-mask/generated-deps/current-20260722/normalized/AspisCoreFieldReduceU64.lean
+13730	aeneas-verif/component-b-mask/generated-deps/current-20260722/raw/AspisCoreCm31Multiplicative.lean
+4286	aeneas-verif/component-b-mask/generated-deps/current-20260722/raw/AspisCoreFieldAddSubNeg.lean
+11838	aeneas-verif/component-b-mask/generated-deps/current-20260722/raw/AspisCoreFieldMulNamespaced.lean
+1314	aeneas-verif/component-b-mask/generated-deps/current-20260722/raw/AspisCoreFieldReduceU64.lean
+26929	aeneas-verif/component-b-mask/generated/ComponentBV5SamplerAuthenticatedConstants20260721/Funs.lean
+1970	aeneas-verif/component-b-mask/generated/ComponentBV5SamplerAuthenticatedConstants20260721/Types.lean
+48	aeneas-verif/component-b-mask/generated/v5-evaluate-current-split-20260722/ComponentBV5EvaluateCurrent20260722.lean
+43495	aeneas-verif/component-b-mask/generated/v5-evaluate-current-split-20260722/ComponentBV5EvaluateCurrent20260722/Funs.lean
+3588	aeneas-verif/component-b-mask/generated/v5-evaluate-current-split-20260722/ComponentBV5EvaluateCurrent20260722/Types.lean
+43596	aeneas-verif/component-b-mask/generated/v5-evaluate-current-split-20260722/Funs.raw.lean
+3836	aeneas-verif/component-b-mask/generated/v5-evaluate-current-split-20260722/Types.raw.lean
+3581	aeneas-verif/component-b-mask/generated/v5-evaluate-current-split-20260722/lean432-normalization.diff
+1506352	aeneas-verif/component-b-mask/llbc/component_b_v5_evaluate_current_20260722.llbc
+1059679	aeneas-verif/component-b-mask/llbc/component_b_v5_sampler_authenticated_constants_20260721.llbc
+4937	aeneas-verif/component-b-mask/metadata/SHA256SUMS
+1276	aeneas-verif/component-b-mask/proof/ComponentBCurrentFieldEvaluatorCorrespondence.lean
+18861	aeneas-verif/component-b-mask/proof/ComponentBDegree27CoordinateFormulaD1E7.lean
+7575	aeneas-verif/component-b-mask/proof/ComponentBEvaluatorCorrespondence.lean
+24113	aeneas-verif/component-b-mask/proof/ComponentBEvaluatorFieldBridge.lean
+9111	aeneas-verif/component-b-mask/proof/ComponentBEvaluatorOperationalProof.lean
+7909	aeneas-verif/component-b-mask/proof/ComponentBEvaluatorProof.lean
+9450	aeneas-verif/component-b-mask/proof/ComponentBHalfCombinedProof.lean
+19651	aeneas-verif/component-b-mask/proof/ComponentBMaintainedTerminalBridge.lean
+30064	aeneas-verif/component-b-mask/proof/ComponentBMaintainedTerminalCapstone.lean
+839	aeneas-verif/component-b-mask/proof/ComponentBOperationalPrimitiveCapstoneD1E7.lean
+1483	aeneas-verif/component-b-mask/proof/ComponentBOptimizedPrimitiveBridge.lean
+14517	aeneas-verif/component-b-mask/proof/ComponentBPublicEvaluateRecurrence.lean
+2031	aeneas-verif/component-b-mask/proof/ComponentBRoundCombinedProof.lean
+9715	aeneas-verif/component-b-mask/proof/ComponentBSamplerMaintainedPredicatesBridge.lean
+3031	aeneas-verif/component-b-mask/proof/ComponentBSamplerTerminalCapstone.lean
+40909	aeneas-verif/component-b-mask/proof/ComponentBSamplerZeroBoundary.lean
+3724	aeneas-verif/component-b-mask/proof/ComponentBSumProducts3GeneratedCorrespondence.lean
+12083	aeneas-verif/component-b-mask/proof/ComponentBSumProducts3OperationalAdapterD1E7.lean
+11099	aeneas-verif/component-b-mask/replay-lean432.sh
+16409	aeneas-verif/component-b-mask/retarget-test/SumProductsArithmetic.lean
+10062	aeneas-verif/component-b-mask/retarget-test/SumProductsComponentLoop.lean
+27752	aeneas-verif/component-b-mask/retarget-test/SumProductsFullCorrespondence.lean
+17507	aeneas-verif/component-b-mask/retarget-test/SumProductsLoop.lean
+7859	aeneas-verif/component-b-mask/rust/state_only_sumcheck.diff
+13730	aeneas-verif/component-b-weight-at/arithmetic-lean432/AspisCoreCm31Multiplicative.lean
+4286	aeneas-verif/component-b-weight-at/arithmetic-lean432/AspisCoreFieldAddSubNeg.lean
+11838	aeneas-verif/component-b-weight-at/arithmetic-lean432/AspisCoreFieldMulNamespaced.lean
+1314	aeneas-verif/component-b-weight-at/arithmetic-lean432/AspisCoreFieldReduceU64.lean
+2433	aeneas-verif/component-b-weight-at/arithmetic-lean432/AspisCoreHalf.lean
+1888	aeneas-verif/component-b-weight-at/arithmetic-lean432/AspisCoreIsZero.lean
+4849	aeneas-verif/component-b-weight-at/arithmetic-lean432/AspisCoreM31Inverse.lean
+1863	aeneas-verif/component-b-weight-at/arithmetic-lean432/AspisCoreMulPow2.lean
+11320	aeneas-verif/component-b-weight-at/arithmetic-lean432/AspisCorePow.lean
+22381	aeneas-verif/component-b-weight-at/arithmetic-lean432/AspisCorePreparedQM31.lean
+3053	aeneas-verif/component-b-weight-at/arithmetic-lean432/AspisCorePublicReducers.lean
+6723	aeneas-verif/component-b-weight-at/arithmetic-lean432/AspisCoreQm31SquareScalars.lean
+17222	aeneas-verif/component-b-weight-at/arithmetic-lean432/AspisCoreQm31SumProductsSmall.lean
+13668	aeneas-verif/component-b-weight-at/arithmetic-lean432/AspisCoreTowerEmbeddings.lean
+1297	aeneas-verif/component-b-weight-at/arithmetic-lean432/CM31ExactModel.lean
+3020	aeneas-verif/component-b-weight-at/arithmetic-lean432/CM31MulM31Proof.lean
+15773	aeneas-verif/component-b-weight-at/arithmetic-lean432/CM31MultiplicativeProof.lean
+12731	aeneas-verif/component-b-weight-at/arithmetic-lean432/CM31PowProof.lean
+5506	aeneas-verif/component-b-weight-at/arithmetic-lean432/CM31SquareProof.lean
+11806	aeneas-verif/component-b-weight-at/arithmetic-lean432/HalfProof.lean
+543	aeneas-verif/component-b-weight-at/arithmetic-lean432/HalfShiftCountAdapter.lean
+8194	aeneas-verif/component-b-weight-at/arithmetic-lean432/IsZeroProof.lean
+20199	aeneas-verif/component-b-weight-at/arithmetic-lean432/M31InverseProof.lean
+2947	aeneas-verif/component-b-weight-at/arithmetic-lean432/M31MulProof.lean
+8653	aeneas-verif/component-b-weight-at/arithmetic-lean432/M31PowProof.lean
+8541	aeneas-verif/component-b-weight-at/arithmetic-lean432/M31ReduceU64Proof.lean
+4570	aeneas-verif/component-b-weight-at/arithmetic-lean432/MulPow2Proof.lean
+515	aeneas-verif/component-b-weight-at/arithmetic-lean432/MulPow2ShiftAdapter.lean
+1061	aeneas-verif/component-b-weight-at/arithmetic-lean432/PowNonVacuity.lean
+10600	aeneas-verif/component-b-weight-at/arithmetic-lean432/PreparedQM31NewMulProof.lean
+11423	aeneas-verif/component-b-weight-at/arithmetic-lean432/PublicU128ReducerProof.lean
+2574	aeneas-verif/component-b-weight-at/arithmetic-lean432/PublicU64ReducersProof.lean
+19806	aeneas-verif/component-b-weight-at/arithmetic-lean432/QM31AddSubNegProof.lean
+12336	aeneas-verif/component-b-weight-at/arithmetic-lean432/QM31MulProof.lean
+20484	aeneas-verif/component-b-weight-at/arithmetic-lean432/QM31PowProof.lean
+23888	aeneas-verif/component-b-weight-at/arithmetic-lean432/QM31SquareScalarsProof.lean
+501	aeneas-verif/component-b-weight-at/arithmetic-lean432/ReducerShiftCountAdapter.lean
+3804	aeneas-verif/component-b-weight-at/arithmetic-lean432/SOURCE_MANIFEST.sha256
+16403	aeneas-verif/component-b-weight-at/arithmetic-lean432/SumProductsArithmetic.lean
+5664	aeneas-verif/component-b-weight-at/arithmetic-lean432/TowerEmbeddingsProof.lean

@@ -6,7 +6,7 @@
 //! absorbs the round and samples its challenge.  The byte verifier decodes
 //! only one 28-element round at a time.
 
-use crate::field::{qm31_sum_products3, PreparedQm31Multiplier, QM31};
+use crate::field::{qm31_sum_products3, PreparedQm31Multiplier, CM31, M31, P, QM31};
 use crate::statement_sumcheck::PaymentConstraintChallenges;
 use crate::transcript::{label, ChallengeSampleExhausted, Transcript};
 
@@ -30,13 +30,21 @@ pub const STATE_ONLY_CONSTRAINT_REGISTRY_BYTES: usize = 28;
 /// hashing. Seven radix-four blocks use 21 fused coefficient products and
 /// six `x^4` Horner products. Constructing `(x^2,x^3,x^4)` costs two
 /// specialized squares and one generic product. The literal `p(0)+p(1)`
-/// boundary costs another 28 adds.
+/// boundary is accumulated limbwise with 108 raw `u64` additions and four
+/// final M31 reductions instead of an extension-field addition chain.
 pub const STATE_ONLY_VERIFY_QM31_MULS_PER_ROUND: usize = 30;
-pub const STATE_ONLY_VERIFY_QM31_ADDS_PER_ROUND: usize = 41;
+pub const STATE_ONLY_VERIFY_QM31_ADDS_PER_ROUND: usize = 13;
+pub const STATE_ONLY_BOUNDARY_U64_ADDS_PER_ROUND: usize =
+    4 * (STATE_ONLY_SUMCHECK_COEFFICIENTS - 1);
+pub const STATE_ONLY_BOUNDARY_M31_REDUCTIONS_PER_ROUND: usize = 4;
 pub const STATE_ONLY_VERIFY_QM31_MULS: usize =
     STATE_ONLY_SUMCHECK_ROUNDS * STATE_ONLY_VERIFY_QM31_MULS_PER_ROUND;
 pub const STATE_ONLY_VERIFY_QM31_ADDS: usize =
     STATE_ONLY_SUMCHECK_ROUNDS * STATE_ONLY_VERIFY_QM31_ADDS_PER_ROUND;
+pub const STATE_ONLY_BOUNDARY_U64_ADDS: usize =
+    STATE_ONLY_SUMCHECK_ROUNDS * STATE_ONLY_BOUNDARY_U64_ADDS_PER_ROUND;
+pub const STATE_ONLY_BOUNDARY_M31_REDUCTIONS: usize =
+    STATE_ONLY_SUMCHECK_ROUNDS * STATE_ONLY_BOUNDARY_M31_REDUCTIONS_PER_ROUND;
 /// Per round the 21 fused products, six `x^4` Horner products, and one `x^3`
 /// product cost 252 M31 products; the two specialized squares add fourteen.
 pub const STATE_ONLY_VERIFY_M31_MULS_PER_ROUND: usize = 266;
@@ -100,8 +108,29 @@ pub fn begin_state_only_zerocheck(
 
 /// Literal `p(0) + p(1)` for a complete degree-27 round polynomial.
 pub fn state_only_boundary_sum(polynomial: &StateOnlySumcheckPolynomial) -> QM31 {
-    let at_one = polynomial.iter().copied().fold(QM31::ZERO, QM31::add);
-    polynomial[0].add(at_one)
+    // Each coefficient is canonical in all verifier call sites.  The largest
+    // limb sum is `2*c0 + c1 + ... + c27 < 29*P < 2^36`, so accumulate the
+    // four limbs as ordinary integers and reduce once per limb.  This is the
+    // exact same field sum as the former 28-step QM31 addition chain.
+    const _: () =
+        assert!((STATE_ONLY_SUMCHECK_COEFFICIENTS as u64 + 1) * (P as u64) < (1u64 << 36));
+    let first = polynomial[0];
+    let mut limbs = [
+        2 * u64::from(first.c0.a.0),
+        2 * u64::from(first.c0.b.0),
+        2 * u64::from(first.c1.a.0),
+        2 * u64::from(first.c1.b.0),
+    ];
+    for coefficient in &polynomial[1..] {
+        limbs[0] += u64::from(coefficient.c0.a.0);
+        limbs[1] += u64::from(coefficient.c0.b.0);
+        limbs[2] += u64::from(coefficient.c1.a.0);
+        limbs[3] += u64::from(coefficient.c1.b.0);
+    }
+    QM31 {
+        c0: CM31::new(M31::reduce_u64(limbs[0]), M31::reduce_u64(limbs[1])),
+        c1: CM31::new(M31::reduce_u64(limbs[2]), M31::reduce_u64(limbs[3])),
+    }
 }
 
 /// Reference degree-27 Horner evaluation using exactly 27 prepared products.
@@ -129,6 +158,36 @@ pub fn evaluate_state_only_polynomial_horner(
 /// fewer extension-field reconstructions and reductions.
 #[inline(never)]
 pub fn evaluate_state_only_polynomial(
+    polynomial: &StateOnlySumcheckPolynomial,
+    challenge: QM31,
+) -> QM31 {
+    let x2 = challenge.square();
+    let x3 = challenge.mul(x2);
+    let x4 = x2.square();
+    let powers = [challenge, x2, x3];
+    let prepared_x4 = PreparedQm31Multiplier::new(x4);
+    let block_value = |block: usize| {
+        let start = 4 * block;
+        polynomial[start].add(qm31_sum_products3(
+            powers,
+            [
+                polynomial[start + 1],
+                polynomial[start + 2],
+                polynomial[start + 3],
+            ],
+        ))
+    };
+    let mut accumulator = block_value(6);
+    let mut block = 6usize;
+    while block > 0 {
+        block -= 1;
+        accumulator = prepared_x4.mul(accumulator).add(block_value(block));
+    }
+    accumulator
+}
+
+#[cfg(test)]
+fn evaluate_state_only_polynomial_iterator_oracle(
     polynomial: &StateOnlySumcheckPolynomial,
     challenge: QM31,
 ) -> QM31 {
@@ -359,6 +418,56 @@ mod tests {
     }
 
     #[test]
+    fn indexed_radix_four_matches_former_iterator_spelling() {
+        let mut random = 0x4556_414c_5541_5445;
+        for sample in 0..256 {
+            let polynomial = core::array::from_fn(|_| random_qm31(&mut random));
+            let challenge = random_qm31(&mut random);
+            assert_eq!(
+                evaluate_state_only_polynomial(&polynomial, challenge),
+                evaluate_state_only_polynomial_iterator_oracle(&polynomial, challenge),
+                "sample={sample}",
+            );
+        }
+
+        let polynomial = core::array::from_fn(|_| random_qm31(&mut random));
+        let non_base = QM31 {
+            c0: CM31::new(M31(7), M31(11)),
+            c1: CM31::new(M31(13), M31(17)),
+        };
+        for challenge in [QM31::ZERO, QM31::ONE, non_base] {
+            assert_eq!(
+                evaluate_state_only_polynomial(&polynomial, challenge),
+                evaluate_state_only_polynomial_iterator_oracle(&polynomial, challenge),
+            );
+        }
+    }
+
+    #[test]
+    fn limbwise_boundary_sum_matches_extension_addition_chain() {
+        let reference = |polynomial: &StateOnlySumcheckPolynomial| {
+            let at_one = polynomial.iter().copied().fold(QM31::ZERO, QM31::add);
+            polynomial[0].add(at_one)
+        };
+        let mut random = 0x424f_554e_4441_5259;
+        for sample in 0..256 {
+            let polynomial = core::array::from_fn(|_| random_qm31(&mut random));
+            assert_eq!(
+                state_only_boundary_sum(&polynomial),
+                reference(&polynomial),
+                "sample={sample}",
+            );
+        }
+
+        let max = M31(P - 1);
+        let all_max = [QM31 {
+            c0: CM31::new(max, max),
+            c1: CM31::new(max, max),
+        }; STATE_ONLY_SUMCHECK_COEFFICIENTS];
+        assert_eq!(state_only_boundary_sum(&all_max), reference(&all_max));
+    }
+
+    #[test]
     fn every_round_coefficient_has_a_boundary_tooth() {
         let (proof, initial_claim) = valid_random_wire(0x4755_4152_4432_37);
         for round in 0..STATE_ONLY_SUMCHECK_ROUNDS {
@@ -458,9 +567,13 @@ mod tests {
         assert_eq!(STATE_ONLY_SUMCHECK_BYTES, 4_480);
         assert_eq!(STATE_ONLY_SUMCHECK_ABSORB_BYTES, 449);
         assert_eq!(STATE_ONLY_VERIFY_QM31_MULS_PER_ROUND, 30);
-        assert_eq!(STATE_ONLY_VERIFY_QM31_ADDS_PER_ROUND, 41);
+        assert_eq!(STATE_ONLY_VERIFY_QM31_ADDS_PER_ROUND, 13);
+        assert_eq!(STATE_ONLY_BOUNDARY_U64_ADDS_PER_ROUND, 108);
+        assert_eq!(STATE_ONLY_BOUNDARY_M31_REDUCTIONS_PER_ROUND, 4);
         assert_eq!(STATE_ONLY_VERIFY_QM31_MULS, 300);
-        assert_eq!(STATE_ONLY_VERIFY_QM31_ADDS, 410);
+        assert_eq!(STATE_ONLY_VERIFY_QM31_ADDS, 130);
+        assert_eq!(STATE_ONLY_BOUNDARY_U64_ADDS, 1_080);
+        assert_eq!(STATE_ONLY_BOUNDARY_M31_REDUCTIONS, 40);
         assert_eq!(STATE_ONLY_VERIFY_M31_MULS_PER_ROUND, 266);
         assert_eq!(STATE_ONLY_VERIFY_M31_MULS, 2_660);
     }

@@ -62,6 +62,23 @@ pub struct V5SumcheckMask {
     zero_boundary_rounds: [StateOnlySumcheckPolynomial; STATE_ONLY_SUMCHECK_ROUNDS],
 }
 
+fn sample_zero_boundary_round<S: Qm31WordSource>(
+    source: &mut S,
+) -> Result<StateOnlySumcheckPolynomial, MaskSampleExhausted> {
+    let mut polynomial = [QM31::ZERO; STATE_ONLY_SUMCHECK_COEFFICIENTS];
+    let mut tail_sum = QM31::ZERO;
+    let mut coefficient = 1;
+    while coefficient < STATE_ONLY_SUMCHECK_COEFFICIENTS {
+        let sampled = sample_qm31(source)?;
+        polynomial[coefficient] = sampled;
+        tail_sum = tail_sum.add(sampled);
+        coefficient += 1;
+    }
+    polynomial[0] = tail_sum.neg().half();
+    debug_assert_eq!(state_only_boundary_sum(&polynomial), QM31::ZERO);
+    Ok(polynomial)
+}
+
 impl V5SumcheckMask {
     /// Sample the initial claim and all 270 free round coefficients.
     ///
@@ -72,14 +89,10 @@ impl V5SumcheckMask {
         let initial_claim = sample_qm31(source)?;
         let mut zero_boundary_rounds =
             [[QM31::ZERO; STATE_ONLY_SUMCHECK_COEFFICIENTS]; STATE_ONLY_SUMCHECK_ROUNDS];
-        for polynomial in &mut zero_boundary_rounds {
-            let mut tail_sum = QM31::ZERO;
-            for coefficient in &mut polynomial[1..] {
-                *coefficient = sample_qm31(source)?;
-                tail_sum = tail_sum.add(*coefficient);
-            }
-            polynomial[0] = tail_sum.neg().half();
-            debug_assert_eq!(state_only_boundary_sum(polynomial), QM31::ZERO);
+        let mut round = 0;
+        while round < STATE_ONLY_SUMCHECK_ROUNDS {
+            zero_boundary_rounds[round] = sample_zero_boundary_round(source)?;
+            round += 1;
         }
         Ok(Self {
             initial_claim,
@@ -97,13 +110,37 @@ impl V5SumcheckMask {
         self.zero_boundary_rounds.get(round)
     }
 
+    /// Coordinates used by the provisional component-B commitment lane.
+    ///
+    /// The order is the initial claim followed by `c1..c27` for rounds zero
+    /// through nine. The omitted constant coefficient in each round is fixed
+    /// by the zero-boundary equation.
+    pub(crate) fn commitment_coordinates(&self) -> [QM31; V5_SUMCHECK_MASK_RANDOMNESS] {
+        let mut coordinates = [QM31::ZERO; V5_SUMCHECK_MASK_RANDOMNESS];
+        coordinates[0] = self.initial_claim;
+        let mut round = 0;
+        while round < STATE_ONLY_SUMCHECK_ROUNDS {
+            let mut coefficient = 1;
+            while coefficient < STATE_ONLY_SUMCHECK_COEFFICIENTS {
+                let coordinate = 1 + round * STATE_ONLY_SUMCHECK_DEGREE + (coefficient - 1);
+                coordinates[coordinate] = self.zero_boundary_rounds[round][coefficient];
+                coefficient += 1;
+            }
+            round += 1;
+        }
+        coordinates
+    }
+
     /// Form `incoming_claim / 2 + p_i(X)` for one round.
     pub fn round_polynomial(
         &self,
         round: usize,
         incoming_claim: QM31,
     ) -> Option<StateOnlySumcheckPolynomial> {
-        let mut polynomial = *self.zero_boundary_rounds.get(round)?;
+        let mut polynomial = match self.zero_boundary_rounds.get(round) {
+            Some(polynomial) => *polynomial,
+            None => return None,
+        };
         polynomial[0] = polynomial[0].add(incoming_claim.half());
         debug_assert_eq!(state_only_boundary_sum(&polynomial), incoming_claim);
         Some(polynomial)
@@ -112,11 +149,15 @@ impl V5SumcheckMask {
     /// Evaluate the globally chained ten-variate mask at a field point.
     pub fn evaluate(&self, point: &[QM31; STATE_ONLY_SUMCHECK_ROUNDS]) -> QM31 {
         let mut claim = self.initial_claim;
-        for (round, challenge) in point.iter().copied().enumerate() {
-            let polynomial = self
-                .round_polynomial(round, claim)
-                .expect("the fixed point has exactly ten coordinates");
+        let mut round = 0;
+        while round < STATE_ONLY_SUMCHECK_ROUNDS {
+            let challenge = point[round];
+            let polynomial = match self.round_polynomial(round, claim) {
+                Some(polynomial) => polynomial,
+                None => panic!("the fixed point has exactly ten coordinates"),
+            };
             claim = evaluate_state_only_polynomial(&polynomial, challenge);
+            round += 1;
         }
         claim
     }
@@ -134,9 +175,14 @@ impl V5SumcheckMask {
     ) -> Option<StateOnlySumcheckPolynomial> {
         let real_claim = state_only_boundary_sum(real);
         let mask_claim = total_claim.sub(eta.mul(real_claim));
-        let mut mixed = self.round_polynomial(round, mask_claim)?;
-        for (coefficient, real_coefficient) in mixed.iter_mut().zip(real) {
-            *coefficient = coefficient.add(eta.mul(*real_coefficient));
+        let mut mixed = match self.round_polynomial(round, mask_claim) {
+            Some(polynomial) => polynomial,
+            None => return None,
+        };
+        let mut coefficient = 0;
+        while coefficient < STATE_ONLY_SUMCHECK_COEFFICIENTS {
+            mixed[coefficient] = mixed[coefficient].add(eta.mul(real[coefficient]));
+            coefficient += 1;
         }
         debug_assert_eq!(state_only_boundary_sum(&mixed), total_claim);
         Some(mixed)
@@ -203,6 +249,26 @@ mod tests {
         V5SumcheckMask::sample(&mut XorShift(seed)).expect("test source remains canonical")
     }
 
+    fn sample_iterator_reference<S: Qm31WordSource>(
+        source: &mut S,
+    ) -> Result<V5SumcheckMask, MaskSampleExhausted> {
+        let initial_claim = sample_qm31(source)?;
+        let mut zero_boundary_rounds =
+            [[QM31::ZERO; STATE_ONLY_SUMCHECK_COEFFICIENTS]; STATE_ONLY_SUMCHECK_ROUNDS];
+        for polynomial in &mut zero_boundary_rounds {
+            let mut tail_sum = QM31::ZERO;
+            for coefficient in &mut polynomial[1..] {
+                *coefficient = sample_qm31(source)?;
+                tail_sum = tail_sum.add(*coefficient);
+            }
+            polynomial[0] = tail_sum.neg().half();
+        }
+        Ok(V5SumcheckMask {
+            initial_claim,
+            zero_boundary_rounds,
+        })
+    }
+
     fn q(seed: u32) -> QM31 {
         QM31 {
             c0: CM31::new(M31(seed * 1_003 + 1), M31(seed * 1_009 + 3)),
@@ -236,6 +302,27 @@ mod tests {
 
         let mut bad = AlwaysOutOfRange;
         assert_eq!(V5SumcheckMask::sample(&mut bad), Err(MaskSampleExhausted));
+    }
+
+    #[test]
+    fn indexed_sampler_matches_iterator_reference_exactly() {
+        for seed in 0..64 {
+            let seed = 0x7b51_090d_e218_43a1u64 ^ seed;
+            let mut indexed_source = XorShift(seed);
+            let mut iterator_source = XorShift(seed);
+            assert_eq!(
+                V5SumcheckMask::sample(&mut indexed_source),
+                sample_iterator_reference(&mut iterator_source)
+            );
+            assert_eq!(indexed_source.0, iterator_source.0);
+        }
+
+        let mut indexed_bad = AlwaysOutOfRange;
+        let mut iterator_bad = AlwaysOutOfRange;
+        assert_eq!(
+            V5SumcheckMask::sample(&mut indexed_bad),
+            sample_iterator_reference(&mut iterator_bad)
+        );
     }
 
     #[test]
