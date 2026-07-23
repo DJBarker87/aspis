@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aspis V5 mainnet deployment handoff</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #18222c;
+      --muted: #5c6975;
+      --line: #d8e0e6;
+      --paper: #fff;
+      --wash: #f3f6f8;
+      --green: #086a43;
+      --green-wash: #e7f6ee;
+      --blue: #245f95;
+      --amber: #8a5900;
+      --amber-wash: #fff7e5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--wash);
+      font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
+    }
+    main {
+      width: min(1040px, calc(100% - 32px));
+      margin: 40px auto;
+      padding: 48px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 16px 50px rgb(25 42 58 / 8%);
+    }
+    h1, h2 { line-height: 1.15; letter-spacing: -0.025em; }
+    h1 { max-width: 820px; margin: 12px 0; font-size: clamp(2.2rem, 5vw, 4rem); }
+    h2 { margin-top: 42px; font-size: 1.55rem; }
+    p { max-width: 850px; }
+    code {
+      font: 0.9em/1.45 ui-monospace, SFMono-Regular, Consolas, monospace;
+      overflow-wrap: anywhere;
+    }
+    pre {
+      overflow-x: auto;
+      padding: 18px;
+      color: #eff6fb;
+      background: #17222c;
+      border-radius: 12px;
+    }
+    .eyebrow {
+      color: var(--blue);
+      font-size: 0.78rem;
+      font-weight: 750;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .decision {
+      display: inline-block;
+      margin: 18px 0 4px;
+      padding: 8px 13px;
+      color: var(--green);
+      background: var(--green-wash);
+      border: 1px solid #b8e1cc;
+      border-radius: 999px;
+      font-weight: 750;
+    }
+    .lede { color: var(--muted); font-size: 1.18rem; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin: 24px 0;
+    }
+    .card {
+      padding: 18px;
+      background: var(--wash);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+    .card strong { display: block; color: var(--muted); font-size: 0.8rem; }
+    .card span { display: block; margin-top: 6px; font-size: 1.22rem; font-weight: 750; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .pass { color: var(--green); font-weight: 750; }
+    .operator { color: var(--amber); font-weight: 750; }
+    .callout {
+      margin-top: 24px;
+      padding: 18px 20px;
+      background: var(--amber-wash);
+      border-left: 4px solid var(--amber);
+    }
+    ul { padding-left: 22px; }
+    li + li { margin-top: 8px; }
+    footer {
+      margin-top: 46px;
+      padding-top: 20px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      font-size: 0.9rem;
+    }
+    @media (max-width: 760px) {
+      main { margin: 0; width: 100%; padding: 28px 20px; border: 0; border-radius: 0; }
+      .grid { grid-template-columns: 1fr; }
+      table { display: block; overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Aspis V5 · deployment handoff · 23 July 2026</div>
+  <div class="decision">ARTEFACT GO · TRANSACTION AWAITS OPERATOR AUTHORIZATION</div>
+  <h1>The frozen V5 program is ready to deploy.</h1>
+  <p class="lede">
+    There is no remaining code, formal-correspondence, compute-budget, account
+    safety, or provenance gate on the exact Tag-67 SBF. No mainnet transaction
+    was sent during this review. The next step belongs to the deployment
+    operator: provide the secured signers, paid RPC, funding, and explicit
+    authorization for the transaction.
+  </p>
+
+  <div class="grid">
+    <div class="card"><strong>Program ID</strong><span><code>7Q2n…Rmue</code></span></div>
+    <div class="card"><strong>SBF size</strong><span>1,258,496 bytes</span></div>
+    <div class="card"><strong>Accepted-input ceiling</strong><span>1,353,616 CU</span></div>
+  </div>
+
+  <h2>Frozen identity</h2>
+  <p>
+    Canonical SBF:
+    <code>results/spend/v5-production-tag67-freeze-stream3-20260722/aspis_verifier_v5_production_tag67.so</code>
+  </p>
+  <p>
+    SHA-256:
+    <code>4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40</code>.
+    The recommended 1,300,000-byte ProgramData allocation leaves 41,504 bytes
+    above the current binary. Source and toolchain provenance matched 77/77
+    and 91/91 recorded identities at freeze time.
+  </p>
+
+  <h2>Readiness checklist</h2>
+  <table>
+    <thead><tr><th>Gate</th><th>Status</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>Default production route</td><td class="pass">Pass</td><td>Tag 67 enters only through the atomic verify-and-apply wrapper; Tag 66 is absent.</td></tr>
+      <tr><td>Compute budget</td><td class="pass">Pass</td><td>Universal frozen-grammar ceiling is 1,353,616 CU, 46,384 below the cap.</td></tr>
+      <tr><td>Formal closure</td><td class="pass">Pass</td><td>Current A/B/C public output and Tag-67 six-step verifier compose under one named hash-application boundary.</td></tr>
+      <tr><td>Runtime evidence</td><td class="pass">Pass</td><td>Exact final SBF completed selector and marker-mode local-validator replays.</td></tr>
+      <tr><td>Secrets history</td><td class="pass">Pass</td><td>Gitleaks scanned all 127 commits; audited public test-vector and source-name false positives are recorded explicitly.</td></tr>
+      <tr><td>Mainnet account state</td><td class="pass">Pass</td><td>The canonical program ID was undeployed in a read-only mainnet-beta check on 23 July 2026.</td></tr>
+      <tr><td>RPC, funding, and signers</td><td class="operator">Operator</td><td>Use a paid mainnet RPC, secured dedicated payer, canonical program signer, explicit upgrade authority, and sufficient rent plus fee reserve.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Deployment command shape</h2>
+  <p>
+    The operator should verify the hash once more at the secure signing
+    boundary, then deploy with explicit paths and a paid mainnet endpoint:
+  </p>
+  <pre><code>sha256sum results/spend/v5-production-tag67-freeze-stream3-20260722/\
+aspis_verifier_v5_production_tag67.so
+
+solana program deploy \
+  --url "$MAINNET_RPC" \
+  --keypair /secure/mainnet-payer.json \
+  --program-id /secure/v5-program-keypair.json \
+  --upgrade-authority /secure/v5-upgrade-authority.json \
+  --buffer /secure/v5-buffer.json \
+  --max-len 1300000 \
+  --commitment finalized \
+  --max-sign-attempts 1 \
+  --use-tpu-client \
+  results/spend/v5-production-tag67-freeze-stream3-20260722/\
+aspis_verifier_v5_production_tag67.so</code></pre>
+  <p>
+    Keep the upgrade authority for the first canary run so the exact prior
+    binary can be restored. For a persistent value-bearing deployment, move
+    that authority to an operator-controlled multisig before accepting funds.
+    For a disposable publication run, close or freeze only after the evidence
+    bundle is complete.
+  </p>
+
+  <h2>Mainnet-bound proof</h2>
+  <p>
+    The retained proof in the CU evidence is a measurement fixture. A mainnet
+    run must generate a fresh proof and statement from the production host
+    caller, bound to the deployed program ID, fresh pool, sequence, anchor,
+    nullifier, and <code>mainnet-beta</code> domain. The isolated
+    <code>v5-devnet-execute</code> command is intentionally devnet-only and
+    must not be repointed at mainnet.
+  </p>
+
+  <h2>Post-deploy evidence contract</h2>
+  <ul>
+    <li>Read back the executable and ProgramData accounts at finalized commitment.</li>
+    <li>Dump the deployed program and confirm SHA-256 <code>4cf3…edf40</code>.</li>
+    <li>Record ProgramData allocation, deployment signature, finalized slot, RPC provider, and upgrade authority.</li>
+    <li>For the canary spend, publish proof and statement hashes, the exact signed wire hash, landed CU, pool transition, nullifier marker, and replay rejection.</li>
+    <li>Append a short assumptions ledger naming the transcript hash boundary and external cryptographic assumptions.</li>
+  </ul>
+
+  <div class="callout">
+    <strong>Stop condition.</strong>
+    If the SBF hash, accepted grammar, runtime cost schedule, program ID, or
+    source/toolchain binding changes, do not reuse this GO. Create a new freeze.
+  </div>
+
+  <footer>
+    This handoff distinguishes an achieved engineering gate from a signing
+    action. The artefact is ready; chain mutation remains under the operator’s
+    authority.
+  </footer>
+</main>
+</body>
+</html>

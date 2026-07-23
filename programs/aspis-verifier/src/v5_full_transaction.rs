@@ -1,9 +1,10 @@
-//! Atomic transaction wrapper shared by the V5 production route and isolated
-//! local-validator CU probe.
+//! Isolated local-validator transaction wrapper for the provisional v5 Spend.
 //!
-//! The proof account is retained and read-only. Production Tag 67 enters
-//! through the minimal dispatcher; the opt-in `v5-cu-probe` entrypoint reuses
-//! the same wrapper for measurement.
+//! This deliberately reuses the production atomic state-transition machinery
+//! while keeping the provisional proof verifier behind the `v5-cu-probe`
+//! feature.  The proof account is retained and read-only, matching production
+//! tag 60.  Nothing in this module is reachable from the frozen production
+//! dispatcher.
 
 use solana_program::{
     account_info::AccountInfo, entrypoint::ProgramResult, program_error::ProgramError,
@@ -12,7 +13,7 @@ use solana_program::{
 
 use crate::atomic_payment::{self, AtomicPaymentPublicInputs};
 
-/// Production discriminator for an end-to-end V5 Spend.
+/// Local-validator-only discriminator for an end-to-end provisional v5 Spend.
 pub const V5_FULL_CU_TRANSACTION_TAG: u8 = 67;
 
 const PUBLIC_WIRE_BYTES: usize = 4 * 32 + 2 * 4 + 32;
@@ -53,7 +54,7 @@ pub fn parse_v5_full_cu_public_inputs(
     Ok(public)
 }
 
-/// Run one real atomic state transition around a complete V5 verifier.
+/// Run one real atomic state transition around a provisional v5 verifier.
 ///
 /// The callback shape is intentionally identical to the production verifier
 /// callback.  This lets the v5 verifier consume the statement constructed from

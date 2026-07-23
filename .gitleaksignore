@@ -1,0 +1,12 @@
+# Audited false positives retained in immutable research history.
+#
+# Five generic-api-key matches point at `authenticated_offset` assignments in
+# V5 source/LLBC snapshots; no credential is present. The private-key match is
+# the public IETF SLH-DSA PKCS#8 known-answer vector vendored with its upstream
+# test suite.
+859d8588d2761fac6714226877c9317f7d697a03:aeneas-verif/tag67-work-wire-correspondence/source/v5_cu_probe.rs:generic-api-key:3463
+859d8588d2761fac6714226877c9317f7d697a03:aeneas-verif/v5-transcript-absorb-input/llbc/v5_transcript_absorb_input.llbc:generic-api-key:1
+859d8588d2761fac6714226877c9317f7d697a03:programs/aspis-verifier/src/v5_cu_probe.rs:generic-api-key:3486
+859d8588d2761fac6714226877c9317f7d697a03:aeneas-verif/tag67-work-wire-correspondence/llbc/tag67_work_wire.llbc:generic-api-key:1
+859d8588d2761fac6714226877c9317f7d697a03:aeneas-verif/tag67-work-wire-correspondence/llbc/tag67_grinding_only.llbc:generic-api-key:1
+d0d7605e99a110e7aa54ac500617d95bd89740a7:third_party/solana-pqzk-fullchain/third-party/slh-dsa/tests/pkcs8.rs:private-key:20

@@ -1,4 +1,4 @@
-//! V5 verifier implementation plus opt-in local-validator CU probes.
+//! Opt-in, local-validator-only CU probes for proposed v5 Spend kernels.
 //!
 //! Runtime gamma, leaf values, and salts are read from a host-created account.
 //! The kernel marker interval executes eighteen C1/C2 private-leaf hashes and
@@ -35,10 +35,9 @@
 //! transcript-derived q18 positions, authenticates all five private-opening
 //! sections, checks every FRI transition through the final polynomial, runs
 //! four production-order OOD/relation sumchecks and the final tensor dot, and
-//! retains mode 8's compact Component-B path. The default production Tag-67
-//! route calls this same strict Mode-9 verifier. Its formal correspondence,
-//! accepted-input CU ceiling, and frozen SBF identity are recorded in
-//! `release/preflight/v5-production-freeze.md`.
+//! retains mode 8's compact Component-B path. Tag 67 remains a CU artefact,
+//! not a security-approved v5 proof: production sampling and Rust--Lean
+//! correspondence for the B pivot and candidate Component C remain open.
 
 #[path = "v5_wire_skeleton.rs"]
 pub mod wire_skeleton;

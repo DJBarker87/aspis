@@ -55,8 +55,9 @@ fn production_require_empty(input: &[u8]) -> ProgramResult {
 /// - 64: close a sealed proof account and refund every lamport; and
 /// - 65: production verification plus the atomic state transition and an
 ///   atomic proof-account close and rent refund; and
-/// - 67: complete V5 verification plus the retained-proof atomic state
-///   transition. The default production feature set enables this route.
+/// - 67: only with the non-default `v5-production-tag67` release-candidate
+///   feature, complete v5 verification plus the retained-proof atomic state
+///   transition.
 ///
 /// Every other historical or diagnostic tag fails before account access.
 pub fn process_spend_production_instruction(
@@ -337,7 +338,7 @@ mod tests {
 
     #[cfg(feature = "v5-production-tag67")]
     #[test]
-    fn tag67_production_routes_only_through_atomic_wrapper() {
+    fn tag67_release_candidate_routes_only_through_atomic_wrapper() {
         let mut wire = vec![0u8; crate::v5_full_transaction::V5_FULL_CU_TRANSACTION_WIRE_BYTES];
         wire[0] = crate::v5_full_transaction::V5_FULL_CU_TRANSACTION_TAG;
         assert_eq!(
@@ -345,7 +346,8 @@ mod tests {
             Err(ProgramError::NotEnoughAccountKeys)
         );
 
-        // Tag 66 remains unreachable in the production feature set.
+        // Tag 66 remains unreachable even when the non-default production
+        // candidate switch is enabled.
         assert_eq!(
             process_spend_production_instruction(&id(), &[], &[66]),
             Err(ProgramError::InvalidInstructionData)

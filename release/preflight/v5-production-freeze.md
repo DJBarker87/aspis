@@ -150,6 +150,10 @@ publishes the resulting signature alongside the SBF and provenance hashes.
 
 No devnet or mainnet transaction was submitted during this freeze.
 
+The publication-side deployment checklist and post-deploy evidence contract
+are recorded in the
+[V5 mainnet deployment handoff](../../docs/reviews/v5-mainnet-deployment-handoff.html).
+
 ## Evidence layout
 
 `main` retains the final production SBF, provenance, three selector proofs and
