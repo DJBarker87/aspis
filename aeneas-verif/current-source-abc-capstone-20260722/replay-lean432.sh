@@ -3,8 +3,8 @@ set -eu
 
 BUNDLE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 ROOT=$(CDPATH= cd -- "$BUNDLE/../.." && pwd)
-LEAN_BIN=${LEAN432_BIN:-/Users/dominic/.elan/toolchains/leanprover--lean4---v4.32.0/bin/lean}
-AENEAS_LIB="$ROOT/aeneas-verif/component-a-encoder-eval-residual/capstone/.lake/build/lib/lean"
+LEAN_BIN=${LEAN432_BIN:-$(command -v lean)}
+AENEAS_LIB=${AENEAS_LEAN_LIB:-"$ROOT/aeneas-verif/component-a-encoder-eval-residual/capstone/.lake/build/lib/lean"}
 ASPIS_PATH=$(cd "$ROOT/AspisFormal" && NO_DNA=1 lake env printenv LEAN_PATH)
 
 GOOD_A_SOURCE="$BUNDLE/gooda-generated-split-root"

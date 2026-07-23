@@ -24,6 +24,14 @@ first-generation release evidence with its documents and certificates. The
 historical measurement and reproduction commands recorded there run from
 that tag.
 
+The immutable
+[`research-archive-v5-production-closure-2026-07-22`](https://github.com/DJBarker87/aspis/tree/research-archive-v5-production-closure-2026-07-22)
+tag is the complete V5 production-closure workspace before publication
+curation. It preserves every LLBC blob, raw and versioned Aeneas translation,
+extraction log, superseded retarget experiment, and intermediate V5
+feature-build directory. The default branch retains the final normalized Lean,
+proof source, capstones, reports, canonical SBF, and CU evidence.
+
 Use the tags when reproducing research history. Use the default branch for
 the current implementation. Git history is the authoritative per-change
 record.

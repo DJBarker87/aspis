@@ -1,0 +1,49 @@
+\section{Machine-checked development}
+\label{sec:formalization}
+
+The repository includes a Lean~4 formalisation
+\cite{deMouraUllrich2021Lean4} of the finite algebra and theorem composition
+used in this paper. The \path{AspisFormal/} project kernel-checks integer value
+conservation, relation closure from the gate residuals, the manifest-bound
+Johnson/MCA regime, the complete finite soundness ledger, the
+work-normalised endpoint, circle-generator order and fibre distinctness,
+distribution-level masking lemmas, and the Poseidon2 known-answer bindings.
+The theft-resistance module proves the final implication from its explicitly
+named extractor and nullifier-binding interfaces. Every audited theorem uses
+only \texttt{propext}, \texttt{Classical.choice}, and \texttt{Quot.sound}; the
+development contains no \texttt{sorry} or custom axiom.
+
+The proof-status table in \path{AspisFormal/README.md} separates kernel
+theorems from cited interfaces. In particular, the published
+Johnson/MCA/PCS, Fiat--Shamir, extractor, and simulation-extractability
+results are imported at their mathematical statements rather than
+reconstructed. Hash security and random-oracle modelling remain
+cryptographic assumptions. This is the same boundary used by the paper's
+security reductions.
+
+After the q18/g37 mainnet execution, the project extended this architecture to
+the current V5 Tag-67 candidate with Charon and Aeneas
+\cite{HoProtzenko2022Aeneas}. The pipeline is
+\[
+  \text{production Rust}
+  \longrightarrow
+  \text{Aeneas-generated Lean}
+  \longrightarrow
+  \text{maintained protocol model}
+\]
+\[
+  \longrightarrow\ \text{combined capstone}.
+\]
+The final V5 theorem composes maintained Components A and B, the actual-current
+Component-C four-round evaluator and public packed output, and the exact
+Tag-67 work-wire/six-step verifier. Its sole Tag-67
+implementation-to-model premise identifies the stored hash-function
+application with the maintained function on
+\(\texttt{DOM\_GRIND}\mathbin\Vert\texttt{nonce\_le64}\). Wire parsing,
+projection, the leading-zero predicate, and the ordered six checks are proved
+inside the theorem.
+
+The q18/g37 transaction and V5 candidate remain distinct artefacts. The former
+is the mainnet execution studied in this paper; the latter demonstrates the
+stronger source-authentic verification architecture now present on the
+repository's default branch.

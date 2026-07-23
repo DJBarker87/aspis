@@ -135,11 +135,10 @@ equalities hold, so Proposition~\ref{prop:relation-realization} supplies a
 valid witness.
 \end{proof}
 
-The preceding proofs identify the intended reduction, but the generated
-calculator and regression fixtures are not a formal verification of every
-imported-theorem hypothesis.  The concrete theorem therefore isolates the
-finite-parameter step rather than silently treating executable agreement as
-a proof.
+The Lean development kernel-checks the finite-parameter ledger and
+work-normalised endpoint. The code/list and Fiat--Shamir theorems enter through
+the cited interfaces stated above, so the concrete theorem isolates their
+application from the machine-checked finite arithmetic.
 
 \begin{remark}[Machine-verified point-form to row-form equivalence]
 \label{rem:point-row-equivalence}

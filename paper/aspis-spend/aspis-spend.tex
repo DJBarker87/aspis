@@ -37,11 +37,11 @@
 
 \title{\Profile{}: Transparent Shielded-Spend Verification and\\
 Atomic State Update from a Pre-Uploaded Proof Account on Solana}
-\author{D. Barker}
-\date{15 July 2026}
+\author{Dominic Barker}
+\date{23 July 2026}
 \hypersetup{
   pdftitle={Aspis Spend: Transparent Shielded-Spend Verification and Atomic State Update from a Pre-Uploaded Proof Account on Solana},
-  pdfauthor={D. Barker},
+  pdfauthor={Dominic Barker},
   pdfsubject={Transparent arguments and atomic Solana state transitions},
   pdfkeywords={zero knowledge, transparent arguments, circle codes, Solana, shielded state}
 }
@@ -51,45 +51,35 @@ Atomic State Update from a Pre-Uploaded Proof Account on Solana}
 \maketitle
 
 \begin{abstract}
-This paper presents \Profile, a transparent argument for a depth-20,
-one-input/one-output shielded-spend relation together with a Solana program
-that verifies the argument and atomically records the corresponding nullifier
-and pool-state transition.  The accepting instruction consumes a finalized,
-pre-uploaded proof account; proof-account creation, chunk upload, and
-finalization are separate setup transactions.  The polynomial-commitment
-layer is a custom circle-domain, WHIR-style multilinear protocol at rate
-$1/512$, with \ProfileQueryCount{} sampled query fibers and batch-work
-parameter $g=\ProfileBatchWork$.  Under the stated finite-parameter and
-boundary-state-restoration premises, the frozen event ledger and its
+We present \Profile, a transparent argument for a depth-20,
+one-input/one-output shielded-spend relation and a Solana program that verifies
+it while atomically recording the nullifier and pool transition. The
+polynomial-commitment layer is a custom circle-domain, WHIR-style multilinear
+protocol at rate $1/512$, with \ProfileQueryCount{} query fibres and
+batch-work parameter $g=\ProfileBatchWork$. The frozen event ledger and its
 32-boundary Fiat--Shamir reduction give a conservative
 \ProfileSoundnessBits-bit floor for work-normalized false acceptance per
-random-oracle query.  Under the stated affine-image premise, a witness-free simulator gives
-\ProfileSimulationBits{} bits for a real view versus simulation and
-\ProfilePairwiseBits{} bits for pairwise witness-indistinguishability in the
-declared programmable-SHA-256 random-oracle, fixed Proof-or-Abort view; this
-is a conditional computational zero-knowledge statement for that declared
-view.  The pinned
-implementation artifact contains a \ProfileProofBytes-byte proof and a
-\ProfileSbfBytes-byte Solana bytecode format (SBF) binary.  A finalized
-mainnet-beta transaction verified that proof, closed and refunded its proof
-account, advanced the pool sequence, and created the nullifier marker in one
-atomic transition.  It consumed \ProfileMainnetComputeUnits{} of the
-\ProfileComputeLimit{} requested compute units.  Program deployment, pool and
-proof-account setup, proof upload, and proof finalization were separate
-transactions.  The security statements are argument soundness and
-conditional computational zero knowledge for the exact relation and declared
-view; they do not assert a statistical, perfect, or standard-model
-zero-knowledge result.  Under an added round-by-round knowledge premise that
-posits a straight-line extractor, the knowledge analogue of the
-state-restoration premise and assumed rather than proved, the argument is an
-argument of knowledge; and because the public nullifier binds the note to its
-spending secret, this yields conditional theft resistance, in that the note's
-secret is known to any party that produces an accepting spend of it, except with
-the stated soundness error.  Establishing weak unique response of the compiled argument and invoking
-the Fiat--Shamir simulation-extractability theorem extends this to an adversary
-that also observes honest spends, under the same knowledge premise.  The
-relation is a same-path leaf replacement: this release verifies a
-spend and does not include a deposit construction or a growing anonymity set.
+random-oracle query under the stated finite-parameter and
+boundary-state-restoration premises. Under the stated affine-image premise, an
+explicit witness-free simulator gives \ProfileSimulationBits{} bits for real
+view versus simulation and \ProfilePairwiseBits{} bits for pairwise
+witness-indistinguishability in the declared programmable-SHA-256
+Proof-or-Abort view. An accompanying Lean 4 development kernel-checks the
+relation core, finite security arithmetic, circle-group facts, masking lemmas,
+and theorem composition, with cited cryptographic results kept as named
+interfaces.
+
+The released artefact contains a \ProfileProofBytes-byte proof and a
+\ProfileSbfBytes-byte Solana bytecode format binary. A finalized mainnet-beta
+transaction verified that proof, advanced the pool sequence, created the
+nullifier marker, and refunded the proof account in one atomic transition,
+using \ProfileMainnetComputeUnits{} of the \ProfileComputeLimit{} requested
+compute units. Proof transport and account setup occurred beforehand. The base
+claim is argument soundness and conditional computational zero knowledge for
+the exact relation and declared view. A separately stated round-by-round
+knowledge premise yields the theft-resistance corollary. The demonstrated
+relation is a same-path leaf replacement; deposit and a growing anonymity set
+are outside this release.
 \end{abstract}
 
 \input{sections/introduction}
@@ -97,6 +87,7 @@ spend and does not include a deposit construction or a growing anonymity set.
 
 \input{sections/relation}
 \input{sections/construction}
+\input{sections/formalization}
 
 \input{sections/soundness}
 \input{sections/hiding}

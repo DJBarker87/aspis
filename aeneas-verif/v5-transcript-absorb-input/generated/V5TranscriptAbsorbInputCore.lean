@@ -1,4 +1,5 @@
--- Normalized from the Aeneas output in ../generated-raw.
+-- Normalized from the pinned Aeneas output archived at
+-- research-archive-v5-production-closure-2026-07-22.
 import V5TranscriptRecords
 
 open Aeneas Aeneas.Std Result ControlFlow Error

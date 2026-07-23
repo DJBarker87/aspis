@@ -2,32 +2,27 @@
 
 [![Spend integration](https://github.com/DJBarker87/aspis/actions/workflows/spend-integration.yml/badge.svg)](https://github.com/DJBarker87/aspis/actions/workflows/spend-integration.yml)
 
-Aspis is my experimental answer to a narrow question: can a transparent,
-trusted-setup-free proof for a shielded-spend state transition be verified
-entirely on Solana L1, inside its 1.4 million compute-unit limit? Transparent
-proofs are large, and that cap has kept them off L1.
+Aspis demonstrates that a transparent, trusted-setup-free proof for a
+shielded-spend state transition can be verified entirely on Solana L1 inside
+its 1.4 million compute-unit limit.
 
 On 2026-07-16 one finalized mainnet-beta transaction verified a 65,407-byte
 shielded-spend proof, advanced the pool state, and recorded the nullifier in
 one atomic step, at 1,344,003 of the 1,400,000-CU cap:
 [`3G1vogg…sRPFcv`](https://explorer.solana.com/tx/3G1voggszvDMGi5PbGM1kuEMYKvh2TNMbH6hHHwndUdRQJNT7ehRFpQpksxLnx5tp2xkS5jGi359rVXk42sRPFcv?cluster=mainnet-beta).
-The program was a disposable deployment, closed after the run, so there is no
-standing instance to call ([evidence](docs/mainnet-demo.md)).
+The program was a disposable deployment and was closed after the run
+([evidence](docs/mainnet-demo.md)).
 
-This is not a usable shielded-payment system. It is the spend-verification
-primitive only: one input, one output, a same-path leaf replacement in a
-depth-20 tree, with the atomic pool and nullifier state transition. There is no
-deposit path, the anonymity set does not grow (the demonstrated set was one),
-each spend needs 71 preparatory transactions to upload the proof, theft
-resistance rests on an unproved knowledge premise, and none of it has had an
-external audit.
+The released construction is the spend-verification primitive: one input, one
+output, a same-path leaf replacement in a depth-20 tree, and an atomic pool and
+nullifier transition. It establishes the on-chain feasibility result; deposit,
+wallet, growing-anonymity-set, and multi-input/output protocols are separate
+work.
 
-The contribution is the feasibility result: this class of transparent verifier
-and atomic state transition can be made to fit inside one Solana L1 execution.
-The code, proof artifacts, measurements, failed approaches, and the security
-argument are here so others can reproduce, check, or break them. The exact
-claim and model are in the [paper](paper/aspis-spend/) and
-[Limitations](#limitations), and the
+The code, proof artefacts, measurements, formal development, failed approaches,
+and security argument are public so the result can be reproduced and
+challenged. The exact model is in the [paper](paper/aspis-spend/) and
+[Limitations](#limitations). The
 [novelty re-scan](docs/novelty-rescan-2026-07-13.md) is a dated public-evidence
 search for the claim shape.
 
@@ -41,8 +36,24 @@ asked whether the same budget could hold a real spend statement. The
 construction that answers it shares no components with his prototype, but the
 direction came from his paper.
 
-This is a solo project built with heavy AI assistance. Don't protect real funds
-with it without independent cryptographic and Solana review.
+This is a solo project built with heavy AI assistance. The evidence is the
+checked code, frozen artefacts, Lean proofs, and reproducible measurements—not
+the development process.
+
+## Current status
+
+Aspis now has two clearly separated release lines:
+
+| Track | Status | Runtime result |
+| --- | --- | ---: |
+| q18/g37, tag 65 | Executed and finalized on mainnet-beta on 2026-07-16 | 1,344,003 CU |
+| V5, tag 67 | Production-default, provenance-bound deployment candidate; not yet deployed | universal accepted-grammar ceiling 1,353,616 CU |
+
+The q18/g37 release is the published mainnet feasibility result. V5 is the
+current verifier architecture: its default SBF is 1,258,496 bytes, SHA-256
+`4cf3c1d5…edf40`, and has 46,384 CU of conservative headroom. Its code,
+source-authentic formal closure, provenance, and CU evidence are recorded in
+the [V5 production preflight](release/preflight/v5-production-freeze.md).
 
 ## Release numbers
 
@@ -62,12 +73,10 @@ cumulative advantage grows with the query budget and goes vacuous past roughly
 reduction are in the [paper](paper/aspis-spend/), recomputed by
 `spend_soundness_epro_ledger`.
 
-The floor is argument soundness: a satisfying witness exists. It becomes an
-argument of knowledge, and so gives conditional theft resistance (spending a
-note requires knowing its secret), only under an added round-by-round knowledge
-premise that is assumed, not proved. That single premise is load-bearing;
-nothing here is production-cleared, and no funds should sit in a pool on the
-strength of this release. See [Limitations](#limitations).
+The floor is argument soundness: a satisfying witness exists. The
+theft-resistance corollary additionally uses a named round-by-round knowledge
+premise. The paper keeps the proved soundness statement and that extra
+knowledge assumption separate.
 
 ## No trusted setup
 
@@ -151,74 +160,53 @@ the cap prices verifier queries, not prover time.
   that make the balance check an integer equality rather than an equality
   modulo p.
 
+## Machine-checked evidence
+
+The repository contains two complementary formal layers.
+
+- [`AspisFormal/`](AspisFormal/) is the maintained Lean 4 development. For the
+  q18/g37 construction it kernel-checks the value-conservation and relation
+  core, finite soundness ledger, work-normalized endpoint, circle-group and
+  fibre facts, hiding lemmas, Poseidon2 known-answer bindings, and the
+  theft-resistance implication from its explicitly cited interfaces.
+- [`aeneas-verif/`](aeneas-verif/) connects the current V5 Rust implementation
+  to maintained Lean models through pinned Charon/Aeneas extraction. Its final
+  capstone joins Components A, B, and C—including the public Component-C
+  output—with the Tag-67 wire and six-step work verifier.
+
+The final V5 theorem has one implementation boundary: the actual transcript
+hash application must equal the maintained `HashFn` applied to
+`DOM_GRIND || nonce_le64`. Parser, projection, digest-predicate, and six-step
+correspondence are theorem conclusions rather than assumptions. The audited
+capstones use only Lean's standard `{propext, Classical.choice, Quot.sound}`
+base. Published PCS, Fiat–Shamir, extractor, and cryptographic hash-security
+results remain cited assumptions, as they should.
+
 ## Limitations
 
-Each limitation is recorded in the paper's limitations section.
+The limits define the next engineering and research steps; the paper gives the
+full statements.
 
-- **Theft resistance is conditional on one unproved knowledge premise.** The
-  base soundness theorem gives only that a satisfying witness exists. The
-  theft-resistance corollary (a party producing an accepting spend must know
-  the note's secret, since the public nullifier binds the note to it) rests on
-  a round-by-round *knowledge* premise positing a straight-line extractor,
-  assumed rather than proved. It is heavier than, but the same epistemic status
-  as, the soundness state-restoration premise it mirrors. The deployed-pool
-  setting, where the adversary has also seen honest spends, is covered by
-  *proving* the compiled argument has weak unique responses (from
-  statement-first Fiat–Shamir absorption, salts bound into leaves, and a
-  three-value selector) and invoking the published Fiat–Shamir
-  simulation-extractability theorem; the extra error terms are a Merkle
-  second-preimage and a birthday collision over the simulated proofs, both of
-  the order already in the soundness ledger. Theft resistance is therefore a
-  conditional guarantee, not a production-cleared one, and it says nothing
-  about key management or secret-key leakage.
-- **No deposit path; anonymity set does not grow.** This release ships the
-  spend verifier only. There is no deposit, mint, or append-leaf instruction;
-  the pool's starting anchor is supplied at initialization rather than
-  accumulated from deposits, and the relation replaces a leaf in place rather
-  than adding one. The demonstrated spend advanced one pool from sequence 0 to
-  1, so its anonymity set is one. A deposit construction and a growing set are
-  future work.
-- **Single-note, single-pool.** One input, one output, one pool account, one
-  nullifier PDA per spend, strictly sequential (see
-  [Throughput and scaling](#throughput-and-scaling)). Multi-input/output,
-  change/merge, and a shared nullifier structure are not in this release.
-- **Cross-cluster isolation rests on an operator-chosen tag.** The statement
-  binds a deployment domain,
-  `sha256("aspis-spend-deployment-domain-v1" || runtime_program_id ||
-  domain_tag)`, stored by the pool at initialization and compared, with a
-  distinct error code, before any proof byte is interpreted. A proof ground for
-  one deployment is rejected by every pool storing another domain. Two gaps
-  remain. The binding is keyholder-shaped: the holder of the program-id keypair
-  can redeploy the same program id with the same domain tag on another cluster
-  and reproduce the domain. And the domain tag is an operator-supplied label
-  that the program does not check against the cluster genesis, so a pool
-  initialized on one cluster with another cluster's tag produces that cluster's
-  domain. Cross-cluster isolation therefore rests on the operator choosing an
-  honest tag, verified by the off-chain executor's genesis check rather than
-  enforced by the program. Binding the cluster genesis into the domain would
-  remove the second gap; it is not in this release because it would require
-  regenerating the proof.
-- **Zero knowledge is conditional and model-scoped.** The paper constructs a
-  witness-free simulator (Theorem "real view versus simulation") whose output
-  is computationally indistinguishable from the real proof view. It holds only
-  under the affine-image rank and coverage premise, in the programmable SHA-256
-  random-oracle model, and for the declared proof-and-execution view, which
-  excludes the fee-payer identity, blockhash, account-graph linkage, network
-  metadata, and timing/scheduler/power side channels. It is computational, not
-  statistical, perfect, or standard-model zero knowledge, and it is not
-  transaction-graph or network-layer privacy. The affine-image rank premise is
-  independently checkable with `tools/verify_hiding_ranks.py`, which re-derives
-  the maps with its own field arithmetic and reproduces the eight pinned ranks
-  rather than taking the prover's word for them.
-- **No external audit; no live instance.** No third-party security audit or
-  coverage-guided fuzz campaign has been performed
-  ([internal review](docs/reviews/prepublication-security-review.md)). The
-  mainnet program was disposable and is closed; there is no standing deployment
-  to call.
-- **Compute-unit repricing.** Runtime CU pricing differs across clusters and
-  changes over time. A repricing past the cap halts spends at these parameters,
-  since the executor's same-cluster preflight simulation fails closed before
-  submission, and it cannot admit invalid state.
+- **Knowledge.** The base theorem proves argument soundness. Theft resistance
+  additionally uses the stated round-by-round extractor premise.
+- **Application scope.** The q18/g37 release is one input, one output, one
+  sequential pool, and a same-path replacement. It has no deposit or append
+  path, so the demonstrated anonymity set was one.
+- **Privacy scope.** The simulator covers the declared proof-and-execution view
+  in the programmable SHA-256 random-oracle model. Fee-payer linkage,
+  transaction graphs, network metadata, timing, and physical side channels are
+  different privacy layers.
+- **Deployment identity.** Statements bind the runtime program ID and an
+  operator-selected domain tag. The executor checks the cluster genesis;
+  including genesis directly in the statement would make that binding
+  self-contained.
+- **Operations.** Proof upload takes 71 preparatory transactions, one pool is
+  sequential, nullifier storage grows linearly, and a CU repricing beyond the
+  measured headroom would require new parameters.
+- **Assurance.** The repository includes internal review, formal proofs,
+  independent checkers, and frozen mainnet evidence. Independent cryptographic
+  and Solana review and a published coverage-guided fuzz campaign remain the
+  next assurance milestones.
 
 ## Verify the source
 
@@ -254,10 +242,12 @@ signature, slot, and compute units.
 
 ## Paper
 
-The [paper source](paper/aspis-spend/) states the exact relation, transcript,
-and security reductions, with measured release values flowing through
-`macros-generated.tex`. The PDF is rebuilt, frozen, and hash-pinned when a
-release executes.
+The [paper source](paper/aspis-spend/) and adjacent PDF are the living
+manuscript. The immutable q18/g37 publication PDF is
+[`release/aspis-spend-q18-g37-mainnet-v1/paper/aspis-spend.pdf`](release/aspis-spend-q18-g37-mainnet-v1/paper/aspis-spend.pdf),
+identical to the PDF attached to the GitHub Release. This keeps the executed
+release record fixed while allowing the manuscript to document later formal
+work.
 
 ## Repository map
 
@@ -266,6 +256,10 @@ carries a README naming its production entry points.
 
 | Path | Contents |
 | --- | --- |
+| `.cargo/` | Reproducible Cargo aliases and build configuration |
+| `.github/` | CI for Rust, release bindings, and Lean kernel checks |
+| `AspisFormal/` | Maintained Lean 4 formalisation and proof-status table |
+| `aeneas-verif/` | Curated Rust-to-Lean extraction proofs and V5 capstones |
 | `crates/aspis-core/` | `no_std`, byte-exact host and SBF verifier core |
 | `crates/aspis-prover/` | Prover, grinding, security calculators, and the release proof fixtures |
 | `crates/aspis-statement/` | Shielded-spend relation and statement encoding |
@@ -273,6 +267,11 @@ carries a README naming its production entry points.
 | `xtask/` | Release certification, measurement, and deployment execution |
 | `paper/aspis-spend/` | Publication source and build instructions |
 | `docs/` | Novelty search record and design history |
+| `manifests/` | Machine-readable parameter and release bindings |
+| `reference/` | Compact independent reference material |
+| `release/` | Immutable mainnet bundle and V5 production preflight |
+| `results/` | Curated runtime measurements and final V5 evidence |
+| `tools/` | Independent checkers and formal/evidence utilities |
 | `archive/` | Index of superseded and failed research retained in Git |
 
 Earlier prototypes, rejected parameters, failed designs, and the research

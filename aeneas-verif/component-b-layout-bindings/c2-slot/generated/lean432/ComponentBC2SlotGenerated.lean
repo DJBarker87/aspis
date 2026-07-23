@@ -1,5 +1,6 @@
 -- Lean-4.32 replay of the exact Aeneas function bodies in
--- `generated/raw/ComponentBC2Slot.lean`.  The source types are reused from
+-- the raw ComponentBC2Slot extraction archived at
+-- research-archive-v5-production-closure-2026-07-22. The source types are reused from
 -- the independently authenticated Component-B layout extraction so the same
 -- Rust lane is not represented by a second Lean structure.
 import ComponentBLayoutBindingsGenerated

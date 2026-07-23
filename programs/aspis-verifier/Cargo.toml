@@ -33,8 +33,8 @@ spend-dynamic-rate512 = ["aspis-statement/spend-dynamic-rate512"]
 v5-cu-probe = []
 # Frozen production switch. This compiles tag 67 into the minimal production
 # dispatcher and routes it only through the atomic verify-and-apply wrapper.
-# The executable, transcript, formal, and CU gates are recorded in the release
-# preflight before this feature is included in `default`.
+# It entered `default` after the executable, transcript, formal, and CU gates
+# recorded in the release preflight closed.
 v5-production-tag67 = ["spend-production"]
 
 [dependencies]

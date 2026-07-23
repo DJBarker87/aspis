@@ -1,4 +1,5 @@
--- Normalized from the pinned Aeneas output in ../generated-raw.
+-- Normalized from the pinned Aeneas output archived at
+-- research-archive-v5-production-closure-2026-07-22.
 import Aeneas.Std
 import Aeneas.Tactic.RustAttributes
 

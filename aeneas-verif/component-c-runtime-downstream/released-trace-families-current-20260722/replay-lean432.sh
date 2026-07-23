@@ -7,8 +7,8 @@ readonly runtime="$root/aeneas-verif/component-c-runtime-downstream"
 readonly canonical="$runtime/relation-table-canonical-current-20260722/generated/normalized/RuntimeEvaluatorCanonicalCurrent20260722"
 readonly arithmetic="$root/aeneas-verif/component-b-weight-at/arithmetic-lean432"
 readonly b_olean="${COMPONENT_B_ARITHMETIC_OLEAN_DIR:-$root/aeneas-verif/component-b-mask/unified-current-20260722/olean}"
-readonly aeneas_lib="$root/aeneas-verif/component-a-encoder-eval-residual/capstone/.lake/build/lib/lean"
-readonly lean_bin="${LEAN432_BIN:-/Users/dominic/.elan/toolchains/leanprover--lean4---v4.32.0/bin/lean}"
+readonly aeneas_lib="${AENEAS_LEAN_LIB:-$root/aeneas-verif/component-a-encoder-eval-residual/capstone/.lake/build/lib/lean}"
+readonly lean_bin="${LEAN432_BIN:-$(command -v lean)}"
 
 if [[ -n "${COMPONENT_C_REPLAY_OUT:-}" ]]; then
   out=$COMPONENT_C_REPLAY_OUT

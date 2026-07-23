@@ -106,10 +106,11 @@ The hiding theorems are conditional on the complete affine-image and
 rank-coverage premise in Assumption~\ref{lem:complete-affine-image}.  The
 \(\mathsf{Good}_{\mathrm{spend}}\) checker supplies release-bound evidence by reconstructing
 and eliminating the relevant finite-field matrices from the frozen layout.
-The fingerprints and regression tests detect drift, but no independent
-verifier of the reconstruction and implementation binding is presently
-published; the executable evidence is not a formal proof-assistant
-development or an external security audit.
+The independent rank checker re-derives the maps with separate field
+arithmetic, while the Lean development proves the corresponding finite
+algebraic hiding statements. The released q18/g37 binary is bound through
+parameter CI, known-answer tests, and frozen execution evidence rather than a
+universal Rust-refinement theorem.
 The finalized mainnet execution establishes behaviour for one exact proof,
 statement, binary, account pre-state, and transaction.  It is not a throughput
 benchmark, an availability result, or an external audit, and it does not

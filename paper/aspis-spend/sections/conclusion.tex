@@ -23,6 +23,12 @@ post-state.  Program deployment, proof transport, and finalization were
 separate setup operations; ProgramData recovery and the treasury sweep were
 separate cleanup operations.
 
+The accompanying Lean~4 project kernel-checks the relation core, finite
+security arithmetic, circle and masking lemmas, and capstone composition. The
+current repository extends that approach with an Aeneas-generated
+Rust-to-Lean path for the later V5 Tag-67 candidate, while keeping the V5
+candidate distinct from the q18/g37 transaction reported here.
+
 The result establishes feasibility for this one-input, one-output same-path
 transition under the measured Solana limit.  Broader transaction relations,
 lower prover latency, independent security review, and sustained deployment

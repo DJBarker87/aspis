@@ -1,13 +1,44 @@
 cff-version: 1.2.0
-message: "If you use Aspis, please cite the software and accompanying Aspis Spend manuscript."
+message: "Please cite the Aspis Spend manuscript and the q18/g37 mainnet release."
 title: "Aspis Spend: Transparent Shielded-Spend Verification and Atomic State Update from a Pre-Uploaded Proof Account on Solana"
 type: software
+version: "aspis-spend-q18-g37-mainnet-v1"
+date-released: 2026-07-16
 authors:
   - family-names: "Barker"
-    given-names: "D."
+    given-names: "Dominic"
     website: "https://github.com/DJBarker87"
+abstract: >-
+  Aspis demonstrates transparent, trusted-setup-free verification of a
+  one-input/one-output shielded-spend state transition entirely on Solana L1.
+  The q18/g37 release finalized on mainnet-beta at 1,344,003 compute units and
+  includes the proof, deployed SBF, transaction evidence, security analysis,
+  and an offline-verifiable release bundle. The repository also contains a
+  Lean 4 formalisation and the later source-authentic V5 Tag-67 candidate.
+keywords:
+  - "zero knowledge"
+  - "transparent arguments"
+  - "Solana"
+  - "STARK"
+  - "WHIR"
+  - "M31"
+  - "Lean 4"
+  - "Aeneas"
 repository-code: "https://github.com/DJBarker87/aspis"
+repository-artifact: "https://github.com/DJBarker87/aspis/releases/tag/aspis-spend-q18-g37-mainnet-v1"
 url: "https://github.com/DJBarker87/aspis"
 license:
   - Apache-2.0
   - MIT
+identifiers:
+  - type: other
+    value: "d80a9f1cf1332e4af61346f1458441c6c39e0d80"
+    description: "Git commit identified by the aspis-spend-q18-g37-mainnet-v1 tag"
+preferred-citation:
+  type: article
+  title: "Aspis Spend: Transparent Shielded-Spend Verification and Atomic State Update from a Pre-Uploaded Proof Account on Solana"
+  authors:
+    - family-names: "Barker"
+      given-names: "Dominic"
+  year: 2026
+  url: "https://github.com/DJBarker87/aspis/releases/tag/aspis-spend-q18-g37-mainnet-v1"
