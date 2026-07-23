@@ -6,6 +6,10 @@
 sampler, exact runtime schedule, encoder inputs, four production-order rounds,
 relation finalisation, dynamic packer, and public output.
 
+This closure is part of the default-Tag-67 frozen release candidate, whose
+exact SBF SHA-256 is
+`4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40`.
+
 The strongest public theorem is
 `generated_public_run_output_matches_deployed` in
 `released-trace-families-current-20260722/proof/RuntimeReleasedTraceFamiliesCurrentJoin.lean`.
@@ -15,8 +19,8 @@ For every packaged successful generated run it proves:
 - every row equals the corresponding row of maintained `deployedEvaluate`.
 
 `FormalClosureStream1.current_source_combined_capstone` imports that public
-closure alongside the actual-current operational folds, Components A and B,
-and the Tag-67 work-wire verifier.
+closure alongside the actual-current operational folds, the frozen-schedule
+Component-A bridge, Component B, and the Tag-67 work-wire verifier.
 
 ## What is proved
 

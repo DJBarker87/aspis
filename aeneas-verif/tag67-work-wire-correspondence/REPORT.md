@@ -7,6 +7,12 @@ work-verifier helpers to the maintained Lean model. The final theorem is
 `AspisTag67WorkVerifierClosure.tag67AcceptedWireAndVerifierClosure` in
 [`proof/Tag67WorkVerifierClosure.lean`](proof/Tag67WorkVerifierClosure.lean).
 
+Tag 67 is enabled in the default verifier dispatch. The theorem is part of the
+formal closure for the frozen SBF with SHA-256
+`4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40`;
+dispatch relies on it while supplying the exact hash-application equation
+below.
+
 ## What the theorem closes
 
 Generated acceptance proves all of the following:

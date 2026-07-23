@@ -1,5 +1,11 @@
 # Component-B unified source-authentic correspondence
 
+> Release status (2026-07-23): this dated bundle is now imported by
+> `FormalClosureStream1.current_source_combined_capstone`. The integration work
+> described at the end of this extraction report has been completed; the
+> snapshot identities and local theorem scope below remain the provenance
+> record.
+
 ## Result
 
 The Component-B executable chain is closed on Lean 4.32 against one combined
@@ -154,7 +160,8 @@ The replay-script SHA-256 is
 The 70-entry authoritative nested manifest SHA-256 is
 `0f420aebd37f7e64af89d75f88f4932190338e1b0138d3bc989421855424f4bb`.
 
-The only remaining integration work is central import placement into the
-maintained Lean-4.32 tree and composition with separately stated transcript
-and PCS premises.  No local executable or arithmetic seam remains in this
-Component-B chain.
+Central import placement and repository-level composition are complete:
+`FormalClosureStream1.current_source_combined_capstone` imports the
+Component-B result alongside the frozen-schedule Component-A bridge,
+Component-C public output, and Tag-67 verifier closure. No local executable or
+arithmetic seam remains in this Component-B chain.

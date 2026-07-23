@@ -22,7 +22,7 @@ cryptographic assumptions. This is the same boundary used by the paper's
 security reductions.
 
 After the q18/g37 mainnet execution, the project extended this architecture to
-the current V5 Tag-67 candidate with Charon and Aeneas
+the frozen V5 Tag-67 deployment candidate with Charon and Aeneas
 \cite{HoProtzenko2022Aeneas}. The pipeline is
 \[
   \text{production Rust}
@@ -34,9 +34,12 @@ the current V5 Tag-67 candidate with Charon and Aeneas
 \[
   \longrightarrow\ \text{combined capstone}.
 \]
-The final V5 theorem composes maintained Components A and B, the actual-current
-Component-C four-round evaluator and public packed output, and the exact
-Tag-67 work-wire/six-step verifier. Its sole Tag-67
+The final V5 theorem composes the source-extracted Component-A execution at
+the frozen concrete schedule, general Component-B correspondence, the
+actual-current Component-C four-round evaluator and public packed output, and
+the exact Tag-67 work-wire/six-step verifier. The runtime recomputes both
+GoodA and GoodB for every selected branch; a universal all-schedule
+source-authentic Component-A theorem remains separate. The theorem's sole Tag-67
 implementation-to-model premise identifies the stored hash-function
 application with the maintained function on
 \(\texttt{DOM\_GRIND}\mathbin\Vert\texttt{nonce\_le64}\). Wire parsing,
@@ -44,6 +47,7 @@ projection, the leading-zero predicate, and the ordered six checks are proved
 inside the theorem.
 
 The q18/g37 transaction and V5 candidate remain distinct artefacts. The former
-is the mainnet execution studied in this paper; the latter demonstrates the
+is the mainnet execution studied in this paper. The exact frozen V5 SBF later
+finalized the atomic Tag-67 path on devnet at 1,335,952 CU, demonstrating the
 stronger source-authentic verification architecture now present on the
-repository's default branch.
+repository's default branch; V5 has not yet been executed on mainnet.

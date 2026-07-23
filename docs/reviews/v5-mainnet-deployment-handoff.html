@@ -115,9 +115,9 @@
   <div class="decision">ARTEFACT GO · TRANSACTION AWAITS OPERATOR AUTHORIZATION</div>
   <h1>The frozen V5 program is ready to deploy.</h1>
   <p class="lede">
-    There is no remaining code, formal-correspondence, compute-budget, account
-    safety, or provenance gate on the exact Tag-67 SBF. No mainnet transaction
-    was sent during this review. The next step belongs to the deployment
+    The code, runtime-enforced candidate gate, compute budget, atomic account
+    path, and exact binary identity are ready. No mainnet transaction was sent
+    during this review. The next step belongs to the deployment
     operator: provide the secured signers, paid RPC, funding, and explicit
     authorization for the transaction.
   </p>
@@ -126,6 +126,7 @@
     <div class="card"><strong>Program ID</strong><span><code>7Q2n…Rmue</code></span></div>
     <div class="card"><strong>SBF size</strong><span>1,258,496 bytes</span></div>
     <div class="card"><strong>Accepted-input ceiling</strong><span>1,353,616 CU</span></div>
+    <div class="card"><strong>Devnet rehearsal</strong><span>1,335,952 CU · finalized</span></div>
   </div>
 
   <h2>Frozen identity</h2>
@@ -137,8 +138,9 @@
     SHA-256:
     <code>4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40</code>.
     The recommended 1,300,000-byte ProgramData allocation leaves 41,504 bytes
-    above the current binary. Source and toolchain provenance matched 77/77
-    and 91/91 recorded identities at freeze time.
+    above the current binary. Source and toolchain provenance matched all 77
+    and 91 recorded identities in the live freeze workspace; a fresh clone of
+    public commit <code>06788d4</code> reproduced the binary byte-for-byte.
   </p>
 
   <h2>Readiness checklist</h2>
@@ -146,14 +148,26 @@
     <thead><tr><th>Gate</th><th>Status</th><th>Result</th></tr></thead>
     <tbody>
       <tr><td>Default production route</td><td class="pass">Pass</td><td>Tag 67 enters only through the atomic verify-and-apply wrapper; Tag 66 is absent.</td></tr>
-      <tr><td>Compute budget</td><td class="pass">Pass</td><td>Universal frozen-grammar ceiling is 1,353,616 CU, 46,384 below the cap.</td></tr>
-      <tr><td>Formal closure</td><td class="pass">Pass</td><td>Current A/B/C public output and Tag-67 six-step verifier compose under one named hash-application boundary.</td></tr>
-      <tr><td>Runtime evidence</td><td class="pass">Pass</td><td>Exact final SBF completed selector and marker-mode local-validator replays.</td></tr>
+      <tr><td>Compute budget</td><td class="pass">Pass</td><td>The frozen-runtime accepted-grammar ceiling is 1,353,616 CU, 46,384 below the cap.</td></tr>
+      <tr><td>Formal closure</td><td class="pass">Pass</td><td>Frozen-schedule A, general B/C public output, and the Tag-67 six-step verifier compose under one named hash-application boundary.</td></tr>
+      <tr><td>Runtime evidence</td><td class="pass">Pass</td><td>Exact final SBF completed selector/marker-mode replays and finalized the atomic devnet path at 1,335,952 CU.</td></tr>
       <tr><td>Secrets history</td><td class="pass">Pass</td><td>Gitleaks scanned all 127 commits; audited public test-vector and source-name false positives are recorded explicitly.</td></tr>
       <tr><td>Mainnet account state</td><td class="pass">Pass</td><td>The canonical program ID was undeployed in a read-only mainnet-beta check on 23 July 2026.</td></tr>
-      <tr><td>RPC, funding, and signers</td><td class="operator">Operator</td><td>Use a paid mainnet RPC, secured dedicated payer, canonical program signer, explicit upgrade authority, and sufficient rent plus fee reserve.</td></tr>
+      <tr><td>RPC, funding, and signers</td><td class="operator">Operator</td><td>Use a paid mainnet RPC/WS pair, secured dedicated payer funded with at least 10 SOL, canonical program signer, fresh pool/proof signers, buffer, and explicit upgrade authority.</td></tr>
     </tbody>
   </table>
+
+  <h2>Finalized devnet rehearsal</h2>
+  <p>
+    The exact frozen SBF was deployed as
+    <a href="https://explorer.solana.com/address/EZYH9FFDGj9gSacmDhvYBqPAzcSm9cfURwuz1CtzQRFS?cluster=devnet"><code>EZYH9FF…zQRFS</code></a>.
+    Atomic Tag 67 finalized at slot <code>478299357</code>:
+    <a href="https://explorer.solana.com/tx/38mNKeMmRf9Ttqmde8jZqCMq8F1piHhCEqGYVYrSHEggTu21C93wWAEhoDkZ2qJHeTX7j3qCmibNNmZ6awWtEuLC?cluster=devnet"><code>38mNKeM…WtEuLC</code></a>.
+    Simulation and landed metadata both report 1,335,952 CU. The pool advanced
+    from sequence 0 to 1, the canonical nullifier marker was created, the
+    sealed proof remained byte-for-byte unchanged, and the poststate replay
+    was rejected with the exact expected nullifier error.
+  </p>
 
   <h2>Deployment command shape</h2>
   <p>
@@ -165,6 +179,7 @@ aspis_verifier_v5_production_tag67.so
 
 solana program deploy \
   --url "$MAINNET_RPC" \
+  --ws "$MAINNET_WS" \
   --keypair /secure/mainnet-payer.json \
   --program-id /secure/v5-program-keypair.json \
   --upgrade-authority /secure/v5-upgrade-authority.json \
@@ -172,6 +187,7 @@ solana program deploy \
   --max-len 1300000 \
   --commitment finalized \
   --max-sign-attempts 1 \
+  --with-compute-unit-price 0 \
   --use-tpu-client \
   results/spend/v5-production-tag67-freeze-stream3-20260722/\
 aspis_verifier_v5_production_tag67.so</code></pre>

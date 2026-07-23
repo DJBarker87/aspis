@@ -1,0 +1,125 @@
+{
+  "artifact": "v5_universal_accepted_topology_cu_policy",
+  "generated_at_utc": "2026-07-22T18:49:49Z",
+  "policy": "full canonical grammar retained; conservative upper bound, no topology rejection",
+  "sbf_path": "program/aspis_verifier_v5_tag67.so",
+  "sbf_bytes": 1258496,
+  "sbf_sha256": "4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40",
+  "transaction_cu_limit": 1400000,
+  "maximum_parent_hashes_by_section": [
+    119,
+    119,
+    101,
+    83,
+    65
+  ],
+  "maximum_parent_hashes_total": 487,
+  "maximum_frontier_nodes_by_section": [
+    338,
+    338,
+    284,
+    230,
+    176
+  ],
+  "maximum_frontier_nodes_total": 1366,
+  "sha256_129_byte_syscall_cu": 149,
+  "conservative_cu_per_additional_parent_hash": 512,
+  "good_gate_variable_control_flow_cu": 4096,
+  "selectors": [
+    {
+      "selector": 0,
+      "missing_marker_baseline_cu": 1331232,
+      "identical_repeats": [
+        1331232,
+        1331232,
+        1331232
+      ],
+      "system_program_cpi_completed_repeats": 3,
+      "parent_hashes_by_section": [
+        113,
+        113,
+        95,
+        77,
+        59
+      ],
+      "parent_hashes_total": 457,
+      "frontier_nodes_by_section": [
+        320,
+        320,
+        266,
+        212,
+        158
+      ],
+      "frontier_nodes_total": 1276,
+      "maximum_additional_parent_hashes": 30,
+      "universal_selector_upper_bound_cu": 1350688,
+      "universal_selector_headroom_cu": 49312
+    },
+    {
+      "selector": 1,
+      "missing_marker_baseline_cu": 1333896,
+      "identical_repeats": [
+        1333896,
+        1333896,
+        1333896
+      ],
+      "system_program_cpi_completed_repeats": 3,
+      "parent_hashes_by_section": [
+        115,
+        115,
+        97,
+        79,
+        61
+      ],
+      "parent_hashes_total": 467,
+      "frontier_nodes_by_section": [
+        326,
+        326,
+        272,
+        218,
+        164
+      ],
+      "frontier_nodes_total": 1306,
+      "maximum_additional_parent_hashes": 20,
+      "universal_selector_upper_bound_cu": 1348232,
+      "universal_selector_headroom_cu": 51768
+    },
+    {
+      "selector": 2,
+      "missing_marker_baseline_cu": 1326480,
+      "identical_repeats": [
+        1326480,
+        1326480,
+        1326480
+      ],
+      "system_program_cpi_completed_repeats": 3,
+      "parent_hashes_by_section": [
+        110,
+        110,
+        92,
+        74,
+        56
+      ],
+      "parent_hashes_total": 442,
+      "frontier_nodes_by_section": [
+        311,
+        311,
+        257,
+        203,
+        149
+      ],
+      "frontier_nodes_total": 1231,
+      "maximum_additional_parent_hashes": 45,
+      "universal_selector_upper_bound_cu": 1353616,
+      "universal_selector_headroom_cu": 46384
+    }
+  ],
+  "universal_accepted_input_upper_bound_cu": 1353616,
+  "universal_headroom_cu": 46384,
+  "governing_selector_after_topology_normalization": 2,
+  "topology_derivation": "For each section, one private leaf hash per opened record is fixed at 18. Internal radix-4 parent hashes equal the sum of distinct parent counts after every two-bit shift; every odd-depth tree adds one binary-cap parent hash. Maximizing distinct parents at each finite level gives [119,119,101,83,65].",
+  "per_parent_derivation": "Solana runtime 2.3.13 charges 85 + floor(129/2) = 149 CU for each one-slice radix-4 SHA-256 parent syscall. The 512-CU allowance leaves 363 CU for topology iteration and four fixed child copies and exceeds the largest observed all-in selector-fixture increment of 300 CU per additional parent.",
+  "good_gate_derivation": "For accepted nonsingular matrices, fraction-free elimination updates have fixed loop counts. Variable work is bounded by 66 extra M31 pivot checks, six extra QM31 pivot checks (24 limb comparisons), and at most 208 u32 word swaps. These paths invoke no cryptographic syscall; 4096 CU reserves more than four ordinary SBF instructions per bounded word operation.",
+  "remaining_cu_quantifier": "closed for the frozen grammar and Solana runtime 2.3.13 cost schedule",
+  "paths_normalized_for_bundle": true
+}

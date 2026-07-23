@@ -10,9 +10,16 @@ The strongest result is
 [`current-source-abc-capstone-20260722/proof/CurrentSourceABCapstone.lean`](current-source-abc-capstone-20260722/proof/CurrentSourceABCapstone.lean).
 It combines:
 
-- maintained Component-A and Component-B correspondence;
+- source-authentic Component-A correspondence for the frozen concrete schedule
+  and maintained Component-B correspondence;
 - the actual-current Component-C fold and public-output correspondence; and
 - Tag-67 wire decoding plus all six ordered work-verifier steps.
+
+The production Rust verifier enforces the GoodA and GoodB gates for every
+accepted selection. The combined theorem's Component-A conjunct is narrower:
+it authenticates the frozen concrete schedule. A universal source-authentic
+theorem connecting the extracted `candidate_is_good` path to
+`VerifierEnforcesGoodA` remains open.
 
 The Tag-67 side enters through
 `AspisTag67WorkVerifierClosure.tag67AcceptedWireAndVerifierClosure`. Its only
@@ -26,6 +33,10 @@ actualTranscriptGrindingDigest state nonce
 That equation names the pinned Aeneas function-pointer boundary directly.
 Parser, projection, digest-predicate, and six-step correspondence are proved
 inside the closure.
+
+This proof layer is bound to the frozen V5 release candidate. Tag 67 is enabled
+in the default verifier dispatch, and the exact SBF has SHA-256
+`4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40`.
 
 ## Proof map
 
@@ -76,8 +87,10 @@ and superseded retarget experiments are preserved at
 [`research-archive-v5-production-closure-2026-07-22`](https://github.com/DJBarker87/aspis/tree/research-archive-v5-production-closure-2026-07-22).
 This reduces the tracked directory from roughly 40 MB to about 5 MB without
 discarding the extraction history.
+The archive tag resolves to
+[`859d8588d2761fac6714226877c9317f7d697a03`](https://github.com/DJBarker87/aspis/commit/859d8588d2761fac6714226877c9317f7d697a03).
 
 The q18/g37 mainnet transaction predates this V5 proof layer. Its immutable
 evidence remains in [`release/aspis-spend-q18-g37-mainnet-v1/`](../release/aspis-spend-q18-g37-mainnet-v1/);
-the V5 closure supports the current production candidate and does not relabel
-the earlier transaction.
+the V5 closure supports the exact frozen V5 release candidate and does not
+relabel the earlier transaction.

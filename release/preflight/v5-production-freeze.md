@@ -1,7 +1,7 @@
-# V5 Tag-67 production freeze
+# V5 Tag-67 release freeze
 
-Status date: 2026-07-22
-Decision: **GO for production-default and mainnet deployment readiness**
+Status date: 2026-07-23
+Decision: **GO for exact frozen mainnet deployment**
 
 V5 Tag 67 is enabled in the default `aspis-verifier` feature set and routes
 only through the atomic verify-and-apply wrapper. The plain manifest-default
@@ -9,8 +9,8 @@ SBF build is byte-identical to the frozen production-feature binary. This
 record freezes the code, formal closure, runtime envelope, and deployment
 handoff for that exact artefact.
 
-V5 has not yet been deployed. The q18/g37 Tag-65 transaction finalized on
-2026-07-16 is a separate release and remains frozen under
+V5 has not yet been deployed on mainnet. The q18/g37 Tag-65 transaction
+finalized on 2026-07-16 is a separate release and remains frozen under
 [`aspis-spend-q18-g37-mainnet-v1`](../aspis-spend-q18-g37-mainnet-v1/).
 
 ## Frozen artefact
@@ -23,14 +23,19 @@ V5 has not yet been deployed. The q18/g37 Tag-65 transaction finalized on
 | SHA-256 | `4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40` |
 | Provenance | `aspis_verifier_v5_production_tag67.provenance.json` |
 | Provenance SHA-256 | `a7c9f7bea70d9805d8aff093fad309c911c752f2d47f6ad489c2f2eda1d7c3ec` |
-| Source identities | 77/77 matched |
+| Source identities | 77/77 matched against the live build workspace at freeze time |
 | Toolchain identities | 91/91 matched |
 | Exact allocation minimum | 1,258,496 bytes |
 | Suggested fresh allocation | 1,300,000 bytes, leaving 41,504 bytes |
 
-The production-feature build and the later default-feature build produced the
+The production-feature build and the later manifest-default build produced the
 same bytes. `v5-production-tag67` is therefore both the measured binary and the
-default deployment binary.
+default deployment binary. A fresh clone of public `main` at
+`06788d44d30ea8cbd391899dddaf6f0acc6e4a3f` then rebuilt the manifest-default
+program to the same 1,258,496 bytes and SHA-256. The
+[source-parity attestation](../../results/spend/v5-production-tag67-freeze-stream3-20260722/source-parity-attestation.json)
+reconciles every build-snapshot/source delta and records the clean command,
+tree, tool, and output identities.
 
 ## Accepted-input CU ceiling
 
@@ -74,8 +79,9 @@ SHA-256
 
 The formal gate is green under Lean 4.32 default limits.
 
-- **Component A:** maintained source correspondence and deployed-terminal
-  applicability.
+- **Component A:** maintained rank/applicability theorems and source
+  correspondence at the frozen concrete schedule. The runtime independently
+  recomputes GoodA and GoodB for every selected branch.
 - **Component B:** deterministic sampler/evaluator/layout correspondence and
   maintained terminal capstone.
 - **Component C:** actual-current sampler, encoder, arithmetic/folds, finish,
@@ -85,8 +91,8 @@ The formal gate is green under Lean 4.32 default limits.
   maintained work-wire view; the digest predicate and all six ordered
   batch/fold0/fold1/fold2/fold3/final steps are proved.
 - **Combined capstone:**
-  `FormalClosureStream1.current_source_combined_capstone` joins A, B, C
-  operational/public output, and Tag-67 wire/verifier closure.
+  `FormalClosureStream1.current_source_combined_capstone` joins that concrete
+  A bridge, B, C operational/public output, and Tag-67 wire/verifier closure.
 
 The combined theorem's only Tag-67 implementation/model premise is:
 
@@ -99,6 +105,8 @@ The combined theorem's only Tag-67 implementation/model premise is:
 This is the exact pinned-Aeneas `HashFn` application boundary. No parser,
 projection, digest-predicate, or six-step correspondence premise remains.
 The audited capstones use only `{propext, Classical.choice, Quot.sound}`.
+The external cryptographic and toolchain boundary is collected once in the
+[assumptions ledger](../../docs/assumptions-ledger.md).
 
 Principal entry points:
 
@@ -139,6 +147,11 @@ rejects a reused nullifier.
 - Rust formatting, diff hygiene, JSON validation, provenance checks, and
   targeted credential scan: green.
 - Manifest-default SBF versus frozen production SBF: byte-identical.
+- Fresh-clone manifest-default build at public commit `06788d4`: byte-identical.
+- Exact frozen SBF devnet deployment and atomic Tag-67 execution: finalized at
+  slot `478299357`, 1,335,952 CU in both simulation and landed metadata.
+- Devnet pool transition 0 → 1, canonical nullifier creation, sealed-proof
+  retention, signed-wire refetch, and same-nullifier replay rejection: green.
 
 ## Deployment handoff
 
@@ -148,7 +161,15 @@ the actual on-chain ProgramData allocation. The deployment operator supplies
 the RPC URL, program identity, payer, funding, and signing authorization, then
 publishes the resulting signature alongside the SBF and provenance hashes.
 
-No devnet or mainnet transaction was submitted during this freeze.
+The exact frozen SBF was subsequently deployed through the devnet-only
+executor as program
+[`EZYH9FF…zQRFS`](https://explorer.solana.com/address/EZYH9FFDGj9gSacmDhvYBqPAzcSm9cfURwuz1CtzQRFS?cluster=devnet).
+The atomic Tag-67 transaction
+[`38mNKeM…WtEuLC`](https://explorer.solana.com/tx/38mNKeMmRf9Ttqmde8jZqCMq8F1piHhCEqGYVYrSHEggTu21C93wWAEhoDkZ2qJHeTX7j3qCmibNNmZ6awWtEuLC?cluster=devnet)
+finalized at slot `478299357` with 1,335,952 CU. The
+[offline candidate bundle](../aspis-v5-tag67-frozen-candidate-v1/)
+contains the sanitized full execution record, exact proof and statement, and
+offline verifier. No V5 mainnet transaction has been submitted.
 
 The publication-side deployment checklist and post-deploy evidence contract
 are recorded in the
@@ -163,4 +184,4 @@ paths are relative symlinks to the canonical binary.
 
 Regenerable LLBC, raw/versioned Aeneas output, build logs, intermediate
 feature-only SBFs, and the temporary-suffixed devnet build are preserved at
-[`research-archive-v5-production-closure-2026-07-22`](https://github.com/DJBarker87/aspis/tree/research-archive-v5-production-closure-2026-07-22).
+[`research-archive-v5-production-closure-2026-07-22`](https://github.com/DJBarker87/aspis/releases/tag/research-archive-v5-production-closure-2026-07-22).

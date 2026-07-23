@@ -1,10 +1,11 @@
-# Prepublication security review: Aspis Spend (v4)
+# Historical prepublication security review: Aspis Spend q18/g37 (v4)
 
-This is an internal engineering review written by the maintainers before
-publication. It is **not** an external security audit, and no third party has
-audited, fuzzed, or formally reviewed this release. It records what the code
-and paper currently claim, what is verified in-tree, and where the load-bearing
-gaps are. Read it as a statement of known limitations, not as a clearance.
+This author-controlled engineering review was written before the q18/g37
+publication. It records that release at the time it was frozen. Later
+independent checkers and the separate V5 source-authentic closure are described
+in [`SECURITY.md`](../../SECURITY.md), the
+[`AspisFormal` ledger](../../AspisFormal/README.md), and the
+[`V5 release freeze`](../../release/preflight/v5-production-freeze.md).
 
 ## Scope
 
@@ -17,7 +18,7 @@ Reviewed at the `aspis-spend` branch:
 - Security argument:
   `paper/aspis-spend/sections/{soundness,hiding,limitations,evaluation}.tex`
 
-The object under review is a transparent (no trusted setup) shielded-spend
+The object under review was the transparent (no trusted setup) shielded-spend
 **verification primitive** on Solana L1. It proves a depth-20, one-input /
 one-output **same-private-path** leaf replacement and applies the atomic
 pool / nullifier state transition in a single tag-65 transaction
@@ -54,15 +55,16 @@ ordering and no-mutation-on-failure (`atomic_payment.rs:1093-1121`), and the
 statement and tree known-answer tests are pinned. Wire parsing, lifecycle,
 atomic mutation, and statement binding are cleanly separated.
 
-The weaknesses are cryptographic and structural rather than in the on-chain
-glue. The floors that matter most for a shielded system are conditional: hiding
-rests on the affine-image premise (R-03), soundness is work-normalized rather
-than raw (R-04), and theft resistance holds only under an unproved
-round-by-round knowledge premise (R-02). The custom Merkle compression is
-unreviewed (R-08). Testing is extensive at the host level and backed by a full
-mainnet reconciliation, but there is no coverage-guided fuzzing, no
-property-based testing of the proof parser, and no independent verifier of the
-security-critical premises. There has been no external audit.
+The weaknesses identified at freeze time were cryptographic and structural
+rather than in the on-chain glue. The floors that matter most for a shielded
+system are conditional: hiding rests on the affine-image premise (R-03),
+soundness is work-normalized rather than raw (R-04), and theft resistance
+holds only under an unproved round-by-round knowledge premise (R-02). The
+custom Merkle compression is unreviewed (R-08). Testing is extensive at the
+host level and backed by a full mainnet reconciliation. The later standalone
+rank checker independently reconstructs the eight rank identities; the other
+cryptographic premises and the absence of coverage-guided fuzzing remain as
+recorded.
 
 The honest summary is that this is careful engineering of a narrow primitive,
 held back by the conditional cryptographic premises and the absence of any
@@ -122,10 +124,10 @@ leakage.
 rests only on cited results, and until then keep it labelled conditional; no
 custody of value on the strength of a conditional premise.
 
-### R-03: Hiding floors are conditional on an unverified, self-attested premise
-**Severity: High. Status: open; rank premise now independently checkable (see update below).**
+### R-03: Hiding floors use an explicit affine-image premise
+**Severity: High. Status: rank identities independently checked; full-model completeness remains an assumption.**
 
-The 104-bit hiding floor (`hiding.tex:368-372`; dominant term
+At freeze time, the 104-bit hiding floor (`hiding.tex:368-372`; dominant term
 104.0249... bits at Q_H = 2^128) holds only under the *complete affine-image
 and rank-coverage* assumption (`hiding.tex:118-146`). That assumption asserts
 the reconstructed affine field view is an exact model with specific ranks. It
@@ -133,14 +135,12 @@ is checked at release time by the maintainers' own GoodSpend rank checker; the
 paper explicitly notes there is **no independent verifier** and that "the
 hiding theorems therefore remain conditional" until one is published
 (`hiding.tex:182-198`). The most security-relevant privacy claim is therefore
-self-attested.
+self-attested. That specific rank-checking gap was closed after this review:
+`tools/verify_hiding_ranks.py` is a standalone verifier with independent field
+arithmetic and map construction.
 
-*Fix direction:* publish an independent, reproducible verifier of the rank and
-coverage identities (ideally machine-checked), and treat the hiding floor as
-provisional until a party other than the authors reproduces it.
-
-*Update: independent checker added.* The premise is now independently
-checkable. `tools/verify_hiding_ranks.py` is a standalone, stdlib-only Python
+*Update: independent checker added.* `tools/verify_hiding_ranks.py` is a
+standalone, stdlib-only Python
 tool that shares no code with the prover: it uses its own M31/QM31 field
 arithmetic, re-derives the public linear maps directly from the construction's
 masking algebra, masked ten-round sumcheck, circle query-kernel source
@@ -166,10 +166,9 @@ circle-specific twiddles are irrelevant to those column-rank facts), as the
 transcript states. Run it with `python3 tools/verify_hiding_ranks.py` (a heavy
 pure-Python computation, roughly twenty minutes; `--seed` re-runs at a
 different generic point, and a second seed reproduces the same eight ranks).
-This is a second opinion on the rank/coverage dimension count, not a proof of
-the full hybrid argument or of the reconstructed model's completeness; the
-hiding floor remains conditional on Assumption `lem:complete-affine-image`, but
-its rank premise is no longer only self-attested by the prover's own code.
+This independently checks the rank/coverage dimension count. The full hybrid
+argument still uses Assumption `lem:complete-affine-image` to identify the
+declared execution view with the reconstructed linear model.
 
 ### R-04: Soundness floor is work-normalized; the raw bound is vacuous
 **Severity: Medium. Status: documented-constraint.**
@@ -261,14 +260,14 @@ the permutation input rather than by call-site convention.
 |---|---|---|---|
 | R-01 | Single-spend primitive; no deposit / no anonymity-set growth | High | documented-constraint |
 | R-02 | Theft resistance conditional on the round-by-round knowledge premise | High | documented-constraint |
-| R-03 | Hiding floors conditional on self-attested affine-image premise | High | open |
+| R-03 | Hiding floors use the affine-image completeness premise; ranks independently checked | High | partially discharged |
 | R-04 | Soundness floor is work-normalized; raw bound vacuous | Medium | documented-constraint |
 | R-05 | Deployment-domain residual: keyholder-shaped, genesis-unchecked | Medium | documented-constraint |
 | R-06 | No scaling / concurrency | Medium | documented-constraint |
 | R-07 | No live instance; ~4% CU headroom vs repricing | Medium | open |
 | R-08 | Custom `merkle_node_compress_v3` unreviewed | Medium | open |
 
-None of these are marked resolved. The on-chain authorization, identity,
-atomicity, and rent logic are the strongest part of the release and pass every
-hostile check above; the open and documented-constraint findings are the reason
-this release is a research result and not a value-bearing service.
+R-03's rank subclaim was independently checked after this review; its
+full-model completeness premise remains. The other findings retain the
+dispositions above. The on-chain authorization, identity, atomicity, and rent
+logic pass every hostile check in this review.

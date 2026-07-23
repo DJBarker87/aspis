@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "artifact": "aspis_v5_tag67_source_parity_attestation",
+  "candidate": {
+    "program_id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+    "bytes": 1258496,
+    "sha256": "4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40"
+  },
+  "frozen_feature_build": {
+    "generated_at_utc": "2026-07-22T18:49:49Z",
+    "base_git_head": "27e8265d28de88e7967626a2d2432ef161fb4f49",
+    "provenance_path": "results/spend/v5-production-tag67-freeze-stream3-20260722/aspis_verifier_v5_production_tag67.provenance.json",
+    "provenance_sha256": "a7c9f7bea70d9805d8aff093fad309c911c752f2d47f6ad489c2f2eda1d7c3ec",
+    "source_identities": 77,
+    "toolchain_identities": 91,
+    "no_default_features": true,
+    "features": [
+      "v5-production-tag67"
+    ],
+    "identity_check_completed_at_utc": "2026-07-22T18:55:28Z",
+    "all_recorded_identities_matched": true
+  },
+  "manifest_default_parity_build": {
+    "started_at_utc": "2026-07-22T23:23:30Z",
+    "checked_at_utc": "2026-07-22T23:23:58Z",
+    "default_features": [
+      "spend-production",
+      "v5-production-tag67"
+    ],
+    "bytes": 1258496,
+    "sha256": "4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40",
+    "byte_equal_to_frozen_feature_build": true
+  },
+  "clean_publication_source_build": {
+    "source_commit": "06788d44d30ea8cbd391899dddaf6f0acc6e4a3f",
+    "source_tree": "9b6bdfddb3c213addc2bb705c8130cce4fb2c351",
+    "source": "fresh depth-1 clone of https://github.com/DJBarker87/aspis.git main",
+    "checkout_clean_before_and_after": true,
+    "checked_at_utc": "2026-07-23T08:07:01Z",
+    "manifest_default": true,
+    "cargo_lock_sha256": "5b407dc5cb239633b6d3cad6a05ac38570887f2393c74b5e2f03634793bfb176",
+    "root_manifest_sha256": "9c9a3948723bfcab692c012a26df34d88352e359f90affd0759097287cb2c832",
+    "cargo_build_sbf": {
+      "bytes": 11129616,
+      "sha256": "7f16d75bdd59bad56442ab89f9768280ea8f1e14a4fbd68ee8822ce735312f42",
+      "version": "solana-cargo-build-sbf 2.3.0; platform-tools v1.48; rustc 1.84.1"
+    },
+    "command": [
+      "NO_DNA=1",
+      "cargo-build-sbf",
+      "--manifest-path",
+      "programs/aspis-verifier/Cargo.toml",
+      "--arch",
+      "v0",
+      "--offline",
+      "--skip-tools-install",
+      "--tools-version",
+      "v1.48",
+      "--sbf-sdk",
+      "platform-tools-sdk/sbf",
+      "--sbf-out-dir",
+      "<isolated-output>",
+      "--",
+      "--locked"
+    ],
+    "output_bytes": 1258496,
+    "output_sha256": "4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40",
+    "byte_equal_to_frozen_candidate": true
+  },
+  "build_snapshot_to_publication_source_reconciliation": [
+    {
+      "path": "Cargo.toml",
+      "build_bytes": 1669,
+      "build_sha256": "3e38df835217f397251440617c6aa4ae4ba2e9531ffc62a722fbb72b30254756",
+      "publication_bytes": 1025,
+      "publication_sha256": "9c9a3948723bfcab692c012a26df34d88352e359f90affd0759097287cb2c832",
+      "classification": "Unrelated protocol workspace members were excluded from the public release; the selected verifier dependency closure is unchanged."
+    },
+    {
+      "path": "Cargo.lock",
+      "build_bytes": 150042,
+      "build_sha256": "c2b2523ed73ac070924e1632eed74bd74ea320d861d3379cce2745d6e0315ec5",
+      "publication_bytes": 115835,
+      "publication_sha256": "5b407dc5cb239633b6d3cad6a05ac38570887f2393c74b5e2f03634793bfb176",
+      "classification": "Lock entries reachable only from the excluded protocol workspace members were removed; the selected verifier dependency closure is unchanged."
+    },
+    {
+      "path": "programs/aspis-verifier/Cargo.toml",
+      "build_bytes": 2017,
+      "build_sha256": "eee6a7597716f964eb5abe537264539d3d31d849e67994ad3e5c86488130cf7b",
+      "publication_bytes": 2036,
+      "publication_sha256": "b5cca1f1d984c8cb58e28eb23eefb34f299d806a8155edfe270af137a4b0c8e7",
+      "classification": "Tag 67 was enabled in the default feature set; the later manifest-default build exercised this publication form and reproduced the candidate bytes."
+    },
+    {
+      "path": "programs/aspis-verifier/src/lib.rs",
+      "build_bytes": 4434,
+      "build_sha256": "646fb008c64aebc407aff5d028f0b359ac16375d37fff39bf8c3d6f6b36c913b",
+      "publication_bytes": 4452,
+      "publication_sha256": "cf98a7bbbf5c6f0fde55bbac84de81c5928da4c2e150c0dba9ba12015270ec35",
+      "classification": "Default-dispatch documentation and a probe/production compile guard were integrated; the later manifest-default build exercised this publication form."
+    },
+    {
+      "path": "programs/aspis-verifier/src/v5_cu_probe.rs",
+      "build_bytes": 189001,
+      "build_sha256": "2a0800d2595cbde402d4dfd0517a158073d519e56a990d80d27d999376f2559d",
+      "publication_bytes": 188894,
+      "publication_sha256": "3e6d8d0c8d15cdbcea51027482c7a8e0d852a936c0d1cd60f964171ba4f1ec44",
+      "classification": "Three rustfmt-only changes inside cfg(test), applied after the manifest-default parity build; no SBF code changed."
+    }
+  ],
+  "verifier_dependency_closure": {
+    "command": "cargo tree --offline --locked -p aspis-verifier --edges normal,build --prefix none --format '{p} [{f}]'",
+    "normalized_sha256": "01be877996a1bc2e6f80c838f7af422fbac004802459e66b515d29aeb111101a",
+    "build_and_publication_closures_equal": true
+  },
+  "archive": {
+    "tag": "research-archive-v5-production-closure-2026-07-22",
+    "tag_object": "00e1675459544d9d1307d07c92ddc9af7fd44ff5",
+    "commit": "859d8588d2761fac6714226877c9317f7d697a03",
+    "tree": "ed152203f7efddeb19649da46042f4130da3feef"
+  }
+}

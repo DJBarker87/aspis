@@ -115,6 +115,7 @@
 
   <div class="grid">
     <div class="card"><strong>q18/g37 mainnet execution</strong><span>1,344,003 CU</span></div>
+    <div class="card"><strong>V5 devnet execution</strong><span>1,335,952 CU</span></div>
     <div class="card"><strong>V5 accepted-input ceiling</strong><span>1,353,616 CU</span></div>
     <div class="card"><strong>V5 headroom</strong><span>46,384 CU</span></div>
   </div>
@@ -130,13 +131,13 @@
       </tr>
       <tr>
         <td>V5 runtime</td>
-        <td>Green</td>
-        <td>Frozen 1,258,496-byte SBF; SHA-256 <code>4cf3c1d5…edf40</code></td>
+        <td>Finalized on devnet</td>
+        <td>Frozen 1,258,496-byte SBF; SHA-256 <code>4cf3c1d5…edf40</code>; atomic Tag 67 landed at slot 478299357</td>
       </tr>
       <tr>
         <td>V5 compute</td>
         <td>Green</td>
-        <td>Conservative bound covers every topology accepted by the frozen grammar</td>
+        <td>Measured-and-derived bound covers every topology accepted by the frozen grammar under runtime 2.3.13</td>
       </tr>
       <tr>
         <td>Atomic transition</td>
@@ -146,12 +147,12 @@
       <tr>
         <td>Formal correspondence</td>
         <td>Green</td>
-        <td>Combined A/B/C public-output and Tag-67 wire/verifier capstone</td>
+        <td>Frozen-schedule A, general B/C public-output, and Tag-67 wire/verifier capstone</td>
       </tr>
       <tr>
         <td>Provenance</td>
         <td>Green</td>
-        <td>77/77 source and 91/91 toolchain identities match</td>
+        <td>77 source and 91 toolchain identities matched the live build workspace; fresh public-main commit <code>06788d4</code> reproduced the SBF byte-for-byte</td>
       </tr>
     </tbody>
   </table>
@@ -159,8 +160,9 @@
   <h2>Formal closure</h2>
   <p>
     <code>AspisFormal/</code> contains the maintained Lean 4 security
-    development. <code>aeneas-verif/</code> connects current production Rust
-    to the maintained models. The final theorem composes Components A and B,
+    development. <code>aeneas-verif/</code> connects production Rust
+    to the maintained models. The final theorem composes the frozen-schedule
+    Component-A bridge and Component B,
     the actual four-round Component-C evaluator and packed public output, and
     the exact Tag-67 wire plus six ordered work checks.
   </p>
@@ -194,7 +196,7 @@
   </p>
 
   <div class="callout">
-    <strong>Launch actions, not repository blockers.</strong>
+    <strong>Launch actions.</strong>
     Mint a Zenodo DOI, submit the manuscript to IACR ePrint, and—when the
     operator supplies the program identity, funded signer, RPC endpoint, and
     explicit transaction authorization—deploy and execute the exact frozen V5

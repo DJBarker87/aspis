@@ -1,0 +1,36 @@
+{
+  "artifact": "v5_frozen_marker_mode_cu",
+  "identical_repeats": 3,
+  "marker_mode": "missing",
+  "proof_body_bytes": 74398,
+  "query_indices": [
+    50532,
+    22083,
+    130755,
+    96325,
+    64748,
+    111639,
+    62701,
+    121059,
+    10797,
+    8586,
+    122389,
+    28732,
+    60839,
+    45002,
+    58911,
+    23292,
+    45221,
+    104967
+  ],
+  "sbf_path": "program/aspis_verifier_v5_tag67.so",
+  "sbf_sha256": "4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40",
+  "sealed_proof_account_bytes": 74438,
+  "system_program_cpi_completed_repeats": 3,
+  "totals_cu": [
+    1331232,
+    1331232,
+    1331232
+  ],
+  "paths_normalized_for_bundle": true
+}

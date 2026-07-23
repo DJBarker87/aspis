@@ -6,14 +6,23 @@ Component-C, and Tag-67 boundaries, then audits the combined theorem under
 default limits.
 
 The `gooda-generated-split-root/` directory is the curated source closure for
-the authenticated Component-A theorem. Its additive namespace is mechanically
-retargeted from `AuthenticFieldSub` to the equivalent current
+the authenticated frozen-schedule Component-A theorem. Its additive namespace
+is mechanically retargeted from `AuthenticFieldSub` to the equivalent current
 `AspisCoreAdditive` boundary used by the combined environment. The generated
 Good-A kernels are large, so the ordinary combined replay consumes their
 previously audited Lean-4.32 object cache. Set `GOOD_A_OLEAN_DIR` when that
 cache is not present at the historical local extraction path.
 
+The Rust verifier executes GoodA and GoodB for every accepted candidate. This
+capstone proves the source-authentic Component-A endpoint for the frozen
+concrete schedule; it does not claim the still-open universal
+`candidate_is_good` to `VerifierEnforcesGoodA` correspondence.
+
 The combined theorem's only Tag-67 implementation/model correspondence premise
 is the exact grinding `HashFn` application equation recorded in the release
 preflight. No parser, projection, digest-predicate, or six-step correspondence
 premise is accepted.
+
+The theorem is the formal capstone for the default-Tag-67 frozen SBF,
+SHA-256
+`4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40`.

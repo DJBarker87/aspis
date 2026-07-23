@@ -1,0 +1,14 @@
+{
+  "artifact": "aspis_spend_production_statement",
+  "pool_hex": "01196ae28991dc05a95c7a1916e0ae5c65301342a12b110dc04ae8cc653831e7",
+  "sequence": 0,
+  "current_anchor_hex": "fd2cc4014d7b10629047f84f04dcf029982a2d64a10266270330eb1f46bd8559",
+  "nullifier_hex": "e1e177365ae01d656968ce4b9503ae69fbd99822e2d5692c68db4727f5e28850",
+  "output_commitment_hex": "8eaa3f20c123d374e2161c5d6b7dc1001e14b76fbfa15720aa6d385bb423ac6e",
+  "output_anchor_hex": "63c1ce1791cc706948107357c3f0894d54b61d43ddfee2414a601049bcbc923d",
+  "asset_id": 17,
+  "fee": 1,
+  "deployment_domain_hex": "4fced6d912e21ead32afd5d4beb887abef6ee4cba140850edacc03792ad92e47",
+  "selection_rule": "least GoodSpend selector from three post-final branches",
+  "witness_independent_public_metadata": true
+}

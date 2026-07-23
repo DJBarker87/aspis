@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "artifact": "aspis_v5_production_closure_research_archive",
+  "tag": "research-archive-v5-production-closure-2026-07-22",
+  "tag_object": "00e1675459544d9d1307d07c92ddc9af7fd44ff5",
+  "commit": "859d8588d2761fac6714226877c9317f7d697a03",
+  "tree": "ed152203f7efddeb19649da46042f4130da3feef",
+  "tracked_files": 914,
+  "tracked_blob_bytes": 60500710,
+  "archive": {
+    "filename": "aspis-research-archive-v5-production-closure-2026-07-22.tar.gz",
+    "bytes": 10260383,
+    "sha256": "3a3d177a719b02244ed8a94bc2701898506f3a0c91e786c0a9394a2885439739",
+    "format": "git archive tar, gzip -n -9",
+    "prefix": "aspis-research-archive-v5-production-closure-2026-07-22/"
+  },
+  "contents": "Complete pre-curation V5 production-closure workspace: LLBC, raw and versioned Aeneas output, extraction logs, superseded retarget experiments, intermediate feature builds, final proof sources, SBF, and CU evidence."
+}
