@@ -63,6 +63,7 @@ const DEFAULT_SBF_PATH: &str = "target/deploy/aspis_verifier.so";
 const DEVNET_REHEARSAL_PROOF_PATH: &str = "crates/aspis-prover/fixtures/spend_devnet_q18_g37.bin";
 const DEVNET_REHEARSAL_STATEMENT_PATH: &str =
     "crates/aspis-prover/fixtures/spend_devnet_q18_g37.statement.json";
+const SPEND_DEFAULT_FEATURES: [&str; 2] = ["spend-production", "v5-production-tag67"];
 const SPEND_PRODUCTION_ALIAS_FEATURES: [&str; 2] =
     ["spend-minimal-dispatch", "spend-dynamic-rate512"];
 const PRODUCTION_FORBIDDEN_FEATURES: [&str; 6] = [
@@ -819,15 +820,17 @@ fn spend_program_defaults_match(
     let production_alias = manifest_section(manifest, "features")
         .and_then(|section| manifest_assignment(section, "spend-production"))
         .and_then(|value| manifest_string_array(&value));
-    let matches = default_features
-        .as_deref()
-        .is_some_and(|features| features == ["spend-production".to_string()])
-        && production_alias.as_deref().is_some_and(|features| {
-            features
-                .iter()
-                .map(String::as_str)
-                .eq(SPEND_PRODUCTION_ALIAS_FEATURES)
-        });
+    let matches = default_features.as_deref().is_some_and(|features| {
+        features
+            .iter()
+            .map(String::as_str)
+            .eq(SPEND_DEFAULT_FEATURES)
+    }) && production_alias.as_deref().is_some_and(|features| {
+        features
+            .iter()
+            .map(String::as_str)
+            .eq(SPEND_PRODUCTION_ALIAS_FEATURES)
+    });
     (default_features, production_alias, matches)
 }
 
@@ -3164,6 +3167,25 @@ mod tests {
     fn production_feature_alias_is_exact_and_fails_closed_if_incomplete() {
         let manifest = fs::read_to_string(workspace_root().join(PROGRAM_MANIFEST_PATH)).unwrap();
         assert!(spend_program_defaults_match(&manifest).2);
+
+        for feature in SPEND_DEFAULT_FEATURES {
+            let manifest_line = "default = [\"spend-production\", \"v5-production-tag67\"]";
+            assert!(manifest.contains(manifest_line));
+            let tampered = manifest.replace(
+                manifest_line,
+                &format!(
+                    "default = [{}]",
+                    SPEND_DEFAULT_FEATURES
+                        .iter()
+                        .copied()
+                        .filter(|candidate| *candidate != feature)
+                        .map(|candidate| format!("\"{candidate}\""))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+            );
+            assert!(!spend_program_defaults_match(&tampered).2);
+        }
 
         for feature in SPEND_PRODUCTION_ALIAS_FEATURES {
             let manifest_line = format!("    \"{feature}\",\n");

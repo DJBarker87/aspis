@@ -81,7 +81,7 @@ above do not affect the retained proof replay; `replay-lean432.sh` compiles all
 normalized modules at Lean defaults and authenticates the complete retained
 raw-to-normalized diff.
 
-## Sampler/evaluator terminal capstone replay
+## Sampler/evaluator terminal integration replay
 
 The durable all-proof gate compiles 81 exported sampler/evaluator/terminal
 theorems with 81 matching `#print axioms` commands:
@@ -100,7 +100,7 @@ its independent exact extraction and replay commands in
 
 ## Authoritative authentic sampler extraction
 
-The source-authentic sampler LLBC used by the capstone was produced from the
+The source-authentic sampler LLBC used by the integration theorem was produced from the
 owning crate by:
 
 ```sh

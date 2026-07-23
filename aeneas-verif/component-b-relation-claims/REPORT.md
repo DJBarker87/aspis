@@ -1,5 +1,10 @@
 # Component-B relation-claim consumer correspondence
 
+> **Integration note.** This report records the consumer theorem before the
+> two row equalities were joined. They are now closed by
+> [`../component-b-layout-bindings/REPORT.md`](../component-b-layout-bindings/REPORT.md)
+> and included in the production-default V5 proof map.
+
 ## Result
 
 The exact source-authentic Rust consumer of the committed Component-B message
@@ -45,9 +50,8 @@ the row-993 pivot outside terminal support, so literal equality with the sparse
 maintained `rowMessage` would be false. The stated interface is the exact fact
 the terminal consumer needs and no stronger.
 
-This closes the real MLE callsite and terminal accumulation. It does **not**
-yet close the two source-authentic constructors that must establish the two
-row equalities above.
+This stage closes the real MLE callsite and terminal accumulation. The later
+layout theorem establishes the two row equalities above.
 
 ## Rust source binding
 
@@ -66,7 +70,8 @@ Extracted helper spans:
 The small private helper is called only from the existing Component-B branch
 of `build_v5_relation_claims`. It preserves the existing lane, point, terminal,
 and output-slot order while making the concrete MLE consumer independently
-extractable. It remains feature-gated candidate-v5 code.
+extractable. The source was extracted under the V5 feature profile and now
+ships in the default production feature set.
 
 The Rust tooth
 `component_b_relation_claims_select_exact_c2_lane_one` assigns different
@@ -130,8 +135,8 @@ The targeted Rust test result was `1 passed, 0 failed`. Direct Lean-4.32
 compilation of the merged generated module, consumer proof, and maintained
 terminal bridge succeeded with no warnings.
 
-## Honest scope
+## Scope
 
-This result concerns current feature-gated candidate-v5 code. It is not a
-deployed-v4 proof, production-freeze decision, PCS/Merkle theorem, Fiat--Shamir
-theorem, or zero-knowledge claim. No file was staged, committed, or pushed.
+This report proves the source-authentic relation-claim consumer. The
+production V5 integration and the wider cryptographic interfaces are indexed
+from [`../README.md`](../README.md).

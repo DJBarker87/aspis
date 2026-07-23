@@ -5,19 +5,19 @@ verifier. Charon extracts the selected production Rust, Aeneas translates it to
 Lean, and handwritten bridge proofs connect the generated definitions to the
 maintained models in [`AspisFormal/`](../AspisFormal/).
 
-The strongest result is
+The principal result is
 `FormalClosureStream1.current_source_combined_capstone` in
 [`current-source-abc-capstone-20260722/proof/CurrentSourceABCapstone.lean`](current-source-abc-capstone-20260722/proof/CurrentSourceABCapstone.lean).
 It combines:
 
-- source-authentic Component-A correspondence for the frozen concrete schedule
+- source-authentic Component-A correspondence for the selected release schedule
   and maintained Component-B correspondence;
 - the actual-current Component-C fold and public-output correspondence; and
 - Tag-67 wire decoding plus all six ordered work-verifier steps.
 
 The production Rust verifier enforces the GoodA and GoodB gates for every
 accepted selection. The combined theorem's Component-A conjunct is narrower:
-it authenticates the frozen concrete schedule. A universal source-authentic
+it authenticates the selected release schedule. A universal source-authentic
 theorem connecting the extracted `candidate_is_good` path to
 `VerifierEnforcesGoodA` remains open.
 
@@ -32,21 +32,21 @@ actualTranscriptGrindingDigest state nonce
 
 That equation names the pinned Aeneas function-pointer boundary directly.
 Parser, projection, digest-predicate, and six-step correspondence are proved
-inside the closure.
+inside the theorem.
 
-This proof layer is bound to the frozen V5 release candidate. Tag 67 is enabled
-in the default verifier dispatch, and the exact SBF has SHA-256
+This proof layer is bound to the V5 release. Tag 67 is enabled in the
+default verifier dispatch, and the SBF has SHA-256
 `4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40`.
 
 ## Proof map
 
 | Path | Role |
 | --- | --- |
-| `current-source-abc-capstone-20260722/` | Final A/B/C and Tag-67 composition |
+| `current-source-abc-capstone-20260722/` | A/B/C and Tag-67 integration theorem |
 | `component-b-mask/unified-current-20260722/` | Current generated Component-B evaluator/sampler and maintained bridge |
 | `component-b-layout-bindings/` | Rust layout and relation-claim bindings |
 | `component-c-runtime-downstream/` | Four rounds, finish, packer, and public deployed output |
-| `tag67-work-wire-correspondence/` | Exact wire reads, predicate, ordered six-step verifier, and final closure |
+| `tag67-work-wire-correspondence/` | Wire reads, predicate, ordered six-step verifier, and final composition |
 | `v5-transcript-absorb-input/` | Transcript payload ordering |
 | `proof/` and `lean432/` | Pinned field-operation proof base and Lean 4.32 compatibility harness |
 | `FIELD-OPS.md`, `M31-INVERSE.md`, `CM31-MULTIPLICATIVE.md`, `QM31-ADDITIVE.md` | Focused arithmetic correspondence reports |
@@ -54,7 +54,7 @@ in the default verifier dispatch, and the exact SBF has SHA-256
 The dated directory suffixes identify the extraction snapshot that entered the
 release theorem; they are provenance labels, not active work queues.
 
-## Replaying the final closure
+## Replaying the final integration
 
 The maintained Lean project is the quick, fresh-clone check:
 
@@ -92,5 +92,5 @@ The archive tag resolves to
 
 The q18/g37 mainnet transaction predates this V5 proof layer. Its immutable
 evidence remains in [`release/aspis-spend-q18-g37-mainnet-v1/`](../release/aspis-spend-q18-g37-mainnet-v1/);
-the V5 closure supports the exact frozen V5 release candidate and does not
+the V5 proof supports the identified V5 release and does not
 relabel the earlier transaction.

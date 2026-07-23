@@ -76,7 +76,7 @@ commits above, then run:
 
 The checker rebuilds every generated/proved dependency, machine-rejects any
 unapproved axiom report or forbidden construct, and requires reports for the
-loop, assertion, negative tooth, and capstone.
+loop, assertion, counterexample, and integration theorem.
 
 ## Remaining boundaries
 

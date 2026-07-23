@@ -1,9 +1,6 @@
 //! Aspis v5 masking component (A): the block-form circle mask.
 //!
-//! # Status: PROVISIONAL — first cut, feature-gated (`v5-mask`), NOT in the v4 path
-//!
-//! This module is a clean-room implementation of the v5 hiding component (A):
-//! an aligned block-form circle mask
+//! This module implements the aligned block-form circle mask
 //!
 //! ```text
 //!     T̂ = T + B_896 · R,
@@ -23,69 +20,15 @@
 //! QM31 value is split into four M31 lane masks.
 //!
 //! The older [`BlockMask`] QM31 primitive remains in this module because the
-//! feature-gated sumcheck work uses its QM31 sampler and because it is useful
-//! for extension-field algebraic diagnostics. The field-correct semantic C1
-//! primitive is [`M31BlockMask`].
+//! sumcheck uses its QM31 sampler and it remains useful for extension-field
+//! diagnostics. The field-correct semantic C1 primitive is [`M31BlockMask`].
 //!
-//! ## What this provisional primitive ESTABLISHES (validated by the tests here)
-//!
-//! * The M31 block-form mask object `R = p(x) + y·q(x)`, its canonical
-//!   rejection sampler, and an API which samples one mask for each of the
-//!   existing sixteen semantic C1 lanes from separate sources.
-//! * The reserved-row layout: active rows `0..=878`, reserved rows
-//!   `896..=991` (exactly `b = 96` rows), carrying the mask. The start is
-//!   aligned to a 128-coordinate tensor block.
-//! * The agreement property `T̂ == T` on every active row of an M31 C1
-//!   message. Component (A) adds no mask-only C1 lane: each mask is placed in
-//!   the reserved rows of its existing semantic lane. The bespoke H, G and D
-//!   auxiliaries belong to the current-v4 context; this isolated primitive
-//!   neither retains them nor defines their v5 replacement.
-//! * Rate preservation: the masked column is a length-`TRACE_LEN` message and
-//!   encodes, through the real M31 C1 circle encoder, to a rate-1/512 codeword.
-//! * The real encoder's basis images satisfy, entry by entry,
-//!
-//!   ```text
-//!       L = diag(B_896(p_i)) · V,
-//!   ```
-//!
-//!   where `V` is the block-form circle Vandermonde model used by
-//!   `CircleTMatrixHiding`. Ordinary monomial coefficients are converted to
-//!   the encoder's natural line-tensor basis before being placed in the
-//!   reserved rows. The tests compare all 96 columns with sparse basis images
-//!   emitted by the real circle encoder.
-//! * Teeth: the leakage matrix is nonsingular on a sampled valid schedule and
-//!   singular on a deliberately duplicated schedule.
-//! * The wire fibre geometry: one proof opens 18 disjoint four-point fibres,
-//!   i.e. 72 layer-zero positions = 36 x-nodes each with a ±y pair — the
-//!   `circleTMatrix` witness shape. The rectangular 72×96 leakage map has
-//!   full row rank (certified by the 72×72 witness-shape minor), across
-//!   distinct parameter families, and a fibre collision only deletes rows
-//!   (the distinct view keeps full row rank). A square `b = 96`
-//!   point-evaluation schedule CANNOT be instantiated from one proof; the
-//!   square schedule is retained only as an algebraic diagnostic.
-//!
-//! ## What remains PENDING (NOT established here)
-//!
-//! * A mechanically checked Rust↔Lean correspondence for the concrete
-//!   coefficient table. `CircleTensorBinding.lean` proves the aligned tensor
-//!   and conversion algebra, while the tests below check the Rust table and
-//!   real encoder; neither alone is a cross-language proof.
-//! * The Fiat-Shamir query-index → fibre-position binding and the complete
-//!   released-view enumeration. The fibre schedule below models the wire's
-//!   orbit geometry; which fibre each FS index selects is not modelled here.
-//!   OOD, fold and terminal coordinates are component (C)'s to mask, not
-//!   component (A)'s: they are not point-evaluations of the masked lane.
-//! * Production integration and the transcript/entropy derivation for sixteen
-//!   independent lane sources. The API requires separate sources but cannot
-//!   establish that a caller derived them independently.
-//! * Component (B)'s commitment and verifier wire. The feature-gated
-//!   degree-preserving arithmetic primitive lives in `v5_sumcheck_mask`, but
-//!   is deliberately not integrated here.
-//! * Component (C): the DEEP mask.
-//! * The verifier / `Good_spend` changes, and the wire re-enumeration.
-//!
-//! Nothing in this module is wired into any v4 prover/verifier function; it is
-//! reachable only under `--features v5-mask`.
+//! The V5 host owns sixteen independent lane sources, converts ordinary
+//! coefficients into the encoder's natural line-tensor basis, and places the
+//! masks in reserved rows `896..=991`. Tests bind all 96 basis columns to the
+//! real rate-1/512 circle encoder. The formal proof map records the maintained
+//! algebra, source-authentic sampler and host-flow correspondence, layout
+//! bindings, and the combined A/B/C result.
 
 use aspis_core::circle::{
     double_x, secure_circle_point_from_parameter, CirclePointError, SecureCirclePoint,
@@ -95,20 +38,17 @@ use aspis_core::params::CIRCLE_GEN;
 
 use crate::circle_candidate::{CircleCandidateError, CircleEncoder};
 
-/// Provisional component (C): one full atomic-v3-kernel helper lane for
-/// masking the combined PCS/OOD/fold/terminal view.  It is quarantined under
-/// the same `v5-mask` feature and is not reachable from the v4 prover.
+/// Component C: one full atomic-v3-kernel helper lane for masking the combined
+/// PCS/OOD/fold/terminal view.
 #[path = "v5_c_mask.rs"]
 pub mod component_c;
 
-/// Feature-gated construction of the real atomic-v3 v5 layer-zero messages,
-/// rate-1/512 codewords and private Merkle roots.  This remains outside the
-/// v4 prover and deliberately stops before transcript/opening integration.
+/// Construction of the real atomic-v3 V5 layer-zero messages, rate-1/512
+/// codewords, and private Merkle roots.
 #[path = "v5_spend_messages.rs"]
 pub mod spend_messages;
 
-/// Honest incremental PCS relation for the four-claim v5 CU/prover path.
-/// It is isolated from every v4 proof format and production entrypoint.
+/// Incremental PCS relation for the four-claim V5 prover path.
 #[path = "v5_relation_prover.rs"]
 pub mod relation_prover;
 
@@ -117,7 +57,7 @@ pub mod relation_prover;
 #[path = "v5_split_layer_zero.rs"]
 pub mod split_layer_zero;
 
-/// Real-witness host artefact for the isolated v5/tag-66 CU path.
+/// Real-witness host artifact for V5 Tag 67 and the historical Tag 66 CU probe.
 #[path = "v5_real_host_proof.rs"]
 pub mod real_host_proof;
 

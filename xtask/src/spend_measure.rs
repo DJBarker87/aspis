@@ -63,6 +63,7 @@ use crate::spend_statement::{load_spend_statement_file, spend_hex, spend_recorde
 const UPLOAD_CHUNK_BYTES: usize = 640;
 const VERIFY_CU_LIMIT: u32 = 1_400_000;
 const HEAP_FRAME_BYTES: u32 = 262_144;
+pub(crate) const V5_CU_COMPUTE_UNIT_PRICE_ENV: &str = "V5_CU_COMPUTE_UNIT_PRICE_MICROLAMPORTS";
 
 /// Default mined release instance measured when no override is supplied.
 const RELEASE_PROOF_PATH: &str = "crates/aspis-prover/fixtures/spend_q18_g37_release.bin";
@@ -781,6 +782,66 @@ pub(crate) fn simulate_atomic_program_account_instructions_with_absent_marker(
     )
 }
 
+/// Simulate the same atomic v5 instruction with the canonical marker PDA
+/// pre-funded by one lamport while it is still System-owned and empty.
+///
+/// This is the third creation branch accepted by the atomic wrapper. It must
+/// top up, allocate, and assign the PDA before the verifier can write the
+/// marker.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn simulate_atomic_program_account_instructions_with_prefunded_system_marker(
+    so: &Path,
+    proof_address: Pubkey,
+    proof_data: &[u8],
+    pool_address: Pubkey,
+    pool_data: &[u8],
+    marker_address: Pubkey,
+    instruction_data: &[Vec<u8>],
+) -> Result<Vec<StatelessSimulationResult>> {
+    simulate_atomic_program_account_instructions_with_marker_fixture(
+        so,
+        proof_address,
+        proof_data,
+        pool_address,
+        pool_data,
+        marker_address,
+        Some(AtomicMarkerFixture::SystemOwnedEmpty {
+            lamports: PREFUNDED_SYSTEM_MARKER_LAMPORTS,
+        }),
+        instruction_data,
+    )
+}
+
+const PREFUNDED_SYSTEM_MARKER_LAMPORTS: u64 = 1;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum AtomicMarkerFixture<'a> {
+    ProgramOwned(&'a [u8]),
+    SystemOwnedEmpty { lamports: u64 },
+}
+
+fn atomic_marker_fixture_parts(fixture: AtomicMarkerFixture<'_>) -> (Pubkey, u64, &[u8]) {
+    match fixture {
+        AtomicMarkerFixture::ProgramOwned(data) => (aspis_verifier::id(), 10_000_000, data),
+        AtomicMarkerFixture::SystemOwnedEmpty { lamports } => (system_program::id(), lamports, &[]),
+    }
+}
+
+fn atomic_v5_simulation_instructions(
+    instruction: Instruction,
+    compute_unit_price_microlamports: Option<u64>,
+) -> Vec<Instruction> {
+    let mut instructions = vec![
+        ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+        ComputeBudgetInstruction::request_heap_frame(HEAP_FRAME_BYTES),
+    ];
+    if let Some(price) = compute_unit_price_microlamports {
+        instructions.push(ComputeBudgetInstruction::set_compute_unit_price(price));
+    }
+    instructions.push(instruction);
+    instructions
+}
+
 fn atomic_validator_account_fixtures(
     proof: (Pubkey, PathBuf),
     pool: (Pubkey, PathBuf),
@@ -804,6 +865,29 @@ fn simulate_atomic_program_account_instructions_with_optional_marker(
     marker_data: Option<&[u8]>,
     instruction_data: &[Vec<u8>],
 ) -> Result<Vec<StatelessSimulationResult>> {
+    simulate_atomic_program_account_instructions_with_marker_fixture(
+        so,
+        proof_address,
+        proof_data,
+        pool_address,
+        pool_data,
+        marker_address,
+        marker_data.map(AtomicMarkerFixture::ProgramOwned),
+        instruction_data,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn simulate_atomic_program_account_instructions_with_marker_fixture(
+    so: &Path,
+    proof_address: Pubkey,
+    proof_data: &[u8],
+    pool_address: Pubkey,
+    pool_data: &[u8],
+    marker_address: Pubkey,
+    marker_fixture: Option<AtomicMarkerFixture<'_>>,
+    instruction_data: &[Vec<u8>],
+) -> Result<Vec<StatelessSimulationResult>> {
     let root = workspace_root()?;
     let proof_fixture = write_validator_account_fixture(
         &root,
@@ -819,16 +903,18 @@ fn simulate_atomic_program_account_instructions_with_optional_marker(
         aspis_verifier::id(),
         pool_data,
     )?;
-    let marker_fixture = marker_data
-        .map(|data| {
-            write_validator_account_fixture(
+    let marker_fixture = marker_fixture
+        .map(|fixture| {
+            let (owner, lamports, data) = atomic_marker_fixture_parts(fixture);
+            write_validator_account_fixture_with_lamports(
                 &root,
                 "v5-full-cu-marker",
                 marker_address,
-                aspis_verifier::id(),
+                owner,
+                lamports,
                 data,
             )
-            .map(|fixture| (marker_address, fixture))
+            .map(|path| (marker_address, path))
         })
         .transpose()?;
     let fixtures = atomic_validator_account_fixtures(
@@ -840,6 +926,15 @@ fn simulate_atomic_program_account_instructions_with_optional_marker(
     let rpc = Rpc::for_validator(&validator)?;
     let payer = Keypair::new();
     rpc.airdrop_and_wait(&payer.pubkey(), LAMPORTS_PER_SOL)?;
+    let compute_unit_price_microlamports = match std::env::var(V5_CU_COMPUTE_UNIT_PRICE_ENV) {
+        Ok(value) => Some(
+            value
+                .parse::<u64>()
+                .with_context(|| format!("{V5_CU_COMPUTE_UNIT_PRICE_ENV} must parse as u64"))?,
+        ),
+        Err(std::env::VarError::NotPresent) => None,
+        Err(error) => return Err(error).context(format!("read {V5_CU_COMPUTE_UNIT_PRICE_ENV}")),
+    };
 
     let mut outcomes = Vec::with_capacity(instruction_data.len());
     for data in instruction_data {
@@ -854,12 +949,10 @@ fn simulate_atomic_program_account_instructions_with_optional_marker(
             ],
             data: data.clone(),
         };
+        let instructions =
+            atomic_v5_simulation_instructions(instruction, compute_unit_price_microlamports);
         let transaction = Transaction::new_signed_with_payer(
-            &[
-                ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
-                ComputeBudgetInstruction::request_heap_frame(HEAP_FRAME_BYTES),
-                instruction,
-            ],
+            &instructions,
             Some(&payer.pubkey()),
             &[&payer],
             rpc.latest_blockhash()?,
@@ -894,13 +987,24 @@ fn write_validator_account_fixture(
     owner: Pubkey,
     data: &[u8],
 ) -> Result<PathBuf> {
+    write_validator_account_fixture_with_lamports(root, label, address, owner, 10_000_000, data)
+}
+
+fn write_validator_account_fixture_with_lamports(
+    root: &Path,
+    label: &str,
+    address: Pubkey,
+    owner: Pubkey,
+    lamports: u64,
+    data: &[u8],
+) -> Result<PathBuf> {
     let directory = root.join(".spend-validator-account-fixtures");
     fs::create_dir_all(&directory)?;
     let path = directory.join(format!("{label}-{address}.json"));
     let account = json!({
         "pubkey": address.to_string(),
         "account": {
-            "lamports": 10_000_000u64,
+            "lamports": lamports,
             "data": [BASE64.encode(data), "base64"],
             "owner": owner.to_string(),
             "executable": false,
@@ -2624,6 +2728,50 @@ mod optional_marker_tests {
         assert_eq!(
             atomic_validator_account_fixtures(proof.clone(), pool.clone(), Some(marker.clone())),
             vec![proof, pool, marker]
+        );
+    }
+
+    #[test]
+    fn prefunded_marker_fixture_is_system_owned_empty_and_one_lamport() {
+        let (owner, lamports, data) =
+            atomic_marker_fixture_parts(AtomicMarkerFixture::SystemOwnedEmpty {
+                lamports: PREFUNDED_SYSTEM_MARKER_LAMPORTS,
+            });
+        assert_eq!(owner, system_program::id());
+        assert_eq!(lamports, 1);
+        assert!(data.is_empty());
+
+        let marker = [0u8; ATOMIC_NULLIFIER_MARKER_LEN];
+        let (owner, lamports, data) =
+            atomic_marker_fixture_parts(AtomicMarkerFixture::ProgramOwned(&marker));
+        assert_eq!(owner, aspis_verifier::id());
+        assert_eq!(lamports, 10_000_000);
+        assert_eq!(data, marker);
+    }
+
+    #[test]
+    fn priced_atomic_v5_instruction_order_places_tag67_at_index_three() {
+        let tag67 = Instruction {
+            program_id: aspis_verifier::id(),
+            accounts: Vec::new(),
+            data: vec![67],
+        };
+        assert_eq!(
+            atomic_v5_simulation_instructions(tag67.clone(), None),
+            vec![
+                ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+                ComputeBudgetInstruction::request_heap_frame(HEAP_FRAME_BYTES),
+                tag67.clone(),
+            ]
+        );
+        assert_eq!(
+            atomic_v5_simulation_instructions(tag67.clone(), Some(1)),
+            vec![
+                ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+                ComputeBudgetInstruction::request_heap_frame(HEAP_FRAME_BYTES),
+                ComputeBudgetInstruction::set_compute_unit_price(1),
+                tag67,
+            ]
         );
     }
 }

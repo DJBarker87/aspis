@@ -125,7 +125,7 @@ propext, Classical.choice, Quot.sound
 
 The upstream `Aeneas.Std` import closure contains unrelated declarations that
 use `sorry`. Therefore this harness does not claim the dependency is globally
-`sorry`-free. Its checked claim is narrower and load-bearing: none of the 30
+`sorry`-free. Its checked claim is narrower: none of the 30
 audited theorem dependency closures contains `sorryAx`, `ofReduceBool`, or any
 axiom outside the allowlist.
 

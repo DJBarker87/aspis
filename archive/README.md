@@ -32,7 +32,7 @@ contain the complete V5 production-closure workspace before publication
 curation. It preserves every LLBC blob, raw and versioned Aeneas translation,
 extraction log, superseded retarget experiment, and intermediate V5
 feature-build directory. The default branch retains the final normalized Lean,
-proof source, capstones, reports, canonical SBF, and CU evidence.
+proof source, integration theorems, reports, canonical SBF, and CU evidence.
 The tag is pinned to full commit
 [`859d8588d2761fac6714226877c9317f7d697a03`](https://github.com/DJBarker87/aspis/commit/859d8588d2761fac6714226877c9317f7d697a03).
 Its deterministic archive identity is recorded in

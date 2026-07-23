@@ -35,7 +35,7 @@ Deployment domain: `ba43feb01d7d7f5ee3f57a6481b202066c83c6c3e76020a619c1611abbd0
   (ELF), sha256
   `e289faf85fe4773880794d5d4356461bb9cb94077b68711f99348efe19707d7e`.
 - `certificates/release.json` : the release certificate. It reports
-  `released=true` with all release gates green.
+  `released=true` with every release gate passed.
 - `certificates/spend_d_after_g_soundness_epro.json`,
   `certificates/spend_complete_good_product.json`,
   `certificates/spend_computational_hvzk_closure.json`: the three
@@ -70,7 +70,7 @@ It requires only Bash, `jq`, and either `sha256sum` or `shasum`. It uses no
 network access and no Solana toolchain. It checks every file against
 `SHA256SUMS`, checks every `manifest.json` object's byte length and sha256,
 asserts the proof `ASP0` header and the SBF ELF magic, asserts the
-certificate reports `released=true` with all gates green, asserts the
+certificate reports `released=true` with every gate passed, asserts the
 evidence's finalized signature, slot, and compute units are the values above,
 and scans the bundle for secret-key material, leaked local paths, and
 explorer links that fail to pin a cluster. It prints `PASS` and exits 0 only

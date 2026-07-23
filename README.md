@@ -2,9 +2,8 @@
 
 [![Spend integration](https://github.com/DJBarker87/aspis/actions/workflows/spend-integration.yml/badge.svg)](https://github.com/DJBarker87/aspis/actions/workflows/spend-integration.yml)
 
-Aspis demonstrates that a transparent, trusted-setup-free proof for a
-shielded-spend state transition can be verified entirely on Solana L1 inside
-its 1.4 million compute-unit limit.
+Aspis puts transparent shielded-spend verification and its atomic state
+transition inside one Solana L1 transaction, with no trusted setup.
 
 On 2026-07-16 one finalized mainnet-beta transaction verified a 65,407-byte
 shielded-spend proof, advanced the pool state, and recorded the nullifier in
@@ -13,16 +12,14 @@ one atomic step, at 1,344,003 of the 1,400,000-CU cap:
 The program was a disposable deployment and was closed after the run
 ([evidence](docs/mainnet-demo.md)).
 
-The released construction is the spend-verification primitive: one input, one
-output, a same-path leaf replacement in a depth-20 tree, and an atomic pool and
-nullifier transition. It establishes the on-chain feasibility result; deposit,
-wallet, growing-anonymity-set, and multi-input/output protocols are separate
-work.
+The released construction handles one input, one output, a same-path leaf
+replacement in a depth-20 tree, and an atomic pool and nullifier transition.
+It establishes the on-chain feasibility result. Deposit, wallet,
+growing-anonymity-set, and multi-input/output protocols are separate work.
 
 The code, proof artefacts, measurements, formal development, failed approaches,
-and security argument are public so the result can be reproduced and
-challenged. The exact model is in the [paper](paper/aspis-spend/) and
-[Limitations](#limitations). The
+and security argument are public for reproduction and review. The construction
+and its limits are set out in the [paper](paper/aspis-spend/). The
 [novelty re-scan](docs/novelty-rescan-2026-07-13.md) is a dated public-evidence
 search for the claim shape.
 
@@ -36,8 +33,9 @@ asked whether the same budget could hold a real spend statement. The
 construction that answers it shares no components with his prototype, but the
 direction came from his paper.
 
-Aspis was built by one researcher working heavily with AI. The result stands
-on checked code, frozen artefacts, Lean proofs, and reproducible measurements.
+Dominic Barker built Aspis as a solo research project, using AI-assisted
+engineering throughout. The release includes checked code, versioned
+artefacts, Lean proofs, and reproducible measurements.
 
 ## Current status
 
@@ -46,21 +44,29 @@ Aspis now has two clearly separated release lines:
 | Track | Status | Runtime result |
 | --- | --- | ---: |
 | q18/g37, tag 65 | Executed and finalized on mainnet-beta on 2026-07-16 | 1,344,003 CU |
-| V5, tag 67 | Exact frozen SBF finalized on devnet; ready for exact mainnet deployment | 1,335,952 CU landed; accepted-grammar ceiling 1,353,616 CU |
+| V5, tag 67 | Finalized on devnet; ready for mainnet deployment | 1,335,952 CU landed; current-mainnet ceiling 1,356,912 CU |
 
 The q18/g37 release is the published mainnet feasibility result. V5 is the
 current verifier architecture: its default SBF is 1,258,496 bytes, SHA-256
-`4cf3c1d5…edf40`, and has 46,384 CU of conservative headroom. Its code,
-frozen-schedule Component-A bridge, general Component-B/Component-C and
-Tag-67 closure, provenance, and CU evidence are recorded in the
+`4cf3c1d5…edf40`, and has 43,088 CU of conservative headroom. Its code,
+Component-A correspondence at the selected schedule, general Component-B and
+Component-C correspondence, Tag-67 verifier theorem, provenance, and CU
+evidence are recorded in the
 [V5 production preflight](release/preflight/v5-production-freeze.md).
-On 2026-07-23 that exact SBF completed the atomic Tag-67 path on devnet at
+On 2026-07-23 that SBF completed the atomic Tag-67 path on devnet at
 1,335,952 CU:
 [`38mNKeM…WtEuLC`](https://explorer.solana.com/tx/38mNKeMmRf9Ttqmde8jZqCMq8F1piHhCEqGYVYrSHEggTu21C93wWAEhoDkZ2qJHeTX7j3qCmibNNmZ6awWtEuLC?cluster=devnet).
-The offline-verifiable
-[V5 candidate bundle](release/aspis-v5-tag67-frozen-candidate-v1/)
-binds the proof, statement, deployed program, state transition, retained proof,
-and rejected replay.
+The same binary was then replayed across all three selectors on the current
+mainnet Agave 4.1.0 runtime, including the accepted one-lamport prefunded
+marker path that performs transfer, allocate, and assign CPIs. The resulting
+accepted-state ceiling is 1,356,912 CU
+([evidence](results/spend/v5-mainnet-runtime-4.1.0-20260723/)).
+The
+[original frozen V5 bundle](release/aspis-v5-tag67-frozen-candidate-v1/)
+binds the proof, statement, devnet program, state transition, retained proof,
+and rejected replay. Its 2.3.13 topology record is preserved unchanged; the
+[current-runtime addendum](results/spend/v5-mainnet-runtime-4.1.0-20260723/)
+adds the priced Agave 4.1.0 transaction and every accepted marker pre-state.
 The compact trust boundary is in the
 [assumptions ledger](docs/assumptions-ledger.md).
 
@@ -78,7 +84,7 @@ The soundness floor is a per-query figure: after the Fiat–Shamir reduction and
 a conservative whole-ledger factor of three, the false-acceptance probability
 is at most 2^−100.16 per random-oracle query. Like any grinding-based bound the
 cumulative advantage grows with the query budget and goes vacuous past roughly
-2^105 queries. The full event ledger, the per-budget table, and the exact
+2^105 queries. The full event ledger, the per-budget table, and the complete
 reduction are in the [paper](paper/aspis-spend/), recomputed by
 `spend_soundness_epro_ledger`.
 
@@ -177,22 +183,23 @@ The repository contains two complementary formal layers.
   q18/g37 construction it kernel-checks the value-conservation and relation
   core, finite soundness ledger, work-normalized endpoint, circle-group and
   fibre facts, hiding lemmas, Poseidon2 known-answer bindings, and the
-  theft-resistance implication from its explicitly cited interfaces.
+  theft-resistance implication from its cited interfaces.
 - [`aeneas-verif/`](aeneas-verif/) connects the current V5 Rust implementation
   to maintained Lean models through pinned Charon/Aeneas extraction. Its final
-  capstone joins the frozen-schedule Component-A bridge, Component B,
-  Component C—including the public Component-C output—and the Tag-67 wire and
-  six-step work verifier.
+  integration theorem joins Component A at the selected schedule, Component B,
+  Component C (including its public output), and the Tag-67 wire and six-step
+  work verifier.
 
 The final V5 theorem has one Tag-67 implementation boundary: the actual
 transcript hash application must equal the maintained `HashFn` applied to
 `DOM_GRIND || nonce_le64`. Parser, projection, digest-predicate, and six-step
 correspondence are theorem conclusions rather than assumptions. The audited
-capstones use only Lean's standard `{propext, Classical.choice, Quot.sound}`
-base. Published PCS, Fiat–Shamir, extractor, and cryptographic hash-security
+integration theorems use only Lean's standard
+`{propext, Classical.choice, Quot.sound}` base. Published PCS, Fiat–Shamir,
+extractor, and cryptographic hash-security
 results are the external cryptographic inputs. The runtime recomputes
 GoodA/GoodB for every selected branch; the source-authentic Component-A theorem
-currently covers the frozen schedule.
+currently covers the selected release schedule.
 
 ## Limitations
 
@@ -216,9 +223,9 @@ full statements.
   sequential, nullifier storage grows linearly, and a CU repricing beyond the
   measured headroom would require new parameters.
 - **Assurance.** The repository includes internal review, formal proofs,
-  independent checkers, and frozen mainnet evidence. Independent cryptographic
-  and Solana review and a published coverage-guided fuzz campaign remain the
-  next assurance milestones.
+  independent checkers, and finalized mainnet evidence. Independent
+  cryptographic and Solana review and a published coverage-guided fuzz campaign
+  are the next assurance milestones.
 
 ## Verify the source
 
@@ -240,7 +247,7 @@ machine-checked certificate gates from fresh local-validator measurements.
 
 ## Verify the release
 
-The finalized mainnet-beta execution is frozen in an offline-verifiable
+The finalized mainnet-beta execution is preserved in an offline-verifiable
 bundle. From the repository root:
 
 ```bash
@@ -271,7 +278,7 @@ carries a README naming its production entry points.
 | `.cargo/` | Reproducible Cargo aliases and build configuration |
 | `.github/` | CI for Rust, release bindings, and Lean kernel checks |
 | `AspisFormal/` | Maintained Lean 4 formalisation and proof-status table |
-| `aeneas-verif/` | Curated Rust-to-Lean extraction proofs and V5 capstones |
+| `aeneas-verif/` | Curated Rust-to-Lean extraction proofs and V5 integration theorems |
 | `crates/aspis-core/` | `no_std`, byte-exact host and SBF verifier core |
 | `crates/aspis-prover/` | Prover, grinding, security calculators, and the release proof fixtures |
 | `crates/aspis-statement/` | Shielded-spend relation and statement encoding |

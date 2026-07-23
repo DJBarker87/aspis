@@ -1,7 +1,5 @@
 //! Aspis v5 masking component (B): degree-preserving chained sumcheck masks.
 //!
-//! # Status: provisional and feature-gated
-//!
 //! The state-only sumcheck releases ten complete degree-27 polynomials. A
 //! random multilinear table cannot hide coefficients of degrees 2 through 27.
 //! This module instead samples, for each round, a uniformly random degree-27
@@ -20,16 +18,9 @@
 //! the exact sampler bijection, and the conditional distribution of each full
 //! round polynomial.
 //!
-//! ## Deliberate boundary
-//!
-//! This module does not define the commitment or opening wire. The mask
-//! coefficients and initial claim must be bound before `eta` is sampled, and
-//! the verifier must authenticate the terminal evaluation of this degree-27
-//! oracle. A commitment to only its 1024 Boolean values would authenticate the
-//! multilinear extension, which is a different polynomial. Until that binding,
-//! the adaptive transcript composition, and the correlated PCS view are fixed,
-//! this primitive is not a production zero-knowledge claim and is not reachable
-//! from the v4 prover.
+//! The production V5 host commits this mask in Component B before dependent
+//! transcript challenges and authenticates the terminal evaluation. The
+//! source-authentic proof connects the sampler, host flow, layout, and terminal.
 
 use aspis_core::field::QM31;
 use aspis_core::state_only_sumcheck::{

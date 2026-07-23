@@ -1,4 +1,4 @@
-//! Read-only deployment audit for the provisional v5 inactive claim.
+//! Read-only deployment audit for the V5 inactive claim.
 //!
 //! This test does not construct two witnesses for one statement and makes no
 //! same-statement privacy claim. It checks two narrower code facts:

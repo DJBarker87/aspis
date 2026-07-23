@@ -1,7 +1,7 @@
-//! Real-witness host proof material for the feature-gated v5/tag-67 path.
+//! Production host proof construction for V5 Tag 67.
 //!
 //! This constructs every algebraic and PCS value needed by the complete
-//! candidate grammar:
+//! release grammar:
 //! the atomic-v3 witness trace, split C1/C2 roots in Fiat--Shamir order, the
 //! Component-B-masked semantic sumcheck, all `4 * 19` claims, the terminal
 //! identity, one shared four-round relation, later roots, final polynomial,
@@ -9,9 +9,8 @@
 //!
 //! [`build_v5_production_host_artifact_cap17`] owns fresh private entropy,
 //! post-root public Fiat--Shamir salts, quiet deployed PoW, and the bounded
-//! public-Good retry lifecycle. This does not enable tag 67 in production
-//! dispatch or discharge PCS/Merkle, hash/random-oracle, Fiat--Shamir, entropy,
-//! or executable-correspondence assumptions.
+//! public-Good retry lifecycle. The V5 preflight and formal proof map record
+//! the cryptographic interfaces and source-authentic correspondence.
 
 use aspis_core::circle_fri::circle_fiber_point_for_domain_log;
 use aspis_core::circle_hiding_prefix::PAYMENT_HIDING_QUERY_DRAW_LIMIT;
@@ -1646,7 +1645,7 @@ pub fn build_v5_real_host_artifact(
     )
 }
 
-/// Build the same candidate artifact while owning the public FS entropy seam.
+/// Build the same production artifact while owning the public FS entropy seam.
 ///
 /// Each 32-byte salt is drawn from the OS only after its PCS root is fixed and
 /// immediately before that root is transcript-absorbed. Entropy failure is a

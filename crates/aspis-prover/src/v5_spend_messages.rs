@@ -1,4 +1,4 @@
-//! Real layer-zero message construction for the feature-gated v5 candidate.
+//! Layer-zero message construction for V5.
 //!
 //! This module starts from the atomic-v3 statement and witness, builds the
 //! real sixteen-column semantic trace, applies one atomic-conditioned
@@ -11,10 +11,8 @@
 //! used by Spend.  C1 leaves are exactly 256 bytes and C2 leaves exactly 192
 //! bytes.  No synthetic digest stands in for either root.
 //!
-//! This is not a complete v5 proof builder.  In particular it does not yet
-//! define the transcript, the correlated PCS openings, the mixed sumcheck
-//! wire, the later FRI trees, or a production verifier.  It is unreachable
-//! from the v4 prover.
+//! The production host builder composes these messages with the transcript,
+//! mixed sumcheck, private openings, and later folds.
 
 use aspis_core::circle_fri::FIXED_ARITY4_ROUNDS;
 use aspis_core::circle_line_merkle::{
@@ -82,9 +80,9 @@ pub const V5_PRIVATE_TAGS: [u8; V5_PRIVATE_SECTIONS] = [
     CIRCLE_LINE_TAGS[2],
 ];
 
-/// This artefact exercises the complete PCS mechanics for CU and integration
-/// work.  It is not a security-approved v5 construction: the current full-
-/// kernel Component C has been rejected as a hiding design.
+/// Legacy diagnostic status retained for the older CU stress artifact.
+///
+/// The production V5 host does not use this status value.
 pub const V5_CU_STRESS_ONLY_STATUS: &str =
     "CU stress only: Component C is rejected and no v5 security claim is made";
 
@@ -264,7 +262,7 @@ const fn b_block_row(round: usize, offset: usize) -> usize {
     V5_B_ROUND_BLOCKS[round] * V5_B_ROUND_BLOCK_ROWS + offset
 }
 
-/// Structured Component-B message used by the compact same-pass candidate.
+/// Structured Component-B message used by the compact production path.
 ///
 /// The initial mask claim and the 270 independent round coefficients are
 /// committed in the exact 32-row block layout used by the compact terminal
@@ -511,7 +509,7 @@ fn encode_messages(
 /// Byte ordinal of one M31 limb inside a v5 C1 layer-zero leaf.
 ///
 /// Leaves are slot-major, then lane-major, then little-endian byte order.
-/// This helper is called by the production candidate packer so the runtime
+/// This helper is called by the production packer so the runtime
 /// ordering is available as a first-order extraction target.
 fn c1_leaf_m31_byte_ordinal(slot: usize, lane: usize, byte: usize) -> usize {
     (slot * V5_C1_LANES + lane) * 4 + byte

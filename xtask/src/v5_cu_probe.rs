@@ -112,7 +112,9 @@ use aspis_verifier::PROOF_ACCOUNT_HEADER_LEN;
 use crate::spend_measure::{
     parse_cu_markers, simulate_atomic_program_account_instructions,
     simulate_atomic_program_account_instructions_with_absent_marker,
+    simulate_atomic_program_account_instructions_with_prefunded_system_marker,
     simulate_readonly_program_account_instructions, StatelessSimulationResult,
+    V5_CU_COMPUTE_UNIT_PRICE_ENV,
 };
 
 const REPEATS: usize = 3;
@@ -1482,6 +1484,26 @@ fn completed_system_program_cpi_log_evidence(logs: &[String]) -> Option<Vec<Stri
     )
 }
 
+fn system_program_cpi_counts(logs: &[String]) -> (usize, usize) {
+    let system_program = Pubkey::default().to_string();
+    let invoke_prefix = format!("Program {system_program} invoke");
+    let success_line = format!("Program {system_program} success");
+    (
+        logs.iter()
+            .filter(|line| line.starts_with(&invoke_prefix))
+            .count(),
+        logs.iter().filter(|line| *line == &success_line).count(),
+    )
+}
+
+fn system_program_log_lines(logs: &[String]) -> Vec<String> {
+    let prefix = format!("Program {} ", Pubkey::default());
+    logs.iter()
+        .filter(|line| line.starts_with(&prefix))
+        .cloned()
+        .collect()
+}
+
 fn run_real_full_transaction_with_serialized_fixture(
     results_dir: &Path,
     probe_so: &Path,
@@ -1609,7 +1631,7 @@ fn run_real_full_transaction_with_serialized_fixture(
         generated_at_utc: chrono::Utc::now().to_rfc3339(),
         command: format!("NO_DNA=1 V5_CU_RESULTS_DIR=<tmp> cargo test -p aspis-xtask {measurement_test_name} --release -- --ignored --nocapture # marker-mode={}", marker_mode.label()),
         scope: format!("One isolated local-SBF tag-67 transaction for selected Good branch {selector}: sealed real-witness v5 proof account, exact branch-{selector} transcript-derived q18 queries, five branch-regenerated authenticated openings, semantic terminal, four-claim compact-B relation, complete FRI checks, and the unchanged atomic verify-and-apply state wrapper. Nullifier marker fixture mode: {}.", marker_mode.label()),
-        security_scope: format!("CU fixture only. The production host artifact remains leastGood={}; selector {selector} is {}. Selectors one and two are explicitly test-only malicious/nonleast branch overrides used solely to measure selected-Good verifier control flow; their q18 indices, fixed C1/C2 records, all five private opening sections, and every later FRI value are rebuilt from the retained committed codewords and original deterministic salts. The five caller-supplied public FS salt fields implement the wire and transcript-order hook needed by one Chiesa--Fenzi premise; deterministic fixture salts do not instantiate its fresh uniform sampling requirement. The radix-4/oracle transport, BCS reduction, and HVZK obligations remain open. Component-B production sampling and Rust--Lean correspondence remain open. Direct Component C is the live finite route; its executable encoder/downstream correspondence remains an explicit premise. This measurement is not a v5 security proof, production grammar, or deployment authorization.", artifact_metadata.honest_least_good_selector, if artifact_metadata.test_only_nonleast_branch_override { "nonleast but selected-Good-valid" } else { "the honest least-Good branch" }),
+        security_scope: format!("CU fixture only. The production host artifact remains leastGood={}; selector {selector} is {}. Selectors one and two are test-only nonleast branch overrides used to measure selected-Good verifier control flow; their q18 indices, fixed C1/C2 records, all five private opening sections, and every later FRI value are rebuilt from the retained committed codewords and original deterministic salts. The five caller-supplied public FS salt fields exercise the wire and transcript order. The release preflight records the production grammar, formal correspondence, and security argument separately.", artifact_metadata.honest_least_good_selector, if artifact_metadata.test_only_nonleast_branch_override { "nonleast but selected-Good-valid" } else { "the honest least-Good branch" }),
         transaction_repeats: REPEATS,
         transaction_total_cu: total,
         transaction_cu_limit: TRANSACTION_CU_LIMIT,
@@ -1661,7 +1683,7 @@ fn run_real_full_transaction_with_serialized_fixture(
         accepted_three_of_three: true,
         deterministic_cu_three_of_three: true,
         conclusion: format!(
-            "The feature-gated v5 tag-67 selected-Good branch {selector} transaction accepted three of three local-SBF simulations at {total} CU in marker mode {}. System Program CPI completion was observed in {}/{} repetitions. The production host still chooses leastGood={}; this {} fixture answers branch-specific implementation fit only. Production sampling/correspondence for Component B, executable correspondence for direct Component C, and the full security argument remain open.",
+            "The feature-gated v5 tag-67 selected-Good branch {selector} transaction accepted three of three local-SBF simulations at {total} CU in marker mode {}. System Program CPI completion was observed in {}/{} repetitions. The production host still chooses leastGood={}; this {} fixture measures branch-specific implementation fit. The release preflight records the production correspondence and security results.",
             marker_mode.label(),
             usize::from(system_program_cpi_observed_all_repeats) * REPEATS,
             REPEATS,
@@ -3116,6 +3138,17 @@ mod tests {
             format!("Program {} success", aspis_verifier::id()),
         ])
         .is_none());
+
+        let prefunded_cpis = vec![
+            format!("Program {system_program} invoke [2]"),
+            format!("Program {system_program} success"),
+            format!("Program {system_program} invoke [2]"),
+            format!("Program {system_program} success"),
+            format!("Program {system_program} invoke [2]"),
+            format!("Program {system_program} success"),
+        ];
+        assert_eq!(system_program_cpi_counts(&prefunded_cpis), (3, 3));
+        assert_eq!(system_program_log_lines(&prefunded_cpis), prefunded_cpis);
     }
 
     fn frozen_hex32(value: &str) -> [u8; 32] {
@@ -3201,8 +3234,10 @@ mod tests {
 
     /// Replay the checked-in runtime proof against the checked-in tag-67 SBF.
     /// `V5_CU_FROZEN_MARKER_MODE=present` is the program-owned zero-marker
-    /// control; `missing` exercises the real System Program create-account CPI.
-    /// Neither mode performs proof generation, work mining, or an SBF build.
+    /// control; `missing` exercises the System Program create-account CPI; and
+    /// `prefunded` exercises transfer, allocate, and assign from a System-owned
+    /// empty PDA carrying one lamport. No mode performs proof generation, work
+    /// mining, or an SBF build.
     #[test]
     #[ignore = "frozen-artifact local-validator control; set V5_CU_FROZEN_DIR"]
     fn v5_frozen_artifact_marker_mode_cu_measurement() {
@@ -3276,7 +3311,21 @@ mod tests {
         let marker_data = [0u8; ATOMIC_NULLIFIER_MARKER_LEN];
         let instructions = vec![full_v5_transaction_wire(&statement); REPEATS];
         let marker_mode = std::env::var("V5_CU_FROZEN_MARKER_MODE")
-            .expect("V5_CU_FROZEN_MARKER_MODE must be `present` or `missing`");
+            .expect("V5_CU_FROZEN_MARKER_MODE must be `present`, `missing`, or `prefunded`");
+        let compute_unit_price_microlamports = std::env::var(V5_CU_COMPUTE_UNIT_PRICE_ENV)
+            .ok()
+            .map(|value| {
+                value
+                    .parse::<u64>()
+                    .expect("V5_CU_COMPUTE_UNIT_PRICE_MICROLAMPORTS must parse as u64")
+            });
+        let mut transaction_instruction_order =
+            vec!["set_compute_unit_limit", "request_heap_frame"];
+        if compute_unit_price_microlamports.is_some() {
+            transaction_instruction_order.push("set_compute_unit_price");
+        }
+        let tag67_instruction_index = transaction_instruction_order.len();
+        transaction_instruction_order.push("tag67");
         let simulations = match marker_mode.as_str() {
             "present" => simulate_atomic_program_account_instructions(
                 &probe_so,
@@ -3297,6 +3346,17 @@ mod tests {
                 marker_address,
                 &instructions,
             ),
+            "prefunded" => {
+                simulate_atomic_program_account_instructions_with_prefunded_system_marker(
+                    &probe_so,
+                    proof_address,
+                    &sealed_proof,
+                    pool_address,
+                    &pool_data,
+                    marker_address,
+                    &instructions,
+                )
+            }
             mode => panic!("unsupported V5_CU_FROZEN_MARKER_MODE {mode:?}"),
         }
         .expect("simulate frozen marker mode");
@@ -3310,11 +3370,51 @@ mod tests {
             .iter()
             .filter(|result| completed_system_program_cpi_log_evidence(&result.logs).is_some())
             .count();
+        let expected_cpis_per_repeat = match marker_mode.as_str() {
+            "present" => 0,
+            "missing" => 1,
+            "prefunded" => 3,
+            _ => unreachable!(),
+        };
+        let cpi_counts = simulations
+            .iter()
+            .map(|result| system_program_cpi_counts(&result.logs))
+            .collect::<Vec<_>>();
+        assert!(cpi_counts
+            .iter()
+            .all(|counts| { *counts == (expected_cpis_per_repeat, expected_cpis_per_repeat) }));
         assert_eq!(
             completed_cpi,
-            if marker_mode == "missing" { REPEATS } else { 0 }
+            if expected_cpis_per_repeat == 0 {
+                0
+            } else {
+                REPEATS
+            }
         );
-        let summary_path = frozen_dir.join(format!("v5_frozen_marker_{marker_mode}_cu.json"));
+        let logs_identical_repeats = simulations
+            .iter()
+            .all(|result| result.logs == simulations[0].logs);
+        assert!(logs_identical_repeats);
+        let logs = simulations[0].logs.clone();
+        let logs_sha256 = hex(&Sha256::digest(logs.join("\n")));
+        let system_program_logs = system_program_log_lines(&logs);
+        let summary_dir = std::env::var_os("V5_CU_RESULTS_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| frozen_dir.clone());
+        fs::create_dir_all(&summary_dir).expect("create frozen marker-mode summary directory");
+        let selector = std::env::var("V5_CU_SINGLE_SELECTOR").ok().map(|value| {
+            value
+                .parse::<u8>()
+                .expect("V5_CU_SINGLE_SELECTOR must parse as u8")
+        });
+        let summary_filename = selector.map_or_else(
+            || format!("v5_frozen_marker_{marker_mode}_cu.json"),
+            |selector| {
+                assert!(selector < 3, "V5_CU_SINGLE_SELECTOR must be 0, 1, or 2");
+                format!("v5_frozen_marker_{marker_mode}_selector_{selector}_cu.json")
+            },
+        );
+        let summary_path = summary_dir.join(summary_filename);
         fs::write(
             &summary_path,
             format!(
@@ -3322,11 +3422,33 @@ mod tests {
                 serde_json::to_string_pretty(&serde_json::json!({
                     "artifact": "v5_frozen_marker_mode_cu",
                     "marker_mode": marker_mode,
+                    "selector": selector,
+                    "marker_address": marker_address.to_string(),
+                    "compute_unit_price_microlamports": compute_unit_price_microlamports,
+                    "transaction_instruction_order": transaction_instruction_order,
+                    "tag67_instruction_index": tag67_instruction_index,
                     "sbf_path": probe_so,
                     "sbf_sha256": expected_sbf,
                     "totals_cu": totals,
                     "identical_repeats": REPEATS,
+                    "logs_identical_repeats": logs_identical_repeats,
+                    "logs_sha256": logs_sha256,
+                    "logs": logs,
                     "system_program_cpi_completed_repeats": completed_cpi,
+                    "system_program_cpi_invocations_per_repeat": cpi_counts
+                        .iter()
+                        .map(|(invocations, _)| invocations)
+                        .collect::<Vec<_>>(),
+                    "system_program_cpi_successes_per_repeat": cpi_counts
+                        .iter()
+                        .map(|(_, successes)| successes)
+                        .collect::<Vec<_>>(),
+                    "system_program_log_lines": system_program_logs,
+                    "prefunded_marker_lamports": if marker_mode == "prefunded" {
+                        Some(1u64)
+                    } else {
+                        None
+                    },
                     "proof_body_bytes": proof_body.len(),
                     "sealed_proof_account_bytes": sealed_proof.len(),
                     "query_indices": frozen_queries,
@@ -3336,7 +3458,7 @@ mod tests {
         )
         .expect("write frozen marker-mode summary");
         println!(
-            "v5-frozen-marker-mode mode={marker_mode} total={} repeats={totals:?} system_cpi_repeats={completed_cpi} proof_body_bytes={} sealed_proof_account_bytes={} queries={frozen_queries:?} path={}",
+            "v5-frozen-marker-mode mode={marker_mode} total={} repeats={totals:?} system_cpis={cpi_counts:?} proof_body_bytes={} sealed_proof_account_bytes={} queries={frozen_queries:?} path={}",
             totals[0],
             proof_body.len(),
             sealed_proof.len(),

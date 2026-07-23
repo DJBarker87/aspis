@@ -179,7 +179,7 @@ fn main() -> Result<()> {
                 );
             }
             eprintln!(
-                "spend-mainnet-readiness: all readiness gates green; wrote {}",
+                "spend-mainnet-readiness: all readiness gates passed; wrote {}",
                 path.display()
             );
             Ok(())
@@ -291,7 +291,7 @@ fn main() -> Result<()> {
             let readiness = spend_devnet::v5::readiness(&arguments)?;
             println!("{}", serde_json::to_string_pretty(&readiness)?);
             eprintln!(
-                "v5-devnet-readiness: read-only gates green for program {}, pool {}, proof account {}",
+                "v5-devnet-readiness: read-only gates passed for program {}, pool {}, proof account {}",
                 readiness.program_id, readiness.pool, readiness.proof_account,
             );
             Ok(())
@@ -302,6 +302,60 @@ fn main() -> Result<()> {
             println!("{}", serde_json::to_string_pretty(&evidence)?);
             eprintln!(
                 "v5-devnet-execute: finalized tag-67 {} at slot {}; immutable evidence {}",
+                evidence.final_transaction.signature,
+                evidence.final_transaction.finalized_slot,
+                evidence.evidence_path,
+            );
+            Ok(())
+        }
+        Some("v5-mainnet-artifact") => {
+            let arguments = args.collect::<Vec<_>>();
+            let outcome = spend_devnet::v5::generate_mainnet_artifact(&arguments)?;
+            println!("{}", serde_json::to_string_pretty(&outcome)?);
+            eprintln!(
+                "v5-mainnet-artifact: created {} proof bytes at {} and strict statement {} (leastGood={}, successful attempt index={})",
+                outcome.proof_bytes,
+                outcome.proof_path,
+                outcome.statement_path,
+                outcome.least_good_selector,
+                outcome.successful_attempt_index,
+            );
+            Ok(())
+        }
+        Some("v5-mainnet-readiness") => {
+            let arguments = args.collect::<Vec<_>>();
+            let readiness = spend_devnet::v5::mainnet_readiness(&arguments)?;
+            println!("{}", serde_json::to_string_pretty(&readiness)?);
+            if readiness.ready {
+                eprintln!(
+                    "v5-mainnet-readiness: ready for program {}, pool {}, proof account {}, solana-core {}, feature-set {}",
+                    readiness.program_id,
+                    readiness.pool,
+                    readiness.proof_account,
+                    readiness
+                        .observed_solana_core
+                        .as_deref()
+                        .unwrap_or("unavailable"),
+                    readiness
+                        .observed_feature_set
+                        .map_or_else(|| "unavailable".to_owned(), |value| value.to_string()),
+                );
+            } else {
+                eprintln!(
+                    "v5-mainnet-readiness: exact read-only identities matched; execution remains blocked: {}",
+                    readiness
+                        .execution_stop_reason
+                        .unwrap_or("unspecified stop condition")
+                );
+            }
+            Ok(())
+        }
+        Some("v5-mainnet-execute") => {
+            let arguments = args.collect::<Vec<_>>();
+            let evidence = spend_devnet::v5::execute_mainnet(&arguments)?;
+            println!("{}", serde_json::to_string_pretty(&evidence)?);
+            eprintln!(
+                "v5-mainnet-execute: finalized tag-67 {} at slot {}; immutable evidence {}",
                 evidence.final_transaction.signature,
                 evidence.final_transaction.finalized_slot,
                 evidence.evidence_path,
@@ -329,7 +383,7 @@ fn main() -> Result<()> {
                 );
             }
             eprintln!(
-                "spend-devnet-readiness: all read-only gates green; wrote {}",
+                "spend-devnet-readiness: all read-only gates passed; wrote {}",
                 path.display()
             );
             Ok(())
@@ -375,7 +429,7 @@ fn main() -> Result<()> {
             Ok(())
         }
         other => bail!(
-            "usage: cargo run -p aspis-xtask -- v5-component-c-obstruction | v5-component-c-rank | v5-component-c-fmat | v5-component-c-emat | v5-cu-probe | v5-devnet-build | v5-devnet-artifact | v5-devnet-readiness | v5-devnet-execute | spend-measure | spend-release | spend-bundle | spend-mainnet-readiness | spend-mainnet-execute | spend-mainnet-cleanup | spend-devnet-readiness | spend-devnet-execute | spend-devnet-upload-smoke | spend-devnet-close-smoke (got {:?})",
+            "usage: cargo run -p aspis-xtask -- v5-component-c-obstruction | v5-component-c-rank | v5-component-c-fmat | v5-component-c-emat | v5-cu-probe | v5-devnet-build | v5-devnet-artifact | v5-devnet-readiness | v5-devnet-execute | v5-mainnet-artifact | v5-mainnet-readiness | v5-mainnet-execute | spend-measure | spend-release | spend-bundle | spend-mainnet-readiness | spend-mainnet-execute | spend-mainnet-cleanup | spend-devnet-readiness | spend-devnet-execute | spend-devnet-upload-smoke | spend-devnet-close-smoke (got {:?})",
             other
         ),
     }

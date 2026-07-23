@@ -1,10 +1,10 @@
-# Component-B deterministic pipeline capstone
+# Component-B deterministic pipeline integration
 
 ## Result
 
 Lean 4.32 theorem
 `ComponentBDeterministicPipelineCapstone.sampled_mask_to_c2_relation_and_tenRoundTerminal`
-closes the deterministic source-authentic pipeline:
+proves the deterministic source-authentic pipeline:
 
 1. successful generated `V5SumcheckMask::sample`;
 2. the authentic generated mixing/evaluation helper, returning the same
@@ -19,10 +19,10 @@ closes the deterministic source-authentic pipeline:
 
 The theorem additionally proves that transporting either maintained relation
 sum into the evaluator's authenticated exact tower gives exactly the returned
-generated `terminal`.  It deliberately states only the weighted row equality:
+generated `terminal`. It states only the weighted row equality:
 no unweighted full-lane equality is claimed at pad or pivot rows.
 
-## Strong theorem interface
+## Principal theorem interface
 
 The executable premises are:
 
@@ -57,7 +57,7 @@ not a `Faithful` predicate, opaque transport assumption, or parallel model.
 
 ## Lean-4.32 compatibility normalization
 
-The two green bundles contain colliding Lean module/declaration names.  The
+The two validated bundles contain colliding Lean module/declaration names. The
 new bundle retains two mechanically checked normalizations:
 
 - `generated/ComponentBLayoutBindingsGenerated.lean` is the accepted layout
@@ -68,7 +68,7 @@ new bundle retains two mechanically checked normalizations:
   theorem bodies under their distinct original namespaces, with one combined
   import header.  This preserves both meanings of the colliding module name.
 
-`replay-lean432.sh` reconstructs both normalizations from the green source
+`replay-lean432.sh` reconstructs both normalizations from the authenticated source
 files and byte-compares them before compiling.
 
 ## Authentication
@@ -86,15 +86,15 @@ files and byte-compares them before compiling.
   `26ed8e873da039503976fe08dcd26894b847c75007497d290fa74c4c9296319a`
 - current `v5_mask.rs` SHA-256:
   `a1516a5ab348d1e374d908844545054f1fd5647ea12ff56cff273cb1b2b7d05c`
-- capstone proof SHA-256:
+- integration proof SHA-256:
   `9ffcb3bcf1eb63f33959e28414cdebc5d77b96b9e2198def9bc3303a39175866`
 - clean replay log SHA-256:
   `93eafde98212887cad93acd1774738b8222e0a1033407e534832307f7b4d64cc`
 
-The source LLBC/raw Lean artifacts remain in the two consumed green bundles;
+The source LLBC/raw Lean artifacts remain in the two consumed source bundles;
 their exact paths and hashes are checked by the replay script.  The retained
 `olean-deps/` objects are hash-pinned Lean-4.32 replay dependencies for the
-already-green relation/MLE chain.
+already-proved relation/MLE chain.
 
 ## Verification
 
@@ -107,7 +107,7 @@ COMPONENT_B_PIPELINE_REPLAY_OUT=/private/tmp/component-b-pipeline-clean-final \
 ```
 
 Result: PASS.  Eight new exported theorems were audited with `#print axioms`.
-Every closure is exactly contained in
+Every theorem depends only on
 `{propext, Classical.choice, Quot.sound}`.  The replay rejects `sorryAx`,
 `ofReduceBool`, forbidden proof tokens, raised heartbeat limits, and raised
 recursion limits.  Compilation used Lean default limits.

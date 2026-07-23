@@ -1694,7 +1694,7 @@ fn exact_regular_file(path: &Path) -> Result<Vec<u8>> {
 
 fn rpc_origin(endpoint: &str) -> Result<String> {
     let url = reqwest::Url::parse(endpoint).context("invalid RPC URL")?;
-    ensure!(url.scheme() == "https", "devnet RPC must use HTTPS");
+    ensure!(url.scheme() == "https", "RPC endpoint must use HTTPS");
     ensure!(
         url.username().is_empty() && url.password().is_none(),
         "RPC credentials may not use URL userinfo"

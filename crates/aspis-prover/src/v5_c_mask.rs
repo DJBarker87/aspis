@@ -1,15 +1,14 @@
-//! Provisional v5 component (C): a full-kernel PCS masking lane.
+//! V5 Component C: a full-kernel PCS masking lane.
 //!
-//! This candidate uses the third already-budgeted QM31 helper lane.  Its
+//! V5 uses the third already-budgeted QM31 helper lane. Its
 //! message is uniform in the kernel of the exact atomic-v3 copy-inactive
 //! functional: 1,023 coordinates are sampled independently and the first
 //! selected row is derived so the functional is zero.  Consequently it does
 //! not change the root claim enforced by the existing PCS relation.
 //!
-//! The module establishes only the row encoding and its four public linear
-//! claims.  It does not establish complete-view hiding, Fiat--Shamir ordering,
-//! or Rust-to-Lean correspondence.  It is feature-gated with `v5-mask` and is
-//! not called by the v4 prover.
+//! This module owns the row encoding and its four public linear claims. The
+//! complete runtime path and Rust-to-Lean correspondence are joined in the V5
+//! release proofs.
 
 use aspis_core::field::QM31;
 use aspis_statement::atomic_state_only_terminal::atomic_state_only_copy_inactive_row_masks_v3;

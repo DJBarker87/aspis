@@ -1,6 +1,6 @@
 # Component-B durable index
 
-## Authoritative unified result — 2026-07-22
+## Authoritative unified result, 2026-07-22
 
 The current authoritative Component-B result is the self-contained bundle
 `unified-current-20260722/`.  Its `REPORT.md` and 70-entry
@@ -11,12 +11,12 @@ strongest theorem is
 the actual successful generated sampler and the actual generated call-through
 helper share one generated mask/type universe, mixing and ten-round terminal
 evaluation are both closed, no `CurrentMixingTerminalTransport` or platform
-premise remains, and all 200 exported theorems have exact closure audits.
+premise remains, and all 200 exported theorems have complete axiom audits.
 
 Replay routes through `unified-current-20260722/replay-lean432.sh`.  The nested
 manifest SHA-256 is
 `0f420aebd37f7e64af89d75f88f4932190338e1b0138d3bc989421855424f4bb`.
-No transcript/PCS/ZK/freeze claim is made.
+Transcript, PCS, and zero-knowledge claims are outside this result's scope.
 
 ## Superseded historical record
 
@@ -47,16 +47,16 @@ returns a canonical value equal in the maintained exact tower to
 `AspisV5SumcheckCommitment.terminalCovector`.
 
 No optimized-primitive premise, evaluator-faithfulness premise, or
-zero-boundary premise remains in that capstone. Its executable interfaces are
+zero-boundary premise remains in that theorem. Its executable interfaces are
 the actual successful sampler run, totality of the supplied word-source
 transition, and the recorded 64-bit extraction target; canonicality of the ten
 public evaluation coordinates is the semantic input condition. It makes no
 distributional or sampler-uniformity claim.
 
-The concrete tooth `omitted_zero_boundary_constant_changes_round` proves over
-the rationals that dropping the sampler's derived constant coefficient changes
-a one-round evaluation. Thus the zero-boundary fact consumed by the capstone
-is load-bearing rather than decorative.
+The theorem `omitted_zero_boundary_constant_changes_round` proves over the
+rationals that dropping the sampler's derived constant coefficient changes a
+one-round evaluation. The zero-boundary equation therefore affects the result;
+it is not an unused premise.
 
 ## 2026-07-21 deterministic evaluator-to-terminal closure
 
@@ -274,13 +274,12 @@ The attempted all-in-one generated-round theorem is not exported: Lean reaches
 the default heartbeat limit while elaborating the combined generated
 Array/Result signature before entering its proof. The fixed ten-round
 `List.ofFn` reduction separately reaches the default recursion limit. Thus the
-green retained result closes the half, addition, zero-boundary algebra, tail
-ordering interface, and exact-tower field-instance transport, but does not yet
-claim the maintained `tenRoundTerminal`/`terminalCovector` capstone.
+retained result proves the half, addition, zero-boundary algebra, tail ordering
+interface, and exact-tower field-instance transport, but does not yet claim the
+maintained `tenRoundTerminal`/`terminalCovector` result.
 
-At that earlier checkpoint, two separate seams remained; neither was hidden in
-a correspondence slogan. The first is closed by the authoritative 2026-07-21
-continuation above.
+Two obligations remained at that earlier checkpoint. The authoritative
+2026-07-21 continuation above closes the first.
 
 At that checkpoint, `generated_public_evaluate_exact_ten_round_terminal` assumed
 `ComponentBRealEvaluatorProof.OptimizedPrimitiveCorrespondence`. That bundle
@@ -301,7 +300,7 @@ map in increasing order to the maintained tail; the updated slot zero maps to
 to the maintained coefficient sum. A default-limit attempt to prove the last
 `Fin 28` sum bridge exposed an elaboration/instance seam between the evaluator's
 exact quadratic tower and the maintained exact tower, so it is not included in
-the green replay or theorem inventory. No transcript binding, Fiat--Shamir
+the replay or theorem inventory. No transcript binding, Fiat--Shamir
 security, PCS authentication, deployed ZK, or v5 freeze claim is made here.
 
 ## Reproducibility inventory
@@ -341,7 +340,7 @@ Tests:
 
 - targeted state-only tests: 8 passed, 0 failed;
 - full `aspis-core --lib`: 167 passed, 0 failed;
-- combined generated module and all seven green handwritten proof modules: direct
+- combined generated module and all seven retained handwritten proof modules: direct
   Lean 4.32 default-limit compile passed;
 - hardened replay matched the actual 14 exported theorem names against exactly
   14 corresponding `#print axioms` commands before accepting the proof set.

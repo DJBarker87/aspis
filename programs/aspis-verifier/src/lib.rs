@@ -11,15 +11,15 @@
 //!
 //! The opt-in `v5-cu-probe` feature builds a separate local-validator-only
 //! entrypoint. Tag 66 selects diagnostic kernels; tag 67 wraps the complete
-//! provisional v5 verifier in the unchanged atomic state transition.
+//! v5 verifier in the unchanged atomic state transition.
 //! Entrypoint builds are incompatible with `spend-production`; host tooling
 //! may feature-unify the library only while `no-entrypoint` is set.
 //!
 //! The default `v5-production-tag67` production switch instead
 //! routes tag 67 through the minimal production dispatcher and the same atomic
 //! verify-and-apply wrapper. It never exposes tag 66 or the probe entrypoint.
-//! It was added to the default feature set only after the recorded
-//! correspondence, formal, CU, and release gates closed.
+//! It is part of the default feature set after the recorded correspondence,
+//! formal, CU, and release gates passed.
 //!
 //! Proof account layout:
 //! [0..4] magic "ASPU", [4..8] proof_len u32 LE, [8..40] upload authority,

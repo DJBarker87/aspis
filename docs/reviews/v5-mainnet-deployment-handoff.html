@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -112,24 +112,23 @@
 <body>
 <main>
   <div class="eyebrow">Aspis V5 · deployment handoff · 23 July 2026</div>
-  <div class="decision">ARTEFACT GO · TRANSACTION AWAITS OPERATOR AUTHORIZATION</div>
-  <h1>The frozen V5 program is ready to deploy.</h1>
+  <div class="decision">BINARY READY · MAINNET CANARY NEXT</div>
+  <h1>V5 is ready for a mainnet canary.</h1>
   <p class="lede">
     The code, runtime-enforced candidate gate, compute budget, atomic account
-    path, and exact binary identity are ready. No mainnet transaction was sent
-    during this review. The next step belongs to the deployment
-    operator: provide the secured signers, paid RPC, funding, and explicit
-    authorization for the transaction.
+    path, and binary identity are ready. The deployment operator now supplies
+    secured signers, a paid RPC, funding, and transaction authorization. No
+    V5 mainnet transaction has been sent.
   </p>
 
   <div class="grid">
     <div class="card"><strong>Program ID</strong><span><code>7Q2n…Rmue</code></span></div>
     <div class="card"><strong>SBF size</strong><span>1,258,496 bytes</span></div>
-    <div class="card"><strong>Accepted-input ceiling</strong><span>1,353,616 CU</span></div>
+    <div class="card"><strong>Accepted-state ceiling</strong><span>1,356,912 CU</span></div>
     <div class="card"><strong>Devnet rehearsal</strong><span>1,335,952 CU · finalized</span></div>
   </div>
 
-  <h2>Frozen identity</h2>
+  <h2>Release identity</h2>
   <p>
     Canonical SBF:
     <code>results/spend/v5-production-tag67-freeze-stream3-20260722/aspis_verifier_v5_production_tag67.so</code>
@@ -148,9 +147,9 @@
     <thead><tr><th>Gate</th><th>Status</th><th>Result</th></tr></thead>
     <tbody>
       <tr><td>Default production route</td><td class="pass">Pass</td><td>Tag 67 enters only through the atomic verify-and-apply wrapper; Tag 66 is absent.</td></tr>
-      <tr><td>Compute budget</td><td class="pass">Pass</td><td>The frozen-runtime accepted-grammar ceiling is 1,353,616 CU, 46,384 below the cap.</td></tr>
-      <tr><td>Formal closure</td><td class="pass">Pass</td><td>Frozen-schedule A, general B/C public output, and the Tag-67 six-step verifier compose under one named hash-application boundary.</td></tr>
-      <tr><td>Runtime evidence</td><td class="pass">Pass</td><td>Exact final SBF completed selector/marker-mode replays and finalized the atomic devnet path at 1,335,952 CU.</td></tr>
+      <tr><td>Compute budget</td><td class="pass">Pass</td><td>The release-grammar and accepted-marker-state ceiling is 1,356,912 CU, 43,088 below the cap on mainnet Agave 4.1.0.</td></tr>
+      <tr><td>Formal correspondence</td><td class="pass">Pass</td><td>Release-schedule A, general B/C public output, and the Tag-67 six-step verifier compose under one named hash-application boundary.</td></tr>
+      <tr><td>Runtime evidence</td><td class="pass">Pass</td><td>The release SBF completed selector/marker-mode replays and finalized the atomic devnet path at 1,335,952 CU.</td></tr>
       <tr><td>Secrets history</td><td class="pass">Pass</td><td>Gitleaks scanned all 127 commits; audited public test-vector and source-name false positives are recorded explicitly.</td></tr>
       <tr><td>Mainnet account state</td><td class="pass">Pass</td><td>The canonical program ID was undeployed in a read-only mainnet-beta check on 23 July 2026.</td></tr>
       <tr><td>RPC, funding, and signers</td><td class="operator">Operator</td><td>Use a paid mainnet RPC/WS pair, secured dedicated payer funded with at least 10 SOL, canonical program signer, fresh pool/proof signers, buffer, and explicit upgrade authority.</td></tr>
@@ -159,75 +158,120 @@
 
   <h2>Finalized devnet rehearsal</h2>
   <p>
-    The exact frozen SBF was deployed as
+    The same SBF was deployed as
     <a href="https://explorer.solana.com/address/EZYH9FFDGj9gSacmDhvYBqPAzcSm9cfURwuz1CtzQRFS?cluster=devnet"><code>EZYH9FF…zQRFS</code></a>.
     Atomic Tag 67 finalized at slot <code>478299357</code>:
     <a href="https://explorer.solana.com/tx/38mNKeMmRf9Ttqmde8jZqCMq8F1piHhCEqGYVYrSHEggTu21C93wWAEhoDkZ2qJHeTX7j3qCmibNNmZ6awWtEuLC?cluster=devnet"><code>38mNKeM…WtEuLC</code></a>.
     Simulation and landed metadata both report 1,335,952 CU. The pool advanced
     from sequence 0 to 1, the canonical nullifier marker was created, the
     sealed proof remained byte-for-byte unchanged, and the poststate replay
-    was rejected with the exact expected nullifier error.
+    was rejected with the expected nullifier error.
   </p>
 
-  <h2>Deployment command shape</h2>
+  <h2>Current mainnet runtime</h2>
   <p>
-    The operator should verify the hash once more at the secure signing
-    boundary, then deploy with explicit paths and a paid mainnet endpoint:
+    Mainnet-beta reported Agave <code>4.1.0</code>, feature set
+    <code>3345198602</code>, on 23 July 2026. The release SBF was replayed on
+    the matching official validator across every selector. Missing-marker
+    executions were exactly 54 CU cheaper than the release measurements. The
+    accepted one-lamport prefunded marker, which performs transfer, allocate,
+    and assign CPIs, was then replayed across every selector. The resulting
+    accepted-state ceiling is 1,356,912 CU. The complete runtime identity,
+    hashes, source references, and measurements are in
+    <code>results/spend/v5-mainnet-runtime-4.1.0-20260723/</code>.
   </p>
-  <pre><code>sha256sum results/spend/v5-production-tag67-freeze-stream3-20260722/\
-aspis_verifier_v5_production_tag67.so
 
-solana program deploy \
-  --url "$MAINNET_RPC" \
-  --ws "$MAINNET_WS" \
-  --keypair /secure/mainnet-payer.json \
-  --program-id /secure/v5-program-keypair.json \
-  --upgrade-authority /secure/v5-upgrade-authority.json \
-  --buffer /secure/v5-buffer.json \
-  --max-len 1300000 \
-  --commitment finalized \
-  --max-sign-attempts 1 \
-  --with-compute-unit-price 0 \
-  --use-tpu-client \
-  results/spend/v5-production-tag67-freeze-stream3-20260722/\
-aspis_verifier_v5_production_tag67.so</code></pre>
+  <h2>Deployment and execution</h2>
   <p>
-    Keep the upgrade authority for the first canary run so the exact prior
-    binary can be restored. For a persistent value-bearing deployment, move
-    that authority to an operator-controlled multisig before accepting funds.
-    For a disposable publication run, close or freeze only after the evidence
-    bundle is complete.
+    The dedicated mainnet path generates a fresh mainnet-bound proof, repeats
+    every identity and funding check without mutation, then deploys and
+    executes through a durable one-shot journal. It requires the pinned Agave
+    4.1.0 CLI and a paid HTTPS/WSS endpoint.
+  </p>
+  <pre><code>ROOT="$(pwd -P)"
+SBF="$ROOT/results/spend/v5-production-tag67-freeze-stream3-20260722/\
+aspis_verifier_v5_production_tag67.so"
+PROVENANCE="$ROOT/results/spend/v5-production-tag67-freeze-stream3-20260722/\
+aspis_verifier_v5_production_tag67.provenance.json"
+RUNTIME_REPLAY="$ROOT/results/spend/v5-mainnet-runtime-4.1.0-20260723/\
+runtime-replay.json"
+PROGRAM_ID="7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue"
+POOL_ID="$("$SOLANA_KEYGEN" pubkey "$POOL_KEYPAIR")"
+
+cargo run --locked -p aspis-xtask -- v5-mainnet-artifact \
+  --network mainnet-beta \
+  --program-id "$PROGRAM_ID" \
+  --pool "$POOL_ID" \
+  --sequence 0 \
+  --proof-out "$PROOF" \
+  --statement-out "$STATEMENT"
+
+V5_MAINNET_ARGS=(
+  --rpc-url "$MAINNET_RPC"
+  --ws-url "$MAINNET_WS"
+  --payer-keypair "$PAYER_KEYPAIR"
+  --program-keypair "$PROGRAM_KEYPAIR"
+  --pool-keypair "$POOL_KEYPAIR"
+  --proof-account-keypair "$PROOF_ACCOUNT_KEYPAIR"
+  --sbf "$SBF"
+  --sbf-provenance "$PROVENANCE"
+  --proof "$PROOF"
+  --statement "$STATEMENT"
+  --program-max-len 1300000
+  --fee-reserve-lamports 100000000
+  --expected-solana-core 4.1.0
+  --expected-feature-set 3345198602
+  --upgrade-authority-keypair "$UPGRADE_AUTHORITY_KEYPAIR"
+  --deployment-buffer-keypair "$DEPLOYMENT_BUFFER_KEYPAIR"
+  --runtime-replay "$RUNTIME_REPLAY"
+  --compute-unit-price-microlamports "$CU_PRICE"
+)
+
+cargo run --locked -p aspis-xtask -- \
+  v5-mainnet-readiness "${V5_MAINNET_ARGS[@]}"
+
+cargo run --locked -p aspis-xtask -- \
+  v5-mainnet-execute "${V5_MAINNET_ARGS[@]}" \
+  --solana-cli "$SOLANA_CLI_4_1_0" \
+  --evidence "$FINAL_EVIDENCE" \
+  --run-directory "$FRESH_RUN_DIRECTORY" \
+  --acknowledgement \
+  I_ACKNOWLEDGE_V5_TAG67_MAINNET_BETA_EXECUTION_IS_IRREVERSIBLE_MUTATES_MAINNET_AND_SPENDS_REAL_SOL \
+  --execute-mainnet-beta</code></pre>
+  <p>
+    The executor persists every Rust-signed wire before submission, records
+    the CLI deployment command before invocation, simulates the exact Tag-67
+    wire, submits those same bytes, and refetches the finalized transaction.
+    An interrupted run stops for manual reconciliation from
+    <code>$FRESH_RUN_DIRECTORY</code>; it never resumes or resubmits
+    automatically.
   </p>
 
   <h2>Mainnet-bound proof</h2>
   <p>
-    The retained proof in the CU evidence is a measurement fixture. A mainnet
-    run must generate a fresh proof and statement from the production host
-    caller, bound to the deployed program ID, fresh pool, sequence, anchor,
-    nullifier, and <code>mainnet-beta</code> domain. The isolated
-    <code>v5-devnet-execute</code> command is intentionally devnet-only and
-    must not be repointed at mainnet.
+    The retained proof in the CU evidence is a measurement fixture.
+    <code>v5-mainnet-artifact</code> creates the fresh production-host proof
+    and statement bound to the canonical program ID, fresh pool, sequence,
+    anchor, nullifier, and <code>mainnet-beta</code> domain.
   </p>
 
-  <h2>Post-deploy evidence contract</h2>
+  <h2>What to publish</h2>
   <ul>
     <li>Read back the executable and ProgramData accounts at finalized commitment.</li>
     <li>Dump the deployed program and confirm SHA-256 <code>4cf3…edf40</code>.</li>
     <li>Record ProgramData allocation, deployment signature, finalized slot, RPC provider, and upgrade authority.</li>
-    <li>For the canary spend, publish proof and statement hashes, the exact signed wire hash, landed CU, pool transition, nullifier marker, and replay rejection.</li>
+    <li>For the canary spend, publish proof and statement hashes, the signed wire hash, landed CU, pool transition, nullifier marker, and replay rejection.</li>
     <li>Append a short assumptions ledger naming the transcript hash boundary and external cryptographic assumptions.</li>
   </ul>
 
   <div class="callout">
-    <strong>Stop condition.</strong>
-    If the SBF hash, accepted grammar, runtime cost schedule, program ID, or
-    source/toolchain binding changes, do not reuse this GO. Create a new freeze.
+    <strong>Re-run the release if</strong> the SBF hash, accepted grammar,
+    runtime cost schedule, program ID, or source/toolchain binding changes.
   </div>
 
   <footer>
-    This handoff distinguishes an achieved engineering gate from a signing
-    action. The artefact is ready; chain mutation remains under the operator’s
-    authority.
+    The artefact is ready. The deployment transaction remains under the
+    operator’s authority.
   </footer>
 </main>
 </body>

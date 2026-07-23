@@ -1,4 +1,4 @@
-//! Honest four-claim incremental relation for the provisional v5 PCS.
+//! Four-claim incremental relation for the V5 PCS.
 //!
 //! The ordinary three MLE claims, the carried atomic-v3 copy-inactive claim and
 //! the structured Component-B terminal covector are all reduced against the

@@ -1,4 +1,4 @@
-//! Runtime-sized Component-C downstream evaluation for the provisional v5 path.
+//! Runtime-sized Component-C downstream evaluation for V5.
 //!
 //! The offline F-matrix generator historically evaluated only the collision-free
 //! `18 + 18 + 18` later-query layout.  The real host artifact instead carries
@@ -8,8 +8,7 @@
 //! implementation for both shapes.  The fixed F-matrix path calls it and then
 //! checks that the runtime result has 256 entries.
 //!
-//! This remains feature-gated candidate code.  It changes no v4 proof bytes or
-//! verifier dispatch.
+//! V5 uses this path directly. It does not alter the earlier V4 proof format.
 
 use std::vec::Vec;
 

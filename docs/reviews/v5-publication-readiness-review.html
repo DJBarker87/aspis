@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -104,20 +104,20 @@
 <body>
 <main>
   <div class="eyebrow">Aspis · repository review · 23 July 2026</div>
-  <div class="decision">GO · publication ready and V5 deployment ready</div>
-  <h1>The result now reads as strongly as the evidence warrants.</h1>
+  <div class="decision">READY · PUBLICATION AND V5 DEPLOYMENT</div>
+  <h1>A transparent shielded spend landed on Solana. V5 is next.</h1>
   <p class="lede">
     Aspis has a finalized q18/g37 mainnet feasibility result and a separate,
-    production-default V5 Tag-67 deployment candidate. The repository now
-    presents both achievements clearly, exposes the formal proof architecture,
-    and keeps the exact artefacts needed to reproduce each claim.
+    production-default V5 Tag-67 candidate. Its binary, compute envelope,
+    formal correspondence, and atomic devnet execution are all public and
+    reproducible.
   </p>
 
   <div class="grid">
     <div class="card"><strong>q18/g37 mainnet execution</strong><span>1,344,003 CU</span></div>
     <div class="card"><strong>V5 devnet execution</strong><span>1,335,952 CU</span></div>
-    <div class="card"><strong>V5 accepted-input ceiling</strong><span>1,353,616 CU</span></div>
-    <div class="card"><strong>V5 headroom</strong><span>46,384 CU</span></div>
+    <div class="card"><strong>V5 accepted-state ceiling</strong><span>1,356,912 CU</span></div>
+    <div class="card"><strong>V5 headroom</strong><span>43,088 CU</span></div>
   </div>
 
   <h2>Decision basis</h2>
@@ -132,82 +132,78 @@
       <tr>
         <td>V5 runtime</td>
         <td>Finalized on devnet</td>
-        <td>Frozen 1,258,496-byte SBF; SHA-256 <code>4cf3c1d5…edf40</code>; atomic Tag 67 landed at slot 478299357</td>
+        <td>1,258,496-byte SBF; SHA-256 <code>4cf3c1d5…edf40</code>; atomic Tag 67 landed at slot 478299357</td>
       </tr>
       <tr>
         <td>V5 compute</td>
-        <td>Green</td>
-        <td>Measured-and-derived bound covers every topology accepted by the frozen grammar under runtime 2.3.13</td>
+        <td>Passed</td>
+        <td>The 1,356,912-CU ceiling covers every release topology, the exact priced transaction shape, and the longest accepted prefunded-marker path on mainnet Agave 4.1.0</td>
       </tr>
       <tr>
         <td>Atomic transition</td>
-        <td>Green</td>
+        <td>Passed</td>
         <td>Tag 67 routes through verify-before-write, canonical-marker state handling</td>
       </tr>
       <tr>
         <td>Formal correspondence</td>
-        <td>Green</td>
-        <td>Frozen-schedule A, general B/C public-output, and Tag-67 wire/verifier capstone</td>
+        <td>Passed</td>
+        <td>Release-schedule A, general B/C public output, and the Tag-67 wire/verifier integration theorem</td>
       </tr>
       <tr>
         <td>Provenance</td>
-        <td>Green</td>
+        <td>Passed</td>
         <td>77 source and 91 toolchain identities matched the live build workspace; fresh public-main commit <code>06788d4</code> reproduced the SBF byte-for-byte</td>
       </tr>
     </tbody>
   </table>
 
-  <h2>Formal closure</h2>
+  <h2>Formal correspondence</h2>
   <p>
     <code>AspisFormal/</code> contains the maintained Lean 4 security
     development. <code>aeneas-verif/</code> connects production Rust
-    to the maintained models. The final theorem composes the frozen-schedule
-    Component-A bridge and Component B,
+    to the maintained models. The final theorem composes the release-schedule
+    Component-A result and Component B,
     the actual four-round Component-C evaluator and packed public output, and
-    the exact Tag-67 wire plus six ordered work checks.
+    the Tag-67 wire plus six ordered work checks.
   </p>
   <p>
     The remaining Tag-67 implementation boundary is narrow and explicit: the
     extracted transcript function-pointer application equals the maintained
     hash function on <code>DOM_GRIND || nonce_le64</code>. The parser,
     projection, leading-zero predicate, and six-step ordering are proved within
-    the closure. Audited capstones depend only on Lean’s standard
+    the theorem. The audited integration depends only on Lean’s standard
     <code>propext</code>, <code>Classical.choice</code>, and
     <code>Quot.sound</code>.
   </p>
 
-  <h2>Publication curation completed</h2>
+  <h2>Review entry points</h2>
   <ul>
-    <li>The README now leads with the achieved mainnet result and clearly separates it from V5.</li>
-    <li>The Lean and Aeneas developments are visible in the repository map and manuscript.</li>
-    <li>Regenerable LLBC, raw translations, logs, and intermediate binaries moved behind a recoverable research archive tag.</li>
-    <li>The living manuscript and the immutable tagged-release PDF are labelled and no longer confused.</li>
-    <li><code>CITATION.cff</code> now contains a full author name, version, release date, abstract, tagged commit, and preferred citation.</li>
-    <li>Public proof reports and program navigation were aligned with the green production freeze while provenance-bound source bytes remained untouched.</li>
+    <li><code>programs/aspis-verifier/src/v5_full_transaction.rs</code> contains the atomic Tag-67 state transition.</li>
+    <li><code>release/preflight/v5-production-freeze.md</code> derives the accepted-input CU ceiling and binds it to the SBF.</li>
+    <li><code>AspisFormal/README.md</code> distinguishes proved results, cited inputs, and open universal claims.</li>
+    <li><code>aeneas-verif/README.md</code> maps production Rust to the final Lean integration theorem.</li>
+    <li>The V5 release bundle verifies checksums, binary identity, devnet state transition, and replay rejection offline.</li>
   </ul>
 
-  <h2>Exact scope</h2>
+  <h2>Current scope</h2>
   <p>
     The published q18/g37 result demonstrates a transparent shielded-spend
     verification primitive on Solana L1. It is not presented as a complete
-    wallet or multi-user pool product. V5 is ready to deploy as the exact
-    frozen binary above; changing source, SBF bytes, Solana runtime pricing, or
+    wallet or multi-user pool product. V5 is ready to deploy as the identified
+    binary above; changing source, SBF bytes, Solana runtime pricing, or
     the accepted grammar creates a new candidate and requires a new freeze.
   </p>
 
   <div class="callout">
     <strong>Launch actions.</strong>
-    Mint a Zenodo DOI, submit the manuscript to IACR ePrint, and—when the
-    operator supplies the program identity, funded signer, RPC endpoint, and
-    explicit transaction authorization—deploy and execute the exact frozen V5
-    artefact.
+    Mint a Zenodo DOI, submit the manuscript to IACR ePrint, then deploy V5
+    with secured operator inputs and publish the resulting chain evidence.
   </div>
 
   <footer>
-    Review scope: repository presentation, release integrity, frozen V5
-    preflight, proof-status records, and publication metadata. This review
-    records the evidence already in the tree; it does not substitute for an
-    independent cryptographic audit.
+    Start with the finalized transaction, the frozen V5 binary, and the linked
+    Lean entry points. Every result above leads directly to chain evidence,
+    checksums, source, or a theorem.
   </footer>
 </main>
 </body>

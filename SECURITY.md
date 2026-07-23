@@ -10,14 +10,19 @@ problems.
 
 ## Review status
 
-The repository contains formal proofs, source-authentic Aeneas bridges,
-independent rank checkers, hostile-path tests, frozen binary provenance, and
+The repository contains formal proofs, source-authentic Aeneas correspondence,
+independent rank checkers, hostile-path tests, binary provenance, and
 reproducible chain evidence. It has not yet received an external security
 audit or a published coverage-guided fuzz campaign.
 
 The current trust boundary is kept in
-[`docs/assumptions-ledger.md`](docs/assumptions-ledger.md). The two best targets
-for specialist review are:
+[`docs/assumptions-ledger.md`](docs/assumptions-ledger.md).
+
+For a Solana review, start with the Tag-67 dispatch and atomic transition in
+`programs/aspis-verifier/src/{dispatch,v5_full_transaction}.rs`, then the
+accepted-input compute analysis in
+[`release/preflight/v5-production-freeze.md`](release/preflight/v5-production-freeze.md).
+The two best cryptographic review targets are:
 
 1. The complete affine-image reconstruction and hybrid argument behind the
    hiding floors. `tools/verify_hiding_ranks.py` independently reproduces the

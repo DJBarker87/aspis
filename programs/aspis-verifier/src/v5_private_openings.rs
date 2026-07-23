@@ -1,10 +1,10 @@
-//! Isolated five-section private-opening grammar for the v5 candidate.
+//! Five-section private-opening grammar for V5.
 //!
-//! The production helper fixes C1 at 416 bytes.  V5 keeps the same query
+//! The earlier production helper fixes C1 at 416 bytes. V5 keeps the same query
 //! universe, depths, tree tags, C2 width, and three later-tree widths, but its
-//! real sixteen-lane C1 leaf is 256 bytes.  This wrapper uses only public
-//! `aspis-core` authentication primitives and is reachable solely through the
-//! local v5 CU probe.
+//! real sixteen-lane C1 leaf is 256 bytes. The production verifier and local CU
+//! probe share this grammar and the public `aspis-core` authentication
+//! primitives.
 
 use aspis_core::circle_line_merkle::{
     derive_circle_line_query_indices_for_count, CircleLineMerkleError, CircleLineQueryIndices,

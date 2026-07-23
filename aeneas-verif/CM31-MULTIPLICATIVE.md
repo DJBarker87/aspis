@@ -31,8 +31,8 @@ coordinate multiplications.  Concrete negative theorems reject reversed
 subtraction, a wrong Karatsuba cross-term sign, a missing square doubling, and
 a scalar-limb swap.
 
-All capstones report only `[propext, Classical.choice, Quot.sound]`; the
-negative teeth require the smaller `[propext, Quot.sound]` set.  The
+These theorems report only `[propext, Classical.choice, Quot.sound]`; the
+counterexample theorems require the smaller `[propext, Quot.sound]` set. The
 hand-written files contain no `sorry`, `admit`, `axiom`, `unsafe`,
 `native_decide`, or raised resource limits.
 

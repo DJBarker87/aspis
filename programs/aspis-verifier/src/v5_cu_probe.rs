@@ -35,9 +35,9 @@
 //! transcript-derived q18 positions, authenticates all five private-opening
 //! sections, checks every FRI transition through the final polynomial, runs
 //! four production-order OOD/relation sumchecks and the final tensor dot, and
-//! retains mode 8's compact Component-B path. Tag 67 remains a CU artefact,
-//! not a security-approved v5 proof: production sampling and Rust--Lean
-//! correspondence for the B pivot and candidate Component C remain open.
+//! retains mode 8's compact Component-B path. Tag 67 is the production V5
+//! verifier path. Its production sampling and Rust-to-Lean correspondence are
+//! recorded in the V5 release preflight and source-authentic Lean proofs.
 
 #[path = "v5_wire_skeleton.rs"]
 pub mod wire_skeleton;
@@ -2632,7 +2632,7 @@ pub fn process_v5_cu_probe_instruction(
     {
         // The measured SBF contains tag 67 and the minimal account-lifecycle
         // subset above. The older ten-mode tag-66 instrumentation remains
-        // host-testable but is not linked into this candidate artifact.
+        // host-testable but is not linked into the production artifact.
         Err(ProgramError::InvalidInstructionData)
     }
 }

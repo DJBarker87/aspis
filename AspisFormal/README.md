@@ -17,7 +17,7 @@ back to Rust are checked by
 [`param-binding.yml`](../.github/workflows/param-binding.yml) and
 [`poseidon-binding.yml`](../.github/workflows/poseidon-binding.yml).
 
-The audited capstones depend only on
+The audited integration theorems depend only on
 `{propext, Classical.choice, Quot.sound}`, Lean/mathlib's standard logical
 base. The project contains no `sorry`, custom axiom, `native_decide`, or
 compiled-evaluation shortcut. Poseidon2 known-answer theorems use kernel
@@ -30,7 +30,7 @@ compiled-evaluation shortcut. Poseidon2 known-answer theorems use kernel
   hiding lemmas, and selected implementation bindings. Its immutable evidence
   is in
   [`release/aspis-spend-q18-g37-mainnet-v1/`](../release/aspis-spend-q18-g37-mainnet-v1/).
-- **V5, tag 67** is the frozen mainnet candidate. The exact SBF finalized the
+- **V5, tag 67** is the current mainnet candidate. Its SBF finalized the
   atomic Tag-67 path on devnet on 2026-07-23 at 1,335,952 CU. Its maintained
   mathematics lives here; pinned Charon/Aeneas extraction and the final
   Rust-to-model composition live in
@@ -60,24 +60,24 @@ The later V5 proof does not retroactively relabel the tag-65 transaction.
 | --- | --- | --- |
 | Component-A rank, schedule, and deployed terminal applicability | `V5AtomicComponentA.lean`, `V5ComponentARankCompletion.lean`, `V5ComponentADeployedTerminalApplicability.lean` | **PROVED** |
 | Component-B triangular hiding, spend-difference coverage, commitment, and transcript binding | `V5ComponentBTriangularHiding.lean`, `V5ComponentBSpendDifferenceCoverage.lean`, `V5SumcheckCommitment.lean`, `V5SumcheckTranscriptBinding.lean` | **PROVED for the maintained model** |
-| Component-C sampler, pivot encoder, exact QM31 tower/codec, residual projection, and four-fold runtime | `V5ComponentCSamplerKernel.lean`, `V5ComponentCEncoderCorrespondence.lean`, `V5ComponentCExactTowerDeployment.lean`, `V5ComponentCPreCProjection.lean`, `V5ComponentCConcreteFoldLinearity.lean` | **PROVED** |
+| Component-C sampler, pivot encoder, QM31 tower/codec, residual projection, and four-fold runtime | `V5ComponentCSamplerKernel.lean`, `V5ComponentCEncoderCorrespondence.lean`, `V5ComponentCExactTowerDeployment.lean`, `V5ComponentCPreCProjection.lean`, `V5ComponentCConcreteFoldLinearity.lean` | **PROVED** |
 | Component-C direct conditional hiding and deployment composition | `V5ComponentCDirectHiding.lean`, `V5ComponentCDeploymentLedger.lean`, `V5ConditionalHidingCapstoneV3.lean` | **PROVED relative to the named entropy, transcript, PCS, serialization, and hash interfaces** |
 | Selected-good verifier relation and functional batching | `V5SelectedGoodVerifierRelation.lean`, `V5FunctionalBatching.lean`, `V5GoodGateDotBatching.lean` | **PROVED** |
 | Exact 17-attempt retry control and nonce/work authentication | `V5ProductionCap17RetryControl.lean`, `V5NonceWorkAuthentication.lean` | **PROVED** |
 | Work-normalized V5 endpoint | `V5ImplementedWorkNormalizedEndpoint.lean`, `V5WorkNormalizedApplicabilityRepair.lean` | **PROVED under the cited cryptographic endpoint formula** |
 
-## V5 source-authentic closure
+## V5 source-authentic correspondence
 
-The final integration theorem is
+The principal integration theorem is
 `FormalClosureStream1.current_source_combined_capstone` in
 [`CurrentSourceABCapstone.lean`](../aeneas-verif/current-source-abc-capstone-20260722/proof/CurrentSourceABCapstone.lean).
 
-| Runtime seam | Closing theorem | Status |
+| Implementation path | Theorem | Status |
 | --- | --- | --- |
-| Source-extracted Component-A matrix execution to maintained GoodA at the frozen concrete schedule | `FormalClosureStream1.component_a_actual_matches_maintained` | **CLOSED FOR THE FROZEN SCHEDULE** |
+| Source-extracted Component-A matrix execution to maintained GoodA at the selected release schedule | `FormalClosureStream1.component_a_actual_matches_maintained` | **PROVED FOR THE RELEASE SCHEDULE** |
 | Generated Component-B sampler/evaluator/C2 layout to maintained ten-round terminal | `FormalClosureStream1.component_b_actual_matches_maintained` | **CLOSED** |
 | Actual four Component-C rounds, finish, packer, and deployed public rows | `generated_public_run_output_matches_deployed` | **CLOSED** |
-| Tag-67 magic, LE64 reads, exact projection, digest predicate, and six ordered work checks | `AspisTag67WorkVerifierClosure.tag67AcceptedWireAndVerifierClosure` | **CLOSED subject to one exact hash-call equation** |
+| Tag-67 magic, LE64 reads, projection, digest predicate, and six ordered work checks | `AspisTag67WorkVerifierClosure.tag67AcceptedWireAndVerifierClosure` | **CLOSED subject to one hash-call equation** |
 | Combined A/B/C public output and Tag-67 verifier at that schedule | `FormalClosureStream1.current_source_combined_capstone` | **CLOSED under the same equation** |
 
 That remaining equation is:
@@ -98,17 +98,17 @@ Here is the current disposition of the items most likely to be encountered:
 
 | Older obligation | Current disposition |
 | --- | --- |
-| Component-A universal 48×48 conversion table | **SUPERSEDED FOR THE FINAL V5 ROUTE**. The source-authentic route proves the reachable even-kernel conversion and twelve GoodA shifts used by the frozen schedule. The unrelated Component-B width-64 table is closed by `AspisV5Row256Aeneas.generatedRow256Conversion64_exact`. |
+| Component-A universal 48×48 conversion table | **SUPERSEDED FOR THE FINAL V5 ROUTE**. The source-authentic route proves the reachable even-kernel conversion and twelve GoodA shifts used by the release schedule. The unrelated Component-B width-64 table is closed by `AspisV5Row256Aeneas.generatedRow256Conversion64_exact`. |
 | Component-C stored-OOD identity and public output | **CLOSED BY** `generated_public_run_output_matches_deployed`; the stored OOD pair, four rounds, finish, and packed output are in the theorem chain. |
-| Discrete q18 availability and universal executable GoodA correspondence | **RUNTIME ENFORCEMENT CLOSED; UNIVERSAL SOURCE CORRESPONDENCE STILL OPEN**. The verifier recomputes GoodA/GoodB for every selected branch and rejects failure; the 17-attempt host fails closed if it finds no good schedule. The source-authentic theorem currently proves the concrete frozen schedule, not every possible schedule. A universal source theorem would additionally need the generic circle-query kernel, terminal-minor construction, and fraction-free determinant loop invariants. Availability is a liveness question, not a fail-closed acceptance gap. |
+| Discrete q18 availability and universal executable GoodA correspondence | **RUNTIME ENFORCEMENT CLOSED; UNIVERSAL SOURCE CORRESPONDENCE STILL OPEN**. The verifier recomputes GoodA/GoodB for every selected branch and rejects failure; the 17-attempt host fails closed if it finds no good schedule. The source-authentic theorem currently proves the selected release schedule, not every possible schedule. A universal source theorem would additionally need the generic circle-query kernel, terminal-minor construction, and fraction-free determinant loop invariants. Availability is a liveness question, not an acceptance gap. |
 | Comprehensive all-proof-bytes serialization faithfulness | **STILL OPEN**. The final route closes the Component-B layout, Component-C public vector/packer, and Tag-67 work wire separately; it does not claim one universal serializer theorem for the complete joint cryptographic view. |
 | Adaptive sumcheck/PCS/Fiat–Shamir security from first principles | **STILL OPEN AS AN INTERNAL REPROOF**. The release uses the cited PCS/BCS and Fiat–Shamir results with an explicit parameter mapping. |
 | Universal all-input Rust Poseidon2 equality | **STILL OPEN**. Constants and known-answer executions are pinned; `Poseidon2Faithful` remains the named all-input interface used by the relation theorem. |
 
 The runtime enforces the GoodA/GoodB predicate on every selected branch. The
-source-authentic Component-A theorem is specialized to the frozen schedule;
+source-authentic Component-A theorem is specialized to the release schedule;
 the source-authentic B, C, public-output, work-wire, and ordered-verifier
-closures have the broader scopes stated above. Published PCS/Fiat–Shamir
+theorems have the broader scopes stated above. Published PCS/Fiat–Shamir
 results and primitive security are the external cryptographic inputs.
 
 ## Assumptions and replay
@@ -124,7 +124,7 @@ lake exe cache get
 lake build
 ```
 
-For the pinned source-authentic capstones:
+For the pinned source-authentic integration theorems:
 
 ```sh
 aeneas-verif/component-c-runtime-downstream/released-trace-families-current-20260722/replay-lean432.sh

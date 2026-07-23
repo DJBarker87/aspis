@@ -55,9 +55,8 @@ fn production_require_empty(input: &[u8]) -> ProgramResult {
 /// - 64: close a sealed proof account and refund every lamport; and
 /// - 65: production verification plus the atomic state transition and an
 ///   atomic proof-account close and rent refund; and
-/// - 67: only with the non-default `v5-production-tag67` release-candidate
-///   feature, complete v5 verification plus the retained-proof atomic state
-///   transition.
+/// - 67: complete v5 verification plus the retained-proof atomic state
+///   transition, enabled by the default `v5-production-tag67` feature.
 ///
 /// Every other historical or diagnostic tag fails before account access.
 pub fn process_spend_production_instruction(
@@ -153,8 +152,8 @@ pub fn process_spend_production_instruction(
         }
         // Keep the frozen production API's explicit fail-closed result for
         // the former diagnostic mutation tag.  Returning the same custom
-        // error preserves the release tooth without rooting a diagnostic
-        // verifier or CU-marker graph in the ELF.
+        // error preserves the published API behavior without rooting a
+        // diagnostic verifier or CU-marker graph in the ELF.
         61 => Err(ProgramError::Custom(
             atomic_payment::ATOMIC_ERROR_VERIFIER_NOT_INTEGRATED,
         )),
@@ -338,7 +337,7 @@ mod tests {
 
     #[cfg(feature = "v5-production-tag67")]
     #[test]
-    fn tag67_release_candidate_routes_only_through_atomic_wrapper() {
+    fn tag67_production_routes_only_through_atomic_wrapper() {
         let mut wire = vec![0u8; crate::v5_full_transaction::V5_FULL_CU_TRANSACTION_WIRE_BYTES];
         wire[0] = crate::v5_full_transaction::V5_FULL_CU_TRANSACTION_TAG;
         assert_eq!(
@@ -346,8 +345,7 @@ mod tests {
             Err(ProgramError::NotEnoughAccountKeys)
         );
 
-        // Tag 66 remains unreachable even when the non-default production
-        // candidate switch is enabled.
+        // Tag 66 remains unreachable when Tag 67 production dispatch is enabled.
         assert_eq!(
             process_spend_production_instruction(&id(), &[], &[66]),
             Err(ProgramError::InvalidInstructionData)

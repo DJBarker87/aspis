@@ -1,0 +1,194 @@
+{
+  "artifact": "aspis_v5_prefunded_system_marker_runtime_replay",
+  "schema_version": 1,
+  "observed_at_utc": "2026-07-23T19:02:00Z",
+  "source_base_commit": "d98a2e69618dc95b95c1996506ed8c05904a56a1",
+  "measurement_source_files": {
+    "xtask/src/spend_measure.rs": "2bc86053cc08d4993a2fc911b5e43f419c0adce708b5aaed81cb6e76d6280f44",
+    "xtask/src/v5_cu_probe.rs": "f3ede3cec935312cc2f32509cae90c7b8a12ee42bb96f5adffb2b5904573815e"
+  },
+  "agave": {
+    "version": "solana-test-validator 4.1.0 (src:d3f1f55c; feat:c763ae0a, client:Agave)",
+    "solana_test_validator_sha256": "b53917e1807ea4f4d5d8f534319621a1041df355fc8f5a0b8a453769530bbe8d"
+  },
+  "sbf": {
+    "path": "../v5-production-tag67-freeze-stream3-20260722/aspis_verifier_v5_production_tag67.so",
+    "bytes": 1258496,
+    "sha256": "4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40"
+  },
+  "marker_prestate": {
+    "address": "AbWC9vKT7mxRNLeCnFrfi9HFsncF73XfG9TnbJS2jXHy",
+    "owner": "11111111111111111111111111111111",
+    "lamports": 1,
+    "data_bytes": 0
+  },
+  "system_program_sequence": [
+    "transfer rent deficit",
+    "allocate 72 bytes",
+    "assign to Aspis verifier"
+  ],
+  "transaction": {
+    "compute_unit_price_microlamports": 1,
+    "instruction_order": [
+      "set_compute_unit_limit",
+      "request_heap_frame",
+      "set_compute_unit_price",
+      "tag67"
+    ],
+    "tag67_instruction_index": 3
+  },
+  "compute_unit_price_control": {
+    "selector": 0,
+    "unpriced_missing_marker_total_cu": 1331178,
+    "priced_missing_marker_total_cu": 1331328,
+    "delta_cu": 150,
+    "program_consumed_cu": 1330822,
+    "priced_logs_sha256": "1f340965adf166bb1f7ba6c310f74f325c9338e0c4e0ce6ae8f7f94a92808330"
+  },
+  "repeats_per_selector": 3,
+  "measurements": [
+    {
+      "selector": 0,
+      "proof_path": "../v5-production-tag67-freeze-stream3-20260722/v5_runtime_proof.bin",
+      "proof_sha256": "30db5e0b0e3610848e6e134bb109b9646785e6760ca13d0bc57ea500228d4d49",
+      "proof_body_bytes": 74398,
+      "sealed_proof_account_bytes": 74438,
+      "totals_cu": [
+        1334528,
+        1334528,
+        1334528
+      ],
+      "program_consumed_cu": 1334022,
+      "transaction_overhead_cu": 506,
+      "unpriced_missing_marker_total_cu": 1331178,
+      "delta_from_unpriced_missing_marker_cu": 3350,
+      "delta_from_priced_missing_marker_cu": 3200,
+      "system_program_cpi_invocations_per_repeat": [
+        3,
+        3,
+        3
+      ],
+      "system_program_cpi_successes_per_repeat": [
+        3,
+        3,
+        3
+      ],
+      "logs_sha256": "9b55ce33404dad06a935492feeeb7074846a9e91e41bb8919c836ce66c840ec6",
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue invoke [1]",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue consumed 1334022 of 1399550 compute units",
+        "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue success"
+      ]
+    },
+    {
+      "selector": 1,
+      "proof_path": "../v5-production-tag67-freeze-stream3-20260722/selector-1-replay/v5_runtime_proof.bin",
+      "proof_sha256": "c671966c30e2f00363359e668381f3e4bf0f9e99d03da54887c93d5066fc2f5d",
+      "proof_body_bytes": 75358,
+      "sealed_proof_account_bytes": 75398,
+      "totals_cu": [
+        1337192,
+        1337192,
+        1337192
+      ],
+      "program_consumed_cu": 1336686,
+      "transaction_overhead_cu": 506,
+      "unpriced_missing_marker_total_cu": 1333842,
+      "delta_from_unpriced_missing_marker_cu": 3350,
+      "delta_from_priced_missing_marker_cu": 3200,
+      "system_program_cpi_invocations_per_repeat": [
+        3,
+        3,
+        3
+      ],
+      "system_program_cpi_successes_per_repeat": [
+        3,
+        3,
+        3
+      ],
+      "logs_sha256": "a8dc003e251a2e230c1e80aa831cf3c631104271957699f8889f845590dd7e8e",
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue invoke [1]",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue consumed 1336686 of 1399550 compute units",
+        "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue success"
+      ]
+    },
+    {
+      "selector": 2,
+      "proof_path": "../v5-production-tag67-freeze-stream3-20260722/selector-2-replay/v5_runtime_proof.bin",
+      "proof_sha256": "9e1298513f691aeac88be67027b90a6f54ec0b9a6f06eeb1c01cdac21a7d1996",
+      "proof_body_bytes": 72958,
+      "sealed_proof_account_bytes": 72998,
+      "totals_cu": [
+        1329776,
+        1329776,
+        1329776
+      ],
+      "program_consumed_cu": 1329270,
+      "transaction_overhead_cu": 506,
+      "unpriced_missing_marker_total_cu": 1326426,
+      "delta_from_unpriced_missing_marker_cu": 3350,
+      "delta_from_priced_missing_marker_cu": 3200,
+      "system_program_cpi_invocations_per_repeat": [
+        3,
+        3,
+        3
+      ],
+      "system_program_cpi_successes_per_repeat": [
+        3,
+        3,
+        3
+      ],
+      "logs_sha256": "3e39fbeae5801c3e33e20c84f7e607c0868886cb6750c9d5f1d2d5c38a1c44bb",
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue invoke [1]",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue consumed 1329270 of 1399550 compute units",
+        "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue success"
+      ]
+    }
+  ],
+  "current_runtime_accepted_input_ceiling": {
+    "selector_0_cu": 1353984,
+    "selector_1_cu": 1351528,
+    "selector_2_cu": 1356912,
+    "ceiling_cu": 1356912,
+    "headroom_below_1400000_cu": 43088,
+    "derivation": "2.3.13 missing-marker ceiling minus 54 CU observed runtime delta plus 3200 CU prefunded-marker delta plus 150 CU compute-price instruction delta"
+  }
+}

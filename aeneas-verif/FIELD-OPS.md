@@ -66,7 +66,7 @@ the minimal reduction extraction and multiplication extraction together
 without redeclaring `aspis_core.field.P` and `aspis_core.field.reduce_u64`.
 
 The script rejects an empty declaration order and checks the exact Rust source
-text, generated definition names, source spans, and load-bearing wrapping
+text, generated definition names, source spans, and wrapping
 arithmetic/shift calls before replacing these artifacts.
 
 ## Shift-type source normalization
@@ -100,10 +100,10 @@ diff is `evidence/reduce-u64-shift-type-only.diff`.
 This closes the selected Rust-source-to-Lean-functional-model edges. The
 proof layer is now provided by:
 
-- `proof/M31ReduceU64Proof.lean`, whose capstone
+- `proof/M31ReduceU64Proof.lean`, whose integration theorem
   `extracted_reduce_u64_corresponds` covers every Rust `u64`, proves canonical
   output, and proves equality in `ZMod (2^31 - 1)`;
-- `proof/M31MulProof.lean`, whose capstone `extracted_m31_mul_corresponds`
+- `proof/M31MulProof.lean`, whose integration theorem `extracted_m31_mul_corresponds`
   covers every pair of canonical production M31 words and proves exact field
   multiplication.
 

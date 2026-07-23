@@ -24,7 +24,7 @@ ASPIS_CHARON_REPO=/path/to/charon \
 `proof/QM31AddSubNegProof.lean` proves the exact generated functions preserve
 canonicality in every output limb and implement addition, subtraction, and
 negation in the explicit nested quadratic tower. It also includes concrete
-negative teeth for a swap within the first CM31 pair and a swap of the two
+counterexample theorems for a swap within the first CM31 pair and a swap of the two
 CM31 tower blocks.
 
 The generated proof project remains replayable on pinned Lean 4.31. The same

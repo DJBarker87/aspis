@@ -12,7 +12,7 @@ Where each concept lives. File names are stable; functions are named so
 | Proof-account lifecycle (create, upload, finalize, close) | `programs/aspis-verifier/src/lifecycle.rs` |
 | Verify-and-apply (tag 65): ordering, atomicity, refund | `programs/aspis-verifier/src/atomic_payment.rs`, `verify_and_apply_atomic_payment_state_with_proof_refund`; validation and complete proof verification precede every write |
 | V5 verify-and-apply (tag 67): retained proof, atomic state transition | `programs/aspis-verifier/src/v5_full_transaction.rs`, `process_v5_full_cu_transaction_with_verifier`; the production dispatcher supplies the strict Mode-9 verifier from `v5_cu_probe.rs` |
-| Statement decode and verify closures (tags 59/60/65) | `programs/aspis-verifier/src/verify.rs` |
+| Statement decode and verification (tags 59/60/65) | `programs/aspis-verifier/src/verify.rs` |
 | q18/g37 complete proof verifier | `crates/aspis-statement/src/state_only_spend.rs`, `verify_atomic_state_only_spend_v4_with_inverse` |
 | V5 complete proof verifier | `programs/aspis-verifier/src/v5_cu_probe.rs`, `verify_uploaded_v5_mode9_cu_fixture` |
 | Account-distinctness matrix (production guard) | `programs/aspis-verifier/src/atomic_payment.rs`, `validate_accounts_and_state`; pairwise distinctness over {proof, pool, nullifier, payer}, PDA-seed and owner checks, and the post-verification recheck |
@@ -93,7 +93,8 @@ redirected without it.
 | --- | --- |
 | Release certificate gates | `src/spend_release.rs`, `evaluate`; command `spend-release` |
 | Local-validator measurement | `src/spend_measure.rs`; command `spend-measure` |
-| Devnet / mainnet executors, cleanup, journal, loader | `src/spend_devnet*.rs`, `src/spend_mainnet*.rs` |
+| V5 mainnet proof, read-only gate, and one-shot executor | `src/spend_devnet/v5.rs`; commands `v5-mainnet-artifact`, `v5-mainnet-readiness`, and `v5-mainnet-execute` |
+| q18/g37 devnet/mainnet executor, cleanup, journal, loader | `src/spend_devnet*.rs`, `src/spend_mainnet*.rs` |
 | Statement digests and sidecar schema | `src/spend_statement.rs` |
 
 ## Machine-checked evidence
@@ -102,10 +103,11 @@ redirected without it.
 | --- | --- |
 | Maintained q18/g37 algebra, finite ledger, masking, and theft-resistance composition | `AspisFormal/`; status and theorem map in `AspisFormal/README.md` |
 | Current Rust-to-Lean proof map | `aeneas-verif/README.md` |
-| V5 combined A/B/C and Tag-67 capstone | `aeneas-verif/current-source-abc-capstone-20260722/proof/CurrentSourceABCapstone.lean`, `FormalClosureStream1.current_source_combined_capstone` |
+| V5 combined A/B/C and Tag-67 integration theorem | `aeneas-verif/current-source-abc-capstone-20260722/proof/CurrentSourceABCapstone.lean`, `FormalClosureStream1.current_source_combined_capstone` |
 | Component-C actual four-round evaluator and public packed output | `aeneas-verif/component-c-runtime-downstream/released-trace-families-current-20260722/proof/RuntimeReleasedTraceFamiliesCurrentJoin.lean`, `generated_public_run_output_matches_deployed` |
-| Tag-67 wire and six-step verifier closure | `aeneas-verif/tag67-work-wire-correspondence/proof/Tag67WorkVerifierClosure.lean`, `AspisTag67WorkVerifierClosure.tag67AcceptedWireAndVerifierClosure` |
-| Frozen V5 SBF, CU ceiling, and provenance | `release/preflight/v5-production-freeze.md` and `results/spend/v5-production-tag67-freeze-stream3-20260722/` |
+| Tag-67 wire and six-step verifier theorem | `aeneas-verif/tag67-work-wire-correspondence/proof/Tag67WorkVerifierClosure.lean`, `AspisTag67WorkVerifierClosure.tag67AcceptedWireAndVerifierClosure` |
+| V5 release SBF, CU ceiling, and provenance | `release/preflight/v5-production-freeze.md` and `results/spend/v5-production-tag67-freeze-stream3-20260722/` |
+| V5 replay on the current mainnet runtime | `results/spend/v5-mainnet-runtime-4.1.0-20260723/` |
 
 ## Naming conventions
 

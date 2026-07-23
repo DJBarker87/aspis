@@ -26,7 +26,7 @@ spend-minimal-dispatch = []
 # Production derives only the 18 authenticated Rate-1/512 query paths instead
 # of linking six full-domain coordinate tables into the deployed ELF.
 spend-dynamic-rate512 = ["aspis-statement/spend-dynamic-rate512"]
-# Local-validator-only entrypoint used for the provisional v5 diagnostic
+# Local-validator-only entrypoint used for the v5 diagnostic
 # kernels (tag 66) and complete atomic transaction CU wrapper (tag 67).
 # An entrypoint build is deliberately incompatible with `spend-production`;
 # feature-unified host tooling must also enable `no-entrypoint`.
@@ -34,7 +34,7 @@ v5-cu-probe = []
 # Frozen production switch. This compiles tag 67 into the minimal production
 # dispatcher and routes it only through the atomic verify-and-apply wrapper.
 # The executable, transcript, formal, and CU gates are recorded in the release
-# preflight before this feature is included in `default`.
+# preflight. This feature is included in `default`.
 v5-production-tag67 = ["spend-production"]
 
 [dependencies]

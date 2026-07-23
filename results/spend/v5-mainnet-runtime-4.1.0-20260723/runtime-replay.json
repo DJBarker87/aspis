@@ -1,0 +1,168 @@
+{
+  "artifact": "aspis_v5_mainnet_runtime_replay",
+  "schema_version": 1,
+  "observed_at_utc": "2026-07-23T19:02:00Z",
+  "source_base_commit": "d98a2e69618dc95b95c1996506ed8c05904a56a1",
+  "measurement_source_files": {
+    "xtask/src/spend_measure.rs": "2bc86053cc08d4993a2fc911b5e43f419c0adce708b5aaed81cb6e76d6280f44",
+    "xtask/src/v5_cu_probe.rs": "f3ede3cec935312cc2f32509cae90c7b8a12ee42bb96f5adffb2b5904573815e"
+  },
+  "mainnet_beta": {
+    "observed_finalized_slot": 434766704,
+    "solana_core": "4.1.0",
+    "feature_set": 3345198602,
+    "get_version_method": "https://solana.com/docs/rpc/http/getversion"
+  },
+  "agave_release": {
+    "tag": "v4.1.0",
+    "commit": "d3f1f55c65143b1f9ad0474644fb28b767bd79db",
+    "target": "aarch64-apple-darwin",
+    "asset_url": "https://github.com/anza-xyz/agave/releases/download/v4.1.0/solana-release-aarch64-apple-darwin.tar.bz2",
+    "asset_bytes": 82671954,
+    "asset_sha256": "331878e4a36689faf2c5bfe769481b9506c0158e43fc553f61c7b842cfbd4a86",
+    "version_yml_sha256": "2cc122ac26c5cd4d787e4eb3371b3e2cf73aac7494670c5f3b3a9bca76539332",
+    "solana_cli_sha256": "ad541533b992ff4ee1ea0f24e583a0ef26a5b80fa3482b5f930b5e6db707747c",
+    "solana_cli_version": "solana-cli 4.1.0 (src:d3f1f55c; feat:c763ae0a, client:Agave)",
+    "solana_test_validator_sha256": "b53917e1807ea4f4d5d8f534319621a1041df355fc8f5a0b8a453769530bbe8d"
+  },
+  "sbf": {
+    "path": "../v5-production-tag67-freeze-stream3-20260722/aspis_verifier_v5_production_tag67.so",
+    "bytes": 1258496,
+    "sha256": "4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40"
+  },
+  "mainnet_transaction_shape": {
+    "compute_unit_price_microlamports": 1,
+    "instruction_order": [
+      "set_compute_unit_limit",
+      "request_heap_frame",
+      "set_compute_unit_price",
+      "tag67"
+    ],
+    "tag67_instruction_index": 3,
+    "compute_unit_price_instruction_delta_cu": 150,
+    "prefunded_marker_evidence_path": "prefunded-system-marker-cu.json",
+    "prefunded_marker_evidence_sha256": "2d62930963fa67b247a746ec81e3b1614391710a69df528fc2a28361407e819f"
+  },
+  "measurements": [
+    {
+      "selector": 0,
+      "marker_mode": "missing",
+      "proof_path": "../v5-production-tag67-freeze-stream3-20260722/v5_runtime_proof.bin",
+      "proof_sha256": "30db5e0b0e3610848e6e134bb109b9646785e6760ca13d0bc57ea500228d4d49",
+      "proof_body_bytes": 74398,
+      "totals_cu": [1331178, 1331178, 1331178],
+      "system_program_cpi_completed_repeats": 3,
+      "delta_from_2_3_13_cu": -54
+    },
+    {
+      "selector": 1,
+      "marker_mode": "missing",
+      "proof_path": "../v5-production-tag67-freeze-stream3-20260722/selector-1-replay/v5_runtime_proof.bin",
+      "proof_sha256": "c671966c30e2f00363359e668381f3e4bf0f9e99d03da54887c93d5066fc2f5d",
+      "proof_body_bytes": 75358,
+      "totals_cu": [1333842, 1333842, 1333842],
+      "system_program_cpi_completed_repeats": 3,
+      "delta_from_2_3_13_cu": -54
+    },
+    {
+      "selector": 2,
+      "marker_mode": "missing",
+      "proof_path": "../v5-production-tag67-freeze-stream3-20260722/selector-2-replay/v5_runtime_proof.bin",
+      "proof_sha256": "9e1298513f691aeac88be67027b90a6f54ec0b9a6f06eeb1c01cdac21a7d1996",
+      "proof_body_bytes": 72958,
+      "totals_cu": [1326426, 1326426, 1326426],
+      "system_program_cpi_completed_repeats": 3,
+      "delta_from_2_3_13_cu": -54
+    },
+    {
+      "selector": 0,
+      "marker_mode": "present",
+      "proof_path": "../v5-production-tag67-freeze-stream3-20260722/v5_runtime_proof.bin",
+      "proof_sha256": "30db5e0b0e3610848e6e134bb109b9646785e6760ca13d0bc57ea500228d4d49",
+      "proof_body_bytes": 74398,
+      "totals_cu": [1328897, 1328897, 1328897],
+      "system_program_cpi_completed_repeats": 0,
+      "delta_from_2_3_13_cu": 0
+    },
+    {
+      "selector": 0,
+      "marker_mode": "prefunded_system_owned_one_lamport",
+      "proof_path": "../v5-production-tag67-freeze-stream3-20260722/v5_runtime_proof.bin",
+      "proof_sha256": "30db5e0b0e3610848e6e134bb109b9646785e6760ca13d0bc57ea500228d4d49",
+      "proof_body_bytes": 74398,
+      "totals_cu": [1334528, 1334528, 1334528],
+      "system_program_invokes_per_repeat": 3,
+      "system_program_successes_per_repeat": 3,
+      "prefunded_lamports": 1,
+      "compute_unit_price_microlamports": 1,
+      "delta_from_unpriced_4_1_missing_cu": 3350,
+      "delta_from_priced_4_1_missing_cu": 3200
+    },
+    {
+      "selector": 1,
+      "marker_mode": "prefunded_system_owned_one_lamport",
+      "proof_path": "../v5-production-tag67-freeze-stream3-20260722/selector-1-replay/v5_runtime_proof.bin",
+      "proof_sha256": "c671966c30e2f00363359e668381f3e4bf0f9e99d03da54887c93d5066fc2f5d",
+      "proof_body_bytes": 75358,
+      "totals_cu": [1337192, 1337192, 1337192],
+      "system_program_invokes_per_repeat": 3,
+      "system_program_successes_per_repeat": 3,
+      "prefunded_lamports": 1,
+      "compute_unit_price_microlamports": 1,
+      "delta_from_unpriced_4_1_missing_cu": 3350,
+      "delta_from_priced_4_1_missing_cu": 3200
+    },
+    {
+      "selector": 2,
+      "marker_mode": "prefunded_system_owned_one_lamport",
+      "proof_path": "../v5-production-tag67-freeze-stream3-20260722/selector-2-replay/v5_runtime_proof.bin",
+      "proof_sha256": "9e1298513f691aeac88be67027b90a6f54ec0b9a6f06eeb1c01cdac21a7d1996",
+      "proof_body_bytes": 72958,
+      "totals_cu": [1329776, 1329776, 1329776],
+      "system_program_invokes_per_repeat": 3,
+      "system_program_successes_per_repeat": 3,
+      "prefunded_lamports": 1,
+      "compute_unit_price_microlamports": 1,
+      "delta_from_unpriced_4_1_missing_cu": 3350,
+      "delta_from_priced_4_1_missing_cu": 3200
+    }
+  ],
+  "runtime_costs": {
+    "transaction_cu_limit": 1400000,
+    "maximum_heap_bytes": 262144,
+    "heap_cost_per_32kib_page": 8,
+    "cpi_bytes_per_unit": 250,
+    "invoke_units_2_3_13": 1000,
+    "invoke_units_4_1_0": 946,
+    "sha256_base_cost": 85,
+    "sha256_byte_cost": 1,
+    "sha256_129_byte_single_slice_cost": 149,
+    "sbf_instruction_metering": true
+  },
+  "accepted_input_policy": {
+    "path": "../v5-production-tag67-freeze-stream3-20260722/v5_universal_accepted_topology_cu_policy.json",
+    "grammar_topology_ceiling_cu": 1353616,
+    "grammar_topology_headroom_cu": 46384,
+    "agave_4_1_0_unpriced_missing_marker_delta_cu": -54,
+    "compute_unit_price_instruction_delta_cu": 150,
+    "prefunded_marker_delta_from_priced_missing_cu": 3200,
+    "prefunded_system_marker_evidence_path": "prefunded-system-marker-cu.json",
+    "prefunded_system_marker_evidence_sha256": "2d62930963fa67b247a746ec81e3b1614391710a69df528fc2a28361407e819f",
+    "accepted_state_ceiling_cu": 1356912,
+    "accepted_state_headroom_cu": 43088,
+    "governing_selector": 2,
+    "agave_4_1_0_result": "the exact priced transaction shape, release grammar, and every accepted marker pre-state remain below the transaction limit"
+  },
+  "official_source": {
+    "agave_4_1_execution_budget": "https://github.com/anza-xyz/agave/blob/d3f1f55c65143b1f9ad0474644fb28b767bd79db/program-runtime/src/execution_budget.rs#L21-L36",
+    "agave_4_1_invoke_cost": "https://github.com/anza-xyz/agave/blob/d3f1f55c65143b1f9ad0474644fb28b767bd79db/program-runtime/src/execution_budget.rs#L205-L231",
+    "agave_4_1_sha256_cost": "https://github.com/anza-xyz/agave/blob/d3f1f55c65143b1f9ad0474644fb28b767bd79db/syscalls/src/lib.rs#L2580-L2636",
+    "agave_4_1_cpi_charge": "https://github.com/anza-xyz/agave/blob/d3f1f55c65143b1f9ad0474644fb28b767bd79db/program-runtime/src/cpi.rs#L825-L840",
+    "agave_4_1_vm_metering": "https://github.com/anza-xyz/agave/blob/d3f1f55c65143b1f9ad0474644fb28b767bd79db/syscalls/src/lib.rs#L354-L370",
+    "agave_4_1_bank_defaults": "https://github.com/anza-xyz/agave/blob/d3f1f55c65143b1f9ad0474644fb28b767bd79db/runtime/src/bank.rs#L4408-L4417",
+    "sbpf_instruction_meter": "https://github.com/anza-xyz/sbpf/blob/f95941e1f8ffed43d8722543f350b09e389f332f/src/interpreter.rs#L180-L192",
+    "agave_2_3_13_execution_budget": "https://github.com/anza-xyz/agave/blob/5466f4592b1983adb13ba0a5d53f41ea2de69fba/program-runtime/src/execution_budget.rs#L15-L25",
+    "agave_2_3_13_sha256_cost": "https://github.com/anza-xyz/agave/blob/5466f4592b1983adb13ba0a5d53f41ea2de69fba/programs/bpf_loader/src/syscalls/mod.rs#L2000-L2055"
+  },
+  "mainnet_execution_gate": "verify deployed bytes, simulate the exact signed Tag-67 transaction, record getVersion and unitsConsumed, then submit the byte-identical wire"
+}

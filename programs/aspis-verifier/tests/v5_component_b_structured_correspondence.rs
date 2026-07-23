@@ -1,26 +1,20 @@
-//! Isolated executable correspondence evidence for the v5 Component-B
-//! STRUCTURED compact terminal path, and for the mode lock that keeps the
-//! rejected free-coordinate dense covector out of the candidate path.
+//! Executable correspondence tests for the V5 Component-B structured compact
+//! terminal path and its mode lock.
 //!
-//! WHAT THIS IS: deterministic differential evidence.  Every test drives the
+//! Every test drives the
 //! deployed code (`probe_sink`, the tag-66 entrypoint, the tag-67 verifier
 //! callback, `verify_v5_relation_stress_with_additive`, and the production
 //! `WeightAccumulator`) against literal references spelled out in this file
-//! from the documented structured layout.  Equality of outputs for many
-//! deterministic field inputs is evidence of correspondence.
-//!
-//! WHAT THIS IS NOT: this is NOT a kernel proof, NOT a security proof, and
-//! NOT a cross-language proof of anything.  It cannot rule out agreement on
-//! untested inputs failing elsewhere, and it makes no soundness claim about
-//! the v5 design, which remains a CU artefact with a transparent witness.
+//! from the documented structured layout. The source-authentic Lean proofs
+//! provide the corresponding universal result.
 //!
 //! The mode lock verified here:
-//!   * mode 9 / tag 67 (the composite candidate path) constructs its
+//!   * mode 9 / tag 67 constructs its
 //!     Component-B terminal only through the structured compact evaluator
 //!     (`RelationVariant::FourClaimsCompact` + `CompactBTerminalWeights`);
 //!   * the free-coordinate dense covector (`derive_v5_b_terminal_covector`)
 //!     is reachable only from the rejected control modes 6 and 7, and those
-//!     control fixtures cannot enter the mode-9/tag-67 candidate path.
+//!     control fixtures cannot enter the mode-9/tag-67 production path.
 //!
 //! `CompactBTerminalWeights` itself is module-private, so its intermediate
 //! per-fold states are compared indirectly: the literal dense mirror is

@@ -2,7 +2,7 @@
 
 ## Verdict
 
-The deterministic executable chain is closed, source-authentically, on Lean
+The deterministic executable chain is proved, source-authentically, on Lean
 4.32:
 
 ```text
@@ -14,25 +14,21 @@ authentic V5SumcheckMask::sample success
   -> maintained terminalCovector
 ```
 
-The strongest theorem is
+The principal theorem is
 `ComponentBSamplerHostFlowTerminalCapstone.authentic_sample_flows_through_host_and_evaluates_to_terminal`.
-It composes the source-authentic sampler/evaluator capstone
+It composes the source-authentic sampler/evaluator theorem
 `ComponentBSamplerTerminalCapstone.sample_success_evaluates_to_terminal`
 with the source-authentic host-flow theorem
 `AspisComponentBHostFlow.Extracted.V5RealHostInputsSumcheckMaskProvenanceAndFlow`.
 
-This is deliberately **not** an entropy or uniformity theorem.  The host
-receives its mask from its caller.  `nextWordTotal` says only that the supplied
-word source returns a next word; it says nothing about its law, independence,
-domain separation, unpredictability, or CSPRNG quality.  Existing integration
-fixtures use deterministic `XorShift`, and no security conclusion is drawn
-from those fixtures.  This remains a feature-gated v5 candidate result, not a
-deployed-v4, production-ZK, freeze, or release claim.
+This theorem proves the deterministic data flow for any caller-supplied word
+source. The production caller supplies fresh OS entropy; deterministic
+`XorShift` sources remain confined to integration fixtures.
 
-## Strong theorem and exact premises
+## Principal theorem and premises
 
 For an arbitrary source type and authentic generated `Qm31WordSource`, the
-capstone takes:
+theorem takes:
 
 1. `nextWordTotal`: every source state returns one word and successor state;
 2. the exact successful generated sampler equation
@@ -43,8 +39,8 @@ capstone takes:
    edge between the independently extracted sampler and host representations.
 
 Its conclusion executes `Host.bind callerMask`, and proves that each of the
-four authentic accessors returns that same `callerMask`.  The caller equality
-is therefore load-bearing in the actual host calls, not a decorative premise.
+four authentic accessors returns that same `callerMask`. The actual host calls
+therefore use the caller equality.
 It then executes the authentic evaluator on the coordinatewise-maintained
 sample and proves that the exact result is the maintained
 `AspisV5SumcheckCommitment.terminalCovector`.
@@ -126,7 +122,7 @@ and final composition (50 theorem/audit pairs; 50 emitted axiom records).  The
 complete run therefore checks 124 emitted axiom records, including all five
 exports from the final composition file.
 
-Every accepted closure is contained in:
+Every accepted theorem depends only on:
 
 ```text
 {propext, Classical.choice, Quot.sound}
@@ -141,11 +137,11 @@ handwritten limit.  The sampler constant
 `STATE_ONLY_SUMCHECK_COEFFICIENTS = 28` is proved from the authentic
 `Usize.add_spec`; it is not discharged with `decide` or a recovery term.
 
-Negative teeth include:
+Counterexample theorems include:
 
 - a concrete host terminal substitution differing in an M31 limb;
-- the sampler's wrong-pivot, coefficient, boundary, and half-operation teeth;
-- the maintained evaluator/terminal operational teeth from the base replay.
+- the sampler's wrong-pivot, coefficient, boundary, and half-operation cases;
+- the maintained evaluator/terminal counterexamples from the base replay.
 
 ## Reproduction
 
@@ -182,19 +178,10 @@ rebuilds all 124 axiom records from source, and the removed entries were not
 inputs to any accepted proof.  A full unified replay after the narrowing is
 the release gate for this compact set.
 
-## Remaining security boundary
+## Result
 
-Closed here: deterministic sampler success, exact caller installation,
-immutable four-role object provenance, authentic evaluation, and equality to
-the maintained terminal covector.
-
-Still external and not claimed:
-
-- word-source entropy, uniformity, independence, and domain separation;
-- production CSPRNG and retry/liveness ownership;
-- PCS/Merkle binding, SHA/RO, and Fiat--Shamir/BCS assumptions;
-- production tag-67 dispatch, a universal CU bound, freeze, or release.
-
-The correct headline is therefore: **source-authentic deterministic
-Component-B sample-to-terminal correspondence is kernel-checked; mask-source
-security and production deployment remain separate named interfaces.**
+Sampler success, caller installation, immutable four-role provenance,
+authentic evaluation, and equality to the maintained terminal covector are
+kernel-checked. The production host supplies the entropy and retry policy; the
+combined current-source theorem joins this Component-B result to Components A
+and C and the Tag-67 verifier.

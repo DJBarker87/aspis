@@ -8,33 +8,33 @@
 
 ## Result
 
-The Component-B executable chain is closed on Lean 4.32 against one combined
+The Component-B executable chain is proved on Lean 4.32 against one combined
 Charon/Aeneas universe.  The retained LLBC contains the actual generic sampler,
 `sample_zero_boundary_round`, the actual call-through helper, public round
 construction and ten-round evaluation, the real degree-27 evaluator, boundary
 sum, and current field operations.
 
-The strongest theorem is
+The principal theorem is
 `ComponentBSamplerUnifiedCapstone.sampled_helper_mixing_and_terminal_covector`
 in `proof/sampler/ComponentBSamplerUnifiedCapstone.lean`.  Given an actual
 successful generated sampler run and canonical public mixing/evaluation
 inputs, it proves existence of the actual generated helper result
 `(.some mixed, terminal)`, proves the generated boundary of `mixed` is exactly
-`totalClaim`, proves `terminal` canonical, and identifies its exact-field value
+`totalClaim`, proves `terminal` canonical, and identifies its field value
 with maintained `AspisV5SumcheckCommitment.terminalCovector`.  The sampled mask
 is the same generated value passed to the helper; there is no nominal-copy,
 field-adapter, platform-width, evaluator-faithfulness, or generic transport
 premise.
 
-Sampler transition totality and canonicality of externally supplied point,
-total claim, eta, and real polynomial remain explicit.  Transcript binding,
-Fiat--Shamir, PCS authentication, sampler uniformity, deployed ZK, and freeze
-are outside this local algebra theorem and are not claimed.
+Sampler transition totality and canonicality of the supplied point, total
+claim, eta, and real polynomial remain explicit inputs. Transcript binding,
+Fiat--Shamir, PCS authentication, sampler uniformity, and deployed
+zero-knowledge are outside this local algebra theorem.
 
 ## Source and tools
 
 - workspace HEAD: `27e8265d28de88e7967626a2d2432ef161fb4f49`
-- exact source statuses:
+- source status:
   ` M crates/aspis-prover/src/v5_sumcheck_mask.rs`,
   ` M crates/aspis-prover/src/v5_mask.rs`;
   `state_only_sumcheck.rs` and `field.rs` are clean
@@ -59,11 +59,11 @@ are outside this local algebra theorem and are not claimed.
 - extraction Rust: `nightly-2026-06-01`
 - replay: Lean `4.32.0`, using the pinned Aeneas compatibility backend
 
-This lane made no Rust edit during the completion.  The final extraction was
-refreshed after an externally owned cleanup removed the unused
+No Rust source changed while completing this proof. The final extraction was
+refreshed after a concurrent cleanup removed the unused
 `zero_boundary_coefficient` accessor; the retained helper, sampler, evaluator,
 mixing, boundary, and field semantics are unchanged.  `field.rs` and
-`state_only_sumcheck.rs` were not edited by this lane.
+`state_only_sumcheck.rs` were unchanged.
 
 ## Extraction identity
 
@@ -115,28 +115,28 @@ branches.
 The chain proves, against generated definitions:
 
 - successful sampling supplies a canonical initial claim and ten canonical
-  exact zero-boundary rounds;
+  zero-boundary rounds;
 - generated and maintained zero-boundary equations imply one another;
 - generated half, boundary sum, degree-27 evaluator, round update, public
-  ten-round recurrence, exact field tower, and terminal covector agree;
+  ten-round recurrence, field tower, and terminal covector agree;
 - generated mixing is coefficientwise and has endpoint `totalClaim`;
 - the actual combined helper returns both the mixed round and terminal result;
 - sampler success specializes that helper theorem without a copy/transport
-  seam;
+  assumption;
 - evaluator logic is portable across the generated 32/64-bit platform split,
   so no `System.Platform.numBits = 64` premise remains.
 
-Negative teeth are universal/concrete theorems for adjacent commitment block
-swap, reversing all 28 round coefficients, changing a nonzero zero-boundary
-constant, and changing the canonical exact adapter.  They are in
+Counterexample theorems cover an adjacent commitment-block swap, reversal of
+all 28 round coefficients, a changed nonzero zero-boundary constant, and a
+changed canonical adapter. They are in
 `proof/ComponentBUnifiedTeeth.lean`.
 
 ## Verification
 
-The durable clean replay starts from an empty output directory and compiles
+The clean replay starts from an empty output directory and compiles
 three generated modules plus all 47 proof/audit modules: 50 oleans total.
-There are 200 exported theorem declarations and 200 exact `#print axioms`
-audits.  Every reported closure is contained in
+There are 200 exported theorem declarations and 200 matching `#print axioms`
+audits. Every theorem depends only on
 `{propext, Classical.choice, Quot.sound}`; no `sorryAx` occurs.  Handwritten
 proofs and normalized generated code contain none of the forbidden constructs
 or raised proof limits.  The retained clean replay log SHA-256 is
@@ -162,6 +162,6 @@ The 70-entry authoritative nested manifest SHA-256 is
 
 Central import placement and repository-level composition are complete:
 `FormalClosureStream1.current_source_combined_capstone` imports the
-Component-B result alongside the frozen-schedule Component-A bridge,
-Component-C public output, and Tag-67 verifier closure. No local executable or
-arithmetic seam remains in this Component-B chain.
+Component-B result alongside the release-schedule Component-A theorem,
+Component-C public output, and Tag-67 verifier theorem. The Component-B chain
+has no remaining executable or arithmetic correspondence assumption.

@@ -145,9 +145,9 @@ application from the machine-checked finite arithmetic.
 The verifier evaluates a compiled point-form composition
 (\path{crates/aspis-statement/src/atomic_state_only_terminal.rs}), whereas the
 algebraic reductions above read the per-row residual system.  For the
-copy/lookup lane and its rank-\(74\) routing --- the objects whose equivalence
-to the row form was previously only tested at a handful of points on a fixed
-honest trace --- the two forms are now checked equal as polynomials over the
+copy/lookup lane and its rank-\(74\) routing, whose equivalence to the row form
+was previously tested only at a handful of points on a fixed honest trace,
+the two forms are now checked equal as polynomials over the
 full space of \emph{adversarial} openings and challenges, by a soundness-grade
 Schwartz--Zippel battery (test
 \texttt{point\_form\_equals\_row\_form\_at\_soundness\_grade\_over\_adversarial\_openings}).
@@ -412,7 +412,7 @@ this event by the preceding lemmas.
 \label{sec:rbr-discharge}
 
 Assumption~\ref{ass:boundary-restoration} bundles two different things: the
-generic Fiat--Shamir plumbing of a FRI/WHIR-style compiler (commitment,
+generic Fiat--Shamir steps of a FRI/WHIR-style compiler (commitment,
 sumcheck, fold, grinding, query, and selector boundaries) and the bespoke
 relation binding of the \Profile{} encoding and its zero-factor \(D\) lane.
 The generic part is not specific to Aspis; it is discharged here from imported

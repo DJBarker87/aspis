@@ -1,9 +1,9 @@
-//! Compute-envelope constraints for the provisional v5 masking design.
+//! Compute-envelope constraints used to shape the V5 masking design.
 //!
 //! The measured v4 atomic transaction used 1,344,003 of 1,400,000 compute
 //! units.  V5 therefore has no budget for an additional commitment pass or a
 //! literal 96-by-96 determinant inside the program.  This module pins the
-//! shape that a CU-feasible v5 candidate must respect before implementation:
+//! shape that the CU-feasible V5 implementation respects:
 //!
 //! * five authenticated trees, with no additional opening section;
 //! * no wider leaf than the corresponding v4 tree;
@@ -11,11 +11,9 @@
 //! * the same ten degree-27 sumcheck rounds; and
 //! * no on-chain dense determinant.
 //!
-//! These assertions are necessary conditions, not a CU measurement and not a
-//! construction of components B or C.  Any v5 design that cannot reuse the
-//! existing five trees and three C2 lanes fails this envelope and is rejected
-//! before further formalisation.  The lanes are a fixed budget, not evidence
-//! that the still-undefined binding data fits inside it.
+//! These compile-time assertions define the structural budget. Runtime
+//! measurements and the accepted-input ceiling are recorded separately in the
+//! V5 release evidence.
 
 use aspis_core::circle_prefix::{CANDIDATE_OOD_SAMPLES, CANDIDATE_ROUND_COUNT};
 use aspis_core::state_only_prefix::{

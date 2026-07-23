@@ -2,10 +2,10 @@
 
 ## Verdict
 
-The deterministic Component-B terminal/covector/layout seam is closed for the
-current feature-gated v5 candidate.
+The production-default V5 release has a proved deterministic correspondence
+between the Component-B terminal, covector, and layout.
 
-The strongest theorem is
+The principal theorem is
 `ComponentBRelationClaimsLayoutInstantiation.extracted_component_b_relation_claims_layout_equalities`.
 It executes the source-authentic terminal-covector builder, the source-authentic
 1,024-row Component-B copy, and the source-authentic C2 constructor, then proves:
@@ -18,20 +18,21 @@ It executes the source-authentic terminal-covector builder, the source-authentic
 4. the actual Nat-indexed 1,024-row accumulation used by the extracted
    relation-claims loop is `tenRoundTerminal`.
 
-There is deliberately no theorem equating the complete unweighted lane with
+There is no theorem equating the complete unweighted lane with
 `rowMessage`: pad and pivot rows differ outside the terminal functional's
 support.  The weighted statement is the exact consumer-facing obligation.
 
 No opaque `faithful`, executable-correspondence, or Rust/model equality premise
-remains.  The capstone has three preconditions: canonical terminal-point words,
+remains. The theorem has three preconditions: canonical terminal-point words,
 canonical mask words, and the exact successful execution equation of the
-generated encoder.  Only the last is executable, and it is the generated
-function run itself rather than an abstract correspondence slogan.
+generated encoder. Only the last is executable, and it is the generated
+function run itself rather than an abstract equality assumption.
 
-This result does not claim sampler uniformity, transcript security, PCS
-binding, hash/RO security, production dispatch, or deployed-v4 correspondence.
+The sampler, production host flow, and full V5 integration are joined in the
+current-source Component-B and A/B/C proof suites indexed from
+[`aeneas-verif/README.md`](../README.md).
 
-## Frozen provenance
+## Recorded provenance
 
 - Workspace HEAD during final replay:
   `27e8265d28de88e7967626a2d2432ef161fb4f49`
@@ -84,7 +85,8 @@ The earlier `.expect("fixed B message shape")` spelling introduced an Aeneas
 string proof whose generated theorem closure contained a native decide axiom.
 The source now uses an explicit `match` with the same unreachable error branch
 (`v5_spend_messages.rs:308-311`).  Fresh extraction removes that axiom; the
-encoder and all downstream capstones now have only the permitted kernel base.
+encoder and all downstream integration theorems now have only the permitted
+kernel base.
 
 ### Component-B row copy and C2 slot
 
@@ -132,7 +134,7 @@ The relation-facing results are:
 - `extracted_component_b_relation_claims_weightedMessageRows`;
 - `extracted_component_b_relation_claims_layout_equalities`.
 
-The three exported relation capstones printed by the final module depend
+The three exported relation theorems printed by the final module depend
 exactly on:
 
 ```text
@@ -146,7 +148,7 @@ axiom, `sorry`, `admit`, `native_decide`, `unsafe`, or raised handwritten limit.
 ## Validation
 
 - Lean 4.32 direct replay at default handwritten limits: pass.
-- Final capstone axiom audit: pass.
+- Final theorem axiom audit: pass.
 - Targeted Rust test
   `component_b_copy_and_c2_slot_constructor_preserve_exact_order`: 1/1 pass.
 - `cargo check --release --locked -p aspis-prover --features v5-mask`: pass
@@ -157,8 +159,6 @@ axiom, `sorry`, `admit`, `native_decide`, `unsafe`, or raised handwritten limit.
 - `git diff --check` / no-index whitespace checks: pass.
 
 The final Lean replay reports only pre-existing `unusedSimpArgs` linter
-warnings in the long Aeneas loop-invariant proof.  The capstone integration,
+warnings in the long Aeneas loop-invariant proof. The final integration,
 encoder binding, normalized generated modules, relation bridge, and C2 proof
 compile without warnings.
-
-Nothing was staged, committed, or pushed by this lane.

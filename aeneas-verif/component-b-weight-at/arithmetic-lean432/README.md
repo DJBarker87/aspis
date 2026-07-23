@@ -25,11 +25,11 @@ are replayed unchanged at the theorem level:
   `qm31_sum_products_small` for every valid `N ≤ 4`, and the public arity-2,
   arity-3, and arity-4 wrappers.
 
-The small-product capstone is not a finite KAT: it proves the two nested
+The small-product theorem is not a finite KAT: it proves the two nested
 channel loops, the three-component helper loop, the outer input-index loop,
 the exact Karatsuba reconstruction, and equality with the ordinary QM31 dot
 product for arbitrary canonical inputs. Separate non-vacuity and
-omit-one-product teeth ensure the outer loop is load-bearing.
+omit-one-product counterexamples show that the outer loop affects the result.
 
 The same run also replays the prerequisite M31 reduction/multiplication,
 CM31 multiplication/square/scalar multiplication, M31 inverse, and the full
@@ -44,7 +44,7 @@ axiom, or unsafe declaration.
 
 ## Normalization boundary
 
-The frozen Rust source is `crates/aspis-core/src/field.rs`, Git blob
+The recorded Rust source is `crates/aspis-core/src/field.rs`, Git blob
 `a28ff94de05265102ca819849805a7f73c675800` and SHA-256
 `dadd6bac7c6c44fcb13e1a1ca26e9d2b6f767370bb6e802640948f15fc795836`.
 The extraction tools remain Charon
@@ -79,8 +79,8 @@ different dependency closure.  The checker retargets exactly one import in
 the already-audited CM31 proof, pins that transformed source hash, and proves
 the reverse substitution recovers the original byte-for-byte.  The broad
 Prepared and tower generated modules each retain one Aeneas environment axiom
-for `core.array.from_fn`; it is explicitly classified, and every capstone and
-tooth closure is checked not to depend on it.
+for `core.array.from_fn`; it is explicitly classified, and every integration
+or counterexample theorem is checked not to depend on it.
 
 ## Status boundary
 
@@ -91,7 +91,7 @@ into maintained `AspisFormal`; this isolated bundle deliberately avoids an
 aggregator edit.  It also does not prove the complete generic
 `WeightAccumulator::weight_at` caller or production dispatch.  In particular,
 `qm31_sum_products_small` and its public arity-2/3/4 wrappers now have their
-Level-3 source-authentic capstone in both kernels, while
+Level-3 source-authentic theorem in both kernels, while
 `CM31::{inv,inv_with}` and `QM31::{try_inv,inv}` remain Level 1 because the
 pinned translator does not support the function-pointer dependency.  Their
 presence in a broad generated closure does not promote those functions.

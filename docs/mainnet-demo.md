@@ -28,7 +28,7 @@ finalized program log commits to the same proof digest under the domain
 `aspis-proof-sha256-v1`. The conservative published soundness floor is
 100.16 bits.
 
-The proof is bound to the exact public statement, pool identity, sequence,
+The proof is bound to the public statement, pool identity, sequence,
 selector, verifier transcript, and, new in this release, the deployment
 domain, so the same proof is valid only against a pool that stores the
 matching domain. The mainnet program was the disposable id
@@ -39,14 +39,14 @@ matching domain. The mainnet program was the disposable id
 ## Finalized lifecycle
 
 | Event | Finalized slot | Signature |
-|---|---:|---|
-| Exact SBF deployment | 433219270 | `qdeDmK712P3ifnn4hfqtEH3CzW7rssoP9hsJtCceebmAnA5qSrN34v4KE1H6tJbWbUjD7GdaZmLv2CxV823coW8` |
+| --- | ---: | --- |
+| SBF deployment | 433219270 | `qdeDmK712P3ifnn4hfqtEH3CzW7rssoP9hsJtCceebmAnA5qSrN34v4KE1H6tJbWbUjD7GdaZmLv2CxV823coW8` |
 | Verify and apply (tag 65) | 433219840 | `3G1voggszvDMGi5PbGM1kuEMYKvh2TNMbH6hHHwndUdRQJNT7ehRFpQpksxLnx5tp2xkS5jGi359rVXk42sRPFcv` |
-| Replay probe close | — | `51fzSDCoT53XrzoQZy69mpe2g36r4GjmBnNVj6K7F9vH7zQK9JhLyggApLjYxRbFaVigjzmq3P24myLgkagjTkd1` |
+| Replay probe close | n/a | `51fzSDCoT53XrzoQZy69mpe2g36r4GjmBnNVj6K7F9vH7zQK9JhLyggApLjYxRbFaVigjzmq3P24myLgkagjTkd1` |
 | ProgramData close | 433220251 | `3mfD5KEYXJ4ZyC2XeHW4fXKNYUqo46SA1waGeJ3CNz7fBzzxqy4rK6tiniVpx5D4ZpDziCEKgi66KUdEjyLkrVDo` |
 
 After the spend, a sealed replay probe was simulated against the spent
-nullifier and rejected with the exact expected nullifier error, with pool and
+nullifier and rejected with the expected nullifier error, with pool and
 nullifier state unchanged. ProgramData was then closed and its
 `6,434,638,320` lamports reclaimed.
 

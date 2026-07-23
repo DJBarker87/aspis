@@ -575,8 +575,8 @@ where
     let (statement, statement_digest) = checked_statement(pool_account.key, pool.sequence, public)?;
     trace(AtomicPaymentTransitionTraceEvent::StatementDigestDone);
 
-    // Load-bearing ordering rule: this must remain before marker creation and
-    // before either mutable borrow below.
+    // Ordering rule: proof verification must remain before marker creation
+    // and before either mutable borrow below.
     // The proof verifier must evaluate the exact `statement.spend`, constrain
     // `statement.output_anchor` by the same-path replacement relation, and
     // absorb exactly `statement_digest`; the digest alone is insufficient.
