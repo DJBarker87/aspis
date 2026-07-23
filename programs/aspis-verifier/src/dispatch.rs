@@ -54,7 +54,10 @@ fn production_require_empty(input: &[u8]) -> ProgramResult {
 /// - 63: initialize a fresh atomic pool;
 /// - 64: close a sealed proof account and refund every lamport; and
 /// - 65: production verification plus the atomic state transition and an
-///   atomic proof-account close and rent refund.
+///   atomic proof-account close and rent refund; and
+/// - 67: only with the non-default `v5-production-tag67` release-candidate
+///   feature, complete v5 verification plus the retained-proof atomic state
+///   transition.
 ///
 /// Every other historical or diagnostic tag fails before account access.
 pub fn process_spend_production_instruction(
@@ -203,6 +206,13 @@ pub fn process_spend_production_instruction(
                 },
             )
         }
+        #[cfg(feature = "v5-production-tag67")]
+        67 => crate::v5_full_transaction::process_v5_full_cu_transaction_with_verifier(
+            program_id,
+            accounts,
+            instruction_data,
+            crate::v5_cu_probe::verify_uploaded_v5_mode9_cu_fixture,
+        ),
         _ => Err(ProgramError::InvalidInstructionData),
     }
 }
@@ -313,6 +323,34 @@ mod tests {
             Err(ProgramError::Custom(
                 atomic_payment::ATOMIC_ERROR_VERIFIER_NOT_INTEGRATED
             ))
+        );
+
+        assert_eq!(
+            process_spend_production_instruction(&id(), &[], &[66]),
+            Err(ProgramError::InvalidInstructionData)
+        );
+        #[cfg(not(feature = "v5-production-tag67"))]
+        assert_eq!(
+            process_spend_production_instruction(&id(), &[], &[67]),
+            Err(ProgramError::InvalidInstructionData)
+        );
+    }
+
+    #[cfg(feature = "v5-production-tag67")]
+    #[test]
+    fn tag67_release_candidate_routes_only_through_atomic_wrapper() {
+        let mut wire = vec![0u8; crate::v5_full_transaction::V5_FULL_CU_TRANSACTION_WIRE_BYTES];
+        wire[0] = crate::v5_full_transaction::V5_FULL_CU_TRANSACTION_TAG;
+        assert_eq!(
+            process_spend_production_instruction(&id(), &[], &wire),
+            Err(ProgramError::NotEnoughAccountKeys)
+        );
+
+        // Tag 66 remains unreachable even when the non-default production
+        // candidate switch is enabled.
+        assert_eq!(
+            process_spend_production_instruction(&id(), &[], &[66]),
+            Err(ProgramError::InvalidInstructionData)
         );
     }
 }

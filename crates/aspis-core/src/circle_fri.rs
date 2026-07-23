@@ -238,7 +238,7 @@ fn point_from_group_index(index: u64) -> BaseCirclePoint {
 /// point costs only the set bits of the bit-reversed fiber index.  The result
 /// is algebraically identical to `circle_fiber_point_for_domain_log` and is
 /// returned in caller order.
-fn selected_circle_fiber_points_shared(
+pub fn selected_circle_fiber_points_shared(
     domain_log_size: u32,
     fibers: &[u32],
 ) -> Result<Vec<BaseCirclePoint>, CircleFriError> {

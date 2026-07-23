@@ -322,6 +322,247 @@ pub(crate) fn verify_radix4_binary_cap_prevalidated_in_place(
     verify_radix4_binary_cap_level_bytes(hash, root, binary_depth, node_bytes, level, next)
 }
 
+/// Index-only traversal plan for a radix-4 multiproof with an optional
+/// binary cap.  Several commitments opened at the same queries can share
+/// this plan while retaining independent leaf hashes, frontiers, and roots.
+///
+/// `level_indices` stores the exact sorted index set at every radix-4 level,
+/// and `group_masks` stores which of each parent's four children are supplied
+/// by that level.  Keeping the level index sets makes reuse fail closed when a
+/// caller supplies anything other than the exact suffix it claims to share.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Radix4BinaryCapTopology {
+    binary_depth: u32,
+    radix_levels: usize,
+    level_indices: Vec<u32>,
+    level_offsets: [usize; 17],
+    group_masks: Vec<u8>,
+    group_offsets: [usize; 16],
+}
+
+/// Opaque proof that one exact index slice is a suffix of a validated
+/// radix-4/binary-cap topology. Only [`Radix4BinaryCapTopology::matched_suffix`]
+/// can construct this token, so crate-internal callers can reuse the match
+/// without weakening the public verifier's fail-closed index binding.
+#[derive(Clone, Copy)]
+pub(crate) struct MatchedRadix4BinaryCapSuffix<'a> {
+    topology: &'a Radix4BinaryCapTopology,
+    radix_level: usize,
+    binary_depth: u32,
+    expected_len: usize,
+}
+
+impl Radix4BinaryCapTopology {
+    /// Build one exact traversal plan from sorted, unique, in-range indices.
+    /// Binary depths below 32 have at most fifteen radix-4 levels.
+    pub fn new(binary_depth: u32, indices: &[u32]) -> Option<Self> {
+        if indices.is_empty() || binary_depth >= 32 {
+            return None;
+        }
+        if indices.windows(2).any(|pair| pair[0] >= pair[1])
+            || indices.last().copied()? >= (1u32 << binary_depth)
+        {
+            return None;
+        }
+
+        let radix_levels = (binary_depth / 2) as usize;
+        let mut level_indices = Vec::with_capacity(indices.len() * (radix_levels + 1));
+        level_indices.extend_from_slice(indices);
+        let mut level_offsets = [0usize; 17];
+        let mut group_masks = Vec::with_capacity(indices.len() * radix_levels);
+        let mut group_offsets = [0usize; 16];
+        let mut current_start = 0usize;
+        let mut current_end = level_indices.len();
+
+        for level in 0..radix_levels {
+            group_offsets[level] = group_masks.len();
+            let mut position = current_start;
+            while position < current_end {
+                let parent = level_indices[position] >> 2;
+                let mut present = 0u8;
+                while position < current_end && level_indices[position] >> 2 == parent {
+                    let slot = (level_indices[position] & 3) as u8;
+                    let slot_mask = 1u8 << slot;
+                    if present & slot_mask != 0 {
+                        return None;
+                    }
+                    present |= slot_mask;
+                    position += 1;
+                }
+                group_masks.push(present);
+                level_indices.push(parent);
+            }
+            level_offsets[level + 1] = current_end;
+            current_start = current_end;
+            current_end = level_indices.len();
+        }
+        level_offsets[radix_levels + 1] = current_end;
+        group_offsets[radix_levels] = group_masks.len();
+
+        Some(Self {
+            binary_depth,
+            radix_levels,
+            level_indices,
+            level_offsets,
+            group_masks,
+            group_offsets,
+        })
+    }
+
+    fn level_indices(&self, level: usize) -> Option<&[u32]> {
+        if level > self.radix_levels {
+            return None;
+        }
+        self.level_indices
+            .get(self.level_offsets[level]..self.level_offsets[level + 1])
+    }
+
+    fn group_masks(&self, level: usize) -> Option<&[u8]> {
+        if level >= self.radix_levels {
+            return None;
+        }
+        self.group_masks
+            .get(self.group_offsets[level]..self.group_offsets[level + 1])
+    }
+
+    /// Bind one literal index slice and remaining depth to this topology.
+    pub(crate) fn matched_suffix<'a>(
+        &'a self,
+        radix_level: usize,
+        binary_depth: u32,
+        indices: &[u32],
+    ) -> Option<MatchedRadix4BinaryCapSuffix<'a>> {
+        if radix_level <= self.radix_levels
+            && self.binary_depth.checked_sub((radix_level as u32) * 2) == Some(binary_depth)
+            && self.level_indices(radix_level) == Some(indices)
+        {
+            Some(MatchedRadix4BinaryCapSuffix {
+                topology: self,
+                radix_level,
+                binary_depth,
+                expected_len: indices.len(),
+            })
+        } else {
+            None
+        }
+    }
+
+    /// Check that `indices` is literally the requested plan level and that
+    /// the remaining binary depth is the caller's claimed tree depth.
+    pub fn matches_suffix(&self, radix_level: usize, binary_depth: u32, indices: &[u32]) -> bool {
+        self.matched_suffix(radix_level, binary_depth, indices)
+            .is_some()
+    }
+}
+
+/// Verify one commitment using a suffix of a previously built index topology.
+/// Every SHA-256 compression, frontier node, and binary-cap orientation is
+/// identical to [`verify_radix4_binary_cap_prevalidated_in_place`]; only the
+/// repeated index grouping is replaced by prevalidated child masks.
+pub fn verify_radix4_binary_cap_with_topology(
+    hash: HashFn,
+    root: &[u8; 32],
+    binary_depth: u32,
+    node_bytes: &[u8],
+    topology: &Radix4BinaryCapTopology,
+    radix_level: usize,
+    expected_indices: &[u32],
+    level: &mut Vec<[u8; 32]>,
+    next: &mut Vec<[u8; 32]>,
+) -> bool {
+    let Some(matched) = topology.matched_suffix(radix_level, binary_depth, expected_indices) else {
+        return false;
+    };
+    verify_radix4_binary_cap_with_matched_topology(hash, root, node_bytes, matched, level, next)
+}
+
+/// Verify using an opaque suffix match already produced by the topology.
+/// This is crate-private so the literal index/depth check cannot be skipped.
+pub(crate) fn verify_radix4_binary_cap_with_matched_topology(
+    hash: HashFn,
+    root: &[u8; 32],
+    node_bytes: &[u8],
+    matched: MatchedRadix4BinaryCapSuffix<'_>,
+    level: &mut Vec<[u8; 32]>,
+    next: &mut Vec<[u8; 32]>,
+) -> bool {
+    if level.is_empty() || node_bytes.len() & 31 != 0 || level.len() != matched.expected_len {
+        return false;
+    }
+
+    let topology = matched.topology;
+    let radix_level = matched.radix_level;
+    let binary_depth = matched.binary_depth;
+
+    let mut node_pos = 0usize;
+    for plan_level in radix_level..topology.radix_levels {
+        next.clear();
+        let Some(masks) = topology.group_masks(plan_level) else {
+            return false;
+        };
+        let mut value_pos = 0usize;
+        for &present in masks {
+            // Fill the exact radix-4 hash preimage in place. Building an
+            // intermediate `[[u8; 32]; 4]` makes `node_hash4` copy the same
+            // 128 child bytes a second time before the syscall.
+            let mut input = [0u8; 129];
+            input[0] = DOM_NODE4;
+            for slot in 0..4 {
+                let child = &mut input[1 + slot * 32..1 + (slot + 1) * 32];
+                if present & (1u8 << slot) != 0 {
+                    let Some(value) = level.get(value_pos) else {
+                        return false;
+                    };
+                    child.copy_from_slice(value);
+                    value_pos += 1;
+                } else {
+                    if node_pos + 32 > node_bytes.len() {
+                        return false;
+                    }
+                    child.copy_from_slice(&node_bytes[node_pos..node_pos + 32]);
+                    node_pos += 32;
+                }
+            }
+            next.push(hash(&[&input]));
+        }
+        if value_pos != level.len() {
+            return false;
+        }
+        core::mem::swap(level, next);
+    }
+
+    let top_indices = match topology.level_indices(topology.radix_levels) {
+        Some(indices) => indices,
+        None => return false,
+    };
+    let top = if binary_depth & 1 == 0 {
+        match (top_indices, level.as_slice()) {
+            ([0], [value]) => *value,
+            _ => return false,
+        }
+    } else {
+        match (top_indices, level.as_slice()) {
+            ([0, 1], [left, right]) => node_hash(hash, left, right),
+            ([index], [value]) => {
+                if node_pos + 32 > node_bytes.len() {
+                    return false;
+                }
+                let sibling: [u8; 32] = node_bytes[node_pos..node_pos + 32].try_into().unwrap();
+                node_pos += 32;
+                if *index == 0 {
+                    node_hash(hash, value, &sibling)
+                } else if *index == 1 {
+                    node_hash(hash, &sibling, value)
+                } else {
+                    return false;
+                }
+            }
+            _ => return false,
+        }
+    };
+    node_pos == node_bytes.len() && top == *root
+}
+
 fn verify_radix4_binary_cap_level_bytes(
     hash: HashFn,
     root: &[u8; 32],
@@ -560,6 +801,152 @@ mod tests {
                 &mut level,
                 &mut next,
             ));
+        }
+    }
+
+    #[test]
+    fn matched_topology_token_matches_public_wrapper_across_suffixes_and_corruptions() {
+        for depth in [7u32, 9] {
+            let leaves = (0..1usize << depth)
+                .map(|index| test_hash(&[&index.to_le_bytes()]))
+                .collect::<Vec<_>>();
+            let levels = build_tree4_binary_cap(&leaves);
+            let root = levels.last().unwrap()[0];
+            let base_indices = [1u32, 7, (1u32 << depth) - 2];
+            let topology = Radix4BinaryCapTopology::new(depth, &base_indices).unwrap();
+
+            for radix_level in 0..=depth as usize / 2 {
+                let binary_depth = depth - 2 * radix_level as u32;
+                let mut indices = base_indices
+                    .iter()
+                    .map(|index| index >> (2 * radix_level))
+                    .collect::<Vec<_>>();
+                indices.dedup();
+                let values = indices
+                    .iter()
+                    .map(|&index| levels[radix_level][index as usize])
+                    .collect::<Vec<_>>();
+                let frontier = frontier4_binary_cap(&levels[radix_level..], &indices)
+                    .into_iter()
+                    .flatten()
+                    .collect::<Vec<_>>();
+                let matched = topology
+                    .matched_suffix(radix_level, binary_depth, &indices)
+                    .unwrap();
+
+                let compare = |candidate_root: &[u8; 32], candidate_frontier: &[u8]| {
+                    let mut public_level = values.clone();
+                    let mut public_next = Vec::new();
+                    let public = verify_radix4_binary_cap_with_topology(
+                        test_hash,
+                        candidate_root,
+                        binary_depth,
+                        candidate_frontier,
+                        &topology,
+                        radix_level,
+                        &indices,
+                        &mut public_level,
+                        &mut public_next,
+                    );
+                    let mut matched_level = values.clone();
+                    let mut matched_next = Vec::new();
+                    let token = verify_radix4_binary_cap_with_matched_topology(
+                        test_hash,
+                        candidate_root,
+                        candidate_frontier,
+                        matched,
+                        &mut matched_level,
+                        &mut matched_next,
+                    );
+                    assert_eq!(token, public, "depth={depth} suffix={radix_level}");
+                };
+
+                compare(&root, &frontier);
+                let mut wrong_root = root;
+                wrong_root[radix_level] ^= 1;
+                compare(&wrong_root, &frontier);
+                if !frontier.is_empty() {
+                    let mut corrupted = frontier.clone();
+                    corrupted[frontier.len() / 2] ^= 1;
+                    compare(&root, &corrupted);
+                    compare(&root, &frontier[..frontier.len() - 32]);
+                }
+                let mut extra = frontier.clone();
+                extra.extend_from_slice(&[0u8; 32]);
+                compare(&root, &extra);
+
+                let mut different_indices = indices.clone();
+                different_indices.reverse();
+                assert!(topology
+                    .matched_suffix(radix_level, binary_depth, &different_indices)
+                    .is_none());
+                let mut different_level = values.clone();
+                let mut different_next = Vec::new();
+                assert!(!verify_radix4_binary_cap_with_topology(
+                    test_hash,
+                    &root,
+                    binary_depth,
+                    &frontier,
+                    &topology,
+                    radix_level,
+                    &different_indices,
+                    &mut different_level,
+                    &mut different_next,
+                ));
+            }
+        }
+    }
+
+    #[test]
+    fn matched_topology_direct_preimage_matches_node_hash4_for_extreme_and_random_children() {
+        let mut seed = 0x6a09_e667_f3bc_c909u64;
+        for case in 0..34 {
+            let children = if case == 0 {
+                [[0u8; 32]; 4]
+            } else if case == 1 {
+                [[u8::MAX; 32]; 4]
+            } else {
+                core::array::from_fn(|_| {
+                    core::array::from_fn(|_| {
+                        seed ^= seed << 13;
+                        seed ^= seed >> 7;
+                        seed ^= seed << 17;
+                        seed as u8
+                    })
+                })
+            };
+            let root = node_hash4(test_hash, &children);
+            let mut expected_preimage = [0u8; 129];
+            expected_preimage[0] = DOM_NODE4;
+            for (slot, child) in children.iter().enumerate() {
+                expected_preimage[1 + slot * 32..1 + (slot + 1) * 32].copy_from_slice(child);
+            }
+            assert_eq!(root, test_hash(&[&expected_preimage]));
+
+            // Exercise every non-empty mix of values supplied by the level
+            // and by the proof frontier. Both routes must construct the same
+            // literal parent preimage.
+            for present in 1u8..16 {
+                let indices = (0u32..4)
+                    .filter(|slot| present & (1u8 << *slot) != 0)
+                    .collect::<Vec<_>>();
+                let topology = Radix4BinaryCapTopology::new(2, &indices).unwrap();
+                let matched = topology.matched_suffix(0, 2, &indices).unwrap();
+                let mut level = indices
+                    .iter()
+                    .map(|&slot| children[slot as usize])
+                    .collect::<Vec<_>>();
+                let mut frontier = Vec::new();
+                for slot in 0..4 {
+                    if present & (1u8 << slot) == 0 {
+                        frontier.extend_from_slice(&children[slot]);
+                    }
+                }
+                let mut next = Vec::new();
+                assert!(verify_radix4_binary_cap_with_matched_topology(
+                    test_hash, &root, &frontier, matched, &mut level, &mut next,
+                ));
+            }
         }
     }
 

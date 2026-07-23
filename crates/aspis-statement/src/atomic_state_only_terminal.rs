@@ -36,6 +36,22 @@ const ATOMIC_SELECTED_H1_COLUMN: usize = C1_COLUMNS + STATE_ONLY_HIDING_MASK_ONL
 const ATOMIC_SELECTED_G_COLUMN: usize = ATOMIC_SELECTED_H1_COLUMN + 1;
 const ATOMIC_RETAINED_INITIAL_BLOCK_INDICES: [usize; 4] = [0, 1, 22, 23];
 
+// The semantic selector factorizations below are deliberately tied to this
+// frozen atomic-v3 layout.  A changed registry must re-derive them instead of
+// silently reusing stale block identities.
+const _: () = {
+    assert!(crate::state_only_poseidon::STATE_ONLY_POSEIDON_BLOCKS == 49);
+    assert!(state_constants::ABSORPTION_ZERO_MASKS[0] == 0x0000);
+    assert!(state_constants::ABSORPTION_ZERO_MASKS[1] == 0xff00);
+    assert!(state_constants::ABSORPTION_ZERO_MASKS[2] == 0x0000);
+    assert!(state_constants::ABSORPTION_ZERO_MASKS[3] == 0x00fc);
+    assert!(state_constants::ABSORPTION_ZERO_MASKS[44] == 0xff00);
+    assert!(state_constants::ABSORPTION_ZERO_MASKS[45] == 0xff00);
+    assert!(state_constants::ABSORPTION_ZERO_MASKS[46] == 0xff00);
+    assert!(state_constants::ABSORPTION_ZERO_MASKS[47] == 0x0000);
+    assert!(state_constants::ABSORPTION_ZERO_MASKS[48] == 0xfffc);
+};
+
 #[derive(Clone, Copy)]
 struct CompiledAtomicPattern {
     /// 0 = zero, 1 = constant, 2 = affine local cell.
@@ -116,7 +132,9 @@ pub fn atomic_state_only_copy_inactive_row_masks_v3() -> [u16; 64] {
     let mut masks = [u16::MAX; 64];
     for &row in &constants::COMPILED_ATOMIC_COPY_ACTIVE_ROWS {
         let row = usize::from(row);
-        masks[row >> 4] &= !(1u16 << (row & 15));
+        let low = (row & 15) as u32;
+        let word = row >> 4u32;
+        masks[word] &= !(1u16 << low);
     }
     masks
 }
@@ -277,13 +295,29 @@ impl LegacyAtomicSelectors {
 struct AtomicSemanticSelectors {
     high: [QM31; 64],
     low: [QM31; 16],
+    poseidon_block: QM31,
+    path_block: QM31,
 }
 
 impl AtomicSemanticSelectors {
     fn at_point(point: &[QM31; 10]) -> Self {
+        let high = AtomicSelectors::expand(&point[..6]);
+        let low = AtomicSelectors::expand(&point[6..]);
+
+        // The complete six-coordinate equality basis sums to one, including
+        // away from the Boolean cube.  The Poseidon blocks are 0..49, so use
+        // the smaller 15-entry tail and derive the forty path blocks 4..44 by
+        // subtracting their two small complements inside the Poseidon range.
+        let poseidon_tail = high[49..].iter().copied().fold(QM31::ZERO, QM31::add);
+        let poseidon_block = QM31::ONE.sub(poseidon_tail);
+        let path_left = high[..4].iter().copied().fold(QM31::ZERO, QM31::add);
+        let path_right = high[44..49].iter().copied().fold(QM31::ZERO, QM31::add);
+        let path_block = poseidon_block.sub(path_left).sub(path_right);
         Self {
-            high: AtomicSelectors::expand(&point[..6]),
-            low: AtomicSelectors::expand(&point[6..]),
+            high,
+            low,
+            poseidon_block,
+            path_block,
         }
     }
 
@@ -294,10 +328,7 @@ impl AtomicSemanticSelectors {
 
     fn poseidon(&self) -> StateOnlyPoseidonSelectors {
         StateOnlyPoseidonSelectors {
-            block: self.high[..crate::state_only_poseidon::STATE_ONLY_POSEIDON_BLOCKS]
-                .iter()
-                .copied()
-                .fold(QM31::ZERO, QM31::add),
+            block: self.poseidon_block,
             local: self.low,
         }
     }
@@ -818,6 +849,16 @@ fn atomic_retained_initial_sums(selectors: &AtomicSemanticSelectors) -> (QM31, Q
     )
 }
 
+/// Exact little-endian reconstruction of ten extension-field limbs.
+#[inline(always)]
+fn atomic_reconstruct_10(view: &[QM31]) -> QM31 {
+    debug_assert!(view.len() >= 10);
+    view[..9]
+        .iter()
+        .rev()
+        .fold(view[9], |acc, bit| acc.add(acc).add(*bit))
+}
+
 #[inline(never)]
 fn atomic_semantic_packed_impl<F>(
     statement: &AtomicPaymentStatementV4,
@@ -837,6 +878,135 @@ where
     // original domain/length initial-state constraints.
     let (initial_high_sum, domain_sum, length_sum) = atomic_retained_initial_sums(selectors);
     let initial_selector = selectors.low[0].mul(initial_high_sum);
+    let path_initial_selector = selectors.low[0].mul(selectors.path_block);
+    let initial_or_path_selector = initial_selector.add(path_initial_selector);
+    for group in 0..2 {
+        packed[group] =
+            initial_or_path_selector.mul(qm31_pack_base4(&openings.z[4 * group..4 * group + 4]));
+    }
+    for group in 2..4 {
+        packed[group] =
+            initial_selector.mul(qm31_pack_base4(&openings.z[4 * group..4 * group + 4]));
+    }
+    packed[2] = packed[2].sub(selectors.low[0].mul(qm31_pack_base4(&[
+        domain_sum,
+        length_sum,
+        QM31::ZERO,
+        QM31::ZERO,
+    ])));
+    trace(StateOnlyTerminalDiagnosticPhase::SemanticInitial);
+
+    // After removing path blocks 4..43, the frozen absorption table has only
+    // these supports: 0x00fc at block 3, 0xff00 at blocks 1/44/45/46, and
+    // 0xfffc at block 48.  Combining masks before multiplication leaves two
+    // selectors: lanes 2..7 and lanes 8..15.
+    let absorption_low = selectors.low[12];
+    let low_lanes_selector = absorption_low.mul(selectors.high[3].add(selectors.high[48]));
+    let high_lanes_selector = absorption_low.mul(
+        selectors.high[1]
+            .add(selectors.high[44])
+            .add(selectors.high[45])
+            .add(selectors.high[46])
+            .add(selectors.high[48]),
+    );
+    for group in 0..4 {
+        let residuals: [QM31; 4] = core::array::from_fn(|slot| {
+            let lane = 4 * group + slot;
+            if lane >= 2 {
+                openings.z[lane]
+            } else {
+                QM31::ZERO
+            }
+        });
+        let selector = if group < 2 {
+            low_lanes_selector
+        } else {
+            high_lanes_selector
+        };
+        packed[4 + group] = packed[4 + group].add(selector.mul(qm31_pack_base4(&residuals)));
+    }
+    trace(StateOnlyTerminalDiagnosticPhase::SemanticAbsorption);
+    // Atomic path selection is enforced by the copy lane, so there is no
+    // separate Merkle semantic polynomial. Keep the named boundary so the
+    // atomic and baseline breakdown ledgers remain directly comparable.
+    trace(StateOnlyTerminalDiagnosticPhase::SemanticMerkle);
+
+    let range_selectors = [selectors.row(864), selectors.row(866)];
+    let range_selector = range_selectors[0].add(range_selectors[1]);
+    let triple_value = openings.z[10]
+        .add(openings.succ_z[10].mul_m31(M31(1 << 10)))
+        .add(openings.xor12_z[10].mul_m31(M31(1 << 20)));
+    let range_residuals: [QM31; 34] = core::array::from_fn(|index| {
+        if index < 30 {
+            let view = match index / 10 {
+                0 => &openings.z,
+                1 => &openings.succ_z,
+                _ => &openings.xor12_z,
+            };
+            let bit = view[index % 10];
+            bit.square().sub(bit)
+        } else if index < 33 {
+            let view = match index - 30 {
+                0 => &openings.z,
+                1 => &openings.succ_z,
+                _ => &openings.xor12_z,
+            };
+            let reconstructed = atomic_reconstruct_10(view);
+            view[10].sub(reconstructed)
+        } else {
+            openings.z[11].sub(triple_value)
+        }
+    });
+    atomic_accumulate(&mut packed, 32, &range_residuals, range_selector);
+
+    let fee_total = [range_selectors[0].mul(
+        openings.z[11]
+            .sub(openings.z[12])
+            .sub(lift(M31(statement.spend.fee))),
+    )];
+    atomic_add_preweighted(&mut packed, 66, &fee_total);
+    trace(StateOnlyTerminalDiagnosticPhase::SemanticRange);
+
+    for (block, digest) in [
+        (23usize, &statement.spend.anchor),
+        (43usize, &statement.output_anchor),
+        (45usize, &statement.spend.nullifier),
+        (48usize, &statement.spend.output_commitment),
+    ] {
+        let residuals: [QM31; DIGEST_ELEMS] =
+            core::array::from_fn(|limb| openings.z[limb].sub(lift(digest[limb])));
+        atomic_accumulate(&mut packed, 67, &residuals, selectors.row(block * 16 + 11));
+    }
+
+    let assets: [QM31; 2] = core::array::from_fn(|lane| {
+        let (row, column) = [
+            state_constants::INPUT_ASSET_CELL,
+            state_constants::OUTPUT_ASSET_CELL,
+        ][lane];
+        selectors
+            .row(usize::from(row))
+            .mul(openings.z[usize::from(column)].sub(lift(statement.spend.asset_id)))
+    });
+    atomic_add_preweighted(&mut packed, 75, &assets);
+    trace(StateOnlyTerminalDiagnosticPhase::SemanticPublic);
+    packed
+}
+
+/// Independent test spelling of the frozen atomic-v3 semantic evaluator.
+///
+/// Keep this deliberately unfactored: it is the executable correspondence
+/// tooth for the optimized selector complements, mask grouping, Boolean
+/// square, radix-two reconstruction, and range-pack fusion above.
+#[cfg(test)]
+fn atomic_semantic_packed_unfactored_reference(
+    statement: &AtomicPaymentStatementV4,
+    openings: &StateOnlyPoseidonOpenings,
+    selectors: &AtomicSemanticSelectors,
+) -> [QM31; ATOMIC_PACKED_SEMANTIC_LANES] {
+    let mut packed = [QM31::ZERO; ATOMIC_PACKED_SEMANTIC_LANES];
+
+    let (initial_high_sum, domain_sum, length_sum) = atomic_retained_initial_sums(selectors);
+    let initial_selector = selectors.low[0].mul(initial_high_sum);
     for group in 0..4 {
         packed[group] =
             initial_selector.mul(qm31_pack_base4(&openings.z[4 * group..4 * group + 4]));
@@ -853,7 +1023,6 @@ where
         packed[group] = packed[group]
             .add(path_initial_selector.mul(qm31_pack_base4(&openings.z[4 * group..4 * group + 4])));
     }
-    trace(StateOnlyTerminalDiagnosticPhase::SemanticInitial);
 
     for mask in [0x00fcu16, 0xff00, 0xfffc] {
         let high_sum = state_constants::ABSORPTION_ZERO_MASKS
@@ -878,11 +1047,6 @@ where
             }
         }
     }
-    trace(StateOnlyTerminalDiagnosticPhase::SemanticAbsorption);
-    // Atomic path selection is enforced by the copy lane, so there is no
-    // separate Merkle semantic polynomial. Keep the named boundary so the
-    // atomic and baseline breakdown ledgers remain directly comparable.
-    trace(StateOnlyTerminalDiagnosticPhase::SemanticMerkle);
 
     let range_selectors = [selectors.row(864), selectors.row(866)];
     let range_selector = range_selectors[0].add(range_selectors[1]);
@@ -921,7 +1085,6 @@ where
         ),
     ];
     atomic_add_preweighted(&mut packed, 65, &totals);
-    trace(StateOnlyTerminalDiagnosticPhase::SemanticRange);
 
     for (block, digest) in [
         (23usize, &statement.spend.anchor),
@@ -944,7 +1107,6 @@ where
             .mul(openings.z[usize::from(column)].sub(lift(statement.spend.asset_id)))
     });
     atomic_add_preweighted(&mut packed, 75, &assets);
-    trace(StateOnlyTerminalDiagnosticPhase::SemanticPublic);
     packed
 }
 
@@ -1204,6 +1366,9 @@ const _: () = assert!(ATOMIC_SELECTED_TERMINAL_CLAIMS == 84);
 mod tests {
     use super::*;
     use aspis_core::field::P;
+    use aspis_core::state_only_hiding::{
+        state_only_mask_factors, state_only_selected_mask_value_with_factors,
+    };
 
     use crate::atomic_state_only_registry::{
         atomic_state_only_registry_fingerprint_v3, build_atomic_state_only_registry_v3,
@@ -1233,6 +1398,174 @@ mod tests {
                 c1: CM31::new(self.m31(), self.m31()),
             }
         }
+    }
+
+    #[test]
+    fn atomic_semantic_arithmetic_factorizations_match_direct_forms_off_domain() {
+        let mut rng = Rng(0x5345_4d41_4e54_4943);
+        for _ in 0..64 {
+            let point = core::array::from_fn(|_| rng.qm31());
+            let selectors = AtomicSemanticSelectors::at_point(&point);
+            let direct_poseidon = selectors.high[..49]
+                .iter()
+                .copied()
+                .fold(QM31::ZERO, QM31::add);
+            let direct_path = selectors.high[4..44]
+                .iter()
+                .copied()
+                .fold(QM31::ZERO, QM31::add);
+            assert_eq!(selectors.poseidon_block, direct_poseidon);
+            assert_eq!(selectors.path_block, direct_path);
+            assert_eq!(
+                selectors.poseidon(),
+                StateOnlyPoseidonSelectors::at_point(&point)
+            );
+
+            let view: [QM31; 13] = core::array::from_fn(|_| rng.qm31());
+            let direct_reconstruction = (0..10).fold(QM31::ZERO, |sum, bit| {
+                sum.add(view[bit].mul_m31(M31(1 << bit)))
+            });
+            assert_eq!(atomic_reconstruct_10(&view), direct_reconstruction);
+            for &value in &view[..10] {
+                assert_eq!(value.square().sub(value), value.mul(value.sub(QM31::ONE)));
+            }
+
+            let openings: [QM31; C1_COLUMNS] = core::array::from_fn(|_| rng.qm31());
+            let mut reference = [QM31::ZERO; 4];
+            for mask in [0x00fcu16, 0xff00, 0xfffc] {
+                let high_sum = state_constants::ABSORPTION_ZERO_MASKS
+                    .iter()
+                    .copied()
+                    .enumerate()
+                    .filter(|(block, candidate)| !(4..=43).contains(block) && *candidate == mask)
+                    .fold(QM31::ZERO, |sum, (block, _)| sum.add(selectors.high[block]));
+                let selector = selectors.low[12].mul(high_sum);
+                for (group, output) in reference.iter_mut().enumerate() {
+                    if mask & (0xf << (4 * group)) != 0 {
+                        let residuals: [QM31; 4] = core::array::from_fn(|slot| {
+                            let lane = 4 * group + slot;
+                            if mask & (1 << lane) != 0 {
+                                openings[lane]
+                            } else {
+                                QM31::ZERO
+                            }
+                        });
+                        *output = output.add(selector.mul(qm31_pack_base4(&residuals)));
+                    }
+                }
+            }
+
+            let absorption_low = selectors.low[12];
+            let low_lanes_selector = absorption_low.mul(selectors.high[3].add(selectors.high[48]));
+            let high_lanes_selector = absorption_low.mul(
+                selectors.high[1]
+                    .add(selectors.high[44])
+                    .add(selectors.high[45])
+                    .add(selectors.high[46])
+                    .add(selectors.high[48]),
+            );
+            let factored: [QM31; 4] = core::array::from_fn(|group| {
+                let residuals: [QM31; 4] = core::array::from_fn(|slot| {
+                    let lane = 4 * group + slot;
+                    if lane >= 2 {
+                        openings[lane]
+                    } else {
+                        QM31::ZERO
+                    }
+                });
+                let selector = if group < 2 {
+                    low_lanes_selector
+                } else {
+                    high_lanes_selector
+                };
+                selector.mul(qm31_pack_base4(&residuals))
+            });
+            assert_eq!(factored, reference);
+        }
+
+        // Deterministic basis teeth pin little-endian order and prove that
+        // the terminal/value tail is not read by the ten-limb reconstruction.
+        for bit in 0..10 {
+            let mut view = [QM31::ZERO; 13];
+            view[bit] = QM31::ONE;
+            view[10] = lift(M31(17));
+            view[11] = lift(M31(19));
+            view[12] = lift(M31(23));
+            assert_eq!(atomic_reconstruct_10(&view), lift(M31(1 << bit)));
+        }
+    }
+
+    #[test]
+    fn optimized_atomic_semantic_matches_unfactored_reference_off_domain() {
+        let mut rng = Rng(0x554e_4641_4354_4f52);
+        for _ in 0..64 {
+            let statement = AtomicPaymentStatementV4 {
+                pool: [0x31; 32],
+                sequence: rng.next(),
+                spend: SpendPublic {
+                    anchor: core::array::from_fn(|_| rng.m31()),
+                    nullifier: core::array::from_fn(|_| rng.m31()),
+                    output_commitment: core::array::from_fn(|_| rng.m31()),
+                    asset_id: rng.m31(),
+                    fee: ((rng.next() % u64::from(VALUE_LIMIT)) + 1) as u32,
+                },
+                output_anchor: core::array::from_fn(|_| rng.m31()),
+                deployment_domain: [0x41; 32],
+            };
+            let openings = StateOnlyPoseidonOpenings {
+                z: core::array::from_fn(|_| rng.qm31()),
+                succ_z: core::array::from_fn(|_| rng.qm31()),
+                xor12_z: core::array::from_fn(|_| rng.qm31()),
+            };
+            let point = core::array::from_fn(|_| rng.qm31());
+            let selectors = AtomicSemanticSelectors::at_point(&point);
+            assert_eq!(
+                atomic_semantic_packed(&statement, &openings, &selectors),
+                atomic_semantic_packed_unfactored_reference(&statement, &openings, &selectors),
+            );
+        }
+    }
+
+    #[test]
+    fn public_digest_high_limb_is_constrained() {
+        let base = AtomicPaymentStatementV4 {
+            pool: [0; 32],
+            sequence: 0,
+            spend: SpendPublic {
+                anchor: [M31::ZERO; DIGEST_ELEMS],
+                nullifier: [M31::ZERO; DIGEST_ELEMS],
+                output_commitment: [M31::ZERO; DIGEST_ELEMS],
+                asset_id: M31::ZERO,
+                fee: 0,
+            },
+            output_anchor: [M31::ZERO; DIGEST_ELEMS],
+            deployment_domain: [0; 32],
+        };
+        let openings = StateOnlyPoseidonOpenings {
+            z: [QM31::ZERO; C1_COLUMNS],
+            succ_z: [QM31::ZERO; C1_COLUMNS],
+            xor12_z: [QM31::ZERO; C1_COLUMNS],
+        };
+        // Select anchor block 23, local row 11 exactly on the Boolean cube.
+        let row = 23 * 16 + 11;
+        let point: [QM31; 10] = core::array::from_fn(|coordinate| {
+            if row & (1 << (9 - coordinate)) != 0 {
+                QM31::ONE
+            } else {
+                QM31::ZERO
+            }
+        });
+        let selectors = AtomicSemanticSelectors::at_point(&point);
+        let original = atomic_semantic_packed(&base, &openings, &selectors);
+        let mut corrupted = base.clone();
+        corrupted.spend.anchor[7] = M31::ONE;
+        let changed = atomic_semantic_packed(&corrupted, &openings, &selectors);
+        assert_ne!(changed, original);
+        assert_ne!(changed[18], original[18]);
+        assert_eq!(
+            changed,
+            atomic_semantic_packed_unfactored_reference(&corrupted, &openings, &selectors)
+        );
     }
 
     fn host_pattern(tuple: AtomicCopyTupleV3) -> CompiledAtomicPattern {
@@ -1722,6 +2055,126 @@ mod tests {
                 ]
             );
         }
+    }
+
+    #[test]
+    fn compiled_v3_selected_horner_matches_legacy_and_detects_claim_corruption() {
+        let mut rng = Rng(0x4154_4f4d_484f_524e);
+        let statement = AtomicPaymentStatementV4 {
+            pool: [0x5a; 32],
+            sequence: 73,
+            spend: SpendPublic {
+                anchor: core::array::from_fn(|_| rng.m31()),
+                nullifier: core::array::from_fn(|_| rng.m31()),
+                output_commitment: core::array::from_fn(|_| rng.m31()),
+                asset_id: rng.m31(),
+                fee: 1,
+            },
+            output_anchor: core::array::from_fn(|_| rng.m31()),
+            deployment_domain: [0x5d; 32],
+        };
+
+        let reference = |claims: &[QM31; ATOMIC_SELECTED_TERMINAL_CLAIMS],
+                         point: &[QM31; 10],
+                         lambda: QM31,
+                         chi: QM31,
+                         theta: QM31,
+                         zerocheck_point: &[QM31; 10],
+                         mu: QM31,
+                         eta: QM31| {
+            let (original, c1, mask_only, g) = atomic_state_only_terminal_parts_compiled_v3(
+                &statement,
+                claims,
+                point,
+                lambda,
+                chi,
+                theta,
+                zerocheck_point,
+                mu,
+            )
+            .unwrap();
+            state_only_selected_mask_value_with_factors(
+                &c1,
+                &mask_only,
+                g,
+                &state_only_mask_factors(point),
+            )
+            .add(eta.mul(original))
+        };
+
+        for _ in 0..64 {
+            let claims = core::array::from_fn(|_| rng.qm31());
+            let point = core::array::from_fn(|_| rng.qm31());
+            let zerocheck_point = core::array::from_fn(|_| rng.qm31());
+            let lambda = rng.qm31();
+            let chi = rng.qm31();
+            let theta = rng.qm31();
+            let mu = rng.qm31();
+            let eta = rng.qm31();
+            assert_eq!(
+                atomic_state_only_selected_masked_terminal_value_compiled_v3(
+                    &statement,
+                    &claims,
+                    &point,
+                    lambda,
+                    chi,
+                    theta,
+                    &zerocheck_point,
+                    mu,
+                    eta,
+                )
+                .unwrap(),
+                reference(
+                    &claims,
+                    &point,
+                    lambda,
+                    chi,
+                    theta,
+                    &zerocheck_point,
+                    mu,
+                    eta,
+                ),
+            );
+        }
+
+        // At L0=0 and eta=0, semantic column zero has coefficient one.
+        // Corrupting that committed claim therefore changes the terminal by
+        // exactly one in both the Horner and legacy-factor evaluators.
+        let claims = [QM31::ZERO; ATOMIC_SELECTED_TERMINAL_CLAIMS];
+        let mut corrupted = claims;
+        corrupted[0] = QM31::ONE;
+        let point = [QM31::ZERO; 10];
+        let zerocheck_point = [QM31::ZERO; 10];
+        let evaluate = |claims| {
+            atomic_state_only_selected_masked_terminal_value_compiled_v3(
+                &statement,
+                claims,
+                &point,
+                QM31::ONE,
+                QM31::ONE,
+                QM31::ONE,
+                &zerocheck_point,
+                QM31::ZERO,
+                QM31::ZERO,
+            )
+            .unwrap()
+        };
+        let original = evaluate(&claims);
+        let corrupted_value = evaluate(&corrupted);
+        assert_eq!(corrupted_value, original.add(QM31::ONE));
+        assert_eq!(
+            corrupted_value,
+            reference(
+                &corrupted,
+                &point,
+                QM31::ONE,
+                QM31::ONE,
+                QM31::ONE,
+                &zerocheck_point,
+                QM31::ZERO,
+                QM31::ZERO,
+            ),
+        );
     }
 
     #[test]

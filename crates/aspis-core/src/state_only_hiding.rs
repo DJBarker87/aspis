@@ -6,7 +6,7 @@
 //! prover because it also needs the circle encoder and the statement crate's
 //! final relation-free-cell inventory.
 
-use crate::field::{CM31, M31, QM31};
+use crate::field::{PreparedQm31Multiplier, CM31, M31, QM31};
 use crate::transcript::{label, ChallengeSampleExhausted, Transcript};
 
 pub const STATE_ONLY_HIDING_C1_COLUMNS: usize = 16;
@@ -246,6 +246,36 @@ const MASK_ONLY_FACTOR_EXPONENTS: [u8; STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS] =
 const EXPLICIT_FACTOR_EXPONENT: usize = STATE_ONLY_HIDING_FACTOR_DEGREE;
 const EXPLICIT_FACTOR_FAMILY: usize = 16;
 
+// The selected terminal can be evaluated as one dense degree-26 polynomial
+// in the shared linear form only because these two frozen schedules form a
+// duplicate-free cover of every exponent except 23. Keep that fact at the
+// compiler boundary: a schedule change must fail here rather than silently
+// changing the selected evaluator's algebra.
+const _: () = {
+    let mut seen = [false; STATE_ONLY_HIDING_FACTOR_DEGREE + 1];
+    let mut column = 0;
+    while column < STATE_ONLY_HIDING_C1_COLUMNS {
+        let exponent = FACTOR_EXPONENTS[column] as usize;
+        assert!(exponent <= STATE_ONLY_HIDING_FACTOR_DEGREE);
+        assert!(!seen[exponent]);
+        seen[exponent] = true;
+        column += 1;
+    }
+    column = 0;
+    while column < STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS {
+        let exponent = MASK_ONLY_FACTOR_EXPONENTS[column] as usize;
+        assert!(exponent <= STATE_ONLY_HIDING_FACTOR_DEGREE);
+        assert!(!seen[exponent]);
+        seen[exponent] = true;
+        column += 1;
+    }
+    let mut exponent = 0;
+    while exponent <= STATE_ONLY_HIDING_FACTOR_DEGREE {
+        assert!(seen[exponent] == (exponent != 23));
+        exponent += 1;
+    }
+};
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct StateOnlyMaskFactors {
     pub c1: [QM31; STATE_ONLY_HIDING_C1_COLUMNS],
@@ -311,8 +341,38 @@ fn mask_linear(family: usize, point: &[QM31; STATE_ONLY_HIDING_SUMCHECK_ROUNDS])
         })
 }
 
+/// Evaluate the two linear forms used by the selected terminal from the same
+/// add-only sufficient statistics. With `S0 = sum z_i` and
+/// `S1 = sum i*z_i`, the frozen forms are exactly
+/// `L0 = 3*S0 + 22*S1` and `L16 = 275*S0 + 150*S1`.
+#[inline(always)]
+fn selected_mask_linears(point: &[QM31; STATE_ONLY_HIDING_SUMCHECK_ROUNDS]) -> (QM31, QM31) {
+    let mut suffix = QM31::ZERO;
+    let mut weighted = QM31::ZERO;
+    for variable in (0..STATE_ONLY_HIDING_SUMCHECK_ROUNDS).rev() {
+        suffix = suffix.add(point[variable]);
+        if variable != 0 {
+            weighted = weighted.add(suffix);
+        }
+    }
+    (
+        suffix.mul_m31(M31(3)).add(weighted.mul_m31(M31(22))),
+        suffix.mul_m31(M31(275)).add(weighted.mul_m31(M31(150))),
+    )
+}
+
 fn mask_power(value: QM31, exponent: usize) -> QM31 {
     (0..exponent).fold(QM31::ONE, |power, _| power.mul(value))
+}
+
+/// Exact fixed addition chain for the explicit degree-26 factor.
+#[inline(always)]
+fn mask_power_26(value: QM31) -> QM31 {
+    let x2 = value.square();
+    let x4 = x2.square();
+    let x8 = x4.square();
+    let x16 = x8.square();
+    x16.mul(x8).mul(x2)
 }
 
 fn explicit_mask_factor(point: &[QM31; STATE_ONLY_HIDING_SUMCHECK_ROUNDS]) -> QM31 {
@@ -433,17 +493,34 @@ pub fn state_only_selected_mask_value_with_factors(
     )
 }
 
+#[inline(never)]
 pub fn state_only_selected_mask_value(
     c1: &[QM31; STATE_ONLY_HIDING_C1_COLUMNS],
     mask_only_c1: &[QM31; STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS],
     explicit_g: QM31,
     point: &[QM31; STATE_ONLY_HIDING_SUMCHECK_ROUNDS],
 ) -> QM31 {
-    state_only_selected_mask_value_with_factors(
-        c1,
-        mask_only_c1,
-        explicit_g,
-        &state_only_mask_factors(point),
+    let (linear, explicit_linear) = selected_mask_linears(point);
+    let mut coefficients = [QM31::ZERO; STATE_ONLY_HIDING_FACTOR_DEGREE + 1];
+    for column in 0..STATE_ONLY_HIDING_C1_COLUMNS {
+        coefficients[usize::from(FACTOR_EXPONENTS[column])] =
+            mul_tower_basis(c1[column], column & 3);
+    }
+    for column in 0..STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS {
+        coefficients[usize::from(MASK_ONLY_FACTOR_EXPONENTS[column])] =
+            mul_tower_basis(mask_only_c1[column], column & 3);
+    }
+
+    let prepared_linear = PreparedQm31Multiplier::new(linear);
+    let mut shared = coefficients[STATE_ONLY_HIDING_FACTOR_DEGREE];
+    for exponent in (0..STATE_ONLY_HIDING_FACTOR_DEGREE).rev() {
+        shared = prepared_linear.mul(shared).add(coefficients[exponent]);
+    }
+
+    shared.add(
+        QM31::ONE
+            .add(mask_power_26(explicit_linear))
+            .mul(explicit_g),
     )
 }
 
@@ -569,6 +646,107 @@ mod tests {
         }
         assert_eq!(values.len(), 1);
         values[0]
+    }
+
+    fn legacy_selected_mask_value(
+        c1: &[QM31; STATE_ONLY_HIDING_C1_COLUMNS],
+        mask_only_c1: &[QM31; STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS],
+        explicit_g: QM31,
+        point: &[QM31; STATE_ONLY_HIDING_SUMCHECK_ROUNDS],
+    ) -> QM31 {
+        state_only_selected_mask_value_with_factors(
+            c1,
+            mask_only_c1,
+            explicit_g,
+            &state_only_mask_factors(point),
+        )
+    }
+
+    #[test]
+    fn selected_horner_matches_the_frozen_factor_evaluator() {
+        let maximal = QM31 {
+            c0: CM31::new(M31(P - 1), M31(P - 1)),
+            c1: CM31::new(M31(P - 1), M31(P - 1)),
+        };
+        let alternating = QM31 {
+            c0: CM31::new(M31::ZERO, M31::ONE),
+            c1: CM31::new(M31(P - 1), M31(P - 2)),
+        };
+        let check = |c1: [QM31; STATE_ONLY_HIDING_C1_COLUMNS],
+                     mask_only_c1: [QM31; STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS],
+                     explicit_g: QM31,
+                     point: [QM31; STATE_ONLY_HIDING_SUMCHECK_ROUNDS]| {
+            assert_eq!(
+                state_only_selected_mask_value(&c1, &mask_only_c1, explicit_g, &point),
+                legacy_selected_mask_value(&c1, &mask_only_c1, explicit_g, &point),
+            );
+        };
+
+        check(
+            [QM31::ZERO; STATE_ONLY_HIDING_C1_COLUMNS],
+            [QM31::ZERO; STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS],
+            QM31::ZERO,
+            [QM31::ZERO; STATE_ONLY_HIDING_SUMCHECK_ROUNDS],
+        );
+        check(
+            [QM31::ONE; STATE_ONLY_HIDING_C1_COLUMNS],
+            [QM31::ONE; STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS],
+            QM31::ONE,
+            [QM31::ONE; STATE_ONLY_HIDING_SUMCHECK_ROUNDS],
+        );
+        check(
+            [maximal; STATE_ONLY_HIDING_C1_COLUMNS],
+            [maximal; STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS],
+            maximal,
+            [maximal; STATE_ONLY_HIDING_SUMCHECK_ROUNDS],
+        );
+        check(
+            core::array::from_fn(|index| if index & 1 == 0 { alternating } else { maximal }),
+            core::array::from_fn(|index| if index & 1 == 0 { maximal } else { alternating }),
+            alternating,
+            core::array::from_fn(|index| if index & 1 == 0 { QM31::ONE } else { maximal }),
+        );
+
+        let mut rng = Rng(0x484f_524e_4552_5633);
+        for _ in 0..256 {
+            check(
+                core::array::from_fn(|_| rng.qm31()),
+                core::array::from_fn(|_| rng.qm31()),
+                rng.qm31(),
+                core::array::from_fn(|_| rng.qm31()),
+            );
+        }
+    }
+
+    #[test]
+    fn selected_linear_statistics_and_power_26_are_exact() {
+        let maximal = QM31 {
+            c0: CM31::new(M31(P - 1), M31(P - 1)),
+            c1: CM31::new(M31(P - 1), M31(P - 1)),
+        };
+        let check_point = |point: [QM31; STATE_ONLY_HIDING_SUMCHECK_ROUNDS]| {
+            let (linear, explicit_linear) = selected_mask_linears(&point);
+            assert_eq!(linear, mask_linear(0, &point));
+            assert_eq!(explicit_linear, mask_linear(EXPLICIT_FACTOR_FAMILY, &point));
+            assert_eq!(mask_power_26(explicit_linear), explicit_linear.pow(26));
+        };
+        check_point([QM31::ZERO; STATE_ONLY_HIDING_SUMCHECK_ROUNDS]);
+        check_point([QM31::ONE; STATE_ONLY_HIDING_SUMCHECK_ROUNDS]);
+        check_point([maximal; STATE_ONLY_HIDING_SUMCHECK_ROUNDS]);
+        check_point(core::array::from_fn(|index| {
+            if index & 1 == 0 {
+                QM31::ONE
+            } else {
+                maximal
+            }
+        }));
+
+        let mut rng = Rng(0x504f_5732_365f_4449);
+        for _ in 0..256 {
+            let value = rng.qm31();
+            assert_eq!(mask_power_26(value), value.pow(26));
+            check_point(core::array::from_fn(|_| rng.qm31()));
+        }
     }
 
     #[test]

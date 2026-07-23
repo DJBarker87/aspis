@@ -1,0 +1,17 @@
+Core extraction (run from programs/aspis-verifier):
+CARGO_TARGET_DIR=/private/tmp/tag67-aeneas.2IIg8c/target-core-final RUSTUP_TOOLCHAIN=nightly-2026-06-01 /private/tmp/aspis-aeneas-tools.aTcyie/charon/bin/charon cargo --preset=aeneas --sysroot=default --start-from='crate::v5_cu_probe::v5_work_wire_magic_is_valid,crate::v5_cu_probe::v5_work_wire_u64,crate::v5_cu_probe::project_v5_work_wire,crate::v5_cu_probe::v5_batch_work_difficulty,crate::v5_cu_probe::v5_fold_work_difficulty,crate::v5_cu_probe::v5_final_work_difficulty,crate::v5_cu_probe::v5_fold_work_record,crate::v5_cu_probe::v5_batch_work_record,crate::v5_cu_probe::v5_final_work_record,crate::v5_cu_probe::v5_fold_work_absorb_input,crate::v5_cu_probe::v5_batch_work_absorb_input,crate::v5_cu_probe::v5_final_work_absorb_input,crate::v5_cu_probe::v5_relation_final_zero_tail_is_valid,crate::v5_cu_probe::v5_query_selector_is_valid' --include='aspis_core::transcript::label::M31_PAYMENT_BATCH_POW_NONCE' --include='aspis_core::transcript::label::M31_CIRCLE_FOLD_POW_NONCE' --include='aspis_core::transcript::label::GRIND_NONCE' --dest-file=/Users/dominic/ZK/aeneas-verif/tag67-work-wire-correspondence/llbc/tag67_work_wire.llbc -- --release --locked -p aspis-verifier --features v5-cu-probe,no-entrypoint
+
+Core translation:
+/private/tmp/aspis-aeneas-tools.aTcyie/aeneas/bin/aeneas -backend lean aeneas-verif/tag67-work-wire-correspondence/llbc/tag67_work_wire.llbc -dest /private/tmp/tag67-aeneas.2IIg8c/lean-core-final -abort-on-error -warnings-as-errors -no-progress-bar
+
+Grinding-only extraction (run from programs/aspis-verifier):
+CARGO_TARGET_DIR=/private/tmp/tag67-aeneas.2IIg8c/target-grind-final RUSTUP_TOOLCHAIN=nightly-2026-06-01 /private/tmp/aspis-aeneas-tools.aTcyie/charon/bin/charon cargo --preset=aeneas --sysroot=default --start-from='crate::v5_cu_probe::v5_real_work_is_valid' --include='aspis_core::transcript::Transcript::grinding_ok' --extract-opaque-bodies --opaque='core::fmt::_' --opaque='core::ptr::_' --opaque='core::result::_' --dest-file=/Users/dominic/ZK/aeneas-verif/tag67-work-wire-correspondence/llbc/tag67_grinding_only.llbc -- --release --locked -p aspis-verifier --features v5-cu-probe,no-entrypoint
+
+Grinding-only translation (expected pinned-Aeneas failure retained in logs):
+/private/tmp/aspis-aeneas-tools.aTcyie/aeneas/bin/aeneas -backend lean aeneas-verif/tag67-work-wire-correspondence/llbc/tag67_grinding_only.llbc -dest /private/tmp/tag67-aeneas.2IIg8c/lean-grind-final -abort-on-error -warnings-as-errors -no-progress-bar
+
+Targeted differential tests:
+CARGO_TARGET_DIR=/private/tmp/tag67-aeneas.2IIg8c/rust-target2 RUSTUP_TOOLCHAIN=nightly-2026-06-01 cargo test --locked -p aspis-verifier --features v5-cu-probe,no-entrypoint tag67_extraction_ -- --nocapture
+
+Full library tests:
+CARGO_TARGET_DIR=/private/tmp/tag67-aeneas.2IIg8c/rust-full-target RUSTUP_TOOLCHAIN=nightly-2026-06-01 cargo test --locked -p aspis-verifier --features v5-cu-probe,no-entrypoint --lib

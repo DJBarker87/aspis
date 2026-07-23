@@ -1,0 +1,58 @@
+{
+  "artifact": "v5_selector_cached_replay_missing_marker_cu",
+  "identical_repeats": 3,
+  "marker_mode": "missing-system-owned-create-cpi",
+  "proof_body_bytes": 72958,
+  "proof_body_path": "/Users/dominic/ZK/results/spend/v5-production-freeze-stream3-20260722/selector-replay/v5_selector_2_proof_body.bin",
+  "proof_body_sha256": "9e1298513f691aeac88be67027b90a6f54ec0b9a6f06eeb1c01cdac21a7d1996",
+  "proof_generation_performed": false,
+  "query_indices": [
+    75558,
+    79839,
+    63274,
+    107847,
+    122569,
+    118926,
+    50796,
+    52161,
+    43596,
+    129622,
+    92207,
+    129493,
+    37001,
+    52953,
+    43467,
+    73149,
+    41929,
+    13368
+  ],
+  "query_selector": 2,
+  "sbf_build_performed": false,
+  "sbf_bytes": 1081384,
+  "sbf_path": "/Users/dominic/ZK/results/spend/v5-production-freeze-stream3-20260722/aspis_verifier_v5_tag67.so",
+  "sbf_sha256": "8dad5ff8cabac2d9ce1f28968010f39bbc14cecad4252de81b3dc89e4b92c418",
+  "sealed_proof_account_bytes": 72998,
+  "sealed_proof_account_sha256": "418b9202e76e70878c83158bc832238f4c28ee7558cc4bb4fb17da49252adb48",
+  "system_program_cpi_completed_repeats": 3,
+  "system_program_cpi_log_evidence": [
+    [
+      "Program 11111111111111111111111111111111 invoke [2]",
+      "Program 11111111111111111111111111111111 success"
+    ],
+    [
+      "Program 11111111111111111111111111111111 invoke [2]",
+      "Program 11111111111111111111111111111111 success"
+    ],
+    [
+      "Program 11111111111111111111111111111111 invoke [2]",
+      "Program 11111111111111111111111111111111 success"
+    ]
+  ],
+  "totals_cu": [
+    1326460,
+    1326460,
+    1326460
+  ],
+  "transaction_cu_limit": 1400000,
+  "transaction_headroom_cu": 73540
+}

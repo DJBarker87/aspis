@@ -1,4 +1,4 @@
-import ComponentBV5SamplerAuthenticatedConstants20260721.Funs
+import ComponentBV5SamplerCurrent20260722.Funs
 import QM31AddSubNegProof
 import HalfProof
 import Aeneas.Tactic.Step.StepStar

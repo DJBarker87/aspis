@@ -22,6 +22,7 @@ pub mod circle_hiding_query;
 pub mod circle_line_merkle;
 pub mod circle_merkle;
 pub mod circle_openings;
+pub mod circle_pcs_shape;
 pub mod circle_prefix;
 pub mod circle_query;
 pub mod field;

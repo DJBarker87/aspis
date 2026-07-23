@@ -1,6 +1,11 @@
 #!/bin/sh
 set -eu
 
+# The former split sampler/evaluator replay is retained below this exec only as
+# historical provenance.  The unified replay is authoritative.
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec "$SCRIPT_DIR/unified-current-20260722/replay-lean432.sh" "$@"
+
 : "${AENEAS432_BACKEND:?set to the patched Aeneas b59d5188 backends/lean directory}"
 
 ROOT=${REPO_ROOT:-/Users/dominic/ZK}
@@ -9,6 +14,7 @@ ARITH_SOURCE=${COMPONENT_B_ARITH432_SOURCE:-$ROOT/aeneas-verif/component-b-weigh
 LEAN_BIN=${LEAN432_BIN:-/Users/dominic/.elan/toolchains/leanprover--lean4---v4.32.0/bin/lean}
 EXPECTED_AENEAS=b59d5188c082f704a418c7cb4e52ad69328002d1
 SPLIT="$BUNDLE/generated/v5-evaluate-current-split-20260722"
+SAMPLER_SPLIT="$BUNDLE/generated/ComponentBV5SamplerCurrent20260722"
 GENERATED_DEPS="$BUNDLE/generated-deps/current-20260722"
 MANIFEST=${COMPONENT_B_REPLAY_MANIFEST:-metadata/SHA256SUMS}
 if test -n "${COMPONENT_B_REPLAY_OUT:-}"; then
@@ -60,6 +66,20 @@ ACTUAL_CORE_SOURCE=$(shasum -a 256 \
   "$ROOT/crates/aspis-core/src/state_only_sumcheck.rs" | awk '{print $1}')
 test "$ACTUAL_CORE_SOURCE" = "$EXPECTED_CORE_SOURCE"
 
+# Bind the generated sampler graph to the exact current candidate sources.
+# This extraction contains the real rejection sampler, all ten zero-boundary
+# rounds, the generated field constants, and the boundary-sum implementation.
+SAMPLER_LLBC="$BUNDLE/llbc/component_b_v5_sampler_current_20260722.llbc"
+jq -e '.has_errors == false and (.translated.ordered_decls | length) == 88' \
+  "$SAMPLER_LLBC" >/dev/null
+for source in v5_mask.rs v5_sumcheck_mask.rs; do
+  jq -j --arg source "crates/aspis-prover/src/$source" '.translated.files[]
+    | select(.name.Local == $source) | .contents' "$SAMPLER_LLBC" \
+    > "$OUT/sampler-embedded-$source"
+  cmp "$ROOT/crates/aspis-prover/src/$source" \
+    "$OUT/sampler-embedded-$source"
+done
+
 for module in AspisCoreFieldAddSubNeg AspisCoreFieldReduceU64 \
   AspisCoreFieldMulNamespaced AspisCoreCm31Multiplicative
 do
@@ -80,6 +100,15 @@ done
   > "$OUT/current-generated-normalization.diff"
 cmp "$SPLIT/lean432-normalization.diff" \
   "$OUT/current-generated-normalization.diff"
+
+(diff -u --label Types.raw.lean --label Types.lean \
+    "$SAMPLER_SPLIT/Types.raw.lean" "$SAMPLER_SPLIT/Types.lean" || true
+ diff -u --label Funs.raw.lean --label Funs.lean \
+    "$SAMPLER_SPLIT/Funs.raw.lean" "$SAMPLER_SPLIT/Funs.lean" || true) \
+  | sed 's/[[:space:]]*$//' \
+  > "$OUT/sampler-generated-normalization.diff"
+cmp "$SAMPLER_SPLIT/lean432-normalization.diff" \
+  "$OUT/sampler-generated-normalization.diff"
 
 ARITH_MODULES="
 AspisCoreFieldReduceU64
@@ -112,6 +141,9 @@ ComponentBCurrentFieldEvaluatorCorrespondence
 ComponentBMaintainedTerminalBridge
 ComponentBDegree27CoordinateFormulaD1E7
 ComponentBMaintainedTerminalCapstone
+ComponentBSamplerZeroBoundary
+ComponentBSamplerMaintainedPredicatesBridge
+ComponentBSamplerTerminalCapstone
 "
 for module in $RETARGET_MODULES; do
   if rg -n '\b(sorry|admit|native_decide|axiom|unsafe|ofReduceBool)\b|maxHeartbeats|maxRecDepth' \
@@ -128,7 +160,7 @@ for module in $PROOF_MODULES; do
   fi
 done
 for module in M31ReduceU64Proof M31MulProof CM31ExactModel \
-  CM31MultiplicativeProof QM31AddSubNegProof
+  CM31MultiplicativeProof QM31AddSubNegProof HalfShiftCountAdapter HalfProof
 do
   if rg -n '\b(sorry|admit|native_decide|axiom|unsafe|ofReduceBool)\b|maxHeartbeats|maxRecDepth' \
       "$ARITH_SOURCE/$module.lean"; then
@@ -148,6 +180,12 @@ if rg -n '\b(sorry|admit|native_decide|unsafe|ofReduceBool)\b|maxHeartbeats|maxR
     "$SPLIT/ComponentBV5EvaluateCurrent20260722/Funs.lean"
 then
   echo "forbidden token or raised proof limit in normalized generated module" >&2
+  exit 1
+fi
+if rg -n '\b(sorry|admit|native_decide|unsafe|ofReduceBool)\b|maxHeartbeats|maxRecDepth' \
+    "$SAMPLER_SPLIT/Types.lean" "$SAMPLER_SPLIT/Funs.lean"
+then
+  echo "forbidden token or raised proof limit in normalized sampler module" >&2
   exit 1
 fi
 
@@ -172,8 +210,8 @@ if ! diff -u "$OUT/theorems" "$OUT/audits"; then
   exit 1
 fi
 THEOREM_COUNT=$(wc -l < "$OUT/theorems" | tr -d ' ')
-if test "$THEOREM_COUNT" -ne 49; then
-  echo "expected 49 exported theorems, found $THEOREM_COUNT" >&2
+if test "$THEOREM_COUNT" -ne 81; then
+  echo "expected 81 exported theorems, found $THEOREM_COUNT" >&2
   exit 1
 fi
 
@@ -206,6 +244,29 @@ for module in $ARITH_MODULES; do
   esac
   LEAN_PATH="$LEAN_PATH" "$LEAN_BIN" -R "$OUT" -o "$OUT/$module.olean" \
     "$OUT/$module.lean" >> "$LOG" 2>&1
+done
+
+# The sampler proof uses the authentic halving graph.  Normalize only the
+# generated proof-limit directives; the adapter and proof replay unchanged.
+cp "$ARITH_SOURCE/HalfShiftCountAdapter.lean" "$OUT/"
+sed -e '/maxHeartbeats/d' -e '/maxRecDepth/d' \
+  "$ARITH_SOURCE/AspisCoreHalf.lean" > "$OUT/AspisCoreHalf.lean"
+cp "$ARITH_SOURCE/HalfProof.lean" "$OUT/"
+for module in HalfShiftCountAdapter AspisCoreHalf HalfProof; do
+  LEAN_PATH="$LEAN_PATH" "$LEAN_BIN" -R "$OUT" -o "$OUT/$module.olean" \
+    "$OUT/$module.lean" >> "$LOG" 2>&1
+done
+
+mkdir -p "$OUT/ComponentBV5SamplerCurrent20260722"
+cp "$SAMPLER_SPLIT/Types.lean" \
+  "$OUT/ComponentBV5SamplerCurrent20260722/"
+cp "$SAMPLER_SPLIT/Funs.lean" \
+  "$OUT/ComponentBV5SamplerCurrent20260722/"
+for module in Types Funs; do
+  LEAN_PATH="$LEAN_PATH" "$LEAN_BIN" -R "$OUT" \
+    -o "$OUT/ComponentBV5SamplerCurrent20260722/$module.olean" \
+    "$OUT/ComponentBV5SamplerCurrent20260722/$module.lean" \
+    >> "$LOG" 2>&1
 done
 
 mkdir -p "$OUT/ComponentBV5EvaluateCurrent20260722"
@@ -258,6 +319,13 @@ do
     -o "$OUT/$module.olean" "$OUT/$module.lean" >> "$LOG" 2>&1
 done
 
+for module in ComponentBSamplerZeroBoundary \
+  ComponentBSamplerMaintainedPredicatesBridge ComponentBSamplerTerminalCapstone
+do
+  LEAN_PATH="$OUT:$ASPIS_PATH:$AENEAS_PATH" "$LEAN_BIN" -R "$OUT" \
+    -o "$OUT/$module.olean" "$OUT/$module.lean" >> "$LOG" 2>&1
+done
+
 cat "$LOG"
 
 if rg -n 'sorryAx' "$LOG"; then
@@ -293,9 +361,9 @@ fi
 
 AXIOM_RECORD_COUNT=$(rg -c \
   'depends on axioms:|does not depend on any axioms' "$LOG")
-if test "$AXIOM_RECORD_COUNT" -ne 74; then
-  echo "expected 74 axiom records, found $AXIOM_RECORD_COUNT" >&2
+if test "$AXIOM_RECORD_COUNT" -ne 113; then
+  echo "expected 113 axiom records, found $AXIOM_RECORD_COUNT" >&2
   exit 1
 fi
 
-echo "PASS: Component-B current-source evaluator and maintained terminal capstone replayed on Lean 4.32"
+echo "PASS: Component-B current-source sampler, evaluator, and maintained terminal capstone replayed on Lean 4.32"

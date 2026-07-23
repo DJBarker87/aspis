@@ -1,14 +1,17 @@
-//! Real-witness host proof material for the isolated v5 CU path.
+//! Real-witness host proof material for the feature-gated v5/tag-67 path.
 //!
-//! This is deliberately not a production proof grammar. It constructs every
-//! algebraic and PCS value needed by the complete tag-67 CU transaction:
+//! This constructs every algebraic and PCS value needed by the complete
+//! candidate grammar:
 //! the atomic-v3 witness trace, split C1/C2 roots in Fiat--Shamir order, the
 //! Component-B-masked semantic sumcheck, all `4 * 19` claims, the terminal
 //! identity, one shared four-round relation, later roots, final polynomial,
 //! transcript-derived q18 positions, and five real private opening sections.
 //!
-//! Component C remains provisional, so an artefact from this module is an
-//! integration/measurement result only, not a security-approved proof.
+//! [`build_v5_production_host_artifact_cap17`] owns fresh private entropy,
+//! post-root public Fiat--Shamir salts, quiet deployed PoW, and the bounded
+//! public-Good retry lifecycle. This does not enable tag 67 in production
+//! dispatch or discharge PCS/Merkle, hash/random-oracle, Fiat--Shamir, entropy,
+//! or executable-correspondence assumptions.
 
 use aspis_core::circle_fri::circle_fiber_point_for_domain_log;
 use aspis_core::circle_hiding_prefix::PAYMENT_HIDING_QUERY_DRAW_LIMIT;
@@ -21,6 +24,10 @@ use aspis_core::circle_prefix::{
 use aspis_core::field::{qm31_power_table, CM31, M31, QM31};
 use aspis_core::proof::M31_CIRCLE_BASIS_DISCRIMINATOR;
 use aspis_core::state_only_hiding::begin_state_only_masked_sumcheck;
+use aspis_core::state_only_prefix::{
+    STATE_ONLY_SPEND_BATCH_GRINDING_BITS, STATE_ONLY_SPEND_FOLD_GRINDING_BITS,
+    STATE_ONLY_SPEND_GRINDING_BITS,
+};
 use aspis_core::state_only_private_merkle::STATE_ONLY_PRIVATE_LEAF_SALT_BYTES;
 use aspis_core::state_only_sumcheck::begin_state_only_zerocheck;
 use aspis_core::sumcheck::{SumcheckPolynomial, SUMCHECK_COEFFICIENTS};
@@ -35,8 +42,9 @@ use aspis_statement::{
     xor12_point, AtomicPaymentStatementV4, AtomicStatementError, SpendWitness,
     ATOMIC_PAYMENT_STATEMENT_PAYLOAD_BYTES,
 };
+use zeroize::{Zeroize, Zeroizing};
 
-use super::component_c::V5ComponentCLane;
+use super::component_c::{V5ComponentCLane, V5_C_FREE_COORDINATES};
 use super::spend_messages::{
     gamma_combine_v5_messages, verify_v5_pcs_openings, V5BuiltPcsOpenings, V5PcsRoots,
     V5SpendMessageError, V5StructuredBLane, V5_B_PAD_COORDINATES, V5_C1_LANES, V5_C2_LANES,
@@ -46,7 +54,11 @@ use super::split_layer_zero::{
     build_and_commit_v5_c1, build_v5_relation_claims, finish_v5_split_layer_zero, V5RelationClaims,
     V5SplitLayerZero,
 };
-use super::{M31BlockMask, V5_CODEWORD_LEN, V5_DOMAIN_LOG, V5_TRACE_ROWS};
+use super::{
+    sample_atomic_m31_block_mask, sample_qm31, M31BlockMask, MaskSampleExhausted, Qm31WordSource,
+    V5_ATOMIC_A_FREE_COORDINATES, V5_CODEWORD_LEN, V5_DOMAIN_LOG, V5_MASK_SAMPLE_RETRY_LIMIT,
+    V5_TRACE_ROWS,
+};
 use crate::circle_candidate::{
     combined_layer_leaves, fold_candidate_codeword_round_for_domain_log, CircleCandidateError,
     COMBINED_LAYER_LEAF_BYTES,
@@ -59,7 +71,9 @@ use crate::state_only_zerocheck::StateOnlyZerocheckTrace;
 use crate::v5_mask::relation_prover::{
     V5IncrementalRelation, V5RelationProverError, V5RelationTrace,
 };
-use crate::v5_sumcheck_mask::{prove_v5_masked_state_only_zerocheck, V5SumcheckMask};
+use crate::v5_sumcheck_mask::{
+    prove_v5_masked_state_only_zerocheck, V5SumcheckMask, V5_SUMCHECK_MASK_RANDOMNESS,
+};
 
 /// Historical transcript-domain bytes retained for host/verifier compatibility.
 /// The `cu-v1` suffix is not the wire grammar version; `AV5PFX03` and the
@@ -76,6 +90,11 @@ pub const V5_REAL_HOST_GOOD_RETRY_CAP: u8 = 17;
 /// cryptographic interface, so it remains an explicit deployment obligation.
 pub const V5_REAL_HOST_GOOD_RETRY_FRESHNESS_OBLIGATION: &str =
     "each retry derives a fresh schedule triple from public witness-independent transcript entropy";
+/// Operational assumption behind the complete production-attempt API. The
+/// kernel and Rust types cannot establish the quality or independence of the
+/// host operating system's random source.
+pub const V5_PRODUCTION_OS_ENTROPY_ASSUMPTION: &str =
+    "every getrandom draw used by a v5 attempt is fresh, mutually independent, and uniformly distributed; entropy failure aborts without a deterministic fallback";
 
 /// Exact real-transcript prefix consumed by the isolated tag-67 CU verifier
 /// through the shared mode-9 kernel. This deliberately retains the existing
@@ -85,6 +104,31 @@ pub const V5_REAL_PREFIX_MAGIC: [u8; 8] = *b"AV5PFX03";
 pub const V5_REAL_PREFIX_VERSION: u8 = 3;
 pub const V5_REAL_PREFIX_FLAGS: u8 = 0;
 pub const V5_REAL_PREFIX_HEADER_BYTES: usize = 23;
+pub const V5_REAL_PREFIX_FIXED_HEADER: [u8; V5_REAL_PREFIX_HEADER_BYTES] = [
+    b'A',
+    b'V',
+    b'5',
+    b'P',
+    b'F',
+    b'X',
+    b'0',
+    b'3',
+    V5_REAL_PREFIX_VERSION,
+    V5_REAL_PREFIX_FLAGS,
+    0,
+    1,
+    192,
+    0,
+    V5_C1_LANES as u8,
+    V5_C2_LANES as u8,
+    1,
+    2,
+    3,
+    10,
+    27,
+    4,
+    0,
+];
 pub const V5_REAL_PREFIX_C1_ROOT_OFFSET: usize = V5_REAL_PREFIX_HEADER_BYTES;
 pub const V5_REAL_PREFIX_C2_ROOT_OFFSET: usize = V5_REAL_PREFIX_C1_ROOT_OFFSET + 32;
 pub const V5_REAL_PREFIX_INITIAL_CLAIM_OFFSET: usize = V5_REAL_PREFIX_C2_ROOT_OFFSET + 32;
@@ -95,6 +139,8 @@ pub const V5_REAL_PREFIX_CLAIMS_OFFSET: usize =
 pub const V5_REAL_PREFIX_CLAIMS_BYTES: usize = 4 * V5_TOTAL_LANES * 16;
 pub const V5_REAL_PREFIX_TERMINALS_OFFSET: usize =
     V5_REAL_PREFIX_CLAIMS_OFFSET + V5_REAL_PREFIX_CLAIMS_BYTES;
+pub const V5_REAL_PREFIX_TERMINAL_MASK_OFFSET: usize = V5_REAL_PREFIX_TERMINALS_OFFSET + 16;
+pub const V5_REAL_PREFIX_TERMINAL_MASKED_OFFSET: usize = V5_REAL_PREFIX_TERMINALS_OFFSET + 32;
 pub const V5_REAL_PREFIX_BYTES: usize = 6_423;
 pub const V5_REAL_PREFIX_TERMINAL_BYTES: usize = 3 * 16;
 pub const V5_REAL_PREFIX_INACTIVE_CLAIM_OFFSET: usize =
@@ -105,6 +151,14 @@ pub const V5_PUBLIC_FS_SALT_COUNT: usize = 2 + V5_LATER_LAYERS;
 pub const V5_PUBLIC_FS_SALT_PRODUCTION_OBLIGATION: &str =
     "sample each public FS salt freshly and independently after its corresponding PCS root is fixed and before the first dependent challenge";
 pub const V5_REAL_PREFIX_PUBLIC_FS_SALTS_OFFSET: usize = V5_REAL_PREFIX_RESERVE_OFFSET;
+pub const V5_REAL_PREFIX_PUBLIC_FS_C2_SALT_OFFSET: usize =
+    V5_REAL_PREFIX_PUBLIC_FS_SALTS_OFFSET + V5_PUBLIC_FS_SALT_BYTES;
+pub const V5_REAL_PREFIX_PUBLIC_FS_LATER0_SALT_OFFSET: usize =
+    V5_REAL_PREFIX_PUBLIC_FS_SALTS_OFFSET + 2 * V5_PUBLIC_FS_SALT_BYTES;
+pub const V5_REAL_PREFIX_PUBLIC_FS_LATER1_SALT_OFFSET: usize =
+    V5_REAL_PREFIX_PUBLIC_FS_SALTS_OFFSET + 3 * V5_PUBLIC_FS_SALT_BYTES;
+pub const V5_REAL_PREFIX_PUBLIC_FS_LATER2_SALT_OFFSET: usize =
+    V5_REAL_PREFIX_PUBLIC_FS_SALTS_OFFSET + 4 * V5_PUBLIC_FS_SALT_BYTES;
 pub const V5_REAL_PREFIX_PUBLIC_FS_SALTS_BYTES: usize =
     V5_PUBLIC_FS_SALT_COUNT * V5_PUBLIC_FS_SALT_BYTES;
 pub const V5_REAL_PREFIX_ZERO_RESERVE_OFFSET: usize =
@@ -142,18 +196,34 @@ const _: () = assert!(V5_REAL_ATOMIC_CONTEXT_BYTES == 440);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct V5HostPowBits {
+    pub batch_bits: u8,
     pub folds: [u8; CANDIDATE_ROUND_COUNT],
     pub final_bits: u8,
 }
 
 impl V5HostPowBits {
-    /// Fast isolated-CU construction. The transcript still binds and absorbs
-    /// every nonce; the consuming verifier must use the same advertised bits.
+    /// Exact deployed Profile-23/S-two work factors.
+    pub const DEPLOYED: Self = Self {
+        batch_bits: STATE_ONLY_SPEND_BATCH_GRINDING_BITS,
+        folds: STATE_ONLY_SPEND_FOLD_GRINDING_BITS,
+        final_bits: STATE_ONLY_SPEND_GRINDING_BITS,
+    };
+
+    /// Fast diagnostic/test-only construction. The transcript still binds and
+    /// absorbs every nonce; this setting is never a production work profile.
     pub const CU_ZERO: Self = Self {
+        batch_bits: 0,
         folds: [0; CANDIDATE_ROUND_COUNT],
         final_bits: 0,
     };
 }
+
+const _: () = assert!(STATE_ONLY_SPEND_BATCH_GRINDING_BITS == 37);
+const _: () = assert!(STATE_ONLY_SPEND_FOLD_GRINDING_BITS[0] == 34);
+const _: () = assert!(STATE_ONLY_SPEND_FOLD_GRINDING_BITS[1] == 33);
+const _: () = assert!(STATE_ONLY_SPEND_FOLD_GRINDING_BITS[2] == 30);
+const _: () = assert!(STATE_ONLY_SPEND_FOLD_GRINDING_BITS[3] == 25);
+const _: () = assert!(STATE_ONLY_SPEND_GRINDING_BITS == 32);
 
 #[derive(Clone, Copy)]
 pub struct V5HostPcsSalts<'a> {
@@ -208,9 +278,10 @@ pub struct V5RealHostInputs<'a> {
 
 /// Production input surface for the public-FS-salt timing seam.
 ///
-/// Unlike [`V5RealHostInputs`], this type has no public-salt field. The builder
-/// owns five fresh OS draws and performs each draw only after the corresponding
-/// PCS root exists and before that root is absorbed into the transcript.
+/// Unlike [`V5RealHostInputs`], this type has no public-salt or configurable
+/// work-profile field. The builder fixes [`V5HostPowBits::DEPLOYED`], owns five
+/// fresh OS draws, and performs each draw only after the corresponding PCS root
+/// exists and before that root is absorbed into the transcript.
 pub struct V5FreshPublicFsRealHostInputs<'a> {
     pub statement: &'a AtomicPaymentStatementV4,
     pub witness: &'a SpendWitness,
@@ -222,7 +293,15 @@ pub struct V5FreshPublicFsRealHostInputs<'a> {
     pub component_c: &'a V5ComponentCLane,
     pub salts: V5HostPcsSalts<'a>,
     pub hash: HashFn,
-    pub pow_bits: V5HostPowBits,
+}
+
+/// Complete public input to one bounded production proof attempt. All private
+/// masking material, all five private Merkle salt vectors, and all five public
+/// Fiat--Shamir salts are owned and sampled by the production manager.
+#[derive(Clone, Copy)]
+pub struct V5ProductionAttemptInputs<'a> {
+    pub statement: &'a AtomicPaymentStatementV4,
+    pub witness: &'a SpendWitness,
 }
 
 /// One immutable Component-B mask reference shared by every real-host role.
@@ -319,7 +398,6 @@ impl<'a> V5RealHostCoreInputs<'a> {
             component_c,
             salts,
             hash,
-            pow_bits,
         } = inputs;
         Self {
             statement,
@@ -332,7 +410,7 @@ impl<'a> V5RealHostCoreInputs<'a> {
             component_c,
             salts,
             hash,
-            pow_bits,
+            pow_bits: V5HostPowBits::DEPLOYED,
         }
     }
 }
@@ -364,6 +442,7 @@ pub struct V5RealHostArtifact {
     pub semantic_sumcheck: StateOnlyZerocheckTrace,
     pub relation_claims: V5RelationClaims,
     pub terminal: V5TerminalIdentity,
+    pub batch_nonce: u64,
     pub inactive_claim: QM31,
     pub relation: V5RelationTrace,
     pub ood_points_circle: [[aspis_core::circle::SecureCirclePoint; CANDIDATE_OOD_SAMPLES]; 1],
@@ -385,56 +464,155 @@ pub struct V5RealHostArtifact {
     pub transcript_state_after_queries: [u8; 32],
 }
 
+#[inline(never)]
+fn write_real_prefix_qm31(bytes: &mut [u8; V5_REAL_PREFIX_BYTES], start: usize, value: QM31) {
+    value.write_le_bytes(&mut bytes[start..start + 16]);
+}
+
+#[inline(never)]
+fn write_real_prefix_32(bytes: &mut [u8; V5_REAL_PREFIX_BYTES], start: usize, value: &[u8; 32]) {
+    bytes[start..start + 32].copy_from_slice(value);
+}
+
+#[inline(never)]
+fn write_real_prefix_sumcheck(
+    bytes: &mut [u8; V5_REAL_PREFIX_BYTES],
+    value: &[u8; V5_REAL_PREFIX_SUMCHECK_BYTES],
+) {
+    bytes[V5_REAL_PREFIX_SUMCHECK_OFFSET..V5_REAL_PREFIX_CLAIMS_OFFSET].copy_from_slice(value);
+}
+
+#[inline(never)]
+fn write_real_prefix_relation_claims(
+    bytes: &mut [u8; V5_REAL_PREFIX_BYTES],
+    value: &[u8; V5_REAL_PREFIX_CLAIMS_BYTES],
+) {
+    bytes[V5_REAL_PREFIX_CLAIMS_OFFSET..V5_REAL_PREFIX_TERMINALS_OFFSET].copy_from_slice(value);
+}
+
+#[inline(never)]
+fn write_real_prefix_header(bytes: &mut [u8; V5_REAL_PREFIX_BYTES]) {
+    bytes[..V5_REAL_PREFIX_HEADER_BYTES].copy_from_slice(&V5_REAL_PREFIX_FIXED_HEADER);
+}
+
+#[inline(never)]
+fn write_real_prefix_claims(
+    bytes: &mut [u8; V5_REAL_PREFIX_BYTES],
+    roots: &V5PcsRoots,
+    semantic_initial_claim: QM31,
+    semantic_sumcheck_proof: &[u8; V5_REAL_PREFIX_SUMCHECK_BYTES],
+    relation_claims: &[u8; V5_REAL_PREFIX_CLAIMS_BYTES],
+) {
+    write_real_prefix_32(bytes, V5_REAL_PREFIX_C1_ROOT_OFFSET, &roots.c1);
+    write_real_prefix_32(bytes, V5_REAL_PREFIX_C2_ROOT_OFFSET, &roots.c2);
+    write_real_prefix_qm31(
+        bytes,
+        V5_REAL_PREFIX_INITIAL_CLAIM_OFFSET,
+        semantic_initial_claim,
+    );
+    write_real_prefix_sumcheck(bytes, semantic_sumcheck_proof);
+    write_real_prefix_relation_claims(bytes, relation_claims);
+}
+
+#[inline(never)]
+fn write_real_prefix_terminal_values(
+    bytes: &mut [u8; V5_REAL_PREFIX_BYTES],
+    terminal: V5TerminalIdentity,
+    inactive_claim: QM31,
+) {
+    write_real_prefix_qm31(bytes, V5_REAL_PREFIX_TERMINALS_OFFSET, terminal.real);
+    write_real_prefix_qm31(bytes, V5_REAL_PREFIX_TERMINAL_MASK_OFFSET, terminal.mask);
+    write_real_prefix_qm31(
+        bytes,
+        V5_REAL_PREFIX_TERMINAL_MASKED_OFFSET,
+        terminal.masked,
+    );
+    write_real_prefix_qm31(bytes, V5_REAL_PREFIX_INACTIVE_CLAIM_OFFSET, inactive_claim);
+}
+
+#[inline(never)]
+fn write_real_prefix_public_fs_salts(
+    bytes: &mut [u8; V5_REAL_PREFIX_BYTES],
+    public_fs_salts: &V5PublicFsSalts,
+) {
+    write_real_prefix_32(
+        bytes,
+        V5_REAL_PREFIX_PUBLIC_FS_SALTS_OFFSET,
+        &public_fs_salts.c1,
+    );
+    write_real_prefix_32(
+        bytes,
+        V5_REAL_PREFIX_PUBLIC_FS_C2_SALT_OFFSET,
+        &public_fs_salts.c2,
+    );
+    write_real_prefix_32(
+        bytes,
+        V5_REAL_PREFIX_PUBLIC_FS_LATER0_SALT_OFFSET,
+        &public_fs_salts.later[0],
+    );
+    write_real_prefix_32(
+        bytes,
+        V5_REAL_PREFIX_PUBLIC_FS_LATER1_SALT_OFFSET,
+        &public_fs_salts.later[1],
+    );
+    write_real_prefix_32(
+        bytes,
+        V5_REAL_PREFIX_PUBLIC_FS_LATER2_SALT_OFFSET,
+        &public_fs_salts.later[2],
+    );
+}
+
+#[inline(never)]
+fn write_real_prefix_tail(
+    bytes: &mut [u8; V5_REAL_PREFIX_BYTES],
+    terminal: V5TerminalIdentity,
+    inactive_claim: QM31,
+    public_fs_salts: &V5PublicFsSalts,
+) {
+    write_real_prefix_terminal_values(bytes, terminal, inactive_claim);
+    write_real_prefix_public_fs_salts(bytes, public_fs_salts);
+}
+
+fn encode_real_prefix_fields(
+    roots: &V5PcsRoots,
+    semantic_initial_claim: QM31,
+    semantic_sumcheck_proof: &[u8; V5_REAL_PREFIX_SUMCHECK_BYTES],
+    relation_claims: &[u8; V5_REAL_PREFIX_CLAIMS_BYTES],
+    terminal: V5TerminalIdentity,
+    inactive_claim: QM31,
+    public_fs_salts: &V5PublicFsSalts,
+) -> [u8; V5_REAL_PREFIX_BYTES] {
+    let mut bytes = [0u8; V5_REAL_PREFIX_BYTES];
+    write_real_prefix_header(&mut bytes);
+    write_real_prefix_claims(
+        &mut bytes,
+        roots,
+        semantic_initial_claim,
+        semantic_sumcheck_proof,
+        relation_claims,
+    );
+    write_real_prefix_tail(&mut bytes, terminal, inactive_claim, public_fs_salts);
+    debug_assert!(bytes[V5_REAL_PREFIX_ZERO_RESERVE_OFFSET..]
+        .iter()
+        .all(|byte| *byte == 0));
+    bytes
+}
+
 impl V5RealHostArtifact {
     /// Serialize the exact real-witness semantic prefix. The reserve remaining
     /// after the five public FS salts stays canonical zero so the verifier can
     /// reject hidden extensions.
     pub fn encode_real_prefix(&self) -> [u8; V5_REAL_PREFIX_BYTES] {
-        let mut bytes = [0u8; V5_REAL_PREFIX_BYTES];
-        bytes[..8].copy_from_slice(&V5_REAL_PREFIX_MAGIC);
-        bytes[8] = V5_REAL_PREFIX_VERSION;
-        bytes[9] = V5_REAL_PREFIX_FLAGS;
-        bytes[10..12].copy_from_slice(&256u16.to_le_bytes());
-        bytes[12..14].copy_from_slice(&192u16.to_le_bytes());
-        bytes[14] = V5_C1_LANES as u8;
-        bytes[15] = V5_C2_LANES as u8;
-        bytes[16..19].copy_from_slice(&[1, 2, 3]);
-        bytes[19] = 10;
-        bytes[20] = 27;
-        bytes[21] = 4;
-        bytes[22] = 0; // point-major claim layout
-
-        bytes[V5_REAL_PREFIX_C1_ROOT_OFFSET..V5_REAL_PREFIX_C2_ROOT_OFFSET]
-            .copy_from_slice(&self.roots.c1);
-        bytes[V5_REAL_PREFIX_C2_ROOT_OFFSET..V5_REAL_PREFIX_INITIAL_CLAIM_OFFSET]
-            .copy_from_slice(&self.roots.c2);
-        self.semantic_initial_claim.write_le_bytes(
-            &mut bytes[V5_REAL_PREFIX_INITIAL_CLAIM_OFFSET..V5_REAL_PREFIX_SUMCHECK_OFFSET],
-        );
-        bytes[V5_REAL_PREFIX_SUMCHECK_OFFSET..V5_REAL_PREFIX_CLAIMS_OFFSET]
-            .copy_from_slice(&self.semantic_sumcheck.proof);
-        bytes[V5_REAL_PREFIX_CLAIMS_OFFSET..V5_REAL_PREFIX_TERMINALS_OFFSET]
-            .copy_from_slice(&self.relation_claims.encode_point_major());
-        for (index, terminal) in [self.terminal.real, self.terminal.mask, self.terminal.masked]
-            .iter()
-            .copied()
-            .enumerate()
-        {
-            let start = V5_REAL_PREFIX_TERMINALS_OFFSET + index * 16;
-            terminal.write_le_bytes(&mut bytes[start..start + 16]);
-        }
-        self.inactive_claim.write_le_bytes(
-            &mut bytes[V5_REAL_PREFIX_INACTIVE_CLAIM_OFFSET..V5_REAL_PREFIX_RESERVE_OFFSET],
-        );
-        for section in 0..V5_PUBLIC_FS_SALT_COUNT {
-            let start = V5_REAL_PREFIX_PUBLIC_FS_SALTS_OFFSET + section * V5_PUBLIC_FS_SALT_BYTES;
-            bytes[start..start + V5_PUBLIC_FS_SALT_BYTES]
-                .copy_from_slice(self.public_fs_salts.section(section));
-        }
-        debug_assert!(bytes[V5_REAL_PREFIX_ZERO_RESERVE_OFFSET..]
-            .iter()
-            .all(|byte| *byte == 0));
-        bytes
+        let relation_claims = self.relation_claims.encode_point_major();
+        encode_real_prefix_fields(
+            &self.roots,
+            self.semantic_initial_claim,
+            &self.semantic_sumcheck.proof,
+            &relation_claims,
+            self.terminal,
+            self.inactive_claim,
+            &self.public_fs_salts,
+        )
     }
 
     /// Serialize `(z, successor(z), xor12(z))`, point-major, for the existing
@@ -524,19 +702,66 @@ impl V5RealHostArtifact {
     }
 }
 
+/// Exact private diagnostic for the lower-level sampler. This is deliberately
+/// not part of the public production API because the failed attempt/stage can
+/// be witness-dependent metadata.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum V5ProductionEntropyStage {
+    ComponentALane(u8),
+    HcopyPadding,
+    SumcheckMask,
+    ComponentBPads,
+    ComponentBPivotPad,
+    DirectComponentC,
+    PrivateC1Salts,
+    PrivateC2Salts,
+    PrivateLater0Salts,
+    PrivateLater1Salts,
+    PrivateLater2Salts,
+}
+
+/// Exact rejection sampler that exhausted its pinned 16-word budget.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum V5ProductionMaskStage {
+    ComponentALane(u8),
+    HcopyPadding,
+    SumcheckMask,
+    ComponentBPads,
+    ComponentBPivotPad,
+    DirectComponentC,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum V5RealHostError {
     Message(V5SpendMessageError),
     Relation(V5RelationProverError),
     Circle(CircleCandidateError),
     Opening(StateOnlyPrivateOpeningBuildError),
-    /// Fresh public-FS entropy was unavailable. The OS error is deliberately
-    /// not exposed through the proof-building interface.
+    /// Fresh public-FS entropy was unavailable. The OS error and root stage are
+    /// deliberately not exposed through the proof-building interface.
     PublicFsEntropy,
+    /// The unpublished-attempt PoW miner failed without publishing progress or
+    /// checkpoint state for the rejected attempt.
+    UnpublishedPow(crate::pow::UnpublishedPowError),
     AllGoodCandidatesBad,
     GoodRetryCapExhausted,
     Stage(&'static str),
     Consistency(&'static str),
+}
+
+/// Opaque production abort. Exact attempt numbers and internal build stages are
+/// intentionally hidden because they can depend on the private witness.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct V5ProductionAttemptError;
+
+/// Successful cap-17 production result. `successful_attempt_index` is the
+/// zero-based index in the fixed `0..17` attempt schedule; it is retained as
+/// explicit public retry metadata. `artifact.query_selector` remains the
+/// honest least-Good branch chosen inside the transcript-bound artifact
+/// builder.
+pub struct V5ProductionAttemptOutput {
+    pub successful_attempt_index: u8,
+    pub artifact: V5RealHostArtifact,
 }
 
 /// Successful output of the bounded public GoodA/GoodB retry manager. The
@@ -595,6 +820,12 @@ impl From<StateOnlyPrivateOpeningBuildError> for V5RealHostError {
     }
 }
 
+impl From<crate::pow::UnpublishedPowError> for V5RealHostError {
+    fn from(error: crate::pow::UnpublishedPowError) -> Self {
+        Self::UnpublishedPow(error)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum V5PublicFsSaltStage {
     C1,
@@ -625,12 +856,265 @@ impl V5PublicFsSaltStage {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum V5ProductionMaterialError {
+    Entropy(V5ProductionEntropyStage),
+    MaskSampleExhausted(V5ProductionMaskStage),
+    Consistency(&'static str),
+}
+
+trait V5ProductionEntropyProvider {
+    fn fill(
+        &mut self,
+        stage: V5ProductionEntropyStage,
+        output: &mut [u8],
+    ) -> Result<(), V5ProductionMaterialError>;
+}
+
+struct V5OsProductionEntropy;
+
+impl V5ProductionEntropyProvider for V5OsProductionEntropy {
+    fn fill(
+        &mut self,
+        stage: V5ProductionEntropyStage,
+        output: &mut [u8],
+    ) -> Result<(), V5ProductionMaterialError> {
+        getrandom::fill(output).map_err(|_| V5ProductionMaterialError::Entropy(stage))
+    }
+}
+
+/// A finite, OS-filled word source sized for the rejection sampler's exact
+/// worst case. The sampler can never request beyond this buffer: every M31
+/// coordinate consumes at most `V5_MASK_SAMPLE_RETRY_LIMIT` words.
+struct V5ProductionWordSource {
+    bytes: Zeroizing<Vec<u8>>,
+    cursor: usize,
+}
+
+impl V5ProductionWordSource {
+    fn sample(
+        provider: &mut impl V5ProductionEntropyProvider,
+        stage: V5ProductionEntropyStage,
+        m31_coordinates: usize,
+    ) -> Result<Self, V5ProductionMaterialError> {
+        let byte_count = m31_coordinates
+            .checked_mul(V5_MASK_SAMPLE_RETRY_LIMIT)
+            .and_then(|words| words.checked_mul(core::mem::size_of::<u32>()))
+            .ok_or(V5ProductionMaterialError::Consistency(
+                "production entropy buffer size",
+            ))?;
+        let mut bytes = Zeroizing::new(vec![0u8; byte_count]);
+        provider.fill(stage, bytes.as_mut_slice())?;
+        Ok(Self { bytes, cursor: 0 })
+    }
+}
+
+impl Qm31WordSource for V5ProductionWordSource {
+    fn next_word(&mut self) -> u32 {
+        let end = self.cursor + core::mem::size_of::<u32>();
+        let word = u32::from_le_bytes(
+            self.bytes[self.cursor..end]
+                .try_into()
+                .expect("production word source has a whole u32"),
+        );
+        self.cursor = end;
+        word
+    }
+}
+
+struct V5FreshPrivateMaterial {
+    component_a: [M31BlockMask; V5_C1_LANES],
+    hcopy_padding: [QM31; V5_TRACE_ROWS],
+    sumcheck_mask: V5SumcheckMask,
+    component_b_pads: [QM31; V5_B_PAD_COORDINATES],
+    component_b_pivot_pad: QM31,
+    component_c: V5ComponentCLane,
+    c1_salts: Zeroizing<Vec<[u8; STATE_ONLY_PRIVATE_LEAF_SALT_BYTES]>>,
+    c2_salts: Zeroizing<Vec<[u8; STATE_ONLY_PRIVATE_LEAF_SALT_BYTES]>>,
+    later_salts: [Zeroizing<Vec<[u8; STATE_ONLY_PRIVATE_LEAF_SALT_BYTES]>>; V5_LATER_LAYERS],
+}
+
+fn sample_production_qm31(
+    source: &mut V5ProductionWordSource,
+    stage: V5ProductionMaskStage,
+) -> Result<QM31, V5ProductionMaterialError> {
+    sample_qm31(source)
+        .map_err(|MaskSampleExhausted| V5ProductionMaterialError::MaskSampleExhausted(stage))
+}
+
+fn sample_production_hcopy_padding(
+    provider: &mut impl V5ProductionEntropyProvider,
+) -> Result<[QM31; V5_TRACE_ROWS], V5ProductionMaterialError> {
+    let inactive = atomic_state_only_copy_inactive_row_masks_v3();
+    let inactive_count = inactive
+        .iter()
+        .map(|word| word.count_ones() as usize)
+        .sum::<usize>();
+    let pivot = (0..V5_TRACE_ROWS)
+        .find(|row| inactive[row >> 4] & (1 << (row & 15)) != 0)
+        .ok_or(V5ProductionMaterialError::Consistency(
+            "Hcopy inactive pivot",
+        ))?;
+    let free_count =
+        inactive_count
+            .checked_sub(1)
+            .ok_or(V5ProductionMaterialError::Consistency(
+                "Hcopy inactive dimension",
+            ))?;
+    let mut source = V5ProductionWordSource::sample(
+        provider,
+        V5ProductionEntropyStage::HcopyPadding,
+        4 * free_count,
+    )?;
+    let mut padding = [QM31::ZERO; V5_TRACE_ROWS];
+    let mut sum = QM31::ZERO;
+    for row in 0..V5_TRACE_ROWS {
+        if row != pivot && inactive[row >> 4] & (1 << (row & 15)) != 0 {
+            padding[row] =
+                sample_production_qm31(&mut source, V5ProductionMaskStage::HcopyPadding)?;
+            sum = sum.add(padding[row]);
+        }
+    }
+    padding[pivot] = sum.neg();
+    debug_assert_eq!(
+        padding
+            .iter()
+            .copied()
+            .enumerate()
+            .filter(|(row, _)| inactive[row >> 4] & (1 << (row & 15)) != 0)
+            .fold(QM31::ZERO, |sum, (_, value)| sum.add(value)),
+        QM31::ZERO
+    );
+    Ok(padding)
+}
+
+const V5_PRIVATE_SALT_CHUNK_LEAVES: usize = 128;
+
+fn sample_production_private_salts(
+    provider: &mut impl V5ProductionEntropyProvider,
+    stage: V5ProductionEntropyStage,
+    count: usize,
+) -> Result<Zeroizing<Vec<[u8; STATE_ONLY_PRIVATE_LEAF_SALT_BYTES]>>, V5ProductionMaterialError> {
+    let mut salts = Zeroizing::new(Vec::with_capacity(count));
+    let mut chunk =
+        Zeroizing::new([0u8; STATE_ONLY_PRIVATE_LEAF_SALT_BYTES * V5_PRIVATE_SALT_CHUNK_LEAVES]);
+    while salts.len() < count {
+        let leaves = (count - salts.len()).min(V5_PRIVATE_SALT_CHUNK_LEAVES);
+        let bytes = leaves * STATE_ONLY_PRIVATE_LEAF_SALT_BYTES;
+        provider.fill(stage, &mut chunk[..bytes])?;
+        for encoded in chunk[..bytes].chunks_exact(STATE_ONLY_PRIVATE_LEAF_SALT_BYTES) {
+            salts.push(
+                encoded
+                    .try_into()
+                    .expect("private salt chunk has the pinned leaf width"),
+            );
+        }
+        chunk[..bytes].zeroize();
+    }
+    Ok(salts)
+}
+
+fn sample_v5_fresh_private_material(
+    provider: &mut impl V5ProductionEntropyProvider,
+) -> Result<V5FreshPrivateMaterial, V5ProductionMaterialError> {
+    let mut component_a = Vec::with_capacity(V5_C1_LANES);
+    for lane in 0..V5_C1_LANES {
+        let entropy_stage = V5ProductionEntropyStage::ComponentALane(lane as u8);
+        let mask_stage = V5ProductionMaskStage::ComponentALane(lane as u8);
+        let mut source =
+            V5ProductionWordSource::sample(provider, entropy_stage, V5_ATOMIC_A_FREE_COORDINATES)?;
+        component_a.push(sample_atomic_m31_block_mask(&mut source).map_err(
+            |MaskSampleExhausted| V5ProductionMaterialError::MaskSampleExhausted(mask_stage),
+        )?);
+    }
+    let component_a = component_a
+        .try_into()
+        .map_err(|_| V5ProductionMaterialError::Consistency("Component-A lane count"))?;
+
+    let hcopy_padding = sample_production_hcopy_padding(provider)?;
+
+    let mut sumcheck_source = V5ProductionWordSource::sample(
+        provider,
+        V5ProductionEntropyStage::SumcheckMask,
+        4 * V5_SUMCHECK_MASK_RANDOMNESS,
+    )?;
+    let sumcheck_mask =
+        V5SumcheckMask::sample(&mut sumcheck_source).map_err(|MaskSampleExhausted| {
+            V5ProductionMaterialError::MaskSampleExhausted(V5ProductionMaskStage::SumcheckMask)
+        })?;
+
+    let mut pad_source = V5ProductionWordSource::sample(
+        provider,
+        V5ProductionEntropyStage::ComponentBPads,
+        4 * V5_B_PAD_COORDINATES,
+    )?;
+    let mut component_b_pads = [QM31::ZERO; V5_B_PAD_COORDINATES];
+    for pad in &mut component_b_pads {
+        *pad = sample_production_qm31(&mut pad_source, V5ProductionMaskStage::ComponentBPads)?;
+    }
+
+    let mut pivot_source =
+        V5ProductionWordSource::sample(provider, V5ProductionEntropyStage::ComponentBPivotPad, 4)?;
+    let component_b_pivot_pad =
+        sample_production_qm31(&mut pivot_source, V5ProductionMaskStage::ComponentBPivotPad)?;
+
+    let mut component_c_source = V5ProductionWordSource::sample(
+        provider,
+        V5ProductionEntropyStage::DirectComponentC,
+        4 * V5_C_FREE_COORDINATES,
+    )?;
+    let component_c =
+        V5ComponentCLane::sample(&mut component_c_source).map_err(|MaskSampleExhausted| {
+            V5ProductionMaterialError::MaskSampleExhausted(V5ProductionMaskStage::DirectComponentC)
+        })?;
+
+    let c1_salts = sample_production_private_salts(
+        provider,
+        V5ProductionEntropyStage::PrivateC1Salts,
+        V5_LAYER_ZERO_LEAVES,
+    )?;
+    let c2_salts = sample_production_private_salts(
+        provider,
+        V5ProductionEntropyStage::PrivateC2Salts,
+        V5_LAYER_ZERO_LEAVES,
+    )?;
+    let later_salts = [
+        sample_production_private_salts(
+            provider,
+            V5ProductionEntropyStage::PrivateLater0Salts,
+            1usize << V5_PRIVATE_DEPTHS[2],
+        )?,
+        sample_production_private_salts(
+            provider,
+            V5ProductionEntropyStage::PrivateLater1Salts,
+            1usize << V5_PRIVATE_DEPTHS[3],
+        )?,
+        sample_production_private_salts(
+            provider,
+            V5ProductionEntropyStage::PrivateLater2Salts,
+            1usize << V5_PRIVATE_DEPTHS[4],
+        )?,
+    ];
+
+    Ok(V5FreshPrivateMaterial {
+        component_a,
+        hcopy_padding,
+        sumcheck_mask,
+        component_b_pads,
+        component_b_pivot_pad,
+        component_c,
+        c1_salts,
+        c2_salts,
+        later_salts,
+    })
+}
+
 trait V5PublicFsSaltProvider {
     /// Produce one salt after `root` is fixed. Implementations must not cache a
     /// future production salt before this method is called.
     fn sample_after_root(
         &mut self,
-        stage: V5PublicFsSaltStage,
+        _stage: V5PublicFsSaltStage,
         root: &[u8; 32],
     ) -> Result<[u8; V5_PUBLIC_FS_SALT_BYTES], V5RealHostError>;
 }
@@ -769,6 +1253,43 @@ fn absorb_terminal(transcript: &mut Transcript, terminal: V5TerminalIdentity) {
     transcript.absorb(label::CLAIM, &bytes);
 }
 
+#[derive(Clone, Copy)]
+enum V5HostPowStrategy {
+    /// Byte-compatible diagnostic/KAT behavior, including configured progress
+    /// and checkpoints. Never used by the cap-17 production manager.
+    DiagnosticPublished,
+    /// Quiet production behavior for attempts that may be discarded by Good.
+    ProductionUnpublished,
+}
+
+fn mine_v5_pow(
+    transcript: &Transcript,
+    bits: u8,
+    strategy: V5HostPowStrategy,
+) -> Result<u64, V5RealHostError> {
+    match strategy {
+        V5HostPowStrategy::DiagnosticPublished => {
+            Ok(crate::pow::find_grinding_nonce(transcript, bits))
+        }
+        V5HostPowStrategy::ProductionUnpublished => {
+            crate::pow::find_grinding_nonce_unpublished(transcript, bits).map_err(Into::into)
+        }
+    }
+}
+
+fn mine_check_and_absorb_batch_pow(
+    transcript: &mut Transcript,
+    bits: u8,
+    strategy: V5HostPowStrategy,
+) -> Result<u64, V5RealHostError> {
+    let nonce = mine_v5_pow(transcript, bits, strategy)?;
+    if !transcript.grinding_ok(nonce, bits) {
+        return Err(V5RealHostError::Consistency("batch grinding nonce"));
+    }
+    transcript.absorb(label::M31_PAYMENT_BATCH_POW_NONCE, &nonce.to_le_bytes());
+    Ok(nonce)
+}
+
 fn v5_legacy_atomic_claims(
     c1: &[Vec<M31>; V5_C1_LANES],
     hcopy: &[QM31],
@@ -868,10 +1389,6 @@ fn aggregate_claims(claims: &V5RelationClaims, gamma: QM31) -> [QM31; 4] {
             .zip(powers)
             .fold(QM31::ZERO, |sum, (value, power)| sum.add(power.mul(value)))
     })
-}
-
-fn mine(transcript: &Transcript, bits: u8) -> u64 {
-    crate::pow::find_grinding_nonce(transcript, bits)
 }
 
 const V5_GOOD_A_SIZE: usize = 12;
@@ -1122,27 +1639,117 @@ pub fn build_v5_real_host_artifact(
     let mut provider = FixedV5PublicFsSaltProvider {
         salts: public_fs_salts,
     };
-    build_v5_real_host_artifact_with_provider(inputs, &mut provider)
+    build_v5_real_host_artifact_with_provider(
+        inputs,
+        &mut provider,
+        V5HostPowStrategy::DiagnosticPublished,
+    )
 }
 
 /// Build the same candidate artifact while owning the public FS entropy seam.
 ///
 /// Each 32-byte salt is drawn from the OS only after its PCS root is fixed and
 /// immediately before that root is transcript-absorbed. Entropy failure is a
-/// fatal [`V5RealHostError::PublicFsEntropy`] with no OS-specific detail. This
-/// function does not own mask/private-salt entropy and therefore is not, by
-/// itself, a complete production attempt manager.
+/// fatal [`V5RealHostError::PublicFsEntropy`].
+/// Its deployed PoW work uses the unpublished-attempt miner, so a caller may
+/// safely discard an all-three-bad attempt without emitting progress or a
+/// checkpoint. This function does not own mask/private-salt entropy and
+/// therefore is not, by itself, a complete production attempt manager.
 pub fn build_v5_real_host_artifact_with_fresh_public_fs_salts(
     inputs: V5FreshPublicFsRealHostInputs<'_>,
 ) -> Result<V5RealHostArtifact, V5RealHostError> {
     let inputs = V5RealHostCoreInputs::from_fresh(inputs);
-    build_v5_real_host_artifact_with_provider(inputs, &mut FreshV5PublicFsSaltProvider)
+    build_v5_real_host_artifact_with_provider(
+        inputs,
+        &mut FreshV5PublicFsSaltProvider,
+        V5HostPowStrategy::ProductionUnpublished,
+    )
+}
+
+fn build_v5_production_host_artifact_attempt(
+    inputs: V5ProductionAttemptInputs<'_>,
+) -> Result<V5RealHostArtifact, V5RealHostError> {
+    let mut entropy = V5OsProductionEntropy;
+    let material = sample_v5_fresh_private_material(&mut entropy)
+        .map_err(|_| V5RealHostError::Stage("production private material"))?;
+    build_v5_real_host_artifact_with_fresh_public_fs_salts(V5FreshPublicFsRealHostInputs {
+        statement: inputs.statement,
+        witness: inputs.witness,
+        component_a: &material.component_a,
+        hcopy_padding: &material.hcopy_padding,
+        sumcheck_mask: &material.sumcheck_mask,
+        component_b_pads: &material.component_b_pads,
+        component_b_pivot_pad: material.component_b_pivot_pad,
+        component_c: &material.component_c,
+        salts: V5HostPcsSalts {
+            c1: material.c1_salts.as_slice(),
+            c2: material.c2_salts.as_slice(),
+            later: [
+                material.later_salts[0].as_slice(),
+                material.later_salts[1].as_slice(),
+                material.later_salts[2].as_slice(),
+            ],
+        },
+        hash: crate::HOST_HASH,
+    })
+}
+
+/// Concrete, indexed cap-17 recursion used by the production manager. Keeping
+/// the attempt operation out of a generic callback makes the executable retry
+/// control flow available to Rust-to-Lean extraction without changing which
+/// outcomes retry, abort, or release the public failed-attempt count. The
+/// explicit bound limits runtime recursion depth to 17 attempts.
+fn build_v5_production_host_artifact_cap17_indexed(
+    inputs: V5ProductionAttemptInputs<'_>,
+    failed_attempts: u8,
+) -> Result<V5GoodRetryOutput<V5RealHostArtifact>, V5RealHostError> {
+    if failed_attempts >= V5_REAL_HOST_GOOD_RETRY_CAP {
+        return Err(V5RealHostError::GoodRetryCapExhausted);
+    }
+    match build_v5_production_host_artifact_attempt(inputs) {
+        Ok(value) => Ok(V5GoodRetryOutput {
+            failed_attempts,
+            value,
+        }),
+        Err(V5RealHostError::AllGoodCandidatesBad) => {
+            build_v5_production_host_artifact_cap17_indexed(inputs, failed_attempts + 1)
+        }
+        Err(error) => Err(error),
+    }
+}
+
+/// Build a complete production v5 host artifact with at most 17 attempts.
+///
+/// Every attempt independently draws all Component-A lane sources, Hcopy
+/// padding, the complete correlated Component-B state (271 mask coordinates,
+/// 255 pads, and its separate dependent-pivot pad), the direct Component-C
+/// lane, and exact private salts for all five trees. Public FS salts remain
+/// staged inside [`build_v5_real_host_artifact_with_fresh_public_fs_salts`]
+/// after their corresponding roots. Only `AllGoodCandidatesBad` is retried;
+/// every entropy, sampler, PoW, algebraic, commitment, and serialization error
+/// becomes the same opaque public abort so private build-stage metadata cannot
+/// escape through this API.
+///
+/// This executable seam retains the named external premise
+/// [`V5_PRODUCTION_OS_ENTROPY_ASSUMPTION`]. It does not replace PCS/Merkle,
+/// hash/random-oracle, Fiat--Shamir, or Rust-to-model assumptions.
+pub fn build_v5_production_host_artifact_cap17(
+    inputs: V5ProductionAttemptInputs<'_>,
+) -> Result<V5ProductionAttemptOutput, V5ProductionAttemptError> {
+    match build_v5_production_host_artifact_cap17_indexed(inputs, 0) {
+        Ok(output) => Ok(V5ProductionAttemptOutput {
+            successful_attempt_index: output.failed_attempts,
+            artifact: output.value,
+        }),
+        Err(_) => Err(V5ProductionAttemptError),
+    }
 }
 
 #[allow(clippy::too_many_lines)]
 fn build_v5_real_host_artifact_with_provider(
     inputs: V5RealHostCoreInputs<'_>,
     public_fs_salt_provider: &mut impl V5PublicFsSaltProvider,
+    pow_strategy: V5HostPowStrategy,
 ) -> Result<V5RealHostArtifact, V5RealHostError> {
     let statement_digest = atomic_payment_statement_digest_v4(inputs.statement, inputs.hash)
         .map_err(|_| V5RealHostError::Stage("statement digest"))?;
@@ -1245,6 +1852,8 @@ fn build_v5_real_host_artifact_with_provider(
         return Err(V5RealHostError::Consistency("semantic terminal identity"));
     }
     absorb_terminal(&mut transcript, terminal);
+    let batch_nonce =
+        mine_check_and_absorb_batch_pow(&mut transcript, inputs.pow_bits.batch_bits, pow_strategy)?;
 
     let gamma = transcript
         .challenge_nonzero_qm31()
@@ -1332,7 +1941,7 @@ fn build_v5_real_host_artifact_with_provider(
         }
         let polynomial = relation.polynomial()?;
         absorb_relation_sumcheck(&mut transcript, round, &polynomial);
-        fold_nonces[round] = mine(&transcript, inputs.pow_bits.folds[round]);
+        fold_nonces[round] = mine_v5_pow(&transcript, inputs.pow_bits.folds[round], pow_strategy)?;
         absorb_fold_pow(&mut transcript, round, fold_nonces[round]);
         alphas[round] = transcript
             .challenge_qm31()
@@ -1374,7 +1983,7 @@ fn build_v5_real_host_artifact_with_provider(
         ));
     }
     absorb_final(&mut transcript, &relation.final_coefficients);
-    let final_nonce = mine(&transcript, inputs.pow_bits.final_bits);
+    let final_nonce = mine_v5_pow(&transcript, inputs.pow_bits.final_bits, pow_strategy)?;
     transcript.absorb(label::GRIND_NONCE, &final_nonce.to_le_bytes());
     let pre_selector_transcript = transcript.clone();
     let conversion48 = super::ordinary_monomials_in_natural_line_basis(48);
@@ -1491,6 +2100,7 @@ fn build_v5_real_host_artifact_with_provider(
         semantic_sumcheck,
         relation_claims,
         terminal,
+        batch_nonce,
         inactive_claim,
         relation,
         ood_points_circle: circle_points,
@@ -1527,6 +2137,70 @@ mod tests {
 
     use crate::v5_mask::{sample_atomic_m31_lane_masks, Qm31WordSource};
     use crate::HOST_HASH;
+
+    #[test]
+    fn deployed_pow_profile_is_exact_and_cu_zero_is_diagnostic_only() {
+        assert_eq!(V5HostPowBits::DEPLOYED.batch_bits, 37);
+        assert_eq!(V5HostPowBits::DEPLOYED.folds, [34, 33, 30, 25]);
+        assert_eq!(V5HostPowBits::DEPLOYED.final_bits, 32);
+        assert_eq!(V5HostPowBits::CU_ZERO.batch_bits, 0);
+        assert_eq!(V5HostPowBits::CU_ZERO.folds, [0; CANDIDATE_ROUND_COUNT]);
+        assert_eq!(V5HostPowBits::CU_ZERO.final_bits, 0);
+        assert_ne!(V5HostPowBits::CU_ZERO, V5HostPowBits::DEPLOYED);
+    }
+
+    #[test]
+    fn batch_pow_is_checked_then_absorbed_before_gamma() {
+        let terminal = V5TerminalIdentity {
+            real: QM31::ZERO,
+            mask: QM31::ONE,
+            masked: QM31::ONE,
+        };
+        let mut actual = Transcript::new(HOST_HASH);
+        actual.absorb(label::PROFILE, V5_REAL_HOST_TRANSCRIPT_DOMAIN);
+        absorb_terminal(&mut actual, terminal);
+        let before_batch = actual.clone();
+
+        let nonce =
+            mine_check_and_absorb_batch_pow(&mut actual, 8, V5HostPowStrategy::DiagnosticPublished)
+                .unwrap();
+        assert!(before_batch.grinding_ok(nonce, 8));
+
+        let mut expected = before_batch;
+        expected.absorb(label::M31_PAYMENT_BATCH_POW_NONCE, &nonce.to_le_bytes());
+        assert_eq!(actual.diagnostic_state(), expected.diagnostic_state());
+        assert_eq!(
+            actual.challenge_nonzero_qm31().unwrap(),
+            expected.challenge_nonzero_qm31().unwrap()
+        );
+    }
+
+    #[test]
+    fn changing_batch_nonce_changes_the_following_gamma() {
+        let terminal = V5TerminalIdentity {
+            real: QM31::ONE,
+            mask: QM31::ZERO,
+            masked: QM31::ONE,
+        };
+        let mut nonce_zero = Transcript::new(HOST_HASH);
+        nonce_zero.absorb(label::PROFILE, V5_REAL_HOST_TRANSCRIPT_DOMAIN);
+        absorb_terminal(&mut nonce_zero, terminal);
+        let mut nonce_one = nonce_zero.clone();
+        nonce_zero.absorb(label::M31_PAYMENT_BATCH_POW_NONCE, &0u64.to_le_bytes());
+        nonce_one.absorb(label::M31_PAYMENT_BATCH_POW_NONCE, &1u64.to_le_bytes());
+        assert_ne!(
+            nonce_zero.challenge_nonzero_qm31().unwrap(),
+            nonce_one.challenge_nonzero_qm31().unwrap()
+        );
+    }
+
+    #[test]
+    fn batch_nonce_does_not_consume_the_source_authentic_prefix_reserve() {
+        assert_eq!(V5_REAL_PREFIX_PUBLIC_FS_SALTS_OFFSET, 5_863);
+        assert_eq!(V5_REAL_PREFIX_ZERO_RESERVE_OFFSET, 6_023);
+        assert_eq!(V5_REAL_PREFIX_ZERO_RESERVE_BYTES, 400);
+        assert_eq!(V5_REAL_PREFIX_BYTES, 6_423);
+    }
 
     struct XorShift(u64);
 
@@ -1762,6 +2436,216 @@ mod tests {
         });
         assert!(matches!(result, Err(V5RealHostError::PublicFsEntropy)));
         assert_eq!(calls, 1);
+    }
+
+    struct RecordingProductionEntropy {
+        calls: Vec<(V5ProductionEntropyStage, usize)>,
+        next: u32,
+        fail_at: Option<V5ProductionEntropyStage>,
+        force_rejection_at: Option<V5ProductionEntropyStage>,
+    }
+
+    impl RecordingProductionEntropy {
+        fn canonical() -> Self {
+            Self {
+                calls: Vec::new(),
+                next: 1,
+                fail_at: None,
+                force_rejection_at: None,
+            }
+        }
+
+        fn bytes_for(&self, stage: V5ProductionEntropyStage) -> usize {
+            self.calls
+                .iter()
+                .filter(|(called, _)| *called == stage)
+                .map(|(_, bytes)| *bytes)
+                .sum()
+        }
+
+        fn calls_for(&self, stage: V5ProductionEntropyStage) -> usize {
+            self.calls
+                .iter()
+                .filter(|(called, _)| *called == stage)
+                .count()
+        }
+    }
+
+    impl V5ProductionEntropyProvider for RecordingProductionEntropy {
+        fn fill(
+            &mut self,
+            stage: V5ProductionEntropyStage,
+            output: &mut [u8],
+        ) -> Result<(), V5ProductionMaterialError> {
+            self.calls.push((stage, output.len()));
+            if self.fail_at == Some(stage) {
+                return Err(V5ProductionMaterialError::Entropy(stage));
+            }
+            for word in output.chunks_exact_mut(4) {
+                let value = if self.force_rejection_at == Some(stage) {
+                    P
+                } else {
+                    let value = self.next % P;
+                    self.next = self.next.wrapping_add(1);
+                    value
+                };
+                word.copy_from_slice(&value.to_le_bytes());
+            }
+            Ok(())
+        }
+    }
+
+    const fn production_word_bytes(m31_coordinates: usize) -> usize {
+        m31_coordinates * V5_MASK_SAMPLE_RETRY_LIMIT * core::mem::size_of::<u32>()
+    }
+
+    #[test]
+    fn production_private_material_uses_exact_independent_domains_and_invariants() {
+        let mut entropy = RecordingProductionEntropy::canonical();
+        let material = sample_v5_fresh_private_material(&mut entropy).unwrap();
+
+        for lane in 0..V5_C1_LANES {
+            let stage = V5ProductionEntropyStage::ComponentALane(lane as u8);
+            assert_eq!(entropy.calls_for(stage), 1);
+            assert_eq!(
+                entropy.bytes_for(stage),
+                production_word_bytes(V5_ATOMIC_A_FREE_COORDINATES)
+            );
+            assert_eq!(
+                crate::v5_mask::atomic_m31_block_mask_coefficient_sum(&material.component_a[lane]),
+                M31::ZERO
+            );
+        }
+        assert_ne!(material.component_a[0], material.component_a[1]);
+
+        let inactive = atomic_state_only_copy_inactive_row_masks_v3();
+        let inactive_count = inactive
+            .iter()
+            .map(|word| word.count_ones() as usize)
+            .sum::<usize>();
+        assert_eq!(
+            entropy.bytes_for(V5ProductionEntropyStage::HcopyPadding),
+            production_word_bytes(4 * (inactive_count - 1))
+        );
+        let inactive_sum = material
+            .hcopy_padding
+            .iter()
+            .copied()
+            .enumerate()
+            .filter(|(row, _)| inactive[row >> 4] & (1 << (row & 15)) != 0)
+            .fold(QM31::ZERO, |sum, (_, value)| sum.add(value));
+        assert_eq!(inactive_sum, QM31::ZERO);
+        for row in 0..V5_TRACE_ROWS {
+            if inactive[row >> 4] & (1 << (row & 15)) == 0 {
+                assert_eq!(material.hcopy_padding[row], QM31::ZERO);
+            }
+        }
+
+        assert_eq!(
+            entropy.bytes_for(V5ProductionEntropyStage::SumcheckMask),
+            production_word_bytes(4 * V5_SUMCHECK_MASK_RANDOMNESS)
+        );
+        for round in 0..10 {
+            assert_eq!(
+                aspis_core::state_only_sumcheck::state_only_boundary_sum(
+                    material.sumcheck_mask.zero_boundary_round(round).unwrap()
+                ),
+                QM31::ZERO
+            );
+        }
+        assert_eq!(
+            entropy.bytes_for(V5ProductionEntropyStage::ComponentBPads),
+            production_word_bytes(4 * V5_B_PAD_COORDINATES)
+        );
+        assert_eq!(
+            entropy.bytes_for(V5ProductionEntropyStage::ComponentBPivotPad),
+            production_word_bytes(4)
+        );
+        assert_eq!(
+            entropy.bytes_for(V5ProductionEntropyStage::DirectComponentC),
+            production_word_bytes(4 * V5_C_FREE_COORDINATES)
+        );
+        assert_eq!(
+            crate::v5_mask::component_c::v5_c_inactive_functional(material.component_c.values()),
+            QM31::ZERO
+        );
+
+        let private_salt_bytes = |count: usize| count * STATE_ONLY_PRIVATE_LEAF_SALT_BYTES;
+        assert_eq!(material.c1_salts.len(), V5_LAYER_ZERO_LEAVES);
+        assert_eq!(material.c2_salts.len(), V5_LAYER_ZERO_LEAVES);
+        assert_eq!(
+            entropy.bytes_for(V5ProductionEntropyStage::PrivateC1Salts),
+            private_salt_bytes(V5_LAYER_ZERO_LEAVES)
+        );
+        assert_eq!(
+            entropy.bytes_for(V5ProductionEntropyStage::PrivateC2Salts),
+            private_salt_bytes(V5_LAYER_ZERO_LEAVES)
+        );
+        for (round, stage) in [
+            V5ProductionEntropyStage::PrivateLater0Salts,
+            V5ProductionEntropyStage::PrivateLater1Salts,
+            V5ProductionEntropyStage::PrivateLater2Salts,
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let count = 1usize << V5_PRIVATE_DEPTHS[2 + round];
+            assert_eq!(material.later_salts[round].len(), count);
+            assert_eq!(entropy.bytes_for(stage), private_salt_bytes(count));
+        }
+        assert_ne!(material.c1_salts[0], material.c2_salts[0]);
+    }
+
+    #[test]
+    fn production_entropy_and_rejection_failures_are_precise_and_never_retried() {
+        assert_eq!(core::mem::size_of::<V5ProductionAttemptError>(), 0);
+        let failed_stage = V5ProductionEntropyStage::ComponentALane(3);
+        let mut entropy = RecordingProductionEntropy::canonical();
+        entropy.fail_at = Some(failed_stage);
+        assert!(matches!(
+            sample_v5_fresh_private_material(&mut entropy),
+            Err(V5ProductionMaterialError::Entropy(stage)) if stage == failed_stage
+        ));
+        assert_eq!(entropy.calls_for(failed_stage), 1);
+        assert_eq!(
+            entropy.calls.last().map(|(stage, _)| *stage),
+            Some(failed_stage)
+        );
+
+        let rejected_stage = V5ProductionEntropyStage::ComponentALane(0);
+        let mut rejected = RecordingProductionEntropy::canonical();
+        rejected.force_rejection_at = Some(rejected_stage);
+        assert!(matches!(
+            sample_v5_fresh_private_material(&mut rejected),
+            Err(V5ProductionMaterialError::MaskSampleExhausted(
+                V5ProductionMaskStage::ComponentALane(0)
+            ))
+        ));
+
+        let mut calls = 0u8;
+        let result = retry_v5_public_good_attempts::<()>(|_| {
+            calls += 1;
+            Err(V5RealHostError::Stage("production private material"))
+        });
+        assert!(matches!(
+            result,
+            Err(V5RealHostError::Stage("production private material"))
+        ));
+        assert_eq!(calls, 1);
+    }
+
+    #[test]
+    fn production_pow_strategy_is_controlled_without_running_deployed_work() {
+        let mut transcript = Transcript::new(HOST_HASH);
+        transcript.absorb(label::PROFILE, b"v5-unpublished-pow-strategy-test-v1");
+        assert_eq!(
+            mine_v5_pow(&transcript, 0, V5HostPowStrategy::ProductionUnpublished),
+            Ok(0)
+        );
+        assert_eq!(
+            mine_v5_pow(&transcript, 0, V5HostPowStrategy::DiagnosticPublished),
+            Ok(0)
+        );
     }
 
     impl Qm31WordSource for XorShift {

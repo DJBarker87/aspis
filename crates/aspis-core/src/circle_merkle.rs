@@ -305,6 +305,10 @@ fn validate_canonical_leaves(opening: &CircleLayer0Opening<'_>) -> Result<(), Ci
     Ok(())
 }
 
+// Widths and tags stay explicit here because collapsing them into a
+// profile-agnostic tuple would make domain-separation mistakes easier at the
+// frozen-wrapper boundary.
+#[allow(clippy::too_many_arguments)]
 fn verify_parsed_circle_layer0_opening(
     hash: HashFn,
     c1_root: &[u8; 32],
@@ -313,6 +317,8 @@ fn verify_parsed_circle_layer0_opening(
     opening: &CircleLayer0Opening<'_>,
     validate_canonical: bool,
     binary_depth: u32,
+    c1_layer_tag: u8,
+    c2_layer_tag: u8,
 ) -> Result<(), CircleMerkleError> {
     validate_indices_for_depth(unique_indices, binary_depth)?;
     if validate_canonical {
@@ -323,7 +329,7 @@ fn verify_parsed_circle_layer0_opening(
     for (leaf, &fiber_index) in unique_indices.iter().enumerate() {
         level.push((
             fiber_index,
-            leaf_hash(hash, CIRCLE_C1_LAYER0_TAG, opening.c1_leaf(leaf).unwrap()),
+            leaf_hash(hash, c1_layer_tag, opening.c1_leaf(leaf).unwrap()),
         ));
     }
     let mut next = Vec::with_capacity(opening.unique_count);
@@ -342,7 +348,7 @@ fn verify_parsed_circle_layer0_opening(
     for (leaf, &fiber_index) in unique_indices.iter().enumerate() {
         level.push((
             fiber_index,
-            leaf_hash(hash, CIRCLE_C2_LAYER0_TAG, opening.c2_leaf(leaf).unwrap()),
+            leaf_hash(hash, c2_layer_tag, opening.c2_leaf(leaf).unwrap()),
         ));
     }
     if !verify_radix4_binary_cap_prevalidated_in_place(
@@ -377,6 +383,8 @@ pub fn verify_circle_layer0_opening<'a>(
         &opening,
         true,
         CIRCLE_LAYER0_BINARY_DEPTH,
+        CIRCLE_C1_LAYER0_TAG,
+        CIRCLE_C2_LAYER0_TAG,
     )?;
     Ok(opening)
 }
@@ -400,6 +408,8 @@ pub fn verify_circle_layer0_opening_from_proof<'a>(
         &opening,
         true,
         CIRCLE_LAYER0_BINARY_DEPTH,
+        CIRCLE_C1_LAYER0_TAG,
+        CIRCLE_C2_LAYER0_TAG,
     )?;
     Ok((opening, remainder))
 }
@@ -456,6 +466,45 @@ pub(crate) fn verify_circle_layer0_opening_from_proof_deferred_canonical_for_dep
         &opening,
         false,
         binary_depth,
+        CIRCLE_C1_LAYER0_TAG,
+        CIRCLE_C2_LAYER0_TAG,
+    )?;
+    Ok((opening, remainder))
+}
+
+/// Authenticate a layer-zero C1/C2 opening under an additive profile's exact
+/// widths, depth, and domain-separation tags. Frozen wrappers above continue
+/// to pass the V4 constants.
+#[allow(clippy::too_many_arguments)]
+pub fn verify_circle_layer0_opening_from_proof_for_shape<'a>(
+    hash: HashFn,
+    c1_root: &[u8; 32],
+    c2_root: &[u8; 32],
+    unique_indices: &[u32],
+    proof_bytes: &'a [u8],
+    binary_depth: u32,
+    c1_leaf_bytes: usize,
+    c2_leaf_bytes: usize,
+    c1_layer_tag: u8,
+    c2_layer_tag: u8,
+) -> Result<(CircleLayer0Opening<'a>, &'a [u8]), CircleMerkleError> {
+    let (opening, remainder) = parse_circle_layer0_opening_from_proof_for_depth_and_leaf_bytes(
+        proof_bytes,
+        unique_indices.len(),
+        binary_depth,
+        c1_leaf_bytes,
+        c2_leaf_bytes,
+    )?;
+    verify_parsed_circle_layer0_opening(
+        hash,
+        c1_root,
+        c2_root,
+        unique_indices,
+        &opening,
+        true,
+        binary_depth,
+        c1_layer_tag,
+        c2_layer_tag,
     )?;
     Ok((opening, remainder))
 }

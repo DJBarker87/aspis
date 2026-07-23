@@ -9,6 +9,18 @@
 //! tree is preserved at the git tags `research-archive-2026-07-14` and
 //! `research-archive-2026-07-15` and in git history.
 //!
+//! The opt-in `v5-cu-probe` feature builds a separate local-validator-only
+//! entrypoint. Tag 66 selects diagnostic kernels; tag 67 wraps the complete
+//! provisional v5 verifier in the unchanged atomic state transition.
+//! Entrypoint builds are incompatible with `spend-production`; host tooling
+//! may feature-unify the library only while `no-entrypoint` is set.
+//!
+//! The default `v5-production-tag67` production switch instead
+//! routes tag 67 through the minimal production dispatcher and the same atomic
+//! verify-and-apply wrapper. It never exposes tag 66 or the probe entrypoint.
+//! It was added to the default feature set only after the recorded
+//! correspondence, formal, CU, and release gates closed.
+//!
 //! Proof account layout:
 //! [0..4] magic "ASPU", [4..8] proof_len u32 LE, [8..40] upload authority,
 //! [40..40+proof_len] proof bytes.
@@ -27,9 +39,35 @@ compile_error!(
     "SPEND_DYNAMIC_RATE512_REQUIRES_PRODUCTION: query-local public coordinates are enabled only for spend-production"
 );
 
+#[cfg(all(
+    feature = "v5-cu-probe",
+    feature = "spend-production",
+    not(feature = "no-entrypoint")
+))]
+compile_error!(
+    "V5_CU_PROBE_FORBIDS_PRODUCTION (v5-cu-probe): the local CU probe must use its isolated tag-67 entrypoint"
+);
+
+#[cfg(all(
+    feature = "v5-cu-probe",
+    feature = "v5-production-tag67",
+    not(feature = "no-entrypoint")
+))]
+compile_error!(
+    "V5_TAG67_PRODUCTION_FORBIDS_PROBE: production tag 67 and the diagnostic probe entrypoint cannot coexist"
+);
+
 pub mod atomic_payment;
 pub mod dispatch;
 pub mod lifecycle;
+#[cfg(any(feature = "v5-cu-probe", feature = "v5-production-tag67"))]
+pub mod v5_atomic_terminal;
+#[cfg(any(feature = "v5-cu-probe", feature = "v5-production-tag67"))]
+pub mod v5_cu_probe;
+#[cfg(any(feature = "v5-cu-probe", feature = "v5-production-tag67"))]
+pub mod v5_full_transaction;
+#[cfg(any(feature = "v5-cu-probe", feature = "v5-production-tag67"))]
+pub mod v5_relation_stress;
 pub mod verify;
 pub mod wire;
 

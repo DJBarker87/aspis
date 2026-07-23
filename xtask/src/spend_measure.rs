@@ -47,7 +47,7 @@ use solana_sdk::{
 // solana-sdk 2.x deprecates the re-export in favor of solana-system-interface;
 // keep the single-crate dependency surface for this harness.
 #[allow(deprecated)]
-use solana_sdk::system_instruction;
+use solana_sdk::{system_instruction, system_program};
 
 use aspis_prover::HOST_HASH;
 use aspis_verifier::atomic_payment::{
@@ -82,17 +82,17 @@ const PRODUCTION_ONLY_FEATURES: [&str; 1] = ["spend-production"];
 
 /// The forbidden feature list pinned by the release evaluator. Every union of
 /// the production alias with one of these (and with all of them at once) must
-/// fail to build. The list names the insecure diagnostic/test features that
-/// still exist elsewhere in the workspace (prover fixture entropy, weakened
-/// Fiat-Shamir schedules, broken compression, unmined diagnostics); none may
-/// ever become resolvable features of the deployed program crate.
-const PRODUCTION_FORBIDDEN_FEATURES: [&str; 6] = [
+/// fail to build. Most names are retired insecure diagnostic/test features;
+/// `v5-cu-probe` is a real but separately gated local entrypoint. None may be
+/// feature-unified into the deployed production program.
+const PRODUCTION_FORBIDDEN_FEATURES: [&str; 7] = [
     "diagnostic-unmined-spend-acceptance",
     "diagnostic-unmined-spend-mutation",
     "insecure-spend-fixture",
     "insecure-test-framing",
     "insecure-test-logup-compression",
     "insecure-test-ordering",
+    "v5-cu-probe",
 ];
 
 #[derive(Serialize)]
@@ -323,6 +323,16 @@ struct SimulationResult {
     units: Option<u64>,
     err: Option<String>,
     logs: Vec<String>,
+}
+
+/// Result of one narrow local-validator simulation.
+///
+/// This is shared with narrow, opt-in CU probes. It deliberately exposes no
+/// release-certificate state and does not write either production evidence
+/// artifact.
+pub(crate) struct StatelessSimulationResult {
+    pub units: u64,
+    pub logs: Vec<String>,
 }
 
 struct LandedTransactionCost {
@@ -659,6 +669,215 @@ fn start_validator_with_accounts(
     Ok(validator)
 }
 
+/// Simulate instructions that read one host-created, program-owned account.
+///
+/// The account bytes are loaded into the validator before it starts and the
+/// instruction receives the account read-only. This keeps CU probes honest
+/// about runtime account input without going through a production lifecycle
+/// or mutating any release fixture.
+pub(crate) fn simulate_readonly_program_account_instructions(
+    so: &Path,
+    account_address: Pubkey,
+    account_owner: Pubkey,
+    account_data: &[u8],
+    instruction_data: &[Vec<u8>],
+) -> Result<Vec<StatelessSimulationResult>> {
+    let root = workspace_root()?;
+    let fixture = write_validator_account_fixture(
+        &root,
+        "v5-cu-probe-runtime-input",
+        account_address,
+        account_owner,
+        account_data,
+    )?;
+    let validator = start_validator_with_accounts(&root, so, &[(account_address, fixture)])?;
+    let rpc = Rpc::for_validator(&validator)?;
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), LAMPORTS_PER_SOL)?;
+
+    let mut outcomes = Vec::with_capacity(instruction_data.len());
+    for data in instruction_data {
+        let instruction = Instruction {
+            program_id: aspis_verifier::id(),
+            accounts: vec![AccountMeta::new_readonly(account_address, false)],
+            data: data.clone(),
+        };
+        let transaction = Transaction::new_signed_with_payer(
+            &[
+                ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+                ComputeBudgetInstruction::request_heap_frame(HEAP_FRAME_BYTES),
+                instruction,
+            ],
+            Some(&payer.pubkey()),
+            &[&payer],
+            rpc.latest_blockhash()?,
+        );
+        let simulation = rpc.simulate_verbose(&transaction)?;
+        if let Some(error) = simulation.err {
+            bail!("read-only-account SBF probe failed: {error}");
+        }
+        outcomes.push(StatelessSimulationResult {
+            units: simulation
+                .units
+                .ok_or_else(|| anyhow!("read-only-account SBF probe omitted unitsConsumed"))?,
+            logs: simulation.logs,
+        });
+    }
+    Ok(outcomes)
+}
+
+/// Simulate the isolated v5 proof verifier inside the unchanged atomic state
+/// transition using preloaded program-owned proof, pool and zeroed-nullifier
+/// accounts. Simulations do not commit, so every repetition sees the same
+/// pre-state and measures the complete verifier-plus-mutation instruction.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn simulate_atomic_program_account_instructions(
+    so: &Path,
+    proof_address: Pubkey,
+    proof_data: &[u8],
+    pool_address: Pubkey,
+    pool_data: &[u8],
+    marker_address: Pubkey,
+    marker_data: &[u8],
+    instruction_data: &[Vec<u8>],
+) -> Result<Vec<StatelessSimulationResult>> {
+    simulate_atomic_program_account_instructions_with_optional_marker(
+        so,
+        proof_address,
+        proof_data,
+        pool_address,
+        pool_data,
+        marker_address,
+        Some(marker_data),
+        instruction_data,
+    )
+}
+
+/// Simulate the same atomic v5 instruction with no preloaded nullifier marker.
+///
+/// The instruction still receives the canonical marker address as writable,
+/// but the validator starts with only proof and pool fixtures. The runtime
+/// therefore presents the missing PDA as a System-owned, empty account and a
+/// successful tag-67 instruction must exercise the real marker-creation CPI.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn simulate_atomic_program_account_instructions_with_absent_marker(
+    so: &Path,
+    proof_address: Pubkey,
+    proof_data: &[u8],
+    pool_address: Pubkey,
+    pool_data: &[u8],
+    marker_address: Pubkey,
+    instruction_data: &[Vec<u8>],
+) -> Result<Vec<StatelessSimulationResult>> {
+    simulate_atomic_program_account_instructions_with_optional_marker(
+        so,
+        proof_address,
+        proof_data,
+        pool_address,
+        pool_data,
+        marker_address,
+        None,
+        instruction_data,
+    )
+}
+
+fn atomic_validator_account_fixtures(
+    proof: (Pubkey, PathBuf),
+    pool: (Pubkey, PathBuf),
+    marker: Option<(Pubkey, PathBuf)>,
+) -> Vec<(Pubkey, PathBuf)> {
+    let mut fixtures = Vec::with_capacity(2 + usize::from(marker.is_some()));
+    fixtures.push(proof);
+    fixtures.push(pool);
+    fixtures.extend(marker);
+    fixtures
+}
+
+#[allow(clippy::too_many_arguments)]
+fn simulate_atomic_program_account_instructions_with_optional_marker(
+    so: &Path,
+    proof_address: Pubkey,
+    proof_data: &[u8],
+    pool_address: Pubkey,
+    pool_data: &[u8],
+    marker_address: Pubkey,
+    marker_data: Option<&[u8]>,
+    instruction_data: &[Vec<u8>],
+) -> Result<Vec<StatelessSimulationResult>> {
+    let root = workspace_root()?;
+    let proof_fixture = write_validator_account_fixture(
+        &root,
+        "v5-full-cu-proof",
+        proof_address,
+        aspis_verifier::id(),
+        proof_data,
+    )?;
+    let pool_fixture = write_validator_account_fixture(
+        &root,
+        "v5-full-cu-pool",
+        pool_address,
+        aspis_verifier::id(),
+        pool_data,
+    )?;
+    let marker_fixture = marker_data
+        .map(|data| {
+            write_validator_account_fixture(
+                &root,
+                "v5-full-cu-marker",
+                marker_address,
+                aspis_verifier::id(),
+                data,
+            )
+            .map(|fixture| (marker_address, fixture))
+        })
+        .transpose()?;
+    let fixtures = atomic_validator_account_fixtures(
+        (proof_address, proof_fixture),
+        (pool_address, pool_fixture),
+        marker_fixture,
+    );
+    let validator = start_validator_with_accounts(&root, so, &fixtures)?;
+    let rpc = Rpc::for_validator(&validator)?;
+    let payer = Keypair::new();
+    rpc.airdrop_and_wait(&payer.pubkey(), LAMPORTS_PER_SOL)?;
+
+    let mut outcomes = Vec::with_capacity(instruction_data.len());
+    for data in instruction_data {
+        let instruction = Instruction {
+            program_id: aspis_verifier::id(),
+            accounts: vec![
+                AccountMeta::new_readonly(proof_address, false),
+                AccountMeta::new(pool_address, false),
+                AccountMeta::new(marker_address, false),
+                AccountMeta::new(payer.pubkey(), true),
+                AccountMeta::new_readonly(system_program::id(), false),
+            ],
+            data: data.clone(),
+        };
+        let transaction = Transaction::new_signed_with_payer(
+            &[
+                ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+                ComputeBudgetInstruction::request_heap_frame(HEAP_FRAME_BYTES),
+                instruction,
+            ],
+            Some(&payer.pubkey()),
+            &[&payer],
+            rpc.latest_blockhash()?,
+        );
+        let simulation = rpc.simulate_verbose(&transaction)?;
+        if let Some(error) = simulation.err {
+            bail!("atomic v5 full-CU SBF simulation failed: {error}");
+        }
+        outcomes.push(StatelessSimulationResult {
+            units: simulation
+                .units
+                .ok_or_else(|| anyhow!("atomic v5 SBF simulation omitted unitsConsumed"))?,
+            logs: simulation.logs,
+        });
+    }
+    Ok(outcomes)
+}
+
 fn validator_version() -> String {
     Command::new("solana-test-validator")
         .env("NO_DNA", "1")
@@ -800,7 +1019,7 @@ fn upload_finalized_proof_account(
     Ok((proof_account, snapshot))
 }
 
-fn parse_cu_markers(logs: &[String], marker_prefix: &str) -> Vec<CuMarker> {
+pub(crate) fn parse_cu_markers(logs: &[String], marker_prefix: &str) -> Vec<CuMarker> {
     let mut pending: Option<String> = None;
     let mut previous: Option<u64> = None;
     let mut markers = Vec::new();
@@ -860,11 +1079,11 @@ fn build_spend_production_sbf(root: &Path) -> Result<PathBuf> {
 }
 
 /// Prove that the production alias cannot be feature-unified with a PoW
-/// bypass or an insecure test/fixture feature. None of the forbidden names
-/// is a feature of the program crate, so every union must fail Cargo
-/// feature resolution before any code is compiled. Each union is checked
-/// independently so one working guard cannot hide a missing guard, plus one
-/// grouped invocation.
+/// bypass, an insecure test/fixture feature, or the isolated v5 CU probe.
+/// Retired names fail Cargo feature resolution; the local probe has an
+/// explicit compile-time incompatibility with production. Each union is
+/// checked independently so one working guard cannot hide a missing guard,
+/// plus one grouped invocation.
 fn check_spend_production_feature_isolation(root: &Path) -> Result<Vec<String>> {
     const PRODUCTION_ALIAS: &str = "spend-production";
 
@@ -899,7 +1118,7 @@ fn check_spend_production_feature_isolation(root: &Path) -> Result<Vec<String>> 
             .any(|feature| stdout.contains(feature) || stderr.contains(feature));
         ensure!(
             mentions_forbidden_feature,
-            "Spend feature union {label} failed for an unrelated reason; expected Cargo to reject an absent forbidden feature; stdout={stdout}; stderr={stderr}"
+            "Spend feature union {label} failed for an unrelated reason; expected an absent-feature or explicit incompatibility error; stdout={stdout}; stderr={stderr}"
         );
         Ok(())
     }
@@ -2383,4 +2602,28 @@ pub fn run_spend_measure(results_dir: &Path) -> Result<SpendMeasureOutcome> {
         acceptance_tag59_cu: acceptance.literal_simulation_cu,
         max_production_tag65_cu,
     })
+}
+
+#[cfg(test)]
+mod optional_marker_tests {
+    use super::*;
+
+    #[test]
+    fn atomic_validator_fixture_list_omits_only_the_absent_marker() {
+        let proof_address = Pubkey::new_unique();
+        let pool_address = Pubkey::new_unique();
+        let marker_address = Pubkey::new_unique();
+        let proof = (proof_address, PathBuf::from("proof.json"));
+        let pool = (pool_address, PathBuf::from("pool.json"));
+        let marker = (marker_address, PathBuf::from("marker.json"));
+
+        assert_eq!(
+            atomic_validator_account_fixtures(proof.clone(), pool.clone(), None),
+            vec![proof.clone(), pool.clone()]
+        );
+        assert_eq!(
+            atomic_validator_account_fixtures(proof.clone(), pool.clone(), Some(marker.clone())),
+            vec![proof, pool, marker]
+        );
+    }
 }

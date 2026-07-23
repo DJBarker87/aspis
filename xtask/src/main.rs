@@ -8,6 +8,11 @@ mod spend_mainnet_loader;
 mod spend_measure;
 mod spend_release;
 mod spend_statement;
+mod v5_component_c_fmat;
+mod v5_component_c_maps;
+mod v5_component_c_obstruction;
+mod v5_component_c_rank;
+mod v5_cu_probe;
 
 use std::fs;
 use std::path::PathBuf;
@@ -28,6 +33,82 @@ fn stage2_results_dir() -> Result<PathBuf> {
 fn main() -> Result<()> {
     let mut args = std::env::args().skip(1);
     match args.next().as_deref() {
+        Some("v5-component-c-obstruction") => {
+            let dir = stage2_results_dir()?;
+            let outcome = v5_component_c_obstruction::run(&dir)?;
+            eprintln!(
+                "v5-component-c-obstruction: exact 19-dimensional quotient certificate {} bytes sha256 {}; pairs sha256 {}; wrote {} and {} in {} ms",
+                outcome.artifact_bytes,
+                outcome.artifact_sha256,
+                outcome.pair_sha256,
+                outcome.artifact_path.display(),
+                outcome.manifest_path.display(),
+                outcome.total_ms,
+            );
+            Ok(())
+        }
+        Some("v5-component-c-rank") => {
+            let dir = stage2_results_dir()?;
+            let outcome = v5_component_c_rank::run(&dir)?;
+            eprintln!(
+                "v5-component-c-rank: exact QM31 ranks E={}, F={}, [E;F]={} in {} ms; certificate {} sha256 {}; wrote {}",
+                outcome.emat_rank,
+                outcome.fmat_rank,
+                outcome.joint_rank,
+                outcome.total_ms,
+                outcome
+                    .certificate_path
+                    .as_ref()
+                    .map_or_else(|| "none".to_owned(), |path| path.display().to_string()),
+                outcome.certificate_sha256.as_deref().unwrap_or("none"),
+                outcome.manifest_path.display(),
+            );
+            Ok(())
+        }
+        Some("v5-component-c-fmat") => {
+            let dir = stage2_results_dir()?;
+            let outcome = v5_component_c_fmat::run(&dir)?;
+            eprintln!(
+                "v5-component-c-fmat: maps-only intrinsic {}x{} F matrix generated in {} ms ({} ms total); artifact {} bytes sha256 {}; matrix sha256 {}; wrote {} and {}",
+                aspis_prover::v5_mask::component_c_fmat::V5_C_FMAT_ROWS,
+                aspis_prover::v5_mask::component_c_fmat::V5_C_FMAT_COLUMNS,
+                outcome.generation_ms,
+                outcome.total_ms,
+                outcome.artifact_bytes,
+                outcome.artifact_sha256,
+                outcome.matrix_sha256,
+                outcome.artifact_path.display(),
+                outcome.manifest_path.display(),
+            );
+            Ok(())
+        }
+        Some("v5-component-c-emat") => {
+            let dir = stage2_results_dir()?;
+            let outcome = v5_component_c_maps::run(&dir)?;
+            eprintln!(
+                "v5-component-c-emat: maps-only {}x{} E matrix generated in {} ms ({} ms total); artifact {} bytes sha256 {}; matrix sha256 {}; wrote {} and {}",
+                aspis_prover::v5_mask::component_c_emat::V5_C_EMAT_ROWS,
+                aspis_prover::v5_mask::component_c_emat::V5_C_EMAT_COLUMNS,
+                outcome.generation_ms,
+                outcome.total_ms,
+                outcome.artifact_bytes,
+                outcome.artifact_sha256,
+                outcome.matrix_sha256,
+                outcome.artifact_path.display(),
+                outcome.manifest_path.display(),
+            );
+            Ok(())
+        }
+        Some("v5-cu-probe") => {
+            let dir = stage2_results_dir()?;
+            let outcome = v5_cu_probe::run(&dir)?;
+            eprintln!(
+                "v5-cu-probe: genuine tag-67 full atomic transaction accepted at {} CU; wrote {}",
+                outcome.candidate_kernel_cu,
+                outcome.path.display(),
+            );
+            Ok(())
+        }
         Some("spend-measure") => {
             let dir = stage2_results_dir()?;
             let outcome = spend_measure::run_spend_measure(&dir)?;
@@ -178,6 +259,55 @@ fn main() -> Result<()> {
             );
             Ok(())
         }
+        Some("v5-devnet-build") => {
+            let arguments = args.collect::<Vec<_>>();
+            let outcome = spend_devnet::v5::build_sbf(&arguments)?;
+            println!("{}", serde_json::to_string_pretty(&outcome)?);
+            eprintln!(
+                "v5-devnet-build: created feature-only SBF {} bytes at {} and provenance {} (HEAD {})",
+                outcome.sbf_bytes,
+                outcome.sbf_path,
+                outcome.provenance_path,
+                outcome.git_head,
+            );
+            Ok(())
+        }
+        Some("v5-devnet-artifact") => {
+            let arguments = args.collect::<Vec<_>>();
+            let outcome = spend_devnet::v5::generate_artifact(&arguments)?;
+            println!("{}", serde_json::to_string_pretty(&outcome)?);
+            eprintln!(
+                "v5-devnet-artifact: created {} proof bytes at {} and strict statement {} (leastGood={}, successful attempt index={})",
+                outcome.proof_bytes,
+                outcome.proof_path,
+                outcome.statement_path,
+                outcome.least_good_selector,
+                outcome.successful_attempt_index,
+            );
+            Ok(())
+        }
+        Some("v5-devnet-readiness") => {
+            let arguments = args.collect::<Vec<_>>();
+            let readiness = spend_devnet::v5::readiness(&arguments)?;
+            println!("{}", serde_json::to_string_pretty(&readiness)?);
+            eprintln!(
+                "v5-devnet-readiness: read-only gates green for program {}, pool {}, proof account {}",
+                readiness.program_id, readiness.pool, readiness.proof_account,
+            );
+            Ok(())
+        }
+        Some("v5-devnet-execute") => {
+            let arguments = args.collect::<Vec<_>>();
+            let evidence = spend_devnet::v5::execute(&arguments)?;
+            println!("{}", serde_json::to_string_pretty(&evidence)?);
+            eprintln!(
+                "v5-devnet-execute: finalized tag-67 {} at slot {}; immutable evidence {}",
+                evidence.final_transaction.signature,
+                evidence.final_transaction.finalized_slot,
+                evidence.evidence_path,
+            );
+            Ok(())
+        }
         Some("spend-devnet-readiness") => {
             let arguments = args.collect::<Vec<_>>();
             let dir = stage2_results_dir()?;
@@ -245,7 +375,7 @@ fn main() -> Result<()> {
             Ok(())
         }
         other => bail!(
-            "usage: cargo run -p aspis-xtask -- spend-measure | spend-release | spend-bundle | spend-mainnet-readiness | spend-mainnet-execute | spend-mainnet-cleanup | spend-devnet-readiness | spend-devnet-execute | spend-devnet-upload-smoke | spend-devnet-close-smoke (got {:?})",
+            "usage: cargo run -p aspis-xtask -- v5-component-c-obstruction | v5-component-c-rank | v5-component-c-fmat | v5-component-c-emat | v5-cu-probe | v5-devnet-build | v5-devnet-artifact | v5-devnet-readiness | v5-devnet-execute | spend-measure | spend-release | spend-bundle | spend-mainnet-readiness | spend-mainnet-execute | spend-mainnet-cleanup | spend-devnet-readiness | spend-devnet-execute | spend-devnet-upload-smoke | spend-devnet-close-smoke (got {:?})",
             other
         ),
     }

@@ -5,6 +5,8 @@
 //! path and RPC endpoint is supplied on the command line; Solana CLI ambient
 //! configuration is never consulted.
 
+pub(crate) mod v5;
+
 use std::{
     collections::{BTreeMap, BTreeSet},
     ffi::OsString,

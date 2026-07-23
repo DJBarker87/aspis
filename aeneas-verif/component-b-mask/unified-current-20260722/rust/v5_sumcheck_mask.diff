@@ -1,0 +1,96 @@
+diff --git a/crates/aspis-prover/src/v5_sumcheck_mask.rs b/crates/aspis-prover/src/v5_sumcheck_mask.rs
+index 505630d..04e24bc 100644
+--- a/crates/aspis-prover/src/v5_sumcheck_mask.rs
++++ b/crates/aspis-prover/src/v5_sumcheck_mask.rs
+@@ -110,6 +110,24 @@ impl V5SumcheckMask {
+         self.zero_boundary_rounds.get(round)
+     }
+
++    /// The coefficient committed by the fixed Component-B lane.  The
++    /// constant coefficient is recomputed from the 27 stored tail
++    /// coefficients in the same increasing order used by the original lane
++    /// encoder; positive coefficients are read directly.
++    pub(crate) fn commitment_coefficient(&self, round: usize, coefficient: usize) -> QM31 {
++        if coefficient == 0 {
++            let mut tail_sum = QM31::ZERO;
++            let mut offset = 1usize;
++            while offset < STATE_ONLY_SUMCHECK_COEFFICIENTS {
++                tail_sum = tail_sum.add(self.zero_boundary_rounds[round][offset]);
++                offset += 1;
++            }
++            tail_sum.neg().mul(QM31::ONE.half())
++        } else {
++            self.zero_boundary_rounds[round][coefficient]
++        }
++    }
++
+     /// Coordinates used by the provisional component-B commitment lane.
+     ///
+     /// The order is the initial claim followed by `c1..c27` for rounds zero
+@@ -189,6 +207,21 @@ impl V5SumcheckMask {
+     }
+ }
+
++#[allow(dead_code)]
++fn v5_sumcheck_mask_mixing_evaluate_correspondence(
++    mask: &V5SumcheckMask,
++    round: usize,
++    total_claim: QM31,
++    eta: QM31,
++    real: &StateOnlySumcheckPolynomial,
++    point: &[QM31; STATE_ONLY_SUMCHECK_ROUNDS],
++) -> (Option<StateOnlySumcheckPolynomial>, QM31) {
++    (
++        mask.mixed_round_polynomial(round, total_claim, eta, real),
++        mask.evaluate(point),
++    )
++}
++
+ /// Exercise the ordinary state-only sumcheck on `R + eta*F`.
+ ///
+ /// The caller is responsible for the transcript schedule: a binding commitment
+@@ -348,6 +381,44 @@ mod tests {
+         assert_eq!(claim, mask.evaluate(&point));
+     }
+
++    #[test]
++    fn correspondence_helper_calls_the_actual_mixing_and_evaluator() {
++        let mask = sample(0x5f27_a306_410d_e9cbu64);
++        let point = core::array::from_fn(|coordinate| q(401 + coordinate as u32));
++        let real = *mask.zero_boundary_round(7).unwrap();
++        let total_claim = q(521);
++        let eta = q(523);
++
++        for round in 0..STATE_ONLY_SUMCHECK_ROUNDS {
++            assert_eq!(
++                v5_sumcheck_mask_mixing_evaluate_correspondence(
++                    &mask,
++                    round,
++                    total_claim,
++                    eta,
++                    &real,
++                    &point,
++                ),
++                (
++                    mask.mixed_round_polynomial(round, total_claim, eta, &real),
++                    mask.evaluate(&point),
++                )
++            );
++        }
++
++        assert_eq!(
++            v5_sumcheck_mask_mixing_evaluate_correspondence(
++                &mask,
++                STATE_ONLY_SUMCHECK_ROUNDS,
++                total_claim,
++                eta,
++                &real,
++                &point,
++            ),
++            (None, mask.evaluate(&point))
++        );
++    }
++
+     #[test]
+     fn masked_prover_matches_round_model_streaming_verifier_and_terminal() {
+         let mask = sample(0x52bd_817c_a091_f3e5u64);

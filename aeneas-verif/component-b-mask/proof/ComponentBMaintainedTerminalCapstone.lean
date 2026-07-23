@@ -566,6 +566,41 @@ theorem generated_public_evaluate_eq_terminalCovector
       polynomials hinitial hround hevaluate,
     exact_claim_steps_eq_terminalCovector mask point claims step⟩
 
+/-- Concrete tooth: omitting the sampler's derived constant coefficient is
+observable in one round. With one nonzero tail coefficient and challenge zero,
+the uncorrected degree-27 evaluation is zero, whereas `maskStep` includes the
+required `-tail / 2` correction and is nonzero. -/
+theorem omitted_zero_boundary_constant_changes_round :
+    let tail : Fin AspisV5SumcheckCommitment.tailCount → ℚ :=
+      fun coefficient ↦
+      if coefficient.val = 0 then 1 else 0
+    (∑ coefficient : Fin AspisV5SumcheckCommitment.tailCount,
+        tail coefficient * (0 : ℚ) ^ (coefficient.val + 1)) ≠
+      AspisV5SumcheckCommitment.maskStep (0 : ℚ) tail 0 := by
+  dsimp
+  have hpow (coefficient : Fin AspisV5SumcheckCommitment.tailCount) :
+      (0 : ℚ) ^ (coefficient.val + 1) = 0 := by
+    apply zero_pow
+    omega
+  simp_rw [hpow, mul_zero]
+  simp only [Finset.sum_const_zero]
+  unfold AspisV5SumcheckCommitment.maskStep
+    AspisV5SumcheckCommitment.tailEvaluation
+    AspisV5SumcheckCommitment.half
+  simp only [mul_zero, zero_add]
+  rw [Finset.sum_eq_single
+    (⟨0, by norm_num [AspisV5SumcheckCommitment.tailCount]⟩ :
+      Fin AspisV5SumcheckCommitment.tailCount)]
+  · norm_num
+  · intro coefficient _ hne
+    have hval : coefficient.val ≠ 0 := by
+      intro hzero
+      apply hne
+      apply Fin.ext
+      exact hzero
+    simp [hval]
+  · simp
+
 #print axioms generated_round_evaluation_eq_maskStep
 #print axioms generated_round_step_exists
 #print axioms ten_maskSteps_eq_terminalCovector
@@ -574,5 +609,6 @@ theorem generated_public_evaluate_eq_terminalCovector
 #print axioms generated_public_evaluate_exists_terminal
 #print axioms generated_public_evaluate_exists_terminal_current_field
 #print axioms generated_public_evaluate_eq_terminalCovector
+#print axioms omitted_zero_boundary_constant_changes_round
 
 end ComponentBMaintainedTerminalBridge

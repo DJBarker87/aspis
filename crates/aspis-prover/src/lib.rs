@@ -40,6 +40,11 @@ pub mod v5_mask;
 #[cfg(feature = "v5-mask")]
 pub mod v5_sumcheck_mask;
 
+/// Necessary compute-envelope constraints for any v5 verifier candidate.
+/// This is a shape gate, not a compute-unit measurement.
+#[cfg(feature = "v5-mask")]
+pub mod v5_cu_envelope;
+
 #[cfg(test)]
 mod state_only_spend_privacy_regressions;
 
@@ -737,33 +742,159 @@ pub fn prove_with_lying_ood_for_tests(
     )
 }
 
+// Indexed production kernel for valid power-of-two table shapes.
+fn multilinear_eval_valid_shape(coeffs: &[M31], z: &[QM31]) -> QM31 {
+    // fold one variable at a time, last coordinate first (bit 0)
+    let mut layer: Vec<QM31> = Vec::with_capacity(coeffs.len());
+    let mut coefficient_index = 0usize;
+    while coefficient_index < coeffs.len() {
+        layer.push(QM31::from_cm31(CM31::from_m31(coeffs[coefficient_index])));
+        coefficient_index += 1;
+    }
+    let mut coordinate_index = z.len();
+    while coordinate_index > 0 {
+        coordinate_index -= 1;
+        let zi = z[coordinate_index];
+        let pair_count = layer.len() / 2;
+        let mut next_layer = Vec::with_capacity(pair_count);
+        let mut pair_index = 0usize;
+        while pair_index < pair_count {
+            let left = layer[2 * pair_index];
+            let right = layer[2 * pair_index + 1];
+            next_layer.push(left.add(zi.mul(right.sub(left))));
+            pair_index += 1;
+        }
+        layer = next_layer;
+    }
+    layer[0]
+}
+
 /// Multilinear evaluation of the coefficient table at z (big-endian variable
 /// order: z[0] pairs with the highest coefficient-index bit). Used to form
 /// honest claims; also the future sumcheck/fold-interleave ingredient.
 pub fn multilinear_eval(coeffs: &[M31], z: &[QM31]) -> QM31 {
-    assert_eq!(coeffs.len(), 1usize << z.len());
-    // fold one variable at a time, last coordinate first (bit 0)
-    let mut layer: Vec<QM31> = coeffs
-        .iter()
-        .map(|c| QM31::from_cm31(CM31::from_m31(*c)))
-        .collect();
-    for zi in z.iter().rev() {
-        layer = (0..layer.len() / 2)
-            .map(|j| layer[2 * j].add(zi.mul(layer[2 * j + 1].sub(layer[2 * j]))))
-            .collect();
+    assert_eq!(coeffs.len() as u64, 1u64 << z.len());
+    multilinear_eval_valid_shape(coeffs, z)
+}
+
+fn multilinear_eval_extension_valid_shape(coeffs: &[QM31], z: &[QM31]) -> QM31 {
+    let mut layer = coeffs.to_vec();
+    let mut coordinate_index = z.len();
+    while coordinate_index > 0 {
+        coordinate_index -= 1;
+        let zi = z[coordinate_index];
+        let pair_count = layer.len() / 2;
+        let mut next_layer = Vec::with_capacity(pair_count);
+        let mut pair_index = 0usize;
+        while pair_index < pair_count {
+            let left = layer[2 * pair_index];
+            let right = layer[2 * pair_index + 1];
+            next_layer.push(left.add(zi.mul(right.sub(left))));
+            pair_index += 1;
+        }
+        layer = next_layer;
     }
     layer[0]
 }
 
 fn multilinear_eval_extension(coeffs: &[QM31], z: &[QM31]) -> QM31 {
-    assert_eq!(coeffs.len(), 1usize << z.len());
-    let mut layer = coeffs.to_vec();
-    for zi in z.iter().rev() {
-        layer = (0..layer.len() / 2)
-            .map(|index| layer[2 * index].add(zi.mul(layer[2 * index + 1].sub(layer[2 * index]))))
-            .collect();
+    assert_eq!(coeffs.len() as u64, 1u64 << z.len());
+    multilinear_eval_extension_valid_shape(coeffs, z)
+}
+
+#[cfg(test)]
+mod multilinear_eval_kernel_tests {
+    use super::*;
+
+    fn q(seed: u32) -> QM31 {
+        QM31 {
+            c0: CM31::new(M31(seed * 1_003 + 1), M31(seed * 1_009 + 3)),
+            c1: CM31::new(M31(seed * 1_021 + 5), M31(seed * 1_031 + 7)),
+        }
     }
-    layer[0]
+
+    fn iterator_m31_oracle(coeffs: &[M31], z: &[QM31]) -> QM31 {
+        assert_eq!(coeffs.len(), 1usize << z.len());
+        let mut layer: Vec<QM31> = coeffs
+            .iter()
+            .map(|coefficient| QM31::from_cm31(CM31::from_m31(*coefficient)))
+            .collect();
+        for zi in z.iter().rev() {
+            layer = (0..layer.len() / 2)
+                .map(|pair| layer[2 * pair].add(zi.mul(layer[2 * pair + 1].sub(layer[2 * pair]))))
+                .collect();
+        }
+        layer[0]
+    }
+
+    fn iterator_extension_oracle(coeffs: &[QM31], z: &[QM31]) -> QM31 {
+        assert_eq!(coeffs.len(), 1usize << z.len());
+        let mut layer = coeffs.to_vec();
+        for zi in z.iter().rev() {
+            layer = (0..layer.len() / 2)
+                .map(|pair| layer[2 * pair].add(zi.mul(layer[2 * pair + 1].sub(layer[2 * pair]))))
+                .collect();
+        }
+        layer[0]
+    }
+
+    #[test]
+    fn indexed_kernels_match_former_iterator_spelling() {
+        for arity in 0..=7usize {
+            let coefficient_count = 1usize << arity;
+            for seed in 0..8u32 {
+                let coordinates: Vec<QM31> =
+                    (0..arity).map(|index| q(seed + index as u32 + 1)).collect();
+                let m31_coefficients: Vec<M31> = (0..coefficient_count)
+                    .map(|index| M31(seed * 257 + index as u32 * 17 + 11))
+                    .collect();
+                let extension_coefficients: Vec<QM31> = (0..coefficient_count)
+                    .map(|index| q(seed * 257 + index as u32 + 19))
+                    .collect();
+                assert_eq!(
+                    multilinear_eval(&m31_coefficients, &coordinates),
+                    iterator_m31_oracle(&m31_coefficients, &coordinates)
+                );
+                assert_eq!(
+                    multilinear_eval_extension(&extension_coefficients, &coordinates),
+                    iterator_extension_oracle(&extension_coefficients, &coordinates)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn malformed_lengths_preserve_both_assertion_paths() {
+        let coordinates = [q(1), q(2)];
+        let m31_coefficients = [M31(3), M31(5), M31(7)];
+        let extension_coefficients = [q(3), q(4), q(5)];
+        assert!(
+            std::panic::catch_unwind(|| { multilinear_eval(&m31_coefficients, &coordinates) })
+                .is_err()
+        );
+        assert!(std::panic::catch_unwind(|| {
+            multilinear_eval_extension(&extension_coefficients, &coordinates)
+        })
+        .is_err());
+        assert!(std::panic::catch_unwind(|| {
+            iterator_m31_oracle(&m31_coefficients, &coordinates)
+        })
+        .is_err());
+        assert!(std::panic::catch_unwind(|| {
+            iterator_extension_oracle(&extension_coefficients, &coordinates)
+        })
+        .is_err());
+    }
+
+    #[test]
+    fn fixed_u64_guard_has_a_real_32_bit_tooth() {
+        let coordinate_count = 40u32;
+        let fixed_u64 = 1u64 << coordinate_count;
+        let former_32_bit_shape = u64::from(1u32.wrapping_shl(coordinate_count));
+        assert_eq!(fixed_u64, 1_099_511_627_776);
+        assert_eq!(former_32_bit_shape, 256);
+        assert_ne!(fixed_u64, former_32_bit_shape);
+    }
 }
 
 /// Deterministic challenge-dependent helper used to exercise the generic C2

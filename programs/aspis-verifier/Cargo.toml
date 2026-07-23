@@ -9,7 +9,7 @@ description = "Aspis on-chain verifier program: Spend production verification an
 crate-type = ["cdylib", "lib"]
 
 [features]
-default = ["spend-production"]
+default = ["spend-production", "v5-production-tag67"]
 no-entrypoint = []
 custom-heap = []
 custom-panic = []
@@ -20,12 +20,22 @@ spend-production = [
     "spend-dynamic-rate512",
 ]
 # Production-only entrypoint registration. The deployed entrypoint accepts
-# only the eight wire tags of the finalized lifecycle (0, 1, 59, 60, 62, 63,
-# 64, 65); every other tag fails closed before account access.
+# the eight lifecycle tags (0, 1, 59, 60, 62, 63, 64, 65) and the frozen v5
+# transaction tag 67; every other tag fails closed before account access.
 spend-minimal-dispatch = []
 # Production derives only the 18 authenticated Rate-1/512 query paths instead
 # of linking six full-domain coordinate tables into the deployed ELF.
 spend-dynamic-rate512 = ["aspis-statement/spend-dynamic-rate512"]
+# Local-validator-only entrypoint used for the provisional v5 diagnostic
+# kernels (tag 66) and complete atomic transaction CU wrapper (tag 67).
+# An entrypoint build is deliberately incompatible with `spend-production`;
+# feature-unified host tooling must also enable `no-entrypoint`.
+v5-cu-probe = []
+# Frozen production switch. This compiles tag 67 into the minimal production
+# dispatcher and routes it only through the atomic verify-and-apply wrapper.
+# The executable, transcript, formal, and CU gates are recorded in the release
+# preflight before this feature is included in `default`.
+v5-production-tag67 = ["spend-production"]
 
 [dependencies]
 aspis-core = { path = "../../crates/aspis-core" }

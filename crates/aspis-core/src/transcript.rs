@@ -44,6 +44,21 @@ pub const TRANSCRIPT_KAT_FINAL_PAYMENT_V4_EXPECTED: [u8; 32] = [
 /// hashv-shaped backend: hash the concatenation of the input slices.
 pub type HashFn = fn(&[&[u8]]) -> [u8; 32];
 
+/// Pure grinding predicate over an already-computed digest.
+///
+/// The first eight digest bytes are interpreted in big-endian order. Zero
+/// work accepts every digest; positive deployed difficulties accept exactly
+/// the heads below `2^(64 - bits)`.
+pub fn digest_has_leading_zero_bits(digest: [u8; 32], bits: u8) -> bool {
+    if bits == 0 {
+        return true;
+    }
+    let head = u64::from_be_bytes([
+        digest[0], digest[1], digest[2], digest[3], digest[4], digest[5], digest[6], digest[7],
+    ]);
+    head < (1u64 << (64 - bits as u32))
+}
+
 pub mod label {
     pub const PROFILE: u8 = 1;
     pub const STATEMENT: u8 = 2;
@@ -68,9 +83,11 @@ pub mod label {
     pub const SECOND_PHASE_CLAIM: u8 = 10;
     /// Fixed genuine-circle C1 basis discriminator.
     pub const M31_CIRCLE_BASIS: u8 = 11;
-    /// `layer_u8 || root32` for C1 at layer zero and later combined roots.
+    /// Circle-layer root record. The salted v5 profile uses
+    /// `layer_u8 || root32 || public_fs_salt32`.
     pub const M31_CIRCLE_ROUND_ROOT: u8 = 12;
-    /// Dedicated combined C2 helper root.
+    /// Dedicated combined C2 helper root. The salted v5 profile uses
+    /// `root32 || public_fs_salt32`.
     pub const M31_CIRCLE_C2_ROOT: u8 = 13;
     /// External `z || xor11(z)` MLE points.
     pub const M31_CIRCLE_STATEMENT_POINTS: u8 = 14;
@@ -169,6 +186,14 @@ pub mod label {
     /// Domain-separate the selected post-final-nonce q18 candidate.  The
     /// canonical spend selector range is 0..3 (three candidates).
     pub const M31_STATE_ONLY_QUERY_CANDIDATE: u8 = 44;
+    /// Additive fixed-log-10 PCS shape descriptor. Later proof families
+    /// absorb exact widths, tags, rate, point count, and query count here
+    /// before sampling their powers-generator challenge.
+    pub const M31_CIRCLE_PCS_SHAPE: u8 = 45;
+    /// Profile-24 PCS suffix magic, wire version, flags, and fixed front
+    /// geometry. This precedes the generic shape so future suffix semantics
+    /// cannot reuse the same Fiat-Shamir schedule.
+    pub const M31_PROFILE24_PCS_SUFFIX_HEADER: u8 = 46;
 }
 
 const DOM_ABSORB: u8 = 0x00;
@@ -445,12 +470,8 @@ impl Transcript {
     /// Grinding check: hash(state, DOM_GRIND, nonce) must have
     /// `bits` leading zero bits. Verifier-side cost: one hash call.
     pub fn grinding_ok(&self, nonce: u64, bits: u8) -> bool {
-        if bits == 0 {
-            return true;
-        }
         let digest = (self.hash)(&[&self.state, &[DOM_GRIND], &nonce.to_le_bytes()]);
-        let head = u64::from_be_bytes(digest[0..8].try_into().unwrap());
-        head < (1u64 << (64 - bits as u32))
+        digest_has_leading_zero_bits(digest, bits)
     }
 }
 
@@ -788,6 +809,44 @@ mod tests {
             h.update(i);
         }
         h.finalize().into()
+    }
+
+    fn grinding_input_probe(inputs: &[&[u8]]) -> [u8; 32] {
+        assert_eq!(inputs.len(), 3);
+        assert_eq!(inputs[0], &[0u8; 32]);
+        assert_eq!(inputs[1], &[DOM_GRIND]);
+        assert_eq!(inputs[2], &0x0102_0304_0506_0708u64.to_le_bytes());
+        let mut digest = [0u8; 32];
+        digest[..8].copy_from_slice(&(u32::MAX as u64).to_be_bytes());
+        digest
+    }
+
+    #[test]
+    fn grinding_digest_predicate_has_exact_boundaries_and_byte_order() {
+        for bits in [37u8, 34, 33, 30, 25, 32] {
+            let threshold = 1u64 << (64 - bits as u32);
+            let mut below = [0u8; 32];
+            below[..8].copy_from_slice(&(threshold - 1).to_be_bytes());
+            let mut at = [0u8; 32];
+            at[..8].copy_from_slice(&threshold.to_be_bytes());
+            assert!(digest_has_leading_zero_bits(below, bits));
+            assert!(!digest_has_leading_zero_bits(at, bits));
+        }
+
+        assert!(digest_has_leading_zero_bits([0xff; 32], 0));
+
+        let mut canonical = [0u8; 32];
+        canonical[..8].copy_from_slice(&(u32::MAX as u64).to_be_bytes());
+        let mut byte_reversed = canonical;
+        byte_reversed[..8].reverse();
+        assert!(digest_has_leading_zero_bits(canonical, 32));
+        assert!(!digest_has_leading_zero_bits(byte_reversed, 32));
+    }
+
+    #[test]
+    fn grinding_ok_hashes_exact_state_domain_and_little_endian_nonce_chunks() {
+        let transcript = Transcript::new(grinding_input_probe);
+        assert!(transcript.grinding_ok(0x0102_0304_0506_0708, 32));
     }
 
     #[test]

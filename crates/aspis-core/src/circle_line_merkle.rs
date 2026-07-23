@@ -250,30 +250,61 @@ pub fn derive_circle_line_query_indices(
     derive_circle_line_query_indices_for_count(layer0_queries, LAYER0_QUERY_COUNT)
 }
 
+fn sorted_unique_shifted(indices: &[u32], shift: u32) -> Vec<u32> {
+    let mut result = Vec::with_capacity(indices.len());
+    let mut index = 0usize;
+    while index < indices.len() {
+        let value = indices[index] >> shift;
+        if result.len() == 0 || result[result.len() - 1] != value {
+            result.push(value);
+        }
+        index += 1;
+    }
+    result
+}
+
 pub fn derive_circle_line_query_indices_for_count(
     layer0_queries: &[u32],
     layer0_query_count: usize,
 ) -> Result<CircleLineQueryIndices, CircleLineMerkleError> {
-    if layer0_queries.is_empty() {
+    if layer0_queries.len() == 0 {
         return Err(CircleLineMerkleError::EmptyQueries);
     }
-    if let Some(&query) = layer0_queries
-        .iter()
-        .find(|&&query| query >= layer0_query_count as u32)
-    {
-        return Err(CircleLineMerkleError::QueryOutOfRange { query });
+    let query_limit = layer0_query_count as u32;
+    let mut input_index = 0usize;
+    while input_index < layer0_queries.len() {
+        let query = layer0_queries[input_index];
+        if query >= query_limit {
+            return Err(CircleLineMerkleError::QueryOutOfRange { query });
+        }
+        input_index += 1;
     }
-    let mut layer0 = layer0_queries.to_vec();
-    layer0.sort_unstable();
-    layer0.dedup();
-    let later = core::array::from_fn(|layer| {
-        let mut indices = layer0
-            .iter()
-            .map(|query| query >> CIRCLE_LINE_QUERY_SHIFTS[layer])
-            .collect::<Vec<_>>();
-        indices.dedup();
-        indices
-    });
+
+    let mut sorted = layer0_queries.to_vec();
+    let mut index = 1usize;
+    while index < sorted.len() {
+        let mut position = index;
+        while position > 0 && sorted[position] < sorted[position - 1] {
+            sorted.swap(position, position - 1);
+            position -= 1;
+        }
+        index += 1;
+    }
+
+    let mut layer0 = Vec::with_capacity(sorted.len());
+    let mut index = 0usize;
+    while index < sorted.len() {
+        let value = sorted[index];
+        if layer0.len() == 0 || layer0[layer0.len() - 1] != value {
+            layer0.push(value);
+        }
+        index += 1;
+    }
+    let later = [
+        sorted_unique_shifted(&layer0, CIRCLE_LINE_QUERY_SHIFTS[0]),
+        sorted_unique_shifted(&layer0, CIRCLE_LINE_QUERY_SHIFTS[1]),
+        sorted_unique_shifted(&layer0, CIRCLE_LINE_QUERY_SHIFTS[2]),
+    ];
     Ok(CircleLineQueryIndices { layer0, later })
 }
 
@@ -387,6 +418,7 @@ fn verify_circle_line_openings_with_canonical_policy<'a>(
     proof_bytes: &'a [u8],
     validate_canonical: bool,
     geometry: CircleOpeningGeometry,
+    layer_tags: [u8; CIRCLE_LINE_LAYER_COUNT],
 ) -> Result<VerifiedCircleLineOpenings<'a>, CircleLineMerkleError> {
     let indices = derive_circle_line_query_indices_for_count(
         layer0_queries,
@@ -399,6 +431,7 @@ fn verify_circle_line_openings_with_canonical_policy<'a>(
         proof_bytes,
         validate_canonical,
         geometry,
+        layer_tags,
     )
 }
 
@@ -409,6 +442,7 @@ fn verify_circle_line_openings_with_canonical_policy_and_indices<'a>(
     proof_bytes: &'a [u8],
     validate_canonical: bool,
     geometry: CircleOpeningGeometry,
+    layer_tags: [u8; CIRCLE_LINE_LAYER_COUNT],
 ) -> Result<VerifiedCircleLineOpenings<'a>, CircleLineMerkleError> {
     let openings = parse_circle_line_openings_with_indices(proof_bytes, &indices)?;
     let largest_count = indices.later[0].len();
@@ -425,7 +459,7 @@ fn verify_circle_line_openings_with_canonical_policy_and_indices<'a>(
                 leaf_index,
                 leaf_hash(
                     hash,
-                    CIRCLE_LINE_TAGS[layer_index],
+                    layer_tags[layer_index],
                     opening.leaf(ordinal).unwrap(),
                 ),
             ));
@@ -463,6 +497,7 @@ pub(crate) fn verify_circle_line_openings_deferred_canonical_for_geometry_with_i
         proof_bytes,
         false,
         geometry,
+        CIRCLE_LINE_TAGS,
     )
 }
 
@@ -480,6 +515,7 @@ pub(crate) fn verify_circle_line_openings_for_geometry_with_indices<'a>(
         proof_bytes,
         true,
         geometry,
+        CIRCLE_LINE_TAGS,
     )
 }
 
@@ -496,6 +532,7 @@ pub fn verify_circle_line_openings<'a>(
         proof_bytes,
         true,
         FIXED_CIRCLE_OPENING_GEOMETRY,
+        CIRCLE_LINE_TAGS,
     )
 }
 
@@ -514,6 +551,29 @@ pub(crate) fn verify_circle_line_openings_deferred_canonical_for_geometry<'a>(
         proof_bytes,
         false,
         geometry,
+        CIRCLE_LINE_TAGS,
+    )
+}
+
+/// Authenticate all three later layers under an additive profile's exact
+/// tags and geometry. Query indices remain transcript-derived and are never
+/// accepted as proof data.
+pub fn verify_circle_line_openings_for_geometry_and_tags_with_indices<'a>(
+    hash: HashFn,
+    roots: &[[u8; 32]; CIRCLE_LINE_LAYER_COUNT],
+    indices: CircleLineQueryIndices,
+    proof_bytes: &'a [u8],
+    geometry: CircleOpeningGeometry,
+    layer_tags: [u8; CIRCLE_LINE_LAYER_COUNT],
+) -> Result<VerifiedCircleLineOpenings<'a>, CircleLineMerkleError> {
+    verify_circle_line_openings_with_canonical_policy_and_indices(
+        hash,
+        roots,
+        indices,
+        proof_bytes,
+        true,
+        geometry,
+        layer_tags,
     )
 }
 
@@ -539,6 +599,33 @@ pub fn verify_circle_line_openings_for_prefix<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn iterator_query_derivation_reference(
+        layer0_queries: &[u32],
+        layer0_query_count: usize,
+    ) -> Result<CircleLineQueryIndices, CircleLineMerkleError> {
+        if layer0_queries.is_empty() {
+            return Err(CircleLineMerkleError::EmptyQueries);
+        }
+        if let Some(&query) = layer0_queries
+            .iter()
+            .find(|&&query| query >= layer0_query_count as u32)
+        {
+            return Err(CircleLineMerkleError::QueryOutOfRange { query });
+        }
+        let mut layer0 = layer0_queries.to_vec();
+        layer0.sort_unstable();
+        layer0.dedup();
+        let later = core::array::from_fn(|layer| {
+            let mut indices = layer0
+                .iter()
+                .map(|query| query >> CIRCLE_LINE_QUERY_SHIFTS[layer])
+                .collect::<Vec<_>>();
+            indices.dedup();
+            indices
+        });
+        Ok(CircleLineQueryIndices { layer0, later })
+    }
 
     fn framed_from_indices(
         indices: &CircleLineQueryIndices,
@@ -576,6 +663,29 @@ mod tests {
         assert_eq!(
             derive_circle_line_query_indices(&[1_024]),
             Err(CircleLineMerkleError::QueryOutOfRange { query: 1_024 })
+        );
+    }
+
+    #[test]
+    fn indexed_query_derivation_matches_iterator_reference() {
+        let mut state = 0x434f_4d50_4f4e_454eu64;
+        for width in 0..=36usize {
+            let mut queries = Vec::with_capacity(width);
+            for _ in 0..width {
+                state = state
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(1_442_695_040_888_963_407);
+                queries.push(((state >> 32) as u32) & 1023);
+            }
+            assert_eq!(
+                derive_circle_line_query_indices_for_count(&queries, 1024),
+                iterator_query_derivation_reference(&queries, 1024),
+                "width={width}",
+            );
+        }
+        assert_eq!(
+            derive_circle_line_query_indices_for_count(&[7, 1024, 3], 1024),
+            iterator_query_derivation_reference(&[7, 1024, 3], 1024),
         );
     }
 

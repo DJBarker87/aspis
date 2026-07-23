@@ -1,0 +1,6 @@
+import Tag67WorkWireLE64Bridge
+
+-- Small focused import smoke test for the existential work-wire closure.
+#check AspisTag67WorkWireMaintained.generated_read_zero
+#check AspisTag67WorkWireMaintained.generated_u64_from_le_bytes_roundtrip
+#check AspisTag67WorkWireMaintained.generated_acceptance_constructs_exact_work_wire_view

@@ -1,4 +1,62 @@
+# Component-B durable index
+
+## Authoritative unified result — 2026-07-22
+
+The current authoritative Component-B result is the self-contained bundle
+`unified-current-20260722/`.  Its `REPORT.md` and 70-entry
+`metadata/SHA256SUMS` supersede every result, residual premise, hash, replay
+count, and “authoritative” label below this marker.  In particular, the current
+strongest theorem is
+`ComponentBSamplerUnifiedCapstone.sampled_helper_mixing_and_terminal_covector`:
+the actual successful generated sampler and the actual generated call-through
+helper share one generated mask/type universe, mixing and ten-round terminal
+evaluation are both closed, no `CurrentMixingTerminalTransport` or platform
+premise remains, and all 200 exported theorems have exact closure audits.
+
+Replay routes through `unified-current-20260722/replay-lean432.sh`.  The nested
+manifest SHA-256 is
+`0f420aebd37f7e64af89d75f88f4932190338e1b0138d3bc989421855424f4bb`.
+No transcript/PCS/ZK/freeze claim is made.
+
+## Superseded historical record
+
+Everything below this heading is retained only for provenance and must not be
+used as the current result.
+
 # Component-B source-authentic evaluator continuation
+
+## 2026-07-22 source-authentic sampler-to-terminal closure
+
+The authentic generated sampler is now part of the authoritative Lean 4.32
+replay. A fresh current-source extraction of `V5SumcheckMask::sample` has LLBC
+SHA-256
+`451edb30dc2551ac258ec0a0a255494f9d98e4d164b396cdda404ec9bf157691`,
+88 ordered declarations, and `has_errors=false`. Its embedded `v5_mask.rs`
+and `v5_sumcheck_mask.rs` bytes are checked against the current workspace
+sources before any proof is compiled.
+
+`ComponentBSamplerZeroBoundary.V5SumcheckMask_sample_success` proves from the
+actual generated rejection-sampling and update loops that every successful
+sample has a canonical initial claim and ten canonical stored polynomials,
+each satisfying the exact zero-boundary equation. The representation-only
+bridge preserves coefficient zero and the increasing coefficient tail 1
+through 27. The strongest theorem is
+`ComponentBSamplerTerminalCapstone.sample_success_evaluates_to_terminal`: a
+successful authentic sample followed by the authentic ten-round evaluator
+returns a canonical value equal in the maintained exact tower to
+`AspisV5SumcheckCommitment.terminalCovector`.
+
+No optimized-primitive premise, evaluator-faithfulness premise, or
+zero-boundary premise remains in that capstone. Its executable interfaces are
+the actual successful sampler run, totality of the supplied word-source
+transition, and the recorded 64-bit extraction target; canonicality of the ten
+public evaluation coordinates is the semantic input condition. It makes no
+distributional or sampler-uniformity claim.
+
+The concrete tooth `omitted_zero_boundary_constant_changes_round` proves over
+the rationals that dropping the sampler's derived constant coefficient changes
+a one-round evaluation. Thus the zero-boundary fact consumed by the capstone
+is load-bearing rather than decorative.
 
 ## 2026-07-21 deterministic evaluator-to-terminal closure
 
@@ -28,19 +86,17 @@ values and the ten stored-round zero-boundary equations.  It concludes that
 the actual extracted public evaluator succeeds with a canonical result equal,
 in the exact field tower, to the maintained terminal covector.
 
-The clean replay checks 49 retained exported theorem names against 49 exact
-`#print axioms` commands and observes 74 total axiom records including imported
+The clean replay checks 81 retained exported theorem names against 81 exact
+`#print axioms` commands and observes 113 total axiom records including imported
 authenticated arithmetic.  Every closure is contained in
 `{propext, Classical.choice, Quot.sound}`.  The retained default-limit log is
-`logs/lean432-current-source-terminal-final-20260722.log`, SHA-256
-`004b8a1ec47c0686a0bed052c7d436e100cda43cb49a85d74b5d1b54ed2fa899`.
+`logs/lean432-current-source-sampler-terminal-final-20260722.log`, SHA-256
+`30b907ed38404eaeaeb64f8beae3f39575ffdd2226406450d93028b4c1139397`.
 
-The generic sampler is intentionally outside this deterministic mission.  A
-fresh optional extraction of the authentic sampler, field constants, and
-boundary primitive is retained as LLBC/raw evidence, but its unfinished proof
-files and sampler capstone are excluded from `metadata/SHA256SUMS`, the replay,
-and every strongest-claim statement.  No handwritten `FunsExternal` constant
-stub participates in the retained proof graph.
+The earlier `...sampler_authenticated_constants_20260721` artifacts are
+historical provenance only. The authoritative sampler graph is the fresh
+`...sampler_current_20260722` extraction described above. No handwritten
+`FunsExternal` constant stub participates in the retained proof graph.
 
 Mixing is a second current-source, source-authentic Lean 4.32 kernel rather
 than being folded into this evaluator theorem.  The isolated bundle
@@ -121,7 +177,7 @@ Every generated dependency compiled by the replay is normalized to remove its
 generated heartbeat/recursion directives.  Four external raw files are pinned,
 re-normalized during replay, compared byte-for-byte with their retained
 normalized copies, and scanned before compilation.  The full proof graph then
-compiles at default Lean 4.32 limits with 49 theorem/name audits and 74 total
+compiles at default Lean 4.32 limits with 81 theorem/name audits and 113 total
 axiom records, all inside `{propext, Classical.choice, Quot.sound}`.
 
 The prior `e713b1…` LLBC and its `CURRENT_FIELD_REPLAY_20260721.log` are a

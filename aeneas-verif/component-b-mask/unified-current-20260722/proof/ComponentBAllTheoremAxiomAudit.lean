@@ -1,0 +1,70 @@
+import CM31ExactModel
+import CM31MultiplicativeProof
+import M31MulProof
+import M31ReduceU64Proof
+import QM31AddSubNegProof
+
+/- This module closes the closure audit census for exported arithmetic lemmas
+used by the unified Component-B proof graph.  The other exported theorems are
+audited beside their declarations. -/
+
+#print axioms AspisAeneasCM31Exact.mulIExact_eq_mul
+#print axioms AspisAeneasCM31Exact.ofRaw_im
+#print axioms AspisAeneasCM31Exact.ofRaw_re
+
+#print axioms AspisAeneasCM31Multiplicative.add_P_lt_u32
+#print axioms AspisAeneasCM31Multiplicative.canonical_sum_lt_u32
+#print axioms AspisAeneasCM31Multiplicative.extracted_P_val
+#print axioms AspisAeneasCM31Multiplicative.extracted_m31_add_eq_conditional
+#print axioms AspisAeneasCM31Multiplicative.extracted_m31_double_corresponds
+#print axioms AspisAeneasCM31Multiplicative.extracted_m31_mul_eq_existing
+#print axioms AspisAeneasCM31Multiplicative.extracted_m31_sub_eq_conditional
+#print axioms AspisAeneasCM31Multiplicative.high_sub_P_val
+#print axioms AspisAeneasCM31Multiplicative.shifted_high_iff
+#print axioms AspisAeneasCM31Multiplicative.shifted_sub_val
+#print axioms AspisAeneasCM31Multiplicative.u32_size_eq
+#print axioms AspisAeneasCM31Multiplicative.wrapping_add_P_val
+#print axioms AspisAeneasCM31Multiplicative.wrapping_add_sub_P_val
+#print axioms AspisAeneasCM31Multiplicative.wrapping_add_val_of_canonical
+
+#print axioms AspisAeneasM31Mul.canonical_product_lt_u64
+
+#print axioms AspisAeneasM31ReduceU64.cast_two31_eq_one
+#print axioms AspisAeneasM31ReduceU64.extractedFold31_val
+#print axioms AspisAeneasM31ReduceU64.extractedReduceOut_val
+#print axioms AspisAeneasM31ReduceU64.extractedSecondFold_val
+#print axioms AspisAeneasM31ReduceU64.extracted_P_val
+#print axioms AspisAeneasM31ReduceU64.extracted_reduce_u64_eq_out
+#print axioms AspisAeneasM31ReduceU64.m31Modulus_eq_two31_sub_one
+#print axioms AspisAeneasM31ReduceU64.masked31_val
+#print axioms AspisAeneasM31ReduceU64.mersenneFold31_lt_two34
+#print axioms AspisAeneasM31ReduceU64.narrowedSecondFold_val
+#print axioms AspisAeneasM31ReduceU64.residue_mersenneFold31
+#print axioms AspisAeneasM31ReduceU64.secondFold_lt_modulus_add_eight
+#print axioms AspisAeneasM31ReduceU64.secondFold_lt_u32
+#print axioms AspisAeneasM31ReduceU64.u32_size_eq
+#print axioms AspisAeneasM31ReduceU64.u64_size_eq
+#print axioms AspisAeneasM31ReduceU64.wrapping_sub_P_val
+
+#print axioms AspisAeneasQM31Additive.add_P_lt_u32
+#print axioms AspisAeneasQM31Additive.canonical_sum_lt_u32
+#print axioms AspisAeneasQM31Additive.extracted_P_val
+#print axioms AspisAeneasQM31Additive.extracted_m31_add_eq_conditional
+#print axioms AspisAeneasQM31Additive.extracted_m31_neg_eq_conditional
+#print axioms AspisAeneasQM31Additive.extracted_m31_sub_eq_conditional
+#print axioms AspisAeneasQM31Additive.high_sub_P_val
+#print axioms AspisAeneasQM31Additive.orderTooth_canonical
+#print axioms AspisAeneasQM31Additive.rawM31Add_canonical
+#print axioms AspisAeneasQM31Additive.rawM31Neg_canonical
+#print axioms AspisAeneasQM31Additive.rawM31Sub_canonical
+#print axioms AspisAeneasQM31Additive.residue_rawM31Add
+#print axioms AspisAeneasQM31Additive.residue_rawM31Neg
+#print axioms AspisAeneasQM31Additive.residue_rawM31Sub
+#print axioms AspisAeneasQM31Additive.scalar_eq_zero_iff
+#print axioms AspisAeneasQM31Additive.shifted_high_iff
+#print axioms AspisAeneasQM31Additive.shifted_sub_val
+#print axioms AspisAeneasQM31Additive.u32_size_eq
+#print axioms AspisAeneasQM31Additive.wrapping_P_sub_val
+#print axioms AspisAeneasQM31Additive.wrapping_add_P_val
+#print axioms AspisAeneasQM31Additive.wrapping_add_sub_P_val
+#print axioms AspisAeneasQM31Additive.wrapping_add_val_of_canonical

@@ -1,0 +1,22 @@
+[[92mInfo[39m ] Imported: aeneas-verif/tag67-work-wire-correspondence/llbc/tag67_grinding_only.llbc
+[[91mError[39m] Arrow types are not supported yet
+Source: 'crates/aspis-core/src/transcript.rs', lines 244:0-244:21
+Compiler source: symbolic/SymbolicToPureTypes.ml, line 185
+
+Uncaught exception:
+
+  (Failure
+    "Arrow types are not supported yet\
+   \nSource: 'crates/aspis-core/src/transcript.rs', lines 244:0-244:21\
+   \nCompiler source: symbolic/SymbolicToPureTypes.ml, line 185")
+
+Raised at Aeneas__Errors.craise_opt_span in file "Errors.ml", line 120, characters 4-23
+Called from Aeneas__SymbolicToPureTypes.translate_field in file "symbolic/SymbolicToPureTypes.ml", line 247, characters 17-53
+Called from Stdlib__List.map in file "list.ml", line 87, characters 15-19
+Called from Aeneas__SymbolicToPureTypes.translate_type_decl_kind in file "symbolic/SymbolicToPureTypes.ml", line 276, characters 30-60
+Called from Aeneas__SymbolicToPureTypes.translate_type_decl in file "symbolic/SymbolicToPureTypes.ml", line 307, characters 13-53
+Called from Aeneas__SymbolicToPure.translate_type_decls.(fun) in file "symbolic/SymbolicToPure.ml", line 135, characters 15-42
+Called from Stdlib__List.filter_map in file "list.ml", line 280, characters 12-15
+Called from Aeneas__Translate.translate_crate_to_pure in file "Translate.ml", line 326, characters 19-64
+Called from Aeneas__Translate.translate_crate in file "Translate.ml", line 2199, characters 31-71
+Called from Dune__exe__Main in file "Main.ml", lines 743-744, characters 8-37

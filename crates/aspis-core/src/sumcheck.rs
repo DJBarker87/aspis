@@ -49,17 +49,17 @@ enum WeightComponent {
         low_width: u8,
     },
     /// The same 64-by-16 binary matrix as `Grouped64x16`, but retain the
-    /// eight-or-fewer distinct masks through the first dual fold.  The next
-    /// fold evaluates the complete 16-entry low mask from nine cross-products
-    /// of the two rounds' challenge powers, then expands directly to the
-    /// 64-entry high covector.  No verifier code observes the intermediate
-    /// covector between relation folds, but `weight_at` still implements it
-    /// exactly so random-point identity tests can compare both paths after
-    /// every round.
+    /// distinct masks through the first two dual folds. The high-row group
+    /// schedule then remains grouped through both later folds: each distinct
+    /// four-tuple is evaluated once and equal entries within a tuple share one
+    /// multiplication. No verifier code observes an intermediate covector,
+    /// but `weight_at` still implements every fold depth exactly so off-domain
+    /// differential tests can compare both paths after every round.
     Grouped64x16BinaryDeferred {
         row_groups: Vec<u8>,
         group_masks: Vec<u16>,
         first_alpha: Option<QM31>,
+        group_values: Vec<QM31>,
     },
     /// Log-11 analogue of `Grouped64x16`. The lower 1024 entries use the
     /// generated inactive masks and the upper 1024 entries may share the
@@ -70,6 +70,209 @@ enum WeightComponent {
         group_values: Vec<QM31>,
         low_width: u8,
     },
+}
+
+/// Read one coefficient from the unfurled log-10 representation of a
+/// deferred 64-by-16 binary mask component.
+///
+/// The high six index bits select the row and its mask group. The low four
+/// bits select a bit within that `u16`, with the least-significant bit first.
+fn grouped_64x16_binary_deferred_weight_at_log10(
+    row_groups: &[u8],
+    group_masks: &[u16],
+    index: u32,
+) -> QM31 {
+    let high = (index / 16) as usize;
+    let low = index & 15;
+    let group = usize::from(row_groups[high]);
+    let mask = group_masks[group];
+    if mask & (1u16 << low) == 0 {
+        QM31::ZERO
+    } else {
+        QM31::ONE
+    }
+}
+
+/// Evaluate every distinct 16-bit mask after the two low arity-four dual
+/// folds.  Dense masks use the exact total-minus-complement identity, while
+/// sparse masks sum their set positions.  Only basis entries selected by one
+/// of those two representations are formed, and cross-products are shared by
+/// every mask.
+fn sum_selected_binary_basis(selected_positions: u16, basis: &[QM31; 16]) -> QM31 {
+    let mut partial = QM31::ZERO;
+    let mut low = 0usize;
+    while low < 16 {
+        if selected_positions & (1 << low) != 0 {
+            partial = partial.add(basis[low]);
+        }
+        low += 1;
+    }
+    partial
+}
+
+#[inline(never)]
+fn fold_binary_low_masks(group_masks: &[u16], alpha0: QM31, alpha1: QM31) -> Vec<QM31> {
+    let alpha0_2 = alpha0.square();
+    let alpha1_2 = alpha1.square();
+    let alpha0_powers = [QM31::ONE, alpha0_2.mul(alpha0), alpha0_2, alpha0];
+    let alpha1_powers = [QM31::ONE, alpha1_2.mul(alpha1), alpha1_2, alpha1];
+
+    let mut selected = 0u16;
+    let mut needs_total = false;
+    let mut mask_index = 0usize;
+    while mask_index < group_masks.len() {
+        let mask = group_masks[mask_index];
+        if mask.count_ones() > 8 {
+            needs_total = true;
+            selected |= !mask;
+        } else {
+            selected |= mask;
+        }
+        mask_index += 1;
+    }
+
+    // If every cross term is needed, materializing the complete basis also
+    // gives the total by addition and avoids buying a tenth multiplication.
+    const CROSS_POSITIONS: u16 = 0xeee0;
+    let materialize_all = needs_total && (selected & CROSS_POSITIONS) == CROSS_POSITIONS;
+    if materialize_all {
+        selected = u16::MAX;
+    }
+
+    let mut basis = [QM31::ZERO; 16];
+    let mut low = 0usize;
+    while low < 16 {
+        if selected & (1 << low) != 0 {
+            let high_slot = low >> 2;
+            let low_slot = low & 3;
+            basis[low] = if high_slot == 0 {
+                alpha0_powers[low_slot]
+            } else if low_slot == 0 {
+                alpha1_powers[high_slot]
+            } else {
+                alpha1_powers[high_slot].mul(alpha0_powers[low_slot])
+            };
+        }
+        low += 1;
+    }
+
+    let total = if needs_total {
+        if materialize_all {
+            let mut total = QM31::ZERO;
+            let mut low = 0usize;
+            while low < 16 {
+                total = total.add(basis[low]);
+                low += 1;
+            }
+            total
+        } else {
+            let mut alpha0_total = QM31::ZERO;
+            let mut alpha1_total = QM31::ZERO;
+            let mut slot = 0usize;
+            while slot < 4 {
+                alpha0_total = alpha0_total.add(alpha0_powers[slot]);
+                alpha1_total = alpha1_total.add(alpha1_powers[slot]);
+                slot += 1;
+            }
+            alpha0_total.mul(alpha1_total)
+        }
+    } else {
+        QM31::ZERO
+    };
+
+    let mut values = Vec::with_capacity(group_masks.len());
+    let mut mask_index = 0usize;
+    while mask_index < group_masks.len() {
+        let mask = group_masks[mask_index];
+        let dense = mask.count_ones() > 8;
+        let selected_positions = if dense { !mask } else { mask };
+        let partial = sum_selected_binary_basis(selected_positions, &basis);
+        let raw = if dense { total.sub(partial) } else { partial };
+        values.push(raw.half().half().half().half());
+        mask_index += 1;
+    }
+    values
+}
+
+/// Fold one four-row group tuple. Equal group identifiers are collected
+/// before multiplying, so the frozen high-row schedule pays once per distinct
+/// value in a tuple rather than once per nonconstant slot.
+#[inline(never)]
+fn fold_group_tuple(
+    groups: [u8; 4],
+    group_values: &[QM31],
+    alpha: QM31,
+    alpha2: QM31,
+    alpha3: QM31,
+) -> QM31 {
+    let powers = [QM31::ONE, alpha3, alpha2, alpha];
+    let mut unique_groups = [0u8; 4];
+    let mut coefficients = [QM31::ZERO; 4];
+    let mut counts = [0u8; 4];
+    let mut first_slots = [0u8; 4];
+    let mut unique_len = 0usize;
+
+    for slot in 0..4 {
+        let group = groups[slot];
+        let mut position = 0usize;
+        while position < unique_len && unique_groups[position] != group {
+            position += 1;
+        }
+        if position < unique_len {
+            coefficients[position] = coefficients[position].add(powers[slot]);
+            counts[position] += 1;
+        } else {
+            unique_groups[unique_len] = group;
+            coefficients[unique_len] = powers[slot];
+            counts[unique_len] = 1;
+            first_slots[unique_len] = slot as u8;
+            unique_len += 1;
+        }
+    }
+
+    let mut folded = QM31::ZERO;
+    for position in 0..unique_len {
+        let value = group_values[usize::from(unique_groups[position])];
+        let contribution = if first_slots[position] == 0 && counts[position] == 1 {
+            value
+        } else {
+            value.mul(coefficients[position])
+        };
+        folded = folded.add(contribution);
+    }
+    folded.half().half()
+}
+
+/// Deduplicate the consecutive four-tuples of a grouped high-row schedule and
+/// evaluate each distinct tuple once. The returned group schedule represents
+/// the exact folded covector without expanding it to one QM31 per row.
+#[inline(never)]
+fn fold_grouped_rows(
+    row_groups: &[u8],
+    group_values: &[QM31],
+    alpha: QM31,
+    alpha2: QM31,
+    alpha3: QM31,
+) -> (Vec<u8>, Vec<QM31>) {
+    debug_assert_eq!(row_groups.len() % 4, 0);
+    let folded_len = row_groups.len() / 4;
+    let mut tuples = Vec::<[u8; 4]>::with_capacity(folded_len);
+    let mut folded_groups = Vec::<u8>::with_capacity(folded_len);
+    let mut folded_values = Vec::<QM31>::with_capacity(folded_len);
+
+    for chunk in row_groups.chunks_exact(4) {
+        let tuple = [chunk[0], chunk[1], chunk[2], chunk[3]];
+        let mut group = 0usize;
+        while group < tuples.len() && tuples[group] != tuple {
+            group += 1;
+        }
+        if group == tuples.len() {
+            tuples.push(tuple);
+            folded_values.push(fold_group_tuple(tuple, group_values, alpha, alpha2, alpha3));
+        }
+        folded_groups.push(group as u8);
+    }
+    (folded_groups, folded_values)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -86,6 +289,8 @@ pub enum TensorWeightError {
     DenseLength,
     /// Grouped 64-by-16 masks are defined only at log length ten.
     Grouped64x16LogLength,
+    /// A pre-grouped 64-by-16 mask schedule must reference a nonempty group table.
+    Grouped64x16PreparedShape,
     /// The 128-by-16 grouped form is defined only at log length eleven.
     Grouped128x16LogLength,
 }
@@ -100,6 +305,22 @@ pub struct WeightAccumulator {
 }
 
 impl WeightAccumulator {
+    /// Append one validated, already-deduplicated deferred binary schedule.
+    /// Callers retain responsibility for log length and schedule-shape checks.
+    fn install_grouped_64x16_binary_masks_deferred_prepared(
+        &mut self,
+        row_groups: Vec<u8>,
+        group_masks: Vec<u16>,
+    ) {
+        self.components
+            .push(WeightComponent::Grouped64x16BinaryDeferred {
+                row_groups,
+                group_masks,
+                first_alpha: None,
+                group_values: Vec::new(),
+            });
+    }
+
     pub fn empty(log_len: u32) -> Self {
         Self {
             log_len,
@@ -278,22 +499,51 @@ impl WeightAccumulator {
         }
         let mut group_masks = Vec::<u16>::new();
         let mut row_groups = Vec::with_capacity(64);
-        for mask in row_masks {
-            let group = group_masks
-                .iter()
-                .position(|&candidate| candidate == mask)
-                .unwrap_or_else(|| {
-                    group_masks.push(mask);
-                    group_masks.len() - 1
-                });
+        let mut high = 0usize;
+        while high < row_masks.len() {
+            let mask = row_masks[high];
+            let mut group = 0usize;
+            while group < group_masks.len() && group_masks[group] != mask {
+                group += 1;
+            }
+            if group == group_masks.len() {
+                group_masks.push(mask);
+            }
             row_groups.push(group as u8);
+            high += 1;
         }
-        self.components
-            .push(WeightComponent::Grouped64x16BinaryDeferred {
-                row_groups,
-                group_masks,
-                first_alpha: None,
-            });
+        self.install_grouped_64x16_binary_masks_deferred_prepared(row_groups, group_masks);
+        Ok(())
+    }
+
+    /// Install an already deduplicated 64-by-16 binary mask schedule.
+    ///
+    /// This is algebraically identical to
+    /// [`Self::add_grouped_64x16_binary_masks_deferred`]. It lets callers with
+    /// a frozen public layout move the row-mask construction and deduplication
+    /// off chain while retaining the same fold implementation.
+    pub fn add_grouped_64x16_binary_masks_deferred_prepared(
+        &mut self,
+        row_groups: &[u8; 64],
+        group_masks: &[u16],
+    ) -> Result<(), TensorWeightError> {
+        if self.log_len != 10 {
+            return Err(TensorWeightError::Grouped64x16LogLength);
+        }
+        if group_masks.is_empty() {
+            return Err(TensorWeightError::Grouped64x16PreparedShape);
+        }
+        let mut high = 0usize;
+        while high < row_groups.len() {
+            if usize::from(row_groups[high]) >= group_masks.len() {
+                return Err(TensorWeightError::Grouped64x16PreparedShape);
+            }
+            high += 1;
+        }
+        self.install_grouped_64x16_binary_masks_deferred_prepared(
+            row_groups.to_vec(),
+            group_masks.to_vec(),
+        );
         Ok(())
     }
 
@@ -306,25 +556,33 @@ impl WeightAccumulator {
         }
         let mut unique_masks = Vec::<u16>::new();
         let mut row_groups = Vec::with_capacity(128);
-        for mask in row_masks {
-            let group = unique_masks
-                .iter()
-                .position(|&candidate| candidate == mask)
-                .unwrap_or_else(|| {
-                    unique_masks.push(mask);
-                    unique_masks.len() - 1
-                });
+        let mut high = 0usize;
+        while high < row_masks.len() {
+            let mask = row_masks[high];
+            let mut group = 0usize;
+            while group < unique_masks.len() && unique_masks[group] != mask {
+                group += 1;
+            }
+            if group == unique_masks.len() {
+                unique_masks.push(mask);
+            }
             row_groups.push(group as u8);
+            high += 1;
         }
         let mut group_values = Vec::with_capacity(unique_masks.len() * 16);
-        for mask in unique_masks {
-            group_values.extend((0..16).map(|low| {
-                if mask & (1 << low) == 0 {
+        let mut group = 0usize;
+        while group < unique_masks.len() {
+            let mask = unique_masks[group];
+            let mut low = 0u32;
+            while low < 16 {
+                group_values.push(if mask & (1u16 << low) == 0 {
                     QM31::ZERO
                 } else {
                     QM31::ONE
-                }
-            }));
+                });
+                low += 1;
+            }
+            group += 1;
         }
         self.components.push(WeightComponent::Grouped128x16 {
             row_groups,
@@ -376,7 +634,9 @@ impl WeightAccumulator {
     pub fn weight_at(&self, index: u32) -> QM31 {
         debug_assert!(index < (1u32 << self.log_len));
         let mut total = QM31::ZERO;
-        for component in &self.components {
+        let mut component_index = 0usize;
+        while component_index < self.components.len() {
+            let component = &self.components[component_index];
             let value = match component {
                 WeightComponent::Geometric { scale, base } => scale.mul(base.pow(index as u64)),
                 WeightComponent::Multilinear { scale, point } => {
@@ -425,9 +685,20 @@ impl WeightAccumulator {
                     row_groups,
                     group_masks,
                     first_alpha,
-                } => {
-                    if let Some(alpha) = first_alpha {
-                        debug_assert_eq!(self.log_len, 8);
+                    group_values,
+                } => match self.log_len {
+                    10 => {
+                        debug_assert!(first_alpha.is_none());
+                        grouped_64x16_binary_deferred_weight_at_log10(
+                            row_groups,
+                            group_masks,
+                            index,
+                        )
+                    }
+                    8 => {
+                        let alpha = first_alpha
+                            .as_ref()
+                            .expect("the first deferred fold stores its challenge");
                         let high = index as usize / 4;
                         let low_chunk = index as usize & 3;
                         let mask = group_masks[usize::from(row_groups[high])];
@@ -435,25 +706,22 @@ impl WeightAccumulator {
                         let alpha2 = alpha.square();
                         let alpha3 = alpha2.mul(*alpha);
                         let powers = [QM31::ONE, alpha3, alpha2, *alpha];
-                        powers
-                            .iter()
-                            .enumerate()
-                            .filter(|(slot, _)| bits & (1 << slot) != 0)
-                            .fold(QM31::ZERO, |sum, (_, power)| sum.add(*power))
-                            .half()
-                            .half()
-                    } else {
-                        debug_assert_eq!(self.log_len, 10);
-                        let high = index as usize / 16;
-                        let low = index as usize & 15;
-                        let mask = group_masks[usize::from(row_groups[high])];
-                        if mask & (1 << low) == 0 {
-                            QM31::ZERO
-                        } else {
-                            QM31::ONE
+                        let mut sum = QM31::ZERO;
+                        let mut slot = 0u32;
+                        while slot < 4 {
+                            if bits & (1u16 << slot) != 0 {
+                                sum = sum.add(powers[slot as usize]);
+                            }
+                            slot += 1;
                         }
+                        sum.half().half()
                     }
-                }
+                    2 | 4 | 6 => {
+                        debug_assert!(first_alpha.is_none());
+                        group_values[usize::from(row_groups[index as usize])]
+                    }
+                    _ => unreachable!("invalid deferred binary fold depth"),
+                },
                 WeightComponent::Grouped128x16 {
                     row_groups,
                     group_values,
@@ -467,6 +735,7 @@ impl WeightAccumulator {
                 }
             };
             total = total.add(value);
+            component_index += 1;
         }
         total
     }
@@ -511,20 +780,27 @@ impl WeightAccumulator {
         }
 
         let mut output = [QM31::ZERO; N];
-        for component in &self.components {
+        let mut component_index = 0usize;
+        while component_index < self.components.len() {
+            let component = &self.components[component_index];
             match component {
                 WeightComponent::Geometric { scale, base } => {
                     let mut value = *scale;
-                    for item in &mut output {
-                        *item = item.add(value);
+                    let mut index = 0usize;
+                    while index < N {
+                        output[index] = output[index].add(value);
                         value = value.mul(*base);
+                        index += 1;
                     }
                 }
                 WeightComponent::Multilinear { scale, point } => {
-                    let pairs = point
-                        .iter()
-                        .map(|&value| [QM31::ONE.sub(value), value])
-                        .collect::<Vec<_>>();
+                    let mut pairs = Vec::with_capacity(point.len());
+                    let mut coordinate = 0usize;
+                    while coordinate < point.len() {
+                        let value = point[coordinate];
+                        pairs.push([QM31::ONE.sub(value), value]);
+                        coordinate += 1;
+                    }
                     add_product_prefix(&mut output, &pairs, 0, 0, *scale);
                 }
                 WeightComponent::Tensor { scale, factors } => {
@@ -532,21 +808,27 @@ impl WeightAccumulator {
                     if N != 0 {
                         values[0] = *scale;
                     }
-                    for index in 1..N {
+                    let mut index = 1usize;
+                    while index < N {
                         let bit = index.trailing_zeros() as usize;
                         let prefix = index ^ (1usize << bit);
                         values[index] = values[prefix].mul(factors[factors.len() - 1 - bit]);
+                        index += 1;
                     }
-                    for (item, value) in output.iter_mut().zip(values) {
-                        *item = item.add(value);
+                    let mut index = 0usize;
+                    while index < N {
+                        output[index] = output[index].add(values[index]);
+                        index += 1;
                     }
                 }
                 WeightComponent::Product { scale, pairs } => {
                     add_product_prefix(&mut output, pairs, 0, 0, *scale);
                 }
                 WeightComponent::Dense { values } => {
-                    for (item, &value) in output.iter_mut().zip(values) {
-                        *item = item.add(value);
+                    let mut index = 0usize;
+                    while index < N && index < values.len() {
+                        output[index] = output[index].add(values[index]);
+                        index += 1;
                     }
                 }
                 WeightComponent::Grouped64x16 {
@@ -555,60 +837,386 @@ impl WeightAccumulator {
                     low_width,
                 } => {
                     let width = usize::from(*low_width);
-                    for (index, item) in output.iter_mut().enumerate() {
+                    let mut index = 0usize;
+                    while index < N {
                         let group = usize::from(row_groups[index / width]);
-                        *item = item.add(group_values[group * width + index % width]);
+                        output[index] =
+                            output[index].add(group_values[group * width + index % width]);
+                        index += 1;
                     }
                 }
                 WeightComponent::Grouped64x16BinaryDeferred {
                     row_groups,
                     group_masks,
                     first_alpha,
-                } => {
-                    if let Some(alpha) = first_alpha {
-                        debug_assert_eq!(self.log_len, 8);
-                        let alpha2 = alpha.square();
-                        let powers = [QM31::ONE, alpha2.mul(*alpha), alpha2, *alpha];
-                        for (index, item) in output.iter_mut().enumerate() {
-                            let high = index / 4;
-                            let low_chunk = index & 3;
-                            let mask = group_masks[usize::from(row_groups[high])];
-                            let bits = (mask >> (4 * low_chunk)) & 0x0f;
-                            let value = powers
-                                .iter()
-                                .enumerate()
-                                .filter(|(slot, _)| bits & (1 << slot) != 0)
-                                .fold(QM31::ZERO, |sum, (_, power)| sum.add(*power))
-                                .half()
-                                .half();
-                            *item = item.add(value);
-                        }
-                    } else {
-                        debug_assert_eq!(self.log_len, 10);
-                        for (index, item) in output.iter_mut().enumerate() {
+                    group_values,
+                } => match self.log_len {
+                    10 => {
+                        debug_assert!(first_alpha.is_none());
+                        let mut index = 0usize;
+                        while index < N {
                             let high = index / 16;
                             let low = index & 15;
                             let mask = group_masks[usize::from(row_groups[high])];
                             if mask & (1 << low) != 0 {
-                                *item = item.add(QM31::ONE);
+                                output[index] = output[index].add(QM31::ONE);
                             }
+                            index += 1;
                         }
                     }
-                }
+                    8 => {
+                        let alpha = first_alpha
+                            .as_ref()
+                            .expect("the first deferred fold stores its challenge");
+                        let alpha2 = alpha.square();
+                        let powers = [QM31::ONE, alpha2.mul(*alpha), alpha2, *alpha];
+                        let mut index = 0usize;
+                        while index < N {
+                            let high = index / 4;
+                            let low_chunk = index & 3;
+                            let mask = group_masks[usize::from(row_groups[high])];
+                            let bits = (mask >> (4 * low_chunk)) & 0x0f;
+                            let mut value = QM31::ZERO;
+                            let mut slot = 0u32;
+                            while slot < 4 {
+                                if bits & (1u16 << slot) != 0 {
+                                    value = value.add(powers[slot as usize]);
+                                }
+                                slot += 1;
+                            }
+                            value = value.half().half();
+                            output[index] = output[index].add(value);
+                            index += 1;
+                        }
+                    }
+                    2 | 4 | 6 => {
+                        debug_assert!(first_alpha.is_none());
+                        let mut index = 0usize;
+                        while index < N {
+                            output[index] =
+                                output[index].add(group_values[usize::from(row_groups[index])]);
+                            index += 1;
+                        }
+                    }
+                    _ => unreachable!("invalid deferred binary fold depth"),
+                },
                 WeightComponent::Grouped128x16 {
                     row_groups,
                     group_values,
                     low_width,
                 } => {
                     let width = usize::from(*low_width);
-                    for (index, item) in output.iter_mut().enumerate() {
+                    let mut index = 0usize;
+                    while index < N {
                         let group = usize::from(row_groups[index / width]);
-                        *item = item.add(group_values[group * width + index % width]);
+                        output[index] =
+                            output[index].add(group_values[group * width + index % width]);
+                        index += 1;
                     }
                 }
             }
+            component_index += 1;
         }
         output
+    }
+
+    fn fold_multilinear_arity4(
+        scale: &mut QM31,
+        point: &mut Vec<QM31>,
+        alpha: QM31,
+        alpha2: QM31,
+        alpha3: QM31,
+    ) {
+        let split = point.len() - 2;
+        let z0 = point[split];
+        let z1 = point[split + 1];
+        let low = QM31::ONE.add(alpha3.sub(QM31::ONE).mul(z1));
+        let high = alpha2.add(alpha.sub(alpha2).mul(z1));
+        let factor = low.add(z0.mul(high.sub(low))).half().half();
+        *scale = scale.mul(factor);
+        point.truncate(split);
+    }
+
+    fn fold_tensor_arity4(
+        scale: &mut QM31,
+        factors: &mut Vec<QM31>,
+        alpha3: QM31,
+        prepared_alpha: PreparedQm31Multiplier,
+        prepared_alpha2: PreparedQm31Multiplier,
+    ) {
+        let split = factors.len() - 2;
+        let high = factors[split];
+        let low = factors[split + 1];
+        let prepared = [prepared_alpha2, PreparedQm31Multiplier::new(low)];
+        let products =
+            qm31_sum_products2_prepared(&prepared, &[high, alpha3.add(prepared_alpha.mul(high))]);
+        let factor = QM31::ONE.add(products).half().half();
+        *scale = scale.mul(factor);
+        factors.truncate(split);
+    }
+
+    fn fold_dense_arity4(values: &mut Vec<QM31>, alpha: QM31, alpha2: QM31, alpha3: QM31) {
+        let chunk_count = values.len() / 4;
+        let mut folded = Vec::with_capacity(chunk_count);
+        let mut chunk_index = 0usize;
+        while chunk_index < chunk_count {
+            let offset = chunk_index * 4;
+            folded.push(
+                values[offset]
+                    .add(alpha3.mul(values[offset + 1]))
+                    .add(alpha2.mul(values[offset + 2]))
+                    .add(alpha.mul(values[offset + 3]))
+                    .half()
+                    .half(),
+            );
+            chunk_index += 1;
+        }
+        *values = folded;
+    }
+
+    fn fold_grouped64_binary_deferred_arity4(
+        row_groups: &mut Vec<u8>,
+        group_masks: &mut Vec<u16>,
+        first_alpha: &mut Option<QM31>,
+        group_values: &mut Vec<QM31>,
+        current_log_len: u32,
+        alpha: QM31,
+        alpha2: QM31,
+        alpha3: QM31,
+    ) {
+        match current_log_len {
+            10 => {
+                debug_assert!(first_alpha.is_none());
+                *first_alpha = Some(alpha);
+            }
+            8 => {
+                let alpha0 = first_alpha
+                    .take()
+                    .expect("the first deferred fold stores its challenge");
+                *group_values = fold_binary_low_masks(group_masks, alpha0, alpha);
+                group_masks.clear();
+            }
+            6 | 4 => {
+                debug_assert!(first_alpha.is_none());
+                let (folded_groups, folded_values) =
+                    fold_grouped_rows(row_groups, group_values, alpha, alpha2, alpha3);
+                *row_groups = folded_groups;
+                *group_values = folded_values;
+            }
+            _ => unreachable!("invalid deferred binary fold depth"),
+        }
+    }
+
+    fn fold_component_arity4(
+        component: &mut WeightComponent,
+        current_log_len: u32,
+        alpha: QM31,
+        alpha2: QM31,
+        alpha3: QM31,
+        prepared_alpha: PreparedQm31Multiplier,
+        prepared_alpha2: PreparedQm31Multiplier,
+    ) -> Option<WeightComponent> {
+        let mut replacement = None;
+        match component {
+            WeightComponent::Geometric { scale, base } => {
+                let base2 = base.square();
+                let base3 = base2.mul(*base);
+                let factor = QM31::ONE
+                    .add(alpha3.mul(*base))
+                    .add(alpha2.mul(base2))
+                    .add(alpha.mul(base3))
+                    .half()
+                    .half();
+                *scale = scale.mul(factor);
+                *base = base2.square();
+            }
+            WeightComponent::Multilinear { scale, point } => {
+                Self::fold_multilinear_arity4(scale, point, alpha, alpha2, alpha3);
+            }
+            WeightComponent::Tensor { scale, factors } => {
+                Self::fold_tensor_arity4(scale, factors, alpha3, prepared_alpha, prepared_alpha2)
+            }
+            WeightComponent::Product { scale, pairs } => {
+                let split = pairs.len() - 2;
+                let high = pairs[split];
+                let low = pairs[split + 1];
+                let factor = high[0]
+                    .mul(low[0])
+                    .add(alpha3.mul(high[0].mul(low[1])))
+                    .add(alpha2.mul(high[1].mul(low[0])))
+                    .add(alpha.mul(high[1].mul(low[1])))
+                    .half()
+                    .half();
+                *scale = scale.mul(factor);
+                pairs.truncate(split);
+            }
+            WeightComponent::Dense { values } => {
+                Self::fold_dense_arity4(values, alpha, alpha2, alpha3);
+            }
+            WeightComponent::Grouped64x16 {
+                row_groups,
+                group_values,
+                low_width,
+            } => {
+                replacement = Self::fold_grouped64_arity4(
+                    row_groups,
+                    group_values,
+                    low_width,
+                    current_log_len,
+                    alpha,
+                    alpha2,
+                    alpha3,
+                );
+            }
+            WeightComponent::Grouped64x16BinaryDeferred {
+                row_groups,
+                group_masks,
+                first_alpha,
+                group_values,
+            } => Self::fold_grouped64_binary_deferred_arity4(
+                row_groups,
+                group_masks,
+                first_alpha,
+                group_values,
+                current_log_len,
+                alpha,
+                alpha2,
+                alpha3,
+            ),
+            WeightComponent::Grouped128x16 {
+                row_groups,
+                group_values,
+                low_width,
+            } => {
+                debug_assert!(matches!(current_log_len, 11 | 9));
+                let chunk_count = group_values.len() / 4;
+                let mut folded = Vec::with_capacity(chunk_count);
+                let mut chunk_index = 0usize;
+                while chunk_index < chunk_count {
+                    let offset = chunk_index * 4;
+                    folded.push(
+                        group_values[offset]
+                            .add(alpha3.mul(group_values[offset + 1]))
+                            .add(alpha2.mul(group_values[offset + 2]))
+                            .add(alpha.mul(group_values[offset + 3]))
+                            .half()
+                            .half(),
+                    );
+                    chunk_index += 1;
+                }
+                if *low_width == 16 {
+                    *group_values = folded;
+                    *low_width = 4;
+                } else {
+                    debug_assert_eq!(*low_width, 4);
+                    let mut values = Vec::with_capacity(row_groups.len());
+                    let mut row = 0usize;
+                    while row < row_groups.len() {
+                        values.push(folded[usize::from(row_groups[row])]);
+                        row += 1;
+                    }
+                    replacement = Some(WeightComponent::Dense { values });
+                }
+            }
+        }
+        replacement
+    }
+
+    /// The ordinary grouped-64 arm of [`Self::fold_component_arity4`].
+    ///
+    /// This helper is deliberately kept separate from the other component
+    /// variants so source-correspondence extraction can authenticate the
+    /// deployed grouped traversal without importing unreachable enum arms.
+    fn fold_grouped64_arity4(
+        row_groups: &Vec<u8>,
+        group_values: &mut Vec<QM31>,
+        low_width: &mut u8,
+        current_log_len: u32,
+        alpha: QM31,
+        alpha2: QM31,
+        alpha3: QM31,
+    ) -> Option<WeightComponent> {
+        debug_assert!(matches!(current_log_len, 10 | 8));
+        // This indexed loop has exactly the former `chunks_exact(4)`
+        // traversal: incomplete trailing values are deliberately ignored.
+        let chunk_count = group_values.len() / 4;
+        let mut folded = Vec::with_capacity(chunk_count);
+        let mut chunk_index = 0usize;
+        while chunk_index < chunk_count {
+            let offset = chunk_index * 4;
+            folded.push(
+                group_values[offset]
+                    .add(alpha3.mul(group_values[offset + 1]))
+                    .add(alpha2.mul(group_values[offset + 2]))
+                    .add(alpha.mul(group_values[offset + 3]))
+                    .half()
+                    .half(),
+            );
+            chunk_index += 1;
+        }
+        if *low_width == 16 {
+            *group_values = folded;
+            *low_width = 4;
+            None
+        } else {
+            debug_assert_eq!(*low_width, 4);
+            let mut values = Vec::with_capacity(row_groups.len());
+            let mut row = 0usize;
+            while row < row_groups.len() {
+                values.push(folded[usize::from(row_groups[row])]);
+                row += 1;
+            }
+            Some(WeightComponent::Dense { values })
+        }
+    }
+
+    /// Arity-four fold for the exact component family used by the v5
+    /// incremental relation.  That relation contains only multilinear,
+    /// tensor, dense and deferred grouped-binary components, so no component
+    /// changes enum variant during its four folds.
+    pub fn fold_deferred_relation_arity4(&mut self, alpha: QM31) {
+        debug_assert!(self.log_len >= 2);
+        let current_log_len = self.log_len;
+        let alpha2 = alpha.square();
+        let prepared_alpha = PreparedQm31Multiplier::new(alpha);
+        let prepared_alpha2 = PreparedQm31Multiplier::new(alpha2);
+        let alpha3 = prepared_alpha.mul(alpha2);
+        let mut component_index = 0usize;
+        while component_index < self.components.len() {
+            match &mut self.components[component_index] {
+                WeightComponent::Multilinear { scale, point } => {
+                    Self::fold_multilinear_arity4(scale, point, alpha, alpha2, alpha3);
+                }
+                WeightComponent::Tensor { scale, factors } => Self::fold_tensor_arity4(
+                    scale,
+                    factors,
+                    alpha3,
+                    prepared_alpha,
+                    prepared_alpha2,
+                ),
+                WeightComponent::Dense { values } => {
+                    Self::fold_dense_arity4(values, alpha, alpha2, alpha3);
+                }
+                WeightComponent::Grouped64x16BinaryDeferred {
+                    row_groups,
+                    group_masks,
+                    first_alpha,
+                    group_values,
+                } => Self::fold_grouped64_binary_deferred_arity4(
+                    row_groups,
+                    group_masks,
+                    first_alpha,
+                    group_values,
+                    current_log_len,
+                    alpha,
+                    alpha2,
+                    alpha3,
+                ),
+                _ => unreachable!("unsupported deferred-relation component"),
+            }
+            component_index += 1;
+        }
+        self.log_len -= 2;
     }
 
     /// Apply the dual of the arity-4 monomial coefficient fold.
@@ -619,183 +1227,46 @@ impl WeightAccumulator {
         let prepared_alpha = PreparedQm31Multiplier::new(alpha);
         let prepared_alpha2 = PreparedQm31Multiplier::new(alpha2);
         let alpha3 = prepared_alpha.mul(alpha2);
-        for component in &mut self.components {
-            match component {
-                WeightComponent::Geometric { scale, base } => {
-                    let base2 = base.square();
-                    let base3 = base2.mul(*base);
-                    let factor = QM31::ONE
-                        .add(alpha3.mul(*base))
-                        .add(alpha2.mul(base2))
-                        .add(alpha.mul(base3))
-                        .half()
-                        .half();
-                    *scale = scale.mul(factor);
-                    *base = base2.square();
-                }
-                WeightComponent::Multilinear { scale, point } => {
-                    let split = point.len() - 2;
-                    let z0 = point[split];
-                    let z1 = point[split + 1];
-                    // Interpolate first in z1 and then z0. This is exactly
-                    // b0 + alpha^3*b1 + alpha^2*b2 + alpha*b3, but avoids
-                    // materializing all four multilinear basis weights.
-                    let low = QM31::ONE.add(alpha3.sub(QM31::ONE).mul(z1));
-                    let high = alpha2.add(alpha.sub(alpha2).mul(z1));
-                    let factor = low.add(z0.mul(high.sub(low))).half().half();
-                    *scale = scale.mul(factor);
-                    point.truncate(split);
-                }
-                WeightComponent::Tensor { scale, factors } => {
-                    let split = factors.len() - 2;
-                    let high = factors[split];
-                    let low = factors[split + 1];
-                    // For weights [b0,b1,b2,b3] =
-                    // scale*[1,low,high,high*low], the arity-4 dual is
-                    // (b0 + alpha^3*b1 + alpha^2*b2 + alpha*b3) / 4.
-                    // 1 + alpha^3*low + alpha^2*high + alpha*high*low,
-                    // grouped to reuse the high product.
-                    let prepared = [prepared_alpha2, PreparedQm31Multiplier::new(low)];
-                    let products = qm31_sum_products2_prepared(
-                        &prepared,
-                        &[high, alpha3.add(prepared_alpha.mul(high))],
-                    );
-                    let factor = QM31::ONE.add(products).half().half();
-                    *scale = scale.mul(factor);
-                    factors.truncate(split);
-                }
-                WeightComponent::Product { scale, pairs } => {
-                    let split = pairs.len() - 2;
-                    let high = pairs[split];
-                    let low = pairs[split + 1];
-                    let factor = high[0]
-                        .mul(low[0])
-                        .add(alpha3.mul(high[0].mul(low[1])))
-                        .add(alpha2.mul(high[1].mul(low[0])))
-                        .add(alpha.mul(high[1].mul(low[1])))
-                        .half()
-                        .half();
-                    *scale = scale.mul(factor);
-                    pairs.truncate(split);
-                }
-                WeightComponent::Dense { values } => {
-                    let folded = values
-                        .chunks_exact(4)
-                        .map(|chunk| {
-                            chunk[0]
-                                .add(alpha3.mul(chunk[1]))
-                                .add(alpha2.mul(chunk[2]))
-                                .add(alpha.mul(chunk[3]))
-                                .half()
-                                .half()
-                        })
-                        .collect();
-                    *values = folded;
-                }
-                WeightComponent::Grouped64x16 {
-                    row_groups,
-                    group_values,
-                    low_width,
-                } => {
-                    debug_assert!(matches!(self.log_len, 10 | 8));
-                    let folded = group_values
-                        .chunks_exact(4)
-                        .map(|chunk| {
-                            chunk[0]
-                                .add(alpha3.mul(chunk[1]))
-                                .add(alpha2.mul(chunk[2]))
-                                .add(alpha.mul(chunk[3]))
-                                .half()
-                                .half()
-                        })
-                        .collect::<Vec<_>>();
-                    if *low_width == 16 {
-                        *group_values = folded;
-                        *low_width = 4;
-                    } else {
-                        debug_assert_eq!(*low_width, 4);
-                        let values = row_groups
-                            .iter()
-                            .map(|&group| folded[usize::from(group)])
-                            .collect();
-                        *component = WeightComponent::Dense { values };
-                    }
-                }
-                WeightComponent::Grouped64x16BinaryDeferred {
-                    row_groups,
-                    group_masks,
-                    first_alpha,
-                } => {
-                    if let Some(alpha0) = *first_alpha {
-                        debug_assert_eq!(current_log_len, 8);
-                        let alpha0_2 = alpha0.square();
-                        let alpha0_powers = [QM31::ONE, alpha0_2.mul(alpha0), alpha0_2, alpha0];
-                        let alpha1_2 = alpha2;
-                        let alpha1_powers = [QM31::ONE, alpha3, alpha1_2, alpha];
-                        let low_basis: [QM31; 16] = core::array::from_fn(|low| {
-                            let high_slot = low >> 2;
-                            let low_slot = low & 3;
-                            let product = if high_slot == 0 {
-                                alpha0_powers[low_slot]
-                            } else if low_slot == 0 {
-                                alpha1_powers[high_slot]
-                            } else {
-                                alpha1_powers[high_slot].mul(alpha0_powers[low_slot])
-                            };
-                            product.half().half().half().half()
-                        });
-                        let group_values = group_masks
-                            .iter()
-                            .map(|mask| {
-                                low_basis
-                                    .iter()
-                                    .enumerate()
-                                    .filter(|(low, _)| mask & (1 << low) != 0)
-                                    .fold(QM31::ZERO, |sum, (_, value)| sum.add(*value))
-                            })
-                            .collect::<Vec<_>>();
-                        let values = row_groups
-                            .iter()
-                            .map(|&group| group_values[usize::from(group)])
-                            .collect();
-                        *component = WeightComponent::Dense { values };
-                    } else {
-                        debug_assert_eq!(current_log_len, 10);
-                        *first_alpha = Some(alpha);
-                    }
-                }
-                WeightComponent::Grouped128x16 {
-                    row_groups,
-                    group_values,
-                    low_width,
-                } => {
-                    debug_assert!(matches!(self.log_len, 11 | 9));
-                    let folded = group_values
-                        .chunks_exact(4)
-                        .map(|chunk| {
-                            chunk[0]
-                                .add(alpha3.mul(chunk[1]))
-                                .add(alpha2.mul(chunk[2]))
-                                .add(alpha.mul(chunk[3]))
-                                .half()
-                                .half()
-                        })
-                        .collect::<Vec<_>>();
-                    if *low_width == 16 {
-                        *group_values = folded;
-                        *low_width = 4;
-                    } else {
-                        debug_assert_eq!(*low_width, 4);
-                        let values = row_groups
-                            .iter()
-                            .map(|&group| folded[usize::from(group)])
-                            .collect();
-                        *component = WeightComponent::Dense { values };
-                    }
-                }
-            }
-        }
+        self.fold_all_components_arity4(
+            current_log_len,
+            alpha,
+            alpha2,
+            alpha3,
+            prepared_alpha,
+            prepared_alpha2,
+        );
         self.log_len -= 2;
+    }
+
+    /// Indexed spelling of the public fold dispatcher. This preserves the
+    /// former mutable-iterator order while exposing the exact call graph to
+    /// source-correspondence extraction.
+    fn fold_all_components_arity4(
+        &mut self,
+        current_log_len: u32,
+        alpha: QM31,
+        alpha2: QM31,
+        alpha3: QM31,
+        prepared_alpha: PreparedQm31Multiplier,
+        prepared_alpha2: PreparedQm31Multiplier,
+    ) {
+        let mut component_index = 0usize;
+        while component_index < self.components.len() {
+            let component = &mut self.components[component_index];
+            let replacement = Self::fold_component_arity4(
+                component,
+                current_log_len,
+                alpha,
+                alpha2,
+                alpha3,
+                prepared_alpha,
+                prepared_alpha2,
+            );
+            if let Some(replacement) = replacement {
+                *component = replacement;
+            }
+            component_index += 1;
+        }
     }
 
     /// Host-probe implementation of the dual of an arity-8 monomial fold.
@@ -863,19 +1334,32 @@ impl WeightAccumulator {
                             .add(values[3].mul(pairs[0][1].mul(pairs[1][1])));
                         scale.mul(evaluation)
                     }
-                    WeightComponent::Dense { values: weights } => values
-                        .iter()
-                        .zip(weights)
-                        .fold(QM31::ZERO, |sum, (value, weight)| {
-                            sum.add(value.mul(*weight))
-                        }),
+                    WeightComponent::Dense { values: weights } => {
+                        let mut sum = QM31::ZERO;
+                        let mut index = 0usize;
+                        while index < values.len() {
+                            sum = sum.add(values[index].mul(weights[index]));
+                            index += 1;
+                        }
+                        sum
+                    }
                     WeightComponent::Grouped64x16 { .. } => {
                         unreachable!("grouped component becomes dense before log length two")
                     }
-                    WeightComponent::Grouped64x16BinaryDeferred { .. } => {
-                        unreachable!(
-                            "deferred binary component becomes dense before log length two"
-                        )
+                    WeightComponent::Grouped64x16BinaryDeferred {
+                        row_groups,
+                        group_values,
+                        ..
+                    } => {
+                        let mut sum = QM31::ZERO;
+                        let mut index = 0usize;
+                        while index < values.len() {
+                            sum = sum.add(
+                                values[index].mul(group_values[usize::from(row_groups[index])]),
+                            );
+                            index += 1;
+                        }
+                        sum
                     }
                     WeightComponent::Grouped128x16 { .. } => {
                         unreachable!("grouped component becomes dense before log length two")
@@ -885,12 +1369,13 @@ impl WeightAccumulator {
             }
             return total;
         }
-        values
-            .iter()
-            .enumerate()
-            .fold(QM31::ZERO, |sum, (index, value)| {
-                sum.add(value.mul(self.weight_at(index as u32)))
-            })
+        let mut sum = QM31::ZERO;
+        let mut index = 0usize;
+        while index < values.len() {
+            sum = sum.add(values[index].mul(self.weight_at(index as u32)));
+            index += 1;
+        }
+        sum
     }
 }
 
@@ -963,12 +1448,13 @@ pub fn boundary_sum(polynomial: &SumcheckPolynomial) -> QM31 {
 }
 
 pub fn evaluate(polynomial: &SumcheckPolynomial, point: QM31) -> QM31 {
-    polynomial
-        .iter()
-        .rev()
-        .fold(QM31::ZERO, |acc, coefficient| {
-            acc.mul(point).add(*coefficient)
-        })
+    let mut acc = polynomial[SUMCHECK_COEFFICIENTS - 1];
+    let mut degree = SUMCHECK_COEFFICIENTS - 1;
+    while degree > 0 {
+        degree -= 1;
+        acc = acc.mul(point).add(polynomial[degree]);
+    }
+    acc
 }
 
 #[cfg(test)]
@@ -977,6 +1463,8 @@ mod tests {
     use crate::circle::secure_circle_point_from_parameter;
     use crate::field::{CM31, M31};
     use alloc::vec;
+
+    extern crate std;
 
     fn q(value: u32) -> QM31 {
         QM31::from_cm31(CM31::from_m31(M31(value)))
@@ -1008,6 +1496,485 @@ mod tests {
             c0: CM31::new(next(state), next(state)),
             c1: CM31::new(next(state), next(state)),
         }
+    }
+
+    /// The exact former iterator spelling of the legacy grouped dual fold,
+    /// materialized as a dense covector for differential testing.
+    fn grouped_64x16_fold_reference(
+        row_groups: &[u8],
+        group_values: &[QM31],
+        low_width: u8,
+        alpha: QM31,
+    ) -> Vec<QM31> {
+        let alpha2 = alpha.square();
+        let alpha3 = alpha2.mul(alpha);
+        let folded = group_values
+            .chunks_exact(4)
+            .map(|chunk| {
+                chunk[0]
+                    .add(alpha3.mul(chunk[1]))
+                    .add(alpha2.mul(chunk[2]))
+                    .add(alpha.mul(chunk[3]))
+                    .half()
+                    .half()
+            })
+            .collect::<Vec<_>>();
+        if low_width == 16 {
+            row_groups
+                .iter()
+                .flat_map(|&group| {
+                    let start = usize::from(group) * 4;
+                    folded[start..start + 4].iter().copied()
+                })
+                .collect()
+        } else {
+            debug_assert_eq!(low_width, 4);
+            row_groups
+                .iter()
+                .map(|&group| folded[usize::from(group)])
+                .collect()
+        }
+    }
+
+    /// The complete pre-helper branch state, kept test-only as a differential
+    /// oracle for mutation, replacement, and malformed-tail behavior.
+    fn grouped_64x16_branch_reference(
+        row_groups: &[u8],
+        group_values: &[QM31],
+        low_width: u8,
+        alpha: QM31,
+    ) -> (Vec<QM31>, u8, Option<Vec<QM31>>) {
+        let alpha2 = alpha.square();
+        let alpha3 = alpha2.mul(alpha);
+        let folded = group_values
+            .chunks_exact(4)
+            .map(|chunk| {
+                chunk[0]
+                    .add(alpha3.mul(chunk[1]))
+                    .add(alpha2.mul(chunk[2]))
+                    .add(alpha.mul(chunk[3]))
+                    .half()
+                    .half()
+            })
+            .collect::<Vec<_>>();
+        if low_width == 16 {
+            (folded, 4, None)
+        } else {
+            debug_assert_eq!(low_width, 4);
+            let values = row_groups
+                .iter()
+                .map(|&group| folded[usize::from(group)])
+                .collect();
+            (group_values.to_vec(), low_width, Some(values))
+        }
+    }
+
+    fn run_grouped64_helper(
+        row_groups: Vec<u8>,
+        mut group_values: Vec<QM31>,
+        mut low_width: u8,
+        alpha: QM31,
+    ) -> (Vec<QM31>, u8, Option<Vec<QM31>>) {
+        let alpha2 = alpha.square();
+        let prepared_alpha = PreparedQm31Multiplier::new(alpha);
+        let alpha3 = prepared_alpha.mul(alpha2);
+        let current_log_len = if low_width == 16 { 10 } else { 8 };
+        let replacement = WeightAccumulator::fold_grouped64_arity4(
+            &row_groups,
+            &mut group_values,
+            &mut low_width,
+            current_log_len,
+            alpha,
+            alpha2,
+            alpha3,
+        );
+        let dense = replacement.map(|component| match component {
+            WeightComponent::Dense { values } => values,
+            _ => panic!("ordinary grouped fold returned a non-dense replacement"),
+        });
+        (group_values, low_width, dense)
+    }
+
+    fn run_grouped64_component_wrapper(
+        row_groups: Vec<u8>,
+        group_values: Vec<QM31>,
+        low_width: u8,
+        alpha: QM31,
+    ) -> (Vec<QM31>, u8, Option<Vec<QM31>>) {
+        let alpha2 = alpha.square();
+        let prepared_alpha = PreparedQm31Multiplier::new(alpha);
+        let prepared_alpha2 = PreparedQm31Multiplier::new(alpha2);
+        let alpha3 = prepared_alpha.mul(alpha2);
+        let mut component = WeightComponent::Grouped64x16 {
+            row_groups,
+            group_values,
+            low_width,
+        };
+        let replacement = WeightAccumulator::fold_component_arity4(
+            &mut component,
+            if low_width == 16 { 10 } else { 8 },
+            alpha,
+            alpha2,
+            alpha3,
+            prepared_alpha,
+            prepared_alpha2,
+        );
+        let (group_values, low_width) = match component {
+            WeightComponent::Grouped64x16 {
+                group_values,
+                low_width,
+                ..
+            } => (group_values, low_width),
+            _ => panic!("component wrapper changed the input before replacement"),
+        };
+        let dense = replacement.map(|component| match component {
+            WeightComponent::Dense { values } => values,
+            _ => panic!("ordinary grouped fold returned a non-dense replacement"),
+        });
+        (group_values, low_width, dense)
+    }
+
+    /// The exact pre-refactor spelling of the log-10 deferred lookup. This is
+    /// test-only differential evidence; production `weight_at` calls the
+    /// extracted helper above.
+    fn grouped_64x16_binary_deferred_weight_at_log10_reference(
+        row_groups: &[u8],
+        group_masks: &[u16],
+        index: u32,
+    ) -> QM31 {
+        let high = index as usize / 16;
+        let low = index as usize & 15;
+        let mask = group_masks[usize::from(row_groups[high])];
+        if mask & (1 << low) == 0 {
+            QM31::ZERO
+        } else {
+            QM31::ONE
+        }
+    }
+
+    #[test]
+    fn log10_deferred_lookup_helper_matches_reference_for_every_row_and_bounds() {
+        let fixed_masks = [0x0000, 0x0002, 0x4000, 0xe7ff, 0xeffe, 0xfd00, 0xffff];
+        let fixed_groups: [u8; 64] =
+            core::array::from_fn(|high| ((high * 5 + high / 7 + 3) % fixed_masks.len()) as u8);
+
+        for index in 0..1024u32 {
+            let expected = grouped_64x16_binary_deferred_weight_at_log10_reference(
+                &fixed_groups,
+                &fixed_masks,
+                index,
+            );
+            assert_eq!(
+                grouped_64x16_binary_deferred_weight_at_log10(&fixed_groups, &fixed_masks, index,),
+                expected,
+                "fixed index={index}"
+            );
+        }
+
+        let mut state = 0x5745_4947_4854_3130u64;
+        for case in 1..=64usize {
+            let group_len = 1 + case % 23;
+            let group_masks = (0..group_len)
+                .map(|_| next(&mut state).0 as u16)
+                .collect::<Vec<_>>();
+            let row_groups: [u8; 64] =
+                core::array::from_fn(|_| (next(&mut state).0 as usize % group_len) as u8);
+            let mut accumulator = WeightAccumulator::empty(10);
+            accumulator
+                .add_grouped_64x16_binary_masks_deferred_prepared(&row_groups, &group_masks)
+                .unwrap();
+
+            for index in 0..1024u32 {
+                let expected = grouped_64x16_binary_deferred_weight_at_log10_reference(
+                    &row_groups,
+                    &group_masks,
+                    index,
+                );
+                assert_eq!(
+                    grouped_64x16_binary_deferred_weight_at_log10(&row_groups, &group_masks, index,),
+                    expected,
+                    "case={case} index={index}"
+                );
+                assert_eq!(
+                    accumulator.weight_at(index),
+                    expected,
+                    "production caller case={case} index={index}"
+                );
+            }
+        }
+
+        let short_groups = [0u8; 63];
+        assert!(std::panic::catch_unwind(|| {
+            grouped_64x16_binary_deferred_weight_at_log10_reference(
+                &short_groups,
+                &fixed_masks,
+                1023,
+            )
+        })
+        .is_err());
+        assert!(std::panic::catch_unwind(|| {
+            grouped_64x16_binary_deferred_weight_at_log10(&short_groups, &fixed_masks, 1023)
+        })
+        .is_err());
+
+        let mut out_of_range_group = [0u8; 64];
+        out_of_range_group[62] = 1;
+        assert!(std::panic::catch_unwind(|| {
+            grouped_64x16_binary_deferred_weight_at_log10_reference(
+                &out_of_range_group,
+                &[0u16],
+                993,
+            )
+        })
+        .is_err());
+        assert!(std::panic::catch_unwind(|| {
+            grouped_64x16_binary_deferred_weight_at_log10(&out_of_range_group, &[0u16], 993)
+        })
+        .is_err());
+    }
+
+    #[test]
+    fn log10_deferred_lookup_row993_and_mutation_teeth() {
+        let mut row_groups = [0u8; 64];
+        row_groups[62] = 6;
+        let mut group_masks = [0u16; 7];
+        group_masks[6] = 0xffff;
+
+        assert_eq!(
+            grouped_64x16_binary_deferred_weight_at_log10(&row_groups, &group_masks, 993),
+            QM31::ONE
+        );
+
+        let mut wrong_group = row_groups;
+        wrong_group[62] = 0;
+        assert_eq!(
+            grouped_64x16_binary_deferred_weight_at_log10(&wrong_group, &group_masks, 993),
+            QM31::ZERO
+        );
+
+        let mut flipped_bit = group_masks;
+        flipped_bit[6] ^= 1u16 << 1;
+        assert_eq!(
+            grouped_64x16_binary_deferred_weight_at_log10(&row_groups, &flipped_bit, 993),
+            QM31::ZERO
+        );
+
+        let mut reversed_bit = group_masks;
+        reversed_bit[6] = 1u16 << 14;
+        assert_eq!(
+            grouped_64x16_binary_deferred_weight_at_log10(&row_groups, &reversed_bit, 993),
+            QM31::ZERO
+        );
+    }
+
+    #[test]
+    fn deferred_relation_fold_matches_generic_fold_after_every_round() {
+        let mut state = 0x4445_4645_5252_4544u64;
+        let mut accumulator = WeightAccumulator::empty(10);
+        accumulator
+            .add_multilinear(q(3), (0..10).map(|_| random_q(&mut state)).collect())
+            .unwrap();
+        accumulator
+            .add_tensor_factors(q(5), (0..10).map(|_| random_q(&mut state)).collect())
+            .unwrap();
+        accumulator
+            .add_dense((0..1024).map(|_| random_q(&mut state)).collect())
+            .unwrap();
+        let masks = core::array::from_fn(|row| {
+            let rotate = (row % 16) as u32;
+            (0xa53cu16).rotate_left(rotate) ^ ((row as u16).wrapping_mul(0x0101))
+        });
+        accumulator
+            .add_grouped_64x16_binary_masks_deferred(masks)
+            .unwrap();
+
+        let mut generic = accumulator.clone();
+        let mut specialized = accumulator;
+        for round in 0..4 {
+            let alpha = random_q(&mut state);
+            generic.fold(alpha);
+            specialized.fold_deferred_relation_arity4(alpha);
+            assert_eq!(generic.log_len, specialized.log_len, "round={round}");
+            let size = 1u32 << generic.log_len;
+            for index in 0..size {
+                assert_eq!(
+                    generic.weight_at(index),
+                    specialized.weight_at(index),
+                    "round={round} index={index}"
+                );
+            }
+        }
+    }
+
+    /// The exact former iterator spelling of the grouped-128 constructor.
+    /// Production uses indexed loops; this remains test-only differential
+    /// evidence for first-occurrence grouping and low-bit table order.
+    fn grouped_128x16_builder_reference(row_masks: &[u16; 128]) -> (Vec<u8>, Vec<QM31>) {
+        let mut unique_masks = Vec::<u16>::new();
+        let row_groups = row_masks
+            .iter()
+            .map(|&mask| {
+                let group = unique_masks
+                    .iter()
+                    .position(|&candidate| candidate == mask)
+                    .unwrap_or_else(|| {
+                        unique_masks.push(mask);
+                        unique_masks.len() - 1
+                    });
+                group as u8
+            })
+            .collect::<Vec<_>>();
+        let group_values = unique_masks
+            .iter()
+            .flat_map(|&mask| {
+                (0..16).map(move |low| {
+                    if mask & (1 << low) == 0 {
+                        QM31::ZERO
+                    } else {
+                        QM31::ONE
+                    }
+                })
+            })
+            .collect::<Vec<_>>();
+        (row_groups, group_values)
+    }
+
+    fn assert_weight_prefix_matches_weight_at<const N: usize>(weights: &WeightAccumulator) {
+        assert_eq!(
+            weights.weight_prefix::<N>(),
+            core::array::from_fn(|index| weights.weight_at(index as u32))
+        );
+    }
+
+    #[test]
+    fn indexed_grouped_64x16_fold_matches_former_iterator_spelling() {
+        let mut state = 0x4752_4f55_5046_4f4cu64;
+        for low_width in [16u8, 4u8] {
+            for case in 0..32usize {
+                let group_count = 1 + case % 13;
+                let row_groups = (0..64)
+                    .map(|_| (next(&mut state).0 as usize % group_count) as u8)
+                    .collect::<Vec<_>>();
+                let group_values = (0..group_count * usize::from(low_width))
+                    .map(|_| random_q(&mut state))
+                    .collect::<Vec<_>>();
+                let alpha = random_q(&mut state);
+                let branch_expected =
+                    grouped_64x16_branch_reference(&row_groups, &group_values, low_width, alpha);
+                assert_eq!(
+                    run_grouped64_helper(
+                        row_groups.clone(),
+                        group_values.clone(),
+                        low_width,
+                        alpha,
+                    ),
+                    branch_expected,
+                );
+                assert_eq!(
+                    run_grouped64_component_wrapper(
+                        row_groups.clone(),
+                        group_values.clone(),
+                        low_width,
+                        alpha,
+                    ),
+                    branch_expected,
+                );
+                let expected =
+                    grouped_64x16_fold_reference(&row_groups, &group_values, low_width, alpha);
+                let mut actual = WeightAccumulator {
+                    log_len: if low_width == 16 { 10 } else { 8 },
+                    components: vec![WeightComponent::Grouped64x16 {
+                        row_groups,
+                        group_values,
+                        low_width,
+                    }],
+                };
+                actual.fold(alpha);
+                assert_eq!(1usize << actual.log_len, expected.len());
+                for (index, expected_value) in expected.into_iter().enumerate() {
+                    assert_eq!(
+                        actual.weight_at(index as u32),
+                        expected_value,
+                        "low_width={low_width} case={case} index={index}",
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn grouped_64x16_helper_preserves_malformed_tail_and_table_boundaries() {
+        let alpha = q(7);
+        for (row_groups, group_values, low_width) in [
+            (Vec::new(), Vec::new(), 16),
+            (Vec::new(), Vec::new(), 4),
+            (vec![0], vec![q(1), q(2), q(3), q(4), q(99)], 16),
+            (vec![0], vec![q(1), q(2), q(3), q(4), q(99)], 4),
+            (
+                (0..64).map(|row| (row % 256) as u8).collect(),
+                (0..256 * 16).map(|index| q((index + 1) as u32)).collect(),
+                16,
+            ),
+            (
+                (0..64).map(|row| (row % 256) as u8).collect(),
+                (0..256 * 4).map(|index| q((index + 1) as u32)).collect(),
+                4,
+            ),
+        ] {
+            let expected =
+                grouped_64x16_branch_reference(&row_groups, &group_values, low_width, alpha);
+            assert_eq!(
+                run_grouped64_helper(row_groups.clone(), group_values.clone(), low_width, alpha,),
+                expected,
+            );
+            assert_eq!(
+                run_grouped64_component_wrapper(row_groups, group_values, low_width, alpha),
+                expected,
+            );
+        }
+    }
+
+    #[test]
+    fn grouped_64x16_helper_preserves_invalid_group_failure() {
+        use std::panic::{catch_unwind, AssertUnwindSafe};
+
+        let rows = vec![1];
+        let values = vec![q(1), q(2), q(3), q(4)];
+        let alpha = q(3);
+        assert!(catch_unwind(AssertUnwindSafe(|| {
+            grouped_64x16_branch_reference(&rows, &values, 4, alpha)
+        }))
+        .is_err());
+        assert!(catch_unwind(AssertUnwindSafe(|| {
+            run_grouped64_helper(rows.clone(), values.clone(), 4, alpha)
+        }))
+        .is_err());
+        assert!(catch_unwind(AssertUnwindSafe(|| {
+            run_grouped64_component_wrapper(rows, values, 4, alpha)
+        }))
+        .is_err());
+    }
+
+    #[test]
+    fn grouped_64x16_fold_order_and_all_four_terms_are_observable() {
+        let alpha = q(2);
+        let values = vec![q(1), q(2), q(4), q(8)];
+        let correct = grouped_64x16_branch_reference(&[], &values, 16, alpha).0[0];
+        let alpha2 = alpha.square();
+        let alpha3 = alpha2.mul(alpha);
+        let reversed = values[3]
+            .add(alpha3.mul(values[2]))
+            .add(alpha2.mul(values[1]))
+            .add(alpha.mul(values[0]))
+            .half()
+            .half();
+        let omitted = values[0]
+            .add(alpha3.mul(values[1]))
+            .add(alpha2.mul(values[2]))
+            .half()
+            .half();
+        assert_ne!(correct, reversed);
+        assert_ne!(correct, omitted);
     }
 
     #[test]
@@ -1045,6 +2012,103 @@ mod tests {
                 core::array::from_fn(|index| weights.weight_at(index as u32)),
             );
         }
+    }
+
+    #[test]
+    fn indexed_weight_prefix_preserves_product_order_and_dense_shortest_input() {
+        let mut product = WeightAccumulator::empty(2);
+        product
+            .add_product_pairs(q(1), vec![[q(1), q(2)], [q(3), q(4)]])
+            .unwrap();
+        assert_eq!(product.weight_prefix::<4>(), [q(3), q(4), q(6), q(8)]);
+
+        let malformed_dense = WeightAccumulator {
+            log_len: 2,
+            components: vec![WeightComponent::Dense {
+                values: vec![q(7), q(8)],
+            }],
+        };
+        assert_eq!(
+            malformed_dense.weight_prefix::<4>(),
+            [q(7), q(8), QM31::ZERO, QM31::ZERO]
+        );
+    }
+
+    #[test]
+    fn indexed_weight_prefix_matches_weight_at_for_every_component_branch() {
+        let empty = WeightAccumulator::empty(0);
+        assert_weight_prefix_matches_weight_at::<0>(&empty);
+
+        let mut structured = WeightAccumulator::empty(2);
+        structured.add_geometric(q(2), q(3));
+        structured.add_multilinear(q(5), vec![q(7), q(11)]).unwrap();
+        structured
+            .add_tensor_factors(q(13), vec![q(17), q(19)])
+            .unwrap();
+        structured
+            .add_product_pairs(q(23), vec![[q(29), q(31)], [q(37), q(41)]])
+            .unwrap();
+        structured
+            .add_dense(vec![q(43), q(47), q(53), q(59)])
+            .unwrap();
+        assert_weight_prefix_matches_weight_at::<4>(&structured);
+
+        let masks64 = core::array::from_fn(|high| {
+            [0x0001, 0x8000, 0xa55a, 0x5aa5][(high * 3 + high / 7) & 3]
+        });
+        let mut grouped64 = WeightAccumulator::empty(10);
+        grouped64.add_grouped_64x16_binary_masks(masks64).unwrap();
+        assert_weight_prefix_matches_weight_at::<1024>(&grouped64);
+
+        let mut deferred10 = WeightAccumulator::empty(10);
+        deferred10
+            .add_grouped_64x16_binary_masks_deferred(masks64)
+            .unwrap();
+        assert_weight_prefix_matches_weight_at::<1024>(&deferred10);
+
+        let deferred8 = WeightAccumulator {
+            log_len: 8,
+            components: vec![WeightComponent::Grouped64x16BinaryDeferred {
+                row_groups: (0..64).map(|high| (high & 1) as u8).collect(),
+                group_masks: vec![0xa55a, 0x5aa5],
+                first_alpha: Some(q(2)),
+                group_values: Vec::new(),
+            }],
+        };
+        assert_weight_prefix_matches_weight_at::<256>(&deferred8);
+
+        let deferred6 = WeightAccumulator {
+            log_len: 6,
+            components: vec![WeightComponent::Grouped64x16BinaryDeferred {
+                row_groups: (0..64).map(|high| (high & 1) as u8).collect(),
+                group_masks: Vec::new(),
+                first_alpha: None,
+                group_values: vec![q(61), q(67)],
+            }],
+        };
+        assert_weight_prefix_matches_weight_at::<64>(&deferred6);
+
+        let masks128 = core::array::from_fn(|high| {
+            [0x0001, 0x8000, 0xa55a, 0x5aa5][(high * 3 + high / 11) & 3]
+        });
+        let mut grouped128 = WeightAccumulator::empty(11);
+        grouped128
+            .add_grouped_128x16_binary_masks(masks128)
+            .unwrap();
+        assert_weight_prefix_matches_weight_at::<2048>(&grouped128);
+    }
+
+    #[test]
+    #[should_panic]
+    fn zero_length_product_prefix_preserves_bounds_failure() {
+        let accumulator = WeightAccumulator {
+            log_len: 0,
+            components: vec![WeightComponent::Product {
+                scale: QM31::ONE,
+                pairs: Vec::new(),
+            }],
+        };
+        let _ = accumulator.weight_prefix::<0>();
     }
 
     fn explicit_tensor_weights(scale: QM31, factors: &[QM31]) -> Vec<QM31> {
@@ -1490,6 +2554,85 @@ mod tests {
     }
 
     #[test]
+    fn indexed_grouped_128x16_builder_matches_former_iterator_spelling() {
+        let masks = [0x0001, 0x8000, 0x0001, 0xa55a, 0xffff, 0x0000];
+        let row_masks: [u16; 128] = core::array::from_fn(|high| {
+            if high < 3 {
+                [0x0001, 0x8000, 0x0001][high]
+            } else {
+                masks[(high * 5 + high / 9) % masks.len()]
+            }
+        });
+        let (expected_groups, expected_values) = grouped_128x16_builder_reference(&row_masks);
+
+        let mut actual = WeightAccumulator::empty(11);
+        actual.add_grouped_128x16_binary_masks(row_masks).unwrap();
+        match actual.components.as_slice() {
+            [WeightComponent::Grouped128x16 {
+                row_groups,
+                group_values,
+                low_width,
+            }] => {
+                assert_eq!(row_groups, &expected_groups);
+                assert_eq!(group_values, &expected_values);
+                assert_eq!(*low_width, 16);
+                assert_eq!(&row_groups[..3], &[0, 1, 0]);
+                assert_eq!(group_values[0], QM31::ONE);
+                assert_eq!(group_values[15], QM31::ZERO);
+                assert_eq!(group_values[16], QM31::ZERO);
+                assert_eq!(group_values[31], QM31::ONE);
+                assert!(row_groups
+                    .iter()
+                    .all(|&group| { usize::from(group) * 16 + 15 < group_values.len() }));
+            }
+            other => panic!("unexpected grouped-128 layout: {other:?}"),
+        }
+
+        let mut wrong_log = WeightAccumulator::empty(10);
+        assert_eq!(
+            wrong_log.add_grouped_128x16_binary_masks(row_masks),
+            Err(TensorWeightError::Grouped128x16LogLength)
+        );
+        assert!(wrong_log.components.is_empty());
+
+        let mut state = 0x4752_4f55_5031_2816u64;
+        for _ in 0..16 {
+            let row_masks = core::array::from_fn(|high| {
+                let choice = (next(&mut state).0 as usize + high / 11) & 15;
+                (0x9e37u16).rotate_left(choice as u32)
+            });
+            let expected = grouped_128x16_builder_reference(&row_masks);
+            let mut actual = WeightAccumulator::empty(11);
+            actual.add_grouped_128x16_binary_masks(row_masks).unwrap();
+            match actual.components.as_slice() {
+                [WeightComponent::Grouped128x16 {
+                    row_groups,
+                    group_values,
+                    low_width: 16,
+                }] => {
+                    assert_eq!(row_groups, &expected.0);
+                    assert_eq!(group_values, &expected.1);
+                }
+                other => panic!("unexpected grouped-128 layout: {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn manually_malformed_grouped_128x16_reference_preserves_bounds_failure() {
+        let accumulator = WeightAccumulator {
+            log_len: 11,
+            components: vec![WeightComponent::Grouped128x16 {
+                row_groups: vec![1; 128],
+                group_values: vec![QM31::ZERO; 16],
+                low_width: 16,
+            }],
+        };
+        let _ = accumulator.weight_prefix::<1>();
+    }
+
+    #[test]
     fn deferred_binary_64x16_matches_legacy_at_64_random_off_domain_fold_points() {
         let masks = [
             0xe7ff, 0xe7fe, 0xeffe, 0x4000, 0xfd00, 0xff00, 0xfffa, 0xffff,
@@ -1518,6 +2661,12 @@ mod tests {
                 let terminal_values = (0..1usize << legacy.log_len)
                     .map(|_| random_q(&mut state))
                     .collect::<Vec<_>>();
+                assert_eq!(
+                    polynomial_for_extension(&terminal_values, &deferred),
+                    polynomial_for_extension(&terminal_values, &legacy),
+                    "seed={seed} log_len={} polynomial",
+                    legacy.log_len
+                );
                 assert_eq!(deferred.dot(&terminal_values), legacy.dot(&terminal_values));
                 if legacy.log_len == 2 {
                     break;
@@ -1533,6 +2682,65 @@ mod tests {
             wrong.add_grouped_64x16_binary_masks_deferred(row_masks),
             Err(TensorWeightError::Grouped64x16LogLength)
         );
+    }
+
+    #[test]
+    fn deferred_wrapper_and_prepared_installer_install_the_identical_schedule() {
+        let masks = [
+            0xe7ff, 0xe7fe, 0xeffe, 0x4000, 0xfd00, 0xff00, 0xfffa, 0xffff,
+        ];
+        let row_masks: [u16; 64] =
+            core::array::from_fn(|high| masks[(high * 5 + high / 7 + 3) & 7]);
+
+        let mut expected_masks = Vec::<u16>::new();
+        let mut expected_groups = [0u8; 64];
+        for (high, mask) in row_masks.into_iter().enumerate() {
+            let mut group = 0usize;
+            while group < expected_masks.len() && expected_masks[group] != mask {
+                group += 1;
+            }
+            if group == expected_masks.len() {
+                expected_masks.push(mask);
+            }
+            expected_groups[high] = group as u8;
+        }
+
+        let mut from_masks = WeightAccumulator::empty(10);
+        from_masks
+            .add_grouped_64x16_binary_masks_deferred(row_masks)
+            .unwrap();
+        let mut from_prepared = WeightAccumulator::empty(10);
+        from_prepared
+            .add_grouped_64x16_binary_masks_deferred_prepared(&expected_groups, &expected_masks)
+            .unwrap();
+
+        let [WeightComponent::Grouped64x16BinaryDeferred {
+            row_groups: mask_groups,
+            group_masks: mask_values,
+            first_alpha: mask_alpha,
+            group_values: mask_folded,
+        }] = from_masks.components.as_slice()
+        else {
+            panic!("mask wrapper must install one deferred component")
+        };
+        let [WeightComponent::Grouped64x16BinaryDeferred {
+            row_groups: prepared_groups,
+            group_masks: prepared_values,
+            first_alpha: prepared_alpha,
+            group_values: prepared_folded,
+        }] = from_prepared.components.as_slice()
+        else {
+            panic!("prepared wrapper must install one deferred component")
+        };
+
+        assert_eq!(mask_groups, prepared_groups);
+        assert_eq!(mask_values, prepared_values);
+        assert_eq!(mask_alpha, prepared_alpha);
+        assert_eq!(mask_folded, prepared_folded);
+        assert_eq!(mask_groups, &expected_groups);
+        assert_eq!(mask_values, &expected_masks);
+        assert!(mask_alpha.is_none());
+        assert!(mask_folded.is_empty());
     }
 
     #[test]

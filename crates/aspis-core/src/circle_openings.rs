@@ -6,17 +6,19 @@
 //! enable tag 24, or accept a complete proof.
 
 use crate::circle_fri::{
-    CircleFriError, FIXED_ARITY4_ROUNDS, FIXED_CIRCLE_INV_2X, FIXED_CIRCLE_INV_2Y, FIXED_FINAL_X,
-    FIXED_LINE1_INV, FIXED_LINE2_INV, FIXED_LINE3_INV, RATE16_CIRCLE_INV_2X, RATE16_CIRCLE_INV_2Y,
-    RATE16_FINAL_X, RATE16_LINE1_INV, RATE16_LINE2_INV, RATE16_LINE3_INV, RATE32_CIRCLE_INV_2X,
-    RATE32_CIRCLE_INV_2Y, RATE32_FINAL_X, RATE32_LINE1_INV, RATE32_LINE2_INV, RATE32_LINE3_INV,
-    RATE512_CIRCLE_INV_2X, RATE512_CIRCLE_INV_2Y, RATE512_FINAL_X, RATE512_LINE1_INV,
-    RATE512_LINE2_INV, RATE512_LINE3_INV,
+    derive_query_fold_inverses_for_circle, CircleFriError, FIXED_ARITY4_ROUNDS,
+    FIXED_CIRCLE_INV_2X, FIXED_CIRCLE_INV_2Y, FIXED_FINAL_X, FIXED_LINE1_INV, FIXED_LINE2_INV,
+    FIXED_LINE3_INV, RATE16_CIRCLE_INV_2X, RATE16_CIRCLE_INV_2Y, RATE16_FINAL_X, RATE16_LINE1_INV,
+    RATE16_LINE2_INV, RATE16_LINE3_INV, RATE32_CIRCLE_INV_2X, RATE32_CIRCLE_INV_2Y, RATE32_FINAL_X,
+    RATE32_LINE1_INV, RATE32_LINE2_INV, RATE32_LINE3_INV, RATE512_CIRCLE_INV_2X,
+    RATE512_CIRCLE_INV_2Y, RATE512_FINAL_X, RATE512_LINE1_INV, RATE512_LINE2_INV,
+    RATE512_LINE3_INV,
 };
 use crate::circle_hiding_query::PaymentHidingQueryPowers;
 use crate::circle_line_merkle::{
     derive_circle_line_query_indices, derive_circle_line_query_indices_for_count,
     verify_circle_line_openings_deferred_canonical_for_geometry_with_indices,
+    verify_circle_line_openings_for_geometry_and_tags_with_indices,
     verify_circle_line_openings_for_geometry_with_indices, CircleLineMerkleError,
     CircleOpeningGeometry, VerifiedCircleLineOpenings, CIRCLE_LINE_LAYER_COUNT,
     FIXED_CIRCLE_OPENING_GEOMETRY,
@@ -24,7 +26,12 @@ use crate::circle_line_merkle::{
 use crate::circle_merkle::{
     verify_circle_layer0_opening_from_proof,
     verify_circle_layer0_opening_from_proof_deferred_canonical_for_depth_and_leaf_bytes,
-    CircleLayer0Opening, CircleMerkleError, CIRCLE_C2_LEAF_BYTES,
+    verify_circle_layer0_opening_from_proof_for_shape, CircleLayer0Opening, CircleMerkleError,
+    CIRCLE_C2_LEAF_BYTES,
+};
+use crate::circle_pcs_shape::{
+    gamma_combine_circle_pcs_layer0, CirclePcsDecodeError, CirclePcsPreparedClaims, CirclePcsShape,
+    CirclePcsShapeError,
 };
 use crate::circle_prefix::{CandidatePrefix, CANDIDATE_FINAL_POLY_LEN, CANDIDATE_QUERY_COUNT};
 use crate::circle_query::{
@@ -56,6 +63,56 @@ pub enum CircleOpeningsError {
         available: usize,
     },
     PrefixShape,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CirclePcsOpeningsError {
+    Shape(CirclePcsShapeError),
+    Layer0(CircleMerkleError),
+    Later(CircleLineMerkleError),
+    Decode(CirclePcsDecodeError),
+    Query(CircleQueryError),
+    Fold(CircleFriError),
+    QueryCountMismatch { expected: usize, actual: usize },
+    MissingOpening { layer: u8, index: u32 },
+    FirstFoldMismatch { query: u32 },
+    NonCanonicalLater { layer: u8, offset: usize },
+}
+
+impl From<CirclePcsShapeError> for CirclePcsOpeningsError {
+    fn from(error: CirclePcsShapeError) -> Self {
+        Self::Shape(error)
+    }
+}
+
+impl From<CircleMerkleError> for CirclePcsOpeningsError {
+    fn from(error: CircleMerkleError) -> Self {
+        Self::Layer0(error)
+    }
+}
+
+impl From<CircleLineMerkleError> for CirclePcsOpeningsError {
+    fn from(error: CircleLineMerkleError) -> Self {
+        Self::Later(error)
+    }
+}
+
+impl From<CirclePcsDecodeError> for CirclePcsOpeningsError {
+    fn from(error: CirclePcsDecodeError) -> Self {
+        Self::Decode(error)
+    }
+}
+
+impl From<CircleQueryError> for CirclePcsOpeningsError {
+    fn from(error: CircleQueryError) -> Self {
+        Self::Query(error)
+    }
+}
+
+impl From<CircleFriError> for CirclePcsOpeningsError {
+    fn from(error: CircleFriError) -> Self {
+        Self::Fold(error)
+    }
 }
 
 /// Measurement-only partition of the exact all-query arithmetic. The
@@ -737,6 +794,170 @@ impl<'a> VerifiedCircleOpenings<'a> {
             geometry,
         )
     }
+
+    /// Check every authenticated query for an additive fixed-log-10 PCS
+    /// shape. Widths and tags were already enforced by
+    /// [`verify_circle_pcs_openings_for_shape`]; this method canonical-decodes
+    /// the selected C1/C2 fibers, recombines them with the same generator used
+    /// for point claims, and follows all four normalized folds.
+    pub fn check_circle_pcs_queries_for_shape(
+        &self,
+        shape: CirclePcsShape,
+        prepared: &CirclePcsPreparedClaims,
+        alphas: [QM31; FIXED_ARITY4_ROUNDS as usize],
+        final_coefficients: [QM31; CANDIDATE_FINAL_POLY_LEN],
+        inverse: fn(M31) -> M31,
+    ) -> Result<(), CirclePcsOpeningsError> {
+        let shape = shape.validate()?;
+        let queries = &self.later.indices.layer0;
+        if queries.len() != usize::from(shape.query_count) {
+            return Err(CirclePcsOpeningsError::QueryCountMismatch {
+                expected: usize::from(shape.query_count),
+                actual: queries.len(),
+            });
+        }
+        if prepared.powers.len() != shape.total_columns()
+            || prepared.claims.len() != usize::from(shape.opening_points)
+        {
+            return Err(CirclePcsOpeningsError::Decode(
+                CirclePcsDecodeError::EvaluationLength {
+                    expected: shape.evaluation_bytes(),
+                    actual: prepared.claims.len() * shape.total_columns() * 16,
+                },
+            ));
+        }
+
+        let coordinates = derive_query_fold_inverses_for_circle(
+            u32::from(shape.domain_log_size),
+            queries,
+            [
+                &self.later.indices.later[0],
+                &self.later.indices.later[1],
+                &self.later.indices.later[2],
+            ],
+            inverse,
+        )?;
+        let alpha_squared = alphas.map(QM31::square);
+        let alpha = alphas.map(PreparedQm31Multiplier::new);
+        let alpha_squared = alpha_squared.map(PreparedQm31Multiplier::new);
+        let alpha_cubed: [PreparedQm31Multiplier; FIXED_ARITY4_ROUNDS as usize] =
+            core::array::from_fn(|round| {
+                PreparedQm31Multiplier::new(alphas[round].square().mul(alphas[round]))
+            });
+
+        for (ordinal, &query) in queries.iter().enumerate() {
+            let c1 =
+                self.layer0
+                    .c1_leaf(ordinal)
+                    .ok_or(CirclePcsOpeningsError::MissingOpening {
+                        layer: 0,
+                        index: query,
+                    })?;
+            let c2 =
+                self.layer0
+                    .c2_leaf(ordinal)
+                    .ok_or(CirclePcsOpeningsError::MissingOpening {
+                        layer: 0,
+                        index: query,
+                    })?;
+            let combined = gamma_combine_circle_pcs_layer0(shape, c1, c2, &prepared.powers)?;
+            let [inv_2x, inv_2y] =
+                *coordinates
+                    .circle
+                    .get(ordinal)
+                    .ok_or(CirclePcsOpeningsError::MissingOpening {
+                        layer: 0,
+                        index: query,
+                    })?;
+            let folded =
+                crate::circle_fri::normalized_circle_to_line_arity4_prepared_polynomial_candidate(
+                    combined,
+                    alpha[0],
+                    alpha_squared[0],
+                    alpha_cubed[0],
+                    inv_2x,
+                    inv_2y,
+                );
+            let parent = query >> 2;
+            let parent_ordinal =
+                self.later.indices.later[0]
+                    .binary_search(&parent)
+                    .map_err(|_| CirclePcsOpeningsError::MissingOpening {
+                        layer: 1,
+                        index: parent,
+                    })?;
+            let leaf = self.later.openings.layers[0].leaf(parent_ordinal).ok_or(
+                CirclePcsOpeningsError::MissingOpening {
+                    layer: 1,
+                    index: parent,
+                },
+            )?;
+            let offset = (query & 3) as usize * 16;
+            let expected = QM31::from_le_bytes(&leaf[offset..offset + 16])
+                .ok_or(CirclePcsOpeningsError::NonCanonicalLater { layer: 1, offset })?;
+            if folded != expected {
+                return Err(CirclePcsOpeningsError::FirstFoldMismatch { query });
+            }
+        }
+
+        for layer in 0..CIRCLE_QUERY_LATER_LAYERS {
+            for (ordinal, &index) in self.later.indices.later[layer].iter().enumerate() {
+                let incoming = self.later.openings.layers[layer].leaf(ordinal).ok_or(
+                    CirclePcsOpeningsError::MissingOpening {
+                        layer: layer as u8 + 1,
+                        index,
+                    },
+                )?;
+                let inverses = *coordinates.later[layer].get(ordinal).ok_or(
+                    CirclePcsOpeningsError::MissingOpening {
+                        layer: layer as u8 + 1,
+                        index,
+                    },
+                )?;
+                if layer + 1 < CIRCLE_QUERY_LATER_LAYERS {
+                    let parent = index >> 2;
+                    let parent_ordinal = self.later.indices.later[layer + 1]
+                        .binary_search(&parent)
+                        .map_err(|_| CirclePcsOpeningsError::MissingOpening {
+                            layer: layer as u8 + 2,
+                            index: parent,
+                        })?;
+                    let outgoing = self.later.openings.layers[layer + 1]
+                        .leaf(parent_ordinal)
+                        .ok_or(CirclePcsOpeningsError::MissingOpening {
+                            layer: layer as u8 + 2,
+                            index: parent,
+                        })?;
+                    check_fixed_line_transition_prepared_polynomial(
+                        incoming,
+                        outgoing,
+                        index as usize,
+                        layer as u8 + 1,
+                        inverses,
+                        alpha[layer + 1],
+                        alpha_squared[layer + 1],
+                        alpha_cubed[layer + 1],
+                    )?;
+                } else {
+                    let final_x = *coordinates
+                        .final_x
+                        .get(ordinal)
+                        .ok_or(CirclePcsOpeningsError::MissingOpening { layer: 4, index })?;
+                    check_fixed_terminal_transition_prepared_polynomial(
+                        incoming,
+                        final_coefficients,
+                        index as usize,
+                        inverses,
+                        final_x,
+                        alpha[3],
+                        alpha_squared[3],
+                        alpha_cubed[3],
+                    )?;
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Authenticate the complete layer0||layer1||layer2||layer3 opening suffix.
@@ -1011,6 +1232,53 @@ pub fn verify_state_only_circle_openings_for_geometry<'a>(
         STATE_ONLY_C1_LEAF_BYTES,
         STATE_ONLY_C2_LEAF_BYTES,
     )
+}
+
+/// Authenticate the complete opening forest for an additive fixed-log-10 PCS
+/// shape. Exact leaf widths, rate-derived depths, and all five Merkle tags
+/// are supplied by the transcript-bound shape descriptor.
+pub fn verify_circle_pcs_openings_for_shape<'a>(
+    hash: HashFn,
+    shape: CirclePcsShape,
+    c1_root: &[u8; 32],
+    c2_root: &[u8; 32],
+    later_roots: &[[u8; 32]; CIRCLE_LINE_LAYER_COUNT],
+    layer0_queries: &[u32],
+    proof_bytes: &'a [u8],
+) -> Result<VerifiedCircleOpenings<'a>, CirclePcsOpeningsError> {
+    let shape = shape.validate()?;
+    if layer0_queries.len() != usize::from(shape.query_count) {
+        return Err(CirclePcsOpeningsError::QueryCountMismatch {
+            expected: usize::from(shape.query_count),
+            actual: layer0_queries.len(),
+        });
+    }
+    let geometry = shape.opening_geometry()?;
+    let indices = derive_circle_line_query_indices_for_count(
+        layer0_queries,
+        1usize << geometry.layer0_binary_depth,
+    )?;
+    let (layer0, remainder) = verify_circle_layer0_opening_from_proof_for_shape(
+        hash,
+        c1_root,
+        c2_root,
+        &indices.layer0,
+        proof_bytes,
+        geometry.layer0_binary_depth,
+        shape.c1_leaf_bytes_checked()?,
+        shape.c2_leaf_bytes_checked()?,
+        shape.c1_layer0_tag,
+        shape.c2_layer0_tag,
+    )?;
+    let later = verify_circle_line_openings_for_geometry_and_tags_with_indices(
+        hash,
+        later_roots,
+        indices,
+        remainder,
+        geometry,
+        shape.later_layer_tags,
+    )?;
+    Ok(VerifiedCircleOpenings { layer0, later })
 }
 
 #[cfg(test)]

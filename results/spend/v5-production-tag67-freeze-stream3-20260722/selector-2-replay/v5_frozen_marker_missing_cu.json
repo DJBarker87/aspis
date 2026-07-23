@@ -1,0 +1,35 @@
+{
+  "artifact": "v5_frozen_marker_mode_cu",
+  "identical_repeats": 3,
+  "marker_mode": "missing",
+  "proof_body_bytes": 72958,
+  "query_indices": [
+    75558,
+    79839,
+    63274,
+    107847,
+    122569,
+    118926,
+    50796,
+    52161,
+    43596,
+    129622,
+    92207,
+    129493,
+    37001,
+    52953,
+    43467,
+    73149,
+    41929,
+    13368
+  ],
+  "sbf_path": "/Users/dominic/ZK/results/spend/v5-production-tag67-freeze-stream3-20260722/selector-2-replay/aspis_verifier_v5_tag67.so",
+  "sbf_sha256": "4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40",
+  "sealed_proof_account_bytes": 72998,
+  "system_program_cpi_completed_repeats": 3,
+  "totals_cu": [
+    1326480,
+    1326480,
+    1326480
+  ]
+}

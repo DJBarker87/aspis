@@ -81,10 +81,10 @@ above do not affect the retained proof replay; `replay-lean432.sh` compiles all
 normalized modules at Lean defaults and authenticates the complete retained
 raw-to-normalized diff.
 
-## Deterministic terminal capstone replay
+## Sampler/evaluator terminal capstone replay
 
-The durable all-proof gate excludes the generic sampler and compiles 49
-exported evaluator/terminal theorems with 49 matching `#print axioms` commands:
+The durable all-proof gate compiles 81 exported sampler/evaluator/terminal
+theorems with 81 matching `#print axioms` commands:
 
 ```sh
 cd /Users/dominic/ZK/aeneas-verif/component-b-mask
@@ -98,15 +98,14 @@ its independent exact extraction and replay commands in
 `aspis_prover::v5_sumcheck_mask::_::round_polynomial` and
 `aspis_prover::v5_sumcheck_mask::_::mixed_round_polynomial`.
 
-## Optional authentic sampler extraction evidence
+## Authoritative authentic sampler extraction
 
-The generic sampler is not part of the deterministic replay or theorem claim.
-For provenance only, the retained nonempty LLBC was produced from the owning
-crate by:
+The source-authentic sampler LLBC used by the capstone was produced from the
+owning crate by:
 
 ```sh
 cd /Users/dominic/ZK/crates/aspis-prover
-CARGO_TARGET_DIR=/Users/dominic/ZK/aeneas-verif/component-b-mask/target-v5-sampler-authenticated-constants-20260721 \
+CARGO_TARGET_DIR=/Users/dominic/ZK/aeneas-verif/component-b-mask/target-v5-sampler-current-20260722 \
   /private/tmp/aspis-aeneas-tools.aTcyie/charon/bin/charon cargo \
     --preset=aeneas --abort-on-error \
     --start-from='aspis_prover::v5_sumcheck_mask::_::sample' \
@@ -115,10 +114,19 @@ CARGO_TARGET_DIR=/Users/dominic/ZK/aeneas-verif/component-b-mask/target-v5-sampl
     --include='aspis_core::state_only_sumcheck::STATE_ONLY_SUMCHECK_DEGREE' \
     --include='aspis_core::state_only_sumcheck::STATE_ONLY_SUMCHECK_COEFFICIENTS' \
     --include='aspis_core::state_only_sumcheck::state_only_boundary_sum' \
-    --dest-file='/Users/dominic/ZK/aeneas-verif/component-b-mask/llbc/component_b_v5_sampler_authenticated_constants_20260721.llbc' \
+    --dest-file='/Users/dominic/ZK/aeneas-verif/component-b-mask/llbc/component_b_v5_sampler_current_20260722.llbc' \
     -- --release --locked -p aspis-prover --features v5-mask
+
+/private/tmp/aspis-aeneas-tools.aTcyie/aeneas/bin/aeneas \
+  -backend lean \
+  /Users/dominic/ZK/aeneas-verif/component-b-mask/llbc/component_b_v5_sampler_current_20260722.llbc \
+  -dest /private/tmp/ComponentBV5SamplerCurrent20260722 \
+  -split-files \
+  -max-heartbeats 200000 -max-recdepth 1000 \
+  -abort-on-error -warnings-as-errors -no-progress-bar
 ```
 
-It has 88 ordered declaration groups and `has_errors=false`.  The LLBC and raw
-generated output are retained in `metadata/SHA256SUMS`, but no sampler proof is
-in that manifest or replay.
+It has 88 ordered declaration groups and `has_errors=false`. The replay checks
+both embedded owning-source files byte-for-byte, authenticates the complete
+raw-to-Lean-4.32 normalization diff, and compiles the generated modules at
+default proof limits.

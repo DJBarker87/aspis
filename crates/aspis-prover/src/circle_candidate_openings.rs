@@ -7,6 +7,7 @@ use aspis_core::circle_line_merkle::{
 use aspis_core::circle_merkle::{
     CIRCLE_C1_LAYER0_TAG, CIRCLE_C1_LEAF_BYTES, CIRCLE_C2_LAYER0_TAG, CIRCLE_C2_LEAF_BYTES,
 };
+use aspis_core::circle_pcs_shape::{CirclePcsShape, CirclePcsShapeError};
 use aspis_core::merkle::{leaf_hash, node_hash, node_hash4};
 use aspis_core::HashFn;
 
@@ -15,13 +16,32 @@ use crate::circle_candidate::{CircleFoldCommitments, COMBINED_LAYER_LEAF_BYTES, 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CandidateOpeningBuildError {
     Query(CircleLineMerkleError),
+    Shape(CirclePcsShapeError),
     Layer0Shape,
-    LaterShape { layer: usize },
+    Layer0Width {
+        expected_c1: usize,
+        actual_c1: usize,
+        expected_c2: usize,
+        actual_c2: usize,
+    },
+    QueryCountMismatch {
+        expected: usize,
+        actual: usize,
+    },
+    LaterShape {
+        layer: usize,
+    },
 }
 
 impl From<CircleLineMerkleError> for CandidateOpeningBuildError {
     fn from(error: CircleLineMerkleError) -> Self {
         Self::Query(error)
+    }
+}
+
+impl From<CirclePcsShapeError> for CandidateOpeningBuildError {
+    fn from(error: CirclePcsShapeError) -> Self {
+        Self::Shape(error)
     }
 }
 
@@ -149,6 +169,72 @@ pub fn serialize_candidate_openings_for_fiber_count_with_leaf_bytes<
     fiber_count: usize,
     hash: HashFn,
 ) -> Result<Vec<u8>, CandidateOpeningBuildError> {
+    serialize_candidate_openings_with_tags(
+        queries,
+        c1_leaves,
+        c2_leaves,
+        folds,
+        fiber_count,
+        CIRCLE_C1_LAYER0_TAG,
+        CIRCLE_C2_LAYER0_TAG,
+        CIRCLE_LINE_TAGS,
+        hash,
+    )
+}
+
+/// Serialize an additive PCS opening forest under the exact widths, rate,
+/// and Merkle tags carried by `shape`. Frozen wrappers above still route
+/// through the V4 constants.
+pub fn serialize_candidate_openings_for_shape<const C1_BYTES: usize, const C2_BYTES: usize>(
+    queries: &[u32],
+    c1_leaves: &[[u8; C1_BYTES]],
+    c2_leaves: &[[u8; C2_BYTES]],
+    folds: &CircleFoldCommitments,
+    shape: CirclePcsShape,
+    hash: HashFn,
+) -> Result<Vec<u8>, CandidateOpeningBuildError> {
+    let shape = shape.validate()?;
+    let expected_c1 = shape.c1_leaf_bytes_checked()?;
+    let expected_c2 = shape.c2_leaf_bytes_checked()?;
+    if C1_BYTES != expected_c1 || C2_BYTES != expected_c2 {
+        return Err(CandidateOpeningBuildError::Layer0Width {
+            expected_c1,
+            actual_c1: C1_BYTES,
+            expected_c2,
+            actual_c2: C2_BYTES,
+        });
+    }
+    if queries.len() != usize::from(shape.query_count) {
+        return Err(CandidateOpeningBuildError::QueryCountMismatch {
+            expected: usize::from(shape.query_count),
+            actual: queries.len(),
+        });
+    }
+    serialize_candidate_openings_with_tags(
+        queries,
+        c1_leaves,
+        c2_leaves,
+        folds,
+        shape.fiber_count(),
+        shape.c1_layer0_tag,
+        shape.c2_layer0_tag,
+        shape.later_layer_tags,
+        hash,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn serialize_candidate_openings_with_tags<const C1_BYTES: usize, const C2_BYTES: usize>(
+    queries: &[u32],
+    c1_leaves: &[[u8; C1_BYTES]],
+    c2_leaves: &[[u8; C2_BYTES]],
+    folds: &CircleFoldCommitments,
+    fiber_count: usize,
+    c1_layer_tag: u8,
+    c2_layer_tag: u8,
+    later_layer_tags: [u8; CIRCLE_LINE_LAYER_COUNT],
+    hash: HashFn,
+) -> Result<Vec<u8>, CandidateOpeningBuildError> {
     if c1_leaves.len() != fiber_count || c2_leaves.len() != fiber_count {
         return Err(CandidateOpeningBuildError::Layer0Shape);
     }
@@ -157,8 +243,8 @@ pub fn serialize_candidate_openings_for_fiber_count_with_leaf_bytes<
     } else {
         derive_circle_line_query_indices_for_count(queries, fiber_count)?
     };
-    let c1_tree = tree(c1_leaves, CIRCLE_C1_LAYER0_TAG, hash);
-    let c2_tree = tree(c2_leaves, CIRCLE_C2_LAYER0_TAG, hash);
+    let c1_tree = tree(c1_leaves, c1_layer_tag, hash);
+    let c2_tree = tree(c2_leaves, c2_layer_tag, hash);
     let mut bytes = Vec::new();
 
     bytes.extend_from_slice(&(indices.layer0.len() as u16).to_le_bytes());
@@ -171,13 +257,13 @@ pub fn serialize_candidate_openings_for_fiber_count_with_leaf_bytes<
     append_frontier(&mut bytes, &frontier(&c1_tree, &indices.layer0));
     append_frontier(&mut bytes, &frontier(&c2_tree, &indices.layer0));
 
-    for layer in 0..CIRCLE_LINE_LAYER_COUNT {
+    for (layer, layer_tag) in later_layer_tags.into_iter().enumerate() {
         let leaves: &[[u8; COMBINED_LAYER_LEAF_BYTES]] = &folds.committed_leaves[layer];
         let expected = fiber_count >> (2 * (layer + 1));
         if leaves.len() != expected {
             return Err(CandidateOpeningBuildError::LaterShape { layer });
         }
-        let levels = tree(leaves, CIRCLE_LINE_TAGS[layer], hash);
+        let levels = tree(leaves, layer_tag, hash);
         bytes.extend_from_slice(&(indices.later[layer].len() as u16).to_le_bytes());
         for &index in &indices.later[layer] {
             bytes.extend_from_slice(&leaves[index as usize]);

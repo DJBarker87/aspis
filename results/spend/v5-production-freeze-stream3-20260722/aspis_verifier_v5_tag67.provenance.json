@@ -1,0 +1,891 @@
+{
+  "artifact": "aspis_v5_devnet_sbf_provenance",
+  "schema_version": 1,
+  "generated_at_utc": "2026-07-22T17:54:28.882722+00:00",
+  "git_head": "27e8265d28de88e7967626a2d2432ef161fb4f49",
+  "cargo_build_sbf_path": "/Users/dominic/.local/share/solana/install/active_release/bin/cargo-build-sbf",
+  "cargo_build_sbf_bytes": 11129616,
+  "cargo_build_sbf_sha256": "7f16d75bdd59bad56442ab89f9768280ea8f1e14a4fbd68ee8822ce735312f42",
+  "cargo_build_sbf_version": "solana-cargo-build-sbf 2.3.0\nplatform-tools v1.48\nrustc 1.84.1",
+  "sbf_sdk_path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf",
+  "platform_tools_root": "/Users/dominic/.cache/solana/v1.48/platform-tools",
+  "platform_tools_version": "v1.48",
+  "toolchain_files": [
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/llvm/bin/clang-19",
+      "bytes": 113294312,
+      "sha256": "70e53904220bcc816f43de6d2e6ae31e6adda5f848d0640a0a318dd22626a8be"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/llvm/bin/llc",
+      "bytes": 57019472,
+      "sha256": "db78ce8029a658a5f8379b62ff1b9e7f4c3a5e526224933092c140913f557349"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/llvm/bin/lld",
+      "bytes": 62801472,
+      "sha256": "043b4804ba68a7bf15a66f16d83b8f7c73f0ccece48c0c418142de5d70f93a10"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/llvm/bin/llvm-ar",
+      "bytes": 11769320,
+      "sha256": "d274308a80671f06e20c11e42ffa09ec1d884ccd9f1469c7fe3448935544e81c"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/llvm/bin/llvm-objcopy",
+      "bytes": 5261872,
+      "sha256": "64996ee17cf331084457873062a34b3c62d894ac28f378ff1078e837e5448297"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/llvm/bin/llvm-objdump",
+      "bytes": 14771904,
+      "sha256": "0c5e7cb7104c77da863ba3763b14a427212675a005af0bb78d0603a03d1d3584"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/llvm/bin/llvm-readobj",
+      "bytes": 7668944,
+      "sha256": "9bdd14ab3d6ca0eeba3d05131682beb81b5cf5eb9fbbb46b4fb3ee85a2fbec83"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/llvm/lib/sbpf/libc.a",
+      "bytes": 903974,
+      "sha256": "e9f0d9127d5d29bbf909ee4fe448e5c5f4f48e3c1de8542639c44f9795604e70"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/llvm/lib/sbpf/libm.a",
+      "bytes": 619102,
+      "sha256": "e9b27d36b6504d673e039e3d700996fc5a2dbb3ced98be6d4857ce338c7e634d"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/bin/cargo",
+      "bytes": 30876016,
+      "sha256": "b57f6208bbd0b54574df3dba5a73091f2228fdd146d21239cecfecbabb4be19b"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/bin/rustc",
+      "bytes": 50696,
+      "sha256": "ab6cfa61ce01944ef0729b01663e2da23251ff48e5eb5bf9238587f65096547d"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/libaddr2line-fd96f384ff503a32.rlib",
+      "bytes": 452070,
+      "sha256": "dbbefdd152b1d024995192561855b941fe6560d731e78df6f1a241f030b3de4b"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/libadler-38cc468237aca0a6.rlib",
+      "bytes": 33308,
+      "sha256": "8f997fab5e40d25acabc2eb8386a56b9263c2ac1abe44aaf607d3f30b336d43b"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/liballoc-1b4946c38627603a.rlib",
+      "bytes": 6165558,
+      "sha256": "966672539190cbd38759a7a42c2889ab39cdf7d99634065a184c1a0145935c32"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/libcfg_if-186c0b1406f5dbc7.rlib",
+      "bytes": 8830,
+      "sha256": "aa527897a075c64002c7b91a4721335c22970ae3dce232b130c945dce3109ceb"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/libcompiler_builtins-6d9eb9edf607eb48.rlib",
+      "bytes": 2862882,
+      "sha256": "6cce91e05ac3abf791aa4500e3c06ff45f412e3dc64dbaded76dafbb896a6989"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/libcore-df2f94031a6f96fd.rlib",
+      "bytes": 32737326,
+      "sha256": "e040458462ca37710a15c80621acb7bea50d38b49a98b4459865962dd7710ff8"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/libgetopts-7252ee1d4806e952.rlib",
+      "bytes": 398738,
+      "sha256": "c2c540c13bd01b551ae5303bda88435b79e022f18f1b8de69337f43fc40d9d37"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/libgimli-37ac842c1ee38998.rlib",
+      "bytes": 5975920,
+      "sha256": "9ecb631ad658b3bbf3f2b99c07f3e597cf986fdafcf6a1c0b49fd0ca5ca6171c"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/libhashbrown-0abce47e1de580c1.rlib",
+      "bytes": 1546450,
+      "sha256": "c8fe8a23d469d3034848f0c7f85c65c9254fdd12dfcd9c93faf9170ee8462a6e"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/liblibc-7b0f25a521396171.rlib",
+      "bytes": 36554,
+      "sha256": "46688f98eeddbede5d99bbdf5cd44e767083f0905d1c49305c25cb762c19bb84"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/libmemchr-4184389ed62324b6.rlib",
+      "bytes": 665110,
+      "sha256": "b47a986ad3c3533fc717bbe91648978419c315b1dbe35974596f24137a0375c1"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/libminiz_oxide-89178ce34205c999.rlib",
+      "bytes": 303810,
+      "sha256": "8757a22c215830ee4146cf0441b8f48546a19381f471aafc727c7dd4cab70bb4"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/libobject-3d99edc6908e2dbd.rlib",
+      "bytes": 8460002,
+      "sha256": "0ace6098e1a268e5db9f358f54cd60721d10b92a155c05aac40baf8c8f4b8636"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/libpanic_abort-9d3f50d55a01206a.rlib",
+      "bytes": 8980,
+      "sha256": "70ae997f845b49748550b9034884368093bd45e6e5b65adcba6f2060ca71614f"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/libpanic_unwind-6ad26c42c1a3fbb9.rlib",
+      "bytes": 12814,
+      "sha256": "0f68a575436afbf36cee7a7550b53634447cdc514fa087bcd5300e3d6a5412b5"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/libproc_macro-18faeb86803b614e.rlib",
+      "bytes": 2264314,
+      "sha256": "592977eaaa860f2731a4f5eac9a9b9983cdf87bc02bff25e37730877fc8457b0"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/librustc_std_workspace_alloc-6096db9b34eeef8b.rlib",
+      "bytes": 5140,
+      "sha256": "ce2d06ebe9cdf1d7fb6c200bc87c165a348ffe38d781253f9ae6249d438e2c3f"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/librustc_std_workspace_core-02199b0ee1706357.rlib",
+      "bytes": 8074,
+      "sha256": "cfbda7e741a6fedbc8b1522f86b5576bb16e20597584547be405a58a3b80cfcd"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/librustc_std_workspace_std-93827ef371cc5d11.rlib",
+      "bytes": 9336,
+      "sha256": "2d9586efad023fded670a6ea0d988a87f141dc557d21f6a9d72eda5f518b1b5f"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/libstd-f2094252604a0065.rlib",
+      "bytes": 6964708,
+      "sha256": "69485bce373b0883f184090fe142e79e222ef1a172bed811673c2815874f22f1"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/libstd_detect-981fd71e1fb93c0d.rlib",
+      "bytes": 140382,
+      "sha256": "fb7cd11358da78a69112387a0a47bb0fc24743a16d3aa4c525bea76b2f0bf517"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/libsysroot-3adae697ae390021.rlib",
+      "bytes": 4824,
+      "sha256": "a208ff11effbd21da2a2fef403a25bde00311e6d83e24c4434e7032d14ed4157"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/libtest-fbe83a3ffb06f237.rlib",
+      "bytes": 2496256,
+      "sha256": "1ec42ebb64959eed9b3e72c5413e97d7505f94a038f7dc6d74808b8c74f0d796"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/libunicode_width-a127bc12630f380d.rlib",
+      "bytes": 859676,
+      "sha256": "973f4f1b73e3e1e75b257e23d73a7d7e5de512ce1845802a8f1df37edcd3b0f6"
+    },
+    {
+      "path": "/Users/dominic/.cache/solana/v1.48/platform-tools/rust/lib/rustlib/sbpf-solana-solana/lib/libunwind-27d36cb899006ea8.rlib",
+      "bytes": 9894,
+      "sha256": "b4c03b8c4221e3ed0154695fb32d9090bbb728ffbcd5f2d385915cd1d4310c4b"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/README.md",
+      "bytes": 1030,
+      "sha256": "06a36b4517d8a1f5ca005385601e5c14827baefc87ce45719681f65436c0335c"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/deserialize_deprecated.h",
+      "bytes": 39,
+      "sha256": "76c96c25637df160388fac89f265c0af946dae909fa37fbb0d979cb35946b03e"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/alt_bn128.h",
+      "bytes": 1625,
+      "sha256": "aa05959b4147805bc08fc64d46c125bfdff127d8b442fb4bfd99067ee46e4145"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/alt_bn128_compression.h",
+      "bytes": 2056,
+      "sha256": "047178eb076f59cb09c3780b2e18c1c1946829e0b4953cd686dacd8240b52c75"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/assert.h",
+      "bytes": 1299,
+      "sha256": "d488f2eb8453488e298482a0db2daf7f40dfcecc939a3a7253e680503feca36e"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/big_mod_exp.h",
+      "bytes": 857,
+      "sha256": "8b2a539d43050b758527af9eb1bfc78a0cab0e2eccf4c25e9644c3dfcc8a42ec"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/blake3.h",
+      "bytes": 921,
+      "sha256": "1685b4195b4e83a9e0c7cd0bb22cd1e02a4a3dc7fac364be77609c59c977e204"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/compute_units.h",
+      "bytes": 901,
+      "sha256": "98fdaeccd35479de916296eb6d95e11a16b84382f3ac0b5e5983691472107fe0"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/constants.h",
+      "bytes": 801,
+      "sha256": "7dd040c41526b0676d0f2ab7e2a9137065106e83a4d83a375b95d28d52307b5b"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/cpi.h",
+      "bytes": 3841,
+      "sha256": "96c75b02b43a4aa7e90696e5812e9772174a5b1f80fa229874a4437b2ffb8384"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/deserialize.h",
+      "bytes": 4137,
+      "sha256": "505785cdbc64d74372ab71791adcd2a8305fb298c201dbca979e0dfca291bb53"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/deserialize_deprecated.h",
+      "bytes": 3420,
+      "sha256": "113d2f4577684caa2ff6f4607e98537079c597349db145aab6c457715076feaa"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/entrypoint.h",
+      "bytes": 1663,
+      "sha256": "2f99d265e925adf204041008ccfae84844a486bfe456f75ee03e2c04ee9374ab"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/alt_bn128.inc",
+      "bytes": 1032,
+      "sha256": "6ae92d1138161ced53ffbd2c5e0a78c449bb902db679e95ffd4dbb015cd43a3c"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/alt_bn128_compression.inc",
+      "bytes": 1316,
+      "sha256": "e067415bc4c61431e0f16f551c3f44ba6cd731f89f7bd3d2ab70bf01ff662c7a"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/assert.inc",
+      "bytes": 828,
+      "sha256": "88e6625a05acf6d09588eca6f1a152057fb0565e164a7033ad4dc6a7f311e4b2"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/big_mod_exp.inc",
+      "bytes": 390,
+      "sha256": "472ec9728c281669071eae3784ecf255f651468713b85e8084a7f7f464a8e2ba"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/blake3.inc",
+      "bytes": 455,
+      "sha256": "03b3fe35b02e906d109c30c7bab66db7dd6b0a1f0c78b1c12af744a66101aa50"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/compute_units.inc",
+      "bytes": 432,
+      "sha256": "d2d0ea287f00664012d4676b403bb4b2217c5d47e1318ee9f84b15d5d9a15f4b"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/cpi.inc",
+      "bytes": 3193,
+      "sha256": "d932d0400803f42f20191732565a7c42140347ef855109efd9afccd3bd516adc"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/keccak.inc",
+      "bytes": 452,
+      "sha256": "fc9b740a99bb48aa42cb8aa54240e4b0f05165a3f85f352bcdb71e8f1997d252"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/last_restart_slot.inc",
+      "bytes": 261,
+      "sha256": "06548830c844182b6ace88f2598872c5170af73f03c73d71483d6e6d21a9af4f"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/log.inc",
+      "bytes": 2590,
+      "sha256": "a6aef93e86a3ed71dabc0670506bc4603b64144b355948b3c2fc3f1837b55736"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/poseidon.inc",
+      "bytes": 1229,
+      "sha256": "c083b4fffc6ab62a9aaffab07c6fdfd0a95817e8fcf93ec8de69f25e852447d9"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/pubkey.inc",
+      "bytes": 2336,
+      "sha256": "038379d439f4fd72bebd4caed69f8e26c8267d1a20c87a56aa792c85b0da953f"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/return_data.inc",
+      "bytes": 875,
+      "sha256": "5fbf73f745893a4205d0ba7ea0e12811bdbdcfa549db23b87d2524b7f785ecea"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/secp256k1.inc",
+      "bytes": 1205,
+      "sha256": "ec843427e8277dbcacaef96c2b71a9d7237b01b63ea1c86be62c5f7bb2ecccee"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/sha.inc",
+      "bytes": 446,
+      "sha256": "288faee6eb253def269b4127eeb7d429b4e6f41c8eab11ae7e9ee44714ca87d7"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/keccak.h",
+      "bytes": 925,
+      "sha256": "0058f9ef7e2de1be77a3b713dbd355ed00a4ef4afd88ba971b76aa11d69da5f4"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/last_restart_slot.h",
+      "bytes": 750,
+      "sha256": "dd66d2188ec0e7cd88654e9fed0167c6a40252db54417042ad3f20584cb85585"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/log.h",
+      "bytes": 4308,
+      "sha256": "aabc490bc3e40512d6aa57a47eb90b9fcffe6dd30acf5a7f9b021040df681dd0"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/poseidon.h",
+      "bytes": 1916,
+      "sha256": "8bb9c176f125545b73af9a7723ca1a8fd5eb8f428452592f9a9aa8ad84e21596"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/pubkey.h",
+      "bytes": 4021,
+      "sha256": "e7490aecae4ccc3a5f1dab8f4c64907e97f3def927ffedd7eb61d760b50bfd2b"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/return_data.h",
+      "bytes": 1863,
+      "sha256": "4595e26096f93cf97939747a6d74978cfd0be74303c13aca3dc641cc4921ac2d"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/secp256k1.h",
+      "bytes": 1781,
+      "sha256": "fd580acfc83b513b4f1593bfd6e6ae2eae1fea3bfe6ae5ce3e62b7865ef58da4"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/sha.h",
+      "bytes": 897,
+      "sha256": "4683a97894efea38058b602edacceeaac045baba12c2bdf70530168a41047bc4"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/string.h",
+      "bytes": 2069,
+      "sha256": "1fb1db89fba24801dc0c014fdd6543c96ebddd051787f768005e069122df5461"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sol/types.h",
+      "bytes": 3883,
+      "sha256": "e52965f8bd283e8ac7b504022d394b718dd2ba77270e9ce34f6b64acd555326e"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/solana_sdk.h",
+      "bytes": 515,
+      "sha256": "cf7f5762db7a87677bfb62b357c6950cba6d1146bc2a4e3adc8eacab7bde1d44"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/stdio.h",
+      "bytes": 81,
+      "sha256": "b05557a562439eb2981507f79f90855a72aaf716cc068a4d96727b958162fdf1"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/stdlib.h",
+      "bytes": 37,
+      "sha256": "866e40d29930b07886fba1a881cf11cb43a1e19ce00e656d67c6f6e528afdf83"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/string.h",
+      "bytes": 116,
+      "sha256": "1fa8b80022c45e01274e452964efad09dd7e7951e060874a3c8ca03bab320635"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/sys/param.h",
+      "bytes": 13,
+      "sha256": "b3adf106d95b8934f690943f2921308b90be5b766c4c8ba250c792de56400201"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/inc/wchar.h",
+      "bytes": 13,
+      "sha256": "b3adf106d95b8934f690943f2921308b90be5b766c4c8ba250c792de56400201"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/sbf.ld",
+      "bytes": 452,
+      "sha256": "a7feb3b4a201045e44c3cce9f3c1087a2bf2fb6d1974aa84f55ed4a65b6f1380"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/c/sbf.mk",
+      "bytes": 9411,
+      "sha256": "5087a38789eb0aed6931ff9fca78ff7166fcbd2f89b4367c707b77ef8f82f5c7"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/dependencies/criterion-v2.3.2.md",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/dependencies/platform-tools-v1.48.md",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/env.sh",
+      "bytes": 499,
+      "sha256": "ff2f69a21002d52c154c839057c52252b0bf784bbba4d7a3e26e660233e552f2"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/scripts/dump.sh",
+      "bytes": 1016,
+      "sha256": "1a10c293944672576a4d840f7fd5a093d59781ea094f19dee1e19386185f3f07"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/scripts/install.sh",
+      "bytes": 2978,
+      "sha256": "89644f119cd649b3e6c4e6bfb3758ac8e198e662bd2bee79a6e76525cb2825c4"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/scripts/objcopy.sh",
+      "bytes": 209,
+      "sha256": "7425a852c14baa9706c360d1ecbdbd696dd8ce6cd0cb12050b3bde888f9f7160"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/scripts/package.sh",
+      "bytes": 354,
+      "sha256": "b8651c7f1fc35911f24254e5fb6993aefc4ee750c782b399a9388c9be9b81019"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/scripts/strip.sh",
+      "bytes": 510,
+      "sha256": "aa6fad201d4301e8d9adf92359c951a828002679ed043703477a3b333c171ead"
+    },
+    {
+      "path": "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf/syscalls.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "manifest_path": "/Users/dominic/ZK/programs/aspis-verifier/Cargo.toml",
+  "no_default_features": true,
+  "features": [
+    "v5-cu-probe"
+  ],
+  "command": [
+    "/Users/dominic/.local/share/solana/install/active_release/bin/cargo-build-sbf",
+    "--manifest-path",
+    "/Users/dominic/ZK/programs/aspis-verifier/Cargo.toml",
+    "--no-default-features",
+    "--features",
+    "v5-cu-probe",
+    "--arch",
+    "v0",
+    "--offline",
+    "--skip-tools-install",
+    "--tools-version",
+    "v1.48",
+    "--sbf-sdk",
+    "/Users/dominic/.local/share/solana/install/active_release/bin/platform-tools-sdk/sbf",
+    "--sbf-out-dir",
+    "/private/tmp/aspis-v5-freeze-stream3.nidTA2/build",
+    "--",
+    "--locked"
+  ],
+  "build_output_dir": "/private/tmp/aspis-v5-freeze-stream3.nidTA2/build",
+  "cargo_target_dir": "/private/tmp/aspis-v5-freeze-stream3.nidTA2/build/cargo-target",
+  "built_artifact_path": "/private/tmp/aspis-v5-freeze-stream3.nidTA2/build/aspis_verifier.so",
+  "build_stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "build_stderr_sha256": "fccc3645d74f77b87c9944401e1802a168ecfa86181a39ec4d58f4d406f5a55e",
+  "cargo_lock_sha256": "c2b2523ed73ac070924e1632eed74bd74ea320d861d3379cce2745d6e0315ec5",
+  "source_files": [
+    {
+      "path": "Cargo.lock",
+      "bytes": 150042,
+      "sha256": "c2b2523ed73ac070924e1632eed74bd74ea320d861d3379cce2745d6e0315ec5"
+    },
+    {
+      "path": "Cargo.toml",
+      "bytes": 1669,
+      "sha256": "3e38df835217f397251440617c6aa4ae4ba2e9531ffc62a722fbb72b30254756"
+    },
+    {
+      "path": "crates/aspis-core/Cargo.toml",
+      "bytes": 864,
+      "sha256": "e8a42dd399467dc252ca7851f11220ba123f08ee97db771f7d92094fe0f1ab13"
+    },
+    {
+      "path": "crates/aspis-core/build.rs",
+      "bytes": 5765,
+      "sha256": "ed57b3d0beb1dc8de4ed55945faae5a7be7d97b6d4ee686b24b01744e7ce54b5"
+    },
+    {
+      "path": "crates/aspis-core/src/circle.rs",
+      "bytes": 4294,
+      "sha256": "8f6f0f32c8dd93e3ee459df0c1d0ef710b01996d3bc929dbeffb3f7d14a0227c"
+    },
+    {
+      "path": "crates/aspis-core/src/circle_fri.rs",
+      "bytes": 72015,
+      "sha256": "6ce32a64e6e996680592a214cea07d2a982fe26aec8416064e8b0a66d3406289"
+    },
+    {
+      "path": "crates/aspis-core/src/circle_hiding_prefix.rs",
+      "bytes": 26187,
+      "sha256": "92f47e55f9d1e73280e48de7563e40685e88ff78c21f589fa98a4cc2c4c31973"
+    },
+    {
+      "path": "crates/aspis-core/src/circle_hiding_query.rs",
+      "bytes": 5377,
+      "sha256": "f256ea7b9ae761df4834aa902a250a539c06f5b23cdefab7cb7698eb51290029"
+    },
+    {
+      "path": "crates/aspis-core/src/circle_line_merkle.rs",
+      "bytes": 26671,
+      "sha256": "8c3fe1a4a60d037e7c6bd251ac451fd314991528f3831f7f892c5fb376da821a"
+    },
+    {
+      "path": "crates/aspis-core/src/circle_merkle.rs",
+      "bytes": 21384,
+      "sha256": "826736d396946cf7927d4617dcd0e4706ab08c0d778b647117c7369ed9ab7592"
+    },
+    {
+      "path": "crates/aspis-core/src/circle_openings.rs",
+      "bytes": 50330,
+      "sha256": "6881301b1ec47a796902afde80e129fd34c43ae864e07125992aef1e2c84d332"
+    },
+    {
+      "path": "crates/aspis-core/src/circle_pcs_shape.rs",
+      "bytes": 13489,
+      "sha256": "bc45f5031892218dcfc175e17e11da86ed64c372467081abd0c1475a97149a2a"
+    },
+    {
+      "path": "crates/aspis-core/src/circle_prefix.rs",
+      "bytes": 40347,
+      "sha256": "437a5c853f8018ffa256cfa14a5f36e718cb2b1fc39410e82e9a0fc455a8c4db"
+    },
+    {
+      "path": "crates/aspis-core/src/circle_query.rs",
+      "bytes": 29491,
+      "sha256": "ebf05c45f5f3bd8fbe77dbaf37b0b39520fc469d69d693ca53b39832ed2d77d0"
+    },
+    {
+      "path": "crates/aspis-core/src/field.rs",
+      "bytes": 108515,
+      "sha256": "dadd6bac7c6c44fcb13e1a1ca26e9d2b6f767370bb6e802640948f15fc795836"
+    },
+    {
+      "path": "crates/aspis-core/src/lib.rs",
+      "bytes": 2666,
+      "sha256": "707467acca89d780f713c8dc6274a3be854b95d7ad8224d9530fb9879c3f80a3"
+    },
+    {
+      "path": "crates/aspis-core/src/merkle.rs",
+      "bytes": 43258,
+      "sha256": "76aa94ce9db033715c04e42effe4fe67807b7a2409dcae6595332be8f1cf9747"
+    },
+    {
+      "path": "crates/aspis-core/src/params.rs",
+      "bytes": 11024,
+      "sha256": "5f1e013c441f80b04c7960af8d4d3ae8ebbd295fe0031e9b60dd9e85b2be10b3"
+    },
+    {
+      "path": "crates/aspis-core/src/proof.rs",
+      "bytes": 22303,
+      "sha256": "a8e3b259da25d47a3d88b38ca838d57ab104476929fe5758b43d1a37c06306a0"
+    },
+    {
+      "path": "crates/aspis-core/src/state_only_hiding.rs",
+      "bytes": 38483,
+      "sha256": "9a388e62b1477dd3ff13d87d937a3855619b30c308ba0d59d82b3d195dd713e4"
+    },
+    {
+      "path": "crates/aspis-core/src/state_only_masked_switch.rs",
+      "bytes": 32734,
+      "sha256": "8704f8a9a23787ef468dbff013fb4211bda637d1ebd42908292c2a055b3f3c1d"
+    },
+    {
+      "path": "crates/aspis-core/src/state_only_masked_switch_basis.rs",
+      "bytes": 21016,
+      "sha256": "ec0a3646cf610b593b75179b751f27386f66903483227bbe14678ad0b3ab05ec"
+    },
+    {
+      "path": "crates/aspis-core/src/state_only_prefix.rs",
+      "bytes": 65000,
+      "sha256": "2ccc17f40b3cfe15ff381761b35ed0850644115d1456330712b11410a4eb8c6c"
+    },
+    {
+      "path": "crates/aspis-core/src/state_only_private_merkle.rs",
+      "bytes": 3648,
+      "sha256": "f0edc31d07d30f5b19fcaf872fba18678d13d1ba5fac1199f1f4d2be74c74f9b"
+    },
+    {
+      "path": "crates/aspis-core/src/state_only_private_openings.rs",
+      "bytes": 17768,
+      "sha256": "178968bf12967eead324f07e8e0047c5e018874998540e103afad2dcea33cfdb"
+    },
+    {
+      "path": "crates/aspis-core/src/state_only_query.rs",
+      "bytes": 13139,
+      "sha256": "4e91b9b356998cc52f5482bc18c5de79b6dddeb9f9bb77bbf6af7d30ff401bd6"
+    },
+    {
+      "path": "crates/aspis-core/src/state_only_relation.rs",
+      "bytes": 7305,
+      "sha256": "e9e57e1497eceb22163698b466d059e14e76cff9ff998bf257d5bbd9533342eb"
+    },
+    {
+      "path": "crates/aspis-core/src/state_only_spend_openings.rs",
+      "bytes": 3858,
+      "sha256": "0e3de4cfb3678137b6260daec537e4d70b0c4d26e03a5ee3b99acad31a6c3681"
+    },
+    {
+      "path": "crates/aspis-core/src/state_only_spend_query.rs",
+      "bytes": 13042,
+      "sha256": "c5c6bbce91a1c3083f38ccda2b1bb0f79c2a67b2b5deee76cdb9c4a042ecabdd"
+    },
+    {
+      "path": "crates/aspis-core/src/state_only_spend_relation.rs",
+      "bytes": 2832,
+      "sha256": "6c82101c3546c2a26201731567aa687c6a9050b55bc0d88ac127131b5d9ba1dd"
+    },
+    {
+      "path": "crates/aspis-core/src/state_only_sumcheck.rs",
+      "bytes": 24427,
+      "sha256": "5458d3134a3123b8b02bef0374ccbf96a05461974d7e274966c6a3f0d2d496f9"
+    },
+    {
+      "path": "crates/aspis-core/src/statement_hiding.rs",
+      "bytes": 52306,
+      "sha256": "78b84cb12067d6f6f31068dd15aa76f4e9ecdb38315030d686040472814b1b9f"
+    },
+    {
+      "path": "crates/aspis-core/src/statement_sumcheck.rs",
+      "bytes": 7139,
+      "sha256": "f707317329a8e13bac2538d718b16e048bc58c7de82ef2bb08f0e0d75da66a78"
+    },
+    {
+      "path": "crates/aspis-core/src/sumcheck.rs",
+      "bytes": 108721,
+      "sha256": "4ccbde07a8f80015b311b489b9f6447418a3dca92978e2957576a11ab38904b7"
+    },
+    {
+      "path": "crates/aspis-core/src/transcript.rs",
+      "bytes": 49836,
+      "sha256": "7e5f7ddf6dff96f9aefb70f48d8fafab744ac5537f16299c2f49780d10a77cde"
+    },
+    {
+      "path": "crates/aspis-core/src/verify.rs",
+      "bytes": 60111,
+      "sha256": "108021252ada329b627808c045509eb0678c720b7ed052060213af0763b40656"
+    },
+    {
+      "path": "crates/aspis-statement/Cargo.toml",
+      "bytes": 878,
+      "sha256": "10584360b1d6fa13160a976fc42454dcbffdea65b07063cf5eb9e6020295b7f6"
+    },
+    {
+      "path": "crates/aspis-statement/src/atomic_state_only_registry.rs",
+      "bytes": 34068,
+      "sha256": "d54ce5d801c974faeda0c0604f3ea987dd714c94ca524b8dbe00d10965edb8f1"
+    },
+    {
+      "path": "crates/aspis-statement/src/atomic_state_only_terminal.rs",
+      "bytes": 100053,
+      "sha256": "dcaa91d454db276b9dc40baf951b62d0eea0fbe87a14b51752525e5316078986"
+    },
+    {
+      "path": "crates/aspis-statement/src/atomic_state_only_terminal_constants.rs",
+      "bytes": 50537,
+      "sha256": "d26146e13605fbebb634445fb6846cae0bab0b4aec0b89ca15eaae083dc9adb3"
+    },
+    {
+      "path": "crates/aspis-statement/src/atomic_state_only_terminal_constants_legacy_partition.rs",
+      "bytes": 55141,
+      "sha256": "b0a824632c92290ad4854b20706f280f34537470b86b0b30f5975c26d7db1214"
+    },
+    {
+      "path": "crates/aspis-statement/src/atomic_state_only_trace.rs",
+      "bytes": 17601,
+      "sha256": "bae98cf528cfb60af75303ed61237193d8faad508e099f22b89ed7c76bde90d0"
+    },
+    {
+      "path": "crates/aspis-statement/src/atomic_statement.rs",
+      "bytes": 12986,
+      "sha256": "32c75a198064af1bf7700a3cf92198e6bd01d8655405a55736b37d8302c4dc09"
+    },
+    {
+      "path": "crates/aspis-statement/src/constraints_v4.rs",
+      "bytes": 155981,
+      "sha256": "264921454f5ddd97184944b149b7f41ed791230413ba80fe09eb9be7059d1ba5"
+    },
+    {
+      "path": "crates/aspis-statement/src/direct_range_hiding_v4.rs",
+      "bytes": 22527,
+      "sha256": "9d7942805b60905d7e8bf08616e34737957be4d1b9f102ef06cff68dbadee258"
+    },
+    {
+      "path": "crates/aspis-statement/src/hiding_v4.rs",
+      "bytes": 15688,
+      "sha256": "bebc2d716cb6828c38d909243b8d8cec9b56460ae38955f0f140ed71e6f19924"
+    },
+    {
+      "path": "crates/aspis-statement/src/lib.rs",
+      "bytes": 11811,
+      "sha256": "6caafef540e8746640e416469636fdb55f266cd68bc9ac19df5eff62feb6148a"
+    },
+    {
+      "path": "crates/aspis-statement/src/logup.rs",
+      "bytes": 22915,
+      "sha256": "c6e84617e6473f014fc53c704dd26b04667046211985ea6ddca8f66f496bea65"
+    },
+    {
+      "path": "crates/aspis-statement/src/poseidon2.rs",
+      "bytes": 34682,
+      "sha256": "028594ae18135a7808649182bf6cc92145e6e826226ceb674b80854399fd35ec"
+    },
+    {
+      "path": "crates/aspis-statement/src/spend.rs",
+      "bytes": 20766,
+      "sha256": "1cee5f45331207c1841106838daea76126f85b1c97b1066bc39089a6cb623ee9"
+    },
+    {
+      "path": "crates/aspis-statement/src/state_only_constraints.rs",
+      "bytes": 4508,
+      "sha256": "e2be03ea1c8a3912f2e850b34a40066ce9b8aff4c51bed4f093f9717d71b74d8"
+    },
+    {
+      "path": "crates/aspis-statement/src/state_only_poseidon.rs",
+      "bytes": 44076,
+      "sha256": "6625fb215d6aa5888a18e158c2e0d97cd5e33fc82efa759af3fcfa7cb74b3010"
+    },
+    {
+      "path": "crates/aspis-statement/src/state_only_semantic.rs",
+      "bytes": 40979,
+      "sha256": "fdea5d4d8be1dd4a093e2b06391d3f242866648496ed791a03597b596719fdd4"
+    },
+    {
+      "path": "crates/aspis-statement/src/state_only_spend.rs",
+      "bytes": 16746,
+      "sha256": "7b7a8c6be04f16be0cb0c38e4ab6c304e1ca106771113b5aad27333b1d7ed7b5"
+    },
+    {
+      "path": "crates/aspis-statement/src/state_only_terminal.rs",
+      "bytes": 50609,
+      "sha256": "1e4ae2058a92c0c8fb6217144ac0c092e233ab4dd8f4e63a85cdab7b2ae121a5"
+    },
+    {
+      "path": "crates/aspis-statement/src/state_only_terminal_constants.rs",
+      "bytes": 55183,
+      "sha256": "fd14b8dfd2f690d588b39ecabad46d23ef8b47fc9aad047f0c645260b94c99dd"
+    },
+    {
+      "path": "crates/aspis-statement/src/state_only_trace.rs",
+      "bytes": 63144,
+      "sha256": "43eeed8cb0d07d3eba63008156fdb0ec6dcac63f735e2235e5db5bc4ccb80574"
+    },
+    {
+      "path": "crates/aspis-statement/src/state_only_verify.rs",
+      "bytes": 43196,
+      "sha256": "f72e2c2d100fbc098908c4fd72b0781d75edbc13f0f4a45fddb4c4dc1379474e"
+    },
+    {
+      "path": "crates/aspis-statement/src/trace_v4.rs",
+      "bytes": 81935,
+      "sha256": "60e36ebb52b003de401c014eb6a139f1981b19b06f575dad5b87d8f59d0c8aa3"
+    },
+    {
+      "path": "crates/aspis-statement/src/wide_v4.rs",
+      "bytes": 8435,
+      "sha256": "9037d0176d1a77288a7429e2023ca2e474e8340a4992ffeb5f9eb27dabfacbff"
+    },
+    {
+      "path": "programs/aspis-verifier/Cargo.toml",
+      "bytes": 2017,
+      "sha256": "eee6a7597716f964eb5abe537264539d3d31d849e67994ad3e5c86488130cf7b"
+    },
+    {
+      "path": "programs/aspis-verifier/src/atomic_payment.rs",
+      "bytes": 71951,
+      "sha256": "7aebd259c6ed4fd8ee7a0afcdec3728a29870fefe42c6b4a57c89feaeac4468a"
+    },
+    {
+      "path": "programs/aspis-verifier/src/dispatch.rs",
+      "bytes": 13829,
+      "sha256": "bdc7604540e6aeb43b16ab5329448f363fbca583bde9ec389209bb01d3f1df7d"
+    },
+    {
+      "path": "programs/aspis-verifier/src/lib.rs",
+      "bytes": 4434,
+      "sha256": "646fb008c64aebc407aff5d028f0b359ac16375d37fff39bf8c3d6f6b36c913b"
+    },
+    {
+      "path": "programs/aspis-verifier/src/lifecycle.rs",
+      "bytes": 33046,
+      "sha256": "46b6cdbe04c29dbea7c29e16b7ec918df9cd9d21ec0053d93933760c7d053e4d"
+    },
+    {
+      "path": "programs/aspis-verifier/src/v5_atomic_terminal.rs",
+      "bytes": 24024,
+      "sha256": "84c14aab5656afaf36998f7bb085c35120578a9d3eb3f4c3fe8bbf6ebbf949b7"
+    },
+    {
+      "path": "programs/aspis-verifier/src/v5_cu_probe.rs",
+      "bytes": 189001,
+      "sha256": "2a0800d2595cbde402d4dfd0517a158073d519e56a990d80d27d999376f2559d"
+    },
+    {
+      "path": "programs/aspis-verifier/src/v5_fri_checks.rs",
+      "bytes": 32737,
+      "sha256": "d909370e1c4d168350b8c9b5c020c8b0f8503e4e2f66a5f7644cb04739749d3a"
+    },
+    {
+      "path": "programs/aspis-verifier/src/v5_full_transaction.rs",
+      "bytes": 5069,
+      "sha256": "aedac6f1ebbc8e031aec9ae921788338d80fe8c52e119fb1410f645dd70d93cf"
+    },
+    {
+      "path": "programs/aspis-verifier/src/v5_good_gate_probe.rs",
+      "bytes": 89161,
+      "sha256": "61063233a0e4fd2e68417f54a6de1cc18e0362403e2dc117a4653b907c71bb0d"
+    },
+    {
+      "path": "programs/aspis-verifier/src/v5_private_openings.rs",
+      "bytes": 5607,
+      "sha256": "916c14930d419bc0cd794a3d1e01c4e45fea9f4dbbc1f44f89f71caf3ff63c49"
+    },
+    {
+      "path": "programs/aspis-verifier/src/v5_relation_stress.rs",
+      "bytes": 12747,
+      "sha256": "7a06e6a92e2e06c35d18af03667093fa1a4fcc3948de9ed4fffbf781a8d37cca"
+    },
+    {
+      "path": "programs/aspis-verifier/src/v5_relation_stress_fast.rs",
+      "bytes": 11097,
+      "sha256": "eac80b62e1febd45d7114b553340d91ee5a1bafa7f63fafa9c82bc4e8806025b"
+    },
+    {
+      "path": "programs/aspis-verifier/src/v5_relation_stress_root.rs",
+      "bytes": 6755,
+      "sha256": "cfe3cc483f12d0fbba4827feb9374356539aea6ec7b87fa3408a58ea5d7b93f1"
+    },
+    {
+      "path": "programs/aspis-verifier/src/v5_wire_skeleton.rs",
+      "bytes": 22855,
+      "sha256": "0aa4d04f74899b009d8ac77415cdb1a414df2eee1390375f9f7f8f948eeca6f7"
+    },
+    {
+      "path": "programs/aspis-verifier/src/verify.rs",
+      "bytes": 8169,
+      "sha256": "819951203e6149d3ca51ebdf65a416492674e5e57e0e21621dff3cf6419bb9ad"
+    },
+    {
+      "path": "programs/aspis-verifier/src/wire.rs",
+      "bytes": 47212,
+      "sha256": "592d25744ba3e5cd66705ec99b8bd47bbb0fbc3e5497110c7e48e28fe2980741"
+    }
+  ],
+  "sbf_path": "/Users/dominic/ZK/results/spend/v5-production-freeze-stream3-20260722/aspis_verifier_v5_tag67.so",
+  "sbf_bytes": 1081384,
+  "sbf_sha256": "8dad5ff8cabac2d9ce1f28968010f39bbc14cecad4252de81b3dc89e4b92c418"
+}

@@ -1,0 +1,14 @@
+import RuntimeFoldPrimitiveInstantiation
+
+open aspis_prover.ComponentCRuntimeFoldPrimitiveInstantiation
+
+#print axioms runtime_qm31_add_corresponds
+#print axioms runtime_qm31_sub_corresponds
+#print axioms runtime_m31_neg_corresponds
+#print axioms runtime_qm31_half_corresponds
+#print axioms runtime_qm31_mul_corresponds
+#print axioms runtime_qm31_mul_m31_corresponds
+#print axioms runtimeFoldPrimitiveLaws
+#print axioms runtimeCirclePrimitiveLaws
+#print axioms extracted_prepared_line_fold_exact
+#print axioms extracted_prepared_circle_fold_exact

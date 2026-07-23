@@ -193,7 +193,7 @@ impl CirclePoint {
                 result = result.add(power);
             }
             power = power.double();
-            scalar >>= 1;
+            scalar >>= 1u32;
         }
         result
     }
@@ -236,20 +236,26 @@ impl Coset {
 }
 
 fn bit_reverse_index(index: usize, log_size: u32) -> usize {
-    if log_size == 0 {
-        0
-    } else {
-        index.reverse_bits() >> (usize::BITS - log_size)
+    assert!(log_size <= usize::BITS);
+    let mut remaining = index;
+    let mut reversed = 0usize;
+    let mut bit = 0u32;
+    while bit < log_size {
+        reversed = (reversed << 1u32) | (remaining & 1usize);
+        remaining >>= 1u32;
+        bit += 1;
     }
+    reversed
 }
 
-fn bit_reverse<T>(values: &mut [T]) {
-    let log_size = values.len().ilog2();
-    for index in 0..values.len() {
+fn bit_reverse<T>(values: &mut [T], log_size: u32) {
+    let mut index = 0usize;
+    while index < values.len() {
         let reversed = bit_reverse_index(index, log_size);
         if reversed > index {
             values.swap(index, reversed);
         }
+        index += 1;
     }
 }
 
@@ -257,8 +263,12 @@ fn precompute_twiddles(mut coset: Coset) -> Vec<M31> {
     let mut twiddles = Vec::with_capacity(coset.size());
     while coset.log_size != 0 {
         let layer_start = twiddles.len();
-        twiddles.extend((0..coset.size() / 2).map(|index| coset.point(index).x));
-        bit_reverse(&mut twiddles[layer_start..]);
+        let mut index = 0usize;
+        while index < coset.size() / 2 {
+            twiddles.push(coset.point(index).x);
+            index += 1;
+        }
+        bit_reverse(&mut twiddles[layer_start..], coset.log_size - 1u32);
         coset = coset.double();
     }
     // Stwo pads its size-(n-1) twiddle tree to n.
@@ -267,45 +277,62 @@ fn precompute_twiddles(mut coset: Coset) -> Vec<M31> {
 }
 
 fn line_twiddle_layers(twiddles: &[M31], line_log_size: u32) -> Vec<Vec<M31>> {
-    let mut layers = (0..line_log_size)
-        .map(|layer| {
-            let len = 1usize << layer;
-            twiddles[twiddles.len() - 2 * len..twiddles.len() - len].to_vec()
-        })
-        .collect::<Vec<_>>();
+    let mut layers = Vec::with_capacity(line_log_size as usize);
+    let mut layer = 0u32;
+    while layer < line_log_size {
+        let len = 1usize << layer;
+        let start = twiddles.len() - 2 * len;
+        let mut layer_values = Vec::with_capacity(len);
+        let mut index = 0usize;
+        while index < len {
+            layer_values.push(twiddles[start + index]);
+            index += 1;
+        }
+        layers.push(layer_values);
+        layer += 1;
+    }
     layers.reverse();
     layers
 }
 
 fn circle_twiddles(first_line_layer: &[M31]) -> Vec<M31> {
     let mut result = Vec::with_capacity(first_line_layer.len() * 2);
-    for pair in first_line_layer.chunks_exact(2) {
-        let x = pair[0];
-        let y = pair[1];
-        result.extend([y, y.neg(), x.neg(), x]);
+    let mut index = 0usize;
+    while index < first_line_layer.len() {
+        let x = first_line_layer[index];
+        let y = first_line_layer[index + 1];
+        result.push(y);
+        result.push(y.neg());
+        result.push(x.neg());
+        result.push(x);
+        index += 2;
     }
     result
 }
 
-fn fft_layer_m31(values: &mut [M31], layer: usize, block: usize, twiddle: M31) {
-    for lane in 0..(1usize << layer) {
-        let index0 = (block << (layer + 1)) + lane;
+fn fft_layer_m31(values: &mut [M31], layer: u32, block: usize, twiddle: M31) {
+    let mut lane = 0usize;
+    while lane < (1usize << layer) {
+        let index0 = (block << (layer + 1u32)) + lane;
         let index1 = index0 + (1usize << layer);
         let left = values[index0];
         let weighted_right = values[index1].mul(twiddle);
         values[index0] = left.add(weighted_right);
         values[index1] = left.sub(weighted_right);
+        lane += 1;
     }
 }
 
 fn fft_layer_qm31(values: &mut [QM31], layer: usize, block: usize, twiddle: M31) {
-    for lane in 0..(1usize << layer) {
+    let mut lane = 0usize;
+    while lane < (1usize << layer) {
         let index0 = (block << (layer + 1)) + lane;
         let index1 = index0 + (1usize << layer);
         let left = values[index0];
         let weighted_right = values[index1].mul_m31(twiddle);
         values[index0] = left.add(weighted_right);
         values[index1] = left.sub(weighted_right);
+        lane += 1;
     }
 }
 
@@ -369,13 +396,15 @@ impl CircleEncoder {
             });
         }
         let mut value = M31::ONE;
-        for bit in 0..TRACE_LOG_SIZE {
+        let mut bit = 0u32;
+        while bit < TRACE_LOG_SIZE {
             if (row >> bit) & 1 == 0 {
+                bit += 1;
                 continue;
             }
             let (twiddle, output_bit) = if bit == 0 {
                 (
-                    self.first_circle_layer[codeword_index >> 1],
+                    self.first_circle_layer[codeword_index >> 1u32],
                     codeword_index & 1,
                 )
             } else {
@@ -389,6 +418,7 @@ impl CircleEncoder {
             } else {
                 twiddle.neg()
             });
+            bit += 1;
         }
         Ok(value)
     }
@@ -456,15 +486,34 @@ impl CircleEncoder {
                 actual: message.len(),
             });
         }
-        let mut values = vec![M31::ZERO; self.codeword_len];
-        values[..TRACE_LEN].copy_from_slice(message);
-        for (layer, twiddles) in self.line_layers.iter().enumerate().rev() {
-            for (block, twiddle) in twiddles.iter().copied().enumerate() {
-                fft_layer_m31(&mut values, layer + 1, block, twiddle);
+        let mut values = Vec::with_capacity(self.codeword_len);
+        let mut index = 0usize;
+        while index < self.codeword_len {
+            values.push(if index < TRACE_LEN {
+                message[index]
+            } else {
+                M31::ZERO
+            });
+            index += 1;
+        }
+        let mut layer = self.line_layers.len();
+        while layer > 0 {
+            layer -= 1;
+            let mut block = 0usize;
+            while block < self.line_layers[layer].len() {
+                fft_layer_m31(
+                    &mut values,
+                    (layer + 1) as u32,
+                    block,
+                    self.line_layers[layer][block],
+                );
+                block += 1;
             }
         }
-        for (block, twiddle) in self.first_circle_layer.iter().copied().enumerate() {
-            fft_layer_m31(&mut values, 0, block, twiddle);
+        let mut block = 0usize;
+        while block < self.first_circle_layer.len() {
+            fft_layer_m31(&mut values, 0u32, block, self.first_circle_layer[block]);
+            block += 1;
         }
         Ok(values)
     }
@@ -479,13 +528,24 @@ impl CircleEncoder {
         }
         let mut values = vec![QM31::ZERO; self.codeword_len];
         values[..TRACE_LEN].copy_from_slice(message);
-        for (layer, twiddles) in self.line_layers.iter().enumerate().rev() {
-            for (block, twiddle) in twiddles.iter().copied().enumerate() {
-                fft_layer_qm31(&mut values, layer + 1, block, twiddle);
+        let mut layer = self.line_layers.len();
+        while layer > 0 {
+            layer -= 1;
+            let mut block = 0usize;
+            while block < self.line_layers[layer].len() {
+                fft_layer_qm31(
+                    &mut values,
+                    layer + 1,
+                    block,
+                    self.line_layers[layer][block],
+                );
+                block += 1;
             }
         }
-        for (block, twiddle) in self.first_circle_layer.iter().copied().enumerate() {
-            fft_layer_qm31(&mut values, 0, block, twiddle);
+        let mut block = 0usize;
+        while block < self.first_circle_layer.len() {
+            fft_layer_qm31(&mut values, 0, block, self.first_circle_layer[block]);
+            block += 1;
         }
         Ok(values)
     }
@@ -943,7 +1003,7 @@ pub fn gamma_combine_statement_evaluations(
     })
 }
 
-pub(crate) fn combined_layer_leaves(values: &[QM31]) -> Vec<[u8; COMBINED_LAYER_LEAF_BYTES]> {
+pub fn combined_layer_leaves(values: &[QM31]) -> Vec<[u8; COMBINED_LAYER_LEAF_BYTES]> {
     debug_assert_eq!(values.len() % FIBER_SLOTS, 0);
     values
         .chunks_exact(FIBER_SLOTS)
@@ -957,84 +1017,170 @@ pub(crate) fn combined_layer_leaves(values: &[QM31]) -> Vec<[u8; COMBINED_LAYER_
         .collect()
 }
 
-pub(crate) fn fold_adjacent_natural_arity4(values: &[QM31], alpha: QM31) -> Vec<QM31> {
+pub fn fold_adjacent_natural_arity4(values: &[QM31], alpha: QM31) -> Vec<QM31> {
     let alpha_squared = alpha.square();
     let alpha_cubed = alpha_squared.mul(alpha);
-    values
-        .chunks_exact(FIBER_SLOTS)
-        .map(|chunk| {
-            chunk[0]
-                .add(alpha.mul(chunk[1]))
-                .add(alpha_squared.mul(chunk[2]))
-                .add(alpha_cubed.mul(chunk[3]))
-        })
-        .collect()
+    let mut folded = Vec::with_capacity(values.len() / FIBER_SLOTS);
+    let mut start = 0usize;
+    while start + FIBER_SLOTS <= values.len() {
+        folded.push(
+            values[start]
+                .add(alpha.mul(values[start + 1]))
+                .add(alpha_squared.mul(values[start + 2]))
+                .add(alpha_cubed.mul(values[start + 3])),
+        );
+        start += FIBER_SLOTS;
+    }
+    folded
+}
+
+fn candidate_layer_len_for_domain_log(
+    domain_log_size: u32,
+    completed_rounds: usize,
+) -> Result<usize, CircleCandidateError> {
+    if domain_log_size == 0 || domain_log_size > CIRCLE_LOG_ORDER - 1 {
+        return Err(CircleCandidateError::Fold(
+            CircleFriError::InvalidBitReverseLength,
+        ));
+    }
+    let completed_rounds = match u32::try_from(completed_rounds) {
+        Ok(completed_rounds) => completed_rounds,
+        Err(_) => {
+            return Err(CircleCandidateError::Fold(
+                CircleFriError::InvalidBitReverseLength,
+            ))
+        }
+    };
+    let consumed_log = match completed_rounds.checked_mul(2) {
+        Some(consumed_log) => consumed_log,
+        None => {
+            return Err(CircleCandidateError::Fold(
+                CircleFriError::InvalidBitReverseLength,
+            ))
+        }
+    };
+    let layer_log_size = match domain_log_size.checked_sub(consumed_log) {
+        Some(layer_log_size) if layer_log_size >= 2 => layer_log_size,
+        _ => {
+            return Err(CircleCandidateError::Fold(
+                CircleFriError::InvalidBitReverseLength,
+            ))
+        }
+    };
+    match 1usize.checked_shl(layer_log_size) {
+        Some(layer_len) => Ok(layer_len),
+        None => Err(CircleCandidateError::Fold(
+            CircleFriError::InvalidBitReverseLength,
+        )),
+    }
 }
 
 /// Fold one codeword layer in the fixed circle-then-line candidate schedule.
 ///
-/// This is exposed inside the prover crate so the sequential prefix builder
-/// can commit a layer before sampling the next layer's OOD challenges. It is
-/// the same arithmetic used by [`build_fold_commitments`].
-pub(crate) fn fold_candidate_codeword_round_for_domain_log(
+/// This is public for additive proof families that must commit a layer before
+/// sampling the next layer's OOD challenges. It is the same arithmetic used
+/// by [`build_fold_commitments`].
+pub fn fold_candidate_codeword_round_for_domain_log(
     evaluations: &[QM31],
     alpha: QM31,
     round: usize,
     domain_log_size: u32,
 ) -> Result<Vec<QM31>, CircleCandidateError> {
-    let expected = (1usize << domain_log_size) >> (2 * round);
-    if round >= FIXED_ARITY4_ROUNDS as usize || evaluations.len() != expected {
+    if round >= FIXED_ARITY4_ROUNDS as usize {
+        return Err(CircleCandidateError::Fold(
+            CircleFriError::InvalidLineFoldLayer,
+        ));
+    }
+    let expected = candidate_layer_len_for_domain_log(domain_log_size, round)?;
+    if evaluations.len() != expected {
         return Err(CircleCandidateError::CombinedLength {
             expected,
             actual: evaluations.len(),
         });
     }
-    evaluations
-        .chunks_exact(FIBER_SLOTS)
-        .enumerate()
-        .map(|(fiber, values)| {
-            let values: [QM31; FIBER_SLOTS] = values.try_into().unwrap();
-            if round == 0 {
-                normalized_circle_to_line_arity4_at_fiber_for_domain_log(
-                    values,
-                    alpha,
-                    domain_log_size,
-                    fiber,
-                )
-            } else {
-                normalized_line_arity4_at_fiber_for_domain_log(
-                    values,
-                    alpha,
-                    domain_log_size,
-                    round as u8,
-                    fiber,
-                )
-            }
-        })
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(Into::into)
+    let mut folded = Vec::with_capacity(evaluations.len() / FIBER_SLOTS);
+    let mut fiber = 0usize;
+    let mut error = None;
+    while fiber < evaluations.len() / FIBER_SLOTS && error.is_none() {
+        let start = FIBER_SLOTS * fiber;
+        let values = [
+            evaluations[start],
+            evaluations[start + 1],
+            evaluations[start + 2],
+            evaluations[start + 3],
+        ];
+        let value = if round == 0 {
+            normalized_circle_to_line_arity4_at_fiber_for_domain_log(
+                values,
+                alpha,
+                domain_log_size,
+                fiber,
+            )
+        } else {
+            normalized_line_arity4_at_fiber_for_domain_log(
+                values,
+                alpha,
+                domain_log_size,
+                round as u8,
+                fiber,
+            )
+        };
+        match value {
+            Ok(value) => folded.push(value),
+            Err(fold_error) => error = Some(CircleCandidateError::Fold(fold_error)),
+        }
+        fiber += 1;
+    }
+    match error {
+        Some(error) => Err(error),
+        None => Ok(folded),
+    }
 }
 
 /// Commit the already-folded values for candidate layer `1..=3`.
-pub(crate) fn combined_candidate_layer_root_for_domain_log(
+pub fn combined_candidate_layer_root_for_domain_log(
     evaluations: &[QM31],
     layer: usize,
     domain_log_size: u32,
     hash: HashFn,
 ) -> Result<[u8; 32], CircleCandidateError> {
-    let expected = (1usize << domain_log_size) >> (2 * layer);
-    if !(1..=COMBINED_COMMITTED_LAYERS).contains(&layer) || evaluations.len() != expected {
+    if !(1..=COMBINED_COMMITTED_LAYERS).contains(&layer) {
+        return Err(CircleCandidateError::Fold(CircleFriError::InvalidLineLayer));
+    }
+    let layer_tag = u8::try_from(layer)
+        .ok()
+        .and_then(|layer| M31_CIRCLE_COMBINED_LAYER_TAG_BASE.checked_add(layer))
+        .ok_or(CircleCandidateError::Fold(CircleFriError::InvalidLineLayer))?;
+    combined_candidate_layer_root_for_domain_log_and_tag(
+        evaluations,
+        layer,
+        domain_log_size,
+        layer_tag,
+        hash,
+    )
+}
+
+/// Commit one already-folded layer under an additive profile's explicit
+/// domain-separation tag.
+pub fn combined_candidate_layer_root_for_domain_log_and_tag(
+    evaluations: &[QM31],
+    layer: usize,
+    domain_log_size: u32,
+    layer_tag: u8,
+    hash: HashFn,
+) -> Result<[u8; 32], CircleCandidateError> {
+    if !(1..=COMBINED_COMMITTED_LAYERS).contains(&layer) {
+        return Err(CircleCandidateError::Fold(CircleFriError::InvalidLineLayer));
+    }
+    let expected = candidate_layer_len_for_domain_log(domain_log_size, layer)?;
+    if evaluations.len() != expected {
         return Err(CircleCandidateError::CombinedLength {
             expected,
             actual: evaluations.len(),
         });
     }
     let leaves = combined_layer_leaves(evaluations);
-    Ok(radix4_root(
-        &leaves,
-        M31_CIRCLE_COMBINED_LAYER_TAG_BASE + layer as u8,
-        hash,
-    ))
+    Ok(radix4_root(&leaves, layer_tag, hash))
 }
 
 /// Fold one combined log-12 circle codeword through the four fixed arity-4
@@ -1357,6 +1503,351 @@ fn qm31_coordinates(value: QM31) -> [M31; 4] {
 mod tests {
     use super::*;
     use aspis_core::field::CM31;
+
+    // Test-only copies of the pre-refactor iterator spellings. They are
+    // differential oracles only and are unreachable from production and from
+    // the Charon start matchers used by the correspondence lane.
+    fn iterator_reference_bit_reverse_index(index: usize, log_size: u32) -> usize {
+        if log_size == 0 {
+            0
+        } else {
+            index.reverse_bits() >> (usize::BITS - log_size)
+        }
+    }
+
+    fn iterator_reference_circle_point_mul(point: CirclePoint, mut scalar: usize) -> CirclePoint {
+        let mut result = CirclePoint::identity();
+        let mut power = point;
+        while scalar != 0 {
+            if scalar & 1 == 1 {
+                result = result.add(power);
+            }
+            power = power.double();
+            scalar >>= 1;
+        }
+        result
+    }
+
+    fn iterator_reference_bit_reverse<T>(values: &mut [T]) {
+        let log_size = values.len().ilog2();
+        for index in 0..values.len() {
+            let reversed = iterator_reference_bit_reverse_index(index, log_size);
+            if reversed > index {
+                values.swap(index, reversed);
+            }
+        }
+    }
+
+    fn iterator_reference_precompute_twiddles(mut coset: Coset) -> Vec<M31> {
+        let mut twiddles = Vec::with_capacity(coset.size());
+        while coset.log_size != 0 {
+            let layer_start = twiddles.len();
+            twiddles.extend((0..coset.size() / 2).map(|index| coset.point(index).x));
+            iterator_reference_bit_reverse(&mut twiddles[layer_start..]);
+            coset = coset.double();
+        }
+        twiddles.push(M31::ONE);
+        twiddles
+    }
+
+    fn iterator_reference_line_twiddle_layers(
+        twiddles: &[M31],
+        line_log_size: u32,
+    ) -> Vec<Vec<M31>> {
+        let mut layers = (0..line_log_size)
+            .map(|layer| {
+                let len = 1usize << layer;
+                twiddles[twiddles.len() - 2 * len..twiddles.len() - len].to_vec()
+            })
+            .collect::<Vec<_>>();
+        layers.reverse();
+        layers
+    }
+
+    fn iterator_reference_circle_twiddles(first_line_layer: &[M31]) -> Vec<M31> {
+        let mut result = Vec::with_capacity(first_line_layer.len() * 2);
+        for pair in first_line_layer.chunks_exact(2) {
+            let x = pair[0];
+            let y = pair[1];
+            result.extend([y, y.neg(), x.neg(), x]);
+        }
+        result
+    }
+
+    fn iterator_reference_encode_c1_basis_value(
+        encoder: &CircleEncoder,
+        row: usize,
+        codeword_index: usize,
+    ) -> Result<M31, CircleCandidateError> {
+        if row >= TRACE_LEN {
+            return Err(CircleCandidateError::MessageLength {
+                expected: TRACE_LEN,
+                actual: row + 1,
+            });
+        }
+        if codeword_index >= encoder.codeword_len {
+            return Err(CircleCandidateError::FiberIndex {
+                index: codeword_index,
+            });
+        }
+        let mut value = M31::ONE;
+        for bit in 0..TRACE_LOG_SIZE {
+            if (row >> bit) & 1 == 0 {
+                continue;
+            }
+            let (twiddle, output_bit) = if bit == 0 {
+                (
+                    encoder.first_circle_layer[codeword_index >> 1],
+                    codeword_index & 1,
+                )
+            } else {
+                (
+                    encoder.line_layers[(bit - 1) as usize][codeword_index >> (bit + 1)],
+                    (codeword_index >> bit) & 1,
+                )
+            };
+            value = value.mul(if output_bit == 0 {
+                twiddle
+            } else {
+                twiddle.neg()
+            });
+        }
+        Ok(value)
+    }
+
+    fn iterator_reference_fft_layer_m31(
+        values: &mut [M31],
+        layer: usize,
+        block: usize,
+        twiddle: M31,
+    ) {
+        for lane in 0..(1usize << layer) {
+            let index0 = (block << (layer + 1)) + lane;
+            let index1 = index0 + (1usize << layer);
+            let left = values[index0];
+            let weighted_right = values[index1].mul(twiddle);
+            values[index0] = left.add(weighted_right);
+            values[index1] = left.sub(weighted_right);
+        }
+    }
+
+    fn iterator_reference_encode_c1_message(
+        encoder: &CircleEncoder,
+        message: &[M31],
+    ) -> Result<Vec<M31>, CircleCandidateError> {
+        if message.len() != TRACE_LEN {
+            return Err(CircleCandidateError::MessageLength {
+                expected: TRACE_LEN,
+                actual: message.len(),
+            });
+        }
+        let mut values = vec![M31::ZERO; encoder.codeword_len];
+        values[..TRACE_LEN].copy_from_slice(message);
+        for (layer, twiddles) in encoder.line_layers.iter().enumerate().rev() {
+            for (block, twiddle) in twiddles.iter().copied().enumerate() {
+                iterator_reference_fft_layer_m31(&mut values, layer + 1, block, twiddle);
+            }
+        }
+        for (block, twiddle) in encoder.first_circle_layer.iter().copied().enumerate() {
+            iterator_reference_fft_layer_m31(&mut values, 0, block, twiddle);
+        }
+        Ok(values)
+    }
+
+    #[test]
+    fn indexed_constructor_and_dense_encoder_match_iterator_reference() {
+        for scalar in [0usize, 1, 2, 3, 17, 255, 65_537, usize::MAX] {
+            let indexed = CIRCLE_GENERATOR.mul(scalar);
+            let reference = iterator_reference_circle_point_mul(CIRCLE_GENERATOR, scalar);
+            assert_eq!((indexed.x, indexed.y), (reference.x, reference.y));
+        }
+        for log_size in 0..=19u32 {
+            let size = 1usize << log_size;
+            for index in 0..size {
+                assert_eq!(
+                    bit_reverse_index(index, log_size),
+                    iterator_reference_bit_reverse_index(index, log_size),
+                    "bit reversal differed at log={log_size}, index={index}"
+                );
+            }
+        }
+
+        for domain_log_size in [12u32, 15, 19] {
+            let half_coset = Coset::half_odds(domain_log_size - 1);
+            let twiddles = precompute_twiddles(half_coset);
+            let reference_twiddles = iterator_reference_precompute_twiddles(half_coset);
+            assert_eq!(twiddles, reference_twiddles);
+            assert_eq!(twiddles.capacity(), reference_twiddles.capacity());
+
+            let line_layers = line_twiddle_layers(&twiddles, domain_log_size - 1);
+            let reference_line_layers =
+                iterator_reference_line_twiddle_layers(&reference_twiddles, domain_log_size - 1);
+            assert_eq!(line_layers, reference_line_layers);
+            assert_eq!(line_layers.capacity(), reference_line_layers.capacity());
+
+            let first_circle_layer = circle_twiddles(&line_layers[0]);
+            let reference_first_circle_layer =
+                iterator_reference_circle_twiddles(&reference_line_layers[0]);
+            assert_eq!(first_circle_layer, reference_first_circle_layer);
+            assert_eq!(
+                first_circle_layer.capacity(),
+                reference_first_circle_layer.capacity()
+            );
+
+            let encoder = CircleEncoder::new_for_domain_log(domain_log_size);
+            assert_eq!(encoder.line_layers, reference_line_layers);
+            assert_eq!(encoder.first_circle_layer, reference_first_circle_layer);
+            for row in [0usize, 1, 2, 3, 17, 511, 1023] {
+                for index in [
+                    0usize,
+                    1,
+                    2,
+                    3,
+                    encoder.codeword_len() / 3,
+                    encoder.codeword_len() / 2 + 7,
+                    encoder.codeword_len() - 1,
+                ] {
+                    assert_eq!(
+                        encoder.encode_c1_basis_value(row, index),
+                        iterator_reference_encode_c1_basis_value(&encoder, row, index)
+                    );
+                }
+            }
+
+            if domain_log_size != 19 {
+                let message = (0..TRACE_LEN)
+                    .map(|index| M31((index as u32).wrapping_mul(17).wrapping_add(9)))
+                    .collect::<Vec<_>>();
+                let indexed = encoder.encode_c1_message(&message).unwrap();
+                let reference = iterator_reference_encode_c1_message(&encoder, &message).unwrap();
+                assert_eq!(indexed, reference);
+                assert_eq!(indexed.capacity(), reference.capacity());
+            }
+        }
+
+        let encoder = CircleEncoder::new();
+        for invalid in [Vec::new(), vec![M31::ZERO; TRACE_LEN - 1]] {
+            assert_eq!(
+                encoder.encode_c1_message(&invalid),
+                iterator_reference_encode_c1_message(&encoder, &invalid)
+            );
+        }
+        assert_eq!(
+            encoder.encode_c1_basis_value(TRACE_LEN, 0),
+            iterator_reference_encode_c1_basis_value(&encoder, TRACE_LEN, 0)
+        );
+        assert_eq!(
+            encoder.encode_c1_basis_value(0, encoder.codeword_len()),
+            iterator_reference_encode_c1_basis_value(&encoder, 0, encoder.codeword_len())
+        );
+    }
+
+    #[test]
+    fn public_fold_rejects_invalid_geometry_before_arithmetic() {
+        let invalid_round = CircleCandidateError::Fold(CircleFriError::InvalidLineFoldLayer);
+        let invalid_domain = CircleCandidateError::Fold(CircleFriError::InvalidBitReverseLength);
+
+        assert_eq!(
+            fold_candidate_codeword_round_for_domain_log(&[], QM31::ZERO, usize::MAX, u32::MAX,),
+            Err(invalid_round)
+        );
+        assert_eq!(
+            fold_candidate_codeword_round_for_domain_log(
+                &[],
+                QM31::ZERO,
+                FIXED_ARITY4_ROUNDS as usize,
+                DOMAIN_LOG_SIZE,
+            ),
+            Err(invalid_round)
+        );
+        assert_eq!(
+            fold_candidate_codeword_round_for_domain_log(&[], QM31::ZERO, 0, u32::MAX),
+            Err(invalid_domain)
+        );
+        assert_eq!(
+            fold_candidate_codeword_round_for_domain_log(&[], QM31::ZERO, 3, 7),
+            Err(invalid_domain)
+        );
+        assert_eq!(
+            fold_candidate_codeword_round_for_domain_log(&[], QM31::ZERO, 0, 2),
+            Err(CircleCandidateError::CombinedLength {
+                expected: FIBER_SLOTS,
+                actual: 0,
+            })
+        );
+    }
+
+    #[test]
+    fn public_layer_root_rejects_invalid_geometry_before_tagging() {
+        let invalid_layer = CircleCandidateError::Fold(CircleFriError::InvalidLineLayer);
+        let invalid_domain = CircleCandidateError::Fold(CircleFriError::InvalidBitReverseLength);
+
+        assert_eq!(
+            combined_candidate_layer_root_for_domain_log(
+                &[],
+                usize::MAX,
+                u32::MAX,
+                crate::HOST_HASH,
+            ),
+            Err(invalid_layer)
+        );
+        assert_eq!(
+            combined_candidate_layer_root_for_domain_log_and_tag(
+                &[],
+                usize::MAX,
+                u32::MAX,
+                u8::MAX,
+                crate::HOST_HASH,
+            ),
+            Err(invalid_layer)
+        );
+        assert_eq!(
+            combined_candidate_layer_root_for_domain_log(&[], 1, u32::MAX, crate::HOST_HASH,),
+            Err(invalid_domain)
+        );
+        assert_eq!(
+            combined_candidate_layer_root_for_domain_log_and_tag(
+                &[],
+                3,
+                7,
+                u8::MAX,
+                crate::HOST_HASH,
+            ),
+            Err(invalid_domain)
+        );
+        assert_eq!(
+            combined_candidate_layer_root_for_domain_log(&[], 1, 4, crate::HOST_HASH),
+            Err(CircleCandidateError::CombinedLength {
+                expected: FIBER_SLOTS,
+                actual: 0,
+            })
+        );
+    }
+
+    #[test]
+    fn public_fold_and_layer_root_keep_valid_boundary_behavior() {
+        let evaluations = [QM31::ZERO; FIBER_SLOTS];
+        assert_eq!(
+            fold_candidate_codeword_round_for_domain_log(&evaluations, QM31::ONE, 3, 8,).unwrap(),
+            vec![QM31::ZERO]
+        );
+
+        let default_root =
+            combined_candidate_layer_root_for_domain_log(&evaluations, 3, 8, crate::HOST_HASH)
+                .unwrap();
+        let default_tag = M31_CIRCLE_COMBINED_LAYER_TAG_BASE.checked_add(3).unwrap();
+        assert_eq!(
+            default_root,
+            combined_candidate_layer_root_for_domain_log_and_tag(
+                &evaluations,
+                3,
+                8,
+                default_tag,
+                crate::HOST_HASH,
+            )
+            .unwrap()
+        );
+    }
 
     #[test]
     fn c2_transform_is_coordinatewise() {
