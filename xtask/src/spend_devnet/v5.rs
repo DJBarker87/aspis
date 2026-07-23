@@ -1,9 +1,9 @@
-//! Isolated, feature-gated v5/tag-67 devnet artifact and readiness tooling.
+//! V5/tag-67 devnet artifact, readiness, and exact-execution tooling.
 //!
 //! Artifact generation performs no RPC calls. Readiness performs only
 //! filesystem reads and finalized/read-only RPC calls. Execution is a separate
-//! two-interlock devnet-only surface that is intentionally unavailable from
-//! the production dispatcher.
+//! two-interlock devnet-only surface. It accepts either the isolated probe SBF
+//! or the exact frozen production SBF and records which profile was executed.
 
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -66,11 +66,21 @@ const DEVNET_GENESIS_HASH: &str = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG"
 const SBF_PROVENANCE_ARTIFACT: &str = "aspis_v5_devnet_sbf_provenance";
 const SBF_PROVENANCE_SCHEMA_VERSION: u32 = 1;
 const SBF_FEATURE: &str = "v5-cu-probe";
+const FROZEN_PRODUCTION_PROVENANCE_ARTIFACT: &str = "aspis_v5_production_tag67_sbf_provenance";
+const FROZEN_PRODUCTION_PROVENANCE_SCHEMA_VERSION: u32 = 2;
+const FROZEN_PRODUCTION_FEATURE: &str = "v5-production-tag67";
+const FROZEN_PRODUCTION_SBF_BYTES: usize = 1_258_496;
+const FROZEN_PRODUCTION_SBF_SHA256: &str =
+    "4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40";
+const FROZEN_PRODUCTION_PROVENANCE_SHA256: &str =
+    "a7c9f7bea70d9805d8aff093fad309c911c752f2d47f6ad489c2f2eda1d7c3ec";
+const FROZEN_PRODUCTION_SOURCE_IDENTITIES: usize = 77;
+const FROZEN_PRODUCTION_TOOLCHAIN_IDENTITIES: usize = 91;
 const PLATFORM_TOOLS_VERSION: &str = "v1.48";
 const SBF_OUTPUT_NAME: &str = "aspis_verifier.so";
 const EXECUTE_ACK: &str =
-    "I_ACKNOWLEDGE_V5_TAG67_FEATURE_ONLY_DEVNET_EXECUTION_MUTATES_DEVNET_AND_SPENDS_DEVNET_SOL";
-const EXECUTION_EVIDENCE_ARTIFACT: &str = "aspis_v5_tag67_feature_devnet_execution";
+    "I_ACKNOWLEDGE_V5_TAG67_DEVNET_EXECUTION_MUTATES_DEVNET_AND_SPENDS_DEVNET_SOL";
+const EXECUTION_EVIDENCE_ARTIFACT: &str = "aspis_v5_tag67_devnet_execution";
 const TAG67_INSTRUCTION_INDEX: u64 = 2;
 const READINESS_VALUE_ARGUMENTS: [&str; 11] = [
     "--rpc-url",
@@ -157,13 +167,48 @@ struct V5SbfProvenance {
     build_output_dir: String,
     cargo_target_dir: String,
     built_artifact_path: String,
-    build_stdout_sha256: String,
-    build_stderr_sha256: String,
+    build_stdout_sha256: Option<String>,
+    build_stderr_sha256: Option<String>,
     cargo_lock_sha256: String,
     source_files: Vec<SourceFileIdentity>,
     sbf_path: String,
     sbf_bytes: usize,
     sbf_sha256: String,
+    #[serde(default)]
+    capture_note: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum V5SbfProfile {
+    FeatureProbe,
+    FrozenProduction,
+}
+
+impl V5SbfProfile {
+    const fn feature(self) -> &'static str {
+        match self {
+            Self::FeatureProbe => SBF_FEATURE,
+            Self::FrozenProduction => FROZEN_PRODUCTION_FEATURE,
+        }
+    }
+
+    const fn label(self) -> &'static str {
+        match self {
+            Self::FeatureProbe => "v5-cu-probe",
+            Self::FrozenProduction => "frozen-production-tag67",
+        }
+    }
+
+    const fn execution_scope(self) -> &'static str {
+        match self {
+            Self::FeatureProbe => {
+                "Feature-only tag-67 devnet execution through the isolated probe entrypoint."
+            }
+            Self::FrozenProduction => {
+                "Exact frozen production Tag-67 SBF executed through the default atomic dispatcher."
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -221,6 +266,7 @@ pub(crate) struct V5DevnetReadiness {
     pub(crate) sbf_sha256: String,
     pub(crate) sbf_provenance_path: String,
     pub(crate) sbf_provenance_sha256: String,
+    pub(crate) sbf_profile: &'static str,
     pub(crate) sbf_build_command: Vec<String>,
     pub(crate) sbf_source_file_count: usize,
     pub(crate) canonical_public_input_digest: String,
@@ -776,14 +822,18 @@ fn git_head(root: &Path) -> Result<String> {
     Ok(head)
 }
 
-fn expected_build_command(config: &BuildConfig, manifest: &Path) -> Result<Vec<String>> {
+fn expected_build_command(
+    config: &BuildConfig,
+    manifest: &Path,
+    feature: &str,
+) -> Result<Vec<String>> {
     Ok(vec![
         path_string(&config.cargo_build_sbf)?,
         "--manifest-path".to_owned(),
         path_string(manifest)?,
         "--no-default-features".to_owned(),
         "--features".to_owned(),
-        SBF_FEATURE.to_owned(),
+        feature.to_owned(),
         "--arch".to_owned(),
         "v0".to_owned(),
         "--offline".to_owned(),
@@ -865,22 +915,27 @@ fn validate_provenance_shape(
     provenance: &V5SbfProvenance,
     expected_sbf: &Path,
     root: &Path,
-) -> Result<BuildConfig> {
-    ensure!(
-        provenance.artifact == SBF_PROVENANCE_ARTIFACT,
-        "unknown v5 SBF provenance artifact"
-    );
-    ensure!(
-        provenance.schema_version == SBF_PROVENANCE_SCHEMA_VERSION,
-        "unsupported v5 SBF provenance schema"
-    );
+) -> Result<(BuildConfig, V5SbfProfile)> {
+    let profile = match (
+        provenance.artifact.as_str(),
+        provenance.schema_version,
+        provenance.features.as_slice(),
+    ) {
+        (SBF_PROVENANCE_ARTIFACT, SBF_PROVENANCE_SCHEMA_VERSION, [feature])
+            if feature == SBF_FEATURE =>
+        {
+            V5SbfProfile::FeatureProbe
+        }
+        (
+            FROZEN_PRODUCTION_PROVENANCE_ARTIFACT,
+            FROZEN_PRODUCTION_PROVENANCE_SCHEMA_VERSION,
+            [feature],
+        ) if feature == FROZEN_PRODUCTION_FEATURE => V5SbfProfile::FrozenProduction,
+        _ => bail!("unknown v5 SBF provenance artifact, schema, or feature set"),
+    };
     ensure!(
         provenance.no_default_features,
         "default features were not disabled"
-    );
-    ensure!(
-        provenance.features == [SBF_FEATURE],
-        "v5 SBF provenance must contain only the v5-cu-probe feature"
     );
     ensure!(
         provenance.platform_tools_version == PLATFORM_TOOLS_VERSION,
@@ -911,8 +966,8 @@ fn validate_provenance_shape(
         "provenance binds a different verifier manifest"
     );
     ensure!(
-        provenance.command == expected_build_command(&config, &manifest)?,
-        "provenance build command is not the exact feature-only command"
+        provenance.command == expected_build_command(&config, &manifest, profile.feature())?,
+        "provenance build command is not the exact declared-profile command"
     );
     ensure!(
         provenance.cargo_target_dir == path_string(&config.build_output_dir.join("cargo-target"))?,
@@ -925,31 +980,53 @@ fn validate_provenance_shape(
     );
     validate_identity_list(&provenance.source_files, "source")?;
     validate_identity_list(&provenance.toolchain_files, "toolchain")?;
-    Ok(config)
+    if profile == V5SbfProfile::FrozenProduction {
+        ensure!(
+            provenance.sbf_bytes == FROZEN_PRODUCTION_SBF_BYTES
+                && provenance.sbf_sha256 == FROZEN_PRODUCTION_SBF_SHA256,
+            "production provenance does not identify the frozen Tag-67 SBF"
+        );
+        ensure!(
+            provenance.source_files.len() == FROZEN_PRODUCTION_SOURCE_IDENTITIES
+                && provenance.toolchain_files.len() == FROZEN_PRODUCTION_TOOLCHAIN_IDENTITIES,
+            "production provenance identity counts differ from the freeze"
+        );
+    }
+    Ok((config, profile))
 }
 
 fn validate_current_provenance(
     provenance_bytes: &[u8],
     expected_sbf: &Path,
     sbf: &[u8],
-) -> Result<V5SbfProvenance> {
+) -> Result<(V5SbfProvenance, V5SbfProfile)> {
     let provenance: V5SbfProvenance =
         serde_json::from_slice(provenance_bytes).context("decode strict v5 SBF provenance")?;
     let root = workspace_root()?;
-    let config = validate_provenance_shape(&provenance, expected_sbf, &root)?;
-    ensure!(
-        provenance.git_head == git_head(&root)?,
-        "SBF provenance HEAD is stale"
-    );
-    ensure!(
-        provenance.source_files == source_inventory(&root)?,
-        "SBF provenance source inventory is stale"
-    );
-    let cargo_lock = exact_regular_file(&root.join("Cargo.lock"))?;
-    ensure!(
-        provenance.cargo_lock_sha256 == sha256(&cargo_lock),
-        "SBF provenance Cargo.lock hash is stale"
-    );
+    let (config, profile) = validate_provenance_shape(&provenance, expected_sbf, &root)?;
+    match profile {
+        V5SbfProfile::FeatureProbe => {
+            ensure!(
+                provenance.git_head == git_head(&root)?,
+                "SBF provenance HEAD is stale"
+            );
+            ensure!(
+                provenance.source_files == source_inventory(&root)?,
+                "SBF provenance source inventory is stale"
+            );
+            let cargo_lock = exact_regular_file(&root.join("Cargo.lock"))?;
+            ensure!(
+                provenance.cargo_lock_sha256 == sha256(&cargo_lock),
+                "SBF provenance Cargo.lock hash is stale"
+            );
+        }
+        V5SbfProfile::FrozenProduction => {
+            ensure!(
+                sha256(provenance_bytes) == FROZEN_PRODUCTION_PROVENANCE_SHA256,
+                "production provenance bytes differ from the frozen release record"
+            );
+        }
+    }
     let build_tool = exact_executable(&config.cargo_build_sbf)?;
     ensure!(
         provenance.cargo_build_sbf_bytes == build_tool.len()
@@ -966,9 +1043,9 @@ fn validate_current_provenance(
     );
     ensure!(
         provenance.sbf_bytes == sbf.len() && provenance.sbf_sha256 == sha256(sbf),
-        "SBF bytes differ from feature-only build provenance"
+        "SBF bytes differ from build provenance"
     );
-    Ok(provenance)
+    Ok((provenance, profile))
 }
 
 fn ensure_distinct_keys(keys: &[Pubkey]) -> Result<()> {
@@ -1474,7 +1551,7 @@ pub(crate) fn build_sbf(arguments: &[String]) -> Result<V5DevnetBuildOutcome> {
     let toolchain_before = toolchain_inventory(&config)?;
     let build_tool_before = exact_executable(&config.cargo_build_sbf)?;
     let build_tool_version = cargo_build_sbf_version(&config.cargo_build_sbf)?;
-    let command = expected_build_command(&config, &manifest)?;
+    let command = expected_build_command(&config, &manifest, SBF_FEATURE)?;
     let cargo_target_dir = config.build_output_dir.join("cargo-target");
     let built_artifact_path = config.build_output_dir.join(SBF_OUTPUT_NAME);
 
@@ -1539,13 +1616,14 @@ pub(crate) fn build_sbf(arguments: &[String]) -> Result<V5DevnetBuildOutcome> {
         build_output_dir: path_string(&config.build_output_dir)?,
         cargo_target_dir: path_string(&cargo_target_dir)?,
         built_artifact_path: path_string(&built_artifact_path)?,
-        build_stdout_sha256: sha256(&output.stdout),
-        build_stderr_sha256: sha256(&output.stderr),
+        build_stdout_sha256: Some(sha256(&output.stdout)),
+        build_stderr_sha256: Some(sha256(&output.stderr)),
         cargo_lock_sha256: sha256(&cargo_lock),
         source_files: sources_before,
         sbf_path: path_string(&config.sbf_output)?,
         sbf_bytes: sbf.len(),
         sbf_sha256: sha256(&sbf),
+        capture_note: None,
     };
     validate_provenance_shape(&provenance, &config.sbf_output, &root)?;
     let mut provenance_bytes = serde_json::to_vec_pretty(&provenance)?;
@@ -1596,7 +1674,8 @@ pub(crate) fn readiness(arguments: &[String]) -> Result<V5DevnetReadiness> {
         config.program_max_len >= sbf.len(),
         "program max length is smaller than the exact v5 SBF"
     );
-    let sbf_provenance = validate_current_provenance(&sbf_provenance_bytes, &config.sbf, &sbf)?;
+    let (sbf_provenance, sbf_profile) =
+        validate_current_provenance(&sbf_provenance_bytes, &config.sbf, &sbf)?;
     let statement = decode_spend_statement_sidecar(&statement_bytes)?;
     verify_runtime_statement_and_wire(program.pubkey(), pool.pubkey(), &statement)?;
     let (least_good_selector, good_candidates) = verify_host_proof_and_least_good(
@@ -1695,6 +1774,7 @@ pub(crate) fn readiness(arguments: &[String]) -> Result<V5DevnetReadiness> {
         sbf_sha256: sha256(&sbf),
         sbf_provenance_path: path_string(&config.sbf_provenance)?,
         sbf_provenance_sha256: sha256(&sbf_provenance_bytes),
+        sbf_profile: sbf_profile.label(),
         sbf_build_command: sbf_provenance.command,
         sbf_source_file_count: sbf_provenance.source_files.len(),
         canonical_public_input_digest: canonical_spend_public_input_digest(&statement)?,
@@ -1705,8 +1785,8 @@ pub(crate) fn readiness(arguments: &[String]) -> Result<V5DevnetReadiness> {
         surplus_lamports,
         explicit_nonclaims: [
             "Readiness signs and submits no transaction and performs no network mutation.",
-            "Tag 67 remains feature-gated and absent from production dispatch.",
-            "A green devnet readiness result is not a production-security or mainnet claim.",
+            sbf_profile.execution_scope(),
+            "A green devnet readiness result is not a mainnet transaction.",
         ],
     })
 }
@@ -1758,7 +1838,12 @@ pub(crate) fn execute(arguments: &[String]) -> Result<V5DevnetExecutionEvidence>
     );
     let sbf = exact_regular_file(&config.readiness.sbf)?;
     let sbf_provenance_bytes = exact_regular_file(&config.readiness.sbf_provenance)?;
-    validate_current_provenance(&sbf_provenance_bytes, &config.readiness.sbf, &sbf)?;
+    let (_sbf_provenance, sbf_profile) =
+        validate_current_provenance(&sbf_provenance_bytes, &config.readiness.sbf, &sbf)?;
+    ensure!(
+        readiness.sbf_profile == sbf_profile.label(),
+        "SBF profile changed after readiness"
+    );
     let proof = exact_regular_file(&config.readiness.proof)?;
     let statement_bytes = exact_regular_file(&config.readiness.statement)?;
     ensure!(!proof.is_empty(), "v5 execution proof is empty");
@@ -1817,7 +1902,7 @@ pub(crate) fn execute(arguments: &[String]) -> Result<V5DevnetExecutionEvidence>
                 &payer.pubkey(),
             )?
             .is_some(),
-            "existing program differs from the exact feature-only SBF"
+            "existing program differs from the exact declared-profile SBF"
         );
     }
 
@@ -1837,7 +1922,7 @@ pub(crate) fn execute(arguments: &[String]) -> Result<V5DevnetExecutionEvidence>
         config.readiness.program_max_len,
         &payer.pubkey(),
     )?
-    .context("exact feature-only program missing before v5 setup")?;
+    .context("exact declared-profile program missing before v5 setup")?;
     ensure!(
         rpc.account(&pool.pubkey())?.is_none()
             && rpc.account(&proof_account.pubkey())?.is_none()
@@ -2083,7 +2168,7 @@ pub(crate) fn execute(arguments: &[String]) -> Result<V5DevnetExecutionEvidence>
         config.readiness.program_max_len,
         &payer.pubkey(),
     )?
-    .context("exact feature-only program missing before tag-67 simulation")?;
+    .context("exact declared-profile program missing before tag-67 simulation")?;
     let upgradeable_program_before_final_simulation_continuity =
         upgradeable_program_before_final_simulation
             .continuity_from(&upgradeable_program_before_setup);
@@ -2149,7 +2234,7 @@ pub(crate) fn execute(arguments: &[String]) -> Result<V5DevnetExecutionEvidence>
         config.readiness.program_max_len,
         &payer.pubkey(),
     )?
-    .context("exact feature-only program missing after tag-67 finality")?;
+    .context("exact declared-profile program missing after tag-67 finality")?;
     let upgradeable_program_after_finality_continuity =
         upgradeable_program_after_finality.continuity_from(&upgradeable_program_before_setup);
     ensure!(
@@ -2343,10 +2428,10 @@ pub(crate) fn execute(arguments: &[String]) -> Result<V5DevnetExecutionEvidence>
         evidence_path: path_string(&config.evidence)?,
         evidence_file_mode: 0o444,
         explicit_scope: [
-            "Feature-only tag-67 devnet execution; production dispatch remains unchanged.",
+            sbf_profile.execution_scope(),
             "The retained proof account is sealed, read-only, non-signing, and unchanged by tag 67.",
             "Deployment, pool creation/tag63, proof creation/tag0, uploads, and tag62 are setup writes.",
-            "This finalized devnet evidence is not a mainnet or unconditional security claim.",
+            "This finalized evidence records the devnet rehearsal; mainnet remains a separate deployment.",
         ],
     };
     let evidence_mode = evidence_reservation.commit(&evidence)?;
@@ -2405,19 +2490,21 @@ mod tests {
             command: expected_build_command(
                 &config,
                 &root.join("programs/aspis-verifier/Cargo.toml"),
+                SBF_FEATURE,
             )
             .unwrap(),
             build_output_dir: path_string(&config.build_output_dir).unwrap(),
             cargo_target_dir: path_string(&config.build_output_dir.join("cargo-target")).unwrap(),
             built_artifact_path: path_string(&config.build_output_dir.join(SBF_OUTPUT_NAME))
                 .unwrap(),
-            build_stdout_sha256: "00".repeat(32),
-            build_stderr_sha256: "00".repeat(32),
+            build_stdout_sha256: Some("00".repeat(32)),
+            build_stderr_sha256: Some("00".repeat(32)),
             cargo_lock_sha256: "00".repeat(32),
             source_files: vec![identity],
             sbf_path: path_string(sbf).unwrap(),
             sbf_bytes: 1,
             sbf_sha256: "00".repeat(32),
+            capture_note: None,
         }
     }
 
@@ -2657,15 +2744,41 @@ mod tests {
     }
 
     #[test]
-    fn provenance_shape_rejects_production_or_unknown_artifacts() {
+    fn provenance_shape_accepts_exact_profiles_and_rejects_unknown_artifacts() {
         let root = Path::new("/workspace");
         let sbf = Path::new("/artifacts/v5.so");
         let valid = sample_provenance(root, sbf);
-        validate_provenance_shape(&valid, sbf, root).unwrap();
+        assert_eq!(
+            validate_provenance_shape(&valid, sbf, root).unwrap().1,
+            V5SbfProfile::FeatureProbe
+        );
 
         let mut production = valid.clone();
-        production.features = vec!["spend-production".to_owned()];
-        assert!(validate_provenance_shape(&production, sbf, root).is_err());
+        production.artifact = FROZEN_PRODUCTION_PROVENANCE_ARTIFACT.to_owned();
+        production.schema_version = FROZEN_PRODUCTION_PROVENANCE_SCHEMA_VERSION;
+        production.features = vec![FROZEN_PRODUCTION_FEATURE.to_owned()];
+        production.command = expected_build_command(
+            &build_config_from_provenance(&production).unwrap(),
+            &root.join("programs/aspis-verifier/Cargo.toml"),
+            FROZEN_PRODUCTION_FEATURE,
+        )
+        .unwrap();
+        production.sbf_bytes = FROZEN_PRODUCTION_SBF_BYTES;
+        production.sbf_sha256 = FROZEN_PRODUCTION_SBF_SHA256.to_owned();
+        production.source_files =
+            vec![production.source_files[0].clone(); FROZEN_PRODUCTION_SOURCE_IDENTITIES];
+        for (index, identity) in production.source_files.iter_mut().enumerate() {
+            identity.path = format!("source/{index:03}");
+        }
+        production.toolchain_files =
+            vec![production.toolchain_files[0].clone(); FROZEN_PRODUCTION_TOOLCHAIN_IDENTITIES];
+        for (index, identity) in production.toolchain_files.iter_mut().enumerate() {
+            identity.path = format!("/toolchain/{index:03}");
+        }
+        assert_eq!(
+            validate_provenance_shape(&production, sbf, root).unwrap().1,
+            V5SbfProfile::FrozenProduction
+        );
 
         let mut unknown = valid;
         unknown.artifact = "untrusted_sbf_provenance".to_owned();
