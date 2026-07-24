@@ -122,6 +122,7 @@ jobs:
           test -d "$sbf_sdk"
           test -x "$platform_root/rust/bin/rustc"
           test -x "$platform_root/llvm/bin/clang"
+          mkdir -p "$sbf_sdk/dependencies"
           test ! -e "$sdk_platform_tools"
           test ! -L "$sdk_platform_tools"
           ln -s "$platform_root" "$sdk_platform_tools"
