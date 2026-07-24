@@ -103,6 +103,7 @@
         "pda_derivation_attempts": 1,
         "exact_signed_wire_simulation_required": true,
         "exact_signed_wire_simulation_max_cu": 1356912,
+        "transaction_compute_unit_limit_cu": 1356912,
         "current_mainnet_priced_prefunded_by_selector_cu": {
           "0": 1334528,
           "1": 1337192,

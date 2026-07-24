@@ -75,7 +75,8 @@ two conditions before submission:
 - the exact signed-wire simulation succeeds at or below 1,356,912 CU.
 
 The runner then submits the same serialized transaction and verifies its
-landed CU and refetched bytes.
+landed CU and refetched bytes. The transaction compute limit is also
+1,356,912 CU, so execution above the policy ceiling fails atomically.
 
 The original runtime 2.3.13 topology derivation used the absent-marker
 create-account path:

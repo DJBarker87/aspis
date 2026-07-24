@@ -1445,6 +1445,13 @@ const fn mainnet_release_policy_cu_ceiling(network: V5NetworkPolicy) -> Option<u
     }
 }
 
+const fn tag67_compute_unit_limit(network: V5NetworkPolicy) -> u32 {
+    match network {
+        V5NetworkPolicy::Devnet => CU_LIMIT,
+        V5NetworkPolicy::MainnetBeta => MAINNET_RELEASE_POLICY_CU_CEILING as u32,
+    }
+}
+
 fn tag67_cu_is_within_release_policy(network: V5NetworkPolicy, units: u64) -> bool {
     mainnet_release_policy_cu_ceiling(network).is_none_or(|ceiling| units <= ceiling)
 }
@@ -3218,8 +3225,9 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
     let tag67_account_metas = tag67_meta_evidence(&tag67)?;
     let tag67_instruction_sha256 = sha256(&tag67.data);
     let tag67_instruction_bytes = tag67.data.len();
+    let tag67_compute_unit_limit = tag67_compute_unit_limit(config.readiness.network);
     let mut final_instructions = vec![
-        ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT),
+        ComputeBudgetInstruction::set_compute_unit_limit(tag67_compute_unit_limit),
         ComputeBudgetInstruction::request_heap_frame(HEAP_FRAME_BYTES),
     ];
     if let Some(price) = compute_unit_price_instruction(&config.readiness) {
@@ -3258,8 +3266,8 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
         .units
         .context("tag-67 simulation omitted CU")?;
     ensure!(
-        final_transaction_simulation_cu < u64::from(CU_LIMIT),
-        "tag-67 simulation exceeded the 1.4M CU limit"
+        final_transaction_simulation_cu <= u64::from(tag67_compute_unit_limit),
+        "tag-67 simulation exceeded its declared compute-unit limit"
     );
     ensure!(
         tag67_cu_is_within_release_policy(
@@ -3293,8 +3301,8 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
         .compute_units_consumed
         .context("finalized tag-67 omitted computeUnitsConsumed")?;
     ensure!(
-        final_transaction_landed_cu < u64::from(CU_LIMIT),
-        "finalized tag-67 exceeded the 1.4M CU limit"
+        final_transaction_landed_cu <= u64::from(tag67_compute_unit_limit),
+        "finalized tag-67 exceeded its declared compute-unit limit"
     );
     ensure!(
         tag67_cu_is_within_release_policy(config.readiness.network, final_transaction_landed_cu),
@@ -3407,7 +3415,7 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
         "replay wire is not bound to poststate anchor and the same nullifier"
     );
     let mut replay_instructions = vec![
-        ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT),
+        ComputeBudgetInstruction::set_compute_unit_limit(tag67_compute_unit_limit),
         ComputeBudgetInstruction::request_heap_frame(HEAP_FRAME_BYTES),
     ];
     if let Some(price) = compute_unit_price_instruction(&config.readiness) {
@@ -3505,7 +3513,7 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
         tag67_instruction_bytes,
         tag67_instruction_sha256,
         tag67_account_metas,
-        tag67_compute_unit_limit: CU_LIMIT,
+        tag67_compute_unit_limit,
         tag67_heap_frame_bytes: HEAP_FRAME_BYTES,
         tag67_compute_unit_price_microlamports: config
             .readiness
@@ -3986,6 +3994,11 @@ mod tests {
 
     #[test]
     fn mainnet_release_policy_enforces_the_simulation_cu_ceiling() {
+        assert_eq!(
+            tag67_compute_unit_limit(V5NetworkPolicy::MainnetBeta),
+            MAINNET_RELEASE_POLICY_CU_CEILING as u32
+        );
+        assert_eq!(tag67_compute_unit_limit(V5NetworkPolicy::Devnet), CU_LIMIT);
         assert!(tag67_cu_is_within_release_policy(
             V5NetworkPolicy::MainnetBeta,
             MAINNET_RELEASE_POLICY_CU_CEILING

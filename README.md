@@ -56,7 +56,8 @@ current verifier architecture: its default SBF is 1,258,496 bytes, SHA-256
 `4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40`,
 and has 43,088 CU of conservative headroom under the mainnet runner's CU
 policy. Before submission, the runner requires a canonical nullifier PDA bump
-of 255 and exact signed-wire simulation at or below 1,356,912 CU. Its code,
+of 255 and exact signed-wire simulation at or below 1,356,912 CU. The
+transaction compute limit is set to the same value. Its code,
 Component-A correspondence at the selected schedule, general Component-B and
 Component-C correspondence, Tag-67 verifier theorem, provenance, and CU
 evidence are recorded in the

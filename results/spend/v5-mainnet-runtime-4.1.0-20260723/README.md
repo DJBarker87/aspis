@@ -23,7 +23,8 @@ adds 3,200 CU over the priced missing-marker path. Applying the existing
 topology and GoodA/GoodB reserves gives a V5 CU ceiling of 1,356,912 CU with
 43,088 CU of headroom for this replay family. The mainnet runner requires
 canonical nullifier PDA bump 255 and exact signed-wire simulation at or below
-that ceiling before submission.
+that ceiling before submission. The transaction declares the same compute
+limit.
 [`runtime-replay.json`](runtime-replay.json) records the runtime identity,
 release hashes, replay inputs, measurements, and pinned source references.
 [`prefunded-system-marker-cu.json`](prefunded-system-marker-cu.json) records

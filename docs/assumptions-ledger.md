@@ -44,6 +44,6 @@ and Solana runtime 2.3.13. The mainnet Agave 4.1.0 replay adds the longest
 accepted prefunded-marker CPI path and establishes a 1,356,912-CU ceiling with
 43,088 CU of headroom for the replay family. Mainnet readiness and execution
 require canonical nullifier PDA bump 255 and exact signed-wire simulation at
-or below that ceiling. The
+or below that ceiling, and the transaction declares the same compute limit. The
 [runtime record](../results/spend/v5-mainnet-runtime-4.1.0-20260723/)
 pins that comparison.

@@ -59,7 +59,8 @@ V5 release uses a 1,258,496-byte SBF with SHA-256
 That binary finalized the retained-proof Tag-67 path on devnet at slot
 `478299357`, consuming 1,335,952 CU. The V5 CU ceiling is 1,356,912 CU.
 Mainnet readiness and execution require canonical nullifier PDA bump 255 and
-exact signed-wire simulation at or below that ceiling.
+exact signed-wire simulation at or below that ceiling. The transaction
+declares the same compute limit.
 
 ## Removed research tooling
 

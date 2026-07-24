@@ -464,6 +464,11 @@ def check_v5(facts: dict[str, Any], compute_limit: int) -> None:
         facts["compute"]["current_mainnet_release_policy_ceiling_cu"],
         "V5 exact signed-wire simulation ceiling",
     )
+    require_equal(
+        facts["compute"]["transaction_compute_unit_limit_cu"],
+        facts["compute"]["current_mainnet_release_policy_ceiling_cu"],
+        "V5 transaction compute-unit limit",
+    )
 
 
 def tracked_public_paths() -> list[Path]:
@@ -529,6 +534,7 @@ def check_public_claims(facts: dict[str, Any]) -> None:
             v5["program"]["sbf_sha256"],
             "exact signed-wire simulation",
             "canonical nullifier PDA bump",
+            "transaction compute limit",
             "ready for mainnet deployment",
         ],
     )
@@ -557,6 +563,7 @@ def check_public_claims(facts: dict[str, Any]) -> None:
             f"{v5['compute']['current_mainnet_release_policy_headroom_cu']:,}",
             "PDA bump is 255",
             "exact signed-wire simulation",
+            "transaction compute limit",
         ],
     )
     require_literals(
