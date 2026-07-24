@@ -18,6 +18,5 @@ and refunds its proof account; Tag 67 retains the sealed proof account.
 Build with `cargo-build-sbf --manifest-path programs/aspis-verifier/Cargo.toml`.
 
 Concept-to-file index: [docs/code-map.md](../../docs/code-map.md).
-The exact V5 binary, accepted-input CU ceiling, provenance, and formal gate are
-recorded in
-[the production freeze](../../release/preflight/v5-production-freeze.md).
+The exact V5 binary, mainnet CU policy, provenance, and formal gate are
+recorded in [the production freeze](../../release/preflight/v5-production-freeze.md).

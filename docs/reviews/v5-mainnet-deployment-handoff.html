@@ -124,7 +124,7 @@
   <div class="grid">
     <div class="card"><strong>Program ID</strong><span><code>7Q2n…Rmue</code></span></div>
     <div class="card"><strong>SBF size</strong><span>1,258,496 bytes</span></div>
-    <div class="card"><strong>Accepted-state ceiling</strong><span>1,356,912 CU</span></div>
+    <div class="card"><strong>V5 CU ceiling</strong><span>1,356,912 CU</span></div>
     <div class="card"><strong>Devnet rehearsal</strong><span>1,335,952 CU · finalized</span></div>
   </div>
 
@@ -147,7 +147,7 @@
     <thead><tr><th>Gate</th><th>Status</th><th>Result</th></tr></thead>
     <tbody>
       <tr><td>Default production route</td><td class="pass">Pass</td><td>Tag 67 enters only through the atomic verify-and-apply wrapper; Tag 66 is absent.</td></tr>
-      <tr><td>Compute budget</td><td class="pass">Pass</td><td>The release-grammar and accepted-marker-state ceiling is 1,356,912 CU, 43,088 below the cap on mainnet Agave 4.1.0.</td></tr>
+      <tr><td>Compute budget</td><td class="pass">Pass</td><td>The runner requires bump 255 and exact signed-wire simulation at or below 1,356,912 CU, 43,088 below the cap.</td></tr>
       <tr><td>Formal correspondence</td><td class="pass">Pass</td><td>Release-schedule A, general B/C public output, and the Tag-67 six-step verifier compose under one named hash-application boundary.</td></tr>
       <tr><td>Runtime evidence</td><td class="pass">Pass</td><td>The release SBF completed selector/marker-mode replays and finalized the atomic devnet path at 1,335,952 CU.</td></tr>
       <tr><td>Secrets history</td><td class="pass">Pass</td><td>Gitleaks scanned all 127 commits; audited public test-vector and source-name false positives are recorded explicitly.</td></tr>
@@ -176,7 +176,9 @@
     executions were exactly 54 CU cheaper than the release measurements. The
     accepted one-lamport prefunded marker, which performs transfer, allocate,
     and assign CPIs, was then replayed across every selector. The resulting
-    accepted-state ceiling is 1,356,912 CU. The complete runtime identity,
+    V5 CU ceiling is 1,356,912 CU. Readiness and execution require a canonical
+    nullifier PDA bump of 255 and exact signed-wire simulation at or below that
+    ceiling. The complete runtime identity,
     hashes, source references, and measurements are in
     <code>results/spend/v5-mainnet-runtime-4.1.0-20260723/</code>.
   </p>

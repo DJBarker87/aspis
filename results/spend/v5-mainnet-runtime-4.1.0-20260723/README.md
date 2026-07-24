@@ -20,8 +20,10 @@ mainnet transaction shape places a compute-unit price instruction before Tag
 67. It measured 1,334,528, 1,337,192, and 1,329,776 CU across the three
 selectors. The price instruction adds 150 CU and the prefunded marker path
 adds 3,200 CU over the priced missing-marker path. Applying the existing
-topology and GoodA/GoodB reserves gives a final 1,356,912-CU accepted-state
-ceiling with 43,088 CU of headroom.
+topology and GoodA/GoodB reserves gives a V5 CU ceiling of 1,356,912 CU with
+43,088 CU of headroom for this replay family. The mainnet runner requires
+canonical nullifier PDA bump 255 and exact signed-wire simulation at or below
+that ceiling before submission.
 [`runtime-replay.json`](runtime-replay.json) records the runtime identity,
 release hashes, replay inputs, measurements, and pinned source references.
 [`prefunded-system-marker-cu.json`](prefunded-system-marker-cu.json) records

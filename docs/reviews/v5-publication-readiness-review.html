@@ -116,7 +116,7 @@
   <div class="grid">
     <div class="card"><strong>q18/g37 mainnet execution</strong><span>1,344,003 CU</span></div>
     <div class="card"><strong>V5 devnet execution</strong><span>1,335,952 CU</span></div>
-    <div class="card"><strong>V5 accepted-state ceiling</strong><span>1,356,912 CU</span></div>
+    <div class="card"><strong>V5 CU ceiling</strong><span>1,356,912 CU</span></div>
     <div class="card"><strong>V5 headroom</strong><span>43,088 CU</span></div>
   </div>
 
@@ -137,7 +137,7 @@
       <tr>
         <td>V5 compute</td>
         <td>Passed</td>
-        <td>The 1,356,912-CU ceiling covers every release topology, the exact priced transaction shape, and the longest accepted prefunded-marker path on mainnet Agave 4.1.0</td>
+        <td>The replay and topology derivation cover every selector, topology maxima, the exact priced transaction shape, and the longest accepted marker path; the runner requires bump 255 and exact simulation at or below 1,356,912 CU</td>
       </tr>
       <tr>
         <td>Atomic transition</td>
@@ -179,7 +179,7 @@
   <h2>Review entry points</h2>
   <ul>
     <li><code>programs/aspis-verifier/src/v5_full_transaction.rs</code> contains the atomic Tag-67 state transition.</li>
-    <li><code>release/preflight/v5-production-freeze.md</code> derives the accepted-input CU ceiling and binds it to the SBF.</li>
+    <li><code>release/preflight/v5-production-freeze.md</code> derives the V5 CU ceiling and records the runner gate.</li>
     <li><code>AspisFormal/README.md</code> distinguishes proved results, cited inputs, and open universal claims.</li>
     <li><code>aeneas-verif/README.md</code> maps production Rust to the final Lean integration theorem.</li>
     <li>The V5 release bundle verifies checksums, binary identity, devnet state transition, and replay rejection offline.</li>

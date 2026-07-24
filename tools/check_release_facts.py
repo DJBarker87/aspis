@@ -31,11 +31,22 @@ KNOWN_STALE_PATTERNS = (
         re.compile(r"(?<![\d,])(?:43,238|43238)(?!\d)"),
     ),
     (
-        "frozen-grammar ceiling presented as the current accepted-state ceiling",
+        "unscoped accepted-state CU claim",
         re.compile(
-            r"(?:accepted-state.{0,48}1,353,616|1,353,616.{0,48}accepted-state)",
+            r"\baccepted[- ]state (?:CU |compute )?(?:ceiling|bound|envelope)\b",
             re.IGNORECASE,
         ),
+    ),
+    (
+        "unscoped accepted-input CU claim",
+        re.compile(
+            r"\baccepted[- ]input (?:CU |compute )?(?:ceiling|bound|envelope)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "obsolete universal CU policy label",
+        re.compile(r"\buniversal CU policy\b", re.IGNORECASE),
     ),
     (
         "obsolete feature-gated V5 status",
@@ -378,13 +389,13 @@ def check_v5(facts: dict[str, Any], compute_limit: int) -> None:
     require_equal(frozen["solana_core"], "2.3.13", "V5 frozen runtime")
     require_equal(
         frozen_policy["universal_accepted_input_upper_bound_cu"],
-        frozen["grammar_topology_ceiling_cu"],
-        "V5 frozen grammar ceiling",
+        frozen["bump_255_topology_ceiling_cu"],
+        "V5 frozen bump-255 topology ceiling",
     )
     require_equal(
         frozen_policy["universal_headroom_cu"],
-        frozen["grammar_topology_headroom_cu"],
-        "V5 frozen grammar headroom",
+        frozen["bump_255_topology_headroom_cu"],
+        "V5 frozen bump-255 topology headroom",
     )
 
     require_equal(sha256(runtime_path), current["evidence_sha256"], "V5 runtime replay hash")
@@ -414,19 +425,44 @@ def check_v5(facts: dict[str, Any], compute_limit: int) -> None:
     policy = runtime["accepted_input_policy"]
     require_equal(
         policy["accepted_state_ceiling_cu"],
-        facts["compute"]["current_mainnet_accepted_state_ceiling_cu"],
-        "V5 current accepted-state ceiling",
+        facts["compute"]["current_mainnet_release_policy_ceiling_cu"],
+        "V5 current release-policy ceiling",
     )
     require_equal(
         policy["accepted_state_headroom_cu"],
-        facts["compute"]["current_mainnet_accepted_state_headroom_cu"],
-        "V5 current accepted-state headroom",
+        facts["compute"]["current_mainnet_release_policy_headroom_cu"],
+        "V5 current release-policy headroom",
     )
     require_equal(
-        facts["compute"]["current_mainnet_accepted_state_ceiling_cu"]
-        + facts["compute"]["current_mainnet_accepted_state_headroom_cu"],
+        facts["compute"]["current_mainnet_release_policy_ceiling_cu"]
+        + facts["compute"]["current_mainnet_release_policy_headroom_cu"],
         compute_limit,
         "V5 current CU arithmetic",
+    )
+    require_equal(
+        facts["compute"]["ceiling_scope"],
+        "mainnet_runner_exact_signed_wire_simulation_with_canonical_nullifier_pda_bump_255",
+        "V5 current CU scope",
+    )
+    require_equal(
+        facts["compute"]["required_nullifier_pda_bump"],
+        255,
+        "V5 required nullifier PDA bump",
+    )
+    require_equal(
+        facts["compute"]["pda_derivation_attempts"],
+        256 - facts["compute"]["required_nullifier_pda_bump"],
+        "V5 nullifier PDA derivation attempts",
+    )
+    require_equal(
+        facts["compute"]["exact_signed_wire_simulation_required"],
+        True,
+        "V5 exact signed-wire simulation gate",
+    )
+    require_equal(
+        facts["compute"]["exact_signed_wire_simulation_max_cu"],
+        facts["compute"]["current_mainnet_release_policy_ceiling_cu"],
+        "V5 exact signed-wire simulation ceiling",
     )
 
 
@@ -488,9 +524,11 @@ def check_public_claims(facts: dict[str, Any]) -> None:
             f"{q18['compute']['measured_transaction_cu']:,}",
             v5["devnet"]["transaction"]["signature"],
             f"{v5['compute']['devnet_measured_transaction_cu']:,}",
-            f"{v5['compute']['current_mainnet_accepted_state_ceiling_cu']:,}",
-            f"{v5['compute']['current_mainnet_accepted_state_headroom_cu']:,}",
+            f"{v5['compute']['current_mainnet_release_policy_ceiling_cu']:,}",
+            f"{v5['compute']['current_mainnet_release_policy_headroom_cu']:,}",
             v5["program"]["sbf_sha256"],
+            "exact signed-wire simulation",
+            "canonical nullifier PDA bump",
             "ready for mainnet deployment",
         ],
     )
@@ -515,8 +553,10 @@ def check_public_claims(facts: dict[str, Any]) -> None:
         [
             "V5 has not yet been deployed on mainnet.",
             v5["program"]["sbf_sha256"],
-            f"{v5['compute']['current_mainnet_accepted_state_ceiling_cu']:,}",
-            f"{v5['compute']['current_mainnet_accepted_state_headroom_cu']:,}",
+            f"{v5['compute']['current_mainnet_release_policy_ceiling_cu']:,}",
+            f"{v5['compute']['current_mainnet_release_policy_headroom_cu']:,}",
+            "PDA bump is 255",
+            "exact signed-wire simulation",
         ],
     )
     require_literals(
@@ -526,8 +566,9 @@ def check_public_claims(facts: dict[str, Any]) -> None:
     require_literals(
         "results/spend/v5-mainnet-runtime-4.1.0-20260723/README.md",
         [
-            f"{v5['compute']['current_mainnet_accepted_state_ceiling_cu']:,}",
-            f"{v5['compute']['current_mainnet_accepted_state_headroom_cu']:,}",
+            f"{v5['compute']['current_mainnet_release_policy_ceiling_cu']:,}",
+            f"{v5['compute']['current_mainnet_release_policy_headroom_cu']:,}",
+            "exact signed-wire simulation",
         ],
     )
 
@@ -538,6 +579,9 @@ def self_test() -> None:
         "The current ceiling is 1,356,762 CU.",
         "Current headroom is 43,238 CU.",
         "The accepted-state ceiling is 1,353,616 CU.",
+        "The accepted-state ceiling is 1,356,912 CU.",
+        "The accepted-input CU bound is 1,356,912 CU.",
+        "The universal CU policy passed.",
         "This is current feature-gated candidate-v5 code.",
         "The v5-production-tag67 feature is not enabled by default.",
         "The prepared switch remains unapplied.",
@@ -549,9 +593,11 @@ def self_test() -> None:
         require(stale_claims(path, example), f"self-test did not reject {example!r}")
     clean = (
         "V5 has not yet been deployed on mainnet. "
-        "It is ready for mainnet deployment with a 1,356,912-CU "
-        "accepted-state ceiling and 43,088 CU of headroom. "
-        "The immutable 2.3.13 grammar ceiling remains 1,353,616 CU."
+        "It is ready for mainnet deployment. The runner requires an exact "
+        "signed-wire simulation at or below 1,356,912 CU, leaving 43,088 CU "
+        "of headroom. "
+        "The immutable 2.3.13 bump-255 topology ceiling remains "
+        "1,353,616 CU."
     )
     require(not stale_claims(path, clean), "self-test rejected the current release statement")
     print("PASS: release-facts stale-claim self-test")
@@ -560,7 +606,7 @@ def self_test() -> None:
 def check() -> None:
     facts = load_json(LEDGER_PATH)
     require_equal(facts["artifact"], "aspis_release_facts", "ledger artifact")
-    require_equal(facts["schema_version"], 1, "ledger schema version")
+    require_equal(facts["schema_version"], 2, "ledger schema version")
     require(
         re.fullmatch(r"\d{4}-\d{2}-\d{2}", facts["facts_as_of_date"]) is not None,
         "facts_as_of_date must use YYYY-MM-DD",

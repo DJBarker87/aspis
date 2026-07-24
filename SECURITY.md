@@ -20,7 +20,7 @@ The current trust boundary is kept in
 
 For a Solana review, start with the Tag-67 dispatch and atomic transition in
 `programs/aspis-verifier/src/{dispatch,v5_full_transaction}.rs`, then the
-accepted-input compute analysis in
+mainnet CU policy and runtime analysis in
 [`release/preflight/v5-production-freeze.md`](release/preflight/v5-production-freeze.md).
 The two best cryptographic review targets are:
 

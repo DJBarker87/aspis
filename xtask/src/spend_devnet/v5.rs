@@ -90,6 +90,8 @@ const MAINNET_SOLANA_CLI_SHA256: &str =
     "ad541533b992ff4ee1ea0f24e583a0ef26a5b80fa3482b5f930b5e6db707747c";
 const MAINNET_SOLANA_CLI_VERSION: &str =
     "solana-cli 4.1.0 (src:d3f1f55c; feat:c763ae0a, client:Agave)";
+const MAINNET_NULLIFIER_PDA_BUMP: u8 = u8::MAX;
+const MAINNET_RELEASE_POLICY_CU_CEILING: u64 = 1_356_912;
 const MAX_MAINNET_COMPUTE_UNIT_PRICE_MICROLAMPORTS: u64 = 1_000_000;
 const CONSERVATIVE_SIGNATURE_FEE_LAMPORTS_PER_TRANSACTION: u64 = 200_000;
 const SBF_OUTPUT_NAME: &str = "aspis_verifier.so";
@@ -389,12 +391,14 @@ pub(crate) struct V5DevnetReadiness {
     pub(crate) runtime_replay_path: Option<String>,
     pub(crate) runtime_replay_sha256: Option<String>,
     pub(crate) compute_unit_price_microlamports: Option<u64>,
+    pub(crate) mainnet_release_policy_cu_ceiling: Option<u64>,
     pub(crate) program_id: String,
     pub(crate) upgrade_authority: Option<String>,
     pub(crate) deployment_buffer: Option<String>,
     pub(crate) pool: String,
     pub(crate) proof_account: String,
     pub(crate) nullifier_address: String,
+    pub(crate) nullifier_bump: u8,
     pub(crate) program_already_deployed: bool,
     pub(crate) proof_bytes: usize,
     pub(crate) proof_sha256: String,
@@ -1434,6 +1438,39 @@ fn runtime_domain(network: V5NetworkPolicy, program_id: Pubkey) -> [u8; 32] {
     )
 }
 
+const fn mainnet_release_policy_cu_ceiling(network: V5NetworkPolicy) -> Option<u64> {
+    match network {
+        V5NetworkPolicy::Devnet => None,
+        V5NetworkPolicy::MainnetBeta => Some(MAINNET_RELEASE_POLICY_CU_CEILING),
+    }
+}
+
+fn tag67_cu_is_within_release_policy(network: V5NetworkPolicy, units: u64) -> bool {
+    mainnet_release_policy_cu_ceiling(network).is_none_or(|ceiling| units <= ceiling)
+}
+
+fn nullifier_address_for_network(
+    network: V5NetworkPolicy,
+    program_id: Pubkey,
+    nullifier: &[u8; 32],
+) -> Result<(Pubkey, u8)> {
+    if network == V5NetworkPolicy::MainnetBeta {
+        ensure!(
+            program_id == aspis_verifier::id(),
+            "v5 mainnet-beta nullifier PDA requires the canonical program ID"
+        );
+    }
+    let (address, bump) = atomic_nullifier_address(&program_id, nullifier);
+    if network == V5NetworkPolicy::MainnetBeta {
+        ensure!(
+            bump == MAINNET_NULLIFIER_PDA_BUMP,
+            "v5 mainnet-beta requires a one-attempt nullifier PDA derivation at bump \
+             {MAINNET_NULLIFIER_PDA_BUMP}; generated statement resolves to bump {bump}"
+        );
+    }
+    Ok((address, bump))
+}
+
 fn strict_statement_bytes(statement: &AtomicPaymentStatementV4) -> Result<Vec<u8>> {
     let sidecar = StrictStatementSidecar {
         artifact: SPEND_STATEMENT_ARTIFACT,
@@ -1686,7 +1723,8 @@ fn validate_runtime_replay(config: &ReadinessConfig) -> Result<Option<(String, S
                 == "prefunded-system-marker-cu.json"
             && value["accepted_input_policy"]["prefunded_system_marker_evidence_sha256"]
                 == MAINNET_PREFUNDED_MARKER_REPLAY_SHA256
-            && value["accepted_input_policy"]["accepted_state_ceiling_cu"] == 1_356_912
+            && value["accepted_input_policy"]["accepted_state_ceiling_cu"]
+                == MAINNET_RELEASE_POLICY_CU_CEILING
             && value["accepted_input_policy"]["accepted_state_headroom_cu"] == 43_088
             && value["accepted_input_policy"]["governing_selector"] == 2
             && value["accepted_input_policy"]["agave_4_1_0_result"]
@@ -2492,7 +2530,8 @@ fn readiness_from_config(config: ReadinessConfig) -> Result<V5DevnetReadiness> {
         "v5 proof account is not fresh"
     );
     let public = statement_public_inputs(&statement);
-    let (nullifier_address, _) = atomic_nullifier_address(&program.pubkey(), &public.nullifier);
+    let (nullifier_address, nullifier_bump) =
+        nullifier_address_for_network(config.network, program.pubkey(), &public.nullifier)?;
     ensure_distinct_keys(&[
         payer.pubkey(),
         program.pubkey(),
@@ -2567,6 +2606,7 @@ fn readiness_from_config(config: ReadinessConfig) -> Result<V5DevnetReadiness> {
         runtime_replay_path: runtime_replay.as_ref().map(|(path, _)| path.clone()),
         runtime_replay_sha256: runtime_replay.map(|(_, digest)| digest),
         compute_unit_price_microlamports: config.compute_unit_price_microlamports,
+        mainnet_release_policy_cu_ceiling: mainnet_release_policy_cu_ceiling(config.network),
         program_id: program.pubkey().to_string(),
         upgrade_authority: upgrade_authority
             .as_ref()
@@ -2577,6 +2617,7 @@ fn readiness_from_config(config: ReadinessConfig) -> Result<V5DevnetReadiness> {
         pool: pool.pubkey().to_string(),
         proof_account: proof_account.pubkey().to_string(),
         nullifier_address: nullifier_address.to_string(),
+        nullifier_bump,
         program_already_deployed: program_snapshot.is_some(),
         proof_bytes: proof.len(),
         proof_sha256: sha256(&proof),
@@ -2657,6 +2698,7 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
                     "pool": readiness.pool,
                     "proof_account": readiness.proof_account,
                     "nullifier_address": readiness.nullifier_address,
+                    "nullifier_bump": readiness.nullifier_bump,
                     "sbf_sha256": readiness.sbf_sha256,
                     "sbf_provenance_sha256": readiness.sbf_provenance_sha256,
                     "proof_sha256": readiness.proof_sha256,
@@ -2666,6 +2708,7 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
                     "runtime_replay_path": readiness.runtime_replay_path,
                     "runtime_replay_sha256": readiness.runtime_replay_sha256,
                     "compute_unit_price_microlamports": readiness.compute_unit_price_microlamports,
+                    "mainnet_release_policy_cu_ceiling": readiness.mainnet_release_policy_cu_ceiling,
                     "solana_cli_sha256": sha256(&solana_cli_before),
                     "solana_cli_version": solana_cli_version.clone(),
                     "rpc_origin_redacted": readiness.rpc_origin_redacted,
@@ -2814,7 +2857,8 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
     );
 
     let public = statement_public_inputs(&statement);
-    let (nullifier_address, _) = atomic_nullifier_address(&program_id, &public.nullifier);
+    let (nullifier_address, nullifier_bump) =
+        nullifier_address_for_network(config.readiness.network, program_id, &public.nullifier)?;
     ensure_distinct_keys(&[
         payer.pubkey(),
         program_id,
@@ -2825,6 +2869,10 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
     ensure!(
         readiness.nullifier_address == nullifier_address.to_string(),
         "runtime nullifier PDA differs from readiness"
+    );
+    ensure!(
+        readiness.nullifier_bump == nullifier_bump,
+        "runtime nullifier PDA bump differs from readiness"
     );
     ensure!(
         rpc.account(&pool.pubkey())?.is_none()
@@ -3213,6 +3261,14 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
         final_transaction_simulation_cu < u64::from(CU_LIMIT),
         "tag-67 simulation exceeded the 1.4M CU limit"
     );
+    ensure!(
+        tag67_cu_is_within_release_policy(
+            config.readiness.network,
+            final_transaction_simulation_cu
+        ),
+        "tag-67 simulation consumed {final_transaction_simulation_cu} CU, above the mainnet \
+         release-policy ceiling of {MAINNET_RELEASE_POLICY_CU_CEILING} CU"
+    );
     require_exact_program_success(&final_simulation.logs, program_id)?;
     ensure!(
         rpc.account(&pool.pubkey())?.as_ref() == Some(&pool_before_snapshot)
@@ -3239,6 +3295,11 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
     ensure!(
         final_transaction_landed_cu < u64::from(CU_LIMIT),
         "finalized tag-67 exceeded the 1.4M CU limit"
+    );
+    ensure!(
+        tag67_cu_is_within_release_policy(config.readiness.network, final_transaction_landed_cu),
+        "finalized tag-67 consumed {final_transaction_landed_cu} CU, above the mainnet \
+         release-policy ceiling of {MAINNET_RELEASE_POLICY_CU_CEILING} CU"
     );
     let final_signature = final_tx.signatures[0];
     let (refetched_wire, refetched_transaction) = rpc.transaction_wire(&final_signature)?;
@@ -3887,6 +3948,56 @@ mod tests {
         assert!(V5NetworkPolicy::MainnetBeta
             .validate_program_id(Pubkey::new_unique())
             .is_err());
+    }
+
+    #[test]
+    fn mainnet_nullifier_pda_policy_requires_canonical_one_attempt_bump() {
+        let program = aspis_verifier::id();
+        let nullifier = [0u8; 32];
+        let expected = atomic_nullifier_address(&program, &nullifier);
+        let actual =
+            nullifier_address_for_network(V5NetworkPolicy::MainnetBeta, program, &nullifier)
+                .unwrap();
+        assert_eq!(actual, expected);
+        assert_eq!(actual.1, MAINNET_NULLIFIER_PDA_BUMP);
+
+        let error =
+            nullifier_address_for_network(V5NetworkPolicy::MainnetBeta, program, &[1u8; 32])
+                .unwrap_err();
+        assert!(error.to_string().contains("bump 254"));
+        assert!(nullifier_address_for_network(
+            V5NetworkPolicy::MainnetBeta,
+            Pubkey::new_unique(),
+            &nullifier
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn devnet_nullifier_pda_policy_allows_non_mainnet_bumps() {
+        let (_, bump) = nullifier_address_for_network(
+            V5NetworkPolicy::Devnet,
+            aspis_verifier::id(),
+            &[1u8; 32],
+        )
+        .unwrap();
+        assert_eq!(bump, 254);
+    }
+
+    #[test]
+    fn mainnet_release_policy_enforces_the_simulation_cu_ceiling() {
+        assert!(tag67_cu_is_within_release_policy(
+            V5NetworkPolicy::MainnetBeta,
+            MAINNET_RELEASE_POLICY_CU_CEILING
+        ));
+        assert!(!tag67_cu_is_within_release_policy(
+            V5NetworkPolicy::MainnetBeta,
+            MAINNET_RELEASE_POLICY_CU_CEILING + 1
+        ));
+        assert!(tag67_cu_is_within_release_policy(
+            V5NetworkPolicy::Devnet,
+            MAINNET_RELEASE_POLICY_CU_CEILING + 1
+        ));
     }
 
     #[test]

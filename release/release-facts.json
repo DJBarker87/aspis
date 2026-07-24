@@ -1,6 +1,6 @@
 {
   "artifact": "aspis_release_facts",
-  "schema_version": 1,
+  "schema_version": 2,
   "facts_as_of_date": "2026-07-24",
   "transaction_compute_limit_cu": 1400000,
   "tracks": {
@@ -69,8 +69,8 @@
       "runtime": {
         "frozen_cost_schedule": {
           "solana_core": "2.3.13",
-          "grammar_topology_ceiling_cu": 1353616,
-          "grammar_topology_headroom_cu": 46384
+          "bump_255_topology_ceiling_cu": 1353616,
+          "bump_255_topology_headroom_cu": 46384
         },
         "current_mainnet_replay": {
           "source_base_commit": "d98a2e69618dc95b95c1996506ed8c05904a56a1",
@@ -98,13 +98,18 @@
       },
       "compute": {
         "devnet_measured_transaction_cu": 1335952,
+        "ceiling_scope": "mainnet_runner_exact_signed_wire_simulation_with_canonical_nullifier_pda_bump_255",
+        "required_nullifier_pda_bump": 255,
+        "pda_derivation_attempts": 1,
+        "exact_signed_wire_simulation_required": true,
+        "exact_signed_wire_simulation_max_cu": 1356912,
         "current_mainnet_priced_prefunded_by_selector_cu": {
           "0": 1334528,
           "1": 1337192,
           "2": 1329776
         },
-        "current_mainnet_accepted_state_ceiling_cu": 1356912,
-        "current_mainnet_accepted_state_headroom_cu": 43088
+        "current_mainnet_release_policy_ceiling_cu": 1356912,
+        "current_mainnet_release_policy_headroom_cu": 43088
       },
       "mainnet": {
         "deployment_status": "not_deployed",

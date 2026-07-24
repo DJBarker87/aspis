@@ -75,5 +75,5 @@ Regenerable LLBC, raw translations, intermediate logs, and earlier conditional
 graphs are preserved at git tag
 `research-archive-v5-production-closure-2026-07-22`.
 
-The complete production decision, SBF identity, and accepted-input CU bound
+The complete production decision, SBF identity, and mainnet CU policy
 are recorded in `release/preflight/v5-production-freeze.md`.

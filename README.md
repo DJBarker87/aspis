@@ -44,7 +44,7 @@ Aspis now has two clearly separated release lines:
 | Track | Status | Runtime result |
 | --- | --- | ---: |
 | q18/g37, tag 65 | Executed and finalized on mainnet-beta on 2026-07-16 | 1,344,003 CU |
-| V5, tag 67 | Finalized on devnet; ready for mainnet deployment | 1,335,952 CU landed; current-mainnet ceiling 1,356,912 CU |
+| V5, tag 67 | Finalized on devnet; ready for mainnet deployment | 1,335,952 CU landed; V5 CU ceiling 1,356,912 CU |
 
 The machine-readable [release facts ledger](release/release-facts.json) is the
 single source for release identities, hashes, transactions, runtimes, and
@@ -54,7 +54,9 @@ known stale figures and statuses.
 The q18/g37 release is the published mainnet feasibility result. V5 is the
 current verifier architecture: its default SBF is 1,258,496 bytes, SHA-256
 `4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40`,
-and has 43,088 CU of conservative headroom. Its code,
+and has 43,088 CU of conservative headroom under the mainnet runner's CU
+policy. Before submission, the runner requires a canonical nullifier PDA bump
+of 255 and exact signed-wire simulation at or below 1,356,912 CU. Its code,
 Component-A correspondence at the selected schedule, general Component-B and
 Component-C correspondence, Tag-67 verifier theorem, provenance, and CU
 evidence are recorded in the
@@ -64,15 +66,18 @@ On 2026-07-23 that SBF completed the atomic Tag-67 path on devnet at
 [`38mNKeM…WtEuLC`](https://explorer.solana.com/tx/38mNKeMmRf9Ttqmde8jZqCMq8F1piHhCEqGYVYrSHEggTu21C93wWAEhoDkZ2qJHeTX7j3qCmibNNmZ6awWtEuLC?cluster=devnet).
 The same binary was then replayed across all three selectors on the current
 mainnet Agave 4.1.0 runtime, including the accepted one-lamport prefunded
-marker path that performs transfer, allocate, and assign CPIs. The resulting
-accepted-state ceiling is 1,356,912 CU
+marker path that performs transfer, allocate, and assign CPIs. Together, the
+measurements and topology derivation cover all selectors, maximum proof
+topologies, and every accepted marker state. The measured-and-derived V5 CU
+ceiling is 1,356,912 CU
 ([evidence](results/spend/v5-mainnet-runtime-4.1.0-20260723/)).
 The
 [original frozen V5 bundle](release/aspis-v5-tag67-frozen-candidate-v1/)
 binds the proof, statement, devnet program, state transition, retained proof,
 and rejected replay. Its 2.3.13 topology record is preserved unchanged; the
 [current-runtime addendum](results/spend/v5-mainnet-runtime-4.1.0-20260723/)
-adds the priced Agave 4.1.0 transaction and every accepted marker pre-state.
+adds the priced Agave 4.1.0 transaction, the bump-255 and exact-simulation
+policy, and every accepted marker pre-state.
 The compact trust boundary is in the
 [assumptions ledger](docs/assumptions-ledger.md).
 

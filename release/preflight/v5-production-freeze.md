@@ -64,11 +64,18 @@ program to the same 1,258,496 bytes and SHA-256. The
 reconciles every build-snapshot/source delta and records the clean command,
 tree, tool, and output identities.
 
-## Accepted-state CU ceiling
+## Mainnet CU policy
 
-The final ceiling for the release grammar and every accepted nullifier-marker
-pre-state on the current mainnet runtime is **1,356,912 CU**, leaving
-**43,088 CU** below Solana's 1.4 million limit.
+The measured-and-derived V5 CU ceiling is **1,356,912 CU**, leaving
+**43,088 CU** below Solana's 1.4 million limit. The mainnet runner enforces
+two conditions before submission:
+
+- the canonical nullifier PDA bump is 255, so on-chain address derivation
+  takes one 1,500-CU attempt; and
+- the exact signed-wire simulation succeeds at or below 1,356,912 CU.
+
+The runner then submits the same serialized transaction and verifies its
+landed CU and refetched bytes.
 
 The original runtime 2.3.13 topology derivation used the absent-marker
 create-account path:
@@ -84,7 +91,7 @@ create-account CPI and repeated identically three times. The selector-0
 initialized program-owned marker control consumed 1,328,897 CU, also
 identically three times, without a CPI.
 
-That topology bound covers the complete release grammar:
+That topology bound covers the complete proof grammar:
 
 - proof body: at most 77,278 bytes;
 - sealed proof account: at most 77,318 bytes;
@@ -125,7 +132,7 @@ three selectors. The price instruction contributes 150 CU and the prefunded
 marker path contributes another 3,200 CU over the corresponding absent-marker
 execution.
 
-| Selector | Prefunded baseline | Extra parents | GoodA/GoodB reserve | Accepted-state ceiling |
+| Selector | Prefunded baseline | Extra parents | GoodA/GoodB reserve | Bump-255 CU ceiling |
 | ---: | ---: | ---: | ---: | ---: |
 | 0 | 1,334,528 | 30 × 512 | 4,096 | 1,353,984 |
 | 1 | 1,337,192 | 20 × 512 | 4,096 | 1,351,528 |
@@ -137,6 +144,17 @@ Selector 2 remains governing after topology normalization. The runtime
 identity, release hashes, all marker-mode measurements, and pinned source
 references are in
 [`results/spend/v5-mainnet-runtime-4.1.0-20260723/`](../../results/spend/v5-mainnet-runtime-4.1.0-20260723/).
+
+The table derives topology and GoodA/GoodB variation from the frozen replay
+family. Transcript challenge sampling also has bounded retry paths. Rather
+than treating this calculation as a theorem over every accepted byte string,
+the mainnet runner checks the exact candidate's signed-wire simulation against
+the V5 CU ceiling.
+
+`Pubkey::find_program_address` charges another 1,500 CU after each failed bump.
+The historical topology record predates this runner scope. A future policy or
+binary that accepts a wider bump range or a higher simulation result gets a
+new ceiling.
 
 ## Formal correspondence
 
@@ -218,7 +236,7 @@ rejects a reused nullifier.
 - Devnet pool transition 0 → 1, canonical nullifier creation, sealed-proof
   retention, signed-wire refetch, and same-nullifier replay rejection: passed.
 - Exact Agave 4.1.0 all-selector replay, including the prefunded marker path:
-  passed; the accepted-state ceiling is 1,356,912 CU.
+  passed; the V5 CU ceiling is 1,356,912 CU.
 
 ## Deployment handoff
 
@@ -247,7 +265,7 @@ The deployment checklist and publication record are in the
 ## Evidence layout
 
 `main` retains the final production SBF, provenance, three selector proofs and
-measurements, marker-mode controls, statement, and universal CU policy under
+measurements, marker-mode controls, statement, and topology CU evidence under
 `results/spend/v5-production-tag67-freeze-stream3-20260722/`. Duplicate SBF
 paths are relative symlinks to the canonical binary.
 

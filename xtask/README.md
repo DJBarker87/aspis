@@ -57,8 +57,9 @@ transaction finalized at slot `433219840`, consuming 1,344,003 CU. The frozen
 V5 release uses a 1,258,496-byte SBF with SHA-256
 `4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40`.
 That binary finalized the retained-proof Tag-67 path on devnet at slot
-`478299357`, consuming 1,335,952 CU. The current Agave 4.1.0 accepted-state
-ceiling is 1,356,912 CU.
+`478299357`, consuming 1,335,952 CU. The V5 CU ceiling is 1,356,912 CU.
+Mainnet readiness and execution require canonical nullifier PDA bump 255 and
+exact signed-wire simulation at or below that ceiling.
 
 ## Removed research tooling
 

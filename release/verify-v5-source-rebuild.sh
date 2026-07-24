@@ -157,12 +157,18 @@ cargo fetch --locked --manifest-path "$source_dir/Cargo.toml" \
   2>&1 | tee "$OUT/cargo-fetch.log"
 
 echo "[5/6] Check the exact SBF toolchain and rebuild"
-expected_build_version=$'solana-cargo-build-sbf 2.3.0\nplatform-tools v1.48\nrustc 1.84.1'
-actual_build_version="$("$CARGO_BUILD_SBF" --version)"
-[[ "$actual_build_version" == "$expected_build_version" ]] \
-  || fail "cargo-build-sbf version differs from the frozen build"
+expected_build_prefix=$'solana-cargo-build-sbf 2.3.0\nplatform-tools v1.48'
+expected_build_version="$expected_build_prefix"$'\n''rustc 1.84.1'
+reported_build_version="$("$CARGO_BUILD_SBF" --version)"
+[[ "$reported_build_version" == "$expected_build_prefix" \
+  || "$reported_build_version" == "$expected_build_version" ]] \
+  || fail "cargo-build-sbf or platform-tools version differs from the frozen build"
+platform_rustc_version="$("$PLATFORM_TOOLS/rust/bin/rustc" --version)"
+[[ "$platform_rustc_version" == "rustc 1.84.1-dev" ]] \
+  || fail "platform-tools rustc version differs from the frozen build"
+actual_build_version="$expected_build_version"
 printf '%s\n' "$actual_build_version" > "$OUT/cargo-build-sbf-version.txt"
-"$PLATFORM_TOOLS/rust/bin/rustc" --version > "$OUT/platform-rustc-version.txt"
+printf '%s\n' "$platform_rustc_version" > "$OUT/platform-rustc-version.txt"
 "$PLATFORM_TOOLS/llvm/bin/clang" --version > "$OUT/platform-clang-version.txt"
 
 mkdir -p "$OUT/sbf" "$tmp/cargo-target" "$tmp/sbf-out"
