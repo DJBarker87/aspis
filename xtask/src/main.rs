@@ -5,6 +5,7 @@ mod spend_mainnet;
 mod spend_mainnet_cleanup;
 mod spend_mainnet_journal;
 mod spend_mainnet_loader;
+mod spend_mainnet_v5_close;
 mod spend_measure;
 mod spend_release;
 mod spend_statement;
@@ -13,6 +14,7 @@ mod v5_component_c_maps;
 mod v5_component_c_obstruction;
 mod v5_component_c_rank;
 mod v5_cu_probe;
+mod v5_mainnet_refund;
 
 use std::fs;
 use std::path::PathBuf;
@@ -259,6 +261,34 @@ fn main() -> Result<()> {
             );
             Ok(())
         }
+        Some("v5-mainnet-proof-close") => {
+            let arguments = args.collect::<Vec<_>>();
+            let evidence = spend_mainnet_v5_close::execute(&arguments)?;
+            eprintln!(
+                "v5-mainnet-proof-close: finalized {} at slot {}; refunded {} lamports; immutable evidence {}",
+                evidence.signature,
+                evidence.finalized_slot,
+                evidence.refund_lamports,
+                evidence.evidence_path,
+            );
+            Ok(())
+        }
+        Some("v5-mainnet-payer-sweep") => {
+            let arguments = args.collect::<Vec<_>>();
+            let outcome = v5_mainnet_refund::execute(&arguments)?;
+            eprintln!(
+                "v5-mainnet-payer-sweep: finalized {} at slot {}; sent {} lamports to {}; fee {} lamports; payer post-balance {}; immutable evidence {} and {}",
+                outcome.signature,
+                outcome.finalized_slot,
+                outcome.transfer_lamports,
+                outcome.refund_recipient_pubkey,
+                outcome.fee_lamports,
+                outcome.payer_post_lamports,
+                outcome.presubmit_evidence.path,
+                outcome.postsubmit_evidence.path,
+            );
+            Ok(())
+        }
         Some("v5-devnet-build") => {
             let arguments = args.collect::<Vec<_>>();
             let outcome = spend_devnet::v5::build_sbf(&arguments)?;
@@ -429,7 +459,7 @@ fn main() -> Result<()> {
             Ok(())
         }
         other => bail!(
-            "usage: cargo run -p aspis-xtask -- v5-component-c-obstruction | v5-component-c-rank | v5-component-c-fmat | v5-component-c-emat | v5-cu-probe | v5-devnet-build | v5-devnet-artifact | v5-devnet-readiness | v5-devnet-execute | v5-mainnet-artifact | v5-mainnet-readiness | v5-mainnet-execute | spend-measure | spend-release | spend-bundle | spend-mainnet-readiness | spend-mainnet-execute | spend-mainnet-cleanup | spend-devnet-readiness | spend-devnet-execute | spend-devnet-upload-smoke | spend-devnet-close-smoke (got {:?})",
+            "usage: cargo run -p aspis-xtask -- v5-component-c-obstruction | v5-component-c-rank | v5-component-c-fmat | v5-component-c-emat | v5-cu-probe | v5-devnet-build | v5-devnet-artifact | v5-devnet-readiness | v5-devnet-execute | v5-mainnet-artifact | v5-mainnet-readiness | v5-mainnet-execute | v5-mainnet-proof-close | v5-mainnet-payer-sweep | spend-measure | spend-release | spend-bundle | spend-mainnet-readiness | spend-mainnet-execute | spend-mainnet-cleanup | spend-devnet-readiness | spend-devnet-execute | spend-devnet-upload-smoke | spend-devnet-close-smoke (got {:?})",
             other
         ),
     }

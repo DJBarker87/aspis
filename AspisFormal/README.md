@@ -1,8 +1,22 @@
-# AspisFormal
+# Lean proofs of the Aspis construction
 
-`AspisFormal` is the maintained Lean 4 proof layer for Aspis. This README gives
-the proof status on the current `main` branch. Older module comments and
+This directory contains the mathematical proof layer for Aspis. Lean checks
+substantial parts of the private-spend relation, the concrete security
+calculations used by the release, group and hiding results, fixed Poseidon2
+executions, and the Lean models for current V5 verifier components.
+
+Aspis also has a second proof layer that connects selected production Rust to
+these models through Charon, Aeneas, and Lean bridge proofs. The accessible
+overview is
+[`docs/formal-verification.md`](../docs/formal-verification.md); the exact
+Rust-to-model coverage is recorded in
+[`aeneas-verif/README.md`](../aeneas-verif/README.md).
+
+The detailed table below states what is proved, what uses a named assumption,
+and what remains outside the current release theorem. Older module comments and
 archived reports record the state at the time they were written.
+
+## Build the proofs
 
 ```sh
 cd AspisFormal
@@ -38,7 +52,7 @@ compiled-evaluation shortcut. Poseidon2 known-answer theorems use kernel
 
 The later V5 proof does not retroactively relabel the tag-65 transaction.
 
-## q18/g37 ledger
+## q18/g37 theorem status
 
 | Result | Principal module | Status |
 | --- | --- | --- |
@@ -46,26 +60,26 @@ The later V5 proof does not retroactively relabel the tag-65 transaction.
 | Range, balance, and asset clauses from constraint residuals | `ArithmetizationCore.lean` | **PROVED** |
 | Complete maintained spend relation from Poseidon2/Merkle clauses | `HashMerkleModel.lean` | **PROVED relative to `Poseidon2Faithful`** |
 | Manifest-bound Johnson/MCA regime and agreement cap | `SoundnessParams.lean` | **PROVED** |
-| Complete finite event ledger and conservative `≤ 2⁻¹⁰⁴` floor | `SoundnessLedger.lean` | **PROVED** |
+| Complete finite-event calculation and conservative `≤ 2⁻¹⁰⁴` floor | `SoundnessLedger.lean` | **PROVED** |
 | Work-normalized `≤ 2⁻¹⁰⁰` endpoint | `SoundnessWorkNormalizedEndpoint.lean` | **PROVED relative to the cited BCS error formula** |
 | Circle generator order, same-x criterion, and fibre-root distinctness | `CircleGroupOrder.lean`, `CircleFibreRoots.lean` | **PROVED** |
 | Distribution-level masking and concrete circle-matrix hiding | `CoreHidingPMF.lean`, `MaskingHiding.lean`, `AspisViewBinding.lean` | **PROVED for the stated model** |
 | Poseidon2 permutation, node, owner, note, and nullifier known-answer bindings | `Poseidon2Kat.lean` | **PROVED on the pinned vectors** |
 | Extractor plus nullifier binding implies theft resistance | `TheftResistance.lean` | **PROVED as a connective; extractor and simulation-extractability are cited inputs** |
 
-## V5 maintained-model ledger
+## V5 mathematical model status
 
 | Result | Principal modules | Status |
 | --- | --- | --- |
 | Component-A rank, schedule, and deployed terminal applicability | `V5AtomicComponentA.lean`, `V5ComponentARankCompletion.lean`, `V5ComponentADeployedTerminalApplicability.lean` | **PROVED** |
-| Component-B triangular hiding, spend-difference coverage, commitment, and transcript binding | `V5ComponentBTriangularHiding.lean`, `V5ComponentBSpendDifferenceCoverage.lean`, `V5SumcheckCommitment.lean`, `V5SumcheckTranscriptBinding.lean` | **PROVED for the maintained model** |
+| Component-B triangular hiding, spend-difference coverage, commitment, and transcript binding | `V5ComponentBTriangularHiding.lean`, `V5ComponentBSpendDifferenceCoverage.lean`, `V5SumcheckCommitment.lean`, `V5SumcheckTranscriptBinding.lean` | **PROVED for the Lean model** |
 | Component-C sampler, pivot encoder, QM31 tower/codec, residual projection, and four-fold runtime | `V5ComponentCSamplerKernel.lean`, `V5ComponentCEncoderCorrespondence.lean`, `V5ComponentCExactTowerDeployment.lean`, `V5ComponentCPreCProjection.lean`, `V5ComponentCConcreteFoldLinearity.lean` | **PROVED** |
 | Component-C direct conditional hiding and deployment composition | `V5ComponentCDirectHiding.lean`, `V5ComponentCDeploymentLedger.lean`, `V5ConditionalHidingCapstoneV3.lean` | **PROVED relative to the named entropy, transcript, PCS, serialization, and hash interfaces** |
-| Selected-good verifier relation and functional batching | `V5SelectedGoodVerifierRelation.lean`, `V5FunctionalBatching.lean`, `V5GoodGateDotBatching.lean` | **PROVED** |
+| Good-gate verifier relation and functional batching | `V5SelectedGoodVerifierRelation.lean`, `V5FunctionalBatching.lean`, `V5GoodGateDotBatching.lean` | **PROVED** |
 | Exact 17-attempt retry control and nonce/work authentication | `V5ProductionCap17RetryControl.lean`, `V5NonceWorkAuthentication.lean` | **PROVED** |
 | Work-normalized V5 endpoint | `V5ImplementedWorkNormalizedEndpoint.lean`, `V5WorkNormalizedApplicabilityRepair.lean` | **PROVED under the cited cryptographic endpoint formula** |
 
-## V5 source-authentic correspondence
+## V5 production Rust connection
 
 The principal integration theorem is
 `FormalClosureStream1.current_source_combined_capstone` in
@@ -97,16 +111,16 @@ Here is the current disposition of the items most likely to be encountered:
 
 | Older obligation | Current disposition |
 | --- | --- |
-| Component-A universal 48×48 conversion table | **SUPERSEDED FOR THE FINAL V5 ROUTE**. The source-authentic route proves the reachable even-kernel conversion and twelve GoodA shifts used by the release schedule. The unrelated Component-B width-64 table is closed by `AspisV5Row256Aeneas.generatedRow256Conversion64_exact`. |
+| Component-A universal 48×48 conversion table | **SUPERSEDED FOR THE FINAL V5 ROUTE**. The production-Rust proof covers the reachable even-kernel conversion and twelve GoodA shifts used by the release schedule. The unrelated Component-B width-64 table is closed by `AspisV5Row256Aeneas.generatedRow256Conversion64_exact`. |
 | Component-C stored-OOD identity and public output | **CLOSED BY** `generated_public_run_output_matches_deployed`; the stored OOD pair, four rounds, finish, and packed output are in the theorem chain. |
-| Discrete q18 availability and universal executable GoodA correspondence | **RUNTIME ENFORCEMENT CLOSED; UNIVERSAL SOURCE CORRESPONDENCE STILL OPEN**. The verifier recomputes GoodA/GoodB for every selected branch and rejects failure; the 17-attempt host fails closed if it finds no good schedule. The source-authentic theorem currently proves the selected release schedule, not every possible schedule. A universal source theorem would additionally need the generic circle-query kernel, terminal-minor construction, and fraction-free determinant loop invariants. Availability is a liveness question, not an acceptance gap. |
-| Comprehensive all-proof-bytes serialization faithfulness | **STILL OPEN**. The final route closes the Component-B layout, Component-C public vector/packer, and Tag-67 work wire separately; it does not claim one universal serializer theorem for the complete joint cryptographic view. |
+| Discrete q18 availability and a universal Rust proof for GoodA | **RUNTIME ENFORCEMENT PROVED; UNIVERSAL RUST PROOF STILL OPEN**. The verifier recomputes GoodA/GoodB for every selected branch and rejects failure; the 17-attempt host fails closed if it finds no good schedule. The production-Rust theorem currently proves the selected release schedule, not every possible schedule. A universal source theorem would additionally need the generic circle-query kernel, terminal-minor construction, and fraction-free determinant loop invariants. Availability is a liveness question, not an acceptance gap. |
+| Comprehensive all-proof-bytes serialization faithfulness | **STILL OPEN**. The final route proves the Component-B layout, Component-C public vector/packer, and Tag-67 work-byte layout separately; it does not claim one universal serializer theorem for the complete joint cryptographic view. |
 | Adaptive sumcheck/PCS/Fiat–Shamir security from first principles | **STILL OPEN AS AN INTERNAL REPROOF**. The release uses the cited PCS/BCS and Fiat–Shamir results with an explicit parameter mapping. |
 | Universal all-input Rust Poseidon2 equality | **STILL OPEN**. Constants and known-answer executions are pinned; `Poseidon2Faithful` remains the named all-input interface used by the relation theorem. |
 
 The runtime enforces the GoodA/GoodB predicate on every selected branch. The
-source-authentic Component-A theorem is specialized to the release schedule;
-the source-authentic B, C, public-output, work-wire, and ordered-verifier
+production-Rust Component-A theorem is specialized to the release schedule;
+the production-Rust B, C, public-output, work-byte, and ordered-verifier
 theorems have the broader scopes stated above. Published PCS/Fiat–Shamir
 results and primitive security are the external cryptographic inputs.
 
@@ -123,9 +137,13 @@ lake exe cache get
 lake build
 ```
 
-For the pinned source-authentic integration theorems:
+For the retained production-Rust integration theorems:
 
 ```sh
 aeneas-verif/component-c-runtime-downstream/released-trace-families-current-20260722/replay-lean432.sh
 aeneas-verif/current-source-abc-capstone-20260722/replay-lean432.sh
 ```
+
+The integration replay requires the authenticated dependency caches described
+in the
+[`aeneas-verif` replay notes](../aeneas-verif/README.md#replaying-the-final-integration).

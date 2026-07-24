@@ -45,7 +45,7 @@ the frozen SBF. The candidate tag resolves to the later commit whose tree
 contains the release bundle, manifest, and finalized devnet record. The
 manifest records the earlier build source and the exact SBF identity; it does
 not try to name the commit that contains itself. The
-[release facts ledger](../release-facts.json) supplies that outer binding from
+[release facts record](../release-facts.json) supplies that outer binding from
 the candidate tag to its commit.
 
 Later documentation or release-index changes do not replace any identity in
@@ -72,7 +72,7 @@ two conditions before submission:
 
 - the canonical nullifier PDA bump is 255, so on-chain address derivation
   takes one 1,500-CU attempt; and
-- the exact signed-wire simulation succeeds at or below 1,356,912 CU.
+- simulation of the exact signed transaction bytes succeeds at or below 1,356,912 CU.
 
 The runner then submits the same serialized transaction and verifies its
 landed CU and refetched bytes. The transaction compute limit is also
@@ -149,7 +149,7 @@ references are in
 The table derives topology and GoodA/GoodB variation from the frozen replay
 family. Transcript challenge sampling also has bounded retry paths. Rather
 than treating this calculation as a theorem over every accepted byte string,
-the mainnet runner checks the exact candidate's signed-wire simulation against
+the mainnet runner simulates the exact signed candidate transaction against
 the V5 CU ceiling.
 
 `Pubkey::find_program_address` charges another 1,500 CU after each failed bump.
@@ -169,15 +169,15 @@ The formal proofs pass under Lean 4.32 default limits.
 - **Component C:** actual-current sampler, encoder, arithmetic/folds, finish,
   packer, and public output. The final public theorem is
   `generated_public_run_output_matches_deployed`.
-- **Tag 67:** generated wire guards and six actual LE64 reads construct the
-  maintained work-wire view; the digest predicate and all six ordered
+- **Tag 67:** generated instruction guards and six actual LE64 reads construct
+  the work values used by Lean; the digest predicate and all six ordered
   batch/fold0/fold1/fold2/fold3/final steps are proved.
 - **Combined integration theorem:**
   `FormalClosureStream1.current_source_combined_capstone` joins that concrete
   Component-A result, B, C operational/public output, and the Tag-67
-  wire/verifier theorem.
+  instruction-decoding and verifier theorem.
 
-The combined theorem's only Tag-67 implementation/model premise is:
+The combined theorem's only remaining Tag-67 Rust-to-Lean assumption is:
 
 ```text
 ∀ state nonce,
@@ -235,7 +235,8 @@ rejects a reused nullifier.
 - Production SBF devnet deployment and atomic Tag-67 execution: finalized at
   slot `478299357`, 1,335,952 CU in both simulation and landed metadata.
 - Devnet pool transition 0 → 1, canonical nullifier creation, sealed-proof
-  retention, signed-wire refetch, and same-nullifier replay rejection: passed.
+  retention, signed-transaction refetch, and same-nullifier replay rejection:
+  passed.
 - Exact Agave 4.1.0 all-selector replay, including the prefunded marker path:
   passed; the V5 CU ceiling is 1,356,912 CU.
 
@@ -262,6 +263,14 @@ mainnet transaction has been submitted.
 
 The deployment checklist and publication record are in the
 [V5 mainnet deployment handoff](../../docs/reviews/v5-mainnet-deployment-handoff.html).
+
+After the mainnet transaction evidence is recorded, temporary rent is recovered in three
+separate transactions: close the sealed proof to the dedicated payer, close
+ProgramData directly to the operator's locally pinned refund wallet, then sweep
+the payer's remaining balance to that wallet. The commands verify the
+finalized Tag-67 transaction and the preceding account state before signing.
+The refund public key is supplied from outside the repository; the repository
+contains no default recipient.
 
 ## Evidence layout
 

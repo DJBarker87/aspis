@@ -2,40 +2,44 @@
 
 [![Spend integration](https://github.com/DJBarker87/aspis/actions/workflows/spend-integration.yml/badge.svg)](https://github.com/DJBarker87/aspis/actions/workflows/spend-integration.yml)
 
-Aspis puts transparent shielded-spend verification and its atomic state
-transition inside one Solana L1 transaction, with no trusted setup.
+Aspis verifies a private spend and applies its state change entirely on
+Solana, without a trusted setup. A user proves that a private record may be
+spent under the pool's rules without publishing its secret data. The program
+checks the proof, advances the pool, and records a one-time spent marker in one
+transaction. Every check and update succeeds together, or nothing changes.
 
-On 2026-07-16 one finalized mainnet-beta transaction verified a 65,407-byte
-shielded-spend proof, advanced the pool state, and recorded the nullifier in
-one atomic step, at 1,344,003 of the 1,400,000-CU cap:
-[`3G1vogg…sRPFcv`](https://explorer.solana.com/tx/3G1voggszvDMGi5PbGM1kuEMYKvh2TNMbH6hHHwndUdRQJNT7ehRFpQpksxLnx5tp2xkS5jGi359rVXk42sRPFcv?cluster=mainnet-beta).
-The program was a disposable deployment and was closed after the run
-([evidence](docs/mainnet-demo.md)).
+What makes Aspis unusual is the chain behind the transaction. Lean checks
+substantial parts of the mathematics. Charon extracts selected production
+Rust, Aeneas translates it into Lean, and bridge proofs show that the
+extracted code agrees with the Lean models for the V5 release scope. The exact
+compiled Solana program can then be reproduced from the pinned V5 build-source
+commit and recorded build tools.
 
-The released construction handles one input, one output, a same-path leaf
-replacement in a depth-20 tree, and an atomic pool and nullifier transition.
-It establishes the on-chain feasibility result. Deposit, wallet,
-growing-anonymity-set, and multi-input/output protocols are separate work.
+```mermaid
+flowchart LR
+    M["Mathematical construction<br/>Lean 4 models and proofs"]
+    R["Selected prover and verifier Rust<br/>Charon and Aeneas translation"]
+    P["Rust-to-model proofs<br/>checked in Lean"]
+    S["Pinned V5 verifier source"]
+    B["Compiled Solana program<br/>reproduced byte for byte"]
+    X["Chain execution<br/>finalized evidence"]
 
-The code, proof artefacts, measurements, formal development, failed approaches,
-and security argument are public for reproduction and review. The construction
-and its limits are set out in the [paper](paper/aspis-spend/). The
-[novelty re-scan](docs/novelty-rescan-2026-07-13.md) is a dated public-evidence
-search for the claim shape.
+    M --> P
+    R --> P
+    S --> B
+    B --> X
+```
 
-The starting point was Jotaro Yano's measurement study
-([ePrint 2025/1741](https://eprint.iacr.org/2025/1741),
-[solana-pqzk-fullchain](https://github.com/pqzk-labs/solana-pqzk-fullchain)),
-which verified a minimal Winterfell STARK inside one Solana transaction on
-devnet. This repository began as a cost model calibrated against that
-verifier, and the first commit carries its measured profile. The work then
-asked whether the same budget could hold a real spend statement. The
-construction that answers it shares no components with his prototype, but the
-direction came from his paper.
+| Layer | What the repository establishes | Where to check it |
+| --- | --- | --- |
+| Mathematics | Lean checks the private-spend relation, release security calculations, group and hiding results, and models for current V5 verifier components | [formal-verification overview](docs/formal-verification.md) and [`AspisFormal/`](AspisFormal/) |
+| Rust and Lean | Selected V5 production Rust is translated through Charon and Aeneas, then proved to agree with the Lean models for the stated release path | [`aeneas-verif/`](aeneas-verif/) |
+| Source-to-program connection | The pinned V5 build-source commit and pinned tools reproduce the exact Solana program byte for byte | [V5 release preflight](release/preflight/v5-production-freeze.md) |
+| Program-to-chain connection | V5 has a finalized devnet state transition; its mainnet transaction is pending. The earlier q18/g37 release has finalized mainnet evidence | [current status](#current-status) |
 
-Dominic Barker built Aspis as a solo research project, using AI-assisted
-engineering throughout. The release includes checked code, versioned
-artefacts, Lean proofs, and reproducible measurements.
+The code, proof artefacts, measurements, formal development, and security
+argument are public for reproduction and review. The construction and its
+limits are set out in the [paper](paper/aspis-spend/).
 
 ## Current status
 
@@ -43,46 +47,65 @@ Aspis now has two clearly separated release lines:
 
 | Track | Status | Runtime result |
 | --- | --- | ---: |
-| q18/g37, tag 65 | Executed and finalized on mainnet-beta on 2026-07-16 | 1,344,003 CU |
-| V5, tag 67 | Finalized on devnet; ready for mainnet deployment | 1,335,952 CU landed; V5 CU ceiling 1,356,912 CU |
+| q18/g37, tag 65 | [Executed and finalized](https://explorer.solana.com/tx/3G1voggszvDMGi5PbGM1kuEMYKvh2TNMbH6hHHwndUdRQJNT7ehRFpQpksxLnx5tp2xkS5jGi359rVXk42sRPFcv?cluster=mainnet-beta) on 2026-07-16 | 65,407-byte proof; 1,344,003 CU |
+| V5, tag 67 | Finalized on devnet; ready for mainnet deployment | 1,335,952 CU landed; mainnet-runner policy limit 1,356,912 CU |
 
-The machine-readable [release facts ledger](release/release-facts.json) is the
+The machine-readable [release facts record](release/release-facts.json) is the
 single source for release identities, hashes, transactions, runtimes, and
 compute figures. CI checks the public release summary against it and rejects
 known stale figures and statuses.
 
-The q18/g37 release is the published mainnet feasibility result. V5 is the
-current verifier architecture: its default SBF is 1,258,496 bytes, SHA-256
+V5's default SBF is 1,258,496 bytes, SHA-256
 `4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40`,
-and has 43,088 CU of conservative headroom under the mainnet runner's CU
-policy. Before submission, the runner requires a canonical nullifier PDA bump
-of 255 and exact signed-wire simulation at or below 1,356,912 CU. The
-transaction compute limit is set to the same value. Its code,
-Component-A correspondence at the selected schedule, general Component-B and
-Component-C correspondence, Tag-67 verifier theorem, provenance, and CU
-evidence are recorded in the
-[V5 production preflight](release/preflight/v5-production-freeze.md).
-On 2026-07-23 that SBF completed the atomic Tag-67 path on devnet at
-1,335,952 CU:
+and completed the full Tag-67 state transition on devnet at 1,335,952 CU:
 [`38mNKeM…WtEuLC`](https://explorer.solana.com/tx/38mNKeMmRf9Ttqmde8jZqCMq8F1piHhCEqGYVYrSHEggTu21C93wWAEhoDkZ2qJHeTX7j3qCmibNNmZ6awWtEuLC?cluster=devnet).
-The same binary was then replayed across all three selectors on the current
-mainnet Agave 4.1.0 runtime, including the accepted one-lamport prefunded
-marker path that performs transfer, allocate, and assign CPIs. Together, the
-measurements and topology derivation cover all selectors, maximum proof
-topologies, and every accepted marker state. The measured-and-derived V5 CU
-ceiling is 1,356,912 CU
-([evidence](results/spend/v5-mainnet-runtime-4.1.0-20260723/)).
-The
-[original frozen V5 bundle](release/aspis-v5-tag67-frozen-candidate-v1/)
-binds the proof, statement, devnet program, state transition, retained proof,
-and rejected replay. Its 2.3.13 topology record is preserved unchanged; the
-[current-runtime addendum](results/spend/v5-mainnet-runtime-4.1.0-20260723/)
-adds the priced Agave 4.1.0 transaction, the bump-255 and exact-simulation
-policy, and every accepted marker pre-state.
-The compact trust boundary is in the
-[assumptions ledger](docs/assumptions-ledger.md).
+The same binary was replayed across all three selectors and every accepted
+marker pre-state on mainnet Agave 4.1.0. The topology calculation covers the
+maximum tree shapes in the frozen replay family. Before submission, the runner
+requires a canonical nullifier PDA bump of 255 and simulation of the exact
+signed transaction bytes at or below 1,356,912 CU; the transaction compute
+limit is the same. This gives
+43,088 CU of policy headroom for the exact simulated transaction.
 
-## Release numbers
+The [V5 preflight](release/preflight/v5-production-freeze.md),
+[candidate bundle](release/aspis-v5-tag67-frozen-candidate-v1/), and
+[current-runtime record](results/spend/v5-mainnet-runtime-4.1.0-20260723/)
+hold the Rust-to-Lean proof, reproducible build, proof and statement, devnet
+transition, runtime measurements, and rejected replay. The
+[assumptions page](docs/assumptions-ledger.md) lists the remaining assumptions.
+
+## What has been formally checked
+
+Aspis has two connected formal-proof layers.
+The [formal-verification overview](docs/formal-verification.md) explains how
+they fit together and links each production path to its principal theorem.
+
+### The mathematical construction
+
+[`AspisFormal/`](AspisFormal/) is the maintained Lean 4 development. It checks
+the private-spend relation and value-conservation core, the finite security
+calculation used for the release parameters, circle-group and hiding results,
+Poseidon2 known-answer bindings, and the Lean models for current V5 verifier
+components. The detailed proof-status table distinguishes proved results from
+named external cryptographic inputs.
+
+### The production Rust
+
+Charon extracts selected production V5 Rust paths, Aeneas translates them into
+Lean, and the proofs in [`aeneas-verif/`](aeneas-verif/) show where the
+generated definitions agree with the Lean models.
+
+The proof covers the selected release schedule, the remaining verifier stages,
+the public output, reading the Tag-67 work bytes, and all six ordered work
+checks. The Tag-67 theorem retains one explicit code-to-model premise: the
+production hash call must equal `HashFn` applied to the transcript state and
+`DOM_GRIND || nonce_le64`. The
+[formal-verification overview](docs/formal-verification.md) records the exact
+coverage and theorem names.
+
+## Previous mainnet result
+
+The figures below describe the finalized q18/g37 mainnet feasibility result.
 
 | Result | Value |
 | --- | ---: |
@@ -93,10 +116,10 @@ The compact trust boundary is in the
 | Finalized slot | `433219840` |
 
 The soundness floor is a per-query figure: after the Fiat–Shamir reduction and
-a conservative whole-ledger factor of three, the false-acceptance probability
+a conservative whole-proof factor of three, the false-acceptance probability
 is at most 2^−100.16 per random-oracle query. Like any grinding-based bound the
 cumulative advantage grows with the query budget and goes vacuous past roughly
-2^105 queries. The full event ledger, the per-budget table, and the complete
+2^105 queries. The full event calculation, the per-budget table, and the complete
 reduction are in the [paper](paper/aspis-spend/), recomputed by
 `spend_soundness_epro_ledger`.
 
@@ -105,7 +128,13 @@ theft-resistance corollary additionally uses a named round-by-round knowledge
 premise. The paper keeps the proved soundness statement and that extra
 knowledge assumption separate.
 
-## No trusted setup
+## q18/g37 construction and transaction design
+
+The next sections describe the finalized q18/g37 mainnet release. V5 keeps the
+same overall proof-account and one-transaction state-update design with its
+own proof format and release parameters.
+
+### No trusted setup
 
 Groth16 proofs are a few hundred bytes and cheap to verify, but their
 soundness depends on a multi-party setup ceremony: a participant who retained
@@ -121,9 +150,9 @@ reference string with a trapdoor. The cost is proof size: 65,407 bytes against
 a few hundred for Groth16. Closing that size gap on-chain is what the
 transaction design below is for.
 
-## One transaction
+### One transaction
 
-![Proof upload, sealing, and one-transaction verification with atomic state transition](docs/assets/transaction-flow.svg)
+![Proof upload, sealing, and one-transaction verification with an all-or-nothing state update](docs/assets/transaction-flow.svg)
 
 A 65,407-byte proof exceeds Solana's 1,232-byte transaction packet limit, so
 it is uploaded once and verified in place:
@@ -132,7 +161,7 @@ it is uploaded once and verified in place:
 2. The account is sealed after its complete byte image is checked against
    the released proof digest.
 3. One transaction then verifies the sealed proof, advances the pool,
-   records the nullifier, and refunds the proof account, atomically. If any
+   records the one-time spent marker, and refunds the proof account. If any
    step fails, no state changes.
 
 A spend therefore costs 71 setup transactions (proof-account create, 69 chunk
@@ -140,7 +169,7 @@ uploads, finalize) before the verification transaction, plus 2 per pool
 (create, initialize). The proof account's rent is held from creation until the
 verification transaction refunds it.
 
-### Throughput and scaling
+#### Throughput and scaling
 
 Spends within one pool are strictly sequential. Each proof is ground against
 the pool's current sequence number, and the pool account is writable-locked
@@ -159,7 +188,7 @@ spends. The landed 1,344,003-CU transaction leaves 55,997 CU under the cap;
 the release gate's 1,344,057-CU maximum leaves 55,943 CU. A runtime repricing
 past that margin requires new parameters (see [Limitations](#limitations)).
 
-## Construction
+### Construction
 
 The parameters are chosen to fit complete verification under Solana's
 compute-unit cap. The commitment layer is WHIR-style rather than FRI because
@@ -185,32 +214,6 @@ the cap prices verifier queries, not prover time.
 - **Lookup.** A 10-bit lookup table proves the 30-bit range decompositions
   that make the balance check an integer equality rather than an equality
   modulo p.
-
-## Machine-checked evidence
-
-The repository contains two complementary formal layers.
-
-- [`AspisFormal/`](AspisFormal/) is the maintained Lean 4 development. For the
-  q18/g37 construction it kernel-checks the value-conservation and relation
-  core, finite soundness ledger, work-normalized endpoint, circle-group and
-  fibre facts, hiding lemmas, Poseidon2 known-answer bindings, and the
-  theft-resistance implication from its cited interfaces.
-- [`aeneas-verif/`](aeneas-verif/) connects the current V5 Rust implementation
-  to maintained Lean models through pinned Charon/Aeneas extraction. Its final
-  integration theorem joins Component A at the selected schedule, Component B,
-  Component C (including its public output), and the Tag-67 wire and six-step
-  work verifier.
-
-The final V5 theorem has one Tag-67 implementation boundary: the actual
-transcript hash application must equal the maintained `HashFn` applied to
-`DOM_GRIND || nonce_le64`. Parser, projection, digest-predicate, and six-step
-correspondence are theorem conclusions rather than assumptions. The audited
-integration theorems use only Lean's standard
-`{propext, Classical.choice, Quot.sound}` base. Published PCS, Fiat–Shamir,
-extractor, and cryptographic hash-security
-results are the external cryptographic inputs. The runtime recomputes
-GoodA/GoodB for every selected branch; the source-authentic Component-A theorem
-currently covers the selected release schedule.
 
 ## Limitations
 
@@ -238,7 +241,30 @@ full statements.
   cryptographic and Solana review and a published coverage-guided fuzz campaign
   are the next assurance milestones.
 
-## Verify the source
+## Reproduce the evidence
+
+### 1. Check the mathematical proofs
+
+```bash
+cd AspisFormal
+lake exe cache get
+lake build
+```
+
+### 2. Replay the Rust-to-Lean proofs
+
+From the repository root:
+
+```bash
+aeneas-verif/component-c-runtime-downstream/released-trace-families-current-20260722/replay-lean432.sh
+aeneas-verif/current-source-abc-capstone-20260722/replay-lean432.sh
+```
+
+These commands check the retained generated Lean and bridge proofs. The
+[Aeneas replay notes](aeneas-verif/README.md#replaying-the-final-integration)
+describe the authenticated dependency caches and tool locations they require.
+
+### 3. Check the source and compiled program
 
 ```bash
 cargo fmt --all -- --check
@@ -256,7 +282,12 @@ end-to-end through the production verifier. The release pipeline
 (`cargo run --release -p aspis-xtask -- spend-release`) regenerates the
 machine-checked certificate gates from fresh local-validator measurements.
 
-## Verify the release
+The V5 source-to-program reproduction, including the pinned Agave and
+platform-tools archives, is recorded in the
+[V5 release preflight](release/preflight/v5-production-freeze.md) and enforced
+by the V5 reproducible-build workflow.
+
+### 4. Check the release records
 
 The finalized mainnet-beta execution is preserved in an offline-verifiable
 bundle. From the repository root:
@@ -282,6 +313,23 @@ identical to the PDF attached to the GitHub Release. This keeps the executed
 release record fixed while allowing the manuscript to document later formal
 work.
 
+## Origin
+
+The starting point was Jotaro Yano's measurement study
+([ePrint 2025/1741](https://eprint.iacr.org/2025/1741),
+[solana-pqzk-fullchain](https://github.com/pqzk-labs/solana-pqzk-fullchain)),
+which verified a minimal Winterfell STARK inside one Solana transaction on
+devnet. Aspis began as a cost model calibrated against that verifier, then
+asked whether the same budget could hold a real spend statement. The resulting
+construction shares no components with the prototype, but the direction came
+from Yano's paper.
+
+Dominic Barker built Aspis as a solo research project, using AI-assisted
+engineering throughout. The release includes checked code, versioned
+artefacts, Lean proofs, and reproducible measurements. The
+[novelty re-scan](docs/novelty-rescan-2026-07-13.md) records the dated
+public-evidence search for the claim shape.
+
 ## Repository map
 
 Concept-to-file navigation: [docs/code-map.md](docs/code-map.md). Each crate
@@ -291,20 +339,20 @@ carries a README naming its production entry points.
 | --- | --- |
 | `.cargo/` | Reproducible Cargo aliases and build configuration |
 | `.github/` | CI for Rust, release bindings, and Lean kernel checks |
-| `AspisFormal/` | Maintained Lean 4 formalisation and proof-status table |
-| `aeneas-verif/` | Curated Rust-to-Lean extraction proofs and V5 integration theorems |
-| `crates/aspis-core/` | `no_std`, byte-exact host and SBF verifier core |
-| `crates/aspis-prover/` | Prover, grinding, security calculators, and the release proof fixtures |
-| `crates/aspis-statement/` | Shielded-spend relation and statement encoding |
-| `programs/aspis-verifier/` | Wire format, dispatch, lifecycle, verification, and atomic state transition |
-| `xtask/` | Release certification, measurement, and deployment execution |
+| `AspisFormal/` | Lean proofs of the mathematical construction and release calculations |
+| `aeneas-verif/` | Proofs that selected production Rust agrees with the Lean models |
+| `crates/aspis-core/` | Shared verifier logic for the host and Solana program |
+| `crates/aspis-prover/` | Code that creates proofs, runs grinding, and records release fixtures |
+| `crates/aspis-statement/` | The private-spend rules and their byte encoding |
+| `programs/aspis-verifier/` | The Solana program that checks proofs and updates state |
+| `xtask/` | Release checks, measurements, and transaction execution |
 | `paper/aspis-spend/` | Publication source and build instructions |
-| `docs/` | Novelty search record and design history |
+| `docs/` | Explanations, code navigation, evidence, and design history |
 | `manifests/` | Machine-readable parameter and release bindings |
 | `reference/` | Compact independent reference material |
-| `release/` | Immutable release bundles, canonical facts, and V5 production preflight |
-| `results/` | Curated runtime measurements and final V5 evidence |
-| `tools/` | Independent checkers and formal/evidence utilities |
+| `release/` | Exact files and records for published releases and the V5 candidate |
+| `results/` | Recorded runtime measurements and V5 chain evidence |
+| `tools/` | Independent checking and release utilities |
 | `archive/` | Index of superseded and failed research retained in Git |
 
 Earlier prototypes, rejected parameters, failed designs, and the research

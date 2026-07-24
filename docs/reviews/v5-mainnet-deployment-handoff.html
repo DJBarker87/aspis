@@ -112,8 +112,8 @@
 <body>
 <main>
   <div class="eyebrow">Aspis V5 · deployment handoff · 23 July 2026</div>
-  <div class="decision">BINARY READY · MAINNET CANARY NEXT</div>
-  <h1>V5 is ready for a mainnet canary.</h1>
+  <div class="decision">BINARY READY · MAINNET TRANSACTION NEXT</div>
+  <h1>V5 is ready for its mainnet transaction.</h1>
   <p class="lede">
     The code, runtime-enforced candidate gate, compute budget, atomic account
     path, and binary identity are ready. The deployment operator now supplies
@@ -147,7 +147,7 @@
     <thead><tr><th>Gate</th><th>Status</th><th>Result</th></tr></thead>
     <tbody>
       <tr><td>Default production route</td><td class="pass">Pass</td><td>Tag 67 enters only through the atomic verify-and-apply wrapper; Tag 66 is absent.</td></tr>
-      <tr><td>Compute budget</td><td class="pass">Pass</td><td>The runner requires bump 255, exact signed-wire simulation at or below 1,356,912 CU, and the same transaction compute limit.</td></tr>
+      <tr><td>Compute budget</td><td class="pass">Pass</td><td>The runner requires bump 255, simulation of the exact signed transaction bytes at or below 1,356,912 CU, and the same transaction compute limit.</td></tr>
       <tr><td>Formal correspondence</td><td class="pass">Pass</td><td>Release-schedule A, general B/C public output, and the Tag-67 six-step verifier compose under one named hash-application boundary.</td></tr>
       <tr><td>Runtime evidence</td><td class="pass">Pass</td><td>The release SBF completed selector/marker-mode replays and finalized the atomic devnet path at 1,335,952 CU.</td></tr>
       <tr><td>Secrets history</td><td class="pass">Pass</td><td>Gitleaks scanned all 127 commits; audited public test-vector and source-name false positives are recorded explicitly.</td></tr>
@@ -177,8 +177,9 @@
     accepted one-lamport prefunded marker, which performs transfer, allocate,
     and assign CPIs, was then replayed across every selector. The resulting
     V5 CU ceiling is 1,356,912 CU. Readiness and execution require a canonical
-    nullifier PDA bump of 255 and exact signed-wire simulation at or below that
-    ceiling; the transaction declares the same compute limit. The complete runtime identity,
+    nullifier PDA bump of 255 and simulation of the exact signed transaction
+    bytes at or below that ceiling; the transaction declares the same compute
+    limit. The complete runtime identity,
     hashes, source references, and measurements are in
     <code>results/spend/v5-mainnet-runtime-4.1.0-20260723/</code>.
   </p>
@@ -241,9 +242,9 @@ cargo run --locked -p aspis-xtask -- \
   I_ACKNOWLEDGE_V5_TAG67_MAINNET_BETA_EXECUTION_IS_IRREVERSIBLE_MUTATES_MAINNET_AND_SPENDS_REAL_SOL \
   --execute-mainnet-beta</code></pre>
   <p>
-    The executor persists every Rust-signed wire before submission, records
+    The executor persists every transaction signed by the Rust runner before submission, records
     the CLI deployment command before invocation, simulates the exact Tag-67
-    wire, submits those same bytes, and refetches the finalized transaction.
+    transaction bytes, submits those same bytes, and refetches the finalized transaction.
     An interrupted run stops for manual reconciliation from
     <code>$FRESH_RUN_DIRECTORY</code>; it never resumes or resubmits
     automatically.
@@ -257,12 +258,29 @@ cargo run --locked -p aspis-xtask -- \
     anchor, nullifier, and <code>mainnet-beta</code> domain.
   </p>
 
+  <h2>Recover temporary rent</h2>
+  <p>
+    After the finalized mainnet transaction and its evidence have been recorded, recover
+    temporary rent in this order:
+  </p>
+  <ol>
+    <li><code>v5-mainnet-proof-close</code> closes the sealed proof account and returns its rent to the dedicated payer.</li>
+    <li><code>spend-mainnet-cleanup</code> closes ProgramData and sends that rent directly to the operator's locally pinned refund wallet.</li>
+    <li><code>v5-mainnet-payer-sweep</code> sends the payer's remaining balance to the same pinned wallet.</li>
+  </ol>
+  <p>
+    Each command verifies the finalized Tag-67 transaction and the preceding
+    account state before it signs. The operator supplies the refund public key
+    from a protected file outside the repository. There is no repository
+    default or example refund address.
+  </p>
+
   <h2>What to publish</h2>
   <ul>
     <li>Read back the executable and ProgramData accounts at finalized commitment.</li>
     <li>Dump the deployed program and confirm SHA-256 <code>4cf3…edf40</code>.</li>
     <li>Record ProgramData allocation, deployment signature, finalized slot, RPC provider, and upgrade authority.</li>
-    <li>For the canary spend, publish proof and statement hashes, the signed wire hash, landed CU, pool transition, nullifier marker, and replay rejection.</li>
+    <li>For the V5 spend, publish proof and statement hashes, the signed transaction hash, landed CU, pool transition, spent marker, and replay rejection.</li>
     <li>Append a short assumptions ledger naming the transcript hash boundary and external cryptographic assumptions.</li>
   </ul>
 

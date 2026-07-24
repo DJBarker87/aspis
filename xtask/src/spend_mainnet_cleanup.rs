@@ -1,7 +1,7 @@
 //! Explicit ProgramData recovery for a disposable Spend deployment.
 //!
-//! The command is intentionally not registered by this module. Calling
-//! [`execute`] requires a pinned genesis hash and an exact destructive
+//! The registered command remains inert unless [`execute`] receives the exact
+//! mainnet identity, Tag-67 transaction, local refund pin, and destructive
 //! acknowledgement. Unit tests exercise only pure parsing, construction,
 //! reconciliation, and local evidence I/O; they make no network calls.
 
@@ -10,8 +10,8 @@
 use std::{
     collections::BTreeMap,
     fs::{self, OpenOptions},
-    io::Write,
-    os::unix::fs::{OpenOptionsExt, PermissionsExt},
+    io::{Read, Write},
+    os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt},
     path::{Path, PathBuf},
     str::FromStr,
     thread,
@@ -28,6 +28,7 @@ use solana_sdk::{
     compute_budget::ComputeBudgetInstruction,
     hash::Hash,
     instruction::Instruction,
+    message::VersionedMessage,
     pubkey::Pubkey,
     signature::{read_keypair_file, Keypair, Signature, Signer},
     system_instruction,
@@ -35,12 +36,20 @@ use solana_sdk::{
 };
 
 use crate::spend_mainnet_loader::{
-    build_close_programdata_to_payer, derive_programdata_address, validate_exact_program_account,
-    validate_exact_programdata_account, LoaderAccountImage,
+    build_close_programdata_to_payer as build_close_programdata_to_recipient,
+    derive_programdata_address, validate_exact_program_account, validate_exact_programdata_account,
+    LoaderAccountImage,
 };
 
 pub const EXECUTE_CLEANUP_ACKNOWLEDGEMENT: &str = "I_ACKNOWLEDGE_SPEND_PROGRAMDATA_CLEANUP_PERMANENTLY_CLOSES_THE_DISPOSABLE_PROGRAM_AND_REFUNDS_ITS_PROGRAMDATA_RENT";
 pub const MAX_PROGRAMDATA_CLEANUP_FEE_LAMPORTS: u64 = 1_000_000;
+const MAINNET_BETA_GENESIS_HASH: &str = "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d";
+const V5_SBF_BYTES: usize = 1_258_496;
+const V5_SBF_SHA256: &str = "4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40";
+const V5_PROGRAM_MAX_LEN: usize = 1_300_000;
+const V5_TAG67_COMPUTE_UNIT_LIMIT: u32 = 1_356_912;
+const V5_TAG67_HEAP_FRAME_BYTES: u32 = 262_144;
+const V5_MAX_COMPUTE_UNIT_PRICE_MICROLAMPORTS: u64 = 1_000_000;
 
 const READ_RETRIES: u8 = 12;
 const FINALITY_TIMEOUT: Duration = Duration::from_secs(180);
@@ -52,13 +61,35 @@ pub struct CleanupConfig {
     pub rpc_url: String,
     pub rpc_origin_redacted: String,
     pub payer_keypair: PathBuf,
+    pub refund_recipient_pubkey_file: PathBuf,
+    pub expected_refund_pin_sha256: String,
+    pub expected_proof_account: Pubkey,
+    pub expected_tag67_signature: Signature,
     pub program_keypair: PathBuf,
     pub upgrade_authority_keypair: PathBuf,
     pub sbf: PathBuf,
+    pub program_max_len: usize,
     pub evidence: PathBuf,
     pub expected_genesis_hash: String,
     pub execute_interlock: bool,
     pub acknowledgement: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct PinnedRefundRecipient {
+    path: PathBuf,
+    bytes: Vec<u8>,
+    sha256: String,
+    pubkey: Pubkey,
+    mode: u32,
+    uid: u32,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct FinalizedTag67Binding {
+    signature: Signature,
+    slot: u64,
+    wire_sha256: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -127,10 +158,13 @@ pub struct SimulationEvidence {
 #[derive(Clone, Debug, Serialize)]
 pub struct ProgramDataRefundEvidence {
     pub payer_account_index: usize,
+    pub refund_recipient_account_index: usize,
     pub program_account_index: usize,
     pub programdata_account_index: usize,
     pub payer_pre_lamports: u64,
     pub payer_post_lamports: u64,
+    pub refund_recipient_pre_lamports: u64,
+    pub refund_recipient_post_lamports: u64,
     pub program_pre_lamports: u64,
     pub program_post_lamports: u64,
     pub programdata_pre_lamports: u64,
@@ -138,6 +172,9 @@ pub struct ProgramDataRefundEvidence {
     pub transaction_fee_lamports: u64,
     pub refund_lamports: u64,
     pub payer_delta_plus_fee_lamports: i128,
+    pub refund_recipient_delta_lamports: i128,
+    pub payer_fee_equation_reconciled: bool,
+    pub refund_recipient_equation_reconciled: bool,
     pub exact_refund_equation_reconciled: bool,
     pub program_balance_unchanged: bool,
     pub every_other_message_account_balance_unchanged: bool,
@@ -150,6 +187,18 @@ pub struct PrecloseEvidence {
     pub network_genesis_hash: String,
     pub rpc_origin_redacted: String,
     pub payer_pubkey: String,
+    pub refund_recipient_pubkey: String,
+    pub refund_recipient_pubkey_file_name: String,
+    pub refund_recipient_pubkey_file_sha256: String,
+    pub refund_recipient_pubkey_file_mode: u32,
+    pub expected_proof_account: String,
+    pub expected_tag67_signature: String,
+    pub tag67_finalized_slot: u64,
+    pub tag67_wire_sha256: String,
+    pub tag67_proof_account_role_exact: bool,
+    pub proof_account_absent_initially: bool,
+    pub proof_account_absent_before_signing: bool,
+    pub proof_account_absent_before_submission: bool,
     pub disposable_program_id: String,
     pub programdata_address: String,
     pub upgrade_authority: String,
@@ -182,6 +231,15 @@ pub struct PostcloseEvidence {
     pub generated_at_utc: String,
     pub network_genesis_hash: String,
     pub rpc_origin_redacted: String,
+    pub refund_recipient_pubkey: String,
+    pub refund_recipient_pubkey_file_name: String,
+    pub refund_recipient_pubkey_file_sha256: String,
+    pub refund_recipient_pubkey_file_mode: u32,
+    pub expected_proof_account: String,
+    pub expected_tag67_signature: String,
+    pub tag67_finalized_slot: u64,
+    pub tag67_wire_sha256: String,
+    pub proof_account_absent_after_cleanup: bool,
     pub preclose_evidence_path: String,
     pub preclose_evidence_sha256: String,
     pub preclose_evidence_bytes: usize,
@@ -441,6 +499,168 @@ impl Rpc {
     }
 }
 
+fn fetch_finalized_tag67_binding(
+    rpc: &Rpc,
+    expected_signature: &Signature,
+    program_id: &Pubkey,
+    expected_proof_account: &Pubkey,
+) -> Result<FinalizedTag67Binding> {
+    let (slot, finalized, error) = rpc
+        .signature_status(expected_signature)?
+        .context("expected Tag-67 transaction is not visible")?;
+    ensure!(error.is_none(), "expected Tag-67 transaction failed");
+    ensure!(finalized, "expected Tag-67 transaction is not finalized");
+    let transaction = rpc.finalized_transaction(expected_signature, slot)?;
+    validate_finalized_tag67_transaction(
+        &transaction,
+        expected_signature,
+        program_id,
+        expected_proof_account,
+    )?;
+    Ok(FinalizedTag67Binding {
+        signature: *expected_signature,
+        slot,
+        wire_sha256: sha256(&transaction.wire),
+    })
+}
+
+fn validate_finalized_tag67_transaction(
+    finalized: &FinalizedTransaction,
+    expected_signature: &Signature,
+    program_id: &Pubkey,
+    expected_proof_account: &Pubkey,
+) -> Result<()> {
+    let transaction: VersionedTransaction =
+        bincode::deserialize(&finalized.wire).context("decode finalized Tag-67 wire")?;
+    ensure!(
+        transaction.signatures.first() == Some(expected_signature),
+        "finalized Tag-67 wire has a different signature"
+    );
+    ensure!(
+        transaction.signatures.len() == 1,
+        "canonical V5 Tag-67 transaction must have exactly one signature"
+    );
+    let message = match &transaction.message {
+        VersionedMessage::Legacy(message) => message,
+        VersionedMessage::V0(_) => {
+            bail!("canonical V5 Tag-67 transaction must use a legacy message")
+        }
+    };
+    ensure!(
+        message.instructions.len() == 4,
+        "canonical V5 Tag-67 transaction must contain three compute-budget instructions and Tag 67"
+    );
+    let instruction_program_id = |instruction_index: usize| -> Result<Pubkey> {
+        let instruction = message
+            .instructions
+            .get(instruction_index)
+            .context("Tag-67 instruction index is out of bounds")?;
+        message
+            .account_keys
+            .get(usize::from(instruction.program_id_index))
+            .copied()
+            .context("Tag-67 program-id index is out of bounds")
+    };
+    let compute_budget_program = ComputeBudgetInstruction::set_compute_unit_limit(1).program_id;
+    ensure!(
+        (0..3).all(|index| {
+            instruction_program_id(index).is_ok_and(|program| program == compute_budget_program)
+        }),
+        "canonical V5 Tag-67 compute-budget prefix differs"
+    );
+    ensure!(
+        message.instructions[..3]
+            .iter()
+            .all(|instruction| instruction.accounts.is_empty()),
+        "canonical V5 Tag-67 compute-budget instructions must not carry accounts"
+    );
+    ensure!(
+        message.instructions[0].data
+            == ComputeBudgetInstruction::set_compute_unit_limit(V5_TAG67_COMPUTE_UNIT_LIMIT).data,
+        "canonical V5 Tag-67 compute-unit limit drift"
+    );
+    ensure!(
+        message.instructions[1].data
+            == ComputeBudgetInstruction::request_heap_frame(V5_TAG67_HEAP_FRAME_BYTES).data,
+        "canonical V5 Tag-67 heap-frame request drift"
+    );
+    let price_data = &message.instructions[2].data;
+    ensure!(
+        price_data.len() == 9 && price_data[0] == 3,
+        "canonical V5 Tag-67 compute-unit price instruction drift"
+    );
+    let price = u64::from_le_bytes(
+        price_data[1..]
+            .try_into()
+            .context("decode V5 Tag-67 compute-unit price")?,
+    );
+    ensure!(
+        price <= V5_MAX_COMPUTE_UNIT_PRICE_MICROLAMPORTS,
+        "V5 Tag-67 compute-unit price exceeded the runner safety cap"
+    );
+    ensure!(
+        instruction_program_id(3)? == *program_id,
+        "finalized Tag-67 instruction targets a different Aspis program"
+    );
+    let tag67 = &message.instructions[3];
+    ensure!(
+        aspis_verifier::v5_full_transaction::parse_v5_full_cu_public_inputs(&tag67.data).is_ok(),
+        "finalized Aspis instruction is not the exact Tag-67 public wire"
+    );
+    let tag67_accounts = tag67
+        .accounts
+        .iter()
+        .map(|index| {
+            let index = usize::from(*index);
+            message
+                .account_keys
+                .get(index)
+                .copied()
+                .map(|pubkey| (index, pubkey))
+                .context("Tag-67 account index is out of bounds")
+        })
+        .collect::<Result<Vec<_>>>()?;
+    ensure!(
+        tag67_accounts.len() == 5,
+        "canonical Tag-67 account count drift"
+    );
+    ensure!(
+        tag67_accounts[0].1 == *expected_proof_account,
+        "finalized Tag-67 transaction used a different proof account"
+    );
+    ensure!(
+        message.header.num_required_signatures == 1
+            && tag67_accounts[3].0 == 0
+            && message.account_keys.first() == Some(&tag67_accounts[3].1),
+        "canonical Tag-67 payer must be the sole fee payer and signer"
+    );
+    ensure!(
+        tag67_accounts[4].1 == solana_sdk::system_program::id(),
+        "canonical Tag-67 System Program role drift"
+    );
+    let unique = tag67_accounts
+        .iter()
+        .map(|(_, key)| *key)
+        .collect::<std::collections::BTreeSet<_>>();
+    ensure!(
+        unique.len() == tag67_accounts.len(),
+        "canonical Tag-67 account roles are not distinct"
+    );
+    let role_is = |role: usize, signer: bool, writable: bool| {
+        let index = tag67_accounts[role].0;
+        message.is_signer(index) == signer && message.is_writable(index) == writable
+    };
+    ensure!(
+        role_is(0, false, false)
+            && role_is(1, false, true)
+            && role_is(2, false, true)
+            && role_is(3, true, true)
+            && role_is(4, false, false),
+        "canonical Tag-67 signer/writable roles drift"
+    );
+    Ok(())
+}
+
 struct EvidenceReservation {
     path: PathBuf,
     file: fs::File,
@@ -530,9 +750,14 @@ pub fn parse_cleanup_args(arguments: &[String]) -> Result<CleanupConfig> {
     let allowed = [
         "--rpc-url",
         "--payer-keypair",
+        "--refund-recipient-pubkey-file",
+        "--expected-refund-pin-sha256",
+        "--expected-proof-account",
+        "--expected-tag67-signature",
         "--program-keypair",
         "--upgrade-authority-keypair",
         "--sbf",
+        "--program-max-len",
         "--evidence",
         "--expected-genesis",
         "--acknowledgement",
@@ -560,17 +785,49 @@ pub fn parse_cleanup_args(arguments: &[String]) -> Result<CleanupConfig> {
     );
     let expected_genesis_hash = required("--expected-genesis")?;
     Hash::from_str(&expected_genesis_hash).context("--expected-genesis is not a hash")?;
+    ensure!(
+        expected_genesis_hash == MAINNET_BETA_GENESIS_HASH,
+        "--expected-genesis must equal canonical mainnet-beta"
+    );
     let rpc_url = required("--rpc-url")?;
     let rpc_origin_redacted = explicit_https_rpc(&rpc_url)?;
     let evidence = absolute("--evidence")?;
     evidence_paths(&evidence)?;
+    let expected_proof_account = Pubkey::from_str(&required("--expected-proof-account")?)
+        .context("--expected-proof-account is not a public key")?;
+    ensure!(
+        expected_proof_account.is_on_curve(),
+        "--expected-proof-account must be an on-curve keypair address"
+    );
+    let expected_tag67_signature = Signature::from_str(&required("--expected-tag67-signature")?)
+        .context("--expected-tag67-signature is not a transaction signature")?;
+    let expected_refund_pin_sha256 = required("--expected-refund-pin-sha256")?;
+    ensure!(
+        expected_refund_pin_sha256.len() == 64
+            && expected_refund_pin_sha256
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)),
+        "--expected-refund-pin-sha256 must be 64 lowercase hexadecimal characters"
+    );
+    let program_max_len = required("--program-max-len")?
+        .parse::<usize>()
+        .context("--program-max-len is not usize")?;
+    ensure!(
+        program_max_len == V5_PROGRAM_MAX_LEN,
+        "--program-max-len must equal the frozen V5 allocation of {V5_PROGRAM_MAX_LEN} bytes"
+    );
     Ok(CleanupConfig {
         rpc_url,
         rpc_origin_redacted,
         payer_keypair: absolute("--payer-keypair")?,
+        refund_recipient_pubkey_file: absolute("--refund-recipient-pubkey-file")?,
+        expected_refund_pin_sha256,
+        expected_proof_account,
+        expected_tag67_signature,
         program_keypair: absolute("--program-keypair")?,
         upgrade_authority_keypair: absolute("--upgrade-authority-keypair")?,
         sbf: absolute("--sbf")?,
+        program_max_len,
         evidence,
         expected_genesis_hash,
         execute_interlock,
@@ -582,13 +839,128 @@ pub fn parse_cleanup_args(arguments: &[String]) -> Result<CleanupConfig> {
 /// submission occurs here.
 pub fn build_programdata_cleanup_instructions(
     runtime_program_id: &Pubkey,
-    payer: &Pubkey,
+    refund_recipient: &Pubkey,
     upgrade_authority: &Pubkey,
 ) -> Result<Vec<Instruction>> {
     Ok(vec![
         ComputeBudgetInstruction::set_compute_unit_price(0),
-        build_close_programdata_to_payer(runtime_program_id, payer, upgrade_authority)?,
+        build_close_programdata_to_recipient(
+            runtime_program_id,
+            refund_recipient,
+            upgrade_authority,
+        )?,
     ])
+}
+
+fn validate_exact_v5_cleanup_identity(
+    program_id: &Pubkey,
+    sbf: &[u8],
+    program_max_len: usize,
+) -> Result<()> {
+    ensure!(
+        program_id == &aspis_verifier::id(),
+        "cleanup program keypair is not the canonical Aspis verifier"
+    );
+    ensure!(
+        program_max_len == V5_PROGRAM_MAX_LEN,
+        "cleanup ProgramData allocation differs from frozen V5"
+    );
+    ensure!(
+        sbf.len() == V5_SBF_BYTES && sha256(sbf) == V5_SBF_SHA256,
+        "cleanup SBF is not the exact frozen V5 program"
+    );
+    Ok(())
+}
+
+fn validate_programdata_cleanup_transaction(
+    transaction: &Transaction,
+    payer: &Pubkey,
+    refund_recipient: &Pubkey,
+    runtime_program_id: &Pubkey,
+    upgrade_authority: &Pubkey,
+) -> Result<()> {
+    let programdata = derive_programdata_address(runtime_program_id);
+    ensure!(
+        payer != refund_recipient
+            && payer != runtime_program_id
+            && payer != upgrade_authority
+            && refund_recipient != runtime_program_id
+            && refund_recipient != upgrade_authority
+            && refund_recipient != &programdata
+            && runtime_program_id != upgrade_authority,
+        "cleanup payer, refund recipient, program, ProgramData, and authority roles must be distinct"
+    );
+    let message = &transaction.message;
+    ensure!(
+        message.account_keys.first() == Some(payer),
+        "cleanup signed message has a different fee payer"
+    );
+    ensure!(
+        message.instructions.len() == 2,
+        "cleanup signed message instruction count drift"
+    );
+    let close = &message.instructions[1];
+    let close_program_id = message
+        .account_keys
+        .get(usize::from(close.program_id_index))
+        .context("cleanup close program-id index is out of bounds")?;
+    ensure!(
+        close_program_id == &bpf_loader_upgradeable::id(),
+        "cleanup close does not target loader-v3"
+    );
+    let close_kind: solana_sdk::loader_upgradeable_instruction::UpgradeableLoaderInstruction =
+        bincode::deserialize(&close.data).context("decode cleanup loader-v3 instruction")?;
+    ensure!(
+        matches!(
+            close_kind,
+            solana_sdk::loader_upgradeable_instruction::UpgradeableLoaderInstruction::Close
+        ),
+        "cleanup loader-v3 instruction is not Close"
+    );
+    let close_accounts = close
+        .accounts
+        .iter()
+        .map(|index| {
+            message
+                .account_keys
+                .get(usize::from(*index))
+                .copied()
+                .context("cleanup close account index is out of bounds")
+        })
+        .collect::<Result<Vec<_>>>()?;
+    ensure!(
+        close_accounts
+            == vec![
+                programdata,
+                *refund_recipient,
+                *upgrade_authority,
+                *runtime_program_id,
+            ],
+        "cleanup signed message does not pin the declared refund recipient"
+    );
+    let account_index = |address: &Pubkey| {
+        message
+            .account_keys
+            .iter()
+            .position(|candidate| candidate == address)
+            .with_context(|| format!("cleanup signed message omitted account {address}"))
+    };
+    let payer_index = account_index(payer)?;
+    let recipient_index = account_index(refund_recipient)?;
+    let authority_index = account_index(upgrade_authority)?;
+    ensure!(
+        message.is_signer(payer_index) && message.is_writable(payer_index),
+        "cleanup payer must be a writable signer"
+    );
+    ensure!(
+        !message.is_signer(recipient_index) && message.is_writable(recipient_index),
+        "cleanup refund recipient must be writable and must not sign"
+    );
+    ensure!(
+        message.is_signer(authority_index),
+        "cleanup upgrade authority must sign"
+    );
+    Ok(())
 }
 
 /// Build an instruction that sweeps every lamport except an explicit future
@@ -662,27 +1034,50 @@ pub fn check_sweep_remaining_to_refund_source(
     Ok(())
 }
 
-/// Execute one permanent loader-v3 ProgramData close. This function is inert
-/// unless called by a future command surface with the exact parsed interlocks.
+/// Execute one permanent loader-v3 ProgramData close. The registered command
+/// remains inert unless every explicit interlock and on-chain identity check
+/// succeeds.
 #[allow(clippy::too_many_lines)]
 pub fn execute(arguments: &[String]) -> Result<ProgramDataCleanupOutcome> {
     let config = parse_cleanup_args(arguments)?;
     ensure!(config.execute_interlock);
     ensure!(config.acknowledgement == EXECUTE_CLEANUP_ACKNOWLEDGEMENT);
 
+    let refund_recipient = read_pinned_refund_recipient(&config.refund_recipient_pubkey_file)?;
     let payer = secure_keypair(&config.payer_keypair)?;
+    let payer_metadata = fs::symlink_metadata(&config.payer_keypair)
+        .context("stat cleanup payer keypair for refund-pin ownership check")?;
+    ensure!(
+        refund_recipient.uid == payer_metadata.uid(),
+        "refund recipient pin and payer keypair must have the same file owner"
+    );
+    ensure!(
+        refund_recipient.sha256 == config.expected_refund_pin_sha256,
+        "refund recipient pin SHA-256 differs from the explicit expected digest"
+    );
     let program = secure_keypair(&config.program_keypair)?;
     let upgrade_authority = secure_keypair(&config.upgrade_authority_keypair)?;
     ensure!(
         payer.pubkey() != program.pubkey()
             && payer.pubkey() != upgrade_authority.pubkey()
-            && program.pubkey() != upgrade_authority.pubkey(),
-        "payer, disposable program, and upgrade authority must be distinct"
+            && program.pubkey() != upgrade_authority.pubkey()
+            && refund_recipient.pubkey != payer.pubkey()
+            && refund_recipient.pubkey != program.pubkey()
+            && refund_recipient.pubkey != upgrade_authority.pubkey()
+            && config.expected_proof_account != payer.pubkey()
+            && config.expected_proof_account != refund_recipient.pubkey
+            && config.expected_proof_account != program.pubkey()
+            && config.expected_proof_account != upgrade_authority.pubkey(),
+        "payer, refund recipient, proof, disposable program, and upgrade authority must be distinct"
     );
     let sbf = exact_regular_file(&config.sbf)?;
-    ensure!(!sbf.is_empty(), "SBF image is empty");
+    validate_exact_v5_cleanup_identity(&program.pubkey(), &sbf, config.program_max_len)?;
     let sbf_sha256 = sha256(&sbf);
     let programdata = derive_programdata_address(&program.pubkey());
+    ensure!(
+        config.expected_proof_account != programdata,
+        "expected proof account must differ from ProgramData"
+    );
     let (preclose_path, postclose_path) = evidence_paths(&config.evidence)?;
     ensure!(
         !preclose_path.exists(),
@@ -696,26 +1091,54 @@ pub fn execute(arguments: &[String]) -> Result<ProgramDataCleanupOutcome> {
         observed_genesis == config.expected_genesis_hash,
         "RPC genesis differs from the explicit expected genesis"
     );
+    let tag67_binding = fetch_finalized_tag67_binding(
+        &rpc,
+        &config.expected_tag67_signature,
+        &program.pubkey(),
+        &config.expected_proof_account,
+    )?;
     let addresses = [
         payer.pubkey(),
+        refund_recipient.pubkey,
         program.pubkey(),
         programdata,
         upgrade_authority.pubkey(),
+        config.expected_proof_account,
     ];
-    let initial = rpc.snapshot(&addresses, None)?;
+    let initial = rpc.snapshot(&addresses, Some(tag67_binding.slot))?;
+    validate_refund_recipient_wallet(&initial, &refund_recipient.pubkey)?;
+    require_expected_proof_absent(&initial, &config.expected_proof_account)?;
     validate_cleanup_prestate(
         &initial,
         &program.pubkey(),
         &programdata,
         &upgrade_authority.pubkey(),
         &sbf,
+        config.program_max_len,
     )?;
 
     let (recent_blockhash, last_valid_block_height) = rpc.latest_blockhash()?;
+    // This coherent finalized view is taken immediately before constructing
+    // and signing the only permitted loader close.
+    let presign = rpc.snapshot(&addresses, Some(initial.context_slot))?;
+    validate_refund_recipient_wallet(&presign, &refund_recipient.pubkey)?;
+    require_expected_proof_absent(&presign, &config.expected_proof_account)?;
+    let programdata_presign = validate_cleanup_prestate(
+        &presign,
+        &program.pubkey(),
+        &programdata,
+        &upgrade_authority.pubkey(),
+        &sbf,
+        config.program_max_len,
+    )?;
     let instructions = build_programdata_cleanup_instructions(
         &program.pubkey(),
-        &payer.pubkey(),
+        &refund_recipient.pubkey,
         &upgrade_authority.pubkey(),
+    )?;
+    require_unchanged_refund_recipient_pin(
+        &refund_recipient,
+        &config.refund_recipient_pubkey_file,
     )?;
     let transaction = Transaction::new_signed_with_payer(
         &instructions,
@@ -726,6 +1149,13 @@ pub fn execute(arguments: &[String]) -> Result<ProgramDataCleanupOutcome> {
     transaction
         .verify()
         .map_err(|error| anyhow!("verify signed ProgramData close: {error}"))?;
+    validate_programdata_cleanup_transaction(
+        &transaction,
+        &payer.pubkey(),
+        &refund_recipient.pubkey,
+        &program.pubkey(),
+        &upgrade_authority.pubkey(),
+    )?;
     let wire = bincode::serialize(&transaction)?;
     let expected_signature = transaction.signatures[0];
     let wire_sha256 = sha256(&wire);
@@ -735,24 +1165,13 @@ pub fn execute(arguments: &[String]) -> Result<ProgramDataCleanupOutcome> {
         quoted_fee_lamports <= MAX_PROGRAMDATA_CLEANUP_FEE_LAMPORTS,
         "ProgramData cleanup fee quote exceeds its reserved envelope"
     );
-
-    // Revalidate the complete executable and payer balance at one finalized
-    // context immediately before exact signed simulation.
-    let prestate = rpc.snapshot(&addresses, Some(initial.context_slot))?;
-    let programdata_pre = validate_cleanup_prestate(
-        &prestate,
-        &program.pubkey(),
-        &programdata,
-        &upgrade_authority.pubkey(),
-        &sbf,
-    )?;
     ensure!(
-        quoted_fee_lamports < programdata_pre.lamports,
+        quoted_fee_lamports < programdata_presign.lamports,
         "cleanup fee is not strictly smaller than the expected refund"
     );
-    let simulation = rpc.simulate_exact(&wire, prestate.context_slot)?;
+    let simulation = rpc.simulate_exact(&wire, presign.context_slot)?;
     ensure!(
-        simulation.context_slot >= prestate.context_slot,
+        simulation.context_slot >= presign.context_slot,
         "exact signed simulation used state older than the coherent prestate"
     );
     ensure!(
@@ -760,19 +1179,55 @@ pub fn execute(arguments: &[String]) -> Result<ProgramDataCleanupOutcome> {
         "exact signed ProgramData close simulation rejected: {:?}",
         simulation.error
     );
+
+    // Recheck finalized state after simulation and immediately before
+    // journaling/submitting the signed wire. ProgramData cleanup is forbidden
+    // until the V5 proof account is absent.
+    let prestate = rpc.snapshot(&addresses, Some(simulation.context_slot))?;
+    validate_refund_recipient_wallet(&prestate, &refund_recipient.pubkey)?;
+    require_expected_proof_absent(&prestate, &config.expected_proof_account)?;
+    let programdata_pre = validate_cleanup_prestate(
+        &prestate,
+        &program.pubkey(),
+        &programdata,
+        &upgrade_authority.pubkey(),
+        &sbf,
+        config.program_max_len,
+    )?;
+    ensure!(
+        programdata_pre == programdata_presign,
+        "ProgramData changed between signing and the pre-submission snapshot"
+    );
     let preclose = PrecloseEvidence {
         artifact: "spend_programdata_cleanup_preclose",
         generated_at_utc: chrono::Utc::now().to_rfc3339(),
         network_genesis_hash: observed_genesis.clone(),
         rpc_origin_redacted: config.rpc_origin_redacted.clone(),
         payer_pubkey: payer.pubkey().to_string(),
+        refund_recipient_pubkey: refund_recipient.pubkey.to_string(),
+        refund_recipient_pubkey_file_name: refund_recipient
+            .path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .context("refund recipient pin filename is not UTF-8")?
+            .to_owned(),
+        refund_recipient_pubkey_file_sha256: refund_recipient.sha256.clone(),
+        refund_recipient_pubkey_file_mode: refund_recipient.mode,
+        expected_proof_account: config.expected_proof_account.to_string(),
+        expected_tag67_signature: tag67_binding.signature.to_string(),
+        tag67_finalized_slot: tag67_binding.slot,
+        tag67_wire_sha256: tag67_binding.wire_sha256.clone(),
+        tag67_proof_account_role_exact: true,
+        proof_account_absent_initially: true,
+        proof_account_absent_before_signing: true,
+        proof_account_absent_before_submission: true,
         disposable_program_id: program.pubkey().to_string(),
         programdata_address: programdata.to_string(),
         upgrade_authority: upgrade_authority.pubkey().to_string(),
         sbf_path: config.sbf.display().to_string(),
         sbf_bytes: sbf.len(),
         sbf_sha256,
-        program_max_len: sbf.len(),
+        program_max_len: config.program_max_len,
         exact_program_and_programdata_validated: true,
         prestate: prestate.evidence(),
         programdata_lamports: programdata_pre.lamports,
@@ -808,6 +1263,7 @@ pub fn execute(arguments: &[String]) -> Result<ProgramDataCleanupOutcome> {
         &finalized.post_balances,
         finalized.fee_lamports,
         &payer.pubkey(),
+        &refund_recipient.pubkey,
         &program.pubkey(),
         &programdata,
         programdata_pre.lamports,
@@ -818,6 +1274,8 @@ pub fn execute(arguments: &[String]) -> Result<ProgramDataCleanupOutcome> {
     );
 
     let poststate = rpc.snapshot(&addresses, Some(finalized_slot))?;
+    validate_refund_recipient_wallet(&poststate, &refund_recipient.pubkey)?;
+    require_expected_proof_absent(&poststate, &config.expected_proof_account)?;
     let pre_program = prestate.required(&program.pubkey(), "pre-close Program")?;
     let post_program = poststate.required(&program.pubkey(), "post-close Program")?;
     ensure!(
@@ -842,6 +1300,20 @@ pub fn execute(arguments: &[String]) -> Result<ProgramDataCleanupOutcome> {
         generated_at_utc: chrono::Utc::now().to_rfc3339(),
         network_genesis_hash: observed_genesis,
         rpc_origin_redacted: config.rpc_origin_redacted,
+        refund_recipient_pubkey: refund_recipient.pubkey.to_string(),
+        refund_recipient_pubkey_file_name: refund_recipient
+            .path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .context("refund recipient pin filename is not UTF-8")?
+            .to_owned(),
+        refund_recipient_pubkey_file_sha256: refund_recipient.sha256,
+        refund_recipient_pubkey_file_mode: refund_recipient.mode,
+        expected_proof_account: config.expected_proof_account.to_string(),
+        expected_tag67_signature: tag67_binding.signature.to_string(),
+        tag67_finalized_slot: tag67_binding.slot,
+        tag67_wire_sha256: tag67_binding.wire_sha256,
+        proof_account_absent_after_cleanup: true,
         preclose_evidence_path: preclose_receipt.path.clone(),
         preclose_evidence_sha256: preclose_receipt.sha256.clone(),
         preclose_evidence_bytes: preclose_receipt.bytes,
@@ -919,6 +1391,7 @@ fn validate_cleanup_prestate<'a>(
     programdata: &Pubkey,
     upgrade_authority: &Pubkey,
     sbf: &[u8],
+    program_max_len: usize,
 ) -> Result<&'a RpcAccount> {
     let program_account = snapshot.required(program, "disposable Program")?;
     let programdata_account = snapshot.required(programdata, "disposable ProgramData")?;
@@ -941,7 +1414,7 @@ fn validate_cleanup_prestate<'a>(
         program,
         upgrade_authority,
         sbf,
-        sbf.len(),
+        program_max_len,
     )?;
     ensure!(
         programdata_account.lamports > MAX_PROGRAMDATA_CLEANUP_FEE_LAMPORTS,
@@ -957,6 +1430,7 @@ pub fn check_programdata_refund_equation(
     post_balances: &[u64],
     transaction_fee_lamports: u64,
     payer: &Pubkey,
+    refund_recipient: &Pubkey,
     program: &Pubkey,
     programdata: &Pubkey,
     expected_programdata_lamports: u64,
@@ -972,15 +1446,21 @@ pub fn check_programdata_refund_equation(
             .with_context(|| format!("cleanup transaction omitted account {address}"))
     };
     let payer_index = index(payer)?;
+    let refund_recipient_index = index(refund_recipient)?;
     let program_index = index(program)?;
     let programdata_index = index(programdata)?;
     ensure!(
-        payer_index != program_index
+        payer_index != refund_recipient_index
+            && payer_index != program_index
             && payer_index != programdata_index
+            && refund_recipient_index != program_index
+            && refund_recipient_index != programdata_index
             && program_index != programdata_index
     );
     let payer_pre = pre_balances[payer_index];
     let payer_post = post_balances[payer_index];
+    let refund_recipient_pre = pre_balances[refund_recipient_index];
+    let refund_recipient_post = post_balances[refund_recipient_index];
     let program_pre = pre_balances[program_index];
     let program_post = post_balances[program_index];
     let programdata_pre = pre_balances[programdata_index];
@@ -995,10 +1475,20 @@ pub fn check_programdata_refund_equation(
         .context("ProgramData balance increased")?;
     let payer_delta_plus_fee =
         i128::from(payer_post) - i128::from(payer_pre) + i128::from(transaction_fee_lamports);
-    let exact_refund_equation_reconciled = payer_delta_plus_fee == i128::from(refund_lamports);
+    let refund_recipient_delta =
+        i128::from(refund_recipient_post) - i128::from(refund_recipient_pre);
+    let payer_fee_equation_reconciled = payer_delta_plus_fee == 0;
+    let refund_recipient_equation_reconciled =
+        refund_recipient_delta == i128::from(refund_lamports);
+    let exact_refund_equation_reconciled =
+        payer_fee_equation_reconciled && refund_recipient_equation_reconciled;
     ensure!(
-        exact_refund_equation_reconciled,
-        "payer delta plus fee does not equal ProgramData refund"
+        payer_fee_equation_reconciled,
+        "payer balance decrease does not equal the cleanup fee"
+    );
+    ensure!(
+        refund_recipient_equation_reconciled,
+        "pinned refund recipient did not receive the complete ProgramData refund"
     );
     let program_balance_unchanged = program_pre == program_post;
     ensure!(program_balance_unchanged, "Program account balance changed");
@@ -1007,18 +1497,24 @@ pub fn check_programdata_refund_equation(
         .zip(post_balances)
         .enumerate()
         .all(|(index, (pre, post))| {
-            index == payer_index || index == programdata_index || pre == post
+            index == payer_index
+                || index == refund_recipient_index
+                || index == programdata_index
+                || pre == post
         });
     ensure!(
         every_other_message_account_balance_unchanged,
-        "a non-payer/non-ProgramData message balance changed"
+        "an unrelated cleanup message-account balance changed"
     );
     Ok(ProgramDataRefundEvidence {
         payer_account_index: payer_index,
+        refund_recipient_account_index: refund_recipient_index,
         program_account_index: program_index,
         programdata_account_index: programdata_index,
         payer_pre_lamports: payer_pre,
         payer_post_lamports: payer_post,
+        refund_recipient_pre_lamports: refund_recipient_pre,
+        refund_recipient_post_lamports: refund_recipient_post,
         program_pre_lamports: program_pre,
         program_post_lamports: program_post,
         programdata_pre_lamports: programdata_pre,
@@ -1026,6 +1522,9 @@ pub fn check_programdata_refund_equation(
         transaction_fee_lamports,
         refund_lamports,
         payer_delta_plus_fee_lamports: payer_delta_plus_fee,
+        refund_recipient_delta_lamports: refund_recipient_delta,
+        payer_fee_equation_reconciled,
+        refund_recipient_equation_reconciled,
         exact_refund_equation_reconciled,
         program_balance_unchanged,
         every_other_message_account_balance_unchanged,
@@ -1218,6 +1717,135 @@ fn secure_keypair(path: &Path) -> Result<Keypair> {
         "keypair permissions must exclude group/other access"
     );
     read_keypair_file(path).map_err(|_| anyhow!("could not decode keypair {}", path.display()))
+}
+
+fn workspace_root() -> Result<PathBuf> {
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let root = manifest_dir
+        .parent()
+        .context("xtask manifest directory has no workspace parent")?;
+    fs::canonicalize(root).context("canonicalize workspace root")
+}
+
+fn read_pinned_refund_recipient(path: &Path) -> Result<PinnedRefundRecipient> {
+    let root = workspace_root()?;
+    read_pinned_refund_recipient_outside(path, &root)
+}
+
+fn read_pinned_refund_recipient_outside(
+    path: &Path,
+    excluded_root: &Path,
+) -> Result<PinnedRefundRecipient> {
+    ensure!(
+        path.is_absolute(),
+        "refund recipient public-key file must be an absolute path"
+    );
+    let path_metadata = fs::symlink_metadata(path).with_context(|| {
+        format!(
+            "refund recipient public-key file unavailable: {}",
+            path.display()
+        )
+    })?;
+    ensure!(
+        path_metadata.file_type().is_file() && !path_metadata.file_type().is_symlink(),
+        "refund recipient public-key file must be a regular non-symlink file"
+    );
+    let mode = path_metadata.permissions().mode() & 0o777;
+    ensure!(
+        mode == 0o400 || mode == 0o600,
+        "refund recipient public-key file mode must be 0400 or 0600"
+    );
+    let canonical_path = fs::canonicalize(path)
+        .with_context(|| format!("canonicalize refund recipient file {}", path.display()))?;
+    let canonical_root =
+        fs::canonicalize(excluded_root).context("canonicalize excluded workspace root")?;
+    ensure!(
+        !canonical_path.starts_with(&canonical_root),
+        "refund recipient public-key file must be outside the workspace"
+    );
+
+    let mut file = fs::File::open(path)
+        .with_context(|| format!("open refund recipient file {}", path.display()))?;
+    let opened_metadata = file
+        .metadata()
+        .with_context(|| format!("stat opened refund recipient file {}", path.display()))?;
+    ensure!(
+        opened_metadata.file_type().is_file()
+            && opened_metadata.dev() == path_metadata.dev()
+            && opened_metadata.ino() == path_metadata.ino()
+            && opened_metadata.permissions().mode() & 0o777 == mode,
+        "refund recipient public-key file changed while opening"
+    );
+    let mut bytes = Vec::new();
+    file.read_to_end(&mut bytes)
+        .with_context(|| format!("read refund recipient file {}", path.display()))?;
+    ensure!(
+        bytes.len() > 1
+            && bytes.last() == Some(&b'\n')
+            && bytes.iter().filter(|byte| **byte == b'\n').count() == 1
+            && !bytes.contains(&b'\r'),
+        "refund recipient public-key file must contain exactly one LF-terminated line"
+    );
+    let text = std::str::from_utf8(&bytes[..bytes.len() - 1])
+        .context("refund recipient public key is not UTF-8")?;
+    ensure!(
+        !text.is_empty() && !text.chars().any(char::is_whitespace),
+        "refund recipient public key contains whitespace"
+    );
+    let pubkey = Pubkey::from_str(text).context("refund recipient public key is invalid")?;
+    ensure!(
+        pubkey.to_string() == text,
+        "refund recipient public key is not in canonical base58 form"
+    );
+    ensure!(
+        pubkey.is_on_curve(),
+        "refund recipient must be an on-curve wallet public key"
+    );
+    Ok(PinnedRefundRecipient {
+        path: canonical_path,
+        sha256: sha256(&bytes),
+        bytes,
+        pubkey,
+        mode,
+        uid: opened_metadata.uid(),
+    })
+}
+
+fn require_unchanged_refund_recipient_pin(
+    expected: &PinnedRefundRecipient,
+    configured_path: &Path,
+) -> Result<()> {
+    let observed = read_pinned_refund_recipient(configured_path)?;
+    ensure!(
+        observed == *expected,
+        "refund recipient public-key file changed before signing"
+    );
+    Ok(())
+}
+
+fn validate_refund_recipient_wallet(
+    snapshot: &CoherentSnapshot,
+    refund_recipient: &Pubkey,
+) -> Result<()> {
+    let account = snapshot.required(refund_recipient, "refund recipient wallet")?;
+    ensure!(
+        account.owner == solana_sdk::system_program::id()
+            && !account.executable
+            && account.data.is_empty(),
+        "refund recipient must be an existing System-owned zero-data wallet"
+    );
+    Ok(())
+}
+
+fn require_expected_proof_absent(
+    snapshot: &CoherentSnapshot,
+    expected_proof_account: &Pubkey,
+) -> Result<()> {
+    ensure!(
+        snapshot.account(expected_proof_account)?.is_none(),
+        "expected V5 proof account still exists; close it before ProgramData cleanup"
+    );
+    Ok(())
 }
 
 fn exact_regular_file(path: &Path) -> Result<Vec<u8>> {
@@ -1428,16 +2056,26 @@ mod tests {
             "https://rpc.example.test/private?key=secret".to_owned(),
             "--payer-keypair".to_owned(),
             root.join("payer.json").display().to_string(),
+            "--refund-recipient-pubkey-file".to_owned(),
+            root.join("refund-recipient.pubkey").display().to_string(),
+            "--expected-refund-pin-sha256".to_owned(),
+            "00".repeat(32),
+            "--expected-proof-account".to_owned(),
+            Keypair::new().pubkey().to_string(),
+            "--expected-tag67-signature".to_owned(),
+            Keypair::new().sign_message(b"tag67").to_string(),
             "--program-keypair".to_owned(),
             root.join("program.json").display().to_string(),
             "--upgrade-authority-keypair".to_owned(),
             root.join("authority.json").display().to_string(),
             "--sbf".to_owned(),
             root.join("program.so").display().to_string(),
+            "--program-max-len".to_owned(),
+            V5_PROGRAM_MAX_LEN.to_string(),
             "--evidence".to_owned(),
             root.join("cleanup.json").display().to_string(),
             "--expected-genesis".to_owned(),
-            Hash::new_unique().to_string(),
+            MAINNET_BETA_GENESIS_HASH.to_owned(),
             "--acknowledgement".to_owned(),
             EXECUTE_CLEANUP_ACKNOWLEDGEMENT.to_owned(),
         ]
@@ -1454,9 +2092,22 @@ mod tests {
             "https://rpc.example.test/<redacted>"
         );
         assert!(!config.rpc_origin_redacted.contains("secret"));
+        assert_eq!(
+            config.refund_recipient_pubkey_file,
+            root.0.join("refund-recipient.pubkey")
+        );
+        assert_eq!(config.program_max_len, V5_PROGRAM_MAX_LEN);
+        assert!(config.expected_proof_account.is_on_curve());
 
         let without_interlock = arguments[1..].to_vec();
         assert!(parse_cleanup_args(&without_interlock).is_err());
+        let mut without_refund_pin = arguments.clone();
+        let refund_pin_index = without_refund_pin
+            .iter()
+            .position(|value| value == "--refund-recipient-pubkey-file")
+            .unwrap();
+        without_refund_pin.drain(refund_pin_index..=refund_pin_index + 1);
+        assert!(parse_cleanup_args(&without_refund_pin).is_err());
         let mut wrong_ack = arguments.clone();
         *wrong_ack.last_mut().unwrap() = "no".to_owned();
         assert!(parse_cleanup_args(&wrong_ack).is_err());
@@ -1467,12 +2118,59 @@ mod tests {
     }
 
     #[test]
+    fn parser_pins_v5_allocation_genesis_proof_and_refund_digest() {
+        let root = TempDir::new();
+        let replace = |arguments: &mut [String], key: &str, value: String| {
+            let index = arguments
+                .iter()
+                .position(|candidate| candidate == key)
+                .unwrap();
+            arguments[index + 1] = value;
+        };
+
+        let mut wrong_max_len = valid_arguments(&root.0);
+        replace(
+            &mut wrong_max_len,
+            "--program-max-len",
+            V5_SBF_BYTES.to_string(),
+        );
+        assert!(parse_cleanup_args(&wrong_max_len).is_err());
+
+        let mut wrong_genesis = valid_arguments(&root.0);
+        replace(
+            &mut wrong_genesis,
+            "--expected-genesis",
+            Hash::new_unique().to_string(),
+        );
+        assert!(parse_cleanup_args(&wrong_genesis).is_err());
+
+        let mut off_curve_proof = valid_arguments(&root.0);
+        let (program_address, _) =
+            Pubkey::find_program_address(&[b"cleanup-proof-test"], &Pubkey::new_unique());
+        replace(
+            &mut off_curve_proof,
+            "--expected-proof-account",
+            program_address.to_string(),
+        );
+        assert!(parse_cleanup_args(&off_curve_proof).is_err());
+
+        let mut malformed_pin_digest = valid_arguments(&root.0);
+        replace(
+            &mut malformed_pin_digest,
+            "--expected-refund-pin-sha256",
+            "AA".repeat(32),
+        );
+        assert!(parse_cleanup_args(&malformed_pin_digest).is_err());
+    }
+
+    #[test]
     fn cleanup_builder_is_explicitly_zero_priority_and_links_programdata() {
-        let payer = Pubkey::new_unique();
+        let refund_recipient = Pubkey::new_unique();
         let program = Pubkey::new_unique();
         let authority = Pubkey::new_unique();
         let instructions =
-            build_programdata_cleanup_instructions(&program, &payer, &authority).unwrap();
+            build_programdata_cleanup_instructions(&program, &refund_recipient, &authority)
+                .unwrap();
         assert_eq!(instructions.len(), 2);
         assert_eq!(
             instructions[0],
@@ -1487,12 +2185,293 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![
                 derive_programdata_address(&program),
-                payer,
+                refund_recipient,
                 authority,
                 program
             ]
         );
         assert!(instructions[1].accounts[2].is_signer);
+    }
+
+    #[test]
+    fn cleanup_identity_is_the_exact_frozen_v5_program() {
+        let sbf = include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../release/aspis-v5-tag67-frozen-candidate-v1/program/aspis_verifier_v5_tag67.so"
+        ));
+        validate_exact_v5_cleanup_identity(&aspis_verifier::id(), sbf, V5_PROGRAM_MAX_LEN).unwrap();
+        assert!(
+            validate_exact_v5_cleanup_identity(&Pubkey::new_unique(), sbf, V5_PROGRAM_MAX_LEN,)
+                .is_err()
+        );
+        assert!(validate_exact_v5_cleanup_identity(
+            &aspis_verifier::id(),
+            &sbf[..sbf.len() - 1],
+            V5_PROGRAM_MAX_LEN,
+        )
+        .is_err());
+        assert!(
+            validate_exact_v5_cleanup_identity(&aspis_verifier::id(), sbf, V5_SBF_BYTES).is_err()
+        );
+    }
+
+    #[test]
+    fn signed_cleanup_message_pins_recipient_and_rejects_poison_substitution() {
+        let payer = Keypair::new();
+        let refund_recipient = Keypair::new().pubkey();
+        let poison_recipient = Keypair::new().pubkey();
+        let program = Pubkey::new_unique();
+        let authority = Keypair::new();
+        let blockhash = Hash::new_unique();
+        let instructions = build_programdata_cleanup_instructions(
+            &program,
+            &refund_recipient,
+            &authority.pubkey(),
+        )
+        .unwrap();
+        let transaction = Transaction::new_signed_with_payer(
+            &instructions,
+            Some(&payer.pubkey()),
+            &[&payer, &authority],
+            blockhash,
+        );
+        validate_programdata_cleanup_transaction(
+            &transaction,
+            &payer.pubkey(),
+            &refund_recipient,
+            &program,
+            &authority.pubkey(),
+        )
+        .unwrap();
+
+        let poisoned_instructions = build_programdata_cleanup_instructions(
+            &program,
+            &poison_recipient,
+            &authority.pubkey(),
+        )
+        .unwrap();
+        let poisoned = Transaction::new_signed_with_payer(
+            &poisoned_instructions,
+            Some(&payer.pubkey()),
+            &[&payer, &authority],
+            blockhash,
+        );
+        assert!(validate_programdata_cleanup_transaction(
+            &poisoned,
+            &payer.pubkey(),
+            &refund_recipient,
+            &program,
+            &authority.pubkey(),
+        )
+        .is_err());
+    }
+
+    fn finalized_tag67_fixture(
+        program: Pubkey,
+        proof: Pubkey,
+    ) -> (FinalizedTransaction, Signature) {
+        let payer = Keypair::new();
+        let pool = Pubkey::new_unique();
+        let nullifier = Pubkey::new_unique();
+        let mut wire = vec![0u8; 169];
+        wire[0] = 67;
+        let tag67 = Instruction {
+            program_id: program,
+            accounts: vec![
+                solana_sdk::instruction::AccountMeta::new_readonly(proof, false),
+                solana_sdk::instruction::AccountMeta::new(pool, false),
+                solana_sdk::instruction::AccountMeta::new(nullifier, false),
+                solana_sdk::instruction::AccountMeta::new(payer.pubkey(), true),
+                solana_sdk::instruction::AccountMeta::new_readonly(
+                    solana_sdk::system_program::id(),
+                    false,
+                ),
+            ],
+            data: wire,
+        };
+        let transaction = Transaction::new_signed_with_payer(
+            &[
+                ComputeBudgetInstruction::set_compute_unit_limit(1_356_912),
+                ComputeBudgetInstruction::request_heap_frame(262_144),
+                ComputeBudgetInstruction::set_compute_unit_price(1_000),
+                tag67,
+            ],
+            Some(&payer.pubkey()),
+            &[&payer],
+            Hash::new_unique(),
+        );
+        let signature = transaction.signatures[0];
+        (
+            FinalizedTransaction {
+                slot: 77,
+                block_time: None,
+                fee_lamports: 5_000,
+                pre_balances: Vec::new(),
+                post_balances: Vec::new(),
+                compute_units: 1_300_000,
+                logs: Vec::new(),
+                wire: bincode::serialize(&transaction).unwrap(),
+            },
+            signature,
+        )
+    }
+
+    #[test]
+    fn finalized_tag67_binding_requires_the_exact_proof_role() {
+        let program = Pubkey::new_unique();
+        let proof = Keypair::new().pubkey();
+        let poison_proof = Keypair::new().pubkey();
+        let (finalized, signature) = finalized_tag67_fixture(program, proof);
+        validate_finalized_tag67_transaction(&finalized, &signature, &program, &proof).unwrap();
+        assert!(validate_finalized_tag67_transaction(
+            &finalized,
+            &signature,
+            &program,
+            &poison_proof,
+        )
+        .is_err());
+        assert!(validate_finalized_tag67_transaction(
+            &finalized,
+            &Keypair::new().sign_message(b"other"),
+            &program,
+            &proof,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn finalized_tag67_binding_rejects_compute_budget_shape_drift() {
+        let program = Pubkey::new_unique();
+        let proof = Keypair::new().pubkey();
+        let (finalized, signature) = finalized_tag67_fixture(program, proof);
+
+        let mutate_instruction = |index: usize, replacement: Instruction| {
+            let mut changed = finalized.clone();
+            let mut transaction: VersionedTransaction =
+                bincode::deserialize(&changed.wire).unwrap();
+            let VersionedMessage::Legacy(message) = &mut transaction.message else {
+                unreachable!()
+            };
+            message.instructions[index].data = replacement.data;
+            changed.wire = bincode::serialize(&transaction).unwrap();
+            changed
+        };
+
+        let wrong_limit = mutate_instruction(
+            0,
+            ComputeBudgetInstruction::set_compute_unit_limit(
+                V5_TAG67_COMPUTE_UNIT_LIMIT.saturating_sub(1),
+            ),
+        );
+        assert!(
+            validate_finalized_tag67_transaction(&wrong_limit, &signature, &program, &proof,)
+                .is_err()
+        );
+
+        let wrong_heap = mutate_instruction(
+            1,
+            ComputeBudgetInstruction::request_heap_frame(
+                V5_TAG67_HEAP_FRAME_BYTES.saturating_sub(1024),
+            ),
+        );
+        assert!(
+            validate_finalized_tag67_transaction(&wrong_heap, &signature, &program, &proof,)
+                .is_err()
+        );
+
+        let excessive_price = mutate_instruction(
+            2,
+            ComputeBudgetInstruction::set_compute_unit_price(
+                V5_MAX_COMPUTE_UNIT_PRICE_MICROLAMPORTS + 1,
+            ),
+        );
+        assert!(validate_finalized_tag67_transaction(
+            &excessive_price,
+            &signature,
+            &program,
+            &proof,
+        )
+        .is_err());
+    }
+
+    fn write_refund_pin(path: &Path, pubkey: Pubkey, mode: u32) {
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(mode)
+            .open(path)
+            .unwrap();
+        writeln!(file, "{pubkey}").unwrap();
+        file.sync_all().unwrap();
+        let mut permissions = file.metadata().unwrap().permissions();
+        permissions.set_mode(mode);
+        fs::set_permissions(path, permissions).unwrap();
+    }
+
+    #[test]
+    fn refund_recipient_pin_is_exact_private_and_outside_workspace() {
+        let root = TempDir::new();
+        let excluded = root.0.join("workspace");
+        fs::create_dir(&excluded).unwrap();
+        let path = root.0.join("refund.pubkey");
+        let refund_recipient = Keypair::new().pubkey();
+        write_refund_pin(&path, refund_recipient, 0o400);
+        let pin = read_pinned_refund_recipient_outside(&path, &excluded).unwrap();
+        assert_eq!(pin.pubkey, refund_recipient);
+        assert_eq!(pin.mode, 0o400);
+        assert_eq!(pin.path, fs::canonicalize(&path).unwrap());
+        assert_eq!(pin.sha256, sha256(&fs::read(&path).unwrap()));
+    }
+
+    #[test]
+    fn refund_recipient_pin_rejects_insecure_or_ambiguous_files() {
+        let root = TempDir::new();
+        let excluded = root.0.join("workspace");
+        fs::create_dir(&excluded).unwrap();
+
+        let insecure = root.0.join("insecure.pubkey");
+        write_refund_pin(&insecure, Keypair::new().pubkey(), 0o644);
+        assert!(read_pinned_refund_recipient_outside(&insecure, &excluded).is_err());
+
+        let multiline = root.0.join("multiline.pubkey");
+        let mut multiline_file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(&multiline)
+            .unwrap();
+        writeln!(multiline_file, "{}", Keypair::new().pubkey()).unwrap();
+        writeln!(multiline_file, "{}", Keypair::new().pubkey()).unwrap();
+        multiline_file.sync_all().unwrap();
+        assert!(read_pinned_refund_recipient_outside(&multiline, &excluded).is_err());
+
+        let inside = excluded.join("inside.pubkey");
+        write_refund_pin(&inside, Keypair::new().pubkey(), 0o600);
+        assert!(read_pinned_refund_recipient_outside(&inside, &excluded).is_err());
+
+        let off_curve = root.0.join("off-curve.pubkey");
+        let (program_address, _) =
+            Pubkey::find_program_address(&[b"refund-pin-test"], &Pubkey::new_unique());
+        write_refund_pin(&off_curve, program_address, 0o600);
+        assert!(read_pinned_refund_recipient_outside(&off_curve, &excluded).is_err());
+
+        let target = root.0.join("target.pubkey");
+        write_refund_pin(&target, Keypair::new().pubkey(), 0o600);
+        let symlink = root.0.join("symlink.pubkey");
+        std::os::unix::fs::symlink(&target, &symlink).unwrap();
+        assert!(read_pinned_refund_recipient_outside(&symlink, &excluded).is_err());
+    }
+
+    #[test]
+    fn refund_recipient_pin_change_is_rejected_before_signing() {
+        let root = TempDir::new();
+        let path = root.0.join("refund.pubkey");
+        write_refund_pin(&path, Keypair::new().pubkey(), 0o600);
+        let expected = read_pinned_refund_recipient(&path).unwrap();
+
+        fs::remove_file(&path).unwrap();
+        write_refund_pin(&path, Keypair::new().pubkey(), 0o600);
+        assert!(require_unchanged_refund_recipient_pin(&expected, &path).is_err());
     }
 
     #[test]
@@ -1520,37 +2499,116 @@ mod tests {
     }
 
     #[test]
+    fn refund_recipient_must_be_an_existing_system_wallet() {
+        let refund_recipient = Keypair::new().pubkey();
+        let wallet = RpcAccount {
+            lamports: 7,
+            owner: solana_sdk::system_program::id(),
+            executable: false,
+            data: Vec::new(),
+        };
+        let mut snapshot = CoherentSnapshot {
+            context_slot: 1,
+            addresses: vec![refund_recipient],
+            accounts: vec![Some(wallet.clone())],
+        };
+        validate_refund_recipient_wallet(&snapshot, &refund_recipient).unwrap();
+
+        snapshot.accounts[0] = None;
+        assert!(validate_refund_recipient_wallet(&snapshot, &refund_recipient).is_err());
+        snapshot.accounts[0] = Some(RpcAccount {
+            owner: Pubkey::new_unique(),
+            ..wallet.clone()
+        });
+        assert!(validate_refund_recipient_wallet(&snapshot, &refund_recipient).is_err());
+        snapshot.accounts[0] = Some(RpcAccount {
+            data: vec![1],
+            ..wallet
+        });
+        assert!(validate_refund_recipient_wallet(&snapshot, &refund_recipient).is_err());
+    }
+
+    #[test]
+    fn programdata_cleanup_requires_the_expected_proof_account_to_be_absent() {
+        let proof = Keypair::new().pubkey();
+        let mut snapshot = CoherentSnapshot {
+            context_slot: 1,
+            addresses: vec![proof],
+            accounts: vec![None],
+        };
+        require_expected_proof_absent(&snapshot, &proof).unwrap();
+        snapshot.accounts[0] = Some(RpcAccount {
+            lamports: 1,
+            owner: aspis_verifier::id(),
+            executable: false,
+            data: vec![1],
+        });
+        assert!(require_expected_proof_absent(&snapshot, &proof).is_err());
+    }
+
+    #[test]
     fn refund_equation_requires_full_programdata_refund_and_program_retention() {
         let payer = Pubkey::new_unique();
+        let refund_recipient = Pubkey::new_unique();
         let program = Pubkey::new_unique();
         let programdata = derive_programdata_address(&program);
         let loader = bpf_loader_upgradeable::id();
-        let keys = [payer, programdata, program, loader];
+        let keys = [payer, refund_recipient, programdata, program, loader];
         let fee = 10_000u64;
         let refund = 6_417_266_160u64;
         let payer_pre = 1_000_000_000u64;
-        let payer_post = payer_pre + refund - fee;
+        let payer_post = payer_pre - fee;
+        let recipient_pre = 44_000u64;
+        let recipient_post = recipient_pre + refund;
         let evidence = check_programdata_refund_equation(
             &keys,
-            &[payer_pre, refund, 1_141_440, 1],
-            &[payer_post, 0, 1_141_440, 1],
+            &[payer_pre, recipient_pre, refund, 1_141_440, 1],
+            &[payer_post, recipient_post, 0, 1_141_440, 1],
             fee,
             &payer,
+            &refund_recipient,
             &program,
             &programdata,
             refund,
         )
         .unwrap();
         assert!(evidence.exact_refund_equation_reconciled);
+        assert!(evidence.payer_fee_equation_reconciled);
+        assert!(evidence.refund_recipient_equation_reconciled);
         assert!(evidence.program_balance_unchanged);
         assert_eq!(evidence.refund_lamports, refund);
 
         assert!(check_programdata_refund_equation(
             &keys,
-            &[payer_pre, refund, 1_141_440, 1],
-            &[payer_post, 1, 1_141_440, 1],
+            &[payer_pre, recipient_pre, refund, 1_141_440, 1],
+            &[payer_post, recipient_post, 1, 1_141_440, 1],
             fee,
             &payer,
+            &refund_recipient,
+            &program,
+            &programdata,
+            refund,
+        )
+        .is_err());
+        assert!(check_programdata_refund_equation(
+            &keys,
+            &[payer_pre, recipient_pre, refund, 1_141_440, 1],
+            &[payer_post, recipient_post - 1, 0, 1_141_440, 1],
+            fee,
+            &payer,
+            &refund_recipient,
+            &program,
+            &programdata,
+            refund,
+        )
+        .is_err());
+        assert!(check_programdata_refund_equation(
+            &keys,
+            &[payer_pre, recipient_pre, refund, 1_141_440, 1],
+            &[payer_post - 1, recipient_post, 0, 1_141_440, 1],
+            fee,
+            &payer,
+            &refund_recipient,
             &program,
             &programdata,
             refund,
