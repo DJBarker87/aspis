@@ -1,10 +1,10 @@
 name: V5 release provenance
 
 # The q18/g37 release keeps its existing provenance workflow. This workflow is
-# the fail-closed path for a final V5 Tag-67 mainnet release. It rebuilds the
-# frozen SBF from the documented clean source commit, checks exact byte
-# equality, runs the retained V5 verifier checks and maintained Lean build, and
-# forces a fresh paper build.
+# the fail-closed path for a final V5 Tag-67 mainnet release. Its macOS arm64
+# lane reproduces the frozen SBF on the architecture that created it. Its Linux
+# lane runs the retained verifier checks, maintained Lean build, and pinned
+# paper build. Both lanes must pass.
 
 on:
   push:
@@ -18,16 +18,27 @@ permissions:
 env:
   NO_DNA: "1"
   V5_BUNDLE: release/aspis-v5-tag67-frozen-candidate-v1
-  V5_PROVENANCE: provenance/v5
-  AGAVE_ARCHIVE_URL: https://github.com/anza-xyz/agave/releases/download/v2.3.0/solana-release-x86_64-unknown-linux-gnu.tar.bz2
-  AGAVE_ARCHIVE_SHA256: 56241fbe862495ff01b2b875195e44f94c22e9f2a504591a3ade1b9d82862730
-  PLATFORM_TOOLS_ARCHIVE_URL: https://github.com/anza-xyz/platform-tools/releases/download/v1.48/platform-tools-linux-x86_64.tar.bz2
-  PLATFORM_TOOLS_ARCHIVE_SHA256: a9d3157f937d5f6faf4321a35a8035e0f827114a663b0150db492e893ec27597
+  AGAVE_ARCHIVE_URL: https://github.com/anza-xyz/agave/releases/download/v2.3.0/solana-release-aarch64-apple-darwin.tar.bz2
+  AGAVE_ARCHIVE_SHA256: dad301dc7b77a93093efc921c602b05397ec8f8c35195940417b3dcc28124d74
+  PLATFORM_TOOLS_ARCHIVE_URL: https://github.com/anza-xyz/platform-tools/releases/download/v1.48/platform-tools-osx-aarch64.tar.bz2
+  PLATFORM_TOOLS_ARCHIVE_SHA256: 799e4cfcee38e227155c83fb2294f96f94a843d42e01c0359fb7128e2216d2dd
+  CRITERION_ARCHIVE_URL: https://github.com/Snaipe/Criterion/releases/download/v2.3.2/criterion-v2.3.2-osx-x86_64.tar.bz2
+  CRITERION_ARCHIVE_SHA256: a70d760c93bb0a0364d47699c4981317117ca135fabec914448bea02eddcedf2
 
 jobs:
   v5-provenance:
-    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - lane: sbf
+            runner: macos-26
+          - lane: assurance
+            runner: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 120
+    env:
+      V5_PROVENANCE: provenance/v5/${{ matrix.lane }}
     steps:
       - name: Check out the release ref and complete source history
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -87,37 +98,52 @@ jobs:
             echo "- runner_arch: $RUNNER_ARCH"
             echo "- runner_image: ${ImageOS:-unknown}"
             echo "- runner_image_version: ${ImageVersion:-unknown}"
+            echo "- lane: ${{ matrix.lane }}"
             echo "- generated_at_utc: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo "- rustc: $(rustc --version)"
             echo "- cargo: $(cargo --version)"
           } | tee "$V5_PROVENANCE/transcript.md"
 
       - name: Install the pinned Agave 2.3.0 and platform-tools v1.48 archives
+        if: matrix.lane == 'sbf'
         shell: bash
         run: |
           set -euo pipefail
+          test "$(uname -s)" = "Darwin"
+          test "$(uname -m)" = "arm64"
           agave_archive="$RUNNER_TEMP/agave-v2.3.0.tar.bz2"
           platform_archive="$RUNNER_TEMP/platform-tools-v1.48.tar.bz2"
+          criterion_archive="$RUNNER_TEMP/criterion-v2.3.2.tar.bz2"
           agave_root="$RUNNER_TEMP/agave-v2.3.0"
-          platform_root="$HOME/.cache/solana/v1.48/platform-tools"
+          platform_root="$RUNNER_TEMP/platform-tools-v1.48/platform-tools"
+          criterion_root="$RUNNER_TEMP/criterion-v2.3.2/criterion"
 
           curl --fail --location --retry 3 \
             --output "$agave_archive" "$AGAVE_ARCHIVE_URL"
-          echo "$AGAVE_ARCHIVE_SHA256  $agave_archive" | sha256sum --check --strict
+          echo "$AGAVE_ARCHIVE_SHA256  $agave_archive" | shasum -a 256 -c
           mkdir -p "$agave_root"
           tar -xjf "$agave_archive" -C "$agave_root"
 
           curl --fail --location --retry 3 \
             --output "$platform_archive" "$PLATFORM_TOOLS_ARCHIVE_URL"
           echo "$PLATFORM_TOOLS_ARCHIVE_SHA256  $platform_archive" \
-            | sha256sum --check --strict
+            | shasum -a 256 -c
           mkdir -p "$platform_root"
           test -z "$(find "$platform_root" -mindepth 1 -maxdepth 1 -print -quit)"
           tar -xjf "$platform_archive" -C "$platform_root"
 
+          curl --fail --location --retry 3 \
+            --output "$criterion_archive" "$CRITERION_ARCHIVE_URL"
+          echo "$CRITERION_ARCHIVE_SHA256  $criterion_archive" \
+            | shasum -a 256 -c
+          mkdir -p "$criterion_root"
+          test -z "$(find "$criterion_root" -mindepth 1 -maxdepth 1 -print -quit)"
+          tar --strip-components 1 -xjf "$criterion_archive" -C "$criterion_root"
+
           cargo_build_sbf="$agave_root/solana-release/bin/cargo-build-sbf"
           sbf_sdk="$agave_root/solana-release/bin/platform-tools-sdk/sbf"
           sdk_platform_tools="$sbf_sdk/dependencies/platform-tools"
+          sdk_criterion="$sbf_sdk/dependencies/criterion"
           test -x "$cargo_build_sbf"
           test -d "$sbf_sdk"
           test -x "$platform_root/rust/bin/rustc"
@@ -127,6 +153,11 @@ jobs:
           test ! -L "$sdk_platform_tools"
           ln -s "$platform_root" "$sdk_platform_tools"
           test -d "$sdk_platform_tools/rust/lib"
+          test ! -e "$sdk_criterion"
+          test ! -L "$sdk_criterion"
+          ln -s "$criterion_root" "$sdk_criterion"
+          touch "$sbf_sdk/dependencies/platform-tools-v1.48.md"
+          touch "$sbf_sdk/dependencies/criterion-v2.3.2.md"
 
           {
             echo "V5_CARGO_BUILD_SBF=$cargo_build_sbf"
@@ -136,10 +167,12 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Rebuild and compare the frozen V5 SBF
+        if: matrix.lane == 'sbf'
         shell: bash
         run: bash release/verify-v5-source-rebuild.sh
 
       - name: Run the retained V5 verifier and wire replay checks
+        if: matrix.lane == 'assurance'
         shell: bash
         run: |
           set -euo pipefail
@@ -154,6 +187,7 @@ jobs:
             2>&1 | tee "$V5_PROVENANCE/tag67-honest-replay.log"
 
       - name: Build and kernel-check the maintained Lean formalization
+        if: matrix.lane == 'assurance'
         id: lean
         uses: leanprover/lean-action@38fbc41a8c28c4cbaec22d7f7de508ec2e7c0dd9 # v1.5.0
         with:
@@ -164,6 +198,7 @@ jobs:
           use-github-cache: "false"
 
       - name: Record the formal build and V5 entrypoint bindings
+        if: matrix.lane == 'assurance'
         shell: bash
         run: |
           set -euo pipefail
@@ -179,6 +214,7 @@ jobs:
           } | tee "$V5_PROVENANCE/formal-build.txt"
 
       - name: Rebuild the paper in the pinned TeX Live 2025 image
+        if: matrix.lane == 'assurance'
         uses: xu-cheng/latex-action@6549dc21effb2730855a1281407ecfcececc6c1b # v4
         with:
           docker_image: ghcr.io/xu-cheng/texlive-historic-debian@sha256:d3e42adc0c8d84bc913bfc33571feaf7037616260a771bb6f027504661568bf6
@@ -192,6 +228,7 @@ jobs:
             latexmk --version
 
       - name: Record the rebuilt paper
+        if: matrix.lane == 'assurance'
         shell: bash
         run: |
           set -euo pipefail
@@ -201,17 +238,13 @@ jobs:
           sha256sum "$paper" | tee "$V5_PROVENANCE/paper.sha256"
           wc -c "$paper" | tee "$V5_PROVENANCE/paper.bytes"
 
-      - name: Require the complete V5 provenance set
+      - name: Require the exact SBF provenance set
+        if: matrix.lane == 'sbf'
         shell: bash
         run: |
           set -euo pipefail
           test -s "$V5_PROVENANCE/source-rebuild/source-rebuild.json"
           test -s "$V5_PROVENANCE/source-rebuild/sbf/aspis_verifier.so"
-          test -s "$V5_PROVENANCE/tag67-verifier-tests.log"
-          test -s "$V5_PROVENANCE/tag67-wire-replay.log"
-          test -s "$V5_PROVENANCE/tag67-honest-replay.log"
-          test -s "$V5_PROVENANCE/formal-build.txt"
-          test -s "$V5_PROVENANCE/aspis-spend.pdf"
           test -z "$(
             find "$V5_PROVENANCE" -type f \
               \( -iname '*keypair*' -o -iname '*.pem' \) \
@@ -224,12 +257,30 @@ jobs:
             and .sbf_bytes == 1258496
             and .byte_equal_to_frozen_candidate
           ' "$V5_PROVENANCE/source-rebuild/source-rebuild.json" >/dev/null
-          echo "PASS: complete V5 release provenance" \
+          echo "PASS: exact V5 SBF provenance" \
+            | tee -a "$V5_PROVENANCE/transcript.md"
+
+      - name: Require the V5 assurance provenance set
+        if: matrix.lane == 'assurance'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$V5_PROVENANCE/tag67-verifier-tests.log"
+          test -s "$V5_PROVENANCE/tag67-wire-replay.log"
+          test -s "$V5_PROVENANCE/tag67-honest-replay.log"
+          test -s "$V5_PROVENANCE/formal-build.txt"
+          test -s "$V5_PROVENANCE/aspis-spend.pdf"
+          test -z "$(
+            find "$V5_PROVENANCE" -type f \
+              \( -iname '*keypair*' -o -iname '*.pem' \) \
+              -print -quit
+          )"
+          echo "PASS: V5 assurance provenance" \
             | tee -a "$V5_PROVENANCE/transcript.md"
 
       - name: Upload the V5 provenance artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: v5-release-provenance-${{ github.sha }}
-          path: provenance/v5/
+          name: v5-release-provenance-${{ matrix.lane }}-${{ github.sha }}
+          path: provenance/v5/${{ matrix.lane }}/
           if-no-files-found: error
