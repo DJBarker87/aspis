@@ -1,0 +1,229 @@
+name: V5 release provenance
+
+# The q18/g37 release keeps its existing provenance workflow. This workflow is
+# the fail-closed path for a final V5 Tag-67 mainnet release. It rebuilds the
+# frozen SBF from the documented clean source commit, checks exact byte
+# equality, runs the retained V5 verifier checks and maintained Lean build, and
+# forces a fresh paper build.
+
+on:
+  push:
+    tags:
+      - "aspis-v5-tag67-mainnet-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NO_DNA: "1"
+  V5_BUNDLE: release/aspis-v5-tag67-frozen-candidate-v1
+  V5_PROVENANCE: provenance/v5
+  AGAVE_ARCHIVE_URL: https://github.com/anza-xyz/agave/releases/download/v2.3.0/solana-release-x86_64-unknown-linux-gnu.tar.bz2
+  AGAVE_ARCHIVE_SHA256: 56241fbe862495ff01b2b875195e44f94c22e9f2a504591a3ade1b9d82862730
+  PLATFORM_TOOLS_ARCHIVE_URL: https://github.com/anza-xyz/platform-tools/releases/download/v1.48/platform-tools-linux-x86_64.tar.bz2
+  PLATFORM_TOOLS_ARCHIVE_SHA256: a9d3157f937d5f6faf4321a35a8035e0f827114a663b0150db492e893ec27597
+
+jobs:
+  v5-provenance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Check out the release ref and complete source history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install the pinned host Rust toolchain
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # pinned 2026-07-15
+        with:
+          toolchain: 1.84.1
+
+      - name: Install the pinned Python runtime
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Check the release facts and require finalized evidence on a release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/check_release_facts.py --self-test
+
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            [[ "$GITHUB_REF" == refs/tags/aspis-v5-tag67-mainnet-v* ]]
+            release_tag="${GITHUB_REF#refs/tags/}"
+            jq -e --arg release_tag "$release_tag" '
+              def finalized_transaction:
+                type == "object"
+                and (.signature | type == "string" and length > 0)
+                and ((.finalized_slot // .slot) | type == "number" and . > 0);
+              [
+                .tracks
+                | to_entries[]
+                | .value
+                | select(.release_tag? == $release_tag)
+                | select(.role? == "finalized_mainnet_release")
+                | select(.status? == "finalized_mainnet")
+                | select(.mainnet.deployment_status? == "deployed")
+                | select(.mainnet.deployment_transaction | finalized_transaction)
+                | select(.mainnet.transaction | finalized_transaction)
+              ]
+              | length == 1
+            ' release/release-facts.json >/dev/null
+          fi
+
+      - name: Prepare provenance output
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$V5_PROVENANCE"
+          {
+            echo "# V5 release provenance"
+            echo
+            echo "- ref: $GITHUB_REF"
+            echo "- sha: $GITHUB_SHA"
+            echo "- runner_os: $RUNNER_OS"
+            echo "- runner_arch: $RUNNER_ARCH"
+            echo "- runner_image: ${ImageOS:-unknown}"
+            echo "- runner_image_version: ${ImageVersion:-unknown}"
+            echo "- generated_at_utc: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "- rustc: $(rustc --version)"
+            echo "- cargo: $(cargo --version)"
+          } | tee "$V5_PROVENANCE/transcript.md"
+
+      - name: Install the pinned Agave 2.3.0 and platform-tools v1.48 archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          agave_archive="$RUNNER_TEMP/agave-v2.3.0.tar.bz2"
+          platform_archive="$RUNNER_TEMP/platform-tools-v1.48.tar.bz2"
+          agave_root="$RUNNER_TEMP/agave-v2.3.0"
+          platform_root="$HOME/.cache/solana/v1.48/platform-tools"
+
+          curl --fail --location --retry 3 \
+            --output "$agave_archive" "$AGAVE_ARCHIVE_URL"
+          echo "$AGAVE_ARCHIVE_SHA256  $agave_archive" | sha256sum --check --strict
+          mkdir -p "$agave_root"
+          tar -xjf "$agave_archive" -C "$agave_root"
+
+          curl --fail --location --retry 3 \
+            --output "$platform_archive" "$PLATFORM_TOOLS_ARCHIVE_URL"
+          echo "$PLATFORM_TOOLS_ARCHIVE_SHA256  $platform_archive" \
+            | sha256sum --check --strict
+          mkdir -p "$platform_root"
+          test -z "$(find "$platform_root" -mindepth 1 -maxdepth 1 -print -quit)"
+          tar -xjf "$platform_archive" -C "$platform_root"
+
+          cargo_build_sbf="$agave_root/solana-release/bin/cargo-build-sbf"
+          sbf_sdk="$agave_root/solana-release/bin/platform-tools-sdk/sbf"
+          test -x "$cargo_build_sbf"
+          test -d "$sbf_sdk"
+          test -x "$platform_root/rust/bin/rustc"
+          test -x "$platform_root/llvm/bin/clang"
+
+          {
+            echo "V5_CARGO_BUILD_SBF=$cargo_build_sbf"
+            echo "V5_SBF_SDK=$sbf_sdk"
+            echo "V5_PLATFORM_TOOLS_ROOT=$platform_root"
+            echo "V5_PROVENANCE_OUT=$GITHUB_WORKSPACE/$V5_PROVENANCE/source-rebuild"
+          } >> "$GITHUB_ENV"
+
+      - name: Rebuild and compare the frozen V5 SBF
+        shell: bash
+        run: bash release/verify-v5-source-rebuild.sh
+
+      - name: Run the retained V5 verifier and wire replay checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo test --release --locked -p aspis-verifier tag67_ \
+            2>&1 | tee "$V5_PROVENANCE/tag67-verifier-tests.log"
+          cargo test --release --locked -p aspis-xtask \
+            v5_runtime_statement_and_exact_tag67_wire_preserve_the_cu_fixture \
+            2>&1 | tee "$V5_PROVENANCE/tag67-wire-replay.log"
+          cargo test --release --locked -p aspis-xtask \
+            v5_honest_serializer_preserves_fixture_and_binds_runtime_statement \
+            -- --ignored \
+            2>&1 | tee "$V5_PROVENANCE/tag67-honest-replay.log"
+
+      - name: Build and kernel-check the maintained Lean formalization
+        id: lean
+        uses: leanprover/lean-action@38fbc41a8c28c4cbaec22d7f7de508ec2e7c0dd9 # v1.5.0
+        with:
+          lake-package-directory: AspisFormal
+          build: "true"
+          test: "false"
+          lint: "false"
+          use-github-cache: "false"
+
+      - name: Record the formal build and V5 entrypoint bindings
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ steps.lean.outputs.build-status }}" = "SUCCESS"
+          case "$(lean --version)" in
+            "Lean (version 4.32.0,"*) ;;
+            *) echo "Lean 4.32.0 is required" >&2; exit 1 ;;
+          esac
+          {
+            echo "lean_version=$(lean --version)"
+            echo "lean_build_status=${{ steps.lean.outputs.build-status }}"
+            echo "v5_formal_source_bindings=verified_by_release/verify-v5-source-rebuild.sh"
+          } | tee "$V5_PROVENANCE/formal-build.txt"
+
+      - name: Rebuild the paper in the pinned TeX Live 2025 image
+        uses: xu-cheng/latex-action@6549dc21effb2730855a1281407ecfcececc6c1b # v4
+        with:
+          docker_image: ghcr.io/xu-cheng/texlive-historic-debian@sha256:d3e42adc0c8d84bc913bfc33571feaf7037616260a771bb6f027504661568bf6
+          working_directory: paper/aspis-spend
+          root_file: aspis-spend.tex
+          args: -pdf -g -file-line-error -halt-on-error -interaction=nonstopmode
+          pre_compile: rm -f aspis-spend.pdf
+          post_compile: |
+            test -s aspis-spend.pdf
+            pdflatex --version
+            latexmk --version
+
+      - name: Record the rebuilt paper
+        shell: bash
+        run: |
+          set -euo pipefail
+          paper=paper/aspis-spend/aspis-spend.pdf
+          test -s "$paper"
+          cp "$paper" "$V5_PROVENANCE/aspis-spend.pdf"
+          sha256sum "$paper" | tee "$V5_PROVENANCE/paper.sha256"
+          wc -c "$paper" | tee "$V5_PROVENANCE/paper.bytes"
+
+      - name: Require the complete V5 provenance set
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$V5_PROVENANCE/source-rebuild/source-rebuild.json"
+          test -s "$V5_PROVENANCE/source-rebuild/sbf/aspis_verifier.so"
+          test -s "$V5_PROVENANCE/tag67-verifier-tests.log"
+          test -s "$V5_PROVENANCE/tag67-wire-replay.log"
+          test -s "$V5_PROVENANCE/tag67-honest-replay.log"
+          test -s "$V5_PROVENANCE/formal-build.txt"
+          test -s "$V5_PROVENANCE/aspis-spend.pdf"
+          test -z "$(
+            find "$V5_PROVENANCE" -type f \
+              \( -iname '*keypair*' -o -iname '*.pem' \) \
+              -print -quit
+          )"
+          jq -e '
+            .source_commit == "06788d44d30ea8cbd391899dddaf6f0acc6e4a3f"
+            and .source_tree == "9b6bdfddb3c213addc2bb705c8130cce4fb2c351"
+            and .sbf_sha256 == "4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40"
+            and .sbf_bytes == 1258496
+            and .byte_equal_to_frozen_candidate
+          ' "$V5_PROVENANCE/source-rebuild/source-rebuild.json" >/dev/null
+          echo "PASS: complete V5 release provenance" \
+            | tee -a "$V5_PROVENANCE/transcript.md"
+
+      - name: Upload the V5 provenance artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: v5-release-provenance-${{ github.sha }}
+          path: provenance/v5/
+          if-no-files-found: error

@@ -28,6 +28,33 @@ finalized on 2026-07-16 is a separate release preserved under
 | ProgramData allocation minimum | 1,258,496 bytes |
 | Suggested fresh allocation | 1,300,000 bytes, leaving 41,504 bytes |
 
+### Release identity
+
+| Identity | Value |
+| --- | --- |
+| Clean build source commit | `06788d44d30ea8cbd391899dddaf6f0acc6e4a3f` |
+| Clean build source tree | `9b6bdfddb3c213addc2bb705c8130cce4fb2c351` |
+| Candidate tag | `aspis-v5-tag67-frozen-candidate-v1` |
+| Candidate tag commit | `d98a2e69618dc95b95c1996506ed8c05904a56a1` |
+| Release metadata tree | `919f461131dbdceb8fa00783a16658fa10059ac6` |
+| Candidate manifest | [`release/aspis-v5-tag67-frozen-candidate-v1/manifest.json`](../aspis-v5-tag67-frozen-candidate-v1/manifest.json) |
+| Frozen SBF | 1,258,496 bytes, SHA-256 `4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40` |
+
+The source commit and source tree identify the clean checkout that produced
+the frozen SBF. The candidate tag resolves to the later commit whose tree
+contains the release bundle, manifest, and finalized devnet record. The
+manifest records the earlier build source and the exact SBF identity; it does
+not try to name the commit that contains itself. The
+[release facts ledger](../release-facts.json) supplies that outer binding from
+the candidate tag to its commit.
+
+Later documentation or release-index changes do not replace any identity in
+this table. They refer back to the candidate tag and commit while the program
+remains exactly 1,258,496 bytes with the stated SHA-256. If a later change
+alters even one SBF byte, it requires a new manifest and candidate tag. A
+byte-identical rebuild from a later source commit may add a new parity record,
+but it does not rewrite this candidate's build-source or tag history.
+
 The production-feature build and the later manifest-default build produced the
 same bytes. `v5-production-tag67` is therefore both the measured binary and the
 default deployment binary. A fresh clone of public `main` at
@@ -54,8 +81,8 @@ create-account path:
 
 Each missing-marker measurement completed the real System Program
 create-account CPI and repeated identically three times. The selector-0
-present-marker control consumed 1,328,897 CU, also identically three times,
-without a CPI.
+initialized program-owned marker control consumed 1,328,897 CU, also
+identically three times, without a CPI.
 
 That topology bound covers the complete release grammar:
 
@@ -71,8 +98,9 @@ That topology bound covers the complete release grammar:
 Every additional radix-4 parent is budgeted at 512 CU, above its measured
 SHA-256 syscall, loop, and child-copy cost. The GoodA/GoodB control-flow
 variation receives a separate 4,096-CU allowance. The missing-marker path
-upper-bounds the present-marker path because it performs the same verification
-plus the create-account CPI.
+upper-bounds the initialized program-owned marker path because it performs the
+same verification plus the create-account CPI. The accepted prefunded
+System-owned marker path is measured separately below.
 
 The original machine-readable topology derivation is
 [`v5_universal_accepted_topology_cu_policy.json`](../../results/spend/v5-production-tag67-freeze-stream3-20260722/v5_universal_accepted_topology_cu_policy.json),
@@ -86,7 +114,7 @@ Mainnet-beta reported Agave `4.1.0`, feature set `3345198602`, on
 across selectors 0, 1, and 2 with real missing-marker System Program CPI.
 The totals were 1,331,178, 1,333,842, and 1,326,426 CU, each exactly 54 CU
 below the 2.3.13 result. The present-marker control remained exactly
-1,328,897 CU.
+1,328,897 CU; this is the initialized program-owned marker control.
 
 The runtime also accepts a canonical System-owned, empty marker PDA that has
 already received lamports. A one-lamport fixture exercises the longest

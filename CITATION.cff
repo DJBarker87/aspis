@@ -32,8 +32,8 @@ license:
   - MIT
 identifiers:
   - type: other
-    value: "d80a9f1cf1332e4af61346f1458441c6c39e0d80"
-    description: "Git commit identified by the aspis-spend-q18-g37-mainnet-v1 tag"
+    value: "cdb3d3408b89b5179353d01cffea2b0ef6484fb3"
+    description: "Git commit reached by the annotated aspis-spend-q18-g37-mainnet-v1 tag"
 preferred-citation:
   type: article
   title: "Aspis Spend: Transparent Shielded-Spend Verification and Atomic State Update from a Pre-Uploaded Proof Account on Solana"

@@ -1,0 +1,122 @@
+{
+  "artifact": "aspis_release_facts",
+  "schema_version": 1,
+  "facts_as_of_date": "2026-07-24",
+  "transaction_compute_limit_cu": 1400000,
+  "tracks": {
+    "q18_g37_tag65_mainnet_v1": {
+      "role": "finalized_mainnet_release",
+      "status": "finalized_mainnet",
+      "release_tag": "aspis-spend-q18-g37-mainnet-v1",
+      "release_tag_commit": "cdb3d3408b89b5179353d01cffea2b0ef6484fb3",
+      "release_tag_tree": "5d46434a0d30cd3226069a54e795381b386cab98",
+      "build_source_commit": null,
+      "build_source_commit_status": "not_recorded_in_immutable_release_bundle",
+      "program": {
+        "id": "GQPNqfYF17Nj2dGsf6Q2AtiouyM67YxFZPh9LxBk2Ye3",
+        "sbf_path": "release/aspis-spend-q18-g37-mainnet-v1/program/aspis_verifier.so",
+        "sbf_bytes": 924344,
+        "sbf_sha256": "e289faf85fe4773880794d5d4356461bb9cb94077b68711f99348efe19707d7e"
+      },
+      "proof": {
+        "path": "release/aspis-spend-q18-g37-mainnet-v1/proof/spend-q18-g37.bin",
+        "bytes": 65407,
+        "sha256": "32eb419e0c5c3ef4fa2db0d32579e88f1207547d8fb010279efeb6c05981b529"
+      },
+      "runtime": {
+        "network": "mainnet-beta",
+        "genesis_hash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+        "solana_core": null,
+        "feature_set": null,
+        "runtime_identity_status": "not_recorded_in_immutable_release_bundle"
+      },
+      "compute": {
+        "measured_transaction_cu": 1344003,
+        "release_gate_max_literal_cu": 1344057,
+        "release_gate_headroom_cu": 55943
+      },
+      "mainnet": {
+        "pool": "3ZRYarQZcWJQgzNwLo1Eo7PDmier3rbW41L8ccAddCvb",
+        "nullifier": "CFJ5fYPSi4Qn6okBCZS3tXFMw7Lsz4Jy9vEAAGU5kfSU",
+        "transaction": {
+          "signature": "3G1voggszvDMGi5PbGM1kuEMYKvh2TNMbH6hHHwndUdRQJNT7ehRFpQpksxLnx5tp2xkS5jGi359rVXk42sRPFcv",
+          "slot": 433219840,
+          "compute_units": 1344003
+        },
+        "program_lifecycle": "closed_after_demonstration"
+      },
+      "authoritative_sources": {
+        "manifest": "release/aspis-spend-q18-g37-mainnet-v1/manifest.json",
+        "release_certificate": "release/aspis-spend-q18-g37-mainnet-v1/certificates/release.json",
+        "execution": "release/aspis-spend-q18-g37-mainnet-v1/evidence/mainnet-execution.json"
+      }
+    },
+    "v5_tag67_candidate_v1": {
+      "role": "mainnet_candidate",
+      "status": "ready_for_mainnet_deployment",
+      "candidate_tag": "aspis-v5-tag67-frozen-candidate-v1",
+      "candidate_tag_commit": "d98a2e69618dc95b95c1996506ed8c05904a56a1",
+      "candidate_tag_tree": "919f461131dbdceb8fa00783a16658fa10059ac6",
+      "build_source_commit": "06788d44d30ea8cbd391899dddaf6f0acc6e4a3f",
+      "build_source_tree": "9b6bdfddb3c213addc2bb705c8130cce4fb2c351",
+      "clean_rebuild_byte_equal": true,
+      "program": {
+        "declared_id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+        "sbf_path": "release/aspis-v5-tag67-frozen-candidate-v1/program/aspis_verifier_v5_tag67.so",
+        "sbf_bytes": 1258496,
+        "sbf_sha256": "4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40"
+      },
+      "runtime": {
+        "frozen_cost_schedule": {
+          "solana_core": "2.3.13",
+          "grammar_topology_ceiling_cu": 1353616,
+          "grammar_topology_headroom_cu": 46384
+        },
+        "current_mainnet_replay": {
+          "source_base_commit": "d98a2e69618dc95b95c1996506ed8c05904a56a1",
+          "network": "mainnet-beta",
+          "observed_finalized_slot": 434766704,
+          "solana_core": "4.1.0",
+          "feature_set": 3345198602,
+          "evidence_path": "results/spend/v5-mainnet-runtime-4.1.0-20260723/runtime-replay.json",
+          "evidence_sha256": "00323072e02a9836db8bb4947e1dea0a17f1d0ab1088be0940580c319587e154"
+        }
+      },
+      "devnet": {
+        "genesis_hash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+        "program_id": "EZYH9FFDGj9gSacmDhvYBqPAzcSm9cfURwuz1CtzQRFS",
+        "pool": "5HtT94qnUNU1gfWsjGm7786hwi15Ky4qEByuRc5Qzmt",
+        "proof_account": "Er5ocNK2QHDxRL2pahqvXGE91ku39T9Q5pFJHgkfQ6DX",
+        "nullifier": "F4wakJYuP18URA1HnwJZjW3GjY91jWDWwWRnbp9hCQAH",
+        "proof_sha256": "cc53b00b7c82b008ba554c6e3860431e0f3796e60ad50eac2126e431f14c9fdd",
+        "statement_sha256": "5c8c609f8a53f0c8928d9353b6220119cb089d95efe7ff8bb1feac0e1db04e4e",
+        "transaction": {
+          "signature": "38mNKeMmRf9Ttqmde8jZqCMq8F1piHhCEqGYVYrSHEggTu21C93wWAEhoDkZ2qJHeTX7j3qCmibNNmZ6awWtEuLC",
+          "slot": 478299357,
+          "compute_units": 1335952
+        }
+      },
+      "compute": {
+        "devnet_measured_transaction_cu": 1335952,
+        "current_mainnet_priced_prefunded_by_selector_cu": {
+          "0": 1334528,
+          "1": 1337192,
+          "2": 1329776
+        },
+        "current_mainnet_accepted_state_ceiling_cu": 1356912,
+        "current_mainnet_accepted_state_headroom_cu": 43088
+      },
+      "mainnet": {
+        "deployment_status": "not_deployed",
+        "deployment_transaction": null,
+        "transaction": null
+      },
+      "authoritative_sources": {
+        "manifest": "release/aspis-v5-tag67-frozen-candidate-v1/manifest.json",
+        "devnet_execution": "release/aspis-v5-tag67-frozen-candidate-v1/evidence/devnet-execution.json",
+        "frozen_compute_policy": "release/aspis-v5-tag67-frozen-candidate-v1/evidence/accepted-topology-cu-policy.json",
+        "current_runtime_replay": "results/spend/v5-mainnet-runtime-4.1.0-20260723/runtime-replay.json"
+      }
+    }
+  }
+}

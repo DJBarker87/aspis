@@ -1,9 +1,8 @@
 # AspisFormal
 
-`AspisFormal` is the maintained Lean 4 proof layer for Aspis. This file is the
-canonical proof-status ledger for the repository as of the current `main`
-branch. Older module comments and archived reports record the state at the time
-they were written; they do not override this ledger.
+`AspisFormal` is the maintained Lean 4 proof layer for Aspis. This README gives
+the proof status on the current `main` branch. Older module comments and
+archived reports record the state at the time they were written.
 
 ```sh
 cd AspisFormal
@@ -75,10 +74,10 @@ The principal integration theorem is
 | Implementation path | Theorem | Status |
 | --- | --- | --- |
 | Source-extracted Component-A matrix execution to maintained GoodA at the selected release schedule | `FormalClosureStream1.component_a_actual_matches_maintained` | **PROVED FOR THE RELEASE SCHEDULE** |
-| Generated Component-B sampler/evaluator/C2 layout to maintained ten-round terminal | `FormalClosureStream1.component_b_actual_matches_maintained` | **CLOSED** |
-| Actual four Component-C rounds, finish, packer, and deployed public rows | `generated_public_run_output_matches_deployed` | **CLOSED** |
-| Tag-67 magic, LE64 reads, projection, digest predicate, and six ordered work checks | `AspisTag67WorkVerifierClosure.tag67AcceptedWireAndVerifierClosure` | **CLOSED subject to one hash-call equation** |
-| Combined A/B/C public output and Tag-67 verifier at that schedule | `FormalClosureStream1.current_source_combined_capstone` | **CLOSED under the same equation** |
+| Generated Component-B sampler/evaluator/C2 layout to maintained ten-round terminal | `FormalClosureStream1.component_b_actual_matches_maintained` | **PROVED** |
+| Actual four Component-C rounds, finish, packer, and deployed public rows | `generated_public_run_output_matches_deployed` | **PROVED** |
+| Tag-67 magic, LE64 reads, projection, digest predicate, and six ordered work checks | `AspisTag67WorkVerifierClosure.tag67AcceptedWireAndVerifierClosure` | **PROVED subject to one hash-call equation** |
+| Combined A/B/C public output and Tag-67 verifier at that schedule | `FormalClosureStream1.current_source_combined_capstone` | **PROVED under the same equation** |
 
 That remaining equation is:
 

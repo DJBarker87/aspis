@@ -1,6 +1,6 @@
 name: Spend release provenance
 
-# Runs only on release tags of the form `*mainnet-v*` (e.g.
+# Runs only on q18/g37 release tags (for example
 # `aspis-spend-q18-g37-mainnet-v1`). It records a reproducible transcript of
 # the toolchain, the test suite, the built SBF, the paper, and the offline
 # release verification, and uploads everything as a single `provenance`
@@ -14,7 +14,7 @@ permissions:
 on:
   push:
     tags:
-      - "*mainnet-v*"
+      - "aspis-spend-q18-g37-mainnet-v*"
 
 jobs:
   provenance:
@@ -23,7 +23,7 @@ jobs:
       NO_DNA: "1"
       PROV: provenance
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable, pinned 2026-07-15
 
       - name: Prepare provenance directory
@@ -206,7 +206,7 @@ jobs:
           echo '```' | tee -a "$PROV/transcript.md"
 
       - name: Upload provenance artifact
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: provenance
           path: provenance/

@@ -46,9 +46,15 @@ Aspis now has two clearly separated release lines:
 | q18/g37, tag 65 | Executed and finalized on mainnet-beta on 2026-07-16 | 1,344,003 CU |
 | V5, tag 67 | Finalized on devnet; ready for mainnet deployment | 1,335,952 CU landed; current-mainnet ceiling 1,356,912 CU |
 
+The machine-readable [release facts ledger](release/release-facts.json) is the
+single source for release identities, hashes, transactions, runtimes, and
+compute figures. CI checks the public release summary against it and rejects
+known stale figures and statuses.
+
 The q18/g37 release is the published mainnet feasibility result. V5 is the
 current verifier architecture: its default SBF is 1,258,496 bytes, SHA-256
-`4cf3c1d5…edf40`, and has 43,088 CU of conservative headroom. Its code,
+`4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40`,
+and has 43,088 CU of conservative headroom. Its code,
 Component-A correspondence at the selected schedule, general Component-B and
 Component-C correspondence, Tag-67 verifier theorem, provenance, and CU
 evidence are recorded in the
@@ -143,10 +149,9 @@ of this release.
 
 Each spend also creates one canonical nullifier PDA that persists on-chain at
 its rent minimum, so nullifier storage grows linearly with the number of
-spends. The 1,344,003-CU verification leaves 55,997 CU of headroom under the
-cap (about 4%), so the parameters do not survive a runtime compute-unit
-repricing that raises this workload past the cap (see
-[Limitations](#limitations)).
+spends. The landed 1,344,003-CU transaction leaves 55,997 CU under the cap;
+the release gate's 1,344,057-CU maximum leaves 55,943 CU. A runtime repricing
+past that margin requires new parameters (see [Limitations](#limitations)).
 
 ## Construction
 
@@ -252,12 +257,15 @@ bundle. From the repository root:
 
 ```bash
 ./release/aspis-spend-q18-g37-mainnet-v1/verify.sh
+./release/aspis-v5-tag67-frozen-candidate-v1/verify.sh
+python3 tools/check_release_facts.py
 ```
 
-It needs only `jq` and `sha256sum` or `shasum`, runs fully offline, and checks
-every published byte against `SHA256SUMS` and `manifest.json`, the proof and
-SBF container magics, the release-certificate gates, and the finalized on-chain
-signature, slot, and compute units.
+The bundle verifiers need only `jq` and `sha256sum` or `shasum`. They run
+fully offline and check every published byte against `SHA256SUMS` and
+`manifest.json`, including proof and SBF identities, release gates, and the
+recorded chain evidence. The facts check also catches stale figures or status
+claims elsewhere in the repository.
 
 ## Paper
 
@@ -288,7 +296,7 @@ carries a README naming its production entry points.
 | `docs/` | Novelty search record and design history |
 | `manifests/` | Machine-readable parameter and release bindings |
 | `reference/` | Compact independent reference material |
-| `release/` | Immutable mainnet bundle and V5 production preflight |
+| `release/` | Immutable release bundles, canonical facts, and V5 production preflight |
 | `results/` | Curated runtime measurements and final V5 evidence |
 | `tools/` | Independent checkers and formal/evidence utilities |
 | `archive/` | Index of superseded and failed research retained in Git |
