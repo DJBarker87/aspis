@@ -2261,11 +2261,16 @@ fn generate_artifact_from_config(config: ArtifactConfig) -> Result<V5DevnetArtif
     );
     config.network.validate_program_id(config.program_id)?;
     let deployment_domain = runtime_domain(config.network, config.program_id);
+    let required_nullifier_bump = match config.network {
+        V5NetworkPolicy::Devnet => None,
+        V5NetworkPolicy::MainnetBeta => Some((config.program_id, MAINNET_NULLIFIER_PDA_BUMP)),
+    };
     let (statement, proof, least_good_selector, successful_attempt_index) =
         build_v5_runtime_bound_production_demo_proof_body(
             config.pool.to_bytes(),
             0,
             deployment_domain,
+            required_nullifier_bump,
         )?;
     verify_runtime_statement_and_wire(config.network, config.program_id, config.pool, &statement)?;
     let host_check_account =

@@ -786,6 +786,7 @@ fn fixture_digest(seed: u32) -> Digest {
 }
 
 const RUNTIME_WITNESS_M31_RETRY_LIMIT: usize = 16;
+const RUNTIME_NULLIFIER_PDA_PREFILTER_LIMIT: usize = 64;
 
 /// Draw one runtime witness digest directly from the operating system. Each
 /// limb uses the same canonical bounded M31 rejection rule as the proof-mask
@@ -858,6 +859,31 @@ fn fresh_v5_statement_and_witness_for_runtime(
         deployment_domain,
     };
     Ok((statement, witness))
+}
+
+fn runtime_statement_nullifier_pda_bump(
+    program_id: Pubkey,
+    statement: &AtomicPaymentStatementV4,
+) -> u8 {
+    let nullifier = aspis_statement::encode_digest_canonical(&statement.spend.nullifier);
+    atomic_nullifier_address(&program_id, &nullifier).1
+}
+
+fn select_runtime_candidate_with_required_bump<T>(
+    mut next_candidate: impl FnMut() -> Result<T>,
+    mut candidate_bump: impl FnMut(&T) -> u8,
+    required_bump: u8,
+) -> Result<T> {
+    for _ in 0..RUNTIME_NULLIFIER_PDA_PREFILTER_LIMIT {
+        let candidate = next_candidate()?;
+        if candidate_bump(&candidate) == required_bump {
+            return Ok(candidate);
+        }
+    }
+    bail!(
+        "runtime statement sampling did not produce nullifier PDA bump {required_bump} in {} candidates",
+        RUNTIME_NULLIFIER_PDA_PREFILTER_LIMIT
+    )
 }
 
 fn real_v5_statement_and_witness_for_runtime(
@@ -1346,9 +1372,16 @@ pub(crate) fn build_v5_runtime_bound_production_demo_proof_body(
     pool: [u8; 32],
     sequence: u64,
     deployment_domain: [u8; 32],
+    required_nullifier_bump: Option<(Pubkey, u8)>,
 ) -> Result<(AtomicPaymentStatementV4, Vec<u8>, u8, u8)> {
-    let (statement, witness) =
-        fresh_v5_statement_and_witness_for_runtime(pool, sequence, deployment_domain)?;
+    let (statement, witness) = match required_nullifier_bump {
+        Some((program_id, required_bump)) => select_runtime_candidate_with_required_bump(
+            || fresh_v5_statement_and_witness_for_runtime(pool, sequence, deployment_domain),
+            |(statement, _)| runtime_statement_nullifier_pda_bump(program_id, statement),
+            required_bump,
+        )?,
+        None => fresh_v5_statement_and_witness_for_runtime(pool, sequence, deployment_domain)?,
+    };
     let output = build_v5_production_host_artifact_cap17(V5ProductionAttemptInputs {
         statement: &statement,
         witness: &witness,
@@ -2966,6 +2999,53 @@ pub fn run(results_dir: &Path) -> Result<V5Layer0CuProbeOutcome> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn runtime_nullifier_bump_prefilter_accepts_the_first_match() {
+        let bumps = [254u8, 253, u8::MAX];
+        let mut next = 0usize;
+        let selected = select_runtime_candidate_with_required_bump(
+            || {
+                let candidate = next;
+                next += 1;
+                Ok(candidate)
+            },
+            |candidate| bumps[*candidate],
+            u8::MAX,
+        )
+        .expect("select matching bump");
+
+        assert_eq!(selected, 2);
+        assert_eq!(next, 3);
+    }
+
+    #[test]
+    fn runtime_nullifier_bump_prefilter_stops_after_64_candidates() {
+        let mut attempts = 0usize;
+        let error = select_runtime_candidate_with_required_bump(
+            || {
+                attempts += 1;
+                Ok(())
+            },
+            |_| 254,
+            u8::MAX,
+        )
+        .expect_err("missing required bump must fail");
+
+        assert_eq!(attempts, RUNTIME_NULLIFIER_PDA_PREFILTER_LIMIT);
+        assert!(error.to_string().contains("in 64 candidates"));
+    }
+
+    #[test]
+    fn runtime_nullifier_bump_uses_canonical_public_bytes() {
+        let (mut statement, _) = real_v5_statement_and_witness();
+        statement.spend.nullifier = [M31::ZERO; 8];
+
+        assert_eq!(
+            runtime_statement_nullifier_pda_bump(aspis_verifier::id(), &statement),
+            u8::MAX
+        );
+    }
 
     /// Run the honest tag-67 devnet-shaped transaction with no preloaded
     /// nullifier marker. Every repetition must therefore complete the marker
