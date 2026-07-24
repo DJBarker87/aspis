@@ -469,6 +469,15 @@ def check_v5(facts: dict[str, Any], compute_limit: int) -> None:
         facts["compute"]["current_mainnet_release_policy_ceiling_cu"],
         "V5 transaction compute-unit limit",
     )
+    require_literals(
+        "xtask/src/spend_devnet/v5.rs",
+        [
+            "const MAINNET_NULLIFIER_PDA_BUMP: u8 = u8::MAX;",
+            "const MAINNET_RELEASE_POLICY_CU_CEILING: u64 = 1_356_912;",
+            "ComputeBudgetInstruction::set_compute_unit_limit(tag67_compute_unit_limit)",
+            "final_transaction_simulation_cu <= u64::from(tag67_compute_unit_limit)",
+        ],
+    )
 
 
 def tracked_public_paths() -> list[Path]:
