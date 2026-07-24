@@ -117,10 +117,15 @@ jobs:
 
           cargo_build_sbf="$agave_root/solana-release/bin/cargo-build-sbf"
           sbf_sdk="$agave_root/solana-release/bin/platform-tools-sdk/sbf"
+          sdk_platform_tools="$sbf_sdk/dependencies/platform-tools"
           test -x "$cargo_build_sbf"
           test -d "$sbf_sdk"
           test -x "$platform_root/rust/bin/rustc"
           test -x "$platform_root/llvm/bin/clang"
+          test ! -e "$sdk_platform_tools"
+          test ! -L "$sdk_platform_tools"
+          ln -s "$platform_root" "$sdk_platform_tools"
+          test -d "$sdk_platform_tools/rust/lib"
 
           {
             echo "V5_CARGO_BUILD_SBF=$cargo_build_sbf"
