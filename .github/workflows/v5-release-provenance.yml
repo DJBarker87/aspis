@@ -203,12 +203,13 @@ jobs:
         run: |
           set -euo pipefail
           test "${{ steps.lean.outputs.build-status }}" = "SUCCESS"
-          case "$(lean --version)" in
+          lean_version="$(cd AspisFormal && lean --version)"
+          case "$lean_version" in
             "Lean (version 4.32.0,"*) ;;
             *) echo "Lean 4.32.0 is required" >&2; exit 1 ;;
           esac
           {
-            echo "lean_version=$(lean --version)"
+            echo "lean_version=$lean_version"
             echo "lean_build_status=${{ steps.lean.outputs.build-status }}"
             echo "v5_formal_source_bindings=verified_by_release/verify-v5-source-rebuild.sh"
           } | tee "$V5_PROVENANCE/formal-build.txt"
