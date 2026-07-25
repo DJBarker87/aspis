@@ -143,10 +143,20 @@ struct RefundEvidence {
     fee_lamports: u64,
     payer_account_index: usize,
     proof_account_index: usize,
+    program_account_index: usize,
     payer_pre_lamports: u64,
     payer_post_lamports: u64,
     proof_pre_lamports: u64,
     proof_post_lamports: u64,
+    validated_proof_lamports: u64,
+    inbound_dust_after_validation_lamports: u64,
+    landed_proof_pre_at_least_validated_prestate: bool,
+    program_pre_lamports: u64,
+    program_post_lamports: u64,
+    validated_program_lamports: u64,
+    program_inbound_lamports_after_validation: u64,
+    landed_program_pre_at_least_validated_prestate: bool,
+    program_balance_unchanged_during_tag64: bool,
     refund_lamports: u64,
     payer_delta_plus_fee_lamports: i128,
     exact_refund_equation_reconciled: bool,
@@ -918,18 +928,104 @@ fn program_value(snapshot: &ProgramSnapshot) -> Value {
     })
 }
 
-fn program_continuity(before: &ProgramSnapshot, after: &ProgramSnapshot) -> Value {
-    json!({
-        "programdata_address_unchanged":
-            after.programdata_address == before.programdata_address,
-        "program_raw_account_image_unchanged": after.program == before.program,
-        "programdata_raw_account_image_unchanged":
-            after.programdata == before.programdata,
-        "programdata_deployment_slot_unchanged":
-            after.programdata_deployment_slot == before.programdata_deployment_slot,
-        "upgrade_authority_unchanged":
-            after.upgrade_authority == before.upgrade_authority,
-    })
+fn inbound_lamports_with_unchanged_structural_image(
+    before: &RpcAccount,
+    after: &RpcAccount,
+    label: &str,
+) -> Result<u64> {
+    ensure!(
+        after.owner == before.owner,
+        "{label} owner changed after validation"
+    );
+    ensure!(
+        after.executable == before.executable,
+        "{label} executable flag changed after validation"
+    );
+    ensure!(
+        after.data == before.data,
+        "{label} data changed after validation"
+    );
+    after
+        .lamports
+        .checked_sub(before.lamports)
+        .with_context(|| format!("{label} balance fell below its validated balance"))
+}
+
+fn program_continuity(
+    before: &ProgramSnapshot,
+    after: &ProgramSnapshot,
+    refund: &RefundEvidence,
+) -> Result<Value> {
+    ensure!(
+        after.program_id == before.program_id,
+        "verifier Program address changed after validation"
+    );
+    ensure!(
+        after.programdata_address == before.programdata_address,
+        "verifier ProgramData address changed after validation"
+    );
+    ensure!(
+        after.programdata_deployment_slot == before.programdata_deployment_slot,
+        "verifier ProgramData deployment slot changed after validation"
+    );
+    ensure!(
+        after.upgrade_authority == before.upgrade_authority,
+        "verifier upgrade authority changed after validation"
+    );
+    ensure!(
+        refund.validated_program_lamports == before.program.lamports,
+        "refund evidence does not reference the validated Program balance"
+    );
+
+    let program_inbound_lamports_since_validation =
+        inbound_lamports_with_unchanged_structural_image(
+            &before.program,
+            &after.program,
+            "verifier Program",
+        )?;
+    let program_inbound_lamports_after_landed_tag64 = after
+        .program
+        .lamports
+        .checked_sub(refund.program_post_lamports)
+        .context("verifier Program balance fell below the landed tag64 post-balance")?;
+    ensure!(
+        refund
+            .program_inbound_lamports_after_validation
+            .checked_add(program_inbound_lamports_after_landed_tag64)
+            == Some(program_inbound_lamports_since_validation),
+        "verifier Program inbound-lamport intervals do not reconcile"
+    );
+    let programdata_inbound_lamports_since_validation =
+        inbound_lamports_with_unchanged_structural_image(
+            &before.programdata,
+            &after.programdata,
+            "verifier ProgramData",
+        )?;
+
+    Ok(json!({
+        "program_id_unchanged": true,
+        "programdata_address_unchanged": true,
+        "program_structural_account_image_unchanged": true,
+        "programdata_structural_account_image_unchanged": true,
+        "structural_account_image_fields": ["owner", "executable", "data"],
+        "program_validated_lamports": before.program.lamports,
+        "program_landed_pre_lamports": refund.program_pre_lamports,
+        "program_landed_post_lamports": refund.program_post_lamports,
+        "program_observed_after_finality_lamports": after.program.lamports,
+        "program_inbound_lamports_before_landed_tag64":
+            refund.program_inbound_lamports_after_validation,
+        "program_inbound_lamports_after_landed_tag64":
+            program_inbound_lamports_after_landed_tag64,
+        "program_inbound_lamports_since_validation":
+            program_inbound_lamports_since_validation,
+        "program_inbound_lamport_intervals_reconciled": true,
+        "programdata_validated_lamports": before.programdata.lamports,
+        "programdata_observed_after_finality_lamports": after.programdata.lamports,
+        "programdata_inbound_lamports_since_validation":
+            programdata_inbound_lamports_since_validation,
+        "programdata_deployment_slot_unchanged": true,
+        "upgrade_authority_unchanged": true,
+    }))
 }
 
 fn deployed_program_exact(
@@ -1030,6 +1126,22 @@ fn validate_dedicated_payer(read: AccountRead, payer: Pubkey) -> Result<Value> {
         "dedicated payer has no lamports for the close fee"
     );
     Ok(account_value(&account, payer, read.context_slot))
+}
+
+fn closed_or_system_dust_lamports(read: &AccountRead, label: &str) -> Result<u64> {
+    match read.account.as_ref() {
+        None => Ok(0),
+        Some(account)
+            if account.owner == system_program::id()
+                && !account.executable
+                && account.data.is_empty() =>
+        {
+            Ok(account.lamports)
+        }
+        Some(_) => bail!(
+            "{label} was not closed: only absence or a System-owned zero-data dust account is accepted"
+        ),
+    }
 }
 
 fn sealed_proof_exact(read: AccountRead, proof_address: Pubkey) -> Result<(RpcAccount, Value)> {
@@ -1135,17 +1247,25 @@ fn reconcile_refund(
     let payer_post = post_balances[payer_index];
     let proof_pre = pre_balances[proof_index];
     let proof_post = post_balances[proof_index];
-    ensure!(
-        proof_pre == validated_proof_lamports,
-        "transaction proof pre-balance differs from the validated sealed account"
-    );
+    let program_pre = pre_balances[program_index];
+    let program_post = post_balances[program_index];
+    let inbound_dust_after_validation_lamports = proof_pre
+        .checked_sub(validated_proof_lamports)
+        .context("transaction proof pre-balance fell below the validated sealed account")?;
+    let program_inbound_lamports_after_validation = program_pre
+        .checked_sub(validated_program_lamports)
+        .context("transaction Program pre-balance fell below the validated Program account")?;
     ensure!(proof_post == 0, "closed proof post-balance is not zero");
+    ensure!(
+        program_post == program_pre,
+        "canonical verifier Program balance changed during tag64"
+    );
     let refund_lamports = proof_pre
         .checked_sub(proof_post)
         .context("closed proof balance increased")?;
     ensure!(
-        refund_lamports == validated_proof_lamports,
-        "tag64 did not refund the complete proof-account balance"
+        refund_lamports == proof_pre,
+        "tag64 did not refund the complete landed proof-account balance"
     );
     let payer_delta_plus_fee = i128::from(payer_post) - i128::from(payer_pre) + i128::from(fee);
     let exact_refund_equation_reconciled = payer_delta_plus_fee == i128::from(refund_lamports);
@@ -1162,19 +1282,24 @@ fn reconcile_refund(
         every_other_unchanged,
         "tag64 changed a message-account balance other than payer/proof"
     );
-    ensure!(
-        pre_balances[program_index] == validated_program_lamports
-            && post_balances[program_index] == validated_program_lamports,
-        "canonical verifier Program balance changed during tag64"
-    );
     Ok(RefundEvidence {
         fee_lamports: fee,
         payer_account_index: payer_index,
         proof_account_index: proof_index,
+        program_account_index: program_index,
         payer_pre_lamports: payer_pre,
         payer_post_lamports: payer_post,
         proof_pre_lamports: proof_pre,
         proof_post_lamports: proof_post,
+        validated_proof_lamports,
+        inbound_dust_after_validation_lamports,
+        landed_proof_pre_at_least_validated_prestate: true,
+        program_pre_lamports: program_pre,
+        program_post_lamports: program_post,
+        validated_program_lamports,
+        program_inbound_lamports_after_validation,
+        landed_program_pre_at_least_validated_prestate: true,
+        program_balance_unchanged_during_tag64: true,
         refund_lamports,
         payer_delta_plus_fee_lamports: payer_delta_plus_fee,
         exact_refund_equation_reconciled,
@@ -1433,25 +1558,15 @@ pub fn execute(arguments: &[String]) -> Result<V5MainnetProofCloseEvidence> {
     let refund_lamports = refund.refund_lamports;
 
     let proof_after = rpc.account(&proof.pubkey())?;
-    ensure!(
-        proof_after.account.is_none(),
-        "proof account still exists after finalized tag64"
-    );
+    let proof_postclose_dust_lamports =
+        closed_or_system_dust_lamports(&proof_after, "proof account")?;
     let program_after = deployed_program_exact(
         &rpc,
         &sbf,
         config.program_max_len,
         upgrade_authority.pubkey(),
     )?;
-    ensure!(
-        program_after.programdata_address == program_before.programdata_address
-            && program_after.program == program_before.program
-            && program_after.programdata == program_before.programdata
-            && program_after.programdata_deployment_slot
-                == program_before.programdata_deployment_slot
-            && program_after.upgrade_authority == program_before.upgrade_authority,
-        "verifier Program or ProgramData changed across proof-account close"
-    );
+    let program_continuity = program_continuity(&program_before, &program_after, &refund)?;
     let landed_compute_units = finalized
         .compute_units
         .context("finalized tag64 transaction omitted computeUnitsConsumed")?;
@@ -1534,16 +1649,17 @@ pub fn execute(arguments: &[String]) -> Result<V5MainnetProofCloseEvidence> {
             "landed_fee_equals_quote": true,
         },
         "refund": refund,
-        "proof_account_absent_after_finality": true,
+        "proof_account_closed_or_system_dust_after_finality": true,
+        "proof_account_postclose_dust_lamports": proof_postclose_dust_lamports,
         "program_after": program_value(&program_after),
-        "program_continuity": program_continuity(&program_before, &program_after),
-        "programdata_account_remains_present_and_unchanged": true,
+        "program_continuity": program_continuity,
+        "program_and_programdata_remain_present_with_structural_images_unchanged": true,
         "evidence_file_name": file_name(&config.evidence)?,
         "evidence_file_mode": "0444",
         "scope": [
             "This record covers one finalized tag64 close of the exact pinned V5 proof account on the pinned Solana mainnet genesis.",
             "The complete proof-account balance is refunded to the exact dedicated payer named before signing, with the transaction fee reconciled separately.",
-            "The canonical verifier Program and ProgramData remain present and byte-for-byte unchanged.",
+            "The canonical verifier Program and ProgramData remain present with their owner, executable flag, data, linkage, deployment slot, and upgrade authority unchanged; nonnegative external lamport credits observed after validation are recorded separately.",
             "This command cannot close ProgramData and does not sweep the dedicated payer.",
         ],
     });
@@ -1794,7 +1910,29 @@ mod tests {
         )
         .unwrap();
         assert_eq!(refund.refund_lamports, 400_000);
+        assert_eq!(refund.program_account_index, 2);
+        assert_eq!(refund.program_inbound_lamports_after_validation, 0);
+        assert!(refund.program_balance_unchanged_during_tag64);
         assert!(refund.exact_refund_equation_reconciled);
+
+        let credited_before = [1_000_000, 400_007, 1_141_449];
+        let credited_after = [1_395_007, 0, 1_141_449];
+        let credited_refund = reconcile_refund(
+            &keys,
+            &credited_before,
+            &credited_after,
+            5_000,
+            payer,
+            proof,
+            program,
+            400_000,
+            1_141_440,
+        )
+        .unwrap();
+        assert_eq!(credited_refund.inbound_dust_after_validation_lamports, 7);
+        assert_eq!(credited_refund.program_inbound_lamports_after_validation, 9);
+        assert_eq!(credited_refund.program_pre_lamports, 1_141_449);
+        assert_eq!(credited_refund.program_post_lamports, 1_141_449);
 
         let bad_after = [1_395_000, 1, 1_141_440];
         assert!(reconcile_refund(
@@ -1815,6 +1953,158 @@ mod tests {
             1_141_440,
         )
         .is_err());
+
+        let program_below_validated = [1_000_000, 400_000, 1_141_439];
+        let after_program_below_validated = [1_395_000, 0, 1_141_439];
+        assert!(reconcile_refund(
+            &keys,
+            &program_below_validated,
+            &after_program_below_validated,
+            5_000,
+            payer,
+            proof,
+            program,
+            400_000,
+            1_141_440,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn program_continuity_tolerates_and_records_only_structural_lamport_credits() {
+        let program_id = Pubkey::new_unique();
+        let programdata_address = Pubkey::new_unique();
+        let authority = Pubkey::new_unique();
+        let before = ProgramSnapshot {
+            program_context_slot: 10,
+            program_id,
+            program: RpcAccount {
+                lamports: 100,
+                owner: bpf_loader_upgradeable::id(),
+                executable: true,
+                data: vec![1, 2, 3],
+            },
+            programdata_context_slot: 10,
+            programdata_address,
+            programdata: RpcAccount {
+                lamports: 200,
+                owner: bpf_loader_upgradeable::id(),
+                executable: false,
+                data: vec![4, 5, 6],
+            },
+            programdata_deployment_slot: 7,
+            upgrade_authority: authority,
+        };
+        let mut after = before.clone();
+        after.program_context_slot = 20;
+        after.programdata_context_slot = 20;
+        after.program.lamports = 112;
+        after.programdata.lamports = 207;
+
+        let payer = Pubkey::new_unique();
+        let proof = Pubkey::new_unique();
+        let keys = [payer, proof, program_id];
+        let refund = reconcile_refund(
+            &keys,
+            &[1_000, 400, 105],
+            &[1_395, 0, 105],
+            5,
+            payer,
+            proof,
+            program_id,
+            400,
+            100,
+        )
+        .unwrap();
+        let continuity = program_continuity(&before, &after, &refund).unwrap();
+        assert_eq!(
+            continuity["program_inbound_lamports_before_landed_tag64"],
+            5
+        );
+        assert_eq!(continuity["program_inbound_lamports_after_landed_tag64"], 7);
+        assert_eq!(continuity["program_inbound_lamports_since_validation"], 12);
+        assert_eq!(
+            continuity["programdata_inbound_lamports_since_validation"],
+            7
+        );
+        assert_eq!(
+            continuity["program_structural_account_image_unchanged"],
+            true
+        );
+        assert_eq!(
+            continuity["programdata_structural_account_image_unchanged"],
+            true
+        );
+
+        let mut changed_data = after.clone();
+        changed_data.program.data.push(9);
+        assert!(program_continuity(&before, &changed_data, &refund).is_err());
+
+        let mut changed_owner = after.clone();
+        changed_owner.programdata.owner = system_program::id();
+        assert!(program_continuity(&before, &changed_owner, &refund).is_err());
+
+        let mut changed_executable = after.clone();
+        changed_executable.program.executable = false;
+        assert!(program_continuity(&before, &changed_executable, &refund).is_err());
+
+        let mut program_below_landed_post = after.clone();
+        program_below_landed_post.program.lamports = 104;
+        assert!(program_continuity(&before, &program_below_landed_post, &refund).is_err());
+
+        let mut programdata_below_validated = after;
+        programdata_below_validated.programdata.lamports = 199;
+        assert!(program_continuity(&before, &programdata_below_validated, &refund).is_err());
+    }
+
+    #[test]
+    fn postclose_proof_state_tolerates_only_absence_or_plain_system_dust() {
+        let absent = AccountRead {
+            context_slot: 1,
+            account: None,
+        };
+        assert_eq!(closed_or_system_dust_lamports(&absent, "proof").unwrap(), 0);
+
+        let dust = AccountRead {
+            context_slot: 2,
+            account: Some(RpcAccount {
+                lamports: 1,
+                owner: system_program::id(),
+                executable: false,
+                data: Vec::new(),
+            }),
+        };
+        assert_eq!(closed_or_system_dust_lamports(&dust, "proof").unwrap(), 1);
+
+        for account in [
+            RpcAccount {
+                lamports: 1,
+                owner: aspis_verifier::id(),
+                executable: false,
+                data: Vec::new(),
+            },
+            RpcAccount {
+                lamports: 1,
+                owner: system_program::id(),
+                executable: true,
+                data: Vec::new(),
+            },
+            RpcAccount {
+                lamports: 1,
+                owner: system_program::id(),
+                executable: false,
+                data: vec![1],
+            },
+        ] {
+            assert!(closed_or_system_dust_lamports(
+                &AccountRead {
+                    context_slot: 3,
+                    account: Some(account),
+                },
+                "proof",
+            )
+            .is_err());
+        }
     }
 
     #[test]

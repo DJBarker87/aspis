@@ -12,7 +12,7 @@ use std::{
     ffi::OsString,
     fs::{self, OpenOptions},
     io::Write,
-    os::unix::fs::PermissionsExt,
+    os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt},
     path::{Component, Path, PathBuf},
     process::Command,
     str::FromStr,
@@ -82,6 +82,18 @@ const DEFAULT_CONFIRM_TIMEOUT: Duration = Duration::from_secs(180);
 const READ_ONLY_RPC_RATE_LIMIT_RETRIES: u8 = 12;
 const SIGNATURE_POLL_INTERVAL: Duration = Duration::from_secs(2);
 const IN_PROGRESS_WARNING: &str = "If this file remains in_progress, execution did not reach the finalized evidence commit. Inspect chain state by recorded signer history before retrying.";
+
+#[cfg(any(target_os = "linux", target_os = "android"))]
+const EVIDENCE_O_NOFOLLOW: i32 = 0o400000;
+#[cfg(any(
+    target_os = "macos",
+    target_os = "ios",
+    target_os = "freebsd",
+    target_os = "openbsd",
+    target_os = "netbsd",
+    target_os = "dragonfly"
+))]
+const EVIDENCE_O_NOFOLLOW: i32 = 0x0100;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum CommandMode {
@@ -237,7 +249,7 @@ pub struct TransactionEvidence {
     pub message_sha256: String,
     pub serialized_transaction_sha256: String,
     pub compute_units_consumed: Option<u64>,
-    pub identical_wire_retries: u8,
+    pub identical_wire_retries: Option<u8>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -301,20 +313,47 @@ pub struct UpgradeableProgramSnapshotEvidence {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 pub struct UpgradeableProgramContinuityChecks {
+    pub program_id_unchanged: bool,
     pub programdata_address_unchanged: bool,
     pub program_raw_account_image_unchanged: bool,
+    pub program_structural_image_unchanged: bool,
+    pub program_lamports_not_decreased: bool,
     pub program_data_unchanged: bool,
     pub programdata_raw_account_image_unchanged: bool,
+    pub programdata_structural_image_unchanged: bool,
+    pub programdata_lamports_not_decreased: bool,
     pub programdata_data_unchanged: bool,
+    pub programdata_slot_unchanged: bool,
+    pub upgrade_authority_address_unchanged: bool,
 }
 
 impl UpgradeableProgramContinuityChecks {
     fn all_unchanged(self) -> bool {
-        self.programdata_address_unchanged
+        self.program_id_unchanged
+            && self.programdata_address_unchanged
             && self.program_raw_account_image_unchanged
+            && self.program_structural_image_unchanged
+            && self.program_lamports_not_decreased
             && self.program_data_unchanged
             && self.programdata_raw_account_image_unchanged
+            && self.programdata_structural_image_unchanged
+            && self.programdata_lamports_not_decreased
             && self.programdata_data_unchanged
+            && self.programdata_slot_unchanged
+            && self.upgrade_authority_address_unchanged
+    }
+
+    fn dust_hardened_continuity(self) -> bool {
+        self.program_id_unchanged
+            && self.programdata_address_unchanged
+            && self.program_structural_image_unchanged
+            && self.program_lamports_not_decreased
+            && self.program_data_unchanged
+            && self.programdata_structural_image_unchanged
+            && self.programdata_lamports_not_decreased
+            && self.programdata_data_unchanged
+            && self.programdata_slot_unchanged
+            && self.upgrade_authority_address_unchanged
     }
 }
 
@@ -579,6 +618,16 @@ impl RpcAccount {
             raw_account_image_sha256: sha256(&raw),
         }
     }
+
+    fn structural_image_unchanged_from(&self, baseline: &Self) -> bool {
+        self.owner == baseline.owner
+            && self.executable == baseline.executable
+            && self.data == baseline.data
+    }
+
+    fn dust_hardened_continuity_from(&self, baseline: &Self) -> bool {
+        self.structural_image_unchanged_from(baseline) && self.lamports >= baseline.lamports
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -604,11 +653,24 @@ impl UpgradeableProgramSnapshot {
 
     fn continuity_from(&self, baseline: &Self) -> UpgradeableProgramContinuityChecks {
         UpgradeableProgramContinuityChecks {
+            program_id_unchanged: self.program_id == baseline.program_id,
             programdata_address_unchanged: self.programdata_address == baseline.programdata_address,
             program_raw_account_image_unchanged: self.program == baseline.program,
+            program_structural_image_unchanged: self
+                .program
+                .structural_image_unchanged_from(&baseline.program),
+            program_lamports_not_decreased: self.program.lamports >= baseline.program.lamports,
             program_data_unchanged: self.program.data == baseline.program.data,
             programdata_raw_account_image_unchanged: self.programdata == baseline.programdata,
+            programdata_structural_image_unchanged: self
+                .programdata
+                .structural_image_unchanged_from(&baseline.programdata),
+            programdata_lamports_not_decreased: self.programdata.lamports
+                >= baseline.programdata.lamports,
             programdata_data_unchanged: self.programdata.data == baseline.programdata.data,
+            programdata_slot_unchanged: self.programdata_slot == baseline.programdata_slot,
+            upgrade_authority_address_unchanged: self.upgrade_authority_address
+                == baseline.upgrade_authority_address,
         }
     }
 }
@@ -659,7 +721,7 @@ impl PendingTransaction {
             message_sha256: self.message_sha256,
             serialized_transaction_sha256: self.serialized_transaction_sha256,
             compute_units_consumed: compute_units,
-            identical_wire_retries: self.identical_wire_retries,
+            identical_wire_retries: Some(self.identical_wire_retries),
         }
     }
 }
@@ -862,6 +924,7 @@ impl FinalizationTracker {
 fn rpc_read_retryable(error: &anyhow::Error) -> bool {
     let rendered = format!("{error:#}");
     rendered.contains("\"code\":429")
+        || rendered.contains("\"code\":-32429")
         || rendered.contains("HTTP 429")
         || rendered.contains("Too Many Requests")
         || rendered.contains("transport failure")
@@ -924,7 +987,7 @@ impl Rpc {
     }
 
     fn latest_blockhash_with_expiry(&self) -> Result<RecentBlockhash> {
-        let result = self.call_read("getLatestBlockhash", json!([{"commitment":"finalized"}]))?;
+        let result = self.call_read("getLatestBlockhash", json!([{"commitment":"confirmed"}]))?;
         let value = &result["value"];
         Ok(RecentBlockhash {
             hash: value["blockhash"]
@@ -940,6 +1003,15 @@ impl Rpc {
 
     fn latest_blockhash(&self) -> Result<Hash> {
         Ok(self.latest_blockhash_with_expiry()?.hash)
+    }
+
+    fn blockhash_valid_at_finalized(&self, blockhash: &Hash) -> Result<bool> {
+        self.call_read(
+            "isBlockhashValid",
+            json!([blockhash.to_string(), {"commitment":"finalized"}]),
+        )?["value"]
+            .as_bool()
+            .context("isBlockhashValid value was not bool")
     }
 
     fn block_height(&self) -> Result<u64> {
@@ -998,7 +1070,7 @@ impl Rpc {
                 "encoding":"base64",
                 "sigVerify":true,
                 "replaceRecentBlockhash":false,
-                "commitment":"finalized"
+                "commitment":"confirmed"
             }]),
         )?;
         let error = if result["value"]["err"].is_null() {
@@ -1170,7 +1242,7 @@ impl Rpc {
             json!([BASE64.encode(wire), {
                 "encoding":"base64",
                 "skipPreflight":false,
-                "preflightCommitment":"finalized",
+                "preflightCommitment":"confirmed",
                 "maxRetries":0
             }]),
         )
@@ -3057,7 +3129,7 @@ fn deploy_if_needed(
         message_sha256,
         serialized_transaction_sha256: wire_sha256,
         compute_units_consumed: rpc.transaction_cu(&signature)?,
-        identical_wire_retries: 0,
+        identical_wire_retries: Some(0),
     }))
 }
 
@@ -3082,7 +3154,7 @@ fn expected_nullifier_marker(pool: Pubkey, nullifier: [u8; 32]) -> Vec<u8> {
     expected
 }
 
-fn exact_in_progress_evidence_marker(path: &Path) -> bool {
+fn exact_in_progress_evidence_marker_for(path: &Path, artifact: &str) -> bool {
     let Ok(metadata) = fs::symlink_metadata(path) else {
         return false;
     };
@@ -3099,10 +3171,14 @@ fn exact_in_progress_evidence_marker(path: &Path) -> bool {
         return false;
     };
     value.as_object().is_some_and(|object| object.len() == 4)
-        && value["artifact"] == "spend_devnet_finalized_rehearsal"
+        && value["artifact"] == artifact
         && value["status"] == "in_progress_no_claim"
         && value["reserved_at_utc"].as_str().is_some()
         && value["warning"] == IN_PROGRESS_WARNING
+}
+
+fn exact_in_progress_evidence_marker(path: &Path) -> bool {
+    exact_in_progress_evidence_marker_for(path, "spend_devnet_finalized_rehearsal")
 }
 
 fn zeroed_pool_account_exact(account: &RpcAccount, program_id: &Pubkey, pool_rent: u64) -> bool {
@@ -3206,7 +3282,7 @@ fn recover_exact_transaction_evidence(
         message_sha256,
         serialized_transaction_sha256: sha256(&wire),
         compute_units_consumed: rpc.transaction_cu(signature)?,
-        identical_wire_retries: 0,
+        identical_wire_retries: None,
     })
 }
 
@@ -3414,15 +3490,37 @@ impl EvidenceReservation {
     }
 
     fn resume(path: &Path) -> Result<Self> {
+        Self::resume_for_artifact(path, "spend_devnet_finalized_rehearsal")
+    }
+
+    fn resume_for_artifact(path: &Path, artifact: &str) -> Result<Self> {
         ensure!(
-            exact_in_progress_evidence_marker(path),
+            exact_in_progress_evidence_marker_for(path, artifact),
             "resume evidence path is not the exact in-progress marker"
+        );
+        let before = fs::symlink_metadata(path)
+            .with_context(|| format!("inspect in-progress evidence {}", path.display()))?;
+        ensure!(
+            before.file_type().is_file() && !before.file_type().is_symlink() && before.nlink() == 1,
+            "in-progress evidence must be one regular non-symlink file"
         );
         let file = OpenOptions::new()
             .read(true)
             .write(true)
+            .custom_flags(EVIDENCE_O_NOFOLLOW)
             .open(path)
             .with_context(|| format!("open in-progress evidence {}", path.display()))?;
+        let opened = file
+            .metadata()
+            .with_context(|| format!("inspect opened evidence {}", path.display()))?;
+        ensure!(
+            opened.dev() == before.dev() && opened.ino() == before.ino() && opened.nlink() == 1,
+            "in-progress evidence changed while opening"
+        );
+        ensure!(
+            exact_in_progress_evidence_marker_for(path, artifact),
+            "in-progress evidence changed after opening"
+        );
         Ok(Self {
             file,
             path: path.to_path_buf(),
@@ -3571,7 +3669,7 @@ pub fn upload_smoke(arguments: &[String]) -> Result<SpendDevnetUploadSmokeEviden
         .context("upload smoke produced no upload transaction")?;
     let upload_identical_wire_retries = upload_transactions
         .iter()
-        .map(|transaction| u64::from(transaction.identical_wire_retries))
+        .filter_map(|transaction| transaction.identical_wire_retries.map(u64::from))
         .sum();
     let proof_upload_transaction_count = upload_transactions.len();
     setup_transactions.extend(upload_transactions);
@@ -5935,8 +6033,17 @@ mod tests {
         programdata_lamports_changed.programdata.lamports += 1;
         let checks = programdata_lamports_changed.continuity_from(&baseline);
         assert!(!checks.programdata_raw_account_image_unchanged);
+        assert!(checks.programdata_structural_image_unchanged);
+        assert!(checks.programdata_lamports_not_decreased);
         assert!(checks.programdata_data_unchanged);
         assert!(checks.programdata_address_unchanged);
+        assert!(checks.dust_hardened_continuity());
+
+        let mut programdata_lamports_decreased = baseline.clone();
+        programdata_lamports_decreased.programdata.lamports -= 1;
+        let checks = programdata_lamports_decreased.continuity_from(&baseline);
+        assert!(!checks.programdata_lamports_not_decreased);
+        assert!(!checks.dust_hardened_continuity());
 
         let mut programdata_bytes_changed = baseline.clone();
         programdata_bytes_changed.programdata.data[0] ^= 1;
@@ -5945,6 +6052,7 @@ mod tests {
         assert!(!checks.programdata_data_unchanged);
         assert!(checks.program_raw_account_image_unchanged);
         assert!(checks.program_data_unchanged);
+        assert!(!checks.dust_hardened_continuity());
 
         let mut linked_address_changed = baseline.clone();
         linked_address_changed.programdata_address = Pubkey::new_unique();
@@ -5961,6 +6069,18 @@ mod tests {
         assert!(!checks.program_data_unchanged);
         assert!(checks.programdata_raw_account_image_unchanged);
         assert!(checks.programdata_data_unchanged);
+
+        let mut authority_changed = baseline.clone();
+        authority_changed.upgrade_authority_address = Pubkey::new_unique();
+        assert!(!authority_changed
+            .continuity_from(&baseline)
+            .dust_hardened_continuity());
+
+        let mut slot_changed = baseline.clone();
+        slot_changed.programdata_slot += 1;
+        assert!(!slot_changed
+            .continuity_from(&baseline)
+            .dust_hardened_continuity());
     }
 
     #[test]

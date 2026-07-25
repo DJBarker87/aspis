@@ -9,8 +9,9 @@ SBF build is byte-identical to the production-feature binary. This record
 binds the code, formal proof, runtime envelope, and deployment handoff to that
 artefact.
 
-V5 has not yet been deployed on mainnet. The q18/g37 Tag-65 transaction
-finalized on 2026-07-16 is a separate release preserved under
+At this 2026-07-23 preflight cutoff, V5 had not yet been deployed on mainnet.
+The q18/g37 Tag-65 transaction finalized on 2026-07-16 is a separate release
+preserved under
 [`aspis-spend-q18-g37-mainnet-v1`](../aspis-spend-q18-g37-mainnet-v1/).
 
 ## Release artefact
@@ -258,8 +259,8 @@ finalized at slot `478299357` with 1,335,952 CU. The
 contains the sanitized full execution record, proof and statement, and
 offline verifier. Its 2.3.13 topology record remains immutable; the
 [Agave 4.1.0 addendum](../../results/spend/v5-mainnet-runtime-4.1.0-20260723/)
-binds the exact priced transaction shape and prefunded-marker execution. No V5
-mainnet transaction has been submitted.
+binds the exact priced transaction shape and prefunded-marker execution. At
+this preflight cutoff, no V5 mainnet transaction had been submitted.
 
 The deployment checklist and publication record are in the
 [V5 mainnet deployment handoff](../../docs/reviews/v5-mainnet-deployment-handoff.html).
@@ -282,3 +283,55 @@ paths are relative symlinks to the canonical binary.
 Regenerable LLBC, raw/versioned Aeneas output, build logs, intermediate
 feature-only SBFs, and the temporary-suffixed devnet build are preserved at
 [`research-archive-v5-production-closure-2026-07-22`](https://github.com/DJBarker87/aspis/releases/tag/research-archive-v5-production-closure-2026-07-22).
+
+## Outcome addendum — 2026-07-25
+
+This addendum records the result of executing the frozen candidate. It does
+not rewrite the 2026-07-23 preflight above.
+
+The exact 1,258,496-byte SBF identified by SHA-256
+`4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40`
+was deployed as program
+[`7Q2nGsP…CieRmue`](https://explorer.solana.com/address/7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue).
+Deployment transaction
+[`RHt7eEr…Ndp3RMf`](https://explorer.solana.com/tx/RHt7eErpgLvc7Z2QDWVSj4dmYTg9s4bU62CgWfN5Y1N2BUkAMmQ1V3P8RhtpX9px7aUfAYa8CNSo5Rx5Ndp3RMf)
+finalized at slot `434999519`.
+
+The production proof and statement have SHA-256
+`330414df587974684643a6062d092db0519d746f0c7efe4ed2108775b685feaf`
+and
+`0cdc34bc7f835640cff76d1085df9ba966df9f39eb228f3002f927cf30958113`,
+respectively. Atomic Tag 67
+[`EJviPgF…3vJ2fE`](https://explorer.solana.com/tx/EJviPgF12i9iK2CveVaQSMeFQqDMFPQ1iPRUYEwNQE3zGquTUZNJXPZEENorcQtsnQj1orFmH1TPsgdbR3vJ2fE)
+finalized at slot `435019536`. The canonical nullifier PDA bump was exactly
+`255`; simulation and landed metadata both reported `1,334,452 CU`, below the
+frozen `1,356,912 CU` policy ceiling.
+
+The executor used a hash-chained, crash-resumable per-wire journal. Each
+replacement wire received a fresh finalized-expiry gate and exact signed-wire
+simulation, while any wire whose send authority had been consumed could only
+be polled until finality or expiry. Standard provider-neutral Solana JSON-RPC
+over HTTPS and WSS was sufficient; the completed run did not require a paid
+RPC tier.
+
+For lifecycle accounting, this V5 proof required 84 transactions: two pool
+initialization transactions, one proof-account create, 79 proof uploads, one
+proof seal (Tag 62), and one atomic verify-and-apply (Tag 67). Program
+deployment and the three cleanup transactions are deliberately outside that
+84-transaction lifecycle count. The older 71-transaction figure belongs to
+the smaller q18/g37 proof lifecycle and was not a mid-run change to V5.
+
+Temporary rent was then recovered in the prescribed order:
+
+| Operation | Finalized transaction | Slot | Amount | Fee |
+| --- | --- | ---: | ---: | ---: |
+| Close sealed proof to dedicated payer | [`5FF19Ec…71hZXbW`](https://explorer.solana.com/tx/5FF19EceNFBVbrNzvhxTnbK8bWSysAHVLRjbfggamY3YSeUFzdk54c4GT9GKitBWGkntNG2Zx9xHgbzp371hZXbW) | `435019649` | `525,660,961` lamports | `10,000` lamports |
+| Close ProgramData directly to pinned wallet | [`uZ6q5a2…kBdHkWn`](https://explorer.solana.com/tx/uZ6q5a2jGYcscEZgnLghPrqNwp9Hxq3REgYmt6gnb3JuorkUUEQUeJkVWy2e88j9bSLHgRvT2DytjRW2kBdHkWn) | `435019804` | `9,049,204,080` lamports | `10,000` lamports |
+| Sweep dedicated payer to pinned wallet | [`4haJ6dP…zbj1JyUW`](https://explorer.solana.com/tx/4haJ6dPmSFkscFKC57QoCUUcf46vU77av9Y8UfcRyCWjfydzHjCeJCsfuthmifXJfVWreZZM8JTDUdBgzbj1JyUW) | `435020068` | `1,931,690,802` lamports | `5,000` lamports |
+
+The protected refund pin was
+`Dni6HwfsjJ3sQFTEtKVGL6RgE7zAXnKA7K8MLBBm2RZp`. Its two direct receipt
+transactions credited a total of `10,980,894,882` lamports. The payer was
+left at zero lamports. The sanitized evidence and offline verification
+materials are collected in
+[`release/aspis-v5-tag67-mainnet-v1/`](../aspis-v5-tag67-mainnet-v1/).

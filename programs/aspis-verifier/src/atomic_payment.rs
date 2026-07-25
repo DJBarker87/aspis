@@ -239,6 +239,7 @@ fn validate_accounts_and_state(
     system_program_account: &AccountInfo,
     public: &AtomicPaymentPublicInputs,
     proof_disposition: ProofAccountDisposition,
+    required_nullifier_bump: Option<u8>,
 ) -> Result<(AtomicPoolStateV2, u8, MarkerPreparation), ProgramError> {
     if proof_account.owner != program_id || pool_account.owner != program_id {
         return Err(ProgramError::IncorrectProgramId);
@@ -278,6 +279,9 @@ fn validate_accounts_and_state(
 
     let (expected_nullifier, bump) = atomic_nullifier_address(program_id, &public.nullifier);
     if nullifier_account.key != &expected_nullifier {
+        return Err(ProgramError::InvalidSeeds);
+    }
+    if required_nullifier_bump.is_some_and(|required| bump != required) {
         return Err(ProgramError::InvalidSeeds);
     }
 
@@ -459,6 +463,29 @@ where
     )
 }
 
+/// Apply the retained-proof atomic transition only when the canonical
+/// nullifier PDA uses the caller's required bump.
+pub fn verify_and_apply_atomic_payment_state_with_required_nullifier_bump<'a, F>(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'a>],
+    public: &AtomicPaymentPublicInputs,
+    required_nullifier_bump: u8,
+    verify_complete_proof: F,
+) -> ProgramResult
+where
+    F: FnOnce(&AccountInfo<'a>, &AtomicPaymentStatementV4, &[u8; 32]) -> ProgramResult,
+{
+    verify_and_apply_atomic_payment_state_traced_inner(
+        program_id,
+        accounts,
+        public,
+        verify_complete_proof,
+        ProofAccountDisposition::Retain,
+        Some(required_nullifier_bump),
+        |_| {},
+    )
+}
+
 /// Spend production form of [`verify_and_apply_atomic_payment_state`].
 /// Account 0 must additionally be writable and sign the transaction. After
 /// proof verification and every mutable-state recheck succeed, its complete
@@ -478,6 +505,7 @@ where
         public,
         verify_complete_proof,
         ProofAccountDisposition::RefundToPayer,
+        None,
         |_| {},
     )
 }
@@ -502,6 +530,7 @@ where
         public,
         verify_complete_proof,
         ProofAccountDisposition::Retain,
+        None,
         trace,
     )
 }
@@ -525,6 +554,7 @@ where
         public,
         verify_complete_proof,
         ProofAccountDisposition::RefundToPayer,
+        None,
         trace,
     )
 }
@@ -535,6 +565,7 @@ fn verify_and_apply_atomic_payment_state_traced_inner<'a, F, T>(
     public: &AtomicPaymentPublicInputs,
     verify_complete_proof: F,
     proof_disposition: ProofAccountDisposition,
+    required_nullifier_bump: Option<u8>,
     mut trace: T,
 ) -> ProgramResult
 where
@@ -559,6 +590,7 @@ where
         system_program_account,
         public,
         proof_disposition,
+        required_nullifier_bump,
     )?;
     trace(match preparation {
         MarkerPreparation::ProgramOwnedZeroed => {

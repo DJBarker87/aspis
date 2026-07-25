@@ -167,8 +167,14 @@ pub struct ProgramDataRefundEvidence {
     pub refund_recipient_post_lamports: u64,
     pub program_pre_lamports: u64,
     pub program_post_lamports: u64,
+    pub validated_program_lamports: u64,
+    pub program_inbound_lamports_after_validation: u64,
+    pub landed_program_pre_at_least_validated_prestate: bool,
     pub programdata_pre_lamports: u64,
     pub programdata_post_lamports: u64,
+    pub validated_programdata_lamports: u64,
+    pub inbound_dust_after_validation_lamports: u64,
+    pub landed_programdata_pre_at_least_validated_prestate: bool,
     pub transaction_fee_lamports: u64,
     pub refund_lamports: u64,
     pub payer_delta_plus_fee_lamports: i128,
@@ -196,9 +202,12 @@ pub struct PrecloseEvidence {
     pub tag67_finalized_slot: u64,
     pub tag67_wire_sha256: String,
     pub tag67_proof_account_role_exact: bool,
-    pub proof_account_absent_initially: bool,
-    pub proof_account_absent_before_signing: bool,
-    pub proof_account_absent_before_submission: bool,
+    pub proof_account_closed_or_system_dust_initially: bool,
+    pub proof_account_dust_lamports_initially: u64,
+    pub proof_account_closed_or_system_dust_before_signing: bool,
+    pub proof_account_dust_lamports_before_signing: u64,
+    pub proof_account_closed_or_system_dust_before_submission: bool,
+    pub proof_account_dust_lamports_before_submission: u64,
     pub disposable_program_id: String,
     pub programdata_address: String,
     pub upgrade_authority: String,
@@ -209,6 +218,7 @@ pub struct PrecloseEvidence {
     pub exact_program_and_programdata_validated: bool,
     pub prestate: SnapshotEvidence,
     pub programdata_lamports: u64,
+    pub programdata_inbound_dust_before_submission_lamports: u64,
     pub compute_unit_price_micro_lamports: u64,
     pub top_level_instruction_count: usize,
     pub expected_signature: String,
@@ -239,7 +249,8 @@ pub struct PostcloseEvidence {
     pub expected_tag67_signature: String,
     pub tag67_finalized_slot: u64,
     pub tag67_wire_sha256: String,
-    pub proof_account_absent_after_cleanup: bool,
+    pub proof_account_closed_or_system_dust_after_cleanup: bool,
+    pub proof_account_dust_lamports_after_cleanup: u64,
     pub preclose_evidence_path: String,
     pub preclose_evidence_sha256: String,
     pub preclose_evidence_bytes: usize,
@@ -254,8 +265,12 @@ pub struct PostcloseEvidence {
     pub landed_logs_sha256: String,
     pub poststate: SnapshotEvidence,
     pub program_account_remains: bool,
-    pub program_account_image_unchanged: bool,
-    pub programdata_account_absent: bool,
+    pub program_account_structure_unchanged: bool,
+    pub program_account_inbound_lamports_since_validation: u64,
+    pub program_account_inbound_lamports_after_landed_cleanup: u64,
+    pub program_account_inbound_lamport_intervals_reconciled: bool,
+    pub programdata_account_closed_or_system_dust: bool,
+    pub programdata_postclose_dust_lamports: u64,
     pub refund: ProgramDataRefundEvidence,
     pub sweep_remaining_to_refund_source_submitted: bool,
 }
@@ -1107,7 +1122,8 @@ pub fn execute(arguments: &[String]) -> Result<ProgramDataCleanupOutcome> {
     ];
     let initial = rpc.snapshot(&addresses, Some(tag67_binding.slot))?;
     validate_refund_recipient_wallet(&initial, &refund_recipient.pubkey)?;
-    require_expected_proof_absent(&initial, &config.expected_proof_account)?;
+    let proof_dust_initial =
+        require_closed_or_system_dust(&initial, &config.expected_proof_account, "V5 proof")?;
     validate_cleanup_prestate(
         &initial,
         &program.pubkey(),
@@ -1122,7 +1138,12 @@ pub fn execute(arguments: &[String]) -> Result<ProgramDataCleanupOutcome> {
     // and signing the only permitted loader close.
     let presign = rpc.snapshot(&addresses, Some(initial.context_slot))?;
     validate_refund_recipient_wallet(&presign, &refund_recipient.pubkey)?;
-    require_expected_proof_absent(&presign, &config.expected_proof_account)?;
+    let proof_dust_presign =
+        require_closed_or_system_dust(&presign, &config.expected_proof_account, "V5 proof")?;
+    ensure!(
+        proof_dust_presign >= proof_dust_initial,
+        "closed proof dust balance decreased before signing"
+    );
     let programdata_presign = validate_cleanup_prestate(
         &presign,
         &program.pubkey(),
@@ -1185,7 +1206,12 @@ pub fn execute(arguments: &[String]) -> Result<ProgramDataCleanupOutcome> {
     // until the V5 proof account is absent.
     let prestate = rpc.snapshot(&addresses, Some(simulation.context_slot))?;
     validate_refund_recipient_wallet(&prestate, &refund_recipient.pubkey)?;
-    require_expected_proof_absent(&prestate, &config.expected_proof_account)?;
+    let proof_dust_presubmit =
+        require_closed_or_system_dust(&prestate, &config.expected_proof_account, "V5 proof")?;
+    ensure!(
+        proof_dust_presubmit >= proof_dust_presign,
+        "closed proof dust balance decreased before submission"
+    );
     let programdata_pre = validate_cleanup_prestate(
         &prestate,
         &program.pubkey(),
@@ -1194,10 +1220,11 @@ pub fn execute(arguments: &[String]) -> Result<ProgramDataCleanupOutcome> {
         &sbf,
         config.program_max_len,
     )?;
-    ensure!(
-        programdata_pre == programdata_presign,
-        "ProgramData changed between signing and the pre-submission snapshot"
-    );
+    let programdata_inbound_dust_before_submission = inbound_lamports_if_same_account_image(
+        &programdata_presign,
+        &programdata_pre,
+        "ProgramData",
+    )?;
     let preclose = PrecloseEvidence {
         artifact: "spend_programdata_cleanup_preclose",
         generated_at_utc: chrono::Utc::now().to_rfc3339(),
@@ -1218,9 +1245,12 @@ pub fn execute(arguments: &[String]) -> Result<ProgramDataCleanupOutcome> {
         tag67_finalized_slot: tag67_binding.slot,
         tag67_wire_sha256: tag67_binding.wire_sha256.clone(),
         tag67_proof_account_role_exact: true,
-        proof_account_absent_initially: true,
-        proof_account_absent_before_signing: true,
-        proof_account_absent_before_submission: true,
+        proof_account_closed_or_system_dust_initially: true,
+        proof_account_dust_lamports_initially: proof_dust_initial,
+        proof_account_closed_or_system_dust_before_signing: true,
+        proof_account_dust_lamports_before_signing: proof_dust_presign,
+        proof_account_closed_or_system_dust_before_submission: true,
+        proof_account_dust_lamports_before_submission: proof_dust_presubmit,
         disposable_program_id: program.pubkey().to_string(),
         programdata_address: programdata.to_string(),
         upgrade_authority: upgrade_authority.pubkey().to_string(),
@@ -1231,6 +1261,8 @@ pub fn execute(arguments: &[String]) -> Result<ProgramDataCleanupOutcome> {
         exact_program_and_programdata_validated: true,
         prestate: prestate.evidence(),
         programdata_lamports: programdata_pre.lamports,
+        programdata_inbound_dust_before_submission_lamports:
+            programdata_inbound_dust_before_submission,
         compute_unit_price_micro_lamports: 0,
         top_level_instruction_count: instructions.len(),
         expected_signature: expected_signature.to_string(),
@@ -1257,6 +1289,7 @@ pub fn execute(arguments: &[String]) -> Result<ProgramDataCleanupOutcome> {
         finalized.wire == wire,
         "landed ProgramData close wire differs from immutable pre-close artifact"
     );
+    let pre_program = prestate.required(&program.pubkey(), "pre-close Program")?;
     let refund = check_programdata_refund_equation(
         &transaction.message.account_keys,
         &finalized.pre_balances,
@@ -1266,6 +1299,7 @@ pub fn execute(arguments: &[String]) -> Result<ProgramDataCleanupOutcome> {
         &refund_recipient.pubkey,
         &program.pubkey(),
         &programdata,
+        pre_program.lamports,
         programdata_pre.lamports,
     )?;
     ensure!(
@@ -1275,25 +1309,32 @@ pub fn execute(arguments: &[String]) -> Result<ProgramDataCleanupOutcome> {
 
     let poststate = rpc.snapshot(&addresses, Some(finalized_slot))?;
     validate_refund_recipient_wallet(&poststate, &refund_recipient.pubkey)?;
-    require_expected_proof_absent(&poststate, &config.expected_proof_account)?;
-    let pre_program = prestate.required(&program.pubkey(), "pre-close Program")?;
+    let proof_dust_postclose =
+        require_closed_or_system_dust(&poststate, &config.expected_proof_account, "V5 proof")?;
+    ensure!(
+        proof_dust_postclose >= proof_dust_presubmit,
+        "closed proof dust balance decreased during ProgramData cleanup"
+    );
     let post_program = poststate.required(&program.pubkey(), "post-close Program")?;
     ensure!(
         post_program.owner == bpf_loader_upgradeable::id(),
         "remaining Program account changed owner"
     );
+    let program_account_inbound_since_validation =
+        inbound_lamports_if_same_account_image(pre_program, post_program, "remaining Program")?;
+    let program_account_inbound_after_landed_cleanup = post_program
+        .lamports
+        .checked_sub(refund.program_post_lamports)
+        .context("remaining Program account balance fell below finalized metadata")?;
     ensure!(
-        post_program.lamports == refund.program_post_lamports,
-        "remaining Program account balance differs from finalized metadata"
+        refund
+            .program_inbound_lamports_after_validation
+            .checked_add(program_account_inbound_after_landed_cleanup)
+            == Some(program_account_inbound_since_validation),
+        "remaining Program inbound-lamport intervals do not reconcile"
     );
-    ensure!(
-        post_program == pre_program,
-        "remaining Program account image changed during cleanup"
-    );
-    ensure!(
-        poststate.account(&programdata)?.is_none(),
-        "ProgramData account remains after finalized close"
-    );
+    let programdata_postclose_dust =
+        require_closed_or_system_dust(&poststate, &programdata, "ProgramData")?;
 
     let postclose = PostcloseEvidence {
         artifact: "spend_programdata_cleanup_postclose",
@@ -1313,7 +1354,8 @@ pub fn execute(arguments: &[String]) -> Result<ProgramDataCleanupOutcome> {
         expected_tag67_signature: tag67_binding.signature.to_string(),
         tag67_finalized_slot: tag67_binding.slot,
         tag67_wire_sha256: tag67_binding.wire_sha256,
-        proof_account_absent_after_cleanup: true,
+        proof_account_closed_or_system_dust_after_cleanup: true,
+        proof_account_dust_lamports_after_cleanup: proof_dust_postclose,
         preclose_evidence_path: preclose_receipt.path.clone(),
         preclose_evidence_sha256: preclose_receipt.sha256.clone(),
         preclose_evidence_bytes: preclose_receipt.bytes,
@@ -1328,8 +1370,13 @@ pub fn execute(arguments: &[String]) -> Result<ProgramDataCleanupOutcome> {
         landed_logs_sha256: joined_logs_sha256(&finalized.logs),
         poststate: poststate.evidence(),
         program_account_remains: true,
-        program_account_image_unchanged: true,
-        programdata_account_absent: true,
+        program_account_structure_unchanged: true,
+        program_account_inbound_lamports_since_validation: program_account_inbound_since_validation,
+        program_account_inbound_lamports_after_landed_cleanup:
+            program_account_inbound_after_landed_cleanup,
+        program_account_inbound_lamport_intervals_reconciled: true,
+        programdata_account_closed_or_system_dust: true,
+        programdata_postclose_dust_lamports: programdata_postclose_dust,
         refund: refund.clone(),
         sweep_remaining_to_refund_source_submitted: false,
     };
@@ -1433,6 +1480,7 @@ pub fn check_programdata_refund_equation(
     refund_recipient: &Pubkey,
     program: &Pubkey,
     programdata: &Pubkey,
+    expected_program_lamports: u64,
     expected_programdata_lamports: u64,
 ) -> Result<ProgramDataRefundEvidence> {
     ensure!(
@@ -1465,10 +1513,12 @@ pub fn check_programdata_refund_equation(
     let program_post = post_balances[program_index];
     let programdata_pre = pre_balances[programdata_index];
     let programdata_post = post_balances[programdata_index];
-    ensure!(
-        programdata_pre == expected_programdata_lamports,
-        "transaction ProgramData pre-balance differs from validated prestate"
-    );
+    let program_inbound_lamports_after_validation = program_pre
+        .checked_sub(expected_program_lamports)
+        .context("transaction Program pre-balance fell below validated prestate")?;
+    let inbound_dust_after_validation_lamports = programdata_pre
+        .checked_sub(expected_programdata_lamports)
+        .context("transaction ProgramData pre-balance fell below validated prestate")?;
     ensure!(programdata_post == 0, "ProgramData post-balance is nonzero");
     let refund_lamports = programdata_pre
         .checked_sub(programdata_post)
@@ -1517,8 +1567,14 @@ pub fn check_programdata_refund_equation(
         refund_recipient_post_lamports: refund_recipient_post,
         program_pre_lamports: program_pre,
         program_post_lamports: program_post,
+        validated_program_lamports: expected_program_lamports,
+        program_inbound_lamports_after_validation,
+        landed_program_pre_at_least_validated_prestate: true,
         programdata_pre_lamports: programdata_pre,
         programdata_post_lamports: programdata_post,
+        validated_programdata_lamports: expected_programdata_lamports,
+        inbound_dust_after_validation_lamports,
+        landed_programdata_pre_at_least_validated_prestate: true,
         transaction_fee_lamports,
         refund_lamports,
         payer_delta_plus_fee_lamports: payer_delta_plus_fee,
@@ -1837,15 +1893,41 @@ fn validate_refund_recipient_wallet(
     Ok(())
 }
 
-fn require_expected_proof_absent(
-    snapshot: &CoherentSnapshot,
-    expected_proof_account: &Pubkey,
-) -> Result<()> {
+fn inbound_lamports_if_same_account_image(
+    before: &RpcAccount,
+    after: &RpcAccount,
+    label: &str,
+) -> Result<u64> {
     ensure!(
-        snapshot.account(expected_proof_account)?.is_none(),
-        "expected V5 proof account still exists; close it before ProgramData cleanup"
+        before.owner == after.owner
+            && before.executable == after.executable
+            && before.data == after.data,
+        "{label} owner, executable flag, or data changed"
     );
-    Ok(())
+    after
+        .lamports
+        .checked_sub(before.lamports)
+        .with_context(|| format!("{label} balance decreased"))
+}
+
+fn require_closed_or_system_dust(
+    snapshot: &CoherentSnapshot,
+    address: &Pubkey,
+    label: &str,
+) -> Result<u64> {
+    match snapshot.account(address)? {
+        None => Ok(0),
+        Some(account)
+            if account.owner == solana_sdk::system_program::id()
+                && !account.executable
+                && account.data.is_empty() =>
+        {
+            Ok(account.lamports)
+        }
+        Some(_) => bail!(
+            "{label} was not closed: only absence or a System-owned zero-data dust account is accepted"
+        ),
+    }
 }
 
 fn exact_regular_file(path: &Path) -> Result<Vec<u8>> {
@@ -2529,21 +2611,82 @@ mod tests {
     }
 
     #[test]
-    fn programdata_cleanup_requires_the_expected_proof_account_to_be_absent() {
+    fn programdata_cleanup_accepts_closed_proof_absence_or_plain_system_dust() {
         let proof = Keypair::new().pubkey();
         let mut snapshot = CoherentSnapshot {
             context_slot: 1,
             addresses: vec![proof],
             accounts: vec![None],
         };
-        require_expected_proof_absent(&snapshot, &proof).unwrap();
+        assert_eq!(
+            require_closed_or_system_dust(&snapshot, &proof, "proof").unwrap(),
+            0
+        );
+        snapshot.accounts[0] = Some(RpcAccount {
+            lamports: 1,
+            owner: solana_sdk::system_program::id(),
+            executable: false,
+            data: Vec::new(),
+        });
+        assert_eq!(
+            require_closed_or_system_dust(&snapshot, &proof, "proof").unwrap(),
+            1
+        );
         snapshot.accounts[0] = Some(RpcAccount {
             lamports: 1,
             owner: aspis_verifier::id(),
             executable: false,
             data: vec![1],
         });
-        assert!(require_expected_proof_absent(&snapshot, &proof).is_err());
+        assert!(require_closed_or_system_dust(&snapshot, &proof, "proof").is_err());
+        snapshot.accounts[0] = Some(RpcAccount {
+            lamports: 1,
+            owner: solana_sdk::system_program::id(),
+            executable: false,
+            data: vec![1],
+        });
+        assert!(require_closed_or_system_dust(&snapshot, &proof, "proof").is_err());
+    }
+
+    #[test]
+    fn account_transition_accepts_only_structure_preserving_lamport_credits() {
+        let before = RpcAccount {
+            lamports: 100,
+            owner: bpf_loader_upgradeable::id(),
+            executable: false,
+            data: vec![1, 2, 3],
+        };
+        let mut credited = before.clone();
+        credited.lamports += 9;
+        assert_eq!(
+            inbound_lamports_if_same_account_image(&before, &credited, "ProgramData").unwrap(),
+            9
+        );
+
+        let mut decreased = before.clone();
+        decreased.lamports -= 1;
+        assert!(
+            inbound_lamports_if_same_account_image(&before, &decreased, "ProgramData").is_err()
+        );
+
+        let mut changed_owner = credited.clone();
+        changed_owner.owner = Pubkey::new_unique();
+        assert!(
+            inbound_lamports_if_same_account_image(&before, &changed_owner, "ProgramData").is_err()
+        );
+        let mut changed_executable = credited.clone();
+        changed_executable.executable = true;
+        assert!(inbound_lamports_if_same_account_image(
+            &before,
+            &changed_executable,
+            "ProgramData",
+        )
+        .is_err());
+        let mut changed_data = credited;
+        changed_data.data.push(4);
+        assert!(
+            inbound_lamports_if_same_account_image(&before, &changed_data, "ProgramData").is_err()
+        );
     }
 
     #[test]
@@ -2569,10 +2712,36 @@ mod tests {
             &refund_recipient,
             &program,
             &programdata,
+            1_141_440,
             refund,
         )
         .unwrap();
         assert!(evidence.exact_refund_equation_reconciled);
+
+        let donated = 9u64;
+        let evidence_with_dust = check_programdata_refund_equation(
+            &keys,
+            &[payer_pre, recipient_pre, refund + donated, 1_141_443, 1],
+            &[payer_post, recipient_post + donated, 0, 1_141_443, 1],
+            fee,
+            &payer,
+            &refund_recipient,
+            &program,
+            &programdata,
+            1_141_440,
+            refund,
+        )
+        .unwrap();
+        assert_eq!(
+            evidence_with_dust.inbound_dust_after_validation_lamports,
+            donated
+        );
+        assert_eq!(evidence_with_dust.refund_lamports, refund + donated);
+        assert_eq!(
+            evidence_with_dust.program_inbound_lamports_after_validation,
+            3
+        );
+        assert!(evidence_with_dust.exact_refund_equation_reconciled);
         assert!(evidence.payer_fee_equation_reconciled);
         assert!(evidence.refund_recipient_equation_reconciled);
         assert!(evidence.program_balance_unchanged);
@@ -2587,6 +2756,7 @@ mod tests {
             &refund_recipient,
             &program,
             &programdata,
+            1_141_440,
             refund,
         )
         .is_err());
@@ -2599,6 +2769,7 @@ mod tests {
             &refund_recipient,
             &program,
             &programdata,
+            1_141_440,
             refund,
         )
         .is_err());
@@ -2611,6 +2782,33 @@ mod tests {
             &refund_recipient,
             &program,
             &programdata,
+            1_141_440,
+            refund,
+        )
+        .is_err());
+        assert!(check_programdata_refund_equation(
+            &keys,
+            &[payer_pre, recipient_pre, refund - 1, 1_141_440, 1,],
+            &[payer_post, recipient_pre + refund - 1, 0, 1_141_440, 1,],
+            fee,
+            &payer,
+            &refund_recipient,
+            &program,
+            &programdata,
+            1_141_440,
+            refund,
+        )
+        .is_err());
+        assert!(check_programdata_refund_equation(
+            &keys,
+            &[payer_pre, recipient_pre, refund, 1_141_439, 1],
+            &[payer_post, recipient_post, 0, 1_141_439, 1],
+            fee,
+            &payer,
+            &refund_recipient,
+            &program,
+            &programdata,
+            1_141_440,
             refund,
         )
         .is_err());

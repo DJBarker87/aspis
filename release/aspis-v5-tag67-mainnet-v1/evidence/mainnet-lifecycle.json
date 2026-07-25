@@ -1,0 +1,159 @@
+{
+  "artifact": "aspis_v5_tag67_mainnet_lifecycle",
+  "schema_version": 1,
+  "generated_at_utc": "2026-07-25T00:05:00Z",
+  "network": "mainnet-beta",
+  "genesis_hash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+  "runtime": {
+    "solana_core": "4.1.0",
+    "feature_set": 3345198602
+  },
+  "identities": {
+    "program": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+    "programdata": "cdRqe7MGCEJ2Z6iZfWuXtuymRiAhXtyfDgT47sKZr69",
+    "pool": "u99qswA5FJbaMdJN23XEBUiyKmiyBcRidWHrzUz8VTm",
+    "proof_account": "3cb9NKGgNayZfTnGzNkWiwbHfQZyaonMFRxvAF8dEfUM",
+    "nullifier": "7Umhkv2Z3E2DksnpivCz2tovtbRoL1uXtnYBAtQBgu8Q",
+    "nullifier_pda_bump": 255,
+    "payer": "AXfWHFSF2F7gbwzdDfe8h5PHksePb3fLxSGsRpktbJ8p",
+    "refund_recipient": "Dni6HwfsjJ3sQFTEtKVGL6RgE7zAXnKA7K8MLBBm2RZp",
+    "refund_pin_sha256": "162843938809e34e58bf436c338a0d9888707087edd990192666b38a1b9d02fb"
+  },
+  "artifacts": {
+    "sbf": {
+      "path": "../aspis-v5-tag67-frozen-candidate-v1/program/aspis_verifier_v5_tag67.so",
+      "bytes": 1258496,
+      "sha256": "4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40"
+    },
+    "proof": {
+      "path": "proof/v5-mainnet-proof.bin",
+      "bytes": 75358,
+      "sha256": "330414df587974684643a6062d092db0519d746f0c7efe4ed2108775b685feaf"
+    },
+    "statement": {
+      "path": "statement/v5-mainnet-statement.json",
+      "bytes": 768,
+      "sha256": "0cdc34bc7f835640cff76d1085df9ba966df9f39eb228f3002f927cf30958113"
+    },
+    "canonical_public_input_digest": "04e574906f817d9cde9fe2edda984b203cd0adc9cba19f2038d62adbaceba69c"
+  },
+  "transaction_accounting": {
+    "pool_setup_transactions": 2,
+    "proof_create_transactions": 1,
+    "proof_upload_transactions": 79,
+    "proof_finalize_tag62_transactions": 1,
+    "tag67_transactions": 1,
+    "setup_transactions": 83,
+    "core_lifecycle_transactions": 84,
+    "deployment_and_cleanup_are_separate": true,
+    "setup_fees_lamports": 430000,
+    "tag67_fee_lamports": 5000,
+    "core_lifecycle_fees_lamports": 435000,
+    "explanation": "V5 uses 79 uploads because the proof is 75,358 bytes and each upload carries at most 960 bytes. The older q18 proof setup count of 71 was 1 create + 69 uploads + 1 finalize and was never the V5 total."
+  },
+  "transactions": {
+    "deployment": {
+      "signature": "RHt7eErpgLvc7Z2QDWVSj4dmYTg9s4bU62CgWfN5Y1N2BUkAMmQ1V3P8RhtpX9px7aUfAYa8CNSo5Rx5Ndp3RMf",
+      "finalized_slot": 434999519,
+      "compute_units_consumed": 2970,
+      "fee_lamports": 15000,
+      "finalized_success": true
+    },
+    "tag67": {
+      "signature": "EJviPgF12i9iK2CveVaQSMeFQqDMFPQ1iPRUYEwNQE3zGquTUZNJXPZEENorcQtsnQj1orFmH1TPsgdbR3vJ2fE",
+      "finalized_slot": 435019536,
+      "simulation_compute_units": 1334452,
+      "landed_compute_units": 1334452,
+      "compute_unit_limit": 1356912,
+      "fee_lamports": 5000,
+      "wire_sha256": "d5e78bb615a18274f36964248197f116a244391a77a2598f1a733c8fac7fa0b2",
+      "message_sha256": "4260bec062c9dcb51f5e3e0a05478520b2d08e89b02a5cb18de1a03132805286",
+      "instruction_sha256": "876339743083f9a7edc6f36a4bb884fa51ced7b77df104455d8f15bef3166618",
+      "nullifier_pda_bump": 255,
+      "pool_sequence_before": 0,
+      "pool_sequence_after": 1,
+      "proof_readonly_non_signer_and_retained": true,
+      "exact_signed_wire_simulation_equal_to_landed": true,
+      "program_success_log_exact": true,
+      "finalized_success": true
+    },
+    "proof_close_tag64": {
+      "signature": "5FF19EceNFBVbrNzvhxTnbK8bWSysAHVLRjbfggamY3YSeUFzdk54c4GT9GKitBWGkntNG2Zx9xHgbzp371hZXbW",
+      "finalized_slot": 435019649,
+      "simulation_compute_units": 781,
+      "landed_compute_units": 781,
+      "fee_lamports": 10000,
+      "refund_to_payer_lamports": 525660961,
+      "proof_balance_included_inbound_dust_lamports": 1,
+      "proof_post_lamports": 0,
+      "finalized_success": true
+    },
+    "programdata_close": {
+      "signature": "uZ6q5a2jGYcscEZgnLghPrqNwp9Hxq3REgYmt6gnb3JuorkUUEQUeJkVWy2e88j9bSLHgRvT2DytjRW2kBdHkWn",
+      "finalized_slot": 435019804,
+      "landed_compute_units": 2520,
+      "fee_lamports": 10000,
+      "refund_direct_to_pinned_recipient_lamports": 9049204080,
+      "programdata_post_lamports": 0,
+      "program_account_unchanged": true,
+      "finalized_success": true
+    },
+    "payer_sweep": {
+      "signature": "4haJ6dPmSFkscFKC57QoCUUcf46vU77av9Y8UfcRyCWjfydzHjCeJCsfuthmifXJfVWreZZM8JTDUdBgzbj1JyUW",
+      "finalized_slot": 435020068,
+      "landed_compute_units": 150,
+      "fee_lamports": 5000,
+      "transfer_to_pinned_recipient_lamports": 1931690802,
+      "payer_pre_lamports": 1931695802,
+      "payer_post_lamports": 0,
+      "finalized_success": true
+    }
+  },
+  "refund_reconciliation": {
+    "proof_close_intermediate_refund_to_payer_lamports": 525660961,
+    "programdata_direct_refund_to_pinned_recipient_lamports": 9049204080,
+    "payer_sweep_to_pinned_recipient_lamports": 1931690802,
+    "total_direct_receipt_by_pinned_recipient_lamports": 10980894882,
+    "cleanup_fees_lamports": 25000,
+    "payer_final_lamports": 0,
+    "exact_equations_reconciled": true,
+    "post_landing_inbound_dust_cannot_redirect_refund": true
+  },
+  "retained_accounts": {
+    "program_lamports": 1141440,
+    "pool_lamports": 1447680,
+    "nullifier_lamports": 1392000,
+    "total_permanent_lamports": 3981120,
+    "proof_account_absent": true,
+    "programdata_account_absent": true,
+    "payer_account_zero_or_absent": true
+  },
+  "independent_public_rpc_observation": {
+    "provider": "api.mainnet-beta.solana.com",
+    "commitment": "finalized",
+    "context_slot": 435020230,
+    "deployment_finalized_success": true,
+    "tag67_finalized_success": true,
+    "proof_close_finalized_success": true,
+    "programdata_close_finalized_success": true,
+    "payer_sweep_finalized_success": true,
+    "refund_recipient_lamports": 427667180731,
+    "refund_recipient_inbound_after_sweep_evidence_lamports": 1000,
+    "payer_absent": true,
+    "proof_absent": true,
+    "programdata_absent": true
+  },
+  "private_executor_evidence_sha256": {
+    "tag67_execution": "579552946780bab56d55c97457af74f5ec3dbe63e8bdc32cd6fe65fcafa4c00d",
+    "proof_close": "93983e4a0d91bdf28d38df66b615f93e50044eed8dec315d235e14ccf6f28182",
+    "programdata_close_presubmit": "2d45a6caea6fb15670563a0d1e42315b0ddf747abfde2ac707db8b3ee089807e",
+    "programdata_close_postsubmit": "c2c7073121e1746027a62ad93770b9185276b33ad129556fc0cfb810f40c6237",
+    "payer_sweep_presubmit": "41e98be49717170397f230ba56b0332047e305611701838b5112b3c15a373c1b",
+    "payer_sweep_postsubmit": "6ee75967124915a973d6833e9dbf7e4638e0cef57d088b6d0ea1031bb4572fa2"
+  },
+  "scope": [
+    "This record contains public identities, hashes, finalized receipts, balances, and reconciliation facts only.",
+    "Private key paths, RPC credentials, signed-wire spools, and local journal paths are intentionally omitted.",
+    "The frozen candidate bundle remains immutable; this bundle records the subsequent mainnet lifecycle."
+  ]
+}

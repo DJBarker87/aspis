@@ -20,6 +20,55 @@ IMMUTABLE_RELEASE_PREFIXES = (
     "release/aspis-spend-q18-g37-mainnet-v1/",
     "release/aspis-v5-tag67-frozen-candidate-v1/",
 )
+V5_FORMAL_EVIDENCE_PATH = (
+    "release/aspis-v5-tag67-mainnet-v1/formal/formal-evidence.json"
+)
+V5_PRINCIPAL_INTEGRATION_THEOREM = (
+    "FormalClosureStream1.current_source_combined_capstone"
+)
+V5_REMAINING_IMPLEMENTATION_BOUNDARY = (
+    "exact_transcript_hash_function_call_equality"
+)
+V5_REMAINING_IMPLEMENTATION_BOUNDARY_STATEMENT = (
+    "forall state nonce, actualTranscriptGrindingDigest state nonce = "
+    "rustHash state ((3 : Byte) :: List.ofFn (nonceLEBytes nonce))"
+)
+V5_FORMAL_COVERAGE = (
+    "Component-A matrix execution at the selected V5 release schedule",
+    "Component-B sampler, evaluator, and C2 layout correspondence",
+    "Component-C four runtime rounds, finish, packer, and deployed public output",
+    "Tag-67 instruction guards and six actual little-endian 64-bit work reads",
+    "The digest predicate and all six ordered work-verification steps",
+    "Composition of those results for the stated V5 release scope",
+)
+V5_FORMAL_REPLAY_COMMANDS = (
+    "cd AspisFormal && lake exe cache get && lake build",
+    (
+        "aeneas-verif/component-c-runtime-downstream/"
+        "released-trace-families-current-20260722/replay-lean432.sh"
+    ),
+    "aeneas-verif/current-source-abc-capstone-20260722/replay-lean432.sh",
+)
+V5_REQUIRED_FORMAL_ARTIFACTS = {
+    (
+        "aeneas-verif/current-source-abc-capstone-20260722/proof/"
+        "CurrentSourceABCapstone.lean"
+    ),
+    (
+        "aeneas-verif/component-c-runtime-downstream/"
+        "released-trace-families-current-20260722/proof/"
+        "RuntimeReleasedTraceFamiliesCurrentJoin.lean"
+    ),
+    (
+        "aeneas-verif/tag67-work-wire-correspondence/proof/"
+        "Tag67WorkVerifierClosure.lean"
+    ),
+    (
+        "aeneas-verif/component-c-runtime-downstream/"
+        "released-trace-families-current-20260722/replay-lean432.sh"
+    ),
+    "aeneas-verif/current-source-abc-capstone-20260722/replay-lean432.sh",
+}
 
 KNOWN_STALE_PATTERNS = (
     (
@@ -80,15 +129,6 @@ KNOWN_STALE_PATTERNS = (
         "stale worktree process note",
         re.compile(r"\bNo file was staged, committed, or pushed\b", re.IGNORECASE),
     ),
-    (
-        "false positive V5 mainnet execution status",
-        re.compile(
-            r"\bV5\b[^\n.]{0,80}\b(?:has|was|is)\s+(?:already\s+)?"
-            r"(?:been\s+)?(?:deployed|executed|finalized|landed)\s+"
-            r"(?:on|to)\s+mainnet\b",
-            re.IGNORECASE,
-        ),
-    ),
 )
 
 
@@ -139,6 +179,26 @@ def require_file_identity(path_value: str, expected_bytes: int, expected_sha256:
     require_equal(sha256(path), expected_sha256, f"{path_value} SHA-256")
 
 
+def require_repository_file(path_value: str, label: str) -> Path:
+    require(isinstance(path_value, str) and path_value, f"{label}: path is not a string")
+    require("\x00" not in path_value, f"{label}: path contains NUL")
+    require("\\" not in path_value, f"{label}: path must use repository separators")
+    relative = Path(path_value)
+    require(not relative.is_absolute(), f"{label}: path must be repository-relative")
+    require(
+        relative.as_posix() == path_value and all(part not in (".", "..") for part in relative.parts),
+        f"{label}: path is not normalized",
+    )
+    path = ROOT / relative
+    resolved = path.resolve()
+    require(
+        resolved == ROOT.resolve() or ROOT.resolve() in resolved.parents,
+        f"{label}: path escapes the repository",
+    )
+    require(path.is_file(), f"{label}: file is missing at {path_value}")
+    return path
+
+
 def git_output(*arguments: str) -> str:
     result = subprocess.run(
         ["git", *arguments],
@@ -151,6 +211,34 @@ def git_output(*arguments: str) -> str:
         detail = result.stderr.decode("utf-8", errors="replace").strip()
         raise AssertionError(f"git {' '.join(arguments)} failed: {detail}")
     return result.stdout.decode("utf-8").strip()
+
+
+def git_blob(commit: str, path_value: str) -> bytes:
+    result = subprocess.run(
+        ["git", "cat-file", "blob", f"{commit}:{path_value}"],
+        cwd=ROOT,
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if result.returncode != 0:
+        detail = result.stderr.decode("utf-8", errors="replace").strip()
+        raise AssertionError(
+            f"git cannot read {path_value!r} at source commit {commit}: {detail}"
+        )
+    return result.stdout
+
+
+def require_git_commit(commit: str, label: str) -> None:
+    require(
+        isinstance(commit, str) and re.fullmatch(r"[0-9a-f]{40}", commit) is not None,
+        f"{label}: expected a full lowercase Git commit",
+    )
+    require_equal(
+        git_output("rev-parse", "--verify", f"{commit}^{{commit}}"),
+        commit,
+        label,
+    )
 
 
 def tag_commit(tag: str) -> str:
@@ -270,15 +358,341 @@ def measurement_totals(runtime: dict[str, Any], marker_mode: str) -> dict[str, i
     return result
 
 
-def check_v5(facts: dict[str, Any], compute_limit: int) -> None:
-    require_equal(facts["role"], "mainnet_candidate", "V5 role")
-    require_equal(facts["status"], "ready_for_mainnet_deployment", "V5 status")
-    require(facts["mainnet"]["transaction"] is None, "V5 mainnet transaction must remain null")
-    require(
-        facts["mainnet"]["deployment_transaction"] is None,
-        "V5 mainnet deployment transaction must remain null",
+def check_v5_formal_evidence(
+    facts: dict[str, Any],
+    mainnet_manifest: dict[str, Any],
+) -> None:
+    sources = facts["authoritative_sources"]
+    formal = facts["formal"]
+    mainnet = facts["mainnet"]
+    program = facts["program"]
+
+    require_equal(
+        set(formal),
+        {
+            "evidence_path",
+            "maintained_lean_project_commit",
+            "lean_toolchain",
+            "lean_status_page",
+            "aeneas_status_page",
+            "aeneas_commit",
+            "charon_commit",
+            "principal_integration_theorem",
+            "remaining_implementation_boundary",
+        },
+        "V5 formal fact fields",
     )
-    require_equal(facts["mainnet"]["deployment_status"], "not_deployed", "V5 deployment status")
+    require_equal(
+        sources["formal_evidence"],
+        formal["evidence_path"],
+        "V5 authoritative formal-evidence path",
+    )
+    require_equal(
+        formal["evidence_path"],
+        V5_FORMAL_EVIDENCE_PATH,
+        "V5 formal-evidence release path",
+    )
+    require_equal(
+        formal["lean_status_page"],
+        "AspisFormal/README.md",
+        "V5 Lean status-page release path",
+    )
+    require_equal(
+        formal["aeneas_status_page"],
+        "aeneas-verif/README.md",
+        "V5 Aeneas status-page release path",
+    )
+    formal_evidence_path = require_repository_file(
+        formal["evidence_path"],
+        "V5 formal evidence",
+    )
+    formal_evidence = load_json(formal_evidence_path)
+
+    require_equal(
+        set(formal_evidence),
+        {
+            "artifact",
+            "schema_version",
+            "release_id",
+            "release_tag",
+            "release_scope",
+            "lean",
+            "rust_to_lean",
+            "coverage",
+            "remaining_implementation_boundary",
+            "outside_current_proof_scope",
+            "replay_commands",
+            "artifacts",
+        },
+        "V5 formal-evidence fields",
+    )
+    require_equal(
+        formal_evidence["artifact"],
+        "aspis_v5_tag67_formal_evidence",
+        "V5 formal-evidence artifact",
+    )
+    require_equal(formal_evidence["schema_version"], 1, "V5 formal-evidence schema")
+    require_equal(formal_evidence["release_id"], facts["release_id"], "V5 formal release")
+    require_equal(
+        formal_evidence["release_tag"],
+        facts["release_id"],
+        "V5 formal release tag",
+    )
+
+    release_scope = formal_evidence["release_scope"]
+    require_equal(
+        set(release_scope),
+        {
+            "network",
+            "program_id",
+            "sbf_sha256",
+            "tag67_signature",
+            "tag67_finalized_slot",
+        },
+        "V5 formal release-scope fields",
+    )
+    require_equal(
+        release_scope["network"],
+        mainnet_manifest["network"],
+        "V5 formal network",
+    )
+    require_equal(
+        release_scope["program_id"],
+        mainnet_manifest["mainnet"]["program_id"],
+        "V5 formal program manifest binding",
+    )
+    require_equal(release_scope["program_id"], mainnet["program_id"], "V5 formal program")
+    require_equal(
+        release_scope["sbf_sha256"],
+        mainnet_manifest["frozen_candidate"]["sbf_sha256"],
+        "V5 formal SBF manifest binding",
+    )
+    require_equal(release_scope["sbf_sha256"], program["sbf_sha256"], "V5 formal SBF")
+    require_equal(
+        release_scope["tag67_signature"],
+        mainnet_manifest["mainnet"]["tag67_signature"],
+        "V5 formal transaction manifest binding",
+    )
+    require_equal(
+        release_scope["tag67_signature"],
+        mainnet["transaction"]["signature"],
+        "V5 formal transaction",
+    )
+    require_equal(
+        release_scope["tag67_finalized_slot"],
+        mainnet_manifest["mainnet"]["tag67_finalized_slot"],
+        "V5 formal slot manifest binding",
+    )
+    require_equal(
+        release_scope["tag67_finalized_slot"],
+        mainnet["transaction"]["slot"],
+        "V5 formal finalized slot",
+    )
+
+    lean = formal_evidence["lean"]
+    require_equal(
+        lean["maintained_project_commit"],
+        formal["maintained_lean_project_commit"],
+        "V5 maintained Lean commit",
+    )
+    require_git_commit(
+        formal["maintained_lean_project_commit"],
+        "V5 maintained Lean project commit",
+    )
+    require_equal(lean["toolchain"], formal["lean_toolchain"], "V5 Lean toolchain")
+    require_equal(
+        formal["lean_toolchain"],
+        "leanprover/lean4:v4.32.0",
+        "V5 release Lean toolchain",
+    )
+    require_equal(
+        (ROOT / "AspisFormal/lean-toolchain").read_text(encoding="utf-8").strip(),
+        formal["lean_toolchain"],
+        "V5 maintained Lean toolchain file",
+    )
+    committed_toolchain = git_blob(
+        formal["maintained_lean_project_commit"],
+        "AspisFormal/lean-toolchain",
+    )
+    require_equal(
+        committed_toolchain.decode("utf-8").strip(),
+        formal["lean_toolchain"],
+        "V5 recorded Lean commit toolchain",
+    )
+    require_equal(lean["status_page"], formal["lean_status_page"], "V5 Lean status page")
+    require_equal(
+        lean["audited_integration_theorem_dependencies"],
+        ["propext", "Classical.choice", "Quot.sound"],
+        "V5 audited theorem dependencies",
+    )
+    require_equal(
+        lean["status_assertions"],
+        {
+            "contains_sorry": False,
+            "contains_custom_axiom": False,
+            "uses_native_decide": False,
+            "uses_compiled_evaluation_shortcut": False,
+        },
+        "V5 Lean status assertions",
+    )
+
+    rust_to_lean = formal_evidence["rust_to_lean"]
+    require_equal(
+        rust_to_lean["technical_status_page"],
+        formal["aeneas_status_page"],
+        "V5 Aeneas status page",
+    )
+    require_equal(
+        rust_to_lean["aeneas_commit"],
+        formal["aeneas_commit"],
+        "V5 Aeneas tool commit",
+    )
+    require_equal(
+        rust_to_lean["charon_commit"],
+        formal["charon_commit"],
+        "V5 Charon tool commit",
+    )
+    for tool_name in ("aeneas", "charon"):
+        require(
+            re.fullmatch(r"[0-9a-f]{40}", formal[f"{tool_name}_commit"]) is not None,
+            f"V5 {tool_name} commit is not a full lowercase commit",
+        )
+    require_equal(
+        rust_to_lean["principal_integration_theorem"],
+        formal["principal_integration_theorem"],
+        "V5 principal integration theorem",
+    )
+    require_equal(
+        formal["principal_integration_theorem"],
+        V5_PRINCIPAL_INTEGRATION_THEOREM,
+        "V5 release principal integration theorem",
+    )
+    require_equal(
+        formal_evidence["coverage"],
+        list(V5_FORMAL_COVERAGE),
+        "V5 formal coverage",
+    )
+    require_equal(
+        formal_evidence["replay_commands"],
+        list(V5_FORMAL_REPLAY_COMMANDS),
+        "V5 formal replay commands",
+    )
+
+    boundary = formal_evidence["remaining_implementation_boundary"]
+    require_equal(
+        boundary["kind"],
+        formal["remaining_implementation_boundary"],
+        "V5 remaining implementation boundary",
+    )
+    require_equal(
+        formal["remaining_implementation_boundary"],
+        V5_REMAINING_IMPLEMENTATION_BOUNDARY,
+        "V5 release remaining implementation boundary",
+    )
+    require_equal(
+        boundary["statement"],
+        V5_REMAINING_IMPLEMENTATION_BOUNDARY_STATEMENT,
+        "V5 remaining implementation boundary statement",
+    )
+    require(
+        isinstance(boundary["explanation"], str) and boundary["explanation"],
+        "V5 remaining implementation boundary explanation is empty",
+    )
+
+    for status_label, status_path in (
+        ("Lean", formal["lean_status_page"]),
+        ("Aeneas", formal["aeneas_status_page"]),
+    ):
+        require_repository_file(status_path, f"V5 {status_label} status page")
+        require_literals(
+            status_path,
+            [formal["principal_integration_theorem"]],
+        )
+    require_literals(
+        formal["aeneas_status_page"],
+        [formal["aeneas_commit"], formal["charon_commit"]],
+    )
+
+    artifacts = formal_evidence["artifacts"]
+    require(isinstance(artifacts, dict) and artifacts, "V5 formal artifacts are empty")
+    require(
+        V5_REQUIRED_FORMAL_ARTIFACTS.issubset(artifacts),
+        "V5 formal evidence omits a required theorem or replay artifact",
+    )
+    for path_value, identity in artifacts.items():
+        require(
+            isinstance(identity, dict),
+            f"V5 formal artifact {path_value!r}: identity is not an object",
+        )
+        require_equal(
+            set(identity),
+            {"bytes", "sha256", "source_commit"},
+            f"V5 formal artifact {path_value!r} identity fields",
+        )
+        require(
+            type(identity["bytes"]) is int and identity["bytes"] >= 0,
+            f"V5 formal artifact {path_value!r}: invalid byte length",
+        )
+        require(
+            isinstance(identity["sha256"], str)
+            and re.fullmatch(r"[0-9a-f]{64}", identity["sha256"]) is not None,
+            f"V5 formal artifact {path_value!r}: invalid SHA-256",
+        )
+        require_repository_file(path_value, f"V5 formal artifact {path_value!r}")
+        require_file_identity(path_value, identity["bytes"], identity["sha256"])
+        require_git_commit(
+            identity["source_commit"],
+            f"V5 formal artifact {path_value!r} source commit",
+        )
+        committed_source = git_blob(identity["source_commit"], path_value)
+        require_equal(
+            len(committed_source),
+            identity["bytes"],
+            f"V5 formal artifact {path_value!r} source-commit byte length",
+        )
+        require_equal(
+            hashlib.sha256(committed_source).hexdigest(),
+            identity["sha256"],
+            f"V5 formal artifact {path_value!r} source-commit SHA-256",
+        )
+
+    release_prefix = f"release/{facts['release_id']}/"
+    require(
+        formal["evidence_path"].startswith(release_prefix),
+        "V5 formal evidence is outside the mainnet release bundle",
+    )
+    formal_manifest_path = formal["evidence_path"][len(release_prefix) :]
+    require_equal(
+        formal_manifest_path,
+        "formal/formal-evidence.json",
+        "V5 formal manifest object path",
+    )
+    require(
+        formal_manifest_path in mainnet_manifest["objects"],
+        "V5 mainnet manifest omits formal evidence",
+    )
+    manifest_identity = mainnet_manifest["objects"][formal_manifest_path]
+    require_equal(
+        manifest_identity["bytes"],
+        formal_evidence_path.stat().st_size,
+        "V5 formal manifest byte length",
+    )
+    require_equal(
+        manifest_identity["sha256"],
+        sha256(formal_evidence_path),
+        "V5 formal manifest SHA-256",
+    )
+
+
+def check_v5(facts: dict[str, Any], compute_limit: int) -> None:
+    require_equal(facts["role"], "finalized_mainnet_release", "V5 role")
+    require_equal(facts["status"], "finalized_mainnet", "V5 status")
+    require_equal(facts["release_id"], "aspis-v5-tag67-mainnet-v1", "V5 release id")
+    require_equal(
+        facts["mainnet"]["deployment_status"],
+        "deployed_then_programdata_closed_after_demonstration",
+        "V5 deployment status",
+    )
     require_equal(
         tag_commit(facts["candidate_tag"]),
         facts["candidate_tag_commit"],
@@ -301,13 +715,17 @@ def check_v5(facts: dict[str, Any], compute_limit: int) -> None:
     )
 
     sources = facts["authoritative_sources"]
-    manifest = load_json(ROOT / sources["manifest"])
+    manifest = load_json(ROOT / sources["candidate_manifest"])
+    mainnet_manifest = load_json(ROOT / sources["mainnet_manifest"])
+    mainnet_lifecycle = load_json(ROOT / sources["mainnet_lifecycle"])
     devnet_execution = load_json(ROOT / sources["devnet_execution"])
     frozen_policy = load_json(ROOT / sources["frozen_compute_policy"])
     runtime_path = ROOT / sources["current_runtime_replay"]
     runtime = load_json(runtime_path)
     program = facts["program"]
+    proof = facts["proof"]
     devnet = facts["devnet"]
+    mainnet = facts["mainnet"]
     current = facts["runtime"]["current_mainnet_replay"]
     frozen = facts["runtime"]["frozen_cost_schedule"]
 
@@ -327,6 +745,66 @@ def check_v5(facts: dict[str, Any], compute_limit: int) -> None:
     require_equal(manifest["candidate"]["sbf_bytes"], program["sbf_bytes"], "V5 SBF bytes")
     require_equal(manifest["candidate"]["sbf_sha256"], program["sbf_sha256"], "V5 SBF hash")
     require_file_identity(program["sbf_path"], program["sbf_bytes"], program["sbf_sha256"])
+    require_file_identity(proof["path"], proof["bytes"], proof["sha256"])
+    require_file_identity(
+        proof["statement_path"],
+        proof["statement_bytes"],
+        proof["statement_sha256"],
+    )
+
+    require_equal(
+        mainnet_manifest["release_id"],
+        facts["release_id"],
+        "V5 mainnet manifest release id",
+    )
+    require_equal(mainnet_manifest["network"], "mainnet-beta", "V5 mainnet network")
+    require_equal(
+        mainnet_manifest["genesis_hash"],
+        mainnet["genesis_hash"],
+        "V5 mainnet genesis",
+    )
+    require_equal(
+        mainnet_manifest["frozen_candidate"]["sbf_sha256"],
+        program["sbf_sha256"],
+        "V5 mainnet manifest SBF hash",
+    )
+    require_equal(
+        mainnet_manifest["frozen_candidate"]["sbf_bytes"],
+        program["sbf_bytes"],
+        "V5 mainnet manifest SBF bytes",
+    )
+    require_equal(
+        mainnet_manifest["mainnet"]["program_id"],
+        mainnet["program_id"],
+        "V5 mainnet manifest program",
+    )
+    require_equal(
+        mainnet["program_id"],
+        program["declared_id"],
+        "V5 deployed/declared program",
+    )
+    require_equal(
+        mainnet_manifest["mainnet"]["tag67_signature"],
+        mainnet["transaction"]["signature"],
+        "V5 mainnet manifest transaction",
+    )
+    require_equal(
+        mainnet_manifest["mainnet"]["tag67_finalized_slot"],
+        mainnet["transaction"]["slot"],
+        "V5 mainnet manifest finalized slot",
+    )
+    require_equal(
+        mainnet_manifest["mainnet"]["tag67_compute_units"],
+        mainnet["transaction"]["compute_units"],
+        "V5 mainnet manifest transaction CU",
+    )
+    for path_value, identity in mainnet_manifest["objects"].items():
+        require_file_identity(
+            f"release/{facts['release_id']}/{path_value}",
+            identity["bytes"],
+            identity["sha256"],
+        )
+    check_v5_formal_evidence(facts, mainnet_manifest)
 
     manifest_devnet = manifest["devnet"]
     require_equal(manifest_devnet["genesis_hash"], devnet["genesis_hash"], "V5 devnet genesis")
@@ -469,14 +947,147 @@ def check_v5(facts: dict[str, Any], compute_limit: int) -> None:
         facts["compute"]["current_mainnet_release_policy_ceiling_cu"],
         "V5 transaction compute-unit limit",
     )
+    require_equal(
+        facts["compute"]["mainnet_simulation_cu"],
+        facts["compute"]["mainnet_landed_cu"],
+        "V5 mainnet simulation/landing CU",
+    )
+    require_equal(
+        facts["compute"]["mainnet_landed_cu"]
+        + facts["compute"]["mainnet_wire_headroom_under_instruction_limit_cu"],
+        facts["compute"]["transaction_compute_unit_limit_cu"],
+        "V5 landed-wire CU arithmetic",
+    )
+
+    require_equal(
+        mainnet_lifecycle["artifact"],
+        "aspis_v5_tag67_mainnet_lifecycle",
+        "V5 mainnet lifecycle artifact",
+    )
+    require_equal(
+        mainnet_lifecycle["genesis_hash"],
+        mainnet["genesis_hash"],
+        "V5 lifecycle genesis",
+    )
+    require_equal(
+        mainnet_lifecycle["runtime"]["solana_core"],
+        mainnet["solana_core"],
+        "V5 lifecycle runtime",
+    )
+    require_equal(
+        mainnet_lifecycle["runtime"]["feature_set"],
+        mainnet["feature_set"],
+        "V5 lifecycle feature set",
+    )
+    identities = mainnet_lifecycle["identities"]
+    require_equal(identities["program"], mainnet["program_id"], "V5 mainnet program")
+    require_equal(identities["pool"], mainnet["pool"], "V5 mainnet pool")
+    require_equal(
+        identities["proof_account"],
+        mainnet["proof_account"],
+        "V5 mainnet proof account",
+    )
+    require_equal(identities["nullifier"], mainnet["nullifier"], "V5 mainnet nullifier")
+    require_equal(
+        identities["nullifier_pda_bump"],
+        mainnet["nullifier_pda_bump"],
+        "V5 mainnet nullifier bump",
+    )
+    require_equal(
+        mainnet_lifecycle["artifacts"]["sbf"]["sha256"],
+        program["sbf_sha256"],
+        "V5 lifecycle SBF hash",
+    )
+    require_equal(
+        mainnet_lifecycle["artifacts"]["proof"]["sha256"],
+        proof["sha256"],
+        "V5 lifecycle proof hash",
+    )
+    require_equal(
+        mainnet_lifecycle["artifacts"]["statement"]["sha256"],
+        proof["statement_sha256"],
+        "V5 lifecycle statement hash",
+    )
+
+    transactions = mainnet_lifecycle["transactions"]
+    for ledger_name, evidence_name in (
+        ("deployment_transaction", "deployment"),
+        ("transaction", "tag67"),
+        ("proof_close", "proof_close_tag64"),
+        ("programdata_close", "programdata_close"),
+        ("payer_sweep", "payer_sweep"),
+    ):
+        ledger_transaction = mainnet[ledger_name]
+        evidence_transaction = transactions[evidence_name]
+        require_equal(
+            evidence_transaction["signature"],
+            ledger_transaction["signature"],
+            f"V5 {evidence_name} signature",
+        )
+        require_equal(
+            evidence_transaction["finalized_slot"],
+            ledger_transaction["slot"],
+            f"V5 {evidence_name} slot",
+        )
+        require(evidence_transaction["finalized_success"], f"V5 {evidence_name} did not finalize")
+    require_equal(
+        transactions["tag67"]["simulation_compute_units"],
+        mainnet["transaction"]["simulation_compute_units"],
+        "V5 Tag-67 simulation CU",
+    )
+    require_equal(
+        transactions["tag67"]["landed_compute_units"],
+        mainnet["transaction"]["compute_units"],
+        "V5 Tag-67 landed CU",
+    )
+    require_equal(
+        transactions["tag67"]["wire_sha256"],
+        mainnet["transaction"]["wire_sha256"],
+        "V5 Tag-67 wire hash",
+    )
+    require_equal(
+        mainnet_lifecycle["transaction_accounting"]["core_lifecycle_transactions"],
+        mainnet["transaction_accounting"]["core_lifecycle_total"],
+        "V5 core lifecycle transaction count",
+    )
+    require_equal(
+        mainnet_lifecycle["refund_reconciliation"][
+            "total_direct_receipt_by_pinned_recipient_lamports"
+        ],
+        mainnet["refund"]["direct_receipt_lamports"],
+        "V5 pinned refund total",
+    )
+    require_equal(
+        transactions["programdata_close"]["refund_direct_to_pinned_recipient_lamports"]
+        + transactions["payer_sweep"]["transfer_to_pinned_recipient_lamports"],
+        mainnet["refund"]["direct_receipt_lamports"],
+        "V5 direct refund arithmetic",
+    )
+    require_equal(
+        mainnet_lifecycle["retained_accounts"]["total_permanent_lamports"],
+        mainnet["retained_rent_lamports"]["total"],
+        "V5 retained-rent total",
+    )
+    require_equal(
+        mainnet["retained_rent_lamports"]["program"]
+        + mainnet["retained_rent_lamports"]["pool"]
+        + mainnet["retained_rent_lamports"]["nullifier"],
+        mainnet["retained_rent_lamports"]["total"],
+        "V5 retained-rent arithmetic",
+    )
     require_literals(
         "xtask/src/spend_devnet/v5.rs",
         [
-            "const MAINNET_NULLIFIER_PDA_BUMP: u8 = u8::MAX;",
+            "const MAINNET_NULLIFIER_PDA_BUMP: u8 = aspis_verifier::v5_full_transaction::V5_NULLIFIER_PDA_BUMP;",
             "const MAINNET_RELEASE_POLICY_CU_CEILING: u64 = 1_356_912;",
             "ComputeBudgetInstruction::set_compute_unit_limit(tag67_compute_unit_limit)",
-            "final_transaction_simulation_cu <= u64::from(tag67_compute_unit_limit)",
+            "units <= u64::from(tag67_compute_unit_limit)",
+            "final_transaction_landed_cu <= u64::from(tag67_compute_unit_limit)",
         ],
+    )
+    require_literals(
+        "programs/aspis-verifier/src/v5_full_transaction.rs",
+        ["pub const V5_NULLIFIER_PDA_BUMP: u8 = u8::MAX;"],
     )
 
 
@@ -530,21 +1141,36 @@ def check_public_claims(facts: dict[str, Any]) -> None:
     require(not findings, "tracked public release claims disagree:\n" + "\n".join(findings))
 
     q18 = facts["tracks"]["q18_g37_tag65_mainnet_v1"]
-    v5 = facts["tracks"]["v5_tag67_candidate_v1"]
+    v5 = facts["tracks"]["v5_tag67_mainnet_v1"]
+    formal_evidence = load_json(ROOT / v5["authoritative_sources"]["formal_evidence"])
     require_literals(
         "README.md",
         [
             q18["mainnet"]["transaction"]["signature"],
             f"{q18['compute']['measured_transaction_cu']:,}",
-            v5["devnet"]["transaction"]["signature"],
-            f"{v5['compute']['devnet_measured_transaction_cu']:,}",
-            f"{v5['compute']['current_mainnet_release_policy_ceiling_cu']:,}",
-            f"{v5['compute']['current_mainnet_release_policy_headroom_cu']:,}",
+            v5["mainnet"]["transaction"]["signature"],
+            str(v5["mainnet"]["transaction"]["slot"]),
+            f"{v5['compute']['mainnet_landed_cu']:,}",
+            v5["mainnet"]["program_id"],
+            f"{v5['proof']['bytes']:,}",
+            f"{v5['program']['sbf_bytes']:,}",
             v5["program"]["sbf_sha256"],
-            "exact signed-wire simulation",
-            "canonical nullifier PDA bump",
-            "transaction compute limit",
-            "ready for mainnet deployment",
+            "docs/formal-verification.md",
+            "docs/assumptions-ledger.md",
+            "docs/v5-mainnet-demo.md",
+            "release/aspis-v5-tag67-frozen-candidate-v1/",
+            "release/aspis-v5-tag67-mainnet-v1/",
+            "AspisFormal/",
+            "aeneas-verif/",
+            v5["formal"]["principal_integration_theorem"],
+            "cd AspisFormal",
+            "lake exe cache get",
+            "lake build",
+            formal_evidence["replay_commands"][1],
+            formal_evidence["replay_commands"][2],
+            "./release/aspis-v5-tag67-frozen-candidate-v1/verify.sh",
+            "./release/aspis-v5-tag67-mainnet-v1/verify.sh",
+            "python3 tools/check_release_facts.py",
         ],
     )
     require_literals(
@@ -564,20 +1190,36 @@ def check_public_claims(facts: dict[str, Any]) -> None:
         ],
     )
     require_literals(
+        "docs/v5-mainnet-demo.md",
+        [
+            v5["mainnet"]["deployment_transaction"]["signature"],
+            v5["mainnet"]["transaction"]["signature"],
+            str(v5["mainnet"]["transaction"]["slot"]),
+            f"{v5['compute']['mainnet_landed_cu']:,}",
+            v5["mainnet"]["proof_close"]["signature"],
+            v5["mainnet"]["programdata_close"]["signature"],
+            v5["mainnet"]["payer_sweep"]["signature"],
+            v5["mainnet"]["refund"]["recipient"],
+            f"{v5['mainnet']['refund']['direct_receipt_lamports']:,}",
+            "84",
+            "71",
+            "../release/aspis-v5-tag67-mainnet-v1/verify.sh",
+        ],
+    )
+    require_literals(
         "release/preflight/v5-production-freeze.md",
         [
-            "V5 has not yet been deployed on mainnet.",
+            v5["mainnet"]["transaction"]["signature"],
             v5["program"]["sbf_sha256"],
-            f"{v5['compute']['current_mainnet_release_policy_ceiling_cu']:,}",
-            f"{v5['compute']['current_mainnet_release_policy_headroom_cu']:,}",
-            "PDA bump is 255",
-            "exact signed-wire simulation",
-            "transaction compute limit",
+            f"{v5['compute']['mainnet_landed_cu']:,}",
+            "nullifier PDA bump was exactly\n`255`",
+            "exact signed-wire\nsimulation",
+            v5["mainnet"]["refund"]["recipient"],
         ],
     )
     require_literals(
         "paper/aspis-spend/sections/formalization.tex",
-        ["V5 has not yet been executed on mainnet."],
+        [v5["mainnet"]["transaction"]["signature"]],
     )
     require_literals(
         "results/spend/v5-mainnet-runtime-4.1.0-20260723/README.md",
@@ -603,17 +1245,13 @@ def self_test() -> None:
         "The prepared switch remains unapplied.",
         "Production-default remains NO-GO.",
         "No file was staged, committed, or pushed.",
-        "V5 has already been deployed on mainnet.",
     )
     for example in stale_examples:
         require(stale_claims(path, example), f"self-test did not reject {example!r}")
     clean = (
-        "V5 has not yet been deployed on mainnet. "
-        "It is ready for mainnet deployment. The runner requires an exact "
-        "signed-wire simulation at or below 1,356,912 CU, leaving 43,088 CU "
-        "of headroom. "
-        "The immutable 2.3.13 bump-255 topology ceiling remains "
-        "1,353,616 CU."
+        "V5 finalized on mainnet. The runner required an exact signed-wire "
+        "simulation at or below 1,356,912 CU. The landed wire consumed "
+        "1,334,452 CU with canonical bump 255."
     )
     require(not stale_claims(path, clean), "self-test rejected the current release statement")
     print("PASS: release-facts stale-claim self-test")
@@ -632,11 +1270,11 @@ def check() -> None:
     tracks = facts["tracks"]
     require_equal(
         set(tracks),
-        {"q18_g37_tag65_mainnet_v1", "v5_tag67_candidate_v1"},
+        {"q18_g37_tag65_mainnet_v1", "v5_tag67_mainnet_v1"},
         "release track set",
     )
     check_q18(tracks["q18_g37_tag65_mainnet_v1"], compute_limit)
-    check_v5(tracks["v5_tag67_candidate_v1"], compute_limit)
+    check_v5(tracks["v5_tag67_mainnet_v1"], compute_limit)
     check_public_claims(facts)
     print("PASS: release facts match artifacts, tags, runtime evidence, and public claims")
 
