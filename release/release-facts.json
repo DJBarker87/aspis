@@ -1,7 +1,7 @@
 {
   "artifact": "aspis_release_facts",
   "schema_version": 2,
-  "facts_as_of_date": "2026-07-24",
+  "facts_as_of_date": "2026-07-25",
   "transaction_compute_limit_cu": 1400000,
   "tracks": {
     "q18_g37_tag65_mainnet_v1": {
@@ -51,9 +51,13 @@
         "execution": "release/aspis-spend-q18-g37-mainnet-v1/evidence/mainnet-execution.json"
       }
     },
-    "v5_tag67_candidate_v1": {
-      "role": "mainnet_candidate",
-      "status": "ready_for_mainnet_deployment",
+    "v5_tag67_mainnet_v1": {
+      "role": "finalized_mainnet_release",
+      "status": "finalized_mainnet",
+      "release_id": "aspis-v5-tag67-mainnet-v1",
+      "release_tag": "aspis-v5-tag67-mainnet-v1",
+      "release_tag_commit": "dbf239cc6d9b996cb2b94086c68bf54bc17cceb1",
+      "release_tag_tree": "c8d56202f258241d925a5a944ee08fed4abedfa8",
       "candidate_tag": "aspis-v5-tag67-frozen-candidate-v1",
       "candidate_tag_commit": "d98a2e69618dc95b95c1996506ed8c05904a56a1",
       "candidate_tag_tree": "919f461131dbdceb8fa00783a16658fa10059ac6",
@@ -65,6 +69,25 @@
         "sbf_path": "release/aspis-v5-tag67-frozen-candidate-v1/program/aspis_verifier_v5_tag67.so",
         "sbf_bytes": 1258496,
         "sbf_sha256": "4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40"
+      },
+      "proof": {
+        "path": "release/aspis-v5-tag67-mainnet-v1/proof/v5-mainnet-proof.bin",
+        "bytes": 75358,
+        "sha256": "330414df587974684643a6062d092db0519d746f0c7efe4ed2108775b685feaf",
+        "statement_path": "release/aspis-v5-tag67-mainnet-v1/statement/v5-mainnet-statement.json",
+        "statement_bytes": 768,
+        "statement_sha256": "0cdc34bc7f835640cff76d1085df9ba966df9f39eb228f3002f927cf30958113"
+      },
+      "formal": {
+        "evidence_path": "release/aspis-v5-tag67-mainnet-v1/formal/formal-evidence.json",
+        "maintained_lean_project_commit": "42c683f4c28c7b5d83250b7633d55583e9ed93c9",
+        "lean_toolchain": "leanprover/lean4:v4.32.0",
+        "lean_status_page": "AspisFormal/README.md",
+        "aeneas_status_page": "aeneas-verif/README.md",
+        "aeneas_commit": "b59d5188c082f704a418c7cb4e52ad69328002d1",
+        "charon_commit": "cb50ff16b9f1066b8a97dc06da704de2da2fa41c",
+        "principal_integration_theorem": "FormalClosureStream1.current_source_combined_capstone",
+        "remaining_implementation_boundary": "exact_transcript_hash_function_call_equality"
       },
       "runtime": {
         "frozen_cost_schedule": {
@@ -110,18 +133,88 @@
           "2": 1329776
         },
         "current_mainnet_release_policy_ceiling_cu": 1356912,
-        "current_mainnet_release_policy_headroom_cu": 43088
+        "current_mainnet_release_policy_headroom_cu": 43088,
+        "mainnet_simulation_cu": 1334452,
+        "mainnet_landed_cu": 1334452,
+        "mainnet_wire_headroom_under_instruction_limit_cu": 22460
       },
       "mainnet": {
-        "deployment_status": "not_deployed",
-        "deployment_transaction": null,
-        "transaction": null
+        "genesis_hash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+        "solana_core": "4.1.0",
+        "feature_set": 3345198602,
+        "deployment_status": "deployed_then_programdata_closed_after_demonstration",
+        "deployment_transaction": {
+          "signature": "RHt7eErpgLvc7Z2QDWVSj4dmYTg9s4bU62CgWfN5Y1N2BUkAMmQ1V3P8RhtpX9px7aUfAYa8CNSo5Rx5Ndp3RMf",
+          "slot": 434999519,
+          "compute_units": 2970,
+          "fee_lamports": 15000
+        },
+        "program_id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+        "programdata": "cdRqe7MGCEJ2Z6iZfWuXtuymRiAhXtyfDgT47sKZr69",
+        "pool": "u99qswA5FJbaMdJN23XEBUiyKmiyBcRidWHrzUz8VTm",
+        "proof_account": "3cb9NKGgNayZfTnGzNkWiwbHfQZyaonMFRxvAF8dEfUM",
+        "nullifier": "7Umhkv2Z3E2DksnpivCz2tovtbRoL1uXtnYBAtQBgu8Q",
+        "nullifier_pda_bump": 255,
+        "transaction": {
+          "signature": "EJviPgF12i9iK2CveVaQSMeFQqDMFPQ1iPRUYEwNQE3zGquTUZNJXPZEENorcQtsnQj1orFmH1TPsgdbR3vJ2fE",
+          "slot": 435019536,
+          "simulation_compute_units": 1334452,
+          "compute_units": 1334452,
+          "fee_lamports": 5000,
+          "wire_sha256": "d5e78bb615a18274f36964248197f116a244391a77a2598f1a733c8fac7fa0b2"
+        },
+        "proof_close": {
+          "signature": "5FF19EceNFBVbrNzvhxTnbK8bWSysAHVLRjbfggamY3YSeUFzdk54c4GT9GKitBWGkntNG2Zx9xHgbzp371hZXbW",
+          "slot": 435019649,
+          "compute_units": 781,
+          "fee_lamports": 10000,
+          "refund_lamports": 525660961
+        },
+        "programdata_close": {
+          "signature": "uZ6q5a2jGYcscEZgnLghPrqNwp9Hxq3REgYmt6gnb3JuorkUUEQUeJkVWy2e88j9bSLHgRvT2DytjRW2kBdHkWn",
+          "slot": 435019804,
+          "compute_units": 2520,
+          "fee_lamports": 10000,
+          "refund_lamports": 9049204080
+        },
+        "payer_sweep": {
+          "signature": "4haJ6dPmSFkscFKC57QoCUUcf46vU77av9Y8UfcRyCWjfydzHjCeJCsfuthmifXJfVWreZZM8JTDUdBgzbj1JyUW",
+          "slot": 435020068,
+          "compute_units": 150,
+          "fee_lamports": 5000,
+          "transfer_lamports": 1931690802,
+          "payer_post_lamports": 0
+        },
+        "refund": {
+          "recipient": "Dni6HwfsjJ3sQFTEtKVGL6RgE7zAXnKA7K8MLBBm2RZp",
+          "pin_sha256": "162843938809e34e58bf436c338a0d9888707087edd990192666b38a1b9d02fb",
+          "direct_receipt_lamports": 10980894882,
+          "cleanup_fees_lamports": 25000
+        },
+        "transaction_accounting": {
+          "pool_setup": 2,
+          "proof_create": 1,
+          "proof_uploads": 79,
+          "proof_finalize_tag62": 1,
+          "tag67": 1,
+          "core_lifecycle_total": 84,
+          "deployment_and_cleanup_separate": true
+        },
+        "retained_rent_lamports": {
+          "program": 1141440,
+          "pool": 1447680,
+          "nullifier": 1392000,
+          "total": 3981120
+        }
       },
       "authoritative_sources": {
-        "manifest": "release/aspis-v5-tag67-frozen-candidate-v1/manifest.json",
+        "candidate_manifest": "release/aspis-v5-tag67-frozen-candidate-v1/manifest.json",
         "devnet_execution": "release/aspis-v5-tag67-frozen-candidate-v1/evidence/devnet-execution.json",
         "frozen_compute_policy": "release/aspis-v5-tag67-frozen-candidate-v1/evidence/accepted-topology-cu-policy.json",
-        "current_runtime_replay": "results/spend/v5-mainnet-runtime-4.1.0-20260723/runtime-replay.json"
+        "current_runtime_replay": "results/spend/v5-mainnet-runtime-4.1.0-20260723/runtime-replay.json",
+        "mainnet_manifest": "release/aspis-v5-tag67-mainnet-v1/manifest.json",
+        "mainnet_lifecycle": "release/aspis-v5-tag67-mainnet-v1/evidence/mainnet-lifecycle.json",
+        "formal_evidence": "release/aspis-v5-tag67-mainnet-v1/formal/formal-evidence.json"
       }
     }
   }

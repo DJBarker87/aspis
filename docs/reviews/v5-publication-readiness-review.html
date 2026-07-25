@@ -103,6 +103,80 @@
 </head>
 <body>
 <main>
+  <section aria-labelledby="v5-outcome-2026-07-25">
+    <div class="eyebrow">Outcome addendum · 25 July 2026</div>
+    <div class="decision">V5 MAINNET EVIDENCE FINALIZED</div>
+    <h2 id="v5-outcome-2026-07-25">The V5 candidate subsequently landed on mainnet.</h2>
+    <p>
+      This addendum preserves the 23 July readiness review below as a
+      pre-deployment snapshot. The q18/g37 release remains the preferred
+      citation for the manuscript-scoped result; V5 is a separate, later
+      mainnet outcome collected in
+      <code>release/aspis-v5-tag67-mainnet-v1/</code>.
+    </p>
+    <div class="grid">
+      <div class="card"><strong>Deployment</strong><span>Slot 434999519</span></div>
+      <div class="card"><strong>V5 Tag 67</strong><span>1,334,452 CU</span></div>
+      <div class="card"><strong>Simulation / landed</strong><span>Exact match</span></div>
+      <div class="card"><strong>Nullifier bump</strong><span>255</span></div>
+    </div>
+    <table>
+      <thead><tr><th>Evidence</th><th>Outcome</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Frozen deployment</td>
+          <td>
+            <a href="https://explorer.solana.com/tx/RHt7eErpgLvc7Z2QDWVSj4dmYTg9s4bU62CgWfN5Y1N2BUkAMmQ1V3P8RhtpX9px7aUfAYa8CNSo5Rx5Ndp3RMf"><code>RHt7eEr…Ndp3RMf</code></a>
+            finalized at slot 434999519; SBF SHA-256
+            <code>4cf3c1d5…edf40</code>
+          </td>
+        </tr>
+        <tr>
+          <td>Atomic Tag 67</td>
+          <td>
+            <a href="https://explorer.solana.com/tx/EJviPgF12i9iK2CveVaQSMeFQqDMFPQ1iPRUYEwNQE3zGquTUZNJXPZEENorcQtsnQj1orFmH1TPsgdbR3vJ2fE"><code>EJviPgF…3vJ2fE</code></a>
+            finalized at slot 435019536; exact signed-wire simulation and
+            landed metadata both reported 1,334,452 CU
+          </td>
+        </tr>
+        <tr>
+          <td>Proof and statement</td>
+          <td>
+            SHA-256 <code>330414df…5feaf</code> and
+            <code>0cdc34bc…58113</code>, respectively
+          </td>
+        </tr>
+        <tr>
+          <td>Rent recovery</td>
+          <td>
+            Proof close <a href="https://explorer.solana.com/tx/5FF19EceNFBVbrNzvhxTnbK8bWSysAHVLRjbfggamY3YSeUFzdk54c4GT9GKitBWGkntNG2Zx9xHgbzp371hZXbW"><code>5FF19Ec…71hZXbW</code></a>
+            at slot 435019649; ProgramData close
+            <a href="https://explorer.solana.com/tx/uZ6q5a2jGYcscEZgnLghPrqNwp9Hxq3REgYmt6gnb3JuorkUUEQUeJkVWy2e88j9bSLHgRvT2DytjRW2kBdHkWn"><code>uZ6q5a2…kBdHkWn</code></a>
+            at slot 435019804; payer sweep
+            <a href="https://explorer.solana.com/tx/4haJ6dPmSFkscFKC57QoCUUcf46vU77av9Y8UfcRyCWjfydzHjCeJCsfuthmifXJfVWreZZM8JTDUdBgzbj1JyUW"><code>4haJ6dP…zbj1JyUW</code></a>
+            at slot 435020068
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      The proof close returned 525,660,961 lamports to the dedicated payer
+      with a 10,000-lamport fee. ProgramData close sent 9,049,204,080
+      lamports directly to the protected pin
+      <code>Dni6HwfsjJ3sQFTEtKVGL6RgE7zAXnKA7K8MLBBm2RZp</code> with a
+      10,000-lamport fee. The final sweep sent 1,931,690,802 lamports to the
+      same pin with a 5,000-lamport fee and left the payer at zero. The pin's
+      two direct credits totaled 10,980,894,882 lamports.
+    </p>
+    <p>
+      The V5 lifecycle used 84 transactions: two pool initializations, proof
+      create, 79 uploads, Tag 62, and Tag 67. Deployment and cleanup are
+      counted separately. The executor's final form is crash-resumable and
+      provider-neutral over standard Solana HTTPS/WSS; a no-cost endpoint
+      completed this run.
+    </p>
+  </section>
+
   <div class="eyebrow">Aspis · repository review · 23 July 2026</div>
   <div class="decision">READY · PUBLICATION AND V5 DEPLOYMENT</div>
   <h1>A transparent shielded spend landed on Solana. V5 is next.</h1>

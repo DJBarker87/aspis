@@ -97,6 +97,29 @@ pub enum JournalBody {
     SubmissionRecorded {
         wire_id: String,
         signature: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        identical_wire_retries: Option<u8>,
+    },
+    WireAbandonedUnsubmitted {
+        wire_id: String,
+        expected_signature: String,
+        recent_blockhash: String,
+        last_valid_block_height: Option<u64>,
+        checked_finalized_block_height: u64,
+        reason: String,
+    },
+    SubmittedWireExpiredAbsent {
+        wire_id: String,
+        expected_signature: String,
+        recent_blockhash: String,
+        last_valid_block_height: Option<u64>,
+        checked_finalized_block_height: u64,
+        reason: String,
+    },
+    FinalizedFailureRecorded {
+        wire_id: String,
+        slot: u64,
+        error: String,
     },
     FinalizationRecorded {
         wire_id: String,
@@ -136,7 +159,18 @@ pub struct ReadyWire {
     pub wire_sha256: String,
     pub ready_sequence: u64,
     pub submitted_signature: Option<String>,
+    pub identical_wire_retries: Option<u8>,
     pub finalized_slot: Option<u64>,
+    pub abandoned_reason: Option<String>,
+    pub submitted_expired_absent_reason: Option<String>,
+    pub finalized_failure_reason: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct WireBlockhashBinding {
+    pub expected_signature: String,
+    pub recent_blockhash: String,
+    pub last_valid_block_height: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -144,6 +178,9 @@ pub struct RecoveryState {
     pub run_id: Option<String>,
     pub mode: RunMode,
     pub ready_wires: BTreeMap<String, ReadyWire>,
+    pub wire_last_valid_block_heights: BTreeMap<String, u64>,
+    pub wire_blockhash_bindings: BTreeMap<String, WireBlockhashBinding>,
+    pub checkpoints: Vec<(String, Value)>,
     pub completed_outcome: Option<String>,
 }
 
@@ -153,6 +190,9 @@ impl Default for RecoveryState {
             run_id: None,
             mode: RunMode::Forward,
             ready_wires: BTreeMap::new(),
+            wire_last_valid_block_heights: BTreeMap::new(),
+            wire_blockhash_bindings: BTreeMap::new(),
+            checkpoints: Vec::new(),
             completed_outcome: None,
         }
     }
@@ -385,6 +425,30 @@ impl RecoveryJournal {
             ready.submitted_signature.is_none(),
             "wire already has a recorded submission: {wire_id}"
         );
+        ensure!(
+            ready.abandoned_reason.is_none(),
+            "wire has been durably abandoned: {wire_id}"
+        );
+        ensure!(
+            ready.submitted_expired_absent_reason.is_none(),
+            "wire has been durably expired after submission: {wire_id}"
+        );
+        ensure!(
+            ready.finalized_failure_reason.is_none(),
+            "wire has a durable finalized failure: {wire_id}"
+        );
+        read_and_validate_spool(&self.spool_directory, ready)
+    }
+
+    /// Loads and validates a retained signed-wire spool without authorizing
+    /// submission. This is used only for recovery reconciliation.
+    pub fn load_persisted_wire(&mut self, wire_id: &str) -> Result<Vec<u8>> {
+        self.refresh()?;
+        let ready = self
+            .state
+            .ready_wires
+            .get(wire_id)
+            .with_context(|| format!("wire has no persisted spool: {wire_id}"))?;
         read_and_validate_spool(&self.spool_directory, ready)
     }
 
@@ -396,11 +460,104 @@ impl RecoveryJournal {
         wire_id: impl Into<String>,
         signature: impl Into<String>,
     ) -> Result<JournalEntry> {
+        self.record_submission_with_retries(wire_id, signature, None)
+    }
+
+    pub fn record_submission_with_retries(
+        &mut self,
+        wire_id: impl Into<String>,
+        signature: impl Into<String>,
+        identical_wire_retries: Option<u8>,
+    ) -> Result<JournalEntry> {
         let wire_id = wire_id.into();
         let signature = signature.into();
         validate_identifier("wire_id", &wire_id)?;
         validate_text("signature", &signature)?;
-        self.append_body(JournalBody::SubmissionRecorded { wire_id, signature })
+        self.append_body(JournalBody::SubmissionRecorded {
+            wire_id,
+            signature,
+            identical_wire_retries,
+        })
+    }
+
+    /// Durably revokes submission authority for a wire proven expired and
+    /// absent from transaction history. The retained spool remains auditable.
+    pub fn record_abandonment(
+        &mut self,
+        wire_id: impl Into<String>,
+        expected_signature: impl Into<String>,
+        recent_blockhash: impl Into<String>,
+        last_valid_block_height: Option<u64>,
+        checked_finalized_block_height: u64,
+        reason: impl Into<String>,
+    ) -> Result<JournalEntry> {
+        let wire_id = wire_id.into();
+        let expected_signature = expected_signature.into();
+        let recent_blockhash = recent_blockhash.into();
+        let reason = reason.into();
+        validate_identifier("wire_id", &wire_id)?;
+        validate_text("expected signature", &expected_signature)?;
+        validate_text("recent blockhash", &recent_blockhash)?;
+        ensure!(
+            checked_finalized_block_height > 0,
+            "abandonment finalized block height must be nonzero"
+        );
+        if let Some(last_valid_block_height) = last_valid_block_height {
+            ensure!(
+                checked_finalized_block_height > last_valid_block_height,
+                "abandonment precedes the signed wire's last valid block height"
+            );
+        }
+        validate_text("abandonment reason", &reason)?;
+        self.append_body(JournalBody::WireAbandonedUnsubmitted {
+            wire_id,
+            expected_signature,
+            recent_blockhash,
+            last_valid_block_height,
+            checked_finalized_block_height,
+            reason,
+        })
+    }
+
+    /// Records that a previously submitted wire is absent from full history
+    /// after its recent blockhash has expired at finalized commitment. This is
+    /// the only terminal transition that permits a semantic replacement after
+    /// a submission record exists.
+    pub fn record_submitted_expired_absent(
+        &mut self,
+        wire_id: impl Into<String>,
+        expected_signature: impl Into<String>,
+        recent_blockhash: impl Into<String>,
+        last_valid_block_height: Option<u64>,
+        checked_finalized_block_height: u64,
+        reason: impl Into<String>,
+    ) -> Result<JournalEntry> {
+        let wire_id = wire_id.into();
+        let expected_signature = expected_signature.into();
+        let recent_blockhash = recent_blockhash.into();
+        let reason = reason.into();
+        validate_identifier("wire_id", &wire_id)?;
+        validate_text("expected signature", &expected_signature)?;
+        validate_text("recent blockhash", &recent_blockhash)?;
+        ensure!(
+            checked_finalized_block_height > 0,
+            "submitted-wire expiry finalized block height must be nonzero"
+        );
+        if let Some(last_valid_block_height) = last_valid_block_height {
+            ensure!(
+                checked_finalized_block_height > last_valid_block_height,
+                "submitted-wire expiry precedes the signed wire's last valid block height"
+            );
+        }
+        validate_text("submitted-wire expiry reason", &reason)?;
+        self.append_body(JournalBody::SubmittedWireExpiredAbsent {
+            wire_id,
+            expected_signature,
+            recent_blockhash,
+            last_valid_block_height,
+            checked_finalized_block_height,
+            reason,
+        })
     }
 
     pub fn record_finalization(
@@ -411,6 +568,24 @@ impl RecoveryJournal {
         let wire_id = wire_id.into();
         validate_identifier("wire_id", &wire_id)?;
         self.append_body(JournalBody::FinalizationRecorded { wire_id, slot })
+    }
+
+    pub fn record_finalized_failure(
+        &mut self,
+        wire_id: impl Into<String>,
+        slot: u64,
+        error: impl Into<String>,
+    ) -> Result<JournalEntry> {
+        let wire_id = wire_id.into();
+        let error = error.into();
+        validate_identifier("wire_id", &wire_id)?;
+        ensure!(slot > 0, "failed finalized slot must be nonzero");
+        validate_text("finalized transaction error", &error)?;
+        self.append_body(JournalBody::FinalizedFailureRecorded {
+            wire_id,
+            slot,
+            error,
+        })
     }
 
     pub fn complete(&mut self, outcome: impl Into<String>) -> Result<JournalEntry> {
@@ -690,7 +865,57 @@ fn reduce(state: &mut RecoveryState, seq: u64, body: &JournalBody) -> Result<()>
 
     match body {
         JournalBody::RunStarted { .. } => unreachable!("handled above"),
-        JournalBody::Checkpoint { name, .. } => validate_text("checkpoint name", name),
+        JournalBody::Checkpoint { name, details } => {
+            validate_text("checkpoint name", name)?;
+            if name == "fresh_wire_blockhash_bound" {
+                let wire_id = details["wire_id"]
+                    .as_str()
+                    .context("fresh-wire checkpoint omitted wire_id")?;
+                validate_identifier("wire_id", wire_id)?;
+                let expected_signature = details["expected_signature"]
+                    .as_str()
+                    .context("fresh-wire checkpoint omitted expected_signature")?;
+                validate_text("expected signature", expected_signature)?;
+                let recent_blockhash = details["recent_blockhash"]
+                    .as_str()
+                    .context("fresh-wire checkpoint omitted recent_blockhash")?;
+                validate_text("recent blockhash", recent_blockhash)?;
+                let last_valid_block_height = details["last_valid_block_height"]
+                    .as_u64()
+                    .context("fresh-wire checkpoint omitted last_valid_block_height")?;
+                ensure!(
+                    state.ready_wires.contains_key(wire_id),
+                    "fresh-wire checkpoint precedes submit-ready wire: {wire_id}"
+                );
+                match state
+                    .wire_last_valid_block_heights
+                    .insert(wire_id.to_owned(), last_valid_block_height)
+                {
+                    None => {}
+                    Some(previous) => ensure!(
+                        previous == last_valid_block_height,
+                        "fresh-wire last-valid height changed for {wire_id}"
+                    ),
+                }
+                let binding = WireBlockhashBinding {
+                    expected_signature: expected_signature.to_owned(),
+                    recent_blockhash: recent_blockhash.to_owned(),
+                    last_valid_block_height,
+                };
+                match state
+                    .wire_blockhash_bindings
+                    .insert(wire_id.to_owned(), binding.clone())
+                {
+                    None => {}
+                    Some(previous) => ensure!(
+                        previous == binding,
+                        "fresh-wire blockhash binding changed for {wire_id}"
+                    ),
+                }
+            }
+            state.checkpoints.push((name.clone(), details.clone()));
+            Ok(())
+        }
         JournalBody::CleanupOnlyEntered { reason } => {
             validate_text("cleanup-only reason", reason)?;
             ensure!(
@@ -740,12 +965,20 @@ fn reduce(state: &mut RecoveryState, seq: u64, body: &JournalBody) -> Result<()>
                     wire_sha256: wire_sha256.clone(),
                     ready_sequence: seq,
                     submitted_signature: None,
+                    identical_wire_retries: None,
                     finalized_slot: None,
+                    abandoned_reason: None,
+                    submitted_expired_absent_reason: None,
+                    finalized_failure_reason: None,
                 },
             );
             Ok(())
         }
-        JournalBody::SubmissionRecorded { wire_id, signature } => {
+        JournalBody::SubmissionRecorded {
+            wire_id,
+            signature,
+            identical_wire_retries,
+        } => {
             validate_identifier("wire_id", wire_id)?;
             validate_text("signature", signature)?;
             let transaction_class = state
@@ -759,10 +992,140 @@ fn reduce(state: &mut RecoveryState, seq: u64, body: &JournalBody) -> Result<()>
                 .get_mut(wire_id)
                 .expect("wire existence checked above");
             ensure!(
+                ready.abandoned_reason.is_none(),
+                "submission follows durable abandonment for wire: {wire_id}"
+            );
+            ensure!(
+                ready.submitted_expired_absent_reason.is_none(),
+                "submission follows submitted-wire expiry for wire: {wire_id}"
+            );
+            ensure!(
+                ready.finalized_failure_reason.is_none(),
+                "submission follows finalized failure for wire: {wire_id}"
+            );
+            ensure!(
                 ready.submitted_signature.is_none(),
                 "duplicate submission record for wire: {wire_id}"
             );
             ready.submitted_signature = Some(signature.clone());
+            ready.identical_wire_retries = *identical_wire_retries;
+            Ok(())
+        }
+        JournalBody::WireAbandonedUnsubmitted {
+            wire_id,
+            expected_signature,
+            recent_blockhash,
+            last_valid_block_height,
+            checked_finalized_block_height,
+            reason,
+        } => {
+            validate_identifier("wire_id", wire_id)?;
+            validate_text("expected signature", expected_signature)?;
+            validate_text("recent blockhash", recent_blockhash)?;
+            ensure!(
+                *checked_finalized_block_height > 0,
+                "abandonment finalized block height must be nonzero"
+            );
+            if let Some(last_valid_block_height) = last_valid_block_height {
+                ensure!(
+                    *checked_finalized_block_height > *last_valid_block_height,
+                    "abandonment precedes the signed wire's last valid block height"
+                );
+            }
+            validate_text("abandonment reason", reason)?;
+            let ready = state
+                .ready_wires
+                .get_mut(wire_id)
+                .with_context(|| format!("abandonment has no submit-ready wire: {wire_id}"))?;
+            ensure!(
+                ready.submitted_signature.is_none(),
+                "cannot abandon a wire with a recorded submission: {wire_id}"
+            );
+            ensure!(
+                ready.finalized_slot.is_none(),
+                "cannot abandon a finalized wire: {wire_id}"
+            );
+            ensure!(
+                ready.abandoned_reason.is_none(),
+                "duplicate abandonment record for wire: {wire_id}"
+            );
+            ready.abandoned_reason = Some(reason.clone());
+            Ok(())
+        }
+        JournalBody::SubmittedWireExpiredAbsent {
+            wire_id,
+            expected_signature,
+            recent_blockhash,
+            last_valid_block_height,
+            checked_finalized_block_height,
+            reason,
+        } => {
+            validate_identifier("wire_id", wire_id)?;
+            validate_text("expected signature", expected_signature)?;
+            validate_text("recent blockhash", recent_blockhash)?;
+            ensure!(
+                *checked_finalized_block_height > 0,
+                "submitted-wire expiry finalized block height must be nonzero"
+            );
+            if let Some(last_valid_block_height) = last_valid_block_height {
+                ensure!(
+                    *checked_finalized_block_height > *last_valid_block_height,
+                    "submitted-wire expiry precedes the signed wire's last valid block height"
+                );
+            }
+            validate_text("submitted-wire expiry reason", reason)?;
+            let ready = state.ready_wires.get_mut(wire_id).with_context(|| {
+                format!("submitted-wire expiry has no submit-ready wire: {wire_id}")
+            })?;
+            ensure!(
+                ready.submitted_signature.as_deref() == Some(expected_signature.as_str()),
+                "submitted-wire expiry signature differs from recorded submission: {wire_id}"
+            );
+            ensure!(
+                ready.finalized_slot.is_none(),
+                "cannot expire a finalized submitted wire: {wire_id}"
+            );
+            ensure!(
+                ready.abandoned_reason.is_none(),
+                "submitted-wire expiry follows unsubmitted abandonment: {wire_id}"
+            );
+            ensure!(
+                ready.submitted_expired_absent_reason.is_none(),
+                "duplicate submitted-wire expiry record for wire: {wire_id}"
+            );
+            ensure!(
+                ready.finalized_failure_reason.is_none(),
+                "submitted-wire expiry follows finalized failure: {wire_id}"
+            );
+            ready.submitted_expired_absent_reason = Some(reason.clone());
+            Ok(())
+        }
+        JournalBody::FinalizedFailureRecorded {
+            wire_id,
+            slot,
+            error,
+        } => {
+            validate_identifier("wire_id", wire_id)?;
+            ensure!(*slot > 0, "failed finalized slot must be nonzero");
+            validate_text("finalized transaction error", error)?;
+            let ready = state.ready_wires.get_mut(wire_id).with_context(|| {
+                format!("finalized failure has no submit-ready wire: {wire_id}")
+            })?;
+            ensure!(
+                ready.submitted_signature.is_some(),
+                "finalized failure precedes submission record for wire: {wire_id}"
+            );
+            ensure!(
+                ready.finalized_slot.is_none(),
+                "finalized failure follows successful finalization for wire: {wire_id}"
+            );
+            ensure!(
+                ready.abandoned_reason.is_none()
+                    && ready.submitted_expired_absent_reason.is_none()
+                    && ready.finalized_failure_reason.is_none(),
+                "finalized failure follows another terminal event for wire: {wire_id}"
+            );
+            ready.finalized_failure_reason = Some(error.clone());
             Ok(())
         }
         JournalBody::FinalizationRecorded { wire_id, slot } => {
@@ -772,6 +1135,18 @@ fn reduce(state: &mut RecoveryState, seq: u64, body: &JournalBody) -> Result<()>
                 .ready_wires
                 .get_mut(wire_id)
                 .with_context(|| format!("finalization has no submit-ready wire: {wire_id}"))?;
+            ensure!(
+                ready.abandoned_reason.is_none(),
+                "finalization follows durable abandonment for wire: {wire_id}"
+            );
+            ensure!(
+                ready.submitted_expired_absent_reason.is_none(),
+                "finalization follows submitted-wire expiry for wire: {wire_id}"
+            );
+            ensure!(
+                ready.finalized_failure_reason.is_none(),
+                "successful finalization follows finalized failure for wire: {wire_id}"
+            );
             ensure!(
                 ready.submitted_signature.is_some(),
                 "finalization precedes submission record for wire: {wire_id}"
@@ -1187,6 +1562,16 @@ mod tests {
     }
 
     #[test]
+    fn externally_supplied_legacy_journal_reopens_without_mutation() {
+        let Ok(run_directory) = std::env::var("ASPIS_TEST_RECOVERY_JOURNAL_DIR") else {
+            return;
+        };
+        let journal = RecoveryJournal::reopen(Path::new(&run_directory)).unwrap();
+        assert!(journal.state().run_id.is_some());
+        assert!(!journal.state().ready_wires.is_empty());
+    }
+
+    #[test]
     fn run_lock_is_exclusive() {
         let root = TestRoot::new();
         let run = root.run();
@@ -1219,6 +1604,165 @@ mod tests {
 
         let mut reopened = RecoveryJournal::reopen(&run).unwrap();
         assert_eq!(reopened.load_submit_ready_wire("deploy_1").unwrap(), wire);
+    }
+
+    #[test]
+    fn expired_unsubmitted_wire_is_retained_but_loses_submit_authority() {
+        let root = TestRoot::new();
+        let run = root.run();
+        let wire = b"expired signed transaction wire";
+        let mut journal = RecoveryJournal::create(&run, "expired_wire_run").unwrap();
+        journal
+            .spool_signed_wire_submit_ready("upload_34", TransactionClass::Forward, wire)
+            .unwrap();
+        journal
+            .record_abandonment(
+                "upload_34",
+                "expected_signature",
+                "recent_blockhash",
+                Some(100),
+                101,
+                "history absent after finalized expiry",
+            )
+            .unwrap();
+        assert!(journal.load_submit_ready_wire("upload_34").is_err());
+        assert_eq!(journal.load_persisted_wire("upload_34").unwrap(), wire);
+        assert!(journal
+            .record_submission("upload_34", "late_signature")
+            .is_err());
+        drop(journal);
+
+        let mut reopened = RecoveryJournal::reopen(&run).unwrap();
+        assert!(reopened.load_submit_ready_wire("upload_34").is_err());
+        assert_eq!(reopened.load_persisted_wire("upload_34").unwrap(), wire);
+        assert_eq!(
+            reopened.state().ready_wires["upload_34"]
+                .abandoned_reason
+                .as_deref(),
+            Some("history absent after finalized expiry")
+        );
+    }
+
+    #[test]
+    fn submitted_wire_cannot_be_abandoned_or_replaced() {
+        let root = TestRoot::new();
+        let run = root.run();
+        let mut journal = RecoveryJournal::create(&run, "submitted_wire_run").unwrap();
+        journal
+            .spool_signed_wire_submit_ready(
+                "submitted_upload",
+                TransactionClass::Forward,
+                b"submitted wire",
+            )
+            .unwrap();
+        journal
+            .record_submission_with_retries("submitted_upload", "signature", Some(1))
+            .unwrap();
+        assert!(journal
+            .record_abandonment(
+                "submitted_upload",
+                "signature",
+                "recent_blockhash",
+                Some(100),
+                101,
+                "must be rejected",
+            )
+            .is_err());
+        assert_eq!(
+            journal.state().ready_wires["submitted_upload"].identical_wire_retries,
+            Some(1)
+        );
+    }
+
+    #[test]
+    fn submitted_expiry_is_terminal_and_reopen_safe() {
+        let root = TestRoot::new();
+        let run = root.run();
+        let mut journal = RecoveryJournal::create(&run, "submitted_expiry_run").unwrap();
+        journal
+            .spool_signed_wire_submit_ready(
+                "proof_upload_0034_r01",
+                TransactionClass::Forward,
+                b"submitted expiring wire",
+            )
+            .unwrap();
+        journal
+            .record_checkpoint(
+                "fresh_wire_blockhash_bound",
+                serde_json::json!({
+                    "wire_id": "proof_upload_0034_r01",
+                    "expected_signature": "expected_signature",
+                    "recent_blockhash": "recent_blockhash",
+                    "last_valid_block_height": 100,
+                }),
+            )
+            .unwrap();
+        journal
+            .record_submission("proof_upload_0034_r01", "expected_signature")
+            .unwrap();
+        journal
+            .record_submitted_expired_absent(
+                "proof_upload_0034_r01",
+                "expected_signature",
+                "recent_blockhash",
+                Some(100),
+                101,
+                "absent after finalized expiry",
+            )
+            .unwrap();
+        assert!(journal
+            .record_finalization("proof_upload_0034_r01", 9)
+            .is_err());
+        drop(journal);
+
+        let reopened = RecoveryJournal::reopen(&run).unwrap();
+        assert_eq!(
+            reopened.state().ready_wires["proof_upload_0034_r01"]
+                .submitted_expired_absent_reason
+                .as_deref(),
+            Some("absent after finalized expiry")
+        );
+        assert_eq!(
+            reopened.state().wire_blockhash_bindings["proof_upload_0034_r01"],
+            WireBlockhashBinding {
+                expected_signature: "expected_signature".to_owned(),
+                recent_blockhash: "recent_blockhash".to_owned(),
+                last_valid_block_height: 100,
+            }
+        );
+    }
+
+    #[test]
+    fn finalized_failure_is_terminal_and_cannot_be_recast_as_success() {
+        let root = TestRoot::new();
+        let run = root.run();
+        let mut journal = RecoveryJournal::create(&run, "failed_wire_run").unwrap();
+        journal
+            .spool_signed_wire_submit_ready(
+                "proof_finalize_tag62_r01",
+                TransactionClass::Forward,
+                b"failed wire",
+            )
+            .unwrap();
+        journal
+            .record_submission("proof_finalize_tag62_r01", "signature")
+            .unwrap();
+        journal
+            .record_finalized_failure(
+                "proof_finalize_tag62_r01",
+                123,
+                "{\"InstructionError\":[0,\"InvalidAccountData\"]}",
+            )
+            .unwrap();
+        assert!(journal
+            .record_finalization("proof_finalize_tag62_r01", 123)
+            .is_err());
+        assert_eq!(
+            journal.state().ready_wires["proof_finalize_tag62_r01"]
+                .finalized_failure_reason
+                .as_deref(),
+            Some("{\"InstructionError\":[0,\"InvalidAccountData\"]}")
+        );
     }
 
     #[test]

@@ -1,55 +1,58 @@
 # Documentation
 
-Start with the repository [README](../README.md). It presents Aspis as one
-connected evidence chain:
-
-- Lean proofs check substantial parts of the private-spend mathematics.
-- Charon and Aeneas bring selected production Rust into Lean, where bridge
-  proofs connect it to the maintained models.
-- Pinned source and build tools reproduce the exact compiled Solana program.
-- Finalized chain records show what the program actually executed.
-
-V5 currently completes this chain through a finalized devnet transaction. Its
-mainnet transaction is pending. The earlier q18/g37 release is the existing
-finalized mainnet feasibility result.
+Aspis V5 is the current release. It connects a private-spend construction to
+Lean proofs, selected production verifier paths through Charon, Aeneas, and
+Lean bridge proofs, a byte-reproducible Solana program, and a finalized
+mainnet-beta state transition.
 
 ## Start here
 
-- [README](../README.md): the result, evidence chain, formal coverage, and
-  reproduction entry points
-- [how Aspis works](how-it-works.md): the private-spend proof, proof-account
-  upload, and all-or-nothing state update
-- [how Aspis is formally checked](formal-verification.md): the mathematical
-  proof layer, the Rust-to-Lean connection, and the exact current scope
-- [formal proof status](../AspisFormal/README.md): the detailed Lean theorem
-  table
-- [Rust-to-Lean proof status](../aeneas-verif/README.md): exact Charon/Aeneas
-  coverage and the remaining transcript-hash boundary
-- [code map](code-map.md): concept-to-file navigation and production entry
-  points
-- [security assumptions](assumptions-ledger.md): the cryptographic,
-  translation, compiler, and runtime trust boundary
-- [paper source](../paper/aspis-spend/): the complete construction and
-  security argument
+1. [How Aspis works](how-it-works.md) — the private-spend statement, proof
+   upload, atomic transaction, and cleanup
+2. [From mathematics to mainnet](../README.md#from-mathematics-to-mainnet) —
+   the four-stage evidence chain
+3. [What has been formally checked](formal-verification.md) — what Lean
+   checks, how selected Rust is connected, and what remains trusted
+4. [V5 mainnet result](v5-mainnet-demo.md) — finalized execution first, then
+   exact deployment, lifecycle, compute, and refund evidence
+5. [Verify and reproduce the
+   evidence](../README.md#reproduce-the-evidence) — separate checks for the
+   proof layers, program identity, and mainnet bundle
+6. [Security assumptions](assumptions-ledger.md) — cryptographic,
+   translation, compiler, and runtime boundaries
+7. [Code map](code-map.md) — concept-to-file navigation
+8. [Technical paper](../paper/aspis-spend/) — construction, security
+   argument, and evidence chain
+9. [Design history and previous releases](design-history.md) — evolution of
+   the current V5 result and the earlier q18/g37 record
 
-## Chain evidence and history
+## Evidence by layer
 
-- [q18/g37 mainnet demonstration](mainnet-demo.md): finalized mainnet-beta
-  execution, lifecycle signatures, and compute use
-- [V5 release preflight](../release/preflight/v5-production-freeze.md):
-  current candidate identity, formal evidence, reproducible build, and
-  finalized devnet record
-- [novelty re-scan, 2026-07-13](novelty-rescan-2026-07-13.md): dated
-  public-evidence search for the claim shape; machine-readable companion
-  alongside it
-- [design history](design-history.md): what the default branch keeps and
-  where the research archive tags live
+| Layer | Record |
+| --- | --- |
+| Maintained mathematical models and Lean proofs | [`AspisFormal/`](../AspisFormal/) and its [proof-status table](../AspisFormal/README.md) |
+| Selected production Rust translated and bridged to Lean | [`aeneas-verif/`](../aeneas-verif/) |
+| Exact V5 SBF and reproducible build inputs | [V5 preflight](../release/preflight/v5-production-freeze.md) and [frozen candidate bundle](../release/aspis-v5-tag67-frozen-candidate-v1/) |
+| Finalized V5 mainnet transaction and cleanup | [mainnet lifecycle bundle](../release/aspis-v5-tag67-mainnet-v1/) |
 
-The q18/g37 release evidence and certificates are frozen in the
-offline-verifiable bundle at
-[`release/aspis-spend-q18-g37-mainnet-v1/`](../release/aspis-spend-q18-g37-mainnet-v1/);
-run its
-[`verify.sh`](../release/aspis-spend-q18-g37-mainnet-v1/verify.sh) to check
-every byte, the release-certificate gates, and the finalized on-chain
-signature, slot, and compute units offline. The complete relation and account
-model are specified in the paper.
+Run the V5 lifecycle verifier from a repository checkout:
+
+```bash
+./release/aspis-v5-tag67-mainnet-v1/verify.sh
+python3 tools/check_release_facts.py
+```
+
+The [V5 evidence-chain publication
+review](reviews/v5-evidence-chain-publication-review.html) records the resolved
+framing and release-integrity findings and the boundaries that remain open to
+outside review.
+
+## History
+
+The earlier q18/g37 Tag-65 feasibility result is retained separately in the
+[historical mainnet record](mainnet-demo.md) and
+[`release/aspis-spend-q18-g37-mainnet-v1/`](../release/aspis-spend-q18-g37-mainnet-v1/).
+It is not the current top-level release.
+
+Design evolution and archived research are indexed in
+[design history](design-history.md) and the [archive](../archive/README.md).

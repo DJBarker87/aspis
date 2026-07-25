@@ -1,0 +1,60 @@
+{
+  "artifact": "aspis_v5_tag67_mainnet_release",
+  "schema_version": 1,
+  "release_id": "aspis-v5-tag67-mainnet-v1",
+  "generated_at_utc": "2026-07-25T00:05:00Z",
+  "network": "mainnet-beta",
+  "genesis_hash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+  "frozen_candidate": {
+    "candidate_tag": "aspis-v5-tag67-frozen-candidate-v1",
+    "candidate_tag_commit": "d98a2e69618dc95b95c1996506ed8c05904a56a1",
+    "candidate_tag_tree": "919f461131dbdceb8fa00783a16658fa10059ac6",
+    "build_source_commit": "06788d44d30ea8cbd391899dddaf6f0acc6e4a3f",
+    "build_source_tree": "9b6bdfddb3c213addc2bb705c8130cce4fb2c351",
+    "sbf_path": "../aspis-v5-tag67-frozen-candidate-v1/program/aspis_verifier_v5_tag67.so",
+    "sbf_bytes": 1258496,
+    "sbf_sha256": "4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40"
+  },
+  "mainnet": {
+    "program_id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+    "pool": "u99qswA5FJbaMdJN23XEBUiyKmiyBcRidWHrzUz8VTm",
+    "proof_account": "3cb9NKGgNayZfTnGzNkWiwbHfQZyaonMFRxvAF8dEfUM",
+    "nullifier": "7Umhkv2Z3E2DksnpivCz2tovtbRoL1uXtnYBAtQBgu8Q",
+    "nullifier_pda_bump": 255,
+    "deployment_signature": "RHt7eErpgLvc7Z2QDWVSj4dmYTg9s4bU62CgWfN5Y1N2BUkAMmQ1V3P8RhtpX9px7aUfAYa8CNSo5Rx5Ndp3RMf",
+    "tag67_signature": "EJviPgF12i9iK2CveVaQSMeFQqDMFPQ1iPRUYEwNQE3zGquTUZNJXPZEENorcQtsnQj1orFmH1TPsgdbR3vJ2fE",
+    "tag67_finalized_slot": 435019536,
+    "tag67_compute_units": 1334452,
+    "proof_close_signature": "5FF19EceNFBVbrNzvhxTnbK8bWSysAHVLRjbfggamY3YSeUFzdk54c4GT9GKitBWGkntNG2Zx9xHgbzp371hZXbW",
+    "programdata_close_signature": "uZ6q5a2jGYcscEZgnLghPrqNwp9Hxq3REgYmt6gnb3JuorkUUEQUeJkVWy2e88j9bSLHgRvT2DytjRW2kBdHkWn",
+    "payer_sweep_signature": "4haJ6dPmSFkscFKC57QoCUUcf46vU77av9Y8UfcRyCWjfydzHjCeJCsfuthmifXJfVWreZZM8JTDUdBgzbj1JyUW",
+    "refund_recipient": "Dni6HwfsjJ3sQFTEtKVGL6RgE7zAXnKA7K8MLBBm2RZp",
+    "total_direct_refund_lamports": 10980894882
+  },
+  "objects": {
+    "README.md": {
+      "bytes": 3032,
+      "sha256": "a25cd4cc8b95d5e2be7607213bdfb96de145296f1513705697191466dd210ae8"
+    },
+    "evidence/mainnet-lifecycle.json": {
+      "bytes": 7002,
+      "sha256": "8cf9057173903e98763ba5485d88291b7564cf6464b9e651e8b52696f6c9a1e3"
+    },
+    "formal/formal-evidence.json": {
+      "bytes": 4859,
+      "sha256": "e06934bb07f29b7329f54dcf21c094759ce8d96382d1cff0bf4d84e22e295c5e"
+    },
+    "proof/v5-mainnet-proof.bin": {
+      "bytes": 75358,
+      "sha256": "330414df587974684643a6062d092db0519d746f0c7efe4ed2108775b685feaf"
+    },
+    "statement/v5-mainnet-statement.json": {
+      "bytes": 768,
+      "sha256": "0cdc34bc7f835640cff76d1085df9ba966df9f39eb228f3002f927cf30958113"
+    },
+    "verify.sh": {
+      "bytes": 2996,
+      "sha256": "fad0b00c2904d2700420a383b4cb482330efcc88dbc95d168e647b6bb7991f01"
+    }
+  }
+}

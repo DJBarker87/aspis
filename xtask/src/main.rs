@@ -386,9 +386,9 @@ fn main() -> Result<()> {
             println!("{}", serde_json::to_string_pretty(&evidence)?);
             eprintln!(
                 "v5-mainnet-execute: finalized tag-67 {} at slot {}; immutable evidence {}",
-                evidence.final_transaction.signature,
-                evidence.final_transaction.finalized_slot,
-                evidence.evidence_path,
+                evidence.signature()?,
+                evidence.finalized_slot()?,
+                evidence.evidence_path()?,
             );
             Ok(())
         }

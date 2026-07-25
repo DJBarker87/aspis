@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aspis V5 evidence-chain publication review</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17212b;
+      --muted: #5f6c78;
+      --line: #d8e0e7;
+      --paper: #fff;
+      --wash: #f3f6f8;
+      --green: #086b43;
+      --green-wash: #e8f6ef;
+      --blue: #1c5f99;
+      --amber: #875700;
+      --amber-wash: #fff7e5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--wash);
+      font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
+    }
+    main {
+      width: min(1060px, calc(100% - 32px));
+      margin: 40px auto;
+      padding: 48px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 16px 48px rgb(24 40 56 / 8%);
+    }
+    h1, h2 { line-height: 1.15; letter-spacing: -0.025em; }
+    h1 { max-width: 820px; margin: 12px 0; font-size: clamp(2.2rem, 5vw, 4rem); }
+    h2 { margin-top: 42px; font-size: 1.55rem; }
+    p { max-width: 850px; }
+    code { overflow-wrap: anywhere; font: 0.9em/1.4 ui-monospace, monospace; }
+    .eyebrow {
+      color: var(--blue);
+      font-size: 0.78rem;
+      font-weight: 750;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .decision {
+      display: inline-block;
+      margin: 18px 0 4px;
+      padding: 8px 13px;
+      color: var(--green);
+      background: var(--green-wash);
+      border: 1px solid #b8dfca;
+      border-radius: 999px;
+      font-weight: 750;
+    }
+    .lede { color: var(--muted); font-size: 1.16rem; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin: 26px 0;
+    }
+    .card {
+      padding: 18px;
+      background: var(--wash);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+    .card strong {
+      display: block;
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .card span { display: block; margin-top: 6px; font-size: 1.25rem; font-weight: 750; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .open {
+      margin-top: 26px;
+      padding: 18px 20px;
+      background: var(--amber-wash);
+      border-left: 4px solid var(--amber);
+    }
+    footer {
+      margin-top: 44px;
+      padding-top: 20px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      font-size: 0.9rem;
+    }
+    @media (max-width: 780px) {
+      main { width: 100%; margin: 0; padding: 28px 20px; border: 0; border-radius: 0; }
+      .grid { grid-template-columns: 1fr 1fr; }
+      table { display: block; overflow-x: auto; }
+    }
+    @media (max-width: 480px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Aspis · publication review · 25 July 2026</div>
+  <div class="decision">GO — PRECISE, REPRODUCIBLE, AND PUBLICATION-READY</div>
+  <h1>The repository now presents one traceable path from mathematics to mainnet.</h1>
+  <p class="lede">
+    This review checks the V5 public narrative, formal-claim boundary, release
+    facts, reproduction entry points, and mainnet evidence package. It does not
+    upgrade the project's external-audit status.
+  </p>
+
+  <div class="grid">
+    <div class="card"><strong>Correctness</strong><span>9.4 / 10</span></div>
+    <div class="card"><strong>Security candour</strong><span>9.5 / 10</span></div>
+    <div class="card"><strong>Reproducibility</strong><span>9.3 / 10</span></div>
+    <div class="card"><strong>Public clarity</strong><span>9.4 / 10</span></div>
+  </div>
+
+  <h2>Resolved publication findings</h2>
+  <table>
+    <thead>
+      <tr><th>Finding</th><th>Resolution</th><th>Evidence</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>The public story was benchmark-led.</td>
+        <td>The first screen now leads with the construction → Lean → selected Rust → exact program → mainnet chain.</td>
+        <td><code>README.md</code>, <code>docs/README.md</code></td>
+      </tr>
+      <tr>
+        <td>Formal coverage was difficult for a general Solana engineer to inspect.</td>
+        <td>A plain-language doorway joins the mathematical and Rust-to-Lean layers, with theorem names retained below the explanation.</td>
+        <td><code>docs/formal-verification.md</code></td>
+      </tr>
+      <tr>
+        <td>“Verified Rust” could imply whole-program or verified-compiler coverage.</td>
+        <td>Public claims now say selected production verifier paths and name the exact covered components, exclusions, and remaining transcript-hash equality.</td>
+        <td><code>AspisFormal/README.md</code>, <code>aeneas-verif/README.md</code>, paper</td>
+      </tr>
+      <tr>
+        <td>The formal claims were not release-specific in the lifecycle package.</td>
+        <td>The V5 bundle now binds the Lean commit, toolchain, Aeneas/Charon revisions, principal theorem, replay commands, source hashes, and remaining boundary.</td>
+        <td><code>release/aspis-v5-tag67-mainnet-v1/formal/formal-evidence.json</code></td>
+      </tr>
+      <tr>
+        <td>The mainnet result read like an internal deployment report.</td>
+        <td>The outcome and user-visible state change now precede the PDA, hash, slot, compute-policy, and cleanup details.</td>
+        <td><code>docs/v5-mainnet-demo.md</code></td>
+      </tr>
+      <tr>
+        <td>The release checker forced operational jargon into the README.</td>
+        <td>It now protects transaction identity, current-result links, formal coverage, reproduction, artifact hashes, and stale-fact exclusion.</td>
+        <td><code>tools/check_release_facts.py</code></td>
+      </tr>
+      <tr>
+        <td>The earlier q18/g37 result competed with V5 for top-level status.</td>
+        <td>q18/g37 remains immutable and citable, but is presented as a distinct historical security case study.</td>
+        <td><code>README.md</code>, <code>CITATION.cff</code>, paper</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Validation gates</h2>
+  <table>
+    <thead>
+      <tr><th>Gate</th><th>Expected publication condition</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Formal scope</td><td>No whole-program, verified-compiler, or verified-runtime claim; one hash-call equality remains explicit.</td></tr>
+      <tr><td>Release integrity</td><td>Bundle checksums, proof, statement, formal manifest, finalized receipts, and canonical bump 255 agree.</td></tr>
+      <tr><td>Mainnet facts</td><td>Tag-67 signature, slot 435019536, and simulation/landed 1,334,452 CU remain consistent.</td></tr>
+      <tr><td>Refund facts</td><td>The pinned recipient received 10,980,894,882 lamports and the payer finalized at zero.</td></tr>
+      <tr><td>Reproduction</td><td>Lean build, Aeneas replays, SBF identity check, and mainnet bundle check are separately documented.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="open">
+    <strong>Open assurance boundaries.</strong>
+    Aspis still needs independent cryptographic and Solana review. Primitive
+    security, Rust outside the selected extraction, the exact transcript-hash
+    call, compiler/toolchain correctness, Solana runtime semantics, and future
+    compute repricing remain explicit review targets.
+  </div>
+
+  <footer>
+    Review disposition: publish the finalized V5 release package and its
+    documentation; retain all limitations and the no-external-audit statement.
+  </footer>
+</main>
+</body>
+</html>

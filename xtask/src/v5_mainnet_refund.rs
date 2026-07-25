@@ -39,7 +39,7 @@ use crate::spend_mainnet_loader::{
 };
 
 pub const EXECUTE_ACKNOWLEDGEMENT: &str =
-    "I_ACKNOWLEDGE_V5_MAINNET_PAYER_SWEEP_SENDS_EVERY_SPENDABLE_LAMPORT_TO_THE_LOCALLY_PINNED_REFUND_RECIPIENT";
+    "I_ACKNOWLEDGE_V5_MAINNET_PAYER_SWEEP_SENDS_THE_SIGNED_SNAPSHOT_BALANCE_MINUS_FEE_TO_THE_LOCALLY_PINNED_REFUND_RECIPIENT";
 
 const MAINNET_BETA_GENESIS_HASH: &str = "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d";
 const READ_RETRIES: u8 = 12;
@@ -145,11 +145,34 @@ struct SweepBalanceEvidence {
     transfer_lamports: u64,
     fee_lamports: u64,
     payer_pre_matches_signed_snapshot: bool,
+    payer_pre_at_least_signed_snapshot: bool,
+    inbound_dust_after_signing_lamports: u64,
     payer_debit_equals_transfer_plus_fee: bool,
     recipient_credit_equals_transfer: bool,
     payer_post_is_zero: bool,
+    payer_post_equals_inbound_dust_after_signing: bool,
+    signed_snapshot_balance_fully_swept: bool,
     every_other_message_account_balance_unchanged: bool,
-    exact_dust_free_result: bool,
+    landed_exact_zero_balance_result: bool,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+struct PostfinalityBalanceEvidence {
+    landed_payer_residual_lamports: u64,
+    current_payer_lamports: u64,
+    payer_inbound_after_landing_lamports: u64,
+    landed_refund_recipient_post_lamports: u64,
+    current_refund_recipient_lamports: u64,
+    refund_recipient_inbound_after_landing_lamports: u64,
+    presubmit_program_lamports: u64,
+    current_program_lamports: u64,
+    program_inbound_after_submission_lamports: u64,
+    presubmit_programdata_dust_lamports: u64,
+    current_programdata_dust_lamports: u64,
+    programdata_inbound_after_submission_lamports: u64,
+    presubmit_proof_account_dust_lamports: u64,
+    current_proof_account_dust_lamports: u64,
+    proof_account_inbound_after_submission_lamports: u64,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -174,12 +197,22 @@ struct PresubmitEvidence {
     refund_recipient_pin_owner_matches_payer_keypair: bool,
     refund_recipient_pin_outside_workspace: bool,
     prestate: SnapshotEvidence,
-    programdata_absent_before_signing: bool,
-    proof_account_absent_before_signing: bool,
+    before_submission: SnapshotEvidence,
+    programdata_closed_or_system_dust_before_signing: bool,
+    programdata_dust_lamports_before_signing: u64,
+    proof_account_closed_or_system_dust_before_signing: bool,
+    proof_account_dust_lamports_before_signing: u64,
+    payer_inbound_lamports_before_submission: u64,
+    recipient_inbound_lamports_before_submission: u64,
+    program_inbound_lamports_before_submission: u64,
+    programdata_dust_lamports_before_submission: u64,
+    programdata_inbound_dust_before_submission_lamports: u64,
+    proof_account_dust_lamports_before_submission: u64,
+    proof_account_inbound_dust_before_submission_lamports: u64,
     fee_reserve_lamports: u64,
     quoted_fee_lamports: u64,
     transfer_lamports: u64,
-    expected_payer_post_lamports: u64,
+    expected_payer_post_lamports_without_concurrent_inflow: u64,
     expected_signature: String,
     recent_blockhash: String,
     last_valid_block_height: u64,
@@ -190,7 +223,7 @@ struct PresubmitEvidence {
     exact_single_system_transfer_validated: bool,
     pin_reread_before_signing_exact: bool,
     pin_reread_before_submission_exact: bool,
-    prestate_reread_before_submission_exact: bool,
+    prestate_reread_before_submission_donation_only: bool,
     simulation: SimulationEvidence,
     submission_performed_when_written: bool,
     postsubmit_evidence_path: String,
@@ -218,6 +251,9 @@ struct PostsubmitEvidence {
     landed_fee_lamports: u64,
     landed_fee_equals_quote: bool,
     balances: SweepBalanceEvidence,
+    postfinality_snapshot: SnapshotEvidence,
+    postfinality_balances: PostfinalityBalanceEvidence,
+    post_landing_dust_does_not_change_landed_reconciliation: bool,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -237,7 +273,9 @@ pub struct SweepOutcome {
     pub transfer_lamports: u64,
     pub fee_lamports: u64,
     pub payer_post_lamports: u64,
-    pub exact_dust_free_result: bool,
+    pub inbound_dust_after_signing_lamports: u64,
+    pub signed_snapshot_balance_fully_swept: bool,
+    pub landed_exact_zero_balance_result: bool,
     pub presubmit_evidence: EvidenceReceipt,
     pub postsubmit_evidence: EvidenceReceipt,
 }
@@ -739,7 +777,7 @@ pub fn execute(arguments: &[String]) -> Result<SweepOutcome> {
         config.expected_proof_account,
     ];
     let signed_snapshot = rpc.snapshot(&addresses, Some(blockhash_context_slot))?;
-    validate_sweep_prestate(
+    let (programdata_dust_signed, proof_dust_signed) = validate_sweep_prestate(
         &signed_snapshot,
         &payer.pubkey(),
         &pinned.pubkey,
@@ -818,7 +856,7 @@ pub fn execute(arguments: &[String]) -> Result<SweepOutcome> {
         &addresses,
         Some(simulation.context_slot.max(signed_snapshot.context_slot)),
     )?;
-    validate_sweep_prestate(
+    let (programdata_dust_presubmit, proof_dust_presubmit) = validate_sweep_prestate(
         &before_submission,
         &payer.pubkey(),
         &pinned.pubkey,
@@ -826,10 +864,21 @@ pub fn execute(arguments: &[String]) -> Result<SweepOutcome> {
         &programdata,
         &config.expected_proof_account,
     )?;
-    ensure!(
-        before_submission.same_accounts(&signed_snapshot),
-        "payer or refund wallet changed after signing; no transaction was submitted"
-    );
+    let (
+        payer_inbound_presubmit,
+        recipient_inbound_presubmit,
+        program_inbound_presubmit,
+        programdata_inbound_presubmit,
+        proof_inbound_presubmit,
+    ) = validate_donation_only_snapshot_change(
+        &signed_snapshot,
+        &before_submission,
+        &payer.pubkey(),
+        &pinned.pubkey,
+        &config.expected_program_id,
+        &programdata,
+        &config.expected_proof_account,
+    )?;
     let pin_before_submission = read_pinned_recipient(&config.refund_recipient_pubkey_file)?;
     ensure!(
         pin_before_submission == pinned,
@@ -861,12 +910,22 @@ pub fn execute(arguments: &[String]) -> Result<SweepOutcome> {
         refund_recipient_pin_owner_matches_payer_keypair: true,
         refund_recipient_pin_outside_workspace: true,
         prestate: signed_snapshot.evidence(),
-        programdata_absent_before_signing: true,
-        proof_account_absent_before_signing: true,
+        before_submission: before_submission.evidence(),
+        programdata_closed_or_system_dust_before_signing: true,
+        programdata_dust_lamports_before_signing: programdata_dust_signed,
+        proof_account_closed_or_system_dust_before_signing: true,
+        proof_account_dust_lamports_before_signing: proof_dust_signed,
+        payer_inbound_lamports_before_submission: payer_inbound_presubmit,
+        recipient_inbound_lamports_before_submission: recipient_inbound_presubmit,
+        program_inbound_lamports_before_submission: program_inbound_presubmit,
+        programdata_dust_lamports_before_submission: programdata_dust_presubmit,
+        programdata_inbound_dust_before_submission_lamports: programdata_inbound_presubmit,
+        proof_account_dust_lamports_before_submission: proof_dust_presubmit,
+        proof_account_inbound_dust_before_submission_lamports: proof_inbound_presubmit,
         fee_reserve_lamports: config.fee_reserve_lamports,
         quoted_fee_lamports,
         transfer_lamports,
-        expected_payer_post_lamports: 0,
+        expected_payer_post_lamports_without_concurrent_inflow: 0,
         expected_signature: expected_signature.to_string(),
         recent_blockhash: recent_blockhash.to_string(),
         last_valid_block_height,
@@ -877,7 +936,7 @@ pub fn execute(arguments: &[String]) -> Result<SweepOutcome> {
         exact_single_system_transfer_validated: true,
         pin_reread_before_signing_exact: true,
         pin_reread_before_submission_exact: true,
-        prestate_reread_before_submission_exact: true,
+        prestate_reread_before_submission_donation_only: true,
         simulation: simulation.evidence(),
         submission_performed_when_written: false,
         postsubmit_evidence_path: postsubmit_path.display().to_string(),
@@ -911,6 +970,17 @@ pub fn execute(arguments: &[String]) -> Result<SweepOutcome> {
         transfer_lamports,
     )?;
     let landed_fee_equals_quote = finalized.fee_lamports == quoted_fee_lamports;
+    let postfinality_snapshot = rpc.snapshot(&addresses, Some(finalized_slot))?;
+    let postfinality_balances = validate_postfinality_state(
+        &before_submission,
+        &postfinality_snapshot,
+        &balances,
+        &payer.pubkey(),
+        &pinned.pubkey,
+        &config.expected_program_id,
+        &programdata,
+        &config.expected_proof_account,
+    )?;
     let postsubmit = PostsubmitEvidence {
         artifact: "aspis_v5_mainnet_payer_sweep_postsubmit",
         generated_at_utc: chrono::Utc::now().to_rfc3339(),
@@ -932,11 +1002,14 @@ pub fn execute(arguments: &[String]) -> Result<SweepOutcome> {
         landed_fee_lamports: finalized.fee_lamports,
         landed_fee_equals_quote,
         balances: balances.clone(),
+        postfinality_snapshot: postfinality_snapshot.evidence(),
+        postfinality_balances,
+        post_landing_dust_does_not_change_landed_reconciliation: true,
     };
     let postsubmit_receipt = postsubmit_reservation.commit(&postsubmit)?;
     ensure!(
-        landed_fee_equals_quote && balances.exact_dust_free_result,
-        "payer sweep finalized but did not produce the exact quoted-fee, zero-balance result; inspect immutable evidence before any retry"
+        landed_fee_equals_quote && balances.signed_snapshot_balance_fully_swept,
+        "payer sweep finalized but did not transfer the signed-snapshot balance net of the finalized fee to the pinned recipient; inspect immutable evidence before any retry"
     );
     Ok(SweepOutcome {
         signature: expected_signature.to_string(),
@@ -946,7 +1019,9 @@ pub fn execute(arguments: &[String]) -> Result<SweepOutcome> {
         transfer_lamports,
         fee_lamports: finalized.fee_lamports,
         payer_post_lamports: balances.payer_post_lamports,
-        exact_dust_free_result: balances.exact_dust_free_result,
+        inbound_dust_after_signing_lamports: balances.inbound_dust_after_signing_lamports,
+        signed_snapshot_balance_fully_swept: balances.signed_snapshot_balance_fully_swept,
+        landed_exact_zero_balance_result: balances.landed_exact_zero_balance_result,
         presubmit_evidence: presubmit_receipt,
         postsubmit_evidence: postsubmit_receipt,
     })
@@ -1117,6 +1192,10 @@ fn reconcile_sweep(
     let recipient_pre = pre_balances[recipient_index];
     let recipient_post = post_balances[recipient_index];
     let payer_pre_matches_signed_snapshot = payer_pre == signed_snapshot_payer_lamports;
+    let inbound_dust_after_signing_lamports = payer_pre
+        .checked_sub(signed_snapshot_payer_lamports)
+        .context("landed payer pre-balance fell below the signed snapshot")?;
+    let payer_pre_at_least_signed_snapshot = true;
     let payer_debit_equals_transfer_plus_fee = payer_pre
         .checked_sub(payer_post)
         .and_then(|debit| {
@@ -1129,6 +1208,8 @@ fn reconcile_sweep(
         .checked_sub(recipient_pre)
         .is_some_and(|credit| credit == transfer_lamports);
     let payer_post_is_zero = payer_post == 0;
+    let payer_post_equals_inbound_dust_after_signing =
+        payer_post == inbound_dust_after_signing_lamports;
     let every_other_message_account_balance_unchanged = pre_balances
         .iter()
         .zip(post_balances)
@@ -1136,11 +1217,14 @@ fn reconcile_sweep(
         .all(|(index, (pre, post))| {
             index == payer_index || index == recipient_index || pre == post
         });
-    let exact_dust_free_result = payer_pre_matches_signed_snapshot
+    let signed_snapshot_balance_fully_swept = payer_pre_at_least_signed_snapshot
         && payer_debit_equals_transfer_plus_fee
         && recipient_credit_equals_transfer
-        && payer_post_is_zero
+        && payer_post_equals_inbound_dust_after_signing
         && every_other_message_account_balance_unchanged;
+    let landed_exact_zero_balance_result = signed_snapshot_balance_fully_swept
+        && payer_pre_matches_signed_snapshot
+        && payer_post_is_zero;
     Ok(SweepBalanceEvidence {
         payer_account_index: payer_index,
         refund_recipient_account_index: recipient_index,
@@ -1151,12 +1235,36 @@ fn reconcile_sweep(
         transfer_lamports,
         fee_lamports,
         payer_pre_matches_signed_snapshot,
+        payer_pre_at_least_signed_snapshot,
+        inbound_dust_after_signing_lamports,
         payer_debit_equals_transfer_plus_fee,
         recipient_credit_equals_transfer,
         payer_post_is_zero,
+        payer_post_equals_inbound_dust_after_signing,
+        signed_snapshot_balance_fully_swept,
         every_other_message_account_balance_unchanged,
-        exact_dust_free_result,
+        landed_exact_zero_balance_result,
     })
+}
+
+fn closed_or_system_dust_lamports(
+    snapshot: &CoherentSnapshot,
+    address: &Pubkey,
+    label: &str,
+) -> Result<u64> {
+    match snapshot.account(address)? {
+        None => Ok(0),
+        Some(account)
+            if account.owner == system_program::id()
+                && !account.executable
+                && account.data.is_empty() =>
+        {
+            Ok(account.lamports)
+        }
+        Some(_) => bail!(
+            "{label} was not closed: only absence or a System-owned zero-data dust account is accepted"
+        ),
+    }
 }
 
 fn validate_sweep_prestate(
@@ -1166,7 +1274,7 @@ fn validate_sweep_prestate(
     program: &Pubkey,
     programdata: &Pubkey,
     proof_account: &Pubkey,
-) -> Result<()> {
+) -> Result<(u64, u64)> {
     ensure!(
         payer != recipient
             && payer != program
@@ -1209,15 +1317,155 @@ fn validate_sweep_prestate(
         program,
     )
     .context("canonical V5 Program account is not the retained loader-v3 Program image")?;
+    let programdata_dust = closed_or_system_dust_lamports(snapshot, programdata, "ProgramData")?;
+    let proof_dust =
+        closed_or_system_dust_lamports(snapshot, proof_account, "sealed proof account")?;
+    Ok((programdata_dust, proof_dust))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn validate_donation_only_snapshot_change(
+    signed: &CoherentSnapshot,
+    later: &CoherentSnapshot,
+    payer: &Pubkey,
+    recipient: &Pubkey,
+    program: &Pubkey,
+    programdata: &Pubkey,
+    proof_account: &Pubkey,
+) -> Result<(u64, u64, u64, u64, u64)> {
     ensure!(
-        snapshot.account(programdata)?.is_none(),
-        "ProgramData still exists; recover its rent before sweeping the payer"
+        later.context_slot >= signed.context_slot,
+        "pre-submission snapshot is older than the signed snapshot"
     );
     ensure!(
-        snapshot.account(proof_account)?.is_none(),
-        "sealed proof account still exists; recover its rent before sweeping the payer"
+        later.addresses == signed.addresses,
+        "pre-submission snapshot address order changed"
     );
-    Ok(())
+    let donation_only = |address: &Pubkey, label: &str| -> Result<u64> {
+        let before = signed.required(address, label)?;
+        let after = later.required(address, label)?;
+        ensure!(
+            before.owner == after.owner
+                && before.executable == after.executable
+                && before.data == after.data,
+            "{label} owner, executable flag, or data changed after signing"
+        );
+        after
+            .lamports
+            .checked_sub(before.lamports)
+            .with_context(|| format!("{label} balance decreased after signing"))
+    };
+    let payer_inbound = donation_only(payer, "payer")?;
+    let recipient_inbound = donation_only(recipient, "refund recipient")?;
+    let program_inbound = donation_only(program, "canonical V5 Program")?;
+
+    let signed_programdata = closed_or_system_dust_lamports(signed, programdata, "ProgramData")?;
+    let later_programdata = closed_or_system_dust_lamports(later, programdata, "ProgramData")?;
+    let programdata_inbound = later_programdata
+        .checked_sub(signed_programdata)
+        .context("ProgramData dust balance decreased after signing")?;
+    let signed_proof =
+        closed_or_system_dust_lamports(signed, proof_account, "sealed proof account")?;
+    let later_proof = closed_or_system_dust_lamports(later, proof_account, "sealed proof account")?;
+    let proof_inbound = later_proof
+        .checked_sub(signed_proof)
+        .context("proof-account dust balance decreased after signing")?;
+    Ok((
+        payer_inbound,
+        recipient_inbound,
+        program_inbound,
+        programdata_inbound,
+        proof_inbound,
+    ))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn validate_postfinality_state(
+    before_submission: &CoherentSnapshot,
+    snapshot: &CoherentSnapshot,
+    landed: &SweepBalanceEvidence,
+    payer: &Pubkey,
+    recipient: &Pubkey,
+    program: &Pubkey,
+    programdata: &Pubkey,
+    proof_account: &Pubkey,
+) -> Result<PostfinalityBalanceEvidence> {
+    ensure!(
+        snapshot.context_slot >= before_submission.context_slot,
+        "post-finality snapshot is older than the pre-submission snapshot"
+    );
+    ensure!(
+        snapshot.addresses == before_submission.addresses,
+        "post-finality snapshot address order changed"
+    );
+    let payer_lamports = closed_or_system_dust_lamports(snapshot, payer, "swept payer")?;
+    let payer_inbound_after_landing = payer_lamports
+        .checked_sub(landed.payer_post_lamports)
+        .context("current payer balance fell below the finalized transaction residual")?;
+    let recipient_account = snapshot.required(recipient, "refund recipient")?;
+    ensure!(
+        recipient_account.owner == system_program::id()
+            && !recipient_account.executable
+            && recipient_account.data.is_empty(),
+        "refund recipient is no longer a plain System Program wallet"
+    );
+    let recipient_inbound_after_landing = recipient_account
+        .lamports
+        .checked_sub(landed.refund_recipient_post_lamports)
+        .context("refund-recipient balance fell below the finalized transaction post-balance")?;
+    let program_before =
+        before_submission.required(program, "pre-submission canonical V5 Program")?;
+    let program_account = snapshot.required(program, "canonical V5 Program")?;
+    ensure!(
+        program_account.owner == program_before.owner
+            && program_account.executable == program_before.executable
+            && program_account.data == program_before.data,
+        "canonical V5 Program owner, executable flag, or data changed after submission"
+    );
+    validate_exact_program_account(
+        &LoaderAccountImage {
+            address: *program,
+            owner: program_account.owner,
+            executable: program_account.executable,
+            data: &program_account.data,
+        },
+        program,
+    )
+    .context("canonical V5 Program account changed after the payer sweep")?;
+    let program_inbound_after_submission = program_account
+        .lamports
+        .checked_sub(program_before.lamports)
+        .context("canonical V5 Program balance decreased after submission")?;
+    let programdata_before =
+        closed_or_system_dust_lamports(before_submission, programdata, "ProgramData")?;
+    let programdata_dust = closed_or_system_dust_lamports(snapshot, programdata, "ProgramData")?;
+    let programdata_inbound_after_submission = programdata_dust
+        .checked_sub(programdata_before)
+        .context("ProgramData dust balance decreased after submission")?;
+    let proof_before =
+        closed_or_system_dust_lamports(before_submission, proof_account, "sealed proof account")?;
+    let proof_dust =
+        closed_or_system_dust_lamports(snapshot, proof_account, "sealed proof account")?;
+    let proof_inbound_after_submission = proof_dust
+        .checked_sub(proof_before)
+        .context("proof-account dust balance decreased after submission")?;
+    Ok(PostfinalityBalanceEvidence {
+        landed_payer_residual_lamports: landed.payer_post_lamports,
+        current_payer_lamports: payer_lamports,
+        payer_inbound_after_landing_lamports: payer_inbound_after_landing,
+        landed_refund_recipient_post_lamports: landed.refund_recipient_post_lamports,
+        current_refund_recipient_lamports: recipient_account.lamports,
+        refund_recipient_inbound_after_landing_lamports: recipient_inbound_after_landing,
+        presubmit_program_lamports: program_before.lamports,
+        current_program_lamports: program_account.lamports,
+        program_inbound_after_submission_lamports: program_inbound_after_submission,
+        presubmit_programdata_dust_lamports: programdata_before,
+        current_programdata_dust_lamports: programdata_dust,
+        programdata_inbound_after_submission_lamports: programdata_inbound_after_submission,
+        presubmit_proof_account_dust_lamports: proof_before,
+        current_proof_account_dust_lamports: proof_dust,
+        proof_account_inbound_after_submission_lamports: proof_inbound_after_submission,
+    })
 }
 
 fn read_pinned_recipient(path: &Path) -> Result<PinnedRecipient> {
@@ -1489,10 +1737,6 @@ impl CoherentSnapshot {
     fn required(&self, address: &Pubkey, label: &str) -> Result<&RpcAccount> {
         self.account(address)?
             .with_context(|| format!("{label} is absent"))
-    }
-
-    fn same_accounts(&self, other: &Self) -> bool {
-        self.addresses == other.addresses && self.accounts == other.accounts
     }
 
     fn evidence(&self) -> SnapshotEvidence {
@@ -1909,7 +2153,7 @@ mod tests {
     }
 
     #[test]
-    fn reconciliation_requires_exact_zero_balance_and_pinned_credit() {
+    fn reconciliation_sweeps_signed_balance_and_classifies_concurrent_dust() {
         let payer = Keypair::new().pubkey();
         let recipient = Keypair::new().pubkey();
         let keys = [payer, recipient, system_program::id()];
@@ -1924,7 +2168,8 @@ mod tests {
             7_184_879_880,
         )
         .unwrap();
-        assert!(exact.exact_dust_free_result);
+        assert!(exact.landed_exact_zero_balance_result);
+        assert!(exact.signed_snapshot_balance_fully_swept);
 
         let dust_race = reconcile_sweep(
             &keys,
@@ -1939,7 +2184,10 @@ mod tests {
         .unwrap();
         assert!(!dust_race.payer_pre_matches_signed_snapshot);
         assert!(!dust_race.payer_post_is_zero);
-        assert!(!dust_race.exact_dust_free_result);
+        assert_eq!(dust_race.inbound_dust_after_signing_lamports, 10_000);
+        assert!(dust_race.payer_post_equals_inbound_dust_after_signing);
+        assert!(dust_race.signed_snapshot_balance_fully_swept);
+        assert!(!dust_race.landed_exact_zero_balance_result);
     }
 
     #[test]
@@ -1981,6 +2229,22 @@ mod tests {
         validate_sweep_prestate(&clean, &payer, &recipient, &program, &programdata, &proof)
             .unwrap();
 
+        let mut system_dust = clean.clone();
+        system_dust.accounts[3] = Some(wallet(1));
+        system_dust.accounts[4] = Some(wallet(2));
+        assert_eq!(
+            validate_sweep_prestate(
+                &system_dust,
+                &payer,
+                &recipient,
+                &program,
+                &programdata,
+                &proof,
+            )
+            .unwrap(),
+            (1, 2)
+        );
+
         let mut recipient_absent = clean.clone();
         recipient_absent.accounts[1] = None;
         assert!(validate_sweep_prestate(
@@ -2010,7 +2274,7 @@ mod tests {
         )
         .is_err());
 
-        let mut proof_present = clean;
+        let mut proof_present = clean.clone();
         proof_present.accounts[4] = Some(RpcAccount {
             lamports: 500_000_000,
             owner: program,
@@ -2019,6 +2283,352 @@ mod tests {
         });
         assert!(validate_sweep_prestate(
             &proof_present,
+            &payer,
+            &recipient,
+            &program,
+            &programdata,
+            &proof,
+        )
+        .is_err());
+
+        let mut proof_system_data = clean;
+        proof_system_data.accounts[4] = Some(RpcAccount {
+            lamports: 1,
+            owner: system_program::id(),
+            executable: false,
+            data: vec![1],
+        });
+        assert!(validate_sweep_prestate(
+            &proof_system_data,
+            &payer,
+            &recipient,
+            &program,
+            &programdata,
+            &proof,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn presubmit_snapshot_accepts_only_inbound_donations_and_closed_account_dust() {
+        use solana_sdk::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
+
+        let payer = Keypair::new().pubkey();
+        let recipient = Keypair::new().pubkey();
+        let program = aspis_verifier::id();
+        let programdata = derive_programdata_address(&program);
+        let proof = Keypair::new().pubkey();
+        let wallet = |lamports| RpcAccount {
+            lamports,
+            owner: system_program::id(),
+            executable: false,
+            data: Vec::new(),
+        };
+        let program_account = RpcAccount {
+            lamports: 1_141_440,
+            owner: bpf_loader_upgradeable::id(),
+            executable: true,
+            data: bincode::serialize(&UpgradeableLoaderState::Program {
+                programdata_address: programdata,
+            })
+            .unwrap(),
+        };
+        let addresses = vec![payer, recipient, program, programdata, proof];
+        let signed = CoherentSnapshot {
+            context_slot: 10,
+            addresses: addresses.clone(),
+            accounts: vec![
+                Some(wallet(100_000)),
+                Some(wallet(20_000)),
+                Some(program_account.clone()),
+                None,
+                None,
+            ],
+        };
+        let later = CoherentSnapshot {
+            context_slot: 11,
+            addresses,
+            accounts: vec![
+                Some(wallet(100_001)),
+                Some(wallet(20_002)),
+                Some(RpcAccount {
+                    lamports: program_account.lamports + 3,
+                    ..program_account.clone()
+                }),
+                Some(wallet(4)),
+                Some(wallet(5)),
+            ],
+        };
+        assert_eq!(
+            validate_donation_only_snapshot_change(
+                &signed,
+                &later,
+                &payer,
+                &recipient,
+                &program,
+                &programdata,
+                &proof,
+            )
+            .unwrap(),
+            (1, 2, 3, 4, 5)
+        );
+
+        let mut decreased = later.clone();
+        decreased.accounts[0].as_mut().unwrap().lamports = 99_999;
+        assert!(validate_donation_only_snapshot_change(
+            &signed,
+            &decreased,
+            &payer,
+            &recipient,
+            &program,
+            &programdata,
+            &proof,
+        )
+        .is_err());
+
+        let mut recipient_mutated = later.clone();
+        recipient_mutated.accounts[1].as_mut().unwrap().data.push(1);
+        assert!(validate_donation_only_snapshot_change(
+            &signed,
+            &recipient_mutated,
+            &payer,
+            &recipient,
+            &program,
+            &programdata,
+            &proof,
+        )
+        .is_err());
+
+        let mut program_decreased = later.clone();
+        program_decreased.accounts[2].as_mut().unwrap().lamports = program_account.lamports - 1;
+        assert!(validate_donation_only_snapshot_change(
+            &signed,
+            &program_decreased,
+            &payer,
+            &recipient,
+            &program,
+            &programdata,
+            &proof,
+        )
+        .is_err());
+
+        let mut program_mutated = later.clone();
+        program_mutated.accounts[2].as_mut().unwrap().executable = false;
+        assert!(validate_donation_only_snapshot_change(
+            &signed,
+            &program_mutated,
+            &payer,
+            &recipient,
+            &program,
+            &programdata,
+            &proof,
+        )
+        .is_err());
+
+        let mut signed_with_tombstone_dust = signed.clone();
+        signed_with_tombstone_dust.accounts[3] = Some(wallet(5));
+        signed_with_tombstone_dust.accounts[4] = Some(wallet(6));
+        let mut tombstone_decreased = later;
+        tombstone_decreased.accounts[3] = Some(wallet(4));
+        tombstone_decreased.accounts[4] = Some(wallet(5));
+        assert!(validate_donation_only_snapshot_change(
+            &signed_with_tombstone_dust,
+            &tombstone_decreased,
+            &payer,
+            &recipient,
+            &program,
+            &programdata,
+            &proof,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn postfinality_state_accepts_absent_or_redusted_closed_addresses() {
+        use solana_sdk::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
+
+        let payer = Keypair::new().pubkey();
+        let recipient = Keypair::new().pubkey();
+        let program = aspis_verifier::id();
+        let programdata = derive_programdata_address(&program);
+        let proof = Keypair::new().pubkey();
+        let wallet = |lamports| RpcAccount {
+            lamports,
+            owner: system_program::id(),
+            executable: false,
+            data: Vec::new(),
+        };
+        let program_account = RpcAccount {
+            lamports: 1_141_440,
+            owner: bpf_loader_upgradeable::id(),
+            executable: true,
+            data: bincode::serialize(&UpgradeableLoaderState::Program {
+                programdata_address: programdata,
+            })
+            .unwrap(),
+        };
+        let addresses = vec![payer, recipient, program, programdata, proof];
+        let before_submission = CoherentSnapshot {
+            context_slot: 19,
+            addresses: addresses.clone(),
+            accounts: vec![
+                Some(wallet(100_000)),
+                Some(wallet(900_000)),
+                Some(program_account.clone()),
+                None,
+                None,
+            ],
+        };
+        let landed = reconcile_sweep(
+            &[payer, recipient, system_program::id()],
+            &[100_000, 900_000, 1],
+            &[0, 995_000, 1],
+            5_000,
+            &payer,
+            &recipient,
+            100_000,
+            95_000,
+        )
+        .unwrap();
+        let mut snapshot = CoherentSnapshot {
+            context_slot: 20,
+            addresses,
+            accounts: vec![
+                None,
+                Some(wallet(995_007)),
+                Some(RpcAccount {
+                    lamports: program_account.lamports + 3,
+                    ..program_account
+                }),
+                Some(wallet(4)),
+                Some(wallet(5)),
+            ],
+        };
+        assert_eq!(
+            validate_postfinality_state(
+                &before_submission,
+                &snapshot,
+                &landed,
+                &payer,
+                &recipient,
+                &program,
+                &programdata,
+                &proof,
+            )
+            .unwrap(),
+            PostfinalityBalanceEvidence {
+                landed_payer_residual_lamports: 0,
+                current_payer_lamports: 0,
+                payer_inbound_after_landing_lamports: 0,
+                landed_refund_recipient_post_lamports: 995_000,
+                current_refund_recipient_lamports: 995_007,
+                refund_recipient_inbound_after_landing_lamports: 7,
+                presubmit_program_lamports: 1_141_440,
+                current_program_lamports: 1_141_443,
+                program_inbound_after_submission_lamports: 3,
+                presubmit_programdata_dust_lamports: 0,
+                current_programdata_dust_lamports: 4,
+                programdata_inbound_after_submission_lamports: 4,
+                presubmit_proof_account_dust_lamports: 0,
+                current_proof_account_dust_lamports: 5,
+                proof_account_inbound_after_submission_lamports: 5,
+            }
+        );
+
+        snapshot.accounts[0] = Some(wallet(6));
+        let redusted = validate_postfinality_state(
+            &before_submission,
+            &snapshot,
+            &landed,
+            &payer,
+            &recipient,
+            &program,
+            &programdata,
+            &proof,
+        )
+        .unwrap();
+        assert_eq!(redusted.current_payer_lamports, 6);
+        assert_eq!(redusted.payer_inbound_after_landing_lamports, 6);
+        snapshot.accounts[0] = Some(RpcAccount {
+            lamports: 6,
+            owner: program,
+            executable: false,
+            data: Vec::new(),
+        });
+        assert!(validate_postfinality_state(
+            &before_submission,
+            &snapshot,
+            &landed,
+            &payer,
+            &recipient,
+            &program,
+            &programdata,
+            &proof,
+        )
+        .is_err());
+
+        let landed_with_inbound = reconcile_sweep(
+            &[payer, recipient, system_program::id()],
+            &[100_006, 900_000, 1],
+            &[6, 995_000, 1],
+            5_000,
+            &payer,
+            &recipient,
+            100_000,
+            95_000,
+        )
+        .unwrap();
+        snapshot.accounts[0] = Some(wallet(5));
+        assert!(validate_postfinality_state(
+            &before_submission,
+            &snapshot,
+            &landed_with_inbound,
+            &payer,
+            &recipient,
+            &program,
+            &programdata,
+            &proof,
+        )
+        .is_err());
+
+        snapshot.accounts[0] = Some(wallet(6));
+        snapshot.accounts[1] = Some(wallet(994_999));
+        assert!(validate_postfinality_state(
+            &before_submission,
+            &snapshot,
+            &landed_with_inbound,
+            &payer,
+            &recipient,
+            &program,
+            &programdata,
+            &proof,
+        )
+        .is_err());
+
+        snapshot.accounts[1] = Some(wallet(995_000));
+        snapshot.accounts[2].as_mut().unwrap().lamports = 1_141_439;
+        assert!(validate_postfinality_state(
+            &before_submission,
+            &snapshot,
+            &landed_with_inbound,
+            &payer,
+            &recipient,
+            &program,
+            &programdata,
+            &proof,
+        )
+        .is_err());
+
+        let mut before_with_tombstone_dust = before_submission;
+        before_with_tombstone_dust.accounts[3] = Some(wallet(10));
+        before_with_tombstone_dust.accounts[4] = Some(wallet(11));
+        snapshot.accounts[2].as_mut().unwrap().lamports = 1_141_440;
+        snapshot.accounts[3] = Some(wallet(9));
+        snapshot.accounts[4] = Some(wallet(10));
+        assert!(validate_postfinality_state(
+            &before_with_tombstone_dust,
+            &snapshot,
+            &landed_with_inbound,
             &payer,
             &recipient,
             &program,

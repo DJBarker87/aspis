@@ -10,10 +10,12 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     fs::{self, OpenOptions},
     io::Write,
-    os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt},
+    os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt},
     path::{Component, Path, PathBuf},
     process::Command,
     str::FromStr,
+    thread,
+    time::Duration,
 };
 
 use anyhow::{anyhow, bail, ensure, Context, Result};
@@ -27,7 +29,7 @@ use solana_sdk::{
     instruction::{AccountMeta, Instruction},
     message::VersionedMessage,
     pubkey::Pubkey,
-    signature::{Keypair, Signer},
+    signature::{Keypair, Signature, Signer},
     transaction::Transaction,
 };
 #[allow(deprecated)]
@@ -43,14 +45,15 @@ use aspis_verifier::{
 };
 
 use super::{
-    custom_simulation_error, deploy_if_needed, deployed_program_exact, exact_regular_file,
-    expected_nullifier_marker, expected_proof_account, initialized_pool_account_exact,
-    invalid_account_data_simulation_error, proof_instruction, rpc_origin, secure_keypair, sha256,
+    custom_simulation_error, deploy_if_needed, deployed_program_exact,
+    exact_in_progress_evidence_marker_for, exact_regular_file, expected_nullifier_marker,
+    expected_proof_account, initialized_pool_account_exact, invalid_account_data_simulation_error,
+    proof_instruction, recover_exact_transaction_evidence, rpc_origin, secure_keypair, sha256,
     signed_transaction, statement_public_inputs, upload_proof_chunks, zeroed_pool_account_exact,
-    AccountEvidence, ClusterPolicy, DevnetConfig, EvidenceReservation, Rpc, TransactionEvidence,
-    UpgradeableProgramContinuityChecks, UpgradeableProgramSnapshotEvidence, BUFFER_METADATA_BYTES,
-    CU_LIMIT, HEAP_FRAME_BYTES, PROGRAMDATA_METADATA_BYTES, PROGRAM_ACCOUNT_BYTES,
-    UPLOAD_CHUNK_BYTES, UPLOAD_WINDOW_TRANSACTIONS,
+    AccountEvidence, ClusterPolicy, DevnetConfig, EvidenceReservation, Rpc, RpcAccount,
+    TransactionEvidence, UpgradeableProgramContinuityChecks, UpgradeableProgramSnapshot,
+    UpgradeableProgramSnapshotEvidence, BUFFER_METADATA_BYTES, CU_LIMIT, HEAP_FRAME_BYTES,
+    PROGRAMDATA_METADATA_BYTES, PROGRAM_ACCOUNT_BYTES, UPLOAD_CHUNK_BYTES,
 };
 use crate::{
     spend_statement::{
@@ -90,7 +93,7 @@ const MAINNET_SOLANA_CLI_SHA256: &str =
     "ad541533b992ff4ee1ea0f24e583a0ef26a5b80fa3482b5f930b5e6db707747c";
 const MAINNET_SOLANA_CLI_VERSION: &str =
     "solana-cli 4.1.0 (src:d3f1f55c; feat:c763ae0a, client:Agave)";
-const MAINNET_NULLIFIER_PDA_BUMP: u8 = u8::MAX;
+const MAINNET_NULLIFIER_PDA_BUMP: u8 = aspis_verifier::v5_full_transaction::V5_NULLIFIER_PDA_BUMP;
 const MAINNET_RELEASE_POLICY_CU_CEILING: u64 = 1_356_912;
 const MAX_MAINNET_COMPUTE_UNIT_PRICE_MICROLAMPORTS: u64 = 1_000_000;
 const CONSERVATIVE_SIGNATURE_FEE_LAMPORTS_PER_TRANSACTION: u64 = 200_000;
@@ -125,6 +128,28 @@ const READINESS_VALUE_ARGUMENTS: [&str; 18] = [
 enum V5NetworkPolicy {
     Devnet,
     MainnetBeta,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum V5StateRequirement {
+    Fresh,
+    Attempt02Resume,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum V5ResumePhase {
+    Uploading { next_index: usize },
+    ProofUploadedUnsealed,
+    ProofSealed,
+    Tag67Finalized,
+}
+
+#[derive(Clone, Debug)]
+struct V5ResumeSnapshot {
+    phase: V5ResumePhase,
+    pool: RpcAccount,
+    pool_state: AtomicPoolStateV2,
+    proof: RpcAccount,
 }
 
 impl V5NetworkPolicy {
@@ -255,6 +280,7 @@ struct ExecuteConfig {
     solana_cli: PathBuf,
     evidence: PathBuf,
     run_directory: Option<PathBuf>,
+    resume_in_progress: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -436,16 +462,48 @@ struct V5RetainedProofBalanceEvidence {
     fee_lamports: u64,
     payer_account_index: usize,
     proof_account_index: usize,
+    pool_account_index: usize,
     nullifier_account_index: usize,
     payer_pre_lamports: u64,
     payer_post_lamports: u64,
     proof_pre_lamports: u64,
     proof_post_lamports: u64,
+    pool_pre_lamports: u64,
+    pool_post_lamports: u64,
     nullifier_pre_lamports: u64,
     nullifier_post_lamports: u64,
     nullifier_funding_lamports: u64,
     exact_balance_equation_reconciled: bool,
     proof_balance_retained_exactly: bool,
+    pool_balance_retained_exactly: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+struct V5Tag67SimulationCheckpointEvidence {
+    wire_id: String,
+    expected_signature: String,
+    wire_sha256: String,
+    message_sha256: String,
+    compute_units_consumed: u64,
+    program_address: String,
+    program_lamports: u64,
+    program_owner: String,
+    program_executable: bool,
+    program_data_len: usize,
+    program_data_sha256: String,
+    program_raw_account_image_sha256: String,
+    programdata_address: String,
+    programdata_lamports: u64,
+    programdata_owner: String,
+    programdata_executable: bool,
+    programdata_data_len: usize,
+    programdata_data_sha256: String,
+    programdata_raw_account_image_sha256: String,
+    programdata_slot: u64,
+    upgrade_authority_address: String,
+    nullifier_prestate_kind: String,
+    nullifier_prestate_lamports: u64,
+    nullifier_prestate_raw_account_image_sha256: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -480,16 +538,33 @@ pub(crate) struct V5DevnetExecutionEvidence {
     least_good_selector: u8,
     good_candidates: [bool; 3],
     program_max_len: usize,
+    resumed_from_in_progress: bool,
+    recovered_finalized_transaction_count: usize,
+    recovered_upload_transaction_count: usize,
+    recovered_upload_prefix_bytes: usize,
+    recovered_historical_identical_wire_retry_counts_available: bool,
+    upgradeable_program_before_setup_observation_scope: &'static str,
     deployment: Option<TransactionEvidence>,
     setup_transactions: Vec<TransactionEvidence>,
     proof_upload_chunk_bytes: usize,
     proof_upload_transaction_count: usize,
     proof_upload_finality_windows: usize,
-    upgradeable_program_before_setup: UpgradeableProgramSnapshotEvidence,
-    upgradeable_program_before_final_simulation: UpgradeableProgramSnapshotEvidence,
-    upgradeable_program_before_final_simulation_continuity: UpgradeableProgramContinuityChecks,
+    upgradeable_program_before_setup: Option<UpgradeableProgramSnapshotEvidence>,
+    upgradeable_program_before_continuation_observation_scope: &'static str,
+    upgradeable_program_before_continuation: UpgradeableProgramSnapshotEvidence,
+    upgradeable_program_before_final_simulation: Option<UpgradeableProgramSnapshotEvidence>,
+    upgradeable_program_before_final_simulation_continuity:
+        Option<UpgradeableProgramContinuityChecks>,
+    tag67_simulation_checkpoint: V5Tag67SimulationCheckpointEvidence,
+    tag67_checkpoint_observation_order: &'static str,
+    tag67_checkpoint_program_structural_identity_exact: bool,
+    tag67_checkpoint_program_observation_order_monotonic: bool,
+    tag67_checkpoint_program_inbound_lamports_to_later_observation: u64,
+    tag67_checkpoint_programdata_inbound_lamports_to_later_observation: u64,
+    upgradeable_program_after_finality_observation_scope: &'static str,
     upgradeable_program_after_finality: UpgradeableProgramSnapshotEvidence,
     upgradeable_program_after_finality_continuity: UpgradeableProgramContinuityChecks,
+    pool_before_observation_scope: &'static str,
     pool_before: AccountEvidence,
     pool_after: AccountEvidence,
     sequence_before: u64,
@@ -497,9 +572,15 @@ pub(crate) struct V5DevnetExecutionEvidence {
     current_anchor_hex: String,
     output_anchor_hex: String,
     deployment_domain_hex: String,
+    sealed_proof_before_observation_scope: &'static str,
     sealed_proof_before: AccountEvidence,
     retained_proof_after: AccountEvidence,
     retained_proof_byte_for_byte_exact: bool,
+    retained_proof_structural_image_exact: bool,
+    retained_proof_current_lamports_at_least_landed_post: bool,
+    retained_proof_inbound_lamports_after_landing: u64,
+    pool_current_lamports_at_least_landed_post: bool,
+    pool_inbound_lamports_after_landing: u64,
     post_finalize_upload_rejected: bool,
     post_finalize_upload_error: Value,
     post_finalize_second_finalize_rejected: bool,
@@ -521,6 +602,8 @@ pub(crate) struct V5DevnetExecutionEvidence {
     final_transaction_program_success_log_exact: bool,
     retained_proof_balance_equation: V5RetainedProofBalanceEvidence,
     nullifier_observed_before_simulation: Option<AccountEvidence>,
+    nullifier_inbound_lamports_between_simulation_and_landing: u64,
+    nullifier_inbound_lamports_after_landing: u64,
     nullifier_landing_path: &'static str,
     nullifier_after: AccountEvidence,
     nullifier_marker_rent_lamports: u64,
@@ -530,9 +613,44 @@ pub(crate) struct V5DevnetExecutionEvidence {
     replay_pool_unchanged: bool,
     replay_nullifier_unchanged: bool,
     replay_proof_unchanged: bool,
+    replay_pool_inbound_lamports: u64,
+    replay_nullifier_inbound_lamports: u64,
+    replay_proof_inbound_lamports: u64,
     pub(crate) evidence_path: String,
     evidence_file_mode: u32,
     explicit_scope: [&'static str; 4],
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(transparent)]
+pub(crate) struct V5MainnetExecutionOutcome {
+    evidence: Value,
+}
+
+impl V5MainnetExecutionOutcome {
+    fn from_new_evidence(evidence: &V5DevnetExecutionEvidence) -> Result<Self> {
+        Ok(Self {
+            evidence: serde_json::to_value(evidence)?,
+        })
+    }
+
+    pub(crate) fn signature(&self) -> Result<&str> {
+        self.evidence["final_transaction"]["signature"]
+            .as_str()
+            .context("v5 mainnet evidence omitted final transaction signature")
+    }
+
+    pub(crate) fn finalized_slot(&self) -> Result<u64> {
+        self.evidence["final_transaction"]["finalized_slot"]
+            .as_u64()
+            .context("v5 mainnet evidence omitted finalized slot")
+    }
+
+    pub(crate) fn evidence_path(&self) -> Result<&str> {
+        self.evidence["evidence_path"]
+            .as_str()
+            .context("v5 mainnet evidence omitted evidence_path")
+    }
 }
 
 fn parse_explicit_arguments(
@@ -770,12 +888,23 @@ fn parse_execute_args_for(arguments: &[String], network: V5NetworkPolicy) -> Res
     let mut readiness_arguments = Vec::new();
     let mut execution_values = BTreeMap::<String, String>::new();
     let mut execute_interlock = false;
+    let mut resume_in_progress = false;
     let mut index = 0usize;
     while index < arguments.len() {
         let key = &arguments[index];
         if key == network.execute_flag() {
             ensure!(!execute_interlock, "duplicate {}", network.execute_flag());
             execute_interlock = true;
+            index += 1;
+            continue;
+        }
+        if key == "--resume-in-progress" {
+            ensure!(
+                network == V5NetworkPolicy::MainnetBeta,
+                "--resume-in-progress is mainnet-beta only"
+            );
+            ensure!(!resume_in_progress, "duplicate --resume-in-progress");
+            resume_in_progress = true;
             index += 1;
             continue;
         }
@@ -906,6 +1035,7 @@ fn parse_execute_args_for(arguments: &[String], network: V5NetworkPolicy) -> Res
         solana_cli,
         evidence,
         run_directory,
+        resume_in_progress,
     })
 }
 
@@ -1478,6 +1608,164 @@ fn nullifier_address_for_network(
     Ok((address, bump))
 }
 
+fn initialized_pool_account_data_exact_allowing_dust(
+    account: &RpcAccount,
+    program_id: Pubkey,
+    pool_rent: u64,
+    sequence: u64,
+    anchor: [u8; 32],
+    deployment_domain: [u8; 32],
+) -> bool {
+    let mut expected = vec![0u8; ATOMIC_POOL_STATE_LEN];
+    AtomicPoolStateV2 {
+        sequence,
+        anchor,
+        deployment_domain,
+    }
+    .encode(&mut expected)
+    .is_ok()
+        && account.lamports >= pool_rent
+        && account.owner == program_id
+        && !account.executable
+        && account.data == expected
+}
+
+fn supported_nullifier_prestate(account: Option<&RpcAccount>) -> bool {
+    match account {
+        None => true,
+        Some(account) => {
+            account.owner == system_program::id() && !account.executable && account.data.is_empty()
+        }
+    }
+}
+
+fn account_unchanged_allowing_inbound_lamports(
+    current: Option<&RpcAccount>,
+    baseline: &RpcAccount,
+) -> bool {
+    current.is_some_and(|account| account.dust_hardened_continuity_from(baseline))
+}
+
+fn nullifier_prestate_unchanged_allowing_inbound_lamports(
+    current: Option<&RpcAccount>,
+    baseline: Option<&RpcAccount>,
+) -> bool {
+    match (current, baseline) {
+        (None, None) => true,
+        (Some(current), None) => supported_nullifier_prestate(Some(current)),
+        (Some(current), Some(baseline)) => {
+            supported_nullifier_prestate(Some(current))
+                && current.dust_hardened_continuity_from(baseline)
+        }
+        (None, Some(_)) => false,
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn inspect_v5_resume_snapshot(
+    rpc: &Rpc,
+    program_id: Pubkey,
+    payer: Pubkey,
+    pool: Pubkey,
+    proof_account: Pubkey,
+    nullifier_address: Pubkey,
+    nullifier: [u8; 32],
+    proof_bytes: &[u8],
+    pool_rent: u64,
+    proof_rent: u64,
+    nullifier_rent: u64,
+    current_anchor: [u8; 32],
+    output_anchor: [u8; 32],
+    deployment_domain: [u8; 32],
+) -> Result<V5ResumeSnapshot> {
+    let pool_snapshot = rpc
+        .account(&pool)?
+        .context("v5 resume pool account is missing")?;
+    let pool_state = AtomicPoolStateV2::decode(&pool_snapshot.data)
+        .map_err(|error| anyhow!("decode v5 resume pool: {error:?}"))?;
+    let proof_snapshot = rpc
+        .account(&proof_account)?
+        .context("v5 resume proof account is missing")?;
+    ensure!(
+        proof_snapshot.owner == program_id
+            && !proof_snapshot.executable
+            && proof_snapshot.lamports >= proof_rent,
+        "v5 resume proof owner/executable/rent image differs"
+    );
+
+    let full_unsealed = expected_proof_account(proof_bytes, payer, false);
+    let full_sealed = expected_proof_account(proof_bytes, payer, true);
+    let nullifier_snapshot = rpc.account(&nullifier_address)?;
+    let phase = if initialized_pool_account_data_exact_allowing_dust(
+        &pool_snapshot,
+        program_id,
+        pool_rent,
+        0,
+        current_anchor,
+        deployment_domain,
+    ) {
+        ensure!(
+            supported_nullifier_prestate(nullifier_snapshot.as_ref()),
+            "sequence-0 v5 resume nullifier is neither absent nor a System-owned empty dust account"
+        );
+        if proof_snapshot.data == full_sealed {
+            V5ResumePhase::ProofSealed
+        } else if proof_snapshot.data == full_unsealed {
+            V5ResumePhase::ProofUploadedUnsealed
+        } else {
+            let transaction_count = proof_bytes.len().div_ceil(UPLOAD_CHUNK_BYTES);
+            let mut matching_prefixes = Vec::new();
+            for next_index in 0..transaction_count {
+                let prefix_len = (next_index * UPLOAD_CHUNK_BYTES).min(proof_bytes.len());
+                let mut partial = vec![0u8; proof_bytes.len()];
+                partial[..prefix_len].copy_from_slice(&proof_bytes[..prefix_len]);
+                if proof_snapshot.data == expected_proof_account(&partial, payer, false) {
+                    matching_prefixes.push(next_index);
+                }
+            }
+            ensure!(
+                matching_prefixes.len() == 1,
+                "unsealed v5 resume proof does not identify one exact contiguous upload prefix"
+            );
+            V5ResumePhase::Uploading {
+                next_index: matching_prefixes[0],
+            }
+        }
+    } else if initialized_pool_account_data_exact_allowing_dust(
+        &pool_snapshot,
+        program_id,
+        pool_rent,
+        1,
+        output_anchor,
+        deployment_domain,
+    ) {
+        ensure!(
+            proof_snapshot.data == full_sealed,
+            "sequence-1 v5 resume state does not retain the exact sealed proof"
+        );
+        let marker = nullifier_snapshot
+            .as_ref()
+            .context("sequence-1 v5 resume state omitted the canonical nullifier")?;
+        ensure!(
+            marker.owner == program_id
+                && !marker.executable
+                && marker.lamports >= nullifier_rent
+                && marker.data == expected_nullifier_marker(pool, nullifier),
+            "sequence-1 v5 resume nullifier image differs from the canonical marker"
+        );
+        V5ResumePhase::Tag67Finalized
+    } else {
+        bail!("v5 resume pool is neither the exact sequence-0 nor sequence-1 image");
+    };
+
+    Ok(V5ResumeSnapshot {
+        phase,
+        pool: pool_snapshot,
+        pool_state,
+        proof: proof_snapshot,
+    })
+}
+
 fn strict_statement_bytes(statement: &AtomicPaymentStatementV4) -> Result<Vec<u8>> {
     let sidecar = StrictStatementSidecar {
         artifact: SPEND_STATEMENT_ARTIFACT,
@@ -1865,16 +2153,1557 @@ fn submit_signed_transaction(
         persisted_wire == wire,
         "recovery spool differs from signed transaction {wire_id}"
     );
-    let evidence = rpc.submit_wire(
+    let pending = rpc.submit_wire_pending(
         &persisted_wire,
         transaction.signatures[0],
-        true,
+        1,
         label,
         sha256(&bincode::serialize(&transaction.message)?),
     )?;
-    journal.record_submission(wire_id, evidence.signature.clone())?;
-    journal.record_finalization(wire_id, evidence.finalized_slot)?;
+    journal.record_submission_with_retries(
+        wire_id,
+        transaction.signatures[0].to_string(),
+        Some(pending.identical_wire_retries),
+    )?;
+    let finalized_slot = rpc.wait_finalized(&transaction.signatures[0])?;
+    let compute_units = rpc.transaction_cu(&transaction.signatures[0])?;
+    let evidence = pending.into_evidence(finalized_slot, compute_units);
+    journal.record_finalization(wire_id, finalized_slot)?;
     Ok(evidence)
+}
+
+fn recover_exact_journal_transaction(
+    rpc: &Rpc,
+    recovery_journal: &mut crate::spend_mainnet_journal::RecoveryJournal,
+    payer: &Keypair,
+    signers: &[&Keypair],
+    instructions: &[Instruction],
+    wire_id: &str,
+    label: &str,
+) -> Result<TransactionEvidence> {
+    let ready = recovery_journal
+        .state()
+        .ready_wires
+        .get(wire_id)
+        .cloned()
+        .with_context(|| format!("recovery journal omitted {wire_id}"))?;
+    ensure!(
+        ready.abandoned_reason.is_none()
+            && ready.submitted_expired_absent_reason.is_none()
+            && ready.finalized_failure_reason.is_none(),
+        "finalized recovery wire is marked terminally absent: {wire_id}"
+    );
+    let signature = Signature::from_str(
+        ready
+            .submitted_signature
+            .as_deref()
+            .with_context(|| format!("recovery wire has no submission: {wire_id}"))?,
+    )
+    .with_context(|| format!("recovery wire has invalid signature: {wire_id}"))?;
+    let journal_slot = ready
+        .finalized_slot
+        .with_context(|| format!("recovery wire has no finalization: {wire_id}"))?;
+    let persisted_wire = recovery_journal.load_persisted_wire(wire_id)?;
+    ensure!(
+        sha256(&persisted_wire) == ready.wire_sha256,
+        "recovery spool hash differs from journal for {wire_id}"
+    );
+    let (finalized_wire, finalized_transaction) = rpc.transaction_wire(&signature)?;
+    ensure!(
+        finalized_wire == persisted_wire
+            && finalized_transaction.signatures.first() == Some(&signature),
+        "finalized transaction differs from retained recovery spool for {wire_id}"
+    );
+    let evidence =
+        recover_exact_transaction_evidence(rpc, payer, signers, instructions, &signature, label)?;
+    ensure!(
+        evidence.finalized_slot == journal_slot
+            && evidence.serialized_transaction_sha256 == ready.wire_sha256,
+        "finalized transaction evidence differs from journal for {wire_id}"
+    );
+    Ok(evidence)
+}
+
+fn semantic_wire_attempt(wire_id: &str, wire_id_base: &str) -> Option<u8> {
+    if wire_id == wire_id_base {
+        return Some(0);
+    }
+    let suffix = wire_id.strip_prefix(wire_id_base)?.strip_prefix("_r")?;
+    if suffix.len() != 2 || !suffix.bytes().all(|byte| byte.is_ascii_digit()) {
+        return None;
+    }
+    let attempt = suffix.parse::<u8>().ok()?;
+    (attempt > 0).then_some(attempt)
+}
+
+fn has_canonical_retry_suffix(wire_id: &str) -> bool {
+    wire_id.rsplit_once("_r").is_some_and(|(_, suffix)| {
+        suffix.len() == 2 && suffix.bytes().all(|byte| byte.is_ascii_digit())
+    })
+}
+
+fn semantic_wire_ids(
+    recovery_journal: &crate::spend_mainnet_journal::RecoveryJournal,
+    wire_id_base: &str,
+) -> Result<Vec<String>> {
+    let mut candidates = recovery_journal
+        .state()
+        .ready_wires
+        .values()
+        .filter_map(|ready| {
+            semantic_wire_attempt(&ready.wire_id, wire_id_base)
+                .map(|attempt| (attempt, ready.ready_sequence, ready.wire_id.clone()))
+        })
+        .collect::<Vec<_>>();
+    candidates.sort_by_key(|(attempt, sequence, _)| (*attempt, *sequence));
+    let mut observed_attempts = BTreeSet::new();
+    for (attempt, _, wire_id) in &candidates {
+        ensure!(
+            observed_attempts.insert(*attempt),
+            "duplicate semantic signing attempt {attempt} for {wire_id_base}: {wire_id}"
+        );
+    }
+    let retry_attempts = observed_attempts
+        .iter()
+        .copied()
+        .filter(|attempt| *attempt > 0)
+        .collect::<Vec<_>>();
+    for (index, attempt) in retry_attempts.iter().enumerate() {
+        let expected = u8::try_from(index + 1).context("semantic retry index exceeds u8")?;
+        ensure!(
+            *attempt == expected,
+            "semantic signing retries are not contiguous for {wire_id_base}: expected r{expected:02}, observed r{attempt:02}"
+        );
+    }
+    Ok(candidates
+        .into_iter()
+        .map(|(_, _, wire_id)| wire_id)
+        .collect())
+}
+
+fn validate_v5_resume_wire_topology(
+    recovery_journal: &crate::spend_mainnet_journal::RecoveryJournal,
+    proof_upload_transaction_count: usize,
+) -> Result<()> {
+    for wire_id in recovery_journal.state().ready_wires.keys() {
+        if matches!(
+            wire_id.as_str(),
+            "pool_create" | "pool_initialize_tag63" | "proof_create_and_initialize_tag0"
+        ) || semantic_wire_attempt(wire_id, "proof_finalize_tag62").is_some()
+            || semantic_wire_attempt(wire_id, "tag67_verify_and_apply").is_some()
+        {
+            continue;
+        }
+        let Some(rest) = wire_id.strip_prefix("proof_upload_") else {
+            bail!("v5 recovery journal contains an unknown wire ID: {wire_id}");
+        };
+        let (index_text, suffix) = if rest.len() >= 4 {
+            (&rest[..4], &rest[4..])
+        } else {
+            bail!("v5 recovery upload wire ID is malformed: {wire_id}");
+        };
+        ensure!(
+            index_text.bytes().all(|byte| byte.is_ascii_digit()),
+            "v5 recovery upload index is malformed: {wire_id}"
+        );
+        let index = index_text
+            .parse::<usize>()
+            .with_context(|| format!("parse v5 recovery upload index: {wire_id}"))?;
+        ensure!(
+            index < proof_upload_transaction_count,
+            "v5 recovery upload index exceeds proof transaction count: {wire_id}"
+        );
+        let base = format!("proof_upload_{index:04}");
+        ensure!(
+            semantic_wire_attempt(wire_id, &base).is_some()
+                && (suffix.is_empty()
+                    || (suffix.len() == 4
+                        && suffix.starts_with("_r")
+                        && suffix[2..].bytes().all(|byte| byte.is_ascii_digit()))),
+            "v5 recovery upload wire ID is malformed: {wire_id}"
+        );
+    }
+    for required in [
+        "pool_create",
+        "pool_initialize_tag63",
+        "proof_create_and_initialize_tag0",
+    ] {
+        ensure!(
+            recovery_journal.state().ready_wires.contains_key(required),
+            "v5 recovery journal omitted required setup wire {required}"
+        );
+    }
+    Ok(())
+}
+
+fn validate_expected_journal_wire(
+    recovery_journal: &mut crate::spend_mainnet_journal::RecoveryJournal,
+    payer: &Keypair,
+    signers: &[&Keypair],
+    instructions: &[Instruction],
+    wire_id: &str,
+) -> Result<(
+    crate::spend_mainnet_journal::ReadyWire,
+    Transaction,
+    Vec<u8>,
+)> {
+    let ready = recovery_journal
+        .state()
+        .ready_wires
+        .get(wire_id)
+        .cloned()
+        .with_context(|| format!("recovery journal omitted wire {wire_id}"))?;
+    let wire = recovery_journal.load_persisted_wire(wire_id)?;
+    ensure!(
+        sha256(&wire) == ready.wire_sha256,
+        "recovery spool hash differs from journal for {wire_id}"
+    );
+    let transaction: Transaction =
+        bincode::deserialize(&wire).with_context(|| format!("decode recovery wire {wire_id}"))?;
+    ensure!(
+        !transaction.signatures.is_empty(),
+        "recovery wire has no signature: {wire_id}"
+    );
+    let expected = signed_transaction(
+        payer,
+        signers,
+        instructions,
+        transaction.message.recent_blockhash,
+    );
+    ensure!(
+        transaction.signatures == expected.signatures && wire == bincode::serialize(&expected)?,
+        "recovery wire is not the exact expected transaction for {wire_id}"
+    );
+    if let Some(submitted_signature) = ready.submitted_signature.as_deref() {
+        ensure!(
+            submitted_signature == transaction.signatures[0].to_string(),
+            "recorded submission signature differs from spool for {wire_id}"
+        );
+    }
+    let fresh_binding = recovery_journal
+        .state()
+        .wire_blockhash_bindings
+        .get(wire_id);
+    if let Some(binding) = fresh_binding {
+        ensure!(
+            binding.expected_signature == transaction.signatures[0].to_string()
+                && binding.recent_blockhash == transaction.message.recent_blockhash.to_string()
+                && recovery_journal
+                    .state()
+                    .wire_last_valid_block_heights
+                    .get(wire_id)
+                    == Some(&binding.last_valid_block_height),
+            "fresh-wire checkpoint does not bind the exact spool signature/blockhash for {wire_id}"
+        );
+    }
+    Ok((ready, transaction, wire))
+}
+
+fn validate_terminal_absence(
+    rpc: &Rpc,
+    recovery_journal: &mut crate::spend_mainnet_journal::RecoveryJournal,
+    payer: &Keypair,
+    signers: &[&Keypair],
+    instructions: &[Instruction],
+    wire_id: &str,
+) -> Result<()> {
+    let (ready, transaction, _) =
+        validate_expected_journal_wire(recovery_journal, payer, signers, instructions, wire_id)?;
+    ensure!(
+        ready.abandoned_reason.is_some()
+            || ready.submitted_expired_absent_reason.is_some()
+            || ready.finalized_failure_reason.is_some(),
+        "recovery wire is not terminal: {wire_id}"
+    );
+    ensure!(
+        ready.finalized_slot.is_none(),
+        "terminally absent recovery wire is finalized: {wire_id}"
+    );
+    let signature = transaction.signatures[0];
+    if ready.finalized_failure_reason.is_some() {
+        let (slot, error, progress) = rpc
+            .signature_status(&signature)?
+            .context("finalized failed recovery wire disappeared from history")?;
+        ensure!(
+            slot > 0 && error.is_some() && progress == "finalized",
+            "durably failed recovery wire is not a finalized failure: {wire_id}"
+        );
+    } else {
+        ensure!(
+            rpc.signature_status(&signature)?.is_none(),
+            "terminally absent recovery wire appeared in history: {wire_id}"
+        );
+        ensure!(
+            !rpc.blockhash_valid_at_finalized(&transaction.message.recent_blockhash)?,
+            "terminally absent recovery wire has a valid blockhash: {wire_id}"
+        );
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn reconcile_journal_wire<F>(
+    rpc: &Rpc,
+    recovery_journal: &mut crate::spend_mainnet_journal::RecoveryJournal,
+    payer: &Keypair,
+    signers: &[&Keypair],
+    instructions: &[Instruction],
+    wire_id: &str,
+    label: &str,
+    allow_submit: bool,
+    before_send: &mut F,
+) -> Result<Option<TransactionEvidence>>
+where
+    F: FnMut(
+        &mut crate::spend_mainnet_journal::RecoveryJournal,
+        &str,
+        &Transaction,
+        &[u8],
+    ) -> Result<()>,
+{
+    let mut exact_resend_attempted = false;
+    loop {
+        let (ready, transaction, wire) = validate_expected_journal_wire(
+            recovery_journal,
+            payer,
+            signers,
+            instructions,
+            wire_id,
+        )?;
+        let retry_binding_missing = has_canonical_retry_suffix(wire_id)
+            && !recovery_journal
+                .state()
+                .wire_blockhash_bindings
+                .contains_key(wire_id);
+        if ready.abandoned_reason.is_some()
+            || ready.submitted_expired_absent_reason.is_some()
+            || ready.finalized_failure_reason.is_some()
+        {
+            validate_terminal_absence(
+                rpc,
+                recovery_journal,
+                payer,
+                signers,
+                instructions,
+                wire_id,
+            )?;
+            return Ok(None);
+        }
+        if ready.finalized_slot.is_some() {
+            ensure!(
+                !retry_binding_missing,
+                "finalized retry wire omitted its pre-submit blockhash-expiry binding: {wire_id}"
+            );
+            return recover_exact_journal_transaction(
+                rpc,
+                recovery_journal,
+                payer,
+                signers,
+                instructions,
+                wire_id,
+                label,
+            )
+            .map(Some);
+        }
+
+        let signature = transaction.signatures[0];
+        if let Some((slot, transaction_error, progress)) = rpc.signature_status(&signature)? {
+            ensure!(
+                !retry_binding_missing,
+                "retry wire without a persisted blockhash binding appeared in transaction history: {wire_id}"
+            );
+            if ready.submitted_signature.is_none() {
+                recovery_journal.record_submission_with_retries(
+                    wire_id,
+                    signature.to_string(),
+                    None,
+                )?;
+            }
+            if progress == "finalized" {
+                if let Some(transaction_error) = transaction_error {
+                    recovery_journal.record_finalized_failure(
+                        wire_id,
+                        slot,
+                        transaction_error.to_string(),
+                    )?;
+                    return Ok(None);
+                } else {
+                    recovery_journal.record_finalization(wire_id, slot)?;
+                    return recover_exact_journal_transaction(
+                        rpc,
+                        recovery_journal,
+                        payer,
+                        signers,
+                        instructions,
+                        wire_id,
+                        label,
+                    )
+                    .map(Some);
+                }
+            }
+            thread::sleep(Duration::from_secs(2));
+            continue;
+        }
+
+        let blockhash_valid =
+            rpc.blockhash_valid_at_finalized(&transaction.message.recent_blockhash)?;
+        if !blockhash_valid {
+            let checked_finalized_block_height = rpc.block_height()?;
+            if let Some(last_valid_block_height) = recovery_journal
+                .state()
+                .wire_last_valid_block_heights
+                .get(wire_id)
+                .copied()
+            {
+                if checked_finalized_block_height <= last_valid_block_height {
+                    // A blockhash fetched at confirmed commitment can briefly
+                    // be unknown to a finalized-commitment validity query.
+                    // Preserve the exact signed wire and wait: neither submit
+                    // nor replacement is authorized until it becomes valid or
+                    // its persisted height is conclusively exceeded.
+                    thread::sleep(Duration::from_secs(1));
+                    continue;
+                }
+            }
+            ensure!(
+                rpc.signature_status(&signature)?.is_none(),
+                "recovery wire {wire_id} appeared while recording finalized expiry"
+            );
+            let reason = "signature absent from full history after recent blockhash expiry at finalized commitment";
+            if ready.submitted_signature.is_some() {
+                recovery_journal.record_submitted_expired_absent(
+                    wire_id,
+                    signature.to_string(),
+                    transaction.message.recent_blockhash.to_string(),
+                    recovery_journal
+                        .state()
+                        .wire_last_valid_block_heights
+                        .get(wire_id)
+                        .copied(),
+                    checked_finalized_block_height,
+                    reason,
+                )?;
+            } else {
+                recovery_journal.record_abandonment(
+                    wire_id,
+                    signature.to_string(),
+                    transaction.message.recent_blockhash.to_string(),
+                    recovery_journal
+                        .state()
+                        .wire_last_valid_block_heights
+                        .get(wire_id)
+                        .copied(),
+                    checked_finalized_block_height,
+                    reason,
+                )?;
+            }
+            return Ok(None);
+        }
+
+        ensure!(
+            allow_submit,
+            "nonterminal recovery wire exists before its semantic step is eligible: {wire_id}"
+        );
+        if retry_binding_missing {
+            // The submit-ready spool fsync precedes the expiry-binding
+            // checkpoint fsync. A crash in that narrow gap must never gain
+            // submission authority. Wait for finalized expiry, record an
+            // unsubmitted abandonment with last_valid=None, then sign a new
+            // canonical retry.
+            thread::sleep(Duration::from_secs(1));
+            continue;
+        }
+        if !exact_resend_attempted {
+            let signature_text = signature.to_string();
+            let wire_hash = sha256(&wire);
+            let send_authority_already_consumed = recovery_journal
+                .state()
+                .checkpoints
+                .iter()
+                .filter(|(name, details)| {
+                    name == "wire_send_authority_consumed"
+                        && details["wire_id"].as_str() == Some(wire_id)
+                })
+                .try_fold(false, |_, (_, details)| -> Result<bool> {
+                    ensure!(
+                        details["expected_signature"].as_str() == Some(signature_text.as_str())
+                            && details["wire_sha256"].as_str() == Some(wire_hash.as_str()),
+                        "wire send-authority checkpoint differs from exact spool for {wire_id}"
+                    );
+                    Ok(true)
+                })?;
+            if send_authority_already_consumed {
+                // Once this checkpoint is durable, the wire may have reached
+                // the RPC even if the process crashed before recording the
+                // result. Never grant the same wire another send call; status
+                // history or finalized blockhash expiry is authoritative.
+                exact_resend_attempted = true;
+                thread::sleep(Duration::from_secs(1));
+                continue;
+            }
+            before_send(recovery_journal, wire_id, &transaction, &wire)?;
+            recovery_journal.record_checkpoint(
+                "wire_send_authority_consumed",
+                serde_json::json!({
+                    "wire_id": wire_id,
+                    "expected_signature": signature_text,
+                    "wire_sha256": wire_hash,
+                }),
+            )?;
+            let pending = rpc.submit_wire_pending(
+                &wire,
+                signature,
+                0,
+                label,
+                sha256(&bincode::serialize(&transaction.message)?),
+            );
+            exact_resend_attempted = true;
+            match pending {
+                Ok(pending) => {
+                    if ready.submitted_signature.is_none() {
+                        recovery_journal.record_submission_with_retries(
+                            wire_id,
+                            signature.to_string(),
+                            Some(pending.identical_wire_retries),
+                        )?;
+                    }
+                }
+                Err(_error) => {
+                    // A send/preflight error does not prove whether the wire
+                    // reached a validator. Preserve the exact spool and let
+                    // full-history status plus finalized blockhash expiry make
+                    // the only replacement decision.
+                    recovery_journal.record_checkpoint(
+                        "wire_send_error_reconciliation_continues",
+                        serde_json::json!({
+                            "wire_id": wire_id,
+                            "expected_signature": signature.to_string(),
+                        }),
+                    )?;
+                }
+            }
+        }
+        thread::sleep(Duration::from_secs(1));
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn reconcile_semantic_transaction<F>(
+    rpc: &Rpc,
+    recovery_journal: &mut crate::spend_mainnet_journal::RecoveryJournal,
+    payer: &Keypair,
+    signers: &[&Keypair],
+    instructions: &[Instruction],
+    wire_id_base: &str,
+    label: &str,
+    expected_landed: bool,
+    allow_submit: bool,
+    before_send: &mut F,
+) -> Result<Option<TransactionEvidence>>
+where
+    F: FnMut(
+        &mut crate::spend_mainnet_journal::RecoveryJournal,
+        &str,
+        &Transaction,
+        &[u8],
+    ) -> Result<()>,
+{
+    let candidates = semantic_wire_ids(recovery_journal, wire_id_base)?;
+    let mut finalized_ids = Vec::new();
+    let mut active_ids = Vec::new();
+    for wire_id in &candidates {
+        let ready = recovery_journal
+            .state()
+            .ready_wires
+            .get(wire_id)
+            .context("semantic recovery candidate disappeared")?;
+        if ready.finalized_slot.is_some() {
+            finalized_ids.push(wire_id.clone());
+        } else if ready.abandoned_reason.is_none()
+            && ready.submitted_expired_absent_reason.is_none()
+            && ready.finalized_failure_reason.is_none()
+        {
+            active_ids.push(wire_id.clone());
+        }
+    }
+    ensure!(
+        finalized_ids.len() <= 1,
+        "more than one finalized wire exists for semantic step {wire_id_base}"
+    );
+    ensure!(
+        active_ids.len() <= 1,
+        "more than one nonterminal wire exists for semantic step {wire_id_base}"
+    );
+    ensure!(
+        finalized_ids.is_empty() || active_ids.is_empty(),
+        "finalized and nonterminal wires coexist for semantic step {wire_id_base}"
+    );
+
+    for wire_id in &candidates {
+        let ready = recovery_journal
+            .state()
+            .ready_wires
+            .get(wire_id)
+            .context("semantic recovery candidate disappeared")?;
+        if ready.abandoned_reason.is_some()
+            || ready.submitted_expired_absent_reason.is_some()
+            || ready.finalized_failure_reason.is_some()
+        {
+            validate_terminal_absence(
+                rpc,
+                recovery_journal,
+                payer,
+                signers,
+                instructions,
+                wire_id,
+            )?;
+        }
+    }
+
+    let evidence = if let Some(wire_id) = finalized_ids.first() {
+        recover_exact_journal_transaction(
+            rpc,
+            recovery_journal,
+            payer,
+            signers,
+            instructions,
+            wire_id,
+            label,
+        )
+        .map(Some)?
+    } else if let Some(wire_id) = active_ids.first() {
+        reconcile_journal_wire(
+            rpc,
+            recovery_journal,
+            payer,
+            signers,
+            instructions,
+            wire_id,
+            label,
+            allow_submit,
+            before_send,
+        )?
+    } else {
+        None
+    };
+    ensure!(
+        !expected_landed || evidence.is_some(),
+        "on-chain state says semantic step {wire_id_base} landed but no exact finalized journal wire proves it"
+    );
+    ensure!(
+        expected_landed || allow_submit || evidence.is_none(),
+        "journal says semantic step {wire_id_base} finalized but on-chain state does not"
+    );
+    Ok(evidence)
+}
+
+fn journal_transaction_for_semantic_evidence(
+    recovery_journal: &mut crate::spend_mainnet_journal::RecoveryJournal,
+    wire_id_base: &str,
+    evidence: &TransactionEvidence,
+) -> Result<(String, Transaction, Vec<u8>)> {
+    let mut matches = Vec::new();
+    for wire_id in semantic_wire_ids(recovery_journal, wire_id_base)? {
+        let ready = recovery_journal
+            .state()
+            .ready_wires
+            .get(&wire_id)
+            .context("semantic evidence candidate disappeared")?;
+        if ready.submitted_signature.as_deref() == Some(evidence.signature.as_str())
+            && ready.finalized_slot == Some(evidence.finalized_slot)
+        {
+            let wire = recovery_journal.load_persisted_wire(&wire_id)?;
+            let transaction: Transaction = bincode::deserialize(&wire)
+                .with_context(|| format!("decode semantic evidence wire {wire_id}"))?;
+            matches.push((wire_id, transaction, wire));
+        }
+    }
+    ensure!(
+        matches.len() == 1,
+        "finalized semantic evidence does not identify one journal wire for {wire_id_base}"
+    );
+    Ok(matches.pop().unwrap())
+}
+
+fn tag67_simulation_checkpoint(
+    recovery_journal: &crate::spend_mainnet_journal::RecoveryJournal,
+    wire_id: &str,
+    transaction: &Transaction,
+    wire: &[u8],
+) -> Result<V5Tag67SimulationCheckpointEvidence> {
+    let expected_signature = transaction
+        .signatures
+        .first()
+        .context("tag-67 checkpoint transaction omitted signature")?
+        .to_string();
+    let wire_sha256 = sha256(wire);
+    let message_sha256 = sha256(&bincode::serialize(&transaction.message)?);
+    let mut matching = Vec::new();
+    for (name, details) in &recovery_journal.state().checkpoints {
+        if name != "v5_tag67_exact_simulation_green" || details["wire_id"].as_str() != Some(wire_id)
+        {
+            continue;
+        }
+        let checkpoint = V5Tag67SimulationCheckpointEvidence {
+            wire_id: wire_id.to_owned(),
+            expected_signature: details["expected_signature"]
+                .as_str()
+                .context("tag-67 simulation checkpoint omitted expected_signature")?
+                .to_owned(),
+            wire_sha256: details["wire_sha256"]
+                .as_str()
+                .context("tag-67 simulation checkpoint omitted wire_sha256")?
+                .to_owned(),
+            message_sha256: details["message_sha256"]
+                .as_str()
+                .context("tag-67 simulation checkpoint omitted message_sha256")?
+                .to_owned(),
+            compute_units_consumed: details["compute_units_consumed"]
+                .as_u64()
+                .context("tag-67 simulation checkpoint omitted compute_units_consumed")?,
+            program_address: details["program_address"]
+                .as_str()
+                .context("tag-67 simulation checkpoint omitted program_address")?
+                .to_owned(),
+            program_lamports: details["program_lamports"]
+                .as_u64()
+                .context("tag-67 simulation checkpoint omitted program_lamports")?,
+            program_owner: details["program_owner"]
+                .as_str()
+                .context("tag-67 simulation checkpoint omitted program_owner")?
+                .to_owned(),
+            program_executable: details["program_executable"]
+                .as_bool()
+                .context("tag-67 simulation checkpoint omitted program_executable")?,
+            program_data_len: usize::try_from(
+                details["program_data_len"]
+                    .as_u64()
+                    .context("tag-67 simulation checkpoint omitted program_data_len")?,
+            )
+            .context("tag-67 simulation checkpoint program_data_len exceeds usize")?,
+            program_data_sha256: details["program_data_sha256"]
+                .as_str()
+                .context("tag-67 simulation checkpoint omitted program_data_sha256")?
+                .to_owned(),
+            program_raw_account_image_sha256: details["program_raw_account_image_sha256"]
+                .as_str()
+                .context("tag-67 simulation checkpoint omitted program_raw_account_image_sha256")?
+                .to_owned(),
+            programdata_address: details["programdata_address"]
+                .as_str()
+                .context("tag-67 simulation checkpoint omitted programdata_address")?
+                .to_owned(),
+            programdata_lamports: details["programdata_lamports"]
+                .as_u64()
+                .context("tag-67 simulation checkpoint omitted programdata_lamports")?,
+            programdata_owner: details["programdata_owner"]
+                .as_str()
+                .context("tag-67 simulation checkpoint omitted programdata_owner")?
+                .to_owned(),
+            programdata_executable: details["programdata_executable"]
+                .as_bool()
+                .context("tag-67 simulation checkpoint omitted programdata_executable")?,
+            programdata_data_len: usize::try_from(
+                details["programdata_data_len"]
+                    .as_u64()
+                    .context("tag-67 simulation checkpoint omitted programdata_data_len")?,
+            )
+            .context("tag-67 simulation checkpoint programdata_data_len exceeds usize")?,
+            programdata_data_sha256: details["programdata_data_sha256"]
+                .as_str()
+                .context("tag-67 simulation checkpoint omitted programdata_data_sha256")?
+                .to_owned(),
+            programdata_raw_account_image_sha256: details["programdata_raw_account_image_sha256"]
+                .as_str()
+                .context(
+                    "tag-67 simulation checkpoint omitted programdata_raw_account_image_sha256",
+                )?
+                .to_owned(),
+            programdata_slot: details["programdata_slot"]
+                .as_u64()
+                .context("tag-67 simulation checkpoint omitted programdata_slot")?,
+            upgrade_authority_address: details["upgrade_authority_address"]
+                .as_str()
+                .context("tag-67 simulation checkpoint omitted upgrade_authority_address")?
+                .to_owned(),
+            nullifier_prestate_kind: details["nullifier_prestate_kind"]
+                .as_str()
+                .context("tag-67 simulation checkpoint omitted nullifier_prestate_kind")?
+                .to_owned(),
+            nullifier_prestate_lamports: details["nullifier_prestate_lamports"]
+                .as_u64()
+                .context("tag-67 simulation checkpoint omitted nullifier_prestate_lamports")?,
+            nullifier_prestate_raw_account_image_sha256: details
+                ["nullifier_prestate_raw_account_image_sha256"]
+                .as_str()
+                .map(ToOwned::to_owned),
+        };
+        ensure!(
+            checkpoint.expected_signature == expected_signature
+                && checkpoint.wire_sha256 == wire_sha256
+                && checkpoint.message_sha256 == message_sha256
+                && matches!(
+                    checkpoint.nullifier_prestate_kind.as_str(),
+                    "absent" | "system_owned_empty"
+                )
+                && (checkpoint.nullifier_prestate_kind == "system_owned_empty"
+                    && checkpoint
+                        .nullifier_prestate_raw_account_image_sha256
+                        .is_some()
+                    || checkpoint.nullifier_prestate_kind == "absent"
+                        && checkpoint.nullifier_prestate_lamports == 0
+                        && checkpoint
+                            .nullifier_prestate_raw_account_image_sha256
+                            .is_none()),
+            "tag-67 simulation checkpoint does not bind the finalized exact wire"
+        );
+        matching.push(checkpoint);
+    }
+    ensure!(
+        !matching.is_empty(),
+        "tag-67 exact wire has no pre-submit simulation checkpoint"
+    );
+    // Multiple checkpoints for one wire can be legitimate across a crash and
+    // exact resend. The last durable checkpoint is the one immediately
+    // authorizing the most recent send; earlier nullifier balances may differ
+    // only through inbound dust.
+    Ok(matching.pop().unwrap())
+}
+
+fn tag67_checkpoint_program_structural_identity_exact(
+    checkpoint: &V5Tag67SimulationCheckpointEvidence,
+    snapshot: &UpgradeableProgramSnapshotEvidence,
+) -> bool {
+    checkpoint.program_address == snapshot.program_account.address
+        && checkpoint.program_owner == snapshot.program_account.owner
+        && checkpoint.program_executable == snapshot.program_account.executable
+        && checkpoint.program_data_len == snapshot.program_account.data_len
+        && checkpoint.program_data_sha256 == snapshot.program_account.data_sha256
+        && checkpoint.programdata_address == snapshot.programdata_address
+        && checkpoint.programdata_address == snapshot.programdata_account.address
+        && checkpoint.programdata_owner == snapshot.programdata_account.owner
+        && checkpoint.programdata_executable == snapshot.programdata_account.executable
+        && checkpoint.programdata_data_len == snapshot.programdata_account.data_len
+        && checkpoint.programdata_data_sha256 == snapshot.programdata_account.data_sha256
+        && checkpoint.programdata_slot == snapshot.programdata_slot
+        && checkpoint.upgrade_authority_address == snapshot.upgrade_authority_address
+}
+
+fn tag67_checkpoint_lamports_follow_observation_order(
+    checkpoint: &V5Tag67SimulationCheckpointEvidence,
+    continuation: &UpgradeableProgramSnapshotEvidence,
+    finalized_recovery: bool,
+) -> bool {
+    if finalized_recovery {
+        continuation.program_account.lamports >= checkpoint.program_lamports
+            && continuation.programdata_account.lamports >= checkpoint.programdata_lamports
+    } else {
+        checkpoint.program_lamports >= continuation.program_account.lamports
+            && checkpoint.programdata_lamports >= continuation.programdata_account.lamports
+    }
+}
+
+fn tag67_checkpoint_predates_current_continuation(
+    live_simulation_snapshot: Option<&UpgradeableProgramSnapshot>,
+) -> bool {
+    // The callback records this snapshot only when this invocation performed
+    // the exact pre-send simulation. If reconciliation instead recovers a
+    // wire sent by a previous invocation, its durable checkpoint is older
+    // even when this invocation initially observed pool sequence 0.
+    live_simulation_snapshot.is_none()
+}
+
+fn nullifier_prestate_from_checkpoint(
+    checkpoint: &V5Tag67SimulationCheckpointEvidence,
+    nullifier_address: Pubkey,
+) -> Result<Option<RpcAccount>> {
+    match checkpoint.nullifier_prestate_kind.as_str() {
+        "absent" => {
+            ensure!(
+                checkpoint.nullifier_prestate_lamports == 0
+                    && checkpoint
+                        .nullifier_prestate_raw_account_image_sha256
+                        .is_none(),
+                "absent nullifier checkpoint contains an account image"
+            );
+            Ok(None)
+        }
+        "system_owned_empty" => {
+            let account = RpcAccount {
+                lamports: checkpoint.nullifier_prestate_lamports,
+                owner: system_program::id(),
+                executable: false,
+                data: Vec::new(),
+            };
+            ensure!(
+                checkpoint
+                    .nullifier_prestate_raw_account_image_sha256
+                    .as_deref()
+                    == Some(
+                        account
+                            .evidence(nullifier_address)
+                            .raw_account_image_sha256
+                            .as_str()
+                    ),
+                "prefunded nullifier checkpoint raw account image differs"
+            );
+            Ok(Some(account))
+        }
+        other => bail!("unsupported tag-67 nullifier prestate kind: {other}"),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn recover_attempt02_setup(
+    rpc: &Rpc,
+    recovery_journal: &mut crate::spend_mainnet_journal::RecoveryJournal,
+    config: &ReadinessConfig,
+    program_id: Pubkey,
+    payer: &Keypair,
+    pool: &Keypair,
+    proof_account: &Keypair,
+    proof: &[u8],
+    pool_rent: u64,
+    proof_rent: u64,
+    current_anchor: [u8; 32],
+    deployment_domain: [u8; 32],
+) -> Result<(
+    Vec<TransactionEvidence>,
+    RpcAccount,
+    AtomicPoolStateV2,
+    usize,
+)> {
+    ensure!(
+        recovery_journal.state().completed_outcome.is_none(),
+        "v5 recovery journal is already complete"
+    );
+    ensure!(
+        matches!(
+            recovery_journal.state().mode,
+            crate::spend_mainnet_journal::RunMode::Forward
+        ),
+        "v5 recovery journal is not in forward mode"
+    );
+
+    let resumed_upload_index = 34usize;
+    let resumed_prefix_len = resumed_upload_index
+        .checked_mul(UPLOAD_CHUNK_BYTES)
+        .context("recovery proof prefix overflow")?;
+    ensure!(
+        proof.len().div_ceil(UPLOAD_CHUNK_BYTES) == 79 && resumed_prefix_len < proof.len(),
+        "attempt-02 recovery is pinned to the exact 79-chunk proof"
+    );
+
+    let pool_snapshot = rpc
+        .account(&pool.pubkey())?
+        .context("attempt-02 recovery pool is missing")?;
+    ensure!(
+        initialized_pool_account_exact(
+            &pool_snapshot,
+            &program_id,
+            pool_rent,
+            0,
+            current_anchor,
+            deployment_domain,
+        ),
+        "attempt-02 recovery pool differs from the exact sequence-0 image"
+    );
+    let pool_state = AtomicPoolStateV2::decode(&pool_snapshot.data)
+        .map_err(|error| anyhow!("decode attempt-02 recovery pool: {error:?}"))?;
+
+    let proof_snapshot = rpc
+        .account(&proof_account.pubkey())?
+        .context("attempt-02 recovery proof account is missing")?;
+    let mut partial_proof = vec![0u8; proof.len()];
+    partial_proof[..resumed_prefix_len].copy_from_slice(&proof[..resumed_prefix_len]);
+    ensure!(
+        proof_snapshot.owner == program_id
+            && !proof_snapshot.executable
+            && proof_snapshot.lamports >= proof_rent
+            && proof_snapshot.data == expected_proof_account(&partial_proof, payer.pubkey(), false),
+        "attempt-02 recovery proof is not the exact unsealed chunks-0-through-33 image"
+    );
+
+    let mut expected_wire_ids = BTreeSet::from([
+        "pool_create".to_owned(),
+        "pool_initialize_tag63".to_owned(),
+        "proof_create_and_initialize_tag0".to_owned(),
+    ]);
+    expected_wire_ids
+        .extend((0..=resumed_upload_index).map(|index| format!("proof_upload_{index:04}")));
+    let observed_wire_ids = recovery_journal
+        .state()
+        .ready_wires
+        .keys()
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    ensure!(
+        observed_wire_ids == expected_wire_ids,
+        "attempt-02 recovery journal wire topology differs from setup plus uploads 0..34"
+    );
+
+    let mut setup_transactions = Vec::with_capacity(3 + resumed_upload_index);
+    let mut create_pool_instructions = Vec::with_capacity(2);
+    if let Some(price) = compute_unit_price_instruction(config) {
+        create_pool_instructions.push(price);
+    }
+    create_pool_instructions.push(system_instruction::create_account(
+        &payer.pubkey(),
+        &pool.pubkey(),
+        pool_rent,
+        u64::try_from(ATOMIC_POOL_STATE_LEN).context("pool account length exceeds u64")?,
+        &program_id,
+    ));
+    setup_transactions.push(recover_exact_journal_transaction(
+        rpc,
+        recovery_journal,
+        payer,
+        &[pool],
+        &create_pool_instructions,
+        "pool_create",
+        "v5_create_pool_account",
+    )?);
+
+    let mut initialize_pool_instructions = Vec::with_capacity(2);
+    if let Some(price) = compute_unit_price_instruction(config) {
+        initialize_pool_instructions.push(price);
+    }
+    initialize_pool_instructions.push(Instruction {
+        program_id,
+        accounts: vec![AccountMeta::new(pool.pubkey(), true)],
+        data: to_vec(&AspisInstruction::InitializeAtomicPool {
+            sequence: 0,
+            anchor: current_anchor,
+            domain_tag: config.network.domain_tag().to_vec(),
+        })?,
+    });
+    setup_transactions.push(recover_exact_journal_transaction(
+        rpc,
+        recovery_journal,
+        payer,
+        &[pool],
+        &initialize_pool_instructions,
+        "pool_initialize_tag63",
+        "v5_tag63_initialize_pool",
+    )?);
+
+    let mut create_and_init_proof_instructions = super::create_and_init_proof_instructions(
+        &program_id,
+        payer.pubkey(),
+        proof_account.pubkey(),
+        proof_rent,
+        proof.len(),
+    )?;
+    if let Some(price) = compute_unit_price_instruction(config) {
+        create_and_init_proof_instructions.insert(1, price);
+    }
+    setup_transactions.push(recover_exact_journal_transaction(
+        rpc,
+        recovery_journal,
+        payer,
+        &[proof_account],
+        &create_and_init_proof_instructions,
+        "proof_create_and_initialize_tag0",
+        "v5_create_and_tag0_proof",
+    )?);
+
+    for (index, chunk) in proof
+        .chunks(UPLOAD_CHUNK_BYTES)
+        .take(resumed_upload_index)
+        .enumerate()
+    {
+        let mut instructions = Vec::with_capacity(2);
+        if let Some(price) = compute_unit_price_instruction(config) {
+            instructions.push(price);
+        }
+        instructions.push(proof_instruction(
+            &program_id,
+            payer.pubkey(),
+            proof_account.pubkey(),
+            &AspisInstruction::UploadChunk {
+                offset: u32::try_from(index * UPLOAD_CHUNK_BYTES)
+                    .context("recovered upload offset exceeds u32")?,
+                chunk: chunk.to_vec(),
+            },
+        )?);
+        setup_transactions.push(recover_exact_journal_transaction(
+            rpc,
+            recovery_journal,
+            payer,
+            &[],
+            &instructions,
+            &format!("proof_upload_{index:04}"),
+            &format!("upload_proof_chunk_{index}"),
+        )?);
+    }
+
+    let stale_wire_id = format!("proof_upload_{resumed_upload_index:04}");
+    let stale_ready = recovery_journal
+        .state()
+        .ready_wires
+        .get(&stale_wire_id)
+        .cloned()
+        .context("attempt-02 recovery omitted stale upload-34 wire")?;
+    ensure!(
+        stale_ready.submitted_signature.is_none()
+            && stale_ready.finalized_slot.is_none()
+            && stale_ready.abandoned_reason.is_none(),
+        "attempt-02 upload-34 wire is not the exact unsubmitted staged state"
+    );
+    let stale_wire = recovery_journal.load_persisted_wire(&stale_wire_id)?;
+    let stale_transaction: Transaction =
+        bincode::deserialize(&stale_wire).context("decode stale upload-34 wire")?;
+    let stale_chunk =
+        &proof[resumed_prefix_len..(resumed_prefix_len + UPLOAD_CHUNK_BYTES).min(proof.len())];
+    let mut stale_instructions = Vec::with_capacity(2);
+    if let Some(price) = compute_unit_price_instruction(config) {
+        stale_instructions.push(price);
+    }
+    stale_instructions.push(proof_instruction(
+        &program_id,
+        payer.pubkey(),
+        proof_account.pubkey(),
+        &AspisInstruction::UploadChunk {
+            offset: u32::try_from(resumed_prefix_len).context("stale upload offset exceeds u32")?,
+            chunk: stale_chunk.to_vec(),
+        },
+    )?);
+    let expected_stale = signed_transaction(
+        payer,
+        &[],
+        &stale_instructions,
+        stale_transaction.message.recent_blockhash,
+    );
+    ensure!(
+        stale_wire == bincode::serialize(&expected_stale)?
+            && stale_transaction.signatures == expected_stale.signatures,
+        "stale upload-34 spool is not the exact expected transaction"
+    );
+    let stale_signature = stale_transaction.signatures[0];
+    ensure!(
+        rpc.signature_status(&stale_signature)?.is_none(),
+        "stale upload-34 signature appeared in transaction history"
+    );
+    ensure!(
+        !rpc.blockhash_valid_at_finalized(&stale_transaction.message.recent_blockhash)?,
+        "stale upload-34 blockhash is still valid at finalized commitment"
+    );
+    let checked_finalized_block_height = rpc.block_height()?;
+    ensure!(
+        rpc.signature_status(&stale_signature)?.is_none(),
+        "stale upload-34 signature appeared while proving expiry"
+    );
+
+    recovery_journal.record_abandonment(
+        stale_wire_id,
+        stale_signature.to_string(),
+        stale_transaction.message.recent_blockhash.to_string(),
+        None,
+        checked_finalized_block_height,
+        "signature absent from full history and recent blockhash invalid at finalized commitment",
+    )?;
+    recovery_journal.record_checkpoint(
+        "attempt02_exact_resume_reconciled",
+        serde_json::json!({
+            "finalized_setup_transactions": setup_transactions.len(),
+            "finalized_uploads": resumed_upload_index,
+            "next_upload_index": resumed_upload_index,
+            "next_upload_offset": resumed_prefix_len,
+            "proof_lamports": proof_snapshot.lamports,
+            "proof_rent_lamports": proof_rent,
+            "stale_signature": stale_signature.to_string(),
+            "stale_recent_blockhash": stale_transaction.message.recent_blockhash.to_string(),
+            "checked_finalized_block_height": checked_finalized_block_height,
+        }),
+    )?;
+    Ok((
+        setup_transactions,
+        pool_snapshot,
+        pool_state,
+        resumed_upload_index,
+    ))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn recover_v5_setup(
+    rpc: &Rpc,
+    recovery_journal: &mut crate::spend_mainnet_journal::RecoveryJournal,
+    config: &ReadinessConfig,
+    program_id: Pubkey,
+    payer: &Keypair,
+    pool: &Keypair,
+    proof_account: &Keypair,
+    nullifier_address: Pubkey,
+    nullifier: [u8; 32],
+    proof: &[u8],
+    pool_rent: u64,
+    proof_rent: u64,
+    nullifier_rent: u64,
+    current_anchor: [u8; 32],
+    output_anchor: [u8; 32],
+    deployment_domain: [u8; 32],
+) -> Result<(
+    Vec<TransactionEvidence>,
+    RpcAccount,
+    AtomicPoolStateV2,
+    usize,
+    bool,
+    V5ResumePhase,
+)> {
+    ensure!(
+        recovery_journal.state().completed_outcome.is_none(),
+        "v5 recovery journal is already complete"
+    );
+    ensure!(
+        matches!(
+            recovery_journal.state().mode,
+            crate::spend_mainnet_journal::RunMode::Forward
+        ),
+        "v5 recovery journal is not in forward mode"
+    );
+    let transaction_count = proof.len().div_ceil(UPLOAD_CHUNK_BYTES);
+    ensure!(
+        transaction_count == 79,
+        "attempt-02 recovery is pinned to the exact 79-chunk proof"
+    );
+    validate_v5_resume_wire_topology(recovery_journal, transaction_count)?;
+    let resume = inspect_v5_resume_snapshot(
+        rpc,
+        program_id,
+        payer.pubkey(),
+        pool.pubkey(),
+        proof_account.pubkey(),
+        nullifier_address,
+        nullifier,
+        proof,
+        pool_rent,
+        proof_rent,
+        nullifier_rent,
+        current_anchor,
+        output_anchor,
+        deployment_domain,
+    )?;
+
+    let mut setup_transactions = Vec::with_capacity(3 + transaction_count + 1);
+    let mut create_pool_instructions = Vec::with_capacity(2);
+    if let Some(price) = compute_unit_price_instruction(config) {
+        create_pool_instructions.push(price);
+    }
+    create_pool_instructions.push(system_instruction::create_account(
+        &payer.pubkey(),
+        &pool.pubkey(),
+        pool_rent,
+        u64::try_from(ATOMIC_POOL_STATE_LEN).context("pool account length exceeds u64")?,
+        &program_id,
+    ));
+    setup_transactions.push(recover_exact_journal_transaction(
+        rpc,
+        recovery_journal,
+        payer,
+        &[pool],
+        &create_pool_instructions,
+        "pool_create",
+        "v5_create_pool_account",
+    )?);
+
+    let mut initialize_pool_instructions = Vec::with_capacity(2);
+    if let Some(price) = compute_unit_price_instruction(config) {
+        initialize_pool_instructions.push(price);
+    }
+    initialize_pool_instructions.push(Instruction {
+        program_id,
+        accounts: vec![AccountMeta::new(pool.pubkey(), true)],
+        data: to_vec(&AspisInstruction::InitializeAtomicPool {
+            sequence: 0,
+            anchor: current_anchor,
+            domain_tag: config.network.domain_tag().to_vec(),
+        })?,
+    });
+    setup_transactions.push(recover_exact_journal_transaction(
+        rpc,
+        recovery_journal,
+        payer,
+        &[pool],
+        &initialize_pool_instructions,
+        "pool_initialize_tag63",
+        "v5_tag63_initialize_pool",
+    )?);
+
+    let mut create_and_init_proof_instructions = super::create_and_init_proof_instructions(
+        &program_id,
+        payer.pubkey(),
+        proof_account.pubkey(),
+        proof_rent,
+        proof.len(),
+    )?;
+    if let Some(price) = compute_unit_price_instruction(config) {
+        create_and_init_proof_instructions.insert(1, price);
+    }
+    setup_transactions.push(recover_exact_journal_transaction(
+        rpc,
+        recovery_journal,
+        payer,
+        &[proof_account],
+        &create_and_init_proof_instructions,
+        "proof_create_and_initialize_tag0",
+        "v5_create_and_tag0_proof",
+    )?);
+
+    let finalized_upload_count = match resume.phase {
+        V5ResumePhase::Uploading { next_index } => next_index,
+        V5ResumePhase::ProofUploadedUnsealed
+        | V5ResumePhase::ProofSealed
+        | V5ResumePhase::Tag67Finalized => transaction_count,
+    };
+    for (index, chunk) in proof
+        .chunks(UPLOAD_CHUNK_BYTES)
+        .take(finalized_upload_count)
+        .enumerate()
+    {
+        let mut instructions = Vec::with_capacity(2);
+        if let Some(price) = compute_unit_price_instruction(config) {
+            instructions.push(price);
+        }
+        instructions.push(proof_instruction(
+            &program_id,
+            payer.pubkey(),
+            proof_account.pubkey(),
+            &AspisInstruction::UploadChunk {
+                offset: u32::try_from(index * UPLOAD_CHUNK_BYTES)
+                    .context("recovered upload offset exceeds u32")?,
+                chunk: chunk.to_vec(),
+            },
+        )?);
+        let mut no_send = |_: &mut crate::spend_mainnet_journal::RecoveryJournal,
+                           _: &str,
+                           _: &Transaction,
+                           _: &[u8]|
+         -> Result<()> { Ok(()) };
+        setup_transactions.push(
+            reconcile_semantic_transaction(
+                rpc,
+                recovery_journal,
+                payer,
+                &[],
+                &instructions,
+                &format!("proof_upload_{index:04}"),
+                &format!("upload_proof_chunk_{index}"),
+                true,
+                false,
+                &mut no_send,
+            )?
+            .context("finalized upload evidence disappeared during v5 recovery")?,
+        );
+    }
+
+    for index in finalized_upload_count..transaction_count {
+        let base = format!("proof_upload_{index:04}");
+        let candidates = semantic_wire_ids(recovery_journal, &base)?;
+        for wire_id in candidates {
+            let ready = recovery_journal
+                .state()
+                .ready_wires
+                .get(&wire_id)
+                .context("future upload recovery candidate disappeared")?;
+            ensure!(
+                ready.finalized_slot.is_none(),
+                "journal contains finalized upload beyond the exact on-chain prefix: {wire_id}"
+            );
+            let is_terminal = ready.abandoned_reason.is_some()
+                || ready.submitted_expired_absent_reason.is_some()
+                || ready.finalized_failure_reason.is_some();
+            ensure!(
+                index == finalized_upload_count || is_terminal,
+                "journal contains a nonterminal upload beyond the next exact chunk: {wire_id}"
+            );
+        }
+    }
+
+    let mut finalize_instructions = Vec::with_capacity(2);
+    if let Some(price) = compute_unit_price_instruction(config) {
+        finalize_instructions.push(price);
+    }
+    finalize_instructions.push(proof_instruction(
+        &program_id,
+        payer.pubkey(),
+        proof_account.pubkey(),
+        &AspisInstruction::FinalizeProof,
+    )?);
+    let proof_is_sealed = matches!(
+        resume.phase,
+        V5ResumePhase::ProofSealed | V5ResumePhase::Tag67Finalized
+    );
+    let mut no_send = |_: &mut crate::spend_mainnet_journal::RecoveryJournal,
+                       _: &str,
+                       _: &Transaction,
+                       _: &[u8]|
+     -> Result<()> { Ok(()) };
+    if proof_is_sealed {
+        setup_transactions.push(
+            reconcile_semantic_transaction(
+                rpc,
+                recovery_journal,
+                payer,
+                &[],
+                &finalize_instructions,
+                "proof_finalize_tag62",
+                "v5_tag62_finalize_proof",
+                true,
+                false,
+                &mut no_send,
+            )?
+            .context("sealed proof has no exact finalized tag-62 journal wire")?,
+        );
+    } else {
+        let tag62_candidates = semantic_wire_ids(recovery_journal, "proof_finalize_tag62")?;
+        for wire_id in tag62_candidates {
+            let ready = recovery_journal
+                .state()
+                .ready_wires
+                .get(&wire_id)
+                .context("tag-62 recovery candidate disappeared")?;
+            ensure!(
+                ready.finalized_slot.is_none(),
+                "tag-62 journal wire is finalized while the proof is unsealed"
+            );
+            let is_terminal = ready.abandoned_reason.is_some()
+                || ready.submitted_expired_absent_reason.is_some()
+                || ready.finalized_failure_reason.is_some();
+            ensure!(
+                resume.phase == V5ResumePhase::ProofUploadedUnsealed || is_terminal,
+                "tag-62 has a nonterminal wire before all proof uploads are finalized"
+            );
+        }
+    }
+
+    recovery_journal.record_checkpoint(
+        "v5_dynamic_resume_reconciled",
+        serde_json::json!({
+            "phase": format!("{:?}", resume.phase),
+            "finalized_upload_count": finalized_upload_count,
+            "next_upload_offset": (finalized_upload_count * UPLOAD_CHUNK_BYTES).min(proof.len()),
+            "proof_lamports": resume.proof.lamports,
+            "proof_rent_lamports": proof_rent,
+        }),
+    )?;
+    Ok((
+        setup_transactions,
+        resume.pool,
+        resume.pool_state,
+        finalized_upload_count,
+        proof_is_sealed,
+        resume.phase,
+    ))
+}
+
+fn submit_fresh_mainnet_transaction(
+    rpc: &Rpc,
+    recovery_journal: &mut crate::spend_mainnet_journal::RecoveryJournal,
+    payer: &Keypair,
+    signers: &[&Keypair],
+    instructions: &[Instruction],
+    wire_id_base: &str,
+    label: &str,
+) -> Result<TransactionEvidence> {
+    let mut no_send = |_: &mut crate::spend_mainnet_journal::RecoveryJournal,
+                       _: &str,
+                       _: &Transaction,
+                       _: &[u8]|
+     -> Result<()> { Ok(()) };
+    submit_fresh_mainnet_transaction_checked(
+        rpc,
+        recovery_journal,
+        payer,
+        signers,
+        instructions,
+        wire_id_base,
+        label,
+        &mut no_send,
+    )
+}
+
+fn submit_fresh_mainnet_transaction_checked<F>(
+    rpc: &Rpc,
+    recovery_journal: &mut crate::spend_mainnet_journal::RecoveryJournal,
+    payer: &Keypair,
+    signers: &[&Keypair],
+    instructions: &[Instruction],
+    wire_id_base: &str,
+    label: &str,
+    before_send: &mut F,
+) -> Result<TransactionEvidence>
+where
+    F: FnMut(
+        &mut crate::spend_mainnet_journal::RecoveryJournal,
+        &str,
+        &Transaction,
+        &[u8],
+    ) -> Result<()>,
+{
+    if let Some(evidence) = reconcile_semantic_transaction(
+        rpc,
+        recovery_journal,
+        payer,
+        signers,
+        instructions,
+        wire_id_base,
+        label,
+        false,
+        true,
+        before_send,
+    )? {
+        return Ok(evidence);
+    }
+    const MAX_FRESH_SIGNING_ATTEMPTS: u8 = 99;
+    let observed_attempts = semantic_wire_ids(recovery_journal, wire_id_base)?
+        .iter()
+        .filter_map(|wire_id| semantic_wire_attempt(wire_id, wire_id_base))
+        .collect::<BTreeSet<_>>();
+    for attempt in 1..=MAX_FRESH_SIGNING_ATTEMPTS {
+        if observed_attempts.contains(&attempt) {
+            continue;
+        }
+        let recent_blockhash = rpc.latest_blockhash_with_expiry()?;
+        let transaction = signed_transaction(payer, signers, instructions, recent_blockhash.hash);
+        let wire = bincode::serialize(&transaction)?;
+        let signature = transaction.signatures[0];
+        let wire_id = format!("{wire_id_base}_r{attempt:02}");
+        recovery_journal.spool_signed_wire_submit_ready(
+            &wire_id,
+            crate::spend_mainnet_journal::TransactionClass::Forward,
+            &wire,
+        )?;
+        recovery_journal.record_checkpoint(
+            "fresh_wire_blockhash_bound",
+            serde_json::json!({
+                "wire_id": wire_id,
+                "expected_signature": signature.to_string(),
+                "recent_blockhash": recent_blockhash.hash.to_string(),
+                "last_valid_block_height": recent_blockhash.last_valid_block_height,
+            }),
+        )?;
+        let persisted_wire = recovery_journal.load_submit_ready_wire(&wire_id)?;
+        ensure!(
+            persisted_wire == wire,
+            "fresh recovery spool differs from signed transaction {wire_id}"
+        );
+        if let Some(evidence) = reconcile_journal_wire(
+            rpc,
+            recovery_journal,
+            payer,
+            signers,
+            instructions,
+            &wire_id,
+            label,
+            true,
+            before_send,
+        )? {
+            return Ok(evidence);
+        }
+    }
+    bail!(
+        "fresh transaction {wire_id_base} exhausted {MAX_FRESH_SIGNING_ATTEMPTS} safe signing attempts"
+    )
 }
 
 fn upload_proof_chunks_for_network(
@@ -1885,12 +3714,36 @@ fn upload_proof_chunks_for_network(
     payer: &Keypair,
     proof_account: &Keypair,
     proof: &[u8],
+    start_index: usize,
+    recovery_fresh_signing: bool,
 ) -> Result<Vec<TransactionEvidence>> {
     if config.network == V5NetworkPolicy::Devnet {
+        ensure!(
+            start_index == 0 && !recovery_fresh_signing,
+            "devnet proof upload cannot use mainnet recovery parameters"
+        );
         return upload_proof_chunks(rpc, program_id, payer, proof_account, proof);
     }
-    let mut evidence = Vec::with_capacity(proof.len().div_ceil(UPLOAD_CHUNK_BYTES));
-    for (index, chunk) in proof.chunks(UPLOAD_CHUNK_BYTES).enumerate() {
+    let transaction_count = proof.len().div_ceil(UPLOAD_CHUNK_BYTES);
+    ensure!(
+        start_index <= transaction_count,
+        "proof upload recovery start exceeds transaction count"
+    );
+    let retained_proof_lamports = if recovery_fresh_signing {
+        Some(
+            rpc.account(&proof_account.pubkey())?
+                .context("recovered proof account is missing before upload")?
+                .lamports,
+        )
+    } else {
+        None
+    };
+    let mut evidence = Vec::with_capacity(transaction_count - start_index);
+    for (index, chunk) in proof
+        .chunks(UPLOAD_CHUNK_BYTES)
+        .enumerate()
+        .skip(start_index)
+    {
         let upload = proof_instruction(
             program_id,
             payer.pubkey(),
@@ -1906,15 +3759,48 @@ fn upload_proof_chunks_for_network(
             instructions.push(price);
         }
         instructions.push(upload);
-        let transaction = signed_transaction(payer, &[], &instructions, rpc.latest_blockhash()?);
-        evidence.push(submit_signed_transaction(
-            rpc,
-            config.network,
-            recovery_journal,
-            &transaction,
-            &format!("proof_upload_{index:04}"),
-            &format!("upload_proof_chunk_{index}"),
-        )?);
+        if recovery_fresh_signing {
+            evidence.push(submit_fresh_mainnet_transaction(
+                rpc,
+                recovery_journal
+                    .as_mut()
+                    .context("recovered upload has no mainnet journal")?,
+                payer,
+                &[],
+                &instructions,
+                &format!("proof_upload_{index:04}"),
+                &format!("upload_proof_chunk_{index}"),
+            )?);
+        } else {
+            let transaction =
+                signed_transaction(payer, &[], &instructions, rpc.latest_blockhash()?);
+            evidence.push(submit_signed_transaction(
+                rpc,
+                config.network,
+                recovery_journal,
+                &transaction,
+                &format!("proof_upload_{index:04}"),
+                &format!("upload_proof_chunk_{index}"),
+            )?);
+        }
+
+        if recovery_fresh_signing {
+            let prefix_len = ((index + 1) * UPLOAD_CHUNK_BYTES).min(proof.len());
+            let mut expected_partial = vec![0u8; proof.len()];
+            expected_partial[..prefix_len].copy_from_slice(&proof[..prefix_len]);
+            let observed = rpc
+                .account(&proof_account.pubkey())?
+                .context("proof account missing after recovered upload")?;
+            ensure!(
+                observed.owner == *program_id
+                    && !observed.executable
+                    && retained_proof_lamports
+                        .is_some_and(|baseline| observed.lamports >= baseline)
+                    && observed.data
+                        == expected_proof_account(&expected_partial, payer.pubkey(), false),
+                "proof account differs after recovered upload {index}"
+            );
+        }
     }
     Ok(evidence)
 }
@@ -2038,7 +3924,7 @@ fn deploy_mainnet_if_needed(
         message_sha256,
         serialized_transaction_sha256: wire_sha256,
         compute_units_consumed: rpc.transaction_cu(&signature)?,
-        identical_wire_retries: 0,
+        identical_wire_retries: Some(0),
     };
     recovery_journal.record_checkpoint(
         "deploy_finalized_and_exact_program_verified",
@@ -2165,8 +4051,8 @@ fn retained_proof_balance_evidence(
     post_balances: &[u64],
     payer: Pubkey,
     proof: Pubkey,
+    pool: Pubkey,
     nullifier: Pubkey,
-    expected_proof_lamports: u64,
 ) -> Result<V5RetainedProofBalanceEvidence> {
     ensure!(
         pre_balances.len() == account_keys.len() && post_balances.len() == account_keys.len(),
@@ -2180,11 +4066,14 @@ fn retained_proof_balance_evidence(
     };
     let payer_account_index = index(payer)?;
     let proof_account_index = index(proof)?;
+    let pool_account_index = index(pool)?;
     let nullifier_account_index = index(nullifier)?;
     let payer_pre_lamports = pre_balances[payer_account_index];
     let payer_post_lamports = post_balances[payer_account_index];
     let proof_pre_lamports = pre_balances[proof_account_index];
     let proof_post_lamports = post_balances[proof_account_index];
+    let pool_pre_lamports = pre_balances[pool_account_index];
+    let pool_post_lamports = post_balances[pool_account_index];
     let nullifier_pre_lamports = pre_balances[nullifier_account_index];
     let nullifier_post_lamports = post_balances[nullifier_account_index];
     let payer_spend = payer_pre_lamports
@@ -2193,11 +4082,15 @@ fn retained_proof_balance_evidence(
     let nullifier_funding_lamports = nullifier_post_lamports
         .checked_sub(nullifier_pre_lamports)
         .context("tag-67 nullifier balance decreased")?;
-    let proof_balance_retained_exactly = proof_pre_lamports == expected_proof_lamports
-        && proof_post_lamports == expected_proof_lamports;
+    let proof_balance_retained_exactly = proof_pre_lamports == proof_post_lamports;
     ensure!(
         proof_balance_retained_exactly,
         "tag-67 did not retain the proof account balance exactly"
+    );
+    let pool_balance_retained_exactly = pool_pre_lamports == pool_post_lamports;
+    ensure!(
+        pool_balance_retained_exactly,
+        "tag-67 did not retain the pool account balance exactly"
     );
     let exact_balance_equation_reconciled = payer_spend
         == fee_lamports
@@ -2211,16 +4104,20 @@ fn retained_proof_balance_evidence(
         fee_lamports,
         payer_account_index,
         proof_account_index,
+        pool_account_index,
         nullifier_account_index,
         payer_pre_lamports,
         payer_post_lamports,
         proof_pre_lamports,
         proof_post_lamports,
+        pool_pre_lamports,
+        pool_post_lamports,
         nullifier_pre_lamports,
         nullifier_post_lamports,
         nullifier_funding_lamports,
         exact_balance_equation_reconciled,
         proof_balance_retained_exactly,
+        pool_balance_retained_exactly,
     })
 }
 
@@ -2436,7 +4333,10 @@ pub(crate) fn build_sbf(arguments: &[String]) -> Result<V5DevnetBuildOutcome> {
     })
 }
 
-fn readiness_from_config(config: ReadinessConfig) -> Result<V5DevnetReadiness> {
+fn readiness_from_config_with_state(
+    config: ReadinessConfig,
+    state_requirement: V5StateRequirement,
+) -> Result<V5DevnetReadiness> {
     let payer = secure_keypair_0600(&config.payer_keypair)?;
     let program = secure_keypair_0600(&config.program_keypair)?;
     let pool = secure_keypair_0600(&config.pool_keypair)?;
@@ -2533,14 +4433,6 @@ fn readiness_from_config(config: ReadinessConfig) -> Result<V5DevnetReadiness> {
             "v5 mainnet deployment buffer account is not fresh"
         );
     }
-    ensure!(
-        rpc.account(&pool.pubkey())?.is_none(),
-        "v5 pool account is not fresh"
-    );
-    ensure!(
-        rpc.account(&proof_account.pubkey())?.is_none(),
-        "v5 proof account is not fresh"
-    );
     let public = statement_public_inputs(&statement);
     let (nullifier_address, nullifier_bump) =
         nullifier_address_for_network(config.network, program.pubkey(), &public.nullifier)?;
@@ -2551,14 +4443,51 @@ fn readiness_from_config(config: ReadinessConfig) -> Result<V5DevnetReadiness> {
         proof_account.pubkey(),
         nullifier_address,
     ])?;
-    ensure!(
-        rpc.account(&nullifier_address)?.is_none(),
-        "canonical v5 nullifier PDA must be absent"
-    );
-
     let pool_rent = rpc.rent(ATOMIC_POOL_STATE_LEN)?;
     let proof_rent = rpc.rent(PROOF_ACCOUNT_HEADER_LEN + proof.len())?;
     let nullifier_rent = rpc.rent(ATOMIC_NULLIFIER_MARKER_LEN)?;
+    match state_requirement {
+        V5StateRequirement::Fresh => {
+            ensure!(
+                rpc.account(&pool.pubkey())?.is_none(),
+                "v5 pool account is not fresh"
+            );
+            ensure!(
+                rpc.account(&proof_account.pubkey())?.is_none(),
+                "v5 proof account is not fresh"
+            );
+            ensure!(
+                rpc.account(&nullifier_address)?.is_none(),
+                "canonical v5 nullifier PDA is not fresh"
+            );
+        }
+        V5StateRequirement::Attempt02Resume => {
+            ensure!(
+                config.network == V5NetworkPolicy::MainnetBeta,
+                "attempt-02 recovery is mainnet-beta only"
+            );
+            ensure!(
+                proof.len().div_ceil(UPLOAD_CHUNK_BYTES) == 79,
+                "attempt-02 readiness is pinned to the exact 79-chunk proof"
+            );
+            let _ = inspect_v5_resume_snapshot(
+                &rpc,
+                program.pubkey(),
+                payer.pubkey(),
+                pool.pubkey(),
+                proof_account.pubkey(),
+                nullifier_address,
+                public.nullifier,
+                &proof,
+                pool_rent,
+                proof_rent,
+                nullifier_rent,
+                public.current_anchor,
+                public.output_anchor,
+                public.deployment_domain,
+            )?;
+        }
+    }
     let (rust_signed_transaction_count, rust_signed_priority_and_signature_fee_bound_lamports) =
         match config.compute_unit_price_microlamports {
             Some(price) => {
@@ -2572,9 +4501,12 @@ fn readiness_from_config(config: ReadinessConfig) -> Result<V5DevnetReadiness> {
             }
             None => (None, None),
         };
-    let mut required_lamports = checked_add_lamports(pool_rent, proof_rent, "setup")?;
+    let mut required_lamports = match state_requirement {
+        V5StateRequirement::Fresh => checked_add_lamports(pool_rent, proof_rent, "setup")?,
+        V5StateRequirement::Attempt02Resume => 0,
+    };
     required_lamports =
-        checked_add_lamports(required_lamports, nullifier_rent, "setup plus nullifier")?;
+        checked_add_lamports(required_lamports, nullifier_rent, "state plus nullifier")?;
     required_lamports = checked_add_lamports(
         required_lamports,
         config.fee_reserve_lamports,
@@ -2665,6 +4597,10 @@ fn readiness_from_config(config: ReadinessConfig) -> Result<V5DevnetReadiness> {
     })
 }
 
+fn readiness_from_config(config: ReadinessConfig) -> Result<V5DevnetReadiness> {
+    readiness_from_config_with_state(config, V5StateRequirement::Fresh)
+}
+
 pub(crate) fn readiness(arguments: &[String]) -> Result<V5DevnetReadiness> {
     readiness_from_config(parse_readiness_args(arguments)?)
 }
@@ -2681,12 +4617,27 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
         &config.solana_cli,
         &solana_cli_before,
     )?;
-    validate_fresh_evidence_destination(&config.evidence)?;
+    if config.resume_in_progress {
+        ensure!(
+            config.readiness.network == V5NetworkPolicy::MainnetBeta
+                && config.run_directory.is_some(),
+            "v5 in-progress recovery is mainnet-beta only and requires the existing run directory"
+        );
+    } else {
+        validate_fresh_evidence_destination(&config.evidence)?;
+    }
 
     // This is the last operation before reserving the one-shot evidence file,
     // which is itself the first write of any kind. It repeats every read-only
     // local/RPC readiness gate on the exact execution arguments.
-    let readiness = readiness_from_config(config.readiness.clone())?;
+    let readiness = readiness_from_config_with_state(
+        config.readiness.clone(),
+        if config.resume_in_progress {
+            V5StateRequirement::Attempt02Resume
+        } else {
+            V5StateRequirement::Fresh
+        },
+    )?;
     ensure!(
         readiness.ready,
         "v5 {} execution blocked: {}",
@@ -2697,44 +4648,55 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
     );
     let mut recovery_journal = match &config.run_directory {
         Some(run_directory) => {
-            let run_id = format!("v5-mainnet-{}", chrono::Utc::now().format("%Y%m%dT%H%M%SZ"));
-            let mut journal =
-                crate::spend_mainnet_journal::RecoveryJournal::create(run_directory, run_id)?;
-            journal.record_checkpoint(
-                "readiness_passed_before_first_network_mutation",
-                serde_json::json!({
-                    "network": config.readiness.network.network(),
-                    "program_id": readiness.program_id,
-                    "upgrade_authority": readiness.upgrade_authority,
-                    "deployment_buffer": readiness.deployment_buffer,
-                    "pool": readiness.pool,
-                    "proof_account": readiness.proof_account,
-                    "nullifier_address": readiness.nullifier_address,
-                    "nullifier_bump": readiness.nullifier_bump,
-                    "sbf_sha256": readiness.sbf_sha256,
-                    "sbf_provenance_sha256": readiness.sbf_provenance_sha256,
-                    "proof_sha256": readiness.proof_sha256,
-                    "statement_sha256": readiness.statement_sha256,
-                    "expected_solana_core": readiness.expected_solana_core,
-                    "expected_feature_set": readiness.expected_feature_set,
-                    "runtime_replay_path": readiness.runtime_replay_path,
-                    "runtime_replay_sha256": readiness.runtime_replay_sha256,
-                    "compute_unit_price_microlamports": readiness.compute_unit_price_microlamports,
-                    "mainnet_release_policy_cu_ceiling": readiness.mainnet_release_policy_cu_ceiling,
-                    "solana_cli_sha256": sha256(&solana_cli_before),
-                    "solana_cli_version": solana_cli_version.clone(),
-                    "rpc_origin_redacted": readiness.rpc_origin_redacted,
-                    "ws_origin_redacted": readiness.ws_origin_redacted,
-                    "evidence_path": config.evidence,
-                    "recovery_policy": "one-shot fail-closed; an incomplete run directory must be reconciled manually and is never resumed automatically",
-                }),
-            )?;
+            let mut journal = if config.resume_in_progress {
+                crate::spend_mainnet_journal::RecoveryJournal::reopen(run_directory)?
+            } else {
+                let run_id = format!("v5-mainnet-{}", chrono::Utc::now().format("%Y%m%dT%H%M%SZ"));
+                crate::spend_mainnet_journal::RecoveryJournal::create(run_directory, run_id)?
+            };
+            if !config.resume_in_progress {
+                journal.record_checkpoint(
+                    "readiness_passed_before_first_network_mutation",
+                    serde_json::json!({
+                        "network": config.readiness.network.network(),
+                        "program_id": readiness.program_id,
+                        "upgrade_authority": readiness.upgrade_authority,
+                        "deployment_buffer": readiness.deployment_buffer,
+                        "pool": readiness.pool,
+                        "proof_account": readiness.proof_account,
+                        "nullifier_address": readiness.nullifier_address,
+                        "nullifier_bump": readiness.nullifier_bump,
+                        "sbf_sha256": readiness.sbf_sha256,
+                        "sbf_provenance_sha256": readiness.sbf_provenance_sha256,
+                        "proof_sha256": readiness.proof_sha256,
+                        "statement_sha256": readiness.statement_sha256,
+                        "expected_solana_core": readiness.expected_solana_core,
+                        "expected_feature_set": readiness.expected_feature_set,
+                        "runtime_replay_path": readiness.runtime_replay_path,
+                        "runtime_replay_sha256": readiness.runtime_replay_sha256,
+                        "compute_unit_price_microlamports": readiness.compute_unit_price_microlamports,
+                        "mainnet_release_policy_cu_ceiling": readiness.mainnet_release_policy_cu_ceiling,
+                        "solana_cli_sha256": sha256(&solana_cli_before),
+                        "solana_cli_version": solana_cli_version.clone(),
+                        "rpc_origin_redacted": readiness.rpc_origin_redacted,
+                        "ws_origin_redacted": readiness.ws_origin_redacted,
+                        "evidence_path": config.evidence,
+                        "recovery_policy": "one-shot fail-closed unless explicitly reopened through exact in-progress recovery",
+                    }),
+                )?;
+            }
             Some(journal)
         }
         None => None,
     };
-    let evidence_reservation =
-        EvidenceReservation::reserve(&config.evidence, config.readiness.network.evidence_name())?;
+    let evidence_reservation = if config.resume_in_progress {
+        EvidenceReservation::resume_for_artifact(
+            &config.evidence,
+            config.readiness.network.evidence_name(),
+        )?
+    } else {
+        EvidenceReservation::reserve(&config.evidence, config.readiness.network.evidence_name())?
+    };
 
     let rpc_origin_redacted = rpc_origin(&config.readiness.rpc_url)?;
     let ws_origin_redacted = config
@@ -2886,12 +4848,14 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
         readiness.nullifier_bump == nullifier_bump,
         "runtime nullifier PDA bump differs from readiness"
     );
-    ensure!(
-        rpc.account(&pool.pubkey())?.is_none()
-            && rpc.account(&proof_account.pubkey())?.is_none()
-            && rpc.account(&nullifier_address)?.is_none(),
-        "pool, proof, or nullifier ceased to be fresh after evidence reservation"
-    );
+    if !config.resume_in_progress {
+        ensure!(
+            rpc.account(&pool.pubkey())?.is_none()
+                && rpc.account(&proof_account.pubkey())?.is_none()
+                && rpc.account(&nullifier_address)?.is_none(),
+            "pool, proof, or nullifier ceased to be fresh after evidence reservation"
+        );
+    }
     if let Some(deployment_buffer) = deployment_buffer.as_ref() {
         ensure!(
             rpc.account(&deployment_buffer.pubkey())?.is_none(),
@@ -2912,30 +4876,34 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
         );
     }
 
-    let deployment = match config.readiness.network {
-        V5NetworkPolicy::Devnet => {
-            let deploy_config = deployment_adapter(&config);
-            deploy_if_needed(
+    let deployment = if config.resume_in_progress {
+        None
+    } else {
+        match config.readiness.network {
+            V5NetworkPolicy::Devnet => {
+                let deploy_config = deployment_adapter(&config);
+                deploy_if_needed(
+                    &rpc,
+                    &program_id,
+                    &expected_upgrade_authority,
+                    config.readiness.network.cluster_policy(),
+                    &deploy_config,
+                    &sbf,
+                )?
+            }
+            V5NetworkPolicy::MainnetBeta => deploy_mainnet_if_needed(
                 &rpc,
+                &config,
+                recovery_journal
+                    .as_mut()
+                    .context("mainnet deployment has no recovery journal")?,
                 &program_id,
                 &expected_upgrade_authority,
-                config.readiness.network.cluster_policy(),
-                &deploy_config,
                 &sbf,
-            )?
+            )?,
         }
-        V5NetworkPolicy::MainnetBeta => deploy_mainnet_if_needed(
-            &rpc,
-            &config,
-            recovery_journal
-                .as_mut()
-                .context("mainnet deployment has no recovery journal")?,
-            &program_id,
-            &expected_upgrade_authority,
-            &sbf,
-        )?,
     };
-    let upgradeable_program_before_setup = deployed_program_exact(
+    let upgradeable_program_before_continuation = deployed_program_exact(
         &rpc,
         &program_id,
         &sbf,
@@ -2943,19 +4911,32 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
         &expected_upgrade_authority,
     )?
     .context("exact declared-profile program missing before v5 setup")?;
-    ensure!(
-        rpc.account(&pool.pubkey())?.is_none()
-            && rpc.account(&proof_account.pubkey())?.is_none()
-            && rpc.account(&nullifier_address)?.is_none(),
-        "deployment raced with fresh v5 state identities"
-    );
+    let upgradeable_program_before_setup = if config.resume_in_progress {
+        None
+    } else {
+        Some(upgradeable_program_before_continuation.clone())
+    };
+    if !config.resume_in_progress {
+        ensure!(
+            rpc.account(&pool.pubkey())?.is_none()
+                && rpc.account(&proof_account.pubkey())?.is_none()
+                && rpc.account(&nullifier_address)?.is_none(),
+            "deployment raced with fresh v5 state identities"
+        );
+    }
 
     let pool_rent = rpc.rent(ATOMIC_POOL_STATE_LEN)?;
     let proof_rent = rpc.rent(PROOF_ACCOUNT_HEADER_LEN + proof.len())?;
     let nullifier_marker_rent_lamports = rpc.rent(ATOMIC_NULLIFIER_MARKER_LEN)?;
-    let post_deploy_required = pool_rent
-        .checked_add(proof_rent)
-        .and_then(|value| value.checked_add(nullifier_marker_rent_lamports))
+    let post_deploy_state_rent = if config.resume_in_progress {
+        0
+    } else {
+        pool_rent
+            .checked_add(proof_rent)
+            .context("post-deployment state-rent overflow")?
+    };
+    let post_deploy_required = post_deploy_state_rent
+        .checked_add(nullifier_marker_rent_lamports)
         .and_then(|value| value.checked_add(config.readiness.fee_reserve_lamports))
         .context("post-deployment v5 budget overflow")?;
     ensure!(
@@ -2963,169 +4944,216 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
         "payer cannot cover pool/proof/nullifier rent plus fee reserve after deployment"
     );
 
-    let mut setup_transactions = Vec::new();
-    let create_pool = system_instruction::create_account(
-        &payer.pubkey(),
-        &pool.pubkey(),
-        pool_rent,
-        u64::try_from(ATOMIC_POOL_STATE_LEN).context("pool account length exceeds u64")?,
-        &program_id,
-    );
-    let mut create_pool_instructions = Vec::with_capacity(2);
-    if let Some(price) = compute_unit_price_instruction(&config.readiness) {
-        create_pool_instructions.push(price);
-    }
-    create_pool_instructions.push(create_pool);
-    let create_pool_tx = signed_transaction(
-        &payer,
-        &[&pool],
-        &create_pool_instructions,
-        rpc.latest_blockhash()?,
-    );
-    setup_transactions.push(submit_signed_transaction(
-        &rpc,
-        config.readiness.network,
-        &mut recovery_journal,
-        &create_pool_tx,
-        "pool_create",
-        "v5_create_pool_account",
-    )?);
-    let zeroed_pool = rpc
-        .account(&pool.pubkey())?
-        .context("new v5 pool account missing")?;
-    ensure!(
-        zeroed_pool_account_exact(&zeroed_pool, &program_id, pool_rent),
-        "new v5 pool account image is not exactly zeroed"
-    );
-
-    let initialize_pool = Instruction {
-        program_id,
-        accounts: vec![AccountMeta::new(pool.pubkey(), true)],
-        data: to_vec(&AspisInstruction::InitializeAtomicPool {
-            sequence: 0,
-            anchor: public.current_anchor,
-            domain_tag: config.readiness.network.domain_tag().to_vec(),
-        })?,
-    };
-    let mut initialize_pool_instructions = Vec::with_capacity(2);
-    if let Some(price) = compute_unit_price_instruction(&config.readiness) {
-        initialize_pool_instructions.push(price);
-    }
-    initialize_pool_instructions.push(initialize_pool);
-    let initialize_pool_tx = signed_transaction(
-        &payer,
-        &[&pool],
-        &initialize_pool_instructions,
-        rpc.latest_blockhash()?,
-    );
-    let initialize_pool_wire = bincode::serialize(&initialize_pool_tx)?;
-    let initialize_pool_simulation = rpc.simulate_exact(&initialize_pool_wire)?;
-    ensure!(
-        initialize_pool_simulation.error.is_none(),
-        "tag-63 pool initialization simulation rejected: {:?}",
-        initialize_pool_simulation.error
-    );
-    ensure!(
-        rpc.account(&pool.pubkey())?.as_ref() == Some(&zeroed_pool),
-        "tag-63 simulation changed the pool"
-    );
-    setup_transactions.push(submit_signed_transaction(
-        &rpc,
-        config.readiness.network,
-        &mut recovery_journal,
-        &initialize_pool_tx,
-        "pool_initialize_tag63",
-        "v5_tag63_initialize_pool",
-    )?);
-    let pool_before_snapshot = rpc
-        .account(&pool.pubkey())?
-        .context("initialized v5 pool missing")?;
-    ensure!(
-        initialized_pool_account_exact(
-            &pool_before_snapshot,
-            &program_id,
+    let (
+        mut setup_transactions,
+        pool_before_snapshot,
+        pool_before_state,
+        proof_upload_start_index,
+        proof_already_sealed,
+        resume_phase,
+    ) = if config.resume_in_progress {
+        recover_v5_setup(
+            &rpc,
+            recovery_journal
+                .as_mut()
+                .context("attempt-02 recovery has no mainnet journal")?,
+            &config.readiness,
+            program_id,
+            &payer,
+            &pool,
+            &proof_account,
+            nullifier_address,
+            public.nullifier,
+            &proof,
             pool_rent,
-            0,
+            proof_rent,
+            nullifier_marker_rent_lamports,
             public.current_anchor,
+            public.output_anchor,
             public.deployment_domain,
-        ),
-        "tag-63 pool image differs from sequence-0 statement/domain"
-    );
-    let pool_before_state = AtomicPoolStateV2::decode(&pool_before_snapshot.data)
-        .map_err(|error| anyhow!("decode initialized v5 pool: {error:?}"))?;
+        )?
+    } else {
+        let mut setup_transactions = Vec::new();
+        let create_pool = system_instruction::create_account(
+            &payer.pubkey(),
+            &pool.pubkey(),
+            pool_rent,
+            u64::try_from(ATOMIC_POOL_STATE_LEN).context("pool account length exceeds u64")?,
+            &program_id,
+        );
+        let mut create_pool_instructions = Vec::with_capacity(2);
+        if let Some(price) = compute_unit_price_instruction(&config.readiness) {
+            create_pool_instructions.push(price);
+        }
+        create_pool_instructions.push(create_pool);
+        let create_pool_tx = signed_transaction(
+            &payer,
+            &[&pool],
+            &create_pool_instructions,
+            rpc.latest_blockhash()?,
+        );
+        setup_transactions.push(submit_signed_transaction(
+            &rpc,
+            config.readiness.network,
+            &mut recovery_journal,
+            &create_pool_tx,
+            "pool_create",
+            "v5_create_pool_account",
+        )?);
+        let zeroed_pool = rpc
+            .account(&pool.pubkey())?
+            .context("new v5 pool account missing")?;
+        ensure!(
+            zeroed_pool_account_exact(&zeroed_pool, &program_id, pool_rent),
+            "new v5 pool account image is not exactly zeroed"
+        );
 
-    let mut create_and_init_proof_instructions = super::create_and_init_proof_instructions(
-        &program_id,
-        payer.pubkey(),
-        proof_account.pubkey(),
-        proof_rent,
-        proof.len(),
-    )?;
-    if let Some(price) = compute_unit_price_instruction(&config.readiness) {
-        create_and_init_proof_instructions.insert(1, price);
-    }
-    let create_and_init_proof = signed_transaction(
-        &payer,
-        &[&proof_account],
-        &create_and_init_proof_instructions,
-        rpc.latest_blockhash()?,
-    );
-    let create_and_init_wire = bincode::serialize(&create_and_init_proof)?;
-    let create_and_init_simulation = rpc.simulate_exact(&create_and_init_wire)?;
-    ensure!(
-        create_and_init_simulation.error.is_none()
-            && create_and_init_simulation
-                .units
-                .is_some_and(|units| units < u64::from(CU_LIMIT)),
-        "atomic proof create/tag-0 simulation failed or exceeded CU"
-    );
-    ensure!(
-        rpc.account(&proof_account.pubkey())?.is_none(),
-        "proof create/tag-0 simulation changed the proof account"
-    );
-    setup_transactions.push(submit_signed_transaction(
-        &rpc,
-        config.readiness.network,
-        &mut recovery_journal,
-        &create_and_init_proof,
-        "proof_create_and_initialize_tag0",
-        "v5_create_and_tag0_proof",
-    )?);
-    let initialized_proof = rpc
-        .account(&proof_account.pubkey())?
-        .context("tag-0 proof account missing")?;
-    ensure!(
-        initialized_proof.owner == program_id
-            && !initialized_proof.executable
-            && initialized_proof.lamports == proof_rent
-            && initialized_proof.data
-                == expected_proof_account(&vec![0u8; proof.len()], payer.pubkey(), false),
-        "tag-0 proof image differs before upload"
-    );
+        let initialize_pool = Instruction {
+            program_id,
+            accounts: vec![AccountMeta::new(pool.pubkey(), true)],
+            data: to_vec(&AspisInstruction::InitializeAtomicPool {
+                sequence: 0,
+                anchor: public.current_anchor,
+                domain_tag: config.readiness.network.domain_tag().to_vec(),
+            })?,
+        };
+        let mut initialize_pool_instructions = Vec::with_capacity(2);
+        if let Some(price) = compute_unit_price_instruction(&config.readiness) {
+            initialize_pool_instructions.push(price);
+        }
+        initialize_pool_instructions.push(initialize_pool);
+        let initialize_pool_tx = signed_transaction(
+            &payer,
+            &[&pool],
+            &initialize_pool_instructions,
+            rpc.latest_blockhash()?,
+        );
+        let initialize_pool_wire = bincode::serialize(&initialize_pool_tx)?;
+        let initialize_pool_simulation = rpc.simulate_exact(&initialize_pool_wire)?;
+        ensure!(
+            initialize_pool_simulation.error.is_none(),
+            "tag-63 pool initialization simulation rejected: {:?}",
+            initialize_pool_simulation.error
+        );
+        ensure!(
+            account_unchanged_allowing_inbound_lamports(
+                rpc.account(&pool.pubkey())?.as_ref(),
+                &zeroed_pool,
+            ),
+            "tag-63 simulation changed the pool"
+        );
+        setup_transactions.push(submit_signed_transaction(
+            &rpc,
+            config.readiness.network,
+            &mut recovery_journal,
+            &initialize_pool_tx,
+            "pool_initialize_tag63",
+            "v5_tag63_initialize_pool",
+        )?);
+        let pool_before_snapshot = rpc
+            .account(&pool.pubkey())?
+            .context("initialized v5 pool missing")?;
+        ensure!(
+            initialized_pool_account_data_exact_allowing_dust(
+                &pool_before_snapshot,
+                program_id,
+                pool_rent,
+                0,
+                public.current_anchor,
+                public.deployment_domain,
+            ),
+            "tag-63 pool image differs from sequence-0 statement/domain"
+        );
+        let pool_before_state = AtomicPoolStateV2::decode(&pool_before_snapshot.data)
+            .map_err(|error| anyhow!("decode initialized v5 pool: {error:?}"))?;
+
+        let mut create_and_init_proof_instructions = super::create_and_init_proof_instructions(
+            &program_id,
+            payer.pubkey(),
+            proof_account.pubkey(),
+            proof_rent,
+            proof.len(),
+        )?;
+        if let Some(price) = compute_unit_price_instruction(&config.readiness) {
+            create_and_init_proof_instructions.insert(1, price);
+        }
+        let create_and_init_proof = signed_transaction(
+            &payer,
+            &[&proof_account],
+            &create_and_init_proof_instructions,
+            rpc.latest_blockhash()?,
+        );
+        let create_and_init_wire = bincode::serialize(&create_and_init_proof)?;
+        let create_and_init_simulation = rpc.simulate_exact(&create_and_init_wire)?;
+        ensure!(
+            create_and_init_simulation.error.is_none()
+                && create_and_init_simulation
+                    .units
+                    .is_some_and(|units| units < u64::from(CU_LIMIT)),
+            "atomic proof create/tag-0 simulation failed or exceeded CU"
+        );
+        ensure!(
+            rpc.account(&proof_account.pubkey())?.is_none(),
+            "proof create/tag-0 simulation changed the proof account"
+        );
+        setup_transactions.push(submit_signed_transaction(
+            &rpc,
+            config.readiness.network,
+            &mut recovery_journal,
+            &create_and_init_proof,
+            "proof_create_and_initialize_tag0",
+            "v5_create_and_tag0_proof",
+        )?);
+        let initialized_proof = rpc
+            .account(&proof_account.pubkey())?
+            .context("tag-0 proof account missing")?;
+        ensure!(
+            initialized_proof.owner == program_id
+                && !initialized_proof.executable
+                && initialized_proof.lamports == proof_rent
+                && initialized_proof.data
+                    == expected_proof_account(&vec![0u8; proof.len()], payer.pubkey(), false),
+            "tag-0 proof image differs before upload"
+        );
+        (
+            setup_transactions,
+            pool_before_snapshot,
+            pool_before_state,
+            0,
+            false,
+            V5ResumePhase::Uploading { next_index: 0 },
+        )
+    };
 
     let proof_upload_transaction_count = proof.len().div_ceil(UPLOAD_CHUNK_BYTES);
-    let proof_upload_finality_windows =
-        proof_upload_transaction_count.div_ceil(UPLOAD_WINDOW_TRANSACTIONS);
-    let upload_transactions = upload_proof_chunks_for_network(
-        &rpc,
-        &config.readiness,
-        &mut recovery_journal,
-        &program_id,
-        &payer,
-        &proof_account,
-        &proof,
-    )?;
+    // Uploads are finalized serially. This is a count of actual finality
+    // boundaries, not the legacy batching-window estimate.
+    let proof_upload_finality_windows = proof_upload_transaction_count;
+    if !proof_already_sealed {
+        let upload_transactions = upload_proof_chunks_for_network(
+            &rpc,
+            &config.readiness,
+            &mut recovery_journal,
+            &program_id,
+            &payer,
+            &proof_account,
+            &proof,
+            proof_upload_start_index,
+            config.resume_in_progress,
+        )?;
+        ensure!(
+            upload_transactions.len()
+                == proof_upload_transaction_count
+                    .checked_sub(proof_upload_start_index)
+                    .context("proof upload start exceeds transaction count")?,
+            "proof upload transaction count drift"
+        );
+        setup_transactions.extend(upload_transactions);
+    }
     ensure!(
-        upload_transactions.len() == proof_upload_transaction_count,
-        "proof upload transaction count drift"
-    );
-    setup_transactions.extend(upload_transactions);
-    let uploaded_proof = rpc
-        .account(&proof_account.pubkey())?
-        .context("uploaded v5 proof account missing")?;
-    ensure!(
-        uploaded_proof.data == expected_proof_account(&proof, payer.pubkey(), false),
-        "uploaded proof bytes/header differ before tag-62"
+        setup_transactions.len()
+            == 3 + proof_upload_transaction_count + usize::from(proof_already_sealed),
+        "complete setup transaction evidence count drift"
     );
 
     let finalize_proof = proof_instruction(
@@ -3139,38 +5167,88 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
         finalize_proof_instructions.push(price);
     }
     finalize_proof_instructions.push(finalize_proof);
-    let finalize_proof_tx = signed_transaction(
-        &payer,
-        &[],
-        &finalize_proof_instructions,
-        rpc.latest_blockhash()?,
-    );
-    let finalize_proof_wire = bincode::serialize(&finalize_proof_tx)?;
-    let finalize_proof_simulation = rpc.simulate_exact(&finalize_proof_wire)?;
-    ensure!(
-        finalize_proof_simulation.error.is_none(),
-        "tag-62 proof finalization simulation rejected: {:?}",
-        finalize_proof_simulation.error
-    );
-    ensure!(
-        rpc.account(&proof_account.pubkey())?.as_ref() == Some(&uploaded_proof),
-        "tag-62 simulation changed the uploaded proof"
-    );
-    setup_transactions.push(submit_signed_transaction(
-        &rpc,
-        config.readiness.network,
-        &mut recovery_journal,
-        &finalize_proof_tx,
-        "proof_finalize_tag62",
-        "v5_tag62_finalize_proof",
-    )?);
+    if !proof_already_sealed {
+        let uploaded_proof = rpc
+            .account(&proof_account.pubkey())?
+            .context("uploaded v5 proof account missing")?;
+        ensure!(
+            uploaded_proof.owner == program_id
+                && !uploaded_proof.executable
+                && uploaded_proof.lamports >= proof_rent
+                && uploaded_proof.data == expected_proof_account(&proof, payer.pubkey(), false),
+            "uploaded proof bytes/header differ before tag-62"
+        );
+        if config.readiness.network == V5NetworkPolicy::MainnetBeta && config.resume_in_progress {
+            let mut validate_tag62 = |_: &mut crate::spend_mainnet_journal::RecoveryJournal,
+                                      _: &str,
+                                      _: &Transaction,
+                                      wire: &[u8]|
+             -> Result<()> {
+                let simulation = rpc.simulate_exact(wire)?;
+                ensure!(
+                    simulation.error.is_none(),
+                    "tag-62 proof finalization simulation rejected: {:?}",
+                    simulation.error
+                );
+                ensure!(
+                    account_unchanged_allowing_inbound_lamports(
+                        rpc.account(&proof_account.pubkey())?.as_ref(),
+                        &uploaded_proof,
+                    ),
+                    "tag-62 simulation changed the uploaded proof"
+                );
+                Ok(())
+            };
+            setup_transactions.push(submit_fresh_mainnet_transaction_checked(
+                &rpc,
+                recovery_journal
+                    .as_mut()
+                    .context("tag-62 mainnet recovery has no journal")?,
+                &payer,
+                &[],
+                &finalize_proof_instructions,
+                "proof_finalize_tag62",
+                "v5_tag62_finalize_proof",
+                &mut validate_tag62,
+            )?);
+        } else {
+            let finalize_proof_tx = signed_transaction(
+                &payer,
+                &[],
+                &finalize_proof_instructions,
+                rpc.latest_blockhash()?,
+            );
+            let finalize_proof_wire = bincode::serialize(&finalize_proof_tx)?;
+            let finalize_proof_simulation = rpc.simulate_exact(&finalize_proof_wire)?;
+            ensure!(
+                finalize_proof_simulation.error.is_none(),
+                "tag-62 proof finalization simulation rejected: {:?}",
+                finalize_proof_simulation.error
+            );
+            ensure!(
+                account_unchanged_allowing_inbound_lamports(
+                    rpc.account(&proof_account.pubkey())?.as_ref(),
+                    &uploaded_proof,
+                ),
+                "tag-62 simulation changed the uploaded proof"
+            );
+            setup_transactions.push(submit_signed_transaction(
+                &rpc,
+                config.readiness.network,
+                &mut recovery_journal,
+                &finalize_proof_tx,
+                "proof_finalize_tag62",
+                "v5_tag62_finalize_proof",
+            )?);
+        }
+    }
     let finalized_proof = rpc
         .account(&proof_account.pubkey())?
         .context("sealed v5 proof account missing")?;
     ensure!(
         finalized_proof.owner == program_id
             && !finalized_proof.executable
-            && finalized_proof.lamports == proof_rent
+            && finalized_proof.lamports >= proof_rent
             && finalized_proof.data == expected_proof_account(&proof, payer.pubkey(), true),
         "tag-62 sealed proof image differs byte-for-byte"
     );
@@ -3215,9 +5293,45 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
         "sealed proof returned an unexpected second-finalize rejection: {post_finalize_second_finalize_error}"
     );
     ensure!(
-        rpc.account(&proof_account.pubkey())?.as_ref() == Some(&finalized_proof),
+        account_unchanged_allowing_inbound_lamports(
+            rpc.account(&proof_account.pubkey())?.as_ref(),
+            &finalized_proof,
+        ),
         "hostile sealed-proof simulations changed the retained proof"
     );
+
+    let (pool_before_snapshot, pool_before_state, pool_before_observation_scope) = if resume_phase
+        == V5ResumePhase::Tag67Finalized
+    {
+        let pool_before_state = AtomicPoolStateV2 {
+            sequence: 0,
+            anchor: public.current_anchor,
+            deployment_domain: public.deployment_domain,
+        };
+        let mut data = vec![0u8; ATOMIC_POOL_STATE_LEN];
+        pool_before_state
+            .encode(&mut data)
+            .map_err(|error| anyhow!("encode reconstructed tag-67 pool prestate: {error:?}"))?;
+        (
+                RpcAccount {
+                    // Tag 67 does not debit or credit the pool. Use the
+                    // observed sequence-1 balance so inbound dust cannot make
+                    // recovered prestate accounting false.
+                    lamports: pool_before_snapshot.lamports,
+                    owner: program_id,
+                    executable: false,
+                    data,
+                },
+                pool_before_state,
+                "reconstructed exact sequence-0 image after recovering a finalized tag-67 wire; transaction pre-balances and program transition are revalidated",
+            )
+    } else {
+        (
+            pool_before_snapshot,
+            pool_before_state,
+            "observed at finalized commitment before tag-67 submission",
+        )
+    };
 
     let tag67 = build_tag67_instruction(
         program_id,
@@ -3239,68 +5353,383 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
         final_instructions.push(price);
     }
     final_instructions.push(tag67.clone());
-    let final_tx = signed_transaction(&payer, &[], &final_instructions, rpc.latest_blockhash()?);
-    let final_wire = bincode::serialize(&final_tx)?;
+    let mut upgradeable_program_before_final_simulation: Option<UpgradeableProgramSnapshot> = None;
+    let mut nonjournaled_tag67_simulation_cu = None;
+    let mut tag67_nullifier_before_simulation: Option<Option<RpcAccount>> = None;
+    let final_transaction = if resume_phase == V5ResumePhase::Tag67Finalized {
+        let mut no_send = |_: &mut crate::spend_mainnet_journal::RecoveryJournal,
+                           _: &str,
+                           _: &Transaction,
+                           _: &[u8]|
+         -> Result<()> { Ok(()) };
+        reconcile_semantic_transaction(
+            &rpc,
+            recovery_journal
+                .as_mut()
+                .context("finalized tag-67 recovery has no journal")?,
+            &payer,
+            &[],
+            &final_instructions,
+            "tag67_verify_and_apply",
+            "v5_tag67_verify_and_apply_retaining_proof",
+            true,
+            false,
+            &mut no_send,
+        )?
+        .context("sequence-1 state has no exact finalized tag-67 journal wire")?
+    } else if config.readiness.network == V5NetworkPolicy::MainnetBeta {
+        let mut validate_tag67 = |journal: &mut crate::spend_mainnet_journal::RecoveryJournal,
+                                  wire_id: &str,
+                                  transaction: &Transaction,
+                                  wire: &[u8]|
+         -> Result<()> {
+            // No RPC call intervenes between this exact executable /
+            // ProgramData snapshot and simulation of this serialized wire.
+            let snapshot = deployed_program_exact(
+                &rpc,
+                &program_id,
+                &sbf,
+                config.readiness.program_max_len,
+                &expected_upgrade_authority,
+            )?
+            .context("exact declared-profile program missing before tag-67 simulation")?;
+            let continuity = snapshot.continuity_from(&upgradeable_program_before_continuation);
+            ensure!(
+                continuity.dust_hardened_continuity(),
+                "program/ProgramData changed before tag-67 simulation"
+            );
+            let nullifier_before = rpc.account(&nullifier_address)?;
+            ensure!(
+                supported_nullifier_prestate(nullifier_before.as_ref()),
+                "tag-67 nullifier prestate is neither absent nor a System-owned empty dust account"
+            );
+            let simulation = rpc.simulate_exact(wire)?;
+            ensure!(
+                simulation.error.is_none(),
+                "exact signed tag-67 simulation rejected: {:?}",
+                simulation.error
+            );
+            let units = simulation.units.context("tag-67 simulation omitted CU")?;
+            ensure!(
+                units <= u64::from(tag67_compute_unit_limit)
+                    && tag67_cu_is_within_release_policy(config.readiness.network, units),
+                "tag-67 simulation consumed {units} CU outside the declared release policy"
+            );
+            require_exact_program_success(&simulation.logs, program_id)?;
+            ensure!(
+                account_unchanged_allowing_inbound_lamports(
+                    rpc.account(&pool.pubkey())?.as_ref(),
+                    &pool_before_snapshot,
+                ) && nullifier_prestate_unchanged_allowing_inbound_lamports(
+                    rpc.account(&nullifier_address)?.as_ref(),
+                    nullifier_before.as_ref(),
+                ) && account_unchanged_allowing_inbound_lamports(
+                    rpc.account(&proof_account.pubkey())?.as_ref(),
+                    &finalized_proof,
+                ),
+                "tag-67 simulation changed pool/nullifier/proof state"
+            );
+            let program_after_simulation = deployed_program_exact(
+                &rpc,
+                &program_id,
+                &sbf,
+                config.readiness.program_max_len,
+                &expected_upgrade_authority,
+            )?
+            .context("exact declared-profile program missing after tag-67 simulation")?;
+            ensure!(
+                program_after_simulation
+                    .continuity_from(&snapshot)
+                    .dust_hardened_continuity(),
+                "program/ProgramData changed during tag-67 simulation interval"
+            );
+            let snapshot_evidence = snapshot.evidence();
+            let (nullifier_prestate_kind, nullifier_prestate_lamports, nullifier_raw_sha256) =
+                match nullifier_before.as_ref() {
+                    None => ("absent", 0, None),
+                    Some(account) => (
+                        "system_owned_empty",
+                        account.lamports,
+                        Some(account.evidence(nullifier_address).raw_account_image_sha256),
+                    ),
+                };
+            journal.record_checkpoint(
+                "v5_tag67_exact_simulation_green",
+                serde_json::json!({
+                    "wire_id": wire_id,
+                    "expected_signature": transaction.signatures[0].to_string(),
+                    "wire_sha256": sha256(wire),
+                    "message_sha256": sha256(&bincode::serialize(&transaction.message)?),
+                    "compute_units_consumed": units,
+                    "program_address": snapshot_evidence.program_account.address,
+                    "program_lamports": snapshot_evidence.program_account.lamports,
+                    "program_owner": snapshot_evidence.program_account.owner,
+                    "program_executable": snapshot_evidence.program_account.executable,
+                    "program_data_len": snapshot_evidence.program_account.data_len,
+                    "program_data_sha256": snapshot_evidence.program_account.data_sha256,
+                    "program_raw_account_image_sha256":
+                        snapshot_evidence.program_account.raw_account_image_sha256,
+                    "programdata_address": snapshot_evidence.programdata_address,
+                    "programdata_lamports": snapshot_evidence.programdata_account.lamports,
+                    "programdata_owner": snapshot_evidence.programdata_account.owner,
+                    "programdata_executable": snapshot_evidence.programdata_account.executable,
+                    "programdata_data_len": snapshot_evidence.programdata_account.data_len,
+                    "programdata_data_sha256": snapshot_evidence.programdata_account.data_sha256,
+                    "programdata_raw_account_image_sha256":
+                        snapshot_evidence.programdata_account.raw_account_image_sha256,
+                    "programdata_slot": snapshot_evidence.programdata_slot,
+                    "upgrade_authority_address": snapshot_evidence.upgrade_authority_address,
+                    "nullifier_prestate_kind": nullifier_prestate_kind,
+                    "nullifier_prestate_lamports": nullifier_prestate_lamports,
+                    "nullifier_prestate_raw_account_image_sha256": nullifier_raw_sha256,
+                }),
+            )?;
+            tag67_nullifier_before_simulation = Some(nullifier_before);
+            upgradeable_program_before_final_simulation = Some(snapshot);
+            Ok(())
+        };
+        submit_fresh_mainnet_transaction_checked(
+            &rpc,
+            recovery_journal
+                .as_mut()
+                .context("mainnet tag-67 has no recovery journal")?,
+            &payer,
+            &[],
+            &final_instructions,
+            "tag67_verify_and_apply",
+            "v5_tag67_verify_and_apply_retaining_proof",
+            &mut validate_tag67,
+        )?
+    } else {
+        let final_tx =
+            signed_transaction(&payer, &[], &final_instructions, rpc.latest_blockhash()?);
+        let final_wire = bincode::serialize(&final_tx)?;
+        let snapshot = deployed_program_exact(
+            &rpc,
+            &program_id,
+            &sbf,
+            config.readiness.program_max_len,
+            &expected_upgrade_authority,
+        )?
+        .context("exact declared-profile program missing before tag-67 simulation")?;
+        let continuity = snapshot.continuity_from(&upgradeable_program_before_continuation);
+        ensure!(
+            continuity.dust_hardened_continuity(),
+            "program/ProgramData changed before tag-67 simulation"
+        );
+        let nullifier_before = rpc.account(&nullifier_address)?;
+        ensure!(
+            supported_nullifier_prestate(nullifier_before.as_ref()),
+            "tag-67 nullifier prestate is neither absent nor a System-owned empty dust account"
+        );
+        let simulation = rpc.simulate_exact(&final_wire)?;
+        ensure!(
+            simulation.error.is_none(),
+            "exact signed tag-67 simulation rejected: {:?}",
+            simulation.error
+        );
+        let units = simulation.units.context("tag-67 simulation omitted CU")?;
+        ensure!(
+            units <= u64::from(tag67_compute_unit_limit)
+                && tag67_cu_is_within_release_policy(config.readiness.network, units),
+            "tag-67 simulation consumed {units} CU outside the declared release policy"
+        );
+        require_exact_program_success(&simulation.logs, program_id)?;
+        ensure!(
+            account_unchanged_allowing_inbound_lamports(
+                rpc.account(&pool.pubkey())?.as_ref(),
+                &pool_before_snapshot,
+            ) && nullifier_prestate_unchanged_allowing_inbound_lamports(
+                rpc.account(&nullifier_address)?.as_ref(),
+                nullifier_before.as_ref(),
+            ) && account_unchanged_allowing_inbound_lamports(
+                rpc.account(&proof_account.pubkey())?.as_ref(),
+                &finalized_proof,
+            ),
+            "tag-67 simulation changed pool/nullifier/proof state"
+        );
+        let program_after_simulation = deployed_program_exact(
+            &rpc,
+            &program_id,
+            &sbf,
+            config.readiness.program_max_len,
+            &expected_upgrade_authority,
+        )?
+        .context("exact declared-profile program missing after tag-67 simulation")?;
+        ensure!(
+            program_after_simulation
+                .continuity_from(&snapshot)
+                .dust_hardened_continuity(),
+            "program/ProgramData changed during tag-67 simulation interval"
+        );
+        nonjournaled_tag67_simulation_cu = Some(units);
+        tag67_nullifier_before_simulation = Some(nullifier_before);
+        upgradeable_program_before_final_simulation = Some(snapshot);
+        submit_signed_transaction(
+            &rpc,
+            config.readiness.network,
+            &mut recovery_journal,
+            &final_tx,
+            "tag67_verify_and_apply",
+            "v5_tag67_verify_and_apply_retaining_proof",
+        )?
+    };
+    let (final_wire_id, final_tx, final_wire, tag67_simulation_checkpoint) =
+        if config.readiness.network == V5NetworkPolicy::MainnetBeta {
+            let journal = recovery_journal
+                .as_mut()
+                .context("mainnet tag-67 evidence has no recovery journal")?;
+            let (wire_id, transaction, wire) = journal_transaction_for_semantic_evidence(
+                journal,
+                "tag67_verify_and_apply",
+                &final_transaction,
+            )?;
+            let checkpoint = tag67_simulation_checkpoint(journal, &wire_id, &transaction, &wire)?;
+            (wire_id, transaction, wire, checkpoint)
+        } else {
+            let signature = Signature::from_str(&final_transaction.signature)
+                .context("devnet final evidence signature invalid")?;
+            let (wire, versioned) = rpc.transaction_wire(&signature)?;
+            let VersionedMessage::Legacy(message) = versioned.message else {
+                bail!("devnet finalized tag-67 transaction is not legacy");
+            };
+            let transaction =
+                signed_transaction(&payer, &[], &final_instructions, message.recent_blockhash);
+            let snapshot = upgradeable_program_before_final_simulation
+                .as_ref()
+                .context("devnet tag-67 simulation snapshot missing")?
+                .evidence();
+            let nullifier_before = tag67_nullifier_before_simulation
+                .as_ref()
+                .context("devnet tag-67 nullifier prestate checkpoint missing")?;
+            let (nullifier_prestate_kind, nullifier_prestate_lamports, nullifier_raw_sha256) =
+                match nullifier_before.as_ref() {
+                    None => ("absent".to_owned(), 0, None),
+                    Some(account) => (
+                        "system_owned_empty".to_owned(),
+                        account.lamports,
+                        Some(account.evidence(nullifier_address).raw_account_image_sha256),
+                    ),
+                };
+            let checkpoint = V5Tag67SimulationCheckpointEvidence {
+                wire_id: "devnet_nonjournaled_exact_wire".to_owned(),
+                expected_signature: transaction.signatures[0].to_string(),
+                wire_sha256: sha256(&wire),
+                message_sha256: sha256(&bincode::serialize(&transaction.message)?),
+                compute_units_consumed: nonjournaled_tag67_simulation_cu
+                    .context("devnet tag-67 simulation CU checkpoint missing")?,
+                program_address: snapshot.program_account.address,
+                program_lamports: snapshot.program_account.lamports,
+                program_owner: snapshot.program_account.owner,
+                program_executable: snapshot.program_account.executable,
+                program_data_len: snapshot.program_account.data_len,
+                program_data_sha256: snapshot.program_account.data_sha256,
+                program_raw_account_image_sha256: snapshot.program_account.raw_account_image_sha256,
+                programdata_address: snapshot.programdata_address,
+                programdata_lamports: snapshot.programdata_account.lamports,
+                programdata_owner: snapshot.programdata_account.owner,
+                programdata_executable: snapshot.programdata_account.executable,
+                programdata_data_len: snapshot.programdata_account.data_len,
+                programdata_data_sha256: snapshot.programdata_account.data_sha256,
+                programdata_raw_account_image_sha256: snapshot
+                    .programdata_account
+                    .raw_account_image_sha256,
+                programdata_slot: snapshot.programdata_slot,
+                upgrade_authority_address: snapshot.upgrade_authority_address,
+                nullifier_prestate_kind,
+                nullifier_prestate_lamports,
+                nullifier_prestate_raw_account_image_sha256: nullifier_raw_sha256,
+            };
+            (
+                "devnet_nonjournaled_exact_wire".to_owned(),
+                transaction,
+                wire,
+                checkpoint,
+            )
+        };
+    let _ = final_wire_id;
+    let continuation_program_evidence = upgradeable_program_before_continuation.evidence();
+    // A restart can initially observe sequence 0 while a previously sent
+    // Tag-67 wire is still pending, then recover that wire as finalized.
+    // Whether this invocation ran the pre-send callback is therefore the
+    // durable chronology signal; the initial on-chain phase is not.
+    let tag67_checkpoint_predates_continuation = tag67_checkpoint_predates_current_continuation(
+        upgradeable_program_before_final_simulation.as_ref(),
+    );
+    let tag67_checkpoint_observation_order = if tag67_checkpoint_predates_continuation {
+        "durable simulation checkpoint predates this invocation's continuation observation"
+    } else {
+        "this invocation's continuation observation predates its durable simulation checkpoint"
+    };
+    let tag67_checkpoint_program_structural_identity_exact =
+        tag67_checkpoint_program_structural_identity_exact(
+            &tag67_simulation_checkpoint,
+            &continuation_program_evidence,
+        );
+    let tag67_checkpoint_program_observation_order_monotonic =
+        tag67_checkpoint_lamports_follow_observation_order(
+            &tag67_simulation_checkpoint,
+            &continuation_program_evidence,
+            tag67_checkpoint_predates_continuation,
+        );
+    ensure!(
+        tag67_checkpoint_program_structural_identity_exact
+            && tag67_checkpoint_program_observation_order_monotonic,
+        "tag-67 simulation checkpoint program structure changed or lamports moved opposite the observation order"
+    );
+    let (
+        tag67_checkpoint_program_inbound_lamports_to_later_observation,
+        tag67_checkpoint_programdata_inbound_lamports_to_later_observation,
+    ) = if tag67_checkpoint_predates_continuation {
+        (
+            continuation_program_evidence
+                .program_account
+                .lamports
+                .checked_sub(tag67_simulation_checkpoint.program_lamports)
+                .context("program lamports decreased after tag-67 checkpoint")?,
+            continuation_program_evidence
+                .programdata_account
+                .lamports
+                .checked_sub(tag67_simulation_checkpoint.programdata_lamports)
+                .context("ProgramData lamports decreased after tag-67 checkpoint")?,
+        )
+    } else {
+        (
+            tag67_simulation_checkpoint
+                .program_lamports
+                .checked_sub(continuation_program_evidence.program_account.lamports)
+                .context("program lamports decreased before tag-67 checkpoint")?,
+            tag67_simulation_checkpoint
+                .programdata_lamports
+                .checked_sub(continuation_program_evidence.programdata_account.lamports)
+                .context("ProgramData lamports decreased before tag-67 checkpoint")?,
+        )
+    };
+    let checkpoint_nullifier_prestate =
+        nullifier_prestate_from_checkpoint(&tag67_simulation_checkpoint, nullifier_address)?;
+    if let Some(observed) = tag67_nullifier_before_simulation.as_ref() {
+        ensure!(
+            observed == &checkpoint_nullifier_prestate,
+            "tag-67 simulation checkpoint nullifier prestate differs from the live observation"
+        );
+    } else {
+        tag67_nullifier_before_simulation = Some(checkpoint_nullifier_prestate);
+    }
     let final_wire_sha256 = sha256(&final_wire);
     let final_message_sha256 = sha256(&bincode::serialize(&final_tx.message)?);
-
-    // No RPC call intervenes between this exact executable/ProgramData
-    // snapshot and simulation of the one serialized signed wire.
-    let upgradeable_program_before_final_simulation = deployed_program_exact(
-        &rpc,
-        &program_id,
-        &sbf,
-        config.readiness.program_max_len,
-        &expected_upgrade_authority,
-    )?
-    .context("exact declared-profile program missing before tag-67 simulation")?;
-    let upgradeable_program_before_final_simulation_continuity =
-        upgradeable_program_before_final_simulation
-            .continuity_from(&upgradeable_program_before_setup);
-    ensure!(
-        upgradeable_program_before_final_simulation_continuity.all_unchanged(),
-        "program/ProgramData changed between setup and tag-67 simulation"
-    );
-    let final_simulation = rpc.simulate_exact(&final_wire)?;
-    ensure!(
-        final_simulation.error.is_none(),
-        "exact signed tag-67 simulation rejected: {:?}",
-        final_simulation.error
-    );
-    let final_transaction_simulation_cu = final_simulation
-        .units
-        .context("tag-67 simulation omitted CU")?;
-    ensure!(
-        final_transaction_simulation_cu <= u64::from(tag67_compute_unit_limit),
-        "tag-67 simulation exceeded its declared compute-unit limit"
-    );
-    ensure!(
-        tag67_cu_is_within_release_policy(
-            config.readiness.network,
-            final_transaction_simulation_cu
-        ),
-        "tag-67 simulation consumed {final_transaction_simulation_cu} CU, above the mainnet \
-         release-policy ceiling of {MAINNET_RELEASE_POLICY_CU_CEILING} CU"
-    );
-    require_exact_program_success(&final_simulation.logs, program_id)?;
-    ensure!(
-        rpc.account(&pool.pubkey())?.as_ref() == Some(&pool_before_snapshot)
-            && rpc.account(&nullifier_address)?.is_none()
-            && rpc.account(&proof_account.pubkey())?.as_ref() == Some(&finalized_proof),
-        "tag-67 simulation changed pool/nullifier/proof state"
-    );
-
-    let final_transaction = submit_signed_transaction(
-        &rpc,
-        config.readiness.network,
-        &mut recovery_journal,
-        &final_tx,
-        "tag67_verify_and_apply",
-        "v5_tag67_verify_and_apply_retaining_proof",
-    )?;
+    let final_transaction_simulation_cu = tag67_simulation_checkpoint.compute_units_consumed;
     ensure!(
         final_transaction.serialized_transaction_sha256 == final_wire_sha256,
-        "submitted tag-67 wire hash differs from simulated wire"
+        "submitted tag-67 wire hash differs from simulated/checkpointed wire"
+    );
+    let upgradeable_program_before_final_simulation_continuity =
+        upgradeable_program_before_final_simulation
+            .as_ref()
+            .map(|snapshot| snapshot.continuity_from(&upgradeable_program_before_continuation));
+    ensure!(
+        upgradeable_program_before_final_simulation_continuity
+            .is_none_or(UpgradeableProgramContinuityChecks::dust_hardened_continuity),
+        "program/ProgramData changed before tag-67 simulation"
     );
     let final_transaction_landed_cu = final_transaction
         .compute_units_consumed
@@ -3334,10 +5763,10 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
         &expected_upgrade_authority,
     )?
     .context("exact declared-profile program missing after tag-67 finality")?;
-    let upgradeable_program_after_finality_continuity =
-        upgradeable_program_after_finality.continuity_from(&upgradeable_program_before_setup);
+    let upgradeable_program_after_finality_continuity = upgradeable_program_after_finality
+        .continuity_from(&upgradeable_program_before_continuation);
     ensure!(
-        upgradeable_program_after_finality_continuity.all_unchanged(),
+        upgradeable_program_after_finality_continuity.dust_hardened_continuity(),
         "program/ProgramData changed across finalized tag-67"
     );
 
@@ -3349,7 +5778,7 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
     ensure!(
         pool_after_snapshot.owner == program_id
             && !pool_after_snapshot.executable
-            && pool_after_snapshot.lamports == pool_before_snapshot.lamports
+            && pool_after_snapshot.lamports >= pool_rent
             && pool_after_state.sequence == 1
             && pool_after_state.anchor == public.output_anchor
             && pool_after_state.deployment_domain == public.deployment_domain,
@@ -3370,9 +5799,11 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
         .account(&proof_account.pubkey())?
         .context("tag-67 did not retain the sealed proof account")?;
     let retained_proof_byte_for_byte_exact = retained_proof_after == finalized_proof;
+    let retained_proof_structural_image_exact =
+        retained_proof_after.structural_image_unchanged_from(&finalized_proof);
     ensure!(
-        retained_proof_byte_for_byte_exact,
-        "tag-67 changed retained proof bytes/lamports/owner"
+        retained_proof_structural_image_exact,
+        "tag-67 changed retained proof owner/executable/data"
     );
 
     let (final_fee_lamports, pre_balances, post_balances, final_logs) =
@@ -3386,9 +5817,14 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
         &post_balances,
         payer.pubkey(),
         proof_account.pubkey(),
+        pool.pubkey(),
         nullifier_address,
-        finalized_proof.lamports,
     )?;
+    ensure!(
+        retained_proof_balance_equation.nullifier_pre_lamports
+            >= tag67_simulation_checkpoint.nullifier_prestate_lamports,
+        "tag-67 landed nullifier prebalance fell below the simulation checkpoint; only inbound dust is admissible"
+    );
     ensure!(
         retained_proof_balance_equation.nullifier_funding_lamports
             == nullifier_marker_rent_lamports
@@ -3400,6 +5836,55 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
                     .context("tag-67 nullifier balance overflow")?,
         "tag-67 nullifier funding does not match the supported absent/prefunded marker path"
     );
+    let pool_current_lamports_at_least_landed_post =
+        pool_after_snapshot.lamports >= retained_proof_balance_equation.pool_post_lamports;
+    let retained_proof_current_lamports_at_least_landed_post =
+        retained_proof_after.lamports >= retained_proof_balance_equation.proof_post_lamports;
+    ensure!(
+        pool_current_lamports_at_least_landed_post
+            && retained_proof_current_lamports_at_least_landed_post,
+        "pool or retained proof balance fell below the finalized tag-67 post-balance"
+    );
+    let pool_inbound_lamports_after_landing = pool_after_snapshot
+        .lamports
+        .checked_sub(retained_proof_balance_equation.pool_post_lamports)
+        .context("pool post-observation balance fell below landed post-balance")?;
+    let retained_proof_inbound_lamports_after_landing = retained_proof_after
+        .lamports
+        .checked_sub(retained_proof_balance_equation.proof_post_lamports)
+        .context("proof post-observation balance fell below landed post-balance")?;
+    let nullifier_inbound_lamports_between_simulation_and_landing = retained_proof_balance_equation
+        .nullifier_pre_lamports
+        .checked_sub(tag67_simulation_checkpoint.nullifier_prestate_lamports)
+        .context("nullifier landed prebalance fell below simulation prebalance")?;
+    let nullifier_inbound_lamports_after_landing = nullifier_after_snapshot
+        .lamports
+        .checked_sub(retained_proof_balance_equation.nullifier_post_lamports)
+        .context("nullifier post-observation balance fell below landed post-balance")?;
+    let pool_before_for_evidence = if tag67_checkpoint_predates_continuation {
+        let mut reconstructed = pool_before_snapshot.clone();
+        reconstructed.lamports = retained_proof_balance_equation.pool_pre_lamports;
+        reconstructed
+    } else {
+        pool_before_snapshot.clone()
+    };
+    let sealed_proof_before_for_evidence = if tag67_checkpoint_predates_continuation {
+        let mut reconstructed = finalized_proof.clone();
+        reconstructed.lamports = retained_proof_balance_equation.proof_pre_lamports;
+        reconstructed
+    } else {
+        finalized_proof.clone()
+    };
+    let sealed_proof_before_observation_scope = if tag67_checkpoint_predates_continuation {
+        "reconstructed exact sealed owner/executable/data image with lamports from finalized tag-67 transaction preBalances"
+    } else {
+        "observed before this invocation's tag-67 simulation/send; transaction preBalances are separately authoritative for landing"
+    };
+    let pool_before_evidence_observation_scope = if tag67_checkpoint_predates_continuation {
+        "reconstructed exact sequence-0 image with lamports from finalized tag-67 transaction preBalances"
+    } else {
+        pool_before_observation_scope
+    };
 
     let mut replay_tag67 = tag67;
     replay_tag67.data[1..33].copy_from_slice(&public.output_anchor);
@@ -3444,20 +5929,47 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
         replay_expected_nullifier_error_exact,
         "same-nullifier replay returned an unexpected rejection: {replay_simulation_error}"
     );
-    let replay_pool_unchanged = rpc.account(&pool.pubkey())?.as_ref() == Some(&pool_after_snapshot);
+    let replay_pool_after = rpc
+        .account(&pool.pubkey())?
+        .context("v5 pool missing after replay simulation")?;
+    let replay_nullifier_after = rpc
+        .account(&nullifier_address)?
+        .context("v5 nullifier missing after replay simulation")?;
+    let replay_proof_after = rpc
+        .account(&proof_account.pubkey())?
+        .context("v5 proof missing after replay simulation")?;
+    let replay_pool_unchanged =
+        replay_pool_after.dust_hardened_continuity_from(&pool_after_snapshot);
     let replay_nullifier_unchanged =
-        rpc.account(&nullifier_address)?.as_ref() == Some(&nullifier_after_snapshot);
+        replay_nullifier_after.dust_hardened_continuity_from(&nullifier_after_snapshot);
     let replay_proof_unchanged =
-        rpc.account(&proof_account.pubkey())?.as_ref() == Some(&retained_proof_after);
+        replay_proof_after.dust_hardened_continuity_from(&retained_proof_after);
     ensure!(
         replay_pool_unchanged && replay_nullifier_unchanged && replay_proof_unchanged,
-        "same-nullifier replay simulation changed pool/nullifier/proof"
+        "same-nullifier replay simulation changed pool/nullifier/proof structure or observed a lamport decrease"
     );
+    let replay_pool_inbound_lamports = replay_pool_after
+        .lamports
+        .checked_sub(pool_after_snapshot.lamports)
+        .context("pool lamports decreased during replay interval")?;
+    let replay_nullifier_inbound_lamports = replay_nullifier_after
+        .lamports
+        .checked_sub(nullifier_after_snapshot.lamports)
+        .context("nullifier lamports decreased during replay interval")?;
+    let replay_proof_inbound_lamports = replay_proof_after
+        .lamports
+        .checked_sub(retained_proof_after.lamports)
+        .context("proof lamports decreased during replay interval")?;
     let nullifier_landing_path = if retained_proof_balance_equation.nullifier_pre_lamports == 0 {
         "absent_create_account"
     } else {
         "system_owned_prefunded_transfer_if_needed_allocate_assign"
     };
+    let nullifier_observed_before_simulation = tag67_nullifier_before_simulation
+        .as_ref()
+        .context("tag-67 nullifier simulation prestate was not retained")?
+        .as_ref()
+        .map(|account| account.evidence(nullifier_address));
 
     let mut evidence = V5DevnetExecutionEvidence {
         artifact: config.readiness.network.evidence_name(),
@@ -3490,27 +6002,86 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
         least_good_selector,
         good_candidates,
         program_max_len: config.readiness.program_max_len,
+        resumed_from_in_progress: config.resume_in_progress,
+        recovered_finalized_transaction_count: if config.resume_in_progress {
+            3 + proof_upload_start_index
+                + usize::from(proof_already_sealed)
+                + usize::from(tag67_checkpoint_predates_continuation)
+        } else {
+            0
+        },
+        recovered_upload_transaction_count: if config.resume_in_progress {
+            proof_upload_start_index
+        } else {
+            0
+        },
+        recovered_upload_prefix_bytes: if config.resume_in_progress {
+            (proof_upload_start_index * UPLOAD_CHUNK_BYTES).min(proof.len())
+        } else {
+            0
+        },
+        recovered_historical_identical_wire_retry_counts_available: !config.resume_in_progress,
+        upgradeable_program_before_setup_observation_scope: if config.resume_in_progress {
+            "historical pre-setup snapshot unavailable and encoded as null; before-continuation is separately observed"
+        } else {
+            "snapshot taken before initial setup"
+        },
         deployment,
         setup_transactions,
         proof_upload_chunk_bytes: UPLOAD_CHUNK_BYTES,
         proof_upload_transaction_count,
         proof_upload_finality_windows,
-        upgradeable_program_before_setup: upgradeable_program_before_setup.evidence(),
+        upgradeable_program_before_setup: upgradeable_program_before_setup
+            .as_ref()
+            .map(UpgradeableProgramSnapshot::evidence),
+        upgradeable_program_before_continuation_observation_scope:
+            if tag67_checkpoint_predates_continuation
+                && resume_phase == V5ResumePhase::Tag67Finalized
+            {
+                "observed after recovered tag-67 finality; the persisted pre-submit checkpoint separately binds transaction-time program structure"
+            } else if tag67_checkpoint_predates_continuation {
+                "observed during recovery after a prior tag-67 submission but before its pending finality was reconciled; the persisted checkpoint separately binds transaction-time program structure"
+            } else {
+                "observed before this invocation's durable tag-67 simulation checkpoint"
+            },
+        upgradeable_program_before_continuation:
+            upgradeable_program_before_continuation.evidence(),
         upgradeable_program_before_final_simulation:
-            upgradeable_program_before_final_simulation.evidence(),
+            upgradeable_program_before_final_simulation
+                .as_ref()
+                .map(UpgradeableProgramSnapshot::evidence),
         upgradeable_program_before_final_simulation_continuity,
+        tag67_simulation_checkpoint,
+        tag67_checkpoint_observation_order,
+        tag67_checkpoint_program_structural_identity_exact,
+        tag67_checkpoint_program_observation_order_monotonic,
+        tag67_checkpoint_program_inbound_lamports_to_later_observation,
+        tag67_checkpoint_programdata_inbound_lamports_to_later_observation,
+        upgradeable_program_after_finality_observation_scope:
+            if tag67_checkpoint_predates_continuation {
+                "observed during persisted-checkpoint recovery; before_continuation continuity covers only the later recovery observation interval"
+            } else {
+                "observed after finalized tag-67; continuity from before_continuation spans the live execution interval"
+            },
         upgradeable_program_after_finality: upgradeable_program_after_finality.evidence(),
         upgradeable_program_after_finality_continuity,
-        pool_before: pool_before_snapshot.evidence(pool.pubkey()),
+        pool_before_observation_scope: pool_before_evidence_observation_scope,
+        pool_before: pool_before_for_evidence.evidence(pool.pubkey()),
         pool_after: pool_after_snapshot.evidence(pool.pubkey()),
         sequence_before: pool_before_state.sequence,
         sequence_after: pool_after_state.sequence,
         current_anchor_hex: spend_hex(&public.current_anchor),
         output_anchor_hex: spend_hex(&public.output_anchor),
         deployment_domain_hex: spend_hex(&public.deployment_domain),
-        sealed_proof_before: finalized_proof.evidence(proof_account.pubkey()),
+        sealed_proof_before_observation_scope,
+        sealed_proof_before: sealed_proof_before_for_evidence.evidence(proof_account.pubkey()),
         retained_proof_after: retained_proof_after.evidence(proof_account.pubkey()),
         retained_proof_byte_for_byte_exact,
+        retained_proof_structural_image_exact,
+        retained_proof_current_lamports_at_least_landed_post,
+        retained_proof_inbound_lamports_after_landing,
+        pool_current_lamports_at_least_landed_post,
+        pool_inbound_lamports_after_landing,
         post_finalize_upload_rejected,
         post_finalize_upload_error,
         post_finalize_second_finalize_rejected,
@@ -3533,7 +6104,9 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
         final_transaction_refetched_message_exact,
         final_transaction_program_success_log_exact,
         retained_proof_balance_equation,
-        nullifier_observed_before_simulation: None,
+        nullifier_observed_before_simulation,
+        nullifier_inbound_lamports_between_simulation_and_landing,
+        nullifier_inbound_lamports_after_landing,
         nullifier_landing_path,
         nullifier_after: nullifier_after_snapshot.evidence(nullifier_address),
         nullifier_marker_rent_lamports,
@@ -3543,6 +6116,9 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
         replay_pool_unchanged,
         replay_nullifier_unchanged,
         replay_proof_unchanged,
+        replay_pool_inbound_lamports,
+        replay_nullifier_inbound_lamports,
+        replay_proof_inbound_lamports,
         evidence_path: path_string(&config.evidence)?,
         evidence_file_mode: 0o444,
         explicit_scope: [
@@ -3565,6 +6141,7 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
         "final v5 evidence mode is not immutable 0444"
     );
     evidence.evidence_file_mode = evidence_mode;
+    let committed_evidence_sha256 = sha256(&exact_regular_file(&config.evidence)?);
     if let Some(journal) = recovery_journal.as_mut() {
         journal.record_checkpoint(
             "tag67_finalized_and_evidence_committed",
@@ -3573,6 +6150,7 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
                 "finalized_slot": evidence.final_transaction.finalized_slot,
                 "landed_cu": evidence.final_transaction_landed_cu,
                 "evidence_path": evidence.evidence_path,
+                "evidence_sha256": committed_evidence_sha256,
                 "pool_after": evidence.pool_after.address,
                 "nullifier_after": evidence.nullifier_after.address,
             }),
@@ -3582,12 +6160,288 @@ fn execute_from_config(config: ExecuteConfig) -> Result<V5DevnetExecutionEvidenc
     Ok(evidence)
 }
 
+fn recover_committed_mainnet_evidence_if_present(
+    config: &ExecuteConfig,
+) -> Result<Option<V5MainnetExecutionOutcome>> {
+    ensure!(
+        config.readiness.network == V5NetworkPolicy::MainnetBeta && config.resume_in_progress,
+        "committed-evidence recovery is mainnet resume-only"
+    );
+    if exact_in_progress_evidence_marker_for(
+        &config.evidence,
+        config.readiness.network.evidence_name(),
+    ) {
+        return Ok(None);
+    }
+
+    let metadata = fs::symlink_metadata(&config.evidence)
+        .with_context(|| format!("inspect mainnet evidence {}", config.evidence.display()))?;
+    ensure!(
+        metadata.file_type().is_file()
+            && !metadata.file_type().is_symlink()
+            && metadata.nlink() == 1
+            && metadata.permissions().mode() & 0o7777 == 0o444,
+        "resume evidence is neither the exact in-progress marker nor one immutable 0444 regular file"
+    );
+    let bytes = exact_regular_file(&config.evidence)?;
+    let evidence: Value =
+        serde_json::from_slice(&bytes).context("decode immutable committed v5 mainnet evidence")?;
+    ensure!(
+        evidence["artifact"] == config.readiness.network.evidence_name()
+            && evidence["network"] == config.readiness.network.network()
+            && evidence["evidence_file_mode"] == 0o444
+            && evidence["evidence_path"] == path_string(&config.evidence)?,
+        "immutable committed evidence header differs from this resume request"
+    );
+
+    let payer = secure_keypair_0600(&config.readiness.payer_keypair)?;
+    let program = secure_keypair_0600(&config.readiness.program_keypair)?;
+    let pool = secure_keypair_0600(&config.readiness.pool_keypair)?;
+    let proof_account = secure_keypair_0600(&config.readiness.proof_account_keypair)?;
+    let proof = exact_regular_file(&config.readiness.proof)?;
+    let statement_bytes = exact_regular_file(&config.readiness.statement)?;
+    let sbf = exact_regular_file(&config.readiness.sbf)?;
+    let statement = decode_spend_statement_sidecar(&statement_bytes)?;
+    verify_runtime_statement_and_wire(
+        config.readiness.network,
+        program.pubkey(),
+        pool.pubkey(),
+        &statement,
+    )?;
+    let public = statement_public_inputs(&statement);
+    let (nullifier_address, nullifier_bump) = nullifier_address_for_network(
+        config.readiness.network,
+        program.pubkey(),
+        &public.nullifier,
+    )?;
+    ensure!(
+        evidence["program_id"] == program.pubkey().to_string()
+            && evidence["payer"] == payer.pubkey().to_string()
+            && evidence["pool"] == pool.pubkey().to_string()
+            && evidence["proof_account"] == proof_account.pubkey().to_string()
+            && evidence["nullifier_address"] == nullifier_address.to_string()
+            && evidence["readiness"]["nullifier_bump"] == u64::from(nullifier_bump)
+            && nullifier_bump == MAINNET_NULLIFIER_PDA_BUMP
+            && evidence["proof_sha256"] == sha256(&proof)
+            && evidence["statement_sha256"] == sha256(&statement_bytes)
+            && evidence["sbf_sha256"] == sha256(&sbf)
+            && evidence["sequence_after"] == 1
+            && evidence["final_transaction_submitted_identically_to_simulation"] == true
+            && evidence["final_transaction_refetched_wire_exact"] == true
+            && evidence["final_transaction_refetched_message_exact"] == true
+            && evidence["final_transaction_program_success_log_exact"] == true,
+        "immutable committed evidence identities differ from exact bump-255 resume inputs"
+    );
+
+    let signature_text = evidence["final_transaction"]["signature"]
+        .as_str()
+        .context("committed evidence omitted tag-67 signature")?;
+    let signature = Signature::from_str(signature_text)
+        .context("committed evidence tag-67 signature invalid")?;
+    let finalized_slot = evidence["final_transaction"]["finalized_slot"]
+        .as_u64()
+        .context("committed evidence omitted tag-67 finalized slot")?;
+    ensure!(
+        finalized_slot > 0,
+        "committed evidence tag-67 finalized slot is zero"
+    );
+    let wire_sha256 = evidence["final_transaction_wire_sha256"]
+        .as_str()
+        .context("committed evidence omitted final wire hash")?;
+    ensure!(
+        evidence["final_transaction"]["serialized_transaction_sha256"] == wire_sha256,
+        "committed evidence final transaction hashes disagree"
+    );
+
+    let run_directory = config
+        .run_directory
+        .as_ref()
+        .context("committed-evidence recovery omitted run directory")?;
+    let mut journal = crate::spend_mainnet_journal::RecoveryJournal::reopen(run_directory)?;
+    let journal_already_completed =
+        if let Some(outcome) = journal.state().completed_outcome.as_deref() {
+            ensure!(
+                outcome == "v5_tag67_finalized_and_evidence_committed",
+                "completed recovery journal has a different outcome"
+            );
+            true
+        } else {
+            false
+        };
+    let matching_wires = semantic_wire_ids(&journal, "tag67_verify_and_apply")?
+        .into_iter()
+        .filter(|wire_id| {
+            let ready = &journal.state().ready_wires[wire_id];
+            ready.submitted_signature.as_deref() == Some(signature_text)
+                && ready.finalized_slot == Some(finalized_slot)
+                && ready.wire_sha256 == wire_sha256
+        })
+        .collect::<Vec<_>>();
+    ensure!(
+        matching_wires.len() == 1,
+        "committed evidence does not identify one exact finalized tag-67 journal wire"
+    );
+    let wire_id = &matching_wires[0];
+    let wire = journal.load_persisted_wire(wire_id)?;
+    let transaction: Transaction =
+        bincode::deserialize(&wire).context("decode committed-evidence tag-67 spool")?;
+    let tag67 = build_tag67_instruction(
+        program.pubkey(),
+        proof_account.pubkey(),
+        pool.pubkey(),
+        nullifier_address,
+        payer.pubkey(),
+        &statement,
+    )?;
+    let mut expected_instructions = vec![
+        ComputeBudgetInstruction::set_compute_unit_limit(tag67_compute_unit_limit(
+            config.readiness.network,
+        )),
+        ComputeBudgetInstruction::request_heap_frame(HEAP_FRAME_BYTES),
+    ];
+    if let Some(price) = compute_unit_price_instruction(&config.readiness) {
+        expected_instructions.push(price);
+    }
+    expected_instructions.push(tag67);
+    let expected_transaction = signed_transaction(
+        &payer,
+        &[],
+        &expected_instructions,
+        transaction.message.recent_blockhash,
+    );
+    let message_sha256 = sha256(&bincode::serialize(&transaction.message)?);
+    ensure!(
+        bincode::serialize(&expected_transaction)? == wire
+            && sha256(&wire) == wire_sha256
+            && transaction.signatures.first() == Some(&signature)
+            && evidence["final_transaction_message_sha256"] == message_sha256
+            && evidence["final_transaction"]["message_sha256"] == message_sha256,
+        "committed evidence differs from the reconstructed exact bump-255 tag-67 transaction"
+    );
+    let simulation_checkpoint =
+        tag67_simulation_checkpoint(&journal, wire_id, &transaction, &wire)?;
+    ensure!(
+        serde_json::to_value(&simulation_checkpoint)? == evidence["tag67_simulation_checkpoint"]
+            && evidence["final_transaction_simulation_cu"]
+                == simulation_checkpoint.compute_units_consumed,
+        "committed evidence differs from its complete exact-simulation checkpoint"
+    );
+    let simulation_checkpoint_indices = journal
+        .state()
+        .checkpoints
+        .iter()
+        .enumerate()
+        .filter(|(_, (name, details))| {
+            name == "v5_tag67_exact_simulation_green"
+                && details["wire_id"].as_str() == Some(wire_id.as_str())
+        })
+        .map(|(index, _)| index)
+        .collect::<Vec<_>>();
+    let send_authority_checkpoints = journal
+        .state()
+        .checkpoints
+        .iter()
+        .enumerate()
+        .filter(|(_, (name, details))| {
+            name == "wire_send_authority_consumed"
+                && details["wire_id"].as_str() == Some(wire_id.as_str())
+        })
+        .map(|(index, (_, details))| (index, details))
+        .collect::<Vec<_>>();
+    ensure!(
+        send_authority_checkpoints.len() == 1
+            && !simulation_checkpoint_indices.is_empty()
+            && send_authority_checkpoints[0].0
+                > *simulation_checkpoint_indices
+                    .last()
+                    .context("exact tag-67 simulation checkpoint disappeared")?
+            && send_authority_checkpoints[0].1["expected_signature"].as_str()
+                == Some(signature_text)
+            && send_authority_checkpoints[0].1["wire_sha256"].as_str() == Some(wire_sha256),
+        "committed evidence lacks one exact send-authority checkpoint"
+    );
+
+    let rpc = Rpc::new(config.readiness.rpc_url.clone())?;
+    ensure!(
+        rpc.genesis_hash()? == MAINNET_BETA_GENESIS_HASH,
+        "committed-evidence recovery RPC is not mainnet-beta"
+    );
+    let (status_slot, transaction_error, progress) = rpc
+        .signature_status(&signature)?
+        .context("committed tag-67 signature disappeared from full history")?;
+    ensure!(
+        status_slot == finalized_slot && transaction_error.is_none() && progress == "finalized",
+        "committed tag-67 signature is not the exact finalized success"
+    );
+    let (refetched_wire, refetched_transaction) = rpc.transaction_wire(&signature)?;
+    ensure!(
+        refetched_wire == wire && refetched_transaction.signatures.first() == Some(&signature),
+        "committed tag-67 chain bytes differ from the retained spool"
+    );
+
+    let evidence_sha256 = sha256(&bytes);
+    let completion_checkpoints = journal
+        .state()
+        .checkpoints
+        .iter()
+        .filter(|(name, _)| name == "tag67_finalized_and_evidence_committed")
+        .map(|(_, details)| details)
+        .collect::<Vec<_>>();
+    ensure!(
+        completion_checkpoints.len() <= 1,
+        "recovery journal has duplicate evidence-commit checkpoints"
+    );
+    if let Some(details) = completion_checkpoints.first() {
+        ensure!(
+            details["signature"].as_str() == Some(signature_text)
+                && details["finalized_slot"].as_u64() == Some(finalized_slot)
+                && details["landed_cu"] == evidence["final_transaction_landed_cu"]
+                && details["evidence_path"] == evidence["evidence_path"]
+                && details["evidence_sha256"].as_str() == Some(evidence_sha256.as_str())
+                && details["pool_after"] == evidence["pool_after"]["address"]
+                && details["nullifier_after"] == evidence["nullifier_after"]["address"],
+            "recovery journal evidence-commit checkpoint conflicts with immutable evidence"
+        );
+    }
+    if journal_already_completed {
+        ensure!(
+            completion_checkpoints.len() == 1,
+            "completed recovery journal omitted its exact evidence-commit checkpoint"
+        );
+        return Ok(Some(V5MainnetExecutionOutcome { evidence }));
+    }
+    if completion_checkpoints.is_empty() {
+        journal.record_checkpoint(
+            "tag67_finalized_and_evidence_committed",
+            serde_json::json!({
+                "signature": signature_text,
+                "finalized_slot": finalized_slot,
+                "landed_cu": evidence["final_transaction_landed_cu"],
+                "evidence_path": evidence["evidence_path"],
+                "evidence_sha256": evidence_sha256,
+                "pool_after": evidence["pool_after"]["address"],
+                "nullifier_after": evidence["nullifier_after"]["address"],
+                "recovered_after_atomic_evidence_commit": true,
+            }),
+        )?;
+    }
+    journal.complete("v5_tag67_finalized_and_evidence_committed")?;
+    Ok(Some(V5MainnetExecutionOutcome { evidence }))
+}
+
 pub(crate) fn execute(arguments: &[String]) -> Result<V5DevnetExecutionEvidence> {
     execute_from_config(parse_execute_args(arguments)?)
 }
 
-pub(crate) fn execute_mainnet(arguments: &[String]) -> Result<V5DevnetExecutionEvidence> {
-    execute_from_config(parse_mainnet_execute_args(arguments)?)
+pub(crate) fn execute_mainnet(arguments: &[String]) -> Result<V5MainnetExecutionOutcome> {
+    let config = parse_mainnet_execute_args(arguments)?;
+    if config.resume_in_progress {
+        if let Some(recovered) = recover_committed_mainnet_evidence_if_present(&config)? {
+            return Ok(recovered);
+        }
+    }
+    let evidence = execute_from_config(config)?;
+    V5MainnetExecutionOutcome::from_new_evidence(&evidence)
 }
 
 #[cfg(test)]
@@ -3896,6 +6750,16 @@ mod tests {
             parsed.readiness.ws_url.as_deref(),
             Some("wss://mainnet.example.invalid")
         );
+        assert!(!parsed.resume_in_progress);
+
+        let mut resume = mainnet_execute_arguments();
+        resume.push("--resume-in-progress".to_owned());
+        let resumed = parse_mainnet_execute_args(&resume).unwrap();
+        assert!(resumed.resume_in_progress);
+        assert_eq!(
+            resumed.run_directory.as_deref(),
+            Some(Path::new("/recovery/v5-mainnet-run"))
+        );
 
         let mut no_flag = mainnet_execute_arguments();
         no_flag.pop();
@@ -4016,6 +6880,81 @@ mod tests {
             V5NetworkPolicy::Devnet,
             MAINNET_RELEASE_POLICY_CU_CEILING + 1
         ));
+    }
+
+    #[test]
+    fn semantic_retry_wire_ids_are_canonical() {
+        assert_eq!(
+            semantic_wire_attempt("proof_upload_0034", "proof_upload_0034"),
+            Some(0)
+        );
+        assert_eq!(
+            semantic_wire_attempt("proof_upload_0034_r01", "proof_upload_0034"),
+            Some(1)
+        );
+        assert_eq!(
+            semantic_wire_attempt("tag67_verify_and_apply_r99", "tag67_verify_and_apply"),
+            Some(99)
+        );
+        for malformed in [
+            "proof_upload_0034_r00",
+            "proof_upload_0034_r1",
+            "proof_upload_0034_r001",
+            "proof_upload_0034_rxx",
+            "proof_upload_0034_retry01",
+        ] {
+            assert_eq!(semantic_wire_attempt(malformed, "proof_upload_0034"), None);
+        }
+    }
+
+    #[test]
+    fn resume_pool_image_allows_only_balance_dust() {
+        let program_id = Pubkey::new_unique();
+        let anchor = [7u8; 32];
+        let domain = [9u8; 32];
+        let mut data = vec![0u8; ATOMIC_POOL_STATE_LEN];
+        AtomicPoolStateV2 {
+            sequence: 1,
+            anchor,
+            deployment_domain: domain,
+        }
+        .encode(&mut data)
+        .unwrap();
+        let rent = 1_000;
+        let account = RpcAccount {
+            lamports: rent + 1,
+            owner: program_id,
+            executable: false,
+            data: data.clone(),
+        };
+        assert!(initialized_pool_account_data_exact_allowing_dust(
+            &account, program_id, rent, 1, anchor, domain
+        ));
+        let mut wrong = account;
+        wrong.data[0] ^= 1;
+        assert!(!initialized_pool_account_data_exact_allowing_dust(
+            &wrong, program_id, rent, 1, anchor, domain
+        ));
+    }
+
+    #[test]
+    fn nullifier_prestate_accepts_only_absence_or_system_owned_empty_dust() {
+        assert!(supported_nullifier_prestate(None));
+        let mut dust = RpcAccount {
+            lamports: 1,
+            owner: system_program::id(),
+            executable: false,
+            data: Vec::new(),
+        };
+        assert!(supported_nullifier_prestate(Some(&dust)));
+        dust.data.push(0);
+        assert!(!supported_nullifier_prestate(Some(&dust)));
+        dust.data.clear();
+        dust.owner = Pubkey::new_unique();
+        assert!(!supported_nullifier_prestate(Some(&dust)));
+        dust.owner = system_program::id();
+        dust.executable = true;
+        assert!(!supported_nullifier_prestate(Some(&dust)));
     }
 
     #[test]
@@ -4184,32 +7123,34 @@ mod tests {
     fn retained_proof_balance_equation_is_exact() {
         let payer = Pubkey::new_unique();
         let proof = Pubkey::new_unique();
+        let pool = Pubkey::new_unique();
         let nullifier = Pubkey::new_unique();
         let other = Pubkey::new_unique();
-        let keys = [payer, proof, nullifier, other];
+        let keys = [payer, proof, pool, nullifier, other];
         let valid = retained_proof_balance_evidence(
             &keys,
             10,
-            &[1_000, 500, 0, 1],
-            &[890, 500, 100, 1],
+            &[1_000, 500, 300, 0, 1],
+            &[890, 500, 300, 100, 1],
             payer,
             proof,
+            pool,
             nullifier,
-            500,
         )
         .unwrap();
         assert!(valid.exact_balance_equation_reconciled);
         assert!(valid.proof_balance_retained_exactly);
+        assert!(valid.pool_balance_retained_exactly);
 
         let prefunded = retained_proof_balance_evidence(
             &keys,
             10,
-            &[1_000, 500, 40, 1],
-            &[930, 500, 100, 1],
+            &[1_000, 500, 300, 40, 1],
+            &[930, 500, 300, 100, 1],
             payer,
             proof,
+            pool,
             nullifier,
-            500,
         )
         .unwrap();
         assert_eq!(prefunded.nullifier_funding_lamports, 60);
@@ -4217,12 +7158,12 @@ mod tests {
         let overfunded = retained_proof_balance_evidence(
             &keys,
             10,
-            &[1_000, 500, 120, 1],
-            &[990, 500, 120, 1],
+            &[1_000, 500, 300, 120, 1],
+            &[990, 500, 300, 120, 1],
             payer,
             proof,
+            pool,
             nullifier,
-            500,
         )
         .unwrap();
         assert_eq!(overfunded.nullifier_funding_lamports, 0);
@@ -4230,25 +7171,170 @@ mod tests {
         assert!(retained_proof_balance_evidence(
             &keys,
             10,
-            &[1_000, 500, 0, 1],
-            &[890, 499, 100, 1],
+            &[1_000, 500, 300, 0, 1],
+            &[890, 499, 300, 100, 1],
             payer,
             proof,
+            pool,
             nullifier,
-            500,
         )
         .is_err());
         assert!(retained_proof_balance_evidence(
             &keys,
             9,
-            &[1_000, 500, 0, 1],
-            &[890, 500, 100, 1],
+            &[1_000, 500, 300, 0, 1],
+            &[890, 500, 300, 100, 1],
             payer,
             proof,
+            pool,
             nullifier,
-            500,
         )
         .is_err());
+        assert!(retained_proof_balance_evidence(
+            &keys,
+            10,
+            &[1_000, 500, 300, 0, 1],
+            &[890, 500, 301, 100, 1],
+            payer,
+            proof,
+            pool,
+            nullifier,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn account_continuity_accepts_only_inbound_lamport_dust() {
+        let baseline = RpcAccount {
+            lamports: 100,
+            owner: Pubkey::new_unique(),
+            executable: false,
+            data: vec![1, 2, 3],
+        };
+        let mut inbound_dust = baseline.clone();
+        inbound_dust.lamports += 1;
+        assert!(inbound_dust.dust_hardened_continuity_from(&baseline));
+        assert!(account_unchanged_allowing_inbound_lamports(
+            Some(&inbound_dust),
+            &baseline
+        ));
+
+        let mut decreased = baseline.clone();
+        decreased.lamports -= 1;
+        assert!(!decreased.dust_hardened_continuity_from(&baseline));
+
+        let mut owner_changed = inbound_dust.clone();
+        owner_changed.owner = Pubkey::new_unique();
+        assert!(!owner_changed.dust_hardened_continuity_from(&baseline));
+        let mut executable_changed = inbound_dust.clone();
+        executable_changed.executable = true;
+        assert!(!executable_changed.dust_hardened_continuity_from(&baseline));
+        let mut data_changed = inbound_dust;
+        data_changed.data.push(4);
+        assert!(!data_changed.dust_hardened_continuity_from(&baseline));
+
+        let prefunded = RpcAccount {
+            lamports: 1,
+            owner: system_program::id(),
+            executable: false,
+            data: Vec::new(),
+        };
+        assert!(nullifier_prestate_unchanged_allowing_inbound_lamports(
+            Some(&prefunded),
+            None
+        ));
+        let mut more_prefunded = prefunded.clone();
+        more_prefunded.lamports += 1;
+        assert!(nullifier_prestate_unchanged_allowing_inbound_lamports(
+            Some(&more_prefunded),
+            Some(&prefunded)
+        ));
+        assert!(!nullifier_prestate_unchanged_allowing_inbound_lamports(
+            None,
+            Some(&prefunded)
+        ));
+    }
+
+    #[test]
+    fn tag67_program_checkpoint_pins_structure_and_orders_inbound_dust() {
+        let live_snapshot = UpgradeableProgramSnapshot {
+            program_id: Pubkey::new_unique(),
+            program: RpcAccount {
+                lamports: 10,
+                owner: solana_sdk::bpf_loader_upgradeable::id(),
+                executable: true,
+                data: vec![1, 2],
+            },
+            programdata_address: Pubkey::new_unique(),
+            programdata: RpcAccount {
+                lamports: 20,
+                owner: solana_sdk::bpf_loader_upgradeable::id(),
+                executable: false,
+                data: vec![3, 4, 5],
+            },
+            programdata_slot: 77,
+            upgrade_authority_address: Pubkey::new_unique(),
+        };
+        let snapshot = live_snapshot.evidence();
+        assert!(tag67_checkpoint_predates_current_continuation(None));
+        assert!(!tag67_checkpoint_predates_current_continuation(Some(
+            &live_snapshot
+        )));
+        let mut checkpoint = V5Tag67SimulationCheckpointEvidence {
+            wire_id: "tag67_verify_and_apply_r01".to_owned(),
+            expected_signature: "signature".to_owned(),
+            wire_sha256: "wire".to_owned(),
+            message_sha256: "message".to_owned(),
+            compute_units_consumed: 1,
+            program_address: snapshot.program_account.address.clone(),
+            program_lamports: snapshot.program_account.lamports + 1,
+            program_owner: snapshot.program_account.owner.clone(),
+            program_executable: snapshot.program_account.executable,
+            program_data_len: snapshot.program_account.data_len,
+            program_data_sha256: snapshot.program_account.data_sha256.clone(),
+            program_raw_account_image_sha256: "program-raw".to_owned(),
+            programdata_address: snapshot.programdata_address.clone(),
+            programdata_lamports: snapshot.programdata_account.lamports + 1,
+            programdata_owner: snapshot.programdata_account.owner.clone(),
+            programdata_executable: snapshot.programdata_account.executable,
+            programdata_data_len: snapshot.programdata_account.data_len,
+            programdata_data_sha256: snapshot.programdata_account.data_sha256.clone(),
+            programdata_raw_account_image_sha256: "programdata-raw".to_owned(),
+            programdata_slot: snapshot.programdata_slot,
+            upgrade_authority_address: snapshot.upgrade_authority_address.clone(),
+            nullifier_prestate_kind: "absent".to_owned(),
+            nullifier_prestate_lamports: 0,
+            nullifier_prestate_raw_account_image_sha256: None,
+        };
+        assert!(tag67_checkpoint_program_structural_identity_exact(
+            &checkpoint,
+            &snapshot
+        ));
+        assert!(tag67_checkpoint_lamports_follow_observation_order(
+            &checkpoint,
+            &snapshot,
+            false
+        ));
+        assert!(!tag67_checkpoint_lamports_follow_observation_order(
+            &checkpoint,
+            &snapshot,
+            true
+        ));
+
+        let mut later_recovery = snapshot.clone();
+        later_recovery.program_account.lamports += 2;
+        later_recovery.programdata_account.lamports += 2;
+        assert!(tag67_checkpoint_lamports_follow_observation_order(
+            &checkpoint,
+            &later_recovery,
+            true
+        ));
+
+        checkpoint.programdata_data_sha256 = "changed".to_owned();
+        assert!(!tag67_checkpoint_program_structural_identity_exact(
+            &checkpoint,
+            &snapshot
+        ));
     }
 
     #[test]

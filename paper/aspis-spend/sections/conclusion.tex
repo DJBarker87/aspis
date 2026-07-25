@@ -29,6 +29,19 @@ current repository extends that approach with an Aeneas-generated
 Rust-to-Lean path for the later V5 Tag-67 candidate, while keeping the V5
 candidate distinct from the q18/g37 transaction reported here.
 
+\paragraph{Repository outcome addendum (25 July 2026).}
+After the manuscript result, the frozen V5 SBF was deployed at mainnet slot
+\(434999519\), and Tag~67 transaction
+\nolinkurl{EJviPgF12i9iK2CveVaQSMeFQqDMFPQ1iPRUYEwNQE3zGquTUZNJXPZEENorcQtsnQj1orFmH1TPsgdbR3vJ2fE}
+finalized at slot \(435019536\).  Its canonical nullifier-PDA bump was \(255\),
+and exact signed-wire simulation and landed execution both consumed
+\(1{,}334{,}452\) CU.  Subsequent proof-account close, ProgramData close, and
+payer sweep recovered temporary rent; the two direct credits to the protected
+refund wallet totaled \(10{,}980{,}894{,}882\) lamports and left the dedicated
+payer at zero.  The separate evidence bundle is
+\path{release/aspis-v5-tag67-mainnet-v1/}.  This operational follow-up does not
+alter the q18/g37 security parameters or manuscript scope.
+
 The result establishes feasibility for this one-input, one-output same-path
 transition under the measured Solana limit.  Broader transaction relations,
 lower prover latency, independent security review, and sustained deployment

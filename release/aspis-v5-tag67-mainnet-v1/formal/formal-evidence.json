@@ -1,0 +1,95 @@
+{
+  "artifact": "aspis_v5_tag67_formal_evidence",
+  "schema_version": 1,
+  "release_id": "aspis-v5-tag67-mainnet-v1",
+  "release_tag": "aspis-v5-tag67-mainnet-v1",
+  "release_scope": {
+    "network": "mainnet-beta",
+    "program_id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+    "sbf_sha256": "4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40",
+    "tag67_signature": "EJviPgF12i9iK2CveVaQSMeFQqDMFPQ1iPRUYEwNQE3zGquTUZNJXPZEENorcQtsnQj1orFmH1TPsgdbR3vJ2fE",
+    "tag67_finalized_slot": 435019536
+  },
+  "lean": {
+    "maintained_project_commit": "42c683f4c28c7b5d83250b7633d55583e9ed93c9",
+    "toolchain": "leanprover/lean4:v4.32.0",
+    "status_page": "AspisFormal/README.md",
+    "audited_integration_theorem_dependencies": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "status_assertions": {
+      "contains_sorry": false,
+      "contains_custom_axiom": false,
+      "uses_native_decide": false,
+      "uses_compiled_evaluation_shortcut": false
+    }
+  },
+  "rust_to_lean": {
+    "technical_status_page": "aeneas-verif/README.md",
+    "aeneas_commit": "b59d5188c082f704a418c7cb4e52ad69328002d1",
+    "charon_commit": "cb50ff16b9f1066b8a97dc06da704de2da2fa41c",
+    "extraction_snapshots": [
+      "aeneas-verif/current-source-abc-capstone-20260722/",
+      "aeneas-verif/component-b-mask/unified-current-20260722/",
+      "aeneas-verif/component-c-runtime-downstream/released-trace-families-current-20260722/",
+      "aeneas-verif/tag67-work-wire-correspondence/"
+    ],
+    "principal_integration_theorem": "FormalClosureStream1.current_source_combined_capstone",
+    "component_c_public_output_theorem": "generated_public_run_output_matches_deployed",
+    "tag67_work_theorem": "AspisTag67WorkVerifierClosure.tag67AcceptedWireAndVerifierClosure"
+  },
+  "coverage": [
+    "Component-A matrix execution at the selected V5 release schedule",
+    "Component-B sampler, evaluator, and C2 layout correspondence",
+    "Component-C four runtime rounds, finish, packer, and deployed public output",
+    "Tag-67 instruction guards and six actual little-endian 64-bit work reads",
+    "The digest predicate and all six ordered work-verification steps",
+    "Composition of those results for the stated V5 release scope"
+  ],
+  "remaining_implementation_boundary": {
+    "kind": "exact_transcript_hash_function_call_equality",
+    "statement": "forall state nonce, actualTranscriptGrindingDigest state nonce = rustHash state ((3 : Byte) :: List.ofFn (nonceLEBytes nonce))",
+    "explanation": "The pinned Aeneas translation does not translate this function-pointer hash call. The parser, projection, leading-zero predicate, and six ordered checks are inside the proved theorem chain."
+  },
+  "outside_current_proof_scope": [
+    "Every Rust function and every accepted input schedule",
+    "The Rust compiler, LLVM, the SBF toolchain, and the Solana runtime",
+    "First-principles cryptographic security proofs for SHA-256, Poseidon2, the PCS, and Fiat-Shamir",
+    "One universal serializer theorem for the complete joint cryptographic view",
+    "A universal all-input Rust-to-Lean Poseidon2 equality"
+  ],
+  "replay_commands": [
+    "cd AspisFormal && lake exe cache get && lake build",
+    "aeneas-verif/component-c-runtime-downstream/released-trace-families-current-20260722/replay-lean432.sh",
+    "aeneas-verif/current-source-abc-capstone-20260722/replay-lean432.sh"
+  ],
+  "artifacts": {
+    "aeneas-verif/current-source-abc-capstone-20260722/proof/CurrentSourceABCapstone.lean": {
+      "bytes": 25247,
+      "sha256": "0b5fe370eba730c48306bf4a25a2c228d8315570b9cabb930b2878604bf3d950",
+      "source_commit": "859d8588d2761fac6714226877c9317f7d697a03"
+    },
+    "aeneas-verif/component-c-runtime-downstream/released-trace-families-current-20260722/proof/RuntimeReleasedTraceFamiliesCurrentJoin.lean": {
+      "bytes": 82435,
+      "sha256": "75b0f3e7ebc3adeb3050be69376d6c07d13aafcef3f9073b5485d6215d457d3a",
+      "source_commit": "859d8588d2761fac6714226877c9317f7d697a03"
+    },
+    "aeneas-verif/tag67-work-wire-correspondence/proof/Tag67WorkVerifierClosure.lean": {
+      "bytes": 14422,
+      "sha256": "ca7710a24cba91915feb730d0f045fff039fc95cf9c66262144e1211badc81ca",
+      "source_commit": "859d8588d2761fac6714226877c9317f7d697a03"
+    },
+    "aeneas-verif/component-c-runtime-downstream/released-trace-families-current-20260722/replay-lean432.sh": {
+      "bytes": 6467,
+      "sha256": "22f829f471db3a330ad66afcbeb37d8b4939d6eb96bacae9f4884938f6b7dcfc",
+      "source_commit": "8d71671d744667864296af35cb092891b4c5512c"
+    },
+    "aeneas-verif/current-source-abc-capstone-20260722/replay-lean432.sh": {
+      "bytes": 8378,
+      "sha256": "b65561ceae9fd42ab6a75200bf3f7eb868d8ea00c68703116719bc29dab40c2e",
+      "source_commit": "8d71671d744667864296af35cb092891b4c5512c"
+    }
+  }
+}

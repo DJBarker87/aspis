@@ -338,16 +338,31 @@ mod tests {
     #[cfg(feature = "v5-production-tag67")]
     #[test]
     fn tag67_production_routes_only_through_atomic_wrapper() {
+        let program_id = id();
         let mut wire = vec![0u8; crate::v5_full_transaction::V5_FULL_CU_TRANSACTION_WIRE_BYTES];
         wire[0] = crate::v5_full_transaction::V5_FULL_CU_TRANSACTION_TAG;
+        let nullifier = {
+            use aspis_core::field::M31;
+
+            (0..10_000u32)
+                .find_map(|seed| {
+                    let digest = core::array::from_fn(|index| M31(seed + index as u32 * 17));
+                    let nullifier = aspis_statement::encode_digest_canonical(&digest);
+                    let (_, bump) =
+                        atomic_payment::atomic_nullifier_address(&program_id, &nullifier);
+                    (bump == crate::v5_full_transaction::V5_NULLIFIER_PDA_BUMP).then_some(nullifier)
+                })
+                .expect("test nullifier with bump 255")
+        };
+        wire[33..65].copy_from_slice(&nullifier);
         assert_eq!(
-            process_spend_production_instruction(&id(), &[], &wire),
+            process_spend_production_instruction(&program_id, &[], &wire),
             Err(ProgramError::NotEnoughAccountKeys)
         );
 
         // Tag 66 remains unreachable when Tag 67 production dispatch is enabled.
         assert_eq!(
-            process_spend_production_instruction(&id(), &[], &[66]),
+            process_spend_production_instruction(&program_id, &[], &[66]),
             Err(ProgramError::InvalidInstructionData)
         );
     }

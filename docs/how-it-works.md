@@ -1,102 +1,142 @@
 # How Aspis works
 
-Aspis checks a private spend and applies its state change entirely on Solana.
-The person spending proves that a private record satisfies the pool's rules
-without publishing the record, its owner secret, its value, or its Merkle path.
+Aspis V5 verifies a private-spend proof and applies its public state change on
+Solana. The spender does not publish the private record, owner secret, value,
+or Merkle path.
 
-The proof and the state update are one all-or-nothing operation. If any check
-fails, the pool and spent-marker accounts remain unchanged.
+The proof check and state update are atomic. If any instruction, account,
+statement, proof, or state recheck fails, the pool and nullifier are not
+changed.
 
 ## What the proof establishes
 
-For the released one-input, one-output construction, the proof establishes
-that:
+For the released one-input, one-output relation, a valid private witness
+satisfies these conditions:
 
-- the spender knows a record in the current pool;
+- it contains a record in the current pool and the secret data needed to spend
+  it;
 - the owner secret authorizes that record;
 - the input and output use the declared asset;
 - the input value equals the output value plus the public fee;
 - the output commitment and next pool root are computed correctly; and
-- the one-time spent marker is derived from the private input.
+- the public nullifier is derived from the private input.
 
-The spent marker is public. It prevents the same private record from being used
-twice without revealing which record was spent.
+Argument soundness says an accepted proof implies that such a valid witness
+exists under the stated cryptographic assumptions. Interpreting acceptance as
+knowledge by the prover additionally uses the named extraction premise in the
+[assumptions ledger](assumptions-ledger.md). The nullifier prevents the same
+record from being spent twice without revealing which private record was used.
 
 ## Why the proof is uploaded first
 
-The proof is much larger than a Solana transaction packet. Aspis therefore
-stores it in a temporary program-owned account:
+The V5 proof is 75,358 bytes, far larger than Solana's transaction packet
+limit. Aspis therefore uses a temporary program-owned proof account:
 
-1. The prover creates the proof account.
-2. The proof is uploaded in chunks.
-3. The program seals the account after checking its complete byte image.
-4. The spend transaction verifies the sealed proof in place.
-5. The q18/g37 release closed the temporary proof account in the spend.
-   V5 retains it as evidence until a separate close transaction returns its
-   rent to the operator.
+1. Create the pool and initialize it.
+2. Create the proof account.
+3. Upload the proof in 79 chunks of at most 960 bytes.
+4. Seal the account with Tag 62 after checking its complete byte image.
+5. Verify and apply the spend with Tag 67.
 
-Sealing prevents the proof from changing between upload and verification.
+That is 84 lifecycle transactions: 2 pool transactions, 1 proof-account
+create, 79 uploads, 1 seal, and 1 spend. Program deployment and the three
+post-execution cleanup transactions are separate.
 
-## The spend transaction
+Sealing prevents the proof bytes from changing between upload and
+verification. During Tag 67 the sealed proof is read-only and retained, so the
+finalized execution can be recorded before a separate authorized close.
 
-The spend transaction supplies the sealed proof account, current pool account,
-canonical spent-marker account, payer, and System Program.
+## The Tag-67 transaction
+
+The transaction supplies five ordered accounts:
+
+- the sealed proof account;
+- the current pool;
+- the canonical nullifier PDA;
+- the payer; and
+- the System Program.
 
 The program then:
 
-1. checks the instruction bytes and all account roles;
-2. reconstructs the public statement from the instruction and live pool state;
+1. validates the instruction and every account role;
+2. reconstructs the public statement from the instruction and live pool;
 3. verifies the complete proof;
-4. rechecks the mutable state;
-5. advances the pool;
-6. creates or assigns the canonical spent-marker account.
+4. rechecks the mutable pool and nullifier state;
+5. advances the pool; and
+6. creates or assigns the nullifier marker.
 
-The q18/g37 path also closed and refunded the proof account in this
-transaction. V5 keeps the proof account unchanged during the spend and closes
-it separately after the result has been recorded.
-
-Solana account locking serializes writes to one pool. The program performs no
-state change unless every verification and account check succeeds.
+The account-distinctness checks reject reusing one account in multiple roles.
+Verification and the mutable-state recheck happen before the first write or
+System Program call. Solana's writable account locks serialize spends against
+one pool.
 
 ## No trusted setup
 
-Aspis uses public parameters and hash-based commitments. It does not rely on a
-setup ceremony with secret randomness that must be destroyed.
+Aspis uses transparent public parameters and hash-based commitments. It has no
+setup ceremony whose secret randomness must be destroyed.
 
-The tradeoff is proof size and compute. Aspis uses a pre-uploaded proof account,
-Solana's native SHA-256 syscall, high-rate expansion, a small number of
-verifier queries, and proof-of-work grinding to fit the complete check within
-one transaction.
+The tradeoff is operational cost. The proof is large, and the prover performs
+substantial proof-of-work grinding to exchange off-chain time for lower
+on-chain verification cost. Aspis uses M31 arithmetic, a circle-domain
+WHIR-style commitment, Poseidon2 inside the relation, and Solana's native
+SHA-256 syscall for the Fiat–Shamir transcript.
 
-## From mathematics to the program
+The [paper](../paper/aspis-spend/) defines the construction precisely. The
+[assumptions ledger](assumptions-ledger.md) identifies the cryptographic
+assumptions rather than treating them as Lean conclusions.
 
-The repository records four distinct forms of evidence:
+## From construction to mainnet
 
-1. Lean checks substantial parts of the private-spend mathematics and release
-   calculations.
-2. Charon and Aeneas translate selected production Rust into Lean, where
-   bridge proofs connect it to the mathematical models.
-3. The pinned build-source commit and tools reproduce the compiled Solana
-   program byte for byte.
-4. Finalized transactions and account records show what the program executed.
+Aspis records four complementary evidence layers:
 
-The exact formal scope is explained in
-[How Aspis is formally checked](formal-verification.md).
+| Layer | Evidence |
+| --- | --- |
+| Mathematical construction | Lean checks substantial parts of the statement, algebra, concrete release calculations, hiding argument, and V5 component models |
+| Selected production implementation | Charon and Aeneas translate selected Rust; Lean bridge proofs connect those definitions to the maintained models |
+| Exact program | Pinned source and build tools reproduce the frozen SBF byte for byte |
+| Chain result | Finalized receipts bind that SBF, proof, statement, state transition, compute use, and cleanup |
 
-## Current results
+The [formal-verification overview](formal-verification.md) explains the exact
+proof boundary. The [V5 mainnet record](v5-mainnet-demo.md) gives the chain
+identities and transaction links.
 
-The q18/g37 release completed a finalized mainnet transaction on 2026-07-16 at
-1,344,003 CU.
+## Finalized V5 result
 
-V5 Tag 67 is the current candidate. Its frozen program completed the full state
-transition on devnet at 1,335,952 CU and has been replayed on the current
-mainnet runtime. Its mainnet transaction is pending.
+The mainnet Tag-67 transaction finalized at slot `435019536`. The runner used
+the canonical nullifier PDA bump 255. Exact signed-wire simulation and landed
+metadata both reported 1,334,452 CU.
 
-See the [main README](../README.md) for current release identities and the
-[paper](../paper/aspis-spend/) for the complete construction.
+After finality:
 
-## Scope
+1. Tag 64 closed the retained proof account and returned 525,660,961 lamports
+   to the payer.
+2. ProgramData close sent 9,049,204,080 lamports directly to the pinned refund
+   recipient.
+3. The payer sweep sent 1,931,690,802 lamports to the same recipient and left
+   the payer at zero.
 
-The current construction demonstrates one input, one output, and one
-sequential pool. It does not yet provide deposits, multiple inputs or outputs,
-a wallet, or a growing privacy set.
+The pinned recipient therefore received 10,980,894,882 lamports. The proof
+refund is already included in the later payer sweep and is not added a second
+time.
+
+## Limits of the demonstration
+
+- The statement has one input and one output.
+- The release has no deposit or append path, wallet, or growing privacy set;
+  the demonstrated anonymity set was one.
+- One pool is sequential. Separate pools increase throughput but split
+  anonymity.
+- Every spend leaves a persistent nullifier account.
+- Proof upload and grinding are operationally expensive.
+- The proved privacy view does not include fee-payer linkage, timing, network
+  metadata, transaction graphs, or physical side channels.
+
+## Historical q18/g37 result
+
+The earlier q18/g37 Tag-65 result used a 65,407-byte proof and a different
+proof-account lifecycle. Its often-cited count of 71 is only
+`1 create + 69 uploads + 1 finalize`; it excludes its two pool transactions
+and final Tag-65 spend. V5 did not switch from 71 to 84 during execution.
+
+The q18/g37 evidence remains in the
+[historical mainnet record](mainnet-demo.md). V5 is the current result.

@@ -4,6 +4,23 @@ Aspis connects Lean-checked mathematics, proofs about selected production Rust,
 a reproducible compiled Solana program, and direct runtime evidence. Each layer
 is explicit about what it establishes and what it relies on.
 
+## How the layers fit together
+
+This page separates four questions that are easy to conflate:
+
+1. Does the mathematical construction have the claimed properties under its
+   stated cryptographic premises?
+2. Do the selected production Rust paths implement the maintained models?
+3. Do the pinned source and tools reproduce the exact SBF that ran?
+4. Did the real transaction, account topology, compute schedule, and cleanup
+   behave as recorded?
+
+Lean addresses the first question, Charon/Aeneas and bridge proofs address
+selected parts of the second, the reproducible-build record addresses the
+third, and tests plus runtime and chain evidence address the fourth. These
+layers reinforce one another, but they are not a single universal end-to-end
+proof and none silently proves the assumptions of an adjacent layer.
+
 ## In plain language
 
 The main assumptions are:
@@ -20,6 +37,32 @@ The main assumptions are:
    correctly.
 6. Solana performs account locking, system calls, state updates, and compute
    accounting as recorded for the release.
+
+## Selected production-Rust coverage
+
+The current Rust-to-model theorem covers these release paths:
+
+- Component-A extracted matrix execution to maintained GoodA for the selected
+  release schedule;
+- the generated Component-B sampler/evaluator/C2 layout to the maintained
+  ten-round terminal;
+- Component C's actual four rounds, finish, packer, and deployed public rows;
+- Tag-67 magic, LE64 reads, projection, digest predicate, and six ordered work
+  checks; and
+- the combined A/B/C public output and Tag-67 verifier at that schedule.
+
+The runtime verifier recomputes GoodA and GoodB on every selected branch. That
+runtime fact is broader than the current production-Rust Component-A theorem:
+a universal all-schedule source theorem remains open. A complete joint
+serializer theorem and universal all-input Rust Poseidon2 equality also remain
+open, and the adaptive PCS/Fiat–Shamir argument is supported by cited results
+rather than an internal reproof.
+
+The only retained transcript-call equality is stated verbatim below. The
+strongest outside-review targets are the cryptographic reduction boundaries,
+the custom Poseidon2-M31 primitive, that one call equality, Rust outside this
+selected coverage, Solana account/state/refund behavior, and future runtime
+repricing; see [`SECURITY.md`](../SECURITY.md) for the prioritized list.
 
 The detailed table below identifies where each assumption is used, the
 evidence that constrains it, and what follows if it fails.
