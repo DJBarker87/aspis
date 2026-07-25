@@ -915,7 +915,7 @@ For each predicate class, the theorem that would license replacing it with a pro
 | **Q-SINK** | E-SINK | **Open**: is `fri_sum + relation_claim + terminal_masked` meant to satisfy an identity? It is discarded (`v5_cu_probe.rs:2420,2462-2464`). | **new, unresolved** |
 | **T-EXTR** | knowledge soundness | Extractor for the spend relation; not exercised by any predicate above | out of scope of this extraction |
 | **T-SIM** | hiding | Simulator. A conditional abstract capstone exists and is proved; deployed hiding is not (see N3) | **conditional only** |
-| **Q-GOOD-RANK** | Component-B coverage | **Open, decisive for hiding.** Lean proves a universal rank-76 coverage theorem is impossible "without an additional point-rejection predicate" (`V5ComponentBCorrelatedResidualCoverage.lean:731-753`), with a counterexample at the Boolean `row976Point` reachable under Component A's real `sampleQueries` schedule. The deployed verifier **has** a point-rejection predicate — the GoodA/GoodB gate (`v5_good_gate_probe.rs:1137-1146`). **Does the Good gate reject `row976Point`?** I found no file linking them: `row976` appears only in `V5ComponentBCorrelatedResidualCoverage.lean` and `V5ComponentBLegalWitnessDifference.lean`; the Good-gate files (`V5GoodGateSparseShift.lean`, `V5SelectedGoodVerifierRelation.lean`, `V5ComponentADeployedTerminalApplicability.lean`) do not mention it. The coverage file calls the connection an "Import-ready cross-gate endpoint" (`:697-701`) — intended, not proved. | **new, unresolved** |
+| **Q-GOOD-RANK** | Component-B coverage | **RESOLVED FAVOURABLY by execution; the proof obligation is now a single stated lemma.** See §Q-GOOD-RANK below. | **computed, lemma outstanding** |
 
 ---
 
@@ -954,6 +954,74 @@ Component-B covector), E36 (GoodA/GoodB at 12×12 / 4×4), E-SINK, E-ZERO.
 proved identical. Two more (`ten_degree_27_zerocheck_rounds`, `sha256_rom_assumption`) are
 identical on the evidence above. Everything that touches lane count, masking, the terminal, the
 selector, or the OOD schedule must be recomputed, and five theorems in Part 9 are marked **new**.
+
+---
+
+## Q-GOOD-RANK — does the deployed Good gate reject the Lean counterexample?
+
+**Yes.** Executed against the deployed gate itself (`candidate_is_good` /
+`evaluate_candidate`, `programs/aspis-verifier/src/v5_good_gate_probe.rs:1117-1146`), built
+`--features no-entrypoint`, with the inputs taken from the Lean counterexample:
+
+- point = `row976Point` = the Boolean point `z = 1111010000₂` in deployed big-endian MLE order
+  (`V5ComponentBCorrelatedResidualCoverage.lean:354-357, 380-381`);
+- queries = Component A's `sampleQueries`, `q ↦ q`, i.e. `[0..17]`
+  (`V5ComponentARankCompletion.lean:572-577`).
+
+```
+candidate_is_good(row976Point, sampleQueries)      = Some(false)     <- gate REJECTS
+  successor(z) / row977                            = Some(false)
+  xor12(z)     / row988                            = Some(false)
+  all-zero point (zeroSchedule witness)            = Some(false)
+```
+
+**Controls** (each 2000 trials, deterministic LCG inputs):
+
+```
+C1  random points  under sampleQueries[0..17]      2000/2000 good   <- schedule is NOT degenerate
+C2  row976Point    under random q18 schedules         0/2000 good   <- rejection is a property of the POINT
+C3  random point   + random schedule               2000/2000 good   <- gate is permissive in general
+C4  random BOOLEAN point + random schedule            0/2000 good   <- Boolean points rejected as a CLASS
+```
+
+C1 is the control that makes the result meaningful: the counterexample's own query schedule
+accepts every random point tried, so the rejection at `row976Point` is not an artifact of
+`sampleQueries`. C4 shows the rejection generalises to the whole Boolean class.
+
+**Attribution** (500 trials, `evaluate_candidate`): at `row976Point` and at random Boolean
+points, **both** determinants vanish in every trial — `det GoodA = 0` and `det GoodB = 0`,
+500/500, independent of schedule. The rejection is doubly redundant, not a marginal one.
+
+**What this establishes.** The "additional point-rejection predicate" that
+`applicable_schedule_universal_rank76_is_false` says a universal rank-76 theorem requires
+**exists in the deployed verifier**, and it rejects the counterexample. The row-976 obstruction
+direction of `V5ComponentBLegalWitnessDifference.lean` is therefore not reachable on a transcript
+the deployed verifier accepts.
+
+**What this does not establish.** This is computation, not proof, and it does not deliver deployed
+hiding:
+
+1. It is 2000/500 sampled trials, not a theorem.
+2. It removes one counterexample class. The coverage premise needs rank 76 on **every**
+   Good-accepted point; nothing here shows that no *non-Boolean* Good-accepted point degenerates.
+3. The other eight `UnmetDeployment` items of the capstone are untouched (N3).
+
+**The minimal outstanding lemma, now precisely stated:**
+
+> **Lemma (Good gate rejects Boolean points).** For every Boolean point `z ∈ {0,1}¹⁰` and every
+> injective q18 fibre schedule, `GoodA(z)` and `GoodB(z)` are both singular.
+
+Proving it converts Lean's hypothetical point-rejection predicate into the deployed gate, and lets
+`CurrentPadsPlusPivotMapHasRank76` be restated over Good-accepted points — the form the
+counterexample no longer refutes. The Lean development already anticipates this connection and
+calls it an "Import-ready cross-gate endpoint"
+(`V5ComponentBCorrelatedResidualCoverage.lean:697-701`); no file currently proves it, and
+`row976` does not appear in any Good-gate file.
+
+**Reproduction note.** `cargo build` at HEAD fails: `Cargo.toml:5-12` lists six workspace members
+under `protocol/`, a directory that was never committed and is not in `.gitignore`
+(`git log --all -- protocol` is empty). The computation above required temporarily removing those
+members; the tree was restored afterwards.
 
 ---
 
