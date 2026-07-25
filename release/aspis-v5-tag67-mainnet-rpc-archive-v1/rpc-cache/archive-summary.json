@@ -1,0 +1,10 @@
+{
+  "archive": "payer-full-rpc-responses.tar.gz",
+  "bytes": 1292220,
+  "full_get_transaction_responses": 1570,
+  "members": 1581,
+  "non_null_get_transaction_results": 1570,
+  "sha256": "3da57fa1ea94f87793221d9f2f649e56c854127f0da02ae96d0db430f86a2101",
+  "signature_pages": 2,
+  "signatures": 1570
+}

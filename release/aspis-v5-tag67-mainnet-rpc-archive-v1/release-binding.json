@@ -1,0 +1,66 @@
+{
+  "artifact": "aspis_v5_tag67_mainnet_rpc_archive_binding",
+  "schema_version": 1,
+  "network": "mainnet-beta",
+  "genesis_hash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+  "payer": "AXfWHFSF2F7gbwzdDfe8h5PHksePb3fLxSGsRpktbJ8p",
+  "archive": {
+    "path": "rpc-cache/payer-full-rpc-responses.tar.gz",
+    "bytes": 1292220,
+    "sha256": "3da57fa1ea94f87793221d9f2f649e56c854127f0da02ae96d0db430f86a2101",
+    "signature_pages": 2,
+    "signature_count": 1570,
+    "full_get_transaction_responses": 1570,
+    "non_null_get_transaction_results": 1570,
+    "newest_block_time_utc": "2026-07-25T00:01:06Z",
+    "oldest_block_time_utc": "2026-07-24T10:35:27Z"
+  },
+  "mainnet_release": {
+    "path": "../aspis-v5-tag67-mainnet-v1",
+    "manifest_sha256": "0b25b134b06283edc9e602eaca3e085b24d24717d6b9fc920d20c3d695ab8adf",
+    "lifecycle_sha256": "8cf9057173903e98763ba5485d88291b7564cf6464b9e651e8b52696f6c9a1e3",
+    "proof": {
+      "path": "../aspis-v5-tag67-mainnet-v1/proof/v5-mainnet-proof.bin",
+      "bytes": 75358,
+      "sha256": "330414df587974684643a6062d092db0519d746f0c7efe4ed2108775b685feaf"
+    },
+    "statement": {
+      "path": "../aspis-v5-tag67-mainnet-v1/statement/v5-mainnet-statement.json",
+      "bytes": 768,
+      "sha256": "0cdc34bc7f835640cff76d1085df9ba966df9f39eb228f3002f927cf30958113"
+    }
+  },
+  "named_transactions": {
+    "deployment": {
+      "signature": "RHt7eErpgLvc7Z2QDWVSj4dmYTg9s4bU62CgWfN5Y1N2BUkAMmQ1V3P8RhtpX9px7aUfAYa8CNSo5Rx5Ndp3RMf",
+      "slot": 434999519,
+      "block_time_utc": "2026-07-24T21:37:16Z"
+    },
+    "tag67": {
+      "signature": "EJviPgF12i9iK2CveVaQSMeFQqDMFPQ1iPRUYEwNQE3zGquTUZNJXPZEENorcQtsnQj1orFmH1TPsgdbR3vJ2fE",
+      "slot": 435019536,
+      "block_time_utc": "2026-07-24T23:57:25Z"
+    },
+    "proof_close_tag64": {
+      "signature": "5FF19EceNFBVbrNzvhxTnbK8bWSysAHVLRjbfggamY3YSeUFzdk54c4GT9GKitBWGkntNG2Zx9xHgbzp371hZXbW",
+      "slot": 435019649,
+      "block_time_utc": "2026-07-24T23:58:11Z"
+    },
+    "programdata_close": {
+      "signature": "uZ6q5a2jGYcscEZgnLghPrqNwp9Hxq3REgYmt6gnb3JuorkUUEQUeJkVWy2e88j9bSLHgRvT2DytjRW2kBdHkWn",
+      "slot": 435019804,
+      "block_time_utc": "2026-07-24T23:59:16Z",
+      "seconds_after_tag67": 111
+    },
+    "payer_sweep": {
+      "signature": "4haJ6dPmSFkscFKC57QoCUUcf46vU77av9Y8UfcRyCWjfydzHjCeJCsfuthmifXJfVWreZZM8JTDUdBgzbj1JyUW",
+      "slot": 435020068,
+      "block_time_utc": "2026-07-25T00:01:06Z"
+    }
+  },
+  "closed_account_observations": [
+    "cdRqe7MGCEJ2Z6iZfWuXtuymRiAhXtyfDgT47sKZr69",
+    "3cb9NKGgNayZfTnGzNkWiwbHfQZyaonMFRxvAF8dEfUM",
+    "AXfWHFSF2F7gbwzdDfe8h5PHksePb3fLxSGsRpktbJ8p"
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "artifact": "aspis_v5_tag67_mainnet_rpc_archive",
+  "schema_version": 1,
+  "release_id": "aspis-v5-tag67-mainnet-rpc-archive-v1",
+  "network": "mainnet-beta",
+  "capture_started_at_utc": "2026-07-25T09:03:05.908383Z",
+  "capture_completed_at_utc": "2026-07-25T09:07:54.423827Z",
+  "based_on_main_commit": "792fcdb4a0d1710f3d9755eb84c8165549e7a8ee",
+  "capture_tool": {
+    "path": "../../tools/archive_solana_address_history.py",
+    "bytes": 16229,
+    "sha256": "0c5fd92a159f5a7dc35a7120126696b2568ab0c1a6c925c595760285735c333e"
+  },
+  "objects": {
+    "README.md": {
+      "bytes": 2503,
+      "sha256": "ab1a31aa21327d5e9394f63e4795005d11567a4d1a153a525286f916c57a8b01"
+    },
+    "release-binding.json": {
+      "bytes": 2651,
+      "sha256": "1326771040729fe442b685bfed0df984289516406c31dd872a221f37d815e5e6"
+    },
+    "rpc-cache/archive-summary.json": {
+      "bytes": 302,
+      "sha256": "865d7d46290da250696b402cb52898f14743351b70c61c02cbd1cb45ce7c336f"
+    },
+    "rpc-cache/index.json": {
+      "bytes": 953782,
+      "sha256": "ab0dd3b61d80df5acecd28d529b3ea34c55578ea8d0357758dccc7a3c64a8310"
+    },
+    "rpc-cache/payer-full-rpc-responses.tar.gz": {
+      "bytes": 1292220,
+      "sha256": "3da57fa1ea94f87793221d9f2f649e56c854127f0da02ae96d0db430f86a2101"
+    },
+    "verify.py": {
+      "bytes": 10883,
+      "sha256": "60a2cf1943888cbb003819ce5b3d58f24d62e3c1113513d654305f5c8b92e2cd"
+    }
+  },
+  "privacy": {
+    "rpc_endpoint_published": false,
+    "rpc_credential_published": false,
+    "keypair_published": false,
+    "private_signed_wire_spool_published": false
+  }
+}
