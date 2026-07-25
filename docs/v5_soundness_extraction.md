@@ -914,7 +914,8 @@ For each predicate class, the theorem that would license replacing it with a pro
 | **Q-FUNC** | E19, E16 | **Open**: claim 3 of every lane is a covector dot product, not a point evaluation (Part 7), yet the γ-batch weights all four positionally (`v5_fri_checks.rs:260-274`). Does the MCA/proximity statement being relied on cover a batch in which one of the four "opening" slots is a structured linear functional of the message rather than an evaluation? | **new, unresolved** |
 | **Q-SINK** | E-SINK | **Open**: is `fri_sum + relation_claim + terminal_masked` meant to satisfy an identity? It is discarded (`v5_cu_probe.rs:2420,2462-2464`). | **new, unresolved** |
 | **T-EXTR** | knowledge soundness | Extractor for the spend relation; not exercised by any predicate above | out of scope of this extraction |
-| **T-SIM** | hiding | Simulator; **no V5 hiding artifact exists** (see N3) | out of scope |
+| **T-SIM** | hiding | Simulator. A conditional abstract capstone exists and is proved; deployed hiding is not (see N3) | **conditional only** |
+| **Q-GOOD-RANK** | Component-B coverage | **Open, decisive for hiding.** Lean proves a universal rank-76 coverage theorem is impossible "without an additional point-rejection predicate" (`V5ComponentBCorrelatedResidualCoverage.lean:731-753`), with a counterexample at the Boolean `row976Point` reachable under Component A's real `sampleQueries` schedule. The deployed verifier **has** a point-rejection predicate — the GoodA/GoodB gate (`v5_good_gate_probe.rs:1137-1146`). **Does the Good gate reject `row976Point`?** I found no file linking them: `row976` appears only in `V5ComponentBCorrelatedResidualCoverage.lean` and `V5ComponentBLegalWitnessDifference.lean`; the Good-gate files (`V5GoodGateSparseShift.lean`, `V5SelectedGoodVerifierRelation.lean`, `V5ComponentADeployedTerminalApplicability.lean`) do not mention it. The coverage file calls the connection an "Import-ready cross-gate endpoint" (`:697-701`) — intended, not proved. | **new, unresolved** |
 
 ---
 
@@ -969,11 +970,58 @@ records `STATE_ONLY_SEMANTIC_SOURCE_LANES = 95` (`state_only_sumcheck.rs:22`, ab
 `:86`), which is a source-lane count and **not** a per-column role map for the 16 committed
 columns. *Would be answered by*: `crates/aspis-statement/src/atomic_state_only_trace.rs`.
 
-**N3 — Whether V5's masking inputs suffice, and under what condition.** The deployed verifier
-checks no masking-rank or hiding condition; the inputs are prover-side
-(`v5_real_host_proof.rs:259-276`) and two of them carry only `&str` obligations (P4.2).
-*Would be answered by*: a V5 hiding/masking certificate. `release/aspis-v5-tag67-mainnet-v1/`
-contains no `certificates/` directory.
+**N3 — CORRECTED. A V5 hiding development exists; it does not establish deployed hiding, and it
+contains a proved negative result.** My earlier statement that no V5 hiding artifact exists was
+false: I searched for a certificate JSON and a `certificates/` directory and missed nine Lean
+files totalling ~5,400 lines — `V5ConditionalHidingCapstone{,V2,V3}.lean`,
+`V5ComponentBTriangularHiding.lean`, `V5ComponentCDirectHiding.lean`,
+`V5ComponentCBlockSamplerDirectHiding.lean`, `V5RankOneOpeningHiding.lean`,
+`V5InactiveClaimJointHiding.lean`, `V5SelectionHidingAbort.lean`, all under
+`AspisFormal/AspisFormal/`. No `sorry`; no `native_decide` (every match is prose disclaiming it).
+
+**What it establishes.** `conditional_complete_joint_hiding_v3`
+(`V5ConditionalHidingCapstoneV3.lean:258`) proves equality of the complete joint law for an
+abstract model: Component A and Hcopy as affine views under independent uniform linear masks,
+Component B under the triangular law, Component C sampled uniformly from the relation kernel. The
+file's own header (`:36-40`) states the limit verbatim:
+
+> This is an abstract, conditional capstone.  It does not prove that the Rust
+> maps, rank certificates, samplers, transcript, compiler, or serialized bytes
+> instantiate the model.  Those edges are named as unproved propositions in
+> `UnmetDeployment`.  Therefore this file must not be cited as a deployed
+> zero-knowledge proof.
+
+Nine `UnmetDeployment` items are `def ... : Prop`, never theorems
+(`V5ConditionalHidingCapstoneV3.lean:578-598`): `FrozenRankAndLinearMapCorrespondence`,
+`RustTriangularBViewCorrespondence`, `RustOuterSamplerIsIndependentUniform`,
+`RustPublishedResidualProjectionCorrespondence`, `RustPreCAndCMapsCorrespondence`,
+`RustComponentCKernelSamplerIsUniform`, `FiatShamirCompilerCorrespondence`,
+`RustCompleteSerializationCorrespondence`, `ComputationalBindingHashAndCompilerAssumptions`.
+
+**The negative result.** `applicable_schedule_universal_rank76_is_false`
+(`V5ComponentBCorrelatedResidualCoverage.lean:731-753`) proves that a rank-76 coverage theorem
+quantified over every applicable transcript schedule **is impossible without an additional
+point-rejection predicate**. The witness is not contrived:
+`row976_sampleQueries_point_to_mle_rank76_counterexample` (`:702-719`) shows that at the Boolean
+`row976Point` (`:380-381`), using Component A's *actual* concrete injective q18 schedule
+`sampleQueries`, the Component-B residual map has `finrank ... ≤ 73` — below the required 76. The
+file notes: *"The counterexample uses distinct fibres; it is not a q18 collision."*
+
+**Nonzero η does not rescue it.** `V5ComponentBLegalWitnessDifference.lean:22-24`: *"The
+obstruction persists after multiplication by every nonzero `eta`, matching the runtime
+nonzero-eta requirement."*
+
+**It is not a proved attack.** Same file, `:26-30`: *"This is an algebraic identity-compatible
+obstruction candidate, not yet a deployed witness attack.  A theorem characterising the actual
+Spend-witness image is absent; even realisability of this one direction remains an explicit
+interface below."*
+
+**Consequences for a certificate author.** (a) The deployed system's proof-view hiding property is
+**unestablished**, and this is a stronger statement than "no artifact exists" — the natural
+universal form of the Component-B coverage premise is proved false. (b) A Boolean sumcheck point
+is in the support of the deployed sampler: `z[0..10]` are drawn with plain `challenge_qm31`
+(`state_only_sumcheck.rs:278`, `transcript.rs:307-345`), which permits every value including 0 and
+1. (c) The decisive open question is recorded as **Q-GOOD-RANK** in Part 9.
 
 **N4 — The internals of `atomic_state_only_selected_unmasked_terminal_value_compiled_v3`**, hence
 the exact degrees behind E15 and the q18 rows `atomic_tuple_compression` and
