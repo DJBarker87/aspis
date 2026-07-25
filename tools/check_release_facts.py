@@ -435,7 +435,7 @@ def check_v5_formal_evidence(
     require_equal(formal_evidence["release_id"], facts["release_id"], "V5 formal release")
     require_equal(
         formal_evidence["release_tag"],
-        facts["release_id"],
+        facts["release_tag"],
         "V5 formal release tag",
     )
 
@@ -688,6 +688,17 @@ def check_v5(facts: dict[str, Any], compute_limit: int) -> None:
     require_equal(facts["role"], "finalized_mainnet_release", "V5 role")
     require_equal(facts["status"], "finalized_mainnet", "V5 status")
     require_equal(facts["release_id"], "aspis-v5-tag67-mainnet-v1", "V5 release id")
+    require_equal(facts["release_tag"], facts["release_id"], "V5 release tag name")
+    require_equal(
+        tag_commit(facts["release_tag"]),
+        facts["release_tag_commit"],
+        "V5 release tag commit",
+    )
+    require_equal(
+        object_tree(facts["release_tag"]),
+        facts["release_tag_tree"],
+        "V5 release tag tree",
+    )
     require_equal(
         facts["mainnet"]["deployment_status"],
         "deployed_then_programdata_closed_after_demonstration",
