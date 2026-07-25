@@ -3,6 +3,12 @@ members = [
     "crates/aspis-core",
     "crates/aspis-prover",
     "crates/aspis-statement",
+    "protocol/crates/aspis-joinsplit-prover",
+    "protocol/crates/aspis-protocol",
+    "protocol/programs/aspis-pool-program",
+    "protocol/programs/aspis-protocol-bench-program",
+    "protocol/programs/aspis-v5-verifier-program",
+    "protocol/tools/aspis-protocol-bench",
     "programs/aspis-verifier",
     "xtask",
 ]
@@ -14,6 +20,8 @@ license = "MIT OR Apache-2.0"
 version = "0.1.0"
 
 [workspace.dependencies]
+hkdf = "0.12.4"
+hpke = { version = "=0.14.0", default-features = false, features = ["alloc", "chacha", "x25519"] }
 aspis-core = { path = "crates/aspis-core" }
 aspis-prover = { path = "crates/aspis-prover" }
 aspis-statement = { path = "crates/aspis-statement" }
@@ -23,6 +31,7 @@ base64 = "0.22.1"
 bincode = "1.3.3"
 borsh = { version = "=1.5.7", features = ["derive"] }
 chrono = { version = "0.4.42", default-features = false, features = ["clock", "serde", "std"] }
+chacha20poly1305 = { version = "=0.11.0", default-features = false, features = ["zeroize"] }
 getrandom = "0.3.4"
 reqwest = { version = "0.12.28", default-features = false, features = ["blocking", "json", "rustls-tls"] }
 serde = { version = "1.0.228", features = ["derive"] }
@@ -30,4 +39,6 @@ serde_json = "1.0.145"
 sha2 = "0.10.8"
 solana-program = "2.3.0"
 solana-sdk = "2.3.0"
+solana-system-interface = { version = "1.0.0", features = ["bincode"] }
 zeroize = "1.8.1"
+x25519-dalek = { version = "=3.0.0", default-features = false, features = ["zeroize"] }
