@@ -8,6 +8,9 @@ target/
 __pycache__/
 *.py[cod]
 
+# Local agent guide for the Aeneas Rust->Lean pilot (not part of the project).
+/aeneas-agent-guide.md
+
 # Local remnants from the workspace preserved by the research archive tag.
 /aspis/
 /third_party/

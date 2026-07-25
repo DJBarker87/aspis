@@ -13,6 +13,32 @@ For a plain-language account of both proof layers, start with
 [`docs/formal-verification.md`](../docs/formal-verification.md). The theorem
 map below is the exact technical record of the Rust-to-model coverage.
 
+## Scope in one minute
+
+This layer proves correspondence for selected production V5 Rust, not for the
+whole program, the compiler, or the cryptographic premises. Its final chain
+covers:
+
+- extracted Component-A matrix execution to maintained GoodA for the selected
+  release schedule;
+- the generated Component-B sampler/evaluator/C2 layout to the maintained
+  ten-round terminal;
+- Component C's actual four rounds, finish, packer, and deployed public rows;
+- Tag-67 magic, LE64 reads, projection, digest predicate, and six ordered work
+  checks; and
+- their combined A/B/C public output and Tag-67 verifier at that schedule.
+
+The runtime verifier independently recomputes GoodA and GoodB for every
+selected branch. The bridge theorem for Component A is nevertheless
+schedule-specific: a universal all-schedule source theorem remains open. A
+complete joint serializer theorem and universal all-input Rust Poseidon2
+equality also remain outside this proof, and the PCS/Fiat–Shamir security
+argument relies on cited cryptographic results.
+
+This correspondence layer complements the maintained mathematical proofs,
+source-to-SBF reproducibility, and tests/runtime/mainnet evidence. It does not
+replace them or turn those four layers into a single universal theorem.
+
 ## Current V5 integration theorem
 
 The principal result is
@@ -35,13 +61,16 @@ The Tag-67 side enters through
 remaining Rust-to-Lean assumption is the exact transcript hash application:
 
 ```text
-actualTranscriptGrindingDigest state nonce
-  = rustHash state ((3 : Byte) :: List.ofFn (nonceLEBytes nonce))
+∀ state nonce,
+  actualTranscriptGrindingDigest state nonce =
+    rustHash state ((3 : Byte) :: List.ofFn (nonceLEBytes nonce))
 ```
 
 That equation names the function-pointer call that pinned Aeneas cannot
 translate. Given successful work-byte guards and reads, the decoded values,
-leading-zero test, and six ordered checks follow inside the theorem.
+exact projection, leading-zero predicate, six ordered checks, Component-C
+public output, and A/B/C composition follow inside the theorem rather than
+entering as additional assumptions.
 
 This proof layer is bound to the V5 release. Tag 67 is enabled in the
 default verifier dispatch, and the SBF has SHA-256
@@ -62,6 +91,17 @@ default verifier dispatch, and the SBF has SHA-256
 
 The dated directory suffixes identify the extraction snapshot used by the
 release theorem; they are snapshot labels, not active work queues.
+
+## Best places to challenge this layer
+
+An outside review adds the most value by checking the selected-source identity
+and extraction replay, the schedule-specific Component-A bridge and Rust paths
+outside it, the exact transcript hash-call equation above, and serialization
+paths not covered by one complete joint theorem. Primitive security,
+source-to-SBF compilation, Solana account/state/refund behavior, and runtime
+pricing belong to the adjacent assurance layers and remain equally important
+review targets; the full boundary is in
+[`docs/assumptions-ledger.md`](../docs/assumptions-ledger.md).
 
 ## Replaying the final integration
 

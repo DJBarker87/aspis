@@ -16,6 +16,34 @@ The detailed table below states what is proved, what uses a named assumption,
 and what remains outside the current release theorem. Older module comments and
 archived reports record the state at the time they were written.
 
+## How the proof layers fit together
+
+The maintained Lean project answers mathematical questions: it proves the
+relations and concrete release calculations stated below, relative to explicit
+cryptographic interfaces where noted. The Charon/Aeneas project answers a
+different implementation question: selected production V5 Rust paths agree
+with those Lean models. Reproducible-build evidence then identifies the exact
+SBF, while tests, runtime replay, exact-wire simulation, and finalized chain
+receipts exercise the deployed system.
+
+These are complementary assurance layers, not one theorem that universally
+proves the cryptography, every Rust path, compilation, and Solana execution at
+once. In particular, the Rust bridge covers Component A at the selected
+release schedule, generated Component B through its ten-round terminal,
+Component C's four rounds through deployed public output, the Tag-67 wire and
+six ordered work checks, and their selected-schedule composition. The runtime
+verifier recomputes GoodA and GoodB for every selected branch, but the universal
+all-schedule Component-A source theorem remains open.
+
+The best independent-review targets are therefore the seams: the reduction
+from the full execution view to the maintained hiding model and applicability
+of the cited PCS/Fiat–Shamir results; the custom Poseidon2-M31 primitive and
+universal Rust correspondence; the one transcript hash-call equation shown
+below; production Rust and serialization outside the selected extraction; and
+Solana account/state, refund, and runtime-pricing behavior. The complete
+boundary ledger is
+[`docs/assumptions-ledger.md`](../docs/assumptions-ledger.md).
+
 ## Build the proofs
 
 ```sh
@@ -43,12 +71,15 @@ compiled-evaluation shortcut. Poseidon2 known-answer theorems use kernel
   hiding lemmas, and selected implementation bindings. Its immutable evidence
   is in
   [`release/aspis-spend-q18-g37-mainnet-v1/`](../release/aspis-spend-q18-g37-mainnet-v1/).
-- **V5, tag 67** is the current mainnet candidate. Its SBF finalized the
-  atomic Tag-67 path on devnet on 2026-07-23 at 1,335,952 CU. Its maintained
-  mathematics lives here; pinned Charon/Aeneas extraction and the final
-  Rust-to-model composition live in
-  [`aeneas-verif/`](../aeneas-verif/), and the execution record lives in the
-  [`V5 candidate bundle`](../release/aspis-v5-tag67-frozen-candidate-v1/).
+- **V5, tag 67** is the later release line. Its exact frozen SBF finalized the
+  atomic path on devnet on 2026-07-23 at 1,335,952 CU and subsequently
+  finalized the mainnet-beta Tag-67 state transition at slot 435019536 at
+  1,334,452 CU. Its maintained mathematics lives here, and pinned
+  Charon/Aeneas extraction plus the final Rust-to-model composition live in
+  [`aeneas-verif/`](../aeneas-verif/). The frozen inputs remain in the
+  [`V5 candidate bundle`](../release/aspis-v5-tag67-frozen-candidate-v1/);
+  the subsequent chain outcome and cleanup are in the
+  [`V5 mainnet record`](../release/aspis-v5-tag67-mainnet-v1/).
 
 The later V5 proof does not retroactively relabel the tag-65 transaction.
 

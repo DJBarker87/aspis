@@ -1,45 +1,77 @@
 \section{Introduction}\label{sec:introduction}
 
-Transparent arguments remove the structured reference string and secret
-trapdoor required by many succinct proof systems.  FRI and subsequent STARK
-constructions showed how low-degree testing and hash-based commitments can
-support transparent verification of large computations
+A private-spend protocol can be mathematically specified, machine-checked,
+implemented, compiled, and deployed while still leaving gaps between those
+stages.  A kernel theorem does not identify the source that was compiled; a
+source proof does not identify the deployed bytes; and a finalized transaction
+does not by itself establish either mathematical security or source
+correspondence.  The central contribution of Aspis is therefore an evidence
+chain, not an isolated benchmark: maintained private-spend mathematics in
+Lean~4, selected production Rust connected to that mathematics, a
+byte-reproducible Solana binary, and a finalized mainnet state transition.
+
+The chain is intentionally explicit about direction and scope.  Lean
+kernel-checks the relation, finite security arithmetic, circle and masking
+lemmas, and their composition \cite{deMouraUllrich2021Lean4}.  For the selected
+    V5 release schedule, Charon extracts selected production Rust and Aeneas
+    translates it into functional Lean \cite{HoProtzenko2022Aeneas}; bridge
+    proofs cover Component~A at the selected schedule, the Component-B/C
+    evaluator and packed-output paths, and Tag-67 instruction decoding plus the
+    six ordered work checks.  The result is not a universal refinement theorem
+    for every schedule or verifier path.  Its one
+remaining Tag-67 implementation boundary equates the extracted
+hash-function application with the maintained transcript hash on
+\(\texttt{DOM\_GRIND}\mathbin\Vert\texttt{nonce\_le64}\).  A clean checkout of
+the identified source reproduces the 1,258,496-byte V5 SBF binary
+byte-for-byte.  The same binary was deployed on mainnet-beta, where exact
+signed-wire simulation and landed execution of a 75,358-byte proof both
+consumed 1,334,452 compute units.
+
+Transparent arguments provide the cryptographic setting for this chain.  They
+remove the structured reference string and secret trapdoor required by many
+succinct proof systems.  FRI and subsequent STARK constructions showed how
+low-degree testing and hash-based commitments can support transparent
+verification of large computations
 \cite{BenSassonBentovHoreshRiabzev2018FRI,
 BenSassonBentovHoreshRiabzev2018STARK}.  Deploying such a verifier inside a
-blockchain transaction creates a second constraint: the verifier must fit the
-runtime's transaction budget while preserving the state-transition semantics
-of the application.  Solana meters program execution in compute units and
-stores persistent application state in explicitly addressed accounts
-\cite{SolanaComputeBudget,SolanaAccounts}.  A proof that is inexpensive to verify
-on a workstation is therefore not, by itself, an on-chain construction.
+blockchain transaction adds a distinct constraint: it must fit the runtime's
+transaction budget while preserving application state-transition semantics.
+Solana meters execution in compute units and stores persistent state in
+explicitly addressed accounts \cite{SolanaComputeBudget,SolanaAccounts}.  A
+proof that verifies cheaply on a workstation, or even a source-level verifier
+that has been proved correct, is not by itself a deployed on-chain
+construction.
 
-Yano's measurement study \cite{Yano2025Measurement} demonstrated that the
-budget is not prohibitive: a minimal Winterfell STARK verifies inside a
-single Solana transaction on devnet.  The present project began by
-reproducing that measurement and modelling its verifier's costs.  The
-question addressed here is the one that study leaves open: whether the same
-budget can hold a complete application statement, a shielded spend with an
-atomic state transition, at deployable soundness parameters, on
-mainnet-beta.
+Yano's measurement study \cite{Yano2025Measurement} showed that the budget is
+not prohibitive: a minimal Winterfell STARK verifies inside one Solana devnet
+transaction.  Aspis began by reproducing that measurement and modelling its
+costs, then asked whether the same budget could hold a complete shielded-spend
+statement and atomic state transition at deployable parameters on
+mainnet-beta.  The manuscript answers that question with a frozen q18/g37
+security case study; the later V5 Tag-67 release adds the selected-source
+correspondence and byte-reproducible deployment result.  The two are distinct
+artefacts.  In particular, the q18/g37 numerical security bounds in this paper
+are not silently inherited by V5.
 
-This work studies one deliberately narrow application atom.  A valid spend
+Both releases study one deliberately narrow application atom.  A valid spend
 replaces one note by one output note at the same private path in a depth-20
 tree, preserves the asset identifier, enforces value conservation including a
 public fee, derives a nullifier, and advances a public pool anchor and sequence
 number.  The program accepts only if the proof verifies against that public
-state.  In the same transaction it creates the nullifier marker and changes
-the pool state.  This follows the commitment-and-nullifier structure used by
-shielded payment systems \cite{BenSassonEtAl2014Zerocash}, but it is not a general
-wallet protocol, multi-input transaction, or public append operation.
+state; in the same transaction it creates the nullifier marker and changes the
+pool state.  This follows the commitment-and-nullifier structure used by
+shielded payment systems \cite{BenSassonEtAl2014Zerocash}, but it is not a
+general wallet protocol, multi-input transaction, deposit path, or public
+append operation.
 
 The central systems choice is to separate proof transport from proof use.  A
 proof is first written to a program-owned account and finalized.  A later
 instruction reads the finalized bytes, verifies the complete proof, and
-performs the state mutation atomically.  Thus, ``one transaction'' throughout
-this paper means the verification and state update from a finalized,
-pre-uploaded proof account.  It does not include account creation, upload, or
-finalization.  The separation keeps proof bytes available to the verifier
-without implying that the full proof lifecycle fits in one transaction.
+performs the state mutation atomically.  Thus, ``one transaction'' means the
+verification and state update from a finalized, pre-uploaded proof account; it
+does not include account creation, upload, or finalization.  The separation
+keeps proof bytes available to the verifier without implying that the full
+proof lifecycle fits in one transaction.
 
 \paragraph{Protocol.}
 \Profile{} uses arithmetic over $\Fbase$ and a degree-four extension field.
@@ -90,15 +122,34 @@ application-level state machine: bytes may be uploaded before finalization,
 whereas the spend instruction requires the finalized state.  Verification
 precedes every state write, and the pool pre-state, sequence number, anchor,
 nullifier address, account ownership, and proof finalization state are checked
-at the instruction boundary.  The frozen release binds a
+at the instruction boundary.  The frozen q18/g37 release binds a
 \ProfileProofBytes-byte proof to a \ProfileSbfBytes-byte SBF binary.  The
 maximum measured local path consumes \ProfileComputeUnits{} compute units.  A
-finalized mainnet-beta execution of the exact release consumed
+finalized mainnet-beta execution of that exact release consumed
 \ProfileMainnetComputeUnits{} compute units, advanced the pool sequence from
 zero to one, created the canonical nullifier marker, and refunded the complete
 proof-account balance in the same transaction.  Deployment, account creation,
 proof transport, and proof finalization occurred beforehand and are reported
-separately.
+separately.  The later V5 release binds the selected source-correspondence
+theorem, a byte-reproducible 1,258,496-byte SBF binary, and a 75,358-byte
+proof.  Its atomic Tag-67 transaction finalized at 1,334,452 compute units in
+both exact signed-wire simulation and landed metadata, with canonical
+nullifier-PDA bump 255.  V5 deployment, its 84-transaction proof lifecycle,
+and its cleanup transactions are recorded separately from the atomic spend
+and from the q18/g37 release.
+
+\paragraph{Trust boundary.}
+The Lean kernel checks the theorems presented to it, including the selected
+Component-A schedule, Component-B/C evaluator and output, and Tag-67 work-wire
+composition described above.  The remaining trusted or assumed boundary
+includes the single transcript-hash-call equality stated above; the
+Charon/Aeneas translation and bridge inputs; Rust outside those selected paths;
+the Rust, LLVM, and Solana SBF compilation path; the Solana loader, account,
+rollback, and compute metering semantics; SHA-256 and the random-oracle
+idealisation; and the cited
+proximity, agreement, and cryptographic primitive results.  Byte reproducibility
+detects build divergence but is not a verified compiler theorem.  Neither the
+protocol nor the implementation has received an external security audit.
 
 \paragraph{Contributions.}
 The paper makes the following contributions.
@@ -119,13 +170,16 @@ The paper makes the following contributions.
 
   \item It supplies a Lean~4 formalisation of the relation core, finite
   security arithmetic, circle and masking lemmas, and theorem composition,
-  with a proof-status ledger that separates kernel theorems from cited
-  cryptographic interfaces.
+  then connects selected V5 verifier paths through Charon/Aeneas and explicit
+  bridge proofs: Component~A at the release schedule, the Component-B/C
+  evaluator and public output, and the Tag-67 work-wire and six ordered checks.
+  The proof-status ledger separates kernel theorems, the one
+  transcript-hash-call premise, and cited cryptographic interfaces.
 
-  \item It connects the mathematical verifier to an SBF implementation and an
-  atomic account transition, and reports a finalized mainnet-beta execution
-  with the proof identity, deployed-program identity, instruction compute
-  consumption, and setup lifecycle recorded separately.
+  \item It binds that source-linked verifier to a byte-reproducible SBF
+  implementation and reports the finalized V5 mainnet-beta Tag-67 execution
+  of a 75,358-byte proof at 1,334,452 compute units, while preserving the
+  distinct q18/g37 execution and its quantitative security claims.
 
   \item It provides machine-readable ledgers, rank certificates, known-answer
   tests, proof and binary hashes, negative tests, and transaction evidence from

@@ -50,4 +50,22 @@ The q18/g37 transaction and V5 candidate remain distinct artefacts. The former
 is the mainnet execution studied in this paper. The V5 SBF later
 finalized the atomic Tag-67 path on devnet at 1,335,952 CU, demonstrating the
 stronger source-authentic verification architecture now present on the
-repository's default branch; V5 has not yet been executed on mainnet.
+repository's default branch. At this manuscript cutoff, V5 had not yet been
+executed on mainnet.
+
+\paragraph{Repository outcome addendum (25 July 2026).}
+Subsequent to the manuscript-scoped q18/g37 result and the V5 freeze described
+above, the exact V5 SBF (SHA-256
+\nolinkurl{4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40})
+was deployed on mainnet-beta at slot \(434999519\).  Atomic Tag~67 finalized
+at slot \(435019536\) with canonical nullifier-PDA bump \(255\); exact
+signed-wire simulation and landed metadata both reported \(1{,}334{,}452\)
+CU.  Its transaction signature is
+\nolinkurl{EJviPgF12i9iK2CveVaQSMeFQqDMFPQ1iPRUYEwNQE3zGquTUZNJXPZEENorcQtsnQj1orFmH1TPsgdbR3vJ2fE}.
+The corresponding proof and statement SHA-256 values are
+\nolinkurl{330414df587974684643a6062d092db0519d746f0c7efe4ed2108775b685feaf}
+and
+\nolinkurl{0cdc34bc7f835640cff76d1085df9ba966df9f39eb228f3002f927cf30958113}.
+This later chain outcome is recorded separately under
+\path{release/aspis-v5-tag67-mainnet-v1/}; it does not change the q18/g37
+parameters, reductions, or principal empirical claim studied in this paper.

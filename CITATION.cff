@@ -1,20 +1,26 @@
 cff-version: 1.2.0
-message: "Please cite the Aspis Spend manuscript and the q18/g37 mainnet release."
-title: "Aspis Spend: Transparent Shielded-Spend Verification and Atomic State Update from a Pre-Uploaded Proof Account on Solana"
+message: "Cite the preferred q18/g37 historical article for its quantitative security claims, and cite the separate V5 release reference for the later source-linked Tag-67 mainnet result."
+title: "Aspis: From Lean-Checked Private-Spend Mathematics to Solana Mainnet"
 type: software
-version: "aspis-spend-q18-g37-mainnet-v1"
-date-released: 2026-07-16
+date-released: 2026-07-25
 authors:
   - family-names: "Barker"
     given-names: "Dominic"
     website: "https://github.com/DJBarker87"
 abstract: >-
-  Aspis demonstrates transparent, trusted-setup-free verification of a
-  one-input/one-output shielded-spend state transition entirely on Solana L1.
-  The q18/g37 release finalized on mainnet-beta at 1,344,003 compute units and
-  includes the proof, deployed SBF, transaction evidence, security analysis,
-  and an offline-verifiable release bundle. The repository also contains a
-  Lean 4 formalisation and the later source-authentic V5 Tag-67 candidate.
+  Aspis connects maintained Lean 4 private-spend mathematics to selected
+  production verifier paths translated through Charon/Aeneas and joined to
+  the models by explicit bridge proofs, then to a byte-reproducible
+  1,258,496-byte Solana SBF binary. The
+  finalized V5 Tag-67 mainnet transaction verified a 75,358-byte proof and
+  consumed 1,334,452 compute units in both exact simulation and landed
+  metadata. The distinct q18/g37 historical release carries the manuscript's
+  100.161-bit work-normalized soundness floor, 104.024-bit
+  real-versus-simulator floor, and 103.024-bit pairwise-witness floor. The
+  source correspondence covers a selected release schedule and retains one
+  explicit transcript-hash-call equality; compiler, extraction toolchain,
+  Solana runtime, SHA-256, random-oracle, and cited primitive assumptions
+  remain. The project has not received an external security audit.
 keywords:
   - "zero knowledge"
   - "transparent arguments"
@@ -24,16 +30,14 @@ keywords:
   - "M31"
   - "Lean 4"
   - "Aeneas"
+  - "formal verification"
+  - "reproducible builds"
 repository-code: "https://github.com/DJBarker87/aspis"
-repository-artifact: "https://github.com/DJBarker87/aspis/releases/tag/aspis-spend-q18-g37-mainnet-v1"
+repository-artifact: "https://github.com/DJBarker87/aspis/tree/main/paper/aspis-spend"
 url: "https://github.com/DJBarker87/aspis"
 license:
   - Apache-2.0
   - MIT
-identifiers:
-  - type: other
-    value: "cdb3d3408b89b5179353d01cffea2b0ef6484fb3"
-    description: "Git commit reached by the annotated aspis-spend-q18-g37-mainnet-v1 tag"
 preferred-citation:
   type: article
   title: "Aspis Spend: Transparent Shielded-Spend Verification and Atomic State Update from a Pre-Uploaded Proof Account on Solana"
@@ -42,3 +46,22 @@ preferred-citation:
       given-names: "Dominic"
   year: 2026
   url: "https://github.com/DJBarker87/aspis/releases/tag/aspis-spend-q18-g37-mainnet-v1"
+  identifiers:
+    - type: other
+      value: "cdb3d3408b89b5179353d01cffea2b0ef6484fb3"
+      description: "Git commit reached by the annotated aspis-spend-q18-g37-mainnet-v1 tag"
+references:
+  - type: software
+    title: "Aspis V5 Tag-67 Mainnet Evidence Bundle"
+    version: "aspis-v5-tag67-mainnet-v1"
+    date-released: 2026-07-25
+    authors:
+      - family-names: "Barker"
+        given-names: "Dominic"
+    repository-code: "https://github.com/DJBarker87/aspis"
+    repository-artifact: "https://github.com/DJBarker87/aspis/tree/main/release/aspis-v5-tag67-mainnet-v1"
+    url: "https://github.com/DJBarker87/aspis/tree/main/release/aspis-v5-tag67-mainnet-v1"
+    abstract: >-
+      Source-linked V5 Tag-67 mainnet evidence for the byte-reproducible
+      1,258,496-byte SBF binary, 75,358-byte proof, and finalized
+      1,334,452-compute-unit atomic execution.
