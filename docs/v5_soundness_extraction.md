@@ -611,14 +611,27 @@ pad conditions E16/E18. `V5_REAL_HOST_GOOD_RETRY_CAP = 17` (`v5_real_host_proof.
 are inconsistent, which the `const _: () = assert!(...)` block at `:217-232` forbids at compile
 time. Classification: **implementation only**.
 
-**P4.4 — `.expect(...)` in the deployed verifier: four sites.**
+**P4.4 — `.expect(...)` in the deployed verifier: three sites.**
 `v5_fri_checks.rs:140` ("fixed v5 claim count established by constructor"), `:324` ("successful
 fixed-count transcript sampling"), `v5_cu_probe.rs:1775` ("the pinned copy-inactive functional is
-nonzero"), `v5_relation_stress.rs:270` ("nonzero QM31 alpha has an inverse"). Classification:
-`v5_fri_checks.rs:140,324` and `v5_cu_probe.rs:1775` are **implementation only**.
-**`v5_relation_stress.rs:270` is a protocol assumption**: it asserts α ≠ 0, but α is drawn with
-`challenge_qm31` (`v5_cu_probe.rs:849-851`), which *permits* zero (`transcript.rs:307-345`). See
-Part 9 Q-ZERO.
+nonzero"). All three are **implementation only**.
+
+**`v5_relation_stress.rs:270` is NOT in the deployed path.** It sits at line 270, inside
+`build_v5_relation_stress_tail_for_initial_claim`, which begins at line 201 under
+`#[cfg(not(target_os = "solana"))]` (line 200) — a host-side *builder*, EXCLUDED from the SBF.
+Verified absence of any inverse in the deployed relation path:
+
+```
+$ awk 'NR>=139 && NR<=198' v5_relation_stress.rs | grep -E "\.inv\(\)|inverse"   # verify_v5_relation_stress_with_additive
+NONE
+$ awk 'NR>=1223 && NR<=1245' crates/aspis-core/src/sumcheck.rs | grep -E "\.inv\(\)|inverse"   # WeightAccumulator::fold
+NONE
+```
+
+Consequence for Q-ZERO: **there is no α-inverse and no panic risk at α = 0 in the deployed
+verifier.** `WeightAccumulator::fold` (`sumcheck.rs:1223-1239`) computes α, α², α³ and folds; at
+α = 0 that is a well-defined fold, not a fault. Q-ZERO is therefore purely an *algebraic*
+soundness question, not a liveness or crash question. P4.6 stands unchanged.
 
 **P4.5 — `debug_assert!`: three sites, all compiled out in release.**
 `v5_cu_probe.rs:1779`, `:1877`, `v5_fri_checks.rs:172` (`debug_assert!(count == 3 || count == 4)`).
@@ -630,12 +643,37 @@ none constrains an adversary.
 `verify_v5_relation_stress_with_additive`. Classification: **protocol assumption made silently** —
 a certificate must either add an event for zero mix/α or prove the identities survive it.
 
-**P4.7 — `verify_v5_reserved_tail` decodes words rather than scanning bytes.** Comment at
-`v5_cu_probe.rs:1409-1412` says it checks "its 50 safely decoded words … preserving the
-byte-for-byte all-zero predicate". Whether word-decoding excludes every non-zero 400-byte tail is
-**NOT DETERMINABLE FROM SOURCE** without reading `verify_v5_reserved_tail`'s body, which this
-extraction did not open. Classification: **implementation only if the equivalence holds**;
-otherwise it weakens E05.
+**P4.7 — `verify_v5_reserved_tail` word-decoding is exactly equivalent to a byte-wise all-zero
+check. RESOLVED.** `verify_v5_reserved_tail` (`v5_cu_probe.rs:1360-1365`) delegates to
+`v5_reserved_tail_is_zero` (`:1335-1357`):
+
+```rust
+fn v5_reserved_tail_is_zero(bytes: &[u8]) -> bool {
+    if bytes.len() != V5_CU_REAL_PREFIX_ZERO_TAIL_BYTES {
+        return false;
+    }
+    let mut offset = 0;
+    while offset < V5_CU_REAL_PREFIX_ZERO_TAIL_BYTES {
+        let word = u64::from_le_bytes([
+            bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3],
+            bytes[offset + 4], bytes[offset + 5], bytes[offset + 6], bytes[offset + 7],
+        ]);
+        if word != 0 {
+            return false;
+        }
+        offset += 8;
+    }
+    true
+}
+```
+
+A little-endian `u64` is zero iff all eight of its bytes are zero; the length is pinned to
+`V5_CU_REAL_PREFIX_ZERO_TAIL_BYTES = 400` (`v5_cu_probe.rs:212`) and 400 = 50 × 8 exactly, so
+every byte is covered with no remainder. The predicate is therefore **exactly** byte-wise
+all-zero. The repository also carries a differential oracle
+`verify_v5_reserved_tail_bytewise` (`v5_cu_probe.rs:3385-3391`, test-only) exercised at six sites
+(`:3701, 3710, 3728, 3745, 3753, 3762`). Classification: **implementation only**. **E05 is fully
+enforced** and needs no additional lemma.
 
 **P4.8 — `TODO` / `SAFETY` / `ASSUME` / `UNSAFE` markers: none** in the eight production files.
 
@@ -742,10 +780,31 @@ well as for γ.
   `V5_RELATION_STRESS_BYTES == 928` (`:41`).
 - **Opening schedule**: `V5_FRI_OPENING_POINTS = 4` claims per lane
   (`v5_fri_checks.rs:37`; `V5_WIRE_CLAIMS_PER_LANE = 4`, `v5_wire_skeleton.rs:26`); the claim table
-  is 4 × 19 × 16 = 1216 bytes (`v5_atomic_terminal.rs:35`). **Which four points these are is NOT
-  DETERMINABLE FROM SOURCE** — the verifier consumes them positionally; only three appear in the
-  terminal point table (`V5_ATOMIC_TERMINAL_POINT_CLAIMS = 3`) and the 4th claim of lane 17 is the
-  mask. A prover-side artifact (`crates/aspis-prover/src/v5_b_commitment.rs`) would answer it.
+  is 4 × 19 × 16 = 1216 bytes (`v5_atomic_terminal.rs:35`).
+  **RESOLVED — and "four opening points" is a misnomer.** There are **three points and one
+  structured linear functional**. `crates/aspis-prover/src/v5_split_layer_zero.rs:212-213`:
+
+```rust
+    let points = [*z, binary_successor_point(z), xor12_point(z)];
+    let terminal_covector = v5_structured_terminal_covector(z);
+```
+
+  and `evaluate_component_b_relation_claims` (`:188-206`):
+
+```rust
+    claims[0] = crate::multilinear_eval_extension(message, &points[0]);
+    claims[1] = crate::multilinear_eval_extension(message, &points[1]);
+    claims[2] = crate::multilinear_eval_extension(message, &points[2]);
+    ...
+    claims[V5_RELATION_POINT_CLAIMS] = terminal;   // dot with terminal_covector
+```
+
+  So claims 0–2 are multilinear evaluations at `z`, `binary_successor_point(z)`, `xor12_point(z)` —
+  exactly the triple the verifier re-checks at `v5_atomic_terminal.rs:278-283` — and **claim 3 is a
+  covector dot product, not an evaluation at any point**. For the Component-B lane, claim 3 is the
+  mask term consumed by `masked = mask + η·real` (`v5_atomic_terminal.rs:316-327`). The deployed
+  γ-batch nevertheless treats all four positionally as if they were four point claims
+  (`v5_fri_checks.rs:260-274`). See OPEN QUESTION Q-FUNC below.
 - **Terminal polynomial**: 4 QM31 coefficients (`V5_FRI_FINAL_COEFFICIENTS = 4`,
   `V5_FRI_FINAL_BYTES = 64`, `:40-41`).
 - **Transition identities**: E39–E42 above.
@@ -851,7 +910,8 @@ For each predicate class, the theorem that would license replacing it with a pro
 | **T-GRIND** | E27–E32 | Grinding/leading-zero bound in the RO model at six independent boundary positions | imported |
 | **T-PARSE** | E01–E03, E05, E33, E38 | Parser correctness: the accepted grammar admits exactly one interpretation per byte string | **new; also see P4.7** |
 | **T-STMT** | E07 | Collision resistance of the statement digest, and equality of the wrapper-reconstructed statement with the proof-carried context | imported |
-| **Q-ZERO** | α and `mix` | **Open**: α is drawn allowing zero (`transcript.rs:307`) but `v5_relation_stress.rs:270` asserts it is invertible via `.expect`; `ZeroMix`/`ZeroAlpha` are declared but never raised (P4.6). Either a lemma that the identities survive zero, or a sampler change, is required. | **new, unresolved** |
+| **Q-ZERO** | α and `mix` | **Open, narrowed.** α and `mix` are drawn with `challenge_qm31`, which permits zero (`transcript.rs:307-345`). There is **no inverse and no panic** in the deployed path (P4.4), so this is purely algebraic: does α = 0 or `mix` = 0 admit a false accept through `WeightAccumulator::fold` (`sumcheck.rs:1223-1239`), `evaluate`, or `running_claim += mix·value` (`v5_relation_stress.rs:170`)? `ZeroMix`/`ZeroAlpha` are declared but never raised (P4.6). | **new, unresolved** |
+| **Q-FUNC** | E19, E16 | **Open**: claim 3 of every lane is a covector dot product, not a point evaluation (Part 7), yet the γ-batch weights all four positionally (`v5_fri_checks.rs:260-274`). Does the MCA/proximity statement being relied on cover a batch in which one of the four "opening" slots is a structured linear functional of the message rather than an evaluation? | **new, unresolved** |
 | **Q-SINK** | E-SINK | **Open**: is `fri_sum + relation_claim + terminal_masked` meant to satisfy an identity? It is discarded (`v5_cu_probe.rs:2420,2462-2464`). | **new, unresolved** |
 | **T-EXTR** | knowledge soundness | Extractor for the spend relation; not exercised by any predicate above | out of scope of this extraction |
 | **T-SIM** | hiding | Simulator; **no V5 hiding artifact exists** (see N3) | out of scope |
@@ -903,9 +963,11 @@ Part 8 gives 38 absorbs / 42 squeeze sites and a count of 28 under one stated co
 *Would be answered by*: a round-boundary certificate artifact for V5. None exists in the
 repository.
 
-**N2 — The semantic role of each individual C1 column.** The verifier treats them as a 16-wide
-M31 vector (`v5_fri_checks.rs:386-390`). *Would be answered by*:
-`crates/aspis-statement/src/atomic_state_only_trace.rs` and the prover's lane assignment.
+**N2 — The semantic role of each individual C1 column.** Still open. The verifier treats them as a
+16-wide M31 vector (`v5_fri_checks.rs:386-390`). The transcript-absorbed constraint registry
+records `STATE_ONLY_SEMANTIC_SOURCE_LANES = 95` (`state_only_sumcheck.rs:22`, absorbed at
+`:86`), which is a source-lane count and **not** a per-column role map for the 16 committed
+columns. *Would be answered by*: `crates/aspis-statement/src/atomic_state_only_trace.rs`.
 
 **N3 — Whether V5's masking inputs suffice, and under what condition.** The deployed verifier
 checks no masking-rank or hiding condition; the inputs are prover-side
@@ -918,16 +980,19 @@ the exact degrees behind E15 and the q18 rows `atomic_tuple_compression` and
 `atomic_copy_range_poles`. *Would be answered by*:
 `crates/aspis-statement/src/atomic_state_only_terminal.rs`.
 
-**N5 — What the four opening points per lane are.** Count declared
-(`V5_FRI_OPENING_POINTS = 4`), correspondence to the OOD schedule not stated in the verifier.
-*Would be answered by*: `crates/aspis-prover/src/v5_b_commitment.rs`.
+**N5 — RESOLVED.** The four claims per lane are three multilinear evaluations at
+`z`, `binary_successor_point(z)`, `xor12_point(z)` plus one structured covector dot product —
+not four points. See Part 7 and `crates/aspis-prover/src/v5_split_layer_zero.rs:188-215`. The
+consequence for batching is recorded as OPEN QUESTION Q-FUNC.
 
-**N6 — Whether `verify_v5_reserved_tail`'s word-decoding is equivalent to a byte-wise all-zero
-check** (P4.7). *Would be answered by*: the body of `verify_v5_reserved_tail` in `v5_cu_probe.rs`.
+**N6 — RESOLVED.** Word-decoding is exactly equivalent to a byte-wise all-zero check; see P4.7.
+E05 is fully enforced.
 
-**N7 — Whether zero α or zero `mix` breaks any identity** (Q-ZERO). *Would be answered by*: a
-lemma about `WeightAccumulator::fold` and `evaluate` at α = 0, plus the intended semantics of the
-unraised `ZeroAlpha`/`ZeroMix` variants.
+**N7 — Narrowed, still open** (Q-ZERO). The crash/inverse half is resolved: no inverse and no
+panic exist in the deployed path (P4.4). What remains is purely algebraic — whether α = 0 or
+`mix` = 0 admits a false accept. *Would be answered by*: a lemma about `WeightAccumulator::fold`
+(`crates/aspis-core/src/sumcheck.rs:1223-1239`) and `evaluate` at α = 0, plus the intended
+semantics of the unraised `ZeroAlpha`/`ZeroMix` variants.
 
 **N8 — Whether the discarded composite sum was meant to be checked** (Q-SINK). *Would be answered
 by*: a design note or a V5 relation-composition lemma. Nothing in the repository states an
