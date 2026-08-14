@@ -524,6 +524,87 @@ mod tests {
         compare(TEST_DEPTH, 0, &indices);
         compare(TEST_DEPTH, TEST_VALUE_WIDTH, &[]);
         compare(TEST_DEPTH, TEST_VALUE_WIDTH, &[1, 1, 7, 13, 30]);
+        compare(TEST_DEPTH, TEST_VALUE_WIDTH, &[2, 1, 7, 13, 30]);
         compare(TEST_DEPTH, TEST_VALUE_WIDTH, &[1, 2, 7, 13, 32]);
+    }
+
+    #[test]
+    fn topology_opening_rejects_swapped_radix_four_frontier_children() {
+        let indices = [1u32];
+        let (levels, records) = test_tree();
+        let root = levels.last().unwrap()[0];
+        let mut proof = test_proof(&levels, &records, &indices);
+        let topology = Radix4BinaryCapTopology::new(TEST_DEPTH, &indices).unwrap();
+
+        // count || one record || frontier_count || frontier. With one active
+        // slot, the first two frontier digests are slots 0 and 2 of the same
+        // radix-four parent and therefore cannot be interchanged.
+        let frontier_start = 2 + TEST_VALUE_WIDTH + STATE_ONLY_PRIVATE_LEAF_SALT_BYTES + 4;
+        for offset in 0..32 {
+            proof.swap(frontier_start + offset, frontier_start + 32 + offset);
+        }
+        let mut level = Vec::new();
+        let mut next = Vec::new();
+        assert!(verify_state_only_private_opening_from_proof_with_topology(
+            test_hash,
+            &root,
+            TEST_DEPTH,
+            TEST_TAG,
+            TEST_VALUE_WIDTH,
+            &indices,
+            &proof,
+            &topology,
+            0,
+            &mut level,
+            &mut next,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn topology_opening_rejects_the_wrong_odd_cap_side() {
+        let honest_indices = [1u32];
+        let opposite_cap_indices = [17u32];
+        let (levels, records) = test_tree();
+        let root = levels.last().unwrap()[0];
+        let proof = test_proof(&levels, &records, &honest_indices);
+
+        // At depth five, 1 and 17 have the same two radix-four slots but
+        // opposite final binary-cap sides. The proof carries no index bytes;
+        // orientation comes only from the matched public topology.
+        let honest_topology = Radix4BinaryCapTopology::new(TEST_DEPTH, &honest_indices).unwrap();
+        let opposite_topology =
+            Radix4BinaryCapTopology::new(TEST_DEPTH, &opposite_cap_indices).unwrap();
+        let mut level = Vec::new();
+        let mut next = Vec::new();
+
+        assert!(verify_state_only_private_opening_from_proof_with_topology(
+            test_hash,
+            &root,
+            TEST_DEPTH,
+            TEST_TAG,
+            TEST_VALUE_WIDTH,
+            &honest_indices,
+            &proof,
+            &honest_topology,
+            0,
+            &mut level,
+            &mut next,
+        )
+        .is_ok());
+        assert!(verify_state_only_private_opening_from_proof_with_topology(
+            test_hash,
+            &root,
+            TEST_DEPTH,
+            TEST_TAG,
+            TEST_VALUE_WIDTH,
+            &opposite_cap_indices,
+            &proof,
+            &opposite_topology,
+            0,
+            &mut level,
+            &mut next,
+        )
+        .is_err());
     }
 }

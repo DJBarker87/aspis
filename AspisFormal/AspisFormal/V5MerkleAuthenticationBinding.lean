@@ -232,16 +232,31 @@ def sectionIndex (tree : V5PrivateSection) (query : V5Query) : Nat :=
 def radixLevelCount (tree : V5PrivateSection) : Nat :=
   binaryDepth tree / 2
 
+/-- Repeated division by four.  At level `level` this is the integer index
+stored by Rust's shared radix-four topology. -/
+def indexAtRadixLevel (index : Nat) : Nat -> Nat
+  | 0 => index
+  | level + 1 => indexAtRadixLevel index level / 4
+
+/-- The low two bits consumed at each radix-four level, written recursively
+to expose the same state transition as the production loop. -/
+def radixSlotsFromLevel (index level : Nat) : Nat -> List (Fin 4)
+  | 0 => []
+  | count + 1 =>
+      ⟨indexAtRadixLevel index level % 4, Nat.mod_lt _ (by decide)⟩ ::
+        radixSlotsFromLevel index (level + 1) count
+
 /-- Leaf-to-root two-bit slots consumed by the radix-four levels. -/
 def radixSlots (tree : V5PrivateSection) (query : V5Query) : List (Fin 4) :=
-  (List.range (radixLevelCount tree)).map fun level =>
-    ⟨(sectionIndex tree query / 4 ^ level) % 4,
-      Nat.mod_lt _ (by decide)⟩
+  radixSlotsFromLevel (sectionIndex tree query) 0 (radixLevelCount tree)
+
+/-- Index of the node immediately below the final binary cap. -/
+def binaryCapIndex (tree : V5PrivateSection) (query : V5Query) : Nat :=
+  indexAtRadixLevel (sectionIndex tree query) (radixLevelCount tree)
 
 /-- Orientation of the one remaining binary-cap bit. -/
 def topSide (tree : V5PrivateSection) (query : V5Query) : BinarySide :=
-  if (sectionIndex tree query / 4 ^ radixLevelCount tree) % 2 = 0
-  then .left else .right
+  if binaryCapIndex tree query = 0 then .left else .right
 
 theorem released_depths :
     [binaryDepth .c1, binaryDepth .c2, binaryDepth .line1,
