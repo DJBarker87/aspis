@@ -58,9 +58,11 @@ The weaknesses identified at freeze time were cryptographic and structural
 rather than in the on-chain glue. The floors that matter most for a shielded
 system are conditional: hiding rests on the affine-image premise (R-03),
 soundness is work-normalized rather than raw (R-04), and authorization still
-needs deployed and simulation extraction, target sampling and commitment
-bounds, the alternative-path Merkle argument, and a complete attack game tied
-to the code (R-02). The custom Merkle compression is unreviewed (R-08). Testing is extensive at the
+needs deployed and simulation extraction, the connection from real attacks to
+the Lean game, target sampling, and concrete primitive and runtime bounds
+(R-02). Later V5 work supplies the same-position Merkle reduction and the case
+split for the attack event defined in Lean, but not those deployed or numerical
+steps. The custom Merkle compression is unreviewed (R-08). Testing is extensive at the
 host level and backed by a full mainnet reconciliation. The later standalone
 rank checker independently reconstructs the eight rank identities; the other
 cryptographic premises and the absence of coverage-guided fuzzing remain as
@@ -104,7 +106,7 @@ committed set on-chain under the same atomicity discipline, and re-evaluate
 hiding against a realistic set size rather than a one-element pool.
 
 ### R-02: Theft resistance is conditional, not unconditional
-**Severity: High. Status: documented-constraint.**
+**Severity: High. Status: partially discharged; deployed connection and numerical bounds remain open.**
 
 The repaired Lean result proves a narrower and correct statement. For a fixed
 target nullifier, an accepted prover execution whose extracted secret is wrong
@@ -114,22 +116,35 @@ assumption, not public proof bytes alone. A second theorem handles a different
 valid opening of the exact same fixed input leaf. Neither result requires or
 assumes that a compressing hash is globally one-to-one.
 
-This is not yet a complete deployed theft theorem. The project still needs to
-connect actual Tag-67 acceptance to extraction of a witness in the full spend
-relation, bound the extractor's failure probability, justify simulation
-extraction after the attacker has seen other proofs, define target sampling or
-assume a uniform fixed-target guarantee, bound second-preimage attacks on the
-exact Poseidon2 nullifier and combined owner/note commitment, and prove the
-alternative-leaf Merkle-binding route. The current paper states the multi-round
-simulation-extraction step as an assumption; weak unique response is only
-supporting evidence. The result also says nothing about key management or
-secret-key leakage.
+This is not yet a complete deployed theft theorem. Later V5 work proves the
+same-position Merkle reduction and a complete case split for the fixed-victim
+attack event defined in Lean. The project still needs to connect actual Tag-67
+acceptance and real deployed attacks to that model, bound extraction failure,
+justify extraction after the attacker has seen other proofs, define target
+sampling or assume a uniform fixed-target guarantee, and supply concrete
+bounds for credential recovery, the Poseidon2 nullifier, note commitment and
+tree hash, PDA aliasing, setup, and Solana runtime failures. The current paper
+states the multi-round extraction step as an assumption; weak unique response
+is only supporting evidence. The result also says nothing about key management
+or secret-key leakage.
 
 *Fix direction:* prove the deployed acceptance-to-extraction link and the
-exact multi-round simulation-extraction result, then justify concrete
-fixed-target bounds and the Merkle-binding route. Until then,
-describe this as a conditional wrong-secret reduction and do not place real
-value under its protection.
+exact multi-round extraction result, connect real attacks to the Lean game,
+then justify concrete bounds for every listed failure. Until then, describe
+this as a conditional fixed-victim case split and do not place real value under
+its protection.
+
+**Post-review V5 update (14 August 2026):**
+`ApplicationMerkleBinding.lean` now proves the relevant Merkle reduction for
+a different leaf at the victim's exact position, and deliberately does not
+misclassify a legitimate opening at another position. The new fixed-victim
+game separates extraction failure, credential recovery, nullifier collision,
+note-opening collision, Merkle node collision, PDA aliasing, runtime/state
+failure, and invalid victim setup, then proves the corresponding eight-term
+union bound. The exact deployed acceptance-to-extraction connection,
+multi-proof extraction, and concrete Poseidon2, PDA, and runtime probability
+bounds remain open. The status therefore remains high severity for a
+value-bearing system, although the missing cases are now stated precisely.
 
 ### R-03: Hiding floors use an explicit affine-image premise
 **Severity: High. Status: rank identities independently checked; full-model completeness remains an assumption.**
@@ -183,14 +198,15 @@ declared execution view with the reconstructed linear model.
 The headline 100.16-bit soundness floor is in a **work-normalized** (per-RO-query)
 metric (`soundness.tex:322-334`). The raw BCS Fiat–Shamir bound exceeds one at
 T = 2^128 and is "vacuous as a bound" there by the paper's own words
-(`soundness.tex:299`). The raw work-to-forge, expressed as -log2 of the
-raw bound at 2^128, is ≈106.79 (`soundness.tex:315-319`), i.e. roughly 2^106
-work. This is a legitimate way to report the number, but it is a weaker and
-easily-misread claim than a raw 100-bit floor.
+(`soundness.tex:299`). The value ≈106.79 is `-log2` of the work-normalized
+bound at that query budget, not of the raw bound. Multiplying by `T = 2^128`
+makes the raw upper bound exceed one, so it gives no nontrivial raw probability
+at that budget.
 
-*Fix direction:* present the raw work-to-forge figure alongside the normalized
-floor in all reader-facing material, and tighten the IOP/BCS parameters if a
-raw, non-vacuous bound at the target query budget is desired.
+*Fix direction:* present the ordinary bound as `min(1, T × b(T))` alongside the
+normalized value, do not call 106.79 a raw security figure, and tighten the
+proof-system parameters if a nontrivial ordinary bound at the target query
+budget is desired.
 
 ### R-05: Deployment domain does not identify the cluster
 **Severity: Medium. Status: documented-constraint.**
@@ -266,7 +282,7 @@ the permutation input rather than by call-site convention.
 | ID | Finding | Severity | Status |
 |---|---|---|---|
 | R-01 | Single-spend primitive; no deposit / no anonymity-set growth | High | documented-constraint |
-| R-02 | Authorization still needs deployed/simulation extraction, target sampling and commitment bounds, alternative-path Merkle binding, and a complete attack game tied to the code | High | documented-constraint |
+| R-02 | Later V5 work adds the same-position Merkle reduction and a modeled fixed-victim case split; deployed/simulation extraction, the deployed-game connection, target sampling, and concrete primitive/runtime bounds remain | High | partially discharged |
 | R-03 | Hiding floors use the affine-image completeness premise; ranks independently checked | High | partially discharged |
 | R-04 | Soundness floor is work-normalized; raw bound vacuous | Medium | documented-constraint |
 | R-05 | Deployment domain can be reproduced on another cluster by the program-id key holder | Medium | documented-constraint |

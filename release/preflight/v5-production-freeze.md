@@ -68,14 +68,14 @@ tree, tool, and output identities.
 ## Mainnet CU policy
 
 The measured-and-derived V5 CU ceiling is **1,356,912 CU**, leaving
-**43,088 CU** below Solana's 1.4 million limit. The mainnet runner enforces
-two conditions before submission:
+**43,088 CU** below Solana's 1.4 million limit. The recorded pre-execution
+mainnet-runner source enforces two conditions before submission:
 
-- the canonical nullifier PDA bump is 255, so on-chain address derivation
+- the selected nullifier PDA bump is 255, so on-chain address derivation
   takes one 1,500-CU attempt; and
 - simulation of the exact signed transaction bytes succeeds at or below 1,356,912 CU.
 
-The runner then submits the same serialized transaction and verifies its
+That source then submits the same serialized transaction and verifies its
 landed CU and refetched bytes. The transaction compute limit is also
 1,356,912 CU, so execution above the policy ceiling fails atomically.
 
@@ -150,13 +150,16 @@ references are in
 The table derives topology and GoodA/GoodB variation from the frozen replay
 family. Transcript challenge sampling also has bounded retry paths. Rather
 than treating this calculation as a theorem over every accepted byte string,
-the mainnet runner simulates the exact signed candidate transaction against
-the V5 CU ceiling.
+the recorded runner source simulates the exact signed candidate transaction
+against the V5 CU ceiling.
 
 `Pubkey::find_program_address` charges another 1,500 CU after each failed bump.
-The historical topology record predates this runner scope. A future policy or
-binary that accepts a wider bump range or a higher simulation result gets a
-new ceiling.
+The historical topology record predates this runner scope. The exact deployed
+binary derived and checked the PDA address but did not require the numeric
+bump to be 255. The recorded runner's bump-255 rule bounded the intended
+release policy. The immutable lifecycle evidence does not pin the exact
+executed runner commit. A future runner policy allowing another bump, or a
+higher simulation result, gets a new ceiling.
 
 ## Formal correspondence
 
@@ -217,7 +220,7 @@ the production path.
 
 The production dispatcher exposes Tag 67 and no Tag-66 diagnostic arm. It
 requires five ordered accounts, checks ownership/signer/writable flags,
-re-derives the canonical nullifier PDA, requires the executable System
+derives the expected nullifier PDA, requires the executable System
 Program, rejects account aliasing, verifies before the first write or CPI, and
 rejects a reused nullifier.
 
@@ -303,9 +306,12 @@ and
 `0cdc34bc7f835640cff76d1085df9ba966df9f39eb228f3002f927cf30958113`,
 respectively. Atomic Tag 67
 [`EJviPgF…3vJ2fE`](https://explorer.solana.com/tx/EJviPgF12i9iK2CveVaQSMeFQqDMFPQ1iPRUYEwNQE3zGquTUZNJXPZEENorcQtsnQj1orFmH1TPsgdbR3vJ2fE)
-finalized at slot `435019536`. The canonical nullifier PDA bump was exactly
-`255`; simulation and landed metadata both reported `1,334,452 CU`, below the
-frozen `1,356,912 CU` policy ceiling.
+finalized at slot `435019536`. The nullifier PDA bump was exactly
+`255`; recorded pre-execution runner source required that value, while the
+exact deployed program did not require a specific numeric bump. The immutable
+lifecycle evidence does not pin the exact executed runner commit. Simulation
+and landed metadata both reported `1,334,452 CU`, below the frozen
+`1,356,912 CU` policy ceiling.
 
 The executor used a hash-chained, crash-resumable per-wire journal. Each
 replacement wire received a fresh finalized-expiry gate and exact signed-wire

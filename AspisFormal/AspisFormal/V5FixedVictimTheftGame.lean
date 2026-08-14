@@ -19,11 +19,13 @@ bits identify a different tree position and are not automatically an attack;
 a collision would be false.
 
 The final section adds the chain-level boundaries needed by a deployed game:
-PDA aliasing, runtime/state failure, and invalid victim setup.  The theorem
-gives a complete event split and a measure union bound.  It does not invent
+PDA aliasing, runtime/state failure, and invalid victim setup.  Conditional on
+the caller-supplied `DeployedAttackConnection`, the theorem gives a complete
+case split for the attack event defined here and a measure union bound.  It
+does not prove that every real attack satisfies that connection or invent
 probabilities for Poseidon2 collision resistance, credential recovery,
-extraction, PDA derivation, or Solana runtime behavior.  Those bounds remain
-external cryptographic or platform assumptions.
+extraction, PDA derivation, or Solana runtime behavior.  Those statements
+remain external cryptographic or platform assumptions.
 -/
 
 namespace AspisV5FixedVictimTheftGame

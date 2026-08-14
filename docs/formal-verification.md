@@ -70,14 +70,26 @@ bound for Fiat--Shamir, collision, and zero-denominator failures. The current
 accepted-run theorem leaves that whole step as an explicit premise and warns
 that choosing an always-true failure event would prove nothing.
 
+`V5DeployedFalseAcceptance.lean` now makes one conditional probability step
+exact. It defines false acceptance for one public statement, takes three
+failure predicates intended to describe selector branches 0, 1, and 2, and
+proves their union bound. Lean has not yet connected those predicates to the
+actual deployed selector branches. If that connection, accepted-run
+extraction, Poseidon2 faithfulness, the existing width and round premises,
+transcript and commitment assumptions, and the three branch bounds are all
+provided, Lean derives a work-normalized bound of `2^-100`. The ordinary
+probability bound is `min(1, T / 2^100)` for query budget `T`. The theorem does
+not supply any of those deployed or cryptographic premises, and the derived
+endpoint is stated for `1 <= T <= 2^128`.
+
 ### Theft resistance: exact status
 
 `TheftResistance.lean` models a fixed prover execution and a fixed target
 nullifier. Its execution record may contain the prover and random-oracle query
 transcript needed by an extractor; it is not just the serialized proof.
-`V5TheftResistance.lean` then instantiates the result with the exact V5 public
-fields and complete spend relation, deriving the nullifier equality from that
-relation rather than assuming it. Lean proves:
+`V5TheftResistance.lean` then connects that result to the exact V5 public
+fields and spend relation, deriving the nullifier equality from the relation
+rather than assuming it. Lean proves:
 
 ```text
 Pr[accepted prover execution yields the wrong extracted secret]
@@ -85,16 +97,30 @@ Pr[accepted prover execution yields the wrong extracted secret]
        + Pr[target second preimage for the victim's nullifier]
 ```
 
-This replaces the old, impossible assumption that the compressing nullifier
-hash is globally one-to-one. A second Lean reduction covers a different valid
-opening of the exact same fixed input leaf by reducing it to extraction failure
-or a second preimage of the combined owner-and-note commitment. The reductions
-are not yet a complete computational theft game: they do not formalize
-efficient algorithms, the attacker's view, target-note sampling, or the
-deployed verifier. A deployed numerical claim also needs the acceptance-to-
-extraction and after-observed-proofs results, fixed-target security for the
-nullifier and combined note commitment, a Merkle-binding reduction for an
-alternative leaf or path, and the code-to-model connection for all of them.
+This replaces the false assumption that the compressing nullifier hash is
+one-to-one. `V5FixedVictimTheftGame.lean` now gives a fuller fixed-victim game.
+It classifies an accepted attack into five mathematical failures:
+
+1. extraction fails;
+2. the attacker recovers the victim's credential;
+3. a different secret/randomness pair has the victim's nullifier;
+4. a different opening has the victim's note commitment; or
+5. a different leaf at the victim's exact tree position reaches the same root.
+
+`ApplicationMerkleBinding.lean` proves that the fifth case exposes a concrete
+node-hash collision. It also proves a regression example showing why a path at
+a different position can be perfectly valid and must not automatically be
+called a collision. The deployed-game theorem adds three chain-level failures:
+different nullifiers resolving to the same marker PDA, a Solana runtime or
+state failure, and an invalid victim setup. Lean proves that the deployed
+attack probability is at most the sum of those eight events, provided the
+deployed attack is connected to the mathematical game.
+
+That last connection is still a premise. A numerical theft claim also needs
+deployed extraction after observed proofs, concrete fixed-target security for
+the Poseidon2 nullifier and note commitment, a bound for Poseidon2 node-hash
+collisions, PDA security, and the stated Solana runtime behavior. The project
+therefore still does not claim a standalone numerical theft bound.
 
 ## Layer 2: selected production Rust
 
@@ -185,8 +211,12 @@ only if all of the following are assumed:
 - the three branches and six proof-of-work checks have been counted once each.
 
 Lean proves that those assumptions imply a work-normalized error at most
-`2^-100`. It does not prove the assumptions or show that every accepted
-deployed proof meets them.
+`2^-100`. `V5DeployedFalseAcceptance.lean` connects that arithmetic to three
+parameterized failure predicates and derives the ordinary bound
+`min(1, T / 2^100)` within `1 <= T <= 2^128`. It does not prove that those
+predicates are the actual deployed selector failures, supply the extraction
+and branch-security premises, or show that every accepted deployed proof meets
+them.
 
 The fractional 100.161-bit value belongs to the separate q18/g37 case study;
 it is not a V5 deployment claim. The full status is recorded in the
@@ -231,8 +261,14 @@ records:
 
 The finalized mainnet transaction is
 [`EJviPgF…R3vJ2fE`](https://explorer.solana.com/tx/EJviPgF12i9iK2CveVaQSMeFQqDMFPQ1iPRUYEwNQE3zGquTUZNJXPZEENorcQtsnQj1orFmH1TPsgdbR3vJ2fE?cluster=mainnet-beta).
-It used nullifier PDA bump 255 and consumed 1,334,452 CU in both
-exact signed-wire simulation and landed metadata.
+The recorded pre-execution runner source required nullifier PDA bump 255, and
+the transaction used that bump and consumed 1,334,452 CU in both exact
+signed-wire simulation and landed metadata. The immutable lifecycle evidence
+does not pin the exact executed runner commit.
+The exact deployed program derived the PDA from the nullifier and required the
+supplied account to match, but did not itself require the numeric bump to be
+255. That in-program restriction was added later. This is a compute-policy
+correction, not a proof-validity or same-nullifier replay-protection issue.
 
 The archived proof and statement also pass the released verifier callback in
 `programs/aspis-verifier/tests/v5_mainnet_release_proof.rs`; changing any of

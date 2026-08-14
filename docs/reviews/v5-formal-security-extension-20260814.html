@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aspis V5 formal security extension review — 14 August 2026</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17212b;
+      --muted: #5d6975;
+      --line: #d8e0e7;
+      --paper: #fff;
+      --wash: #f3f6f8;
+      --green: #086b43;
+      --green-wash: #e8f6ef;
+      --amber: #815600;
+      --amber-wash: #fff7e5;
+      --blue: #1c5f99;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--wash);
+      font: 16px/1.55 ui-sans-serif, system-ui, -apple-system,
+        BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main {
+      width: min(980px, calc(100% - 32px));
+      margin: 40px auto;
+      padding: 46px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 16px 48px rgb(24 40 56 / 8%);
+    }
+    h1, h2 { line-height: 1.17; letter-spacing: -0.025em; }
+    h1 { max-width: 790px; margin: 12px 0; font-size: clamp(2.1rem, 5vw, 3.7rem); }
+    h2 { margin-top: 38px; font-size: 1.5rem; }
+    p { max-width: 830px; }
+    code {
+      overflow-wrap: anywhere;
+      font: 0.9em/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+    a { color: var(--blue); }
+    .eyebrow {
+      color: var(--blue);
+      font-size: 0.78rem;
+      font-weight: 750;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .decision {
+      display: inline-block;
+      margin: 18px 0 4px;
+      padding: 8px 13px;
+      color: var(--amber);
+      background: var(--amber-wash);
+      border: 1px solid #ead49b;
+      border-radius: 999px;
+      font-weight: 750;
+    }
+    .lede { color: var(--muted); font-size: 1.16rem; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 13px;
+      margin: 25px 0;
+    }
+    .card {
+      padding: 17px;
+      background: var(--wash);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+    .card strong {
+      display: block;
+      color: var(--muted);
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .card span { display: block; margin-top: 6px; font-size: 1.12rem; font-weight: 750; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-size: 0.79rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    ul { padding-left: 22px; }
+    li + li { margin-top: 8px; }
+    .good, .warning {
+      margin-top: 24px;
+      padding: 18px 20px;
+    }
+    .good { background: var(--green-wash); border-left: 4px solid var(--green); }
+    .warning { background: var(--amber-wash); border-left: 4px solid var(--amber); }
+    footer {
+      margin-top: 42px;
+      padding-top: 20px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      font-size: 0.9rem;
+    }
+    @media (max-width: 780px) {
+      main { width: 100%; margin: 0; padding: 28px 20px; border: 0; border-radius: 0; }
+      .grid { grid-template-columns: 1fr 1fr; }
+      table { display: block; overflow-x: auto; }
+    }
+    @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Aspis · formal security review · 14 August 2026</div>
+  <div class="decision">MEANINGFUL PROGRESS — DEPLOYED SECURITY REMAINS CONDITIONAL</div>
+  <h1>The new Lean proofs make the attack cases explicit without pretending the open work is finished.</h1>
+  <p class="lede">
+    Three new modules make the security claim more precise. Within explicitly
+    defined Lean models, they reduce false acceptance and one fixed-victim
+    attack event to named failures. They do not yet prove that the models cover
+    every deployed Tag-67 attack or that each failure is negligibly likely.
+  </p>
+
+  <div class="grid">
+    <div class="card"><strong>New modules</strong><span>3</span></div>
+    <div class="card"><strong>Lean build</strong><span>Passed</span></div>
+    <div class="card"><strong>Theft cases listed</strong><span>8</span></div>
+    <div class="card"><strong>Mainnet bump</strong><span>255 observed</span></div>
+  </div>
+
+  <div class="good">
+    <strong>Bottom line.</strong> The mainnet proof is not an unexplained random
+    transaction: its archived bytes pass the released verifier and were
+    accepted on chain. The remaining issue is broader. The repository still
+    lacks a finished proof that every malicious proof accepted by the deployed
+    verifier must represent a valid spend.
+  </div>
+
+  <h2>What the three modules prove</h2>
+  <table>
+    <thead>
+      <tr><th>Module</th><th>What Lean now proves</th><th>What it does not prove</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>ApplicationMerkleBinding.lean</code></td>
+        <td>
+          If two different note leaves are opened at the same depth-20 tree
+          position and reach the same root, the paths reveal two different
+          ordered node inputs with the same Poseidon2-M31 node-hash output.
+          It also proves that changing the direction bits can simply select a
+          different real position, so that case must not be called a collision.
+        </td>
+        <td>
+          It gives no numerical collision bound for the custom node hash and
+          does not concern the separate SHA-256 trees inside the proof system.
+        </td>
+      </tr>
+      <tr>
+        <td><code>V5DeployedFalseAcceptance.lean</code></td>
+        <td>
+          It takes three caller-supplied definitions of failure and proves their
+          union bound. If callers prove that they are the actual deployed
+          selector failures and supply accepted-run extraction, Poseidon2
+          faithfulness, the existing width, round, transcript, commitment,
+          Fiat–Shamir, and per-branch premises, Lean derives the corrected
+          work-normalized <code>2^-100</code> bound. It also states the ordinary
+          probability as at most <code>min(1, T / 2^100)</code>, where
+          <code>T</code> is the random-oracle query budget and
+          <code>1 &lt;= T &lt;= 2^128</code>.
+        </td>
+        <td>
+          It does not prove that those definitions correspond to selector values
+          0, 1, and 2, or prove any of the other inputs for the deployed Rust
+          program.
+        </td>
+      </tr>
+      <tr>
+        <td><code>V5FixedVictimTheftGame.lean</code></td>
+        <td>
+          It fixes one victim note and defines an attack event. Lean proves
+          that this event falls into one of five mathematical cases: extraction
+          failure, recovery of the victim credential, a nullifier collision,
+          a second opening of the victim note, or a different leaf at the same
+          tree position. A conditional chain-facing theorem adds a PDA alias,
+          a runtime or state failure, and an invalid victim setup, then proves
+          the corresponding eight-term probability sum.
+        </td>
+        <td>
+          It does not supply probabilities for those eight cases and does not
+          itself connect an arbitrary deployed Tag-67 transaction to the
+          mathematical attack model.
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>What remains unproved</h2>
+  <p>The largest open item is still the connection from deployed acceptance to a valid witness:</p>
+  <ul>
+    <li>
+      Show that every arbitrary proof accepted by the exact Tag-67 parser and
+      verifier yields the authenticated rows needed by the full private-spend
+      relation. This includes polynomial commitments, FRI, Fiat–Shamir,
+      proof-tree authentication, byte decoding, public-input binding, and live
+      account state.
+    </li>
+    <li>
+      Identify the three caller-supplied failure definitions with the actual
+      selector-0, selector-1, and selector-2 failures, and prove that the cited
+      coding and proof-system results apply to those schedules, including the
+      separate proof-of-work hashes and the exact Rust challenge order.
+    </li>
+    <li>
+      Supply real security bounds for the custom Poseidon2-M31 owner, note,
+      nullifier, and tree-node functions. Test vectors check selected outputs;
+      they do not prove one-wayness or collision resistance.
+    </li>
+    <li>
+      Connect the fixed-victim model to the exact deployed code and Solana's
+      account locking, rollback, ownership, and marker persistence. The game
+      must also rule out duplicate victim credentials at setup.
+    </li>
+    <li>
+      Handle attackers that have already observed other honest proofs. The
+      extractor needs the adversarial prover and its random-oracle transcript;
+      public proof bytes alone are not enough.
+    </li>
+  </ul>
+
+  <div class="warning">
+    <strong>How serious is this?</strong> It is a high-priority gap in a claim
+    about security against malicious proof makers. No concrete forgery or
+    mathematical break was found, and the archived demonstration remains
+    strong evidence for that one honest execution. The repository should not
+    yet claim a proved deployed 100-bit false-acceptance rate or a numerical
+    theft-resistance bound.
+  </div>
+
+  <h2>The bump-255 correction</h2>
+  <p>
+    The nullifier marker used by the finalized mainnet transaction had bump
+    255. However, deployed source commit <code>06788d44</code> called
+    <code>verify_and_apply_atomic_payment_state</code>, which derived the PDA
+    but did not require the derived bump to equal 255. The required-bump
+    wrapper was added later.
+  </p>
+  <p>
+    Therefore bump 255 is an observed fact about the landed marker, not an
+    enforced rule of the deployed verifier. Repeat protection for the same
+    nullifier still follows from deterministic PDA derivation and the stored
+    marker, subject to Solana runtime behavior. A different nullifier resolving
+    to the same PDA is kept as a separate failure case in the new theft model.
+  </p>
+
+  <h2>Verification</h2>
+  <p>The three modules were checked from commit <code>f722db2</code> with:</p>
+  <pre><code>cd AspisFormal
+lake build AspisFormal.ApplicationMerkleBinding \
+  AspisFormal.V5DeployedFalseAcceptance \
+  AspisFormal.V5FixedVictimTheftGame</code></pre>
+  <p>
+    Lean completed all 8,675 required jobs successfully. The three files
+    contain no <code>sorry</code>, <code>admit</code>, custom <code>axiom</code>,
+    or <code>native_decide</code>. Their printed theorem dependencies are the
+    standard Lean/mathlib logical axioms only. The build emitted style and
+    lint warnings, but no proof error. A subsequent full project build also
+    completed all 8,768 jobs successfully.
+  </p>
+
+  <h2>Safe publication wording</h2>
+  <p>
+    It is accurate to say that Lean checks the Merkle collision reduction, a
+    complete case split for the fixed-victim attack event defined in the Lean
+    model, and a conditional false-acceptance bound over three caller-supplied
+    failure events. It is not accurate yet to say that deployed V5 theft
+    resistance or the deployed 100-bit security claim has been fully proved.
+  </p>
+
+  <footer>
+    Scope: review of the three modules added in commit <code>f722db2</code>.
+    No paper files were changed for this review.
+  </footer>
+</main>
+</body>
+</html>

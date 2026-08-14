@@ -47,6 +47,11 @@ review](reviews/v5-evidence-chain-publication-review.html) records the resolved
 framing and release-integrity findings and the boundaries that remain open to
 outside review.
 
+The [14 August formal-security extension
+review](reviews/v5-formal-security-extension-20260814.html) explains the new
+false-acceptance and theft proofs in plain English, including what they still
+do not establish for the deployed program.
+
 ## History
 
 The earlier q18/g37 Tag-65 feasibility result is retained separately in the

@@ -50,9 +50,13 @@ at slot `434999519`. The finalized state transition is
 [`EJviPgF…R3vJ2fE`](https://explorer.solana.com/tx/EJviPgF12i9iK2CveVaQSMeFQqDMFPQ1iPRUYEwNQE3zGquTUZNJXPZEENorcQtsnQj1orFmH1TPsgdbR3vJ2fE?cluster=mainnet-beta).
 
 The exact signed wire simulated at 1,334,452 CU and landed at exactly
-1,334,452 CU. The nullifier PDA bump was 255. These are deployment
-and replay facts in the technical record, not prerequisites for understanding
-the result.
+1,334,452 CU. The nullifier PDA bump was 255. The recorded pre-execution runner
+source required that value to stay within the measured compute policy, but the
+immutable lifecycle evidence does not pin the exact executed runner commit.
+The exact deployed program derived the PDA from the nullifier and checked the
+supplied address, but did not itself require the numeric bump to be 255; that
+source check was added later. This affects the compute-policy description, not
+the validity of the accepted proof or same-nullifier replay protection.
 
 The proof account and ProgramData were closed after the spend. They can no
 longer be read from live account state. The

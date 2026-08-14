@@ -12,11 +12,13 @@ This file joins two existing parts of the formal development:
   bound with three selectable schedules and the S-two round count `R = 30`.
 
 The result below does not claim that the remaining security work has already
-been done.  The accepted-run extraction statement and each of the three
-per-branch BCS bounds are explicit premises.  Instantiating those premises for
-the deployed Rust verifier still requires the parser and live-account bridge,
-the proof-to-trace extraction argument, and the cited PCS, FRI, Fiat--Shamir,
-random-oracle, and Merkle assumptions.
+been done.  The three failure predicates are caller-supplied; Lean does not
+identify them with the deployed selector branches.  That identification, the
+accepted-run extraction statement, and each of the three per-branch BCS bounds
+are explicit premises.  Instantiating those premises for the deployed Rust
+verifier still requires the parser and live-account bridge, the proof-to-trace
+extraction argument, and the cited PCS, FRI, Fiat--Shamir, random-oracle, and
+Merkle assumptions.
 -/
 
 namespace AspisV5DeployedFalseAcceptance
@@ -30,12 +32,12 @@ open AspisWorkNormalizedEndpoint
 abbrev SpendDigest := AspisFormal.ArithmetizationCore.Digest
 abbrev SpendField := AspisFormal.ArithmetizationCore.F
 
-/-! ## The three selected-schedule failure events -/
+/-! ## Three parameterized failure events -/
 
-/-- The soundness-failure event for the deployed selected-good verifier is the
-union of the failures for selector values zero, one, and two.  The three
-predicates remain parameters until the security proof defines and bounds the
-actual events for each deployed schedule. -/
+/-- A union of three failure predicates intended to represent the deployed
+selector branches.  The definition itself does not connect them to selector
+values zero, one, and two; that remains work for the security proof that
+instantiates and bounds these parameters. -/
 def deployedFailureUnion
     {Run : Type*}
     (branchZeroFailure branchOneFailure branchTwoFailure :
@@ -52,7 +54,7 @@ def branchFailureEvent
     (statement : V5PublicStatement) : Set Run :=
   {run | branchFailure statement run}
 
-/-- The set form of the explicit three-branch failure union. -/
+/-- The set form of the three-predicate failure union. -/
 def deployedFailureUnionEvent
     {Run : Type*}
     (branchZeroFailure branchOneFailure branchTwoFailure :
@@ -91,10 +93,10 @@ theorem deployed_failure_union_event_eq
 
 /-! ## False acceptance is contained in the explicit union -/
 
-/-- If accepted runs extract a valid trace outside the explicit three-branch
-failure union, then every false acceptance lies in that union.  The extraction
-argument is a premise because it has not yet been proved for the complete
-deployed verifier. -/
+/-- If accepted runs extract a valid trace outside the union of the three
+parameterized failure predicates, then every false acceptance lies in that
+union.  The extraction argument and the predicates' deployed meaning are
+premises because they have not yet been proved for the complete verifier. -/
 theorem false_accept_event_subset_deployed_failure_union
     {Run : Type*}
     (accepts : V5PublicStatement → Run → Prop)
@@ -123,7 +125,7 @@ theorem false_accept_event_subset_deployed_failure_union
 
 /-- Measure form of the accepted-run extraction result.  This theorem has no
 numerical content: it only says that false acceptance is no more likely than
-the explicit three-branch failure union. -/
+the parameterized three-predicate failure union. -/
 theorem false_accept_measure_le_deployed_failure_union
     {Run : Type*} [MeasurableSpace Run]
     (measure : MeasureTheory.Measure Run)
@@ -225,11 +227,12 @@ theorem false_accept_probability_le_branch_sum
 /-- Conditional V5 false-acceptance theorem.
 
 The conclusion uses the corrected width-19 event ledger, exactly thirty S-two
-public-coin rounds, and one factor of three for the selectable schedules.  It
-becomes a deployed security theorem only after callers prove
-`acceptedRunExtraction`, `branchZeroBCSBound`, `branchOneBCSBound`, and
-`branchTwoBCSBound`, together with the other named implementation and cited
-cryptographic premises below. -/
+public-coin rounds, one factor of three, and the query-budget range
+`1 ≤ T ≤ 2^128`.  It becomes a deployed security theorem only after callers
+identify the three failure predicates with the deployed selector branches and
+prove `acceptedRunExtraction`,
+`branchZeroBCSBound`, `branchOneBCSBound`, and `branchTwoBCSBound`, together
+with the other named implementation and cited cryptographic premises below. -/
 theorem conditional_deployed_false_accept_work_normalized_le
     {Run Schedule RustBoundary : Type*} [MeasurableSpace Run]
     (measure : MeasureTheory.Measure Run)

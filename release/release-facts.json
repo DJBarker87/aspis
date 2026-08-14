@@ -1,6 +1,6 @@
 {
   "artifact": "aspis_release_facts",
-  "schema_version": 3,
+  "schema_version": 4,
   "facts_as_of_date": "2026-08-14",
   "transaction_compute_limit_cu": 1400000,
   "tracks": {
@@ -110,6 +110,37 @@
             "fixed_target_commitment_security_and_numeric_bounds",
             "alternative_leaf_merkle_binding_and_complete_theft_game"
           ]
+        },
+        "post_review_security_extension": {
+          "date": "2026-08-14",
+          "commit": "f722db2ad9abd75c421b46d3015d50aa57ef77bf",
+          "status": "model_event_composition_proved_deployed_mapping_and_probability_bounds_open",
+          "review_page": "docs/reviews/v5-formal-security-extension-20260814.html",
+          "theorems": {
+            "conditional_false_accept_work_normalized_bound": "AspisV5DeployedFalseAcceptance.conditional_deployed_false_accept_work_normalized_le",
+            "conditional_false_accept_raw_bound": "AspisV5DeployedFalseAcceptance.conditional_deployed_false_accept_raw_le_min",
+            "same_position_merkle_collision_reduction": "AspisApplicationMerkleBinding.same_position_different_leaf_same_root_exposes_node_collision",
+            "fixed_victim_eight_event_bound": "AspisV5FixedVictimTheftGame.deployed_attack_measure_le_eight_failures"
+          },
+          "conditional_probability_statement": {
+            "query_budget_min": 1,
+            "query_budget_max_power_of_two": 128,
+            "work_normalized_upper_bound": "2^-100",
+            "ordinary_upper_bound": "min(1,T/2^100)"
+          },
+          "remaining_boundary_kinds": [
+            "parameterized_failure_predicates_to_deployed_selector_branches",
+            "exact_deployed_tag67_to_protocol_acceptance",
+            "accepted_tag67_to_normalized_trace_and_public_state",
+            "pcs_fri_fiat_shamir_branch_bounds",
+            "tag67_transcript_hash_and_separate_output_grinding_applicability",
+            "rust_sampling_challenge_order_and_transcript_correspondence",
+            "adaptive_experiment_and_query_budget_interpretation",
+            "deployed_poseidon2_faithfulness_and_primitive_security",
+            "deployed_multi_proof_extraction",
+            "fixed_victim_credential_target_sampling_setup_and_concrete_bounds",
+            "pda_and_solana_runtime_assumptions"
+          ]
         }
       },
       "runtime": {
@@ -146,6 +177,17 @@
         "devnet_measured_transaction_cu": 1335952,
         "ceiling_scope": "mainnet_runner_exact_signed_wire_simulation_with_canonical_nullifier_pda_bump_255",
         "required_nullifier_pda_bump": 255,
+        "bump_policy_enforced_by": "mainnet_runner",
+        "bump_policy_source": {
+          "path": "xtask/src/spend_devnet/v5.rs",
+          "first_guard_commit": "86e631316b0555aa883fe2fda96f763a4cb6d20b",
+          "pre_execution_artifact_selection_commit": "7807193cfcfc1e82f5fb733d4df063b1e5c178a8",
+          "exact_executed_runner_commit_bound_in_immutable_evidence": false
+        },
+        "landed_nullifier_pda_bump": 255,
+        "deployed_program_validated_derived_pda": true,
+        "deployed_program_enforced_specific_bump": false,
+        "later_release_source_required_bump": 255,
         "pda_derivation_attempts": 1,
         "exact_signed_wire_simulation_required": true,
         "exact_signed_wire_simulation_max_cu": 1356912,

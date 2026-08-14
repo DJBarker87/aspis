@@ -58,6 +58,18 @@ Lean proves that these statements imply the claimed error bound. It does not
 prove the statements themselves. Closing them is the largest remaining piece
 of the soundness work.
 
+The post-review module `V5DeployedFalseAcceptance.lean` now removes an
+ambiguity in how that conditional calculation is read. It defines false
+acceptance for one public statement, takes three named failure predicates, and
+proves their union bound. Lean does not yet prove that those predicates are
+the actual deployed selector-0, selector-1, and selector-2 failures. If that
+connection, accepted-run extraction, Poseidon2 faithfulness, the existing
+width, round, transcript, commitment, and Fiat--Shamir premises, and the three
+branch bounds all hold, Lean proves a work-normalized false-acceptance
+probability at most `2^-100`. The ordinary probability is at most
+`min(1, T / 2^100)` for query budgets `1 <= T <= 2^128`. This is a precise
+conditional theorem rather than a completed deployed proof.
+
 ## The exact spend rules
 
 The production public statement contains:
@@ -147,47 +159,45 @@ knowledge.
 ## Theft resistance
 
 The wrong-secret reduction has been repaired. It no longer assumes that the
-compressing nullifier hash is globally one-to-one. The generic theorem is also
-instantiated with the exact V5 public-field match and complete spend relation,
-so the nullifier equality is now derived from that relation. For a fixed
-target-nullifier preimage and prover execution, Lean proves:
+compressing nullifier hash is one-to-one. The nullifier equality is derived
+from the exact V5 spend relation. For a fixed victim and prover execution, the
+new `V5FixedVictimTheftGame.lean` classifies an accepted attack into these
+mathematical failures:
 
-```text
-Pr[accepted prover execution yields the wrong extracted secret]
-    <= Pr[the extractor fails]
-       + Pr[the attacker produces a different input with the same nullifier]
-```
+1. witness extraction fails;
+2. the attacker recovers the victim's credential;
+3. a different secret/randomness pair produces the victim's nullifier;
+4. a different opening produces the victim's note commitment; or
+5. a different leaf at the victim's exact position reaches the same root.
 
-The second term is a fixed-target second-preimage event. The reduction is
-valid, but a security claim must either sample the target note in a defined
-game or assume a bound that holds uniformly for every valid target. The Lean
-theorem is not yet a complete computational theft game: it does not define
-efficient algorithms, sample the target note, model the attacker's full view,
-or connect its abstract acceptance predicate to the deployed verifier. The
-extractor's input is a complete execution record that may include the prover
-and random-oracle query transcript; the theorem does not claim that public
-proof bytes reveal a witness.
+`ApplicationMerkleBinding.lean` proves that the fifth case exposes a concrete
+Poseidon2 node-hash collision. It also includes a test theorem showing that
+two different positions under one parent are both legitimate openings. This
+matters: a different Merkle path is not automatically an attack or a hash
+collision; the relevant theft case is a different leaf at the victim's
+position under the victim's root.
 
-The known-answer Poseidon2 tests show that Rust and Lean produce the expected
-outputs on selected test inputs. They do not prove that Poseidon2 is secure or
-give a 124-bit second-preimage bound.
+The chain-level theorem adds three more possible failures: two nullifiers map
+to the same marker PDA, Solana locking/rollback/state behavior fails, or the
+victim setup did not create one unambiguous target note. Lean proves that the
+deployed attack probability is at most the sum of these eight events if the
+deployed attack is connected to this mathematical game.
 
-The on-chain marker gives an exact but narrower guarantee: after one accepted
-transition uses a public nullifier, later transactions using that nullifier
-are rejected. Lean now proves one part of the separate route: if extraction
-returns the exact fixed victim leaf with a different valid owner/note opening,
-then extraction failed or the combined owner-and-note commitment has a target
-second preimage. Showing that an alternative leaf or path reaches the victim
-anchor still needs a Merkle-binding reduction. A different-nullifier attack is
-not a second preimage of the nullifier hash, because a second preimage has the
-same output.
+This is a complete case split for the attack event defined in the Lean model,
+not a theorem that every real attack fits that event and not a numerical
+theft-resistance result. The deployed connection remains a premise. So do
+extraction after the attacker has observed other proofs, concrete security
+bounds for the Poseidon2 nullifier, note commitment and tree hash, PDA
+security, and the Solana runtime statements. Known-answer Poseidon2 tests only
+show agreement on selected inputs; they do not prove primitive security.
 
-The logical flaw in the old injectivity formulation is fixed. Deployed theft
-resistance remains conditional and has no finished numerical bound. It still
-needs deployed extraction or simulation extraction, fixed-target bounds for
-the nullifier and combined owner-and-note commitment, Merkle binding for an
-alternative leaf or path, and the complete game and code-to-model connection.
-This remains important before real value is placed in the system.
+The on-chain marker still gives a narrower deterministic guarantee: after one
+accepted transition uses a public nullifier, another transaction with that
+same nullifier is rejected. A different-nullifier attack is not a second
+preimage of the nullifier hash because a second preimage has the same output.
+
+No finished numerical theft bound is claimed. The remaining deployed and
+cryptographic steps are high priority before real user value is protected.
 
 ## Correct S-two references
 
@@ -216,6 +226,14 @@ bump 255, build the production trace, and run the full host verifier before
 writing the artifact. The secret witness then fell out of scope and was not
 included in the release. The code does not establish secure memory erasure of
 the `SpendWitness`, so no such claim is made.
+
+The recorded pre-execution runner source required bump 255 to stay inside the
+measured compute budget, and the landed transaction used it. The immutable
+lifecycle evidence does not pin the exact executed runner commit. The exact
+deployed program derived the PDA from the nullifier and checked the supplied
+address, but did not require the numeric bump to be 255; that program check was
+added later. This does not change the proof bytes, the accepted statement, or
+same-nullifier replay protection.
 
 This was still a demonstration note rather than a user's funded private asset.
 The archived 75,358-byte proof now has a regression test that feeds the exact

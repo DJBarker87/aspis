@@ -31,8 +31,11 @@ proof as knowledge by the prover needs a further extraction assumption. After
 one accepted spend, the program records its public nullifier and rejects later
 transactions using that nullifier. Lean reduces a different valid opening of
 the exact same fixed input leaf to recovery failure or a second preimage of the
-combined owner-and-note commitment. Ruling out an alternative leaf or path
-under the same anchor still needs Merkle binding and a complete attack game.
+combined owner-and-note commitment. Lean now also proves that a different leaf
+at the victim's exact tree position and root exposes a tree-node hash
+collision, and places that case in an eight-event fixed-victim attack bound.
+The connection from arbitrary deployed acceptance to that game, and numerical
+bounds for the listed cryptographic and runtime failures, remain open.
 
 ## Why the proof is uploaded first
 
@@ -109,9 +112,12 @@ identities and transaction links.
 
 ## Finalized V5 result
 
-The mainnet Tag-67 transaction finalized at slot `435019536`. The runner used
-nullifier PDA bump 255. Exact signed-wire simulation and landed
-metadata both reported 1,334,452 CU.
+The mainnet Tag-67 transaction finalized at slot `435019536`. The transaction
+used nullifier PDA bump 255. The recorded pre-execution runner source required
+that value, although the immutable lifecycle evidence does not pin the exact
+executed runner commit. The exact deployed program derived and checked the PDA
+address but did not require that specific numeric bump. Exact signed-wire
+simulation and landed metadata both reported 1,334,452 CU.
 
 After finality:
 

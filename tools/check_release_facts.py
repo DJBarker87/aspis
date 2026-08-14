@@ -126,6 +126,57 @@ V5_POST_RELEASE_THEOREM_SOURCE_PATHS = {
         "AspisFormal/AspisFormal/V5TheftResistance.lean"
     ),
 }
+V5_SECURITY_EXTENSION_COMMIT = "f722db2ad9abd75c421b46d3015d50aa57ef77bf"
+V5_SECURITY_EXTENSION_STATUS = (
+    "model_event_composition_proved_deployed_mapping_and_probability_bounds_open"
+)
+V5_SECURITY_EXTENSION_PAGE = (
+    "docs/reviews/v5-formal-security-extension-20260814.html"
+)
+V5_SECURITY_EXTENSION_THEOREMS = {
+    "conditional_false_accept_work_normalized_bound": (
+        "AspisV5DeployedFalseAcceptance."
+        "conditional_deployed_false_accept_work_normalized_le"
+    ),
+    "conditional_false_accept_raw_bound": (
+        "AspisV5DeployedFalseAcceptance."
+        "conditional_deployed_false_accept_raw_le_min"
+    ),
+    "same_position_merkle_collision_reduction": (
+        "AspisApplicationMerkleBinding."
+        "same_position_different_leaf_same_root_exposes_node_collision"
+    ),
+    "fixed_victim_eight_event_bound": (
+        "AspisV5FixedVictimTheftGame.deployed_attack_measure_le_eight_failures"
+    ),
+}
+V5_SECURITY_EXTENSION_THEOREM_SOURCE_PATHS = {
+    "conditional_false_accept_work_normalized_bound": (
+        "AspisFormal/AspisFormal/V5DeployedFalseAcceptance.lean"
+    ),
+    "conditional_false_accept_raw_bound": (
+        "AspisFormal/AspisFormal/V5DeployedFalseAcceptance.lean"
+    ),
+    "same_position_merkle_collision_reduction": (
+        "AspisFormal/AspisFormal/ApplicationMerkleBinding.lean"
+    ),
+    "fixed_victim_eight_event_bound": (
+        "AspisFormal/AspisFormal/V5FixedVictimTheftGame.lean"
+    ),
+}
+V5_SECURITY_EXTENSION_REMAINING_BOUNDARY_KINDS = (
+    "parameterized_failure_predicates_to_deployed_selector_branches",
+    "exact_deployed_tag67_to_protocol_acceptance",
+    "accepted_tag67_to_normalized_trace_and_public_state",
+    "pcs_fri_fiat_shamir_branch_bounds",
+    "tag67_transcript_hash_and_separate_output_grinding_applicability",
+    "rust_sampling_challenge_order_and_transcript_correspondence",
+    "adaptive_experiment_and_query_budget_interpretation",
+    "deployed_poseidon2_faithfulness_and_primitive_security",
+    "deployed_multi_proof_extraction",
+    "fixed_victim_credential_target_sampling_setup_and_concrete_bounds",
+    "pda_and_solana_runtime_assumptions",
+)
 
 KNOWN_STALE_PATTERNS = (
     (
@@ -499,6 +550,7 @@ def check_v5_formal_evidence(
             "coverage_status",
             "tag67_work_theorem_boundary",
             "post_release_formal_review",
+            "post_review_security_extension",
         },
         "V5 formal fact fields",
     )
@@ -842,6 +894,72 @@ def check_v5_formal_evidence(
         "V5 review fact remaining boundary kinds",
     )
 
+    extension = formal["post_review_security_extension"]
+    require_equal(
+        set(extension),
+        {
+            "date",
+            "commit",
+            "status",
+            "review_page",
+            "theorems",
+            "conditional_probability_statement",
+            "remaining_boundary_kinds",
+        },
+        "V5 security-extension fact fields",
+    )
+    require_equal(extension["date"], V5_POST_RELEASE_REVIEW_DATE, "V5 extension date")
+    require_equal(
+        extension["commit"],
+        V5_SECURITY_EXTENSION_COMMIT,
+        "V5 security-extension commit",
+    )
+    require_git_commit(extension["commit"], "V5 security-extension commit")
+    require_equal(
+        extension["status"],
+        V5_SECURITY_EXTENSION_STATUS,
+        "V5 security-extension status",
+    )
+    require_equal(
+        extension["review_page"],
+        V5_SECURITY_EXTENSION_PAGE,
+        "V5 security-extension review page",
+    )
+    require_repository_file(extension["review_page"], "V5 security-extension page")
+    require_equal(
+        git_output("ls-files", "--error-unmatch", "--", extension["review_page"]),
+        extension["review_page"],
+        "V5 security-extension tracked review page",
+    )
+    require_equal(
+        extension["theorems"],
+        V5_SECURITY_EXTENSION_THEOREMS,
+        "V5 security-extension theorems",
+    )
+    require_equal(
+        extension["conditional_probability_statement"],
+        {
+            "query_budget_min": 1,
+            "query_budget_max_power_of_two": 128,
+            "work_normalized_upper_bound": "2^-100",
+            "ordinary_upper_bound": "min(1,T/2^100)",
+        },
+        "V5 security-extension conditional probability statement",
+    )
+    require_equal(
+        extension["remaining_boundary_kinds"],
+        list(V5_SECURITY_EXTENSION_REMAINING_BOUNDARY_KINDS),
+        "V5 security-extension remaining boundaries",
+    )
+    for theorem_label, theorem_name in V5_SECURITY_EXTENSION_THEOREMS.items():
+        source_path = V5_SECURITY_EXTENSION_THEOREM_SOURCE_PATHS[theorem_label]
+        source = git_blob(extension["commit"], source_path).decode("utf-8")
+        short_name = theorem_name.rsplit(".", 1)[1]
+        require(
+            re.search(rf"\btheorem\s+{re.escape(short_name)}\b", source) is not None,
+            f"V5 security-extension theorem {theorem_name!r} is absent at the commit",
+        )
+
     for theorem_label, theorem_name in V5_POST_RELEASE_REVIEW_THEOREMS.items():
         source_path = V5_POST_RELEASE_THEOREM_SOURCE_PATHS[theorem_label]
         source = git_blob(review["commit"], source_path).decode("utf-8")
@@ -1159,6 +1277,93 @@ def check_v5(facts: dict[str, Any], compute_limit: int) -> None:
         facts["compute"]["required_nullifier_pda_bump"],
         255,
         "V5 required nullifier PDA bump",
+    )
+    require_equal(
+        facts["compute"]["bump_policy_enforced_by"],
+        "mainnet_runner",
+        "V5 bump-policy enforcement location",
+    )
+    bump_policy_source = facts["compute"]["bump_policy_source"]
+    require_equal(
+        set(bump_policy_source),
+        {
+            "path",
+            "first_guard_commit",
+            "pre_execution_artifact_selection_commit",
+            "exact_executed_runner_commit_bound_in_immutable_evidence",
+        },
+        "V5 bump-policy source fields",
+    )
+    require_equal(
+        bump_policy_source["path"],
+        "xtask/src/spend_devnet/v5.rs",
+        "V5 bump-policy source path",
+    )
+    require_equal(
+        bump_policy_source["first_guard_commit"],
+        "86e631316b0555aa883fe2fda96f763a4cb6d20b",
+        "V5 bump-policy first guard commit",
+    )
+    require_git_commit(
+        bump_policy_source["first_guard_commit"],
+        "V5 bump-policy first guard commit",
+    )
+    bump_policy_source_text = git_blob(
+        bump_policy_source["first_guard_commit"],
+        bump_policy_source["path"],
+    ).decode("utf-8")
+    for literal in (
+        "const MAINNET_NULLIFIER_PDA_BUMP: u8 = u8::MAX;",
+        "bump == MAINNET_NULLIFIER_PDA_BUMP",
+    ):
+        require(
+            literal in bump_policy_source_text,
+            f"V5 recorded runner source omits {literal!r}",
+        )
+    require_equal(
+        bump_policy_source["pre_execution_artifact_selection_commit"],
+        "7807193cfcfc1e82f5fb733d4df063b1e5c178a8",
+        "V5 bump-policy pre-execution artifact-selection commit",
+    )
+    require_git_commit(
+        bump_policy_source["pre_execution_artifact_selection_commit"],
+        "V5 bump-policy pre-execution artifact-selection commit",
+    )
+    artifact_selection_source = git_blob(
+        bump_policy_source["pre_execution_artifact_selection_commit"],
+        bump_policy_source["path"],
+    ).decode("utf-8")
+    require(
+        "Some((config.program_id, MAINNET_NULLIFIER_PDA_BUMP))"
+        in artifact_selection_source,
+        "V5 recorded artifact-builder source omits bump-255 selection",
+    )
+    require_equal(
+        bump_policy_source[
+            "exact_executed_runner_commit_bound_in_immutable_evidence"
+        ],
+        False,
+        "V5 exact executed runner commit evidence status",
+    )
+    require_equal(
+        facts["compute"]["landed_nullifier_pda_bump"],
+        facts["compute"]["required_nullifier_pda_bump"],
+        "V5 landed nullifier PDA bump",
+    )
+    require_equal(
+        facts["compute"]["deployed_program_validated_derived_pda"],
+        True,
+        "V5 deployed PDA-address validation",
+    )
+    require_equal(
+        facts["compute"]["deployed_program_enforced_specific_bump"],
+        False,
+        "V5 deployed numeric-bump enforcement",
+    )
+    require_equal(
+        facts["compute"]["later_release_source_required_bump"],
+        255,
+        "V5 later source bump requirement",
     )
     require_equal(
         facts["compute"]["pda_derivation_attempts"],
@@ -1482,9 +1687,9 @@ def self_test() -> None:
     for example in stale_examples:
         require(stale_claims(path, example), f"self-test did not reject {example!r}")
     clean = (
-        "V5 finalized on mainnet. The runner required an exact signed-wire "
-        "simulation at or below 1,356,912 CU. The landed wire consumed "
-        "1,334,452 CU with canonical bump 255."
+        "V5 finalized on mainnet. The recorded runner policy required an exact "
+        "signed-wire simulation at or below 1,356,912 CU. The landed wire "
+        "consumed 1,334,452 CU with observed bump 255."
     )
     require(not stale_claims(path, clean), "self-test rejected the current release statement")
     print("PASS: release-facts stale-claim self-test")
@@ -1493,7 +1698,7 @@ def self_test() -> None:
 def check() -> None:
     facts = load_json(LEDGER_PATH)
     require_equal(facts["artifact"], "aspis_release_facts", "ledger artifact")
-    require_equal(facts["schema_version"], 3, "ledger schema version")
+    require_equal(facts["schema_version"], 4, "ledger schema version")
     require(
         re.fullmatch(r"\d{4}-\d{2}-\d{2}", facts["facts_as_of_date"]) is not None,
         "facts_as_of_date must use YYYY-MM-DD",

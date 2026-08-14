@@ -74,7 +74,7 @@ Aspis combines several forms of evidence:
 - Release records preserve the finalized q18/g37 and V5 mainnet results, as
   well as the V5 devnet and runtime evidence.
 - The [V5 mainnet record](docs/v5-mainnet-demo.md) binds the exact proof,
-  statement, program, nullifier bump 255, exact-wire simulation,
+  statement, program, observed nullifier bump 255, exact-wire simulation,
   landed compute use, and finalized cleanup/refund transactions.
 - `programs/aspis-verifier/tests/v5_mainnet_release_proof.rs` reruns the exact
   archived proof and statement through the released verifier callback and
@@ -98,6 +98,18 @@ satisfies the complete spend relation. The still-open high-priority step is
 deriving that trace from arbitrary deployed acceptance, with a concrete bound
 on the polynomial-commitment, FRI, Fiat--Shamir, collision, and decoding
 failure events.
+
+`V5DeployedFalseAcceptance.lean` now states one conditional probability step
+without hiding that gap: it takes three parameterized failure predicates,
+proves their union bound, and derives a work-normalized `2^-100` bound and
+ordinary `min(1, T / 2^100)` bound if callers prove that the predicates are
+the actual deployed selector failures and supply the extraction, Poseidon2,
+width, round, transcript, commitment, Fiat--Shamir, and branch-security
+premises, within the theorem's range `1 <= T <= 2^128`.
+`V5FixedVictimTheftGame.lean` separately classifies a fixed-victim attack into
+eight mathematical and chain-level failures for the attack event defined in
+the Lean model. Neither file supplies the still-missing deployed connection or
+extraction theorem, or numerical Poseidon2, PDA, and runtime bounds.
 
 The project has not yet received an external security audit or published a
 coverage-guided fuzzing campaign.
@@ -126,14 +138,16 @@ layers, rather than merely rerunning already-green checks:
    Merkle compression, including its cryptographic security and universal
    all-input Rust equality. Constants and known-answer executions are pinned;
    those checks are not a primitive-security proof. `TheftResistance.lean`
-   and `V5TheftResistance.lean` now use fixed-target second-preimage events and
-   prove two reductions: wrong secret at a fixed nullifier, and a different
-   valid opening of the exact same fixed input leaf. The extractor receives a
-   complete prover execution record, not public proof bytes alone. The files do
-   not supply the deployed extraction theorem, target-sampling game, complete
-   theft game, or Poseidon2 probability bounds. The on-chain marker rejects
-   repeated use of one public nullifier; ruling out an alternative leaf or path
-   under the same anchor still needs a Merkle-binding reduction.
+   and `V5TheftResistance.lean` use fixed-target second-preimage events.
+   `ApplicationMerkleBinding.lean` proves that a different leaf at the
+   victim's exact tree position and root exposes a node-hash collision.
+   `V5FixedVictimTheftGame.lean` separates extraction failure, credential
+   recovery, nullifier collision, note-opening collision, Merkle collision,
+   PDA aliasing, runtime/state failure, and invalid victim setup, and proves
+   their eight-term union bound. The extractor receives a complete prover
+   execution record, not public proof bytes alone. The deployed connection,
+   extraction after observed proofs, target sampling, and concrete Poseidon2,
+   PDA, and runtime bounds remain outside the proof.
 3. The assumptions that the Component-B/C Rust calls return successfully,
    their inputs have the required lengths and field encodings, their folded
    values, coefficients, challenges, serialized bytes, and transcript match

@@ -92,6 +92,16 @@ initialization.
 | Nullifier PDA bump | 255 |
 | SBF | 1,258,496 bytes; SHA-256 `4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40` |
 
+The recorded pre-execution source selected a nullifier with bump 255 and
+required that value in the mainnet runner so PDA derivation stayed inside the
+measured compute budget. The immutable lifecycle evidence records the landed
+bump and transaction but does not pin the exact runner commit used. The exact
+deployed program derived the PDA from the nullifier and required the supplied
+account to match it, but it did not itself require the numeric bump to be 255.
+That in-program restriction was added later. This distinction affects the
+compute policy, not the validity of the landed proof or the rejection of a
+second use of the same nullifier.
+
 The exact mainnet wire simulated and landed at the same compute value, leaving
 22,460 CU below its transaction limit and 65,548 CU below Solana's maximum.
 After finality, three separate cleanup transactions closed the retained proof
@@ -127,17 +137,33 @@ it is not the raw proof bytes. What is not yet proved is that every proof
 accepted by the production program yields that package with the claimed error
 bound.
 
-The authorization proof no longer pretends that the compressing nullifier
-hash is one-to-one. Lean proves that if an accepted prover execution yields the
-wrong secret, either witness recovery failed or two different
-secret/randomness pairs produced the fixed target nullifier. The extractor's
-input may include the prover and its random-oracle query transcript; this is
-not a claim that public proof bytes reveal the witness. Lean also handles the
-case where the recovered input leaf equals a fixed victim leaf but its valid
-opening differs, reducing that event to recovery failure or a second preimage
-of the combined owner-and-note commitment. V5 still lacks the deployed
-recovery theorem, concrete bounds for those commitment events, and the Merkle
-binding step for an alternative leaf or path, so no standalone V5
+`V5DeployedFalseAcceptance.lean` now states a precise conditional probability
+step. It takes three caller-supplied definitions of failure intended to
+describe the selector branches and proves their union bound. If those
+definitions are proved to be the actual deployed branch failures, accepted
+runs extract valid traces outside them, the Poseidon2 model is faithful, and
+the existing width, round, transcript, commitment, Fiat--Shamir, and per-branch
+assumptions hold, Lean
+derives a work-normalized false-acceptance probability at most `2^-100`. The
+corresponding ordinary probability is at most `min(1, T / 2^100)` for query
+budgets `1 <= T <= 2^128`. None of those deployed or cryptographic premises is
+proved by this new theorem.
+
+The theft proof no longer treats the compressing nullifier hash as one-to-one.
+The new fixed-victim game covers recovery of the victim's credential, a
+different secret/randomness pair with the victim's nullifier, a different
+opening of the victim's note commitment, and a different leaf at the victim's
+exact tree position. Lean proves that the last case exposes a concrete
+Poseidon2 node-hash collision. A different path at a different tree position
+can be a normal opening and is therefore not incorrectly called a collision.
+The complete bound also lists PDA aliasing, Solana runtime/state failure, and
+an invalid victim setup as separate events.
+
+This completes the case split for the attack event defined in the Lean model,
+but not the connection from every real attack to that event or its numerical
+security. The connection from the exact deployed Tag-67 program to the
+mathematical game, multi-proof extraction, concrete Poseidon2 bounds, PDA
+security, and Solana runtime guarantees remain external. No standalone V5
 theft-resistance number is claimed.
 
 This is deliberately a bounded claim. It is not an end-to-end formal proof of
@@ -158,6 +184,10 @@ protocol, and the real Rust run must match the Lean model. The q18/g37
 per-query case-study result, not a raw forgery probability or a silently
 inherited V5 security level. See the
 [mathematical status review](docs/reviews/mathematical-status-20260814.md).
+
+The [formal-security extension
+review](docs/reviews/v5-formal-security-extension-20260814.html) gives the
+shortest plain-English account of the new results and the work still open.
 
 The [formal-verification overview](docs/formal-verification.md) gives the
 precise theorem map, coverage, and remaining boundaries.
@@ -193,8 +223,9 @@ at the point where each claim depends on them.
   outside the proved privacy view.
 - **Demonstration secret.** The published transaction used a newly sampled
   demonstration witness, not a user's funded private note. Each secret field
-  came from operating-system randomness, and candidates were discarded until
-  the nullifier PDA had bump 255. The witness was not published or retained,
+  came from operating-system randomness. The recorded artifact-builder source
+  discarded candidates until the nullifier PDA had bump 255. The witness was
+  not published or retained,
   so the transaction demonstrates that the released program accepted and
   applied the archived proof bytes rather than custody of a real asset.
 - **Assurance.** The repository contains formal proofs, tests, reproducible
