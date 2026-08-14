@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Independent finite-parameter checker for the aspis-spend soundness premise.
+"""Independent arithmetic checker for the aspis-spend soundness ledger.
 
 The soundness theorem (`paper/aspis-spend/sections/soundness.tex`) is
 conditional on Assumption `ass:pinned-finite-reduction`: for the exact frozen
@@ -40,16 +40,14 @@ WHAT IT DOES
 
 WHAT THIS CHECKS vs WHAT REMAINS IMPORTED
 
-  This tool checks the finite-parameter APPLICABILITY of the imported theorems
-  at the frozen constants: that alpha lands in the proven Johnson regime, that
-  the width-29 batch is a plain-powers polynomial generator (the MCA generator
-  hypothesis), that the circle coset meets the transport lemma's distinctness
-  and root-not-one conditions, and that every ledger degree and the union
-  arithmetic reproduce the pinned bounds.  It does NOT re-prove the imported
-  theorems themselves: Stwo Johnson list decoding (Theorem 7 / 19), the
-  Bordage et al. / Haboeck polynomial-generator MCA theorem (9.2 / 9.3), and
-  the WHIR fold-list commutation (Lemma 4.13 / Theorem 4.20) are taken as
-  stated, exactly as the paper's assumption does.
+  This tool checks the frozen finite arithmetic: that alpha lands in the
+  proven Johnson regime, that the width-29 batch is a plain-powers polynomial
+  generator, that the circle coset has the stated distinctness and root-not-one
+  properties, and that the listed degrees and union calculation reproduce.
+  It does NOT re-prove the cited coding results or show that they apply to the
+  exact Tag-67 protocol.  S-two Johnson list decoding, the Bordage et al. /
+  Haboeck polynomial-generator MCA theorem, and WHIR fold-list commutation are
+  taken as stated.
 
 USAGE
     python3 tools/verify_soundness_params.py
@@ -57,6 +55,14 @@ USAGE
 It exits non-zero if any independently derived value disagrees with the pinned
 constant.  A disagreement would be a real finding (a finite-parameter
 hypothesis different from the one claimed) and must not be ignored.
+
+Important scope note (14 August 2026): this program reproduces the frozen
+numbers.  It does not prove that the cited S-two opening theorem applies to
+Tag-67.  S-two FRI-tests an out-of-domain quotient, while Tag-67 combines
+ordinary FRI with its own four-round relation check.  The legacy `24 / |K|`
+entry below is only the arithmetic for four degree-six alpha checks.  It does
+not cover the two sequential mixes, choose a member of the FRI list, or prove
+the missing list-to-relation reduction.
 """
 
 from __future__ import annotations
@@ -240,7 +246,7 @@ def check_regime(alpha):
     note(f"capacity threshold  rho        = {RHO:.15f}")
     note(f"Johnson threshold   sqrt(rho)  = {sqrt_rho:.15f}")
     note(f"agreement cap       alpha      = {alpha:.15f}")
-    note("Load-bearing inequality (proximity within the PROVEN Johnson radius,")
+    note("Key inequality (proximity within the PROVEN Johnson radius,")
     note("i.e. NOT relying on the capacity conjecture):")
     note(f"    1 - alpha    = {proximity:.15f}")
     note(f"    1 - sqrt(rho)= {johnson_radius:.15f}   (Johnson radius)")
@@ -395,7 +401,7 @@ def build_ledger_terms(final_miss_bits):
         ("four-fold union", union_bits(fold_rows())),
         ("final q18 miss", final_miss_bits),
         ("two-sample OOD-list union", ood_bits()),
-        ("24 relation OOD mixers", local_bits(24.0)),
+        ("legacy four degree-six alpha checks (arithmetic only)", local_bits(24.0)),
         ("nonzero gamma and three-point batch (deg 30)", local_nonzero_bits(30.0)),
         ("inactive-copy nonzero-gamma claim (deg 28)", local_nonzero_bits(28.0)),
         ("atomic tuple compression (183*17)", local_bits(183.0 * 17.0)),
@@ -416,7 +422,8 @@ def check_ledger_degrees():
     check("width-29 polynomial batch degree = 28 (D lifts 27->28)", 28, 28, exact=True)
     check("nonzero-gamma three-point numerator = 30 (D lifts 29->30)", 30, 30, exact=True)
     check("inactive-copy numerator = 28 (D lifts 27->28)", 28, 28, exact=True)
-    check("relation OOD mixers = 24", 24, 24, exact=True)
+    check("legacy relation alpha numerator 4*6 = 24 (arithmetic only)",
+          4 * 6, 24, exact=True)
     check("tuple-compression degree 183*17 = 3111", 183 * 17, 3111, exact=True)
     check("copy/range-pole degree 4*(183+1024) = 4828",
           4 * (183 + 1024), 4828, exact=True)
@@ -431,7 +438,8 @@ def check_ledger_degrees():
             112.8581350802226, 113.8406480138349][i])
     check("four-fold union bits", union_bits(fold_rows()), 108.9854322657507)
     check("two-sample OOD-list union bits", ood_bits(), 213.1000183949393)
-    check("24 relation OOD mixers bits", local_bits(24.0), 119.4150374966016)
+    check("legacy four degree-six alpha checks bits", local_bits(24.0),
+          119.4150374966016)
     check("nonzero-gamma three-point (deg 30) bits",
           local_nonzero_bits(30.0), 119.0931094017461)
     check("inactive-copy (deg 28) bits", local_nonzero_bits(28.0), 119.1926450753435)
@@ -502,9 +510,8 @@ def main():
         print(msg, flush=True)
 
     print("=" * 74)
-    print("Independent finite-parameter checker for the aspis-spend soundness "
-          "premise")
-    print("ass:pinned-finite-reduction -- own arithmetic, no project imports")
+    print("Independent arithmetic checker for the aspis-spend soundness ledger")
+    print("frozen constants -- own arithmetic, no project imports")
     print("=" * 74)
     print(f"field  : own M31 / CM31 = M31[i]/(i^2+1); |K| = P^4, P = 2^31-1")
     print(f"circle : own coset of order 2^19, generator "
@@ -526,18 +533,22 @@ def main():
     print(f"checks: {passed}/{total} passed")
     print(f"elapsed: {time.time() - start:.1f}s")
     print()
-    print("Scope: this tool checks the finite-parameter APPLICABILITY of the")
-    print("imported theorems at the frozen constants (Johnson regime membership,")
+    print("Scope: this tool checks the finite arithmetic used by the conditional")
+    print("ledger (Johnson regime membership,")
     print("the polynomial-generator MCA hypothesis, the circle coset transport")
     print("conditions, every ledger degree, and the union/floor arithmetic).")
     print("It does NOT re-prove the imported theorems: Stwo Johnson list")
     print("decoding, Bordage/Haboeck polynomial-generator MCA, and WHIR fold-list")
-    print("commutation are taken as stated, exactly as the paper's assumption is.")
+    print("commutation are taken as stated. Lean separately proves the exact")
+    print("candidate-to-relation inclusion and its single-list event count. This")
+    print("checker does not prove that V5's authenticated arity-four FRI supplies")
+    print("the required list, or that its actual list has at most 240 members.")
+    print("The 24/|K| ledger entry remains only the old four-times-degree-six")
+    print("arithmetic; it is not the newer 32*240/|K| conditional relation term.")
     print("-" * 74)
     if passed == total:
-        print("RESULT: PASS -- every finite-parameter hypothesis of "
-              "ass:pinned-finite-reduction")
-        print("        reproduces independently at the exact frozen constants.")
+        print("RESULT: PASS -- the frozen finite arithmetic reproduces independently.")
+        print("        This is not an end-to-end Tag-67 soundness result.")
         return 0
     print("RESULT: FAIL -- an independently derived value disagrees with the "
           "pinned constant.")

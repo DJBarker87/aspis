@@ -1351,19 +1351,39 @@ mod tests {
     }
 
     #[test]
-    fn rate512_tail_precompute_matches_the_formula_exhaustively() {
+    fn rate512_line_precomputes_match_the_formula_exhaustively() {
+        assert_eq!(RATE512_LINE1_INV.len() % 3, 0);
         assert_eq!(RATE512_LINE2_INV.len() % 3, 0);
         assert_eq!(RATE512_LINE3_INV.len() % 3, 0);
         assert_eq!(RATE512_LINE3_INV.len() / 3, RATE512_FINAL_X.len());
-        for (layer, table) in [(2u8, &RATE512_LINE2_INV[..]), (3, &RATE512_LINE3_INV[..])] {
+        for (layer, table) in [
+            (1u8, &RATE512_LINE1_INV[..]),
+            (2, &RATE512_LINE2_INV[..]),
+            (3, &RATE512_LINE3_INV[..]),
+        ] {
             for index in 0..table.len() / 3 {
                 let coordinates = line_fold_coordinates_for_circle(19, layer, index).unwrap();
+                let inverses = [
+                    M31(table[3 * index]),
+                    M31(table[3 * index + 1]),
+                    M31(table[3 * index + 2]),
+                ];
+                for (coordinate, inverse) in [
+                    coordinates.first_pair_x,
+                    coordinates.second_pair_x,
+                    coordinates.second_fold_x,
+                ]
+                .into_iter()
+                .zip(inverses)
+                {
+                    assert_eq!(
+                        coordinate.double().mul(inverse),
+                        M31::ONE,
+                        "line{layer} inverse at fiber {index}",
+                    );
+                }
                 assert_eq!(
-                    [
-                        M31(table[3 * index]),
-                        M31(table[3 * index + 1]),
-                        M31(table[3 * index + 2]),
-                    ],
+                    inverses,
                     [
                         coordinates.first_pair_x.double().inv(),
                         coordinates.second_pair_x.double().inv(),
@@ -1392,7 +1412,18 @@ mod tests {
         let mut expected = point_from_group_index(half_odds_initial_index(18));
         let step = point_from_group_index(half_odds_step_index(18));
         for (natural, point) in actual.into_iter().enumerate() {
+            let fiber = fibers[natural] as usize;
             assert_eq!(point, expected, "natural index {natural}");
+            assert_eq!(
+                point.x.double().mul(M31(RATE512_CIRCLE_INV_2X[fiber])),
+                M31::ONE,
+                "circle x inverse at stored fiber {fiber}",
+            );
+            assert_eq!(
+                point.y.double().mul(M31(RATE512_CIRCLE_INV_2Y[fiber])),
+                M31::ONE,
+                "circle y inverse at stored fiber {fiber}",
+            );
             assert_eq!(
                 double_point(point),
                 point.add(point),
