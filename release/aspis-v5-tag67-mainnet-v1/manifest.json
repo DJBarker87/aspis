@@ -1,8 +1,9 @@
 {
   "artifact": "aspis_v5_tag67_mainnet_release",
-  "schema_version": 1,
+  "schema_version": 2,
   "release_id": "aspis-v5-tag67-mainnet-v1",
   "generated_at_utc": "2026-07-25T00:05:00Z",
+  "record_updated_at_utc": "2026-08-14T09:24:07Z",
   "network": "mainnet-beta",
   "genesis_hash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
   "frozen_candidate": {
@@ -33,16 +34,16 @@
   },
   "objects": {
     "README.md": {
-      "bytes": 3032,
-      "sha256": "a25cd4cc8b95d5e2be7607213bdfb96de145296f1513705697191466dd210ae8"
+      "bytes": 3226,
+      "sha256": "bf20e42d7edbc15d9c0f26c957799b2980e483a7eb9d74c0de8a4b2d928055c9"
     },
     "evidence/mainnet-lifecycle.json": {
       "bytes": 7002,
       "sha256": "8cf9057173903e98763ba5485d88291b7564cf6464b9e651e8b52696f6c9a1e3"
     },
     "formal/formal-evidence.json": {
-      "bytes": 4859,
-      "sha256": "e06934bb07f29b7329f54dcf21c094759ce8d96382d1cff0bf4d84e22e295c5e"
+      "bytes": 9002,
+      "sha256": "ae88e310eadbc070876587720b90090ee4d64813cbef4b065ed5e5437d7f15a9"
     },
     "proof/v5-mainnet-proof.bin": {
       "bytes": 75358,
@@ -53,8 +54,8 @@
       "sha256": "0cdc34bc7f835640cff76d1085df9ba966df9f39eb228f3002f927cf30958113"
     },
     "verify.sh": {
-      "bytes": 2996,
-      "sha256": "fad0b00c2904d2700420a383b4cb482330efcc88dbc95d168e647b6bb7991f01"
+      "bytes": 5050,
+      "sha256": "ea4a04dea976cdf672cc3ddfa338a176204f2a42615851263c89a7b10fd22b8c"
     }
   }
 }

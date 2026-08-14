@@ -1,6 +1,6 @@
 {
   "artifact": "aspis_v5_tag67_formal_evidence",
-  "schema_version": 1,
+  "schema_version": 2,
   "release_id": "aspis-v5-tag67-mainnet-v1",
   "release_tag": "aspis-v5-tag67-mainnet-v1",
   "release_scope": {
@@ -48,12 +48,17 @@
     "The digest predicate and all six ordered work-verification steps",
     "Composition of those results for the stated V5 release scope"
   ],
-  "remaining_implementation_boundary": {
+  "coverage_status": "selected_component_correspondence_not_end_to_end_acceptance",
+  "tag67_work_theorem_boundary": {
     "kind": "exact_transcript_hash_function_call_equality",
     "statement": "forall state nonce, actualTranscriptGrindingDigest state nonce = rustHash state ((3 : Byte) :: List.ofFn (nonceLEBytes nonce))",
-    "explanation": "The pinned Aeneas translation does not translate this function-pointer hash call. The parser, projection, leading-zero predicate, and six ordered checks are inside the proved theorem chain."
+    "explanation": "The pinned Aeneas translation does not translate this function-pointer hash call. This is the remaining premise of the Tag-67 work-verifier theorem only. It is not the only assumption in the complete verifier or security argument."
   },
   "outside_current_proof_scope": [
+    "A theorem deriving the normalized spend trace and exact public/live-state bindings from every accepted deployed Tag-67 execution, together with a concrete false-acceptance bound",
+    "Deployed knowledge extraction and simulation extraction from the full prover and random-oracle execution record",
+    "Concrete fixed-target security bounds for the nullifier and combined owner-and-note commitments",
+    "Merkle binding for an alternative leaf or path and a complete efficient-adversary ledger theft game",
     "Every Rust function and every accepted input schedule",
     "The Rust compiler, LLVM, the SBF toolchain, and the Solana runtime",
     "First-principles cryptographic security proofs for SHA-256, Poseidon2, the PCS, and Fiat-Shamir",
@@ -65,6 +70,67 @@
     "aeneas-verif/component-c-runtime-downstream/released-trace-families-current-20260722/replay-lean432.sh",
     "aeneas-verif/current-source-abc-capstone-20260722/replay-lean432.sh"
   ],
+  "post_release_formal_review": {
+    "date": "2026-08-14",
+    "commit": "598fe3389ef492e10437e28c4c013507d405eb1a",
+    "status": "conditional_not_end_to_end",
+    "review_page": "docs/reviews/mathematical-status-20260814.md",
+    "theorems": {
+      "normalized_trace_to_spend_relation": "AspisV5AcceptedSpendRelation.extracted_trace_implies_spend_relation",
+      "accepted_run_schema": "AspisV5AcceptedSpendRelation.accepted_run_implies_spend_relation_or_bad_event",
+      "false_accept_event_bound": "AspisV5AcceptedSpendRelation.false_accept_measure_le_bad_event",
+      "wrong_secret_event_bound": "AspisV5TheftResistance.wrong_secret_measure_le_bad_events",
+      "same_leaf_different_opening_event_bound": "AspisV5TheftResistance.different_opening_same_leaf_measure_le_bad_events"
+    },
+    "remaining_boundaries": [
+      {
+        "kind": "accepted_tag67_to_normalized_trace_and_public_state",
+        "explanation": "Raw instruction bytes, accounts, parser output, typed hash inputs, copy and LogUp sharing, and the six public spend fields must be connected to the normalized Lean trace."
+      },
+      {
+        "kind": "pcs_fri_fiat_shamir_soundness_and_failure_bound",
+        "explanation": "Polynomial-commitment and FRI extraction, the exact Fiat-Shamir transcript argument, and every failure event still need one proved probability bound for V5."
+      },
+      {
+        "kind": "deployed_poseidon2_faithfulness",
+        "explanation": "The deployed Poseidon2 functions and framing must equal the Lean functions for all inputs used by the relation."
+      },
+      {
+        "kind": "tag67_transcript_hash_call_equality",
+        "explanation": "The concrete Rust grinding-hash call must equal the Lean hash call used by the Tag-67 work-verifier theorem."
+      },
+      {
+        "kind": "deployed_knowledge_and_simulation_extraction",
+        "explanation": "A complete prover and random-oracle execution that is accepted must yield a valid relation witness, including after the attacker has observed other proofs."
+      },
+      {
+        "kind": "fixed_target_commitment_security_and_numeric_bounds",
+        "explanation": "The security game must sample the victim target or provide uniform per-target bounds for the nullifier and combined owner-and-note commitments."
+      },
+      {
+        "kind": "alternative_leaf_merkle_binding_and_complete_theft_game",
+        "explanation": "An alternative leaf or path under the victim anchor must be reduced to Merkle binding inside a complete efficient-adversary ledger game tied to the deployed code."
+      }
+    ],
+    "replay_command": "cd AspisFormal && lake build AspisFormal.V5AcceptedSpendRelation AspisFormal.TheftResistance AspisFormal.V5TheftResistance",
+    "artifacts": {
+      "AspisFormal/AspisFormal/TheftResistance.lean": {
+        "bytes": 14531,
+        "sha256": "30c26d88a8a07205fb73b26686a45b4f57a5ee3e3852bbf015be7af009a3b1b7",
+        "source_commit": "598fe3389ef492e10437e28c4c013507d405eb1a"
+      },
+      "AspisFormal/AspisFormal/V5AcceptedSpendRelation.lean": {
+        "bytes": 25756,
+        "sha256": "9f88b1892795872733f24183e5455caf320a7a439368dada78facdd99fe147f7",
+        "source_commit": "598fe3389ef492e10437e28c4c013507d405eb1a"
+      },
+      "AspisFormal/AspisFormal/V5TheftResistance.lean": {
+        "bytes": 18826,
+        "sha256": "a0ffaf244a12435f0b92d833bbd6d481c228ba7ce3e32f447faa096a91e10b4c",
+        "source_commit": "598fe3389ef492e10437e28c4c013507d405eb1a"
+      }
+    }
+  },
   "artifacts": {
     "aeneas-verif/current-source-abc-capstone-20260722/proof/CurrentSourceABCapstone.lean": {
       "bytes": 25247,

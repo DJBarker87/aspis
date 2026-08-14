@@ -1,7 +1,7 @@
 {
   "artifact": "aspis_release_facts",
-  "schema_version": 2,
-  "facts_as_of_date": "2026-07-25",
+  "schema_version": 3,
+  "facts_as_of_date": "2026-08-14",
   "transaction_compute_limit_cu": 1400000,
   "tracks": {
     "q18_g37_tag65_mainnet_v1": {
@@ -87,7 +87,30 @@
         "aeneas_commit": "b59d5188c082f704a418c7cb4e52ad69328002d1",
         "charon_commit": "cb50ff16b9f1066b8a97dc06da704de2da2fa41c",
         "principal_integration_theorem": "FormalClosureStream1.current_source_combined_capstone",
-        "remaining_implementation_boundary": "exact_transcript_hash_function_call_equality"
+        "coverage_status": "selected_component_correspondence_not_end_to_end_acceptance",
+        "tag67_work_theorem_boundary": "exact_transcript_hash_function_call_equality",
+        "post_release_formal_review": {
+          "date": "2026-08-14",
+          "commit": "598fe3389ef492e10437e28c4c013507d405eb1a",
+          "status": "conditional_not_end_to_end",
+          "review_page": "docs/reviews/mathematical-status-20260814.md",
+          "theorems": {
+            "normalized_trace_to_spend_relation": "AspisV5AcceptedSpendRelation.extracted_trace_implies_spend_relation",
+            "accepted_run_schema": "AspisV5AcceptedSpendRelation.accepted_run_implies_spend_relation_or_bad_event",
+            "false_accept_event_bound": "AspisV5AcceptedSpendRelation.false_accept_measure_le_bad_event",
+            "wrong_secret_event_bound": "AspisV5TheftResistance.wrong_secret_measure_le_bad_events",
+            "same_leaf_different_opening_event_bound": "AspisV5TheftResistance.different_opening_same_leaf_measure_le_bad_events"
+          },
+          "remaining_boundary_kinds": [
+            "accepted_tag67_to_normalized_trace_and_public_state",
+            "pcs_fri_fiat_shamir_soundness_and_failure_bound",
+            "deployed_poseidon2_faithfulness",
+            "tag67_transcript_hash_call_equality",
+            "deployed_knowledge_and_simulation_extraction",
+            "fixed_target_commitment_security_and_numeric_bounds",
+            "alternative_leaf_merkle_binding_and_complete_theft_game"
+          ]
+        }
       },
       "runtime": {
         "frozen_cost_schedule": {

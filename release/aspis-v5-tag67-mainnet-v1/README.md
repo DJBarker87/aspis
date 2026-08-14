@@ -5,7 +5,7 @@ mainnet-beta demonstration on 25 July 2026 in Europe/Berlin (24 July UTC). It
 supplements, and does not mutate, the frozen candidate in
 `release/aspis-v5-tag67-frozen-candidate-v1/`.
 
-The release records one connected evidence chain:
+The release records four linked facts:
 
 1. the maintained Lean project checks substantial parts of the mathematical
    construction;
@@ -15,16 +15,19 @@ The release records one connected evidence chain:
    program; and
 4. that program completed the finalized mainnet transaction below.
 
-`formal/formal-evidence.json` binds the release to the Lean toolchain,
-translation snapshots, principal theorem, replay commands, exact source-file
-hashes, and remaining transcript-hash-call boundary. It does not claim that
-every Rust function, compiler stage, runtime behavior, or cryptographic
-primitive has been formally proved.
+`formal/formal-evidence.json` preserves the formal record made at release time
+and adds the 14 August 2026 review. The newer Lean proofs show that a suitably
+extracted verifier trace satisfies the complete spend relation, and reduce two
+ways of spending someone else's record to named extraction or hash-security
+failures. They do not yet prove that every accepted deployed Tag-67 execution
+produces that trace, or give one numerical theft-probability bound for the
+deployed system. The file lists those and the other remaining proof gaps
+explicitly.
 
 The final Tag-67 transaction is
 [`EJvi…J2fE`](https://explorer.solana.com/tx/EJviPgF12i9iK2CveVaQSMeFQqDMFPQ1iPRUYEwNQE3zGquTUZNJXPZEENorcQtsnQj1orFmH1TPsgdbR3vJ2fE).
 It finalized at slot `435019536`, consumed `1,334,452` CU in both exact
-simulation and landing, and used the canonical nullifier PDA bump `255`.
+simulation and landing, and used nullifier PDA bump `255`.
 
 The cleanup then finalized in this order:
 

@@ -26,12 +26,51 @@ V5_FORMAL_EVIDENCE_PATH = (
 V5_PRINCIPAL_INTEGRATION_THEOREM = (
     "FormalClosureStream1.current_source_combined_capstone"
 )
-V5_REMAINING_IMPLEMENTATION_BOUNDARY = (
+V5_FORMAL_COVERAGE_STATUS = (
+    "selected_component_correspondence_not_end_to_end_acceptance"
+)
+V5_TAG67_WORK_THEOREM_BOUNDARY = (
     "exact_transcript_hash_function_call_equality"
 )
-V5_REMAINING_IMPLEMENTATION_BOUNDARY_STATEMENT = (
+V5_TAG67_WORK_THEOREM_BOUNDARY_STATEMENT = (
     "forall state nonce, actualTranscriptGrindingDigest state nonce = "
     "rustHash state ((3 : Byte) :: List.ofFn (nonceLEBytes nonce))"
+)
+V5_POST_RELEASE_REVIEW_DATE = "2026-08-14"
+V5_POST_RELEASE_REVIEW_COMMIT = "598fe3389ef492e10437e28c4c013507d405eb1a"
+V5_POST_RELEASE_REVIEW_STATUS = "conditional_not_end_to_end"
+V5_POST_RELEASE_REVIEW_PAGE = "docs/reviews/mathematical-status-20260814.md"
+V5_POST_RELEASE_REVIEW_THEOREMS = {
+    "normalized_trace_to_spend_relation": (
+        "AspisV5AcceptedSpendRelation.extracted_trace_implies_spend_relation"
+    ),
+    "accepted_run_schema": (
+        "AspisV5AcceptedSpendRelation."
+        "accepted_run_implies_spend_relation_or_bad_event"
+    ),
+    "false_accept_event_bound": (
+        "AspisV5AcceptedSpendRelation.false_accept_measure_le_bad_event"
+    ),
+    "wrong_secret_event_bound": (
+        "AspisV5TheftResistance.wrong_secret_measure_le_bad_events"
+    ),
+    "same_leaf_different_opening_event_bound": (
+        "AspisV5TheftResistance."
+        "different_opening_same_leaf_measure_le_bad_events"
+    ),
+}
+V5_POST_RELEASE_REMAINING_BOUNDARY_KINDS = (
+    "accepted_tag67_to_normalized_trace_and_public_state",
+    "pcs_fri_fiat_shamir_soundness_and_failure_bound",
+    "deployed_poseidon2_faithfulness",
+    "tag67_transcript_hash_call_equality",
+    "deployed_knowledge_and_simulation_extraction",
+    "fixed_target_commitment_security_and_numeric_bounds",
+    "alternative_leaf_merkle_binding_and_complete_theft_game",
+)
+V5_POST_RELEASE_REPLAY_COMMAND = (
+    "cd AspisFormal && lake build AspisFormal.V5AcceptedSpendRelation "
+    "AspisFormal.TheftResistance AspisFormal.V5TheftResistance"
 )
 V5_FORMAL_COVERAGE = (
     "Component-A matrix execution at the selected V5 release schedule",
@@ -68,6 +107,24 @@ V5_REQUIRED_FORMAL_ARTIFACTS = {
         "released-trace-families-current-20260722/replay-lean432.sh"
     ),
     "aeneas-verif/current-source-abc-capstone-20260722/replay-lean432.sh",
+}
+V5_REQUIRED_POST_RELEASE_REVIEW_ARTIFACTS = {
+    "AspisFormal/AspisFormal/TheftResistance.lean",
+    "AspisFormal/AspisFormal/V5AcceptedSpendRelation.lean",
+    "AspisFormal/AspisFormal/V5TheftResistance.lean",
+}
+V5_POST_RELEASE_THEOREM_SOURCE_PATHS = {
+    "normalized_trace_to_spend_relation": (
+        "AspisFormal/AspisFormal/V5AcceptedSpendRelation.lean"
+    ),
+    "accepted_run_schema": "AspisFormal/AspisFormal/V5AcceptedSpendRelation.lean",
+    "false_accept_event_bound": (
+        "AspisFormal/AspisFormal/V5AcceptedSpendRelation.lean"
+    ),
+    "wrong_secret_event_bound": "AspisFormal/AspisFormal/V5TheftResistance.lean",
+    "same_leaf_different_opening_event_bound": (
+        "AspisFormal/AspisFormal/V5TheftResistance.lean"
+    ),
 }
 
 KNOWN_STALE_PATTERNS = (
@@ -358,6 +415,67 @@ def measurement_totals(runtime: dict[str, Any], marker_mode: str) -> dict[str, i
     return result
 
 
+def check_formal_artifacts(
+    artifacts: dict[str, Any],
+    required_paths: set[str],
+    label: str,
+    *,
+    exact_paths: bool = False,
+    pinned_source_commit: str | None = None,
+) -> None:
+    require(isinstance(artifacts, dict) and artifacts, f"{label} artifacts are empty")
+    if exact_paths:
+        require_equal(set(artifacts), required_paths, f"{label} artifact paths")
+    else:
+        require(
+            required_paths.issubset(artifacts),
+            f"{label} omits a required theorem or replay artifact",
+        )
+
+    for path_value, identity in artifacts.items():
+        require(
+            isinstance(identity, dict),
+            f"{label} artifact {path_value!r}: identity is not an object",
+        )
+        require_equal(
+            set(identity),
+            {"bytes", "sha256", "source_commit"},
+            f"{label} artifact {path_value!r} identity fields",
+        )
+        require(
+            type(identity["bytes"]) is int and identity["bytes"] >= 0,
+            f"{label} artifact {path_value!r}: invalid byte length",
+        )
+        require(
+            isinstance(identity["sha256"], str)
+            and re.fullmatch(r"[0-9a-f]{64}", identity["sha256"]) is not None,
+            f"{label} artifact {path_value!r}: invalid SHA-256",
+        )
+        require_repository_file(path_value, f"{label} artifact {path_value!r}")
+        require_file_identity(path_value, identity["bytes"], identity["sha256"])
+        if pinned_source_commit is not None:
+            require_equal(
+                identity["source_commit"],
+                pinned_source_commit,
+                f"{label} artifact {path_value!r} source commit",
+            )
+        require_git_commit(
+            identity["source_commit"],
+            f"{label} artifact {path_value!r} source commit",
+        )
+        committed_source = git_blob(identity["source_commit"], path_value)
+        require_equal(
+            len(committed_source),
+            identity["bytes"],
+            f"{label} artifact {path_value!r} source-commit byte length",
+        )
+        require_equal(
+            hashlib.sha256(committed_source).hexdigest(),
+            identity["sha256"],
+            f"{label} artifact {path_value!r} source-commit SHA-256",
+        )
+
+
 def check_v5_formal_evidence(
     facts: dict[str, Any],
     mainnet_manifest: dict[str, Any],
@@ -378,7 +496,9 @@ def check_v5_formal_evidence(
             "aeneas_commit",
             "charon_commit",
             "principal_integration_theorem",
-            "remaining_implementation_boundary",
+            "coverage_status",
+            "tag67_work_theorem_boundary",
+            "post_release_formal_review",
         },
         "V5 formal fact fields",
     )
@@ -419,9 +539,11 @@ def check_v5_formal_evidence(
             "lean",
             "rust_to_lean",
             "coverage",
-            "remaining_implementation_boundary",
+            "coverage_status",
+            "tag67_work_theorem_boundary",
             "outside_current_proof_scope",
             "replay_commands",
+            "post_release_formal_review",
             "artifacts",
         },
         "V5 formal-evidence fields",
@@ -431,7 +553,7 @@ def check_v5_formal_evidence(
         "aspis_v5_tag67_formal_evidence",
         "V5 formal-evidence artifact",
     )
-    require_equal(formal_evidence["schema_version"], 1, "V5 formal-evidence schema")
+    require_equal(formal_evidence["schema_version"], 2, "V5 formal-evidence schema")
     require_equal(formal_evidence["release_id"], facts["release_id"], "V5 formal release")
     require_equal(
         formal_evidence["release_tag"],
@@ -573,31 +695,161 @@ def check_v5_formal_evidence(
         "V5 formal coverage",
     )
     require_equal(
+        formal_evidence["coverage_status"],
+        V5_FORMAL_COVERAGE_STATUS,
+        "V5 formal coverage status",
+    )
+    require_equal(
+        formal["coverage_status"],
+        V5_FORMAL_COVERAGE_STATUS,
+        "V5 release formal coverage status",
+    )
+    require_equal(
         formal_evidence["replay_commands"],
         list(V5_FORMAL_REPLAY_COMMANDS),
         "V5 formal replay commands",
     )
 
-    boundary = formal_evidence["remaining_implementation_boundary"]
+    boundary = formal_evidence["tag67_work_theorem_boundary"]
     require_equal(
         boundary["kind"],
-        formal["remaining_implementation_boundary"],
-        "V5 remaining implementation boundary",
+        formal["tag67_work_theorem_boundary"],
+        "V5 Tag-67 work-theorem boundary",
     )
     require_equal(
-        formal["remaining_implementation_boundary"],
-        V5_REMAINING_IMPLEMENTATION_BOUNDARY,
-        "V5 release remaining implementation boundary",
+        formal["tag67_work_theorem_boundary"],
+        V5_TAG67_WORK_THEOREM_BOUNDARY,
+        "V5 release Tag-67 work-theorem boundary",
     )
     require_equal(
         boundary["statement"],
-        V5_REMAINING_IMPLEMENTATION_BOUNDARY_STATEMENT,
-        "V5 remaining implementation boundary statement",
+        V5_TAG67_WORK_THEOREM_BOUNDARY_STATEMENT,
+        "V5 Tag-67 work-theorem boundary statement",
     )
     require(
         isinstance(boundary["explanation"], str) and boundary["explanation"],
-        "V5 remaining implementation boundary explanation is empty",
+        "V5 Tag-67 work-theorem boundary explanation is empty",
     )
+    require(
+        "only" in boundary["explanation"].lower()
+        and "not" in boundary["explanation"].lower(),
+        "V5 Tag-67 boundary must say that it is not the only global assumption",
+    )
+
+    review = formal_evidence["post_release_formal_review"]
+    require_equal(
+        set(review),
+        {
+            "date",
+            "commit",
+            "status",
+            "review_page",
+            "theorems",
+            "remaining_boundaries",
+            "replay_command",
+            "artifacts",
+        },
+        "V5 post-release formal-review fields",
+    )
+    require_equal(review["date"], V5_POST_RELEASE_REVIEW_DATE, "V5 review date")
+    require_equal(
+        review["commit"],
+        V5_POST_RELEASE_REVIEW_COMMIT,
+        "V5 review commit",
+    )
+    require_git_commit(review["commit"], "V5 post-release formal-review commit")
+    require_equal(
+        review["status"],
+        V5_POST_RELEASE_REVIEW_STATUS,
+        "V5 post-release formal-review status",
+    )
+    require_equal(
+        review["review_page"],
+        V5_POST_RELEASE_REVIEW_PAGE,
+        "V5 post-release formal-review page",
+    )
+    require_repository_file(review["review_page"], "V5 post-release review page")
+    require_equal(
+        review["theorems"],
+        V5_POST_RELEASE_REVIEW_THEOREMS,
+        "V5 post-release formal-review theorems",
+    )
+    boundaries = review["remaining_boundaries"]
+    require(
+        isinstance(boundaries, list),
+        "V5 post-release remaining boundaries are not a list",
+    )
+    for index, item in enumerate(boundaries):
+        require(
+            isinstance(item, dict),
+            f"V5 post-release remaining boundary {index} is not an object",
+        )
+        require_equal(
+            set(item),
+            {"kind", "explanation"},
+            f"V5 post-release remaining boundary {index} fields",
+        )
+        require(
+            isinstance(item["explanation"], str) and item["explanation"],
+            f"V5 post-release remaining boundary {index} explanation is empty",
+        )
+    boundary_kinds = [item["kind"] for item in boundaries]
+    require_equal(
+        boundary_kinds,
+        list(V5_POST_RELEASE_REMAINING_BOUNDARY_KINDS),
+        "V5 post-release remaining boundary kinds",
+    )
+    require_equal(
+        len(boundary_kinds),
+        len(set(boundary_kinds)),
+        "V5 post-release remaining boundary uniqueness",
+    )
+    require_equal(
+        review["replay_command"],
+        V5_POST_RELEASE_REPLAY_COMMAND,
+        "V5 post-release formal-review replay command",
+    )
+
+    review_facts = formal["post_release_formal_review"]
+    require_equal(
+        set(review_facts),
+        {
+            "date",
+            "commit",
+            "status",
+            "review_page",
+            "theorems",
+            "remaining_boundary_kinds",
+        },
+        "V5 post-release formal-review fact fields",
+    )
+    require_equal(review_facts["date"], review["date"], "V5 review fact date")
+    require_equal(review_facts["commit"], review["commit"], "V5 review fact commit")
+    require_equal(review_facts["status"], review["status"], "V5 review fact status")
+    require_equal(
+        review_facts["review_page"],
+        review["review_page"],
+        "V5 review fact page",
+    )
+    require_equal(
+        review_facts["theorems"],
+        review["theorems"],
+        "V5 review fact theorems",
+    )
+    require_equal(
+        review_facts["remaining_boundary_kinds"],
+        boundary_kinds,
+        "V5 review fact remaining boundary kinds",
+    )
+
+    for theorem_label, theorem_name in V5_POST_RELEASE_REVIEW_THEOREMS.items():
+        source_path = V5_POST_RELEASE_THEOREM_SOURCE_PATHS[theorem_label]
+        source = git_blob(review["commit"], source_path).decode("utf-8")
+        short_name = theorem_name.rsplit(".", 1)[1]
+        require(
+            re.search(rf"\btheorem\s+{re.escape(short_name)}\b", source) is not None,
+            f"V5 post-release theorem {theorem_name!r} is absent at the review commit",
+        )
 
     for status_label, status_path in (
         ("Lean", formal["lean_status_page"]),
@@ -613,48 +865,18 @@ def check_v5_formal_evidence(
         [formal["aeneas_commit"], formal["charon_commit"]],
     )
 
-    artifacts = formal_evidence["artifacts"]
-    require(isinstance(artifacts, dict) and artifacts, "V5 formal artifacts are empty")
-    require(
-        V5_REQUIRED_FORMAL_ARTIFACTS.issubset(artifacts),
-        "V5 formal evidence omits a required theorem or replay artifact",
+    check_formal_artifacts(
+        formal_evidence["artifacts"],
+        V5_REQUIRED_FORMAL_ARTIFACTS,
+        "V5 release-time formal evidence",
     )
-    for path_value, identity in artifacts.items():
-        require(
-            isinstance(identity, dict),
-            f"V5 formal artifact {path_value!r}: identity is not an object",
-        )
-        require_equal(
-            set(identity),
-            {"bytes", "sha256", "source_commit"},
-            f"V5 formal artifact {path_value!r} identity fields",
-        )
-        require(
-            type(identity["bytes"]) is int and identity["bytes"] >= 0,
-            f"V5 formal artifact {path_value!r}: invalid byte length",
-        )
-        require(
-            isinstance(identity["sha256"], str)
-            and re.fullmatch(r"[0-9a-f]{64}", identity["sha256"]) is not None,
-            f"V5 formal artifact {path_value!r}: invalid SHA-256",
-        )
-        require_repository_file(path_value, f"V5 formal artifact {path_value!r}")
-        require_file_identity(path_value, identity["bytes"], identity["sha256"])
-        require_git_commit(
-            identity["source_commit"],
-            f"V5 formal artifact {path_value!r} source commit",
-        )
-        committed_source = git_blob(identity["source_commit"], path_value)
-        require_equal(
-            len(committed_source),
-            identity["bytes"],
-            f"V5 formal artifact {path_value!r} source-commit byte length",
-        )
-        require_equal(
-            hashlib.sha256(committed_source).hexdigest(),
-            identity["sha256"],
-            f"V5 formal artifact {path_value!r} source-commit SHA-256",
-        )
+    check_formal_artifacts(
+        review["artifacts"],
+        V5_REQUIRED_POST_RELEASE_REVIEW_ARTIFACTS,
+        "V5 post-release formal review",
+        exact_paths=True,
+        pinned_source_commit=review["commit"],
+    )
 
     release_prefix = f"release/{facts['release_id']}/"
     require(
@@ -1173,7 +1395,7 @@ def check_public_claims(facts: dict[str, Any]) -> None:
             "release/aspis-v5-tag67-mainnet-v1/",
             "AspisFormal/",
             "aeneas-verif/",
-            v5["formal"]["principal_integration_theorem"],
+            V5_POST_RELEASE_REVIEW_PAGE,
             "cd AspisFormal",
             "lake exe cache get",
             "lake build",
@@ -1271,10 +1493,15 @@ def self_test() -> None:
 def check() -> None:
     facts = load_json(LEDGER_PATH)
     require_equal(facts["artifact"], "aspis_release_facts", "ledger artifact")
-    require_equal(facts["schema_version"], 2, "ledger schema version")
+    require_equal(facts["schema_version"], 3, "ledger schema version")
     require(
         re.fullmatch(r"\d{4}-\d{2}-\d{2}", facts["facts_as_of_date"]) is not None,
         "facts_as_of_date must use YYYY-MM-DD",
+    )
+    require_equal(
+        facts["facts_as_of_date"],
+        V5_POST_RELEASE_REVIEW_DATE,
+        "release facts date",
     )
     compute_limit = facts["transaction_compute_limit_cu"]
     require_equal(compute_limit, 1_400_000, "transaction CU limit")
