@@ -18,7 +18,9 @@ the already defined mathematical failure events.
 In particular, backwards FRI extraction uses one response strategy fixed over
 the whole four-challenge space.  `V5FriGlobalCausalStrategy` constructs that
 strategy in Lean from the causal transcript family; it is no longer an
-implementation-facing assumption.
+extra mathematical existence assumption.  This does not prove that a
+production Fiat--Shamir run supplies one counterfactual family fixed across
+all challenge tuples; that experiment connection remains external.
 -/
 
 namespace AspisV5AcceptedExecutionSecurityBridge

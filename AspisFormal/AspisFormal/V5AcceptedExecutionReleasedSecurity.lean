@@ -18,7 +18,10 @@ The first two are removed from an explicit
 constructed in Lean by `V5FriGlobalCausalStrategy`.  The fourth is removed
 only when `PublishedOrdinaryPolynomialCurveDecoding` is supplied.  All real
 source, authentication, transcript, primitive, query, FRI, and relation
-failures remain visible.
+failures remain visible.  The theorem is pointwise for one supplied causal
+transcript family.  Connecting a production Fiat--Shamir execution to one
+family fixed across counterfactual challenge tuples remains a separate
+experiment boundary.
 -/
 
 namespace AspisV5AcceptedExecutionReleasedSecurity
@@ -114,7 +117,9 @@ reaches one of the fourteen remaining events.
 
 `hproduction` is the explicit source-to-table correspondence.  This theorem
 does not prove it from the Rust source.  Likewise, `hpublished` remains the
-external ordinary-polynomial curve-decoding theorem. -/
+external ordinary-polynomial curve-decoding theorem.  The counted FRI event
+uses the single constructed strategy, not an outcome-dependent existential
+strategy. -/
 theorem accepted_false_source_execution_event_with_released_tables
     {RustInput MerkleDigest PointValue State : Type*}
     (rc : RoundConstants)

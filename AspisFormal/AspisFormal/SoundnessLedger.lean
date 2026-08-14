@@ -7,8 +7,8 @@ import AspisFormal.CircleGroupOrder
 
 This file pulls the *arithmetic* facts of the Aspis-spend soundness
 finite-parameter check (`tools/verify_soundness_params.py`) into the Lean
-kernel, so fewer load-bearing numbers rest only on the AI-written Python
-script.  It is a companion to `SoundnessParams.lean` (which kernel-checks the
+kernel, so fewer important numbers rest only on the Python calculation.
+It is a companion to `SoundnessParams.lean` (which kernel-checks the
 Johnson-threshold `ρ ≤ α²` and the cap `A = ⌊αN⌋ = 6082`); here we cover the
 event-degree table, the per-event Schwartz–Zippel / MCA probability bounds, the
 batch and four fold-round bounds (via rational sandwiches of the square roots),
@@ -179,7 +179,14 @@ theorem generator_indices :
 Each event probability is `degree / |K|` (or `degree / (|K|−1)` for the
 nonzero-γ / nonzero-η events).  We prove `probability ≤ 2^(-⌊bits⌋)`. -/
 
-/-- 24 relation OOD mixers (deg 24): `24/|K| ≤ 2^(-119)`. -/
+/-- Numeric term `24/|K| ≤ 2^(-119)`, intended as four degree-six
+relation-sumcheck round errors.  This theorem proves only the arithmetic.  The
+custom V5 argument that each bad claimed evaluation reaches one of those four
+nonzero degree-six differences is a separate soundness obligation.  In
+particular, this term does not itself cover adaptive cancellation through the
+eight sequential OOD mix challenges or select one fixed member of the FRI
+list.  The older release label “24 relation OOD mixers” is therefore
+misleading: V5 has eight OOD mix challenges, not twenty-four. -/
 theorem sz_relation_mixers : (24 : ℝ) / FIELD ≤ 1 / 2 ^ 119 := by
   unfold FIELD; norm_num
 /-- Atomic θ-collision (deg 24): `24/|K| ≤ 2^(-119)`. -/

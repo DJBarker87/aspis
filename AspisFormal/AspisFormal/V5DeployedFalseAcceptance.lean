@@ -12,13 +12,16 @@ This file joins two existing parts of the formal development:
   bound with three selectable schedules and the S-two round count `R = 30`.
 
 The result below does not claim that the remaining security work has already
-been done.  The three failure predicates are caller-supplied; Lean does not
-identify them with the deployed selector branches.  That identification, the
-accepted-run extraction statement, and each of the three per-branch BCS bounds
-are explicit premises.  Instantiating those premises for the deployed Rust
-verifier still requires the parser and live-account bridge, the proof-to-trace
-extraction argument, and the cited PCS, FRI, Fiat--Shamir, random-oracle, and
-Merkle assumptions.
+been done.  The three failure predicates are caller-supplied.  A separate
+post-release Aeneas/Lean result proves that a successful generated parser and
+selector check can gate a caller-supplied `Fin 3` predicate family by selector
+zero, one, or two.  It does not prove that those predicates are the real
+cryptographic failure events or that its caller-supplied run-to-proof-body
+function matches the complete deployed callback.  Accepted-run extraction and
+each per-branch BCS bound also remain explicit premises.  Instantiating those
+premises still requires the complete parser/callback bridge, proof-to-trace
+extraction, and the cited PCS, FRI, Fiat--Shamir, random-oracle, and Merkle
+assumptions.
 -/
 
 namespace AspisV5DeployedFalseAcceptance
@@ -34,10 +37,11 @@ abbrev SpendField := AspisFormal.ArithmetizationCore.F
 
 /-! ## Three parameterized failure events -/
 
-/-- A union of three failure predicates intended to represent the deployed
-selector branches.  The definition itself does not connect them to selector
-values zero, one, and two; that remains work for the security proof that
-instantiates and bounds these parameters. -/
+/-- A generic union of three caller-supplied failure predicates.  The separate
+Tag-67 selector result can gate an indexed predicate family by parsed selector
+zero, one, or two.  Giving that family the meaning of the real cryptographic
+failure events remains work for the security proof that instantiates and
+bounds these parameters. -/
 def deployedFailureUnion
     {Run : Type*}
     (branchZeroFailure branchOneFailure branchTwoFailure :
@@ -229,8 +233,9 @@ theorem false_accept_probability_le_branch_sum
 The conclusion uses the corrected width-19 event ledger, exactly thirty S-two
 public-coin rounds, one factor of three, and the query-budget range
 `1 ≤ T ≤ 2^128`.  It becomes a deployed security theorem only after callers
-identify the three failure predicates with the deployed selector branches and
-prove `acceptedRunExtraction`,
+identify the three failure predicates with the actual proof-system failure
+events for the parsed selector and prove the full callback/run connection,
+`acceptedRunExtraction`,
 `branchZeroBCSBound`, `branchOneBCSBound`, and `branchTwoBCSBound`, together
 with the other named implementation and cited cryptographic premises below. -/
 theorem conditional_deployed_false_accept_work_normalized_le
