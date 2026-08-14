@@ -957,6 +957,101 @@ def ExactOpeningAndFriObservation (sha256 : List Byte -> Digest32)
   ∃ run : ExactV5Run sha256 call.roots call.queries,
     run.proofBytes = call.proofBytes ∧ observation = observationOfRun run
 
+theorem friReadSchedule_eq_of_driverOutput_eq
+    {sha256 roots queries}
+    (left right : ExactV5Run sha256 roots queries)
+    (hdriver : driverOutputOfRun left [] = driverOutputOfRun right []) :
+    friReadScheduleOfRun left = friReadScheduleOfRun right := by
+  have hvalue (tree : V5PrivateSection) {index : Nat}
+      (hindex : index ∈ activeIndices tree queries 0) :
+      sectionValueAtIndex (left.sections tree) index =
+        sectionValueAtIndex (right.sections tree) index := by
+    have hleft :=
+      driverOutput_value_at_index_is_authenticated left [] tree hindex
+    have hright :=
+      driverOutput_value_at_index_is_authenticated right [] tree hindex
+    rw [hdriver] at hleft
+    exact Option.some.inj (hleft.symm.trans hright)
+  have hlayer0 :
+      (orderedActiveIndices .c1 queries 0).map (layerZeroReadOfRun left) =
+        (orderedActiveIndices .c1 queries 0).map (layerZeroReadOfRun right) := by
+    apply List.map_congr_left
+    intro index hindexList
+    have hindex : index ∈ activeIndices .c1 queries 0 :=
+      (Finset.mem_sort (.≤.)).mp hindexList
+    have hc2 : index ∈ activeIndices .c2 queries 0 := by
+      simpa [activeIndices_c1_eq_c2] using hindex
+    have hparent := layer0_parent_mem_line1 hindex
+    simp only [layerZeroReadOfRun]
+    congr 1
+    · exact hvalue .c1 hindex
+    · exact hvalue .c2 hc2
+    · exact hvalue .line1 hparent
+  have hline1 :
+      (orderedActiveIndices .line1 queries 0).map (line1ReadOfRun left) =
+        (orderedActiveIndices .line1 queries 0).map (line1ReadOfRun right) := by
+    apply List.map_congr_left
+    intro index hindexList
+    have hindex : index ∈ activeIndices .line1 queries 0 :=
+      (Finset.mem_sort (.≤.)).mp hindexList
+    have hparent := line1_parent_mem_line2 hindex
+    simp only [line1ReadOfRun]
+    congr 1
+    · exact hvalue .line1 hindex
+    · exact hvalue .line2 hparent
+  have hline2 :
+      (orderedActiveIndices .line2 queries 0).map (line2ReadOfRun left) =
+        (orderedActiveIndices .line2 queries 0).map (line2ReadOfRun right) := by
+    apply List.map_congr_left
+    intro index hindexList
+    have hindex : index ∈ activeIndices .line2 queries 0 :=
+      (Finset.mem_sort (.≤.)).mp hindexList
+    have hparent := line2_parent_mem_line3 hindex
+    simp only [line2ReadOfRun]
+    congr 1
+    · exact hvalue .line2 hindex
+    · exact hvalue .line3 hparent
+  have hterminal :
+      (orderedActiveIndices .line3 queries 0).map (terminalReadOfRun left) =
+        (orderedActiveIndices .line3 queries 0).map (terminalReadOfRun right) := by
+    apply List.map_congr_left
+    intro index hindexList
+    have hindex : index ∈ activeIndices .line3 queries 0 :=
+      (Finset.mem_sort (.≤.)).mp hindexList
+    simp only [terminalReadOfRun]
+    congr 1
+    exact hvalue .line3 hindex
+  unfold friReadScheduleOfRun
+  congr
+
+/-- Source boundary for the parser/authentication half only.  A successful
+production observation must expose the five returned openings, sorted index
+lists, offsets, consumption count, and empty remainder of one exact modeled
+run.  This says nothing yet about which values the later FRI loops read. -/
+def ExactRustV5OpeningParserOutputEquality
+    (sha256 : List Byte -> Digest32)
+    (rustObservation : V5ProductionCall -> Option OpeningAndFriObservation) :
+    Prop :=
+  ∀ call observation, rustObservation call = some observation ->
+    ∃ run : ExactV5Run sha256 call.roots call.queries,
+      run.proofBytes = call.proofBytes ∧
+        observation.driver = driverOutputOfRun run []
+
+/-- Source boundary left for the actual four FRI loops after the returned
+opening views are fixed.  It covers their monotone-index traversal, parent
+index and slot calculation, and the exact record-value slices passed to each
+check.  The separately extracted record/value accessor proof and byte-decoder
+proof do not establish this loop-level dataflow equality. -/
+def ExactRustV5FriLoopReadEquality
+    (sha256 : List Byte -> Digest32)
+    (rustObservation : V5ProductionCall -> Option OpeningAndFriObservation) :
+    Prop :=
+  ∀ call observation (run : ExactV5Run sha256 call.roots call.queries),
+    rustObservation call = some observation ->
+    run.proofBytes = call.proofBytes ->
+    observation.driver = driverOutputOfRun run [] ->
+    observation.friReads = friReadScheduleOfRun run
+
 /-- The output/dataflow executable premise left by this module.
 `rustObservation` returns
 `some` only for a successful Rust execution which completed all four FRI
@@ -978,6 +1073,39 @@ def ExactRustV5OpeningAndFriConsumerEquality
     Prop :=
   ∀ call observation, rustObservation call = some observation ->
     ExactOpeningAndFriObservation sha256 call observation
+
+theorem exactRustV5OpeningAndFriConsumerEquality_iff_split
+    (sha256 : List Byte -> Digest32)
+    (rustObservation : V5ProductionCall -> Option OpeningAndFriObservation) :
+    ExactRustV5OpeningAndFriConsumerEquality sha256 rustObservation ↔
+      ExactRustV5OpeningParserOutputEquality sha256 rustObservation ∧
+        ExactRustV5FriLoopReadEquality sha256 rustObservation := by
+  constructor
+  · intro hsource
+    constructor
+    · intro call observation hrust
+      obtain ⟨run, hbytes, hobservation⟩ := hsource call observation hrust
+      exact ⟨run, hbytes, congrArg OpeningAndFriObservation.driver hobservation⟩
+    · intro call observation run hrust hbytes hdriver
+      obtain ⟨sourceRun, hsourceBytes, hobservation⟩ :=
+        hsource call observation hrust
+      have hdriverSource : observation.driver =
+          driverOutputOfRun sourceRun [] :=
+        congrArg OpeningAndFriObservation.driver hobservation
+      have hschedules : friReadScheduleOfRun run =
+          friReadScheduleOfRun sourceRun :=
+        friReadSchedule_eq_of_driverOutput_eq run sourceRun
+          (hdriver.symm.trans hdriverSource)
+      calc
+        observation.friReads = friReadScheduleOfRun sourceRun :=
+          congrArg OpeningAndFriObservation.friReads hobservation
+        _ = friReadScheduleOfRun run := hschedules.symm
+  · intro hsource call observation hrust
+    obtain ⟨run, hbytes, hdriver⟩ := hsource.1 call observation hrust
+    have hreads := hsource.2 call observation run hrust hbytes hdriver
+    refine ⟨run, hbytes, ?_⟩
+    cases observation
+    simp_all [observationOfRun]
 
 theorem rustObservation_exposes_only_authenticated_fri_values
     (sha256 : List Byte -> Digest32)
@@ -1055,6 +1183,8 @@ theorem rustObservation_exposes_only_authenticated_fri_values
 #print axioms every_line1_schedule_read_is_authenticated
 #print axioms every_line2_schedule_read_is_authenticated
 #print axioms every_terminal_schedule_read_is_authenticated
+#print axioms friReadSchedule_eq_of_driverOutput_eq
+#print axioms exactRustV5OpeningAndFriConsumerEquality_iff_split
 #print axioms rustObservation_exposes_only_authenticated_fri_values
 
 end AspisV5MerkleConsumedValueBridge
