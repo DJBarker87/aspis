@@ -1,6 +1,6 @@
 # Code map
 
-This map follows the current V5 evidence chain from the private-spend rules to
+This map follows the current V5 path from the private-spend rules to
 the finalized mainnet transaction. Paths are relative to the repository root.
 
 ## Follow the evidence
@@ -48,11 +48,14 @@ the finalized mainnet transaction. Paths are relative to the repository root.
 | Component A/B/C integration | `aeneas-verif/current-source-abc-capstone-20260722/proof/CurrentSourceABCapstone.lean` |
 | Component-C runtime rounds and public output | `aeneas-verif/component-c-runtime-downstream/released-trace-families-current-20260722/proof/RuntimeReleasedTraceFamiliesCurrentJoin.lean` |
 | Tag-67 work-byte reads and ordered checks | `aeneas-verif/tag67-work-wire-correspondence/proof/Tag67WorkVerifierClosure.lean` |
-| Plain-language scope and remaining boundary | `docs/formal-verification.md` |
+| Plain-language scope and remaining boundaries | `docs/formal-verification.md` |
 
 The final composition theorem is
-`FormalClosureStream1.current_source_combined_capstone`. It connects the listed
-selected paths; it is not a proof of every Rust function.
+`FormalClosureStream1.current_source_combined_capstone`. It packages the listed
+selected paths under successful-call, valid-input, and explicit
+execution/model hypotheses. It is neither a proof of every Rust function nor
+a theorem that arbitrary verifier acceptance implies the complete spend
+relation.
 
 ## V5 Solana transaction
 
@@ -66,7 +69,7 @@ selected paths; it is not a proof of every Rust function.
 | Shared account-distinctness and state guards | `programs/aspis-verifier/src/atomic_payment.rs` |
 
 The production path validates account order, signer/writable requirements,
-owners, distinctness, pool state, and the canonical nullifier before writing.
+owners, distinctness, pool state, and the program-derived nullifier account before writing.
 It verifies the proof and then rechecks mutable state before committing.
 
 ## Mainnet execution and cleanup

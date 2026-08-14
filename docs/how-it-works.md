@@ -21,11 +21,18 @@ satisfies these conditions:
 - the output commitment and next pool root are computed correctly; and
 - the public nullifier is derived from the private input.
 
-Argument soundness says an accepted proof implies that such a valid witness
-exists under the stated cryptographic assumptions. Interpreting acceptance as
-knowledge by the prover additionally uses the named extraction premise in the
-[assumptions ledger](assumptions-ledger.md). The nullifier prevents the same
-record from being spent twice without revealing which private record was used.
+The intended soundness statement is that an accepted proof implies such a
+valid witness exists. Lean now proves the spend rules once a normalized trace
+package containing all required residuals and public-field matches has been
+constructed. Deriving that package from arbitrary accepted proof bytes is
+still an explicit cryptographic and implementation assumption, as recorded
+in the [assumptions ledger](assumptions-ledger.md). Interpreting an accepted
+proof as knowledge by the prover needs a further extraction assumption. After
+one accepted spend, the program records its public nullifier and rejects later
+transactions using that nullifier. Lean reduces a different valid opening of
+the exact same fixed input leaf to recovery failure or a second preimage of the
+combined owner-and-note commitment. Ruling out an alternative leaf or path
+under the same anchor still needs Merkle binding and a complete attack game.
 
 ## Why the proof is uploaded first
 
@@ -52,7 +59,7 @@ The transaction supplies five ordered accounts:
 
 - the sealed proof account;
 - the current pool;
-- the canonical nullifier PDA;
+- the program-derived nullifier account;
 - the payer; and
 - the System Program.
 
@@ -103,7 +110,7 @@ identities and transaction links.
 ## Finalized V5 result
 
 The mainnet Tag-67 transaction finalized at slot `435019536`. The runner used
-the canonical nullifier PDA bump 255. Exact signed-wire simulation and landed
+nullifier PDA bump 255. Exact signed-wire simulation and landed
 metadata both reported 1,334,452 CU.
 
 After finality:

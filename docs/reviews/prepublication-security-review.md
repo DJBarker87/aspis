@@ -2,7 +2,7 @@
 
 This author-controlled engineering review was written before the q18/g37
 publication. It records that release at the time it was frozen. Later
-independent checkers and the separate V5 source-authentic closure are described
+independent checkers and the separate V5 selected-Rust proof are described
 in [`SECURITY.md`](../../SECURITY.md), the
 [`AspisFormal` ledger](../../AspisFormal/README.md), and the
 [`V5 release freeze`](../../release/preflight/v5-production-freeze.md).
@@ -39,9 +39,8 @@ Suitable for publication as a **research result**: a working transparent
 shielded-spend verification transition demonstrated once on L1, with an honest
 and mostly self-attested security argument. **Not cleared as a value-bearing
 service.** There is no deposit path, no anonymity-set growth, only a
-*conditional* theft-resistance theorem (it rests on the round-by-round
-knowledge premise, not yet discharged), and no live callable instance. No
-external audit was performed.
+*conditional* wrong-secret reduction rather than a complete deployed theft
+theorem, and no live callable instance. No external audit was performed.
 
 ## Assessment
 
@@ -58,9 +57,10 @@ atomic mutation, and statement binding are cleanly separated.
 The weaknesses identified at freeze time were cryptographic and structural
 rather than in the on-chain glue. The floors that matter most for a shielded
 system are conditional: hiding rests on the affine-image premise (R-03),
-soundness is work-normalized rather than raw (R-04), and theft resistance
-holds only under an unproved round-by-round knowledge premise (R-02). The
-custom Merkle compression is unreviewed (R-08). Testing is extensive at the
+soundness is work-normalized rather than raw (R-04), and authorization still
+needs deployed and simulation extraction, target sampling and commitment
+bounds, the alternative-path Merkle argument, and a complete attack game tied
+to the code (R-02). The custom Merkle compression is unreviewed (R-08). Testing is extensive at the
 host level and backed by a full mainnet reconciliation. The later standalone
 rank checker independently reconstructs the eight rank identities; the other
 cryptographic premises and the absence of coverage-guided fuzzing remain as
@@ -80,7 +80,7 @@ external review.
 | Rent / refund | Pass | Proof-account refund requires the proof account to sign, checks for overflow, and tombstones before draining (`atomic_payment.rs:323-365`); reconciled against finalized mainnet balances (`evaluation.tex:201-209`). |
 | Proof parser | Partial | Fixed-width `production_take` parsing rejects trailing bytes and mis-sized inputs (`dispatch.rs:21-43`), but the proof-body verifier has had no coverage-guided fuzzing (R-08, testing gap). |
 | Production dispatch | Pass | Only tags 0/1/59/60/62/63/64/65 are live; every historical or diagnostic tag fails before account access, pinned by test (`dispatch.rs:206`, `dispatch.rs:217-317`). |
-| Deployment domain | Partial | Bound and compared fail-closed, but the domain tag is operator-asserted and not tied to cluster genesis, and the derivation is keyholder-shaped (R-05). |
+| Deployment domain | Partial | Bound and compared fail-closed, but the domain tag is operator-asserted and not tied to cluster genesis; whoever controls the program-id keypair can reproduce the same domain on another cluster (R-05). |
 
 ## Findings
 
@@ -106,23 +106,30 @@ hiding against a realistic set size rather than a one-element pool.
 ### R-02: Theft resistance is conditional, not unconditional
 **Severity: High. Status: documented-constraint.**
 
-The base result is argument soundness for the exact relation. The paper now
-also constructs a straight-line extractor (the BCS Fiat--Shamir-of-IOP
-extractor, `lem:generic-extraction`) and proves a conditional argument of
-knowledge (`thm:argument-of-knowledge`) with a theft-resistance corollary: any
-party producing an accepting spend of a note must know its secret, since the
-public nullifier binds the note to it. The deployed-pool case, where the
-adversary has also seen honest spends, is covered by proving weak unique
-response and invoking Fiat--Shamir simulation-extractability. So the theorem
-that matters most is present, but it is conditional: it rests on the
-round-by-round knowledge premise (`ass:sr-knowledge`, reduced to the static
-`ass:relation-knowledge-core`), which is assumed, not proved. It is not an
-unconditional guarantee and says nothing about key management or secret-key
-leakage.
+The repaired Lean result proves a narrower and correct statement. For a fixed
+target nullifier, an accepted prover execution whose extracted secret is wrong
+implies either extractor failure or a different input with the same nullifier.
+The extractor receives the full execution record needed by the knowledge
+assumption, not public proof bytes alone. A second theorem handles a different
+valid opening of the exact same fixed input leaf. Neither result requires or
+assumes that a compressing hash is globally one-to-one.
 
-*Fix direction:* discharge the residual algebraic knowledge core so the theorem
-rests only on cited results, and until then keep it labelled conditional; no
-custody of value on the strength of a conditional premise.
+This is not yet a complete deployed theft theorem. The project still needs to
+connect actual Tag-67 acceptance to extraction of a witness in the full spend
+relation, bound the extractor's failure probability, justify simulation
+extraction after the attacker has seen other proofs, define target sampling or
+assume a uniform fixed-target guarantee, bound second-preimage attacks on the
+exact Poseidon2 nullifier and combined owner/note commitment, and prove the
+alternative-leaf Merkle-binding route. The current paper states the multi-round
+simulation-extraction step as an assumption; weak unique response is only
+supporting evidence. The result also says nothing about key management or
+secret-key leakage.
+
+*Fix direction:* prove the deployed acceptance-to-extraction link and the
+exact multi-round simulation-extraction result, then justify concrete
+fixed-target bounds and the Merkle-binding route. Until then,
+describe this as a conditional wrong-secret reduction and do not place real
+value under its protection.
 
 ### R-03: Hiding floors use an explicit affine-image premise
 **Severity: High. Status: rank identities independently checked; full-model completeness remains an assumption.**
@@ -185,13 +192,13 @@ easily-misread claim than a raw 100-bit floor.
 floor in all reader-facing material, and tighten the IOP/BCS parameters if a
 raw, non-vacuous bound at the target query budget is desired.
 
-### R-05: Deployment-domain residual: keyholder-shaped and genesis-unchecked
+### R-05: Deployment domain does not identify the cluster
 **Severity: Medium. Status: documented-constraint.**
 
 The deployment domain is `sha256(separator || program_id || domain_tag)`
 (`atomic_statement.rs:49-59`). Two residuals remain:
 
-1. **Keyholder-shaped.** The domain is a deterministic function of the program
+1. **Controlled by the program-id key holder.** The domain is a deterministic function of the program
    id and an operator string. Whoever controls the program-id keypair can
    deploy the same program id on another cluster and reproduce an identical
    domain; the domain does not bind to anything an attacker without that key
@@ -259,10 +266,10 @@ the permutation input rather than by call-site convention.
 | ID | Finding | Severity | Status |
 |---|---|---|---|
 | R-01 | Single-spend primitive; no deposit / no anonymity-set growth | High | documented-constraint |
-| R-02 | Theft resistance conditional on the round-by-round knowledge premise | High | documented-constraint |
+| R-02 | Authorization still needs deployed/simulation extraction, target sampling and commitment bounds, alternative-path Merkle binding, and a complete attack game tied to the code | High | documented-constraint |
 | R-03 | Hiding floors use the affine-image completeness premise; ranks independently checked | High | partially discharged |
 | R-04 | Soundness floor is work-normalized; raw bound vacuous | Medium | documented-constraint |
-| R-05 | Deployment-domain residual: keyholder-shaped, genesis-unchecked | Medium | documented-constraint |
+| R-05 | Deployment domain can be reproduced on another cluster by the program-id key holder | Medium | documented-constraint |
 | R-06 | No scaling / concurrency | Medium | documented-constraint |
 | R-07 | No live instance; ~4% CU headroom vs repricing | Medium | open |
 | R-08 | Custom `merkle_node_compress_v3` unreviewed | Medium | open |

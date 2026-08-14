@@ -163,55 +163,86 @@ Equations~\eqref{eq:owner-key}--\eqref{eq:range-out}.  The generated atomic-v3
 registry contains 183 copy terms and fixes the trace layout independently of
 the witness.
 
-\begin{proposition}[Relation realization]
+\begin{proposition}[Normalized trace data implies the spend relation]
 \label{prop:relation-realization}
-For every canonically encoded \((x,w)\), the \Profile{} trace builder produces
-an accepting arithmetic trace if and only if \(\RProfile(x,w)=1\).
+Assume that the deployed Poseidon2 constants, domain labels, absorption rules,
+and output truncation equal the functions in
+Equations~\eqref{eq:owner-key}--\eqref{eq:output-note}.  Let normalized trace
+data for a statement \(x\) contain:
+\begin{enumerate}[label=(\roman*)]
+  \item zero arithmetic residuals for both range checks, asset equality, and
+  balance;
+  \item the required typed owner, note, nullifier, and Merkle-node input for
+  every permutation, its eleven checked two-round transitions, and its output,
+  including the child-selection and node-absorption equations at each Merkle
+  level;
+  \item twenty input-path and twenty output-path levels using the same path
+  bits and siblings; and
+  \item openings equal to the six public spend fields in \(x\).
+\end{enumerate}
+Then those data determine integers \(v,v'\) and a witness \(w\) such that
+\(\RProfile(x,w)=1\).  Conversely, every \((x,w)\) satisfying
+\(\RProfile(x,w)=1\) can be encoded as normalized trace data with all of those
+residuals zero.
 \end{proposition}
 
 \begin{proof}
-The forward direction follows block by block.  The owner, note, nullifier,
-and output-note blocks enforce the four domain-separated hash equations.  At
-each Merkle level, the tagged two-item selection relation enforces the ordered
-pair \((X_j,\sigma_j)\) or \((\sigma_j,X_j)\) according to a Boolean copy of
-\(i_j\); copy aliases force the input path, output path, and sibling row to use
-the same bit and sibling.  The two terminal root bindings yield
-\eqref{eq:input-root} and \eqref{eq:output-root}.  Lookup membership and the
-two reconstruction constraints give the 30-bit ranges, after which the
+For the first direction, zero arithmetic residuals give the two 30-bit range
+checks, balance, and asset equality.  The eleven two-round transitions expand
+to the specified twenty-two Poseidon2 rounds.  The owner, note, nullifier, and
+output-note blocks therefore give the four domain-separated hash equations.
+At each Merkle level, the two selection residuals give the ordered pair
+\((X_j,\sigma_j)\) or \((\sigma_j,X_j)\) according to the shared Boolean path
+bit.  Chaining the twenty levels and using the two terminal root equalities gives
+\eqref{eq:input-root} and \eqref{eq:output-root}.  The Boolean-bit constraints
+and limb/value reconstruction equations give the 30-bit ranges, after which the
 balance constraint is the integer equality \eqref{eq:balance}.  The remaining
 public terminals enforce \eqref{eq:nullifier}, \eqref{eq:output-note}, and
-\eqref{eq:asset-equality}.
+\eqref{eq:asset-equality}.  These values form the required witness.
 
-Conversely, given a witness satisfying the displayed equations, fill each
+For the converse, given a witness satisfying the displayed equations, fill each
 hash block with the deterministic Poseidon2 execution, place the common path
 bits and siblings in their registry cells, and use the stated 10-bit limbs.
-Every local, copy, lookup, and terminal constraint then vanishes.  This
-argument concerns the algebraic trace definition; the polynomial argument
-that binds a proof to such a trace is given in Section~\ref{sec:soundness}.
+Every arithmetic, hash, path, copy, and public-field residual in the normalized
+data then vanishes.  This
+argument concerns the normalized data only.  It does not show that arbitrary
+accepted Rust execution yields those data.  That separate step must justify
+the byte decoding, absorption-row substitutions, copy and LogUp sharing,
+polynomial-commitment and FRI extraction, transcript argument, and public and
+live-account bindings.  Section~\ref{sec:soundness} records that step as an
+explicit premise, and the Lean theorem
+\texttt{AspisV5AcceptedSpendRelation.extracted\_trace\_implies\_spend\_relation}
+checks the deterministic implication above.
 \end{proof}
 
-\begin{lemma}[No double spend]
+\begin{lemma}[No repeated public nullifier]
 \label{lem:no-double-spend}
-Fix a note with secret \(k_\nu\) and input randomness \(r_{\mathrm{in}}\), with
-nullifier \(\nu=H_{\mathsf{nul}}(k_\nu,r_{\mathrm{in}})\) by
-Equation~\eqref{eq:nullifier}.  Two facts bar a second spend of the note.
-\emph{(i) Determinism.}  \(H_{\mathsf{nul}}\) is a function, so the note fixes a
-unique \(\nu\), and the relation accepts only when the public nullifier equals
-\(H_{\mathsf{nul}}(k_\nu,r_{\mathrm{in}})\).  \emph{(ii) Marker (program
-invariant).}  The transition consumes the canonical program-derived account at
-seeds \(\mathtt{aspis\mbox{-}nullifier\mbox{-}v1}\Vert\nu\), creates its
-spent-marker atomically on acceptance, and refuses with a dedicated error any
-transition whose \(\nu\) already carries a marker; so at most one accepting
-transition ever carries a given \(\nu\).  Consequently, for two accepting
-spends of the note, Theorem~\ref{thm:argument-of-knowledge} extracts from each a
-witness \((k,r)\) with \(H_{\mathsf{nul}}(k,r)\) the spend's public nullifier,
-equal to \((k_\nu,r_{\mathrm{in}})\) except with the Poseidon2 reserve
-\(\varepsilon_{\rm cr}\); both then carry \(\nu\), and by~(ii) the second is
-refused.  A spend of the note under a distinct \(\nu'\neq\nu\) requires a second
-preimage of \(H_{\mathsf{nul}}\), again bounded by \(\varepsilon_{\rm cr}\).
-Uniqueness of the accepted nullifier is a program invariant (the canonical
-marker account), not a cryptographic one; collision resistance rules out only
-the distinct-\(\nu'\) route.
+The transition checks the program-derived account at seeds
+\(\mathtt{aspis\mbox{-}nullifier\mbox{-}v1}\Vert\nu\), records that account as
+spent atomically on acceptance, and rejects any later transition carrying the
+same public nullifier \(\nu\).  Subject to Solana's account-locking and atomic
+execution semantics, at most one successful state transition can therefore
+carry a given public nullifier.
+
+This program fact is narrower than a cryptographic theorem saying that one
+semantic note can never be opened under two different nullifiers.  For a fixed
+note leaf
+\[
+ L=H_{\mathsf{note}}(H_{\mathsf{own}}(k_\nu),v,a,r_{\mathrm{in}}),
+\]
+the honest opening determines
+\(\nu=H_{\mathsf{nul}}(k_\nu,r_{\mathrm{in}})\).  An accepted second spend of
+that same leaf with a different nullifier would require either failure of the
+proof's extraction and relation binding, a different opening of the combined
+owner-and-note commitment, or a Merkle binding failure.  It is not a
+target-second-preimage event for \(H_{\mathsf{nul}}\), because a second
+preimage has the same hash output.  The target-second-preimage reduction in
+Corollary~\ref{cor:theft-resistance} instead concerns a wrong extracted secret
+for a fixed public nullifier.  The Lean theorem
+\texttt{different\_opening\_same\_leaf\_reduction} checks the logical
+fixed-leaf note-opening reduction.  It does not prove that an alternative leaf
+or path reaches the same root, and this paper assigns no numerical bound to
+either commitment event.
 \end{lemma}
 
 \subsection{Live-state preconditions and atomic effect}
@@ -223,8 +254,8 @@ the expected owner, type, 80-byte length, key \(P\), sequence
 \(A\), and stored deployment domain equal to the statement's \(\Delta\),
 with a distinct error code for a domain mismatch checked before the anchor
 comparison; (ii) the proof account has the expected owner and a finalized
-all-zero authority sentinel; and (iii) the nullifier marker is the canonical
-program-derived address with seeds
+  all-zero authority sentinel; and (iii) the nullifier marker is the expected
+  program-derived address with seeds
 \(\mathtt{aspis\mbox{-}nullifier\mbox{-}v1}\) and \(\nu\), is unspent, and
 has one of the accepted pre-state shapes.  Its 72-byte post-state stores and
 checks both \(P\) and \(\nu\).  The instruction

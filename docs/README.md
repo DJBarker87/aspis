@@ -10,7 +10,7 @@ mainnet-beta state transition.
 1. [How Aspis works](how-it-works.md) — the private-spend statement, proof
    upload, atomic transaction, and cleanup
 2. [From mathematics to mainnet](../README.md#from-mathematics-to-mainnet) —
-   the four-stage evidence chain
+   the four-stage path
 3. [What has been formally checked](formal-verification.md) — what Lean
    checks, how selected Rust is connected, and what remains trusted
 4. [V5 mainnet result](v5-mainnet-demo.md) — finalized execution first, then
@@ -22,7 +22,7 @@ mainnet-beta state transition.
    translation, compiler, and runtime boundaries
 7. [Code map](code-map.md) — concept-to-file navigation
 8. [Technical paper](../paper/aspis-spend/) — construction, security
-   argument, and evidence chain
+   argument, and supporting records
 9. [Design history and previous releases](design-history.md) — evolution of
    the current V5 result and the earlier q18/g37 record
 

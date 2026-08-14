@@ -4,7 +4,10 @@
 This section gives a concrete classical random-oracle argument-soundness
 bound for the relation in Definition~\ref{def:spend-relation}.  The
 finite-parameter code reduction and the state-restoration property needed by
-the Fiat--Shamir compiler are stated explicitly as premises below.  Section~\ref{sec:knowledge-soundness} states, under an added round-by-round knowledge premise, the extractor that upgrades this to an argument of knowledge and the theft-resistance corollary that follows.
+the Fiat--Shamir compiler are stated explicitly as premises below.
+Section~\ref{sec:knowledge-soundness} states, under an added round-by-round
+knowledge premise, the extractor that upgrades this to an argument of
+knowledge and the fixed-nullifier wrong-secret reduction that follows.
 
 \subsection{Security experiment and metric}
 
@@ -173,8 +176,12 @@ Table~\ref{tab:soundness-events}.  In particular, the premise covers the
 rate-\(1/512\) Johnson-list and polynomial-generator MCA hypotheses, the two
 OOD samples, all four folds and their list sizes, the terminal condition, and
 the assignment of every semantic, copy, lookup, range, mask, and sumcheck
-constraint to rows 5--14 of the table.  The premise is uniform over every
-false public statement and every reachable public transcript prefix.  Its
+constraint to rows 5--14 of the table.  It also covers the raw-evaluator-to-
+normalized-data step used by Proposition~\ref{prop:relation-realization}:
+byte and field decoding, typed Poseidon absorption inputs, row-zero
+substitutions, shared copy/LogUp values, and the six public-field matches.  No
+current Lean or Rust theorem discharges that complete step.  The premise is
+uniform over every false public statement and every reachable public transcript prefix.  Its
 finite-parameter applicability conditions, the Johnson agreement cap
 \(A=6082\), the proven-regime membership \(\alpha\ge\sqrt\rho\) at rate
 \(1/512\) (Johnson, not capacity), the circle-to-GRS transport conditions (the
@@ -465,7 +472,7 @@ boundaries (the width-29 \(\gamma\)-batch of the 26 subfield lanes and the
 three extension lanes \(H,G,D\) including the zero-factor \(D\) lane of
 Equation~\eqref{eq:spend-batch}, the three \(D\)-lane claims absorbed beside
 the statement points, the relation out-of-domain mixers, and the atomic
-tuple-compression, copy/range-pole, and \(\theta\) seams) the
+tuple-compression, copy/range-pole, and \(\theta\) boundaries) the
 doom-persistence error is at most the corresponding entry of
 Table~\ref{tab:soundness-events} (rows for the semantic, copy, lookup, range,
 mask, and inactive-copy events, and the \(D\)-lane contributions), uniformly
@@ -565,7 +572,7 @@ over \(\gamma\ne0\).
 Assumption~\ref{ass:relation-rbr-core} with the two \(D\)-lane clauses removed:
 the residual boundaries are the width-28 sub-batch of lanes \(0,\dots,27\), the
 relation out-of-domain mixers, and the tuple-compression, copy/range-pole, and
-\(\theta\) seams, each functional reading only the 84 lane evaluations, the
+\(\theta\) boundaries, each functional reading only the 84 lane evaluations, the
 masked sumcheck data, and the batched word, never the \(D\)-word or \(d\).
 Their nonzero identity premises are Lemma~\ref{lem:local-algebraic-binding}
 inside Assumption~\ref{ass:pinned-finite-reduction}; only the generic
@@ -722,30 +729,31 @@ unique values \(v,v'\), so the input note carries value \(v\) and the output
 note value \(v'=v-f\le v\).
 \end{proof}
 
-\begin{corollary}[No inflation, relative to initialization]
+\begin{corollary}[Per-spend balance]
 \label{cor:no-inflation}
-Under the premises of Theorem~\ref{thm:value-conservation}, each spend changes
-exactly one leaf and replaces an in-tree note of value \(v\) by a note of value
-\(v-f\), removing the public fee \(f\) from the shielded set; the total
-committed note value is therefore non-increasing across any sequence of
-accepting spends.  This is relative to the value committed at initialization.
-The pool anchor is a caller-supplied value at initialization and this release
-has no deposit or append operation (Section~\ref{sec:limitations}), so the
-statement is that spends do not mint value, not that the pool's committed value
-is externally backed; establishing an honestly-valued initial anchor, or a
-deposit path, is out of scope.
+Under the premises of Theorem~\ref{thm:value-conservation}, every accepted
+spend has an extracted input opening of value \(v\) and output opening of value
+\(v-f\).  Thus the spend relation itself cannot create value by modular
+wraparound.  This statement is per spend.  It does not by itself define a
+unique total value for every Merkle root or prove a sequence-wide conservation
+law: that stronger result also needs a Merkle-tree binding argument connecting
+successive roots and note openings.  The pool anchor is caller supplied at
+initialization, and this release has no deposit or append operation
+(Section~\ref{sec:limitations}), so external backing and honest initialization
+are also out of scope.
 \end{corollary}
 
-\subsection{Knowledge soundness and theft resistance}
+\subsection{Knowledge extraction and the fixed-nullifier wrong-secret reduction}
 \label{sec:knowledge-soundness}
 
 Theorem~\ref{thm:bcs-soundness} is a statement about the \emph{existence} of a
 satisfying witness.  For a spend, the property a pool needs is stronger: only a
 party that knows a note's authorization secret should be able to produce an
 accepting transition that consumes it.  We record the additional premise under
-which the argument becomes an argument of knowledge, and the theft-resistance
-statement that follows from it and from the relation's binding structure.  Like
-the soundness premises, the knowledge premise is assumed, not proved.
+which the argument becomes an argument of knowledge, and the narrower
+wrong-secret statement that follows for a fixed public nullifier.  This is not
+a complete theft game.  Like the soundness premises, the knowledge premise is
+assumed, not proved.
 
 \begin{assumption}[State-restoration knowledge extraction]
 \label{ass:sr-knowledge}
@@ -776,16 +784,19 @@ Lemma~\ref{lem:generic-boundary-rbr}.  There is a straight-line extractor
 \(\mathsf{Ext}_0\) that, given a state-restoration prover \(P^\ast\) with its
 random-oracle query--answer transcript, outputs the Merkle-committed layer-zero
 and per-layer oracle messages opened at the sampled query positions whenever
-\(P^\ast\) accepts, using no rewinding and failing only on a Merkle
-second-preimage, of probability at most the SHA-256 reserve.
+\(P^\ast\) accepts, using no rewinding and failing only when the SHA-256
+Merkle commitment is not binding, with probability represented by the
+corresponding symbolic binding term.
 \end{lemma}
 
 \begin{proof}
 This is the Fiat--Shamir-of-IOP knowledge extractor of
 \citet{BenSassonChiesaSpooner2016}: the compiled proof is public-coin with
 Merkle-committed oracle messages, so the committed words are read off
-\(P^\ast\)'s query transcript at the parser-fixed boundaries, and recovering a
-value inconsistent with its authenticating path is a second preimage.  The
+\(P^\ast\)'s query transcript at the parser-fixed boundaries.  Recovering an
+inconsistent value and authentication path would violate the required Merkle
+binding property; this wording does not identify that game with standard
+target-second-preimage security.  The
 generic-boundary soundness of Lemma~\ref{lem:generic-boundary-rbr} supplies the
 state function BCS needs for the extractor to be straight-line.
 \end{proof}
@@ -861,84 +872,108 @@ Assumption~\ref{ass:sr-knowledge} bounds it by the same
 knowledge error by that premise rather than by the soundness theorem.
 \end{proof}
 
-\begin{corollary}[Authorization possession and theft resistance]
+For a fixed target input \(u=(k_\nu,r_{\mathrm{in}})\), write
+\(\operatorname{Adv}^{\mathrm{tsp}}_{H_{\mathsf{nul}}}(B;u)\) for the
+probability that an efficient algorithm \(B\), even when given \(u\), outputs
+\(u'\ne u\) with \(H_{\mathsf{nul}}(u')=H_{\mathsf{nul}}(u)\).  This is a
+target-second-preimage game.  It does not assume that the compressing hash is
+one-to-one.  The advantage remains indexed by the target (u).  A numerical
+security statement must either sample (u) in a defined target-note game or
+assume a bound that holds uniformly over every valid target; neither is
+derived by the arithmetic ledger.
+
+\begin{corollary}[Wrong-secret reduction for a fixed nullifier]
 \label{cor:theft-resistance}
 Consider a note created with secret \(k_\nu\) and input randomness
 \(r_{\mathrm{in}}\), so that its public nullifier is
 \(\nu=H_{\mathsf{nul}}(k_\nu,r_{\mathrm{in}})\) by
-Equation~\eqref{eq:nullifier}.  The nullifier is the only witness-derived value
-pinned in the public statement, so it alone identifies the note being
-consumed.  Let \(A\) be any probabilistic polynomial-time party that outputs an
-accepting spend for a statement carrying \(\nu\) while making \(T\le2^{128}\)
-oracle queries.  By Theorem~\ref{thm:argument-of-knowledge}, with
-work-normalized knowledge error \(3b(T)\), the extractor yields a witness whose
-secret \(k\) and randomness \(r'\) satisfy \(H_{\mathsf{nul}}(k,r')=\nu\).
-Since
-\((k_\nu,r_{\mathrm{in}})\) is a fixed preimage of the public target \(\nu\),
-any \((k,r')\neq(k_\nu,r_{\mathrm{in}})\) with the same image is a
-second preimage; by the Poseidon2 semantic-binding reserve
-\(\varepsilon_{\rm cr}\) of the soundness ledger, which upper-bounds
-second-preimage advantage, \((k,r')=(k_\nu,r_{\mathrm{in}})\) except with
-probability \(\varepsilon_{\rm cr}\).  The extracted witness therefore contains
-the note's secret \(k_\nu\), and, through Equations~\eqref{eq:owner-key} and
-\eqref{eq:input-note}, its owner key and input note as well.  Hence any
-efficient party that produces an accepting spend of the note knows its
-authorization secret, and no efficient party lacking \(k_\nu\) produces an
-accepting spend, with work-normalized knowledge error \(3b(T)\) and additional
-raw error \(\varepsilon_{\rm cr}\).
+Equation~\eqref{eq:nullifier}.  Restrict this experiment to statements carrying
+that fixed \(\nu\); this models attempts routed to the victim's spent-marker
+address.  It does not cover an alternative opening of the same note under a
+different nullifier, which is the separate owner/note/Merkle-binding route in
+Lemma~\ref{lem:no-double-spend}.  Let \(A\) be any probabilistic
+polynomial-time party that outputs an accepting spend for a statement carrying
+\(\nu\) while making \(T\le2^{128}\) oracle queries.  By
+Theorem~\ref{thm:argument-of-knowledge}, the extractor
+yields a witness whose secret \(k\) and randomness \(r'\) satisfy
+\(H_{\mathsf{nul}}(k,r')=\nu\), or extraction fails.  If \(k\ne k_\nu\), then
+\((k,r')\ne(k_\nu,r_{\mathrm{in}})\), so the extracted pair is a target second
+preimage.  Therefore there is an efficient reduction \(B_A\) such that the raw
+wrong-secret event
+\(\mathsf{WrongSecret}_A=\{\text{\(A\)'s proof is accepted and the extracted secret
+differs from \(k_\nu\)}\}\) satisfies
+\[
+  \Pr[\mathsf{WrongSecret}_A]
+  \le 3T\,b(T)
+     + \operatorname{Adv}^{\mathrm{tsp}}_{H_{\mathsf{nul}}}
+         (B_A;(k_\nu,r_{\mathrm{in}})).
+\]
+Equivalently, after division by \(T\), the work-normalized bound is
+\(3b(T)+\operatorname{Adv}^{\mathrm{tsp}}/T\).  The first term is the stated
+extractor error.  The second is an external security assumption about the
+deployed Poseidon2 nullifier; the arithmetic ledger does not prove or
+numerically bound it.  The Lean development checks this event reduction.
 \end{corollary}
 
-Corollary~\ref{cor:theft-resistance} bounds an adversary that produces an
-accepting spend without being handed honest proofs.  A deployed pool is
-stronger: the adversary also observes honest spends.  We close this case by adapting the non-malleability template for the
-Fiat--Shamir transform of a proof of knowledge with unique
-responses~\citep{FaustKohlweissMarsonVenturi2012} to our setting, and giving
-the reduction explicitly.  That template is stated for three-move protocols;
+Corollary~\ref{cor:theft-resistance} reduces the wrong-secret event for an
+adversary that produces an accepting spend without being handed honest proofs.
+A deployed pool is
+stronger: the adversary also observes honest spends.  The non-malleability
+template for the Fiat--Shamir transform of a proof of knowledge with unique
+responses~\citep{FaustKohlweissMarsonVenturi2012} is relevant, but it is
+stated for three-move protocols;
 the multi-round case has been treated in the algebraic group
 model~\citep{GaneshOrlandiPancholiTakahashiTschudi2022}, which our hash-based
-random-oracle argument does not use.  We therefore do not invoke either as a
-black box: our two ingredients are that the compiled argument is a proof of
-knowledge in the random-oracle model (Theorem~\ref{thm:argument-of-knowledge},
-whose Fiat--Shamir foundation for this FRI-style compiler is
-\citet{BlockGarretaKatzThalerTiwariZajac2023}, giving round-by-round soundness,
-not extractability), and that it has weak unique responses, established next;
-the non-malleability step is the explicit straight-line reduction in the proof
-of Theorem~\ref{thm:sim-extractability}.
+random-oracle argument does not use.  Neither citation directly proves
+simulation extraction for this exact multi-round FRI-style transcript.  We
+therefore separate the weak-response result below from an explicit
+simulation-extraction assumption.
 
-\begin{lemma}[Weak unique response]
+Let \(\varepsilon_{\rm WUR}^{\rm SHA}\) denote the SHA-256 Merkle-binding
+advantage in the fixed-commitment experiment below.  In that experiment the
+adversary chooses the statement and fixed commitment values, then tries to
+produce two distinct accepting responses sharing them.  This is a
+collision/binding game, not a standard target-second-preimage claim.
+
+\begin{assumption}[Weak unique response for fixed commitments]
 \label{lem:quasi-unique-response}
 Fix a statement \(x\), the committed hiding pre-commitment, the layer-zero,
 C2, and three fold roots, the grinding nonces, and the selector.  No
 probabilistic polynomial-time prover produces two distinct accepting proofs
 with these fixed values, except with probability at most
-\(\varepsilon_{\rm cr}+\varepsilon_{\rm round}^{(0)}\).
-\end{lemma}
+\(\varepsilon_{\rm WUR}^{\rm SHA}
+  +\varepsilon_{\rm round}^{(0)}\).
+This premise includes the claim that fixed roots determine the accepted field
+claims outside the query/list failure event.  Root-before-challenge ordering,
+salted Merkle leaves, and the query checks support the premise, but the paper
+does not derive its exact probability experiment from the cited three-move or
+algebraic-group results.
+\end{assumption}
 
-\begin{proof}
-The roots are absorbed before their dependent challenges, so all committed
-codewords and masks are fixed before any challenge is drawn; each private leaf
-is \(\mathrm{SHA256}(\mathtt{0x10}\,\|\,\text{tag}\,\|\,\text{value}\,\|\,
-\text{salt})\), so its salt is inside the pre-image bound by the root and
-cannot be re-randomized.  Fixing \(x\), all roots, nonces, and selector fixes
-the honest field values that the committed vectors determine: each
-out-of-domain, sumcheck, fold, and \(D\)-lane claim has one value consistent
-with the committed low-degree extension.  Any accepting proof whose field
-claims deviate from those honest values passes the query-phase consistency
-check of Theorem~\ref{thm:bcs-soundness} only with probability at most
-\(\varepsilon_{\rm round}^{(0)}\), since low-degreeness is enforced only by
-that phase; so, except on that event, both accepting proofs carry the honest
-field claims, hence identical challenges and identical query positions.  Two
-proofs that agree on all field claims and positions but differ must differ in
-an opened Merkle path: a pair of distinct openings authenticating to the same
-root at the same position is a Merkle second preimage, of probability at most
-\(\varepsilon_{\rm cr}\).  The union bounds the event.
-\end{proof}
+\begin{assumption}[Simulation extraction for the exact compiled protocol]
+\label{ass:exact-sim-extraction}
+For the exact multi-round transcript, simulator, query schedule, and proof
+format used here, the standard programmable-random-oracle simulation-extraction
+experiment admits a straight-line extractor that returns \(w^\ast\) with
+\(\RProfile(x^\ast,w^\ast)=1\) for a fresh accepting pair
+\((x^\ast,\pi^\ast)\).  For
+an adversary making \(T\le2^{128}\) oracle queries after receiving \(q_S\)
+simulated proofs, the extractor failure probability is at most the raw
+knowledge term \(3T\,b(T)\), plus
+\[
+ \varepsilon_{\rm WUR}^{\rm SHA}+\varepsilon_{\rm round}^{(0)}
+ +\frac{R\,q_S\,(T+R\,q_S)}{2^{256}},
+ \qquad R=32 .
+\]
+This assumption includes the multi-round oracle-programming and transcript
+collision argument.  Assumption~\ref{lem:quasi-unique-response} is supporting
+evidence, but does not by itself prove this assumption.
+\end{assumption}
 
-\begin{theorem}[Conditional simulation-extractability]
+\begin{theorem}[Simulation extraction under the stated assumption]
 \label{thm:sim-extractability}
-Assume Assumption~\ref{ass:sr-knowledge}, so that the compiled argument is a
-proof of knowledge in the random-oracle model
-(Theorem~\ref{thm:argument-of-knowledge}), and SHA-256 as a random oracle.  Let
+Assume Assumption~\ref{ass:exact-sim-extraction} and SHA-256 as a random
+oracle.  Let
 \(A\) be a probabilistic polynomial-time adversary that receives simulated
 proofs for valid statements, produced by the simulator of
 Theorem~\ref{thm:real-vs-sim23}, and outputs a fresh accepting pair
@@ -946,85 +981,74 @@ Theorem~\ref{thm:real-vs-sim23}, and outputs a fresh accepting pair
 the experiment makes \(T\le2^{128}\) oracle queries and \(A\) receives
 \(q_S\) simulated proofs.  Then there is an extractor that, given \(A\)'s
 query--answer transcript, outputs \(w^\ast\) with
-\(\RProfile(x^\ast,w^\ast)=1\), with work-normalized knowledge error \(3b(T)\)
-and additional raw error at most
+\(\RProfile(x^\ast,w^\ast)=1\), except with raw probability at most
 \[
- \varepsilon_{\rm cr}+\varepsilon_{\rm round}^{(0)}
+ 3T\,b(T)
+ +\varepsilon_{\rm WUR}^{\rm SHA}+\varepsilon_{\rm round}^{(0)}
  \;+\;
  \frac{R\,q_S\,(T+R\,q_S)}{2^{256}},
  \qquad R=32 .
 \]
+Dividing the entire right-hand side by \(T\) gives the corresponding
+work-normalized expression.
 \end{theorem}
 
 \begin{proof}
-The argument is public-coin, is a proof of knowledge in the random-oracle model
-by Theorem~\ref{thm:argument-of-knowledge}, and has weak unique responses by
-Lemma~\ref{lem:quasi-unique-response}.  We give the non-malleability reduction
-explicitly, following the Fiat--Shamir template of
-\citet{FaustKohlweissMarsonVenturi2012} adapted to the multi-round
-random-oracle straight-line setting.  The reduction runs \(A\), answering each
-simulation query by sampling the challenges first and programming the oracle at
-that proof's \(R\) transcript prefixes, and it invokes the proof-of-knowledge
-extractor of Theorem~\ref{thm:argument-of-knowledge} on the final proof.  That
-extractor is applied against the oracle \emph{as seen through \(A\)'s own
-queries}: statement-first absorption makes every challenge-defining prefix of
-\(\pi^\ast\) a function of \(x^\ast\), so a prefix of \(\pi^\ast\) coincides
-with one of the at most \(Rq_S\) programmed prefixes only by a birthday
-collision against \(A\)'s \(T\) queries, bounded by \(Rq_S(T+Rq_S)/2^{256}\).
-When \(x^\ast\) equals a simulated statement, an early prefix may instead
-coincide deterministically; but the simulated roots are witness-free, and the
-fresh grinding nonce and selector (absorbed last) shift the query positions, so
-opening a reused witness-free root at those positions passes the query phase
-only with probability \(\varepsilon_{\rm round}^{(0)}\).  By weak unique
-response (Lemma~\ref{lem:quasi-unique-response}), reusing a programmed prefix
-without recomputing its opening is a second preimage or a query-phase
-violation, already inside
-\(\varepsilon_{\rm cr}+\varepsilon_{\rm round}^{(0)}\).  Outside these events
-every challenge-defining and opening value of \(\pi^\ast\) is answered by
-\(A\)'s own queries, so \(\pi^\ast\) is a plain-oracle proof to which the
-extractor of Theorem~\ref{thm:argument-of-knowledge} applies, yielding
-\(w^\ast\) with its work-normalized knowledge error \(3b(T)\).  The collision
-and second-preimage terms are raw, of the order already present in the
-soundness ledger; \(3b(T)\) is the work-normalized knowledge floor.
+This is exactly the conclusion of
+Assumption~\ref{ass:exact-sim-extraction}, written in one raw-probability unit.
 \end{proof}
 
-\begin{corollary}[Deployed-pool theft resistance]
+\begin{corollary}[Conditional wrong-secret bound after observed proofs]
 \label{cor:deployed-theft}
-Under Assumption~\ref{ass:sr-knowledge} and
-Lemma~\ref{lem:quasi-unique-response}, no efficient party lacking a note's
-secret \(k_\nu\) produces an accepting spend of it, even after observing any
-number \(q_H\) of honest spend proofs, with work-normalized knowledge error
-\(3b(T)\) and additional raw error at most
-\(\varepsilon_{\rm cr}^{\rm SHA}+\varepsilon_{\rm cr}^{\rm Pos}
-+\varepsilon_{\rm round}^{(0)}+Rq_H(T+Rq_H)/2^{256}+q_H\,\varepsilon_{\rm RS}\),
-summing the SHA-256 Merkle second-preimage event inherited through
-Theorem~\ref{thm:sim-extractability} and the Poseidon2 nullifier-binding event
-inherited through Corollary~\ref{cor:theft-resistance}.
+Under Assumption~\ref{ass:exact-sim-extraction}, the complete affine-image and
+rank-coverage premise of Assumption~\ref{lem:complete-affine-image}, and one
+of the boundary models in Theorem~\ref{thm:real-vs-sim23}, fix a victim note
+with \(\nu=H_{\mathsf{nul}}(k_\nu,r_{\mathrm{in}})\).  Let \(A\), after
+observing \(q_H\) honest spend proofs, output a fresh accepting statement
+carrying \(\nu\).  There is an efficient reduction \(B_A\) for which
+the raw probability that the extracted secret differs from the victim secret
+is at most
+\[
+  3T\,b(T)
+  +\varepsilon_{\rm WUR}^{\rm SHA}
+  +\varepsilon_{\rm round}^{(0)}
+  +\frac{Rq_H(T+Rq_H)}{2^{256}}
+  +q_H\bigl(\varepsilon_{\rm RS}+\delta_{\rm dead}(\Delta)\bigr)
+  +\operatorname{Adv}^{\mathrm{tsp}}_{H_{\mathsf{nul}}}
+       (B_A;(k_\nu,r_{\mathrm{in}})).
+\]
+This is not a complete theft game and does not cover the different-nullifier
+note-opening route.  Even for the fixed-nullifier event, the conclusion is
+useful only when the simulation-extraction terms and target-second-preimage
+advantage are negligible.  The Poseidon2 term is not replaced by a policy
+reserve from the arithmetic ledger.
 \end{corollary}
 
 \begin{proof}
 Honest spends are proofs of valid statements for distinct notes.  Replacing the
-\(q_H\) honest proofs one at a time with simulated proofs costs
-\(q_H\varepsilon_{\rm RS}\) by the zero-knowledge bound of
+\(q_H\) honest proofs one at a time with simulated proofs costs at most
+\(q_H(\varepsilon_{\rm RS}+\delta_{\rm dead}(\Delta))\) by the zero-knowledge bound of
 Theorem~\ref{thm:real-vs-sim23} (\(q_S=q_H\)).  In the resulting experiment
 Theorem~\ref{thm:sim-extractability} extracts a witness from \(A\)'s accepting
-spend for the statement carrying the victim nullifier \(\nu\); the
-second-preimage argument of Corollary~\ref{cor:theft-resistance} forces its
-secret to be \(k_\nu\).  In the theft-relevant case the victim has not yet
-spent \(\nu\), so no honest or simulated proof for \(x^\ast\) exists and the
+spend for the statement carrying the victim nullifier \(\nu\).  If the
+extracted secret differs from \(k_\nu\), Corollary~\ref{cor:theft-resistance}
+turns it into a target second preimage.  In the fixed-nullifier event the victim
+has not yet spent \(\nu\), so no honest or simulated proof for \(x^\ast\) exists and the
 freshness condition holds trivially; a later second spend of \(\nu\) is refused
 on-chain by the nullifier marker regardless.
 \end{proof}
 
 \begin{remark}[Scope]
 \label{rem:sim-extractability}
-The result is classical and conditional on the same premises as the knowledge
-theorem; it makes no quantum-random-oracle claim.  The non-malleability step is
-the explicit straight-line reduction above, adapting the Fiat--Shamir template
-of \citet{FaustKohlweissMarsonVenturi2012} rather than invoking a
-multi-round or algebraic-group-model theorem as a black box; the simulator is a
-proof device, and is strictly stronger than a deployment adversary, which
-cannot program SHA-256.  The guarantee concerns the production
+The simulation-extraction result is classical and conditional on
+Assumption~\ref{ass:exact-sim-extraction}; the observed-proofs corollary also
+needs the hiding theorem's affine-image, rank, and boundary assumptions and
+the nullifier target-second-preimage assumption.  It makes no
+quantum-random-oracle claim.  The cited three-move and algebraic-group-model
+results do not directly prove simulation extraction for this exact
+multi-round hash-based transcript.  The simulator is a proof device, and is
+strictly stronger than a deployment adversary, which cannot program SHA-256.
+The guarantee concerns the production
 of accepting proofs only, and does not address key management, secret-key
 leakage, or the local and network observables excluded from the declared view
 of Definition~\ref{def:spend-complete-view}.

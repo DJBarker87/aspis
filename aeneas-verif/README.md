@@ -5,9 +5,10 @@ directory connects selected production V5 prover and verifier paths to the
 Lean models in [`AspisFormal/`](../AspisFormal/).
 
 Charon extracts the selected Rust, Aeneas translates the extracted code into
-Lean, and bridge proofs show that the generated definitions agree with the
-Aspis models for the stated release scope. Lean checks the generated
-definitions and the bridge proofs together.
+Lean, and further proofs compare those functions with the mathematical models
+under the successful-call, valid-input, and execution/model assumptions stated
+by each theorem. Lean checks the generated definitions and the comparison proofs
+together.
 
 For a plain-language account of both proof layers, start with
 [`docs/formal-verification.md`](../docs/formal-verification.md). The theorem
@@ -23,7 +24,9 @@ covers:
   release schedule;
 - the generated Component-B sampler/evaluator/C2 layout to the maintained
   ten-round terminal;
-- Component C's actual four rounds, finish, packer, and deployed public rows;
+- Component C's four rounds, finish, packer, and deployed public rows for a
+  packaged `GeneratedPublicRun`, which itself carries explicit runtime/model
+  equalities;
 - Tag-67 magic, LE64 reads, projection, digest predicate, and six ordered work
   checks; and
 - their combined A/B/C public output and Tag-67 verifier at that schedule.
@@ -44,17 +47,23 @@ replace them or turn those four layers into a single universal theorem.
 The principal result is
 `FormalClosureStream1.current_source_combined_capstone` in
 [`current-source-abc-capstone-20260722/proof/CurrentSourceABCapstone.lean`](current-source-abc-capstone-20260722/proof/CurrentSourceABCapstone.lean).
-It combines:
+It packages:
 
 - extracted Component-A matrix execution for the selected release schedule;
-- generated Component-B evaluation and Component-C public output; and
+- generated Component-B evaluation and conditional Component-C public-output
+  results; and
 - reading the Tag-67 work bytes plus all six ordered work checks.
 
 The production Rust verifier enforces the GoodA and GoodB gates for every
 accepted selection. The combined theorem's Component-A conjunct is narrower:
-it proves the extracted path for the selected release schedule. A universal
-Rust-to-model theorem connecting the extracted `candidate_is_good` path to
-`VerifierEnforcesGoodA` remains open.
+it proves the extracted path for the selected release schedule. Component B
+consumes successful sampler/evaluator and valid-input hypotheses, while
+Component C's `GeneratedPublicRun` carries folded-word, coefficient,
+challenge, and successful-execution equalities. A universal Rust-to-model
+theorem connecting the extracted `candidate_is_good` path to
+`VerifierEnforcesGoodA` remains open, and no current theorem proves that
+arbitrary verifier acceptance constructs every component package or implies
+the complete spend relation.
 
 The Tag-67 side enters through
 `AspisTag67WorkVerifierClosure.tag67AcceptedWireAndVerifierClosure`. Its only
@@ -68,9 +77,10 @@ remaining Rust-to-Lean assumption is the exact transcript hash application:
 
 That equation names the function-pointer call that pinned Aeneas cannot
 translate. Given successful work-byte guards and reads, the decoded values,
-exact projection, leading-zero predicate, six ordered checks, Component-C
-public output, and A/B/C composition follow inside the theorem rather than
-entering as additional assumptions.
+exact projection, leading-zero predicate, and six ordered Tag-67 checks follow
+inside that subtheorem. It is the sole remaining equation in the Tag-67
+work-verifier subtheorem, not the sole important premise of the complete
+A/B/C composition.
 
 This proof layer is bound to the V5 release. Tag 67 is enabled in the
 default verifier dispatch, and the SBF has SHA-256
@@ -95,9 +105,10 @@ release theorem; they are snapshot labels, not active work queues.
 ## Best places to challenge this layer
 
 An outside review adds the most value by checking the selected-source identity
-and extraction replay, the schedule-specific Component-A bridge and Rust paths
-outside it, the exact transcript hash-call equation above, and serialization
-paths not covered by one complete joint theorem. Primitive security,
+and extraction replay, the schedule-specific Component-A bridge, the
+successful-call/valid-input and Component-C execution/model hypotheses,
+Rust paths outside them, the exact transcript hash-call equation above, and
+serialization paths not covered by one complete joint theorem. Primitive security,
 source-to-SBF compilation, Solana account/state/refund behavior, and runtime
 pricing belong to the adjacent assurance layers and remain equally important
 review targets; the full boundary is in

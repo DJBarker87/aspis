@@ -17,7 +17,7 @@ The released \ProfileProofBytes-byte proof verifies under a
 mainnet-beta: transaction
 \nolinkurl{3G1voggszvDMGi5PbGM1kuEMYKvh2TNMbH6hHHwndUdRQJNT7ehRFpQpksxLnx5tp2xkS5jGi359rVXk42sRPFcv}
 consumed \ProfileMainnetComputeUnits{} CU, advanced the pool sequence,
-created the canonical nullifier marker, and refunded the finalized proof
+created the program-derived nullifier marker, and refunded the finalized proof
 account.  Independent finalized RPC records agree on the transaction and
 post-state.  Program deployment, proof transport, and finalization were
 separate setup operations; ProgramData recovery and the treasury sweep were
@@ -33,7 +33,7 @@ candidate distinct from the q18/g37 transaction reported here.
 After the manuscript result, the frozen V5 SBF was deployed at mainnet slot
 \(434999519\), and Tag~67 transaction
 \nolinkurl{EJviPgF12i9iK2CveVaQSMeFQqDMFPQ1iPRUYEwNQE3zGquTUZNJXPZEENorcQtsnQj1orFmH1TPsgdbR3vJ2fE}
-finalized at slot \(435019536\).  Its canonical nullifier-PDA bump was \(255\),
+finalized at slot \(435019536\).  Its nullifier-PDA bump was \(255\),
 and exact signed-wire simulation and landed execution both consumed
 \(1{,}334{,}452\) CU.  Subsequent proof-account close, ProgramData close, and
 payer sweep recovered temporary rent; the two direct credits to the protected

@@ -9,44 +9,55 @@ aggregation, a wallet protocol, a relayer, or a general private application
 interface.  The pool address, sequence, old and new anchors, nullifier, output
 commitment, asset identifier, and fee are public.
 
-Value conservation (Theorem~\ref{thm:value-conservation}) is per spend: an
-accepting spend does not mint value, and the total committed value is
-non-increasing relative to what was committed at initialization.  Because the
-initial anchor is a caller-supplied value and this release has no deposit or
-append path, absolute solvency, that the pool's committed value is externally
-backed, is out of scope; it would require an honestly-valued (empty-tree)
-initial anchor and a deposit construction.
+Value conservation (Theorem~\ref{thm:value-conservation}) is per spend: the
+extracted output value plus the public fee equals the extracted input value,
+without modular wraparound.  A sequence-wide statement about total value in
+successive Merkle roots additionally needs a Merkle-binding theorem, which is
+not proved here.  The initial anchor is caller supplied and this release has no
+deposit or append path, so external backing and absolute solvency are also out
+of scope; they would require an honestly valued initial anchor and a deposit
+construction.
 
-Theorem~\ref{thm:bcs-soundness} is classical random-oracle argument soundness
-in the work-normalized metric.  It makes no quantum-random-oracle claim, and
-its concrete ledger includes a 124-bit Poseidon2 assumption and treats SHA-256
-as a 256-bit random oracle.  The state-restoration premises are largely discharged. The generic
-commitment, sumcheck, fold, grinding, query, and selector boundaries are proved
-round-by-round sound and straight-line extractable from imported Fiat--Shamir
-soundness of FRI/WHIR-style compilers and the paper's own selector lemma
-(Section~\ref{sec:rbr-discharge}), and the zero-factor \(D\) lane, its batch
-tail and its three claims, is proved sound from four static verifier facts,
-of which the \(D\)-claims-before-\(\gamma\) transcript order is security-critical
-(Section~\ref{sec:d-lane-discharge}, Remark~\ref{rem:d-order-pin}).  All of this
-is given the pinned finite-parameter reduction.  What remains assumed is
-Assumption~\ref{ass:pinned-finite-reduction} itself, the imported Johnson/MCA
-list-decoding hypotheses and the \(D\)-free relation-binding lemma
-(Lemma~\ref{lem:local-algebraic-binding}) at the pinned parameters.  Its
-finite-parameter applicability conditions (Johnson-regime membership, the
-circle-coset transport conditions, the polynomial-generator hypothesis, and
-every tabulated degree and the resulting floor) are reproduced independently
-by \path{tools/verify_soundness_params.py}, which re-derives them with its own
-arithmetic and imports no project code; the imported theorems themselves are
-not re-proved.  The separate state-restoration and state-restoration-knowledge
-premises no longer stand as independent assumptions.  Knowledge soundness, theft resistance, and
-the deployed-pool extension remain conditional on that pinned reduction.
-The deployed-pool extension adds no further premise: it proves weak unique
-response (Lemma~\ref{lem:quasi-unique-response}) and invokes the Fiat--Shamir
-simulation-extractability theorem, with extra error terms of the order already
-in the ledger.  The
-hiding results use the stronger programmable-random-oracle experiment; they
-do not instantiate a standard-model pseudorandom-generator theorem or a
-statistical zero-knowledge theorem.
+Theorem~\ref{thm:bcs-soundness} is a conditional classical random-oracle
+argument-soundness statement in the work-normalized metric.  It makes no
+quantum-random-oracle claim.  Its finite calculator checks every displayed
+inequality, but it does not prove that the recorded event set completely
+covers false acceptance or that the cited Johnson/MCA/circle-FRI and BCS
+theorems apply to the exact mixed construction and restored-round semantics.
+Those are the main unproved premises in
+Assumptions~\ref{ass:pinned-finite-reduction} and
+\ref{ass:boundary-restoration}.  The 124-bit Poseidon2 and 128-bit SHA entries
+are policy reserves in the arithmetic ledger, not independently derived
+primitive-security or second-preimage bounds; actual primitive advantages
+remain symbolic assumptions.
+
+The theorem and its 100.161-bit fractional value are scoped to the historical
+q18/g37 construction, whose batch has width 29 and whose certificate uses the
+conservative boundary cap \(R=32\).  Deployed V5 instead has width 19, degree
+18, a batching challenge sampled from \(\mathbb K^*\), and exactly 30 S-two
+public-coin rounds after the initial ensemble \(m_0\).  Its maintained theorem
+proves an integer work-normalized bound at most \(2^{-100}\) only after
+receiving the complete false-accept event decomposition, exact code and
+literature applicability, separate-output grinding reduction, Rust transcript
+correspondence, authenticated-round, PCS/Merkle, Fiat--Shamir/BCS/CMS, branch,
+and actual-event correspondence premises.  No q18/g37 fractional security
+number is silently transferred to V5.
+
+Knowledge soundness and theft resistance need still stronger inputs.  The
+repaired Lean theorem proves that an accepted prover execution extracting the
+wrong secret is bounded by extractor failure plus a fixed-target
+second-preimage event for the public nullifier.  A second Lean theorem covers a
+different valid opening of the exact same fixed input leaf, reducing it to
+extractor failure or a second preimage of the combined owner-and-note
+commitment.  Neither theorem assumes global injectivity, which would be
+impossible for a compressing hash.  A complete deployed bound still needs an
+acceptance-to-extraction or simulation-extraction theorem, a defined target-
+note sampling game or uniform fixed-target assumptions, computational bounds
+for both commitments, a Merkle-binding reduction for an alternative leaf or
+path, and the complete code-to-model connection.  The
+hiding results use the stronger programmable-random-oracle experiment and do
+not instantiate a standard-model pseudorandom-generator theorem, a statistical
+zero-knowledge theorem, or an end-to-end deployed V5 zero-knowledge theorem.
 
 The hiding view is exactly Definition~\ref{def:spend-complete-view}.  The
 equality \(\epsilon_{\rm side}=0\) is by definition of that fixed public
@@ -93,7 +104,7 @@ frozen SBF digest.  A proof ground for one deployment domain is rejected by
 any pool storing another, with a distinct error code, before proof bytes are
 interpreted; cross-deployment replay against an honestly initialized pool is
 therefore excluded by the statement itself rather than by operational
-discipline.  The residual is keyholder-shaped: the holder of the program-id
+discipline.  One cross-cluster ambiguity remains: the holder of the program-id
 keypair can redeploy the same program id on another cluster and initialize a
 pool there with the same domain tag, reproducing an identical \(\Delta\).
 The binding is nevertheless independently checkable: any observer can
@@ -101,6 +112,13 @@ recompute \(\Delta\) from the public program id and domain tag and confirm
 which deployment a statement commits to.  Economically linked deployments
 under distinct program ids or distinct domain tags cannot accept each
 other's proofs.
+
+Deployment binding is separate from nullifier derivation.  The nullifier is
+\(H_{\mathsf{nul}}(k_\nu,r_{\mathrm{in}})\) under a fixed Poseidon2 domain and
+does not include \(\Delta\), the note commitment, or the program id.  Reusing
+the same nullifier key and input salt across deployments therefore produces
+the same public nullifier and is linkable even though a proof for one stored
+deployment domain is rejected by another.
 
 The hiding theorems are conditional on the complete affine-image and
 rank-coverage premise in Assumption~\ref{lem:complete-affine-image}.  The
@@ -118,3 +136,20 @@ establish resistance to denial-of-service or transaction-ordering attacks.
 Proof generation for the released instance reached its configured publication
 boundary; the paper does not claim a representative distribution of prover
 latency or memory use.
+
+The released transaction used a newly sampled demonstration witness rather
+than a user's funded private note.  The mainnet artifact builder sampled each
+secret digest from operating-system randomness, discarded candidates until the
+nullifier PDA had bump 255, built the production trace, and host-verified the
+proof before writing it.  The witness was not published or retained.  The
+transaction therefore demonstrates private proof verification and the state
+change, not custody of real value.
+
+Finally, the selected Rust composition theorem packages component results
+under successful-call, valid-input, and explicit execution/model
+hypotheses.  Component C's public-run package itself carries folded-word,
+coefficient, and challenge equalities.  The single hash-call equation is the
+remaining equation of the Tag-67 work-verifier subtheorem, not the sole
+premise of the full composition.  There is no current theorem that arbitrary
+production-verifier acceptance constructs every component package or implies
+the complete spend relation.

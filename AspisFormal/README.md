@@ -35,7 +35,7 @@ six ordered work checks, and their selected-schedule composition. The runtime
 verifier recomputes GoodA and GoodB for every selected branch, but the universal
 all-schedule Component-A source theorem remains open.
 
-The best independent-review targets are therefore the seams: the reduction
+The best independent-review targets are therefore the missing links: the reduction
 from the full execution view to the maintained hiding model and applicability
 of the cited PCS/Fiat–Shamir results; the custom Poseidon2-M31 primitive and
 universal Rust correspondence; the one transcript hash-call equation shown
@@ -89,26 +89,27 @@ The later V5 proof does not retroactively relabel the tag-65 transaction.
 | --- | --- | --- |
 | Integer value conservation without field wraparound | `ValueConservation.lean` | **PROVED** |
 | Range, balance, and asset clauses from constraint residuals | `ArithmetizationCore.lean` | **PROVED** |
-| Complete maintained spend relation from Poseidon2/Merkle clauses | `HashMerkleModel.lean` | **PROVED relative to `Poseidon2Faithful`** |
+| Maintained spend relation from arithmetic plus Poseidon2/Merkle clauses | `ArithmetizationCore.lean`, `HashMerkleModel.lean` | **PROVED from an explicit `HashMerkleWitness`, relative to `Poseidon2Faithful`; deriving that witness from complete deployed-verifier acceptance is outside this theorem** |
 | Manifest-bound Johnson/MCA regime and agreement cap | `SoundnessParams.lean` | **PROVED** |
 | Complete finite-event calculation and conservative `≤ 2⁻¹⁰⁴` floor | `SoundnessLedger.lean` | **PROVED** |
 | Work-normalized `≤ 2⁻¹⁰⁰` endpoint | `SoundnessWorkNormalizedEndpoint.lean` | **PROVED relative to the cited BCS error formula** |
 | Circle generator order, same-x criterion, and fibre-root distinctness | `CircleGroupOrder.lean`, `CircleFibreRoots.lean` | **PROVED** |
 | Distribution-level masking and concrete circle-matrix hiding | `CoreHidingPMF.lean`, `MaskingHiding.lean`, `AspisViewBinding.lean` | **PROVED for the stated model** |
 | Poseidon2 permutation, node, owner, note, and nullifier known-answer bindings | `Poseidon2Kat.lean` | **PROVED on the pinned vectors** |
-| Extractor plus nullifier binding implies theft resistance | `TheftResistance.lean` | **PROVED as a connective; extractor and simulation-extractability are cited inputs** |
+| Wrong-secret and same-fixed-leaf/different-opening events reduce to extractor failure or target second-preimage events | `TheftResistance.lean`, `V5TheftResistance.lean` | **PROVED, including exact V5 relation instantiations. The old impossible global-injectivity premise has been removed. The extractor input is a complete execution record, not public proof bytes alone. Efficient-attacker modelling, deployed acceptance/extraction, target sampling or uniform fixed-target bounds, alternative-leaf Merkle binding, and concrete probability bounds remain external, so this is not a complete deployed theft game** |
 
 ## V5 mathematical model status
 
 | Result | Principal modules | Status |
 | --- | --- | --- |
 | Component-A rank, schedule, and deployed terminal applicability | `V5AtomicComponentA.lean`, `V5ComponentARankCompletion.lean`, `V5ComponentADeployedTerminalApplicability.lean` | **PROVED** |
-| Component-B triangular hiding, spend-difference coverage, commitment, and transcript binding | `V5ComponentBTriangularHiding.lean`, `V5ComponentBSpendDifferenceCoverage.lean`, `V5SumcheckCommitment.lean`, `V5SumcheckTranscriptBinding.lean` | **PROVED for the Lean model** |
+| Component-B triangular hiding, spend-difference coverage, terminal-functional algebra, and transcript-order logic | `V5ComponentBTriangularHiding.lean`, `V5ComponentBSpendDifferenceCoverage.lean`, `V5SumcheckCommitment.lean`, `V5SumcheckTranscriptBinding.lean` | **PROVED for the Lean model; opening uniqueness, hash security, Rust absorb/challenge correspondence, and the deployed PCS link remain interfaces** |
 | Component-C sampler, pivot encoder, QM31 tower/codec, residual projection, and four-fold runtime | `V5ComponentCSamplerKernel.lean`, `V5ComponentCEncoderCorrespondence.lean`, `V5ComponentCExactTowerDeployment.lean`, `V5ComponentCPreCProjection.lean`, `V5ComponentCConcreteFoldLinearity.lean` | **PROVED** |
-| Component-C direct conditional hiding and deployment composition | `V5ComponentCDirectHiding.lean`, `V5ComponentCDeploymentLedger.lean`, `V5ConditionalHidingCapstoneV3.lean` | **PROVED relative to the named entropy, transcript, PCS, serialization, and hash interfaces** |
+| Component-C direct conditional hiding and deployment composition | `V5ComponentCDirectHiding.lean`, `V5ComponentCDeploymentLedger.lean`, `V5ConditionalHidingCapstoneV3.lean` | **CONDITIONAL MODEL RESULT relative to the named entropy, sampler, projection, transcript, PCS, serialization, compiler, and hash interfaces; this final model theorem is not a deployed V5 zero-knowledge theorem** |
 | Good-gate verifier relation and functional batching | `V5SelectedGoodVerifierRelation.lean`, `V5FunctionalBatching.lean`, `V5GoodGateDotBatching.lean` | **PROVED** |
 | Exact 17-attempt retry control and nonce/work authentication | `V5ProductionCap17RetryControl.lean`, `V5NonceWorkAuthentication.lean` | **PROVED** |
-| Work-normalized V5 endpoint | `V5ImplementedWorkNormalizedEndpoint.lean`, `V5WorkNormalizedApplicabilityRepair.lean` | **PROVED under the cited cryptographic endpoint formula** |
+| Extracted V5 arithmetic, Poseidon and Merkle rows imply the complete spend relation | `V5AcceptedSpendRelation.lean` | **PROVED for the deterministic step after extraction, relative to `Poseidon2Faithful`. The proof does not yet derive those rows from arbitrary Tag-67 acceptance or bound the probability that extraction fails** |
+| Work-normalized V5 endpoint | `V5ImplementedWorkNormalizedEndpoint.lean`, `V5WorkNormalizedApplicabilityRepair.lean` | **CONDITIONAL COMPOSITION. Lean proves the width-19/degree-18 `F*` arithmetic, six-event accounting, exact post-`m0` `R = 30`, and the final implication; the false-accept event decomposition, virtual-oracle/code membership, separate-output grinding reduction, Rust transcript correspondence, authenticated-round semantics, PCS/Merkle, and cited MCA/BCS/CMS applicability remain premises** |
 
 ## V5 production Rust connection
 
@@ -119,12 +120,12 @@ The principal integration theorem is
 | Implementation path | Theorem | Status |
 | --- | --- | --- |
 | Source-extracted Component-A matrix execution to maintained GoodA at the selected release schedule | `FormalClosureStream1.component_a_actual_matches_maintained` | **PROVED FOR THE RELEASE SCHEDULE** |
-| Generated Component-B sampler/evaluator/C2 layout to maintained ten-round terminal | `FormalClosureStream1.component_b_actual_matches_maintained` | **PROVED** |
-| Actual four Component-C rounds, finish, packer, and deployed public rows | `generated_public_run_output_matches_deployed` | **PROVED** |
+| Generated Component-B sampler/evaluator/C2 layout to maintained ten-round terminal | `FormalClosureStream1.component_b_actual_matches_maintained` | **PROVED under the theorem's successful-call, input-length, and field-encoding premises** |
+| Actual four Component-C rounds, finish, packer, and deployed public rows | `generated_public_run_output_matches_deployed` | **PROVED for a `GeneratedPublicRun`, whose fields include successful-call, valid-input, and folded-word/coefficient/challenge execution-to-model equalities** |
 | Tag-67 magic, LE64 reads, projection, digest predicate, and six ordered work checks | `AspisTag67WorkVerifierClosure.tag67AcceptedWireAndVerifierClosure` | **PROVED subject to one hash-call equation** |
-| Combined A/B/C public output and Tag-67 verifier at that schedule | `FormalClosureStream1.current_source_combined_capstone` | **PROVED under the same equation** |
+| Combined A/B/C public output and Tag-67 verifier at that schedule | `FormalClosureStream1.current_source_combined_capstone` | **PROVED as a package of the selected component results under their successful-call, valid-input, Component-C execution/model, and Tag-67 hash-call hypotheses; it is not `arbitrary verifier acceptance → complete spend relation`** |
 
-That remaining equation is:
+The remaining equation in the **Tag-67 work-verifier subtheorem** is:
 
 ```text
 ∀ state nonce,
@@ -133,7 +134,11 @@ That remaining equation is:
 ```
 
 It is the concrete function-pointer call boundary, not a generic
-“Rust matches Lean” premise.
+“Rust matches Lean” premise. It is not the only important assumption in the
+complete A/B/C composition: in particular, `GeneratedPublicRun` carries
+explicit Component-C execution/model equalities, and the final integration theorem
+does not prove that ordinary production-verifier acceptance constructs every
+component hypothesis or implies the maintained spend relation.
 
 ## Disposition of the older obligation list
 

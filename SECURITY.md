@@ -26,16 +26,20 @@ four complementary layers:
 Each layer answers a different question; evidence in one layer does not erase
 an assumption at the boundary to the next.
 
-The selected production-Rust theorem covers Component-A matrix execution to
-maintained GoodA for the release schedule; the generated Component-B
-sampler/evaluator/C2 layout to its maintained ten-round terminal; Component
-C's actual four rounds, finish, packer, and deployed public rows; Tag-67 magic,
-LE64 reads, projection, digest predicate, and six ordered work checks; and
-their combined public output and verifier at that schedule. The runtime
-verifier recomputes GoodA and GoodB for every selected branch, but a universal
-all-schedule source theorem for Component A remains open.
+The selected production-Rust theorems cover Component-A matrix execution to
+maintained GoodA for the release schedule; selected Component-B
+sampler/evaluator/C2 behavior; a packaged Component-C public run; and Tag-67
+magic, LE64 reads, projection, digest predicate, and six ordered work checks.
+The final Lean theorem combines those results by assuming that the relevant
+Rust calls return successfully, their inputs have the required lengths and
+field encodings, and several intermediate Rust values equal the corresponding
+Lean values. It does not prove that every accepted production proof meets all
+of those assumptions or implies the complete spend relation. The runtime verifier recomputes GoodA and
+GoodB for every selected branch, but a universal all-schedule source theorem
+for Component A remains open.
 
-The only retained Tag-67 transcript function-call equation is:
+The sole retained function-call equation in the **Tag-67 work-verifier
+subtheorem** is:
 
 ```text
 ∀ state nonce,
@@ -46,8 +50,11 @@ The only retained Tag-67 transcript function-call equation is:
 It is a concrete function-pointer boundary that the pinned Aeneas translation
 cannot cross, not a generic assumption that Rust equals Lean. Once that
 equation and the successful generated reads/guards are supplied, the exact
-projection, leading-zero predicate, six ordered checks, Component-C public
-output, and A/B/C composition are theorem conclusions.
+projection, leading-zero predicate, and six ordered Tag-67 checks are theorem
+conclusions. The Component B/C proofs and the final combined theorem still
+assume that the relevant Rust calls return successfully, that inputs have the
+required lengths and encodings, and that specified intermediate values match
+the Lean model.
 
 ## Security evidence
 
@@ -67,9 +74,30 @@ Aspis combines several forms of evidence:
 - Release records preserve the finalized q18/g37 and V5 mainnet results, as
   well as the V5 devnet and runtime evidence.
 - The [V5 mainnet record](docs/v5-mainnet-demo.md) binds the exact proof,
-  statement, program, canonical nullifier bump 255, exact-wire simulation,
+  statement, program, nullifier bump 255, exact-wire simulation,
   landed compute use, and finalized cleanup/refund transactions.
+- `programs/aspis-verifier/tests/v5_mainnet_release_proof.rs` reruns the exact
+  archived proof and statement through the released verifier callback and
+  confirms that changing any public field causes rejection.
+- The [full payer RPC archive](release/aspis-v5-tag67-mainnet-rpc-archive-v1/)
+  reconstructs that proof from 79 finalized uploads and the exact SBF from
+  1,466 finalized loader writes, then compares both with the released files.
 - Independent rank checkers reproduce the eight hiding-rank claims.
+
+The current mathematical review found no concrete forgery or broken finite
+calculation. It also confirms that V5 soundness, deployed hiding, and theft
+resistance still assume that the listed failure cases cover every false proof,
+the cited papers apply to this exact protocol, selected Rust values match the
+Lean model, extraction works as assumed, and the hash functions have the
+required security. See the
+[dated mathematical review](docs/reviews/mathematical-status-20260814.md).
+
+`V5AcceptedSpendRelation.lean` proves that a successfully extracted V5 trace
+with the checked arithmetic, Poseidon2, Merkle, and public-input equations
+satisfies the complete spend relation. The still-open high-priority step is
+deriving that trace from arbitrary deployed acceptance, with a concrete bound
+on the polynomial-commitment, FRI, Fiat--Shamir, collision, and decoding
+failure events.
 
 The project has not yet received an external security audit or published a
 coverage-guided fuzzing campaign.
@@ -88,20 +116,32 @@ mainnet CU policy and runtime analysis in
 The highest-value external work is to attack the boundaries between the four
 layers, rather than merely rerunning already-green checks:
 
-1. The cryptographic reduction from the complete execution view to the
-   affine/linear hiding model, applicability of the cited PCS/BCS and
-   Fiat–Shamir results, and the extractor or simulation-extractability premise
-   used by theft resistance. `tools/verify_hiding_ranks.py` independently
-   reproduces the eight rank claims, but does not discharge that reduction.
+1. Whether the listed failure cases cover every way a false proof could be
+   accepted; whether the cited coding and Fiat--Shamir theorems apply to this
+   exact protocol; whether the separate grinding hashes justify the claimed
+   work factors; and whether the full Rust execution really has the hiding
+   behavior described by the simpler mathematical model. The calculators and
+   rank checks do not prove these links.
 2. The custom Poseidon2-M31 primitive used for commitments, nullifiers, and
    Merkle compression, including its cryptographic security and universal
    all-input Rust equality. Constants and known-answer executions are pinned;
-   those checks are not a primitive-security proof.
-3. The exact transcript-hash function-call equation above, also recorded on
-   the [`assumptions page`](docs/assumptions-ledger.md).
+   those checks are not a primitive-security proof. `TheftResistance.lean`
+   and `V5TheftResistance.lean` now use fixed-target second-preimage events and
+   prove two reductions: wrong secret at a fixed nullifier, and a different
+   valid opening of the exact same fixed input leaf. The extractor receives a
+   complete prover execution record, not public proof bytes alone. The files do
+   not supply the deployed extraction theorem, target-sampling game, complete
+   theft game, or Poseidon2 probability bounds. The on-chain marker rejects
+   repeated use of one public nullifier; ruling out an alternative leaf or path
+   under the same anchor still needs a Merkle-binding reduction.
+3. The assumptions that the Component-B/C Rust calls return successfully,
+   their inputs have the required lengths and field encodings, their folded
+   values, coefficients, challenges, serialized bytes, and transcript match
+   the Lean model, plus the remaining Tag-67 hash-call equation.
 4. Production Rust outside the selected Charon/Aeneas paths, especially the
-   still-open universal Component-A source theorem and a complete joint
-   serializer theorem.
+   still-open universal Component-A source theorem, a complete joint serializer
+   theorem, and a proof that ordinary acceptance supplies the facts currently
+   passed into the selected component theorems as assumptions.
 5. Solana account validation and aliasing, proof-account and marker state
    mutation, ordered all-or-nothing updates, refund and cleanup behavior, and
    the host executor's signer and recovery dependency surface.

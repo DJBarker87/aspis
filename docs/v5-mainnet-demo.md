@@ -4,9 +4,11 @@ On 25 July 2026 in Europe/Berlin (24 July UTC), the current Aspis release
 completed its private-spend verification and state update on Solana
 mainnet-beta. In one transaction, the program:
 
-- checked the complete 75,358-byte proof;
+- ran the deployed verifier's complete proof-checking path and accepted the
+  75,358-byte proof;
 - advanced the pool from sequence zero to sequence one; and
-- created the one-time spent marker that prevents reuse of the private record.
+- recorded the public nullifier as spent, so later transactions using that
+  nullifier are rejected.
 
 The transaction consumed 1,334,452 of Solana's 1,400,000-unit transaction
 limit. It finalized successfully at slot `435019536`:
@@ -14,7 +16,7 @@ limit. It finalized successfully at slot `435019536`:
 
 ## The evidence behind the transaction
 
-The transaction is the observed final stage of a longer evidence chain:
+The transaction is the observed final stage of a longer documented path:
 
 | Layer | What is recorded |
 | --- | --- |
@@ -25,8 +27,8 @@ The transaction is the observed final stage of a longer evidence chain:
 
 The accessible coverage explanation is
 [What has been formally checked](formal-verification.md). The release-specific
-toolchain, theorem, source hashes, replay commands, and remaining
-transcript-hash-call equality are bound in
+toolchain, source hashes, replay commands, historical release theorem, and
+post-release formal-status boundaries are bound in
 [`formal-evidence.json`](../release/aspis-v5-tag67-mainnet-v1/formal/formal-evidence.json).
 
 ## Exact technical record
@@ -48,9 +50,23 @@ at slot `434999519`. The finalized state transition is
 [`EJviPgF…R3vJ2fE`](https://explorer.solana.com/tx/EJviPgF12i9iK2CveVaQSMeFQqDMFPQ1iPRUYEwNQE3zGquTUZNJXPZEENorcQtsnQj1orFmH1TPsgdbR3vJ2fE?cluster=mainnet-beta).
 
 The exact signed wire simulated at 1,334,452 CU and landed at exactly
-1,334,452 CU. The canonical nullifier PDA bump was 255. These are deployment
+1,334,452 CU. The nullifier PDA bump was 255. These are deployment
 and replay facts in the technical record, not prerequisites for understanding
 the result.
+
+The proof account and ProgramData were closed after the spend. They can no
+longer be read from live account state. The
+[full payer RPC archive](../release/aspis-v5-tag67-mainnet-rpc-archive-v1/)
+preserves all 1,570 finalized transactions. Its offline verifier reconstructs
+the exact 75,358-byte proof from the 79 uploads and the exact 1,258,496-byte
+SBF from the loader writes, and both match the released files. It also binds
+the released statement to the landed Tag-67 wire and pool initialization.
+
+The exact archived proof separately passes the released verifier callback in
+`programs/aspis-verifier/tests/v5_mainnet_release_proof.rs`; changing any of
+the nine public fields makes that replay fail. This is direct implementation
+evidence for the published bytes, not a substitute for the still-open general
+proof that every Tag-67 acceptance implies the complete spend relation.
 
 ## Transaction count
 
@@ -110,4 +126,6 @@ offline-verifiable
 [`release/aspis-v5-tag67-mainnet-v1/`](../release/aspis-v5-tag67-mainnet-v1/)
 bundle; run its
 [`verify.sh`](../release/aspis-v5-tag67-mainnet-v1/verify.sh) from the
-repository checkout.
+repository checkout. Then run
+`python3 release/aspis-v5-tag67-mainnet-rpc-archive-v1/verify.py` to reproduce
+the historical proof and SBF reconstruction.

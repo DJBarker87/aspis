@@ -25,14 +25,17 @@ proof and none silently proves the assumptions of an adjacent layer.
 
 The main assumptions are:
 
-1. The published cryptographic results used by Aspis apply to this
-   construction and its release parameters.
+1. The published cryptographic results used by Aspis apply to this exact
+   mixed-field construction, and the recorded bad events completely cover
+   false acceptance at the stated release parameters.
 2. SHA-256 and Poseidon2 provide the security properties required by the
    transcript, commitments, Merkle trees, and spent markers.
 3. The production proof builder receives fresh operating-system randomness
    where the construction requires it.
-4. One specific Rust transcript-hash call performs the operation represented
-   in the Lean model.
+4. The successful-call, valid-input, and explicit execution/model
+   hypotheses used by the selected Rust bridge theorems hold for the execution
+   being described. One specific Tag-67 Rust transcript-hash call is an
+   additional isolated equation.
 5. Lean, Charon, Aeneas, Rust, LLVM, and the pinned build tools execute
    correctly.
 6. Solana performs account locking, system calls, state updates, and compute
@@ -58,22 +61,31 @@ serializer theorem and universal all-input Rust Poseidon2 equality also remain
 open, and the adaptive PCS/Fiat–Shamir argument is supported by cited results
 rather than an internal reproof.
 
-The only retained transcript-call equality is stated verbatim below. The
-strongest outside-review targets are the cryptographic reduction boundaries,
-the custom Poseidon2-M31 primitive, that one call equality, Rust outside this
-selected coverage, Solana account/state/refund behavior, and future runtime
-repricing; see [`SECURITY.md`](../SECURITY.md) for the prioritized list.
+The transcript-call equality retained by the Tag-67 work-verifier subtheorem is
+stated verbatim below. It is not the only premise of the full composition:
+Component C's `GeneratedPublicRun` carries folded-word, coefficient,
+challenge, and successful-execution equalities, Component B consumes
+successful-call and valid-input hypotheses, and no current theorem derives
+all component packages from arbitrary verifier acceptance. The strongest
+outside-review targets are the complete cryptographic event cover, exact
+literature applicability, the custom Poseidon2-M31 primitive, those
+execution/model links, Rust outside the selected coverage, Solana
+account/state/refund behavior, and future runtime repricing; see
+[`SECURITY.md`](../SECURITY.md) for the prioritized list.
 
 The detailed table below identifies where each assumption is used, the
 evidence that constrains it, and what follows if it fails.
 
 | Assumption or trusted boundary | Used for | Evidence in this repository | If it fails |
 | --- | --- | --- | --- |
-| Published Johnson/MCA and PCS/BCS results apply to the stated construction and parameters | Argument soundness, commitment opening, and the work-normalized endpoint | Parameter manifests, the Lean finite-event calculation, and the paper's explicit theorem mapping | The corresponding soundness or zero-knowledge reduction does not follow |
+| The false-acceptance event decomposition is complete, and the published Johnson/MCA, circle-FRI, PCS/BCS/CMS results apply to the exact mixed M31/QM31 construction and parameters | Argument soundness, commitment opening, and the work-normalized endpoint | Parameter manifests, the Lean finite-event calculation, and the paper's explicit theorem mapping; these verify the implication and arithmetic, not the event-cover premise itself | The corresponding soundness or zero-knowledge reduction does not follow |
+| Each separately hashed work predicate admits the stated random-oracle reduction to the later challenge/output, and actual work events map completely and injectively to the six-event ledger | The V5 work factors and exactly-once work accounting | `V5WorkNormalizedApplicabilityRepair.lean`, `V5NonceWorkAuthentication.lean`, and `V5ImplementedWorkNormalizedEndpoint.lean` isolate these as premises | A positioned grinding factor may not apply to the event it is meant to reduce, or an event may be omitted/double-counted |
 | Fiat–Shamir is modelled through SHA-256 as a programmable random oracle | Non-interactive soundness and simulation | Transcript schedule, domain separation, query accounting, and the cited compiler theorem | The Fiat–Shamir security claims do not follow |
 | SHA-256 has the required collision/preimage and random-oracle properties | Transcript binding, Merkle binding, grinding, and simulation | Payload/order tests, SBF syscall execution, and the Tag-67 hash-call boundary below | Binding, grinding, or the ROM reduction may fail |
-| Poseidon2 over M31 has the required cryptographic security and the deployed function satisfies `Poseidon2Faithful` | Note commitments, nullifiers, Merkle relations, and theft-resistance arguments | Constant-binding CI and kernel-checked known-answer permutations, node hashes, owner derivation, notes, and nullifiers | Commitment/nullifier security or the maintained relation-to-code connection may fail |
-| The cited round-by-round extractor and simulation-extractability premise holds | The theft-resistance corollary | `TheftResistance.lean` proves the implication from this premise and nullifier binding | Argument soundness still gives witness existence, but the theft-resistance knowledge claim does not follow |
+| Poseidon2 over M31 has the required cryptographic security, the deployed function satisfies `Poseidon2Faithful`, and accepted execution yields the extracted arithmetic, Poseidon2, Merkle, copy/LogUp, and public-input equations | Note commitments, nullifiers, Merkle relations, and the maintained spend relation | Constant-binding CI and kernel-checked known-answer permutations, node hashes, owner derivation, notes, and nullifiers. `V5AcceptedSpendRelation.lean` proves that the extracted equations imply the complete relation; the deployed acceptance-to-extraction theorem and probability bound remain open | Commitment/nullifier security or the maintained relation-to-code connection may fail |
+| The cited extractor and simulation-extraction results hold for this protocol, and Poseidon2 has the required fixed-target second-preimage security for the nullifier target selected by the security game | Authorization and theft resistance | `TheftResistance.lean` proves the generic wrong-secret event reduction; `V5TheftResistance.lean` derives its nullifier-binding premise from the exact V5 spend relation. The extractor input is a complete execution record, not public proof bytes alone. Neither theorem assumes global hash injectivity. Efficient-attacker/game modelling, deployed acceptance/extraction, target sampling or a uniform per-target bound, and concrete probabilities remain external | Argument soundness may still give witness existence, but authorization possession or the claimed theft bound may not follow |
+| The combined owner-key and note commitment has fixed-target second-preimage security, and the Merkle construction is binding, for the victim note | Ruling out a second opening of the same note under a different public nullifier | `V5TheftResistance.lean` proves the fixed-leaf/different-opening reduction. Known-answer tests check the functions, but the alternative-leaf Merkle reduction, complete computational game, and numerical bounds remain open | The on-chain marker still rejects a repeated nullifier, but the same semantic note might be reopened under a different nullifier |
+| Component-B/C successful-call, valid-input, and explicit runtime/model hypotheses describe the same real execution | Selected Rust-to-model composition and public-output correspondence | The final integration theorem packages the component theorems; `GeneratedPublicRun` exposes folded-word, coefficient, challenge, and execution equalities | The component theorems remain individually valid, but the package does not establish arbitrary acceptance-to-model correspondence |
 | The actual Tag-67 transcript digest call equals `rustHash(state, DOM_GRIND \|\| nonce_le64)` | Final connection between the Rust work verifier and Lean | `AspisTag67WorkVerifierClosure.exactGrindingHashInput` isolates this equation; `tag67AcceptedWireAndVerifierClosure` consumes it | The work-byte and six-step theorem no longer describes the runtime digest call |
 | Lean/mathlib, Charon/Aeneas, Rust/LLVM-to-SBF, and the pinned build tools execute correctly | Kernel checking, extraction, compilation, and source-to-binary identity | Version pins, replay scripts, the 77-source/91-toolchain build-time inventory, and the clean-source byte-parity record | A proof, translation, or binary may not represent the intended source |
 | Solana's account-locking, System Program CPI, SHA syscall, and CU schedule behave as recorded | Atomic state transition and the V5 CU policy | Runtime 2.3.13 release measurements plus an exact all-selector replay on mainnet Agave 4.1.0 across absent, program-owned, and prefunded marker paths; the mainnet runner requires bump 255 and simulation of the exact signed transaction bytes at or below 1,356,912 CU | A later runtime or wider runner policy requires a new replay and ceiling |
@@ -91,8 +103,27 @@ The final implementation theorem retains one code-to-model equation:
 
 Given successful generated work-byte guards and reads, the exact projection,
 leading-zero predicate, six ordered work checks, Component-C public output,
-and current A/B/C composition are theorem conclusions rather than additional
-code-to-model assumptions.
+and ordered Tag-67 work-verifier behavior are theorem conclusions. Component-C
+public output and the current A/B/C package additionally retain the
+successful-call, valid-input, and execution/model assumptions described
+above.
+
+## Limits of the V5 security calculation
+
+The deployed V5 arithmetic has width 19, scalar-powers degree 18, a batching
+challenge sampled from the nonzero extension field, six positioned work
+predicates, and exactly 30 S-two public-coin rounds after `m0`. Lean proves the
+old width-29/full-field expression is a conservative upper bound and then
+proves the final integer `<= 2^-100` implication under the named premises.
+
+That theorem still receives the actual false-acceptance decomposition,
+virtual-oracle/code membership, separate-output grinding reduction, Rust
+sampling/transcript correspondence, authenticated-round semantics,
+PCS/Merkle and Fiat--Shamir applicability, cited MCA/BCS/CMS applicability,
+branch bounds, and the actual-event bijection as inputs. The q18/g37
+100.161-bit fractional, work-normalized figure is not silently transferred to
+V5. See the dated
+[mathematical status review](reviews/mathematical-status-20260814.md).
 
 The verifier itself recomputes GoodA and GoodB on every selected branch. The
 production-Rust Component-A theorem proves the selected release schedule; a
@@ -107,7 +138,7 @@ inside the frozen replay family for SBF
 It does not price transcript challenge-retry paths outside that family. The
 mainnet Agave 4.1.0 replay adds the longest accepted prefunded-marker CPI path
 and sets a 1,356,912-CU runner policy limit with 43,088 CU of headroom.
-Mainnet readiness and execution require canonical nullifier PDA bump 255 and
+Mainnet readiness and execution require nullifier PDA bump 255 and
 simulation of the exact signed transaction bytes at or below that limit, and
 the transaction declares the same compute limit. The
 [runtime record](../results/spend/v5-mainnet-runtime-4.1.0-20260723/)

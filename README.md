@@ -5,8 +5,8 @@
 Aspis is a research implementation of a private spend on Solana. A user proves
 that a private record can be spent under the pool's rules without publishing
 the record, owner secret, value, or Merkle path. The program verifies the
-proof, advances the pool, and records a one-time spent marker atomically: every
-check and write succeeds together, or none of them do. The proof system does
+proof, advances the pool, and records the public nullifier as spent atomically:
+every check and write succeeds together, or none of them do. The proof system does
 not require a trusted setup ceremony.
 
 The result is more than one transaction. The repository connects the
@@ -34,8 +34,8 @@ flowchart LR
 
 | Evidence layer | What is established | Primary record |
 | --- | --- | --- |
-| Mathematics in Lean | Substantial parts of the private-spend relation, concrete release calculations, algebra, hiding results, and maintained V5 component models are checked by Lean | [formal-verification overview](docs/formal-verification.md) and [`AspisFormal/`](AspisFormal/) |
-| Selected Rust to Lean | Charon extracts selected production paths, Aeneas translates them, and Lean bridge proofs relate the generated definitions to the maintained models | [`aeneas-verif/`](aeneas-verif/) |
+| Mathematics in Lean | Lean checks substantial parts of the spend rules, finite calculations, algebra, and component-level hiding arguments, subject to the assumptions named in each theorem | [formal-verification overview](docs/formal-verification.md) and [`AspisFormal/`](AspisFormal/) |
+| Selected Rust to Lean | Charon and Aeneas translate selected Rust functions into Lean; further proofs compare those functions with the mathematical models, assuming that certain Rust inputs and intermediate values are the ones described by the models | [`aeneas-verif/`](aeneas-verif/) |
 | Source to program bytes | A pinned clean source commit and pinned build tools reproduce the exact 1,258,496-byte V5 SBF | [V5 release preflight](release/preflight/v5-production-freeze.md) and [frozen candidate bundle](release/aspis-v5-tag67-frozen-candidate-v1/) |
 | Program to chain | The deployed SBF identity, proof, statement, exact compute, state transition, and cleanup are preserved in a sanitized offline-verifiable bundle | [V5 mainnet bundle](release/aspis-v5-tag67-mainnet-v1/) |
 
@@ -50,9 +50,11 @@ On July 25, 2026 in Europe/Berlin (July 24 UTC), the current Aspis release
 completed the full private-spend verification and state update on Solana
 mainnet-beta. The finalized transaction:
 
-- checked the complete 75,358-byte proof;
+- ran the deployed verifier's complete proof-checking path and accepted the
+  75,358-byte proof;
 - advanced the pool state;
-- created the one-time spent marker that prevents reuse; and
+- recorded the public nullifier as spent, so later transactions using that
+  nullifier are rejected; and
 - consumed 1,334,452 of Solana's 1,400,000-unit transaction limit.
 
 [View the transaction](https://explorer.solana.com/tx/EJviPgF12i9iK2CveVaQSMeFQqDMFPQ1iPRUYEwNQE3zGquTUZNJXPZEENorcQtsnQj1orFmH1TPsgdbR3vJ2fE?cluster=mainnet-beta)
@@ -62,6 +64,20 @@ mainnet-beta. The finalized transaction:
 The exact compiled program is tied to the recorded source and build
 environment. The selected production verifier path is separately connected to
 the maintained Lean models through the Charon/Aeneas proof layer.
+
+The archived 75,358-byte proof also passes the released verifier callback in a
+new regression test. The same test changes each of the nine public fields in
+turn and confirms that every changed statement is rejected. This directly
+checks the published proof and statement bytes; it does not replace the
+general cryptographic soundness assumptions described below.
+
+Because the proof account and ProgramData were closed after the demonstration,
+the [full payer RPC archive](release/aspis-v5-tag67-mainnet-rpc-archive-v1/)
+now reconstructs the exact proof from all 79 finalized uploads and the exact
+SBF from all 1,466 finalized loader writes. Both reconstructed byte strings
+match the released files. It also derives the full loader-v3 ProgramData image
+and binds the released statement to the finalized Tag-67 instruction and pool
+initialization.
 
 ### Exact technical record
 
@@ -73,7 +89,7 @@ the maintained Lean models through the Charon/Aeneas proof layer.
 | Transaction compute limit | 1,356,912 CU |
 | Program | `7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue` |
 | Nullifier | `7Umhkv2Z3E2DksnpivCz2tovtbRoL1uXtnYBAtQBgu8Q` |
-| Canonical nullifier PDA bump | 255 |
+| Nullifier PDA bump | 255 |
 | SBF | 1,258,496 bytes; SHA-256 `4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40` |
 
 The exact mainnet wire simulated and landed at the same compute value, leaving
@@ -94,21 +110,57 @@ Aspis has two connected formal layers:
 2. Charon, Aeneas, and additional Lean proofs connect selected production V5
    Rust paths to those models.
 
-The current Rust-to-Lean coverage includes the selected Component-A release
-schedule, Components B and C, the public output, the Tag-67 work-byte reads,
-and the six ordered work checks. The combined theorem is
-`FormalClosureStream1.current_source_combined_capstone`.
+The current Rust-to-Lean work covers the selected Component-A release
+schedule, parts of Components B and C, the public output, the Tag-67 work-byte
+reads, and the six ordered work checks. The final integration theorem assumes
+that several Rust calls succeeded and that some Rust inputs, folded values,
+and challenges equal the values in the Lean models. It does not prove that
+every accepted production proof automatically meets those assumptions or
+satisfies the complete spend relation. The exact theorem name is recorded in
+the [technical proof map](docs/formal-verification.md#current-v5-coverage).
+
+Lean now proves that a normalized residual package satisfies every spend rule,
+including value balance, ownership, both Merkle paths, the nullifier, the
+output note, the asset, the fee, and all six public spend fields. That package
+already includes the typed hash inputs, path sharing, and public-field matches;
+it is not the raw proof bytes. What is not yet proved is that every proof
+accepted by the production program yields that package with the claimed error
+bound.
+
+The authorization proof no longer pretends that the compressing nullifier
+hash is one-to-one. Lean proves that if an accepted prover execution yields the
+wrong secret, either witness recovery failed or two different
+secret/randomness pairs produced the fixed target nullifier. The extractor's
+input may include the prover and its random-oracle query transcript; this is
+not a claim that public proof bytes reveal the witness. Lean also handles the
+case where the recovered input leaf equals a fixed victim leaf but its valid
+opening differs, reducing that event to recovery failure or a second preimage
+of the combined owner-and-note commitment. V5 still lacks the deployed
+recovery theorem, concrete bounds for those commitment events, and the Merkle
+binding step for an alternative leaf or path, so no standalone V5
+theft-resistance number is claimed.
 
 This is deliberately a bounded claim. It is not an end-to-end formal proof of
 every Rust function, the compiler, Solana, or the complete private-spend
-system. The Tag-67 connection retains one explicit hash-call equality premise:
-the production transcript hash call must equal the Lean `HashFn` interface on
-the transcript state and `DOM_GRIND || nonce_le64`. Cryptographic assumptions,
-untranslated code, extraction, compilation, and runtime trust are listed in
-the [assumptions ledger](docs/assumptions-ledger.md).
+system. The Tag-67 work-checking theorem retains one explicit hash-call
+assumption: the production transcript hash call must equal the Lean hash
+function on the transcript state and `DOM_GRIND || nonce_le64`. Other parts
+retain the assumptions summarized above.
+Cryptographic assumptions, untranslated code, extraction, compilation, and
+runtime trust are listed in the [assumptions ledger](docs/assumptions-ledger.md).
+
+The current mathematical review found no concrete forgery or broken finite
+calculation. It did find that the V5 soundness claim, deployed hiding, and
+theft resistance still depend on major unproved links: the listed failure
+cases must cover every false proof, the cited papers must apply to this exact
+protocol, and the real Rust run must match the Lean model. The q18/g37
+100.161-bit value is a work-normalized
+per-query case-study result, not a raw forgery probability or a silently
+inherited V5 security level. See the
+[mathematical status review](docs/reviews/mathematical-status-20260814.md).
 
 The [formal-verification overview](docs/formal-verification.md) gives the
-precise theorem map, coverage, and remaining boundary.
+precise theorem map, coverage, and remaining boundaries.
 
 ## What the result demonstrates
 
@@ -131,7 +183,7 @@ at the point where each claim depends on them.
 - **Throughput.** A pool processes spends sequentially, and proving plus
   proof-of-work grinding dominates latency. Horizontal scaling uses separate
   pools and therefore fragments anonymity.
-- **Storage.** Each spend leaves one canonical nullifier account on-chain, so
+- **Storage.** Each spend leaves one program-derived nullifier account on-chain, so
   nullifier storage grows linearly.
 - **Proof size and operations.** The proof needs 79 upload transactions before
   sealing. Temporary rent must be funded and later recovered.
@@ -139,6 +191,12 @@ at the point where each claim depends on them.
   SHA-256, Fiat–Shamir, and knowledge extraction. Network metadata, timing,
   fee-payer linkage, transaction graphs, and physical side channels are
   outside the proved privacy view.
+- **Demonstration secret.** The published transaction used a newly sampled
+  demonstration witness, not a user's funded private note. Each secret field
+  came from operating-system randomness, and candidates were discarded until
+  the nullifier PDA had bump 255. The witness was not published or retained,
+  so the transaction demonstrates that the released program accepted and
+  applied the archived proof bytes rather than custody of a real asset.
 - **Assurance.** The repository contains formal proofs, tests, reproducible
   builds, internal review, and finalized chain evidence, but it has not
   received an external cryptographic or Solana security audit.
@@ -160,7 +218,7 @@ lifecycle comprised 84 transactions:
 
 Deployment and the three cleanup transactions are separate from that count.
 During Tag 67, the proof account is read-only and retained so the result can be
-recorded before a separate authorized close. The pool and canonical nullifier
+recorded before a separate authorized close. The pool and nullifier account
 are writable. Validation and complete proof verification precede every state
 write.
 

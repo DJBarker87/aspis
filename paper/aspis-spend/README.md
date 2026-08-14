@@ -1,7 +1,7 @@
 # Aspis: From Lean-Checked Private-Spend Mathematics to Solana Mainnet
 
 `aspis-spend.tex` is the living manuscript on `main`. It presents the
-end-to-end evidence chain from maintained Lean 4 mathematics, through selected
+documented path from maintained Lean 4 mathematics, through selected
 production verifier paths translated with Charon/Aeneas and joined to the
 models by explicit bridge proofs, to a byte-reproducible SBF binary and the
 finalized V5 Tag-67 mainnet execution.
@@ -32,8 +32,10 @@ The repository PDFs have different jobs:
 
 Later documentation and formalisation improvements update the living
 manuscript without changing the executed q18/g37 release record. The living
-manuscript states the selected-schedule formal scope, the remaining
-transcript-hash-call equality, compiler/runtime/primitive assumptions, and the
-absence of an external security audit. Citation metadata keeps the immutable
+manuscript states the selected-schedule formal scope, the still-open
+acceptance-to-normalized-trace and extraction links, the Tag-67
+transcript-hash-call equality, commitment assumptions,
+compiler/runtime/primitive assumptions, and the absence of an external
+security audit. Citation metadata keeps the immutable
 q18/g37 paper as the preferred historical citation and lists the V5 mainnet
 evidence bundle as a separate later release.

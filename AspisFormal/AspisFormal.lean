@@ -20,6 +20,8 @@ import AspisFormal.AspisViewBinding
 import AspisFormal.ViewModel
 import AspisFormal.TheftResistance
 import AspisFormal.HashMerkleModel
+import AspisFormal.V5AcceptedSpendRelation
+import AspisFormal.V5TheftResistance
 import AspisFormal.CircleGroupOrder
 import AspisFormal.CircleGroupCardinality
 import AspisFormal.CircleTMatrixHiding

@@ -40,7 +40,7 @@ to Solana Mainnet\\[0.4em]
 {\large A Transparent Proof System with Selected Rust-to-Lean Correspondence\\
 and an Atomic On-Chain State Update}}
 \author{Dominic Barker}
-\date{25 July 2026}
+\date{14 August 2026}
 \hypersetup{
   pdftitle={Aspis: From Lean-Checked Private-Spend Mathematics to Solana Mainnet},
   pdfauthor={Dominic Barker},
@@ -53,18 +53,23 @@ and an Atomic On-Chain State Update}}
 \maketitle
 
 \begin{abstract}
-Aspis develops an evidence chain from private-spend mathematics to a
+Aspis documents a path from private-spend mathematics to a
 finalized Solana execution.  The maintained Lean~4 development kernel-checks
-the relation core, finite security arithmetic, circle-group facts, masking
-    lemmas, and theorem composition.  For the selected V5 release scope, Charon
-    extracts selected production Rust and Aeneas translates it into Lean; bridge
-    proofs connect the generated definitions to maintained verifier models,
-    public output, Tag-67 decoding, and the six ordered work checks.  A clean
-    build from the identified source reproduces
+the relation arithmetic, finite security calculations, circle-group facts,
+and component-level masking and theorem-composition results under explicitly
+named interfaces.  For the selected V5 release scope, Charon extracts selected
+production Rust and Aeneas translates it into Lean; bridge theorems establish
+component-level correspondences under successful-call, valid-input, and
+explicit execution/model hypotheses.  The Tag-67 work-verifier subtheorem
+isolates one remaining transcript-hash-call equation.  No current theorem says
+that arbitrary deployed-verifier acceptance supplies every component
+hypothesis or implies the complete spend relation.  A clean build from the
+identified source reproduces
 the 1,258,496-byte Solana bytecode format (SBF) binary byte-for-byte.  That
-binary was deployed on mainnet-beta, where a finalized Tag-67 transaction
-verified a 75,358-byte proof, created the canonical nullifier marker, and
-advanced the pool sequence atomically.  Exact signed-wire simulation and
+binary was deployed on mainnet-beta, where a finalized Tag-67 transaction ran
+the complete deployed proof-checking path, accepted the 75,358-byte proof,
+created the expected program-derived nullifier marker, and advanced the pool
+sequence atomically.  Exact signed-wire simulation and
 landed metadata both report 1,334,452 compute units.
 
 The paper's quantitative security case study remains the distinct frozen
@@ -84,11 +89,13 @@ silently transferred to V5; the later V5 execution is separate evidence for
 the source-linked implementation and deployment path.
 
 The formal Rust correspondence is limited to selected verifier paths:
-Component~A at the release schedule, the Component-B/C evaluator and public
-output paths, and the Tag-67 work-byte and six-step verifier.  Its sole
-remaining Tag-67 implementation-to-model premise equates one extracted
-transcript-hash function application with the maintained hash call.  The
-result additionally
+Component~A at the release schedule, conditional Component-B/C evaluator and
+public-output packages, and the Tag-67 work-byte and six-step verifier.  The
+hash-call equation is the sole remaining equation in the Tag-67 subtheorem,
+not the sole premise of the A/B/C composition.  The V5 endpoint also remains
+conditional on a complete false-accept event decomposition, exact
+literature/code applicability, authenticated round semantics, PCS/Merkle and
+Fiat--Shamir premises, and actual-event correspondence.  The result additionally
 assumes the Charon/Aeneas and Rust-to-SBF toolchains, the Solana loader and
 runtime semantics, SHA-256 and the cited cryptographic primitives; it has not
 received an external security audit.  Proof transport and account setup occur

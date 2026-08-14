@@ -2,70 +2,123 @@
 \label{sec:formalization}
 
 The repository includes a Lean~4 formalisation
-\cite{deMouraUllrich2021Lean4} of the finite algebra and theorem composition
-used in this paper. The \path{AspisFormal/} project kernel-checks integer value
-conservation, relation closure from the gate residuals, the manifest-bound
-Johnson/MCA regime, the complete finite soundness ledger, the
-work-normalised endpoint, circle-generator order and fibre distinctness,
-distribution-level masking lemmas, and the Poseidon2 known-answer bindings.
-The theft-resistance module proves the final implication from its explicitly
-named extractor and nullifier-binding interfaces. Every audited theorem uses
-only \texttt{propext}, \texttt{Classical.choice}, and \texttt{Quot.sound}; the
-development contains no \texttt{sorry} or custom axiom.
+\cite{deMouraUllrich2021Lean4} of finite algebra and theorem composition used
+by the project.  The \path{AspisFormal/} project kernel-checks 30-bit
+no-wrap/value arithmetic, range, balance and asset clauses, the finite
+q18/g37 probability ledger, circle-generator order and fibre distinctness,
+QM31 tower facts, distribution-level masking lemmas, and pinned Poseidon2
+known-answer executions.  Its maintained audited theorems use only
+\texttt{propext}, \texttt{Classical.choice}, and \texttt{Quot.sound}; the
+project contains no \texttt{sorry} or custom axiom.
 
-The proof-status table in \path{AspisFormal/README.md} separates kernel
-theorems from cited interfaces. In particular, the published
-Johnson/MCA/PCS, Fiat--Shamir, extractor, and simulation-extractability
-results are imported at their mathematical statements rather than
-reconstructed. Hash security and random-oracle modelling remain
-cryptographic assumptions. This is the same boundary used by the paper's
-security reductions.
+That statement must not be enlarged into a proof of complete deployed
+acceptance.  The new \texttt{V5AcceptedSpendRelation} theorem proves that a
+normalized package containing zero arithmetic residuals, typed Poseidon2
+inputs, the eleven checked two-round transitions of each permutation, both
+Merkle paths with shared bits and siblings, and the exact six public-field
+matches implies the full spend relation, relative to
+\texttt{Poseidon2Faithful}.  The package is not raw proof bytes.  No current
+theorem derives all of those facts from arbitrary accepted V5 execution.  The
+published Johnson/MCA/PCS, Fiat--Shamir, extraction, and anti-malleability
+results likewise enter as assumptions.
+Hash security and random-oracle modelling remain cryptographic assumptions.
+The proof-status table in \path{AspisFormal/README.md} distinguishes these
+assumptions from conclusions Lean actually checks.
 
-After the q18/g37 mainnet execution, the project extended this architecture to
-the V5 Tag-67 deployment candidate with Charon and Aeneas
-\cite{HoProtzenko2022Aeneas}. The pipeline is
+After the q18/g37 mainnet execution, the project used Charon and Aeneas to
+compare selected V5 Rust functions with Lean models
+\cite{HoProtzenko2022Aeneas}:
 \[
-  \text{production Rust}
+  \text{selected production Rust}
   \longrightarrow
   \text{Aeneas-generated Lean}
   \longrightarrow
-  \text{maintained protocol model}
+  \text{maintained component model}.
 \]
-\[
-  \longrightarrow\ \text{integration theorem}.
-\]
-The final V5 theorem composes the source-extracted Component-A execution at
-the selected release schedule, general Component-B correspondence, the
-actual-current Component-C four-round evaluator and public packed output, and
-the Tag-67 work-wire/six-step verifier. The runtime recomputes both
-GoodA and GoodB for every selected branch; a universal all-schedule
-source-authentic Component-A theorem remains separate. The theorem's sole Tag-67
-implementation-to-model premise identifies the stored hash-function
-application with the maintained function on
-\(\texttt{DOM\_GRIND}\mathbin\Vert\texttt{nonce\_le64}\). Wire parsing,
-projection, the leading-zero predicate, and the ordered six checks are proved
-inside the theorem.
+The final Lean theorem collects a source-extracted Component-A result at the
+selected schedule, a Component-B result, Component-C fold and public-output
+results, and the Tag-67 work-wire/six-step verifier.  This is not a theorem of the form
+``arbitrary production-verifier acceptance implies the complete spend
+relation.''  The Component-B proof assumes that the relevant Rust calls
+succeeded and that inputs have the required lengths and field encodings.  The
+Component-C proof assumes that its folded Rust values, coefficients, and
+challenges equal the Lean values.  No theorem currently proves that every
+accepted production proof meets all of those assumptions in one real run.
 
-The q18/g37 transaction and V5 candidate remain distinct artefacts. The former
-is the mainnet execution studied in this paper. The V5 SBF later
-finalized the atomic Tag-67 path on devnet at 1,335,952 CU, demonstrating the
-stronger source-authentic verification architecture now present on the
-repository's default branch. At this manuscript cutoff, V5 had not yet been
-executed on mainnet.
+The Tag-67 work-checking theorem retains one concrete assumption: the stored
+grinding-digest call must equal the hash used in Lean on
+\(\texttt{DOM\_GRIND}\mathbin\Vert\texttt{nonce\_le64}\).  Given that
+equation and successful generated wire guards and reads, projection, the
+leading-zero predicate, and the ordered six work checks are theorem
+conclusions.  This is the only extra equality in the Tag-67 theorem; it is not
+the only assumption in the full Rust-to-Lean argument.
+
+\begin{table}[t]
+\centering
+\small
+\caption{The q18/g37 quantitative case study and deployed V5 are distinct
+mathematical objects.}
+\label{tab:q18-v5-math-status}
+\begin{tabular}{@{}p{0.27\linewidth}p{0.31\linewidth}p{0.34\linewidth}@{}}
+\toprule
+property & q18/g37 case study & deployed V5 \\
+\midrule
+scalar-power batch & 29 lanes, degree 28 & 19 lanes (16 base and 3 extension), degree 18 \\
+batch sampling & historical ledger expression & nonzero extension field, denominator \(\lvert\mathbb K\rvert-1\) \\
+challenge-round count & safe cap \(R=32\) & exactly 30 rounds after the initial committed data \(m_0\), hence \(R\le32\) \\
+security claim & conditional 100.161-bit work-normalised per-query result & conditional error at most \(2^{-100}\), if all V5 assumptions hold \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The V5 repair proves that the legacy degree-28/full-field batch expression is
+a strict conservative upper bound for the deployed degree-18/nonzero-field
+term; it never equates them.  It also separates the old 31-item serialized
+trace into the initial committed data \(m_0\) plus exactly 30 challenge
+rounds.  Thus a cap of 32 remains numerically conservative, but is not the
+exact V5 round count.  The fractional 100.161-bit result belongs only to the
+q18/g37 case study.
+
+The final V5 calculation assumes that the listed failure cases cover every
+false proof; the opened values belong to the claimed code; the cited coding
+and Fiat--Shamir papers apply to this exact mixed M31/QM31 protocol; each
+separately hashed proof-of-work value justifies the work factor used for its
+later challenge; Rust samples challenges and orders transcript messages as
+Lean says; the commitments have the assumed security; and the three branches
+and six work checks are counted once each.  Lean proves the numerical result
+if these statements are true.  It does not prove the statements themselves.
+Consequently V5 is not presently an end-to-end proved 100-bit system.
+
+The same problem applies to privacy and authorization.  Lean proves useful
+masking facts for individual parts, but there is no theorem connecting the
+complete deployed V5 prover, its randomness, transcript, commitments,
+serialization, and published proof into one zero-knowledge result.  The
+repaired authorization theorem no longer assumes that the compressing
+nullifier hash is globally one-to-one.  It is instantiated with the exact V5
+spend relation and proves that an accepted prover execution whose extracted
+secret is wrong implies extractor failure or a different input with the fixed
+target nullifier.  A second theorem handles a different valid opening of the
+exact same fixed input leaf by reducing it to extractor failure or a second
+preimage of the combined owner-and-note commitment.  These are valid logical
+reductions, not a complete efficient-adversary theft game.  Deployed extraction,
+target sampling or uniform fixed-target assumptions, commitment bounds, the
+alternative-leaf Merkle reduction, and the full code connection remain
+external, so no numerical V5 theft-resistance bound is claimed.
 
 \paragraph{Repository outcome addendum (25 July 2026).}
-Subsequent to the manuscript-scoped q18/g37 result and the V5 freeze described
-above, the exact V5 SBF (SHA-256
-\nolinkurl{4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40})
-was deployed on mainnet-beta at slot \(434999519\).  Atomic Tag~67 finalized
-at slot \(435019536\) with canonical nullifier-PDA bump \(255\); exact
-signed-wire simulation and landed metadata both reported \(1{,}334{,}452\)
-CU.  Its transaction signature is
+The exact V5 SBF was deployed on mainnet-beta at slot \(434999519\).  Atomic
+Tag~67 finalized at slot \(435019536\), with nullifier-PDA bump
+\(255\); exact signed-wire simulation and landed metadata both reported
+\(1{,}334{,}452\) CU.  Its transaction signature is
 \nolinkurl{EJviPgF12i9iK2CveVaQSMeFQqDMFPQ1iPRUYEwNQE3zGquTUZNJXPZEENorcQtsnQj1orFmH1TPsgdbR3vJ2fE}.
-The corresponding proof and statement SHA-256 values are
-\nolinkurl{330414df587974684643a6062d092db0519d746f0c7efe4ed2108775b685feaf}
-and
-\nolinkurl{0cdc34bc7f835640cff76d1085df9ba966df9f39eb228f3002f927cf30958113}.
-This later chain outcome is recorded separately under
-\path{release/aspis-v5-tag67-mainnet-v1/}; it does not change the q18/g37
-parameters, reductions, or principal empirical claim studied in this paper.
+The proof and statement are published in
+\path{release/aspis-v5-tag67-mainnet-v1/}.
+
+The proof account, dedicated payer, and upgradeable ProgramData were then
+closed.  ProgramData close finalized at 23:59:16 UTC, 111 seconds after the
+spend, so deployed bytes and uploaded proof bytes are no longer recoverable
+from live account state.  The preserved route is the offline release bundle
+and the two-page, full-\texttt{getTransaction} payer history under
+\path{release/aspis-v5-tag67-mainnet-rpc-archive-v1/}.  This observed mainnet
+outcome and its cleanup evidence do not discharge the mathematical premises
+above or alter the q18/g37 parameters.

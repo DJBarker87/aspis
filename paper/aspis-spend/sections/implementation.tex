@@ -198,7 +198,7 @@ the initialization transaction.  It checks the anchor encoding and that
 \(s+1\) does not overflow before writing the initial state.
 
 \paragraph{Nullifier marker.}
-The canonical marker address is the program-derived address with seeds
+The required marker address is the program-derived address with seeds
 \[
   (\mathtt{aspis-nullifier-v1},\nu).
 \]
@@ -208,7 +208,7 @@ The pool address is intentionally not a PDA seed.  It is recorded in the
   \mathtt{ASPN}\mathbin\|1\mathbin\|0^3
   \mathbin\|P_{32}\mathbin\|\nu_{32}.
 \]
-Consequently one nullifier has one canonical marker address for the deployed
+Consequently one nullifier has one required marker address for the deployed
 program, while the marker contents retain the pool to which it was applied.
 
 \subsection{Production instruction surface}
@@ -259,7 +259,7 @@ Table~\ref{tab:tag65-accounts} in exactly that order.
     \midrule
     0 & signer, writable& finalized program-owned proof account \\
     1 & writable        & program-owned pool account \\
-    2 & writable        & canonical nullifier PDA \\
+    2 & writable        & program-derived nullifier account \\
     3 & signer, writable& system-owned fee payer \\
     4 & read only       & executable System Program \\
     \bottomrule
@@ -272,17 +272,18 @@ Table~\ref{tab:tag65-accounts} in exactly that order.
 The tag~65 implementation uses the following order.
 \begin{enumerate}
   \item It validates ownership, signer and writable flags, account
-  distinctness, the canonical nullifier PDA, the current pool anchor, and
+  distinctness, the program-derived nullifier account, the current pool anchor, and
   sequence non-overflow.  A program-owned marker must be exactly 72 zero
-  bytes; alternatively, the canonical PDA may be an empty System
+  bytes; alternatively, the required program-derived address may be an empty System
   Program-owned account.
-  \item It constructs the canonical statement using the actual pool address
+  \item It constructs the required statement using the actual pool address
   and decoded sequence, then computes the statement digest.
   \item It loads the finalized proof and runs the complete production
   \Profile{} verifier.  No cross-program invocation (CPI) and no account-data
   write occurs before this
   verifier returns success.
-  \item If the marker account is absent, it is created at the canonical PDA\@.
+  \item If the marker account is absent, it is created at the required
+  program-derived address\@.
   A prefunded empty PDA is topped up, allocated, and assigned as necessary.
   The alternative program-owned-zero path requires no System Program CPI\@.
   \item It reacquires mutable borrows, decodes and rechecks both state
@@ -297,7 +298,7 @@ The final transaction contains two Compute Budget instructions, a
 1,400,000-CU limit and a 262,144-byte heap request, followed by one tag~65
 application instruction.  Solana transaction rollback covers both direct
 writes, the proof refund, and the marker-creation CPI, while writable locks on
-the pool and canonical marker serialize conflicting spends
+the pool and required marker serialize conflicting spends
 ~\cite{SolanaTransactions,SolanaComputeBudget}.  A duplicate therefore
 observes either the existing marker or the advanced pool state and is
 rejected.  Tag~60 remains available when retaining the proof account is

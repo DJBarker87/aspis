@@ -11,17 +11,21 @@ Lean~4, selected production Rust connected to that mathematics, a
 byte-reproducible Solana binary, and a finalized mainnet state transition.
 
 The chain is intentionally explicit about direction and scope.  Lean
-kernel-checks the relation, finite security arithmetic, circle and masking
-lemmas, and their composition \cite{deMouraUllrich2021Lean4}.  For the selected
-    V5 release schedule, Charon extracts selected production Rust and Aeneas
-    translates it into functional Lean \cite{HoProtzenko2022Aeneas}; bridge
-    proofs cover Component~A at the selected schedule, the Component-B/C
-    evaluator and packed-output paths, and Tag-67 instruction decoding plus the
-    six ordered work checks.  The result is not a universal refinement theorem
-    for every schedule or verifier path.  Its one
-remaining Tag-67 implementation boundary equates the extracted
-hash-function application with the maintained transcript hash on
-\(\texttt{DOM\_GRIND}\mathbin\Vert\texttt{nonce\_le64}\).  A clean checkout of
+kernel-checks finite relation arithmetic, security calculations, circle and
+component-level masking lemmas, and conditional theorem composition
+\cite{deMouraUllrich2021Lean4}.  For the selected V5 release schedule, Charon
+extracts selected production Rust and Aeneas translates it into functional
+Lean \cite{HoProtzenko2022Aeneas}; bridge theorems cover Component~A at the
+selected schedule, conditional Component-B/C evaluator and packed-output
+packages, and Tag-67 instruction decoding plus the six ordered work checks.
+The result is not a universal refinement theorem for every schedule or
+verifier path, nor a theorem that arbitrary verifier acceptance supplies all
+component hypotheses.  The Tag-67 work-verifier subtheorem has one remaining
+equation: the extracted hash-function application equals the maintained
+transcript hash on
+\(\texttt{DOM\_GRIND}\mathbin\Vert\texttt{nonce\_le64}\).  Other component
+theorems retain their successful-call, valid-input, and execution/model
+hypotheses.  A clean checkout of
 the identified source reproduces the 1,258,496-byte V5 SBF binary
 byte-for-byte.  The same binary was deployed on mainnet-beta, where exact
 signed-wire simulation and landed execution of a 75,358-byte proof both
@@ -98,9 +102,13 @@ query schedule used by the implementation.  It then applies a 32-boundary
 Fiat--Shamir accounting rule for a classical random-oracle adversary.  For
 $1\leq T\leq 2^{128}$ random-oracle queries, the released metric is false
 acceptance probability divided by $T$; after the conservative whole-ledger
-three-selector union, its minimum floor is \ProfileSoundnessBits{} bits.  The
-claim is argument soundness for the exact relation.  No extractor or knowledge
-soundness claim is made.
+three-selector union, its minimum floor is \ProfileSoundnessBits{} bits.  This
+is a conditional argument-soundness calculation for the exact relation: the
+event cover, literature applicability, and implementation-to-trace links are
+explicit premises rather than internally proved facts.  A later
+authorization result is stated only conditionally, under an additional
+knowledge extractor and target-second-preimage premise; the soundness number
+does not itself imply knowledge soundness or theft resistance.
 
 The hiding statement is likewise tied to a precise experiment.  It compares
 the complete declared verifier-visible Proof-or-Abort view with an explicit
@@ -127,23 +135,25 @@ at the instruction boundary.  The frozen q18/g37 release binds a
 maximum measured local path consumes \ProfileComputeUnits{} compute units.  A
 finalized mainnet-beta execution of that exact release consumed
 \ProfileMainnetComputeUnits{} compute units, advanced the pool sequence from
-zero to one, created the canonical nullifier marker, and refunded the complete
+zero to one, created the program-derived nullifier marker, and refunded the complete
 proof-account balance in the same transaction.  Deployment, account creation,
 proof transport, and proof finalization occurred beforehand and are reported
 separately.  The later V5 release binds the selected source-correspondence
 theorem, a byte-reproducible 1,258,496-byte SBF binary, and a 75,358-byte
 proof.  Its atomic Tag-67 transaction finalized at 1,334,452 compute units in
-both exact signed-wire simulation and landed metadata, with canonical
-nullifier-PDA bump 255.  V5 deployment, its 84-transaction proof lifecycle,
+both exact signed-wire simulation and landed metadata, with nullifier-PDA bump
+255.  V5 deployment, its 84-transaction proof lifecycle,
 and its cleanup transactions are recorded separately from the atomic spend
 and from the q18/g37 release.
 
 \paragraph{Trust boundary.}
 The Lean kernel checks the theorems presented to it, including the selected
-Component-A schedule, Component-B/C evaluator and output, and Tag-67 work-wire
-composition described above.  The remaining trusted or assumed boundary
-includes the single transcript-hash-call equality stated above; the
-Charon/Aeneas translation and bridge inputs; Rust outside those selected paths;
+Component-A schedule, conditional Component-B/C evaluator and output results,
+and Tag-67 work-wire composition described above.  The remaining trusted or
+assumed boundary includes the complete false-accept event cover and literature
+applicability, component successful-call/valid-input and execution/model
+hypotheses, the Tag-67 transcript-hash-call equality stated above, the
+Charon/Aeneas translation and bridge inputs, Rust outside those selected paths;
 the Rust, LLVM, and Solana SBF compilation path; the Solana loader, account,
 rollback, and compute metering semantics; SHA-256 and the random-oracle
 idealisation; and the cited
@@ -170,11 +180,12 @@ The paper makes the following contributions.
 
   \item It supplies a Lean~4 formalisation of the relation core, finite
   security arithmetic, circle and masking lemmas, and theorem composition,
-  then connects selected V5 verifier paths through Charon/Aeneas and explicit
-  bridge proofs: Component~A at the release schedule, the Component-B/C
-  evaluator and public output, and the Tag-67 work-wire and six ordered checks.
-  The proof-status ledger separates kernel theorems, the one
-  transcript-hash-call premise, and cited cryptographic interfaces.
+  then establishes selected conditional V5 verifier correspondences through
+  Charon/Aeneas and explicit bridge proofs: Component~A at the release
+  schedule, Component-B/C evaluator and public-output packages, and the Tag-67
+  work-wire and six ordered checks.  The proof-status ledger separates kernel
+  implications, component execution/model hypotheses, the Tag-67 hash-call
+  equation, and cited cryptographic interfaces.
 
   \item It binds that source-linked verifier to a byte-reproducible SBF
   implementation and reports the finalized V5 mainnet-beta Tag-67 execution
@@ -191,7 +202,8 @@ The paper makes the following contributions.
 used in the construction.  \Cref{sec:relation} defines the statement, relation,
 and account model.  \Cref{sec:construction} specifies the protocol and wire
 format, and \Cref{sec:formalization} records the machine-checked development.
-\Cref{sec:soundness,sec:hiding} prove soundness and computational hiding.
+\Cref{sec:soundness,sec:hiding} give the conditional soundness and
+computational-hiding arguments and name the premises that remain external.
 \Cref{sec:implementation} gives the implementation refinement and atomicity
 argument, and \Cref{sec:evaluation} reports the measurements and reproduction
 procedure.  \Cref{sec:limitations} states the scope of the result.

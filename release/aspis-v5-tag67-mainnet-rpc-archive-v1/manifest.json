@@ -13,8 +13,8 @@
   },
   "objects": {
     "README.md": {
-      "bytes": 2503,
-      "sha256": "ab1a31aa21327d5e9394f63e4795005d11567a4d1a153a525286f916c57a8b01"
+      "bytes": 3690,
+      "sha256": "769adc8a19eb0c2f9847fab2f4a8dc0bd049683854274a460dec593dbfff41ea"
     },
     "release-binding.json": {
       "bytes": 2651,
@@ -33,8 +33,8 @@
       "sha256": "3da57fa1ea94f87793221d9f2f649e56c854127f0da02ae96d0db430f86a2101"
     },
     "verify.py": {
-      "bytes": 10883,
-      "sha256": "60a2cf1943888cbb003819ce5b3d58f24d62e3c1113513d654305f5c8b92e2cd"
+      "bytes": 35852,
+      "sha256": "3fc5a6ef18622c59ae86df050e0502c6acbff5ef283f044573364554977a0640"
     }
   },
   "privacy": {
