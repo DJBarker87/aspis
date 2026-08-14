@@ -33,6 +33,7 @@ open AspisV5ComponentCConcreteFoldLinearity
 open AspisV5FriCoherentCandidateExtraction
 open AspisV5FriCompatibleCandidateChain
 open AspisV5FriConcreteEncoderCommutation
+open AspisV5FriGlobalCausalStrategy
 open AspisV5FriPublishedOutputEncoderDecoding
 open AspisV5FriRelationCandidateBridge
 open AspisV5FriReleasedAdaptiveExtraction
@@ -181,9 +182,9 @@ theorem accepted_false_source_execution_event_with_released_tables
       (acceptedTranscript causalFamily input) queries)
     (∃ (hfinal : FinalXMatchesReleasedDomain base)
         (htables : InverseTablesMatch base releasedEvaluationPoints)
-        (hdecoding : PublishedOrdinaryPolynomialCurveDecoding (K := K))
-        (strategies : AdaptiveStrategies (K := K)),
-      (adaptiveBadSets base causalFamily hfinal htables hdecoding strategies).Occurs
+        (hdecoding : PublishedOrdinaryPolynomialCurveDecoding (K := K)),
+      (adaptiveBadSets base causalFamily hfinal htables hdecoding
+        (constructedAdaptiveStrategies base causalFamily)).Occurs
         input.round0.alpha input.round1.alpha input.round2.alpha
           input.round3.alpha)
     (∃ candidate : AcceptedCandidate base causalFamily input,
