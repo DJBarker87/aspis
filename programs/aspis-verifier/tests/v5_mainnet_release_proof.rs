@@ -8,10 +8,10 @@ use aspis_statement::{
 use aspis_verifier::v5_cu_probe::verify_uploaded_v5_mode9_cu_fixture;
 use aspis_verifier::PROOF_ACCOUNT_HEADER_LEN;
 use solana_program::{account_info::AccountInfo, clock::Epoch, hash::hashv, pubkey::Pubkey};
+use std::str::FromStr;
 
-const MAINNET_PROOF: &[u8] = include_bytes!(
-    "../../../release/aspis-v5-tag67-mainnet-v1/proof/v5-mainnet-proof.bin"
-);
+const MAINNET_PROOF: &[u8] =
+    include_bytes!("../../../release/aspis-v5-tag67-mainnet-v1/proof/v5-mainnet-proof.bin");
 const MAINNET_STATEMENT_JSON: &[u8] = include_bytes!(
     "../../../release/aspis-v5-tag67-mainnet-v1/statement/v5-mainnet-statement.json"
 );
@@ -94,6 +94,19 @@ fn tag67_exact_released_mainnet_proof_passes_the_deployed_callback() {
         decode_hex_32("0cdc34bc7f835640cff76d1085df9ba966df9f39eb228f3002f927cf30958113")
     );
     assert_eq!(verify(&mainnet_statement()), Ok(()));
+}
+
+#[test]
+fn tag67_mainnet_nullifier_derives_the_recorded_address_at_bump_255() {
+    let nullifier =
+        decode_hex_32("251bbb2be96bef3b6eccab04da5ab27bc3b3c04bfb9ef5598a417d3406759317");
+    let (address, bump) =
+        aspis_verifier::atomic_payment::atomic_nullifier_address(&aspis_verifier::id(), &nullifier);
+    assert_eq!(
+        address,
+        Pubkey::from_str("7Umhkv2Z3E2DksnpivCz2tovtbRoL1uXtnYBAtQBgu8Q").unwrap()
+    );
+    assert_eq!(bump, u8::MAX);
 }
 
 #[test]
