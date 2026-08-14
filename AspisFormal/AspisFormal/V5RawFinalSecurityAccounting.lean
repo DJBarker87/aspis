@@ -25,6 +25,7 @@ open AspisV5FinalSecurityAccounting
 open AspisV5FriAdaptiveUnmatched
 open AspisV5FriRelationCandidateBridge
 open AspisV5FriReleasedAdaptiveExtraction
+open AspisV5FriPublishedThresholds
 open AspisV5RelationSumcheckSoundness
 open AspisV5Tag67RelationListInclusion
 open AspisV5WithoutReplacementQuerySoundness
@@ -179,6 +180,36 @@ theorem raw_fri_fibre_bound_le (round : Fin 4) :
     norm_num at h ⊢
     linarith
 
+/-- A tighter round-zero estimate.  The coarse `2^-75` bound above is too
+loose to add to the other five raw terms and retain 75 bits.  Reusing the same
+rational lower bound on `sqrt (255 / 131072)` proves that round zero is at
+most `3 * 2^-77`. -/
+theorem raw_fri_round_zero_le_three_mul_two_pow_neg_77 :
+    rawFriFibreBound 0 ≤ (3 : Real) / 2 ^ 77 := by
+  have hcap := released_challenge_cap_le_threshold (0 : Fin 4)
+  have hone :
+      (1 : Real) * ((21 / 2) / Real.sqrt (255 / 131072)) *
+          ((2 * ((21 / 2) / Real.sqrt (255 / 131072)) ^ 4 / 3) *
+            (255 / 131072) + 1) * 131072 / FIELD / 2 ^ 0 ≤
+        (1 : Real) / 2 ^ 77 :=
+    sqrt_event_bound 1 (21 / 2) (255 / 131072) 131072
+      (4410777 / 100000000) 0 77
+      (by norm_num) (by norm_num) (by norm_num)
+      (by unfold FIELD; norm_num)
+  calc
+    rawFriFibreBound 0 ≤
+        challengeThreshold 10 round0Rate 131072 / FIELD := by
+      exact div_le_div_of_nonneg_right hcap FIELD_pos.le
+    _ = 3 *
+        ((1 : Real) * ((21 / 2) / Real.sqrt (255 / 131072)) *
+          ((2 * ((21 / 2) / Real.sqrt (255 / 131072)) ^ 4 / 3) *
+            (255 / 131072) + 1) * 131072 / FIELD / 2 ^ 0) := by
+      norm_num [challengeThreshold, concurrencyThreshold, ell, round0Rate]
+      ring
+    _ ≤ 3 * ((1 : Real) / 2 ^ 77) := by
+      exact mul_le_mul_of_nonneg_left hone (by norm_num)
+    _ = (3 : Real) / 2 ^ 77 := by ring
+
 /-- The raw relation-repair term is below `2^-111`. -/
 theorem raw_relation_repair_bound_le_two_pow_neg_111 :
     rawRelationRepairBound ≤ (1 : Real) / 2 ^ 111 := by
@@ -200,6 +231,26 @@ theorem raw_core_subtotal_le_two_pow_neg_74 :
       (raw_fri_fibre_bound_le (3 : Fin 4))
   have hrelation := raw_relation_repair_bound_le_two_pow_neg_111
   norm_num [rawCoreSubtotal, rawFriExponent] at hquery hrelation hfri0 hfri1 hfri2 hfri3 ⊢
+  linarith
+
+/-- The tighter round-zero estimate retains a full 75-bit conservative raw
+subtotal.  This is still only the six ideal arithmetic terms; all production,
+hash, extraction, and runtime budgets remain separate. -/
+theorem raw_core_subtotal_le_two_pow_neg_75 :
+    rawCoreSubtotal ≤ (1 : Real) / 2 ^ 75 := by
+  have hquery := raw_q18_bound_le_two_pow_neg_79
+  have hfri0 := raw_fri_round_zero_le_three_mul_two_pow_neg_77
+  have hfri1 : rawFriFibreBound 1 ≤ (1 : Real) / 2 ^ 78 := by
+    simpa [rawFriExponent] using
+      (raw_fri_fibre_bound_le (1 : Fin 4))
+  have hfri2 : rawFriFibreBound 2 ≤ (1 : Real) / 2 ^ 82 := by
+    simpa [rawFriExponent] using
+      (raw_fri_fibre_bound_le (2 : Fin 4))
+  have hfri3 : rawFriFibreBound 3 ≤ (1 : Real) / 2 ^ 88 := by
+    simpa [rawFriExponent] using
+      (raw_fri_fibre_bound_le (3 : Fin 4))
+  have hrelation := raw_relation_repair_bound_le_two_pow_neg_111
+  norm_num [rawCoreSubtotal] at hquery hfri0 hfri1 hfri2 hfri3 hrelation ⊢
   linarith
 
 /-! ## Raw core events and assumptions -/
@@ -449,6 +500,34 @@ theorem total_final_failure_probability_le_two_pow_neg_74_plus_external
     measure events budget assumed).trans (by
       linarith [raw_core_subtotal_le_two_pow_neg_74])
 
+theorem total_final_failure_probability_le_two_pow_neg_75_plus_external
+    {Coins : Type*} [MeasurableSpace Coins]
+    (measure : Measure Coins)
+    (events : FinalSecurityEvents Coins)
+    (budget : ExternalSecurityBudget)
+    (assumed : AssumedRawFinalSecurityBounds measure events budget) :
+    measure.real (totalFinalFailure events) ≤
+      (1 : Real) / 2 ^ 75 + budget.total := by
+  exact (total_final_failure_probability_le_raw_core_plus_external
+    measure events budget assumed).trans (by
+      linarith [raw_core_subtotal_le_two_pow_neg_75])
+
+/-- Raw attack endpoint once the caller has reduced that attack to the common
+failure ledger.  The `budget.total` summand is intentionally not hidden: the
+theorem is not a deployed numerical theft bound until those external terms
+are instantiated. -/
+theorem raw_attack_probability_le_two_pow_neg_75_plus_external
+    {Coins : Type*} [MeasurableSpace Coins]
+    (measure : Measure Coins) [IsProbabilityMeasure measure]
+    (events : FinalSecurityEvents Coins)
+    (attack : Set Coins) (covered : attack ⊆ totalFinalFailure events)
+    (budget : ExternalSecurityBudget)
+    (assumed : AssumedRawFinalSecurityBounds measure events budget) :
+    measure.real attack ≤ (1 : Real) / 2 ^ 75 + budget.total := by
+  exact (raw_attack_probability_le_core_plus_external measure events attack
+    covered budget assumed).trans (by
+      linarith [raw_core_subtotal_le_two_pow_neg_75])
+
 /-! ## Explicit classification of the older subtotal -/
 
 /-- Alias whose name records the experiment represented by the older
@@ -470,10 +549,13 @@ theorem work_normalized_released_core_subtotal_le_two_pow_neg_108 :
 #print axioms ideal_relation_repair_probability_le_raw_ratio
 #print axioms raw_q18_bound_le_two_pow_neg_79
 #print axioms raw_fri_fibre_bound_le
+#print axioms raw_fri_round_zero_le_three_mul_two_pow_neg_77
 #print axioms raw_core_subtotal_le_two_pow_neg_74
+#print axioms raw_core_subtotal_le_two_pow_neg_75
 #print axioms raw_one_proof_core_probability_le_subtotal
 #print axioms total_final_failure_probability_le_raw_core_plus_external
 #print axioms raw_attack_probability_le_core_plus_external
+#print axioms raw_attack_probability_le_two_pow_neg_75_plus_external
 #print axioms work_normalized_released_core_subtotal_le_two_pow_neg_108
 
 end AspisV5RawFinalSecurityAccounting
