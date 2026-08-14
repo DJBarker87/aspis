@@ -103,3 +103,5 @@ import AspisFormal.V5RepairedRuntimeWireClassification
 import AspisFormal.V5SelectedGoodVerifierRelation
 import AspisFormal.V5TranscriptConnection
 import AspisFormal.V5CryptographicAssumptions
+import AspisFormal.V5MerkleRustBridge
+import AspisFormal.V5MerkleConsumedValueBridge
