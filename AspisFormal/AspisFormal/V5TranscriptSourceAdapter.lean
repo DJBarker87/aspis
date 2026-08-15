@@ -349,6 +349,66 @@ theorem source_adapter_driver_is_exact
   unfold sourceAdapterDriver sourceShapedTranscriptDriver
   congr 1
 
+/-! ## Smallest remaining source equality
+
+The generated composite caller already records that the production verifier
+runs the prefix, relation, and query-tail helpers in that order and forwards
+their outputs to the later verification phases.  What the current extraction
+does not expose is the event trace inside those three helpers.  The following
+definition states only those missing facts, separately, rather than assuming
+equality of the entire verifier.
+-/
+
+/-- Assemble the observations from the three transcript-producing helpers and
+the values forwarded to the later verification phases. -/
+def joinedRustTranscriptDriver
+    {RustInput FieldValue PointValue : Type*}
+    (rustPrefix rustRelation rustTail : RustInput → List TranscriptEvent)
+    (rustConsumed : RustInput → V5VerifierConsumption FieldValue PointValue)
+    (input : RustInput) : V5TranscriptDriverResult FieldValue PointValue where
+  trace := rustPrefix input ++ rustRelation input ++ rustTail input
+  consumed := rustConsumed input
+
+/-- The four exact observations still needed from generated production code:
+the event trace of each transcript helper and the values the composite caller
+passes to the FRI and relation checks. -/
+def ExactRustV5TranscriptSegments
+    {RustInput FieldValue PointValue : Type*}
+    (decodeInput : RustInput → V5TranscriptInputs)
+    (decodeDerived : RustInput → V5DerivedValues FieldValue PointValue)
+    (rustPrefix rustRelation rustTail : RustInput → List TranscriptEvent)
+    (rustConsumed : RustInput → V5VerifierConsumption FieldValue PointValue) :
+    Prop :=
+  ∀ input,
+    rustPrefix input = sourcePrefix (decodeInput input) ∧
+      rustRelation input = sourceRelation (decodeInput input) ∧
+      rustTail input = sourceTail (decodeInput input) ∧
+      rustConsumed input =
+        sourceShapedConsumption (decodeInput input) (decodeDerived input)
+
+/-- Proving the three helper traces and their forwarded values is sufficient
+to discharge the previously monolithic production-driver equality. -/
+theorem exact_rust_segments_imply_driver_equality
+    {RustInput FieldValue PointValue : Type*}
+    (decodeInput : RustInput → V5TranscriptInputs)
+    (decodeDerived : RustInput → V5DerivedValues FieldValue PointValue)
+    (rustPrefix rustRelation rustTail : RustInput → List TranscriptEvent)
+    (rustConsumed : RustInput → V5VerifierConsumption FieldValue PointValue)
+    (hsegments : ExactRustV5TranscriptSegments decodeInput decodeDerived
+      rustPrefix rustRelation rustTail rustConsumed) :
+    ExactRustV5TranscriptDriverEquality decodeInput decodeDerived
+      (joinedRustTranscriptDriver rustPrefix rustRelation rustTail rustConsumed) := by
+  intro input
+  rcases hsegments input with ⟨hprefix, hrelation, htail, hconsumed⟩
+  calc
+    joinedRustTranscriptDriver rustPrefix rustRelation rustTail rustConsumed input =
+        sourceAdapterDriver (decodeInput input) (decodeDerived input) := by
+      simp only [joinedRustTranscriptDriver, sourceAdapterDriver]
+      rw [hprefix, hrelation, htail, hconsumed]
+      rfl
+    _ = sourceShapedTranscriptDriver (decodeInput input) (decodeDerived input) :=
+      source_adapter_driver_is_exact (decodeInput input) (decodeDerived input)
+
 /-- Expanding the adapter's typed calls yields the exact primitive hash-call
 trace: one absorb hash, two hashes per squeezed block, and one non-advancing
 grinding hash per work check. -/
@@ -434,6 +494,7 @@ theorem source_adapter_queries_are_exact_without_replacement_output
 #print axioms source_relation_is_exact
 #print axioms source_tail_is_exact
 #print axioms source_adapter_driver_is_exact
+#print axioms exact_rust_segments_imply_driver_equality
 #print axioms source_adapter_primitive_trace_is_exact
 #print axioms source_adapter_hash_execution_is_exact
 #print axioms source_adapter_contains_exact_six_work_checks
