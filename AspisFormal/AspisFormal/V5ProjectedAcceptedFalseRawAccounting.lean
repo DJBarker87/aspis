@@ -308,8 +308,83 @@ theorem acceptedFalse_probability_le_raw_core_plus_projected_failures
       gcongr
       exact connections.fourClaimBatchCollision
 
+/-- The same result with the checked ideal-core and four-claim terms replaced
+by the conservative `2^-75` one-proof endpoint. -/
+theorem acceptedFalse_probability_le_two_pow_neg_75_plus_projected_failures
+    {Coins K : Type*} [Field K] [Fintype K] [DecidableEq K]
+    [Algebra (ZMod P) K] [NeZero (2 : K)] [MeasurableSpace Coins]
+    {rc : RoundConstants}
+    {deployedOwner : Digest → Digest}
+    {deployedNote : Digest → AspisFormal.ArithmetizationCore.F →
+      AspisFormal.ArithmetizationCore.F → Digest → Digest}
+    {deployedNullifier : Digest → Digest → Digest}
+    {deployedNode : Digest → Digest → Digest}
+    (measure : Measure Coins) [IsProbabilityMeasure measure]
+    (data : ProjectedAcceptedFalseExperimentData Coins K rc deployedOwner
+      deployedNote deployedNullifier deployedNode)
+    (connections : ReleasedIdealAcceptedFalseRawConnections measure
+      data.base.toEvents) :
+    measure.real data.base.acceptedFalse ≤
+      (((((1 : Real) / 2 ^ 75 + measure.real data.width19Failure) +
+        measure.real data.base.toEvents.statementBindingFailure) +
+        measure.real data.arithmeticResidualFailure) +
+        measure.real data.hashMerkleResidualFailure) := by
+  exact
+    (acceptedFalse_probability_le_raw_core_plus_projected_failures measure data
+      connections).trans (by
+        gcongr
+        exact raw_core_plus_four_claim_batch_le_two_pow_neg_75)
+
+/-- Production transfer.  Rust transcript/hash divergence is added as one
+further explicit term; it is not folded into the `2^-75` ideal-core number. -/
+theorem productionFalseSpend_probability_le_two_pow_neg_75_plus_projected
+    {Coins K : Type*} [Field K] [Fintype K] [DecidableEq K]
+    [Algebra (ZMod P) K] [NeZero (2 : K)] [MeasurableSpace Coins]
+    {rc : RoundConstants}
+    {deployedOwner : Digest → Digest}
+    {deployedNote : Digest → AspisFormal.ArithmetizationCore.F →
+      AspisFormal.ArithmetizationCore.F → Digest → Digest}
+    {deployedNullifier : Digest → Digest → Digest}
+    {deployedNode : Digest → Digest → Digest}
+    (measure : Measure Coins) [IsProbabilityMeasure measure]
+    (data : ProjectedAcceptedFalseExperimentData Coins K rc deployedOwner
+      deployedNote deployedNullifier deployedNode)
+    (connections : ReleasedIdealAcceptedFalseRawConnections measure
+      data.base.toEvents)
+    (production : ReleasedProductionFalseSpendConnection data.base.toEvents) :
+    measure.real production.productionFalseSpend ≤
+      (((((1 : Real) / 2 ^ 75 + measure.real data.width19Failure) +
+        measure.real data.base.toEvents.statementBindingFailure) +
+        measure.real data.arithmeticResidualFailure) +
+        measure.real data.hashMerkleResidualFailure) +
+        measure.real (AspisV5CryptographicAssumptions.totalFailure
+          production.transcriptAndHashFailures) := by
+  calc
+    measure.real production.productionFalseSpend ≤
+        measure.real (data.base.acceptedFalse ∪
+          AspisV5CryptographicAssumptions.totalFailure
+            production.transcriptAndHashFailures) :=
+      MeasureTheory.measureReal_mono
+        production.production_subset_ideal_or_hash
+    _ ≤ measure.real data.base.acceptedFalse +
+          measure.real (AspisV5CryptographicAssumptions.totalFailure
+            production.transcriptAndHashFailures) :=
+      MeasureTheory.measureReal_union_le _ _
+    _ ≤ (((((1 : Real) / 2 ^ 75 + measure.real data.width19Failure) +
+          measure.real data.base.toEvents.statementBindingFailure) +
+          measure.real data.arithmeticResidualFailure) +
+          measure.real data.hashMerkleResidualFailure) +
+          measure.real (AspisV5CryptographicAssumptions.totalFailure
+            production.transcriptAndHashFailures) := by
+      gcongr
+      exact
+        acceptedFalse_probability_le_two_pow_neg_75_plus_projected_failures
+          measure data connections
+
 #print axioms relationOrExtractionFailure_subset_projected
 #print axioms acceptedFalse_subset_projectedFailureUnion
 #print axioms acceptedFalse_probability_le_raw_core_plus_projected_failures
+#print axioms acceptedFalse_probability_le_two_pow_neg_75_plus_projected_failures
+#print axioms productionFalseSpend_probability_le_two_pow_neg_75_plus_projected
 
 end AspisV5ProjectedAcceptedFalseRawAccounting
