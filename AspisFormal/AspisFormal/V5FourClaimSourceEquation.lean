@@ -125,8 +125,12 @@ theorem source_initial_discrepancy_eq_four_claim_batch
             candidateClaim (pointWeights point) values)
         kappa := by
   rw [candidateClaim_sourceFourClaimInitialWeights, hinactive]
-  simp only [sourceCallerInitialClaim, batchedDiscrepancy, sourcePoint0,
-    sourcePoint1, sourcePoint2, sourcePoint3]
+  have hpoint0 : sourcePoint0 = (0 : Fin 4) := by rfl
+  have hpoint1 : sourcePoint1 = (1 : Fin 4) := by rfl
+  have hpoint2 : sourcePoint2 = (2 : Fin 4) := by rfl
+  have hpoint3 : sourcePoint3 = (3 : Fin 4) := by rfl
+  simp only [sourceCallerInitialClaim, batchedDiscrepancy, hpoint0, hpoint1,
+    hpoint2, hpoint3]
   ring
 
 /-- The smallest field-level projection needed from the production initial
