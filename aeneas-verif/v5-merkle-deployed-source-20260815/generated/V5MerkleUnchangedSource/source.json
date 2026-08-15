@@ -1,0 +1,18 @@
+{
+  "source_commit": "06788d44d30ea8cbd391899dddaf6f0acc6e4a3f",
+  "aeneas_commit": "245bc09e6fe0091d4637863b5973d0ff25cac3b7",
+  "llbc_sha256": "8f0c4c27a0770c581a67202a68624e302f3d3e1be12de29f72a7f84a4190d5cd",
+  "raw_types_sha256": "abb759d465198dfb0d7afbb59bc4a8042d6478d4be493eea824838fd18b35c1d",
+  "raw_funs_sha256": "7c622a3ad7a531ea8934785a521f3e36a0a46de04a4d26f5e1610f63736ba2ad",
+  "compilable_types_sha256": "4350ddf3aac198fe23007ee38f2212ccf3ef3ab5c85d362b865c1cc1a9b7cba3",
+  "compilable_funs_sha256": "3c5c6b0ad2f26b0d5b6c350a53ef048280956e6db78e9dce4c177c2b2ddca5dc",
+  "scope": "unchanged production topology and radix authentication loops",
+  "repository_changes": [
+    "Lean module import paths",
+    "explicit low-32-bit cast for the Rust usize shift count",
+    "type-explicit Option elimination",
+    "removal of unused Iterator default fields absent from the pinned Lean runtime",
+    "three partial generated declarations moved to the explicit external boundary",
+    "concrete Lean definitions for Vec.as_slice, Vec.clear, and Vec.is_empty"
+  ]
+}

@@ -41,7 +41,15 @@ fi
 readonly out
 readonly log="$out/lean432.log"
 mkdir -p "$out/V5MerkleDeployedSource"
+mkdir -p "$out/V5MerkleUnchangedSource"
 : > "$log"
+
+[[ $(shasum -a 256 \
+  "$generated/V5MerkleUnchangedSource/TypesRaw.lean.txt" | awk '{print $1}') == \
+  abb759d465198dfb0d7afbb59bc4a8042d6478d4be493eea824838fd18b35c1d ]]
+[[ $(shasum -a 256 \
+  "$generated/V5MerkleUnchangedSource/FunsRaw.lean.txt" | awk '{print $1}') == \
+  7c622a3ad7a531ea8934785a521f3e36a0a46de04a4d26f5e1610f63736ba2ad ]]
 
 export LEAN_PATH="$out:$generated:$proof:$aspis_path:$aeneas_path"
 
@@ -60,6 +68,14 @@ compile "$generated" V5MerkleDeployedSource/FunsExternal \
   "$generated/V5MerkleDeployedSource/FunsExternal.lean"
 compile "$generated" V5MerkleDeployedSource/Funs \
   "$generated/V5MerkleDeployedSource/Funs.lean"
+compile "$generated" V5MerkleUnchangedSource/TypesExternal \
+  "$generated/V5MerkleUnchangedSource/TypesExternal.lean"
+compile "$generated" V5MerkleUnchangedSource/Types \
+  "$generated/V5MerkleUnchangedSource/Types.lean"
+compile "$generated" V5MerkleUnchangedSource/FunsExternal \
+  "$generated/V5MerkleUnchangedSource/FunsExternal.lean"
+compile "$generated" V5MerkleUnchangedSource/Funs \
+  "$generated/V5MerkleUnchangedSource/Funs.lean"
 compile "$proof" V5MerkleGeneratedDriverInversion \
   "$proof/V5MerkleGeneratedDriverInversion.lean"
 compile "$proof" V5MerkleGeneratedDriverBridge \
@@ -86,6 +102,8 @@ compile "$proof" V5MerkleGeneratedHelperSoundness \
   "$proof/V5MerkleGeneratedHelperSoundness.lean"
 compile "$proof" V5MerkleGeneratedSoundnessAdapter \
   "$proof/V5MerkleGeneratedSoundnessAdapter.lean"
+compile "$proof" V5MerkleUntouchedRadixInversion \
+  "$proof/V5MerkleUntouchedRadixInversion.lean"
 
 if rg -n '\b(sorry|admit|native_decide|unsafe|ofReduceBool)\b' \
     "$proof/V5MerkleGeneratedDriverInversion.lean" \
@@ -101,6 +119,9 @@ if rg -n '\b(sorry|admit|native_decide|unsafe|ofReduceBool)\b' \
     "$proof/V5MerkleGeneratedTopologyBridge.lean" \
     "$proof/V5MerkleGeneratedHelperSoundness.lean" \
     "$proof/V5MerkleGeneratedSoundnessAdapter.lean" \
+    "$proof/V5MerkleUntouchedRadixInversion.lean" \
+    "$generated/V5MerkleUnchangedSource/Types.lean" \
+    "$generated/V5MerkleUnchangedSource/Funs.lean" \
     "$generated/V5MerkleDeployedSource/FunsExternal.lean"; then
   echo "forbidden proof token" >&2
   exit 1
