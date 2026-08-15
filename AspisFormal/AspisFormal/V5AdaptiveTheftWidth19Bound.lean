@@ -129,10 +129,10 @@ theorem deployed_qm31_adaptive_theft_probability_le_two_pow_neg_70_plus_remainin
       experiment extractAfter connection coverage cryptoBudget cryptoAssumed
       credentialBudget credentialAssumed runtimeBudget runtimeAssumed
   have widthBound :=
-    width19_completed_attempt_failure_probability_le_31_div_two_pow_75
+    width19_completed_attempt_failure_probability_le_2120_div_two_pow_82
       measure data.width19Failure width19Connection
   have combine :
-      (1 : Real) / 2 ^ 75 + (31 : Real) / 2 ^ 75 =
+      (1 : Real) / 2 ^ 75 + (2120 : Real) / 2 ^ 82 ≤
         (1 : Real) / 2 ^ 70 := by
     norm_num
   linarith

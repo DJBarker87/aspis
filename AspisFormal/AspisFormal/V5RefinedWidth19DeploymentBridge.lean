@@ -1,4 +1,5 @@
 import AspisFormal.V5RefinedAcceptedFalseAccounting
+import AspisFormal.V5HundredBitSecurityMargin
 import AspisFormal.V5Width19CorrelatedAgreement
 import AspisFormal.V5WorkNormalizedApplicabilityRepair
 
@@ -39,6 +40,7 @@ open AspisV5CryptographicAssumptions
 open AspisV5ForwardAcceptedFalseRawAccounting
 open AspisV5FriCoherentCandidateExtraction
 open AspisV5FriCompatibleCandidateChain
+open AspisV5HundredBitSecurityMargin
 open AspisV5MaskedBoundaryFailureAccounting
 open AspisV5ProjectedAcceptedFalseRawAccounting
 open AspisV5RefinedAcceptedFalseAccounting
@@ -68,6 +70,18 @@ theorem raw_width19_fstar_arithmetic_le_31_div_two_pow_75 :
         ((31 : ℝ) / 2 ^ 112) * 2 ^ 37 :=
       mul_le_mul_of_nonneg_right normalized workNonnegative
     _ = (31 : ℝ) / 2 ^ 75 := by norm_num
+
+/-- Tighter restored form of the maintained width-19 arithmetic. -/
+theorem raw_width19_fstar_arithmetic_le_2120_div_two_pow_82 :
+    rawWidth19FStarArithmetic ≤ (2120 : ℝ) / 2 ^ 82 := by
+  have normalized := corrected_batch_le_2120_div_two_pow_119
+  have workNonnegative : (0 : ℝ) ≤ 2 ^ 37 := by positivity
+  unfold rawWidth19FStarArithmetic
+  calc
+    powersBatchArithmeticFStar 18 * 2 ^ 37 ≤
+        ((2120 : ℝ) / 2 ^ 119) * 2 ^ 37 :=
+      mul_le_mul_of_nonneg_right normalized workNonnegative
+    _ = (2120 : ℝ) / 2 ^ 82 := by norm_num
 
 /-- Coarser power-of-two form of the raw width-19 arithmetic. -/
 theorem raw_width19_fstar_arithmetic_le_two_pow_neg_70 :
@@ -163,10 +177,31 @@ theorem Width19MeasuredEventConnection.badChallenges_card_le
     (connection.candidateMessage history) (connection.support history)
 
 /-- Raw probability for one completed attempt.  The exact correlated family
-failure is at most `31 / 2^75`, conditional on the curve-decoding,
+failure is at most `2120 / 2^82`, conditional on the curve-decoding,
 implementation/extraction and prefix-conditioned sampling premises above.
 This is an ordinary completed-attempt probability; it is not the separate
 work-normalized 100-bit computational endpoint. -/
+theorem width19_completed_attempt_failure_probability_le_2120_div_two_pow_82
+    {Sample Prefix K Candidate : Type*}
+    [MeasurableSpace Sample]
+    [Field K] [Fintype K] [DecidableEq K]
+    [Nonempty Candidate]
+    (measure : Measure Sample) (width19Failure : Set Sample)
+    (connection : Width19MeasuredEventConnection
+      (Prefix := Prefix) (K := K) (Candidate := Candidate)
+      measure width19Failure) :
+    measure.real width19Failure ≤ (2120 : ℝ) / 2 ^ 82 := by
+  have rawBound := connection.prefixConditionedSampling
+    connection.badChallenges connection.badChallenges_card_le
+  have eventEquality : width19Failure = {sample |
+      connection.gammaAt sample ∈
+        connection.badChallenges (connection.prefixAt sample)} := by
+    ext sample
+    exact connection.exactFailure sample
+  rw [eventEquality]
+  exact rawBound.trans raw_width19_fstar_arithmetic_le_2120_div_two_pow_82
+
+/-- Older, looser ceiling retained for compatibility. -/
 theorem width19_completed_attempt_failure_probability_le_31_div_two_pow_75
     {Sample Prefix K Candidate : Type*}
     [MeasurableSpace Sample]
@@ -176,16 +211,9 @@ theorem width19_completed_attempt_failure_probability_le_31_div_two_pow_75
     (connection : Width19MeasuredEventConnection
       (Prefix := Prefix) (K := K) (Candidate := Candidate)
       measure width19Failure) :
-    measure.real width19Failure ≤ (31 : ℝ) / 2 ^ 75 := by
-  have rawBound := connection.prefixConditionedSampling
-    connection.badChallenges connection.badChallenges_card_le
-  have eventEquality : width19Failure = {sample |
-      connection.gammaAt sample ∈
-        connection.badChallenges (connection.prefixAt sample)} := by
-    ext sample
-    exact connection.exactFailure sample
-  rw [eventEquality]
-  exact rawBound.trans raw_width19_fstar_arithmetic_le_31_div_two_pow_75
+    measure.real width19Failure ≤ (31 : ℝ) / 2 ^ 75 :=
+  (width19_completed_attempt_failure_probability_le_2120_div_two_pow_82
+    measure width19Failure connection).trans (by norm_num)
 
 /-- Backwards-compatible name for the raw completed-attempt theorem. -/
 theorem width19_measured_failure_probability_le_31_div_two_pow_75
@@ -212,7 +240,7 @@ theorem width19_measured_failure_probability_le_two_pow_neg_70
       (Prefix := Prefix) (K := K) (Candidate := Candidate)
       measure width19Failure) :
     measure.real width19Failure ≤ (1 : ℝ) / 2 ^ 70 := by
-  exact (width19_completed_attempt_failure_probability_le_31_div_two_pow_75
+  exact (width19_completed_attempt_failure_probability_le_2120_div_two_pow_82
     measure width19Failure connection).trans (by norm_num)
 
 /-- Replace the visible width-19 term in any refined bound after the exact
@@ -230,9 +258,9 @@ theorem refined_bound_with_width19_raw_term
       (Prefix := Prefix) (K := K) (Candidate := Candidate)
       measure width19Failure) :
     measure.real target ≤
-      (1 : ℝ) / 2 ^ 75 + (31 : ℝ) / 2 ^ 75 + remaining := by
+      (1 : ℝ) / 2 ^ 75 + (2120 : ℝ) / 2 ^ 82 + remaining := by
   have widthBound :=
-    width19_completed_attempt_failure_probability_le_31_div_two_pow_75
+    width19_completed_attempt_failure_probability_le_2120_div_two_pow_82
       measure width19Failure connection
   linarith
 
@@ -266,19 +294,20 @@ theorem acceptedFalse_probability_le_two_pow_neg_75_plus_width19_raw_bound
       (Prefix := WidthPrefix) (K := K) (Candidate := WidthCandidate)
       measure data.width19Failure) :
     measure.real data.base.acceptedFalse ≤
-      (1 : ℝ) / 2 ^ 75 + (31 : ℝ) / 2 ^ 75 +
+      (1 : ℝ) / 2 ^ 75 + (2120 : ℝ) / 2 ^ 82 +
         nonterminalStatementFailureProbabilitySum measure boundary +
         measure.real data.hashMerkleResidualFailure := by
   have base := acceptedFalse_probability_le_two_pow_neg_75_nonduplicated
     measure data connections projection boundary terminalCandidateFailure
     coverage terminalBound
   have widthBound :=
-    width19_completed_attempt_failure_probability_le_31_div_two_pow_75
+    width19_completed_attempt_failure_probability_le_2120_div_two_pow_82
       measure data.width19Failure width19Connection
   linarith
 
 /-- After the raw width-19 connection, the two explicit ideal terms together
-are at most `2^-70`: `1/2^75 + 31/2^75 = 1/2^70`. -/
+are at most `2^-70`.  The theorem above retains the tighter width-19 term;
+this result is only the convenient power-of-two presentation. -/
 theorem acceptedFalse_probability_le_two_pow_neg_70_plus_remaining
     {Run Coins K Public Root WidthPrefix WidthCandidate : Type*}
     [Field K] [Fintype K] [DecidableEq K]
@@ -315,13 +344,16 @@ theorem acceptedFalse_probability_le_two_pow_neg_70_plus_remaining
       measure data connections projection boundary terminalCandidateFailure
       coverage terminalBound width19Connection
   have combine :
-      (1 : ℝ) / 2 ^ 75 + (31 : ℝ) / 2 ^ 75 =
+      (1 : ℝ) / 2 ^ 75 + (2120 : ℝ) / 2 ^ 82 ≤
         (1 : ℝ) / 2 ^ 70 := by norm_num
   linarith
 
 #print axioms raw_width19_fstar_arithmetic_le_31_div_two_pow_75
+#print axioms raw_width19_fstar_arithmetic_le_2120_div_two_pow_82
 #print axioms raw_width19_fstar_arithmetic_le_two_pow_neg_70
 #print axioms expanded_initial_fibres_exceed_width19_agreement_cap
+#print axioms
+  width19_completed_attempt_failure_probability_le_2120_div_two_pow_82
 #print axioms
   width19_completed_attempt_failure_probability_le_31_div_two_pow_75
 #print axioms width19_measured_failure_probability_le_31_div_two_pow_75
