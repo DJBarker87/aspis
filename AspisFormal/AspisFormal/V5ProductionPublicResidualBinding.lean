@@ -126,6 +126,77 @@ theorem terminal_public_semantic_positions_are_exact :
         publicResidualSemanticPosition (.asset which) = 75 + which.val) := by
   decide
 
+/-- Every public residual occupies one of the final four slots of the
+twenty-lane semantic array. -/
+theorem public_residual_semantic_position_lt_eighty
+    (coordinate : PublicResidualCoordinate) :
+    publicResidualSemanticPosition coordinate < 80 := by
+  cases coordinate with
+  | feeBalance => decide
+  | digest _ limb =>
+      simp only [publicResidualSemanticPosition]
+      omega
+  | asset which =>
+      simp only [publicResidualSemanticPosition]
+      omega
+
+/-- Semantic-array lane used by the production four-at-a-time packer. -/
+def publicResidualPackedLane
+    (coordinate : PublicResidualCoordinate) : Fin 20 :=
+  ⟨publicResidualSemanticPosition coordinate / 4, by
+    have := public_residual_semantic_position_lt_eighty coordinate
+    omega⟩
+
+/-- Base-four slot within the selected semantic-array lane. -/
+def publicResidualPackedSlot
+    (coordinate : PublicResidualCoordinate) : Fin 4 :=
+  ⟨publicResidualSemanticPosition coordinate % 4,
+    Nat.mod_lt _ (by decide)⟩
+
+/-- The lane and base-four slot recover the original semantic position. -/
+theorem public_residual_packed_location_recovers_position
+    (coordinate : PublicResidualCoordinate) :
+    4 * (publicResidualPackedLane coordinate).val +
+        (publicResidualPackedSlot coordinate).val =
+      publicResidualSemanticPosition coordinate := by
+  simp only [publicResidualPackedLane, publicResidualPackedSlot]
+  omega
+
+/-- Exact packed locations of the fee and two asset residuals. -/
+theorem fee_and_asset_packed_locations_are_exact :
+    (publicResidualPackedLane .feeBalance).val = 16 ∧
+      (publicResidualPackedSlot .feeBalance).val = 2 ∧
+      (publicResidualPackedLane (.asset 0)).val = 18 ∧
+      (publicResidualPackedSlot (.asset 0)).val = 3 ∧
+      (publicResidualPackedLane (.asset 1)).val = 19 ∧
+      (publicResidualPackedSlot (.asset 1)).val = 0 := by
+  decide
+
+/-- Exact packed locations of digest limbs zero through seven.  The same
+locations are used for each digest; their distinct row selectors separate
+the four digest instances. -/
+theorem digest_packed_locations_are_exact
+    (which : Fin 4) :
+    (List.ofFn (fun limb : Fin 8 =>
+      ((publicResidualPackedLane (.digest which limb)).val,
+        (publicResidualPackedSlot (.digest which limb)).val))) =
+      [(16, 3), (17, 0), (17, 1), (17, 2),
+        (17, 3), (18, 0), (18, 1), (18, 2)] := by
+  fin_cases which <;> decide
+
+/-- Row, packed lane, and base-four slot identify every one of the 35 public
+residuals.  Digest limbs share packed slots only when their production rows
+are different. -/
+def publicResidualSourceSlot
+    (coordinate : PublicResidualCoordinate) : Nat × Nat × Nat :=
+  (publicResidualRow coordinate,
+    (publicResidualPackedLane coordinate).val,
+    (publicResidualPackedSlot coordinate).val)
+
+theorem public_residual_source_slot_injective :
+    Function.Injective publicResidualSourceSlot := by
+  decide
+
 /-- The public cells read from one extracted production trace.  `inputValue`
 and `outputValue` are columns 11 and 12 at row 864.  The other coordinates
 come from the rows recorded by `publicResidualRow`. -/
@@ -359,6 +430,32 @@ theorem extracted_production_trace_binds_statement
   extracted_public_rows_bind_statement statement opened constraints
     (productionPublicRowsFromTrace z) extracted
 
+/-- Outside the one fixed-trace extraction failure, the production public
+residuals bind all six statement fields.  This is the direct form needed by a
+failure-event accounting proof. -/
+theorem outside_exact_public_residual_extraction_failure_binds_statement
+    (statement : V5PublicStatement) (opened : OpenedColumns)
+    (constraints : ConstraintsSatisfied opened)
+    (z : Fin 1024 → Fin 16 → F)
+    (outsideFailure : ¬ ExactPublicResidualExtractionFailure
+      (terminalSpendFields statement) opened z) :
+    OpenedColumnsMatchStatement statement opened := by
+  apply extracted_production_trace_binds_statement statement opened constraints z
+  exact Classical.byContradiction outsideFailure
+
+/-- If the six public fields do not match despite the maintained arithmetic
+constraints, the exact fixed-trace extraction condition must have failed. -/
+theorem statement_mismatch_implies_exact_public_residual_extraction_failure
+    (statement : V5PublicStatement) (opened : OpenedColumns)
+    (constraints : ConstraintsSatisfied opened)
+    (z : Fin 1024 → Fin 16 → F)
+    (mismatch : ¬ OpenedColumnsMatchStatement statement opened) :
+    ExactPublicResidualExtractionFailure
+      (terminalSpendFields statement) opened z := by
+  intro extracted
+  exact mismatch (extracted_production_trace_binds_statement
+    statement opened constraints z extracted)
+
 /-- Conversely, exact statement matching plus the maintained arithmetic
 constraints makes every production public row residual zero.  Together with
 `public_residuals_bind_statement`, this shows that the residual premise has
@@ -413,6 +510,10 @@ theorem public_residuals_vanish_iff_statement_match
 #print axioms public_residual_coordinate_count
 #print axioms terminal_asset_rows_are_exact
 #print axioms terminal_public_semantic_positions_are_exact
+#print axioms public_residual_packed_location_recovers_position
+#print axioms fee_and_asset_packed_locations_are_exact
+#print axioms digest_packed_locations_are_exact
+#print axioms public_residual_source_slot_injective
 #print axioms projected_row_residual_eq
 #print axioms normalized_residuals_of_extracted_rows
 #print axioms digest_eq_of_public_residuals
@@ -422,6 +523,8 @@ theorem public_residuals_vanish_iff_statement_match
 #print axioms public_residuals_bind_statement
 #print axioms extracted_public_rows_bind_statement
 #print axioms extracted_production_trace_binds_statement
+#print axioms outside_exact_public_residual_extraction_failure_binds_statement
+#print axioms statement_mismatch_implies_exact_public_residual_extraction_failure
 #print axioms public_residuals_vanish_of_statement_match
 #print axioms public_residuals_vanish_iff_statement_match
 
