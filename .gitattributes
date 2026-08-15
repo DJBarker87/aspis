@@ -4,3 +4,6 @@
 /release/**/*.bin -text
 /release/**/*.so -text
 /release/**/*.pdf -text
+
+# Unified diffs require a single-space marker on blank context lines.
+/aeneas-verif/**/*.patch whitespace=-blank-at-eol
