@@ -68,6 +68,8 @@ compile "$proof" V5MerkleGeneratedHelperBridge \
   "$proof/V5MerkleGeneratedHelperBridge.lean"
 compile "$proof" V5MerkleGeneratedRadixBridge \
   "$proof/V5MerkleGeneratedRadixBridge.lean"
+compile "$proof" V5MerkleGeneratedLeafBridge \
+  "$proof/V5MerkleGeneratedLeafBridge.lean"
 compile "$proof" V5MerkleGeneratedSoundnessAdapter \
   "$proof/V5MerkleGeneratedSoundnessAdapter.lean"
 
@@ -76,6 +78,7 @@ if rg -n '\b(sorry|admit|native_decide|unsafe|ofReduceBool)\b' \
     "$proof/V5MerkleGeneratedDriverBridge.lean" \
     "$proof/V5MerkleGeneratedHelperBridge.lean" \
     "$proof/V5MerkleGeneratedRadixBridge.lean" \
+    "$proof/V5MerkleGeneratedLeafBridge.lean" \
     "$proof/V5MerkleGeneratedSoundnessAdapter.lean" \
     "$generated/V5MerkleDeployedSource/FunsExternal.lean"; then
   echo "forbidden proof token" >&2
