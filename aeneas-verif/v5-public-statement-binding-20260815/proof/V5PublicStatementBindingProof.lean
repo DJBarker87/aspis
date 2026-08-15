@@ -1,5 +1,6 @@
 import AspisV5TerminalExtract.Funs
 import AspisFormal.V5AcceptedSpendRelation
+import AspisFormal.V5ProductionPublicResidualBinding
 
 open Aeneas Aeneas.Std Result ControlFlow Error
 
@@ -8,6 +9,7 @@ namespace AspisV5PublicStatementBinding
 open V5PublicStatementGenerated
 open AspisFormal.ArithmetizationCore
 open AspisV5AcceptedSpendRelation
+open AspisV5ProductionPublicResidualBinding
 
 abbrev RustStatement :=
   aspis_statement.atomic_statement.AtomicPaymentStatementV4
@@ -20,13 +22,7 @@ def arrayAt8 (array : Array Std.U32 8#usize) (index : Fin 8) : Std.U32 :=
 def rustDigest (array : Array Std.U32 8#usize) : Digest :=
   fun index => (arrayAt8 array index).val
 
-structure SixSpendFields where
-  currentAnchor : Digest
-  nullifier : Digest
-  outputCommitment : Digest
-  outputAnchor : Digest
-  asset : F
-  fee : Nat
+abbrev SixSpendFields := TerminalSpendFields
 
 def rustSpendFields (statement : RustStatement) : SixSpendFields where
   currentAnchor := rustDigest statement.spend.anchor
@@ -71,15 +67,9 @@ theorem decoded_context_equal_live_binds_all_six_fields
   subst live
   rfl
 
-structure OpenedColumnsMatchRustStatement
-    (statement : RustStatement) (opened : OpenedColumns) : Prop where
-  currentAnchor : opened.A = (rustSpendFields statement).currentAnchor
-  nullifier : opened.nu = (rustSpendFields statement).nullifier
-  outputCommitment :
-    opened.C_out = (rustSpendFields statement).outputCommitment
-  outputAnchor : opened.A' = (rustSpendFields statement).outputAnchor
-  asset : opened.a = (rustSpendFields statement).asset
-  fee : opened.f = (rustSpendFields statement).fee
+abbrev OpenedColumnsMatchRustStatement
+    (statement : RustStatement) (opened : OpenedColumns) :=
+  OpenedColumnsMatchTerminalSpendFields (rustSpendFields statement) opened
 
 /-! Once the authenticated polynomial openings are tied to the terminal's
 six values, equality of the decoded terminal statement and the live statement
@@ -98,24 +88,72 @@ theorem opened_columns_match_maintained_statement
       decodedIsLive).trans liveRepresentsStatement
   constructor
   · exact openedMatchesDecoded.currentAnchor.trans
-      (congrArg SixSpendFields.currentAnchor fields)
+      (congrArg TerminalSpendFields.currentAnchor fields)
   · exact openedMatchesDecoded.nullifier.trans
-      (congrArg SixSpendFields.nullifier fields)
+      (congrArg TerminalSpendFields.nullifier fields)
   · exact openedMatchesDecoded.outputCommitment.trans
-      (congrArg SixSpendFields.outputCommitment fields)
+      (congrArg TerminalSpendFields.outputCommitment fields)
   · exact openedMatchesDecoded.outputAnchor.trans
-      (congrArg SixSpendFields.outputAnchor fields)
+      (congrArg TerminalSpendFields.outputAnchor fields)
   · exact openedMatchesDecoded.asset.trans
-      (congrArg SixSpendFields.asset fields)
+      (congrArg TerminalSpendFields.asset fields)
   · exact openedMatchesDecoded.fee.trans
-      (congrArg SixSpendFields.fee fields)
+      (congrArg TerminalSpendFields.fee fields)
 
-/-! The only mathematical statement-binding premise left after the source
-decoder and live-equality check is the PCS/extraction fact that the accepted
-opening table has these six terminal values. -/
+/-! The remaining PCS/sumcheck step is now stated as the exact raw residual
+condition used by the production terminal, rather than assuming the desired
+six field equalities directly. -/
 def RemainingPCSStatementBinding
-    (decoded : RustStatement) (opened : OpenedColumns) : Prop :=
-  OpenedColumnsMatchRustStatement decoded opened
+    (decoded : RustStatement) (opened : OpenedColumns)
+    (z : Fin 1024 → Fin 16 → F) : Prop :=
+  ExtractedProductionTracePublicResiduals (rustSpendFields decoded) opened z
+
+/-- The exact residual premise, the maintained arithmetic constraints, and
+the source-extracted live-statement equality imply all six public field
+equalities.  This holds for every successful statement and opening record; it
+does not rely on the released proof bytes. -/
+theorem production_public_residuals_bind_live_statement
+    (decoded live : RustStatement)
+    (statement : V5PublicStatement) (opened : OpenedColumns)
+    (decodedIsLive : decoded = live)
+    (liveRepresentsStatement :
+      rustSpendFields live = maintainedSpendFields statement)
+    (constraints : ConstraintsSatisfied opened)
+    (z : Fin 1024 → Fin 16 → F)
+    (residuals : RemainingPCSStatementBinding decoded opened z) :
+    OpenedColumnsMatchStatement statement opened := by
+  have fields :
+      rustSpendFields decoded = terminalSpendFields statement := by
+    exact (decoded_context_equal_live_binds_all_six_fields decoded live
+      decodedIsLive).trans liveRepresentsStatement
+  change ExtractedProductionTracePublicResiduals
+    (rustSpendFields decoded) opened z at residuals
+  rw [fields] at residuals
+  exact extracted_production_trace_binds_statement statement opened constraints
+    z residuals
+
+/-- Equivalently, outside the one explicitly named residual-extraction
+failure, the production terminal binds all six fields.  No cryptographic
+probability is assigned to that failure here. -/
+def PublicResidualExtractionFailure
+    (decoded : RustStatement) (opened : OpenedColumns)
+    (z : Fin 1024 → Fin 16 → F) : Prop :=
+  ¬ RemainingPCSStatementBinding decoded opened z
+
+theorem no_public_residual_extraction_failure_binds_live_statement
+    (decoded live : RustStatement)
+    (statement : V5PublicStatement) (opened : OpenedColumns)
+    (decodedIsLive : decoded = live)
+    (liveRepresentsStatement :
+      rustSpendFields live = maintainedSpendFields statement)
+    (constraints : ConstraintsSatisfied opened)
+    (z : Fin 1024 → Fin 16 → F)
+    (outsideFailure :
+      ¬ PublicResidualExtractionFailure decoded opened z) :
+    OpenedColumnsMatchStatement statement opened := by
+  apply production_public_residuals_bind_live_statement decoded live statement
+    opened decodedIsLive liveRepresentsStatement constraints z
+  exact Classical.byContradiction outsideFailure
 
 /-! ## Exact terminal claim-table layout
 
@@ -203,6 +241,8 @@ theorem complete_claim_table_ends_at_1216_bytes :
 #print axioms decode_statement_success_binds_unique_six_fields
 #print axioms decoded_context_equal_live_binds_all_six_fields
 #print axioms opened_columns_match_maintained_statement
+#print axioms production_public_residuals_bind_live_statement
+#print axioms no_public_residual_extraction_failure_binds_live_statement
 #print axioms extracted_claim_uses_exact_point_major_offset
 #print axioms terminal_adapter_copies_each_semantic_lane
 #print axioms terminal_adapter_copies_hcopy

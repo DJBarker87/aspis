@@ -20,7 +20,17 @@ the released proof, that:
    `16 * (19 * point + lane)`; and
 6. the terminal adapter copies semantic lanes 0 through 15 and lane 16 into
    the old evaluator positions, leaves the removed positions zero, and reads
-   the mask from point 3, lane 17 (bytes 1184 through 1199).
+   the mask from point 3, lane 17 (bytes 1184 through 1199); and
+7. if the exact public row residuals made by the production semantic evaluator
+   vanish, the opened relation uses the live anchor, nullifier, output
+   commitment, output anchor, asset, and fee.
+
+The seventh result is universal. It does not assume the six desired
+equalities. It starts from the residual equations themselves. In particular,
+the fee is not a separate proof-table value: production inserts the live fee
+into the balance residual. Comparing that equation with the maintained
+balance equation, and using both 30-bit fee bounds, proves integer equality of
+the fees rather than equality only modulo M31.
 
 The source in `v5_cu_probe.rs` rejects unless
 `context_statement == live_statement`. That line and the call passing
@@ -30,14 +40,76 @@ whole `verify_v5_wire_prefix` function, so the implication from successful
 execution of that large function to the equality check remains a small,
 explicit Rust-control-flow step rather than a generated Lean theorem.
 
-The larger unresolved security step is not statement parsing or byte indexing.
-It is proving that a successful polynomial-commitment/FRI verification yields
-the same opening table consumed by the terminal and that its vanishing public
-residuals reconstruct the six fields of `OpenedColumns`. The proof names the
-last statement-level relation `RemainingPCSStatementBinding`. Aeneas cannot
-translate the enclosing terminal loops because they return errors from inside
-the loops, so the loop-to-adapter control-flow fact also remains source-pinned
-rather than a generated Lean theorem.
+## Production evaluator audit
+
+The replay now also pins the complete source files that contain the semantic
+evaluator, its row constants, and the 30-bit fee limit. The checked Lean model
+records these exact source positions:
+
+The source audit follows the four functions that carry these checks into the
+value accepted by the verifier:
+
+1. `atomic_semantic_packed_impl` makes the fee, digest and asset row
+   residuals and places them in semantic positions 66 through 76.
+2. `atomic_state_only_selected_constraint_composition_compiled_v3` folds the
+   packed semantic values, the copy value and the Poseidon values with
+   `theta`.
+3. `atomic_state_only_selected_unmasked_terminal_value_compiled_v3`
+   multiplies that composition by the zerocheck equality value and adds the
+   helper term.
+4. `verify_v5_atomic_terminal_from_bytes` reads the exact claim table, calls
+   the unmasked terminal, compares its result with the authenticated real
+   claim, checks the mask claim, and checks the final affine equation.
+
+| Public check | Production row | Semantic position before packing |
+|---|---:|---:|
+| Fee balance | 864 | 66 |
+| Current anchor, 8 limbs | 379 | 67 through 74 |
+| Output anchor, 8 limbs | 699 | 67 through 74 |
+| Nullifier, 8 limbs | 731 | 67 through 74 |
+| Output commitment, 8 limbs | 779 | 67 through 74 |
+| Input asset | 795 | 75 |
+| Output asset | 799 | 76 |
+
+There are 35 raw row residuals: one fee equation, 32 digest-limb equations,
+and two asset equations. The production code then:
+
+1. multiplies each row residual by its multilinear row selector;
+2. packs four semantic positions at a time;
+3. folds the packed semantic lanes, the copy lane, and the Poseidon lanes with
+   `theta`;
+4. multiplies the composition by the zerocheck equality value and adds the
+   helper term; and
+5. checks that result against the authenticated terminal claim. The V5 adapter
+   also checks the mask opening and the affine masked-terminal equation.
+
+This audit matters because a single accepted scalar is not logically the same
+thing as 35 zero row residuals. A cancellation in packing or challenge folding,
+or a failure of the sumcheck/PCS extraction argument, must be handled by the
+soundness proof.
+
+The remaining condition is therefore narrow and explicit:
+`RemainingPCSStatementBinding` takes the fixed 1,024-by-16 trace table
+extracted from the accepted commitments. It states that the exact production
+cells in that table map to the maintained opened columns and that all 35 row
+residuals vanish. The theorem cannot choose a convenient table after seeing
+the statement, and it does not assume the desired six field equalities. The
+theorem `production_public_residuals_bind_live_statement` proves that this
+condition, the maintained arithmetic constraints, and equality of the decoded
+and live statements imply all six field equalities.
+
+The unresolved security step is proving that every accepted deployed proof
+supplies those 35 zero residuals through sumcheck and PCS/FRI extraction, or
+bounding the named `PublicResidualExtractionFailure` event. No probability is
+assigned to that event in this bundle. A pinned full-evaluator extraction was
+attempted. Charon rejected the resulting standard-library iterator graph with
+trait-clause mismatches for `Zip`, `ChunksExactMut`, `IterMut`, and
+`Enumerate`. Disabling Charon's final type check produced an LLBC file, but
+Aeneas then stopped with an internal type-translation error in Rust's
+`Iterator` trait. Treating that unchecked LLBC as proof evidence would be
+unsound. The large evaluator therefore remains protected by exact source
+hashes and the explicit source-shaped residual model; the decoder and claim
+reader are the source-extracted portions.
 
 ## Extraction
 
@@ -68,7 +140,7 @@ Build the maintained statement model once, then run:
 
 ```bash
 cd AspisFormal
-NO_DNA=1 lake build AspisFormal.V5AcceptedSpendRelation
+NO_DNA=1 lake build AspisFormal.V5ProductionPublicResidualBinding
 cd ..
 
 LEAN432_BIN=/path/to/lean-4.32.0 \

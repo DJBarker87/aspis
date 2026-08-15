@@ -28,6 +28,12 @@ check_hash 84c14aab5656afaf36998f7bb085c35120578a9d3eb3f4c3fe8bbf6ebbf949b7 \
   programs/aspis-verifier/src/v5_atomic_terminal.rs
 check_hash 6f40c88c7a6b9f1ce657dd07eaa3e323c4bd3578839d874ba0a16c0117ce8224 \
   programs/aspis-verifier/src/v5_cu_probe.rs
+check_hash dcaa91d454db276b9dc40baf951b62d0eea0fbe87a14b51752525e5316078986 \
+  crates/aspis-statement/src/atomic_state_only_terminal.rs
+check_hash fd14b8dfd2f690d588b39ecabad46d23ef8b47fc9aad047f0c645260b94c99dd \
+  crates/aspis-statement/src/state_only_terminal_constants.rs
+check_hash 1cee5f45331207c1841106838daea76126f85b1c97b1066bc39089a6cb623ee9 \
+  crates/aspis-statement/src/spend.rs
 check_hash 32c75a198064af1bf7700a3cf92198e6bd01d8655405a55736b37d8302c4dc09 \
   crates/aspis-statement/src/atomic_statement.rs
 check_hash dadd6bac7c6c44fcb13e1a1ca26e9d2b6f767370bb6e802640948f15fc795836 \
@@ -46,8 +52,8 @@ mkdir -p "$out/AspisV5TerminalExtract"
 : > "$log"
 
 aspis_path=$(cd "$root/AspisFormal" && NO_DNA=1 lake env printenv LEAN_PATH)
-if [[ ! -f "$root/AspisFormal/.lake/build/lib/lean/AspisFormal/V5AcceptedSpendRelation.olean" ]]; then
-  echo "run 'cd AspisFormal && NO_DNA=1 lake build AspisFormal.V5AcceptedSpendRelation' first" >&2
+if [[ ! -f "$root/AspisFormal/.lake/build/lib/lean/AspisFormal/V5ProductionPublicResidualBinding.olean" ]]; then
+  echo "run 'cd AspisFormal && NO_DNA=1 lake build AspisFormal.V5ProductionPublicResidualBinding' first" >&2
   exit 1
 fi
 export LEAN_PATH="$out:$aspis_path:$aeneas_lib"
