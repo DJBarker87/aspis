@@ -48,6 +48,7 @@ import AspisFormal.V5AcceptedSpendRelation
 import AspisFormal.V5ProductionPublicResidualBinding
 import AspisFormal.V5AcceptedTerminalResidualExtraction
 import AspisFormal.V5AcceptedSumcheckSourceBridge
+import AspisFormal.V5AdaptiveSumcheckChallengeBound
 import AspisFormal.V5DeployedFalseAcceptance
 import AspisFormal.V5TheftResistance
 import AspisFormal.V5FixedVictimTheftGame
