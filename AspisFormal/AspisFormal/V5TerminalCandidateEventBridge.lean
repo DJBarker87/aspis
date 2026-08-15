@@ -1,6 +1,7 @@
 import AspisFormal.V5ComponentCQM31TowerExact
 import AspisFormal.V5PrefixDependentCandidateSecurity
 import AspisFormal.V5RefinedAcceptedFalseAccounting
+import AspisFormal.V5TerminalFixedInitialListSecurity
 
 /-!
 # Exact terminal-candidate event
@@ -27,6 +28,8 @@ open AspisV5AcceptedSumcheckSourceBridge
 open AspisV5AdaptiveSumcheckChallengeBound
 open AspisV5CryptographicAssumptions
 open AspisV5ForwardAcceptedFalseRawAccounting
+open AspisV5FriCoherentCandidateExtraction
+open AspisV5FriInitialListBound
 open AspisV5MaskedBoundaryFailureAccounting
 open AspisV5ProjectedAcceptedFalseRawAccounting
 open AspisV5PrefixDependentCandidateSecurity
@@ -35,6 +38,8 @@ open AspisV5RefinedRawCoreAccounting
 open AspisV5SequentialTerminalChallengeBound
 open AspisV5StatementBindingFailureAccounting
 open AspisV5SumcheckTranscriptBinding
+open AspisV5Tag67FixedCandidateTiming
+open AspisV5TerminalFixedInitialListSecurity
 open Module
 
 variable {K : Type*} [Field K] [Fintype K] [DecidableEq K]
@@ -47,6 +52,13 @@ theorem qm31Exact_card_cast_eq_soundness_field :
       AspisSoundnessLedger.FIELD := by
   rw [AspisV5ComponentCQM31TowerExact.qm31Exact_card]
   norm_num [AspisV5ComponentCQM31TowerExact.P, AspisSoundnessLedger.FIELD]
+
+/-- Short name for the decoder list fixed by one committed prefix. -/
+abbrev PrefixFixedInitialCandidate
+    {K Prefix : Type*} [Field K] [Fintype K] [DecidableEq K]
+    (encoders : CodeEncoders K) (layer0Of : Prefix → Word0 K)
+    (committedPrefix : Prefix) :=
+  FixedInitialCandidate encoders (layer0Of committedPrefix)
 
 /-- The exact terminal algebra plan carried by one projected candidate run. -/
 noncomputable def fixedTerminalPlanAt
@@ -123,7 +135,7 @@ noncomputable def exactTerminalCandidateFailureSet
           (plans.sumcheckPlanOf schedule).badAt
             (challengeHistory (boundary.wireOf run).transcript.point round)}
 
-set_option maxRecDepth 100000 in
+set_option maxRecDepth 1000000 in
 /-- The exact event above discharges all four containment fields in the
 non-duplicated accepted-false accounting. -/
 theorem exactTerminalCandidateFailureCoverage
@@ -240,6 +252,53 @@ theorem exactTerminalCandidateFailure_probability_le_raw_bound
       rw [fieldCard]
       rfl
 
+set_option maxRecDepth 100000 in
+/-- Specialization of the production sampling boundary to the decoder list
+that is fixed by the committed layer-zero word before any terminal challenge.
+The candidate cap is no longer caller supplied: the published encoder-distance
+theorem gives at most 222 candidates, which is stronger than the conservative
+release cap of 240.  The remaining premise is exactly the production
+SHA-256/Fiat--Shamir conditional-sampling comparison. -/
+theorem exactTerminalCandidateFailure_probability_le_raw_bound_fixed_list
+    {Run Coins K Public Root Prefix : Type*}
+    [Field K] [Fintype K] [DecidableEq K]
+    [Algebra (ZMod P) K] [NeZero (2 : K)] [MeasurableSpace Coins]
+    [Fintype Prefix] [Nonempty Prefix]
+    {rc : RoundConstants}
+    {deployedOwner : Digest → Digest}
+    {deployedNote : Digest → F → F → Digest → Digest}
+    {deployedNullifier : Digest → Digest → Digest}
+    {deployedNode : Digest → Digest → Digest}
+    {scheme : FiatShamirSchedule Public Root K}
+    {data : ProjectedAcceptedFalseExperimentData Coins K rc deployedOwner
+      deployedNote deployedNullifier deployedNode}
+    {projection : StatementBindingProjectionData Run Coins K data}
+    {boundary : MaskedBoundaryProjectionData Run Coins K Public Root
+      (scheme := scheme) projection}
+    (measure : Measure Coins)
+    (plans : TerminalCandidatePlanProjection Run Coins K Public Root
+      boundary)
+    (encoders : CodeEncoders K)
+    (layer0Of : Prefix → Word0 K)
+    (hdistance : InitialEncoderDistance encoders)
+    (terminal : ∀ p, PrefixFixedInitialCandidate encoders layer0Of p →
+      FixedTerminalAlgebraPlan K)
+    (sumcheck : ∀ p, PrefixFixedInitialCandidate encoders layer0Of p →
+      AdaptiveDegree27MessagePlan K)
+    (fieldCard : (Fintype.card K : Real) = AspisSoundnessLedger.FIELD)
+    (sourceHashAndConditionalSampling :
+      measure.real (exactTerminalCandidateFailureSet plans) ≤
+        (prefixAveragedCandidateTerminalSubtotal Prefix
+          (PrefixFixedInitialCandidate encoders layer0Of) terminal
+          sumcheck : Real)) :
+    measure.real (exactTerminalCandidateFailureSet plans) ≤
+      rawCandidateTerminalBound := by
+  apply exactTerminalCandidateFailure_probability_le_raw_bound measure plans
+    (PrefixFixedInitialCandidate encoders layer0Of) terminal sumcheck
+    (fun p ↦ ?_) fieldCard sourceHashAndConditionalSampling
+  exact (fixedInitialCandidate_fintype_card_le_222 encoders (layer0Of p)
+    hdistance).trans (by omega)
+
 /-- Accepted-false accounting specialized to the concrete terminal-candidate
 event.  Unlike the generic theorem, this statement has no separate
 set-containment premise for the four terminal failure cases. -/
@@ -315,6 +374,8 @@ theorem productionFalseSpend_probability_le_with_exact_terminal_event
 #print axioms exactTerminalCandidateFailureCoverage
 #print axioms qm31Exact_card_cast_eq_soundness_field
 #print axioms exactTerminalCandidateFailure_probability_le_raw_bound
+#print axioms
+  exactTerminalCandidateFailure_probability_le_raw_bound_fixed_list
 #print axioms acceptedFalse_probability_le_with_exact_terminal_event
 #print axioms productionFalseSpend_probability_le_with_exact_terminal_event
 
