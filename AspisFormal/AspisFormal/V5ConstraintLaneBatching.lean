@@ -4,15 +4,15 @@ import AspisFormal.SoundnessLedger
 /-!
 # Exact batching of the V5 constraint lanes
 
-The production state-only evaluator combines one copy lane, sixteen semantic
+The production state-only evaluator combines one copy lane, twenty semantic
 lanes, and four Poseidon lanes with powers of the transcript challenge
 `theta`.  The Rust loops visit each array in reverse while updating
 `composition = theta * composition + lane`.  Consequently the final powers
 are, in order,
 
 * Poseidon lanes `0..3` at powers `0..3`;
-* semantic lanes `0..15` at powers `4..19`; and
-* the copy lane at power `20`.
+* semantic lanes `0..19` at powers `4..23`; and
+* the copy lane at power `24`.
 
 This file proves that exact ordering, proves that a nonzero fixed lane vector
 can vanish for at most twenty field challenges, and states the transcript
@@ -28,51 +28,51 @@ open AspisV5FriConcreteEncoderApplicability
 
 variable {K : Type*} [Field K]
 
-abbrev ConstraintLane := Fin 21
+abbrev ConstraintLane := Fin 25
 
 /-- The exact final coefficient vector produced by the two reverse Horner
 loops in `atomic_state_only_composition_parts_compiled_v3`. -/
 def constraintLaneVector
-    (poseidon : Fin 4 → K) (semantic : Fin 16 → K) (copy : K) :
+    (poseidon : Fin 4 → K) (semantic : Fin 20 → K) (copy : K) :
     ConstraintLane → K := fun lane =>
   if hposeidon : lane.val < 4 then
     poseidon ⟨lane.val, hposeidon⟩
-  else if hsemantic : lane.val < 20 then
+  else if hsemantic : lane.val < 24 then
     semantic ⟨lane.val - 4, by omega⟩
   else
     copy
 
 @[simp]
 theorem constraintLaneVector_poseidon
-    (poseidon : Fin 4 → K) (semantic : Fin 16 → K) (copy : K)
+    (poseidon : Fin 4 → K) (semantic : Fin 20 → K) (copy : K)
     (lane : Fin 4) :
     constraintLaneVector poseidon semantic copy
-        ⟨lane.val, lane.isLt.trans (by decide : 4 < 21)⟩ = poseidon lane := by
+        ⟨lane.val, lane.isLt.trans (by decide : 4 < 25)⟩ = poseidon lane := by
   simp [constraintLaneVector, lane.isLt]
 
 @[simp]
 theorem constraintLaneVector_semantic
-    (poseidon : Fin 4 → K) (semantic : Fin 16 → K) (copy : K)
-    (lane : Fin 16) :
+    (poseidon : Fin 4 → K) (semantic : Fin 20 → K) (copy : K)
+    (lane : Fin 20) :
     constraintLaneVector poseidon semantic copy
         ⟨lane.val + 4, by omega⟩ = semantic lane := by
   simp [constraintLaneVector]
 
 @[simp]
 theorem constraintLaneVector_copy
-    (poseidon : Fin 4 → K) (semantic : Fin 16 → K) (copy : K) :
-    constraintLaneVector poseidon semantic copy (20 : ConstraintLane) = copy := by
+    (poseidon : Fin 4 → K) (semantic : Fin 20 → K) (copy : K) :
+    constraintLaneVector poseidon semantic copy (24 : ConstraintLane) = copy := by
   simp [constraintLaneVector]
 
-/-- Scalar-power batch of all twenty-one production constraint lanes. -/
-def width21Batch (values : ConstraintLane → K) (theta : K) : K :=
+/-- Scalar-power batch of all twenty-five production constraint lanes. -/
+def width25Batch (values : ConstraintLane → K) (theta : K) : K :=
   ∑ lane : ConstraintLane, values lane * theta ^ lane.val
 
 @[simp]
-theorem eval_monomialPolynomial_width21
+theorem eval_monomialPolynomial_width25
     (values : ConstraintLane → K) (theta : K) :
-    (monomialPolynomial values).eval theta = width21Batch values theta := by
-  simp [monomialPolynomial, width21Batch, Polynomial.eval_finsetSum]
+    (monomialPolynomial values).eval theta = width25Batch values theta := by
+  simp [monomialPolynomial, width25Batch, Polynomial.eval_finsetSum]
 
 /-- Literal mathematical spelling of a Rust reverse-iterator Horner loop. -/
 def reverseHorner (lanes : List K) (theta accumulator : K) : K :=
@@ -81,35 +81,35 @@ def reverseHorner (lanes : List K) (theta accumulator : K) : K :=
 /-- The two source loops: semantic lanes are folded into the copy lane first,
 then Poseidon lanes are folded around that result. -/
 def sourceConstraintComposition
-    (poseidon : Fin 4 → K) (semantic : Fin 16 → K)
+    (poseidon : Fin 4 → K) (semantic : Fin 20 → K)
     (copy theta : K) : K :=
   reverseHorner (List.ofFn poseidon) theta
     (reverseHorner (List.ofFn semantic) theta copy)
 
-/-- The source-shaped two-loop computation is exactly the width-21
+/-- The source-shaped two-loop computation is exactly the width-25
 scalar-power batch with the deployed lane order. -/
-theorem sourceConstraintComposition_eq_width21Batch
-    (poseidon : Fin 4 → K) (semantic : Fin 16 → K)
+theorem sourceConstraintComposition_eq_width25Batch
+    (poseidon : Fin 4 → K) (semantic : Fin 20 → K)
     (copy theta : K) :
     sourceConstraintComposition poseidon semantic copy theta =
-      width21Batch (constraintLaneVector poseidon semantic copy) theta := by
-  simp [sourceConstraintComposition, reverseHorner, width21Batch,
+      width25Batch (constraintLaneVector poseidon semantic copy) theta := by
+  simp [sourceConstraintComposition, reverseHorner, width25Batch,
     constraintLaneVector, Fin.sum_univ_succ]
   ring
 
-/-- The exact source computation is zero iff its width-21 polynomial
+/-- The exact source computation is zero iff its width-25 polynomial
 evaluates to zero. -/
 theorem sourceConstraintComposition_eq_zero_iff_polynomial_eval_eq_zero
-    (poseidon : Fin 4 → K) (semantic : Fin 16 → K)
+    (poseidon : Fin 4 → K) (semantic : Fin 20 → K)
     (copy theta : K) :
     sourceConstraintComposition poseidon semantic copy theta = 0 ↔
       (monomialPolynomial
         (constraintLaneVector poseidon semantic copy)).eval theta = 0 := by
-  rw [sourceConstraintComposition_eq_width21Batch,
-    eval_monomialPolynomial_width21]
+  rw [sourceConstraintComposition_eq_width25Batch,
+    eval_monomialPolynomial_width25]
 
-/-- A nonzero twenty-one-lane discrepancy gives a nonzero polynomial. -/
-theorem width21Polynomial_ne_zero
+/-- A nonzero twenty-five-lane discrepancy gives a nonzero polynomial. -/
+theorem width25Polynomial_ne_zero
     (values : ConstraintLane → K) (hvalues : values ≠ 0) :
     monomialPolynomial values ≠ 0 := by
   intro hzero
@@ -117,17 +117,17 @@ theorem width21Polynomial_ne_zero
   apply monomialPolynomial_injective
   simpa [monomialPolynomial] using hzero
 
-/-- The constraint-lane batching polynomial has degree at most twenty. -/
-theorem width21Polynomial_natDegree_le (values : ConstraintLane → K) :
-    (monomialPolynomial values).natDegree ≤ 20 := by
+/-- The constraint-lane batching polynomial has degree at most twenty-four. -/
+theorem width25Polynomial_natDegree_le (values : ConstraintLane → K) :
+    (monomialPolynomial values).natDegree ≤ 24 := by
   simpa using
-    (monomialPolynomial_natDegree_le (K := K) (n := 21) (by decide) values)
+    (monomialPolynomial_natDegree_le (K := K) (n := 25) (by decide) values)
 
 /-- If the batching polynomial is identically zero, every source lane is
 zero.  This is the deterministic implication used outside the collision
 event. -/
 theorem all_source_lanes_zero_of_polynomial_eq_zero
-    (poseidon : Fin 4 → K) (semantic : Fin 16 → K) (copy : K)
+    (poseidon : Fin 4 → K) (semantic : Fin 20 → K) (copy : K)
     (hzero : monomialPolynomial
       (constraintLaneVector poseidon semantic copy) = 0) :
     (∀ lane, poseidon lane = 0) ∧
@@ -138,13 +138,13 @@ theorem all_source_lanes_zero_of_polynomial_eq_zero
   constructor
   · intro lane
     have := congrFun hvector
-      ⟨lane.val, lane.isLt.trans (by decide : 4 < 21)⟩
+      ⟨lane.val, lane.isLt.trans (by decide : 4 < 25)⟩
     simpa using this
   constructor
   · intro lane
     have := congrFun hvector ⟨lane.val + 4, by omega⟩
     simpa using this
-  · have := congrFun hvector (20 : ConstraintLane)
+  · have := congrFun hvector (24 : ConstraintLane)
     simpa using this
 
 section FiniteField
@@ -152,39 +152,39 @@ section FiniteField
 variable [Fintype K] [DecidableEq K]
 
 /-- All field challenges that hide a fixed nonzero lane discrepancy. -/
-def width21CollisionSet (values : ConstraintLane → K) : Finset K :=
-  Finset.univ.filter fun theta => width21Batch values theta = 0
+def width25CollisionSet (values : ConstraintLane → K) : Finset K :=
+  Finset.univ.filter fun theta => width25Batch values theta = 0
 
-/-- At most twenty field challenges hide a fixed nonzero constraint-lane
+/-- At most twenty-four field challenges hide a fixed nonzero constraint-lane
 vector. -/
-theorem width21_collision_card_le_twenty
+theorem width25_collision_card_le_twenty_four
     (values : ConstraintLane → K) (hvalues : values ≠ 0) :
-    (width21CollisionSet values).card ≤ 20 := by
+    (width25CollisionSet values).card ≤ 24 := by
   let polynomial := monomialPolynomial values
-  have hpolynomial : polynomial ≠ 0 := width21Polynomial_ne_zero values hvalues
-  have hsubset : (width21CollisionSet values).val ⊆ polynomial.roots := by
+  have hpolynomial : polynomial ≠ 0 := width25Polynomial_ne_zero values hvalues
+  have hsubset : (width25CollisionSet values).val ⊆ polynomial.roots := by
     intro theta htheta
-    have hbatch : width21Batch values theta = 0 := by
+    have hbatch : width25Batch values theta = 0 := by
       exact (Finset.mem_filter.mp htheta).2
     rw [Polynomial.mem_roots hpolynomial]
     simpa [Polynomial.IsRoot, polynomial] using hbatch
   exact (Polynomial.card_le_degree_of_subset_roots hsubset).trans
-    (width21Polynomial_natDegree_le values)
+    (width25Polynomial_natDegree_le values)
 
-def uniformWidth21CollisionProbability (values : ConstraintLane → K) : Rat :=
-  (width21CollisionSet values).card / Fintype.card K
+def uniformWidth25CollisionProbability (values : ConstraintLane → K) : Rat :=
+  (width25CollisionSet values).card / Fintype.card K
 
 /-- Under a uniform full-field challenge, the fixed-vector collision
-probability is at most `20 / |K|`. -/
-theorem uniform_width21_collision_probability_le
+probability is at most `24 / |K|`. -/
+theorem uniform_width25_collision_probability_le
     (values : ConstraintLane → K) (hvalues : values ≠ 0) :
-    uniformWidth21CollisionProbability values ≤
-      (20 : Rat) / Fintype.card K := by
+    uniformWidth25CollisionProbability values ≤
+      (24 : Rat) / Fintype.card K := by
   have hcardNat : 0 < Fintype.card K := Fintype.card_pos_iff.mpr ⟨0⟩
   have hcard : (0 : Rat) < Fintype.card K := by exact_mod_cast hcardNat
-  rw [uniformWidth21CollisionProbability,
+  rw [uniformWidth25CollisionProbability,
     div_le_div_iff_of_pos_right hcard]
-  exact_mod_cast width21_collision_card_le_twenty values hvalues
+  exact_mod_cast width25_collision_card_le_twenty_four values hvalues
 
 /-! ## Transcript-ordering condition -/
 
@@ -193,48 +193,48 @@ def FixedBeforeTheta {Prefix : Type*}
   ∀ transcriptPrefix thetaOne thetaTwo,
     values transcriptPrefix thetaOne = values transcriptPrefix thetaTwo
 
-def adaptiveWidth21CollisionSet {Prefix : Type*}
+def adaptiveWidth25CollisionSet {Prefix : Type*}
     (values : Prefix → K → ConstraintLane → K)
-    (transcriptPrefix : Prefix) : Finset K :=
+  (transcriptPrefix : Prefix) : Finset K :=
   Finset.univ.filter fun theta =>
-    width21Batch (values transcriptPrefix theta) theta = 0
+    width25Batch (values transcriptPrefix theta) theta = 0
 
-theorem adaptiveWidth21CollisionSet_eq
+theorem adaptiveWidth25CollisionSet_eq
     {Prefix : Type*}
     (values : Prefix → K → ConstraintLane → K)
     (fixed : FixedBeforeTheta values)
     (transcriptPrefix : Prefix) (thetaZero : K) :
-    adaptiveWidth21CollisionSet values transcriptPrefix =
-      width21CollisionSet (values transcriptPrefix thetaZero) := by
+    adaptiveWidth25CollisionSet values transcriptPrefix =
+      width25CollisionSet (values transcriptPrefix thetaZero) := by
   ext theta
-  simp only [adaptiveWidth21CollisionSet, width21CollisionSet,
+  simp only [adaptiveWidth25CollisionSet, width25CollisionSet,
     Finset.mem_filter, Finset.mem_univ, true_and]
   rw [fixed transcriptPrefix theta thetaZero]
 
-theorem adaptive_width21_collision_card_le_twenty
+theorem adaptive_width25_collision_card_le_twenty_four
     {Prefix : Type*}
     (values : Prefix → K → ConstraintLane → K)
     (fixed : FixedBeforeTheta values)
     (transcriptPrefix : Prefix) (thetaZero : K)
     (nonzero : values transcriptPrefix thetaZero ≠ 0) :
-    (adaptiveWidth21CollisionSet values transcriptPrefix).card ≤ 20 := by
-  rw [adaptiveWidth21CollisionSet_eq values fixed transcriptPrefix thetaZero]
-  exact width21_collision_card_le_twenty _ nonzero
+    (adaptiveWidth25CollisionSet values transcriptPrefix).card ≤ 24 := by
+  rw [adaptiveWidth25CollisionSet_eq values fixed transcriptPrefix thetaZero]
+  exact width25_collision_card_le_twenty_four _ nonzero
 
 end FiniteField
 
-/-- For deployed QM31 cardinality, the exact 21-lane term is within the
+/-- For deployed QM31 cardinality, the exact 25-lane term is within the
 existing conservative `2^-119` ledger allocation. -/
-theorem qm31_width21_collision_le_two_pow_neg_119 :
-    (20 : Real) / AspisSoundnessLedger.FIELD ≤ 1 / 2 ^ 119 := by
+theorem qm31_width25_collision_le_two_pow_neg_119 :
+    (24 : Real) / AspisSoundnessLedger.FIELD ≤ 1 / 2 ^ 119 := by
   unfold AspisSoundnessLedger.FIELD
   norm_num
 
-#print axioms sourceConstraintComposition_eq_width21Batch
+#print axioms sourceConstraintComposition_eq_width25Batch
 #print axioms all_source_lanes_zero_of_polynomial_eq_zero
-#print axioms width21_collision_card_le_twenty
-#print axioms uniform_width21_collision_probability_le
-#print axioms adaptive_width21_collision_card_le_twenty
-#print axioms qm31_width21_collision_le_two_pow_neg_119
+#print axioms width25_collision_card_le_twenty_four
+#print axioms uniform_width25_collision_probability_le
+#print axioms adaptive_width25_collision_card_le_twenty_four
+#print axioms qm31_width25_collision_le_two_pow_neg_119
 
 end AspisV5ConstraintLaneBatching
