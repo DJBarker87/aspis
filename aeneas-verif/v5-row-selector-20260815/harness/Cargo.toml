@@ -1,0 +1,18 @@
+[package]
+name = "aspis-statement-row-selector-extraction"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[lib]
+path = "../../../crates/aspis-statement/src/lib.rs"
+
+[features]
+insecure-test-logup-compression = []
+spend-dynamic-rate512 = []
+
+[dependencies]
+aspis-core = { path = "../../../crates/aspis-core" }
+
+[workspace]
