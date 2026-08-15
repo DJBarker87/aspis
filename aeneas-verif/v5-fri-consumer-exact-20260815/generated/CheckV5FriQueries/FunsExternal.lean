@@ -53,8 +53,11 @@ axiom core.option.Option.map_or
     Name pattern: [core::option::{core::option::Option<@T>}::ok_or]
     Visibility: public -/
 @[rust_fun "core::option::{core::option::Option<@T>}::ok_or"]
-axiom core.option.Option.ok_or
-  {T : Type} {E : Type} : (Option T) → E → Result (core.result.Result T E)
+def core.option.Option.ok_or
+    {T : Type} {E : Type} : Option T → E →
+      Result (core.result.Result T E)
+  | some value, _ => ok (.Ok value)
+  | none, error => ok (.Err error)
 
 /-- [core::option::{core::option::Option<T>}::ok_or_else]:
     Source: '/rustc/library/core/src/option.rs', lines 1360:4-1362:52
@@ -71,9 +74,10 @@ axiom core.option.Option.ok_or_else
     Name pattern: [core::option::{core::option::Option<&'0 @T>}::copied]
     Visibility: public -/
 @[rust_fun "core::option::{core::option::Option<&'0 @T>}::copied"]
-axiom core.option.OptionShared0T.copied
-  {T : Type} (markerCopyInst : core.marker.Copy T) :
-  (Option T) → Result (Option T)
+def core.option.OptionShared0T.copied
+    {T : Type} (_markerCopyInst : core.marker.Copy T) :
+      Option T → Result (Option T)
+  | value => ok value
 
 /-- [core::option::{impl core::cmp::PartialEq<core::option::Option<T>> for core::option::Option<T>}::eq]:
     Source: '/rustc/library/core/src/option.rs', lines 2440:4-2440:38
@@ -81,9 +85,12 @@ axiom core.option.OptionShared0T.copied
     Visibility: public -/
 @[rust_fun
   "core::option::{core::cmp::PartialEq<core::option::Option<@T>, core::option::Option<@T>>}::eq"]
-axiom core.option.Option.Insts.CoreCmpPartialEqOption.eq
-  {T : Type} (cmpPartialEqInst : core.cmp.PartialEq T T) :
-  (Option T) → (Option T) → Result Bool
+def core.option.Option.Insts.CoreCmpPartialEqOption.eq
+    {T : Type} (cmpPartialEqInst : core.cmp.PartialEq T T) :
+      Option T → Option T → Result Bool
+  | none, none => ok true
+  | some left, some right => cmpPartialEqInst.eq left right
+  | _, _ => ok false
 
 /-- [core::option::{impl core::ops::try_trait::Try for core::option::Option<T>}::branch]:
     Source: '/rustc/library/core/src/option.rs', lines 2779:4-2779:64
@@ -91,10 +98,12 @@ axiom core.option.Option.Insts.CoreCmpPartialEqOption.eq
     Visibility: public -/
 @[rust_fun
   "core::option::{core::ops::try_trait::Try<core::option::Option<@T>>}::branch"]
-axiom core.option.Option.Insts.CoreOpsTry_traitTry.branch
-  {T : Type} :
-  (Option T) → Result (core.ops.control_flow.ControlFlow (Option
-    core.convert.Infallible) T)
+def core.option.Option.Insts.CoreOpsTry_traitTry.branch
+    {T : Type} : Option T →
+      Result (core.ops.control_flow.ControlFlow
+        (Option core.convert.Infallible) T)
+  | none => ok (.Break none)
+  | some value => ok (.Continue value)
 
 /-- [core::option::{impl core::ops::try_trait::FromResidual<core::option::Option<core::convert::Infallible>> for core::option::Option<T>}::from_residual]:
     Source: '/rustc/library/core/src/option.rs', lines 2793:4-2793:67
@@ -102,9 +111,11 @@ axiom core.option.Option.Insts.CoreOpsTry_traitTry.branch
     Visibility: public -/
 @[rust_fun
   "core::option::{core::ops::try_trait::FromResidual<core::option::Option<@T>, core::option::Option<core::convert::Infallible>>}::from_residual"]
-axiom
+def
   core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionInfallible.from_residual
-  (T : Type) : (Option core.convert.Infallible) → Result (Option T)
+    (T : Type) : Option core.convert.Infallible → Result (Option T)
+  | none => ok none
+  | some impossible => nomatch impossible
 
 /-- [core::result::{core::result::Result<T, E>}::map_err]:
     Source: '/rustc/library/core/src/result.rs', lines 962:4-964:53
@@ -352,5 +363,6 @@ axiom aspis_core.state_only_prefix.STATE_ONLY_SPEND_QUERY_COUNT
     Visibility: public -/
 @[rust_const
   "aspis_core::state_only_private_merkle::STATE_ONLY_PRIVATE_LEAF_SALT_BYTES"]
-axiom aspis_core.state_only_private_merkle.STATE_ONLY_PRIVATE_LEAF_SALT_BYTES
-  : Result Std.Usize
+def aspis_core.state_only_private_merkle.STATE_ONLY_PRIVATE_LEAF_SALT_BYTES :
+    Result Std.Usize :=
+  ok 32#usize
