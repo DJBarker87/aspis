@@ -45,18 +45,18 @@ limit. Aspis therefore uses a temporary program-owned proof account:
 1. Create the pool and initialize it.
 2. Create the proof account.
 3. Upload the proof in 79 chunks of at most 960 bytes.
-4. Seal the account with Tag 62 after checking its complete byte image.
-5. Verify and apply the spend with Tag 67.
+4. Seal the account after checking its complete byte image (instruction tag 62).
+5. Verify and apply the spend with the V5 instruction (tag 67).
 
 That is 84 lifecycle transactions: 2 pool transactions, 1 proof-account
 create, 79 uploads, 1 seal, and 1 spend. Program deployment and the three
 post-execution cleanup transactions are separate.
 
 Sealing prevents the proof bytes from changing between upload and
-verification. During Tag 67 the sealed proof is read-only and retained, so the
+verification. During V5 verification the sealed proof is read-only and retained, so the
 finalized execution can be recorded before a separate authorized close.
 
-## The Tag-67 transaction
+## The V5 verification transaction
 
 The transaction supplies five ordered accounts:
 
@@ -112,7 +112,7 @@ identities and transaction links.
 
 ## Finalized V5 result
 
-The mainnet Tag-67 transaction finalized at slot `435019536`. The transaction
+The mainnet V5 verification transaction finalized at slot `435019536`. The transaction
 used nullifier PDA bump 255. The recorded pre-execution runner source required
 that value, although the immutable lifecycle evidence does not pin the exact
 executed runner commit. The exact deployed program derived and checked the PDA

@@ -28,7 +28,6 @@ flowchart LR
     L --> A
     R --> A
     R --> B
-    A --> B
     B --> X
 ```
 
@@ -46,12 +45,12 @@ instead of collapsing them into one broader claim.
 
 ## Mainnet result
 
-On July 25, 2026 in Europe/Berlin (July 24 UTC), the current Aspis release
-completed the full private-spend verification and state update on Solana
-mainnet-beta. The finalized transaction:
+On July 25, 2026 in Europe/Berlin (July 24 UTC), the deployed Aspis program ran
+the complete V5 verifier, accepted the archived 75,358-byte proof, and applied
+the state update on Solana mainnet-beta. The finalized transaction:
 
-- ran the deployed verifier's complete proof-checking path and accepted the
-  75,358-byte proof;
+- executed the entire deployed V5 verifier, which returned acceptance for
+  the 75,358-byte archived proof;
 - advanced the pool state;
 - recorded the public nullifier as spent, so later transactions using that
   nullifier are rejected; and
@@ -76,7 +75,7 @@ the [full payer RPC archive](release/aspis-v5-tag67-mainnet-rpc-archive-v1/)
 now reconstructs the exact proof from all 79 finalized uploads and the exact
 SBF from all 1,466 finalized loader writes. Both reconstructed byte strings
 match the released files. It also derives the full loader-v3 ProgramData image
-and binds the released statement to the finalized Tag-67 instruction and pool
+and binds the released statement to the finalized V5 verification instruction and pool
 initialization.
 
 ### Exact technical record
@@ -121,7 +120,7 @@ Aspis has two connected formal layers:
    Rust paths to those models.
 
 The current Rust-to-Lean work covers the selected Component-A release
-schedule, parts of Components B and C, the public output, the Tag-67 work-byte
+schedule, parts of Components B and C, the public output, the V5 work-byte
 reads, and the six ordered work checks. The final integration theorem assumes
 that several Rust calls succeeded and that some Rust inputs, folded values,
 and challenges equal the values in the Lean models. It does not prove that
@@ -129,25 +128,36 @@ every accepted production proof automatically meets those assumptions or
 satisfies the complete spend relation. The exact theorem name is recorded in
 the [technical proof map](docs/formal-verification.md#current-v5-coverage).
 
-Lean now proves that a normalized residual package satisfies every spend rule,
-including value balance, ownership, both Merkle paths, the nullifier, the
-output note, the asset, the fee, and all six public spend fields. That package
-already includes the typed hash inputs, path sharing, and public-field matches;
-it is not the raw proof bytes. What is not yet proved is that every proof
-accepted by the production program yields that package with the claimed error
-bound.
+Lean proves that the extracted mathematical trace satisfies the complete
+spend rules: value balance, ownership, both Merkle paths, the nullifier, the
+output note, asset and fee fields, and the public statement.
 
-`V5DeployedFalseAcceptance.lean` now states a precise conditional probability
-step. It takes three caller-supplied definitions of failure intended to
-describe the selector branches and proves their union bound. If those
-definitions are proved to be the actual deployed branch failures, accepted
-runs extract valid traces outside them, the Poseidon2 model is faithful, and
-the existing width, round, transcript, commitment, Fiat--Shamir, and per-branch
-assumptions hold, Lean
-derives a work-normalized false-acceptance probability at most `2^-100`. The
-corresponding ordinary probability is at most `min(1, T / 2^100)` for query
-budgets `1 <= T <= 2^128`. None of those deployed or cryptographic premises is
-proved by this new theorem.
+The soundness argument has also been corrected and tightened for this release:
+
+- one initial decoder candidate is followed coherently through all four FRI
+  folds, rather than choosing a new list member at each round;
+- the nineteen committed words are handled by a challenge-dependent
+  candidate-family argument, without an extra factor of 240;
+- Lean checks the exact released field, circle code, distance, agreement
+  threshold, list parameters, degree-eighteen batching curve, and nonzero
+  challenge denominator required by the cited circle-decoding result; and
+- the bounded distinct-query sampler and its rejection behavior are proved as
+  finite probability statements.
+
+The dominant raw batching event is about 71 bits after conditioning on a
+completed grind. The 37-bit grind raises the modeled attack work: the checked
+core is below `0.7 * 2^-100`, leaving `0.3 * 2^-100` for separately justified
+external events. This is a **100-bit work-normalized target**, not a claim of a
+raw `2^-100` probability for each completed proof.
+
+The remaining project-specific gaps are now mostly production-code links: the
+outer prepared-value loop, the complete transcript driver, two outer Merkle
+callers, and the final mapping from production candidate records into the
+mathematical candidate family. SHA-256, Poseidon2, Fiat--Shamir, the cited
+decoding result, compilation, and Solana execution remain explicit external
+assumptions. Until those links and external-event bounds are supplied, the
+repository does not claim a completed deployed 100-bit theft-resistance
+theorem. No accepting forgery was found.
 
 The theft proof no longer treats the compressing nullifier hash as one-to-one.
 The new fixed-victim game covers recovery of the victim's credential, a
@@ -156,19 +166,25 @@ opening of the victim's note commitment, and a different leaf at the victim's
 exact tree position. Lean proves that the last case exposes a concrete
 Poseidon2 node-hash collision. A different path at a different tree position
 can be a normal opening and is therefore not incorrectly called a collision.
-The complete bound also lists PDA aliasing, Solana runtime/state failure, and
-an invalid victim setup as separate events.
+The older complete bound also lists PDA aliasing, Solana runtime/state failure,
+and an invalid victim setup as separate events. A newer marker-state theorem
+shows that even two different nullifiers resolving to the same marker address
+cannot both succeed sequentially: the second is rejected. This narrows the
+state argument, but it has not yet been connected to the deployed theft game;
+that game's current theorem therefore still retains PDA aliasing as a separate
+case.
 
 This completes the case split for the attack event defined in the Lean model,
 but not the connection from every real attack to that event or its numerical
-security. The connection from the exact deployed Tag-67 program to the
-mathematical game, multi-proof extraction, concrete Poseidon2 bounds, PDA
-security, and Solana runtime guarantees remain external. No standalone V5
-theft-resistance number is claimed.
+security. The connection from the exact deployed V5 program to the
+mathematical game, multi-proof extraction, concrete Poseidon2 bounds, the
+marker-state Rust correspondence, the theft-game link, PDA aliasing, and
+Solana runtime guarantees remain external. No standalone V5 theft-resistance
+number is claimed.
 
 This is deliberately a bounded claim. It is not an end-to-end formal proof of
 every Rust function, the compiler, Solana, or the complete private-spend
-system. The Tag-67 work-checking theorem retains one explicit hash-call
+system. The V5 work-checking theorem retains one explicit hash-call
 assumption: the production transcript hash call must equal the Lean hash
 function on the transcript state and `DOM_GRIND || nonce_le64`. Other parts
 retain the assumptions summarized above.
@@ -176,13 +192,10 @@ Cryptographic assumptions, untranslated code, extraction, compilation, and
 runtime trust are listed in the [assumptions ledger](docs/assumptions-ledger.md).
 
 The current mathematical review found no concrete forgery or broken finite
-calculation. It did find that the V5 soundness claim, deployed hiding, and
-theft resistance still depend on major unproved links: the listed failure
-cases must cover every false proof, the cited papers must apply to this exact
-protocol, and the real Rust run must match the Lean model. The q18/g37
-100.161-bit value is a work-normalized
-per-query case-study result, not a raw forgery probability or a silently
-inherited V5 security level. See the
+calculation. It records the corrected V5 distinction between roughly 71 raw
+bits for the dominant completed-grind event and a 100-bit work-normalized
+target after charging for grinding. It also lists the remaining code,
+cryptographic, compiler, and runtime assumptions. See the
 [mathematical status review](docs/reviews/mathematical-status-20260814.md).
 
 The [formal-security extension
@@ -245,13 +258,13 @@ lifecycle comprised 84 transactions:
 - 1 proof-account create;
 - 79 proof uploads;
 - 1 Tag-62 seal; and
-- 1 Tag-67 verify-and-apply transaction.
+- 1 V5 verify-and-apply transaction (instruction tag 67).
 
 Deployment and the three cleanup transactions are separate from that count.
-During Tag 67, the proof account is read-only and retained so the result can be
+During V5 verification, the proof account is read-only and retained so the result can be
 recorded before a separate authorized close. The pool and nullifier account
-are writable. Validation and complete proof verification precede every state
-write.
+are writable. The deployed callback completes all of its checks and returns
+acceptance before any state write.
 
 [How Aspis works](docs/how-it-works.md) explains the statement, upload
 lifecycle, atomic state transition, and cleanup in plain language.

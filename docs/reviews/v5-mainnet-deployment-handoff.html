@@ -111,6 +111,21 @@
 </head>
 <body>
 <main>
+  <section class="callout" aria-label="Superseded formal-security conclusion">
+    <strong>Status correction · 14 August 2026.</strong>
+    This handoff remains an operational record, but its formal-security summary
+    is superseded. A later mathematical review found no concrete forgery.
+    Later Lean work proves Tag-67's exact candidate-relative relation folds,
+    counted-event inclusion, and the <code>32 × 240 / |K|</code> bound for a
+    supplied fixed candidate family. It does not prove that raw accepted
+    Merkle/FRI data yields the required coherent matching candidate or that a
+    false spend makes it false. Acceptance-to-trace extraction, Fiat--Shamir,
+    primitive-security bounds, Rust/Solana-to-game links, and a concrete
+    deployed theft bound also remain open. The older “Pass” row below must not
+    be read as a proved deployed 100-bit soundness or theft-resistance claim.
+    See the
+    <a href="mathematical-status-20260814.md">14 August mathematical status</a>.
+  </section>
   <section aria-labelledby="outcome-2026-07-25">
     <div class="eyebrow">Outcome addendum · 25 July 2026</div>
     <div class="decision">MAINNET FINALIZED · TEMPORARY RENT RECOVERED</div>
@@ -239,9 +254,11 @@
     executions were exactly 54 CU cheaper than the release measurements. The
     accepted one-lamport prefunded marker, which performs transfer, allocate,
     and assign CPIs, was then replayed across every selector. The resulting
-    V5 CU ceiling is 1,356,912 CU. Readiness and execution require a canonical
-    nullifier PDA bump of 255 and simulation of the exact signed transaction
-    bytes at or below that ceiling; the transaction declares the same compute
+    V5 CU ceiling is 1,356,912 CU. The recorded transaction runner required PDA
+    derivation to return bump 255 and required simulation of the exact signed
+    transaction bytes at or below that ceiling. The deployed program itself
+    checked that the supplied address was the derived PDA but did not enforce
+    the numeric bump value. The transaction declares the same compute
     limit. The complete runtime identity,
     hashes, source references, and measurements are in
     <code>results/spend/v5-mainnet-runtime-4.1.0-20260723/</code>.

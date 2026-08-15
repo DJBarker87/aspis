@@ -7,6 +7,21 @@ in [`SECURITY.md`](../../SECURITY.md), the
 [`AspisFormal` ledger](../../AspisFormal/README.md), and the
 [`V5 release freeze`](../../release/preflight/v5-production-freeze.md).
 
+**V5 status update, 14 August 2026.** Later Lean work proves the deterministic
+accepted-false inclusion for the V5 model. Accepted ideal FRI either hits six
+named FRI failures or produces one member of one initial list, of at most 240
+members, whose exact four folds reach the published final polynomial. A false
+no-witness statement makes every list member have a scalar mismatch unless one
+of six named candidate/trace failures occurs, and success of the pure relation
+model supplies all shared relation checks. The composed theorem places a raw
+accepted false execution in a raw relation-model failure, a raw FRI-model
+failure, one of those explicit failures, or the single-list repair event. Only
+the repair event has the `32 * 240 / |K|` ideal-uniform bound. The other four
+branches remain unbounded pending Rust callback correspondence, Merkle binding,
+S-two fold-reduction applicability and probabilities, the actual list theorem,
+C1/C2-to-19-lane extraction, Fiat--Shamir/work, primitive-security, and runtime
+bounds. This update does not change the historical q18/g37 disposition below.
+
 ## Scope
 
 Reviewed at the `aspis-spend` branch:
@@ -77,7 +92,7 @@ external review.
 | Vector | Result | Evidence |
 |---|---|---|
 | Authorization | Pass | Upload authority must sign and match the stored key; finalize zeroes it irreversibly; pool init requires the pool key to sign (`lifecycle.rs:55-66,158-172,194-196`). |
-| Account identity | Pass | Owner, writability, signer, aliasing, and canonical-PDA checks on all five accounts before any mutation (`atomic_payment.rs:244-283`). |
+| Account identity | Pass | Owner, writability, signer, account-reuse, and derived-PDA checks on all five accounts before any mutation (`atomic_payment.rs:244-283`). |
 | State transition | Pass | Anchor equality, deployment-domain equality, nullifier freshness, and a full mutable-state recheck all precede the first copy; verifier runs before any CPI/write (`atomic_payment.rs:576-638`). |
 | Rent / refund | Pass | Proof-account refund requires the proof account to sign, checks for overflow, and tombstones before draining (`atomic_payment.rs:323-365`); reconciled against finalized mainnet balances (`evaluation.tex:201-209`). |
 | Proof parser | Partial | Fixed-width `production_take` parsing rejects trailing bytes and mis-sized inputs (`dispatch.rs:21-43`), but the proof-body verifier has had no coverage-guided fuzzing (R-08, testing gap). |
@@ -123,10 +138,12 @@ acceptance and real deployed attacks to that model, bound extraction failure,
 justify extraction after the attacker has seen other proofs, define target
 sampling or assume a uniform fixed-target guarantee, and supply concrete
 bounds for credential recovery, the Poseidon2 nullifier, note commitment and
-tree hash, PDA aliasing, setup, and Solana runtime failures. The current paper
-states the multi-round extraction step as an assumption; weak unique response
-is only supporting evidence. The result also says nothing about key management
-or secret-key leakage.
+tree hash, PDA aliasing or a proved reduction that eliminates it, together
+with the Rust-to-marker-model and Solana runtime failures. It must also
+establish the victim-setup condition. The current paper states
+the multi-round extraction step as an assumption; weak unique response is only
+supporting evidence. The result also says nothing about key management or
+secret-key leakage.
 
 *Fix direction:* prove the deployed acceptance-to-extraction link and the
 exact multi-round extraction result, connect real attacks to the Lean game,
@@ -142,9 +159,18 @@ game separates extraction failure, credential recovery, nullifier collision,
 note-opening collision, Merkle node collision, PDA aliasing, runtime/state
 failure, and invalid victim setup, then proves the corresponding eight-term
 union bound. The exact deployed acceptance-to-extraction connection,
-multi-proof extraction, and concrete Poseidon2, PDA, and runtime probability
-bounds remain open. The status therefore remains high severity for a
-value-bearing system, although the missing cases are now stated precisely.
+multi-proof extraction, concrete Poseidon2 and runtime probability bounds,
+and either a PDA-alias bound or a proved reduction eliminating that case
+remain open. The status therefore remains high severity for a value-bearing
+system, although the missing cases are now stated precisely.
+
+`V5NullifierMarkerReplay.lean` further proves that after one marker write, a
+second spend at the same derived address rejects both the same nullifier and a
+different nullifier. The fixed-victim theft theorem still retains PDA aliasing
+because this state result has not been connected to its deployed attack
+experiment. It also does not prove the Rust/runtime connection or stop a
+fraudulent first spend; Solana locking, rollback, marker persistence, and proof
+soundness remain separate requirements.
 
 ### R-03: Hiding floors use an explicit affine-image premise
 **Severity: High. Status: rank identities independently checked; full-model completeness remains an assumption.**

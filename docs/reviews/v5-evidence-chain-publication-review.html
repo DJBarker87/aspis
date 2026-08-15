@@ -116,6 +116,22 @@
 </head>
 <body>
 <main>
+  <section class="open" aria-label="Superseded formal-security conclusion">
+    <strong>Status correction · 14 August 2026.</strong>
+    This publication review is preserved as a dated snapshot, but its “GO” and
+    formal-scope conclusions are superseded. A later mathematical review found
+    no concrete forgery. Later Lean work proves Tag-67's exact
+    candidate-relative relation folds, counted-event inclusion, and the
+    <code>32 × 240 / |K|</code> bound for a supplied fixed candidate family.
+    It does not prove that raw accepted Merkle/FRI data yields the required
+    coherent matching candidate or that a false spend makes it false.
+    Acceptance-to-trace extraction, Fiat--Shamir, primitive-security bounds,
+    Rust/Solana-to-game links, and a concrete deployed theft bound also remain
+    open. Do not
+    read the older language below as a proved deployed 100-bit soundness or
+    theft-resistance claim. See the
+    <a href="mathematical-status-20260814.md">14 August mathematical status</a>.
+  </section>
   <div class="eyebrow">Aspis · publication review · 25 July 2026</div>
   <div class="decision">GO — PRECISE, REPRODUCIBLE, AND PUBLICATION-READY</div>
   <h1>The repository now presents one traceable path from mathematics to mainnet.</h1>
@@ -145,7 +161,7 @@
       </tr>
       <tr>
         <td>Formal coverage was difficult for a general Solana engineer to inspect.</td>
-        <td>A plain-language doorway joins the mathematical and Rust-to-Lean layers, with theorem names retained below the explanation.</td>
+        <td>The page explains both proof layers and links to their exact theorem lists.</td>
         <td><code>docs/formal-verification.md</code></td>
       </tr>
       <tr>

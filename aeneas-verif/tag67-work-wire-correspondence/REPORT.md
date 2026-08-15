@@ -1,13 +1,13 @@
-# Tag-67 work-wire and verifier correspondence
+# V5 instruction parsing and verifier correspondence
 
 Status: **passed under Lean 4.32 and included in the V5 integration theorem**
 
-Pinned Charon/Aeneas extraction connects the production Tag-67 wire parser and
+Pinned Charon/Aeneas extraction connects the production V5 instruction parser and
 work-verifier helpers to the maintained Lean model. The final theorem is
 `AspisTag67WorkVerifierClosure.tag67AcceptedWireAndVerifierClosure` in
 [`proof/Tag67WorkVerifierClosure.lean`](proof/Tag67WorkVerifierClosure.lean).
 
-Tag 67 is enabled in the default verifier dispatch. The theorem is part of the
+Instruction byte 67 selects this V5 path in the default verifier dispatch. The theorem is part of the
 formal proof for the SBF with SHA-256
 `4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40`;
 dispatch relies on it while supplying the hash-application equation
@@ -22,9 +22,8 @@ Generated acceptance proves all of the following:
 - batch, fold 0, fold 1, fold 2, fold 3, and final record order;
 - difficulties 37, 34, 33, 30, 25, and 32;
 - transcript labels and absorb payload ordering;
-- selector acceptance only for 0, 1, or 2;
 - construction of the maintained `WorkWireView`;
-- equality with the canonical maintained work-wire projection;
+- equality with the maintained work-byte model;
 - equality of the extracted digest predicate and
   `digestHasLeadingZeroBits`; and
 - the complete six-step short-circuit check/absorb/next execution.
@@ -33,9 +32,36 @@ The theorem no longer assumes an arbitrary wire view,
 `ExactWorkWireProjection`, `ExactGeneratedLE64RuntimeReadBridge`, a
 digest-predicate correspondence, or a six-step verifier correspondence.
 
+## Additional selector result
+
+This result is separate from the frozen V5 integration theorem above.
+`Tag67WorkWireProof.lean` proves that the extracted selector helper accepts
+only zero, one, or two.  `Tag67SelectorFailureBranches.lean` takes evidence
+that the generated parser and selector helper both succeeded, makes the
+caller-supplied run-to-proof-body function explicit, and proves that a
+caller-supplied branch-indexed predicate is partitioned into the three cases
+selected by zero, one, or two.
+
+An indexed family is still as unconstrained as three separately supplied
+predicates.  The selector result does not identify or bound any cryptographic
+failure event.
+
+This additional result is not part of
+`tag67AcceptedWireAndVerifierClosure`, `current_source_combined_capstone`, or
+the frozen `Tag67WorkVerifierClosureAxiomAudit`.  Its separate replay command
+is `tools/replay_tag67_selector_branches_lean432.sh` from the repository root.
+
 ## Remaining boundary
 
-The one implementation/model premise is:
+The selector theorem takes an explicit caller-supplied function from an
+underlying run to its proof body.  It does not prove that this function agrees
+with the complete deployed V5 callback, that callback success produces the
+record used by the theorem, or that the caller-supplied branch predicates are
+the actual proof-system failure events.  The surrounding parser and
+selected-good call chain, proof-to-trace extraction, and cryptographic failure
+bounds remain separate obligations.
+
+The frozen work-wire theorem's remaining hash equation is:
 
 ```text
 ∀ state nonce,
@@ -63,9 +89,12 @@ Fiat–Shamir/random-oracle reasoning are imported at the protocol layer.
 | Extracted six-step acceptance iff positioned execution | `proof/Tag67WorkVerifierClosure.lean` |
 | Maintained hash interface from the single application equation | `proof/Tag67WorkVerifierClosure.lean` |
 | Final wire, digest, and six-step composition | `proof/Tag67WorkVerifierClosure.lean` |
+| Extracted selector partition of a caller-supplied branch predicate | `proof/Tag67SelectorFailureBranches.lean` |
 
-`Tag67WorkVerifierClosureAxiomAudit.lean` audits the exported theorems. Lean
-4.32 reports only `{propext, Classical.choice, Quot.sound}`.
+`Tag67WorkVerifierClosureAxiomAudit.lean` audits the original exported
+work-wire and six-step theorems.  The additional selector file has its own
+`#print axioms` checks.  Its targeted Lean 4.32 replay reports only
+`{propext, Classical.choice, Quot.sound}`.
 
 ## Pinned provenance
 
@@ -85,4 +114,6 @@ and `proof/`. Raw translations, LLBC, and build logs are preserved at
 - proof-facing six-step Rust tests: 3 passed;
 - pinned digest and six-step extraction: passed;
 - Lean 4.32 default-limit replay: passed;
+- separate post-release selector-partition replay: passed with
+  `tools/replay_tag67_selector_branches_lean432.sh`;
 - forbidden-premise and forbidden-token audits: passed.

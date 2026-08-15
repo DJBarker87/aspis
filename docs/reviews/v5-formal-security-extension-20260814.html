@@ -121,174 +121,323 @@
 <body>
 <main>
   <div class="eyebrow">Aspis · formal security review · 14 August 2026</div>
-  <div class="decision">MEANINGFUL PROGRESS — DEPLOYED SECURITY REMAINS CONDITIONAL</div>
-  <h1>The new Lean proofs make the attack cases explicit without pretending the open work is finished.</h1>
+  <div class="decision">SUPERSEDED CHECKPOINT — SEE THE CURRENT MATHEMATICAL STATUS</div>
+  <h1>This page records an intermediate review; later proofs narrowed the remaining gaps.</h1>
   <p class="lede">
-    Three new modules make the security claim more precise. Within explicitly
-    defined Lean models, they reduce false acceptance and one fixed-victim
-    attack event to named failures. They do not yet prove that the models cover
-    every deployed Tag-67 attack or that each failure is negligibly likely.
+    The current proof follows one candidate through all four folds, proves the
+    challenge-dependent nineteen-word reduction without a list-cap factor,
+    checks the released circle-code side conditions, and separates roughly 71
+    raw bits from the 100-bit work-normalized target. The remaining
+    project-specific gaps are five production-code connections, plus the named
+    cryptographic and runtime assumptions. See
+    <a href="mathematical-status-20260814.md">the current status page</a>.
   </p>
 
   <div class="grid">
-    <div class="card"><strong>New modules</strong><span>3</span></div>
-    <div class="card"><strong>Lean build</strong><span>Passed</span></div>
-    <div class="card"><strong>Theft cases listed</strong><span>8</span></div>
-    <div class="card"><strong>Mainnet bump</strong><span>255 observed</span></div>
+    <div class="card"><strong>Proof regression</strong><span>Passed</span></div>
+    <div class="card"><strong>Maintained Lean build</strong><span>Passed · 8,773 jobs</span></div>
+    <div class="card"><strong>Concrete forgery</strong><span>None found</span></div>
+    <div class="card"><strong>Deployed proof</strong><span>Still open</span></div>
   </div>
 
   <div class="good">
-    <strong>Bottom line.</strong> The mainnet proof is not an unexplained random
-    transaction: its archived bytes pass the released verifier and were
-    accepted on chain. The remaining issue is broader. The repository still
-    lacks a finished proof that every malicious proof accepted by the deployed
-    verifier must represent a valid spend.
+    <strong>What is known about the published transaction.</strong> The exact
+    archived mainnet proof still passes the released verifier, and the
+    regression confirms that all nine public fields are bound. It was also
+    accepted on chain. This checks that particular honest proof against the
+    released code; it is not a proof that no malicious proof can be accepted.
   </div>
 
-  <h2>What the three modules prove</h2>
+  <h2>What was proved in this round</h2>
   <table>
     <thead>
       <tr><th>Module</th><th>What Lean now proves</th><th>What it does not prove</th></tr>
     </thead>
     <tbody>
       <tr>
-        <td><code>ApplicationMerkleBinding.lean</code></td>
+        <td><code>V5WithoutReplacementQuerySoundness.lean</code></td>
         <td>
-          If two different note leaves are opened at the same depth-20 tree
-          position and reach the same root, the paths reveal two different
-          ordered node inputs with the same Poseidon2-M31 node-hash output.
-          It also proves that changing the direction bits can simply select a
-          different real position, so that case must not be called a collision.
+          For a uniform ordered sample without replacement, the probability
+          that all 18 queries fall in one fixed bad set is the exact descending-
+          factorial ratio. At V5's values the population is 131,072 and the bad
+          set is capped at 6,082. The file also checks that this ratio divided
+          by <code>2^32</code> is at most <code>2^-111</code>.
         </td>
         <td>
-          It gives no numerical collision bound for the custom node hash and
-          does not concern the separate SHA-256 trees inside the proof system.
-        </td>
-      </tr>
-      <tr>
-        <td><code>V5DeployedFalseAcceptance.lean</code></td>
-        <td>
-          It takes three caller-supplied definitions of failure and proves their
-          union bound. If callers prove that they are the actual deployed
-          selector failures and supply accepted-run extraction, Poseidon2
-          faithfulness, the existing width, round, transcript, commitment,
-          Fiat–Shamir, and per-branch premises, Lean derives the corrected
-          work-normalized <code>2^-100</code> bound. It also states the ordinary
-          probability as at most <code>min(1, T / 2^100)</code>, where
-          <code>T</code> is the random-oracle query budget and
-          <code>1 &lt;= T &lt;= 2^128</code>.
-        </td>
-        <td>
-          It does not prove that those definitions correspond to selector values
-          0, 1, and 2, or prove any of the other inputs for the deployed Rust
-          program.
+          It does not derive the <code>2^-32</code> work factor, prove a bound on
+          the actual joint event, or show that FRI failure gives one fixed bad
+          set of the stated size.
         </td>
       </tr>
       <tr>
-        <td><code>V5FixedVictimTheftGame.lean</code></td>
+        <td><code>V5BoundedQuerySamplerUniformity.lean</code></td>
         <td>
-          It fixes one victim note and defines an attack event. Lean proves
-          that this event falls into one of five mathematical cases: extraction
-          failure, recovery of the victim credential, a nullifier collision,
-          a second opening of the victim note, or a different leaf at the same
-          tree position. A conditional chain-facing theorem adds a PDA alias,
-          a runtime or state failure, and an invalid victim setup, then proves
-          the corresponding eight-term probability sum.
+          In the ideal experiment, 64 independent uniform draws are scanned in
+          order, repeated positions are skipped, and the first 18 distinct
+          positions are returned. Conditioned on success, every ordered
+          18-position result has exactly the same probability. Without
+          conditioning, “success and every query is bad” is bounded by the same
+          without-replacement ratio because draw-limit exhaustion rejects.
         </td>
         <td>
-          It does not supply probabilities for those eight cases and does not
-          itself connect an arbitrary deployed Tag-67 transaction to the
-          mathematical attack model.
+          It does not identify SHA-256 output with independent uniform draws,
+          prove that the Rust transcript has this law, or track the transcript
+          state after a variable number of draws.
+        </td>
+      </tr>
+      <tr>
+        <td><code>V5NullifierMarkerReplay.lean</code></td>
+        <td>
+          In an explicit sequential marker model, one successful write causes a
+          replay of the same nullifier to reject. A different nullifier that
+          derives the same address also rejects instead of overwriting the first
+          marker. Two successful sequential writes therefore use different
+          derived addresses in this model.
+        </td>
+        <td>
+          It is not yet a Rust-to-Lean proof and does not establish Solana
+          locking, rollback, persistence, or the connection to the fixed-victim
+          game. It cannot stop a fraudulent first spend at an empty marker.
+        </td>
+      </tr>
+      <tr>
+        <td><code>Tag67SelectorFailureBranches.lean</code></td>
+        <td>
+          The extracted parser projection and extracted range check imply that
+          an accepted selector byte is 0, 1, or 2. That byte selects exactly one
+          member of a caller-supplied family of three predicates.
+        </td>
+        <td>
+          The run-to-proof-body association remains caller-supplied. The result
+          does not prove that the full Tag-67 callback reaches this record, say
+          what the three predicates mean cryptographically, or bound them.
+        </td>
+      </tr>
+      <tr>
+        <td><code>V5RelationSumcheckSoundness.lean</code></td>
+        <td>
+          A wrong degree-six boundary claim can match the honest polynomial at
+          no more than six field challenges. Four modeled, prefix-dependent
+          repair events have total uniform mass at most
+          <code>24 / |K|</code>. Separately, for one fixed candidate with a
+          nonzero discrepancy in the incoming claim or either staged value,
+          cancellation through V5's two sequential mix challenges has mass at
+          most <code>2 / |K|</code>, even when the second error depends on the
+          first mix. A direct count over all twelve mix-and-alpha challenges,
+          allowing each later round to depend on completed earlier rounds,
+          bounds the modeled fixed-candidate repair event by
+          <code>32 / |K|</code>.
+        </td>
+        <td>
+          This file alone does not connect the count to the exact candidate
+          folds, prove Fiat--Shamir randomness, or connect the calculation to
+          the deployed callback.
+        </td>
+      </tr>
+      <tr>
+        <td><code>V5FriRelationCandidateBridge.lean</code></td>
+        <td>
+          Proves the exact natural candidate fold and the verifier's dual
+          weight fold used by each arity-four round. It derives the boundary
+          and evaluation discrepancy equations used by the finite count. For
+          any supplied fixed family of <code>L</code> candidates, the counted
+          union has ideal uniform mass at most <code>32 × L / |K|</code>.
+        </td>
+        <td>
+          The accepted-FRI and false-statement inclusion steps are proved in
+          the later modules below, with explicit failure branches.
+        </td>
+      </tr>
+      <tr>
+        <td><code>V5Tag67RelationListInclusion.lean</code></td>
+        <td>
+          For one supplied candidate, accepted relation boundary and final
+          checks, a match to the published final coefficients, and an initial
+          or out-of-domain claim that is false for that candidate imply that
+          the twelve challenges lie in the counted event. For a fixed
+          family of at most 240 candidates, the event is bounded by
+          <code>32 × 240 / |K|</code>.
+        </td>
+        <td>
+          The later combined theorem supplies this step for the maintained
+          models while retaining raw relation and raw FRI failures explicitly.
+        </td>
+      </tr>
+      <tr>
+        <td><code>V5FriListCap.lean</code></td>
+        <td>
+          Checks all four Guruswami--Sudan list calculations used for V5. The
+          multiplicities are 10, 10, 9, and 6, and every resulting list bound
+          is strictly below 240.
+        </td>
+        <td>
+          The arithmetic does not apply the Guruswami--Sudan theorem to the
+          actual V5 encoders. That remains an external theorem application.
+        </td>
+      </tr>
+      <tr>
+        <td><code>V5FriCoherentCandidateExtraction.lean</code></td>
+        <td>
+          Accepted ideal FRI either hits six explicit failures or yields one
+          member of one initial decoder list whose exact four folds reach the
+          published final polynomial. Outside the list-size failure, that list
+          has at most 240 members. Later layers are folds of the same initial
+          member, not independent list choices.
+        </td>
+        <td>
+          Merkle binding, exact S-two applicability and fold-reduction
+          probabilities, and the actual list-size theorem remain external.
+        </td>
+      </tr>
+      <tr>
+        <td><code>V5Tag67CandidateTraceExtraction.lean</code></td>
+        <td>
+          A false no-witness statement makes every initial-list member have an
+          initial or out-of-domain scalar mismatch unless one of six named
+          candidate/trace failures occurs.
+        </td>
+        <td>
+          Authenticated C1/C2 data still has to supply the 19 lanes, and the
+          batch, binding, arithmetic, and hash/Merkle failures need bounds.
+        </td>
+      </tr>
+      <tr>
+        <td><code>V5Tag67ModeledRelationAcceptanceBridge.lean</code></td>
+        <td>
+          Success of the pure relation-verifier model is equivalent to its
+          four boundary checks and final dot-product check, and gives those
+          shared checks for every member of the initial list.
+        </td>
+        <td>
+          Successful Rust callback execution has not yet been proved to imply
+          success of this pure model.
+        </td>
+      </tr>
+      <tr>
+        <td><code>V5Tag67AcceptedFalseInclusion.lean</code></td>
+        <td>
+          Places every raw accepted false execution in a raw relation-model
+          failure, a raw FRI-model failure, an explicit FRI failure, an
+          explicit candidate/trace failure, or the single-list repair event.
+          Only the last branch is bounded here, by
+          <code>32 × 240 / |K|</code>.
+        </td>
+        <td>
+          The first four branches have no complete probability bounds, so this
+          is not an end-to-end deployed soundness theorem.
+        </td>
+      </tr>
+      <tr>
+        <td><code>V5ConservativeRelationListEndpoint.lean</code></td>
+        <td>
+          Checks the conservative arithmetic after replacing the old relation
+          entry by <code>32 × 240 / |K|</code>. The full expression remains below
+          <code>2^-100</code>. It uses the width-29 batch term and
+          <code>R ≤ 32</code>, both conservative relative to corrected V5 width
+          19 and <code>R = 30</code>. The dyadic margin is about 0.015 bits.
+        </td>
+        <td>
+          This is arithmetic only. It bounds only the repair-event branch, not
+          the other four branches. It does not establish Fiat--Shamir
+          randomness or justify a deployed security claim. Any additional
+          factor needs a new calculation.
         </td>
       </tr>
     </tbody>
   </table>
 
-  <h2>What remains unproved</h2>
-  <p>The largest open item is still the connection from deployed acceptance to a valid witness:</p>
+  <h2>The main protocol mismatch</h2>
+  <p>
+    S-two Theorem 21 proves an opening protocol that runs FRI on both the
+    original function and an out-of-domain quotient. Tag-67 has no quotient
+    word, commitment, or opening. It runs FRI on the ordinary 19-column batch
+    and checks two claimed values per round through a separate degree-six
+    relation calculation.
+  </p>
+  <p>
+    This is a different protocol, so Theorem 21 cannot be cited as a direct
+    proof of Tag-67. Lean now gives a deterministic by-cases argument for the
+    exact four folds: accepted ideal FRI produces one matching initial-list
+    member unless a named query, fold-reduction, or list-size failure occurs.
+    It does not prove that S-two bounds those failures for V5.
+  </p>
+
+  <div class="warning">
+    <strong>How serious is this?</strong> It is the central remaining gap for a
+    numerical claim about malicious proofs accepted by the deployed verifier.
+    No concrete forgery or mathematical break was found, but absence of a found
+    attack is not a security proof. The repository should not yet claim a
+    proved deployed 100-bit false-acceptance rate or a numerical theft bound.
+  </div>
+
+  <h2>What still has to be connected</h2>
   <ul>
     <li>
-      Show that every arbitrary proof accepted by the exact Tag-67 parser and
-      verifier yields the authenticated rows needed by the full private-spend
-      relation. This includes polynomial commitments, FRI, Fiat–Shamir,
-      proof-tree authentication, byte decoding, public-input binding, and live
-      account state.
+      Connect raw accepted Merkle openings and the Rust FRI callback to the
+      ideal words and exact query checks used by the Lean model.
     </li>
     <li>
-      Identify the three caller-supplied failure definitions with the actual
-      selector-0, selector-1, and selector-2 failures, and prove that the cited
-      coding and proof-system results apply to those schedules, including the
-      separate proof-of-work hashes and the exact Rust challenge order.
+      Prove exact S-two applicability and probability bounds for the four
+      arity-four no-predecessor failures, and apply the actual
+      Guruswami--Sudan list theorem to the V5 encoders.
     </li>
     <li>
-      Supply real security bounds for the custom Poseidon2-M31 owner, note,
-      nullifier, and tree-node functions. Test vectors check selected outputs;
-      they do not prove one-wayness or collision resistance.
+      Extract the full 19-lane trace from authenticated C1/C2 data and connect
+      successful Rust relation checking to the maintained pure model.
     </li>
     <li>
-      Connect the fixed-victim model to the exact deployed code and Solana's
-      account locking, rollback, ownership, and marker persistence. The game
-      must also rule out duplicate victim credentials at setup.
+      Supply the missing Fiat--Shamir/work, SHA-256, Poseidon2,
+      polynomial-commitment, FRI, extraction, PDA, Rust-correspondence, and
+      Solana-runtime probability statements.
     </li>
     <li>
-      Handle attackers that have already observed other honest proofs. The
-      extractor needs the adversarial prover and its random-oracle transcript;
-      public proof bytes alone are not enough.
+      Connect the marker state model to the fixed-victim theft game and to
+      Solana's actual locking, rollback, ownership, and finalized persistence.
     </li>
   </ul>
 
-  <div class="warning">
-    <strong>How serious is this?</strong> It is a high-priority gap in a claim
-    about security against malicious proof makers. No concrete forgery or
-    mathematical break was found, and the archived demonstration remains
-    strong evidence for that one honest execution. The repository should not
-    yet claim a proved deployed 100-bit false-acceptance rate or a numerical
-    theft-resistance bound.
-  </div>
-
-  <h2>The bump-255 correction</h2>
+  <h2>Earlier work still applies</h2>
   <p>
-    The nullifier marker used by the finalized mainnet transaction had bump
-    255. However, deployed source commit <code>06788d44</code> called
-    <code>verify_and_apply_atomic_payment_state</code>, which derived the PDA
-    but did not require the derived bump to equal 255. The required-bump
-    wrapper was added later.
-  </p>
-  <p>
-    Therefore bump 255 is an observed fact about the landed marker, not an
-    enforced rule of the deployed verifier. Repeat protection for the same
-    nullifier still follows from deterministic PDA derivation and the stored
-    marker, subject to Solana runtime behavior. A different nullifier resolving
-    to the same PDA is kept as a separate failure case in the new theft model.
+    The previously reviewed Lean modules still provide useful conditional
+    steps: a Merkle collision reduction for two different leaves at one tree
+    position, a three-event false-acceptance union bound, and an eight-case
+    split for the fixed-victim attack game. None of those earlier results
+    supplies the remaining callback, Merkle, fold-reduction, lane-extraction,
+    or primitive-security probabilities.
   </p>
 
   <h2>Verification</h2>
-  <p>The three modules were checked from commit <code>f722db2</code> with:</p>
-  <pre><code>cd AspisFormal
-lake build AspisFormal.ApplicationMerkleBinding \
-  AspisFormal.V5DeployedFalseAcceptance \
-  AspisFormal.V5FixedVictimTheftGame</code></pre>
   <p>
-    Lean completed all 8,675 required jobs successfully. The three files
-    contain no <code>sorry</code>, <code>admit</code>, custom <code>axiom</code>,
-    or <code>native_decide</code>. Their printed theorem dependencies are the
-    standard Lean/mathlib logical axioms only. The build emitted style and
-    lint warnings, but no proof error. A subsequent full project build also
-    completed all 8,768 jobs successfully.
+    The exact archived mainnet proof passes the released verifier regression,
+    and the regression checks all nine public fields. The marker-path Rust test
+    for a successful transition followed by duplicate rejection also passes.
+    The maintained Lean project completed its final build successfully: 8,773
+    jobs. The separate Lean 4.32 selector replay also passed and reported only
+    Lean/mathlib's standard logical axioms. The release-facts checker, frozen
+    soundness arithmetic checker, forbidden-proof-token scan, and diff check
+    passed as well.
   </p>
 
   <h2>Safe publication wording</h2>
   <p>
-    It is accurate to say that Lean checks the Merkle collision reduction, a
-    complete case split for the fixed-victim attack event defined in the Lean
-    model, and a conditional false-acceptance bound over three caller-supplied
-    failure events. It is not accurate yet to say that deployed V5 theft
-    resistance or the deployed 100-bit security claim has been fully proved.
+    It is accurate to say that Lean now checks the exact ideal bounded query
+    experiment, the fixed-set without-replacement probability, a sequential
+    nullifier-marker model, the exact candidate and verifier-weight relation
+    folds, candidate-relative inclusion in the counted event, the
+    <code>32 × 240 / |K|</code> single-list repair bound, all four numeric
+    list expressions, and the five-way accepted-false split. The extracted
+    selector proof checks only the three-way byte split. It is accurate to say
+    that the maintained model now sends every accepted false execution to an
+    explicit unbounded failure branch or the bounded repair event. It is not
+    accurate to say that the four other branches have been bounded, or that
+    deployed V5 theft resistance or the deployed 100-bit security claim has
+    been proved end to end.
   </p>
 
   <footer>
-    Scope: review of the three modules added in commit <code>f722db2</code>.
-    No paper files were changed for this review.
+    Scope: working tree based on <code>f5bc5a1</code>, reviewed after the final
+    8,773-job Lean build and before commit. No paper or frozen release files
+    were changed for this review.
   </footer>
 </main>
 </body>

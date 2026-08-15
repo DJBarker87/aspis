@@ -47,7 +47,7 @@ the finalized mainnet transaction. Paths are relative to the repository root.
 | Current theorem map and pinned extraction packages | `aeneas-verif/README.md` |
 | Component A/B/C integration | `aeneas-verif/current-source-abc-capstone-20260722/proof/CurrentSourceABCapstone.lean` |
 | Component-C runtime rounds and public output | `aeneas-verif/component-c-runtime-downstream/released-trace-families-current-20260722/proof/RuntimeReleasedTraceFamiliesCurrentJoin.lean` |
-| Tag-67 work-byte reads and ordered checks | `aeneas-verif/tag67-work-wire-correspondence/proof/Tag67WorkVerifierClosure.lean` |
+| V5 work-byte reads and ordered checks | `aeneas-verif/tag67-work-wire-correspondence/proof/Tag67WorkVerifierClosure.lean` |
 | Plain-language scope and remaining boundaries | `docs/formal-verification.md` |
 
 The final composition theorem is
@@ -64,7 +64,7 @@ relation.
 | Entrypoint and instruction dispatch | `programs/aspis-verifier/src/dispatch.rs`, `process_spend_production_instruction` |
 | Instruction encoding | `programs/aspis-verifier/src/wire.rs`, `AspisInstruction` |
 | Proof-account create, upload, seal, and close | `programs/aspis-verifier/src/lifecycle.rs` |
-| Tag-67 account checks and atomic state update | `programs/aspis-verifier/src/v5_full_transaction.rs`, `process_v5_full_cu_transaction_with_verifier` |
+| V5 account checks and atomic state update | `programs/aspis-verifier/src/v5_full_transaction.rs`, `process_v5_full_cu_transaction_with_verifier` |
 | Complete V5 verifier used by the dispatcher | `programs/aspis-verifier/src/v5_cu_probe.rs`, `verify_uploaded_v5_mode9_cu_fixture` |
 | Shared account-distinctness and state guards | `programs/aspis-verifier/src/atomic_payment.rs` |
 
@@ -93,7 +93,7 @@ receipts, and refund reconciliation are in
 | Review target | Start here |
 | --- | --- |
 | Malicious account aliasing and state mutation | `programs/aspis-verifier/src/atomic_payment.rs` test modules |
-| Tag-67 dispatch and atomic behavior | `programs/aspis-verifier/src/dispatch.rs`, `v5_full_transaction.rs` tests |
+| V5 dispatch and atomic behavior | `programs/aspis-verifier/src/dispatch.rs`, `v5_full_transaction.rs` tests |
 | Proof-account lifecycle | `programs/aspis-verifier/src/lifecycle.rs` tests |
 | Mainnet recovery rules | `xtask/src/spend_mainnet_journal.rs`, `spend_devnet/v5.rs` tests |
 | Security assumptions | `docs/assumptions-ledger.md` |

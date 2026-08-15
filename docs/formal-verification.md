@@ -19,7 +19,6 @@ flowchart LR
     T --> P
     L --> P
     R --> B
-    P --> B
     B --> X
 ```
 
@@ -54,15 +53,14 @@ The audited integration theorems use Lean and mathlib's standard logical base,
 ### Accepted proof to spend relation: exact status
 
 `V5AcceptedSpendRelation.lean` proves the deterministic half of this claim.
-It starts from a normalized residual package containing the arithmetic
-residuals, typed Poseidon2 inputs, the eleven checked two-round steps of each
-permutation, both twenty-level Merkle paths with shared bits and siblings, and
-the exact six public spend-field matches. Lean constructs the full
+It starts from a structured set of extracted trace values containing the
+arithmetic check results, typed Poseidon2 inputs, the eleven checked two-round
+steps of each permutation, both twenty-level Merkle paths with shared bits and
+siblings, and the exact six public spend-field matches. Lean constructs the full
 private-spend relation from those facts, assuming `Poseidon2Faithful`. The
-package is already a structured interpretation of the trace, not raw proof
-bytes.
+input is already an interpretation of the trace, not raw proof bytes.
 
-It does **not** yet prove that arbitrary Tag-67 acceptance yields those facts.
+It does **not** yet prove that arbitrary acceptance by the deployed V5 verifier yields those facts.
 That remaining theorem must connect the decoded Rust execution to the
 committed trace, prove the copy and LogUp constraints, apply polynomial
 commitment and FRI extraction, bind every public input, and give a probability
@@ -71,16 +69,16 @@ accepted-run theorem leaves that whole step as an explicit premise and warns
 that choosing an always-true failure event would prove nothing.
 
 `V5DeployedFalseAcceptance.lean` now makes one conditional probability step
-exact. It defines false acceptance for one public statement, takes three
-failure predicates intended to describe selector branches 0, 1, and 2, and
-proves their union bound. Lean has not yet connected those predicates to the
-actual deployed selector branches. If that connection, accepted-run
-extraction, Poseidon2 faithfulness, the existing width and round premises,
-transcript and commitment assumptions, and the three branch bounds are all
-provided, Lean derives a work-normalized bound of `2^-100`. The ordinary
-probability bound is `min(1, T / 2^100)` for query budget `T`. The theorem does
-not supply any of those deployed or cryptographic premises, and the derived
-endpoint is stated for `1 <= T <= 2^128`.
+exact. The source-extracted V5 selector result partitions a caller-supplied
+family of three predicates according to the parser projection's accepted
+selector byte. It does not prove what those predicates mean, that the
+caller-supplied proof-body association is the one used by the full callback,
+or that callback success extracts a valid trace outside the selected event.
+With those results, Poseidon2 faithfulness, the existing width and round
+premises, transcript and commitment assumptions, and the three branch bounds,
+the generic false-acceptance theorem derives a work-normalized bound of
+`2^-100`. Its ordinary probability bound is `min(1, T / 2^100)` for query
+budget `T`. Its range is `1 <= T <= 2^128`.
 
 ### Theft resistance: exact status
 
@@ -116,11 +114,20 @@ state failure, and an invalid victim setup. Lean proves that the deployed
 attack probability is at most the sum of those eight events, provided the
 deployed attack is connected to the mathematical game.
 
+`V5NullifierMarkerReplay.lean` narrows the first chain-level case. In its
+sequential marker model, a successful spend writes the nullifier at the
+derived address. A second spend at that address rejects whether it uses the
+same nullifier or a different one. This result has not yet been connected to
+the fixed-victim theft game, so that game's current theorem still lists PDA
+aliasing. Removing it requires the deployed Rust, Solana state semantics, and
+attack experiment to be proved to follow this model.
+
 That last connection is still a premise. A numerical theft claim also needs
 deployed extraction after observed proofs, concrete fixed-target security for
 the Poseidon2 nullifier and note commitment, a bound for Poseidon2 node-hash
-collisions, PDA security, and the stated Solana runtime behavior. The project
-therefore still does not claim a standalone numerical theft bound.
+collisions, the Rust-to-marker-model connection, and the stated Solana runtime
+behavior, including the remaining PDA-alias case. The project therefore still
+does not claim a standalone numerical theft bound.
 
 ## Layer 2: selected production Rust
 
@@ -145,15 +152,17 @@ revisions, and theorem map are under
 | Component A release schedule | Extracted matrix execution agrees with the maintained GoodA model for the selected schedule | `FormalClosureStream1.component_a_actual_matches_maintained` |
 | Component B | Compares selected sampler, evaluator, and C2 results with the ten-round model, assuming the Rust calls succeeded and the inputs have the required lengths and field encodings | `FormalClosureStream1.component_b_actual_matches_maintained` |
 | Component C | Compares one described Rust run with the public-output model; the description assumes the Rust calls succeeded and that folded values, coefficients, and challenges match the Lean values | `generated_public_run_output_matches_deployed` |
-| Tag-67 work bytes | Generated guards and little-endian reads construct the work view used in Lean | `AspisTag67WorkVerifierClosure.tag67AcceptedWireAndVerifierClosure` |
+| V5 work bytes | Generated guards and little-endian reads construct the work view used in Lean | `AspisTag67WorkVerifierClosure.tag67AcceptedWireAndVerifierClosure` |
+| V5 selector | A successful generated parser projection and generated range check choose one exact `Fin 3` branch and partition a caller-supplied predicate family; proof-body fidelity and the predicates' real cryptographic meaning remain assumptions | `AspisTag67SelectorFailureBranches.false_accept_event_subset_parsed_selector_cases` |
 | Ordered work verification | The proof-facing chain preserves batch, four fold, and final check order | `AspisTag67WorkVerifierClosure.tag67AcceptedWireAndVerifierClosure` |
-| Final selected theorem | Collects the A/B/C and Tag-67 results together with all of the assumptions just described | `FormalClosureStream1.current_source_combined_capstone` |
+| Final selected theorem | Collects the A/B/C and current V5-verifier results together with all of the assumptions just described | `FormalClosureStream1.current_source_combined_capstone` |
 
 Principal source files:
 
 - [`CurrentSourceABCapstone.lean`](../aeneas-verif/current-source-abc-capstone-20260722/proof/CurrentSourceABCapstone.lean)
 - [`RuntimeReleasedTraceFamiliesCurrentJoin.lean`](../aeneas-verif/component-c-runtime-downstream/released-trace-families-current-20260722/proof/RuntimeReleasedTraceFamiliesCurrentJoin.lean)
 - [`Tag67WorkVerifierClosure.lean`](../aeneas-verif/tag67-work-wire-correspondence/proof/Tag67WorkVerifierClosure.lean)
+- [`Tag67SelectorFailureBranches.lean`](../aeneas-verif/tag67-work-wire-correspondence/proof/Tag67SelectorFailureBranches.lean)
 
 Pinned Aeneas cannot translate the production `Transcript` function-pointer
 field directly. The six-step control-flow proof therefore uses a small
@@ -161,9 +170,9 @@ proof-facing Rust helper supplied with the six booleans computed by the
 production digest checks. Separate theorems establish the digest predicate and
 ordered checks.
 
-## The remaining Tag-67 hash-call premise
+## The remaining V5 hash-call premise
 
-The selected Tag-67 Rust-to-model theorem retains this explicit premise:
+The selected V5 Rust-to-model theorem retains this explicit premise:
 
 ```text
 ∀ state nonce,
@@ -176,11 +185,11 @@ Lean on the transcript state, the `DOM_GRIND` byte `3`, and the little-endian
 nonce.
 
 Given that premise and successful generated guards and reads, the exact
-projection, leading-zero predicate, and six ordered Tag-67 work checks are
+projection, leading-zero predicate, and six ordered V5 work checks are
 theorem conclusions. SHA-256 security itself is a cryptographic assumption,
 not a Lean conclusion.
 
-This is the only extra equality in the Tag-67 work-checking theorem. It is not
+This is the only extra equality in the V5 work-checking theorem. It is not
 the only assumption in the whole Rust-to-Lean argument. The Component-C proof
 starts from assumptions that the Rust calls succeeded and that its folded
 values, coefficients, and challenges equal the Lean values. The Component-B
@@ -212,21 +221,56 @@ only if all of the following are assumed:
 
 Lean proves that those assumptions imply a work-normalized error at most
 `2^-100`. `V5DeployedFalseAcceptance.lean` connects that arithmetic to three
-parameterized failure predicates and derives the ordinary bound
-`min(1, T / 2^100)` within `1 <= T <= 2^128`. It does not prove that those
-predicates are the actual deployed selector failures, supply the extraction
-and branch-security premises, or show that every accepted deployed proof meets
+branch events and derives the ordinary bound `min(1, T / 2^100)` within
+`1 <= T <= 2^128`. The source-extracted selector result only partitions a
+caller-supplied predicate family by the accepted parsed selector. It does not
+prove the predicates' real meaning, callback/proof-body fidelity, extraction,
+the branch-security premises, or that every accepted deployed proof meets
 them.
 
-The fractional 100.161-bit value belongs to the separate q18/g37 case study;
-it is not a V5 deployment claim. The full status is recorded in the
+`V5BoundedQuerySamplerUniformity.lean` and
+`V5WithoutReplacementQuerySoundness.lean` prove one part without a paper
+assumption. Conditioned on obtaining 18 distinct positions within 64
+independent uniform draws, the first-occurrence sampler is exactly uniform over
+ordered schedules. The chance that every position lies in a fixed set of at
+most 6,082 out of 131,072 positions is then the exact descending-factorial
+ratio. Before conditioning, success with every query in that set is bounded by
+the same ratio because draw-limit exhaustion rejects. A separate joint-event
+premise with a 32-bit work factor gives the existing `2^-111` inequality. The
+FRI bad-set theorem, Rust/SHA sampling correspondence, and joint work argument
+are still required.
+
+The current model-level soundness work proves three important facts. First,
+one initial decoder candidate is followed coherently through all four folds;
+there is no independent 240-way choice at each round. Second, the nineteen
+committed words are handled by a challenge-dependent candidate-family proof,
+without multiplying the error by the list cap. Third, the distinct-query
+sampler is analyzed directly rather than treated as sampling with replacement.
+
+`V5Width19S2ApplicabilityAudit.lean` checks the exact released field, circle
+code, distance, agreement threshold, list parameters, degree-eighteen curve,
+and nonzero challenge denominator required by the cited circle-decoding
+result. The published theorem remains an external premise; its parameter
+matching is machine-checked.
+
+The dominant raw batching event is roughly 71 bits after a grind has
+completed. Charging for the 37-bit grind gives a modeled core of about 100.56
+bits, with a checked conservative ceiling of `0.7 * 2^-100`. The project target
+is 100 work-normalized bits. External bounded events must fit the remaining
+`0.3 * 2^-100` budget.
+
+Five production-code connections remain: the enclosing 76-value preparation
+loop, the full transcript driver, two outer Merkle callers, and the final
+production-candidate mapping. Fiat--Shamir, SHA-256, Poseidon2, compiler, and
+Solana behavior remain explicit external assumptions. No accepting forgery
+was found. The full status is recorded in the
 [mathematical security review](reviews/mathematical-status-20260814.md).
 
 ## What the final theorem does not claim
 
 `FormalClosureStream1.current_source_combined_capstone` is the code name of the
 final Lean theorem. It collects the selected Component A, B, C, public-output,
-and Tag-67 results together with their assumptions. It is not:
+and current V5-verifier results together with their assumptions. It is not:
 
 - an end-to-end proof of every prover or verifier Rust function;
 - a theorem that arbitrary production-verifier acceptance constructs all
@@ -256,7 +300,7 @@ records:
    SHA-256
    `4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40`.
 2. The [V5 mainnet bundle](../release/aspis-v5-tag67-mainnet-v1/) binds that
-   SBF identity to the published proof, statement, finalized Tag-67
+   SBF identity to the published proof, statement, finalized V5 verification
    transaction, compute result, state transition, and cleanup receipts.
 
 The finalized mainnet transaction is

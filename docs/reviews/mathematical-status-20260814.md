@@ -10,9 +10,10 @@ calculation, or false group identity. The 30-bit value arithmetic, M31 circle
 facts, QM31 field construction, finite probability calculations, and several
 masking results are in good shape.
 
-The main problem is that those results do not yet form a complete proof of the
-deployed V5 system. Lean checks many important pieces, but some of the hardest
-links are still passed into the final theorems as assumptions.
+The principal remaining problem is no longer an unidentified hole in the
+circle-code mathematics. It is the final connection from several outer Rust
+control-flow functions to the maintained Lean models, followed by explicit
+bounds for the named cryptographic and runtime assumptions.
 
 Aspis should therefore be described as a research system with conditional
 security. It is not currently justified to describe deployed V5 as a proved
@@ -25,7 +26,7 @@ security. It is not currently justified to describe deployed V5 as a proved
 | Batched lanes | 29 lanes, highest power 28 | 19 lanes (16 base plus 3 extension), highest power 18 |
 | Batch challenge | Historical calculation | Chosen from the nonzero extension field, so the denominator is `|K| - 1` |
 | Number of challenge rounds | Historical calculation uses the safe cap 32 | Exactly 30 after the initial committed data is excluded |
-| Security number | Conditional 100.161-bit work-normalized, per-query result | Conditional work-normalized result of at most `2^-100` error, if all V5 assumptions hold |
+| Security number | Conditional 100.161-bit work-normalized, per-query result | About 71 raw bits for the dominant completed-grind batching event; a checked core below `0.7 * 2^-100` after charging for the 37-bit grind |
 
 The old 29-lane calculation gives a slightly larger error than the correct V5
 19-lane calculation, so it can be used as a safe upper bound. It must not be
@@ -38,37 +39,60 @@ queries. The paper's raw-advantage table shows the difference.
 
 ## What is still assumed in the V5 soundness theorem
 
-The final V5 calculation is valid only if all of the following statements are
-true:
+The mathematical argument now follows one initial decoder candidate through
+all four folds and handles the challenge-dependent family of nearby
+candidates without multiplying the error by the 240-candidate list cap. Lean
+checks the exact released field, circle code, distance, agreement threshold,
+list parameters, batching degree, and nonzero challenge space needed by the
+cited decoding result.
 
-- the listed failure cases cover every way a false proof could be accepted;
-- the values opened by the prover really belong to the claimed code;
-- the cited coding and Fiat--Shamir papers apply to this exact mixed M31/QM31
-  protocol;
-- each separately hashed proof-of-work value justifies the work reduction
-  later used for its challenge;
-- Rust samples challenges and orders transcript messages exactly as the Lean
-  model says;
-- the Merkle tree and polynomial commitments have the assumed security;
-- the three schedule branches are bounded as claimed; and
-- the six proof-of-work checks match the six terms in the calculation, with
-  none omitted or counted twice.
+The main project-specific gaps are five production-code connections:
 
-Lean proves that these statements imply the claimed error bound. It does not
-prove the statements themselves. Closing them is the largest remaining piece
-of the soundness work.
+1. the enclosing Rust loop that places 76 decoded values into four rows;
+2. the complete transcript driver;
+3. the one-section Merkle parser, topology, and hash caller;
+4. the five-section Merkle driver and remainder threading; and
+5. the final construction of the candidate eligibility, support, message, and
+   record data consumed by the correlated-agreement proof.
 
-The post-review module `V5DeployedFalseAcceptance.lean` now removes an
-ambiguity in how that conditional calculation is read. It defines false
-acceptance for one public statement, takes three named failure predicates, and
-proves their union bound. Lean does not yet prove that those predicates are
-the actual deployed selector-0, selector-1, and selector-2 failures. If that
-connection, accepted-run extraction, Poseidon2 faithfulness, the existing
-width, round, transcript, commitment, and Fiat--Shamir premises, and the three
-branch bounds all hold, Lean proves a work-normalized false-acceptance
-probability at most `2^-100`. The ordinary probability is at most
-`min(1, T / 2^100)` for query budgets `1 <= T <= 2^128`. This is a precise
-conditional theorem rather than a completed deployed proof.
+The published decoding result itself, Fiat--Shamir/random-oracle reasoning,
+SHA-256 and Poseidon2 security, compilation, and Solana behavior remain
+external assumptions. The paper-to-Lean interpretation is reviewed and the
+parameter substitution is machine-checked; Lean does not reprove the cited
+paper.
+
+The dominant raw batching event has roughly 71 bits of security once a grind
+has completed. Charging for the released 37-bit grind gives a modeled core of
+about 100.56 bits; Lean proves the conservative statement that this core is at
+most `0.7 * 2^-100`. The remaining external events must together fit the
+reserved `0.3 * 2^-100` budget. This is a 100-bit work-normalized target, not a
+128-bit target and not a raw `2^-100` probability per completed proof.
+
+The query sampler is also less abstract than before. Lean now proves the exact
+finite probability for 18 uniform distinct positions landing in a fixed set of
+at most 6,082 positions out of 131,072. A second finite proof shows that the
+ideal 64-draw first-occurrence sampler is uniform over ordered 18-position
+schedules after conditioning on success. It also proves that, without
+conditioning, success with all queries in the fixed set is bounded by the same
+ratio when draw exhaustion rejects. Those results do not yet show that the SHA
+transcript has the ideal draw law, that the Rust loop matches the finite model,
+or that FRI failure produces the required fixed set. The final 32-bit work
+reduction also remains a separate premise.
+
+For a future wire format, independent sampling with replacement is a sensible
+simplification. Lean checks the cardinality calculation: the 18-draw ratio,
+after division by the same separately justified `2^32` work factor, is still
+at most `2^-111`. It does not justify that work factor or a joint probability
+experiment. V5 itself must not be silently changed: the sampling rule is part
+of its transcript, proof layout, verifier, and published release identity.
+
+V5 used distinct queries so all 18 checks hit different fibres and the Merkle
+opening code could work with one sorted list of 18 different leaf indices. A
+with-replacement version must say how repeated queries are represented and how
+the Good-A/Good-B schedule tests treat them. That is manageable in a new wire
+format. At these parameters a repeat among 18 draws occurs only about 0.12% of
+the time, and the security difference is about 0.035 bit, so the extra V5
+sampler machinery buys very little.
 
 ## The exact spend rules
 
@@ -177,24 +201,36 @@ matters: a different Merkle path is not automatically an attack or a hash
 collision; the relevant theft case is a different leaf at the victim's
 position under the victim's root.
 
-The chain-level theorem adds three more possible failures: two nullifiers map
-to the same marker PDA, Solana locking/rollback/state behavior fails, or the
-victim setup did not create one unambiguous target note. Lean proves that the
-deployed attack probability is at most the sum of these eight events if the
-deployed attack is connected to this mathematical game.
+The general chain-level theorem conservatively adds three more possible
+failures: two nullifiers map to the same marker PDA, Solana
+locking/rollback/state behavior fails, or the victim setup did not create one
+unambiguous target note. Lean proves that the deployed attack probability is
+at most the sum of these eight events if the deployed attack is connected to
+this mathematical game.
+
+`V5NullifierMarkerReplay.lean` now narrows the PDA case. In the explicit
+sequential marker model, a successful spend writes the public nullifier into
+its derived address. A later spend at that address rejects whether it carries
+the same nullifier or a different nullifier. This proves a useful state-model
+fact, but it is not yet connected to the fixed-victim theft game. That theorem
+still includes PDA aliasing. The exact Rust-to-model connection, the
+attack-game reduction, and Solana locking, rollback, and finalized marker
+persistence remain external.
 
 This is a complete case split for the attack event defined in the Lean model,
 not a theorem that every real attack fits that event and not a numerical
 theft-resistance result. The deployed connection remains a premise. So do
 extraction after the attacker has observed other proofs, concrete security
-bounds for the Poseidon2 nullifier, note commitment and tree hash, PDA
-security, and the Solana runtime statements. Known-answer Poseidon2 tests only
-show agreement on selected inputs; they do not prove primitive security.
+bounds for the Poseidon2 nullifier, note commitment and tree hash, and the
+Solana runtime statements. Known-answer Poseidon2 tests only show agreement on
+selected inputs; they do not prove primitive security.
 
-The on-chain marker still gives a narrower deterministic guarantee: after one
-accepted transition uses a public nullifier, another transaction with that
-same nullifier is rejected. A different-nullifier attack is not a second
-preimage of the nullifier hash because a second preimage has the same output.
+The marker result is deliberately narrow. It prevents a second accepted use
+after the first marker has committed. It does not stop a fraudulent first
+spend that reaches an empty marker; that still depends on proof soundness and
+the fixed-victim cryptographic argument. A different-nullifier attack is not a
+second preimage of the nullifier hash because a second preimage has the same
+output.
 
 No finished numerical theft bound is claimed. The remaining deployed and
 cryptographic steps are high priority before real user value is protected.
@@ -212,10 +248,89 @@ For the 24 March 2026 revision of S-two (ePrint 2026/532):
 Any draft calling Theorem 5 the batch theorem or Theorem 6 the Fiat--Shamir
 theorem is wrong for that revision.
 
-The review found no published attack that directly breaks the chosen
-Johnson-radius parameters. The unresolved question is whether Aspis's exact
-circle code, extension-field lanes, challenge sampling, and transcript satisfy
-the cited theorems' conditions.
+The formulas and theorem numbers are not the main remaining problem. The
+published protocol and Aspis differ in several exact places:
+
+- Theorem 21 runs FRI on both the original function and an out-of-domain
+  quotient. V5 has no quotient word, commitment, or opening. It runs FRI on
+  the ordinary 19-column batch and handles two claimed out-of-domain values
+  through a separate degree-six coefficient-relation sumcheck. The two checks
+  share fold challenges and final coefficients. The new Lean modules prove
+  the candidate-relative relation algebra for this custom construction, but no
+  cited theorem supplies the remaining raw Merkle/FRI extraction, matching,
+  and false-spend implication.
+- S-two's query experiment uses independent uniform points. V5 keeps the first
+  18 distinct positions from at most 64 draws.
+- S-two Theorem 19 analyzes its multi-domain folding-with-insertion cascade.
+  V5 performs four radix-four folds of one combined word. The repository has
+  not yet proved that V5 is an exact specialization of that cascade.
+- S-two's grinding condition applies directly to the verifier randomness for
+  that round. V5 checks a separate domain-separated work hash, absorbs the
+  nonce, and then obtains the later challenge through another hash call.
+- S-two says the mixed-domain Merkle adaptation can be made, but does not give
+  its formal proof. V5 authenticates five salted trees with its own mixed
+  radix-four/binary layout.
+
+These differences are not known attacks, and the review found no published
+attack that directly breaks the chosen Johnson-radius parameters. They still
+prevent the S-two theorem from establishing the V5 probability bound without
+additional arguments.
+
+The relation-specific work is now considerably stronger than a degree-six root
+count. `V5RelationSumcheckSoundness.lean` proves that for one fixed candidate,
+false data in the incoming claim or either staged value can cancel through the
+two sequential mixes on at most a `2 / |K|` fraction of mix pairs, even though
+the second value may depend on the first mix. Over all twelve challenges, with
+later rounds allowed to depend on completed earlier rounds, the fixed-candidate
+repair event has mass at most `32 / |K|`.
+
+`V5FriRelationCandidateBridge.lean` connects that scalar count to the exact
+arity-four candidate fold and the verifier's dual weight fold.
+`V5Tag67RelationListInclusion.lean` then proves the decisive deterministic
+candidate statement: accepted relation checks, a final coefficient match, and
+a candidate-relative false claim imply membership in the counted event. For a
+fixed family of at most 240 candidates chosen before the twelve
+challenges, the union is bounded by `32 * 240 / |K|`.
+
+`V5FriListCap.lean` independently checks the four list-bound calculations, not
+just the first layer. The Guruswami--Sudan multiplicities are `10`, `10`, `9`,
+and `6`, and every resulting expression is strictly below 240. The actual
+Guruswami--Sudan theorem connecting those expressions to the V5 decoder lists
+remains external.
+
+`V5FriCoherentCandidateExtraction.lean` closes the deterministic FRI
+selection step. Accepted ideal FRI either hits one of six explicit failures
+(the small consistency set, four exact fold-reduction failures, or an
+oversized initial list) or yields one member of one initial list whose exact
+four folds reach the published final polynomial. This avoids a `240^4` choice:
+later layers are the folds of that one initial member.
+
+`V5Tag67CandidateTraceExtraction.lean` closes the deterministic semantic
+step. A false no-witness statement makes every initial-list member have a
+scalar mismatch unless one of six named failures occurs: the four-claim batch
+equation, a four-claim batch collision, 19-lane recombination, public-field
+binding, arithmetic residuals, or hash/Merkle residuals.
+
+`V5Tag67ModeledRelationAcceptanceBridge.lean` proves that success of the pure
+relation-verifier model gives the four shared boundary checks and the final
+dot-product check for every list member. `V5Tag67AcceptedFalseInclusion.lean`
+then proves the combined split: a raw accepted false execution is in a raw
+relation-model failure, a raw FRI-model failure, an explicit FRI failure, an
+explicit candidate/trace failure, or the single-list repair event.
+
+Later modules replace this coarse five-way status with the actual
+width-nineteen candidate-family event, projected residual failures, and exact
+released accounting. The challenge-dependent family proof avoids a factor of
+240, and the released parameters and circle-code side conditions are checked
+in `V5Width19S2ApplicabilityAudit.lean`.
+
+The updated arithmetic separates raw probability from attack work. The
+dominant completed-grind batching event is about 71 raw bits. Charging for the
+37-bit grind gives a modeled core of about 100.56 bits; the maintained Lean
+endpoint proves the conservative bound `0.7 * 2^-100` and reserves
+`0.3 * 2^-100` for externally bounded events. The remaining gaps are the five
+production-code connections listed near the start of this review and the
+named cryptographic, compiler, and runtime assumptions.
 
 ## The demonstration witness
 

@@ -64,13 +64,14 @@ longer be read from live account state. The
 preserves all 1,570 finalized transactions. Its offline verifier reconstructs
 the exact 75,358-byte proof from the 79 uploads and the exact 1,258,496-byte
 SBF from the loader writes, and both match the released files. It also binds
-the released statement to the landed Tag-67 wire and pool initialization.
+the released statement to the landed V5 wire (instruction tag 67) and pool
+initialization.
 
 The exact archived proof separately passes the released verifier callback in
 `programs/aspis-verifier/tests/v5_mainnet_release_proof.rs`; changing any of
 the nine public fields makes that replay fail. This is direct implementation
 evidence for the published bytes, not a substitute for the still-open general
-proof that every Tag-67 acceptance implies the complete spend relation.
+proof that every deployed V5-verifier acceptance implies the complete spend relation.
 
 ## Transaction count
 
@@ -82,7 +83,7 @@ The V5 spend lifecycle comprised 84 transactions:
 | Proof-account create | 1 |
 | Proof uploads, up to 960 bytes per chunk | 79 |
 | Tag-62 proof seal | 1 |
-| Tag-67 verify and apply | 1 |
+| V5 verify and apply (instruction tag 67) | 1 |
 | **Total** | **84** |
 
 This did not change from 71 to 84 during the run. The q18/g37 figure of 71
@@ -92,14 +93,14 @@ proof is larger, so it required ten more upload chunks, and the V5 total also
 uses the broader end-to-end lifecycle count. Program deployment and the three
 post-execution cleanup transactions are separate.
 
-The resumed Tag-67 lifecycle finalized every write it submitted. Earlier
-unsuccessful Tag-67 candidate-wire attempts did not produce failed on-chain
+The resumed V5 lifecycle finalized every write it submitted. Earlier
+unsuccessful V5 candidate-wire attempts did not produce failed on-chain
 spend transactions. The successful deployment and cleanup transactions are
 accounted separately.
 
 ## Cleanup and refund
 
-After Tag 67 was finalized and recorded, cleanup proceeded in three finalized
+After the V5 verification transaction was finalized and recorded, cleanup proceeded in three finalized
 transactions:
 
 | Action | Finalized transaction | Slot | CU | Fee | Value moved |
