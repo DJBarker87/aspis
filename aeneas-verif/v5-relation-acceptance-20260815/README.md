@@ -33,6 +33,12 @@ final coefficients equal the polynomial already accepted by FRI.  It also
 proves that the caller returns that result's terminal claim.  This is a
 universal theorem, not a test of selected traces.
 
+`V5RelationTailDecoderProof.lean` proves two further source connections.  The
+extracted `decode_indexed` body computes `offset + index * 16` and calls the
+production QM31 decoder.  The already source-extracted QM31 decoder is then
+proved equal to the maintained little-endian model for every one of the 58
+sixteen-byte fields in every possible 928-byte relation tail.
+
 ## Exact remaining boundary
 
 The production function
@@ -71,4 +77,4 @@ one of these universal equalities.
   the private compact state/caller.
 - `generated/`: normalized, Lean-4.32-compiling Aeneas output.
 - `proof/`: the universal caller-success theorem and exact array-equality
-  supporting lemmas.
+  supporting lemmas, plus the universal 58-field decoder connection.

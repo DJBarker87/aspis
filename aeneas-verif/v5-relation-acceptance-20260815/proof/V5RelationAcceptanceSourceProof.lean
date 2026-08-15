@@ -40,13 +40,13 @@ theorem raw_qm31_ne_default_spec (left right : RawQM31) :
 
 private theorem allM_zip_no_raw_qm31_difference
     (left right : List RawQM31) (sameLength : left.length = right.length) :
-    ∀ hrun : List.allM
+    List.allM
         (fun pair => do
           let differs ← core.cmp.PartialEq.ne.default
             V5RelationCallerGenerated.aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31.eq
             pair.1 pair.2
           ok (decide (¬ differs = true)))
-        (List.zip left right) = .ok true,
+        (List.zip left right) = .ok true →
       left = right := by
   induction left generalizing right with
   | nil =>
@@ -99,7 +99,7 @@ theorem raw_qm31_array_ne_false_implies_eq {size : Std.Usize}
       cases equal <;> simp at hrun
       apply Subtype.ext
       exact allM_zip_no_raw_qm31_difference left.val right.val
-        (by simpa using sameLength) hresult
+        (by simp_all) hresult
 
 /-- The exact extracted mode-9 caller cannot return success unless the four
 coefficients returned by the relation checker equal the four coefficients
@@ -134,8 +134,8 @@ theorem extracted_mode9_success_implies_final_polynomial_match
       cases prepared with
       | Err error =>
           simp [core.result.Result.Insts.CoreOpsTry.branch,
-            core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
-            core.convert.FromSame] at success
+            core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual]
+            at success
       | Ok value =>
           rcases value with ⟨relation, ignoredAlphas, denseScale⟩
           simp only [core.result.Result.Insts.CoreOpsTry.branch, bind_tc_ok] at success
@@ -160,14 +160,13 @@ theorem extracted_mode9_success_implies_final_polynomial_match
               | div =>
                   cases success
               | ok verified =>
-                  simp only [hverify, bind_tc_ok] at success
+                  simp only [bind_tc_ok] at success
                   cases verified with
                   | Err error =>
                       simp [V5RelationCallerGenerated.core.result.Result.map_err,
                         V5RelationCallerGenerated.v5_cu_probe.verify_mode9_relation_phase.closure.Insts.CoreOpsFunctionFnOnceTupleV5RelationStressErrorProgramError.call_once,
-                        core.result.Result.Insts.CoreOpsTry.branch,
-                        core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
-                        core.convert.FromSame] at success
+                        core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual]
+                        at success
                   | Ok output =>
                       simp only [V5RelationCallerGenerated.core.result.Result.map_err,
                         bind_tc_ok] at success
