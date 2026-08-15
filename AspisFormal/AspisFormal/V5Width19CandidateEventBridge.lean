@@ -116,6 +116,17 @@ codeword. -/
 abbrev Width19LinearEncoder (K : Type*) [Field K] :=
   Width19CoefficientMessage K →ₗ[K] (Width19ReceivedCoordinate → K)
 
+/-- The generic message-space scalar combination is the same nineteen-lane
+combination used by the release's coefficient representation. -/
+theorem combineWidth19Messages_eq_combineWidth19Coefficients
+    (gamma : K) (columns : Width19Coefficients K) :
+    combineWidth19Messages gamma columns =
+      combineWidth19Coefficients gamma columns := by
+  funext row
+  rw [combineWidth19Coefficients_apply]
+  simp [combineWidth19Messages, Fin.sum_univ_succ]
+  ring
+
 /-- A matching CAT decomposition yields actual coefficient messages.  The
 step from equality of `2^19`-coordinate codewords to equality of
 `Fin 1024` messages is exactly the encoder-injectivity argument inside
@@ -142,6 +153,51 @@ theorem matching_decomposition_extracts_coefficient_messages
       receivedLanes strategy gamma matching
   refine ⟨components, support, ?_⟩
   exact candidateMessage.symm.trans candidate
+
+/-- Outside the actual candidate-family bad event, any eligible valid member
+has a matching decomposition and therefore yields nineteen coefficient
+messages whose scalar combination is the accepted initial message. -/
+theorem candidate_family_member_extracts_coefficient_messages_outside_failure
+    [Fintype K] [DecidableEq K]
+    {Candidate : Type*} [Nonempty Candidate]
+    (encoder : Width19LinearEncoder K)
+    (encoderInjective : Function.Injective encoder)
+    (receivedLanes : Fin 19 → Width19ReceivedCoordinate → K)
+    (eligible : K → Candidate → Prop)
+    (candidateMessage : Candidate → Width19CoefficientMessage K)
+    (support : K → Candidate → Finset Width19ReceivedCoordinate)
+    (gamma : K) (candidate : Candidate)
+    (execution : AcceptedCandidateExecution K)
+    (messageMatches : candidateMessage candidate = execution.initialValues)
+    (outside : ¬ Width19CandidateFamilyBadAt encoder agreementCap0
+      receivedLanes eligible candidateMessage support gamma)
+    (isEligible : eligible gamma candidate)
+    (isValid : Width19CandidateValid encoder agreementCap0 receivedLanes
+      candidateMessage support gamma candidate) :
+    ∃ components : Width19Coefficients K,
+      support gamma candidate ⊆
+          width19JointAgreementSet encoder receivedLanes components ∧
+      execution.initialValues =
+        combineWidth19Coefficients gamma components := by
+  have matching : Width19CandidateHasMatchingDecomposition encoder
+      receivedLanes candidateMessage support gamma candidate := by
+    by_contra missing
+    exact outside ⟨candidate, isEligible, isValid, missing⟩
+  let strategy : Width19ProximateStrategy K Width19ReceivedCoordinate
+      (Width19CoefficientMessage K) := {
+    candidate := fun challenge ↦ candidateMessage candidate
+    support := fun challenge ↦ support challenge candidate
+  }
+  have matchingStrategy : HasMatchingWidth19Decomposition encoder receivedLanes
+      strategy gamma := by
+    exact matching
+  obtain ⟨components, joint, combined⟩ :=
+    matching_decomposition_extracts_coefficient_messages encoder
+      encoderInjective receivedLanes strategy gamma execution messageMatches
+      matchingStrategy
+  refine ⟨components, joint, ?_⟩
+  exact combined.trans
+    (combineWidth19Messages_eq_combineWidth19Coefficients gamma components)
 
 /-- Outside one correlated decoder-family failure event, every candidate used
 by the reduction has the exact nineteen-column projection.  The structure
@@ -211,7 +267,10 @@ theorem combinedLaneBindingFailure_implies_familyFailure
 #print axioms combinedLaneBindingFailure_iff_exact_width19_event
 #print axioms width19CandidateProjection_of_not_event
 #print axioms no_combinedLaneBindingFailure_of_not_exact_width19_event
+#print axioms combineWidth19Messages_eq_combineWidth19Coefficients
 #print axioms matching_decomposition_extracts_coefficient_messages
+#print axioms
+  candidate_family_member_extracts_coefficient_messages_outside_failure
 #print axioms Width19ProjectionOutsideFamilyFailure.projection
 #print axioms combinedLaneBindingFailure_implies_familyFailure
 

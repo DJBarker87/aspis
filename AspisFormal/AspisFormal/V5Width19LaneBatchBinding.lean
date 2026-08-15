@@ -111,7 +111,7 @@ end FiniteField
 
 /-! ## Exact V5 lane order -/
 
-abbrev Width19Coefficients (K : Type*) := TotalLane -> Fin 1024 -> K
+abbrev Width19Coefficients (K : Type*) := Fin 19 → Fin 1024 → K
 
 /-- Read the nineteen coefficient vectors into the semantic/helper partition
 used by the candidate-to-spend extraction proof. -/
