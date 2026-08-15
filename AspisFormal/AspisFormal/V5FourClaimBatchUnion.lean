@@ -124,9 +124,10 @@ def CandidateRecordsCarryKappa
     (records : K → Candidate → CandidateSemanticRecord K) : Prop :=
   ∀ kappa candidate, (records kappa candidate).kappa = kappa
 
-def recordBatchCollisionSet
-    (records : K → Candidate → CandidateSemanticRecord K) : Finset K :=
-  Finset.univ.filter fun kappa =>
+noncomputable def recordBatchCollisionSet
+    (records : K → Candidate → CandidateSemanticRecord K) : Finset K := by
+  classical
+  exact Finset.univ.filter fun kappa =>
     ∃ candidate, FourClaimBatchCollision (records kappa candidate)
 
 theorem recordBatchCollisionSet_eq_candidateBatchCollisionSet
@@ -146,9 +147,9 @@ theorem recordBatchCollisionSet_eq_candidateBatchCollisionSet
   constructor
   · rintro ⟨candidate, hnonzero, hbatch⟩
     refine ⟨candidate, ?_, ?_⟩
-    · simpa only [hfixed kappa referenceKappa candidate] using hnonzero
-    · rw [hfixed kappa referenceKappa candidate, hcarries kappa candidate]
-      exact hbatch
+    · simpa only [← hfixed kappa referenceKappa candidate] using hnonzero
+    · simpa only [hfixed kappa referenceKappa candidate,
+        hcarries kappa candidate] using hbatch
   · rintro ⟨candidate, hnonzero, hbatch⟩
     refine ⟨candidate, ?_, ?_⟩
     · simpa only [hfixed kappa referenceKappa candidate] using hnonzero
@@ -202,8 +203,7 @@ theorem raw_core_plus_four_claim_batch_le_two_pow_neg_75 :
       (raw_fri_fibre_bound_le (3 : Fin 4))
   have hrelation := raw_relation_repair_bound_le_two_pow_neg_111
   have hbatch := rawFourClaimBatchCollisionBound_le_two_pow_neg_114
-  norm_num [rawCoreSubtotal] at
-    hquery hfri0 hfri1 hfri2 hfri3 hrelation hbatch ⊢
+  norm_num [rawCoreSubtotal] at hquery hfri0 hfri1 hfri2 hfri3 hrelation hbatch ⊢
   linarith
 
 /-! ## Audit -/

@@ -1,4 +1,5 @@
 import AspisFormal.V5FriForwardCompatibleChain
+import AspisFormal.V5FourClaimBatchUnion
 import AspisFormal.V5RawFinalSecurityAccounting
 
 /-!
@@ -40,6 +41,7 @@ open AspisV5FriCoherentCandidateExtraction
 open AspisV5FriConcreteEncoderCommutation
 open AspisV5FriFixedFamilyExperiment
 open AspisV5FriForwardCompatibleChain
+open AspisV5FourClaimBatchUnion
 open AspisV5FriPublishedOutputEncoderDecoding
 open AspisV5FriReleasedAdaptiveExtraction
 open AspisV5FriReleasedLineGeometry
@@ -171,6 +173,7 @@ structure ReleasedIdealAcceptedFalseEvents (Coins K : Type*)
   fri : CompatibilityFriExperiment Coins K
   acceptedFalse : Set Coins
   queryMiss : Set Coins
+  fourClaimBatchCollision : Set Coins
   relationOrExtractionFailure : Set Coins
   statementBindingFailure : Set Coins
   relationRepair : Set Coins
@@ -207,7 +210,8 @@ structure ReleasedIdealAcceptedFalseExperimentData
     (concreteCodeEncoders fri.base releasedEvaluationPoints)
     (fri.transcriptAt coins) (relationFamily coins) (challenges coins)
 
-/-- The five earlier candidate failures other than public-statement binding. -/
+/-- The four still-unbounded earlier candidate failures other than the
+separately bounded batching collision and public-statement binding. -/
 def CandidateRelationOrExtractionFailure
     (rc : RoundConstants)
     (execution : AcceptedCandidateExecution K)
@@ -215,21 +219,21 @@ def CandidateRelationOrExtractionFailure
     (statement : V5PublicStatement)
     (record : CandidateSemanticRecord K) : Prop :=
   FourClaimBatchEquationFailure execution challenges record ∨
-    FourClaimBatchCollision record ∨
     CombinedLaneBindingFailure execution record ∨
     ArithmeticResidualFailure execution challenges statement record ∨
     HashMerkleResidualFailure rc execution challenges statement record
 
-theorem candidateEarlierFailure_iff_relationOrExtraction_or_statement
+theorem candidateEarlierFailure_iff_batch_or_relationOrExtraction_or_statement
     (rc : RoundConstants)
     (execution : AcceptedCandidateExecution K)
     (challenges : TwelveRelationChallenges K)
     (statement : V5PublicStatement)
     (record : CandidateSemanticRecord K) :
     CandidateEarlierFailure rc execution challenges statement record ↔
-      CandidateRelationOrExtractionFailure rc execution challenges statement
-          record ∨
-        PublicStatementBindingFailure execution challenges statement record := by
+      FourClaimBatchCollision record ∨
+        CandidateRelationOrExtractionFailure rc execution challenges statement
+            record ∨
+          PublicStatementBindingFailure execution challenges statement record := by
   simp only [CandidateEarlierFailure, CandidateRelationOrExtractionFailure]
   aesop
 
@@ -265,6 +269,20 @@ def ReleasedIdealAcceptedFalseExperimentData.queryMiss
       deployedNote deployedNullifier deployedNode) : Set Coins :=
   {coins | QueryPhaseFailure (data.fri.scheduleAtCoin coins)
     (data.fri.transcriptAt coins) (data.queries coins)}
+
+def ReleasedIdealAcceptedFalseExperimentData.fourClaimBatchCollision
+    {Coins K : Type*} [Field K] [Fintype K] [DecidableEq K]
+    [Algebra (ZMod P) K] [NeZero (2 : K)]
+    {rc : RoundConstants}
+    {deployedOwner : Digest → Digest}
+    {deployedNote : Digest → AspisFormal.ArithmetizationCore.F →
+      AspisFormal.ArithmetizationCore.F → Digest → Digest}
+    {deployedNullifier : Digest → Digest → Digest}
+    {deployedNode : Digest → Digest → Digest}
+    (data : ReleasedIdealAcceptedFalseExperimentData Coins K rc deployedOwner
+      deployedNote deployedNullifier deployedNode) : Set Coins :=
+  {coins | ∃ candidate,
+    FourClaimBatchCollision (data.records coins candidate)}
 
 def ReleasedIdealAcceptedFalseExperimentData.relationOrExtractionFailure
     {Coins K : Type*} [Field K] [Fintype K] [DecidableEq K]
@@ -332,6 +350,7 @@ def ReleasedIdealAcceptedFalseExperimentData.toEvents
   fri := data.fri
   acceptedFalse := data.acceptedFalse
   queryMiss := data.queryMiss
+  fourClaimBatchCollision := data.fourClaimBatchCollision
   relationOrExtractionFailure := data.relationOrExtractionFailure
   statementBindingFailure := data.statementBindingFailure
   relationRepair := data.relationRepair
@@ -350,6 +369,7 @@ structure ReleasedIdealAcceptedFalseCoverage
   pointwise : ∀ coins, coins ∈ events.acceptedFalse →
     coins ∈ events.queryMiss ∨
     coins ∈ events.fri.event ∨
+    coins ∈ events.fourClaimBatchCollision ∨
     coins ∈ events.relationOrExtractionFailure ∨
     coins ∈ events.statementBindingFailure ∨
     coins ∈ events.relationRepair
@@ -385,17 +405,19 @@ theorem ReleasedIdealAcceptedFalseExperimentData.toEvents_coverage
   · exact Or.inl hquery
   · exact Or.inr (Or.inl hcompatibility)
   · rcases hearlier with ⟨candidate, hfailure⟩
-    rcases (candidateEarlierFailure_iff_relationOrExtraction_or_statement
+    rcases
+      (candidateEarlierFailure_iff_batch_or_relationOrExtraction_or_statement
       rc ((data.relationFamily coins).execution candidate)
       (data.challenges coins) (data.statement coins)
       (data.records coins candidate)).mp hfailure with
-      hrelation | hstatement
-    · exact Or.inr (Or.inr (Or.inl ⟨candidate, hrelation⟩))
-    · exact Or.inr (Or.inr (Or.inr (Or.inl ⟨candidate, hstatement⟩)))
-  · exact Or.inr (Or.inr (Or.inr (Or.inr hrepair)))
+      hbatch | hrelation | hstatement
+    · exact Or.inr (Or.inr (Or.inl ⟨candidate, hbatch⟩))
+    · exact Or.inr (Or.inr (Or.inr (Or.inl ⟨candidate, hrelation⟩)))
+    · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl ⟨candidate, hstatement⟩))))
+  · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr hrepair))))
 
-/-- These six inequalities are precisely the distributional connections
-needed for the six already-checked raw core terms.  In particular, the FRI
+/-- These seven inequalities are precisely the distributional connections
+needed for the checked raw core and batching terms.  In particular, the FRI
 fields assert that the four projected challenges have the required fresh
 uniform law; cardinality alone does not prove that about arbitrary `Coins`. -/
 structure ReleasedIdealAcceptedFalseRawConnections
@@ -410,6 +432,11 @@ structure ReleasedIdealAcceptedFalseRawConnections
   friRound2 : measure.real events.fri.round2Event ≤ rawFriFibreBound 2
   friRound3 : measure.real events.fri.round3Event ≤ rawFriFibreBound 3
   relationRepair : measure.real events.relationRepair ≤ rawRelationRepairBound
+  /-- This follows from `recordBatchCollisionSet_card_le_720` when candidate
+  discrepancies are fixed before a uniform `kappa` is sampled. -/
+  fourClaimBatchCollision :
+    measure.real events.fourClaimBatchCollision ≤
+      rawFourClaimBatchCollisionBound
 
 /-! ## Reuse of the raw core ledger -/
 
@@ -478,13 +505,15 @@ theorem released_ideal_accepted_false_subset_core_plus_explicit
     (events : ReleasedIdealAcceptedFalseEvents Coins K)
     (coverage : ReleasedIdealAcceptedFalseCoverage events) :
     events.acceptedFalse ⊆
-      (rawOneProofCoreFailure events.coreLedger ∪
+      ((rawOneProofCoreFailure events.coreLedger ∪
+        events.fourClaimBatchCollision) ∪
         events.relationOrExtractionFailure) ∪
-      events.statementBindingFailure := by
+        events.statementBindingFailure := by
   intro coins haccepted
   rcases coverage.pointwise coins haccepted with
-    hquery | hfri | hrelation | hstatement | hrepair
+    hquery | hfri | hbatch | hrelation | hstatement | hrepair
   · apply Or.inl
+    apply Or.inl
     apply Or.inl
     exact (events.mem_coreFailure_iff coins).mpr (Or.inl hquery)
   · have hfri' :
@@ -501,18 +530,24 @@ theorem released_ideal_accepted_false_subset_core_plus_explicit
       simpa only [CompatibilityFriExperiment.event, Set.mem_setOf_eq,
         PrefixConditionedBadSets.Occurs] using hfri
     rcases hfri' with h0 | h1 | h2 | h3
-    · exact Or.inl (Or.inl ((events.mem_coreFailure_iff coins).mpr
-        (Or.inr (Or.inl h0))))
-    · exact Or.inl (Or.inl ((events.mem_coreFailure_iff coins).mpr
-        (Or.inr (Or.inr (Or.inl h1)))))
-    · exact Or.inl (Or.inl ((events.mem_coreFailure_iff coins).mpr
-        (Or.inr (Or.inr (Or.inr (Or.inl h2))))))
-    · exact Or.inl (Or.inl ((events.mem_coreFailure_iff coins).mpr
-        (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl h3)))))))
+    · have hcore := (events.mem_coreFailure_iff coins).mpr
+        (Or.inr (Or.inl h0))
+      exact Or.inl (Or.inl (Or.inl hcore))
+    · have hcore := (events.mem_coreFailure_iff coins).mpr
+        (Or.inr (Or.inr (Or.inl h1)))
+      exact Or.inl (Or.inl (Or.inl hcore))
+    · have hcore := (events.mem_coreFailure_iff coins).mpr
+        (Or.inr (Or.inr (Or.inr (Or.inl h2))))
+      exact Or.inl (Or.inl (Or.inl hcore))
+    · have hcore := (events.mem_coreFailure_iff coins).mpr
+        (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl h3)))))
+      exact Or.inl (Or.inl (Or.inl hcore))
+  · exact Or.inl (Or.inl (Or.inr hbatch))
   · exact Or.inl (Or.inr hrelation)
   · exact Or.inr hstatement
-  · exact Or.inl (Or.inl ((events.mem_coreFailure_iff coins).mpr
-      (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr hrepair)))))))
+  · exact Or.inl (Or.inl (Or.inl
+      ((events.mem_coreFailure_iff coins).mpr
+        (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr hrepair))))))))
 
 /-! ## Explicit ideal one-proof probability -/
 
@@ -525,7 +560,7 @@ theorem released_ideal_accepted_false_probability_le_raw_core_plus_explicit
     (coverage : ReleasedIdealAcceptedFalseCoverage events)
     (connections : ReleasedIdealAcceptedFalseRawConnections measure events) :
     measure.real events.acceptedFalse ≤
-      rawCoreSubtotal +
+      (rawCoreSubtotal + rawFourClaimBatchCollisionBound) +
         measure.real events.relationOrExtractionFailure +
         measure.real events.statementBindingFailure := by
   have hsubset := released_ideal_accepted_false_subset_core_plus_explicit
@@ -534,24 +569,35 @@ theorem released_ideal_accepted_false_probability_le_raw_core_plus_explicit
     events.coreLedger (connections.toCoreBounds measure events)
   calc
     measure.real events.acceptedFalse ≤
-        measure.real ((rawOneProofCoreFailure events.coreLedger ∪
+        measure.real (((rawOneProofCoreFailure events.coreLedger ∪
+          events.fourClaimBatchCollision) ∪
           events.relationOrExtractionFailure) ∪
           events.statementBindingFailure) :=
       MeasureTheory.measureReal_mono hsubset
     _ ≤ measure.real
-          (rawOneProofCoreFailure events.coreLedger ∪
+          ((rawOneProofCoreFailure events.coreLedger ∪
+            events.fourClaimBatchCollision) ∪
             events.relationOrExtractionFailure) +
         measure.real events.statementBindingFailure :=
       MeasureTheory.measureReal_union_le _ _
-    _ ≤ (measure.real (rawOneProofCoreFailure events.coreLedger) +
+    _ ≤ (measure.real
+          (rawOneProofCoreFailure events.coreLedger ∪
+            events.fourClaimBatchCollision) +
           measure.real events.relationOrExtractionFailure) +
         measure.real events.statementBindingFailure := by
       gcongr
       exact MeasureTheory.measureReal_union_le _ _
-    _ ≤ rawCoreSubtotal +
+    _ ≤ ((measure.real (rawOneProofCoreFailure events.coreLedger) +
+          measure.real events.fourClaimBatchCollision) +
+          measure.real events.relationOrExtractionFailure) +
+        measure.real events.statementBindingFailure := by
+      gcongr
+      exact MeasureTheory.measureReal_union_le _ _
+    _ ≤ (rawCoreSubtotal + rawFourClaimBatchCollisionBound) +
           measure.real events.relationOrExtractionFailure +
         measure.real events.statementBindingFailure := by
       gcongr
+      exact connections.fourClaimBatchCollision
 
 /-- The `2^-75` number is a one-proof ideal-core bound.  The two displayed
 terms are not assigned numbers by this theorem. -/
@@ -570,7 +616,7 @@ theorem released_ideal_accepted_false_probability_le_two_pow_neg_75_plus_explici
   exact (released_ideal_accepted_false_probability_le_raw_core_plus_explicit
     measure events coverage connections).trans (by
       gcongr
-      exact raw_core_subtotal_le_two_pow_neg_75)
+      exact raw_core_plus_four_claim_batch_le_two_pow_neg_75)
 
 set_option maxRecDepth 1000000 in
 /-- Concrete ideal one-proof accounting.  Unlike the generic theorem above,
@@ -591,7 +637,7 @@ theorem released_concrete_ideal_accepted_false_probability_le_raw_core_plus_expl
     (connections : ReleasedIdealAcceptedFalseRawConnections measure
       data.toEvents) :
     measure.real data.acceptedFalse ≤
-      rawCoreSubtotal +
+      (rawCoreSubtotal + rawFourClaimBatchCollisionBound) +
         measure.real data.relationOrExtractionFailure +
         measure.real data.statementBindingFailure := by
   exact released_ideal_accepted_false_probability_le_raw_core_plus_explicit
@@ -644,7 +690,7 @@ theorem released_production_false_spend_probability_le_raw_core_plus_explicit
     (connections : ReleasedIdealAcceptedFalseRawConnections measure events)
     (production : ReleasedProductionFalseSpendConnection events) :
     measure.real production.productionFalseSpend ≤
-      rawCoreSubtotal +
+      (rawCoreSubtotal + rawFourClaimBatchCollisionBound) +
         measure.real events.relationOrExtractionFailure +
         measure.real events.statementBindingFailure +
         measure.real (AspisV5CryptographicAssumptions.totalFailure
@@ -659,7 +705,7 @@ theorem released_production_false_spend_probability_le_raw_core_plus_explicit
           measure.real (AspisV5CryptographicAssumptions.totalFailure
             production.transcriptAndHashFailures) :=
       MeasureTheory.measureReal_union_le _ _
-    _ ≤ rawCoreSubtotal +
+    _ ≤ (rawCoreSubtotal + rawFourClaimBatchCollisionBound) +
           measure.real events.relationOrExtractionFailure +
           measure.real events.statementBindingFailure +
           measure.real (AspisV5CryptographicAssumptions.totalFailure
@@ -686,7 +732,7 @@ theorem released_production_false_spend_probability_le_two_pow_neg_75_plus_expli
   exact (released_production_false_spend_probability_le_raw_core_plus_explicit
     measure events coverage connections production).trans (by
       gcongr
-      exact raw_core_subtotal_le_two_pow_neg_75)
+      exact raw_core_plus_four_claim_batch_le_two_pow_neg_75)
 
 set_option maxRecDepth 1000000 in
 /-- Concrete production accounting with the deterministic ideal inclusion
@@ -708,7 +754,7 @@ theorem released_concrete_production_false_spend_probability_le_raw_core_plus_ex
       data.toEvents)
     (production : ReleasedProductionFalseSpendConnection data.toEvents) :
     measure.real production.productionFalseSpend ≤
-      rawCoreSubtotal +
+      (rawCoreSubtotal + rawFourClaimBatchCollisionBound) +
         measure.real data.relationOrExtractionFailure +
         measure.real data.statementBindingFailure +
         measure.real (AspisV5CryptographicAssumptions.totalFailure
