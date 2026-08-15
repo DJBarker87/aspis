@@ -102,6 +102,19 @@ theorem corrected_batch_le_2120_div_two_pow_119 :
     (by norm_num)
     (by unfold FIELD; norm_num)
 
+/-- Removing the 37-bit work charge from the tighter batching ceiling gives
+the corresponding raw completed-attempt ceiling. -/
+theorem corrected_batch_without_work_le_2120_div_two_pow_82 :
+    powersBatchArithmeticFStar 18 * 2 ^ 37 ≤
+      (2120 : ℝ) / 2 ^ 82 := by
+  have hworkNonnegative : (0 : ℝ) ≤ 2 ^ 37 := by positivity
+  calc
+    powersBatchArithmeticFStar 18 * 2 ^ 37 ≤
+        ((2120 : ℝ) / 2 ^ 119) * 2 ^ 37 :=
+      mul_le_mul_of_nonneg_right corrected_batch_le_2120_div_two_pow_119
+        hworkNonnegative
+    _ = (2120 : ℝ) / 2 ^ 82 := by norm_num
+
 /-- Regression check: the maintained conservative raw width-19 ceiling is not
 itself a 100-bit probability bound.  The 100-bit conclusion below is explicitly
 work-normalized. -/
@@ -289,6 +302,7 @@ theorem eighteen_two_pow_neg_128_fit_external_budget :
   norm_num
 
 #print axioms corrected_batch_le_2120_div_two_pow_119
+#print axioms corrected_batch_without_work_le_2120_div_two_pow_82
 #print axioms raw_width19_reference_ceiling_is_above_two_pow_neg_100
 #print axioms corrected_round_error_le_tight_union
 #print axioms corrected_work_normalized_core_le_seven_tenths
