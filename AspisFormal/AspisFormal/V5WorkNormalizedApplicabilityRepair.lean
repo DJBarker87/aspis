@@ -116,6 +116,21 @@ theorem width19_fstar_powers_batch_arithmetic_bound :
     (by norm_num)
     (by unfold FIELD; norm_num)
 
+/-- A tighter rational ceiling used when the work factor is restored for an
+ordinary, non-work-normalized probability statement. -/
+theorem width19_fstar_powers_batch_arithmetic_bound_tight :
+    powersBatchArithmeticFStar 18 ≤ (31 : ℝ) / 2 ^ 112 := by
+  unfold powersBatchArithmeticFStar
+  exact sqrt_event_le_with_denominator
+    18 (21 / 2) (1 / 512) 524288 (4419417 / 100000000)
+    (FIELD - 1) ((31 : ℝ) / 2 ^ 112) 37
+    (by norm_num)
+    (by norm_num)
+    (by norm_num)
+    (by unfold FIELD; norm_num)
+    (by norm_num)
+    (by unfold FIELD; norm_num)
+
 /-- Regression tooth: using the full-field denominator strictly understates
 the degree-18 root fraction for a challenge sampled uniformly from `F*`.
 Thus the old `18 / |F|` fraction cannot be substituted definitionally or by a
@@ -411,6 +426,7 @@ theorem corrected_30_trace_does_not_supply_round_semantics :
 /-! ## Axiom audit -/
 
 #print axioms width19_fstar_powers_batch_arithmetic_bound
+#print axioms width19_fstar_powers_batch_arithmetic_bound_tight
 #print axioms full_field_degree18_fraction_strictly_understates_fstar
 #print axioms full_field_width19_arithmetic_strictly_understates_fstar
 #print axioms width19_fstar_event_bound_of_all_named_premises

@@ -47,19 +47,24 @@ open AspisV5WorkNormalizedApplicabilityRepair
 noncomputable def rawWidth19FStarArithmetic : ℝ :=
   powersBatchArithmeticFStar 18 * 2 ^ 37
 
-/-- Restoring the work factor to the checked `2^-107` arithmetic gives the
-conservative raw bound `2^-70`.  This is only arithmetic; applying it to a
-real event still requires the named premises below. -/
-theorem raw_width19_fstar_arithmetic_le_two_pow_neg_70 :
-    rawWidth19FStarArithmetic ≤ (1 : ℝ) / 2 ^ 70 := by
-  have normalized := width19_fstar_powers_batch_arithmetic_bound
+/-- Restoring the work factor to the tighter checked arithmetic gives the
+raw bound `31 / 2^75`.  This is only arithmetic; applying it to a real event
+still requires the named premises below. -/
+theorem raw_width19_fstar_arithmetic_le_31_div_two_pow_75 :
+    rawWidth19FStarArithmetic ≤ (31 : ℝ) / 2 ^ 75 := by
+  have normalized := width19_fstar_powers_batch_arithmetic_bound_tight
   have workNonnegative : (0 : ℝ) ≤ 2 ^ 37 := by positivity
   unfold rawWidth19FStarArithmetic
   calc
     powersBatchArithmeticFStar 18 * 2 ^ 37 ≤
-        ((1 : ℝ) / 2 ^ 107) * 2 ^ 37 :=
+        ((31 : ℝ) / 2 ^ 112) * 2 ^ 37 :=
       mul_le_mul_of_nonneg_right normalized workNonnegative
-    _ = (1 : ℝ) / 2 ^ 70 := by norm_num
+    _ = (31 : ℝ) / 2 ^ 75 := by norm_num
+
+/-- Coarser power-of-two form of the raw width-19 arithmetic. -/
+theorem raw_width19_fstar_arithmetic_le_two_pow_neg_70 :
+    rawWidth19FStarArithmetic ≤ (1 : ℝ) / 2 ^ 70 := by
+  exact raw_width19_fstar_arithmetic_le_31_div_two_pow_75.trans (by norm_num)
 
 /-- External interface for applying the raw, non-work-normalized width-19
 bound.  In contrast to `Width19FStarDeploymentPremises`, this interface does
@@ -111,14 +116,15 @@ structure Width19MeasuredEventConnection
   exactMeasuredEvent :
     measure.real width19Failure = actualEventProbability selectedSchedule
 
-/-- The exact measured width-19 failure event is at most `2^-70`, conditional
-on every named published-theorem and implementation premise above. -/
-theorem width19_measured_failure_probability_le_two_pow_neg_70
+/-- The exact measured width-19 failure event is at most `31 / 2^75`,
+conditional on every named published-theorem and implementation premise
+above. -/
+theorem width19_measured_failure_probability_le_31_div_two_pow_75
     {Sample Schedule : Type*} [MeasurableSpace Sample]
     (measure : Measure Sample) (width19Failure : Set Sample)
     (connection : Width19MeasuredEventConnection
       (Schedule := Schedule) measure width19Failure) :
-    measure.real width19Failure ≤ (1 : ℝ) / 2 ^ 70 := by
+    measure.real width19Failure ≤ (31 : ℝ) / 2 ^ 75 := by
   have rawBound :
       connection.actualEventProbability connection.selectedSchedule ≤
         rawWidth19FStarArithmetic :=
@@ -132,11 +138,21 @@ theorem width19_measured_failure_probability_le_two_pow_neg_70
       (connection.deployment.acceptedHasRustSamplingAndTranscriptCorrespondence
         connection.selectedSchedule connection.selectedScheduleAccepted)
   rw [connection.exactMeasuredEvent]
-  exact rawBound.trans raw_width19_fstar_arithmetic_le_two_pow_neg_70
+  exact rawBound.trans raw_width19_fstar_arithmetic_le_31_div_two_pow_75
+
+/-- Coarser power-of-two form of the measured width-19 event bound. -/
+theorem width19_measured_failure_probability_le_two_pow_neg_70
+    {Sample Schedule : Type*} [MeasurableSpace Sample]
+    (measure : Measure Sample) (width19Failure : Set Sample)
+    (connection : Width19MeasuredEventConnection
+      (Schedule := Schedule) measure width19Failure) :
+    measure.real width19Failure ≤ (1 : ℝ) / 2 ^ 70 := by
+  exact (width19_measured_failure_probability_le_31_div_two_pow_75
+    measure width19Failure connection).trans (by norm_num)
 
 /-- Replace the visible width-19 term in any refined bound after the exact
 measured-event connection has been supplied. -/
-theorem refined_bound_with_width19_two_pow_neg_70
+theorem refined_bound_with_width19_raw_term
     {Sample Schedule : Type*} [MeasurableSpace Sample]
     (measure : Measure Sample) (target width19Failure : Set Sample)
     (remaining : ℝ)
@@ -145,9 +161,9 @@ theorem refined_bound_with_width19_two_pow_neg_70
     (connection : Width19MeasuredEventConnection
       (Schedule := Schedule) measure width19Failure) :
     measure.real target ≤
-      (1 : ℝ) / 2 ^ 75 + (1 : ℝ) / 2 ^ 70 + remaining := by
+      (1 : ℝ) / 2 ^ 75 + (31 : ℝ) / 2 ^ 75 + remaining := by
   have widthBound :=
-    width19_measured_failure_probability_le_two_pow_neg_70
+    width19_measured_failure_probability_le_31_div_two_pow_75
       measure width19Failure connection
   linarith
 
@@ -179,20 +195,20 @@ theorem acceptedFalse_probability_le_two_pow_neg_75_plus_width19_raw_bound
     (width19Connection : Width19MeasuredEventConnection
       (Schedule := Schedule) measure data.width19Failure) :
     measure.real data.base.acceptedFalse ≤
-      (1 : ℝ) / 2 ^ 75 + (1 : ℝ) / 2 ^ 70 +
+      (1 : ℝ) / 2 ^ 75 + (31 : ℝ) / 2 ^ 75 +
         nonterminalStatementFailureProbabilitySum measure boundary +
         measure.real data.hashMerkleResidualFailure := by
   have base := acceptedFalse_probability_le_two_pow_neg_75_nonduplicated
     measure data connections projection boundary terminalCandidateFailure
     coverage terminalBound
   have widthBound :=
-    width19_measured_failure_probability_le_two_pow_neg_70
+    width19_measured_failure_probability_le_31_div_two_pow_75
       measure data.width19Failure width19Connection
   linarith
 
-/-- A simpler conservative reading: after the raw width-19 connection, the
-two explicit ideal terms together are below `2^-69`. -/
-theorem acceptedFalse_probability_le_two_pow_neg_69_plus_remaining
+/-- After the raw width-19 connection, the two explicit ideal terms together
+are at most `2^-70`: `1/2^75 + 31/2^75 = 1/2^70`. -/
+theorem acceptedFalse_probability_le_two_pow_neg_70_plus_remaining
     {Run Coins K Public Root Schedule : Type*}
     [Field K] [Fintype K] [DecidableEq K]
     [Algebra (ZMod P) K] [NeZero (2 : K)] [MeasurableSpace Coins]
@@ -218,7 +234,7 @@ theorem acceptedFalse_probability_le_two_pow_neg_69_plus_remaining
     (width19Connection : Width19MeasuredEventConnection
       (Schedule := Schedule) measure data.width19Failure) :
     measure.real data.base.acceptedFalse ≤
-      (1 : ℝ) / 2 ^ 69 +
+      (1 : ℝ) / 2 ^ 70 +
         nonterminalStatementFailureProbabilitySum measure boundary +
         measure.real data.hashMerkleResidualFailure := by
   have exactTerms :=
@@ -226,15 +242,17 @@ theorem acceptedFalse_probability_le_two_pow_neg_69_plus_remaining
       measure data connections projection boundary terminalCandidateFailure
       coverage terminalBound width19Connection
   have combine :
-      (1 : ℝ) / 2 ^ 75 + (1 : ℝ) / 2 ^ 70 ≤
-        (1 : ℝ) / 2 ^ 69 := by norm_num
+      (1 : ℝ) / 2 ^ 75 + (31 : ℝ) / 2 ^ 75 =
+        (1 : ℝ) / 2 ^ 70 := by norm_num
   linarith
 
+#print axioms raw_width19_fstar_arithmetic_le_31_div_two_pow_75
 #print axioms raw_width19_fstar_arithmetic_le_two_pow_neg_70
+#print axioms width19_measured_failure_probability_le_31_div_two_pow_75
 #print axioms width19_measured_failure_probability_le_two_pow_neg_70
-#print axioms refined_bound_with_width19_two_pow_neg_70
+#print axioms refined_bound_with_width19_raw_term
 #print axioms
   acceptedFalse_probability_le_two_pow_neg_75_plus_width19_raw_bound
-#print axioms acceptedFalse_probability_le_two_pow_neg_69_plus_remaining
+#print axioms acceptedFalse_probability_le_two_pow_neg_70_plus_remaining
 
 end AspisV5RefinedWidth19DeploymentBridge
