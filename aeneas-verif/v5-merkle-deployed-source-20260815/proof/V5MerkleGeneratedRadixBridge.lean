@@ -846,6 +846,8 @@ theorem GeneratedFourChildTrace.final_input_eq_children
           ((trace.child 0).val ++ ((trace.child 1).val ++
             ((trace.child 2).val ++ (trace.child 3).val)))
           index (by simp; omega)]
+        change ((trace.child 0).val ++ ((trace.child 1).val ++
+          ((trace.child 2).val ++ (trace.child 3).val)))[index - 1]! = _
         rw [List.getElem!_append_left
           (trace.child 0).val
           ((trace.child 1).val ++ ((trace.child 2).val ++
@@ -870,17 +872,24 @@ theorem GeneratedFourChildTrace.final_input_eq_children
           ((trace.child 0).val ++ ((trace.child 1).val ++
             ((trace.child 2).val ++ (trace.child 3).val)))
           index (by simp; omega)]
+        change ((trace.child 0).val ++ ((trace.child 1).val ++
+          ((trace.child 2).val ++ (trace.child 3).val)))[index - 1]! = _
         rw [List.getElem!_append_right
           (trace.child 0).val
           ((trace.child 1).val ++ ((trace.child 2).val ++
             (trace.child 3).val))
           (index - 1) (by simp [(trace.child 0).property]; omega)]
+        have hoff0 : index - 1 - (trace.child 0).val.length =
+            index - 33 := by
+          have hlen : (trace.child 0).val.length = 32 := by
+            simpa using (trace.child 0).property
+          rw [hlen]
+          omega
+        rw [hoff0]
         rw [List.getElem!_append_left
           (trace.child 1).val
           ((trace.child 2).val ++ (trace.child 3).val)
           (index - 33) (by simpa [(trace.child 1).property] using hbyte)]
-        congr 1
-        omega
       rw [hrhs]
       change finalInput.val[index]! = (trace.child 1).val[index - 33]!
       change finalInput.val[1 + 1 * 32 + (index - 33)]! =
@@ -900,20 +909,34 @@ theorem GeneratedFourChildTrace.final_input_eq_children
           ((trace.child 0).val ++ ((trace.child 1).val ++
             ((trace.child 2).val ++ (trace.child 3).val)))
           index (by simp; omega)]
+        change ((trace.child 0).val ++ ((trace.child 1).val ++
+          ((trace.child 2).val ++ (trace.child 3).val)))[index - 1]! = _
         rw [List.getElem!_append_right
           (trace.child 0).val
           ((trace.child 1).val ++ ((trace.child 2).val ++
             (trace.child 3).val))
           (index - 1) (by simp [(trace.child 0).property]; omega)]
+        have hoff0 : index - 1 - (trace.child 0).val.length =
+            index - 33 := by
+          have hlen : (trace.child 0).val.length = 32 := by
+            simpa using (trace.child 0).property
+          rw [hlen]
+          omega
+        rw [hoff0]
         rw [List.getElem!_append_right
           (trace.child 1).val
           ((trace.child 2).val ++ (trace.child 3).val)
           (index - 33) (by simp [(trace.child 1).property]; omega)]
+        have hoff1 : index - 33 - (trace.child 1).val.length =
+            index - 65 := by
+          have hlen : (trace.child 1).val.length = 32 := by
+            simpa using (trace.child 1).property
+          rw [hlen]
+          omega
+        rw [hoff1]
         rw [List.getElem!_append_left
           (trace.child 2).val (trace.child 3).val
           (index - 65) (by simpa [(trace.child 2).property] using hbyte)]
-        congr 1
-        omega
       rw [hrhs]
       change finalInput.val[index]! = (trace.child 2).val[index - 65]!
       change finalInput.val[1 + 2 * 32 + (index - 65)]! =
@@ -934,20 +957,41 @@ theorem GeneratedFourChildTrace.final_input_eq_children
           ((trace.child 0).val ++ ((trace.child 1).val ++
             ((trace.child 2).val ++ (trace.child 3).val)))
           index (by simp; omega)]
+        change ((trace.child 0).val ++ ((trace.child 1).val ++
+          ((trace.child 2).val ++ (trace.child 3).val)))[index - 1]! = _
         rw [List.getElem!_append_right
           (trace.child 0).val
           ((trace.child 1).val ++ ((trace.child 2).val ++
             (trace.child 3).val))
           (index - 1) (by simp [(trace.child 0).property]; omega)]
+        have hoff0 : index - 1 - (trace.child 0).val.length =
+            index - 33 := by
+          have hlen : (trace.child 0).val.length = 32 := by
+            simpa using (trace.child 0).property
+          rw [hlen]
+          omega
+        rw [hoff0]
         rw [List.getElem!_append_right
           (trace.child 1).val
           ((trace.child 2).val ++ (trace.child 3).val)
           (index - 33) (by simp [(trace.child 1).property]; omega)]
+        have hoff1 : index - 33 - (trace.child 1).val.length =
+            index - 65 := by
+          have hlen : (trace.child 1).val.length = 32 := by
+            simpa using (trace.child 1).property
+          rw [hlen]
+          omega
+        rw [hoff1]
         rw [List.getElem!_append_right
           (trace.child 2).val (trace.child 3).val
           (index - 65) (by simp [(trace.child 2).property]; omega)]
-        congr 1
-        omega
+        have hoff2 : index - 65 - (trace.child 2).val.length =
+            index - 97 := by
+          have hlen : (trace.child 2).val.length = 32 := by
+            simpa using (trace.child 2).property
+          rw [hlen]
+          omega
+        rw [hoff2]
       rw [hrhs]
       change finalInput.val[index]! = (trace.child 3).val[index - 97]!
       change finalInput.val[1 + 3 * 32 + (index - 97)]! =
