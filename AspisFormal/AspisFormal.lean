@@ -175,6 +175,7 @@ import AspisFormal.V5NonzeroKappaSourceBridge
 import AspisFormal.V5MerkleRustBridge
 import AspisFormal.V5TopologyConstruction
 import AspisFormal.V5MerkleConsumedValueBridge
+import AspisFormal.V5FriSourceLoopOrder
 import AspisFormal.V5FinalSecurityAccounting
 import AspisFormal.V5RawFinalSecurityAccounting
 import AspisFormal.V5DeployedZeroKnowledgeBridge
