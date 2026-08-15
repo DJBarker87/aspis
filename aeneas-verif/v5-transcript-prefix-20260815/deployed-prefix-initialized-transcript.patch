@@ -1,0 +1,14 @@
+diff --git a/programs/aspis-verifier/src/v5_cu_probe.rs b/programs/aspis-verifier/src/v5_cu_probe.rs
+index 1083179..6bdb5f1 100644
+--- a/programs/aspis-verifier/src/v5_cu_probe.rs
++++ b/programs/aspis-verifier/src/v5_cu_probe.rs
+@@ -1399 +1399 @@
+-fn verify_v5_wire_prefix(
++fn verify_v5_wire_prefix_from_initialized_transcript(
+@@ -1403 +1403 @@
+-    hash: HashFn,
++    mut transcript: Transcript,
+@@ -1421,3 +1421,0 @@
+-    verify_live_statement_digest(live_statement, statement_digest, hash)?;
+-
+-    let mut transcript = Transcript::new(hash);

@@ -1,0 +1,46 @@
+Archived source commit: 06788d44d30ea8cbd391899dddaf6f0acc6e4a3f
+Archived v5_cu_probe.rs git blob: 1083179fccac7efda7340b82a91c79ba1946513c
+Extraction-only transformed v5_cu_probe.rs git blob: 6bdb5f1cd54610b4b3fc3ebb6c493a7c40b6e746
+Extraction-only patch SHA-256:
+a84b4d559241d87fd9cd0937ed9ff486b1f55237baf62b463dad8095161cfaad
+Normalized successful-path Lean source SHA-256:
+68e51358b1f40381583e3c269533cc1f604360050b96546b5d5b1ffafa8b8df0
+Lean bridge source SHA-256:
+1230fa590ece3652a13905308aa66659d45a4ec54e081425aec4c4aeab5aeb9a
+Normalization checker SHA-256:
+8e5271c9cb69bde8ade9f7018cdde0061278c97fa90db8b73193414e79ac1343
+Artifact verifier SHA-256:
+add76fc7f6da31578d73743dc31f9512970760fa22568edd5982a79ba9835098
+
+Pinned artifact identities audited on 2026-08-15:
+prefix-core.llbc SHA-256:
+0d465ce9291cc57b6fd6ec149abdd8c2d3474a9244ff4336e99de4f9dcd6b319
+prefix-core.llbc.txt SHA-256:
+791309c868758730462991aa5a5fce1cce4d4b1379e9b27314881e4b09a298ed
+generated Funs.lean SHA-256:
+19564142fdddd93b41674554d42df8a0486763b5ce765682b83103408b13b063
+generated Types.lean SHA-256:
+278ea857c1197308bf22e05d3461f13837cdc200d11625b6f8d3d14396c651fa
+generated FunsExternal_Template.lean SHA-256:
+b6664a379775e572749f96c00f7749442123dae63a9565551b203bc1cb8527d1
+generated TypesExternal_Template.lean SHA-256:
+aa82991203f4ee597a6773d805942a0f2fd622cd2782715ae3a11bd73eca57eb
+
+Extraction crate:
+aspis_verifier_kappa_caller_extraction
+LLBC charon_version field: 0.1.223
+Generated function:
+v5_cu_probe.verify_v5_wire_prefix_from_initialized_transcript
+Generated source annotation:
+programs/aspis-verifier/src/v5_cu_probe.rs, archived lines 1399--1516
+
+Charon commit used by the release extraction:
+cb50ff16b9f1066b8a97dc06da704de2da2fa41c
+Aeneas commit used by the release extraction:
+b59d5188c082f704a418c7cb4e52ad69328002d1
+
+The helper transformation is exactly the checked patch in this directory.
+It is not literal deployed source. The proof covers only the successful
+transcript event order and named value flow after an initialized transcript is
+provided. Digest validation and transcript construction remain at the real
+caller boundary.

@@ -194,3 +194,4 @@ import AspisFormal.V5RefinedAdaptiveObservedTheftAccounting
 import AspisFormal.V5AdaptiveTheftWidth19Bound
 import AspisFormal.V5TranscriptSourceAdapter
 import AspisFormal.V5UnifiedSecurityExperiment
+import AspisFormal.V5TranscriptPrefixExtractionBridge
