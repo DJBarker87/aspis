@@ -1246,7 +1246,6 @@ theorem fixed_hash_radix_groups_success_yields_trace
     (finalNodePos finalValuePos : Std.Usize)
     (hnodePos : nodePos.val ≤ nodeBytes.val.length)
     (hroom : nodeBytes.val.length + 32 < UScalar.size .Usize)
-    (hmasksRoom : masks.val.length + 1 < UScalar.size .Usize)
     (hrun :
       merkle.fixed_hash_radix_groups nodeBytes level masks maskPos nodePos
           valuePos next =
@@ -1278,17 +1277,380 @@ theorem fixed_hash_radix_groups_success_yields_trace
     have hmaskSucc :
         (Std.Usize.wrapping_add maskPos 1#usize).val = maskPos.val + 1 := by
       apply fixed_usize_succ_val_of_room
+      have hsizes : UScalar.size .Usize = Usize.size :=
+        UScalar.size_UScalarTyUsize
+      have hmax : Usize.max < Usize.size := by
+        rcases System.Platform.numBits_eq with hbits | hbits <;>
+          simp [Usize.max, Usize.size, Usize.numBits, hbits]
+      rw [hsizes]
+      have hlength := masks.property
       omega
     let tail := Classical.choice
       (fixed_hash_radix_groups_success_yields_trace nodeBytes level masks
         (Std.Usize.wrapping_add maskPos 1#usize) head.nextNodePos
         head.nextValuePos head.next' finalNext finalNodePos finalValuePos
-        hnextNode hroom hmasksRoom head.recurse_run)
+        hnextNode hroom head.recurse_run)
     exact ⟨GeneratedGroupTrace.step maskPos nodePos valuePos next finalNext
       finalNodePos finalValuePos hactive head tail⟩
 termination_by masks.val.length - maskPos.val
 decreasing_by
   rw [hmaskSucc]
+  omega
+
+theorem fixed_hash_radix_groups_success_final_node_pos_le
+    (nodeBytes : Slice Std.U8) (level : Slice GeneratedDigest)
+    (masks : Slice Std.U8) (maskPos nodePos valuePos : Std.Usize)
+    (next finalNext : GeneratedDigestVec)
+    (finalNodePos finalValuePos : Std.Usize)
+    (hnodePos : nodePos.val ≤ nodeBytes.val.length)
+    (hroom : nodeBytes.val.length + 32 < UScalar.size .Usize)
+    (hrun :
+      merkle.fixed_hash_radix_groups nodeBytes level masks maskPos nodePos
+          valuePos next =
+        .ok (some (finalNext, finalNodePos, finalValuePos))) :
+    finalNodePos.val ≤ nodeBytes.val.length := by
+  by_cases hdone : masks.val.length ≤ maskPos.val
+  · have hterminal :=
+      AspisV5MerkleGeneratedHelperBridge.fixed_hash_radix_groups_done
+        nodeBytes level masks maskPos nodePos valuePos next hdone
+    rw [hterminal] at hrun
+    injection hrun with hsome
+    have htriple := Option.some.inj hsome
+    have hnode : nodePos = finalNodePos :=
+      congrArg (fun value => value.2.1) htriple
+    rw [← hnode]
+    exact hnodePos
+  · have hactive : maskPos.val < masks.val.length := by omega
+    let head := Classical.choice
+      (fixed_hash_radix_groups_success_step nodeBytes level masks maskPos
+        nodePos valuePos next finalNext finalNodePos finalValuePos hactive
+        hnodePos hroom hrun)
+    have hnextNode := head.children.finalNodePos_le hnodePos
+    exact fixed_hash_radix_groups_success_final_node_pos_le nodeBytes level
+      masks (Std.Usize.wrapping_add maskPos 1#usize) head.nextNodePos
+      head.nextValuePos head.next' finalNext finalNodePos finalValuePos
+      hnextNode hroom head.recurse_run
+termination_by masks.val.length - maskPos.val
+decreasing_by
+  have hmaskSucc :
+      (Std.Usize.wrapping_add maskPos 1#usize).val = maskPos.val + 1 := by
+    apply fixed_usize_succ_val_of_room
+    have hsizes : UScalar.size .Usize = Usize.size :=
+      UScalar.size_UScalarTyUsize
+    have hmax : Usize.max < Usize.size := by
+      rcases System.Platform.numBits_eq with hbits | hbits <;>
+        simp [Usize.max, Usize.size, Usize.numBits, hbits]
+    rw [hsizes]
+    have hlength := masks.property
+    omega
+  rw [hmaskSucc]
+  omega
+
+/-! ## Exact recursive topology-level execution -/
+
+/-- One nonterminal iteration of the extracted level helper, including the
+exact topology slice, complete group trace, all-value-consumed check, scratch
+swap, and recursive tail. -/
+structure GeneratedLevelStep
+    (topology : merkle.Radix4BinaryCapTopology)
+    (nodeBytes : Slice Std.U8) (planLevel nodePos : Std.Usize)
+    (level next : GeneratedDigestVec)
+    (finalLevel finalNext : GeneratedDigestVec)
+    (finalNodePos : Std.Usize) where
+  nextCleared : GeneratedDigestVec
+  maskStart : Std.Usize
+  maskEnd : Std.Usize
+  maskSlice : Slice Std.U8
+  masksVec : alloc.vec.Vec Std.U8
+  nextHashed : GeneratedDigestVec
+  nextNodePos : Std.Usize
+  nextValuePos : Std.Usize
+  level' : GeneratedDigestVec
+  next' : GeneratedDigestVec
+  clear_run : alloc.vec.Vec.clear Global next = .ok nextCleared
+  mask_start_run :
+    Array.index_usize topology.group_offsets planLevel = .ok maskStart
+  mask_end_run :
+    Array.index_usize topology.group_offsets
+      (Std.Usize.wrapping_add planLevel 1#usize) = .ok maskEnd
+  mask_slice_run :
+    alloc.vec.Vec.index
+        (core.slice.index.SliceIndexRangeUsizeSlice Std.U8)
+        topology.group_masks { start := maskStart, «end» := maskEnd } =
+      .ok maskSlice
+  masks_vec_run :
+    alloc.slice.Slice.to_vec core.clone.CloneU8 maskSlice = .ok masksVec
+  groups_run :
+    merkle.fixed_hash_radix_groups nodeBytes (alloc.vec.Vec.deref level)
+        (alloc.vec.Vec.deref masksVec) 0#usize nodePos 0#usize nextCleared =
+      .ok (some (nextHashed, nextNodePos, nextValuePos))
+  groups : GeneratedGroupTrace nodeBytes (alloc.vec.Vec.deref level)
+    (alloc.vec.Vec.deref masksVec) 0#usize nodePos 0#usize nextCleared
+    nextHashed nextNodePos nextValuePos
+  values_consumed : nextValuePos = alloc.vec.Vec.len level
+  swap_eq : core.mem.swap level nextHashed = (level', next')
+  recurse_run :
+    merkle.fixed_hash_radix_levels topology nodeBytes
+        (Std.Usize.wrapping_add planLevel 1#usize) nextNodePos level' next' =
+      .ok (some (finalLevel, finalNext, finalNodePos))
+
+/-- Invert one successful nonterminal topology-level iteration. -/
+theorem fixed_hash_radix_levels_success_step
+    (topology : merkle.Radix4BinaryCapTopology)
+    (nodeBytes : Slice Std.U8) (planLevel nodePos : Std.Usize)
+    (level next finalLevel finalNext : GeneratedDigestVec)
+    (finalNodePos : Std.Usize)
+    (hplanLevel : planLevel.val < topology.radix_levels.val)
+    (hnodePos : nodePos.val ≤ nodeBytes.val.length)
+    (hroom : nodeBytes.val.length + 32 < UScalar.size .Usize)
+    (hrun :
+      merkle.fixed_hash_radix_levels topology nodeBytes planLevel nodePos level
+          next = .ok (some (finalLevel, finalNext, finalNodePos))) :
+    Nonempty (GeneratedLevelStep topology nodeBytes planLevel nodePos level next
+      finalLevel finalNext finalNodePos) := by
+  rw [merkle.fixed_hash_radix_levels.eq_def] at hrun
+  have hnotDone : ¬ planLevel ≥ topology.radix_levels := by scalar_tac
+  rw [if_neg hnotDone] at hrun
+  dsimp only at hrun
+  generalize hclear : alloc.vec.Vec.clear Global next = clearResult
+  rw [hclear] at hrun
+  cases clearResult with
+  | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+  | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+  | ok nextCleared =>
+    simp only [Aeneas.Std.bind_tc_ok, lift] at hrun
+    generalize hmaskStart :
+      Array.index_usize topology.group_offsets planLevel = maskStartResult
+    rw [hmaskStart] at hrun
+    cases maskStartResult with
+    | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+    | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+    | ok maskStart =>
+      simp only [Aeneas.Std.bind_tc_ok, lift] at hrun
+      generalize hmaskEnd :
+        Array.index_usize topology.group_offsets
+          (Std.Usize.wrapping_add planLevel 1#usize) = maskEndResult
+      rw [hmaskEnd] at hrun
+      cases maskEndResult with
+      | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+      | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+      | ok maskEnd =>
+        simp only [Aeneas.Std.bind_tc_ok, lift] at hrun
+        generalize hmaskSlice :
+          alloc.vec.Vec.index
+              (core.slice.index.SliceIndexRangeUsizeSlice Std.U8)
+              topology.group_masks { start := maskStart, «end» := maskEnd } =
+            maskSliceResult
+        rw [hmaskSlice] at hrun
+        cases maskSliceResult with
+        | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+        | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+        | ok maskSlice =>
+          simp only [Aeneas.Std.bind_tc_ok, lift] at hrun
+          generalize hmasksVec :
+            alloc.slice.Slice.to_vec core.clone.CloneU8 maskSlice =
+              masksVecResult
+          rw [hmasksVec] at hrun
+          cases masksVecResult with
+          | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+          | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+          | ok masksVec =>
+            simp only [Aeneas.Std.bind_tc_ok, lift] at hrun
+            generalize hgroups :
+              merkle.fixed_hash_radix_groups nodeBytes
+                (alloc.vec.Vec.deref level) (alloc.vec.Vec.deref masksVec)
+                0#usize nodePos 0#usize nextCleared = groupsResult
+            rw [hgroups] at hrun
+            cases groupsResult with
+            | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+            | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+            | ok groupsOption =>
+              cases groupsOption with
+              | none => simp [Bind.bind, Aeneas.Std.bind,
+                  core.option.Option.Insts.CoreOpsTry_traitTry.branch,
+                  core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionInfallible.from_residual]
+                  at hrun
+              | some groupsTuple =>
+                rcases groupsTuple with ⟨nextHashed, nextNodePos,
+                  nextValuePos⟩
+                simp only [core.option.Option.Insts.CoreOpsTry_traitTry.branch,
+                  Aeneas.Std.bind_tc_ok, lift] at hrun
+                have hconsumed :
+                    nextValuePos = alloc.vec.Vec.len level := by
+                  by_contra hne
+                  have hneqTrue :
+                      (nextValuePos != alloc.vec.Vec.len level) = true := by
+                    simp [hne]
+                  rw [hneqTrue] at hrun
+                  simp at hrun
+                have hneqFalse :
+                    (nextValuePos != alloc.vec.Vec.len level) = false := by
+                  simp [hconsumed]
+                rw [hneqFalse] at hrun
+                simp only [Bool.false_eq_true, if_false] at hrun
+                let swapPair := core.mem.swap level nextHashed
+                let level' := swapPair.1
+                let next' := swapPair.2
+                have hswap : core.mem.swap level nextHashed =
+                    (level', next') := by
+                  rfl
+                change
+                  merkle.fixed_hash_radix_levels topology nodeBytes
+                    (Std.Usize.wrapping_add planLevel 1#usize) nextNodePos
+                    level' next' =
+                      .ok (some (finalLevel, finalNext, finalNodePos)) at hrun
+                let groups := Classical.choice
+                  (fixed_hash_radix_groups_success_yields_trace nodeBytes
+                    (alloc.vec.Vec.deref level)
+                    (alloc.vec.Vec.deref masksVec) 0#usize nodePos 0#usize
+                    nextCleared nextHashed nextNodePos nextValuePos hnodePos
+                    hroom hgroups)
+                exact ⟨{
+                  nextCleared := nextCleared
+                  maskStart := maskStart
+                  maskEnd := maskEnd
+                  maskSlice := maskSlice
+                  masksVec := masksVec
+                  nextHashed := nextHashed
+                  nextNodePos := nextNodePos
+                  nextValuePos := nextValuePos
+                  level' := level'
+                  next' := next'
+                  clear_run := hclear
+                  mask_start_run := hmaskStart
+                  mask_end_run := hmaskEnd
+                  mask_slice_run := hmaskSlice
+                  masks_vec_run := hmasksVec
+                  groups_run := hgroups
+                  groups := groups
+                  values_consumed := hconsumed
+                  swap_eq := hswap
+                  recurse_run := hrun }⟩
+
+/-- Complete successful recursion of the extracted topology-level helper. -/
+inductive GeneratedLevelTrace
+    (topology : merkle.Radix4BinaryCapTopology)
+    (nodeBytes : Slice Std.U8) :
+    Std.Usize → Std.Usize → GeneratedDigestVec → GeneratedDigestVec →
+      GeneratedDigestVec → GeneratedDigestVec → Std.Usize → Prop
+  | done (planLevel nodePos : Std.Usize)
+      (level next : GeneratedDigestVec)
+      (hdone : topology.radix_levels.val ≤ planLevel.val) :
+      GeneratedLevelTrace topology nodeBytes planLevel nodePos level next
+        level next nodePos
+  | step (planLevel nodePos : Std.Usize)
+      (level next finalLevel finalNext : GeneratedDigestVec)
+      (finalNodePos : Std.Usize)
+      (hactive : planLevel.val < topology.radix_levels.val)
+      (head : GeneratedLevelStep topology nodeBytes planLevel nodePos level next
+        finalLevel finalNext finalNodePos)
+      (tail : GeneratedLevelTrace topology nodeBytes
+        (Std.Usize.wrapping_add planLevel 1#usize) head.nextNodePos
+        head.level' head.next' finalLevel finalNext finalNodePos) :
+      GeneratedLevelTrace topology nodeBytes planLevel nodePos level next
+        finalLevel finalNext finalNodePos
+
+/-- Every successful generated level run has one exact trace node per
+remaining topology level, with a complete exact group trace nested inside. -/
+theorem fixed_hash_radix_levels_success_yields_trace
+    (topology : merkle.Radix4BinaryCapTopology)
+    (nodeBytes : Slice Std.U8) (planLevel nodePos : Std.Usize)
+    (level next finalLevel finalNext : GeneratedDigestVec)
+    (finalNodePos : Std.Usize)
+    (hnodePos : nodePos.val ≤ nodeBytes.val.length)
+    (hroom : nodeBytes.val.length + 32 < UScalar.size .Usize)
+    (hrun :
+      merkle.fixed_hash_radix_levels topology nodeBytes planLevel nodePos level
+          next = .ok (some (finalLevel, finalNext, finalNodePos))) :
+    Nonempty (GeneratedLevelTrace topology nodeBytes planLevel nodePos level
+      next finalLevel finalNext finalNodePos) := by
+  by_cases hdone : topology.radix_levels.val ≤ planLevel.val
+  · have hterminal :=
+      AspisV5MerkleGeneratedHelperBridge.fixed_hash_radix_levels_done
+        topology nodeBytes planLevel nodePos level next hdone
+    rw [hterminal] at hrun
+    injection hrun with hsome
+    have htriple := Option.some.inj hsome
+    have hlevel : level = finalLevel := congrArg Prod.fst htriple
+    have hnext : next = finalNext :=
+      congrArg (fun value => value.2.1) htriple
+    have hnode : nodePos = finalNodePos :=
+      congrArg (fun value => value.2.2) htriple
+    subst finalLevel
+    subst finalNext
+    subst finalNodePos
+    exact ⟨GeneratedLevelTrace.done planLevel nodePos level next hdone⟩
+  · have hactive : planLevel.val < topology.radix_levels.val := by omega
+    let head := Classical.choice
+      (fixed_hash_radix_levels_success_step topology nodeBytes planLevel
+        nodePos level next finalLevel finalNext finalNodePos hactive hnodePos
+        hroom hrun)
+    have hnextNode :=
+      fixed_hash_radix_groups_success_final_node_pos_le nodeBytes
+        (alloc.vec.Vec.deref level) (alloc.vec.Vec.deref head.masksVec)
+        0#usize nodePos 0#usize head.nextCleared head.nextHashed
+        head.nextNodePos head.nextValuePos hnodePos hroom head.groups_run
+    have hlevelSucc :
+        (Std.Usize.wrapping_add planLevel 1#usize).val = planLevel.val + 1 := by
+      apply fixed_usize_succ_val_of_room
+      have hbound := topology.radix_levels.hSize
+      omega
+    let tail := Classical.choice
+      (fixed_hash_radix_levels_success_yields_trace topology nodeBytes
+        (Std.Usize.wrapping_add planLevel 1#usize) head.nextNodePos
+        head.level' head.next' finalLevel finalNext finalNodePos hnextNode hroom
+        head.recurse_run)
+    exact ⟨GeneratedLevelTrace.step planLevel nodePos level next finalLevel
+      finalNext finalNodePos hactive head tail⟩
+termination_by topology.radix_levels.val - planLevel.val
+decreasing_by
+  rw [hlevelSucc]
+  omega
+
+theorem fixed_hash_radix_levels_success_final_node_pos_le
+    (topology : merkle.Radix4BinaryCapTopology)
+    (nodeBytes : Slice Std.U8) (planLevel nodePos : Std.Usize)
+    (level next finalLevel finalNext : GeneratedDigestVec)
+    (finalNodePos : Std.Usize)
+    (hnodePos : nodePos.val ≤ nodeBytes.val.length)
+    (hroom : nodeBytes.val.length + 32 < UScalar.size .Usize)
+    (hrun :
+      merkle.fixed_hash_radix_levels topology nodeBytes planLevel nodePos level
+          next = .ok (some (finalLevel, finalNext, finalNodePos))) :
+    finalNodePos.val ≤ nodeBytes.val.length := by
+  by_cases hdone : topology.radix_levels.val ≤ planLevel.val
+  · have hterminal :=
+      AspisV5MerkleGeneratedHelperBridge.fixed_hash_radix_levels_done
+        topology nodeBytes planLevel nodePos level next hdone
+    rw [hterminal] at hrun
+    injection hrun with hsome
+    have htriple := Option.some.inj hsome
+    have hnode : nodePos = finalNodePos :=
+      congrArg (fun value => value.2.2) htriple
+    rw [← hnode]
+    exact hnodePos
+  · have hactive : planLevel.val < topology.radix_levels.val := by omega
+    let head := Classical.choice
+      (fixed_hash_radix_levels_success_step topology nodeBytes planLevel
+        nodePos level next finalLevel finalNext finalNodePos hactive hnodePos
+        hroom hrun)
+    have hnextNode :=
+      fixed_hash_radix_groups_success_final_node_pos_le nodeBytes
+        (alloc.vec.Vec.deref level) (alloc.vec.Vec.deref head.masksVec)
+        0#usize nodePos 0#usize head.nextCleared head.nextHashed
+        head.nextNodePos head.nextValuePos hnodePos hroom head.groups_run
+    exact fixed_hash_radix_levels_success_final_node_pos_le topology nodeBytes
+      (Std.Usize.wrapping_add planLevel 1#usize) head.nextNodePos head.level'
+      head.next' finalLevel finalNext finalNodePos hnextNode hroom
+      head.recurse_run
+termination_by topology.radix_levels.val - planLevel.val
+decreasing_by
+  have hlevelSucc :
+      (Std.Usize.wrapping_add planLevel 1#usize).val = planLevel.val + 1 := by
+    apply fixed_usize_succ_val_of_room
+    have hbound := topology.radix_levels.hSize
+    omega
+  rw [hlevelSucc]
   omega
 
 /-- One present slot of the extracted recursive child helper reads the next
