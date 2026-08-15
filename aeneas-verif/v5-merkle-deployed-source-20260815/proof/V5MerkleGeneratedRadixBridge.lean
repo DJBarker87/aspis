@@ -704,6 +704,22 @@ theorem fixed_fill_radix_children_success_yields_four_steps
     finalNodePos_eq := hnode.symm
     finalValuePos_eq := hvalue.symm }⟩
 
+theorem GeneratedFourChildTrace.finalNodePos_le
+    {nodeBytes : Slice Std.U8} {level : Slice GeneratedDigest}
+    {present : Std.U8} {nodePos valuePos : Std.Usize}
+    {input finalInput : GeneratedRadixInput}
+    {finalNodePos finalValuePos : Std.Usize}
+    (trace : GeneratedFourChildTrace nodeBytes level present nodePos valuePos
+      input finalInput finalNodePos finalValuePos)
+    (hnodePos : nodePos.val ≤ nodeBytes.val.length) :
+    finalNodePos.val ≤ nodeBytes.val.length := by
+  have h0 := trace.step0.nextNodePos_le hnodePos
+  have h1 := trace.step1.nextNodePos_le h0
+  have h2 := trace.step2.nextNodePos_le h1
+  have h3 := trace.step3.nextNodePos_le h2
+  rw [trace.finalNodePos_eq]
+  exact h3
+
 theorem fixed_write_preserves_other_slot
     (input output : GeneratedRadixInput)
     (writtenSlot targetSlot : Std.Usize) (child : GeneratedDigest)
@@ -1041,6 +1057,239 @@ theorem GeneratedFourChildTrace.hash_exact
   simp [Array.make, Array.val_to_slice] at hexact
   rw [hbytes] at hexact
   simpa [sha256MerkleHashing, hashInputBytes] using hexact
+
+/-! ## Exact recursive group execution -/
+
+/-- One nonterminal iteration of the generated group helper.  This retains
+the exact mask byte, initialized domain-separated input, four-child source
+trace, hash call, vector append, cursor results, and recursive tail. -/
+structure GeneratedGroupStep
+    (nodeBytes : Slice Std.U8) (level : Slice GeneratedDigest)
+    (masks : Slice Std.U8) (maskPos nodePos valuePos : Std.Usize)
+    (next : GeneratedDigestVec)
+    (finalNext : GeneratedDigestVec)
+    (finalNodePos finalValuePos : Std.Usize) where
+  present : Std.U8
+  input : GeneratedRadixInput
+  filledInput : GeneratedRadixInput
+  nextNodePos : Std.Usize
+  nextValuePos : Std.Usize
+  digest : GeneratedDigest
+  next' : GeneratedDigestVec
+  init_run :
+    Array.update (Array.repeat 129#usize 0#u8) 0#usize merkle.DOM_NODE4 =
+      .ok input
+  mask_run : Slice.index_usize masks maskPos = .ok present
+  fill_run :
+    merkle.fixed_fill_radix_children nodeBytes level present 0#usize nodePos
+        valuePos input =
+      .ok (some (filledInput, nextNodePos, nextValuePos))
+  children : GeneratedFourChildTrace nodeBytes level present nodePos valuePos
+    input filledInput nextNodePos nextValuePos
+  hash_run :
+    merkle.fixed_hashv
+        (Array.to_slice (Array.make 1#usize [Array.to_slice filledInput])) =
+      .ok digest
+  push_run : alloc.vec.Vec.push next digest = .ok next'
+  recurse_run :
+    merkle.fixed_hash_radix_groups nodeBytes level masks
+        (Std.Usize.wrapping_add maskPos 1#usize) nextNodePos nextValuePos next' =
+      .ok (some (finalNext, finalNodePos, finalValuePos))
+
+/-- Invert one successful nonterminal group iteration into the exact generated
+operations.  The ordinary `usize` room and frontier-cursor premises are kept
+explicit and are discharged from the released proof-size bounds upstream. -/
+theorem fixed_hash_radix_groups_success_step
+    (nodeBytes : Slice Std.U8) (level : Slice GeneratedDigest)
+    (masks : Slice Std.U8) (maskPos nodePos valuePos : Std.Usize)
+    (next finalNext : GeneratedDigestVec)
+    (finalNodePos finalValuePos : Std.Usize)
+    (hmaskPos : maskPos.val < masks.val.length)
+    (hnodePos : nodePos.val ≤ nodeBytes.val.length)
+    (hroom : nodeBytes.val.length + 32 < UScalar.size .Usize)
+    (hrun :
+      merkle.fixed_hash_radix_groups nodeBytes level masks maskPos nodePos
+          valuePos next =
+        .ok (some (finalNext, finalNodePos, finalValuePos))) :
+    Nonempty (GeneratedGroupStep nodeBytes level masks maskPos nodePos valuePos
+      next finalNext finalNodePos finalValuePos) := by
+  rw [merkle.fixed_hash_radix_groups.eq_def] at hrun
+  have hnotDone : ¬ maskPos ≥ Slice.len masks := by
+    change ¬ maskPos.val ≥ masks.val.length
+    omega
+  rw [if_neg hnotDone] at hrun
+  dsimp only at hrun
+  generalize hinit :
+    Array.update (Array.repeat 129#usize 0#u8) 0#usize merkle.DOM_NODE4 =
+      initResult
+  rw [hinit] at hrun
+  cases initResult with
+  | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+  | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+  | ok input =>
+    simp only [Aeneas.Std.bind_tc_ok, lift] at hrun
+    generalize hmask : Slice.index_usize masks maskPos = maskResult
+    rw [hmask] at hrun
+    cases maskResult with
+    | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+    | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+    | ok present =>
+      simp only [Aeneas.Std.bind_tc_ok, lift] at hrun
+      generalize hfill :
+        merkle.fixed_fill_radix_children nodeBytes level present 0#usize
+          nodePos valuePos input = fillResult
+      rw [hfill] at hrun
+      cases fillResult with
+      | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+      | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+      | ok fillOption =>
+        cases fillOption with
+        | none => simp [Bind.bind, Aeneas.Std.bind,
+            core.option.Option.Insts.CoreOpsTry_traitTry.branch,
+            core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionInfallible.from_residual]
+            at hrun
+        | some fillTuple =>
+          rcases fillTuple with ⟨filledInput, nextNodePos, nextValuePos⟩
+          simp only [core.option.Option.Insts.CoreOpsTry_traitTry.branch,
+            Aeneas.Std.bind_tc_ok, lift] at hrun
+          generalize hhash :
+            merkle.fixed_hashv
+              (Array.to_slice
+                (Array.make 1#usize [Array.to_slice filledInput])) =
+              hashResult
+          rw [hhash] at hrun
+          cases hashResult with
+          | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+          | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+          | ok digest =>
+            simp only [Aeneas.Std.bind_tc_ok, lift] at hrun
+            generalize hpush : alloc.vec.Vec.push next digest = pushResult
+            rw [hpush] at hrun
+            cases pushResult with
+            | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+            | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+            | ok next' =>
+              simp only [Aeneas.Std.bind_tc_ok, lift] at hrun
+              have hchildren :=
+                fixed_fill_radix_children_success_yields_four_steps
+                  nodeBytes level present nodePos valuePos input filledInput
+                  nextNodePos nextValuePos hnodePos hroom hfill
+              exact ⟨{
+                present := present
+                input := input
+                filledInput := filledInput
+                nextNodePos := nextNodePos
+                nextValuePos := nextValuePos
+                digest := digest
+                next' := next'
+                init_run := hinit
+                mask_run := hmask
+                fill_run := hfill
+                children := Classical.choice hchildren
+                hash_run := hhash
+                push_run := hpush
+                recurse_run := hrun }⟩
+
+/-- Every digest appended by one generated group step is exactly the maintained
+model's radix-four hash of the four children selected by that step. -/
+theorem GeneratedGroupStep.digest_exact
+    {nodeBytes : Slice Std.U8} {level : Slice GeneratedDigest}
+    {masks : Slice Std.U8} {maskPos nodePos valuePos : Std.Usize}
+    {next finalNext : GeneratedDigestVec}
+    {finalNodePos finalValuePos : Std.Usize}
+    (sha256 : List AspisV5MerkleAuthenticationBinding.Byte → Digest32)
+    (hhash : FixedHashvEqualsSha256 sha256)
+    (step : GeneratedGroupStep nodeBytes level masks maskPos nodePos valuePos
+      next finalNext finalNodePos finalValuePos) :
+    generatedArrayToDigest step.digest =
+      (sha256MerkleHashing sha256).radix4Node
+        (fun slot => generatedArrayToDigest (step.children.child slot)) := by
+  apply step.children.hash_exact sha256 hhash
+  · have hinit := step.init_run
+    simp [Array.update, core.array.Array.index_mut,
+      core.ops.index.IndexMutSlice, core.slice.index.Slice.index_mut,
+      List.set] at hinit
+    simpa using (congrArg (fun value => value.val[0]!) hinit).symm
+  · exact step.hash_run
+
+/-- Complete successful recursion of the generated group helper.  The `done`
+constructor is the exact mask-end return; `step` records one source iteration
+and the trace of the strictly shorter suffix. -/
+inductive GeneratedGroupTrace
+    (nodeBytes : Slice Std.U8) (level : Slice GeneratedDigest)
+    (masks : Slice Std.U8) :
+    Std.Usize → Std.Usize → Std.Usize → GeneratedDigestVec →
+      GeneratedDigestVec → Std.Usize → Std.Usize → Prop
+  | done (maskPos nodePos valuePos : Std.Usize) (next : GeneratedDigestVec)
+      (hdone : masks.val.length ≤ maskPos.val) :
+      GeneratedGroupTrace nodeBytes level masks maskPos nodePos valuePos next
+        next nodePos valuePos
+  | step (maskPos nodePos valuePos : Std.Usize)
+      (next finalNext : GeneratedDigestVec)
+      (finalNodePos finalValuePos : Std.Usize)
+      (hactive : maskPos.val < masks.val.length)
+      (head : GeneratedGroupStep nodeBytes level masks maskPos nodePos valuePos
+        next finalNext finalNodePos finalValuePos)
+      (tail : GeneratedGroupTrace nodeBytes level masks
+        (Std.Usize.wrapping_add maskPos 1#usize)
+        head.nextNodePos head.nextValuePos head.next'
+        finalNext finalNodePos finalValuePos) :
+      GeneratedGroupTrace nodeBytes level masks maskPos nodePos valuePos next
+        finalNext finalNodePos finalValuePos
+
+/-- Any successful generated group run has an exact finite trace, with one
+trace node per mask byte and no omitted or extra group. -/
+theorem fixed_hash_radix_groups_success_yields_trace
+    (nodeBytes : Slice Std.U8) (level : Slice GeneratedDigest)
+    (masks : Slice Std.U8) (maskPos nodePos valuePos : Std.Usize)
+    (next finalNext : GeneratedDigestVec)
+    (finalNodePos finalValuePos : Std.Usize)
+    (hnodePos : nodePos.val ≤ nodeBytes.val.length)
+    (hroom : nodeBytes.val.length + 32 < UScalar.size .Usize)
+    (hmasksRoom : masks.val.length + 1 < UScalar.size .Usize)
+    (hrun :
+      merkle.fixed_hash_radix_groups nodeBytes level masks maskPos nodePos
+          valuePos next =
+        .ok (some (finalNext, finalNodePos, finalValuePos))) :
+    Nonempty (GeneratedGroupTrace nodeBytes level masks maskPos nodePos
+      valuePos next finalNext finalNodePos finalValuePos) := by
+  by_cases hdone : masks.val.length ≤ maskPos.val
+  · have hterminal :=
+      AspisV5MerkleGeneratedHelperBridge.fixed_hash_radix_groups_done
+        nodeBytes level masks maskPos nodePos valuePos next hdone
+    rw [hterminal] at hrun
+    injection hrun with hsome
+    have htriple := Option.some.inj hsome
+    have hnext : next = finalNext := congrArg Prod.fst htriple
+    have hnode : nodePos = finalNodePos :=
+      congrArg (fun value => value.2.1) htriple
+    have hvalue : valuePos = finalValuePos :=
+      congrArg (fun value => value.2.2) htriple
+    subst finalNext
+    subst finalNodePos
+    subst finalValuePos
+    exact ⟨GeneratedGroupTrace.done maskPos nodePos valuePos next hdone⟩
+  · have hactive : maskPos.val < masks.val.length := by omega
+    let head := Classical.choice
+      (fixed_hash_radix_groups_success_step nodeBytes level masks maskPos
+        nodePos valuePos next finalNext finalNodePos finalValuePos hactive
+        hnodePos hroom hrun)
+    have hnextNode := head.children.finalNodePos_le hnodePos
+    have hmaskSucc :
+        (Std.Usize.wrapping_add maskPos 1#usize).val = maskPos.val + 1 := by
+      apply fixed_usize_succ_val_of_room
+      omega
+    let tail := Classical.choice
+      (fixed_hash_radix_groups_success_yields_trace nodeBytes level masks
+        (Std.Usize.wrapping_add maskPos 1#usize) head.nextNodePos
+        head.nextValuePos head.next' finalNext finalNodePos finalValuePos
+        hnextNode hroom hmasksRoom head.recurse_run)
+    exact ⟨GeneratedGroupTrace.step maskPos nodePos valuePos next finalNext
+      finalNodePos finalValuePos hactive head tail⟩
+termination_by masks.val.length - maskPos.val
+decreasing_by
+  rw [hmaskSucc]
+  omega
 
 /-- One present slot of the extracted recursive child helper reads the next
 level value, writes it into that slot, advances only the value cursor, and
