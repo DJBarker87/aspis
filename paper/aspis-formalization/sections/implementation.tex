@@ -1,0 +1,187 @@
+\section{Connection to the implementation}
+\label{sec:implementation}
+
+\subsection{Production verifier path}
+
+The deployed verifier reads a fixed proof body, reconstructs the public
+statement digest, replays the transcript, verifies the six work records,
+derives the selected eighteen queries, authenticates five opening sections,
+checks the four FRI folds and final polynomial, checks the relation, and only
+then calls the atomic state transition.
+
+The main production functions discussed in this report are:
+\begin{itemize}[leftmargin=*]
+  \item transcript state and SHA-256 framing in
+        \code{crates/aspis-core/src/transcript.rs};
+  \item transcript replay, work checks, relation calls, and verifier control
+        flow in \code{programs/aspis-verifier/src/v5_cu_probe.rs};
+  \item preparation and consumption of FRI values in
+        \code{programs/aspis-verifier/src/v5_fri_checks.rs};
+  \item the five-section opening driver
+        \code{verify_v5_private_openings_from_proof};
+  \item the focused opening helper
+        \code{verify_state_only_private_opening_from_proof_with_topology};
+  \item account validation, marker creation, and pool mutation in
+        \code{verify_and_apply_atomic_payment_state_traced_inner};
+  \item proof-account refund in
+        \code{refund_program_owned_proof_account}.
+\end{itemize}
+
+The production Rust is larger than this list.  The list identifies the path
+for which this paper gives formal anchors.  Dispatch, upload, unrelated
+diagnostic modes, host retry code, compiler lowering, and runtime execution
+are not silently included.
+
+\subsection{Focused extraction}
+
+Charon translates selected safe Rust into its LLBC representation.  Aeneas
+then produces pure Lean functions and proof obligations.  This approach is
+well suited to small parser and arithmetic helpers, but broad Solana functions
+contain framework types, function pointers, syscalls, and control flow that
+are outside the convenient extraction subset.  The project therefore uses
+focused extractions and source-shaped Lean functions for the remaining outer
+drivers.
+
+For each connection we distinguish three statements:
+\begin{enumerate}[leftmargin=*]
+  \item a pure Lean model has the desired property;
+  \item the source-shaped composition equals that model;
+  \item the production Rust function equals the source-shaped composition.
+\end{enumerate}
+Only the third statement turns the first two into a production theorem.  When
+that statement is open, it appears as a named predicate.
+
+\subsection{Transcript coverage}
+
+The pure transcript result is detailed.  It records every label and payload,
+expands each typed event to primitive hash inputs, places each work check
+immediately before its nonce absorb, and proves that the values supplied to
+the FRI and relation code come from the named squeeze results.  The source
+adapter also decodes the exact fixed-body slices and exact selector byte.
+
+The remaining boundary is the universal equality
+\code{ExactRustV5TranscriptDriverEquality}.  Its arguments make the claim
+precise: decode one accepted Rust input into \code{V5TranscriptInputs}, decode
+the returned challenge values, and show that the real driver returns the same
+event trace and consumption record as \code{sourceShapedTranscriptDriver}.
+No theorem in the paper treats this equality as already proved for the full
+production driver.
+
+The transcript hash itself is separated from hash security.  The deterministic
+model says which bytes are hashed and in which order.  The cryptographic model
+defines implementation-divergence, collision, preimage, transcript-divergence,
+and random-oracle events.  Known-answer tests can support the implementation
+equality on selected inputs, but they cannot prove collision resistance or
+random-oracle behavior.
+
+\subsection{Merkle coverage}
+
+The source-shaped Merkle proof is split at two actual Rust functions.  The
+focused helper predicate
+\code{VerifyStateOnlyPrivateOpeningWithTopologySourceEquality} says that the
+helper succeeds exactly when one encoded section has a valid
+\code{ExactSectionTrace} and the returned slice is the literal remainder.
+The outer predicate \code{VerifyV5DriverCompositionSourceEquality} says that
+the five-section Rust driver calls the helper in the fixed tree order, passes
+each remainder to the next call, and requires the final remainder to be
+empty.
+
+Lean proves that these two equalities imply
+\code{VerifyV5PrivateOpeningsFromProofSourceEquality}.  From that statement,
+successful production verification yields an \code{AcceptedV5Forest}.  The
+forest contains one accepted path for every value consumed by the later FRI
+checks.  Outside the explicit SHA-256 collision event, those values are unique
+under the supplied roots and query set.
+
+This is materially narrower than assuming that ``Rust acceptance yields a
+forest.''  The remaining work is attached to the two functions that must be
+extracted or otherwise proved equal.  SHA-256 collision resistance remains a
+separate assumption even after those deterministic equalities are proved.
+
+\subsection{Relation and candidate coverage}
+
+The relation source model covers the prepared point claims, four unrolled
+round calls, staged claim updates, fold challenges, and final coefficients.
+Theorems in \code{V5RelationStressSourceBridge} show that the source-shaped
+caller implies the pure modeled relation checks and that its final
+coefficients equal the values supplied to FRI.
+
+The remaining predicates identify exact production equalities rather than a
+general statement that Rust is correct.  They include
+\code{ExactRustRelationVerifierEquality},
+\code{ExactRustMode9RelationCallerEquality}, and the final raw-success
+connection.  Other source modules prove the M31/QM31 arithmetic kernels,
+prepared-claim packing, row selection, and compact fold body separately.
+
+The final candidate construction also has to connect authenticated values and
+transcript challenges to the eligibility, support, message, and response
+functions used by the correlated-agreement theorem.  The mathematical theorem
+is universal over data satisfying that interface.  The production mapping to
+that interface is still an external source obligation.
+
+\subsection{State-transition coverage}
+
+The state bridge gives a source-shaped description of the current spend and
+close functions.  It proves exact account counts, refund-account selection,
+the bump-255 check, successful state writes, rejection of an existing marker,
+and agreement between current and recorded behavior at the observed bump.
+
+The predicates \code{ExactCurrentRustStateEquality} and
+\code{ExactRustCloseEquality} identify the remaining Rust-to-model statements.
+The structure \code{ProductionRuntimePremises} then names account locking,
+system-program behavior, rollback, and finalized persistence.  The theorem
+\code{runtime_premises_hold_outside_iff_no_named_failure} makes their failure
+events explicit.  The model proves what follows if the runtime premises hold;
+it does not formalize the entire Solana runtime.
+
+\subsection{Source, binary, and chain identity}
+
+The deployed binary is identified by SHA-256 and size.  A clean build from the
+recorded source and pinned tools reproduced the binary byte for byte.  The
+release record then identifies the deployed program and finalized transaction.
+This establishes a useful chain of evidence:
+\begin{equation}
+  \text{recorded source} \longrightarrow
+  \text{recorded binary} \longrightarrow
+  \text{recorded transaction}.
+\end{equation}
+The first arrow depends on the build tools and the reproducibility record.
+The second depends on the loader and chain records.  Neither arrow proves the
+cryptographic soundness of all accepted inputs.
+
+The formal paper snapshot is
+\code{45d0ec466133bba6b7c52a39a288809a4943abf2}.  The clean source commit used
+for the deployed binary is
+\code{06788d44d30ea8cbd391899dddaf6f0acc6e4a3f}.  They are intentionally
+reported as different objects: the formal development continued after the
+deployment.
+
+\begin{table}[p]
+\centering
+\small
+\caption{Production connections and their current status.}
+\label{tab:implementation-status}
+\begin{tabularx}{\textwidth}{@{}R{0.22\textwidth}Y Y@{}}
+\toprule
+Area & Checked result & Remaining statement \\
+\midrule
+Transcript & Exact pure schedule, primitive hash framing, six work checks,
+and consumed challenge mapping &
+\code{ExactRustV5TranscriptDriverEquality} for the enclosing production driver \\
+Merkle helper & Exact parser, value/salt split, hash inputs, slots, binary cap,
+frontier use, and returned remainder &
+\code{VerifyStateOnlyPrivateOpeningWithTopologySourceEquality} \\
+Merkle driver & Exact order of five sections and empty final remainder &
+\code{VerifyV5DriverCompositionSourceEquality} \\
+FRI reads & Every source-shaped FRI read comes from an authenticated returned
+opening & Production equality for the enclosing opening/FRI consumer \\
+Relation & Prepared claims, compact four-round evaluator, fold/weight algebra,
+and final coefficients & Exact equality for the outer Rust relation caller and
+its raw-success predicate \\
+Spend state & Five account roles, bump 255, marker and pool writes, close/refund
+projection & Current Rust equality and Solana runtime premises \\
+Hash primitives & Fixed inputs and known-answer executions & Concrete
+collision, preimage, and random-oracle bounds; all-input Poseidon2 equality \\
+\bottomrule
+\end{tabularx}
+\end{table}

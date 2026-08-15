@@ -1,0 +1,259 @@
+\section{Lean formal model}
+\label{sec:lean-model}
+
+\subsection{Project organization}
+
+The maintained model is a Lean 4 project built on mathlib.  It does not define
+one monolithic verifier function.  Instead, it separates the spend relation,
+algebraic proof system, transcript, authenticated openings, source adapters,
+state transition, and probability accounting.  The final theorems compose
+these pieces through named predicates.  This makes an unfinished connection
+visible in a theorem type rather than burying it in prose.
+
+There are two broad kinds of Lean files.  Files in
+\code{AspisFormal/AspisFormal} define mathematical objects and source-shaped
+models.  Files under \code{aeneas-verif} contain generated or supporting Lean
+for selected Rust extractions.  The latter depend on Charon and
+Aeneas~\cite{HoEtAl2025Charon,HoProtzenko2022Aeneas}.  A theorem about a pure
+source-shaped function is not described as a theorem about production Rust
+unless an extraction equality connects the two.
+
+The principal dependency path is:
+\begin{equation}
+\begin{aligned}
+  &\text{accepted production execution}\\
+  &\quad\Longrightarrow \text{authenticated transcript and opened values}\\
+  &\quad\Longrightarrow \text{one coherent low-degree candidate}\\
+  &\quad\Longrightarrow \text{normalized arithmetic, hash, and Merkle rows}\\
+  &\quad\Longrightarrow \text{a witness for the public spend statement}.
+\end{aligned}
+\label{eq:proof-path}
+\end{equation}
+Lean proves the final implication and substantial parts of the middle two.
+The first implication is split into focused source equalities and failure
+events; several outer equalities and probability bounds remain premises.
+
+\subsection{Arithmetic and spend relation}
+
+The structure \code{OpenedColumns} is the normalized algebraic view of the
+private spend.  \code{ExtractedArithmeticResiduals} records the accepted
+residual equations for range, balance, asset equality, ownership, note
+creation, nullifier creation, and public fields.  The theorem
+\code{ExtractedArithmeticResiduals.toConstraintsSatisfied} turns those
+equations into the higher-level arithmetic predicate.
+
+Hash rows are represented more explicitly.  A
+\code{TwoRoundPermutationRows} value carries one two-round piece of the
+Poseidon2 computation.  Eleven such pieces form each checked permutation
+chain.  \code{ExtractedMerkleLevel} and \code{ExtractedMerklePath} carry the
+per-level left/right placement and siblings for the two depth-twenty paths.
+The conversion functions construct the older abstract hash/Merkle witness;
+they do not assume that witness as an input.
+
+\begin{theorem}[Spend relation after extraction]
+\label{thm:spend-after-extraction}
+Let \(O\) be normalized opened columns and let \(r_c\) be the fixed Poseidon2
+round constants.  If \code{ExtractedV5Trace rc O} holds and the deployed
+owner, note, nullifier, and node functions satisfy \code{Poseidon2Faithful},
+then there are integer input and output values for which the complete
+\code{SpendRelation} holds.
+\end{theorem}
+
+This is the Lean theorem
+\code{AspisV5AcceptedSpendRelation.extracted_trace_implies_spend_relation}.
+It derives both \code{ConstraintsSatisfied} and \code{HashMerkleWitness} from
+the extracted rows.  It does not derive those rows from proof bytes.
+
+The next definitions state the missing step without weakening it.  A
+\code{V5PublicStatement} contains the exact public fields.  The structure
+\code{OpenedColumnsMatchStatement} requires equality with all six spend
+fields.  The predicate \code{AcceptedRunExtractsTrace} says that every
+accepted run outside a stated bad event yields matching opened columns and a
+nonempty \code{ExtractedV5Trace}.  Given this predicate, Lean proves that
+false acceptance is contained in the same bad event.  The measure theorem
+\code{false_accept_measure_le_bad_event} then turns set inclusion into a
+probability inequality, but supplies no numerical bound on its own.
+
+Two regression theorems prevent a weak substitute.  They show that invalid
+opened columns can fail the constraints and that success of a selected
+schedule check alone does not imply the trace constraints.  Thus the missing
+extraction premise cannot be replaced by an unrelated Boolean check.
+
+\subsection{Field and circle domain}
+
+The base field is \(\mathbb{Z}/p\mathbb{Z}\) for
+\(p=2^{31}-1\).  \code{CircleGroupOrder} constructs the unit circle as a
+commutative group and proves that the released generator has order
+\(2^{31}\).  From this it derives the criterion that two generator powers
+have the same x-coordinate exactly when their exponents agree up to sign.
+The proof uses kernel reduction for the concrete repeated-squaring checks; it
+does not use compiled evaluation.
+
+The extension field is represented as a fixed degree-four tower over M31.
+The deployment modules prove the packing basis and arithmetic identities used
+by the verifier.  Separate arithmetic modules prove the raw M31
+multiplication, subtraction, negation, and inversion addition chain used by
+compute-sensitive Rust.
+
+The circle evaluation order matters because the released words are stored in
+bit-reversed order and grouped into radix-four fibres.  The formalization
+proves:
+\begin{itemize}[leftmargin=*]
+  \item distinctness of the initial circle points and the later line-domain
+        points;
+  \item the exact correspondence between bit reversal and radix-four fibre
+        positions;
+  \item that the initial encoder evaluates its exact circle polynomial in the
+        stored order;
+  \item the exact polynomial-evaluation identities for the three later line
+        encoders and final tensor encoder;
+  \item later-code distances derived from exact agreement bounds of 255, 63,
+        15, and 3.
+\end{itemize}
+
+The published circle decoding result is represented by a proposition rather
+than reproved.  The applicability audit substitutes the released field,
+distance, agreement threshold, multiplicities, width nineteen, degree
+eighteen, and nonzero challenge count into that proposition.  The resulting
+theorem is therefore conditional on the cited result but not on informal
+parameter matching.
+
+\subsection{Four-round candidate chain}
+
+An accepted low-degree test must lead to one candidate that remains coherent
+through all folds.  Choosing an unrelated decoder candidate after each
+challenge would multiply the list size and would not describe the protocol.
+The Lean development instead defines causal transcript families and backward
+selection functions.  Later challenges may depend on completed earlier
+rounds, but the response strategy for a round is fixed by its preceding
+transcript.
+
+\code{V5FriReleasedAdaptiveExtraction} defines one bad-challenge set per
+round, proves each cardinality bound, and bounds the four-dimensional tuple
+of adaptive bad challenges.  The theorem
+\code{accepted_ideal_fri_extracts_initial_candidate_or_counted} states that an
+accepted ideal execution either enters one of those counted sets or yields
+one member of the initial decoder list whose exact four folds reach the
+published final coefficients.
+
+The relation uses the same fold challenges.  The candidate fold maps four
+values to one value, while the verifier folds the corresponding weights in
+the dual direction.  \code{V5FriRelationCandidateBridge} proves that their dot
+product is preserved at every round.  The relation soundness modules then
+show that false incoming or out-of-domain claims can be repaired by the
+sequential challenge mixes on only a bounded set of challenge tuples.  The
+analysis is causal: a later claimed value may depend on earlier challenges,
+but not on a challenge that has not yet been sampled.
+
+\subsection{Transcript model}
+
+The transcript is represented as an ordered list of typed events, not merely
+as a list of abstract challenges.  Absorb events contain a label and the exact
+byte payload.  Squeeze events identify the requested field, point, selector,
+or query output.  Work events contain the work kind, nonce, and difficulty.
+The complete schedule includes the profile and basis identifiers, public
+statement digest, all five roots and public salts, public claims, relation
+points, out-of-domain values, relation messages, the final polynomial, and
+the six work nonces.
+
+Typed squeezes are expanded into primitive SHA-256 calls.  An absorb advances
+the transcript state with one hash.  A squeeze uses separate output and state
+advance hashes.  A work check hashes its nonce without advancing the state;
+after the check succeeds, the nonce is absorbed by the next event.  Lean
+proves exact event counts, uniqueness of operation slots, payload widths, and
+the immediate check-before-absorb ordering for every work nonce.
+
+The source adapter decodes the fixed Rust body slices into transcript inputs
+and constructs the same pure event list.  It proves that the exact derived
+values passed to later checks are \(\gamma\), \(\kappa\), the relation
+challenges, out-of-domain points and mixes, four fold challenges, selector,
+and eighteen query positions.  The smallest remaining executable statement
+is \code{ExactRustV5TranscriptDriverEquality}: the production driver, after
+decoding, returns the same trace and consumed values as this source-shaped
+driver.
+
+\subsection{Authenticated openings}
+
+The Merkle model has five tree identifiers: the two initial commitments and
+three later layers.  Each opened record is the value bytes followed by a
+32-byte public salt.  Leaf hashing uses a leaf prefix and tree identifier;
+binary and radix-four nodes use distinct prefixes.  The child order and input
+lengths are part of the hash input.
+
+The two initial sections use query index \(q\).  The later sections use
+\(q\!\gg\!2\), \(q\!\gg\!4\), and \(q\!\gg\!6\).  Indices are sorted and
+deduplicated before frontier verification.  Radix-four slot digits are taken
+from the shifted index.  Because the released depths are odd, each path ends
+with a binary cap whose side is derived from the remaining index bit.
+
+\code{ExactSectionTrace} records the parser and hash trace for one section.
+It accounts for every record, slot, frontier node, and returned remainder.
+The five-section driver passes each remainder into the next section and
+requires the last remainder to be empty.  From an \code{ExactV5Run}, Lean
+constructs an \code{AcceptedV5Forest}.  It then proves that every value read by
+the FRI schedule is the value part of an authenticated record.
+
+The outer Rust connection remains explicit.  The focused helper equality is
+\code{VerifyStateOnlyPrivateOpeningWithTopologySourceEquality}; the five-call
+driver equality is \code{VerifyV5DriverCompositionSourceEquality}.  Together
+they imply the former whole-driver premise
+\code{VerifyV5PrivateOpeningsFromProofSourceEquality}.  Outside the explicit
+SHA-256 collision event, \code{productionAcceptedForest_values_unique} proves
+that accepted forests under the same roots and queries expose the same values.
+
+\subsection{State model}
+
+The state model decodes exactly five spend accounts and checks account keys,
+owners, writability, pool state, sequence, anchors, marker availability, and
+the required marker-address bump.  A successful transition writes the marker
+before the pool update and then returns from the callback.  The current model
+requires bump 255.  A pre-existing marker is rejected, including the case in
+which a different nullifier resolves to the same address.
+
+The close model reads the refund destination from the supplied second account
+and transfers the complete retained proof balance.  The composed trace places
+the spend writes before the later refund.  Rejection rollback is a theorem of
+the explicit state model.  Account locking, system-program behavior, and
+finalized persistence remain runtime premises rather than Lean facts about
+Solana.
+
+\begin{table}[p]
+\centering
+\small
+\caption{Principal Lean anchors for the mathematical model.}
+\label{tab:model-anchors}
+\begin{tabularx}{\textwidth}{@{}YY@{}}
+\toprule
+Claim & File and item \\
+\midrule
+Extracted rows imply the spend relation &
+\code{V5AcceptedSpendRelation.lean}: \code{extracted_trace_implies_spend_relation} \\
+False acceptance is in the extraction bad event &
+\code{V5AcceptedSpendRelation.lean}: \code{false_accept_event_subset_bad_event} \\
+M31 circle generator order &
+\code{CircleGroupOrder.lean}: \code{orderOf_g} \\
+Initial encoder identity &
+\code{V5FriInitialCircleEncoderIdentity.lean}: \code{encoder0_eq_stored_circle_eval} \\
+Later encoder distances &
+\code{V5FriConcreteEncoderApplicability.lean}: \code{concrete_line_encoder_distances} \\
+Released decoding applicability &
+\code{V5Width19S2ApplicabilityAudit.lean}: \code{published_appendixA2_supplies_exact_width19_curve_decodable} \\
+Causal four-round extraction &
+\code{V5FriReleasedAdaptiveExtraction.lean}: \code{accepted_ideal_fri_extracts_initial_candidate_or_counted} \\
+Candidate/verifier fold identity &
+\code{V5FriRelationCandidateBridge.lean}: \code{evaluation_discrepancy_eq_folded_difference} \\
+Complete transcript order &
+\code{V5TranscriptConnection.lean}: \code{source_shaped_helper_composition_exact} \\
+Source-shaped transcript adapter &
+\code{V5TranscriptSourceAdapter.lean}: \code{source_adapter_driver_is_exact} \\
+Five authenticated sections &
+\code{V5MerkleRustBridge.lean}: \code{exactV5Run_yieldsForest} \\
+Authenticated FRI reads &
+\code{V5MerkleConsumedValueBridge.lean}: \code{rustObservation_exposes_only_authenticated_fri_values} \\
+Successful source state &
+\code{V5TheftStateTransitionReduction.lean}: \code{v5_source_success_exact_state} \\
+Rejected transition rollback &
+\code{V5TheftStateTransitionReduction.lean}: \code{rejected_outcome_rolls_back_in_model} \\
+\bottomrule
+\end{tabularx}
+\end{table}

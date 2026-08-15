@@ -1,0 +1,118 @@
+\section{Introduction}
+\label{sec:introduction}
+
+Succinct transparent arguments reduce a statement about a computation to a
+small number of algebraic and authenticated-opening checks.  A deployed
+private-spend verifier adds another set of obligations.  The proof must bind
+the exact public statement, the verifier must authenticate every value it
+uses, the nullifier must control a real state transition, and the
+implementation must preserve the order assumed by the Fiat--Shamir argument.
+Each part is simple to describe in isolation.  Their composition is not.
+
+\Aspis{} is an attempt to make that composition inspectable.  It has three
+different kinds of evidence:
+\begin{enumerate}[leftmargin=*]
+  \item Lean definitions and proofs for the mathematical model;
+  \item focused Rust-to-Lean translations and source-shaped bridge theorems;
+  \item build and transaction records for the binary that ran on Solana.
+\end{enumerate}
+The three kinds of evidence answer different questions.  A theorem about the
+mathematical verifier does not by itself describe the Rust program.  A proof
+about Rust source does not verify the compiler or the chain runtime.  A
+successful transaction shows that one input ran, not that every accepted
+input is sound.  This report keeps those distinctions visible.
+
+The mathematical background is kept short.  Most of the report is devoted to
+the formal model, security experiment, proof reductions, source locations,
+and trust boundary.  Lean declarations are cited by stable names instead of
+line numbers, which change during maintenance.
+
+\subsection{Contributions}
+
+The main checked results reported here are:
+\begin{itemize}[leftmargin=*]
+  \item a deterministic proof that extracted arithmetic, hash, and Merkle
+        rows imply the complete one-input/one-output spend relation;
+  \item exact finite-field and circle-domain facts, including the deployed
+        M31 circle generator order and distinct released evaluation points;
+  \item exact identities for the initial circle encoder and the four later
+        encoders, with the later polynomial-code distances checked in Lean;
+  \item a causal four-round candidate argument that follows one initial
+        decoder candidate through every fold;
+  \item the exact probability for eighteen distinct queries drawn by the
+        bounded first-occurrence sampler, and the corresponding fixed-set
+        miss calculation;
+  \item a byte-level transcript schedule recording absorbs, squeezes, work
+        checks, roots, salts, messages, nonces, and the query selector;
+  \item a five-tree Merkle model covering value/salt records, binary and
+        radix-four hashing, shifted indices, path orientation, exact section
+        order, and rejection of unused path bytes;
+  \item one work-normalized probability experiment with nineteen disjointly
+        listed failure kinds and a checked 70/30 split for a conditional
+        \(2^{-100}\) endpoint;
+  \item fixed-victim and adaptive attack reductions that state each remaining
+        cryptographic, extraction, source, and runtime failure separately;
+  \item explicit models of the spent-marker write, account checks, rollback,
+        close/refund behavior, and the required marker-address bump.
+\end{itemize}
+
+The formal source at the paper snapshot contains 221 maintained Lean modules,
+102,832 lines, and 3,269 declarations introduced with \code{theorem}.  These
+counts describe the repository; they are not a measure of security.  The
+principal results used in this paper include \texttt{\#print axioms} checks.  At
+the selected entry points, Lean reports only \code{propext},
+\code{Classical.choice}, and \code{Quot.sound}, which are standard Lean and
+mathlib foundations~\cite{deMouraUllrich2021Lean4,MathlibCommunity2020}.
+
+\subsection{What is not claimed}
+
+The current theorem does not establish a raw \(2^{-100}\) probability for an
+attacker who has already completed the proof-of-work step.  It charges the
+attacker for that work and is therefore work-normalized.  It also does not
+supply concrete security bounds for SHA-256 or Poseidon2.  The source
+equalities for the enclosing transcript driver, the two outer Merkle
+functions, and parts of the relation/candidate path remain named premises.
+
+For the same reason, this paper does not claim a complete deployed
+zero-knowledge theorem or a numerical deployed theft probability.  The Lean
+development proves useful mathematical hiding and attack-reduction results,
+but the production prover and Solana execution still have to be connected to
+those experiments.  These statements are not cautious paraphrases of a
+stronger theorem.  They are the actual current boundary.
+
+\subsection{Reading guide}
+
+\Cref{sec:background} describes the spend statement and fixed proof profile.
+\Cref{sec:lean-model} presents the Lean model and its main definitions.
+\Cref{sec:implementation} explains what is and is not connected to production
+Rust.  \Cref{sec:soundness} gives the single probability experiment and final
+conditional bound.  \Cref{sec:theft-state,sec:privacy} cover theft resistance,
+state behavior, and privacy.  \Cref{sec:proof-design} records proof choices
+that prevent several attractive but invalid shortcuts.  The evaluation and
+trust boundary follow.  The appendices provide a dependency map, theorem
+index, failure ledger, and source-audit checklist.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Entry points for the report.}
+\label{tab:intro-anchors}
+\begin{tabularx}{\textwidth}{@{}YY@{}}
+\toprule
+Role & Lean item \\
+\midrule
+Extracted trace implies the spend relation &
+\code{AspisV5AcceptedSpendRelation.extracted_trace_implies_spend_relation} \\
+One adversarial experiment &
+\code{AspisV5UnifiedSecurityExperiment.WorkNormalizedV5AdversarialExperiment} \\
+Final conditional bound &
+\code{AspisV5UnifiedSecurityExperiment.work_normalized_accepted_false_probability_le_two_pow_neg_100_of_released_core} \\
+Transcript schedule &
+\code{AspisV5TranscriptConnection.completeTranscriptTrace} \\
+Authenticated five-tree forest &
+\code{AspisV5MerkleAuthenticationBinding.AcceptedV5Forest} \\
+Production state transition &
+\code{AspisV5TheftStateTransitionReduction.runV5SourceTransition} \\
+\bottomrule
+\end{tabularx}
+\end{table}

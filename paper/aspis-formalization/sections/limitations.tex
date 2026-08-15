@@ -1,0 +1,167 @@
+\section{Limits and assumptions}
+\label{sec:limitations}
+
+This section states the current claim in direct terms.  The Lean development
+contains substantial proofs, but the deployed security claim remains
+conditional.  The conditions are not all of the same kind.
+
+\subsection{Mathematical assumptions}
+
+The low-degree analysis uses a published circle-code decoding theorem.  Lean
+checks the released field, domains, point order, degree limits, distances,
+agreement thresholds, rounding, and multiplicities against the proposition
+used by the development.  The proof of the published decoding theorem itself
+is trusted.
+
+The four local fold identities and candidate reductions describe Aspis's
+radix-four protocol.  A final soundness application must still justify the
+exact decoder and Fiat--Shamir premises for that protocol.  A result proved
+for a related quotient or multi-domain protocol cannot be imported merely
+because the parameter table looks similar.
+
+The work-normalized core also needs
+\code{WorkNormalizedCoreEventConnection}: the exact protocol failure event in
+the unified experiment must have the probability bounded by the checked
+arithmetic expression.  The arithmetic theorem does not prove this
+event-level connection.
+
+\subsection{Source equalities}
+
+The main deterministic implementation obligations still open are:
+\begin{itemize}[leftmargin=*]
+  \item \code{ExactRustV5TranscriptDriverEquality} for the enclosing
+        transcript replay and the values returned to later checks;
+  \item \code{VerifyStateOnlyPrivateOpeningWithTopologySourceEquality} for
+        one complete Merkle section;
+  \item \code{VerifyV5DriverCompositionSourceEquality} for the exact order
+        and remainders of the five Merkle sections;
+  \item the production equality for the FRI consumer that reads the returned
+        authenticated values;
+  \item \code{ExactRustRelationVerifierEquality} and the enclosing relation
+        caller/raw-success equalities;
+  \item the complete accepted-run statement
+        \code{AcceptedRunExtractsTrace}, connecting all nineteen columns,
+        public fields, arithmetic checks, hash rows, both Merkle paths, folds,
+        and final polynomial to the witness used by the spend theorem;
+  \item \code{ExactCurrentRustStateEquality} for the spend transition; and
+  \item \code{ExactRustCloseEquality} for proof invalidation and refund.
+\end{itemize}
+
+Focused Charon/Aeneas proofs reduce several of these statements to smaller
+helpers, but they do not cover unrelated dispatch, every Solana framework
+operation, or compiler output.  Until the listed enclosing equalities are
+proved, successful tests and source-shaped theorems remain supporting
+evidence.
+
+\subsection{Cryptographic assumptions}
+
+The development does not prove collision resistance, target-preimage
+resistance, or random-oracle behavior for SHA-256.  It also does not prove
+collision or target-preimage security for Poseidon2, or universal equality
+between every reached production Poseidon2 call and the mathematical
+permutation.  Each property is represented by a separate event or premise.
+
+A concrete claim must state the adversary model, query limits, target
+selection, and numerical bound for each primitive event.  A 256-bit digest
+length does not by itself justify a \(2^{-256}\) collision or preimage term.
+Known-answer tests only show that selected calls agree.
+
+Credential recovery is also an assumption.  Its probability depends on how
+the victim secret and randomness are generated, kept from the adversary, and
+possibly exposed through other proofs or wallet behavior.  The present model
+does not verify a wallet or operating-system random-number generator.
+
+\subsection{Solana assumptions}
+
+The source-shaped state theorem assumes the production program receives the
+modeled account view.  A chain-level claim additionally trusts:
+\begin{itemize}[leftmargin=*]
+  \item program-derived-address calculation and the system program;
+  \item account ownership and writable checks as observed by the program;
+  \item serialization of conflicting writable transactions;
+  \item rollback of state changes when a transaction fails;
+  \item persistence of a committed marker and pool update;
+  \item agreement between the recorded finalized view and committed chain
+        state; and
+  \item the close transaction's refund and account lifecycle.
+\end{itemize}
+
+These assumptions are represented in \code{ProductionRuntimePremises} and in
+the final failure ledger.  The project does not formalize the full Solana
+runtime, consensus protocol, validator software, or RPC service.
+
+\subsection{Privacy assumptions}
+
+The mathematical hiding theorem is for a defined finite view and sampling
+law.  A deployed zero-knowledge result still needs production equality for
+mask generation, the entropy expander, rejection sampling, retry selection,
+serialization, transcript compilation, all five commitments, and the full
+claimed public observation.  It also needs a suitable computational security
+definition if ordinary computational hash assumptions are used.
+
+The present paper therefore makes no deployed zero-knowledge claim.  It does
+not claim that transaction timing, upload behavior, fees, balances, logs, or
+other account history reveal nothing about the witness.
+
+\subsection{Trusted tools and records}
+
+Even a theorem with all premises discharged relies on the correctness of Lean
+4, its kernel, mathlib, and the machine executing the checker.  The source
+connections additionally rely on Charon and Aeneas for the translations that
+are used, and on a correct account of the unsupported Rust constructs left
+outside those translations.  The deployed-artifact claim relies on Rust,
+LLVM, Solana build tools, Cargo inputs, the loader, and the recorded build and
+RPC evidence.
+
+The formal snapshot and deployed source commit are different.  This report
+states both.  The later Lean proofs describe the fixed protocol profile and
+recorded production source through explicit equalities; their existence does
+not change the historical binary.  Conversely, the historical execution
+does not prove later Lean premises.
+
+No independent external audit is claimed in this report.  Review of the Lean
+source, the Rust bridge, the cryptographic reductions, and the archived chain
+record remains valuable.
+
+\subsection{Status summary}
+
+\begin{table}[p]
+\centering
+\small
+\caption{Current status of the principal claims.}
+\label{tab:claim-status}
+\begin{tabularx}{\textwidth}{@{}R{0.28\textwidth}R{0.17\textwidth}Y@{}}
+\toprule
+Claim & Status & Meaning \\
+\midrule
+Extracted trace satisfies the spend relation & Checked in Lean & Complete
+mathematical spend statement, assuming faithful Poseidon2 functions \\
+Circle domains and encoder identities & Checked in Lean & Exact released
+orders, degrees, and later distances; decoding conclusion uses the cited
+theorem \\
+Four-round candidate chain & Conditional & Local and causal reductions are
+checked; final decoder/Fiat--Shamir applicability remains a premise \\
+Transcript byte schedule & Checked in Lean for the source-shaped model & Full
+production driver equality remains open \\
+Five-tree Merkle authentication & Checked in Lean for the source-shaped model
+& Two focused Rust equalities and the enclosing consumer equality remain open \\
+Conditional \(2^{-100}\) soundness & Checked in Lean & Work-normalized; needs
+the core event connection and all eighteen external bounds \\
+Raw theft accounting & Checked in Lean as an inequality & The visible
+primitive, source, credential, runtime, and setup terms have no final numerical
+sum \\
+Spent-marker behavior & Checked in the state model & Rust and Solana runtime
+equalities remain assumptions \\
+Mathematical hiding & Checked in the finite model & Production privacy
+connections are not complete \\
+Source-to-binary identity & Recorded and reproduced & Trusts pinned build tools
+and provenance \\
+Finalized mainnet execution & Recorded & Shows one accepted run and state
+transition, not universal security \\
+Numerical deployed theft bound & Not established & Required remaining terms
+have not all been bounded \\
+Deployed zero knowledge & Not established & Required production and
+cryptographic comparisons are open \\
+\bottomrule
+\end{tabularx}
+\end{table}

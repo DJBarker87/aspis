@@ -1,0 +1,130 @@
+\section{Evaluation and recorded execution}
+\label{sec:evaluation}
+
+The evaluation has two purposes.  First, it measures the size and audit shape
+of the formal and extracted source.  Second, it identifies the exact program,
+proof, statement, and transaction used for the recorded Solana execution.
+Neither purpose is a substitute for the conditional security theorems.
+
+\subsection{Formal source}
+
+At commit \code{45d0ec466133bba6b7c52a39a288809a4943abf2}, the maintained
+directory \code{AspisFormal/AspisFormal} contains 221 Lean files and 102,832
+lines.  A textual count finds 3,269 declarations beginning with
+\code{theorem}.  The selected Aeneas directories contain 128,429 lines of
+Lean, including generated translations, support libraries, tests, and proofs.
+The Rust files under \code{crates} and \code{programs} contain 128,708 lines.
+
+These are repository-size figures, not proof-quality scores.  Generated code
+can be long while proving a narrow equality, and a short theorem can depend on
+substantial earlier work.  The theorem index in \cref{app:theorem-index}
+therefore identifies the results used by the paper, while the dependency map
+in \cref{app:dependency-map} shows how they are composed.
+
+The principal theorem files contain \texttt{\#print axioms} commands.  In the
+recorded Lean environment, the selected results report only
+\code{propext}, \code{Classical.choice}, and \code{Quot.sound}.  There are no
+project-specific axioms in those outputs.  This check says that Lean did not
+accept an extra axiom through the theorem declaration; it does not validate
+the compiler, the cited decoding result supplied as a premise, or any
+cryptographic assumption.
+
+\subsection{Program and proof identities}
+
+The V5 mainnet record identifies the following artifacts.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Archived V5 artifact identities.}
+\label{tab:artifact-identities}
+\begin{tabularx}{\textwidth}{@{}R{0.22\textwidth}R{0.12\textwidth}Y@{}}
+\toprule
+Artifact & Bytes & SHA-256 \\
+\midrule
+Solana program & 1,258,496 &
+\code{4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40} \\
+Proof body & 75,358 &
+\code{330414df587974684643a6062d092db0519d746f0c7efe4ed2108775b685feaf} \\
+Public statement & 768 &
+\code{0cdc34bc7f835640cff76d1085df9ba966df9f39eb228f3002f927cf30958113} \\
+Signed transaction wire & --- &
+\code{d5e78bb615a18274f36964248197f116a244391a77a2598f1a733c8fac7fa0b2} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The program identifier is
+\code{7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue}.  The clean build source
+commit is \code{06788d44d30ea8cbd391899dddaf6f0acc6e4a3f}; its tree is
+\code{9b6bdfddb3c213addc2bb705c8130cce4fb2c351}.  The archived build
+provenance records \code{solana-cargo-build-sbf 2.3.0}, platform tools 1.48,
+and Rust 1.84.1.  A clean build from those recorded inputs produced a binary
+with the same byte count and SHA-256 digest.
+
+The build identity is strong evidence that the archived source produced the
+archived program.  It still trusts the operating system, build scripts,
+Cargo dependency resolution as captured by the lock file, Rust and LLVM,
+Solana platform tools, the SHA-256 utility used for comparison, and the
+accuracy of the provenance capture.
+
+\subsection{Finalized Solana execution}
+
+The spend transaction has signature
+\href{https://explorer.solana.com/tx/EJviPgF12i9iK2CveVaQSMeFQqDMFPQ1iPRUYEwNQE3zGquTUZNJXPZEENorcQtsnQj1orFmH1TPsgdbR3vJ2fE}
+{\code{EJviPgF12i9iK2CveVaQSMeFQqDMFPQ1iPRUYEwNQE3zGquTUZNJXPZEENorcQtsnQj1orFmH1TPsgdbR3vJ2fE}}.
+It finalized at slot 435,019,536.  Exact signed-wire simulation and the landed
+transaction both report 1,334,452 compute units, below the instruction limit
+of 1,356,912.  The derived nullifier account used bump 255.
+
+The archived before/after records show the pool state change and creation of
+the spent marker.  A later transaction closed the retained proof account and
+refunded 525,660,961 lamports at slot 435,019,649.  The program data was later
+closed at slot 435,019,804.  Thus the program and temporary live accounts are
+historical artifacts rather than a currently callable deployment.
+
+The independent RPC archive stores the responses used to reconstruct the
+transaction and account history after those closures.  Its index binds each
+response to a request and digest.  This makes the recorded execution
+checkable without relying on the continued existence of the live accounts.
+It still relies on the correctness and completeness of the captured RPC
+responses and the chain history they report.
+
+\subsection{What the execution shows}
+
+The transaction establishes that one 75,358-byte proof passed the deployed
+program within the recorded compute limit and produced the recorded state
+transition.  The matching simulation and landed cost give a useful check on
+the compute model.  The later close confirms the recorded retained-proof
+lifecycle for this run.
+
+It does not establish any of the following universal statements:
+\begin{itemize}[leftmargin=*]
+  \item every accepted byte string decodes as the Lean transcript or Merkle
+        model;
+  \item every accepted algebraic proof has an extracted spend witness;
+  \item the primitive collision, preimage, or random-oracle events have a
+        stated concrete probability;
+  \item every rejected transaction rolls back under every relevant runtime
+        condition; or
+  \item every production proof has the modeled privacy distribution.
+\end{itemize}
+
+Those statements belong to the source, cryptographic, and runtime parts of
+the theorem.  The transaction record narrows which binary and execution they
+must describe.
+
+\subsection{Reproduction without a fresh proof build}
+
+The repository's archived release bundle contains the proof, statement,
+program binary, manifests, digests, chain evidence, and offline verification
+scripts.  Checking the artifact hashes and recorded transaction therefore
+does not require generating a new proof or rebuilding the Lean project.  A
+fresh program build is a separate, optional reproducibility check and should
+use the recorded clean source and pinned tools.
+
+For long-running verification work, the project also keeps dated snapshots on
+its local build machine.  Those snapshots preserve downloaded Lean packages,
+Charon/Aeneas material, and Rust build output.  They are operational storage,
+not part of the public trust argument; the public artifact identities above
+are content hashes.

@@ -1,0 +1,135 @@
+\section{Proof design and lessons}
+\label{sec:proof-design}
+
+Formalizing this verifier exposed several places where a plausible paper
+argument was too weak for the deployed protocol.  This section records the
+resulting proof choices.  They are useful both for checking the present work
+and for extending it.
+
+\subsection{Model only what the verifier receives}
+
+The verifier does not receive complete committed tables.  It receives roots,
+selected values, salts, and compressed path material.  A model that begins
+with full tables can prove a sound polynomial-commitment theorem while
+skipping the parser and authentication problem faced by the program.
+
+The V5 model therefore starts its Merkle bridge with opened records and the
+literal path stream.  It proves that successful parsing consumes the exact
+stream, reconstructs the supplied root, and returns the exact unused suffix.
+The outer driver must pass that suffix to the next tree and reject a nonempty
+final suffix.  This is what makes omitted, duplicated, reordered, and trailing
+path material visible in the theorem statement.
+
+\subsection{Follow one candidate through all four folds}
+
+List decoding may produce several candidates.  It is invalid to choose a new
+candidate after seeing each later fold challenge unless the probability
+argument pays for that adaptive choice.  The proof instead chooses one member
+of the initial list and follows its four exact folds.  If this cannot be done,
+the run enters one of four named bad-challenge sets.  The candidate choice and
+the bad sets are functions of the transcript prefix available at that point.
+
+This causal form also applies to relation messages.  A prover response may
+depend on earlier challenges, but not on a challenge that the transcript has
+not squeezed.  The finite counting lemmas are stated for such prefix-dependent
+strategies rather than for a fixed polynomial selected before the protocol.
+
+\subsection{Keep algebraic and authentication arguments separate}
+
+Low-degree agreement does not show that the queried value came from a
+committed table.  Merkle authentication does not show that the authenticated
+values satisfy a low-degree relation.  The Lean development joins these
+claims only through an explicit consumed-value map.  Every FRI and relation
+read has to point to the value part of an accepted record in the five-tree
+forest.
+
+The same separation applies to public fields.  Equality of the final relation
+polynomial at sampled points is not enough unless the coefficients were
+formed from all nineteen lanes in the production order and those lanes bind
+the public statement.  The four coefficient folds, four verifier-weight
+folds, and public-field rows are consequently proved as separate identities.
+
+\subsection{Do not assume a compressing hash is injective}
+
+SHA-256 and Poseidon2 map larger input spaces to smaller output spaces.  A
+theorem cannot use global injectivity for either function.  Deterministic
+binding statements are instead phrased as a case split: equal outputs come
+from equal reached inputs, or the execution supplies a concrete collision or
+second-preimage witness.  Probability enters only when an external assumption
+bounds that event.
+
+Merkle trees need an additional positional condition.  Two different paths
+to one root expose a node collision when their leaves occupy the same
+position.  Paths with different direction bits can describe different leaves
+in one valid tree.  The application theorem therefore proves the same-position
+case and keeps alternative positions in the attack model until ownership and
+statement binding rule them out.
+
+\subsection{Treat the transcript as bytes and operations}
+
+An abstract list of challenges cannot detect a missing root, a swapped salt,
+or a work nonce absorbed at the wrong time.  The transcript model records
+each absorb label and byte payload, each squeeze kind, and each work check.
+The work check is a predicate on the current state and nonce; only after it
+succeeds is the nonce absorbed.  The source-shaped schedule proves the exact
+order and maps every later verifier input back to a named squeeze or decoded
+field.
+
+This deterministic result is still different from a Fiat--Shamir security
+argument.  The latter needs a model of the hash oracle, an adversarial query
+budget, and a theorem connecting the byte transcript to that experiment.
+Digest length and known-answer tests do not provide those facts.
+
+\subsection{Use one probability space and one ledger}
+
+Combining bounds from separate informal experiments can hide a conditioning
+change.  The final soundness theorem uses one finite law and one accepted-false
+event.  Every failure is a set in that same sample space.  The nineteen-entry
+ledger has a proved order, no duplicates, and a proved union equality with the
+older detailed ledger.
+
+This organization also makes the unit of the probability clear.  The
+work-normalized theorem charges for grinding.  The theft theorem for a
+completed accepted proof uses raw accounting.  A factor of \(2^{37}\) cannot
+be moved between these statements without changing the experiment.
+
+\subsection{Make source obligations small and exact}
+
+``The Rust verifier implements the model'' is too broad to audit and too easy
+to assume.  The implementation bridge instead names equalities for actual
+functions: the transcript driver, one Merkle-section helper, the five-section
+Merkle caller, the relation caller, the spend transition, and the close path.
+Focused Charon/Aeneas output is used for arithmetic, parsing, and buffer
+helpers that fit its supported Rust subset~\cite{HoEtAl2025Charon,HoProtzenko2022Aeneas}.
+
+When an enclosing Solana function cannot yet be translated, the source-shaped
+Lean theorem is still useful, but its final Rust equality remains in the
+public status table.  Renaming that premise as an ``accepted execution
+connection'' would not prove it.  Tests supply concrete counterexample
+coverage and byte traces; they do not replace the universal equality.
+
+\subsection{Separate proof, evidence, and trust}
+
+The project records a source commit, pinned build inputs, binary hash, proof
+hash, statement hash, transaction, and before/after state.  These records
+answer whether one archived program and proof can be identified and replayed.
+They do not show that all accepted inputs satisfy the mathematical relation.
+
+Conversely, a Lean theorem can quantify over every modeled input while
+depending on the correctness of Lean, mathlib, a cited decoding theorem, and
+cryptographic assumptions.  Neither kind of evidence subsumes the other.
+The final report therefore uses four labels:
+\begin{description}[leftmargin=0.20\textwidth,style=nextline]
+  \item[Checked in Lean] A theorem with the displayed hypotheses has been
+        accepted by the stated Lean environment.
+  \item[Conditional] The conclusion is proved once named mathematical,
+        source, primitive, or runtime premises are supplied.
+  \item[Tested or recorded] A finite collection of executions, hashes, or
+        chain observations agrees with the stated result.
+  \item[Assumed] No proof in the current repository supplies the claim.
+\end{description}
+
+The main theorem is therefore reported together with its experiment,
+decomposition, source locations, and trusted base.  The implementation and
+chain connections are stated separately and are not inferred from the
+mathematical proof.

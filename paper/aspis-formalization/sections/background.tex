@@ -1,0 +1,158 @@
+\section{Protocol background}
+\label{sec:background}
+
+\subsection{The public statement and private witness}
+
+The public statement contains the pool address, sequence number, current note
+root, input nullifier, output note commitment, next note root, asset, fee, and
+deployment domain.  The pool, sequence number, and deployment domain bind the
+proof to one state transition and one deployment.  The six values consumed by
+the mathematical spend relation are the two roots, nullifier, output
+commitment, asset, and fee.
+
+The private witness contains an input note opening, its ownership credential,
+the input note's fixed-depth Merkle path, and the data needed to form the
+output note and next root.  Prover masks, Merkle salts, transcript salts, and
+retry randomness are proof-generation randomness, not part of the witness
+relation.
+
+Write the input and output values as \(v_{\mathrm{in}}\) and
+\(v_{\mathrm{out}}\), the public fee as \(f\), and the public asset as \(a\).
+The relation includes the integer equality
+\begin{equation}
+  v_{\mathrm{in}} = v_{\mathrm{out}} + f,
+  \label{eq:value-balance}
+\end{equation}
+with all three quantities constrained below \(2^{30}\).  The bound prevents a
+valid field equation from hiding an integer wraparound.  Both notes carry the
+same public asset.  Ownership is derived from a secret credential, the
+nullifier is derived from the credential and input salt, and each note
+commitment binds owner, value, asset, and note randomness.
+
+Both note-tree paths have depth twenty.  The input path reconstructs the
+current root from the input leaf.  The output path uses the same path bits and
+siblings but substitutes the output leaf, producing the next root.  This is a
+same-position leaf replacement.  It is not a general append-only note-tree
+operation.
+
+\begin{definition}[Spend witness]
+For deployed owner, note, nullifier, and node functions, a public statement
+has a spend witness when there are opened columns and integer input/output
+values that match the six public spend fields and satisfy the full
+\code{SpendRelation} predicate.
+\end{definition}
+
+The exact Lean definition is
+\code{AspisV5AcceptedSpendRelation.StatementHasSpendWitness}.  The more detailed
+\code{SpendRelation} is defined in \code{ArithmetizationCore} and includes the
+range, balance, ownership, note, nullifier, and two Merkle-root clauses.
+
+\subsection{The proof profile}
+
+The deployed V5 profile works over the Mersenne prime field
+\(\F\), where \(p=2^{31}-1\), and a degree-four extension field
+\(\K\).  It commits to sixteen base-field lanes and three extension-field
+lanes.  A nonzero batching challenge combines these nineteen lanes with
+powers \(\gamma^0,\ldots,\gamma^{18}\).  The highest exponent is therefore
+eighteen, not twenty-eight as in an earlier experiment.
+
+The first codeword is evaluated on a circle domain.  Four circle symbols form
+one query fibre.  Four radix-four folds reduce the initial word to three later
+line layers and then to four final coefficients.  Each round also carries two
+out-of-domain values and relation messages.  The verifier authenticates the
+two initial commitments and three later-layer commitments with five salted
+Merkle trees.
+
+\begin{table}[t]
+\centering
+\caption{Fixed V5 parameters used by the formal model.}
+\label{tab:profile-parameters}
+\begin{tabular}{@{}ll@{}}
+\toprule
+Quantity & Value \\
+\midrule
+Base field & \(\F\) \\
+Challenge field & degree-four extension \(\K\) \\
+Trace rows & \(2^{10}\) \\
+Initial evaluation symbols & \(2^{19}\) \\
+Initial query fibres & \(2^{17}=131{,}072\) \\
+Batched lanes & 19 \\
+Batch challenge degree & 18 \\
+Queries & 18 distinct fibres from at most 64 draws \\
+Folds & four radix-four rounds \\
+Final polynomial & four coefficients in \(\K\) \\
+Work checks & batch, four folds, and final \\
+Work difficulties & 37, 34, 33, 30, 25, and 32 bits \\
+Post-initial public-coin rounds & 30 \\
+Authenticated private trees & five \\
+Merkle record form & value bytes followed by a 32-byte salt \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The protocol is related to STARK, FRI, circle-code, and multilinear
+polynomial work~\cite{BenSassonBentovHoreshRiabzev2018STARK,
+BenSassonBentovHoreshRiabzev2018FRI,HaboeckLubarovNabaglo2023,
+HaboeckLevitPapini2024,CarmonEtAl2026Stwo}.  It is not an unchanged instance
+of any one cited protocol.  In particular, its four-way fold, separate
+out-of-domain relation, bounded distinct-query sampler, work schedule, and
+mixed Merkle layout require separate arguments.
+
+\subsection{Transcript order}
+
+The transcript uses SHA-256 with typed labels.  At a high level it absorbs the
+profile and statement, the initial roots and salts, public claims, relation
+points and messages, each later root and salt, the final polynomial, and six
+work nonces.  It squeezes the batching challenge, relation challenges, four
+fold challenges, selector, and query material.  Each work nonce is checked
+before it is absorbed, and the challenge protected by that check is squeezed
+afterwards.
+
+The query selector is absorbed after the committed data, all relation
+messages, all four fold challenges, all work nonces, and the final polynomial
+have been fixed.  The query sampler then reads 32-byte squeeze blocks as
+little-endian 32-bit words, masks them into the \(2^{17}\)-element query
+space, keeps first occurrences, and succeeds only after collecting eighteen
+distinct positions within the 64-draw limit.
+
+\subsection{On-chain transition}
+
+The accepting instruction checks the proof before changing the pool.  On
+success it creates or validates the spent-marker account derived from the
+public nullifier, writes the nullifier marker, updates the pool root and
+sequence, and returns success.  A pre-existing marker is a rejection.  The
+formal state model treats a rejected instruction as leaving visible state
+unchanged.  A later close instruction refunds the retained proof account to
+the supplied refund account without undoing the spend.
+
+The proof bytes are uploaded and finalized before the spend instruction.
+Thus the atomic claim concerns verification together with the marker and pool
+write.  It does not claim that proof upload occurred in the same transaction.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Background definitions and checked facts.}
+\label{tab:background-anchors}
+\begin{tabularx}{\textwidth}{@{}YY@{}}
+\toprule
+Topic & Lean item \\
+\midrule
+Public statement and six-field match &
+\code{AspisV5AcceptedSpendRelation.V5PublicStatement},
+\code{AspisV5AcceptedSpendRelation.OpenedColumnsMatchStatement} \\
+Integer conservation &
+\code{value_conservation_no_wraparound} \\
+Circle generator order &
+\code{AspisCircleGroupOrder.orderOf_g} \\
+Released query sampler &
+\code{AspisV5TranscriptConnection.derive18Queries} \\
+Five tree identifiers and widths &
+\code{AspisV5MerkleAuthenticationBinding.released_depths},
+\code{AspisV5MerkleAuthenticationBinding.released_value_widths},
+\code{AspisV5MerkleAuthenticationBinding.released_tree_tags} \\
+State transition &
+\code{AspisV5ProductionStateBridge.runCurrentProductionSpend} \\
+\bottomrule
+\end{tabularx}
+\end{table}

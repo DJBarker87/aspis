@@ -1,0 +1,112 @@
+\documentclass[11pt]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{xurl}
+\usepackage[hidelinks]{hyperref}
+\usepackage[capitalise,noabbrev]{cleveref}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{experiment}[theorem]{Experiment}
+\newtheorem{assumption}[theorem]{Assumption}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\Aspis}{\textsc{Aspis}}
+\newcommand{\F}{\mathbb{F}_{2^{31}-1}}
+\newcommand{\K}{\mathbb{K}}
+\newcommand{\bits}{\,\mathrm{bits}}
+\newcommand{\Prob}{\Pr}
+\newcommand{\code}[1]{\texttt{\nolinkurl{#1}}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{R}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{T}{>{\raggedright\arraybackslash\ttfamily}p{0.34\textwidth}}
+\newcolumntype{P}{>{\raggedright\arraybackslash}p{0.58\textwidth}}
+
+\title{\Aspis: A Lean-Checked Private-Spend Protocol\\
+{\large Formal Model, Conditional Soundness, and a Deployed Solana Verifier}}
+\author{Dominic Barker}
+\date{15 August 2026}
+\hypersetup{
+  pdftitle={Aspis: A Lean-Checked Private-Spend Protocol},
+  pdfauthor={Dominic Barker},
+  pdfsubject={Formal model, conditional soundness, Rust correspondence, and Solana execution evidence},
+  pdfkeywords={Lean 4, STARK, private spend, circle code, FRI, Rust, Solana}
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\Aspis{} is a private-spend protocol whose verifier runs as a Solana program.
+The protocol proves knowledge of an owned input note, conserves value and
+asset identity, creates a new note, updates a fixed-depth note-tree root, and
+publishes a nullifier used to reject a later spend of the same input.  Its
+proof system uses the Mersenne prime field \(\F\), a degree-four extension
+field, circle-code evaluation domains, four radix-four folds, five salted
+Merkle trees, SHA-256 Fiat--Shamir challenges, and six separate work checks.
+
+This report describes the maintained Lean 4 development.  Lean proves the
+private-spend relation once authenticated trace values have been extracted;
+the exact M31 circle-group order and released evaluation domains; the later
+encoder distances; the four coefficient and verifier-weight folds; the
+without-replacement query calculation; a fixed-victim attack case split; and
+the state-model rule that an existing spent marker cannot be overwritten.
+It also defines one finite work-normalized adversarial experiment.  In that
+experiment, accepted false statements are covered by one protocol event and
+eighteen separately named source, cryptographic, and runtime events.  If the
+protocol event is at most \(0.7\cdot2^{-100}\) and the external events total at
+most \(0.3\cdot2^{-100}\), Lean proves a final bound of \(2^{-100}\).
+
+The theorem is conditional.  It is not a raw failure probability after an
+attacker has completed the released grind.  The remaining premises include
+the production-to-model equalities for the enclosing transcript, Merkle, and
+relation drivers; applicability of the cited decoding and Fiat--Shamir
+results; concrete SHA-256 and Poseidon2 bounds; and the stated Solana runtime
+behavior.  The current development therefore does not prove a numerical
+deployed theft bound or deployed zero knowledge.
+
+The repository also contains focused Charon/Aeneas translations of selected
+Rust functions, a byte-for-byte reproducible 1,258,496-byte Solana binary, and
+a finalized mainnet execution of a 75,358-byte proof using 1,334,452 compute
+units.  These facts are reported as separate evidence, not as substitutes for
+the missing theorems.  Each section gives stable Lean names so that the prose
+can be checked against the source.
+\end{abstract}
+
+\input{sections/introduction}
+\input{sections/background}
+\input{sections/lean-model}
+\input{sections/implementation}
+\input{sections/soundness}
+\input{sections/theft-and-state}
+\input{sections/privacy}
+\input{sections/proof-design}
+\input{sections/evaluation}
+\input{sections/limitations}
+\input{sections/conclusion}
+
+\appendix
+\input{sections/appendices}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}

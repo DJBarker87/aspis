@@ -1,0 +1,162 @@
+\section{Privacy and zero knowledge}
+\label{sec:privacy}
+
+The public transaction is intended to reveal the current anchor, nullifier,
+output commitment, output anchor, asset identifier, fee, deployment domain,
+and the proof data needed for verification.  The private input note, its
+opening, note-tree path, output opening, and internal trace should not be
+learned from that view.  The maintained formal results cover the algebraic
+hiding argument, but they do not yet establish zero knowledge for the full
+production transaction.
+
+\subsection{Mathematical hiding result}
+
+The mathematical model splits the masking argument into four parts: the main
+trace, a copied consistency component, a boundary component, and an auxiliary
+component used to satisfy a final linear condition.  Uniform masks are drawn
+from finite spaces.  Surjective linear maps show that the visible masked
+values have distributions independent of two compatible private witnesses.
+The auxiliary sampler is modeled at the level of whole 32-bit words, including
+its first-success rule and sixteen-word rejection limit for each M31 limb.
+
+For a fixed schedule and compatible witnesses, Lean proves equality of the
+joint modeled view laws.  The concrete theorem
+\code{encoded_concrete_fixed_schedule_view_is_witness_independent} includes
+the exact degree-four tower, limb order, successful whole-word sampler, kernel
+correction, downstream encoding, and an arbitrary deterministic output
+encoding.  The more general theorem
+\code{encoded_modeled_view_is_witness_independent} proves the corresponding
+statement through an abstract finite linear-algebra interface.
+
+An arbitrary deterministic encoding preserves equality of two distributions.
+This fact is useful, but the encoding argument does not identify that function
+with the production Rust serializer.
+
+\subsection{Retry and public selection}
+
+The prover may try a bounded number of masking schedules and release the
+least-indexed successful choice.  Selection can leak information if the
+success event or retry distribution depends on the witness.  The model
+therefore includes the retry controller rather than treating it as an
+implementation detail.
+
+The theorem \code{retry_selection_preserves_modeled_hiding} proves that the
+cap-17, least-successful-choice procedure preserves witness independence when
+every releasable successful branch has the same law for both witnesses.
+\code{retry_public_release_preserves_modeled_hiding} proves the same result
+after projecting to the selector and selected public view.  To use this result
+for production, the premise
+\code{ExactProductionRetryReleaseCorrespondence} must identify the real
+proof-or-abort law, entropy consumption, selection rule, and release boundary
+with the modeled law.  The conditional theorem
+\code{production_retry_release_hiding_of_exact_correspondence} makes that
+dependence explicit.
+
+\subsection{Complete byte inventory}
+
+The deployed-view model separates three arrays: a 169-byte instruction, a
+40-byte sealed-proof header, and a 75,358-byte proof body.  Their concatenation
+has 75,567 bytes.  Lean proves that every offset belongs to exactly one field
+or semantic class, that the split and concatenation functions are inverse,
+and that the released selector is at the stated proof-body position.
+
+These results are an inventory.  They prevent an argument from ignoring an
+unclassified proof byte, but they do not show that a byte class is
+witness-independent.  The structure \code{DeployedPublicView} also does not
+contain every fact visible through the chain.  Transaction messages, upload
+timing, balances, logs, and unrelated account history require a wider public
+context if they are included in the claimed view.
+
+\subsection{Steps from the model to production}
+
+The bridge uses a sequence of separately named comparisons.  On each side of
+the two-witness experiment it accounts for:
+\begin{enumerate}[leftmargin=*]
+  \item the Fiat--Shamir compiler;
+  \item the full Rust transcript driver;
+  \item the SHA-256 implementation, collision, preimage, and random-oracle
+        steps;
+  \item exact serialization and parsing;
+  \item the five salted Merkle commitments and openings;
+  \item the Poseidon2 implementation, collision, and preimage steps;
+  \item the entropy expander and rejection sampler;
+  \item independence between the domain-separated random sources;
+  \item bounded retry and public selection; and
+  \item equality between the final Rust algebraic view and the mathematical
+        view.
+\end{enumerate}
+
+The structure \code{SideError} assigns one nonnegative error to each
+non-exact step.  The theorem \code{one_side_close_to_mathematical} sums those
+errors by the triangle inequality.  If the two mathematical laws are equal,
+\code{deployed_views_close_of_mathematical_hiding} proves
+\begin{equation}
+  \Delta(V_0,V_1)
+    \leq B_{\mathrm{left}}+B_{\mathrm{right}},
+  \label{eq:zk-hybrid}
+\end{equation}
+where \(\Delta\) is the statistical distance used by the Lean model.
+
+This formulation also exposes a metric issue.  Ordinary computational
+assumptions about SHA-256 do not imply a small statistical distance between
+full byte distributions.  A production claim must either state
+computational indistinguishability for an adversary's output or justify why
+each statistical-distance premise is appropriate.  The current development
+does not make that conversion.
+
+The transcript step can become exact once
+\code{ExactRustV5TranscriptDriverEquality} is proved;
+\code{transcript_law_matches_source_of_exact_driver} then gives equality of
+the output laws.  The fixed-function salted-Merkle result
+\code{fixed_function_merkle_commitment_step} supplies an idealized commitment
+comparison from a stated salt-hiding premise.  It is not yet the adaptive,
+oracle-relative commitment theorem required for the deployed Fiat--Shamir
+experiment.
+
+\subsection{Current claim}
+
+The counterexample
+\code{mathematical_hiding_alone_does_not_imply_deployed_hiding} is deliberate:
+two ideal point distributions can be equal while two unrelated deployed
+point distributions differ.  It formally prevents the mathematical theorem
+from being presented as a production result without the connecting premises.
+
+The current defensible statement is therefore:
+\begin{quote}
+The modeled, fixed-schedule algebraic view is witness-independent under its
+finite sampling and linear-algebra premises.  The same would hold for the
+specified deployed view if the named source, transcript, serialization,
+commitment, entropy, retry, primitive, compiler, and runtime comparisons were
+proved with suitable error bounds.
+\end{quote}
+
+No theorem currently proves that the deployed transaction leaks nothing
+beyond its stated public view.  Known-answer tests for SHA-256 or Poseidon2
+show agreement on selected inputs only; they do not establish the primitive
+assumptions or the complete production distribution.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Privacy results and open production steps.}
+\label{tab:privacy-status}
+\begin{tabularx}{\textwidth}{@{}R{0.34\textwidth}Y@{}}
+\toprule
+Result & Scope \\
+\midrule
+\code{encoded_concrete_fixed_schedule_view_is_witness_independent} &
+Equal encoded laws for the concrete finite fixed-schedule model \\
+\code{retry_selection_preserves_modeled_hiding} &
+Witness independence through bounded modeled retry and selection \\
+\code{released_instruction_header_and_proof_byte_count} &
+Exact 75,567-byte modeled public-vector size \\
+\code{deployed_views_close_of_mathematical_hiding} &
+Conditional two-sided hybrid inequality with every error supplied \\
+\code{mathematical_hiding_alone_does_not_imply_deployed_hiding} &
+Formal counterexample to an unsupported model-to-production inference \\
+Open work & Full Rust and serializer equality, production entropy and retry,
+adaptive commitment simulation, suitable computational primitive bounds, and
+the complete claimed public context \\
+\bottomrule
+\end{tabularx}
+\end{table}

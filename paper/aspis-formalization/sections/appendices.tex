@@ -1,0 +1,411 @@
+\section{Dependency map}
+\label{app:dependency-map}
+
+The formal development is easier to review by following the direction of the
+main implication rather than the repository's alphabetical file list.
+
+\begin{longtable}{@{}R{0.23\textwidth}R{0.31\textwidth}R{0.40\textwidth}@{}}
+\caption{Main formal dependencies.}\label{tab:dependency-map}\\
+\toprule
+Layer & Principal modules & Result passed to the next layer \\
+\midrule
+\endfirsthead
+\toprule
+Layer & Principal modules & Result passed to the next layer \\
+\midrule
+\endhead
+Field and group &
+\code{V5M31RawMulReduction}, \code{V5M31RawSubNeg},
+\code{V5M31InverseAdditionChain}, \code{V5ComponentCQM31TowerExact},
+\code{CircleGroupOrder} &
+Exact base and extension arithmetic, circle order, and distinct domain points \\
+\addlinespace
+Spend relation &
+\code{ArithmetizationCore}, \code{ValueConservation},
+\code{V5AcceptedSpendRelation} &
+Normalized arithmetic, hash, and Merkle rows imply a complete spend witness \\
+\addlinespace
+Encoders &
+\code{V5FriInitialCircleEncoderIdentity},
+\code{V5FriConcreteEncoderApplicability},
+\code{V5Width19S2ApplicabilityAudit} &
+Exact stored evaluation order, polynomial degrees, distances, and checked
+parameters for the cited decoding proposition \\
+\addlinespace
+Four-round extraction &
+\code{V5FriReleasedAdaptiveExtraction},
+\code{V5FriRelationCandidateBridge},
+\code{V5AdaptiveSumcheckChallengeBound} &
+One coherent initial candidate or a counted fold/relation failure \\
+\addlinespace
+Transcript &
+\code{V5TranscriptConnection}, \code{V5TranscriptSourceAdapter},
+\code{V5CryptographicAssumptions} &
+Exact modeled byte schedule, consumed challenges, and named primitive/source
+failure events \\
+\addlinespace
+Authenticated openings &
+\code{V5MerkleAuthenticationBinding}, \code{V5MerkleRustBridge},
+\code{V5MerkleConsumedValueBridge} &
+Five accepted paths, exact parsed values, and authenticated FRI reads outside
+the SHA-256 collision event \\
+\addlinespace
+Production relation &
+\code{V5RelationStressSourceBridge},
+\code{V5AcceptedExecutionSecurityBridge} &
+Source-shaped relation results and explicit outer Rust equalities needed for
+\code{AcceptedRunExtractsTrace} \\
+\addlinespace
+Soundness experiment &
+\code{V5FinalSecurityAccounting},
+\code{V5HundredBitSecurityMargin},
+\code{V5UnifiedSecurityExperiment} &
+One finite accepted-false experiment, exact failure ledger, and conditional
+work-normalized \(2^{-100}\) theorem \\
+\addlinespace
+Theft and state &
+\code{V5FixedVictimTheftGame}, \code{V5AdaptiveObservedTheftGame},
+\code{V5TheftStateTransitionReduction}, \code{V5ProductionStateBridge} &
+First-fraudulent-spend classification and exact modeled marker, pool, close,
+and refund behavior \\
+\addlinespace
+Privacy &
+\code{V5DeployedZeroKnowledgeBridge} and its finite hiding dependencies &
+Mathematical witness independence plus an explicit list of production and
+cryptographic comparisons \\
+\bottomrule
+\end{longtable}
+
+The arrows in this map are not all unconditional.  The encoder layer uses the
+cited decoding result, the transcript and opening layers retain enclosing
+Rust equalities, the probability layer retains event bounds, and the state
+layer retains Solana runtime premises.  Their names are part of the formal
+interfaces.
+
+\section{Theorem index}
+\label{app:theorem-index}
+
+The following table gives the principal Lean declarations used in the report.
+Each name is paired with its source module so that it can be found without a
+line-number reference.
+
+\begin{longtable}{@{}R{0.34\textwidth}R{0.60\textwidth}@{}}
+\caption{Principal checked declarations.}\label{tab:theorem-index}\\
+\toprule
+Module & Declaration and role \\
+\midrule
+\endfirsthead
+\toprule
+Module & Declaration and role \\
+\midrule
+\endhead
+\code{ValueConservation} &
+\code{value_conservation_no_wraparound}: converts the field balance equation
+to integer value conservation under the range assumptions. \\
+\addlinespace
+\code{V5AcceptedSpendRelation} &
+\code{extracted_trace_implies_spend_relation}: extracted residual, hash, and
+path rows imply the complete spend relation. \\
+\addlinespace
+\code{V5AcceptedSpendRelation} &
+\code{false_accept_event_subset_bad_event} and
+\code{false_accept_measure_le_bad_event}: conditional accepted-run extraction
+gives pointwise and measure forms of false-acceptance containment. \\
+\addlinespace
+\code{CircleGroupOrder} &
+\code{orderOf_g}: the released M31 circle generator has order \(2^{31}\). \\
+\addlinespace
+\code{V5FriInitialCircleEncoderIdentity} &
+\code{encoder0_eq_stored_circle_eval}: the initial encoder equals evaluation
+of the exact circle polynomial in released storage order. \\
+\addlinespace
+\code{V5FriConcreteEncoderApplicability} &
+\code{concrete_line_encoder_distances}: the four later code distances follow
+from exact polynomial agreement bounds. \\
+\addlinespace
+\code{V5Width19S2ApplicabilityAudit} &
+\code{published_appendixA2_supplies_exact_width19_curve_decodable}: released
+parameters instantiate the stated external decoding proposition. \\
+\addlinespace
+\code{V5FriReleasedAdaptiveExtraction} &
+\code{accepted_ideal_fri_extracts_initial_candidate_or_counted}: an accepted
+ideal run yields one initial candidate through all folds or a counted event. \\
+\addlinespace
+\code{V5FriRelationCandidateBridge} &
+\code{evaluation_discrepancy_eq_folded_difference}: the final evaluation
+discrepancy equals the folded candidate difference. \\
+\addlinespace
+\code{V5TranscriptConnection} &
+\code{source_shaped_helper_composition_exact}: the source-shaped helpers
+produce the complete ordered transcript trace. \\
+\addlinespace
+\code{V5TranscriptConnection} &
+\code{complete_schedule_checks_each_work_immediately_before_absorb}: every
+work nonce is checked directly before its absorb operation. \\
+\addlinespace
+\code{V5TranscriptConnection} &
+\code{source_consumption_uses_exact_squeezes}: later verifier inputs are the
+values obtained from the named squeeze positions. \\
+\addlinespace
+\code{V5TranscriptSourceAdapter} &
+\code{source_adapter_driver_is_exact}: decoded source fields produce the same
+pure transcript-driver result. \\
+\addlinespace
+\code{V5TranscriptSourceAdapter} &
+\code{source_adapter_passes_exact_values_to_fri_and_relation}: the adapter
+passes the modeled challenge values to their consumers. \\
+\addlinespace
+\code{V5BoundedQuerySamplerUniformity} &
+\code{deployed_q18_conditioned_uniform}: the successful bounded sampler is
+uniform on ordered eighteen-element schedules without replacement. \\
+\addlinespace
+\code{V5WithoutReplacementQuerySoundness} &
+\code{ideal_miss_probability_eq_descFactorial_ratio}: exact miss probability
+for a fixed bad set. \\
+\addlinespace
+\code{V5MerkleRustBridge} &
+\code{fixed_record_eq_value_append_salt}: every exact opened record is value
+bytes followed by the 32-byte salt. \\
+\addlinespace
+\code{V5MerkleRustBridge} &
+\code{exactSection_frontier_has_no_omission_or_trailing}: the exact section
+accounts for all frontier material. \\
+\addlinespace
+\code{V5MerkleRustBridge} &
+\code{exactV5Run_yieldsForest}: five successful modeled sections construct an
+accepted forest. \\
+\addlinespace
+\code{V5MerkleRustBridge} &
+\code{productionAcceptedForest_values_unique}: production values are unique
+under fixed roots and queries outside a SHA-256 collision, assuming the
+focused source equality. \\
+\addlinespace
+\code{V5MerkleConsumedValueBridge} &
+\code{rustObservation_exposes_only_authenticated_fri_values}: the specified
+opening/FRI observation uses only values authenticated by the forest. \\
+\addlinespace
+\code{V5UnifiedSecurityExperiment} &
+\code{final_failure_partition_is_exact}: the six protocol and eighteen
+external entries partition the old twenty-four-entry ledger. \\
+\addlinespace
+\code{V5UnifiedSecurityExperiment} &
+\code{ordered_unified_failure_kinds_are_exactly_once}: the nineteen new kinds
+are present once each. \\
+\addlinespace
+\code{V5UnifiedSecurityExperiment} &
+\code{total_unified_failure_eq_total_final_failure}: old and new failure
+unions are equal. \\
+\addlinespace
+\code{V5UnifiedSecurityExperiment} &
+\code{accepted_false_probability_le_core_plus_external_sum}: one core event
+plus eighteen external event probabilities bounds false acceptance. \\
+\addlinespace
+\code{V5HundredBitSecurityMargin} &
+\code{corrected_selected_release_core_le_seven_tenths}: conditional released
+core arithmetic fits \(0.7\cdot2^{-100}\). \\
+\addlinespace
+\code{V5UnifiedSecurityExperiment} &
+\code{work_normalized_accepted_false_probability_le_two_pow_neg_100_of_released_core}:
+final conditional work-normalized endpoint. \\
+\addlinespace
+\code{V5FixedVictimTheftGame} &
+\code{fixed_victim_attack_implies_mathematical_failure}: five-way
+fixed-victim attack classification. \\
+\addlinespace
+\code{V5FixedVictimTheftGame} &
+\code{deployed_attack_measure_le_eight_failures}: adds address, runtime/state,
+and victim-setup events. \\
+\addlinespace
+\code{V5AdaptiveObservedTheftGame} &
+\code{adaptive_first_fraudulent_spend_implies_mathematical_failure}: extends
+the mathematical split to an observed finite proof history. \\
+\addlinespace
+\code{V5AdaptiveObservedTheftRawAccounting} &
+\code{deployed_adaptive_first_fraudulent_spend_probability_le_two_pow_neg_75}:
+conditional raw accounting with external and setup terms. \\
+\addlinespace
+\code{V5AdaptiveTheftWidth19Bound} &
+\code{deployed_qm31_adaptive_theft_probability_le_two_pow_neg_70_plus_remaining}:
+raw width-19 term plus all remaining terms. \\
+\addlinespace
+\code{V5TheftStateTransitionReduction} &
+\code{v5_source_success_exact_state}: exact marker and pool state after a
+modeled success. \\
+\addlinespace
+\code{V5TheftStateTransitionReduction} &
+\code{v5_source_rejects_preexisting_marker}: an occupied marker cannot be
+overwritten. \\
+\addlinespace
+\code{V5TheftStateTransitionReduction} &
+\code{close_success_refunds_exact_recipient_and_preserves_spend}: exact
+modeled close and refund behavior. \\
+\addlinespace
+\code{V5DeployedZeroKnowledgeBridge} &
+\code{encoded_concrete_fixed_schedule_view_is_witness_independent}: concrete
+finite fixed-schedule hiding after deterministic encoding. \\
+\addlinespace
+\code{V5DeployedZeroKnowledgeBridge} &
+\code{deployed_views_close_of_mathematical_hiding}: two-sided conditional
+hybrid bound. \\
+\addlinespace
+\code{V5DeployedZeroKnowledgeBridge} &
+\code{mathematical_hiding_alone_does_not_imply_deployed_hiding}: counterexample
+showing why production comparisons are required. \\
+\bottomrule
+\end{longtable}
+
+\section{How to read the final bound}
+\label{app:final-bound}
+
+The final result can be checked in four steps.
+
+\begin{enumerate}[leftmargin=*]
+  \item Fix one finite probability law for the complete work-normalized
+        experiment.  All prover coins, ideal-oracle values, and environment
+        choices used by the application must be represented in that law.
+  \item Prove pointwise that every accepted false outcome is either in the
+        single protocol event or one of the eighteen external events.  The
+        maintained released-execution constructor supplies this step only
+        after its accepted-execution classification is supplied.
+  \item Prove an event-level bound
+        \(\Prob[C]\leq B_{\mathrm{core}}\) for the exact protocol event and
+        discharge the released applicability premises.  Checked arithmetic
+        then gives
+        \(B_{\mathrm{core}}\leq0.7\cdot2^{-100}\).
+  \item Give one bound for every external event and prove that their sum is at
+        most \(0.3\cdot2^{-100}\).
+\end{enumerate}
+
+The union bound then gives
+\[
+\begin{aligned}
+\Prob[A_{\mathrm{false}}]
+  &\leq \Prob[C]+\sum_{i=1}^{18}\Prob[E_i]\\
+  &\leq B_{\mathrm{core}}+B_{\mathrm{external}}\\
+  &\leq 0.7\cdot2^{-100}+0.3\cdot2^{-100}\\
+  &=2^{-100}.
+\end{aligned}
+\]
+
+No independence between the nineteen events is needed.  The conclusion is no
+stronger than its law.  If the law conditions on a completed work search, the
+37-bit work factor cannot still be charged.  If an application permits many
+attempts, it must model them or apply a justified multi-attempt bound.
+
+The eighteen external entries are not a reserve to be filled by a single
+informal statement such as ``standard cryptographic assumptions.''  Each
+field in \code{AssumedExternalSecurityBounds} refers to an event in the exact
+experiment.  The intended proof must show both that the event has the stated
+meaning for production and that its probability satisfies its assigned
+budget.
+
+\section{Production-source checklist}
+\label{app:source-checklist}
+
+This checklist states what a complete source proof must establish.  ``Open''
+means that the pure or source-shaped Lean result exists but the universal
+equality for the named production function is not yet proved.
+
+\begin{longtable}{@{}R{0.34\textwidth}R{0.14\textwidth}R{0.46\textwidth}@{}}
+\caption{Production source audit.}\label{tab:source-checklist}\\
+\toprule
+Production function or area & Status & Required equality \\
+\midrule
+\endfirsthead
+\toprule
+Production function or area & Status & Required equality \\
+\midrule
+\endhead
+\code{Transcript::absorb} and \code{Transcript::squeeze_block} & Focused
+model & Exact labels, byte payloads, output hash, and state-advance hash are
+modeled; full all-input source equality must be inherited by the outer driver. \\
+\addlinespace
+\code{Transcript::grinding_ok} and the six check-and-absorb helpers &
+Source-shaped proof and tests & Each nonce is checked against the pre-absorb
+state and correct difficulty, then absorbed once with its exact record. \\
+\addlinespace
+\code{v5_complete_transcript_before_final_with_statement_digest} and query
+derivation & Open & Prove \code{ExactRustV5TranscriptDriverEquality}, including
+all returned challenges, selector, and eighteen query positions. \\
+\addlinespace
+\code{verify_state_only_private_opening_from_proof_with_topology} & Open &
+Prove \code{VerifyStateOnlyPrivateOpeningWithTopologySourceEquality}: exact
+record slices, salt split, framed hash calls, shifted indices, slots, binary
+cap, frontier use, and returned suffix. \\
+\addlinespace
+\code{verify_v5_private_openings_from_proof} & Open & Prove
+\code{VerifyV5DriverCompositionSourceEquality}: five calls in fixed order,
+each supplied with the prior suffix, with no final bytes left. \\
+\addlinespace
+\code{check_v5_fri_queries} and its opening lookups & Open outer equality &
+Show every algebraic read is exactly the decoded value portion returned by the
+authenticated opening driver. \\
+\addlinespace
+\code{prepare_v5_pcs_claims}, compact folds, and relation rounds & Partial &
+Focused arithmetic and source-shaped equalities are checked; prove the
+enclosing relation caller and raw-success equality. \\
+\addlinespace
+All nineteen relation columns and public inputs & Open composition & Prove
+\code{AcceptedRunExtractsTrace}, with no omitted column, residual, fold,
+public field, final coefficient, hash row, or spend Merkle path. \\
+\addlinespace
+\code{verify_and_apply_atomic_payment_state_traced_inner} & Open & Prove
+\code{ExactCurrentRustStateEquality}, including account roles, owners,
+writability, expected derived marker and bump, mutable-state recheck, marker
+write, and pool update. \\
+\addlinespace
+\code{refund_program_owned_proof_account} & Open & Prove
+\code{ExactRustCloseEquality}, including refund-account selection, ownership,
+signers, writable flags, invalidation, and complete balance transfer. \\
+\addlinespace
+Solana runtime & Assumed & Prove or assume system-program behavior, address
+derivation, writable locks, rollback, committed persistence, and finalized
+observation. \\
+\bottomrule
+\end{longtable}
+
+For each row, fixed-input tests are useful for finding mismatched offsets,
+labels, endianness, and failure behavior.  Completion requires a statement
+quantified over every accepted input in the stated function domain.
+
+\section{Archived-execution checklist}
+\label{app:artifact-checklist}
+
+An independent check of the historical execution should verify the following
+items from the archived V5 mainnet bundle.
+
+\begin{enumerate}[leftmargin=*]
+  \item Check the bundle's signed or recorded checksum list before reading the
+        individual files.
+  \item Check the program, proof, statement, and signed-wire SHA-256 values in
+        \cref{tab:artifact-identities}.
+  \item Check that the clean build record names source commit
+        \code{06788d44d30ea8cbd391899dddaf6f0acc6e4a3f}, source tree
+        \code{9b6bdfddb3c213addc2bb705c8130cce4fb2c351}, and the recorded
+        Solana/Rust platform tools.
+  \item Run the bundled offline verifier against the archived proof and public
+        statement.  This checks the archive format and expected fixed input;
+        it is not a universal proof.
+  \item Compare program identifier
+        \code{7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue} and spend
+        transaction signature
+        \code{EJviPgF12i9iK2CveVaQSMeFQqDMFPQ1iPRUYEwNQE3zGquTUZNJXPZEENorcQtsnQj1orFmH1TPsgdbR3vJ2fE}
+        with the captured RPC responses.
+  \item Confirm finalized slot 435,019,536, 1,334,452 consumed compute units,
+        the 1,356,912 unit limit, and marker-address bump 255.
+  \item Compare the before/after pool anchor, pool sequence, marker owner, and
+        marker data with the public statement and the modeled transition.
+  \item Check the later proof-account close at slot 435,019,649 and its
+        525,660,961-lamport refund.
+  \item Record that the program data was closed at slot 435,019,804 and that
+        the demonstration accounts were later cleaned up.  A failed live
+        account lookup today does not contradict the archived state.
+  \item Distinguish the deployment source commit from the paper's later formal
+        snapshot.  Recheck theorem statements against the latter and artifact
+        identity against the former.
+\end{enumerate}
+
+The archive allows these checks without rebuilding the proof system.  A fresh
+Lean build or program build answers a different reproducibility question and
+should use the stored dependencies and toolchain rather than downloading or
+regenerating them without need.
