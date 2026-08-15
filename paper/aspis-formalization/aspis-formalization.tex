@@ -11,6 +11,7 @@
 \usepackage{longtable}
 \usepackage{tabularx}
 \usepackage{enumitem}
+\usepackage{placeins}
 \usepackage{xcolor}
 \usepackage[numbers,sort&compress]{natbib}
 \usepackage{xurl}
@@ -39,12 +40,12 @@
 \newcolumntype{T}{>{\raggedright\arraybackslash\ttfamily}p{0.34\textwidth}}
 \newcolumntype{P}{>{\raggedright\arraybackslash}p{0.58\textwidth}}
 
-\title{\Aspis: A Lean-Checked Private-Spend Protocol\\
-{\large Formal Model, Soundness Analysis, and a Deployed Solana Verifier}}
+\title{\Aspis: A Lean-Checked Security Decomposition\\
+{\large for a Deployed Private-Spend Verifier}}
 \author{Dominic Barker}
 \date{15 August 2026}
 \hypersetup{
-  pdftitle={Aspis: A Lean-Checked Private-Spend Protocol},
+  pdftitle={Aspis: A Lean-Checked Security Decomposition for a Deployed Private-Spend Verifier},
   pdfauthor={Dominic Barker},
   pdfsubject={Formal model, soundness analysis, Rust correspondence, and Solana execution evidence},
   pdfkeywords={Lean 4, STARK, private spend, circle code, FRI, Rust, Solana}
@@ -55,39 +56,37 @@
 \maketitle
 
 \begin{abstract}
-\Aspis{} is a private-spend protocol whose verifier runs as a Solana program.
-The protocol proves knowledge of an owned input note, conserves value and
-asset identity, creates a new note, updates a fixed-depth note-tree root, and
-publishes a nullifier used to reject a later spend of the same input.  Its
-proof system uses the Mersenne prime field \(\F\), a degree-four extension
-field, circle-code evaluation domains, four radix-four folds, five salted
-Merkle trees, SHA-256 Fiat--Shamir challenges, and six separate work checks.
+\Aspis{} is a transparent private-spend verifier implemented as a Solana
+program.  A recorded mainnet transaction verified a 75,358-byte proof,
+published its nullifier, and updated the pool state in 1,334,452 compute units.
 
-This report describes the maintained Lean 4 development.  Lean proves the
-private-spend relation once authenticated trace values have been extracted;
-the exact M31 circle-group order and released evaluation domains; the later
-encoder distances; the four coefficient and verifier-weight folds; the
-without-replacement query calculation; a fixed-victim attack case split; and
-the state-model rule that an existing spent marker cannot be overwritten.
-It also defines one finite adversarial experiment in which accepted false
-statements are covered by one protocol event and eighteen named implementation,
-primitive, and runtime events.  Under the stated work-normalized experiment,
-Lean proves a final \(2^{-100}\) bound from a checked 70/30 split between the
-protocol and external budgets.
+The main contribution is a machine-checked security decomposition for that
+verifier.  In one finite Lean 4 experiment, every accepted false statement is
+covered by one ideal-protocol event or one of eighteen named source,
+primitive, credential, and runtime events.  Lean proves that this ledger has
+no duplicate entries, describes the same union as the earlier detailed
+ledger, and needs no independence assumption.  The development also checks
+the private-spend relation after extraction, the released M31 circle domains
+and encoders, a prefix-timed four-fold FRI candidate argument, distinct-query
+sampling, transcript and five-tree Merkle models, theft reductions, and the
+spent-marker state transition.
 
-The repository also contains focused Charon/Aeneas translations of selected
-Rust functions, a byte-for-byte reproducible 1,258,496-byte Solana binary, and
-a finalized mainnet execution of a 75,358-byte proof using 1,334,452 compute
-units.  The main remaining formalization task is the universal connection from
-an accepting production Rust execution to the exact trace consumed by the
-Lean model.  The final V5-specific FRI/Fiat--Shamir event connection also
-remains explicit.  The development otherwise states the usual trusted inputs:
-the published decoding result, cryptographic primitive security, Lean and its
-libraries, the compiler toolchain, and Solana runtime behavior.
+As a conditional numerical consequence, the work-normalized protocol budget
+is at most \(0.7\cdot2^{-100}\); if the remaining probabilistic terms total at
+most \(0.3\cdot2^{-100}\), the combined budget is at most \(2^{-100}\).
+Separate raw accounting does not charge completed grinding work and leaves a
+\(2^{-70}\) term plus explicit cryptographic and production terms.  Focused
+Charon/Aeneas translations and a byte-for-byte reproducible Solana binary
+support the source and deployment connection.  The main project-specific
+premise still to prove universally is that every accepting production Rust
+execution yields the exact Lean trace; published decoding and Fiat--Shamir
+results and standard primitive, toolchain, and runtime assumptions remain
+stated inputs.
 \end{abstract}
 
 \input{sections/introduction}
 \input{sections/background}
+\input{sections/related-work}
 \input{sections/lean-model}
 \input{sections/implementation}
 \input{sections/soundness}

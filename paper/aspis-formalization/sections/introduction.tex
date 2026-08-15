@@ -21,6 +21,15 @@ the compiled program, and one finalized execution.  The report keeps the
 scope of each result clear so that future source proofs can be added without
 changing the mathematical statement.
 
+The principal result is a checked security decomposition, not an unconditional
+claim of 100-bit deployed security.  Every accepted false outcome in the
+modeled experiment lies in one ideal-protocol event or one of eighteen named
+events for source correspondence, primitive security, credentials, or runtime
+behavior.  Lean proves that this compact ledger covers exactly the same union
+as the earlier detailed ledger and derives the combined probability bound in
+one sample space.  This turns the remaining work into explicit proof
+obligations instead of hiding it inside one broad implementation assumption.
+
 The mathematical background is kept short.  Most of the report is devoted to
 the formal model, security experiment, proof reductions, and source locations.
 Lean declarations are cited by stable names instead of line numbers, which
@@ -28,49 +37,50 @@ change during maintenance.
 
 \subsection{Contributions}
 
-The main checked results reported here are:
+The contributions reported here are:
 \begin{itemize}[leftmargin=*]
-  \item a deterministic proof that extracted arithmetic, hash, and Merkle
-        rows imply the complete one-input/one-output spend relation;
-  \item exact finite-field and circle-domain facts, including the deployed
-        M31 circle generator order and distinct released evaluation points;
-  \item exact identities for the initial circle encoder and the four later
-        encoders, with the later polynomial-code distances checked in Lean;
-  \item a causal four-round candidate argument that follows one initial
-        decoder candidate through every fold;
-  \item the exact probability for eighteen distinct queries drawn by the
-        bounded first-occurrence sampler, and the corresponding fixed-set
-        miss calculation;
-  \item a byte-level transcript schedule recording absorbs, squeezes, work
-        checks, roots, salts, messages, nonces, and the query selector;
-  \item a five-tree Merkle model covering value/salt records, binary and
-        radix-four hashing, shifted indices, path orientation, exact section
-        order, and rejection of unused path bytes;
-  \item one work-normalized probability experiment with nineteen disjointly
-        listed failure kinds and a checked 70/30 split for a conditional
-        \(2^{-100}\) endpoint;
-  \item fixed-victim and adaptive attack reductions that state each remaining
-        cryptographic, extraction, source, and runtime failure separately;
-  \item explicit models of the spent-marker write, account checks, rollback,
-        close/refund behavior, and the required marker-address bump.
+  \item A machine-checked decomposition of accepted false outcomes into one
+        ideal-protocol event and eighteen named external events.  The old and
+        new ledgers have a proved union equality, and the resulting
+        conditional budget theorem uses one probability space without an
+        independence assumption.
+  \item A Lean proof of the released mathematical verifier: the complete
+        one-input/one-output spend relation after extraction, exact M31 circle
+        domains and encoders, four coefficient and verifier-weight folds, a
+        prefix-timed four-round candidate argument, and the exact bounded
+        distinct-query calculation.
+  \item Byte-level transcript and five-tree Merkle specifications, together
+        with source-shaped and focused Charon/Aeneas proofs that identify the
+        exact remaining equalities for the enclosing production Rust
+        functions.
+  \item Fixed-victim and observed-history theft reductions, plus explicit
+        state models for account checks, the non-overwritable spent marker,
+        rollback, finalized persistence, and close/refund behavior.
+  \item A reproducible source-to-binary record and archived mainnet execution
+        evidence binding one program, proof, public statement, transaction,
+        and before/after state.
 \end{itemize}
 
-The formal source at the paper snapshot contains 221 maintained Lean modules,
-102,832 lines, and 3,269 declarations introduced with \code{theorem}.  These
-counts describe the repository; they are not a measure of security.  The
-principal results used in this paper include \texttt{\#print axioms} checks.  At
-the selected entry points, Lean reports only \code{propext},
-\code{Classical.choice}, and \code{Quot.sound}, which are standard Lean and
-mathlib foundations~\cite{deMouraUllrich2021Lean4,MathlibCommunity2020}.
+To our knowledge, this is the first finalized Solana mainnet transaction in
+which a Solana L1 program directly verifies a trusted-setup-free proof of a
+note-based private-spend relation and, upon acceptance, atomically records the
+spent nullifier and advances the committed note state.  This is a claim about
+that specific combination, not a claim that Aspis is the first private-payment
+system, shielded pool, or transparent verifier on Solana.
+\Cref{sec:related-work} gives the comparison and its search date;
+\cref{sec:evaluation} identifies the transaction, program, proof, public
+statement, and before/after state.
 
 \subsection{Scope}
 
-The \(2^{-100}\) result is stated for the work-normalized experiment defined in
-Lean.  The main project-specific work still open is the universal equality
-between an accepting production verifier run and the complete Lean trace,
-together with the final V5-specific FRI/Fiat--Shamir event connection.
-Published decoding results, SHA-256 and Poseidon2 security, the proof
-assistant, compiler, and Solana runtime are stated as ordinary trusted inputs.
+The \(2^{-100}\) result is a conditional budget theorem for the
+work-normalized experiment defined in Lean.  It is not the headline claim
+that deployed V5 has an unconditional 100-bit false-acceptance bound.  The
+main project-specific work still open is the universal equality between an
+accepting production verifier run and the complete Lean trace.  The published
+decoding and BCS Fiat--Shamir results, SHA-256 and Poseidon2 security, the
+proof assistant, compiler, and Solana runtime are stated as ordinary trusted
+inputs.
 The mathematical privacy and theft reductions are reported separately from a
 full production privacy or raw theft bound.  \Cref{sec:limitations} gives the
 complete list.
@@ -78,6 +88,8 @@ complete list.
 \subsection{Reading guide}
 
 \Cref{sec:background} describes the spend statement and fixed proof profile.
+\Cref{sec:related-work} compares the result with proof-system, formal-methods,
+and Solana work.
 \Cref{sec:lean-model} presents the Lean model and its main definitions.
 \Cref{sec:implementation} explains what is and is not connected to production
 Rust.  \Cref{sec:soundness} gives the single probability experiment and final
@@ -100,7 +112,7 @@ Extracted trace implies the spend relation &
 \code{AspisV5AcceptedSpendRelation.extracted_trace_implies_spend_relation} \\
 One adversarial experiment &
 \code{AspisV5UnifiedSecurityExperiment.WorkNormalizedV5AdversarialExperiment} \\
-Final work-normalized bound &
+Conditional work-normalized budget theorem &
 \code{AspisV5UnifiedSecurityExperiment.work_normalized_accepted_false_probability_le_two_pow_neg_100_of_released_core} \\
 Transcript schedule &
 \code{AspisV5TranscriptConnection.completeTranscriptTrace} \\

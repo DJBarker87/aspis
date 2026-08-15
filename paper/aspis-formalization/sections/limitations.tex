@@ -1,10 +1,10 @@
 \section{Assumptions and remaining verification}
 \label{sec:limitations}
 
-Most of the mathematical core is already checked in Lean.  The remaining
-work falls into three groups: the end-to-end production-code connection, one
-Aspis-specific soundness connection, and the standard assumptions made by a
-concrete cryptographic implementation.
+Most of the mathematical core is checked in Lean.  The main project-specific
+gap is end-to-end production-code correspondence.  Published decoding and
+Fiat--Shamir results, primitive security, and toolchain/runtime correctness
+are the standard stated inputs for the concrete instantiation.
 
 \subsection{End-to-end code connection}
 
@@ -21,25 +21,44 @@ path.  Small arithmetic, parsing, buffer, transcript, and Merkle functions
 already have source-shaped or Charon/Aeneas proofs.  The exact remaining
 function list is in \cref{app:source-checklist}.
 
-\subsection{V5 soundness connection}
+\subsection{How the assumptions enter the theorem}
+
+The audit ledger retains source and runtime mismatches as named events so that
+none can disappear from the proof.  The conventional cryptographic statement
+instead assumes the twelve deterministic production correspondences and
+assigns probability only to the protocol, primitive, and credential events.
+Under those correspondences, the deterministic event sets are empty and take
+budget zero.  This is the specialization in
+\cref{eq:deterministic-probabilistic-split}; it does not assign a fictional
+tiny failure probability to parser correctness or rollback semantics.
+
+\subsection{V5 soundness status}
 
 Lean checks the exact circle domains, encoder order, degrees, distances,
-local radix-four folds, causal candidate chain, relation reductions, query
-calculation, and final probability arithmetic.  The remaining protocol step
-is to connect the exact V5 FRI and Fiat--Shamir failure event to that checked
-arithmetic.  This is kept separate because Aspis's four-way fold is not
-literally the protocol in the cited paper.
+local radix-four folds, prefix-conditioned bad sets, compatible candidate
+chain, relation reductions, query calculation, adaptive fresh-oracle count,
+and final probability arithmetic.  This proves the V5-specific four-way FRI
+part rather than assuming that the different S-two folding protocol applies
+unchanged.
 
-The final \(2^{-100}\) theorem is work-normalized.  This is a definition of the
-security experiment, not a weakness in the algebraic proof.  The raw theorem
-for a completed proof keeps the corresponding work factor out and reports its
-remaining terms separately.
+The final event interface identifies the event extracted from production with
+the event covered by the published BCS state-restoration theorem.  Its
+remaining inputs are the production transcript equality and the stated BCS
+and SHA-256 random-oracle assumptions.  They are part of the code connection
+and standard cryptographic model, not a separate unfinished V5 FRI theorem.
+
+The \(2^{-100}\) theorem is a work-normalized conditional budget theorem.  The
+resource-bounded form in \cref{eq:resource-bounded-advantage} and the raw theft
+theorem keep the completed-work factor out and report their remaining terms
+separately.
 
 \subsection{Standard trusted inputs}
 
 The development uses the following normal assumptions:
 \begin{itemize}[leftmargin=*]
   \item correctness of the published circle-code decoding result;
+  \item correctness of the published BCS state-restoration and Fiat--Shamir
+        soundness result for the modeled public-coin IOP;
   \item collision, target-preimage, and modeled random-oracle security for
         SHA-256 where each property is used;
   \item the stated Poseidon2 implementation and security properties;
@@ -78,12 +97,14 @@ Spend relation after extraction & Checked in Lean & Faithful deployed
 Poseidon2 functions are supplied \\
 Circle domains and encoders & Checked in Lean & Published decoding result is
 used as a stated theorem \\
-Four-round candidate and relation chain & Checked in Lean & Exact V5
-FRI/Fiat--Shamir event connection remains \\
+Four-round FRI and candidate chain & Checked in Lean & Published BCS
+Fiat--Shamir theorem and SHA-256 random-oracle assumption apply once the
+production equality is supplied \\
 Transcript, Merkle, and relation source models & Checked in Lean & Enclosing
 production Rust equalities remain \\
-Work-normalized \(2^{-100}\) theorem & Checked in Lean & Exact event
-connections and stated external budgets are supplied \\
+Work-normalized \(2^{-100}\) budget composition & Checked in Lean & Exact
+event connection and six probabilistic external bounds are supplied;
+deterministic correspondences take budget zero \\
 Spent-marker and refund model & Checked in Lean & Production Rust equality and
 standard Solana behavior are supplied \\
 Source, binary, and finalized execution & Reproduced and recorded & Relies on
@@ -93,3 +114,4 @@ prover and complete public-view connection \\
 \bottomrule
 \end{tabularx}
 \end{table}
+\FloatBarrier

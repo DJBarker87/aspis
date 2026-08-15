@@ -131,6 +131,24 @@ parameters instantiate the stated external decoding proposition. \\
 \code{accepted_ideal_fri_extracts_initial_candidate_or_counted}: an accepted
 ideal run yields one initial candidate through all folds or a counted event. \\
 \addlinespace
+\code{V5FriForwardCompatibleChain} &
+\code{accepted_ideal_fri_restores_complete_chain_or_prefix_bad}: the released
+four-fold chain is restored or a bad set fixed by the proper prefix occurs. \\
+\addlinespace
+\code{V5ForwardAcceptedFalseRawAccounting} &
+\code{ReleasedIdealAcceptedFalseExperimentData.toEvents_coverage}: the
+accepted-false ideal experiment is covered by the released FRI and relation
+events. \\
+\addlinespace
+\code{V5ForwardAcceptedFalseRawAccounting} &
+\code{adaptiveCompatibilityReleasedFriFailureProbability_le_queryBudget_mul}:
+adaptive fresh attempts cost at most the query budget times the one-attempt
+FRI bound. \\
+\addlinespace
+\code{V5FiatShamirAdaptiveQueryBudget} &
+\code{ProductionAdaptiveFreshOracleConnection}: exact remaining production
+SHA-256 transcript, query-budget, and ideal fresh-oracle comparison. \\
+\addlinespace
 \code{V5FriRelationCandidateBridge} &
 \code{evaluation_discrepancy_eq_folded_difference}: the final evaluation
 discrepancy equals the folded candidate difference. \\
@@ -206,7 +224,7 @@ core arithmetic fits \(0.7\cdot2^{-100}\). \\
 \addlinespace
 \code{V5UnifiedSecurityExperiment} &
 \code{work_normalized_accepted_false_probability_le_two_pow_neg_100_of_released_core}:
-final conditional work-normalized endpoint. \\
+conditional work-normalized budget implication. \\
 \addlinespace
 \code{V5FixedVictimTheftGame} &
 \code{fixed_victim_attack_implies_mathematical_failure}: five-way
@@ -272,15 +290,18 @@ The final result can be checked in four steps.
         discharge the released applicability premises.  Checked arithmetic
         then gives
         \(B_{\mathrm{core}}\leq0.7\cdot2^{-100}\).
-  \item Give one bound for every external event and prove that their sum is at
-        most \(0.3\cdot2^{-100}\).
+  \item Prove the deterministic production correspondences, making their
+        twelve mismatch events empty, and bound the six remaining primitive
+        and credential events by a total of at most
+        \(0.3\cdot2^{-100}\).
 \end{enumerate}
 
 The union bound then gives
 \[
 \begin{aligned}
 \Prob[A_{\mathrm{false}}]
-  &\leq \Prob[C]+\sum_{i=1}^{18}\Prob[E_i]\\
+  &\leq \Prob[C]+\sum_{j=1}^{6}\Prob[P_j]
+    &&\text{under }D_{\mathrm{prod}}\\
   &\leq B_{\mathrm{core}}+B_{\mathrm{external}}\\
   &\leq 0.7\cdot2^{-100}+0.3\cdot2^{-100}\\
   &=2^{-100}.
@@ -292,12 +313,13 @@ stronger than its law.  If the law conditions on a completed work search, the
 37-bit work factor cannot still be charged.  If an application permits many
 attempts, it must model them or apply a justified multi-attempt bound.
 
-The eighteen external entries are not a reserve to be filled by a single
-informal statement such as ``standard cryptographic assumptions.''  Each
-field in \code{AssumedExternalSecurityBounds} refers to an event in the exact
-experiment.  The intended proof must show both that the event has the stated
-meaning for production and that its probability satisfies its assigned
-budget.
+The full eighteen-entry external ledger remains the audit interface.  Twelve
+entries require deterministic correspondence proofs; the other six require
+concrete cryptographic or credential bounds.  A single informal statement such
+as ``standard cryptographic assumptions'' does not discharge either group.
+Each field in \code{AssumedExternalSecurityBounds} refers to an event in the
+exact experiment, and deterministic events receive zero only after their
+correspondence premise has been proved.
 
 \section{Production-source checklist}
 \label{app:source-checklist}

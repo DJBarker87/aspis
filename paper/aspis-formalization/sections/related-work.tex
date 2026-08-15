@@ -1,0 +1,125 @@
+\section{Related work and position}
+\label{sec:related-work}
+
+\subsection{Transparent proof systems}
+
+Aspis uses the IOP view of transparent arguments introduced by BCS and the
+FRI line of Reed--Solomon proximity tests
+\cite{BenSassonChiesaSpooner2016,
+BenSassonBentovHoreshRiabzev2018FRI,
+BenSassonBentovHoreshRiabzev2018STARK}.  DEEP-FRI strengthens proximity
+testing with out-of-domain samples, while WHIR combines proximity testing
+with multilinear evaluation claims
+\cite{BenSassonGoldbergKoppartySaraf2020,
+ArnonChiesaFenziYogev2025WHIR}.  Circle codes and Circle STARKs provide smooth
+domains over M31, and S-two gives the closest published concrete circle-code
+protocol and BCS accounting
+\cite{HaboeckLubarovNabaglo2023,HaboeckLevitPapini2024,
+CarmonEtAl2026Stwo}.
+
+Those papers supply the mathematical setting, but none specifies the V5 wire
+format.  V5 has its own four-way fold, two initial commitment sections, three
+later Merkle sections, bounded distinct-query sampler, relation messages, and
+six work checks.  The Lean development therefore proves the released domains,
+fold identities, prefix-conditioned bad sets, compatible four-round candidate
+chain, and adaptive fresh-attempt count for this schedule.  It uses a
+published decoding theorem and the BCS Fiat--Shamir compilation instead of
+claiming new general versions of those results.  The bounded-query treatment
+is also informed by later work on Fiat--Shamir security for FRI
+\cite{BlockGarretaKatzThalerTiwariZajac2023}.
+
+The distinction is important over a small field.  Proximity-gap and mutual
+correlated-agreement results explain when folding preserves the required
+candidate structure
+\cite{BenSassonCarmonIshaiKoppartySaraf2023,
+BordageChiesaGuanManzur2025,Haboeck2025MCA}.  Counterexamples to stronger
+Reed--Solomon proximity-gap conjectures show why a capacity-regime claim
+cannot be inferred from a Johnson-regime theorem
+\cite{CritesStewart2025}.  Aspis records the exact released hypotheses rather
+than treating field size or code distance as a sufficient soundness proof by
+itself.
+
+\subsection{Machine-checked cryptography and verifiers}
+
+EasyCrypt established a practical language for machine-checked game-based
+security reductions \cite{BartheEtAl2012EasyCrypt}.  The machine-checked
+MPC-in-the-head work goes further: it proves correctness and security for a
+general zero-knowledge construction and obtains executable implementations by
+extraction and verified Jasmin components
+\cite{AlmeidaEtAl2021MitH}.  Jasmin, HACL*, and Fiat-Crypto demonstrate strong
+source or generated-code guarantees for high-performance cryptographic
+primitives: Jasmin couples verified compilation with implementation proofs,
+HACL* uses F* to generate verified portable C, and Fiat-Crypto generates
+proved finite-field arithmetic
+\cite{AlmeidaEtAl2017Jasmin,ZinzindohoueEtAl2017HACL,
+ErbsenEtAl2019FiatCrypto}.  These projects set a higher standard than tests
+for the code they cover; Aspis does not claim that its whole Rust verifier has
+yet reached that standard.
+
+For proof systems specifically, ArkLib develops a modular Lean theory of
+interactive oracle reductions, composition, and knowledge soundness.  Its
+published roadmap lists Rust equivalence for FRI and WHIR as future work
+\cite{ArkLib2026}.  Work on verifying deployed proof verifiers likewise
+emphasizes that a high-level security proof and a low-level verifier must be
+connected explicitly \cite{FirsovLivshits2024}.  Aspis contributes a different
+point in this space: a maintained application-specific verifier, checked
+private-spend and state semantics, focused translations of selected production
+Rust, and exact outer equalities for the source still to be proved.  Its main
+source result is therefore a precise decomposition, not a completed
+whole-program equivalence theorem.
+
+\subsection{Private payments and Solana verification}
+
+Zerocash established the note-commitment, nullifier, and private-spend pattern
+used by later shielded payment systems \cite{BenSassonEtAl2014Zerocash}.
+Several Solana projects provide important prior art on separate axes.  Protocol
+01 publishes a transparent STARK/FRI shielded-payment stack whose documented
+programs are on devnet; its inspected verifier and transfer paths separate
+proof phases from the later state transition \cite{Protocol01Repository2026}.
+The solana-pqzk-fullchain project directly verifies a Winterfell STARK on
+Solana devnet and gives reproducible measurements, but its proved statement is
+a small affine-counter computation rather than a private spend
+\cite{Yano2026SolanaPQZK}.  Privacy Cash provides a mainnet shielded-state
+precedent with published Groth16 setup material; Light Protocol's published
+proving stack also records a Groth16 setup rather than a transparent proof
+system \cite{PrivacyCashSetup2026,PrivacyCashMainnet2026,
+LightProtocolSetup2026}.
+
+The comparison in \cref{tab:related-comparison} concerns the features needed
+for this paper, not overall product quality.  ``Checked'' means a
+machine-checked security development, not merely a verified build or passing
+test suite.  ``Source link'' distinguishes equivalence to executable code from
+a high-level protocol model.  Aspis is marked partial in both columns because
+substantial Lean and focused source results exist while the enclosing
+production equalities remain open.
+
+\begin{table}[ht!]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\caption{Closest work along the axes combined by Aspis.}
+\label{tab:related-comparison}
+\begin{tabular}{@{}R{0.18\textwidth}R{0.085\textwidth}R{0.09\textwidth}
+R{0.09\textwidth}R{0.09\textwidth}R{0.11\textwidth}R{0.12\textwidth}@{}}
+\toprule
+Work & Transp. & Private spend & State coupled & L1 evidence & Checked
+security & Source link \\
+\midrule
+Zerocash \cite{BenSassonEtAl2014Zerocash} & no & yes & protocol & no & no & no \\
+Machine-checked MitH \cite{AlmeidaEtAl2021MitH} & varies & no & no & no & yes & generated code \\
+ArkLib \cite{ArkLib2026} & several systems & no & no & no & framework & planned \\
+Protocol 01 \cite{Protocol01Repository2026} & yes & yes & split & devnet & no & no \\
+solana-pqzk \cite{Yano2026SolanaPQZK} & yes & no & no & devnet & no & no \\
+Privacy Cash \cite{PrivacyCashSetup2026,PrivacyCashMainnet2026} & no & yes & yes & mainnet & no & no \\
+Aspis & yes & yes & atomic & archived mainnet & partial & selected; outer equality open \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The public-evidence search was updated on 15 August 2026.  It found prior work
+for every individual row of the comparison, but no artifact combining all of
+the Aspis row with a checked failure decomposition, reproducible deployed
+bytecode, and archived execution evidence.  This supports the narrower
+contribution stated here.  It does not support an absolute claim that Aspis is
+the first private-payment system, shielded pool, transparent verifier, or
+formalized proof system on Solana.

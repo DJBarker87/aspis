@@ -1,31 +1,36 @@
 \section{Conclusion}
 \label{sec:conclusion}
 
-Aspis now has a detailed Lean account of its private-spend relation, field and
-circle arithmetic, released encoder order, four-round folding, distinct-query
-sampling, transcript schedule, five-tree authentication, theft reduction, and
-spent-marker state transition.  The formal probability work also puts false
-acceptance in one finite experiment and proves an exact union bound with every
-current failure branch listed once.
+The main result is a machine-checked security decomposition for a concrete
+private-spend verifier.  Lean puts false acceptance in one finite experiment,
+proves that one protocol event and eighteen named external events cover it,
+and proves that the compact ledger describes exactly the same union as the
+earlier detailed ledger.  This joins a checked private-spend relation, released
+circle-code and four-fold FRI arguments, transcript and five-tree Merkle
+models, theft reductions, and state semantics without assuming that their
+failure events are independent.
 
-For the work-normalized experiment, the checked budget arithmetic places the
-protocol event below \(0.7\cdot2^{-100}\), reserves
-\(0.3\cdot2^{-100}\) for implementation and primitive assumptions, and gives
-a final \(2^{-100}\) theorem.  Separate raw accounting gives a \(2^{-70}\)
-protocol term and keeps the implementation, primitive, credential, runtime,
-and victim-setup terms visible for a concrete theft analysis.
+The \(2^{-100}\) result is a conditional budget consequence of that
+decomposition.  For the work-normalized experiment, checked arithmetic places
+the protocol budget below \(0.7\cdot2^{-100}\); if the remaining probabilistic
+terms fit \(0.3\cdot2^{-100}\), their sum fits \(2^{-100}\).  Deterministic
+source and runtime correspondence are stated separately.  The raw companion
+statement exposes its oracle-query budget and, for theft after a completed
+grind, retains a \(2^{-70}\) term plus explicit remaining terms.
 
-The main next step is end-to-end code verification: prove that every accepting
+The main remaining project-specific step is end-to-end code verification:
+prove that every accepting
 production execution supplies the exact transcript, five authenticated
 openings, relation values, final polynomial, public inputs, and state
-transition used by Lean.  The remaining protocol proof is the exact
-event-level FRI and Fiat--Shamir application for Aspis's four-way fold.
-Published decoding results and standard primitive, compiler, proof-assistant,
-and runtime assumptions can remain stated assumptions.
+transition used by Lean.  Lean already supplies the prefix-timed four-way FRI
+reduction and adaptive fresh-oracle count.  Published decoding and BCS
+Fiat--Shamir results, together with standard primitive, compiler,
+proof-assistant, and runtime assumptions, can remain stated assumptions.
 
 The archived program, proof, statement, build provenance, and finalized
 transaction make the implementation being discussed identifiable.  The Lean
 source makes the mathematical core mechanically checkable, and the focused
 Rust translations already cover many of the small functions used by the
-verifier.  The result is a substantial formal security argument with a clear
-path to a complete production connection.
+verifier.  The result is not whole-program verification, but it gives a
+precise, checkable account of what is proved and the exact equalities needed
+to complete the production connection.
