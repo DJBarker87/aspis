@@ -1,0 +1,27 @@
+Archived source commit: 06788d44d30ea8cbd391899dddaf6f0acc6e4a3f
+Archived v5_fri_checks.rs git blob: 3b1f37f2504aa2b309cad82605c88cab11afcb85
+Archived prepare_v5_pcs_claims LLBC SHA-256: 0132c570545b949d885384214784c7a3d08ff58878d90c765511993cb17a38d0
+
+Extraction-only source blob after deployed-nested-loop-lowering.patch:
+d7335af27eb4ad0817ca12603a8aac36a9a9125a
+Extraction-only patch SHA-256:
+d6dae507133a366f1ebf0f22ee0f1e48fd02855418bc95be497795d85330a087
+Extraction-only LLBC SHA-256:
+3664955df6e648b98329ff51ed19e0c163d978769053cafe0b26361490d38989
+Pinned-Aeneas generated Lean SHA-256:
+54fea727a079d62f8cb4c34791d495a62a5ef80ec2a997a5e3d3fd6f27b03864
+
+Charon commit: cb50ff16b9f1066b8a97dc06da704de2da2fa41c
+Aeneas commit: b59d5188c082f704a418c7cb4e52ad69328002d1
+
+The archived LLBC remains pristine. Base Aeneas rejects the enclosing function
+body because `?` returns from inside the column loop nested in the point loop.
+The project-specific Aeneas control-flow extension at b49f69d8 clears that
+return and then stops at the separate nested mutable-borrow join in the same
+source loop. In the archived LLBC the lowered Return is statement 469: the
+inner Loop is statement 479 and the outer Loop is statement 656 (source lines
+259--272 of the archived file). The patch is an extraction input, not a claim
+about deployed source or a general Rust transformation theorem.
+V5DeployedNestedLoopLoweringProof.lean proves that its flat decoder has the
+same complete ordered operation trace and therefore the same first error/index
+or the same 76 successful values as the archived nested decoder.

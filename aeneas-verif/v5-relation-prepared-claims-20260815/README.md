@@ -16,14 +16,29 @@ fixture, that:
 - one shared gamma table produces the maintained nineteen-term claim for each
   of the four point-major rows.
 
-The direct translation of `prepare_v5_pcs_claims` is still blocked because
-the pinned Aeneas version does not support its early return inside nested
-loops. The remaining source connection is therefore narrow and explicit:
-on a successful call, its outer loop must place the 76 already-proved decoded
-values into four nineteen-entry arrays in `19 * point + column` order and call
-the proved five-block expression for each row. Tests are not used as a
-substitute for that universal equality.
+The unmodified archived `prepare_v5_pcs_claims` still cannot be translated in
+full. The project-specific Aeneas extension now lowers its nested `?` return,
+then the exact archived LLBC reaches a separate Aeneas limitation: joining the
+nested mutable iterators used by the nineteen-column and four-point loops.
+
+`deployed-nested-loop-lowering.patch` is an extraction-only spelling that
+decodes the same 76 fields in one loop and rebuilds row `point` from
+`19 * point + column`. Lean proves for every possible decoder result that the
+archived nested loop and the flat loop perform exactly the same operations in
+the same order. They therefore produce the same first error and index, or the
+same ordered list of 76 successful values. The existing layout theorem maps
+entry `19 * point + column` to the exact uploaded bytes, and the extracted
+arithmetic theorem proves the five-block expression used for each row.
+
+The archived source and LLBC were kept unchanged. The patch and
+`deployed-lowering-manifest.txt` record the archived commit, source blob, both
+LLBC hashes, the transformed source blob, the generated Lean hash, and the
+pinned Charon/Aeneas commits. This is a checked semantic argument for the
+specific source transformation around a stated translator limitation, not a
+claim that Aeneas accepted the unmodified nested mutable-iterator loop and not
+a general proof of Rust source transformations.
 
 Run `replay-lean432.sh` with the pinned tool paths described in the script.
 The replay checks source hashes, regenerates the Lean translations, compares
-them byte-for-byte with the checked snapshots, and rebuilds every proof.
+them byte-for-byte with the checked snapshots, and rebuilds every proof,
+including the deployed-loop lowering theorem.

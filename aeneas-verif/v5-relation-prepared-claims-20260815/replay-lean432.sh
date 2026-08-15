@@ -6,6 +6,8 @@ readonly root="$(cd "$bundle/../.." && pwd -P)"
 readonly harness="$bundle/harness"
 readonly checked_generated="$bundle/generated/V5RelationKernels.lean"
 readonly proof="$bundle/proof/V5PreparedPointClaimsProof.lean"
+readonly lowering_proof="$bundle/proof/V5DeployedNestedLoopLoweringProof.lean"
+readonly lowering_patch="$bundle/deployed-nested-loop-lowering.patch"
 readonly decoder_proof="$bundle/proof/V5PreparedPointClaimsDecoderProof.lean"
 readonly arithmetic_source="$root/aeneas-verif/component-b-weight-at/arithmetic-lean432"
 readonly lean_bin="${LEAN432_BIN:-$(command -v lean)}"
@@ -17,7 +19,10 @@ readonly aeneas_bin="${AENEAS_BIN:-$aeneas_repo/bin/aeneas}"
 
 readonly expected_charon_commit="cb50ff16b9f1066b8a97dc06da704de2da2fa41c"
 readonly expected_aeneas_commit="b59d5188c082f704a418c7cb4e52ad69328002d1"
+readonly expected_source_commit="06788d44d30ea8cbd391899dddaf6f0acc6e4a3f"
 readonly expected_fri_checks_blob="3b1f37f2504aa2b309cad82605c88cab11afcb85"
+readonly expected_lowered_fri_checks_blob="d7335af27eb4ad0817ca12603a8aac36a9a9125a"
+readonly expected_lowering_patch_sha256="d6dae507133a366f1ebf0f22ee0f1e48fd02855418bc95be497795d85330a087"
 readonly expected_field_blob="a28ff94de05265102ca819849805a7f73c675800"
 readonly expected_harness_manifest_blob="2b9472e979bbcc73f7306751de7b1675a5245e2b"
 readonly expected_harness_source_blob="eac766f119033c0e3be10e91a45c3cab1eec9717"
@@ -60,10 +65,26 @@ readonly decoder_out="$out/decoder"
 readonly arithmetic_out="$out/arithmetic"
 readonly olean_out="$out/olean"
 readonly bridge_lean_log="$out/bridge-lean.log"
+readonly lowering_check="$out/lowering-check"
 mkdir -p "$raw_generated" "$normalized_generated" "$decoder_out" \
-  "$arithmetic_out" "$olean_out"
+  "$arithmetic_out" "$olean_out" \
+  "$lowering_check/programs/aspis-verifier/src"
 : > "$log"
 : > "$bridge_lean_log"
+
+echo "CHECK exact deployed-loop extraction patch" | tee -a "$log"
+[[ "$(shasum -a 256 "$lowering_patch" | awk '{print $1}')" == \
+  "$expected_lowering_patch_sha256" ]]
+git -C "$root" show \
+  "$expected_source_commit:programs/aspis-verifier/src/v5_fri_checks.rs" > \
+  "$lowering_check/programs/aspis-verifier/src/v5_fri_checks.rs"
+[[ "$(git hash-object \
+  "$lowering_check/programs/aspis-verifier/src/v5_fri_checks.rs")" == \
+  "$expected_fri_checks_blob" ]]
+git apply --unsafe-paths --directory="$lowering_check" "$lowering_patch"
+[[ "$(git hash-object \
+  "$lowering_check/programs/aspis-verifier/src/v5_fri_checks.rs")" == \
+  "$expected_lowered_fri_checks_blob" ]]
 
 echo "EXTRACT production gamma and dot kernels" | tee -a "$log"
 (
@@ -148,10 +169,14 @@ export LEAN_PATH="$arithmetic_out:$olean_out:$arithmetic_source:$aspis_path:$aen
 "$lean_bin" -R "$root" -j 1 \
   -o "$olean_out/V5PreparedPointClaimsProof.olean" \
   "$proof" >> "$bridge_lean_log" 2>&1
+"$lean_bin" -R "$root" -j 1 \
+  -o "$olean_out/V5DeployedNestedLoopLoweringProof.olean" \
+  "$lowering_proof" >> "$bridge_lean_log" 2>&1
 cat "$bridge_lean_log" >> "$log"
 
 if rg -n '\b(sorry|admit|native_decide|axiom|unsafe|ofReduceBool)\b' \
-    "$checked_generated" "$proof" "$decoder_proof" \
+    "$checked_generated" "$proof" "$lowering_proof" \
+    "$decoder_proof" \
     "$root/AspisFormal/AspisFormal/V5PreparedPointClaimsSourceBridge.lean"; then
   echo "forbidden proof token or generated axiom" >&2
   exit 1

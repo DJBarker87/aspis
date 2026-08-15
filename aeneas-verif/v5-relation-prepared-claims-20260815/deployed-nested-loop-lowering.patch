@@ -1,0 +1,30 @@
+diff --git a/programs/aspis-verifier/src/v5_fri_checks.rs b/programs/aspis-verifier/src/v5_fri_checks.rs
+index 3b1f37f..d7335af 100644
+--- a/programs/aspis-verifier/src/v5_fri_checks.rs
++++ b/programs/aspis-verifier/src/v5_fri_checks.rs
+@@ -255,15 +255,18 @@ pub fn prepare_v5_pcs_claims(
+     let c2_multipliers = core::array::from_fn(|helper| {
+         PreparedQm31Multiplier::new(powers[V5_FRI_C1_COLUMNS + helper])
+     });
++    let mut decoded_claims =
++        [QM31::ZERO; V5_FRI_OPENING_POINTS * V5_FRI_TOTAL_COLUMNS];
++    for (index, value) in decoded_claims.iter_mut().enumerate() {
++        let offset = index * 16;
++        *value = QM31::from_le_bytes(&point_major_claim_bytes[offset..offset + 16])
++            .ok_or(CirclePcsDecodeError::NonCanonicalEvaluation { index })?;
++    }
+     let mut claims = [QM31::ZERO; V5_FRI_OPENING_POINTS];
+     for (point, claim) in claims.iter_mut().enumerate() {
+-        let mut values = [QM31::ZERO; V5_FRI_TOTAL_COLUMNS];
+-        for (column, value) in values.iter_mut().enumerate() {
+-            let index = point * V5_FRI_TOTAL_COLUMNS + column;
+-            let offset = index * 16;
+-            *value = QM31::from_le_bytes(&point_major_claim_bytes[offset..offset + 16])
+-                .ok_or(CirclePcsDecodeError::NonCanonicalEvaluation { index })?;
+-        }
++        let values = core::array::from_fn(|column| {
++            decoded_claims[point * V5_FRI_TOTAL_COLUMNS + column]
++        });
+         *claim = v5_claim_dot_block(&powers, &values, 0, 4)
+             .add(v5_claim_dot_block(&powers, &values, 4, 4))
+             .add(v5_claim_dot_block(&powers, &values, 8, 4))
