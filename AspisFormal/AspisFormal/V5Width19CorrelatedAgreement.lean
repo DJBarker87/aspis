@@ -578,6 +578,40 @@ theorem width19_candidate_family_bad_challenges_card_le
       (selectedWidth19BadCandidateStrategy encoder agreementThreshold lanes
         eligible message support))
 
+/-- Exact mass of the family failure set when `gamma` is uniform on `K*`. -/
+noncomputable def uniformWidth19CandidateFamilyBadProbability
+    (encoder : Message → Domain → K) (agreementThreshold : Nat)
+    (lanes : Fin 19 → Domain → K)
+    (eligible : K → Candidate → Prop)
+    (message : Candidate → Message)
+    (support : K → Candidate → Finset Domain) : Rat :=
+  (width19CandidateFamilyBadChallenges encoder agreementThreshold lanes
+      eligible message support).card /
+    ((Fintype.card K - 1 : Nat) : Rat)
+
+/-- Probability form of the no-list-factor family theorem. -/
+theorem uniform_width19_candidate_family_bad_probability_le
+    (encoder : Message → Domain → K)
+    (agreementThreshold challengeThreshold : Nat)
+    (hcurve : Width19CurveDecodable
+      encoder agreementThreshold challengeThreshold)
+    (lanes : Fin 19 → Domain → K)
+    (eligible : K → Candidate → Prop)
+    (message : Candidate → Message)
+    (support : K → Candidate → Finset Domain) :
+    uniformWidth19CandidateFamilyBadProbability encoder agreementThreshold
+        lanes eligible message support ≤
+      (challengeThreshold : Rat) /
+        ((Fintype.card K - 1 : Nat) : Rat) := by
+  have hfieldNat : 0 < Fintype.card K - 1 := Nat.sub_pos_iff_lt.mpr
+    (Fintype.one_lt_card_iff_nontrivial.mpr inferInstance)
+  have hfield : (0 : Rat) < ((Fintype.card K - 1 : Nat) : Rat) := by
+    exact_mod_cast hfieldNat
+  rw [uniformWidth19CandidateFamilyBadProbability,
+    div_le_div_iff_of_pos_right hfield]
+  exact_mod_cast width19_candidate_family_bad_challenges_card_le encoder
+    agreementThreshold challengeThreshold hcurve lanes eligible message support
+
 end CandidateFamily
 
 /-! ## Coefficient-level consequence for a linear injective encoder -/
@@ -627,6 +661,7 @@ theorem candidate_eq_combineWidth19Messages_of_matching
 #print axioms width19_bad_response_challenges_card_le
 #print axioms selected_strategy_bad_of_candidate_family_bad
 #print axioms width19_candidate_family_bad_challenges_card_le
+#print axioms uniform_width19_candidate_family_bad_probability_le
 #print axioms linearMap_combineWidth19Messages
 #print axioms candidate_eq_combineWidth19Messages_of_matching
 
