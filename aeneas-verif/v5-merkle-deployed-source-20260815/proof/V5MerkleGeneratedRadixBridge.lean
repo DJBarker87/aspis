@@ -266,11 +266,81 @@ theorem verify_radix4_binary_cap_odd_success_factors
         rw [hmisaligned] at hrun
         simp at hrun
 
+/-- Exact source location of the two children used by an accepted odd-depth
+binary cap.  Either both top nodes are live, or one live top node is paired
+with the final 32-byte frontier digest in the side dictated by its index. -/
+inductive GeneratedOddCapLocation
+    (nodeBytes : Slice Std.U8) (indices : Slice Std.U32)
+    (finalLevel : GeneratedDigestVec) (nodePos : Std.Usize) :
+    GeneratedDigest → GeneratedDigest → Prop
+  | both (levelSlice : Slice GeneratedDigest) (left right : GeneratedDigest)
+      (level_slice_run : alloc.vec.Vec.as_slice Global finalLevel =
+        .ok levelSlice)
+      (indices_length : Slice.len indices = 2#usize)
+      (level_length : Slice.len levelSlice = 2#usize)
+      (left_index_run : Slice.index_usize indices 0#usize = .ok 0#u32)
+      (right_index_run : Slice.index_usize indices 1#usize = .ok 1#u32)
+      (left_run : Slice.index_usize levelSlice 0#usize = .ok left)
+      (right_run : Slice.index_usize levelSlice 1#usize = .ok right)
+      (frontier_consumed : nodePos = Slice.len nodeBytes) :
+      GeneratedOddCapLocation nodeBytes indices finalLevel nodePos left right
+  | liveLeft (levelSlice : Slice GeneratedDigest)
+      (value sibling : GeneratedDigest) (siblingSlice : Slice Std.U8)
+      (level_slice_run : alloc.vec.Vec.as_slice Global finalLevel =
+        .ok levelSlice)
+      (indices_length : Slice.len indices = 1#usize)
+      (level_length : Slice.len levelSlice = 1#usize)
+      (index_run : Slice.index_usize indices 0#usize = .ok 0#u32)
+      (value_run : Slice.index_usize levelSlice 0#usize = .ok value)
+      (sibling_slice_run : core.slice.index.Slice.index
+        (core.slice.index.SliceIndexRangeUsizeSlice Std.U8) nodeBytes
+        { start := nodePos,
+          «end» := Std.Usize.wrapping_add nodePos 32#usize } =
+        .ok siblingSlice)
+      (sibling_copy_run :
+        core.array.TryFromArrayCopySlice.try_from 32#usize
+            core.marker.CopyU8 siblingSlice = .ok (.Ok sibling))
+      (frontier_consumed : Std.Usize.wrapping_add nodePos 32#usize =
+        Slice.len nodeBytes) :
+      GeneratedOddCapLocation nodeBytes indices finalLevel nodePos value sibling
+  | liveRight (levelSlice : Slice GeneratedDigest)
+      (value sibling : GeneratedDigest) (siblingSlice : Slice Std.U8)
+      (level_slice_run : alloc.vec.Vec.as_slice Global finalLevel =
+        .ok levelSlice)
+      (indices_length : Slice.len indices = 1#usize)
+      (level_length : Slice.len levelSlice = 1#usize)
+      (index_run : Slice.index_usize indices 0#usize = .ok 1#u32)
+      (value_run : Slice.index_usize levelSlice 0#usize = .ok value)
+      (sibling_slice_run : core.slice.index.Slice.index
+        (core.slice.index.SliceIndexRangeUsizeSlice Std.U8) nodeBytes
+        { start := nodePos,
+          «end» := Std.Usize.wrapping_add nodePos 32#usize } =
+        .ok siblingSlice)
+      (sibling_copy_run :
+        core.array.TryFromArrayCopySlice.try_from 32#usize
+            core.marker.CopyU8 siblingSlice = .ok (.Ok sibling))
+      (frontier_consumed : Std.Usize.wrapping_add nodePos 32#usize =
+        Slice.len nodeBytes) :
+      GeneratedOddCapLocation nodeBytes indices finalLevel nodePos sibling value
+
+structure GeneratedOddCapWitness
+    (sha256 : List AspisV5MerkleAuthenticationBinding.Byte → Digest32)
+    (root : GeneratedDigest) (nodeBytes : Slice Std.U8)
+    (indices : Slice Std.U32) (finalLevel : GeneratedDigestVec)
+    (nodePos : Std.Usize) where
+  left : GeneratedDigest
+  right : GeneratedDigest
+  location : GeneratedOddCapLocation nodeBytes indices finalLevel nodePos
+    left right
+  root_eq : (sha256MerkleHashing sha256).binaryNode
+      (generatedArrayToDigest left) (generatedArrayToDigest right) =
+    generatedArrayToDigest root
+
 /-- Acceptance by the factored odd-depth tail implies an exact SHA-256
 binary-node equation for two concrete children.  The next adapter theorem
 identifies those children with the final active nodes or the consumed
 frontier sibling. -/
-theorem generated_odd_binary_cap_success_has_root_pair
+theorem generated_odd_binary_cap_success_has_witness
     (sha256 : List AspisV5MerkleAuthenticationBinding.Byte → Digest32)
     (hhash : FixedHashvEqualsSha256 sha256)
     (root : GeneratedDigest) (nodeBytes : Slice Std.U8)
@@ -278,10 +348,8 @@ theorem generated_odd_binary_cap_success_has_root_pair
     (nodePos : Std.Usize) (outputLevel outputNext : GeneratedDigestVec)
     (hrun : generatedOddBinaryCap root nodeBytes indices finalLevel finalNext
       nodePos = .ok (true, outputLevel, outputNext)) :
-    ∃ left right : GeneratedDigest,
-      (sha256MerkleHashing sha256).binaryNode
-          (generatedArrayToDigest left) (generatedArrayToDigest right) =
-        generatedArrayToDigest root := by
+    Nonempty (GeneratedOddCapWitness sha256 root nodeBytes indices finalLevel
+      nodePos) := by
   unfold generatedOddBinaryCap at hrun
   generalize hlevelSlice :
     alloc.vec.Vec.as_slice Global finalLevel = levelSliceResult at hrun
@@ -344,9 +412,14 @@ theorem generated_odd_binary_cap_success_has_root_pair
                           simp at hrun
                           have hequal : equal = true := hrun.1
                           subst equal
-                          exact ⟨left, right,
-                            fixed_node_hash_and_compare_exact sha256 hhash
-                              left right top root hnode hcompare⟩
+                          exact ⟨{
+                            left := left
+                            right := right
+                            location := GeneratedOddCapLocation.both levelSlice
+                              left right hlevelSlice htwo hlevelTwo hfirst hsecond
+                              hleft hright hcursor
+                            root_eq := fixed_node_hash_and_compare_exact sha256
+                              hhash left right top root hnode hcompare }⟩
                       · rw [if_neg hcursor] at hrun
                         simp at hrun
               next hsecondOther => simp at hrun
@@ -428,9 +501,18 @@ theorem generated_odd_binary_cap_success_has_root_pair
                               simp at hrun
                               have hequal : equal = true := hrun.1
                               subst equal
-                              exact ⟨value, sibling,
-                                fixed_node_hash_and_compare_exact sha256 hhash
-                                  value sibling top root hnode hcompare⟩
+                              exact ⟨{
+                                left := value
+                                right := sibling
+                                location := GeneratedOddCapLocation.liveLeft
+                                  levelSlice value sibling siblingSlice
+                                  hlevelSlice hone hlevelOne
+                                  (by simpa [hleftSide] using hindex)
+                                  hvalue hsiblingSlice hcopy
+                                  hcursor
+                                root_eq := fixed_node_hash_and_compare_exact
+                                  sha256 hhash value sibling top root hnode
+                                  hcompare }⟩
                           · rw [if_neg hcursor] at hrun
                             simp at hrun
                       · rw [if_neg hleftSide] at hrun
@@ -458,9 +540,18 @@ theorem generated_odd_binary_cap_success_has_root_pair
                                 simp at hrun
                                 have hequal : equal = true := hrun.1
                                 subst equal
-                                exact ⟨sibling, value,
-                                  fixed_node_hash_and_compare_exact sha256 hhash
-                                    sibling value top root hnode hcompare⟩
+                                exact ⟨{
+                                  left := sibling
+                                  right := value
+                                  location := GeneratedOddCapLocation.liveRight
+                                    levelSlice value sibling siblingSlice
+                                    hlevelSlice hone hlevelOne
+                                    (by simpa [hrightSide] using hindex)
+                                    hvalue hsiblingSlice
+                                    hcopy hcursor
+                                  root_eq := fixed_node_hash_and_compare_exact
+                                    sha256 hhash sibling value top root hnode
+                                    hcompare }⟩
                             · rw [if_neg hcursor] at hrun
                               simp at hrun
                         · rw [if_neg hrightSide] at hrun
@@ -469,6 +560,23 @@ theorem generated_odd_binary_cap_success_has_root_pair
           simp at hrun
       · rw [if_neg hone] at hrun
         simp at hrun
+
+theorem generated_odd_binary_cap_success_has_root_pair
+    (sha256 : List AspisV5MerkleAuthenticationBinding.Byte → Digest32)
+    (hhash : FixedHashvEqualsSha256 sha256)
+    (root : GeneratedDigest) (nodeBytes : Slice Std.U8)
+    (indices : Slice Std.U32) (finalLevel finalNext : GeneratedDigestVec)
+    (nodePos : Std.Usize) (outputLevel outputNext : GeneratedDigestVec)
+    (hrun : generatedOddBinaryCap root nodeBytes indices finalLevel finalNext
+      nodePos = .ok (true, outputLevel, outputNext)) :
+    ∃ left right : GeneratedDigest,
+      (sha256MerkleHashing sha256).binaryNode
+          (generatedArrayToDigest left) (generatedArrayToDigest right) =
+        generatedArrayToDigest root := by
+  let witness := Classical.choice
+    (generated_odd_binary_cap_success_has_witness sha256 hhash root nodeBytes
+      indices finalLevel finalNext nodePos outputLevel outputNext hrun)
+  exact ⟨witness.left, witness.right, witness.root_eq⟩
 
 def radixInputByte (input : GeneratedRadixInput) (slot byte : Nat) : Std.U8 :=
   input.val[1 + slot * 32 + byte]!
