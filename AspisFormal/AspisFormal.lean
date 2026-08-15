@@ -57,6 +57,7 @@ import AspisFormal.V5TerminalFixedInitialListSecurity
 import AspisFormal.V5RefinedRawCoreAccounting
 import AspisFormal.V5MaskedBoundaryFailureAccounting
 import AspisFormal.V5RefinedAcceptedFalseAccounting
+import AspisFormal.V5RefinedWidth19DeploymentBridge
 import AspisFormal.V5TerminalCandidateEventBridge
 import AspisFormal.V5DeployedFalseAcceptance
 import AspisFormal.V5TheftResistance
