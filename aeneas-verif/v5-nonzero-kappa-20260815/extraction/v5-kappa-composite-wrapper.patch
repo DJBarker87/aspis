@@ -1,0 +1,30 @@
+diff --git a/programs/aspis-verifier/src/v5_cu_probe.rs b/programs/aspis-verifier/src/v5_cu_probe.rs
+index ca28d56..a18da13 100644
+--- a/programs/aspis-verifier/src/v5_cu_probe.rs
++++ b/programs/aspis-verifier/src/v5_cu_probe.rs
+@@ -1520,0 +1521,16 @@ fn verify_v5_wire_prefix(
++/// Extraction-only fixed-hash wrapper. This removes the generic hash-function
++/// type from the composite caller without changing the value it computes.
++#[inline(always)]
++fn verify_v5_wire_prefix_sbf(
++    parsed: &ParsedProbeData<'_>,
++    live_statement: &AtomicPaymentStatementV4,
++    statement_digest: &[u8; 32],
++) -> Result<(VerifiedRealV5Wire, Transcript), ProgramError> {
++    verify_v5_wire_prefix(
++        parsed,
++        live_statement,
++        statement_digest,
++        crate::verify::sbf_hashv,
++    )
++}
++
+@@ -2390,6 +2406,2 @@ fn verify_mode9_composite_with_live_statement(
+-    let (verified_prefix, prefix_transcript) = verify_v5_wire_prefix(
+-        parsed,
+-        live_statement,
+-        statement_digest,
+-        crate::verify::sbf_hashv,
+-    )?;
++    let (verified_prefix, prefix_transcript) =
++        verify_v5_wire_prefix_sbf(parsed, live_statement, statement_digest)?;

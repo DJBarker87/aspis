@@ -214,13 +214,16 @@ theorem successful_value_is_relation_batching_scalar
       finalState kappa hrun,
     sourceCallerInitialClaim_explicit inactive kappa gamma claims⟩
 
-/-- The exact relation-phase caller now has its own Aeneas-generated proof:
-`generated_relation_phase_forwards_exact_kappa` checks all four scalar limbs
-and the `FourClaimsCompact` variant. The remaining large-caller statement is
-only the preceding link: the value stored in `VerifiedRealV5Wire.kappa` by the
-prefix verifier is the value supplied to `verify_mode9_relation_phase` by the
-composite verifier. Pinned Aeneas cannot yet translate that composite because
-the opaque prefix call contains a higher-ranked `HashFn` reference type. -/
+/-- The generated proof `generated_relation_phase_forwards_exact_kappa` checks
+that the relation-phase caller uses all four limbs of its `kappa` argument and
+selects `FourClaimsCompact`. A second generated proof,
+`generated_composite_forwards_prefix_kappa`, checks the preceding production
+call: for every possible value returned in `VerifiedRealV5Wire.kappa`, the
+composite verifier passes that same value to `verify_mode9_relation_phase`.
+Its replay applies a checked extraction-only refactor to the blob-pinned Rust
+source so the pinned Aeneas version can represent the existing fixed-hash
+call. The proof treats that call as opaque, so it makes no claim about SHA-256
+or about the distribution of the sampled value. -/
 def ExactProductionPrefixKappaToRelationPhaseInput
     (sampledKappa relationPhaseKappa : K) : Prop :=
   relationPhaseKappa = sampledKappa

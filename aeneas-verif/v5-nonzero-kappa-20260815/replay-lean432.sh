@@ -155,8 +155,8 @@ rg -F "challenge_qm31" "$full_aeneas_log" >/dev/null
 # The whole verifier source is blob-pinned above.  These checks identify the
 # exact source assignments which move the sampled value into the verified
 # prefix and then into relation batching with powers 1, kappa, kappa^2,
-# kappa^3.  The universal proof of this large caller remains separately named
-# in V5NonzeroKappaSourceBridge.lean.
+# kappa^3. The complete caller link is replayed by the companion relation
+# script.
 readonly verifier="$root/programs/aspis-verifier/src/v5_cu_probe.rs"
 rg -F 'let kappa = transcript' "$verifier" >/dev/null
 rg -F '.challenge_nonzero_qm31()' "$verifier" >/dev/null
@@ -217,7 +217,7 @@ echo "Nonzero collision count and 3/(QM31-1) <= 2^-122: PASS"
 echo "Maintained relation formula uses 1, kappa, kappa^2, kappa^3: PASS"
 echo "Inner hash-derived uniform sampling: ASSUMPTION"
 echo "Exact relation-phase kappa forwarding: SEE replay-relation-caller-lean432.sh"
-echo "Prefix-output kappa to relation-phase input: OPEN translator boundary"
+echo "Prefix-output kappa to relation-phase input: SEE replay-relation-caller-lean432.sh"
 echo "V5_NONZERO_KAPPA_REPLAY_OUT=$out"
 echo "extraction log: $extract_log"
 echo "Aeneas boundary log: $full_aeneas_log"

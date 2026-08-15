@@ -6,6 +6,9 @@ readonly root="$(cd "$bundle/../.." && pwd -P)"
 readonly harness="$bundle/relation-harness"
 readonly checked_generated="$bundle/generated/V5KappaRelationCaller"
 readonly generated_proof="$bundle/proof/V5KappaRelationCallerGeneratedProof.lean"
+readonly checked_composite="$bundle/generated/V5KappaCompositeCaller"
+readonly composite_proof="$bundle/proof/V5KappaCompositeCallerGeneratedProof.lean"
+readonly wrapper_patch="$bundle/extraction/v5-kappa-composite-wrapper.patch"
 
 readonly charon_repo="${ASPIS_CHARON_REPO:?set ASPIS_CHARON_REPO to pinned Charon cb50ff16}"
 readonly aeneas_repo="${ASPIS_AENEAS_REPO:?set ASPIS_AENEAS_REPO to pinned Aeneas b59d5188}"
@@ -16,6 +19,7 @@ readonly aeneas_bin="${AENEAS_BIN:-$aeneas_repo/bin/aeneas}"
 readonly expected_charon_commit="cb50ff16b9f1066b8a97dc06da704de2da2fa41c"
 readonly expected_aeneas_commit="b59d5188c082f704a418c7cb4e52ad69328002d1"
 readonly expected_verifier_blob="ca28d560e44e5e82e689321f32289831c889a0bd"
+readonly expected_wrapper_patch_blob="dce6db9d1bceadb7c3251e5d6fff177c6f72d2f0"
 readonly expected_relation_stress_blob="cbe62500353df776318fcb8933bc1c2200097ade"
 readonly expected_field_blob="a28ff94de05265102ca819849805a7f73c675800"
 readonly expected_harness_toml_blob="e2a5b6412e9410ffd1e392d8ea32033aab76f83f"
@@ -24,6 +28,8 @@ readonly expected_solana_toml_sha256="d77304602d544d2c23567e22f5940bee52ce7f6803
 readonly expected_solana_program_sha256="5b99eb5fd85023f6a3239e7fe7dd40f279ae2f9d08ec47b465268cdcf21a9108"
 readonly expected_types_semantic_sha256="954864f46a836395c5d75e21cc308928e00c860b2df16c62733faf1f03d51a8c"
 readonly expected_funs_semantic_sha256="ff98c980b528d74b8b367620fa7ef8d09f78058b5578a977cdeaf5e00c4d1297"
+readonly expected_composite_types_semantic_sha256="b4b3a139f737c5b8647d92612205e89b4fc039575607659d9fb907ca213a87dd"
+readonly expected_composite_funs_semantic_sha256="152dcba6c9bcf78cc3985aa8cb8c8cba3df9ae6956c07590bce49b7a34a66eef"
 
 if [[ -n "${LEAN432_BIN:-}" ]]; then
   lean_cmd=("$LEAN432_BIN")
@@ -46,6 +52,8 @@ esac
 [[ "$(git -C "$aeneas_repo" rev-parse HEAD)" == "$expected_aeneas_commit" ]]
 [[ "$(git -C "$root" hash-object programs/aspis-verifier/src/v5_cu_probe.rs)" == \
   "$expected_verifier_blob" ]]
+[[ "$(git -C "$root" hash-object "$wrapper_patch")" == \
+  "$expected_wrapper_patch_blob" ]]
 [[ "$(git -C "$root" hash-object programs/aspis-verifier/src/v5_relation_stress.rs)" == \
   "$expected_relation_stress_blob" ]]
 [[ "$(git -C "$root" hash-object crates/aspis-core/src/field.rs)" == \
@@ -65,17 +73,21 @@ fi
 readonly out
 readonly vendor="$out/vendor"
 readonly replay_harness="$out/harness"
+readonly source_root="$out/source-root"
+readonly patched_program_src="$source_root/programs/aspis-verifier/src"
 readonly llbc="$out/V5KappaRelationCaller.llbc"
+readonly prefix_wrapper_llbc="$out/V5KappaPrefixSbfWrapper.llbc"
 readonly composite_llbc="$out/V5KappaCompositeCaller.llbc"
 readonly raw="$out/raw"
 readonly composite_raw="$out/composite-raw"
 readonly extract_log="$out/extract.log"
 readonly aeneas_log="$out/aeneas.log"
-readonly composite_log="$out/composite-aeneas-boundary.log"
+readonly composite_log="$out/composite-aeneas.log"
 readonly lean_log="$out/lean432.log"
 readonly olean_root="$out/olean"
-mkdir -p "$vendor" "$replay_harness" "$raw" "$composite_raw" \
-  "$olean_root/V5KappaRelationCaller"
+mkdir -p "$vendor" "$replay_harness" "$patched_program_src" \
+  "$raw" "$composite_raw" \
+  "$olean_root/V5KappaRelationCaller" "$olean_root/V5KappaCompositeCaller"
 : > "$extract_log"
 : > "$aeneas_log"
 : > "$composite_log"
@@ -106,8 +118,40 @@ rg -F 'assert_eq!((&(*(*data_ptr).as_ptr()))[..], data[..]);' \
   "$solana_program/src/program.rs" >/dev/null
 
 cp "$harness/Cargo.toml" "$harness/Cargo.lock" "$replay_harness/"
-perl -pi -e "s#\.\./\.\./\.\./programs#$root/programs#g; \
+cp -R "$root/programs/aspis-verifier/src/." "$patched_program_src/"
+(
+  cd "$source_root"
+  git apply --unidiff-zero "$wrapper_patch"
+)
+perl -pi -e "s#\.\./\.\./\.\./programs#$source_root/programs#g; \
   s#\.\./\.\./\.\./crates#$root/crates#g" "$replay_harness/Cargo.toml"
+
+# The repository source above is not modified. The pinned patch performs one
+# mechanical refactor in this temporary copy: it gives the existing
+# `verify_v5_wire_prefix(..., sbf_hashv)` call a first-order wrapper that the
+# pinned Aeneas version can represent.
+echo "EXTRACT fixed-hash prefix wrapper from temporary source copy" | \
+  tee -a "$extract_log"
+(
+  cd "$replay_harness"
+  CARGO_TARGET_DIR="$out/cargo-target" "$charon_bin" cargo \
+    --preset aeneas \
+    --start-from \
+      'aspis_verifier_kappa_caller_extraction::v5_cu_probe::verify_v5_wire_prefix_sbf' \
+    --opaque \
+      'aspis_verifier_kappa_caller_extraction::v5_cu_probe::verify_v5_wire_prefix' \
+    --opaque \
+      'aspis_verifier_kappa_caller_extraction::verify::sbf_hashv' \
+    --dest-file "$prefix_wrapper_llbc" -- --offline \
+      --config "patch.crates-io.solana-program.path=\"$solana_program\""
+) >> "$extract_log" 2>&1
+
+"$charon_bin" pretty-print "$prefix_wrapper_llbc" > \
+  "$out/prefix-wrapper.llbc.txt"
+rg -F 'fn verify_v5_wire_prefix_sbf' "$out/prefix-wrapper.llbc.txt" >/dev/null
+rg '= cast<.*sbf_hashv.*const sbf_hashv' \
+  "$out/prefix-wrapper.llbc.txt" >/dev/null
+rg -F '= verify_v5_wire_prefix<' "$out/prefix-wrapper.llbc.txt" >/dev/null
 
 echo "EXTRACT exact production relation-phase caller" | tee -a "$extract_log"
 (
@@ -170,12 +214,11 @@ cmp "$out/raw.Funs.semantic" "$out/checked.Funs.semantic"
 [[ "$(shasum -a 256 "$out/raw.Funs.semantic" | awk '{print $1}')" == \
   "$expected_funs_semantic_sha256" ]]
 
-# Attempt the next larger caller as well. Its opaque prefix verifier exposes
-# HashFn = fn(&[&[u8]]) -> [u8; 32], whose locally quantified reference regions
-# are unsupported by this pinned Aeneas. Requiring the exact failure keeps the
-# remaining prefix-output-to-relation-input link explicit.
-echo "EXTRACT larger composite caller to record translator boundary" | \
-  tee -a "$extract_log"
+# Extract the complete caller around the prefix and relation calls from that
+# temporary copy. The only source difference is the pinned wrapper refactor.
+# All called phases remain opaque: the proof observes only which prefix field
+# is supplied as the relation-phase `kappa` argument.
+echo "EXTRACT mechanically refactored composite caller" | tee -a "$extract_log"
 (
   cd "$replay_harness"
   CARGO_TARGET_DIR="$out/cargo-target" "$charon_bin" cargo \
@@ -183,7 +226,7 @@ echo "EXTRACT larger composite caller to record translator boundary" | \
     --start-from \
       'aspis_verifier_kappa_caller_extraction::v5_cu_probe::verify_mode9_composite_with_live_statement' \
     --opaque \
-      'aspis_verifier_kappa_caller_extraction::v5_cu_probe::verify_v5_wire_prefix' \
+      'aspis_verifier_kappa_caller_extraction::v5_cu_probe::verify_v5_wire_prefix_sbf' \
     --opaque \
       'aspis_verifier_kappa_caller_extraction::v5_cu_probe::verify_mode9_atomic_terminal_with_prefix' \
     --opaque \
@@ -196,21 +239,44 @@ echo "EXTRACT larger composite caller to record translator boundary" | \
       'aspis_verifier_kappa_caller_extraction::v5_cu_probe::verify_mode9_fri_phase' \
     --opaque \
       'aspis_verifier_kappa_caller_extraction::v5_cu_probe::verify_mode9_relation_phase' \
+    --opaque \
+      'aspis_verifier_kappa_caller_extraction::v5_cu_probe::private_openings::V5PrivateOpeningRoots' \
+    --opaque \
+      'aspis_verifier_kappa_caller_extraction::v5_cu_probe::fri_checks::V5PreparedPcsClaims' \
+    --opaque 'aspis_core::transcript::Transcript' \
+    --opaque 'aspis_statement::atomic_statement::AtomicPaymentStatementV4' \
     --dest-file "$composite_llbc" -- --offline \
       --config "patch.crates-io.solana-program.path=\"$solana_program\""
 ) >> "$extract_log" 2>&1
 
-if "$aeneas_bin" -backend lean \
-    -namespace V5KappaCompositeCallerGenerated \
-    -split-files -no-progress-bar \
-    -dest "$composite_raw" "$composite_llbc" > "$composite_log" 2>&1; then
-  echo "pinned Aeneas unexpectedly translated the complete composite caller" >&2
-  exit 1
-fi
-rg -F "We don't support arrow types with locally quantified regions" \
-  "$composite_log" >/dev/null
-rg -F 'verify_v5_wire_prefix' "$composite_log" >/dev/null
-rg -F 'verify_mode9_composite_with_live_statement' "$composite_log" >/dev/null
+"$charon_bin" pretty-print "$composite_llbc" > "$out/composite-caller.llbc.txt"
+rg -F 'verify_mode9_composite_with_live_statement' \
+  "$out/composite-caller.llbc.txt" >/dev/null
+rg -F 'verify_v5_wire_prefix_sbf' "$out/composite-caller.llbc.txt" >/dev/null
+rg -F '(verified_prefix).kappa' "$out/composite-caller.llbc.txt" >/dev/null
+rg -F 'verify_mode9_relation_phase' "$out/composite-caller.llbc.txt" >/dev/null
+
+"$aeneas_bin" -backend lean \
+  -namespace V5KappaCompositeCallerGenerated \
+  -split-files -no-progress-bar \
+  -dest "$composite_raw" "$composite_llbc" > "$composite_log" 2>&1
+
+normalize_generated "$composite_raw/Types.lean" > \
+  "$out/composite.raw.Types.semantic"
+normalize_generated "$checked_composite/Types.lean" > \
+  "$out/composite.checked.Types.semantic"
+normalize_generated "$composite_raw/Funs.lean" > \
+  "$out/composite.raw.Funs.semantic"
+normalize_generated "$checked_composite/Funs.lean" > \
+  "$out/composite.checked.Funs.semantic"
+cmp "$out/composite.raw.Types.semantic" \
+  "$out/composite.checked.Types.semantic"
+cmp "$out/composite.raw.Funs.semantic" \
+  "$out/composite.checked.Funs.semantic"
+[[ "$(shasum -a 256 "$out/composite.raw.Types.semantic" | awk '{print $1}')" == \
+  "$expected_composite_types_semantic_sha256" ]]
+[[ "$(shasum -a 256 "$out/composite.raw.Funs.semantic" | awk '{print $1}')" == \
+  "$expected_composite_funs_semantic_sha256" ]]
 
 aspis_path=${ASPIS_LEAN_PATH:-$(
   cd "$root/AspisFormal" && NO_DNA=1 lake env printenv LEAN_PATH
@@ -232,8 +298,24 @@ export LEAN_PATH="$olean_root:$bundle/generated:$aeneas_lean_lib:$aspis_path"
 "${lean_cmd[@]}" -j 1 -o "$out/V5KappaRelationCallerGeneratedProof.olean" \
   "$generated_proof" >> "$lean_log" 2>&1
 
+"${lean_cmd[@]}" -j 1 \
+  -o "$olean_root/V5KappaCompositeCaller/TypesExternal.olean" \
+  "$checked_composite/TypesExternal.lean" >> "$lean_log" 2>&1
+"${lean_cmd[@]}" -j 1 \
+  -o "$olean_root/V5KappaCompositeCaller/Types.olean" \
+  "$checked_composite/Types.lean" >> "$lean_log" 2>&1
+"${lean_cmd[@]}" -j 1 \
+  -o "$olean_root/V5KappaCompositeCaller/FunsExternal.olean" \
+  "$checked_composite/FunsExternal.lean" >> "$lean_log" 2>&1
+"${lean_cmd[@]}" -j 1 \
+  -o "$olean_root/V5KappaCompositeCaller/Funs.olean" \
+  "$checked_composite/Funs.lean" >> "$lean_log" 2>&1
+"${lean_cmd[@]}" -j 1 -o "$out/V5KappaCompositeCallerGeneratedProof.olean" \
+  "$composite_proof" >> "$lean_log" 2>&1
+
 if rg -n '\b(sorry|admit|native_decide|axiom|unsafe|ofReduceBool)\b' \
-    "$checked_generated" "$generated_proof"; then
+    "$checked_generated" "$generated_proof" \
+    "$checked_composite" "$composite_proof"; then
   echo "forbidden proof token" >&2
   exit 1
 fi
@@ -257,9 +339,12 @@ fi
 
 echo "Exact production relation-phase Aeneas translation: PASS"
 echo "FourClaimsCompact and unchanged kappa forwarding: PASS"
-echo "Opaque downstream-call observation proof: PASS"
-echo "Prefix-output kappa to relation-phase input: TRANSLATOR BOUNDARY"
+echo "Extraction-only SBF-hash wrapper matches the production call: PASS"
+echo "Mechanically refactored composite-caller Aeneas translation: PASS"
+echo "Prefix-output kappa to relation-phase input: PASS"
+echo "Opaque phase-call observation proofs: PASS"
+echo "Hash-derived kappa distribution: ASSUMPTION"
 echo "V5_KAPPA_RELATION_REPLAY_OUT=$out"
 echo "extraction log: $extract_log"
-echo "Aeneas boundary log: $composite_log"
+echo "composite Aeneas log: $composite_log"
 echo "Lean log: $lean_log"
