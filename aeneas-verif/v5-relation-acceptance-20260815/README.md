@@ -54,6 +54,16 @@ the extracted `evaluate` is exactly the six ordered multiply/add steps of
 seven-coefficient Horner evaluation.  These are universal equalities over the
 generated production field calls, not fixture tests.
 
+`V5RelationTerminalKernelProof.lean` records the exact extracted route into
+the main four-value terminal dot and proves that exhausting its generated
+component iterator returns the accumulated value.  On the compact side, it
+proves the exact ten production selectors, their fixed routing to output slots
+zero and three, and that every successful `final_weights` call applies
+`delta_scale` to slot three after the ten-block loop.  The theorem is
+universal over the generated production operations; the standard-array
+iterator functions that Aeneas emitted as declarations remain visible in its
+printed axiom list.
+
 ## Exact remaining boundary
 
 The production function
@@ -93,4 +103,4 @@ one of these universal equalities.
 - `generated/`: normalized, Lean-4.32-compiling Aeneas output.
 - `proof/`: the universal caller-success theorem and exact array-equality
   supporting lemmas, the universal 58-field decoder connection, and the
-  complete extracted boundary/Horner round-kernel proofs.
+  complete extracted boundary/Horner and terminal-routing proofs.
