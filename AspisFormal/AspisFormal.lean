@@ -144,6 +144,7 @@ import AspisFormal.V5FriForwardCompatibleChain
 import AspisFormal.V5ForwardAcceptedFalseRawAccounting
 import AspisFormal.V5FourClaimBatchUnion
 import AspisFormal.V5FourClaimSourceEquation
+import AspisFormal.V5Width19LaneBatchBinding
 import AspisFormal.V5KappaCausality
 import AspisFormal.V5MerkleRustBridge
 import AspisFormal.V5TopologyConstruction
