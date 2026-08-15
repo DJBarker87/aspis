@@ -110,7 +110,7 @@ theorem source_runtime_point_claim_byte_exact
 
 /-! ## Gamma powers and five-block point claims -/
 
-variable {K : Type*} [Field K]
+variable {K : Type*} [CommRing K]
 
 def sourceGammaWeight (gamma : K) (lane : TotalLane) : K :=
   gamma ^ lane.val

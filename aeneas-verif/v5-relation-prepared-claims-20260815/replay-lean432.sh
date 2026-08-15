@@ -6,6 +6,8 @@ readonly root="$(cd "$bundle/../.." && pwd -P)"
 readonly harness="$bundle/harness"
 readonly checked_generated="$bundle/generated/V5RelationKernels.lean"
 readonly proof="$bundle/proof/V5PreparedPointClaimsProof.lean"
+readonly decoder_proof="$bundle/proof/V5PreparedPointClaimsDecoderProof.lean"
+readonly arithmetic_source="$root/aeneas-verif/component-b-weight-at/arithmetic-lean432"
 readonly lean_bin="${LEAN432_BIN:-$(command -v lean)}"
 readonly aeneas_lib="${AENEAS_LEAN_LIB:?set AENEAS_LEAN_LIB to the patched Aeneas Lean 4.32 library}"
 readonly charon_repo="${ASPIS_CHARON_REPO:?set ASPIS_CHARON_REPO to pinned Charon cb50ff16}"
@@ -55,9 +57,11 @@ readonly llbc="$out/v5_relation_kernels.llbc"
 readonly raw_generated="$out/raw-generated"
 readonly normalized_generated="$out/normalized-generated"
 readonly decoder_out="$out/decoder"
+readonly arithmetic_out="$out/arithmetic"
 readonly olean_out="$out/olean"
 readonly bridge_lean_log="$out/bridge-lean.log"
-mkdir -p "$raw_generated" "$normalized_generated" "$decoder_out" "$olean_out"
+mkdir -p "$raw_generated" "$normalized_generated" "$decoder_out" \
+  "$arithmetic_out" "$olean_out"
 : > "$log"
 : > "$bridge_lean_log"
 
@@ -107,19 +111,45 @@ LEAN432_BIN="$lean_bin" AENEAS_LEAN_LIB="$aeneas_lib" \
   >> "$log" 2>&1
 
 aspis_path=$(cd "$root/AspisFormal" && NO_DNA=1 lake env printenv LEAN_PATH)
-export LEAN_PATH="$olean_out:$decoder_out:$aspis_path:$aeneas_lib"
+
+echo "COMPILE byte-decoder bridge in its extraction namespace" | tee -a "$log"
+LEAN_PATH="$decoder_out:$aspis_path:$aeneas_lib" \
+  "$lean_bin" -R "$root" -j 1 \
+  -o "$decoder_out/V5PreparedPointClaimsDecoderProof.olean" \
+  "$decoder_proof" >> "$bridge_lean_log" 2>&1
+
+echo "COMPILE reused source-authentic field arithmetic proofs" | tee -a "$log"
+export LEAN_PATH="$arithmetic_out:$arithmetic_source:$aspis_path:$aeneas_lib"
+for module in \
+  AspisCoreFieldReduceU64 \
+  M31ReduceU64Proof \
+  AspisCoreFieldMulNamespaced \
+  M31MulProof \
+  CM31ExactModel \
+  AspisCoreCm31Multiplicative \
+  CM31MultiplicativeProof \
+  QM31MulProof \
+  AspisCoreQm31SquareScalars \
+  QM31SquareScalarsProof
+do
+  "$lean_bin" -R "$arithmetic_source" -j 1 \
+    -o "$arithmetic_out/$module.olean" \
+    "$arithmetic_source/$module.lean" >> "$bridge_lean_log" 2>&1
+done
 
 echo "COMPILE regenerated kernels and universal bridge" | tee -a "$log"
+export LEAN_PATH="$olean_out:$aspis_path:$aeneas_lib"
 "$lean_bin" -R "$normalized_generated" -j 1 \
   -o "$olean_out/V5RelationKernels.olean" \
   "$normalized_generated/V5RelationKernels.lean" >> "$bridge_lean_log" 2>&1
+export LEAN_PATH="$arithmetic_out:$olean_out:$arithmetic_source:$aspis_path:$aeneas_lib"
 "$lean_bin" -R "$root" -j 1 \
   -o "$olean_out/V5PreparedPointClaimsProof.olean" \
   "$proof" >> "$bridge_lean_log" 2>&1
 cat "$bridge_lean_log" >> "$log"
 
 if rg -n '\b(sorry|admit|native_decide|axiom|unsafe|ofReduceBool)\b' \
-    "$checked_generated" "$proof" \
+    "$checked_generated" "$proof" "$decoder_proof" \
     "$root/AspisFormal/AspisFormal/V5PreparedPointClaimsSourceBridge.lean"; then
   echo "forbidden proof token or generated axiom" >&2
   exit 1
@@ -142,6 +172,6 @@ if ! awk '
   exit 1
 fi
 
-echo "Lean 4.32 V5 prepared-claim decoder/layout bridge: PASS"
+echo "Lean 4.32 V5 prepared-claim decoder and kernel bridges: PASS"
 echo "V5_PREPARED_CLAIMS_REPLAY_OUT=$out"
 echo "log: $log"
