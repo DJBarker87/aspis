@@ -731,6 +731,85 @@ structure FriReadSchedule where
   line3ToFinal : List TerminalRead
   deriving DecidableEq
 
+/-! ## Decoder agreement for a complete FRI read schedule -/
+
+/-- Every field element consumed by the four FRI loops is decoded by the Rust
+M31/QM31 decoder at exactly the byte offset recorded by the maintained read
+schedule.  This proposition is deliberately independent of Merkle hashing:
+the schedule supplies the byte strings, and this statement fixes how those
+strings become field elements. -/
+structure FriReadScheduleDecoderAgreement
+    (rustM31Decode : (Fin 4 -> Byte) ->
+      Option AspisV5ComponentCRejectionSampler.M31Value)
+    (rustQM31Decode : (Fin 16 -> Byte) ->
+      Option AspisV5ComponentCRejectionSampler.QM31Limbs)
+    (schedule : FriReadSchedule) : Prop where
+  layer0 : ∀ read, read ∈ schedule.layer0ToLine1 ->
+    (∀ slot column, read.c1Decoded slot column =
+      (fixedBytes? 4 (byteSlice read.c1Value
+        (((slot : Nat) * 16 + (column : Nat)) * 4) 4)).bind rustM31Decode) ∧
+    (∀ slot helper, read.c2Decoded slot helper =
+      (fixedBytes? 16 (byteSlice read.c2Value
+        (((helper : Nat) * 4 + (slot : Nat)) * 16) 16)).bind
+          rustQM31Decode) ∧
+    (∀ slot, decodeLaterSlot read.parentValue slot =
+      (fixedBytes? 16 (byteSlice read.parentValue
+        ((slot : Nat) * 16) 16)).bind rustQM31Decode)
+  line1 : ∀ read, read ∈ schedule.line1ToLine2 ->
+    (∀ slot, read.incomingValues slot =
+      (fixedBytes? 16 (byteSlice read.incoming
+        ((slot : Nat) * 16) 16)).bind rustQM31Decode) ∧
+    (∀ slot, decodeLaterSlot read.outgoing slot =
+      (fixedBytes? 16 (byteSlice read.outgoing
+        ((slot : Nat) * 16) 16)).bind rustQM31Decode)
+  line2 : ∀ read, read ∈ schedule.line2ToLine3 ->
+    (∀ slot, read.incomingValues slot =
+      (fixedBytes? 16 (byteSlice read.incoming
+        ((slot : Nat) * 16) 16)).bind rustQM31Decode) ∧
+    (∀ slot, decodeLaterSlot read.outgoing slot =
+      (fixedBytes? 16 (byteSlice read.outgoing
+        ((slot : Nat) * 16) 16)).bind rustQM31Decode)
+  terminal : ∀ read, read ∈ schedule.line3ToFinal ->
+    ∀ slot, read.incomingValues slot =
+      (fixedBytes? 16 (byteSlice read.incoming
+        ((slot : Nat) * 16) 16)).bind rustQM31Decode
+
+/-- Decoder equality once implies agreement at every M31/QM31 read in an
+arbitrary four-loop schedule. -/
+theorem exactRustFriByteDecoders_agree_with_schedule
+    (rustM31Decode : (Fin 4 -> Byte) ->
+      Option AspisV5ComponentCRejectionSampler.M31Value)
+    (rustQM31Decode : (Fin 16 -> Byte) ->
+      Option AspisV5ComponentCRejectionSampler.QM31Limbs)
+    (hdecode : ExactRustFriByteDecoderEquality rustM31Decode rustQM31Decode)
+    (schedule : FriReadSchedule) :
+    FriReadScheduleDecoderAgreement rustM31Decode rustQM31Decode schedule := by
+  constructor
+  · intro read _hread
+    obtain ⟨hc1, hc2, hparent⟩ := exactRustFriByteDecoders_bind_all_fri_offsets
+      rustM31Decode rustQM31Decode hdecode
+      read.c1Value read.c2Value read.parentValue
+    exact ⟨hc1, hc2, hparent⟩
+  · intro read _hread
+    obtain ⟨_hm31, _hqm31, hincoming⟩ :=
+      exactRustFriByteDecoders_bind_all_fri_offsets
+        rustM31Decode rustQM31Decode hdecode [] [] read.incoming
+    obtain ⟨_hm31', _hqm31', houtgoing⟩ :=
+      exactRustFriByteDecoders_bind_all_fri_offsets
+        rustM31Decode rustQM31Decode hdecode [] [] read.outgoing
+    exact ⟨hincoming, houtgoing⟩
+  · intro read _hread
+    obtain ⟨_hm31, _hqm31, hincoming⟩ :=
+      exactRustFriByteDecoders_bind_all_fri_offsets
+        rustM31Decode rustQM31Decode hdecode [] [] read.incoming
+    obtain ⟨_hm31', _hqm31', houtgoing⟩ :=
+      exactRustFriByteDecoders_bind_all_fri_offsets
+        rustM31Decode rustQM31Decode hdecode [] [] read.outgoing
+    exact ⟨hincoming, houtgoing⟩
+  · intro read _hread
+    exact (exactRustFriByteDecoders_bind_all_fri_offsets
+      rustM31Decode rustQM31Decode hdecode [] [] read.incoming).2.2
+
 def layerZeroReadOfRun {sha256 roots queries}
     (run : ExactV5Run sha256 roots queries) (query : Nat) : LayerZeroRead where
   query := query
@@ -1720,6 +1799,7 @@ theorem rustObservation_exposes_only_authenticated_fri_values
 #print axioms line1_parentOrdinals_sorted
 #print axioms line2_parentOrdinals_sorted
 #print axioms exactRustFriByteDecoders_bind_all_fri_offsets
+#print axioms exactRustFriByteDecoders_agree_with_schedule
 #print axioms sectionValueAtIndex_is_authenticated
 #print axioms every_layer0_schedule_read_is_returned
 #print axioms every_line1_schedule_read_is_returned

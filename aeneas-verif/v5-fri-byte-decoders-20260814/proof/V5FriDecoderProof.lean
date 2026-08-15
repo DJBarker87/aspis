@@ -424,8 +424,43 @@ theorem exact_extracted_fri_byte_decoders :
   · funext bytes
     exact extractedQM31Decode_eq_model bytes
 
+/-- The extracted production decoders agree at every byte read in any modeled
+four-loop FRI schedule.  There is no decoder premise here: it is discharged by
+`exact_extracted_fri_byte_decoders`. -/
+theorem extracted_fri_decoders_agree_with_every_schedule
+    (schedule : FriReadSchedule) :
+    FriReadScheduleDecoderAgreement extractedM31Decode extractedQM31Decode
+      schedule :=
+  exactRustFriByteDecoders_agree_with_schedule
+    extractedM31Decode extractedQM31Decode
+    exact_extracted_fri_byte_decoders schedule
+
+/-- On every successful observation connected to an exact authenticated
+opening run, the actual extracted Rust decoders agree with every M31/QM31 read
+in that run's FRI schedule. -/
+theorem extracted_decoders_agree_on_authenticated_consumer_observation
+    (sha256 : List AspisV5MerkleAuthenticationBinding.Byte ->
+      AspisV5MerkleRustBridge.Digest32)
+    (rustObservation : AspisV5MerkleRustBridge.V5ProductionCall ->
+      Option OpeningAndFriObservation)
+    (hsource : ExactRustV5OpeningAndFriConsumerEquality sha256 rustObservation)
+    (call : AspisV5MerkleRustBridge.V5ProductionCall)
+    (observation : OpeningAndFriObservation)
+    (hrust : rustObservation call = some observation) :
+    ∃ run : AspisV5MerkleRustBridge.ExactV5Run
+        sha256 call.roots call.queries,
+      run.proofBytes = call.proofBytes ∧
+      observation = observationOfRun run ∧
+      FriReadScheduleDecoderAgreement extractedM31Decode extractedQM31Decode
+        observation.friReads := by
+  obtain ⟨run, hbytes, hobservation⟩ := hsource call observation hrust
+  exact ⟨run, hbytes, hobservation,
+    extracted_fri_decoders_agree_with_every_schedule observation.friReads⟩
+
 #print axioms extractedM31Decode_eq_model
 #print axioms extractedQM31Decode_eq_model
 #print axioms exact_extracted_fri_byte_decoders
+#print axioms extracted_fri_decoders_agree_with_every_schedule
+#print axioms extracted_decoders_agree_on_authenticated_consumer_observation
 
 end AspisV5FriDecoderSourceProof
