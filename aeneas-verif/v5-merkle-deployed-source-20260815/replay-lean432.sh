@@ -72,6 +72,10 @@ compile "$proof" V5MerkleGeneratedLeafBridge \
   "$proof/V5MerkleGeneratedLeafBridge.lean"
 compile "$proof" V5MerkleGeneratedParserBridge \
   "$proof/V5MerkleGeneratedParserBridge.lean"
+compile "$proof" V5MerkleTopologyConstructorModel \
+  "$proof/V5MerkleTopologyConstructorModel.lean"
+compile "$proof" V5MerkleGeneratedConstructorBridge \
+  "$proof/V5MerkleGeneratedConstructorBridge.lean"
 compile "$proof" V5MerkleGeneratedTopologyBridge \
   "$proof/V5MerkleGeneratedTopologyBridge.lean"
 compile "$proof" V5MerkleGeneratedHelperSoundness \
@@ -86,6 +90,8 @@ if rg -n '\b(sorry|admit|native_decide|unsafe|ofReduceBool)\b' \
     "$proof/V5MerkleGeneratedRadixBridge.lean" \
     "$proof/V5MerkleGeneratedLeafBridge.lean" \
     "$proof/V5MerkleGeneratedParserBridge.lean" \
+    "$proof/V5MerkleTopologyConstructorModel.lean" \
+    "$proof/V5MerkleGeneratedConstructorBridge.lean" \
     "$proof/V5MerkleGeneratedTopologyBridge.lean" \
     "$proof/V5MerkleGeneratedHelperSoundness.lean" \
     "$proof/V5MerkleGeneratedSoundnessAdapter.lean" \
