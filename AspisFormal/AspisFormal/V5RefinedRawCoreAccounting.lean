@@ -1,4 +1,5 @@
 import AspisFormal.V5CandidateTerminalSecurity
+import AspisFormal.V5FourClaimBatchUnion
 import AspisFormal.V5RawFinalSecurityAccounting
 
 /-!
@@ -20,6 +21,7 @@ open MeasureTheory
 open AspisV5CandidateTerminalSecurity
 open AspisV5CryptographicAssumptions
 open AspisV5FinalSecurityAccounting
+open AspisV5FourClaimBatchUnion
 open AspisV5RawFinalSecurityAccounting
 open AspisSoundnessLedger
 
@@ -31,6 +33,11 @@ noncomputable def rawCandidateTerminalBound : Real :=
 union. -/
 noncomputable def refinedRawCoreSubtotal : Real :=
   rawCoreSubtotal + rawCandidateTerminalBound
+
+/-- The seven-term subtotal plus the separate cap-240 four-claim batching
+event. -/
+noncomputable def refinedRawCorePlusFourClaimSubtotal : Real :=
+  refinedRawCoreSubtotal + rawFourClaimBatchCollisionBound
 
 theorem raw_candidate_terminal_bound_le_two_pow_neg_107 :
     rawCandidateTerminalBound ≤ (1 : Real) / 2 ^ 107 := by
@@ -57,6 +64,30 @@ theorem refined_raw_core_subtotal_le_two_pow_neg_75 :
   norm_num [rawCandidateTerminalBound] at hterminal
   norm_num [refinedRawCoreSubtotal, rawCoreSubtotal,
     rawCandidateTerminalBound]
+  linarith
+
+/-- The four-claim batching event and the cap-240 terminal event both fit in
+the existing `2^-75` conservative endpoint. -/
+theorem refined_raw_core_plus_four_claim_le_two_pow_neg_75 :
+    refinedRawCorePlusFourClaimSubtotal ≤ (1 : Real) / 2 ^ 75 := by
+  have hquery := raw_q18_bound_le_two_pow_neg_79
+  have hfri0 := raw_fri_round_zero_le_three_mul_two_pow_neg_77
+  have hfri1 : rawFriFibreBound 1 ≤ (1 : Real) / 2 ^ 78 := by
+    simpa [rawFriExponent] using
+      (raw_fri_fibre_bound_le (1 : Fin 4))
+  have hfri2 : rawFriFibreBound 2 ≤ (1 : Real) / 2 ^ 82 := by
+    simpa [rawFriExponent] using
+      (raw_fri_fibre_bound_le (2 : Fin 4))
+  have hfri3 : rawFriFibreBound 3 ≤ (1 : Real) / 2 ^ 88 := by
+    simpa [rawFriExponent] using
+      (raw_fri_fibre_bound_le (3 : Fin 4))
+  have hrelation := raw_relation_repair_bound_le_two_pow_neg_111
+  have hterminal := raw_candidate_terminal_bound_le_two_pow_neg_107
+  have hbatch := rawFourClaimBatchCollisionBound_le_two_pow_neg_114
+  norm_num at hquery hfri0 hfri1 hfri2 hfri3 hrelation hbatch
+  norm_num [rawCandidateTerminalBound] at hterminal
+  norm_num [refinedRawCorePlusFourClaimSubtotal, refinedRawCoreSubtotal,
+    rawCoreSubtotal, rawCandidateTerminalBound]
   linarith
 
 /-! ## Event-level union accounting -/
@@ -115,6 +146,7 @@ theorem refined_raw_core_probability_le_subtotal
 
 #print axioms raw_candidate_terminal_bound_le_two_pow_neg_107
 #print axioms refined_raw_core_subtotal_le_two_pow_neg_75
+#print axioms refined_raw_core_plus_four_claim_le_two_pow_neg_75
 #print axioms refined_raw_core_probability_le_subtotal
 
 end AspisV5RefinedRawCoreAccounting
