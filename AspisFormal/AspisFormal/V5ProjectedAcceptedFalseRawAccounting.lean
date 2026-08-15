@@ -6,19 +6,23 @@ import AspisFormal.V5Width19CandidateEventBridge
 # Raw accounting after the source and width-nineteen projections
 
 The earlier accepted-false theorem left one broad
-`relationOrExtractionFailure` set.  This file narrows that set using two exact
+`relationOrExtractionFailure` set.  This file narrows that set using two
 connections:
 
 * the production-shaped initial claim and weights satisfy the maintained
   four-claim equation; and
-* the candidate's combined-lane mismatch is the named width-nineteen PCS/MCA
-  event.
+* outside the named width-nineteen correlated family event, every eligible
+  candidate has the exact nineteen-column projection.
 
-After those connections, the broad set contains only the width-nineteen
-event, an arithmetic-residual extraction failure, or a hash/Merkle-residual
-extraction failure.  Public-statement binding remains separate.  The final
-probability theorem keeps all four terms explicit; it does not assign a
-numerical bound to any unproved cryptographic connection.
+The family event is not defined as “some decoder-list candidate differs from
+one fixed combined word.”  That rejected event can be certain when the list
+contains two distinct candidates.  The measured-event bridge later identifies
+this set with the actual correlated-agreement failure and proves its bound
+under an explicit prefix-conditioned sampling premise.
+
+After those connections, the broad set contains only the width-nineteen event,
+an arithmetic-residual extraction failure, or a hash/Merkle-residual extraction
+failure.  Public-statement binding remains separate.
 -/
 
 namespace AspisV5ProjectedAcceptedFalseRawAccounting
@@ -72,35 +76,31 @@ structure ProjectedAcceptedFalseExperimentData
   base : ReleasedIdealAcceptedFalseExperimentData Coins K rc deployedOwner
     deployedNote deployedNullifier deployedNode
   sourceAt : Coins → SourceMode9CallerData K
-  columnsAt : Coins → Width19Coefficients K
-  widthEvent : CandidateSchedule base → Prop
-  exactWidthEvent : ExactWidth19BatchEvent widthEvent
+  /-- The nineteen coefficient messages extracted for this candidate.  They
+  are candidate-dependent: CAT supplies some matching decomposition outside
+  the family failure, not one a priori coefficient family shared by every
+  decoder-list member. -/
+  columnsAt : CandidateSchedule base → Width19Coefficients K
+  /-- The actual correlated family failure on experiment outcomes.  This is a
+  field so its deterministic projection and probabilistic interpretation must
+  refer to exactly the same set. -/
+  width19Failure : Set Coins
+  /-- Outside the family failure, every candidate which can appear in the
+  accepted-false reduction has the exact nineteen-column projection. -/
+  width19Projection : Width19ProjectionOutsideFamilyFailure
+    (fun (schedule : CandidateSchedule base) ↦
+      schedule.1 ∈ width19Failure)
     (fun (schedule : CandidateSchedule base) ↦
       (sourceAt schedule.1).gamma)
-    (fun (schedule : CandidateSchedule base) ↦ columnsAt schedule.1)
+    columnsAt
     (fun (schedule : CandidateSchedule base) ↦
       (base.relationFamily schedule.1).execution schedule.2)
-  recordLanes : ∀ (schedule : CandidateSchedule base),
-    (base.records schedule.1 schedule.2).lanes =
-      ensembleOfWidth19Coefficients (sourceAt schedule.1).gamma
-        (columnsAt schedule.1)
+    (fun (schedule : CandidateSchedule base) ↦
+      base.records schedule.1 schedule.2)
   fourClaim : ∀ (schedule : CandidateSchedule base),
     SourceFourClaimProjection (sourceAt schedule.1)
       ((base.relationFamily schedule.1).execution schedule.2)
       (base.records schedule.1 schedule.2)
-
-def ProjectedAcceptedFalseExperimentData.width19Failure
-    {Coins K : Type*} [Field K] [Fintype K] [DecidableEq K]
-    [Algebra (ZMod P) K] [NeZero (2 : K)]
-    {rc : RoundConstants}
-    {deployedOwner : Digest → Digest}
-    {deployedNote : Digest → AspisFormal.ArithmetizationCore.F →
-      AspisFormal.ArithmetizationCore.F → Digest → Digest}
-    {deployedNullifier : Digest → Digest → Digest}
-    {deployedNode : Digest → Digest → Digest}
-    (data : ProjectedAcceptedFalseExperimentData Coins K rc deployedOwner
-      deployedNote deployedNullifier deployedNode) : Set Coins :=
-  {coins | ∃ candidate, data.widthEvent ⟨coins, candidate⟩}
 
 def ProjectedAcceptedFalseExperimentData.arithmeticResidualFailure
     {Coins K : Type*} [Field K] [Fintype K] [DecidableEq K]
@@ -164,14 +164,15 @@ theorem relationOrExtractionFailure_subset_projected
         (data.fourClaim schedule)) equation)
   · apply Or.inl
     apply Or.inl
-    exact ⟨candidate,
-      (combinedLaneBindingFailure_iff_exact_width19_event data.widthEvent
-        (fun item ↦ (data.sourceAt item.1).gamma)
-        (fun item ↦ data.columnsAt item.1)
-        (fun item ↦
-          (data.base.relationFamily item.1).execution item.2)
-        (fun item ↦ data.base.records item.1 item.2)
-        data.exactWidthEvent data.recordLanes schedule).mp combined⟩
+    exact combinedLaneBindingFailure_implies_familyFailure
+      (fun item : CandidateSchedule data.base ↦
+        item.1 ∈ data.width19Failure)
+      (fun item ↦ (data.sourceAt item.1).gamma)
+      data.columnsAt
+      (fun item ↦
+        (data.base.relationFamily item.1).execution item.2)
+      (fun item ↦ data.base.records item.1 item.2)
+      data.width19Projection schedule combined
   · exact Or.inl (Or.inr ⟨candidate, arithmetic⟩)
   · exact Or.inr ⟨candidate, hashMerkle⟩
 

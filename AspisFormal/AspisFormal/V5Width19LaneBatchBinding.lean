@@ -8,16 +8,15 @@ import AspisFormal.V5ComponentCPreProjectionDeployed
 
 The first committed V5 word is the scalar-power combination of nineteen
 columns: sixteen M31 trace columns and three QM31 helper columns.  This file
-separates two facts which must not be conflated.
+proves fixed-vector algebra and pins the lane order.
 
 * Lean proves the elementary algebra: a fixed nonzero discrepancy between two
   nineteen-column families can be hidden by at most eighteen nonzero values of
   the batching challenge.
-* Turning that root count into proximity/PCS soundness for committed oracles is
-  the cited multivariate/correlated-agreement theorem.  The existing
-  `Width19FStarDeploymentPremises` interface retains that theorem, virtual
-  oracle/code membership, grinding independence, and Rust transcript
-  correspondence as explicit premises.
+The fixed-vector mismatch event must not be unioned over every decoder-list
+candidate.  Such a union can be certain when the list contains two distinct
+candidates.  The actual proximity event, its curve-decoding theorem, and the
+no-list-factor cardinality proof are in `V5Width19CorrelatedAgreement`.
 
 The final section pins the exact `0..15,16,17,18` lane order used by
 `CandidateLaneEnsemble`.  It shows precisely when the earlier
@@ -193,12 +192,10 @@ theorem combinedLaneBindingFailure_iff_width19_candidate_mismatch
 
 /-! ## Honest statement of the remaining cryptographic step -/
 
-/-- Event-level interface needed from the cited width-nineteen MCA/PCS
-argument.  It identifies the event bounded by the existing deployment ledger
-with the concrete candidate mismatch above.  Lean proves the degree and
-fixed-vector root count in this file; oracle proximity, code membership,
-grinding independence and Fiat--Shamir remain the named inputs of
-`Width19FStarDeploymentPremises`. -/
+/-- Exact event identity for one fixed candidate schedule.  This definition is
+useful for deterministic algebra only.  Its existential union over a decoder
+family is not the correlated-agreement rare event and receives no probability
+bound from this file. -/
 def ExactWidth19BatchEvent
     {Schedule : Type*}
     (event : Schedule -> Prop)

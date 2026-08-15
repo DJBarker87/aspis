@@ -45,8 +45,9 @@ released candidate family, with the raw width-19 event replaced by its checked
 arithmetic bound.  Every remaining unproved probability is explicit. -/
 theorem deployed_qm31_adaptive_theft_probability_le_two_pow_neg_70_plus_remaining
     {Run Sample AdversaryCoins PublicArtifact Execution Public Root Prefix
-      Schedule : Type*}
+      WidthPrefix WidthCandidate : Type*}
     [MeasurableSpace Sample] [Fintype Prefix] [Nonempty Prefix]
+    [Nonempty WidthCandidate]
     {rc : RoundConstants}
     {deployedOwner : Digest → Digest}
     {deployedNote : Digest → F → F → Digest → Digest}
@@ -101,7 +102,9 @@ theorem deployed_qm31_adaptive_theft_probability_le_two_pow_neg_70_plus_remainin
       {sample | VictimTreeCollisionAfterObservationEvent deployedOwner
         deployedNote deployedNode victim experiment extractAfter sample})
     (width19Connection : Width19MeasuredEventConnection
-      (Schedule := Schedule) measure data.width19Failure)
+      (Prefix := WidthPrefix)
+      (K := AspisV5ComponentCQM31TowerExact.QM31Exact)
+      (Candidate := WidthCandidate) measure data.width19Failure)
     (cryptoBudget : ConcreteSecurityBudget)
     (cryptoAssumed : AssumedConcreteSecurityBounds measure
       production.transcriptAndHashFailures cryptoBudget)
@@ -126,7 +129,7 @@ theorem deployed_qm31_adaptive_theft_probability_le_two_pow_neg_70_plus_remainin
       experiment extractAfter connection coverage cryptoBudget cryptoAssumed
       credentialBudget credentialAssumed runtimeBudget runtimeAssumed
   have widthBound :=
-    width19_measured_failure_probability_le_31_div_two_pow_75
+    width19_completed_attempt_failure_probability_le_31_div_two_pow_75
       measure data.width19Failure width19Connection
   have combine :
       (1 : Real) / 2 ^ 75 + (31 : Real) / 2 ^ 75 =
