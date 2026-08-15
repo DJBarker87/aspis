@@ -6,6 +6,7 @@ readonly root="$(cd "$bundle/../.." && pwd -P)"
 readonly harness="$bundle/harness"
 readonly generated="$bundle/generated"
 readonly proof="$bundle/proof"
+readonly unrolled_patch="$bundle/extraction/v5-relation-four-call-wrapper.patch"
 readonly lean_bin="${LEAN432_BIN:-$(command -v lean)}"
 readonly aeneas_lib="${AENEAS_LEAN_LIB:?set AENEAS_LEAN_LIB to the patched Aeneas Lean 4.32 library}"
 readonly charon_repo="${ASPIS_CHARON_REPO:?set ASPIS_CHARON_REPO to pinned Charon cb50ff16}"
@@ -63,6 +64,8 @@ check_blob e0dd0073eec123ba6ac8cc56f19994d3896bce5c \
   aeneas-verif/v5-relation-acceptance-20260815/harness/Cargo.lock
 check_blob 36c859d6b69489056bff3fd7d9d7c2c5b01f053d \
   aeneas-verif/v5-relation-acceptance-20260815/harness/src/lib.rs
+check_blob 24066d74a6364facde28c85f31a761ec14a756d0 \
+  aeneas-verif/v5-relation-acceptance-20260815/extraction/v5-relation-four-call-wrapper.patch
 check_blob f2b3e15ccc4f852cdb51ea87c7788d5ef000cd3c \
   aeneas-verif/v5-relation-acceptance-20260815/production-harness/Cargo.toml
 check_blob f0dbf1fafc3c391d5a3e467657ce6fb402c8d528 \
@@ -81,8 +84,25 @@ readonly out
 readonly log="$out/replay.log"
 readonly olean_out="$out/olean"
 readonly decoder_out="$out/decoder"
-mkdir -p "$olean_out/AspisFormal" "$decoder_out/V5FriDecoderGenerated"
+readonly unrolled_root="$out/unrolled-source"
+readonly unrolled_harness="$unrolled_root/aeneas-verif/v5-relation-acceptance-20260815/harness"
+mkdir -p "$olean_out/AspisFormal" "$decoder_out/V5FriDecoderGenerated" \
+  "$unrolled_root/programs/aspis-verifier/src" \
+  "$unrolled_root/aeneas-verif/v5-relation-acceptance-20260815"
 : > "$log"
+
+# The released source remains untouched.  Apply the checked fixed-loop
+# unrolling only to a temporary copy so the pinned translator can expose the
+# complete one-round body that it rejects inside the original nested loops.
+cp -R "$harness" "$unrolled_harness"
+cp "$root/programs/aspis-verifier/src/v5_relation_stress.rs" \
+  "$unrolled_root/programs/aspis-verifier/src/v5_relation_stress.rs"
+git -C "$unrolled_root" init -q
+git -C "$unrolled_root" apply "$unrolled_patch"
+ASPIS_REPLAY_ROOT="$root" perl -0pi -e '
+  s{aspis-core = \{ path = "\.\./\.\./\.\./crates/aspis-core" \}}
+   {aspis-core = { path = "$ENV{ASPIS_REPLAY_ROOT}/crates/aspis-core" }};
+' "$unrolled_harness/Cargo.toml"
 
 normalize_generated() {
   local source=$1
@@ -136,6 +156,29 @@ extract_kernel() {
   compare_generated "$raw_dir/$raw_file" "$checked_file" "$name"
 }
 
+extract_unrolled_round() {
+  local name=round-unrolled
+  local llbc="$out/$name.llbc"
+  local raw_dir="$out/$name-raw"
+  mkdir -p "$raw_dir"
+  echo "EXTRACT $name" | tee -a "$log"
+  (
+    cd "$unrolled_harness"
+    CARGO_TARGET_DIR="$out/cargo-$name" "$charon_bin" cargo \
+      --preset aeneas \
+      --start-from \
+        v5_relation_acceptance_harness::relation_stress::verify_v5_relation_stress_round \
+      --opaque aspis_core::field --opaque aspis_core::sumcheck \
+      --dest-file "$llbc" -- --release --locked
+  ) >> "$log" 2>&1
+  echo "TRANSLATE $name" | tee -a "$log"
+  "$aeneas_bin" -backend lean -namespace V5RelationRoundUnrolledGenerated \
+    -dest "$raw_dir" -max-heartbeats 800000 -max-recdepth 3000 "$llbc" \
+    >> "$log" 2>&1
+  compare_generated "$raw_dir/Round-unrolled.lean" \
+    "$generated/V5RelationRoundUnrolledGenerated.lean" "$name"
+}
+
 # These five roots are accepted directly by the pinned tools.  They are
 # regenerated from the current Rust and compared definition-for-definition
 # with the checked Lean snapshots.
@@ -173,6 +216,8 @@ extract_kernel main-dot-opaque \
   "$generated/V5RelationMainDotGenerated.lean" \
   --include aspis_core::field --include aspis_core::sumcheck \
   --opaque 'aspis_core::sumcheck::_::weight_at'
+
+extract_unrolled_round
 
 formal_path=$(cd "$formal_build_root/AspisFormal" && \
   NO_DNA=1 lake env printenv LEAN_PATH)

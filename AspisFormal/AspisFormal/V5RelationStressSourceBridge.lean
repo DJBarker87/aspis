@@ -881,6 +881,172 @@ noncomputable def runSourceRelationVerifier [DecidableEq K]
   else
     none
 
+/-- The same verifier written as four calls to a one-round function.
+
+This spelling exists because the pinned Aeneas version can translate the
+one-round shape but rejects the deployed function's early returns inside its
+nested loops.  `roundVerifier` is kept as an argument so an extracted helper
+can be connected without assuming anything about its implementation. -/
+noncomputable def runSourceRelationVerifierWithRound [DecidableEq K]
+    (roundVerifier : K → SourceRelationRound K → Option K)
+    (input : SourceRelationInput K) : Option (SourceRelationOutput K) :=
+  match roundVerifier input.initialClaim input.round0 with
+  | none => none
+  | some claim1 =>
+      match roundVerifier claim1 input.round1 with
+      | none => none
+      | some claim2 =>
+          match roundVerifier claim2 input.round2 with
+          | none => none
+          | some claim3 =>
+              match roundVerifier claim3 input.round3 with
+              | none => none
+              | some finalClaim =>
+                  if input.mainFinalDot + input.additiveFinalDot = finalClaim then
+                    some
+                      { finalCoefficients := input.finalCoefficients
+                        terminalClaim := finalClaim }
+                  else
+                    none
+
+/-- Four explicit calls to the maintained one-round function. -/
+noncomputable def runSourceRelationVerifierFourCalls [DecidableEq K]
+    (input : SourceRelationInput K) : Option (SourceRelationOutput K) :=
+  runSourceRelationVerifierWithRound runSourceRelationRound input
+
+/-- Exact equality between the four-call spelling and the source-shaped
+nested checks, for every field input.  This is a proof of the control-flow
+rewrite itself; it is not a claim that the deployed Rust binary used the
+four-call spelling. -/
+theorem runSourceRelationVerifierFourCalls_eq_source [DecidableEq K]
+    (input : SourceRelationInput K) :
+    runSourceRelationVerifierFourCalls input =
+      runSourceRelationVerifier input := by
+  by_cases h0 : relationBoundary input.round0.polynomial =
+      sourceClaimAfterMixes input.initialClaim input.round0
+  · by_cases h1 : relationBoundary input.round1.polynomial =
+        sourceClaimAfterMixes
+          (∑ degree,
+            input.round0.polynomial degree * input.round0.alpha ^ degree.val)
+          input.round1
+    · by_cases h2 : relationBoundary input.round2.polynomial =
+          sourceClaimAfterMixes
+            (∑ degree,
+              input.round1.polynomial degree * input.round1.alpha ^ degree.val)
+            input.round2
+      · by_cases h3 : relationBoundary input.round3.polynomial =
+            sourceClaimAfterMixes
+              (∑ degree,
+                input.round2.polynomial degree * input.round2.alpha ^ degree.val)
+              input.round3
+        · simp [runSourceRelationVerifierFourCalls,
+            runSourceRelationVerifierWithRound, runSourceRelationRound,
+            runSourceRelationVerifier, h0, h1, h2, h3]
+        · simp [runSourceRelationVerifierFourCalls,
+            runSourceRelationVerifierWithRound, runSourceRelationRound,
+            runSourceRelationVerifier, h0, h1, h2, h3]
+      · simp [runSourceRelationVerifierFourCalls,
+          runSourceRelationVerifierWithRound, runSourceRelationRound,
+          runSourceRelationVerifier, h0, h1, h2]
+    · simp [runSourceRelationVerifierFourCalls,
+        runSourceRelationVerifierWithRound, runSourceRelationRound,
+        runSourceRelationVerifier, h0, h1]
+  · simp [runSourceRelationVerifierFourCalls,
+      runSourceRelationVerifierWithRound, runSourceRelationRound,
+      runSourceRelationVerifier, h0]
+
+/-- Small implementation boundary left by making the extracted one-round
+helper's field, decoder, sumcheck-kernel, and weight operations opaque.
+
+`extractedRound` denotes that generated helper after its opaque Rust values
+have been mapped into `K` and after successful weight updates have been
+projected away; the generated definition and temporary rewrite are pinned in
+the relation-acceptance replay bundle.
+
+Only the soundness direction is required: whenever that extracted helper
+returns success, its scalar claim transition is accepted by the maintained
+one-round model with the same output.  Rejections need not agree. -/
+def ExtractedUnrolledRoundPrimitivesAgree [DecidableEq K]
+    (extractedRound : K → SourceRelationRound K → Option K) : Prop :=
+  ∀ claim round output,
+    extractedRound claim round = some output →
+      runSourceRelationRound claim round = some output
+
+/-- Per-round primitive correspondence transfers a successful four-call
+execution to the maintained four-call verifier. -/
+theorem extractedRound_success_implies_fourCallVerifier_success
+    [DecidableEq K]
+    (extractedRound : K → SourceRelationRound K → Option K)
+    (primitiveCorrespondence :
+      ExtractedUnrolledRoundPrimitivesAgree extractedRound)
+    {input : SourceRelationInput K} {output : SourceRelationOutput K}
+    (success :
+      runSourceRelationVerifierWithRound extractedRound input = some output) :
+    runSourceRelationVerifierFourCalls input = some output := by
+  cases h0 : extractedRound input.initialClaim input.round0 with
+  | none =>
+      simp [runSourceRelationVerifierWithRound, h0] at success
+  | some claim1 =>
+    cases h1 : extractedRound claim1 input.round1 with
+    | none =>
+        simp [runSourceRelationVerifierWithRound, h0, h1] at success
+    | some claim2 =>
+      cases h2 : extractedRound claim2 input.round2 with
+      | none =>
+          simp [runSourceRelationVerifierWithRound, h0, h1, h2] at success
+      | some claim3 =>
+        cases h3 : extractedRound claim3 input.round3 with
+        | none =>
+            simp [runSourceRelationVerifierWithRound, h0, h1, h2, h3] at success
+        | some finalClaim =>
+          have hs0 := primitiveCorrespondence
+            input.initialClaim input.round0 claim1 h0
+          have hs1 := primitiveCorrespondence claim1 input.round1 claim2 h1
+          have hs2 := primitiveCorrespondence claim2 input.round2 claim3 h2
+          have hs3 := primitiveCorrespondence claim3 input.round3 finalClaim h3
+          simpa [runSourceRelationVerifierFourCalls,
+            runSourceRelationVerifierWithRound, hs0, hs1, hs2, hs3] using
+            (show
+              (if input.mainFinalDot + input.additiveFinalDot = finalClaim then
+                some
+                  { finalCoefficients := input.finalCoefficients
+                    terminalClaim := finalClaim }
+              else none) = some output by
+                simpa [runSourceRelationVerifierWithRound, h0, h1, h2, h3]
+                  using success)
+
+/-- Remaining syntactic transformation boundary for the unchanged deployed
+Rust function.  It states only the direction needed for soundness: a success
+of the original nested-loop function is also a success of the extracted
+four-call spelling with the same output.  Tests cannot discharge this
+universal statement. -/
+def OriginalNestedLoopSuccessImpliesFourCallSuccess [DecidableEq K]
+    (originalVerifier : SourceRelationInput K → Option (SourceRelationOutput K))
+    (extractedRound : K → SourceRelationRound K → Option K) : Prop :=
+  ∀ input output, originalVerifier input = some output →
+    runSourceRelationVerifierWithRound extractedRound input = some output
+
+/-- The named loop-unrolling boundary and success-only primitive
+correspondence reduce an original Rust success to a success of the maintained
+source model. -/
+theorem originalNestedLoop_success_implies_source_success [DecidableEq K]
+    (originalVerifier : SourceRelationInput K → Option (SourceRelationOutput K))
+    (extractedRound : K → SourceRelationRound K → Option K)
+    (primitiveCorrespondence :
+      ExtractedUnrolledRoundPrimitivesAgree extractedRound)
+    (transformation :
+      OriginalNestedLoopSuccessImpliesFourCallSuccess originalVerifier
+        extractedRound)
+    {input : SourceRelationInput K} {output : SourceRelationOutput K}
+    (success : originalVerifier input = some output) :
+    runSourceRelationVerifier input = some output := by
+  have fourCallSuccess := transformation input output success
+  have sourceFourCallSuccess :=
+    extractedRound_success_implies_fourCallVerifier_success extractedRound
+      primitiveCorrespondence fourCallSuccess
+  rw [runSourceRelationVerifierFourCalls_eq_source] at sourceFourCallSuccess
+  exact sourceFourCallSuccess
+
 /-- The production caller accepts the scalar relation result only when its
 four decoded final coefficients equal the final polynomial already passed to
 the FRI checker. -/
@@ -1252,6 +1418,32 @@ theorem source_success_implies_modeled_relation_success
     family input.challenges).mpr
   exact source_success_implies_shared_checks input family projection hsuccess
 
+/-- Soundness-facing theorem for the unchanged nested-loop verifier.  All
+field/model reasoning is proved below this point.  Its two implementation
+inputs are explicit: success preservation for the fixed-loop rewrite, and
+success-only correspondence for the opaque operations in one extracted
+round. -/
+theorem originalNestedLoop_success_implies_modeled_relation_success
+    {Candidate : Type*}
+    (input : SourceRelationInput K)
+    (family : CoherentCandidateFamily K Candidate)
+    (projection : SourceRelationInputMatchesFamily input family)
+    (originalVerifier : SourceRelationInput K → Option (SourceRelationOutput K))
+    (extractedRound : K → SourceRelationRound K → Option K)
+    (primitiveCorrespondence :
+      ExtractedUnrolledRoundPrimitivesAgree extractedRound)
+    (transformation :
+      OriginalNestedLoopSuccessImpliesFourCallSuccess originalVerifier
+        extractedRound)
+    {output : SourceRelationOutput K}
+    (success : originalVerifier input = some output) :
+    ∃ modeledOutput,
+      runModeledRelationVerifier family input.challenges = some modeledOutput := by
+  apply source_success_implies_modeled_relation_success input family projection
+  exact ⟨output,
+    originalNestedLoop_success_implies_source_success originalVerifier
+      extractedRound primitiveCorrespondence transformation success⟩
+
 /-- Complete field-level caller theorem.  Successful caller execution gives
 modeled relation success and proves that the relation's final coefficients
 are the same coefficients consumed by FRI.  The only inputs beyond caller
@@ -1376,12 +1568,16 @@ theorem exactRustMode9RawSuccessImpliesModeledRelationSuccess
 #print axioms sharedFinalWeights_eq_source_main_additive
 #print axioms sharedFinalDot_eq_source_main_additive
 #print axioms sourceCallerChallenges_alphas
+#print axioms runSourceRelationVerifierFourCalls_eq_source
+#print axioms extractedRound_success_implies_fourCallVerifier_success
+#print axioms originalNestedLoop_success_implies_source_success
 #print axioms sourceRelationVerifier_output_final_coefficients
 #print axioms sourceCaller_success_implies_relation_success
 #print axioms sourceCaller_success_implies_final_coefficients_equal_fri
 #print axioms sourceMode9RelationInput_matches_family
 #print axioms source_success_implies_shared_checks
 #print axioms source_success_implies_modeled_relation_success
+#print axioms originalNestedLoop_success_implies_modeled_relation_success
 #print axioms sourceMode9Caller_success_implies_modeled_success_and_fri_equality
 #print axioms exact_rust_caller_implies_modeled_success_and_fri_equality
 #print axioms exactRustMode9RelationCallerEquality_of_parts

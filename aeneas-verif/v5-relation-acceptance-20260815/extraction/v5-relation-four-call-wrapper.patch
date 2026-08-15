@@ -1,0 +1,139 @@
+diff --git a/programs/aspis-verifier/src/v5_relation_stress.rs b/programs/aspis-verifier/src/v5_relation_stress.rs
+index cbe6250..a8485da 100644
+--- a/programs/aspis-verifier/src/v5_relation_stress.rs
++++ b/programs/aspis-verifier/src/v5_relation_stress.rs
+@@ -131,6 +131,59 @@ pub fn verify_v5_relation_stress(
+     )
+ }
+-
++
++#[inline(always)]
++fn verify_v5_relation_stress_round<A: V5RelationStressAdditive>(
++    weights: &mut WeightAccumulator,
++    running_claim: QM31,
++    alpha: QM31,
++    bytes: &[u8; V5_RELATION_STRESS_BYTES],
++    additive: &mut A,
++    circle_points: &[SecureCirclePoint; V5_RELATION_STRESS_OOD_SAMPLES],
++    round: usize,
++) -> Result<QM31, V5RelationStressError> {
++    let first_observation = round * V5_RELATION_STRESS_OOD_SAMPLES;
++    let first_value = decode_indexed(bytes, V5_RELATION_STRESS_OOD_OFFSET, first_observation)?;
++    let first_mix = decode_indexed(bytes, V5_RELATION_STRESS_MIX_OFFSET, first_observation)?;
++    if round == 0 {
++        weights.add_circle_tensor(first_mix, circle_points[0])?;
++    } else {
++        let first_line_index = (round - 1) * V5_RELATION_STRESS_OOD_SAMPLES;
++        let first_point = decode_indexed(bytes, V5_RELATION_STRESS_LINE_OFFSET, first_line_index)?;
++        weights.add_line_tensor(first_mix, first_point)?;
++    }
++    let after_first = running_claim.add(first_mix.mul(first_value));
++
++    let second_observation = first_observation + 1;
++    let second_value = decode_indexed(bytes, V5_RELATION_STRESS_OOD_OFFSET, second_observation)?;
++    let second_mix = decode_indexed(bytes, V5_RELATION_STRESS_MIX_OFFSET, second_observation)?;
++    if round == 0 {
++        weights.add_circle_tensor(second_mix, circle_points[1])?;
++    } else {
++        let second_line_index = (round - 1) * V5_RELATION_STRESS_OOD_SAMPLES + 1;
++        let second_point =
++            decode_indexed(bytes, V5_RELATION_STRESS_LINE_OFFSET, second_line_index)?;
++        weights.add_line_tensor(second_mix, second_point)?;
++    }
++    let mut next_claim = after_first.add(second_mix.mul(second_value));
++
++    let polynomial: SumcheckPolynomial = [
++        decode_indexed(bytes, V5_RELATION_STRESS_SUMCHECK_OFFSET, round * 7)?,
++        decode_indexed(bytes, V5_RELATION_STRESS_SUMCHECK_OFFSET, round * 7 + 1)?,
++        decode_indexed(bytes, V5_RELATION_STRESS_SUMCHECK_OFFSET, round * 7 + 2)?,
++        decode_indexed(bytes, V5_RELATION_STRESS_SUMCHECK_OFFSET, round * 7 + 3)?,
++        decode_indexed(bytes, V5_RELATION_STRESS_SUMCHECK_OFFSET, round * 7 + 4)?,
++        decode_indexed(bytes, V5_RELATION_STRESS_SUMCHECK_OFFSET, round * 7 + 5)?,
++        decode_indexed(bytes, V5_RELATION_STRESS_SUMCHECK_OFFSET, round * 7 + 6)?,
++    ];
++    if boundary_sum(&polynomial) != next_claim {
++        return Err(V5RelationStressError::BoundaryMismatch { round });
++    }
++    next_claim = evaluate(&polynomial, alpha);
++    weights.fold(alpha);
++    additive.fold(alpha);
++    Ok(next_claim)
++}
++
+ /// Execute the same relation while carrying one compact additive covector
+ /// through the identical folds and terminal dot.  This is the exact v5
+ /// composition: the main point/copy weights and Component B share one set of
+@@ -153,35 +206,43 @@ pub fn verify_v5_relation_stress_with_additive<A: V5RelationStressAdditive>(
+             return Err(V5RelationStressError::InvalidCirclePoint { sample });
+         }
+     }
+-    for (round, alpha) in alphas.into_iter().enumerate() {
+-        for sample in 0..V5_RELATION_STRESS_OOD_SAMPLES {
+-            let observation = round * V5_RELATION_STRESS_OOD_SAMPLES + sample;
+-            let value = decode_indexed(bytes, V5_RELATION_STRESS_OOD_OFFSET, observation)?;
+-            let mix = decode_indexed(bytes, V5_RELATION_STRESS_MIX_OFFSET, observation)?;
+-            if round == 0 {
+-                weights.add_circle_tensor(mix, circle_points[sample])?;
+-            } else {
+-                let line_index = (round - 1) * V5_RELATION_STRESS_OOD_SAMPLES + sample;
+-                let point = decode_indexed(bytes, V5_RELATION_STRESS_LINE_OFFSET, line_index)?;
+-                weights.add_line_tensor(mix, point)?;
+-            }
+-            running_claim = running_claim.add(mix.mul(value));
+-        }
+-        let mut polynomial: SumcheckPolynomial = [QM31::ZERO; SUMCHECK_COEFFICIENTS];
+-        for (coefficient, output) in polynomial.iter_mut().enumerate() {
+-            *output = decode_indexed(
+-                bytes,
+-                V5_RELATION_STRESS_SUMCHECK_OFFSET,
+-                round * SUMCHECK_COEFFICIENTS + coefficient,
+-            )?;
+-        }
+-        if boundary_sum(&polynomial) != running_claim {
+-            return Err(V5RelationStressError::BoundaryMismatch { round });
+-        }
+-        running_claim = evaluate(&polynomial, alpha);
+-        weights.fold(alpha);
+-        additive.fold(alpha);
+-    }
++    let [alpha0, alpha1, alpha2, alpha3] = alphas;
++    running_claim = verify_v5_relation_stress_round(
++        &mut weights,
++        running_claim,
++        alpha0,
++        bytes,
++        &mut additive,
++        &circle_points,
++        0,
++    )?;
++    running_claim = verify_v5_relation_stress_round(
++        &mut weights,
++        running_claim,
++        alpha1,
++        bytes,
++        &mut additive,
++        &circle_points,
++        1,
++    )?;
++    running_claim = verify_v5_relation_stress_round(
++        &mut weights,
++        running_claim,
++        alpha2,
++        bytes,
++        &mut additive,
++        &circle_points,
++        2,
++    )?;
++    running_claim = verify_v5_relation_stress_round(
++        &mut weights,
++        running_claim,
++        alpha3,
++        bytes,
++        &mut additive,
++        &circle_points,
++        3,
++    )?;
+-
++
+     let final_coefficients = decode_v5_relation_stress_final(bytes)?;
+     if weights

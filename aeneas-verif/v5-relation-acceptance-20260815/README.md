@@ -26,6 +26,16 @@ The checked generated files contain production definitions for:
 - `verify_mode9_relation_phase`, including its final four-coefficient equality
   gate.
 
+The bundle also contains a checked, temporary source rewrite which replaces
+the fixed two-sample and seven-coefficient loops in one relation round with
+the corresponding explicit statements, and replaces the fixed four-round
+outer loop with four calls.  The rewrite is applied only in the replay's
+temporary directory.  Aeneas then translates the complete one-round body,
+including the real byte reads, circle-versus-line branch, both weight updates,
+claim arithmetic, seven coefficient reads, boundary check, polynomial
+evaluation, and both folds.  The released Rust file and compiled program are
+not changed.
+
 `V5RelationAcceptanceSourceProof.lean` proves that, for every input and every
 possible result of the still-opaque nested relation call, an extracted
 `verify_mode9_relation_phase` success implies that the relation result's four
@@ -76,10 +86,19 @@ Returns inside of nested loops are not supported yet
 
 Therefore this bundle does **not** claim the remaining universal equality
 between that four-round Rust loop and
-`AspisV5RelationStressSourceBridge.runSourceRelationVerifier`.  The separately
-extracted decoder, boundary evaluation, polynomial evaluation, main final dot,
-compact fold body, compact final weights, and caller equality gate narrow that
-boundary; they do not silently discharge it.
+`AspisV5RelationStressSourceBridge.runSourceRelationVerifier`.  The remaining
+statement is split into two named parts:
+
+1. every successful execution of the released nested loops is preserved by
+   the checked fixed-loop rewrite; and
+2. a successful translated round agrees with the maintained model for the
+   decoder, field, sumcheck, and weight operations which were left opaque to
+   Aeneas.
+
+The Lean relation theorem below those two statements is proved.  The
+statements themselves remain explicit implementation assumptions; the
+temporary rewrite and generated body make them smaller and inspectable, but
+do not turn source review into a formal proof.
 
 Three additional translator limitations encountered while extracting the
 supporting operations are kept explicit:
@@ -96,13 +115,15 @@ one of these universal equalities.
 
 ## Replay
 
-`replay-lean432.sh` pins the source blobs and the Charon, Aeneas, and Lean
-versions used by this checkpoint.  It regenerates the five Solana-free roots
-that the pinned translators accept—the tail decoder, byte layout, boundary
-check, polynomial evaluator, and main terminal dot—and compares their
-normalized Lean definitions with the checked snapshots.  It then rebuilds the
-maintained relation-model dependency chain, the production QM31 decoder, all
-nine generated modules, and all four proof files with Lean 4.32.
+`replay-lean432.sh` pins the source blobs, temporary rewrite, and the Charon,
+Aeneas, and Lean versions used by this checkpoint.  It regenerates the five
+Solana-free roots that the pinned translators accept—the tail decoder, byte
+layout, boundary check, polynomial evaluator, and main terminal dot.  It also
+applies the fixed-loop rewrite in a temporary source tree and regenerates the
+complete one-round definition.  Each result is compared with its checked Lean
+snapshot.  The script then rebuilds the maintained relation-model dependency
+chain, the production QM31 decoder, all ten generated modules, and all proof
+files with Lean 4.32.
 
 The comparison normalizes only source-root comments, the split Lean 4.32
 Aeneas imports, and the pinned translator's signed annotation on wrapping
@@ -136,6 +157,8 @@ release sources and a completed Lean build.
   arithmetic helpers.
 - `production-harness/`: extraction root for the unchanged program modules and
   the private compact state/caller.
+- `extraction/`: the exact temporary fixed-loop rewrite used only during
+  replay.
 - `generated/`: normalized, Lean-4.32-compiling Aeneas output.
 - `proof/`: the universal caller-success theorem and exact array-equality
   supporting lemmas, the universal 58-field decoder connection, and the
