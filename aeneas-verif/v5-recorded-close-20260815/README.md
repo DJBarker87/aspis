@@ -43,6 +43,11 @@ The replay:
 - uses the pinned Charon build to extract the exact recorded refund function;
 - checks that the target body is present and that only the three Solana
   `AccountInfo` access methods are opaque in the extraction; and
+- translates a small, source-shaped version of the successful mutation whose
+  inputs are plain booleans, bytes, and u64 balances; proves from the generated
+  Lean that checked addition is exact below `2^64`, the prefix becomes `ASPC`,
+  the suffix is unchanged, the proof balance becomes zero, and the refund
+  balance becomes the exact sum; and
 - compiles the Lean model and checks its reported axioms.
 
 ## Exact remaining boundary
@@ -53,23 +58,32 @@ Solana's `AccountInfo` stores mutable balances and data through
 `solana-account-info` 2.3.0. The replay requires that exact named failure so it
 cannot be mistaken for a successful Rust-to-Lean proof.
 
-The remaining source-level statement is
-`ExactRecordedRustRawCloseEquality`: for every input, the extracted Rust path
-has the same result as `runRecordedClose`. The external meanings of
-`AccountInfo` reads and mutable borrows are listed separately in
-`RecordedAccountInfoSemantics`. Solana rollback, atomic commit, zero-balance
-account removal, and finalized observation are listed separately in
-`RecordedCloseRuntimeSemantics`.
+The successful arithmetic and byte mutation no longer depend only on a
+handwritten Lean function: the separate projection harness is translated by
+Charon/Aeneas, and `generated_successful_path_is_exact` proves its result. The
+harness is deliberately identified as a projection; it is not substituted for
+the immutable production source.
 
-In short: the exact close/refund result is proved in the Lean model, and the
-model is pinned tightly to the exact source and its passing production test.
-The final universal Rust-to-model equality is still explicit, not claimed as
-finished.
+The remaining source-level statement is now the wrapper connection: the
+successful `AccountInfo` reads and mutable borrows in the exact recorded body
+must supply the same values and targets as that proved projection. The broader
+predicate `ExactRecordedRustRawCloseEquality` records the resulting universal
+equality with `runRecordedClose`. The meanings of the individual
+`AccountInfo` operations are listed in `RecordedAccountInfoSemantics`. Solana
+rollback, atomic commit, zero-balance account removal, and finalized
+observation are listed separately in `RecordedCloseRuntimeSemantics`.
+
+In short: the exact close/refund result is proved both in the maintained Lean
+model and for an Aeneas-generated source-shaped mutation. Both are pinned to
+the exact source and its passing production test. The last wrapper connection
+through Solana's `AccountInfo` representation is still explicit, not claimed
+as finished.
 
 ## Replay
 
 ```bash
 ASPIS_CHARON_REPO=/path/to/charon \
 ASPIS_AENEAS_REPO=/path/to/aeneas \
+LEAN432_AENEAS_ROOT=/path/to/aeneas-lean-4.32 \
   ./aeneas-verif/v5-recorded-close-20260815/replay-lean432.sh
 ```
