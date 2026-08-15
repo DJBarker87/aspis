@@ -1,8 +1,5 @@
 import AspisFormal.V5ForwardAcceptedFalseInclusion
 
-set_option maxHeartbeats 2000000
-set_option maxRecDepth 200000
-
 /-!
 # Prefix-timed restoration of one complete FRI candidate chain
 
@@ -352,6 +349,7 @@ theorem round3_restore_final_or_bad
 
 /-! ## A complete compatible chain from acceptance -/
 
+set_option maxRecDepth 200000 in
 /-- Outside a concrete query miss and four prefix-timed bad challenge sets,
 ideal FRI acceptance restores one initial decoder-list member whose exact
 four folds equal the published final polynomial. -/
@@ -550,6 +548,7 @@ width alone supplies no numerical bound for the second item.
 
 /-! ## Accepted false relation executions -/
 
+set_option maxRecDepth 200000 in
 /-- **Prefix-timed accepted-false inclusion.**  Ideal FRI acceptance restores
 one exact initial-to-final candidate chain outside the query miss and the four
 causal compatibility sets.  The existing relation theorem can therefore use

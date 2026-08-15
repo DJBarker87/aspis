@@ -1,9 +1,6 @@
 import AspisFormal.V5FriForwardDoomSoundness
 import AspisFormal.V5Tag67AcceptedFalseInclusion
 
-set_option maxHeartbeats 2000000
-set_option maxRecDepth 200000
-
 /-!
 # Accepted false executions using forward-timed FRI bad sets
 
@@ -258,6 +255,7 @@ def ReleasedAcceptedTerminalMatchCardinalityBound
 
 /-! ## Relation to the existing one-shot extraction theorem -/
 
+set_option maxRecDepth 200000 in
 /-- For a fixed accepted transcript, terminal-match failure is already
 contained in the query-miss event or the existing backwards
 suffix-conditioned bad event.  Indeed, the third branch of backwards
@@ -316,6 +314,7 @@ theorem accepted_terminal_match_failure_implies_query_or_backward_suffix
 
 /-! ## Released accepted-false inclusion -/
 
+set_option maxRecDepth 200000 in
 /-- **Forward-timed accepted-false inclusion.**  This is the relation-chain
 analogue of the previous backwards-extraction theorem, but it uses only the
 prefix-conditioned FRI event.
