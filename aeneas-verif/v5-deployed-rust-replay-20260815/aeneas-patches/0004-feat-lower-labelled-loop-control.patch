@@ -1,0 +1,657 @@
+From d5cb4d0508d5536903fd1f5759792cde429a80fb Mon Sep 17 00:00:00 2001
+From: DJB8787 <168072039+DJBarker87@users.noreply.github.com>
+Date: Sat, 15 Aug 2026 11:21:44 +0100
+Subject: [PATCH 4/6] feat: lower labelled loop control
+
+---
+ src/PrePasses.ml                      | 235 +++++++++++++++++++++++-
+ tests/lean/OuterLoopControl.lean      | 245 ++++++++++++++++++++++++++
+ tests/lean/OuterLoopControlTests.lean |  33 ++++
+ tests/lean/lakefile.lean              |   2 +
+ tests/src/outer-loop-control.rs       |  72 ++++++++
+ 5 files changed, 586 insertions(+), 1 deletion(-)
+ create mode 100644 tests/lean/OuterLoopControl.lean
+ create mode 100644 tests/lean/OuterLoopControlTests.lean
+ create mode 100644 tests/src/outer-loop-control.rs
+
+diff --git a/src/PrePasses.ml b/src/PrePasses.ml
+index da670e40..134c62fb 100644
+--- a/src/PrePasses.ml
++++ b/src/PrePasses.ml
+@@ -949,7 +949,7 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+         { f with body = StructuredBody { body with body = body_body; locals } }
+   | _ -> f
+ 
+-(** Check that loops:
++(* The [update_loops] pass below checks that loops:
+     - do not contain early returns
+     - do not continue/break to outer loops
+ 
+@@ -1046,6 +1046,238 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+       }
+       return;
+     ]} *)
++type outer_loop_control = OuterBreak of int | OuterContinue of int
++
++(** Eliminate [Break]/[Continue] statements which target an enclosing loop.
++
++    The symbolic loop interpreter deliberately accepts only control transfers
++    for the loop it is currently translating. Charon represents a labelled
++    transfer from an inner loop to an enclosing loop with a positive index. For
++    each loop containing such transfers, this pass introduces a fresh integer
++    control local and lowers, for example:
++
++    {[
++      loop {
++        ...;
++        continue 1
++      }
++
++        ~~>
++
++      control = 0;
++      loop {
++        ...;
++        control = 1;
++        break 0
++      };
++      switch control {
++        1 => continue 0,
++        _ => ()
++      }
++    ]}
++
++    Every distinct [(kind, index)] pair gets its own nonzero code. The switch
++    decrements the index by exactly one, so processing loops from the inside out
++    propagates transfers across one loop boundary at a time. Ordinary
++    fallthrough, [break 0], and [continue 0] leave the control local at zero.
++
++    The control local is live only around the transformed loop and is killed on
++    every post-loop branch before the transfer is re-emitted. Mutations before a
++    transfer therefore happen before the control write, while statements after
++    it remain unreachable because the replacement ends in [break 0].
++
++    This pass intentionally does not lower [Return]. A return-unwinding pass can
++    run immediately before this one: the [break 0] statements it introduces are
++    left untouched. *)
++let eliminate_outer_loop_control (crate : crate) (f : fun_decl) : fun_decl =
++  let f0 = f in
++  match f.body with
++  | StructuredBody body ->
++      let control_literal_ty : literal_type = TUInt U32 in
++      let control_ty = TLiteral control_literal_ty in
++      let new_locals = ref [] in
++      let _, gen_local =
++        LocalId.mk_stateful_generator_starting_at_id
++          (LocalId.of_int (List.length body.locals.locals))
++      in
++      let fresh_control_local span =
++        let local =
++          { index = gen_local (); local_ty = control_ty; name = None; span }
++        in
++        new_locals := local :: !new_locals;
++        local.index
++      in
++      let mk_statement span comments_before kind : statement =
++        { span; statement_id = StatementId.zero; kind; comments_before }
++      in
++      let mk_control_literal code : Values.literal =
++        VScalar (UnsignedScalar (U32, Z.of_int code))
++      in
++      let mk_control_operand code : operand =
++        Constant { kind = CLiteral (mk_control_literal code); ty = control_ty }
++      in
++      let action_equal left right =
++        match (left, right) with
++        | OuterBreak i, OuterBreak j | OuterContinue i, OuterContinue j -> i = j
++        | _ -> false
++      in
++      let rec transform_block (block : block) : block =
++        {
++          block with
++          statements =
++            List.flatten (List.map transform_statement block.statements);
++        }
++      and transform_statement (st : statement) : statement list =
++        match st.kind with
++        | Loop loop ->
++            (* Transform nested loops before lowering transfers out of this
++               loop.  A transfer crossing several boundaries is consequently
++               propagated one boundary per recursive return. *)
++            let loop = transform_block loop in
++            let actions = ref [] in
++            let add_action action =
++              if not (List.exists (action_equal action) !actions) then
++                actions := !actions @ [ action ]
++            in
++            let collector =
++              object
++                inherit [_] iter_statement_base as super
++                method! visit_Loop _ _ = ()
++
++                method! visit_Break env index =
++                  if index > 0 then add_action (OuterBreak index)
++                  else super#visit_Break env index
++
++                method! visit_Continue env index =
++                  if index > 0 then add_action (OuterContinue index)
++                  else super#visit_Continue env index
++              end
++            in
++            collector#visit_block () loop;
++            if !actions = [] then [ { st with kind = Loop loop } ]
++            else
++              let control_local = fresh_control_local st.span in
++              let control_place =
++                { kind = PlaceLocal control_local; ty = control_ty }
++              in
++              let code_for action =
++                let rec find code = function
++                  | [] -> [%internal_error] st.span
++                  | candidate :: remaining ->
++                      if action_equal action candidate then code
++                      else find (code + 1) remaining
++                in
++                find 1 !actions
++              in
++              let set_control_and_break (original : statement)
++                  (action : outer_loop_control) : statement list =
++                let set_control =
++                  mk_statement original.span original.comments_before
++                    (Assign
++                       ( control_place,
++                         Use (mk_control_operand (code_for action), NoRetag) ))
++                in
++                let leave_current_loop =
++                  mk_statement original.span [] (Break 0)
++                in
++                [ set_control; leave_current_loop ]
++              in
++              let rec rewrite_block (block : block) : block =
++                {
++                  block with
++                  statements =
++                    List.flatten (List.map rewrite_statement block.statements);
++                }
++              and rewrite_statement (inner_st : statement) : statement list =
++                match inner_st.kind with
++                | Loop _ ->
++                    (* Nested loops were already transformed.  Do not interpret
++                       their local control transfers relative to this loop. *)
++                    [ inner_st ]
++                | Break index when index > 0 ->
++                    set_control_and_break inner_st (OuterBreak index)
++                | Continue index when index > 0 ->
++                    set_control_and_break inner_st (OuterContinue index)
++                | _ ->
++                    let child_rewriter =
++                      object
++                        inherit [_] map_statement_base
++                        method! visit_block _ block = rewrite_block block
++                      end
++                    in
++                    [ child_rewriter#visit_statement () inner_st ]
++              in
++              let loop = rewrite_block loop in
++              let storage_live =
++                mk_statement st.span [] (StorageLive control_local)
++              in
++              let initialize =
++                mk_statement st.span []
++                  (Assign (control_place, Use (mk_control_operand 0, NoRetag)))
++              in
++              let loop_statement = { st with kind = Loop loop } in
++              let branch_for action =
++                let propagated =
++                  match action with
++                  | OuterBreak index -> Break (index - 1)
++                  | OuterContinue index -> Continue (index - 1)
++                in
++                let block =
++                  {
++                    span = st.span;
++                    statements =
++                      [
++                        mk_statement st.span [] (StorageDead control_local);
++                        mk_statement st.span [] propagated;
++                      ];
++                  }
++                in
++                ([ mk_control_literal (code_for action) ], block)
++              in
++              let otherwise =
++                {
++                  span = st.span;
++                  statements =
++                    [ mk_statement st.span [] (StorageDead control_local) ];
++                }
++              in
++              let dispatch =
++                mk_statement st.span []
++                  (Switch
++                     (SwitchInt
++                        ( Copy control_place,
++                          control_literal_ty,
++                          List.map branch_for !actions,
++                          otherwise )))
++              in
++              [ storage_live; initialize; loop_statement; dispatch ]
++        | _ ->
++            let nested_loop_rewriter =
++              object
++                inherit [_] map_statement_base
++                method! visit_block _ block = transform_block block
++              end
++            in
++            [ nested_loop_rewriter#visit_statement () st ]
++      in
++      let body_body = transform_block body.body in
++      let locals =
++        { body.locals with locals = body.locals.locals @ List.rev !new_locals }
++      in
++      let f =
++        { f with body = StructuredBody { body with body = body_body; locals } }
++      in
++      [%ldebug
++        let env = Print.crate_to_fmt_env crate in
++        "Before/after [eliminate_outer_loop_control]:\n"
++        ^ Print.fun_decl_to_string env "" " " f0
++        ^ "\n\n"
++        ^ Print.fun_decl_to_string env "" " " f];
++      f
++  | _ -> f
++
++(** Apply the early-return loop transformations described above and reject any
++    unsupported loop control which remains after the dedicated prepasses. *)
+ let update_loops (crate : crate) (f : fun_decl) : fun_decl =
+   let f0 = f in
+   let span = f.item_meta.span in
+@@ -2825,6 +3057,7 @@ let apply_passes (crate : crate) : crate =
+         eliminate_metadata_only_slice_raw_pointers );
+       ("remove_unreachable", remove_unreachable);
+       ("lower_nested_loop_returns", lower_nested_loop_returns);
++      ("eliminate_outer_loop_control", eliminate_outer_loop_control);
+       ("update_loop", update_loops);
+       ("remove_useless_joins", remove_useless_joins);
+       ( "remove_shallow_borrows_storage_live_dead",
+diff --git a/tests/lean/OuterLoopControl.lean b/tests/lean/OuterLoopControl.lean
+new file mode 100644
+index 00000000..2d47baf7
+--- /dev/null
++++ b/tests/lean/OuterLoopControl.lean
+@@ -0,0 +1,245 @@
++-- THIS FILE WAS AUTOMATICALLY GENERATED BY AENEAS
++-- [outer_loop_control]
++import Aeneas
++open Aeneas Aeneas.Std Result ControlFlow Error
++set_option linter.dupNamespace false
++set_option linter.hashCommand false
++set_option linter.unusedVariables false
++
++/- You can set the `maxHeartbeats` value with the `-max-heartbeats` CLI option -/
++set_option maxHeartbeats 1000000
++
++/- You can set the `maxRecDepth` value with the `-max-recdepth` CLI option -/
++set_option maxRecDepth 2048
++
++namespace outer_loop_control
++
++/-- [outer_loop_control::nested_control_trace]: loop body 1:
++    Source: 'tests/src/outer-loop-control.rs', lines 1:0-32:5 -/
++@[rust_loop_body]
++def nested_control_trace_loop0_loop0.body
++  (mode : Std.U8) (outer : Std.U32) (inner_limit : Std.U32) (trace : Std.U64)
++  (inner : Std.U32) :
++  Result (ControlFlow (Std.U64 × Std.U32) (Std.U64 × Std.U32))
++  := do
++  if inner < inner_limit
++  then
++    let inner1 ← inner + 1#u32
++    let i ← trace * 10#u64
++    let i1 ← lift (UScalar.cast .U64 inner1)
++    let trace1 ← i + i1
++    if mode = 1#u8
++    then
++      if inner1 = 1#u32
++      then
++        let i2 ← trace1 * 10#u64
++        let trace2 ← i2 + 8#u64
++        ok (done (trace2, 0#u32))
++      else
++        if mode = 2#u8
++        then
++          if outer < 3#u32
++          then
++            if inner1 = 1#u32
++            then
++              let i2 ← trace1 * 10#u64
++              let trace2 ← i2 + 7#u64
++              ok (done (trace2, 1#u32))
++            else
++              if mode = 3#u8
++              then
++                if outer = 2#u32
++                then
++                  if inner1 = 1#u32
++                  then
++                    let i2 ← trace1 * 10#u64
++                    let trace2 ← i2 + 6#u64
++                    ok (done (trace2, 2#u32))
++                  else ok (cont (trace1, inner1))
++                else ok (cont (trace1, inner1))
++              else ok (cont (trace1, inner1))
++          else
++            if mode = 3#u8
++            then
++              if outer = 2#u32
++              then
++                if inner1 = 1#u32
++                then
++                  let i2 ← trace1 * 10#u64
++                  let trace2 ← i2 + 6#u64
++                  ok (done (trace2, 2#u32))
++                else ok (cont (trace1, inner1))
++              else ok (cont (trace1, inner1))
++            else ok (cont (trace1, inner1))
++        else
++          if mode = 3#u8
++          then
++            if outer = 2#u32
++            then
++              if inner1 = 1#u32
++              then
++                let i2 ← trace1 * 10#u64
++                let trace2 ← i2 + 6#u64
++                ok (done (trace2, 2#u32))
++              else ok (cont (trace1, inner1))
++            else ok (cont (trace1, inner1))
++          else ok (cont (trace1, inner1))
++    else
++      if mode = 2#u8
++      then
++        if outer < 3#u32
++        then
++          if inner1 = 1#u32
++          then
++            let i2 ← trace1 * 10#u64
++            let trace2 ← i2 + 7#u64
++            ok (done (trace2, 1#u32))
++          else
++            if mode = 3#u8
++            then
++              if outer = 2#u32
++              then
++                if inner1 = 1#u32
++                then
++                  let i2 ← trace1 * 10#u64
++                  let trace2 ← i2 + 6#u64
++                  ok (done (trace2, 2#u32))
++                else ok (cont (trace1, inner1))
++              else ok (cont (trace1, inner1))
++            else ok (cont (trace1, inner1))
++        else
++          if mode = 3#u8
++          then
++            if outer = 2#u32
++            then
++              if inner1 = 1#u32
++              then
++                let i2 ← trace1 * 10#u64
++                let trace2 ← i2 + 6#u64
++                ok (done (trace2, 2#u32))
++              else ok (cont (trace1, inner1))
++            else ok (cont (trace1, inner1))
++          else ok (cont (trace1, inner1))
++      else
++        if mode = 3#u8
++        then
++          if outer = 2#u32
++          then
++            if inner1 = 1#u32
++            then
++              let i2 ← trace1 * 10#u64
++              let trace2 ← i2 + 6#u64
++              ok (done (trace2, 2#u32))
++            else ok (cont (trace1, inner1))
++          else ok (cont (trace1, inner1))
++        else ok (cont (trace1, inner1))
++  else ok (done (trace, 0#u32))
++
++/-- [outer_loop_control::nested_control_trace]: loop 1:
++    Source: 'tests/src/outer-loop-control.rs', lines 1:0-32:5 -/
++@[rust_loop]
++def nested_control_trace_loop0_loop0
++  (mode : Std.U8) (outer : Std.U32) (trace : Std.U64) (inner : Std.U32)
++  (inner_limit : Std.U32) :
++  Result (Std.U64 × Std.U32)
++  := do
++  loop
++    (fun (trace1, inner1) => nested_control_trace_loop0_loop0.body mode outer
++      inner_limit trace1 inner1)
++    (trace, inner)
++
++/-- [outer_loop_control::nested_control_trace]: loop body 0:
++    Source: 'tests/src/outer-loop-control.rs', lines 1:0-32:5 -/
++@[rust_loop_body]
++def nested_control_trace_loop0.body
++  (mode : Std.U8) (outer : Std.U32) (trace : Std.U64) :
++  Result (ControlFlow (Std.U32 × Std.U64) (Std.U32 × Std.U64))
++  := do
++  if outer < 3#u32
++  then
++    let outer1 ← outer + 1#u32
++    let i ← trace * 10#u64
++    let i1 ← lift (UScalar.cast .U64 outer1)
++    let trace1 ← i + i1
++    let inner_limit ← if mode = 0#u8
++                        then ok 1#u32
++                        else ok 2#u32
++    let (trace2, i2) ←
++      nested_control_trace_loop0_loop0 mode outer1 trace1 0#u32 inner_limit
++    match i2 with
++    | 1#uscalar => ok (cont (outer1, trace2))
++    | 2#uscalar => ok (done (outer1, trace2))
++    | _ =>
++      let i3 ← trace2 * 10#u64
++      let trace3 ← i3 + 9#u64
++      ok (cont (outer1, trace3))
++  else ok (done (outer, trace))
++
++/-- [outer_loop_control::nested_control_trace]: loop 0:
++    Source: 'tests/src/outer-loop-control.rs', lines 1:0-32:5 -/
++@[rust_loop]
++def nested_control_trace_loop0
++  (mode : Std.U8) (outer : Std.U32) (trace : Std.U64) :
++  Result (Std.U32 × Std.U64)
++  := do
++  loop
++    (fun (outer1, trace1) => nested_control_trace_loop0.body mode outer1
++      trace1)
++    (outer, trace)
++
++/-- [outer_loop_control::nested_control_trace]:
++    Source: 'tests/src/outer-loop-control.rs', lines 3:0-35:1 -/
++@[reducible]
++def nested_control_trace (mode : Std.U8) : Result (Std.U32 × Std.U64) := do
++  nested_control_trace_loop0 mode 0#u32 0#u64
++
++/-- [outer_loop_control::triple_nested_control]: loop body 0:
++    Source: 'tests/src/outer-loop-control.rs', lines 1:0-54:5 -/
++@[rust_loop_body]
++def triple_nested_control_loop.body
++  (stop_on_second : Bool) (outer : Std.U32) (trace : Std.U64) :
++  Result (ControlFlow (Bool × Std.U32 × Std.U64) (Std.U32 × Std.U64))
++  := do
++  if outer < 3#u32
++  then
++    let outer1 ← outer + 1#u32
++    let i ← trace * 10#u64
++    let i1 ← lift (UScalar.cast .U64 outer1)
++    let trace1 ← i + i1
++    if stop_on_second
++    then
++      if outer1 = 2#u32
++      then
++        let i2 ← trace1 * 10#u64
++        let trace2 ← i2 + 6#u64
++        ok (done (outer1, trace2))
++      else
++        let i2 ← trace1 * 10#u64
++        let trace2 ← i2 + 7#u64
++        ok (cont (true, outer1, trace2))
++    else
++      let i2 ← trace1 * 10#u64
++      let trace2 ← i2 + 7#u64
++      ok (cont (false, outer1, trace2))
++  else ok (done (outer, trace))
++
++/-- [outer_loop_control::triple_nested_control]: loop 0:
++    Source: 'tests/src/outer-loop-control.rs', lines 1:0-54:5 -/
++@[rust_loop]
++def triple_nested_control_loop
++  (stop_on_second : Bool) (outer : Std.U32) (trace : Std.U64) :
++  Result (Std.U32 × Std.U64)
++  := do
++  loop
++    (fun (stop_on_second1, outer1, trace1) => triple_nested_control_loop.body
++      stop_on_second1 outer1 trace1)
++    (stop_on_second, outer, trace)
++
++/-- [outer_loop_control::triple_nested_control]:
++    Source: 'tests/src/outer-loop-control.rs', lines 37:0-57:1 -/
++@[reducible]
++def triple_nested_control
++  (stop_on_second : Bool) : Result (Std.U32 × Std.U64) := do
++  triple_nested_control_loop stop_on_second 0#u32 0#u64
++
++end outer_loop_control
+diff --git a/tests/lean/OuterLoopControlTests.lean b/tests/lean/OuterLoopControlTests.lean
+new file mode 100644
+index 00000000..fb0cc6de
+--- /dev/null
++++ b/tests/lean/OuterLoopControlTests.lean
+@@ -0,0 +1,33 @@
++import OuterLoopControl
++
++open Aeneas Aeneas.Std Result ControlFlow Error
++
++example :
++    outer_loop_control.nested_control_trace 0#u8 =
++      ok (3#u32, 119219319#u64) := by
++  native_decide
++
++example :
++    outer_loop_control.nested_control_trace 1#u8 =
++      ok (3#u32, 118921893189#u64) := by
++  native_decide
++
++example :
++    outer_loop_control.nested_control_trace 2#u8 =
++      ok (3#u32, 1172173129#u64) := by
++  native_decide
++
++example :
++    outer_loop_control.nested_control_trace 3#u8 =
++      ok (2#u32, 1129216#u64) := by
++  native_decide
++
++example :
++    outer_loop_control.triple_nested_control false =
++      ok (3#u32, 172737#u64) := by
++  native_decide
++
++example :
++    outer_loop_control.triple_nested_control true =
++      ok (2#u32, 1726#u64) := by
++  native_decide
+diff --git a/tests/lean/lakefile.lean b/tests/lean/lakefile.lean
+index 23545823..8e564ca1 100644
+--- a/tests/lean/lakefile.lean
++++ b/tests/lean/lakefile.lean
+@@ -85,6 +85,8 @@ package «tests» {}
+ @[default_target] lean_lib OpaqueMutRegion
+ @[default_target] lean_lib Options
+ @[default_target] lean_lib Order
++@[default_target] lean_lib OuterLoopControl
++@[default_target] lean_lib OuterLoopControlTests
+ @[default_target] lean_lib OverflowingOps
+ @[default_target] lean_lib Paper
+ @[default_target] lean_lib PoloniusList
+diff --git a/tests/src/outer-loop-control.rs b/tests/src/outer-loop-control.rs
+new file mode 100644
+index 00000000..4e842626
+--- /dev/null
++++ b/tests/src/outer-loop-control.rs
+@@ -0,0 +1,72 @@
++//@ [!lean] skip
++
++fn nested_control_trace(mode: u8) -> (u32, u64) {
++    let mut outer = 0u32;
++    let mut trace = 0u64;
++
++    'outer: while outer < 3 {
++        outer += 1;
++        trace = trace * 10 + outer as u64;
++        let mut inner = 0u32;
++        let inner_limit = if mode == 0 { 1 } else { 2 };
++
++        while inner < inner_limit {
++            inner += 1;
++            trace = trace * 10 + inner as u64;
++
++            if mode == 1 && inner == 1 {
++                trace = trace * 10 + 8;
++                break;
++            }
++            if mode == 2 && outer < 3 && inner == 1 {
++                trace = trace * 10 + 7;
++                continue 'outer;
++            }
++            if mode == 3 && outer == 2 && inner == 1 {
++                trace = trace * 10 + 6;
++                break 'outer;
++            }
++        }
++
++        trace = trace * 10 + 9;
++    }
++
++    (outer, trace)
++}
++
++fn triple_nested_control(stop_on_second: bool) -> (u32, u64) {
++    let mut outer = 0u32;
++    let mut trace = 0u64;
++
++    'outer: while outer < 3 {
++        outer += 1;
++        loop {
++            loop {
++                trace = trace * 10 + outer as u64;
++                if stop_on_second && outer == 2 {
++                    trace = trace * 10 + 6;
++                    break 'outer;
++                }
++                trace = trace * 10 + 7;
++                continue 'outer;
++            }
++        }
++    }
++
++    (outer, trace)
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn preserves_nested_control_and_evaluation_order() {
++        assert_eq!(nested_control_trace(0), (3, 119_219_319));
++        assert_eq!(nested_control_trace(1), (3, 118_921_893_189));
++        assert_eq!(nested_control_trace(2), (3, 1_172_173_129));
++        assert_eq!(nested_control_trace(3), (2, 1_129_216));
++        assert_eq!(triple_nested_control(false), (3, 172_737));
++        assert_eq!(triple_nested_control(true), (2, 1_726));
++    }
++}

@@ -1,0 +1,52 @@
+{
+  "recorded_at": "2026-08-15",
+  "aspis_deployed_source_commit": "06788d44d30ea8cbd391899dddaf6f0acc6e4a3f",
+  "aeneas": {
+    "base_commit": "b59d5188c082f704a418c7cb4e52ad69328002d1",
+    "patched_commits": [
+      "b4e0c7693e46b9a3fb07245dee1c48db926498c7",
+      "156a8d232e166316260062548f275d4bc024cbf3",
+      "7c8dc061ba11624252976a9dddcfcba84da6cfd6",
+      "d5cb4d0508d5536903fd1f5759792cde429a80fb",
+      "b49f69d8eb72901438f7d7c9e7ac8f9e5135acec",
+      "35b05b92fa1c7a989bbae2982e2ea5f68c5e2bbb"
+    ],
+    "base_tree": "5a843e70672e4139232b2fdcb52a0c1fbd4b1619",
+    "patched_tree": "743286e4d49cbd53a7ae9dae393a166a64886728"
+  },
+  "toolchain": {
+    "charon_commit": "cb50ff16b9f1066b8a97dc06da704de2da2fa41c",
+    "charon_version": "0.1.223",
+    "rust_toolchain": "nightly-2026-06-01"
+  },
+  "artifacts": {
+    "full_private_opening_llbc": {
+      "bytes": 4395575,
+      "sha256": "ca1982d62992e50434f96c7e5d74a3faa3396034661de27b00ec13d12199d575",
+      "status": "blocked by locally quantified function-pointer lifetimes"
+    },
+    "full_row_preparation_llbc": {
+      "bytes": 1551049,
+      "sha256": "0132c570545b949d885384214784c7a3d08ff58878d90c765511993cb17a38d0",
+      "status": "blocked by nested mutable-borrow join"
+    },
+    "focused_selected_candidate_llbc": {
+      "bytes": 473679,
+      "sha256": "53cddb3f8c70cd264dac85f56692b0f37811d2dd39e52e2e020a8ce94afc6388",
+      "status": "translation and Aeneas checks pass"
+    },
+    "focused_selected_candidate_lean": {
+      "bytes": 18922,
+      "lines": 286,
+      "sha256": "e7aa47feaa189c67a8853212ac40596fc5da54f2736c9b1a1fcd1fca1de772bc",
+      "status": "generated Lean compiles"
+    }
+  },
+  "source_identity": {
+    "selected_candidate_function_lines": "v5_cu_probe.rs:977-998 at deployed commit",
+    "selected_candidate_function_sha256": "53fcefed8f97715aca4bef052027d0d40ca73f17827b8150a28290bdb5eb863c",
+    "parsed_probe_data_lines": "v5_cu_probe.rs:356-376 at deployed commit",
+    "parsed_probe_data_sha256": "ffd197f1a34dfccc311768ecf860a6518f5d73f91fef61fc61d3feace3d27d7d",
+    "note": "The focused harness preserves these blocks exactly but has extraction-only changes elsewhere; it is not an unchanged full-source extraction."
+  }
+}

@@ -1,0 +1,6 @@
+b779ae7746a3585d06a251c010e89e0addd0ff569da1e89330ae61c3cba7a044  aeneas-patches/0001-Fix-repeated-loan-projection-traversal.patch
+57d85ea6d337219f9190f66dae2796f4df44b9ada6aa3590b8c3d381b1922ed0  aeneas-patches/0002-Handle-metadata-only-slice-pattern-pointers.patch
+76408f63ef943a14ee040411f97d7fc23e02a3d7b4f7f3a4ff72e4859001c2f3  aeneas-patches/0003-Lower-returns-across-nested-loops.patch
+30081f9d7bab03cf23a68037f329f796dbd8fad6f0054c550765db106f8a489f  aeneas-patches/0004-feat-lower-labelled-loop-control.patch
+c779e82912808b047768fe5aece4feb5836cb9e71ab3230aefada2a7d1ae5d43  aeneas-patches/0005-Fix-outer-control-regression-checks.patch
+7a8d0873b2bafed7b7162206cc6ccd73168f920bd32f475beed36a6971659621  aeneas-patches/0006-Infer-closure-field-lifetime-constraints.patch
