@@ -1,4 +1,6 @@
 import RuntimeSchedule
+import Mathlib.Data.List.Destutter
+import Mathlib.Data.Finset.Sort
 
 open Aeneas Aeneas.Std Result ControlFlow Error
 open aspis_core
@@ -45,6 +47,228 @@ theorem u32_wrapping_shr_val_of_lt (value shift : Std.U32)
 @[simp] theorem u32_wrapping_shr_six_val (value : Std.U32) :
     (Std.U32.wrapping_shr value 6#u32).val = value.val / 64 := by
   simpa using u32_wrapping_shr_val_of_lt value 6#u32 (by norm_num)
+
+/-! ## The scan is ordinary sorted-list deduplication -/
+
+def appendDistinct {alpha : Type*} [DecidableEq alpha]
+    (values : List alpha) (value : alpha) : List alpha :=
+  match values.getLast? with
+  | none => [value]
+  | some last => if last ≠ value then values ++ [value] else values
+
+private theorem appendDistinct_cons_cons {alpha : Type*} [DecidableEq alpha]
+    (first second : alpha) (rest : List alpha) (value : alpha) :
+    appendDistinct (first :: second :: rest) value =
+      first :: appendDistinct (second :: rest) value := by
+  unfold appendDistinct
+  simp only [List.getLast?_cons, Option.getD_some]
+  split <;> simp_all
+
+private theorem destutter'_append_singleton
+    {alpha : Type*} [DecidableEq alpha]
+    (first : alpha) (rest : List alpha) (value : alpha) :
+    List.destutter' (· ≠ ·) first (rest ++ [value]) =
+      appendDistinct (List.destutter' (· ≠ ·) first rest) value := by
+  induction rest generalizing first with
+  | nil =>
+      simp [List.destutter', appendDistinct]
+  | cons head tail ih =>
+      rw [List.cons_append]
+      simp only [List.destutter']
+      by_cases h : first ≠ head
+      · rw [if_pos h, ih]
+        have hne : List.destutter' (· ≠ ·) head tail ≠ [] :=
+          List.destutter'_ne_nil tail (· ≠ ·) (a := head)
+        cases hd : List.destutter' (· ≠ ·) head tail with
+        | nil => exact False.elim (hne hd)
+        | cons next more =>
+            rw [if_pos h]
+            exact (appendDistinct_cons_cons first next more value).symm
+      · rw [if_neg h, ih]
+        simp [h]
+
+theorem destutter_append_singleton
+    {alpha : Type*} [DecidableEq alpha]
+    (values : List alpha) (value : alpha) :
+    (values ++ [value]).destutter (· ≠ ·) =
+      appendDistinct (values.destutter (· ≠ ·)) value := by
+  cases values with
+  | nil => simp [appendDistinct]
+  | cons first rest =>
+      change List.destutter' (· ≠ ·) first (rest ++ [value]) = _
+      exact destutter'_append_singleton first rest value
+
+theorem foldl_appendDistinct_eq_destutter
+    {alpha : Type*} [DecidableEq alpha]
+    (before remaining : List alpha) :
+    remaining.foldl appendDistinct (before.destutter (· ≠ ·)) =
+      (before ++ remaining).destutter (· ≠ ·) := by
+  induction remaining generalizing before with
+  | nil => simp
+  | cons head tail ih =>
+      simp only [List.foldl_cons]
+      rw [← destutter_append_singleton before head]
+      simpa [List.append_assoc] using ih (before ++ [head])
+
+theorem foldl_appendDistinct_eq_dedup_of_pairwise
+    {alpha : Type*} [DecidableEq alpha]
+    {relation : alpha → alpha → Prop} [DecidableRel relation]
+    [Std.Antisymm relation]
+    (values : List alpha) (hsorted : values.Pairwise relation) :
+    values.foldl appendDistinct [] = values.dedup := by
+  rw [show ([] : List alpha) = [].destutter (· ≠ ·) by simp,
+    foldl_appendDistinct_eq_destutter]
+  simpa using hsorted.destutter_eq_dedup
+
+theorem appendIfDifferent_eq_appendDistinct
+    (values : List Std.U32) (value : Std.U32) :
+    appendIfDifferent values value = appendDistinct values value := by
+  cases values with
+  | nil => simp [appendIfDifferent, appendDistinct]
+  | cons head tail =>
+      unfold appendIfDifferent appendDistinct
+      simp only [List.length_cons, Nat.add_eq_zero_iff, one_ne_zero, and_false,
+        ↓reduceIte, List.getLast?_eq_some_getLast (l := head :: tail) (by simp)]
+      rw [List.getLast_eq_getElem]
+      simp only [Nat.add_sub_cancel]
+      by_cases heq : (head :: tail)[tail.length]! = value <;> simp
+
+theorem shiftedUnique_eq_destutter
+    (values : List Std.U32) (shift : Std.U32) :
+    shiftedUnique values shift =
+      (values.map (fun value => Std.U32.wrapping_shr value shift)).destutter
+        (· ≠ ·) := by
+  unfold shiftedUnique
+  rw [← List.foldl_map]
+  have happend :
+      (appendIfDifferent : List Std.U32 → Std.U32 → List Std.U32) =
+        appendDistinct := by
+    funext current value
+    exact appendIfDifferent_eq_appendDistinct current value
+  rw [happend]
+  simpa using
+    (foldl_appendDistinct_eq_destutter ([] : List Std.U32)
+      (values.map (fun value => Std.U32.wrapping_shr value shift)))
+
+/-- When the shifted input is nondecreasing, the exact extracted scan is the
+usual duplicate-free sorted list. -/
+theorem shiftedUnique_eq_dedup_of_sorted_shifted
+    (values : List Std.U32) (shift : Std.U32)
+    (hsorted :
+      (values.map (fun value => Std.U32.wrapping_shr value shift)).Pairwise
+        (· ≤ ·)) :
+    shiftedUnique values shift =
+      (values.map (fun value => Std.U32.wrapping_shr value shift)).dedup := by
+  rw [shiftedUnique_eq_destutter]
+  exact hsorted.destutter_eq_dedup
+
+theorem u32_wrapping_shr_mono
+    (shift : Std.U32) (hshift : shift.val < 32)
+    {left right : Std.U32} (hle : left ≤ right) :
+    Std.U32.wrapping_shr left shift ≤
+      Std.U32.wrapping_shr right shift := by
+  change (Std.U32.wrapping_shr left shift).val ≤
+    (Std.U32.wrapping_shr right shift).val
+  rw [u32_wrapping_shr_val_of_lt left shift hshift,
+    u32_wrapping_shr_val_of_lt right shift hshift]
+  exact Nat.div_le_div_right hle
+
+theorem shifted_values_pairwise
+    (values : List Std.U32) (shift : Std.U32) (hshift : shift.val < 32)
+    (hsorted : values.Pairwise (· ≤ ·)) :
+    (values.map (fun value => Std.U32.wrapping_shr value shift)).Pairwise
+      (· ≤ ·) := by
+  exact hsorted.map _ (fun _ _ hle => u32_wrapping_shr_mono shift hshift hle)
+
+/-- For sorted input and an in-range shift, the exact extracted scan is the
+unique sorted list of shifted values.  This is the same list representation
+used by the maintained finite-set model. -/
+theorem shiftedUnique_eq_sorted_toFinset
+    (values : List Std.U32) (shift : Std.U32) (hshift : shift.val < 32)
+    (hsorted : values.Pairwise (· ≤ ·)) :
+    shiftedUnique values shift =
+      (values.map (fun value => Std.U32.wrapping_shr value shift)).toFinset.sort
+        (· ≤ ·) := by
+  let shiftedValues :=
+    values.map (fun value => Std.U32.wrapping_shr value shift)
+  have hpairwise : shiftedValues.Pairwise (· ≤ ·) :=
+    shifted_values_pairwise values shift hshift hsorted
+  have hdedupPairwise : shiftedValues.dedup.Pairwise (· ≤ ·) :=
+    List.Pairwise.sublist (List.dedup_sublist shiftedValues) hpairwise
+  have hsort : shiftedValues.dedup.toFinset.sort (· ≤ ·) =
+      shiftedValues.dedup :=
+    (List.toFinset_sort (· ≤ ·) (List.nodup_dedup shiftedValues)).2
+      hdedupPairwise
+  have hfinset : shiftedValues.dedup.toFinset = shiftedValues.toFinset := by
+    ext value
+    simp
+  rw [shiftedUnique_eq_dedup_of_sorted_shifted values shift hpairwise]
+  calc
+    shiftedValues.dedup = shiftedValues.dedup.toFinset.sort (· ≤ ·) :=
+      hsort.symm
+    _ = shiftedValues.toFinset.sort (· ≤ ·) := by rw [hfinset]
+
+theorem shiftedUnique_nats_eq_sorted_image
+    (values : List Std.U32) (shift : Std.U32) (hshift : shift.val < 32)
+    (hsorted : values.Pairwise (· ≤ ·)) :
+    (shiftedUnique values shift).map (fun value => value.val) =
+      ((values.map (fun value => Std.U32.wrapping_shr value shift)).toFinset.image
+        (fun value => value.val)).sort (· ≤ ·) := by
+  have hexact := shiftedUnique_eq_sorted_toFinset values shift hshift hsorted
+  let shiftedSet :=
+    (values.map (fun value => Std.U32.wrapping_shr value shift)).toFinset
+  have hvalInjective : Function.Injective (fun value : Std.U32 => value.val) := by
+    intro left right heq
+    exact UScalar.eq_of_val_eq heq
+  have houtNodup : (shiftedUnique values shift).Nodup := by
+    rw [hexact]
+    exact Finset.sort_nodup shiftedSet (· ≤ ·)
+  have hnatNodup :
+      ((shiftedUnique values shift).map (fun value => value.val)).Nodup :=
+    houtNodup.map hvalInjective
+  have houtPairwise : (shiftedUnique values shift).Pairwise (· ≤ ·) := by
+    rw [hexact]
+    exact Finset.pairwise_sort shiftedSet (· ≤ ·)
+  have hnatPairwise :
+      ((shiftedUnique values shift).map (fun value => value.val)).Pairwise
+        (· ≤ ·) := by
+    exact houtPairwise.map _ (fun _ _ hle => hle)
+  have hnatSort :=
+    (List.toFinset_sort (· ≤ ·) hnatNodup).2 hnatPairwise
+  have hnatSet :
+      ((shiftedUnique values shift).map (fun value => value.val)).toFinset =
+        shiftedSet.image (fun value => value.val) := by
+    rw [hexact]
+    ext value
+    simp [shiftedSet]
+  calc
+    (shiftedUnique values shift).map (fun value => value.val) =
+        ((shiftedUnique values shift).map
+          (fun value => value.val)).toFinset.sort (· ≤ ·) :=
+      hnatSort.symm
+    _ = (shiftedSet.image (fun value => value.val)).sort (· ≤ ·) := by
+      rw [hnatSet]
+
+/-- Nat-level form used by the maintained model: take the input integer set,
+divide every member by the released power of two, remove duplicates, and sort
+the result. -/
+theorem shiftedUnique_nats_eq_sorted_division_image
+    (values : List Std.U32) (shift : Std.U32) (hshift : shift.val < 32)
+    (hsorted : values.Pairwise (· ≤ ·)) :
+    (shiftedUnique values shift).map (fun value => value.val) =
+      ((values.map (fun value => value.val)).toFinset.image
+        (fun value => value / 2 ^ shift.val)).sort (· ≤ ·) := by
+  rw [shiftedUnique_nats_eq_sorted_image values shift hshift hsorted]
+  congr 1
+  ext output
+  simp only [Finset.mem_image, List.mem_toFinset, List.mem_map]
+  constructor
+  · rintro ⟨shifted, ⟨input, hinput, rfl⟩, rfl⟩
+    refine ⟨input.val, ⟨input, hinput, rfl⟩, ?_⟩
+    exact (u32_wrapping_shr_val_of_lt input shift hshift).symm
+  · rintro ⟨inputNat, ⟨input, hinput, rfl⟩, rfl⟩
+    refine ⟨Std.U32.wrapping_shr input shift, ⟨input, hinput, rfl⟩, ?_⟩
+    exact u32_wrapping_shr_val_of_lt input shift hshift
 
 theorem appendIfDifferent_length_le_succ
     (values : List Std.U32) (value : Std.U32) :
@@ -292,6 +516,7 @@ theorem sorted_unique_shifted_exact
   · simp [alloc.vec.Vec.with_capacity, shiftedUnique]
 
 #print axioms u32_wrapping_shr_val_of_lt
+#print axioms shiftedUnique_nats_eq_sorted_division_image
 #print axioms sorted_unique_shifted_exact
 
 end RuntimeIndexProof
