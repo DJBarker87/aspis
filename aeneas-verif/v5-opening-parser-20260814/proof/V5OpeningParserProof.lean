@@ -789,6 +789,193 @@ theorem exactRawParserOutput_to_openingOfTrace_of_wirePrefix
     expectedCount valueWidth opening remainder hraw hcount hwidth suffix hwire
     hfrontierLength
 
+/-- A successful extracted parser call removes exactly one authenticated
+section from the front of its input.  In particular, the returned slice is
+the supplied suffix, not merely a slice with the right length. -/
+theorem exactRawParserOutput_remainder_is_wire_suffix
+    {sha256 tree root queries}
+    (trace : ExactSectionTrace sha256 tree root queries)
+    (proofBytes : Slice Std.U8) (expectedCount valueWidth : Std.Usize)
+    (opening : state_only_private_openings.StateOnlyPrivateOpening)
+    (remainder : Slice Std.U8)
+    (hraw : ExactRawParserOutput proofBytes expectedCount valueWidth
+      opening remainder)
+    (hcount : expectedCount.val = trace.records.length)
+    (hwidth : valueWidth.val = AspisV5MerkleAuthenticationBinding.valueWidth tree)
+    (suffix : List AspisV5ComponentCQM31Representation.Byte)
+    (hwire : proofBytes.val.map parserU8ToByte = trace.wire ++ suffix)
+    (hfrontierLength : opening.frontier.val.length =
+      (flattenDigests trace.frontier).length) :
+    remainder.val.map parserU8ToByte = suffix := by
+  have hopen := exactRawParserOutput_to_openingOfTrace_of_wirePrefix trace
+    proofBytes expectedCount valueWidth opening remainder hraw hcount hwidth
+    suffix hwire hfrontierLength
+  have hoffset : opening.offsets.end.val = trace.wire.length := by
+    calc
+      opening.offsets.end.val =
+          (generatedParserOpeningToReturned opening).offsets.endOffset := rfl
+      _ = (openingOfTrace trace).offsets.endOffset :=
+        congrArg (fun returned => returned.offsets.endOffset) hopen
+      _ = trace.wire.length := openingOfTrace_endOffset_eq_wire_length trace
+  rcases hraw with ⟨_frontierCount, _hopenCount, _hopenWidth, _hoffsetCount,
+    _hoffsetRecords, _hrecordsSlice, _hrecordsLength, _hoffsetFrontierCount,
+    _hoffsetFrontier, _hfrontierSlice, _hrawFrontierLength, _hoffsetEnd,
+    _hend, hremainder⟩
+  rw [hremainder, List.map_drop, hoffset, hwire]
+  simp
+
+/-- The inputs and outputs of one successful extracted parser call. -/
+structure ExtractedParserCall where
+  input : Slice Std.U8
+  expectedCount : Std.Usize
+  valueWidth : Std.Usize
+  opening : state_only_private_openings.StateOnlyPrivateOpening
+  remainder : Slice Std.U8
+
+/-- Everything needed to connect one extracted parser call to one
+authenticated section. -/
+structure ExactExtractedParserCall
+    {sha256 tree root queries}
+    (trace : ExactSectionTrace sha256 tree root queries)
+    (call : ExtractedParserCall) : Prop where
+  raw : ExactRawParserOutput call.input call.expectedCount call.valueWidth
+    call.opening call.remainder
+  count : call.expectedCount.val = trace.records.length
+  width : call.valueWidth.val =
+    AspisV5MerkleAuthenticationBinding.valueWidth tree
+  frontierLength : call.opening.frontier.val.length =
+    (flattenDigests trace.frontier).length
+
+/-- One successful extracted call returns both the exact modeled opening and
+the exact remaining suffix. -/
+theorem exactExtractedParserCall_of_wirePrefix
+    {sha256 tree root queries}
+    (trace : ExactSectionTrace sha256 tree root queries)
+    (call : ExtractedParserCall)
+    (suffix : List AspisV5ComponentCQM31Representation.Byte)
+    (hcall : ExactExtractedParserCall trace call)
+    (hwire : call.input.val.map parserU8ToByte = trace.wire ++ suffix) :
+    generatedParserOpeningToReturned call.opening = openingOfTrace trace ∧
+      call.remainder.val.map parserU8ToByte = suffix := by
+  constructor
+  · exact exactRawParserOutput_to_openingOfTrace_of_wirePrefix trace call.input
+      call.expectedCount call.valueWidth call.opening call.remainder hcall.raw
+      hcall.count hcall.width suffix hwire hcall.frontierLength
+  · exact exactRawParserOutput_remainder_is_wire_suffix trace call.input
+      call.expectedCount call.valueWidth call.opening call.remainder hcall.raw
+      hcall.count hcall.width suffix hwire hcall.frontierLength
+
+/-- Five extracted calls wired in the same order as the production V5 parser.
+Each call receives the remainder returned by the preceding call. -/
+structure FiveExtractedParserCalls
+    {sha256 roots queries} (run : ExactV5Run sha256 roots queries) where
+  c1 : ExtractedParserCall
+  c2 : ExtractedParserCall
+  line1 : ExtractedParserCall
+  line2 : ExtractedParserCall
+  line3 : ExtractedParserCall
+  c1Exact : ExactExtractedParserCall (run.sections .c1) c1
+  c2Exact : ExactExtractedParserCall (run.sections .c2) c2
+  line1Exact : ExactExtractedParserCall (run.sections .line1) line1
+  line2Exact : ExactExtractedParserCall (run.sections .line2) line2
+  line3Exact : ExactExtractedParserCall (run.sections .line3) line3
+  c2FollowsC1 : c2.input = c1.remainder
+  line1FollowsC2 : line1.input = c2.remainder
+  line2FollowsLine1 : line2.input = line1.remainder
+  line3FollowsLine2 : line3.input = line2.remainder
+
+/-- The five-call composition theorem.  Starting from the exact V5 proof
+bytes plus any later suffix, the extracted calls return the five modeled
+openings in order and leave precisely that suffix after the fifth call. -/
+theorem fiveExtractedParserCalls_exact
+    {sha256 roots queries} (run : ExactV5Run sha256 roots queries)
+    (calls : FiveExtractedParserCalls run)
+    (suffix : List AspisV5ComponentCQM31Representation.Byte)
+    (hinput : calls.c1.input.val.map parserU8ToByte =
+      run.proofBytes ++ suffix) :
+    generatedParserOpeningToReturned calls.c1.opening =
+        openingOfTrace (run.sections .c1) ∧
+      generatedParserOpeningToReturned calls.c2.opening =
+        openingOfTrace (run.sections .c2) ∧
+      generatedParserOpeningToReturned calls.line1.opening =
+        openingOfTrace (run.sections .line1) ∧
+      generatedParserOpeningToReturned calls.line2.opening =
+        openingOfTrace (run.sections .line2) ∧
+      generatedParserOpeningToReturned calls.line3.opening =
+        openingOfTrace (run.sections .line3) ∧
+      calls.line3.remainder.val.map parserU8ToByte = suffix := by
+  have hc1Wire : calls.c1.input.val.map parserU8ToByte =
+      (run.sections .c1).wire ++
+        ((run.sections .c2).wire ++
+          ((run.sections .line1).wire ++
+            ((run.sections .line2).wire ++
+              ((run.sections .line3).wire ++ suffix)))) := by
+    calc
+      calls.c1.input.val.map parserU8ToByte =
+          run.proofBytes ++ suffix := hinput
+      _ = (run.sections .c1).wire ++
+          ((run.sections .c2).wire ++
+            ((run.sections .line1).wire ++
+              ((run.sections .line2).wire ++
+                ((run.sections .line3).wire ++ suffix)))) := by
+        rw [run.proof_eq]
+        simp only [List.append_assoc]
+  have hc1 := exactExtractedParserCall_of_wirePrefix (run.sections .c1)
+    calls.c1
+    ((run.sections .c2).wire ++
+      ((run.sections .line1).wire ++
+        ((run.sections .line2).wire ++
+          ((run.sections .line3).wire ++ suffix)))) calls.c1Exact hc1Wire
+  have hc2Wire : calls.c2.input.val.map parserU8ToByte =
+      (run.sections .c2).wire ++
+        ((run.sections .line1).wire ++
+          ((run.sections .line2).wire ++
+            ((run.sections .line3).wire ++ suffix))) := by
+    calc
+      calls.c2.input.val.map parserU8ToByte =
+          calls.c1.remainder.val.map parserU8ToByte := by
+        rw [calls.c2FollowsC1]
+      _ = _ := hc1.2
+  have hc2 := exactExtractedParserCall_of_wirePrefix (run.sections .c2)
+    calls.c2
+    ((run.sections .line1).wire ++
+      ((run.sections .line2).wire ++
+        ((run.sections .line3).wire ++ suffix))) calls.c2Exact hc2Wire
+  have hline1Wire : calls.line1.input.val.map parserU8ToByte =
+      (run.sections .line1).wire ++
+        ((run.sections .line2).wire ++
+          ((run.sections .line3).wire ++ suffix)) := by
+    calc
+      calls.line1.input.val.map parserU8ToByte =
+          calls.c2.remainder.val.map parserU8ToByte := by
+        rw [calls.line1FollowsC2]
+      _ = _ := hc2.2
+  have hline1 := exactExtractedParserCall_of_wirePrefix (run.sections .line1)
+    calls.line1
+    ((run.sections .line2).wire ++
+      ((run.sections .line3).wire ++ suffix)) calls.line1Exact hline1Wire
+  have hline2Wire : calls.line2.input.val.map parserU8ToByte =
+      (run.sections .line2).wire ++
+        ((run.sections .line3).wire ++ suffix) := by
+    calc
+      calls.line2.input.val.map parserU8ToByte =
+          calls.line1.remainder.val.map parserU8ToByte := by
+        rw [calls.line2FollowsLine1]
+      _ = _ := hline1.2
+  have hline2 := exactExtractedParserCall_of_wirePrefix (run.sections .line2)
+    calls.line2 ((run.sections .line3).wire ++ suffix) calls.line2Exact
+    hline2Wire
+  have hline3Wire : calls.line3.input.val.map parserU8ToByte =
+      (run.sections .line3).wire ++ suffix := by
+    calc
+      calls.line3.input.val.map parserU8ToByte =
+          calls.line2.remainder.val.map parserU8ToByte := by
+        rw [calls.line3FollowsLine2]
+      _ = _ := hline2.2
+  have hline3 := exactExtractedParserCall_of_wirePrefix (run.sections .line3)
+    calls.line3 suffix calls.line3Exact hline3Wire
+  exact ⟨hc1.1, hc2.1, hline1.1, hline2.1, hline3.1, hline3.2⟩
+
 #print axioms usize_checked_add_eq_some
 #print axioms usize_checked_mul_eq_some
 #print axioms cursor_take_success_exact
@@ -800,5 +987,8 @@ theorem exactRawParserOutput_to_openingOfTrace_of_wirePrefix
 #print axioms exactRawParserOutput_slicesMatchTrace_of_wirePrefix
 #print axioms exactRawParserOutput_to_openingOfTrace
 #print axioms exactRawParserOutput_to_openingOfTrace_of_wirePrefix
+#print axioms exactRawParserOutput_remainder_is_wire_suffix
+#print axioms exactExtractedParserCall_of_wirePrefix
+#print axioms fiveExtractedParserCalls_exact
 
 end AspisV5OpeningParserSourceProof
