@@ -165,7 +165,7 @@ theorem exists_traceRowBit_ne_of_ne
 /-- At its own Boolean point, the source-shaped selector is exactly a
 Kronecker delta on all 1,024 rows. -/
 theorem sourceRowSelector_at_booleanPoint
-    {F : Type*} [Field F] (row selected : TraceRow) :
+    {F : Type*} [CommRing F] (row selected : TraceRow) :
     sourceRowSelector (booleanPointOfRow (F := F) row) selected =
       if selected = row then 1 else 0 := by
   classical
@@ -187,6 +187,15 @@ theorem sourceRowSelector_at_booleanPoint
     · simp [rowCoordinateFactor, booleanPointOfRow, selectedBit, rowBit]
     · exact (differs (by simp [selectedBit, rowBit])).elim
 
+/-- The factored source formula is one on its selected Boolean row and zero on
+every other row.  This algebraic statement needs only a commutative ring. -/
+theorem factoredSourceRowSelector_at_booleanPoint
+    {F : Type*} [CommRing F] (row selected : TraceRow) :
+    factoredSourceRowSelector (booleanPointOfRow (F := F) row) selected =
+      if selected = row then 1 else 0 := by
+  rw [factoredSourceRowSelector_eq_sourceRowSelector]
+  exact sourceRowSelector_at_booleanPoint row selected
+
 /-- The exact selector obligation used by the tower-packed residual theorem. -/
 theorem sourceRowSelector_selectsExactRow {F : Type*} [Field F] :
     SelectsExactRow (sourceRowSelector (F := F))
@@ -199,9 +208,7 @@ theorem factoredSourceRowSelector_selectsExactRow
     {F : Type*} [Field F] :
     SelectsExactRow (factoredSourceRowSelector (F := F))
       (booleanPointOfRow (F := F)) := by
-  intro row selected
-  rw [factoredSourceRowSelector_eq_sourceRowSelector]
-  exact sourceRowSelector_at_booleanPoint row selected
+  exact factoredSourceRowSelector_at_booleanPoint
 
 /-- A source-extracted selector discharges the generic selector boundary as
 soon as its returned field value is identified with the exact factored source
@@ -217,6 +224,7 @@ theorem extractedSelector_selectsExactRow_of_eq
 
 #print axioms traceRow_ext
 #print axioms sourceRowSelector_at_booleanPoint
+#print axioms factoredSourceRowSelector_at_booleanPoint
 #print axioms sourceRowSelector_selectsExactRow
 #print axioms factoredSourceRowSelector_selectsExactRow
 #print axioms extractedSelector_selectsExactRow_of_eq

@@ -7,6 +7,8 @@ readonly harness="$bundle/harness"
 readonly checked_expand="$bundle/generated/V5RowExpand"
 readonly checked_row="$bundle/generated/V5RowAccess"
 readonly checked_row_external="$checked_row/FunsExternal.lean"
+readonly proof="$bundle/proof/V5RowSelectorImplementationProof.lean"
+readonly arithmetic="$root/aeneas-verif/component-b-weight-at/arithmetic-lean432"
 
 readonly charon_repo="${ASPIS_CHARON_REPO:?set ASPIS_CHARON_REPO to pinned Charon cb50ff16}"
 readonly aeneas_repo="${ASPIS_AENEAS_REPO:?set ASPIS_AENEAS_REPO to pinned Aeneas b59d5188}"
@@ -153,7 +155,30 @@ aspis_path=$(
   cd "$root/AspisFormal"
   NO_DNA=1 lake env printenv LEAN_PATH
 )
-export LEAN_PATH="$olean_root:$checked_src:$aeneas_lean_lib:$aspis_path"
+mkdir -p "$root/AspisFormal/.lake/build/lib/lean/AspisFormal"
+LEAN_PATH="$aspis_path" "${lean_cmd[@]}" -j 1 \
+  -o "$root/AspisFormal/.lake/build/lib/lean/AspisFormal/V5ProductionRowSelector.olean" \
+  "$root/AspisFormal/AspisFormal/V5ProductionRowSelector.lean" \
+  >> "$log" 2>&1
+
+compile_arithmetic() {
+  local module=$1
+  "${lean_cmd[@]}" -j 1 -o "$olean_root/$module.olean" \
+    "$arithmetic/$module.lean"
+}
+
+export LEAN_PATH="$olean_root:$checked_src:$arithmetic:$aeneas_lean_lib:$aspis_path"
+(
+  compile_arithmetic AspisCoreFieldReduceU64
+  compile_arithmetic M31ReduceU64Proof
+  compile_arithmetic AspisCoreFieldMulNamespaced
+  compile_arithmetic M31MulProof
+  compile_arithmetic CM31ExactModel
+  compile_arithmetic AspisCoreCm31Multiplicative
+  compile_arithmetic CM31MultiplicativeProof
+  compile_arithmetic QM31MulProof
+) >> "$log" 2>&1
+
 (
   cd "$checked_src"
   "${lean_cmd[@]}" -j 1 -o "$olean_root/V5RowExpand/Types.olean" \
@@ -168,17 +193,17 @@ export LEAN_PATH="$olean_root:$checked_src:$aeneas_lean_lib:$aspis_path"
     V5RowAccess/Funs.lean
 ) >> "$log" 2>&1
 
+"${lean_cmd[@]}" -j 1 \
+  -o "$olean_root/V5RowSelectorImplementationProof.olean" "$proof" \
+  >> "$log" 2>&1
+
 if rg -n '\b(sorry|admit|native_decide|axiom|unsafe|ofReduceBool)\b' \
     "$checked_expand" "$checked_row" \
+    "$proof" \
     "$root/AspisFormal/AspisFormal/V5ProductionRowSelector.lean"; then
   echo "forbidden proof token" >&2
   exit 1
 fi
-
-(
-  cd "$root/AspisFormal"
-  NO_DNA=1 lake env lean AspisFormal/V5ProductionRowSelector.lean
-) >> "$log" 2>&1
 
 if rg -n 'sorryAx|ofReduceBool' "$log"; then
   echo "forbidden axiom in row-selector proof" >&2
@@ -197,6 +222,21 @@ if ! awk '
 ' "$log"; then
   exit 1
 fi
+
+readonly expected_axiom_reports=(
+  "AspisV5RowSelectorImplementationProof.Expand.expand_exact_spec"
+  "AspisV5RowSelectorImplementationProof.Access.qm31_mul_corresponds"
+  "AspisV5RowSelectorImplementationProof.Composition.generated_row_corresponds"
+  "AspisV5RowSelectorImplementationProof.Composition.extracted_expand_and_row_agree"
+  "AspisV5RowSelectorImplementationProof.Composition.generated_row_selects_exactly_one"
+  "AspisV5RowSelectorImplementationProof.Composition.extracted_expand_and_row_select_exactly_one"
+)
+for theorem_name in "${expected_axiom_reports[@]}"; do
+  if ! grep -Fq "'$theorem_name' depends on axioms:" "$log"; then
+    echo "missing axiom report for $theorem_name" >&2
+    exit 1
+  fi
+done
 
 echo "Lean 4.32 V5 row-selector replay: PASS"
 echo "V5_ROW_SELECTOR_REPLAY_OUT=$out"

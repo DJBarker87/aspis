@@ -46,20 +46,39 @@ error, rejects any generated function that refers to the excluded method, and
 uses a deliberately empty `FunsExternal.lean`. No axiom is introduced for
 the excluded code.
 
-## Exact remaining boundary
+## What Lean proves
 
-The Boolean algebra and the source-shaped 64-by-16 factorization are proved.
-Charon/Aeneas also translates the exact production loops. What is not yet a
-single Lean theorem is the universal equality between the generated mutable
-array loop for `AtomicSelectors::expand` and the mathematical product formula
-in `V5ProductionRowSelector.lean`. The generic theorem names precisely that
-last step as equality of the extracted selector and
-`factoredSourceRowSelector`; once supplied,
-`extractedSelector_selectsExactRow_of_eq` closes the selector obligation.
+`proof/V5RowSelectorImplementationProof.lean` proves the implementation link,
+not just the Boolean algebra:
 
-This bundle therefore removes any ambiguity about row bit order or the
-`row >> 4` / `row & 15` routing. It does not claim that inspection of two
-separate definitions is itself a proved implementation correspondence.
+- the extracted reverse mutable loop computes the exact child weights;
+- the extracted outer loop computes the complete product table for every
+  valid field representation with the stated table size;
+- the production cases are exactly six coordinates to 64 entries and four
+  coordinates to 16 entries;
+- the extracted `row` method reads entry `row / 16` and entry `row % 16`;
+- the extracted QM31 multiplication returns the product of those entries;
+- the result equals `factoredSourceRowSelector`; and
+- at a Boolean point it is one for the selected row and zero for all other
+  rows.
+
+The final two theorem names are:
+
+```text
+extracted_expand_and_row_agree
+extracted_expand_and_row_select_exactly_one
+```
+
+The two methods are extracted into separate generated namespaces so their
+otherwise identical Rust structs become different Lean types. The proof uses
+an explicit field-for-field conversion between those generated types. No
+equality or arithmetic assumption is introduced by that conversion.
+
+The theorem takes as input the two slices passed to `expand` and requires them
+to contain valid field values matching coordinates 0 through 5 and 6 through
+9. It does not cover the unrelated `poseidon_block` and `path_block` fields,
+which the row method never reads. Charon, Aeneas, Lean, and the Rust compiler
+remain part of the toolchain that must be trusted.
 
 ## Replay
 
