@@ -62,6 +62,414 @@ theorem generated_digest_eq_true_implies_eq (left right : GeneratedDigest)
   exact allM_zip_no_generated_u8_difference left.val right.val
     (by simpa using sameLength) hrun
 
+/-- If the extracted binary-node helper hashes two children and the
+production digest comparison accepts its output as the requested root, the
+maintained SHA-256 Merkle model has exactly the same root equation. -/
+theorem fixed_node_hash_and_compare_exact
+    (sha256 : List AspisV5MerkleAuthenticationBinding.Byte → Digest32)
+    (hhash : FixedHashvEqualsSha256 sha256)
+    (left right top root : GeneratedDigest)
+    (hnode : merkle.fixed_node_hash left right = .ok top)
+    (hcompare : core.array.equality.PartialEqArray.eq
+      core.cmp.PartialEqU8 top root = .ok true) :
+    (sha256MerkleHashing sha256).binaryNode
+        (generatedArrayToDigest left) (generatedArrayToDigest right) =
+      generatedArrayToDigest root := by
+  have htop := fixed_node_hash_exact sha256 hhash left right top hnode
+  have heq := generated_digest_eq_true_implies_eq top root hcompare
+  subst root
+  exact htop.symm
+
+/-- The odd-depth binary-cap tail, factored out verbatim from the generated
+verifier so its two accepted shapes can be analysed separately from setup
+and radix-level recursion. -/
+noncomputable def generatedOddBinaryCap
+    (root : GeneratedDigest) (nodeBytes : Slice Std.U8)
+    (indices : Slice Std.U32) (finalLevel finalNext : GeneratedDigestVec)
+    (nodePos : Std.Usize) :
+    Result (Bool × GeneratedDigestVec × GeneratedDigestVec) := do
+  let levelSlice ← alloc.vec.Vec.as_slice Global finalLevel
+  let indexCount := Slice.len indices
+  if indexCount = 2#usize then
+    let levelCount := Slice.len levelSlice
+    if levelCount = 2#usize then
+      let firstIndex ← Slice.index_usize indices 0#usize
+      match firstIndex with
+      | 0#uscalar =>
+        let secondIndex ← Slice.index_usize indices 1#usize
+        match secondIndex with
+        | 1#uscalar =>
+          let left ← Slice.index_usize levelSlice 0#usize
+          let right ← Slice.index_usize levelSlice 1#usize
+          let top ← merkle.fixed_node_hash left right
+          let frontierLength := Slice.len nodeBytes
+          if nodePos = frontierLength then
+            let equal ← core.array.equality.PartialEqArray.eq
+              core.cmp.PartialEqU8 top root
+            ok (equal, finalLevel, finalNext)
+          else ok (false, finalLevel, finalNext)
+        | _ => ok (false, finalLevel, finalNext)
+      | _ => ok (false, finalLevel, finalNext)
+    else ok (false, finalLevel, finalNext)
+  else
+    let indexCount := Slice.len indices
+    if indexCount = 1#usize then
+      let levelCount := Slice.len levelSlice
+      if levelCount = 1#usize then
+        let index ← Slice.index_usize indices 0#usize
+        let value ← Slice.index_usize levelSlice 0#usize
+        let endPos ← lift (Std.Usize.wrapping_add nodePos 32#usize)
+        let frontierLength := Slice.len nodeBytes
+        if endPos > frontierLength then
+          ok (false, finalLevel, finalNext)
+        else
+          let endPos' ← lift (Std.Usize.wrapping_add nodePos 32#usize)
+          let siblingSlice ← core.slice.index.Slice.index
+            (core.slice.index.SliceIndexRangeUsizeSlice Std.U8)
+            nodeBytes { start := nodePos, «end» := endPos' }
+          let copied ← core.array.TryFromArrayCopySlice.try_from 32#usize
+            core.marker.CopyU8 siblingSlice
+          let sibling ← core.result.Result.unwrap
+            core.fmt.DebugTryFromSliceError copied
+          let nextPos ← lift (Std.Usize.wrapping_add nodePos 32#usize)
+          if index = 0#u32 then
+            let top ← merkle.fixed_node_hash value sibling
+            let frontierLength := Slice.len nodeBytes
+            if nextPos = frontierLength then
+              let equal ← core.array.equality.PartialEqArray.eq
+                core.cmp.PartialEqU8 top root
+              ok (equal, finalLevel, finalNext)
+            else ok (false, finalLevel, finalNext)
+          else if index = 1#u32 then
+            let top ← merkle.fixed_node_hash sibling value
+            let frontierLength := Slice.len nodeBytes
+            if nextPos = frontierLength then
+              let equal ← core.array.equality.PartialEqArray.eq
+                core.cmp.PartialEqU8 top root
+              ok (equal, finalLevel, finalNext)
+            else ok (false, finalLevel, finalNext)
+          else ok (false, finalLevel, finalNext)
+      else ok (false, finalLevel, finalNext)
+    else ok (false, finalLevel, finalNext)
+
+/-- A successful odd-depth verifier call reaches the recursive radix helper,
+then the exact factored binary-cap tail.  This theorem is only source
+inversion: it does not assume a mathematical Merkle model. -/
+theorem verify_radix4_binary_cap_odd_success_factors
+    (root : GeneratedDigest) (nodeBytes : Slice Std.U8)
+    (matched : merkle.MatchedRadix4BinaryCapSuffix)
+    (level next outputLevel outputNext : GeneratedDigestVec)
+    (hodd : (matched.binary_depth &&& 1#u32) ≠ 0#u32)
+    (hrun : merkle.verify_radix4_binary_cap_with_matched_topology
+      root nodeBytes matched level next = .ok (true, outputLevel, outputNext)) :
+    ∃ initialLevel initialNext finalLevel finalNext nodePos indices,
+      alloc.vec.CloneVec.clone
+          (core.clone.CloneArray 32#usize core.clone.CloneU8) level =
+        .ok initialLevel ∧
+      alloc.vec.CloneVec.clone
+          (core.clone.CloneArray 32#usize core.clone.CloneU8) next =
+        .ok initialNext ∧
+      merkle.fixed_hash_radix_levels matched.topology nodeBytes
+          matched.radix_level 0#usize initialLevel initialNext =
+        .ok (some (finalLevel, finalNext, nodePos)) ∧
+      merkle.Radix4BinaryCapTopology.impl.level_indices matched.topology
+          matched.topology.radix_levels = .ok (some indices) ∧
+      generatedOddBinaryCap root nodeBytes indices finalLevel finalNext
+          nodePos = .ok (true, outputLevel, outputNext) := by
+  unfold merkle.verify_radix4_binary_cap_with_matched_topology at hrun
+  generalize hempty : alloc.vec.Vec.is_empty Global level = emptyResult at hrun
+  cases emptyResult with
+  | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+  | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+  | ok isEmpty =>
+    simp only [Aeneas.Std.bind_tc_ok] at hrun
+    by_cases hisEmpty : isEmpty = true
+    · rw [hisEmpty] at hrun
+      simp at hrun
+    · have hisEmptyFalse : isEmpty = false := Bool.eq_false_of_not_eq_true hisEmpty
+      rw [hisEmptyFalse] at hrun
+      simp only [Bool.false_eq_true, if_false, lift,
+        Aeneas.Std.bind_tc_ok] at hrun
+      by_cases haligned : (Slice.len nodeBytes &&& 31#usize) = 0#usize
+      · have hnotMisaligned :
+            ((Slice.len nodeBytes &&& 31#usize) != 0#usize) = false := by
+          simp [haligned]
+        rw [hnotMisaligned] at hrun
+        simp only [Bool.false_eq_true, if_false] at hrun
+        by_cases hlength : alloc.vec.Vec.len level = matched.expected_len
+        · have hnotWrongLength :
+              (alloc.vec.Vec.len level != matched.expected_len) = false := by
+            simp [hlength]
+          rw [hnotWrongLength] at hrun
+          simp only [Bool.false_eq_true, if_false] at hrun
+          generalize hcloneLevel :
+            alloc.vec.CloneVec.clone
+                (core.clone.CloneArray 32#usize core.clone.CloneU8) level =
+              cloneLevelResult at hrun
+          cases cloneLevelResult with
+          | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+          | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+          | ok initialLevel =>
+            simp only [Aeneas.Std.bind_tc_ok] at hrun
+            generalize hcloneNext :
+              alloc.vec.CloneVec.clone
+                  (core.clone.CloneArray 32#usize core.clone.CloneU8) next =
+                cloneNextResult at hrun
+            cases cloneNextResult with
+            | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+            | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+            | ok initialNext =>
+              simp only [Aeneas.Std.bind_tc_ok] at hrun
+              generalize hlevels :
+                merkle.fixed_hash_radix_levels matched.topology nodeBytes
+                    matched.radix_level 0#usize initialLevel initialNext =
+                  levelsResult at hrun
+              cases levelsResult with
+              | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+              | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+              | ok levelsOption =>
+                simp only [Aeneas.Std.bind_tc_ok] at hrun
+                cases levelsOption with
+                | none => simp at hrun
+                | some levelsTuple =>
+                  rcases levelsTuple with ⟨finalLevel, finalNext, nodePos⟩
+                  generalize hindices :
+                    merkle.Radix4BinaryCapTopology.impl.level_indices
+                        matched.topology matched.topology.radix_levels =
+                      indicesResult at hrun
+                  cases indicesResult with
+                  | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                  | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                  | ok indicesOption =>
+                    simp only [Aeneas.Std.bind_tc_ok] at hrun
+                    cases indicesOption with
+                    | none => simp at hrun
+                    | some indices =>
+                      simp only [Aeneas.Std.bind_tc_ok, lift] at hrun
+                      have hoddBranch :
+                          ¬ (matched.binary_depth &&& 1#u32) = 0#u32 := hodd
+                      rw [if_neg hoddBranch] at hrun
+                      refine ⟨initialLevel, initialNext, finalLevel, finalNext,
+                        nodePos, indices, rfl, rfl, hlevels, rfl, ?_⟩
+                      change generatedOddBinaryCap root nodeBytes indices
+                        finalLevel finalNext nodePos =
+                          .ok (true, outputLevel, outputNext) at hrun
+                      exact hrun
+        · have hwrongLength :
+              (alloc.vec.Vec.len level != matched.expected_len) = true := by
+            simp [hlength]
+          rw [hwrongLength] at hrun
+          simp at hrun
+      · have hmisaligned :
+            ((Slice.len nodeBytes &&& 31#usize) != 0#usize) = true := by
+          simp [haligned]
+        rw [hmisaligned] at hrun
+        simp at hrun
+
+/-- Acceptance by the factored odd-depth tail implies an exact SHA-256
+binary-node equation for two concrete children.  The next adapter theorem
+identifies those children with the final active nodes or the consumed
+frontier sibling. -/
+theorem generated_odd_binary_cap_success_has_root_pair
+    (sha256 : List AspisV5MerkleAuthenticationBinding.Byte → Digest32)
+    (hhash : FixedHashvEqualsSha256 sha256)
+    (root : GeneratedDigest) (nodeBytes : Slice Std.U8)
+    (indices : Slice Std.U32) (finalLevel finalNext : GeneratedDigestVec)
+    (nodePos : Std.Usize) (outputLevel outputNext : GeneratedDigestVec)
+    (hrun : generatedOddBinaryCap root nodeBytes indices finalLevel finalNext
+      nodePos = .ok (true, outputLevel, outputNext)) :
+    ∃ left right : GeneratedDigest,
+      (sha256MerkleHashing sha256).binaryNode
+          (generatedArrayToDigest left) (generatedArrayToDigest right) =
+        generatedArrayToDigest root := by
+  unfold generatedOddBinaryCap at hrun
+  generalize hlevelSlice :
+    alloc.vec.Vec.as_slice Global finalLevel = levelSliceResult at hrun
+  cases levelSliceResult with
+  | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+  | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+  | ok levelSlice =>
+    simp only [Aeneas.Std.bind_tc_ok] at hrun
+    by_cases htwo : Slice.len indices = 2#usize
+    · rw [if_pos htwo] at hrun
+      by_cases hlevelTwo : Slice.len levelSlice = 2#usize
+      · rw [if_pos hlevelTwo] at hrun
+        generalize hfirst : Slice.index_usize indices 0#usize = firstResult at hrun
+        cases firstResult with
+        | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+        | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+        | ok firstIndex =>
+          simp only [Aeneas.Std.bind_tc_ok] at hrun
+          split at hrun
+          next hfirstZero =>
+            generalize hsecond :
+              Slice.index_usize indices 1#usize = secondResult at hrun
+            cases secondResult with
+            | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+            | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+            | ok secondIndex =>
+              simp only [Aeneas.Std.bind_tc_ok] at hrun
+              split at hrun
+              next hsecondOne =>
+                generalize hleft :
+                  Slice.index_usize levelSlice 0#usize = leftResult at hrun
+                cases leftResult with
+                | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                | ok left =>
+                  simp only [Aeneas.Std.bind_tc_ok] at hrun
+                  generalize hright :
+                    Slice.index_usize levelSlice 1#usize = rightResult at hrun
+                  cases rightResult with
+                  | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                  | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                  | ok right =>
+                    simp only [Aeneas.Std.bind_tc_ok] at hrun
+                    generalize hnode :
+                      merkle.fixed_node_hash left right = nodeResult at hrun
+                    cases nodeResult with
+                    | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                    | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                    | ok top =>
+                      simp only [Aeneas.Std.bind_tc_ok] at hrun
+                      by_cases hcursor : nodePos = Slice.len nodeBytes
+                      · rw [if_pos hcursor] at hrun
+                        generalize hcompare :
+                          core.array.equality.PartialEqArray.eq
+                              core.cmp.PartialEqU8 top root = compareResult at hrun
+                        cases compareResult with
+                        | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                        | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                        | ok equal =>
+                          simp at hrun
+                          have hequal : equal = true := hrun.1
+                          subst equal
+                          exact ⟨left, right,
+                            fixed_node_hash_and_compare_exact sha256 hhash
+                              left right top root hnode hcompare⟩
+                      · rw [if_neg hcursor] at hrun
+                        simp at hrun
+              next hsecondOther => simp at hrun
+          next hfirstOther => simp at hrun
+      · rw [if_neg hlevelTwo] at hrun
+        simp at hrun
+    · rw [if_neg htwo] at hrun
+      by_cases hone : Slice.len indices = 1#usize
+      · rw [if_pos hone] at hrun
+        by_cases hlevelOne : Slice.len levelSlice = 1#usize
+        · rw [if_pos hlevelOne] at hrun
+          generalize hindex :
+            Slice.index_usize indices 0#usize = indexResult at hrun
+          cases indexResult with
+          | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+          | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+          | ok index =>
+            simp only [Aeneas.Std.bind_tc_ok] at hrun
+            generalize hvalue :
+              Slice.index_usize levelSlice 0#usize = valueResult at hrun
+            cases valueResult with
+            | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+            | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+            | ok value =>
+              simp only [Aeneas.Std.bind_tc_ok, lift] at hrun
+              by_cases hpast :
+                  Std.Usize.wrapping_add nodePos 32#usize > Slice.len nodeBytes
+              · rw [if_pos hpast] at hrun
+                simp at hrun
+              · rw [if_neg hpast] at hrun
+                generalize hsiblingSlice :
+                  core.slice.index.Slice.index
+                      (core.slice.index.SliceIndexRangeUsizeSlice Std.U8)
+                      nodeBytes
+                      { start := nodePos,
+                        «end» := Std.Usize.wrapping_add nodePos 32#usize } =
+                    siblingSliceResult at hrun
+                cases siblingSliceResult with
+                | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                | ok siblingSlice =>
+                  simp only [Aeneas.Std.bind_tc_ok] at hrun
+                  generalize hcopy :
+                    core.array.TryFromArrayCopySlice.try_from 32#usize
+                        core.marker.CopyU8 siblingSlice = copyResult at hrun
+                  cases copyResult with
+                  | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                  | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                  | ok copied =>
+                    simp only [Aeneas.Std.bind_tc_ok] at hrun
+                    cases copied with
+                    | Err error =>
+                      simp [core.result.Result.unwrap, Bind.bind,
+                        Aeneas.Std.bind] at hrun
+                    | Ok sibling =>
+                      simp only [core.result.Result.unwrap,
+                        Aeneas.Std.bind_tc_ok, lift] at hrun
+                      by_cases hleftSide : index = 0#u32
+                      · rw [if_pos hleftSide] at hrun
+                        generalize hnode :
+                          merkle.fixed_node_hash value sibling = nodeResult at hrun
+                        cases nodeResult with
+                        | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                        | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                        | ok top =>
+                          simp only [Aeneas.Std.bind_tc_ok] at hrun
+                          by_cases hcursor :
+                              Std.Usize.wrapping_add nodePos 32#usize =
+                                Slice.len nodeBytes
+                          · rw [if_pos hcursor] at hrun
+                            generalize hcompare :
+                              core.array.equality.PartialEqArray.eq
+                                  core.cmp.PartialEqU8 top root =
+                                compareResult at hrun
+                            cases compareResult with
+                            | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                            | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                            | ok equal =>
+                              simp at hrun
+                              have hequal : equal = true := hrun.1
+                              subst equal
+                              exact ⟨value, sibling,
+                                fixed_node_hash_and_compare_exact sha256 hhash
+                                  value sibling top root hnode hcompare⟩
+                          · rw [if_neg hcursor] at hrun
+                            simp at hrun
+                      · rw [if_neg hleftSide] at hrun
+                        by_cases hrightSide : index = 1#u32
+                        · rw [if_pos hrightSide] at hrun
+                          generalize hnode :
+                            merkle.fixed_node_hash sibling value = nodeResult at hrun
+                          cases nodeResult with
+                          | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                          | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                          | ok top =>
+                            simp only [Aeneas.Std.bind_tc_ok] at hrun
+                            by_cases hcursor :
+                                Std.Usize.wrapping_add nodePos 32#usize =
+                                  Slice.len nodeBytes
+                            · rw [if_pos hcursor] at hrun
+                              generalize hcompare :
+                                core.array.equality.PartialEqArray.eq
+                                    core.cmp.PartialEqU8 top root =
+                                  compareResult at hrun
+                              cases compareResult with
+                              | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                              | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                              | ok equal =>
+                                simp at hrun
+                                have hequal : equal = true := hrun.1
+                                subst equal
+                                exact ⟨sibling, value,
+                                  fixed_node_hash_and_compare_exact sha256 hhash
+                                    sibling value top root hnode hcompare⟩
+                            · rw [if_neg hcursor] at hrun
+                              simp at hrun
+                        · rw [if_neg hrightSide] at hrun
+                          simp at hrun
+        · rw [if_neg hlevelOne] at hrun
+          simp at hrun
+      · rw [if_neg hone] at hrun
+        simp at hrun
+
 def radixInputByte (input : GeneratedRadixInput) (slot byte : Nat) : Std.U8 :=
   input.val[1 + slot * 32 + byte]!
 
