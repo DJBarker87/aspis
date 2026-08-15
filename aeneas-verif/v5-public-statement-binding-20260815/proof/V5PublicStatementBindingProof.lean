@@ -117,9 +117,98 @@ def RemainingPCSStatementBinding
     (decoded : RustStatement) (opened : OpenedColumns) : Prop :=
   OpenedColumnsMatchRustStatement decoded opened
 
+/-! ## Exact terminal claim-table layout
+
+The production terminal reads a point-major `4 × 19` table.  The first
+three points and lanes `0..15` are copied into the old semantic slots; lane 16
+is copied into old column 26.  Old columns `16..25` and 27 remain zero.  The
+mask is the fourth point's lane 17.  These definitions spell out that direct
+indexing without making a polynomial-commitment claim. -/
+
+def extractedClaimBody
+    (bytes : Slice Std.U8) (point lane : Std.Usize) :
+    Result (core.result.Result aspis_core.field.QM31
+      v5_atomic_terminal.V5AtomicTerminalError) := do
+  let i ← point * 19#usize
+  let value ← i + lane
+  let start ← value * 16#usize
+  let stop ← start + 16#usize
+  let slice ← core.slice.index.Slice.index
+    (core.slice.index.SliceIndexRangeUsizeSlice Std.U8)
+    bytes { start, «end» := stop }
+  let value ← aspis_core.field.QM31.from_le_bytes slice
+  core.option.Option.ok_or value
+    (v5_atomic_terminal.V5AtomicTerminalError.NonCanonicalClaim point lane)
+
+/-- The Aeneas translation of the production `claim` helper uses exactly
+`16 * (19 * point + lane)` as the start of the field encoding. -/
+theorem extracted_claim_uses_exact_point_major_offset
+    (bytes : Slice Std.U8) (point lane : Std.Usize) :
+    v5_atomic_terminal.claim bytes point lane =
+      extractedClaimBody bytes point lane := by
+  simp only [v5_atomic_terminal.claim, extractedClaimBody,
+    v5_atomic_terminal.V5_ATOMIC_TERMINAL_LANES]
+
+def pointMajorIndex (point lane : Nat) : Nat := point * 19 + lane
+
+def pointMajorByteStart (point lane : Nat) : Nat :=
+  16 * pointMajorIndex point lane
+
+def terminalLegacyAdapter {T : Type} [OfNat T 0]
+    (claims : Nat → Nat → T) (point column : Nat) : T :=
+  if column < 16 then claims point column
+  else if column = 26 then claims point 16
+  else 0
+
+theorem terminal_adapter_copies_each_semantic_lane
+    {T : Type} [OfNat T 0] (claims : Nat → Nat → T)
+    (point lane : Nat) (laneBound : lane < 16) :
+    terminalLegacyAdapter claims point lane = claims point lane := by
+  simp [terminalLegacyAdapter, laneBound]
+
+theorem terminal_adapter_copies_hcopy
+    {T : Type} [OfNat T 0] (claims : Nat → Nat → T)
+    (point : Nat) :
+    terminalLegacyAdapter claims point 26 = claims point 16 := by
+  simp [terminalLegacyAdapter]
+
+theorem terminal_adapter_zeros_removed_columns
+    {T : Type} [OfNat T 0] (claims : Nat → Nat → T)
+    (point column : Nat) (lower : 16 ≤ column) (notHcopy : column ≠ 26) :
+    terminalLegacyAdapter claims point column = 0 := by
+  simp [terminalLegacyAdapter, Nat.not_lt.mpr lower, notHcopy]
+
+theorem terminal_adapter_zeros_old_mask_and_g_slots
+    {T : Type} [OfNat T 0] (claims : Nat → Nat → T)
+    (point : Nat) :
+    (∀ column, 16 ≤ column → column < 26 →
+      terminalLegacyAdapter claims point column = 0) ∧
+      terminalLegacyAdapter claims point 27 = 0 := by
+  constructor
+  · intro column lower upper
+    exact terminal_adapter_zeros_removed_columns claims point column lower (by omega)
+  · exact terminal_adapter_zeros_removed_columns claims point 27 (by omega) (by omega)
+
+theorem terminal_mask_uses_fourth_point_lane_seventeen :
+    pointMajorIndex 3 17 = 74 ∧
+      pointMajorByteStart 3 17 = 1184 ∧
+      pointMajorByteStart 3 17 + 16 = 1200 := by
+  norm_num [pointMajorIndex, pointMajorByteStart]
+
+theorem complete_claim_table_ends_at_1216_bytes :
+    pointMajorByteStart 3 18 + 16 = 1216 := by
+  norm_num [pointMajorIndex, pointMajorByteStart]
+
 #print axioms decode_statement_success_unique
 #print axioms decode_statement_success_binds_unique_six_fields
 #print axioms decoded_context_equal_live_binds_all_six_fields
 #print axioms opened_columns_match_maintained_statement
+#print axioms extracted_claim_uses_exact_point_major_offset
+#print axioms terminal_adapter_copies_each_semantic_lane
+#print axioms terminal_adapter_copies_hcopy
+#print axioms terminal_adapter_zeros_removed_columns
+#print axioms terminal_adapter_zeros_old_mask_and_g_slots
+#print axioms terminal_mask_uses_fourth_point_lane_seventeen
+#print axioms complete_claim_table_ends_at_1216_bytes
 
 end AspisV5PublicStatementBinding

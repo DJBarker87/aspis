@@ -31,6 +31,12 @@ impl_def Slice.Insts.CoreCmpPartialEqSlice {T : Type} {U : Type}
     cmpPartialEqInst)
 }
 
+/-- [aspis_v5_terminal_extract::v5_atomic_terminal::V5_ATOMIC_TERMINAL_LANES]
+    Source: '/Users/dominic/ZK/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 28:0-28:47
+    Visibility: public -/
+@[global_simps, irreducible]
+def v5_atomic_terminal.V5_ATOMIC_TERMINAL_LANES : Std.Usize := 19#usize
+
 /-- [aspis_v5_terminal_extract::v5_atomic_terminal::V5_ATOMIC_TERMINAL_POINT_COORDINATES]
     Source: '/Users/dominic/ZK/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 31:0-31:59
     Visibility: public -/
@@ -460,5 +466,23 @@ def v5_atomic_terminal.decode_context_qm31
   let o ← aspis_core.field.QM31.from_le_bytes s
   core.option.Option.ok_or o
     (v5_atomic_terminal.V5AtomicTerminalError.NonCanonicalContextField field)
+
+/-- [aspis_v5_terminal_extract::v5_atomic_terminal::claim]:
+    Source: '/Users/dominic/ZK/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 247:0-252:1 -/
+def v5_atomic_terminal.claim
+  (bytes : Slice Std.U8) (point : Std.Usize) (lane : Std.Usize) :
+  Result (core.result.Result aspis_core.field.QM31
+    v5_atomic_terminal.V5AtomicTerminalError)
+  := do
+  let i ← point * v5_atomic_terminal.V5_ATOMIC_TERMINAL_LANES
+  let value ← i + lane
+  let start ← value * 16#usize
+  let i1 ← start + 16#usize
+  let s ←
+    core.slice.index.Slice.index (core.slice.index.SliceIndexRangeUsizeSlice
+      Std.U8) bytes { start, «end» := i1 }
+  let o ← aspis_core.field.QM31.from_le_bytes s
+  core.option.Option.ok_or o
+    (v5_atomic_terminal.V5AtomicTerminalError.NonCanonicalClaim point lane)
 
 end V5PublicStatementGenerated

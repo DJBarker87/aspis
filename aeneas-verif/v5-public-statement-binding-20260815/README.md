@@ -4,9 +4,9 @@ This bundle checks the narrow question that matters for the public spend:
 which pool anchor, nullifier, output commitment, output anchor, asset and fee
 does the terminal use?
 
-Charon extracted `decode_statement` from the unchanged production file
+Charon extracted `decode_statement` and the terminal claim reader from the unchanged production file
 `programs/aspis-verifier/src/v5_atomic_terminal.rs`. Aeneas translated that
-function to Lean. The proof then establishes, for every input rather than only
+code to Lean. The proof then establishes, for every input rather than only
 the released proof, that:
 
 1. one successfully decoded 216-byte statement cannot produce two different
@@ -15,7 +15,12 @@ the released proof, that:
 3. equality of the decoded context statement and the live statement makes all
    six terminal fields equal to the live fields; and
 4. once the polynomial-opening argument supplies those six terminal values,
-   they satisfy the existing Lean predicate `OpenedColumnsMatchStatement`.
+   they satisfy the existing Lean predicate `OpenedColumnsMatchStatement`;
+5. the claim reader uses exactly the point-major byte position
+   `16 * (19 * point + lane)`; and
+6. the terminal adapter copies semantic lanes 0 through 15 and lane 16 into
+   the old evaluator positions, leaves the removed positions zero, and reads
+   the mask from point 3, lane 17 (bytes 1184 through 1199).
 
 The source in `v5_cu_probe.rs` rejects unless
 `context_statement == live_statement`. That line and the call passing
@@ -25,10 +30,14 @@ whole `verify_v5_wire_prefix` function, so the implication from successful
 execution of that large function to the equality check remains a small,
 explicit Rust-control-flow step rather than a generated Lean theorem.
 
-The larger unresolved security step is not statement parsing. It is proving
-that a successful polynomial-commitment/FRI verification yields opened columns
-whose six values are exactly the values consumed by the terminal. The proof
-names that relation `RemainingPCSStatementBinding`.
+The larger unresolved security step is not statement parsing or byte indexing.
+It is proving that a successful polynomial-commitment/FRI verification yields
+the same opening table consumed by the terminal and that its vanishing public
+residuals reconstruct the six fields of `OpenedColumns`. The proof names the
+last statement-level relation `RemainingPCSStatementBinding`. Aeneas cannot
+translate the enclosing terminal loops because they return errors from inside
+the loops, so the loop-to-adapter control-flow fact also remains source-pinned
+rather than a generated Lean theorem.
 
 ## Extraction
 
@@ -45,6 +54,7 @@ Rust `#[path = "..."]` declaration and starts Charon at:
 
 ```text
 crate::v5_atomic_terminal::decode_statement
+crate::v5_atomic_terminal::claim
 ```
 
 The generated decoder keeps the statement codec calls external. Their
@@ -68,5 +78,5 @@ AENEAS_LEAN_LIB=/path/to/aeneas-lean432/lib/lean \
 
 The replay verifies the exact production source hashes, compiles the generated
 definitions and handwritten proof, rejects proof escapes, and checks that the
-four public theorems use only Lean/mathlib's standard `propext`,
+public theorems use only Lean/mathlib's standard `propext`,
 `Classical.choice`, and `Quot.sound` foundations.
