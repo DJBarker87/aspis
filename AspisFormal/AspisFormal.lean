@@ -129,6 +129,7 @@ import AspisFormal.V5GoodGateSparseShift
 import AspisFormal.V5RepairedRuntimeWireClassification
 import AspisFormal.V5SelectedGoodVerifierRelation
 import AspisFormal.V5TranscriptConnection
+import AspisFormal.V5QuerySamplerControl
 import AspisFormal.V5CryptographicAssumptions
 import AspisFormal.V5FriReleasedEncoderApplicability
 import AspisFormal.V5FriGlobalCausalStrategy
