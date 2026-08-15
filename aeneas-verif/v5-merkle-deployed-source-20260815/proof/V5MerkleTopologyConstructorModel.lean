@@ -117,6 +117,32 @@ theorem source_group_mask_lists_are_shared (queries : Finset V5Query) :
   intro level _
   exact parentMaskLevelFrom_shared queries level
 
+theorem levelPrefix_shared_length_eq_prefixOffset
+    (queries : Finset V5Query) (count : Nat) (hcount : count ≤ 9) :
+    (levelPrefix (sharedLevelIndices queries 0) count).length =
+      prefixOffset (sharedLevelLists queries) count := by
+  unfold levelPrefix prefixOffset sharedLevelLists
+  simp only [List.length_flatten, List.map_map]
+  rw [← List.map_take, List.take_range, Nat.min_eq_left hcount]
+  apply congrArg List.sum
+  apply List.map_congr_left
+  intro level _
+  simp only [Function.comp_apply]
+  rw [parentLevelFrom_shared]
+
+theorem maskPrefix_shared_length_eq_prefixOffset
+    (queries : Finset V5Query) (count : Nat) (hcount : count ≤ 8) :
+    (maskPrefix (sharedLevelIndices queries 0) count).length =
+      prefixOffset (sharedGroupMaskLists queries) count := by
+  unfold maskPrefix prefixOffset sharedGroupMaskLists
+  simp only [List.length_flatten, List.map_map]
+  rw [← List.map_take, List.take_range, Nat.min_eq_left hcount]
+  apply congrArg List.sum
+  apply List.map_congr_left
+  intro level _
+  simp only [Function.comp_apply]
+  rw [parentMaskLevelFrom_shared]
+
 #print axioms parentIndicesOf_shared
 #print axioms presentSlotsOf_shared
 #print axioms parentMasksOf_shared
@@ -124,5 +150,7 @@ theorem source_group_mask_lists_are_shared (queries : Finset V5Query) :
 #print axioms parentMaskLevelFrom_shared
 #print axioms source_level_lists_are_shared
 #print axioms source_group_mask_lists_are_shared
+#print axioms levelPrefix_shared_length_eq_prefixOffset
+#print axioms maskPrefix_shared_length_eq_prefixOffset
 
 end AspisV5MerkleTopologyConstructorModel
