@@ -20,7 +20,7 @@ readonly expected_aeneas_commit="b59d5188c082f704a418c7cb4e52ad69328002d1"
 readonly expected_fri_checks_blob="3b1f37f2504aa2b309cad82605c88cab11afcb85"
 readonly expected_field_blob="a28ff94de05265102ca819849805a7f73c675800"
 readonly expected_harness_manifest_blob="2b9472e979bbcc73f7306751de7b1675a5245e2b"
-readonly expected_harness_source_blob="075ccdfd7b840ec193f37d1d7037e96c0ce7c3f3"
+readonly expected_harness_source_blob="eac766f119033c0e3be10e91a45c3cab1eec9717"
 
 case "$($lean_bin --version)" in
   "Lean (version 4.32.0,"*) ;;
@@ -74,6 +74,8 @@ echo "EXTRACT production gamma and dot kernels" | tee -a "$log"
       'v5_relation_prepared_claims_harness::fri_checks::v5_gamma_powers' \
     --start-from \
       'v5_relation_prepared_claims_harness::fri_checks::v5_claim_dot_block' \
+    --start-from \
+      'v5_relation_prepared_claims_harness::extracted_qm31_add' \
     --include 'aspis_core::field' \
     --dest-file "$llbc" -- --release --locked
 ) >> "$log" 2>&1

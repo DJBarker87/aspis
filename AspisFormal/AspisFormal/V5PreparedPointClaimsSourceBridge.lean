@@ -165,6 +165,51 @@ def sourcePreparedPointClaims (gamma : K) (claims : Fin 76 → K) :
     PointClaimRow → K :=
   fun point => sourcePreparedPointClaim gamma claims point
 
+/-- The point-claim summand indexed by an ordinary natural number.  Outside
+the fixed nineteen-column domain it is zero. -/
+def sourcePointClaimTerm (gamma : K) (claims : Fin 76 → K)
+    (point : PointClaimRow) (index : Nat) : K :=
+  if h : index < totalLaneCount then
+    sourceGammaWeight gamma ⟨index, h⟩ *
+      claims (pointMajorClaimLayout (point, ⟨index, h⟩))
+  else
+    0
+
+/-- The literal contiguous block used by the production helper.  The guarded
+index makes the definition total; every production call proves the guard from
+its fixed start and count. -/
+def sourceContiguousPointClaimBlock (gamma : K) (claims : Fin 76 → K)
+    (point : PointClaimRow) (start count : Nat) : K :=
+  ∑ offset ∈ Finset.range count,
+    sourcePointClaimTerm gamma claims point (start + offset)
+
+/-- The exact five calls in production: four blocks of four followed by one
+block of three. -/
+def sourceFiveBlockPointClaim (gamma : K) (claims : Fin 76 → K)
+    (point : PointClaimRow) : K :=
+  sourceContiguousPointClaimBlock gamma claims point 0 4 +
+    sourceContiguousPointClaimBlock gamma claims point 4 4 +
+    sourceContiguousPointClaimBlock gamma claims point 8 4 +
+    sourceContiguousPointClaimBlock gamma claims point 12 4 +
+    sourceContiguousPointClaimBlock gamma claims point 16 3
+
+theorem sourceFiveBlockPointClaim_eq_sourcePointClaim
+    (gamma : K) (claims : Fin 76 → K) (point : PointClaimRow) :
+    sourceFiveBlockPointClaim gamma claims point =
+      sourcePointClaim gamma claims point := by
+  classical
+  rw [show sourcePointClaim gamma claims point =
+      ∑ index ∈ Finset.range totalLaneCount,
+        sourcePointClaimTerm gamma claims point index by
+    rw [← Fin.sum_univ_eq_sum_range]
+    unfold sourcePointClaim
+    apply Finset.sum_congr rfl
+    intro lane _
+    simp [sourcePointClaimTerm, lane.isLt]]
+  unfold sourceFiveBlockPointClaim sourceContiguousPointClaimBlock
+  norm_num [totalLaneCount, Finset.sum_range_succ]
+  ring
+
 theorem source_point_claim_block_sizes :
     (Finset.univ.filter
       (fun lane : TotalLane => sourceClaimBlockOfLane lane = (0 : Fin 5))).card = 4 ∧
@@ -199,5 +244,6 @@ theorem sourcePreparedPointClaim_eq_sourcePointClaim
 #print axioms source_gamma_initial_powers
 #print axioms source_point_claim_block_sizes
 #print axioms sourcePreparedPointClaim_eq_sourcePointClaim
+#print axioms sourceFiveBlockPointClaim_eq_sourcePointClaim
 
 end AspisV5PreparedPointClaimsSourceBridge

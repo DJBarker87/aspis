@@ -284,6 +284,28 @@ private theorem kernel_mul_by_r_corresponds
         QuadraticAlgebra.im_mul]
       ring
 
+/-- The addition used to join the five production claim blocks is extracted
+from the production QM31 method and is exact for every canonical pair. -/
+theorem extracted_kernel_qm31_add_corresponds
+    (x y : KernelQM31) (hx : KernelCanonicalQM31 x)
+    (hy : KernelCanonicalQM31 y) :
+    ∃ out : KernelQM31,
+      V5RelationPreparedClaimsGenerated.extracted_qm31_add x y = .ok out ∧
+      KernelCanonicalQM31 out ∧
+      kernelQM31ToExact out =
+        kernelQM31ToExact x + kernelQM31ToExact y := by
+  rcases kernel_cm31_add_corresponds x.c0 y.c0 hx.1 hy.1 with
+    ⟨c0, hc0, hc0Canonical, hc0Exact⟩
+  rcases kernel_cm31_add_corresponds x.c1 y.c1 hx.2 hy.2 with
+    ⟨c1, hc1, hc1Canonical, hc1Exact⟩
+  refine ⟨⟨c0, c1⟩, ?_, ⟨hc0Canonical, hc1Canonical⟩, ?_⟩
+  · simp [V5RelationPreparedClaimsGenerated.extracted_qm31_add,
+      V5RelationPreparedClaimsGenerated.aspis_core.field.QM31.add,
+      hc0, hc1]
+  · apply QuadraticAlgebra.ext
+    · exact hc0Exact
+    · exact hc1Exact
+
 /-- The multiplication called by the extracted kernels is the exact QM31
 multiplication for every canonical pair. -/
 theorem extracted_kernel_qm31_mul_corresponds
@@ -2146,6 +2168,184 @@ theorem extracted_claim_dot_block_corresponds
     exact kernel_reconstruct_qm_exact_eq_block_dot powers values
       start.val count.val sums hchannels
 
+/-! ## Exact five-block and four-point driver composition -/
+
+/-- The literal left-associated chain used by the production point loop:
+five fixed calls to the proved dot-product helper and four production QM31
+adds. -/
+def extractedFiveBlockPointClaim
+    (powers values : Array KernelQM31 19#usize) : Result KernelQM31 := do
+  let block0 ←
+    V5RelationPreparedClaimsGenerated.fri_checks.v5_claim_dot_block
+      powers values 0#usize 4#usize
+  let block1 ←
+    V5RelationPreparedClaimsGenerated.fri_checks.v5_claim_dot_block
+      powers values 4#usize 4#usize
+  let block2 ←
+    V5RelationPreparedClaimsGenerated.fri_checks.v5_claim_dot_block
+      powers values 8#usize 4#usize
+  let block3 ←
+    V5RelationPreparedClaimsGenerated.fri_checks.v5_claim_dot_block
+      powers values 12#usize 4#usize
+  let block4 ←
+    V5RelationPreparedClaimsGenerated.fri_checks.v5_claim_dot_block
+      powers values 16#usize 3#usize
+  let total01 ←
+    V5RelationPreparedClaimsGenerated.extracted_qm31_add block0 block1
+  let total012 ←
+    V5RelationPreparedClaimsGenerated.extracted_qm31_add total01 block2
+  let total0123 ←
+    V5RelationPreparedClaimsGenerated.extracted_qm31_add total012 block3
+  V5RelationPreparedClaimsGenerated.extracted_qm31_add total0123 block4
+
+/-- The complete generated five-block arithmetic is the sum of exactly the
+nineteen weighted entries, partitioned at `0,4,8,12,16`. -/
+theorem extracted_five_block_point_claim_corresponds
+    (powers values : Array KernelQM31 19#usize)
+    (hpowers : KernelCanonicalQM31Array19 powers)
+    (hvalues : KernelCanonicalQM31Array19 values) :
+    ∃ out : KernelQM31,
+      extractedFiveBlockPointClaim powers values = .ok out ∧
+      KernelCanonicalQM31 out ∧
+      kernelQM31ToExact out =
+        kernelExactBlockDot powers values 0 4 +
+        kernelExactBlockDot powers values 4 4 +
+        kernelExactBlockDot powers values 8 4 +
+        kernelExactBlockDot powers values 12 4 +
+        kernelExactBlockDot powers values 16 3 := by
+  rcases extracted_claim_dot_block_corresponds powers values 0#usize 4#usize
+      (by norm_num) (by norm_num) hpowers hvalues with
+    ⟨block0, hblock0, hblock0Canonical, hblock0Exact⟩
+  rcases extracted_claim_dot_block_corresponds powers values 4#usize 4#usize
+      (by norm_num) (by norm_num) hpowers hvalues with
+    ⟨block1, hblock1, hblock1Canonical, hblock1Exact⟩
+  rcases extracted_claim_dot_block_corresponds powers values 8#usize 4#usize
+      (by norm_num) (by norm_num) hpowers hvalues with
+    ⟨block2, hblock2, hblock2Canonical, hblock2Exact⟩
+  rcases extracted_claim_dot_block_corresponds powers values 12#usize 4#usize
+      (by norm_num) (by norm_num) hpowers hvalues with
+    ⟨block3, hblock3, hblock3Canonical, hblock3Exact⟩
+  rcases extracted_claim_dot_block_corresponds powers values 16#usize 3#usize
+      (by norm_num) (by norm_num) hpowers hvalues with
+    ⟨block4, hblock4, hblock4Canonical, hblock4Exact⟩
+  rcases extracted_kernel_qm31_add_corresponds block0 block1
+      hblock0Canonical hblock1Canonical with
+    ⟨total01, htotal01, htotal01Canonical, htotal01Exact⟩
+  rcases extracted_kernel_qm31_add_corresponds total01 block2
+      htotal01Canonical hblock2Canonical with
+    ⟨total012, htotal012, htotal012Canonical, htotal012Exact⟩
+  rcases extracted_kernel_qm31_add_corresponds total012 block3
+      htotal012Canonical hblock3Canonical with
+    ⟨total0123, htotal0123, htotal0123Canonical, htotal0123Exact⟩
+  rcases extracted_kernel_qm31_add_corresponds total0123 block4
+      htotal0123Canonical hblock4Canonical with
+    ⟨out, hout, houtCanonical, houtExact⟩
+  refine ⟨out, ?_, houtCanonical, ?_⟩
+  · simp [extractedFiveBlockPointClaim, hblock0, hblock1, hblock2,
+      hblock3, hblock4, htotal01, htotal012, htotal0123, hout]
+  · rw [houtExact, htotal0123Exact, htotal012Exact, htotal01Exact,
+      hblock0Exact, hblock1Exact, hblock2Exact, hblock3Exact,
+      hblock4Exact]
+    norm_num
+
+/-- Exact relation between one generated nineteen-entry value array and its
+point-major slice in the maintained 76-entry claim table. -/
+def KernelValuesMatchSourcePoint
+    (values : Array KernelQM31 19#usize)
+    (claims : Fin 76 → KernelQM31Exact) (point : PointClaimRow) : Prop :=
+  ∀ lane : TotalLane,
+    kernelQM31ToExact (kernelArrayEntry values lane) =
+      claims (pointMajorClaimLayout (point, lane))
+
+private theorem kernel_exact_block_dot_eq_source_contiguous
+    (gamma : KernelQM31) (powers values : Array KernelQM31 19#usize)
+    (claims : Fin 76 → KernelQM31Exact) (point : PointClaimRow)
+    (start count : Nat) (hspan : start + count ≤ 19)
+    (hpowers : GammaPowerTablePost gamma powers)
+    (hvalues : KernelValuesMatchSourcePoint values claims point) :
+    kernelExactBlockDot powers values start count =
+      sourceContiguousPointClaimBlock (kernelQM31ToExact gamma)
+        claims point start count := by
+  classical
+  unfold kernelExactBlockDot sourceContiguousPointClaimBlock
+  apply Finset.sum_congr rfl
+  intro offset hoffset
+  simp only [Finset.mem_range] at hoffset
+  have hindex : start + offset < 19 := by omega
+  have hpower := (hpowers ⟨start + offset, hindex⟩).2
+  have hvalue := hvalues ⟨start + offset, hindex⟩
+  simpa [kernelArrayEntry, sourcePointClaimTerm, totalLaneCount, hindex] using
+    congrArg₂ (fun x y => x * y) hpower hvalue
+
+/-- Given the exact generated gamma table and one exact point-major value
+slice, the five production blocks return the maintained nineteen-term point
+claim. -/
+theorem extracted_five_block_point_claim_eq_source
+    (gamma : KernelQM31) (powers values : Array KernelQM31 19#usize)
+    (claims : Fin 76 → KernelQM31Exact) (point : PointClaimRow)
+    (hpowers : GammaPowerTablePost gamma powers)
+    (hvaluesCanonical : KernelCanonicalQM31Array19 values)
+    (hvalues : KernelValuesMatchSourcePoint values claims point) :
+    ∃ out : KernelQM31,
+      extractedFiveBlockPointClaim powers values = .ok out ∧
+      KernelCanonicalQM31 out ∧
+      kernelQM31ToExact out =
+        sourcePointClaim (kernelQM31ToExact gamma) claims point := by
+  have hpowersCanonical : KernelCanonicalQM31Array19 powers :=
+    fun index => (hpowers index).1
+  rcases extracted_five_block_point_claim_corresponds powers values
+      hpowersCanonical hvaluesCanonical with
+    ⟨out, hout, houtCanonical, houtExact⟩
+  refine ⟨out, hout, houtCanonical, ?_⟩
+  calc
+    kernelQM31ToExact out =
+        kernelExactBlockDot powers values 0 4 +
+        kernelExactBlockDot powers values 4 4 +
+        kernelExactBlockDot powers values 8 4 +
+        kernelExactBlockDot powers values 12 4 +
+        kernelExactBlockDot powers values 16 3 := houtExact
+    _ = sourceFiveBlockPointClaim (kernelQM31ToExact gamma) claims point := by
+      rw [kernel_exact_block_dot_eq_source_contiguous gamma powers values
+          claims point 0 4 (by norm_num) hpowers hvalues,
+        kernel_exact_block_dot_eq_source_contiguous gamma powers values
+          claims point 4 4 (by norm_num) hpowers hvalues,
+        kernel_exact_block_dot_eq_source_contiguous gamma powers values
+          claims point 8 4 (by norm_num) hpowers hvalues,
+        kernel_exact_block_dot_eq_source_contiguous gamma powers values
+          claims point 12 4 (by norm_num) hpowers hvalues,
+        kernel_exact_block_dot_eq_source_contiguous gamma powers values
+          claims point 16 3 (by norm_num) hpowers hvalues]
+      rfl
+    _ = sourcePointClaim (kernelQM31ToExact gamma) claims point :=
+      sourceFiveBlockPointClaim_eq_sourcePointClaim _ _ _
+
+/-- One generated gamma-power table is shared by all four source-shaped point
+calls.  For every point, its exact nineteen decoded values yield exactly the
+corresponding maintained claim. -/
+theorem extracted_four_point_claims_eq_source
+    (gamma : KernelQM31) (hgamma : KernelCanonicalQM31 gamma)
+    (claims : Fin 76 → KernelQM31Exact)
+    (values : PointClaimRow → Array KernelQM31 19#usize)
+    (hvaluesCanonical : ∀ point,
+      KernelCanonicalQM31Array19 (values point))
+    (hvalues : ∀ point,
+      KernelValuesMatchSourcePoint (values point) claims point) :
+    ∃ powers : Array KernelQM31 19#usize,
+      V5RelationPreparedClaimsGenerated.fri_checks.v5_gamma_powers gamma =
+        .ok powers ∧
+      ∀ point : PointClaimRow, ∃ out : KernelQM31,
+        extractedFiveBlockPointClaim powers (values point) = .ok out ∧
+        KernelCanonicalQM31 out ∧
+        kernelQM31ToExact out =
+          sourcePointClaim (kernelQM31ToExact gamma) claims point := by
+  rcases extracted_gamma_powers_eq_source_weights gamma hgamma with
+    ⟨powers, hpowersRun, hpowers⟩
+  refine ⟨powers, hpowersRun, ?_⟩
+  intro point
+  exact extracted_five_block_point_claim_eq_source gamma powers
+    (values point) claims point hpowers (hvaluesCanonical point)
+      (hvalues point)
+
 /-! This definitional trace theorem remains useful when inspecting a fresh
 extraction.  The stronger universal mathematical result is
 `extracted_gamma_powers_eq_source_weights` above. -/
@@ -2164,12 +2364,16 @@ theorem extracted_gamma_builder_enters_at_exponent_two
 
 #print axioms extracted_kernel_qm31_mul_corresponds
 #print axioms extracted_kernel_qm31_square_corresponds
+#print axioms extracted_kernel_qm31_add_corresponds
 #print axioms extracted_gamma_powers_eq_source_weights
 #print axioms extracted_dot_channel_loop_corresponds
 #print axioms extracted_dot_component_loop_corresponds
 #print axioms extracted_dot_outer_loop_corresponds
 #print axioms extracted_dot_reconstruction_corresponds
 #print axioms extracted_claim_dot_block_corresponds
+#print axioms extracted_five_block_point_claim_corresponds
+#print axioms extracted_five_block_point_claim_eq_source
+#print axioms extracted_four_point_claims_eq_source
 #print axioms extracted_gamma_builder_enters_at_exponent_two
 
 end AspisV5PreparedPointClaimsSourceProof

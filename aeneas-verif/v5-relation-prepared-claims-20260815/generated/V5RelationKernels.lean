@@ -228,6 +228,19 @@ def aspis_core.field.QM31.ZERO : aspis_core.field.QM31 :=
 def aspis_core.field.QM31.ONE : aspis_core.field.QM31 :=
   { c0 := { a := 1#u32, b := 0#u32 }, c1 := { a := 0#u32, b := 0#u32 } }
 
+/-- [aspis_core::field::{aspis_core::field::QM31}::add]:
+    Source: 'crates/aspis-core/src/field.rs', lines 742:4-742:39
+    Name pattern: [aspis_core::field::{aspis_core::field::QM31}::add]
+    Visibility: public -/
+@[rust_fun "aspis_core::field::{aspis_core::field::QM31}::add"]
+def aspis_core.field.QM31.add
+  (self : aspis_core.field.QM31) (rhs : aspis_core.field.QM31) :
+  Result aspis_core.field.QM31
+  := do
+  let c ← aspis_core.field.CM31.add self.c0 rhs.c0
+  let c1 ← aspis_core.field.CM31.add self.c1 rhs.c1
+  ok { c0 := c, c1 }
+
 /-- [aspis_core::field::{aspis_core::field::QM31}::mul]:
     Source: 'crates/aspis-core/src/field.rs', lines 775:4-775:39
     Name pattern: [aspis_core::field::{aspis_core::field::QM31}::mul]
@@ -576,5 +589,14 @@ def
   call :=
     fri_checks.v5_claim_dot_block.closure.Insts.CoreOpsFunctionFnTupleArrayU643CM31.call
 }
+
+/-- [v5_relation_prepared_claims_harness::extracted_qm31_add]:
+    Source: 'src/lib.rs', lines 16:0-21:1
+    Visibility: public -/
+def extracted_qm31_add
+  (left : aspis_core.field.QM31) (right : aspis_core.field.QM31) :
+  Result aspis_core.field.QM31
+  := do
+  aspis_core.field.QM31.add left right
 
 end V5RelationPreparedClaimsGenerated
