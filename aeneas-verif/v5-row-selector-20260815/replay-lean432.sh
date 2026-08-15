@@ -4,8 +4,10 @@ set -euo pipefail
 readonly bundle="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 readonly root="$(cd "$bundle/../.." && pwd -P)"
 readonly harness="$bundle/harness"
+readonly callsite_harness="$bundle/callsite-harness"
 readonly checked_expand="$bundle/generated/V5RowExpand"
 readonly checked_row="$bundle/generated/V5RowAccess"
+readonly checked_callsite="$bundle/generated/V5RowCallSite"
 readonly checked_row_external="$checked_row/FunsExternal.lean"
 readonly proof="$bundle/proof/V5RowSelectorImplementationProof.lean"
 readonly arithmetic="$root/aeneas-verif/component-b-weight-at/arithmetic-lean432"
@@ -22,10 +24,15 @@ readonly expected_terminal_blob="8d607ab0ed63ffaf24372ad58bdfb3750edc0765"
 readonly expected_field_blob="a28ff94de05265102ca819849805a7f73c675800"
 readonly expected_harness_toml_blob="3a4cea97ee149500c71486a9f5b0c1cbebc899d3"
 readonly expected_harness_lock_blob="10e8c1acf9e1c8edbcc0cbab59bc74f93bd4f51a"
+readonly expected_callsite_toml_blob="c385908e1b969c602b2ab4adac39a1d5dd5f24b7"
+readonly expected_callsite_lock_blob="5b5b04f326592b9706dddbc568be21ccb2c23362"
+readonly expected_callsite_source_blob="28de5ded9c96aa24c1c035d97ca152c27c3c98ce"
 readonly expected_expand_types_sha256="7bb0960cae0f8d1c83a5cb2bdd6edb89e4152db1533d2f3b77a2bccb3427ab3b"
 readonly expected_expand_funs_sha256="2c2f397acd32ed5d6afad2a8c6d8b9e67a96bd3db48c0ce32e7ea27745e0b2a6"
 readonly expected_row_types_sha256="ac6c41fdc0e82284b4e56eaa3b01fb66abbbc3dd14c1670d231142a81ef6a173"
 readonly expected_row_funs_sha256="1ce81fcbf9ae894823bf1187ed02ebe4a177a489492af79e74d1f9129ba19a05"
+readonly expected_callsite_types_sha256="391943cae2955321aa9256fa312b2b1e83a41adbb6748d7fc690b18592b9aba8"
+readonly expected_callsite_funs_sha256="57b8c43ef2f51aba1fa09369c12862cb378582952b7640519d7fba5c739a828a"
 
 if [[ -n "${LEAN432_BIN:-}" ]]; then
   lean_cmd=("$LEAN432_BIN")
@@ -50,6 +57,17 @@ esac
 [[ "$(git -C "$root" hash-object crates/aspis-core/src/field.rs)" == "$expected_field_blob" ]]
 [[ "$(git -C "$root" hash-object "$harness/Cargo.toml")" == "$expected_harness_toml_blob" ]]
 [[ "$(git -C "$root" hash-object "$harness/Cargo.lock")" == "$expected_harness_lock_blob" ]]
+[[ "$(git -C "$root" hash-object "$callsite_harness/Cargo.toml")" == \
+    "$expected_callsite_toml_blob" ]]
+[[ "$(git -C "$root" hash-object "$callsite_harness/Cargo.lock")" == \
+    "$expected_callsite_lock_blob" ]]
+[[ "$(git -C "$root" hash-object "$callsite_harness/src/lib.rs")" == \
+    "$expected_callsite_source_blob" ]]
+
+readonly expected_at_point_builder_block=$'    fn at_point(point: &[QM31; 10]) -> Self {\n        let high = AtomicSelectors::expand(&point[..6]);\n        let low = AtomicSelectors::expand(&point[6..]);'
+[[ "$(rg -F -U -c "$expected_at_point_builder_block" \
+    "$root/crates/aspis-statement/src/atomic_state_only_terminal.rs")" == "1" ]]
+rg -F '(&point[..6], &point[6..])' "$callsite_harness/src/lib.rs" >/dev/null
 
 if [[ -n "${V5_ROW_SELECTOR_REPLAY_OUT:-}" ]]; then
   out=$V5_ROW_SELECTOR_REPLAY_OUT
@@ -61,12 +79,16 @@ fi
 readonly out
 readonly raw_expand="$out/raw-expand"
 readonly raw_row="$out/raw-row"
+readonly raw_callsite="$out/raw-callsite"
 readonly checked_src="$out/checked-src"
 readonly olean_root="$out/olean"
 readonly log="$out/replay.log"
 mkdir -p "$raw_expand" "$raw_row" \
+  "$raw_callsite" \
   "$checked_src/V5RowExpand" "$checked_src/V5RowAccess" \
-  "$olean_root/V5RowExpand" "$olean_root/V5RowAccess"
+  "$checked_src/V5RowCallSite" \
+  "$olean_root/V5RowExpand" "$olean_root/V5RowAccess" \
+  "$olean_root/V5RowCallSite"
 : > "$log"
 
 extract() {
@@ -109,6 +131,18 @@ extract V5RowAccess \
   --exclude 'aspis_statement_row_selector_extraction::atomic_state_only_terminal::AtomicSelectors::_' \
   --exclude 'aspis_statement_row_selector_extraction::atomic_state_only_terminal::projected_row_index'
 
+(
+  cd "$callsite_harness"
+  CARGO_TARGET_DIR="$out/cargo-V5RowCallSite" "$charon_bin" cargo \
+    --preset aeneas \
+    --start-from \
+      'aspis_row_callsite_extraction::atomic_semantic_selector_coordinate_slices' \
+    --dest-file "$out/V5RowCallSite.llbc" -- --release --locked
+) >> "$log" 2>&1
+"$aeneas_bin" -backend lean -namespace V5RowCallSiteGenerated \
+  -split-files -no-progress-bar -dest "$raw_callsite" \
+  "$out/V5RowCallSite.llbc" >> "$log" 2>&1
+
 # Pinned Aeneas emits the unsuffixed Rust shift literal as `I32`, while its
 # Lean model for `usize::wrapping_shr` correctly requires `U32`. Rust's trait
 # call also uses `u32`; normalize that one generated argument on both replay
@@ -124,7 +158,7 @@ fi
 
 normalize() {
   perl -0777 -pe \
-    's/import Aeneas(?:\.Std)?\n//g; s/import Aeneas\.Tactic\.RustAttributes\n//g; s/import (?:V5RowExpand|V5RowAccess)\.(?:Types|FunsExternal)\n//g; s{/-.*?-/}{}gs; s{--[^\n]*}{}g; s/\s+//g' \
+    's/import Aeneas(?:\.Std)?\n//g; s/import Aeneas\.Tactic\.RustAttributes\n//g; s/import (?:V5RowExpand|V5RowAccess|V5RowCallSite)\.(?:Types|FunsExternal)\n//g; s{/-.*?-/}{}gs; s{--[^\n]*}{}g; s/\s+//g' \
     "$1"
 }
 
@@ -144,17 +178,27 @@ compare_one "$raw_row/Types.lean" "$checked_row/Types.lean" \
   "$expected_row_types_sha256" row-types
 compare_one "$raw_row/Funs.lean" "$checked_row/Funs.lean" \
   "$expected_row_funs_sha256" row-funs
+compare_one "$raw_callsite/Types.lean" "$checked_callsite/Types.lean" \
+  "$expected_callsite_types_sha256" callsite-types
+compare_one "$raw_callsite/Funs.lean" "$checked_callsite/Funs.lean" \
+  "$expected_callsite_funs_sha256" callsite-funs
 
 cp "$checked_expand/Types.lean" "$checked_src/V5RowExpand/Types.lean"
 cp "$checked_expand/Funs.lean" "$checked_src/V5RowExpand/Funs.lean"
 cp "$checked_row/Types.lean" "$checked_src/V5RowAccess/Types.lean"
 cp "$checked_row_external" "$checked_src/V5RowAccess/FunsExternal.lean"
 cp "$checked_row/Funs.lean" "$checked_src/V5RowAccess/Funs.lean"
+cp "$checked_callsite/Types.lean" "$checked_src/V5RowCallSite/Types.lean"
+cp "$checked_callsite/Funs.lean" "$checked_src/V5RowCallSite/Funs.lean"
 
-aspis_path=$(
-  cd "$root/AspisFormal"
-  NO_DNA=1 lake env printenv LEAN_PATH
-)
+if [[ -n "${ASPIS_FORMAL_LEAN_PATH:-}" ]]; then
+  aspis_path=$ASPIS_FORMAL_LEAN_PATH
+else
+  aspis_path=$(
+    cd "$root/AspisFormal"
+    NO_DNA=1 lake env printenv LEAN_PATH
+  )
+fi
 mkdir -p "$root/AspisFormal/.lake/build/lib/lean/AspisFormal"
 LEAN_PATH="$aspis_path" "${lean_cmd[@]}" -j 1 \
   -o "$root/AspisFormal/.lake/build/lib/lean/AspisFormal/V5ProductionRowSelector.olean" \
@@ -191,6 +235,10 @@ export LEAN_PATH="$olean_root:$checked_src:$arithmetic:$aeneas_lean_lib:$aspis_p
     V5RowAccess/FunsExternal.lean
   "${lean_cmd[@]}" -j 1 -o "$olean_root/V5RowAccess/Funs.olean" \
     V5RowAccess/Funs.lean
+  "${lean_cmd[@]}" -j 1 -o "$olean_root/V5RowCallSite/Types.olean" \
+    V5RowCallSite/Types.lean
+  "${lean_cmd[@]}" -j 1 -o "$olean_root/V5RowCallSite/Funs.olean" \
+    V5RowCallSite/Funs.lean
 ) >> "$log" 2>&1
 
 "${lean_cmd[@]}" -j 1 \
@@ -198,7 +246,8 @@ export LEAN_PATH="$olean_root:$checked_src:$arithmetic:$aeneas_lean_lib:$aspis_p
   >> "$log" 2>&1
 
 if rg -n '\b(sorry|admit|native_decide|axiom|unsafe|ofReduceBool)\b' \
-    "$checked_expand" "$checked_row" \
+    "$checked_expand" "$checked_row" "$checked_callsite" \
+    "$callsite_harness/src/lib.rs" \
     "$proof" \
     "$root/AspisFormal/AspisFormal/V5ProductionRowSelector.lean"; then
   echo "forbidden proof token" >&2
@@ -230,6 +279,10 @@ readonly expected_axiom_reports=(
   "AspisV5RowSelectorImplementationProof.Composition.extracted_expand_and_row_agree"
   "AspisV5RowSelectorImplementationProof.Composition.generated_row_selects_exactly_one"
   "AspisV5RowSelectorImplementationProof.Composition.extracted_expand_and_row_select_exactly_one"
+  "AspisV5RowSelectorImplementationProof.Composition.generated_coordinate_slices_exact"
+  "AspisV5RowSelectorImplementationProof.Composition.generated_coordinate_slices_match_terminal_point"
+  "AspisV5RowSelectorImplementationProof.Composition.source_bound_at_point_expand_and_row_agree"
+  "AspisV5RowSelectorImplementationProof.Composition.source_bound_at_point_expand_and_row_select_exactly_one"
 )
 for theorem_name in "${expected_axiom_reports[@]}"; do
   if ! grep -Fq "'$theorem_name' depends on axioms:" "$log"; then

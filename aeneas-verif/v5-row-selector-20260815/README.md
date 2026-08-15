@@ -26,6 +26,27 @@ The replay extracts two private methods from the unchanged production file
 - `AtomicSemanticSelectors::row`, including `row >> 4`, `row & 15`, the two
   array reads, and the source field multiplication.
 
+It also checks the exact production `at_point` block and translates a small
+generic Rust witness containing the same two slice expressions:
+
+```text
+&point[..6]
+&point[6..]
+```
+
+The replay rejects a changed production-file hash or a changed `at_point`
+method block. Lean then proves from the translated witness that the first
+slice has coordinates 0 through 5 and the second has coordinates 6 through
+9, and feeds those returned slices directly to the two extracted `expand`
+definitions.
+
+Pinned Aeneas cannot translate the whole `at_point` method because the later
+iterator folds used to compute `poseidon_block` and `path_block` hit an Aeneas
+translation error. Those fields are not read by `row`. The source-bound
+witness therefore covers exactly the two production arguments relevant to
+this theorem, while the complete two builder loops and `row` remain direct
+production extractions.
+
 The reachable field operations are extracted from
 `crates/aspis-core/src/field.rs` rather than replaced by handwritten axioms.
 The checked snapshots are regenerated in release mode and compared after
@@ -67,6 +88,8 @@ The final two theorem names are:
 ```text
 extracted_expand_and_row_agree
 extracted_expand_and_row_select_exactly_one
+source_bound_at_point_expand_and_row_agree
+source_bound_at_point_expand_and_row_select_exactly_one
 ```
 
 The two methods are extracted into separate generated namespaces so their
@@ -74,11 +97,13 @@ otherwise identical Rust structs become different Lean types. The proof uses
 an explicit field-for-field conversion between those generated types. No
 equality or arithmetic assumption is introduced by that conversion.
 
-The theorem takes as input the two slices passed to `expand` and requires them
-to contain valid field values matching coordinates 0 through 5 and 6 through
-9. It does not cover the unrelated `poseidon_block` and `path_block` fields,
-which the row method never reads. Charon, Aeneas, Lean, and the Rust compiler
-remain part of the toolchain that must be trusted.
+The first two theorems expose the slice conditions for reuse. The final
+theorem discharges them from the generated call-site witness, so there is no
+remaining mathematical premise about which point coordinates reach the two
+tables. It does not cover the unrelated `poseidon_block` and `path_block`
+computations, which the row method never reads. The exact source-block check,
+Charon, Aeneas, Lean, and the Rust compiler remain part of the toolchain that
+must be trusted.
 
 ## Replay
 

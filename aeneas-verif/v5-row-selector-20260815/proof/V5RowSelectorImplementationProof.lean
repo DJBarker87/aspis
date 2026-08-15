@@ -1,5 +1,6 @@
 import V5RowExpand.Funs
 import V5RowAccess.Funs
+import V5RowCallSite.Funs
 import QM31MulProof
 import AspisFormal.V5ProductionRowSelector
 
@@ -1585,6 +1586,21 @@ namespace Composition
 
 open scoped BigOperators
 
+theorem generated_coordinate_slices_exact {T : Type}
+    (point : Array T 10#usize) :
+    ∃ high low : Slice T,
+      V5RowCallSiteGenerated.atomic_semantic_selector_coordinate_slices point =
+        .ok (high, low) ∧
+      high.val = point.val.take 6 ∧
+      low.val = point.val.drop 6 := by
+  unfold V5RowCallSiteGenerated.atomic_semantic_selector_coordinate_slices
+  simp [core.array.Array.index, core.ops.index.IndexSlice,
+    core.slice.index.SliceIndexRangeToUsizeSlice,
+    core.slice.index.SliceIndexRangeToUsizeSlice.index,
+    core.slice.index.SliceIndexRangeFromUsizeSlice,
+    core.slice.index.SliceIndexRangeFromUsizeSlice.index,
+    Array.to_slice, Slice.drop]
+
 abbrev ExactQM31 := AspisAeneasQM31Mul.QM31Exact
 
 def expandToAccessQM31 (value : Expand.RustQM31) : Access.RustQM31 :=
@@ -1674,6 +1690,63 @@ def ExactLowCoordinates (point : TerminalPoint)
   ∀ coordinate : Fin 4,
     Expand.exactCoordinate coordinates coordinate.val =
       point ⟨6 + coordinate.val, by omega⟩
+
+def pointEntry (point : Array Expand.RustQM31 10#usize)
+    (coordinate : Fin 10) : Expand.RustQM31 :=
+  point.val[coordinate.val]'(by rw [point.property]; exact coordinate.isLt)
+
+def ValidTerminalPointRepresentation
+    (point : Array Expand.RustQM31 10#usize) : Prop :=
+  ∀ coordinate : Fin 10, Expand.ValidQM31 (pointEntry point coordinate)
+
+def ExactTerminalPointRepresentation (point : TerminalPoint)
+    (rustPoint : Array Expand.RustQM31 10#usize) : Prop :=
+  ∀ coordinate : Fin 10,
+    Expand.toExact (pointEntry rustPoint coordinate) = point coordinate
+
+theorem generated_coordinate_slices_match_terminal_point
+    (point : TerminalPoint)
+    (rustPoint : Array Expand.RustQM31 10#usize)
+    (hvalid : ValidTerminalPointRepresentation rustPoint)
+    (hexact : ExactTerminalPointRepresentation point rustPoint) :
+    ∃ highCoordinates lowCoordinates : Slice Expand.RustQM31,
+      V5RowCallSiteGenerated.atomic_semantic_selector_coordinate_slices
+          rustPoint = .ok (highCoordinates, lowCoordinates) ∧
+      Expand.ValidCoordinates highCoordinates ∧
+      Expand.ValidCoordinates lowCoordinates ∧
+      ExactHighCoordinates point highCoordinates ∧
+      ExactLowCoordinates point lowCoordinates := by
+  rcases generated_coordinate_slices_exact rustPoint with
+    ⟨highCoordinates, lowCoordinates, hcall, hhigh, hlow⟩
+  have hhighLength : highCoordinates.val.length = 6 := by
+    rw [hhigh, List.length_take, rustPoint.property]
+    norm_num
+  have hlowLength : lowCoordinates.val.length = 4 := by
+    rw [hlow, List.length_drop, rustPoint.property]
+    norm_num
+  refine ⟨highCoordinates, lowCoordinates, hcall, ?_, ?_, ?_, ?_⟩
+  · intro coordinate
+    have hcoordinate : coordinate.val < 10 := by omega
+    simpa [Expand.coordinateEntry, hhigh, pointEntry] using
+      hvalid ⟨coordinate.val, hcoordinate⟩
+  · intro coordinate
+    have hcoordinate : 6 + coordinate.val < 10 := by omega
+    simpa [Expand.coordinateEntry, hlow, pointEntry, Nat.add_comm] using
+      hvalid ⟨6 + coordinate.val, hcoordinate⟩
+  · constructor
+    · exact hhighLength
+    · intro coordinate
+      have hcoordinate : coordinate.val < 10 := by omega
+      simpa [Expand.exactCoordinate, Expand.coordinateEntry, hhigh,
+        rustPoint.property, pointEntry] using
+        hexact ⟨coordinate.val, hcoordinate⟩
+  · constructor
+    · exact hlowLength
+    · intro coordinate
+      have hcoordinate : 6 + coordinate.val < 10 := by omega
+      simpa [Expand.exactCoordinate, Expand.coordinateEntry, hlow,
+        rustPoint.property, pointEntry, Nat.add_comm] using
+        hexact ⟨6 + coordinate.val, hcoordinate⟩
 
 theorem expand_high_exact (point : TerminalPoint)
     (coordinates : Slice Expand.RustQM31)
@@ -2012,12 +2085,90 @@ theorem extracted_expand_and_row_select_exactly_one
     (AspisV5ProductionRowSelector.factoredSourceRowSelector_at_booleanPoint
       (F := ExactQM31) selected row)
 
+/-- For an arbitrary valid ten-coordinate point, the source-bound call-site
+witness, extracted table builders, and extracted row lookup return the exact
+production selector formula. -/
+theorem source_bound_at_point_expand_and_row_agree
+    (point : TerminalPoint)
+    (rustPoint : Array Expand.RustQM31 10#usize)
+    (hvalid : ValidTerminalPointRepresentation rustPoint)
+    (hexact : ExactTerminalPointRepresentation point rustPoint) :
+    ∃ highCoordinates lowCoordinates : Slice Expand.RustQM31,
+    ∃ high : Array Expand.RustQM31 64#usize,
+    ∃ low : Array Expand.RustQM31 16#usize,
+      V5RowCallSiteGenerated.atomic_semantic_selector_coordinate_slices
+          rustPoint = .ok (highCoordinates, lowCoordinates) ∧
+      V5RowExpandGenerated.atomic_state_only_terminal.AtomicSelectors.expand
+          64#usize highCoordinates = .ok high ∧
+      V5RowExpandGenerated.atomic_state_only_terminal.AtomicSelectors.expand
+          16#usize lowCoordinates = .ok low ∧
+      ∀ row : TraceRow,
+        ∃ output : Access.RustQM31,
+          V5RowAccessGenerated.atomic_state_only_terminal.AtomicSemanticSelectors.row
+              (selectorsOfExpanded high low) (rowUsize row) = .ok output ∧
+          Access.ValidQM31 output ∧
+          Access.toExact output =
+            AspisV5ProductionRowSelector.factoredSourceRowSelector point row := by
+  rcases generated_coordinate_slices_match_terminal_point
+      point rustPoint hvalid hexact with
+    ⟨highCoordinates, lowCoordinates, hcall, hhighValid, hlowValid,
+      hhighExact, hlowExact⟩
+  rcases extracted_expand_and_row_agree point
+      highCoordinates lowCoordinates hhighValid hlowValid
+      hhighExact hlowExact with
+    ⟨high, low, hhighCall, hlowCall, hrows⟩
+  exact ⟨highCoordinates, lowCoordinates, high, low, hcall,
+    hhighCall, hlowCall, hrows⟩
+
+/-- The source-bound call-site witness removes the two slice premises from the
+Boolean-row theorem.  The replay checks that its two expressions are exactly
+the two arguments used by production `AtomicSemanticSelectors::at_point`. -/
+theorem source_bound_at_point_expand_and_row_select_exactly_one
+    (selected : TraceRow)
+    (rustPoint : Array Expand.RustQM31 10#usize)
+    (hvalid : ValidTerminalPointRepresentation rustPoint)
+    (hexact : ExactTerminalPointRepresentation
+      (AspisV5ProductionRowSelector.booleanPointOfRow
+        (F := ExactQM31) selected)
+      rustPoint) :
+    ∃ highCoordinates lowCoordinates : Slice Expand.RustQM31,
+    ∃ high : Array Expand.RustQM31 64#usize,
+    ∃ low : Array Expand.RustQM31 16#usize,
+      V5RowCallSiteGenerated.atomic_semantic_selector_coordinate_slices
+          rustPoint = .ok (highCoordinates, lowCoordinates) ∧
+      V5RowExpandGenerated.atomic_state_only_terminal.AtomicSelectors.expand
+          64#usize highCoordinates = .ok high ∧
+      V5RowExpandGenerated.atomic_state_only_terminal.AtomicSelectors.expand
+          16#usize lowCoordinates = .ok low ∧
+      ∀ row : TraceRow,
+        ∃ output : Access.RustQM31,
+          V5RowAccessGenerated.atomic_state_only_terminal.AtomicSemanticSelectors.row
+              (selectorsOfExpanded high low) (rowUsize row) = .ok output ∧
+          Access.ValidQM31 output ∧
+          Access.toExact output = if row = selected then 1 else 0 := by
+  rcases generated_coordinate_slices_match_terminal_point
+      (AspisV5ProductionRowSelector.booleanPointOfRow
+        (F := ExactQM31) selected)
+      rustPoint hvalid hexact with
+    ⟨highCoordinates, lowCoordinates, hcall, hhighValid, hlowValid,
+      hhighExact, hlowExact⟩
+  rcases extracted_expand_and_row_select_exactly_one selected
+      highCoordinates lowCoordinates hhighValid hlowValid
+      hhighExact hlowExact with
+    ⟨high, low, hhighCall, hlowCall, hrows⟩
+  exact ⟨highCoordinates, lowCoordinates, high, low, hcall,
+    hhighCall, hlowCall, hrows⟩
+
 #print axioms Expand.expand_exact_spec
 #print axioms Access.qm31_mul_corresponds
 #print axioms generated_row_corresponds
 #print axioms extracted_expand_and_row_agree
 #print axioms generated_row_selects_exactly_one
 #print axioms extracted_expand_and_row_select_exactly_one
+#print axioms generated_coordinate_slices_exact
+#print axioms generated_coordinate_slices_match_terminal_point
+#print axioms source_bound_at_point_expand_and_row_agree
+#print axioms source_bound_at_point_expand_and_row_select_exactly_one
 
 end Composition
 
