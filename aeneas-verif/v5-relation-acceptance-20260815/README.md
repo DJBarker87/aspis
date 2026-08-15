@@ -46,6 +46,14 @@ theorems prove that the exact index formula used by each circle-coordinate,
 line-point, OOD-value, OOD-mix, polynomial, and final-coefficient read selects
 the corresponding maintained field number.
 
+`V5RelationRoundKernelProof.lean` removes the generated-loop uncertainty from
+the two arithmetic calls made in every relation round.  For every possible
+seven-coefficient polynomial, the extracted `boundary_sum` reads words zero
+and four, adds them, and multiplies by four.  For every polynomial and point,
+the extracted `evaluate` is exactly the six ordered multiply/add steps of
+seven-coefficient Horner evaluation.  These are universal equalities over the
+generated production field calls, not fixture tests.
+
 ## Exact remaining boundary
 
 The production function
@@ -84,4 +92,5 @@ one of these universal equalities.
   the private compact state/caller.
 - `generated/`: normalized, Lean-4.32-compiling Aeneas output.
 - `proof/`: the universal caller-success theorem and exact array-equality
-  supporting lemmas, plus the universal 58-field decoder connection.
+  supporting lemmas, the universal 58-field decoder connection, and the
+  complete extracted boundary/Horner round-kernel proofs.
