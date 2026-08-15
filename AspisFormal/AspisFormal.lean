@@ -141,6 +141,7 @@ import AspisFormal.V5FriForwardAdaptiveQueryBudget
 import AspisFormal.V5ForwardAcceptedFalseInclusion
 import AspisFormal.V5FriForwardCompatibleChain
 import AspisFormal.V5ForwardAcceptedFalseRawAccounting
+import AspisFormal.V5FourClaimBatchUnion
 import AspisFormal.V5MerkleRustBridge
 import AspisFormal.V5MerkleConsumedValueBridge
 import AspisFormal.V5FinalSecurityAccounting
