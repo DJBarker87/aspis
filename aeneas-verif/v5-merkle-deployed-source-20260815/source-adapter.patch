@@ -1,0 +1,573 @@
+diff --git a/crates/aspis-core/src/merkle.rs b/crates/aspis-core/src/merkle.rs
+index 7b9a944..43e1c6b 100644
+--- a/crates/aspis-core/src/merkle.rs
++++ b/crates/aspis-core/src/merkle.rs
+@@ -13,6 +13,22 @@ const DOM_LEAF: u8 = 0x10;
+ const DOM_NODE: u8 = 0x11;
+ const DOM_NODE4: u8 = 0x12;
+
++/// Extraction-only stand-in for the one deployed SHA-256 `hashv` backend.
++/// Charon treats this function as opaque; its equality to Solana `hashv` over
++/// the same ordered slices is an explicit premise in the accompanying proof.
++#[inline(never)]
++pub fn fixed_hashv(_inputs: &[&[u8]]) -> [u8; 32] {
++    unreachable!("extraction-only fixed hash boundary")
++}
++
++fn fixed_node_hash(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
++    let mut input = [0u8; 65];
++    input[0] = DOM_NODE;
++    input[1..33].copy_from_slice(left);
++    input[33..65].copy_from_slice(right);
++    fixed_hashv(&[&input])
++}
++
+ pub fn leaf_hash(hash: HashFn, layer: u8, leaf_bytes: &[u8]) -> [u8; 32] {
+     hash(&[&[DOM_LEAF, layer], leaf_bytes])
+ }
+@@ -352,6 +368,87 @@ pub(crate) struct MatchedRadix4BinaryCapSuffix<'a> {
+     expected_len: usize,
+ }
+
++/// Compute one radix-four parent level without borrowing the vector which
++/// receives that level. The deployed constructor performs the same scan while
++/// appending directly to its flattened storage; this spelling separates those
++/// ownership roles for extraction.
++fn topology_parent_level(indices: &[u32]) -> (Vec<u32>, Vec<u8>) {
++    let mut parents = Vec::with_capacity(indices.len());
++    let mut masks = Vec::with_capacity(indices.len());
++    let mut position = 0usize;
++    let mut have_parent = false;
++    let mut parent = 0u32;
++    let mut present = 0u8;
++
++    while position < indices.len() {
++        let index = indices[position];
++        let index_parent = index >> 2;
++        let slot_mask = 1u8 << ((index & 3) as u8);
++        if !have_parent {
++            parent = index_parent;
++            present = slot_mask;
++            have_parent = true;
++        } else if index_parent == parent {
++            // The constructor has already established that the source indices
++            // are strictly increasing, so a repeated slot for one parent is
++            // unreachable here.
++            present |= slot_mask;
++        } else {
++            parents.push(parent);
++            masks.push(present);
++            parent = index_parent;
++            present = slot_mask;
++        }
++        position += 1;
++    }
++
++    if have_parent {
++        parents.push(parent);
++        masks.push(present);
++    }
++    (parents, masks)
++}
++
++type TopologyStorage = (Vec<u32>, [usize; 17], Vec<u8>, [usize; 16]);
++
++/// Tail-recursive spelling of the constructor's outer level loop. Every call
++/// consumes and returns the four storage objects, avoiding a loop-carried
++/// mutable loan while preserving the exact flattened order and offsets.
++fn build_topology_levels(
++    radix_levels: usize,
++    level: usize,
++    current_start: usize,
++    current_end: usize,
++    mut level_indices: Vec<u32>,
++    mut level_offsets: [usize; 17],
++    mut group_masks: Vec<u8>,
++    mut group_offsets: [usize; 16],
++) -> TopologyStorage {
++    if level >= radix_levels {
++        level_offsets[radix_levels + 1] = current_end;
++        group_offsets[radix_levels] = group_masks.len();
++        (level_indices, level_offsets, group_masks, group_offsets)
++    } else {
++        group_offsets[level] = group_masks.len();
++        let current_indices = level_indices[current_start..current_end].to_vec();
++        let (next_indices, next_masks) = topology_parent_level(&current_indices);
++        group_masks.extend_from_slice(&next_masks);
++        level_indices.extend_from_slice(&next_indices);
++        level_offsets[level + 1] = current_end;
++        let next_end = level_indices.len();
++        build_topology_levels(
++            radix_levels,
++            level + 1,
++            current_end,
++            next_end,
++            level_indices,
++            level_offsets,
++            group_masks,
++            group_offsets,
++        )
++    }
++}
++
+ impl Radix4BinaryCapTopology {
+     /// Build one exact traversal plan from sorted, unique, in-range indices.
+     /// Binary depths below 32 have at most fifteen radix-4 levels.
+@@ -368,36 +465,20 @@ impl Radix4BinaryCapTopology {
+         let radix_levels = (binary_depth / 2) as usize;
+         let mut level_indices = Vec::with_capacity(indices.len() * (radix_levels + 1));
+         level_indices.extend_from_slice(indices);
+-        let mut level_offsets = [0usize; 17];
+-        let mut group_masks = Vec::with_capacity(indices.len() * radix_levels);
+-        let mut group_offsets = [0usize; 16];
+-        let mut current_start = 0usize;
+-        let mut current_end = level_indices.len();
+-
+-        for level in 0..radix_levels {
+-            group_offsets[level] = group_masks.len();
+-            let mut position = current_start;
+-            while position < current_end {
+-                let parent = level_indices[position] >> 2;
+-                let mut present = 0u8;
+-                while position < current_end && level_indices[position] >> 2 == parent {
+-                    let slot = (level_indices[position] & 3) as u8;
+-                    let slot_mask = 1u8 << slot;
+-                    if present & slot_mask != 0 {
+-                        return None;
+-                    }
+-                    present |= slot_mask;
+-                    position += 1;
+-                }
+-                group_masks.push(present);
+-                level_indices.push(parent);
+-            }
+-            level_offsets[level + 1] = current_end;
+-            current_start = current_end;
+-            current_end = level_indices.len();
+-        }
+-        level_offsets[radix_levels + 1] = current_end;
+-        group_offsets[radix_levels] = group_masks.len();
++        let level_offsets = [0usize; 17];
++        let group_masks = Vec::with_capacity(indices.len() * radix_levels);
++        let group_offsets = [0usize; 16];
++        let initial_end = level_indices.len();
++        let (level_indices, level_offsets, group_masks, group_offsets) = build_topology_levels(
++            radix_levels,
++            0,
++            0,
++            initial_end,
++            level_indices,
++            level_offsets,
++            group_masks,
++            group_offsets,
++        );
+
+         Some(Self {
+             binary_depth,
+@@ -473,13 +554,23 @@ pub fn verify_radix4_binary_cap_with_topology(
+     let Some(matched) = topology.matched_suffix(radix_level, binary_depth, expected_indices) else {
+         return false;
+     };
+-    verify_radix4_binary_cap_with_matched_topology(hash, root, node_bytes, matched, level, next)
++    verify_radix4_binary_cap_with_matched_topology(root, node_bytes, matched, level, next)
++}
++
++/// Copy one child into the fixed radix-four hash preimage. Keeping the mutable
++/// array borrow inside this helper avoids a loop-carried slice loan in the
++/// extracted program.
++fn fixed_write_radix_child(input: &mut [u8; 129], slot: usize, child: &[u8; 32]) {
++    let mut byte = 0usize;
++    while byte < 32 {
++        input[1 + slot * 32 + byte] = child[byte];
++        byte += 1;
++    }
+ }
+
+ /// Verify using an opaque suffix match already produced by the topology.
+ /// This is crate-private so the literal index/depth check cannot be skipped.
+ pub(crate) fn verify_radix4_binary_cap_with_matched_topology(
+-    hash: HashFn,
+     root: &[u8; 32],
+     node_bytes: &[u8],
+     matched: MatchedRadix4BinaryCapSuffix<'_>,
+@@ -495,40 +586,68 @@ pub(crate) fn verify_radix4_binary_cap_with_matched_topology(
+     let binary_depth = matched.binary_depth;
+
+     let mut node_pos = 0usize;
+-    for plan_level in radix_level..topology.radix_levels {
++    let mut plan_level = radix_level;
++    let mut failed = false;
++    while plan_level < topology.radix_levels {
+         next.clear();
+-        let Some(masks) = topology.group_masks(plan_level) else {
+-            return false;
+-        };
++        // `matched` can only be created by this topology, and the loop bound
++        // is its validated radix-level count, so these offsets are the exact
++        // in-range slice returned by `group_masks` in the deployed source.
++        let mask_start = topology.group_offsets[plan_level];
++        let mask_end = topology.group_offsets[plan_level + 1];
++        let masks = topology.group_masks[mask_start..mask_end].to_vec();
+         let mut value_pos = 0usize;
+-        for &present in masks {
++        let mut mask_pos = 0usize;
++        while mask_pos < masks.len() {
++            let present = masks[mask_pos];
+             // Fill the exact radix-4 hash preimage in place. Building an
+             // intermediate `[[u8; 32]; 4]` makes `node_hash4` copy the same
+             // 128 child bytes a second time before the syscall.
+             let mut input = [0u8; 129];
+             input[0] = DOM_NODE4;
+-            for slot in 0..4 {
+-                let child = &mut input[1 + slot * 32..1 + (slot + 1) * 32];
+-                if present & (1u8 << slot) != 0 {
+-                    let Some(value) = level.get(value_pos) else {
+-                        return false;
+-                    };
+-                    child.copy_from_slice(value);
+-                    value_pos += 1;
++            let mut slot = 0usize;
++            while slot < 4 {
++                let child = if present & (1u8 << slot) != 0 {
++                    match level.get(value_pos).copied() {
++                        Some(value) => {
++                            value_pos += 1;
++                            value
++                        }
++                        None => {
++                            failed = true;
++                            [0u8; 32]
++                        }
++                    }
+                 } else {
+                     if node_pos + 32 > node_bytes.len() {
+-                        return false;
++                        failed = true;
++                        [0u8; 32]
++                    } else {
++                        let mut value = [0u8; 32];
++                        let mut byte = 0usize;
++                        while byte < 32 {
++                            value[byte] = node_bytes[node_pos + byte];
++                            byte += 1;
++                        }
++                        node_pos += 32;
++                        value
+                     }
+-                    child.copy_from_slice(&node_bytes[node_pos..node_pos + 32]);
+-                    node_pos += 32;
+-                }
++                };
++                fixed_write_radix_child(&mut input, slot, &child);
++                slot += 1;
+             }
+-            next.push(hash(&[&input]));
++            next.push(fixed_hashv(&[&input]));
++            mask_pos += 1;
+         }
+         if value_pos != level.len() {
+-            return false;
++            failed = true;
+         }
+         core::mem::swap(level, next);
++        plan_level += 1;
++    }
++
++    if failed {
++        return false;
+     }
+
+     let top_indices = match topology.level_indices(topology.radix_levels) {
+@@ -542,7 +661,7 @@ pub(crate) fn verify_radix4_binary_cap_with_matched_topology(
+         }
+     } else {
+         match (top_indices, level.as_slice()) {
+-            ([0, 1], [left, right]) => node_hash(hash, left, right),
++            ([0, 1], [left, right]) => fixed_node_hash(left, right),
+             ([index], [value]) => {
+                 if node_pos + 32 > node_bytes.len() {
+                     return false;
+@@ -550,9 +669,9 @@ pub(crate) fn verify_radix4_binary_cap_with_matched_topology(
+                 let sibling: [u8; 32] = node_bytes[node_pos..node_pos + 32].try_into().unwrap();
+                 node_pos += 32;
+                 if *index == 0 {
+-                    node_hash(hash, value, &sibling)
++                    fixed_node_hash(value, &sibling)
+                 } else if *index == 1 {
+-                    node_hash(hash, &sibling, value)
++                    fixed_node_hash(&sibling, value)
+                 } else {
+                     return false;
+                 }
+diff --git a/crates/aspis-core/src/state_only_private_merkle.rs b/crates/aspis-core/src/state_only_private_merkle.rs
+index dd166e9..a8787f3 100644
+--- a/crates/aspis-core/src/state_only_private_merkle.rs
++++ b/crates/aspis-core/src/state_only_private_merkle.rs
+@@ -4,6 +4,7 @@
+ //! hidden 32-byte salt belongs to one logical leaf and is disclosed only for
+ //! queried leaves.  Tree tags must be unique across committed oracles.
+
++use crate::merkle::fixed_hashv;
+ use crate::transcript::HashFn;
+
+ const DOM_LEAF: u8 = 0x10;
+@@ -19,6 +20,12 @@ pub fn private_leaf_hash_record(hash: HashFn, tree_tag: u8, value_and_salt: &[u8
+     hash(&[&[DOM_LEAF, tree_tag], value_and_salt])
+ }
+
++/// Extraction-only fixed-backend form of `private_leaf_hash_record`.
++#[inline]
++pub fn private_leaf_hash_record_fixed(tree_tag: u8, value_and_salt: &[u8]) -> [u8; 32] {
++    fixed_hashv(&[&[DOM_LEAF, tree_tag], value_and_salt])
++}
++
+ /// Hash one fixed-width private Merkle leaf as
+ /// `SHA256(0x10 || tree_tag || value || salt32)`.
+ ///
+diff --git a/crates/aspis-core/src/state_only_private_openings.rs b/crates/aspis-core/src/state_only_private_openings.rs
+index 8b9721c..1564dc1 100644
+--- a/crates/aspis-core/src/state_only_private_openings.rs
++++ b/crates/aspis-core/src/state_only_private_openings.rs
+@@ -13,7 +13,7 @@ use crate::merkle::{
+     Radix4BinaryCapTopology,
+ };
+ use crate::state_only_private_merkle::{
+-    private_leaf_hash_record, STATE_ONLY_PRIVATE_LEAF_SALT_BYTES,
++    private_leaf_hash_record, private_leaf_hash_record_fixed, STATE_ONLY_PRIVATE_LEAF_SALT_BYTES,
+ };
+ use crate::HashFn;
+
+@@ -123,6 +123,29 @@ impl<'a> Cursor<'a> {
+     }
+ }
+
++fn first_out_of_range(indices: &[u32], leaf_count: u32, ordinal: usize) -> Option<u32> {
++    if ordinal >= indices.len() {
++        None
++    } else {
++        let index = indices[ordinal];
++        if index >= leaf_count {
++            Some(index)
++        } else {
++            first_out_of_range(indices, leaf_count, ordinal + 1)
++        }
++    }
++}
++
++fn indices_are_strictly_increasing(indices: &[u32], ordinal: usize) -> bool {
++    if ordinal + 1 >= indices.len() {
++        true
++    } else if indices[ordinal] >= indices[ordinal + 1] {
++        false
++    } else {
++        indices_are_strictly_increasing(indices, ordinal + 1)
++    }
++}
++
+ fn validate_shape(
+     binary_depth: u32,
+     value_width: usize,
+@@ -144,13 +167,11 @@ fn validate_shape(
+             count: indices.len(),
+         });
+     }
+-    for pair in indices.windows(2) {
+-        if pair[0] >= pair[1] {
+-            return Err(StateOnlyPrivateOpeningError::IndicesNotStrictlyIncreasing);
+-        }
++    if !indices_are_strictly_increasing(indices, 0) {
++        return Err(StateOnlyPrivateOpeningError::IndicesNotStrictlyIncreasing);
+     }
+     let leaf_count = 1u32 << binary_depth;
+-    if let Some(&index) = indices.iter().find(|&&index| index >= leaf_count) {
++    if let Some(index) = first_out_of_range(indices, leaf_count, 0) {
+         return Err(StateOnlyPrivateOpeningError::LeafIndexOutOfRange { index });
+     }
+     Ok(())
+@@ -248,7 +269,6 @@ pub fn verify_state_only_private_opening_from_proof<'a>(
+ /// checked against `expected_sorted_indices` before any proof is accepted.
+ #[allow(clippy::too_many_arguments)]
+ pub fn verify_state_only_private_opening_from_proof_with_topology<'a>(
+-    hash: HashFn,
+     root: &[u8; 32],
+     binary_depth: u32,
+     tree_tag: u8,
+@@ -277,13 +297,12 @@ pub fn verify_state_only_private_opening_from_proof_with_topology<'a>(
+
+     level.clear();
+     for record in opening.records.chunks_exact(opening.record_width()) {
+-        level.push(private_leaf_hash_record(hash, tree_tag, record));
++        level.push(private_leaf_hash_record_fixed(tree_tag, record));
+     }
+     let Some(matched_topology) = matched_topology else {
+         return Err(StateOnlyPrivateOpeningError::MerkleMismatch);
+     };
+     if !verify_radix4_binary_cap_with_matched_topology(
+-        hash,
+         root,
+         opening.frontier,
+         matched_topology,
+diff --git a/programs/aspis-verifier/src/v5_private_openings.rs b/programs/aspis-verifier/src/v5_private_openings.rs
+index 825bafe..3a3b0f6 100644
+--- a/programs/aspis-verifier/src/v5_private_openings.rs
++++ b/programs/aspis-verifier/src/v5_private_openings.rs
+@@ -6,17 +6,16 @@
+ //! `aspis-core` authentication primitives and is reachable solely through the
+ //! local v5 CU probe.
+
++use crate::merkle::Radix4BinaryCapTopology;
++use crate::state_only_private_openings::{
++    verify_state_only_private_opening_from_proof_with_topology, StateOnlyPrivateOpening,
++    StateOnlyPrivateOpeningError,
++};
+ use aspis_core::circle_line_merkle::{
+     derive_circle_line_query_indices_for_count, CircleLineMerkleError, CircleLineQueryIndices,
+     CIRCLE_LINE_TAGS,
+ };
+ use aspis_core::circle_merkle::{CIRCLE_C1_LAYER0_TAG, CIRCLE_C2_LAYER0_TAG};
+-use aspis_core::merkle::Radix4BinaryCapTopology;
+-use aspis_core::state_only_private_openings::{
+-    verify_state_only_private_opening_from_proof_with_topology, StateOnlyPrivateOpening,
+-    StateOnlyPrivateOpeningError,
+-};
+-use aspis_core::HashFn;
+
+ pub const V5_PRIVATE_LAYER0_LEAVES: usize = 1 << 17;
+ pub const V5_PRIVATE_SECTION_COUNT: usize = 5;
+@@ -81,53 +80,87 @@ pub struct VerifiedV5PrivateOpenings<'a> {
+ /// Authenticate five canonical sections at the transcript-derived queries and
+ /// return the unconsumed proof suffix.  Query indices are never proof bytes.
+ pub fn verify_v5_private_openings_from_proof<'a>(
+-    hash: HashFn,
+     roots: &V5PrivateOpeningRoots,
+     queries: &[u32],
+     proof_bytes: &'a [u8],
+ ) -> Result<(VerifiedV5PrivateOpenings<'a>, &'a [u8]), V5PrivateOpeningError> {
+     let indices = derive_circle_line_query_indices_for_count(queries, V5_PRIVATE_LAYER0_LEAVES)?;
+-    let section_indices: [&[u32]; V5_PRIVATE_SECTION_COUNT] = [
+-        &indices.layer0,
+-        &indices.layer0,
+-        &indices.later[0],
+-        &indices.later[1],
+-        &indices.later[2],
+-    ];
+     let roots = roots.as_array();
+     let topology = Radix4BinaryCapTopology::new(V5_PRIVATE_DEPTHS[0], &indices.layer0)
+         .ok_or(V5PrivateOpeningError::InvalidSharedTopology)?;
+     let mut hash_level = Vec::<[u8; 32]>::with_capacity(indices.layer0.len());
+     let mut hash_next = Vec::<[u8; 32]>::with_capacity(indices.layer0.len());
+-    let mut remainder = proof_bytes;
+-    let mut parsed = [None; V5_PRIVATE_SECTION_COUNT];
+-    for section in 0..V5_PRIVATE_SECTION_COUNT {
+-        let (opening, next) = verify_state_only_private_opening_from_proof_with_topology(
+-            hash,
+-            &roots[section],
+-            V5_PRIVATE_DEPTHS[section],
+-            V5_PRIVATE_TREE_TAGS[section],
+-            V5_PRIVATE_VALUE_WIDTHS[section],
+-            section_indices[section],
+-            remainder,
+-            &topology,
+-            if section < 2 { 0 } else { section - 1 },
+-            &mut hash_level,
+-            &mut hash_next,
+-        )
+-        .map_err(|error| V5PrivateOpeningError::Section {
+-            section: section as u8,
+-            error,
+-        })?;
+-        parsed[section] = Some(opening);
+-        remainder = next;
+-    }
++    let (c1, remainder) = verify_state_only_private_opening_from_proof_with_topology(
++        &roots[0],
++        V5_PRIVATE_DEPTHS[0],
++        V5_PRIVATE_TREE_TAGS[0],
++        V5_PRIVATE_VALUE_WIDTHS[0],
++        &indices.layer0,
++        proof_bytes,
++        &topology,
++        0,
++        &mut hash_level,
++        &mut hash_next,
++    )
++    .map_err(|error| V5PrivateOpeningError::Section { section: 0, error })?;
++    let (c2, remainder) = verify_state_only_private_opening_from_proof_with_topology(
++        &roots[1],
++        V5_PRIVATE_DEPTHS[1],
++        V5_PRIVATE_TREE_TAGS[1],
++        V5_PRIVATE_VALUE_WIDTHS[1],
++        &indices.layer0,
++        remainder,
++        &topology,
++        0,
++        &mut hash_level,
++        &mut hash_next,
++    )
++    .map_err(|error| V5PrivateOpeningError::Section { section: 1, error })?;
++    let (later0, remainder) = verify_state_only_private_opening_from_proof_with_topology(
++        &roots[2],
++        V5_PRIVATE_DEPTHS[2],
++        V5_PRIVATE_TREE_TAGS[2],
++        V5_PRIVATE_VALUE_WIDTHS[2],
++        &indices.later[0],
++        remainder,
++        &topology,
++        1,
++        &mut hash_level,
++        &mut hash_next,
++    )
++    .map_err(|error| V5PrivateOpeningError::Section { section: 2, error })?;
++    let (later1, remainder) = verify_state_only_private_opening_from_proof_with_topology(
++        &roots[3],
++        V5_PRIVATE_DEPTHS[3],
++        V5_PRIVATE_TREE_TAGS[3],
++        V5_PRIVATE_VALUE_WIDTHS[3],
++        &indices.later[1],
++        remainder,
++        &topology,
++        2,
++        &mut hash_level,
++        &mut hash_next,
++    )
++    .map_err(|error| V5PrivateOpeningError::Section { section: 3, error })?;
++    let (later2, remainder) = verify_state_only_private_opening_from_proof_with_topology(
++        &roots[4],
++        V5_PRIVATE_DEPTHS[4],
++        V5_PRIVATE_TREE_TAGS[4],
++        V5_PRIVATE_VALUE_WIDTHS[4],
++        &indices.later[2],
++        remainder,
++        &topology,
++        3,
++        &mut hash_level,
++        &mut hash_next,
++    )
++    .map_err(|error| V5PrivateOpeningError::Section { section: 4, error })?;
+     let bytes_consumed = proof_bytes.len() - remainder.len();
+     Ok((
+         VerifiedV5PrivateOpenings {
+-            c1: parsed[0].unwrap(),
+-            c2: parsed[1].unwrap(),
+-            later: [parsed[2].unwrap(), parsed[3].unwrap(), parsed[4].unwrap()],
++            c1,
++            c2,
++            later: [later0, later1, later2],
+             indices,
+             bytes_consumed,
+         },
+@@ -137,13 +170,11 @@ pub fn verify_v5_private_openings_from_proof<'a>(
+
+ /// Authenticate exactly the five private sections and reject a trailing byte.
+ pub fn verify_v5_private_openings<'a>(
+-    hash: HashFn,
+     roots: &V5PrivateOpeningRoots,
+     queries: &[u32],
+     proof_bytes: &'a [u8],
+ ) -> Result<VerifiedV5PrivateOpenings<'a>, V5PrivateOpeningError> {
+-    let (verified, remainder) =
+-        verify_v5_private_openings_from_proof(hash, roots, queries, proof_bytes)?;
++    let (verified, remainder) = verify_v5_private_openings_from_proof(roots, queries, proof_bytes)?;
+     if !remainder.is_empty() {
+         return Err(V5PrivateOpeningError::TrailingBytes {
+             offset: verified.bytes_consumed,

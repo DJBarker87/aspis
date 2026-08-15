@@ -1,0 +1,1685 @@
+{
+  "aeneas_version": "35b05b92",
+  "charon_version": "0.1.223",
+  "crate": "v5_merkle_fixed_hash_adapter",
+  "functions": [
+    {
+      "def_id": 31,
+      "lean_name": "V5MerkleDeployedSource.core.iter.traits.iterator.Iterator.any.default",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::iter::traits::iterator::Iterator::any",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/iter/traits/iterator.rs",
+        "begin_line": 2885,
+        "end_line": 2888
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 10,
+      "lean_name": "V5MerkleDeployedSource.core.option.Option.ok_or",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::option::{core::option::Option<T>}::ok_or",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 1334,
+        "end_line": 1334
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 33,
+      "lean_name": "V5MerkleDeployedSource.core.option.OptionShared0T.copied",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::option::{core::option::Option<&'_0 T>}::copied",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 2135,
+        "end_line": 2137
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 152,
+      "lean_name": "V5MerkleDeployedSource.core.option.Option.Insts.CoreCmpPartialEqOption.eq",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::option::{impl core::cmp::PartialEq<core::option::Option<T>> for core::option::Option<T>}::eq",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 2440,
+        "end_line": 2440
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 34,
+      "lean_name": "V5MerkleDeployedSource.core.option.Option.Insts.CoreOpsTry_traitTry.branch",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::option::{impl core::ops::try_trait::Try for core::option::Option<T>}::branch",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 2779,
+        "end_line": 2779
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 35,
+      "lean_name": "V5MerkleDeployedSource.core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionInfallible.from_residual",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::option::{impl core::ops::try_trait::FromResidual<core::option::Option<core::convert::Infallible>> for core::option::Option<T>}::from_residual",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 2793,
+        "end_line": 2793
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V5MerkleDeployedSource.core.result.Result.map_err",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::result::{core::result::Result<T, E>}::map_err",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/result.rs",
+        "begin_line": 962,
+        "end_line": 964
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 138,
+      "lean_name": "V5MerkleDeployedSource.core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice.next",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a [T]> for core::slice::iter::Windows<'a, T>}::next",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/iter.rs",
+        "begin_line": 1354,
+        "end_line": 1354
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 32,
+      "lean_name": "V5MerkleDeployedSource.core.slice.Slice.last",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::slice::{[T]}::last",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/mod.rs",
+        "begin_line": 281,
+        "end_line": 281
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 30,
+      "lean_name": "V5MerkleDeployedSource.core.slice.Slice.windows",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::slice::{[T]}::windows",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/mod.rs",
+        "begin_line": 1116,
+        "end_line": 1116
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 173,
+      "lean_name": "V5MerkleDeployedSource.alloc.vec.Vec.as_slice",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "alloc::vec::{alloc::vec::Vec<T>}::as_slice",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/alloc/src/vec/mod.rs",
+        "begin_line": 1854,
+        "end_line": 1854
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 48,
+      "lean_name": "V5MerkleDeployedSource.alloc.vec.Vec.clear",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "alloc::vec::{alloc::vec::Vec<T>}::clear",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/alloc/src/vec/mod.rs",
+        "begin_line": 3028,
+        "end_line": 3028
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 172,
+      "lean_name": "V5MerkleDeployedSource.alloc.vec.Vec.is_empty",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "alloc::vec::{alloc::vec::Vec<T>}::is_empty",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/alloc/src/vec/mod.rs",
+        "begin_line": 3085,
+        "end_line": 3085
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 6,
+      "lean_name": "V5MerkleDeployedSource.aspis_core.circle_line_merkle.derive_circle_line_query_indices_for_count",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "aspis_core::circle_line_merkle::derive_circle_line_query_indices_for_count",
+      "is_local": false,
+      "source": {
+        "file": "<DEPLOYED_SOURCE>/crates/aspis-core/src/circle_line_merkle.rs",
+        "begin_line": 266,
+        "end_line": 269
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 170,
+      "lean_name": "V5MerkleDeployedSource.merkle.fixed_hashv",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::fixed_hashv",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 20,
+        "end_line": 22
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 174,
+      "lean_name": "V5MerkleDeployedSource.merkle.fixed_node_hash",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::fixed_node_hash",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 24,
+        "end_line": 30
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 149,
+      "lean_name": "V5MerkleDeployedSource.merkle.topology_parent_level_loop.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::topology_parent_level",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 383,
+        "end_line": 403
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "V5MerkleDeployedSource.merkle.topology_parent_level"
+    },
+    {
+      "def_id": 149,
+      "lean_name": "V5MerkleDeployedSource.merkle.topology_parent_level_loop",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::topology_parent_level",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 383,
+        "end_line": 403
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "V5MerkleDeployedSource.merkle.topology_parent_level"
+    },
+    {
+      "def_id": 149,
+      "lean_name": "V5MerkleDeployedSource.merkle.topology_parent_level",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::topology_parent_level",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 375,
+        "end_line": 410
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 37,
+      "lean_name": "V5MerkleDeployedSource.merkle.build_topology_levels",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::build_topology_levels",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 417,
+        "end_line": 450
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": true,
+      "reducible": false
+    },
+    {
+      "def_id": 62,
+      "lean_name": "V5MerkleDeployedSource.merkle.Radix4BinaryCapTopology.new.closure.Insts.CoreOpsFunctionFnMutTupleSharedSliceU32Bool.call_mut",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::{v5_merkle_fixed_hash_adapter::merkle::Radix4BinaryCapTopology}::new::{impl core::ops::function::FnMut<(&'_ [u32],), bool> for v5_merkle_fixed_hash_adapter::merkle::{v5_merkle_fixed_hash_adapter::merkle::Radix4BinaryCapTopology}::new::closure}::call_mut",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 459,
+        "end_line": 459
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 61,
+      "lean_name": "V5MerkleDeployedSource.merkle.Radix4BinaryCapTopology.new.closure.Insts.CoreOpsFunctionFnOnceTupleSharedSliceU32Bool.call_once",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::{v5_merkle_fixed_hash_adapter::merkle::Radix4BinaryCapTopology}::new::{impl core::ops::function::FnOnce<(&'_ [u32],), bool> for v5_merkle_fixed_hash_adapter::merkle::{v5_merkle_fixed_hash_adapter::merkle::Radix4BinaryCapTopology}::new::closure}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 459,
+        "end_line": 459
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V5MerkleDeployedSource.merkle.Radix4BinaryCapTopology.new",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::{v5_merkle_fixed_hash_adapter::merkle::Radix4BinaryCapTopology}::new",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 455,
+        "end_line": 491
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 153,
+      "lean_name": "V5MerkleDeployedSource.merkle.Radix4BinaryCapTopology.impl.level_indices",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::{v5_merkle_fixed_hash_adapter::merkle::Radix4BinaryCapTopology}::level_indices",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 493,
+        "end_line": 499
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 44,
+      "lean_name": "V5MerkleDeployedSource.merkle.Radix4BinaryCapTopology.matched_suffix",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::{v5_merkle_fixed_hash_adapter::merkle::Radix4BinaryCapTopology}::matched_suffix",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 510,
+        "end_line": 529
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 180,
+      "lean_name": "V5MerkleDeployedSource.merkle.fixed_write_radix_child_loop.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::fixed_write_radix_child",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 565,
+        "end_line": 568
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "V5MerkleDeployedSource.merkle.fixed_write_radix_child"
+    },
+    {
+      "def_id": 180,
+      "lean_name": "V5MerkleDeployedSource.merkle.fixed_write_radix_child_loop",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::fixed_write_radix_child",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 565,
+        "end_line": 568
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "V5MerkleDeployedSource.merkle.fixed_write_radix_child"
+    },
+    {
+      "def_id": 180,
+      "lean_name": "V5MerkleDeployedSource.merkle.fixed_write_radix_child",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::fixed_write_radix_child",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 563,
+        "end_line": 569
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": true
+    },
+    {
+      "def_id": 55,
+      "lean_name": "V5MerkleDeployedSource.merkle.verify_radix4_binary_cap_with_matched_topology_loop0_loop0_loop0_loop0.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::verify_radix4_binary_cap_with_matched_topology",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 628,
+        "end_line": 631
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 3, "pos": [ 0, 0, 0, 0 ], "is_body": true },
+      "parent_lean_name": "V5MerkleDeployedSource.merkle.verify_radix4_binary_cap_with_matched_topology"
+    },
+    {
+      "def_id": 55,
+      "lean_name": "V5MerkleDeployedSource.merkle.verify_radix4_binary_cap_with_matched_topology_loop0_loop0_loop0_loop0",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::verify_radix4_binary_cap_with_matched_topology",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 628,
+        "end_line": 631
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 3, "pos": [ 0, 0, 0, 0 ], "is_body": false },
+      "parent_lean_name": "V5MerkleDeployedSource.merkle.verify_radix4_binary_cap_with_matched_topology"
+    },
+    {
+      "def_id": 55,
+      "lean_name": "V5MerkleDeployedSource.merkle.verify_radix4_binary_cap_with_matched_topology_loop0_loop0_loop0.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::verify_radix4_binary_cap_with_matched_topology",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 609,
+        "end_line": 638
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 2, "pos": [ 0, 0, 0 ], "is_body": true },
+      "parent_lean_name": "V5MerkleDeployedSource.merkle.verify_radix4_binary_cap_with_matched_topology"
+    },
+    {
+      "def_id": 55,
+      "lean_name": "V5MerkleDeployedSource.merkle.verify_radix4_binary_cap_with_matched_topology_loop0_loop0_loop0",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::verify_radix4_binary_cap_with_matched_topology",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 609,
+        "end_line": 638
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 2, "pos": [ 0, 0, 0 ], "is_body": false },
+      "parent_lean_name": "V5MerkleDeployedSource.merkle.verify_radix4_binary_cap_with_matched_topology"
+    },
+    {
+      "def_id": 55,
+      "lean_name": "V5MerkleDeployedSource.merkle.verify_radix4_binary_cap_with_matched_topology_loop0_loop0.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::verify_radix4_binary_cap_with_matched_topology",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 601,
+        "end_line": 641
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 0, 0 ], "is_body": true },
+      "parent_lean_name": "V5MerkleDeployedSource.merkle.verify_radix4_binary_cap_with_matched_topology"
+    },
+    {
+      "def_id": 55,
+      "lean_name": "V5MerkleDeployedSource.merkle.verify_radix4_binary_cap_with_matched_topology_loop0_loop0",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::verify_radix4_binary_cap_with_matched_topology",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 601,
+        "end_line": 641
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 0, 0 ], "is_body": false },
+      "parent_lean_name": "V5MerkleDeployedSource.merkle.verify_radix4_binary_cap_with_matched_topology"
+    },
+    {
+      "def_id": 55,
+      "lean_name": "V5MerkleDeployedSource.merkle.verify_radix4_binary_cap_with_matched_topology_loop0.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::verify_radix4_binary_cap_with_matched_topology",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 591,
+        "end_line": 647
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "V5MerkleDeployedSource.merkle.verify_radix4_binary_cap_with_matched_topology"
+    },
+    {
+      "def_id": 55,
+      "lean_name": "V5MerkleDeployedSource.merkle.verify_radix4_binary_cap_with_matched_topology_loop0",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::verify_radix4_binary_cap_with_matched_topology",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 591,
+        "end_line": 647
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "V5MerkleDeployedSource.merkle.verify_radix4_binary_cap_with_matched_topology"
+    },
+    {
+      "def_id": 55,
+      "lean_name": "V5MerkleDeployedSource.merkle.verify_radix4_binary_cap_with_matched_topology",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::verify_radix4_binary_cap_with_matched_topology",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 573,
+        "end_line": 683
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 53,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_merkle.private_leaf_hash_record_fixed",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_merkle::private_leaf_hash_record_fixed",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_merkle.rs",
+        "begin_line": 25,
+        "end_line": 27
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 49,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_openings.StateOnlyPrivateOpening.record_width",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_openings::{v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpening<'a>}::record_width",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 55,
+        "end_line": 57
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 158,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_openings.Cursor.new",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_openings::{v5_merkle_fixed_hash_adapter::state_only_private_openings::Cursor<'a>}::new",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 97,
+        "end_line": 99
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 162,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_openings.Cursor.take",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_openings::{v5_merkle_fixed_hash_adapter::state_only_private_openings::Cursor<'a>}::take",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 101,
+        "end_line": 115
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 159,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_openings.Cursor.u16",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_openings::{v5_merkle_fixed_hash_adapter::state_only_private_openings::Cursor<'a>}::u16",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 117,
+        "end_line": 119
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 163,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_openings.Cursor.u32",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_openings::{v5_merkle_fixed_hash_adapter::state_only_private_openings::Cursor<'a>}::u32",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 121,
+        "end_line": 123
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 155,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_openings.first_out_of_range",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_openings::first_out_of_range",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 126,
+        "end_line": 137
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": true,
+      "reducible": false
+    },
+    {
+      "def_id": 154,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_openings.indices_are_strictly_increasing",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_openings::indices_are_strictly_increasing",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 139,
+        "end_line": 147
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": true,
+      "reducible": false
+    },
+    {
+      "def_id": 45,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_openings.validate_shape",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_openings::validate_shape",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 149,
+        "end_line": 178
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 161,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_openings.checked_section_len",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_openings::checked_section_len",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 180,
+        "end_line": 184
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 47,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_openings.parse_private_opening_from_proof",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_openings::parse_private_opening_from_proof",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 186,
+        "end_line": 226
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology_loop0.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 299,
+        "end_line": 301
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "V5MerkleDeployedSource.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology"
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology_loop0",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 299,
+        "end_line": 301
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "V5MerkleDeployedSource.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology"
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology_loop1.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 299,
+        "end_line": 301
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 1 ], "is_body": true },
+      "parent_lean_name": "V5MerkleDeployedSource.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology"
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology_loop1",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 299,
+        "end_line": 301
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 1 ], "is_body": false },
+      "parent_lean_name": "V5MerkleDeployedSource.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology"
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology_loop2.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 299,
+        "end_line": 301
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 2, "pos": [ 2 ], "is_body": true },
+      "parent_lean_name": "V5MerkleDeployedSource.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology"
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology_loop2",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 299,
+        "end_line": 301
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 2, "pos": [ 2 ], "is_body": false },
+      "parent_lean_name": "V5MerkleDeployedSource.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology"
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology_loop3.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 299,
+        "end_line": 301
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 3, "pos": [ 3 ], "is_body": true },
+      "parent_lean_name": "V5MerkleDeployedSource.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology"
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology_loop3",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 299,
+        "end_line": 301
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 3, "pos": [ 3 ], "is_body": false },
+      "parent_lean_name": "V5MerkleDeployedSource.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology"
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 271,
+        "end_line": 315
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 7,
+      "lean_name": "V5MerkleDeployedSource.private_openings.V5PrivateOpeningRoots.as_array",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::{v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningRoots}::as_array",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 40,
+        "end_line": 48
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 28,
+      "lean_name": "V5MerkleDeployedSource.private_openings.V5PrivateOpeningError.Insts.CoreConvertFromCircleLineMerkleError.from",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::{impl core::convert::From<aspis_core::circle_line_merkle::CircleLineMerkleError> for v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError}::from",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 66,
+        "end_line": 68
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 25,
+      "lean_name": "V5MerkleDeployedSource.private_openings.verify_v5_private_openings_from_proof.closure_4.Insts.CoreOpsFunctionFnOnceTupleStateOnlyPrivateOpeningErrorV5PrivateOpeningError.call_once",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::{impl core::ops::function::FnOnce<(v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpeningError,), v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError> for v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure#4}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 157,
+        "end_line": 157
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 24,
+      "lean_name": "V5MerkleDeployedSource.private_openings.verify_v5_private_openings_from_proof.closure_3.Insts.CoreOpsFunctionFnOnceTupleStateOnlyPrivateOpeningErrorV5PrivateOpeningError.call_once",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::{impl core::ops::function::FnOnce<(v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpeningError,), v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError> for v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure#3}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 144,
+        "end_line": 144
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 23,
+      "lean_name": "V5MerkleDeployedSource.private_openings.verify_v5_private_openings_from_proof.closure_2.Insts.CoreOpsFunctionFnOnceTupleStateOnlyPrivateOpeningErrorV5PrivateOpeningError.call_once",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::{impl core::ops::function::FnOnce<(v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpeningError,), v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError> for v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure#2}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 131,
+        "end_line": 131
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 22,
+      "lean_name": "V5MerkleDeployedSource.private_openings.verify_v5_private_openings_from_proof.closure_1.Insts.CoreOpsFunctionFnOnceTupleStateOnlyPrivateOpeningErrorV5PrivateOpeningError.call_once",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::{impl core::ops::function::FnOnce<(v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpeningError,), v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError> for v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure#1}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 118,
+        "end_line": 118
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 21,
+      "lean_name": "V5MerkleDeployedSource.private_openings.verify_v5_private_openings_from_proof.closure.Insts.CoreOpsFunctionFnOnceTupleStateOnlyPrivateOpeningErrorV5PrivateOpeningError.call_once",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::{impl core::ops::function::FnOnce<(v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpeningError,), v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError> for v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 105,
+        "end_line": 105
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V5MerkleDeployedSource.private_openings.verify_v5_private_openings_from_proof",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 82,
+        "end_line": 169
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V5MerkleDeployedSource.private_openings.verify_v5_private_openings",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 172,
+        "end_line": 185
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    }
+  ],
+  "types": [
+    {
+      "def_id": 20,
+      "lean_name": "V5MerkleDeployedSource.core.slice.iter.Windows",
+      "lean_file": "TypesExternal_Template.lean",
+      "rust_name": "core::slice::iter::Windows",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/iter.rs",
+        "begin_line": 1329,
+        "end_line": 1329
+      }
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V5MerkleDeployedSource.aspis_core.circle_line_merkle.CircleLineMerkleError",
+      "lean_file": "Types.lean",
+      "rust_name": "aspis_core::circle_line_merkle::CircleLineMerkleError",
+      "is_local": false,
+      "source": {
+        "file": "<DEPLOYED_SOURCE>/crates/aspis-core/src/circle_line_merkle.rs",
+        "begin_line": 58,
+        "end_line": 58
+      }
+    },
+    {
+      "def_id": 7,
+      "lean_name": "V5MerkleDeployedSource.aspis_core.circle_line_merkle.CircleLineQueryIndices",
+      "lean_file": "Types.lean",
+      "rust_name": "aspis_core::circle_line_merkle::CircleLineQueryIndices",
+      "is_local": false,
+      "source": {
+        "file": "<DEPLOYED_SOURCE>/crates/aspis-core/src/circle_line_merkle.rs",
+        "begin_line": 102,
+        "end_line": 102
+      }
+    },
+    {
+      "def_id": 10,
+      "lean_name": "V5MerkleDeployedSource.merkle.Radix4BinaryCapTopology",
+      "lean_file": "Types.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::Radix4BinaryCapTopology",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 350,
+        "end_line": 357
+      }
+    },
+    {
+      "def_id": 22,
+      "lean_name": "V5MerkleDeployedSource.merkle.MatchedRadix4BinaryCapSuffix",
+      "lean_file": "Types.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::MatchedRadix4BinaryCapSuffix",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 364,
+        "end_line": 369
+      }
+    },
+    {
+      "def_id": 21,
+      "lean_name": "V5MerkleDeployedSource.merkle.Radix4BinaryCapTopology.new.closure",
+      "lean_file": "Types.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::{v5_merkle_fixed_hash_adapter::merkle::Radix4BinaryCapTopology}::new::closure",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 459,
+        "end_line": 459
+      }
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_openings.StateOnlyPrivateOpeningError",
+      "lean_file": "Types.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpeningError",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 21,
+        "end_line": 33
+      }
+    },
+    {
+      "def_id": 19,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_openings.StateOnlyPrivateOpeningOffsets",
+      "lean_file": "Types.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpeningOffsets",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 36,
+        "end_line": 42
+      }
+    },
+    {
+      "def_id": 6,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_openings.StateOnlyPrivateOpening",
+      "lean_file": "Types.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpening",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 46,
+        "end_line": 52
+      }
+    },
+    {
+      "def_id": 58,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_openings.Cursor",
+      "lean_file": "Types.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_openings::Cursor",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 91,
+        "end_line": 94
+      }
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V5MerkleDeployedSource.private_openings.V5PrivateOpeningRoots",
+      "lean_file": "Types.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningRoots",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 33,
+        "end_line": 37
+      }
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V5MerkleDeployedSource.private_openings.V5PrivateOpeningError",
+      "lean_file": "Types.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 52,
+        "end_line": 63
+      }
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V5MerkleDeployedSource.private_openings.VerifiedV5PrivateOpenings",
+      "lean_file": "Types.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::VerifiedV5PrivateOpenings",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 72,
+        "end_line": 78
+      }
+    },
+    {
+      "def_id": 18,
+      "lean_name": "V5MerkleDeployedSource.private_openings.verify_v5_private_openings_from_proof.closure_4",
+      "lean_file": "Types.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure#4",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 157,
+        "end_line": 157
+      }
+    },
+    {
+      "def_id": 17,
+      "lean_name": "V5MerkleDeployedSource.private_openings.verify_v5_private_openings_from_proof.closure_3",
+      "lean_file": "Types.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure#3",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 144,
+        "end_line": 144
+      }
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V5MerkleDeployedSource.private_openings.verify_v5_private_openings_from_proof.closure_2",
+      "lean_file": "Types.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure#2",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 131,
+        "end_line": 131
+      }
+    },
+    {
+      "def_id": 15,
+      "lean_name": "V5MerkleDeployedSource.private_openings.verify_v5_private_openings_from_proof.closure_1",
+      "lean_file": "Types.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure#1",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 118,
+        "end_line": 118
+      }
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V5MerkleDeployedSource.private_openings.verify_v5_private_openings_from_proof.closure",
+      "lean_file": "Types.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 105,
+        "end_line": 105
+      }
+    }
+  ],
+  "globals": [
+    {
+      "def_id": 7,
+      "lean_name": "V5MerkleDeployedSource.aspis_core.circle_line_merkle.CIRCLE_LINE_TAGS",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "aspis_core::circle_line_merkle::CIRCLE_LINE_TAGS",
+      "is_local": false,
+      "source": {
+        "file": "<DEPLOYED_SOURCE>/crates/aspis-core/src/circle_line_merkle.rs",
+        "begin_line": 18,
+        "end_line": 18
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V5MerkleDeployedSource.aspis_core.circle_merkle.CIRCLE_C1_LAYER0_TAG",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "aspis_core::circle_merkle::CIRCLE_C1_LAYER0_TAG",
+      "is_local": false,
+      "source": {
+        "file": "<DEPLOYED_SOURCE>/crates/aspis-core/src/circle_merkle.rs",
+        "begin_line": 21,
+        "end_line": 21
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V5MerkleDeployedSource.aspis_core.circle_merkle.CIRCLE_C2_LAYER0_TAG",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "aspis_core::circle_merkle::CIRCLE_C2_LAYER0_TAG",
+      "is_local": false,
+      "source": {
+        "file": "<DEPLOYED_SOURCE>/crates/aspis-core/src/circle_merkle.rs",
+        "begin_line": 22,
+        "end_line": 22
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 24,
+      "lean_name": "V5MerkleDeployedSource.merkle.DOM_NODE",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::DOM_NODE",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 13,
+        "end_line": 13
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V5MerkleDeployedSource.merkle.DOM_NODE4",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::DOM_NODE4",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 14,
+        "end_line": 14
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_merkle.DOM_LEAF",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_merkle::DOM_LEAF",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_merkle.rs",
+        "begin_line": 10,
+        "end_line": 10
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 10,
+      "lean_name": "V5MerkleDeployedSource.state_only_private_merkle.STATE_ONLY_PRIVATE_LEAF_SALT_BYTES",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::state_only_private_merkle::STATE_ONLY_PRIVATE_LEAF_SALT_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/state_only_private_merkle.rs",
+        "begin_line": 12,
+        "end_line": 12
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V5MerkleDeployedSource.private_openings.V5_PRIVATE_LAYER0_LEAVES",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::V5_PRIVATE_LAYER0_LEAVES",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 20,
+        "end_line": 20
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V5MerkleDeployedSource.private_openings.V5_PRIVATE_DEPTHS",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::V5_PRIVATE_DEPTHS",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 22,
+        "end_line": 22
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V5MerkleDeployedSource.private_openings.V5_PRIVATE_VALUE_WIDTHS",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::V5_PRIVATE_VALUE_WIDTHS",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 23,
+        "end_line": 23
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V5MerkleDeployedSource.private_openings.V5_PRIVATE_TREE_TAGS",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::V5_PRIVATE_TREE_TAGS",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 24,
+        "end_line": 30
+      },
+      "can_fail": true
+    }
+  ],
+  "trait_decls": [],
+  "trait_impls": [
+    {
+      "def_id": 44,
+      "lean_name": "V5MerkleDeployedSource.Slice.Insts.CoreCmpPartialEqSlice",
+      "lean_file": "Funs.lean",
+      "rust_name": "core::slice::cmp::{impl core::cmp::PartialEq<[U]> for [T]}",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/cmp.rs",
+        "begin_line": 14,
+        "end_line": 16
+      },
+      "impl_trait_def_id": 22,
+      "impl_trait_rust_name": "core::cmp::PartialEq",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 27,
+      "lean_name": "V5MerkleDeployedSource.core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice",
+      "lean_file": "Funs.lean",
+      "rust_name": "core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a [T]> for core::slice::iter::Windows<'a, T>}",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/iter.rs",
+        "begin_line": 1350,
+        "end_line": 1350
+      },
+      "impl_trait_def_id": 7,
+      "impl_trait_rust_name": "core::iter::traits::iterator::Iterator",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 25,
+      "lean_name": "V5MerkleDeployedSource.merkle.Radix4BinaryCapTopology.new.closure.Insts.CoreOpsFunctionFnOnceTupleSharedSliceU32Bool",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::{v5_merkle_fixed_hash_adapter::merkle::Radix4BinaryCapTopology}::new::{impl core::ops::function::FnOnce<(&'_ [u32],), bool> for v5_merkle_fixed_hash_adapter::merkle::{v5_merkle_fixed_hash_adapter::merkle::Radix4BinaryCapTopology}::new::closure}",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 459,
+        "end_line": 459
+      },
+      "impl_trait_def_id": 2,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 26,
+      "lean_name": "V5MerkleDeployedSource.merkle.Radix4BinaryCapTopology.new.closure.Insts.CoreOpsFunctionFnMutTupleSharedSliceU32Bool",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::merkle::{v5_merkle_fixed_hash_adapter::merkle::Radix4BinaryCapTopology}::new::{impl core::ops::function::FnMut<(&'_ [u32],), bool> for v5_merkle_fixed_hash_adapter::merkle::{v5_merkle_fixed_hash_adapter::merkle::Radix4BinaryCapTopology}::new::closure}",
+      "is_local": true,
+      "source": {
+        "file": "src/../crates/aspis-core/src/merkle.rs",
+        "begin_line": 459,
+        "end_line": 459
+      },
+      "impl_trait_def_id": 8,
+      "impl_trait_rust_name": "core::ops::function::FnMut",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V5MerkleDeployedSource.private_openings.V5PrivateOpeningError.Insts.CoreConvertFromCircleLineMerkleError",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::{impl core::convert::From<aspis_core::circle_line_merkle::CircleLineMerkleError> for v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError}",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 65,
+        "end_line": 69
+      },
+      "impl_trait_def_id": 1,
+      "impl_trait_rust_name": "core::convert::From",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V5MerkleDeployedSource.private_openings.verify_v5_private_openings_from_proof.closure_4.Insts.CoreOpsFunctionFnOnceTupleStateOnlyPrivateOpeningErrorV5PrivateOpeningError",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::{impl core::ops::function::FnOnce<(v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpeningError,), v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError> for v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure#4}",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 157,
+        "end_line": 157
+      },
+      "impl_trait_def_id": 2,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 10,
+      "lean_name": "V5MerkleDeployedSource.private_openings.verify_v5_private_openings_from_proof.closure_3.Insts.CoreOpsFunctionFnOnceTupleStateOnlyPrivateOpeningErrorV5PrivateOpeningError",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::{impl core::ops::function::FnOnce<(v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpeningError,), v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError> for v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure#3}",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 144,
+        "end_line": 144
+      },
+      "impl_trait_def_id": 2,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V5MerkleDeployedSource.private_openings.verify_v5_private_openings_from_proof.closure_2.Insts.CoreOpsFunctionFnOnceTupleStateOnlyPrivateOpeningErrorV5PrivateOpeningError",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::{impl core::ops::function::FnOnce<(v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpeningError,), v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError> for v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure#2}",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 131,
+        "end_line": 131
+      },
+      "impl_trait_def_id": 2,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V5MerkleDeployedSource.private_openings.verify_v5_private_openings_from_proof.closure_1.Insts.CoreOpsFunctionFnOnceTupleStateOnlyPrivateOpeningErrorV5PrivateOpeningError",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::{impl core::ops::function::FnOnce<(v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpeningError,), v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError> for v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure#1}",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 118,
+        "end_line": 118
+      },
+      "impl_trait_def_id": 2,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 7,
+      "lean_name": "V5MerkleDeployedSource.private_openings.verify_v5_private_openings_from_proof.closure.Insts.CoreOpsFunctionFnOnceTupleStateOnlyPrivateOpeningErrorV5PrivateOpeningError",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::{impl core::ops::function::FnOnce<(v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpeningError,), v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError> for v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure}",
+      "is_local": true,
+      "source": {
+        "file": "src/../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 105,
+        "end_line": 105
+      },
+      "impl_trait_def_id": 2,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    }
+  ]
+}
