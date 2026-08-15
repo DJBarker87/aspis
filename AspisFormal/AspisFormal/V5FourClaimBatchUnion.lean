@@ -170,6 +170,30 @@ theorem recordBatchCollisionSet_card_le_720
       (records referenceKappa candidate).fourClaimDiscrepancy)).trans (by
         omega)
 
+/-- Exact finite-uniform probability for candidate records that are fixed
+before the batching challenge.  This is the form needed after conditioning
+on any earlier transcript prefix. -/
+noncomputable def uniformRecordBatchCollisionProbability
+    (records : K → Candidate → CandidateSemanticRecord K) : Rat :=
+  (recordBatchCollisionSet records).card / Fintype.card K
+
+theorem uniformRecordBatchCollisionProbability_le_720
+    (records : K → Candidate → CandidateSemanticRecord K)
+    (hfixed : CandidateRecordsFixedBeforeKappa records)
+    (hcarries : CandidateRecordsCarryKappa records)
+    (hcandidates : Fintype.card Candidate ≤ 240)
+    (referenceKappa : K) :
+    uniformRecordBatchCollisionProbability records ≤
+      (720 : Rat) / Fintype.card K := by
+  have hfieldNat : 0 < Fintype.card K :=
+    Fintype.card_pos_iff.mpr ⟨0⟩
+  have hfield : (0 : Rat) < Fintype.card K := by
+    exact_mod_cast hfieldNat
+  rw [uniformRecordBatchCollisionProbability,
+    div_le_div_iff_of_pos_right hfield]
+  exact_mod_cast recordBatchCollisionSet_card_le_720 records hfixed hcarries
+    hcandidates referenceKappa
+
 /-- For the released field cardinality, `720 / |QM31|` is below `2^-114`. -/
 theorem qm31_candidate_batch_collision_le_two_pow_neg_114 :
     (720 : Real) / FIELD ≤ (1 : Real) / 2 ^ 114 := by
@@ -213,6 +237,7 @@ theorem raw_core_plus_four_claim_batch_le_two_pow_neg_75 :
 #print axioms uniformCandidateBatchCollisionProbability_le_720
 #print axioms recordBatchCollisionSet_eq_candidateBatchCollisionSet
 #print axioms recordBatchCollisionSet_card_le_720
+#print axioms uniformRecordBatchCollisionProbability_le_720
 #print axioms qm31_candidate_batch_collision_le_two_pow_neg_114
 #print axioms raw_core_plus_four_claim_batch_le_two_pow_neg_75
 
