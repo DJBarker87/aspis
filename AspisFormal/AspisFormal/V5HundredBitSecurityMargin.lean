@@ -279,6 +279,15 @@ theorem eight_two_pow_neg_128_fit_external_budget :
     8 * ((1 : ℝ) / 2 ^ 128) ≤ (3 : ℝ) / (10 * 2 ^ 100) := by
   norm_num
 
+/-- The complete final ledger currently names eighteen external entries: eight
+transcript/primitive entries, three relation/Merkle/credential entries, and
+seven runtime entries.  Even eighteen `2^-128` premises fit in the reserved
+budget.  As above, this is arithmetic only and does not manufacture those
+premises. -/
+theorem eighteen_two_pow_neg_128_fit_external_budget :
+    18 * ((1 : ℝ) / 2 ^ 128) ≤ (3 : ℝ) / (10 * 2 ^ 100) := by
+  norm_num
+
 #print axioms corrected_batch_le_2120_div_two_pow_119
 #print axioms raw_width19_reference_ceiling_is_above_two_pow_neg_100
 #print axioms corrected_round_error_le_tight_union
@@ -286,5 +295,6 @@ theorem eight_two_pow_neg_128_fit_external_budget :
 #print axioms corrected_selected_release_core_le_seven_tenths
 #print axioms core_plus_external_budget_le_two_pow_neg_100
 #print axioms eight_two_pow_neg_128_fit_external_budget
+#print axioms eighteen_two_pow_neg_128_fit_external_budget
 
 end AspisV5HundredBitSecurityMargin
