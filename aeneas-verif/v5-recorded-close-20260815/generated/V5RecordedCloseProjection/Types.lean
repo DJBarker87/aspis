@@ -14,7 +14,7 @@ set_option maxRecDepth 2048
 
 namespace V5RecordedCloseProjectionGenerated
 
-/-- [aspis_close_projection::CloseError]
+/- [aspis_close_projection::CloseError]
     Source: 'src/lib.rs', lines 2:0-11:1
     Visibility: public -/
 inductive CloseError where
@@ -27,7 +27,7 @@ inductive CloseError where
 | Overflow : CloseError
 | ShortData : CloseError
 
-/-- [aspis_close_projection::CloseChecks]
+/- [aspis_close_projection::CloseChecks]
     Source: 'src/lib.rs', lines 14:0-25:1
     Visibility: public -/
 structure CloseChecks where
@@ -42,10 +42,21 @@ structure CloseChecks where
   refund_system_owned : Bool
   data_has_four_bytes : Bool
 
-/-- [aspis_close_projection::CloseState]
+/- [aspis_close_projection::CloseState]
     Source: 'src/lib.rs', lines 28:0-33:1
     Visibility: public -/
 structure CloseState (S : Type) where
+  proof_prefix : Array Std.U8 4#usize
+  proof_suffix : S
+  proof_lamports : Std.U64
+  refund_lamports : Std.U64
+
+/- [aspis_close_projection::CloseOutput]
+    Source: 'src/lib.rs', lines 36:0-43:1
+    Visibility: public -/
+structure CloseOutput (A : Type) (S : Type) where
+  proof_address : A
+  refund_recipient : A
   proof_prefix : Array Std.U8 4#usize
   proof_suffix : S
   proof_lamports : Std.U64

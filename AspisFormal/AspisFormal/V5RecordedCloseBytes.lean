@@ -371,6 +371,8 @@ theorem rust_close_success_inherits_exact_bytes_and_refund
 identified with the executable Lean state.  These are narrower than Solana
 transaction-runtime assumptions. -/
 structure RecordedAccountInfoSemantics where
+  accountIteratorReturnsProofThenRefund : Prop
+  refundFunctionReceivesTheSecondAccount : Prop
   publicFieldsMatchAccountMetadata : Prop
   lamportsReadReturnsLiveBalance : Prop
   mutableDataBorrowTargetsProofBytes : Prop

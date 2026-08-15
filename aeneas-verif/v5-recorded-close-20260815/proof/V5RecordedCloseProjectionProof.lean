@@ -32,29 +32,40 @@ theorem checked_add_exact_of_bound (left right : Std.U64)
       simp [h] at spec
       exact ⟨sum, rfl, spec.2.1⟩
 
-def successfulOutput {S : Type} (state : CloseState S) (sum : Std.U64) :
-    CloseState S :=
-  { state with
+def successfulOutput {A S : Type} (proofAddress refundAddress : A)
+    (state : CloseState S) (sum : Std.U64) : CloseOutput A S :=
+  { proof_address := proofAddress
+    refund_recipient := refundAddress
     proof_prefix := Array.make 4#usize [65#u8, 83#u8, 80#u8, 67#u8]
+    proof_suffix := state.proof_suffix
     proof_lamports := 0#u64
     refund_lamports := sum }
 
 theorem generated_successful_path_is_exact
-    {S : Type} (checks : CloseChecks) (state : CloseState S)
+    {A S : Type} (checks : CloseChecks)
+    (proofAddress refundAddress : A) (state : CloseState S)
     (checksHold : ChecksHold checks)
     (positive : state.proof_lamports ≠ 0#u64)
     (bound : state.refund_lamports.val + state.proof_lamports.val < 2 ^ 64) :
     ∃ sum,
-      source_shaped_close checks state =
-        .ok (.Ok (successfulOutput state sum)) ∧
+      source_shaped_close checks proofAddress refundAddress state =
+        .ok (.Ok (successfulOutput proofAddress refundAddress state sum)) ∧
       sum.val = state.refund_lamports.val + state.proof_lamports.val ∧
-      (successfulOutput state sum).proof_prefix.val =
+      (successfulOutput proofAddress refundAddress state sum).proof_address =
+        proofAddress ∧
+      (successfulOutput proofAddress refundAddress state sum).refund_recipient =
+        refundAddress ∧
+      (successfulOutput proofAddress refundAddress state sum).proof_prefix.val =
         [65#u8, 83#u8, 80#u8, 67#u8] ∧
-      (successfulOutput state sum).proof_suffix = state.proof_suffix ∧
-      (successfulOutput state sum).proof_lamports = 0#u64 := by
+      (successfulOutput proofAddress refundAddress state sum).proof_suffix =
+        state.proof_suffix ∧
+      (successfulOutput proofAddress refundAddress state sum).proof_lamports =
+        0#u64 ∧
+      (successfulOutput proofAddress refundAddress state sum).refund_lamports =
+        sum := by
   obtain ⟨sum, addEq, sumValue⟩ :=
     checked_add_exact_of_bound state.refund_lamports state.proof_lamports bound
-  refine ⟨sum, ?_, sumValue, rfl, rfl, rfl⟩
+  refine ⟨sum, ?_, sumValue, rfl, rfl, rfl, rfl, rfl, rfl⟩
   simp [source_shaped_close, checksHold.uploadedBoundsValid,
     checksHold.proofFinalized, checksHold.proofOwnedByProgram,
     checksHold.refundSystemOwned, checksHold.proofSigner,
@@ -62,7 +73,20 @@ theorem generated_successful_path_is_exact
     checksHold.refundWritable, checksHold.distinctAddresses,
     checksHold.dataHasFourBytes, positive, addEq, successfulOutput, Std.lift]
 
+theorem current_required_nullifier_bump_is_255 :
+    current_required_nullifier_bump = .ok 255#u8 := by
+  unfold current_required_nullifier_bump CURRENT_REQUIRED_NULLIFIER_BUMP
+  congr 1
+
+theorem current_bump_gate_accepts_iff_255 (derivedBump : Std.U8) :
+    current_nullifier_bump_is_accepted derivedBump = .ok true ↔
+      derivedBump.val = 255 := by
+  simp [current_nullifier_bump_is_accepted, current_required_nullifier_bump,
+    CURRENT_REQUIRED_NULLIFIER_BUMP, UScalar.eq_equiv, U8.rMax]
+
 #print axioms checked_add_exact_of_bound
 #print axioms generated_successful_path_is_exact
+#print axioms current_required_nullifier_bump_is_255
+#print axioms current_bump_gate_accepts_iff_255
 
 end V5RecordedCloseProjectionProof

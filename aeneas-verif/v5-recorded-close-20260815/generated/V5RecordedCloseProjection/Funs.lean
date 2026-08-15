@@ -15,12 +15,13 @@ set_option maxRecDepth 2048
 
 namespace V5RecordedCloseProjectionGenerated
 
-/-- [aspis_close_projection::source_shaped_close]:
-    Source: 'src/lib.rs', lines 35:0-76:1
+/- [aspis_close_projection::source_shaped_close]:
+    Source: 'src/lib.rs', lines 45:0-87:1
     Visibility: public -/
 def source_shaped_close
-  {S : Type} (checks : CloseChecks) (state : CloseState S) :
-  Result (core.result.Result (CloseState S) CloseError)
+  {A : Type} {S : Type} (checks : CloseChecks) (proof_address : A)
+  (refund_address : A) (state : CloseState S) :
+  Result (core.result.Result (CloseOutput A S) CloseError)
   := do
   if checks.uploaded_bounds_valid
   then
@@ -53,14 +54,15 @@ def source_shaped_close
                         then
                           ok (core.result.Result.Ok
                             {
-                              state
-                                with
-                                proof_prefix :=
-                                  (Array.make 4#usize [
-                                    65#u8, 83#u8, 80#u8, 67#u8
-                                    ]),
-                                proof_lamports := 0#u64,
-                                refund_lamports := value
+                              proof_address,
+                              refund_recipient := refund_address,
+                              proof_prefix :=
+                                (Array.make 4#usize [
+                                  65#u8, 83#u8, 80#u8, 67#u8
+                                  ]),
+                              proof_suffix := state.proof_suffix,
+                              proof_lamports := 0#u64,
+                              refund_lamports := value
                             })
                         else ok (core.result.Result.Err CloseError.ShortData)
                   else ok (core.result.Result.Err CloseError.InvalidOwner)
@@ -72,5 +74,25 @@ def source_shaped_close
       else ok (core.result.Result.Err CloseError.InvalidOwner)
     else ok (core.result.Result.Err CloseError.InvalidProof)
   else ok (core.result.Result.Err CloseError.InvalidProof)
+
+/- [aspis_close_projection::CURRENT_REQUIRED_NULLIFIER_BUMP]
+    Source: 'src/lib.rs', lines 89:0-89:56
+    Visibility: public -/
+@[global_simps, irreducible]
+def CURRENT_REQUIRED_NULLIFIER_BUMP : Std.U8 := core.num.U8.MAX
+
+/- [aspis_close_projection::current_required_nullifier_bump]:
+    Source: 'src/lib.rs', lines 91:0-93:1
+    Visibility: public -/
+def current_required_nullifier_bump : Result Std.U8 := do
+  ok CURRENT_REQUIRED_NULLIFIER_BUMP
+
+/- [aspis_close_projection::current_nullifier_bump_is_accepted]:
+    Source: 'src/lib.rs', lines 95:0-97:1
+    Visibility: public -/
+def current_nullifier_bump_is_accepted
+  (derived_bump : Std.U8) : Result Bool := do
+  let i ← current_required_nullifier_bump
+  ok (derived_bump = i)
 
 end V5RecordedCloseProjectionGenerated

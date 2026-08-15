@@ -20,11 +20,14 @@ readonly recorded_tree="9b6bdfddb3c213addc2bb705c8130cce4fb2c351"
 readonly recorded_atomic_blob="dca4626b5b49da6aa48076fad748dc838ce9c7d6"
 readonly recorded_lifecycle_blob="560466bb84c85dde599b4b918f95b3015bf6b52a"
 readonly current_atomic_blob="53e44db042f6035d06dbddb08f80a76c67b25b80"
+readonly current_lifecycle_blob="560466bb84c85dde599b4b918f95b3015bf6b52a"
+readonly current_v5_wrapper_blob="9318294b41ec8b5572075bfd919b8f1c24172525"
+readonly current_dispatch_blob="d3687ed3b689b311f174b95a1f4137ced6784633"
 readonly projection_toml_blob="0e079bdc60f9dcd778e1402fc193f98f22734acb"
 readonly projection_lock_blob="c7a462cd9db477c53bb355899627c911bd1dd5dc"
-readonly projection_source_blob="d91011767477561d8af5568ddcab03bf38041c11"
-readonly projection_types_sha256="6b74ccf823c425ee6b105822a090df63022db036488777e691c72b92a248ead9"
-readonly projection_funs_sha256="b4b8626ae2c6eec70dedbf4ace52ea12ad1073905aa34d464c67acd8c01076e5"
+readonly projection_source_blob="1e9835e38d9e10debf45e0d5e1957199b3a6e3e4"
+readonly projection_types_sha256="4cce796ed90316354a012911b875ab1f87e8a92cf1759635eae96ff4033ff8ed"
+readonly projection_funs_sha256="7c268852eec33c129f8deccf31d209e74e7a9d89a05a2f56ea0c2d532d8b921b"
 
 [[ -x "$charon_bin" ]]
 [[ -x "$aeneas_bin" ]]
@@ -51,6 +54,9 @@ readonly aeneas_lean_path="$(cd "$lean432_aeneas_root" && lake env printenv LEAN
 [[ "$(git -C "$root" rev-parse "$recorded_commit:programs/aspis-verifier/src/atomic_payment.rs")" == "$recorded_atomic_blob" ]]
 [[ "$(git -C "$root" rev-parse "$recorded_commit:programs/aspis-verifier/src/lifecycle.rs")" == "$recorded_lifecycle_blob" ]]
 [[ "$(git -C "$root" hash-object programs/aspis-verifier/src/atomic_payment.rs)" == "$current_atomic_blob" ]]
+[[ "$(git -C "$root" hash-object programs/aspis-verifier/src/lifecycle.rs)" == "$current_lifecycle_blob" ]]
+[[ "$(git -C "$root" hash-object programs/aspis-verifier/src/v5_full_transaction.rs)" == "$current_v5_wrapper_blob" ]]
+[[ "$(git -C "$root" hash-object programs/aspis-verifier/src/dispatch.rs)" == "$current_dispatch_blob" ]]
 [[ "$(git -C "$root" hash-object "$projection_harness/Cargo.toml")" == "$projection_toml_blob" ]]
 [[ "$(git -C "$root" hash-object "$projection_harness/Cargo.lock")" == "$projection_lock_blob" ]]
 [[ "$(git -C "$root" hash-object "$projection_harness/src/lib.rs")" == "$projection_source_blob" ]]
@@ -64,6 +70,7 @@ else
 fi
 readonly out
 readonly source="$out/source"
+readonly current_source="$out/current-source"
 readonly llbc="$out/refund.llbc"
 readonly accountinfo_partial="$out/accountinfo-partial"
 readonly projection_llbc="$out/V5RecordedCloseProjection.llbc"
@@ -71,14 +78,27 @@ readonly projection_raw="$out/projection-raw"
 readonly projection_checked_src="$out/projection-checked-src"
 readonly projection_olean="$out/projection-olean"
 readonly log="$out/replay.log"
-mkdir -p "$source" "$accountinfo_partial" "$projection_raw" \
+mkdir -p "$source" "$current_source" "$accountinfo_partial" "$projection_raw" \
   "$projection_checked_src/V5RecordedCloseProjection" \
   "$projection_olean/V5RecordedCloseProjection"
 : > "$log"
 
 git -C "$root" archive "$recorded_commit" | tar -x -C "$source"
+git -C "$root" archive HEAD | tar -x -C "$current_source"
 [[ "$(git -C "$root" hash-object "$source/programs/aspis-verifier/src/atomic_payment.rs")" == "$recorded_atomic_blob" ]]
 [[ "$(git -C "$root" hash-object "$source/programs/aspis-verifier/src/lifecycle.rs")" == "$recorded_lifecycle_blob" ]]
+[[ "$(git -C "$root" hash-object "$current_source/programs/aspis-verifier/src/atomic_payment.rs")" == "$current_atomic_blob" ]]
+[[ "$(git -C "$root" hash-object "$current_source/programs/aspis-verifier/src/lifecycle.rs")" == "$current_lifecycle_blob" ]]
+[[ "$(git -C "$root" hash-object "$current_source/programs/aspis-verifier/src/v5_full_transaction.rs")" == "$current_v5_wrapper_blob" ]]
+[[ "$(git -C "$root" hash-object "$current_source/programs/aspis-verifier/src/dispatch.rs")" == "$current_dispatch_blob" ]]
+
+# The current root manifest names later, locally developed protocol crates
+# that are deliberately absent from this release branch.  Remove only those
+# unavailable workspace-member lines in the temporary test copy; no verifier
+# or dependency source is changed.
+sed '\|"protocol/|d' "$current_source/Cargo.toml" \
+  > "$current_source/Cargo.toml.release-test"
+mv "$current_source/Cargo.toml.release-test" "$current_source/Cargo.toml"
 
 # The recorded source has address derivation but no separate numeric-bump
 # rejection. The current source blob contains that later check.
@@ -91,6 +111,36 @@ if rg -F 'required_nullifier_bump' \
 fi
 rg -F 'required_nullifier_bump.is_some_and(|required| bump != required)' \
   "$root/programs/aspis-verifier/src/atomic_payment.rs" >/dev/null
+rg -F 'pub const V5_NULLIFIER_PDA_BUMP: u8 = u8::MAX;' \
+  "$root/programs/aspis-verifier/src/v5_full_transaction.rs" >/dev/null
+rg -F 'verify_and_apply_atomic_payment_state_with_required_nullifier_bump(' \
+  "$root/programs/aspis-verifier/src/v5_full_transaction.rs" >/dev/null
+rg -F 'V5_NULLIFIER_PDA_BUMP,' \
+  "$root/programs/aspis-verifier/src/v5_full_transaction.rs" >/dev/null
+rg -F 'Some(required_nullifier_bump),' \
+  "$root/programs/aspis-verifier/src/atomic_payment.rs" >/dev/null
+rg -F '67 => crate::v5_full_transaction::process_v5_full_cu_transaction_with_verifier(' \
+  "$root/programs/aspis-verifier/src/dispatch.rs" >/dev/null
+rg -F 'let proof_account = next_account_info(account_iter)?;' \
+  "$root/programs/aspis-verifier/src/lifecycle.rs" >/dev/null
+rg -F 'let refund_account = next_account_info(account_iter)?;' \
+  "$root/programs/aspis-verifier/src/lifecycle.rs" >/dev/null
+rg -F 'close_finalized_proof_account(program_id, proof_account, refund_account)' \
+  "$root/programs/aspis-verifier/src/lifecycle.rs" >/dev/null
+
+# The current close wrapper is byte-for-byte the recorded wrapper, and the
+# refund helper body itself is unchanged even though atomic_payment.rs also
+# contains the later bump plumbing.
+[[ "$current_lifecycle_blob" == "$recorded_lifecycle_blob" ]]
+extract_refund_helper() {
+  sed -n \
+    '/^pub fn refund_program_owned_proof_account(/,/^fn create_nullifier_marker/p' \
+    "$1" | sed '$d'
+}
+cmp <(extract_refund_helper \
+    "$source/programs/aspis-verifier/src/atomic_payment.rs") \
+  <(extract_refund_helper \
+    "$root/programs/aspis-verifier/src/atomic_payment.rs")
 
 (
   cd "$source"
@@ -100,12 +150,26 @@ rg -F 'required_nullifier_bump.is_some_and(|required| bump != required)' \
 ) >> "$log" 2>&1
 
 (
+  cd "$current_source"
+  CARGO_TARGET_DIR="$out/current-test-target" cargo test -p aspis-verifier \
+    tag67_rejects_bump_below_255_without_verification_or_state_change \
+    -- --nocapture
+  CARGO_TARGET_DIR="$out/current-test-target" cargo test -p aspis-verifier \
+    tag67_accepts_bump_255_and_applies_the_state_change \
+    -- --nocapture
+  CARGO_TARGET_DIR="$out/current-test-target" cargo test -p aspis-verifier \
+    close_finalized_proof_refunds_exact_balance_and_tombstones_overallocation \
+    -- --nocapture
+) >> "$log" 2>&1
+
+(
   cd "$source"
   CARGO_TARGET_DIR="$out/charon-target" "$charon_bin" cargo \
     --preset aeneas \
     --sysroot default \
-    --start-from 'aspis_verifier::atomic_payment::refund_program_owned_proof_account' \
+    --start-from 'aspis_verifier::lifecycle::close_proof' \
     --opaque 'solana_account_info::_::lamports' \
+    --opaque 'solana_account_info::_::try_borrow_data' \
     --opaque 'solana_account_info::_::try_borrow_mut_data' \
     --opaque 'solana_account_info::_::try_borrow_mut_lamports' \
     --dest-file "$llbc" -- --release --locked -p aspis-verifier
@@ -117,12 +181,28 @@ jq --rawfile source_file "$source/programs/aspis-verifier/src/atomic_payment.rs"
     .name.Local == "programs/aspis-verifier/src/atomic_payment.rs" and
     .contents == $source_file)
 ' "$llbc" >/dev/null
+jq --rawfile source_file "$source/programs/aspis-verifier/src/lifecycle.rs" -e '
+  any(.translated.files[];
+    .name.Local == "programs/aspis-verifier/src/lifecycle.rs" and
+    .contents == $source_file)
+' "$llbc" >/dev/null
+jq -e '
+  any(.translated.fun_decls[];
+    (.item_meta.name | tostring | contains("lifecycle") and
+      contains("close_proof")) and
+    .item_meta.opacity == "Transparent" and .body != null)
+' "$llbc" >/dev/null
+jq -e '
+  any(.translated.fun_decls[];
+    (.item_meta.name | tostring | contains("close_finalized_proof_account")) and
+    .item_meta.opacity == "Transparent" and .body != null)
+' "$llbc" >/dev/null
 jq -e '
   any(.translated.fun_decls[];
     (.item_meta.name | tostring | contains("refund_program_owned_proof_account")) and
     .item_meta.opacity == "Transparent" and .body != null)
 ' "$llbc" >/dev/null
-for method in lamports try_borrow_mut_data try_borrow_mut_lamports; do
+for method in lamports try_borrow_data try_borrow_mut_data try_borrow_mut_lamports; do
   jq --arg method "$method" -e '
     any(.translated.fun_decls[];
       (.item_meta.name | tostring | contains($method)) and
@@ -149,6 +229,7 @@ rg -F "Could not translate the body of function 'aspis_verifier::atomic_payment:
 rg -F "solana-account-info-2.3.0/src/lib.rs', lines 72:4-72:33" \
   "$out/aeneas.log" >/dev/null
 rg -F 'InterpProjectors.ml' "$out/aeneas.log" >/dev/null
+rg -F 'InterpBorrowsCore.ml' "$out/aeneas.log" >/dev/null
 
 # Translate the same successful check/mutation order over plain values. This
 # isolates the arithmetic and byte update from AccountInfo's unsupported
@@ -158,6 +239,7 @@ rg -F 'InterpProjectors.ml' "$out/aeneas.log" >/dev/null
   CARGO_TARGET_DIR="$out/projection-target" "$charon_bin" cargo \
     --preset aeneas --sysroot default \
     --start-from 'aspis_close_projection::source_shaped_close' \
+    --start-from 'aspis_close_projection::current_nullifier_bump_is_accepted' \
     --dest-file "$projection_llbc" -- --release --locked
 ) >> "$log" 2>&1
 "$aeneas_bin" -backend lean \
@@ -207,6 +289,7 @@ cp "$projection_proof" \
 
 if rg -n '\b(sorry|admit|native_decide|axiom|unsafe|ofReduceBool)\b' \
     "$root/AspisFormal/AspisFormal/V5RecordedCloseBytes.lean" \
+    "$root/AspisFormal/AspisFormal/V5CurrentInstructionAndClose.lean" \
     "$checked_projection" "$projection_proof"; then
   echo "forbidden proof token" >&2
   exit 1
@@ -215,6 +298,7 @@ fi
 (
   cd "$root/AspisFormal"
   NO_DNA=1 lake env lean AspisFormal/V5RecordedCloseBytes.lean
+  NO_DNA=1 lake env lean AspisFormal/V5CurrentInstructionAndClose.lean
 ) >> "$log" 2>&1
 
 if rg -n 'sorryAx|ofReduceBool' "$log"; then
@@ -237,6 +321,7 @@ fi
 
 echo "Recorded close source/model replay: PASS"
 echo "Aeneas AccountInfo translation limitation: reproduced and still explicit"
-echo "Aeneas successful close projection and exact-effect theorem: PASS"
+echo "Aeneas close projection, supplied refund route, and exact-effect theorem: PASS"
+echo "Current source bump-255 route and translated gate: PASS"
 echo "V5_RECORDED_CLOSE_REPLAY_OUT=$out"
 echo "log: $log"

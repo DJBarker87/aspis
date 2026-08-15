@@ -1,4 +1,4 @@
-# Recorded mainnet proof close and refund
+# Recorded close, current bump check, and refund
 
 This bundle checks the source used to build the mainnet program, not a later
 version of the repository.
@@ -25,13 +25,22 @@ left behind or changing the recipient.
 model. It also proves that the proof-data suffix and length are unchanged and
 that the earlier pool and spent-marker state are unchanged by the close.
 
+`AspisFormal.V5CurrentInstructionAndClose` separately proves the current
+source model. A successful current instruction-67 run has derived bump 255.
+A successful current close sends the complete live proof balance, including
+any extra inbound lamports, to the second account supplied to the close.
+
 ## Mainnet source versus current source
 
 The mainnet source checked that the spent-marker address was the address
 derived by Solana, but it did not separately reject a derived numeric bump
 below 255. The observed mainnet address had bump 255. The current source adds
-an explicit numeric-bump check. The Lean files keep these two claims separate;
-they do not say the deployed program contained the later check.
+an explicit numeric-bump check. The replay pins the current dispatcher,
+instruction-67 wrapper, account validator, and close wrapper. It checks that
+the dispatcher selects the wrapper, the wrapper passes `u8::MAX`, and the
+validator rejects any different derived bump. The Lean files keep these two
+claims separate; they do not say the deployed program contained the later
+check.
 
 ## What the replay establishes
 
@@ -39,15 +48,23 @@ The replay:
 
 - verifies the recorded commit, tree, and exact Rust source blobs;
 - verifies the separate current-source blob containing the numeric-bump check;
+- verifies the current dispatcher, instruction-67 wrapper, validator, and
+  lifecycle source blobs and their relevant calls;
 - runs the recorded Rust test that checks the exact refund and `ASPC` write;
-- uses the pinned Charon build to extract the exact recorded refund function;
-- checks that the target body is present and that only the three Solana
-  `AccountInfo` access methods are opaque in the extraction; and
+- runs the current Rust tests that reject bump 254 before verification, accept
+  bump 255, and refund the complete proof balance;
+- uses the pinned Charon build to extract the exact recorded close wrapper,
+  finalized-proof check, and refund function;
+- checks that all three target bodies are present and that only the four
+  needed Solana `AccountInfo` access methods are opaque in the extraction; and
 - translates a small, source-shaped version of the successful mutation whose
-  inputs are plain booleans, bytes, and u64 balances; proves from the generated
-  Lean that checked addition is exact below `2^64`, the prefix becomes `ASPC`,
-  the suffix is unchanged, the proof balance becomes zero, and the refund
-  balance becomes the exact sum; and
+  inputs are plain booleans, two supplied addresses, bytes, and u64 balances;
+  proves from the generated Lean that the refund recipient is exactly the
+  supplied second address, checked addition is exact below `2^64`, the prefix
+  becomes `ASPC`, the suffix is unchanged, the proof balance becomes zero, and
+  the refund balance becomes the exact sum;
+- translates the current source-shaped `u8::MAX` gate and proves that it
+  accepts exactly bump 255; and
 - compiles the Lean model and checks its reported axioms.
 
 ## Exact remaining boundary
@@ -55,23 +72,27 @@ The replay:
 The pinned Aeneas version cannot translate this function all the way to Lean.
 Solana's `AccountInfo` stores mutable balances and data through
 `Rc<RefCell<&mut _>>`; Aeneas stops at the `lamports()` projection in
-`solana-account-info` 2.3.0. The replay requires that exact named failure so it
-cannot be mistaken for a successful Rust-to-Lean proof.
+`solana-account-info` 2.3.0. It also cannot complete the borrowed slice
+iterator used by the outer close wrapper. The replay requires those exact
+named failures so they cannot be mistaken for a successful Rust-to-Lean
+proof.
 
-The successful arithmetic and byte mutation no longer depend only on a
-handwritten Lean function: the separate projection harness is translated by
-Charon/Aeneas, and `generated_successful_path_is_exact` proves its result. The
-harness is deliberately identified as a projection; it is not substituted for
-the immutable production source.
+The successful recipient choice, arithmetic, and byte mutation no longer
+depend only on a handwritten Lean function: the separate projection harness
+is translated by Charon/Aeneas, and `generated_successful_path_is_exact`
+proves its result. `current_bump_gate_accepts_iff_255` proves the translated
+bump gate. The harness is deliberately identified as a projection; it is not
+substituted for either the immutable mainnet source or the current source.
 
-The remaining source-level statement is now the wrapper connection: the
-successful `AccountInfo` reads and mutable borrows in the exact recorded body
-must supply the same values and targets as that proved projection. The broader
-predicate `ExactRecordedRustRawCloseEquality` records the resulting universal
-equality with `runRecordedClose`. The meanings of the individual
-`AccountInfo` operations are listed in `RecordedAccountInfoSemantics`. Solana
-rollback, atomic commit, zero-balance account removal, and finalized
-observation are listed separately in `RecordedCloseRuntimeSemantics`.
+The remaining source-level statement is now the `AccountInfo` connection: the
+successful reads and mutable borrows in the exact Rust body must supply the
+same addresses, values, and write targets as the proved plain-value function.
+`ExactRecordedRustRawCloseEquality` records that condition for the mainnet
+tree. `ExactCurrentCloseAccountInfoWrapperEquality` records it for current
+source. The individual `AccountInfo` meanings are listed in
+`RecordedAccountInfoSemantics`. Solana rollback, locking, atomic commit,
+zero-balance account removal, and finalized observation are listed separately
+as runtime assumptions.
 
 In short: the exact close/refund result is proved both in the maintained Lean
 model and for an Aeneas-generated source-shaped mutation. Both are pinned to
