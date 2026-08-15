@@ -1,0 +1,40 @@
+diff --git a/programs/aspis-verifier/src/v5_private_openings.rs b/programs/aspis-verifier/src/v5_private_openings.rs
+index 6970faa..6f7fe16 100644
+--- a/programs/aspis-verifier/src/v5_private_openings.rs
++++ b/programs/aspis-verifier/src/v5_private_openings.rs
+@@ -80,0 +81,19 @@ pub struct VerifiedV5PrivateOpenings<'a> {
++fn assemble_v5_private_openings<'a>(
++    parsed: [Option<StateOnlyPrivateOpening<'a>>; V5_PRIVATE_SECTION_COUNT],
++    indices: CircleLineQueryIndices,
++    proof_bytes_len: usize,
++    remainder: &'a [u8],
++) -> (VerifiedV5PrivateOpenings<'a>, &'a [u8]) {
++    let bytes_consumed = proof_bytes_len - remainder.len();
++    (
++        VerifiedV5PrivateOpenings {
++            c1: parsed[0].unwrap(),
++            c2: parsed[1].unwrap(),
++            later: [parsed[2].unwrap(), parsed[3].unwrap(), parsed[4].unwrap()],
++            indices,
++            bytes_consumed,
++        },
++        remainder,
++    )
++}
++
+@@ -125,11 +144,6 @@ pub fn verify_v5_private_openings_from_proof<'a>(
+-    let bytes_consumed = proof_bytes.len() - remainder.len();
+-    Ok((
+-        VerifiedV5PrivateOpenings {
+-            c1: parsed[0].unwrap(),
+-            c2: parsed[1].unwrap(),
+-            later: [parsed[2].unwrap(), parsed[3].unwrap(), parsed[4].unwrap()],
+-            indices,
+-            bytes_consumed,
+-        },
++    Ok(assemble_v5_private_openings(
++        parsed,
++        indices,
++        proof_bytes.len(),
+         remainder,
+     ))

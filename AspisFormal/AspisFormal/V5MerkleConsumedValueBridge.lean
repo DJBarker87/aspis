@@ -432,6 +432,139 @@ theorem line2_parent_mem_line3 {queries : Finset V5Query} {index : Nat}
   simp only [indexAtRadixLevel, sectionIndex] at hqueryIndex ⊢
   rw [← hqueryIndex, Nat.div_div_eq_div_mul]
 
+/-- Dividing a sorted request list by four preserves its order.  These are the
+parent requests made by each of the first three production FRI loops. -/
+theorem parentRequests_sorted (tree : V5PrivateSection)
+    (queries : Finset V5Query) :
+    ((orderedActiveIndices tree queries 0).map (fun index => index / 4)).Pairwise
+      (.≤.) := by
+  rw [List.pairwise_map]
+  exact (orderedActiveIndices_sorted tree queries 0).imp (by
+    intro left right hle
+    omega)
+
+/-- Every parent requested by the layer-zero loop occurs in the returned
+line-1 index array. -/
+theorem layer0_parent_requests_all_present (queries : Finset V5Query) :
+    ∀ parent ∈
+        (orderedActiveIndices .c1 queries 0).map (fun index => index / 4),
+      parent ∈ orderedActiveIndices .line1 queries 0 := by
+  intro parent hparent
+  simp only [List.mem_map] at hparent
+  obtain ⟨index, hindex, rfl⟩ := hparent
+  apply (Finset.mem_sort (.≤.)).mpr
+  apply layer0_parent_mem_line1
+  exact (Finset.mem_sort (.≤.)).mp hindex
+
+/-- Every parent requested by the line-1 loop occurs in the returned line-2
+index array. -/
+theorem line1_parent_requests_all_present (queries : Finset V5Query) :
+    ∀ parent ∈
+        (orderedActiveIndices .line1 queries 0).map (fun index => index / 4),
+      parent ∈ orderedActiveIndices .line2 queries 0 := by
+  intro parent hparent
+  simp only [List.mem_map] at hparent
+  obtain ⟨index, hindex, rfl⟩ := hparent
+  apply (Finset.mem_sort (.≤.)).mpr
+  apply line1_parent_mem_line2
+  exact (Finset.mem_sort (.≤.)).mp hindex
+
+/-- Every parent requested by the line-2 loop occurs in the returned line-3
+index array. -/
+theorem line2_parent_requests_all_present (queries : Finset V5Query) :
+    ∀ parent ∈
+        (orderedActiveIndices .line2 queries 0).map (fun index => index / 4),
+      parent ∈ orderedActiveIndices .line3 queries 0 := by
+  intro parent hparent
+  simp only [List.mem_map] at hparent
+  obtain ⟨index, hindex, rfl⟩ := hparent
+  apply (Finset.mem_sort (.≤.)).mpr
+  apply line2_parent_mem_line3
+  exact (Finset.mem_sort (.≤.)).mp hindex
+
+/-- In a sorted list, asking for a no-larger member cannot produce a later
+`idxOf` position. -/
+theorem idxOf_le_idxOf_of_pairwise_le
+    (values : List Nat) (hsorted : values.Pairwise (.≤.))
+    {left right : Nat} (hleft : left ∈ values) (hright : right ∈ values)
+    (hle : left ≤ right) :
+    values.idxOf left ≤ values.idxOf right := by
+  by_contra hnot
+  have hlt : values.idxOf right < values.idxOf left := Nat.lt_of_not_ge hnot
+  have hleftBound := List.idxOf_lt_length_of_mem hleft
+  have hrightBound := List.idxOf_lt_length_of_mem hright
+  let leftPosition : Fin values.length :=
+    ⟨values.idxOf left, hleftBound⟩
+  let rightPosition : Fin values.length :=
+    ⟨values.idxOf right, hrightBound⟩
+  have hreverse := hsorted.rel_get_of_lt
+    (a := rightPosition) (b := leftPosition) (by
+      simpa [rightPosition, leftPosition] using hlt)
+  have hleftGet : values.get leftPosition = left := by
+    simp [leftPosition]
+  have hrightGet : values.get rightPosition = right := by
+    simp [rightPosition]
+  rw [hrightGet, hleftGet] at hreverse
+  have heq : left = right := Nat.le_antisymm hle hreverse
+  have hpositions : values.idxOf left = values.idxOf right :=
+    congrArg values.idxOf heq
+  omega
+
+/-- If source indices are processed in order and every divided-by-four parent
+is present in a sorted target list, the target ordinals never move backwards.
+This is the condition used by Rust's monotone parent lookup. -/
+theorem parentOrdinals_sorted
+    (source target : List Nat)
+    (hsource : source.Pairwise (.≤.))
+    (htarget : target.Pairwise (.≤.))
+    (hparents : ∀ index ∈ source, index / 4 ∈ target) :
+    (source.map (fun index => target.idxOf (index / 4))).Pairwise (.≤.) := by
+  rw [List.pairwise_iff_getElem]
+  intro i j hi hj hij
+  simp only [List.length_map] at hi hj
+  simp only [List.getElem_map]
+  apply idxOf_le_idxOf_of_pairwise_le target htarget
+  · exact hparents source[i] (List.getElem_mem hi)
+  · exact hparents source[j] (List.getElem_mem hj)
+  · have hindices := (List.pairwise_iff_getElem.mp hsource) i j hi hj hij
+    omega
+
+theorem layer0_parentOrdinals_sorted (queries : Finset V5Query) :
+    ((orderedActiveIndices .c1 queries 0).map (fun index =>
+      (orderedActiveIndices .line1 queries 0).idxOf (index / 4))).Pairwise
+        (.≤.) := by
+  apply parentOrdinals_sorted
+  · exact orderedActiveIndices_sorted .c1 queries 0
+  · exact orderedActiveIndices_sorted .line1 queries 0
+  · intro index hindex
+    apply (Finset.mem_sort (.≤.)).mpr
+    apply layer0_parent_mem_line1
+    exact (Finset.mem_sort (.≤.)).mp hindex
+
+theorem line1_parentOrdinals_sorted (queries : Finset V5Query) :
+    ((orderedActiveIndices .line1 queries 0).map (fun index =>
+      (orderedActiveIndices .line2 queries 0).idxOf (index / 4))).Pairwise
+        (.≤.) := by
+  apply parentOrdinals_sorted
+  · exact orderedActiveIndices_sorted .line1 queries 0
+  · exact orderedActiveIndices_sorted .line2 queries 0
+  · intro index hindex
+    apply (Finset.mem_sort (.≤.)).mpr
+    apply line1_parent_mem_line2
+    exact (Finset.mem_sort (.≤.)).mp hindex
+
+theorem line2_parentOrdinals_sorted (queries : Finset V5Query) :
+    ((orderedActiveIndices .line2 queries 0).map (fun index =>
+      (orderedActiveIndices .line3 queries 0).idxOf (index / 4))).Pairwise
+        (.≤.) := by
+  apply parentOrdinals_sorted
+  · exact orderedActiveIndices_sorted .line2 queries 0
+  · exact orderedActiveIndices_sorted .line3 queries 0
+  · intro index hindex
+    apply (Finset.mem_sort (.≤.)).mpr
+    apply line2_parent_mem_line3
+    exact (Finset.mem_sort (.≤.)).mp hindex
+
 /-! ## Exact byte decoders and production layouts -/
 
 def fixedBytes? (width : Nat) (bytes : List Byte) :
@@ -1142,6 +1275,59 @@ structure V5DriverOutputFieldsMatchRun
   bytesConsumed : output.bytesConsumed = run.proofBytes.length
   remainder : output.remainder = []
 
+/-- The five parser results in their actual Rust array positions. -/
+structure FiveReturnedOpenings where
+  get : Fin 5 -> ReturnedOpening
+
+/-- The four index arrays carried by Rust's `CircleLineQueryIndices`. -/
+structure FourReturnedIndexArrays where
+  layer0 : List Nat
+  later : Fin 3 -> List Nat
+
+/-- Pure model of the final struct expression in
+`verify_v5_private_openings_from_proof`.  It contains no parsing, hashing, or
+FRI arithmetic: it only places five already-returned opening views and four
+already-derived index arrays into their output fields and computes the consumed
+length from the final remainder. -/
+def assembleV5DriverOutput
+    (parsed : FiveReturnedOpenings) (indices : FourReturnedIndexArrays)
+    (proofBytesLength : Nat) (remainder : List Byte) : V5DriverOutput where
+  c1 := parsed.get 0
+  c2 := parsed.get 1
+  line1 := parsed.get 2
+  line2 := parsed.get 3
+  line3 := parsed.get 4
+  layer0Indices := indices.layer0
+  line1Indices := indices.later 0
+  line2Indices := indices.later 1
+  line3Indices := indices.later 2
+  bytesConsumed := proofBytesLength - remainder.length
+  remainder := remainder
+
+/-- If the five helper results and four index arrays are the modeled values,
+the final assembly is exactly the modeled driver output.  This is the Lean
+counterpart of the extracted Aeneas theorem
+`assemble_v5_private_openings_exact`; the source bundle proves the Rust field
+placement and this theorem proves the model-side composition. -/
+theorem assembleV5DriverOutput_eq_run
+    {sha256 roots queries}
+    (run : ExactV5Run sha256 roots queries)
+    (parsed : FiveReturnedOpenings) (indices : FourReturnedIndexArrays)
+    (h0 : parsed.get 0 = openingOfTrace (run.sections .c1))
+    (h1 : parsed.get 1 = openingOfTrace (run.sections .c2))
+    (h2 : parsed.get 2 = openingOfTrace (run.sections .line1))
+    (h3 : parsed.get 3 = openingOfTrace (run.sections .line2))
+    (h4 : parsed.get 4 = openingOfTrace (run.sections .line3))
+    (hlayer0 : indices.layer0 = orderedActiveIndices .c1 queries 0)
+    (hlater0 : indices.later 0 = orderedActiveIndices .line1 queries 0)
+    (hlater1 : indices.later 1 = orderedActiveIndices .line2 queries 0)
+    (hlater2 : indices.later 2 = orderedActiveIndices .line3 queries 0) :
+    assembleV5DriverOutput parsed indices run.proofBytes.length [] =
+      driverOutputOfRun run [] := by
+  unfold assembleV5DriverOutput driverOutputOfRun
+  rw [h0, h1, h2, h3, h4, hlayer0, hlater0, hlater1, hlater2]
+  rfl
+
 theorem driverOutput_eq_iff_fieldsMatchRun
     {sha256 roots queries}
     (output : V5DriverOutput) (run : ExactV5Run sha256 roots queries) :
@@ -1339,10 +1525,13 @@ must be the deterministic reconstruction from those returned values.
 The extracted `StateOnlyPrivateOpening::value` theorem proves each individual
 slice operation.  The temporary recursive extraction in
 `aeneas-verif/v5-fri-monotone-source-20260815` also proves the monotone helper
-returns the requested ordinal under its sorted-list conditions.  What remains
-here is equality of that temporary recursion with the production `while`, and
-that the four production loops call the accessors at these indices without
-substituting, omitting, or reordering a read. -/
+returns the requested ordinal under its sorted-list conditions.  The
+`*_parentOrdinals_sorted` theorems above prove those conditions for all three
+parent-read sequences: every requested parent exists and the requested target
+ordinal never moves backwards.  What remains here is equality of that
+temporary recursion with the production `while`, and that the four production
+loops call the accessors at these indices without substituting, omitting, or
+reordering a read. -/
 def ExactRustV5FriReadsFromReturnedOpenings
     (rustObservation : V5ProductionCall -> Option OpeningAndFriObservation) :
     Prop :=
@@ -1521,6 +1710,15 @@ theorem rustObservation_exposes_only_authenticated_fri_values
 #print axioms openingOfTrace_query_value_is_authenticated
 #print axioms driverOutput_exact_bytes_consumed
 #print axioms driverOutput_value_at_index_is_authenticated
+#print axioms parentRequests_sorted
+#print axioms layer0_parent_requests_all_present
+#print axioms line1_parent_requests_all_present
+#print axioms line2_parent_requests_all_present
+#print axioms idxOf_le_idxOf_of_pairwise_le
+#print axioms parentOrdinals_sorted
+#print axioms layer0_parentOrdinals_sorted
+#print axioms line1_parentOrdinals_sorted
+#print axioms line2_parentOrdinals_sorted
 #print axioms exactRustFriByteDecoders_bind_all_fri_offsets
 #print axioms sectionValueAtIndex_is_authenticated
 #print axioms every_layer0_schedule_read_is_returned
@@ -1533,6 +1731,7 @@ theorem rustObservation_exposes_only_authenticated_fri_values
 #print axioms every_terminal_schedule_read_is_authenticated
 #print axioms friReadScheduleFromDriver_eq_run
 #print axioms driverOutput_eq_iff_fieldsMatchRun
+#print axioms assembleV5DriverOutput_eq_run
 #print axioms fiveOpeningHelpers_imply_authenticationSuccess
 #print axioms openingParserOutputEquality_implies_authentication
 #print axioms authentication_and_fields_imply_openingParserOutputEquality
