@@ -5,22 +5,26 @@ import AspisFormal.V5WorkNormalizedApplicabilityRepair
 # Connecting the width-19 event to the refined probability bound
 
 The refined accepted-false theorem names the exact event in which the
-nineteen committed columns do not agree with the combined FRI word.  The
-published PCS/MCA theorem interface bounds an `actualEventProbability`, but
-the two were previously left as separate endpoints.
+nineteen committed columns do not agree with the combined FRI word.  This
+file records how a published PCS/MCA bound may be connected to the measured
+probability of that event.
 
-This file joins them without hiding any assumption.  A caller must still
-supply:
+The distinction between ordinary probability and work-normalized accounting
+is essential.  `powersBatchArithmeticFStar 18` contains a division by the
+37-bit grind.  That division measures success per unit of grinding work; it
+does not reduce the success probability of an attacker who actually performs
+the grind.  The theft bound below therefore restores the factor `2^37` and
+uses the conservative raw bound `2^-70`.  The work-normalized `2^-107` number
+is not used as a theft probability.
+
+A caller must still supply:
 
 * the cited PCS/MCA hypotheses;
 * membership of the virtual oracle in the required code;
-* the separate grinding-output reduction;
+* random-oracle and Fiat--Shamir applicability;
 * the Rust sampling/transcript correspondence; and
 * equality between the probability of the exact width-19 failure set and the
   event probability to which the cited theorem is applied.
-
-Once those facts are supplied, Lean replaces the previously unbounded
-width-19 term by `2^-107` in the refined accepted-false result.
 -/
 
 namespace AspisV5RefinedWidth19DeploymentBridge
@@ -39,47 +43,100 @@ open AspisV5StatementBindingFailureAccounting
 open AspisV5SumcheckTranscriptBinding
 open AspisV5WorkNormalizedApplicabilityRepair
 
-/-- The exact information needed to apply the cited width-19 bound to one
-measured failure set.  No source, code-membership, grinding, or sampling fact
-is inferred from the algebraic root-count proof. -/
+/-- The width-19 arithmetic before dividing by the 37-bit work factor. -/
+noncomputable def rawWidth19FStarArithmetic : ℝ :=
+  powersBatchArithmeticFStar 18 * 2 ^ 37
+
+/-- Restoring the work factor to the checked `2^-107` arithmetic gives the
+conservative raw bound `2^-70`.  This is only arithmetic; applying it to a
+real event still requires the named premises below. -/
+theorem raw_width19_fstar_arithmetic_le_two_pow_neg_70 :
+    rawWidth19FStarArithmetic ≤ (1 : ℝ) / 2 ^ 70 := by
+  have normalized := width19_fstar_powers_batch_arithmetic_bound
+  have workNonnegative : (0 : ℝ) ≤ 2 ^ 37 := by positivity
+  unfold rawWidth19FStarArithmetic
+  calc
+    powersBatchArithmeticFStar 18 * 2 ^ 37 ≤
+        ((1 : ℝ) / 2 ^ 107) * 2 ^ 37 :=
+      mul_le_mul_of_nonneg_right normalized workNonnegative
+    _ = (1 : ℝ) / 2 ^ 70 := by norm_num
+
+/-- External interface for applying the raw, non-work-normalized width-19
+bound.  In contrast to `Width19FStarDeploymentPremises`, this interface does
+not divide the event probability by the grind. -/
+structure Width19RawDeploymentPremises {Schedule : Type*}
+    (acceptedSchedule : Schedule → Prop)
+    (citedMCAHypotheses : Schedule → Prop)
+    (virtualOracleAndCodeMembership : Schedule → Prop)
+    (randomOracleAndFiatShamirApplicability : Schedule → Prop)
+    (rustSamplingAndTranscriptCorrespondence : Schedule → Prop)
+    (actualEventProbability : Schedule → ℝ) : Prop where
+  acceptedHasCitedMCAHypotheses :
+    ∀ schedule, acceptedSchedule schedule → citedMCAHypotheses schedule
+  acceptedHasVirtualOracleAndCodeMembership :
+    ∀ schedule, acceptedSchedule schedule →
+      virtualOracleAndCodeMembership schedule
+  acceptedHasRandomOracleAndFiatShamirApplicability :
+    ∀ schedule, acceptedSchedule schedule →
+      randomOracleAndFiatShamirApplicability schedule
+  acceptedHasRustSamplingAndTranscriptCorrespondence :
+    ∀ schedule, acceptedSchedule schedule →
+      rustSamplingAndTranscriptCorrespondence schedule
+  citedRawEventBound :
+    ∀ schedule,
+      citedMCAHypotheses schedule →
+      virtualOracleAndCodeMembership schedule →
+      randomOracleAndFiatShamirApplicability schedule →
+      rustSamplingAndTranscriptCorrespondence schedule →
+      actualEventProbability schedule ≤ rawWidth19FStarArithmetic
+
+/-- The exact information needed to apply the raw width-19 bound to one
+measured failure set.  No source, code-membership, or sampling fact is
+inferred from the algebraic root-count proof. -/
 structure Width19MeasuredEventConnection
     {Sample Schedule : Type*} [MeasurableSpace Sample]
     (measure : Measure Sample) (width19Failure : Set Sample) where
   acceptedSchedule : Schedule → Prop
   citedMCAHypotheses : Schedule → Prop
   virtualOracleAndCodeMembership : Schedule → Prop
-  separateGrindingOutputReduction : Schedule → Prop
+  randomOracleAndFiatShamirApplicability : Schedule → Prop
   rustSamplingAndTranscriptCorrespondence : Schedule → Prop
   actualEventProbability : Schedule → ℝ
-  deployment : Width19FStarDeploymentPremises acceptedSchedule
+  deployment : Width19RawDeploymentPremises acceptedSchedule
     citedMCAHypotheses virtualOracleAndCodeMembership
-    separateGrindingOutputReduction rustSamplingAndTranscriptCorrespondence
-    actualEventProbability
+    randomOracleAndFiatShamirApplicability
+    rustSamplingAndTranscriptCorrespondence actualEventProbability
   selectedSchedule : Schedule
   selectedScheduleAccepted : acceptedSchedule selectedSchedule
   exactMeasuredEvent :
     measure.real width19Failure = actualEventProbability selectedSchedule
 
-/-- The exact measured width-19 failure event is at most `2^-107`, conditional
+/-- The exact measured width-19 failure event is at most `2^-70`, conditional
 on every named published-theorem and implementation premise above. -/
-theorem width19_measured_failure_probability_le_two_pow_neg_107
+theorem width19_measured_failure_probability_le_two_pow_neg_70
     {Sample Schedule : Type*} [MeasurableSpace Sample]
     (measure : Measure Sample) (width19Failure : Set Sample)
     (connection : Width19MeasuredEventConnection
       (Schedule := Schedule) measure width19Failure) :
-    measure.real width19Failure ≤ (1 : ℝ) / 2 ^ 107 := by
+    measure.real width19Failure ≤ (1 : ℝ) / 2 ^ 70 := by
+  have rawBound :
+      connection.actualEventProbability connection.selectedSchedule ≤
+        rawWidth19FStarArithmetic :=
+    connection.deployment.citedRawEventBound connection.selectedSchedule
+      (connection.deployment.acceptedHasCitedMCAHypotheses
+        connection.selectedSchedule connection.selectedScheduleAccepted)
+      (connection.deployment.acceptedHasVirtualOracleAndCodeMembership
+        connection.selectedSchedule connection.selectedScheduleAccepted)
+      (connection.deployment.acceptedHasRandomOracleAndFiatShamirApplicability
+        connection.selectedSchedule connection.selectedScheduleAccepted)
+      (connection.deployment.acceptedHasRustSamplingAndTranscriptCorrespondence
+        connection.selectedSchedule connection.selectedScheduleAccepted)
   rw [connection.exactMeasuredEvent]
-  exact width19_fstar_event_bound_of_all_named_premises
-    connection.acceptedSchedule connection.citedMCAHypotheses
-    connection.virtualOracleAndCodeMembership
-    connection.separateGrindingOutputReduction
-    connection.rustSamplingAndTranscriptCorrespondence
-    connection.actualEventProbability connection.deployment
-    connection.selectedSchedule connection.selectedScheduleAccepted
+  exact rawBound.trans raw_width19_fstar_arithmetic_le_two_pow_neg_70
 
 /-- Replace the visible width-19 term in any refined bound after the exact
 measured-event connection has been supplied. -/
-theorem refined_bound_with_width19_two_pow_neg_107
+theorem refined_bound_with_width19_two_pow_neg_70
     {Sample Schedule : Type*} [MeasurableSpace Sample]
     (measure : Measure Sample) (target width19Failure : Set Sample)
     (remaining : ℝ)
@@ -88,15 +145,15 @@ theorem refined_bound_with_width19_two_pow_neg_107
     (connection : Width19MeasuredEventConnection
       (Schedule := Schedule) measure width19Failure) :
     measure.real target ≤
-      (1 : ℝ) / 2 ^ 75 + (1 : ℝ) / 2 ^ 107 + remaining := by
+      (1 : ℝ) / 2 ^ 75 + (1 : ℝ) / 2 ^ 70 + remaining := by
   have widthBound :=
-    width19_measured_failure_probability_le_two_pow_neg_107
+    width19_measured_failure_probability_le_two_pow_neg_70
       measure width19Failure connection
   linarith
 
 /-- Accepted-false form of the refined theorem with the exact width-19 event
-replaced by its conditional `2^-107` deployment bound. -/
-theorem acceptedFalse_probability_le_two_pow_neg_75_plus_width19_bound
+replaced by its conditional raw `2^-70` deployment bound. -/
+theorem acceptedFalse_probability_le_two_pow_neg_75_plus_width19_raw_bound
     {Run Coins K Public Root Schedule : Type*}
     [Field K] [Fintype K] [DecidableEq K]
     [Algebra (ZMod P) K] [NeZero (2 : K)] [MeasurableSpace Coins]
@@ -122,20 +179,62 @@ theorem acceptedFalse_probability_le_two_pow_neg_75_plus_width19_bound
     (width19Connection : Width19MeasuredEventConnection
       (Schedule := Schedule) measure data.width19Failure) :
     measure.real data.base.acceptedFalse ≤
-      (1 : ℝ) / 2 ^ 75 + (1 : ℝ) / 2 ^ 107 +
+      (1 : ℝ) / 2 ^ 75 + (1 : ℝ) / 2 ^ 70 +
         nonterminalStatementFailureProbabilitySum measure boundary +
         measure.real data.hashMerkleResidualFailure := by
   have base := acceptedFalse_probability_le_two_pow_neg_75_nonduplicated
     measure data connections projection boundary terminalCandidateFailure
     coverage terminalBound
   have widthBound :=
-    width19_measured_failure_probability_le_two_pow_neg_107
+    width19_measured_failure_probability_le_two_pow_neg_70
       measure data.width19Failure width19Connection
   linarith
 
-#print axioms width19_measured_failure_probability_le_two_pow_neg_107
-#print axioms refined_bound_with_width19_two_pow_neg_107
+/-- A simpler conservative reading: after the raw width-19 connection, the
+two explicit ideal terms together are below `2^-69`. -/
+theorem acceptedFalse_probability_le_two_pow_neg_69_plus_remaining
+    {Run Coins K Public Root Schedule : Type*}
+    [Field K] [Fintype K] [DecidableEq K]
+    [Algebra (ZMod P) K] [NeZero (2 : K)] [MeasurableSpace Coins]
+    {rc : RoundConstants}
+    {deployedOwner : Digest → Digest}
+    {deployedNote : Digest → F → F → Digest → Digest}
+    {deployedNullifier : Digest → Digest → Digest}
+    {deployedNode : Digest → Digest → Digest}
+    {scheme : FiatShamirSchedule Public Root K}
+    (measure : Measure Coins) [IsProbabilityMeasure measure]
+    (data : ProjectedAcceptedFalseExperimentData Coins K rc deployedOwner
+      deployedNote deployedNullifier deployedNode)
+    (connections : ReleasedIdealAcceptedFalseRawConnections measure
+      data.base.toEvents)
+    (projection : StatementBindingProjectionData Run Coins K data)
+    (boundary : MaskedBoundaryProjectionData Run Coins K Public Root
+      (scheme := scheme) projection)
+    (terminalCandidateFailure : Set Coins)
+    (coverage : TerminalCandidateFailureCoverage boundary
+      terminalCandidateFailure)
+    (terminalBound : measure.real terminalCandidateFailure ≤
+      rawCandidateTerminalBound)
+    (width19Connection : Width19MeasuredEventConnection
+      (Schedule := Schedule) measure data.width19Failure) :
+    measure.real data.base.acceptedFalse ≤
+      (1 : ℝ) / 2 ^ 69 +
+        nonterminalStatementFailureProbabilitySum measure boundary +
+        measure.real data.hashMerkleResidualFailure := by
+  have exactTerms :=
+    acceptedFalse_probability_le_two_pow_neg_75_plus_width19_raw_bound
+      measure data connections projection boundary terminalCandidateFailure
+      coverage terminalBound width19Connection
+  have combine :
+      (1 : ℝ) / 2 ^ 75 + (1 : ℝ) / 2 ^ 70 ≤
+        (1 : ℝ) / 2 ^ 69 := by norm_num
+  linarith
+
+#print axioms raw_width19_fstar_arithmetic_le_two_pow_neg_70
+#print axioms width19_measured_failure_probability_le_two_pow_neg_70
+#print axioms refined_bound_with_width19_two_pow_neg_70
 #print axioms
-  acceptedFalse_probability_le_two_pow_neg_75_plus_width19_bound
+  acceptedFalse_probability_le_two_pow_neg_75_plus_width19_raw_bound
+#print axioms acceptedFalse_probability_le_two_pow_neg_69_plus_remaining
 
 end AspisV5RefinedWidth19DeploymentBridge
