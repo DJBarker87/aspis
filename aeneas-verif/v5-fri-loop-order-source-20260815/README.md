@@ -15,8 +15,9 @@ The patch makes two narrowly scoped changes to the temporary copy of
 `programs/aspis-verifier/src/v5_fri_checks.rs`:
 
 1. It rewrites the monotone `while` loop used to find a parent opening as the
-   equivalent recursive function `advance_monotone_ordinal`, because this is
-   the form Aeneas can translate.
+   intended recursive version, `advance_monotone_ordinal`, because this is the
+   form Aeneas can translate. Agreement between these two spellings remains a
+   named source-review step.
 2. It adds a diagnostic function,
    `trace_v5_fri_reads_after_preparation`, plus small helper functions and
    fixed-size trace records. The function performs the same four read passes,
@@ -35,18 +36,26 @@ production FRI-check file used by this package has Git blob
 
 ## What is proved
 
-Charon and Aeneas successfully translate all 19 transparent functions needed
+Charon and Aeneas successfully translate all 19 functions with bodies needed
 by the diagnostic driver. The checked Lean proof establishes:
 
 - writing an entry below position 18 changes exactly that position in the
   fixed trace;
 - the full fixed trace has length 18; and
-- taking a prefix with an allowed count has exactly that count as its length.
+- taking a prefix with an allowed count has exactly that count as its length;
+- each successful recursive pass records every read in order; and
+- the successful top-level generated driver combines the four passes into the
+  four expected lists.
 
-The generated driver also visibly calls the four recursive passes once and in
-the production order. `ExactRustV5FriSourceLoopTrace` states the exact list
-equality needed to connect those generated traces to the maintained FRI
-read-schedule theorem.
+The final theorem is `ExactGeneratedV5FriSourceLoopTrace`. Its statement
+shows the required released-input facts directly: each of the four lists has
+at most 18 entries, and every successful read has the expected source
+position and monotone-parent position. Under those facts, every successful
+generated top-level trace satisfies `ExactRustV5FriSourceLoopTrace`.
+
+The proof also shows why the length premise cannot be dropped. The diagnostic
+driver records the original count but has only 18 storage slots, so an input
+with more than 18 layer-zero entries cannot satisfy the claimed exact trace.
 
 The proof contains no `sorry`, declared axiom, `native_decide`, or compiled
 evaluation shortcut. Its printed dependencies are Lean's standard
@@ -54,19 +63,19 @@ propositional and quotient foundations.
 
 ## What remains open
 
-`ExactGeneratedV5FriSourceLoopTrace` is currently a named proposition, not a
-proved theorem. Closing it requires induction over the four generated
-recursive passes to show that every successful trace prefix equals the four
-expected maps.
+The unchanged production parser and preparation path still need to be proved
+to supply the length and exact-read facts in `ReleasedFriTraceInput`. This
+remaining step is named `ProductionPreparedFriTraceInputBridge`.
 
 There is also an explicit source-review boundary between the unchanged
 production `while` loop and the recursive spelling used only in the temporary
-copy. This package does not prove the arithmetic FRI checks, coordinate
-calculations, transition equations, cryptographic assumptions, or any theft
-probability. Those operations were deliberately left outside the diagnostic
-trace. Existing accessor and monotone-lookup packages cover the bytes returned
-for a requested index under their stated sorted-list assumptions; this package
-only covers their call order and numeric read metadata.
+copy. It is named `ProductionWhileLoopToTemporaryRecursionBridge`. This
+package does not prove the arithmetic FRI checks, coordinate calculations,
+transition equations, cryptographic assumptions, or any theft probability.
+Those operations were deliberately left outside the diagnostic trace.
+Existing accessor and monotone-lookup packages cover the bytes returned for a
+requested index under their stated sorted-list assumptions; this package only
+covers their call order and numeric read metadata.
 
 ## Replay
 
