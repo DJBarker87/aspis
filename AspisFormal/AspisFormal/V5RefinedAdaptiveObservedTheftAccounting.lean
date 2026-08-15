@@ -27,6 +27,7 @@ open AspisCircleGroupOrder
 open AspisFormal.ArithmetizationCore
 open AspisFormal.HashMerkleModel
 open AspisV5AcceptedSpendRelation
+open AspisV5AdaptiveSumcheckChallengeBound
 open AspisV5AdaptiveObservedTheftGame
 open AspisV5CryptographicAssumptions
 open AspisV5FinalSecurityAccounting
@@ -34,7 +35,9 @@ open AspisV5FixedVictimTheftGame
 open AspisV5ForwardAcceptedFalseRawAccounting
 open AspisV5MaskedBoundaryFailureAccounting
 open AspisV5ProjectedAcceptedFalseRawAccounting
+open AspisV5PrefixDependentCandidateSecurity
 open AspisV5RefinedAcceptedFalseAccounting
+open AspisV5SequentialTerminalChallengeBound
 open AspisV5StatementBindingFailureAccounting
 open AspisV5SumcheckTranscriptBinding
 open AspisV5TerminalCandidateEventBridge
@@ -283,6 +286,81 @@ theorem deployed_adaptive_first_fraudulent_spend_probability_le_refined
           measure.real setup := by
       gcongr
 
+/-- The refined adaptive-theft theorem specialized to the released decoder
+candidate family.  The terminal cap and its coding-theory premise are both
+derived by Lean.  The remaining terminal premise is precisely the comparison
+between the production hash transcript and conditional ideal sampling. -/
+theorem deployed_adaptive_first_fraudulent_spend_probability_le_released_candidates
+    {Run Sample AdversaryCoins PublicArtifact Execution K Public Root Prefix :
+      Type*}
+    [Field K] [Fintype K] [DecidableEq K]
+    [Algebra (ZMod P) K] [NeZero (2 : K)] [MeasurableSpace Sample]
+    [Fintype Prefix] [Nonempty Prefix]
+    {rc : RoundConstants}
+    {deployedOwner : Digest → Digest}
+    {deployedNote : Digest → F → F → Digest → Digest}
+    {deployedNullifier : Digest → Digest → Digest}
+    {deployedNode : Digest → Digest → Digest}
+    {scheme : FiatShamirSchedule Public Root K}
+    (measure : Measure Sample) [IsProbabilityMeasure measure]
+    (data : ProjectedAcceptedFalseExperimentData Sample K rc deployedOwner
+      deployedNote deployedNullifier deployedNode)
+    (connections : ReleasedIdealAcceptedFalseRawConnections measure
+      data.base.toEvents)
+    (production : ReleasedProductionFalseSpendConnection data.base.toEvents)
+    (projection : StatementBindingProjectionData Run Sample K data)
+    (boundary : MaskedBoundaryProjectionData Run Sample K Public Root
+      (scheme := scheme) projection)
+    (plans : TerminalCandidatePlanProjection Run Sample K Public Root boundary)
+    (candidateExperiment : CompatibilityFriExperiment Prefix K)
+    (terminal : ∀ p, candidateExperiment.CandidateAt p →
+      FixedTerminalAlgebraPlan K)
+    (sumcheck : ∀ p, candidateExperiment.CandidateAt p →
+      AdaptiveDegree27MessagePlan K)
+    (fieldCard : (Fintype.card K : Real) = AspisSoundnessLedger.FIELD)
+    (sourceHashAndConditionalSampling :
+      measure.real (exactTerminalCandidateFailureSet plans) ≤
+        (prefixAveragedCandidateTerminalSubtotal Prefix
+          candidateExperiment.CandidateAt terminal sumcheck : Real))
+    (deployedFirstFraudulentSpend : Sample → Prop)
+    (runtime : RuntimeFailurePredicates Sample)
+    (chain : AdaptiveChainFailures Sample)
+    (Accepts Commits : V5PublicStatement → Execution → Prop)
+    (victim : FixedVictim)
+    (experiment : AdaptiveObservationExperiment Sample AdversaryCoins
+      PublicArtifact Execution)
+    (extractAfter : ExtractAfterObservation PublicArtifact Execution)
+    (connection : DeployedAdaptiveAttackConnection deployedFirstFraudulentSpend
+      runtime chain deployedOwner deployedNote deployedNullifier deployedNode
+      Accepts Commits victim experiment extractAfter)
+    (coverage : RefinedAdaptiveHistoryCoverage production
+      {sample | ExtractorAfterObservationFailureEvent deployedOwner deployedNote
+        deployedNullifier deployedNode Accepts experiment extractAfter sample}
+      {sample | NullifierSecondPreimageAfterObservationEvent deployedNullifier
+        victim experiment extractAfter sample}
+      {sample | NoteSecondPreimageAfterObservationEvent deployedOwner
+        deployedNote victim experiment extractAfter sample}
+      {sample | VictimTreeCollisionAfterObservationEvent deployedOwner
+        deployedNote deployedNode victim experiment extractAfter sample}) :
+    measure.real {sample | deployedFirstFraudulentSpend sample} ≤
+      (1 : Real) / 2 ^ 75 + measure.real data.width19Failure +
+        nonterminalStatementFailureProbabilitySum measure boundary +
+        measure.real data.arithmeticResidualFailure +
+        measure.real data.hashMerkleResidualFailure +
+        measure.real (totalFailure production.transcriptAndHashFailures) +
+        measure.real {sample | CredentialRecoveryAfterObservationEvent Accepts
+          victim experiment extractAfter sample} +
+        measure.real {sample | NamedRuntimeFailureEvent runtime sample} +
+        measure.real {sample | chain.victimSetup sample} := by
+  have terminalBound :=
+    exactTerminalCandidateFailure_probability_le_raw_bound_released_candidates
+      measure plans candidateExperiment terminal sumcheck fieldCard
+      sourceHashAndConditionalSampling
+  exact deployed_adaptive_first_fraudulent_spend_probability_le_refined
+    measure data connections production projection boundary plans terminalBound
+    deployedFirstFraudulentSpend runtime chain Accepts Commits victim experiment
+    extractAfter connection coverage
+
 /-! ## Explicit cryptographic and runtime budgets -/
 
 /-- The seven implementation/runtime failure sets, in the same order as the
@@ -442,6 +520,8 @@ theorem deployed_adaptive_first_fraudulent_spend_probability_le_refined_budget
 #print axioms measureReal_refinedAdaptiveFailureUnion_le
 #print axioms deployed_adaptive_first_fraudulent_spend_subset_refined_union
 #print axioms deployed_adaptive_first_fraudulent_spend_probability_le_refined
+#print axioms
+  deployed_adaptive_first_fraudulent_spend_probability_le_released_candidates
 #print axioms namedRuntimeFailure_set_eq_union
 #print axioms namedRuntimeFailure_probability_le_total
 #print axioms
