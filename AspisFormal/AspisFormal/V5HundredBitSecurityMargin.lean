@@ -285,20 +285,14 @@ theorem core_plus_external_budget_le_two_pow_neg_100
     core + external ≤ (1 : ℝ) / 2 ^ 100 := by
   linarith
 
-/-- Eight ledger entries each bounded by `2^-128` fit comfortably in
-the reserved external budget.  This theorem assigns no such bound; it only
-checks the arithmetic once those eight premises are supplied. -/
-theorem eight_two_pow_neg_128_fit_external_budget :
-    8 * ((1 : ℝ) / 2 ^ 128) ≤ (3 : ℝ) / (10 * 2 ^ 100) := by
-  norm_num
-
-/-- The complete final ledger currently names eighteen external entries: eight
-transcript/primitive entries, three relation/Merkle/credential entries, and
-seven runtime entries.  Even eighteen `2^-128` premises fit in the reserved
-budget.  As above, this is arithmetic only and does not manufacture those
-premises. -/
-theorem eighteen_two_pow_neg_128_fit_external_budget :
-    18 * ((1 : ℝ) / 2 ^ 128) ≤ (3 : ℝ) / (10 * 2 ^ 100) := by
+/-- The release target is exactly 100 bits.  The proof does not require every
+external event to satisfy a separate 128-bit target: it requires only that the
+sum of the justified external-event bounds fit the remaining thirty percent of
+the `2^-100` budget.  This identity records that split without imposing an
+arbitrary per-event allocation. -/
+theorem hundred_bit_target_budget_is_core_plus_external :
+    (7 : ℝ) / (10 * 2 ^ 100) + (3 : ℝ) / (10 * 2 ^ 100) =
+      (1 : ℝ) / 2 ^ 100 := by
   norm_num
 
 #print axioms corrected_batch_le_2120_div_two_pow_119
@@ -308,7 +302,6 @@ theorem eighteen_two_pow_neg_128_fit_external_budget :
 #print axioms corrected_work_normalized_core_le_seven_tenths
 #print axioms corrected_selected_release_core_le_seven_tenths
 #print axioms core_plus_external_budget_le_two_pow_neg_100
-#print axioms eight_two_pow_neg_128_fit_external_budget
-#print axioms eighteen_two_pow_neg_128_fit_external_budget
+#print axioms hundred_bit_target_budget_is_core_plus_external
 
 end AspisV5HundredBitSecurityMargin

@@ -28,6 +28,7 @@ namespace AspisV5Width19CandidateEventBridge
 
 open AspisV5Tag67CandidateTraceExtraction
 open AspisV5Tag67RelationListInclusion
+open AspisV5FriCoherentCandidateExtraction
 open AspisV5Width19CorrelatedAgreement
 open AspisV5Width19LaneBatchBinding
 

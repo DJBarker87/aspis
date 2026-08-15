@@ -54,6 +54,7 @@ open AspisV5FriConcreteEncoderCommutation
 open AspisV5FriConcreteEncoderApplicability
 open AspisV5FriExactLineDomains
 open AspisV5FriInitialCircleEncoderIdentity
+open AspisV5FriInitialListBound
 open AspisV5FriReleasedLineGeometry
 open AspisV5FriListCap
 open AspisV5ComponentCQM31Representation
@@ -348,6 +349,7 @@ theorem exact_initial_cat_threshold_and_four_symbol_expansion :
       agreementCap0 = 4 * agreementCap1 ∧
       ∀ fibres : Nat, agreementCap1 < fibres → agreementCap0 < 4 * fibres := by
   norm_num [agreementCap0, agreementCap1]
+  omega
 
 /-- The exact published-theorem input for this release.  It is deliberately
 definitionally the existing `Width19CurveDecodable` predicate, with domain
@@ -489,8 +491,10 @@ theorem conditional_exact_width19_cap_meets_100_bit_budget :
   calc
     (appendixA2Width19ChallengeCap : ℝ) / (FIELD - 1) / 2 ^ 37 ≤
         appendixA2Width19Threshold / (FIELD - 1) / 2 ^ 37 := by
-      gcongr
-      exact appendixA2_width19_cap_le_threshold
+      exact div_le_div_of_nonneg_right
+        (div_le_div_of_nonneg_right appendixA2_width19_cap_le_threshold
+          (by unfold FIELD; norm_num))
+        (by positivity)
     _ ≤ 1 / 2 ^ 100 := conditional_width19_batch_term_meets_100_bit_budget
 
 /-! ## Audit -/
