@@ -247,6 +247,8 @@ done
 
 compile V5RelationAcceptanceSourceProof \
   "$proof/V5RelationAcceptanceSourceProof.lean"
+compile V5RelationCompactFoldKernelProof \
+  "$proof/V5RelationCompactFoldKernelProof.lean"
 compile V5RelationRoundKernelProof \
   "$proof/V5RelationRoundKernelProof.lean"
 compile V5RelationTailDecoderProof \
