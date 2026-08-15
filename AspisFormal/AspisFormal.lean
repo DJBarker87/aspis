@@ -188,4 +188,5 @@ import AspisFormal.V5RecordedCloseBytes
 import AspisFormal.V5CurrentInstructionAndClose
 import AspisFormal.V5AdaptiveObservedTheftGame
 import AspisFormal.V5AdaptiveObservedTheftRawAccounting
+import AspisFormal.V5RefinedAdaptiveObservedTheftAccounting
 import AspisFormal.V5TranscriptSourceAdapter
