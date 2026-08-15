@@ -398,6 +398,77 @@ theorem exactRun_sourceShapedFriReadSchedule_eq
   · exact friReadScheduleFromDriver_eq_run run
   all_goals exact Finset.sort_nodup _ _
 
+/-! ## The one production-loop equality still needed -/
+
+/-- Exact successful-read observation required from the production
+`check_v5_fri_queries` function.  It says that the function reads the returned
+opening views in the literal order of its four Rust loops:
+
+* `queries.iter().enumerate()` for C1, C2, and the first parent layer;
+* the first later-layer loop;
+* the second later-layer loop; and
+* the terminal later-layer loop.
+
+This statement contains no Merkle or decoder assumption.  The driver output
+already contains the five returned byte views and four returned index arrays;
+`sourceShapedFriReadSchedule` merely records the exact accessor calls made on
+those values. -/
+def CheckV5FriQueriesSuccessfulReadTraceEquality
+    (rustObservation : V5ProductionCall -> Option OpeningAndFriObservation) :
+    Prop :=
+  ∀ call observation, rustObservation call = some observation ->
+    observation.friReads = sourceShapedFriReadSchedule observation.driver
+
+/-- Once the five returned parser views are fixed to an exact authenticated
+run, the literal four-loop read order is exactly the maintained FRI read
+schedule.  This removes the old broad FRI-consumer premise: the only remaining
+source fact is the successful read trace of `check_v5_fri_queries` itself. -/
+theorem openingParser_and_checkV5FriQueriesReadTrace_imply_consumerEquality
+    (sha256 : List Byte -> Digest32)
+    (rustObservation : V5ProductionCall -> Option OpeningAndFriObservation)
+    (hparser : ExactRustV5OpeningParserOutputEquality sha256 rustObservation)
+    (hreads : CheckV5FriQueriesSuccessfulReadTraceEquality rustObservation) :
+    ExactRustV5OpeningAndFriConsumerEquality sha256 rustObservation := by
+  apply (exactRustV5OpeningAndFriConsumerEquality_iff_split
+    sha256 rustObservation).2
+  refine ⟨hparser, ?_⟩
+  intro call observation run hrust hbytes hdriver
+  calc
+    observation.friReads =
+        sourceShapedFriReadSchedule observation.driver :=
+      hreads call observation hrust
+    _ = sourceShapedFriReadSchedule (driverOutputOfRun run []) := by
+      rw [hdriver]
+    _ = friReadScheduleOfRun run :=
+      exactRun_sourceShapedFriReadSchedule_eq run
+
+/-- Equivalent smaller split of the former whole parser-and-consumer source
+boundary.  The reverse direction is stated relative to an exact parser output:
+under that fact, the maintained schedule and the literal source-shaped
+schedule coincide. -/
+theorem openingAndFriConsumerEquality_iff_parser_and_checkReadTrace
+    (sha256 : List Byte -> Digest32)
+    (rustObservation : V5ProductionCall -> Option OpeningAndFriObservation) :
+    ExactRustV5OpeningAndFriConsumerEquality sha256 rustObservation ↔
+      ExactRustV5OpeningParserOutputEquality sha256 rustObservation ∧
+        CheckV5FriQueriesSuccessfulReadTraceEquality rustObservation := by
+  constructor
+  · intro hfull
+    have hsplit := (exactRustV5OpeningAndFriConsumerEquality_iff_split
+      sha256 rustObservation).1 hfull
+    refine ⟨hsplit.1, ?_⟩
+    intro call observation hrust
+    obtain ⟨run, hbytes, hdriver⟩ := hsplit.1 call observation hrust
+    have hfri := hsplit.2 call observation run hrust hbytes hdriver
+    calc
+      observation.friReads = friReadScheduleOfRun run := hfri
+      _ = sourceShapedFriReadSchedule (driverOutputOfRun run []) :=
+        (exactRun_sourceShapedFriReadSchedule_eq run).symm
+      _ = sourceShapedFriReadSchedule observation.driver := by rw [hdriver]
+  · rintro ⟨hparser, hreads⟩
+    exact openingParser_and_checkV5FriQueriesReadTrace_imply_consumerEquality
+      sha256 rustObservation hparser hreads
+
 theorem shiftRight_two_eq_div_four (index : Nat) :
     index >>> 2 = index / 4 := by
   rw [Nat.shiftRight_eq_div_pow]
@@ -408,6 +479,8 @@ theorem shiftRight_two_eq_div_four (index : Nat) :
 #print axioms mapIdx_uses_idxOf_of_nodup
 #print axioms sourceShapedFriReadSchedule_eq
 #print axioms exactRun_sourceShapedFriReadSchedule_eq
+#print axioms openingParser_and_checkV5FriQueriesReadTrace_imply_consumerEquality
+#print axioms openingAndFriConsumerEquality_iff_parser_and_checkReadTrace
 #print axioms shiftRight_two_eq_div_four
 
 end AspisV5FriSourceLoopOrder
