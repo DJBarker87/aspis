@@ -272,7 +272,7 @@ theorem core_plus_external_budget_le_two_pow_neg_100
     core + external ≤ (1 : ℝ) / 2 ^ 100 := by
   linarith
 
-/-- Eight independent ledger entries bounded by `2^-128` fit comfortably in
+/-- Eight ledger entries each bounded by `2^-128` fit comfortably in
 the reserved external budget.  This theorem assigns no such bound; it only
 checks the arithmetic once those eight premises are supplied. -/
 theorem eight_two_pow_neg_128_fit_external_budget :
