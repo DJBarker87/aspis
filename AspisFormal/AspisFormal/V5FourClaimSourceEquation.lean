@@ -187,6 +187,36 @@ theorem no_four_claim_batch_equation_failure_of_source_projection
     (initial_discrepancy_eq_batch_of_source_projection data execution
       challenges record projection)
 
+/-- Once the source projection is supplied, the earlier-failure list no
+longer needs a separate batch-equation branch. -/
+def CandidateFailureAfterSourceProjection
+    (rc : AspisFormal.HashMerkleModel.RoundConstants)
+    (execution : AcceptedCandidateExecution K)
+    (challenges : TwelveRelationChallenges K)
+    (statement : AspisV5AcceptedSpendRelation.V5PublicStatement)
+    (record : CandidateSemanticRecord K) : Prop :=
+  FourClaimBatchCollision record ∨
+    CombinedLaneBindingFailure execution record ∨
+    PublicStatementBindingFailure execution challenges statement record ∨
+    ArithmeticResidualFailure execution challenges statement record ∨
+    HashMerkleResidualFailure rc execution challenges statement record
+
+theorem candidate_earlier_failure_iff_after_source_projection
+    (rc : AspisFormal.HashMerkleModel.RoundConstants)
+    (data : SourceMode9CallerData K)
+    (execution : AcceptedCandidateExecution K)
+    (challenges : TwelveRelationChallenges K)
+    (statement : AspisV5AcceptedSpendRelation.V5PublicStatement)
+    (record : CandidateSemanticRecord K)
+    (projection : SourceFourClaimProjection data execution record) :
+    CandidateEarlierFailure rc execution challenges statement record ↔
+      CandidateFailureAfterSourceProjection rc execution challenges statement
+        record := by
+  have hequation := no_four_claim_batch_equation_failure_of_source_projection
+    data execution challenges record projection
+  simp only [CandidateEarlierFailure, CandidateFailureAfterSourceProjection]
+  tauto
+
 #print axioms candidateClaim_scale_weights
 #print axioms prepared_bridge_point_claim_eq_relation_bridge
 #print axioms prepared_bridge_all_point_claims_eq_relation_bridge
@@ -194,5 +224,6 @@ theorem no_four_claim_batch_equation_failure_of_source_projection
 #print axioms source_initial_discrepancy_eq_four_claim_batch
 #print axioms initial_discrepancy_eq_batch_of_source_projection
 #print axioms no_four_claim_batch_equation_failure_of_source_projection
+#print axioms candidate_earlier_failure_iff_after_source_projection
 
 end AspisV5FourClaimSourceEquation
