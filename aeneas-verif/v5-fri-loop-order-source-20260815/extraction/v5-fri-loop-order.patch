@@ -1,0 +1,404 @@
+diff --git a/programs/aspis-verifier/src/v5_fri_checks.rs b/programs/aspis-verifier/src/v5_fri_checks.rs
+index 3b1f37f..0000000 100644
+--- a/programs/aspis-verifier/src/v5_fri_checks.rs
++++ b/programs/aspis-verifier/src/v5_fri_checks.rs
+@@ -327,6 +327,14 @@ pub fn bind_final_and_derive_v5_queries(
+     ))
+ }
+
++fn advance_monotone_ordinal(indices: &[u32], ordinal: usize, index: u32) -> usize {
++    if ordinal < indices.len() && indices[ordinal] < index {
++        advance_monotone_ordinal(indices, ordinal + 1, index)
++    } else {
++        ordinal
++    }
++}
++
+ fn opening_value_for_monotone_index<'a>(
+     opening: &aspis_core::state_only_private_openings::StateOnlyPrivateOpening<'a>,
+     indices: &[u32],
+@@ -335,9 +343,7 @@ fn opening_value_for_monotone_index<'a>(
+     index: u32,
+     layer: u8,
+ ) -> Result<&'a [u8], V5FriCheckError> {
+-    while *ordinal < indices.len() && indices[*ordinal] < index {
+-        *ordinal += 1;
+-    }
++    *ordinal = advance_monotone_ordinal(indices, *ordinal, index);
+     if indices.get(*ordinal).copied() != Some(index) {
+         return Err(V5FriCheckError::MissingOpening { layer, index });
+     }
+@@ -554,6 +560,373 @@ pub fn check_v5_fri_queries(
+
+     Ok(V5FriCheckSink { folded_layer0_sum })
+ }
++
++/// One successful source-ordered layer-zero consumer iteration.  The byte
++/// values remain live locals passed to the arithmetic calls; the durable
++/// trace records their exact source indices and ordinals.
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub struct V5FriLayerZeroReadTrace {
++    pub query: u32,
++    pub ordinal: usize,
++    pub c1_value_width: usize,
++    pub c2_value_width: usize,
++    pub parent_index: u32,
++    pub parent_ordinal: usize,
++    pub parent_value_width: usize,
++    pub parent_slot: u8,
++}
++
++/// One successful source-ordered line-to-line consumer iteration.
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub struct V5FriLineReadTrace {
++    pub layer: u8,
++    pub index: u32,
++    pub ordinal: usize,
++    pub incoming_width: usize,
++    pub parent_index: u32,
++    pub parent_ordinal: usize,
++    pub outgoing_width: usize,
++    pub slot: u8,
++}
++
++/// One successful source-ordered terminal consumer iteration.
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub struct V5FriTerminalReadTrace {
++    pub index: u32,
++    pub ordinal: usize,
++    pub incoming_width: usize,
++}
++
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub struct V5FriFixedTrace18<T> {
++    pub v0: T,
++    pub v1: T,
++    pub v2: T,
++    pub v3: T,
++    pub v4: T,
++    pub v5: T,
++    pub v6: T,
++    pub v7: T,
++    pub v8: T,
++    pub v9: T,
++    pub v10: T,
++    pub v11: T,
++    pub v12: T,
++    pub v13: T,
++    pub v14: T,
++    pub v15: T,
++    pub v16: T,
++    pub v17: T,
++}
++
++fn repeated_v5_fri_trace<T: Copy>(value: T) -> V5FriFixedTrace18<T> {
++    V5FriFixedTrace18 {
++        v0: value,
++        v1: value,
++        v2: value,
++        v3: value,
++        v4: value,
++        v5: value,
++        v6: value,
++        v7: value,
++        v8: value,
++        v9: value,
++        v10: value,
++        v11: value,
++        v12: value,
++        v13: value,
++        v14: value,
++        v15: value,
++        v16: value,
++        v17: value,
++    }
++}
++
++fn write_v5_fri_trace<T>(
++    mut trace: V5FriFixedTrace18<T>,
++    ordinal: usize,
++    value: T,
++) -> V5FriFixedTrace18<T> {
++    match ordinal {
++        0 => trace.v0 = value,
++        1 => trace.v1 = value,
++        2 => trace.v2 = value,
++        3 => trace.v3 = value,
++        4 => trace.v4 = value,
++        5 => trace.v5 = value,
++        6 => trace.v6 = value,
++        7 => trace.v7 = value,
++        8 => trace.v8 = value,
++        9 => trace.v9 = value,
++        10 => trace.v10 = value,
++        11 => trace.v11 = value,
++        12 => trace.v12 = value,
++        13 => trace.v13 = value,
++        14 => trace.v14 = value,
++        15 => trace.v15 = value,
++        16 => trace.v16 = value,
++        17 => trace.v17 = value,
++        _ => {}
++    }
++    trace
++}
++
++/// The four production passes, kept separate so no pass can be omitted,
++/// duplicated, or silently reordered by the trace projection.
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub struct V5FriLoopReadTrace {
++    pub layer0_to_line1: V5FriFixedTrace18<V5FriLayerZeroReadTrace>,
++    pub layer0_count: usize,
++    pub line1_to_line2: V5FriFixedTrace18<V5FriLineReadTrace>,
++    pub line1_count: usize,
++    pub line2_to_line3: V5FriFixedTrace18<V5FriLineReadTrace>,
++    pub line2_count: usize,
++    pub line3_to_final: V5FriFixedTrace18<V5FriTerminalReadTrace>,
++    pub line3_count: usize,
++}
++
++const EMPTY_LAYER_ZERO_READ: V5FriLayerZeroReadTrace = V5FriLayerZeroReadTrace {
++    query: 0,
++    ordinal: 0,
++    c1_value_width: 0,
++    c2_value_width: 0,
++    parent_index: 0,
++    parent_ordinal: 0,
++    parent_value_width: 0,
++    parent_slot: 0,
++};
++
++const EMPTY_LINE_READ: V5FriLineReadTrace = V5FriLineReadTrace {
++    layer: 0,
++    index: 0,
++    ordinal: 0,
++    incoming_width: 0,
++    parent_index: 0,
++    parent_ordinal: 0,
++    outgoing_width: 0,
++    slot: 0,
++};
++
++const EMPTY_TERMINAL_READ: V5FriTerminalReadTrace = V5FriTerminalReadTrace {
++    index: 0,
++    ordinal: 0,
++    incoming_width: 0,
++};
++
++fn trace_v5_fri_layer_zero_read<'a>(
++    openings: &VerifiedV5PrivateOpenings<'a>,
++    ordinal: usize,
++    layer1_ordinal: usize,
++) -> Result<(V5FriLayerZeroReadTrace, usize), V5FriCheckError> {
++    let query = openings.indices.layer0[ordinal];
++    let c1_value_width = openings
++        .c1
++        .value(ordinal)
++        .ok_or(V5FriCheckError::MissingOpening {
++            layer: 0,
++            index: query,
++        })?
++        .len();
++    let c2_value_width = openings
++        .c2
++        .value(ordinal)
++        .ok_or(V5FriCheckError::MissingOpening {
++            layer: 0,
++            index: query,
++        })?
++        .len();
++    let parent = query >> 2u32;
++    let mut next_layer1_ordinal = layer1_ordinal;
++    let parent_value_width = opening_value_for_monotone_index(
++        &openings.later[0],
++        &openings.indices.later[0],
++        &mut next_layer1_ordinal,
++        parent,
++        1,
++    )?
++    .len();
++    Ok((
++        V5FriLayerZeroReadTrace {
++            query,
++            ordinal,
++            c1_value_width,
++            c2_value_width,
++            parent_index: parent,
++            parent_ordinal: next_layer1_ordinal,
++            parent_value_width,
++            parent_slot: (query & 3) as u8,
++        },
++        next_layer1_ordinal,
++    ))
++}
++
++fn trace_v5_fri_line_read<'a>(
++    openings: &VerifiedV5PrivateOpenings<'a>,
++    layer: usize,
++    ordinal: usize,
++    outgoing_ordinal: usize,
++) -> Result<(V5FriLineReadTrace, usize), V5FriCheckError> {
++    let index = openings.indices.later[layer][ordinal];
++    let incoming_width = openings.later[layer]
++        .value(ordinal)
++        .ok_or(V5FriCheckError::MissingOpening {
++            layer: layer as u8 + 1,
++            index,
++        })?
++        .len();
++    let parent = index >> 2u32;
++    let mut next_outgoing_ordinal = outgoing_ordinal;
++    let outgoing_width = opening_value_for_monotone_index(
++        &openings.later[layer + 1],
++        &openings.indices.later[layer + 1],
++        &mut next_outgoing_ordinal,
++        parent,
++        layer as u8 + 2,
++    )?
++    .len();
++    Ok((
++        V5FriLineReadTrace {
++            layer: layer as u8 + 1,
++            index,
++            ordinal,
++            incoming_width,
++            parent_index: parent,
++            parent_ordinal: next_outgoing_ordinal,
++            outgoing_width,
++            slot: (index & 3) as u8,
++        },
++        next_outgoing_ordinal,
++    ))
++}
++
++fn trace_v5_fri_terminal_read<'a>(
++    openings: &VerifiedV5PrivateOpenings<'a>,
++    ordinal: usize,
++) -> Result<V5FriTerminalReadTrace, V5FriCheckError> {
++    let layer = 2usize;
++    let index = openings.indices.later[layer][ordinal];
++    let incoming_width = openings.later[layer]
++        .value(ordinal)
++        .ok_or(V5FriCheckError::MissingOpening {
++            layer: layer as u8 + 1,
++            index,
++        })?
++        .len();
++    Ok(V5FriTerminalReadTrace {
++        index,
++        ordinal,
++        incoming_width,
++    })
++}
++
++fn trace_v5_fri_layer_zero_pass<'a>(
++    openings: &VerifiedV5PrivateOpenings<'a>,
++    ordinal: usize,
++    layer1_ordinal: usize,
++    trace: V5FriFixedTrace18<V5FriLayerZeroReadTrace>,
++) -> Result<(V5FriFixedTrace18<V5FriLayerZeroReadTrace>, usize), V5FriCheckError> {
++    let queries = &openings.indices.layer0;
++    if ordinal < queries.len() {
++        let (read, next_layer1_ordinal) =
++            trace_v5_fri_layer_zero_read(openings, ordinal, layer1_ordinal)?;
++        let trace = write_v5_fri_trace(trace, ordinal, read);
++        trace_v5_fri_layer_zero_pass(
++            openings,
++            ordinal + 1,
++            next_layer1_ordinal,
++            trace,
++        )
++    } else {
++        Ok((trace, layer1_ordinal))
++    }
++}
++
++fn trace_v5_fri_line_pass<'a>(
++    openings: &VerifiedV5PrivateOpenings<'a>,
++    layer: usize,
++    ordinal: usize,
++    outgoing_ordinal: usize,
++    trace: V5FriFixedTrace18<V5FriLineReadTrace>,
++) -> Result<(V5FriFixedTrace18<V5FriLineReadTrace>, usize), V5FriCheckError> {
++    let indices = &openings.indices.later[layer];
++    if ordinal < indices.len() {
++        let (read, next_outgoing_ordinal) =
++            trace_v5_fri_line_read(openings, layer, ordinal, outgoing_ordinal)?;
++        let trace = write_v5_fri_trace(trace, ordinal, read);
++        trace_v5_fri_line_pass(
++            openings,
++            layer,
++            ordinal + 1,
++            next_outgoing_ordinal,
++            trace,
++        )
++    } else {
++        Ok((trace, outgoing_ordinal))
++    }
++}
++
++fn trace_v5_fri_terminal_pass<'a>(
++    openings: &VerifiedV5PrivateOpenings<'a>,
++    ordinal: usize,
++    trace: V5FriFixedTrace18<V5FriTerminalReadTrace>,
++) -> Result<V5FriFixedTrace18<V5FriTerminalReadTrace>, V5FriCheckError> {
++    let layer = 2usize;
++    let indices = &openings.indices.later[layer];
++    if ordinal < indices.len() {
++        let read = trace_v5_fri_terminal_read(openings, ordinal)?;
++        let trace = write_v5_fri_trace(trace, ordinal, read);
++        trace_v5_fri_terminal_pass(
++            openings,
++            ordinal + 1,
++            trace,
++        )
++    } else {
++        Ok(trace)
++    }
++}
++
++/// Diagnostic source-shaped spelling of the four FRI opening-read passes.
++/// Arithmetic and transition functions are intentionally outside this trace
++/// and remain an explicit opaque boundary of this package.
++pub fn trace_v5_fri_reads_after_preparation<'a>(
++    openings: &VerifiedV5PrivateOpenings<'a>,
++) -> Result<V5FriLoopReadTrace, V5FriCheckError> {
++    let (layer0_to_line1, _) = trace_v5_fri_layer_zero_pass(
++        openings,
++        0,
++        0,
++        repeated_v5_fri_trace(EMPTY_LAYER_ZERO_READ),
++    )?;
++    let (line1_to_line2, _) = trace_v5_fri_line_pass(
++        openings,
++        0,
++        0,
++        0,
++        repeated_v5_fri_trace(EMPTY_LINE_READ),
++    )?;
++    let (line2_to_line3, _) = trace_v5_fri_line_pass(
++        openings,
++        1,
++        0,
++        0,
++        repeated_v5_fri_trace(EMPTY_LINE_READ),
++    )?;
++    let line3_to_final = trace_v5_fri_terminal_pass(
++        openings,
++        0,
++        repeated_v5_fri_trace(EMPTY_TERMINAL_READ),
++    )?;
++    Ok(V5FriLoopReadTrace {
++        layer0_to_line1,
++        layer0_count: openings.indices.layer0.len(),
++        line1_to_line2,
++        line1_count: openings.indices.later[0].len(),
++        line2_to_line3,
++        line2_count: openings.indices.later[1].len(),
++        line3_to_final,
++        line3_count: openings.indices.later[2].len(),
++    })
++}
+
+ #[cfg(test)]
+ mod tests {
