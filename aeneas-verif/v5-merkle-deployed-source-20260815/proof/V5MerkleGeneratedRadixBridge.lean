@@ -13,6 +13,55 @@ abbrev GeneratedDigest := Array Std.U8 32#usize
 abbrev GeneratedRadixInput := Array Std.U8 129#usize
 abbrev GeneratedDigestVec := alloc.vec.Vec GeneratedDigest
 
+private theorem generated_u8_ne_spec (left right : Std.U8) :
+    liftFun2 core.cmp.impls.PartialEqU8.ne left right =
+      .ok (decide (left ≠ right)) := by
+  simp [core.cmp.impls.PartialEqU8.ne]
+
+private theorem allM_zip_no_generated_u8_difference
+    (left right : List Std.U8) (sameLength : left.length = right.length) :
+    List.allM
+        (fun pair => do
+          let differs ← core.cmp.PartialEqU8.ne pair.1 pair.2
+          ok (decide (¬ differs = true)))
+        (List.zip left right) = .ok true →
+      left = right := by
+  induction left generalizing right with
+  | nil =>
+      intro hrun
+      cases right <;> simp_all
+  | cons head tail ih =>
+      cases right with
+      | nil => simp at sameLength
+      | cons head' tail' =>
+          intro hrun
+          simp only [List.length_cons, Nat.add_right_cancel_iff] at sameLength
+          simp only [List.zip_cons_cons, List.allM] at hrun
+          generalize htail : List.allM
+              (fun pair => do
+                let differs ← core.cmp.PartialEqU8.ne pair.1 pair.2
+                ok (decide (¬ differs = true)))
+              (List.zip tail tail') = tailResult at hrun
+          rw [generated_u8_ne_spec head head'] at hrun
+          by_cases hHead : head = head'
+          · subst head'
+            simp [pure] at hrun
+            have hTail := ih tail' sameLength (hrun ▸ htail)
+            subst tail'
+            rfl
+          · simp [hHead, pure] at hrun
+
+theorem generated_digest_eq_true_implies_eq (left right : GeneratedDigest)
+    (hrun : core.array.equality.PartialEqArray.eq
+      core.cmp.PartialEqU8 left right = .ok true) :
+    left = right := by
+  unfold core.array.equality.PartialEqArray.eq at hrun
+  have sameLength : left.length = right.length := by simp
+  simp only [sameLength, ↓reduceIte] at hrun
+  apply Subtype.ext
+  exact allM_zip_no_generated_u8_difference left.val right.val
+    (by simpa using sameLength) hrun
+
 def radixInputByte (input : GeneratedRadixInput) (slot byte : Nat) : Std.U8 :=
   input.val[1 + slot * 32 + byte]!
 
