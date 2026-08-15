@@ -1,7 +1,7 @@
 import AspisFormal.V5ImplementedWorkNormalizedEndpoint
 
 /-!
-# Preserve enough numerical margin for an overall 100-bit statement
+# Preserve enough numerical margin for a 100-bit work-normalized statement
 
 The maintained endpoint rounds the work-normalized arithmetic directly to
 `2^-100`.  That is enough for the interactive core, but leaves no formal room
@@ -10,9 +10,14 @@ to add separately stated hash or implementation failure probabilities.
 This file keeps a conservative fraction of the actual margin.  It uses the
 released width-nineteen coefficient and nonzero-field denominator, the exact
 `R = 30` public-coin count, and every other existing ledger term unchanged.
-The resulting core is at most `0.7 * 2^-100`.  Therefore any explicit external
-budget of at most `0.3 * 2^-100` can be added while retaining a complete
-`2^-100` bound.
+The resulting work-normalized core is at most `0.7 * 2^-100`.  Therefore any
+explicit external-event budget of at most `0.3 * 2^-100` can be added while
+retaining a complete `2^-100` work-normalized bound.
+
+This is not a `2^-100` bound on the conditional probability of failure after
+an attacker has already completed the 37-bit grind.  Removing the work charge
+restores a factor `2^37`; the raw completed-attempt calculation is kept
+separate in `V5RefinedWidth19DeploymentBridge`.
 
 This is arithmetic only.  The event inclusions, published theorem, random
 oracle, and executable correspondence hypotheses remain separate.
@@ -96,6 +101,13 @@ theorem corrected_batch_le_2120_div_two_pow_119 :
     (by unfold FIELD; norm_num)
     (by norm_num)
     (by unfold FIELD; norm_num)
+
+/-- Regression check: the maintained conservative raw width-19 ceiling is not
+itself a 100-bit probability bound.  The 100-bit conclusion below is explicitly
+work-normalized. -/
+theorem raw_width19_reference_ceiling_is_above_two_pow_neg_100 :
+    (1 : ℝ) / 2 ^ 100 < 31 / 2 ^ 75 := by
+  norm_num
 
 /-! ## Corrected tight union -/
 
@@ -268,6 +280,7 @@ theorem eight_two_pow_neg_128_fit_external_budget :
   norm_num
 
 #print axioms corrected_batch_le_2120_div_two_pow_119
+#print axioms raw_width19_reference_ceiling_is_above_two_pow_neg_100
 #print axioms corrected_round_error_le_tight_union
 #print axioms corrected_work_normalized_core_le_seven_tenths
 #print axioms corrected_selected_release_core_le_seven_tenths
