@@ -34,7 +34,10 @@
 \newcommand{\K}{\mathbb{K}}
 \newcommand{\bits}{\,\mathrm{bits}}
 \newcommand{\Prob}{\Pr}
-\newcommand{\code}[1]{\texttt{\nolinkurl{#1}}}
+% Keep code upright inside italic theorem bodies.  xurl supplies safe line
+% breaks for long identifiers; the small stretch avoids visible letterspacing.
+\newcommand{\code}[1]{{\Urlmuskip=0mu plus .1mu\relax
+  \def\UrlFont{\ttfamily\upshape}\nolinkurl{#1}}}
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
 \newcolumntype{R}[1]{>{\raggedright\arraybackslash}p{#1}}
 \newcolumntype{T}{>{\raggedright\arraybackslash\ttfamily}p{0.34\textwidth}}

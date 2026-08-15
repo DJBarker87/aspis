@@ -53,10 +53,10 @@ they do not assume that witness as an input.
 \begin{theorem}[Spend relation after extraction]
 \label{thm:spend-after-extraction}
 Let \(O\) be normalized opened columns and let \(r_c\) be the fixed Poseidon2
-round constants.  If \code{ExtractedV5Trace rc O} holds and the deployed
-owner, note, nullifier, and node functions satisfy \code{Poseidon2Faithful},
-then there are integer input and output values for which the complete
-\code{SpendRelation} holds.
+round constants.  If \code{ExtractedV5Trace} holds for \(r_c\) and \(O\), and
+the deployed owner, note, nullifier, and node functions satisfy
+\code{Poseidon2Faithful}, then there are integer input and output values for
+which the complete \code{SpendRelation} holds.
 \end{theorem}
 
 This is the Lean theorem

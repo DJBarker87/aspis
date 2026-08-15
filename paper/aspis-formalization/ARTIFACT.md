@@ -1,7 +1,7 @@
 # Aspis formal security report artifact
 
 This manifest identifies the files needed to inspect and reproduce the report.
-The immutable release name is `aspis-formal-security-report-v1`.
+The immutable release name is `aspis-formal-security-report-v1.1`.
 
 ## Identifiers
 
@@ -9,7 +9,7 @@ The immutable release name is `aspis-formal-security-report-v1`.
 - Deployed-program source commit: `06788d44d30ea8cbd391899dddaf6f0acc6e4a3f`
 - Repository: <https://github.com/DJBarker87/aspis>
 - Paper PDF: `output/pdf/aspis-formalization.pdf`
-- Paper PDF SHA-256: `1cffde2a4426f2e4dbaba09e463b6679bb7f899d9f49e702cfc21927476fbd51`
+- Paper PDF SHA-256: `aafc7b168999138690a3a6e99ea6622f8c2bf3636fc312382e05c4961dc4e44c`
 - Paper source: `paper/aspis-formalization/aspis-formalization.tex`
 - Lean toolchain: `AspisFormal/lean-toolchain`
 - Lean dependency lock: `AspisFormal/lake-manifest.json`
