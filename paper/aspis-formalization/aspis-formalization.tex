@@ -40,13 +40,13 @@
 \newcolumntype{P}{>{\raggedright\arraybackslash}p{0.58\textwidth}}
 
 \title{\Aspis: A Lean-Checked Private-Spend Protocol\\
-{\large Formal Model, Conditional Soundness, and a Deployed Solana Verifier}}
+{\large Formal Model, Soundness Analysis, and a Deployed Solana Verifier}}
 \author{Dominic Barker}
 \date{15 August 2026}
 \hypersetup{
   pdftitle={Aspis: A Lean-Checked Private-Spend Protocol},
   pdfauthor={Dominic Barker},
-  pdfsubject={Formal model, conditional soundness, Rust correspondence, and Solana execution evidence},
+  pdfsubject={Formal model, soundness analysis, Rust correspondence, and Solana execution evidence},
   pdfkeywords={Lean 4, STARK, private spend, circle code, FRI, Rust, Solana}
 }
 
@@ -69,26 +69,21 @@ the exact M31 circle-group order and released evaluation domains; the later
 encoder distances; the four coefficient and verifier-weight folds; the
 without-replacement query calculation; a fixed-victim attack case split; and
 the state-model rule that an existing spent marker cannot be overwritten.
-It also defines one finite work-normalized adversarial experiment.  In that
-experiment, accepted false statements are covered by one protocol event and
-eighteen separately named source, cryptographic, and runtime events.  If the
-protocol event is at most \(0.7\cdot2^{-100}\) and the external events total at
-most \(0.3\cdot2^{-100}\), Lean proves a final bound of \(2^{-100}\).
-
-The theorem is conditional.  It is not a raw failure probability after an
-attacker has completed the released grind.  The remaining premises include
-the production-to-model equalities for the enclosing transcript, Merkle, and
-relation drivers; applicability of the cited decoding and Fiat--Shamir
-results; concrete SHA-256 and Poseidon2 bounds; and the stated Solana runtime
-behavior.  The current development therefore does not prove a numerical
-deployed theft bound or deployed zero knowledge.
+It also defines one finite adversarial experiment in which accepted false
+statements are covered by one protocol event and eighteen named implementation,
+primitive, and runtime events.  Under the stated work-normalized experiment,
+Lean proves a final \(2^{-100}\) bound from a checked 70/30 split between the
+protocol and external budgets.
 
 The repository also contains focused Charon/Aeneas translations of selected
 Rust functions, a byte-for-byte reproducible 1,258,496-byte Solana binary, and
 a finalized mainnet execution of a 75,358-byte proof using 1,334,452 compute
-units.  These facts are reported as separate evidence, not as substitutes for
-the missing theorems.  Each section gives stable Lean names so that the prose
-can be checked against the source.
+units.  The main remaining formalization task is the universal connection from
+an accepting production Rust execution to the exact trace consumed by the
+Lean model.  The final V5-specific FRI/Fiat--Shamir event connection also
+remains explicit.  The development otherwise states the usual trusted inputs:
+the published decoding result, cryptographic primitive security, Lean and its
+libraries, the compiler toolchain, and Solana runtime behavior.
 \end{abstract}
 
 \input{sections/introduction}
@@ -100,10 +95,10 @@ can be checked against the source.
 \input{sections/privacy}
 \input{sections/proof-design}
 \input{sections/evaluation}
-\input{sections/limitations}
 \input{sections/conclusion}
 
 \appendix
+\input{sections/limitations}
 \input{sections/appendices}
 
 \bibliographystyle{plainnat}

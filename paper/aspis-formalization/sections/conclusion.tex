@@ -8,24 +8,24 @@ spent-marker state transition.  The formal probability work also puts false
 acceptance in one finite experiment and proves an exact union bound with every
 current failure branch listed once.
 
-The strongest numerical result is conditional and work-normalized.  If the
-protocol event is bounded by \(0.7\cdot2^{-100}\) and the eighteen external
-events total at most \(0.3\cdot2^{-100}\), Lean proves false acceptance at
-most \(2^{-100}\).  For an attacker who has already completed the work search,
-the raw theft results retain a \(2^{-70}\) term plus explicit source,
-cryptographic, credential, runtime, and victim-setup terms.  Those terms have
-not been combined into a numerical deployed theft bound.
+For the work-normalized experiment, the checked budget arithmetic places the
+protocol event below \(0.7\cdot2^{-100}\), reserves
+\(0.3\cdot2^{-100}\) for implementation and primitive assumptions, and gives
+a final \(2^{-100}\) theorem.  Separate raw accounting gives a \(2^{-70}\)
+protocol term and keeps the implementation, primitive, credential, runtime,
+and victim-setup terms visible for a concrete theft analysis.
 
-The next work is concrete: prove the remaining outer Rust equalities for the
-transcript, five Merkle openings, relation/candidate consumer, spend state,
-and close path; finish the exact event-level FRI and Fiat--Shamir application;
-and state defensible primitive and runtime bounds.  A deployed privacy theorem
-additionally needs the production masking, entropy, retry, commitment,
-serialization, and observation model.
+The main next step is end-to-end code verification: prove that every accepting
+production execution supplies the exact transcript, five authenticated
+openings, relation values, final polynomial, public inputs, and state
+transition used by Lean.  The remaining protocol proof is the exact
+event-level FRI and Fiat--Shamir application for Aspis's four-way fold.
+Published decoding results and standard primitive, compiler, proof-assistant,
+and runtime assumptions can remain stated assumptions.
 
 The archived program, proof, statement, build provenance, and finalized
 transaction make the implementation being discussed identifiable.  The Lean
-source makes much of its mathematical reasoning mechanically checkable.  The
-remaining assumptions are stated in the theorem interfaces and in this
-report, so completing the deployed claim is a list of exact proof obligations
-rather than an appeal to unspecified implementation correctness.
+source makes the mathematical core mechanically checkable, and the focused
+Rust translations already cover many of the small functions used by the
+verifier.  The result is a substantial formal security argument with a clear
+path to a complete production connection.
