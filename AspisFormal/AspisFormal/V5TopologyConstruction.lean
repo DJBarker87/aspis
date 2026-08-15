@@ -186,8 +186,22 @@ def sharedGroupLists (queries : Finset V5Query) :
     List (List (Finset (Fin 4))) :=
   (List.range 8).map (sharedGroupSlots queries)
 
+/-- The eight literal byte-mask lists stored by the extracted Rust topology. -/
+def sharedGroupMaskLists (queries : Finset V5Query) : List (List Nat) :=
+  (List.range 8).map (sharedGroupMasks queries)
+
 def prefixOffset (lists : List (List α)) (level : Nat) : Nat :=
   ((lists.map List.length).take level).sum
+
+theorem prefixOffset_succ {lists : List (List α)} {level : Nat}
+    (hlevel : level < lists.length) :
+    prefixOffset lists (level + 1) =
+      prefixOffset lists level + lists[level].length := by
+  have hmapped : level < (lists.map List.length).length := by
+    simpa using hlevel
+  rw [prefixOffset, prefixOffset, List.take_add_one, List.sum_append]
+  rw [List.getElem?_eq_getElem hmapped]
+  simp
 
 theorem flatten_slice_at {lists : List (List α)} {level : Nat}
     (hlevel : level < lists.length) :
@@ -206,6 +220,47 @@ theorem sharedGroupLists_get (queries : Finset V5Query) (level : Nat)
     (hlevel : level < 8) :
     (sharedGroupLists queries)[level] = sharedGroupSlots queries level := by
   simp [sharedGroupLists]
+
+theorem sharedGroupMaskLists_get (queries : Finset V5Query) (level : Nat)
+    (hlevel : level < 8) :
+    (sharedGroupMaskLists queries)[level] = sharedGroupMasks queries level := by
+  simp [sharedGroupMaskLists]
+
+theorem sharedLevelPrefixOffset_succ (queries : Finset V5Query)
+    (level : Nat) (hlevel : level < 9) :
+    prefixOffset (sharedLevelLists queries) (level + 1) =
+      prefixOffset (sharedLevelLists queries) level +
+        (sharedLevelIndices queries level).length := by
+  have hlists : level < (sharedLevelLists queries).length := by
+    simp [sharedLevelLists, hlevel]
+  calc
+    prefixOffset (sharedLevelLists queries) (level + 1) =
+        prefixOffset (sharedLevelLists queries) level +
+          (sharedLevelLists queries)[level].length :=
+      prefixOffset_succ hlists
+    _ = prefixOffset (sharedLevelLists queries) level +
+          (sharedLevelIndices queries level).length := by
+      congr 1
+      exact congrArg List.length
+        (sharedLevelLists_get queries level hlevel)
+
+theorem sharedGroupMaskPrefixOffset_succ (queries : Finset V5Query)
+    (level : Nat) (hlevel : level < 8) :
+    prefixOffset (sharedGroupMaskLists queries) (level + 1) =
+      prefixOffset (sharedGroupMaskLists queries) level +
+        (sharedGroupMasks queries level).length := by
+  have hlists : level < (sharedGroupMaskLists queries).length := by
+    simp [sharedGroupMaskLists, hlevel]
+  calc
+    prefixOffset (sharedGroupMaskLists queries) (level + 1) =
+        prefixOffset (sharedGroupMaskLists queries) level +
+          (sharedGroupMaskLists queries)[level].length :=
+      prefixOffset_succ hlists
+    _ = prefixOffset (sharedGroupMaskLists queries) level +
+          (sharedGroupMasks queries level).length := by
+      congr 1
+      exact congrArg List.length
+        (sharedGroupMaskLists_get queries level hlevel)
 
 theorem flattened_level_slice_is_exact (queries : Finset V5Query)
     (level : Nat) (hlevel : level < 9) :
@@ -231,6 +286,19 @@ theorem flattened_group_slice_is_exact (queries : Finset V5Query)
   have hslice := flatten_slice_at
     (lists := sharedGroupLists queries) (level := level) (by omega)
   rw [← sharedGroupLists_get queries level hlevel]
+  exact hslice
+
+theorem flattened_group_mask_slice_is_exact (queries : Finset V5Query)
+    (level : Nat) (hlevel : level < 8) :
+    ((sharedGroupMaskLists queries).flatten.drop
+        (prefixOffset (sharedGroupMaskLists queries) level)).take
+          (sharedGroupMasks queries level).length =
+      sharedGroupMasks queries level := by
+  have hlength : (sharedGroupMaskLists queries).length = 8 := by
+    simp [sharedGroupMaskLists]
+  have hslice := flatten_slice_at
+    (lists := sharedGroupMaskLists queries) (level := level) (by omega)
+  rw [← sharedGroupMaskLists_get queries level hlevel]
   exact hslice
 
 /-! ## Precisely split residual implementation obligations -/
@@ -434,8 +502,12 @@ theorem constructedTopology_driver_iff_exactV5Acceptance
 #print axioms slotMask_lt_sixteen
 #print axioms released_section_indices_are_exact_shared_suffixes
 #print axioms released_section_depths_are_shared_suffix_depths
+#print axioms prefixOffset_succ
+#print axioms sharedLevelPrefixOffset_succ
+#print axioms sharedGroupMaskPrefixOffset_succ
 #print axioms flattened_level_slice_is_exact
 #print axioms flattened_group_slice_is_exact
+#print axioms flattened_group_mask_slice_is_exact
 #print axioms constructor_and_hash_loop_imply_released_helper_equality
 #print axioms releasedHelperSourceEquality_driver_iff_exactV5Acceptance
 #print axioms constructedTopology_driver_iff_exactV5Acceptance

@@ -1,10 +1,14 @@
 import V5TopologyReadsGenerated.Funs
+import AspisFormal.V5TopologyConstruction
 
 open Aeneas Aeneas.Std Result ControlFlow Error
 open aspis_core
 set_option maxRecDepth 3000
 
 namespace AspisV5TopologyReadsSourceProof
+
+open AspisV5TopologyConstruction
+open AspisV5MerkleAuthenticationBinding
 
 def ExactLevelIndicesOutput
     (topology : merkle.Radix4BinaryCapTopology)
@@ -235,10 +239,133 @@ theorem matched_suffix_binds_exact_depth_and_literal_indices
   · omega
   · exact hlevelIndices.2
 
+/-! ## Connection to the exact shared topology plan
+
+`Radix4BinaryCapTopology::new` is the one source function which the pinned
+Charon/Aeneas pair cannot translate: its nested early returns are outside the
+current structured-loop support.  The following premise names only the fields
+and prefix offsets which that constructor must produce.  Subject to that
+single constructor-field premise, the source-extracted read methods above are
+proved to return exactly the shared mathematical plan for every released
+level.  Parser and hash-loop behavior is not part of this premise.
+-/
+
+structure ExactConstructedTopologyFields
+    (queries : Finset V5Query)
+    (topology : merkle.Radix4BinaryCapTopology) : Prop where
+  binaryDepth : topology.binary_depth.val = 17
+  radixLevels : topology.radix_levels.val = 8
+  levelValues :
+    topology.level_indices.val.map (fun index => index.val) =
+      (sharedLevelLists queries).flatten
+  groupMaskValues :
+    topology.group_masks.val.map (fun mask => mask.val) =
+      (sharedGroupMaskLists queries).flatten
+  levelOffset : ∀ (level offset : Std.Usize), level.val ≤ 9 →
+    Array.index_usize topology.level_offsets level = .ok offset →
+    offset.val = prefixOffset (sharedLevelLists queries) level.val
+  groupOffset : ∀ (level offset : Std.Usize), level.val ≤ 8 →
+    Array.index_usize topology.group_offsets level = .ok offset →
+    offset.val = prefixOffset (sharedGroupMaskLists queries) level.val
+
+private theorem usize_succ_val_below_ten (level : Std.Usize)
+    (hlevel : level.val ≤ 9) :
+    (Std.Usize.wrapping_add level 1#usize).val = level.val + 1 := by
+  rw [Std.Usize.wrapping_add_val_eq]
+  have hone : (1#usize : Std.Usize).val = 1 := rfl
+  rw [hone]
+  apply Nat.mod_eq_of_lt
+  have hsize : 11 < UScalar.size .Usize := by
+    rw [UScalar.size_def, UScalarTy.Usize_numBits_eq]
+    rcases System.Platform.numBits_eq with hbits | hbits <;>
+      rw [hbits] <;> norm_num
+  omega
+
+private theorem map_slice (values : List α) (start finish : Nat)
+    (f : α → β) :
+    (List.slice start finish values).map f =
+      List.slice start finish (values.map f) := by
+  simp [List.slice]
+
+theorem extracted_level_indices_follow_shared_plan
+    (queries : Finset V5Query)
+    (topology : merkle.Radix4BinaryCapTopology)
+    (level : Std.Usize) (indices : Slice Std.U32)
+    (hfields : ExactConstructedTopologyFields queries topology)
+    (hlevel : level.val < 9)
+    (hindices : merkle.Radix4BinaryCapTopology.impl.level_indices
+      topology level = .ok (some indices)) :
+    indices.val.map (fun index => index.val) =
+      sharedLevelIndices queries level.val := by
+  obtain ⟨_, start, finish, hstart, hfinish, _, _ , hvalue⟩ :=
+    level_indices_success_exact topology level indices hindices
+  have hstartVal := hfields.levelOffset level start (by omega) hstart
+  let nextLevel := Std.Usize.wrapping_add level 1#usize
+  have hnextVal : nextLevel.val = level.val + 1 := by
+    exact usize_succ_val_below_ten level (by omega)
+  have hfinishVal := hfields.levelOffset nextLevel finish (by omega) hfinish
+  have hoffset := sharedLevelPrefixOffset_succ queries level.val hlevel
+  rw [hvalue, map_slice, hfields.levelValues, hstartVal, hfinishVal, hnextVal]
+  simp only [List.slice, hoffset, Nat.add_sub_cancel_left]
+  exact flattened_level_slice_is_exact queries level.val hlevel
+
+theorem extracted_group_masks_follow_shared_plan
+    (queries : Finset V5Query)
+    (topology : merkle.Radix4BinaryCapTopology)
+    (level : Std.Usize) (masks : Slice Std.U8)
+    (hfields : ExactConstructedTopologyFields queries topology)
+    (hlevel : level.val < 8)
+    (hmasks : merkle.Radix4BinaryCapTopology.impl.group_masks
+      topology level = .ok (some masks)) :
+    masks.val.map (fun mask => mask.val) =
+      sharedGroupMasks queries level.val := by
+  obtain ⟨_, start, finish, hstart, hfinish, _, _ , hvalue⟩ :=
+    group_masks_success_exact topology level masks hmasks
+  have hstartVal := hfields.groupOffset level start (by omega) hstart
+  let nextLevel := Std.Usize.wrapping_add level 1#usize
+  have hnextVal : nextLevel.val = level.val + 1 := by
+    exact usize_succ_val_below_ten level (by omega)
+  have hfinishVal := hfields.groupOffset nextLevel finish (by omega) hfinish
+  have hoffset := sharedGroupMaskPrefixOffset_succ queries level.val hlevel
+  rw [hvalue, map_slice, hfields.groupMaskValues,
+    hstartVal, hfinishVal, hnextVal]
+  simp only [List.slice, hoffset, Nat.add_sub_cancel_left]
+  exact flattened_group_mask_slice_is_exact queries level.val hlevel
+
+theorem extracted_matched_suffix_follows_shared_plan
+    (queries : Finset V5Query)
+    (topology : merkle.Radix4BinaryCapTopology)
+    (radixLevel : Std.Usize) (binaryDepth : Std.U32)
+    (indices : Slice Std.U32)
+    (matched : merkle.MatchedRadix4BinaryCapSuffix)
+    (hfields : ExactConstructedTopologyFields queries topology)
+    (hmatch : merkle.Radix4BinaryCapTopology.matched_suffix
+      topology radixLevel binaryDepth indices = .ok (some matched)) :
+    radixLevel.val ≤ 8 ∧
+      binaryDepth.val + radixLevel.val * 2 = 17 ∧
+      indices.val.map (fun index => index.val) =
+        sharedLevelIndices queries radixLevel.val := by
+  have hexact := matched_suffix_success_exact topology radixLevel
+    binaryDepth indices matched hmatch
+  have hlevel : radixLevel.val ≤ 8 := by
+    rw [← hfields.radixLevels]
+    exact hexact.2.1
+  have hdepthAndIndices :=
+    matched_suffix_binds_exact_depth_and_literal_indices topology radixLevel
+      binaryDepth indices matched (by rw [hfields.radixLevels]; omega) hmatch
+  refine ⟨hlevel, ?_, ?_⟩
+  · rw [← hfields.binaryDepth]
+    exact hdepthAndIndices.1.symm
+  · exact extracted_level_indices_follow_shared_plan queries topology
+      radixLevel indices hfields (by omega) hexact.2.2.2
+
 #print axioms level_indices_success_exact
 #print axioms group_masks_success_exact
 #print axioms slice_u32_partial_eq_success_iff
 #print axioms matched_suffix_success_exact
 #print axioms matched_suffix_binds_exact_depth_and_literal_indices
+#print axioms extracted_level_indices_follow_shared_plan
+#print axioms extracted_group_masks_follow_shared_plan
+#print axioms extracted_matched_suffix_follows_shared_plan
 
 end AspisV5TopologyReadsSourceProof
