@@ -1,0 +1,171 @@
+import AspisFormal.V5RelationStressSourceBridge
+import AspisFormal.V5Tag67CandidateTraceExtraction
+
+/-!
+# Exact source-shaped four-claim equation
+
+The production relation caller starts with one separately carried inactive
+claim and four point claims scaled by `1`, `kappa`, `kappa^2`, and `kappa^3`.
+This file proves the corresponding discrepancy equation.  It then states the
+small source projection needed to rule out `FourClaimBatchEquationFailure`.
+
+The theorem is deterministic.  It does not assume that `kappa` is random and
+does not use the cubic collision bound.
+-/
+
+namespace AspisV5FourClaimSourceEquation
+
+open AspisV5RelationStressSourceBridge
+open AspisV5Tag67CandidateTraceExtraction
+open AspisV5Tag67RelationListInclusion
+open AspisV5FriRelationCandidateBridge
+open AspisV5FunctionalBatching
+open AspisV5RelationSumcheckSoundness
+
+variable {K : Type*} [Field K]
+
+/-- The exact initial covector assembled from the inactive functional and the
+four point-opening functionals. -/
+def sourceFourClaimInitialWeights
+    (kappa : K)
+    (inactiveWeights : Fin 1024 → K)
+    (pointWeights : Fin 4 → Fin 1024 → K) : Fin 1024 → K :=
+  fun row =>
+    inactiveWeights row + pointWeights 0 row +
+      kappa * pointWeights 1 row +
+      kappa ^ 2 * pointWeights 2 row +
+      kappa ^ 3 * pointWeights 3 row
+
+theorem candidateClaim_scale_weights
+    (scale : K) (weights values : Fin 1024 → K) :
+    candidateClaim (fun row => scale * weights row) values =
+      scale * candidateClaim weights values := by
+  simp only [candidateClaim, Finset.mul_sum]
+  apply Finset.sum_congr rfl
+  intro row _
+  ring
+
+theorem candidateClaim_sourceFourClaimInitialWeights
+    (kappa : K)
+    (inactiveWeights : Fin 1024 → K)
+    (pointWeights : Fin 4 → Fin 1024 → K)
+    (values : Fin 1024 → K) :
+    candidateClaim
+        (sourceFourClaimInitialWeights kappa inactiveWeights pointWeights)
+        values =
+      candidateClaim inactiveWeights values +
+      candidateClaim (pointWeights 0) values +
+        kappa * candidateClaim (pointWeights 1) values +
+        kappa ^ 2 * candidateClaim (pointWeights 2) values +
+        kappa ^ 3 * candidateClaim (pointWeights 3) values := by
+  simp only [sourceFourClaimInitialWeights, candidateClaim, mul_add,
+    Finset.sum_add_distrib, Finset.mul_sum]
+  have h1 :
+      (∑ row, values row * (kappa * pointWeights 1 row)) =
+        ∑ row, kappa * (values row * pointWeights 1 row) := by
+    apply Finset.sum_congr rfl
+    intro row _
+    ring
+  have h2 :
+      (∑ row, values row * (kappa ^ 2 * pointWeights 2 row)) =
+        ∑ row, kappa ^ 2 * (values row * pointWeights 2 row) := by
+    apply Finset.sum_congr rfl
+    intro row _
+    ring
+  have h3 :
+      (∑ row, values row * (kappa ^ 3 * pointWeights 3 row)) =
+        ∑ row, kappa ^ 3 * (values row * pointWeights 3 row) := by
+    apply Finset.sum_congr rfl
+    intro row _
+    ring
+  rw [h1, h2, h3]
+
+/-- Once the inactive scalar is the dot product of its functional, the initial
+relation discrepancy is exactly the scalar-power batch of the four point
+claim discrepancies. -/
+theorem source_initial_discrepancy_eq_four_claim_batch
+    (inactiveClaim kappa gamma : K)
+    (claims : Fin 76 → K)
+    (inactiveWeights : Fin 1024 → K)
+    (pointWeights : Fin 4 → Fin 1024 → K)
+    (values : Fin 1024 → K)
+    (hinactive : inactiveClaim = candidateClaim inactiveWeights values) :
+    sourceCallerInitialClaim inactiveClaim kappa gamma claims -
+        candidateClaim
+          (sourceFourClaimInitialWeights kappa inactiveWeights pointWeights)
+          values =
+      batchedDiscrepancy
+        (fun point =>
+          sourcePreparedPointClaim gamma claims point -
+            candidateClaim (pointWeights point) values)
+        kappa := by
+  rw [candidateClaim_sourceFourClaimInitialWeights, hinactive]
+  simp only [sourceCallerInitialClaim, batchedDiscrepancy, sourcePoint0,
+    sourcePoint1, sourcePoint2, sourcePoint3]
+  ring
+
+/-- The smallest field-level projection needed from the production initial
+claim and covector construction.  Byte decoding and Rust equality are kept
+outside this structure. -/
+structure SourceFourClaimProjection
+    (data : SourceMode9CallerData K)
+    (execution : AcceptedCandidateExecution K)
+    (record : CandidateSemanticRecord K) where
+  inactiveWeights : Fin 1024 → K
+  pointWeights : Fin 4 → Fin 1024 → K
+  initialClaim : execution.initialClaim =
+    sourceCallerInitialClaim data.inactiveClaim data.kappa data.gamma
+      data.pointMajorClaims
+  initialWeights : execution.initialWeights =
+    sourceFourClaimInitialWeights data.kappa inactiveWeights pointWeights
+  inactiveClaim : data.inactiveClaim =
+    candidateClaim inactiveWeights execution.initialValues
+  recordKappa : record.kappa = data.kappa
+  recordDiscrepancy : ∀ point,
+    record.fourClaimDiscrepancy point =
+      sourcePreparedPointClaim data.gamma data.pointMajorClaims point -
+        candidateClaim (pointWeights point) execution.initialValues
+
+/-- The source projection makes the candidate's initial discrepancy exactly
+the maintained four-claim batch. -/
+theorem initial_discrepancy_eq_batch_of_source_projection
+    (data : SourceMode9CallerData K)
+    (execution : AcceptedCandidateExecution K)
+    (challenges : TwelveRelationChallenges K)
+    (record : CandidateSemanticRecord K)
+    (projection : SourceFourClaimProjection data execution record) :
+    (execution.discrepancyTrace challenges).before 0 =
+      batchedDiscrepancy record.fourClaimDiscrepancy record.kappa := by
+  have hsource := source_initial_discrepancy_eq_four_claim_batch
+    data.inactiveClaim data.kappa data.gamma data.pointMajorClaims
+    projection.inactiveWeights projection.pointWeights execution.initialValues
+    projection.inactiveClaim
+  rw [← projection.initialClaim, ← projection.initialWeights] at hsource
+  rw [projection.recordKappa]
+  convert hsource using 1
+  · simp [AcceptedCandidateExecution.discrepancyTrace]
+  · congr 1
+    funext point
+    exact projection.recordDiscrepancy point
+
+/-- Therefore the separately named batch-equation failure is impossible once
+the exact source projection is available. -/
+theorem no_four_claim_batch_equation_failure_of_source_projection
+    (data : SourceMode9CallerData K)
+    (execution : AcceptedCandidateExecution K)
+    (challenges : TwelveRelationChallenges K)
+    (record : CandidateSemanticRecord K)
+    (projection : SourceFourClaimProjection data execution record) :
+    ¬ FourClaimBatchEquationFailure execution challenges record := by
+  intro failure
+  exact failure.2
+    (initial_discrepancy_eq_batch_of_source_projection data execution
+      challenges record projection)
+
+#print axioms candidateClaim_scale_weights
+#print axioms candidateClaim_sourceFourClaimInitialWeights
+#print axioms source_initial_discrepancy_eq_four_claim_batch
+#print axioms initial_discrepancy_eq_batch_of_source_projection
+#print axioms no_four_claim_batch_equation_failure_of_source_projection
+
+end AspisV5FourClaimSourceEquation
