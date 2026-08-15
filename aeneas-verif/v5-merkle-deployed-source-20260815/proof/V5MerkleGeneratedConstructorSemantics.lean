@@ -1,5 +1,6 @@
 import V5MerkleGeneratedConstructorBridge
 import V5MerkleGeneratedTopologyBridge
+import V5MerkleGeneratedParentLevelSemantics
 
 open Aeneas Aeneas.Std Result ControlFlow Error
 
@@ -9,6 +10,7 @@ open V5MerkleDeployedSource
 open AspisV5MerkleTopologyConstructorModel
 open AspisV5MerkleGeneratedConstructorBridge
 open AspisV5MerkleGeneratedTopologyBridge
+open ScanProof
 open AspisV5TopologyConstruction
 
 private theorem clone_u32_slice_eq (slice : Slice Std.U32) :
@@ -145,18 +147,6 @@ private theorem array_index_success_getElem!
           some values.val[index.val] := by simp
       exact (List.getElem!_of_getElem? hopt).symm
 
-/-- The remaining source fact about one parent scan, stated independently of
-the outer constructor recursion. -/
-def GeneratedParentLevelSourceEquality : Prop :=
-  ∀ (input : Slice Std.U32)
-      (nextIndices : alloc.vec.Vec Std.U32)
-      (nextMasks : alloc.vec.Vec Std.U8),
-    merkle.topology_parent_level input = .ok (nextIndices, nextMasks) →
-      nextIndices.val.map (fun index => index.val) =
-          parentIndicesOf (input.val.map fun index => index.val) ∧
-        nextMasks.val.map (fun mask => mask.val) =
-          parentMasksOf (input.val.map fun index => index.val)
-
 /-- Value-level meaning of one recursive-builder entry. Array offsets are
 proved separately because they are writes, not inputs to the parent scan. -/
 structure GeneratedBuildValueState
@@ -176,6 +166,8 @@ structure GeneratedBuildValueState
   mask_values :
     groupMasks.val.map (fun mask => mask.val) =
       maskPrefix initialIndices level.val
+  current_sorted :
+    (parentLevelFrom initialIndices level.val).Pairwise (· < ·)
 
 /-- Prefix offsets already written when the recursive builder enters a
 level. The next level offset is written by the step; the current group offset
@@ -224,7 +216,9 @@ theorem generated_build_step_preserves_values
     simp [List.slice, List.length_append]
   obtain ⟨hnextIndices, hnextMasks⟩ :=
     hparent (alloc.vec.Vec.deref head.currentIndices) head.nextIndices
-      head.nextMasks head.parent_run
+      head.nextMasks (by
+        rw [alloc.vec.Vec.deref, hsliceMapped]
+        exact hstate.current_sorted) head.parent_run
   have hnextIndices' :
       head.nextIndices.val.map (fun index => index.val) =
         parentLevelFrom initialIndices (level.val + 1) := by
@@ -271,6 +265,9 @@ theorem generated_build_step_preserves_values
       rw [hmaskAppend, List.map_append, hstate.mask_values,
         alloc.vec.Vec.deref, hnextMasks', hnextLevel,
         maskPrefix_succ]
+    current_sorted := by
+      rw [hnextLevel]
+      exact parentIndicesOf_pairwise_lt _
   }
 
 theorem generated_build_step_preserves_offsets
@@ -501,6 +498,8 @@ theorem generated_build_trace_final_offsets
 theorem released_builder_success_values
     (hparent : GeneratedParentLevelSourceEquality)
     (input : GeneratedIndexVec)
+    (hinputSorted :
+      (input.val.map fun index => index.val).Pairwise (· < ·))
     (levelOffsets : GeneratedLevelOffsets)
     (groupOffsets : GeneratedGroupOffsets)
     (finalLevelIndices : GeneratedIndexVec)
@@ -532,6 +531,9 @@ theorem released_builder_success_values
       level_values := by
         simp [initialIndices, levelPrefix_succ, parentLevelFrom]
       mask_values := by simp [initialIndices]
+      current_sorted := by
+        change initialIndices.Pairwise (· < ·)
+        simpa only [initialIndices] using hinputSorted
     }
   have hfinal := generated_build_trace_final_values hparent initialIndices
     8#usize 0#usize 0#usize (alloc.vec.Vec.len input) input levelOffsets
@@ -543,6 +545,8 @@ theorem released_builder_success_values
 theorem released_builder_success_semantics
     (hparent : GeneratedParentLevelSourceEquality)
     (input : GeneratedIndexVec)
+    (hinputSorted :
+      (input.val.map fun index => index.val).Pairwise (· < ·))
     (finalLevelIndices : GeneratedIndexVec)
     (finalLevelOffsets : GeneratedLevelOffsets)
     (finalGroupMasks : GeneratedMaskVec)
@@ -577,6 +581,9 @@ theorem released_builder_success_semantics
       level_values := by
         simp [initialIndices, levelPrefix_succ, parentLevelFrom]
       mask_values := by simp [initialIndices]
+      current_sorted := by
+        change initialIndices.Pairwise (· < ·)
+        simpa only [initialIndices] using hinputSorted
     }
   have hoffsets : GeneratedBuildOffsetState initialIndices 0#usize
       (Array.repeat 17#usize 0#usize)
@@ -715,8 +722,17 @@ theorem new_17_success_yields_execution
     · rw [if_neg hisIncreasing] at hrun
       simp at hrun
 
+private theorem shared_level_indices_pairwise_lt
+    (queries : Finset AspisV5MerkleAuthenticationBinding.V5Query)
+    (level : Nat) :
+    (sharedLevelIndices queries level).Pairwise (· < ·) := by
+  unfold sharedLevelIndices AspisV5MerkleRustBridge.orderedActiveIndices
+  exact ((Finset.pairwise_sort
+    (AspisV5MerkleRustBridge.activeIndices .c1 queries level)
+    (fun left right : Nat => left ≤ right)).sortedLE.sortedLT_of_nodup
+      (Finset.sort_nodup _ _)).pairwise
+
 theorem new_17_success_has_exact_topology_fields
-    (hparent : GeneratedParentLevelSourceEquality)
     (queries : Finset AspisV5MerkleAuthenticationBinding.V5Query)
     (indices : Slice Std.U32)
     (topology : merkle.Radix4BinaryCapTopology)
@@ -731,8 +747,14 @@ theorem new_17_success_has_exact_topology_fields
       execution.initialLevelIndices.val.map (fun index => index.val) =
         sharedLevelIndices queries 0 := by
     rw [execution.initial_values, hindices]
-  have hsemantics := released_builder_success_semantics hparent
-    execution.initialLevelIndices execution.finalLevelIndices
+  have hinitialSorted :
+      (execution.initialLevelIndices.val.map fun index => index.val).Pairwise
+        (· < ·) := by
+    rw [hinitialMapped]
+    exact shared_level_indices_pairwise_lt queries 0
+  have hsemantics := released_builder_success_semantics
+    generated_parent_level_source_equality execution.initialLevelIndices
+    hinitialSorted execution.finalLevelIndices
     execution.finalLevelOffsets execution.finalGroupMasks
     execution.finalGroupOffsets execution.builder_run
   have hlevelValues :

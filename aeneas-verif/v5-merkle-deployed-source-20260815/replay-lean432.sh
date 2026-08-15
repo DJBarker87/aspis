@@ -74,6 +74,8 @@ compile "$proof" V5MerkleGeneratedParserBridge \
   "$proof/V5MerkleGeneratedParserBridge.lean"
 compile "$proof" V5MerkleTopologyConstructorModel \
   "$proof/V5MerkleTopologyConstructorModel.lean"
+compile "$proof" V5MerkleGeneratedParentLevelSemantics \
+  "$proof/V5MerkleGeneratedParentLevelSemantics.lean"
 compile "$proof" V5MerkleGeneratedConstructorBridge \
   "$proof/V5MerkleGeneratedConstructorBridge.lean"
 compile "$proof" V5MerkleGeneratedTopologyBridge \
@@ -93,6 +95,7 @@ if rg -n '\b(sorry|admit|native_decide|unsafe|ofReduceBool)\b' \
     "$proof/V5MerkleGeneratedLeafBridge.lean" \
     "$proof/V5MerkleGeneratedParserBridge.lean" \
     "$proof/V5MerkleTopologyConstructorModel.lean" \
+    "$proof/V5MerkleGeneratedParentLevelSemantics.lean" \
     "$proof/V5MerkleGeneratedConstructorBridge.lean" \
     "$proof/V5MerkleGeneratedConstructorSemantics.lean" \
     "$proof/V5MerkleGeneratedTopologyBridge.lean" \
