@@ -29,6 +29,7 @@ open AspisFormal.HashMerkleModel
 open AspisV5AcceptedSpendRelation
 open AspisV5AdaptiveObservedTheftGame
 open AspisV5CryptographicAssumptions
+open AspisV5FinalSecurityAccounting
 open AspisV5FixedVictimTheftGame
 open AspisV5ForwardAcceptedFalseRawAccounting
 open AspisV5MaskedBoundaryFailureAccounting
@@ -104,11 +105,11 @@ structure RefinedAdaptiveHistoryCoverage
   extractorAfterObservation :
     extractorAfterObservation ⊆ production.productionFalseSpend
   nullifierSecondPreimage : nullifierSecondPreimage ⊆
-    totalFailure production.transcriptAndHashFailures
+    production.transcriptAndHashFailures.event .poseidon2Collision
   noteSecondPreimage : noteSecondPreimage ⊆
-    totalFailure production.transcriptAndHashFailures
+    production.transcriptAndHashFailures.event .poseidon2Collision
   victimTreeCollision : victimTreeCollision ⊆
-    totalFailure production.transcriptAndHashFailures
+    production.transcriptAndHashFailures.event .poseidon2Collision
 
 /-- A deployed first fraudulent spend, even when selected after observing an
 arbitrary finite public history, lands in the exact five-event union above.
@@ -172,13 +173,20 @@ theorem deployed_adaptive_first_fraudulent_spend_subset_refined_union
         (Set.mem_union_right _ credential))
     · exact Set.mem_union_left _ (Set.mem_union_left _
         (Set.mem_union_left _
-          (Set.mem_union_right _ (coverage.nullifierSecondPreimage nullifier))))
+          (Set.mem_union_right _
+            (one_failure_is_in_total production.transcriptAndHashFailures
+              .poseidon2Collision
+              (coverage.nullifierSecondPreimage nullifier)))))
     · exact Set.mem_union_left _ (Set.mem_union_left _
         (Set.mem_union_left _
-          (Set.mem_union_right _ (coverage.noteSecondPreimage note))))
+          (Set.mem_union_right _
+            (one_failure_is_in_total production.transcriptAndHashFailures
+              .poseidon2Collision (coverage.noteSecondPreimage note)))))
     · exact Set.mem_union_left _ (Set.mem_union_left _
         (Set.mem_union_left _
-          (Set.mem_union_right _ (coverage.victimTreeCollision tree))))
+          (Set.mem_union_right _
+            (one_failure_is_in_total production.transcriptAndHashFailures
+              .poseidon2Collision (coverage.victimTreeCollision tree)))))
   · exact Set.mem_union_left _ (Set.mem_union_right _ runtimeFailure)
   · exact Set.mem_union_right _ setupFailure
 
@@ -275,8 +283,168 @@ theorem deployed_adaptive_first_fraudulent_spend_probability_le_refined
           measure.real setup := by
       gcongr
 
+/-! ## Explicit cryptographic and runtime budgets -/
+
+/-- The seven implementation/runtime failure sets, in the same order as the
+existing runtime budget record. -/
+def runtimeFailureEvents
+    {Sample : Type*} (runtime : RuntimeFailurePredicates Sample) :
+    List (Set Sample) :=
+  [{sample | runtime.rustStateModelMismatch sample},
+    {sample | runtime.systemProgramOrPdaMismatch sample},
+    {sample | runtime.writableAccountLockFailure sample},
+    {sample | runtime.rejectedTransactionRollbackFailure sample},
+    {sample | runtime.committedMarkerPersistenceFailure sample},
+    {sample | runtime.finalizedStateObservationFailure sample},
+    {sample | runtime.closeOrRefundModelMismatch sample}]
+
+def runtimeFailureUnion
+    {Sample : Type*} (runtime : RuntimeFailurePredicates Sample) : Set Sample :=
+  (runtimeFailureEvents runtime).foldr (· ∪ ·) ∅
+
+theorem namedRuntimeFailure_set_eq_union
+    {Sample : Type*} (runtime : RuntimeFailurePredicates Sample) :
+    {sample | NamedRuntimeFailureEvent runtime sample} =
+      runtimeFailureUnion runtime := by
+  ext sample
+  simp [NamedRuntimeFailureEvent, runtimeFailureUnion, runtimeFailureEvents]
+
+/-- Caller-supplied probability bounds for the seven runtime events.  These
+are assumptions about the Rust/Solana execution environment, not consequences
+of the deterministic Lean state model. -/
+structure AssumedRuntimeSecurityBounds
+    {Sample : Type*} [MeasurableSpace Sample]
+    (measure : Measure Sample)
+    (runtime : RuntimeFailurePredicates Sample)
+    (budget : RuntimeSecurityBudget) : Prop where
+  rustStateModelMismatch :
+    measure.real {sample | runtime.rustStateModelMismatch sample} ≤
+      budget.rustStateModelMismatch
+  systemProgramOrPdaMismatch :
+    measure.real {sample | runtime.systemProgramOrPdaMismatch sample} ≤
+      budget.systemProgramOrPdaMismatch
+  writableAccountLockFailure :
+    measure.real {sample | runtime.writableAccountLockFailure sample} ≤
+      budget.writableAccountLockFailure
+  rejectedTransactionRollbackFailure :
+    measure.real {sample | runtime.rejectedTransactionRollbackFailure sample} ≤
+      budget.rejectedTransactionRollbackFailure
+  committedMarkerPersistenceFailure :
+    measure.real {sample | runtime.committedMarkerPersistenceFailure sample} ≤
+      budget.committedMarkerPersistenceFailure
+  finalizedStateObservationFailure :
+    measure.real {sample | runtime.finalizedStateObservationFailure sample} ≤
+      budget.finalizedStateObservationFailure
+  closeOrRefundModelMismatch :
+    measure.real {sample | runtime.closeOrRefundModelMismatch sample} ≤
+      budget.closeOrRefundModelMismatch
+
+theorem namedRuntimeFailure_probability_le_total
+    {Sample : Type*} [MeasurableSpace Sample]
+    (measure : Measure Sample)
+    (runtime : RuntimeFailurePredicates Sample)
+    (budget : RuntimeSecurityBudget)
+    (assumed : AssumedRuntimeSecurityBounds measure runtime budget) :
+    measure.real {sample | NamedRuntimeFailureEvent runtime sample} ≤
+      budget.total := by
+  rw [namedRuntimeFailure_set_eq_union]
+  calc
+    measure.real (runtimeFailureUnion runtime) ≤
+        ((runtimeFailureEvents runtime).map measure.real).sum :=
+      measureReal_foldr_union_le_sum measure (runtimeFailureEvents runtime)
+    _ ≤ budget.total := by
+      simp only [runtimeFailureEvents, List.map_cons, List.map_nil,
+        List.sum_cons, List.sum_nil, add_zero]
+      unfold RuntimeSecurityBudget.total
+      linarith [assumed.rustStateModelMismatch,
+        assumed.systemProgramOrPdaMismatch,
+        assumed.writableAccountLockFailure,
+        assumed.rejectedTransactionRollbackFailure,
+        assumed.committedMarkerPersistenceFailure,
+        assumed.finalizedStateObservationFailure,
+        assumed.closeOrRefundModelMismatch]
+
+/-- Budgeted form of the refined adaptive theorem.  The eight cryptographic
+and translation bounds, seven runtime bounds, and credential-recovery bound
+are still supplied explicitly by the caller.  The six source/authentication
+residuals and victim setup remain as measured events. -/
+theorem deployed_adaptive_first_fraudulent_spend_probability_le_refined_budget
+    {Run Sample AdversaryCoins PublicArtifact Execution K Public Root : Type*}
+    [Field K] [Fintype K] [DecidableEq K]
+    [Algebra (ZMod P) K] [NeZero (2 : K)] [MeasurableSpace Sample]
+    {rc : RoundConstants}
+    {deployedOwner : Digest → Digest}
+    {deployedNote : Digest → F → F → Digest → Digest}
+    {deployedNullifier : Digest → Digest → Digest}
+    {deployedNode : Digest → Digest → Digest}
+    {scheme : FiatShamirSchedule Public Root K}
+    (measure : Measure Sample) [IsProbabilityMeasure measure]
+    (data : ProjectedAcceptedFalseExperimentData Sample K rc deployedOwner
+      deployedNote deployedNullifier deployedNode)
+    (connections : ReleasedIdealAcceptedFalseRawConnections measure
+      data.base.toEvents)
+    (production : ReleasedProductionFalseSpendConnection data.base.toEvents)
+    (projection : StatementBindingProjectionData Run Sample K data)
+    (boundary : MaskedBoundaryProjectionData Run Sample K Public Root
+      (scheme := scheme) projection)
+    (plans : TerminalCandidatePlanProjection Run Sample K Public Root boundary)
+    (terminalBound :
+      measure.real (exactTerminalCandidateFailureSet plans) ≤
+        AspisV5RefinedRawCoreAccounting.rawCandidateTerminalBound)
+    (deployedFirstFraudulentSpend : Sample → Prop)
+    (runtime : RuntimeFailurePredicates Sample)
+    (chain : AdaptiveChainFailures Sample)
+    (Accepts Commits : V5PublicStatement → Execution → Prop)
+    (victim : FixedVictim)
+    (experiment : AdaptiveObservationExperiment Sample AdversaryCoins
+      PublicArtifact Execution)
+    (extractAfter : ExtractAfterObservation PublicArtifact Execution)
+    (connection : DeployedAdaptiveAttackConnection deployedFirstFraudulentSpend
+      runtime chain deployedOwner deployedNote deployedNullifier deployedNode
+      Accepts Commits victim experiment extractAfter)
+    (coverage : RefinedAdaptiveHistoryCoverage production
+      {sample | ExtractorAfterObservationFailureEvent deployedOwner deployedNote
+        deployedNullifier deployedNode Accepts experiment extractAfter sample}
+      {sample | NullifierSecondPreimageAfterObservationEvent deployedNullifier
+        victim experiment extractAfter sample}
+      {sample | NoteSecondPreimageAfterObservationEvent deployedOwner
+        deployedNote victim experiment extractAfter sample}
+      {sample | VictimTreeCollisionAfterObservationEvent deployedOwner
+        deployedNote deployedNode victim experiment extractAfter sample})
+    (cryptoBudget : ConcreteSecurityBudget)
+    (cryptoAssumed : AssumedConcreteSecurityBounds measure
+      production.transcriptAndHashFailures cryptoBudget)
+    (credentialBudget : Real)
+    (credentialAssumed :
+      measure.real {sample | CredentialRecoveryAfterObservationEvent Accepts
+        victim experiment extractAfter sample} ≤ credentialBudget)
+    (runtimeBudget : RuntimeSecurityBudget)
+    (runtimeAssumed : AssumedRuntimeSecurityBounds measure runtime
+      runtimeBudget) :
+    measure.real {sample | deployedFirstFraudulentSpend sample} ≤
+      (1 : Real) / 2 ^ 75 + measure.real data.width19Failure +
+        nonterminalStatementFailureProbabilitySum measure boundary +
+        measure.real data.arithmeticResidualFailure +
+        measure.real data.hashMerkleResidualFailure +
+        cryptoBudget.total + credentialBudget + runtimeBudget.total +
+        measure.real {sample | chain.victimSetup sample} := by
+  have refined :=
+    deployed_adaptive_first_fraudulent_spend_probability_le_refined measure
+      data connections production projection boundary plans terminalBound
+      deployedFirstFraudulentSpend runtime chain Accepts Commits victim
+      experiment extractAfter connection coverage
+  have crypto := total_failure_probability_le_budget_sum measure
+    production.transcriptAndHashFailures cryptoBudget cryptoAssumed
+  have runtimeBound := namedRuntimeFailure_probability_le_total measure runtime
+    runtimeBudget runtimeAssumed
+  linarith
+
 #print axioms measureReal_refinedAdaptiveFailureUnion_le
 #print axioms deployed_adaptive_first_fraudulent_spend_subset_refined_union
 #print axioms deployed_adaptive_first_fraudulent_spend_probability_le_refined
+#print axioms namedRuntimeFailure_set_eq_union
+#print axioms namedRuntimeFailure_probability_le_total
+#print axioms
+  deployed_adaptive_first_fraudulent_spend_probability_le_refined_budget
 
 end AspisV5RefinedAdaptiveObservedTheftAccounting
