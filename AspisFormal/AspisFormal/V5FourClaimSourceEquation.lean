@@ -1,5 +1,6 @@
 import AspisFormal.V5RelationStressSourceBridge
 import AspisFormal.V5Tag67CandidateTraceExtraction
+import AspisFormal.V5PreparedPointClaimsSourceBridge
 
 /-!
 # Exact source-shaped four-claim equation
@@ -23,6 +24,30 @@ open AspisV5FunctionalBatching
 open AspisV5RelationSumcheckSoundness
 
 variable {K : Type*} [Field K]
+
+/-! ## The two maintained point-claim presentations agree -/
+
+/-- The point-claim model used by the extracted decoder package is the same
+nineteen-lane dot used by the relation caller model. -/
+theorem prepared_bridge_point_claim_eq_relation_bridge
+    (gamma : K) (claims : Fin 76 → K)
+    (point : AspisV5ComponentCPreProjectionDeployed.PointClaimRow) :
+    AspisV5PreparedPointClaimsSourceBridge.sourcePreparedPointClaim
+        gamma claims point =
+      AspisV5RelationStressSourceBridge.sourcePreparedPointClaim
+        gamma claims point := by
+  rw [AspisV5PreparedPointClaimsSourceBridge.sourcePreparedPointClaim_eq_sourcePointClaim,
+    AspisV5RelationStressSourceBridge.sourcePreparedPointClaim_eq_sourcePointClaim]
+  rfl
+
+theorem prepared_bridge_all_point_claims_eq_relation_bridge
+    (gamma : K) (claims : Fin 76 → K) :
+    AspisV5PreparedPointClaimsSourceBridge.sourcePreparedPointClaims
+        gamma claims =
+      AspisV5RelationStressSourceBridge.sourcePreparedPointClaims
+        gamma claims := by
+  funext point
+  exact prepared_bridge_point_claim_eq_relation_bridge gamma claims point
 
 /-- The exact initial covector assembled from the inactive functional and the
 four point-opening functionals. -/
@@ -163,6 +188,8 @@ theorem no_four_claim_batch_equation_failure_of_source_projection
       challenges record projection)
 
 #print axioms candidateClaim_scale_weights
+#print axioms prepared_bridge_point_claim_eq_relation_bridge
+#print axioms prepared_bridge_all_point_claims_eq_relation_bridge
 #print axioms candidateClaim_sourceFourClaimInitialWeights
 #print axioms source_initial_discrepancy_eq_four_claim_batch
 #print axioms initial_discrepancy_eq_batch_of_source_projection
