@@ -1,4 +1,5 @@
 import AspisFormal.V5ComponentCQM31TowerExact
+import AspisFormal.V5CompatibilityCandidateTimingBridge
 import AspisFormal.V5PrefixDependentCandidateSecurity
 import AspisFormal.V5RefinedAcceptedFalseAccounting
 import AspisFormal.V5TerminalFixedInitialListSecurity
@@ -27,6 +28,7 @@ open AspisFormal.HashMerkleModel
 open AspisV5AcceptedSumcheckSourceBridge
 open AspisV5AdaptiveSumcheckChallengeBound
 open AspisV5CryptographicAssumptions
+open AspisV5CompatibilityCandidateTimingBridge
 open AspisV5ForwardAcceptedFalseRawAccounting
 open AspisV5FriCoherentCandidateExtraction
 open AspisV5FriInitialListBound
@@ -299,6 +301,49 @@ theorem exactTerminalCandidateFailure_probability_le_raw_bound_fixed_list
   exact (fixedInitialCandidate_fintype_card_le_222 encoders (layer0Of p)
     hdistance).trans (by omega)
 
+set_option maxRecDepth 100000 in
+/-- Release specialization using the candidate type in the accepted-false
+experiment.  Its candidate cap is derived from the proved distance of the
+exact released circle encoder and the theorem that the apparent
+outcome-indexed list is fixed before the terminal challenges.  The caller
+supplies neither a candidate cap nor a coding-theory premise. -/
+theorem exactTerminalCandidateFailure_probability_le_raw_bound_released_candidates
+    {Run Coins K Public Root Prefix : Type*}
+    [Field K] [Fintype K] [DecidableEq K]
+    [Algebra (ZMod P) K] [NeZero (2 : K)] [MeasurableSpace Coins]
+    [Fintype Prefix] [Nonempty Prefix]
+    {rc : RoundConstants}
+    {deployedOwner : Digest → Digest}
+    {deployedNote : Digest → F → F → Digest → Digest}
+    {deployedNullifier : Digest → Digest → Digest}
+    {deployedNode : Digest → Digest → Digest}
+    {scheme : FiatShamirSchedule Public Root K}
+    {data : ProjectedAcceptedFalseExperimentData Coins K rc deployedOwner
+      deployedNote deployedNullifier deployedNode}
+    {projection : StatementBindingProjectionData Run Coins K data}
+    {boundary : MaskedBoundaryProjectionData Run Coins K Public Root
+      (scheme := scheme) projection}
+    (measure : Measure Coins)
+    (plans : TerminalCandidatePlanProjection Run Coins K Public Root
+      boundary)
+    (experiment : CompatibilityFriExperiment Prefix K)
+    (terminal : ∀ p, experiment.CandidateAt p → FixedTerminalAlgebraPlan K)
+    (sumcheck : ∀ p, experiment.CandidateAt p →
+      AdaptiveDegree27MessagePlan K)
+    (fieldCard : (Fintype.card K : Real) = AspisSoundnessLedger.FIELD)
+    (sourceHashAndConditionalSampling :
+      measure.real (exactTerminalCandidateFailureSet plans) ≤
+        (prefixAveragedCandidateTerminalSubtotal Prefix
+          experiment.CandidateAt terminal sumcheck : Real)) :
+    measure.real (exactTerminalCandidateFailureSet plans) ≤
+      rawCandidateTerminalBound := by
+  apply exactTerminalCandidateFailure_probability_le_raw_bound measure plans
+    experiment.CandidateAt terminal sumcheck (fun p ↦ ?_) fieldCard
+    sourceHashAndConditionalSampling
+  exact
+    (AspisV5CompatibilityCandidateTimingBridge.CompatibilityFriExperiment.candidateAt_card_le_222
+      experiment p).trans (by omega)
+
 /-- Accepted-false accounting specialized to the concrete terminal-candidate
 event.  Unlike the generic theorem, this statement has no separate
 set-containment premise for the four terminal failure cases. -/
@@ -376,6 +421,8 @@ theorem productionFalseSpend_probability_le_with_exact_terminal_event
 #print axioms exactTerminalCandidateFailure_probability_le_raw_bound
 #print axioms
   exactTerminalCandidateFailure_probability_le_raw_bound_fixed_list
+#print axioms
+  exactTerminalCandidateFailure_probability_le_raw_bound_released_candidates
 #print axioms acceptedFalse_probability_le_with_exact_terminal_event
 #print axioms productionFalseSpend_probability_le_with_exact_terminal_event
 
