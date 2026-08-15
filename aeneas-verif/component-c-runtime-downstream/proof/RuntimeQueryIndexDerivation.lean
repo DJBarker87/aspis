@@ -585,9 +585,216 @@ theorem extracted_layer0_dedup_exact
   intro output hout
   exact hout.trans (uniqueValues_eq_dedup_of_sorted sorted.val hsorted)
 
+/-! ## Exact extracted adjacent-swap loop -/
+
+def swapWithPrevious (values : List Std.U32) (position : Nat) : List Std.U32 :=
+  (values.set position values[position - 1]!).set (position - 1)
+    values[position]!
+
+@[simp] theorem swapWithPrevious_length
+    (values : List Std.U32) (position : Nat) :
+    (swapWithPrevious values position).length = values.length := by
+  simp [swapWithPrevious]
+
+def bubbleLeft : List Std.U32 → Nat → List Std.U32
+  | values, 0 => values
+  | values, position + 1 =>
+      if position + 1 < values.length then
+        if values[position + 1]! < values[position]! then
+          bubbleLeft (swapWithPrevious values (position + 1)) position
+        else values
+      else values
+termination_by _ position => position
+
+private theorem slice_swap_with_previous
+    (values : Slice Std.U32) (position previous : Std.Usize)
+    (hposition : position.val < values.val.length)
+    (hprevious : previous.val = position.val - 1)
+    (hpositive : 0 < position.val) :
+    core.slice.Slice.swap values position previous ⦃ output =>
+      output.val = swapWithPrevious values.val position.val ⦄ := by
+  have hpreviousBound : previous.val < values.val.length := by omega
+  obtain ⟨atPosition, hreadPosition, hatPosition⟩ := WP.spec_imp_exists
+    (Slice.index_usize_spec values position hposition)
+  obtain ⟨atPrevious, hreadPrevious, hatPrevious⟩ := WP.spec_imp_exists
+    (Slice.index_usize_spec values previous hpreviousBound)
+  obtain ⟨afterPosition, hsetPosition, hafterPosition⟩ := WP.spec_imp_exists
+    (Slice.update_spec values position atPrevious hposition)
+  have hafterPreviousBound :
+      previous.val < afterPosition.val.length := by
+    rw [hafterPosition, Slice.set_val_eq, List.length_set]
+    exact hpreviousBound
+  obtain ⟨output, hsetPrevious, houtput⟩ := WP.spec_imp_exists
+    (Slice.update_spec afterPosition previous atPosition hafterPreviousBound)
+  have hatPositionBang : atPosition = values.val[position.val]! := by
+    rw [hatPosition]
+    symm
+    apply List.getElem!_of_getElem?
+    simp [hposition]
+  have hatPreviousBang :
+      atPrevious = values.val[position.val - 1]! := by
+    have hbang : atPrevious = values.val[previous.val]! := by
+      rw [hatPrevious]
+      symm
+      apply List.getElem!_of_getElem?
+      simp [hpreviousBound]
+    simpa only [hprevious] using hbang
+  simp only [core.slice.Slice.swap]
+  rw [hreadPosition]
+  simp only [bind_tc_ok]
+  rw [hreadPrevious]
+  simp only [bind_tc_ok]
+  rw [hsetPosition]
+  simp only [bind_tc_ok]
+  rw [hsetPrevious]
+  simp only [WP.spec, WP.theta, WP.wp_return]
+  rw [houtput, hafterPosition, Slice.set_val_eq, Slice.set_val_eq,
+    hatPositionBang, hatPreviousBang]
+  rw [hprevious]
+  rfl
+
+/-- The innermost extracted Rust loop is exactly the pure operation that moves
+one value left while it is smaller than its predecessor. -/
+theorem generated_inner_insertion_loop_exact
+    (sorted : alloc.vec.Vec Std.U32) (position : Std.Usize)
+    (hbound : position.val < sorted.val.length) :
+    aspis_core.circle_line_merkle.derive_circle_line_query_indices_for_count_loop0_loop0_loop0
+        sorted position ⦃ output =>
+      output.val = bubbleLeft sorted.val position.val ⦄ := by
+  simp only [
+    aspis_core.circle_line_merkle.derive_circle_line_query_indices_for_count_loop0_loop0_loop0]
+  apply loop.spec_decr_nat
+    (fun state : alloc.vec.Vec Std.U32 × Std.Usize => state.2.val)
+    (fun state =>
+      state.2.val < state.1.val.length ∧
+        bubbleLeft state.1.val state.2.val =
+          bubbleLeft sorted.val position.val)
+    (fun output : alloc.vec.Vec Std.U32 =>
+      output.val = bubbleLeft sorted.val position.val)
+  · rintro ⟨current, currentPosition⟩ ⟨hcurrentBound, hcurrentModel⟩
+    have hcurrentBound' : currentPosition.val < current.val.length := by
+      simpa only using hcurrentBound
+    have hcurrentModel' :
+        bubbleLeft current.val currentPosition.val =
+          bubbleLeft sorted.val position.val := by
+      simpa only using hcurrentModel
+    unfold
+      aspis_core.circle_line_merkle.derive_circle_line_query_indices_for_count_loop0_loop0_loop0.body
+    by_cases hpositive : 0 < currentPosition.val
+    · have hpositiveScalar : currentPosition > 0#usize := by scalar_tac
+      rw [if_pos hpositiveScalar]
+      obtain ⟨atPosition, hreadPosition, hatPosition⟩ := WP.spec_imp_exists
+        (alloc.vec.Vec.index_usize_spec current currentPosition hcurrentBound')
+      rw [alloc.vec.Vec.index_slice_index, hreadPosition]
+      simp only [bind_tc_ok, Std.lift]
+      let previous := Std.Usize.wrapping_sub currentPosition 1#usize
+      have hprevious : previous.val = currentPosition.val - 1 := by
+        exact wrapping_pred_exact currentPosition hpositive
+      have hpreviousBound : previous.val < current.val.length := by
+        omega
+      obtain ⟨atPrevious, hreadPrevious, hatPrevious⟩ := WP.spec_imp_exists
+        (alloc.vec.Vec.index_usize_spec current previous hpreviousBound)
+      rw [show Std.Usize.wrapping_sub currentPosition 1#usize = previous by rfl,
+        alloc.vec.Vec.index_slice_index, hreadPrevious]
+      simp only [bind_tc_ok]
+      have hatPositionBang :
+          atPosition = current.val[currentPosition.val]! := by
+        rw [hatPosition]
+        symm
+        apply List.getElem!_of_getElem?
+        simp [hcurrentBound']
+      have hatPreviousBang :
+          atPrevious = current.val[currentPosition.val - 1]! := by
+        have hbang : atPrevious = current.val[previous.val]! := by
+          rw [hatPrevious]
+          symm
+          apply List.getElem!_of_getElem?
+          simp [hpreviousBound]
+        simpa only [hprevious] using hbang
+      by_cases hless : atPosition < atPrevious
+      · rw [if_pos hless]
+        simp only [Std.lift, bind_tc_ok, alloc.vec.Vec.deref_mut]
+        obtain ⟨afterSwap, hswap, hafterSwap⟩ := WP.spec_imp_exists
+          (slice_swap_with_previous (alloc.vec.Vec.deref current)
+            currentPosition previous hcurrentBound' hprevious hpositive)
+        have hswap' :
+            core.slice.Slice.swap
+                (⟨current.val, current.property⟩ : Slice Std.U32)
+                currentPosition previous = ok afterSwap := by
+          simpa only [alloc.vec.Vec.deref] using hswap
+        rw [hswap']
+        simp only [bind_tc_ok, Std.lift]
+        have hafterSwap' :
+            afterSwap.val =
+              swapWithPrevious current.val currentPosition.val := by
+          simpa only [alloc.vec.Vec.deref] using hafterSwap
+        have hlessBang :
+            current.val[currentPosition.val]! <
+              current.val[currentPosition.val - 1]! := by
+          rw [← hatPositionBang, ← hatPreviousBang]
+          exact hless
+        have hmodelStep :
+            bubbleLeft current.val currentPosition.val =
+              bubbleLeft (swapWithPrevious current.val currentPosition.val)
+                previous.val := by
+          have hsucc :
+              currentPosition.val = (currentPosition.val - 1) + 1 := by omega
+          have hsuccBound :
+              currentPosition.val - 1 + 1 < current.val.length := by
+            omega
+          conv_lhs => rw [hsucc, bubbleLeft]
+          rw [if_pos hsuccBound, if_pos (by
+            rw [← hsucc]
+            exact hlessBang)]
+          rw [← hsucc, hprevious]
+        simp only [WP.spec, WP.theta]
+        refine ⟨⟨?_, ?_⟩, ?_⟩
+        · change previous.val < afterSwap.val.length
+          rw [hafterSwap', swapWithPrevious_length, hprevious]
+          omega
+        · change
+            bubbleLeft afterSwap.val previous.val =
+              bubbleLeft sorted.val position.val
+          rw [hafterSwap']
+          exact hmodelStep.symm.trans hcurrentModel'
+        · rw [hprevious]
+          omega
+      · rw [if_neg hless]
+        simp only [WP.spec, WP.theta, WP.wp_return]
+        have hnotLessBang :
+            ¬ current.val[currentPosition.val]! <
+              current.val[currentPosition.val - 1]! := by
+          intro hbang
+          apply hless
+          rw [hatPositionBang, hatPreviousBang]
+          exact hbang
+        have hstops :
+            bubbleLeft current.val currentPosition.val = current.val := by
+          have hsucc :
+              currentPosition.val = (currentPosition.val - 1) + 1 := by omega
+          have hsuccBound :
+              currentPosition.val - 1 + 1 < current.val.length := by
+            omega
+          conv_lhs => rw [hsucc, bubbleLeft]
+          rw [if_pos hsuccBound, if_neg (by
+            rw [← hsucc]
+            exact hnotLessBang)]
+        rw [← hstops]
+        exact hcurrentModel'
+    · have hzero : currentPosition.val = 0 := by omega
+      rw [if_neg (show ¬ currentPosition > 0#usize by scalar_tac)]
+      simp only [WP.spec, WP.theta, WP.wp_return]
+      calc
+        current.val = bubbleLeft current.val 0 := by
+          simp only [bubbleLeft]
+        _ = bubbleLeft sorted.val position.val := by
+          simpa only [hzero] using hcurrentModel'
+  · exact ⟨hbound, rfl⟩
+
 #print axioms u32_wrapping_shr_val_of_lt
 #print axioms shiftedUnique_nats_eq_sorted_division_image
 #print axioms sorted_unique_shifted_exact
 #print axioms extracted_layer0_dedup_exact
+#print axioms generated_inner_insertion_loop_exact
 
 end RuntimeIndexProof
