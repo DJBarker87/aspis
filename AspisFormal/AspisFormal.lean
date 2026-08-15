@@ -153,6 +153,7 @@ import AspisFormal.V5HashMerkleResidualDecomposition
 import AspisFormal.V5ProjectedAcceptedFalseComponentAccounting
 import AspisFormal.V5ConstraintLaneBatching
 import AspisFormal.V5TowerPackedResidualExtraction
+import AspisFormal.V5ExactTowerPacking
 import AspisFormal.V5KappaCausality
 import AspisFormal.V5NonzeroKappaSourceBridge
 import AspisFormal.V5MerkleRustBridge
