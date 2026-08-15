@@ -1,4 +1,5 @@
 import AspisFormal.V5AcceptedSpendRelation
+import AspisFormal.V5TowerPackedResidualExtraction
 
 /-!
 # Public values enforced by the production V5 terminal
@@ -33,6 +34,9 @@ namespace AspisV5ProductionPublicResidualBinding
 
 open AspisFormal.ArithmetizationCore
 open AspisV5AcceptedSpendRelation
+open AspisV5TowerPackedResidualExtraction
+open AspisV5FriConcreteEncoderApplicability
+open Module
 
 /-- The six values from the live Rust statement that occur in the semantic
 terminal.  Pool, sequence, and deployment domain are transcript-bound but do
@@ -139,6 +143,21 @@ theorem public_residual_semantic_position_lt_eighty
   | asset which =>
       simp only [publicResidualSemanticPosition]
       omega
+
+theorem public_residual_row_lt_1024
+    (coordinate : PublicResidualCoordinate) :
+    publicResidualRow coordinate < 1024 := by
+  cases coordinate with
+  | feeBalance => decide
+  | digest which _ =>
+      fin_cases which <;> simp [publicResidualRow, terminalDigestRow]
+  | asset which =>
+      fin_cases which <;> decide
+
+/-- Boolean trace row selected by this public residual. -/
+def publicResidualTraceRow
+    (coordinate : PublicResidualCoordinate) : Fin 1024 :=
+  ⟨publicResidualRow coordinate, public_residual_row_lt_1024 coordinate⟩
 
 /-- Semantic-array lane used by the production four-at-a-time packer. -/
 def publicResidualPackedLane
@@ -277,6 +296,88 @@ def ExtractedProductionTracePublicResiduals
     (z : Fin 1024 → Fin 16 → F) : Prop :=
   ExtractedProductionPublicResiduals fields opened
     (productionPublicRowsFromTrace z)
+
+/-! ## Composition with tower packing and theta batching -/
+
+section TowerExtraction
+
+variable {K : Type*} [Field K] [Algebra F K]
+
+/-- Exact link between the 35 public residual formulas above and the raw
+semantic residual positions used by the generic tower/selector model.  This
+is a code/model boundary until the complete production evaluator is extracted
+successfully. -/
+structure ProductionPublicResidualsMatchConstraintRows
+    (fields : TerminalSpendFields) (rows : ProductionPublicRowValues)
+    (constraintRows : Fin 1024 →
+      ConstraintRowResiduals (F := F) (K := K)) : Prop where
+  residual : ∀ coordinate,
+    (constraintRows (publicResidualTraceRow coordinate)).semantic
+        (publicResidualPackedLane coordinate)
+        (publicResidualPackedSlot coordinate) =
+      rowPublicResidual fields rows coordinate
+
+/-- Identically zero theta polynomials at every Boolean trace row expose all
+raw public residuals through the proved 25-lane and tower-basis maps. -/
+theorem public_row_residuals_vanish_of_theta_polynomials_zero
+    (basis : Basis (Fin 4) F K)
+    (fields : TerminalSpendFields) (rows : ProductionPublicRowValues)
+    (constraintRows : Fin 1024 →
+      ConstraintRowResiduals (F := F) (K := K))
+    (residualsMatch : ProductionPublicResidualsMatchConstraintRows
+      fields rows constraintRows)
+    (polynomialZero : ∀ row,
+      monomialPolynomial ((constraintRows row).laneVector basis) = 0) :
+    ProductionPublicRowResidualsVanish fields rows := by
+  intro coordinate
+  rw [← residualsMatch.residual coordinate]
+  have allZero := all_row_residuals_zero_of_theta_polynomial_zero basis
+    (constraintRows (publicResidualTraceRow coordinate))
+    (polynomialZero (publicResidualTraceRow coordinate))
+  exact allZero.2.1 (publicResidualPackedLane coordinate)
+    (publicResidualPackedSlot coordinate)
+
+/-- The exact deterministic evidence needed after accepted-execution
+extraction: trace projection, source-residual correspondence, and an
+identically zero theta polynomial at every Boolean row. -/
+structure ExtractedProductionThetaPublicResiduals
+    (fields : TerminalSpendFields) (opened : OpenedColumns)
+    (rows : ProductionPublicRowValues)
+    (basis : Basis (Fin 4) F K)
+    (constraintRows : Fin 1024 →
+      ConstraintRowResiduals (F := F) (K := K)) : Prop where
+  projects : ProductionPublicRowsProjectToOpenedColumns rows opened
+  residualsMatch : ProductionPublicResidualsMatchConstraintRows
+    fields rows constraintRows
+  polynomialZero : ∀ row,
+    monomialPolynomial ((constraintRows row).laneVector basis) = 0
+
+theorem extracted_theta_public_residuals_to_row_residuals
+    (fields : TerminalSpendFields) (opened : OpenedColumns)
+    (rows : ProductionPublicRowValues)
+    (basis : Basis (Fin 4) F K)
+    (constraintRows : Fin 1024 →
+      ConstraintRowResiduals (F := F) (K := K))
+    (extracted : ExtractedProductionThetaPublicResiduals
+      fields opened rows basis constraintRows) :
+    ExtractedProductionPublicResiduals fields opened rows where
+  projects := extracted.projects
+  vanish := public_row_residuals_vanish_of_theta_polynomials_zero basis
+    fields rows constraintRows extracted.residualsMatch extracted.polynomialZero
+
+/-- Smallest combined failure at this deterministic boundary.  It assigns no
+probability: an accepted-execution proof must supply this evidence or account
+for its failure. -/
+def ExactPublicResidualThetaExtractionFailure
+    (fields : TerminalSpendFields) (opened : OpenedColumns)
+    (rows : ProductionPublicRowValues)
+    (basis : Basis (Fin 4) F K)
+    (constraintRows : Fin 1024 →
+      ConstraintRowResiduals (F := F) (K := K)) : Prop :=
+  ¬ ExtractedProductionThetaPublicResiduals
+    fields opened rows basis constraintRows
+
+end TowerExtraction
 
 theorem projected_row_residual_eq
     (fields : TerminalSpendFields) (opened : OpenedColumns)
@@ -430,6 +531,60 @@ theorem extracted_production_trace_binds_statement
   extracted_public_rows_bind_statement statement opened constraints
     (productionPublicRowsFromTrace z) extracted
 
+section TowerStatementBinding
+
+variable {K : Type*} [Field K] [Algebra F K]
+
+/-- Full deterministic composition from exact per-row theta polynomial
+identities to the six statement fields. -/
+theorem extracted_theta_public_residuals_bind_statement
+    (statement : V5PublicStatement) (opened : OpenedColumns)
+    (constraints : ConstraintsSatisfied opened)
+    (rows : ProductionPublicRowValues)
+    (basis : Basis (Fin 4) F K)
+    (constraintRows : Fin 1024 →
+      ConstraintRowResiduals (F := F) (K := K))
+    (extracted : ExtractedProductionThetaPublicResiduals
+      (terminalSpendFields statement) opened rows basis constraintRows) :
+    OpenedColumnsMatchStatement statement opened :=
+  extracted_public_rows_bind_statement statement opened constraints rows
+    (extracted_theta_public_residuals_to_row_residuals
+      (terminalSpendFields statement) opened rows basis constraintRows
+      extracted)
+
+/-- Outside the named combined failure, exact tower/selector extraction binds
+the six public fields. -/
+theorem outside_theta_extraction_failure_binds_statement
+    (statement : V5PublicStatement) (opened : OpenedColumns)
+    (constraints : ConstraintsSatisfied opened)
+    (rows : ProductionPublicRowValues)
+    (basis : Basis (Fin 4) F K)
+    (constraintRows : Fin 1024 →
+      ConstraintRowResiduals (F := F) (K := K))
+    (outsideFailure : ¬ ExactPublicResidualThetaExtractionFailure
+      (terminalSpendFields statement) opened rows basis constraintRows) :
+    OpenedColumnsMatchStatement statement opened := by
+  apply extracted_theta_public_residuals_bind_statement statement opened
+    constraints rows basis constraintRows
+  exact Classical.byContradiction outsideFailure
+
+/-- A public-field mismatch forces the exact combined extraction failure. -/
+theorem statement_mismatch_implies_theta_extraction_failure
+    (statement : V5PublicStatement) (opened : OpenedColumns)
+    (constraints : ConstraintsSatisfied opened)
+    (rows : ProductionPublicRowValues)
+    (basis : Basis (Fin 4) F K)
+    (constraintRows : Fin 1024 →
+      ConstraintRowResiduals (F := F) (K := K))
+    (mismatch : ¬ OpenedColumnsMatchStatement statement opened) :
+    ExactPublicResidualThetaExtractionFailure
+      (terminalSpendFields statement) opened rows basis constraintRows := by
+  intro extracted
+  exact mismatch (extracted_theta_public_residuals_bind_statement statement
+    opened constraints rows basis constraintRows extracted)
+
+end TowerStatementBinding
+
 /-- Outside the one fixed-trace extraction failure, the production public
 residuals bind all six statement fields.  This is the direct form needed by a
 failure-event accounting proof. -/
@@ -514,6 +669,8 @@ theorem public_residuals_vanish_iff_statement_match
 #print axioms fee_and_asset_packed_locations_are_exact
 #print axioms digest_packed_locations_are_exact
 #print axioms public_residual_source_slot_injective
+#print axioms public_row_residuals_vanish_of_theta_polynomials_zero
+#print axioms extracted_theta_public_residuals_to_row_residuals
 #print axioms projected_row_residual_eq
 #print axioms normalized_residuals_of_extracted_rows
 #print axioms digest_eq_of_public_residuals
@@ -523,6 +680,9 @@ theorem public_residuals_vanish_iff_statement_match
 #print axioms public_residuals_bind_statement
 #print axioms extracted_public_rows_bind_statement
 #print axioms extracted_production_trace_binds_statement
+#print axioms extracted_theta_public_residuals_bind_statement
+#print axioms outside_theta_extraction_failure_binds_statement
+#print axioms statement_mismatch_implies_theta_extraction_failure
 #print axioms outside_exact_public_residual_extraction_failure_binds_statement
 #print axioms statement_mismatch_implies_exact_public_residual_extraction_failure
 #print axioms public_residuals_vanish_of_statement_match

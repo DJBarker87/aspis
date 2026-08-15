@@ -98,6 +98,21 @@ theorem `production_public_residuals_bind_live_statement` proves that this
 condition, the maintained arithmetic constraints, and equality of the decoded
 and live statements imply all six field equalities.
 
+The maintained Lean project also composes this result with the generic
+25-lane `theta` batching and four-coordinate tower-packing proofs. The exact
+source locations of all 35 public residuals are proved: row, semantic lane and
+base-four slot uniquely identify each residual. If the extracted per-row
+`theta` polynomial is identically zero, tower-basis injectivity exposes every
+one of those raw residuals and the six-field theorem applies.
+
+That composition leaves two explicit boundaries. First, the full Rust
+evaluator must agree with the modeled tower pack, row selectors and residual
+locations. Second, successful verification must yield the fixed trace and the
+per-row polynomial identities, outside the separately accounted challenge
+collision events. The theorem names the negation of this combined evidence as
+`ExactPublicResidualThetaExtractionFailure`; it does not assign that event a
+probability.
+
 The unresolved security step is proving that every accepted deployed proof
 supplies those 35 zero residuals through sumcheck and PCS/FRI extraction, or
 bounding the named `PublicResidualExtractionFailure` event. No probability is
