@@ -361,6 +361,86 @@ theorem deployed_adaptive_first_fraudulent_spend_probability_le_released_candida
     deployedFirstFraudulentSpend runtime chain Accepts Commits victim experiment
     extractAfter connection coverage
 
+set_option maxRecDepth 100000 in
+/-- Concrete-field form of the released-candidate adaptive theorem.  The
+literal deployed QM31 tower supplies the field cardinality, leaving the
+production hash-sampling comparison and the explicitly displayed source,
+cryptographic, runtime, credential, and setup events. -/
+theorem deployed_adaptive_first_fraudulent_spend_probability_le_deployed_qm31
+    {Run Sample AdversaryCoins PublicArtifact Execution Public Root Prefix :
+      Type*}
+    [MeasurableSpace Sample] [Fintype Prefix] [Nonempty Prefix]
+    {rc : RoundConstants}
+    {deployedOwner : Digest → Digest}
+    {deployedNote : Digest → F → F → Digest → Digest}
+    {deployedNullifier : Digest → Digest → Digest}
+    {deployedNode : Digest → Digest → Digest}
+    {scheme : FiatShamirSchedule Public Root
+      AspisV5ComponentCQM31TowerExact.QM31Exact}
+    (measure : Measure Sample) [IsProbabilityMeasure measure]
+    (data : ProjectedAcceptedFalseExperimentData Sample
+      AspisV5ComponentCQM31TowerExact.QM31Exact rc deployedOwner deployedNote
+      deployedNullifier deployedNode)
+    (connections : ReleasedIdealAcceptedFalseRawConnections measure
+      data.base.toEvents)
+    (production : ReleasedProductionFalseSpendConnection data.base.toEvents)
+    (projection : StatementBindingProjectionData Run Sample
+      AspisV5ComponentCQM31TowerExact.QM31Exact data)
+    (boundary : MaskedBoundaryProjectionData Run Sample
+      AspisV5ComponentCQM31TowerExact.QM31Exact Public Root
+      (scheme := scheme) projection)
+    (plans : TerminalCandidatePlanProjection Run Sample
+      AspisV5ComponentCQM31TowerExact.QM31Exact Public Root boundary)
+    (candidateExperiment : CompatibilityFriExperiment Prefix
+      AspisV5ComponentCQM31TowerExact.QM31Exact)
+    (terminal : ∀ p, candidateExperiment.CandidateAt p →
+      FixedTerminalAlgebraPlan
+        AspisV5ComponentCQM31TowerExact.QM31Exact)
+    (sumcheck : ∀ p, candidateExperiment.CandidateAt p →
+      AdaptiveDegree27MessagePlan
+        AspisV5ComponentCQM31TowerExact.QM31Exact)
+    (sourceHashAndConditionalSampling :
+      measure.real (exactTerminalCandidateFailureSet plans) ≤
+        (prefixAveragedCandidateTerminalSubtotal Prefix
+          candidateExperiment.CandidateAt terminal sumcheck : Real))
+    (deployedFirstFraudulentSpend : Sample → Prop)
+    (runtime : RuntimeFailurePredicates Sample)
+    (chain : AdaptiveChainFailures Sample)
+    (Accepts Commits : V5PublicStatement → Execution → Prop)
+    (victim : FixedVictim)
+    (experiment : AdaptiveObservationExperiment Sample AdversaryCoins
+      PublicArtifact Execution)
+    (extractAfter : ExtractAfterObservation PublicArtifact Execution)
+    (connection : DeployedAdaptiveAttackConnection deployedFirstFraudulentSpend
+      runtime chain deployedOwner deployedNote deployedNullifier deployedNode
+      Accepts Commits victim experiment extractAfter)
+    (coverage : RefinedAdaptiveHistoryCoverage production
+      {sample | ExtractorAfterObservationFailureEvent deployedOwner deployedNote
+        deployedNullifier deployedNode Accepts experiment extractAfter sample}
+      {sample | NullifierSecondPreimageAfterObservationEvent deployedNullifier
+        victim experiment extractAfter sample}
+      {sample | NoteSecondPreimageAfterObservationEvent deployedOwner
+        deployedNote victim experiment extractAfter sample}
+      {sample | VictimTreeCollisionAfterObservationEvent deployedOwner
+        deployedNote deployedNode victim experiment extractAfter sample}) :
+    measure.real {sample | deployedFirstFraudulentSpend sample} ≤
+      (1 : Real) / 2 ^ 75 + measure.real data.width19Failure +
+        nonterminalStatementFailureProbabilitySum measure boundary +
+        measure.real data.arithmeticResidualFailure +
+        measure.real data.hashMerkleResidualFailure +
+        measure.real (totalFailure production.transcriptAndHashFailures) +
+        measure.real {sample | CredentialRecoveryAfterObservationEvent Accepts
+          victim experiment extractAfter sample} +
+        measure.real {sample | NamedRuntimeFailureEvent runtime sample} +
+        measure.real {sample | chain.victimSetup sample} := by
+  exact
+    deployed_adaptive_first_fraudulent_spend_probability_le_released_candidates
+      measure data connections production projection boundary plans
+      candidateExperiment terminal sumcheck
+      qm31Exact_card_cast_eq_soundness_field sourceHashAndConditionalSampling
+      deployedFirstFraudulentSpend runtime chain Accepts Commits victim
+      experiment extractAfter connection coverage
+
 /-! ## Explicit cryptographic and runtime budgets -/
 
 /-- The seven implementation/runtime failure sets, in the same order as the
@@ -522,6 +602,8 @@ theorem deployed_adaptive_first_fraudulent_spend_probability_le_refined_budget
 #print axioms deployed_adaptive_first_fraudulent_spend_probability_le_refined
 #print axioms
   deployed_adaptive_first_fraudulent_spend_probability_le_released_candidates
+#print axioms
+  deployed_adaptive_first_fraudulent_spend_probability_le_deployed_qm31
 #print axioms namedRuntimeFailure_set_eq_union
 #print axioms namedRuntimeFailure_probability_le_total
 #print axioms
