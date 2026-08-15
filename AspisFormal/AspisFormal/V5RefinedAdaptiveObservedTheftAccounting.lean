@@ -244,7 +244,6 @@ theorem deployed_adaptive_first_fraudulent_spend_probability_le_refined
     measure.real {sample | deployedFirstFraudulentSpend sample} ≤
       (1 : Real) / 2 ^ 75 + measure.real data.width19Failure +
         nonterminalStatementFailureProbabilitySum measure boundary +
-        measure.real data.arithmeticResidualFailure +
         measure.real data.hashMerkleResidualFailure +
         measure.real (totalFailure production.transcriptAndHashFailures) +
         measure.real {sample | CredentialRecoveryAfterObservationEvent Accepts
@@ -279,7 +278,6 @@ theorem deployed_adaptive_first_fraudulent_spend_probability_le_refined
           measure.real setup := unionBound
     _ ≤ (1 : Real) / 2 ^ 75 + measure.real data.width19Failure +
           nonterminalStatementFailureProbabilitySum measure boundary +
-          measure.real data.arithmeticResidualFailure +
           measure.real data.hashMerkleResidualFailure +
           measure.real (totalFailure production.transcriptAndHashFailures) +
           measure.real credential + measure.real runtimeFailure +
@@ -345,7 +343,6 @@ theorem deployed_adaptive_first_fraudulent_spend_probability_le_released_candida
     measure.real {sample | deployedFirstFraudulentSpend sample} ≤
       (1 : Real) / 2 ^ 75 + measure.real data.width19Failure +
         nonterminalStatementFailureProbabilitySum measure boundary +
-        measure.real data.arithmeticResidualFailure +
         measure.real data.hashMerkleResidualFailure +
         measure.real (totalFailure production.transcriptAndHashFailures) +
         measure.real {sample | CredentialRecoveryAfterObservationEvent Accepts
@@ -426,7 +423,6 @@ theorem deployed_adaptive_first_fraudulent_spend_probability_le_deployed_qm31
     measure.real {sample | deployedFirstFraudulentSpend sample} ≤
       (1 : Real) / 2 ^ 75 + measure.real data.width19Failure +
         nonterminalStatementFailureProbabilitySum measure boundary +
-        measure.real data.arithmeticResidualFailure +
         measure.real data.hashMerkleResidualFailure +
         measure.real (totalFailure production.transcriptAndHashFailures) +
         measure.real {sample | CredentialRecoveryAfterObservationEvent Accepts
@@ -582,7 +578,6 @@ theorem deployed_adaptive_first_fraudulent_spend_probability_le_refined_budget
     measure.real {sample | deployedFirstFraudulentSpend sample} ≤
       (1 : Real) / 2 ^ 75 + measure.real data.width19Failure +
         nonterminalStatementFailureProbabilitySum measure boundary +
-        measure.real data.arithmeticResidualFailure +
         measure.real data.hashMerkleResidualFailure +
         cryptoBudget.total + credentialBudget + runtimeBudget.total +
         measure.real {sample | chain.victimSetup sample} := by
@@ -672,7 +667,6 @@ theorem deployed_adaptive_first_fraudulent_spend_probability_le_deployed_qm31_bu
     measure.real {sample | deployedFirstFraudulentSpend sample} ≤
       (1 : Real) / 2 ^ 75 + measure.real data.width19Failure +
         nonterminalStatementFailureProbabilitySum measure boundary +
-        measure.real data.arithmeticResidualFailure +
         measure.real data.hashMerkleResidualFailure +
         cryptoBudget.total + credentialBudget + runtimeBudget.total +
         measure.real {sample | chain.victimSetup sample} := by

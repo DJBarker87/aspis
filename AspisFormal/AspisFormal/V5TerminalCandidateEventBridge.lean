@@ -437,9 +437,8 @@ theorem acceptedFalse_probability_le_with_exact_terminal_event
     measure.real data.base.acceptedFalse ≤
       (1 : Real) / 2 ^ 75 + measure.real data.width19Failure +
         nonterminalStatementFailureProbabilitySum measure boundary +
-        measure.real data.arithmeticResidualFailure +
         measure.real data.hashMerkleResidualFailure := by
-  exact acceptedFalse_probability_le_two_pow_neg_75_plus_remaining_failures
+  exact acceptedFalse_probability_le_two_pow_neg_75_nonduplicated
     measure data connections projection boundary
     (exactTerminalCandidateFailureSet plans)
     (exactTerminalCandidateFailureCoverage plans) terminalBound
@@ -473,10 +472,9 @@ theorem productionFalseSpend_probability_le_with_exact_terminal_event
     measure.real production.productionFalseSpend ≤
       (1 : Real) / 2 ^ 75 + measure.real data.width19Failure +
         nonterminalStatementFailureProbabilitySum measure boundary +
-        measure.real data.arithmeticResidualFailure +
         measure.real data.hashMerkleResidualFailure +
         measure.real (totalFailure production.transcriptAndHashFailures) := by
-  exact productionFalseSpend_probability_le_two_pow_neg_75_plus_remaining
+  exact productionFalseSpend_probability_le_two_pow_neg_75_nonduplicated
     measure data connections production projection boundary
     (exactTerminalCandidateFailureSet plans)
     (exactTerminalCandidateFailureCoverage plans) terminalBound
