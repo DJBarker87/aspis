@@ -143,6 +143,7 @@ import AspisFormal.V5FriForwardCompatibleChain
 import AspisFormal.V5ForwardAcceptedFalseRawAccounting
 import AspisFormal.V5FourClaimBatchUnion
 import AspisFormal.V5MerkleRustBridge
+import AspisFormal.V5TopologyConstruction
 import AspisFormal.V5MerkleConsumedValueBridge
 import AspisFormal.V5FinalSecurityAccounting
 import AspisFormal.V5RawFinalSecurityAccounting
