@@ -36,6 +36,11 @@ theorem u32_wrapping_shr_val_of_lt (value shift : Std.U32)
   rw [Nat.mod_eq_of_lt hshift]
   simp only [Std.U32.bv_toNat, Nat.shiftRight_eq_div_pow]
 
+@[simp] theorem u32_wrapping_shr_zero (value : Std.U32) :
+    Std.U32.wrapping_shr value 0#u32 = value := by
+  apply UScalar.eq_of_val_eq
+  simpa using u32_wrapping_shr_val_of_lt value 0#u32 (by norm_num)
+
 @[simp] theorem u32_wrapping_shr_two_val (value : Std.U32) :
     (Std.U32.wrapping_shr value 2#u32).val = value.val / 4 := by
   simpa using u32_wrapping_shr_val_of_lt value 2#u32 (by norm_num)
@@ -515,8 +520,74 @@ theorem sorted_unique_shifted_exact
   · norm_num
   · simp [alloc.vec.Vec.with_capacity, shiftedUnique]
 
+/-! ## Exact layer-zero duplicate removal -/
+
+def uniqueValues (values : List Std.U32) : List Std.U32 :=
+  values.foldl appendIfDifferent []
+
+theorem uniqueValues_length_le (values : List Std.U32) :
+    (uniqueValues values).length ≤ values.length := by
+  unfold uniqueValues
+  have h := shiftedFold_length_le values [] 0#u32
+  simpa using h
+
+theorem uniqueValues_take_succ (values : List Std.U32)
+    {index : Nat} (hindex : index < values.length) :
+    uniqueValues (values.take (index + 1)) =
+      appendIfDifferent (uniqueValues (values.take index)) values[index] := by
+  have htake := List.take_append_getElem hindex
+  unfold uniqueValues
+  rw [← htake, List.foldl_append]
+  rfl
+
+theorem uniqueValues_eq_dedup_of_sorted
+    (values : List Std.U32) (hsorted : values.Pairwise (· ≤ ·)) :
+    uniqueValues values = values.dedup := by
+  unfold uniqueValues
+  have happend :
+      (appendIfDifferent : List Std.U32 → Std.U32 → List Std.U32) =
+        appendDistinct := by
+    funext current value
+    exact appendIfDifferent_eq_appendDistinct current value
+  rw [happend]
+  exact foldl_appendDistinct_eq_dedup_of_pairwise values hsorted
+
+private theorem layer0_dedup_loop_eq_shift_zero
+    (sorted layer0 : alloc.vec.Vec Std.U32) (index : Std.Usize) :
+    aspis_core.circle_line_merkle.derive_circle_line_query_indices_for_count_loop0_loop1
+        sorted layer0 index =
+      aspis_core.circle_line_merkle.sorted_unique_shifted_loop
+        (alloc.vec.Vec.deref sorted) 0#u32 layer0 index := by
+  rfl
+
+theorem extracted_layer0_unique_exact
+    (sorted : alloc.vec.Vec Std.U32) :
+    aspis_core.circle_line_merkle.derive_circle_line_query_indices_for_count_loop0_loop1
+        sorted (alloc.vec.Vec.with_capacity Std.U32 (alloc.vec.Vec.len sorted))
+          0#usize ⦃ output =>
+      output.val = uniqueValues sorted.val ⦄ := by
+  rw [layer0_dedup_loop_eq_shift_zero]
+  simpa [shiftedUnique, uniqueValues, alloc.vec.Vec.with_capacity,
+      alloc.vec.Vec.deref] using
+    (sorted_unique_shifted_loop_exact (alloc.vec.Vec.deref sorted) 0#u32
+      (alloc.vec.Vec.with_capacity Std.U32 (alloc.vec.Vec.len sorted))
+      0#usize (by norm_num)
+      (by simp [alloc.vec.Vec.with_capacity, shiftedUnique]))
+
+theorem extracted_layer0_dedup_exact
+    (sorted : alloc.vec.Vec Std.U32)
+    (hsorted : sorted.val.Pairwise (· ≤ ·)) :
+    aspis_core.circle_line_merkle.derive_circle_line_query_indices_for_count_loop0_loop1
+        sorted (alloc.vec.Vec.with_capacity Std.U32 (alloc.vec.Vec.len sorted))
+          0#usize ⦃ output =>
+      output.val = sorted.val.dedup ⦄ := by
+  apply WP.spec_mono (extracted_layer0_unique_exact sorted)
+  intro output hout
+  exact hout.trans (uniqueValues_eq_dedup_of_sorted sorted.val hsorted)
+
 #print axioms u32_wrapping_shr_val_of_lt
 #print axioms shiftedUnique_nats_eq_sorted_division_image
 #print axioms sorted_unique_shifted_exact
+#print axioms extracted_layer0_dedup_exact
 
 end RuntimeIndexProof
