@@ -23,7 +23,10 @@ namespace AspisV5HundredBitSecurityMargin
 open AspisSoundnessLedger
 open AspisWorkNormalizedEndpoint
 open AspisV5ImplementedWorkNormalizedEndpoint
+open AspisV5NonceWorkAuthentication
+open AspisV5SelectedGoodVerifierRelation
 open AspisV5WorkNormalizedApplicabilityRepair
+open AspisFormal.V5ExactRuntimeWireRepair
 
 /-! ## Tighter corrected batching term -/
 
@@ -176,6 +179,78 @@ theorem corrected_work_normalized_core_le_seven_tenths
   unfold selectorInflation correctedTightUnionBound
   norm_num
 
+/-! ## Conditional release endpoint with the margin retained -/
+
+/-- The existing selected-branch endpoint, but with the tighter width-19
+arithmetic retained in the conclusion.  This is still conditional on the
+published decoding result, the transcript correspondence, the separate
+grinding reduction, the Merkle/PCS connection, and the cited Fiat--Shamir
+theorem through the structures in the arguments. -/
+theorem corrected_selected_release_core_le_seven_tenths
+    {Schedule RustBoundary : Type*}
+    (acceptedSchedule citedMCAHypotheses : Schedule → Prop)
+    (virtualOracleAndCodeMembership : Schedule → Prop)
+    (separateGrindingOutputReduction : Schedule → Prop)
+    (rustSamplingAndTranscriptCorrespondence : Schedule → Prop)
+    (actualBatchEventProbability : Schedule → ℝ)
+    (widthDeployment : Width19FStarDeploymentPremises acceptedSchedule
+      citedMCAHypotheses virtualOracleAndCodeMembership
+      separateGrindingOutputReduction rustSamplingAndTranscriptCorrespondence
+      actualBatchEventProbability)
+    (schedule : Schedule) (haccepted : acceptedSchedule schedule)
+    (epsRound : ℝ) (hepsRoundNonnegative : 0 ≤ epsRound)
+    (hdecomposition : epsRound ≤
+      actualBatchEventProbability schedule + correctedNonBatchRoundError)
+    (R : ℝ) (rustRoundTrace : List RustBoundary)
+    (decode : RustBoundary → V5PublicMessageBoundary)
+    (semantics : STwoBCSIOPRoundSemantics rustRoundTrace)
+    (rustInitialEnsembleM0Correspondence : Prop)
+    (randomOracleAndFiatShamirApplicability : Prop)
+    (pcsAndMerkleAuthenticationApplicability : Prop)
+    (citedBCSAndCMSApplicability : Prop)
+    (bcsDeployment : M0ExcludedBCSDeploymentPremises
+      R rustRoundTrace decode semantics
+      rustInitialEnsembleM0Correspondence
+      randomOracleAndFiatShamirApplicability
+      pcsAndMerkleAuthenticationApplicability
+      citedBCSAndCMSApplicability)
+    (unionError branch0 branch1 branch2 capErr T : ℝ)
+    (hUnion : unionError ≤ branch0 + branch1 + branch2)
+    (hbranch0 : branch0 ≤ bcsError epsRound T R capErr)
+    (hbranch1 : branch1 ≤ bcsError epsRound T R capErr)
+    (hbranch2 : branch2 ≤ bcsError epsRound T R capErr)
+    (hcapNonnegative : 0 ≤ capErr) (hcap : capErr ≤ roCapErr)
+    (hT1 : 1 ≤ T) (hTmax : T ≤ 2 ^ 128) :
+    unionError ≤ (7 : ℝ) / (10 * 2 ^ 100) := by
+  have hroundCorrected : epsRound ≤ correctedRoundError :=
+    actual_round_error_le_corrected_round_error
+      acceptedSchedule citedMCAHypotheses virtualOracleAndCodeMembership
+      separateGrindingOutputReduction rustSamplingAndTranscriptCorrespondence
+      actualBatchEventProbability widthDeployment schedule haccepted epsRound
+      hdecomposition
+  have hroundTight : epsRound ≤ correctedTightUnionBound :=
+    hroundCorrected.trans corrected_round_error_le_tight_union
+  rcases m0_excluded_boundary_application_preserves_all_named_premises
+      R rustRoundTrace decode semantics
+      rustInitialEnsembleM0Correspondence
+      randomOracleAndFiatShamirApplicability
+      pcsAndMerkleAuthenticationApplicability
+      citedBCSAndCMSApplicability bcsDeployment with
+    ⟨hR30, _hRbound, _hsemantics, _hm0, _hrofs, _hpcs, _hcited⟩
+  have hRNonnegative : 0 ≤ R := by
+    rw [hR30]
+    norm_num
+  have hRle30 : R ≤ 30 := by
+    rw [hR30]
+  calc
+    unionError ≤ selectorInflation * bcsError epsRound T R capErr :=
+      three_selected_branches_union_bound unionError branch0 branch1 branch2
+        (bcsError epsRound T R capErr) hUnion hbranch0 hbranch1 hbranch2
+    _ ≤ (7 : ℝ) / (10 * 2 ^ 100) :=
+      corrected_work_normalized_core_le_seven_tenths epsRound R capErr T
+        hepsRoundNonnegative hroundTight hRNonnegative hRle30
+        hcapNonnegative hcap hT1 hTmax
+
 /-- Any separately justified external budget occupying the remaining thirty
 percent preserves an overall 100-bit bound. -/
 theorem core_plus_external_budget_le_two_pow_neg_100
@@ -195,6 +270,7 @@ theorem eight_two_pow_neg_128_fit_external_budget :
 #print axioms corrected_batch_le_2120_div_two_pow_119
 #print axioms corrected_round_error_le_tight_union
 #print axioms corrected_work_normalized_core_le_seven_tenths
+#print axioms corrected_selected_release_core_le_seven_tenths
 #print axioms core_plus_external_budget_le_two_pow_neg_100
 #print axioms eight_two_pow_neg_128_fit_external_budget
 
