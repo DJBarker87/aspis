@@ -191,4 +191,5 @@ import AspisFormal.V5CurrentInstructionAndClose
 import AspisFormal.V5AdaptiveObservedTheftGame
 import AspisFormal.V5AdaptiveObservedTheftRawAccounting
 import AspisFormal.V5RefinedAdaptiveObservedTheftAccounting
+import AspisFormal.V5AdaptiveTheftWidth19Bound
 import AspisFormal.V5TranscriptSourceAdapter
