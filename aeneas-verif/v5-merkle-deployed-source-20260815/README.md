@@ -16,11 +16,19 @@ have these SHA-256 hashes:
 | `crates/aspis-core/src/state_only_private_merkle.rs` | `f0edc31d07d30f5b19fcaf872fba18678d13d1ba5fac1199f1f4d2be74c74f9b` |
 | `programs/aspis-verifier/src/v5_private_openings.rs` | `916c14930d419bc0cd794a3d1e01c4e45fea9f4dbbc1f44f89f71caf3ff63c49` |
 
-`source-adapter.patch` is an extraction-only rewrite. It fixes the hash
-backend to one opaque call, rewrites unsupported iterator and loop shapes, and
-unrolls the fixed five-section driver. The patched Rust type-checks. Charon
-then reaches `verify_v5_private_openings` and Aeneas emits complete definitions
-for the parser, topology constructor, leaf hashing, radix-four and binary-cap
+`source-adapter.patch` and `immediate-return-adapter.patch` are
+extraction-only rewrites. They fix the hash backend to one opaque call, rewrite
+unsupported iterator and loop shapes, and unroll the fixed five-section
+driver. The second patch replaces the first patch's provisional failure flag
+with recursive helpers that stop before hashing an incomplete radix-four
+group. This preserves the deployed verifier's first-error hash-call prefix;
+on success it also returns the same scratch vectors. Scratch contents after a
+rejected call are intentionally outside the claimed observation because the
+production caller returns the error without reading them.
+
+The patched Rust type-checks. Charon then reaches
+`verify_v5_private_openings` and Aeneas emits complete definitions for the
+parser, topology constructor, leaf hashing, radix-four and binary-cap
 authentication, the five helper calls, returned remainder, and trailing-byte
 check. Aeneas emitted no partial function bodies.
 
@@ -32,9 +40,13 @@ collision, preimage, or random-oracle claim.
 ## What this does not prove
 
 This is a complete extraction artifact, not the final source-equality proof.
-The extraction-only rewrites still need a universal Lean proof that they
-preserve the deployed Rust behavior, followed by a proof that the generated
-definitions satisfy:
+`AspisFormal/V5MerkleSourceAdapter.lean` proves the generic control-flow
+lemma: the loop-shaped and recursive scans have the same result and ordered
+hash-call prefix, and successful runs have the same scratch vectors and
+frontier position. It explicitly names, but does not assume or discharge, the
+two remaining code connections: original deployed LLBC to the loop model, and
+generated Aeneas helpers to the recursive model. The generated definitions
+must then be connected to:
 
 - `VerifyStateOnlyPrivateOpeningWithTopologySourceEquality`;
 - `VerifyV5DriverCompositionSourceEquality`.
@@ -47,8 +59,8 @@ tests support the rewrites, but tests do not replace that universal proof.
 
 - Charon: `cb50ff16b9f1066b8a97dc06da704de2da2fa41c`
 - Aeneas base: `b59d5188c082f704a418c7cb4e52ad69328002d1`
-- Aeneas extraction extensions: `156a8d23`, `7c8dc061`, `d5cb4d05`,
-  `b49f69d8`
+- Aeneas extraction extensions: `b4e0f598`, `156a8d23`, `7c8dc061`,
+  `d5cb4d05`, `b49f69d8`, `35b05b92`
 
 Run `replay-extraction.sh` with `CHARON_BIN` and `AENEAS_BIN` pointing to
 those builds. The script checks the source identity, checks and applies the

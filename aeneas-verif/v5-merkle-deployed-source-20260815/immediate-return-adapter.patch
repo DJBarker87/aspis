@@ -1,0 +1,272 @@
+diff --git a/crates/aspis-core/src/merkle.rs b/crates/aspis-core/src/merkle.rs
+--- a/crates/aspis-core/src/merkle.rs
++++ b/crates/aspis-core/src/merkle.rs
+@@ -410,7 +410,29 @@ fn topology_parent_level(indices: &[u32]) -> (Vec<u32>, Vec<u8>) {
+ }
+ 
+ type TopologyStorage = (Vec<u32>, [usize; 17], Vec<u8>, [usize; 16]);
++
++fn topology_indices_are_strictly_increasing(indices: &[u32], ordinal: usize) -> bool {
++    if ordinal + 1 >= indices.len() {
++        true
++    } else if indices[ordinal] >= indices[ordinal + 1] {
++        false
++    } else {
++        topology_indices_are_strictly_increasing(indices, ordinal + 1)
++    }
++}
+ 
++fn u32_slices_equal(left: &[u32], right: &[u32], ordinal: usize) -> bool {
++    if left.len() != right.len() {
++        false
++    } else if ordinal >= left.len() {
++        true
++    } else if left[ordinal] != right[ordinal] {
++        false
++    } else {
++        u32_slices_equal(left, right, ordinal + 1)
++    }
++}
++
+ /// Tail-recursive spelling of the constructor's outer level loop. Every call
+ /// consumes and returns the four storage objects, avoiding a loop-carried
+ /// mutable loan while preserving the exact flattened order and offsets.
+@@ -456,8 +478,8 @@ impl Radix4BinaryCapTopology {
+         if indices.is_empty() || binary_depth >= 32 {
+             return None;
+         }
+-        if indices.windows(2).any(|pair| pair[0] >= pair[1])
+-            || indices.last().copied()? >= (1u32 << binary_depth)
++        if !topology_indices_are_strictly_increasing(indices, 0)
++            || indices[indices.len() - 1] >= (1u32 << binary_depth)
+         {
+             return None;
+         }
+@@ -513,9 +535,11 @@ impl Radix4BinaryCapTopology {
+         binary_depth: u32,
+         indices: &[u32],
+     ) -> Option<MatchedRadix4BinaryCapSuffix<'a>> {
++        let remaining_depth = self.binary_depth.checked_sub((radix_level as u32) * 2)?;
++        let expected_indices = self.level_indices(radix_level)?;
+         if radix_level <= self.radix_levels
+-            && self.binary_depth.checked_sub((radix_level as u32) * 2) == Some(binary_depth)
+-            && self.level_indices(radix_level) == Some(indices)
++            && remaining_depth == binary_depth
++            && u32_slices_equal(expected_indices, indices, 0)
+         {
+             Some(MatchedRadix4BinaryCapSuffix {
+                 topology: self,
+@@ -565,7 +589,129 @@ fn fixed_write_radix_child(input: &mut [u8; 129], slot: usize, child: &[u8; 32])
+     while byte < 32 {
+         input[1 + slot * 32 + byte] = child[byte];
+         byte += 1;
++    }
++}
++
++/// Fill the four children of one radix-four parent from left to right. This
++/// recursive spelling is extraction-only: it has the same first-error return
++/// point as the deployed inner loop, without lowering a return through nested
++/// loops to an unsupported outer-loop `continue` in Aeneas.
++fn fixed_fill_radix_children(
++    node_bytes: &[u8],
++    level: &[[u8; 32]],
++    present: u8,
++    slot: usize,
++    node_pos: usize,
++    value_pos: usize,
++    mut input: [u8; 129],
++) -> Option<([u8; 129], usize, usize)> {
++    if slot >= 4 {
++        return Some((input, node_pos, value_pos));
++    }
++
++    let (child, next_node_pos, next_value_pos) = if present & (1u8 << slot) != 0 {
++        let value = match level.get(value_pos).copied() {
++            Some(value) => value,
++            None => return None,
++        };
++        (value, node_pos, value_pos + 1)
++    } else {
++        if node_pos + 32 > node_bytes.len() {
++            return None;
++        }
++        let mut value = [0u8; 32];
++        let mut byte = 0usize;
++        while byte < 32 {
++            value[byte] = node_bytes[node_pos + byte];
++            byte += 1;
++        }
++        (value, node_pos + 32, value_pos)
++    };
++    fixed_write_radix_child(&mut input, slot, &child);
++    fixed_fill_radix_children(
++        node_bytes,
++        level,
++        present,
++        slot + 1,
++        next_node_pos,
++        next_value_pos,
++        input,
++    )
++}
++
++/// Hash every parent group in one level. Failure is returned before the hash
++/// of an incomplete group, exactly as in the deployed loop.
++fn fixed_hash_radix_groups(
++    node_bytes: &[u8],
++    level: &[[u8; 32]],
++    masks: &[u8],
++    mask_pos: usize,
++    node_pos: usize,
++    value_pos: usize,
++    mut next: Vec<[u8; 32]>,
++) -> Option<(Vec<[u8; 32]>, usize, usize)> {
++    if mask_pos >= masks.len() {
++        return Some((next, node_pos, value_pos));
++    }
++
++    let mut input = [0u8; 129];
++    input[0] = DOM_NODE4;
++    let (input, node_pos, value_pos) = fixed_fill_radix_children(
++        node_bytes,
++        level,
++        masks[mask_pos],
++        0,
++        node_pos,
++        value_pos,
++        input,
++    )?;
++    next.push(fixed_hashv(&[&input]));
++    fixed_hash_radix_groups(
++        node_bytes,
++        level,
++        masks,
++        mask_pos + 1,
++        node_pos,
++        value_pos,
++        next,
++    )
++}
++
++/// Hash the radix-four levels in order, stopping at precisely the first
++/// rejected level and preserving the accepted-path output vectors.
++fn fixed_hash_radix_levels(
++    topology: &Radix4BinaryCapTopology,
++    node_bytes: &[u8],
++    plan_level: usize,
++    node_pos: usize,
++    mut level: Vec<[u8; 32]>,
++    mut next: Vec<[u8; 32]>,
++) -> Option<(Vec<[u8; 32]>, Vec<[u8; 32]>, usize)> {
++    if plan_level >= topology.radix_levels {
++        return Some((level, next, node_pos));
+     }
++
++    next.clear();
++    // A matched suffix is constructible only from this topology and the
++    // recursion is bounded by its validated radix-level count.
++    let mask_start = topology.group_offsets[plan_level];
++    let mask_end = topology.group_offsets[plan_level + 1];
++    let masks = topology.group_masks[mask_start..mask_end].to_vec();
++    let level_len = level.len();
++    let (mut next, node_pos, value_pos) =
++        fixed_hash_radix_groups(node_bytes, &level, &masks, 0, node_pos, 0, next)?;
++    if value_pos != level_len {
++        return None;
++    }
++    core::mem::swap(&mut level, &mut next);
++    fixed_hash_radix_levels(
++        topology,
++        node_bytes,
++        plan_level + 1,
++        node_pos,
++        level,
++        next,
++    )
+ }
+ 
+ /// Verify using an opaque suffix match already produced by the topology.
+@@ -585,70 +731,20 @@ pub(crate) fn verify_radix4_binary_cap_with_matched_topology(
+     let radix_level = matched.radix_level;
+     let binary_depth = matched.binary_depth;
+ 
+-    let mut node_pos = 0usize;
+-    let mut plan_level = radix_level;
+-    let mut failed = false;
+-    while plan_level < topology.radix_levels {
+-        next.clear();
+-        // `matched` can only be created by this topology, and the loop bound
+-        // is its validated radix-level count, so these offsets are the exact
+-        // in-range slice returned by `group_masks` in the deployed source.
+-        let mask_start = topology.group_offsets[plan_level];
+-        let mask_end = topology.group_offsets[plan_level + 1];
+-        let masks = topology.group_masks[mask_start..mask_end].to_vec();
+-        let mut value_pos = 0usize;
+-        let mut mask_pos = 0usize;
+-        while mask_pos < masks.len() {
+-            let present = masks[mask_pos];
+-            // Fill the exact radix-4 hash preimage in place. Building an
+-            // intermediate `[[u8; 32]; 4]` makes `node_hash4` copy the same
+-            // 128 child bytes a second time before the syscall.
+-            let mut input = [0u8; 129];
+-            input[0] = DOM_NODE4;
+-            let mut slot = 0usize;
+-            while slot < 4 {
+-                let child = if present & (1u8 << slot) != 0 {
+-                    match level.get(value_pos).copied() {
+-                        Some(value) => {
+-                            value_pos += 1;
+-                            value
+-                        }
+-                        None => {
+-                            failed = true;
+-                            [0u8; 32]
+-                        }
+-                    }
+-                } else {
+-                    if node_pos + 32 > node_bytes.len() {
+-                        failed = true;
+-                        [0u8; 32]
+-                    } else {
+-                        let mut value = [0u8; 32];
+-                        let mut byte = 0usize;
+-                        while byte < 32 {
+-                            value[byte] = node_bytes[node_pos + byte];
+-                            byte += 1;
+-                        }
+-                        node_pos += 32;
+-                        value
+-                    }
+-                };
+-                fixed_write_radix_child(&mut input, slot, &child);
+-                slot += 1;
+-            }
+-            next.push(fixed_hashv(&[&input]));
+-            mask_pos += 1;
+-        }
+-        if value_pos != level.len() {
+-            failed = true;
+-        }
+-        core::mem::swap(level, next);
+-        plan_level += 1;
+-    }
+-
+-    if failed {
++    let initial_level = level.clone();
++    let initial_next = next.clone();
++    let Some((final_level, final_next, mut node_pos)) = fixed_hash_radix_levels(
++        topology,
++        node_bytes,
++        radix_level,
++        0,
++        initial_level,
++        initial_next,
++    ) else {
+         return false;
+-    }
++    };
++    *level = final_level;
++    *next = final_next;
+ 
+     let top_indices = match topology.level_indices(topology.radix_levels) {
+         Some(indices) => indices,

@@ -19,43 +19,16 @@ noncomputable section
 
 namespace V5MerkleDeployedSource
 
-/-- Trait implementation: [core::slice::cmp::{impl core::cmp::PartialEq<[U]> for [T]}]
-    Source: '/rustc/library/core/src/slice/cmp.rs', lines 14:0-16:28
-    Name pattern: [core::cmp::PartialEq<[@T], [@U]>] -/
-@[reducible, rust_trait_impl "core::cmp::PartialEq<[@T], [@U]>"]
-def Slice.Insts.CoreCmpPartialEqSlice {T : Type} {U : Type} (cmpPartialEqInst :
-  core.cmp.PartialEq T U) : core.cmp.PartialEq (Slice T) (Slice U) := {
-  eq := core.slice.cmp.PartialEqSlice.eq cmpPartialEqInst
-}
-
-/-- Trait implementation: [core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a [T]> for core::slice::iter::Windows<'a, T>}]
-    Source: '/rustc/library/core/src/slice/iter.rs', lines 1350:0-1350:39
-    Name pattern: [core::iter::traits::iterator::Iterator<core::slice::iter::Windows<'a, @T>, &'a [@T]>] -/
-@[reducible, rust_trait_impl
-  "core::iter::traits::iterator::Iterator<core::slice::iter::Windows<'a, @T>, &'a [@T]>"]
-impl_def
-  core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice (T :
-  Type) : core.iter.traits.iterator.Iterator (core.slice.iter.Windows T) (Slice
-  T) := {
-  next :=
-    core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice.next
-  any := fun {F : Type} (opsfunctionFnMutPTupleShared0SliceBoolInst :
-    core.ops.function.FnMut F (Slice T) Bool) =>
-    core.iter.traits.iterator.Iterator.any.default
-    (core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice
-    T) opsfunctionFnMutPTupleShared0SliceBoolInst
-}
-
 /-- [v5_merkle_fixed_hash_adapter::merkle::DOM_NODE]
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 13:0-13:26 -/
+    Source: 'src/../../../../crates/aspis-core/src/merkle.rs', lines 13:0-13:26 -/
 @[global_simps, irreducible] def merkle.DOM_NODE : Std.U8 := 17#u8
 
 /-- [v5_merkle_fixed_hash_adapter::merkle::DOM_NODE4]
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 14:0-14:27 -/
+    Source: 'src/../../../../crates/aspis-core/src/merkle.rs', lines 14:0-14:27 -/
 @[global_simps, irreducible] def merkle.DOM_NODE4 : Std.U8 := 18#u8
 
 /-- [v5_merkle_fixed_hash_adapter::merkle::fixed_node_hash]:
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 24:0-30:1 -/
+    Source: 'src/../../../../crates/aspis-core/src/merkle.rs', lines 24:0-30:1 -/
 def merkle.fixed_node_hash
   (left : Array Std.U8 32#usize) (right : Array Std.U8 32#usize) :
   Result (Array Std.U8 32#usize)
@@ -81,7 +54,7 @@ def merkle.fixed_node_hash
   merkle.fixed_hashv s7
 
 /-- [v5_merkle_fixed_hash_adapter::merkle::topology_parent_level]: loop body 0:
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 383:4-403:5 -/
+    Source: 'src/../../../../crates/aspis-core/src/merkle.rs', lines 383:4-403:5 -/
 @[rust_loop_body]
 def merkle.topology_parent_level_loop.body
   (indices : Slice Std.U32) (parents : alloc.vec.Vec Std.U32)
@@ -118,7 +91,7 @@ def merkle.topology_parent_level_loop.body
   else ok (done (parents, masks, have_parent, parent, present))
 
 /-- [v5_merkle_fixed_hash_adapter::merkle::topology_parent_level]: loop 0:
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 383:4-403:5 -/
+    Source: 'src/../../../../crates/aspis-core/src/merkle.rs', lines 383:4-403:5 -/
 @[rust_loop]
 def merkle.topology_parent_level_loop
   (indices : Slice Std.U32) (parents : alloc.vec.Vec Std.U32)
@@ -134,7 +107,7 @@ def merkle.topology_parent_level_loop
     (parents, masks, position, have_parent, parent, present)
 
 /-- [v5_merkle_fixed_hash_adapter::merkle::topology_parent_level]:
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 375:0-410:1 -/
+    Source: 'src/../../../../crates/aspis-core/src/merkle.rs', lines 375:0-410:1 -/
 def merkle.topology_parent_level
   (indices : Slice Std.U32) :
   Result ((alloc.vec.Vec Std.U32) × (alloc.vec.Vec Std.U8))
@@ -153,8 +126,51 @@ def merkle.topology_parent_level
     ok (parents2, masks2)
   else ok (parents1, masks1)
 
+/-- [v5_merkle_fixed_hash_adapter::merkle::topology_indices_are_strictly_increasing]:
+    Source: 'src/../../../../crates/aspis-core/src/merkle.rs', lines 414:0-422:1 -/
+def merkle.topology_indices_are_strictly_increasing
+  (indices : Slice Std.U32) (ordinal : Std.Usize) : Result Bool := do
+  let i ← lift (Std.Usize.wrapping_add ordinal 1#usize)
+  let i1 := Slice.len indices
+  if i >= i1
+  then ok true
+  else
+    let i2 ← Slice.index_usize indices ordinal
+    let i3 ← lift (Std.Usize.wrapping_add ordinal 1#usize)
+    let i4 ← Slice.index_usize indices i3
+    if i2 >= i4
+    then ok false
+    else
+      let i5 ← lift (Std.Usize.wrapping_add ordinal 1#usize)
+      merkle.topology_indices_are_strictly_increasing indices i5
+partial_fixpoint
+
+/-- [v5_merkle_fixed_hash_adapter::merkle::u32_slices_equal]:
+    Source: 'src/../../../../crates/aspis-core/src/merkle.rs', lines 424:0-434:1 -/
+def merkle.u32_slices_equal
+  (left : Slice Std.U32) (right : Slice Std.U32) (ordinal : Std.Usize) :
+  Result Bool
+  := do
+  let i := Slice.len left
+  let i1 := Slice.len right
+  if i != i1
+  then ok false
+  else
+    let i2 := Slice.len left
+    if ordinal >= i2
+    then ok true
+    else
+      let i3 ← Slice.index_usize left ordinal
+      let i4 ← Slice.index_usize right ordinal
+      if i3 != i4
+      then ok false
+      else
+        let i5 ← lift (Std.Usize.wrapping_add ordinal 1#usize)
+        merkle.u32_slices_equal left right i5
+partial_fixpoint
+
 /-- [v5_merkle_fixed_hash_adapter::merkle::build_topology_levels]:
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 417:0-450:1 -/
+    Source: 'src/../../../../crates/aspis-core/src/merkle.rs', lines 439:0-472:1 -/
 def merkle.build_topology_levels
   (radix_levels : Std.Usize) (level : Std.Usize) (current_start : Std.Usize)
   (current_end : Std.Usize) (level_indices : alloc.vec.Vec Std.U32)
@@ -194,56 +210,8 @@ def merkle.build_topology_levels
       level_indices1 level_offsets1 group_masks1 group_offsets1
 partial_fixpoint
 
-/-- [v5_merkle_fixed_hash_adapter::merkle::{v5_merkle_fixed_hash_adapter::merkle::Radix4BinaryCapTopology}::new::{impl core::ops::function::FnMut<(&'_ [u32],), bool> for v5_merkle_fixed_hash_adapter::merkle::{v5_merkle_fixed_hash_adapter::merkle::Radix4BinaryCapTopology}::new::closure}::call_mut]:
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 459:34-459:59 -/
-def
-  merkle.Radix4BinaryCapTopology.new.closure.Insts.CoreOpsFunctionFnMutTupleSharedSliceU32Bool.call_mut
-  (c : merkle.Radix4BinaryCapTopology.new.closure)
-  (tupled_args : Slice Std.U32) :
-  Result (Bool × merkle.Radix4BinaryCapTopology.new.closure)
-  := do
-  let i ← Slice.index_usize tupled_args 0#usize
-  let i1 ← Slice.index_usize tupled_args 1#usize
-  ok (i >= i1, c)
-
-/-- [v5_merkle_fixed_hash_adapter::merkle::{v5_merkle_fixed_hash_adapter::merkle::Radix4BinaryCapTopology}::new::{impl core::ops::function::FnOnce<(&'_ [u32],), bool> for v5_merkle_fixed_hash_adapter::merkle::{v5_merkle_fixed_hash_adapter::merkle::Radix4BinaryCapTopology}::new::closure}::call_once]:
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 459:34-459:59 -/
-def
-  merkle.Radix4BinaryCapTopology.new.closure.Insts.CoreOpsFunctionFnOnceTupleSharedSliceU32Bool.call_once
-  (c : merkle.Radix4BinaryCapTopology.new.closure) (s : Slice Std.U32) :
-  Result Bool
-  := do
-  let (b, _) ←
-    merkle.Radix4BinaryCapTopology.new.closure.Insts.CoreOpsFunctionFnMutTupleSharedSliceU32Bool.call_mut
-      c s
-  ok b
-
-/-- Trait implementation: [v5_merkle_fixed_hash_adapter::merkle::{v5_merkle_fixed_hash_adapter::merkle::Radix4BinaryCapTopology}::new::{impl core::ops::function::FnOnce<(&'_ [u32],), bool> for v5_merkle_fixed_hash_adapter::merkle::{v5_merkle_fixed_hash_adapter::merkle::Radix4BinaryCapTopology}::new::closure}]
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 459:34-459:59 -/
-@[reducible]
-def
-  merkle.Radix4BinaryCapTopology.new.closure.Insts.CoreOpsFunctionFnOnceTupleSharedSliceU32Bool
-  : core.ops.function.FnOnce merkle.Radix4BinaryCapTopology.new.closure (Slice
-  Std.U32) Bool := {
-  call_once :=
-    merkle.Radix4BinaryCapTopology.new.closure.Insts.CoreOpsFunctionFnOnceTupleSharedSliceU32Bool.call_once
-}
-
-/-- Trait implementation: [v5_merkle_fixed_hash_adapter::merkle::{v5_merkle_fixed_hash_adapter::merkle::Radix4BinaryCapTopology}::new::{impl core::ops::function::FnMut<(&'_ [u32],), bool> for v5_merkle_fixed_hash_adapter::merkle::{v5_merkle_fixed_hash_adapter::merkle::Radix4BinaryCapTopology}::new::closure}]
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 459:34-459:59 -/
-@[reducible]
-def
-  merkle.Radix4BinaryCapTopology.new.closure.Insts.CoreOpsFunctionFnMutTupleSharedSliceU32Bool
-  : core.ops.function.FnMut merkle.Radix4BinaryCapTopology.new.closure (Slice
-  Std.U32) Bool := {
-  FnOnceInst :=
-    merkle.Radix4BinaryCapTopology.new.closure.Insts.CoreOpsFunctionFnOnceTupleSharedSliceU32Bool
-  call_mut :=
-    merkle.Radix4BinaryCapTopology.new.closure.Insts.CoreOpsFunctionFnMutTupleSharedSliceU32Bool.call_mut
-}
-
 /-- [v5_merkle_fixed_hash_adapter::merkle::{v5_merkle_fixed_hash_adapter::merkle::Radix4BinaryCapTopology}::new]:
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 455:4-491:5
+    Source: 'src/../../../../crates/aspis-core/src/merkle.rs', lines 477:4-513:5
     Visibility: public -/
 def merkle.Radix4BinaryCapTopology.new
   (binary_depth : Std.U32) (indices : Slice Std.U32) :
@@ -256,60 +224,50 @@ def merkle.Radix4BinaryCapTopology.new
     if binary_depth >= 32#u32
     then ok none
     else
-      let w ← core.slice.Slice.windows indices 2#usize
-      let (b1, _) ←
-        core.iter.traits.iterator.Iterator.any.default
-          (core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice
-          Std.U32)
-          merkle.Radix4BinaryCapTopology.new.closure.Insts.CoreOpsFunctionFnMutTupleSharedSliceU32Bool
-          w ()
+      let b1 ←
+        merkle.topology_indices_are_strictly_increasing indices 0#usize
       if b1
-      then ok none
-      else
-        let o ← core.slice.Slice.last indices
-        let o1 ← core.option.OptionShared0T.copied core.marker.CopyU32 o
-        let cf ← core.option.Option.Insts.CoreOpsTry_traitTry.branch o1
-        match cf with
-        | core.ops.control_flow.ControlFlow.Continue val =>
-          let i ← lift (Std.U32.wrapping_shl 1#u32 binary_depth)
-          if val >= i
-          then ok none
-          else
-            let i1 ← binary_depth / 2#u32
-            let radix_levels ← lift (UScalar.cast .Usize i1)
-            let i2 := Slice.len indices
-            let i3 ← lift (Std.Usize.wrapping_add radix_levels 1#usize)
-            let i4 ← lift (Std.Usize.wrapping_mul i2 i3)
-            let level_indices := alloc.vec.Vec.with_capacity Std.U32 i4
-            let level_indices1 ←
-              alloc.vec.Vec.extend_from_slice core.clone.CloneU32 level_indices
-                indices
-            let level_offsets := Array.repeat 17#usize 0#usize
-            let i5 := Slice.len indices
-            let i6 ← lift (Std.Usize.wrapping_mul i5 radix_levels)
-            let group_masks := alloc.vec.Vec.with_capacity Std.U8 i6
-            let group_offsets := Array.repeat 16#usize 0#usize
-            let initial_end := alloc.vec.Vec.len level_indices1
-            let (level_indices2, level_offsets1, group_masks1, group_offsets1)
-              ←
-              merkle.build_topology_levels radix_levels 0#usize 0#usize
-                initial_end level_indices1 level_offsets group_masks
-                group_offsets
-            ok (some
-              {
-                binary_depth,
-                radix_levels,
-                level_indices := level_indices2,
-                level_offsets := level_offsets1,
-                group_masks := group_masks1,
-                group_offsets := group_offsets1
-              })
-        | core.ops.control_flow.ControlFlow.Break residual =>
-          core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionInfallible.from_residual
-            merkle.Radix4BinaryCapTopology residual
+      then
+        let i := Slice.len indices
+        let i1 ← lift (Std.Usize.wrapping_sub i 1#usize)
+        let i2 ← Slice.index_usize indices i1
+        let i3 ← lift (Std.U32.wrapping_shl 1#u32 binary_depth)
+        if i2 >= i3
+        then ok none
+        else
+          let i4 ← binary_depth / 2#u32
+          let radix_levels ← lift (UScalar.cast .Usize i4)
+          let i5 := Slice.len indices
+          let i6 ← lift (Std.Usize.wrapping_add radix_levels 1#usize)
+          let i7 ← lift (Std.Usize.wrapping_mul i5 i6)
+          let level_indices := alloc.vec.Vec.with_capacity Std.U32 i7
+          let level_indices1 ←
+            alloc.vec.Vec.extend_from_slice core.clone.CloneU32 level_indices
+              indices
+          let level_offsets := Array.repeat 17#usize 0#usize
+          let i8 := Slice.len indices
+          let i9 ← lift (Std.Usize.wrapping_mul i8 radix_levels)
+          let group_masks := alloc.vec.Vec.with_capacity Std.U8 i9
+          let group_offsets := Array.repeat 16#usize 0#usize
+          let initial_end := alloc.vec.Vec.len level_indices1
+          let (level_indices2, level_offsets1, group_masks1, group_offsets1)
+            ←
+            merkle.build_topology_levels radix_levels 0#usize 0#usize
+              initial_end level_indices1 level_offsets group_masks
+              group_offsets
+          ok (some
+            {
+              binary_depth,
+              radix_levels,
+              level_indices := level_indices2,
+              level_offsets := level_offsets1,
+              group_masks := group_masks1,
+              group_offsets := group_offsets1
+            })
+      else ok none
 
 /-- [v5_merkle_fixed_hash_adapter::merkle::{v5_merkle_fixed_hash_adapter::merkle::Radix4BinaryCapTopology}::level_indices]:
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 493:4-499:5 -/
+    Source: 'src/../../../../crates/aspis-core/src/merkle.rs', lines 515:4-521:5 -/
 def merkle.Radix4BinaryCapTopology.impl.level_indices
   (self : merkle.Radix4BinaryCapTopology) (level : Std.Usize) :
   Result (Option (Slice Std.U32))
@@ -325,39 +283,46 @@ def merkle.Radix4BinaryCapTopology.impl.level_indices
       { start := i, «end» := i2 }
 
 /-- [v5_merkle_fixed_hash_adapter::merkle::{v5_merkle_fixed_hash_adapter::merkle::Radix4BinaryCapTopology}::matched_suffix]:
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 510:4-529:5 -/
+    Source: 'src/../../../../crates/aspis-core/src/merkle.rs', lines 532:4-553:5 -/
 def merkle.Radix4BinaryCapTopology.matched_suffix
   (self : merkle.Radix4BinaryCapTopology) (radix_level : Std.Usize)
   (binary_depth : Std.U32) (indices : Slice Std.U32) :
   Result (Option merkle.MatchedRadix4BinaryCapSuffix)
   := do
-  if radix_level <= self.radix_levels
-  then
-    let i ← lift (UScalar.cast .U32 radix_level)
-    let i1 ← lift (Std.U32.wrapping_mul i 2#u32)
-    let o ← lift (U32.checked_sub self.binary_depth i1)
-    let b ←
-      core.option.Option.Insts.CoreCmpPartialEqOption.eq core.cmp.PartialEqU32
-        o (some binary_depth)
-    if b
-    then
-      let o1 ←
-        merkle.Radix4BinaryCapTopology.impl.level_indices self radix_level
-      let b1 ←
-        core.option.Option.Insts.CoreCmpPartialEqOption.eq
-          (core.cmp.PartialEqShared (Slice.Insts.CoreCmpPartialEqSlice
-          core.cmp.PartialEqU32)) o1 (some indices)
-      if b1
+  let i ← lift (UScalar.cast .U32 radix_level)
+  let i1 ← lift (Std.U32.wrapping_mul i 2#u32)
+  let o ← lift (U32.checked_sub self.binary_depth i1)
+  let cf ← core.option.Option.Insts.CoreOpsTry_traitTry.branch o
+  match cf with
+  | core.ops.control_flow.ControlFlow.Continue val =>
+    let o1 ←
+      merkle.Radix4BinaryCapTopology.impl.level_indices self radix_level
+    let cf1 ← core.option.Option.Insts.CoreOpsTry_traitTry.branch o1
+    match cf1 with
+    | core.ops.control_flow.ControlFlow.Continue val1 =>
+      if radix_level <= self.radix_levels
       then
-        let i2 := Slice.len indices
-        ok (some
-          { topology := self, radix_level, binary_depth, expected_len := i2 })
+        if val = binary_depth
+        then
+          let b ← merkle.u32_slices_equal val1 indices 0#usize
+          if b
+          then
+            let i2 := Slice.len indices
+            ok (some
+              { topology := self, radix_level, binary_depth, expected_len := i2
+              })
+          else ok none
+        else ok none
       else ok none
-    else ok none
-  else ok none
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionInfallible.from_residual
+        merkle.MatchedRadix4BinaryCapSuffix residual
+  | core.ops.control_flow.ControlFlow.Break residual =>
+    core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionInfallible.from_residual
+      merkle.MatchedRadix4BinaryCapSuffix residual
 
 /-- [v5_merkle_fixed_hash_adapter::merkle::fixed_write_radix_child]: loop body 0:
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 565:4-568:5 -/
+    Source: 'src/../../../../crates/aspis-core/src/merkle.rs', lines 589:4-592:5 -/
 @[rust_loop_body]
 def merkle.fixed_write_radix_child_loop.body
   (slot : Std.Usize) (child : Array Std.U8 32#usize)
@@ -377,7 +342,7 @@ def merkle.fixed_write_radix_child_loop.body
   else ok (done input)
 
 /-- [v5_merkle_fixed_hash_adapter::merkle::fixed_write_radix_child]: loop 0:
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 565:4-568:5 -/
+    Source: 'src/../../../../crates/aspis-core/src/merkle.rs', lines 589:4-592:5 -/
 @[rust_loop]
 def merkle.fixed_write_radix_child_loop
   (input : Array Std.U8 129#usize) (slot : Std.Usize)
@@ -390,7 +355,7 @@ def merkle.fixed_write_radix_child_loop
     (input, byte)
 
 /-- [v5_merkle_fixed_hash_adapter::merkle::fixed_write_radix_child]:
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 563:0-569:1 -/
+    Source: 'src/../../../../crates/aspis-core/src/merkle.rs', lines 587:0-593:1 -/
 @[reducible]
 def merkle.fixed_write_radix_child
   (input : Array Std.U8 129#usize) (slot : Std.Usize)
@@ -399,11 +364,10 @@ def merkle.fixed_write_radix_child
   := do
   merkle.fixed_write_radix_child_loop input slot child 0#usize
 
-/-- [v5_merkle_fixed_hash_adapter::merkle::verify_radix4_binary_cap_with_matched_topology]: loop body 3:
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 628:24-631:25 -/
+/-- [v5_merkle_fixed_hash_adapter::merkle::fixed_fill_radix_children]: loop body 0:
+    Source: 'src/../../../../crates/aspis-core/src/merkle.rs', lines 624:8-627:9 -/
 @[rust_loop_body]
-def
-  merkle.verify_radix4_binary_cap_with_matched_topology_loop0_loop0_loop0_loop0.body
+def merkle.fixed_fill_radix_children_loop.body
   (node_bytes : Slice Std.U8) (node_pos : Std.Usize)
   (value : Array Std.U8 32#usize) (byte : Std.Usize) :
   Result (ControlFlow ((Array Std.U8 32#usize) × Std.Usize) (Array Std.U8
@@ -418,158 +382,114 @@ def
     ok (cont (a, byte1))
   else ok (done value)
 
-/-- [v5_merkle_fixed_hash_adapter::merkle::verify_radix4_binary_cap_with_matched_topology]: loop 3:
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 628:24-631:25 -/
+/-- [v5_merkle_fixed_hash_adapter::merkle::fixed_fill_radix_children]: loop 0:
+    Source: 'src/../../../../crates/aspis-core/src/merkle.rs', lines 624:8-627:9 -/
 @[rust_loop]
-def
-  merkle.verify_radix4_binary_cap_with_matched_topology_loop0_loop0_loop0_loop0
+def merkle.fixed_fill_radix_children_loop
   (node_bytes : Slice Std.U8) (node_pos : Std.Usize)
   (value : Array Std.U8 32#usize) (byte : Std.Usize) :
   Result (Array Std.U8 32#usize)
   := do
   loop
-    (fun (value1, byte1) =>
-      merkle.verify_radix4_binary_cap_with_matched_topology_loop0_loop0_loop0_loop0.body
+    (fun (value1, byte1) => merkle.fixed_fill_radix_children_loop.body
       node_bytes node_pos value1 byte1)
     (value, byte)
 
-/-- [v5_merkle_fixed_hash_adapter::merkle::verify_radix4_binary_cap_with_matched_topology]: loop body 2:
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 609:12-638:13 -/
-@[rust_loop_body]
-def
-  merkle.verify_radix4_binary_cap_with_matched_topology_loop0_loop0_loop0.body
-  (node_bytes : Slice Std.U8) (level : alloc.vec.Vec (Array Std.U8 32#usize))
-  (present : Std.U8) (node_pos : Std.Usize) (failed : Bool)
-  (value_pos : Std.Usize) (input : Array Std.U8 129#usize) (slot : Std.Usize) :
-  Result (ControlFlow (Std.Usize × Bool × Std.Usize × (Array Std.U8
-    129#usize) × Std.Usize) (Std.Usize × Bool × Std.Usize × (Array Std.U8
-    129#usize)))
+/-- [v5_merkle_fixed_hash_adapter::merkle::fixed_fill_radix_children]:
+    Source: 'src/../../../../crates/aspis-core/src/merkle.rs', lines 599:0-640:1 -/
+def merkle.fixed_fill_radix_children
+  (node_bytes : Slice Std.U8) (level : Slice (Array Std.U8 32#usize))
+  (present : Std.U8) (slot : Std.Usize) (node_pos : Std.Usize)
+  (value_pos : Std.Usize) (input : Array Std.U8 129#usize) :
+  Result (Option ((Array Std.U8 129#usize) × Std.Usize × Std.Usize))
   := do
-  if slot < 4#usize
-  then
+  if slot >= 4#usize
+  then ok (some (input, node_pos, value_pos))
+  else
     let i ← lift (Std.U8.wrapping_shl 1#u8 slot)
     let i1 ← lift (present &&& i)
     if i1 != 0#u8
     then
-      let s := alloc.vec.Vec.deref level
       let o ←
         core.slice.Slice.get (core.slice.index.SliceIndexUsizeSlice (Array
-          Std.U8 32#usize)) s value_pos
+          Std.U8 32#usize)) level value_pos
       let o1 ←
         core.option.OptionShared0T.copied (Array.Insts.CoreMarkerCopy 32#usize
           core.marker.CopyU8) o
-      let (failed1, value_pos1, child) ←
-        match o1 with
-        | none =>
-          let child1 := Array.repeat 32#usize 0#u8
-          ok (true, value_pos, child1)
-        | some value =>
-          do
-          let value_pos2 ← lift (Std.Usize.wrapping_add value_pos 1#usize)
-          ok (failed, value_pos2, value)
-      let input1 ← merkle.fixed_write_radix_child input slot child
-      let slot1 ← lift (Std.Usize.wrapping_add slot 1#usize)
-      ok (cont (node_pos, failed1, value_pos1, input1, slot1))
+      match o1 with
+      | none => ok none
+      | some value =>
+        let next_value_pos ← lift (Std.Usize.wrapping_add value_pos 1#usize)
+        let input1 ← merkle.fixed_write_radix_child input slot value
+        let i2 ← lift (Std.Usize.wrapping_add slot 1#usize)
+        merkle.fixed_fill_radix_children node_bytes level present i2 node_pos
+          next_value_pos input1
     else
       let i2 ← lift (Std.Usize.wrapping_add node_pos 32#usize)
       let i3 := Slice.len node_bytes
       if i2 > i3
-      then
-        let child := Array.repeat 32#usize 0#u8
-        let input1 ← merkle.fixed_write_radix_child input slot child
-        let slot1 ← lift (Std.Usize.wrapping_add slot 1#usize)
-        ok (cont (node_pos, true, value_pos, input1, slot1))
+      then ok none
       else
         let value := Array.repeat 32#usize 0#u8
-        let child ←
-          merkle.verify_radix4_binary_cap_with_matched_topology_loop0_loop0_loop0_loop0
-            node_bytes node_pos value 0#usize
-        let node_pos1 ← lift (Std.Usize.wrapping_add node_pos 32#usize)
-        let input1 ← merkle.fixed_write_radix_child input slot child
-        let slot1 ← lift (Std.Usize.wrapping_add slot 1#usize)
-        ok (cont (node_pos1, failed, value_pos, input1, slot1))
-  else ok (done (node_pos, failed, value_pos, input))
+        let value1 ←
+          merkle.fixed_fill_radix_children_loop node_bytes node_pos value
+            0#usize
+        let next_node_pos ← lift (Std.Usize.wrapping_add node_pos 32#usize)
+        let input1 ← merkle.fixed_write_radix_child input slot value1
+        let i4 ← lift (Std.Usize.wrapping_add slot 1#usize)
+        merkle.fixed_fill_radix_children node_bytes level present i4
+          next_node_pos value_pos input1
+partial_fixpoint
 
-/-- [v5_merkle_fixed_hash_adapter::merkle::verify_radix4_binary_cap_with_matched_topology]: loop 2:
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 609:12-638:13 -/
-@[rust_loop]
-def merkle.verify_radix4_binary_cap_with_matched_topology_loop0_loop0_loop0
-  (node_bytes : Slice Std.U8) (level : alloc.vec.Vec (Array Std.U8 32#usize))
-  (node_pos : Std.Usize) (failed : Bool) (value_pos : Std.Usize)
-  (present : Std.U8) (input : Array Std.U8 129#usize) (slot : Std.Usize) :
-  Result (Std.Usize × Bool × Std.Usize × (Array Std.U8 129#usize))
+/-- [v5_merkle_fixed_hash_adapter::merkle::fixed_hash_radix_groups]:
+    Source: 'src/../../../../crates/aspis-core/src/merkle.rs', lines 644:0-678:1 -/
+def merkle.fixed_hash_radix_groups
+  (node_bytes : Slice Std.U8) (level : Slice (Array Std.U8 32#usize))
+  (masks : Slice Std.U8) (mask_pos : Std.Usize) (node_pos : Std.Usize)
+  (value_pos : Std.Usize) (next : alloc.vec.Vec (Array Std.U8 32#usize)) :
+  Result (Option ((alloc.vec.Vec (Array Std.U8 32#usize)) × Std.Usize ×
+    Std.Usize))
   := do
-  loop
-    (fun (node_pos1, failed1, value_pos1, input1, slot1) =>
-      merkle.verify_radix4_binary_cap_with_matched_topology_loop0_loop0_loop0.body
-      node_bytes level present node_pos1 failed1 value_pos1 input1 slot1)
-    (node_pos, failed, value_pos, input, slot)
-
-/-- [v5_merkle_fixed_hash_adapter::merkle::verify_radix4_binary_cap_with_matched_topology]: loop body 1:
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 601:8-641:9 -/
-@[rust_loop_body]
-def merkle.verify_radix4_binary_cap_with_matched_topology_loop0_loop0.body
-  (node_bytes : Slice Std.U8) (level : alloc.vec.Vec (Array Std.U8 32#usize))
-  (masks : alloc.vec.Vec Std.U8) (next : alloc.vec.Vec (Array Std.U8 32#usize))
-  (node_pos : Std.Usize) (failed : Bool) (value_pos : Std.Usize)
-  (mask_pos : Std.Usize) :
-  Result (ControlFlow ((alloc.vec.Vec (Array Std.U8 32#usize)) × Std.Usize ×
-    Bool × Std.Usize × Std.Usize) ((alloc.vec.Vec (Array Std.U8 32#usize)) ×
-    Std.Usize × Bool × Std.Usize))
-  := do
-  let i := alloc.vec.Vec.len masks
-  if mask_pos < i
-  then
-    let present ←
-      alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice Std.U8) masks
-        mask_pos
+  let i := Slice.len masks
+  if mask_pos >= i
+  then ok (some (next, node_pos, value_pos))
+  else
     let input := Array.repeat 129#usize 0#u8
-    let a ← Array.update input 0#usize merkle.DOM_NODE4
-    let (node_pos1, failed1, value_pos1, input1) ←
-      merkle.verify_radix4_binary_cap_with_matched_topology_loop0_loop0_loop0
-        node_bytes level node_pos failed value_pos present a 0#usize
-    let s ← lift (Array.to_slice input1)
-    let s1 ← lift (Array.to_slice (Array.make 1#usize [ s ]))
-    let a1 ← merkle.fixed_hashv s1
-    let next1 ← alloc.vec.Vec.push next a1
-    let mask_pos1 ← lift (Std.Usize.wrapping_add mask_pos 1#usize)
-    ok (cont (next1, node_pos1, failed1, value_pos1, mask_pos1))
-  else ok (done (next, node_pos, failed, value_pos))
+    let input1 ← Array.update input 0#usize merkle.DOM_NODE4
+    let i1 ← Slice.index_usize masks mask_pos
+    let o ←
+      merkle.fixed_fill_radix_children node_bytes level i1 0#usize node_pos
+        value_pos input1
+    let cf ← core.option.Option.Insts.CoreOpsTry_traitTry.branch o
+    match cf with
+    | core.ops.control_flow.ControlFlow.Continue val =>
+      let (input2, node_pos1, value_pos1) := val
+      let s ← lift (Array.to_slice input2)
+      let s1 ← lift (Array.to_slice (Array.make 1#usize [ s ]))
+      let a ← merkle.fixed_hashv s1
+      let next1 ← alloc.vec.Vec.push next a
+      let i2 ← lift (Std.Usize.wrapping_add mask_pos 1#usize)
+      merkle.fixed_hash_radix_groups node_bytes level masks i2 node_pos1
+        value_pos1 next1
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionInfallible.from_residual
+        ((alloc.vec.Vec (Array Std.U8 32#usize)) × Std.Usize × Std.Usize)
+        residual
+partial_fixpoint
 
-/-- [v5_merkle_fixed_hash_adapter::merkle::verify_radix4_binary_cap_with_matched_topology]: loop 1:
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 601:8-641:9 -/
-@[rust_loop]
-def merkle.verify_radix4_binary_cap_with_matched_topology_loop0_loop0
-  (node_bytes : Slice Std.U8) (level : alloc.vec.Vec (Array Std.U8 32#usize))
-  (next : alloc.vec.Vec (Array Std.U8 32#usize)) (node_pos : Std.Usize)
-  (failed : Bool) (masks : alloc.vec.Vec Std.U8) (value_pos : Std.Usize)
-  (mask_pos : Std.Usize) :
-  Result ((alloc.vec.Vec (Array Std.U8 32#usize)) × Std.Usize × Bool ×
-    Std.Usize)
-  := do
-  loop
-    (fun (next1, node_pos1, failed1, value_pos1, mask_pos1) =>
-      merkle.verify_radix4_binary_cap_with_matched_topology_loop0_loop0.body
-      node_bytes level masks next1 node_pos1 failed1 value_pos1 mask_pos1)
-    (next, node_pos, failed, value_pos, mask_pos)
-
-/-- [v5_merkle_fixed_hash_adapter::merkle::verify_radix4_binary_cap_with_matched_topology]: loop body 0:
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 591:4-647:5 -/
-@[rust_loop_body]
-def merkle.verify_radix4_binary_cap_with_matched_topology_loop0.body
-  (node_bytes : Slice Std.U8) (topology : merkle.Radix4BinaryCapTopology)
+/-- [v5_merkle_fixed_hash_adapter::merkle::fixed_hash_radix_levels]:
+    Source: 'src/../../../../crates/aspis-core/src/merkle.rs', lines 682:0-715:1 -/
+def merkle.fixed_hash_radix_levels
+  (topology : merkle.Radix4BinaryCapTopology) (node_bytes : Slice Std.U8)
+  (plan_level : Std.Usize) (node_pos : Std.Usize)
   (level : alloc.vec.Vec (Array Std.U8 32#usize))
-  (next : alloc.vec.Vec (Array Std.U8 32#usize)) (node_pos : Std.Usize)
-  (plan_level : Std.Usize) (failed : Bool) :
-  Result (ControlFlow ((alloc.vec.Vec (Array Std.U8 32#usize)) ×
-    (alloc.vec.Vec (Array Std.U8 32#usize)) × Std.Usize × Std.Usize × Bool)
-    (Std.U32 × Std.Usize × (alloc.vec.Vec Std.U32) × (Array Std.Usize
-    17#usize) × (alloc.vec.Vec Std.U8) × (Array Std.Usize 16#usize) ×
-    (alloc.vec.Vec (Array Std.U8 32#usize)) × (alloc.vec.Vec (Array Std.U8
-    32#usize)) × Std.Usize × Bool))
+  (next : alloc.vec.Vec (Array Std.U8 32#usize)) :
+  Result (Option ((alloc.vec.Vec (Array Std.U8 32#usize)) × (alloc.vec.Vec
+    (Array Std.U8 32#usize)) × Std.Usize))
   := do
-  if plan_level < topology.radix_levels
-  then
+  if plan_level >= topology.radix_levels
+  then ok (some (level, next, node_pos))
+  else
     let next1 ← alloc.vec.Vec.clear Global next
     let mask_start ← Array.index_usize topology.group_offsets plan_level
     let i ← lift (Std.Usize.wrapping_add plan_level 1#usize)
@@ -578,42 +498,31 @@ def merkle.verify_radix4_binary_cap_with_matched_topology_loop0.body
       alloc.vec.Vec.index (core.slice.index.SliceIndexRangeUsizeSlice Std.U8)
         topology.group_masks { start := mask_start, «end» := mask_end }
     let masks ← alloc.slice.Slice.to_vec core.clone.CloneU8 s
-    let (next2, node_pos1, failed1, value_pos) ←
-      merkle.verify_radix4_binary_cap_with_matched_topology_loop0_loop0
-        node_bytes level next1 node_pos failed masks 0#usize 0#usize
-    let i1 := alloc.vec.Vec.len level
-    let failed2 ← if value_pos != i1
-                    then ok true
-                    else ok failed1
-    let (level1, next3) := core.mem.swap level next2
-    let plan_level1 ← lift (Std.Usize.wrapping_add plan_level 1#usize)
-    ok (cont (level1, next3, node_pos1, plan_level1, failed2))
-  else
-    ok (done (topology.binary_depth, topology.radix_levels,
-      topology.level_indices, topology.level_offsets, topology.group_masks,
-      topology.group_offsets, level, next, node_pos, failed))
-
-/-- [v5_merkle_fixed_hash_adapter::merkle::verify_radix4_binary_cap_with_matched_topology]: loop 0:
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 591:4-647:5 -/
-@[rust_loop]
-def merkle.verify_radix4_binary_cap_with_matched_topology_loop0
-  (node_bytes : Slice Std.U8) (topology : merkle.Radix4BinaryCapTopology)
-  (level : alloc.vec.Vec (Array Std.U8 32#usize))
-  (next : alloc.vec.Vec (Array Std.U8 32#usize)) (node_pos : Std.Usize)
-  (plan_level : Std.Usize) (failed : Bool) :
-  Result (Std.U32 × Std.Usize × (alloc.vec.Vec Std.U32) × (Array Std.Usize
-    17#usize) × (alloc.vec.Vec Std.U8) × (Array Std.Usize 16#usize) ×
-    (alloc.vec.Vec (Array Std.U8 32#usize)) × (alloc.vec.Vec (Array Std.U8
-    32#usize)) × Std.Usize × Bool)
-  := do
-  loop
-    (fun (level1, next1, node_pos1, plan_level1, failed1) =>
-      merkle.verify_radix4_binary_cap_with_matched_topology_loop0.body
-      node_bytes topology level1 next1 node_pos1 plan_level1 failed1)
-    (level, next, node_pos, plan_level, failed)
+    let level_len := alloc.vec.Vec.len level
+    let s1 := alloc.vec.Vec.deref level
+    let s2 := alloc.vec.Vec.deref masks
+    let o ←
+      merkle.fixed_hash_radix_groups node_bytes s1 s2 0#usize node_pos 0#usize
+        next1
+    let cf ← core.option.Option.Insts.CoreOpsTry_traitTry.branch o
+    match cf with
+    | core.ops.control_flow.ControlFlow.Continue val =>
+      let (next2, node_pos1, value_pos) := val
+      if value_pos != level_len
+      then ok none
+      else
+        let (level1, next3) := core.mem.swap level next2
+        let i1 ← lift (Std.Usize.wrapping_add plan_level 1#usize)
+        merkle.fixed_hash_radix_levels topology node_bytes i1 node_pos1 level1
+          next3
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionInfallible.from_residual
+        ((alloc.vec.Vec (Array Std.U8 32#usize)) × (alloc.vec.Vec (Array
+        Std.U8 32#usize)) × Std.Usize) residual
+partial_fixpoint
 
 /-- [v5_merkle_fixed_hash_adapter::merkle::verify_radix4_binary_cap_with_matched_topology]:
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 573:0-683:1 -/
+    Source: 'src/../../../../crates/aspis-core/src/merkle.rs', lines 719:0-779:1 -/
 def merkle.verify_radix4_binary_cap_with_matched_topology
   (root : Array Std.U8 32#usize) (node_bytes : Slice Std.U8)
   (matched : merkle.MatchedRadix4BinaryCapSuffix)
@@ -635,99 +544,98 @@ def merkle.verify_radix4_binary_cap_with_matched_topology
       if i2 != matched.expected_len
       then ok (false, level, next)
       else
-        let (i3, i4, v, a, v1, a1, level1, next1, node_pos, failed) ←
-          merkle.verify_radix4_binary_cap_with_matched_topology_loop0
-            node_bytes matched.topology level next 0#usize matched.radix_level
-            false
-        if failed
-        then ok (false, level1, next1)
-        else
-          let o ←
-            merkle.Radix4BinaryCapTopology.impl.level_indices
-              {
-                binary_depth := i3,
-                radix_levels := i4,
-                level_indices := v,
-                level_offsets := a,
-                group_masks := v1,
-                group_offsets := a1
-              } i4
-          match o with
-          | none => ok (false, level1, next1)
+        let initial_level ←
+          alloc.vec.CloneVec.clone (core.clone.CloneArray 32#usize
+            core.clone.CloneU8) level
+        let initial_next ←
+          alloc.vec.CloneVec.clone (core.clone.CloneArray 32#usize
+            core.clone.CloneU8) next
+        let o ←
+          merkle.fixed_hash_radix_levels matched.topology node_bytes
+            matched.radix_level 0#usize initial_level initial_next
+        match o with
+        | none => ok (false, level, next)
+        | some t =>
+          let (final_level, final_next, node_pos) := t
+          let o1 ←
+            merkle.Radix4BinaryCapTopology.impl.level_indices matched.topology
+              matched.topology.radix_levels
+          match o1 with
+          | none => ok (false, final_level, final_next)
           | some indices =>
-            let i5 ← lift (matched.binary_depth &&& 1#u32)
-            if i5 = 0#u32
+            let i3 ← lift (matched.binary_depth &&& 1#u32)
+            if i3 = 0#u32
             then
-              let s ← alloc.vec.Vec.as_slice Global level1
-              let i6 := Slice.len indices
-              if i6 = 1#usize
+              let s ← alloc.vec.Vec.as_slice Global final_level
+              let i4 := Slice.len indices
+              if i4 = 1#usize
               then
-                let i7 := Slice.len s
-                if i7 = 1#usize
+                let i5 := Slice.len s
+                if i5 = 1#usize
                 then
-                  let i8 ← Slice.index_usize indices 0#usize
-                  match i8 with
+                  let i6 ← Slice.index_usize indices 0#usize
+                  match i6 with
                   | 0#uscalar =>
                     let value ← Slice.index_usize s 0#usize
-                    let i9 := Slice.len node_bytes
-                    if node_pos = i9
+                    let i7 := Slice.len node_bytes
+                    if node_pos = i7
                     then
                       let b1 ←
                         core.array.equality.PartialEqArray.eq
                           core.cmp.PartialEqU8 value root
-                      ok (b1, level1, next1)
-                    else ok (false, level1, next1)
-                  | _ => ok (false, level1, next1)
-                else ok (false, level1, next1)
-              else ok (false, level1, next1)
+                      ok (b1, final_level, final_next)
+                    else ok (false, final_level, final_next)
+                  | _ => ok (false, final_level, final_next)
+                else ok (false, final_level, final_next)
+              else ok (false, final_level, final_next)
             else
-              let s ← alloc.vec.Vec.as_slice Global level1
-              let i6 := Slice.len indices
-              if i6 = 2#usize
+              let s ← alloc.vec.Vec.as_slice Global final_level
+              let i4 := Slice.len indices
+              if i4 = 2#usize
               then
-                let i7 := Slice.len s
-                if i7 = 2#usize
+                let i5 := Slice.len s
+                if i5 = 2#usize
                 then
-                  let i8 ← Slice.index_usize indices 0#usize
-                  match i8 with
+                  let i6 ← Slice.index_usize indices 0#usize
+                  match i6 with
                   | 0#uscalar =>
-                    let i9 ← Slice.index_usize indices 1#usize
-                    match i9 with
+                    let i7 ← Slice.index_usize indices 1#usize
+                    match i7 with
                     | 1#uscalar =>
                       let left ← Slice.index_usize s 0#usize
                       let right ← Slice.index_usize s 1#usize
                       let top ← merkle.fixed_node_hash left right
-                      let i10 := Slice.len node_bytes
-                      if node_pos = i10
+                      let i8 := Slice.len node_bytes
+                      if node_pos = i8
                       then
                         let b1 ←
                           core.array.equality.PartialEqArray.eq
                             core.cmp.PartialEqU8 top root
-                        ok (b1, level1, next1)
-                      else ok (false, level1, next1)
-                    | _ => ok (false, level1, next1)
-                  | _ => ok (false, level1, next1)
-                else ok (false, level1, next1)
+                        ok (b1, final_level, final_next)
+                      else ok (false, final_level, final_next)
+                    | _ => ok (false, final_level, final_next)
+                  | _ => ok (false, final_level, final_next)
+                else ok (false, final_level, final_next)
               else
-                let i7 := Slice.len indices
-                if i7 = 1#usize
+                let i5 := Slice.len indices
+                if i5 = 1#usize
                 then
-                  let i8 := Slice.len s
-                  if i8 = 1#usize
+                  let i6 := Slice.len s
+                  if i6 = 1#usize
                   then
                     let index ← Slice.index_usize indices 0#usize
                     let value ← Slice.index_usize s 0#usize
-                    let i9 ← lift (Std.Usize.wrapping_add node_pos 32#usize)
-                    let i10 := Slice.len node_bytes
-                    if i9 > i10
-                    then ok (false, level1, next1)
+                    let i7 ← lift (Std.Usize.wrapping_add node_pos 32#usize)
+                    let i8 := Slice.len node_bytes
+                    if i7 > i8
+                    then ok (false, final_level, final_next)
                     else
-                      let i11 ←
+                      let i9 ←
                         lift (Std.Usize.wrapping_add node_pos 32#usize)
                       let s1 ←
                         core.slice.index.Slice.index
                           (core.slice.index.SliceIndexRangeUsizeSlice Std.U8)
-                          node_bytes { start := node_pos, «end» := i11 }
+                          node_bytes { start := node_pos, «end» := i9 }
                       let r ←
                         core.array.TryFromArrayCopySlice.try_from 32#usize
                           core.marker.CopyU8 s1
@@ -739,44 +647,44 @@ def merkle.verify_radix4_binary_cap_with_matched_topology
                       if index = 0#u32
                       then
                         let top ← merkle.fixed_node_hash value sibling
-                        let i12 := Slice.len node_bytes
-                        if node_pos1 = i12
+                        let i10 := Slice.len node_bytes
+                        if node_pos1 = i10
                         then
                           let b1 ←
                             core.array.equality.PartialEqArray.eq
                               core.cmp.PartialEqU8 top root
-                          ok (b1, level1, next1)
-                        else ok (false, level1, next1)
+                          ok (b1, final_level, final_next)
+                        else ok (false, final_level, final_next)
                       else
                         if index = 1#u32
                         then
                           let top ← merkle.fixed_node_hash sibling value
-                          let i12 := Slice.len node_bytes
-                          if node_pos1 = i12
+                          let i10 := Slice.len node_bytes
+                          if node_pos1 = i10
                           then
                             let b1 ←
                               core.array.equality.PartialEqArray.eq
                                 core.cmp.PartialEqU8 top root
-                            ok (b1, level1, next1)
-                          else ok (false, level1, next1)
-                        else ok (false, level1, next1)
-                  else ok (false, level1, next1)
-                else ok (false, level1, next1)
+                            ok (b1, final_level, final_next)
+                          else ok (false, final_level, final_next)
+                        else ok (false, final_level, final_next)
+                  else ok (false, final_level, final_next)
+                else ok (false, final_level, final_next)
 
 /-- [v5_merkle_fixed_hash_adapter::state_only_private_merkle::DOM_LEAF]
-    Source: 'src/../crates/aspis-core/src/state_only_private_merkle.rs', lines 10:0-10:26 -/
+    Source: 'src/../../../../crates/aspis-core/src/state_only_private_merkle.rs', lines 10:0-10:26 -/
 @[global_simps, irreducible]
 def state_only_private_merkle.DOM_LEAF : Std.U8 := 16#u8
 
 /-- [v5_merkle_fixed_hash_adapter::state_only_private_merkle::STATE_ONLY_PRIVATE_LEAF_SALT_BYTES]
-    Source: 'src/../crates/aspis-core/src/state_only_private_merkle.rs', lines 12:0-12:57
+    Source: 'src/../../../../crates/aspis-core/src/state_only_private_merkle.rs', lines 12:0-12:57
     Visibility: public -/
 @[global_simps, irreducible]
 def state_only_private_merkle.STATE_ONLY_PRIVATE_LEAF_SALT_BYTES : Std.Usize :=
   32#usize
 
 /-- [v5_merkle_fixed_hash_adapter::state_only_private_merkle::private_leaf_hash_record_fixed]:
-    Source: 'src/../crates/aspis-core/src/state_only_private_merkle.rs', lines 25:0-27:1
+    Source: 'src/../../../../crates/aspis-core/src/state_only_private_merkle.rs', lines 25:0-27:1
     Visibility: public -/
 def state_only_private_merkle.private_leaf_hash_record_fixed
   (tree_tag : Std.U8) (value_and_salt : Slice Std.U8) :
@@ -789,7 +697,7 @@ def state_only_private_merkle.private_leaf_hash_record_fixed
   merkle.fixed_hashv s1
 
 /-- [v5_merkle_fixed_hash_adapter::state_only_private_openings::{v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpening<'a>}::record_width]:
-    Source: 'src/../crates/aspis-core/src/state_only_private_openings.rs', lines 55:4-57:5
+    Source: 'src/../../../../crates/aspis-core/src/state_only_private_openings.rs', lines 55:4-57:5
     Visibility: public -/
 def state_only_private_openings.StateOnlyPrivateOpening.record_width
   (self : state_only_private_openings.StateOnlyPrivateOpening) :
@@ -799,13 +707,13 @@ def state_only_private_openings.StateOnlyPrivateOpening.record_width
     state_only_private_merkle.STATE_ONLY_PRIVATE_LEAF_SALT_BYTES)
 
 /-- [v5_merkle_fixed_hash_adapter::state_only_private_openings::{v5_merkle_fixed_hash_adapter::state_only_private_openings::Cursor<'a>}::new]:
-    Source: 'src/../crates/aspis-core/src/state_only_private_openings.rs', lines 97:4-99:5 -/
+    Source: 'src/../../../../crates/aspis-core/src/state_only_private_openings.rs', lines 97:4-99:5 -/
 def state_only_private_openings.Cursor.new
   (bytes : Slice Std.U8) : Result state_only_private_openings.Cursor := do
   ok { bytes, position := 0#usize }
 
 /-- [v5_merkle_fixed_hash_adapter::state_only_private_openings::{v5_merkle_fixed_hash_adapter::state_only_private_openings::Cursor<'a>}::take]:
-    Source: 'src/../crates/aspis-core/src/state_only_private_openings.rs', lines 101:4-115:5 -/
+    Source: 'src/../../../../crates/aspis-core/src/state_only_private_openings.rs', lines 101:4-115:5 -/
 def state_only_private_openings.Cursor.take
   (self : state_only_private_openings.Cursor) (len : Std.Usize) :
   Result ((core.result.Result (Slice Std.U8)
@@ -839,7 +747,7 @@ def state_only_private_openings.Cursor.take
     ok (r1, self)
 
 /-- [v5_merkle_fixed_hash_adapter::state_only_private_openings::{v5_merkle_fixed_hash_adapter::state_only_private_openings::Cursor<'a>}::u16]:
-    Source: 'src/../crates/aspis-core/src/state_only_private_openings.rs', lines 117:4-119:5 -/
+    Source: 'src/../../../../crates/aspis-core/src/state_only_private_openings.rs', lines 117:4-119:5 -/
 def state_only_private_openings.Cursor.u16
   (self : state_only_private_openings.Cursor) :
   Result ((core.result.Result Std.U16
@@ -863,7 +771,7 @@ def state_only_private_openings.Cursor.u16
     ok (r1, self1)
 
 /-- [v5_merkle_fixed_hash_adapter::state_only_private_openings::{v5_merkle_fixed_hash_adapter::state_only_private_openings::Cursor<'a>}::u32]:
-    Source: 'src/../crates/aspis-core/src/state_only_private_openings.rs', lines 121:4-123:5 -/
+    Source: 'src/../../../../crates/aspis-core/src/state_only_private_openings.rs', lines 121:4-123:5 -/
 def state_only_private_openings.Cursor.u32
   (self : state_only_private_openings.Cursor) :
   Result ((core.result.Result Std.U32
@@ -887,7 +795,7 @@ def state_only_private_openings.Cursor.u32
     ok (r1, self1)
 
 /-- [v5_merkle_fixed_hash_adapter::state_only_private_openings::first_out_of_range]:
-    Source: 'src/../crates/aspis-core/src/state_only_private_openings.rs', lines 126:0-137:1 -/
+    Source: 'src/../../../../crates/aspis-core/src/state_only_private_openings.rs', lines 126:0-137:1 -/
 def state_only_private_openings.first_out_of_range
   (indices : Slice Std.U32) (leaf_count : Std.U32) (ordinal : Std.Usize) :
   Result (Option Std.U32)
@@ -905,7 +813,7 @@ def state_only_private_openings.first_out_of_range
 partial_fixpoint
 
 /-- [v5_merkle_fixed_hash_adapter::state_only_private_openings::indices_are_strictly_increasing]:
-    Source: 'src/../crates/aspis-core/src/state_only_private_openings.rs', lines 139:0-147:1 -/
+    Source: 'src/../../../../crates/aspis-core/src/state_only_private_openings.rs', lines 139:0-147:1 -/
 def state_only_private_openings.indices_are_strictly_increasing
   (indices : Slice Std.U32) (ordinal : Std.Usize) : Result Bool := do
   let i ← lift (Std.Usize.wrapping_add ordinal 1#usize)
@@ -924,7 +832,7 @@ def state_only_private_openings.indices_are_strictly_increasing
 partial_fixpoint
 
 /-- [v5_merkle_fixed_hash_adapter::state_only_private_openings::validate_shape]:
-    Source: 'src/../crates/aspis-core/src/state_only_private_openings.rs', lines 149:0-178:1 -/
+    Source: 'src/../../../../crates/aspis-core/src/state_only_private_openings.rs', lines 149:0-178:1 -/
 def state_only_private_openings.validate_shape
   (binary_depth : Std.U32) (value_width : Std.Usize) (indices : Slice Std.U32)
   :
@@ -978,7 +886,7 @@ def state_only_private_openings.validate_shape
               state_only_private_openings.StateOnlyPrivateOpeningError.IndicesNotStrictlyIncreasing)
 
 /-- [v5_merkle_fixed_hash_adapter::state_only_private_openings::checked_section_len]:
-    Source: 'src/../crates/aspis-core/src/state_only_private_openings.rs', lines 180:0-184:1 -/
+    Source: 'src/../../../../crates/aspis-core/src/state_only_private_openings.rs', lines 180:0-184:1 -/
 def state_only_private_openings.checked_section_len
   (count : Std.Usize) (width : Std.Usize) :
   Result (core.result.Result Std.Usize
@@ -989,7 +897,7 @@ def state_only_private_openings.checked_section_len
     state_only_private_openings.StateOnlyPrivateOpeningError.LengthOverflow
 
 /-- [v5_merkle_fixed_hash_adapter::state_only_private_openings::parse_private_opening_from_proof]:
-    Source: 'src/../crates/aspis-core/src/state_only_private_openings.rs', lines 186:0-226:1 -/
+    Source: 'src/../../../../crates/aspis-core/src/state_only_private_openings.rs', lines 186:0-226:1 -/
 def state_only_private_openings.parse_private_opening_from_proof
   (proof_bytes : Slice Std.U8) (expected_count : Std.Usize)
   (value_width : Std.Usize) :
@@ -1105,7 +1013,7 @@ def state_only_private_openings.parse_private_opening_from_proof
       state_only_private_openings.StateOnlyPrivateOpeningError) residual
 
 /-- [v5_merkle_fixed_hash_adapter::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology]: loop body 0:
-    Source: 'src/../crates/aspis-core/src/state_only_private_openings.rs', lines 299:4-301:5
+    Source: 'src/../../../../crates/aspis-core/src/state_only_private_openings.rs', lines 299:4-301:5
     Visibility: public -/
 @[rust_loop_body]
 def
@@ -1125,7 +1033,7 @@ def
     ok (cont (iter1, level1))
 
 /-- [v5_merkle_fixed_hash_adapter::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology]: loop 0:
-    Source: 'src/../crates/aspis-core/src/state_only_private_openings.rs', lines 299:4-301:5
+    Source: 'src/../../../../crates/aspis-core/src/state_only_private_openings.rs', lines 299:4-301:5
     Visibility: public -/
 @[rust_loop]
 def
@@ -1141,7 +1049,7 @@ def
     (iter, level)
 
 /-- [v5_merkle_fixed_hash_adapter::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology]: loop body 1:
-    Source: 'src/../crates/aspis-core/src/state_only_private_openings.rs', lines 299:4-301:5
+    Source: 'src/../../../../crates/aspis-core/src/state_only_private_openings.rs', lines 299:4-301:5
     Visibility: public -/
 @[rust_loop_body]
 def
@@ -1161,7 +1069,7 @@ def
     ok (cont (iter1, level1))
 
 /-- [v5_merkle_fixed_hash_adapter::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology]: loop 1:
-    Source: 'src/../crates/aspis-core/src/state_only_private_openings.rs', lines 299:4-301:5
+    Source: 'src/../../../../crates/aspis-core/src/state_only_private_openings.rs', lines 299:4-301:5
     Visibility: public -/
 @[rust_loop]
 def
@@ -1177,7 +1085,7 @@ def
     (iter, level)
 
 /-- [v5_merkle_fixed_hash_adapter::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology]: loop body 2:
-    Source: 'src/../crates/aspis-core/src/state_only_private_openings.rs', lines 299:4-301:5
+    Source: 'src/../../../../crates/aspis-core/src/state_only_private_openings.rs', lines 299:4-301:5
     Visibility: public -/
 @[rust_loop_body]
 def
@@ -1197,7 +1105,7 @@ def
     ok (cont (iter1, level1))
 
 /-- [v5_merkle_fixed_hash_adapter::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology]: loop 2:
-    Source: 'src/../crates/aspis-core/src/state_only_private_openings.rs', lines 299:4-301:5
+    Source: 'src/../../../../crates/aspis-core/src/state_only_private_openings.rs', lines 299:4-301:5
     Visibility: public -/
 @[rust_loop]
 def
@@ -1213,7 +1121,7 @@ def
     (iter, level)
 
 /-- [v5_merkle_fixed_hash_adapter::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology]: loop body 3:
-    Source: 'src/../crates/aspis-core/src/state_only_private_openings.rs', lines 299:4-301:5
+    Source: 'src/../../../../crates/aspis-core/src/state_only_private_openings.rs', lines 299:4-301:5
     Visibility: public -/
 @[rust_loop_body]
 def
@@ -1233,7 +1141,7 @@ def
     ok (cont (iter1, level1))
 
 /-- [v5_merkle_fixed_hash_adapter::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology]: loop 3:
-    Source: 'src/../crates/aspis-core/src/state_only_private_openings.rs', lines 299:4-301:5
+    Source: 'src/../../../../crates/aspis-core/src/state_only_private_openings.rs', lines 299:4-301:5
     Visibility: public -/
 @[rust_loop]
 def
@@ -1249,7 +1157,7 @@ def
     (iter, level)
 
 /-- [v5_merkle_fixed_hash_adapter::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology]:
-    Source: 'src/../crates/aspis-core/src/state_only_private_openings.rs', lines 271:0-315:1
+    Source: 'src/../../../../crates/aspis-core/src/state_only_private_openings.rs', lines 271:0-315:1
     Visibility: public -/
 def
   state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology
@@ -1474,28 +1382,28 @@ def
           ok (r1, level, next)
 
 /-- [v5_merkle_fixed_hash_adapter::private_openings::V5_PRIVATE_LAYER0_LEAVES]
-    Source: 'src/../programs/aspis-verifier/src/v5_private_openings.rs', lines 20:0-20:52
+    Source: 'src/../../../../programs/aspis-verifier/src/v5_private_openings.rs', lines 20:0-20:52
     Visibility: public -/
 @[global_simps, irreducible]
 def private_openings.V5_PRIVATE_LAYER0_LEAVES : Result Std.Usize :=
   1#usize <<< 17#i32
 
 /-- [v5_merkle_fixed_hash_adapter::private_openings::V5_PRIVATE_DEPTHS]
-    Source: 'src/../programs/aspis-verifier/src/v5_private_openings.rs', lines 22:0-22:84
+    Source: 'src/../../../../programs/aspis-verifier/src/v5_private_openings.rs', lines 22:0-22:84
     Visibility: public -/
 @[global_simps, irreducible]
 def private_openings.V5_PRIVATE_DEPTHS : Array Std.U32 5#usize :=
   Array.make 5#usize [ 17#u32, 17#u32, 15#u32, 13#u32, 11#u32 ]
 
 /-- [v5_merkle_fixed_hash_adapter::private_openings::V5_PRIVATE_VALUE_WIDTHS]
-    Source: 'src/../programs/aspis-verifier/src/v5_private_openings.rs', lines 23:0-23:94
+    Source: 'src/../../../../programs/aspis-verifier/src/v5_private_openings.rs', lines 23:0-23:94
     Visibility: public -/
 @[global_simps, irreducible]
 def private_openings.V5_PRIVATE_VALUE_WIDTHS : Array Std.Usize 5#usize :=
   Array.make 5#usize [ 256#usize, 192#usize, 64#usize, 64#usize, 64#usize ]
 
 /-- [v5_merkle_fixed_hash_adapter::private_openings::V5_PRIVATE_TREE_TAGS]
-    Source: 'src/../programs/aspis-verifier/src/v5_private_openings.rs', lines 24:0-30:2
+    Source: 'src/../../../../programs/aspis-verifier/src/v5_private_openings.rs', lines 24:0-30:2
     Visibility: public -/
 @[global_simps, irreducible]
 def private_openings.V5_PRIVATE_TREE_TAGS : Result (Array Std.U8 5#usize) := do
@@ -1508,7 +1416,7 @@ def private_openings.V5_PRIVATE_TREE_TAGS : Result (Array Std.U8 5#usize) := do
   ok (Array.make 5#usize [ i3, i4, i, i1, i2 ])
 
 /-- [v5_merkle_fixed_hash_adapter::private_openings::{v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningRoots}::as_array]:
-    Source: 'src/../programs/aspis-verifier/src/v5_private_openings.rs', lines 40:4-48:5 -/
+    Source: 'src/../../../../programs/aspis-verifier/src/v5_private_openings.rs', lines 40:4-48:5 -/
 def private_openings.V5PrivateOpeningRoots.as_array
   (self : private_openings.V5PrivateOpeningRoots) :
   Result (Array (Array Std.U8 32#usize) 5#usize)
@@ -1519,7 +1427,7 @@ def private_openings.V5PrivateOpeningRoots.as_array
   ok (Array.make 5#usize [ self.c1, self.c2, a, a1, a2 ])
 
 /-- [v5_merkle_fixed_hash_adapter::private_openings::{impl core::convert::From<aspis_core::circle_line_merkle::CircleLineMerkleError> for v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError}::from]:
-    Source: 'src/../programs/aspis-verifier/src/v5_private_openings.rs', lines 66:4-68:5
+    Source: 'src/../../../../programs/aspis-verifier/src/v5_private_openings.rs', lines 66:4-68:5
     Visibility: public -/
 def
   private_openings.V5PrivateOpeningError.Insts.CoreConvertFromCircleLineMerkleError.from
@@ -1529,7 +1437,7 @@ def
   ok (private_openings.V5PrivateOpeningError.Query error)
 
 /-- Trait implementation: [v5_merkle_fixed_hash_adapter::private_openings::{impl core::convert::From<aspis_core::circle_line_merkle::CircleLineMerkleError> for v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError}]
-    Source: 'src/../programs/aspis-verifier/src/v5_private_openings.rs', lines 65:0-69:1 -/
+    Source: 'src/../../../../programs/aspis-verifier/src/v5_private_openings.rs', lines 65:0-69:1 -/
 @[reducible]
 def
   private_openings.V5PrivateOpeningError.Insts.CoreConvertFromCircleLineMerkleError
@@ -1540,7 +1448,7 @@ def
 }
 
 /-- [v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::{impl core::ops::function::FnOnce<(v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpeningError,), v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError> for v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure#4}::call_once]:
-    Source: 'src/../programs/aspis-verifier/src/v5_private_openings.rs', lines 157:13-157:73 -/
+    Source: 'src/../../../../programs/aspis-verifier/src/v5_private_openings.rs', lines 157:13-157:73 -/
 def
   private_openings.verify_v5_private_openings_from_proof.closure_4.Insts.CoreOpsFunctionFnOnceTupleStateOnlyPrivateOpeningErrorV5PrivateOpeningError.call_once
   (c : private_openings.verify_v5_private_openings_from_proof.closure_4)
@@ -1550,7 +1458,7 @@ def
   ok (private_openings.V5PrivateOpeningError.Section 4#u8 tupled_args)
 
 /-- Trait implementation: [v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::{impl core::ops::function::FnOnce<(v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpeningError,), v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError> for v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure#4}]
-    Source: 'src/../programs/aspis-verifier/src/v5_private_openings.rs', lines 157:13-157:73 -/
+    Source: 'src/../../../../programs/aspis-verifier/src/v5_private_openings.rs', lines 157:13-157:73 -/
 @[reducible]
 def
   private_openings.verify_v5_private_openings_from_proof.closure_4.Insts.CoreOpsFunctionFnOnceTupleStateOnlyPrivateOpeningErrorV5PrivateOpeningError
@@ -1563,7 +1471,7 @@ def
 }
 
 /-- [v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::{impl core::ops::function::FnOnce<(v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpeningError,), v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError> for v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure#3}::call_once]:
-    Source: 'src/../programs/aspis-verifier/src/v5_private_openings.rs', lines 144:13-144:73 -/
+    Source: 'src/../../../../programs/aspis-verifier/src/v5_private_openings.rs', lines 144:13-144:73 -/
 def
   private_openings.verify_v5_private_openings_from_proof.closure_3.Insts.CoreOpsFunctionFnOnceTupleStateOnlyPrivateOpeningErrorV5PrivateOpeningError.call_once
   (c : private_openings.verify_v5_private_openings_from_proof.closure_3)
@@ -1573,7 +1481,7 @@ def
   ok (private_openings.V5PrivateOpeningError.Section 3#u8 tupled_args)
 
 /-- Trait implementation: [v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::{impl core::ops::function::FnOnce<(v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpeningError,), v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError> for v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure#3}]
-    Source: 'src/../programs/aspis-verifier/src/v5_private_openings.rs', lines 144:13-144:73 -/
+    Source: 'src/../../../../programs/aspis-verifier/src/v5_private_openings.rs', lines 144:13-144:73 -/
 @[reducible]
 def
   private_openings.verify_v5_private_openings_from_proof.closure_3.Insts.CoreOpsFunctionFnOnceTupleStateOnlyPrivateOpeningErrorV5PrivateOpeningError
@@ -1586,7 +1494,7 @@ def
 }
 
 /-- [v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::{impl core::ops::function::FnOnce<(v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpeningError,), v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError> for v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure#2}::call_once]:
-    Source: 'src/../programs/aspis-verifier/src/v5_private_openings.rs', lines 131:13-131:73 -/
+    Source: 'src/../../../../programs/aspis-verifier/src/v5_private_openings.rs', lines 131:13-131:73 -/
 def
   private_openings.verify_v5_private_openings_from_proof.closure_2.Insts.CoreOpsFunctionFnOnceTupleStateOnlyPrivateOpeningErrorV5PrivateOpeningError.call_once
   (c : private_openings.verify_v5_private_openings_from_proof.closure_2)
@@ -1596,7 +1504,7 @@ def
   ok (private_openings.V5PrivateOpeningError.Section 2#u8 tupled_args)
 
 /-- Trait implementation: [v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::{impl core::ops::function::FnOnce<(v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpeningError,), v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError> for v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure#2}]
-    Source: 'src/../programs/aspis-verifier/src/v5_private_openings.rs', lines 131:13-131:73 -/
+    Source: 'src/../../../../programs/aspis-verifier/src/v5_private_openings.rs', lines 131:13-131:73 -/
 @[reducible]
 def
   private_openings.verify_v5_private_openings_from_proof.closure_2.Insts.CoreOpsFunctionFnOnceTupleStateOnlyPrivateOpeningErrorV5PrivateOpeningError
@@ -1609,7 +1517,7 @@ def
 }
 
 /-- [v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::{impl core::ops::function::FnOnce<(v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpeningError,), v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError> for v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure#1}::call_once]:
-    Source: 'src/../programs/aspis-verifier/src/v5_private_openings.rs', lines 118:13-118:73 -/
+    Source: 'src/../../../../programs/aspis-verifier/src/v5_private_openings.rs', lines 118:13-118:73 -/
 def
   private_openings.verify_v5_private_openings_from_proof.closure_1.Insts.CoreOpsFunctionFnOnceTupleStateOnlyPrivateOpeningErrorV5PrivateOpeningError.call_once
   (c : private_openings.verify_v5_private_openings_from_proof.closure_1)
@@ -1619,7 +1527,7 @@ def
   ok (private_openings.V5PrivateOpeningError.Section 1#u8 tupled_args)
 
 /-- Trait implementation: [v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::{impl core::ops::function::FnOnce<(v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpeningError,), v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError> for v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure#1}]
-    Source: 'src/../programs/aspis-verifier/src/v5_private_openings.rs', lines 118:13-118:73 -/
+    Source: 'src/../../../../programs/aspis-verifier/src/v5_private_openings.rs', lines 118:13-118:73 -/
 @[reducible]
 def
   private_openings.verify_v5_private_openings_from_proof.closure_1.Insts.CoreOpsFunctionFnOnceTupleStateOnlyPrivateOpeningErrorV5PrivateOpeningError
@@ -1632,7 +1540,7 @@ def
 }
 
 /-- [v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::{impl core::ops::function::FnOnce<(v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpeningError,), v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError> for v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure}::call_once]:
-    Source: 'src/../programs/aspis-verifier/src/v5_private_openings.rs', lines 105:13-105:73 -/
+    Source: 'src/../../../../programs/aspis-verifier/src/v5_private_openings.rs', lines 105:13-105:73 -/
 def
   private_openings.verify_v5_private_openings_from_proof.closure.Insts.CoreOpsFunctionFnOnceTupleStateOnlyPrivateOpeningErrorV5PrivateOpeningError.call_once
   (c : private_openings.verify_v5_private_openings_from_proof.closure)
@@ -1642,7 +1550,7 @@ def
   ok (private_openings.V5PrivateOpeningError.Section 0#u8 tupled_args)
 
 /-- Trait implementation: [v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::{impl core::ops::function::FnOnce<(v5_merkle_fixed_hash_adapter::state_only_private_openings::StateOnlyPrivateOpeningError,), v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError> for v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure}]
-    Source: 'src/../programs/aspis-verifier/src/v5_private_openings.rs', lines 105:13-105:73 -/
+    Source: 'src/../../../../programs/aspis-verifier/src/v5_private_openings.rs', lines 105:13-105:73 -/
 @[reducible]
 def
   private_openings.verify_v5_private_openings_from_proof.closure.Insts.CoreOpsFunctionFnOnceTupleStateOnlyPrivateOpeningErrorV5PrivateOpeningError
@@ -1655,7 +1563,7 @@ def
 }
 
 /-- [v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof]:
-    Source: 'src/../programs/aspis-verifier/src/v5_private_openings.rs', lines 82:0-169:1
+    Source: 'src/../../../../programs/aspis-verifier/src/v5_private_openings.rs', lines 82:0-169:1
     Visibility: public -/
 def private_openings.verify_v5_private_openings_from_proof
   (roots : private_openings.V5PrivateOpeningRoots) (queries : Slice Std.U32)
@@ -1826,7 +1734,7 @@ def private_openings.verify_v5_private_openings_from_proof
       residual
 
 /-- [v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings]:
-    Source: 'src/../programs/aspis-verifier/src/v5_private_openings.rs', lines 172:0-185:1
+    Source: 'src/../../../../programs/aspis-verifier/src/v5_private_openings.rs', lines 172:0-185:1
     Visibility: public -/
 def private_openings.verify_v5_private_openings
   (roots : private_openings.V5PrivateOpeningRoots) (queries : Slice Std.U32)

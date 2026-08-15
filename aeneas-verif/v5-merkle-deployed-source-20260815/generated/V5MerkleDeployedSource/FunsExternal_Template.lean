@@ -15,18 +15,6 @@ set_option maxHeartbeats 1000000
 set_option maxRecDepth 2048
 open V5MerkleDeployedSource
 
-/-- [core::iter::traits::iterator::Iterator::any]:
-    Source: '/rustc/library/core/src/iter/traits/iterator.rs', lines 2885:4-2888:37
-    Name pattern: [core::iter::traits::iterator::Iterator::any]
-    Visibility: public -/
-@[trait_default, rust_fun "core::iter::traits::iterator::Iterator::any"]
-axiom core.iter.traits.iterator.Iterator.any.default
-  {Self : Type} {F : Type} {Clause0_Item : Type} (IteratorInst :
-  core.iter.traits.iterator.Iterator Self Clause0_Item)
-  (opsfunctionFnMutFTupleClause0_ItemBoolInst : core.ops.function.FnMut F
-  Clause0_Item Bool) :
-  Self → F → Result (Bool × Self)
-
 /-- [core::option::{core::option::Option<T>}::ok_or]:
     Source: '/rustc/library/core/src/option.rs', lines 1334:4-1334:73
     Name pattern: [core::option::{core::option::Option<@T>}::ok_or]
@@ -43,16 +31,6 @@ axiom core.option.Option.ok_or
 axiom core.option.OptionShared0T.copied
   {T : Type} (markerCopyInst : core.marker.Copy T) :
   Option T → Result (Option T)
-
-/-- [core::option::{impl core::cmp::PartialEq<core::option::Option<T>> for core::option::Option<T>}::eq]:
-    Source: '/rustc/library/core/src/option.rs', lines 2440:4-2440:38
-    Name pattern: [core::option::{core::cmp::PartialEq<core::option::Option<@T>, core::option::Option<@T>>}::eq]
-    Visibility: public -/
-@[rust_fun
-  "core::option::{core::cmp::PartialEq<core::option::Option<@T>, core::option::Option<@T>>}::eq"]
-axiom core.option.Option.Insts.CoreCmpPartialEqOption.eq
-  {T : Type} (cmpPartialEqInst : core.cmp.PartialEq T T) :
-  Option T → Option T → Result Bool
 
 /-- [core::option::{impl core::ops::try_trait::Try for core::option::Option<T>}::branch]:
     Source: '/rustc/library/core/src/option.rs', lines 2779:4-2779:64
@@ -85,33 +63,6 @@ axiom core.result.Result.map_err
   core.ops.function.FnOnce O E F) :
   core.result.Result T E → O → Result (core.result.Result T F)
 
-/-- [core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a [T]> for core::slice::iter::Windows<'a, T>}::next]:
-    Source: '/rustc/library/core/src/slice/iter.rs', lines 1354:4-1354:41
-    Name pattern: [core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Windows<'a, @T>, &'a [@T]>}::next]
-    Visibility: public -/
-@[rust_fun
-  "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Windows<'a, @T>, &'a [@T]>}::next"]
-axiom
-  core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice.next
-  {T : Type} :
-  core.slice.iter.Windows T → Result ((Option (Slice T)) ×
-    (core.slice.iter.Windows T))
-
-/-- [core::slice::{[T]}::last]:
-    Source: '/rustc/library/core/src/slice/mod.rs', lines 281:4-281:42
-    Name pattern: [core::slice::{[@T]}::last]
-    Visibility: public -/
-@[rust_fun "core::slice::{[@T]}::last"]
-axiom core.slice.Slice.last {T : Type} : Slice T → Result (Option T)
-
-/-- [core::slice::{[T]}::windows]:
-    Source: '/rustc/library/core/src/slice/mod.rs', lines 1116:4-1116:62
-    Name pattern: [core::slice::{[@T]}::windows]
-    Visibility: public -/
-@[rust_fun "core::slice::{[@T]}::windows"]
-axiom core.slice.Slice.windows
-  {T : Type} : Slice T → Std.Usize → Result (core.slice.iter.Windows T)
-
 /-- [alloc::vec::{alloc::vec::Vec<T>}::as_slice]:
     Source: '/rustc/library/alloc/src/vec/mod.rs', lines 1854:4-1854:40
     Name pattern: [alloc::vec::{alloc::vec::Vec<@T>}::as_slice]
@@ -137,7 +88,7 @@ axiom alloc.vec.Vec.is_empty
   {T : Type} (A : Type) : alloc.vec.Vec T → Result Bool
 
 /-- [aspis_core::circle_line_merkle::CIRCLE_LINE_TAGS]
-    Source: '<DEPLOYED_SOURCE>/crates/aspis-core/src/circle_line_merkle.rs', lines 18:0-18:57
+    Source: '/private/tmp/v5-merkle-transform-audit.bhZLOd/crates/aspis-core/src/circle_line_merkle.rs', lines 18:0-18:57
     Name pattern: [aspis_core::circle_line_merkle::CIRCLE_LINE_TAGS]
     Visibility: public -/
 @[rust_const "aspis_core::circle_line_merkle::CIRCLE_LINE_TAGS"]
@@ -145,7 +96,7 @@ axiom aspis_core.circle_line_merkle.CIRCLE_LINE_TAGS
   : Result (Array Std.U8 3#usize)
 
 /-- [aspis_core::circle_line_merkle::derive_circle_line_query_indices_for_count]:
-    Source: '<DEPLOYED_SOURCE>/crates/aspis-core/src/circle_line_merkle.rs', lines 266:0-269:58
+    Source: '/private/tmp/v5-merkle-transform-audit.bhZLOd/crates/aspis-core/src/circle_line_merkle.rs', lines 266:0-269:58
     Name pattern: [aspis_core::circle_line_merkle::derive_circle_line_query_indices_for_count]
     Visibility: public -/
 @[rust_fun
@@ -157,21 +108,21 @@ axiom aspis_core.circle_line_merkle.derive_circle_line_query_indices_for_count
     aspis_core.circle_line_merkle.CircleLineMerkleError)
 
 /-- [aspis_core::circle_merkle::CIRCLE_C1_LAYER0_TAG]
-    Source: '<DEPLOYED_SOURCE>/crates/aspis-core/src/circle_merkle.rs', lines 21:0-21:34
+    Source: '/private/tmp/v5-merkle-transform-audit.bhZLOd/crates/aspis-core/src/circle_merkle.rs', lines 21:0-21:34
     Name pattern: [aspis_core::circle_merkle::CIRCLE_C1_LAYER0_TAG]
     Visibility: public -/
 @[rust_const "aspis_core::circle_merkle::CIRCLE_C1_LAYER0_TAG"]
 axiom aspis_core.circle_merkle.CIRCLE_C1_LAYER0_TAG : Result Std.U8
 
 /-- [aspis_core::circle_merkle::CIRCLE_C2_LAYER0_TAG]
-    Source: '<DEPLOYED_SOURCE>/crates/aspis-core/src/circle_merkle.rs', lines 22:0-22:34
+    Source: '/private/tmp/v5-merkle-transform-audit.bhZLOd/crates/aspis-core/src/circle_merkle.rs', lines 22:0-22:34
     Name pattern: [aspis_core::circle_merkle::CIRCLE_C2_LAYER0_TAG]
     Visibility: public -/
 @[rust_const "aspis_core::circle_merkle::CIRCLE_C2_LAYER0_TAG"]
 axiom aspis_core.circle_merkle.CIRCLE_C2_LAYER0_TAG : Result Std.U8
 
 /-- [v5_merkle_fixed_hash_adapter::merkle::fixed_hashv]:
-    Source: 'src/../crates/aspis-core/src/merkle.rs', lines 20:0-22:1
+    Source: 'src/../../../../crates/aspis-core/src/merkle.rs', lines 20:0-22:1
     Visibility: public -/
 axiom merkle.fixed_hashv
   : Slice (Slice Std.U8) → Result (Array Std.U8 32#usize)

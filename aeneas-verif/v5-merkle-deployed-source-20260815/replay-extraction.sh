@@ -35,6 +35,8 @@ check_hash 916c14930d419bc0cd794a3d1e01c4e45fea9f4dbbc1f44f89f71caf3ff63c49 \
 
 git -C "$checkout" apply --check "$bundle/source-adapter.patch"
 git -C "$checkout" apply "$bundle/source-adapter.patch"
+git -C "$checkout" apply --check "$bundle/immediate-return-adapter.patch"
+git -C "$checkout" apply "$bundle/immediate-return-adapter.patch"
 mkdir -p "$checkout/aeneas-verif/v5-merkle-deployed-source-20260815"
 cp -R "$bundle/harness" \
   "$checkout/aeneas-verif/v5-merkle-deployed-source-20260815/harness"

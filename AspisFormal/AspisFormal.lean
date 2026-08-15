@@ -173,6 +173,7 @@ import AspisFormal.V5ProductionRowSelector
 import AspisFormal.V5KappaCausality
 import AspisFormal.V5NonzeroKappaSourceBridge
 import AspisFormal.V5MerkleRustBridge
+import AspisFormal.V5MerkleSourceAdapter
 import AspisFormal.V5TopologyConstruction
 import AspisFormal.V5MerkleConsumedValueBridge
 import AspisFormal.V5FriSourceLoopOrder
