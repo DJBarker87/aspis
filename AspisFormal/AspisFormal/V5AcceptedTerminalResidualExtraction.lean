@@ -21,9 +21,11 @@ The production verifier does the following in this order.
 Acceptance alone is not enough to conclude that the committed table satisfies
 all constraints.  The commitment/FRI and sumcheck argument must first connect
 the accepted messages and authenticated point openings to one fixed table.
-That remaining implication is represented below by
-`AcceptedTraceAndSumcheckEvidence`.  It is deliberately not assigned a
-probability here.
+That implication is represented below by `AcceptedTraceAndSumcheckEvidence`.
+The following module, `V5AcceptedSumcheckSourceBridge`, splits its sumcheck
+field into the accepted ten-round value flow, fixed-oracle authentication, and
+the degree-27 repair event.  No probability is assigned to the combined
+evidence here.
 
 Once that evidence is available, this file proves the rest of the deterministic
 argument.  A false public statement must fall into one of three separate
@@ -607,33 +609,83 @@ structure AcceptedTerminalRunView (K : Type*) [Field K] [Algebra F K] where
   helper : Fin 1024 → K
   mask : Fin 1024 → K
 
+/-- Fixed accepted-trace projection, independent of the sumcheck argument. -/
+structure AcceptedTraceProjectionEvidence
+    (view : AcceptedTerminalRunView K) : Prop where
+  publicRowsProject : ProductionPublicRowsProjectToOpenedColumns
+    (productionPublicRowsFromTrace view.trace) view.opened
+
+/-- Exact source residual map, independent of trace projection and sumcheck
+soundness. -/
+structure AcceptedResidualMapEvidence
+    (statement : V5PublicStatement)
+    (view : AcceptedTerminalRunView K) : Prop where
+  publicResidualsMatch : ProductionPublicResidualsMatchConstraintRows
+    (terminalSpendFields statement)
+    (productionPublicRowsFromTrace view.trace) view.constraintRows
+
 /-- The remaining exact evidence expected from source correspondence,
-commitment/FRI extraction, and sumcheck soundness.  Its three fields are kept
-separate so later work can discharge them independently. -/
+commitment/FRI extraction, and sumcheck soundness.  Trace projection and
+residual mapping are separate records; the following module splits the
+masked-boundary field further. -/
 structure AcceptedTraceAndSumcheckEvidence
     (statement : V5PublicStatement)
     (basis : Basis (Fin 4) F K)
     (view : AcceptedTerminalRunView K) : Prop where
-  publicRowsProject : ProductionPublicRowsProjectToOpenedColumns
-    (productionPublicRowsFromTrace view.trace) view.opened
-  publicResidualsMatch : ProductionPublicResidualsMatchConstraintRows
-    (terminalSpendFields statement)
-    (productionPublicRowsFromTrace view.trace) view.constraintRows
+  traceProjection : AcceptedTraceProjectionEvidence view
+  residualMap : AcceptedResidualMapEvidence statement view
   maskedBoundary : ExtractedMaskedSumcheckBoundary view.eta
     (sourceUnmaskedZerocheckTable basis view.constraintRows view.theta
       view.zerocheckPoint view.mu view.helper)
     view.mask
 
-/-- Exact failure of the still-missing accepted-Rust-to-fixed-table and
-sumcheck/commitment implication.  No numerical bound is claimed here. -/
-def AcceptedTraceOrSumcheckExtractionFailure
+/-- The accepted commitments did not yield the fixed trace rows used by the
+public-field model. -/
+def AcceptedTraceProjectionFailure
+    {Run : Type*}
+    (accepts : V5PublicStatement → Run → Prop)
+    (viewOf : Run → AcceptedTerminalRunView K)
+    (statement : V5PublicStatement) (run : Run) : Prop :=
+  accepts statement run ∧
+    ¬ AcceptedTraceProjectionEvidence (viewOf run)
+
+/-- The production residual evaluator did not agree with the maintained
+constraint-row model for the fixed trace. -/
+def AcceptedResidualMapFailure
+    {Run : Type*}
+    (accepts : V5PublicStatement → Run → Prop)
+    (viewOf : Run → AcceptedTerminalRunView K)
+    (statement : V5PublicStatement) (run : Run) : Prop :=
+  accepts statement run ∧
+    ¬ AcceptedResidualMapEvidence statement (viewOf run)
+
+/-- The accepted ten-round proof and authenticated openings did not provide
+the fixed mixed-boundary equation.  `V5AcceptedSumcheckSourceBridge` splits
+this field into smaller source, authentication, and degree-27 events. -/
+def AcceptedMaskedBoundaryExtractionFailure
     {Run : Type*}
     (accepts : V5PublicStatement → Run → Prop)
     (viewOf : Run → AcceptedTerminalRunView K)
     (basis : Basis (Fin 4) F K)
     (statement : V5PublicStatement) (run : Run) : Prop :=
   accepts statement run ∧
-    ¬ AcceptedTraceAndSumcheckEvidence statement basis (viewOf run)
+    ¬ ExtractedMaskedSumcheckBoundary (viewOf run).eta
+      (sourceUnmaskedZerocheckTable basis (viewOf run).constraintRows
+        (viewOf run).theta (viewOf run).zerocheckPoint (viewOf run).mu
+        (viewOf run).helper)
+      (viewOf run).mask
+
+/-- Exact missing arithmetic extraction fact.  The previous version of the
+final statement-binding theorem accepted `ConstraintsSatisfied` as an unnamed
+premise.  An accepted run must instead either supply the low-level arithmetic
+residual equations or enter this explicit failure branch. -/
+def AcceptedArithmeticResidualExtractionFailure
+    {Run : Type*}
+    (accepts : V5PublicStatement → Run → Prop)
+    (viewOf : Run → AcceptedTerminalRunView K)
+    (statement : V5PublicStatement) (run : Run) : Prop :=
+  accepts statement run ∧
+    ¬ ExtractedArithmeticResiduals (viewOf run).opened
 
 /-- With the fixed trace and accepted masked-boundary equation, the three
 named algebraic events are the only remaining reasons this step can fail to
@@ -686,8 +738,8 @@ theorem extracted_production_theta_residuals_outside_algebraic_failures
       (terminalSpendFields statement) view.opened
       (productionPublicRowsFromTrace view.trace) basis view.constraintRows := by
   refine {
-    projects := evidence.publicRowsProject
-    residualsMatch := evidence.publicResidualsMatch
+    projects := evidence.traceProjection.publicRowsProject
+    residualsMatch := evidence.residualMap.publicResidualsMatch
     polynomialZero := ?_
   }
   have realSumZero :
@@ -704,29 +756,61 @@ theorem extracted_production_theta_residuals_outside_algebraic_failures
     view.theta tableZero noTheta
 
 /-- Accepted production verification either binds all six spend fields or
-falls into the exact unproved extraction condition or one of the three named
-algebraic events.  The theorem assigns no probability to any branch. -/
+falls into the trace/sumcheck extraction condition, the separately named
+arithmetic-residual extraction condition, or one of the three algebraic
+events.  The theorem assigns no probability to any branch. -/
 theorem accepted_run_binds_statement_or_named_failure
     {Run : Type*}
     (accepts : V5PublicStatement → Run → Prop)
     (viewOf : Run → AcceptedTerminalRunView K)
     (basis : Basis (Fin 4) F K)
     (statement : V5PublicStatement) (run : Run)
-    (constraints : ConstraintsSatisfied (viewOf run).opened)
     (accepted : accepts statement run) :
     OpenedColumnsMatchStatement statement (viewOf run).opened ∨
-      AcceptedTraceOrSumcheckExtractionFailure accepts viewOf basis statement run ∨
+      AcceptedTraceProjectionFailure accepts viewOf statement run ∨
+      AcceptedResidualMapFailure accepts viewOf statement run ∨
+      AcceptedMaskedBoundaryExtractionFailure accepts viewOf basis statement run ∨
+      AcceptedArithmeticResidualExtractionFailure accepts viewOf statement run ∨
       HelperCancellation basis (viewOf run).constraintRows (viewOf run).theta
           (viewOf run).zerocheckPoint (viewOf run).mu (viewOf run).helper ∨
       ZerocheckEvaluationCollision basis (viewOf run).constraintRows
           (viewOf run).theta (viewOf run).zerocheckPoint ∨
       ThetaLaneCollision basis (viewOf run).constraintRows (viewOf run).theta := by
-  by_cases extractionFailure : AcceptedTraceOrSumcheckExtractionFailure
-      accepts viewOf basis statement run
-  · exact Or.inr (Or.inl extractionFailure)
-  have evidence : AcceptedTraceAndSumcheckEvidence statement basis (viewOf run) := by
+  by_cases traceFailure : AcceptedTraceProjectionFailure
+      accepts viewOf statement run
+  · exact Or.inr (Or.inl traceFailure)
+  have traceProjection : AcceptedTraceProjectionEvidence (viewOf run) := by
     by_contra missing
-    exact extractionFailure ⟨accepted, missing⟩
+    exact traceFailure ⟨accepted, missing⟩
+  by_cases residualFailure : AcceptedResidualMapFailure
+      accepts viewOf statement run
+  · exact Or.inr (Or.inr (Or.inl residualFailure))
+  have residualMap : AcceptedResidualMapEvidence statement (viewOf run) := by
+    by_contra missing
+    exact residualFailure ⟨accepted, missing⟩
+  by_cases boundaryFailure : AcceptedMaskedBoundaryExtractionFailure
+      accepts viewOf basis statement run
+  · exact Or.inr (Or.inr (Or.inr (Or.inl boundaryFailure)))
+  have maskedBoundary : ExtractedMaskedSumcheckBoundary (viewOf run).eta
+      (sourceUnmaskedZerocheckTable basis (viewOf run).constraintRows
+        (viewOf run).theta (viewOf run).zerocheckPoint (viewOf run).mu
+        (viewOf run).helper)
+      (viewOf run).mask := by
+    by_contra missing
+    exact boundaryFailure ⟨accepted, missing⟩
+  have evidence : AcceptedTraceAndSumcheckEvidence statement basis (viewOf run) := {
+    traceProjection := traceProjection
+    residualMap := residualMap
+    maskedBoundary := maskedBoundary
+  }
+  by_cases arithmeticFailure : AcceptedArithmeticResidualExtractionFailure
+      accepts viewOf statement run
+  · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl arithmeticFailure))))
+  have arithmetic : ExtractedArithmeticResiduals (viewOf run).opened := by
+    by_contra missing
+    exact arithmeticFailure ⟨accepted, missing⟩
+  have constraints : ConstraintsSatisfied (viewOf run).opened :=
+    arithmetic.toConstraintsSatisfied
   rcases extracted_row_polynomials_or_algebraic_failure statement basis
       (viewOf run) evidence with polynomialZero | failure
   · left
@@ -735,14 +819,14 @@ theorem accepted_run_binds_statement_or_named_failure
       (productionPublicRowsFromTrace (viewOf run).trace) basis
       (viewOf run).constraintRows
     exact {
-      projects := evidence.publicRowsProject
-      residualsMatch := evidence.publicResidualsMatch
+      projects := evidence.traceProjection.publicRowsProject
+      residualsMatch := evidence.residualMap.publicResidualsMatch
       polynomialZero := polynomialZero
     }
   · rcases failure with helper | zerocheck | theta
-    · exact Or.inr (Or.inr (Or.inl helper))
-    · exact Or.inr (Or.inr (Or.inr (Or.inl zerocheck)))
-    · exact Or.inr (Or.inr (Or.inr (Or.inr theta)))
+    · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl helper)))))
+    · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl zerocheck))))))
+    · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr theta))))))
 
 #print axioms sourceEqualityValue_booleanTracePoint
 #print axioms bigEndianBits_injective

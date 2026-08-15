@@ -5,6 +5,8 @@ readonly bundle="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 readonly root="$(cd "$bundle/../.." && pwd -P)"
 readonly generated="$bundle/generated/AspisV5TerminalExtract"
 readonly proof="$bundle/proof/V5PublicStatementBindingProof.lean"
+readonly terminal_residual_proof="$root/AspisFormal/AspisFormal/V5AcceptedTerminalResidualExtraction.lean"
+readonly sumcheck_source_proof="$root/AspisFormal/AspisFormal/V5AcceptedSumcheckSourceBridge.lean"
 readonly lean_bin="${LEAN432_BIN:-$(command -v lean)}"
 readonly aeneas_lib="${AENEAS_LEAN_LIB:?set AENEAS_LEAN_LIB to the Lean-4.32 Aeneas library}"
 
@@ -58,8 +60,8 @@ mkdir -p "$out/AspisV5TerminalExtract"
 : > "$log"
 
 aspis_path=$(cd "$root/AspisFormal" && NO_DNA=1 lake env printenv LEAN_PATH)
-if [[ ! -f "$root/AspisFormal/.lake/build/lib/lean/AspisFormal/V5ProductionPublicResidualBinding.olean" ]]; then
-  echo "run 'cd AspisFormal && NO_DNA=1 lake build AspisFormal.V5ProductionPublicResidualBinding' first" >&2
+if [[ ! -f "$root/AspisFormal/.lake/build/lib/lean/AspisFormal/V5AcceptedSumcheckSourceBridge.olean" ]]; then
+  echo "run 'cd AspisFormal && NO_DNA=1 lake build AspisFormal.V5AcceptedSumcheckSourceBridge' first" >&2
   exit 1
 fi
 export LEAN_PATH="$out:$aspis_path:$aeneas_lib"
@@ -76,7 +78,8 @@ compile AspisV5TerminalExtract/Funs "$generated/Funs.lean"
 compile V5PublicStatementBindingProof "$proof"
 
 if rg -n '^[[:space:]]*(axiom|opaque|unsafe)[[:space:]]|\b(sorry|admit|native_decide|ofReduceBool)\b' \
-    "$proof" "$generated/FunsExternal.lean"; then
+    "$proof" "$generated/FunsExternal.lean" "$terminal_residual_proof" \
+    "$sumcheck_source_proof"; then
   echo "forbidden proof escape or handwritten axiom" >&2
   exit 1
 fi

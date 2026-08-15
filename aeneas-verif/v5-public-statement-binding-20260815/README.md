@@ -128,15 +128,50 @@ identically zero per-row `theta` polynomials, which feed directly into the
 looking at `theta` is explicit, so the theta bound is 24 roots rather than a
 union bound over all 1,024 rows.
 
-Two implementation-level obligations remain. First, the full Rust evaluator
-must agree with the modeled tower pack, row selectors, and residual locations.
-Second, successful verification plus commitment/FRI and ten-round sumcheck
-soundness must supply one fixed trace and the exact mixed-boundary equation.
-The latter includes the degree-27 sumcheck error; it is not silently counted
-as one of the three algebraic events above. The exact missing evidence is
-`AcceptedTraceAndSumcheckEvidence`, and accepted failure to supply it is
-`AcceptedTraceOrSumcheckExtractionFailure`. No probability is assigned to
-that remaining combined failure in this bundle.
+`V5AcceptedSumcheckSourceBridge.lean` now proves the deterministic ten-round
+sumcheck step instead of assuming the mixed-boundary equation as one block.
+It records the exact value flow checked by the verifier:
+
+1. round zero checks `p(0) + p(1)` against the supplied initial claim;
+2. each later round checks that boundary against the preceding evaluation;
+3. each 448-byte message is absorbed with its round byte before its challenge
+   is derived;
+4. challenge `i` depends on messages zero through `i`, not on later messages
+   or openings; and
+5. the returned value is the tenth message evaluated at the tenth challenge.
+
+For reference messages derived from one fixed committed polynomial, Lean
+proves that a wrong initial claim which nevertheless reaches the authenticated
+reference terminal must be repaired in one of the ten rounds. That repair
+challenge is a root of a nonzero polynomial of degree at most 27, so one fixed
+round has at most 27 repairing field elements. Outside that event, an
+authenticated mask sum and authenticated reference terminal give the exact
+mixed-boundary equation used by the residual proof. The deterministic record
+does not itself prove that dependency order; the source and probability work
+listed below must show that the polynomial is fixed before `eta` and each
+reference message is fixed before its corresponding round challenge.
+
+This leaves smaller, separately named obligations rather than one catch-all
+premise:
+
+- successful Rust execution must project to the modeled ten boundary checks,
+  message bytes, challenges, and returned value;
+- the mask commitment must authenticate the initial mask sum;
+- the commitment/FRI openings must authenticate one fixed oracle and its final
+  evaluation;
+- Fiat--Shamir must justify conditional challenge randomness for the ten
+  adaptive degree-27 events; and
+- the production residual rows must supply the low-level range, balance, and
+  asset equations. Failure of the last step is now
+  `AcceptedArithmeticResidualExtractionFailure`; the final theorem no longer
+  accepts `ConstraintsSatisfied` as an unnamed argument.
+
+The one-root helper result and the `10 / |K|` and `24 / |K|` finite-set
+results are also not final probability claims. They require source-order
+proofs showing, respectively, that the helper is fixed before `mu`, the table
+is fixed before the equality point, and the residual rows are fixed before
+`theta`, together with the corresponding challenge-distribution argument.
+No combined numerical bound is claimed here.
 
 A pinned full-evaluator extraction was attempted. Charon rejected the
 resulting standard-library iterator graph with
@@ -177,7 +212,7 @@ Build the maintained statement model once, then run:
 
 ```bash
 cd AspisFormal
-NO_DNA=1 lake build AspisFormal.V5AcceptedTerminalResidualExtraction
+NO_DNA=1 lake build AspisFormal.V5AcceptedSumcheckSourceBridge
 cd ..
 
 LEAN432_BIN=/path/to/lean-4.32.0 \
