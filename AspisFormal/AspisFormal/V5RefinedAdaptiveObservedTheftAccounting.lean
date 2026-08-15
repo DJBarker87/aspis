@@ -597,6 +597,97 @@ theorem deployed_adaptive_first_fraudulent_spend_probability_le_refined_budget
     runtimeBudget runtimeAssumed
   linarith
 
+set_option maxRecDepth 100000 in
+/-- Budgeted adaptive-theft bound for the literal deployed QM31 tower and the
+released decoder candidate family.  Lean derives the field cardinality and
+the terminal candidate cap; callers still supply the honest cryptographic,
+credential-recovery, runtime, source/authentication, and setup bounds. -/
+theorem deployed_adaptive_first_fraudulent_spend_probability_le_deployed_qm31_budget
+    {Run Sample AdversaryCoins PublicArtifact Execution Public Root Prefix :
+      Type*}
+    [MeasurableSpace Sample] [Fintype Prefix] [Nonempty Prefix]
+    {rc : RoundConstants}
+    {deployedOwner : Digest → Digest}
+    {deployedNote : Digest → F → F → Digest → Digest}
+    {deployedNullifier : Digest → Digest → Digest}
+    {deployedNode : Digest → Digest → Digest}
+    {scheme : FiatShamirSchedule Public Root
+      AspisV5ComponentCQM31TowerExact.QM31Exact}
+    (measure : Measure Sample) [IsProbabilityMeasure measure]
+    (data : ProjectedAcceptedFalseExperimentData Sample
+      AspisV5ComponentCQM31TowerExact.QM31Exact rc deployedOwner deployedNote
+      deployedNullifier deployedNode)
+    (connections : ReleasedIdealAcceptedFalseRawConnections measure
+      data.base.toEvents)
+    (production : ReleasedProductionFalseSpendConnection data.base.toEvents)
+    (projection : StatementBindingProjectionData Run Sample
+      AspisV5ComponentCQM31TowerExact.QM31Exact data)
+    (boundary : MaskedBoundaryProjectionData Run Sample
+      AspisV5ComponentCQM31TowerExact.QM31Exact Public Root
+      (scheme := scheme) projection)
+    (plans : TerminalCandidatePlanProjection Run Sample
+      AspisV5ComponentCQM31TowerExact.QM31Exact Public Root boundary)
+    (candidateExperiment : CompatibilityFriExperiment Prefix
+      AspisV5ComponentCQM31TowerExact.QM31Exact)
+    (terminal : ∀ p, candidateExperiment.CandidateAt p →
+      FixedTerminalAlgebraPlan
+        AspisV5ComponentCQM31TowerExact.QM31Exact)
+    (sumcheck : ∀ p, candidateExperiment.CandidateAt p →
+      AdaptiveDegree27MessagePlan
+        AspisV5ComponentCQM31TowerExact.QM31Exact)
+    (sourceHashAndConditionalSampling :
+      measure.real (exactTerminalCandidateFailureSet plans) ≤
+        (prefixAveragedCandidateTerminalSubtotal Prefix
+          candidateExperiment.CandidateAt terminal sumcheck : Real))
+    (deployedFirstFraudulentSpend : Sample → Prop)
+    (runtime : RuntimeFailurePredicates Sample)
+    (chain : AdaptiveChainFailures Sample)
+    (Accepts Commits : V5PublicStatement → Execution → Prop)
+    (victim : FixedVictim)
+    (experiment : AdaptiveObservationExperiment Sample AdversaryCoins
+      PublicArtifact Execution)
+    (extractAfter : ExtractAfterObservation PublicArtifact Execution)
+    (connection : DeployedAdaptiveAttackConnection deployedFirstFraudulentSpend
+      runtime chain deployedOwner deployedNote deployedNullifier deployedNode
+      Accepts Commits victim experiment extractAfter)
+    (coverage : RefinedAdaptiveHistoryCoverage production
+      {sample | ExtractorAfterObservationFailureEvent deployedOwner deployedNote
+        deployedNullifier deployedNode Accepts experiment extractAfter sample}
+      {sample | NullifierSecondPreimageAfterObservationEvent deployedNullifier
+        victim experiment extractAfter sample}
+      {sample | NoteSecondPreimageAfterObservationEvent deployedOwner
+        deployedNote victim experiment extractAfter sample}
+      {sample | VictimTreeCollisionAfterObservationEvent deployedOwner
+        deployedNote deployedNode victim experiment extractAfter sample})
+    (cryptoBudget : ConcreteSecurityBudget)
+    (cryptoAssumed : AssumedConcreteSecurityBounds measure
+      production.transcriptAndHashFailures cryptoBudget)
+    (credentialBudget : Real)
+    (credentialAssumed :
+      measure.real {sample | CredentialRecoveryAfterObservationEvent Accepts
+        victim experiment extractAfter sample} ≤ credentialBudget)
+    (runtimeBudget : RuntimeSecurityBudget)
+    (runtimeAssumed : AssumedRuntimeSecurityBounds measure runtime
+      runtimeBudget) :
+    measure.real {sample | deployedFirstFraudulentSpend sample} ≤
+      (1 : Real) / 2 ^ 75 + measure.real data.width19Failure +
+        nonterminalStatementFailureProbabilitySum measure boundary +
+        measure.real data.arithmeticResidualFailure +
+        measure.real data.hashMerkleResidualFailure +
+        cryptoBudget.total + credentialBudget + runtimeBudget.total +
+        measure.real {sample | chain.victimSetup sample} := by
+  have refined :=
+    deployed_adaptive_first_fraudulent_spend_probability_le_deployed_qm31
+      measure data connections production projection boundary plans
+      candidateExperiment terminal sumcheck sourceHashAndConditionalSampling
+      deployedFirstFraudulentSpend runtime chain Accepts Commits victim
+      experiment extractAfter connection coverage
+  have crypto := total_failure_probability_le_budget_sum measure
+    production.transcriptAndHashFailures cryptoBudget cryptoAssumed
+  have runtimeBound := namedRuntimeFailure_probability_le_total measure runtime
+    runtimeBudget runtimeAssumed
+  linarith
+
 #print axioms measureReal_refinedAdaptiveFailureUnion_le
 #print axioms deployed_adaptive_first_fraudulent_spend_subset_refined_union
 #print axioms deployed_adaptive_first_fraudulent_spend_probability_le_refined
@@ -608,5 +699,7 @@ theorem deployed_adaptive_first_fraudulent_spend_probability_le_refined_budget
 #print axioms namedRuntimeFailure_probability_le_total
 #print axioms
   deployed_adaptive_first_fraudulent_spend_probability_le_refined_budget
+#print axioms
+  deployed_adaptive_first_fraudulent_spend_probability_le_deployed_qm31_budget
 
 end AspisV5RefinedAdaptiveObservedTheftAccounting
