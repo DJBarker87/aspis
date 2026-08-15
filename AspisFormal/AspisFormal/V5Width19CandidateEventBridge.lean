@@ -125,7 +125,8 @@ theorem combineWidth19Messages_eq_combineWidth19Coefficients
       combineWidth19Coefficients gamma columns := by
   funext row
   rw [combineWidth19Coefficients_apply]
-  simp [combineWidth19Messages, Fin.sum_univ_succ]
+  change (∑ lane : Fin 19, gamma ^ lane.val * columns lane row) = _
+  simp [Fin.sum_univ_succ]
   ring
 
 /-- A matching CAT decomposition yields actual coefficient messages.  The
@@ -200,6 +201,212 @@ theorem candidate_family_member_extracts_coefficient_messages_outside_failure
   exact combined.trans
     (combineWidth19Messages_eq_combineWidth19Coefficients gamma components)
 
+/-! ## Exact candidate data used by the production reduction
+
+The verifier does not construct a decoder list at runtime.  Candidate
+eligibility, messages and agreement supports are mathematical objects derived
+from the authenticated initial word.  The definitions below make that
+derivation deterministic, instead of leaving four unrelated functions to a
+release instantiation. -/
+
+/-- Exact agreement support of one coefficient message against the
+gamma-combined nineteen received words. -/
+noncomputable def productionCandidateSupport
+    (encoder : Width19LinearEncoder K)
+    (receivedLanes : Fin 19 → Width19ReceivedCoordinate → K)
+    (gamma : K) (candidate : Width19CoefficientMessage K) :
+    Finset Width19ReceivedCoordinate := by
+  classical
+  exact Finset.univ.filter fun coordinate ↦
+    width19CurveValue receivedLanes gamma coordinate =
+      encoder candidate coordinate
+
+/-- A candidate is eligible exactly when its exact agreement support exceeds
+the released layer-zero threshold. -/
+def productionCandidateEligible
+    (encoder : Width19LinearEncoder K)
+    (receivedLanes : Fin 19 → Width19ReceivedCoordinate → K)
+    (gamma : K) (candidate : Width19CoefficientMessage K) : Prop :=
+  agreementCap0 <
+    (productionCandidateSupport encoder receivedLanes gamma candidate).card
+
+/-- The candidate message supplied to correlated agreement is the candidate
+coefficient vector itself; no Rust-side candidate record is invented. -/
+def productionCandidateMessage
+    (candidate : Width19CoefficientMessage K) :
+    Width19CoefficientMessage K := candidate
+
+/-- With the exact support above, validity is precisely eligibility: the
+pointwise agreement half follows from membership in that support. -/
+theorem production_candidate_valid_iff_eligible
+    (encoder : Width19LinearEncoder K)
+    (receivedLanes : Fin 19 → Width19ReceivedCoordinate → K)
+    (gamma : K) (candidate : Width19CoefficientMessage K) :
+    Width19CandidateValid encoder agreementCap0 receivedLanes
+        productionCandidateMessage
+        (fun challenge message ↦
+          productionCandidateSupport encoder receivedLanes challenge message)
+        gamma candidate ↔
+      productionCandidateEligible encoder receivedLanes gamma candidate := by
+  classical
+  constructor
+  · intro valid
+    exact valid.1
+  · intro eligible
+    refine ⟨eligible, ?_⟩
+    intro coordinate hcoordinate
+    simpa [productionCandidateSupport, productionCandidateMessage] using
+      (Finset.mem_filter.mp hcoordinate).2
+
+/-- Replace only the initial word of an ideal transcript by the exact
+gamma-combination of the nineteen authenticated words. -/
+def transcriptAtWidth19Challenge
+    (template : IdealTranscript K)
+    (receivedLanes : Fin 19 → Width19ReceivedCoordinate → K)
+    (gamma : K) : IdealTranscript K :=
+  { template with layer0 := width19CurveValue receivedLanes gamma }
+
+/-- Replace only the initial encoder by the exact released linear encoder. -/
+def encodersWithWidth19Layer0
+    (template : CodeEncoders K) (encoder : Width19LinearEncoder K) :
+    CodeEncoders K :=
+  { template with layer0 := encoder }
+
+/-- Membership in the actual initial decoder list is exactly the eligibility
+predicate above.  This closes the former independent choices of eligibility,
+message and support at the ideal-transcript boundary. -/
+theorem mem_initialCandidateList_iff_productionCandidateEligible
+    [Fintype K] [DecidableEq K]
+    (encoder : Width19LinearEncoder K)
+    (encoderTemplate : CodeEncoders K)
+    (transcriptTemplate : IdealTranscript K)
+    (receivedLanes : Fin 19 → Width19ReceivedCoordinate → K)
+    (gamma : K) (candidate : Width19CoefficientMessage K) :
+    candidate ∈ initialCandidateList
+        (encodersWithWidth19Layer0 encoderTemplate encoder)
+        (transcriptAtWidth19Challenge transcriptTemplate receivedLanes gamma) ↔
+      productionCandidateEligible encoder receivedLanes gamma candidate := by
+  classical
+  have supportEquality :
+      agreementSet (width19CurveValue receivedLanes gamma)
+          (encoder candidate) =
+        productionCandidateSupport encoder receivedLanes gamma candidate := by
+    apply Finset.ext
+    intro coordinate
+    simp [agreementSet, productionCandidateSupport]
+  rw [mem_initialCandidateList_iff]
+  change agreementCap0 <
+      (agreementSet (width19CurveValue receivedLanes gamma)
+        (encoder candidate)).card ↔
+    productionCandidateEligible encoder receivedLanes gamma candidate
+  rw [supportEquality]
+  rfl
+
+/-- Assemble the semantic record once correlated agreement has supplied the
+nineteen coefficient messages.  The opened statement fields and four claim
+discrepancies come from the separate relation/source projection. -/
+def productionCandidateRecord
+    (gamma : K) (columns : Width19Coefficients K)
+    (opened : AspisFormal.ArithmetizationCore.OpenedColumns)
+    (fourClaimDiscrepancy : Fin 4 → K) (kappa : K) :
+    CandidateSemanticRecord K where
+  lanes := ensembleOfWidth19Coefficients gamma columns
+  opened := opened
+  fourClaimDiscrepancy := fourClaimDiscrepancy
+  kappa := kappa
+
+@[simp] theorem productionCandidateRecord_lanes
+    (gamma : K) (columns : Width19Coefficients K)
+    (opened : AspisFormal.ArithmetizationCore.OpenedColumns)
+    (fourClaimDiscrepancy : Fin 4 → K) (kappa : K) :
+    (productionCandidateRecord gamma columns opened fourClaimDiscrepancy
+      kappa).lanes = ensembleOfWidth19Coefficients gamma columns := rfl
+
+/-- Outside the one correlated-family event, an eligible valid candidate
+constructs the exact record lanes and combined initial message.  No runtime
+decoder-list object is required. -/
+theorem production_candidate_constructs_exact_record_outside_failure
+    [Fintype K] [DecidableEq K]
+    (encoder : Width19LinearEncoder K)
+    (encoderInjective : Function.Injective encoder)
+    (receivedLanes : Fin 19 → Width19ReceivedCoordinate → K)
+    {Candidate : Type*} [Nonempty Candidate]
+    (eligible : K → Candidate → Prop)
+    (candidateMessage : Candidate → Width19CoefficientMessage K)
+    (support : K → Candidate → Finset Width19ReceivedCoordinate)
+    (gamma : K) (candidate : Candidate)
+    (execution : AcceptedCandidateExecution K)
+    (opened : AspisFormal.ArithmetizationCore.OpenedColumns)
+    (fourClaimDiscrepancy : Fin 4 → K) (kappa : K)
+    (messageMatches : candidateMessage candidate = execution.initialValues)
+    (outside : ¬ Width19CandidateFamilyBadAt encoder agreementCap0
+      receivedLanes eligible candidateMessage support gamma)
+    (isEligible : eligible gamma candidate)
+    (isValid : Width19CandidateValid encoder agreementCap0 receivedLanes
+      candidateMessage support gamma candidate) :
+    ∃ columns : Width19Coefficients K,
+      support gamma candidate ⊆
+          width19JointAgreementSet encoder receivedLanes columns ∧
+      (productionCandidateRecord gamma columns opened fourClaimDiscrepancy
+          kappa).lanes = ensembleOfWidth19Coefficients gamma columns ∧
+      execution.initialValues = combineWidth19Coefficients gamma columns := by
+  obtain ⟨columns, joint, combined⟩ :=
+    candidate_family_member_extracts_coefficient_messages_outside_failure
+      encoder encoderInjective receivedLanes eligible candidateMessage support
+      gamma candidate execution messageMatches outside isEligible isValid
+  exact ⟨columns, joint, rfl, combined⟩
+
+set_option maxRecDepth 10000 in
+/-- The exact initial-list specialization.  Once ideal FRI supplies a member
+of the decoder list fixed by the authenticated initial word, no independent
+eligibility, message, or support premise remains: all three are the concrete
+objects defined above. -/
+theorem initial_candidate_constructs_exact_record_outside_failure
+    [Fintype K] [DecidableEq K]
+    (encoder : Width19LinearEncoder K)
+    (encoderInjective : Function.Injective encoder)
+    (encoderTemplate : CodeEncoders K)
+    (transcriptTemplate : IdealTranscript K)
+    (receivedLanes : Fin 19 → Width19ReceivedCoordinate → K)
+    (gamma : K) (candidate : Width19CoefficientMessage K)
+    (execution : AcceptedCandidateExecution K)
+    (opened : AspisFormal.ArithmetizationCore.OpenedColumns)
+    (fourClaimDiscrepancy : Fin 4 → K) (kappa : K)
+    (member : candidate ∈ initialCandidateList
+      (encodersWithWidth19Layer0 encoderTemplate encoder)
+      (transcriptAtWidth19Challenge transcriptTemplate receivedLanes gamma))
+    (messageMatches : candidate = execution.initialValues)
+    (outside : ¬ Width19CandidateFamilyBadAt encoder agreementCap0
+      receivedLanes
+      (productionCandidateEligible encoder receivedLanes)
+      productionCandidateMessage
+      (productionCandidateSupport encoder receivedLanes)
+      gamma) :
+    ∃ columns : Width19Coefficients K,
+      productionCandidateSupport encoder receivedLanes gamma candidate ⊆
+          width19JointAgreementSet encoder receivedLanes columns ∧
+      (productionCandidateRecord gamma columns opened fourClaimDiscrepancy
+          kappa).lanes = ensembleOfWidth19Coefficients gamma columns ∧
+      execution.initialValues = combineWidth19Coefficients gamma columns := by
+  have eligible :
+      productionCandidateEligible encoder receivedLanes gamma candidate :=
+    (mem_initialCandidateList_iff_productionCandidateEligible encoder
+      encoderTemplate transcriptTemplate receivedLanes gamma candidate).mp
+      member
+  have valid : Width19CandidateValid encoder agreementCap0 receivedLanes
+      productionCandidateMessage
+      (productionCandidateSupport encoder receivedLanes)
+      gamma candidate :=
+    (production_candidate_valid_iff_eligible encoder receivedLanes gamma
+      candidate).mpr eligible
+  exact production_candidate_constructs_exact_record_outside_failure
+    encoder encoderInjective receivedLanes
+    (productionCandidateEligible encoder receivedLanes)
+    productionCandidateMessage
+    (productionCandidateSupport encoder receivedLanes)
+    gamma candidate execution opened fourClaimDiscrepancy kappa messageMatches
+    outside eligible valid
+
 /-- Outside one correlated decoder-family failure event, every candidate used
 by the reduction has the exact nineteen-column projection.  The structure
 stores the codeword equation first and derives coefficient-message equality
@@ -272,6 +479,10 @@ theorem combinedLaneBindingFailure_implies_familyFailure
 #print axioms matching_decomposition_extracts_coefficient_messages
 #print axioms
   candidate_family_member_extracts_coefficient_messages_outside_failure
+#print axioms production_candidate_valid_iff_eligible
+#print axioms mem_initialCandidateList_iff_productionCandidateEligible
+#print axioms production_candidate_constructs_exact_record_outside_failure
+#print axioms initial_candidate_constructs_exact_record_outside_failure
 #print axioms Width19ProjectionOutsideFamilyFailure.projection
 #print axioms combinedLaneBindingFailure_implies_familyFailure
 
