@@ -1,3 +1,4 @@
+import AspisFormal.V5ComponentCQM31TowerExact
 import AspisFormal.V5PrefixDependentCandidateSecurity
 import AspisFormal.V5RefinedAcceptedFalseAccounting
 
@@ -38,6 +39,14 @@ open Module
 
 variable {K : Type*} [Field K] [Fintype K] [DecidableEq K]
   [Algebra (ZMod P) K] [NeZero (2 : K)]
+
+/-- The literal Rust-compatible four-limb tower has the cardinality used by
+the numerical soundness ledger. -/
+theorem qm31Exact_card_cast_eq_soundness_field :
+    (Fintype.card AspisV5ComponentCQM31TowerExact.QM31Exact : Real) =
+      AspisSoundnessLedger.FIELD := by
+  rw [AspisV5ComponentCQM31TowerExact.qm31Exact_card]
+  norm_num [AspisV5ComponentCQM31TowerExact.P, AspisSoundnessLedger.FIELD]
 
 /-- The exact terminal algebra plan carried by one projected candidate run. -/
 noncomputable def fixedTerminalPlanAt
@@ -304,6 +313,7 @@ theorem productionFalseSpend_probability_le_with_exact_terminal_event
     (exactTerminalCandidateFailureCoverage plans) terminalBound
 
 #print axioms exactTerminalCandidateFailureCoverage
+#print axioms qm31Exact_card_cast_eq_soundness_field
 #print axioms exactTerminalCandidateFailure_probability_le_raw_bound
 #print axioms acceptedFalse_probability_le_with_exact_terminal_event
 #print axioms productionFalseSpend_probability_le_with_exact_terminal_event

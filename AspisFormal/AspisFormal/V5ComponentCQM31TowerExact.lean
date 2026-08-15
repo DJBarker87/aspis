@@ -177,6 +177,13 @@ noncomputable instance cm31ExactFintype : Fintype CM31Exact :=
 noncomputable instance qm31ExactFintype : Fintype QM31Exact :=
   Fintype.ofEquiv (CM31Exact × CM31Exact) (QuadraticAlgebra.equivProd qm31R 0).symm
 
+/-- The literal deployed tower has exactly four M31 coordinates. -/
+theorem qm31Exact_card : Fintype.card QM31Exact = P ^ 4 := by
+  calc
+    Fintype.card QM31Exact = Fintype.card QM31Limbs :=
+      Fintype.card_congr qm31ExactLimbEquiv.symm
+    _ = P ^ 4 := qm31Limbs_card
+
 /-- The exact-tower analogue of the old cardinality-only sampler theorem. -/
 theorem successfulExactQM31FreeCoordinates_areIndependentUniform :
     AspisV5ComponentCSamplerKernel.SuccessfulFreeCoordinatesAreIndependentUniform
@@ -348,6 +355,7 @@ def RustQM31SourceFunctionsMatch
 #print axioms cm31_qm31R_not_isSquare
 #print axioms qm31ExactToLimbs_limbsToQM31Exact
 #print axioms limbsToQM31Exact_qm31ExactToLimbs
+#print axioms qm31Exact_card
 #print axioms successfulExactQM31FreeCoordinates_areIndependentUniform
 #print axioms successfulExactQM31RawU32KernelLaw_eq_uniform
 #print axioms decodeQM31ExactLE_encodeQM31ExactLE
