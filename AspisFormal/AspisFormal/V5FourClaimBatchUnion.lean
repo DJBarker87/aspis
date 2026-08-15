@@ -1,4 +1,5 @@
 import AspisFormal.V5FunctionalBatching
+import AspisFormal.V5RawFinalSecurityAccounting
 import AspisFormal.V5Tag67CandidateTraceExtraction
 
 /-!
@@ -22,6 +23,7 @@ namespace AspisV5FourClaimBatchUnion
 
 open AspisSoundnessLedger
 open AspisV5FunctionalBatching
+open AspisV5RawFinalSecurityAccounting
 open AspisV5Tag67CandidateTraceExtraction
 
 variable {K Candidate : Type*}
@@ -173,6 +175,37 @@ theorem qm31_candidate_batch_collision_le_two_pow_neg_114 :
   unfold FIELD
   norm_num
 
+/-- The ideal-uniform contribution of four-claim batching across all 240
+candidates. -/
+noncomputable def rawFourClaimBatchCollisionBound : Real :=
+  (720 : Real) / FIELD
+
+theorem rawFourClaimBatchCollisionBound_le_two_pow_neg_114 :
+    rawFourClaimBatchCollisionBound ≤ (1 : Real) / 2 ^ 114 := by
+  exact qm31_candidate_batch_collision_le_two_pow_neg_114
+
+/-- Adding the complete 240-candidate batching term does not change the
+conservative 75-bit raw ideal bound. -/
+theorem raw_core_plus_four_claim_batch_le_two_pow_neg_75 :
+    rawCoreSubtotal + rawFourClaimBatchCollisionBound ≤
+      (1 : Real) / 2 ^ 75 := by
+  have hquery := raw_q18_bound_le_two_pow_neg_79
+  have hfri0 := raw_fri_round_zero_le_three_mul_two_pow_neg_77
+  have hfri1 : rawFriFibreBound 1 ≤ (1 : Real) / 2 ^ 78 := by
+    simpa [rawFriExponent] using
+      (raw_fri_fibre_bound_le (1 : Fin 4))
+  have hfri2 : rawFriFibreBound 2 ≤ (1 : Real) / 2 ^ 82 := by
+    simpa [rawFriExponent] using
+      (raw_fri_fibre_bound_le (2 : Fin 4))
+  have hfri3 : rawFriFibreBound 3 ≤ (1 : Real) / 2 ^ 88 := by
+    simpa [rawFriExponent] using
+      (raw_fri_fibre_bound_le (3 : Fin 4))
+  have hrelation := raw_relation_repair_bound_le_two_pow_neg_111
+  have hbatch := rawFourClaimBatchCollisionBound_le_two_pow_neg_114
+  norm_num [rawCoreSubtotal] at
+    hquery hfri0 hfri1 hfri2 hfri3 hrelation hbatch ⊢
+  linarith
+
 /-! ## Audit -/
 
 #print axioms mem_candidateBatchCollisionSet_iff
@@ -181,5 +214,6 @@ theorem qm31_candidate_batch_collision_le_two_pow_neg_114 :
 #print axioms recordBatchCollisionSet_eq_candidateBatchCollisionSet
 #print axioms recordBatchCollisionSet_card_le_720
 #print axioms qm31_candidate_batch_collision_le_two_pow_neg_114
+#print axioms raw_core_plus_four_claim_batch_le_two_pow_neg_75
 
 end AspisV5FourClaimBatchUnion
