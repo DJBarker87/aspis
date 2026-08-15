@@ -1143,6 +1143,224 @@ theorem generated_insertion_sort_loop_exact
       · exact hcurrentPerm'
   · exact ⟨hindex, rfl, List.Perm.refl sorted.val, hprefix⟩
 
+/-! ## Complete extracted query-index assembly -/
+
+def expectedLayer0 (values : List Std.U32) : List Std.U32 :=
+  values.toFinset.sort (· ≤ ·)
+
+def expectedLater (values : List Std.U32) : List (List Std.U32) :=
+  [shiftedUnique (expectedLayer0 values) 2#u32,
+    shiftedUnique (expectedLayer0 values) 4#u32,
+    shiftedUnique (expectedLayer0 values) 6#u32]
+
+def QueryIndicesPost (values : List Std.U32)
+    (result : core.result.Result
+      circle_line_merkle.CircleLineQueryIndices
+      circle_line_merkle.CircleLineMerkleError) : Prop :=
+  ∃ output,
+    result = core.result.Result.Ok output ∧
+    output.layer0.val = expectedLayer0 values ∧
+    output.later.val.map (fun later => later.val) = expectedLater values
+
+theorem generated_insertion_sort_from_one
+    (values : alloc.vec.Vec Std.U32) (hne : values.val ≠ []) :
+    circle_line_merkle.derive_circle_line_query_indices_for_count_loop0_loop0
+        values 1#usize ⦃ output =>
+      output.val.Pairwise (· ≤ ·) ∧ output.val.Perm values.val ⦄ := by
+  apply generated_insertion_sort_loop_exact
+  · change 1 ≤ values.val.length
+    cases hvalues : values.val with
+    | nil => exact False.elim (hne hvalues)
+    | cons head tail => simp
+  · change (values.val.take 1).Pairwise (· ≤ ·)
+    cases hvalues : values.val with
+    | nil => exact False.elim (hne hvalues)
+    | cons head tail => simp
+
+theorem sorted_dedup_eq_expectedLayer0
+    (sorted values : List Std.U32)
+    (hsorted : sorted.Pairwise (· ≤ ·))
+    (hperm : sorted.Perm values) :
+    sorted.dedup = expectedLayer0 values := by
+  have hdedupPairwise : sorted.dedup.Pairwise (· ≤ ·) :=
+    List.Pairwise.sublist (List.dedup_sublist sorted) hsorted
+  have hsort : sorted.dedup.toFinset.sort (· ≤ ·) = sorted.dedup :=
+    (List.toFinset_sort (· ≤ ·) (List.nodup_dedup sorted)).2
+      hdedupPairwise
+  have hfinset : sorted.dedup.toFinset = values.toFinset := by
+    ext value
+    simp only [List.mem_toFinset, List.mem_dedup]
+    exact hperm.mem_iff
+  unfold expectedLayer0
+  rw [← hfinset, hsort]
+
+/-- Once range validation reaches the end, the extracted body executes the
+actual Rust sort, duplicate removal, fixed shift lookup, and three later-layer
+scans, and returns the exact maintained list model. -/
+theorem terminal_query_index_body_exact
+    (queries : Slice Std.U32) (queryLimit : Std.U32)
+    (inputIndex : Std.Usize)
+    (hdone : inputIndex.val = queries.val.length)
+    (hne : queries.val ≠ []) :
+    circle_line_merkle.derive_circle_line_query_indices_for_count_loop0.body
+        queries queryLimit inputIndex ⦃ flow =>
+      ∃ result,
+        flow = ControlFlow.done result ∧ QueryIndicesPost queries.val result ⦄ := by
+  unfold circle_line_merkle.derive_circle_line_query_indices_for_count_loop0.body
+  have hnotActive : ¬ inputIndex < Slice.len queries := by scalar_tac
+  rw [if_neg hnotActive]
+  obtain ⟨sorted, hsortedRun, hsortedEq⟩ := WP.spec_imp_exists
+    (alloc.slice.Slice.to_vec_spec core.clone.CloneU32 queries (by
+      intro value hvalue
+      simp))
+  rw [hsortedRun]
+  simp only [bind_tc_ok]
+  have hsortedValues : sorted.val = queries.val := by
+    exact congrArg Subtype.val hsortedEq.symm
+  have hsortedNe : sorted.val ≠ [] := by
+    simpa only [hsortedValues] using hne
+  obtain ⟨sorted1, hsortRun, hsortPost⟩ := WP.spec_imp_exists
+    (generated_insertion_sort_from_one sorted hsortedNe)
+  rw [hsortRun]
+  simp only [bind_tc_ok]
+  obtain ⟨layer01, hlayerRun, hlayerValues⟩ := WP.spec_imp_exists
+    (extracted_layer0_dedup_exact sorted1 hsortPost.1)
+  rw [hlayerRun]
+  simp only [bind_tc_ok]
+  have hshift0 :
+      Array.index_usize circle_line_merkle.CIRCLE_LINE_QUERY_SHIFTS
+        0#usize = ok 2#u32 := by
+    unfold circle_line_merkle.CIRCLE_LINE_QUERY_SHIFTS
+    simp [Array.index_usize, Array.make]
+  have hshift1 :
+      Array.index_usize circle_line_merkle.CIRCLE_LINE_QUERY_SHIFTS
+        1#usize = ok 4#u32 := by
+    unfold circle_line_merkle.CIRCLE_LINE_QUERY_SHIFTS
+    simp [Array.index_usize, Array.make]
+  have hshift2 :
+      Array.index_usize circle_line_merkle.CIRCLE_LINE_QUERY_SHIFTS
+        2#usize = ok 6#u32 := by
+    unfold circle_line_merkle.CIRCLE_LINE_QUERY_SHIFTS
+    simp [Array.index_usize, Array.make]
+  rw [hshift0]
+  simp only [bind_tc_ok]
+  obtain ⟨later0, hlater0Run, hlater0Values⟩ := WP.spec_imp_exists
+    (sorted_unique_shifted_exact (alloc.vec.Vec.deref layer01) 2#u32)
+  rw [hlater0Run]
+  simp only [bind_tc_ok]
+  rw [hshift1]
+  simp only [bind_tc_ok]
+  obtain ⟨later1, hlater1Run, hlater1Values⟩ := WP.spec_imp_exists
+    (sorted_unique_shifted_exact (alloc.vec.Vec.deref layer01) 4#u32)
+  rw [hlater1Run]
+  simp only [bind_tc_ok]
+  rw [hshift2]
+  simp only [bind_tc_ok]
+  obtain ⟨later2, hlater2Run, hlater2Values⟩ := WP.spec_imp_exists
+    (sorted_unique_shifted_exact (alloc.vec.Vec.deref layer01) 6#u32)
+  rw [hlater2Run]
+  simp only [bind_tc_ok, WP.spec, WP.theta, WP.wp_return]
+  have hsortedPermQueries : sorted1.val.Perm queries.val := by
+    simpa only [hsortedValues] using hsortPost.2
+  have hlayerExpected : layer01.val = expectedLayer0 queries.val := by
+    calc
+      layer01.val = sorted1.val.dedup := hlayerValues
+      _ = expectedLayer0 queries.val :=
+        sorted_dedup_eq_expectedLayer0 sorted1.val queries.val hsortPost.1
+          hsortedPermQueries
+  refine ⟨_, rfl, ?_⟩
+  unfold QueryIndicesPost
+  refine ⟨_, rfl, hlayerExpected, ?_⟩
+  unfold expectedLater
+  simp only [Array.make, List.map_cons, List.map_nil]
+  rw [hlater0Values, hlater1Values, hlater2Values]
+  simp only [alloc.vec.Vec.deref]
+  rw [hlayerExpected]
+
+private theorem query_wrapping_succ_exact
+    (queries : Slice Std.U32) (index : Std.Usize)
+    (hindex : index.val < queries.val.length) :
+    (Std.Usize.wrapping_add index 1#usize).val = index.val + 1 := by
+  rw [Std.Usize.wrapping_add_val_eq]
+  apply Nat.mod_eq_of_lt
+  have hlength := queries.property
+  change index.val + 1 < UScalar.size .Usize
+  rw [UScalar.size_UScalarTyUsize]
+  have hsize := Usize.size_scalarTac_eq
+  omega
+
+/-- The extracted validation loop rejects no in-range value and reaches the
+exact final assembly proved above. -/
+theorem generated_query_indices_loop_exact
+    (queries : Slice Std.U32) (queryLimit : Std.U32)
+    (hne : queries.val ≠ [])
+    (hrange : ∀ query ∈ queries.val, query < queryLimit) :
+    circle_line_merkle.derive_circle_line_query_indices_for_count_loop0
+        queries queryLimit 0#usize ⦃ result =>
+      QueryIndicesPost queries.val result ⦄ := by
+  simp only [
+    circle_line_merkle.derive_circle_line_query_indices_for_count_loop0]
+  apply loop.spec_decr_nat
+    (fun index : Std.Usize => queries.val.length - index.val)
+    (fun index => index.val ≤ queries.val.length)
+    (QueryIndicesPost queries.val)
+  · intro index hindex
+    have hindex' : index.val ≤ queries.val.length := by simpa only using hindex
+    by_cases hactive : index.val < queries.val.length
+    · unfold
+        circle_line_merkle.derive_circle_line_query_indices_for_count_loop0.body
+      have hactiveScalar : index < Slice.len queries := by scalar_tac
+      rw [if_pos hactiveScalar]
+      obtain ⟨query, hqueryRun, hqueryValue⟩ := WP.spec_imp_exists
+        (Slice.index_usize_spec queries index hactive)
+      rw [hqueryRun]
+      simp only [bind_tc_ok]
+      have hqueryMember : query ∈ queries.val := by
+        rw [hqueryValue]
+        exact List.getElem_mem hactive
+      have hnotOutOfRange : ¬ query ≥ queryLimit := by
+        exact not_le_of_gt (hrange query hqueryMember)
+      rw [if_neg hnotOutOfRange]
+      simp only [Std.lift, bind_tc_ok, WP.spec, WP.theta]
+      have hnext :
+          (Std.Usize.wrapping_add index 1#usize).val = index.val + 1 :=
+        query_wrapping_succ_exact queries index hactive
+      constructor
+      · rw [hnext]
+        omega
+      · rw [hnext]
+        omega
+    · have hdone : index.val = queries.val.length := by omega
+      have hterminal :=
+        terminal_query_index_body_exact queries queryLimit index hdone hne
+      apply WP.spec_mono hterminal
+      intro flow hflow
+      rcases hflow with ⟨result, rfl, hpost⟩
+      exact hpost
+  · norm_num
+
+/-- The public extracted Rust helper returns the exact sorted layer-zero set
+and the exact shifted unique later-layer lists for every nonempty in-range
+input. -/
+theorem generated_query_indices_exact
+    (queries : Slice Std.U32) (queryCount : Std.Usize)
+    (hne : queries.val ≠ [])
+    (hrange : ∀ query ∈ queries.val,
+      query < UScalar.cast .U32 queryCount) :
+    circle_line_merkle.derive_circle_line_query_indices_for_count
+        queries queryCount ⦃ result =>
+      QueryIndicesPost queries.val result ⦄ := by
+  unfold circle_line_merkle.derive_circle_line_query_indices_for_count
+  have hnotEmpty : ¬ Slice.len queries = 0#usize := by
+    intro hempty
+    apply hne
+    apply List.eq_nil_of_length_eq_zero
+    scalar_tac
+  rw [if_neg hnotEmpty]
+  simp only [Std.lift, bind_tc_ok]
+  exact generated_query_indices_loop_exact queries
+    (UScalar.cast .U32 queryCount) hne hrange
+
 #print axioms u32_wrapping_shr_val_of_lt
 #print axioms shiftedUnique_nats_eq_sorted_division_image
 #print axioms sorted_unique_shifted_exact
@@ -1151,5 +1369,8 @@ theorem generated_insertion_sort_loop_exact
 #print axioms bubbleLeft_sorted_prefix
 #print axioms bubbleLeft_perm
 #print axioms generated_insertion_sort_loop_exact
+#print axioms terminal_query_index_body_exact
+#print axioms generated_query_indices_loop_exact
+#print axioms generated_query_indices_exact
 
 end RuntimeIndexProof
