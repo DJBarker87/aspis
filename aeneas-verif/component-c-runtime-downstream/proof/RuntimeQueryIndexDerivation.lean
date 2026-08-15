@@ -1054,6 +1054,95 @@ theorem generated_inner_insertion_loop_exact
           simpa only [hzero] using hcurrentModel'
   · exact ⟨hbound, rfl⟩
 
+private theorem wrapping_vec_succ_exact
+    {T : Type} (values : alloc.vec.Vec T) (index : Std.Usize)
+    (hindex : index.val < values.val.length) :
+    (Std.Usize.wrapping_add index 1#usize).val = index.val + 1 := by
+  rw [Std.Usize.wrapping_add_val_eq]
+  apply Nat.mod_eq_of_lt
+  have hlength := values.property
+  change index.val + 1 < UScalar.size .Usize
+  rw [UScalar.size_UScalarTyUsize]
+  have hsize := Usize.size_scalarTac_eq
+  omega
+
+/-- The complete extracted insertion-sort loop returns a sorted permutation
+of its input whenever the prefix before `index` is already sorted. -/
+theorem generated_insertion_sort_loop_exact
+    (sorted : alloc.vec.Vec Std.U32) (index : Std.Usize)
+    (hindex : index.val ≤ sorted.val.length)
+    (hprefix : (sorted.val.take index.val).Pairwise (· ≤ ·)) :
+    aspis_core.circle_line_merkle.derive_circle_line_query_indices_for_count_loop0_loop0
+        sorted index ⦃ output =>
+      output.val.Pairwise (· ≤ ·) ∧ output.val.Perm sorted.val ⦄ := by
+  simp only [
+    aspis_core.circle_line_merkle.derive_circle_line_query_indices_for_count_loop0_loop0]
+  apply loop.spec_decr_nat
+    (fun state : alloc.vec.Vec Std.U32 × Std.Usize =>
+      sorted.val.length - state.2.val)
+    (fun state =>
+      state.2.val ≤ state.1.val.length ∧
+      state.1.val.length = sorted.val.length ∧
+      state.1.val.Perm sorted.val ∧
+      (state.1.val.take state.2.val).Pairwise (· ≤ ·))
+    (fun output : alloc.vec.Vec Std.U32 =>
+      output.val.Pairwise (· ≤ ·) ∧ output.val.Perm sorted.val)
+  · rintro ⟨current, currentIndex⟩
+      ⟨hcurrentBound, hcurrentLength, hcurrentPerm, hcurrentPrefix⟩
+    have hcurrentBound' : currentIndex.val ≤ current.val.length := by
+      simpa only using hcurrentBound
+    have hcurrentLength' : current.val.length = sorted.val.length := by
+      simpa only using hcurrentLength
+    have hcurrentPerm' : current.val.Perm sorted.val := by
+      simpa only using hcurrentPerm
+    have hcurrentPrefix' :
+        (current.val.take currentIndex.val).Pairwise (· ≤ ·) := by
+      simpa only using hcurrentPrefix
+    unfold
+      aspis_core.circle_line_merkle.derive_circle_line_query_indices_for_count_loop0_loop0.body
+    by_cases hactive : currentIndex.val < current.val.length
+    · have hactiveScalar : currentIndex < alloc.vec.Vec.len current := by
+        scalar_tac
+      rw [if_pos hactiveScalar]
+      obtain ⟨next, hnextRun, hnextModel⟩ := WP.spec_imp_exists
+        (generated_inner_insertion_loop_exact current currentIndex hactive)
+      rw [hnextRun]
+      simp only [bind_tc_ok, Std.lift]
+      let nextIndex := Std.Usize.wrapping_add currentIndex 1#usize
+      have hnextIndex : nextIndex.val = currentIndex.val + 1 := by
+        exact wrapping_vec_succ_exact current currentIndex hactive
+      have hnextValues :
+          next.val = bubbleLeft current.val currentIndex.val := hnextModel
+      have hnextLength : next.val.length = current.val.length := by
+        rw [hnextValues, bubbleLeft_length]
+      have hnextPrefix :
+          (next.val.take nextIndex.val).Pairwise (· ≤ ·) := by
+        rw [hnextValues, hnextIndex]
+        exact bubbleLeft_sorted_prefix current.val currentIndex.val hactive
+          hcurrentPrefix'
+      have hnextPermCurrent : next.val.Perm current.val := by
+        rw [hnextValues]
+        exact bubbleLeft_perm current.val currentIndex.val hactive
+          hcurrentPrefix'
+      simp only [WP.spec, WP.theta]
+      refine ⟨⟨?_, ?_, ?_, ?_⟩, ?_⟩
+      · rw [hnextIndex, hnextLength]
+        omega
+      · exact hnextLength.trans hcurrentLength'
+      · exact hnextPermCurrent.trans hcurrentPerm'
+      · exact hnextPrefix
+      · rw [hnextIndex]
+        omega
+    · have hdone : currentIndex.val = current.val.length := by omega
+      have hnotActive : ¬ currentIndex < alloc.vec.Vec.len current := by
+        scalar_tac
+      rw [if_neg hnotActive]
+      simp only [WP.spec, WP.theta, WP.wp_return]
+      constructor
+      · simpa only [hdone, List.take_length] using hcurrentPrefix'
+      · exact hcurrentPerm'
+  · exact ⟨hindex, rfl, List.Perm.refl sorted.val, hprefix⟩
+
 #print axioms u32_wrapping_shr_val_of_lt
 #print axioms shiftedUnique_nats_eq_sorted_division_image
 #print axioms sorted_unique_shifted_exact
@@ -1061,5 +1150,6 @@ theorem generated_inner_insertion_loop_exact
 #print axioms generated_inner_insertion_loop_exact
 #print axioms bubbleLeft_sorted_prefix
 #print axioms bubbleLeft_perm
+#print axioms generated_insertion_sort_loop_exact
 
 end RuntimeIndexProof
