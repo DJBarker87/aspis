@@ -8,6 +8,7 @@ namespace AspisV5OpeningParserSourceProof
 
 open aspis_core
 open AspisV5MerkleConsumedValueBridge
+open AspisV5MerkleRustBridge
 
 @[simp] theorem usize_from_u16_val (word : Std.U16) :
     (core.convert.num.FromUsizeU16.from word).val = word.val :=
@@ -584,6 +585,210 @@ theorem parse_private_opening_success_exact
                   state_only_private_openings.Cursor.new, cursor0, hu16,
                   actualCount, hcount, hcountWord] at hparse
 
+/-! ## From the extracted raw slices to the maintained opening view -/
+
+def parserU8ToByte (byte : Std.U8) :
+    AspisV5ComponentCQM31Representation.Byte :=
+  ⟨byte.val, by
+    have h := UScalar.hBounds byte
+    norm_num at h ⊢
+    exact h⟩
+
+def generatedParserOpeningToReturned
+    (opening : state_only_private_openings.StateOnlyPrivateOpening) :
+    ReturnedOpening where
+  count := opening.count.val
+  valueWidth := opening.value_width.val
+  records := opening.records.val.map parserU8ToByte
+  frontier := opening.frontier.val.map parserU8ToByte
+  offsets :=
+    { count := opening.offsets.count.val
+      records := opening.offsets.records.val
+      frontierCount := opening.offsets.frontier_count.val
+      frontier := opening.offsets.frontier.val
+      endOffset := opening.offsets.end.val }
+
+/-- The only byte-identification facts needed after the already-proved raw
+parser theorem: the two returned slices are the record and frontier portions
+of the authenticated section. -/
+structure ExtractedParserSlicesMatchTrace
+    {sha256 tree root queries}
+    (opening : state_only_private_openings.StateOnlyPrivateOpening)
+    (trace : ExactSectionTrace sha256 tree root queries) : Prop where
+  records : opening.records.val.map parserU8ToByte = trace.records.flatten
+  frontier : opening.frontier.val.map parserU8ToByte =
+    flattenDigests trace.frontier
+
+private theorem map_parserU8ToByte_slice
+    (start stop : Nat) (bytes : List Std.U8) :
+    (List.slice start stop bytes).map parserU8ToByte =
+      List.slice start stop (bytes.map parserU8ToByte) := by
+  simp [List.slice]
+
+private theorem slice_append_middle {A : Type}
+    (before middle after : List A) :
+    List.slice before.length (before.length + middle.length)
+        (before ++ middle ++ after) = middle := by
+  simp [List.slice]
+
+/-- The two slice-identification facts follow from a wire prefix and the
+length of the parsed frontier.  No byte-by-byte slice equality must be
+supplied separately. -/
+theorem exactRawParserOutput_slicesMatchTrace_of_wirePrefix
+    {sha256 tree root queries}
+    (trace : ExactSectionTrace sha256 tree root queries)
+    (proofBytes : Slice Std.U8) (expectedCount valueWidth : Std.Usize)
+    (opening : state_only_private_openings.StateOnlyPrivateOpening)
+    (remainder : Slice Std.U8)
+    (hraw : ExactRawParserOutput proofBytes expectedCount valueWidth
+      opening remainder)
+    (hcount : expectedCount.val = trace.records.length)
+    (hwidth : valueWidth.val = AspisV5MerkleAuthenticationBinding.valueWidth tree)
+    (suffix : List AspisV5ComponentCQM31Representation.Byte)
+    (hwire : proofBytes.val.map parserU8ToByte = trace.wire ++ suffix)
+    (hfrontierLength : opening.frontier.val.length =
+      (flattenDigests trace.frontier).length) :
+    ExtractedParserSlicesMatchTrace opening trace := by
+  rcases hraw with ⟨frontierCount, _hopenCount, _hopenWidth, _hoffsetCount,
+    _hoffsetRecords, hrecordsSlice, _hrecordsLength,
+    _hoffsetFrontierCount, _hoffsetFrontier, hfrontierSlice,
+    hrawFrontierLength, _hoffsetEnd, _hend, _hremainder⟩
+  have htraceRecordsLength :
+      trace.records.flatten.length =
+        trace.records.length *
+          (AspisV5MerkleAuthenticationBinding.valueWidth tree + 32) := by
+    rw [List.length_flatten]
+    have hlengths : trace.records.map List.length =
+        List.replicate trace.records.length
+          (AspisV5MerkleAuthenticationBinding.valueWidth tree + 32) := by
+      apply List.eq_replicate_iff.mpr
+      constructor
+      · simp
+      · intro value hvalue
+        simp only [List.mem_map] at hvalue
+        obtain ⟨record, hrecord, rfl⟩ := hvalue
+        exact exactSection_records_uniform_length trace record hrecord
+    rw [hlengths, List.sum_replicate]
+    simp
+  have hrecordsBytes :
+      expectedCount.val * (valueWidth.val + 32) =
+        trace.records.flatten.length := by
+    calc
+      expectedCount.val * (valueWidth.val + 32) =
+          trace.records.length *
+            (AspisV5MerkleAuthenticationBinding.valueWidth tree + 32) := by
+        rw [hcount, hwidth]
+      _ = trace.records.flatten.length := htraceRecordsLength.symm
+  have hfrontierCount : frontierCount = trace.frontier.length := by
+    rw [hfrontierLength, flattenDigests_length] at hrawFrontierLength
+    omega
+  constructor
+  · rw [hrecordsSlice, map_parserU8ToByte_slice, hwire,
+      openingOfTrace_wire_exact trace]
+    have hmiddle := slice_append_middle
+      (u16LE (openingOfTrace trace).count)
+      (openingOfTrace trace).records
+      (u32LE trace.frontier.length ++
+        (openingOfTrace trace).frontier ++ suffix)
+    simpa [openingOfTrace_count, openingOfTrace_records, u16LE_length,
+      hrecordsBytes, List.append_assoc] using hmiddle
+  · rw [hfrontierSlice, map_parserU8ToByte_slice, hwire,
+      openingOfTrace_wire_exact trace]
+    have hmiddle := slice_append_middle
+      (u16LE (openingOfTrace trace).count ++
+        (openingOfTrace trace).records ++ u32LE trace.frontier.length)
+      (openingOfTrace trace).frontier suffix
+    simpa [openingOfTrace_count, openingOfTrace_records,
+      openingOfTrace_frontier, u16LE_length, u32LE_length,
+      hrecordsBytes, hfrontierCount, flattenDigests_length,
+      List.append_assoc, Nat.mul_comm, Nat.add_assoc] using hmiddle
+
+/-- A successful extracted parser output, once its two zero-copy slices are
+identified with one authenticated section, is exactly `openingOfTrace`,
+including every offset. -/
+theorem exactRawParserOutput_to_openingOfTrace
+    {sha256 tree root queries}
+    (trace : ExactSectionTrace sha256 tree root queries)
+    (proofBytes : Slice Std.U8) (expectedCount valueWidth : Std.Usize)
+    (opening : state_only_private_openings.StateOnlyPrivateOpening)
+    (remainder : Slice Std.U8)
+    (hraw : ExactRawParserOutput proofBytes expectedCount valueWidth
+      opening remainder)
+    (hcount : expectedCount.val = trace.records.length)
+    (hwidth : valueWidth.val = AspisV5MerkleAuthenticationBinding.valueWidth tree)
+    (hslices : ExtractedParserSlicesMatchTrace opening trace) :
+    generatedParserOpeningToReturned opening = openingOfTrace trace := by
+  rcases hraw with ⟨frontierCount, hopenCount, hopenWidth, hoffsetCount,
+    hoffsetRecords, _hrecordsSlice, hrecordsLength, hoffsetFrontierCount,
+    hoffsetFrontier, _hfrontierSlice, hfrontierLength, hoffsetEnd,
+    _hend, _hremainder⟩
+  have hrecordsMappedLength :
+      (opening.records.val.map parserU8ToByte).length =
+        expectedCount.val * (valueWidth.val + 32) := by
+    simpa using hrecordsLength
+  have hfrontierMappedLength :
+      (opening.frontier.val.map parserU8ToByte).length =
+        frontierCount * 32 := by
+    simpa using hfrontierLength
+  have hfrontierCount : frontierCount = trace.frontier.length := by
+    have hmapped : frontierCount * 32 =
+        (flattenDigests trace.frontier).length := by
+      rw [← hslices.frontier, hfrontierMappedLength]
+    rw [flattenDigests_length] at hmapped
+    omega
+  have hrecordsBytes :
+      expectedCount.val * (valueWidth.val + 32) =
+        trace.records.flatten.length := by
+    rw [← hrecordsMappedLength, hslices.records]
+  unfold generatedParserOpeningToReturned openingOfTrace
+  simp only [ReturnedOpening.mk.injEq, OpeningOffsets.mk.injEq]
+  refine ⟨hopenCount.trans hcount, congrArg UScalar.val hopenWidth |>.trans hwidth,
+    hslices.records, hslices.frontier, ?_⟩
+  refine ⟨hoffsetCount, hoffsetRecords, ?_, ?_, ?_⟩
+  · calc
+      opening.offsets.frontier_count.val =
+          2 + expectedCount.val * (valueWidth.val + 32) :=
+        hoffsetFrontierCount
+      _ = 2 + trace.records.flatten.length := by rw [hrecordsBytes]
+  · calc
+      opening.offsets.frontier.val =
+          2 + expectedCount.val * (valueWidth.val + 32) + 4 :=
+        hoffsetFrontier
+      _ = 2 + trace.records.flatten.length + 4 := by rw [hrecordsBytes]
+  · calc
+      opening.offsets.end.val =
+          2 + expectedCount.val * (valueWidth.val + 32) + 4 +
+            frontierCount * 32 := hoffsetEnd
+      _ = 2 + trace.records.flatten.length + 4 +
+          (flattenDigests trace.frontier).length := by
+        rw [hrecordsBytes, hfrontierCount, flattenDigests_length]
+        omega
+
+/-- A directly composable form for the outer five-section driver: an exact
+raw parse of a section whose converted bytes begin with the authenticated wire
+returns exactly that authenticated opening.  The only extra scalar fact is
+that the parsed frontier has the authenticated frontier's byte length. -/
+theorem exactRawParserOutput_to_openingOfTrace_of_wirePrefix
+    {sha256 tree root queries}
+    (trace : ExactSectionTrace sha256 tree root queries)
+    (proofBytes : Slice Std.U8) (expectedCount valueWidth : Std.Usize)
+    (opening : state_only_private_openings.StateOnlyPrivateOpening)
+    (remainder : Slice Std.U8)
+    (hraw : ExactRawParserOutput proofBytes expectedCount valueWidth
+      opening remainder)
+    (hcount : expectedCount.val = trace.records.length)
+    (hwidth : valueWidth.val = AspisV5MerkleAuthenticationBinding.valueWidth tree)
+    (suffix : List AspisV5ComponentCQM31Representation.Byte)
+    (hwire : proofBytes.val.map parserU8ToByte = trace.wire ++ suffix)
+    (hfrontierLength : opening.frontier.val.length =
+      (flattenDigests trace.frontier).length) :
+    generatedParserOpeningToReturned opening = openingOfTrace trace := by
+  apply exactRawParserOutput_to_openingOfTrace trace proofBytes expectedCount
+    valueWidth opening remainder hraw hcount hwidth
+  exact exactRawParserOutput_slicesMatchTrace_of_wirePrefix trace proofBytes
+    expectedCount valueWidth opening remainder hraw hcount hwidth suffix hwire
+    hfrontierLength
+
 #print axioms usize_checked_add_eq_some
 #print axioms usize_checked_mul_eq_some
 #print axioms cursor_take_success_exact
@@ -592,5 +797,8 @@ theorem parse_private_opening_success_exact
 #print axioms cursor_u32_success_position_exact
 #print axioms checked_section_len_success_inversion
 #print axioms parse_private_opening_success_exact
+#print axioms exactRawParserOutput_slicesMatchTrace_of_wirePrefix
+#print axioms exactRawParserOutput_to_openingOfTrace
+#print axioms exactRawParserOutput_to_openingOfTrace_of_wirePrefix
 
 end AspisV5OpeningParserSourceProof

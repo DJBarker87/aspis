@@ -934,7 +934,228 @@ theorem friReadSchedule_has_exact_four_production_loops
         (orderedActiveIndices .line3 queries 0).map (terminalReadOfRun run) := by
   exact ⟨rfl, rfl, rfl, rfl⟩
 
+/-! ## FRI reads reconstructed only from returned parser views -/
+
+/-- Total form of the production `StateOnlyPrivateOpening::value` read.  The
+empty default is irrelevant on a successful parser/FRI path; keeping it here
+makes the reconstruction a total function of the returned driver output. -/
+def returnedValueOrEmpty (opening : ReturnedOpening) (ordinal : Nat) :
+    List Byte :=
+  (opening.value ordinal).getD []
+
+/-- One layer-zero read reconstructed solely from the openings and sorted
+index arrays returned by the five-section parser. -/
+def layerZeroReadOfDriver (output : V5DriverOutput) (query : Nat) :
+    LayerZeroRead where
+  query := query
+  ordinal := output.layer0Indices.idxOf query
+  c1Value := returnedValueOrEmpty output.c1
+    (output.layer0Indices.idxOf query)
+  c2Value := returnedValueOrEmpty output.c2
+    (output.layer0Indices.idxOf query)
+  parentIndex := query / 4
+  parentOrdinal := output.line1Indices.idxOf (query / 4)
+  parentValue := returnedValueOrEmpty output.line1
+    (output.line1Indices.idxOf (query / 4))
+  parentSlot := ⟨query % 4, Nat.mod_lt _ (by decide)⟩
+
+def line1ReadOfDriver (output : V5DriverOutput) (index : Nat) :
+    LineTransitionRead where
+  layer := 1
+  index := index
+  ordinal := output.line1Indices.idxOf index
+  incoming := returnedValueOrEmpty output.line1
+    (output.line1Indices.idxOf index)
+  parentIndex := index / 4
+  parentOrdinal := output.line2Indices.idxOf (index / 4)
+  outgoing := returnedValueOrEmpty output.line2
+    (output.line2Indices.idxOf (index / 4))
+  slot := ⟨index % 4, Nat.mod_lt _ (by decide)⟩
+
+def line2ReadOfDriver (output : V5DriverOutput) (index : Nat) :
+    LineTransitionRead where
+  layer := 2
+  index := index
+  ordinal := output.line2Indices.idxOf index
+  incoming := returnedValueOrEmpty output.line2
+    (output.line2Indices.idxOf index)
+  parentIndex := index / 4
+  parentOrdinal := output.line3Indices.idxOf (index / 4)
+  outgoing := returnedValueOrEmpty output.line3
+    (output.line3Indices.idxOf (index / 4))
+  slot := ⟨index % 4, Nat.mod_lt _ (by decide)⟩
+
+def terminalReadOfDriver (output : V5DriverOutput) (index : Nat) :
+    TerminalRead where
+  index := index
+  ordinal := output.line3Indices.idxOf index
+  incoming := returnedValueOrEmpty output.line3
+    (output.line3Indices.idxOf index)
+
+/-- The four FRI input lists reconstructed without a Merkle witness or a
+cryptographic model: only the parser's returned opening views and sorted index
+arrays are used. -/
+def friReadScheduleFromDriver (output : V5DriverOutput) : FriReadSchedule where
+  layer0ToLine1 := output.layer0Indices.map (layerZeroReadOfDriver output)
+  line1ToLine2 := output.line1Indices.map (line1ReadOfDriver output)
+  line2ToLine3 := output.line2Indices.map (line2ReadOfDriver output)
+  line3ToFinal := output.line3Indices.map (terminalReadOfDriver output)
+
+theorem layerZeroReadOfDriver_eq_run
+    {sha256 roots queries}
+    (run : ExactV5Run sha256 roots queries)
+    {query : Nat} (hquery : query ∈ activeIndices .c1 queries 0) :
+    layerZeroReadOfDriver (driverOutputOfRun run []) query =
+      layerZeroReadOfRun run query := by
+  have hc2 : query ∈ activeIndices .c2 queries 0 := by
+    simpa [activeIndices_c1_eq_c2] using hquery
+  have hparent := layer0_parent_mem_line1 hquery
+  have hc1Value := openingOfTrace_value_at_ordinal (run.sections .c1) hquery
+  have hc2Value := openingOfTrace_value_at_ordinal (run.sections .c2) hc2
+  have hparentValue :=
+    openingOfTrace_value_at_ordinal (run.sections .line1) hparent
+  have hc1Value' :
+      (openingOfTrace (run.sections .c1)).value
+          ((orderedActiveIndices .c1 queries 0).idxOf query) =
+        some (sectionValueAtIndex (run.sections .c1) query) := by
+    simpa [sectionOrdinal] using hc1Value
+  have hc2Value' :
+      (openingOfTrace (run.sections .c2)).value
+          ((orderedActiveIndices .c1 queries 0).idxOf query) =
+        some (sectionValueAtIndex (run.sections .c2) query) := by
+    simpa [sectionOrdinal, c1_c2_ordered_indices_equal] using hc2Value
+  have hparentValue' :
+      (openingOfTrace (run.sections .line1)).value
+          ((orderedActiveIndices .line1 queries 0).idxOf (query / 4)) =
+        some (sectionValueAtIndex (run.sections .line1) (query / 4)) := by
+    simpa [sectionOrdinal] using hparentValue
+  simp [layerZeroReadOfDriver, layerZeroReadOfRun, returnedValueOrEmpty,
+    driverOutputOfRun, sectionOrdinal, hc1Value', hc2Value', hparentValue']
+
+theorem line1ReadOfDriver_eq_run
+    {sha256 roots queries}
+    (run : ExactV5Run sha256 roots queries)
+    {index : Nat} (hindex : index ∈ activeIndices .line1 queries 0) :
+    line1ReadOfDriver (driverOutputOfRun run []) index =
+      line1ReadOfRun run index := by
+  have hparent := line1_parent_mem_line2 hindex
+  have hincoming :=
+    openingOfTrace_value_at_ordinal (run.sections .line1) hindex
+  have houtgoing :=
+    openingOfTrace_value_at_ordinal (run.sections .line2) hparent
+  have hincoming' :
+      (openingOfTrace (run.sections .line1)).value
+          ((orderedActiveIndices .line1 queries 0).idxOf index) =
+        some (sectionValueAtIndex (run.sections .line1) index) := by
+    simpa [sectionOrdinal] using hincoming
+  have houtgoing' :
+      (openingOfTrace (run.sections .line2)).value
+          ((orderedActiveIndices .line2 queries 0).idxOf (index / 4)) =
+        some (sectionValueAtIndex (run.sections .line2) (index / 4)) := by
+    simpa [sectionOrdinal] using houtgoing
+  simp [line1ReadOfDriver, line1ReadOfRun, returnedValueOrEmpty,
+    driverOutputOfRun, sectionOrdinal, hincoming', houtgoing']
+
+theorem line2ReadOfDriver_eq_run
+    {sha256 roots queries}
+    (run : ExactV5Run sha256 roots queries)
+    {index : Nat} (hindex : index ∈ activeIndices .line2 queries 0) :
+    line2ReadOfDriver (driverOutputOfRun run []) index =
+      line2ReadOfRun run index := by
+  have hparent := line2_parent_mem_line3 hindex
+  have hincoming :=
+    openingOfTrace_value_at_ordinal (run.sections .line2) hindex
+  have houtgoing :=
+    openingOfTrace_value_at_ordinal (run.sections .line3) hparent
+  have hincoming' :
+      (openingOfTrace (run.sections .line2)).value
+          ((orderedActiveIndices .line2 queries 0).idxOf index) =
+        some (sectionValueAtIndex (run.sections .line2) index) := by
+    simpa [sectionOrdinal] using hincoming
+  have houtgoing' :
+      (openingOfTrace (run.sections .line3)).value
+          ((orderedActiveIndices .line3 queries 0).idxOf (index / 4)) =
+        some (sectionValueAtIndex (run.sections .line3) (index / 4)) := by
+    simpa [sectionOrdinal] using houtgoing
+  simp [line2ReadOfDriver, line2ReadOfRun, returnedValueOrEmpty,
+    driverOutputOfRun, sectionOrdinal, hincoming', houtgoing']
+
+theorem terminalReadOfDriver_eq_run
+    {sha256 roots queries}
+    (run : ExactV5Run sha256 roots queries)
+    {index : Nat} (hindex : index ∈ activeIndices .line3 queries 0) :
+    terminalReadOfDriver (driverOutputOfRun run []) index =
+      terminalReadOfRun run index := by
+  have hincoming :=
+    openingOfTrace_value_at_ordinal (run.sections .line3) hindex
+  have hincoming' :
+      (openingOfTrace (run.sections .line3)).value
+          ((orderedActiveIndices .line3 queries 0).idxOf index) =
+        some (sectionValueAtIndex (run.sections .line3) index) := by
+    simpa [sectionOrdinal] using hincoming
+  simp [terminalReadOfDriver, terminalReadOfRun, returnedValueOrEmpty,
+    driverOutputOfRun, sectionOrdinal, hincoming']
+
+/-- Once the parser output is fixed, every byte string handed to the four FRI
+consumers is determined without any further cryptographic assumption. -/
+theorem friReadScheduleFromDriver_eq_run
+    {sha256 roots queries}
+    (run : ExactV5Run sha256 roots queries) :
+    friReadScheduleFromDriver (driverOutputOfRun run []) =
+      friReadScheduleOfRun run := by
+  unfold friReadScheduleFromDriver friReadScheduleOfRun
+  congr 1
+  · apply List.map_congr_left
+    intro query hquery
+    exact layerZeroReadOfDriver_eq_run run
+      ((Finset.mem_sort (.≤.)).mp hquery)
+  · apply List.map_congr_left
+    intro index hindex
+    exact line1ReadOfDriver_eq_run run
+      ((Finset.mem_sort (.≤.)).mp hindex)
+  · apply List.map_congr_left
+    intro index hindex
+    exact line2ReadOfDriver_eq_run run
+      ((Finset.mem_sort (.≤.)).mp hindex)
+  · apply List.map_congr_left
+    intro index hindex
+    exact terminalReadOfDriver_eq_run run
+      ((Finset.mem_sort (.≤.)).mp hindex)
+
 /-! ## Smallest remaining source equality -/
+
+/-- Field-by-field form of the five-section parser result.  This is the exact
+meeting point for the existing one-section parser proof, opening-accessor
+proof, and sorted-topology proof. -/
+structure V5DriverOutputFieldsMatchRun
+    {sha256 roots queries}
+    (output : V5DriverOutput) (run : ExactV5Run sha256 roots queries) : Prop where
+  c1 : output.c1 = openingOfTrace (run.sections .c1)
+  c2 : output.c2 = openingOfTrace (run.sections .c2)
+  line1 : output.line1 = openingOfTrace (run.sections .line1)
+  line2 : output.line2 = openingOfTrace (run.sections .line2)
+  line3 : output.line3 = openingOfTrace (run.sections .line3)
+  layer0Indices : output.layer0Indices = orderedActiveIndices .c1 queries 0
+  line1Indices : output.line1Indices = orderedActiveIndices .line1 queries 0
+  line2Indices : output.line2Indices = orderedActiveIndices .line2 queries 0
+  line3Indices : output.line3Indices = orderedActiveIndices .line3 queries 0
+  bytesConsumed : output.bytesConsumed = run.proofBytes.length
+  remainder : output.remainder = []
+
+theorem driverOutput_eq_iff_fieldsMatchRun
+    {sha256 roots queries}
+    (output : V5DriverOutput) (run : ExactV5Run sha256 roots queries) :
+    output = driverOutputOfRun run [] ↔
+      V5DriverOutputFieldsMatchRun output run := by
+  constructor
+  · rintro rfl
+    exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  · rintro ⟨hc1, hc2, hline1, hline2, hline3, hlayer0, hline1Indices,
+      hline2Indices, hline3Indices, hconsumed, hremainder⟩
+    cases output
+    simp only [driverOutputOfRun, V5DriverOutput.mk.injEq] at *
+    exact ⟨hc1, hc2, hline1, hline2, hline3, hlayer0, hline1Indices,
+      hline2Indices, hline3Indices, hconsumed, hremainder⟩
 
 /-- Observable output of the real helper/driver plus the byte slices passed to
 the four FRI checks.  An extraction adapter for Rust should populate this from
@@ -1037,6 +1258,97 @@ def ExactRustV5OpeningParserOutputEquality
       run.proofBytes = call.proofBytes ∧
         observation.driver = driverOutputOfRun run []
 
+/-- Authentication-only half of successful parser execution.  It is the
+existing shared-topology/Merkle source obligation and says nothing about the
+Rust slices returned to later code. -/
+def ExactRustV5OpeningAuthenticationSuccess
+    (sha256 : List Byte -> Digest32)
+    (rustObservation : V5ProductionCall -> Option OpeningAndFriObservation) :
+    Prop :=
+  ∀ call observation, rustObservation call = some observation ->
+    ExactV5PrivateOpeningAcceptance sha256 call
+
+/-- Source-only statement that every successful observation came through the
+released five calls to the state-only opening helper, with each returned
+remainder passed to the next call. -/
+def RustObservationUsesFiveOpeningHelpers
+    (rustObservation : V5ProductionCall -> Option OpeningAndFriObservation)
+    (rustHelperAccepts : StateOnlyTopologyHelperCall -> Prop) : Prop :=
+  ∀ call observation, rustObservation call = some observation ->
+    V5DriverUsingStateOnlyHelper rustHelperAccepts call
+
+/-- The existing focused helper equality and the literal five-call driver
+shape discharge the authentication-only half. -/
+theorem fiveOpeningHelpers_imply_authenticationSuccess
+    (sha256 : List Byte -> Digest32)
+    (rustObservation : V5ProductionCall -> Option OpeningAndFriObservation)
+    (rustHelperAccepts : StateOnlyTopologyHelperCall -> Prop)
+    (hhelper : VerifyStateOnlyPrivateOpeningWithTopologySourceEquality
+      sha256 rustHelperAccepts)
+    (hdriver : RustObservationUsesFiveOpeningHelpers rustObservation
+      rustHelperAccepts) :
+    ExactRustV5OpeningAuthenticationSuccess sha256 rustObservation := by
+  intro call observation hrust
+  exact (helperSourceEquality_driver_iff_exactV5Acceptance
+    sha256 rustHelperAccepts hhelper call).mp (hdriver call observation hrust)
+
+/-- Output-only half after an authenticated run has been fixed.  Each field is
+the direct target of an existing extraction: five raw parser views, four
+sorted index arrays, and the final consumed-length/remainder calculation. -/
+def ExactRustV5OpeningParserFields
+    (sha256 : List Byte -> Digest32)
+    (rustObservation : V5ProductionCall -> Option OpeningAndFriObservation) :
+    Prop :=
+  ∀ call observation (run : ExactV5Run sha256 call.roots call.queries),
+    rustObservation call = some observation ->
+    run.proofBytes = call.proofBytes ->
+    V5DriverOutputFieldsMatchRun observation.driver run
+
+/-- Parser-output equality implies the already separated authentication
+success statement. -/
+theorem openingParserOutputEquality_implies_authentication
+    (sha256 : List Byte -> Digest32)
+    (rustObservation : V5ProductionCall -> Option OpeningAndFriObservation)
+    (hparser : ExactRustV5OpeningParserOutputEquality sha256 rustObservation) :
+    ExactRustV5OpeningAuthenticationSuccess sha256 rustObservation := by
+  intro call observation hrust
+  obtain ⟨run, hbytes, _hdriver⟩ := hparser call observation hrust
+  exact ⟨run, hbytes⟩
+
+/-- Authentication success and the field-level parser outputs are sufficient
+for the former whole-driver parser equality.  This is the useful direction
+for composing the existing helper/topology and raw-parser extraction
+packages. -/
+theorem authentication_and_fields_imply_openingParserOutputEquality
+    (sha256 : List Byte -> Digest32)
+    (rustObservation : V5ProductionCall -> Option OpeningAndFriObservation)
+    (hauth : ExactRustV5OpeningAuthenticationSuccess sha256 rustObservation)
+    (hfields : ExactRustV5OpeningParserFields sha256 rustObservation) :
+    ExactRustV5OpeningParserOutputEquality sha256 rustObservation := by
+  intro call observation hrust
+  obtain ⟨run, hbytes⟩ := hauth call observation hrust
+  have hmatch := hfields call observation run hrust hbytes
+  exact ⟨run, hbytes,
+    (driverOutput_eq_iff_fieldsMatchRun observation.driver run).mpr hmatch⟩
+
+/-- Small source-only boundary for the FRI dataflow.  It no longer mentions
+Merkle traces, SHA-256, or a separately chosen model run: after Rust returns
+the five opening views and sorted index arrays, all four consumer input lists
+must be the deterministic reconstruction from those returned values.
+
+The extracted `StateOnlyPrivateOpening::value` theorem proves each individual
+slice operation.  The temporary recursive extraction in
+`aeneas-verif/v5-fri-monotone-source-20260815` also proves the monotone helper
+returns the requested ordinal under its sorted-list conditions.  What remains
+here is equality of that temporary recursion with the production `while`, and
+that the four production loops call the accessors at these indices without
+substituting, omitting, or reordering a read. -/
+def ExactRustV5FriReadsFromReturnedOpenings
+    (rustObservation : V5ProductionCall -> Option OpeningAndFriObservation) :
+    Prop :=
+  ∀ call observation, rustObservation call = some observation ->
+    observation.friReads = friReadScheduleFromDriver observation.driver
+
 /-- Source boundary left for the actual four FRI loops after the returned
 opening views are fixed.  It covers their monotone-index traversal, parent
 index and slot calculation, and the exact record-value slices passed to each
@@ -1051,6 +1363,42 @@ def ExactRustV5FriLoopReadEquality
     run.proofBytes = call.proofBytes ->
     observation.driver = driverOutputOfRun run [] ->
     observation.friReads = friReadScheduleOfRun run
+
+/-- The returned-opening dataflow statement is sufficient for the former
+run-indexed FRI-loop equality. -/
+theorem friReadsFromReturnedOpenings_implies_friLoopReadEquality
+    (sha256 : List Byte -> Digest32)
+    (rustObservation : V5ProductionCall -> Option OpeningAndFriObservation)
+    (hreads : ExactRustV5FriReadsFromReturnedOpenings rustObservation) :
+    ExactRustV5FriLoopReadEquality sha256 rustObservation := by
+  intro call observation run hrust _hbytes hdriver
+  calc
+    observation.friReads =
+        friReadScheduleFromDriver observation.driver :=
+      hreads call observation hrust
+    _ = friReadScheduleFromDriver (driverOutputOfRun run []) := by rw [hdriver]
+    _ = friReadScheduleOfRun run := friReadScheduleFromDriver_eq_run run
+
+/-- Once parser output equality is available, the old run-indexed FRI premise
+is equivalent to the smaller statement that Rust reads from its own returned
+opening views. -/
+theorem friLoopReadEquality_iff_readsFromReturnedOpenings
+    (sha256 : List Byte -> Digest32)
+    (rustObservation : V5ProductionCall -> Option OpeningAndFriObservation)
+    (hparser : ExactRustV5OpeningParserOutputEquality sha256 rustObservation) :
+    ExactRustV5FriLoopReadEquality sha256 rustObservation ↔
+      ExactRustV5FriReadsFromReturnedOpenings rustObservation := by
+  constructor
+  · intro hloops call observation hrust
+    obtain ⟨run, hbytes, hdriver⟩ := hparser call observation hrust
+    have hrun := hloops call observation run hrust hbytes hdriver
+    calc
+      observation.friReads = friReadScheduleOfRun run := hrun
+      _ = friReadScheduleFromDriver (driverOutputOfRun run []) :=
+        (friReadScheduleFromDriver_eq_run run).symm
+      _ = friReadScheduleFromDriver observation.driver := by rw [hdriver]
+  · exact friReadsFromReturnedOpenings_implies_friLoopReadEquality
+      sha256 rustObservation
 
 /-- The output/dataflow executable premise left by this module.
 `rustObservation` returns
@@ -1183,6 +1531,13 @@ theorem rustObservation_exposes_only_authenticated_fri_values
 #print axioms every_line1_schedule_read_is_authenticated
 #print axioms every_line2_schedule_read_is_authenticated
 #print axioms every_terminal_schedule_read_is_authenticated
+#print axioms friReadScheduleFromDriver_eq_run
+#print axioms driverOutput_eq_iff_fieldsMatchRun
+#print axioms fiveOpeningHelpers_imply_authenticationSuccess
+#print axioms openingParserOutputEquality_implies_authentication
+#print axioms authentication_and_fields_imply_openingParserOutputEquality
+#print axioms friReadsFromReturnedOpenings_implies_friLoopReadEquality
+#print axioms friLoopReadEquality_iff_readsFromReturnedOpenings
 #print axioms friReadSchedule_eq_of_driverOutput_eq
 #print axioms exactRustV5OpeningAndFriConsumerEquality_iff_split
 #print axioms rustObservation_exposes_only_authenticated_fri_values

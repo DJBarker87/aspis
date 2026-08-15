@@ -1,0 +1,18 @@
+diff --git a/programs/aspis-verifier/src/v5_fri_checks.rs b/programs/aspis-verifier/src/v5_fri_checks.rs
+index 3b1f37f..4818daf 100644
+--- a/programs/aspis-verifier/src/v5_fri_checks.rs
++++ b/programs/aspis-verifier/src/v5_fri_checks.rs
+@@ -327,0 +328,8 @@ pub fn bind_final_and_derive_v5_queries(
++fn advance_monotone_ordinal(indices: &[u32], ordinal: usize, index: u32) -> usize {
++    if ordinal < indices.len() && indices[ordinal] < index {
++        advance_monotone_ordinal(indices, ordinal + 1, index)
++    } else {
++        ordinal
++    }
++}
++
+@@ -335,3 +343 @@ fn opening_value_for_monotone_index<'a>(
+-    while *ordinal < indices.len() && indices[*ordinal] < index {
+-        *ordinal += 1;
+-    }
++    *ordinal = advance_monotone_ordinal(indices, *ordinal, index);

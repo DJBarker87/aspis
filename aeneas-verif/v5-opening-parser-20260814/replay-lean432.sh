@@ -33,7 +33,9 @@ readonly log="$out/lean432.log"
 mkdir -p "$out/V5OpeningParserGenerated"
 : > "$log"
 
-aspis_path=$(cd "$root/AspisFormal" && NO_DNA=1 lake env printenv LEAN_PATH)
+aspis_path=${ASPIS_FORMAL_LEAN_PATH:-$(
+  cd "$root/AspisFormal" && NO_DNA=1 lake env printenv LEAN_PATH
+)}
 export LEAN_PATH="$out:$aspis_path:$aeneas_lib"
 
 compile() {
