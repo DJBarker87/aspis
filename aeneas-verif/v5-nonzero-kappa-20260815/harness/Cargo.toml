@@ -1,0 +1,18 @@
+[package]
+name = "aspis-core-nonzero-kappa-extraction"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+publish = false
+build = "../../../crates/aspis-core/build.rs"
+
+[lib]
+path = "../../../crates/aspis-core/src/lib.rs"
+
+[features]
+insecure-test-ordering = []
+insecure-test-framing = []
+
+[dependencies]
+
+[workspace]
