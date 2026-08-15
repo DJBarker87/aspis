@@ -20,17 +20,27 @@ have these SHA-256 hashes:
 extraction-only rewrites. They fix the hash backend to one opaque call, rewrite
 unsupported iterator and loop shapes, and unroll the fixed five-section
 driver. The second patch replaces the first patch's provisional failure flag
-with recursive helpers that stop before hashing an incomplete radix-four
-group. This preserves the deployed verifier's first-error hash-call prefix;
-on success it also returns the same scratch vectors. Scratch contents after a
-rejected call are intentionally outside the claimed observation because the
-production caller returns the error without reading them.
+with recursive helpers designed to stop before hashing an incomplete
+radix-four group. The handwritten semantics proof establishes first-error
+hash-prefix and successful-buffer equality between the corresponding loop and
+recursive models. It does not by itself establish either remaining code
+bridge. Scratch contents after a rejected call are outside the modeled
+observation because the production caller returns the error without reading
+them.
 
 The patched Rust type-checks. Charon then reaches
 `verify_v5_private_openings` and Aeneas emits complete definitions for the
 parser, topology constructor, leaf hashing, radix-four and binary-cap
 authentication, the five helper calls, returned remainder, and trailing-byte
-check. Aeneas emitted no partial function bodies.
+check. Aeneas emitted no partial bodies for those local functions.
+
+The generated `FunsExternal_Template.lean` is also part of the record. It
+lists 13 definitions that this extraction does not translate: standard
+`Option`, `Result`, and `Vec` operations; the query-index helper and its public
+constants; and `fixed_hashv`. The generated file is therefore not a standalone
+proof until those definitions are implemented and proved against their source
+semantics. The extraction replay checks generation; it does not claim to close
+those external definitions.
 
 The only opaque cryptographic operation is `merkle.fixed_hashv`. Any later
 proof must take as an explicit premise that it equals Solana `hashv` (SHA-256)
@@ -55,13 +65,54 @@ Until those proofs exist, the repository must not say that the deployed Rust
 Merkle verifier has been proved equal to the mathematical model. Concrete Rust
 tests support the rewrites, but tests do not replace that universal proof.
 
+The generated proof package now establishes the exact leaf and binary-cap
+SHA-256 inputs and inverts a successful top-level driver call into all five
+opening results, their remainders, four query arrays, scratch states, byte
+count, and the final empty-remainder check. Its one executable axiom is
+`fixed_hashv`. The remaining generated-code proof is the nonterminal
+radix-four recursion: each slot read, group hash, frontier read, and cursor
+advance must still be connected to the maintained section trace. The original
+deployed nested loop must separately be connected to the loop model, and
+`fixed_hashv` must be connected to Solana SHA-256. These are open obligations,
+not conclusions of the extraction replay.
+
 ## Tool versions
 
 - Charon: `cb50ff16b9f1066b8a97dc06da704de2da2fa41c`
 - Aeneas base: `b59d5188c082f704a418c7cb4e52ad69328002d1`
-- Aeneas extraction extensions: `b4e0f598`, `156a8d23`, `7c8dc061`,
+- Aeneas extraction extensions: `b4e0c769`, `156a8d23`, `7c8dc061`,
   `d5cb4d05`, `b49f69d8`, `35b05b92`
 
 Run `replay-extraction.sh` with `CHARON_BIN` and `AENEAS_BIN` pointing to
-those builds. The script checks the source identity, checks and applies the
+those builds, and `CHARON_REPO` and `AENEAS_REPO` pointing to their source
+trees. The script checks the exact source identities, checks and applies the
 adapter, type-checks it, and requires a complete Aeneas extraction.
+
+The extraction-affecting compiler changes from the local Aeneas commits are
+reproduced by `aeneas-extraction-extensions.patch` (SHA-256
+`6be4942915a0468bb05f0de385d2c308e23deb8f2dbb91866a030bc5f55f38f5`).
+The commits also contain tests, which are not needed to build the extractor
+and are not copied into this patch. These local Aeneas changes are ordinary
+tooling code, not formally verified transformations; review them or include
+them in the extraction trust boundary.
+
+Apply the patch to Aeneas base `b59d5188`, then build `src/main.exe` with the
+recorded reconstruction version. Build Charon at `cb50ff16` with
+`cargo build --release` from its `charon/` directory. For example:
+
+```sh
+git -C /path/to/aeneas checkout b59d5188
+git -C /path/to/aeneas apply \
+  /path/to/Aspis/aeneas-verif/v5-merkle-deployed-source-20260815/aeneas-extraction-extensions.patch
+(cd /path/to/aeneas/src && \
+  AENEAS_VERSION=aspis-v5-merkle-6be49429 dune build)
+
+git -C /path/to/charon checkout cb50ff16
+(cd /path/to/charon/charon && cargo build --release)
+
+CHARON_REPO=/path/to/charon \
+CHARON_BIN=/path/to/charon/charon/target/release/charon \
+AENEAS_REPO=/path/to/aeneas \
+AENEAS_BIN=/path/to/aeneas/src/_build/default/main.exe \
+  ./aeneas-verif/v5-merkle-deployed-source-20260815/replay-extraction.sh
+```

@@ -3,7 +3,7 @@ diff --git a/crates/aspis-core/src/merkle.rs b/crates/aspis-core/src/merkle.rs
 +++ b/crates/aspis-core/src/merkle.rs
 @@ -410,7 +410,29 @@ fn topology_parent_level(indices: &[u32]) -> (Vec<u32>, Vec<u8>) {
  }
- 
+
  type TopologyStorage = (Vec<u32>, [usize; 17], Vec<u8>, [usize; 16]);
 +
 +fn topology_indices_are_strictly_increasing(indices: &[u32], ordinal: usize) -> bool {
@@ -15,7 +15,7 @@ diff --git a/crates/aspis-core/src/merkle.rs b/crates/aspis-core/src/merkle.rs
 +        topology_indices_are_strictly_increasing(indices, ordinal + 1)
 +    }
 +}
- 
+
 +fn u32_slices_equal(left: &[u32], right: &[u32], ordinal: usize) -> bool {
 +    if left.len() != right.len() {
 +        false
@@ -184,12 +184,12 @@ diff --git a/crates/aspis-core/src/merkle.rs b/crates/aspis-core/src/merkle.rs
 +        next,
 +    )
  }
- 
+
  /// Verify using an opaque suffix match already produced by the topology.
 @@ -585,70 +731,20 @@ pub(crate) fn verify_radix4_binary_cap_with_matched_topology(
      let radix_level = matched.radix_level;
      let binary_depth = matched.binary_depth;
- 
+
 -    let mut node_pos = 0usize;
 -    let mut plan_level = radix_level;
 -    let mut failed = false;
@@ -267,6 +267,6 @@ diff --git a/crates/aspis-core/src/merkle.rs b/crates/aspis-core/src/merkle.rs
 +    };
 +    *level = final_level;
 +    *next = final_next;
- 
+
      let top_indices = match topology.level_indices(topology.radix_levels) {
          Some(indices) => indices,

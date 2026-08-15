@@ -1,20 +1,22 @@
 import Std
 
 /-!
-# Universal equivalence of the deployed Merkle loop and its extraction adapter
+# Model equivalence for the Merkle loop and its extraction adapter
 
 Charon/Aeneas cannot translate the deployed verifier's nested early returns.
 The extraction-only source adapter therefore spells the same scan as three
 recursive helpers: four children, all groups in one level, and all levels.
 
-This file models both control-flow spellings independently.  It proves equality
+This file models both control-flow spellings independently. The `deployed`
+names below refer to the model of the original loop, not to an already-proved
+source-code connection. It proves equality
 of acceptance, successful buffers and frontier position, and the ordered list
 of primitive hash calls.  A rejected run exposes only its hash-call prefix:
 the production caller returns immediately and never reads its scratch vectors.
 
-The proof is polymorphic in the digest type and hash function.  It therefore
-applies in particular to the released SHA-256 specialization; it assumes no
-cryptographic property of SHA-256.
+The proof is polymorphic in the digest type and hash function. It assumes no
+cryptographic property; identifying the abstract function with deployed
+SHA-256 remains part of the separately named source-code bridge.
 -/
 
 namespace AspisV5MerkleSourceAdapter
@@ -134,16 +136,16 @@ def childrenFunction {Digest : Type} [Inhabited Digest]
     (children : List Digest) : Fin 4 → Digest :=
   fun slot => children[slot.val]!
 
-def processRadixGroup {Digest : Type} [Inhabited Digest]
+def processRadixGroupWith {Digest : Type} [Inhabited Digest]
     (hash : (Fin 4 → Digest) → Digest)
-    (level frontier : List Digest) (present : RadixMask)
+    (fill : FillState Digest → Option (FillState Digest))
     (state : LevelScanState Digest) :
     Except (List (HashCallInput Digest)) (LevelScanState Digest) :=
   let initial : FillState Digest := {
     valuePos := state.valuePos
     frontierPos := state.frontierPos
     children := [] }
-  match deployedFillChildren level frontier present initial with
+  match fill initial with
   | none => .error state.calls
   | some filled =>
       let children := childrenFunction filled.children
@@ -154,7 +156,38 @@ def processRadixGroup {Digest : Type} [Inhabited Digest]
         next := state.next ++ [hash children]
         calls := state.calls ++ [call] }
 
-/-- The source `while mask_pos < masks.len()` loop. -/
+def processRadixGroup {Digest : Type} [Inhabited Digest]
+    (hash : (Fin 4 → Digest) → Digest)
+    (level frontier : List Digest) (present : RadixMask)
+    (state : LevelScanState Digest) :
+    Except (List (HashCallInput Digest)) (LevelScanState Digest) :=
+  processRadixGroupWith hash
+    (deployedFillChildren level frontier present) state
+
+def processRecursiveRadixGroup {Digest : Type} [Inhabited Digest]
+    (hash : (Fin 4 → Digest) → Digest)
+    (level frontier : List Digest) (present : RadixMask)
+    (state : LevelScanState Digest) :
+    Except (List (HashCallInput Digest)) (LevelScanState Digest) :=
+  processRadixGroupWith hash
+    (recursiveFillChildren level frontier present) state
+
+theorem processRadixGroup_eq_processRecursiveRadixGroup {Digest : Type}
+    [Inhabited Digest]
+    (hash : (Fin 4 → Digest) → Digest)
+    (level frontier : List Digest) (present : RadixMask)
+    (state : LevelScanState Digest) :
+    processRadixGroup hash level frontier present state =
+      processRecursiveRadixGroup hash level frontier present state := by
+  unfold processRadixGroup processRecursiveRadixGroup
+  have hfill : deployedFillChildren level frontier present =
+      recursiveFillChildren level frontier present := by
+    funext input
+    exact deployedFillChildren_eq_recursiveFillChildren
+      level frontier present input
+  rw [hfill]
+
+/-- Model of the source `while mask_pos < masks.len()` loop. -/
 def deployedHashGroups {Digest : Type} [Inhabited Digest]
     (hash : (Fin 4 → Digest) → Digest)
     (level frontier : List Digest) :
@@ -174,7 +207,7 @@ def recursiveHashGroups {Digest : Type} [Inhabited Digest]
       Except (List (HashCallInput Digest)) (LevelScanState Digest)
   | [], state => .ok state
   | present :: masks, state =>
-      match processRadixGroup hash level frontier present state with
+      match processRecursiveRadixGroup hash level frontier present state with
       | .error calls => .error calls
       | .ok next => recursiveHashGroups hash level frontier masks next
 
@@ -190,21 +223,23 @@ theorem deployedHashGroups_eq_recursiveHashGroups {Digest : Type}
   induction masks generalizing state with
   | nil => rfl
   | cons present masks ih =>
-      cases hgroup : processRadixGroup hash level frontier present state with
-      | error calls => simp [deployedHashGroups, recursiveHashGroups, hgroup]
-      | ok next =>
-          simp [deployedHashGroups, recursiveHashGroups, hgroup, ih]
+      simp only [deployedHashGroups, recursiveHashGroups]
+      rw [processRadixGroup_eq_processRecursiveRadixGroup]
+      cases hgroup : processRecursiveRadixGroup hash level frontier present state with
+      | error calls => rfl
+      | ok next => exact ih next
 
-def processRadixLevel {Digest : Type} [Inhabited Digest]
-    (hash : (Fin 4 → Digest) → Digest) (frontier : List Digest)
-    (masks : List RadixMask) (state : RadixState Digest) :
+def processRadixLevelWith {Digest : Type} [Inhabited Digest]
+    (groups : LevelScanState Digest →
+      Except (List (HashCallInput Digest)) (LevelScanState Digest))
+    (state : RadixState Digest) :
     Except (List (HashCallInput Digest)) (RadixState Digest) :=
   let initial : LevelScanState Digest := {
     valuePos := 0
     frontierPos := state.frontierPos
     next := []
     calls := state.calls }
-  match deployedHashGroups hash state.level frontier masks initial with
+  match groups initial with
   | .error calls => .error calls
   | .ok scanned =>
       if scanned.valuePos = state.level.length then
@@ -216,7 +251,35 @@ def processRadixLevel {Digest : Type} [Inhabited Digest]
       else
         .error scanned.calls
 
-/-- The source outer level loop. -/
+def processRadixLevel {Digest : Type} [Inhabited Digest]
+    (hash : (Fin 4 → Digest) → Digest) (frontier : List Digest)
+    (masks : List RadixMask) (state : RadixState Digest) :
+    Except (List (HashCallInput Digest)) (RadixState Digest) :=
+  processRadixLevelWith
+    (deployedHashGroups hash state.level frontier masks) state
+
+def processRecursiveRadixLevel {Digest : Type} [Inhabited Digest]
+    (hash : (Fin 4 → Digest) → Digest) (frontier : List Digest)
+    (masks : List RadixMask) (state : RadixState Digest) :
+    Except (List (HashCallInput Digest)) (RadixState Digest) :=
+  processRadixLevelWith
+    (recursiveHashGroups hash state.level frontier masks) state
+
+theorem processRadixLevel_eq_processRecursiveRadixLevel {Digest : Type}
+    [Inhabited Digest]
+    (hash : (Fin 4 → Digest) → Digest) (frontier : List Digest)
+    (masks : List RadixMask) (state : RadixState Digest) :
+    processRadixLevel hash frontier masks state =
+      processRecursiveRadixLevel hash frontier masks state := by
+  unfold processRadixLevel processRecursiveRadixLevel
+  have hgroups : deployedHashGroups hash state.level frontier masks =
+      recursiveHashGroups hash state.level frontier masks := by
+    funext input
+    exact deployedHashGroups_eq_recursiveHashGroups hash state.level
+      frontier masks input
+  rw [hgroups]
+
+/-- Model of the source outer level loop. -/
 def deployedHashLevels {Digest : Type} [Inhabited Digest]
     (hash : (Fin 4 → Digest) → Digest) (frontier : List Digest)
     : List (List RadixMask) → RadixState Digest →
@@ -234,7 +297,7 @@ def recursiveHashLevels {Digest : Type} [Inhabited Digest]
       Except (List (HashCallInput Digest)) (RadixState Digest)
   | [], state => .ok state
   | masks :: levels, state =>
-      match processRadixLevel hash frontier masks state with
+      match processRecursiveRadixLevel hash frontier masks state with
       | .error calls => .error calls
       | .ok next => recursiveHashLevels hash frontier levels next
 
@@ -250,10 +313,11 @@ theorem deployedHashLevels_eq_recursiveHashLevels {Digest : Type}
   induction levels generalizing state with
   | nil => rfl
   | cons masks levels ih =>
-      cases hlevel : processRadixLevel hash frontier masks state with
-      | error calls => simp [deployedHashLevels, recursiveHashLevels, hlevel]
-      | ok next =>
-          simp [deployedHashLevels, recursiveHashLevels, hlevel, ih]
+      simp only [deployedHashLevels, recursiveHashLevels]
+      rw [processRadixLevel_eq_processRecursiveRadixLevel]
+      cases hlevel : processRecursiveRadixLevel hash frontier masks state with
+      | error calls => rfl
+      | ok next => exact ih next
 
 def observeLoopResult {Digest : Type}
     (result : Except (List (HashCallInput Digest)) (RadixState Digest)) :
@@ -283,8 +347,8 @@ def runRecursiveHelper {Digest : Type} [Inhabited Digest]
     frontierPos := 0
     calls := [] }
 
-/-- Universal observable equivalence of the source loop and extraction
-adapter.  Equality contains acceptance/rejection, exact first-failure hash
+/-- Universal observable equivalence of the two models. Equality contains
+acceptance/rejection, exact first-failure hash
 prefix, and on success both buffers, the frontier position, and all calls. -/
 theorem deployedLoopResult_eq_recursiveHelperResult {Digest : Type}
     [Inhabited Digest]
@@ -346,25 +410,10 @@ theorem sourceBridges_imply_exact_observable_equality
   exact deployedLoopResult_eq_recursiveHelperResult hash (frontierOf input)
     (levelsOf input) (initialLevelOf input) (initialNextOf input)
 
-/-- Released constructor bounds are not needed for equivalence.  This named
-corollary exposes the exact premises available in V5: sorted/deduplicated at
-most 18 initial indices and at most eight radix-four levels. -/
-theorem releasedConstructorReachable_loop_equivalence {Digest : Type}
-    [Inhabited Digest]
-    (hash : (Fin 4 → Digest) → Digest) (frontier : List Digest)
-    (levels : List (List RadixMask)) (initialLevel initialNext : List Digest)
-    (indices : List Nat)
-    (_hsorted : indices.Pairwise (· < ·)) (_hnodup : indices.Nodup)
-    (_hqueries : indices.length ≤ 18) (_hlevels : levels.length ≤ 8) :
-    runDeployedLoop hash frontier levels initialLevel initialNext =
-      runRecursiveHelper hash frontier levels initialLevel initialNext :=
-  deployedLoopResult_eq_recursiveHelperResult hash frontier levels
-    initialLevel initialNext
-
 /-- The theorem is parametric in the hash oracle.  In particular, replacing
-the adapter's opaque fixed hash by the released Merkle radix-four function
-does not add a mathematical or cryptographic assumption to the control-flow
-equivalence. -/
+the adapter's opaque fixed hash by any specified radix-four function does not
+add a mathematical or cryptographic assumption to the control-flow lemma. A
+separate code bridge must still identify that function with deployed `hashv`. -/
 theorem fixedHash_specialization {Digest : Type} [Inhabited Digest]
     (hashing : MerkleHashing Digest) (frontier : List Digest)
     (levels : List (List RadixMask)) (initialLevel initialNext : List Digest) :
@@ -379,7 +428,6 @@ theorem fixedHash_specialization {Digest : Type} [Inhabited Digest]
 #print axioms deployedHashLevels_eq_recursiveHashLevels
 #print axioms deployedLoopResult_eq_recursiveHelperResult
 #print axioms sourceBridges_imply_exact_observable_equality
-#print axioms releasedConstructorReachable_loop_equivalence
 #print axioms fixedHash_specialization
 
 end AspisV5MerkleSourceAdapter

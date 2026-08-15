@@ -1,0 +1,902 @@
+diff --git a/src/PrePasses.ml b/src/PrePasses.ml
+index b613aba1..e22af45d 100644
+--- a/src/PrePasses.ml
++++ b/src/PrePasses.ml
+@@ -87,6 +87,306 @@ let erase_body_regions (crate : crate) (f : fun_decl) : fun_decl =
+     ^ Print.fun_decl_to_string env "" "  " f];
+   f
+
++(** Eliminate the metadata-only raw pointers which rustc introduces while
++    lowering slice patterns.
++
++    For a match such as [(indices, values) = ([0, 1], [left, right])], rustc
++    currently emits the following shape (irrelevant temporaries omitted):
++
++    {[
++      raw = raw_pointer_to (deref slice_ref, copy slice_ref.metadata);
++      len = copy raw.metadata
++    ]}
++
++    The raw pointer is an implementation detail of the length check: its data
++    address is never observed. In that exact case this pass changes the raw
++    pointer temporary into a [usize] temporary, initializes it by calling the
++    safe slice [len] operation at the original statement, and rewrites the later
++    metadata read to read that temporary. Keeping the initialization at the
++    original statement is important: [slice_ref] may be reassigned before the
++    metadata is used. Calling [len] also avoids treating pointer metadata as an
++    independent, unconstrained value in the functional translation.
++
++    This is deliberately not general raw-pointer support. A candidate is
++    rewritten only when:
++    - it points to a slice through a shared safe Rust reference;
++    - the metadata used to construct it is the metadata of that same reference;
++    - it has exactly one use, which is a read of its [usize] metadata; and
++    - it has exactly one definition.
++
++    Any dereference, cast, comparison, address observation, call escape,
++    reassignment, or second use leaves the raw pointer untouched. The normal
++    interpreter will then reject it as unsupported. Requiring a single read also
++    ensures that the transformed [usize] temporary has the same linear
++    definition/use shape as the original raw-pointer temporary. *)
++type metadata_only_slice_raw_pointer = {
++  definition : statement_id;
++  reference : place;
++  elem_ty : ty;
++}
++
++let eliminate_metadata_only_slice_raw_pointers (crate : crate) (f : fun_decl) :
++    fun_decl =
++  let metadata_definition (st : statement) :
++      (local_id * metadata_only_slice_raw_pointer) option =
++    match st.kind with
++    | Assign
++        ( {
++            kind = PlaceLocal local;
++            ty = TRawPtr (TSlice raw_elem_ty, raw_kind);
++          },
++          RawPtr
++            ( { kind = PlaceProjection (reference, Deref); ty = TSlice elem_ty },
++              ptr_kind,
++              (Copy metadata_place | Move metadata_place) ) )
++      when raw_elem_ty = elem_ty && raw_kind = ptr_kind
++           && metadata_place.ty = mk_usize_ty -> (
++        match (reference.ty, metadata_place.kind) with
++        | ( TRef (_, TSlice reference_elem_ty, _),
++            PlaceProjection (metadata_reference, PtrMetadata) )
++          when reference_elem_ty = elem_ty && metadata_reference = reference
++          -> (
++            match reference.ty with
++            | TRef (_, _, RShared) ->
++                Some
++                  (local, { definition = st.statement_id; reference; elem_ty })
++            | _ -> None)
++        | _ -> None)
++    | _ -> None
++  in
++  (* The generated call deliberately targets Charon's existing slice-length
++     language item.  If it is absent or ambiguous we decline the rewrite. *)
++  let slice_len_ids =
++    FunDeclId.Map.fold
++      (fun id (decl : fun_decl) ids ->
++        if decl.item_meta.lang_item = Some "slice_len_fn" then id :: ids
++        else ids)
++      crate.fun_decls []
++  in
++  match slice_len_ids with
++  | [ slice_len_id ] -> (
++      let slice_len_call (st : statement) (dest : place) (reference : place)
++          (elem_ty : ty) : statement_kind =
++        let generics =
++          TypesUtils.mk_generic_args [ RErased ] [ elem_ty ] [] []
++        in
++        let call =
++          {
++            func =
++              FnOpRegular { kind = FunId (FRegular slice_len_id); generics };
++            args = [ Copy reference ];
++            dest;
++          }
++        in
++        Call (call, { span = st.span; statements = [] })
++      in
++      (* Some slice patterns lower directly to a metadata read on a shared safe
++         slice reference, without an intermediate raw pointer.  This is the
++         same length operation and can be rewritten without any use analysis. *)
++      let direct_metadata_rewriter =
++        object
++          inherit [_] map_statement as super
++
++          method! visit_statement env st =
++            match st.kind with
++            | Assign
++                (dest, Use ((Copy metadata_place | Move metadata_place), _retag))
++              when dest.ty = mk_usize_ty && metadata_place.ty = mk_usize_ty -> (
++                match metadata_place.kind with
++                | PlaceProjection
++                    ( ({ ty = TRef (_, TSlice elem_ty, RShared); _ } as reference),
++                      PtrMetadata ) ->
++                    { st with kind = slice_len_call st dest reference elem_ty }
++                | _ -> super#visit_statement env st)
++            | _ -> super#visit_statement env st
++        end
++      in
++      let f =
++        match f.body with
++        | StructuredBody body ->
++            let body =
++              {
++                body with
++                body = direct_metadata_rewriter#visit_block () body.body;
++              }
++            in
++            { f with body = StructuredBody body }
++        | _ -> f
++      in
++      match f.body with
++      | StructuredBody body ->
++          (* First collect definitions.  A local with more than one definition is
++         intentionally not a candidate. *)
++          let definitions = ref LocalId.Map.empty in
++          let collector =
++            object
++              inherit [_] iter_statement as super
++
++              method! visit_statement env st =
++                (match metadata_definition st with
++                | None -> ()
++                | Some (local, definition) ->
++                    definitions :=
++                      LocalId.Map.update local
++                        (fun previous ->
++                          Some
++                            (definition
++                            ::
++                            (match previous with
++                            | None -> []
++                            | Some xs -> xs)))
++                        !definitions);
++                super#visit_statement env st
++            end
++          in
++          collector#visit_block () body.body;
++          let candidates =
++            LocalId.Map.filter_map
++              (fun _ definitions ->
++                match definitions with
++                | [ definition ] -> Some definition
++                | _ -> None)
++              !definitions
++          in
++          if LocalId.Map.is_empty candidates then f
++          else
++            (* Classify every use.  Exact [copy/move raw.metadata] operands are the
++           sole permitted use.  Every other place rooted at the raw local is
++           forbidden.  Storage markers contain a local id rather than a place
++           and are deliberately ignored. *)
++            let invalid = ref LocalId.Set.empty in
++            let reads = ref LocalId.Map.empty in
++            let add_read local =
++              reads :=
++                LocalId.Map.update local
++                  (fun count -> Some (1 + Option.value ~default:0 count))
++                  !reads
++            in
++            let rec root_local (p : place) : local_id option =
++              match p.kind with
++              | PlaceLocal local -> Some local
++              | PlaceProjection (p, _) -> root_local p
++              | PlaceGlobal _ -> None
++            in
++            let metadata_read (p : place) : local_id option =
++              match p.kind with
++              | PlaceProjection
++                  ( { kind = PlaceLocal local; ty = TRawPtr (TSlice _, _) },
++                    PtrMetadata )
++                when p.ty = mk_usize_ty && LocalId.Map.mem local candidates ->
++                  Some local
++              | _ -> None
++            in
++            let classifier =
++              object (self)
++                inherit [_] iter_statement as super
++
++                method! visit_statement env st =
++                  match metadata_definition st with
++                  | Some (local, definition)
++                    when LocalId.Map.mem local candidates
++                         && definition.definition = st.statement_id ->
++                      (* Visit the source place and metadata operand, but not the
++                     defining destination local. *)
++                      self#visit_rvalue env
++                        (match st.kind with
++                        | Assign (_, rv) -> rv
++                        | _ -> assert false)
++                  | _ -> super#visit_statement env st
++
++                method! visit_operand env op =
++                  match op with
++                  | Copy p | Move p -> (
++                      match metadata_read p with
++                      | Some local -> add_read local
++                      | None -> super#visit_operand env op)
++                  | Constant _ -> super#visit_operand env op
++
++                method! visit_place env p =
++                  match root_local p with
++                  | Some local when LocalId.Map.mem local candidates ->
++                      invalid := LocalId.Set.add local !invalid
++                  | _ -> super#visit_place env p
++
++                method! visit_local_id _ _ = ()
++              end
++            in
++            classifier#visit_block () body.body;
++            let candidates =
++              LocalId.Map.filter
++                (fun local _ ->
++                  (not (LocalId.Set.mem local !invalid))
++                  && LocalId.Map.find_opt local !reads = Some 1)
++                candidates
++            in
++            if LocalId.Map.is_empty candidates then f
++            else
++              let rewriter =
++                object
++                  inherit [_] map_statement as super
++
++                  method! visit_statement env st =
++                    match metadata_definition st with
++                    | Some (local, definition) -> (
++                        match LocalId.Map.find_opt local candidates with
++                        | Some candidate
++                          when candidate.definition = definition.definition ->
++                            {
++                              st with
++                              kind =
++                                slice_len_call st
++                                  { kind = PlaceLocal local; ty = mk_usize_ty }
++                                  candidate.reference candidate.elem_ty;
++                            }
++                        | _ -> super#visit_statement env st)
++                    | None -> super#visit_statement env st
++
++                  method! visit_operand env op =
++                    match op with
++                    | (Copy p | Move p) as original -> (
++                        match metadata_read p with
++                        | Some local -> (
++                            match LocalId.Map.find_opt local candidates with
++                            | Some _ -> (
++                                let p =
++                                  { kind = PlaceLocal local; ty = mk_usize_ty }
++                                in
++                                match original with
++                                | Copy _ -> Copy p
++                                | Move _ -> Move p
++                                | _ -> assert false)
++                            | None -> super#visit_operand env op)
++                        | None -> super#visit_operand env op)
++                    | Constant _ -> super#visit_operand env op
++                end
++              in
++              let body_body = rewriter#visit_block () body.body in
++              let locals =
++                {
++                  body.locals with
++                  locals =
++                    List.map
++                      (fun (local : local) ->
++                        if LocalId.Map.mem local.index candidates then
++                          { local with local_ty = mk_usize_ty }
++                        else local)
++                      body.locals.locals;
++                }
++              in
++              let f =
++                {
++                  f with
++                  body = StructuredBody { body with body = body_body; locals };
++                }
++              in
++              [%ldebug
++                let env = Print.crate_to_fmt_env crate in
++                "After eliminating metadata-only slice raw pointers:\n"
++                ^ Print.fun_decl_to_string env "" " " f];
++              f
++      | _ -> f)
++  | _ -> f
++
+ (** Replace the occurrences of [core::intrinsics::unreachable] with
+     [Abort UndefinedBehavior]. This helps with the analyzes and the symbolic
+     evaluation (in particular, we stop the evaluation when encountering an
+@@ -401,7 +701,236 @@ let update_array_default (crate : crate) : crate =
+
+ exception FoundStatement of statement
+
+-(** Check that loops:
++(** Lower function returns from nested loops before {!update_loops}.
++
++    The symbolic loop interpreter handles nested loops, but a function return
++    cannot cross more than one loop boundary directly. We make that control
++    transfer explicit with one fresh [Option<return_type>] local. The option
++    carries the return value as well as the control signal; this matters because
++    the ordinary function return place is uninitialized on non-return paths:
++
++    {[
++      loop {
++        loop {
++          if p { return }
++        }
++      }
++
++        ~~>
++
++      pending_return := None;
++      loop {
++        loop {
++          if p {
++            pending_return := Some(move return_place);
++            break 0
++          }
++        };
++        match pending_return { Some(_) => break 0, None => () }
++      };
++      match pending_return {
++        Some(value) => { return_place := move value; return },
++        None => ()
++      }
++    ]}
++
++    A propagation check is inserted immediately after every loop containing a
++    lowered return. At an inner level it breaks the immediately enclosing loop;
++    after an outermost loop it restores the carried value to the return place
++    and performs the original return. Normal breaks and continues leave the
++    option at [None] and retain their original behaviour.
++
++    The pass activates only for functions which actually contain a return at
++    loop depth two or greater. In such a function all returns under a loop are
++    lowered uniformly, so the existing loop pass never has to distinguish an
++    original return from a propagated one. Newly-created statements receive id
++    zero; the existing statement-id refresh pass assigns their final ids. *)
++let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
++  match f.body with
++  | StructuredBody body ->
++      let has_nested_return =
++        let visitor =
++          object
++            inherit [_] iter_statement as super
++            method! visit_Loop depth loop = super#visit_Loop (depth + 1) loop
++            method! visit_Return depth = if depth >= 2 then raise Found
++          end
++        in
++        try
++          visitor#visit_block 0 body.body;
++          false
++        with Found -> true
++      in
++      if not has_nested_return then f
++      else
++        let option_ids =
++          TypeDeclId.Map.fold
++            (fun id (decl : type_decl) ids ->
++              if decl.item_meta.lang_item = Some "Option" then id :: ids
++              else ids)
++            crate.type_decls []
++        in
++        let option_id =
++          match option_ids with
++          | [ id ] -> id
++          | _ ->
++              [%craise] f.item_meta.span
++                "Nested-loop returns require exactly one Option language item"
++        in
++        let return_local =
++          match body.locals.locals with
++          | return_local :: _ -> return_local
++          | [] -> [%internal_error] f.item_meta.span
++        in
++        let return_ty = return_local.local_ty in
++        let option_ref : type_decl_ref =
++          {
++            id = TAdtId option_id;
++            generics = TypesUtils.mk_generic_args [] [ return_ty ] [] [];
++          }
++        in
++        let pending_ty = TAdt option_ref in
++        let _, gen =
++          LocalId.mk_stateful_generator_starting_at_id
++            (LocalId.of_int (List.length body.locals.locals))
++        in
++        let pending_local : local =
++          {
++            index = gen ();
++            local_ty = pending_ty;
++            name = Some "pending_return";
++            span = f.item_meta.span;
++          }
++        in
++        let pending_place : place =
++          { kind = PlaceLocal pending_local.index; ty = pending_ty }
++        in
++        let return_place : place =
++          { kind = PlaceLocal return_local.index; ty = return_ty }
++        in
++        let mk_statement ?(comments_before = []) span kind : statement =
++          { span; statement_id = StatementId.zero; kind; comments_before }
++        in
++        let mk_pending_assignment ?(comments_before = []) span variant fields =
++          mk_statement ~comments_before span
++            (Assign
++               ( pending_place,
++                 Aggregate
++                   (AggregatedAdt (option_ref, Some variant, None), fields) ))
++        in
++        let block_contains_return (block : block) : bool =
++          let visitor =
++            object
++              inherit [_] iter_statement
++              method! visit_Return _ = raise Found
++            end
++          in
++          try
++            visitor#visit_block () block;
++            false
++          with Found -> true
++        in
++        let propagation_check span depth : statement =
++          let action =
++            if depth = 0 then
++              let payload_place : place =
++                {
++                  kind =
++                    PlaceProjection
++                      ( pending_place,
++                        Field
++                          ( ProjAdt (option_id, Some Types.option_some_id),
++                            FieldId.of_int 0 ) );
++                  ty = return_ty;
++                }
++              in
++              [
++                mk_statement span
++                  (Assign (return_place, Use (Move payload_place, NoRetag)));
++                mk_statement span Return;
++              ]
++            else [ mk_statement span (Break 0) ]
++          in
++          let then_block = { span; statements = action } in
++          let else_block = { span; statements = [] } in
++          mk_statement span
++            (Switch
++               (Match
++                  ( pending_place,
++                    [ ([ Types.option_some_id ], then_block) ],
++                    Some else_block )))
++        in
++        (* Charon places [StorageDead] cleanup immediately before a function
++           return.  Once the return is propagated out through loop breaks,
++           executing that cleanup before the break would make live loop state
++           unavailable on the join path.  Dropping these markers is semantics
++           preserving: [StorageDead] has no runtime effect, and the eventual
++           propagated [Return] implicitly deallocates the function locals. *)
++        let rec strip_storage_dead_before_lowered_return depth statements =
++          match statements with
++          | ({ kind = StorageDead _; _ } as dead) :: rest -> (
++              let rec take_dead reversed = function
++                | ({ kind = StorageDead _; _ } as next) :: tail ->
++                    take_dead (next :: reversed) tail
++                | tail -> (List.rev reversed, tail)
++              in
++              let dead, rest = take_dead [ dead ] rest in
++              match rest with
++              | { kind = Return; _ } :: _ when depth > 0 ->
++                  strip_storage_dead_before_lowered_return depth rest
++              | _ -> dead @ strip_storage_dead_before_lowered_return depth rest)
++          | st :: rest ->
++              st :: strip_storage_dead_before_lowered_return depth rest
++          | [] -> []
++        in
++        let rec transform_block depth (block : block) : block =
++          let statements =
++            strip_storage_dead_before_lowered_return depth block.statements
++          in
++          {
++            block with
++            statements = List.concat_map (transform_statement depth) statements;
++          }
++        and transform_statement depth (st : statement) : statement list =
++          match st.kind with
++          | Return when depth > 0 ->
++              [
++                mk_pending_assignment ~comments_before:st.comments_before
++                  st.span Types.option_some_id [ Move return_place ];
++                { st with kind = Break 0; comments_before = [] };
++              ]
++          | Loop loop ->
++              let contains_return = block_contains_return loop in
++              let loop = transform_block (depth + 1) loop in
++              let loop_st = { st with kind = Loop loop } in
++              if contains_return then
++                [ loop_st; propagation_check st.span depth ]
++              else [ loop_st ]
++          | _ ->
++              let visitor =
++                object
++                  inherit [_] map_statement
++
++                  method! visit_block child_depth child =
++                    transform_block child_depth child
++                end
++              in
++              [ visitor#visit_statement depth st ]
++        in
++        let initialization =
++          mk_pending_assignment f.item_meta.span Types.option_none_id []
++        in
++        let body_body = transform_block 0 body.body in
++        let body_body =
++          { body_body with statements = initialization :: body_body.statements }
++        in
++        let locals =
++          { body.locals with locals = body.locals.locals @ [ pending_local ] }
++        in
++        { f with body = StructuredBody { body with body = body_body; locals } }
++  | _ -> f
++
++(* The [update_loops] pass below checks that loops:
+     - do not contain early returns
+     - do not continue/break to outer loops
+
+@@ -498,6 +1027,238 @@ exception FoundStatement of statement
+       }
+       return;
+     ]} *)
++type outer_loop_control = OuterBreak of int | OuterContinue of int
++
++(** Eliminate [Break]/[Continue] statements which target an enclosing loop.
++
++    The symbolic loop interpreter deliberately accepts only control transfers
++    for the loop it is currently translating. Charon represents a labelled
++    transfer from an inner loop to an enclosing loop with a positive index. For
++    each loop containing such transfers, this pass introduces a fresh integer
++    control local and lowers, for example:
++
++    {[
++      loop {
++        ...;
++        continue 1
++      }
++
++        ~~>
++
++      control = 0;
++      loop {
++        ...;
++        control = 1;
++        break 0
++      };
++      switch control {
++        1 => continue 0,
++        _ => ()
++      }
++    ]}
++
++    Every distinct [(kind, index)] pair gets its own nonzero code. The switch
++    decrements the index by exactly one, so processing loops from the inside out
++    propagates transfers across one loop boundary at a time. Ordinary
++    fallthrough, [break 0], and [continue 0] leave the control local at zero.
++
++    The control local is live only around the transformed loop and is killed on
++    every post-loop branch before the transfer is re-emitted. Mutations before a
++    transfer therefore happen before the control write, while statements after
++    it remain unreachable because the replacement ends in [break 0].
++
++    This pass intentionally does not lower [Return]. A return-unwinding pass can
++    run immediately before this one: the [break 0] statements it introduces are
++    left untouched. *)
++let eliminate_outer_loop_control (crate : crate) (f : fun_decl) : fun_decl =
++  let f0 = f in
++  match f.body with
++  | StructuredBody body ->
++      let control_literal_ty : literal_type = TUInt U32 in
++      let control_ty = TLiteral control_literal_ty in
++      let new_locals = ref [] in
++      let _, gen_local =
++        LocalId.mk_stateful_generator_starting_at_id
++          (LocalId.of_int (List.length body.locals.locals))
++      in
++      let fresh_control_local span =
++        let local =
++          { index = gen_local (); local_ty = control_ty; name = None; span }
++        in
++        new_locals := local :: !new_locals;
++        local.index
++      in
++      let mk_statement span comments_before kind : statement =
++        { span; statement_id = StatementId.zero; kind; comments_before }
++      in
++      let mk_control_literal code : Values.literal =
++        VScalar (UnsignedScalar (U32, Z.of_int code))
++      in
++      let mk_control_operand code : operand =
++        Constant { kind = CLiteral (mk_control_literal code); ty = control_ty }
++      in
++      let action_equal left right =
++        match (left, right) with
++        | OuterBreak i, OuterBreak j | OuterContinue i, OuterContinue j -> i = j
++        | _ -> false
++      in
++      let rec transform_block (block : block) : block =
++        {
++          block with
++          statements =
++            List.flatten (List.map transform_statement block.statements);
++        }
++      and transform_statement (st : statement) : statement list =
++        match st.kind with
++        | Loop loop ->
++            (* Transform nested loops before lowering transfers out of this
++               loop.  A transfer crossing several boundaries is consequently
++               propagated one boundary per recursive return. *)
++            let loop = transform_block loop in
++            let actions = ref [] in
++            let add_action action =
++              if not (List.exists (action_equal action) !actions) then
++                actions := !actions @ [ action ]
++            in
++            let collector =
++              object
++                inherit [_] iter_statement_base as super
++                method! visit_Loop _ _ = ()
++
++                method! visit_Break env index =
++                  if index > 0 then add_action (OuterBreak index)
++                  else super#visit_Break env index
++
++                method! visit_Continue env index =
++                  if index > 0 then add_action (OuterContinue index)
++                  else super#visit_Continue env index
++              end
++            in
++            collector#visit_block () loop;
++            if !actions = [] then [ { st with kind = Loop loop } ]
++            else
++              let control_local = fresh_control_local st.span in
++              let control_place =
++                { kind = PlaceLocal control_local; ty = control_ty }
++              in
++              let code_for action =
++                let rec find code = function
++                  | [] -> [%internal_error] st.span
++                  | candidate :: remaining ->
++                      if action_equal action candidate then code
++                      else find (code + 1) remaining
++                in
++                find 1 !actions
++              in
++              let set_control_and_break (original : statement)
++                  (action : outer_loop_control) : statement list =
++                let set_control =
++                  mk_statement original.span original.comments_before
++                    (Assign
++                       ( control_place,
++                         Use (mk_control_operand (code_for action), NoRetag) ))
++                in
++                let leave_current_loop =
++                  mk_statement original.span [] (Break 0)
++                in
++                [ set_control; leave_current_loop ]
++              in
++              let rec rewrite_block (block : block) : block =
++                {
++                  block with
++                  statements =
++                    List.flatten (List.map rewrite_statement block.statements);
++                }
++              and rewrite_statement (inner_st : statement) : statement list =
++                match inner_st.kind with
++                | Loop _ ->
++                    (* Nested loops were already transformed.  Do not interpret
++                       their local control transfers relative to this loop. *)
++                    [ inner_st ]
++                | Break index when index > 0 ->
++                    set_control_and_break inner_st (OuterBreak index)
++                | Continue index when index > 0 ->
++                    set_control_and_break inner_st (OuterContinue index)
++                | _ ->
++                    let child_rewriter =
++                      object
++                        inherit [_] map_statement_base
++                        method! visit_block _ block = rewrite_block block
++                      end
++                    in
++                    [ child_rewriter#visit_statement () inner_st ]
++              in
++              let loop = rewrite_block loop in
++              let storage_live =
++                mk_statement st.span [] (StorageLive control_local)
++              in
++              let initialize =
++                mk_statement st.span []
++                  (Assign (control_place, Use (mk_control_operand 0, NoRetag)))
++              in
++              let loop_statement = { st with kind = Loop loop } in
++              let branch_for action =
++                let propagated =
++                  match action with
++                  | OuterBreak index -> Break (index - 1)
++                  | OuterContinue index -> Continue (index - 1)
++                in
++                let block =
++                  {
++                    span = st.span;
++                    statements =
++                      [
++                        mk_statement st.span [] (StorageDead control_local);
++                        mk_statement st.span [] propagated;
++                      ];
++                  }
++                in
++                ([ mk_control_literal (code_for action) ], block)
++              in
++              let otherwise =
++                {
++                  span = st.span;
++                  statements =
++                    [ mk_statement st.span [] (StorageDead control_local) ];
++                }
++              in
++              let dispatch =
++                mk_statement st.span []
++                  (Switch
++                     (SwitchInt
++                        ( Copy control_place,
++                          control_literal_ty,
++                          List.map branch_for !actions,
++                          otherwise )))
++              in
++              [ storage_live; initialize; loop_statement; dispatch ]
++        | _ ->
++            let nested_loop_rewriter =
++              object
++                inherit [_] map_statement_base
++                method! visit_block _ block = transform_block block
++              end
++            in
++            [ nested_loop_rewriter#visit_statement () st ]
++      in
++      let body_body = transform_block body.body in
++      let locals =
++        { body.locals with locals = body.locals.locals @ List.rev !new_locals }
++      in
++      let f =
++        { f with body = StructuredBody { body with body = body_body; locals } }
++      in
++      [%ldebug
++        let env = Print.crate_to_fmt_env crate in
++        "Before/after [eliminate_outer_loop_control]:\n"
++        ^ Print.fun_decl_to_string env "" " " f0
++        ^ "\n\n"
++        ^ Print.fun_decl_to_string env "" " " f];
++      f
++  | _ -> f
++
++(** Apply the early-return loop transformations described above and reject any
++    unsupported loop control which remains after the dedicated prepasses. *)
+ let update_loops (crate : crate) (f : fun_decl) : fun_decl =
+   let f0 = f in
+   let span = f.item_meta.span in
+@@ -2273,7 +3034,11 @@ let apply_passes (crate : crate) : crate =
+     [
+       ("fix_closure_lifetimes", fix_closure_lifetimes);
+       ("erase_body_regions", erase_body_regions);
++      ( "eliminate_metadata_only_slice_raw_pointers",
++        eliminate_metadata_only_slice_raw_pointers );
+       ("remove_unreachable", remove_unreachable);
++      ("lower_nested_loop_returns", lower_nested_loop_returns);
++      ("eliminate_outer_loop_control", eliminate_outer_loop_control);
+       ("update_loop", update_loops);
+       ("remove_useless_joins", remove_useless_joins);
+       ( "remove_shallow_borrows_storage_live_dead",
+diff --git a/src/interp/InterpBorrowsCore.ml b/src/interp/InterpBorrowsCore.ml
+index fd692f88..a2c6809f 100644
+--- a/src/interp/InterpBorrowsCore.ml
++++ b/src/interp/InterpBorrowsCore.ml
+@@ -1513,24 +1513,27 @@ let lookup_aproj_loans_opt (span : Meta.span) (abs_id : AbsId.id)
+         if abs.abs_id = abs_id then super#visit_abs (Some abs) abs else ()
+
+       method! visit_aproj (abs : abs option) sproj =
++        (* Inspect here, then recurse exactly once below. *)
+         (match sproj with
+-        | AProjBorrows _ | AEndedProjLoans _ | AEndedProjBorrows _ | AEmpty ->
+-            super#visit_aproj abs sproj
+         | AProjLoans aproj_loan ->
+-            let abs = Option.get abs in
+-            [%sanity_check] span (abs.abs_id = abs_id);
+-            if aproj_loan.proj.sv_id = sv_id then set_found aproj_loan else ());
++            let current_abs = Option.get abs in
++            [%sanity_check] span (current_abs.abs_id = abs_id);
++            if aproj_loan.proj.sv_id = sv_id then set_found aproj_loan
++            else ()
++        | AProjBorrows _ | AEndedProjLoans _ | AEndedProjBorrows _ | AEmpty ->
++            ());
+         super#visit_aproj abs sproj
+
+       method! visit_eproj (abs : abs option) sproj =
++        (* Keep the expression visitor in lockstep with the value visitor. *)
+         (match sproj with
+-        | EProjBorrows _ | EEndedProjLoans _ | EEndedProjBorrows _ | EEmpty ->
+-            super#visit_eproj abs sproj
+         | EProjLoans aproj_loan ->
+-            let abs = Option.get abs in
+-            [%sanity_check] span (abs.abs_id = abs_id);
++            let current_abs = Option.get abs in
++            [%sanity_check] span (current_abs.abs_id = abs_id);
+             if aproj_loan.proj.sv_id = sv_id then set_found_eproj aproj_loan
+-            else ());
++            else ()
++        | EProjBorrows _ | EEndedProjLoans _ | EEndedProjBorrows _ | EEmpty ->
++            ());
+         super#visit_eproj abs sproj
+     end
+   in
+diff --git a/src/interp/Invariants.ml b/src/interp/Invariants.ml
+index 3b67d1e2..1b5b42e5 100644
+--- a/src/interp/Invariants.ml
++++ b/src/interp/Invariants.ml
+@@ -597,6 +597,18 @@ let check_typing_invariant_visitor span ctx (lookups : bool) =
+           List.iter
+             (fun ((v, ty) : tavalue * ty) -> [%sanity_check] span (v.ty = ty))
+             fields_with_types
++      (* Array case *)
++      | AAdt av, TArray (inner_ty, len) ->
++          [%sanity_check] span
++            (List.for_all (fun (v : tavalue) -> v.ty = inner_ty) av.fields);
++          (* The length is necessarily concrete. *)
++          let len =
++            Scalars.get_val
++              (ValuesUtils.literal_as_scalar
++                 (TypesUtils.constant_expr_as_literal len))
++          in
++          [%sanity_check] span (Z.of_int (List.length av.fields) = len)
++      | AAdt _, TSlice _ -> [%craise] span "Unexpected slice avalue"
+       (* Builtin type case *)
+       | AAdt av, TAdt { id = TBuiltin aty_id; generics } -> (
+           [%sanity_check] span (av.variant_id = None);
+diff --git a/src/llbc/RegionsHierarchy.ml b/src/llbc/RegionsHierarchy.ml
+index aa1db67d..d7508222 100644
+--- a/src/llbc/RegionsHierarchy.ml
++++ b/src/llbc/RegionsHierarchy.ml
+@@ -108,7 +108,7 @@ let compute_regions_hierarchy_for_sig (span : Meta.span option) (crate : crate)
+     | TAdt { id; generics } ->
+         (* Add constraints coming from the type clauses *)
+         (match id with
+-        | TAdtId id ->
++        | TAdtId id -> (
+             (* Lookup the type declaration *)
+             let decl = TypeDeclId.Map.find_opt id crate.type_decls in
+             let decl =
+@@ -137,7 +137,22 @@ let compute_regions_hierarchy_for_sig (span : Meta.span option) (crate : crate)
+             in
+             List.iter
+               (add_edges_from_region_binder add_edges_from_types_outlive)
+-              predicates.types_outlive
++              predicates.types_outlive;
++            (* Rustc does not currently expose every implied outlives bound on
++               compiler-generated closure types through Charon.  In
++               particular, a closure field of type [&'a T<'b>] requires
++               ['b : 'a], but the generated closure declaration can have an
++               empty [regions_outlive] list.  Recover those constraints from
++               the instantiated closure fields themselves.  We restrict this
++               fallback to closure types: ordinary ADTs already carry the
++               compiler-provided predicates handled above. *)
++            match (decl.src, decl.kind) with
++            | ClosureItem _, Struct fields ->
++                List.iter
++                  (fun (field : field) ->
++                    explore_ty outer (Subst.ty_substitute subst field.field_ty))
++                  fields
++            | _ -> ())
+         | TTuple -> (* No clauses for tuples *) ()
+         | TBuiltin aid -> (
+             match aid with
