@@ -1,3 +1,4 @@
+import AspisFormal.V5PrefixDependentCandidateSecurity
 import AspisFormal.V5RefinedAcceptedFalseAccounting
 
 /-!
@@ -27,6 +28,7 @@ open AspisV5CryptographicAssumptions
 open AspisV5ForwardAcceptedFalseRawAccounting
 open AspisV5MaskedBoundaryFailureAccounting
 open AspisV5ProjectedAcceptedFalseRawAccounting
+open AspisV5PrefixDependentCandidateSecurity
 open AspisV5RefinedAcceptedFalseAccounting
 open AspisV5RefinedRawCoreAccounting
 open AspisV5SequentialTerminalChallengeBound
@@ -182,6 +184,53 @@ theorem exactTerminalCandidateFailureCoverage
       simpa [terminal, fixedTerminalPlanAt, view, run] using theta
     exact ⟨candidate, Or.inl member⟩
 
+/-- Reduce the terminal-event probability obligation to the precise ideal
+comparison that remains at the Fiat--Shamir boundary.  Candidate lists may
+depend on the committed prefix; their number is averaged over prefixes and
+only the at-most-240 candidates within a prefix are union-bounded. -/
+theorem exactTerminalCandidateFailure_probability_le_raw_bound
+    {Run Coins K Public Root Prefix : Type*}
+    [Field K] [Fintype K] [DecidableEq K]
+    [Algebra (ZMod P) K] [NeZero (2 : K)] [MeasurableSpace Coins]
+    [Fintype Prefix] [Nonempty Prefix]
+    {rc : RoundConstants}
+    {deployedOwner : Digest → Digest}
+    {deployedNote : Digest → F → F → Digest → Digest}
+    {deployedNullifier : Digest → Digest → Digest}
+    {deployedNode : Digest → Digest → Digest}
+    {scheme : FiatShamirSchedule Public Root K}
+    {data : ProjectedAcceptedFalseExperimentData Coins K rc deployedOwner
+      deployedNote deployedNullifier deployedNode}
+    {projection : StatementBindingProjectionData Run Coins K data}
+    {boundary : MaskedBoundaryProjectionData Run Coins K Public Root
+      (scheme := scheme) projection}
+    (measure : Measure Coins)
+    (plans : TerminalCandidatePlanProjection Run Coins K Public Root
+      boundary)
+    (CandidateAt : Prefix → Type*)
+    [candidateFintype : ∀ p : Prefix, Fintype (CandidateAt p)]
+    (terminal : ∀ p, CandidateAt p → FixedTerminalAlgebraPlan K)
+    (sumcheck : ∀ p,
+      CandidateAt p → AdaptiveDegree27MessagePlan K)
+    (candidateCap : ∀ p, Fintype.card (CandidateAt p) ≤ 240)
+    (fieldCard : (Fintype.card K : Real) = AspisSoundnessLedger.FIELD)
+    (sourceHashAndConditionalSampling :
+      measure.real (exactTerminalCandidateFailureSet plans) ≤
+        (prefixAveragedCandidateTerminalSubtotal Prefix CandidateAt terminal
+          sumcheck : Real)) :
+    measure.real (exactTerminalCandidateFailureSet plans) ≤
+      rawCandidateTerminalBound := by
+  calc
+    measure.real (exactTerminalCandidateFailureSet plans) ≤
+        (prefixAveragedCandidateTerminalSubtotal Prefix CandidateAt terminal
+          sumcheck : Real) := sourceHashAndConditionalSampling
+    _ ≤ (73200 : Real) / Fintype.card K :=
+      prefixAveragedCandidateTerminalSubtotal_real_le_240 Prefix CandidateAt
+        terminal sumcheck candidateCap
+    _ = rawCandidateTerminalBound := by
+      rw [fieldCard]
+      rfl
+
 /-- Accepted-false accounting specialized to the concrete terminal-candidate
 event.  Unlike the generic theorem, this statement has no separate
 set-containment premise for the four terminal failure cases. -/
@@ -255,6 +304,7 @@ theorem productionFalseSpend_probability_le_with_exact_terminal_event
     (exactTerminalCandidateFailureCoverage plans) terminalBound
 
 #print axioms exactTerminalCandidateFailureCoverage
+#print axioms exactTerminalCandidateFailure_probability_le_raw_bound
 #print axioms acceptedFalse_probability_le_with_exact_terminal_event
 #print axioms productionFalseSpend_probability_le_with_exact_terminal_event
 

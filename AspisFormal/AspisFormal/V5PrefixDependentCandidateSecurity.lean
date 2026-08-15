@@ -68,6 +68,28 @@ theorem prefixAveragedCandidateTerminalSubtotal_le_240
       candidateCombinedIdealTerminalSubtotal_le_240 (CandidateAt p)
         (terminal p) (sumcheck p) (candidateCap p))
 
+/-- Real-valued form used by the measure-theoretic accepted-false
+accounting.  It is only a coercion of the rational counting theorem above. -/
+theorem prefixAveragedCandidateTerminalSubtotal_real_le_240
+    (Prefix : Type*) [Fintype Prefix] [Nonempty Prefix]
+    (CandidateAt : Prefix → Type*)
+    [candidateFintype : ∀ p : Prefix, Fintype (CandidateAt p)]
+    (terminal : ∀ p, CandidateAt p → FixedTerminalAlgebraPlan K)
+    (sumcheck : ∀ p,
+      CandidateAt p → AdaptiveDegree27MessagePlan K)
+    (candidateCap : ∀ p, Fintype.card (CandidateAt p) ≤ 240) :
+    (prefixAveragedCandidateTerminalSubtotal Prefix CandidateAt terminal
+        sumcheck : Real) ≤
+      (73200 : Real) / Fintype.card K := by
+  have hrat := prefixAveragedCandidateTerminalSubtotal_le_240 Prefix
+    CandidateAt terminal sumcheck candidateCap
+  have hreal :
+      (prefixAveragedCandidateTerminalSubtotal Prefix CandidateAt terminal
+          sumcheck : Real) ≤
+        (((73200 : Rat) / Fintype.card K : Rat) : Real) :=
+    (Rat.cast_le (K := Real)).2 hrat
+  simpa using hreal
+
 /-- The exact remaining production comparison for a list chosen from a
 prefix.  The comparison is stated separately so source equality, commitment
 timing, SHA-256 behavior, and conditional field sampling cannot be mistaken
@@ -117,6 +139,7 @@ theorem productionPrefixDependentTerminalFailureProbability_le
       le_rfl)
 
 #print axioms prefixAveragedCandidateTerminalSubtotal_le_240
+#print axioms prefixAveragedCandidateTerminalSubtotal_real_le_240
 #print axioms productionPrefixDependentTerminalFailureProbability_le
 
 end AspisV5PrefixDependentCandidateSecurity
