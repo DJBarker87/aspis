@@ -11,8 +11,9 @@ file applies that result to the complete initial FRI candidate list.
 
 The candidate list and every four-error vector must be fixed before the
 batching challenge is sampled.  Under that condition, a list of at most 240
-candidates has at most `3 * 240 = 720` bad challenge values.  For the released
-QM31 field, the resulting ideal-uniform probability is below `2^-114`.
+candidates has at most `3 * 240 = 720` bad challenge values.  The released
+sampler chooses uniformly from the nonzero QM31 elements, so the exact
+denominator is `|QM31| - 1`; the resulting probability is below `2^-114`.
 
 This is a mathematical ideal-challenge result.  Showing that the production
 transcript samples the challenge after fixing the same candidate records is a
@@ -108,6 +109,33 @@ theorem uniformCandidateBatchCollisionProbability_le_720
       apply div_le_div_of_nonneg_right _ hfield
       exact_mod_cast Nat.mul_le_mul_left 3 hcandidates
 
+/-- Bad batching challenges restricted to the nonzero values used by the
+released transcript sampler. -/
+def nonzeroCandidateBatchCollisionSet
+    (discrepancy : Candidate → Fin 4 → K) : Finset K :=
+  (candidateBatchCollisionSet discrepancy).erase 0
+
+/-- Exact rational mass under a uniform nonzero batching challenge. -/
+def uniformNonzeroCandidateBatchCollisionProbability
+    (discrepancy : Candidate → Fin 4 → K) : Rat :=
+  (nonzeroCandidateBatchCollisionSet discrepancy).card /
+    ((Fintype.card K - 1 : Nat) : Rat)
+
+theorem uniformNonzeroCandidateBatchCollisionProbability_le_720
+    (discrepancy : Candidate → Fin 4 → K)
+    (hcandidates : Fintype.card Candidate ≤ 240) :
+    uniformNonzeroCandidateBatchCollisionProbability discrepancy ≤
+      (720 : Rat) / ((Fintype.card K - 1 : Nat) : Rat) := by
+  have hfieldNat : 0 < Fintype.card K - 1 := Nat.sub_pos_iff_lt.mpr
+    (Fintype.one_lt_card_iff_nontrivial.mpr inferInstance)
+  have hfield : (0 : Rat) < ((Fintype.card K - 1 : Nat) : Rat) := by
+    exact_mod_cast hfieldNat
+  rw [uniformNonzeroCandidateBatchCollisionProbability,
+    div_le_div_iff_of_pos_right hfield]
+  exact_mod_cast (Finset.card_erase_le.trans
+    ((candidateBatchCollisionSet_card_le discrepancy).trans (by omega :
+      3 * Fintype.card Candidate ≤ 720)))
+
 /-! ## The exact candidate-record event -/
 
 /-- Candidate records may be written as a function of the future challenge so
@@ -194,16 +222,47 @@ theorem uniformRecordBatchCollisionProbability_le_720
   exact_mod_cast recordBatchCollisionSet_card_le_720 records hfixed hcarries
     hcandidates referenceKappa
 
-/-- For the released field cardinality, `720 / |QM31|` is below `2^-114`. -/
+/-- The candidate-record collision event restricted to the nonzero values
+used by the released batching sampler. -/
+noncomputable def nonzeroRecordBatchCollisionSet
+    (records : K → Candidate → CandidateSemanticRecord K) : Finset K :=
+  (recordBatchCollisionSet records).erase 0
+
+/-- Exact conditional probability for the released uniform nonzero sampler. -/
+noncomputable def uniformNonzeroRecordBatchCollisionProbability
+    (records : K → Candidate → CandidateSemanticRecord K) : Rat :=
+  (nonzeroRecordBatchCollisionSet records).card /
+    ((Fintype.card K - 1 : Nat) : Rat)
+
+theorem uniformNonzeroRecordBatchCollisionProbability_le_720
+    (records : K → Candidate → CandidateSemanticRecord K)
+    (hfixed : CandidateRecordsFixedBeforeKappa records)
+    (hcarries : CandidateRecordsCarryKappa records)
+    (hcandidates : Fintype.card Candidate ≤ 240)
+    (referenceKappa : K) :
+    uniformNonzeroRecordBatchCollisionProbability records ≤
+      (720 : Rat) / ((Fintype.card K - 1 : Nat) : Rat) := by
+  have hfieldNat : 0 < Fintype.card K - 1 := Nat.sub_pos_iff_lt.mpr
+    (Fintype.one_lt_card_iff_nontrivial.mpr inferInstance)
+  have hfield : (0 : Rat) < ((Fintype.card K - 1 : Nat) : Rat) := by
+    exact_mod_cast hfieldNat
+  rw [uniformNonzeroRecordBatchCollisionProbability,
+    div_le_div_iff_of_pos_right hfield]
+  exact_mod_cast (Finset.card_erase_le.trans
+    (recordBatchCollisionSet_card_le_720 records hfixed hcarries hcandidates
+      referenceKappa))
+
+/-- For the released nonzero QM31 sampler, `720 / (|QM31| - 1)` is below
+`2^-114`. -/
 theorem qm31_candidate_batch_collision_le_two_pow_neg_114 :
-    (720 : Real) / FIELD ≤ (1 : Real) / 2 ^ 114 := by
+    (720 : Real) / (FIELD - 1) ≤ (1 : Real) / 2 ^ 114 := by
   unfold FIELD
   norm_num
 
 /-- The ideal-uniform contribution of four-claim batching across all 240
 candidates. -/
 noncomputable def rawFourClaimBatchCollisionBound : Real :=
-  (720 : Real) / FIELD
+  (720 : Real) / (FIELD - 1)
 
 theorem rawFourClaimBatchCollisionBound_le_two_pow_neg_114 :
     rawFourClaimBatchCollisionBound ≤ (1 : Real) / 2 ^ 114 := by
@@ -235,9 +294,11 @@ theorem raw_core_plus_four_claim_batch_le_two_pow_neg_75 :
 #print axioms mem_candidateBatchCollisionSet_iff
 #print axioms candidateBatchCollisionSet_card_le
 #print axioms uniformCandidateBatchCollisionProbability_le_720
+#print axioms uniformNonzeroCandidateBatchCollisionProbability_le_720
 #print axioms recordBatchCollisionSet_eq_candidateBatchCollisionSet
 #print axioms recordBatchCollisionSet_card_le_720
 #print axioms uniformRecordBatchCollisionProbability_le_720
+#print axioms uniformNonzeroRecordBatchCollisionProbability_le_720
 #print axioms qm31_candidate_batch_collision_le_two_pow_neg_114
 #print axioms raw_core_plus_four_claim_batch_le_two_pow_neg_75
 

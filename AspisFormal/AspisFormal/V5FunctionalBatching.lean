@@ -8,7 +8,7 @@ This file checks the algebra behind batching four already-fixed discrepancies
 with the scalar powers `1, κ, κ², κ³`.  A nonzero discrepancy vector defines a
 nonzero cubic, so at most three field elements make the batch vanish.
 
-The ordering hypothesis is load-bearing.  `FixedBeforeKappa` states that the
+The ordering hypothesis is essential.  `FixedBeforeKappa` states that the
 discrepancy vector is determined by the transcript prefix and cannot depend on
 the subsequently sampled `κ`.  Without that hypothesis, an adaptive prover can
 choose a different polynomial for each challenge and the cubic root bound does
@@ -78,7 +78,8 @@ theorem collision_card_le_three (δ : Fin 4 → K) (hδ : δ ≠ 0) :
   exact (Polynomial.card_le_degree_of_subset_roots hsubset).trans
     (natDegree_discrepancyPolynomial_le δ)
 
-/-- The exact rational mass of the collision event under uniform `κ`. -/
+/-- The exact rational mass of the collision event under uniform `κ` over
+the complete field. -/
 def uniformCollisionProbability (δ : Fin 4 → K) : ℚ :=
   (collisionSet δ).card / Fintype.card K
 
@@ -89,6 +90,30 @@ theorem uniformCollisionProbability_le (δ : Fin 4 → K) (hδ : δ ≠ 0) :
   have hcard : (0 : ℚ) < Fintype.card K := by exact_mod_cast hcardNat
   rw [uniformCollisionProbability, div_le_div_iff_of_pos_right hcard]
   exact_mod_cast collision_card_le_three δ hδ
+
+/-- Collision challenges after restricting the sampler to nonzero field
+elements, as the released V5 transcript does. -/
+def nonzeroCollisionSet (δ : Fin 4 → K) : Finset K :=
+  (collisionSet δ).erase 0
+
+/-- Exact rational mass under a uniform nonzero batching challenge. -/
+def uniformNonzeroCollisionProbability (δ : Fin 4 → K) : ℚ :=
+  (nonzeroCollisionSet δ).card /
+    ((Fintype.card K - 1 : Nat) : ℚ)
+
+/-- A fixed nonzero discrepancy collides with probability at most
+`3 / (|K| - 1)` under the released nonzero sampler. -/
+theorem uniformNonzeroCollisionProbability_le
+    (δ : Fin 4 → K) (hδ : δ ≠ 0) :
+    uniformNonzeroCollisionProbability δ ≤
+      (3 : ℚ) / ((Fintype.card K - 1 : Nat) : ℚ) := by
+  have hfieldNat : 0 < Fintype.card K - 1 := Nat.sub_pos_iff_lt.mpr
+    (Fintype.one_lt_card_iff_nontrivial.mpr inferInstance)
+  have hfield : (0 : ℚ) < ((Fintype.card K - 1 : Nat) : ℚ) := by
+    exact_mod_cast hfieldNat
+  rw [uniformNonzeroCollisionProbability,
+    div_le_div_iff_of_pos_right hfield]
+  exact_mod_cast (Finset.card_erase_le.trans (collision_card_le_three δ hδ))
 
 /-! ## Transcript-ordering precondition
 
@@ -133,16 +158,17 @@ end Roots
 
 /-! ## Concrete QM31 ledger arithmetic -/
 
-/-- For the deployed QM31 cardinality `(2³¹ - 1)⁴`, the cubic collision term
-is at most `2⁻¹²²`. -/
+/-- For the deployed QM31 cardinality `(2³¹ - 1)⁴` and its nonzero
+sampler, the cubic collision term is at most `2⁻¹²²`. -/
 theorem qm31_four_functional_collision :
-    (3 : ℝ) / AspisSoundnessLedger.FIELD ≤ 1 / 2 ^ 122 := by
+    (3 : ℝ) / (AspisSoundnessLedger.FIELD - 1) ≤ 1 / 2 ^ 122 := by
   unfold AspisSoundnessLedger.FIELD
   norm_num
 
 #print axioms discrepancyPolynomial_ne_zero
 #print axioms collision_card_le_three
 #print axioms uniformCollisionProbability_le
+#print axioms uniformNonzeroCollisionProbability_le
 #print axioms adaptive_collision_card_le_three
 #print axioms qm31_four_functional_collision
 
