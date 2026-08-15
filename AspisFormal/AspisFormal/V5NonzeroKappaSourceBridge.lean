@@ -214,17 +214,23 @@ theorem successful_value_is_relation_batching_scalar
       finalState kappa hrun,
     sourceCallerInitialClaim_explicit inactive kappa gamma claims⟩
 
-/-- Remaining source-level call-path statement. The source audit shows this
-equality at the assignments and calls; a universal extraction proof for the
-large verifier caller must still supply it. -/
-def ExactProductionKappaCallPath (sampledKappa relationKappa : K) : Prop :=
-  relationKappa = sampledKappa
+/-- The exact relation-phase caller now has its own Aeneas-generated proof:
+`generated_relation_phase_forwards_exact_kappa` checks all four scalar limbs
+and the `FourClaimsCompact` variant. The remaining large-caller statement is
+only the preceding link: the value stored in `VerifiedRealV5Wire.kappa` by the
+prefix verifier is the value supplied to `verify_mode9_relation_phase` by the
+composite verifier. Pinned Aeneas cannot yet translate that composite because
+the opaque prefix call contains a higher-ranked `HashFn` reference type. -/
+def ExactProductionPrefixKappaToRelationPhaseInput
+    (sampledKappa relationPhaseKappa : K) : Prop :=
+  relationPhaseKappa = sampledKappa
 
 theorem relation_formula_uses_sampled_kappa
     [Field K]
     (sampledKappa relationKappa inactive gamma : K)
     (claims : Fin 76 → K)
-    (hpath : ExactProductionKappaCallPath sampledKappa relationKappa) :
+    (hpath : ExactProductionPrefixKappaToRelationPhaseInput
+      sampledKappa relationKappa) :
     sourceCallerInitialClaim inactive relationKappa gamma claims =
       inactive + sourcePreparedPointClaim gamma claims sourcePoint0 +
         sampledKappa * sourcePreparedPointClaim gamma claims sourcePoint1 +
