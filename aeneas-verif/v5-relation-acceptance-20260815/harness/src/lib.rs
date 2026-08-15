@@ -28,3 +28,17 @@ pub fn extract_weight_fold(mut weights: WeightAccumulator, alpha: QM31) -> Weigh
 pub fn extract_weight_dot(weights: &WeightAccumulator, values: &[QM31; 4]) -> QM31 {
     weights.dot(values)
 }
+
+/// Extraction-only view of the public byte offsets used by each production
+/// relation-tail category and of the complete tail length.
+pub fn extract_relation_layout() -> [usize; 7] {
+    [
+        relation_stress::V5_RELATION_STRESS_CIRCLE_OFFSET,
+        relation_stress::V5_RELATION_STRESS_LINE_OFFSET,
+        relation_stress::V5_RELATION_STRESS_OOD_OFFSET,
+        relation_stress::V5_RELATION_STRESS_MIX_OFFSET,
+        relation_stress::V5_RELATION_STRESS_SUMCHECK_OFFSET,
+        relation_stress::V5_RELATION_STRESS_FINAL_OFFSET,
+        relation_stress::V5_RELATION_STRESS_BYTES,
+    ]
+}

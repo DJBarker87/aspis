@@ -39,6 +39,13 @@ production QM31 decoder.  The already source-extracted QM31 decoder is then
 proved equal to the maintained little-endian model for every one of the 58
 sixteen-byte fields in every possible 928-byte relation tail.
 
+The extraction-only layout wrapper reads the public constants from the
+unchanged production module.  Its Lean translation proves the byte starts are
+exactly `0, 64, 160, 288, 416, 864`, with total length `928`.  Separate
+theorems prove that the exact index formula used by each circle-coordinate,
+line-point, OOD-value, OOD-mix, polynomial, and final-coefficient read selects
+the corresponding maintained field number.
+
 ## Exact remaining boundary
 
 The production function
