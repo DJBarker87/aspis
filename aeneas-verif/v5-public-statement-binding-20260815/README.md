@@ -105,19 +105,41 @@ base-four slot uniquely identify each residual. If the extracted per-row
 `theta` polynomial is identically zero, tower-basis injectivity exposes every
 one of those raw residuals and the six-field theorem applies.
 
-That composition leaves two explicit boundaries. First, the full Rust
-evaluator must agree with the modeled tower pack, row selectors and residual
-locations. Second, successful verification must yield the fixed trace and the
-per-row polynomial identities, outside the separately accounted challenge
-collision events. The theorem names the negation of this combined evidence as
-`ExactPublicResidualThetaExtractionFailure`; it does not assign that event a
-probability.
+The maintained Lean project now proves the algebra after the accepted masked
+sumcheck in `V5AcceptedTerminalResidualExtraction.lean`. In particular, it
+proves all of the following rather than putting them into one unnamed
+assumption:
 
-The unresolved security step is proving that every accepted deployed proof
-supplies those 35 zero residuals through sumcheck and PCS/FRI extraction, or
-bounding the named `PublicResidualExtractionFailure` event. No probability is
-assigned to that event in this bundle. A pinned full-evaluator extraction was
-attempted. Charon rejected the resulting standard-library iterator graph with
+1. the Rust equality-factor formula agrees with the big-endian 1,024-row
+   multilinear selector;
+2. those ten row bits select exactly one Boolean trace row;
+3. a nonzero 1,024-row table has a nonzero ten-variable multilinear
+   polynomial of total degree at most ten;
+4. an accepted mixed equation with nonzero `eta` forces the unmasked oracle
+   to have zero Boolean sum;
+5. helper cancellation at `mu` has at most one field root;
+6. a fixed nonzero Boolean table vanishes on at most a `10 / |K|` fraction of
+   equality points; and
+7. one fixed nonzero 25-lane row polynomial has at most 24 roots in `theta`.
+
+Outside those three separate algebraic events, the fixed trace gives
+identically zero per-row `theta` polynomials, which feed directly into the
+35-residual and six-public-field theorem. Choosing the nonzero row before
+looking at `theta` is explicit, so the theta bound is 24 roots rather than a
+union bound over all 1,024 rows.
+
+Two implementation-level obligations remain. First, the full Rust evaluator
+must agree with the modeled tower pack, row selectors, and residual locations.
+Second, successful verification plus commitment/FRI and ten-round sumcheck
+soundness must supply one fixed trace and the exact mixed-boundary equation.
+The latter includes the degree-27 sumcheck error; it is not silently counted
+as one of the three algebraic events above. The exact missing evidence is
+`AcceptedTraceAndSumcheckEvidence`, and accepted failure to supply it is
+`AcceptedTraceOrSumcheckExtractionFailure`. No probability is assigned to
+that remaining combined failure in this bundle.
+
+A pinned full-evaluator extraction was attempted. Charon rejected the
+resulting standard-library iterator graph with
 trait-clause mismatches for `Zip`, `ChunksExactMut`, `IterMut`, and
 `Enumerate`. Disabling Charon's final type check produced an LLBC file, but
 Aeneas then stopped with an internal type-translation error in Rust's
@@ -155,7 +177,7 @@ Build the maintained statement model once, then run:
 
 ```bash
 cd AspisFormal
-NO_DNA=1 lake build AspisFormal.V5ProductionPublicResidualBinding
+NO_DNA=1 lake build AspisFormal.V5AcceptedTerminalResidualExtraction
 cd ..
 
 LEAN432_BIN=/path/to/lean-4.32.0 \

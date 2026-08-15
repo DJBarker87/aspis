@@ -38,6 +38,12 @@ check_hash 32c75a198064af1bf7700a3cf92198e6bd01d8655405a55736b37d8302c4dc09 \
   crates/aspis-statement/src/atomic_statement.rs
 check_hash dadd6bac7c6c44fcb13e1a1ca26e9d2b6f767370bb6e802640948f15fc795836 \
   crates/aspis-core/src/field.rs
+check_hash 5458d3134a3123b8b02bef0374ccbf96a05461974d7e274966c6a3f0d2d496f9 \
+  crates/aspis-core/src/state_only_sumcheck.rs
+check_hash 9a388e62b1477dd3ff13d87d937a3855619b30c308ba0d59d82b3d195dd713e4 \
+  crates/aspis-core/src/state_only_hiding.rs
+check_hash 4fa471dc6acf50356017a4bd27b8fac7f354d8c513154f2b65cc98773dc2be0f \
+  crates/aspis-prover/src/state_only_hiding.rs
 
 if [[ -n "${V5_PUBLIC_STATEMENT_REPLAY_OUT:-}" ]]; then
   out=$V5_PUBLIC_STATEMENT_REPLAY_OUT

@@ -46,6 +46,7 @@ import AspisFormal.HashMerkleModel
 import AspisFormal.ApplicationMerkleBinding
 import AspisFormal.V5AcceptedSpendRelation
 import AspisFormal.V5ProductionPublicResidualBinding
+import AspisFormal.V5AcceptedTerminalResidualExtraction
 import AspisFormal.V5DeployedFalseAcceptance
 import AspisFormal.V5TheftResistance
 import AspisFormal.V5FixedVictimTheftGame
