@@ -391,6 +391,195 @@ theorem width19_bad_response_challenges_card_le
       honcurve gamma hgammaSelected
   exact hbad.2.2 ⟨components, hsupport, honcurveOriginal⟩
 
+/-! ## Selecting one bad decoder-list member per challenge -/
+
+section CandidateFamily
+
+variable {Candidate : Type*} [Nonempty Candidate]
+
+/-- One candidate from a challenge-indexed decoder family is a valid response
+using its own agreement support. -/
+def Width19CandidateValid
+    (encoder : Message → Domain → K) (agreementThreshold : Nat)
+    (lanes : Fin 19 → Domain → K)
+    (message : Candidate → Message)
+    (support : K → Candidate → Finset Domain)
+    (gamma : K) (candidate : Candidate) : Prop :=
+  agreementThreshold < (support gamma candidate).card ∧
+    ∀ x ∈ support gamma candidate,
+      width19CurveValue lanes gamma x = encoder (message candidate) x
+
+/-- Candidate-specific form of the matching decomposition. -/
+def Width19CandidateHasMatchingDecomposition
+    (encoder : Message → Domain → K)
+    (lanes : Fin 19 → Domain → K)
+    (message : Candidate → Message)
+    (support : K → Candidate → Finset Domain)
+    (gamma : K) (candidate : Candidate) : Prop :=
+  ∃ components : Fin 19 → Message,
+    support gamma candidate ⊆
+      width19JointAgreementSet encoder lanes components ∧
+    encoder (message candidate) =
+      fun x ↦ width19CurveValue
+        (fun lane ↦ encoder (components lane)) gamma x
+
+/-- At least one eligible candidate at this challenge is valid but lacks the
+matching nineteen-lane decomposition. -/
+def Width19CandidateFamilyBadAt
+    (encoder : Message → Domain → K) (agreementThreshold : Nat)
+    (lanes : Fin 19 → Domain → K)
+    (eligible : K → Candidate → Prop)
+    (message : Candidate → Message)
+    (support : K → Candidate → Finset Domain)
+    (gamma : K) : Prop :=
+  ∃ candidate,
+    eligible gamma candidate ∧
+      Width19CandidateValid encoder agreementThreshold lanes message support
+        gamma candidate ∧
+      ¬ Width19CandidateHasMatchingDecomposition
+        encoder lanes message support gamma candidate
+
+/-- Choose one bad family member when one exists.  No order on the decoder
+list is needed for the proof: classical choice is only the reduction's fixed
+selection rule. -/
+noncomputable def selectWidth19BadCandidate
+    (encoder : Message → Domain → K) (agreementThreshold : Nat)
+    (lanes : Fin 19 → Domain → K)
+    (eligible : K → Candidate → Prop)
+    (message : Candidate → Message)
+    (support : K → Candidate → Finset Domain)
+    (gamma : K) : Candidate := by
+  classical
+  exact if h : Width19CandidateFamilyBadAt encoder agreementThreshold lanes
+      eligible message support gamma then
+    Classical.choose h
+  else Classical.choice inferInstance
+
+theorem selectedWidth19BadCandidate_spec
+    (encoder : Message → Domain → K) (agreementThreshold : Nat)
+    (lanes : Fin 19 → Domain → K)
+    (eligible : K → Candidate → Prop)
+    (message : Candidate → Message)
+    (support : K → Candidate → Finset Domain)
+    (gamma : K)
+    (hbad : Width19CandidateFamilyBadAt encoder agreementThreshold lanes
+      eligible message support gamma) :
+    eligible gamma
+        (selectWidth19BadCandidate encoder agreementThreshold lanes eligible
+          message support gamma) ∧
+      Width19CandidateValid encoder agreementThreshold lanes message support
+        gamma (selectWidth19BadCandidate encoder agreementThreshold lanes
+          eligible message support gamma) ∧
+      ¬ Width19CandidateHasMatchingDecomposition encoder lanes message support
+        gamma (selectWidth19BadCandidate encoder agreementThreshold lanes
+          eligible message support gamma) := by
+  classical
+  simp only [selectWidth19BadCandidate, dif_pos hbad]
+  exact Classical.choose_spec hbad
+
+/-- Strategy obtained by selecting one bad candidate for each challenge where
+one exists.  It may select different candidates at different challenges. -/
+noncomputable def selectedWidth19BadCandidateStrategy
+    (encoder : Message → Domain → K) (agreementThreshold : Nat)
+    (lanes : Fin 19 → Domain → K)
+    (eligible : K → Candidate → Prop)
+    (message : Candidate → Message)
+    (support : K → Candidate → Finset Domain) :
+    Width19ProximateStrategy K Domain Message where
+  candidate gamma := message
+    (selectWidth19BadCandidate encoder agreementThreshold lanes eligible
+      message support gamma)
+  support gamma := support gamma
+    (selectWidth19BadCandidate encoder agreementThreshold lanes eligible
+      message support gamma)
+
+/-- If the family contains a bad member at `gamma`, the selected strategy is a
+bad response at exactly that challenge. -/
+theorem selected_strategy_bad_of_candidate_family_bad
+    (encoder : Message → Domain → K) (agreementThreshold : Nat)
+    (lanes : Fin 19 → Domain → K)
+    (eligible : K → Candidate → Prop)
+    (message : Candidate → Message)
+    (support : K → Candidate → Finset Domain)
+    (gamma : K)
+    (hbad : Width19CandidateFamilyBadAt encoder agreementThreshold lanes
+      eligible message support gamma) :
+    Width19BadResponse encoder agreementThreshold lanes
+      (selectedWidth19BadCandidateStrategy encoder agreementThreshold lanes
+        eligible message support) gamma := by
+  obtain ⟨_heligible, hvalid, hmissing⟩ :=
+    selectedWidth19BadCandidate_spec encoder agreementThreshold lanes eligible
+      message support gamma hbad
+  constructor
+  · exact hvalid
+  · intro hmatching
+    apply hmissing
+    obtain ⟨components, hsupport, honcurve⟩ := hmatching
+    exact ⟨components, hsupport, honcurve⟩
+
+/-- Nonzero challenges for which some eligible family member is bad. -/
+noncomputable def width19CandidateFamilyBadChallenges
+    (encoder : Message → Domain → K) (agreementThreshold : Nat)
+    (lanes : Fin 19 → Domain → K)
+    (eligible : K → Candidate → Prop)
+    (message : Candidate → Message)
+    (support : K → Candidate → Finset Domain) : Finset K := by
+  classical
+  exact (Finset.univ.erase 0).filter
+    (Width19CandidateFamilyBadAt encoder agreementThreshold lanes eligible
+      message support)
+
+/-- Selecting one bad member per challenge embeds the whole family failure set
+into the single-strategy failure set. -/
+theorem candidateFamilyBadChallenges_subset_selectedStrategy
+    (encoder : Message → Domain → K) (agreementThreshold : Nat)
+    (lanes : Fin 19 → Domain → K)
+    (eligible : K → Candidate → Prop)
+    (message : Candidate → Message)
+    (support : K → Candidate → Finset Domain) :
+    width19CandidateFamilyBadChallenges encoder agreementThreshold lanes
+        eligible message support ⊆
+      width19GoodChallenges encoder agreementThreshold lanes
+        (width19BadStrategy encoder agreementThreshold lanes
+          (selectedWidth19BadCandidateStrategy encoder agreementThreshold lanes
+            eligible message support)) := by
+  classical
+  intro gamma hgamma
+  have hparts : gamma ≠ 0 ∧
+      Width19CandidateFamilyBadAt encoder agreementThreshold lanes eligible
+        message support gamma := by
+    simpa [width19CandidateFamilyBadChallenges] using hgamma
+  apply (mem_width19BadStrategy_good_iff encoder agreementThreshold lanes
+    (selectedWidth19BadCandidateStrategy encoder agreementThreshold lanes
+      eligible message support) gamma).mpr
+  exact ⟨hparts.1,
+    selected_strategy_bad_of_candidate_family_bad encoder agreementThreshold
+      lanes eligible message support gamma hparts.2⟩
+
+/-- The full event “there exists a bad eligible decoder-list member” has the
+same curve-decoding cap as one response strategy.  No factor equal to the list
+size appears. -/
+theorem width19_candidate_family_bad_challenges_card_le
+    (encoder : Message → Domain → K)
+    (agreementThreshold challengeThreshold : Nat)
+    (hcurve : Width19CurveDecodable
+      encoder agreementThreshold challengeThreshold)
+    (lanes : Fin 19 → Domain → K)
+    (eligible : K → Candidate → Prop)
+    (message : Candidate → Message)
+    (support : K → Candidate → Finset Domain) :
+    (width19CandidateFamilyBadChallenges encoder agreementThreshold lanes
+      eligible message support).card ≤ challengeThreshold := by
+  exact (Finset.card_le_card
+    (candidateFamilyBadChallenges_subset_selectedStrategy encoder
+      agreementThreshold lanes eligible message support)).trans
+    (width19_bad_response_challenges_card_le encoder agreementThreshold
+      challengeThreshold hcurve lanes
+      (selectedWidth19BadCandidateStrategy encoder agreementThreshold lanes
+        eligible message support))
+
+end CandidateFamily
+
 /-! ## Coefficient-level consequence for a linear injective encoder -/
 
 /-- Scalar-power combination in the message space. -/
@@ -436,6 +625,8 @@ theorem candidate_eq_combineWidth19Messages_of_matching
 #print axioms exists_selected_not_width19Resolving
 #print axioms width19Support_subset_jointAgreement
 #print axioms width19_bad_response_challenges_card_le
+#print axioms selected_strategy_bad_of_candidate_family_bad
+#print axioms width19_candidate_family_bad_challenges_card_le
 #print axioms linearMap_combineWidth19Messages
 #print axioms candidate_eq_combineWidth19Messages_of_matching
 
