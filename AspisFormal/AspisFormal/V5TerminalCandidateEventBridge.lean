@@ -55,6 +55,25 @@ theorem qm31Exact_card_cast_eq_soundness_field :
   rw [AspisV5ComponentCQM31TowerExact.qm31Exact_card]
   norm_num [AspisV5ComponentCQM31TowerExact.P, AspisSoundnessLedger.FIELD]
 
+/-- Two is nonzero in the literal deployed QM31 tower. -/
+theorem qm31Exact_two_ne_zero :
+    (2 : AspisV5ComponentCQM31TowerExact.QM31Exact) ≠ 0 := by
+  open AspisV5ComponentCQM31TowerExact in
+    intro h
+    have hmap : algebraMap M31Exact QM31Exact (2 : M31Exact) =
+        algebraMap M31Exact QM31Exact (0 : M31Exact) := by
+      calc
+        algebraMap M31Exact QM31Exact (2 : M31Exact) =
+            (2 : QM31Exact) := map_ofNat _ 2
+        _ = 0 := h
+        _ = algebraMap M31Exact QM31Exact (0 : M31Exact) := (map_zero _).symm
+    have hbase := FaithfulSMul.algebraMap_injective M31Exact QM31Exact hmap
+    exact AspisCircleGroupOrder.two_ne_zero_ZModP hbase
+
+instance qm31ExactNeZeroTwo :
+    NeZero (2 : AspisV5ComponentCQM31TowerExact.QM31Exact) :=
+  ⟨qm31Exact_two_ne_zero⟩
+
 /-- Short name for the decoder list fixed by one committed prefix. -/
 abbrev PrefixFixedInitialCandidate
     {K Prefix : Type*} [Field K] [Fintype K] [DecidableEq K]
@@ -344,6 +363,52 @@ theorem exactTerminalCandidateFailure_probability_le_raw_bound_released_candidat
     (AspisV5CompatibilityCandidateTimingBridge.CompatibilityFriExperiment.candidateAt_card_le_222
       experiment p).trans (by omega)
 
+set_option maxRecDepth 100000 in
+/-- Fully concrete-field version of the released-candidate terminal bound.
+The field-cardinality equation is proved from the literal four-limb QM31
+tower, so the only remaining premise is the production-to-ideal conditional
+sampling comparison. -/
+theorem exactTerminalCandidateFailure_probability_le_raw_bound_deployed_qm31
+    {Run Coins Public Root Prefix : Type*}
+    [MeasurableSpace Coins] [Fintype Prefix] [Nonempty Prefix]
+    {rc : RoundConstants}
+    {deployedOwner : Digest → Digest}
+    {deployedNote : Digest → F → F → Digest → Digest}
+    {deployedNullifier : Digest → Digest → Digest}
+    {deployedNode : Digest → Digest → Digest}
+    {scheme : FiatShamirSchedule Public Root
+      AspisV5ComponentCQM31TowerExact.QM31Exact}
+    {data : ProjectedAcceptedFalseExperimentData Coins
+      AspisV5ComponentCQM31TowerExact.QM31Exact rc deployedOwner deployedNote
+      deployedNullifier deployedNode}
+    {projection : StatementBindingProjectionData Run Coins
+      AspisV5ComponentCQM31TowerExact.QM31Exact data}
+    {boundary : MaskedBoundaryProjectionData Run Coins
+      AspisV5ComponentCQM31TowerExact.QM31Exact Public Root
+      (scheme := scheme) projection}
+    (measure : Measure Coins)
+    (plans : TerminalCandidatePlanProjection Run Coins
+      AspisV5ComponentCQM31TowerExact.QM31Exact Public Root boundary)
+    (experiment : CompatibilityFriExperiment Prefix
+      AspisV5ComponentCQM31TowerExact.QM31Exact)
+    (terminal : ∀ p, experiment.CandidateAt p →
+      FixedTerminalAlgebraPlan
+        AspisV5ComponentCQM31TowerExact.QM31Exact)
+    (sumcheck : ∀ p, experiment.CandidateAt p →
+      AdaptiveDegree27MessagePlan
+        AspisV5ComponentCQM31TowerExact.QM31Exact)
+    (sourceHashAndConditionalSampling :
+      measure.real (exactTerminalCandidateFailureSet plans) ≤
+        (prefixAveragedCandidateTerminalSubtotal Prefix
+          experiment.CandidateAt terminal sumcheck : Real)) :
+    measure.real (exactTerminalCandidateFailureSet plans) ≤
+      rawCandidateTerminalBound := by
+  exact
+    exactTerminalCandidateFailure_probability_le_raw_bound_released_candidates
+      measure plans experiment terminal sumcheck
+      qm31Exact_card_cast_eq_soundness_field
+      sourceHashAndConditionalSampling
+
 /-- Accepted-false accounting specialized to the concrete terminal-candidate
 event.  Unlike the generic theorem, this statement has no separate
 set-containment premise for the four terminal failure cases. -/
@@ -418,11 +483,14 @@ theorem productionFalseSpend_probability_le_with_exact_terminal_event
 
 #print axioms exactTerminalCandidateFailureCoverage
 #print axioms qm31Exact_card_cast_eq_soundness_field
+#print axioms qm31Exact_two_ne_zero
 #print axioms exactTerminalCandidateFailure_probability_le_raw_bound
 #print axioms
   exactTerminalCandidateFailure_probability_le_raw_bound_fixed_list
 #print axioms
   exactTerminalCandidateFailure_probability_le_raw_bound_released_candidates
+#print axioms
+  exactTerminalCandidateFailure_probability_le_raw_bound_deployed_qm31
 #print axioms acceptedFalse_probability_le_with_exact_terminal_event
 #print axioms productionFalseSpend_probability_le_with_exact_terminal_event
 
