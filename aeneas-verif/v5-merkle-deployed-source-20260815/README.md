@@ -47,6 +47,29 @@ proof must take as an explicit premise that it equals Solana `hashv` (SHA-256)
 over the concatenation of the exact ordered slices. This package makes no
 collision, preimage, or random-oracle claim.
 
+## Unchanged verifier-loop snapshot
+
+`generated/V5MerkleUnchangedSource/` records the newer Aeneas output for the
+production radix authentication function with its original three nested loops.
+The byte-exact raw output and its LLBC hash are retained beside a Lean 4.32
+compilable view.  The compilable view changes only Lean import and elaboration
+details; it does not replace the Rust loop with the recursive extraction
+helpers.
+
+`V5MerkleUntouchedRadixInversion.lean` proves what every successful call to
+that translated function must have done: the three public input checks passed,
+and the original nested loop returned `some true` with exactly the output
+vectors returned by the function.  The statement compares only data the
+verifier reads, so arbitrary unused entries in fixed-size offset arrays are
+irrelevant.
+
+This is not yet the full source-to-mathematics proof for the loop.  The next
+theorem must show that the successful generated loop execution produces the
+same ordered child reads, hash inputs, cursor movement, and final root check as
+the maintained Merkle model.  The topology constructor, shape validator, and
+outer five-section driver were still partial in this raw translation and are
+listed as explicit external declarations in its compilable view.
+
 ## What this does not prove
 
 This is a complete extraction artifact, not the final source-equality proof.
