@@ -1,0 +1,21 @@
+diff --git a/programs/aspis-verifier/src/v5_cu_probe.rs b/programs/aspis-verifier/src/v5_cu_probe.rs
+--- a/programs/aspis-verifier/src/v5_cu_probe.rs
++++ b/programs/aspis-verifier/src/v5_cu_probe.rs
+@@ -923,11 +923,13 @@ fn derive_v5_complete_queries_for_selector_from_transcript(
+         [V5_RELATION_STRESS_FINAL_OFFSET..V5_RELATION_STRESS_FINAL_OFFSET + 4 * QM31_BYTES];
+     if stress_final != parsed.v5_final_coefficients || !v5_query_selector_is_valid(selector) {
+         return Err(ProgramError::InvalidAccountData);
+-    }
+-    let mut final_polynomial = [QM31::ZERO; 4];
+-    for (index, value) in final_polynomial.iter_mut().enumerate() {
+-        *value = decode_qm31(parsed.v5_final_coefficients, index)?;
+     }
++    let final_polynomial = [
++        decode_qm31(parsed.v5_final_coefficients, 0)?,
++        decode_qm31(parsed.v5_final_coefficients, 1)?,
++        decode_qm31(parsed.v5_final_coefficients, 2)?,
++        decode_qm31(parsed.v5_final_coefficients, 3)?,
++    ];
+     transcript.absorb(
+         label::M31_CIRCLE_FINAL_TENSOR_POLY,
+         parsed.v5_final_coefficients,
