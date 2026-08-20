@@ -16,7 +16,7 @@ readonly expected_tree="a0f99ac9591fb568b6fce9fda5ef4dd7ac32e5f0"
 readonly expected_source_blob="3b1f37f2504aa2b309cad82605c88cab11afcb85"
 readonly expected_types_external="8184109b4cf2fe609835f1cab610516276f575afeef53793f12d7ecc589b7c37"
 readonly expected_types="c121162321fc5f7bfc00bb58f18b342d182529dca03eb4534157fcaf085cd58e"
-readonly expected_funs_external="85e73d71b53cd87c561b06c80beaa358641b5dcb2b448e7010ad42a74a486a41"
+readonly expected_funs_external="d9781f69ad77b8d453e86c818c1978643f719ccab3425e0c50dcaf88dc053318"
 readonly expected_funs="370be7ac485d08bef17844e240b3d759f639cb078c91b2880c6e2747d21b3745"
 
 case "$($lean_bin --version)" in

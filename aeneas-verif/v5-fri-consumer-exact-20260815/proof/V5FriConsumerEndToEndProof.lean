@@ -1036,7 +1036,19 @@ structure ProductionFriPreparationTrace
     (alphaPowers : Array
       (Array aspis_core.field.PreparedQm31Multiplier 3#usize) 4#usize) :
     Type where
+  sourceShape : aspis_core.circle_pcs_shape.CirclePcsShape
+  validatedShape : aspis_core.circle_pcs_shape.CirclePcsShape
+  validationResult : core.result.Result
+    aspis_core.circle_pcs_shape.CirclePcsShape
+    aspis_core.circle_pcs_shape.CirclePcsShapeError
+  sourceShapeCall : fri_checks.V5_FRI_PCS_SHAPE = .ok sourceShape
+  validationCall :
+    aspis_core.circle_pcs_shape.CirclePcsShape.validate sourceShape =
+      .ok validationResult
+  validationSucceeded : validationResult = .Ok validatedShape
   domainLog : Std.U32
+  domainLogCall :
+    core.convert.num.FromU32U8.from validatedShape.domain_log_size = domainLog
   later0 : alloc.vec.Vec Std.U32
   later1 : alloc.vec.Vec Std.U32
   later2 : alloc.vec.Vec Std.U32
@@ -1053,6 +1065,45 @@ structure ProductionFriPreparationTrace
     core.array.Array.map
         fri_checks.check_v5_fri_queries.closure.Insts.CoreOpsFunctionFnMutTupleQM31ArrayPreparedQm31Multiplier3
         alphas () = .ok alphaPowers
+
+/-- The only property of shape validation needed by the coordinate bridge:
+successful validation returns the shape it was given. -/
+def ValidationSuccessPreservesShape : Prop :=
+  ∀ input output,
+    aspis_core.circle_pcs_shape.CirclePcsShape.validate input =
+        .ok (.Ok output) →
+      output = input
+
+theorem v5_fri_source_shape_domain_log_is_19
+    (shape : aspis_core.circle_pcs_shape.CirclePcsShape)
+    (hShape : fri_checks.V5_FRI_PCS_SHAPE = .ok shape) :
+    shape.domain_log_size = 19#u8 := by
+  unfold fri_checks.V5_FRI_PCS_SHAPE at hShape
+  repeat' first
+    | split at hShape
+    | simp_all [Bind.bind, Aeneas.Std.bind, Std.lift]
+
+theorem ProductionFriPreparationTrace.domainLog_eq_19
+    {openings : VerifiedOpenings}
+    {alphas : Array aspis_core.field.QM31 4#usize}
+    {inverse : aspis_core.field.M31 → aspis_core.field.M31}
+    {coordinates : aspis_core.circle_fri.DerivedCircleQueryFoldInverses}
+    {alphaPowers : Array
+      (Array aspis_core.field.PreparedQm31Multiplier 3#usize) 4#usize}
+    (trace : ProductionFriPreparationTrace openings alphas inverse
+      coordinates alphaPowers)
+    (hValidate : ValidationSuccessPreservesShape) :
+    trace.domainLog = 19#u32 := by
+  have hValidation :
+      aspis_core.circle_pcs_shape.CirclePcsShape.validate trace.sourceShape =
+        .ok (.Ok trace.validatedShape) := by
+    simpa [trace.validationSucceeded] using trace.validationCall
+  have hValidated : trace.validatedShape = trace.sourceShape :=
+    hValidate trace.sourceShape trace.validatedShape hValidation
+  have hSourceDomain := v5_fri_source_shape_domain_log_is_19
+    trace.sourceShape trace.sourceShapeCall
+  rw [hValidated, hSourceDomain] at trace.domainLogCall
+  simpa using trace.domainLogCall.symm
 
 /-- Successful unchanged-source acceptance exposes both the exact preparation
 calls and the first accepted loop.  The second `split at *` normalizes only
@@ -1088,6 +1139,7 @@ theorem top_level_acceptance_exposes_preparation_and_layerZero_loop
   repeat' first
     | split at haccept
     | simp_all [Bind.bind, Aeneas.Std.bind, Std.lift,
+        core.result.Result.map_err,
         core.result.Result.Insts.CoreOpsTry.branch,
         from_residual_ne_ok, core.slice.Slice.iter,
         core.iter.traits.iterator.Iterator.enumerate.trait_default,
@@ -1096,6 +1148,7 @@ theorem top_level_acceptance_exposes_preparation_and_layerZero_loop
   repeat' first
     | split at *
     | simp_all [Bind.bind, Aeneas.Std.bind, Std.lift,
+        core.result.Result.map_err,
         core.result.Result.Insts.CoreOpsTry.branch,
         from_residual_ne_ok, core.slice.Slice.iter,
         core.iter.traits.iterator.Iterator.enumerate.trait_default,
@@ -1107,7 +1160,8 @@ theorem top_level_acceptance_exposes_preparation_and_layerZero_loop
   · eapply Exists.intro
     assumption
   · apply Nonempty.intro
-    eapply ProductionFriPreparationTrace.mk <;> assumption
+    eapply ProductionFriPreparationTrace.mk
+    all_goals first | rfl | assumption
 
 /-- Compatibility projection retaining the previous API for callers which do
 not yet consume the preparation trace. -/

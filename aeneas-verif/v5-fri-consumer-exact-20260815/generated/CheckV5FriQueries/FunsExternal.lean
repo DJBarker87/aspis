@@ -16,15 +16,107 @@ set_option maxHeartbeats 800000
 set_option maxRecDepth 3000
 namespace V5FriConsumerExact
 
+/-- Length-indexed model of the state-threading loop used by Rust array
+`map`. Keeping the length in the return type makes the public wrapper total
+without an extra trusted cast. -/
+def core.array.mapListFnMut
+    {T : Type} {F : Type} {U : Type}
+    (fnMut : core.ops.function.FnMut F T U) :
+    (values : List T) → F →
+      Result ({ output : List U // output.length = values.length } × F)
+  | [], closure => ok (⟨[], rfl⟩, closure)
+  | value :: rest, closure => do
+      let (mapped, closureNext) ← fnMut.call_mut closure value
+      let (mappedRest, closureFinal) ←
+        core.array.mapListFnMut fnMut rest closureNext
+      ok (⟨mapped :: mappedRest.val, by simp [mappedRest.property]⟩,
+        closureFinal)
+
+/-- Successful state-threading `array::map` execution relates every source
+element to the corresponding returned element whenever each successful
+closure call has that relation. -/
+theorem core.array.mapListFnMut_forall₂
+    {T : Type} {F : Type} {U : Type}
+    (fnMut : core.ops.function.FnMut F T U)
+    (relation : T → U → Prop) :
+    ∀ (values : List T) (closure : F)
+      (mapped : { output : List U // output.length = values.length })
+      (closureFinal : F),
+      core.array.mapListFnMut fnMut values closure =
+          ok (mapped, closureFinal) →
+      (∀ state input output stateNext,
+        fnMut.call_mut state input = ok (output, stateNext) →
+        relation input output) →
+      List.Forall₂ relation values mapped.val := by
+  intro values
+  induction values with
+  | nil =>
+    intro closure mapped closureFinal hMap _hCall
+    unfold core.array.mapListFnMut at hMap
+    have hPair := Result.ok.inj hMap
+    have hMapped : mapped.val = [] := by
+      have hFirst := congrArg (fun pair => pair.1.val) hPair
+      exact hFirst.symm
+    simpa [hMapped]
+  | cons value rest ih =>
+    intro closure mapped closureFinal hMap hCall
+    unfold core.array.mapListFnMut at hMap
+    cases hFirst : fnMut.call_mut closure value with
+    | fail error => simp [hFirst] at hMap
+    | div => simp [hFirst] at hMap
+    | ok pair =>
+      rcases pair with ⟨firstOutput, closureNext⟩
+      simp only [hFirst, bind_tc_ok] at hMap
+      cases hRest : core.array.mapListFnMut fnMut rest closureNext with
+      | fail error => simp [hRest] at hMap
+      | div => simp [hRest] at hMap
+      | ok pair =>
+        rcases pair with ⟨restOutput, closureEnd⟩
+        simp only [hRest, bind_tc_ok, Result.ok.injEq, Prod.mk.injEq] at hMap
+        have hMapped : mapped.val = firstOutput :: restOutput.val := by
+          have hArray := congrArg (fun array => array.val) hMap.1
+          exact hArray.symm
+        rw [hMapped]
+        exact List.Forall₂.cons
+          (hCall closure value firstOutput closureNext hFirst)
+          (ih closureNext restOutput closureEnd hRest hCall)
+
 /-- [core::array::{[T; N]}::map]:
     Source: '/rustc/library/core/src/array/mod.rs', lines 592:4-596:28
     Name pattern: [core::array::{[@T; @N]}::map]
     Visibility: public -/
 @[rust_fun "core::array::{[@T; @N]}::map"]
-axiom core.array.Array.map
+def core.array.Array.map
   {T : Type} {F : Type} {U : Type} {N : Std.Usize}
-  (opsfunctionFnMutFTupleTUInst : core.ops.function.FnMut F T U) :
-  (Array T N) → F → Result (Array U N)
+  (opsfunctionFnMutFTupleTUInst : core.ops.function.FnMut F T U)
+  (values : Array T N) (closure : F) : Result (Array U N) := do
+  let (mapped, _closureFinal) ←
+    core.array.mapListFnMut opsfunctionFnMutFTupleTUInst values.val closure
+  ok ⟨mapped.val, mapped.property.trans values.property⟩
+
+/-- Pointwise semantics of the concrete total model above. -/
+theorem core.array.Array.map_forall₂
+    {T : Type} {F : Type} {U : Type} {N : Std.Usize}
+    (fnMut : core.ops.function.FnMut F T U)
+    (relation : T → U → Prop)
+    (values : Array T N) (closure : F) (mapped : Array U N)
+    (hMap : core.array.Array.map fnMut values closure = ok mapped)
+    (hCall : ∀ state input output stateNext,
+      fnMut.call_mut state input = ok (output, stateNext) →
+      relation input output) :
+    List.Forall₂ relation values.val mapped.val := by
+  unfold core.array.Array.map at hMap
+  cases hRun : core.array.mapListFnMut fnMut values.val closure with
+  | fail error => simp [hRun] at hMap
+  | div => simp [hRun] at hMap
+  | ok pair =>
+    rcases pair with ⟨mappedList, closureFinal⟩
+    simp only [hRun, bind_tc_ok, Result.ok.injEq] at hMap
+    have hPointwise := core.array.mapListFnMut_forall₂ fnMut relation
+      values.val closure mappedList closureFinal hRun hCall
+    have hValues : mapped.val = mappedList.val := by
+      exact (congrArg (fun array => array.val) hMap).symm
+    simpa [hValues] using hPointwise
 
 /-- [core::iter::traits::iterator::Iterator::position]:
     Source: '/rustc/library/core/src/iter/traits/iterator.rs', lines 3134:4-3137:37
@@ -122,10 +214,14 @@ def
     Name pattern: [core::result::{core::result::Result<@T, @E>}::map_err]
     Visibility: public -/
 @[rust_fun "core::result::{core::result::Result<@T, @E>}::map_err"]
-axiom core.result.Result.map_err
+def core.result.Result.map_err
   {T : Type} {E : Type} {F : Type} {O : Type} (opsfunctionFnOnceOTupleEFInst :
   core.ops.function.FnOnce O E F) :
   (core.result.Result T E) → O → Result (core.result.Result T F)
+  | .Ok value, _ => ok (.Ok value)
+  | .Err error, closure => do
+      let mapped ← opsfunctionFnOnceOTupleEFInst.call_once closure error
+      ok (.Err mapped)
 
 /-- [core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a T> for core::slice::iter::Iter<'a, T>}::position]:
     Source: '/rustc/library/core/src/slice/iter/macros.rs', lines 377:12-379:45

@@ -77,6 +77,23 @@ consumer extraction.  Each field states equality of a concrete call after
 structural conversion; it does not state any mathematical fold result. -/
 structure ExactFriHelperCallEquality : Type where
   prepared : Consumer.Prepared → Exact.Prepared
+  square : ∀ input output,
+    canonicalQM31 (toExactQM31 input) →
+      V5FriConsumerExact.aspis_core.field.QM31.square input = .ok output →
+      canonicalQM31 (toExactQM31 output) ∧
+        qm31View (toExactQM31 output) = qm31View (toExactQM31 input) ^ 2
+  mul : ∀ left right output,
+    canonicalQM31 (toExactQM31 left) →
+      canonicalQM31 (toExactQM31 right) →
+      V5FriConsumerExact.aspis_core.field.QM31.mul left right = .ok output →
+      canonicalQM31 (toExactQM31 output) ∧
+        qm31View (toExactQM31 output) =
+          qm31View (toExactQM31 left) * qm31View (toExactQM31 right)
+  preparedNew : ∀ input output,
+    canonicalQM31 (toExactQM31 input) →
+      V5FriConsumerExact.aspis_core.field.PreparedQm31Multiplier.new input =
+        .ok output →
+      PreparedRepresents (prepared output) (qm31View (toExactQM31 input))
   circle : ∀ values alphaPowers inv2x inv2y output,
     V5FriConsumerExact.aspis_core.circle_fri.normalized_circle_to_line_arity4_prepared_polynomial_refs
         values alphaPowers inv2x inv2y = .ok output →
@@ -96,6 +113,141 @@ structure ExactFriHelperCallEquality : Type where
       V5FriArithmeticExact.circle_query.check_fixed_terminal_transition_prepared_polynomial_refs
           incoming (mapArray toExactQM31 finalPolynomial) index inverses finalX
           (mapArray prepared alphaPowers) = .ok (.Ok ())
+
+/-- The literal closure used by `check_v5_fri_queries` prepares exactly the
+first three positive powers of one source challenge. This consumes only
+call-level field/preparation correspondences; it does not assume the prepared
+array postcondition. -/
+theorem source_preparation_closure_yields_exact_powers
+    (hCalls : ExactFriHelperCallEquality)
+    (input : Consumer.QM31)
+    (output : Array Consumer.Prepared 3#usize)
+    (hCanonical : canonicalQM31 (toExactQM31 input))
+    (hCall :
+      V5FriConsumerExact.fri_checks.check_v5_fri_queries.closure.Insts.CoreOpsFunctionFnMutTupleQM31ArrayPreparedQm31Multiplier3.call_mut
+          () input = .ok (output, ())) :
+    PreparedArrayRepresents (mapArray hCalls.prepared output)
+      (fun index => qm31View (toExactQM31 input) ^ (index + 1)) := by
+  unfold
+    V5FriConsumerExact.fri_checks.check_v5_fri_queries.closure.Insts.CoreOpsFunctionFnMutTupleQM31ArrayPreparedQm31Multiplier3.call_mut at hCall
+  generalize hSquareCall :
+      V5FriConsumerExact.aspis_core.field.QM31.square input = squareResult
+      at hCall
+  cases squareResult with
+  | fail error => simp [Bind.bind, Aeneas.Std.bind] at hCall
+  | div => simp [Bind.bind, Aeneas.Std.bind] at hCall
+  | ok squared =>
+    generalize hPrepared1Call :
+        V5FriConsumerExact.aspis_core.field.PreparedQm31Multiplier.new input =
+          prepared1Result at hCall
+    cases prepared1Result with
+    | fail error =>
+      simp only [bind_tc_ok, bind_tc_fail] at hCall
+      cases hCall
+    | div =>
+      simp only [bind_tc_ok, bind_tc_div] at hCall
+      cases hCall
+    | ok prepared1 =>
+      simp only [bind_tc_ok] at hCall
+      generalize hPrepared2Call :
+          V5FriConsumerExact.aspis_core.field.PreparedQm31Multiplier.new
+              squared = prepared2Result at hCall
+      cases prepared2Result with
+      | fail error =>
+        simp only [bind_tc_fail] at hCall
+        cases hCall
+      | div =>
+        simp only [bind_tc_div] at hCall
+        cases hCall
+      | ok prepared2 =>
+        simp only [bind_tc_ok] at hCall
+        generalize hCubeCall :
+            V5FriConsumerExact.aspis_core.field.QM31.mul squared input =
+              cubeResult at hCall
+        cases cubeResult with
+        | fail error =>
+          simp only [bind_tc_fail] at hCall
+          cases hCall
+        | div =>
+          simp only [bind_tc_div] at hCall
+          cases hCall
+        | ok cubed =>
+          simp only [bind_tc_ok] at hCall
+          generalize hPrepared3Call :
+              V5FriConsumerExact.aspis_core.field.PreparedQm31Multiplier.new
+                  cubed = prepared3Result at hCall
+          cases prepared3Result with
+          | fail error =>
+            simp only [bind_tc_fail] at hCall
+            cases hCall
+          | div =>
+            simp only [bind_tc_div] at hCall
+            cases hCall
+          | ok prepared3 =>
+            simp only [bind_tc_ok] at hCall
+            have hSquared := hCalls.square input squared hCanonical hSquareCall
+            have hCubed := hCalls.mul squared input cubed hSquared.1
+              hCanonical hCubeCall
+            have hPrepared1 := hCalls.preparedNew input prepared1 hCanonical
+              hPrepared1Call
+            have hPrepared2 := hCalls.preparedNew squared prepared2 hSquared.1
+              hPrepared2Call
+            have hPrepared3 := hCalls.preparedNew cubed prepared3 hCubed.1
+              hPrepared3Call
+            have hOutput : output.val = [prepared1, prepared2, prepared3] := by
+              have hPair := Result.ok.inj hCall
+              have hArray := congrArg Prod.fst hPair
+              exact (congrArg (fun array => array.val) hArray).symm
+            intro index hIndex
+            have hCases : index = 0 ∨ index = 1 ∨ index = 2 := by omega
+            rcases hCases with rfl | rfl | rfl
+            · simpa [mapArray, hOutput] using hPrepared1
+            · simpa [mapArray, hOutput, hSquared.2] using hPrepared2
+            · simpa [mapArray, hOutput, hCubed.2, hSquared.2, pow_succ]
+                using hPrepared3
+
+/-- The actual four-element `array::map` call made by the production verifier
+prepares the first three powers of every challenge. -/
+theorem source_alpha_map_yields_exact_powers
+    (hCalls : ExactFriHelperCallEquality)
+    (alphas : Array Consumer.QM31 4#usize)
+    (alphaPowers : Array (Array Consumer.Prepared 3#usize) 4#usize)
+    (hCanonical : ∀ (layer : Nat) (hLayer : layer < 4),
+      canonicalQM31 (toExactQM31
+        (alphas.val.get ⟨layer, by simpa using hLayer⟩)))
+    (hMap :
+      V5FriConsumerExact.core.array.Array.map
+          V5FriConsumerExact.fri_checks.check_v5_fri_queries.closure.Insts.CoreOpsFunctionFnMutTupleQM31ArrayPreparedQm31Multiplier3
+          alphas () = .ok alphaPowers) :
+    ∀ (layer : Nat) (hLayer : layer < 4),
+      PreparedArrayRepresents
+        (mapArray hCalls.prepared
+          (alphaPowers.val.get ⟨layer, by simpa using hLayer⟩))
+        (fun index =>
+          qm31View (toExactQM31
+            (alphas.val.get ⟨layer, by simpa using hLayer⟩)) ^
+              (index + 1)) := by
+  let relation : Consumer.QM31 → Array Consumer.Prepared 3#usize → Prop :=
+    fun input output =>
+      canonicalQM31 (toExactQM31 input) →
+      PreparedArrayRepresents (mapArray hCalls.prepared output)
+        (fun index => qm31View (toExactQM31 input) ^ (index + 1))
+  have hForall : List.Forall₂ relation alphas.val alphaPowers.val :=
+    V5FriConsumerExact.core.array.Array.map_forall₂
+      V5FriConsumerExact.fri_checks.check_v5_fri_queries.closure.Insts.CoreOpsFunctionFnMutTupleQM31ArrayPreparedQm31Multiplier3
+      relation alphas () alphaPowers hMap (by
+        intro state input output stateNext hCall
+        cases state
+        cases stateNext
+        intro hInputCanonical
+        exact source_preparation_closure_yields_exact_powers
+          hCalls input output hInputCanonical hCall)
+  intro layer hLayer
+  have hLayerAlpha : layer < alphas.val.length := by simpa using hLayer
+  have hLayerPowers : layer < alphaPowers.val.length := by simpa using hLayer
+  have hEntry := hForall.get hLayerAlpha hLayerPowers
+  apply hEntry
+  exact hCanonical layer hLayer
 
 private theorem consumer_qm31_ne_false_iff
     (left right : Consumer.QM31) :

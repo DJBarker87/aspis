@@ -20,13 +20,14 @@ The checked Lean files have these SHA-256 identities:
 |---|---|
 | `TypesExternal.lean` | `8184109b4cf2fe609835f1cab610516276f575afeef53793f12d7ecc589b7c37` |
 | `Types.lean` | `c121162321fc5f7bfc00bb58f18b342d182529dca03eb4534157fcaf085cd58e` |
-| `FunsExternal.lean` | `85e73d71b53cd87c561b06c80beaa358641b5dcb2b448e7010ad42a74a486a41` |
+| `FunsExternal.lean` | `d9781f69ad77b8d453e86c818c1978643f719ccab3425e0c50dcaf88dc053318` |
 | `Funs.lean` | `370be7ac485d08bef17844e240b3d759f639cb078c91b2880c6e2747d21b3745` |
 
 `Funs.lean` includes only the narrow compatibility expansion required for
 the mutable enumerated slice iterator and two translated shift literals.
 `FunsExternal.lean` replaces the relevant generated standard-library
-placeholders with their transparent definitions. Its generated external
+placeholders with transparent definitions, including the state-threading
+semantics of fixed-array `map` and `Result::map_err`. Its generated external
 declarations are kept inside the extraction namespace so that this snapshot
 can be imported beside the independent arithmetic snapshot; the derived
 `QM31` equality is the transparent four-limb equality implemented by Rust.
@@ -114,11 +115,13 @@ and slice access; it is not a trace-test assumption.
 
 ## Opaque called operations
 
-The generated translation treats several called operations as opaque:
+The generated translation still treats several called operations as opaque:
 shape validation and column counts, inverse derivation and the supplied
-inverse callback, fixed-array mapping for alpha powers, circle-to-line
-normalisation, line and terminal transition checks, field decoding and
-arithmetic, prepared multiplication, and fixed proof-system constants. These
+inverse callback, circle-to-line normalisation, line and terminal transition
+checks, field decoding and arithmetic, prepared multiplication, and fixed
+proof-system constants. Fixed-array mapping for alpha powers is no longer in
+that list: its exact state-threading and pointwise semantics are defined and
+proved in this bundle. These
 operations determine whether a run accepts and are covered elsewhere by the
 mathematical and arithmetic proofs. This package proves a conditional source
 statement: whenever the exact generated top-level function accepts, none of
