@@ -127,6 +127,21 @@ private theorem reduce_u64_eq_multiplicative (x : Std.U64) :
     AspisCoreCM31Multiplicative.field.reduce_u64
   rw [P_eq_multiplicative]
 
+private theorem P_eq_reduce_root :
+    V5RelationLinkedGenerated.aspis_core.field.P =
+      _root_.aspis_core.field.P := by
+  apply UScalar.eq_of_val_eq
+  unfold V5RelationLinkedGenerated.aspis_core.field.P
+    _root_.aspis_core.field.P
+  rfl
+
+private theorem reduce_u64_eq_reduce_root (x : Std.U64) :
+    V5RelationLinkedGenerated.aspis_core.field.reduce_u64 x =
+      _root_.aspis_core.field.reduce_u64 x := by
+  unfold V5RelationLinkedGenerated.aspis_core.field.reduce_u64
+    _root_.aspis_core.field.reduce_u64
+  rw [P_eq_reduce_root]
+
 private theorem m31_mul_eq_multiplicative (a b : NewM31) :
     V5RelationLinkedGenerated.aspis_core.field.M31.mul a b =
       AspisCoreCM31Multiplicative.field.M31.mul a b := by
@@ -135,12 +150,85 @@ private theorem m31_mul_eq_multiplicative (a b : NewM31) :
   simp only [Aeneas.Std.lift, bind_tc_ok]
   rw [reduce_u64_eq_multiplicative]
 
+private theorem m31_add_eq_multiplicative (a b : NewM31) :
+    V5RelationLinkedGenerated.aspis_core.field.M31.add a b =
+      AspisCoreCM31Multiplicative.field.M31.add a b := by
+  unfold V5RelationLinkedGenerated.aspis_core.field.M31.add
+    AspisCoreCM31Multiplicative.field.M31.add
+  rw [P_eq_multiplicative]
+
 private theorem m31_sub_eq_multiplicative (a b : NewM31) :
     V5RelationLinkedGenerated.aspis_core.field.M31.sub a b =
       AspisCoreCM31Multiplicative.field.M31.sub a b := by
   unfold V5RelationLinkedGenerated.aspis_core.field.M31.sub
     AspisCoreCM31Multiplicative.field.M31.sub
   rw [P_eq_multiplicative]
+
+/-- Exact base-field addition for the fresh complete relation extraction.
+This is exposed because the prepared multiplier and its fused dot-product
+kernel cache these generated limb sums directly. -/
+theorem generated_m31_add_corresponds
+    (a b : NewM31)
+    (ha : AspisAeneasCM31Multiplicative.CanonicalRawM31 a.val)
+    (hb : AspisAeneasCM31Multiplicative.CanonicalRawM31 b.val) :
+    ∃ out : NewM31,
+      V5RelationLinkedGenerated.aspis_core.field.M31.add a b = ok out ∧
+      AspisAeneasCM31Multiplicative.CanonicalRawM31 out.val ∧
+      ((out.val : Nat) : ComponentBRealEvaluatorProof.ExactM31) =
+        (a.val : ComponentBRealEvaluatorProof.ExactM31) +
+          (b.val : ComponentBRealEvaluatorProof.ExactM31) := by
+  obtain ⟨out, oldRun, canonical, exact⟩ :=
+    AspisAeneasCM31Multiplicative.extracted_m31_add_corresponds a b ha hb
+  refine ⟨out, ?_, canonical, exact⟩
+  rw [m31_add_eq_multiplicative]
+  exact oldRun
+
+theorem generated_m31_sub_corresponds
+    (a b : NewM31)
+    (ha : AspisAeneasCM31Multiplicative.CanonicalRawM31 a.val)
+    (hb : AspisAeneasCM31Multiplicative.CanonicalRawM31 b.val) :
+    ∃ out : NewM31,
+      V5RelationLinkedGenerated.aspis_core.field.M31.sub a b = ok out ∧
+      AspisAeneasCM31Multiplicative.CanonicalRawM31 out.val ∧
+      ((out.val : Nat) : ComponentBRealEvaluatorProof.ExactM31) =
+        (a.val : ComponentBRealEvaluatorProof.ExactM31) -
+          (b.val : ComponentBRealEvaluatorProof.ExactM31) := by
+  obtain ⟨out, oldRun, canonical, exact⟩ :=
+    AspisAeneasCM31Multiplicative.extracted_m31_sub_corresponds a b ha hb
+  refine ⟨out, ?_, canonical, exact⟩
+  rw [m31_sub_eq_multiplicative]
+  exact oldRun
+
+theorem generated_m31_reduce_u64_corresponds (x : Std.U64) :
+    ∃ out : NewM31,
+      V5RelationLinkedGenerated.aspis_core.field.M31.reduce_u64 x = ok out ∧
+      AspisAeneasCM31Multiplicative.CanonicalRawM31 out.val ∧
+      ((out.val : Nat) : ComponentBRealEvaluatorProof.ExactM31) =
+        (x.val : ComponentBRealEvaluatorProof.ExactM31) := by
+  obtain ⟨out, oldRun, _, canonical, exact⟩ :=
+    AspisAeneasM31ReduceU64.extracted_reduce_u64_corresponds x
+  have freshRun :
+      V5RelationLinkedGenerated.aspis_core.field.reduce_u64 x = ok out := by
+    rw [reduce_u64_eq_reduce_root]
+    exact oldRun
+  refine ⟨out, ?_, canonical, exact⟩
+  simp [V5RelationLinkedGenerated.aspis_core.field.M31.reduce_u64,
+    freshRun]
+
+theorem generated_m31_double_corresponds
+    (a : NewM31)
+    (ha : AspisAeneasCM31Multiplicative.CanonicalRawM31 a.val) :
+    ∃ out : NewM31,
+      V5RelationLinkedGenerated.aspis_core.field.M31.double a = ok out ∧
+      AspisAeneasCM31Multiplicative.CanonicalRawM31 out.val ∧
+      ((out.val : Nat) : ComponentBRealEvaluatorProof.ExactM31) =
+        (a.val : ComponentBRealEvaluatorProof.ExactM31) +
+          (a.val : ComponentBRealEvaluatorProof.ExactM31) := by
+  obtain ⟨out, run, canonical, exact⟩ :=
+    generated_m31_add_corresponds a a ha ha
+  exact ⟨out, by simpa
+    [V5RelationLinkedGenerated.aspis_core.field.M31.double] using run,
+    canonical, exact⟩
 
 private theorem m31_sub_corresponds
     (a b : NewM31)
