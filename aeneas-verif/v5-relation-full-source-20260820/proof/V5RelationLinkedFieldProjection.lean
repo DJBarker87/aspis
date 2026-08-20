@@ -1,5 +1,6 @@
 import RelationLinked.Funs
 import ComponentBEvaluatorFieldBridge
+import HalfProof
 import AspisFormal.V5ComponentCQM31TowerExact
 
 /-!
@@ -134,6 +135,45 @@ private theorem m31_mul_eq_multiplicative (a b : NewM31) :
   simp only [Aeneas.Std.lift, bind_tc_ok]
   rw [reduce_u64_eq_multiplicative]
 
+private theorem m31_sub_eq_multiplicative (a b : NewM31) :
+    V5RelationLinkedGenerated.aspis_core.field.M31.sub a b =
+      AspisCoreCM31Multiplicative.field.M31.sub a b := by
+  unfold V5RelationLinkedGenerated.aspis_core.field.M31.sub
+    AspisCoreCM31Multiplicative.field.M31.sub
+  rw [P_eq_multiplicative]
+
+private theorem m31_sub_corresponds
+    (a b : NewM31)
+    (ha : AspisAeneasCM31Multiplicative.CanonicalRawM31 a.val)
+    (hb : AspisAeneasCM31Multiplicative.CanonicalRawM31 b.val) :
+    ∃ out : NewM31,
+      V5RelationLinkedGenerated.aspis_core.field.M31.sub a b = ok out ∧
+      AspisAeneasCM31Multiplicative.CanonicalRawM31 out.val ∧
+      ((out.val : Nat) : ComponentBRealEvaluatorProof.ExactM31) =
+        (a.val : ComponentBRealEvaluatorProof.ExactM31) -
+          (b.val : ComponentBRealEvaluatorProof.ExactM31) := by
+  obtain ⟨out, oldRun, canonical, exact⟩ :=
+    AspisAeneasCM31Multiplicative.extracted_m31_sub_corresponds a b ha hb
+  refine ⟨out, ?_, canonical, exact⟩
+  rw [m31_sub_eq_multiplicative]
+  exact oldRun
+
+private theorem cm31_sub_corresponds
+    (x y : NewCM31) (hx : CanonicalCM31 x) (hy : CanonicalCM31 y) :
+    ∃ out : NewCM31,
+      V5RelationLinkedGenerated.aspis_core.field.CM31.sub x y = ok out ∧
+      CanonicalCM31 out ∧
+      ComponentBRealEvaluatorProof.generatedCm31ToExact (toOldCM31 out) =
+        ComponentBRealEvaluatorProof.generatedCm31ToExact (toOldCM31 x) -
+          ComponentBRealEvaluatorProof.generatedCm31ToExact (toOldCM31 y) := by
+  obtain ⟨oa, ha, hca, ea⟩ := m31_sub_corresponds x.a y.a hx.1 hy.1
+  obtain ⟨ob, hb, hcb, eb⟩ := m31_sub_corresponds x.b y.b hx.2 hy.2
+  refine ⟨⟨oa, ob⟩, ?_, ⟨hca, hcb⟩, ?_⟩
+  · simp [V5RelationLinkedGenerated.aspis_core.field.CM31.sub, ha, hb]
+  · apply QuadraticAlgebra.ext
+    · exact ea
+    · exact eb
+
 private theorem m31_mul_corresponds
     (a b : NewM31)
     (ha : AspisAeneasCM31Multiplicative.CanonicalRawM31 a.val)
@@ -226,6 +266,16 @@ theorem qm31_add_transport (x y : NewQM31) :
     ComponentBGenerated.aspis_core.field.QM31.add,
     cm31_add_transport, toOldQM31, fromOldQM31]
 
+theorem qm31_sub_transport (x y : NewQM31) :
+    V5RelationLinkedGenerated.aspis_core.field.QM31.sub x y =
+      (do
+        let out ← ComponentBGenerated.aspis_core.field.QM31.sub
+          (toOldQM31 x) (toOldQM31 y)
+        ok (fromOldQM31 out)) := by
+  simp [V5RelationLinkedGenerated.aspis_core.field.QM31.sub,
+    ComponentBGenerated.aspis_core.field.QM31.sub,
+    cm31_sub_transport, toOldQM31, fromOldQM31]
+
 theorem qm31_mul_transport (x y : NewQM31) :
     V5RelationLinkedGenerated.aspis_core.field.QM31.mul x y =
       (do
@@ -265,6 +315,22 @@ theorem generated_qm31_add_corresponds
   · exact (canonical_toOld _).mpr (by simpa using oldCanonical)
   · rw [toExact_eq_old, toExact_eq_old, toExact_eq_old]
     simpa using oldExact
+
+theorem generated_qm31_sub_corresponds
+    (x y : NewQM31) (hx : CanonicalQM31 x) (hy : CanonicalQM31 y) :
+    ∃ out : NewQM31,
+      V5RelationLinkedGenerated.aspis_core.field.QM31.sub x y = ok out ∧
+      CanonicalQM31 out ∧
+      toExact out = toExact x - toExact y := by
+  obtain ⟨o0, h0, hc0, e0⟩ :=
+    cm31_sub_corresponds x.c0 y.c0 hx.1 hy.1
+  obtain ⟨o1, h1, hc1, e1⟩ :=
+    cm31_sub_corresponds x.c1 y.c1 hx.2 hy.2
+  refine ⟨⟨o0, o1⟩, ?_, ⟨hc0, hc1⟩, ?_⟩
+  · simp [V5RelationLinkedGenerated.aspis_core.field.QM31.sub, h0, h1]
+  · apply QuadraticAlgebra.ext
+    · exact e0
+    · exact e1
 
 theorem generated_qm31_mul_corresponds
     (x y : NewQM31) (hx : CanonicalQM31 x) (hy : CanonicalQM31 y) :
@@ -329,6 +395,67 @@ theorem generated_qm31_mul_m31_corresponds
       · simpa [toExact] using e10
       · simpa [toExact] using e11
 
+private theorem P_eq_half :
+    V5RelationLinkedGenerated.aspis_core.field.P =
+      AspisCoreHalf.field.P := by
+  apply UScalar.eq_of_val_eq
+  unfold V5RelationLinkedGenerated.aspis_core.field.P AspisCoreHalf.field.P
+  rfl
+
+private theorem m31_half_eq_half (x : NewM31) :
+    V5RelationLinkedGenerated.aspis_core.field.M31.half x =
+      AspisCoreHalf.field.M31.half x := by
+  unfold V5RelationLinkedGenerated.aspis_core.field.M31.half
+    AspisCoreHalf.field.M31.half
+  rw [P_eq_half]
+  simp only [halfShiftCountOne_exact]
+
+/-- The extracted `half` operation is exact division by two on canonical
+field values, stated without choosing a particular inverse representation. -/
+theorem generated_qm31_half_corresponds
+    (x : NewQM31) (hx : CanonicalQM31 x) :
+    ∃ out : NewQM31,
+      V5RelationLinkedGenerated.aspis_core.field.QM31.half x = ok out ∧
+      CanonicalQM31 out ∧
+      toExact out + toExact out = toExact x := by
+  have m31_half (v : NewM31)
+      (hv : AspisAeneasCM31Multiplicative.CanonicalRawM31 v.val) :
+      ∃ out : NewM31,
+        V5RelationLinkedGenerated.aspis_core.field.M31.half v = ok out ∧
+        AspisAeneasCM31Multiplicative.CanonicalRawM31 out.val ∧
+        ((out.val : Nat) : ComponentBRealEvaluatorProof.ExactM31) +
+            (out.val : ComponentBRealEvaluatorProof.ExactM31) =
+          (v.val : ComponentBRealEvaluatorProof.ExactM31) := by
+    obtain ⟨out, oldRun, _raw, canonical, exact⟩ :=
+      AspisAeneasHalf.extracted_m31_half_corresponds v hv
+    refine ⟨out, ?_, canonical, ?_⟩
+    · rw [m31_half_eq_half]
+      exact oldRun
+    · have htwo : (2 : ComponentBRealEvaluatorProof.ExactM31) ≠ 0 := by decide
+      rw [← mul_two]
+      exact (eq_div_iff htwo).1 exact
+  have cm31_half (v : NewCM31) (hv : CanonicalCM31 v) :
+      ∃ out : NewCM31,
+        V5RelationLinkedGenerated.aspis_core.field.CM31.half v = ok out ∧
+        CanonicalCM31 out ∧
+        ComponentBRealEvaluatorProof.generatedCm31ToExact (toOldCM31 out) +
+            ComponentBRealEvaluatorProof.generatedCm31ToExact (toOldCM31 out) =
+          ComponentBRealEvaluatorProof.generatedCm31ToExact (toOldCM31 v) := by
+    obtain ⟨oa, ha, hca, ea⟩ := m31_half v.a hv.1
+    obtain ⟨ob, hb, hcb, eb⟩ := m31_half v.b hv.2
+    refine ⟨⟨oa, ob⟩, ?_, ⟨hca, hcb⟩, ?_⟩
+    · simp [V5RelationLinkedGenerated.aspis_core.field.CM31.half, ha, hb]
+    · apply QuadraticAlgebra.ext
+      · exact ea
+      · exact eb
+  obtain ⟨o0, h0, hc0, e0⟩ := cm31_half x.c0 hx.1
+  obtain ⟨o1, h1, hc1, e1⟩ := cm31_half x.c1 hx.2
+  refine ⟨⟨o0, o1⟩, ?_, ⟨hc0, hc1⟩, ?_⟩
+  · simp [V5RelationLinkedGenerated.aspis_core.field.QM31.half, h0, h1]
+  · apply QuadraticAlgebra.ext
+    · exact e0
+    · exact e1
+
 /-- Success-directed forms used when projecting an arbitrary accepted Rust
 execution.  Determinism identifies the result returned by Rust with the
 canonical exact result supplied by the operation theorem above. -/
@@ -338,6 +465,26 @@ theorem generated_qm31_add_run_corresponds
     CanonicalQM31 out ∧ toExact out = toExact x + toExact y := by
   obtain ⟨expected, expectedRun, expectedCanonical, expectedExact⟩ :=
     generated_qm31_add_corresponds x y hx hy
+  rw [run] at expectedRun
+  cases expectedRun
+  exact ⟨expectedCanonical, expectedExact⟩
+
+theorem generated_qm31_sub_run_corresponds
+    (x y out : NewQM31) (hx : CanonicalQM31 x) (hy : CanonicalQM31 y)
+    (run : V5RelationLinkedGenerated.aspis_core.field.QM31.sub x y = ok out) :
+    CanonicalQM31 out ∧ toExact out = toExact x - toExact y := by
+  obtain ⟨expected, expectedRun, expectedCanonical, expectedExact⟩ :=
+    generated_qm31_sub_corresponds x y hx hy
+  rw [run] at expectedRun
+  cases expectedRun
+  exact ⟨expectedCanonical, expectedExact⟩
+
+theorem generated_qm31_half_run_corresponds
+    (x out : NewQM31) (hx : CanonicalQM31 x)
+    (run : V5RelationLinkedGenerated.aspis_core.field.QM31.half x = ok out) :
+    CanonicalQM31 out ∧ toExact out + toExact out = toExact x := by
+  obtain ⟨expected, expectedRun, expectedCanonical, expectedExact⟩ :=
+    generated_qm31_half_corresponds x hx
   rw [run] at expectedRun
   cases expectedRun
   exact ⟨expectedCanonical, expectedExact⟩
@@ -375,10 +522,14 @@ theorem generated_qm31_mul_m31_run_corresponds
   exact ⟨expectedCanonical, expectedExact⟩
 
 #print axioms generated_qm31_add_corresponds
+#print axioms generated_qm31_sub_corresponds
 #print axioms generated_qm31_mul_corresponds
 #print axioms generated_qm31_square_corresponds
+#print axioms generated_qm31_half_corresponds
 #print axioms generated_qm31_mul_m31_corresponds
 #print axioms generated_qm31_add_run_corresponds
+#print axioms generated_qm31_sub_run_corresponds
+#print axioms generated_qm31_half_run_corresponds
 #print axioms generated_qm31_mul_run_corresponds
 #print axioms generated_qm31_square_run_corresponds
 #print axioms generated_qm31_mul_m31_run_corresponds
