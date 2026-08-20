@@ -44,6 +44,12 @@ def oldQm31ToMaintained
       oldQm31ToMaintained x + oldQm31ToMaintained y := by
   ext <;> rfl
 
+@[simp] theorem oldQm31ToMaintained_sub
+    (x y : ComponentBRealEvaluatorProof.ExactQM31) :
+    oldQm31ToMaintained (x - y) =
+      oldQm31ToMaintained x - oldQm31ToMaintained y := by
+  rfl
+
 @[simp] theorem oldQm31ToMaintained_mul
     (x y : ComponentBRealEvaluatorProof.ExactQM31) :
     oldQm31ToMaintained (x * y) =
