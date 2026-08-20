@@ -222,8 +222,8 @@ theorem later_completed_loop_reads_target
         .ok (coordinatesOut, pendingOut, 1#u32)) :
     ∃ carriedAt : Std.Usize, ∃ nextPosition : Std.Usize,
       nextPosition.val = target.val + 1 ∧
-      Nonempty (LaterBodyReadEvidence later laterIndices layer target carriedAt
-        values[target.val]) := by
+      Nonempty (LaterBodyReadEvidence later laterIndices coordinates alphaPowers
+        layer target carriedAt values[target.val]) := by
   have hcurrent : current.val < values.val.length := by omega
   obtain ⟨nextPosition, hnextValue, hnext⟩ :=
     enumerate_slice_at_next_run values current hcurrent
@@ -274,7 +274,8 @@ theorem terminal_completed_loop_reads_target
         .ok (coordinatesOut, pendingOut, 1#u32)) :
     ∃ nextPosition : Std.Usize,
       nextPosition.val = target.val + 1 ∧
-      Nonempty (TerminalBodyReadEvidence later layer target) := by
+      Nonempty (TerminalBodyReadEvidence later finalPolynomial coordinates
+        alphaPowers layer target values[target.val]) := by
   have hcurrent : current.val < values.val.length := by omega
   obtain ⟨nextPosition, hnextValue, hnext⟩ :=
     enumerate_slice_at_next_run values current hcurrent
@@ -297,7 +298,6 @@ theorem terminal_completed_loop_reads_target
       pending pendingOut values nextPosition target carriedNext
     · rw [hnextValue]
       omega
-    · exact htarget
     · exact hloopNext
 termination_by target.val - current.val
 decreasing_by
@@ -910,22 +910,26 @@ theorem outer_accepted_reads_every_later_target
             (alloc.vec.Vec.deref runs.indices0).val.length),
         ∃ (carriedAt nextPosition : Std.Usize),
           nextPosition.val = target.val + 1 ∧
-          Nonempty (LaterBodyReadEvidence later laterIndices 0#usize target
-            carriedAt (sliceValueAt
+          Nonempty (LaterBodyReadEvidence later laterIndices coordinates
+            alphaPowers 0#usize target carriedAt (sliceValueAt
               (alloc.vec.Vec.deref runs.indices0) target htarget))) ∧
       (∀ (target : Std.Usize)
           (htarget : target.val <
             (alloc.vec.Vec.deref runs.indices1).val.length),
         ∃ (carriedAt nextPosition : Std.Usize),
           nextPosition.val = target.val + 1 ∧
-          Nonempty (LaterBodyReadEvidence later laterIndices 1#usize target
-            carriedAt (sliceValueAt
+          Nonempty (LaterBodyReadEvidence later laterIndices runs.coordinates1
+            alphaPowers 1#usize target carriedAt (sliceValueAt
               (alloc.vec.Vec.deref runs.indices1) target htarget))) ∧
-      (∀ target : Std.Usize,
-        target.val < (alloc.vec.Vec.deref runs.indices2).val.length →
+      (∀ (target : Std.Usize)
+          (htarget : target.val <
+            (alloc.vec.Vec.deref runs.indices2).val.length),
         ∃ nextPosition : Std.Usize,
           nextPosition.val = target.val + 1 ∧
-          Nonempty (TerminalBodyReadEvidence later 2#usize target)) := by
+          Nonempty (TerminalBodyReadEvidence later finalPolynomial
+            runs.coordinates2 alphaPowers 2#usize target
+            (sliceValueAt (alloc.vec.Vec.deref runs.indices2) target
+              htarget))) := by
   obtain ⟨runs⟩ := outer_accepted_three_pass_runs later laterIndices
     finalPolynomial alphaPowers folded coordinates sink hloop
   refine ⟨runs, ?_, ?_, ?_⟩
@@ -1093,7 +1097,9 @@ structure AcceptedProductionFriExecution
         Nonempty (LayerZeroBodyReadEvidence openings openings.c1.count
           openings.c1.value_width openings.c1.offsets openings.c2.count
           openings.c2.value_width openings.c2.offsets openings.later
-          openings.indices.later
+          openings.indices.later prepared.inner.claims prepared.inner.powers
+          prepared.c1_weight_limbs prepared.c2_multipliers coordinates
+          alphaPowers
           (enumerateSliceAt (alloc.vec.Vec.deref openings.indices.layer0)
             nextPosition)
           (enumerateSliceAt (alloc.vec.Vec.deref openings.indices.layer0)
@@ -1108,7 +1114,7 @@ structure AcceptedProductionFriExecution
       ∃ (carriedAt nextPosition : Std.Usize),
         nextPosition.val = target.val + 1 ∧
         Nonempty (LaterBodyReadEvidence openings.later openings.indices.later
-          0#usize target carriedAt
+          coordinates alphaPowers 0#usize target carriedAt
           (sliceValueAt (alloc.vec.Vec.deref laterRuns.indices0)
             target htarget))
   later1Reads :
@@ -1118,15 +1124,19 @@ structure AcceptedProductionFriExecution
       ∃ (carriedAt nextPosition : Std.Usize),
         nextPosition.val = target.val + 1 ∧
         Nonempty (LaterBodyReadEvidence openings.later openings.indices.later
-          1#usize target carriedAt
+          laterRuns.coordinates1 alphaPowers 1#usize target carriedAt
           (sliceValueAt (alloc.vec.Vec.deref laterRuns.indices1)
             target htarget))
   later2Reads :
-    ∀ (target : Std.Usize),
-      target.val < (alloc.vec.Vec.deref laterRuns.indices2).val.length →
+    ∀ (target : Std.Usize)
+      (htarget : target.val <
+        (alloc.vec.Vec.deref laterRuns.indices2).val.length),
       ∃ nextPosition : Std.Usize,
         nextPosition.val = target.val + 1 ∧
-        Nonempty (TerminalBodyReadEvidence openings.later 2#usize target)
+        Nonempty (TerminalBodyReadEvidence openings.later finalPolynomial
+          laterRuns.coordinates2 alphaPowers 2#usize target
+          (sliceValueAt (alloc.vec.Vec.deref laterRuns.indices2) target
+            htarget))
 
 /-- End-to-end unchanged-source theorem for the FRI consumer: successful
 top-level acceptance entails the exact first pass, all three later passes,
