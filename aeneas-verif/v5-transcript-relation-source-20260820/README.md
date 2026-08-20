@@ -60,3 +60,20 @@ unchanged spelling.
 - `generated/`: Aeneas output plus explicit observation definitions.
 - `proof/V5TranscriptRelationSourceProof.lean`: exact body, inner-loop,
   outer-loop, and complete-helper proofs.
+- `replay-lean432.sh`: checks the source, patch, tool commits, and binary
+  hashes; regenerates the Lean; compares it with the reviewed snapshot; and
+  recompiles the proof with Lean 4.32.
+
+## Replay
+
+The replay expects the pinned Charon and Aeneas checkouts and an Aeneas Lean
+library compiled with Lean 4.32. `AENEAS_LEAN_PATH` should contain the complete
+Lean search path printed by `lake env printenv LEAN_PATH`, including mathlib.
+
+```bash
+ASPIS_CHARON_REPO=/path/to/charon-cb50ff16 \
+ASPIS_AENEAS_REPO=/path/to/aeneas-9a30bf93 \
+AENEAS_LEAN_LIB=/path/to/aeneas-lean432/.lake/build/lib/lean \
+AENEAS_LEAN_PATH="$(cd /path/to/aeneas-lean432 && lake env printenv LEAN_PATH)" \
+./aeneas-verif/v5-transcript-relation-source-20260820/replay-lean432.sh
+```
