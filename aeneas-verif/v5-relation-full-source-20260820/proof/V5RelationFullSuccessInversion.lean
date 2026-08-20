@@ -958,7 +958,139 @@ theorem accepted_outer_loop_yields_four_ordered_rounds
     weights3, claim3, additive3, weights4, claim4, additive4,
     round0, round1, round2, round3, run4⟩
 
+/-- An accepted tail after the four released rounds must execute the real
+terminal decoder and both production dot calls.  In particular, the two dot
+results add to the running claim; an error, a decoded Rust `Err`, or a
+terminal mismatch cannot produce the accepted result. -/
+theorem accepted_outer_loop_terminal_calls_are_exact
+    {A : Type}
+    (additiveInst :
+      V5RelationFullGenerated.relation_stress.V5RelationStressAdditive A)
+    (alphas : Array V5RelationFullGenerated.aspis_core.field.QM31 4#usize)
+    (bytes : Array Std.U8 928#usize)
+    (circlePoints : Array
+      V5RelationFullGenerated.aspis_core.circle.SecureCirclePoint 2#usize)
+    (weights :
+      V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator)
+    (runningClaim : V5RelationFullGenerated.aspis_core.field.QM31)
+    (additive : A)
+    (output : Verified)
+    (run :
+      V5RelationFullGenerated.relation_stress.verify_v5_relation_stress_with_additive_loop0_loop0
+          additiveInst
+          (AspisV5RelationFullSourceProof.alphaIteratorAt alphas 4 4#usize)
+          weights runningClaim bytes additive circlePoints none =
+        .ok (some (.Ok output))) :
+    ∃ finalCoefficients mainDot additiveDot,
+      V5RelationFullGenerated.relation_stress.decode_v5_relation_stress_final
+          bytes = .ok (.Ok finalCoefficients) ∧
+      aspis_core.sumcheck.WeightAccumulator.dot
+          weights (Array.to_slice finalCoefficients) = .ok mainDot ∧
+      additiveInst.dot additive finalCoefficients = .ok additiveDot ∧
+      V5RelationFullGenerated.aspis_core.field.QM31.add mainDot additiveDot =
+        .ok runningClaim ∧
+      output =
+        { final_coefficients := finalCoefficients
+          terminal_claim := runningClaim } := by
+  have alphaLength : alphas.val.length = 4 := by
+    simpa using alphas.property
+  have next4 :=
+    AspisV5RelationFullSourceProof.alpha_iterator_next_none_exact
+      alphas 4 4#usize (by omega)
+  unfold
+    V5RelationFullGenerated.relation_stress.verify_v5_relation_stress_with_additive_loop0_loop0
+    at run
+  rw [Aeneas.Std.loop.eq_def] at run
+  simp only at run
+  unfold
+    V5RelationFullGenerated.relation_stress.verify_v5_relation_stress_with_additive_loop0_loop0.body
+    at run
+  rw [next4] at run
+  simp only [bind_tc_ok] at run
+  generalize decoderEquation :
+    V5RelationFullGenerated.relation_stress.decode_v5_relation_stress_final
+      bytes = decoderResult at run
+  cases decoderResult with
+  | fail error => simp [Bind.bind, Aeneas.Std.bind] at run
+  | div => simp [Bind.bind, Aeneas.Std.bind] at run
+  | ok decoded =>
+      simp only [bind_tc_ok] at run
+      cases decoded with
+      | Err decodeError =>
+          simp only [
+            core.result.Result.Insts.CoreOpsTry.branch,
+            bind_tc_ok,
+            core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+            core.convert.FromSame.from] at run
+          simp at run
+      | Ok finalCoefficients =>
+          simp only [
+            core.result.Result.Insts.CoreOpsTry.branch,
+            Aeneas.Std.lift,
+            bind_tc_ok] at run
+          generalize mainDotEquation :
+            aspis_core.sumcheck.WeightAccumulator.dot
+              weights (Array.to_slice finalCoefficients) = mainDotResult at run
+          cases mainDotResult with
+          | fail error => simp [Bind.bind, Aeneas.Std.bind] at run
+          | div => simp [Bind.bind, Aeneas.Std.bind] at run
+          | ok mainDot =>
+              simp only [bind_tc_ok] at run
+              generalize additiveDotEquation :
+                additiveInst.dot additive finalCoefficients =
+                  additiveDotResult at run
+              cases additiveDotResult with
+              | fail error => simp [Bind.bind, Aeneas.Std.bind] at run
+              | div => simp [Bind.bind, Aeneas.Std.bind] at run
+              | ok additiveDot =>
+                  simp only [bind_tc_ok] at run
+                  generalize combinedEquation :
+                    V5RelationFullGenerated.aspis_core.field.QM31.add
+                      mainDot additiveDot = combinedResult at run
+                  cases combinedResult with
+                  | fail error => simp [Bind.bind, Aeneas.Std.bind] at run
+                  | div => simp [Bind.bind, Aeneas.Std.bind] at run
+                  | ok combined =>
+                      simp only [bind_tc_ok] at run
+                      generalize mismatchEquation :
+                        core.cmp.PartialEq.ne.trait_default
+                          V5RelationFullGenerated.aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31
+                          combined runningClaim = mismatchResult at run
+                      cases mismatchResult with
+                      | fail error => simp [Bind.bind, Aeneas.Std.bind] at run
+                      | div => simp [Bind.bind, Aeneas.Std.bind] at run
+                      | ok mismatch =>
+                          cases mismatch with
+                          | true => simp at run
+                          | false =>
+                              change
+                                (.ok (some (.Ok
+                                  { final_coefficients := finalCoefficients
+                                    terminal_claim := runningClaim })) :
+                                  Aeneas.Std.Result
+                                    (Option (core.result.Result Verified VError))) =
+                                  .ok (some (.Ok output)) at run
+                              injection run with resultEquation
+                              injection resultEquation with outputEquation
+                              have combinedExact : combined = runningClaim := by
+                                by_contra different
+                                have specification :=
+                                  AspisV5RelationFullSourceProof.raw_qm31_ne_spec
+                                    combined runningClaim
+                                rw [mismatchEquation] at specification
+                                simp [different] at specification
+                              have outputExact : output =
+                                  { final_coefficients := finalCoefficients
+                                    terminal_claim := runningClaim } := by
+                                injection outputEquation.symm
+                              subst combined
+                              exact ⟨finalCoefficients, mainDot, additiveDot,
+                                rfl, mainDotEquation,
+                                additiveDotEquation, combinedEquation,
+                                outputExact⟩
+
 #print axioms loop_ok_has_done_origin
 #print axioms accepted_outer_loop_yields_four_ordered_rounds
+#print axioms accepted_outer_loop_terminal_calls_are_exact
 
 end AspisV5RelationFullSuccessInversion

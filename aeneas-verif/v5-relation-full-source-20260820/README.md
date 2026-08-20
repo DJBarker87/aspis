@@ -55,6 +55,9 @@ accepted result, that result must originate in a real terminating branch of
 the translated loop.  Error exits cannot be mistaken for acceptance, and the
 accepted run exposes the four active round bodies in the released order
 `0, 1, 2, 3`, together with the successful tail beginning after round four.
+The tail theorem then exposes the exact final-coefficient decoder, the main
+and additive production dot calls, and the equality of their sum with the
+running claim.
 This removes an assumption about how a successful translated loop was reached;
 it does not replace the remaining semantic proof about the weight accumulator.
 
