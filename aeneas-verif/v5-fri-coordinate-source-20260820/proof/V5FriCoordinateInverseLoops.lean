@@ -121,7 +121,7 @@ private def PrefixInvariant
   ∀ index, index < state.2.2.val →
     m31Value state.1.val[index]! = prefixProduct denominators index
 
-private def PrefixPost
+def PrefixPost
     (denominators : Coordinate.M31Vec)
     (out : Coordinate.M31Vec × Coordinate.M31) : Prop :=
   out.1.val.length = denominators.val.length ∧
@@ -289,7 +289,7 @@ private def SuffixInvariant
       prefixProduct denominators index * backend *
         suffixProduct denominators (index + 1))
 
-private def SuffixPost
+def SuffixPost
     (denominators : Coordinate.M31Vec) (backend : ZMod P)
     (out : Coordinate.M31Vec) : Prop :=
   out.val.length = denominators.val.length ∧
@@ -565,8 +565,204 @@ theorem checked_suffix_outputs_from_source_product
     hpost hnonempty
   rw [← hcheck.2, hone]
 
+/-- The exact starting state used by production (an equally sized canonical
+scratch vector, field one, and index zero) satisfies the forward-loop
+invariant. -/
+theorem prefix_loop_from_initial_exact
+    (denominators flat : Coordinate.M31Vec)
+    (hdenominators : CanonicalVec denominators)
+    (hlength : flat.val.length = denominators.val.length)
+    (hflat : CanonicalVec flat) :
+    V5FriCoordinateAdapter.aspis_core.circle_fri.derive_query_fold_inverses_for_circle_loop17
+        denominators flat
+        V5FriCoordinateAdapter.aspis_core.field.M31.ONE 0#usize
+      ⦃ out => PrefixPost denominators out ⦄ := by
+  apply prefix_loop_exact denominators flat
+    V5FriCoordinateAdapter.aspis_core.field.M31.ONE 0#usize hdenominators
+  unfold PrefixInvariant
+  simp only
+  refine ⟨by norm_num, hlength, hflat, ?_, ?_, ?_⟩
+  · norm_num [canonicalM31,
+      AspisV5FriArithmeticSemantics.canonicalM31,
+      AspisAeneasCM31Multiplicative.CanonicalRawM31,
+      V5FriCoordinateAdapter.aspis_core.field.M31.ONE]
+  · simp [prefixProduct, m31Value,
+      V5FriCoordinateAdapter.aspis_core.field.M31.ONE]
+  · intro index hindex
+    norm_num at hindex
+
+/-- A completed forward pass and the exact value returned by the injected
+inversion call form the starting state of the translated backward pass. -/
+theorem suffix_loop_from_prefix_exact
+    (denominators flat : Coordinate.M31Vec)
+    (accumulator accumulatorInverse : Coordinate.M31) (suffix : Std.Usize)
+    (backend : ZMod P)
+    (hdenominators : CanonicalVec denominators)
+    (hprefix : PrefixPost denominators
+      (flat, accumulator))
+    (hinverseCanonical : canonicalM31 accumulatorInverse)
+    (hinverseValue : m31Value accumulatorInverse = backend)
+    (hsuffix : suffix.val = denominators.val.length) :
+    V5FriCoordinateAdapter.aspis_core.circle_fri.derive_query_fold_inverses_for_circle_loop18
+        denominators flat accumulatorInverse suffix
+      ⦃ out => SuffixPost denominators backend out ⦄ := by
+  apply suffix_loop_exact denominators flat accumulatorInverse suffix backend
+    hdenominators
+  unfold SuffixInvariant
+  rcases hprefix with
+    ⟨hlength, hflat, _haccCanonical, _haccValue, hstored⟩
+  simp only at hlength hflat hstored
+  refine ⟨by rw [hsuffix], hlength, hflat, hinverseCanonical, ?_,
+    ?_, ?_⟩
+  · rw [hinverseValue, hsuffix]
+    unfold suffixProduct
+    rw [List.drop_length]
+    simp
+  · intro index hindex
+    apply hstored index
+    rwa [hsuffix] at hindex
+  · intro index hlower hupper
+    rw [hsuffix] at hlower
+    omega
+
+def NonzeroVec (values : Coordinate.M31Vec) : Prop :=
+  ∀ index, index < values.val.length → m31Value values.val[index]! ≠ 0
+
+def BatchInverseEvidence
+    (denominators output : Coordinate.M31Vec) : Prop :=
+  output.val.length = denominators.val.length ∧
+  CanonicalVec output ∧
+  ∀ index, index < denominators.val.length →
+    m31Value output.val[index]! =
+      (m31Value denominators.val[index]!)⁻¹
+
+private theorem prefixProduct_full_ne_zero
+    (denominators : Coordinate.M31Vec)
+    (hnonzero : NonzeroVec denominators) :
+    prefixProduct denominators denominators.val.length ≠ 0 := by
+  unfold prefixProduct
+  rw [List.take_length]
+  apply List.prod_ne_zero
+  intro hzero
+  rcases List.mem_map.mp hzero with ⟨value, hvalue, hvalueZero⟩
+  rcases List.mem_iff_getElem.mp hvalue with ⟨index, hindex, hindexValue⟩
+  have hentry := hnonzero index hindex
+  have hbang := getElemBang_eq_getElem denominators.val index hindex
+  rw [hbang, hindexValue, hvalueZero] at hentry
+  exact hentry rfl
+
+/-- The complete extracted batch-inverse path is constructive: the forward
+loop, the retained inversion addition chain, the backward loop, and the
+production first-entry multiplication check all succeed, and every returned
+slot is the exact inverse of the matching denominator. -/
+theorem batch_inverse_pipeline_exact
+    (denominators initialFlat : Coordinate.M31Vec)
+    (hdenominators : CanonicalVec denominators)
+    (hnonzero : NonzeroVec denominators)
+    (hnonempty : 0 < denominators.val.length)
+    (hlength : initialFlat.val.length = denominators.val.length)
+    (hflat : CanonicalVec initialFlat) :
+    ∃ forward accumulator accumulatorInverse output,
+      V5FriCoordinateAdapter.aspis_core.circle_fri.derive_query_fold_inverses_for_circle_loop17
+          denominators initialFlat
+          V5FriCoordinateAdapter.aspis_core.field.M31.ONE 0#usize =
+        .ok (forward, accumulator) ∧
+      V5FriCoordinateAdapter.aspis_core.field.M31.inv accumulator =
+        .ok accumulatorInverse ∧
+      V5FriCoordinateAdapter.aspis_core.circle_fri.derive_query_fold_inverses_for_circle_loop18
+          denominators forward accumulatorInverse
+          (alloc.vec.Vec.len denominators) = .ok output ∧
+      V5FriCoordinateAdapter.aspis_core.field.M31.mul
+          denominators.val[0]! output.val[0]! =
+        .ok V5FriCoordinateAdapter.aspis_core.field.M31.ONE ∧
+      BatchInverseEvidence denominators output := by
+  obtain ⟨⟨forward, accumulator⟩, hprefixRun, hprefixPost⟩ :=
+    Aeneas.Std.WP.spec_imp_exists
+      (prefix_loop_from_initial_exact denominators initialFlat hdenominators
+        hlength hflat)
+  rcases hprefixPost with
+    ⟨hprefixLength, hprefixCanonical, haccumulatorCanonical,
+      haccumulatorValue, hprefixValues⟩
+  have htotalNonzero := prefixProduct_full_ne_zero denominators hnonzero
+  have haccumulatorM31Nonzero : m31Value accumulator ≠ 0 := by
+    rw [haccumulatorValue]
+    exact htotalNonzero
+  have haccumulatorRawNonzero : accumulator.val ≠ 0 := by
+    intro hzero
+    apply haccumulatorM31Nonzero
+    unfold m31Value
+    rw [hzero]
+    rfl
+  obtain ⟨accumulatorInverse, hinverseRun, hinverseCanonical,
+      hinverseValue⟩ :=
+    inv_produces_exact accumulator haccumulatorCanonical
+      haccumulatorRawNonzero
+  have hsuffixValue : (alloc.vec.Vec.len denominators).val =
+      denominators.val.length := rfl
+  have hprefixPostAgain : PrefixPost denominators (forward, accumulator) :=
+    ⟨hprefixLength, hprefixCanonical, haccumulatorCanonical,
+      haccumulatorValue, hprefixValues⟩
+  obtain ⟨output, hsuffixRun, hsuffixPost⟩ :=
+    Aeneas.Std.WP.spec_imp_exists
+      (suffix_loop_from_prefix_exact denominators forward accumulator
+        accumulatorInverse (alloc.vec.Vec.len denominators)
+        (m31Value accumulator)⁻¹ hdenominators hprefixPostAgain
+        hinverseCanonical hinverseValue hsuffixValue)
+  rcases hsuffixPost with
+    ⟨houtputLength, houtputCanonical, houtputValues⟩
+  have hfirstFormula := houtputValues 0 hnonempty
+  have hentryProduct :=
+    entry_prefix_suffix_product denominators 0 hnonempty
+  have hfirstMath :
+      m31Value denominators.val[0]! * m31Value output.val[0]! = 1 := by
+    rw [hfirstFormula]
+    calc
+      m31Value denominators.val[0]! *
+          (prefixProduct denominators 0 *
+            (m31Value accumulator)⁻¹ * suffixProduct denominators 1) =
+          (prefixProduct denominators 0 *
+            m31Value denominators.val[0]! * suffixProduct denominators 1) *
+              (m31Value accumulator)⁻¹ := by ring
+      _ = prefixProduct denominators denominators.val.length *
+              (m31Value accumulator)⁻¹ := by rw [hentryProduct]
+      _ = m31Value accumulator * (m31Value accumulator)⁻¹ := by
+            rw [haccumulatorValue]
+      _ = 1 := mul_inv_cancel₀ haccumulatorM31Nonzero
+  have hfirstCanonical := hdenominators 0 hnonempty
+  have houtputFirstCanonical := houtputCanonical 0 (by
+    simpa [houtputLength] using hnonempty)
+  obtain ⟨check, hcheckRun, hcheckCanonical, hcheckValue⟩ :=
+    mul_produces_canonical denominators.val[0]! output.val[0]!
+      hfirstCanonical houtputFirstCanonical
+  have hcheckOneValue : m31Value check =
+      m31Value V5FriCoordinateAdapter.aspis_core.field.M31.ONE := by
+    rw [hcheckValue, hfirstMath]
+    norm_num [m31Value,
+      V5FriCoordinateAdapter.aspis_core.field.M31.ONE]
+  have honeCanonical :
+      canonicalM31 V5FriCoordinateAdapter.aspis_core.field.M31.ONE := by
+    norm_num [canonicalM31,
+      AspisV5FriArithmeticSemantics.canonicalM31,
+      AspisAeneasCM31Multiplicative.CanonicalRawM31,
+      V5FriCoordinateAdapter.aspis_core.field.M31.ONE]
+  have hcheckEq : check =
+      V5FriCoordinateAdapter.aspis_core.field.M31.ONE :=
+    canonical_eq_of_m31Value_eq check
+      V5FriCoordinateAdapter.aspis_core.field.M31.ONE
+      hcheckCanonical honeCanonical hcheckOneValue
+  subst check
+  have hexact := checked_suffix_outputs_from_source_product
+    denominators output (m31Value accumulator)⁻¹ hdenominators
+    ⟨houtputLength, houtputCanonical, houtputValues⟩ hnonempty hcheckRun
+  refine ⟨forward, accumulator, accumulatorInverse, output,
+    hprefixRun, hinverseRun, hsuffixRun, hcheckRun, ?_⟩
+  exact ⟨houtputLength, houtputCanonical, hexact⟩
+
 #print axioms prefix_loop_exact
 #print axioms suffix_loop_exact
 #print axioms checked_suffix_outputs_from_source_product
+#print axioms prefix_loop_from_initial_exact
+#print axioms suffix_loop_from_prefix_exact
+#print axioms batch_inverse_pipeline_exact
 
 end AspisV5FriCoordinateInverseLoops

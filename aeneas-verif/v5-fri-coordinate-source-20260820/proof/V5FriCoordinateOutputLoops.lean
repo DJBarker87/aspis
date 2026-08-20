@@ -681,10 +681,127 @@ theorem final_x_loop33_exact
     · intro index hindex
       norm_num at hindex
 
+def AcceptedOutputEvidence
+    (layer0 line1 line2 line3 : Slice Std.U32)
+    (flat : Coordinate.M31Vec) (line3Points : Coordinate.PointVec)
+    (out : V5FriCoordinateAdapter.aspis_core.circle_fri.DerivedCircleQueryFoldInverses) :
+    Prop :=
+  out.circle.val = pairOutput flat 0 layer0.val.length ∧
+  ∃ later0 later1 later2 : Coordinate.TripleVec,
+    out.later.val = [later0, later1, later2] ∧
+    later0.val = tripleOutput flat (2 * layer0.val.length)
+      line1.val.length ∧
+    later1.val = tripleOutput flat
+      (2 * layer0.val.length + 3 * line1.val.length) line2.val.length ∧
+    later2.val = tripleOutput flat
+      (2 * layer0.val.length + 3 * line1.val.length +
+        3 * line2.val.length) line3.val.length ∧
+    FinalXPost line3Points out.final_x
+
+/-- The five accepted output calls return a record whose every slot is the
+corresponding consecutive entry of the checked flat inverse vector. -/
+theorem accepted_output_calls_exact
+    (layer0 line1 line2 line3 : Slice Std.U32)
+    (flat : Coordinate.M31Vec) (line3Points : Coordinate.PointVec)
+    (hflatLength : flat.val.length =
+      2 * layer0.val.length + 3 * line1.val.length +
+        3 * line2.val.length + 3 * line3.val.length)
+    (hline3Points : CanonicalPointXVec line3Points) :
+    ∃ (cursor0 : Std.Usize) (circle : Coordinate.PairVec)
+      (cursor1 : Std.Usize) (later0 : Coordinate.TripleVec)
+      (cursor2 : Std.Usize) (later1 later2 : Coordinate.TripleVec)
+      (finalX : Coordinate.M31Vec),
+      V5FriCoordinateAdapter.aspis_core.circle_fri.derive_query_fold_inverses_for_circle_loop29
+          layer0 flat 0#usize
+          (alloc.vec.Vec.with_capacity (Array Coordinate.M31 2#usize)
+            (Slice.len layer0)) 0#usize = .ok (cursor0, circle) ∧
+      V5FriCoordinateAdapter.aspis_core.circle_fri.derive_query_fold_inverses_for_circle_loop30
+          line1 flat cursor0
+          (alloc.vec.Vec.with_capacity (Array Coordinate.M31 3#usize)
+            (Slice.len line1)) 0#usize = .ok (cursor1, later0) ∧
+      V5FriCoordinateAdapter.aspis_core.circle_fri.derive_query_fold_inverses_for_circle_loop31
+          line2 flat cursor1
+          (alloc.vec.Vec.with_capacity (Array Coordinate.M31 3#usize)
+            (Slice.len line2)) 0#usize = .ok (cursor2, later1) ∧
+      V5FriCoordinateAdapter.aspis_core.circle_fri.derive_query_fold_inverses_for_circle_loop32
+          line3 flat cursor2
+          (alloc.vec.Vec.with_capacity (Array Coordinate.M31 3#usize)
+            (Slice.len line3)) 0#usize = .ok later2 ∧
+      V5FriCoordinateAdapter.aspis_core.circle_fri.derive_query_fold_inverses_for_circle_loop33
+          line3Points
+          (alloc.vec.Vec.with_capacity Coordinate.M31
+            (alloc.vec.Vec.len line3Points)) 0#usize = .ok finalX ∧
+      AcceptedOutputEvidence layer0 line1 line2 line3 flat line3Points
+        {
+          circle := circle,
+          later := Array.make 3#usize [later0, later1, later2],
+          final_x := finalX
+        } := by
+  let circleEmpty : Coordinate.PairVec :=
+    alloc.vec.Vec.with_capacity (Array Coordinate.M31 2#usize)
+      (Slice.len layer0)
+  have hcircleEmpty : circleEmpty.val = [] := rfl
+  obtain ⟨⟨cursor0, circle⟩, hcircleRun, hcirclePost⟩ :=
+    Aeneas.Std.WP.spec_imp_exists
+      (pair_loop29_exact layer0 flat 0#usize circleEmpty
+        (by norm_num) hcircleEmpty (by rw [hflatLength]; omega))
+  rcases hcirclePost with ⟨hcursor0, hcircleValue⟩
+  simp only at hcursor0 hcircleValue
+  let later0Empty : Coordinate.TripleVec :=
+    alloc.vec.Vec.with_capacity (Array Coordinate.M31 3#usize)
+      (Slice.len line1)
+  have hlater0Empty : later0Empty.val = [] := rfl
+  obtain ⟨⟨cursor1, later0⟩, hlater0Run, hlater0Post⟩ :=
+    Aeneas.Std.WP.spec_imp_exists
+      (triple_loop30_exact line1 flat cursor0 later0Empty
+        (2 * layer0.val.length) (by simpa using hcursor0) hlater0Empty
+        (by rw [hflatLength]; omega))
+  rcases hlater0Post with ⟨hcursor1, hlater0Value⟩
+  simp only at hcursor1 hlater0Value
+  let later1Empty : Coordinate.TripleVec :=
+    alloc.vec.Vec.with_capacity (Array Coordinate.M31 3#usize)
+      (Slice.len line2)
+  have hlater1Empty : later1Empty.val = [] := rfl
+  obtain ⟨⟨cursor2, later1⟩, hlater1Run, hlater1Post⟩ :=
+    Aeneas.Std.WP.spec_imp_exists
+      (triple_loop31_exact line2 flat cursor1 later1Empty
+        (2 * layer0.val.length + 3 * line1.val.length) hcursor1
+        hlater1Empty (by rw [hflatLength]; omega))
+  rcases hlater1Post with ⟨hcursor2, hlater1Value⟩
+  simp only at hcursor2 hlater1Value
+  let later2Empty : Coordinate.TripleVec :=
+    alloc.vec.Vec.with_capacity (Array Coordinate.M31 3#usize)
+      (Slice.len line3)
+  have hlater2Empty : later2Empty.val = [] := rfl
+  obtain ⟨later2, hlater2Run, hlater2Post⟩ :=
+    Aeneas.Std.WP.spec_imp_exists
+      (triple_loop32_exact line3 flat cursor2 later2Empty
+        (2 * layer0.val.length + 3 * line1.val.length +
+          3 * line2.val.length) hcursor2 hlater2Empty
+        (by rw [hflatLength]))
+  let finalEmpty : Coordinate.M31Vec :=
+    alloc.vec.Vec.with_capacity Coordinate.M31
+      (alloc.vec.Vec.len line3Points)
+  have hfinalEmpty : finalEmpty.val = [] := rfl
+  obtain ⟨finalX, hfinalRun, hfinalPost⟩ :=
+    Aeneas.Std.WP.spec_imp_exists
+      (final_x_loop33_exact line3Points finalEmpty hline3Points hfinalEmpty)
+  refine ⟨cursor0, circle, cursor1, later0, cursor2, later1, later2,
+    finalX, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · simpa [circleEmpty] using hcircleRun
+  · simpa [later0Empty] using hlater0Run
+  · simpa [later1Empty] using hlater1Run
+  · simpa [later2Empty] using hlater2Run
+  · simpa [finalEmpty] using hfinalRun
+  · unfold AcceptedOutputEvidence
+    refine ⟨hcircleValue, later0, later1, later2, rfl,
+      hlater0Value, hlater1Value, hlater2Post, hfinalPost⟩
+
 #print axioms pair_loop29_exact
 #print axioms triple_loop30_exact
 #print axioms triple_loop31_exact
 #print axioms triple_loop32_exact
 #print axioms final_x_loop33_exact
+#print axioms accepted_output_calls_exact
 
 end AspisV5FriCoordinateOutputLoops

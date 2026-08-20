@@ -50,6 +50,20 @@ def pointValue (point : Coordinate.Point) : ZMod P × ZMod P :=
 def pointCanonical (point : Coordinate.Point) : Prop :=
   canonicalM31 point.x ∧ canonicalM31 point.y
 
+/-- Canonical raw M31 words are uniquely determined by their field value. -/
+theorem canonical_eq_of_m31Value_eq
+    (left right : Coordinate.M31)
+    (hleft : canonicalM31 left) (hright : canonicalM31 right)
+    (hvalue : m31Value left = m31Value right) : left = right := by
+  apply UScalar.eq_of_val_eq
+  have hleftLt : left.val < P := by
+    exact hleft
+  have hrightLt : right.val < P := by
+    exact hright
+  have hvals := congrArg ZMod.val hvalue
+  simpa [m31Value, ZMod.val_natCast_of_lt hleftLt,
+    ZMod.val_natCast_of_lt hrightLt] using hvals
+
 private theorem coordinate_P_eq_arithmetic :
     V5FriCoordinateAdapter.aspis_core.field.P =
       V5FriArithmeticExact.field.P := by
@@ -558,12 +572,131 @@ theorem inv_output_canonical
   subst output
   exact hexpectedCanonical
 
+/-- The translated nonzero inversion call terminates and returns the exact
+field inverse.  Its addition-chain value is identified with the maintained
+Lean proof of the same production schedule. -/
+theorem inv_produces_exact
+    (input : Coordinate.M31)
+    (hinput : canonicalM31 input) (hnonzero : input.val ≠ 0) :
+    ∃ output : Coordinate.M31,
+      V5FriCoordinateAdapter.aspis_core.field.M31.inv input = .ok output ∧
+      canonicalM31 output ∧
+      m31Value output = (m31Value input)⁻¹ := by
+  obtain ⟨x2, hx2Run, hx2Canonical, hx2Value⟩ :=
+    mul_produces_canonical input input hinput hinput
+  obtain ⟨t2, ht2Run, ht2Canonical, ht2Value⟩ :=
+    mul_produces_canonical x2 input hx2Canonical hinput
+  obtain ⟨t2Squared2, ht2Squared2Run, ht2Squared2Canonical,
+      ht2Squared2Value⟩ := square_n_corresponds t2 ht2Canonical 2#usize
+  obtain ⟨t4, ht4Run, ht4Canonical, ht4Value⟩ :=
+    mul_produces_canonical t2Squared2 t2 ht2Squared2Canonical ht2Canonical
+  obtain ⟨t4Squared4, ht4Squared4Run, ht4Squared4Canonical,
+      ht4Squared4Value⟩ := square_n_corresponds t4 ht4Canonical 4#usize
+  obtain ⟨t8, ht8Run, ht8Canonical, ht8Value⟩ :=
+    mul_produces_canonical t4Squared4 t4 ht4Squared4Canonical ht4Canonical
+  obtain ⟨t8Squared8, ht8Squared8Run, ht8Squared8Canonical,
+      ht8Squared8Value⟩ := square_n_corresponds t8 ht8Canonical 8#usize
+  obtain ⟨t16, ht16Run, ht16Canonical, ht16Value⟩ :=
+    mul_produces_canonical t8Squared8 t8 ht8Squared8Canonical ht8Canonical
+  obtain ⟨t16Squared8, ht16Squared8Run, ht16Squared8Canonical,
+      ht16Squared8Value⟩ := square_n_corresponds t16 ht16Canonical 8#usize
+  obtain ⟨t24, ht24Run, ht24Canonical, ht24Value⟩ :=
+    mul_produces_canonical t16Squared8 t8 ht16Squared8Canonical ht8Canonical
+  obtain ⟨t24Squared4, ht24Squared4Run, ht24Squared4Canonical,
+      ht24Squared4Value⟩ := square_n_corresponds t24 ht24Canonical 4#usize
+  obtain ⟨t28, ht28Run, ht28Canonical, ht28Value⟩ :=
+    mul_produces_canonical t24Squared4 t4 ht24Squared4Canonical ht4Canonical
+  obtain ⟨t28Squared, ht28SquaredRun, ht28SquaredCanonical,
+      ht28SquaredValue⟩ :=
+    mul_produces_canonical t28 t28 ht28Canonical ht28Canonical
+  obtain ⟨t29, ht29Run, ht29Canonical, ht29Value⟩ :=
+    mul_produces_canonical t28Squared input ht28SquaredCanonical hinput
+  obtain ⟨t30, ht30Run, ht30Canonical, ht30Value⟩ :=
+    mul_produces_canonical t29 t29 ht29Canonical ht29Canonical
+  obtain ⟨t30Squared, ht30SquaredRun, ht30SquaredCanonical,
+      ht30SquaredValue⟩ :=
+    mul_produces_canonical t30 t30 ht30Canonical ht30Canonical
+  obtain ⟨output, houtputRun, houtputCanonical, houtputValue⟩ :=
+    mul_produces_canonical t30Squared input ht30SquaredCanonical hinput
+  have hinputNe : input ≠ 0#u32 := by
+    intro heq
+    apply hnonzero
+    exact congrArg UScalar.val heq
+  have hassert : massert (input != 0#u32) = .ok () :=
+    (Aeneas.Std.massert_ok _).2 (bne_iff_ne.mpr hinputNe)
+  have hrun :
+      V5FriCoordinateAdapter.aspis_core.field.M31.inv input =
+        .ok output := by
+    simp only [V5FriCoordinateAdapter.aspis_core.field.M31.inv, hassert,
+      bind_tc_ok, hx2Run, ht2Run, ht2Squared2Run, ht4Run,
+      ht4Squared4Run, ht8Run, ht8Squared8Run, ht16Run,
+      ht16Squared8Run, ht24Run, ht24Squared4Run, ht28Run,
+      ht28SquaredRun, ht29Run, ht30Run, ht30SquaredRun, houtputRun]
+  let x := m31Value input
+  have hx2Pow : m31Value x2 = x ^ 2 := by
+    rw [hx2Value]
+    unfold x
+    rw [pow_two]
+  have ht2Pow : m31Value t2 = x ^ 3 := by
+    rw [ht2Value, hx2Pow]
+    unfold x
+    rw [show 3 = 2 + 1 by norm_num, pow_add, pow_one]
+  have ht2Squared2Pow : m31Value t2Squared2 = x ^ 12 := by
+    rw [ht2Squared2Value, ht2Pow, ← pow_mul]
+    norm_num
+  have ht4Pow : m31Value t4 = x ^ 15 := by
+    rw [ht4Value, ht2Squared2Pow, ht2Pow, ← pow_add]
+  have ht4Squared4Pow : m31Value t4Squared4 = x ^ 240 := by
+    rw [ht4Squared4Value, ht4Pow, ← pow_mul]
+    norm_num
+  have ht8Pow : m31Value t8 = x ^ 255 := by
+    rw [ht8Value, ht4Squared4Pow, ht4Pow, ← pow_add]
+  have ht8Squared8Pow : m31Value t8Squared8 = x ^ 65280 := by
+    rw [ht8Squared8Value, ht8Pow, ← pow_mul]
+    norm_num
+  have ht16Pow : m31Value t16 = x ^ 65535 := by
+    rw [ht16Value, ht8Squared8Pow, ht8Pow, ← pow_add]
+  have ht16Squared8Pow : m31Value t16Squared8 = x ^ 16776960 := by
+    rw [ht16Squared8Value, ht16Pow, ← pow_mul]
+    norm_num
+  have ht24Pow : m31Value t24 = x ^ 16777215 := by
+    rw [ht24Value, ht16Squared8Pow, ht8Pow, ← pow_add]
+  have ht24Squared4Pow : m31Value t24Squared4 = x ^ 268435440 := by
+    rw [ht24Squared4Value, ht24Pow, ← pow_mul]
+    norm_num
+  have ht28Pow : m31Value t28 = x ^ 268435455 := by
+    rw [ht28Value, ht24Squared4Pow, ht4Pow, ← pow_add]
+  have ht28SquaredPow : m31Value t28Squared = x ^ 536870910 := by
+    rw [ht28SquaredValue, ht28Pow, ← pow_add]
+  have ht29Pow : m31Value t29 = x ^ 536870911 := by
+    rw [ht29Value, ht28SquaredPow]
+    change x ^ 536870910 * x = _
+    rw [← pow_succ]
+  have ht30Pow : m31Value t30 = x ^ 1073741822 := by
+    rw [ht30Value, ht29Pow, ← pow_add]
+  have ht30SquaredPow : m31Value t30Squared = x ^ 2147483644 := by
+    rw [ht30SquaredValue, ht30Pow, ← pow_add]
+  have houtputPow : m31Value output = x ^ 2147483645 := by
+    rw [houtputValue, ht30SquaredPow]
+    change x ^ 2147483644 * x = _
+    rw [← pow_succ]
+  have hpowInv : x ^ (P - 2) = x⁻¹ := by
+    by_cases hx : x = 0
+    · rw [hx, zero_pow (show P - 2 ≠ 0 by norm_num [P]), inv_zero]
+    · rw [inv_eq_one_div, eq_div_iff hx, ← pow_succ,
+        show (P - 2) + 1 = P - 1 by norm_num [P]]
+      exact ZMod.pow_card_sub_one_eq_one hx
+  refine ⟨output, hrun, houtputCanonical, ?_⟩
+  rw [houtputPow, show 2147483645 = P - 2 by norm_num [P], hpowInv]
+
 #print axioms point_add_corresponds
+#print axioms canonical_eq_of_m31Value_eq
 #print axioms double_point_corresponds
 #print axioms double_produces_canonical
 #print axioms is_zero_false
 #print axioms double_x_produces_canonical
 #print axioms square_n_corresponds
 #print axioms inv_output_canonical
+#print axioms inv_produces_exact
 
 end AspisV5FriCoordinateFieldSemantics
