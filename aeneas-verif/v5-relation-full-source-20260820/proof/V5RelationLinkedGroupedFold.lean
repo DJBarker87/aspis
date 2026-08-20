@@ -1016,4 +1016,1200 @@ theorem releasedBasisLoopExact
   rw [releasedBasis13_eq_releasedBasis alpha0Cubed alpha0Squared alpha0
     alpha1SquaredTimesAlpha0 alpha1]
 
+private theorem releasedPowerTotalStep
+    (alpha0Powers alpha1Powers : Array RawQM31 4#usize)
+    (alpha0Total alpha1Total alpha0Term alpha1Term
+      alpha0TotalOut alpha1TotalOut : RawQM31)
+    (slot next : Std.Usize)
+    (hactive : slot < 4#usize)
+    (hread0 : Array.index_usize alpha0Powers slot = ok alpha0Term)
+    (hadd0 :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          alpha0Total alpha0Term = ok alpha0TotalOut)
+    (hread1 : Array.index_usize alpha1Powers slot = ok alpha1Term)
+    (hadd1 :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          alpha1Total alpha1Term = ok alpha1TotalOut)
+    (hnext : Std.Usize.wrapping_add slot 1#usize = next) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks_loop4.body
+        alpha0Powers alpha1Powers alpha0Total alpha1Total slot =
+      ok (cont (alpha0TotalOut, alpha1TotalOut, next)) := by
+  unfold V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks_loop4.body
+  rw [if_pos hactive, hread0]
+  simp only [bind_tc_ok]
+  rw [hadd0]
+  simp only [bind_tc_ok]
+  rw [hread1]
+  simp only [bind_tc_ok]
+  rw [hadd1]
+  simp only [bind_tc_ok, lift, hnext]
+
+private theorem releasedPowerTotalDone
+    (alpha0Powers alpha1Powers : Array RawQM31 4#usize)
+    (alpha0Total alpha1Total : RawQM31) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks_loop4.body
+        alpha0Powers alpha1Powers alpha0Total alpha1Total 4#usize =
+      ok (done (alpha0Total, alpha1Total)) := by
+  unfold V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks_loop4.body
+  rw [if_neg (by decide)]
+
+/-- The extracted fixed-release total loop reads the four powers in their
+source order for both challenges.  The theorem deliberately names every
+field addition result; the field-semantics theorem can therefore connect this
+source trace to ordinary sums without hiding the executed schedule. -/
+theorem releasedPowerTotalsLoopExact
+    (alpha0 alpha0Squared alpha0Cubed alpha1 alpha1Squared alpha1Cubed :
+      RawQM31)
+    (alpha0Total0 alpha0Total1 alpha0Total2 alpha0Total3
+      alpha1Total0 alpha1Total1 alpha1Total2 alpha1Total3 : RawQM31)
+    (hadd00 :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+          V5RelationLinkedGenerated.aspis_core.field.QM31.ONE =
+        ok alpha0Total0)
+    (hadd10 :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+          V5RelationLinkedGenerated.aspis_core.field.QM31.ONE =
+        ok alpha1Total0)
+    (hadd01 :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          alpha0Total0 alpha0Cubed = ok alpha0Total1)
+    (hadd11 :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          alpha1Total0 alpha1Cubed = ok alpha1Total1)
+    (hadd02 :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          alpha0Total1 alpha0Squared = ok alpha0Total2)
+    (hadd12 :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          alpha1Total1 alpha1Squared = ok alpha1Total2)
+    (hadd03 :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          alpha0Total2 alpha0 = ok alpha0Total3)
+    (hadd13 :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          alpha1Total2 alpha1 = ok alpha1Total3) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks_loop4
+        (releasedAlpha0Powers alpha0 alpha0Squared alpha0Cubed)
+        (releasedAlpha1Powers alpha1 alpha1Squared alpha1Cubed)
+        V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+        V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO 0#usize =
+      ok (alpha0Total3, alpha1Total3) := by
+  have step0 := releasedPowerTotalStep
+    (releasedAlpha0Powers alpha0 alpha0Squared alpha0Cubed)
+    (releasedAlpha1Powers alpha1 alpha1Squared alpha1Cubed)
+    V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+    V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+    V5RelationLinkedGenerated.aspis_core.field.QM31.ONE
+    V5RelationLinkedGenerated.aspis_core.field.QM31.ONE
+    alpha0Total0 alpha1Total0 0#usize 1#usize
+    (by decide) (by rfl) hadd00 (by rfl) hadd10 usize_zero_succ
+  have step1 := releasedPowerTotalStep
+    (releasedAlpha0Powers alpha0 alpha0Squared alpha0Cubed)
+    (releasedAlpha1Powers alpha1 alpha1Squared alpha1Cubed)
+    alpha0Total0 alpha1Total0 alpha0Cubed alpha1Cubed
+    alpha0Total1 alpha1Total1 1#usize 2#usize
+    (by decide) (by rfl) hadd01 (by rfl) hadd11 usize_one_succ
+  have step2 := releasedPowerTotalStep
+    (releasedAlpha0Powers alpha0 alpha0Squared alpha0Cubed)
+    (releasedAlpha1Powers alpha1 alpha1Squared alpha1Cubed)
+    alpha0Total1 alpha1Total1 alpha0Squared alpha1Squared
+    alpha0Total2 alpha1Total2 2#usize 3#usize
+    (by decide) (by rfl) hadd02 (by rfl) hadd12 usize_two_succ
+  have step3 := releasedPowerTotalStep
+    (releasedAlpha0Powers alpha0 alpha0Squared alpha0Cubed)
+    (releasedAlpha1Powers alpha1 alpha1Squared alpha1Cubed)
+    alpha0Total2 alpha1Total2 alpha0 alpha1
+    alpha0Total3 alpha1Total3 3#usize 4#usize
+    (by decide) (by rfl) hadd03 (by rfl) hadd13 usize_three_succ
+  have done := releasedPowerTotalDone
+    (releasedAlpha0Powers alpha0 alpha0Squared alpha0Cubed)
+    (releasedAlpha1Powers alpha1 alpha1Squared alpha1Cubed)
+    alpha0Total3 alpha1Total3
+  unfold V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks_loop4
+  rw [loop.eq_1]
+  dsimp only
+  rw [step0]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step1]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step2]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step3]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [done]
+
+structure DenseMaskValueTrace (selected : Std.U16)
+    (basis : Array RawQM31 16#usize) (total : RawQM31)
+    (values valuesOut : alloc.vec.Vec RawQM31) where
+  partialSum : RawQM31
+  raw : RawQM31
+  half0 : RawQM31
+  half1 : RawQM31
+  half2 : RawQM31
+  value : RawQM31
+  sumRun :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis
+        selected basis = ok partialSum
+  subRun :
+    V5RelationLinkedGenerated.aspis_core.field.QM31.sub total partialSum =
+      ok raw
+  half0Run :
+    V5RelationLinkedGenerated.aspis_core.field.QM31.half raw = ok half0
+  half1Run :
+    V5RelationLinkedGenerated.aspis_core.field.QM31.half half0 = ok half1
+  half2Run :
+    V5RelationLinkedGenerated.aspis_core.field.QM31.half half1 = ok half2
+  half3Run :
+    V5RelationLinkedGenerated.aspis_core.field.QM31.half half2 = ok value
+  pushRun : alloc.vec.Vec.push values value = ok valuesOut
+
+structure SparseMaskValueTrace (selected : Std.U16)
+    (basis : Array RawQM31 16#usize)
+    (values valuesOut : alloc.vec.Vec RawQM31) where
+  partialSum : RawQM31
+  half0 : RawQM31
+  half1 : RawQM31
+  half2 : RawQM31
+  value : RawQM31
+  sumRun :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis
+        selected basis = ok partialSum
+  half0Run :
+    V5RelationLinkedGenerated.aspis_core.field.QM31.half partialSum = ok half0
+  half1Run :
+    V5RelationLinkedGenerated.aspis_core.field.QM31.half half0 = ok half1
+  half2Run :
+    V5RelationLinkedGenerated.aspis_core.field.QM31.half half1 = ok half2
+  half3Run :
+    V5RelationLinkedGenerated.aspis_core.field.QM31.half half2 = ok value
+  pushRun : alloc.vec.Vec.push values value = ok valuesOut
+
+private theorem releasedMaskValueStep0
+    (basis : Array RawQM31 16#usize) (total : RawQM31)
+    (values valuesOut : alloc.vec.Vec RawQM31)
+    (trace : DenseMaskValueTrace 0x1800#u16 basis total values valuesOut) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks_loop5.body
+        (alloc.vec.Vec.deref releasedMasks) basis total values 0#usize =
+      ok (cont (valuesOut, 1#usize)) := by
+  have hcountRun : core.num.U16.count_ones 0xe7ff#u16 = ok 14#u32 := by
+    rfl
+  have hnot : ~~~(0xe7ff#u16) = 0x1800#u16 := by decide
+  simp [V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks_loop5.body,
+    releasedMasks, alloc.vec.Vec.deref, Slice.len, Slice.index_usize,
+    UScalar.lt_equiv, lift, hcountRun, hnot, trace.sumRun, trace.subRun,
+    trace.half0Run, trace.half1Run, trace.half2Run, trace.half3Run,
+    trace.pushRun, usize_zero_succ]
+
+private theorem releasedDenseMaskValueStep
+    (basis : Array RawQM31 16#usize) (total : RawQM31)
+    (values valuesOut : alloc.vec.Vec RawQM31)
+    (maskIndex next : Std.Usize) (mask selected : Std.U16)
+    (count : Std.U32)
+    (hactive : maskIndex < Slice.len (alloc.vec.Vec.deref releasedMasks))
+    (hread :
+      Slice.index_usize (alloc.vec.Vec.deref releasedMasks) maskIndex =
+        ok mask)
+    (hcount : core.num.U16.count_ones mask = ok count)
+    (hdense : count > 8#u32)
+    (hcomplement : ~~~mask = selected)
+    (hnext : Std.Usize.wrapping_add maskIndex 1#usize = next)
+    (trace : DenseMaskValueTrace selected basis total values valuesOut) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks_loop5.body
+        (alloc.vec.Vec.deref releasedMasks) basis total values maskIndex =
+      ok (cont (valuesOut, next)) := by
+  unfold V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks_loop5.body
+  rw [if_pos hactive, hread]
+  simp only [bind_tc_ok]
+  rw [hcount]
+  simp only [bind_tc_ok]
+  rw [if_pos hdense]
+  simp only [lift, bind_tc_ok]
+  rw [hcomplement, trace.sumRun]
+  simp only [bind_tc_ok]
+  rw [trace.subRun]
+  simp only [bind_tc_ok]
+  rw [trace.half0Run]
+  simp only [bind_tc_ok]
+  rw [trace.half1Run]
+  simp only [bind_tc_ok]
+  rw [trace.half2Run]
+  simp only [bind_tc_ok]
+  rw [trace.half3Run]
+  simp only [bind_tc_ok]
+  rw [trace.pushRun]
+  simp [hnext]
+
+private theorem releasedSparseMaskValueStep
+    (basis : Array RawQM31 16#usize) (total : RawQM31)
+    (values valuesOut : alloc.vec.Vec RawQM31)
+    (maskIndex next : Std.Usize) (mask : Std.U16) (count : Std.U32)
+    (hactive : maskIndex < Slice.len (alloc.vec.Vec.deref releasedMasks))
+    (hread :
+      Slice.index_usize (alloc.vec.Vec.deref releasedMasks) maskIndex =
+        ok mask)
+    (hcount : core.num.U16.count_ones mask = ok count)
+    (hsparse : ¬ count > 8#u32)
+    (hnext : Std.Usize.wrapping_add maskIndex 1#usize = next)
+    (trace : SparseMaskValueTrace mask basis values valuesOut) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks_loop5.body
+        (alloc.vec.Vec.deref releasedMasks) basis total values maskIndex =
+      ok (cont (valuesOut, next)) := by
+  unfold V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks_loop5.body
+  rw [if_pos hactive, hread]
+  simp only [bind_tc_ok]
+  rw [hcount]
+  simp only [bind_tc_ok]
+  rw [if_neg hsparse, trace.sumRun]
+  simp only [bind_tc_ok]
+  rw [trace.half0Run]
+  simp only [bind_tc_ok]
+  rw [trace.half1Run]
+  simp only [bind_tc_ok]
+  rw [trace.half2Run]
+  simp only [bind_tc_ok]
+  rw [trace.half3Run]
+  simp only [bind_tc_ok]
+  rw [trace.pushRun]
+  simp [hnext, Aeneas.Std.lift]
+
+private theorem releasedMaskValueStep1
+    (basis : Array RawQM31 16#usize) (total : RawQM31)
+    (values valuesOut : alloc.vec.Vec RawQM31)
+    (trace : DenseMaskValueTrace 0x1801#u16 basis total values valuesOut) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks_loop5.body
+        (alloc.vec.Vec.deref releasedMasks) basis total values 1#usize =
+      ok (cont (valuesOut, 2#usize)) := by
+  apply releasedDenseMaskValueStep basis total values valuesOut
+    1#usize 2#usize 0xe7fe#u16 0x1801#u16 13#u32
+  · simp [releasedMasks, alloc.vec.Vec.deref, Slice.len, UScalar.lt_equiv]
+  · simp [releasedMasks, alloc.vec.Vec.deref, Slice.index_usize]
+  · rfl
+  · decide
+  · decide
+  · exact usize_one_succ
+  · exact trace
+
+private theorem releasedMaskValueStep2
+    (basis : Array RawQM31 16#usize) (total : RawQM31)
+    (values valuesOut : alloc.vec.Vec RawQM31)
+    (trace : DenseMaskValueTrace 0x1001#u16 basis total values valuesOut) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks_loop5.body
+        (alloc.vec.Vec.deref releasedMasks) basis total values 2#usize =
+      ok (cont (valuesOut, 3#usize)) := by
+  apply releasedDenseMaskValueStep basis total values valuesOut
+    2#usize 3#usize 0xeffe#u16 0x1001#u16 14#u32
+  · simp [releasedMasks, alloc.vec.Vec.deref, Slice.len, UScalar.lt_equiv]
+  · simp [releasedMasks, alloc.vec.Vec.deref, Slice.index_usize]
+  · rfl
+  · decide
+  · decide
+  · exact usize_two_succ
+  · exact trace
+
+private theorem releasedMaskValueStep3
+    (basis : Array RawQM31 16#usize) (total : RawQM31)
+    (values valuesOut : alloc.vec.Vec RawQM31)
+    (trace : SparseMaskValueTrace 0x0000#u16 basis values valuesOut) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks_loop5.body
+        (alloc.vec.Vec.deref releasedMasks) basis total values 3#usize =
+      ok (cont (valuesOut, 4#usize)) := by
+  apply releasedSparseMaskValueStep basis total values valuesOut
+    3#usize 4#usize 0x0000#u16 0#u32
+  · simp [releasedMasks, alloc.vec.Vec.deref, Slice.len, UScalar.lt_equiv]
+  · simp [releasedMasks, alloc.vec.Vec.deref, Slice.index_usize]
+  · rfl
+  · decide
+  · exact usize_three_succ
+  · exact trace
+
+private theorem releasedMaskValueStep4
+    (basis : Array RawQM31 16#usize) (total : RawQM31)
+    (values valuesOut : alloc.vec.Vec RawQM31)
+    (trace : DenseMaskValueTrace 0x000f#u16 basis total values valuesOut) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks_loop5.body
+        (alloc.vec.Vec.deref releasedMasks) basis total values 4#usize =
+      ok (cont (valuesOut, 5#usize)) := by
+  apply releasedDenseMaskValueStep basis total values valuesOut
+    4#usize 5#usize 0xfff0#u16 0x000f#u16 12#u32
+  · simp [releasedMasks, alloc.vec.Vec.deref, Slice.len, UScalar.lt_equiv]
+  · simp [releasedMasks, alloc.vec.Vec.deref, Slice.index_usize]
+  · rfl
+  · decide
+  · decide
+  · exact usize_four_succ
+  · exact trace
+
+private theorem releasedMaskValueStep5
+    (basis : Array RawQM31 16#usize) (total : RawQM31)
+    (values valuesOut : alloc.vec.Vec RawQM31)
+    (trace : DenseMaskValueTrace 0x0005#u16 basis total values valuesOut) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks_loop5.body
+        (alloc.vec.Vec.deref releasedMasks) basis total values 5#usize =
+      ok (cont (valuesOut, 6#usize)) := by
+  apply releasedDenseMaskValueStep basis total values valuesOut
+    5#usize 6#usize 0xfffa#u16 0x0005#u16 14#u32
+  · simp [releasedMasks, alloc.vec.Vec.deref, Slice.len, UScalar.lt_equiv]
+  · simp [releasedMasks, alloc.vec.Vec.deref, Slice.index_usize]
+  · rfl
+  · decide
+  · decide
+  · exact usize_five_succ
+  · exact trace
+
+private theorem releasedMaskValueStep6
+    (basis : Array RawQM31 16#usize) (total : RawQM31)
+    (values valuesOut : alloc.vec.Vec RawQM31)
+    (trace : DenseMaskValueTrace 0x0000#u16 basis total values valuesOut) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks_loop5.body
+        (alloc.vec.Vec.deref releasedMasks) basis total values 6#usize =
+      ok (cont (valuesOut, 7#usize)) := by
+  apply releasedDenseMaskValueStep basis total values valuesOut
+    6#usize 7#usize 0xffff#u16 0x0000#u16 16#u32
+  · simp [releasedMasks, alloc.vec.Vec.deref, Slice.len, UScalar.lt_equiv]
+  · simp [releasedMasks, alloc.vec.Vec.deref, Slice.index_usize]
+  · rfl
+  · decide
+  · decide
+  · exact usize_six_succ
+  · exact trace
+
+private theorem releasedMaskValueDone
+    (basis : Array RawQM31 16#usize) (total : RawQM31)
+    (values : alloc.vec.Vec RawQM31) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks_loop5.body
+        (alloc.vec.Vec.deref releasedMasks) basis total values 7#usize =
+      ok (done values) := by
+  simp [V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks_loop5.body,
+    releasedMasks, alloc.vec.Vec.deref, Slice.len, UScalar.lt_equiv]
+
+/-- On the released seven masks, the extracted loop consumes exactly the six
+dense-complement traces and the one sparse trace in wire order, and returns
+exactly the seven values pushed by those traces. -/
+theorem releasedMaskValuesLoopExact
+    (basis : Array RawQM31 16#usize) (total : RawQM31)
+    (values0 values1 values2 values3 values4 values5 values6 values7 :
+      alloc.vec.Vec RawQM31)
+    (trace0 : DenseMaskValueTrace 0x1800#u16 basis total values0 values1)
+    (trace1 : DenseMaskValueTrace 0x1801#u16 basis total values1 values2)
+    (trace2 : DenseMaskValueTrace 0x1001#u16 basis total values2 values3)
+    (trace3 : SparseMaskValueTrace 0x0000#u16 basis values3 values4)
+    (trace4 : DenseMaskValueTrace 0x000f#u16 basis total values4 values5)
+    (trace5 : DenseMaskValueTrace 0x0005#u16 basis total values5 values6)
+    (trace6 : DenseMaskValueTrace 0x0000#u16 basis total values6 values7) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks_loop5
+        (alloc.vec.Vec.deref releasedMasks) basis total values0 0#usize =
+      ok values7 := by
+  have step0 := releasedMaskValueStep0 basis total values0 values1 trace0
+  have step1 := releasedMaskValueStep1 basis total values1 values2 trace1
+  have step2 := releasedMaskValueStep2 basis total values2 values3 trace2
+  have step3 := releasedMaskValueStep3 basis total values3 values4 trace3
+  have step4 := releasedMaskValueStep4 basis total values4 values5 trace4
+  have step5 := releasedMaskValueStep5 basis total values5 values6 trace5
+  have step6 := releasedMaskValueStep6 basis total values6 values7 trace6
+  have done := releasedMaskValueDone basis total values7
+  unfold V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks_loop5
+  rw [loop.eq_1]
+  dsimp only
+  rw [step0]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step1]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step2]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step3]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step4]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step5]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step6]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [done]
+
+private theorem selectedZeroStep
+    (basis : Array RawQM31 16#usize) (accumulator : RawQM31)
+    (low next : Std.Usize) (hactive : low < 16#usize)
+    (hnext : Std.Usize.wrapping_add low 1#usize = next) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop.body
+        0x0000#u16 basis accumulator low =
+      ok (cont (accumulator, next)) := by
+  unfold V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop.body
+  rw [if_pos hactive]
+  simp [hnext, Aeneas.Std.lift]
+
+private theorem selectedBasisDone
+    (selected : Std.U16) (basis : Array RawQM31 16#usize)
+    (accumulator : RawQM31) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop.body
+        selected basis accumulator 16#usize =
+      ok (done accumulator) := by
+  unfold V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop.body
+  rw [if_neg (by decide)]
+
+private theorem selectedBasisOffStep
+    (selected : Std.U16) (basis : Array RawQM31 16#usize)
+    (accumulator : RawQM31) (low next : Std.Usize) (bit : Std.U16)
+    (hactive : low < 16#usize)
+    (hshift : Std.U16.wrapping_shl 1#u16
+      (V5RelationLinkedGenerated.usizeShiftCount low) = bit)
+    (hoff : selected &&& bit = 0#u16)
+    (hnext : Std.Usize.wrapping_add low 1#usize = next) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop.body
+        selected basis accumulator low =
+      ok (cont (accumulator, next)) := by
+  unfold V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop.body
+  rw [if_pos hactive, hshift]
+  simp only [lift, bind_tc_ok]
+  rw [hoff, if_neg (by decide), hnext]
+
+private theorem selectedBasisOnStep
+    (selected : Std.U16) (basis : Array RawQM31 16#usize)
+    (accumulator value accumulatorOut : RawQM31)
+    (low next : Std.Usize) (bit : Std.U16)
+    (hactive : low < 16#usize)
+    (hshift : Std.U16.wrapping_shl 1#u16
+      (V5RelationLinkedGenerated.usizeShiftCount low) = bit)
+    (hon : selected &&& bit = bit)
+    (hbit : bit != 0#u16)
+    (hread : Array.index_usize basis low = ok value)
+    (hadd :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add accumulator value =
+        ok accumulatorOut)
+    (hnext : Std.Usize.wrapping_add low 1#usize = next) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop.body
+        selected basis accumulator low =
+      ok (cont (accumulatorOut, next)) := by
+  unfold V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop.body
+  rw [if_pos hactive, hshift]
+  simp only [lift, bind_tc_ok]
+  rw [hon, if_pos hbit, hread]
+  simp only [bind_tc_ok]
+  rw [hadd]
+  simp only [bind_tc_ok, hnext]
+
+private theorem selectedBit0 : Std.U16.wrapping_shl 1#u16
+    (V5RelationLinkedGenerated.usizeShiftCount 0#usize) = 0x0001#u16 := by
+  exact oneShiftVia 0#usize 0#u32 0x0001#u16
+    (usizeShiftCountEq 0#usize 0#u32 (by decide) rfl)
+    (by apply Std.U16.bv_eq_imp_eq; decide)
+
+private theorem selectedBit1 : Std.U16.wrapping_shl 1#u16
+    (V5RelationLinkedGenerated.usizeShiftCount 1#usize) = 0x0002#u16 := by
+  exact oneShiftVia 1#usize 1#u32 0x0002#u16
+    (usizeShiftCountEq 1#usize 1#u32 (by decide) rfl)
+    (by apply Std.U16.bv_eq_imp_eq; decide)
+
+private theorem selectedBit2 : Std.U16.wrapping_shl 1#u16
+    (V5RelationLinkedGenerated.usizeShiftCount 2#usize) = 0x0004#u16 := by
+  exact oneShiftVia 2#usize 2#u32 0x0004#u16
+    (usizeShiftCountEq 2#usize 2#u32 (by decide) rfl)
+    (by apply Std.U16.bv_eq_imp_eq; decide)
+
+private theorem selectedBit3 : Std.U16.wrapping_shl 1#u16
+    (V5RelationLinkedGenerated.usizeShiftCount 3#usize) = 0x0008#u16 := by
+  exact oneShiftVia 3#usize 3#u32 0x0008#u16
+    (usizeShiftCountEq 3#usize 3#u32 (by decide) rfl)
+    (by apply Std.U16.bv_eq_imp_eq; decide)
+
+private theorem selectedBit4 : Std.U16.wrapping_shl 1#u16
+    (V5RelationLinkedGenerated.usizeShiftCount 4#usize) = 0x0010#u16 := by
+  exact oneShiftVia 4#usize 4#u32 0x0010#u16
+    (usizeShiftCountEq 4#usize 4#u32 (by decide) rfl)
+    (by apply Std.U16.bv_eq_imp_eq; decide)
+
+private theorem selectedBit5 : Std.U16.wrapping_shl 1#u16
+    (V5RelationLinkedGenerated.usizeShiftCount 5#usize) = 0x0020#u16 := by
+  exact oneShiftVia 5#usize 5#u32 0x0020#u16
+    (usizeShiftCountEq 5#usize 5#u32 (by decide) rfl)
+    (by apply Std.U16.bv_eq_imp_eq; decide)
+
+private theorem selectedBit6 : Std.U16.wrapping_shl 1#u16
+    (V5RelationLinkedGenerated.usizeShiftCount 6#usize) = 0x0040#u16 := by
+  exact oneShiftVia 6#usize 6#u32 0x0040#u16
+    (usizeShiftCountEq 6#usize 6#u32 (by decide) rfl)
+    (by apply Std.U16.bv_eq_imp_eq; decide)
+
+private theorem selectedBit7 : Std.U16.wrapping_shl 1#u16
+    (V5RelationLinkedGenerated.usizeShiftCount 7#usize) = 0x0080#u16 := by
+  exact oneShiftVia 7#usize 7#u32 0x0080#u16
+    (usizeShiftCountEq 7#usize 7#u32 (by decide) rfl)
+    (by apply Std.U16.bv_eq_imp_eq; decide)
+
+private theorem selectedBit8 : Std.U16.wrapping_shl 1#u16
+    (V5RelationLinkedGenerated.usizeShiftCount 8#usize) = 0x0100#u16 := by
+  exact oneShiftVia 8#usize 8#u32 0x0100#u16
+    (usizeShiftCountEq 8#usize 8#u32 (by decide) rfl)
+    (by apply Std.U16.bv_eq_imp_eq; decide)
+
+private theorem selectedBit9 : Std.U16.wrapping_shl 1#u16
+    (V5RelationLinkedGenerated.usizeShiftCount 9#usize) = 0x0200#u16 := by
+  exact oneShiftVia 9#usize 9#u32 0x0200#u16
+    (usizeShiftCountEq 9#usize 9#u32 (by decide) rfl)
+    (by apply Std.U16.bv_eq_imp_eq; decide)
+
+private theorem selectedBit10 : Std.U16.wrapping_shl 1#u16
+    (V5RelationLinkedGenerated.usizeShiftCount 10#usize) = 0x0400#u16 := by
+  exact oneShiftVia 10#usize 10#u32 0x0400#u16
+    (usizeShiftCountEq 10#usize 10#u32 (by decide) rfl)
+    (by apply Std.U16.bv_eq_imp_eq; decide)
+
+private theorem selectedBit11 : Std.U16.wrapping_shl 1#u16
+    (V5RelationLinkedGenerated.usizeShiftCount 11#usize) = 0x0800#u16 := by
+  exact oneShiftVia 11#usize 11#u32 0x0800#u16
+    (usizeShiftCountEq 11#usize 11#u32 (by decide) rfl)
+    (by apply Std.U16.bv_eq_imp_eq; decide)
+
+private theorem selectedBit12 : Std.U16.wrapping_shl 1#u16
+    (V5RelationLinkedGenerated.usizeShiftCount 12#usize) = 0x1000#u16 := by
+  exact oneShiftVia 12#usize 12#u32 0x1000#u16
+    (usizeShiftCountEq 12#usize 12#u32 (by decide) rfl)
+    (by apply Std.U16.bv_eq_imp_eq; decide)
+
+private theorem selectedBit13 : Std.U16.wrapping_shl 1#u16
+    (V5RelationLinkedGenerated.usizeShiftCount 13#usize) = 0x2000#u16 := by
+  exact oneShiftVia 13#usize 13#u32 0x2000#u16
+    (usizeShiftCountEq 13#usize 13#u32 (by decide) rfl)
+    (by apply Std.U16.bv_eq_imp_eq; decide)
+
+private theorem selectedBit14 : Std.U16.wrapping_shl 1#u16
+    (V5RelationLinkedGenerated.usizeShiftCount 14#usize) = 0x4000#u16 := by
+  exact oneShiftVia 14#usize 14#u32 0x4000#u16
+    (usizeShiftCountEq 14#usize 14#u32 (by decide) rfl)
+    (by apply Std.U16.bv_eq_imp_eq; decide)
+
+private theorem selectedBit15 : Std.U16.wrapping_shl 1#u16
+    (V5RelationLinkedGenerated.usizeShiftCount 15#usize) = 0x8000#u16 := by
+  exact oneShiftVia 15#usize 15#u32 0x8000#u16
+    (usizeShiftCountEq 15#usize 15#u32 (by decide) rfl)
+    (by apply Std.U16.bv_eq_imp_eq; decide)
+
+theorem selectedBasisStepsExact
+    (selected : Std.U16) (basis : Array RawQM31 16#usize)
+    (acc1 acc2 acc3 acc4 acc5 acc6 acc7 acc8 acc9 acc10 acc11 acc12 acc13
+      acc14 acc15 acc16 : RawQM31)
+    (step0 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop.body
+          selected basis V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+            0#usize = ok (cont (acc1, 1#usize)))
+    (step1 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop.body
+          selected basis acc1 1#usize = ok (cont (acc2, 2#usize)))
+    (step2 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop.body
+          selected basis acc2 2#usize = ok (cont (acc3, 3#usize)))
+    (step3 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop.body
+          selected basis acc3 3#usize = ok (cont (acc4, 4#usize)))
+    (step4 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop.body
+          selected basis acc4 4#usize = ok (cont (acc5, 5#usize)))
+    (step5 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop.body
+          selected basis acc5 5#usize = ok (cont (acc6, 6#usize)))
+    (step6 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop.body
+          selected basis acc6 6#usize = ok (cont (acc7, 7#usize)))
+    (step7 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop.body
+          selected basis acc7 7#usize = ok (cont (acc8, 8#usize)))
+    (step8 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop.body
+          selected basis acc8 8#usize = ok (cont (acc9, 9#usize)))
+    (step9 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop.body
+          selected basis acc9 9#usize = ok (cont (acc10, 10#usize)))
+    (step10 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop.body
+          selected basis acc10 10#usize = ok (cont (acc11, 11#usize)))
+    (step11 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop.body
+          selected basis acc11 11#usize = ok (cont (acc12, 12#usize)))
+    (step12 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop.body
+          selected basis acc12 12#usize = ok (cont (acc13, 13#usize)))
+    (step13 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop.body
+          selected basis acc13 13#usize = ok (cont (acc14, 14#usize)))
+    (step14 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop.body
+          selected basis acc14 14#usize = ok (cont (acc15, 15#usize)))
+    (step15 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop.body
+          selected basis acc15 15#usize = ok (cont (acc16, 16#usize))) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis
+        selected basis = ok acc16 := by
+  have done := selectedBasisDone selected basis acc16
+  unfold V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis
+    V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop
+  rw [loop.eq_1]
+  dsimp only
+  rw [step0]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step1]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step2]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step3]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step4]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step5]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step6]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step7]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step8]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step9]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step10]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step11]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step12]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step13]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step14]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step15]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [done]
+
+private theorem releasedSelectedZeroExact
+    (basis : Array RawQM31 16#usize) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis
+        0x0000#u16 basis =
+      ok V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO := by
+  let zero := V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+  have step0 := selectedZeroStep basis zero 0#usize 1#usize (by decide)
+    usize_zero_succ
+  have step1 := selectedZeroStep basis zero 1#usize 2#usize (by decide)
+    usize_one_succ
+  have step2 := selectedZeroStep basis zero 2#usize 3#usize (by decide)
+    usize_two_succ
+  have step3 := selectedZeroStep basis zero 3#usize 4#usize (by decide)
+    usize_three_succ
+  have step4 := selectedZeroStep basis zero 4#usize 5#usize (by decide)
+    usize_four_succ
+  have step5 := selectedZeroStep basis zero 5#usize 6#usize (by decide)
+    usize_five_succ
+  have step6 := selectedZeroStep basis zero 6#usize 7#usize (by decide)
+    usize_six_succ
+  have step7 := selectedZeroStep basis zero 7#usize 8#usize (by decide)
+    usize_seven_succ
+  have step8 := selectedZeroStep basis zero 8#usize 9#usize (by decide)
+    usize_eight_succ
+  have step9 := selectedZeroStep basis zero 9#usize 10#usize (by decide)
+    usize_nine_succ
+  have step10 := selectedZeroStep basis zero 10#usize 11#usize (by decide)
+    usize_ten_succ
+  have step11 := selectedZeroStep basis zero 11#usize 12#usize (by decide)
+    usize_eleven_succ
+  have step12 := selectedZeroStep basis zero 12#usize 13#usize (by decide)
+    usize_twelve_succ
+  have step13 := selectedZeroStep basis zero 13#usize 14#usize (by decide)
+    usize_thirteen_succ
+  have step14 := selectedZeroStep basis zero 14#usize 15#usize (by decide)
+    usize_fourteen_succ
+  have step15 := selectedZeroStep basis zero 15#usize 16#usize (by decide)
+    usize_fifteen_succ
+  have done := selectedBasisDone 0x0000#u16 basis zero
+  unfold V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis
+    V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis_loop
+  rw [loop.eq_1]
+  dsimp only
+  rw [step0]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step1]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step2]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step3]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step4]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step5]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step6]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step7]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step8]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step9]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step10]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step11]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step12]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step13]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step14]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step15]
+  simp only
+  rw [loop.eq_1]
+  dsimp only [zero]
+  rw [done]
+
+theorem releasedSelected1800Exact
+    (alpha0Cubed alpha0Squared alpha0 alpha1SquaredTimesAlpha0 alpha1
+      sum11 sum12 : RawQM31)
+    (hadd11 :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+          alpha1SquaredTimesAlpha0 = ok sum11)
+    (hadd12 :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add sum11 alpha1 =
+        ok sum12) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis
+        0x1800#u16
+        (releasedBasis alpha0Cubed alpha0Squared alpha0
+          alpha1SquaredTimesAlpha0 alpha1) = ok sum12 := by
+  let basis := releasedBasis alpha0Cubed alpha0Squared alpha0
+    alpha1SquaredTimesAlpha0 alpha1
+  let zero := V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+  have step0 := selectedBasisOffStep 0x1800#u16 basis zero
+    0#usize 1#usize 0x0001#u16 (by decide) selectedBit0 (by decide)
+    usize_zero_succ
+  have step1 := selectedBasisOffStep 0x1800#u16 basis zero
+    1#usize 2#usize 0x0002#u16 (by decide) selectedBit1 (by decide)
+    usize_one_succ
+  have step2 := selectedBasisOffStep 0x1800#u16 basis zero
+    2#usize 3#usize 0x0004#u16 (by decide) selectedBit2 (by decide)
+    usize_two_succ
+  have step3 := selectedBasisOffStep 0x1800#u16 basis zero
+    3#usize 4#usize 0x0008#u16 (by decide) selectedBit3 (by decide)
+    usize_three_succ
+  have step4 := selectedBasisOffStep 0x1800#u16 basis zero
+    4#usize 5#usize 0x0010#u16 (by decide) selectedBit4 (by decide)
+    usize_four_succ
+  have step5 := selectedBasisOffStep 0x1800#u16 basis zero
+    5#usize 6#usize 0x0020#u16 (by decide) selectedBit5 (by decide)
+    usize_five_succ
+  have step6 := selectedBasisOffStep 0x1800#u16 basis zero
+    6#usize 7#usize 0x0040#u16 (by decide) selectedBit6 (by decide)
+    usize_six_succ
+  have step7 := selectedBasisOffStep 0x1800#u16 basis zero
+    7#usize 8#usize 0x0080#u16 (by decide) selectedBit7 (by decide)
+    usize_seven_succ
+  have step8 := selectedBasisOffStep 0x1800#u16 basis zero
+    8#usize 9#usize 0x0100#u16 (by decide) selectedBit8 (by decide)
+    usize_eight_succ
+  have step9 := selectedBasisOffStep 0x1800#u16 basis zero
+    9#usize 10#usize 0x0200#u16 (by decide) selectedBit9 (by decide)
+    usize_nine_succ
+  have step10 := selectedBasisOffStep 0x1800#u16 basis zero
+    10#usize 11#usize 0x0400#u16 (by decide) selectedBit10 (by decide)
+    usize_ten_succ
+  have step11 := selectedBasisOnStep 0x1800#u16 basis zero
+    alpha1SquaredTimesAlpha0 sum11 11#usize 12#usize 0x0800#u16
+    (by decide) selectedBit11 (by decide) (by decide) (by rfl) hadd11
+    usize_eleven_succ
+  have step12 := selectedBasisOnStep 0x1800#u16 basis sum11 alpha1 sum12
+    12#usize 13#usize 0x1000#u16 (by decide) selectedBit12 (by decide)
+    (by decide) (by rfl) hadd12 usize_twelve_succ
+  have step13 := selectedBasisOffStep 0x1800#u16 basis sum12
+    13#usize 14#usize 0x2000#u16 (by decide) selectedBit13 (by decide)
+    usize_thirteen_succ
+  have step14 := selectedBasisOffStep 0x1800#u16 basis sum12
+    14#usize 15#usize 0x4000#u16 (by decide) selectedBit14 (by decide)
+    usize_fourteen_succ
+  have step15 := selectedBasisOffStep 0x1800#u16 basis sum12
+    15#usize 16#usize 0x8000#u16 (by decide) selectedBit15 (by decide)
+    usize_fifteen_succ
+  exact selectedBasisStepsExact 0x1800#u16 basis
+    zero zero zero zero zero zero zero zero zero zero zero sum11 sum12 sum12
+      sum12 sum12
+    step0 step1 step2 step3 step4 step5 step6 step7 step8 step9 step10
+      step11 step12 step13 step14 step15
+
+theorem releasedSelected1801Exact
+    (alpha0Cubed alpha0Squared alpha0 alpha1SquaredTimesAlpha0 alpha1
+      sum0 sum11 sum12 : RawQM31)
+    (hadd0 :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+          V5RelationLinkedGenerated.aspis_core.field.QM31.ONE = ok sum0)
+    (hadd11 :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          sum0 alpha1SquaredTimesAlpha0 = ok sum11)
+    (hadd12 :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add sum11 alpha1 =
+        ok sum12) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis
+        0x1801#u16
+        (releasedBasis alpha0Cubed alpha0Squared alpha0
+          alpha1SquaredTimesAlpha0 alpha1) = ok sum12 := by
+  let basis := releasedBasis alpha0Cubed alpha0Squared alpha0
+    alpha1SquaredTimesAlpha0 alpha1
+  let zero := V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+  have step0 := selectedBasisOnStep 0x1801#u16 basis zero
+    V5RelationLinkedGenerated.aspis_core.field.QM31.ONE sum0
+    0#usize 1#usize 0x0001#u16 (by decide) selectedBit0 (by decide)
+    (by decide) (by rfl) hadd0 usize_zero_succ
+  have step1 := selectedBasisOffStep 0x1801#u16 basis sum0
+    1#usize 2#usize 0x0002#u16 (by decide) selectedBit1 (by decide)
+    usize_one_succ
+  have step2 := selectedBasisOffStep 0x1801#u16 basis sum0
+    2#usize 3#usize 0x0004#u16 (by decide) selectedBit2 (by decide)
+    usize_two_succ
+  have step3 := selectedBasisOffStep 0x1801#u16 basis sum0
+    3#usize 4#usize 0x0008#u16 (by decide) selectedBit3 (by decide)
+    usize_three_succ
+  have step4 := selectedBasisOffStep 0x1801#u16 basis sum0
+    4#usize 5#usize 0x0010#u16 (by decide) selectedBit4 (by decide)
+    usize_four_succ
+  have step5 := selectedBasisOffStep 0x1801#u16 basis sum0
+    5#usize 6#usize 0x0020#u16 (by decide) selectedBit5 (by decide)
+    usize_five_succ
+  have step6 := selectedBasisOffStep 0x1801#u16 basis sum0
+    6#usize 7#usize 0x0040#u16 (by decide) selectedBit6 (by decide)
+    usize_six_succ
+  have step7 := selectedBasisOffStep 0x1801#u16 basis sum0
+    7#usize 8#usize 0x0080#u16 (by decide) selectedBit7 (by decide)
+    usize_seven_succ
+  have step8 := selectedBasisOffStep 0x1801#u16 basis sum0
+    8#usize 9#usize 0x0100#u16 (by decide) selectedBit8 (by decide)
+    usize_eight_succ
+  have step9 := selectedBasisOffStep 0x1801#u16 basis sum0
+    9#usize 10#usize 0x0200#u16 (by decide) selectedBit9 (by decide)
+    usize_nine_succ
+  have step10 := selectedBasisOffStep 0x1801#u16 basis sum0
+    10#usize 11#usize 0x0400#u16 (by decide) selectedBit10 (by decide)
+    usize_ten_succ
+  have step11 := selectedBasisOnStep 0x1801#u16 basis sum0
+    alpha1SquaredTimesAlpha0 sum11 11#usize 12#usize 0x0800#u16
+    (by decide) selectedBit11 (by decide) (by decide) (by rfl) hadd11
+    usize_eleven_succ
+  have step12 := selectedBasisOnStep 0x1801#u16 basis sum11 alpha1 sum12
+    12#usize 13#usize 0x1000#u16 (by decide) selectedBit12 (by decide)
+    (by decide) (by rfl) hadd12 usize_twelve_succ
+  have step13 := selectedBasisOffStep 0x1801#u16 basis sum12
+    13#usize 14#usize 0x2000#u16 (by decide) selectedBit13 (by decide)
+    usize_thirteen_succ
+  have step14 := selectedBasisOffStep 0x1801#u16 basis sum12
+    14#usize 15#usize 0x4000#u16 (by decide) selectedBit14 (by decide)
+    usize_fourteen_succ
+  have step15 := selectedBasisOffStep 0x1801#u16 basis sum12
+    15#usize 16#usize 0x8000#u16 (by decide) selectedBit15 (by decide)
+    usize_fifteen_succ
+  exact selectedBasisStepsExact 0x1801#u16 basis
+    sum0 sum0 sum0 sum0 sum0 sum0 sum0 sum0 sum0 sum0 sum0 sum11 sum12
+      sum12 sum12 sum12
+    step0 step1 step2 step3 step4 step5 step6 step7 step8 step9 step10
+      step11 step12 step13 step14 step15
+
+theorem releasedSelected1001Exact
+    (alpha0Cubed alpha0Squared alpha0 alpha1SquaredTimesAlpha0 alpha1
+      sum0 sum12 : RawQM31)
+    (hadd0 :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+          V5RelationLinkedGenerated.aspis_core.field.QM31.ONE = ok sum0)
+    (hadd12 :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add sum0 alpha1 =
+        ok sum12) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis
+        0x1001#u16
+        (releasedBasis alpha0Cubed alpha0Squared alpha0
+          alpha1SquaredTimesAlpha0 alpha1) = ok sum12 := by
+  let basis := releasedBasis alpha0Cubed alpha0Squared alpha0
+    alpha1SquaredTimesAlpha0 alpha1
+  let zero := V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+  have step0 := selectedBasisOnStep 0x1001#u16 basis zero
+    V5RelationLinkedGenerated.aspis_core.field.QM31.ONE sum0
+    0#usize 1#usize 0x0001#u16 (by decide) selectedBit0 (by decide)
+    (by decide) (by rfl) hadd0 usize_zero_succ
+  have step1 := selectedBasisOffStep 0x1001#u16 basis sum0
+    1#usize 2#usize 0x0002#u16 (by decide) selectedBit1 (by decide)
+    usize_one_succ
+  have step2 := selectedBasisOffStep 0x1001#u16 basis sum0
+    2#usize 3#usize 0x0004#u16 (by decide) selectedBit2 (by decide)
+    usize_two_succ
+  have step3 := selectedBasisOffStep 0x1001#u16 basis sum0
+    3#usize 4#usize 0x0008#u16 (by decide) selectedBit3 (by decide)
+    usize_three_succ
+  have step4 := selectedBasisOffStep 0x1001#u16 basis sum0
+    4#usize 5#usize 0x0010#u16 (by decide) selectedBit4 (by decide)
+    usize_four_succ
+  have step5 := selectedBasisOffStep 0x1001#u16 basis sum0
+    5#usize 6#usize 0x0020#u16 (by decide) selectedBit5 (by decide)
+    usize_five_succ
+  have step6 := selectedBasisOffStep 0x1001#u16 basis sum0
+    6#usize 7#usize 0x0040#u16 (by decide) selectedBit6 (by decide)
+    usize_six_succ
+  have step7 := selectedBasisOffStep 0x1001#u16 basis sum0
+    7#usize 8#usize 0x0080#u16 (by decide) selectedBit7 (by decide)
+    usize_seven_succ
+  have step8 := selectedBasisOffStep 0x1001#u16 basis sum0
+    8#usize 9#usize 0x0100#u16 (by decide) selectedBit8 (by decide)
+    usize_eight_succ
+  have step9 := selectedBasisOffStep 0x1001#u16 basis sum0
+    9#usize 10#usize 0x0200#u16 (by decide) selectedBit9 (by decide)
+    usize_nine_succ
+  have step10 := selectedBasisOffStep 0x1001#u16 basis sum0
+    10#usize 11#usize 0x0400#u16 (by decide) selectedBit10 (by decide)
+    usize_ten_succ
+  have step11 := selectedBasisOffStep 0x1001#u16 basis sum0
+    11#usize 12#usize 0x0800#u16 (by decide) selectedBit11 (by decide)
+    usize_eleven_succ
+  have step12 := selectedBasisOnStep 0x1001#u16 basis sum0 alpha1 sum12
+    12#usize 13#usize 0x1000#u16 (by decide) selectedBit12 (by decide)
+    (by decide) (by rfl) hadd12 usize_twelve_succ
+  have step13 := selectedBasisOffStep 0x1001#u16 basis sum12
+    13#usize 14#usize 0x2000#u16 (by decide) selectedBit13 (by decide)
+    usize_thirteen_succ
+  have step14 := selectedBasisOffStep 0x1001#u16 basis sum12
+    14#usize 15#usize 0x4000#u16 (by decide) selectedBit14 (by decide)
+    usize_fourteen_succ
+  have step15 := selectedBasisOffStep 0x1001#u16 basis sum12
+    15#usize 16#usize 0x8000#u16 (by decide) selectedBit15 (by decide)
+    usize_fifteen_succ
+  exact selectedBasisStepsExact 0x1001#u16 basis
+    sum0 sum0 sum0 sum0 sum0 sum0 sum0 sum0 sum0 sum0 sum0 sum0 sum12
+      sum12 sum12 sum12
+    step0 step1 step2 step3 step4 step5 step6 step7 step8 step9 step10
+      step11 step12 step13 step14 step15
+
+theorem releasedSelected000fExact
+    (alpha0Cubed alpha0Squared alpha0 alpha1SquaredTimesAlpha0 alpha1
+      sum0 sum1 sum2 sum3 : RawQM31)
+    (hadd0 :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+          V5RelationLinkedGenerated.aspis_core.field.QM31.ONE = ok sum0)
+    (hadd1 :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add sum0 alpha0Cubed =
+        ok sum1)
+    (hadd2 :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add sum1 alpha0Squared =
+        ok sum2)
+    (hadd3 :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add sum2 alpha0 =
+        ok sum3) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis
+        0x000f#u16
+        (releasedBasis alpha0Cubed alpha0Squared alpha0
+          alpha1SquaredTimesAlpha0 alpha1) = ok sum3 := by
+  let basis := releasedBasis alpha0Cubed alpha0Squared alpha0
+    alpha1SquaredTimesAlpha0 alpha1
+  let zero := V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+  have step0 := selectedBasisOnStep 0x000f#u16 basis zero
+    V5RelationLinkedGenerated.aspis_core.field.QM31.ONE sum0
+    0#usize 1#usize 0x0001#u16 (by decide) selectedBit0 (by decide)
+    (by decide) (by rfl) hadd0 usize_zero_succ
+  have step1 := selectedBasisOnStep 0x000f#u16 basis sum0 alpha0Cubed sum1
+    1#usize 2#usize 0x0002#u16 (by decide) selectedBit1 (by decide)
+    (by decide) (by rfl) hadd1 usize_one_succ
+  have step2 := selectedBasisOnStep 0x000f#u16 basis sum1 alpha0Squared sum2
+    2#usize 3#usize 0x0004#u16 (by decide) selectedBit2 (by decide)
+    (by decide) (by rfl) hadd2 usize_two_succ
+  have step3 := selectedBasisOnStep 0x000f#u16 basis sum2 alpha0 sum3
+    3#usize 4#usize 0x0008#u16 (by decide) selectedBit3 (by decide)
+    (by decide) (by rfl) hadd3 usize_three_succ
+  have step4 := selectedBasisOffStep 0x000f#u16 basis sum3
+    4#usize 5#usize 0x0010#u16 (by decide) selectedBit4 (by decide)
+    usize_four_succ
+  have step5 := selectedBasisOffStep 0x000f#u16 basis sum3
+    5#usize 6#usize 0x0020#u16 (by decide) selectedBit5 (by decide)
+    usize_five_succ
+  have step6 := selectedBasisOffStep 0x000f#u16 basis sum3
+    6#usize 7#usize 0x0040#u16 (by decide) selectedBit6 (by decide)
+    usize_six_succ
+  have step7 := selectedBasisOffStep 0x000f#u16 basis sum3
+    7#usize 8#usize 0x0080#u16 (by decide) selectedBit7 (by decide)
+    usize_seven_succ
+  have step8 := selectedBasisOffStep 0x000f#u16 basis sum3
+    8#usize 9#usize 0x0100#u16 (by decide) selectedBit8 (by decide)
+    usize_eight_succ
+  have step9 := selectedBasisOffStep 0x000f#u16 basis sum3
+    9#usize 10#usize 0x0200#u16 (by decide) selectedBit9 (by decide)
+    usize_nine_succ
+  have step10 := selectedBasisOffStep 0x000f#u16 basis sum3
+    10#usize 11#usize 0x0400#u16 (by decide) selectedBit10 (by decide)
+    usize_ten_succ
+  have step11 := selectedBasisOffStep 0x000f#u16 basis sum3
+    11#usize 12#usize 0x0800#u16 (by decide) selectedBit11 (by decide)
+    usize_eleven_succ
+  have step12 := selectedBasisOffStep 0x000f#u16 basis sum3
+    12#usize 13#usize 0x1000#u16 (by decide) selectedBit12 (by decide)
+    usize_twelve_succ
+  have step13 := selectedBasisOffStep 0x000f#u16 basis sum3
+    13#usize 14#usize 0x2000#u16 (by decide) selectedBit13 (by decide)
+    usize_thirteen_succ
+  have step14 := selectedBasisOffStep 0x000f#u16 basis sum3
+    14#usize 15#usize 0x4000#u16 (by decide) selectedBit14 (by decide)
+    usize_fourteen_succ
+  have step15 := selectedBasisOffStep 0x000f#u16 basis sum3
+    15#usize 16#usize 0x8000#u16 (by decide) selectedBit15 (by decide)
+    usize_fifteen_succ
+  exact selectedBasisStepsExact 0x000f#u16 basis
+    sum0 sum1 sum2 sum3 sum3 sum3 sum3 sum3 sum3 sum3 sum3 sum3 sum3 sum3
+      sum3 sum3
+    step0 step1 step2 step3 step4 step5 step6 step7 step8 step9 step10
+      step11 step12 step13 step14 step15
+
+theorem releasedSelected0005Exact
+    (alpha0Cubed alpha0Squared alpha0 alpha1SquaredTimesAlpha0 alpha1
+      sum0 sum2 : RawQM31)
+    (hadd0 :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+          V5RelationLinkedGenerated.aspis_core.field.QM31.ONE = ok sum0)
+    (hadd2 :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add sum0 alpha0Squared =
+        ok sum2) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.sum_selected_binary_basis
+        0x0005#u16
+        (releasedBasis alpha0Cubed alpha0Squared alpha0
+          alpha1SquaredTimesAlpha0 alpha1) = ok sum2 := by
+  let basis := releasedBasis alpha0Cubed alpha0Squared alpha0
+    alpha1SquaredTimesAlpha0 alpha1
+  let zero := V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+  have step0 := selectedBasisOnStep 0x0005#u16 basis zero
+    V5RelationLinkedGenerated.aspis_core.field.QM31.ONE sum0
+    0#usize 1#usize 0x0001#u16 (by decide) selectedBit0 (by decide)
+    (by decide) (by rfl) hadd0 usize_zero_succ
+  have step1 := selectedBasisOffStep 0x0005#u16 basis sum0
+    1#usize 2#usize 0x0002#u16 (by decide) selectedBit1 (by decide)
+    usize_one_succ
+  have step2 := selectedBasisOnStep 0x0005#u16 basis sum0 alpha0Squared sum2
+    2#usize 3#usize 0x0004#u16 (by decide) selectedBit2 (by decide)
+    (by decide) (by rfl) hadd2 usize_two_succ
+  have step3 := selectedBasisOffStep 0x0005#u16 basis sum2
+    3#usize 4#usize 0x0008#u16 (by decide) selectedBit3 (by decide)
+    usize_three_succ
+  have step4 := selectedBasisOffStep 0x0005#u16 basis sum2
+    4#usize 5#usize 0x0010#u16 (by decide) selectedBit4 (by decide)
+    usize_four_succ
+  have step5 := selectedBasisOffStep 0x0005#u16 basis sum2
+    5#usize 6#usize 0x0020#u16 (by decide) selectedBit5 (by decide)
+    usize_five_succ
+  have step6 := selectedBasisOffStep 0x0005#u16 basis sum2
+    6#usize 7#usize 0x0040#u16 (by decide) selectedBit6 (by decide)
+    usize_six_succ
+  have step7 := selectedBasisOffStep 0x0005#u16 basis sum2
+    7#usize 8#usize 0x0080#u16 (by decide) selectedBit7 (by decide)
+    usize_seven_succ
+  have step8 := selectedBasisOffStep 0x0005#u16 basis sum2
+    8#usize 9#usize 0x0100#u16 (by decide) selectedBit8 (by decide)
+    usize_eight_succ
+  have step9 := selectedBasisOffStep 0x0005#u16 basis sum2
+    9#usize 10#usize 0x0200#u16 (by decide) selectedBit9 (by decide)
+    usize_nine_succ
+  have step10 := selectedBasisOffStep 0x0005#u16 basis sum2
+    10#usize 11#usize 0x0400#u16 (by decide) selectedBit10 (by decide)
+    usize_ten_succ
+  have step11 := selectedBasisOffStep 0x0005#u16 basis sum2
+    11#usize 12#usize 0x0800#u16 (by decide) selectedBit11 (by decide)
+    usize_eleven_succ
+  have step12 := selectedBasisOffStep 0x0005#u16 basis sum2
+    12#usize 13#usize 0x1000#u16 (by decide) selectedBit12 (by decide)
+    usize_twelve_succ
+  have step13 := selectedBasisOffStep 0x0005#u16 basis sum2
+    13#usize 14#usize 0x2000#u16 (by decide) selectedBit13 (by decide)
+    usize_thirteen_succ
+  have step14 := selectedBasisOffStep 0x0005#u16 basis sum2
+    14#usize 15#usize 0x4000#u16 (by decide) selectedBit14 (by decide)
+    usize_fourteen_succ
+  have step15 := selectedBasisOffStep 0x0005#u16 basis sum2
+    15#usize 16#usize 0x8000#u16 (by decide) selectedBit15 (by decide)
+    usize_fifteen_succ
+  exact selectedBasisStepsExact 0x0005#u16 basis
+    sum0 sum0 sum2 sum2 sum2 sum2 sum2 sum2 sum2 sum2 sum2 sum2 sum2 sum2
+      sum2 sum2
+    step0 step1 step2 step3 step4 step5 step6 step7 step8 step9 step10
+      step11 step12 step13 step14 step15
+
 end AspisV5RelationLinkedGroupedFold
