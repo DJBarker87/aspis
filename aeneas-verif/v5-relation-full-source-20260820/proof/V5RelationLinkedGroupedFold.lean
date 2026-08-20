@@ -2212,4 +2212,134 @@ theorem releasedSelected0005Exact
     step0 step1 step2 step3 step4 step5 step6 step7 step8 step9 step10
       step11 step12 step13 step14 step15
 
+structure ReleasedBinaryPowerTrace (alpha0 alpha1 : RawQM31) where
+  alpha0Squared : RawQM31
+  alpha1Squared : RawQM31
+  alpha0Cubed : RawQM31
+  alpha1Cubed : RawQM31
+  cross : RawQM31
+  square0Run :
+    V5RelationLinkedGenerated.aspis_core.field.QM31.square alpha0 =
+      ok alpha0Squared
+  square1Run :
+    V5RelationLinkedGenerated.aspis_core.field.QM31.square alpha1 =
+      ok alpha1Squared
+  cube0Run :
+    V5RelationLinkedGenerated.aspis_core.field.QM31.mul alpha0Squared alpha0 =
+      ok alpha0Cubed
+  cube1Run :
+    V5RelationLinkedGenerated.aspis_core.field.QM31.mul alpha1Squared alpha1 =
+      ok alpha1Cubed
+  crossRun :
+    V5RelationLinkedGenerated.aspis_core.field.QM31.mul alpha1Squared alpha0 =
+      ok cross
+  alpha0Total0 : RawQM31
+  alpha0Total1 : RawQM31
+  alpha0Total2 : RawQM31
+  alpha0Total3 : RawQM31
+  alpha1Total0 : RawQM31
+  alpha1Total1 : RawQM31
+  alpha1Total2 : RawQM31
+  alpha1Total3 : RawQM31
+  add00Run :
+    V5RelationLinkedGenerated.aspis_core.field.QM31.add
+        V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+        V5RelationLinkedGenerated.aspis_core.field.QM31.ONE = ok alpha0Total0
+  add10Run :
+    V5RelationLinkedGenerated.aspis_core.field.QM31.add
+        V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+        V5RelationLinkedGenerated.aspis_core.field.QM31.ONE = ok alpha1Total0
+  add01Run :
+    V5RelationLinkedGenerated.aspis_core.field.QM31.add
+        alpha0Total0 alpha0Cubed = ok alpha0Total1
+  add11Run :
+    V5RelationLinkedGenerated.aspis_core.field.QM31.add
+        alpha1Total0 alpha1Cubed = ok alpha1Total1
+  add02Run :
+    V5RelationLinkedGenerated.aspis_core.field.QM31.add
+        alpha0Total1 alpha0Squared = ok alpha0Total2
+  add12Run :
+    V5RelationLinkedGenerated.aspis_core.field.QM31.add
+        alpha1Total1 alpha1Squared = ok alpha1Total2
+  add03Run :
+    V5RelationLinkedGenerated.aspis_core.field.QM31.add
+        alpha0Total2 alpha0 = ok alpha0Total3
+  add13Run :
+    V5RelationLinkedGenerated.aspis_core.field.QM31.add
+        alpha1Total2 alpha1 = ok alpha1Total3
+  total : RawQM31
+  totalRun :
+    V5RelationLinkedGenerated.aspis_core.field.QM31.mul
+        alpha0Total3 alpha1Total3 = ok total
+
+structure ReleasedMaskValuesTrace
+    (basis : Array RawQM31 16#usize) (total : RawQM31) where
+  values0 : alloc.vec.Vec RawQM31
+  values1 : alloc.vec.Vec RawQM31
+  values2 : alloc.vec.Vec RawQM31
+  values3 : alloc.vec.Vec RawQM31
+  values4 : alloc.vec.Vec RawQM31
+  values5 : alloc.vec.Vec RawQM31
+  values6 : alloc.vec.Vec RawQM31
+  values7 : alloc.vec.Vec RawQM31
+  initial : values0 = alloc.vec.Vec.with_capacity RawQM31
+    (Slice.len (alloc.vec.Vec.deref releasedMasks))
+  trace0 : DenseMaskValueTrace 0x1800#u16 basis total values0 values1
+  trace1 : DenseMaskValueTrace 0x1801#u16 basis total values1 values2
+  trace2 : DenseMaskValueTrace 0x1001#u16 basis total values2 values3
+  trace3 : SparseMaskValueTrace 0x0000#u16 basis values3 values4
+  trace4 : DenseMaskValueTrace 0x000f#u16 basis total values4 values5
+  trace5 : DenseMaskValueTrace 0x0005#u16 basis total values5 values6
+  trace6 : DenseMaskValueTrace 0x0000#u16 basis total values6 values7
+
+/-- Exact fixed-release source theorem for the optimized seven-mask helper.
+All loops beneath the public function have already been discharged above; the
+only inputs here are the explicit primitive field traces and vector pushes. -/
+theorem releasedFoldBinaryLowMasksSourceExact
+    (alpha0 alpha1 : RawQM31) (power : ReleasedBinaryPowerTrace alpha0 alpha1)
+    (values : ReleasedMaskValuesTrace
+      (releasedBasis power.alpha0Cubed power.alpha0Squared alpha0 power.cross
+        alpha1) power.total) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks
+        (alloc.vec.Vec.deref releasedMasks) alpha0 alpha1 =
+      ok values.values7 := by
+  have basisRun := releasedBasisLoopExact alpha0 power.alpha0Squared
+    power.alpha0Cubed alpha1 power.alpha1Squared power.alpha1Cubed power.cross
+    power.crossRun
+  have totalsRun := releasedPowerTotalsLoopExact alpha0 power.alpha0Squared
+    power.alpha0Cubed alpha1 power.alpha1Squared power.alpha1Cubed
+    power.alpha0Total0 power.alpha0Total1 power.alpha0Total2 power.alpha0Total3
+    power.alpha1Total0 power.alpha1Total1 power.alpha1Total2 power.alpha1Total3
+    power.add00Run power.add10Run power.add01Run power.add11Run power.add02Run
+    power.add12Run power.add03Run power.add13Run
+  have valuesRun := releasedMaskValuesLoopExact
+    (releasedBasis power.alpha0Cubed power.alpha0Squared alpha0 power.cross
+      alpha1) power.total
+    values.values0 values.values1 values.values2 values.values3 values.values4
+      values.values5 values.values6 values.values7
+    values.trace0 values.trace1 values.trace2 values.trace3 values.trace4
+      values.trace5 values.trace6
+  simp only [releasedAlpha0Powers, releasedAlpha1Powers, releasedBasis0] at basisRun totalsRun
+  unfold V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks
+  rw [power.square0Run]
+  simp only [bind_tc_ok]
+  rw [power.square1Run]
+  simp only [bind_tc_ok]
+  rw [power.cube0Run]
+  simp only [bind_tc_ok]
+  rw [power.cube1Run]
+  simp only [bind_tc_ok]
+  rw [releasedMaskScanExact]
+  simp only [bind_tc_ok]
+  simp [V5RelationLinkedGenerated.aspis_core.sumcheck.fold_binary_low_masks.CROSS_POSITIONS,
+    Aeneas.Std.lift]
+  rw [basisRun]
+  simp only [bind_tc_ok]
+  rw [totalsRun]
+  simp only [bind_tc_ok]
+  rw [power.totalRun]
+  simp only [bind_tc_ok]
+  rw [← values.initial]
+  exact valuesRun
+
 end AspisV5RelationLinkedGroupedFold
