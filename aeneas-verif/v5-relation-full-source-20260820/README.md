@@ -55,15 +55,40 @@ external production helpers `circle.double_x`, `WeightAccumulator.fold`, and
 `WeightAccumulator.dot`.  There is no `sorry` in the checked snapshot or
 proof.
 
+## Production-linked fold and dot extraction
+
+`generated-linked/RelationLinked/` is a stronger second extraction of the
+same unchanged verifier.  It follows the production call graph through the
+real field arithmetic, `circle.double_x`, every weight-fold helper, the
+indexed component dispatcher, and the terminal component-specific dot loop.
+The reviewed LLBC SHA-256 is
+`6637ed571615edc445fded19b70d12101642c2146a5dd6eccfb936a185e5a678`.
+
+The only helper deliberately opaque during that extraction was the generic
+`WeightAccumulator::weight_at` fallback.  The checked Lean bundle gives that
+unmodeled fallback a failing interpretation rather than an assumed result.
+`V5RelationLinkedWeightPath.lean` proves from the generated code that four
+successful production folds have the exact log-length trace
+`10 -> 8 -> 6 -> 4 -> 2`, and that a four-element terminal array at log length
+two enters the direct component loop.  Consequently the accepted release
+path cannot call the fallback.  These theorems print only Lean's standard
+`propext`, `Classical.choice`, and `Quot.sound` foundations.
+
+The checked generated files contain a small elaboration-only normalization:
+the existing mutable-enumerate adapter, scalar shift-count annotations, an
+explicit proof for the fixed panic-string length, and executable models for
+standard-library iterators and vector operations.  None changes the Rust
+control flow.  There is no `axiom`, `sorry`, or `native_decide` in the linked
+generated snapshot or its weight-path proof.
+
 ## Remaining work
 
-The fixed generated control flow is complete.  The remaining proof is the
-projection from generated raw QM31 values and successful opaque weight
-operations into the maintained field-level verifier, followed by the existing
-relation-soundness theorem.  The production `double_x`,
-`WeightAccumulator.fold`, and `WeightAccumulator.dot` helpers remain explicit
-source boundaries here unless their independent generated proofs are
-imported.
+The fixed generated control flow and the production fold/dot call graph are
+complete.  The remaining proof is semantic: connect the successful generated
+component updates and direct final dot to the maintained weight schedule,
+then use the existing relation-soundness theorem.  The generic `weight_at`
+fallback is outside that accepted release path and is not an assumption of
+the checked path theorem.
 
 This directory is therefore a checked intermediate proof bundle, not yet the
 finished end-to-end relation theorem.
@@ -88,3 +113,19 @@ From `aeneas-verif/v5-relation-acceptance-20260815/harness`:
 
 The reviewed LLBC SHA-256 is
 `821aecad6f488f9a399dc07dd429694226fecee2a8e84ce140c3673000109301`.
+
+The production-linked extraction uses:
+
+```bash
+/path/to/charon cargo \
+  --preset aeneas \
+  --start-from v5_relation_acceptance_harness::relation_stress::verify_v5_relation_stress_with_additive \
+  --include aspis_core::field \
+  --include aspis_core::circle \
+  --include aspis_core::sumcheck \
+  --opaque 'aspis_core::sumcheck::_::weight_at' \
+  --dest-file relation-linked.llbc -- --release --locked
+
+/path/to/aeneas -backend lean -namespace V5RelationLinkedGenerated \
+  -no-progress-bar -split-files -dest generated-linked relation-linked.llbc
+```
