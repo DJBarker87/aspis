@@ -1,0 +1,2 @@
+# Preserve the raw Aeneas templates byte-for-byte, including their final blank line.
+generated/V5MerkleUnchangedFull/*ExternalRaw.lean.txt whitespace=-blank-at-eof

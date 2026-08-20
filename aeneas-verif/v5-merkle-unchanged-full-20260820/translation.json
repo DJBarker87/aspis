@@ -1,0 +1,1623 @@
+{
+  "aeneas_version": "000c7b6a-dirty",
+  "charon_version": "0.1.223",
+  "crate": "v5_merkle_fixed_hash_adapter",
+  "functions": [
+    {
+      "def_id": 84,
+      "lean_name": "V5MerkleUnchangedFull.core.iter.traits.iterator.Iterator.find.default",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::iter::traits::iterator::Iterator::find",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/iter/traits/iterator.rs",
+        "begin_line": 2959,
+        "end_line": 2962
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 30,
+      "lean_name": "V5MerkleUnchangedFull.core.iter.traits.iterator.Iterator.any.default",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::iter::traits::iterator::Iterator::any",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/iter/traits/iterator.rs",
+        "begin_line": 2885,
+        "end_line": 2888
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 10,
+      "lean_name": "V5MerkleUnchangedFull.core.option.Option.ok_or",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::option::{core::option::Option<T>}::ok_or",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 1334,
+        "end_line": 1334
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 32,
+      "lean_name": "V5MerkleUnchangedFull.core.option.OptionShared0T.copied",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::option::{core::option::Option<&'_0 T>}::copied",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 2135,
+        "end_line": 2137
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 203,
+      "lean_name": "V5MerkleUnchangedFull.core.option.Option.Insts.CoreCmpPartialEqOption.eq",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::option::{impl core::cmp::PartialEq<core::option::Option<T>> for core::option::Option<T>}::eq",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 2440,
+        "end_line": 2440
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 33,
+      "lean_name": "V5MerkleUnchangedFull.core.option.Option.Insts.CoreOpsTry_traitTry.branch",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::option::{impl core::ops::try_trait::Try for core::option::Option<T>}::branch",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 2779,
+        "end_line": 2779
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 34,
+      "lean_name": "V5MerkleUnchangedFull.core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionInfallible.from_residual",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::option::{impl core::ops::try_trait::FromResidual<core::option::Option<core::convert::Infallible>> for core::option::Option<T>}::from_residual",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 2793,
+        "end_line": 2793
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 17,
+      "lean_name": "V5MerkleUnchangedFull.core.result.Result.map_err",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::result::{core::result::Result<T, E>}::map_err",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/result.rs",
+        "begin_line": 962,
+        "end_line": 964
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 206,
+      "lean_name": "V5MerkleUnchangedFull.core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.find",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a T> for core::slice::iter::Iter<'a, T>}::find",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/iter/macros.rs",
+        "begin_line": 343,
+        "end_line": 346
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 153,
+      "lean_name": "V5MerkleUnchangedFull.core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice.next",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a [T]> for core::slice::iter::Windows<'a, T>}::next",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/iter.rs",
+        "begin_line": 1354,
+        "end_line": 1354
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 31,
+      "lean_name": "V5MerkleUnchangedFull.core.slice.Slice.last",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::slice::{[T]}::last",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/mod.rs",
+        "begin_line": 281,
+        "end_line": 281
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 29,
+      "lean_name": "V5MerkleUnchangedFull.core.slice.Slice.windows",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::slice::{[T]}::windows",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/mod.rs",
+        "begin_line": 1116,
+        "end_line": 1116
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 223,
+      "lean_name": "V5MerkleUnchangedFull.alloc.vec.Vec.as_slice",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "alloc::vec::{alloc::vec::Vec<T>}::as_slice",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/alloc/src/vec/mod.rs",
+        "begin_line": 1854,
+        "end_line": 1854
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 144,
+      "lean_name": "V5MerkleUnchangedFull.alloc.vec.Vec.clear",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "alloc::vec::{alloc::vec::Vec<T>}::clear",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/alloc/src/vec/mod.rs",
+        "begin_line": 3028,
+        "end_line": 3028
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 221,
+      "lean_name": "V5MerkleUnchangedFull.alloc.vec.Vec.is_empty",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "alloc::vec::{alloc::vec::Vec<T>}::is_empty",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/alloc/src/vec/mod.rs",
+        "begin_line": 3085,
+        "end_line": 3085
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 6,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.circle_line_merkle.derive_circle_line_query_indices_for_count",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "aspis_core::circle_line_merkle::derive_circle_line_query_indices_for_count",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/circle_line_merkle.rs",
+        "begin_line": 266,
+        "end_line": 269
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 226,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.node_hash",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::merkle::node_hash",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 20,
+        "end_line": 20
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 152,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.Radix4BinaryCapTopology.new.closure.Insts.CoreOpsFunctionFnMutTupleSharedSliceU32Bool.call_mut",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::merkle::{aspis_core::merkle::Radix4BinaryCapTopology}::new::{impl core::ops::function::FnMut<(&'_ [u32],), bool> for aspis_core::merkle::{aspis_core::merkle::Radix4BinaryCapTopology}::new::closure}::call_mut",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 362,
+        "end_line": 362
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 151,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.Radix4BinaryCapTopology.new.closure.Insts.CoreOpsFunctionFnOnceTupleSharedSliceU32Bool.call_once",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::merkle::{aspis_core::merkle::Radix4BinaryCapTopology}::new::{impl core::ops::function::FnOnce<(&'_ [u32],), bool> for aspis_core::merkle::{aspis_core::merkle::Radix4BinaryCapTopology}::new::closure}::call_once",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 362,
+        "end_line": 362
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.Radix4BinaryCapTopology.new_loop0_loop0_loop0.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::merkle::{aspis_core::merkle::Radix4BinaryCapTopology}::new",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 383,
+        "end_line": 410
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 2, "pos": [ 0, 0, 0 ], "is_body": true },
+      "parent_lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.Radix4BinaryCapTopology.new"
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.Radix4BinaryCapTopology.new_loop0_loop0_loop0",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::merkle::{aspis_core::merkle::Radix4BinaryCapTopology}::new",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 383,
+        "end_line": 410
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 2, "pos": [ 0, 0, 0 ], "is_body": false },
+      "parent_lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.Radix4BinaryCapTopology.new"
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.Radix4BinaryCapTopology.new_loop0_loop0.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::merkle::{aspis_core::merkle::Radix4BinaryCapTopology}::new",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 380,
+        "end_line": 410
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 0, 0 ], "is_body": true },
+      "parent_lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.Radix4BinaryCapTopology.new"
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.Radix4BinaryCapTopology.new_loop0_loop0",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::merkle::{aspis_core::merkle::Radix4BinaryCapTopology}::new",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 380,
+        "end_line": 410
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 0, 0 ], "is_body": false },
+      "parent_lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.Radix4BinaryCapTopology.new"
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.Radix4BinaryCapTopology.new_loop0.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::merkle::{aspis_core::merkle::Radix4BinaryCapTopology}::new",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 377,
+        "end_line": 410
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.Radix4BinaryCapTopology.new"
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.Radix4BinaryCapTopology.new_loop0",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::merkle::{aspis_core::merkle::Radix4BinaryCapTopology}::new",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 377,
+        "end_line": 410
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.Radix4BinaryCapTopology.new"
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.Radix4BinaryCapTopology.new",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::merkle::{aspis_core::merkle::Radix4BinaryCapTopology}::new",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 358,
+        "end_line": 358
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 204,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.Radix4BinaryCapTopology.impl.level_indices",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::merkle::{aspis_core::merkle::Radix4BinaryCapTopology}::level_indices",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 412,
+        "end_line": 412
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 222,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.Radix4BinaryCapTopology.impl.group_masks",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::merkle::{aspis_core::merkle::Radix4BinaryCapTopology}::group_masks",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 420,
+        "end_line": 420
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 140,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.Radix4BinaryCapTopology.matched_suffix",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::merkle::{aspis_core::merkle::Radix4BinaryCapTopology}::matched_suffix",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 429,
+        "end_line": 434
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 149,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.verify_radix4_binary_cap_with_matched_topology_loop0_loop0_loop0.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::merkle::verify_radix4_binary_cap_with_matched_topology",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 504,
+        "end_line": 527
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 2, "pos": [ 0, 0, 0 ], "is_body": true },
+      "parent_lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.verify_radix4_binary_cap_with_matched_topology"
+    },
+    {
+      "def_id": 149,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.verify_radix4_binary_cap_with_matched_topology_loop0_loop0_loop0",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::merkle::verify_radix4_binary_cap_with_matched_topology",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 504,
+        "end_line": 527
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 2, "pos": [ 0, 0, 0 ], "is_body": false },
+      "parent_lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.verify_radix4_binary_cap_with_matched_topology"
+    },
+    {
+      "def_id": 149,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.verify_radix4_binary_cap_with_matched_topology_loop0_loop0.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::merkle::verify_radix4_binary_cap_with_matched_topology",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 498,
+        "end_line": 532
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 0, 0 ], "is_body": true },
+      "parent_lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.verify_radix4_binary_cap_with_matched_topology"
+    },
+    {
+      "def_id": 149,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.verify_radix4_binary_cap_with_matched_topology_loop0_loop0",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::merkle::verify_radix4_binary_cap_with_matched_topology",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 498,
+        "end_line": 532
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 0, 0 ], "is_body": false },
+      "parent_lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.verify_radix4_binary_cap_with_matched_topology"
+    },
+    {
+      "def_id": 149,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.verify_radix4_binary_cap_with_matched_topology_loop0.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::merkle::verify_radix4_binary_cap_with_matched_topology",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 498,
+        "end_line": 564
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.verify_radix4_binary_cap_with_matched_topology"
+    },
+    {
+      "def_id": 149,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.verify_radix4_binary_cap_with_matched_topology_loop0",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::merkle::verify_radix4_binary_cap_with_matched_topology",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 498,
+        "end_line": 564
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.verify_radix4_binary_cap_with_matched_topology"
+    },
+    {
+      "def_id": 149,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.verify_radix4_binary_cap_with_matched_topology",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::merkle::verify_radix4_binary_cap_with_matched_topology",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 481,
+        "end_line": 488
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 148,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_merkle.private_leaf_hash_record",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_merkle::private_leaf_hash_record",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_merkle.rs",
+        "begin_line": 18,
+        "end_line": 18
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 145,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.StateOnlyPrivateOpening.record_width",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_openings::{aspis_core::state_only_private_openings::StateOnlyPrivateOpening<'a>}::record_width",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 55,
+        "end_line": 55
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 209,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.Cursor.new",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_openings::{aspis_core::state_only_private_openings::Cursor<'a>}::new",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 97,
+        "end_line": 97
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 213,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.Cursor.take",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_openings::{aspis_core::state_only_private_openings::Cursor<'a>}::take",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 101,
+        "end_line": 101
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 210,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.Cursor.u16",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_openings::{aspis_core::state_only_private_openings::Cursor<'a>}::u16",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 117,
+        "end_line": 117
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 214,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.Cursor.u32",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_openings::{aspis_core::state_only_private_openings::Cursor<'a>}::u32",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 121,
+        "end_line": 121
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 247,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.validate_shape.closure.Insts.CoreOpsFunctionFnMutTupleSharedSharedU32Bool.call_mut",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_openings::validate_shape::{impl core::ops::function::FnMut<(&'_ &'_ u32,), bool> for aspis_core::state_only_private_openings::validate_shape::closure<'_0>}::call_mut",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 153,
+        "end_line": 153
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 246,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.validate_shape.closure.Insts.CoreOpsFunctionFnOnceTupleSharedSharedU32Bool.call_once",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_openings::validate_shape::{impl core::ops::function::FnOnce<(&'_ &'_ u32,), bool> for aspis_core::state_only_private_openings::validate_shape::closure<'_0>}::call_once",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 153,
+        "end_line": 153
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 141,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.validate_shape_loop.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_openings::validate_shape",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 147,
+        "end_line": 157
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.validate_shape"
+    },
+    {
+      "def_id": 141,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.validate_shape_loop",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_openings::validate_shape",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 147,
+        "end_line": 157
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.validate_shape"
+    },
+    {
+      "def_id": 141,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.validate_shape",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_openings::validate_shape",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 126,
+        "end_line": 130
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 212,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.checked_section_len",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_openings::checked_section_len",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 159,
+        "end_line": 159
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 143,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.parse_private_opening_from_proof",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_openings::parse_private_opening_from_proof",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 165,
+        "end_line": 169
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology_loop0.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 279,
+        "end_line": 281
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology"
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology_loop0",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 279,
+        "end_line": 281
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology"
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology_loop1.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 279,
+        "end_line": 281
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 1 ], "is_body": true },
+      "parent_lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology"
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology_loop1",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 279,
+        "end_line": 281
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 1 ], "is_body": false },
+      "parent_lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology"
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology_loop2.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 279,
+        "end_line": 281
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 2, "pos": [ 2 ], "is_body": true },
+      "parent_lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology"
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology_loop2",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 279,
+        "end_line": 281
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 2, "pos": [ 2 ], "is_body": false },
+      "parent_lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology"
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology_loop3.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 279,
+        "end_line": 281
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 3, "pos": [ 3 ], "is_body": true },
+      "parent_lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology"
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology_loop3",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 279,
+        "end_line": 281
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 3, "pos": [ 3 ], "is_body": false },
+      "parent_lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology"
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_openings::verify_state_only_private_opening_from_proof_with_topology",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 250,
+        "end_line": 262
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V5MerkleUnchangedFull.private_openings.V5PrivateOpeningRoots.as_array",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::{v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningRoots}::as_array",
+      "is_local": true,
+      "source": {
+        "file": "src/../../../../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 41,
+        "end_line": 49
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 27,
+      "lean_name": "V5MerkleUnchangedFull.private_openings.V5PrivateOpeningError.Insts.CoreConvertFromCircleLineMerkleError.from",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::{impl core::convert::From<aspis_core::circle_line_merkle::CircleLineMerkleError> for v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError}::from",
+      "is_local": true,
+      "source": {
+        "file": "src/../../../../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 67,
+        "end_line": 69
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 24,
+      "lean_name": "V5MerkleUnchangedFull.private_openings.verify_v5_private_openings_from_proof.closure.Insts.CoreOpsFunctionFnOnceTupleStateOnlyPrivateOpeningErrorV5PrivateOpeningError.call_once",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::{impl core::ops::function::FnOnce<(aspis_core::state_only_private_openings::StateOnlyPrivateOpeningError,), v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError> for v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure<'_0>}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "src/../../../../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 118,
+        "end_line": 121
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V5MerkleUnchangedFull.private_openings.verify_v5_private_openings_from_proof_loop.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof",
+      "is_local": true,
+      "source": {
+        "file": "src/../../../../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 104,
+        "end_line": 136
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "V5MerkleUnchangedFull.private_openings.verify_v5_private_openings_from_proof"
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V5MerkleUnchangedFull.private_openings.verify_v5_private_openings_from_proof_loop",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof",
+      "is_local": true,
+      "source": {
+        "file": "src/../../../../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 104,
+        "end_line": 136
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "V5MerkleUnchangedFull.private_openings.verify_v5_private_openings_from_proof"
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V5MerkleUnchangedFull.private_openings.verify_v5_private_openings_from_proof",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof",
+      "is_local": true,
+      "source": {
+        "file": "src/../../../../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 83,
+        "end_line": 136
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V5MerkleUnchangedFull.private_openings.verify_v5_private_openings",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings",
+      "is_local": true,
+      "source": {
+        "file": "src/../../../../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 139,
+        "end_line": 154
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    }
+  ],
+  "types": [
+    {
+      "def_id": 17,
+      "lean_name": "V5MerkleUnchangedFull.core.slice.iter.Windows",
+      "lean_file": "TypesExternal_Template.lean",
+      "rust_name": "core::slice::iter::Windows",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/iter.rs",
+        "begin_line": 1329,
+        "end_line": 1329
+      }
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.circle_line_merkle.CircleLineMerkleError",
+      "lean_file": "Types.lean",
+      "rust_name": "aspis_core::circle_line_merkle::CircleLineMerkleError",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/circle_line_merkle.rs",
+        "begin_line": 58,
+        "end_line": 58
+      }
+    },
+    {
+      "def_id": 7,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.circle_line_merkle.CircleLineQueryIndices",
+      "lean_file": "Types.lean",
+      "rust_name": "aspis_core::circle_line_merkle::CircleLineQueryIndices",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/circle_line_merkle.rs",
+        "begin_line": 102,
+        "end_line": 102
+      }
+    },
+    {
+      "def_id": 12,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.Radix4BinaryCapTopology",
+      "lean_file": "Types.lean",
+      "rust_name": "aspis_core::merkle::Radix4BinaryCapTopology",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 334,
+        "end_line": 334
+      }
+    },
+    {
+      "def_id": 49,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.MatchedRadix4BinaryCapSuffix",
+      "lean_file": "Types.lean",
+      "rust_name": "aspis_core::merkle::MatchedRadix4BinaryCapSuffix",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 348,
+        "end_line": 348
+      }
+    },
+    {
+      "def_id": 18,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.Radix4BinaryCapTopology.new.closure",
+      "lean_file": "Types.lean",
+      "rust_name": "aspis_core::merkle::{aspis_core::merkle::Radix4BinaryCapTopology}::new::closure",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 362,
+        "end_line": 362
+      }
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.StateOnlyPrivateOpeningError",
+      "lean_file": "Types.lean",
+      "rust_name": "aspis_core::state_only_private_openings::StateOnlyPrivateOpeningError",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 21,
+        "end_line": 21
+      }
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.StateOnlyPrivateOpeningOffsets",
+      "lean_file": "Types.lean",
+      "rust_name": "aspis_core::state_only_private_openings::StateOnlyPrivateOpeningOffsets",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 36,
+        "end_line": 36
+      }
+    },
+    {
+      "def_id": 6,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.StateOnlyPrivateOpening",
+      "lean_file": "Types.lean",
+      "rust_name": "aspis_core::state_only_private_openings::StateOnlyPrivateOpening",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 46,
+        "end_line": 46
+      }
+    },
+    {
+      "def_id": 63,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.Cursor",
+      "lean_file": "Types.lean",
+      "rust_name": "aspis_core::state_only_private_openings::Cursor",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 91,
+        "end_line": 91
+      }
+    },
+    {
+      "def_id": 62,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.validate_shape.closure",
+      "lean_file": "Types.lean",
+      "rust_name": "aspis_core::state_only_private_openings::validate_shape::closure",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 153,
+        "end_line": 153
+      }
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V5MerkleUnchangedFull.private_openings.V5PrivateOpeningRoots",
+      "lean_file": "Types.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningRoots",
+      "is_local": true,
+      "source": {
+        "file": "src/../../../../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 34,
+        "end_line": 38
+      }
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V5MerkleUnchangedFull.private_openings.V5PrivateOpeningError",
+      "lean_file": "Types.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError",
+      "is_local": true,
+      "source": {
+        "file": "src/../../../../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 53,
+        "end_line": 64
+      }
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V5MerkleUnchangedFull.private_openings.VerifiedV5PrivateOpenings",
+      "lean_file": "Types.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::VerifiedV5PrivateOpenings",
+      "is_local": true,
+      "source": {
+        "file": "src/../../../../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 73,
+        "end_line": 79
+      }
+    },
+    {
+      "def_id": 15,
+      "lean_name": "V5MerkleUnchangedFull.private_openings.verify_v5_private_openings_from_proof.closure",
+      "lean_file": "Types.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure",
+      "is_local": true,
+      "source": {
+        "file": "src/../../../../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 118,
+        "end_line": 121
+      }
+    }
+  ],
+  "globals": [
+    {
+      "def_id": 13,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.circle_line_merkle.CIRCLE_LINE_TAGS",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "aspis_core::circle_line_merkle::CIRCLE_LINE_TAGS",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/circle_line_merkle.rs",
+        "begin_line": 18,
+        "end_line": 18
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.circle_merkle.CIRCLE_C1_LAYER0_TAG",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "aspis_core::circle_merkle::CIRCLE_C1_LAYER0_TAG",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/circle_merkle.rs",
+        "begin_line": 21,
+        "end_line": 21
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 15,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.circle_merkle.CIRCLE_C2_LAYER0_TAG",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "aspis_core::circle_merkle::CIRCLE_C2_LAYER0_TAG",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/circle_merkle.rs",
+        "begin_line": 22,
+        "end_line": 22
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 31,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.DOM_NODE",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::merkle::DOM_NODE",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 13,
+        "end_line": 13
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 19,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.DOM_NODE4",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::merkle::DOM_NODE4",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 14,
+        "end_line": 14
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 18,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_merkle.DOM_LEAF",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_merkle::DOM_LEAF",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_merkle.rs",
+        "begin_line": 9,
+        "end_line": 9
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_merkle.STATE_ONLY_PRIVATE_LEAF_SALT_BYTES",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_merkle::STATE_ONLY_PRIVATE_LEAF_SALT_BYTES",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_merkle.rs",
+        "begin_line": 11,
+        "end_line": 11
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V5MerkleUnchangedFull.private_openings.V5_PRIVATE_LAYER0_LEAVES",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::V5_PRIVATE_LAYER0_LEAVES",
+      "is_local": true,
+      "source": {
+        "file": "src/../../../../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 21,
+        "end_line": 21
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V5MerkleUnchangedFull.private_openings.V5_PRIVATE_SECTION_COUNT",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::V5_PRIVATE_SECTION_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "src/../../../../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 22,
+        "end_line": 22
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V5MerkleUnchangedFull.private_openings.V5_PRIVATE_DEPTHS",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::V5_PRIVATE_DEPTHS",
+      "is_local": true,
+      "source": {
+        "file": "src/../../../../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 23,
+        "end_line": 23
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 4,
+      "lean_name": "V5MerkleUnchangedFull.private_openings.V5_PRIVATE_VALUE_WIDTHS",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::V5_PRIVATE_VALUE_WIDTHS",
+      "is_local": true,
+      "source": {
+        "file": "src/../../../../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 24,
+        "end_line": 24
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V5MerkleUnchangedFull.private_openings.V5_PRIVATE_TREE_TAGS",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::V5_PRIVATE_TREE_TAGS",
+      "is_local": true,
+      "source": {
+        "file": "src/../../../../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 25,
+        "end_line": 31
+      },
+      "can_fail": true
+    }
+  ],
+  "trait_decls": [],
+  "trait_impls": [
+    {
+      "def_id": 43,
+      "lean_name": "V5MerkleUnchangedFull.Slice.Insts.CoreCmpPartialEqSlice",
+      "lean_file": "Funs.lean",
+      "rust_name": "core::slice::cmp::{impl core::cmp::PartialEq<[U]> for [T]}",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/cmp.rs",
+        "begin_line": 14,
+        "end_line": 16
+      },
+      "impl_trait_def_id": 24,
+      "impl_trait_rust_name": "core::cmp::PartialEq",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 22,
+      "lean_name": "V5MerkleUnchangedFull.core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice",
+      "lean_file": "Funs.lean",
+      "rust_name": "core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a [T]> for core::slice::iter::Windows<'a, T>}",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/iter.rs",
+        "begin_line": 1350,
+        "end_line": 1350
+      },
+      "impl_trait_def_id": 2,
+      "impl_trait_rust_name": "core::iter::traits::iterator::Iterator",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 20,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.Radix4BinaryCapTopology.new.closure.Insts.CoreOpsFunctionFnOnceTupleSharedSliceU32Bool",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::merkle::{aspis_core::merkle::Radix4BinaryCapTopology}::new::{impl core::ops::function::FnOnce<(&'_ [u32],), bool> for aspis_core::merkle::{aspis_core::merkle::Radix4BinaryCapTopology}::new::closure}",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 362,
+        "end_line": 362
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 21,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.merkle.Radix4BinaryCapTopology.new.closure.Insts.CoreOpsFunctionFnMutTupleSharedSliceU32Bool",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::merkle::{aspis_core::merkle::Radix4BinaryCapTopology}::new::{impl core::ops::function::FnMut<(&'_ [u32],), bool> for aspis_core::merkle::{aspis_core::merkle::Radix4BinaryCapTopology}::new::closure}",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/merkle.rs",
+        "begin_line": 362,
+        "end_line": 362
+      },
+      "impl_trait_def_id": 9,
+      "impl_trait_rust_name": "core::ops::function::FnMut",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 44,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.validate_shape.closure.Insts.CoreOpsFunctionFnOnceTupleSharedSharedU32Bool",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_openings::validate_shape::{impl core::ops::function::FnOnce<(&'_ &'_ u32,), bool> for aspis_core::state_only_private_openings::validate_shape::closure<'_0>}",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 153,
+        "end_line": 153
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 45,
+      "lean_name": "V5MerkleUnchangedFull.aspis_core.state_only_private_openings.validate_shape.closure.Insts.CoreOpsFunctionFnMutTupleSharedSharedU32Bool",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::state_only_private_openings::validate_shape::{impl core::ops::function::FnMut<(&'_ &'_ u32,), bool> for aspis_core::state_only_private_openings::validate_shape::closure<'_0>}",
+      "is_local": false,
+      "source": {
+        "file": "/private/tmp/v5-merkle-unchanged-new-aeneas.qX0gvy/repo/crates/aspis-core/src/state_only_private_openings.rs",
+        "begin_line": 153,
+        "end_line": 153
+      },
+      "impl_trait_def_id": 9,
+      "impl_trait_rust_name": "core::ops::function::FnMut",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V5MerkleUnchangedFull.private_openings.V5PrivateOpeningError.Insts.CoreConvertFromCircleLineMerkleError",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::{impl core::convert::From<aspis_core::circle_line_merkle::CircleLineMerkleError> for v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError}",
+      "is_local": true,
+      "source": {
+        "file": "src/../../../../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 66,
+        "end_line": 70
+      },
+      "impl_trait_def_id": 1,
+      "impl_trait_rust_name": "core::convert::From",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 7,
+      "lean_name": "V5MerkleUnchangedFull.private_openings.verify_v5_private_openings_from_proof.closure.Insts.CoreOpsFunctionFnOnceTupleStateOnlyPrivateOpeningErrorV5PrivateOpeningError",
+      "lean_file": "Funs.lean",
+      "rust_name": "v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::{impl core::ops::function::FnOnce<(aspis_core::state_only_private_openings::StateOnlyPrivateOpeningError,), v5_merkle_fixed_hash_adapter::private_openings::V5PrivateOpeningError> for v5_merkle_fixed_hash_adapter::private_openings::verify_v5_private_openings_from_proof::closure<'_0>}",
+      "is_local": true,
+      "source": {
+        "file": "src/../../../../programs/aspis-verifier/src/v5_private_openings.rs",
+        "begin_line": 118,
+        "end_line": 121
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    }
+  ]
+}
