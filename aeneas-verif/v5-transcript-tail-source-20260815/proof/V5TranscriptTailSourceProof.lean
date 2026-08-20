@@ -210,7 +210,93 @@ theorem generated_tail_success_returns_exact_decodes_and_queries
           subst queries
           exact ⟨rfl, rfl⟩
 
+/-! ## Exact transcript-call observation -/
+
+/-- The four transcript-affecting calls made after the polynomial decoder.
+The nonce helper represents the production work check followed by its absorb;
+the maintained transcript join expands that event into those two operations. -/
+def expectedTailEvents
+    (parsed : v5_cu_probe.ParsedProbeData) (selector : Std.U8) :
+    List TailTranscriptEvent :=
+  [.absorb 19#u8 parsed.v5_final_coefficients.val,
+    .finalNonce parsed.v5_final_nonce,
+    .absorb 44#u8 [selector],
+    .querySample 18#usize 131072#u32 64#usize]
+
+/-- Under the observation meanings supplied to the Aeneas-generated function,
+the four transcript calls append exactly the production label, payload, nonce,
+query count, bound, and draw limit. -/
+theorem exact_observed_tail_calls
+    (transcript : aspis_core.transcript.Transcript)
+    (parsed : v5_cu_probe.ParsedProbeData)
+    (selector : Std.U8) :
+    ∃ afterFinalPolynomial afterNonce afterSelector afterQueries,
+      aspis_core.transcript.Transcript.absorb transcript 19#u8
+          parsed.v5_final_coefficients = .ok afterFinalPolynomial ∧
+      v5_cu_probe.check_and_absorb_real_v5_final_nonce
+          afterFinalPolynomial parsed.v5_final_nonce =
+        .ok (.Ok (), afterNonce) ∧
+      aspis_core.transcript.Transcript.absorb afterNonce 44#u8
+          (Array.to_slice (Array.make 1#usize [selector])) =
+        .ok afterSelector ∧
+      aspis_core.transcript.Transcript.challenge_queries_without_replacement
+          afterSelector 18#usize 131072#u32 64#usize =
+        .ok (.Ok transcript.sampledQueries, afterQueries) ∧
+      afterQueries.events =
+        transcript.events ++ expectedTailEvents parsed selector := by
+  refine ⟨
+    { transcript with events := transcript.events ++
+        [.absorb 19#u8 parsed.v5_final_coefficients.val] },
+    { transcript with events := transcript.events ++
+        [.absorb 19#u8 parsed.v5_final_coefficients.val,
+          .finalNonce parsed.v5_final_nonce] },
+    { transcript with events := transcript.events ++
+        [.absorb 19#u8 parsed.v5_final_coefficients.val,
+          .finalNonce parsed.v5_final_nonce,
+          .absorb 44#u8 [selector]] },
+    { transcript with events := transcript.events ++
+        expectedTailEvents parsed selector }, ?_⟩
+  simp [aspis_core.transcript.Transcript.absorb,
+    v5_cu_probe.check_and_absorb_real_v5_final_nonce,
+    aspis_core.transcript.Transcript.challenge_queries_without_replacement,
+    expectedTailEvents, Array.to_slice, Array.make, List.append_assoc]
+
+/-- A successful generated tail therefore has both the previously proved
+output dataflow and the exact transcript-call observation above. -/
+theorem generated_tail_success_has_exact_calls_and_output
+    (transcript : aspis_core.transcript.Transcript)
+    (parsed : v5_cu_probe.ParsedProbeData)
+    (selector : Std.U8)
+    (polynomial : Array aspis_core.field.QM31 4#usize)
+    (queries : Array Std.U32 18#usize)
+    (success :
+      v5_cu_probe.derive_v5_complete_queries_for_selector_from_transcript
+          transcript parsed selector = .ok (.Ok (polynomial, queries))) :
+    (polynomial.val = [0#usize, 1#usize, 2#usize, 3#usize] ∧
+      queries.val = transcript.sampledQueries.val ∧
+      transcript.sampledQueries.val.length = 18 ∧ selector.val < 3) ∧
+    ∃ afterFinalPolynomial afterNonce afterSelector afterQueries,
+      aspis_core.transcript.Transcript.absorb transcript 19#u8
+          parsed.v5_final_coefficients = .ok afterFinalPolynomial ∧
+      v5_cu_probe.check_and_absorb_real_v5_final_nonce
+          afterFinalPolynomial parsed.v5_final_nonce =
+        .ok (.Ok (), afterNonce) ∧
+      aspis_core.transcript.Transcript.absorb afterNonce 44#u8
+          (Array.to_slice (Array.make 1#usize [selector])) =
+        .ok afterSelector ∧
+      aspis_core.transcript.Transcript.challenge_queries_without_replacement
+          afterSelector 18#usize 131072#u32 64#usize =
+        .ok (.Ok transcript.sampledQueries, afterQueries) ∧
+      afterQueries.events =
+        transcript.events ++ expectedTailEvents parsed selector := by
+  exact ⟨
+    generated_tail_success_returns_exact_decodes_and_queries
+      transcript parsed selector polynomial queries success,
+    exact_observed_tail_calls transcript parsed selector⟩
+
 #print axioms exact_tail_constants
 #print axioms generated_tail_success_returns_exact_decodes_and_queries
+#print axioms exact_observed_tail_calls
+#print axioms generated_tail_success_has_exact_calls_and_output
 
 end AspisV5TranscriptTailSourceProof

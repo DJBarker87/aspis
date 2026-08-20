@@ -45,17 +45,20 @@ def aspis_core.transcript.label.M31_STATE_ONLY_QUERY_CANDIDATE :
 
 def aspis_core.transcript.Transcript.absorb
     (transcript : aspis_core.transcript.Transcript)
-    (_label : Std.U8) (_payload : Slice Std.U8) :
+    (label : Std.U8) (payload : Slice Std.U8) :
     Result aspis_core.transcript.Transcript :=
-  ok transcript
+  ok { transcript with
+    events := transcript.events ++ [.absorb label payload.val] }
 
 def aspis_core.transcript.Transcript.challenge_queries_without_replacement
     (transcript : aspis_core.transcript.Transcript)
-    (_count : Std.Usize) (_bound : Std.U32) (_drawLimit : Std.Usize) :
+    (count : Std.Usize) (bound : Std.U32) (drawLimit : Std.Usize) :
     Result ((core.result.Result (alloc.vec.Vec Std.U32)
       aspis_core.transcript.QuerySampleError) ×
       aspis_core.transcript.Transcript) :=
-  ok (.Ok transcript.sampledQueries, transcript)
+  ok (.Ok transcript.sampledQueries,
+    { transcript with
+      events := transcript.events ++ [.querySample count bound drawLimit] })
 
 def v5_cu_probe.V5_CU_PROBE_QUERY_COUNT : Result Std.Usize :=
   ok 18#usize
@@ -64,10 +67,12 @@ def v5_cu_probe.QM31_BYTES : Result Std.Usize :=
   ok 16#usize
 
 def v5_cu_probe.check_and_absorb_real_v5_final_nonce
-    (transcript : aspis_core.transcript.Transcript) (_nonce : Std.U64) :
+    (transcript : aspis_core.transcript.Transcript) (nonce : Std.U64) :
     Result ((core.result.Result Unit solana_program_error.ProgramError) ×
       aspis_core.transcript.Transcript) :=
-  ok (.Ok (), transcript)
+  ok (.Ok (),
+    { transcript with
+      events := transcript.events ++ [.finalNonce nonce] })
 
 def v5_cu_probe.decode_qm31
     (_bytes : Slice Std.U8) (index : Std.Usize) :

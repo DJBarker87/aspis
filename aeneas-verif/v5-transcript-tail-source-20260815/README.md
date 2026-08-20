@@ -22,9 +22,12 @@ prove that every successful translated execution:
 
 The external Lean definitions are deliberately observational. A decoded field
 value is represented by its decoder index, and a transcript carries a supplied
-query vector. This proves call order and data flow. It does not assume or prove
-field decoding, SHA-256, Fiat-Shamir security, or the probability distribution
-of the supplied queries.
+query vector. The transcript observer now also records the final-polynomial
+absorb, final work helper, selector absorb, and query-sampler call. The checked
+theorem proves their exact labels, payloads, nonce, query count, `2^17` bound,
+and draw limit on every successful generated execution. This proves call order
+and data flow. It does not assume or prove field decoding, SHA-256,
+Fiat-Shamir security, or the probability distribution of the supplied queries.
 
 ## Remaining source boundary
 
