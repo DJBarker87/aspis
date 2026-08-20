@@ -58,6 +58,14 @@ accepted run exposes the four active round bodies in the released order
 The tail theorem then exposes the exact final-coefficient decoder, the main
 and additive production dot calls, and the equality of their sum with the
 running claim.
+
+`V5RelationTopLevelSuccessInversion.lean` carries that result through the
+outermost generated function.  An accepted top-level call must finish the
+real two-point circle-reading loop and then enter the real four-round relation
+loop.  A decoding error, a failed circle equation, or any other early return
+cannot produce an accepted result.  This closes the remaining control-flow
+step between the extracted top-level Rust function and the round proof.
+
 This removes an assumption about how a successful translated loop was reached;
 it does not replace the remaining semantic proof about the weight accumulator.
 
