@@ -101,6 +101,17 @@ read the maintained schedule. The remaining source input to this composition
 is the parser-output theorem connecting the returned Rust opening views and
 index arrays to the authenticated run.
 
+## Opening-byte adapter
+
+`V5FriConsumerValueAdapter.lean` connects each successful generated Rust
+opening accessor call to the byte-level returned-opening model used by the
+authenticated FRI schedule. In particular,
+`generatedOpeningToReturned_value_of_success` proves that a successful
+`StateOnlyPrivateOpening::value(ordinal)` call returns exactly the model's
+value bytes at the same ordinal, assuming the parser-established record-width
+and record-length bounds. The proof unfolds the generated checked arithmetic
+and slice access; it is not a trace-test assumption.
+
 ## Opaque called operations
 
 The generated translation treats several called operations as opaque:
@@ -126,5 +137,6 @@ AENEAS_LEAN_LIB=/path/to/aeneas/backends/lean/.lake/build/lib/lean \
 
 The replay checks all recorded source and generated-file identities and then
 compiles the generated definitions, the complete accepted-execution proof,
-and the maintained observation bridge. It does not regenerate the LLBC; that
-requires the pinned Charon/Aeneas extraction environment.
+the maintained observation bridge, and the byte/accessor adapter. It does not
+regenerate the LLBC; that requires the pinned Charon/Aeneas extraction
+environment.

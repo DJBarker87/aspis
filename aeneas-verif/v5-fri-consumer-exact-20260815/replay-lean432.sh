@@ -7,6 +7,7 @@ readonly generated="$bundle/generated/CheckV5FriQueries"
 readonly proof="$bundle/proof/V5FriConsumerExactProof.lean"
 readonly end_to_end_proof="$bundle/proof/V5FriConsumerEndToEndProof.lean"
 readonly observation_bridge="$bundle/proof/V5FriConsumerObservationBridge.lean"
+readonly value_adapter="$bundle/proof/V5FriConsumerValueAdapter.lean"
 readonly lean_bin="${LEAN432_BIN:-$(command -v lean)}"
 readonly aeneas_lib="${AENEAS_LEAN_LIB:?set AENEAS_LEAN_LIB to the matching Aeneas Lean library}"
 
@@ -69,9 +70,10 @@ compile CheckV5FriQueries/Funs "$generated/Funs.lean"
 compile V5FriConsumerExactProof "$proof"
 compile V5FriConsumerEndToEndProof "$end_to_end_proof"
 compile V5FriConsumerObservationBridge "$observation_bridge"
+compile V5FriConsumerValueAdapter "$value_adapter"
 
 if rg -n '\b(sorry|admit|native_decide|unsafe|ofReduceBool)\b' \
-    "$proof" "$end_to_end_proof" "$observation_bridge"; then
+    "$proof" "$end_to_end_proof" "$observation_bridge" "$value_adapter"; then
   echo "forbidden proof shortcut" >&2
   exit 1
 fi
