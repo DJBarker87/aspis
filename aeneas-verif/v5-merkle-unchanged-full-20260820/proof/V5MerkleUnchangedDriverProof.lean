@@ -647,6 +647,30 @@ structure GeneratedFiveCallTrace
   call4 : GeneratedSectionCall hash s4 roots topology 4#usize 3#usize
     level4 next4 level5 next5 remainder4 finalRemainder parsed4 finalParsed
 
+/-- Once each helper identifies the literal section prefix it consumed, the
+five threaded remainders and the public empty-remainder check imply that the
+entire proof slice is exactly the five section encodings in source order. -/
+theorem GeneratedFiveCallTrace.proof_bytes_eq_five_sections
+    {hash : Slice (Slice Std.U8) → Digest}
+    {s0 s1 s2 s3 s4 : Slice Std.U32}
+    {roots : Array Digest 5#usize} {topology : Topology}
+    {level0 next0 : HashBuffer} {proofBytes : Slice Std.U8}
+    {parsed0 : Array (Option Opening) 5#usize}
+    {finalRemainder : Slice Std.U8}
+    {finalParsed : Array (Option Opening) 5#usize}
+    (trace : GeneratedFiveCallTrace hash s0 s1 s2 s3 s4 roots topology
+      level0 next0 proofBytes parsed0 finalRemainder finalParsed)
+    (wire0 wire1 wire2 wire3 wire4 : List Std.U8)
+    (h0 : proofBytes.val = wire0 ++ trace.remainder1.val)
+    (h1 : trace.remainder1.val = wire1 ++ trace.remainder2.val)
+    (h2 : trace.remainder2.val = wire2 ++ trace.remainder3.val)
+    (h3 : trace.remainder3.val = wire3 ++ trace.remainder4.val)
+    (h4 : trace.remainder4.val = wire4 ++ finalRemainder.val)
+    (hempty : finalRemainder.val = []) :
+    proofBytes.val = wire0 ++ wire1 ++ wire2 ++ wire3 ++ wire4 := by
+  rw [h0, h1, h2, h3, h4, hempty]
+  simp only [List.append_assoc, List.append_nil]
+
 /-- A successful result from the exact Aeneas translation of the unchanged
 production `0..5` loop determines all five helper calls in source order. -/
 theorem generated_loop_success_yields_five_call_trace
@@ -978,6 +1002,7 @@ theorem generated_verify_success_yields_call_trace
 #print axioms range_next_0
 #print axioms range_next_5
 #print axioms generated_loop_ne_some_ok
+#print axioms GeneratedFiveCallTrace.proof_bytes_eq_five_sections
 #print axioms generated_loop_success_yields_five_call_trace
 #print axioms generated_from_proof_success_yields_call_trace
 #print axioms generated_verify_success_iff_from_proof_success_empty
