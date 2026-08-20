@@ -1128,6 +1128,253 @@ decreasing_by
   rw [hnextValue]
   omega
 
+/-- Every continuation of an active later-layer body uses exactly the
+iterator returned by the production `enumerate().next()` call. -/
+theorem production_later_cont_iter_exact
+    (later : Array Opening 3#usize)
+    (laterIndices : Array (alloc.vec.Vec Std.U32) 3#usize)
+    (finalPolynomial : Array aspis_core.field.QM31 4#usize)
+    (coordinates : aspis_core.circle_fri.DerivedCircleQueryFoldInverses)
+    (alphaPowers : Array
+      (Array aspis_core.field.PreparedQm31Multiplier 3#usize) 4#usize)
+    (layer : Std.Usize)
+    (pending : Option
+      (core.result.Result fri_checks.V5FriCheckSink fri_checks.V5FriCheckError))
+    (iter iterNext iterOut :
+      core.iter.adapters.enumerate.Enumerate
+        (core.slice.iter.Iter Std.U32))
+    (carried carriedOut ordinal : Std.Usize) (index : Std.U32)
+    (hnext :
+      core.iter.adapters.enumerate.IteratorEnumerate.next
+          (core.iter.traits.iterator.IteratorSliceIter Std.U32) iter =
+        .ok (some (ordinal, index), iterNext))
+    (hrun :
+      fri_checks.check_v5_fri_queries_loop0_loop0_loop0.body later
+          laterIndices finalPolynomial coordinates alphaPowers layer pending
+          iter carried = .ok (.cont (iterOut, carriedOut))) :
+    iterOut = iterNext := by
+  unfold fri_checks.check_v5_fri_queries_loop0_loop0_loop0.body at hrun
+  rw [hnext] at hrun
+  simp only [bind_tc_ok] at hrun
+  repeat' first
+    | split at hrun
+    | simp_all [Bind.bind, Aeneas.Std.bind, Std.lift,
+        core.option.Option.ok_or,
+        core.result.Result.Insts.CoreOpsTry.branch,
+        core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+        core.convert.FromSame, core.convert.FromSame.from]
+
+/-- An active later-layer body can reject or continue, but the production
+source assigns completion flag one only after the iterator is exhausted. -/
+theorem production_inner_active_body_ne_completed
+    (later : Array Opening 3#usize)
+    (laterIndices : Array (alloc.vec.Vec Std.U32) 3#usize)
+    (finalPolynomial : Array aspis_core.field.QM31 4#usize)
+    (coordinates coordinatesOut :
+      aspis_core.circle_fri.DerivedCircleQueryFoldInverses)
+    (alphaPowers : Array
+      (Array aspis_core.field.PreparedQm31Multiplier 3#usize) 4#usize)
+    (layer : Std.Usize)
+    (pending pendingOut : Option
+      (core.result.Result fri_checks.V5FriCheckSink fri_checks.V5FriCheckError))
+    (iter iterNext :
+      core.iter.adapters.enumerate.Enumerate
+        (core.slice.iter.Iter Std.U32))
+    (carried ordinal : Std.Usize) (index : Std.U32)
+    (hnext :
+      core.iter.adapters.enumerate.IteratorEnumerate.next
+          (core.iter.traits.iterator.IteratorSliceIter Std.U32) iter =
+        .ok (some (ordinal, index), iterNext)) :
+    fri_checks.check_v5_fri_queries_loop0_loop0_loop0.body later
+        laterIndices finalPolynomial coordinates alphaPowers layer pending
+        iter carried ≠ .ok (.done (coordinatesOut, pendingOut, 1#u32)) := by
+  intro hrun
+  unfold fri_checks.check_v5_fri_queries_loop0_loop0_loop0.body at hrun
+  rw [hnext] at hrun
+  simp only [bind_tc_ok] at hrun
+  repeat' first
+    | split at hrun
+    | simp_all [Bind.bind, Aeneas.Std.bind, Std.lift,
+        core.option.Option.ok_or,
+        core.result.Result.Insts.CoreOpsTry.branch,
+        core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+        core.convert.FromSame, core.convert.FromSame.from]
+
+/-- Peeling an active iteration from a later-layer loop which eventually
+completes proves that the body continued with the exact next iterator. -/
+theorem production_inner_completed_loop_head
+    (later : Array Opening 3#usize)
+    (laterIndices : Array (alloc.vec.Vec Std.U32) 3#usize)
+    (finalPolynomial : Array aspis_core.field.QM31 4#usize)
+    (coordinates coordinatesOut :
+      aspis_core.circle_fri.DerivedCircleQueryFoldInverses)
+    (alphaPowers : Array
+      (Array aspis_core.field.PreparedQm31Multiplier 3#usize) 4#usize)
+    (layer : Std.Usize)
+    (pending pendingOut : Option
+      (core.result.Result fri_checks.V5FriCheckSink fri_checks.V5FriCheckError))
+    (iter iterNext :
+      core.iter.adapters.enumerate.Enumerate
+        (core.slice.iter.Iter Std.U32))
+    (carried ordinal : Std.Usize) (index : Std.U32)
+    (hnext :
+      core.iter.adapters.enumerate.IteratorEnumerate.next
+          (core.iter.traits.iterator.IteratorSliceIter Std.U32) iter =
+        .ok (some (ordinal, index), iterNext))
+    (hloop :
+      fri_checks.check_v5_fri_queries_loop0_loop0_loop0 iter later
+          laterIndices finalPolynomial coordinates alphaPowers layer carried
+          pending = .ok (coordinatesOut, pendingOut, 1#u32)) :
+    ∃ carriedNext,
+      fri_checks.check_v5_fri_queries_loop0_loop0_loop0.body later
+          laterIndices finalPolynomial coordinates alphaPowers layer pending
+          iter carried = .ok (.cont (iterNext, carriedNext)) ∧
+      fri_checks.check_v5_fri_queries_loop0_loop0_loop0 iterNext later
+          laterIndices finalPolynomial coordinates alphaPowers layer
+          carriedNext pending = .ok (coordinatesOut, pendingOut, 1#u32) := by
+  unfold fri_checks.check_v5_fri_queries_loop0_loop0_loop0 at hloop
+  rw [loop.eq_def] at hloop
+  simp only at hloop
+  generalize hbody :
+      fri_checks.check_v5_fri_queries_loop0_loop0_loop0.body later
+        laterIndices finalPolynomial coordinates alphaPowers layer pending iter
+        carried = bodyResult at hloop
+  cases bodyResult with
+  | fail error => simp [Bind.bind, Aeneas.Std.bind] at hloop
+  | div => simp [Bind.bind, Aeneas.Std.bind] at hloop
+  | ok flow =>
+    cases flow with
+    | cont nextState =>
+      rcases nextState with ⟨nextIter, carriedNext⟩
+      simp only [bind_tc_ok] at hloop
+      have hiter := production_later_cont_iter_exact later laterIndices
+        finalPolynomial coordinates alphaPowers layer pending iter iterNext
+        nextIter carried carriedNext ordinal index hnext hbody
+      subst nextIter
+      refine ⟨carriedNext, ?_, hloop⟩
+      simpa using hbody
+    | done output =>
+      rcases output with ⟨coordinatesDone, pendingDone, flagDone⟩
+      simp only [bind_tc_ok, Result.ok.injEq, Prod.mk.injEq] at hloop
+      have hflag : flagDone = 1#u32 := hloop.2.2
+      have hdone :
+          fri_checks.check_v5_fri_queries_loop0_loop0_loop0.body later
+            laterIndices finalPolynomial coordinates alphaPowers layer pending
+            iter carried =
+              .ok (.done (coordinatesDone, pendingDone, 1#u32)) := by
+        simpa [hflag] using hbody
+      exact (production_inner_active_body_ne_completed later laterIndices
+        finalPolynomial coordinates coordinatesDone alphaPowers layer pending
+        pendingDone iter iterNext carried ordinal index hnext hdone).elim
+
+/-- Every active query in either non-terminal later-layer pass is actually
+visited, and both its incoming opening and requested parent opening are read. -/
+theorem production_later_completed_loop_reads_target
+    (later : Array Opening 3#usize)
+    (laterIndices : Array (alloc.vec.Vec Std.U32) 3#usize)
+    (finalPolynomial : Array aspis_core.field.QM31 4#usize)
+    (coordinates coordinatesOut :
+      aspis_core.circle_fri.DerivedCircleQueryFoldInverses)
+    (alphaPowers : Array
+      (Array aspis_core.field.PreparedQm31Multiplier 3#usize) 4#usize)
+    (layer : Std.Usize) (hlayer : layer < 2#usize)
+    (pending pendingOut : Option
+      (core.result.Result fri_checks.V5FriCheckSink fri_checks.V5FriCheckError))
+    (values : Slice Std.U32) (current target : Std.Usize)
+    (carried : Std.Usize)
+    (horder : current.val ≤ target.val)
+    (htarget : target.val < values.val.length)
+    (hloop :
+      fri_checks.check_v5_fri_queries_loop0_loop0_loop0
+          (enumerateSliceAt values current) later laterIndices finalPolynomial
+          coordinates alphaPowers layer carried pending =
+        .ok (coordinatesOut, pendingOut, 1#u32)) :
+    ∃ carriedAt : Std.Usize, ∃ nextPosition : Std.Usize,
+      nextPosition.val = target.val + 1 ∧
+      Nonempty (LaterBodyReadEvidence later laterIndices layer target carriedAt
+        values[target.val]) := by
+  have hcurrent : current.val < values.val.length := by omega
+  obtain ⟨nextPosition, hnextValue, hnext⟩ :=
+    enumerate_slice_at_next_run values current hcurrent
+  obtain ⟨carriedNext, hbody, hloopNext⟩ :=
+    production_inner_completed_loop_head later laterIndices finalPolynomial
+      coordinates coordinatesOut alphaPowers layer pending pendingOut
+      (enumerateSliceAt values current) (enumerateSliceAt values nextPosition)
+      carried current values[current.val] hnext hloop
+  have hevidence := production_later_body_cont_reads later laterIndices
+    finalPolynomial coordinates alphaPowers layer hlayer pending
+    (enumerateSliceAt values current) (enumerateSliceAt values nextPosition)
+    (enumerateSliceAt values nextPosition) carried carriedNext current
+    values[current.val] hnext hbody
+  by_cases heq : current.val = target.val
+  · have hscalar : current = target := UScalar.eq_of_val_eq heq
+    subst target
+    exact ⟨carried, nextPosition, hnextValue, hevidence⟩
+  · apply production_later_completed_loop_reads_target later laterIndices
+      finalPolynomial coordinates coordinatesOut alphaPowers layer hlayer
+      pending pendingOut values nextPosition target carriedNext
+    · rw [hnextValue]
+      omega
+    · exact hloopNext
+termination_by target.val - current.val
+decreasing_by
+  rw [hnextValue]
+  omega
+
+/-- Every active query in the terminal later-layer pass is actually visited
+and its incoming authenticated opening is read at the enumerated ordinal. -/
+theorem production_terminal_completed_loop_reads_target
+    (later : Array Opening 3#usize)
+    (laterIndices : Array (alloc.vec.Vec Std.U32) 3#usize)
+    (finalPolynomial : Array aspis_core.field.QM31 4#usize)
+    (coordinates coordinatesOut :
+      aspis_core.circle_fri.DerivedCircleQueryFoldInverses)
+    (alphaPowers : Array
+      (Array aspis_core.field.PreparedQm31Multiplier 3#usize) 4#usize)
+    (layer : Std.Usize) (hlayer : ¬layer < 2#usize)
+    (pending pendingOut : Option
+      (core.result.Result fri_checks.V5FriCheckSink fri_checks.V5FriCheckError))
+    (values : Slice Std.U32) (current target : Std.Usize)
+    (carried : Std.Usize)
+    (horder : current.val ≤ target.val)
+    (htarget : target.val < values.val.length)
+    (hloop :
+      fri_checks.check_v5_fri_queries_loop0_loop0_loop0
+          (enumerateSliceAt values current) later laterIndices finalPolynomial
+          coordinates alphaPowers layer carried pending =
+        .ok (coordinatesOut, pendingOut, 1#u32)) :
+    ∃ nextPosition : Std.Usize,
+      nextPosition.val = target.val + 1 ∧
+      Nonempty (TerminalBodyReadEvidence later layer target) := by
+  have hcurrent : current.val < values.val.length := by omega
+  obtain ⟨nextPosition, hnextValue, hnext⟩ :=
+    enumerate_slice_at_next_run values current hcurrent
+  obtain ⟨carriedNext, hbody, hloopNext⟩ :=
+    production_inner_completed_loop_head later laterIndices finalPolynomial
+      coordinates coordinatesOut alphaPowers layer pending pendingOut
+      (enumerateSliceAt values current) (enumerateSliceAt values nextPosition)
+      carried current values[current.val] hnext hloop
+  have hevidence := production_terminal_body_cont_reads later laterIndices
+    finalPolynomial coordinates alphaPowers layer hlayer pending
+    (enumerateSliceAt values current) (enumerateSliceAt values nextPosition)
+    (enumerateSliceAt values nextPosition) carried carriedNext current
+    values[current.val] hnext hbody
+  by_cases heq : current.val = target.val
+  · have hscalar : current = target := UScalar.eq_of_val_eq heq
+    subst target
+    exact ⟨nextPosition, hnextValue, hevidence⟩
+  · apply production_terminal_completed_loop_reads_target later laterIndices
+      finalPolynomial coordinates coordinatesOut alphaPowers layer hlayer
+      pending pendingOut values nextPosition target carriedNext
+    · rw [hnextValue]
+      omega
+    · exact htarget
+    · exact hloopNext
+termination_by target.val - current.val
+decreasing_by
+  rw [hnextValue]
+  omega
+
 #print axioms production_monotone_loop_hits
 #print axioms production_opening_value_for_monotone_index_hits
 #print axioms production_layerZero_body_cont_reads
@@ -1136,5 +1383,10 @@ decreasing_by
 #print axioms production_layerZero_active_body_ne_accepting_done
 #print axioms production_layerZero_accepted_loop_head
 #print axioms production_layerZero_accepted_loop_reads_target
+#print axioms production_later_cont_iter_exact
+#print axioms production_inner_active_body_ne_completed
+#print axioms production_inner_completed_loop_head
+#print axioms production_later_completed_loop_reads_target
+#print axioms production_terminal_completed_loop_reads_target
 
 end AspisV5FriConsumerExactProof

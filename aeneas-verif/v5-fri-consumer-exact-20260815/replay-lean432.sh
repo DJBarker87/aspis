@@ -5,6 +5,8 @@ readonly bundle="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 readonly root="$(cd "$bundle/../.." && pwd -P)"
 readonly generated="$bundle/generated/CheckV5FriQueries"
 readonly proof="$bundle/proof/V5FriConsumerExactProof.lean"
+readonly end_to_end_proof="$bundle/proof/V5FriConsumerEndToEndProof.lean"
+readonly observation_bridge="$bundle/proof/V5FriConsumerObservationBridge.lean"
 readonly lean_bin="${LEAN432_BIN:-$(command -v lean)}"
 readonly aeneas_lib="${AENEAS_LEAN_LIB:?set AENEAS_LEAN_LIB to the matching Aeneas Lean library}"
 
@@ -65,8 +67,11 @@ compile CheckV5FriQueries/Types "$generated/Types.lean"
 compile CheckV5FriQueries/FunsExternal "$generated/FunsExternal.lean"
 compile CheckV5FriQueries/Funs "$generated/Funs.lean"
 compile V5FriConsumerExactProof "$proof"
+compile V5FriConsumerEndToEndProof "$end_to_end_proof"
+compile V5FriConsumerObservationBridge "$observation_bridge"
 
-if rg -n '\b(sorry|admit|native_decide|unsafe|ofReduceBool)\b' "$proof"; then
+if rg -n '\b(sorry|admit|native_decide|unsafe|ofReduceBool)\b' \
+    "$proof" "$end_to_end_proof" "$observation_bridge"; then
   echo "forbidden proof shortcut" >&2
   exit 1
 fi
