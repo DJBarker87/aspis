@@ -1,0 +1,62 @@
+--- a/programs/aspis-verifier/src/v5_cu_probe.rs
++++ b/programs/aspis-verifier/src/v5_cu_probe.rs
+@@ -777,6 +777,21 @@ fn v5_relation_final_zero_tail_is_valid(relation_final: &[u8]) -> bool {
+         offset += 1;
+     }
+     true
++}
++
++fn absorb_real_v5_later_root_for_round(
++    transcript: &mut Transcript,
++    parsed: &ParsedProbeData<'_>,
++    round: usize,
++) {
++    if round < parsed.v5_private_roots.later.len() {
++        absorb_real_v5_round_root(
++            transcript,
++            round + 1,
++            &parsed.v5_private_roots.later[round],
++            v5_public_fs_salt(parsed.v5_wire_prefix, round + 2),
++        );
++    }
+ }
+ 
+ fn replay_real_v5_relation_rounds(
+@@ -784,8 +799,10 @@ fn replay_real_v5_relation_rounds(
+     parsed: &ParsedProbeData<'_>,
+ ) -> Result<Transcript, ProgramError> {
+     verify_v5_relation_final_zero_tail(parsed.relation_final)?;
+-    for round in 0..V5_RELATION_STRESS_ROUNDS {
+-        for sample in 0..V5_RELATION_STRESS_OOD_SAMPLES {
++    let mut round = 0usize;
++    while round < V5_RELATION_STRESS_ROUNDS {
++        let mut sample = 0usize;
++        while sample < V5_RELATION_STRESS_OOD_SAMPLES {
+             if round == 0 {
+                 let point = transcript
+                     .challenge_secure_circle_point()
+@@ -835,6 +852,7 @@ fn replay_real_v5_relation_rounds(
+             {
+                 return Err(ProgramError::InvalidAccountData);
+             }
++            sample += 1;
+         }
+ 
+         let sumcheck_start =
+@@ -853,14 +871,8 @@ fn replay_real_v5_relation_rounds(
+         if decode_qm31(parsed.relation_alphas, round)? != alpha {
+             return Err(ProgramError::InvalidAccountData);
+         }
+-        if round < parsed.v5_private_roots.later.len() {
+-            absorb_real_v5_round_root(
+-                &mut transcript,
+-                round + 1,
+-                &parsed.v5_private_roots.later[round],
+-                v5_public_fs_salt(parsed.v5_wire_prefix, round + 2),
+-            );
+-        }
++        absorb_real_v5_later_root_for_round(&mut transcript, parsed, round);
++        round += 1;
+     }
+     Ok(transcript)
+ }

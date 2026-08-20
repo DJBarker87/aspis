@@ -1,0 +1,28 @@
+[package]
+name = "aspis-verifier-kappa-caller-extraction"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[lib]
+path = "../../../programs/aspis-verifier/src/lib.rs"
+
+[features]
+default = ["no-entrypoint", "spend-production", "v5-production-tag67"]
+no-entrypoint = []
+custom-heap = []
+custom-panic = []
+spend-production = ["spend-minimal-dispatch", "spend-dynamic-rate512"]
+spend-minimal-dispatch = []
+spend-dynamic-rate512 = ["aspis-statement/spend-dynamic-rate512"]
+v5-cu-probe = []
+v5-production-tag67 = ["spend-production"]
+
+[dependencies]
+aspis-core = { path = "../../../crates/aspis-core" }
+aspis-statement = { path = "../../../crates/aspis-statement" }
+borsh = { version = "=1.5.7", features = ["derive"] }
+solana-program = "2.3.0"
+
+[workspace]
