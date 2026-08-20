@@ -7,7 +7,7 @@ asks the transcript for 18 query positions.
 
 Charon extracts the unchanged production function. The pinned Aeneas version
 then stops on the four-iteration Rust loop because it does not support `?`
-returns inside loops. For translation only, the checked patch replaces that
+returns inside loops. For translation only, the recorded patch replaces that
 fixed loop with the same four decoder calls written out at indices 0, 1, 2,
 and 3. The production Rust file is not changed.
 
@@ -36,17 +36,18 @@ generated tail has exactly `sourceTail`: final polynomial absorb, final work
 check and absorb, selector absorb, then the query squeeze. No additional
 transcript-order assumption remains in this tail segment.
 
-## Remaining source boundary
+## Source boundary
 
 The only source rewrite in this bundle is the fixed four-step loop expansion.
 Its equivalence to the original four-iteration Rust loop is directly visible in
-the patch, but is not itself a theorem about Rust compilation. Aeneas also
-cannot yet translate the higher wrapper
-`derive_v5_selected_good_queries_from_transcript` because ending one of its
-borrowing closures is unsupported. The existing generated composite-caller
-proof checks how this lower function's result is forwarded to the FRI and
-relation verifiers; the universal equality for the complete transcript driver
-still requires the unsupported wrapper and concrete transcript primitives.
+the patch, but is not itself a theorem about Rust compilation.
+
+The higher wrapper `derive_v5_selected_good_queries_from_transcript` is now
+translated and joined to this theorem in
+`../v5-transcript-selected-wrapper-source-20260820/`. That proof shows that the
+same selector and returned query array flow through the wrapper's range and
+candidate checks. The candidate's GoodA/GoodB meaning and the concrete
+transcript/hash primitives remain separate proof and cryptographic boundaries.
 
 The proof is probability-neutral. Its printed axioms are only Lean's standard
 `propext`, `Classical.choice`, and `Quot.sound` foundations.
