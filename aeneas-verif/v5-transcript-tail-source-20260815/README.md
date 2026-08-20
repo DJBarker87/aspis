@@ -29,6 +29,13 @@ and draw limit on every successful generated execution. This proves call order
 and data flow. It does not assume or prove field decoding, SHA-256,
 Fiat-Shamir security, or the probability distribution of the supplied queries.
 
+`V5TranscriptTailFinalJoin.lean` converts that observation trace to the
+maintained transcript model. Once the parsed final-polynomial bytes, final
+nonce, and selector are identified with the maintained input, a successful
+generated tail has exactly `sourceTail`: final polynomial absorb, final work
+check and absorb, selector absorb, then the query squeeze. No additional
+transcript-order assumption remains in this tail segment.
+
 ## Remaining source boundary
 
 The only source rewrite in this bundle is the fixed four-step loop expansion.
