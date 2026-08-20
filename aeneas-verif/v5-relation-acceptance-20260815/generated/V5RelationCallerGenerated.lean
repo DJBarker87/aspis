@@ -157,7 +157,11 @@ axiom aspis_core.sumcheck.WeightAccumulator : Type
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-program-error-2.2.2/src/lib.rs', lines 33:0-33:21
     Name pattern: [solana_program_error::ProgramError]
     Visibility: public -/
-@[discriminant isize, rust_type "solana_program_error::ProgramError"]
+/- The discriminant macro gives this generated enum a process-global instance
+name.  Omit it in this snapshot so the independently generated transcript and
+relation modules can be imported together; the relation proof never computes
+this enum's discriminant. -/
+@[rust_type "solana_program_error::ProgramError"]
 inductive solana_program_error.ProgramError where
 | Custom : Std.U32 → solana_program_error.ProgramError
 | InvalidArgument : solana_program_error.ProgramError
