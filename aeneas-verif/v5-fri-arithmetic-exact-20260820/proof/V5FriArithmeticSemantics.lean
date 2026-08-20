@@ -1,6 +1,7 @@
 import FriArithmetic.Funs
 import QM31MulProof
 import HalfProof
+import M31ReduceU64Proof
 import AspisFormal.V5ComponentCConcreteFoldLinearity
 import AspisFormal.V5ComponentCQM31TowerExact
 
@@ -86,6 +87,18 @@ private theorem fresh_reduce_u64_call_eq_multiplicative (x : Std.U64) :
     AspisCoreCM31Multiplicative.field.reduce_u64
   rw [fresh_P_eq_multiplicative]
 
+private theorem fresh_P_eq_reduce :
+    V5FriArithmeticExact.field.P = aspis_core.field.P := by
+  apply UScalar.eq_of_val_eq
+  unfold V5FriArithmeticExact.field.P aspis_core.field.P
+  rfl
+
+private theorem fresh_reduce_u64_call_eq_reduce (x : Std.U64) :
+    V5FriArithmeticExact.field.reduce_u64 x =
+      aspis_core.field.reduce_u64 x := by
+  unfold V5FriArithmeticExact.field.reduce_u64 aspis_core.field.reduce_u64
+  rw [fresh_P_eq_reduce]
+
 private theorem fresh_m31_mul_call_eq_multiplicative (x y : Fresh.M31) :
     V5FriArithmeticExact.field.M31.mul x y =
       AspisCoreCM31Multiplicative.field.M31.mul x y := by
@@ -100,13 +113,24 @@ private theorem fresh_P_eq_half :
   unfold V5FriArithmeticExact.field.P AspisCoreHalf.field.P
   rfl
 
+private theorem u32_wrapping_shr_one_u32_eq_i32 (x : Std.U32) :
+    Std.U32.wrapping_shr x (1#u32) =
+      Std.U32.wrapping_shr x (1#i32) := by
+  rfl
+
+private theorem u64_wrapping_shr_one_u32_eq_i32 (x : Std.U64) :
+    Std.U64.wrapping_shr x (1#u32) =
+      Std.U64.wrapping_shr x (1#i32) := by
+  rfl
+
 private theorem fresh_m31_half_call_eq_half (x : Fresh.M31) :
     V5FriArithmeticExact.field.M31.half x =
       AspisCoreHalf.field.M31.half x := by
   unfold V5FriArithmeticExact.field.M31.half
     AspisCoreHalf.field.M31.half
   simp only [Std.lift, bind_tc_ok]
-  rw [fresh_P_eq_half, halfShiftCountOne_exact]
+  rw [fresh_P_eq_half, u32_wrapping_shr_one_u32_eq_i32,
+    u64_wrapping_shr_one_u32_eq_i32]
 
 theorem m31_add_corresponds
     (x y : Fresh.M31) (hx : canonicalM31 x) (hy : canonicalM31 y) :
@@ -210,6 +234,32 @@ theorem m31_neg_corresponds
           rw [ZMod.natCast_self]
         _ = -((x.val : Nat) : ExactM31) := zero_sub _
 
+theorem m31_double_corresponds
+    (x : Fresh.M31) (hx : canonicalM31 x) :
+    ∃ out,
+      V5FriArithmeticExact.field.M31.double x = ok out ∧
+      canonicalM31 out ∧
+      ((out.val : Nat) : ExactM31) =
+        (x.val : ExactM31) + (x.val : ExactM31) := by
+  rcases m31_add_corresponds x x hx hx with
+    ⟨out, hcall, hcanonical, hview⟩
+  exact ⟨out, by simpa [V5FriArithmeticExact.field.M31.double] using hcall,
+    hcanonical, hview⟩
+
+theorem m31_reduce_u64_corresponds (x : Std.U64) :
+    ∃ out : Fresh.M31,
+      V5FriArithmeticExact.field.M31.reduce_u64 x = ok out ∧
+      canonicalM31 out ∧
+      ((out.val : Nat) : ExactM31) = (x.val : ExactM31) := by
+  rcases AspisAeneasM31ReduceU64.extracted_reduce_u64_corresponds x with
+    ⟨out, hcall, _hraw, hcanonical, hview⟩
+  have hfresh : V5FriArithmeticExact.field.reduce_u64 x = ok out := by
+    rw [fresh_reduce_u64_call_eq_reduce]
+    exact hcall
+  exact ⟨out, by
+    simp [V5FriArithmeticExact.field.M31.reduce_u64, hfresh],
+    hcanonical, hview⟩
+
 theorem cm31_add_corresponds
     (x y : Fresh.CM31) (hx : canonicalCM31 x) (hy : canonicalCM31 y) :
     ∃ out,
@@ -246,17 +296,26 @@ theorem cm31_half_corresponds
   rcases m31_half_corresponds x.b hx.2 with ⟨ob, hcallB, hcanB, hviewB⟩
   refine ⟨⟨oa, ob⟩, ?_, ⟨hcanA, hcanB⟩, ?_⟩
   · simp [V5FriArithmeticExact.field.CM31.half, hcallA, hcallB]
-  · have hdouble :
+  · have htwoM : (2 : ExactM31) ≠ 0 := by decide
+    have hdoubleA :
+        ((oa.val : Nat) : ExactM31) + (oa.val : ExactM31) =
+          (x.a.val : ExactM31) := by
+      have hmul := (eq_div_iff htwoM).1 hviewA
+      simpa [mul_two] using hmul
+    have hdoubleB :
+        ((ob.val : Nat) : ExactM31) + (ob.val : ExactM31) =
+          (x.b.val : ExactM31) := by
+      have hmul := (eq_div_iff htwoM).1 hviewB
+      simpa [mul_two] using hmul
+    have hdouble :
         cm31View ⟨oa, ob⟩ + cm31View ⟨oa, ob⟩ = cm31View x := by
       apply QuadraticAlgebra.ext
       · change ((oa.val : Nat) : ExactM31) + (oa.val : ExactM31) =
           (x.a.val : ExactM31)
-        rw [hviewA]
-        field_simp
+        exact hdoubleA
       · change ((ob.val : Nat) : ExactM31) + (ob.val : ExactM31) =
           (x.b.val : ExactM31)
-        rw [hviewB]
-        field_simp
+        exact hdoubleB
     have htwo : (2 : ExactCM31) ≠ 0 := by
       intro h
       have hre := congrArg (fun z : ExactCM31 => z.re) h
@@ -280,6 +339,32 @@ theorem cm31_mul_m31_corresponds
   · apply QuadraticAlgebra.ext
     · simpa [cm31View, m31CMView] using hviewA
     · simpa [cm31View, m31CMView] using hviewB
+
+theorem mul_by_r_corresponds
+    (x : Fresh.CM31) (hx : canonicalCM31 x) :
+    ∃ out,
+      V5FriArithmeticExact.field.mul_by_r x = ok out ∧
+      canonicalCM31 out ∧
+      cm31View out =
+        AspisV5ComponentCQM31TowerExact.qm31R * cm31View x := by
+  rcases m31_double_corresponds x.a hx.1 with
+    ⟨doubleA, hdoubleA, hdoubleACanonical, hdoubleAExact⟩
+  rcases m31_sub_corresponds doubleA x.b hdoubleACanonical hx.2 with
+    ⟨real, hreal, hrealCanonical, hrealExact⟩
+  rcases m31_double_corresponds x.b hx.2 with
+    ⟨doubleB, hdoubleB, hdoubleBCanonical, hdoubleBExact⟩
+  rcases m31_add_corresponds x.a doubleB hx.1 hdoubleBCanonical with
+    ⟨imag, himag, himagCanonical, himagExact⟩
+  refine ⟨⟨real, imag⟩, ?_, ⟨hrealCanonical, himagCanonical⟩, ?_⟩
+  · simp [V5FriArithmeticExact.field.mul_by_r,
+      hdoubleA, hreal, hdoubleB, himag]
+  · apply QuadraticAlgebra.ext
+    · simp [cm31View, AspisV5ComponentCQM31TowerExact.qm31R,
+        hrealExact, hdoubleAExact]
+      ring
+    · simp [cm31View, AspisV5ComponentCQM31TowerExact.qm31R,
+        himagExact, hdoubleBExact]
+      ring
 
 theorem qm31_add_corresponds
     (x y : Fresh.QM31) (hx : canonicalQM31 x) (hy : canonicalQM31 y) :
@@ -319,21 +404,24 @@ theorem qm31_half_corresponds
     ⟨o1, hcall1, hcan1, hview1⟩
   refine ⟨⟨o0, o1⟩, ?_, ⟨hcan0, hcan1⟩, ?_⟩
   · simp [V5FriArithmeticExact.field.QM31.half, hcall0, hcall1]
-  · have hdouble :
+  · have htwoCM : (2 : ExactCM31) ≠ 0 := by
+      intro h
+      have hre := congrArg (fun z : ExactCM31 => z.re) h
+      change (2 : ExactM31) = 0 at hre
+      exact (by decide : (2 : ExactM31) ≠ 0) hre
+    have hdouble0 : cm31View o0 + cm31View o0 = cm31View x.c0 := by
+      have hmul := (eq_div_iff htwoCM).1 hview0
+      simpa [mul_two] using hmul
+    have hdouble1 : cm31View o1 + cm31View o1 = cm31View x.c1 := by
+      have hmul := (eq_div_iff htwoCM).1 hview1
+      simpa [mul_two] using hmul
+    have hdouble :
         qm31View ⟨o0, o1⟩ + qm31View ⟨o0, o1⟩ = qm31View x := by
       apply QuadraticAlgebra.ext
-      · exact (eq_div_iff (by
-          intro h
-          have hre := congrArg (fun z : ExactCM31 => z.re) h
-          change (2 : ExactM31) = 0 at hre
-          exact (by decide : (2 : ExactM31) ≠ 0) hre)).1 hview0 |>
-            (by simpa [mul_two] using ·)
-      · exact (eq_div_iff (by
-          intro h
-          have hre := congrArg (fun z : ExactCM31 => z.re) h
-          change (2 : ExactM31) = 0 at hre
-          exact (by decide : (2 : ExactM31) ≠ 0) hre)).1 hview1 |>
-            (by simpa [mul_two] using ·)
+      · change cm31View o0 + cm31View o0 = cm31View x.c0
+        exact hdouble0
+      · change cm31View o1 + cm31View o1 = cm31View x.c1
+        exact hdouble1
     have htwo : (2 : ExactQM31) ≠ 0 := by
       intro h
       have hre := congrArg (fun z : ExactQM31 => z.re.re) h
