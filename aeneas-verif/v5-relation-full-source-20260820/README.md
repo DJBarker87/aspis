@@ -39,28 +39,31 @@ and the fixed-array iterator models.
 - the complete seven-coefficient innermost round loop reads words zero
   through six in order, reconstructs exactly that polynomial, checks its
   boundary against the running claim, evaluates it, and returns both folded
-  weight states.
+  weight states;
+- the round-zero circle-tensor branch and the later-round line-tensor branch
+  consume each of the two off-domain samples in order;
+- four successive alpha rounds preserve the generated early-return behavior
+  and reach the terminal comparison only after all four succeed; and
+- the top-level generated function reads exactly two circle points, checks
+  each circle equation, reconstructs the exact point array, executes all four
+  rounds, decodes the four terminal coefficients, and returns the same
+  generated success value.
 
-The printed axioms for the decoder theorem are Lean's standard `propext`,
-`Classical.choice`, and `Quot.sound`.  The polynomial-loop theorem has those
-same foundations plus the named external `WeightAccumulator.fold` function
-because that production helper was deliberately opaque in this extraction.
-There is no `sorry` in the checked snapshot or proof.
+The printed axioms for the complete generated theorem are Lean's standard
+`propext`, `Classical.choice`, and `Quot.sound`, plus the three deliberately
+external production helpers `circle.double_x`, `WeightAccumulator.fold`, and
+`WeightAccumulator.dot`.  There is no `sorry` in the checked snapshot or
+proof.
 
 ## Remaining work
 
-The generated source still has to be proved through the three enclosing fixed
-loops:
-
-1. two off-domain samples in each round;
-2. four relation rounds; and
-3. two decoded circle points.
-
-The terminal `WeightAccumulator.dot`, additive dot, final comparison, and
-projection into the maintained field-level verifier then form the final join.
-The production `double_x`, `WeightAccumulator.fold`, and
-`WeightAccumulator.dot` helpers remain explicit source boundaries here unless
-their independent generated proofs are imported.
+The fixed generated control flow is complete.  The remaining proof is the
+projection from generated raw QM31 values and successful opaque weight
+operations into the maintained field-level verifier, followed by the existing
+relation-soundness theorem.  The production `double_x`,
+`WeightAccumulator.fold`, and `WeightAccumulator.dot` helpers remain explicit
+source boundaries here unless their independent generated proofs are
+imported.
 
 This directory is therefore a checked intermediate proof bundle, not yet the
 finished end-to-end relation theorem.
