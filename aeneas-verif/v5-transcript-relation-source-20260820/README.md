@@ -75,9 +75,15 @@ unchanged spelling.
   outer-loop, and complete-helper proofs.
 - `proof/V5TranscriptRelationFinalJoin.lean`: exact observable projection to
   the maintained schedule and the production final-polynomial gate.
+- `import-normalization/`: a one-line patch applied only to a temporary replay
+  copy so two independent generated modules can coexist without changing the
+  checked-in Aeneas snapshots.
 - `replay-lean432.sh`: checks the source, patch, tool commits, and binary
   hashes; regenerates the Lean; compares it with the reviewed snapshot; and
   recompiles the proof with Lean 4.32.
+- `replay-final-join-lean432.sh`: recompiles both generated snapshots, the two
+  maintained transcript modules, and the joined theorem without rerunning
+  extraction; it also checks and prints the theorem axioms.
 
 ## Replay
 
@@ -92,3 +98,19 @@ AENEAS_LEAN_LIB=/path/to/aeneas-lean432/.lake/build/lib/lean \
 AENEAS_LEAN_PATH="$(cd /path/to/aeneas-lean432 && lake env printenv LEAN_PATH)" \
 ./aeneas-verif/v5-transcript-relation-source-20260820/replay-lean432.sh
 ```
+
+The smaller final-join replay is useful on a machine that has the Lean/Aeneas
+libraries and an existing `AspisFormal` build but not the extraction tools:
+
+```bash
+AENEAS_LEAN_LIB=/path/to/aeneas-lean432/.lake/build/lib/lean \
+AENEAS_LEAN_PATH="$(cd /path/to/aeneas-lean432 && lake env printenv LEAN_PATH)" \
+ASPIS_FORMAL_BUILD_ROOT=/path/to/repository \
+./aeneas-verif/v5-transcript-relation-source-20260820/replay-final-join-lean432.sh
+```
+
+The raw generated relation caller remains unchanged. During either replay a
+temporary copy loses only its unused `ProgramError` discriminant attribute,
+because both independently generated modules otherwise request the same Lean
+instance name. The replay verifies that this is the only change before it
+compiles the joined theorem.
