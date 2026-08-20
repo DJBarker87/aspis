@@ -79,10 +79,92 @@ compile "$generated" V5MerkleUnchangedFull/FunsExternal \
   "$generated/V5MerkleUnchangedFull/FunsExternal.lean"
 compile "$generated" V5MerkleUnchangedFull/Funs \
   "$generated/V5MerkleUnchangedFull/Funs.lean"
-compile "$proof" proof/V5MerkleExternalSemantics \
+compile "$proof" V5MerkleExternalSemantics \
   "$proof/V5MerkleExternalSemantics.lean"
-compile "$proof" proof/V5MerkleUnchangedDriverProof \
+compile "$proof" V5MerkleUnchangedFullParserBridge \
+  "$proof/V5MerkleUnchangedFullParserBridge.lean"
+compile "$proof" V5MerkleUnchangedFullHelperBridge \
+  "$proof/V5MerkleUnchangedFullHelperBridge.lean"
+compile "$proof" V5MerkleUnchangedFullLeafBridge \
+  "$proof/V5MerkleUnchangedFullLeafBridge.lean"
+compile "$proof" V5MerkleUnchangedFullRadixCompat \
+  "$proof/V5MerkleUnchangedFullRadixCompat.lean"
+compile "$proof" V5MerkleUnchangedFullRadixInversion \
+  "$proof/V5MerkleUnchangedFullRadixInversion.lean"
+compile "$proof" V5MerkleUnchangedFullRadixSoundness \
+  "$proof/V5MerkleUnchangedFullRadixSoundness.lean"
+compile "$proof" V5MerkleUnchangedFullHelperSoundness \
+  "$proof/V5MerkleUnchangedFullHelperSoundness.lean"
+compile "$proof" V5MerkleTopologyConstructorModel \
+  "$proof/V5MerkleTopologyConstructorModel.lean"
+compile "$proof" V5MerkleUnchangedFullConstructorSemantics \
+  "$proof/V5MerkleUnchangedFullConstructorSemantics.lean"
+compile "$proof" V5MerkleUnchangedFullRecordChunks \
+  "$proof/V5MerkleUnchangedFullRecordChunks.lean"
+compile "$proof" V5MerkleUnchangedFullLeafTraceLists \
+  "$proof/V5MerkleUnchangedFullLeafTraceLists.lean"
+compile "$proof" V5MerkleUnchangedFullWireCanonicality \
+  "$proof/V5MerkleUnchangedFullWireCanonicality.lean"
+compile "$proof" V5MerkleUnchangedFullFrontierChunks \
+  "$proof/V5MerkleUnchangedFullFrontierChunks.lean"
+compile "$proof" V5MerkleUnchangedFullParserBounds \
+  "$proof/V5MerkleUnchangedFullParserBounds.lean"
+compile "$proof" V5MerkleUnchangedFullLeafTable \
+  "$proof/V5MerkleUnchangedFullLeafTable.lean"
+compile "$proof" V5MerkleUnchangedFullWireTable \
+  "$proof/V5MerkleUnchangedFullWireTable.lean"
+compile "$proof" V5MerkleUnchangedFullSectionBase \
+  "$proof/V5MerkleUnchangedFullSectionBase.lean"
+compile "$proof" V5MerkleUnchangedFullTopologyAccessors \
+  "$proof/V5MerkleUnchangedFullTopologyAccessors.lean"
+compile "$proof" V5MerkleUnchangedFullOrderedChildPositions \
+  "$proof/V5MerkleUnchangedFullOrderedChildPositions.lean"
+compile "$proof" V5MerkleUnchangedFullGroupTraceLists \
+  "$proof/V5MerkleUnchangedFullGroupTraceLists.lean"
+compile "$proof" V5MerkleUnchangedFullGroupCursorPrefixes \
+  "$proof/V5MerkleUnchangedFullGroupCursorPrefixes.lean"
+compile "$proof" V5MerkleUnchangedFullLevelTraceLists \
+  "$proof/V5MerkleUnchangedFullLevelTraceLists.lean"
+compile "$proof" V5MerkleUnchangedFullMaskSemantics \
+  "$proof/V5MerkleUnchangedFullMaskSemantics.lean"
+compile "$proof" V5MerkleUnchangedFullMaskCounts \
+  "$proof/V5MerkleUnchangedFullMaskCounts.lean"
+compile "$proof" V5MerkleUnchangedFullSectionTopologyAlignment \
+  "$proof/V5MerkleUnchangedFullSectionTopologyAlignment.lean"
+compile "$proof" V5MerkleUnchangedFullSectionChildOrder \
+  "$proof/V5MerkleUnchangedFullSectionChildOrder.lean"
+compile "$proof" V5MerkleUnchangedFullFrontierPositionUniqueness \
+  "$proof/V5MerkleUnchangedFullFrontierPositionUniqueness.lean"
+compile "$proof" V5MerkleUnchangedFullCanonicalNodeTable \
+  "$proof/V5MerkleUnchangedFullCanonicalNodeTable.lean"
+compile "$proof" V5MerkleUnchangedFullGroupParentAlignment \
+  "$proof/V5MerkleUnchangedFullGroupParentAlignment.lean"
+compile "$proof" V5MerkleUnchangedFullGroupChildSources \
+  "$proof/V5MerkleUnchangedFullGroupChildSources.lean"
+compile "$proof" V5MerkleUnchangedFullLevelChildSources \
+  "$proof/V5MerkleUnchangedFullLevelChildSources.lean"
+compile "$proof" V5MerkleUnchangedFullCanonicalChildSources \
+  "$proof/V5MerkleUnchangedFullCanonicalChildSources.lean"
+compile "$proof" V5MerkleUnchangedFullCanonicalLevelStep \
+  "$proof/V5MerkleUnchangedFullCanonicalLevelStep.lean"
+compile "$proof" V5MerkleUnchangedFullMatchedSuffixShape \
+  "$proof/V5MerkleUnchangedFullMatchedSuffixShape.lean"
+compile "$proof" V5MerkleUnchangedFullReleasedLevelSources \
+  "$proof/V5MerkleUnchangedFullReleasedLevelSources.lean"
+compile "$proof" V5MerkleUnchangedFullCanonicalLevelInduction \
+  "$proof/V5MerkleUnchangedFullCanonicalLevelInduction.lean"
+compile "$proof" V5MerkleUnchangedFullBinaryCapSemantics \
+  "$proof/V5MerkleUnchangedFullBinaryCapSemantics.lean"
+compile "$proof" V5MerkleUnchangedFullReleasedBinaryCap \
+  "$proof/V5MerkleUnchangedFullReleasedBinaryCap.lean"
+compile "$proof" V5MerkleUnchangedFullSectionNodeClosure \
+  "$proof/V5MerkleUnchangedFullSectionNodeClosure.lean"
+compile "$proof" V5MerkleUnchangedFullSectionCallBridge \
+  "$proof/V5MerkleUnchangedFullSectionCallBridge.lean"
+compile "$proof" V5MerkleUnchangedDriverProof \
   "$proof/V5MerkleUnchangedDriverProof.lean"
+compile "$proof" V5MerkleUnchangedGeneratedSectionBridge \
+  "$proof/V5MerkleUnchangedGeneratedSectionBridge.lean"
 
 if scan '(sorry|admit|native_decide|unsafe|ofReduceBool)' \
     "$generated/V5MerkleUnchangedFull/TypesExternal.lean" \
@@ -90,7 +172,7 @@ if scan '(sorry|admit|native_decide|unsafe|ofReduceBool)' \
     "$generated/V5MerkleUnchangedFull/FunsExternal.lean" \
     "$generated/V5MerkleUnchangedFull/Funs.lean" \
     "$proof/V5MerkleExternalSemantics.lean" \
-    "$proof/V5MerkleUnchangedDriverProof.lean"; then
+    "$proof"/*.lean; then
   echo "forbidden proof token" >&2
   exit 1
 fi
