@@ -1475,4 +1475,582 @@ theorem pairPairSourceCorresponds
         toMaintainedExact alpha ^ 2 * toMaintainedExact value1 +
         toMaintainedExact alpha * toMaintainedExact value1 := by ring
 
+/-! ## The released `[1, 1, 1, 2]` tuple -/
+
+def groupsTripleFirst : Array Std.U8 4#usize :=
+  Array.make 4#usize [1#u8, 1#u8, 1#u8, 2#u8]
+
+private def tripleUnique2 : Array Std.U8 4#usize :=
+  Array.make 4#usize [1#u8, 2#u8, 0#u8, 0#u8]
+
+private def tripleCoefficientsFinal
+    (coefficient0 : RawQM31) (alpha : RawQM31) : Array RawQM31 4#usize :=
+  Array.make 4#usize [coefficient0, alpha,
+    V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO,
+    V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO]
+
+private def tripleCounts31 : Array Std.U8 4#usize :=
+  Array.make 4#usize [3#u8, 1#u8, 0#u8, 0#u8]
+
+private def tripleFirstSlots : Array Std.U8 4#usize :=
+  Array.make 4#usize [0#u8, 3#u8, 0#u8, 0#u8]
+
+private theorem tripleFindNewStep0 :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0_loop1.body
+        (unique1 1#u8) 1#usize 2#u8 0#usize = ok (cont 1#usize) := by
+  have indexRun : Array.index_usize (unique1 1#u8) 0#usize = ok 1#u8 := by
+    simpa [unique1] using
+      (arrayMake4Index0 1#u8 0#u8 0#u8 0#u8)
+  simp [V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0_loop1.body,
+    indexRun, usizeZeroSucc, Std.lift]
+
+private theorem tripleFindNewDone :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0_loop1.body
+        (unique1 1#u8) 1#usize 2#u8 1#usize = ok (done 1#usize) := by
+  simp [V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0_loop1.body]
+
+private theorem tripleFindNewGroup :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0_loop1
+        (unique1 1#u8) 1#usize 2#u8 0#usize = ok 1#usize := by
+  unfold
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0_loop1
+  rw [loop.eq_1]
+  rw [tripleFindNewStep0]
+  simp only
+  rw [loop.eq_1]
+  rw [tripleFindNewDone]
+
+private theorem castUsizeThreeU8 :
+    UScalar.cast .U8 3#usize = 3#u8 := by
+  apply UScalar.val_eq_imp
+  rw [UScalar.cast_val_eq]
+  rfl
+
+private theorem tripleOuterStep0
+    (groupValues : Slice RawQM31) (alpha alpha2 alpha3 : RawQM31) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0.body
+        groupsTripleFirst groupValues (powers alpha alpha2 alpha3)
+        (rangeFrom 0#usize) unique0 coefficients0 unique0 slots0 0#usize =
+      ok (cont (rangeFrom 1#usize, unique1 1#u8, coefficients1,
+        countsAt 1#u8, slots0, 1#usize)) := by
+  simp (config := { maxSteps := 100000 })
+    [V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0.body,
+    rangeNext0, allSameFindEmpty, groupsTripleFirst, powers, rangeFrom, unique0,
+    unique1, coefficients0, coefficients1, countsAt, slots0,
+    Array.index_usize, Array.update, UScalar.lt_equiv, Std.lift]
+  constructor
+  · apply Subtype.ext
+    rfl
+  constructor
+  · apply Subtype.ext
+    rfl
+  constructor
+  · apply Subtype.ext
+    rfl
+  constructor
+  · apply Subtype.ext
+    rw [castUsizeZeroU8]
+    rfl
+  · exact usizeZeroSucc
+
+private theorem tripleOuterStep1
+    (groupValues : Slice RawQM31)
+    (alpha alpha2 alpha3 coefficient0 : RawQM31)
+    (coefficient0Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          V5RelationLinkedGenerated.aspis_core.field.QM31.ONE alpha3 =
+        ok coefficient0) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0.body
+        groupsTripleFirst groupValues (powers alpha alpha2 alpha3)
+        (rangeFrom 1#usize) (unique1 1#u8) coefficients1 (countsAt 1#u8)
+        slots0 1#usize =
+      ok (cont (rangeFrom 2#usize, unique1 1#u8,
+        coefficientsAt coefficient0, countsAt 2#u8, slots0, 1#usize)) := by
+  have groupRun : Array.index_usize groupsTripleFirst 1#usize = ok 1#u8 := by
+    simpa [groupsTripleFirst] using
+      (arrayMake4Index1 1#u8 1#u8 1#u8 2#u8)
+  have coefficientRun : Array.index_usize coefficients1 0#usize =
+      ok V5RelationLinkedGenerated.aspis_core.field.QM31.ONE := by
+    simpa [coefficients1] using
+      (arrayMake4Index0
+        V5RelationLinkedGenerated.aspis_core.field.QM31.ONE
+        V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+        V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+        V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO)
+  have powerRun : Array.index_usize (powers alpha alpha2 alpha3) 1#usize =
+      ok alpha3 := by
+    simpa [powers] using
+      (arrayMake4Index1
+        V5RelationLinkedGenerated.aspis_core.field.QM31.ONE
+        alpha3 alpha2 alpha)
+  have countRun : Array.index_usize (countsAt 1#u8) 0#usize = ok 1#u8 := by
+    simpa [countsAt] using (arrayMake4Index0 1#u8 0#u8 0#u8 0#u8)
+  simp (config := { maxSteps := 100000 })
+    [V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0.body,
+    rangeFrom, rangeNext1, groupRun, allSameFindExisting, coefficientRun,
+    powerRun, coefficient0Run, countRun, u8OneSucc]
+  simp (config := { maxSteps := 100000 })
+    [unique1, coefficients1, coefficientsAt, countsAt, slots0,
+    Array.update, Std.lift]
+  constructor <;> apply Subtype.ext <;> rfl
+
+private theorem tripleOuterStep2
+    (groupValues : Slice RawQM31)
+    (alpha alpha2 alpha3 coefficient0 coefficient1 : RawQM31)
+    (coefficient1Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          coefficient0 alpha2 = ok coefficient1) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0.body
+        groupsTripleFirst groupValues (powers alpha alpha2 alpha3)
+        (rangeFrom 2#usize) (unique1 1#u8) (coefficientsAt coefficient0)
+        (countsAt 2#u8) slots0 1#usize =
+      ok (cont (rangeFrom 3#usize, unique1 1#u8,
+        coefficientsAt coefficient1, countsAt 3#u8, slots0, 1#usize)) := by
+  have groupRun : Array.index_usize groupsTripleFirst 2#usize = ok 1#u8 := by
+    simpa [groupsTripleFirst] using
+      (arrayMake4Index2 1#u8 1#u8 1#u8 2#u8)
+  have coefficientRun :
+      Array.index_usize (coefficientsAt coefficient0) 0#usize =
+        ok coefficient0 := by
+    simpa [coefficientsAt] using
+      (arrayMake4Index0 coefficient0
+        V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+        V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+        V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO)
+  have powerRun : Array.index_usize (powers alpha alpha2 alpha3) 2#usize =
+      ok alpha2 := by
+    simpa [powers] using
+      (arrayMake4Index2
+        V5RelationLinkedGenerated.aspis_core.field.QM31.ONE
+        alpha3 alpha2 alpha)
+  have countRun : Array.index_usize (countsAt 2#u8) 0#usize = ok 2#u8 := by
+    simpa [countsAt] using (arrayMake4Index0 2#u8 0#u8 0#u8 0#u8)
+  simp (config := { maxSteps := 100000 })
+    [V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0.body,
+    rangeFrom, rangeNext2, groupRun, allSameFindExisting, coefficientRun,
+    powerRun, coefficient1Run, countRun, u8TwoSucc]
+  simp (config := { maxSteps := 100000 })
+    [unique1, coefficientsAt, countsAt, slots0, Array.update, Std.lift]
+  constructor <;> apply Subtype.ext <;> rfl
+
+private theorem tripleOuterStep3
+    (groupValues : Slice RawQM31)
+    (alpha alpha2 alpha3 coefficient1 : RawQM31) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0.body
+        groupsTripleFirst groupValues (powers alpha alpha2 alpha3)
+        (rangeFrom 3#usize) (unique1 1#u8) (coefficientsAt coefficient1)
+        (countsAt 3#u8) slots0 1#usize =
+      ok (cont (rangeFrom 4#usize, tripleUnique2,
+        tripleCoefficientsFinal coefficient1 alpha, tripleCounts31,
+        tripleFirstSlots, 2#usize)) := by
+  have groupRun : Array.index_usize groupsTripleFirst 3#usize = ok 2#u8 := by
+    simpa [groupsTripleFirst] using
+      (arrayMake4Index3 1#u8 1#u8 1#u8 2#u8)
+  have powerRun : Array.index_usize (powers alpha alpha2 alpha3) 3#usize =
+      ok alpha := by
+    simpa [powers] using
+      (arrayMake4Index3
+        V5RelationLinkedGenerated.aspis_core.field.QM31.ONE
+        alpha3 alpha2 alpha)
+  simp (config := { maxSteps := 100000 })
+    [V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0.body,
+    rangeFrom, rangeNext3, groupRun, tripleFindNewGroup, powerRun]
+  simp (config := { maxSteps := 100000 })
+    [unique1, coefficientsAt, countsAt, slots0, tripleUnique2,
+    tripleCoefficientsFinal, tripleCounts31, tripleFirstSlots, Array.update,
+    Std.lift, castUsizeThreeU8, usizeOneSucc]
+  constructor
+  · apply Subtype.ext
+    rfl
+  constructor
+  · apply Subtype.ext
+    rfl
+  constructor
+  · apply Subtype.ext
+    rfl
+  · rfl
+
+private theorem tripleInnerStep0
+    (groupValues : Slice RawQM31)
+    (coefficient0 alpha value0 contribution0 sum0 : RawQM31)
+    (value0Run :
+      Slice.index_usize groupValues (UScalar.cast .Usize 1#u8) = ok value0)
+    (contribution0Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.mul
+          value0 coefficient0 = ok contribution0)
+    (sum0Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO contribution0 =
+        ok sum0) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0_loop0.body
+        groupValues tripleUnique2 (tripleCoefficientsFinal coefficient0 alpha)
+        tripleCounts31 tripleFirstSlots
+        { start := 0#usize, «end» := 2#usize }
+        V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO =
+      ok (cont ({ start := 1#usize, «end» := 2#usize }, sum0)) := by
+  have uniqueRun : Array.index_usize tripleUnique2 0#usize = ok 1#u8 := by
+    simpa [tripleUnique2] using
+      (arrayMake4Index0 1#u8 2#u8 0#u8 0#u8)
+  have firstSlotRun :
+      Array.index_usize tripleFirstSlots 0#usize = ok 0#u8 := by
+    simpa [tripleFirstSlots] using
+      (arrayMake4Index0 0#u8 3#u8 0#u8 0#u8)
+  have countRun : Array.index_usize tripleCounts31 0#usize = ok 3#u8 := by
+    simpa [tripleCounts31] using
+      (arrayMake4Index0 3#u8 1#u8 0#u8 0#u8)
+  have coefficientRun :
+      Array.index_usize (tripleCoefficientsFinal coefficient0 alpha)
+          0#usize = ok coefficient0 := by
+    simpa [tripleCoefficientsFinal] using
+      (arrayMake4Index0 coefficient0 alpha
+        V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+        V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO)
+  simp (config := { maxSteps := 100000 })
+    [V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0_loop0.body,
+    rangeNext0End2, uniqueRun, fromU8ToUsizeExact, value0Run, firstSlotRun,
+    countRun, coefficientRun, contribution0Run, sum0Run, Std.lift]
+
+private theorem tripleInnerStep1
+    (groupValues : Slice RawQM31)
+    (coefficient0 alpha value1 contribution1 sum0 sum1 : RawQM31)
+    (value1Run :
+      Slice.index_usize groupValues (UScalar.cast .Usize 2#u8) = ok value1)
+    (contribution1Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.mul value1 alpha =
+        ok contribution1)
+    (sum1Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add sum0 contribution1 =
+        ok sum1) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0_loop0.body
+        groupValues tripleUnique2 (tripleCoefficientsFinal coefficient0 alpha)
+        tripleCounts31 tripleFirstSlots
+        { start := 1#usize, «end» := 2#usize } sum0 =
+      ok (cont ({ start := 2#usize, «end» := 2#usize }, sum1)) := by
+  have uniqueRun : Array.index_usize tripleUnique2 1#usize = ok 2#u8 := by
+    simpa [tripleUnique2] using
+      (arrayMake4Index1 1#u8 2#u8 0#u8 0#u8)
+  have firstSlotRun :
+      Array.index_usize tripleFirstSlots 1#usize = ok 3#u8 := by
+    simpa [tripleFirstSlots] using
+      (arrayMake4Index1 0#u8 3#u8 0#u8 0#u8)
+  have coefficientRun :
+      Array.index_usize (tripleCoefficientsFinal coefficient0 alpha)
+          1#usize = ok alpha := by
+    simpa [tripleCoefficientsFinal] using
+      (arrayMake4Index1 coefficient0 alpha
+        V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+        V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO)
+  simp (config := { maxSteps := 100000 })
+    [V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0_loop0.body,
+    rangeNext1End2, uniqueRun, fromU8ToUsizeExact, value1Run, firstSlotRun,
+    coefficientRun, contribution1Run, sum1Run, Std.lift]
+
+private theorem tripleInnerDone
+    (groupValues : Slice RawQM31) (coefficient0 alpha sum1 : RawQM31) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0_loop0.body
+        groupValues tripleUnique2 (tripleCoefficientsFinal coefficient0 alpha)
+        tripleCounts31 tripleFirstSlots
+        { start := 2#usize, «end» := 2#usize } sum1 = ok (done sum1) := by
+  simp [V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0_loop0.body,
+    rangeDone2]
+
+private theorem tripleInnerExact
+    (groupValues : Slice RawQM31)
+    (coefficient0 alpha value0 value1 contribution0 contribution1 sum0 sum1 :
+      RawQM31)
+    (value0Run :
+      Slice.index_usize groupValues (UScalar.cast .Usize 1#u8) = ok value0)
+    (value1Run :
+      Slice.index_usize groupValues (UScalar.cast .Usize 2#u8) = ok value1)
+    (contribution0Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.mul
+          value0 coefficient0 = ok contribution0)
+    (contribution1Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.mul value1 alpha =
+        ok contribution1)
+    (sum0Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO contribution0 =
+        ok sum0)
+    (sum1Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add sum0 contribution1 =
+        ok sum1) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0_loop0
+        { start := 0#usize, «end» := 2#usize } groupValues tripleUnique2
+        (tripleCoefficientsFinal coefficient0 alpha) tripleCounts31
+        tripleFirstSlots V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO =
+      ok sum1 := by
+  have step0 := tripleInnerStep0 groupValues coefficient0 alpha value0
+    contribution0 sum0 value0Run contribution0Run sum0Run
+  have step1 := tripleInnerStep1 groupValues coefficient0 alpha value1
+    contribution1 sum0 sum1 value1Run contribution1Run sum1Run
+  have done := tripleInnerDone groupValues coefficient0 alpha sum1
+  unfold
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0_loop0
+  rw [loop.eq_1]
+  dsimp only
+  rw [step0]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step1]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [done]
+
+private theorem tripleOuterDone
+    (groupValues : Slice RawQM31)
+    (alpha alpha2 alpha3 coefficient0 value0 value1 contribution0 contribution1
+      sum0 sum1 half1 out : RawQM31)
+    (value0Run :
+      Slice.index_usize groupValues (UScalar.cast .Usize 1#u8) = ok value0)
+    (value1Run :
+      Slice.index_usize groupValues (UScalar.cast .Usize 2#u8) = ok value1)
+    (contribution0Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.mul
+          value0 coefficient0 = ok contribution0)
+    (contribution1Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.mul value1 alpha =
+        ok contribution1)
+    (sum0Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO contribution0 =
+        ok sum0)
+    (sum1Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add sum0 contribution1 =
+        ok sum1)
+    (half1Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.half sum1 = ok half1)
+    (outRun :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.half half1 = ok out) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0.body
+        groupsTripleFirst groupValues (powers alpha alpha2 alpha3)
+        (rangeFrom 4#usize) tripleUnique2
+        (tripleCoefficientsFinal coefficient0 alpha) tripleCounts31
+        tripleFirstSlots 2#usize = ok (done out) := by
+  have innerRun := tripleInnerExact groupValues coefficient0 alpha value0
+    value1 contribution0 contribution1 sum0 sum1 value0Run value1Run
+    contribution0Run contribution1Run sum0Run sum1Run
+  simp [V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0.body,
+    rangeFrom, rangeDone4, innerRun, half1Run, outRun]
+
+private theorem tripleOuterExact
+    (groupValues : Slice RawQM31)
+    (alpha alpha2 alpha3 coefficient0 coefficient1 value0 value1 contribution0
+      contribution1 sum0 sum1 half1 out : RawQM31)
+    (coefficient0Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          V5RelationLinkedGenerated.aspis_core.field.QM31.ONE alpha3 =
+        ok coefficient0)
+    (coefficient1Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          coefficient0 alpha2 = ok coefficient1)
+    (value0Run :
+      Slice.index_usize groupValues (UScalar.cast .Usize 1#u8) = ok value0)
+    (value1Run :
+      Slice.index_usize groupValues (UScalar.cast .Usize 2#u8) = ok value1)
+    (contribution0Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.mul
+          value0 coefficient1 = ok contribution0)
+    (contribution1Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.mul value1 alpha =
+        ok contribution1)
+    (sum0Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO contribution0 =
+        ok sum0)
+    (sum1Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add sum0 contribution1 =
+        ok sum1)
+    (half1Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.half sum1 = ok half1)
+    (outRun :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.half half1 = ok out) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0
+        (rangeFrom 0#usize) groupsTripleFirst groupValues
+        (powers alpha alpha2 alpha3) unique0 coefficients0 unique0 slots0
+        0#usize = ok out := by
+  have step0 := tripleOuterStep0 groupValues alpha alpha2 alpha3
+  have step1 := tripleOuterStep1 groupValues alpha alpha2 alpha3 coefficient0
+    coefficient0Run
+  have step2 := tripleOuterStep2 groupValues alpha alpha2 alpha3 coefficient0
+    coefficient1 coefficient1Run
+  have step3 := tripleOuterStep3 groupValues alpha alpha2 alpha3 coefficient1
+  have done := tripleOuterDone groupValues alpha alpha2 alpha3 coefficient1
+    value0 value1 contribution0 contribution1 sum0 sum1 half1 out value0Run
+    value1Run contribution0Run contribution1Run sum0Run sum1Run half1Run outRun
+  unfold V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple_loop0
+  rw [loop.eq_1]
+  dsimp only
+  rw [step0]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step1]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step2]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [step3]
+  simp only
+  rw [loop.eq_1]
+  dsimp only
+  rw [done]
+
+theorem tripleFirstSourceExact
+    (groupValues : Slice RawQM31)
+    (alpha alpha2 alpha3 coefficient0 coefficient1 value0 value1 contribution0
+      contribution1 sum0 sum1 half1 out : RawQM31)
+    (coefficient0Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          V5RelationLinkedGenerated.aspis_core.field.QM31.ONE alpha3 =
+        ok coefficient0)
+    (coefficient1Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          coefficient0 alpha2 = ok coefficient1)
+    (value0Run :
+      Slice.index_usize groupValues (UScalar.cast .Usize 1#u8) = ok value0)
+    (value1Run :
+      Slice.index_usize groupValues (UScalar.cast .Usize 2#u8) = ok value1)
+    (contribution0Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.mul
+          value0 coefficient1 = ok contribution0)
+    (contribution1Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.mul value1 alpha =
+        ok contribution1)
+    (sum0Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+          V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO contribution0 =
+        ok sum0)
+    (sum1Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add sum0 contribution1 =
+        ok sum1)
+    (half1Run :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.half sum1 = ok half1)
+    (outRun :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.half half1 = ok out) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple
+        groupsTripleFirst groupValues alpha alpha2 alpha3 = ok out := by
+  have run := tripleOuterExact groupValues alpha alpha2 alpha3 coefficient0
+    coefficient1 value0 value1 contribution0 contribution1 sum0 sum1 half1 out
+    coefficient0Run coefficient1Run value0Run value1Run contribution0Run
+    contribution1Run sum0Run sum1Run half1Run outRun
+  unfold V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple
+  simpa [rangeFrom, powers, unique0, coefficients0, slots0] using run
+
+theorem tripleFirstSourceCorresponds
+    (groupValues : Slice RawQM31)
+    (value0 value1 alpha alpha2 alpha3 : RawQM31)
+    (value0Run :
+      Slice.index_usize groupValues (UScalar.cast .Usize 1#u8) = ok value0)
+    (value1Run :
+      Slice.index_usize groupValues (UScalar.cast .Usize 2#u8) = ok value1)
+    (value0Canonical : CanonicalQM31 value0)
+    (value1Canonical : CanonicalQM31 value1)
+    (alphaCanonical : CanonicalQM31 alpha)
+    (alpha2Canonical : CanonicalQM31 alpha2)
+    (alpha3Canonical : CanonicalQM31 alpha3)
+    (alpha2Exact : toMaintainedExact alpha2 = toMaintainedExact alpha ^ 2)
+    (alpha3Exact : toMaintainedExact alpha3 = toMaintainedExact alpha ^ 3) :
+    ∃ out,
+      V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple
+          groupsTripleFirst groupValues alpha alpha2 alpha3 = ok out ∧
+      CanonicalQM31 out ∧
+      toMaintainedExact out =
+        AspisV5FriRelationCandidateBridge.dualWeightFoldValue
+          (toMaintainedExact alpha)
+          (fun index => ![toMaintainedExact value0, toMaintainedExact value0,
+            toMaintainedExact value0, toMaintainedExact value1] index) := by
+  obtain ⟨coefficient0, coefficient0Run, coefficient0Canonical,
+      coefficient0Exact⟩ :=
+    generated_qm31_add_corresponds
+      V5RelationLinkedGenerated.aspis_core.field.QM31.ONE alpha3
+      oneCanonical alpha3Canonical
+  obtain ⟨coefficient1, coefficient1Run, coefficient1Canonical,
+      coefficient1Exact⟩ :=
+    generated_qm31_add_corresponds coefficient0 alpha2 coefficient0Canonical
+      alpha2Canonical
+  obtain ⟨contribution0, contribution0Run, contribution0Canonical,
+      contribution0Exact⟩ :=
+    generated_qm31_mul_corresponds value0 coefficient1 value0Canonical
+      coefficient1Canonical
+  obtain ⟨contribution1, contribution1Run, contribution1Canonical,
+      contribution1Exact⟩ :=
+    generated_qm31_mul_corresponds value1 alpha value1Canonical alphaCanonical
+  obtain ⟨sum0, sum0Run, sum0Canonical, sum0Exact⟩ :=
+    generated_qm31_add_corresponds
+      V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO contribution0
+      zeroCanonical contribution0Canonical
+  obtain ⟨sum1, sum1Run, sum1Canonical, sum1Exact⟩ :=
+    generated_qm31_add_corresponds sum0 contribution1 sum0Canonical
+      contribution1Canonical
+  obtain ⟨half1, half1Run, half1Canonical, half1Exact⟩ :=
+    generated_qm31_half_corresponds sum1 sum1Canonical
+  obtain ⟨out, outRun, outCanonical, outExact⟩ :=
+    generated_qm31_half_corresponds half1 half1Canonical
+  have sourceRun := tripleFirstSourceExact groupValues alpha alpha2 alpha3
+    coefficient0 coefficient1 value0 value1 contribution0 contribution1
+    sum0 sum1 half1 out coefficient0Run coefficient1Run value0Run value1Run
+    contribution0Run contribution1Run sum0Run sum1Run half1Run outRun
+  refine ⟨out, sourceRun, outCanonical, ?_⟩
+  have coefficient0ExactM := congrArg oldQm31ToMaintained coefficient0Exact
+  have coefficient1ExactM := congrArg oldQm31ToMaintained coefficient1Exact
+  have contribution0ExactM := congrArg oldQm31ToMaintained contribution0Exact
+  have contribution1ExactM := congrArg oldQm31ToMaintained contribution1Exact
+  have sum0ExactM := congrArg oldQm31ToMaintained sum0Exact
+  have sum1ExactM := congrArg oldQm31ToMaintained sum1Exact
+  have half1ExactM := congrArg oldQm31ToMaintained half1Exact
+  have outExactM := congrArg oldQm31ToMaintained outExact
+  simp only [oldQm31ToMaintained_toExact, oldQm31ToMaintained_add] at coefficient0ExactM
+  simp only [oldQm31ToMaintained_toExact, oldQm31ToMaintained_add] at coefficient1ExactM
+  simp only [oldQm31ToMaintained_toExact, oldQm31ToMaintained_add] at sum0ExactM
+  simp only [oldQm31ToMaintained_toExact, oldQm31ToMaintained_add] at sum1ExactM
+  simp only [oldQm31ToMaintained_toExact, oldQm31ToMaintained_add] at half1ExactM
+  simp only [oldQm31ToMaintained_toExact, oldQm31ToMaintained_add] at outExactM
+  simp only [oldQm31ToMaintained_toExact, oldQm31ToMaintained_mul] at contribution0ExactM
+  simp only [oldQm31ToMaintained_toExact, oldQm31ToMaintained_mul] at contribution1ExactM
+  have oneExact :
+      toMaintainedExact
+          V5RelationLinkedGenerated.aspis_core.field.QM31.ONE = 1 := by
+    rw [V5RelationLinkedGenerated.aspis_core.field.QM31.ONE]
+    rfl
+  have zeroExact :
+      toMaintainedExact
+          V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO = 0 := by
+    rw [V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO]
+    rfl
+  have fourNonzero : (4 : ExactQM31) ≠ 0 := by decide
+  apply (eq_div_iff fourNonzero).2
+  simp
+  calc
+    toMaintainedExact out * 4 =
+        (toMaintainedExact out + toMaintainedExact out) +
+          (toMaintainedExact out + toMaintainedExact out) := by ring
+    _ = toMaintainedExact half1 + toMaintainedExact half1 := by
+      rw [outExactM]
+    _ = toMaintainedExact sum1 := half1ExactM
+    _ = toMaintainedExact sum0 + toMaintainedExact contribution1 := sum1ExactM
+    _ = (toMaintainedExact
+          V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO +
+          toMaintainedExact contribution0) +
+        toMaintainedExact contribution1 := by rw [sum0ExactM]
+    _ = toMaintainedExact value0 * toMaintainedExact coefficient1 +
+        toMaintainedExact value1 * toMaintainedExact alpha := by
+      rw [zeroExact, contribution0ExactM, contribution1ExactM]
+      ring
+    _ = toMaintainedExact value0 *
+          (((1 : ExactQM31) + toMaintainedExact alpha ^ 3) +
+            toMaintainedExact alpha ^ 2) +
+        toMaintainedExact value1 * toMaintainedExact alpha := by
+      rw [coefficient1ExactM, coefficient0ExactM, oneExact, alpha2Exact,
+        alpha3Exact]
+    _ = toMaintainedExact value0 +
+        toMaintainedExact alpha ^ 3 * toMaintainedExact value0 +
+        toMaintainedExact alpha ^ 2 * toMaintainedExact value0 +
+        toMaintainedExact alpha * toMaintainedExact value1 := by ring
+
 end AspisV5RelationLinkedGroupTuple
