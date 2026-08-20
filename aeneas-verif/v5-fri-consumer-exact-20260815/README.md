@@ -18,16 +18,19 @@ The checked Lean files have these SHA-256 identities:
 
 | File | SHA-256 |
 |---|---|
-| `TypesExternal.lean` | `ce5dd8d1a02924721a8102696e7b5ad94db22d7ed2b2cf61e501155bf1ca163c` |
+| `TypesExternal.lean` | `8184109b4cf2fe609835f1cab610516276f575afeef53793f12d7ecc589b7c37` |
 | `Types.lean` | `c121162321fc5f7bfc00bb58f18b342d182529dca03eb4534157fcaf085cd58e` |
-| `FunsExternal.lean` | `a412449bf88bcb439c5cc8c5d32220c1984a7d454e3c86bb5b08e88e046e3b3f` |
+| `FunsExternal.lean` | `85e73d71b53cd87c561b06c80beaa358641b5dcb2b448e7010ad42a74a486a41` |
 | `Funs.lean` | `370be7ac485d08bef17844e240b3d759f639cb078c91b2880c6e2747d21b3745` |
 
 `Funs.lean` includes only the narrow compatibility expansion required for
 the mutable enumerated slice iterator and two translated shift literals.
 `FunsExternal.lean` replaces the relevant generated standard-library
-placeholders with their transparent definitions. The production verifier
-source is unchanged.
+placeholders with their transparent definitions. Its generated external
+declarations are kept inside the extraction namespace so that this snapshot
+can be imported beside the independent arithmetic snapshot; the derived
+`QM31` equality is the transparent four-limb equality implemented by Rust.
+The production verifier source is unchanged.
 
 ## What is proved
 
@@ -67,6 +70,13 @@ The main declarations are:
 
 The proof contains no `sorry`, `admit`, `native_decide`, or unsafe proof
 shortcut.
+
+`V5FriConsumerValueSemantics.lean` then joins each accepted source read to
+the independently extracted arithmetic helpers. It proves the exact circle
+fold, line fold, and final-polynomial comparison for an accepted read. Its
+only cross-extraction input is equality of the literal helper calls after
+structural conversion of the duplicate generated types; it does not assume a
+fold equation or a `ForestFriChecks` conclusion.
 
 ## Maintained observation connection
 

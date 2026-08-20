@@ -19,7 +19,6 @@ namespace V5FriArithmeticExact
 /-- [aspis_core::circle_fri::FoldDenominator]
     Source: 'crates/aspis-core/src/circle_fri.rs', lines 185:0-191:1
     Visibility: public -/
-@[discriminant isize]
 inductive circle_fri.FoldDenominator where
 | CircleY : circle_fri.FoldDenominator
 | CircleX : circle_fri.FoldDenominator
@@ -30,7 +29,6 @@ inductive circle_fri.FoldDenominator where
 /-- [aspis_core::circle_fri::CircleFriError]
     Source: 'crates/aspis-core/src/circle_fri.rs', lines 194:0-206:1
     Visibility: public -/
-@[discriminant isize]
 inductive circle_fri.CircleFriError where
 | CircleIndexOutOfRange : circle_fri.CircleFriError
 | CircleFiberOutOfRange : circle_fri.CircleFriError
@@ -83,7 +81,6 @@ def circle_fri.evaluate_final_line_tensor_ref.closure :=
 /-- [aspis_core::circle_query::CircleQueryLeaf]
     Source: 'crates/aspis-core/src/circle_query.rs', lines 63:0-67:1
     Visibility: public -/
-@[discriminant isize]
 inductive circle_query.CircleQueryLeaf where
 | C1 : circle_query.CircleQueryLeaf
 | C2 : circle_query.CircleQueryLeaf
@@ -92,7 +89,6 @@ inductive circle_query.CircleQueryLeaf where
 /-- [aspis_core::circle_query::CircleQueryError]
     Source: 'crates/aspis-core/src/circle_query.rs', lines 70:0-95:1
     Visibility: public -/
-@[discriminant isize]
 inductive circle_query.CircleQueryError where
 | QueryOutOfRange : Std.Usize → circle_query.CircleQueryError
 | LeafLength :

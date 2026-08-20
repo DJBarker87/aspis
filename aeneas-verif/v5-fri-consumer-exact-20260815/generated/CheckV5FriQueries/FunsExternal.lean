@@ -14,7 +14,7 @@ set_option maxHeartbeats 800000
 
 /- You can set the `maxRecDepth` value with the `-max-recdepth` CLI option -/
 set_option maxRecDepth 3000
-open V5FriConsumerExact
+namespace V5FriConsumerExact
 
 /-- [core::array::{[T; N]}::map]:
     Source: '/rustc/library/core/src/array/mod.rs', lines 592:4-596:28
@@ -274,8 +274,13 @@ axiom
     Visibility: public -/
 @[rust_fun
   "aspis_core::field::{core::cmp::PartialEq<aspis_core::field::QM31, aspis_core::field::QM31>}::eq"]
-axiom aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31.eq
-  : aspis_core.field.QM31 → aspis_core.field.QM31 → Result Bool
+def aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31.eq
+    (left right : aspis_core.field.QM31) : Result Bool :=
+  if left.c0.a = right.c0.a ∧ left.c0.b = right.c0.b ∧
+      left.c1.a = right.c1.a ∧ left.c1.b = right.c1.b then
+    ok true
+  else
+    ok false
 
 /-- [aspis_core::field::{aspis_core::field::PreparedQm31Multiplier}::new]:
     Source: 'crates/aspis-core/src/field.rs', lines 368:4-368:35
@@ -366,3 +371,5 @@ axiom aspis_core.state_only_prefix.STATE_ONLY_SPEND_QUERY_COUNT
 def aspis_core.state_only_private_merkle.STATE_ONLY_PRIVATE_LEAF_SALT_BYTES :
     Result Std.Usize :=
   ok 32#usize
+
+end V5FriConsumerExact
