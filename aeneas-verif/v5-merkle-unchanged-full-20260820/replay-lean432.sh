@@ -81,13 +81,16 @@ compile "$generated" V5MerkleUnchangedFull/Funs \
   "$generated/V5MerkleUnchangedFull/Funs.lean"
 compile "$proof" proof/V5MerkleExternalSemantics \
   "$proof/V5MerkleExternalSemantics.lean"
+compile "$proof" proof/V5MerkleUnchangedDriverProof \
+  "$proof/V5MerkleUnchangedDriverProof.lean"
 
 if scan '(sorry|admit|native_decide|unsafe|ofReduceBool)' \
     "$generated/V5MerkleUnchangedFull/TypesExternal.lean" \
     "$generated/V5MerkleUnchangedFull/Types.lean" \
     "$generated/V5MerkleUnchangedFull/FunsExternal.lean" \
     "$generated/V5MerkleUnchangedFull/Funs.lean" \
-    "$proof/V5MerkleExternalSemantics.lean"; then
+    "$proof/V5MerkleExternalSemantics.lean" \
+    "$proof/V5MerkleUnchangedDriverProof.lean"; then
   echo "forbidden proof token" >&2
   exit 1
 fi
