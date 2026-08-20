@@ -63,41 +63,53 @@ vectors returned by the function.  The statement compares only data the
 verifier reads, so arbitrary unused entries in fixed-size offset arrays are
 irrelevant.
 
-This is not yet the full source-to-mathematics proof for the loop.  The next
-theorem must show that the successful generated loop execution produces the
-same ordered child reads, hash inputs, cursor movement, and final root check as
-the maintained Merkle model.  The topology constructor, shape validator, and
-outer five-section driver were still partial in this raw translation and are
-listed as explicit external declarations in its compilable view.
+`V5MerkleUntouchedRadixSoundness.lean` supplies that missing semantic proof
+directly over the unchanged generated loops.  Every successful call yields a
+nested trace of the actual level, group, and four-child loops.  The trace
+records the exact live-child and 32-byte frontier reads, cursor movement, one
+domain-separated radix-four hash per completed group, and the terminal
+binary-cap or radix-root comparison.  Separate invariants prove that an early
+child or group rejection cannot later turn into `true`.
+
+The theorem has one executable premise: the generated `fixed_hashv` call
+returns SHA-256 of its exact ordered input slices.  It does not assume a
+source-equality shortcut for the unchanged loop, and it does not assume hash
+collision resistance.  The topology constructor, shape validator, and outer
+five-section driver are represented and analyzed by the other generated-code
+modules in this package rather than by this raw-loop snapshot; their final
+composition is described below.
 
 ## What this does not prove
 
-This is a complete extraction artifact, not the final source-equality proof.
+This is a complete extraction artifact with a direct proof of the unchanged
+radix authentication loops, not by itself the final five-section proof.
 `AspisFormal/V5MerkleSourceAdapter.lean` proves the generic control-flow
 lemma: the loop-shaped and recursive scans have the same result and ordered
 hash-call prefix, and successful runs have the same scratch vectors and
-frontier position. It explicitly names, but does not assume or discharge, the
-two remaining code connections: original deployed LLBC to the loop model, and
-generated Aeneas helpers to the recursive model. The generated definitions
-must then be connected to:
+frontier position.  The direct unchanged-loop theorem is stronger for the
+radix authentication function and no longer needs either model-to-code
+connection for that function.  The generated parser/helper definitions and
+the public five-call driver must still be composed into the repository's
+one-way deployed-acceptance theorem.  The remaining public boundaries are
+tracked as:
 
 - `VerifyStateOnlyPrivateOpeningWithTopologySourceEquality`;
 - `VerifyV5DriverCompositionSourceEquality`.
 
-Until those proofs exist, the repository must not say that the deployed Rust
-Merkle verifier has been proved equal to the mathematical model. Concrete Rust
-tests support the rewrites, but tests do not replace that universal proof.
+Until that composition is discharged, the repository must not claim a
+complete end-to-end theorem from the public deployed entry point to the
+five-section mathematical model. Concrete Rust tests remain supporting
+evidence; they do not replace the universal proof.
 
-The generated proof package now establishes the exact leaf and binary-cap
-SHA-256 inputs and inverts a successful top-level driver call into all five
-opening results, their remainders, four query arrays, scratch states, byte
-count, and the final empty-remainder check. Its one executable axiom is
-`fixed_hashv`. The remaining generated-code proof is the nonterminal
-radix-four recursion: each slot read, group hash, frontier read, and cursor
-advance must still be connected to the maintained section trace. The original
-deployed nested loop must separately be connected to the loop model, and
-`fixed_hashv` must be connected to Solana SHA-256. These are open obligations,
-not conclusions of the extraction replay.
+The generated proof package establishes the exact leaf and binary-cap SHA-256
+inputs and inverts a successful top-level driver call into all five opening
+results, their remainders, four query arrays, scratch states, byte count, and
+the final empty-remainder check.  The unchanged-loop proof now also covers the
+nonterminal radix-four scan: each slot read, group hash, frontier read, cursor
+advance, and accepted terminal root shape.  Its sole executable hash boundary
+is `fixed_hashv`; connecting that boundary to Solana's SHA-256 implementation
+and completing the public parser/helper/driver composition remain explicit
+obligations outside this individual theorem.
 
 ## Tool versions
 
