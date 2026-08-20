@@ -1,0 +1,47 @@
+From 5969311d952549283478d6a4295bed3c169ec496 Mon Sep 17 00:00:00 2001
+From: DJB8787 <168072039+DJBarker87@users.noreply.github.com>
+Date: Thu, 20 Aug 2026 22:20:42 +0100
+Subject: [PATCH] Match higher-ranked pointers across loops
+
+---
+ src/interp/InterpMatchCtxs.ml | 7 +++++++
+ src/llbc/TypesUtils.ml        | 6 +++++-
+ 2 files changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/src/interp/InterpMatchCtxs.ml b/src/interp/InterpMatchCtxs.ml
+index 06560904..3bc4d3c6 100644
+--- a/src/interp/InterpMatchCtxs.ml
++++ b/src/interp/InterpMatchCtxs.ml
+@@ -1985,6 +1985,13 @@ struct
+       | RVar (Free rid0), RVar (Free rid1) ->
+           let rid = match_rid rid0 rid1 in
+           RVar (Free rid)
++      | ( RVar (Bound (depth0, rid0)),
++          RVar (Bound (depth1, rid1)) )
++        when depth0 = depth1 && rid0 = rid1 ->
++          (* Higher-ranked function-pointer regions are local de Bruijn
++             variables, not loop-context resources.  Equal bound variables
++             therefore match literally and require no fresh-id mapping. *)
++          r1
+       | _ -> raise (Distinct "match_rtys")
+     in
+     match_types span ~recover ctx0 ctx1 match_distinct_types match_regions ty0
+diff --git a/src/llbc/TypesUtils.ml b/src/llbc/TypesUtils.ml
+index 4303694f..64417c00 100644
+--- a/src/llbc/TypesUtils.ml
++++ b/src/llbc/TypesUtils.ml
+@@ -71,7 +71,11 @@ let ty_has_regions_in_pred (pred : region -> bool) (ty : ty) : bool =
+ 
+ (** Check if a {!type:Charon.Types.ty} contains regions from a given set *)
+ let ty_has_regions_in_set (rset : RegionId.Set.t) (ty : ty) : bool =
+-  ty_has_regions_in_pred (fun r -> region_in_set r rset) ty
++  ty_has_regions_in_pred
++    (function
++      | RVar (Free rid) -> RegionId.Set.mem rid rset
++      | RStatic | RErased | RBody _ | RVar (Bound _) -> false)
++    ty
+ 
+ (** Check if a type has free (i.e., non erased) regions.
+ 
+-- 
+2.50.1 (Apple Git-155)
