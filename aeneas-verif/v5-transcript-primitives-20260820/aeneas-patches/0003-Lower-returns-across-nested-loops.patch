@@ -1,0 +1,890 @@
+From 7c8dc061ba11624252976a9dddcfcba84da6cfd6 Mon Sep 17 00:00:00 2001
+From: DJB8787 <168072039+DJBarker87@users.noreply.github.com>
+Date: Sat, 15 Aug 2026 11:23:01 +0100
+Subject: [PATCH 03/14] Lower returns across nested loops
+
+---
+ src/PrePasses.ml                      | 249 +++++++++++++++
+ tests/lean/NestedLoopReturn.lean      | 427 ++++++++++++++++++++++++++
+ tests/lean/NestedLoopReturnTests.lean |  44 +++
+ tests/lean/lakefile.lean              |   2 +
+ tests/src/nested-loop-return.rs       | 102 ++++++
+ 5 files changed, 824 insertions(+)
+ create mode 100644 tests/lean/NestedLoopReturn.lean
+ create mode 100644 tests/lean/NestedLoopReturnTests.lean
+ create mode 100644 tests/src/nested-loop-return.rs
+
+diff --git a/src/PrePasses.ml b/src/PrePasses.ml
+index 1063ee9e..da670e40 100644
+--- a/src/PrePasses.ml
++++ b/src/PrePasses.ml
+@@ -701,6 +701,254 @@ let update_array_default (crate : crate) : crate =
+ 
+ exception FoundStatement of statement
+ 
++(** Lower function returns from nested loops before {!update_loops}.
++
++    The symbolic loop interpreter handles nested loops, but a function return
++    cannot cross more than one loop boundary directly.  We make that control
++    transfer explicit with one fresh [Option<return_type>] local.  The option
++    carries the return value as well as the control signal; this matters because
++    the ordinary function return place is uninitialized on non-return paths:
++
++    {[
++      loop {
++        loop {
++          if p { return }
++        }
++      }
++
++        ~~>
++
++      pending_return := None;
++      loop {
++        loop {
++          if p {
++            pending_return := Some(move return_place);
++            break 0
++          }
++        };
++        match pending_return { Some(_) => break 0, None => () }
++      };
++      match pending_return {
++        Some(value) => { return_place := move value; return },
++        None => ()
++      }
++    ]}
++
++    A propagation check is inserted immediately after every loop containing a
++    lowered return.  At an inner level it breaks the immediately enclosing
++    loop; after an outermost loop it restores the carried value to the return
++    place and performs the original return.  Normal breaks and continues leave
++    the option at [None] and retain their original behaviour.
++
++    The pass activates only for functions which actually contain a return at
++    loop depth two or greater.  In such a function all returns under a loop are
++    lowered uniformly, so the existing loop pass never has to distinguish an
++    original return from a propagated one.  Newly-created statements receive
++    id zero; the existing statement-id refresh pass assigns their final ids. *)
++let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
++  match f.body with
++  | StructuredBody body ->
++      let has_nested_return =
++        let visitor =
++          object
++            inherit [_] iter_statement as super
++
++            method! visit_Loop depth loop =
++              super#visit_Loop (depth + 1) loop
++
++            method! visit_Return depth =
++              if depth >= 2 then raise Found
++          end
++        in
++        try
++          visitor#visit_block 0 body.body;
++          false
++        with Found -> true
++      in
++      if not has_nested_return then f
++      else
++        let option_ids =
++          TypeDeclId.Map.fold
++            (fun id (decl : type_decl) ids ->
++              if decl.item_meta.lang_item = Some "Option" then id :: ids
++              else ids)
++            crate.type_decls []
++        in
++        let option_id =
++          match option_ids with
++          | [ id ] -> id
++          | _ ->
++              [%craise] f.item_meta.span
++                "Nested-loop returns require exactly one Option language item"
++        in
++        let return_local =
++          match body.locals.locals with
++          | return_local :: _ -> return_local
++          | [] -> [%internal_error] f.item_meta.span
++        in
++        let return_ty = return_local.local_ty in
++        let option_ref : type_decl_ref =
++          {
++            id = TAdtId option_id;
++            generics = TypesUtils.mk_generic_args [] [ return_ty ] [] [];
++          }
++        in
++        let pending_ty = TAdt option_ref in
++        let _, gen =
++          LocalId.mk_stateful_generator_starting_at_id
++            (LocalId.of_int (List.length body.locals.locals))
++        in
++        let pending_local : local =
++          {
++            index = gen ();
++            local_ty = pending_ty;
++            name = Some "pending_return";
++            span = f.item_meta.span;
++          }
++        in
++        let pending_place : place =
++          { kind = PlaceLocal pending_local.index; ty = pending_ty }
++        in
++        let return_place : place =
++          { kind = PlaceLocal return_local.index; ty = return_ty }
++        in
++        let mk_statement ?(comments_before = []) span kind : statement =
++          {
++            span;
++            statement_id = StatementId.zero;
++            kind;
++            comments_before;
++          }
++        in
++        let mk_pending_assignment ?(comments_before = []) span variant fields =
++          mk_statement ~comments_before span
++            (Assign
++               ( pending_place,
++                 Aggregate
++                   ( AggregatedAdt (option_ref, Some variant, None),
++                     fields ) ))
++        in
++        let block_contains_return (block : block) : bool =
++          let visitor =
++            object
++              inherit [_] iter_statement
++              method! visit_Return _ = raise Found
++            end
++          in
++          try
++            visitor#visit_block () block;
++            false
++          with Found -> true
++        in
++        let propagation_check span depth : statement =
++          let action =
++            if depth = 0 then
++              let payload_place : place =
++                {
++                  kind =
++                    PlaceProjection
++                      ( pending_place,
++                        Field
++                          ( ProjAdt (option_id, Some Types.option_some_id),
++                            FieldId.of_int 0 ) );
++                  ty = return_ty;
++                }
++              in
++              [
++                mk_statement span
++                  (Assign
++                     ( return_place,
++                       Use (Move payload_place, NoRetag) ));
++                mk_statement span Return;
++              ]
++            else [ mk_statement span (Break 0) ]
++          in
++          let then_block =
++            { span; statements = action }
++          in
++          let else_block = { span; statements = [] } in
++          mk_statement span
++            (Switch
++               (Match
++                  ( pending_place,
++                    [ ([ Types.option_some_id ], then_block) ],
++                    Some else_block )))
++        in
++        (* Charon places [StorageDead] cleanup immediately before a function
++           return.  Once the return is propagated out through loop breaks,
++           executing that cleanup before the break would make live loop state
++           unavailable on the join path.  Dropping these markers is semantics
++           preserving: [StorageDead] has no runtime effect, and the eventual
++           propagated [Return] implicitly deallocates the function locals. *)
++        let rec strip_storage_dead_before_lowered_return depth statements =
++          match statements with
++          | ({ kind = StorageDead _; _ } as dead) :: rest ->
++              let rec take_dead reversed = function
++                | ({ kind = StorageDead _; _ } as next) :: tail ->
++                    take_dead (next :: reversed) tail
++                | tail -> (List.rev reversed, tail)
++              in
++              let dead, rest = take_dead [ dead ] rest in
++              (match rest with
++              | { kind = Return; _ } :: _ when depth > 0 ->
++                  strip_storage_dead_before_lowered_return depth rest
++              | _ ->
++                  dead @ strip_storage_dead_before_lowered_return depth rest)
++          | st :: rest ->
++              st :: strip_storage_dead_before_lowered_return depth rest
++          | [] -> []
++        in
++        let rec transform_block depth (block : block) : block =
++          let statements =
++            strip_storage_dead_before_lowered_return depth block.statements
++          in
++          {
++            block with
++            statements =
++              List.concat_map (transform_statement depth) statements;
++          }
++        and transform_statement depth (st : statement) : statement list =
++          match st.kind with
++          | Return when depth > 0 ->
++              [
++                mk_pending_assignment ~comments_before:st.comments_before
++                  st.span Types.option_some_id [ Move return_place ];
++                { st with kind = Break 0; comments_before = [] };
++              ]
++          | Loop loop ->
++              let contains_return = block_contains_return loop in
++              let loop = transform_block (depth + 1) loop in
++              let loop_st = { st with kind = Loop loop } in
++              if contains_return then
++                [ loop_st; propagation_check st.span depth ]
++              else [ loop_st ]
++          | _ ->
++              let visitor =
++                object
++                  inherit [_] map_statement
++
++                  method! visit_block child_depth child =
++                    transform_block child_depth child
++                end
++              in
++              [ visitor#visit_statement depth st ]
++        in
++        let initialization =
++          mk_pending_assignment f.item_meta.span Types.option_none_id []
++        in
++        let body_body = transform_block 0 body.body in
++        let body_body =
++          { body_body with statements = initialization :: body_body.statements }
++        in
++        let locals =
++          {
++            body.locals with
++            locals = body.locals.locals @ [ pending_local ];
++          }
++        in
++        { f with body = StructuredBody { body with body = body_body; locals } }
++  | _ -> f
++
+ (** Check that loops:
+     - do not contain early returns
+     - do not continue/break to outer loops
+@@ -2576,6 +2824,7 @@ let apply_passes (crate : crate) : crate =
+       ( "eliminate_metadata_only_slice_raw_pointers",
+         eliminate_metadata_only_slice_raw_pointers );
+       ("remove_unreachable", remove_unreachable);
++      ("lower_nested_loop_returns", lower_nested_loop_returns);
+       ("update_loop", update_loops);
+       ("remove_useless_joins", remove_useless_joins);
+       ( "remove_shallow_borrows_storage_live_dead",
+diff --git a/tests/lean/NestedLoopReturn.lean b/tests/lean/NestedLoopReturn.lean
+new file mode 100644
+index 00000000..3423ed00
+--- /dev/null
++++ b/tests/lean/NestedLoopReturn.lean
+@@ -0,0 +1,427 @@
++-- THIS FILE WAS AUTOMATICALLY GENERATED BY AENEAS
++-- [nested_loop_return]
++import Aeneas
++open Aeneas Aeneas.Std Result ControlFlow Error
++set_option linter.dupNamespace false
++set_option linter.hashCommand false
++set_option linter.unusedVariables false
++
++/- You can set the `maxHeartbeats` value with the `-max-heartbeats` CLI option -/
++set_option maxHeartbeats 1000000
++
++/- You can set the `maxRecDepth` value with the `-max-recdepth` CLI option -/
++set_option maxRecDepth 2048
++
++namespace nested_loop_return
++
++/-- [nested_loop_return::find_pair]: loop body 1:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-20:1
++    Visibility: public -/
++@[rust_loop_body]
++def find_pair_loop0_loop0.body
++  (columns : Std.U32) (wanted : Std.U32) (row : Std.U32) (column : Std.U32) :
++  Result (ControlFlow Std.U32 (Option (Option (Std.U32 × Std.U32))))
++  := do
++  if column < columns
++  then
++    if row = wanted
++    then
++      if column = wanted
++      then ok (done (some (some (row, column))))
++      else
++        if column = 3#u32
++        then ok (done none)
++        else let column1 ← column + 1#u32
++             ok (cont column1)
++    else
++      if column = 3#u32
++      then ok (done none)
++      else let column1 ← column + 1#u32
++           ok (cont column1)
++  else ok (done none)
++
++/-- [nested_loop_return::find_pair]: loop 1:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-20:1
++    Visibility: public -/
++@[rust_loop]
++def find_pair_loop0_loop0
++  (columns : Std.U32) (wanted : Std.U32) (row : Std.U32) (column : Std.U32) :
++  Result (Option (Option (Std.U32 × Std.U32)))
++  := do
++  loop
++    (fun column1 => find_pair_loop0_loop0.body columns wanted row column1)
++    column
++
++/-- [nested_loop_return::find_pair]: loop body 0:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-20:1
++    Visibility: public -/
++@[rust_loop_body]
++def find_pair_loop0.body
++  (rows : Std.U32) (columns : Std.U32) (wanted : Std.U32) (row : Std.U32) :
++  Result (ControlFlow Std.U32 (Option (Option (Std.U32 × Std.U32))))
++  := do
++  if row < rows
++  then
++    let pending_return ← find_pair_loop0_loop0 columns wanted row 0#u32
++    match pending_return with
++    | none => let row1 ← row + 1#u32
++              ok (cont row1)
++    | some _ => ok (done pending_return)
++  else ok (done none)
++
++/-- [nested_loop_return::find_pair]: loop 0:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-20:1
++    Visibility: public -/
++@[rust_loop]
++def find_pair_loop0
++  (rows : Std.U32) (columns : Std.U32) (wanted : Std.U32) (row : Std.U32) :
++  Result (Option (Option (Std.U32 × Std.U32)))
++  := do
++  loop
++    (fun row1 => find_pair_loop0.body rows columns wanted row1)
++    row
++
++/-- [nested_loop_return::find_pair]:
++    Source: 'tests/src/nested-loop-return.rs', lines 4:0-20:1
++    Visibility: public -/
++def find_pair
++  (rows : Std.U32) (columns : Std.U32) (wanted : Std.U32) :
++  Result (Option (Std.U32 × Std.U32))
++  := do
++  let pending_return ← find_pair_loop0 rows columns wanted 0#u32
++  match pending_return with
++  | none => ok none
++  | some o => ok o
++
++/-- [nested_loop_return::sequential_loops]: loop body 1:
++    Source: 'tests/src/nested-loop-return.rs', lines 27:8-43:1
++    Visibility: public -/
++@[rust_loop_body]
++def sequential_loops_loop0_loop0.body
++  (stop : Std.U32) (value : Std.U32) (inner : Std.I32) :
++  Result (ControlFlow (Std.U32 × Std.I32) (Std.U32 × (Option Std.U32)))
++  := do
++  if inner < 2#i32
++  then
++    if value = stop
++    then let value1 ← value + 10#u32
++         ok (done (value, some value1))
++    else
++      let value1 ← value + 1#u32
++      let inner1 ← inner + 1#i32
++      ok (cont (value1, inner1))
++  else ok (done (value, none))
++
++/-- [nested_loop_return::sequential_loops]: loop 1:
++    Source: 'tests/src/nested-loop-return.rs', lines 27:8-43:1
++    Visibility: public -/
++@[rust_loop]
++def sequential_loops_loop0_loop0
++  (stop : Std.U32) (value : Std.U32) (inner : Std.I32) :
++  Result (Std.U32 × (Option Std.U32))
++  := do
++  loop
++    (fun (value1, inner1) => sequential_loops_loop0_loop0.body stop value1
++      inner1)
++    (value, inner)
++
++/-- [nested_loop_return::sequential_loops]: loop body 0:
++    Source: 'tests/src/nested-loop-return.rs', lines 25:4-43:1
++    Visibility: public -/
++@[rust_loop_body]
++def sequential_loops_loop0.body
++  (stop : Std.U32) (value : Std.U32) (outer : Std.I32) :
++  Result (ControlFlow (Std.U32 × Std.I32) (Std.U32 × (Option Std.U32)))
++  := do
++  if outer < 2#i32
++  then
++    let (value1, pending_return) ←
++      sequential_loops_loop0_loop0 stop value 0#i32
++    match pending_return with
++    | none => let outer1 ← outer + 1#i32
++              ok (cont (value1, outer1))
++    | some _ => ok (done (value1, pending_return))
++  else ok (done (value, none))
++
++/-- [nested_loop_return::sequential_loops]: loop 0:
++    Source: 'tests/src/nested-loop-return.rs', lines 25:4-43:1
++    Visibility: public -/
++@[rust_loop]
++def sequential_loops_loop0
++  (stop : Std.U32) (value : Std.U32) (outer : Std.I32) :
++  Result (Std.U32 × (Option Std.U32))
++  := do
++  loop
++    (fun (value1, outer1) => sequential_loops_loop0.body stop value1 outer1)
++    (value, outer)
++
++/-- [nested_loop_return::sequential_loops]: loop body 2:
++    Source: 'tests/src/nested-loop-return.rs', lines 38:4-41:5
++    Visibility: public -/
++@[rust_loop_body]
++def sequential_loops_loop1.body
++  (value : Std.U32) (tail : Std.I32) :
++  Result (ControlFlow (Std.U32 × Std.I32) Std.U32)
++  := do
++  if tail < 2#i32
++  then
++    let value1 ← value + 2#u32
++    let tail1 ← tail + 1#i32
++    ok (cont (value1, tail1))
++  else ok (done value)
++
++/-- [nested_loop_return::sequential_loops]: loop 2:
++    Source: 'tests/src/nested-loop-return.rs', lines 38:4-41:5
++    Visibility: public -/
++@[rust_loop]
++def sequential_loops_loop1
++  (value : Std.U32) (tail : Std.I32) : Result Std.U32 := do
++  loop
++    (fun (value1, tail1) => sequential_loops_loop1.body value1 tail1)
++    (value, tail)
++
++/-- [nested_loop_return::sequential_loops]:
++    Source: 'tests/src/nested-loop-return.rs', lines 22:0-43:1
++    Visibility: public -/
++def sequential_loops (stop : Std.U32) : Result Std.U32 := do
++  let (value, pending_return) ← sequential_loops_loop0 stop 0#u32 0#i32
++  match pending_return with
++  | none => sequential_loops_loop1 value 0#i32
++  | some value1 => ok value1
++
++/-- [nested_loop_return::triple_nested_return]: loop body 2:
++    Source: 'tests/src/nested-loop-return.rs', lines 51:12-62:1
++    Visibility: public -/
++@[rust_loop_body]
++def triple_nested_return_loop0_loop0_loop0.body
++  (stop : Std.U32) (first : Std.U32) (second : Std.U32) (third : Std.U32) :
++  Result (ControlFlow Std.U32 (Option Std.U32))
++  := do
++  if third < 2#u32
++  then
++    let i ← first + second
++    let i1 ← i + third
++    if i1 = stop
++    then
++      let i2 ← first * 4#u32
++      let i3 ← second * 2#u32
++      let i4 ← i2 + i3
++      let i5 ← i4 + third
++      let i6 ← i5 + 1#u32
++      ok (done (some i6))
++    else let third1 ← third + 1#u32
++         ok (cont third1)
++  else ok (done none)
++
++/-- [nested_loop_return::triple_nested_return]: loop 2:
++    Source: 'tests/src/nested-loop-return.rs', lines 51:12-62:1
++    Visibility: public -/
++@[rust_loop]
++def triple_nested_return_loop0_loop0_loop0
++  (stop : Std.U32) (first : Std.U32) (second : Std.U32) (third : Std.U32) :
++  Result (Option Std.U32)
++  := do
++  loop
++    (fun third1 => triple_nested_return_loop0_loop0_loop0.body stop first
++      second third1)
++    third
++
++/-- [nested_loop_return::triple_nested_return]: loop body 1:
++    Source: 'tests/src/nested-loop-return.rs', lines 49:8-62:1
++    Visibility: public -/
++@[rust_loop_body]
++def triple_nested_return_loop0_loop0.body
++  (stop : Std.U32) (first : Std.U32) (second : Std.U32) :
++  Result (ControlFlow Std.U32 (Option Std.U32))
++  := do
++  if second < 2#u32
++  then
++    let pending_return ←
++      triple_nested_return_loop0_loop0_loop0 stop first second 0#u32
++    match pending_return with
++    | none => let second1 ← second + 1#u32
++              ok (cont second1)
++    | some _ => ok (done pending_return)
++  else ok (done none)
++
++/-- [nested_loop_return::triple_nested_return]: loop 1:
++    Source: 'tests/src/nested-loop-return.rs', lines 49:8-62:1
++    Visibility: public -/
++@[rust_loop]
++def triple_nested_return_loop0_loop0
++  (stop : Std.U32) (first : Std.U32) (second : Std.U32) :
++  Result (Option Std.U32)
++  := do
++  loop
++    (fun second1 => triple_nested_return_loop0_loop0.body stop first second1)
++    second
++
++/-- [nested_loop_return::triple_nested_return]: loop body 0:
++    Source: 'tests/src/nested-loop-return.rs', lines 47:4-62:1
++    Visibility: public -/
++@[rust_loop_body]
++def triple_nested_return_loop0.body
++  (stop : Std.U32) (first : Std.U32) :
++  Result (ControlFlow Std.U32 (Option Std.U32))
++  := do
++  if first < 2#u32
++  then
++    let pending_return ← triple_nested_return_loop0_loop0 stop first 0#u32
++    match pending_return with
++    | none => let first1 ← first + 1#u32
++              ok (cont first1)
++    | some _ => ok (done pending_return)
++  else ok (done none)
++
++/-- [nested_loop_return::triple_nested_return]: loop 0:
++    Source: 'tests/src/nested-loop-return.rs', lines 47:4-62:1
++    Visibility: public -/
++@[rust_loop]
++def triple_nested_return_loop0
++  (stop : Std.U32) (first : Std.U32) : Result (Option Std.U32) := do
++  loop
++    (fun first1 => triple_nested_return_loop0.body stop first1)
++    first
++
++/-- [nested_loop_return::triple_nested_return]:
++    Source: 'tests/src/nested-loop-return.rs', lines 45:0-62:1
++    Visibility: public -/
++def triple_nested_return (stop : Std.U32) : Result Std.U32 := do
++  let pending_return ← triple_nested_return_loop0 stop 0#u32
++  match pending_return with
++  | none => ok 0#u32
++  | some i => ok i
++
++/-- [nested_loop_return::NonCopy]
++    Source: 'tests/src/nested-loop-return.rs', lines 65:0-67:1
++    Visibility: public -/
++structure NonCopy where
++  value : Std.U32
++
++/-- [nested_loop_return::{impl core::fmt::Debug for nested_loop_return::NonCopy}::fmt]:
++    Source: 'tests/src/nested-loop-return.rs', lines 64:9-64:14
++    Visibility: public -/
++def NonCopy.Insts.CoreFmtDebug.fmt
++  (self : NonCopy) (f : core.fmt.Formatter) :
++  Result ((core.result.Result Unit core.fmt.Error) × core.fmt.Formatter)
++  := do
++  let dyn := Dyn.mk _ (core.fmt.DebugShared core.fmt.DebugU32) self.value
++  core.fmt.Formatter.debug_struct_field1_finish f (toStr "NonCopy") (toStr
++    "value") dyn
++
++/-- Trait implementation: [nested_loop_return::{impl core::fmt::Debug for nested_loop_return::NonCopy}]
++    Source: 'tests/src/nested-loop-return.rs', lines 64:9-64:14 -/
++@[reducible]
++def NonCopy.Insts.CoreFmtDebug : core.fmt.Debug NonCopy := {
++  fmt := NonCopy.Insts.CoreFmtDebug.fmt
++}
++
++/-- Trait implementation: [nested_loop_return::{impl core::marker::StructuralPartialEq for nested_loop_return::NonCopy}]
++    Source: 'tests/src/nested-loop-return.rs', lines 64:16-64:25 -/
++@[reducible]
++def NonCopy.Insts.CoreMarkerStructuralPartialEq :
++  core.marker.StructuralPartialEq NonCopy := {
++}
++
++/-- [nested_loop_return::{impl core::cmp::PartialEq<nested_loop_return::NonCopy> for nested_loop_return::NonCopy}::eq]:
++    Source: 'tests/src/nested-loop-return.rs', lines 64:16-64:25
++    Visibility: public -/
++def NonCopy.Insts.CoreCmpPartialEqNonCopy.eq
++  (self : NonCopy) (other : NonCopy) : Result Bool := do
++  ok (self.value = other.value)
++
++/-- Trait implementation: [nested_loop_return::{impl core::cmp::PartialEq<nested_loop_return::NonCopy> for nested_loop_return::NonCopy}]
++    Source: 'tests/src/nested-loop-return.rs', lines 64:16-64:25 -/
++@[reducible]
++def NonCopy.Insts.CoreCmpPartialEqNonCopy : core.cmp.PartialEq NonCopy NonCopy
++  := {
++  eq := NonCopy.Insts.CoreCmpPartialEqNonCopy.eq
++}
++
++/-- [nested_loop_return::{impl core::cmp::Eq for nested_loop_return::NonCopy}::assert_fields_are_eq]:
++    Source: 'tests/src/nested-loop-return.rs', lines 64:27-64:29
++    Visibility: public -/
++def NonCopy.Insts.CoreCmpEq.assert_fields_are_eq
++  (self : NonCopy) : Result Unit := do
++  ok ()
++
++/-- Trait implementation: [nested_loop_return::{impl core::cmp::Eq for nested_loop_return::NonCopy}]
++    Source: 'tests/src/nested-loop-return.rs', lines 64:27-64:29 -/
++@[reducible]
++def NonCopy.Insts.CoreCmpEq : core.cmp.Eq NonCopy := {
++  partialEqInst := NonCopy.Insts.CoreCmpPartialEqNonCopy
++  assert_fields_are_eq := NonCopy.Insts.CoreCmpEq.assert_fields_are_eq
++}
++
++/-- [nested_loop_return::non_copy_result]: loop body 1:
++    Source: 'tests/src/nested-loop-return.rs', lines 73:8-84:1
++    Visibility: public -/
++@[rust_loop_body]
++def non_copy_result_loop0_loop0.body
++  (stop : Std.U32) (outer : Std.U32) (inner : Std.U32) :
++  Result (ControlFlow Std.U32 (Option (core.result.Result NonCopy Std.U32)))
++  := do
++  if inner < 2#u32
++  then
++    let i ← outer + inner
++    if i = stop
++    then
++      let i1 ← outer * 2#u32
++      let i2 ← i1 + inner
++      ok (done (some (core.result.Result.Ok { value := i2 })))
++    else let inner1 ← inner + 1#u32
++         ok (cont inner1)
++  else ok (done none)
++
++/-- [nested_loop_return::non_copy_result]: loop 1:
++    Source: 'tests/src/nested-loop-return.rs', lines 73:8-84:1
++    Visibility: public -/
++@[rust_loop]
++def non_copy_result_loop0_loop0
++  (stop : Std.U32) (outer : Std.U32) (inner : Std.U32) :
++  Result (Option (core.result.Result NonCopy Std.U32))
++  := do
++  loop
++    (fun inner1 => non_copy_result_loop0_loop0.body stop outer inner1)
++    inner
++
++/-- [nested_loop_return::non_copy_result]: loop body 0:
++    Source: 'tests/src/nested-loop-return.rs', lines 71:4-84:1
++    Visibility: public -/
++@[rust_loop_body]
++def non_copy_result_loop0.body
++  (stop : Std.U32) (outer : Std.U32) :
++  Result (ControlFlow Std.U32 (Option (core.result.Result NonCopy Std.U32)))
++  := do
++  if outer < 2#u32
++  then
++    let pending_return ← non_copy_result_loop0_loop0 stop outer 0#u32
++    match pending_return with
++    | none => let outer1 ← outer + 1#u32
++              ok (cont outer1)
++    | some _ => ok (done pending_return)
++  else ok (done none)
++
++/-- [nested_loop_return::non_copy_result]: loop 0:
++    Source: 'tests/src/nested-loop-return.rs', lines 71:4-84:1
++    Visibility: public -/
++@[rust_loop]
++def non_copy_result_loop0
++  (stop : Std.U32) (outer : Std.U32) :
++  Result (Option (core.result.Result NonCopy Std.U32))
++  := do
++  loop
++    (fun outer1 => non_copy_result_loop0.body stop outer1)
++    outer
++
++/-- [nested_loop_return::non_copy_result]:
++    Source: 'tests/src/nested-loop-return.rs', lines 69:0-84:1
++    Visibility: public -/
++def non_copy_result
++  (stop : Std.U32) : Result (core.result.Result NonCopy Std.U32) := do
++  let pending_return ← non_copy_result_loop0 stop 0#u32
++  match pending_return with
++  | none => ok (core.result.Result.Err 7#u32)
++  | some r => ok r
++
++end nested_loop_return
+diff --git a/tests/lean/NestedLoopReturnTests.lean b/tests/lean/NestedLoopReturnTests.lean
+new file mode 100644
+index 00000000..7b0e39b8
+--- /dev/null
++++ b/tests/lean/NestedLoopReturnTests.lean
+@@ -0,0 +1,44 @@
++import NestedLoopReturn
++
++open Aeneas Aeneas.Std Result ControlFlow Error
++open nested_loop_return
++
++def findPairSuccess : Bool :=
++  match find_pair 5#u32 5#u32 2#u32 with
++  | .ok (.some (row, column)) => row.val == 2 && column.val == 2
++  | _ => false
++
++def findPairNormalExit : Bool :=
++  match find_pair 5#u32 5#u32 4#u32 with
++  | .ok .none => true
++  | _ => false
++
++def sequentialEarlyExit : Bool :=
++  match sequential_loops 1#u32 with
++  | .ok value => value.val == 11
++  | _ => false
++
++def sequentialNormalExit : Bool :=
++  match sequential_loops 99#u32 with
++  | .ok value => value.val == 8
++  | _ => false
++
++def tripleExitChecks : Bool :=
++  match (triple_nested_return 0#u32, triple_nested_return 3#u32,
++      triple_nested_return 4#u32) with
++  | (.ok first, .ok last, .ok absent) =>
++      first.val == 1 && last.val == 8 && absent.val == 0
++  | _ => false
++
++def nonCopyResultChecks : Bool :=
++  match (non_copy_result 0#u32, non_copy_result 9#u32) with
++  | (.ok (.Ok value), .ok (.Err error)) =>
++      value.value.val == 0 && error.val == 7
++  | _ => false
++
++example : findPairSuccess = true := by native_decide
++example : findPairNormalExit = true := by native_decide
++example : sequentialEarlyExit = true := by native_decide
++example : sequentialNormalExit = true := by native_decide
++example : tripleExitChecks = true := by native_decide
++example : nonCopyResultChecks = true := by native_decide
+diff --git a/tests/lean/lakefile.lean b/tests/lean/lakefile.lean
+index 7b9da2d4..23545823 100644
+--- a/tests/lean/lakefile.lean
++++ b/tests/lean/lakefile.lean
+@@ -77,6 +77,8 @@ package «tests» {}
+ @[default_target] lean_lib MultiTarget
+ @[default_target] lean_lib MutBorrowInSharedBorrow
+ @[default_target] lean_lib Names
++@[default_target] lean_lib NestedLoopReturn
++@[default_target] lean_lib NestedLoopReturnTests
+ @[default_target] lean_lib NestedBorrows
+ @[default_target] lean_lib NestedSharedBorrows
+ @[default_target] lean_lib NoNestedBorrows
+diff --git a/tests/src/nested-loop-return.rs b/tests/src/nested-loop-return.rs
+new file mode 100644
+index 00000000..389f66b2
+--- /dev/null
++++ b/tests/src/nested-loop-return.rs
+@@ -0,0 +1,102 @@
++//@ [coq,fstar] skip
++// Regression tests for returns which must cross two or more loop boundaries.
++
++pub fn find_pair(rows: u32, columns: u32, wanted: u32) -> Option<(u32, u32)> {
++    let mut row = 0;
++    while row < rows {
++        let mut column = 0;
++        while column < columns {
++            if row == wanted && column == wanted {
++                return Some((row, column));
++            }
++            if column == 3 {
++                break;
++            }
++            column += 1;
++        }
++        row += 1;
++    }
++    None
++}
++
++pub fn sequential_loops(stop: u32) -> u32 {
++    let mut value = 0;
++    let mut outer = 0;
++    while outer < 2 {
++        let mut inner = 0;
++        while inner < 2 {
++            if value == stop {
++                return value + 10;
++            }
++            value += 1;
++            inner += 1;
++        }
++        outer += 1;
++    }
++
++    let mut tail = 0;
++    while tail < 2 {
++        value += 2;
++        tail += 1;
++    }
++    value
++}
++
++pub fn triple_nested_return(stop: u32) -> u32 {
++    let mut first = 0;
++    while first < 2 {
++        let mut second = 0;
++        while second < 2 {
++            let mut third = 0;
++            while third < 2 {
++                if first + second + third == stop {
++                    return first * 4 + second * 2 + third + 1;
++                }
++                third += 1;
++            }
++            second += 1;
++        }
++        first += 1;
++    }
++    0
++}
++
++#[derive(Debug, PartialEq, Eq)]
++pub struct NonCopy {
++    pub value: u32,
++}
++
++pub fn non_copy_result(stop: u32) -> Result<NonCopy, u32> {
++    let mut outer = 0;
++    while outer < 2 {
++        let mut inner = 0;
++        while inner < 2 {
++            if outer + inner == stop {
++                return Ok(NonCopy {
++                    value: outer * 2 + inner,
++                });
++            }
++            inner += 1;
++        }
++        outer += 1;
++    }
++    Err(7)
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn nested_return_paths_and_normal_paths_agree_with_rust() {
++        assert_eq!(find_pair(5, 5, 2), Some((2, 2)));
++        assert_eq!(find_pair(5, 5, 4), None);
++        assert_eq!(sequential_loops(1), 11);
++        assert_eq!(sequential_loops(99), 8);
++        assert_eq!(triple_nested_return(0), 1);
++        assert_eq!(triple_nested_return(3), 8);
++        assert_eq!(triple_nested_return(4), 0);
++        assert_eq!(non_copy_result(0), Ok(NonCopy { value: 0 }));
++        assert_eq!(non_copy_result(9), Err(7));
++    }
++}
+-- 
+2.50.1 (Apple Git-155)
+

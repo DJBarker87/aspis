@@ -1,0 +1,727 @@
+From 02f386122f0b7de1176a6e77c7b068efad595f90 Mon Sep 17 00:00:00 2001
+From: DJB8787 <168072039+DJBarker87@users.noreply.github.com>
+Date: Sat, 15 Aug 2026 16:51:25 +0100
+Subject: [PATCH 10/14] Preserve enclosing iterator across lowered returns
+
+---
+ src/PrePasses.ml                 |  94 ++++++-
+ tests/lean/NestedLoopReturn.lean | 453 +++++++++++++++++++++++++++++++
+ tests/src/nested-loop-return.rs  | 109 +++++++-
+ 3 files changed, 647 insertions(+), 9 deletions(-)
+
+diff --git a/src/PrePasses.ml b/src/PrePasses.ml
+index bf3909dc..886d4be9 100644
+--- a/src/PrePasses.ml
++++ b/src/PrePasses.ml
+@@ -979,6 +979,85 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+               take_cleanup (cleanup :: reversed) rest
+           | rest -> (List.rev reversed, rest)
+         in
++        (* Charon can encode the normal exit from a reconstructed [for] loop
++           as a continue to an enclosing loop.  In that case the statements
++           after the inner [Loop] are an unreachable fallback whose cleanup
++           may also kill state owned by the enclosing loop.  If that fallback
++           is copied onto a lowered return, Aeneas joins the dead enclosing
++           iterator into the ordinary path out of the inner loop.
++
++           Recover the cleanup common to the loop's actual non-return exits.
++           We inspect this loop body but skip nested loops, collect the trailing
++           [StorageDead] locals before a current-loop break or an outward
++           break/continue, and retain their intersection. *)
++        let loop_normal_exit_cleanup (loop : block) : statement list option =
++          let exits : statement list list ref = ref [] in
++          let saw_outward_exit = ref false in
++          let is_cleanup (st : statement) =
++            match st.kind with
++            | StorageDead _ | Nop -> true
++            | _ -> false
++          in
++          let is_normal_exit (st : statement) =
++            match st.kind with
++            | Break index when index > 0 ->
++                saw_outward_exit := true;
++                true
++            | Break 0 -> true
++            | Continue index when index > 0 ->
++                saw_outward_exit := true;
++                true
++            | _ -> false
++          in
++          let rec scan_block (block : block) =
++            scan_statements [] block.statements
++          and scan_statements reversed_cleanup = function
++            | st :: rest when is_cleanup st ->
++                scan_statements (st :: reversed_cleanup) rest
++            | st :: rest ->
++                if is_normal_exit st then
++                  exits := List.rev reversed_cleanup :: !exits
++                else
++                  let visitor =
++                    object
++                      inherit [_] iter_statement_base
++                      method! visit_Loop _ _ = ()
++                      method! visit_block _ block = scan_block block
++                    end
++                  in
++                  visitor#visit_statement () st;
++                  scan_statements [] rest
++            | [] -> ()
++          in
++          scan_block loop;
++          match (!saw_outward_exit, List.rev !exits) with
++          | false, _ -> None
++          | true, [] -> None
++          | true, first :: remaining ->
++              let dead_locals cleanup =
++                List.fold_left
++                  (fun locals (st : statement) ->
++                    match st.kind with
++                    | StorageDead local -> LocalId.Set.add local locals
++                    | Nop -> locals
++                    | _ -> [%internal_error] st.span)
++                  LocalId.Set.empty cleanup
++              in
++              let common =
++                List.fold_left
++                  (fun common cleanup ->
++                    LocalId.Set.inter common (dead_locals cleanup))
++                  (dead_locals first) remaining
++              in
++              Some
++                (List.filter
++                   (fun (st : statement) ->
++                     match st.kind with
++                     | StorageDead local -> LocalId.Set.mem local common
++                     | Nop -> false
++                     | _ -> false)
++                   first)
++        in
+         let rec transform_block depth loop_exit_cleanup outer_fallthrough
+             (block : block) : block =
+           {
+@@ -994,13 +1073,7 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+               let cleanup, rest = take_cleanup [] statements in
+               match (cleanup, rest) with
+               | _ :: _, ({ kind = Return; _ } as return_st) :: tail ->
+-                  (* The original return cleanup mixes function-wide markers
+-                     with locals owned by this loop.  Discard that mixed list
+-                     and use the loop's exact normal-exit cleanup instead.  It
+-                     is also inserted before every ordinary [Break 0], so all
+-                     loop exits reach the post-loop join with the same loans
+-                     ended.  Function-wide locals remain live until the
+-                     propagated return. *)
++                  (* Use the cleanup common to this loop's ordinary exits. *)
+                   let assignment, leave = lowered_return return_st in
+                   fresh_cleanup loop_exit_cleanup
+                   @ [ assignment; leave ]
+@@ -1029,7 +1102,12 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+                    loop interpreter never has to join a live iterator with an
+                    already-ended one. *)
+                 let cleanup, tail = take_cleanup [] rest in
+-                let loop = transform_block (depth + 1) cleanup false loop in
++                let loop_cleanup =
++                  Option.value ~default:cleanup (loop_normal_exit_cleanup loop)
++                in
++                let loop =
++                  transform_block (depth + 1) loop_cleanup false loop
++                in
+                 let loop_st = { st with kind = Loop loop } in
+                 loop_st
+                 :: propagation_check st.span depth reject_none loop_exit_cleanup
+diff --git a/tests/lean/NestedLoopReturn.lean b/tests/lean/NestedLoopReturn.lean
+index e8196d40..2ca6a1d7 100644
+--- a/tests/lean/NestedLoopReturn.lean
++++ b/tests/lean/NestedLoopReturn.lean
+@@ -581,4 +581,457 @@ def result_through_match_and_nested_loops
+     | none => ok (core.result.Result.Ok total)
+     | some r => ok r
+ 
++/-- [nested_loop_return::nested_slice_iterator_return]: loop body 2:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-112:1
++    Visibility: public -/
++@[rust_loop_body]
++def nested_slice_iterator_return_loop0_loop0_loop0.body
++  (stop : Std.U8) (present : Std.U8) (iter : core.ops.range.Range Std.U8) :
++  Result (ControlFlow (core.ops.range.Range Std.U8) (Option Bool))
++  := do
++  let (o, iter1) ←
++    core.iter.range.IteratorRange.next core.iter.range.StepU8 iter
++  match o with
++  | none => ok (done none)
++  | some slot =>
++    let i ← 1#u8 <<< slot
++    let i1 ← lift (present &&& i)
++    if i1 != 0#u8
++    then if slot = stop
++         then ok (done (some false))
++         else ok (cont iter1)
++    else ok (cont iter1)
++
++/-- [nested_loop_return::nested_slice_iterator_return]: loop 2:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-112:1
++    Visibility: public -/
++@[rust_loop]
++def nested_slice_iterator_return_loop0_loop0_loop0
++  (iter : core.ops.range.Range Std.U8) (stop : Std.U8) (present : Std.U8) :
++  Result (Option Bool)
++  := do
++  loop
++    (fun iter1 => nested_slice_iterator_return_loop0_loop0_loop0.body stop
++      present iter1)
++    iter
++
++/-- [nested_loop_return::nested_slice_iterator_return]: loop body 1:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-112:1
++    Visibility: public -/
++@[rust_loop_body]
++def nested_slice_iterator_return_loop0_loop0.body
++  (stop : Std.U8) (iter : core.slice.iter.Iter Std.U8) :
++  Result (ControlFlow (core.slice.iter.Iter Std.U8) (Option Bool))
++  := do
++  let (o, iter1) ← core.slice.iter.IteratorSliceIter.next iter
++  match o with
++  | none => ok (done none)
++  | some present =>
++    let pending_return ←
++      nested_slice_iterator_return_loop0_loop0_loop0
++        { start := 0#u8, «end» := 4#u8 } stop present
++    match pending_return with
++    | none => ok (cont iter1)
++    | some _ => ok (done pending_return)
++
++/-- [nested_loop_return::nested_slice_iterator_return]: loop 1:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-112:1
++    Visibility: public -/
++@[rust_loop]
++def nested_slice_iterator_return_loop0_loop0
++  (iter : core.slice.iter.Iter Std.U8) (stop : Std.U8) :
++  Result (Option Bool)
++  := do
++  loop
++    (fun iter1 => nested_slice_iterator_return_loop0_loop0.body stop iter1)
++    iter
++
++/-- [nested_loop_return::nested_slice_iterator_return]: loop body 0:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-112:1
++    Visibility: public -/
++@[rust_loop_body]
++def nested_slice_iterator_return_loop0.body
++  (masks : Slice Std.U8) (stop : Std.U8) (outer : Std.U32) :
++  Result (ControlFlow Std.U32 (Option Bool))
++  := do
++  if outer < 2#u32
++  then
++    let iter ←
++      SharedSlice.Insts.CoreIterTraitsCollectIntoIteratorSharedIter.into_iter
++        masks
++    let pending_return ← nested_slice_iterator_return_loop0_loop0 iter stop
++    match pending_return with
++    | none => let outer1 ← outer + 1#u32
++              ok (cont outer1)
++    | some _ => ok (done pending_return)
++  else ok (done none)
++
++/-- [nested_loop_return::nested_slice_iterator_return]: loop 0:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-112:1
++    Visibility: public -/
++@[rust_loop]
++def nested_slice_iterator_return_loop0
++  (masks : Slice Std.U8) (stop : Std.U8) (outer : Std.U32) :
++  Result (Option Bool)
++  := do
++  loop
++    (fun outer1 => nested_slice_iterator_return_loop0.body masks stop outer1)
++    outer
++
++/-- [nested_loop_return::nested_slice_iterator_return]:
++    Source: 'tests/src/nested-loop-return.rs', lines 99:0-112:1
++    Visibility: public -/
++def nested_slice_iterator_return
++  (masks : Slice Std.U8) (stop : Std.U8) : Result Bool := do
++  let pending_return ← nested_slice_iterator_return_loop0 masks stop 0#u32
++  match pending_return with
++  | none => ok true
++  | some b => ok b
++
++/-- [nested_loop_return::nested_slice_iterator_with_reads]: loop body 2:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-141:9
++    Visibility: public -/
++@[rust_loop_body]
++def nested_slice_iterator_with_reads_loop0_loop0_loop0.body
++  (values : Slice (Array Std.U8 4#usize)) (present : Std.U8)
++  (pending_return : Option Bool) (iter : core.ops.range.Range Std.Usize)
++  (value_pos : Std.Usize) (input : Array Std.U8 17#usize) :
++  Result (ControlFlow ((core.ops.range.Range Std.Usize) × Std.Usize × (Array
++    Std.U8 17#usize)) (Std.Usize × (Option Bool)))
++  := do
++  let (o, iter1) ←
++    core.iter.range.IteratorRange.next core.iter.range.StepUsize iter
++  match o with
++  | none => ok (done (value_pos, pending_return))
++  | some slot =>
++    let i ← slot * 4#usize
++    let i1 ← 1#usize + i
++    let i2 ← slot + 1#usize
++    let i3 ← i2 * 4#usize
++    let i4 ← 1#usize + i3
++    let (child, index_mut_back) ←
++      core.array.Array.index_mut (core.ops.index.IndexMutSlice
++        (core.slice.index.SliceIndexRangeUsizeSlice Std.U8)) input
++        { start := i1, «end» := i4 }
++    let i5 ← 1#u8 <<< slot
++    let i6 ← lift (present &&& i5)
++    if i6 != 0#u8
++    then
++      let o1 ←
++        core.slice.Slice.get (core.slice.index.SliceIndexUsizeSlice (Array
++          Std.U8 4#usize)) values value_pos
++      match o1 with
++      | none => ok (done (value_pos, some false))
++      | some value =>
++        let s ← lift (Array.to_slice value)
++        let child1 ←
++          core.slice.Slice.copy_from_slice core.marker.CopyU8 child s
++        let value_pos1 ← value_pos + 1#usize
++        let input1 := index_mut_back child1
++        ok (cont (iter1, value_pos1, input1))
++    else
++      let i7 ← lift (UScalar.cast .U8 slot)
++      let child1 ← core.slice.Slice.fill core.clone.CloneU8 child i7
++      let input1 := index_mut_back child1
++      ok (cont (iter1, value_pos, input1))
++
++/-- [nested_loop_return::nested_slice_iterator_with_reads]: loop 2:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-141:9
++    Visibility: public -/
++@[rust_loop]
++def nested_slice_iterator_with_reads_loop0_loop0_loop0
++  (iter : core.ops.range.Range Std.Usize)
++  (values : Slice (Array Std.U8 4#usize)) (value_pos : Std.Usize)
++  (present : Std.U8) (input : Array Std.U8 17#usize)
++  (pending_return : Option Bool) :
++  Result (Std.Usize × (Option Bool))
++  := do
++  loop
++    (fun (iter1, value_pos1, input1) =>
++      nested_slice_iterator_with_reads_loop0_loop0_loop0.body values present
++      pending_return iter1 value_pos1 input1)
++    (iter, value_pos, input)
++
++/-- [nested_loop_return::nested_slice_iterator_with_reads]: loop body 1:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-146:5
++    Visibility: public -/
++@[rust_loop_body]
++def nested_slice_iterator_with_reads_loop0_loop0.body
++  (values : Slice (Array Std.U8 4#usize)) (expected_reads : Std.Usize)
++  (round : Std.U32) (iter : core.slice.iter.Iter Std.U8)
++  (value_pos : Std.Usize) (pending_return : Option Bool) :
++  Result (ControlFlow ((core.slice.iter.Iter Std.U8) × Std.Usize × (Option
++    Bool)) (Std.U32 × (Option Bool) × Std.U32))
++  := do
++  let (o, iter1) ← core.slice.iter.IteratorSliceIter.next iter
++  match o with
++  | none =>
++    if value_pos != expected_reads
++    then ok (done (round, some false, 0#u32))
++    else let round1 ← round + 1#u32
++         ok (done (round1, pending_return, 1#u32))
++  | some present =>
++    let input := Array.repeat 17#usize 0#u8
++    let (value_pos1, pending_return1) ←
++      nested_slice_iterator_with_reads_loop0_loop0_loop0
++        { start := 0#usize, «end» := 4#usize } values value_pos present input
++        pending_return
++    match pending_return1 with
++    | none => ok (cont (iter1, value_pos1, none))
++    | some _ => ok (done (round, pending_return1, 0#u32))
++
++/-- [nested_loop_return::nested_slice_iterator_with_reads]: loop 1:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-146:5
++    Visibility: public -/
++@[rust_loop]
++def nested_slice_iterator_with_reads_loop0_loop0
++  (iter : core.slice.iter.Iter Std.U8) (values : Slice (Array Std.U8 4#usize))
++  (expected_reads : Std.Usize) (round : Std.U32) (value_pos : Std.Usize)
++  (pending_return : Option Bool) :
++  Result (Std.U32 × (Option Bool) × Std.U32)
++  := do
++  loop
++    (fun (iter1, value_pos1, pending_return1) =>
++      nested_slice_iterator_with_reads_loop0_loop0.body values expected_reads
++      round iter1 value_pos1 pending_return1)
++    (iter, value_pos, pending_return)
++
++/-- [nested_loop_return::nested_slice_iterator_with_reads]: loop body 0:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-148:1
++    Visibility: public -/
++@[rust_loop_body]
++def nested_slice_iterator_with_reads_loop0.body
++  (masks : Slice Std.U8) (values : Slice (Array Std.U8 4#usize))
++  (expected_reads : Std.Usize) (round : Std.U32) (pending_return : Option Bool)
++  :
++  Result (ControlFlow (Std.U32 × (Option Bool)) (Option Bool))
++  := do
++  if round < 2#u32
++  then
++    let iter ←
++      SharedSlice.Insts.CoreIterTraitsCollectIntoIteratorSharedIter.into_iter
++        masks
++    let (round1, pending_return1, i) ←
++      nested_slice_iterator_with_reads_loop0_loop0 iter values expected_reads
++        round 0#usize pending_return
++    match i with
++    | 1#uscalar => ok (cont (round1, pending_return1))
++    | _ =>
++      match pending_return1 with
++      | none => ok (done none)
++      | some _ => ok (done pending_return1)
++  else ok (done (some true))
++
++/-- [nested_loop_return::nested_slice_iterator_with_reads]: loop 0:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-148:1
++    Visibility: public -/
++@[rust_loop]
++def nested_slice_iterator_with_reads_loop0
++  (masks : Slice Std.U8) (values : Slice (Array Std.U8 4#usize))
++  (expected_reads : Std.Usize) (round : Std.U32) (pending_return : Option Bool)
++  :
++  Result (Option Bool)
++  := do
++  loop
++    (fun (round1, pending_return1) =>
++      nested_slice_iterator_with_reads_loop0.body masks values expected_reads
++      round1 pending_return1)
++    (round, pending_return)
++
++/-- [nested_loop_return::nested_slice_iterator_with_reads]:
++    Source: 'tests/src/nested-loop-return.rs', lines 119:0-148:1
++    Visibility: public -/
++def nested_slice_iterator_with_reads
++  (masks : Slice Std.U8) (values : Slice (Array Std.U8 4#usize))
++  (expected_reads : Std.Usize) :
++  Result Bool
++  := do
++  let pending_return ←
++    nested_slice_iterator_with_reads_loop0 masks values expected_reads 0#u32
++      none
++  match pending_return with
++  | none => fail panic
++  | some b => ok b
++
++/-- [nested_loop_return::nested_slice_iterator_with_node_reads]: loop body 2:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-181:9
++    Visibility: public -/
++@[rust_loop_body]
++def nested_slice_iterator_with_node_reads_loop0_loop0_loop0.body
++  (values : Slice (Array Std.U8 32#usize)) (node_bytes : Slice Std.U8)
++  (present : Std.U8) (pending_return : Option Bool)
++  (iter : core.ops.range.Range Std.Usize) (node_pos : Std.Usize)
++  (value_pos : Std.Usize) (input : Array Std.U8 129#usize) :
++  Result (ControlFlow ((core.ops.range.Range Std.Usize) × Std.Usize ×
++    Std.Usize × (Array Std.U8 129#usize)) (Std.Usize × Std.Usize × (Option
++    Bool) × Std.U32))
++  := do
++  let (o, iter1) ←
++    core.iter.range.IteratorRange.next core.iter.range.StepUsize iter
++  match o with
++  | none => ok (done (node_pos, value_pos, pending_return, 1#u32))
++  | some slot =>
++    let i ← slot * 32#usize
++    let i1 ← 1#usize + i
++    let i2 ← slot + 1#usize
++    let i3 ← i2 * 32#usize
++    let i4 ← 1#usize + i3
++    let (child, index_mut_back) ←
++      core.array.Array.index_mut (core.ops.index.IndexMutSlice
++        (core.slice.index.SliceIndexRangeUsizeSlice Std.U8)) input
++        { start := i1, «end» := i4 }
++    let i5 ← 1#u8 <<< slot
++    let i6 ← lift (present &&& i5)
++    if i6 != 0#u8
++    then
++      let o1 ←
++        core.slice.Slice.get (core.slice.index.SliceIndexUsizeSlice (Array
++          Std.U8 32#usize)) values value_pos
++      match o1 with
++      | none => ok (done (node_pos, value_pos, some false, 0#u32))
++      | some value =>
++        let s ← lift (Array.to_slice value)
++        let child1 ←
++          core.slice.Slice.copy_from_slice core.marker.CopyU8 child s
++        let value_pos1 ← value_pos + 1#usize
++        let input1 := index_mut_back child1
++        ok (cont (iter1, node_pos, value_pos1, input1))
++    else
++      let i7 ← node_pos + 32#usize
++      let i8 := Slice.len node_bytes
++      if i7 > i8
++      then ok (done (node_pos, value_pos, some false, 0#u32))
++      else
++        let s ←
++          core.slice.index.Slice.index
++            (core.slice.index.SliceIndexRangeUsizeSlice Std.U8) node_bytes
++            { start := node_pos, «end» := i7 }
++        let child1 ←
++          core.slice.Slice.copy_from_slice core.marker.CopyU8 child s
++        let input1 := index_mut_back child1
++        ok (cont (iter1, i7, value_pos, input1))
++
++/-- [nested_loop_return::nested_slice_iterator_with_node_reads]: loop 2:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-181:9
++    Visibility: public -/
++@[rust_loop]
++def nested_slice_iterator_with_node_reads_loop0_loop0_loop0
++  (iter : core.ops.range.Range Std.Usize)
++  (values : Slice (Array Std.U8 32#usize)) (node_bytes : Slice Std.U8)
++  (node_pos : Std.Usize) (value_pos : Std.Usize) (present : Std.U8)
++  (input : Array Std.U8 129#usize) (pending_return : Option Bool) :
++  Result (Std.Usize × Std.Usize × (Option Bool) × Std.U32)
++  := do
++  loop
++    (fun (iter1, node_pos1, value_pos1, input1) =>
++      nested_slice_iterator_with_node_reads_loop0_loop0_loop0.body values
++      node_bytes present pending_return iter1 node_pos1 value_pos1 input1)
++    (iter, node_pos, value_pos, input)
++
++/-- [nested_loop_return::nested_slice_iterator_with_node_reads]: loop body 1:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-186:5
++    Visibility: public -/
++@[rust_loop_body]
++def nested_slice_iterator_with_node_reads_loop0_loop0.body
++  (values : Slice (Array Std.U8 32#usize)) (node_bytes : Slice Std.U8)
++  (round : Std.U32) (iter : core.slice.iter.Iter Std.U8) (node_pos : Std.Usize)
++  (value_pos : Std.Usize) (pending_return : Option Bool) :
++  Result (ControlFlow ((core.slice.iter.Iter Std.U8) × Std.Usize × Std.Usize
++    × (Option Bool)) (Std.U32 × Std.Usize × (Option Bool) × Std.U32))
++  := do
++  let (o, iter1) ← core.slice.iter.IteratorSliceIter.next iter
++  match o with
++  | none =>
++    let i := Slice.len values
++    if value_pos != i
++    then ok (done (round, node_pos, some false, 0#u32))
++    else
++      let round1 ← round + 1#u32
++      ok (done (round1, node_pos, pending_return, 1#u32))
++  | some present =>
++    let input := Array.repeat 129#usize 0#u8
++    let (node_pos1, value_pos1, pending_return1, i) ←
++      nested_slice_iterator_with_node_reads_loop0_loop0_loop0
++        { start := 0#usize, «end» := 4#usize } values node_bytes node_pos
++        value_pos present input pending_return
++    match i with
++    | 1#uscalar => ok (cont (iter1, node_pos1, value_pos1, pending_return1))
++    | _ =>
++      match pending_return1 with
++      | none => ok (done (round, node_pos1, none, 0#u32))
++      | some _ => ok (done (round, node_pos1, pending_return1, 0#u32))
++
++/-- [nested_loop_return::nested_slice_iterator_with_node_reads]: loop 1:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-186:5
++    Visibility: public -/
++@[rust_loop]
++def nested_slice_iterator_with_node_reads_loop0_loop0
++  (iter : core.slice.iter.Iter Std.U8) (values : Slice (Array Std.U8 32#usize))
++  (node_bytes : Slice Std.U8) (round : Std.U32) (node_pos : Std.Usize)
++  (value_pos : Std.Usize) (pending_return : Option Bool) :
++  Result (Std.U32 × Std.Usize × (Option Bool) × Std.U32)
++  := do
++  loop
++    (fun (iter1, node_pos1, value_pos1, pending_return1) =>
++      nested_slice_iterator_with_node_reads_loop0_loop0.body values node_bytes
++      round iter1 node_pos1 value_pos1 pending_return1)
++    (iter, node_pos, value_pos, pending_return)
++
++/-- [nested_loop_return::nested_slice_iterator_with_node_reads]: loop body 0:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-188:1
++    Visibility: public -/
++@[rust_loop_body]
++def nested_slice_iterator_with_node_reads_loop0.body
++  (masks : Slice Std.U8) (values : Slice (Array Std.U8 32#usize))
++  (node_bytes : Slice Std.U8) (round : Std.U32) (node_pos : Std.Usize)
++  (pending_return : Option Bool) :
++  Result (ControlFlow (Std.U32 × Std.Usize × (Option Bool)) (Option Bool))
++  := do
++  if round < 2#u32
++  then
++    let iter ←
++      SharedSlice.Insts.CoreIterTraitsCollectIntoIteratorSharedIter.into_iter
++        masks
++    let (round1, node_pos1, pending_return1, i) ←
++      nested_slice_iterator_with_node_reads_loop0_loop0 iter values node_bytes
++        round node_pos 0#usize pending_return
++    match i with
++    | 1#uscalar => ok (cont (round1, node_pos1, pending_return1))
++    | _ =>
++      match pending_return1 with
++      | none => ok (done none)
++      | some _ => ok (done pending_return1)
++  else ok (done (some true))
++
++/-- [nested_loop_return::nested_slice_iterator_with_node_reads]: loop 0:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-188:1
++    Visibility: public -/
++@[rust_loop]
++def nested_slice_iterator_with_node_reads_loop0
++  (masks : Slice Std.U8) (values : Slice (Array Std.U8 32#usize))
++  (node_bytes : Slice Std.U8) (round : Std.U32) (node_pos : Std.Usize)
++  (pending_return : Option Bool) :
++  Result (Option Bool)
++  := do
++  loop
++    (fun (round1, node_pos1, pending_return1) =>
++      nested_slice_iterator_with_node_reads_loop0.body masks values node_bytes
++      round1 node_pos1 pending_return1)
++    (round, node_pos, pending_return)
++
++/-- [nested_loop_return::nested_slice_iterator_with_node_reads]:
++    Source: 'tests/src/nested-loop-return.rs', lines 154:0-188:1
++    Visibility: public -/
++def nested_slice_iterator_with_node_reads
++  (masks : Slice Std.U8) (values : Slice (Array Std.U8 32#usize))
++  (node_bytes : Slice Std.U8) :
++  Result Bool
++  := do
++  let pending_return ←
++    nested_slice_iterator_with_node_reads_loop0 masks values node_bytes 0#u32
++      0#usize none
++  match pending_return with
++  | none => fail panic
++  | some b => ok b
++
+ end nested_loop_return
+diff --git a/tests/src/nested-loop-return.rs b/tests/src/nested-loop-return.rs
+index e9db298b..31b08bc7 100644
+--- a/tests/src/nested-loop-return.rs
++++ b/tests/src/nested-loop-return.rs
+@@ -112,6 +112,101 @@ pub fn result_through_match_and_nested_loops(
+     Ok(total)
+ }
+ 
++// A slice iterator whose value becomes dead on two distinct exits from a
++// nested loop. This is the control-flow shape used by the Aspis radix-4
++// verifier: an early function return and ordinary iterator exhaustion must
++// produce the same post-loop borrow state.
++pub fn nested_slice_iterator_return(masks: &[u8], stop: u8) -> bool {
++    let mut outer = 0u32;
++    while outer < 2 {
++        for &present in masks {
++            for slot in 0..4u8 {
++                if present & (1u8 << slot) != 0 && slot == stop {
++                    return false;
++                }
++            }
++        }
++        outer += 1;
++    }
++    true
++}
++
++// The fuller shape used by the radix verifier: the nested loop reads a
++// separately borrowed value, writes through a loop-local mutable subslice,
++// and performs a check after the slice iterator is exhausted.  A failed read
++// returns from inside both iterator loops; successful inner-loop exhaustion
++// must leave the outer slice iterator live for its next call to `next`.
++pub fn nested_slice_iterator_with_reads(
++    masks: &[u8],
++    values: &[[u8; 4]],
++    expected_reads: usize,
++) -> bool {
++    let mut round = 0u32;
++    while round < 2 {
++        let mut value_pos = 0usize;
++        for &present in masks {
++            let mut input = [0u8; 17];
++            for slot in 0..4usize {
++                let child = &mut input[1 + slot * 4..1 + (slot + 1) * 4];
++                if present & (1u8 << slot) != 0 {
++                    let Some(value) = values.get(value_pos) else {
++                        return false;
++                    };
++                    child.copy_from_slice(value);
++                    value_pos += 1;
++                } else {
++                    child.fill(slot as u8);
++                }
++            }
++        }
++        if value_pos != expected_reads {
++            return false;
++        }
++        round += 1;
++    }
++    true
++}
++
++// The deployed radix verifier copies either an authenticated value or a
++// frontier node into a loop-local mutable subslice.  Its reconstructed inner
++// loop exits by continuing the enclosing slice loop.  A lowered early return
++// must not kill that enclosing iterator on the ordinary continue path.
++pub fn nested_slice_iterator_with_node_reads(
++    masks: &[u8],
++    values: &[[u8; 32]],
++    node_bytes: &[u8],
++) -> bool {
++    let mut round = 0u32;
++    let mut node_pos = 0usize;
++    while round < 2 {
++        let mut value_pos = 0usize;
++        for &present in masks {
++            let mut input = [0u8; 129];
++            for slot in 0..4usize {
++                let child = &mut input[1 + slot * 32..1 + (slot + 1) * 32];
++                if present & (1u8 << slot) != 0 {
++                    let Some(value) = values.get(value_pos) else {
++                        return false;
++                    };
++                    child.copy_from_slice(value);
++                    value_pos += 1;
++                } else {
++                    if node_pos + 32 > node_bytes.len() {
++                        return false;
++                    }
++                    child.copy_from_slice(&node_bytes[node_pos..node_pos + 32]);
++                    node_pos += 32;
++                }
++            }
++        }
++        if value_pos != values.len() {
++            return false;
++        }
++        round += 1;
++    }
++    true
++}
++
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+@@ -130,12 +225,24 @@ mod tests {
+ 
+         assert!(windows_early_return(&[2, 4, 9]));
+         assert!(!windows_early_return(&[2, 4, 4]));
+-
+         assert_eq!(
+             result_through_match_and_nested_loops(Some(3), 99),
+             Ok(7)
+         );
+         assert_eq!(result_through_match_and_nested_loops(Some(3), 1), Err(2));
+         assert_eq!(result_through_match_and_nested_loops(None, 99), Err(1));
++        assert!(nested_slice_iterator_return(&[1, 2], 7));
++        assert!(!nested_slice_iterator_return(&[1, 2], 1));
++        assert!(nested_slice_iterator_with_reads(
++            &[1, 2],
++            &[[1; 4], [2; 4]],
++            2
++        ));
++        assert!(!nested_slice_iterator_with_reads(&[1, 2], &[[1; 4]], 2));
++        assert!(nested_slice_iterator_with_node_reads(
++            &[1, 2],
++            &[[1; 32], [2; 32]],
++            &[3; 384],
++        ));
+     }
+ }
+-- 
+2.50.1 (Apple Git-155)
+

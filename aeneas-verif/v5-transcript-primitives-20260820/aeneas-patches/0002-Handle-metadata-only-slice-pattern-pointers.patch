@@ -1,0 +1,519 @@
+From 156a8d232e166316260062548f275d4bc024cbf3 Mon Sep 17 00:00:00 2001
+From: DJB8787 <168072039+DJBarker87@users.noreply.github.com>
+Date: Sat, 15 Aug 2026 11:00:59 +0100
+Subject: [PATCH 02/14] Handle metadata-only slice pattern pointers
+
+---
+ src/PrePasses.ml                     | 302 +++++++++++++++++++++++++++
+ tests/lean/SlicePatternMetadata.lean |  82 ++++++++
+ tests/src/metadata-rawptr-cast.rs    |  10 +
+ tests/src/metadata-rawptr-deref.rs   |  10 +
+ tests/src/metadata-rawptr-escape.rs  |  12 ++
+ tests/src/slice-pattern-metadata.rs  |  33 +++
+ 6 files changed, 449 insertions(+)
+ create mode 100644 tests/lean/SlicePatternMetadata.lean
+ create mode 100644 tests/src/metadata-rawptr-cast.rs
+ create mode 100644 tests/src/metadata-rawptr-deref.rs
+ create mode 100644 tests/src/metadata-rawptr-escape.rs
+ create mode 100644 tests/src/slice-pattern-metadata.rs
+
+diff --git a/src/PrePasses.ml b/src/PrePasses.ml
+index b613aba1..1063ee9e 100644
+--- a/src/PrePasses.ml
++++ b/src/PrePasses.ml
+@@ -87,6 +87,306 @@ let erase_body_regions (crate : crate) (f : fun_decl) : fun_decl =
+     ^ Print.fun_decl_to_string env "" "  " f];
+   f
+ 
++(** Eliminate the metadata-only raw pointers which rustc introduces while
++    lowering slice patterns.
++
++    For a match such as [(indices, values) = ([0, 1], [left, right])], rustc
++    currently emits the following shape (irrelevant temporaries omitted):
++
++    {[
++      raw = raw_pointer_to (deref slice_ref, copy slice_ref.metadata);
++      len = copy raw.metadata
++    ]}
++
++    The raw pointer is an implementation detail of the length check: its data
++    address is never observed. In that exact case this pass changes the raw
++    pointer temporary into a [usize] temporary, initializes it by calling the
++    safe slice [len] operation at the original statement, and rewrites the later
++    metadata read to read that temporary. Keeping the initialization at the
++    original statement is important: [slice_ref] may be reassigned before the
++    metadata is used. Calling [len] also avoids treating pointer metadata as an
++    independent, unconstrained value in the functional translation.
++
++    This is deliberately not general raw-pointer support. A candidate is
++    rewritten only when:
++    - it points to a slice through a shared safe Rust reference;
++    - the metadata used to construct it is the metadata of that same reference;
++    - it has exactly one use, which is a read of its [usize] metadata; and
++    - it has exactly one definition.
++
++    Any dereference, cast, comparison, address observation, call escape,
++    reassignment, or second use leaves the raw pointer untouched. The normal
++    interpreter will then reject it as unsupported. Requiring a single read also
++    ensures that the transformed [usize] temporary has the same linear
++    definition/use shape as the original raw-pointer temporary. *)
++type metadata_only_slice_raw_pointer = {
++  definition : statement_id;
++  reference : place;
++  elem_ty : ty;
++}
++
++let eliminate_metadata_only_slice_raw_pointers (crate : crate) (f : fun_decl) :
++    fun_decl =
++  let metadata_definition (st : statement) :
++      (local_id * metadata_only_slice_raw_pointer) option =
++    match st.kind with
++    | Assign
++        ( {
++            kind = PlaceLocal local;
++            ty = TRawPtr (TSlice raw_elem_ty, raw_kind);
++          },
++          RawPtr
++            ( { kind = PlaceProjection (reference, Deref); ty = TSlice elem_ty },
++              ptr_kind,
++              (Copy metadata_place | Move metadata_place) ) )
++      when raw_elem_ty = elem_ty && raw_kind = ptr_kind
++           && metadata_place.ty = mk_usize_ty -> (
++        match (reference.ty, metadata_place.kind) with
++        | ( TRef (_, TSlice reference_elem_ty, _),
++            PlaceProjection (metadata_reference, PtrMetadata) )
++          when reference_elem_ty = elem_ty && metadata_reference = reference
++          -> (
++            match reference.ty with
++            | TRef (_, _, RShared) ->
++                Some
++                  (local, { definition = st.statement_id; reference; elem_ty })
++            | _ -> None)
++        | _ -> None)
++    | _ -> None
++  in
++  (* The generated call deliberately targets Charon's existing slice-length
++     language item.  If it is absent or ambiguous we decline the rewrite. *)
++  let slice_len_ids =
++    FunDeclId.Map.fold
++      (fun id (decl : fun_decl) ids ->
++        if decl.item_meta.lang_item = Some "slice_len_fn" then id :: ids
++        else ids)
++      crate.fun_decls []
++  in
++  match slice_len_ids with
++  | [ slice_len_id ] -> (
++      let slice_len_call (st : statement) (dest : place) (reference : place)
++          (elem_ty : ty) : statement_kind =
++        let generics =
++          TypesUtils.mk_generic_args [ RErased ] [ elem_ty ] [] []
++        in
++        let call =
++          {
++            func =
++              FnOpRegular { kind = FunId (FRegular slice_len_id); generics };
++            args = [ Copy reference ];
++            dest;
++          }
++        in
++        Call (call, { span = st.span; statements = [] })
++      in
++      (* Some slice patterns lower directly to a metadata read on a shared safe
++         slice reference, without an intermediate raw pointer.  This is the
++         same length operation and can be rewritten without any use analysis. *)
++      let direct_metadata_rewriter =
++        object
++          inherit [_] map_statement as super
++
++          method! visit_statement env st =
++            match st.kind with
++            | Assign
++                (dest, Use ((Copy metadata_place | Move metadata_place), _retag))
++              when dest.ty = mk_usize_ty && metadata_place.ty = mk_usize_ty -> (
++                match metadata_place.kind with
++                | PlaceProjection
++                    ( ({ ty = TRef (_, TSlice elem_ty, RShared); _ } as reference),
++                      PtrMetadata ) ->
++                    { st with kind = slice_len_call st dest reference elem_ty }
++                | _ -> super#visit_statement env st)
++            | _ -> super#visit_statement env st
++        end
++      in
++      let f =
++        match f.body with
++        | StructuredBody body ->
++            let body =
++              {
++                body with
++                body = direct_metadata_rewriter#visit_block () body.body;
++              }
++            in
++            { f with body = StructuredBody body }
++        | _ -> f
++      in
++      match f.body with
++      | StructuredBody body ->
++          (* First collect definitions.  A local with more than one definition is
++         intentionally not a candidate. *)
++          let definitions = ref LocalId.Map.empty in
++          let collector =
++            object
++              inherit [_] iter_statement as super
++
++              method! visit_statement env st =
++                (match metadata_definition st with
++                | None -> ()
++                | Some (local, definition) ->
++                    definitions :=
++                      LocalId.Map.update local
++                        (fun previous ->
++                          Some
++                            (definition
++                            ::
++                            (match previous with
++                            | None -> []
++                            | Some xs -> xs)))
++                        !definitions);
++                super#visit_statement env st
++            end
++          in
++          collector#visit_block () body.body;
++          let candidates =
++            LocalId.Map.filter_map
++              (fun _ definitions ->
++                match definitions with
++                | [ definition ] -> Some definition
++                | _ -> None)
++              !definitions
++          in
++          if LocalId.Map.is_empty candidates then f
++          else
++            (* Classify every use.  Exact [copy/move raw.metadata] operands are the
++           sole permitted use.  Every other place rooted at the raw local is
++           forbidden.  Storage markers contain a local id rather than a place
++           and are deliberately ignored. *)
++            let invalid = ref LocalId.Set.empty in
++            let reads = ref LocalId.Map.empty in
++            let add_read local =
++              reads :=
++                LocalId.Map.update local
++                  (fun count -> Some (1 + Option.value ~default:0 count))
++                  !reads
++            in
++            let rec root_local (p : place) : local_id option =
++              match p.kind with
++              | PlaceLocal local -> Some local
++              | PlaceProjection (p, _) -> root_local p
++              | PlaceGlobal _ -> None
++            in
++            let metadata_read (p : place) : local_id option =
++              match p.kind with
++              | PlaceProjection
++                  ( { kind = PlaceLocal local; ty = TRawPtr (TSlice _, _) },
++                    PtrMetadata )
++                when p.ty = mk_usize_ty && LocalId.Map.mem local candidates ->
++                  Some local
++              | _ -> None
++            in
++            let classifier =
++              object (self)
++                inherit [_] iter_statement as super
++
++                method! visit_statement env st =
++                  match metadata_definition st with
++                  | Some (local, definition)
++                    when LocalId.Map.mem local candidates
++                         && definition.definition = st.statement_id ->
++                      (* Visit the source place and metadata operand, but not the
++                     defining destination local. *)
++                      self#visit_rvalue env
++                        (match st.kind with
++                        | Assign (_, rv) -> rv
++                        | _ -> assert false)
++                  | _ -> super#visit_statement env st
++
++                method! visit_operand env op =
++                  match op with
++                  | Copy p | Move p -> (
++                      match metadata_read p with
++                      | Some local -> add_read local
++                      | None -> super#visit_operand env op)
++                  | Constant _ -> super#visit_operand env op
++
++                method! visit_place env p =
++                  match root_local p with
++                  | Some local when LocalId.Map.mem local candidates ->
++                      invalid := LocalId.Set.add local !invalid
++                  | _ -> super#visit_place env p
++
++                method! visit_local_id _ _ = ()
++              end
++            in
++            classifier#visit_block () body.body;
++            let candidates =
++              LocalId.Map.filter
++                (fun local _ ->
++                  (not (LocalId.Set.mem local !invalid))
++                  && LocalId.Map.find_opt local !reads = Some 1)
++                candidates
++            in
++            if LocalId.Map.is_empty candidates then f
++            else
++              let rewriter =
++                object
++                  inherit [_] map_statement as super
++
++                  method! visit_statement env st =
++                    match metadata_definition st with
++                    | Some (local, definition) -> (
++                        match LocalId.Map.find_opt local candidates with
++                        | Some candidate
++                          when candidate.definition = definition.definition ->
++                            {
++                              st with
++                              kind =
++                                slice_len_call st
++                                  { kind = PlaceLocal local; ty = mk_usize_ty }
++                                  candidate.reference candidate.elem_ty;
++                            }
++                        | _ -> super#visit_statement env st)
++                    | None -> super#visit_statement env st
++
++                  method! visit_operand env op =
++                    match op with
++                    | (Copy p | Move p) as original -> (
++                        match metadata_read p with
++                        | Some local -> (
++                            match LocalId.Map.find_opt local candidates with
++                            | Some _ -> (
++                                let p =
++                                  { kind = PlaceLocal local; ty = mk_usize_ty }
++                                in
++                                match original with
++                                | Copy _ -> Copy p
++                                | Move _ -> Move p
++                                | _ -> assert false)
++                            | None -> super#visit_operand env op)
++                        | None -> super#visit_operand env op)
++                    | Constant _ -> super#visit_operand env op
++                end
++              in
++              let body_body = rewriter#visit_block () body.body in
++              let locals =
++                {
++                  body.locals with
++                  locals =
++                    List.map
++                      (fun (local : local) ->
++                        if LocalId.Map.mem local.index candidates then
++                          { local with local_ty = mk_usize_ty }
++                        else local)
++                      body.locals.locals;
++                }
++              in
++              let f =
++                {
++                  f with
++                  body = StructuredBody { body with body = body_body; locals };
++                }
++              in
++              [%ldebug
++                let env = Print.crate_to_fmt_env crate in
++                "After eliminating metadata-only slice raw pointers:\n"
++                ^ Print.fun_decl_to_string env "" " " f];
++              f
++      | _ -> f)
++  | _ -> f
++
+ (** Replace the occurrences of [core::intrinsics::unreachable] with
+     [Abort UndefinedBehavior]. This helps with the analyzes and the symbolic
+     evaluation (in particular, we stop the evaluation when encountering an
+@@ -2273,6 +2573,8 @@ let apply_passes (crate : crate) : crate =
+     [
+       ("fix_closure_lifetimes", fix_closure_lifetimes);
+       ("erase_body_regions", erase_body_regions);
++      ( "eliminate_metadata_only_slice_raw_pointers",
++        eliminate_metadata_only_slice_raw_pointers );
+       ("remove_unreachable", remove_unreachable);
+       ("update_loop", update_loops);
+       ("remove_useless_joins", remove_useless_joins);
+diff --git a/tests/lean/SlicePatternMetadata.lean b/tests/lean/SlicePatternMetadata.lean
+new file mode 100644
+index 00000000..ec8113d2
+--- /dev/null
++++ b/tests/lean/SlicePatternMetadata.lean
+@@ -0,0 +1,82 @@
++-- THIS FILE WAS AUTOMATICALLY GENERATED BY AENEAS
++-- [slice_pattern_metadata]
++import Aeneas
++open Aeneas Aeneas.Std Result ControlFlow Error
++set_option linter.dupNamespace false
++set_option linter.hashCommand false
++set_option linter.unusedVariables false
++
++/- You can set the `maxHeartbeats` value with the `-max-heartbeats` CLI option -/
++set_option maxHeartbeats 1000000
++
++/- You can set the `maxRecDepth` value with the `-max-recdepth` CLI option -/
++set_option maxRecDepth 2048
++
++namespace slice_pattern_metadata
++
++/-- [slice_pattern_metadata::matches_tuple]:
++    Source: 'tests/src/slice-pattern-metadata.rs', lines 3:0-10:1 -/
++def matches_tuple
++  (indices : Slice Std.U32) (values : Slice (Array Std.U8 32#usize)) :
++  Result Std.U8
++  := do
++  let i := Slice.len indices
++  if i = 1#usize
++  then
++    let i1 := Slice.len values
++    if i1 = 1#usize
++    then
++      let i2 ← Slice.index_usize indices 0#usize
++      match i2 with
++      | 0#uscalar =>
++        let value ← Slice.index_usize values 0#usize
++        Array.index_usize value 0#usize
++      | _ =>
++        let value ← Slice.index_usize values 0#usize
++        let i3 ← lift (UScalar.cast .U8 i2)
++        let i4 ← Array.index_usize value 0#usize
++        ok (core.num.U8.wrapping_add i3 i4)
++    else ok 0#u8
++  else
++    let i1 := Slice.len indices
++    if i1 = 2#usize
++    then
++      let i2 := Slice.len values
++      if i2 = 2#usize
++      then
++        let i3 ← Slice.index_usize indices 0#usize
++        match i3 with
++        | 0#uscalar =>
++          let i4 ← Slice.index_usize indices 1#usize
++          match i4 with
++          | 1#uscalar =>
++            let left ← Slice.index_usize values 0#usize
++            let right ← Slice.index_usize values 1#usize
++            let i5 ← Array.index_usize left 0#usize
++            let i6 ← Array.index_usize right 0#usize
++            ok (core.num.U8.wrapping_add i5 i6)
++          | _ => ok 0#u8
++        | _ => ok 0#u8
++      else ok 0#u8
++    else ok 0#u8
++
++/-- [slice_pattern_metadata::metadata_precedes_reference_reassignment]:
++    Source: 'tests/src/slice-pattern-metadata.rs', lines 12:0-17:1 -/
++def metadata_precedes_reference_reassignment
++  (first : Slice Std.U32) (second : Slice Std.U32) : Result Std.Usize := do
++  let i := Slice.len first
++  let matched_before_reassignment ←
++    if i = 1#usize
++    then
++      do
++      let i1 ← Slice.index_usize first 0#usize
++      match i1 with
++      | 1#uscalar => ok true
++      | _ => ok false
++    else ok false
++  let i1 ← lift (UScalar.cast_fromBool .Usize matched_before_reassignment)
++  let i2 := Slice.len second
++  let i3 ← 10#usize * i2
++  i1 + i3
++
++end slice_pattern_metadata
+diff --git a/tests/src/metadata-rawptr-cast.rs b/tests/src/metadata-rawptr-cast.rs
+new file mode 100644
+index 00000000..7c95eb2b
+--- /dev/null
++++ b/tests/src/metadata-rawptr-cast.rs
+@@ -0,0 +1,10 @@
++//@ [lean] known-failure
++//@ [lean] no-check-output
++//@ [!lean] skip
++
++fn metadata_then_observe_address(values: &[u32]) -> usize {
++    let pointer = &raw const *values;
++    let len = pointer.len();
++    let address = pointer as *const u32 as usize;
++    len ^ address
++}
+diff --git a/tests/src/metadata-rawptr-deref.rs b/tests/src/metadata-rawptr-deref.rs
+new file mode 100644
+index 00000000..48ab44f5
+--- /dev/null
++++ b/tests/src/metadata-rawptr-deref.rs
+@@ -0,0 +1,10 @@
++//@ [lean] known-failure
++//@ [lean] no-check-output
++//@ [!lean] skip
++
++fn metadata_then_dereference(values: &[u32]) -> usize {
++    let pointer = &raw const *values;
++    let len = pointer.len();
++    let first = unsafe { (*pointer)[0] };
++    len + first as usize
++}
+diff --git a/tests/src/metadata-rawptr-escape.rs b/tests/src/metadata-rawptr-escape.rs
+new file mode 100644
+index 00000000..504060b3
+--- /dev/null
++++ b/tests/src/metadata-rawptr-escape.rs
+@@ -0,0 +1,12 @@
++//@ [lean] known-failure
++//@ [lean] no-check-output
++//@ [!lean] skip
++
++fn observe_pointer(_: *const [u32]) {}
++
++fn metadata_then_escape(values: &[u32]) -> usize {
++    let pointer = &raw const *values;
++    let len = pointer.len();
++    observe_pointer(pointer);
++    len
++}
+diff --git a/tests/src/slice-pattern-metadata.rs b/tests/src/slice-pattern-metadata.rs
+new file mode 100644
+index 00000000..5f7d95f3
+--- /dev/null
++++ b/tests/src/slice-pattern-metadata.rs
+@@ -0,0 +1,33 @@
++//@ [!lean] skip
++
++fn matches_tuple(indices: &[u32], values: &[[u8; 32]]) -> u8 {
++    match (indices, values) {
++        ([0], [value]) => value[0],
++        ([0, 1], [left, right]) => left[0].wrapping_add(right[0]),
++        ([index], [value]) => (*index as u8).wrapping_add(value[0]),
++        _ => 0,
++    }
++}
++
++fn metadata_precedes_reference_reassignment(first: &[u32], second: &[u32]) -> usize {
++    let mut selected = first;
++    let matched_before_reassignment = matches!(selected, [1]);
++    selected = second;
++    matched_before_reassignment as usize + 10 * selected.len()
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn slice_patterns_have_the_expected_rust_behavior() {
++        let a = [7u8; 32];
++        let b = [9u8; 32];
++        assert_eq!(matches_tuple(&[0], &[a]), 7);
++        assert_eq!(matches_tuple(&[0, 1], &[a, b]), 16);
++        assert_eq!(matches_tuple(&[3], &[a]), 10);
++        assert_eq!(matches_tuple(&[], &[]), 0);
++        assert_eq!(metadata_precedes_reference_reassignment(&[1], &[2, 3]), 21);
++    }
++}
+-- 
+2.50.1 (Apple Git-155)
+

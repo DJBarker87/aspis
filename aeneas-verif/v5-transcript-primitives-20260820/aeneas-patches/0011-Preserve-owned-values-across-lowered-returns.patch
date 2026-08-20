@@ -1,0 +1,535 @@
+From 3d5a3ccafc0b8b3ddb8f15783ee635d5c19b66c4 Mon Sep 17 00:00:00 2001
+From: DJB8787 <168072039+DJBarker87@users.noreply.github.com>
+Date: Sat, 15 Aug 2026 17:31:09 +0100
+Subject: [PATCH 11/14] Preserve owned values across lowered returns
+
+---
+ src/PrePasses.ml                 |  18 ++-
+ tests/lean/NestedLoopReturn.lean | 211 +++++++++++++++++++++++++++----
+ tests/src/nested-loop-return.rs  |  52 ++++++--
+ 3 files changed, 246 insertions(+), 35 deletions(-)
+
+diff --git a/src/PrePasses.ml b/src/PrePasses.ml
+index 886d4be9..7126afff 100644
+--- a/src/PrePasses.ml
++++ b/src/PrePasses.ml
+@@ -979,6 +979,22 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+               take_cleanup (cleanup :: reversed) rest
+           | rest -> (List.rev reversed, rest)
+         in
++        (* A Rust return drops every live owned local before leaving the
++           function.  Once that return is carried through an enclosing loop,
++           those function-exit drops must travel with the return rather than
++           execute before the loop join: the ordinary branch still owns the
++           values.  In the default mode drops are explicitly interpreted as
++           no-ops, so replace the complete drop/dead sequence with the cleanup
++           for a normal exit from the current loop.  Keep explicit drops when
++           [-eval-drops] requests their semantics. *)
++        let rec take_return_cleanup reversed = function
++          | ({ kind = StorageDead _ | Nop; _ } as cleanup) :: rest ->
++              take_return_cleanup (cleanup :: reversed) rest
++          | ({ kind = Drop _; _ } as cleanup) :: rest
++            when !Config.drop_as_no_op ->
++              take_return_cleanup (cleanup :: reversed) rest
++          | rest -> (List.rev reversed, rest)
++        in
+         (* Charon can encode the normal exit from a reconstructed [for] loop
+            as a continue to an enclosing loop.  In that case the statements
+            after the inner [Loop] are an unreachable fallback whose cleanup
+@@ -1070,7 +1086,7 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+             return_written = function
+           | [] -> []
+           | statements when depth > 0 -> (
+-              let cleanup, rest = take_cleanup [] statements in
++              let cleanup, rest = take_return_cleanup [] statements in
+               match (cleanup, rest) with
+               | _ :: _, ({ kind = Return; _ } as return_st) :: tail ->
+                   (* Use the cleanup common to this loop's ordinary exits. *)
+diff --git a/tests/lean/NestedLoopReturn.lean b/tests/lean/NestedLoopReturn.lean
+index 2ca6a1d7..afab8243 100644
+--- a/tests/lean/NestedLoopReturn.lean
++++ b/tests/lean/NestedLoopReturn.lean
+@@ -495,7 +495,7 @@ def windows_early_return (values : Slice Std.U32) : Result Bool := do
+   | some b => ok b
+ 
+ /-- [nested_loop_return::result_through_match_and_nested_loops]: loop body 1:
+-    Source: 'tests/src/nested-loop-return.rs', lines 105:8-113:1
++    Source: 'tests/src/nested-loop-return.rs', lines 102:8-110:1
+     Visibility: public -/
+ @[rust_loop_body]
+ def result_through_match_and_nested_loops_loop0_loop0.body
+@@ -515,7 +515,7 @@ def result_through_match_and_nested_loops_loop0_loop0.body
+          ok (cont (iter1, total1))
+ 
+ /-- [nested_loop_return::result_through_match_and_nested_loops]: loop 1:
+-    Source: 'tests/src/nested-loop-return.rs', lines 105:8-113:1
++    Source: 'tests/src/nested-loop-return.rs', lines 102:8-110:1
+     Visibility: public -/
+ @[rust_loop]
+ def result_through_match_and_nested_loops_loop0_loop0
+@@ -530,7 +530,7 @@ def result_through_match_and_nested_loops_loop0_loop0
+     (iter, total)
+ 
+ /-- [nested_loop_return::result_through_match_and_nested_loops]: loop body 0:
+-    Source: 'tests/src/nested-loop-return.rs', lines 0:0-113:1
++    Source: 'tests/src/nested-loop-return.rs', lines 0:0-110:1
+     Visibility: public -/
+ @[rust_loop_body]
+ def result_through_match_and_nested_loops_loop0.body
+@@ -552,7 +552,7 @@ def result_through_match_and_nested_loops_loop0.body
+     | some _ => ok (done (total1, pending_return))
+ 
+ /-- [nested_loop_return::result_through_match_and_nested_loops]: loop 0:
+-    Source: 'tests/src/nested-loop-return.rs', lines 0:0-113:1
++    Source: 'tests/src/nested-loop-return.rs', lines 0:0-110:1
+     Visibility: public -/
+ @[rust_loop]
+ def result_through_match_and_nested_loops_loop0
+@@ -565,7 +565,7 @@ def result_through_match_and_nested_loops_loop0
+     (iter, total)
+ 
+ /-- [nested_loop_return::result_through_match_and_nested_loops]:
+-    Source: 'tests/src/nested-loop-return.rs', lines 95:0-113:1
++    Source: 'tests/src/nested-loop-return.rs', lines 95:0-110:1
+     Visibility: public -/
+ def result_through_match_and_nested_loops
+   (input : Option Std.U32) (stop : Std.U32) :
+@@ -582,7 +582,7 @@ def result_through_match_and_nested_loops
+     | some r => ok r
+ 
+ /-- [nested_loop_return::nested_slice_iterator_return]: loop body 2:
+-    Source: 'tests/src/nested-loop-return.rs', lines 1:0-112:1
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-129:1
+     Visibility: public -/
+ @[rust_loop_body]
+ def nested_slice_iterator_return_loop0_loop0_loop0.body
+@@ -603,7 +603,7 @@ def nested_slice_iterator_return_loop0_loop0_loop0.body
+     else ok (cont iter1)
+ 
+ /-- [nested_loop_return::nested_slice_iterator_return]: loop 2:
+-    Source: 'tests/src/nested-loop-return.rs', lines 1:0-112:1
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-129:1
+     Visibility: public -/
+ @[rust_loop]
+ def nested_slice_iterator_return_loop0_loop0_loop0
+@@ -616,7 +616,7 @@ def nested_slice_iterator_return_loop0_loop0_loop0
+     iter
+ 
+ /-- [nested_loop_return::nested_slice_iterator_return]: loop body 1:
+-    Source: 'tests/src/nested-loop-return.rs', lines 1:0-112:1
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-129:1
+     Visibility: public -/
+ @[rust_loop_body]
+ def nested_slice_iterator_return_loop0_loop0.body
+@@ -635,7 +635,7 @@ def nested_slice_iterator_return_loop0_loop0.body
+     | some _ => ok (done pending_return)
+ 
+ /-- [nested_loop_return::nested_slice_iterator_return]: loop 1:
+-    Source: 'tests/src/nested-loop-return.rs', lines 1:0-112:1
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-129:1
+     Visibility: public -/
+ @[rust_loop]
+ def nested_slice_iterator_return_loop0_loop0
+@@ -647,7 +647,7 @@ def nested_slice_iterator_return_loop0_loop0
+     iter
+ 
+ /-- [nested_loop_return::nested_slice_iterator_return]: loop body 0:
+-    Source: 'tests/src/nested-loop-return.rs', lines 1:0-112:1
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-129:1
+     Visibility: public -/
+ @[rust_loop_body]
+ def nested_slice_iterator_return_loop0.body
+@@ -667,7 +667,7 @@ def nested_slice_iterator_return_loop0.body
+   else ok (done none)
+ 
+ /-- [nested_loop_return::nested_slice_iterator_return]: loop 0:
+-    Source: 'tests/src/nested-loop-return.rs', lines 1:0-112:1
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-129:1
+     Visibility: public -/
+ @[rust_loop]
+ def nested_slice_iterator_return_loop0
+@@ -679,7 +679,7 @@ def nested_slice_iterator_return_loop0
+     outer
+ 
+ /-- [nested_loop_return::nested_slice_iterator_return]:
+-    Source: 'tests/src/nested-loop-return.rs', lines 99:0-112:1
++    Source: 'tests/src/nested-loop-return.rs', lines 116:0-129:1
+     Visibility: public -/
+ def nested_slice_iterator_return
+   (masks : Slice Std.U8) (stop : Std.U8) : Result Bool := do
+@@ -689,7 +689,7 @@ def nested_slice_iterator_return
+   | some b => ok b
+ 
+ /-- [nested_loop_return::nested_slice_iterator_with_reads]: loop body 2:
+-    Source: 'tests/src/nested-loop-return.rs', lines 1:0-141:9
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-158:9
+     Visibility: public -/
+ @[rust_loop_body]
+ def nested_slice_iterator_with_reads_loop0_loop0_loop0.body
+@@ -736,7 +736,7 @@ def nested_slice_iterator_with_reads_loop0_loop0_loop0.body
+       ok (cont (iter1, value_pos, input1))
+ 
+ /-- [nested_loop_return::nested_slice_iterator_with_reads]: loop 2:
+-    Source: 'tests/src/nested-loop-return.rs', lines 1:0-141:9
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-158:9
+     Visibility: public -/
+ @[rust_loop]
+ def nested_slice_iterator_with_reads_loop0_loop0_loop0
+@@ -753,7 +753,7 @@ def nested_slice_iterator_with_reads_loop0_loop0_loop0
+     (iter, value_pos, input)
+ 
+ /-- [nested_loop_return::nested_slice_iterator_with_reads]: loop body 1:
+-    Source: 'tests/src/nested-loop-return.rs', lines 1:0-146:5
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-163:5
+     Visibility: public -/
+ @[rust_loop_body]
+ def nested_slice_iterator_with_reads_loop0_loop0.body
+@@ -781,7 +781,7 @@ def nested_slice_iterator_with_reads_loop0_loop0.body
+     | some _ => ok (done (round, pending_return1, 0#u32))
+ 
+ /-- [nested_loop_return::nested_slice_iterator_with_reads]: loop 1:
+-    Source: 'tests/src/nested-loop-return.rs', lines 1:0-146:5
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-163:5
+     Visibility: public -/
+ @[rust_loop]
+ def nested_slice_iterator_with_reads_loop0_loop0
+@@ -797,7 +797,7 @@ def nested_slice_iterator_with_reads_loop0_loop0
+     (iter, value_pos, pending_return)
+ 
+ /-- [nested_loop_return::nested_slice_iterator_with_reads]: loop body 0:
+-    Source: 'tests/src/nested-loop-return.rs', lines 1:0-148:1
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-165:1
+     Visibility: public -/
+ @[rust_loop_body]
+ def nested_slice_iterator_with_reads_loop0.body
+@@ -823,7 +823,7 @@ def nested_slice_iterator_with_reads_loop0.body
+   else ok (done (some true))
+ 
+ /-- [nested_loop_return::nested_slice_iterator_with_reads]: loop 0:
+-    Source: 'tests/src/nested-loop-return.rs', lines 1:0-148:1
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-165:1
+     Visibility: public -/
+ @[rust_loop]
+ def nested_slice_iterator_with_reads_loop0
+@@ -839,7 +839,7 @@ def nested_slice_iterator_with_reads_loop0
+     (round, pending_return)
+ 
+ /-- [nested_loop_return::nested_slice_iterator_with_reads]:
+-    Source: 'tests/src/nested-loop-return.rs', lines 119:0-148:1
++    Source: 'tests/src/nested-loop-return.rs', lines 136:0-165:1
+     Visibility: public -/
+ def nested_slice_iterator_with_reads
+   (masks : Slice Std.U8) (values : Slice (Array Std.U8 4#usize))
+@@ -854,7 +854,7 @@ def nested_slice_iterator_with_reads
+   | some b => ok b
+ 
+ /-- [nested_loop_return::nested_slice_iterator_with_node_reads]: loop body 2:
+-    Source: 'tests/src/nested-loop-return.rs', lines 1:0-181:9
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-198:9
+     Visibility: public -/
+ @[rust_loop_body]
+ def nested_slice_iterator_with_node_reads_loop0_loop0_loop0.body
+@@ -912,7 +912,7 @@ def nested_slice_iterator_with_node_reads_loop0_loop0_loop0.body
+         ok (cont (iter1, i7, value_pos, input1))
+ 
+ /-- [nested_loop_return::nested_slice_iterator_with_node_reads]: loop 2:
+-    Source: 'tests/src/nested-loop-return.rs', lines 1:0-181:9
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-198:9
+     Visibility: public -/
+ @[rust_loop]
+ def nested_slice_iterator_with_node_reads_loop0_loop0_loop0
+@@ -929,7 +929,7 @@ def nested_slice_iterator_with_node_reads_loop0_loop0_loop0
+     (iter, node_pos, value_pos, input)
+ 
+ /-- [nested_loop_return::nested_slice_iterator_with_node_reads]: loop body 1:
+-    Source: 'tests/src/nested-loop-return.rs', lines 1:0-186:5
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-203:5
+     Visibility: public -/
+ @[rust_loop_body]
+ def nested_slice_iterator_with_node_reads_loop0_loop0.body
+@@ -962,7 +962,7 @@ def nested_slice_iterator_with_node_reads_loop0_loop0.body
+       | some _ => ok (done (round, node_pos1, pending_return1, 0#u32))
+ 
+ /-- [nested_loop_return::nested_slice_iterator_with_node_reads]: loop 1:
+-    Source: 'tests/src/nested-loop-return.rs', lines 1:0-186:5
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-203:5
+     Visibility: public -/
+ @[rust_loop]
+ def nested_slice_iterator_with_node_reads_loop0_loop0
+@@ -978,7 +978,7 @@ def nested_slice_iterator_with_node_reads_loop0_loop0
+     (iter, node_pos, value_pos, pending_return)
+ 
+ /-- [nested_loop_return::nested_slice_iterator_with_node_reads]: loop body 0:
+-    Source: 'tests/src/nested-loop-return.rs', lines 1:0-188:1
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-205:1
+     Visibility: public -/
+ @[rust_loop_body]
+ def nested_slice_iterator_with_node_reads_loop0.body
+@@ -1004,7 +1004,7 @@ def nested_slice_iterator_with_node_reads_loop0.body
+   else ok (done (some true))
+ 
+ /-- [nested_loop_return::nested_slice_iterator_with_node_reads]: loop 0:
+-    Source: 'tests/src/nested-loop-return.rs', lines 1:0-188:1
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-205:1
+     Visibility: public -/
+ @[rust_loop]
+ def nested_slice_iterator_with_node_reads_loop0
+@@ -1020,7 +1020,7 @@ def nested_slice_iterator_with_node_reads_loop0
+     (round, node_pos, pending_return)
+ 
+ /-- [nested_loop_return::nested_slice_iterator_with_node_reads]:
+-    Source: 'tests/src/nested-loop-return.rs', lines 154:0-188:1
++    Source: 'tests/src/nested-loop-return.rs', lines 171:0-205:1
+     Visibility: public -/
+ def nested_slice_iterator_with_node_reads
+   (masks : Slice Std.U8) (values : Slice (Array Std.U8 32#usize))
+@@ -1034,4 +1034,163 @@ def nested_slice_iterator_with_node_reads
+   | none => fail panic
+   | some b => ok b
+ 
++/-- [nested_loop_return::nested_owned_vec_return]: loop body 2:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-242:1
++    Visibility: public -/
++@[rust_loop_body]
++def nested_owned_vec_return_loop0_loop0_loop0.body
++  (level_indices : alloc.vec.Vec Std.U32) (current_end : Std.Usize)
++  (parent : Std.U32) (position : Std.Usize) (present : Std.U8) :
++  Result (ControlFlow (Std.Usize × Std.U8) (Std.Usize × Std.U8 × (Option
++    (Option ((alloc.vec.Vec Std.U8) × (alloc.vec.Vec Std.U32))))))
++  := do
++  if position < current_end
++  then
++    let i ←
++      alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice Std.U32)
++        level_indices position
++    let i1 ← i >>> 2#i32
++    if i1 = parent
++    then
++      let i2 ← lift (i &&& 3#u32)
++      let slot ← lift (UScalar.cast .U8 i2)
++      let slot_mask ← 1#u8 <<< slot
++      let i3 ← lift (present &&& slot_mask)
++      if i3 != 0#u8
++      then ok (done (position, present, some none))
++      else
++        let present1 ← lift (present ||| slot_mask)
++        let position1 ← position + 1#usize
++        ok (cont (position1, present1))
++    else ok (done (position, present, none))
++  else ok (done (position, present, none))
++
++/-- [nested_loop_return::nested_owned_vec_return]: loop 2:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-242:1
++    Visibility: public -/
++@[rust_loop]
++def nested_owned_vec_return_loop0_loop0_loop0
++  (level_indices : alloc.vec.Vec Std.U32) (current_end : Std.Usize)
++  (position : Std.Usize) (parent : Std.U32) (present : Std.U8) :
++  Result (Std.Usize × Std.U8 × (Option (Option ((alloc.vec.Vec Std.U8) ×
++    (alloc.vec.Vec Std.U32)))))
++  := do
++  loop
++    (fun (position1, present1) =>
++      nested_owned_vec_return_loop0_loop0_loop0.body level_indices current_end
++      parent position1 present1)
++    (position, present)
++
++/-- [nested_loop_return::nested_owned_vec_return]: loop body 1:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-242:1
++    Visibility: public -/
++@[rust_loop_body]
++def nested_owned_vec_return_loop0_loop0.body
++  (current_end : Std.Usize) (level_indices : alloc.vec.Vec Std.U32)
++  (group_masks : alloc.vec.Vec Std.U8) (position : Std.Usize) :
++  Result (ControlFlow ((alloc.vec.Vec Std.U32) × (alloc.vec.Vec Std.U8) ×
++    Std.Usize) ((alloc.vec.Vec Std.U32) × (alloc.vec.Vec Std.U8) × (Option
++    (Option ((alloc.vec.Vec Std.U8) × (alloc.vec.Vec Std.U32))))))
++  := do
++  if position < current_end
++  then
++    let i ←
++      alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice Std.U32)
++        level_indices position
++    let parent ← i >>> 2#i32
++    let (position1, present, pending_return) ←
++      nested_owned_vec_return_loop0_loop0_loop0 level_indices current_end
++        position parent 0#u8
++    match pending_return with
++    | none =>
++      let group_masks1 ← alloc.vec.Vec.push group_masks present
++      let level_indices1 ← alloc.vec.Vec.push level_indices parent
++      ok (cont (level_indices1, group_masks1, position1))
++    | some _ => ok (done (level_indices, group_masks, pending_return))
++  else ok (done (level_indices, group_masks, none))
++
++/-- [nested_loop_return::nested_owned_vec_return]: loop 1:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-242:1
++    Visibility: public -/
++@[rust_loop]
++def nested_owned_vec_return_loop0_loop0
++  (level_indices : alloc.vec.Vec Std.U32) (group_masks : alloc.vec.Vec Std.U8)
++  (current_end : Std.Usize) (position : Std.Usize) :
++  Result ((alloc.vec.Vec Std.U32) × (alloc.vec.Vec Std.U8) × (Option (Option
++    ((alloc.vec.Vec Std.U8) × (alloc.vec.Vec Std.U32)))))
++  := do
++  loop
++    (fun (level_indices1, group_masks1, position1) =>
++      nested_owned_vec_return_loop0_loop0.body current_end level_indices1
++      group_masks1 position1)
++    (level_indices, group_masks, position)
++
++/-- [nested_loop_return::nested_owned_vec_return]: loop body 0:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-242:1
++    Visibility: public -/
++@[rust_loop_body]
++def nested_owned_vec_return_loop0.body
++  (iter : core.ops.range.Range Std.Usize)
++  (level_indices : alloc.vec.Vec Std.U32) (group_masks : alloc.vec.Vec Std.U8)
++  (current_start : Std.Usize) (current_end : Std.Usize) :
++  Result (ControlFlow ((core.ops.range.Range Std.Usize) × (alloc.vec.Vec
++    Std.U32) × (alloc.vec.Vec Std.U8) × Std.Usize × Std.Usize)
++    ((alloc.vec.Vec Std.U32) × (alloc.vec.Vec Std.U8) × (Option (Option
++    ((alloc.vec.Vec Std.U8) × (alloc.vec.Vec Std.U32))))))
++  := do
++  let (o, iter1) ←
++    core.iter.range.IteratorRange.next core.iter.range.StepUsize iter
++  match o with
++  | none => ok (done (level_indices, group_masks, none))
++  | some _ =>
++    let (level_indices1, group_masks1, pending_return) ←
++      nested_owned_vec_return_loop0_loop0 level_indices group_masks current_end
++        current_start
++    match pending_return with
++    | none =>
++      let current_end1 := alloc.vec.Vec.len level_indices1
++      ok (cont (iter1, level_indices1, group_masks1, current_end,
++        current_end1))
++    | some _ => ok (done (level_indices1, group_masks1, pending_return))
++
++/-- [nested_loop_return::nested_owned_vec_return]: loop 0:
++    Source: 'tests/src/nested-loop-return.rs', lines 1:0-242:1
++    Visibility: public -/
++@[rust_loop]
++def nested_owned_vec_return_loop0
++  (iter : core.ops.range.Range Std.Usize)
++  (level_indices : alloc.vec.Vec Std.U32) (group_masks : alloc.vec.Vec Std.U8)
++  (current_start : Std.Usize) (current_end : Std.Usize) :
++  Result ((alloc.vec.Vec Std.U32) × (alloc.vec.Vec Std.U8) × (Option (Option
++    ((alloc.vec.Vec Std.U8) × (alloc.vec.Vec Std.U32)))))
++  := do
++  loop
++    (fun (iter1, level_indices1, group_masks1, current_start1, current_end1) =>
++      nested_owned_vec_return_loop0.body iter1 level_indices1 group_masks1
++      current_start1 current_end1)
++    (iter, level_indices, group_masks, current_start, current_end)
++
++/-- [nested_loop_return::nested_owned_vec_return]:
++    Source: 'tests/src/nested-loop-return.rs', lines 210:0-242:1
++    Visibility: public -/
++def nested_owned_vec_return
++  (indices : Slice Std.U32) :
++  Result (Option ((alloc.vec.Vec Std.U8) × (alloc.vec.Vec Std.U32)))
++  := do
++  let b ← core.slice.Slice.is_empty indices
++  if b
++  then ok none
++  else
++    let level_indices ← alloc.slice.Slice.to_vec core.clone.CloneU32 indices
++    let i := Slice.len indices
++    let i1 ← i * 2#usize
++    let group_masks := alloc.vec.Vec.with_capacity Std.U8 i1
++    let current_end := alloc.vec.Vec.len level_indices
++    let (level_indices1, group_masks1, pending_return) ←
++      nested_owned_vec_return_loop0 { start := 0#usize, «end» := 2#usize }
++        level_indices group_masks 0#usize current_end
++    match pending_return with
++    | none => ok (some (group_masks1, level_indices1))
++    | some o => ok o
++
+ end nested_loop_return
+diff --git a/tests/src/nested-loop-return.rs b/tests/src/nested-loop-return.rs
+index 31b08bc7..843e466b 100644
+--- a/tests/src/nested-loop-return.rs
++++ b/tests/src/nested-loop-return.rs
+@@ -92,10 +92,7 @@ pub fn windows_early_return(values: &[u32]) -> bool {
+     true
+ }
+ 
+-pub fn result_through_match_and_nested_loops(
+-    input: Option<u32>,
+-    stop: u32,
+-) -> Result<u32, u32> {
++pub fn result_through_match_and_nested_loops(input: Option<u32>, stop: u32) -> Result<u32, u32> {
+     let seed = match input {
+         Some(value) => value,
+         None => return Err(1),
+@@ -207,6 +204,43 @@ pub fn nested_slice_iterator_with_node_reads(
+     true
+ }
+ 
++// An early return drops both owned vectors in Rust.  After lowering that
++// return through the two loops, the ordinary branch must still own them so it
++// can append the completed group and continue building the next level.
++pub fn nested_owned_vec_return(indices: &[u32]) -> Option<(Vec<u8>, Vec<u32>)> {
++    if indices.is_empty() {
++        return None;
++    }
++
++    let mut level_indices = indices.to_vec();
++    let mut group_masks = Vec::with_capacity(indices.len() * 2);
++    let mut current_start = 0usize;
++    let mut current_end = level_indices.len();
++
++    for _level in 0..2usize {
++        let mut position = current_start;
++        while position < current_end {
++            let parent = level_indices[position] >> 2;
++            let mut present = 0u8;
++            while position < current_end && level_indices[position] >> 2 == parent {
++                let slot = (level_indices[position] & 3) as u8;
++                let slot_mask = 1u8 << slot;
++                if present & slot_mask != 0 {
++                    return None;
++                }
++                present |= slot_mask;
++                position += 1;
++            }
++            group_masks.push(present);
++            level_indices.push(parent);
++        }
++        current_start = current_end;
++        current_end = level_indices.len();
++    }
++
++    Some((group_masks, level_indices))
++}
++
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+@@ -225,10 +259,7 @@ mod tests {
+ 
+         assert!(windows_early_return(&[2, 4, 9]));
+         assert!(!windows_early_return(&[2, 4, 4]));
+-        assert_eq!(
+-            result_through_match_and_nested_loops(Some(3), 99),
+-            Ok(7)
+-        );
++        assert_eq!(result_through_match_and_nested_loops(Some(3), 99), Ok(7));
+         assert_eq!(result_through_match_and_nested_loops(Some(3), 1), Err(2));
+         assert_eq!(result_through_match_and_nested_loops(None, 99), Err(1));
+         assert!(nested_slice_iterator_return(&[1, 2], 7));
+@@ -244,5 +275,10 @@ mod tests {
+             &[[1; 32], [2; 32]],
+             &[3; 384],
+         ));
++        assert_eq!(
++            nested_owned_vec_return(&[0, 1, 4, 5]),
++            Some((vec![3, 3, 3], vec![0, 1, 4, 5, 0, 1, 0]))
++        );
++        assert_eq!(nested_owned_vec_return(&[0, 0]), None);
+     }
+ }
+-- 
+2.50.1 (Apple Git-155)
+

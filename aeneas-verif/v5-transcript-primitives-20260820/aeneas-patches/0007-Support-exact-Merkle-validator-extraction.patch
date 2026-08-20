@@ -1,0 +1,948 @@
+From d5296af559f6ea5a7ceec55c2f5aa885fdd9b80f Mon Sep 17 00:00:00 2001
+From: DJB8787 <168072039+DJBarker87@users.noreply.github.com>
+Date: Sat, 15 Aug 2026 15:16:30 +0100
+Subject: [PATCH 07/14] Support exact Merkle validator extraction
+
+---
+ src/PrePasses.ml                              | 241 ++++++++++++++----
+ src/interp/InterpAbs.ml                       |  10 +-
+ src/interp/InterpMatchCtxs.ml                 |  72 +++++-
+ src/llbc/TypesAnalysis.ml                     |  71 ++++--
+ src/symbolic/SymbolicToPureAbs.ml             |  19 +-
+ tests/lean/HigherRankedSliceIterFind.lean     |  87 +++++++
+ tests/lean/NestedLoopReturn.lean              |  70 +++++
+ tests/lean/NestedLoopReturnTests.lean         |   7 +
+ tests/lean/lakefile.lean                      |   1 +
+ ...gher_ranked_implied_bounds_borrow.lean.out |   2 +-
+ ...her_ranked_implied_bounds_regions.lean.out |   2 +-
+ ...igher_ranked_implied_bounds_types.lean.out |   2 +-
+ tests/src/higher_ranked_slice_iter_find.rs    |   9 +
+ tests/src/nested-loop-return.rs               |  12 +
+ 14 files changed, 514 insertions(+), 91 deletions(-)
+ create mode 100644 tests/lean/HigherRankedSliceIterFind.lean
+ create mode 100644 tests/src/higher_ranked_slice_iter_find.rs
+
+diff --git a/src/PrePasses.ml b/src/PrePasses.ml
+index e22af45d..ca76924e 100644
+--- a/src/PrePasses.ml
++++ b/src/PrePasses.ml
+@@ -701,6 +701,68 @@ let update_array_default (crate : crate) : crate =
+ 
+ exception FoundStatement of statement
+ 
++(** Charon's structured control-flow reconstruction can encode a function return
++    from inside nested loops as a write to local zero followed by loop control.
++    Re-expose that control transfer as [Return] before
++    [lower_nested_loop_returns] carries it through the loop nest.
++
++    Local zero is LLBC's function return place. We only restore a return when
++    the write's immediate remainder is cleanup followed by [Break] or [Return].
++    This syntactic guard avoids treating an arbitrary intermediate write to the
++    return place as terminal. *)
++let restore_structured_nested_returns (_crate : crate) (f : fun_decl) : fun_decl
++    =
++  match f.body with
++  | StructuredBody body ->
++      let return_local =
++        match body.locals.locals with
++        | return_local :: _ -> return_local.index
++        | [] -> [%internal_error] f.item_meta.span
++      in
++      let writes_return_place (st : statement) =
++        match st.kind with
++        | Assign ({ kind = PlaceLocal local; _ }, _) -> local = return_local
++        | Call ({ dest = { kind = PlaceLocal local; _ }; _ }, _) ->
++            local = return_local
++        | _ -> false
++      in
++      let rec transform_block depth (block : block) : block =
++        { block with statements = transform_statements depth block.statements }
++      and transform_statements depth = function
++        | (write : statement) :: rest
++          when depth > 0 && writes_return_place write -> (
++            let rec take_cleanup reversed = function
++              | ({ kind = StorageDead _ | Nop; _ } as cleanup) :: tail ->
++                  take_cleanup (cleanup :: reversed) tail
++              | tail -> (List.rev reversed, tail)
++            in
++            let cleanup, tail = take_cleanup [] rest in
++            match tail with
++            | ({ kind = Break _ | Return; _ } as leave) :: _ ->
++                (write :: cleanup) @ [ { leave with kind = Return } ]
++            | _ ->
++                transform_statement depth write
++                :: transform_statements depth rest)
++        | st :: rest ->
++            transform_statement depth st :: transform_statements depth rest
++        | [] -> []
++      and transform_statement depth (st : statement) : statement =
++        match st.kind with
++        | Loop loop ->
++            { st with kind = Loop (transform_block (depth + 1) loop) }
++        | _ ->
++            let visitor =
++              object
++                inherit [_] map_statement_base
++                method! visit_block _ block = transform_block depth block
++              end
++            in
++            visitor#visit_statement () st
++      in
++      let body = { body with body = transform_block 0 body.body } in
++      { f with body = StructuredBody body }
++  | _ -> f
++
+ (** Lower function returns from nested loops before {!update_loops}.
+ 
+     The symbolic loop interpreter handles nested loops, but a function return
+@@ -740,11 +802,11 @@ exception FoundStatement of statement
+     and performs the original return. Normal breaks and continues leave the
+     option at [None] and retain their original behaviour.
+ 
+-    The pass activates only for functions which actually contain a return at
+-    loop depth two or greater. In such a function all returns under a loop are
+-    lowered uniformly, so the existing loop pass never has to distinguish an
+-    original return from a propagated one. Newly-created statements receive id
+-    zero; the existing statement-id refresh pass assigns their final ids. *)
++    The pass activates only for functions which actually contain a return under
++    a loop. In such a function all returns under a loop are lowered uniformly,
++    so the loop interpreter never has to distinguish an original return from a
++    propagated one. Newly-created statements receive id zero; the existing
++    statement-id refresh pass assigns their final ids. *)
+ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+   match f.body with
+   | StructuredBody body ->
+@@ -753,7 +815,7 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+           object
+             inherit [_] iter_statement as super
+             method! visit_Loop depth loop = super#visit_Loop (depth + 1) loop
+-            method! visit_Return depth = if depth >= 2 then raise Found
++            method! visit_Return depth = if depth >= 1 then raise Found
+           end
+         in
+         try
+@@ -808,9 +870,23 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+         let return_place : place =
+           { kind = PlaceLocal return_local.index; ty = return_ty }
+         in
++        let writes_return_place (st : statement) =
++          match st.kind with
++          | Assign ({ kind = PlaceLocal local; _ }, _) ->
++              local = return_local.index
++          | Call ({ dest = { kind = PlaceLocal local; _ }; _ }, _) ->
++              local = return_local.index
++          | _ -> false
++        in
+         let mk_statement ?(comments_before = []) span kind : statement =
+           { span; statement_id = StatementId.zero; kind; comments_before }
+         in
++        let fresh_cleanup (cleanup : statement list) : statement list =
++          List.map
++            (fun (st : statement) ->
++              { st with statement_id = StatementId.zero })
++            cleanup
++        in
+         let mk_pending_assignment ?(comments_before = []) span variant fields =
+           mk_statement ~comments_before span
+             (Assign
+@@ -830,7 +906,8 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+             false
+           with Found -> true
+         in
+-        let propagation_check span depth : statement =
++        let propagation_check span depth reject_none loop_exit_cleanup :
++            statement =
+           let action =
+             if depth = 0 then
+               let payload_place : place =
+@@ -849,10 +926,19 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+                   (Assign (return_place, Use (Move payload_place, NoRetag)));
+                 mk_statement span Return;
+               ]
+-            else [ mk_statement span (Break 0) ]
++            else
++              fresh_cleanup loop_exit_cleanup @ [ mk_statement span (Break 0) ]
+           in
+           let then_block = { span; statements = action } in
+-          let else_block = { span; statements = [] } in
++          let else_block =
++            {
++              span;
++              statements =
++                (if reject_none then
++                   [ mk_statement span (Abort UndefinedBehavior) ]
++                 else []);
++            }
++          in
+           mk_statement span
+             (Switch
+                (Match
+@@ -860,59 +946,111 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+                     [ ([ Types.option_some_id ], then_block) ],
+                     Some else_block )))
+         in
+-        (* Charon places [StorageDead] cleanup immediately before a function
+-           return.  Once the return is propagated out through loop breaks,
+-           executing that cleanup before the break would make live loop state
+-           unavailable on the join path.  Dropping these markers is semantics
+-           preserving: [StorageDead] has no runtime effect, and the eventual
+-           propagated [Return] implicitly deallocates the function locals. *)
+-        let rec strip_storage_dead_before_lowered_return depth statements =
+-          match statements with
+-          | ({ kind = StorageDead _; _ } as dead) :: rest -> (
+-              let rec take_dead reversed = function
+-                | ({ kind = StorageDead _; _ } as next) :: tail ->
+-                    take_dead (next :: reversed) tail
+-                | tail -> (List.rev reversed, tail)
+-              in
+-              let dead, rest = take_dead [ dead ] rest in
+-              match rest with
+-              | { kind = Return; _ } :: _ when depth > 0 ->
+-                  strip_storage_dead_before_lowered_return depth rest
+-              | _ -> dead @ strip_storage_dead_before_lowered_return depth rest)
+-          | st :: rest ->
+-              st :: strip_storage_dead_before_lowered_return depth rest
+-          | [] -> []
++        (* A cleanup-only bare return after the outer loop reads LLBC local
++           zero. If no earlier top-level statement wrote that local, Rust's
++           definite-initialization rules mean the loop cannot reach that
++           return without one of the carried nested returns. Keeping an
++           explicit abort in the impossible [None] arm prevents the symbolic
++           interpreter from inventing an uninitialized fallthrough path. *)
++        let rec cleanup_then_bare_return = function
++          | { kind = StorageDead _ | Nop; _ } :: rest ->
++              cleanup_then_bare_return rest
++          | [ { kind = Return; _ } ] -> true
++          | _ -> false
+         in
+-        let rec transform_block depth (block : block) : block =
+-          let statements =
+-            strip_storage_dead_before_lowered_return depth block.statements
+-          in
++        let lowered_return (st : statement) : statement * statement =
++          ( mk_pending_assignment ~comments_before:st.comments_before st.span
++              Types.option_some_id [ Move return_place ],
++            { st with kind = Break 0; comments_before = [] } )
++        in
++        let rec take_cleanup reversed = function
++          | ({ kind = StorageDead _ | Nop; _ } as cleanup) :: rest ->
++              take_cleanup (cleanup :: reversed) rest
++          | rest -> (List.rev reversed, rest)
++        in
++        let rec transform_block depth loop_exit_cleanup (block : block) : block
++            =
+           {
+             block with
+-            statements = List.concat_map (transform_statement depth) statements;
++            statements =
++              transform_statements depth loop_exit_cleanup false
++                block.statements;
+           }
+-        and transform_statement depth (st : statement) : statement list =
+-          match st.kind with
+-          | Return when depth > 0 ->
+-              [
+-                mk_pending_assignment ~comments_before:st.comments_before
+-                  st.span Types.option_some_id [ Move return_place ];
+-                { st with kind = Break 0; comments_before = [] };
+-              ]
+-          | Loop loop ->
++        and transform_statements depth loop_exit_cleanup return_written =
++          function
++          | [] -> []
++          | statements when depth > 0 -> (
++              let cleanup, rest = take_cleanup [] statements in
++              match (cleanup, rest) with
++              | _ :: _, ({ kind = Return; _ } as return_st) :: tail ->
++                  (* The original return cleanup mixes function-wide markers
++                     with locals owned by this loop.  Discard that mixed list
++                     and use the loop's exact normal-exit cleanup instead.  It
++                     is also inserted before every ordinary [Break 0], so all
++                     loop exits reach the post-loop join with the same loans
++                     ended.  Function-wide locals remain live until the
++                     propagated return. *)
++                  let assignment, leave = lowered_return return_st in
++                  fresh_cleanup loop_exit_cleanup
++                  @ [ assignment; leave ]
++                  @ transform_statements depth loop_exit_cleanup return_written
++                      tail
++              | _ ->
++                  transform_noncleanup_statement depth loop_exit_cleanup
++                    return_written statements)
++          | statements ->
++              transform_noncleanup_statement depth loop_exit_cleanup
++                return_written statements
++        and transform_noncleanup_statement depth loop_exit_cleanup
++            return_written = function
++          | [] -> []
++          | ({ kind = Loop loop; _ } as st) :: rest ->
++              let reject_none =
++                depth = 0 && (not return_written)
++                && cleanup_then_bare_return rest
++              in
+               let contains_return = block_contains_return loop in
+-              let loop = transform_block (depth + 1) loop in
+-              let loop_st = { st with kind = Loop loop } in
+               if contains_return then
+-                [ loop_st; propagation_check st.span depth ]
+-              else [ loop_st ]
++                (* The cleanup immediately following a structured loop ends
++                   the iterator state shared by all of its exits. Move copies
++                   of it before every exit from the transformed loop, so the
++                   loop interpreter never has to join a live iterator with an
++                   already-ended one. *)
++                let cleanup, tail = take_cleanup [] rest in
++                let loop = transform_block (depth + 1) cleanup loop in
++                let loop_st = { st with kind = Loop loop } in
++                loop_st
++                :: propagation_check st.span depth reject_none loop_exit_cleanup
++                :: transform_statements depth loop_exit_cleanup return_written
++                     tail
++              else
++                let loop = transform_block (depth + 1) [] loop in
++                let loop_st = { st with kind = Loop loop } in
++                loop_st
++                :: transform_statements depth loop_exit_cleanup return_written
++                     rest
++          | (st : statement) :: rest ->
++              let transformed =
++                transform_statement depth loop_exit_cleanup st
++              in
++              let return_written = return_written || writes_return_place st in
++              transformed
++              @ transform_statements depth loop_exit_cleanup return_written rest
++        and transform_statement depth loop_exit_cleanup (st : statement) :
++            statement list =
++          match st.kind with
++          | Return when depth > 0 ->
++              let assignment, leave = lowered_return st in
++              fresh_cleanup loop_exit_cleanup @ [ assignment; leave ]
++          | Break 0 when depth > 0 -> fresh_cleanup loop_exit_cleanup @ [ st ]
++          | Loop _ -> [%internal_error] st.span
+           | _ ->
+               let visitor =
+                 object
+                   inherit [_] map_statement
+ 
+                   method! visit_block child_depth child =
+-                    transform_block child_depth child
++                    transform_block child_depth loop_exit_cleanup child
+                 end
+               in
+               [ visitor#visit_statement depth st ]
+@@ -920,7 +1058,7 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+         let initialization =
+           mk_pending_assignment f.item_meta.span Types.option_none_id []
+         in
+-        let body_body = transform_block 0 body.body in
++        let body_body = transform_block 0 [] body.body in
+         let body_body =
+           { body_body with statements = initialization :: body_body.statements }
+         in
+@@ -3037,6 +3175,7 @@ let apply_passes (crate : crate) : crate =
+       ( "eliminate_metadata_only_slice_raw_pointers",
+         eliminate_metadata_only_slice_raw_pointers );
+       ("remove_unreachable", remove_unreachable);
++      ("restore_structured_nested_returns", restore_structured_nested_returns);
+       ("lower_nested_loop_returns", lower_nested_loop_returns);
+       ("eliminate_outer_loop_control", eliminate_outer_loop_control);
+       ("update_loop", update_loops);
+diff --git a/src/interp/InterpAbs.ml b/src/interp/InterpAbs.ml
+index 0f67ceff..0c167567 100644
+--- a/src/interp/InterpAbs.ml
++++ b/src/interp/InterpAbs.ml
+@@ -401,11 +401,13 @@ let convert_value_to_input_avalues (span : Meta.span) (ctx : eval_ctx)
+             (* *)
+             ([ av ], input))
+     | VSymbolic sv ->
+-        (* Check that there are no nested borrows in the symbolic value -
+-           we don't support this case yet *)
++        (* Frozen nested shared borrows can be carried by the symbolic loan
++           projection. Keep rejecting nested mutable borrows. *)
+         [%cassert] span
+-          (not
+-             (ty_has_nested_borrows (Some span) ctx.type_ctx.type_infos sv.sv_ty))
++          ((not
++              (ty_has_nested_borrows (Some span) ctx.type_ctx.type_infos
++                 sv.sv_ty))
++          || not (ty_has_mut_borrows ctx.type_ctx.type_infos sv.sv_ty))
+           "Nested borrows are not supported yet";
+         [%cassert] span (not (tvalue_has_bottom ctx v)) "Unexpected";
+ 
+diff --git a/src/interp/InterpMatchCtxs.ml b/src/interp/InterpMatchCtxs.ml
+index 77a15067..b4eb3d54 100644
+--- a/src/interp/InterpMatchCtxs.ml
++++ b/src/interp/InterpMatchCtxs.ml
+@@ -1061,16 +1061,28 @@ module MakeJoinMatcher (S : MatchJoinState) : PrimMatcher = struct
+       let bid2 = ctx0.fresh_borrow_id () in
+ 
+       (* [bv] is the result of the join  *)
+-      let _, bv_ty, kind = ty_as_ref ty in
++      let _, erased_bv_ty, kind = ty_as_ref ty in
+       let sv = bv in
+ 
++      (* The joined reference type is erased, while the two branch-local
++         iterator values may carry distinct live regions.  When the referent
++         contains only frozen shared borrows, give all of those erased regions
++         to this join abstraction.  The avalues below are ignored payloads, so
++         their types should describe the common referent rather than retain a
++         region owned by either input branch. *)
++      let _, bv_ty =
++        ty_refresh_regions (Some span) (fun () -> rid) erased_bv_ty
++      in
+       let borrow_ty = mk_ref_ty (RVar (Free rid)) bv_ty kind in
+ 
+       (* Generate the avalues for the abstraction *)
+       let mk_aborrow (pm : proj_marker) (bid : borrow_id) (bv : tvalue) :
+           tavalue =
+-        let bv_ty = bv.ty in
+-        [%cassert_recover] S.recover span (ty_no_regions bv_ty)
++        [%cassert_recover] S.recover span
++          (Substitute.erase_regions bv.ty = erased_bv_ty)
++          "The mutable-borrow branches have different referent types";
++        [%cassert_recover] S.recover span
++          (not (ty_has_mut_borrows ctx0.type_ctx.type_infos bv.ty))
+           "Nested borrows are not supported yet";
+         let value =
+           ABorrow (AMutBorrow (pm, bid, mk_aignored span bv_ty None))
+@@ -1111,8 +1123,11 @@ module MakeJoinMatcher (S : MatchJoinState) : PrimMatcher = struct
+           let output : tevalue =
+             let mk_output (pm : proj_marker) (bid : borrow_id) (bv : tvalue) :
+                 tevalue =
+-              let bv_ty = bv.ty in
+-              [%cassert_recover] S.recover span (ty_no_regions bv_ty)
++              [%cassert_recover] S.recover span
++                (Substitute.erase_regions bv.ty = erased_bv_ty)
++                "The mutable-borrow branches have different referent types";
++              [%cassert_recover] S.recover span
++                (not (ty_has_mut_borrows ctx0.type_ctx.type_infos bv.ty))
+                 "Nested borrows are not supported yet";
+               let value =
+                 EBorrow (EMutBorrow (pm, bid, mk_eignored None bv_ty))
+@@ -1228,17 +1243,20 @@ module MakeJoinMatcher (S : MatchJoinState) : PrimMatcher = struct
+       (_ctx1 : eval_ctx) (ty : ety) (id0 : loan_id) (id1 : loan_id) : tvalue =
+     if id0 = id1 then { value = VLoan (VMutLoan id0); ty }
+     else begin
+-      (* Sanity checks *)
+-      [%cassert_recover] S.recover span
+-        (not (ety_has_nested_borrows (Some span) ctx0.type_ctx.type_infos ty))
+-        "Nested borrows are not supported yet.";
+-
+       (* We need to introduce a fresh loan and a fresh region abstraction *)
+       let rid = ctx0.fresh_region_id () in
+       let nbid = ctx0.fresh_borrow_id () in
+ 
+       let kind = RMut in
+-      let bv_ty = ty in
++      (* [ty] is erased.  A branch-local mutable iterator loan can have a
++         referent such as [Windows<'a, T>], which contains only a frozen shared
++         region.  Put those erased regions in the join abstraction, while
++         continuing to reject referents containing nested mutable borrows. *)
++      let _, bv_ty = ty_refresh_regions (Some span) (fun () -> rid) ty in
++      [%cassert_recover] S.recover span
++        (not
++           (ty_has_nested_mut_borrows (Some span) ctx0.type_ctx.type_infos bv_ty))
++        "Nested mutable borrows are not supported yet.";
+       let borrow_ty = mk_ref_ty (RVar (Free rid)) bv_ty kind in
+ 
+       let borrow_av =
+@@ -1455,6 +1473,22 @@ module MakeJoinMatcher (S : MatchJoinState) : PrimMatcher = struct
+   let match_bottom_with_other (_ : tvalue_matcher) (ctx0 : eval_ctx)
+       (ctx1 : eval_ctx) ~(bottom_is_left : bool) (v : tvalue) : tvalue =
+     let value_is_left = not bottom_is_left in
++    (* A branch-local mutable borrow may point to a value which itself carries
++       only frozen shared regions, such as [&mut Iter<'a, T>]. If the other
++       branch is [Bottom], that temporary borrow cannot survive the join. End
++       its matching loan and retry, while retaining the ordinary abstraction
++       path for all other values and continuing to reject nested mutable
++       borrows. *)
++    (match v.value with
++    | VBorrow (VMutBorrow (bid, _)) ->
++        let _, ref_ty, _ = ty_as_ref v.ty in
++        if
++          (not (ty_no_regions ref_ty))
++          && not (ty_has_mut_borrows ctx0.type_ctx.type_infos ref_ty)
++        then
++          if value_is_left then raise (ValueMatchFailure (LoanInLeft bid))
++          else raise (ValueMatchFailure (LoanInRight bid))
++    | _ -> ());
+     (* If there are outer loans in the non-bottom value, raise an exception.
+        Otherwise, convert it to an abstraction and return [Bottom].
+     *)
+@@ -1567,12 +1601,22 @@ module MakeJoinMatcher (S : MatchJoinState) : PrimMatcher = struct
+   let match_mut_loan_with_other (_match_rec : tvalue_matcher) (ctx0 : eval_ctx)
+       (ctx1 : eval_ctx) ~(loan_is_left : bool) (ty : ety) (lid : loan_id)
+       (other : tvalue) : tvalue =
++    (* If the branch-local borrow handled by [match_bottom_with_other] points
++       into a value with frozen shared regions, its matching mutable loan also
++       has to be ended before retrying the join. Keep the existing behavior
++       for region-free loans such as ordinary range iterators. *)
++    (match other.value with
++    | VBottom ->
++        if loan_is_left then raise (ValueMatchFailure (LoanInLeft lid))
++        else raise (ValueMatchFailure (LoanInRight lid))
++    | _ -> ());
+     (* Sanity checks *)
+     [%cassert_recover] S.recover span
+       (not (ety_has_nested_borrows (Some span) ctx0.type_ctx.type_infos ty))
+       "Nested borrows are not supported yet.";
+     [%cassert_recover] S.recover span
+-      (not (tvalue_has_borrows (Some span) ctx0 other))
++      ((not (tvalue_has_borrows (Some span) ctx0 other))
++      || not (ty_has_mut_borrows ctx0.type_ctx.type_infos other.ty))
+       "Not implemented";
+ 
+     let loan_ctx, other_ctx, loan_pm, other_pm =
+@@ -1592,7 +1636,9 @@ module MakeJoinMatcher (S : MatchJoinState) : PrimMatcher = struct
+     let nbid = ctx0.fresh_borrow_id () in
+ 
+     let kind = RMut in
+-    let bv_ty = ty in
++    (* [ty] is erased, but it may contain nested frozen shared regions. Use the
++       region owned by this join abstraction for those projections. *)
++    let _, bv_ty = ty_refresh_regions (Some span) (fun () -> rid) ty in
+     let borrow_ty = mk_ref_ty (RVar (Free rid)) bv_ty kind in
+ 
+     let borrow_av =
+diff --git a/src/llbc/TypesAnalysis.ml b/src/llbc/TypesAnalysis.ml
+index 81711ebc..0045e2cd 100644
+--- a/src/llbc/TypesAnalysis.ml
++++ b/src/llbc/TypesAnalysis.ml
+@@ -951,8 +951,9 @@ let compute_outlive_proj_ty (span : Meta.span option)
+       borrow must be shorter than (i.e. is outlived by) every lifetime appearing
+       in the referent [T]. We track the borrow regions we have dived into to
+       check these. *)
+-let check_no_bound_free_implied_bounds (span : Meta.span option)
+-    (type_decls : type_decl TypeDeclId.Map.t) (tys : ty list) : unit =
++let check_no_bound_free_implied_bounds ?(allow_nested_shared = false)
++    (span : Meta.span option) (type_decls : type_decl TypeDeclId.Map.t)
++    (tys : ty list) : unit =
+   let is_bound (r : region) =
+     match r with
+     | RVar (Bound _) -> true
+@@ -965,8 +966,11 @@ let check_no_bound_free_implied_bounds (span : Meta.span option)
+   in
+   (* The constraint "[r0] outlives [r1]" is problematic if it relates a
+      locally-bound region and a free one. *)
+-  let check_pair (r0 : region) (r1 : region) : unit =
+-    if (is_bound r0 && is_free r1) || (is_free r0 && is_bound r1) then
++  let check_pair ~(nested_shared : bool) (r0 : region) (r1 : region) : unit =
++    if
++      ((is_bound r0 && is_free r1) || (is_free r0 && is_bound r1))
++      && not (allow_nested_shared && nested_shared)
++    then
+       [%craise_opt_span] span
+         "Unimplemented: found an occurrence of a lifetime constraint relating\n\
+         \         a higher-ranked lifetime to a free lifetime."
+@@ -986,21 +990,26 @@ let check_no_bound_free_implied_bounds (span : Meta.span option)
+     object (self)
+       inherit [_] iter_ty as super
+ 
+-      (* [outer] is the list of borrow regions we have dived into: the referent
+-         of a borrow must outlive the borrow, so every region we encounter must
+-         outlive each of the [outer] borrow regions. *)
+-      method! visit_region (outer : region list) (r : region) =
+-        List.iter (fun o -> check_pair r o) outer
++      (* [outer] is the list of borrow regions and kinds we have dived into:
++         the referent of a borrow must outlive the borrow, so every region we
++         encounter must outlive each outer borrow region. *)
++      method! visit_region (outer : (region * ref_kind) list) (r : region) =
++        List.iter (fun (o, _) -> check_pair ~nested_shared:false r o) outer
+ 
+-      method! visit_ty (outer : region list) (ty : ty) =
++      method! visit_ty (outer : (region * ref_kind) list) (ty : ty) =
+         match ty with
+-        | TRef (r, ref_ty, _) ->
++        | TRef (r, ref_ty, kind) ->
+             (* [r] itself must outlive the outer borrow regions. *)
+-            self#visit_region outer r;
++            List.iter
++              (fun (o, outer_kind) ->
++                check_pair
++                  ~nested_shared:(kind = RShared && outer_kind = RShared)
++                  r o)
++              outer;
+             (* The regions of [ref_ty] must outlive [r] (the borrow's lifetime
+                is shorter than the lifetimes appearing in the referent), as well
+                as the outer borrow regions: we record [r] and dive in. *)
+-            self#visit_ty (r :: outer) ref_ty
++            self#visit_ty ((r, kind) :: outer) ref_ty
+         | TAdt { id; generics = adt_generics } ->
+             (* The implied bounds coming from the ADT's own declaration
+                (constraints between its lifetime/type parameters). *)
+@@ -1021,13 +1030,15 @@ let check_no_bound_free_implied_bounds (span : Meta.span option)
+                     List.iter
+                       (fun (p : (region, region) outlives_pred region_binder) ->
+                         let r0, r1 = p.binder_value in
+-                        check_pair r0 r1)
++                        check_pair ~nested_shared:false r0 r1)
+                       preds.regions_outlive;
+                     (* [ty] outlives [r]: every region of [ty] outlives [r] *)
+                     List.iter
+                       (fun (p : (ty, region) outlives_pred region_binder) ->
+                         let ty, r = p.binder_value in
+-                        List.iter (fun rt -> check_pair rt r) (regions_of_ty ty))
++                        List.iter
++                          (fun rt -> check_pair ~nested_shared:false rt r)
++                          (regions_of_ty ty))
+                       preds.types_outlive)
+             | _ -> ());
+             (* Dive into the generic arguments. The region arguments are checked
+@@ -1054,5 +1065,31 @@ let check_fun_decl_no_bound_free_implied_bounds
+       (fun (c : trait_param) -> c.trait.binder_value.generics.types)
+       f.generics.trait_clauses
+   in
+-  check_no_bound_free_implied_bounds span type_decls
+-    ((output :: inputs) @ clause_tys)
++  let is_foreign_slice_iter_find =
++    let name =
++      match List.rev f.item_meta.name with
++      | PeTarget _ :: rest -> List.rev rest
++      | _ -> f.item_meta.name
++    in
++    let name_matches =
++      match name with
++      | PeIdent ("core", _)
++        :: PeIdent ("slice", _)
++        :: PeIdent ("iter", _)
++        :: _
++        :: [ PeIdent ("find", _) ] -> true
++      | _ -> false
++    in
++    name_matches
++    &&
++    match f.body with
++    | StructuredBody _ -> false
++    | _ -> true
++  in
++  (* Inputs and outputs retain the ordinary strict check. The one allowed
++     standard-library shape is the erased `for<'b> FnMut(&'b &'a T)` bound on
++     the foreign slice-iterator `find` method. Both nested borrows are shared,
++     the method body is not translated, and Lean erases both lifetimes. *)
++  check_no_bound_free_implied_bounds span type_decls (output :: inputs);
++  check_no_bound_free_implied_bounds
++    ~allow_nested_shared:is_foreign_slice_iter_find span type_decls clause_tys
+diff --git a/src/symbolic/SymbolicToPureAbs.ml b/src/symbolic/SymbolicToPureAbs.ml
+index 71276014..5445b7b4 100644
+--- a/src/symbolic/SymbolicToPureAbs.ml
++++ b/src/symbolic/SymbolicToPureAbs.ml
+@@ -461,9 +461,22 @@ let eoutput_to_pat (ctx : bs_ctx) (fvar_to_texpr : texpr V.AbsFVarId.Map.t ref)
+         abs_fvar_id_to_tpat ctx fvar_to_texpr rids ~filter afid output.ty
+     | V.EBorrow bc -> (
+         match bc with
+-        | V.EIgnoredMutBorrow _
+-        | V.EEndedMutBorrow _
+-        | V.EEndedIgnoredMutBorrow _ -> [%internal_error] span
++        | V.EIgnoredMutBorrow _ | V.EEndedMutBorrow _ -> [%internal_error] span
++        | V.EEndedIgnoredMutBorrow { child; given_back; given_back_meta = _ } ->
++            (* Ending a branch-local mutable borrow can leave this metadata
++               wrapper after both the borrowed child and its returned value
++               have already been erased. It binds no output and is equivalent
++               to an ignored pattern. Keep every non-erased nested-borrow case
++               rejected. *)
++            [%sanity_check] span (ValuesUtils.is_eignored child.value);
++            [%sanity_check] span (ValuesUtils.is_eignored given_back.value);
++            let pat =
++              if filter then None
++              else
++                let ty = ctx_translate_fwd_ty ctx output.ty in
++                Some (mk_ignored_pat ty)
++            in
++            (ctx, pat)
+         | V.EMutBorrow (pm, bid, child) ->
+             [%sanity_check] span (pm = PNone);
+             [%sanity_check] span (ValuesUtils.is_eignored child.value);
+diff --git a/tests/lean/HigherRankedSliceIterFind.lean b/tests/lean/HigherRankedSliceIterFind.lean
+new file mode 100644
+index 00000000..120348d8
+--- /dev/null
++++ b/tests/lean/HigherRankedSliceIterFind.lean
+@@ -0,0 +1,87 @@
++-- THIS FILE WAS AUTOMATICALLY GENERATED BY AENEAS
++-- [higher_ranked_slice_iter_find]
++import Aeneas
++open Aeneas Aeneas.Std Result ControlFlow Error
++set_option linter.dupNamespace false
++set_option linter.hashCommand false
++set_option linter.unusedVariables false
++
++/- You can set the `maxHeartbeats` value with the `-max-heartbeats` CLI option -/
++set_option maxHeartbeats 1000000
++
++/- You can set the `maxRecDepth` value with the `-max-recdepth` CLI option -/
++set_option maxRecDepth 2048
++
++/- You can remove the following line by using the CLI option `-all-computable`: -/
++noncomputable section
++
++namespace higher_ranked_slice_iter_find
++
++/-- [core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a T> for core::slice::iter::Iter<'a, T>}::find]:
++    Source: '/rustc/library/core/src/slice/iter/macros.rs', lines 343:12-346:46
++    Name pattern: [core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, @T>, &'a @T>}::find]
++    Visibility: public -/
++@[rust_fun
++  "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, @T>, &'a @T>}::find"]
++axiom core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.find
++  {T : Type} {P : Type} (opsfunctionFnMutPTupleSharedASharedATBoolInst :
++  core.ops.function.FnMut P T Bool) :
++  core.slice.iter.Iter T → P → Result ((Option T) × (core.slice.iter.Iter
++    T))
++
++/-- [higher_ranked_slice_iter_find::contains::closure]
++    Source: 'tests/src/higher_ranked_slice_iter_find.rs', lines 8:23-8:48 -/
++@[reducible]
++def contains.closure := Std.U32
++
++/-- [higher_ranked_slice_iter_find::contains::{impl core::ops::function::FnMut<(&'_ &'_ u32,), bool> for higher_ranked_slice_iter_find::contains::closure<'_0>}::call_mut]:
++    Source: 'tests/src/higher_ranked_slice_iter_find.rs', lines 8:23-8:48 -/
++def
++  contains.closure.Insts.CoreOpsFunctionFnMutTupleSharedSharedU32Bool.call_mut
++  (c : contains.closure) (tupled_args : Std.U32) :
++  Result (Bool × contains.closure)
++  := do
++  ok (tupled_args = c, c)
++
++/-- [higher_ranked_slice_iter_find::contains::{impl core::ops::function::FnOnce<(&'_ &'_ u32,), bool> for higher_ranked_slice_iter_find::contains::closure<'_0>}::call_once]:
++    Source: 'tests/src/higher_ranked_slice_iter_find.rs', lines 8:23-8:48 -/
++def
++  contains.closure.Insts.CoreOpsFunctionFnOnceTupleSharedSharedU32Bool.call_once
++  (c : contains.closure) (i : Std.U32) : Result Bool := do
++  let (b, _) ←
++    contains.closure.Insts.CoreOpsFunctionFnMutTupleSharedSharedU32Bool.call_mut
++      c i
++  ok b
++
++/-- Trait implementation: [higher_ranked_slice_iter_find::contains::{impl core::ops::function::FnOnce<(&'_ &'_ u32,), bool> for higher_ranked_slice_iter_find::contains::closure<'_0>}]
++    Source: 'tests/src/higher_ranked_slice_iter_find.rs', lines 8:23-8:48 -/
++@[reducible]
++def contains.closure.Insts.CoreOpsFunctionFnOnceTupleSharedSharedU32Bool :
++  core.ops.function.FnOnce contains.closure Std.U32 Bool := {
++  call_once :=
++    contains.closure.Insts.CoreOpsFunctionFnOnceTupleSharedSharedU32Bool.call_once
++}
++
++/-- Trait implementation: [higher_ranked_slice_iter_find::contains::{impl core::ops::function::FnMut<(&'_ &'_ u32,), bool> for higher_ranked_slice_iter_find::contains::closure<'_0>}]
++    Source: 'tests/src/higher_ranked_slice_iter_find.rs', lines 8:23-8:48 -/
++@[reducible]
++def contains.closure.Insts.CoreOpsFunctionFnMutTupleSharedSharedU32Bool :
++  core.ops.function.FnMut contains.closure Std.U32 Bool := {
++  FnOnceInst :=
++    contains.closure.Insts.CoreOpsFunctionFnOnceTupleSharedSharedU32Bool
++  call_mut :=
++    contains.closure.Insts.CoreOpsFunctionFnMutTupleSharedSharedU32Bool.call_mut
++}
++
++/-- [higher_ranked_slice_iter_find::contains]:
++    Source: 'tests/src/higher_ranked_slice_iter_find.rs', lines 7:0-9:1
++    Visibility: public -/
++def contains (values : Slice Std.U32) (wanted : Std.U32) : Result Bool := do
++  let i ← core.slice.Slice.iter values
++  let (o, _) ←
++    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.find
++      contains.closure.Insts.CoreOpsFunctionFnMutTupleSharedSharedU32Bool i
++      wanted
++  ok (core.option.Option.is_some o)
++
++end higher_ranked_slice_iter_find
+diff --git a/tests/lean/NestedLoopReturn.lean b/tests/lean/NestedLoopReturn.lean
+index 3423ed00..71a59eed 100644
+--- a/tests/lean/NestedLoopReturn.lean
++++ b/tests/lean/NestedLoopReturn.lean
+@@ -12,8 +12,38 @@ set_option maxHeartbeats 1000000
+ /- You can set the `maxRecDepth` value with the `-max-recdepth` CLI option -/
+ set_option maxRecDepth 2048
+ 
++/- You can remove the following line by using the CLI option `-all-computable`: -/
++noncomputable section
++
+ namespace nested_loop_return
+ 
++/-- [core::slice::iter::Windows]
++    Source: '/rustc/library/core/src/slice/iter.rs', lines 1329:0-1329:29
++    Name pattern: [core::slice::iter::Windows]
++    Visibility: public -/
++@[rust_type "core::slice::iter::Windows"]
++axiom core.slice.iter.Windows (T : Type) : Type
++
++/-- [core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a [T]> for core::slice::iter::Windows<'a, T>}::next]:
++    Source: '/rustc/library/core/src/slice/iter.rs', lines 1354:4-1354:41
++    Name pattern: [core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Windows<'a, @T>, &'a [@T]>}::next]
++    Visibility: public -/
++@[rust_fun
++  "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Windows<'a, @T>, &'a [@T]>}::next"]
++axiom
++  core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice.next
++  {T : Type} :
++  core.slice.iter.Windows T → Result ((Option (Slice T)) ×
++    (core.slice.iter.Windows T))
++
++/-- [core::slice::{[T]}::windows]:
++    Source: '/rustc/library/core/src/slice/mod.rs', lines 1116:4-1116:62
++    Name pattern: [core::slice::{[@T]}::windows]
++    Visibility: public -/
++@[rust_fun "core::slice::{[@T]}::windows"]
++axiom core.slice.Slice.windows
++  {T : Type} : Slice T → Std.Usize → Result (core.slice.iter.Windows T)
++
+ /-- [nested_loop_return::find_pair]: loop body 1:
+     Source: 'tests/src/nested-loop-return.rs', lines 1:0-20:1
+     Visibility: public -/
+@@ -424,4 +454,44 @@ def non_copy_result
+   | none => ok (core.result.Result.Err 7#u32)
+   | some r => ok r
+ 
++/-- [nested_loop_return::windows_early_return]: loop body 0:
++    Source: 'tests/src/nested-loop-return.rs', lines 87:4-93:1
++    Visibility: public -/
++@[rust_loop_body]
++def windows_early_return_loop.body
++  (iter : core.slice.iter.Windows Std.U32) :
++  Result (ControlFlow (core.slice.iter.Windows Std.U32) (Option Bool))
++  := do
++  let (o, iter1) ←
++    core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice.next
++      iter
++  match o with
++  | none => ok (done none)
++  | some pair =>
++    let i ← Slice.index_usize pair 0#usize
++    let i1 ← Slice.index_usize pair 1#usize
++    if i >= i1
++    then ok (done (some false))
++    else ok (cont iter1)
++
++/-- [nested_loop_return::windows_early_return]: loop 0:
++    Source: 'tests/src/nested-loop-return.rs', lines 87:4-93:1
++    Visibility: public -/
++@[rust_loop]
++def windows_early_return_loop
++  (iter : core.slice.iter.Windows Std.U32) : Result (Option Bool) := do
++  loop
++    (fun iter1 => windows_early_return_loop.body iter1)
++    iter
++
++/-- [nested_loop_return::windows_early_return]:
++    Source: 'tests/src/nested-loop-return.rs', lines 86:0-93:1
++    Visibility: public -/
++def windows_early_return (values : Slice Std.U32) : Result Bool := do
++  let iter ← core.slice.Slice.windows values 2#usize
++  let pending_return ← windows_early_return_loop iter
++  match pending_return with
++  | none => ok true
++  | some b => ok b
++
+ end nested_loop_return
+diff --git a/tests/lean/NestedLoopReturnTests.lean b/tests/lean/NestedLoopReturnTests.lean
+index 7b0e39b8..ff506715 100644
+--- a/tests/lean/NestedLoopReturnTests.lean
++++ b/tests/lean/NestedLoopReturnTests.lean
+@@ -36,9 +36,16 @@ def nonCopyResultChecks : Bool :=
+       value.value.val == 0 && error.val == 7
+   | _ => false
+ 
++def windowsEarlyReturnChecks : Bool :=
++  match (windows_early_return [2#u32, 4#u32, 9#u32],
++      windows_early_return [2#u32, 4#u32, 4#u32]) with
++  | (.ok true, .ok false) => true
++  | _ => false
++
+ example : findPairSuccess = true := by native_decide
+ example : findPairNormalExit = true := by native_decide
+ example : sequentialEarlyExit = true := by native_decide
+ example : sequentialNormalExit = true := by native_decide
+ example : tripleExitChecks = true := by native_decide
+ example : nonCopyResultChecks = true := by native_decide
++example : windowsEarlyReturnChecks = true := by native_decide
+diff --git a/tests/lean/lakefile.lean b/tests/lean/lakefile.lean
+index b70f440c..f7e701b4 100644
+--- a/tests/lean/lakefile.lean
++++ b/tests/lean/lakefile.lean
+@@ -43,6 +43,7 @@ package «tests» {}
+ @[default_target] lean_lib GenericUnitOutput
+ @[default_target] lean_lib Hashmap
+ @[default_target] lean_lib HigherRankedTraitBounds
++@[default_target] lean_lib HigherRankedSliceIterFind
+ @[default_target] lean_lib Into
+ @[default_target] lean_lib Issue1044OpaqueTuple
+ @[default_target] lean_lib Issue1140GlobalLoop
+diff --git a/tests/src/higher_ranked_implied_bounds_borrow.lean.out b/tests/src/higher_ranked_implied_bounds_borrow.lean.out
+index 85a770b3..2d92dda6 100644
+--- a/tests/src/higher_ranked_implied_bounds_borrow.lean.out
++++ b/tests/src/higher_ranked_implied_bounds_borrow.lean.out
+@@ -2,5 +2,5 @@
+ [[91mError[39m] Unimplemented: found an occurrence of a lifetime constraint relating
+          a higher-ranked lifetime to a free lifetime.
+ Source: 'tests/src/higher_ranked_implied_bounds_borrow.rs', lines 16:0-20:1
+-Compiler source: llbc/TypesAnalysis.ml, line 970
++Compiler source: llbc/TypesAnalysis.ml, line 974
+ 
+diff --git a/tests/src/higher_ranked_implied_bounds_regions.lean.out b/tests/src/higher_ranked_implied_bounds_regions.lean.out
+index 5975cd17..4892e27c 100644
+--- a/tests/src/higher_ranked_implied_bounds_regions.lean.out
++++ b/tests/src/higher_ranked_implied_bounds_regions.lean.out
+@@ -2,5 +2,5 @@
+ [[91mError[39m] Unimplemented: found an occurrence of a lifetime constraint relating
+          a higher-ranked lifetime to a free lifetime.
+ Source: 'tests/src/higher_ranked_implied_bounds_regions.rs', lines 19:0-23:1
+-Compiler source: llbc/TypesAnalysis.ml, line 970
++Compiler source: llbc/TypesAnalysis.ml, line 974
+ 
+diff --git a/tests/src/higher_ranked_implied_bounds_types.lean.out b/tests/src/higher_ranked_implied_bounds_types.lean.out
+index 56f5d010..46d4adb6 100644
+--- a/tests/src/higher_ranked_implied_bounds_types.lean.out
++++ b/tests/src/higher_ranked_implied_bounds_types.lean.out
+@@ -2,5 +2,5 @@
+ [[91mError[39m] Unimplemented: found an occurrence of a lifetime constraint relating
+          a higher-ranked lifetime to a free lifetime.
+ Source: 'tests/src/higher_ranked_implied_bounds_types.rs', lines 19:0-23:1
+-Compiler source: llbc/TypesAnalysis.ml, line 970
++Compiler source: llbc/TypesAnalysis.ml, line 974
+ 
+diff --git a/tests/src/higher_ranked_slice_iter_find.rs b/tests/src/higher_ranked_slice_iter_find.rs
+new file mode 100644
+index 00000000..7b69a36d
+--- /dev/null
++++ b/tests/src/higher_ranked_slice_iter_find.rs
+@@ -0,0 +1,9 @@
++//@ [coq,fstar] skip
++// The foreign standard-library slice iterator `find` has the erased bound
++// `for<'b> FnMut(&'b &'a T)`. This exact shared/shared shape is supported;
++// user-defined higher-ranked implied bounds remain rejected by the three
++// `higher_ranked_implied_bounds_*` negative tests.
++
++pub fn contains(values: &[u32], wanted: u32) -> bool {
++    values.iter().find(|&&value| value == wanted).is_some()
++}
+diff --git a/tests/src/nested-loop-return.rs b/tests/src/nested-loop-return.rs
+index 389f66b2..cac19668 100644
+--- a/tests/src/nested-loop-return.rs
++++ b/tests/src/nested-loop-return.rs
+@@ -83,6 +83,15 @@ pub fn non_copy_result(stop: u32) -> Result<NonCopy, u32> {
+     Err(7)
+ }
+ 
++pub fn windows_early_return(values: &[u32]) -> bool {
++    for pair in values.windows(2) {
++        if pair[0] >= pair[1] {
++            return false;
++        }
++    }
++    true
++}
++
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+@@ -98,5 +107,8 @@ mod tests {
+         assert_eq!(triple_nested_return(4), 0);
+         assert_eq!(non_copy_result(0), Ok(NonCopy { value: 0 }));
+         assert_eq!(non_copy_result(9), Err(7));
++
++        assert!(windows_early_return(&[2, 4, 9]));
++        assert!(!windows_early_return(&[2, 4, 4]));
+     }
+ }
+-- 
+2.50.1 (Apple Git-155)
+

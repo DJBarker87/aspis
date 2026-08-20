@@ -1,0 +1,824 @@
+From 107379fb954a346df780b1fe95b9e70d460c4ccb Mon Sep 17 00:00:00 2001
+From: DJB8787 <168072039+DJBarker87@users.noreply.github.com>
+Date: Thu, 20 Aug 2026 21:29:50 +0100
+Subject: [PATCH 14/14] Support transcript function pointers and shared
+ iterators
+
+---
+ src/interp/InterpBorrowsCore.ml           |  12 +-
+ src/interp/InterpExpressions.ml           |  30 ++++
+ src/interp/InterpExpressions.mli          |  12 ++
+ src/interp/InterpJoin.ml                  | 106 ++++++++++++++
+ src/interp/InterpMatchCtxs.ml             |  33 +++--
+ src/interp/InterpStatements.ml            | 163 +++++++++++++++++++---
+ src/llbc/RegionsHierarchy.ml              |   9 +-
+ src/llbc/TypesAnalysis.ml                 |  15 +-
+ src/llbc/TypesUtils.ml                    |  12 +-
+ src/symbolic/PrintSymbolicAst.ml          |   5 +
+ src/symbolic/SymbolicAst.ml               |   4 +
+ src/symbolic/SymbolicToPureExpressions.ml |  56 ++++++++
+ src/symbolic/SymbolicToPureTypes.ml       |  22 +--
+ src/symbolic/SynthesizeSymbolic.ml        |  11 ++
+ 14 files changed, 436 insertions(+), 54 deletions(-)
+
+diff --git a/src/interp/InterpBorrowsCore.ml b/src/interp/InterpBorrowsCore.ml
+index a2c6809f..37f4ee6f 100644
+--- a/src/interp/InterpBorrowsCore.ml
++++ b/src/interp/InterpBorrowsCore.ml
+@@ -1518,8 +1518,7 @@ let lookup_aproj_loans_opt (span : Meta.span) (abs_id : AbsId.id)
+         | AProjLoans aproj_loan ->
+             let current_abs = Option.get abs in
+             [%sanity_check] span (current_abs.abs_id = abs_id);
+-            if aproj_loan.proj.sv_id = sv_id then set_found aproj_loan
+-            else ()
++            if aproj_loan.proj.sv_id = sv_id then set_found aproj_loan else ()
+         | AProjBorrows _ | AEndedProjLoans _ | AEndedProjBorrows _ | AEmpty ->
+             ());
+         super#visit_aproj abs sproj
+@@ -2305,9 +2304,10 @@ let rec norm_proj_tys_union (span : Meta.span) ?(strict : bool = true)
+             };
+         } )
+     when abi1 = abi2 && is_variadic1 = is_variadic2 ->
+-      (* TODO: general case *)
+-      [%sanity_check] span (binder_regions1 = []);
+-      [%sanity_check] span (binder_regions2 = []);
++      (* The locally bound regions belong to the function-pointer signature,
++         not to the surrounding borrow context. Matching signatures must keep
++         the same binder so bound regions in their inputs stay well scoped. *)
++      [%sanity_check] span (binder_regions1 = binder_regions2);
+       let binder_value =
+         {
+           is_unsafe = false;
+@@ -2318,7 +2318,7 @@ let rec norm_proj_tys_union (span : Meta.span) ?(strict : bool = true)
+           is_variadic = is_variadic1;
+         }
+       in
+-      TFnPtr { binder_regions = []; binder_value }
++      TFnPtr { binder_regions = binder_regions1; binder_value }
+   | TArray (ty0, len0), TArray (ty1, len1) ->
+       [%sanity_check] span (len0 = len1);
+       TArray (norm_proj_tys_union span ~strict ctx ty0 ty1, len0)
+diff --git a/src/interp/InterpExpressions.ml b/src/interp/InterpExpressions.ml
+index 2d32fc8e..6a94cec8 100644
+--- a/src/interp/InterpExpressions.ml
++++ b/src/interp/InterpExpressions.ml
+@@ -82,6 +82,36 @@ let access_rplace_reorganize_and_read (config : config) (span : Meta.span)
+   (* Compose *)
+   (lid, value, ctx, cc)
+ 
++(** Prepare and read a place whose value is used only for its ADT discriminant.
++
++    Rust permits reading an enum discriminant after one of the active variant's
++    payload fields has been moved. Such a value contains bottoms below the outer
++    constructor, so the ordinary full-value reader correctly rejects it. A
++    discriminant read does not observe those payload fields; keep the normal
++    loan reorganization and reserved-borrow check, but defer the outer-shape
++    check to the [Match] evaluator. *)
++let access_rplace_reorganize_and_read_discriminant (config : config)
++    (span : Meta.span) (greedy_expand : bool) (access : access_kind) (p : place)
++    (ctx : eval_ctx) :
++    loan_id option * tvalue * eval_ctx * (SymbolicAst.expr -> SymbolicAst.expr)
++    =
++  (* Make sure we can evaluate the path. *)
++  let ctx, cc = update_ctx_along_read_place config span access p ctx in
++  (* End the proper loans at the place itself. *)
++  let ctx, cc = comp cc (end_loans_at_place config span access p ctx) in
++  (* Expand copyable symbolic values containing borrows, as for a normal
++     read. *)
++  let ctx, cc =
++    comp cc
++      (if greedy_expand then expand_if_borrows_at_place span access p ctx
++       else (ctx, fun e -> e))
++  in
++  let lid, value = read_place span access p ctx in
++  [%cassert] span
++    (not (reserved_in_value value))
++    "There should be no reserved borrows in a discriminant value";
++  (lid, value, ctx, cc)
++
+ let access_rplace_reorganize (config : config) (span : Meta.span)
+     (greedy_expand : bool) (access : access_kind) (p : place) : cm_fun =
+  fun ctx ->
+diff --git a/src/interp/InterpExpressions.mli b/src/interp/InterpExpressions.mli
+index 75a12e90..c70e91ae 100644
+--- a/src/interp/InterpExpressions.mli
++++ b/src/interp/InterpExpressions.mli
+@@ -28,6 +28,18 @@ val access_rplace_reorganize_and_read :
+   eval_ctx ->
+   loan_id option * tvalue * eval_ctx * (SymbolicAst.expr -> SymbolicAst.expr)
+ 
++(** As [access_rplace_reorganize_and_read], but for an ADT discriminant read.
++    Payload fields may already have been moved; the caller must inspect only the
++    outer constructor. *)
++val access_rplace_reorganize_and_read_discriminant :
++  config ->
++  Meta.span ->
++  bool ->
++  access_kind ->
++  place ->
++  eval_ctx ->
++  loan_id option * tvalue * eval_ctx * (SymbolicAst.expr -> SymbolicAst.expr)
++
+ (** Evaluate an operand.
+ 
+     Reorganize the context, then evaluate the operand.
+diff --git a/src/interp/InterpJoin.ml b/src/interp/InterpJoin.ml
+index bc7e75e2..18eeaf5f 100644
+--- a/src/interp/InterpJoin.ml
++++ b/src/interp/InterpJoin.ml
+@@ -1379,6 +1379,16 @@ let match_ctx_with_target (config : config) (span : Meta.span)
+       | ALoan (ASharedLoan (_, _, sv, child)) ->
+           (not (value_has_borrows (Some span) src_ctx sv.value))
+           && is_plain_shared_loan_tree child
++      | ABorrow
++          (AEndedIgnoredMutBorrow { child; given_back; given_back_meta = _ }) ->
++          (* Immutable iterators are implemented with a temporary mutable
++             handback.  Once that handback has ended it carries no write-back
++             state; allow [destructure_abs] to flatten its shared children. *)
++          (not (ty_has_mut_borrows src_ctx.type_ctx.type_infos child.ty))
++          && (not
++                (ty_has_mut_borrows src_ctx.type_ctx.type_infos given_back.ty))
++          && is_plain_shared_loan_tree child
++          && is_plain_shared_loan_tree given_back
+       | _ -> false
+     in
+     let rec has_nested_shared_loan (below_adt : bool) (av : tavalue) : bool =
+@@ -1408,6 +1418,15 @@ let match_ctx_with_target (config : config) (span : Meta.span)
+      execution side.  The operation is restricted internally to immutable
+      nested borrows and records any fresh symbolic copies in the continuation. *)
+   let src_ctx, cc = destructure_shared_loans span AbsId.Set.empty src_ctx in
++  (* Destructuring an ended iterator handback can expose a complete immutable
++     loan/borrow projection pair which was nested during the earlier cleanup.
++     Cancel that now-visible zero-write pair before matching the loop body. *)
++  let src_ctx =
++    normalize_projected_shared_projection_pairs fixed_aids src_ctx
++  in
++  let src_ctx =
++    eliminate_unreachable_marked_shared_borrow_projections span src_ctx
++  in
+   let src_ctx, cc =
+     comp cc
+       (simplify_dummy_values_useless_abs config span ~snapshots:false src_ctx)
+@@ -1682,7 +1701,94 @@ let match_ctx_with_target (config : config) (span : Meta.span)
+           match_ctx.env;
+     }
+   in
++  let joined_ctx_for_match =
++    (* Apply the same match-only erasure used below for the fixed-point side.
++       Immutable projectors have no backward value and therefore do not
++       distinguish two execution states. *)
++    let joined_ctx_for_match =
++      let frozen_aids = ctx_get_frozen_abs_set joined_ctx_for_match in
++      {
++        joined_ctx_for_match with
++        env =
++          env_map_abs
++            (fun abs ->
++              if AbsId.Set.mem abs.abs_id frozen_aids then abs
++              else
++                destructure_abs span abs.kind ~can_end:abs.can_end
++                  ~destructure_shared_values:true joined_ctx_for_match abs)
++            joined_ctx_for_match.env;
++      }
++    in
++    ctx_map_abs
++      (fun abs ->
++        {
++          abs with
++          avalues =
++            List.filter
++              (fun (av : tavalue) ->
++                match av.value with
++                | AIgnored _ -> false
++                | ASymbolic
++                    (PNone, (AProjLoans { proj; _ } | AProjBorrows { proj; _ }))
++                  ->
++                    ty_has_mut_borrows joined_ctx.type_ctx.type_infos
++                      proj.proj_ty
++                | _ -> true)
++              abs.avalues;
++        })
++      joined_ctx_for_match
++  in
+   let src_ctx_for_match =
++    (* The projected execution context is fully destructured by collapse.  Put
++       the non-fixed, match-only copy of the loop context in the same normal
++       form.  This is especially important for immutable iterator handbacks,
++       whose ended wrapper can otherwise hide the same shared loans that are
++       already flat on the execution side.  The actual loop context and its
++       continuations remain untouched. *)
++    let src_ctx =
++      let frozen_aids = ctx_get_frozen_abs_set src_ctx in
++      {
++        src_ctx with
++        env =
++          env_map_abs
++            (fun abs ->
++              if AbsId.Set.mem abs.abs_id frozen_aids then abs
++              else
++                destructure_abs span abs.kind ~can_end:abs.can_end
++                  ~destructure_shared_values:true src_ctx abs)
++            src_ctx.env;
++      }
++    in
++    let src_ctx =
++      normalize_projected_shared_projection_pairs fixed_aids src_ctx
++    in
++    let src_ctx =
++      eliminate_unreachable_marked_shared_borrow_projections span src_ctx
++    in
++    let src_ctx =
++      (* Matching ignores abstraction continuations, and a fully immutable
++         projector carries no value that can be written back.  The projected
++         execution side legitimately erases these iterator-return projectors;
++         erase the same zero-write bookkeeping from this match-only copy. *)
++      ctx_map_abs
++        (fun abs ->
++          {
++            abs with
++            avalues =
++              List.filter
++                (fun (av : tavalue) ->
++                  match av.value with
++                  | AIgnored _ -> false
++                  | ASymbolic
++                      ( PNone,
++                        (AProjLoans { proj; _ } | AProjBorrows { proj; _ }) ) ->
++                      ty_has_mut_borrows src_ctx.type_ctx.type_infos
++                        proj.proj_ty
++                  | _ -> true)
++                abs.avalues;
++          })
++        src_ctx
++    in
+     let ignored (av : tavalue) =
+       match av.value with
+       | AIgnored _ -> true
+diff --git a/src/interp/InterpMatchCtxs.ml b/src/interp/InterpMatchCtxs.ml
+index 9b25ee03..06560904 100644
+--- a/src/interp/InterpMatchCtxs.ml
++++ b/src/interp/InterpMatchCtxs.ml
+@@ -382,8 +382,8 @@ let rec match_types (span : Meta.span) ~(recover : bool) (ctx0 : eval_ctx)
+       TRawPtr (ty, rk0)
+   | TFnPtr fn0, TFnPtr fn1 ->
+       [%cassert_recover] recover span
+-        (fn0.binder_regions = [] && fn1.binder_regions = [])
+-        "Function pointers with locally quantified regions are not supported";
++        (fn0.binder_regions = fn1.binder_regions)
++        "Function pointers with different locally quantified regions";
+       let sg0 = fn0.binder_value in
+       let sg1 = fn1.binder_value in
+       [%cassert_recover] recover span
+@@ -399,7 +399,7 @@ let rec match_types (span : Meta.span) ~(recover : bool) (ctx0 : eval_ctx)
+           output = match_rec sg0.output sg1.output;
+         }
+       in
+-      TFnPtr { binder_regions = []; binder_value }
++      TFnPtr { binder_regions = fn0.binder_regions; binder_value }
+   | TDynTrait _, TDynTrait _ | TFnDef _, TFnDef _ ->
+       [%craise_recover] recover span "Not implemented yet"
+   | TPtrMetadata ty0, TPtrMetadata ty1 ->
+@@ -2149,11 +2149,28 @@ struct
+            ^ Print.bool_to_string bottom_is_left
+            ^ "\n- value to match with bottom:\n" ^ show_tvalue v))
+ 
+-  let match_shared_loan_with_other (_ : tvalue_matcher) (_ : eval_ctx)
+-      (_ : eval_ctx) ~(loan_is_left : bool) (_ : ety) (_ : loan_id) (_ : tvalue)
+-      (_ : tvalue) : tvalue =
+-    let _ = loan_is_left in
+-    raise (Distinct "match_mut_loan_with_other")
++  let match_shared_loan_with_other (match_rec : tvalue_matcher)
++      (ctx0 : eval_ctx) (_ : eval_ctx) ~(loan_is_left : bool) (ty : ety)
++      (_ : loan_id) (shared_value : tvalue) (other : tvalue) : tvalue =
++    (* Loop fixed points may contain an unloaned immutable value while the
++       execution-side context still wraps the same value in a shared loan for
++       a live slice iterator.  This matcher only computes an id substitution;
++       it does not rewrite either context.  Matching through that wrapper is
++       therefore valid precisely when neither side can carry write-back state.
++
++       Keep mutable references and nested loans outside this rule.  They need
++       their complete loan graph and must continue to fail matching. *)
++    if
++      ty_has_mut_borrows ctx0.type_ctx.type_infos ty
++      || ValuesUtils.value_has_loans shared_value.value
++      || ValuesUtils.value_has_loans other.value
++      || ValuesUtils.value_has_mut_borrows (Some span) ctx0.type_ctx.type_infos
++           shared_value.value
++      || ValuesUtils.value_has_mut_borrows (Some span) ctx0.type_ctx.type_infos
++           other.value
++    then raise (Distinct "match_shared_loan_with_other")
++    else if loan_is_left then match_rec shared_value other
++    else match_rec other shared_value
+ 
+   let match_mut_loan_with_other (_ : tvalue_matcher) (_ : eval_ctx)
+       (_ : eval_ctx) ~(loan_is_left : bool) (_ : ety) (_ : loan_id) (_ : tvalue)
+diff --git a/src/interp/InterpStatements.ml b/src/interp/InterpStatements.ml
+index 6d08f1c1..3b8bd287 100644
+--- a/src/interp/InterpStatements.ml
++++ b/src/interp/InterpStatements.ml
+@@ -557,8 +557,12 @@ let create_push_abstractions_from_abs_region_groups
+   in
+   List.fold_left insert_abs ctx (List.combine rg_ids empty_absl)
+ 
++type symbolic_fun_call_kind =
++  | SymbolicRegular of fn_ptr_kind
++  | SymbolicDynamic of operand
++
+ type symbolic_fun_call_inst = {
+-  call_kind : fn_ptr_kind;
++  call_kind : symbolic_fun_call_kind;
+   call_generics : generic_args;
+   call_span : Meta.span;
+   call_sig : bound_fun_sig;
+@@ -571,7 +575,7 @@ let mk_symbolic_fun_call_inst (span : Meta.span) (ctx : eval_ctx)
+     ~(tr_self : trait_ref_kind) (signature : bound_fun_sig) :
+     symbolic_fun_call_inst =
+   {
+-    call_kind;
++    call_kind = SymbolicRegular call_kind;
+     call_generics;
+     call_span;
+     call_sig = signature;
+@@ -579,6 +583,60 @@ let mk_symbolic_fun_call_inst (span : Meta.span) (ctx : eval_ctx)
+       instantiate_fun_sig (Some span) ctx inst_generics tr_self signature;
+   }
+ 
++(** Open the region binder on a shared-reference function-pointer signature.
++    Bound regions on a higher-ranked pointer are call-local and cannot escape.
++    We represent them as static for symbolic execution so they create no
++    backward borrow abstraction; the Pure translation erases either form. The
++    dynamic-call translator separately rejects mutable-reference inputs and
++    outputs, for which this simplification would be invalid. *)
++let open_dynamic_fun_sig (span : Meta.span) (ctx : eval_ctx)
++    (signature : fun_sig region_binder) : bound_fun_sig =
++  ignore ctx;
++  let visitor =
++    object
++      inherit [_] map_ty
++
++      method! visit_RVar _ var =
++        match var with
++        | Bound _ -> RStatic
++        | Free _ ->
++            [%craise] span
++              "Function pointers capturing an outer free lifetime are not \
++               supported"
++    end
++  in
++  let item_binder_value = visitor#visit_fun_sig () signature.binder_value in
++  { item_binder_params = empty_generic_params; item_binder_value }
++
++let eval_dynamic_function_call_symbolic_inst (span : Meta.span)
++    (callee : operand) (ctx : eval_ctx) : symbolic_fun_call_inst =
++  let callee_ty =
++    match callee with
++    | Copy p | Move p -> p.ty
++    | Constant cv -> cv.ty
++  in
++  let signature =
++    match callee_ty with
++    | TFnPtr signature -> open_dynamic_fun_sig span ctx signature
++    | ty ->
++        [%craise] span
++          ("Dynamic call operand does not have a function-pointer type: "
++         ^ ty_to_string ctx ty)
++  in
++  let call_generics =
++    Substitute.generic_args_of_params_erase_regions (Some span)
++      signature.item_binder_params
++  in
++  let tr_self = UnknownTrait "dynamic function pointer call" in
++  {
++    call_kind = SymbolicDynamic callee;
++    call_generics;
++    call_span = span;
++    call_sig = signature;
++    call_inst_sig =
++      instantiate_fun_sig (Some span) ctx call_generics tr_self signature;
++  }
++
+ (** Auxiliary helper for [eval_function_call_symbolic] Instantiate the signature
+     and introduce fresh abstractions and region ids while doing so.
+ 
+@@ -1148,8 +1206,8 @@ and eval_switch_raw (config : config) (span : Meta.span) (switch : switch) :
+       let access = Read in
+       let expand_prim_copy = false in
+       let _, p_v, ctx, cf_read_p =
+-        access_rplace_reorganize_and_read config span expand_prim_copy access p
+-          ctx
++        access_rplace_reorganize_and_read_discriminant config span
++          expand_prim_copy access p ctx
+       in
+       let ctx0 = ctx in
+       (* Match on the value *)
+@@ -1157,9 +1215,33 @@ and eval_switch_raw (config : config) (span : Meta.span) (switch : switch) :
+         (* The value may be shared: we need to ignore the shared loans
+            to read the value itself *)
+         let p_v = value_strip_shared_loans p_v in
++        (* Rust's drop elaboration can emit a discriminant switch after the
++           active payload has been moved.  The symbolic value is then bottom.
++           If every possible target nevertheless performs the exact same LLBC
++           operations, the tag is observationally irrelevant and we can
++           evaluate that common target.  Compare statement kinds only: spans,
++           comments and fresh statement ids carry no execution semantics. *)
++        let blocks_have_same_statement_kinds b0 b1 =
++          List.length b0.statements = List.length b1.statements
++          && List.for_all2
++               (fun st0 st1 -> st0.kind = st1.kind)
++               b0.statements b1.statements
++        in
++        let uniform_target =
++          match (stgts, otherwise) with
++          | [], Some b -> Some b
++          | (_, b) :: targets, Some otherwise
++            when List.for_all
++                   (fun (_, target) ->
++                     blocks_have_same_statement_kinds b target)
++                   targets
++                 && blocks_have_same_statement_kinds b otherwise -> Some b
++          | _ -> None
++        in
+         (* Match *)
+-        match p_v.value with
+-        | VAdt adt -> (
++        match (p_v.value, uniform_target) with
++        | VBottom, Some target -> eval_block config target ctx
++        | VAdt adt, _ -> (
+             (* Evaluate the discriminant *)
+             let dv = Option.get adt.variant_id in
+             (* Find the branch, evaluate and continue *)
+@@ -1169,7 +1251,7 @@ and eval_switch_raw (config : config) (span : Meta.span) (switch : switch) :
+                 | None -> [%craise] span "No otherwise branch"
+                 | Some otherwise -> eval_block config otherwise ctx)
+             | Some (_, tgt) -> eval_block config tgt ctx)
+-        | VSymbolic sv ->
++        | VSymbolic sv, _ ->
+             (* Expand the symbolic value - may lead to branching *)
+             let ctxl, cf_expand =
+               expand_symbolic_adt span sv (Some (S.mk_mplace span p ctx)) ctx
+@@ -1405,7 +1487,16 @@ and eval_function_call_symbolic (config : config) (span : Meta.span)
+     (call : call) : stl_cm_fun =
+  fun ctx ->
+   match call.func with
+-  | FnOpDynamic _ -> [%craise] span "Function pointers are not supported yet"
++  | FnOpDynamic callee ->
++      [%ltrace
++        "dynamic function call:\n- call: " ^ call_to_string ctx call
++        ^ "\n- callee: "
++        ^ operand_to_string ctx callee];
++      let call_info =
++        eval_dynamic_function_call_symbolic_inst span callee ctx
++      in
++      eval_function_call_symbolic_from_inst_sig config call_info call.args
++        call.dest ctx
+   | FnOpRegular func ->
+       [%ltrace
+         "function call:\n- call: " ^ call_to_string ctx call ^ "\n- fn_ptr : "
+@@ -1522,7 +1613,7 @@ and eval_function_call_symbolic_from_inst_sig (config : config)
+     stl_cm_fun =
+  fun ctx ->
+   let span = call_info.call_span in
+-  let fid = call_info.call_kind in
++  let call_kind = call_info.call_kind in
+   let sg = call_info.call_sig.item_binder_value in
+   let inst_sg = call_info.call_inst_sig in
+   let generics = call_info.call_generics in
+@@ -1535,7 +1626,9 @@ and eval_function_call_symbolic_from_inst_sig (config : config)
+     (call_info.call_inst_sig.output :: call_info.call_inst_sig.inputs);
+   [%ltrace
+     "- fid: "
+-    ^ fn_ptr_kind_to_string ctx fid
++    ^ (match call_kind with
++      | SymbolicRegular fid -> fn_ptr_kind_to_string ctx fid
++      | SymbolicDynamic callee -> "(" ^ operand_to_string ctx callee ^ ")")
+     ^ "\n- inst_sg:\n"
+     ^ inst_fun_sig_to_string ctx inst_sg
+     ^ "\n- call.generics:\n"
+@@ -1556,8 +1649,23 @@ and eval_function_call_symbolic_from_inst_sig (config : config)
+   in
+   let dest_place = Some (S.mk_mplace span dest ctx) in
+ 
+-  (* Evaluate the input operands *)
+-  let args, ctx, cc = eval_operands config span args ctx in
++  (* Evaluate the callee before the inputs for a dynamic call, matching Rust's
++     operand order.  Keep the callee separate from the signature arguments: it
++     is the Pure function expression, not an additional Rust parameter. *)
++  let operands =
++    match call_kind with
++    | SymbolicRegular _ -> args
++    | SymbolicDynamic callee -> callee :: args
++  in
++  let values, ctx, cc = eval_operands config span operands ctx in
++  let callee, args =
++    match call_kind with
++    | SymbolicRegular _ -> (None, values)
++    | SymbolicDynamic _ -> (
++        match values with
++        | callee :: args -> (Some callee, args)
++        | [] -> [%craise] span "Missing dynamic function-pointer value")
++  in
+ 
+   [%ldebug
+     "- args:\n"
+@@ -1571,9 +1679,24 @@ and eval_function_call_symbolic_from_inst_sig (config : config)
+   let args_with_rtypes = List.combine args inst_sg.inputs in
+ 
+   (* Check the type of the input arguments *)
++  let erase_all_regions ty =
++    let visitor =
++      object
++        inherit [_] map_ty
++        method! visit_region _ _ = RErased
++      end
++    in
++    visitor#visit_ty () ty
++  in
+   List.iteri
+     (fun i ((arg, rty) : tvalue * rty) ->
+-      if not (Subst.erase_regions arg.ty = Subst.erase_regions rty) then (
++      let same_type =
++        match call_kind with
++        | SymbolicRegular _ ->
++            Subst.erase_regions arg.ty = Subst.erase_regions rty
++        | SymbolicDynamic _ -> erase_all_regions arg.ty = erase_all_regions rty
++      in
++      if not same_type then (
+         [%ltrace
+           "Argument " ^ string_of_int i
+           ^ " doesn't have the proper type:\n- arg: " ^ tvalue_to_string ctx arg
+@@ -1642,9 +1765,17 @@ and eval_function_call_symbolic_from_inst_sig (config : config)
+   in
+   (* Synthesize the symbolic AST *)
+   let cc =
+-    cc_comp cc
+-      (S.synthesize_regular_function_call span fid call_id ctx sg inst_sg
+-         abs_ids generics args args_places ret_spc dest_place)
++    let synthesize =
++      match (call_kind, callee) with
++      | SymbolicRegular fid, None ->
++          S.synthesize_regular_function_call span fid call_id ctx sg inst_sg
++            abs_ids generics args args_places ret_spc dest_place
++      | SymbolicDynamic _, Some callee ->
++          S.synthesize_dynamic_function_call span callee call_id ctx sg inst_sg
++            abs_ids args args_places ret_spc dest_place
++      | _ -> [%craise] span "Inconsistent dynamic-call evaluation state"
++    in
++    cc_comp cc synthesize
+   in
+ 
+   (* Move the return value to its destination *)
+diff --git a/src/llbc/RegionsHierarchy.ml b/src/llbc/RegionsHierarchy.ml
+index d7508222..ce78b109 100644
+--- a/src/llbc/RegionsHierarchy.ml
++++ b/src/llbc/RegionsHierarchy.ml
+@@ -178,11 +178,10 @@ let compute_regions_hierarchy_for_sig (span : Meta.span option) (crate : crate)
+         (* We have nothing to do *)
+         ()
+     | TFnPtr binder ->
+-        (* TODO: *)
+-        [%cassert_opt_span] span
+-          (binder.binder_regions = [])
+-          "We don't support arrow types with locally quantified regions";
+-        (* We can ignore the outer regions *)
++        (* A function pointer's locally quantified regions are scoped inside
++           its signature. They are independent of the enclosing type's region
++           hierarchy, so inspect the argument/result types with an empty outer
++           stack while leaving bound occurrences untouched. *)
+         let { Types.inputs; output; _ } = binder.binder_value in
+         List.iter (explore_ty []) (output :: inputs)
+     | TFnDef { binder_regions; binder_value = { kind = _; generics } } ->
+diff --git a/src/llbc/TypesAnalysis.ml b/src/llbc/TypesAnalysis.ml
+index 0045e2cd..61427c3c 100644
+--- a/src/llbc/TypesAnalysis.ml
++++ b/src/llbc/TypesAnalysis.ml
+@@ -451,14 +451,13 @@ let analyze_full_ty (span : Meta.span option) (updated : bool ref)
+         (* Return *)
+         { ty_info with mut_regions }
+     | TFnPtr fn_sig ->
+-        let { Types.inputs; output; _ } = fn_sig.binder_value in
+-        (* Just dive into the arrow *)
+-        let ty_info =
+-          List.fold_left
+-            (fun ty_info ty -> analyze span expl_info ty_info ty)
+-            ty_info inputs
+-        in
+-        analyze span expl_info ty_info output
++        (* References in a function-pointer signature are call-local. The
++           pointer value itself neither contains nor owns those borrows, so
++           they must not make a struct field look like an expandable borrowed
++           value. Calls still check their instantiated argument and result
++           types separately. *)
++        ignore fn_sig;
++        ty_info
+     | TFnDef { binder_regions; binder_value = { kind = _; generics } } ->
+         (* For now we check that there are no regions anywhere.
+ 
+diff --git a/src/llbc/TypesUtils.ml b/src/llbc/TypesUtils.ml
+index d415115e..4303694f 100644
+--- a/src/llbc/TypesUtils.ml
++++ b/src/llbc/TypesUtils.ml
+@@ -24,7 +24,10 @@ let ty_regions (ty : ty) : RegionId.Set.t =
+         raise
+           (Failure "ty_regions shouldn't be called on erased or body regions")
+     | RVar (Bound _) ->
+-        raise (Failure "region_in_set shouldn't be called on bound regions")
++        (* A bound region is local to an enclosing function-pointer or trait
++           binder. It can never be one of the surrounding interpreter
++           context's ended free regions. *)
++        ()
+     | RVar (Free id) -> s := RegionId.Set.add id !s
+   in
+   let obj =
+@@ -337,6 +340,13 @@ let raise_if_not_rty_visitor =
+   object
+     inherit [_] iter_ty as super
+ 
++    method! visit_TFnPtr _ _ =
++      (* Regions quantified by a function-pointer signature are locally
++         scoped and are not live borrows carried by the pointer value. Treat
++         the pointer itself as a valid region type; its call arguments are
++         checked when the pointer is invoked. *)
++      ()
++
+     method! visit_region _ r =
+       match r with
+       | RVar (Bound _) | RErased -> raise Found
+diff --git a/src/symbolic/PrintSymbolicAst.ml b/src/symbolic/PrintSymbolicAst.ml
+index 64eff289..d84408e0 100644
+--- a/src/symbolic/PrintSymbolicAst.ml
++++ b/src/symbolic/PrintSymbolicAst.ml
+@@ -9,6 +9,11 @@ let call_id_to_string (env : fmt_env) (call_id : call_id) : string =
+   match call_id with
+   | Fun (fid, call_id) ->
+       fn_ptr_kind_to_string env fid ^ "@" ^ FunCallId.to_string call_id
++  | Dynamic (callee, call_id) ->
++      "("
++      ^ Values.tvalue_to_string env callee
++      ^ ")@"
++      ^ FunCallId.to_string call_id
+   | Unop unop -> unop_to_string env unop
+   | Binop binop -> binop_to_string binop
+ 
+diff --git a/src/symbolic/SymbolicAst.ml b/src/symbolic/SymbolicAst.ml
+index 18e0c858..743807ec 100644
+--- a/src/symbolic/SymbolicAst.ml
++++ b/src/symbolic/SymbolicAst.ml
+@@ -31,6 +31,10 @@ type call_id =
+   | Fun of fn_ptr_kind * FunCallId.id
+       (** A "regular" function (i.e., a function which is not a primitive
+           operation) *)
++  | Dynamic of tvalue * FunCallId.id
++      (** A call through a function pointer value. The callee has already been
++          evaluated, exactly like the ordinary argument values stored in
++          {!call.args}. *)
+   | Unop of unop
+   | Binop of binop
+ [@@deriving show, ord]
+diff --git a/src/symbolic/SymbolicToPureExpressions.ml b/src/symbolic/SymbolicToPureExpressions.ml
+index b83dc456..116c06e1 100644
+--- a/src/symbolic/SymbolicToPureExpressions.ml
++++ b/src/symbolic/SymbolicToPureExpressions.ml
+@@ -339,8 +339,62 @@ and translate_function_call (call : S.call) (e : S.expr) (ctx : bs_ctx) : texpr
+   match call.call_id with
+   | S.Unop (Cast (CastUnsize (ty0, ty1, _))) ->
+       translate_cast_unsize call e ty0 ty1 ctx
++  | S.Dynamic (callee, call_id) ->
++      translate_dynamic_function_call call callee call_id e ctx
+   | _ -> translate_function_call_aux call e ctx
+ 
++(** Translate a call through a function pointer value. Function-pointer types
++    currently erase shared call-local regions to an ordinary Pure arrow.
++    Mutable-reference function pointers are deliberately rejected here: those
++    require synthesizing backward functions just like named Rust calls. *)
++and translate_dynamic_function_call (call : S.call) (callee : V.tvalue)
++    (call_id : V.FunCallId.id) (e : S.expr) (ctx : bs_ctx) : texpr =
++  let inst_sg = Option.get call.inst_sg in
++  [%cassert] call.span
++    (List.for_all
++       (fun ty ->
++         not (TypesUtils.ty_has_mut_borrows ctx.type_ctx.type_infos ty))
++       (inst_sg.output :: inst_sg.inputs))
++    "Dynamic function pointers with mutable-reference inputs or outputs are \
++     not supported";
++  [%sanity_check] call.span (call.generics = TypesUtils.empty_generic_args);
++
++  let ctx =
++    List.fold_left (register_consumed_mut_borrows call.ctx) ctx call.args
++  in
++  let args =
++    let args = List.map (tvalue_to_texpr ctx call.ctx) call.args in
++    let args_mplaces =
++      List.map
++        (translate_opt_mplace (Some call.span) ctx.decls_ctx)
++        call.args_places
++    in
++    List.map
++      (fun (arg, mp) -> mk_opt_mplace_texpr mp arg)
++      (List.combine args args_mplaces)
++  in
++  let callee = tvalue_to_texpr ctx call.ctx callee in
++  let dest_mplace =
++    translate_opt_mplace (Some call.span) ctx.decls_ctx call.dest_place
++  in
++  let ctx, dest = fresh_var_for_symbolic_value call.dest ctx in
++  let dest = mk_tpat_from_fvar dest_mplace dest in
++  let ctx =
++    {
++      ctx with
++      calls = V.FunCallId.Map.add call_id call ctx.calls;
++      ignored_abs_ids =
++        V.AbsId.Set.add_list call.abstractions ctx.ignored_abs_ids;
++    }
++  in
++  let expected_callee_ty =
++    mk_arrows (List.map (fun (arg : texpr) -> arg.ty) args) dest.ty
++  in
++  [%sanity_check] call.span (callee.ty = expected_callee_ty);
++  let call_e = [%add_loc] mk_apps ctx.span callee args in
++  let next_e = translate_expr e ctx in
++  [%add_loc] mk_closed_checked_let ctx false dest call_e next_e
++
+ (** Handle the function call cases which are not unsized casts *)
+ and translate_function_call_aux (call : S.call) (e : S.expr) (ctx : bs_ctx) :
+     texpr =
+@@ -514,6 +568,8 @@ and translate_function_call_aux (call : S.call) (e : S.expr) (ctx : bs_ctx) :
+           { ctx with calls = V.FunCallId.Map.add call_id call ctx.calls }
+         in
+         (ctx, func, effect_info, args, back_funs, dest)
++    | S.Dynamic _ ->
++        [%craise] call.span "Dynamic call reached named-call translation"
+     | S.Unop E.Not -> (
+         match args with
+         | [ arg ] ->
+diff --git a/src/symbolic/SymbolicToPureTypes.ml b/src/symbolic/SymbolicToPureTypes.ml
+index 80de7c27..eb1e4159 100644
+--- a/src/symbolic/SymbolicToPureTypes.ml
++++ b/src/symbolic/SymbolicToPureTypes.ml
+@@ -139,8 +139,11 @@ let translate_fn_ptr_ty (span : Meta.span option) (translate_ty : T.ty -> ty)
+   } =
+     fn_sig
+   in
+-  [%cassert_opt_span] span (binder_regions = [])
+-    "Function pointers with locally quantified regions are not supported";
++  (* Rust function pointers may quantify lifetimes used only by shared input
++     references (for example `for<'a, 'b> fn(&'a [&'b [u8]])`). Pure erases
++     reference lifetimes, so these binders do not appear in the translated
++     arrow type. The ABI, safety, and variadic checks below remain exact. *)
++  ignore binder_regions;
+   [%cassert_opt_span] span
+     (abi = AbiRust && (not is_unsafe) && not is_variadic)
+     "Only safe, non-variadic Rust function pointers are supported";
+@@ -561,10 +564,10 @@ and compute_back_ty_num_levels (span : Meta.span option)
+           "Unimplemented";
+         save_count outer_regions
+     | TFnDef _ -> [%craise_opt_span] span "Arrow types are not supported yet"
+-    | TFnPtr fn_sig ->
+-        [%cassert_opt_span] span
+-          (fn_sig.binder_regions = [])
+-          "Function pointers with locally quantified regions are not supported";
++    | TFnPtr _fn_sig ->
++        (* A function pointer is a value, not an owned borrow whose contents
++           are returned by a backward function. Locally bound regions in its
++           signature therefore add no backward-type nesting level. *)
+         save_count outer_regions
+     | TDynTrait _ ->
+         [%craise_opt_span] span "Dynamic trait types are not supported yet"
+@@ -700,10 +703,9 @@ and translate_back_ty_aux (span : Meta.span option) (decls_ctx : C.decls_ctx)
+           "Unimplemented";
+         stop outer_regions ty
+     | TFnDef _ -> [%craise_opt_span] span "Arrow types are not supported yet"
+-    | TFnPtr fn_sig ->
+-        [%cassert_opt_span] span
+-          (fn_sig.binder_regions = [])
+-          "Function pointers with locally quantified regions are not supported";
++    | TFnPtr _fn_sig ->
++        (* See [translate_fn_ptr_ty]: locally bound function-argument
++           lifetimes disappear when references are erased in Pure. *)
+         stop outer_regions ty
+     | TDynTrait _ ->
+         [%craise_opt_span] span "Dynamic trait types are not supported yet"
+diff --git a/src/symbolic/SynthesizeSymbolic.ml b/src/symbolic/SynthesizeSymbolic.ml
+index 1f8e416e..b1f68e66 100644
+--- a/src/symbolic/SynthesizeSymbolic.ml
++++ b/src/symbolic/SynthesizeSymbolic.ml
+@@ -142,6 +142,17 @@ let synthesize_regular_function_call (span : Meta.span) (fun_id : fn_ptr_kind)
+     (Some (sg, inst_sg))
+     abstractions generics args args_places dest dest_place e
+ 
++let synthesize_dynamic_function_call (span : Meta.span) (callee : tvalue)
++    (call_id : FunCallId.id) (ctx : Contexts.eval_ctx) (sg : fun_sig)
++    (inst_sg : inst_fun_sig) (abstractions : AbsId.id list) (args : tvalue list)
++    (args_places : mplace option list) (dest : symbolic_value)
++    (dest_place : mplace option) (e : expr) : expr =
++  synthesize_function_call span
++    (Dynamic (callee, call_id))
++    ctx
++    (Some (sg, inst_sg))
++    abstractions empty_generic_args args args_places dest dest_place e
++
+ let synthesize_unary_op (span : Meta.span) (ctx : Contexts.eval_ctx)
+     (unop : unop) (arg : tvalue) (arg_place : mplace option)
+     (dest : symbolic_value) (dest_place : mplace option) (e : expr) : expr =
+-- 
+2.50.1 (Apple Git-155)
+

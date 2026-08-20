@@ -1,0 +1,210 @@
+From b49f69d8eb72901438f7d7c9e7ac8f9e5135acec Mon Sep 17 00:00:00 2001
+From: DJB8787 <168072039+DJBarker87@users.noreply.github.com>
+Date: Sat, 15 Aug 2026 11:33:02 +0100
+Subject: [PATCH 05/14] Fix outer control regression checks
+
+---
+ src/PrePasses.ml                      | 59 +++++++++------------------
+ tests/lean/OuterLoopControlTests.lean | 38 +++++++++--------
+ 2 files changed, 40 insertions(+), 57 deletions(-)
+
+diff --git a/src/PrePasses.ml b/src/PrePasses.ml
+index 134c62fb..e22af45d 100644
+--- a/src/PrePasses.ml
++++ b/src/PrePasses.ml
+@@ -704,8 +704,8 @@ exception FoundStatement of statement
+ (** Lower function returns from nested loops before {!update_loops}.
+ 
+     The symbolic loop interpreter handles nested loops, but a function return
+-    cannot cross more than one loop boundary directly.  We make that control
+-    transfer explicit with one fresh [Option<return_type>] local.  The option
++    cannot cross more than one loop boundary directly. We make that control
++    transfer explicit with one fresh [Option<return_type>] local. The option
+     carries the return value as well as the control signal; this matters because
+     the ordinary function return place is uninitialized on non-return paths:
+ 
+@@ -735,16 +735,16 @@ exception FoundStatement of statement
+     ]}
+ 
+     A propagation check is inserted immediately after every loop containing a
+-    lowered return.  At an inner level it breaks the immediately enclosing
+-    loop; after an outermost loop it restores the carried value to the return
+-    place and performs the original return.  Normal breaks and continues leave
+-    the option at [None] and retain their original behaviour.
++    lowered return. At an inner level it breaks the immediately enclosing loop;
++    after an outermost loop it restores the carried value to the return place
++    and performs the original return. Normal breaks and continues leave the
++    option at [None] and retain their original behaviour.
+ 
+     The pass activates only for functions which actually contain a return at
+-    loop depth two or greater.  In such a function all returns under a loop are
++    loop depth two or greater. In such a function all returns under a loop are
+     lowered uniformly, so the existing loop pass never has to distinguish an
+-    original return from a propagated one.  Newly-created statements receive
+-    id zero; the existing statement-id refresh pass assigns their final ids. *)
++    original return from a propagated one. Newly-created statements receive id
++    zero; the existing statement-id refresh pass assigns their final ids. *)
+ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+   match f.body with
+   | StructuredBody body ->
+@@ -752,12 +752,8 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+         let visitor =
+           object
+             inherit [_] iter_statement as super
+-
+-            method! visit_Loop depth loop =
+-              super#visit_Loop (depth + 1) loop
+-
+-            method! visit_Return depth =
+-              if depth >= 2 then raise Found
++            method! visit_Loop depth loop = super#visit_Loop (depth + 1) loop
++            method! visit_Return depth = if depth >= 2 then raise Found
+           end
+         in
+         try
+@@ -813,20 +809,14 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+           { kind = PlaceLocal return_local.index; ty = return_ty }
+         in
+         let mk_statement ?(comments_before = []) span kind : statement =
+-          {
+-            span;
+-            statement_id = StatementId.zero;
+-            kind;
+-            comments_before;
+-          }
++          { span; statement_id = StatementId.zero; kind; comments_before }
+         in
+         let mk_pending_assignment ?(comments_before = []) span variant fields =
+           mk_statement ~comments_before span
+             (Assign
+                ( pending_place,
+                  Aggregate
+-                   ( AggregatedAdt (option_ref, Some variant, None),
+-                     fields ) ))
++                   (AggregatedAdt (option_ref, Some variant, None), fields) ))
+         in
+         let block_contains_return (block : block) : bool =
+           let visitor =
+@@ -856,16 +846,12 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+               in
+               [
+                 mk_statement span
+-                  (Assign
+-                     ( return_place,
+-                       Use (Move payload_place, NoRetag) ));
++                  (Assign (return_place, Use (Move payload_place, NoRetag)));
+                 mk_statement span Return;
+               ]
+             else [ mk_statement span (Break 0) ]
+           in
+-          let then_block =
+-            { span; statements = action }
+-          in
++          let then_block = { span; statements = action } in
+           let else_block = { span; statements = [] } in
+           mk_statement span
+             (Switch
+@@ -882,18 +868,17 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+            propagated [Return] implicitly deallocates the function locals. *)
+         let rec strip_storage_dead_before_lowered_return depth statements =
+           match statements with
+-          | ({ kind = StorageDead _; _ } as dead) :: rest ->
++          | ({ kind = StorageDead _; _ } as dead) :: rest -> (
+               let rec take_dead reversed = function
+                 | ({ kind = StorageDead _; _ } as next) :: tail ->
+                     take_dead (next :: reversed) tail
+                 | tail -> (List.rev reversed, tail)
+               in
+               let dead, rest = take_dead [ dead ] rest in
+-              (match rest with
++              match rest with
+               | { kind = Return; _ } :: _ when depth > 0 ->
+                   strip_storage_dead_before_lowered_return depth rest
+-              | _ ->
+-                  dead @ strip_storage_dead_before_lowered_return depth rest)
++              | _ -> dead @ strip_storage_dead_before_lowered_return depth rest)
+           | st :: rest ->
+               st :: strip_storage_dead_before_lowered_return depth rest
+           | [] -> []
+@@ -904,8 +889,7 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+           in
+           {
+             block with
+-            statements =
+-              List.concat_map (transform_statement depth) statements;
++            statements = List.concat_map (transform_statement depth) statements;
+           }
+         and transform_statement depth (st : statement) : statement list =
+           match st.kind with
+@@ -941,10 +925,7 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+           { body_body with statements = initialization :: body_body.statements }
+         in
+         let locals =
+-          {
+-            body.locals with
+-            locals = body.locals.locals @ [ pending_local ];
+-          }
++          { body.locals with locals = body.locals.locals @ [ pending_local ] }
+         in
+         { f with body = StructuredBody { body with body = body_body; locals } }
+   | _ -> f
+diff --git a/tests/lean/OuterLoopControlTests.lean b/tests/lean/OuterLoopControlTests.lean
+index fb0cc6de..f4a6e367 100644
+--- a/tests/lean/OuterLoopControlTests.lean
++++ b/tests/lean/OuterLoopControlTests.lean
+@@ -2,32 +2,34 @@ import OuterLoopControl
+ 
+ open Aeneas Aeneas.Std Result ControlFlow Error
+ 
+-example :
+-    outer_loop_control.nested_control_trace 0#u8 =
+-      ok (3#u32, 119219319#u64) := by
++def nestedControlTraceMatches
++    (mode : Std.U8) (expectedOuter : Nat) (expectedTrace : Nat) : Bool :=
++  match outer_loop_control.nested_control_trace mode with
++  | .ok (outer, trace) =>
++      outer.val == expectedOuter && trace.val == expectedTrace
++  | _ => false
++
++def tripleNestedControlMatches
++    (stopOnSecond : Bool) (expectedOuter : Nat) (expectedTrace : Nat) : Bool :=
++  match outer_loop_control.triple_nested_control stopOnSecond with
++  | .ok (outer, trace) =>
++      outer.val == expectedOuter && trace.val == expectedTrace
++  | _ => false
++
++example : nestedControlTraceMatches 0#u8 3 119219319 = true := by
+   native_decide
+ 
+-example :
+-    outer_loop_control.nested_control_trace 1#u8 =
+-      ok (3#u32, 118921893189#u64) := by
++example : nestedControlTraceMatches 1#u8 3 118921893189 = true := by
+   native_decide
+ 
+-example :
+-    outer_loop_control.nested_control_trace 2#u8 =
+-      ok (3#u32, 1172173129#u64) := by
++example : nestedControlTraceMatches 2#u8 3 1172173129 = true := by
+   native_decide
+ 
+-example :
+-    outer_loop_control.nested_control_trace 3#u8 =
+-      ok (2#u32, 1129216#u64) := by
++example : nestedControlTraceMatches 3#u8 2 1129216 = true := by
+   native_decide
+ 
+-example :
+-    outer_loop_control.triple_nested_control false =
+-      ok (3#u32, 172737#u64) := by
++example : tripleNestedControlMatches false 3 172737 = true := by
+   native_decide
+ 
+-example :
+-    outer_loop_control.triple_nested_control true =
+-      ok (2#u32, 1726#u64) := by
++example : tripleNestedControlMatches true 2 1726 = true := by
+   native_decide
+-- 
+2.50.1 (Apple Git-155)
+

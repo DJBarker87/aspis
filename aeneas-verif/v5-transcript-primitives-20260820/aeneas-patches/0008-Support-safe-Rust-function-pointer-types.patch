@@ -1,0 +1,214 @@
+From 133ad1533fc8f56ff77a7a921de04d409e88d146 Mon Sep 17 00:00:00 2001
+From: DJB8787 <168072039+DJBarker87@users.noreply.github.com>
+Date: Sat, 15 Aug 2026 15:37:00 +0100
+Subject: [PATCH 08/14] Support safe Rust function-pointer types
+
+---
+ src/extract/Extract.ml              |  5 +++-
+ src/extract/ExtractTypes.ml         | 10 ++++++-
+ src/symbolic/SymbolicToPureTypes.ml | 41 ++++++++++++++++++++++++-----
+ tests/lean/FnPointerTypes.lean      | 38 ++++++++++++++++++++++++++
+ tests/lean/lakefile.lean            |  1 +
+ tests/src/fn-pointer-types.rs       | 16 +++++++++++
+ 6 files changed, 102 insertions(+), 9 deletions(-)
+ create mode 100644 tests/lean/FnPointerTypes.lean
+ create mode 100644 tests/src/fn-pointer-types.rs
+
+diff --git a/src/extract/Extract.ml b/src/extract/Extract.ml
+index 19418426..67af2e59 100644
+--- a/src/extract/Extract.ml
++++ b/src/extract/Extract.ml
+@@ -1825,7 +1825,10 @@ let extract_fun_parameters (space : bool ref) (ctx : extraction_ctx)
+ let extract_fun_input_parameters_types (span : span) (ctx : extraction_ctx)
+     (fmt : F.formatter) (inputs : ty list) : unit =
+   let extract_param (ty : ty) : unit =
+-    let inside = false in
++    (* An input may itself be a function pointer.  Parenthesize it before the
++       enclosing function arrow so `(a -> b) -> c` is not printed as
++       `a -> b -> c`. *)
++    let inside = true in
+     extract_ty span ctx fmt TypeDeclId.Set.empty ~inside ty;
+     F.pp_print_space fmt ();
+     extract_arrow fmt ();
+diff --git a/src/extract/ExtractTypes.ml b/src/extract/ExtractTypes.ml
+index 37171763..5ecc05cc 100644
+--- a/src/extract/ExtractTypes.ml
++++ b/src/extract/ExtractTypes.ml
+@@ -459,7 +459,15 @@ let rec extract_ty (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
+   | TLiteral lty -> extract_literal_type ctx fmt lty
+   | TArrow (arg_ty, ret_ty) ->
+       if inside then F.pp_print_string fmt "(";
+-      extract_rec ~inside:false arg_ty;
++      (* Arrow types are right-associative in every target syntax.  A
++         higher-order argument therefore needs parentheses: without them,
++         `(a -> b) -> c` would be emitted as `a -> b -> c`. *)
++      extract_rec
++        ~inside:
++          (match arg_ty with
++          | TArrow _ -> true
++          | _ -> false)
++        arg_ty;
+       F.pp_print_space fmt ();
+       extract_arrow fmt ();
+       F.pp_print_space fmt ();
+diff --git a/src/symbolic/SymbolicToPureTypes.ml b/src/symbolic/SymbolicToPureTypes.ml
+index 5ea3e9be..80de7c27 100644
+--- a/src/symbolic/SymbolicToPureTypes.ml
++++ b/src/symbolic/SymbolicToPureTypes.ml
+@@ -127,6 +127,25 @@ and translate_trait_ref_kind (span : Meta.span option)
+   | Dyn -> [%craise_opt_span] span "Dynamic trait types are not supported yet"
+   | UnknownTrait s -> [%craise_opt_span] span ("Unknown trait found: " ^ s)
+ 
++(** Translate the subset of Rust function-pointer types whose calling convention
++    is exactly a safe, non-variadic Rust call. Pure already has arrow types; the
++    restriction here avoids silently erasing ABI or safety information which
++    Pure does not represent. *)
++let translate_fn_ptr_ty (span : Meta.span option) (translate_ty : T.ty -> ty)
++    fn_sig : ty =
++  let {
++    T.binder_regions;
++    binder_value = { Types.inputs; output; abi; is_unsafe; is_variadic };
++  } =
++    fn_sig
++  in
++  [%cassert_opt_span] span (binder_regions = [])
++    "Function pointers with locally quantified regions are not supported";
++  [%cassert_opt_span] span
++    (abi = AbiRust && (not is_unsafe) && not is_variadic)
++    "Only safe, non-variadic Rust function pointers are supported";
++  mk_arrows (List.map translate_ty inputs) (translate_ty output)
++
+ (** Translate a signature type - TODO: factor out the different translation
+     functions *)
+ let rec translate_sty (span : Meta.span option) (ty : T.ty) : ty =
+@@ -181,8 +200,8 @@ let rec translate_sty (span : Meta.span option) (ty : T.ty) : ty =
+         (generics = TypesUtils.empty_generic_args)
+         "Unimplemented";
+       TTraitType (trait_ref, type_name)
+-  | TFnDef _ | TFnPtr _ ->
+-      [%craise_opt_span] span "Arrow types are not supported yet"
++  | TFnDef _ -> [%craise_opt_span] span "Arrow types are not supported yet"
++  | TFnPtr fn_sig -> translate_fn_ptr_ty span (translate span) fn_sig
+   | TDynTrait _ ->
+       [%craise_opt_span] span "Dynamic trait types are not supported yet"
+   | TError _ ->
+@@ -424,7 +443,7 @@ let rec translate_fwd_ty (span : Meta.span option) (decls_ctx : C.decls_ctx)
+           let subst = make_subst_from_generics sg.generics generics in
+           ty_substitute subst sigs.ty
+       | T.TraitMethod _ -> [%craise_opt_span] span "Unimplemented")
+-  | TFnPtr _ -> [%craise_opt_span] span "Arrow types are not supported yet"
++  | TFnPtr fn_sig -> translate_fn_ptr_ty span translate fn_sig
+   | TDynTrait { binder } ->
+       let params, _predicates =
+         translate_generic_params span binder.binder_params
+@@ -541,8 +560,12 @@ and compute_back_ty_num_levels (span : Meta.span option)
+           (generics = TypesUtils.empty_generic_args)
+           "Unimplemented";
+         save_count outer_regions
+-    | TFnDef _ | TFnPtr _ ->
+-        [%craise_opt_span] span "Arrow types are not supported yet"
++    | TFnDef _ -> [%craise_opt_span] span "Arrow types are not supported yet"
++    | TFnPtr fn_sig ->
++        [%cassert_opt_span] span
++          (fn_sig.binder_regions = [])
++          "Function pointers with locally quantified regions are not supported";
++        save_count outer_regions
+     | TDynTrait _ ->
+         [%craise_opt_span] span "Dynamic trait types are not supported yet"
+     | TError _ ->
+@@ -676,8 +699,12 @@ and translate_back_ty_aux (span : Meta.span option) (decls_ctx : C.decls_ctx)
+           (generics = TypesUtils.empty_generic_args)
+           "Unimplemented";
+         stop outer_regions ty
+-    | TFnDef _ | TFnPtr _ ->
+-        [%craise_opt_span] span "Arrow types are not supported yet"
++    | TFnDef _ -> [%craise_opt_span] span "Arrow types are not supported yet"
++    | TFnPtr fn_sig ->
++        [%cassert_opt_span] span
++          (fn_sig.binder_regions = [])
++          "Function pointers with locally quantified regions are not supported";
++        stop outer_regions ty
+     | TDynTrait _ ->
+         [%craise_opt_span] span "Dynamic trait types are not supported yet"
+     | TError _ ->
+diff --git a/tests/lean/FnPointerTypes.lean b/tests/lean/FnPointerTypes.lean
+new file mode 100644
+index 00000000..15ed223c
+--- /dev/null
++++ b/tests/lean/FnPointerTypes.lean
+@@ -0,0 +1,38 @@
++-- THIS FILE WAS AUTOMATICALLY GENERATED BY AENEAS
++-- [fn_pointer_types]
++import Aeneas
++open Aeneas Aeneas.Std Result ControlFlow Error
++set_option linter.dupNamespace false
++set_option linter.hashCommand false
++set_option linter.unusedVariables false
++
++/- You can set the `maxHeartbeats` value with the `-max-heartbeats` CLI option -/
++set_option maxHeartbeats 1000000
++
++/- You can set the `maxRecDepth` value with the `-max-recdepth` CLI option -/
++set_option maxRecDepth 2048
++
++/- You can remove the following line by using the CLI option `-all-computable`: -/
++noncomputable section
++
++namespace fn_pointer_types
++
++/-- [fn_pointer_types::keep_fn_ptr]:
++    Source: 'tests/src/fn-pointer-types.rs', lines 5:0-7:1
++    Visibility: public -/
++def keep_fn_ptr (f : Std.U32 → Std.U32) : Result (Std.U32 → Std.U32) := do
++  ok f
++
++/-- [fn_pointer_types::opaque_consumer]:
++    Source: 'tests/src/fn-pointer-types.rs', lines 10:0-12:1
++    Visibility: public -/
++axiom opaque_consumer : (Std.U32 → Std.U32) → Std.U32 → Result Std.U32
++
++/-- [fn_pointer_types::pass_fn_ptr_to_opaque]:
++    Source: 'tests/src/fn-pointer-types.rs', lines 14:0-16:1
++    Visibility: public -/
++def pass_fn_ptr_to_opaque
++  (f : Std.U32 → Std.U32) (x : Std.U32) : Result Std.U32 := do
++  opaque_consumer f x
++
++end fn_pointer_types
+diff --git a/tests/lean/lakefile.lean b/tests/lean/lakefile.lean
+index f7e701b4..a27852c5 100644
+--- a/tests/lean/lakefile.lean
++++ b/tests/lean/lakefile.lean
+@@ -40,6 +40,7 @@ package «tests» {}
+ @[default_target] lean_lib Dyn
+ @[default_target] lean_lib DynamicSize
+ @[default_target] lean_lib FromTo
++@[default_target] lean_lib FnPointerTypes
+ @[default_target] lean_lib GenericUnitOutput
+ @[default_target] lean_lib Hashmap
+ @[default_target] lean_lib HigherRankedTraitBounds
+diff --git a/tests/src/fn-pointer-types.rs b/tests/src/fn-pointer-types.rs
+new file mode 100644
+index 00000000..5aadc23e
+--- /dev/null
++++ b/tests/src/fn-pointer-types.rs
+@@ -0,0 +1,16 @@
++//@ [!lean] skip
++#![feature(register_tool)]
++#![register_tool(verify)]
++
++pub fn keep_fn_ptr(f: fn(u32) -> u32) -> fn(u32) -> u32 {
++    f
++}
++
++#[verify::opaque]
++pub fn opaque_consumer(_f: fn(u32) -> u32, x: u32) -> u32 {
++    x
++}
++
++pub fn pass_fn_ptr_to_opaque(f: fn(u32) -> u32, x: u32) -> u32 {
++    opaque_consumer(f, x)
++}
+-- 
+2.50.1 (Apple Git-155)
+

@@ -1,0 +1,683 @@
+From 395aa6cdf0684b08c845d73a4847bd3dbfde8bec Mon Sep 17 00:00:00 2001
+From: DJB8787 <168072039+DJBarker87@users.noreply.github.com>
+Date: Thu, 20 Aug 2026 16:14:03 +0100
+Subject: [PATCH 13/14] Support nested mutable iterator handback extraction
+
+---
+ src/interp/InterpAbs.ml                   | 157 +++++++++++++++++++++-
+ src/interp/InterpBorrows.ml               | 120 +++++++++++++++--
+ src/interp/InterpMatchCtxs.ml             |  11 +-
+ src/interp/InterpReduceCollapse.ml        |  66 ++++++++-
+ src/interp/InterpStatements.ml            |  10 ++
+ tests/lean/Mutable-iterator-handback.lean | 157 ++++++++++++++++++++++
+ tests/src/mutable-iterator-handback.rs    |  24 ++++
+ 7 files changed, 525 insertions(+), 20 deletions(-)
+ create mode 100644 tests/lean/Mutable-iterator-handback.lean
+ create mode 100644 tests/src/mutable-iterator-handback.rs
+
+diff --git a/src/interp/InterpAbs.ml b/src/interp/InterpAbs.ml
+index 8dd0d228..8b3f7432 100644
+--- a/src/interp/InterpAbs.ml
++++ b/src/interp/InterpAbs.ml
+@@ -2840,6 +2840,148 @@ let project_context (span : Meta.span) (fixed_aids : AbsId.Set.t)
+     shared_ty meta.proj_ty && eproj_shared_only proj
+   in
+ 
++  (* A join branch can contain a complete symbolic mutable wire: one loan
++     projector and one borrow projector for the same branch-local symbolic
++     value, with no concrete occurrence.  Selecting the other branch may drop
++     both ends together.  It remains unsound to drop either end of a live or
++     multiply-projected mutable value, so recognize only the exact two-end
++     shape here. *)
++  let concrete_symbolics = ref SymbolicValueId.Set.empty in
++  let projection_counts = ref SymbolicValueId.Map.empty in
++  let bump_projection sid =
++    let count =
++      Option.value ~default:0
++        (SymbolicValueId.Map.find_opt sid !projection_counts)
++    in
++    projection_counts :=
++      SymbolicValueId.Map.add sid (count + 1) !projection_counts
++  in
++  let occurrence_visitor =
++    object
++      inherit [_] iter_eval_ctx as super
++
++      method! visit_VSymbolic env sv =
++        concrete_symbolics :=
++          SymbolicValueId.Set.add sv.sv_id !concrete_symbolics;
++        super#visit_VSymbolic env sv
++
++      method! visit_ASymbolic env pm aproj =
++        (match aproj with
++        | AProjLoans { proj; _ } | AProjBorrows { proj; _ } ->
++            bump_projection proj.sv_id
++        | AEndedProjLoans _ | AEndedProjBorrows _ | AEmpty -> ());
++        super#visit_ASymbolic env pm aproj
++    end
++  in
++  occurrence_visitor#visit_eval_ctx () ctx;
++  let mutable_loan_ends = ref [] in
++  let mutable_borrow_ends = ref [] in
++  env_iter_abs
++    (fun (abs : abs) ->
++      List.iter
++        (fun (av : tavalue) ->
++          match av.value with
++          | ASymbolic (pm, AProjLoans { proj; consumed = []; borrows = [] })
++            when ty_has_mut_borrows ctx.type_ctx.type_infos proj.proj_ty ->
++              mutable_loan_ends := (pm, proj) :: !mutable_loan_ends
++          | ASymbolic (pm, AProjBorrows { proj; loans = [] })
++            when ty_has_mut_borrows ctx.type_ctx.type_infos proj.proj_ty ->
++              mutable_borrow_ends := (pm, proj) :: !mutable_borrow_ends
++          | _ -> ())
++        abs.avalues)
++    ctx.env;
++  let safe_mutable_wires = ref [] in
++  (* The fixed-point input has a second exact shape: one unmarked mutable loan
++     feeding one left and one right borrow projection. Projecting either branch
++     keeps the loan and that branch's borrow, so the opposite borrow is safe to
++     discard. Exactly three projector occurrences and no concrete value rule
++     out a live extra alias. *)
++  List.iter
++    (fun (pm, (borrow_proj : symbolic_proj)) ->
++      let opposite =
++        match pm with
++        | PLeft -> Some PRight
++        | PRight -> Some PLeft
++        | PNone -> None
++      in
++      match opposite with
++      | None -> ()
++      | Some opposite_pm ->
++          let same_type (proj : symbolic_proj) =
++            proj.sv_id = borrow_proj.sv_id
++            && erase_regions proj.proj_ty = erase_regions borrow_proj.proj_ty
++          in
++          if
++            SymbolicValueId.Map.find_opt borrow_proj.sv_id !projection_counts
++            = Some 3
++            && (not
++                  (SymbolicValueId.Set.mem borrow_proj.sv_id !concrete_symbolics))
++            && List.exists
++                 (fun (loan_pm, proj) -> loan_pm = PNone && same_type proj)
++                 !mutable_loan_ends
++            && List.exists
++                 (fun (borrow_pm, proj) ->
++                   borrow_pm = opposite_pm && same_type proj)
++                 !mutable_borrow_ends
++          then
++            safe_mutable_wires := (borrow_proj.sv_id, pm) :: !safe_mutable_wires)
++    !mutable_borrow_ends;
++  env_iter_abs
++    (fun (abs : abs) ->
++      List.iter
++        (fun (borrow_av : tavalue) ->
++          match borrow_av.value with
++          | ASymbolic (pm, AProjBorrows { proj = borrow_proj; loans = [] })
++            when pm <> PNone
++                 && ty_has_mut_borrows ctx.type_ctx.type_infos
++                      borrow_proj.proj_ty
++                 && (not
++                       (SymbolicValueId.Set.mem borrow_proj.sv_id
++                          !concrete_symbolics))
++                 && SymbolicValueId.Map.find_opt borrow_proj.sv_id
++                      !projection_counts
++                    = Some 2 ->
++              let matching_loan =
++                List.exists
++                  (fun (loan_pm, (loan_proj : symbolic_proj)) ->
++                    loan_pm = pm
++                    && loan_proj.sv_id = borrow_proj.sv_id
++                    && erase_regions loan_proj.proj_ty
++                       = erase_regions borrow_proj.proj_ty)
++                  !mutable_loan_ends
++              in
++              if matching_loan then
++                safe_mutable_wires :=
++                  (borrow_proj.sv_id, pm) :: !safe_mutable_wires
++          | _ -> ())
++        abs.avalues)
++    ctx.env;
++  let safe_mutable_projection pm aproj =
++    let member (proj : symbolic_proj) =
++      List.mem (proj.sv_id, pm) !safe_mutable_wires
++    in
++    match aproj with
++    | AProjLoans { proj; consumed = []; borrows = [] }
++    | AProjBorrows { proj; loans = [] } -> member proj
++    | AProjLoans _
++    | AProjBorrows _
++    | AEndedProjLoans _
++    | AEndedProjBorrows _
++    | AEmpty -> false
++  in
++  let safe_mutable_eprojection pm eproj =
++    let member (proj : esymbolic_proj) =
++      List.mem (proj.sv_id, pm) !safe_mutable_wires
++    in
++    match eproj with
++    | EProjLoans { proj; consumed = []; borrows = [] }
++    | EProjBorrows { proj; loans = [] } -> member proj
++    | EProjLoans _
++    | EProjBorrows _
++    | EEndedProjLoans _
++    | EEndedProjBorrows _
++    | EEmpty -> false
++  in
+   let visitor =
+     object (self)
+       inherit [_] map_eval_ctx as super
+@@ -2854,12 +2996,15 @@ let project_context (span : Meta.span) (fixed_aids : AbsId.Set.t)
+           ASymbolic (PNone, aproj)
+         else begin
+           match aproj with
+-          | AProjLoans _ ->
+-              [%cassert] span (aproj_shared_only aproj)
++          | AProjLoans { proj; _ } ->
++              let _ = proj in
++              [%cassert] span
++                (aproj_shared_only aproj || safe_mutable_projection pm aproj)
+                 "Cannot discard a mutable loan projection";
+               AIgnored None
+           | AProjBorrows _ ->
+-              [%cassert] span (aproj_shared_only aproj)
++              [%cassert] span
++                (aproj_shared_only aproj || safe_mutable_projection pm aproj)
+                 "Cannot discard a mutable borrow projection";
+               AIgnored None
+           | AEndedProjLoans _ ->
+@@ -2933,12 +3078,14 @@ let project_context (span : Meta.span) (fixed_aids : AbsId.Set.t)
+         else
+           match eproj with
+           | EProjLoans _ ->
+-              [%cassert] span (eproj_shared_only eproj)
++              [%cassert] span
++                (eproj_shared_only eproj || safe_mutable_eprojection pm eproj)
+                 "Cannot discard a mutable loan projection";
+               EBottom
+           | EProjBorrows { proj = { sv_id; proj_ty }; loans } ->
+               let _ = loans in
+-              [%cassert] span (eproj_shared_only eproj)
++              [%cassert] span
++                (eproj_shared_only eproj || safe_mutable_eprojection pm eproj)
+                 "Cannot discard a mutable borrow projection";
+               if env.inside_output then
+                 EIgnored
+diff --git a/src/interp/InterpBorrows.ml b/src/interp/InterpBorrows.ml
+index dcbcf156..819bb725 100644
+--- a/src/interp/InterpBorrows.ml
++++ b/src/interp/InterpBorrows.ml
+@@ -1247,7 +1247,106 @@ and end_abs_aux (config : config) (span : Meta.span) ~(snapshots : bool)
+          owned region in shared-reference fields.  Such a region has escaped
+          the abstraction: keeping it live is conservative (shared references
+          are immutable) and prevents the returned value from becoming bottom.
+-         Mutable regions are never promoted this way. *)
++
++         A nested mutable iterator call has a different, precise shape.  The
++         call's continuation consumes the returned iterator state through an
++         ended loan projection, while that state occurs exactly once in the
++         concrete environment, below the mutable borrow used for the call.  In
++         that case the value is being handed back by this abstraction rather
++         than escaping it, so its region must end before the continuation is
++         synthesized.  We recognize only this single-owner shape; any second
++         concrete occurrence, dummy occurrence, or live projection keeps the
++         existing hard failure. *)
++      let bump_count sid counts =
++        let count =
++          Option.value ~default:0 (SymbolicValueId.Map.find_opt sid !counts)
++        in
++        counts := SymbolicValueId.Map.add sid (count + 1) !counts
++      in
++      let concrete_counts = ref SymbolicValueId.Map.empty in
++      let real_root_counts = ref SymbolicValueId.Map.empty in
++      let dummy_counts = ref SymbolicValueId.Map.empty in
++      List.iter
++        (function
++          | EBinding (binder, v) ->
++              let visitor =
++                object
++                  inherit [_] iter_tvalue as super
++
++                  method! visit_VSymbolic env sv =
++                    bump_count sv.sv_id concrete_counts;
++                    (match binder with
++                    | BVar _ -> (
++                        match v.value with
++                        | VSymbolic root when root.sv_id = sv.sv_id ->
++                            bump_count sv.sv_id real_root_counts
++                        | VAdt _
++                        | VBottom
++                        | VBorrow _
++                        | VLoan _
++                        | VLiteral _
++                        | VSymbolic _ -> ())
++                    | BDummy _ -> bump_count sv.sv_id dummy_counts);
++                    super#visit_VSymbolic env sv
++                end
++              in
++              visitor#visit_tvalue () v
++          | EAbs _ | EFrame -> ())
++        ctx.env;
++      let live_projection_counts = ref SymbolicValueId.Map.empty in
++      let handback_counts = ref SymbolicValueId.Map.empty in
++      let projection_visitor =
++        object
++          inherit [_] iter_eval_ctx as super
++
++          method! visit_ASymbolic env pm aproj =
++            (match aproj with
++            | AProjLoans { proj; _ } | AProjBorrows { proj; _ } ->
++                bump_count proj.sv_id live_projection_counts
++            | AEndedProjLoans _ | AEndedProjBorrows _ | AEmpty -> ());
++            super#visit_ASymbolic env pm aproj
++
++          method! visit_ESymbolic env pm eproj =
++            (match eproj with
++            | EProjLoans { proj; _ } | EProjBorrows { proj; _ } ->
++                bump_count proj.sv_id live_projection_counts
++            | EEndedProjLoans { proj; _ } -> bump_count proj handback_counts
++            | EEndedProjBorrows _ | EEmpty -> ());
++            super#visit_ESymbolic env pm eproj
++        end
++      in
++      projection_visitor#visit_eval_ctx () ctx;
++      let current_abs_handbacks = ref SymbolicValueId.Map.empty in
++      let ended_abs = ctx_lookup_abs ctx abs_id in
++      let current_abs_visitor =
++        object
++          inherit [_] iter_eval_ctx as super
++
++          method! visit_ESymbolic env pm eproj =
++            (match eproj with
++            | EEndedProjLoans { proj; _ } ->
++                bump_count proj current_abs_handbacks
++            | EProjLoans _ | EProjBorrows _ | EEndedProjBorrows _ | EEmpty -> ());
++            super#visit_ESymbolic env pm eproj
++        end
++      in
++      current_abs_visitor#visit_eval_ctx ()
++        { ctx with env = [ EAbs ended_abs ] };
++      let is_function_call =
++        match ended_abs.kind with
++        | FunCall _ -> true
++        | _ -> false
++      in
++      let exact_mutable_handback sid =
++        is_function_call
++        && Option.is_some ended_abs.cont
++        && SymbolicValueId.Map.find_opt sid !concrete_counts = Some 1
++        && SymbolicValueId.Map.find_opt sid !real_root_counts = Some 1
++        && SymbolicValueId.Map.find_opt sid !dummy_counts = None
++        && SymbolicValueId.Map.find_opt sid !live_projection_counts = None
++        && SymbolicValueId.Map.find_opt sid !handback_counts = Some 1
++        && SymbolicValueId.Map.find_opt sid !current_abs_handbacks = Some 1
++      in
+       let escaped_shared_regions = ref RegionId.Set.empty in
+       let collect_escaped =
+         object
+@@ -1258,14 +1357,17 @@ and end_abs_aux (config : config) (span : Meta.span) ~(snapshots : bool)
+             let escaped =
+               RegionId.Set.inter abs.regions.owned (ty_regions sv.sv_ty)
+             in
+-            if not (RegionId.Set.is_empty escaped) then (
+-              [%cassert] span
+-                (not
+-                   (ty_has_mut_borrow_for_region_in_set ctx.type_ctx.type_infos
+-                      escaped sv.sv_ty))
+-                "A mutable region escaped while ending an abstraction";
+-              escaped_shared_regions :=
+-                RegionId.Set.union escaped !escaped_shared_regions);
++            if not (RegionId.Set.is_empty escaped) then
++              if
++                ty_has_mut_borrow_for_region_in_set ctx.type_ctx.type_infos
++                  escaped sv.sv_ty
++              then
++                [%cassert] span
++                  (exact_mutable_handback sv.sv_id)
++                  "A mutable region escaped while ending an abstraction"
++              else
++                escaped_shared_regions :=
++                  RegionId.Set.union escaped !escaped_shared_regions;
+             super#visit_symbolic_value env sv
+         end
+       in
+diff --git a/src/interp/InterpMatchCtxs.ml b/src/interp/InterpMatchCtxs.ml
+index a7bba7ec..9b25ee03 100644
+--- a/src/interp/InterpMatchCtxs.ml
++++ b/src/interp/InterpMatchCtxs.ml
+@@ -474,9 +474,14 @@ module MakeMatcher (M : PrimMatcher) : Matcher = struct
+             M.match_shared_loans match_rec ctx0 ctx1 ty id0 id1 sv
+         | VMutLoan id0, VMutLoan id1 ->
+             M.match_mut_loans match_rec ctx0 ctx1 ty id0 id1
+-        | VSharedLoan _, VMutLoan _ | VMutLoan _, VSharedLoan _ ->
+-            (* TODO: *)
+-            [%craise_recover] M.recover M.span "Unimplemented"
++        | VSharedLoan _, VMutLoan id1 ->
++            (* A value cannot remain mutably loaned in one loop branch while
++               the other branch has only an immutable loan. End the mutable
++               loan and retry the join; the ordinary shared-loan matcher then
++               preserves the immutable branch state. *)
++            raise (ValueMatchFailure (LoanInRight id1))
++        | VMutLoan id0, VSharedLoan _ ->
++            raise (ValueMatchFailure (LoanInLeft id0))
+       end
+     | VSymbolic sv0, VSymbolic sv1 ->
+         [%cassert_recover] M.recover M.span
+diff --git a/src/interp/InterpReduceCollapse.ml b/src/interp/InterpReduceCollapse.ml
+index d15a08aa..7bc2a2c4 100644
+--- a/src/interp/InterpReduceCollapse.ml
++++ b/src/interp/InterpReduceCollapse.ml
+@@ -429,6 +429,47 @@ let eliminate_concrete_shared_projection_abstractions (ctx : eval_ctx) :
+     branch. Live or mutable nested projections are never accepted. *)
+ let eliminate_closed_shared_projection_pairs
+     ?(allow_cross_unmarked : bool = false) (ctx : eval_ctx) : eval_ctx =
++  (* Count every live occurrence of a symbolic value before removing anything.
++     A same-branch mutable projector pair may be discharged only when it is a
++     private wire of that branch: exactly one loan projector, exactly one
++     borrow projector, and no concrete or synthesized-expression occurrence.
++     This is deliberately stronger than the shared-only rule below. *)
++  let concrete_ids = ref SymbolicValueId.Set.empty in
++  let expression_ids = ref SymbolicValueId.Set.empty in
++  let projection_counts = ref SymbolicValueId.Map.empty in
++  let bump_projection sid =
++    let count =
++      Option.value ~default:0
++        (SymbolicValueId.Map.find_opt sid !projection_counts)
++    in
++    projection_counts :=
++      SymbolicValueId.Map.add sid (count + 1) !projection_counts
++  in
++  let occurrence_visitor =
++    object
++      inherit [_] iter_eval_ctx as super
++
++      method! visit_VSymbolic env sv =
++        concrete_ids := SymbolicValueId.Set.add sv.sv_id !concrete_ids;
++        super#visit_VSymbolic env sv
++
++      method! visit_ASymbolic env pm aproj =
++        (match aproj with
++        | AProjLoans { proj; _ } | AProjBorrows { proj; _ } ->
++            bump_projection proj.sv_id
++        | AEndedProjLoans _ | AEndedProjBorrows _ | AEmpty -> ());
++        super#visit_ASymbolic env pm aproj
++
++      method! visit_ESymbolic env pm eproj =
++        (match eproj with
++        | EProjLoans { proj; _ } | EProjBorrows { proj; _ } ->
++            expression_ids := SymbolicValueId.Set.add proj.sv_id !expression_ids
++        | EEndedProjLoans _ | EEndedProjBorrows _ | EEmpty -> ());
++        super#visit_ESymbolic env pm eproj
++    end
++  in
++  occurrence_visitor#visit_eval_ctx () ctx;
++
+   let rec closed_aproj (proj : aproj) : bool =
+     match proj with
+     | AEmpty -> true
+@@ -441,9 +482,12 @@ let eliminate_closed_shared_projection_pairs
+     && closed_aproj nested
+   in
+   let shared_ty ty = not (ty_has_mut_borrows ctx.type_ctx.type_infos ty) in
+-  let same_projection (proj0 : symbolic_proj) (proj1 : symbolic_proj) =
++  let same_projection_shape (proj0 : symbolic_proj) (proj1 : symbolic_proj) =
+     proj0.sv_id = proj1.sv_id
+     && erase_regions proj0.proj_ty = erase_regions proj1.proj_ty
++  in
++  let same_projection (proj0 : symbolic_proj) (proj1 : symbolic_proj) =
++    same_projection_shape proj0 proj1
+     && shared_ty proj0.proj_ty && shared_ty proj1.proj_ty
+   in
+   let rec dual_aproj (proj0 : aproj) (proj1 : aproj) : bool =
+@@ -487,6 +531,20 @@ let eliminate_closed_shared_projection_pairs
+     fully_ended
+     || ((pm <> PNone || allow_cross_unmarked) && dual_nested_lists loans borrows)
+   in
++  let unique_branch_local_mutable_pair borrow_aid loan_aid
++      (borrow_proj : symbolic_proj) (loans : (mconsumed_symb * aproj) list)
++      (loan_proj : symbolic_proj) (consumed : (mconsumed_symb * aproj) list)
++      (borrows : (mconsumed_symb * aproj) list) =
++    borrow_aid = loan_aid
++    && same_projection_shape borrow_proj loan_proj
++    && ty_has_mut_borrows ctx.type_ctx.type_infos borrow_proj.proj_ty
++    && ty_has_mut_borrows ctx.type_ctx.type_infos loan_proj.proj_ty
++    && loans = [] && consumed = [] && borrows = []
++    && SymbolicValueId.Map.find_opt borrow_proj.sv_id !projection_counts
++       = Some 2
++    && (not (SymbolicValueId.Set.mem borrow_proj.sv_id !concrete_ids))
++    && not (SymbolicValueId.Set.mem borrow_proj.sv_id !expression_ids)
++  in
+ 
+   (* Record the outer abstraction and list offset so structurally equal pairs
+      remain distinct and are removed at most once. *)
+@@ -517,8 +575,10 @@ let eliminate_closed_shared_projection_pairs
+               (not (was_removed loan_pos))
+               && pm = loan_pm
+               && (pm <> PNone || allow_cross_unmarked || borrow_aid = loan_aid)
+-              && closed_pair pm borrow_proj borrow_loans loan_proj consumed
+-                   borrows)
++              && (closed_pair pm borrow_proj borrow_loans loan_proj consumed
++                    borrows
++                 || unique_branch_local_mutable_pair borrow_aid loan_aid
++                      borrow_proj borrow_loans loan_proj consumed borrows))
+             !loans
+         with
+         | None -> ()
+diff --git a/src/interp/InterpStatements.ml b/src/interp/InterpStatements.ml
+index cb9203a0..6d08f1c1 100644
+--- a/src/interp/InterpStatements.ml
++++ b/src/interp/InterpStatements.ml
+@@ -925,6 +925,16 @@ and eval_statement_raw (config : config) (st : statement) : stl_cm_fun =
+   | StorageDead local ->
+       let p = mk_place_from_var_id ctx st.span local in
+       let ctx, cc = drop_value config st.span p ctx in
++      (* A StorageDead statement ends the lifetime of the local immediately.
++         The ordinary drop path preserves its value in a dummy binding while
++         outstanding borrows are returned.  Simplify that dead binding before
++         the MIR reuses the local in an enclosing loop; otherwise an IterMut
++         from the preceding iteration can look like a live mutable escape when
++         the next iteration borrows the freshly initialized local. *)
++      let ctx, cc =
++        comp cc
++          (InterpBorrows.simplify_dummy_values_useless_abs config st.span ctx)
++      in
+       ([ (ctx, Unit) ], cc_singleton __FILE__ __LINE__ st.span cc)
+   | Assert (assertion, _on_failure, _) ->
+       let (ctx, res), cc = eval_assertion config st.span assertion ctx in
+diff --git a/tests/lean/Mutable-iterator-handback.lean b/tests/lean/Mutable-iterator-handback.lean
+new file mode 100644
+index 00000000..e6ffa2a7
+--- /dev/null
++++ b/tests/lean/Mutable-iterator-handback.lean
+@@ -0,0 +1,157 @@
++-- THIS FILE WAS AUTOMATICALLY GENERATED BY AENEAS
++-- [mutable_iterator_handback]
++import Aeneas
++open Aeneas Aeneas.Std Result ControlFlow Error
++set_option linter.dupNamespace false
++set_option linter.hashCommand false
++set_option linter.unusedVariables false
++
++/- You can set the `maxHeartbeats` value with the `-max-heartbeats` CLI option -/
++set_option maxHeartbeats 1000000
++
++/- You can set the `maxRecDepth` value with the `-max-recdepth` CLI option -/
++set_option maxRecDepth 2048
++
++namespace mutable_iterator_handback
++
++/-- Trait implementation: [core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a mut T> for core::slice::iter::IterMut<'a, T>}]
++    Source: '/rustc/library/core/src/slice/iter/macros.rs', lines 153:8-153:45
++    Name pattern: [core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, @T>, &'a mut @T>] -/
++@[reducible, rust_trait_impl
++  "core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, @T>, &'a mut @T>"]
++impl_def core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT (T :
++  Type) : core.iter.traits.iterator.Iterator (core.slice.iter.IterMut T) T := {
++  next := core.slice.iter.IteratorIterMut.next
++  enumerate := core.iter.traits.iterator.Iterator.enumerate.trait_default
++    (core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT T)
++}
++
++/-- [mutable_iterator_handback::FillError]
++    Source: 'tests/src/mutable-iterator-handback.rs', lines 4:0-6:1
++    Visibility: public -/
++@[discriminant isize]
++inductive FillError where
++| Rejected : FillError
++
++/-- [mutable_iterator_handback::{impl core::clone::Clone for mutable_iterator_handback::FillError}::clone]:
++    Source: 'tests/src/mutable-iterator-handback.rs', lines 3:9-3:14
++    Visibility: public -/
++def FillError.Insts.CoreCloneClone.clone
++  (self : FillError) : Result FillError := do
++  ok self
++
++/-- Trait implementation: [mutable_iterator_handback::{impl core::clone::Clone for mutable_iterator_handback::FillError}]
++    Source: 'tests/src/mutable-iterator-handback.rs', lines 3:9-3:14 -/
++@[reducible]
++def FillError.Insts.CoreCloneClone : core.clone.Clone FillError := {
++  clone := FillError.Insts.CoreCloneClone.clone
++}
++
++/-- Trait implementation: [mutable_iterator_handback::{impl core::marker::Copy for mutable_iterator_handback::FillError}]
++    Source: 'tests/src/mutable-iterator-handback.rs', lines 3:16-3:20 -/
++@[reducible]
++def FillError.Insts.CoreMarkerCopy : core.marker.Copy FillError := {
++  cloneInst := FillError.Insts.CoreCloneClone
++}
++
++/-- [mutable_iterator_handback::checked_coefficient]:
++    Source: 'tests/src/mutable-iterator-handback.rs', lines 8:0-14:1 -/
++def checked_coefficient
++  (index : Std.Usize) (reject_at : Std.Usize) :
++  Result (core.result.Result Std.U32 FillError)
++  := do
++  if index = reject_at
++  then ok (core.result.Result.Err FillError.Rejected)
++  else
++    let i ← lift (UScalar.cast .U32 index)
++    let i1 ← i + 1#u32
++    ok (core.result.Result.Ok i1)
++
++/-- [mutable_iterator_handback::fill_with_enumerated_iter_mut]: loop body 0:
++    Source: 'tests/src/mutable-iterator-handback.rs', lines 20:4-24:1
++    Visibility: public -/
++@[rust_loop_body]
++def fill_with_enumerated_iter_mut_loop.body
++  (reject_at : Std.Usize)
++  (iter : core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
++  Std.U32))
++  (back : core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
++  Std.U32) → core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
++  Std.U32)) :
++  Result (ControlFlow ((core.iter.adapters.enumerate.Enumerate
++    (core.slice.iter.IterMut Std.U32)) ×
++    (core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut Std.U32)
++    → core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
++    Std.U32))) ((Option (core.result.Result Unit FillError)) ×
++    (core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
++    Std.U32))))
++  := do
++  let (o, iter1, next_back) ←
++    core.iter.adapters.enumerate.IteratorEnumerate.next
++      (core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT
++      Std.U32) iter
++  match o with
++  | none => ok (done (none, let e := next_back iter1 none
++                            back e))
++  | some p =>
++    let (index, _) := p
++    let r ← checked_coefficient index reject_at
++    let cf ← core.result.Result.Insts.CoreOpsTry.branch r
++    match cf with
++    | core.ops.control_flow.ControlFlow.Continue val =>
++      ok (cont (iter1,
++        fun e => let e1 := next_back e (some (index, val))
++                 back e1))
++    | core.ops.control_flow.ControlFlow.Break residual =>
++      let r1 ←
++        core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
++          Unit (core.convert.FromSame FillError) residual
++      ok (done (some r1, let e := next_back iter1 o
++                         back e))
++
++/-- [mutable_iterator_handback::fill_with_enumerated_iter_mut]: loop 0:
++    Source: 'tests/src/mutable-iterator-handback.rs', lines 20:4-24:1
++    Visibility: public -/
++@[rust_loop]
++def fill_with_enumerated_iter_mut_loop
++  (iter : core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
++  Std.U32))
++  (back : core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
++  Std.U32) → core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
++  Std.U32)) (reject_at : Std.Usize) :
++  Result ((Option (core.result.Result Unit FillError)) ×
++    (core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut Std.U32)))
++  := do
++  loop
++    (fun (iter1, back1) => fill_with_enumerated_iter_mut_loop.body reject_at
++      iter1 back1)
++    (iter, back)
++
++/-- [mutable_iterator_handback::fill_with_enumerated_iter_mut]:
++    Source: 'tests/src/mutable-iterator-handback.rs', lines 16:0-24:1
++    Visibility: public -/
++def fill_with_enumerated_iter_mut
++  (output : Array Std.U32 7#usize) (reject_at : Std.Usize) :
++  Result ((core.result.Result Unit FillError) × (Array Std.U32 7#usize))
++  := do
++  let (s, to_slice_mut_back) ← lift (Array.to_slice_mut output)
++  let (im, iter_mut_back) ← core.slice.Slice.iter_mut s
++  let (iter, enumerate_back) ←
++    core.iter.traits.iterator.Iterator.enumerate.trait_default
++      (core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT
++      Std.U32) im
++  let (pending_return, back) ←
++    fill_with_enumerated_iter_mut_loop iter (fun e => e) reject_at
++  match pending_return with
++  | none =>
++    let im1 := enumerate_back back
++    let s1 := iter_mut_back im1
++    let output1 := to_slice_mut_back s1
++    ok (core.result.Result.Ok (), output1)
++  | some r =>
++    let im1 := enumerate_back back
++    let s1 := iter_mut_back im1
++    let output1 := to_slice_mut_back s1
++    ok (r, output1)
++
++end mutable_iterator_handback
+diff --git a/tests/src/mutable-iterator-handback.rs b/tests/src/mutable-iterator-handback.rs
+new file mode 100644
+index 00000000..74ffe710
+--- /dev/null
++++ b/tests/src/mutable-iterator-handback.rs
+@@ -0,0 +1,24 @@
++//@ [!lean] skip
++
++#[derive(Clone, Copy)]
++pub enum FillError {
++    Rejected,
++}
++
++fn checked_coefficient(index: usize, reject_at: usize) -> Result<u32, FillError> {
++    if index == reject_at {
++        Err(FillError::Rejected)
++    } else {
++        Ok((index as u32) + 1)
++    }
++}
++
++pub fn fill_with_enumerated_iter_mut(
++    output: &mut [u32; 7],
++    reject_at: usize,
++) -> Result<(), FillError> {
++    for (index, slot) in output.iter_mut().enumerate() {
++        *slot = checked_coefficient(index, reject_at)?;
++    }
++    Ok(())
++}
+-- 
+2.50.1 (Apple Git-155)
+
