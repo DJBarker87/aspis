@@ -41,6 +41,16 @@ private theorem getElemBang_eq_getElem {T : Type*} [Inhabited T]
   apply List.getElem!_of_getElem?
   simp [hindex]
 
+private theorem getElemBang_append_left {T : Type*} [Inhabited T]
+    (head tail : List T) (index : Nat) (hindex : index < head.length) :
+    (head ++ tail)[index]! = head[index]! := by
+  have happ : index < (head ++ tail).length := by
+    simp only [List.length_append]
+    omega
+  rw [getElemBang_eq_getElem _ _ happ,
+    List.getElem_append_left hindex,
+    ← getElemBang_eq_getElem head index hindex]
+
 private theorem wrapping_add_one_exact (index : Std.Usize)
     (hindex : index.val < Std.Usize.max) :
     (Std.Usize.wrapping_add index 1#usize).val = index.val + 1 := by
@@ -437,8 +447,364 @@ theorem coordinate_denominator_loop_exact
     refine ⟨by norm_num, ?_, hinitial, True.intro⟩
     simp
 
+private def LinePointInvariant
+    (initial : Coordinate.M31Vec) (points : Coordinate.PointVec)
+    (state : Coordinate.M31Vec × Option Coordinate.Kind × Std.Usize) : Prop :=
+  state.2.2.val ≤ points.val.length ∧
+  state.1.val.length = initial.val.length + 3 * state.2.2.val ∧
+  CanonicalM31Vec state.1 ∧
+  state.2.1 = none ∧
+  (∀ index, index < initial.val.length →
+    state.1.val[index]! = initial.val[index]!) ∧
+  ∀ index, index < state.2.2.val →
+    m31Value state.1.val[initial.val.length + 3 * index]! =
+        2 * m31Value points.val[index]!.x ∧
+    m31Value state.1.val[initial.val.length + 3 * index + 1]! =
+        2 * m31Value points.val[index]!.y ∧
+    m31Value state.1.val[initial.val.length + 3 * index + 2]! =
+        2 * (2 * m31Value points.val[index]!.x ^ 2 - 1)
+
+def LinePointPost
+    (initial : Coordinate.M31Vec) (points : Coordinate.PointVec)
+    (out : Coordinate.M31Vec × Option Coordinate.Kind) : Prop :=
+  out.1.val.length = initial.val.length + 3 * points.val.length ∧
+  CanonicalM31Vec out.1 ∧
+  out.2 = none ∧
+  (∀ index, index < initial.val.length →
+    out.1.val[index]! = initial.val[index]!) ∧
+  ∀ index, index < points.val.length →
+    m31Value out.1.val[initial.val.length + 3 * index]! =
+        2 * m31Value points.val[index]!.x ∧
+    m31Value out.1.val[initial.val.length + 3 * index + 1]! =
+        2 * m31Value points.val[index]!.y ∧
+    m31Value out.1.val[initial.val.length + 3 * index + 2]! =
+        2 * (2 * m31Value points.val[index]!.x ^ 2 - 1)
+
+/-- For every point of one later FRI layer, the translated Rust appends the
+three denominators `2*x`, `2*y`, and `2*(2*x^2-1)` in that order. -/
+theorem line_point_denominator_loop_exact
+    (initial : Coordinate.M31Vec) (points : Coordinate.PointVec)
+    (hinitial : CanonicalM31Vec initial)
+    (hpoints : CanonicalPoints points)
+    (hcapacity : initial.val.length + 3 * points.val.length ≤
+      Std.Usize.max)
+    (hnonzero : ∀ index, index < points.val.length →
+      2 * m31Value points.val[index]!.x ≠ 0 ∧
+      2 * m31Value points.val[index]!.y ≠ 0 ∧
+      2 * (2 * m31Value points.val[index]!.x ^ 2 - 1) ≠ 0) :
+    V5FriCoordinateAdapter.aspis_core.circle_fri.derive_query_fold_inverses_for_circle_loop1_loop0
+        initial none points 0#usize
+      ⦃ out => LinePointPost initial points out ⦄ := by
+  unfold
+    V5FriCoordinateAdapter.aspis_core.circle_fri.derive_query_fold_inverses_for_circle_loop1_loop0
+  apply loop.spec_decr_nat
+    (fun state => points.val.length - state.2.2.val)
+    (LinePointInvariant initial points)
+    (LinePointPost initial points)
+  · rintro ⟨current, currentZero, ordinal⟩ hstate
+    rcases hstate with
+      ⟨hordinalLe, hlength, hcanonical, hzero, hprefix, hvalues⟩
+    simp only at hordinalLe hlength hcanonical hzero hprefix hvalues
+    unfold
+      V5FriCoordinateAdapter.aspis_core.circle_fri.derive_query_fold_inverses_for_circle_loop1_loop0.body
+    by_cases hactive : ordinal.val < points.val.length
+    · have hcondition : ordinal < alloc.vec.Vec.len points := by
+        simpa [UScalar.lt_equiv] using hactive
+      obtain ⟨point, hpointRun, hpointValue⟩ :=
+        Aeneas.Std.WP.spec_imp_exists
+          (alloc.vec.Vec.index_usize_spec points ordinal hactive)
+      have hpointBang : point = points.val[ordinal.val]! := by
+        rw [hpointValue,
+          getElemBang_eq_getElem points.val ordinal.val hactive]
+      have hpointCanonical : pointCanonical point := by
+        rw [hpointBang]
+        exact hpoints ordinal.val hactive
+      obtain ⟨first, hfirstRun, hfirstCanonical, hfirstValue⟩ :=
+        double_produces_canonical point.x hpointCanonical.1
+      obtain ⟨second, hsecondRun, hsecondCanonical, hsecondValue⟩ :=
+        double_produces_canonical point.y hpointCanonical.2
+      obtain ⟨foldX, hfoldXRun, hfoldXCanonical, hfoldXValue⟩ :=
+        double_x_produces_canonical point.x hpointCanonical.1
+      obtain ⟨third, hthirdRun, hthirdCanonical, hthirdValue⟩ :=
+        double_produces_canonical foldX hfoldXCanonical
+      let coordinates : Array Coordinate.M31 3#usize :=
+        Array.make 3#usize [first, second, third]
+      let kinds : Array Coordinate.Kind 3#usize :=
+        Array.make 3#usize [
+          V5FriCoordinateAdapter.aspis_core.circle_fri.FoldDenominator.LineFirstPairX,
+          V5FriCoordinateAdapter.aspis_core.circle_fri.FoldDenominator.LineSecondPairX,
+          V5FriCoordinateAdapter.aspis_core.circle_fri.FoldDenominator.LineSecondFoldX]
+      have hcoordinatesValue : coordinates.val = [first, second, third] := rfl
+      have hcoord0 : coordinates.val[0]! = first := by
+        rw [hcoordinatesValue]
+        rfl
+      have hcoord1 : coordinates.val[1]! = second := by
+        rw [hcoordinatesValue]
+        rfl
+      have hcoord2 : coordinates.val[2]! = third := by
+        rw [hcoordinatesValue]
+        rfl
+      have hcoordinateCanonical : ∀ index, index < 3 →
+          canonicalM31 coordinates.val[index]! := by
+        intro index hindex
+        interval_cases index
+        · rw [hcoord0]
+          exact hfirstCanonical
+        · rw [hcoord1]
+          exact hsecondCanonical
+        · rw [hcoord2]
+          exact hthirdCanonical
+      have hpointNonzero := hnonzero ordinal.val hactive
+      have hcoordinateNonzero : ∀ index, index < 3 →
+          m31Value coordinates.val[index]! ≠ 0 := by
+        intro index hindex
+        interval_cases index
+        · rw [hcoord0, hfirstValue, hpointBang]
+          exact hpointNonzero.1
+        · rw [hcoord1, hsecondValue, hpointBang]
+          exact hpointNonzero.2.1
+        · rw [hcoord2, hthirdValue, hfoldXValue, hpointBang]
+          exact hpointNonzero.2.2
+      have hinnerCapacity : current.val.length + 3 ≤ Std.Usize.max := by
+        rw [hlength]
+        omega
+      obtain ⟨⟨next, nextZero⟩, hinnerRun, hinnerPost⟩ :=
+        Aeneas.Std.WP.spec_imp_exists
+          (coordinate_denominator_loop_exact current coordinates kinds
+            hcanonical hcoordinateCanonical hcoordinateNonzero
+            hinnerCapacity)
+      rcases hinnerPost with
+        ⟨hnextValue, hnextCanonical, hnextZero⟩
+      simp only at hnextValue hnextCanonical hnextZero
+      have hordinalSmall : ordinal.val < Std.Usize.max := by
+        have hpointsMax : points.val.length ≤ Std.Usize.max := points.property
+        omega
+      let ordinalOne := Std.Usize.wrapping_add ordinal 1#usize
+      have hordinalOne : ordinalOne.val = ordinal.val + 1 := by
+        unfold ordinalOne
+        exact wrapping_add_one_exact ordinal hordinalSmall
+      simp only [if_pos hcondition]
+      rw [alloc.vec.Vec.index_slice_index, hpointRun]
+      simp only [bind_tc_ok]
+      rw [hfirstRun]
+      simp only [bind_tc_ok]
+      rw [hsecondRun]
+      simp only [bind_tc_ok]
+      rw [hfoldXRun]
+      simp only [bind_tc_ok]
+      rw [hthirdRun]
+      simp only [bind_tc_ok]
+      have hinnerRun' :
+          V5FriCoordinateAdapter.aspis_core.circle_fri.derive_query_fold_inverses_for_circle_loop1_loop0_loop0
+            current currentZero
+            (Array.make 3#usize [first, second, third])
+            (Array.make 3#usize [
+              V5FriCoordinateAdapter.aspis_core.circle_fri.FoldDenominator.LineFirstPairX,
+              V5FriCoordinateAdapter.aspis_core.circle_fri.FoldDenominator.LineSecondPairX,
+              V5FriCoordinateAdapter.aspis_core.circle_fri.FoldDenominator.LineSecondFoldX])
+            0#usize = .ok (next, nextZero) := by
+        rw [hzero]
+        simpa [coordinates, kinds] using hinnerRun
+      rw [hinnerRun']
+      simp only [bind_tc_ok, Std.lift, WP.spec_ok]
+      rw [hnextZero]
+      change LinePointInvariant initial points (next, none, ordinalOne) ∧
+        points.val.length - ordinalOne.val <
+          points.val.length - ordinal.val
+      refine ⟨?_, by rw [hordinalOne]; omega⟩
+      unfold LinePointInvariant
+      simp only
+      have hnextLength :
+          next.val.length = initial.val.length + 3 * ordinalOne.val := by
+        rw [hnextValue, List.length_append, hcoordinatesValue, hlength,
+          hordinalOne]
+        simp
+        omega
+      have hnextPrefix : ∀ index, index < initial.val.length →
+          next.val[index]! = initial.val[index]! := by
+        intro index hindex
+        have hcurrentBound : index < current.val.length := by omega
+        have hnextAt : next.val[index]! = current.val[index]! := by
+          have hnextBang :=
+            congrArg (fun values => values[index]!) hnextValue
+          rw [hnextBang]
+          exact getElemBang_append_left _ _ _ hcurrentBound
+        rw [hnextAt]
+        exact hprefix index hindex
+      refine ⟨by rw [hordinalOne]; omega, hnextLength,
+        hnextCanonical, True.intro, hnextPrefix, ?_⟩
+      intro index hindex
+      by_cases hold : index < ordinal.val
+      · have holdValues := hvalues index hold
+        have hslot0 : initial.val.length + 3 * index < current.val.length := by
+          omega
+        have hslot1 : initial.val.length + 3 * index + 1 < current.val.length := by
+          omega
+        have hslot2 : initial.val.length + 3 * index + 2 < current.val.length := by
+          omega
+        have hsame (slot : Nat) (hslot : slot < current.val.length) :
+            next.val[slot]! = current.val[slot]! := by
+          have hnextBang := congrArg (fun values => values[slot]!) hnextValue
+          rw [hnextBang]
+          exact getElemBang_append_left _ _ _ hslot
+        rw [hsame _ hslot0, hsame _ hslot1, hsame _ hslot2]
+        exact holdValues
+      · have hnew : index = ordinal.val := by
+          rw [hordinalOne] at hindex
+          omega
+        subst index
+        have hslot : initial.val.length + 3 * ordinal.val =
+            current.val.length := by omega
+        have hfirstAt : next.val[current.val.length]! = first := by
+          have hnextBang := congrArg
+            (fun values => values[current.val.length]!) hnextValue
+          rw [hnextBang, hcoordinatesValue]
+          simp
+        have hsecondAt : next.val[current.val.length + 1]! = second := by
+          have hnextBang := congrArg
+            (fun values => values[current.val.length + 1]!) hnextValue
+          rw [hnextBang, hcoordinatesValue]
+          simp
+        have hthirdAt : next.val[current.val.length + 2]! = third := by
+          have hnextBang := congrArg
+            (fun values => values[current.val.length + 2]!) hnextValue
+          rw [hnextBang, hcoordinatesValue]
+          simp
+        rw [hslot, hfirstAt, hsecondAt, hthirdAt,
+          hfirstValue, hsecondValue, hthirdValue, hfoldXValue, hpointBang]
+        exact ⟨rfl, rfl, rfl⟩
+    · have hdone : ordinal.val = points.val.length := by omega
+      have hcondition : ¬ ordinal < alloc.vec.Vec.len points := by
+        simpa [UScalar.lt_equiv] using hactive
+      simp only [if_neg hcondition, WP.spec_ok]
+      rw [hdone] at hlength hvalues
+      exact ⟨hlength, hcanonical, hzero, hprefix, hvalues⟩
+  · unfold LinePointInvariant
+    simp only
+    refine ⟨by norm_num, ?_, hinitial, True.intro,
+      (fun _ _ => True.intro), ?_⟩
+    · norm_num
+    · intro index hindex
+      norm_num at hindex
+
+def ThreeLineLayerPost
+    (initial : Coordinate.M31Vec)
+    (line1 line2 line3 : Coordinate.PointVec)
+    (out : Coordinate.M31Vec × Option Coordinate.Kind) : Prop :=
+  ∃ after1 after2 : Coordinate.M31Vec,
+    LinePointPost initial line1 (after1, none) ∧
+    LinePointPost after1 line2 (after2, none) ∧
+    LinePointPost after2 line3 out
+
+/-- The fixed three-layer translated loop runs the later FRI layers in the
+source order: first layer, second layer, then third layer. -/
+theorem three_line_layer_denominator_loop_exact
+    (initial : Coordinate.M31Vec)
+    (line1 line2 line3 : Coordinate.PointVec)
+    (hinitial : CanonicalM31Vec initial)
+    (hline1 : CanonicalPoints line1)
+    (hline2 : CanonicalPoints line2)
+    (hline3 : CanonicalPoints line3)
+    (hcapacity : initial.val.length +
+        3 * (line1.val.length + line2.val.length + line3.val.length) ≤
+      Std.Usize.max)
+    (hnonzero1 : ∀ index, index < line1.val.length →
+      2 * m31Value line1.val[index]!.x ≠ 0 ∧
+      2 * m31Value line1.val[index]!.y ≠ 0 ∧
+      2 * (2 * m31Value line1.val[index]!.x ^ 2 - 1) ≠ 0)
+    (hnonzero2 : ∀ index, index < line2.val.length →
+      2 * m31Value line2.val[index]!.x ≠ 0 ∧
+      2 * m31Value line2.val[index]!.y ≠ 0 ∧
+      2 * (2 * m31Value line2.val[index]!.x ^ 2 - 1) ≠ 0)
+    (hnonzero3 : ∀ index, index < line3.val.length →
+      2 * m31Value line3.val[index]!.x ≠ 0 ∧
+      2 * m31Value line3.val[index]!.y ≠ 0 ∧
+      2 * (2 * m31Value line3.val[index]!.x ^ 2 - 1) ≠ 0) :
+    V5FriCoordinateAdapter.aspis_core.circle_fri.derive_query_fold_inverses_for_circle_loop1
+        line1 line2 line3 initial none 0#usize
+      ⦃ out => ThreeLineLayerPost initial line1 line2 line3 out ⦄ := by
+  have hcap1 : initial.val.length + 3 * line1.val.length ≤
+      Std.Usize.max := by omega
+  obtain ⟨⟨after1, zero1⟩, hrun1, hpost1⟩ :=
+    Aeneas.Std.WP.spec_imp_exists
+      (line_point_denominator_loop_exact initial line1 hinitial hline1
+        hcap1 hnonzero1)
+  rcases hpost1 with
+    ⟨hlen1, hcanonical1, hzero1, hprefix1, hvalues1⟩
+  simp only at hlen1 hcanonical1 hzero1 hprefix1 hvalues1
+  have hcap2 : after1.val.length + 3 * line2.val.length ≤
+      Std.Usize.max := by rw [hlen1]; omega
+  obtain ⟨⟨after2, zero2⟩, hrun2, hpost2⟩ :=
+    Aeneas.Std.WP.spec_imp_exists
+      (line_point_denominator_loop_exact after1 line2 hcanonical1 hline2
+        hcap2 hnonzero2)
+  rcases hpost2 with
+    ⟨hlen2, hcanonical2, hzero2, hprefix2, hvalues2⟩
+  simp only at hlen2 hcanonical2 hzero2 hprefix2 hvalues2
+  have hcap3 : after2.val.length + 3 * line3.val.length ≤
+      Std.Usize.max := by rw [hlen2, hlen1]; omega
+  obtain ⟨⟨after3, zero3⟩, hrun3, hpost3⟩ :=
+    Aeneas.Std.WP.spec_imp_exists
+      (line_point_denominator_loop_exact after2 line3 hcanonical2 hline3
+        hcap3 hnonzero3)
+  rcases hpost3 with
+    ⟨hlen3, hcanonical3, hzero3, hprefix3, hvalues3⟩
+  simp only at hlen3 hcanonical3 hzero3 hprefix3 hvalues3
+  have hrun1' := hrun1
+  have hrun2' := hrun2
+  have hrun3' := hrun3
+  rw [hzero1] at hrun1'
+  rw [hzero2] at hrun2'
+  rw [hzero3] at hrun3'
+  have hmax3 : 3 < Std.Usize.max := by
+    rcases Usize.cMax_bound_concrete with ⟨hmax, _⟩
+    omega
+  have hwrap0 : Std.Usize.wrapping_add 0#usize 1#usize = 1#usize := by
+    apply UScalar.eq_of_val_eq
+    change (Std.Usize.wrapping_add 0#usize 1#usize).val = 1
+    exact wrapping_add_one_exact 0#usize (by
+      change 0 < Std.Usize.max
+      omega)
+  have hwrap1 : Std.Usize.wrapping_add 1#usize 1#usize = 2#usize := by
+    apply UScalar.eq_of_val_eq
+    change (Std.Usize.wrapping_add 1#usize 1#usize).val = 2
+    exact wrapping_add_one_exact 1#usize (by
+      change 1 < Std.Usize.max
+      omega)
+  have hwrap2 : Std.Usize.wrapping_add 2#usize 1#usize = 3#usize := by
+    apply UScalar.eq_of_val_eq
+    change (Std.Usize.wrapping_add 2#usize 1#usize).val = 3
+    exact wrapping_add_one_exact 2#usize (by
+      change 2 < Std.Usize.max
+      omega)
+  unfold
+    V5FriCoordinateAdapter.aspis_core.circle_fri.derive_query_fold_inverses_for_circle_loop1
+  rw [loop.eq_def]
+  unfold
+    V5FriCoordinateAdapter.aspis_core.circle_fri.derive_query_fold_inverses_for_circle_loop1.body
+  norm_num [UScalar.lt_equiv]
+  rw [hrun1']
+  simp only [bind_tc_ok, Std.lift, hwrap0]
+  rw [loop.eq_def]
+  norm_num [UScalar.lt_equiv]
+  rw [hrun2']
+  simp only [bind_tc_ok, Std.lift, hwrap1]
+  rw [loop.eq_def]
+  norm_num [UScalar.lt_equiv]
+  rw [hrun3']
+  simp only [bind_tc_ok, Std.lift, hwrap2]
+  rw [loop.eq_def]
+  norm_num [UScalar.lt_equiv, WP.spec_ok]
+  unfold ThreeLineLayerPost
+  exact ⟨after1, after2,
+    ⟨hlen1, hcanonical1, rfl, hprefix1, hvalues1⟩,
+    ⟨hlen2, hcanonical2, rfl, hprefix2, hvalues2⟩,
+    hlen3, hcanonical3, rfl, hprefix3, hvalues3⟩
+
 #print axioms extend_pair_exact
 #print axioms circle_denominator_loop_exact
 #print axioms coordinate_denominator_loop_exact
+#print axioms line_point_denominator_loop_exact
+#print axioms three_line_layer_denominator_loop_exact
 
 end AspisV5FriCoordinateDenominatorLoops
