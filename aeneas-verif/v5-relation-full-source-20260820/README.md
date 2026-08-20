@@ -49,6 +49,15 @@ and the fixed-array iterator models.
   rounds, decodes the four terminal coefficients, and returns the same
   generated success value.
 
+`V5RelationFullSuccessInversion.lean` proves the converse control-flow fact
+needed by the production theorem: if the generated outer loop returns an
+accepted result, that result must originate in a real terminating branch of
+the translated loop.  Error exits cannot be mistaken for acceptance, and the
+accepted run exposes the four active round bodies in the released order
+`0, 1, 2, 3`, together with the successful tail beginning after round four.
+This removes an assumption about how a successful translated loop was reached;
+it does not replace the remaining semantic proof about the weight accumulator.
+
 The printed axioms for the complete generated theorem are Lean's standard
 `propext`, `Classical.choice`, and `Quot.sound`, plus the three deliberately
 external production helpers `circle.double_x`, `WeightAccumulator.fold`, and
