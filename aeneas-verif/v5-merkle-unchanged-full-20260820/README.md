@@ -32,6 +32,29 @@ with ordinary Lean definitions for:
 `proof/V5MerkleExternalSemantics.lean` checks the defining cases and audits
 the axioms of the topology constructor, shape validator, and public driver.
 
+## Result
+
+The proof now follows one successful generated
+`verify_v5_private_openings` execution all the way to the maintained Merkle
+model:
+
+1. `V5MerkleQueryReuseProof.lean` proves the extracted query helper returns
+   the exact sorted layer-zero list and the three exact divide-by-4, 16, and
+   64 lists.
+2. `V5MerkleUnchangedQueryModelBridge.lean` identifies those lists with the
+   five maintained tree-index sets.
+3. `V5MerkleUnchangedFiveSectionComposition.lean` applies the exact helper
+   theorem to each of the five generated calls and builds one `ExactV5Run`.
+4. `V5MerkleUnchangedPublicAcceptanceBridge.lean` starts at the generated
+   public verifier's success result and produces both the maintained run and
+   an authenticated five-tree forest.
+
+The final theorems are
+`generated_public_acceptance_yields_exact_v5` and
+`generated_public_acceptance_yields_forest`. They do not use
+`VerifyStateOnlyPrivateOpeningWithTopologySourceEquality` or
+`VerifyV5DriverCompositionSourceEquality`.
+
 ## Exact remaining boundary
 
 There are **no `axiom` declarations in the implemented external files**.
@@ -45,6 +68,15 @@ receive their hash callback as an explicit argument.  A production theorem
 must still state which callback is used and connect it to Solana SHA-256.  The
 Aeneas `loop` operator models possible divergence with Lean's
 `partial_fixpoint`; it is a definition, not a new axiom.
+
+The final theorem takes two ordinary input facts from the transcript layer:
+the maintained query set has 18 entries, and sorting the generated query
+slice gives that set. The proof derives nonemptiness and the 17-bit range
+from those facts. Its only executable-behavior premise is
+`HashCallbackEqualsSha256`, which says that the callback result equals SHA-256
+of the concatenated byte slices. SHA-256 collision resistance, the
+translation tools, the compiler, and the Solana runtime remain external to
+this deterministic source proof.
 
 ## Replay
 

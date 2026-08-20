@@ -71,6 +71,8 @@ compile() {
 
 compile "$old_generated" RuntimeScheduleMerkleReuse \
   "$old_generated/RuntimeScheduleMerkleReuse.lean"
+compile "$proof" V5MerkleQueryReuseProof \
+  "$proof/V5MerkleQueryReuseProof.lean"
 compile "$generated" V5MerkleUnchangedFull/TypesExternal \
   "$generated/V5MerkleUnchangedFull/TypesExternal.lean"
 compile "$generated" V5MerkleUnchangedFull/Types \
@@ -131,6 +133,8 @@ compile "$proof" V5MerkleUnchangedFullMaskCounts \
   "$proof/V5MerkleUnchangedFullMaskCounts.lean"
 compile "$proof" V5MerkleUnchangedFullSectionTopologyAlignment \
   "$proof/V5MerkleUnchangedFullSectionTopologyAlignment.lean"
+compile "$proof" V5MerkleUnchangedQueryModelBridge \
+  "$proof/V5MerkleUnchangedQueryModelBridge.lean"
 compile "$proof" V5MerkleUnchangedFullSectionChildOrder \
   "$proof/V5MerkleUnchangedFullSectionChildOrder.lean"
 compile "$proof" V5MerkleUnchangedFullFrontierPositionUniqueness \
@@ -165,6 +169,10 @@ compile "$proof" V5MerkleUnchangedDriverProof \
   "$proof/V5MerkleUnchangedDriverProof.lean"
 compile "$proof" V5MerkleUnchangedGeneratedSectionBridge \
   "$proof/V5MerkleUnchangedGeneratedSectionBridge.lean"
+compile "$proof" V5MerkleUnchangedFiveSectionComposition \
+  "$proof/V5MerkleUnchangedFiveSectionComposition.lean"
+compile "$proof" V5MerkleUnchangedPublicAcceptanceBridge \
+  "$proof/V5MerkleUnchangedPublicAcceptanceBridge.lean"
 
 if scan '(sorry|admit|native_decide|unsafe|ofReduceBool)' \
     "$generated/V5MerkleUnchangedFull/TypesExternal.lean" \
