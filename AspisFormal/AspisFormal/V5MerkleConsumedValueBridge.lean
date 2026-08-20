@@ -1723,6 +1723,47 @@ theorem exactRustV5OpeningAndFriConsumerEquality_iff_split
     cases observation
     simp_all [observationOfRun]
 
+/-- The acceptance predicate exposed by a successful production observation.
+It records no mathematical conclusion: it only says that the source adapter
+returned one concrete successful observation for the call. -/
+def RustObservationAccepted
+    (rustObservation : V5ProductionCall -> Option OpeningAndFriObservation)
+    (call : V5ProductionCall) : Prop :=
+  ∃ observation, rustObservation call = some observation
+
+/-- Exact parser output is enough to construct the authenticated forest used
+by the maintained accepted-execution theorem.  This removes the older
+independent `RustAcceptedOpeningYieldsForest` premise for any adapter whose
+successful output has been connected to one exact parser run. -/
+theorem openingParserOutputEquality_yieldsForest
+    (sha256 : List Byte -> Digest32)
+    (rustObservation : V5ProductionCall -> Option OpeningAndFriObservation)
+    (hparser : ExactRustV5OpeningParserOutputEquality sha256
+      rustObservation) :
+    RustAcceptedOpeningYieldsForest (sha256MerkleHashing sha256)
+      (RustObservationAccepted rustObservation)
+      V5ProductionCall.roots V5ProductionCall.queries := by
+  intro call haccept
+  obtain ⟨observation, hobservation⟩ := haccept
+  obtain ⟨run, _hbytes, _hdriver⟩ :=
+    hparser call observation hobservation
+  exact exactV5Run_yieldsForest run
+
+/-- The combined parser-and-FRI source theorem therefore supplies the same
+forest fact directly.  The FRI half remains available for the subsequent
+arithmetic-consumer join; it is not silently used as a Merkle assumption. -/
+theorem openingAndFriConsumerEquality_yieldsForest
+    (sha256 : List Byte -> Digest32)
+    (rustObservation : V5ProductionCall -> Option OpeningAndFriObservation)
+    (hsource : ExactRustV5OpeningAndFriConsumerEquality sha256
+      rustObservation) :
+    RustAcceptedOpeningYieldsForest (sha256MerkleHashing sha256)
+      (RustObservationAccepted rustObservation)
+      V5ProductionCall.roots V5ProductionCall.queries := by
+  apply openingParserOutputEquality_yieldsForest sha256 rustObservation
+  exact ((exactRustV5OpeningAndFriConsumerEquality_iff_split
+    sha256 rustObservation).mp hsource).1
+
 theorem rustObservation_exposes_only_authenticated_fri_values
     (sha256 : List Byte -> Digest32)
     (rustObservation : V5ProductionCall -> Option OpeningAndFriObservation)
@@ -1819,6 +1860,8 @@ theorem rustObservation_exposes_only_authenticated_fri_values
 #print axioms friLoopReadEquality_iff_readsFromReturnedOpenings
 #print axioms friReadSchedule_eq_of_driverOutput_eq
 #print axioms exactRustV5OpeningAndFriConsumerEquality_iff_split
+#print axioms openingParserOutputEquality_yieldsForest
+#print axioms openingAndFriConsumerEquality_yieldsForest
 #print axioms rustObservation_exposes_only_authenticated_fri_values
 
 end AspisV5MerkleConsumedValueBridge

@@ -1,36 +1,27 @@
-import AspisFormal.V5AcceptedExecutionReleasedSchedule
-import AspisFormal.V5MerkleConsumedValueBridge
+import AspisFormal.V5AcceptedExecutionReleasedSecurity
 
 /-!
-# Accepted false executions with the released FRI schedule
+# Deriving the released query schedule from transcript output
 
-This file combines the accepted-execution theorem with the facts proved for
-the released FRI tables.
+The accepted-execution theorem is stated for an ordered injection
+`Fin 18 ↪ Fin 131072`.  The production transcript sampler returns a list of
+natural numbers.  This file removes the need to supply the injection as a
+separate premise: a successful exact 18-query decode proves the list has
+length 18, has no duplicates, and is in range, so it determines the ordered
+injection and its 18-element image.
 
-Four branches in the general event are impossible here:
-
-* the released final-domain table is wrong;
-* a released inverse table is wrong;
-* no single causal backwards strategy exists; and
-* the published decoding theorem is unavailable.
-
-The first two are removed from an explicit
-`ProductionUsesReleasedFriTables` correspondence.  The third is already
-constructed in Lean by `V5FriGlobalCausalStrategy`.  The fourth is removed
-only when `PublishedOrdinaryPolynomialCurveDecoding` is supplied.  All real
-source, authentication, transcript, primitive, query, FRI, and relation
-failures remain visible.  The theorem is pointwise for one supplied causal
-transcript family.  Connecting a production Fiat--Shamir execution to one
-family fixed across counterfactual challenge tuples remains a separate
-experiment boundary.
+This is a deterministic conversion.  It does not identify a Rust transcript
+driver with the Lean driver.  That source equality remains the separately
+named transcript-projection boundary.
 -/
 
-namespace AspisV5AcceptedExecutionReleasedSecurity
+namespace AspisV5AcceptedExecutionDerivedQueries
 
 open AspisCircleGroupOrder
 open AspisFormal.ArithmetizationCore
 open AspisFormal.HashMerkleModel
 open AspisV5AcceptedExecutionReleasedSchedule
+open AspisV5AcceptedExecutionReleasedSecurity
 open AspisV5AcceptedExecutionSecurityBridge
 open AspisV5AcceptedSpendRelation
 open AspisV5ComponentCConcreteFoldLinearity
@@ -55,121 +46,143 @@ open AspisV5Tag67RelationListInclusion
 open AspisV5TranscriptConnection
 open AspisV5WithoutReplacementQuerySoundness
 
+/-- A length-18 duplicate-free in-range list determines the ordered released
+query schedule. -/
+def queryScheduleOfExactList
+    (queries : List Nat)
+    (hlength : queries.length = 18)
+    (hnodup : queries.Nodup)
+    (hbound : ∀ query ∈ queries, query < 2 ^ 17) :
+    QuerySchedule 18 131072 where
+  toFun index :=
+    ⟨queries.get (Fin.cast hlength.symm index), by
+      have hmember :
+          queries.get (Fin.cast hlength.symm index) ∈ queries :=
+        List.get_mem queries (Fin.cast hlength.symm index)
+      have := hbound _ hmember
+      norm_num at this ⊢
+      exact this⟩
+  inj' := by
+    intro left right heq
+    have hvalues :
+        queries.get (Fin.cast hlength.symm left) =
+          queries.get (Fin.cast hlength.symm right) :=
+      congrArg Fin.val heq
+    have hindices :
+        Fin.cast hlength.symm left = Fin.cast hlength.symm right :=
+      hnodup.injective_get hvalues
+    exact Fin.cast_injective hlength.symm hindices
+
+theorem queryScheduleOfExactList_values
+    (queries : List Nat)
+    (hlength : queries.length = 18)
+    (hnodup : queries.Nodup)
+    (hbound : ∀ query ∈ queries, query < 2 ^ 17) :
+    List.ofFn (fun index =>
+      ((queryScheduleOfExactList queries hlength hnodup hbound) index).val) =
+        queries := by
+  change List.ofFn (fun index : Fin 18 =>
+      queries.get (Fin.cast hlength.symm index)) = queries
+  rw [← List.ofFn_congr hlength queries.get]
+  exact List.ofFn_get queries
+
+/-- The ordered schedule forced by a successful production-shaped query
+decode.  Its three well-formedness proofs come from
+`derive18Queries_success_is_exact`; callers do not supply them. -/
+def decodedQuerySchedule
+    (blocks : List (FixedBytes 32))
+    (queries : List Nat)
+    (hdecode : derive18Queries blocks = some queries) :
+    QuerySchedule 18 131072 :=
+  let exact := derive18Queries_success_is_exact blocks queries hdecode
+  queryScheduleOfExactList queries exact.1 exact.2.1 exact.2.2
+
+def decodedQuerySet
+    (blocks : List (FixedBytes 32))
+    (queries : List Nat)
+    (hdecode : derive18Queries blocks = some queries) : Finset V5Query :=
+  Finset.univ.image (decodedQuerySchedule blocks queries hdecode)
+
+theorem decodedQuerySchedule_values
+    (blocks : List (FixedBytes 32))
+    (queries : List Nat)
+    (hdecode : derive18Queries blocks = some queries) :
+    List.ofFn (fun index =>
+      ((decodedQuerySchedule blocks queries hdecode) index).val) = queries := by
+  unfold decodedQuerySchedule
+  exact queryScheduleOfExactList_values queries
+    (derive18Queries_success_is_exact blocks queries hdecode).1
+    (derive18Queries_success_is_exact blocks queries hdecode).2.1
+    (derive18Queries_success_is_exact blocks queries hdecode).2.2
+
+theorem decoded_query_positions_projection
+    {FieldValue PointValue : Type*}
+    (blocks : List (FixedBytes 32))
+    (derived : V5DerivedValues FieldValue PointValue)
+    (hdecode : derive18Queries blocks = some derived.queries) :
+    derived.queries = List.ofFn (fun index =>
+      ((decodedQuerySchedule blocks derived.queries hdecode) index).val) := by
+  exact (decodedQuerySchedule_values blocks derived.queries hdecode).symm
+
+theorem decodedQuerySet_card
+    (blocks : List (FixedBytes 32))
+    (queries : List Nat)
+    (hdecode : derive18Queries blocks = some queries) :
+    (decodedQuerySet blocks queries hdecode).card = 18 := by
+  unfold decodedQuerySet
+  rw [Finset.card_image_of_injective _
+    (decodedQuerySchedule blocks queries hdecode).injective]
+  simp
+
+theorem mem_decodedQuerySet_iff
+    (blocks : List (FixedBytes 32))
+    (queries : List Nat)
+    (hdecode : derive18Queries blocks = some queries)
+    (query : V5Query) :
+    query ∈ decodedQuerySet blocks queries hdecode ↔ query.val ∈ queries := by
+  constructor
+  · intro hmember
+    rcases Finset.mem_image.mp hmember with ⟨index, _, hquery⟩
+    rw [← decodedQuerySchedule_values blocks queries hdecode]
+    simp only [List.mem_ofFn]
+    exact ⟨index, congrArg Fin.val hquery⟩
+  · intro hmember
+    rw [← decodedQuerySchedule_values blocks queries hdecode] at hmember
+    simp only [List.mem_ofFn] at hmember
+    rcases hmember with ⟨index, hquery⟩
+    exact Finset.mem_image.mpr
+      ⟨index, Finset.mem_univ index, Fin.ext hquery⟩
+
+theorem decoded_queries_are_exact
+    (blocks : List (FixedBytes 32))
+    (queries : List Nat)
+    (hdecode : derive18Queries blocks = some queries) :
+    List.ofFn (fun index =>
+        ((decodedQuerySchedule blocks queries hdecode) index).val) = queries ∧
+      (decodedQuerySet blocks queries hdecode).card = 18 ∧
+      (∀ query : V5Query,
+        query ∈ decodedQuerySet blocks queries hdecode ↔
+          query.val ∈ queries) ∧
+      queries.Nodup ∧
+      (∀ query ∈ queries, query < 131072) := by
+  have hexact := derive18Queries_success_is_exact blocks queries hdecode
+  exact ⟨decodedQuerySchedule_values blocks queries hdecode,
+    decodedQuerySet_card blocks queries hdecode,
+    mem_decodedQuerySet_iff blocks queries hdecode,
+    hexact.2.1, by simpa using hexact.2.2⟩
+
 variable {K : Type*} [Field K] [Fintype K] [DecidableEq K]
   [Algebra (ZMod P) K] [NeZero (2 : K)]
 
-/-- The accepted-execution event after removing the four branches proved
-impossible for the released schedule.  The fourteen remaining propositions
-are kept in the same order as the general event. -/
-abbrev ReleasedAcceptedExecutionSecurityEvent
-    (sourceRelationProjectionFailure : Prop)
-    (familyProjectionFailure : Prop)
-    (transcriptProjectionFailure : Prop)
-    (workProjectionFailure : Prop)
-    (referenceForestFailure : Prop)
-    (rustOpeningCorrespondenceFailure : Prop)
-    (hashCollision : Prop)
-    (workFailure : Prop)
-    (friArithmeticFailure : Prop)
-    (queryMiss : Prop)
-    (countedFriFibre : Prop)
-    (candidateTraceFailure : Prop)
-    (relationRepair : Prop)
-    (poseidonFailure : Prop) : Prop :=
-  AcceptedExecutionSecurityEvent
-    sourceRelationProjectionFailure familyProjectionFailure
-    transcriptProjectionFailure workProjectionFailure
-    False False referenceForestFailure False
-    rustOpeningCorrespondenceFailure hashCollision workFailure
-    friArithmeticFailure queryMiss countedFriFibre candidateTraceFailure
-    relationRepair poseidonFailure False
+/-- The released accepted-execution reduction with its query schedule derived
+from the exact transcript sampler output.  In particular, there is no free
+query schedule, distinctness premise, range premise, or cardinality premise.
 
-/-- Convert the general accepted-execution result to the released-schedule
-event.  This small lemma makes the exact four eliminated positions easy to
-audit independently of the larger source-execution theorem. -/
-theorem released_event_of_accepted_event
-    {schedule : FixedSchedule (ZMod P) K}
-    (hproduction : ProductionUsesReleasedFriTables schedule)
-    (hpublished : PublishedOrdinaryPolynomialCurveDecoding (K := K))
-    {sourceRelationProjectionFailure familyProjectionFailure
-      transcriptProjectionFailure workProjectionFailure
-      referenceForestFailure rustOpeningCorrespondenceFailure
-      hashCollision workFailure friArithmeticFailure queryMiss
-      countedFriFibre candidateTraceFailure relationRepair
-      poseidonFailure : Prop}
-    (event : AcceptedExecutionSecurityEvent
-      sourceRelationProjectionFailure familyProjectionFailure
-      transcriptProjectionFailure workProjectionFailure
-      (¬ FinalXMatchesReleasedDomain schedule)
-      (¬ InverseTablesMatch schedule releasedEvaluationPoints)
-      referenceForestFailure False rustOpeningCorrespondenceFailure
-      hashCollision workFailure friArithmeticFailure queryMiss
-      countedFriFibre candidateTraceFailure relationRepair poseidonFailure
-      (¬ PublishedOrdinaryPolynomialCurveDecoding (K := K))) :
-    ReleasedAcceptedExecutionSecurityEvent
-      sourceRelationProjectionFailure familyProjectionFailure
-      transcriptProjectionFailure workProjectionFailure
-      referenceForestFailure rustOpeningCorrespondenceFailure
-      hashCollision workFailure friArithmeticFailure queryMiss
-      countedFriFibre candidateTraceFailure relationRepair
-      poseidonFailure := by
-  exact accepted_event_with_released_tables hproduction hpublished event
-
-/-- Remove the obsolete opening-correspondence branch once the production
-observation has been proved to yield an authenticated forest.  Every other
-released event is preserved without changing its meaning. -/
-theorem remove_released_rust_opening_failure
-    {sourceRelationProjectionFailure familyProjectionFailure
-      transcriptProjectionFailure workProjectionFailure
-      referenceForestFailure rustOpeningCorrespondenceFailure
-      hashCollision workFailure friArithmeticFailure queryMiss
-      countedFriFibre candidateTraceFailure relationRepair
-      poseidonFailure : Prop}
-    (hopening : ¬ rustOpeningCorrespondenceFailure)
-    (event : ReleasedAcceptedExecutionSecurityEvent
-      sourceRelationProjectionFailure familyProjectionFailure
-      transcriptProjectionFailure workProjectionFailure
-      referenceForestFailure rustOpeningCorrespondenceFailure
-      hashCollision workFailure friArithmeticFailure queryMiss
-      countedFriFibre candidateTraceFailure relationRepair
-      poseidonFailure) :
-    ReleasedAcceptedExecutionSecurityEvent
-      sourceRelationProjectionFailure familyProjectionFailure
-      transcriptProjectionFailure workProjectionFailure
-      referenceForestFailure False
-      hashCollision workFailure friArithmeticFailure queryMiss
-      countedFriFibre candidateTraceFailure relationRepair
-      poseidonFailure := by
-  cases event with
-  | sourceRelationProjection failure =>
-      exact .sourceRelationProjection failure
-  | familyProjection failure => exact .familyProjection failure
-  | transcriptProjection failure => exact .transcriptProjection failure
-  | workProjection failure => exact .workProjection failure
-  | releasedFinalDomain failure => exact failure.elim
-  | releasedInverseTable failure => exact failure.elim
-  | referenceForest failure => exact .referenceForest failure
-  | globalCausalSelection failure => exact failure.elim
-  | rustOpeningCorrespondence failure => exact (hopening failure).elim
-  | merkleHashCollision failure => exact .merkleHashCollision failure
-  | workCheck failure => exact .workCheck failure
-  | friArithmetic failure => exact .friArithmetic failure
-  | queryPhase failure => exact .queryPhase failure
-  | friFibre failure => exact .friFibre failure
-  | candidateTrace failure => exact .candidateTrace failure
-  | relationRepairEvent failure => exact .relationRepairEvent failure
-  | poseidon failure => exact .poseidon failure
-  | publishedDecoding failure => exact failure.elim
-
-/-- A successful false source-shaped execution using the released FRI tables
-reaches one of the fourteen remaining events.
-
-`hproduction` is the explicit source-to-table correspondence.  This theorem
-does not prove it from the Rust source.  Likewise, `hpublished` remains the
-external ordinary-polynomial curve-decoding theorem.  The counted FRI event
-uses the single constructed strategy, not an outcome-dependent existential
-strategy. -/
-theorem accepted_false_source_execution_event_with_released_tables
+The production query set is still projected from the Rust opening verifier.
+Its equality to the image of this derived schedule is checked by
+`TranscriptExecutionProjection.querySetExact`; if that source connection is
+absent, the theorem reports the named transcript-projection failure event. -/
+theorem accepted_false_source_execution_event_with_derived_queries
     {RustInput MerkleDigest PointValue State : Type*}
     (rc : RoundConstants)
     {deployedOwner : AspisFormal.ArithmetizationCore.Digest ->
@@ -199,12 +212,13 @@ theorem accepted_false_source_execution_event_with_released_tables
       (AcceptedCandidate base causalFamily input))
     (records : CandidateRecords (AcceptedCandidate base causalFamily input) K)
     (statement : V5PublicStatement)
-    (queries : QuerySchedule 18 131072)
     (decoder : OpeningFibreDecoder K)
     (expectedC2 : V5Query -> Fin 4 -> K)
     (transcriptInput : V5TranscriptInputs)
     (derived : V5DerivedValues K PointValue)
     (driverResult : V5TranscriptDriverResult K PointValue)
+    (queryBlocks : List (FixedBytes 32))
+    (hdecode : derive18Queries queryBlocks = some derived.queries)
     (workFunctions : ExecutableWorkFunctions State
       (SqueezeResult K PointValue))
     (workInputs : PositionedWorkInputs State (SqueezeResult K PointValue))
@@ -212,6 +226,7 @@ theorem accepted_false_source_execution_event_with_released_tables
     (hrustOpening : rustAcceptsOpening rustInput)
     (noWitness : ¬ StatementHasSpendWitness statement deployedOwner
       deployedNote deployedNullifier deployedNode) :
+    let queries := decodedQuerySchedule queryBlocks derived.queries hdecode
     ReleasedAcceptedExecutionSecurityEvent
     (¬ SourceRelationInputMatchesFamily input relationFamily)
     (¬ FamilyMatchesFriTranscript
@@ -249,19 +264,20 @@ theorem accepted_false_source_execution_event_with_released_tables
         (fun candidate => (relationFamily.execution candidate).adaptiveData))
     (¬ Poseidon2Faithful rc deployedOwner deployedNote deployedNullifier
       deployedNode) := by
-  apply released_event_of_accepted_event hproduction hpublished
-  exact accepted_false_source_execution_event rc hashing rustAcceptsOpening
-    rootsOf querySetOf rustInput base causalFamily input relationFamily records
-    statement queries decoder expectedC2 transcriptInput derived driverResult
-    workFunctions workInputs hsource hrustOpening noWitness
+  let queries := decodedQuerySchedule queryBlocks derived.queries hdecode
+  exact accepted_false_source_execution_event_with_released_tables rc hashing
+    rustAcceptsOpening rootsOf querySetOf rustInput base hproduction hpublished
+    causalFamily input relationFamily records statement queries decoder
+    expectedC2 transcriptInput derived driverResult workFunctions workInputs
+    hsource hrustOpening noWitness
 
-/-- Join the exact production opening/FRI observation to the maintained
-released-security theorem.  The authenticated-forest correspondence branch
-is eliminated: it is a theorem of the exact parser run, not an independent
-failure assumption.  The later `friArithmeticFailure` branch remains because
-the generated transition and field operations still need their separate
-value-semantics connection to `ForestFriChecks`. -/
-theorem accepted_false_source_observation_event_with_released_tables
+/-- The query-derived endpoint specialized to the exact production
+opening-and-FRI observation.  Successful observation now supplies the
+authenticated forest, so the Rust-opening correspondence branch is `False`.
+The derived schedule is still obtained from the exact 18-query transcript
+decode, leaving neither a free query schedule nor a separate opening-forest
+assumption in this maintained endpoint. -/
+theorem accepted_false_source_observation_event_with_derived_queries
     {PointValue State : Type*}
     (rc : RoundConstants)
     {deployedOwner : AspisFormal.ArithmetizationCore.Digest ->
@@ -295,18 +311,20 @@ theorem accepted_false_source_observation_event_with_released_tables
       (AcceptedCandidate base causalFamily input))
     (records : CandidateRecords (AcceptedCandidate base causalFamily input) K)
     (statement : V5PublicStatement)
-    (queries : QuerySchedule 18 131072)
     (decoder : OpeningFibreDecoder K)
     (expectedC2 : V5Query -> Fin 4 -> K)
     (transcriptInput : V5TranscriptInputs)
     (derived : V5DerivedValues K PointValue)
     (driverResult : V5TranscriptDriverResult K PointValue)
+    (queryBlocks : List (FixedBytes 32))
+    (hdecode : derive18Queries queryBlocks = some derived.queries)
     (workFunctions : ExecutableWorkFunctions State
       (SqueezeResult K PointValue))
     (workInputs : PositionedWorkInputs State (SqueezeResult K PointValue))
     (hsource : ∃ output, runSourceRelationVerifier input = some output)
     (noWitness : ¬ StatementHasSpendWitness statement deployedOwner
       deployedNote deployedNullifier deployedNode) :
+    let queries := decodedQuerySchedule queryBlocks derived.queries hdecode
     ReleasedAcceptedExecutionSecurityEvent
     (¬ SourceRelationInputMatchesFamily input relationFamily)
     (¬ FamilyMatchesFriTranscript
@@ -344,26 +362,20 @@ theorem accepted_false_source_observation_event_with_released_tables
         (fun candidate => (relationFamily.execution candidate).adaptiveData))
     (¬ Poseidon2Faithful rc deployedOwner deployedNote deployedNullifier
       deployedNode) := by
-  have hforest : RustAcceptedOpeningYieldsForest
-      (sha256MerkleHashing sha256)
-      (RustObservationAccepted rustObservation)
-      V5ProductionCall.roots V5ProductionCall.queries :=
-    openingAndFriConsumerEquality_yieldsForest sha256 rustObservation
-      hconsumer
-  have event := accepted_false_source_execution_event_with_released_tables
-    rc (sha256MerkleHashing sha256)
-    (RustObservationAccepted rustObservation)
-    V5ProductionCall.roots V5ProductionCall.queries rustCall base hproduction
-    hpublished causalFamily input relationFamily records statement queries
-    decoder expectedC2 transcriptInput derived driverResult workFunctions
-    workInputs hsource ⟨observation, hobservation⟩ noWitness
-  apply remove_released_rust_opening_failure (event := event)
-  intro failure
-  exact failure hforest
+  let queries := decodedQuerySchedule queryBlocks derived.queries hdecode
+  exact accepted_false_source_observation_event_with_released_tables rc sha256
+    rustObservation rustCall observation hconsumer hobservation base
+    hproduction hpublished causalFamily input relationFamily records statement
+    queries decoder expectedC2 transcriptInput derived driverResult
+    workFunctions workInputs hsource noWitness
 
-#print axioms released_event_of_accepted_event
-#print axioms remove_released_rust_opening_failure
-#print axioms accepted_false_source_execution_event_with_released_tables
-#print axioms accepted_false_source_observation_event_with_released_tables
+#print axioms queryScheduleOfExactList_values
+#print axioms decodedQuerySchedule_values
+#print axioms decoded_query_positions_projection
+#print axioms decodedQuerySet_card
+#print axioms mem_decodedQuerySet_iff
+#print axioms decoded_queries_are_exact
+#print axioms accepted_false_source_execution_event_with_derived_queries
+#print axioms accepted_false_source_observation_event_with_derived_queries
 
-end AspisV5AcceptedExecutionReleasedSecurity
+end AspisV5AcceptedExecutionDerivedQueries
