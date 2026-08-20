@@ -29,8 +29,4 @@ structure aspis_core.transcript.Transcript where
   events : List RelationTranscriptEvent
   deriving DecidableEq, Repr
 
-@[reducible, rust_type
-  "aspis_verifier_kappa_caller_extraction::v5_cu_probe::private_openings::V5PrivateOpeningRoots"]
-def v5_cu_probe.private_openings.V5PrivateOpeningRoots := Unit
-
 end V5TranscriptRelationGenerated

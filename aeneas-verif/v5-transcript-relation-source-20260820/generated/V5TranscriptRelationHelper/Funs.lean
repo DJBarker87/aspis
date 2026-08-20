@@ -21,7 +21,7 @@ noncomputable section
 namespace V5TranscriptRelationGenerated
 
 /-- Trait implementation: [aspis_core::field::{impl core::cmp::PartialEq<aspis_core::field::QM31> for aspis_core::field::QM31}]
-    Source: '/Users/dominic/ZK-fiat-shamir-final/crates/aspis-core/src/field.rs', lines 351:22-351:31
+    Source: 'crates/aspis-core/src/field.rs', lines 351:22-351:31
     Name pattern: [core::cmp::PartialEq<aspis_core::field::QM31, aspis_core::field::QM31>] -/
 @[reducible, rust_trait_impl
   "core::cmp::PartialEq<aspis_core::field::QM31, aspis_core::field::QM31>"]
@@ -33,30 +33,30 @@ impl_def aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31 : core.cmp.PartialEq
 }
 
 /-- [aspis_verifier_kappa_caller_extraction::v5_relation_stress::V5_RELATION_STRESS_CIRCLE_OFFSET]
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_relation_stress.rs', lines 27:0-27:54
+    Source: 'programs/aspis-verifier/src/v5_relation_stress.rs', lines 27:0-27:54
     Visibility: public -/
 @[global_simps, irreducible]
 def v5_relation_stress.V5_RELATION_STRESS_CIRCLE_OFFSET : Std.Usize := 0#usize
 
 /-- [aspis_verifier_kappa_caller_extraction::v5_relation_stress::V5_RELATION_STRESS_OOD_SAMPLES]
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_relation_stress.rs', lines 17:0-17:52
+    Source: 'programs/aspis-verifier/src/v5_relation_stress.rs', lines 17:0-17:52
     Visibility: public -/
 @[global_simps, irreducible]
 def v5_relation_stress.V5_RELATION_STRESS_OOD_SAMPLES : Std.Usize := 2#usize
 
 /-- [aspis_verifier_kappa_caller_extraction::v5_relation_stress::CIRCLE_COORDINATES]
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_relation_stress.rs', lines 21:0-21:69 -/
+    Source: 'programs/aspis-verifier/src/v5_relation_stress.rs', lines 21:0-21:69 -/
 @[global_simps, irreducible]
 def v5_relation_stress.CIRCLE_COORDINATES : Result Std.Usize :=
   2#usize * v5_relation_stress.V5_RELATION_STRESS_OOD_SAMPLES
 
 /-- [aspis_verifier_kappa_caller_extraction::v5_relation_stress::QM31_BYTES]
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_relation_stress.rs', lines 19:0-19:29 -/
+    Source: 'programs/aspis-verifier/src/v5_relation_stress.rs', lines 19:0-19:29 -/
 @[global_simps, irreducible]
 def v5_relation_stress.QM31_BYTES : Std.Usize := 16#usize
 
 /-- [aspis_verifier_kappa_caller_extraction::v5_relation_stress::V5_RELATION_STRESS_LINE_OFFSET]
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_relation_stress.rs', lines 28:0-29:71
+    Source: 'programs/aspis-verifier/src/v5_relation_stress.rs', lines 28:0-29:71
     Visibility: public -/
 @[global_simps, irreducible]
 def v5_relation_stress.V5_RELATION_STRESS_LINE_OFFSET : Result Std.Usize := do
@@ -65,20 +65,20 @@ def v5_relation_stress.V5_RELATION_STRESS_LINE_OFFSET : Result Std.Usize := do
   v5_relation_stress.V5_RELATION_STRESS_CIRCLE_OFFSET + i1
 
 /-- [aspis_verifier_kappa_caller_extraction::v5_relation_stress::V5_RELATION_STRESS_ROUNDS]
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_relation_stress.rs', lines 16:0-16:47
+    Source: 'programs/aspis-verifier/src/v5_relation_stress.rs', lines 16:0-16:47
     Visibility: public -/
 @[global_simps, irreducible]
 def v5_relation_stress.V5_RELATION_STRESS_ROUNDS : Std.Usize := 4#usize
 
 /-- [aspis_verifier_kappa_caller_extraction::v5_relation_stress::LINE_POINTS]
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_relation_stress.rs', lines 22:0-22:92 -/
+    Source: 'programs/aspis-verifier/src/v5_relation_stress.rs', lines 22:0-22:92 -/
 @[global_simps, irreducible]
 def v5_relation_stress.LINE_POINTS : Result Std.Usize := do
   let i ← v5_relation_stress.V5_RELATION_STRESS_ROUNDS - 1#usize
   i * v5_relation_stress.V5_RELATION_STRESS_OOD_SAMPLES
 
 /-- [aspis_verifier_kappa_caller_extraction::v5_relation_stress::V5_RELATION_STRESS_OOD_OFFSET]
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_relation_stress.rs', lines 30:0-31:62
+    Source: 'programs/aspis-verifier/src/v5_relation_stress.rs', lines 30:0-31:62
     Visibility: public -/
 @[global_simps, irreducible]
 def v5_relation_stress.V5_RELATION_STRESS_OOD_OFFSET : Result Std.Usize := do
@@ -88,14 +88,14 @@ def v5_relation_stress.V5_RELATION_STRESS_OOD_OFFSET : Result Std.Usize := do
   i2 + i1
 
 /-- [aspis_verifier_kappa_caller_extraction::v5_relation_stress::OOD_VALUES]
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_relation_stress.rs', lines 23:0-23:85 -/
+    Source: 'programs/aspis-verifier/src/v5_relation_stress.rs', lines 23:0-23:85 -/
 @[global_simps, irreducible]
 def v5_relation_stress.OOD_VALUES : Result Std.Usize :=
   v5_relation_stress.V5_RELATION_STRESS_ROUNDS *
     v5_relation_stress.V5_RELATION_STRESS_OOD_SAMPLES
 
 /-- [aspis_verifier_kappa_caller_extraction::v5_relation_stress::V5_RELATION_STRESS_MIX_OFFSET]
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_relation_stress.rs', lines 32:0-33:60
+    Source: 'programs/aspis-verifier/src/v5_relation_stress.rs', lines 32:0-33:60
     Visibility: public -/
 @[global_simps, irreducible]
 def v5_relation_stress.V5_RELATION_STRESS_MIX_OFFSET : Result Std.Usize := do
@@ -105,13 +105,13 @@ def v5_relation_stress.V5_RELATION_STRESS_MIX_OFFSET : Result Std.Usize := do
   i2 + i1
 
 /-- [aspis_verifier_kappa_caller_extraction::v5_relation_stress::OOD_MIXES]
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_relation_stress.rs', lines 24:0-24:36 -/
+    Source: 'programs/aspis-verifier/src/v5_relation_stress.rs', lines 24:0-24:36 -/
 @[global_simps, irreducible]
 def v5_relation_stress.OOD_MIXES : Result Std.Usize :=
   v5_relation_stress.OOD_VALUES
 
 /-- [aspis_verifier_kappa_caller_extraction::v5_relation_stress::V5_RELATION_STRESS_SUMCHECK_OFFSET]
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_relation_stress.rs', lines 34:0-35:59
+    Source: 'programs/aspis-verifier/src/v5_relation_stress.rs', lines 34:0-35:59
     Visibility: public -/
 @[global_simps, irreducible]
 def v5_relation_stress.V5_RELATION_STRESS_SUMCHECK_OFFSET
@@ -122,7 +122,7 @@ def v5_relation_stress.V5_RELATION_STRESS_SUMCHECK_OFFSET
   i2 + i1
 
 /-- [aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds::{impl core::ops::function::FnOnce<(aspis_core::transcript::ChallengeSampleExhausted,), solana_program_error::ProgramError> for aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds::closure#3}::call_once]:
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_cu_probe.rs', lines 870:21-870:57 -/
+    Source: 'programs/aspis-verifier/src/v5_cu_probe.rs', lines 852:21-852:57 -/
 def
   v5_cu_probe.replay_real_v5_relation_rounds.closure_3.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError.call_once
   (c : v5_cu_probe.replay_real_v5_relation_rounds.closure_3)
@@ -132,7 +132,7 @@ def
   ok solana_program_error.ProgramError.InvalidAccountData
 
 /-- Trait implementation: [aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds::{impl core::ops::function::FnOnce<(aspis_core::transcript::ChallengeSampleExhausted,), solana_program_error::ProgramError> for aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds::closure#3}]
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_cu_probe.rs', lines 870:21-870:57 -/
+    Source: 'programs/aspis-verifier/src/v5_cu_probe.rs', lines 852:21-852:57 -/
 @[reducible]
 def
   v5_cu_probe.replay_real_v5_relation_rounds.closure_3.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError
@@ -145,7 +145,7 @@ def
 }
 
 /-- [aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds::{impl core::ops::function::FnOnce<(aspis_core::transcript::ChallengeSampleExhausted,), solana_program_error::ProgramError> for aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds::closure#2}::call_once]:
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_cu_probe.rs', lines 847:25-847:61 -/
+    Source: 'programs/aspis-verifier/src/v5_cu_probe.rs', lines 830:25-830:61 -/
 def
   v5_cu_probe.replay_real_v5_relation_rounds.closure_2.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError.call_once
   (c : v5_cu_probe.replay_real_v5_relation_rounds.closure_2)
@@ -155,7 +155,7 @@ def
   ok solana_program_error.ProgramError.InvalidAccountData
 
 /-- Trait implementation: [aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds::{impl core::ops::function::FnOnce<(aspis_core::transcript::ChallengeSampleExhausted,), solana_program_error::ProgramError> for aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds::closure#2}]
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_cu_probe.rs', lines 847:25-847:61 -/
+    Source: 'programs/aspis-verifier/src/v5_cu_probe.rs', lines 830:25-830:61 -/
 @[reducible]
 def
   v5_cu_probe.replay_real_v5_relation_rounds.closure_2.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError
@@ -168,7 +168,7 @@ def
 }
 
 /-- [aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds::{impl core::ops::function::FnOnce<(aspis_core::transcript::OodSampleError,), solana_program_error::ProgramError> for aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds::closure#1}::call_once]:
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_cu_probe.rs', lines 819:29-819:65 -/
+    Source: 'programs/aspis-verifier/src/v5_cu_probe.rs', lines 802:29-802:65 -/
 def
   v5_cu_probe.replay_real_v5_relation_rounds.closure_1.Insts.CoreOpsFunctionFnOnceTupleOodSampleErrorProgramError.call_once
   (c : v5_cu_probe.replay_real_v5_relation_rounds.closure_1)
@@ -178,7 +178,7 @@ def
   ok solana_program_error.ProgramError.InvalidAccountData
 
 /-- Trait implementation: [aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds::{impl core::ops::function::FnOnce<(aspis_core::transcript::OodSampleError,), solana_program_error::ProgramError> for aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds::closure#1}]
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_cu_probe.rs', lines 819:29-819:65 -/
+    Source: 'programs/aspis-verifier/src/v5_cu_probe.rs', lines 802:29-802:65 -/
 @[reducible]
 def
   v5_cu_probe.replay_real_v5_relation_rounds.closure_1.Insts.CoreOpsFunctionFnOnceTupleOodSampleErrorProgramError
@@ -190,7 +190,7 @@ def
 }
 
 /-- [aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds::{impl core::ops::function::FnOnce<(aspis_core::transcript::CirclePointSampleError,), solana_program_error::ProgramError> for aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds::closure}::call_once]:
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_cu_probe.rs', lines 809:29-809:65 -/
+    Source: 'programs/aspis-verifier/src/v5_cu_probe.rs', lines 792:29-792:65 -/
 def
   v5_cu_probe.replay_real_v5_relation_rounds.closure.Insts.CoreOpsFunctionFnOnceTupleCirclePointSampleErrorProgramError.call_once
   (c : v5_cu_probe.replay_real_v5_relation_rounds.closure)
@@ -200,7 +200,7 @@ def
   ok solana_program_error.ProgramError.InvalidAccountData
 
 /-- Trait implementation: [aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds::{impl core::ops::function::FnOnce<(aspis_core::transcript::CirclePointSampleError,), solana_program_error::ProgramError> for aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds::closure}]
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_cu_probe.rs', lines 809:29-809:65 -/
+    Source: 'programs/aspis-verifier/src/v5_cu_probe.rs', lines 792:29-792:65 -/
 @[reducible]
 def
   v5_cu_probe.replay_real_v5_relation_rounds.closure.Insts.CoreOpsFunctionFnOnceTupleCirclePointSampleErrorProgramError
@@ -212,19 +212,94 @@ def
 }
 
 /-- [aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds]: loop body 1:
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_cu_probe.rs', lines 803:4-876:5 -/
+    Source: 'programs/aspis-verifier/src/v5_cu_probe.rs', lines 787:4-864:5 -/
 @[rust_loop_body]
 def v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body
   (parsed : v5_cu_probe.ParsedProbeData) (q : aspis_core.field.QM31)
   (a : Array Std.U64 4#usize) (i : Std.U64)
   (vpor : v5_cu_probe.private_openings.V5PrivateOpeningRoots) (i1 : Std.U64)
-  (i2 : Std.U8) (round : Std.Usize)
-  (transcript : aspis_core.transcript.Transcript) (sample : Std.Usize) :
-  Result (ControlFlow (aspis_core.transcript.Transcript × Std.Usize)
-    (aspis_core.transcript.Transcript × Std.Usize × Std.U32))
+  (i2 : Std.U8) (round : Std.Usize) (iter : core.ops.range.Range Std.Usize)
+  (transcript : aspis_core.transcript.Transcript) :
+  Result (ControlFlow ((core.ops.range.Range Std.Usize) ×
+    aspis_core.transcript.Transcript) (aspis_core.transcript.Transcript ×
+    v5_cu_probe.private_openings.V5PrivateOpeningRoots × Std.U32))
   := do
-  if sample < v5_relation_stress.V5_RELATION_STRESS_OOD_SAMPLES
-  then
+  let (o, iter1) ←
+    core.iter.range.IteratorRange.next core.iter.range.StepUsize iter
+  match o with
+  | none =>
+    let i3 ← aspis_core.sumcheck.SUMCHECK_COEFFICIENTS
+    let i4 ← round * i3
+    let i5 ← v5_cu_probe.QM31_BYTES
+    let i6 ← i4 * i5
+    let i7 ← v5_relation_stress.V5_RELATION_STRESS_SUMCHECK_OFFSET
+    let sumcheck_start ← i7 + i6
+    let i8 ← i3 * i5
+    let sumcheck_end ← sumcheck_start + i8
+    let s ←
+      core.array.Array.index (core.ops.index.IndexSlice
+        (core.slice.index.SliceIndexRangeUsizeSlice Std.U8))
+        parsed.v5_relation_stress
+        { start := sumcheck_start, «end» := sumcheck_end }
+    let transcript1 ←
+      v5_cu_probe.absorb_real_v5_relation_sumcheck transcript round s
+    let nonce ← Array.index_usize a round
+    let (r, transcript2) ←
+      v5_cu_probe.check_and_absorb_real_v5_fold_nonce transcript1 round nonce
+    let cf ← core.result.Result.Insts.CoreOpsTry.branch r
+    match cf with
+    | core.ops.control_flow.ControlFlow.Continue _ =>
+      let (r1, transcript3) ←
+        aspis_core.transcript.Transcript.challenge_qm31 transcript2
+      let r2 ←
+        core.result.Result.map_err
+          v5_cu_probe.replay_real_v5_relation_rounds.closure_3.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError
+          r1 ()
+      let cf1 ← core.result.Result.Insts.CoreOpsTry.branch r2
+      match cf1 with
+      | core.ops.control_flow.ControlFlow.Continue val =>
+        let r3 ← v5_cu_probe.decode_qm31 parsed.relation_alphas round
+        let cf2 ← core.result.Result.Insts.CoreOpsTry.branch r3
+        match cf2 with
+        | core.ops.control_flow.ControlFlow.Continue val1 =>
+          let b ←
+            core.cmp.PartialEq.ne.trait_default
+              aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31 val1 val
+          if b
+          then ok (done (transcript3, vpor, 0#u32))
+          else
+            let s1 ← lift (Array.to_slice vpor.later)
+            let i9 := Slice.len s1
+            if round < i9
+            then
+              let i10 ← round + 1#usize
+              let a1 ← Array.index_usize vpor.later round
+              let i11 ← round + 2#usize
+              let a2 ←
+                v5_cu_probe.v5_public_fs_salt parsed.v5_wire_prefix i11
+              let transcript4 ←
+                v5_cu_probe.absorb_real_v5_round_root transcript3 i10 a1 a2
+              ok (done (transcript4, vpor, 1#u32))
+            else ok (done (transcript3, vpor, 1#u32))
+        | core.ops.control_flow.ControlFlow.Break residual =>
+          let _ ←
+            core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+              aspis_core.transcript.Transcript (core.convert.FromSame
+              solana_program_error.ProgramError) residual
+          ok (done (transcript3, vpor, 0#u32))
+      | core.ops.control_flow.ControlFlow.Break residual =>
+        let _ ←
+          core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+            aspis_core.transcript.Transcript (core.convert.FromSame
+            solana_program_error.ProgramError) residual
+        ok (done (transcript3, vpor, 0#u32))
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      let _ ←
+        core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+          aspis_core.transcript.Transcript (core.convert.FromSame
+          solana_program_error.ProgramError) residual
+      ok (done (transcript2, vpor, 0#u32))
+  | some sample =>
     if round = 0#usize
     then
       let (r, transcript1) ←
@@ -261,7 +336,7 @@ def v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body
             core.cmp.PartialEq.ne.trait_default
               aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31 val1 val.x
           if b
-          then ok (done (transcript1, round, 0#u32))
+          then ok (done (transcript1, vpor, 0#u32))
           else
             let i6 ← point_offset + i4
             let r3 ←
@@ -284,7 +359,7 @@ def v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body
                   aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31 val2
                   val.y
               if b1
-              then ok (done (transcript1, round, 0#u32))
+              then ok (done (transcript1, vpor, 0#u32))
               else
                 let i7 ←
                   round * v5_relation_stress.V5_RELATION_STRESS_OOD_SAMPLES
@@ -348,24 +423,22 @@ def v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body
                             aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31
                             val5 val4
                         if b2
-                        then ok (done (transcript3, round, 0#u32))
-                        else
-                          let sample1 ← sample + 1#usize
-                          ok (cont (transcript3, sample1))
+                        then ok (done (transcript3, vpor, 0#u32))
+                        else ok (cont (iter1, transcript3))
                       | core.ops.control_flow.ControlFlow.Break residual =>
                         let _ ←
                           core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
                             aspis_core.transcript.Transcript
                             (core.convert.FromSame
                             solana_program_error.ProgramError) residual
-                        ok (done (transcript3, round, 0#u32))
+                        ok (done (transcript3, vpor, 0#u32))
                     | core.ops.control_flow.ControlFlow.Break residual =>
                       let _ ←
                         core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
                           aspis_core.transcript.Transcript
                           (core.convert.FromSame
                           solana_program_error.ProgramError) residual
-                      ok (done (transcript3, round, 0#u32))
+                      ok (done (transcript3, vpor, 0#u32))
                   else
                     let i11 ← aspis_core.transcript.label.M31_LINE_OOD_VALUE
                     let transcript2 ←
@@ -405,48 +478,46 @@ def v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body
                             aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31
                             val5 val4
                         if b2
-                        then ok (done (transcript3, round, 0#u32))
-                        else
-                          let sample1 ← sample + 1#usize
-                          ok (cont (transcript3, sample1))
+                        then ok (done (transcript3, vpor, 0#u32))
+                        else ok (cont (iter1, transcript3))
                       | core.ops.control_flow.ControlFlow.Break residual =>
                         let _ ←
                           core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
                             aspis_core.transcript.Transcript
                             (core.convert.FromSame
                             solana_program_error.ProgramError) residual
-                        ok (done (transcript3, round, 0#u32))
+                        ok (done (transcript3, vpor, 0#u32))
                     | core.ops.control_flow.ControlFlow.Break residual =>
                       let _ ←
                         core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
                           aspis_core.transcript.Transcript
                           (core.convert.FromSame
                           solana_program_error.ProgramError) residual
-                      ok (done (transcript3, round, 0#u32))
+                      ok (done (transcript3, vpor, 0#u32))
                 | core.ops.control_flow.ControlFlow.Break residual =>
                   let _ ←
                     core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
                       aspis_core.transcript.Transcript (core.convert.FromSame
                       solana_program_error.ProgramError) residual
-                  ok (done (transcript1, round, 0#u32))
+                  ok (done (transcript1, vpor, 0#u32))
             | core.ops.control_flow.ControlFlow.Break residual =>
               let _ ←
                 core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
                   aspis_core.transcript.Transcript (core.convert.FromSame
                   solana_program_error.ProgramError) residual
-              ok (done (transcript1, round, 0#u32))
+              ok (done (transcript1, vpor, 0#u32))
         | core.ops.control_flow.ControlFlow.Break residual =>
           let _ ←
             core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
               aspis_core.transcript.Transcript (core.convert.FromSame
               solana_program_error.ProgramError) residual
-          ok (done (transcript1, round, 0#u32))
+          ok (done (transcript1, vpor, 0#u32))
       | core.ops.control_flow.ControlFlow.Break residual =>
         let _ ←
           core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
             aspis_core.transcript.Transcript (core.convert.FromSame
             solana_program_error.ProgramError) residual
-        ok (done (transcript1, round, 0#u32))
+        ok (done (transcript1, vpor, 0#u32))
     else
       let (r, transcript1) ←
         aspis_core.transcript.Transcript.challenge_ood_qm31 transcript
@@ -483,7 +554,7 @@ def v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body
             core.cmp.PartialEq.ne.trait_default
               aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31 val1 val
           if b
-          then ok (done (transcript1, round, 0#u32))
+          then ok (done (transcript1, vpor, 0#u32))
           else
             let i9 ←
               round * v5_relation_stress.V5_RELATION_STRESS_OOD_SAMPLES
@@ -544,22 +615,20 @@ def v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body
                         aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31 val4
                         val3
                     if b1
-                    then ok (done (transcript3, round, 0#u32))
-                    else
-                      let sample1 ← sample + 1#usize
-                      ok (cont (transcript3, sample1))
+                    then ok (done (transcript3, vpor, 0#u32))
+                    else ok (cont (iter1, transcript3))
                   | core.ops.control_flow.ControlFlow.Break residual =>
                     let _ ←
                       core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
                         aspis_core.transcript.Transcript (core.convert.FromSame
                         solana_program_error.ProgramError) residual
-                    ok (done (transcript3, round, 0#u32))
+                    ok (done (transcript3, vpor, 0#u32))
                 | core.ops.control_flow.ControlFlow.Break residual =>
                   let _ ←
                     core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
                       aspis_core.transcript.Transcript (core.convert.FromSame
                       solana_program_error.ProgramError) residual
-                  ok (done (transcript3, round, 0#u32))
+                  ok (done (transcript3, vpor, 0#u32))
               else
                 let i13 ← aspis_core.transcript.label.M31_LINE_OOD_VALUE
                 let transcript2 ←
@@ -597,174 +666,109 @@ def v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body
                         aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31 val4
                         val3
                     if b1
-                    then ok (done (transcript3, round, 0#u32))
-                    else
-                      let sample1 ← sample + 1#usize
-                      ok (cont (transcript3, sample1))
+                    then ok (done (transcript3, vpor, 0#u32))
+                    else ok (cont (iter1, transcript3))
                   | core.ops.control_flow.ControlFlow.Break residual =>
                     let _ ←
                       core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
                         aspis_core.transcript.Transcript (core.convert.FromSame
                         solana_program_error.ProgramError) residual
-                    ok (done (transcript3, round, 0#u32))
+                    ok (done (transcript3, vpor, 0#u32))
                 | core.ops.control_flow.ControlFlow.Break residual =>
                   let _ ←
                     core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
                       aspis_core.transcript.Transcript (core.convert.FromSame
                       solana_program_error.ProgramError) residual
-                  ok (done (transcript3, round, 0#u32))
+                  ok (done (transcript3, vpor, 0#u32))
             | core.ops.control_flow.ControlFlow.Break residual =>
               let _ ←
                 core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
                   aspis_core.transcript.Transcript (core.convert.FromSame
                   solana_program_error.ProgramError) residual
-              ok (done (transcript1, round, 0#u32))
+              ok (done (transcript1, vpor, 0#u32))
         | core.ops.control_flow.ControlFlow.Break residual =>
           let _ ←
             core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
               aspis_core.transcript.Transcript (core.convert.FromSame
               solana_program_error.ProgramError) residual
-          ok (done (transcript1, round, 0#u32))
+          ok (done (transcript1, vpor, 0#u32))
       | core.ops.control_flow.ControlFlow.Break residual =>
         let _ ←
           core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
             aspis_core.transcript.Transcript (core.convert.FromSame
             solana_program_error.ProgramError) residual
-        ok (done (transcript1, round, 0#u32))
-  else
-    let i3 ← aspis_core.sumcheck.SUMCHECK_COEFFICIENTS
-    let i4 ← round * i3
-    let i5 ← v5_cu_probe.QM31_BYTES
-    let i6 ← i4 * i5
-    let i7 ← v5_relation_stress.V5_RELATION_STRESS_SUMCHECK_OFFSET
-    let sumcheck_start ← i7 + i6
-    let i8 ← i3 * i5
-    let sumcheck_end ← sumcheck_start + i8
-    let s ←
-      core.array.Array.index (core.ops.index.IndexSlice
-        (core.slice.index.SliceIndexRangeUsizeSlice Std.U8))
-        parsed.v5_relation_stress
-        { start := sumcheck_start, «end» := sumcheck_end }
-    let transcript1 ←
-      v5_cu_probe.absorb_real_v5_relation_sumcheck transcript round s
-    let nonce ← Array.index_usize a round
-    let (r, transcript2) ←
-      v5_cu_probe.check_and_absorb_real_v5_fold_nonce transcript1 round nonce
-    let cf ← core.result.Result.Insts.CoreOpsTry.branch r
-    match cf with
-    | core.ops.control_flow.ControlFlow.Continue _ =>
-      let (r1, transcript3) ←
-        aspis_core.transcript.Transcript.challenge_qm31 transcript2
-      let r2 ←
-        core.result.Result.map_err
-          v5_cu_probe.replay_real_v5_relation_rounds.closure_3.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError
-          r1 ()
-      let cf1 ← core.result.Result.Insts.CoreOpsTry.branch r2
-      match cf1 with
-      | core.ops.control_flow.ControlFlow.Continue val =>
-        let r3 ← v5_cu_probe.decode_qm31 parsed.relation_alphas round
-        let cf2 ← core.result.Result.Insts.CoreOpsTry.branch r3
-        match cf2 with
-        | core.ops.control_flow.ControlFlow.Continue val1 =>
-          let b ←
-            core.cmp.PartialEq.ne.trait_default
-              aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31 val1 val
-          if b
-          then ok (done (transcript3, round, 0#u32))
-          else
-            let transcript4 ←
-              v5_cu_probe.absorb_real_v5_later_root_for_round transcript3
-                {
-                  parsed
-                    with
-                    gamma := q,
-                    v5_fold_nonces := a,
-                    v5_batch_nonce := i,
-                    v5_private_roots := vpor,
-                    v5_final_nonce := i1,
-                    v5_query_selector := i2
-                } round
-            let round1 ← round + 1#usize
-            ok (done (transcript4, round1, 1#u32))
-        | core.ops.control_flow.ControlFlow.Break residual =>
-          let _ ←
-            core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-              aspis_core.transcript.Transcript (core.convert.FromSame
-              solana_program_error.ProgramError) residual
-          ok (done (transcript3, round, 0#u32))
-      | core.ops.control_flow.ControlFlow.Break residual =>
-        let _ ←
-          core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-            aspis_core.transcript.Transcript (core.convert.FromSame
-            solana_program_error.ProgramError) residual
-        ok (done (transcript3, round, 0#u32))
-    | core.ops.control_flow.ControlFlow.Break residual =>
-      let _ ←
-        core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-          aspis_core.transcript.Transcript (core.convert.FromSame
-          solana_program_error.ProgramError) residual
-      ok (done (transcript2, round, 0#u32))
+        ok (done (transcript1, vpor, 0#u32))
 
 /-- [aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds]: loop 1:
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_cu_probe.rs', lines 803:4-876:5 -/
+    Source: 'programs/aspis-verifier/src/v5_cu_probe.rs', lines 787:4-864:5 -/
 @[rust_loop]
 def v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0
   (parsed : v5_cu_probe.ParsedProbeData)
-  (transcript : aspis_core.transcript.Transcript) (q : aspis_core.field.QM31)
-  (a : Array Std.U64 4#usize) (i : Std.U64)
-  (vpor : v5_cu_probe.private_openings.V5PrivateOpeningRoots) (i1 : Std.U64)
-  (i2 : Std.U8) (round : Std.Usize) (sample : Std.Usize) :
-  Result (aspis_core.transcript.Transcript × Std.Usize × Std.U32)
-  := do
-  loop
-    (fun (transcript1, sample1) =>
-      v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body parsed q a i
-      vpor i1 i2 round transcript1 sample1)
-    (transcript, sample)
-
-/-- [aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds]: loop body 0:
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_cu_probe.rs', lines 803:4-878:1 -/
-@[rust_loop_body]
-def v5_cu_probe.replay_real_v5_relation_rounds_loop0.body
-  (parsed : v5_cu_probe.ParsedProbeData) (q : aspis_core.field.QM31)
-  (a : Array Std.U64 4#usize) (i : Std.U64)
-  (vpor : v5_cu_probe.private_openings.V5PrivateOpeningRoots) (i1 : Std.U64)
-  (i2 : Std.U8) (transcript : aspis_core.transcript.Transcript)
-  (round : Std.Usize) :
-  Result (ControlFlow (aspis_core.transcript.Transcript × Std.Usize) (Option
-    (core.result.Result aspis_core.transcript.Transcript
-    solana_program_error.ProgramError)))
-  := do
-  if round < v5_relation_stress.V5_RELATION_STRESS_ROUNDS
-  then
-    let (transcript1, round1, i3) ←
-      v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0 parsed transcript
-        q a i vpor i1 i2 round 0#usize
-    match i3 with
-    | 1#uscalar => ok (cont (transcript1, round1))
-    | _ => ok (done none)
-  else ok (done (some (core.result.Result.Ok transcript)))
-
-/-- [aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds]: loop 0:
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_cu_probe.rs', lines 803:4-878:1 -/
-@[rust_loop]
-def v5_cu_probe.replay_real_v5_relation_rounds_loop0
-  (parsed : v5_cu_probe.ParsedProbeData)
+  (iter : core.ops.range.Range Std.Usize)
   (transcript : aspis_core.transcript.Transcript) (q : aspis_core.field.QM31)
   (a : Array Std.U64 4#usize) (i : Std.U64)
   (vpor : v5_cu_probe.private_openings.V5PrivateOpeningRoots) (i1 : Std.U64)
   (i2 : Std.U8) (round : Std.Usize) :
+  Result (aspis_core.transcript.Transcript ×
+    v5_cu_probe.private_openings.V5PrivateOpeningRoots × Std.U32)
+  := do
+  loop
+    (fun (iter1, transcript1) =>
+      v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body parsed q a i
+      vpor i1 i2 round iter1 transcript1)
+    (iter, transcript)
+
+/-- [aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds]: loop body 0:
+    Source: 'programs/aspis-verifier/src/v5_cu_probe.rs', lines 787:4-866:1 -/
+@[rust_loop_body]
+def v5_cu_probe.replay_real_v5_relation_rounds_loop0.body
+  (parsed : v5_cu_probe.ParsedProbeData) (q : aspis_core.field.QM31)
+  (a : Array Std.U64 4#usize) (i : Std.U64) (i1 : Std.U64) (i2 : Std.U8)
+  (iter : core.ops.range.Range Std.Usize)
+  (transcript : aspis_core.transcript.Transcript)
+  (vpor : v5_cu_probe.private_openings.V5PrivateOpeningRoots) :
+  Result (ControlFlow ((core.ops.range.Range Std.Usize) ×
+    aspis_core.transcript.Transcript ×
+    v5_cu_probe.private_openings.V5PrivateOpeningRoots) (Option
+    (core.result.Result aspis_core.transcript.Transcript
+    solana_program_error.ProgramError)))
+  := do
+  let (o, iter1) ←
+    core.iter.range.IteratorRange.next core.iter.range.StepUsize iter
+  match o with
+  | none => ok (done (some (core.result.Result.Ok transcript)))
+  | some round =>
+    let (transcript1, vpor1, i3) ←
+      v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0 parsed
+        {
+          start := 0#usize,
+          «end» := v5_relation_stress.V5_RELATION_STRESS_OOD_SAMPLES
+        } transcript q a i vpor i1 i2 round
+    match i3 with
+    | 1#uscalar => ok (cont (iter1, transcript1, vpor1))
+    | _ => ok (done none)
+
+/-- [aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds]: loop 0:
+    Source: 'programs/aspis-verifier/src/v5_cu_probe.rs', lines 787:4-866:1 -/
+@[rust_loop]
+def v5_cu_probe.replay_real_v5_relation_rounds_loop0
+  (parsed : v5_cu_probe.ParsedProbeData)
+  (iter : core.ops.range.Range Std.Usize)
+  (transcript : aspis_core.transcript.Transcript) (q : aspis_core.field.QM31)
+  (a : Array Std.U64 4#usize) (i : Std.U64)
+  (vpor : v5_cu_probe.private_openings.V5PrivateOpeningRoots) (i1 : Std.U64)
+  (i2 : Std.U8) :
   Result (Option (core.result.Result aspis_core.transcript.Transcript
     solana_program_error.ProgramError))
   := do
   loop
-    (fun (transcript1, round1) =>
-      v5_cu_probe.replay_real_v5_relation_rounds_loop0.body parsed q a i vpor
-      i1 i2 transcript1 round1)
-    (transcript, round)
+    (fun (iter1, transcript1, vpor1) =>
+      v5_cu_probe.replay_real_v5_relation_rounds_loop0.body parsed q a i i1 i2
+      iter1 transcript1 vpor1)
+    (iter, transcript, vpor)
 
 /-- [aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds]:
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_cu_probe.rs', lines 797:0-878:1 -/
+    Source: 'programs/aspis-verifier/src/v5_cu_probe.rs', lines 782:0-866:1 -/
 def v5_cu_probe.replay_real_v5_relation_rounds
   (transcript : aspis_core.transcript.Transcript)
   (parsed : v5_cu_probe.ParsedProbeData) :
@@ -777,10 +781,12 @@ def v5_cu_probe.replay_real_v5_relation_rounds
   match cf with
   | core.ops.control_flow.ControlFlow.Continue _ =>
     let pending_return ←
-      v5_cu_probe.replay_real_v5_relation_rounds_loop0 parsed transcript
-        parsed.gamma parsed.v5_fold_nonces parsed.v5_batch_nonce
+      v5_cu_probe.replay_real_v5_relation_rounds_loop0 parsed
+        {
+          start := 0#usize,
+          «end» := v5_relation_stress.V5_RELATION_STRESS_ROUNDS
+        } transcript parsed.gamma parsed.v5_fold_nonces parsed.v5_batch_nonce
         parsed.v5_private_roots parsed.v5_final_nonce parsed.v5_query_selector
-        0#usize
     match pending_return with
     | none => fail panic
     | some r1 => ok r1

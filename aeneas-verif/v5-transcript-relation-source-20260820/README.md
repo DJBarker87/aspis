@@ -3,23 +3,16 @@
 This bundle checks the four-round transcript helper
 `replay_real_v5_relation_rounds` from the production V5 verifier.
 
-Charon extracts the production function and Aeneas translates it to Lean.
-The pinned translator does not accept the original Rust `for` loops or the
-dynamic borrow in the later-root branch.  The extraction-only patch makes two
-mechanical changes:
-
-- the fixed `0..4` and `0..2` loops become `while` loops with the same bounds
-  and increments; and
-- the unchanged later-root branch is moved into a helper called from the same
-  position.
-
-The repository's production Rust is not changed.
+Charon extracts the unchanged production function and the patched Aeneas
+translator translates it to Lean.  The generated definition contains the
+original Rust range loops and the original later-root branch.  There is no
+source rewrite between the checked-in verifier and this extraction.
 
 Pinned identities for this snapshot:
 
 - `v5_cu_probe.rs` Git blob: `ca28d560e44e5e82e689321f32289831c889a0bd`;
 - Charon commit: `cb50ff16b9f1066b8a97dc06da704de2da2fa41c`;
-- Aeneas commit: `9a30bf93807d8043a1a968b6456eb78747c81cb4`;
+- Aeneas commit: `000c7b6a4ab001ddceb16a82dd7fd37c3abfe24d`;
 - Lean: `v4.32.0`.
 
 ## Proved result
@@ -57,19 +50,18 @@ This joined theorem is not the missing arithmetic proof.  The nested
 snapshot, so proving that every successful nested execution agrees with the
 maintained relation model remains a separate obligation.
 
-## Remaining source boundary
+## Remaining boundary
 
-The `for`-to-`while` conversion and helper extraction are visible in
-`extraction/v5-relation-replay-while.patch`.  Their equivalence is not a Lean
-theorem about Rust compiler semantics.  The generated theorem applies to the
-patched extraction tree.  A complete production claim must retain that small
-source-transformation boundary unless Charon/Aeneas gains support for the
-unchanged spelling.
+The transcript helpers are deliberately represented by an observation model
+that records their order, indices, and nonces while erasing field values and
+hash state.  The proof therefore establishes exact source control flow on that
+surface.  Concrete field arithmetic and hash behavior are proved or assumed in
+their separate repository layers; this file does not silently fold them into
+the source theorem.
 
 ## Files
 
 - `relation-harness/`: package manifest pointing at the production verifier.
-- `extraction/`: exact extraction-only source patch.
 - `generated/`: Aeneas output plus explicit observation definitions.
 - `proof/V5TranscriptRelationSourceProof.lean`: exact body, inner-loop,
   outer-loop, and complete-helper proofs.
@@ -78,7 +70,7 @@ unchanged spelling.
 - `import-normalization/`: a one-line patch applied only to a temporary replay
   copy so two independent generated modules can coexist without changing the
   checked-in Aeneas snapshots.
-- `replay-lean432.sh`: checks the source, patch, tool commits, and binary
+- `replay-lean432.sh`: checks the source, tool commits, and binary
   hashes; regenerates the Lean; compares it with the reviewed snapshot; and
   recompiles the proof with Lean 4.32.
 - `replay-final-join-lean432.sh`: recompiles both generated snapshots, the two
@@ -93,7 +85,7 @@ Lean search path printed by `lake env printenv LEAN_PATH`, including mathlib.
 
 ```bash
 ASPIS_CHARON_REPO=/path/to/charon-cb50ff16 \
-ASPIS_AENEAS_REPO=/path/to/aeneas-9a30bf93 \
+ASPIS_AENEAS_REPO=/path/to/aeneas-000c7b6a \
 AENEAS_LEAN_LIB=/path/to/aeneas-lean432/.lake/build/lib/lean \
 AENEAS_LEAN_PATH="$(cd /path/to/aeneas-lean432 && lake env printenv LEAN_PATH)" \
 ./aeneas-verif/v5-transcript-relation-source-20260820/replay-lean432.sh

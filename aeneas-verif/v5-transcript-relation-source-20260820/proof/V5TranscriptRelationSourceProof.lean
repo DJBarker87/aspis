@@ -115,8 +115,11 @@ usize_sub_fact sub_3_1, 3#usize, 1#usize, 2#usize
 usize_sub_fact sub_4_1_global, 4#usize, 1#usize, 3#usize
 
 usize_add_fact add_0_1_global, 0#usize, 1#usize, 1#usize
+usize_add_fact add_0_2_global, 0#usize, 2#usize, 2#usize
 usize_add_fact add_1_1, 1#usize, 1#usize, 2#usize
+usize_add_fact add_1_2, 1#usize, 2#usize, 3#usize
 usize_add_fact add_2_1, 2#usize, 1#usize, 3#usize
+usize_add_fact add_2_2_global, 2#usize, 2#usize, 4#usize
 usize_add_fact add_3_1, 3#usize, 1#usize, 4#usize
 usize_add_fact add_2_0, 2#usize, 0#usize, 2#usize
 usize_add_fact add_4_0, 4#usize, 0#usize, 4#usize
@@ -161,85 +164,6 @@ usize_add_fact add_640_112, 640#usize, 112#usize, 752#usize
 usize_add_fact add_752_112, 752#usize, 112#usize, 864#usize
 usize_add_fact add_416_448, 416#usize, 448#usize, 864#usize
 
-private theorem inner_body_round0_sample0
-    (parsed : v5_cu_probe.ParsedProbeData)
-    (nonces : Array Std.U64 4#usize)
-    (batch final : Std.U64)
-    (roots : v5_cu_probe.private_openings.V5PrivateOpeningRoots)
-    (selector : Std.U8)
-    (transcript : aspis_core.transcript.Transcript) :
-    v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body
-        parsed () nonces batch roots final selector 0#usize transcript 0#usize =
-      .ok (.cont
-        ({ events := transcript.events ++ sampleEvents 0 0 }, 1#usize)) := by
-  have mul2_0 : 2#usize * 0#usize = ok 0#usize := by
-    apply usizeMulExact <;> scalar_tac
-  have mul0_16 : 0#usize * 16#usize = ok 0#usize := by
-    apply usizeMulExact <;> scalar_tac
-  have add0_0 : 0#usize + 0#usize = ok 0#usize := by
-    apply usizeAddExact <;> scalar_tac
-  have add0_16 : 0#usize + 16#usize = ok 16#usize := by
-    apply usizeAddExact <;> scalar_tac
-  have mul0_2 : 0#usize * 2#usize = ok 0#usize := by
-    apply usizeMulExact <;> scalar_tac
-  have sub4_1 : 4#usize - 1#usize = ok 3#usize := by
-    apply usizeSubExact <;> scalar_tac
-  have mul3_2 : 3#usize * 2#usize = ok 6#usize := by
-    apply usizeMulExact <;> scalar_tac
-  have mul6_16 : 6#usize * 16#usize = ok 96#usize := by
-    apply usizeMulExact <;> scalar_tac
-  have mul2_2 : 2#usize * 2#usize = ok 4#usize := by
-    apply usizeMulExact <;> scalar_tac
-  have mul4_16 : 4#usize * 16#usize = ok 64#usize := by
-    apply usizeMulExact <;> scalar_tac
-  have add0_64 : 0#usize + 64#usize = ok 64#usize := by
-    apply usizeAddExact <;> scalar_tac
-  have add64_96 : 64#usize + 96#usize = ok 160#usize := by
-    apply usizeAddExact <;> scalar_tac
-  have mul4_2 : 4#usize * 2#usize = ok 8#usize := by
-    apply usizeMulExact <;> scalar_tac
-  have mul8_16 : 8#usize * 16#usize = ok 128#usize := by
-    apply usizeMulExact <;> scalar_tac
-  have add160_128 : 160#usize + 128#usize = ok 288#usize := by
-    apply usizeAddExact <;> scalar_tac
-  have add160_0 : 160#usize + 0#usize = ok 160#usize := by
-    apply usizeAddExact <;> scalar_tac
-  have add288_0 : 288#usize + 0#usize = ok 288#usize := by
-    apply usizeAddExact <;> scalar_tac
-  have add0_1 : 0#usize + 1#usize = ok 1#usize := by
-    apply usizeAddExact <;> scalar_tac
-  simp [v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body,
-    sampleEvents, v5_relation_stress.V5_RELATION_STRESS_OOD_SAMPLES,
-    v5_relation_stress.V5_RELATION_STRESS_CIRCLE_OFFSET,
-    v5_relation_stress.V5_RELATION_STRESS_OOD_OFFSET,
-    v5_relation_stress.V5_RELATION_STRESS_MIX_OFFSET,
-    v5_relation_stress.V5_RELATION_STRESS_LINE_OFFSET,
-    v5_relation_stress.CIRCLE_COORDINATES,
-    v5_relation_stress.LINE_POINTS,
-    v5_relation_stress.OOD_VALUES,
-    v5_relation_stress.V5_RELATION_STRESS_ROUNDS,
-    v5_relation_stress.QM31_BYTES,
-    v5_cu_probe.QM31_BYTES,
-    aspis_core.transcript.label.M31_CIRCLE_OOD_VALUE,
-    aspis_core.transcript.Transcript.challenge_secure_circle_point,
-    aspis_core.transcript.Transcript.challenge_qm31,
-    v5_cu_probe.stress_qm31,
-    v5_cu_probe.absorb_real_v5_ood,
-    aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31.eq,
-    core.cmp.PartialEq.ne.trait_default,
-    core.cmp.PartialEq.ne.default,
-    core.result.Result.map_err, mul2_0, mul0_16, add0_0, add0_16,
-    mul0_2, sub4_1, mul3_2, mul6_16, mul2_2, mul4_16, add0_64,
-    add64_96, mul4_2, mul8_16, add160_128, add160_0, add288_0,
-    add0_1]
-  change
-    ({ events := ((transcript.events ++ [.secureCirclePoint]) ++
-      [.absorbOod 16 0 0]) ++ [.squeezeQm31] } :
-      aspis_core.transcript.Transcript) = _
-  simp [List.append_assoc]
-
-#print axioms inner_body_round0_sample0
-
 private theorem active_body_exact
     (parsed : v5_cu_probe.ParsedProbeData)
     (nonces : Array Std.U64 4#usize)
@@ -253,17 +177,17 @@ private theorem active_body_exact
     ∃ next : Std.Usize,
       next.val = sample.val + 1 ∧
       v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body
-          parsed () nonces batch roots final selector round transcript sample =
+          parsed () nonces batch roots final selector round
+          { start := sample, «end» := 2#usize } transcript =
         .ok (.cont
-          ({ events := transcript.events ++
-              sampleEvents round.val sample.val }, next)) := by
+          ({ start := next, «end» := 2#usize },
+            { events := transcript.events ++
+                sampleEvents round.val sample.val })) := by
   let next : Std.Usize :=
     Std.Usize.ofNatCore (sample.val + 1) (by scalar_tac)
   have hnextVal : next.val = sample.val + 1 := by simp [next]
-  have hnext : sample + 1#usize = ok next := by
-    apply usizeAddExact
-    · scalar_tac
-    · simpa [next]
+  have hmax0 : 0 < UScalar.max UScalarTy.Usize := by scalar_tac
+  have hmax1 : 1 < UScalar.max UScalarTy.Usize := by scalar_tac
   refine ⟨next, hnextVal, ?_⟩
   have hrange : round.val = 0 ∨ round.val = 1 ∨
       round.val = 2 ∨ round.val = 3 := by omega
@@ -286,6 +210,10 @@ private theorem active_body_exact
     | have sampleEq : sample = 1#usize := UScalar.eq_of_val_eq hs
       subst sample
     simp [v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body,
+      core.iter.range.IteratorRange.next, core.iter.range.StepUsize,
+      core.iter.range.UScalarStep,
+      core.iter.range.UScalarStep.forward_checked,
+      core.cmp.PartialOrdUsize, core.cmp.impls.PartialOrdUsize.lt,
       sampleEvents, v5_relation_stress.V5_RELATION_STRESS_OOD_SAMPLES,
       v5_relation_stress.V5_RELATION_STRESS_CIRCLE_OFFSET,
       v5_relation_stress.V5_RELATION_STRESS_OOD_OFFSET,
@@ -305,56 +233,17 @@ private theorem active_body_exact
       aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31.eq,
       core.cmp.PartialEq.ne.trait_default,
       core.cmp.PartialEq.ne.default,
-      core.result.Result.map_err, hnext]
+      core.result.Result.map_err, next, hmax0, hmax1]
   all_goals
-    change
-      ({ events := ((transcript.events ++ [_]) ++ [_]) ++ [_] } :
-        aspis_core.transcript.Transcript) = _
-    simp [List.append_assoc, sampleEvents]
+    constructor
+    · apply UScalar.eq_of_val_eq
+      simp
+    · change
+        ({ events := ((transcript.events ++ [_]) ++ [_]) ++ [_] } :
+          aspis_core.transcript.Transcript) = _
+      simp [List.append_assoc, sampleEvents]
 
 #print axioms active_body_exact
-
-private theorem tail_body_round0
-    (parsed : v5_cu_probe.ParsedProbeData)
-    (nonces : Array Std.U64 4#usize)
-    (batch final : Std.U64)
-    (roots : v5_cu_probe.private_openings.V5PrivateOpeningRoots)
-    (selector : Std.U8)
-    (transcript : aspis_core.transcript.Transcript) :
-    v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body
-        parsed () nonces batch roots final selector 0#usize transcript 2#usize =
-      .ok (.done
-        ({ events := transcript.events ++ roundTailEvents 0
-            (nonces.val[0]!.val) }, 1#usize, 1#u32)) := by
-  simp [v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body,
-    roundTailEvents, v5_relation_stress.V5_RELATION_STRESS_OOD_SAMPLES,
-    v5_relation_stress.V5_RELATION_STRESS_ROUNDS,
-    v5_relation_stress.V5_RELATION_STRESS_SUMCHECK_OFFSET,
-    v5_relation_stress.V5_RELATION_STRESS_MIX_OFFSET,
-    v5_relation_stress.V5_RELATION_STRESS_OOD_OFFSET,
-    v5_relation_stress.V5_RELATION_STRESS_LINE_OFFSET,
-    v5_relation_stress.V5_RELATION_STRESS_CIRCLE_OFFSET,
-    v5_relation_stress.OOD_MIXES, v5_relation_stress.OOD_VALUES,
-    v5_relation_stress.LINE_POINTS, v5_relation_stress.CIRCLE_COORDINATES,
-    v5_relation_stress.QM31_BYTES, aspis_core.sumcheck.SUMCHECK_COEFFICIENTS,
-    v5_cu_probe.QM31_BYTES,
-    v5_cu_probe.absorb_real_v5_relation_sumcheck,
-    v5_cu_probe.check_and_absorb_real_v5_fold_nonce,
-    aspis_core.transcript.Transcript.challenge_qm31,
-    v5_cu_probe.decode_qm31,
-    v5_cu_probe.absorb_real_v5_later_root_for_round,
-    aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31.eq,
-    core.cmp.PartialEq.ne.trait_default,
-    core.cmp.PartialEq.ne.default,
-    core.result.Result.map_err,
-    core.slice.index.SliceIndexRangeUsizeSlice.index,
-    Array.to_slice, Array.index_usize, Array.getElem?_Usize_eq]
-  change
-    ({ events := (((transcript.events ++ [_]) ++ [_]) ++ [_]) ++ [_] } :
-      aspis_core.transcript.Transcript) = _
-  simp [List.append_assoc, roundTailEvents]
-
-#print axioms tail_body_round0
 
 private theorem tail_body_exact
     (parsed : v5_cu_probe.ParsedProbeData)
@@ -365,21 +254,12 @@ private theorem tail_body_exact
     (transcript : aspis_core.transcript.Transcript)
     (round : Std.Usize)
     (hround : round.val < 4) :
-    ∃ next : Std.Usize,
-      next.val = round.val + 1 ∧
-      v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body
-          parsed () nonces batch roots final selector round transcript 2#usize =
-        .ok (.done
-          ({ events := transcript.events ++ roundTailEvents round.val
-              (nonces.val[round.val]!.val) }, next, 1#u32)) := by
-  let next : Std.Usize :=
-    Std.Usize.ofNatCore (round.val + 1) (by scalar_tac)
-  have hnextVal : next.val = round.val + 1 := by simp [next]
-  have hnext : round + 1#usize = ok next := by
-    apply usizeAddExact
-    · scalar_tac
-    · simpa [next]
-  refine ⟨next, hnextVal, ?_⟩
+    v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body
+        parsed () nonces batch roots final selector round
+        { start := 2#usize, «end» := 2#usize } transcript =
+      .ok (.done
+        ({ events := transcript.events ++ roundTailEvents round.val
+            (nonces.val[round.val]!.val) }, roots, 1#u32)) := by
   have hrange : round.val = 0 ∨ round.val = 1 ∨
       round.val = 2 ∨ round.val = 3 := by omega
   rcases hrange with hr | hr | hr | hr
@@ -394,6 +274,9 @@ private theorem tail_body_exact
     | have roundEq : round = 3#usize := UScalar.eq_of_val_eq hr
       subst round
     simp [v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body,
+      core.iter.range.IteratorRange.next, core.iter.range.StepUsize,
+      core.iter.range.UScalarStep,
+      core.cmp.PartialOrdUsize, core.cmp.impls.PartialOrdUsize.lt,
       roundTailEvents, v5_relation_stress.V5_RELATION_STRESS_OOD_SAMPLES,
       v5_relation_stress.V5_RELATION_STRESS_ROUNDS,
       v5_relation_stress.V5_RELATION_STRESS_SUMCHECK_OFFSET,
@@ -409,12 +292,14 @@ private theorem tail_body_exact
       v5_cu_probe.check_and_absorb_real_v5_fold_nonce,
       aspis_core.transcript.Transcript.challenge_qm31,
       v5_cu_probe.decode_qm31,
-      v5_cu_probe.absorb_real_v5_later_root_for_round,
+      v5_cu_probe.absorb_real_v5_round_root,
+      v5_cu_probe.v5_public_fs_salt,
+      lift, Array.length_to_slice, Slice.length,
       aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31.eq,
       core.cmp.PartialEq.ne.trait_default,
       core.cmp.PartialEq.ne.default, core.result.Result.map_err,
       core.slice.index.SliceIndexRangeUsizeSlice.index,
-      Array.to_slice, Array.index_usize, Array.getElem?_Usize_eq, hnext]
+      Array.to_slice, Array.index_usize, Array.getElem?_Usize_eq]
   all_goals
     first
     | change
@@ -437,13 +322,12 @@ theorem generated_inner_round_exact
     (transcript : aspis_core.transcript.Transcript)
     (round : Std.Usize)
     (hround : round.val < 4) :
-    ∃ next : Std.Usize,
-      next.val = round.val + 1 ∧
-      v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0
-          parsed transcript () nonces batch roots final selector round 0#usize =
-        .ok
-          ({ events := transcript.events ++ roundEvents round.val
-              (nonces.val[round.val]!.val) }, next, 1#u32) := by
+    v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0
+        parsed { start := 0#usize, «end» := 2#usize } transcript () nonces
+        batch roots final selector round =
+      .ok
+        ({ events := transcript.events ++ roundEvents round.val
+            (nonces.val[round.val]!.val) }, roots, 1#u32) := by
   obtain ⟨sample1, hsample1Val, hsample1⟩ :=
     active_body_exact parsed nonces batch final roots selector transcript
       round 0#usize hround (by simp)
@@ -454,8 +338,10 @@ theorem generated_inner_round_exact
     { events := transcript.events ++ sampleEvents round.val 0 }
   have hsample1' :
       v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body
-          parsed () nonces batch roots final selector round transcript 0#usize =
-        .ok (.cont (transcript1, 1#usize)) := by
+          parsed () nonces batch roots final selector round
+          { start := 0#usize, «end» := 2#usize } transcript =
+        .ok (.cont
+          ({ start := 1#usize, «end» := 2#usize }, transcript1)) := by
     simpa [transcript1] using hsample1
   obtain ⟨sample2, hsample2Val, hsample2⟩ :=
     active_body_exact parsed nonces batch final roots selector transcript1
@@ -467,13 +353,13 @@ theorem generated_inner_round_exact
     { events := transcript1.events ++ sampleEvents round.val 1 }
   have hsample2' :
       v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body
-          parsed () nonces batch roots final selector round transcript1 1#usize =
-        .ok (.cont (transcript2, 2#usize)) := by
+          parsed () nonces batch roots final selector round
+          { start := 1#usize, «end» := 2#usize } transcript1 =
+        .ok (.cont
+          ({ start := 2#usize, «end» := 2#usize }, transcript2)) := by
     simpa [transcript2] using hsample2
-  obtain ⟨next, hnextVal, htail⟩ :=
-    tail_body_exact parsed nonces batch final roots selector transcript2
-      round hround
-  refine ⟨next, hnextVal, ?_⟩
+  have htail := tail_body_exact parsed nonces batch final roots selector
+    transcript2 round hround
   unfold v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0
   rw [loop.eq_def]
   simp only
@@ -503,17 +389,27 @@ theorem generated_outer_body_active_exact
     ∃ next : Std.Usize,
       next.val = round.val + 1 ∧
       v5_cu_probe.replay_real_v5_relation_rounds_loop0.body
-          parsed () nonces batch roots final selector transcript round =
+          parsed () nonces batch final selector
+          { start := round, «end» := 4#usize } transcript roots =
         .ok (.cont
-          ({ events := transcript.events ++ roundEvents round.val
-              (nonces.val[round.val]!.val) }, next)) := by
-  obtain ⟨next, hnextVal, hinner⟩ :=
-    generated_inner_round_exact parsed nonces batch final roots selector
-      transcript round hround
+          ({ start := next, «end» := 4#usize },
+            { events := transcript.events ++ roundEvents round.val
+                (nonces.val[round.val]!.val) }, roots)) := by
+  let next : Std.Usize :=
+    Std.Usize.ofNatCore (round.val + 1) (by scalar_tac)
+  have hnextVal : next.val = round.val + 1 := by simp [next]
+  have hmax : round.val < UScalar.max UScalarTy.Usize := by scalar_tac
+  have hinner := generated_inner_round_exact parsed nonces batch final roots
+    selector transcript round hround
   refine ⟨next, hnextVal, ?_⟩
-  have hactive : round < 4#usize := by scalar_tac
   simp [v5_cu_probe.replay_real_v5_relation_rounds_loop0.body,
-    v5_relation_stress.V5_RELATION_STRESS_ROUNDS, hactive, hinner]
+    core.iter.range.IteratorRange.next, core.iter.range.StepUsize,
+    core.iter.range.UScalarStep,
+    core.iter.range.UScalarStep.forward_checked,
+    core.cmp.PartialOrdUsize, core.cmp.impls.PartialOrdUsize.lt,
+    v5_relation_stress.V5_RELATION_STRESS_OOD_SAMPLES,
+    v5_relation_stress.V5_RELATION_STRESS_ROUNDS,
+    next, hmax, hround, hinner]
   rfl
 
 theorem generated_outer_body_done_exact
@@ -524,9 +420,13 @@ theorem generated_outer_body_done_exact
     (selector : Std.U8)
     (transcript : aspis_core.transcript.Transcript) :
     v5_cu_probe.replay_real_v5_relation_rounds_loop0.body
-        parsed () nonces batch roots final selector transcript 4#usize =
+        parsed () nonces batch final selector
+        { start := 4#usize, «end» := 4#usize } transcript roots =
       .ok (.done (some (.Ok transcript))) := by
   simp [v5_cu_probe.replay_real_v5_relation_rounds_loop0.body,
+    core.iter.range.IteratorRange.next, core.iter.range.StepUsize,
+    core.iter.range.UScalarStep,
+    core.cmp.PartialOrdUsize, core.cmp.impls.PartialOrdUsize.lt,
     v5_relation_stress.V5_RELATION_STRESS_ROUNDS]
 
 #print axioms generated_outer_body_active_exact
@@ -539,8 +439,9 @@ theorem generated_four_round_loop_exact
     (roots : v5_cu_probe.private_openings.V5PrivateOpeningRoots)
     (selector : Std.U8)
     (transcript : aspis_core.transcript.Transcript) :
-    v5_cu_probe.replay_real_v5_relation_rounds_loop0
-        parsed transcript () nonces batch roots final selector 0#usize =
+    v5_cu_probe.replay_real_v5_relation_rounds_loop0 parsed
+        { start := 0#usize, «end» := 4#usize } transcript () nonces batch
+        roots final selector =
       .ok (some (.Ok
         { events := transcript.events ++ fourRoundEvents
             (fun index => nonces.val[index.val]!.val) })) := by
@@ -556,8 +457,10 @@ theorem generated_four_round_loop_exact
     { events := transcript.events ++ roundEvents 0 (nonceAt 0) }
   have hround0' :
       v5_cu_probe.replay_real_v5_relation_rounds_loop0.body
-          parsed () nonces batch roots final selector transcript 0#usize =
-        .ok (.cont (transcript1, 1#usize)) := by
+          parsed () nonces batch final selector
+          { start := 0#usize, «end» := 4#usize } transcript roots =
+        .ok (.cont
+          ({ start := 1#usize, «end» := 4#usize }, transcript1, roots)) := by
     simpa [transcript1, nonceAt] using hround0
 
   obtain ⟨round2, hround2Val, hround1⟩ :=
@@ -570,8 +473,10 @@ theorem generated_four_round_loop_exact
     { events := transcript1.events ++ roundEvents 1 (nonceAt 1) }
   have hround1' :
       v5_cu_probe.replay_real_v5_relation_rounds_loop0.body
-          parsed () nonces batch roots final selector transcript1 1#usize =
-        .ok (.cont (transcript2, 2#usize)) := by
+          parsed () nonces batch final selector
+          { start := 1#usize, «end» := 4#usize } transcript1 roots =
+        .ok (.cont
+          ({ start := 2#usize, «end» := 4#usize }, transcript2, roots)) := by
     simpa [transcript2, nonceAt] using hround1
 
   obtain ⟨round3, hround3Val, hround2⟩ :=
@@ -584,8 +489,10 @@ theorem generated_four_round_loop_exact
     { events := transcript2.events ++ roundEvents 2 (nonceAt 2) }
   have hround2' :
       v5_cu_probe.replay_real_v5_relation_rounds_loop0.body
-          parsed () nonces batch roots final selector transcript2 2#usize =
-        .ok (.cont (transcript3, 3#usize)) := by
+          parsed () nonces batch final selector
+          { start := 2#usize, «end» := 4#usize } transcript2 roots =
+        .ok (.cont
+          ({ start := 3#usize, «end» := 4#usize }, transcript3, roots)) := by
     simpa [transcript3, nonceAt] using hround2
 
   obtain ⟨round4, hround4Val, hround3⟩ :=
@@ -598,8 +505,10 @@ theorem generated_four_round_loop_exact
     { events := transcript3.events ++ roundEvents 3 (nonceAt 3) }
   have hround3' :
       v5_cu_probe.replay_real_v5_relation_rounds_loop0.body
-          parsed () nonces batch roots final selector transcript3 3#usize =
-        .ok (.cont (transcript4, 4#usize)) := by
+          parsed () nonces batch final selector
+          { start := 3#usize, «end» := 4#usize } transcript3 roots =
+        .ok (.cont
+          ({ start := 4#usize, «end» := 4#usize }, transcript4, roots)) := by
     simpa [transcript4, nonceAt] using hround3
   have hdone := generated_outer_body_done_exact parsed nonces batch final roots
     selector transcript4
@@ -629,10 +538,10 @@ theorem generated_four_round_loop_exact
 
 #print axioms generated_four_round_loop_exact
 
-/-- Exact successful event trace of the Aeneas-translated production
-`replay_real_v5_relation_rounds` helper.  The field values are intentionally
-erased by the observation semantics; the theorem fixes every transcript call,
-round/sample index, and fold nonce consumed by the source helper. -/
+/-- Exact successful event trace of the Aeneas translation of the unchanged
+production `replay_real_v5_relation_rounds` helper.  The theorem fixes every
+transcript call, round/sample index, later-root position, and fold nonce used
+by the source helper. -/
 theorem generated_replay_relation_rounds_exact
     (transcript : aspis_core.transcript.Transcript)
     (parsed : v5_cu_probe.ParsedProbeData) :
@@ -644,7 +553,8 @@ theorem generated_replay_relation_rounds_exact
     parsed.v5_batch_nonce parsed.v5_final_nonce parsed.v5_private_roots
     parsed.v5_query_selector transcript
   simp [v5_cu_probe.replay_real_v5_relation_rounds,
-    v5_cu_probe.verify_v5_relation_final_zero_tail, hloop]
+    v5_cu_probe.verify_v5_relation_final_zero_tail,
+    v5_relation_stress.V5_RELATION_STRESS_ROUNDS, hloop]
 
 #print axioms generated_replay_relation_rounds_exact
 

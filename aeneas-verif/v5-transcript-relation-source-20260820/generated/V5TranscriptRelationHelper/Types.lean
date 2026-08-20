@@ -17,7 +17,7 @@ set_option maxRecDepth 2048
 namespace V5TranscriptRelationGenerated
 
 /-- [aspis_core::circle::SecureCirclePoint]
-    Source: '/Users/dominic/ZK-fiat-shamir-final/crates/aspis-core/src/circle.rs', lines 11:0-11:28
+    Source: 'crates/aspis-core/src/circle.rs', lines 11:0-11:28
     Name pattern: [aspis_core::circle::SecureCirclePoint]
     Visibility: public -/
 @[rust_type "aspis_core::circle::SecureCirclePoint"]
@@ -26,14 +26,14 @@ structure aspis_core.circle.SecureCirclePoint where
   y : aspis_core.field.QM31
 
 /-- [aspis_core::transcript::ChallengeSampleExhausted]
-    Source: '/Users/dominic/ZK-fiat-shamir-final/crates/aspis-core/src/transcript.rs', lines 227:0-227:35
+    Source: 'crates/aspis-core/src/transcript.rs', lines 227:0-227:35
     Name pattern: [aspis_core::transcript::ChallengeSampleExhausted]
     Visibility: public -/
 @[reducible, rust_type "aspis_core::transcript::ChallengeSampleExhausted"]
 def aspis_core.transcript.ChallengeSampleExhausted := Unit
 
 /-- [aspis_core::transcript::OodSampleError]
-    Source: '/Users/dominic/ZK-fiat-shamir-final/crates/aspis-core/src/transcript.rs', lines 242:0-242:23
+    Source: 'crates/aspis-core/src/transcript.rs', lines 242:0-242:23
     Name pattern: [aspis_core::transcript::OodSampleError]
     Visibility: public -/
 @[discriminant isize, rust_type "aspis_core::transcript::OodSampleError"]
@@ -42,7 +42,7 @@ inductive aspis_core.transcript.OodSampleError where
 | SubfieldSampleExhausted : aspis_core.transcript.OodSampleError
 
 /-- [aspis_core::transcript::CirclePointSampleError]
-    Source: '/Users/dominic/ZK-fiat-shamir-final/crates/aspis-core/src/transcript.rs', lines 250:0-250:31
+    Source: 'crates/aspis-core/src/transcript.rs', lines 250:0-250:31
     Name pattern: [aspis_core::transcript::CirclePointSampleError]
     Visibility: public -/
 @[discriminant isize, rust_type
@@ -52,7 +52,7 @@ inductive aspis_core.transcript.CirclePointSampleError where
 | ParameterSampleExhausted : aspis_core.transcript.CirclePointSampleError
 
 /-- [solana_program_error::ProgramError]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-program-error-2.2.2/src/lib.rs', lines 33:0-33:21
+    Source: 'registry/solana-program-error-2.2.2/src/lib.rs', lines 33:0-33:21
     Name pattern: [solana_program_error::ProgramError]
     Visibility: public -/
 @[discriminant isize, rust_type "solana_program_error::ProgramError"]
@@ -84,8 +84,16 @@ inductive solana_program_error.ProgramError where
 | Immutable : solana_program_error.ProgramError
 | IncorrectAuthority : solana_program_error.ProgramError
 
+/-- [aspis_verifier_kappa_caller_extraction::v5_cu_probe::private_openings::V5PrivateOpeningRoots]
+    Source: 'programs/aspis-verifier/src/v5_private_openings.rs', lines 34:0-38:1
+    Visibility: public -/
+structure v5_cu_probe.private_openings.V5PrivateOpeningRoots where
+  c1 : Array Std.U8 32#usize
+  c2 : Array Std.U8 32#usize
+  later : Array (Array Std.U8 32#usize) 3#usize
+
 /-- [aspis_verifier_kappa_caller_extraction::v5_cu_probe::ParsedProbeData]
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_cu_probe.rs', lines 356:0-376:1 -/
+    Source: 'programs/aspis-verifier/src/v5_cu_probe.rs', lines 356:0-376:1 -/
 structure v5_cu_probe.ParsedProbeData where
   gamma : aspis_core.field.QM31
   production_c1 : Slice Std.U8
@@ -108,22 +116,22 @@ structure v5_cu_probe.ParsedProbeData where
   v5_private_proof : Slice Std.U8
 
 /-- [aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds::closure#3]
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_cu_probe.rs', lines 870:21-870:57 -/
+    Source: 'programs/aspis-verifier/src/v5_cu_probe.rs', lines 852:21-852:57 -/
 @[reducible]
 def v5_cu_probe.replay_real_v5_relation_rounds.closure_3 := Unit
 
 /-- [aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds::closure#2]
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_cu_probe.rs', lines 847:25-847:61 -/
+    Source: 'programs/aspis-verifier/src/v5_cu_probe.rs', lines 830:25-830:61 -/
 @[reducible]
 def v5_cu_probe.replay_real_v5_relation_rounds.closure_2 := Unit
 
 /-- [aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds::closure#1]
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_cu_probe.rs', lines 819:29-819:65 -/
+    Source: 'programs/aspis-verifier/src/v5_cu_probe.rs', lines 802:29-802:65 -/
 @[reducible]
 def v5_cu_probe.replay_real_v5_relation_rounds.closure_1 := Unit
 
 /-- [aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds::closure]
-    Source: '/private/tmp/v5-transcript-relation.jJScR4/source-root/programs/aspis-verifier/src/v5_cu_probe.rs', lines 809:29-809:65 -/
+    Source: 'programs/aspis-verifier/src/v5_cu_probe.rs', lines 792:29-792:65 -/
 @[reducible]
 def v5_cu_probe.replay_real_v5_relation_rounds.closure := Unit
 

@@ -90,14 +90,16 @@ def v5_cu_probe.verify_v5_relation_final_zero_tail
     Result (core.result.Result Unit solana_program_error.ProgramError) :=
   ok (.Ok ())
 
-def v5_cu_probe.absorb_real_v5_later_root_for_round
-    (transcript : aspis_core.transcript.Transcript)
-    (_parsed : v5_cu_probe.ParsedProbeData) (round : Std.Usize) :
+def v5_cu_probe.absorb_real_v5_round_root
+    (transcript : aspis_core.transcript.Transcript) (rootIndex : Std.Usize)
+    (_root _salt : Array Std.U8 32#usize) :
     Result aspis_core.transcript.Transcript :=
-  if round.val < 3 then
-    ok (pushEvent transcript (.laterRoot round.val))
-  else
-    ok transcript
+  ok (pushEvent transcript (.laterRoot (rootIndex.val - 1)))
+
+def v5_cu_probe.v5_public_fs_salt
+    (_wirePrefix : Slice Std.U8) (_index : Std.Usize) :
+    Result (Array Std.U8 32#usize) :=
+  ok (Array.repeat 32#usize 0#u8)
 
 def v5_cu_probe.decode_qm31
     (_bytes : Slice Std.U8) (_index : Std.Usize) :

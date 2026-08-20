@@ -1,0 +1,32 @@
+From 000c7b6a4ab001ddceb16a82dd7fd37c3abfe24d Mon Sep 17 00:00:00 2001
+From: DJB8787 <168072039+DJBarker87@users.noreply.github.com>
+Date: Thu, 20 Aug 2026 21:47:25 +0100
+Subject: [PATCH] Handle excluded callees in unreachable pass
+
+---
+ src/PrePasses.ml | 10 ++++------
+ 1 file changed, 4 insertions(+), 6 deletions(-)
+
+diff --git a/src/PrePasses.ml b/src/PrePasses.ml
+index 7126afff..d6ecefbb 100644
+--- a/src/PrePasses.ml
++++ b/src/PrePasses.ml
+@@ -409,12 +409,10 @@ let remove_unreachable (crate : crate) (f : fun_decl) : fun_decl =
+         match call.func with
+         | FnOpRegular { kind; _ } -> (
+             match kind with
+-            | FunId (FRegular fid) ->
+-                let fun_decl =
+-                  [%silent_unwrap_opt_span] (Some st.span)
+-                    (FunDeclId.Map.find_opt fid crate.fun_decls)
+-                in
+-                match_name impl_pat fun_decl.item_meta.name
++            | FunId (FRegular fid) -> (
++                match FunDeclId.Map.find_opt fid crate.fun_decls with
++                | Some fun_decl -> match_name impl_pat fun_decl.item_meta.name
++                | None -> false)
+             | _ -> false)
+         | FnOpDynamic _ -> false)
+     | _ -> false
+-- 
+2.50.1 (Apple Git-155)

@@ -31,7 +31,7 @@ advances the transcript by exactly the blocks it consumed.
 ## Patched Aeneas
 
 The extraction uses Aeneas commit
-`8cb5ee04420f161b473afa7486983cc313202301`, based on upstream commit
+`000c7b6a4ab001ddceb16a82dd7fd37c3abfe24d`, based on upstream commit
 `b59d5188c082f704a418c7cb4e52ad69328002d1`. The ordered patches needed to
 reconstruct that checkout are in `aeneas-patches/`.
 

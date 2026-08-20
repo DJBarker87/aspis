@@ -6,7 +6,6 @@ readonly root="$(cd "$bundle/../.." && pwd -P)"
 readonly generated="$bundle/generated/V5TranscriptRelationHelper"
 readonly proof="$bundle/proof/V5TranscriptRelationSourceProof.lean"
 readonly final_join_proof="$bundle/proof/V5TranscriptRelationFinalJoin.lean"
-readonly extraction_patch="$bundle/extraction/v5-relation-replay-while.patch"
 readonly import_normalization_patch="$bundle/import-normalization/V5RelationCallerGenerated-for-join.patch"
 readonly harness="$bundle/relation-harness"
 readonly acceptance_bundle="$root/aeneas-verif/v5-relation-acceptance-20260815"
@@ -16,17 +15,17 @@ readonly acceptance_proof="$acceptance_bundle/proof/V5RelationAcceptanceSourcePr
 readonly lean_bin="${LEAN432_BIN:-$HOME/.elan/toolchains/leanprover--lean4---v4.32.0/bin/lean}"
 readonly lake_bin="${LAKE432_BIN:-$(dirname "$lean_bin")/lake}"
 readonly charon_repo="${ASPIS_CHARON_REPO:?set ASPIS_CHARON_REPO to pinned Charon cb50ff16}"
-readonly aeneas_repo="${ASPIS_AENEAS_REPO:?set ASPIS_AENEAS_REPO to pinned Aeneas 9a30bf93}"
-readonly charon_bin="${CHARON_BIN:-$charon_repo/bin/charon}"
+readonly aeneas_repo="${ASPIS_AENEAS_REPO:?set ASPIS_AENEAS_REPO to patched Aeneas 000c7b6a}"
+readonly charon_bin="${CHARON_BIN:-$charon_repo/target/release/charon}"
 readonly aeneas_bin="${AENEAS_BIN:-$aeneas_repo/src/_build/default/main.exe}"
 readonly aeneas_lib="${AENEAS_LEAN_LIB:?set AENEAS_LEAN_LIB to the Aeneas Lean 4.32 library}"
 readonly aeneas_path="${AENEAS_LEAN_PATH:-$aeneas_lib}"
 readonly formal_build_root="${ASPIS_FORMAL_BUILD_ROOT:-$root}"
 
 readonly expected_charon_commit="cb50ff16b9f1066b8a97dc06da704de2da2fa41c"
-readonly expected_aeneas_commit="9a30bf93807d8043a1a968b6456eb78747c81cb4"
-readonly expected_charon_sha256="776344b8bfb7f3ec4ba78d5007ae79c1ef3f4ed654de05f04266693759a37375"
-readonly expected_aeneas_sha256="278d7905bdccc469ae0760b991bbaff94062e2983a02f35262e4acee51f0976b"
+readonly expected_aeneas_commit="000c7b6a4ab001ddceb16a82dd7fd37c3abfe24d"
+readonly expected_charon_sha256="7fad09bfb0e4e6a52472175a6414f65fcb790918658915785088f86c6231ba1a"
+readonly expected_aeneas_sha256="2994c7ed152546b20ca44506ea61c554b93ab806acefe38af905c6f89e4dde84"
 
 check_blob() {
   local expected=$1
@@ -74,19 +73,17 @@ esac
 check_sha256 "$expected_charon_sha256" "$charon_bin"
 check_sha256 "$expected_aeneas_sha256" "$aeneas_bin"
 
-# These blobs bind the replay to the exact production helper, extraction-only
-# transformation, and package graph reviewed for this proof bundle.
+# These blobs bind the replay to the exact unchanged production helper and
+# package graph reviewed for this proof bundle.
 check_blob ca28d560e44e5e82e689321f32289831c889a0bd \
   programs/aspis-verifier/src/v5_cu_probe.rs
-check_blob 3b4c5c4ca145cd87e9199b3ea9069d714d5f5e2d \
-  aeneas-verif/v5-transcript-relation-source-20260820/extraction/v5-relation-replay-while.patch
 check_blob e2a5b6412e9410ffd1e392d8ea32033aab76f83f \
   aeneas-verif/v5-transcript-relation-source-20260820/relation-harness/Cargo.toml
 check_blob 728dc91c3f1f9d6443df8b793c617b340a2e2a45 \
   aeneas-verif/v5-transcript-relation-source-20260820/relation-harness/Cargo.lock
-check_blob 6988356d4007fe3c059300e2ac0b3e43a563cc7c \
+check_blob ba1e691eb658c35fc3512fadb679ce25fe99a49d \
   aeneas-verif/v5-transcript-relation-source-20260820/generated/V5TranscriptRelationHelper/TypesExternal.lean
-check_blob 8ba03a7063c20bdc395662887bb0439cdb2e8872 \
+check_blob f764e0ac5d133a26147d926d69146e2919de70ea \
   aeneas-verif/v5-transcript-relation-source-20260820/generated/V5TranscriptRelationHelper/FunsExternal.lean
 check_blob ff2c2318274298244b47e01e2ca1690a7435ff3c \
   aeneas-verif/v5-relation-acceptance-20260815/generated/V5RelationCallerGenerated.lean
@@ -139,8 +136,6 @@ ASPIS_REPLAY_ROOT="$root" perl -0pi -e '
    {aspis-statement = { path = "$ENV{ASPIS_REPLAY_ROOT}/crates/aspis-statement" }};
 ' "$replay_harness/Cargo.toml"
 git -C "$source_root" init -q
-git -C "$source_root" apply --check "$extraction_patch"
-git -C "$source_root" apply "$extraction_patch"
 
 # Charon's pinned Rust frontend needs two host-only compatibility edits in
 # solana-program 2.3.0.  They affect dependency compilation, not extracted
@@ -172,10 +167,11 @@ echo "EXTRACT production relation transcript helper" | tee -a "$log"
       aspis_verifier_kappa_caller_extraction::v5_cu_probe::replay_real_v5_relation_rounds \
     --include \
       aspis_verifier_kappa_caller_extraction::v5_cu_probe::ParsedProbeData \
+    --include \
+      aspis_verifier_kappa_caller_extraction::v5_cu_probe::private_openings::V5PrivateOpeningRoots \
     --opaque aspis_core::transcript::Transcript \
     --opaque aspis_core::field \
     --opaque core::cmp \
-    --exclude core::iter \
     --exclude core::slice::iter \
     --dest-file "$llbc" -- --offline \
     --config "patch.crates-io.solana-program.path=\"$vendor/solana-program\""
