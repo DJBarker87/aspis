@@ -411,6 +411,43 @@ theorem mul_produces_canonical
   rw [coordinate_mul_call_eq_arithmetic]
   exact hrun
 
+/-- Constructive form of the extracted doubling theorem. -/
+theorem double_produces_canonical
+    (input : Coordinate.M31) (hinput : canonicalM31 input) :
+    ∃ output : Coordinate.M31,
+      V5FriCoordinateAdapter.aspis_core.field.M31.double input =
+        .ok output ∧
+      canonicalM31 output ∧
+      m31Value output = 2 * m31Value input := by
+  obtain ⟨output, hrunArithmetic, hcanonical, hvalue⟩ :=
+    m31_add_corresponds input input hinput hinput
+  have hrun :
+      V5FriCoordinateAdapter.aspis_core.field.M31.add input input =
+        .ok output := by
+    rw [coordinate_add_call_eq_arithmetic]
+    exact hrunArithmetic
+  refine ⟨output, ?_, hcanonical, ?_⟩
+  · unfold V5FriCoordinateAdapter.aspis_core.field.M31.double
+    exact hrun
+  · have hvalue' :
+        m31Value output = m31Value input + m31Value input := by
+      simpa [m31Value] using hvalue
+    rw [hvalue']
+    ring
+
+/-- The source zero test returns false whenever the represented field value
+is nonzero. -/
+theorem is_zero_false
+    (input : Coordinate.M31) (hnonzero : m31Value input ≠ 0) :
+    V5FriCoordinateAdapter.aspis_core.field.M31.is_zero input = .ok false := by
+  have hraw : input ≠ 0#u32 := by
+    intro heq
+    apply hnonzero
+    subst input
+    rfl
+  unfold V5FriCoordinateAdapter.aspis_core.field.M31.is_zero
+  simp [hraw]
+
 /-- The extracted helper used for the final FRI x-coordinate computes
 `2*x^2 - 1` in the base field. -/
 theorem double_x_produces_canonical
@@ -523,6 +560,8 @@ theorem inv_output_canonical
 
 #print axioms point_add_corresponds
 #print axioms double_point_corresponds
+#print axioms double_produces_canonical
+#print axioms is_zero_false
 #print axioms double_x_produces_canonical
 #print axioms square_n_corresponds
 #print axioms inv_output_canonical
