@@ -411,6 +411,53 @@ theorem mul_produces_canonical
   rw [coordinate_mul_call_eq_arithmetic]
   exact hrun
 
+/-- The extracted helper used for the final FRI x-coordinate computes
+`2*x^2 - 1` in the base field. -/
+theorem double_x_produces_canonical
+    (input : Coordinate.M31) (hinput : canonicalM31 input) :
+    ∃ output : Coordinate.M31,
+      V5FriCoordinateAdapter.aspis_core.circle_fri.double_x input =
+        .ok output ∧
+      canonicalM31 output ∧
+      m31Value output = 2 * m31Value input ^ 2 - 1 := by
+  obtain ⟨squared, hsquaredRun, hsquaredCanonical, hsquaredValue⟩ :=
+    mul_produces_canonical input input hinput hinput
+  obtain ⟨doubled, hdoubledArithmeticRun, hdoubledCanonical,
+      hdoubledValue⟩ :=
+    m31_add_corresponds squared squared hsquaredCanonical hsquaredCanonical
+  have hdoubledRun :
+      V5FriCoordinateAdapter.aspis_core.field.M31.add squared squared =
+        .ok doubled := by
+    rw [coordinate_add_call_eq_arithmetic]
+    exact hdoubledArithmeticRun
+  have honeCanonical :
+      canonicalM31 V5FriCoordinateAdapter.aspis_core.field.M31.ONE := by
+    norm_num [canonicalM31, AspisV5FriArithmeticSemantics.canonicalM31,
+      AspisAeneasCM31Multiplicative.CanonicalRawM31,
+      V5FriCoordinateAdapter.aspis_core.field.M31.ONE]
+  obtain ⟨output, houtputArithmeticRun, houtputCanonical, houtputValue⟩ :=
+    m31_sub_corresponds doubled
+      V5FriCoordinateAdapter.aspis_core.field.M31.ONE
+      hdoubledCanonical honeCanonical
+  have houtputRun :
+      V5FriCoordinateAdapter.aspis_core.field.M31.sub doubled
+          V5FriCoordinateAdapter.aspis_core.field.M31.ONE = .ok output := by
+    rw [coordinate_sub_call_eq_arithmetic]
+    exact houtputArithmeticRun
+  refine ⟨output, ?_, houtputCanonical, ?_⟩
+  · unfold V5FriCoordinateAdapter.aspis_core.circle_fri.double_x
+      V5FriCoordinateAdapter.aspis_core.field.M31.double
+    simp only [hsquaredRun, bind_tc_ok, hdoubledRun, houtputRun]
+  · have houtputValue' :
+        m31Value output = m31Value doubled - 1 := by
+      simpa [m31Value, V5FriCoordinateAdapter.aspis_core.field.M31.ONE]
+        using houtputValue
+    have hdoubledValue' :
+        m31Value doubled = m31Value squared + m31Value squared := by
+      simpa [m31Value] using hdoubledValue
+    rw [houtputValue', hdoubledValue', hsquaredValue]
+    ring
+
 /-- A successful call to the exact extracted inversion backend returns a
 canonical M31 value.  Its mathematical inverse property is deliberately not
 needed by the batch proof: the production code validates the common backend
@@ -476,6 +523,7 @@ theorem inv_output_canonical
 
 #print axioms point_add_corresponds
 #print axioms double_point_corresponds
+#print axioms double_x_produces_canonical
 #print axioms square_n_corresponds
 #print axioms inv_output_canonical
 

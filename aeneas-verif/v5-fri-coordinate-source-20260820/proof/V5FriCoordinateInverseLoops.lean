@@ -559,7 +559,8 @@ theorem checked_suffix_outputs_from_source_product
     (hdenominators 0 hnonempty) houtputCanonical hsourceCheck
   have hone :
       m31Value V5FriCoordinateAdapter.aspis_core.field.M31.ONE = 1 := by
-    rfl
+    norm_num [m31Value,
+      V5FriCoordinateAdapter.aspis_core.field.M31.ONE]
   apply checked_suffix_outputs_are_exact_inverses denominators output backend
     hpost hnonempty
   rw [← hcheck.2, hone]
