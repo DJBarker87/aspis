@@ -276,6 +276,31 @@ fn decode_selected_later_slot(
     })
 }
 
+/// Verification-only entry point for the exact private decoder above.
+///
+/// This is absent from normal verifier builds.  The isolated Kani package
+/// enables `formal-verification` to compare the unchanged production decoder
+/// universally with a loop-free reference that Charon/Aeneas can translate.
+#[cfg(feature = "formal-verification")]
+#[doc(hidden)]
+pub fn formal_decode_later_leaf(
+    leaf: &[u8],
+    layer: u8,
+) -> Result<[QM31; 4], CircleQueryError> {
+    decode_later_leaf(leaf, layer)
+}
+
+/// Verification-only entry point for the exact selected-slot decoder above.
+#[cfg(feature = "formal-verification")]
+#[doc(hidden)]
+pub fn formal_decode_selected_later_slot(
+    leaf: &[u8],
+    layer: u8,
+    selected_slot: usize,
+) -> Result<QM31, CircleQueryError> {
+    decode_selected_later_slot(leaf, layer, selected_slot)
+}
+
 fn require_layer_value(
     layer: u8,
     leaf: &[QM31; 4],

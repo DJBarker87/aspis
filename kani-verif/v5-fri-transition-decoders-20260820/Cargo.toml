@@ -1,0 +1,13 @@
+[package]
+name = "v5-fri-transition-decoders"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+aspis-core = { path = "../../crates/aspis-core", features = ["formal-verification"] }
+
+[workspace]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
