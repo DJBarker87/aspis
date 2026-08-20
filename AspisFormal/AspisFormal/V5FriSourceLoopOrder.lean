@@ -15,8 +15,11 @@ requested parent, every intervening entry is smaller, and the returned
 ordinal/value is exactly the one used by `friReadScheduleFromDriver`.  These
 are precisely the hypotheses of the extracted monotone-lookup theorem.
 
-The remaining source obligation is only that the four Rust loops emit this
-trace.  No cryptographic assumption is used here.
+The generic observation boundary below asks that the four Rust loops emit
+this trace.  The exact unchanged-source extraction and the concrete accepted-
+call adapter discharge it in
+`aeneas-verif/v5-fri-consumer-exact-20260815`; no cryptographic assumption is
+used for that read-order result.
 -/
 
 namespace AspisV5FriSourceLoopOrder
@@ -398,7 +401,7 @@ theorem exactRun_sourceShapedFriReadSchedule_eq
   · exact friReadScheduleFromDriver_eq_run run
   all_goals exact Finset.sort_nodup _ _
 
-/-! ## The one production-loop equality still needed -/
+/-! ## Generic observation boundary and concrete source discharge -/
 
 /-- Exact successful-read observation required from the production
 `check_v5_fri_queries` function.  It says that the function reads the returned
@@ -418,6 +421,12 @@ def CheckV5FriQueriesSuccessfulReadTraceEquality
     Prop :=
   ∀ call observation, rustObservation call = some observation ->
     observation.friReads = sourceShapedFriReadSchedule observation.driver
+
+/- The concrete theorem for the accepted production adapter is
+`AspisV5FriConsumerObservationBridge.accepted_resolver_read_trace_equality` in
+the pinned Aeneas replay package.  This module keeps the proposition generic
+so the maintained mathematical development does not import generated source
+snapshots. -/
 
 /-- Once the five returned parser views are fixed to an exact authenticated
 run, the literal four-loop read order is exactly the maintained FRI read

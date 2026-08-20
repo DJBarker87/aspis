@@ -29,7 +29,7 @@ the mutable enumerated slice iterator and two translated shift literals.
 placeholders with their transparent definitions. The production verifier
 source is unchanged.
 
-## What is proved in this checkpoint
+## What is proved
 
 The proof currently establishes directly about the generated production
 definitions:
@@ -40,12 +40,16 @@ definitions:
   advances both positions together;
 - each of the four generated loop bodies, whenever it continues, has made
   the exact opening reads selected by its source arguments;
-- an active first-layer body cannot return successful completion;
-- an accepted first-layer loop must therefore continue through every active
-  iterator entry; and
-- every requested position from the current cursor through an arbitrary
-  in-bounds target is actually visited and read by that accepted production
-  loop.
+- an active loop body cannot return successful completion without finishing
+  its iterator;
+- accepted execution visits every query in the first pass, both middle
+  passes, and the final pass;
+- the generated outer loop invokes the three later passes exactly in order;
+- top-level acceptance reaches those loops through the actual generated shape
+  checks, query count, inverse derivation, alpha powers, and initial iterator;
+  and
+- every query position in all four passes has an exact witness for the Rust
+  opening calls made at that position.
 
 The main declarations are:
 
@@ -56,38 +60,49 @@ The main declarations are:
 - `production_terminal_body_cont_reads`;
 - `production_layerZero_active_body_ne_accepting_done`;
 - `production_layerZero_accepted_loop_head`; and
-- `production_layerZero_accepted_loop_reads_target`.
+- `production_layerZero_accepted_loop_reads_target`;
+- `production_later_completed_loop_reads_target`;
+- `production_terminal_completed_loop_reads_target`; and
+- `unchanged_source_acceptance_yields_complete_fri_execution`.
 
 The proof contains no `sorry`, `admit`, `native_decide`, or unsafe proof
 shortcut.
 
-## Remaining work for the direct accepted-run theorem
+## Maintained observation connection
 
-This checkpoint does not claim the complete production-consumer connection.
-The following source proof remains:
+`V5FriConsumerObservationBridge.lean` supplies the explicit adapter required
+by `OpeningAndFriObservation.friReads`. The field is proof instrumentation,
+not a value returned by Rust. The adapter therefore emits an observation only
+with a proof that the exact generated top-level function accepted, and records
+the four source-shaped query loops over the returned opening views.
 
-1. repeat the accepted-loop argument for the two intermediate passes and the
-   final pass;
-2. prove that the generated outer loop invokes those three passes in order;
-3. connect the generated top-level preparation steps to the first loop,
-   including shape validation, query count, inverse derivation, alpha powers,
-   and the initial iterator; and
-4. connect the resulting concrete read lists to the maintained
-   `OpeningAndFriObservation.friReads` observation through an explicit
-   execution adapter. That field is proof instrumentation, not a value
-   returned by the Rust function, so it cannot be inferred for an arbitrary
-   observation without such an adapter.
+The bridge proves:
 
-The generated translation still treats several called operations as opaque:
+- `accepted_resolver_read_trace_equality`: the concrete adapter satisfies the
+  maintained `CheckV5FriQueriesSuccessfulReadTraceEquality` statement;
+- `accepted_resolver_has_complete_source_execution`: every emitted
+  observation has the complete exact-source execution proof above; and
+- `opening_parser_and_accepted_resolver_imply_consumer_equality`: together
+  with the separately maintained parser-output equality, the adapter proves
+  the combined parser-and-FRI consumer equality.
+
+There is no longer an independent assumption that the four Rust FRI loops
+read the maintained schedule. The remaining source input to this composition
+is the parser-output theorem connecting the returned Rust opening views and
+index arrays to the authenticated run.
+
+## Opaque called operations
+
+The generated translation treats several called operations as opaque:
 shape validation and column counts, inverse derivation and the supplied
 inverse callback, fixed-array mapping for alpha powers, circle-to-line
 normalisation, line and terminal transition checks, field decoding and
 arithmetic, prepared multiplication, and fixed proof-system constants. These
-operations determine whether a run accepts and belong to the mathematical
-soundness proof. They cannot change which source indices are passed to the
-opening accessors once a particular loop iteration continues. The read-order
-theorems therefore expose them honestly without assuming a semantic result
-about them.
+operations determine whether a run accepts and are covered elsewhere by the
+mathematical and arithmetic proofs. This package proves a conditional source
+statement: whenever the exact generated top-level function accepts, none of
+those calls can change which source indices were already passed to the opening
+accessors.
 
 ## Replay
 
@@ -100,5 +115,6 @@ AENEAS_LEAN_LIB=/path/to/aeneas/backends/lean/.lake/build/lib/lean \
 ```
 
 The replay checks all recorded source and generated-file identities and then
-compiles the generated definitions and proof. It does not regenerate the
-LLBC; that requires the pinned Charon/Aeneas extraction environment.
+compiles the generated definitions, the complete accepted-execution proof,
+and the maintained observation bridge. It does not regenerate the LLBC; that
+requires the pinned Charon/Aeneas extraction environment.
