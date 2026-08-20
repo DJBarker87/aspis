@@ -86,8 +86,42 @@ def read_word
     lift (core.convert.num.FromU32Bool.from (value >= aspis_core.field.P))
   ok (i10, i11)
 
+/-- [v5_fri_dot16_exact::raw4]:
+    Source: 'src/lib.rs', lines 14:0-19:1 -/
+def raw4
+  (weight_limbs : Array (Array Std.U32 4#usize) 16#usize) (start : Std.Usize)
+  (values : Array Std.U64 4#usize) (limb : Std.Usize) :
+  Result Std.U64
+  := do
+  let a ← Array.index_usize weight_limbs start
+  let i ← Array.index_usize a limb
+  let i1 ← lift (core.convert.num.FromU64U32.from i)
+  let i2 ← Array.index_usize values 0#usize
+  let i3 ← lift (Std.U64.wrapping_mul i1 i2)
+  let i4 ← lift (Std.Usize.wrapping_add start 1#usize)
+  let a1 ← Array.index_usize weight_limbs i4
+  let i5 ← Array.index_usize a1 limb
+  let i6 ← lift (core.convert.num.FromU64U32.from i5)
+  let i7 ← Array.index_usize values 1#usize
+  let i8 ← lift (Std.U64.wrapping_mul i6 i7)
+  let i9 ← lift (Std.U64.wrapping_add i3 i8)
+  let i10 ← lift (Std.Usize.wrapping_add start 2#usize)
+  let a2 ← Array.index_usize weight_limbs i10
+  let i11 ← Array.index_usize a2 limb
+  let i12 ← lift (core.convert.num.FromU64U32.from i11)
+  let i13 ← Array.index_usize values 2#usize
+  let i14 ← lift (Std.U64.wrapping_mul i12 i13)
+  let i15 ← lift (Std.U64.wrapping_add i9 i14)
+  let i16 ← lift (Std.Usize.wrapping_add start 3#usize)
+  let a3 ← Array.index_usize weight_limbs i16
+  let i17 ← Array.index_usize a3 limb
+  let i18 ← lift (core.convert.num.FromU64U32.from i17)
+  let i19 ← Array.index_usize values 3#usize
+  let i20 ← lift (Std.U64.wrapping_mul i18 i19)
+  ok (Std.U64.wrapping_add i15 i20)
+
 /-- [v5_fri_dot16_exact::block4]:
-    Source: 'src/lib.rs', lines 14:0-47:1 -/
+    Source: 'src/lib.rs', lines 21:0-39:1 -/
 def block4
   (weight_limbs : Array (Array Std.U32 4#usize) 16#usize)
   (bytes : Array Std.U8 256#usize) (slot : Std.Usize) (start : Std.Usize) :
@@ -100,80 +134,46 @@ def block4
   let (v2, e2) ← read_word bytes slot i1
   let i2 ← lift (Std.Usize.wrapping_add start 3#usize)
   let (v3, e3) ← read_word bytes slot i2
-  let w0 ← Array.index_usize weight_limbs start
-  let i3 ← lift (Std.Usize.wrapping_add start 1#usize)
-  let w1 ← Array.index_usize weight_limbs i3
-  let i4 ← lift (Std.Usize.wrapping_add start 2#usize)
-  let w2 ← Array.index_usize weight_limbs i4
-  let i5 ← lift (Std.Usize.wrapping_add start 3#usize)
-  let w3 ← Array.index_usize weight_limbs i5
-  let i6 ← Array.index_usize w0 0#usize
-  let i7 ← lift (core.convert.num.FromU64U32.from i6)
-  let i8 ← lift (Std.U64.wrapping_mul i7 v0)
-  let i9 ← Array.index_usize w1 0#usize
-  let i10 ← lift (core.convert.num.FromU64U32.from i9)
-  let i11 ← lift (Std.U64.wrapping_mul i10 v1)
-  let i12 ← lift (Std.U64.wrapping_add i8 i11)
-  let i13 ← Array.index_usize w2 0#usize
-  let i14 ← lift (core.convert.num.FromU64U32.from i13)
-  let i15 ← lift (Std.U64.wrapping_mul i14 v2)
-  let i16 ← lift (Std.U64.wrapping_add i12 i15)
-  let i17 ← Array.index_usize w3 0#usize
-  let i18 ← lift (core.convert.num.FromU64U32.from i17)
-  let i19 ← lift (Std.U64.wrapping_mul i18 v3)
-  let i20 ← lift (Std.U64.wrapping_add i16 i19)
-  let i21 ← Array.index_usize w0 1#usize
-  let i22 ← lift (core.convert.num.FromU64U32.from i21)
-  let i23 ← lift (Std.U64.wrapping_mul i22 v0)
-  let i24 ← Array.index_usize w1 1#usize
-  let i25 ← lift (core.convert.num.FromU64U32.from i24)
-  let i26 ← lift (Std.U64.wrapping_mul i25 v1)
-  let i27 ← lift (Std.U64.wrapping_add i23 i26)
-  let i28 ← Array.index_usize w2 1#usize
-  let i29 ← lift (core.convert.num.FromU64U32.from i28)
-  let i30 ← lift (Std.U64.wrapping_mul i29 v2)
-  let i31 ← lift (Std.U64.wrapping_add i27 i30)
-  let i32 ← Array.index_usize w3 1#usize
-  let i33 ← lift (core.convert.num.FromU64U32.from i32)
-  let i34 ← lift (Std.U64.wrapping_mul i33 v3)
-  let i35 ← lift (Std.U64.wrapping_add i31 i34)
-  let i36 ← Array.index_usize w0 2#usize
-  let i37 ← lift (core.convert.num.FromU64U32.from i36)
-  let i38 ← lift (Std.U64.wrapping_mul i37 v0)
-  let i39 ← Array.index_usize w1 2#usize
-  let i40 ← lift (core.convert.num.FromU64U32.from i39)
-  let i41 ← lift (Std.U64.wrapping_mul i40 v1)
-  let i42 ← lift (Std.U64.wrapping_add i38 i41)
-  let i43 ← Array.index_usize w2 2#usize
-  let i44 ← lift (core.convert.num.FromU64U32.from i43)
-  let i45 ← lift (Std.U64.wrapping_mul i44 v2)
-  let i46 ← lift (Std.U64.wrapping_add i42 i45)
-  let i47 ← Array.index_usize w3 2#usize
-  let i48 ← lift (core.convert.num.FromU64U32.from i47)
-  let i49 ← lift (Std.U64.wrapping_mul i48 v3)
-  let i50 ← lift (Std.U64.wrapping_add i46 i49)
-  let i51 ← Array.index_usize w0 3#usize
-  let i52 ← lift (core.convert.num.FromU64U32.from i51)
-  let i53 ← lift (Std.U64.wrapping_mul i52 v0)
-  let i54 ← Array.index_usize w1 3#usize
-  let i55 ← lift (core.convert.num.FromU64U32.from i54)
-  let i56 ← lift (Std.U64.wrapping_mul i55 v1)
-  let i57 ← lift (Std.U64.wrapping_add i53 i56)
-  let i58 ← Array.index_usize w2 3#usize
-  let i59 ← lift (core.convert.num.FromU64U32.from i58)
-  let i60 ← lift (Std.U64.wrapping_mul i59 v2)
-  let i61 ← lift (Std.U64.wrapping_add i57 i60)
-  let i62 ← Array.index_usize w3 3#usize
-  let i63 ← lift (core.convert.num.FromU64U32.from i62)
-  let i64 ← lift (Std.U64.wrapping_mul i63 v3)
-  let i65 ← lift (Std.U64.wrapping_add i61 i64)
-  let i66 ← lift (e0 ||| e1)
-  let i67 ← lift (i66 ||| e2)
-  let i68 ← lift (i67 ||| e3)
-  ok (Array.make 4#usize [ i20, i35, i50, i65 ], i68)
+  let i3 ←
+    raw4 weight_limbs start (Array.make 4#usize [ v0, v1, v2, v3 ]) 0#usize
+  let i4 ←
+    raw4 weight_limbs start (Array.make 4#usize [ v0, v1, v2, v3 ]) 1#usize
+  let i5 ←
+    raw4 weight_limbs start (Array.make 4#usize [ v0, v1, v2, v3 ]) 2#usize
+  let i6 ←
+    raw4 weight_limbs start (Array.make 4#usize [ v0, v1, v2, v3 ]) 3#usize
+  let i7 ← lift (e0 ||| e1)
+  let i8 ← lift (i7 ||| e2)
+  let i9 ← lift (i8 ||| e3)
+  ok (Array.make 4#usize [ i3, i4, i5, i6 ], i9)
+
+/-- [v5_fri_dot16_exact::reduce4]:
+    Source: 'src/lib.rs', lines 41:0-48:1 -/
+def reduce4
+  (b0 : Array Std.U64 4#usize) (b1 : Array Std.U64 4#usize)
+  (b2 : Array Std.U64 4#usize) (b3 : Array Std.U64 4#usize) (limb : Std.Usize)
+  :
+  Result aspis_core.field.M31
+  := do
+  let i ← Array.index_usize b0 limb
+  let m ← aspis_core.field.M31.reduce_u64 i
+  let i1 ← lift (core.convert.num.FromU64U32.from m)
+  let i2 ← Array.index_usize b1 limb
+  let m1 ← aspis_core.field.M31.reduce_u64 i2
+  let i3 ← lift (core.convert.num.FromU64U32.from m1)
+  let i4 ← lift (Std.U64.wrapping_add i1 i3)
+  let i5 ← Array.index_usize b2 limb
+  let m2 ← aspis_core.field.M31.reduce_u64 i5
+  let i6 ← lift (core.convert.num.FromU64U32.from m2)
+  let i7 ← lift (Std.U64.wrapping_add i4 i6)
+  let i8 ← Array.index_usize b3 limb
+  let m3 ← aspis_core.field.M31.reduce_u64 i8
+  let i9 ← lift (core.convert.num.FromU64U32.from m3)
+  let i10 ← lift (Std.U64.wrapping_add i7 i9)
+  aspis_core.field.M31.reduce_u64 i10
 
 /-- [v5_fri_dot16_exact::slot_dot]:
-    Source: 'src/lib.rs', lines 49:0-77:1 -/
+    Source: 'src/lib.rs', lines 50:0-60:1 -/
 def slot_dot
   (weight_limbs : Array (Array Std.U32 4#usize) 16#usize)
   (bytes : Array Std.U8 256#usize) (slot : Std.Usize) :
@@ -183,87 +183,19 @@ def slot_dot
   let (b1, e1) ← block4 weight_limbs bytes slot 4#usize
   let (b2, e2) ← block4 weight_limbs bytes slot 8#usize
   let (b3, e3) ← block4 weight_limbs bytes slot 12#usize
-  let i ← Array.index_usize b0 0#usize
-  let m ← aspis_core.field.M31.reduce_u64 i
-  let i1 ← lift (core.convert.num.FromU64U32.from m)
-  let i2 ← Array.index_usize b1 0#usize
-  let m1 ← aspis_core.field.M31.reduce_u64 i2
-  let i3 ← lift (core.convert.num.FromU64U32.from m1)
-  let i4 ← lift (Std.U64.wrapping_add i1 i3)
-  let i5 ← Array.index_usize b2 0#usize
-  let m2 ← aspis_core.field.M31.reduce_u64 i5
-  let i6 ← lift (core.convert.num.FromU64U32.from m2)
-  let i7 ← lift (Std.U64.wrapping_add i4 i6)
-  let i8 ← Array.index_usize b3 0#usize
-  let m3 ← aspis_core.field.M31.reduce_u64 i8
-  let i9 ← lift (core.convert.num.FromU64U32.from m3)
-  let i10 ← lift (Std.U64.wrapping_add i7 i9)
-  let i11 ← Array.index_usize b0 1#usize
-  let m4 ← aspis_core.field.M31.reduce_u64 i11
-  let i12 ← lift (core.convert.num.FromU64U32.from m4)
-  let i13 ← Array.index_usize b1 1#usize
-  let m5 ← aspis_core.field.M31.reduce_u64 i13
-  let i14 ← lift (core.convert.num.FromU64U32.from m5)
-  let i15 ← lift (Std.U64.wrapping_add i12 i14)
-  let i16 ← Array.index_usize b2 1#usize
-  let m6 ← aspis_core.field.M31.reduce_u64 i16
-  let i17 ← lift (core.convert.num.FromU64U32.from m6)
-  let i18 ← lift (Std.U64.wrapping_add i15 i17)
-  let i19 ← Array.index_usize b3 1#usize
-  let m7 ← aspis_core.field.M31.reduce_u64 i19
-  let i20 ← lift (core.convert.num.FromU64U32.from m7)
-  let i21 ← lift (Std.U64.wrapping_add i18 i20)
-  let i22 ← Array.index_usize b0 2#usize
-  let m8 ← aspis_core.field.M31.reduce_u64 i22
-  let i23 ← lift (core.convert.num.FromU64U32.from m8)
-  let i24 ← Array.index_usize b1 2#usize
-  let m9 ← aspis_core.field.M31.reduce_u64 i24
-  let i25 ← lift (core.convert.num.FromU64U32.from m9)
-  let i26 ← lift (Std.U64.wrapping_add i23 i25)
-  let i27 ← Array.index_usize b2 2#usize
-  let m10 ← aspis_core.field.M31.reduce_u64 i27
-  let i28 ← lift (core.convert.num.FromU64U32.from m10)
-  let i29 ← lift (Std.U64.wrapping_add i26 i28)
-  let i30 ← Array.index_usize b3 2#usize
-  let m11 ← aspis_core.field.M31.reduce_u64 i30
-  let i31 ← lift (core.convert.num.FromU64U32.from m11)
-  let i32 ← lift (Std.U64.wrapping_add i29 i31)
-  let i33 ← Array.index_usize b0 3#usize
-  let m12 ← aspis_core.field.M31.reduce_u64 i33
-  let i34 ← lift (core.convert.num.FromU64U32.from m12)
-  let i35 ← Array.index_usize b1 3#usize
-  let m13 ← aspis_core.field.M31.reduce_u64 i35
-  let i36 ← lift (core.convert.num.FromU64U32.from m13)
-  let i37 ← lift (Std.U64.wrapping_add i34 i36)
-  let i38 ← Array.index_usize b2 3#usize
-  let m14 ← aspis_core.field.M31.reduce_u64 i38
-  let i39 ← lift (core.convert.num.FromU64U32.from m14)
-  let i40 ← lift (Std.U64.wrapping_add i37 i39)
-  let i41 ← Array.index_usize b3 3#usize
-  let m15 ← aspis_core.field.M31.reduce_u64 i41
-  let i42 ← lift (core.convert.num.FromU64U32.from m15)
-  let i43 ← lift (Std.U64.wrapping_add i40 i42)
-  let i44 ←
-    Array.index_usize (Array.make 4#usize [ i10, i21, i32, i43 ]) 0#usize
-  let m16 ← aspis_core.field.M31.reduce_u64 i44
-  let i45 ←
-    Array.index_usize (Array.make 4#usize [ i10, i21, i32, i43 ]) 1#usize
-  let m17 ← aspis_core.field.M31.reduce_u64 i45
-  let c ← aspis_core.field.CM31.new m16 m17
-  let i46 ←
-    Array.index_usize (Array.make 4#usize [ i10, i21, i32, i43 ]) 2#usize
-  let m18 ← aspis_core.field.M31.reduce_u64 i46
-  let i47 ←
-    Array.index_usize (Array.make 4#usize [ i10, i21, i32, i43 ]) 3#usize
-  let m19 ← aspis_core.field.M31.reduce_u64 i47
-  let c1 ← aspis_core.field.CM31.new m18 m19
-  let i48 ← lift (e0 ||| e1)
-  let i49 ← lift (i48 ||| e2)
-  let i50 ← lift (i49 ||| e3)
-  ok ({ c0 := c, c1 }, i50)
+  let m ← reduce4 b0 b1 b2 b3 0#usize
+  let m1 ← reduce4 b0 b1 b2 b3 1#usize
+  let c ← aspis_core.field.CM31.new m m1
+  let m2 ← reduce4 b0 b1 b2 b3 2#usize
+  let m3 ← reduce4 b0 b1 b2 b3 3#usize
+  let c1 ← aspis_core.field.CM31.new m2 m3
+  let i ← lift (e0 ||| e1)
+  let i1 ← lift (i ||| e2)
+  let i2 ← lift (i1 ||| e3)
+  ok ({ c0 := c, c1 }, i2)
 
 /-- [v5_fri_dot16_exact::indexed_dot16]:
-    Source: 'src/lib.rs', lines 84:0-94:1
+    Source: 'src/lib.rs', lines 67:0-77:1
     Visibility: public -/
 def indexed_dot16
   (weight_limbs : Array (Array Std.U32 4#usize) 16#usize)
