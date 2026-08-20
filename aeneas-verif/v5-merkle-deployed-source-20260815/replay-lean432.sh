@@ -104,6 +104,8 @@ compile "$proof" V5MerkleGeneratedSoundnessAdapter \
   "$proof/V5MerkleGeneratedSoundnessAdapter.lean"
 compile "$proof" V5MerkleUntouchedRadixInversion \
   "$proof/V5MerkleUntouchedRadixInversion.lean"
+compile "$proof" V5MerkleUntouchedRadixSoundness \
+  "$proof/V5MerkleUntouchedRadixSoundness.lean"
 
 if rg -n '\b(sorry|admit|native_decide|unsafe|ofReduceBool)\b' \
     "$proof/V5MerkleGeneratedDriverInversion.lean" \
@@ -120,6 +122,7 @@ if rg -n '\b(sorry|admit|native_decide|unsafe|ofReduceBool)\b' \
     "$proof/V5MerkleGeneratedHelperSoundness.lean" \
     "$proof/V5MerkleGeneratedSoundnessAdapter.lean" \
     "$proof/V5MerkleUntouchedRadixInversion.lean" \
+    "$proof/V5MerkleUntouchedRadixSoundness.lean" \
     "$generated/V5MerkleUnchangedSource/Types.lean" \
     "$generated/V5MerkleUnchangedSource/Funs.lean" \
     "$generated/V5MerkleDeployedSource/FunsExternal.lean"; then
