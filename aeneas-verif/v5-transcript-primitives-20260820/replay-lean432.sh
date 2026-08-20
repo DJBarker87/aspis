@@ -6,6 +6,8 @@ readonly root="$(cd "$bundle/../.." && pwd -P)"
 readonly harness="$bundle/harness"
 readonly checked_generated="$bundle/generated/V5TranscriptPrimitivesGenerated"
 readonly proof="$bundle/proof/V5TranscriptPrimitivesProof.lean"
+readonly sampler_semantics="$bundle/proof/V5QuerySamplerGeneratedSemantics.lean"
+readonly fixed_sampler="$bundle/proof/V5QuerySamplerFixedCall.lean"
 readonly charon_repo="${ASPIS_CHARON_REPO:?set ASPIS_CHARON_REPO to Charon cb50ff16}"
 readonly aeneas_repo="${ASPIS_AENEAS_REPO:?set ASPIS_AENEAS_REPO to patched Aeneas 000c7b6a}"
 readonly charon_bin="${CHARON_BIN:-$charon_repo/target/release/charon}"
@@ -115,10 +117,15 @@ export LEAN_PATH="$olean_out:$aeneas_lib:$aspis_path"
   "$checked_generated/Funs.lean" >> "$log" 2>&1
 "$lean_bin" -j 1 -o "$olean_out/V5TranscriptPrimitivesProof.olean" \
   "$proof" >> "$log" 2>&1
+"$lean_bin" -j 1 -o "$olean_out/V5QuerySamplerGeneratedSemantics.olean" \
+  "$sampler_semantics" >> "$log" 2>&1
+"$lean_bin" -j 1 -o "$olean_out/V5QuerySamplerFixedCall.olean" \
+  "$fixed_sampler" >> "$log" 2>&1
 
 if rg -n '\b(sorry|admit|native_decide|axiom|unsafe|ofReduceBool)\b' \
     "$checked_generated/Types.lean" "$checked_generated/Funs.lean" \
-    "$checked_generated/FunsExternal.lean" "$proof"; then
+    "$checked_generated/FunsExternal.lean" "$proof" \
+    "$sampler_semantics" "$fixed_sampler"; then
   echo "forbidden proof token or generated axiom" >&2
   exit 1
 fi
