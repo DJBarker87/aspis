@@ -34,6 +34,8 @@ open AspisV5FriRelationCandidateBridge
 open AspisV5FriReleasedAdaptiveExtraction
 open AspisV5FriReleasedLineGeometry
 open AspisV5MerkleAuthenticationBinding
+open AspisV5MerkleConsumedValueBridge
+open AspisV5MerkleRustBridge
 open AspisV5NonceWorkAuthentication
 open AspisV5RelationStressSourceBridge
 open AspisV5Tag67AcceptedFalseInclusion
@@ -269,6 +271,104 @@ theorem accepted_false_source_execution_event_with_derived_queries
     expectedC2 transcriptInput derived driverResult workFunctions workInputs
     hsource hrustOpening noWitness
 
+/-- The query-derived endpoint specialized to the exact production
+opening-and-FRI observation.  Successful observation now supplies the
+authenticated forest, so the Rust-opening correspondence branch is `False`.
+The derived schedule is still obtained from the exact 18-query transcript
+decode, leaving neither a free query schedule nor a separate opening-forest
+assumption in this maintained endpoint. -/
+theorem accepted_false_source_observation_event_with_derived_queries
+    {PointValue State : Type*}
+    (rc : RoundConstants)
+    {deployedOwner : AspisFormal.ArithmetizationCore.Digest ->
+      AspisFormal.ArithmetizationCore.Digest}
+    {deployedNote : AspisFormal.ArithmetizationCore.Digest ->
+      AspisFormal.ArithmetizationCore.F ->
+      AspisFormal.ArithmetizationCore.F ->
+      AspisFormal.ArithmetizationCore.Digest ->
+      AspisFormal.ArithmetizationCore.Digest}
+    {deployedNullifier : AspisFormal.ArithmetizationCore.Digest ->
+      AspisFormal.ArithmetizationCore.Digest ->
+      AspisFormal.ArithmetizationCore.Digest}
+    {deployedNode : AspisFormal.ArithmetizationCore.Digest ->
+      AspisFormal.ArithmetizationCore.Digest ->
+      AspisFormal.ArithmetizationCore.Digest}
+    (sha256 : List AspisV5MerkleAuthenticationBinding.Byte ->
+      AspisV5MerkleRustBridge.Digest32)
+    (rustObservation : V5ProductionCall ->
+      Option OpeningAndFriObservation)
+    (rustCall : V5ProductionCall)
+    (observation : OpeningAndFriObservation)
+    (hconsumer : ExactRustV5OpeningAndFriConsumerEquality sha256
+      rustObservation)
+    (hobservation : rustObservation rustCall = some observation)
+    (base : FixedSchedule (ZMod P) K)
+    (hproduction : ProductionUsesReleasedFriTables base)
+    (hpublished : PublishedOrdinaryPolynomialCurveDecoding (K := K))
+    (causalFamily : CausalTranscriptFamily K)
+    (input : SourceRelationInput K)
+    (relationFamily : CoherentCandidateFamily K
+      (AcceptedCandidate base causalFamily input))
+    (records : CandidateRecords (AcceptedCandidate base causalFamily input) K)
+    (statement : V5PublicStatement)
+    (decoder : OpeningFibreDecoder K)
+    (expectedC2 : V5Query -> Fin 4 -> K)
+    (transcriptInput : V5TranscriptInputs)
+    (derived : V5DerivedValues K PointValue)
+    (driverResult : V5TranscriptDriverResult K PointValue)
+    (queryBlocks : List (FixedBytes 32))
+    (hdecode : derive18Queries queryBlocks = some derived.queries)
+    (workFunctions : ExecutableWorkFunctions State
+      (SqueezeResult K PointValue))
+    (workInputs : PositionedWorkInputs State (SqueezeResult K PointValue))
+    (hsource : ∃ output, runSourceRelationVerifier input = some output)
+    (noWitness : ¬ StatementHasSpendWitness statement deployedOwner
+      deployedNote deployedNullifier deployedNode) :
+    let queries := decodedQuerySchedule queryBlocks derived.queries hdecode
+    ReleasedAcceptedExecutionSecurityEvent
+    (¬ SourceRelationInputMatchesFamily input relationFamily)
+    (¬ FamilyMatchesFriTranscript
+      (concreteCodeEncoders base releasedEvaluationPoints)
+      (acceptedTranscript causalFamily input) relationFamily input.challenges)
+    (¬ TranscriptExecutionProjection input transcriptInput derived
+      driverResult rustCall.queries queries)
+    (¬ WorkExecutionProjection transcriptInput derived workInputs)
+    (¬ ∃ reference : AcceptedV5Forest (sha256MerkleHashing sha256)
+        rustCall.roots rustCall.queries,
+      ForestProjectsToTranscript decoder (sha256MerkleHashing sha256)
+        reference (acceptedTranscript causalFamily input) expectedC2)
+    False
+    (HashCollision (sha256MerkleHashing sha256))
+    (¬ ExecutableWorkAcceptance workFunctions workInputs)
+    (∃ forest : AcceptedV5Forest (sha256MerkleHashing sha256)
+        rustCall.roots rustCall.queries,
+      ¬ ForestFriChecks decoder (sha256MerkleHashing sha256) forest
+        (acceptedSchedule base input)
+        (acceptedTranscript causalFamily input) queries)
+    (QueryPhaseFailure (acceptedSchedule base input)
+      (acceptedTranscript causalFamily input) queries)
+    (∃ (hfinal : FinalXMatchesReleasedDomain base)
+        (htables : InverseTablesMatch base releasedEvaluationPoints)
+        (hdecoding : PublishedOrdinaryPolynomialCurveDecoding (K := K)),
+      (adaptiveBadSets base causalFamily hfinal htables hdecoding
+        (constructedAdaptiveStrategies base causalFamily)).Occurs
+        input.round0.alpha input.round1.alpha input.round2.alpha
+          input.round3.alpha)
+    (∃ candidate : AcceptedCandidate base causalFamily input,
+      CandidateEarlierFailure rc (relationFamily.execution candidate)
+        input.challenges statement (records candidate))
+    (Fintype.card (AcceptedCandidate base causalFamily input) ≤ 240 ∧
+      input.challenges ∈ boundedCandidateRepairEvent
+        (fun candidate => (relationFamily.execution candidate).adaptiveData))
+    (¬ Poseidon2Faithful rc deployedOwner deployedNote deployedNullifier
+      deployedNode) := by
+  let queries := decodedQuerySchedule queryBlocks derived.queries hdecode
+  exact accepted_false_source_observation_event_with_released_tables rc sha256
+    rustObservation rustCall observation hconsumer hobservation base
+    hproduction hpublished causalFamily input relationFamily records statement
+    queries decoder expectedC2 transcriptInput derived driverResult
+    workFunctions workInputs hsource noWitness
+
 #print axioms queryScheduleOfExactList_values
 #print axioms decodedQuerySchedule_values
 #print axioms decoded_query_positions_projection
@@ -276,5 +376,6 @@ theorem accepted_false_source_execution_event_with_derived_queries
 #print axioms mem_decodedQuerySet_iff
 #print axioms decoded_queries_are_exact
 #print axioms accepted_false_source_execution_event_with_derived_queries
+#print axioms accepted_false_source_observation_event_with_derived_queries
 
 end AspisV5AcceptedExecutionDerivedQueries
