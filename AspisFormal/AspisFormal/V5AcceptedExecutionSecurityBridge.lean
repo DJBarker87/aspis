@@ -82,12 +82,17 @@ abbrev AcceptedCandidate
 
 /-! ## Authenticated opened values and exact query arithmetic -/
 
-/-- Decoding of one opened private-tree record into the four field elements
-used at its queried FRI fibre.  The production proof still has to instantiate
-this function with its exact little-endian field decoder. -/
+/-- Decoding of the opened private-tree records into the four field elements
+used at one queried FRI fibre.  Production combines the paired C1/C2 leaves
+before the first fold; later layers decode one four-QM31 leaf.  Keeping those
+inputs separate here prevents a C1-only decoder from silently standing for the
+released nineteen-column gamma combination. -/
 structure OpeningFibreDecoder (K : Type*) where
-  decode : V5PrivateSection -> List AspisV5MerkleAuthenticationBinding.Byte ->
-    Fin 4 -> K
+  layer0 : List AspisV5MerkleAuthenticationBinding.Byte ->
+    List AspisV5MerkleAuthenticationBinding.Byte -> Fin 4 -> K
+  c2 : List AspisV5MerkleAuthenticationBinding.Byte -> Fin 4 -> K
+  later : V5PrivateSection ->
+    List AspisV5MerkleAuthenticationBinding.Byte -> Fin 4 -> K
 
 /-- Four values decoded from one accepted leaf. -/
 def decodedFibre {Digest : Type*}
@@ -97,8 +102,17 @@ def decodedFibre {Digest : Type*}
     (forest : AcceptedV5Forest hashing roots querySet)
     (tree : V5PrivateSection) (query : V5Query) (hq : query ∈ querySet) :
     Fin 4 -> K :=
-  decoder.decode tree
-    (openedValue (forest.opening tree query hq))
+  match tree with
+  | .c1 => decoder.layer0
+      (openedValue (forest.opening .c1 query hq))
+      (openedValue (forest.opening .c2 query hq))
+  | .c2 => decoder.c2 (openedValue (forest.opening .c2 query hq))
+  | .line1 => decoder.later .line1
+      (openedValue (forest.opening .line1 query hq))
+  | .line2 => decoder.later .line2
+      (openedValue (forest.opening .line2 query hq))
+  | .line3 => decoder.later .line3
+      (openedValue (forest.opening .line3 query hq))
 
 /-- Concrete byte-to-field projection from an authenticated forest to the
 four maintained FRI words.  C2 is included explicitly even though it is used
@@ -150,6 +164,8 @@ theorem forestProjectsToTranscript_of_collisionFree
         unfold decodedFibre
         rw [acceptedV5Forest_values_unique hashing hfree accepted reference
           .c1 query hq]
+        rw [acceptedV5Forest_values_unique hashing hfree accepted reference
+          .c2 query hq]
       _ = transcript.layer0 (childIndex query slot) :=
         hreference.circle query hq slot
   · intro query hq slot
