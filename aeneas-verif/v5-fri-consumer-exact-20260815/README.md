@@ -149,9 +149,13 @@ every input by `../v5-shape-validation-20260821/`. Those universal checks do
 not themselves produce Lean proof terms, so both propositions remain visible
 parameters here.
 
-The theorem also takes the separately documented production/coordinate-
-adapter equality that connects the returned coordinate tables to the released
-tables.
+The theorem also takes a coordinate source certificate for the successful
+call in the accepted execution. It deliberately does not claim equality for
+every possible coordinate-helper input. The unchanged private parent helper
+has a reproducible Charon/Aeneas extraction in
+`../v5-fri-coordinate-source-20260820/`; the surrounding public driver's
+mutable fixed-array construction remains the narrowly stated source-tool
+boundary.
 
 ## Opaque called operations
 

@@ -47,11 +47,55 @@ program from its field operations to its returned value:
   adapter call returns the released circle, line, and final-coordinate tables
   for the supplied query indices.
 
-This closes extraction of the coordinate algorithm itself. Equality between
-the extraction adapter and the unchanged Rust helper remains a toolchain
-obligation until its separate Kani/differential proof is recorded; it is not a
-cryptographic assumption and must not be presented as a Lean theorem about the
-unchanged helper.
+This closes extraction of the coordinate algorithm itself.  There are now two
+additional checks on the connection to the unchanged production source:
+
+- Charon 0.1.223 and unmodified Aeneas `d860ac47` directly translate the
+  private `derive_parent_line_points` helper.  The generated Lean in
+  `generated/ParentCore/` compiles without an axiom or proof shortcut.
+- the released domain-19 point shapes and all 18 released query ordinals are
+  checked against the unchanged source by the recorded Kani harness.
+
+The complete public coordinate driver still contains a mutable
+`core::array::from_fn` closure that this Aeneas version cannot translate.  For
+that reason the final equality is recorded only for the successful coordinate
+call contained in an accepted production execution.  It is an explicit
+source-tool certificate, not a Lean-kernel theorem and not a cryptographic
+assumption.  Nothing in the proof assumes equality for arbitrary rejected
+calls.
+
+## Direct unchanged helper replay
+
+`parent-helper-harness/Cargo.toml` points at the unchanged production
+`aspis-core` source while giving Charon a standalone package name. Starting
+from
+`aspis_core_parent_helper_extraction::circle_fri::derive_parent_line_points`
+produces helper-only LLBC. Charon's JSON includes the chosen output path and
+unordered internal maps, so the replay pins the stable generated Lean files
+rather than pretending the raw LLBC bytes are reproducible across runs.
+
+The extraction uses:
+
+```sh
+charon cargo --preset aeneas \
+  --start-from \
+  aspis_core_parent_helper_extraction::circle_fri::derive_parent_line_points \
+  --dest-file ParentCore.llbc -- --manifest-path \
+  parent-helper-harness/Cargo.toml
+
+aeneas -backend lean -split-files \
+  -namespace V5FriCoordinateProduction \
+  -dest generated -subdir ParentCore ParentCore.llbc
+```
+
+Run `replay-parent-helper-lean432.sh` with `AENEAS_LEAN_PATH` set to the full
+Lean path printed by the matching Aeneas `lake env printenv LEAN_PATH`.  It
+checks the source identity, generated-file identities, absence of proof holes,
+and Lean 4.32 compilation.
+
+With the pinned Charon and Aeneas executables also available,
+`reextract-parent-helper.sh` reruns the extraction, checks that the normalized
+generated definitions match the checked files, and then runs that Lean replay.
 
 Pinned inputs:
 
@@ -59,7 +103,10 @@ Pinned inputs:
 - `circle_fri.rs` blob: `d9382a35ec7a660b696171e7609f443995a009bf`;
 - `circle_openings.rs` blob: `2e4a07db0985b3c9db631616dedf590db5e78bd1`;
 - Charon commit: `cb50ff16b9f1066b8a97dc06da704de2da2fa41c`;
-- Aeneas base commit: `9067e42e92bd8882f07dff2f72a61f16a01134af`;
+- Aeneas base commit for the coordinate adapter:
+  `9067e42e92bd8882f07dff2f72a61f16a01134af`;
+- unmodified Aeneas commit for the direct parent-helper extraction:
+  `d860ac47ed548d3da6d799afc013779ce470516c`;
 - extracted LLBC SHA-256: `16742974b58908aa6bfba3f06a9ee349811705ef4ac54349b41207de5b9937c9`.
 
 Run `replay-lean432.sh` with `AENEAS_LEAN_LIB` set to the Lean 4.32 Aeneas
