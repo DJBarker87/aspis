@@ -1,0 +1,13 @@
+[package]
+name = "v5-fri-coordinate-adapter-exact"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+aspis-core = { path = "../../crates/aspis-core" }
+
+[workspace]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
