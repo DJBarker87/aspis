@@ -19,9 +19,10 @@ namespace AspisV5AcceptedExecutionDeterministicClosure
 open AspisV5AcceptedExecutionReleasedSecurity
 
 /-- Remove exactly the deterministic implementation failures that have been
-proved impossible.  The remaining six outcomes are the SHA-256 collision
-event and the mathematical query, FRI, candidate, repair, and Poseidon2
-events. -/
+proved impossible.  A failed reference-forest projection is not discarded:
+the Merkle bridge sends it to the existing SHA-256 collision branch.  The
+remaining six outcomes are that collision event and the mathematical query,
+FRI, candidate, repair, and Poseidon2 events. -/
 theorem remove_proved_implementation_failures
     {sourceRelationProjectionFailure familyProjectionFailure
       transcriptProjectionFailure workProjectionFailure
@@ -33,7 +34,7 @@ theorem remove_proved_implementation_failures
     (hfamily : ¬ familyProjectionFailure)
     (htranscript : ¬ transcriptProjectionFailure)
     (hworkProjection : ¬ workProjectionFailure)
-    (hreference : ¬ referenceForestFailure)
+    (hreference : referenceForestFailure → hashCollision)
     (hopening : ¬ rustOpeningCorrespondenceFailure)
     (hworkCheck : ¬ workFailure)
     (hfriArithmetic : ¬ friArithmeticFailure)
@@ -54,7 +55,7 @@ theorem remove_proved_implementation_failures
   | workProjection failure => exact (hworkProjection failure).elim
   | releasedFinalDomain failure => exact failure.elim
   | releasedInverseTable failure => exact failure.elim
-  | referenceForest failure => exact (hreference failure).elim
+  | referenceForest failure => exact .merkleHashCollision (hreference failure)
   | globalCausalSelection failure => exact failure.elim
   | rustOpeningCorrespondence failure => exact (hopening failure).elim
   | merkleHashCollision failure => exact .merkleHashCollision failure
