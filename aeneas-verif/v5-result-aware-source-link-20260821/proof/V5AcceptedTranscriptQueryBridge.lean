@@ -1,5 +1,6 @@
 import V5AcceptedPostWorkSuccessors
 import V5QuerySamplerFixedCall
+import AspisFormal.V5AcceptedExecutionDerivedQueries
 
 /-!
 # Accepted query sampling is the extracted without-replacement sampler
@@ -19,6 +20,7 @@ open AspisV5TranscriptConnection
 open V5QuerySamplerGeneratedSemantics
 open V5QuerySamplerFixedCall
 open V5TranscriptPrimitivesProof
+open AspisV5AcceptedExecutionDerivedQueries
 
 set_option maxRecDepth 100000
 set_option maxHeartbeats 8000000
@@ -85,7 +87,39 @@ theorem accepted_post_work_successors_build_exact_query_sampler
   accepted_final_query_successor_is_exact_sampler parsed queries
     postWork.finalQueries
 
+/-- An accepted production sampler call determines the ordered released
+query schedule and its exact 18-element set.  Neither the schedule nor its
+injectivity, range, or set cardinality is supplied by the caller. -/
+theorem accepted_query_sampler_builds_decoded_schedule
+    (parsed : EntryParsed) (queries : Array Std.U32 18#usize)
+    (sampler : AcceptedQuerySamplerEvidence parsed queries) :
+    ∃ (blocks : List (FixedBytes 32))
+        (hdecode : derive18Queries blocks =
+          some (queries.val.map UScalar.val)),
+      let schedule := decodedQuerySchedule blocks
+        (queries.val.map UScalar.val) hdecode
+      let querySet := decodedQuerySet blocks
+        (queries.val.map UScalar.val) hdecode
+      List.ofFn (fun index => (schedule index).val) =
+          queries.val.map UScalar.val ∧
+        querySet = Finset.univ.image schedule ∧
+        querySet.card = 18 ∧
+        (queries.val.map UScalar.val).Nodup ∧
+        (∀ query ∈ queries.val.map UScalar.val, query < 131072) := by
+  rcases sampler with
+    ⟨initialTranscript, finalTranscript, rawBlocks, finalDraws,
+      trace, decode, draws⟩
+  let blocks : List (FixedBytes 32) := rawBlocks.map arrayDigest
+  have hdecode : derive18Queries blocks =
+      some (queries.val.map UScalar.val) := by
+    simpa [blocks] using decode
+  refine ⟨blocks, hdecode, ?_⟩
+  have exact := decoded_queries_are_exact blocks
+    (queries.val.map UScalar.val) hdecode
+  exact ⟨exact.1, rfl, exact.2.1, exact.2.2.2.1, exact.2.2.2.2⟩
+
 #print axioms accepted_final_query_successor_is_exact_sampler
 #print axioms accepted_post_work_successors_build_exact_query_sampler
+#print axioms accepted_query_sampler_builds_decoded_schedule
 
 end AspisV5AcceptedTranscriptQueryBridge

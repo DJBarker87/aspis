@@ -108,7 +108,7 @@
     "post_work_successors_sha256": "a156037907e3a5ae4bedda491a16a7ce31e18a95ee4747b5d165ee52cb1aacd9",
     "work_execution_projection_sha256": "375ae486b63d6bfbfe32870d5908e46b743a9be7d9c3e07f2f64a169cd32580f",
     "relation_prepared_adapter_sha256": "82133590f4180f03dcd58d5dc0da390f0e70ef9abe3d053e05afe11370101a17",
-    "accepted_query_sampler_bridge_sha256": "ea7f3e1af42558b4cdc32a293bfa275a770a18f81508d7af4af4b3d7987397c6"
+    "accepted_query_sampler_bridge_sha256": "c5b3d2490bb62bb8e0f30b60b1709e0baa2744e53022f492eb2d272b241533ce"
   },
   "verification": {
     "generated_entry_compiles": true,
@@ -121,6 +121,7 @@
     "relation_prepared_adapter_compiles": true,
     "accepted_query_sampler_bridge_compiles": true,
     "accepted_query_sampler_has_no_source_axiom": true,
+    "accepted_query_sampler_builds_exact_released_schedule": true,
     "relation_transport_parameters_removed": true,
     "forbidden_tokens": [
       "sorry",
