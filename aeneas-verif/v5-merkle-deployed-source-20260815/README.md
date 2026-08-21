@@ -79,37 +79,48 @@ five-section driver are represented and analyzed by the other generated-code
 modules in this package rather than by this raw-loop snapshot; their final
 composition is described below.
 
-## What this does not prove
+## Later end-to-end proof
 
-This is a complete extraction artifact with a direct proof of the unchanged
-radix authentication loops, not by itself the final five-section proof.
+This directory is the earlier extraction record and direct proof of the
+unchanged radix authentication loops. The later
+[`v5-merkle-unchanged-full-20260820`](../v5-merkle-unchanged-full-20260820/)
+package completes the successful-execution path from the unchanged generated
+public verifier through all five opening sections to the maintained Merkle
+model. Its final theorems are
+`generated_public_acceptance_yields_exact_v5` and
+`generated_public_acceptance_yields_forest`.
+
+Those theorems prove the direction needed for security: if the generated
+production verifier accepts, the proof bytes describe five authenticated
+opening sections in the maintained model. They do not rely on the older,
+stronger two-way propositions
+`VerifyStateOnlyPrivateOpeningWithTopologySourceEquality` or
+`VerifyV5DriverCompositionSourceEquality`.
+
+The following text describes what this earlier package established before the
+later composition was added.
+
 `AspisFormal/V5MerkleSourceAdapter.lean` proves the generic control-flow
 lemma: the loop-shaped and recursive scans have the same result and ordered
 hash-call prefix, and successful runs have the same scratch vectors and
 frontier position.  The direct unchanged-loop theorem is stronger for the
 radix authentication function and no longer needs either model-to-code
 connection for that function.  The generated parser/helper definitions and
-the public five-call driver must still be composed into the repository's
-one-way deployed-acceptance theorem.  The remaining public boundaries are
-tracked as:
+the public five-call driver were later composed in the package linked above.
+The two intermediate propositions previously used to track that work were:
 
 - `VerifyStateOnlyPrivateOpeningWithTopologySourceEquality`;
 - `VerifyV5DriverCompositionSourceEquality`.
-
-Until that composition is discharged, the repository must not claim a
-complete end-to-end theorem from the public deployed entry point to the
-five-section mathematical model. Concrete Rust tests remain supporting
-evidence; they do not replace the universal proof.
 
 The generated proof package establishes the exact leaf and binary-cap SHA-256
 inputs and inverts a successful top-level driver call into all five opening
 results, their remainders, four query arrays, scratch states, byte count, and
 the final empty-remainder check.  The unchanged-loop proof now also covers the
 nonterminal radix-four scan: each slot read, group hash, frontier read, cursor
-advance, and accepted terminal root shape.  Its sole executable hash boundary
-is `fixed_hashv`; connecting that boundary to Solana's SHA-256 implementation
-and completing the public parser/helper/driver composition remain explicit
-obligations outside this individual theorem.
+advance, and accepted terminal root shape. Its sole executable hash premise is
+that `fixed_hashv` returns SHA-256 of the ordered byte slices. The later proof
+keeps the same explicit hash premise; it does not prove Solana's SHA-256
+implementation or SHA-256 collision resistance.
 
 ## Tool versions
 
