@@ -1,0 +1,76 @@
+diff --git a/programs/aspis-verifier/src/v5_cu_probe.rs b/programs/aspis-verifier/src/v5_cu_probe.rs
+--- a/programs/aspis-verifier/src/v5_cu_probe.rs
++++ b/programs/aspis-verifier/src/v5_cu_probe.rs
+@@ -575,6 +575,22 @@ fn parse_probe_data_for_mode(mode: u8, data: &[u8]) -> Result<ParsedProbeData<'_>, ProgramError> {
+     }
+ }
+ 
++/// Extraction-only first-order wrapper for the exact production hash callback.
++/// The replay checks its LLBC body is the single original helper call.
++#[inline(always)]
++fn verify_v5_private_openings_sbf<'a>(
++    roots: &V5PrivateOpeningRoots,
++    queries: &[u32],
++    proof: &'a [u8],
++) -> Result<VerifiedV5PrivateOpenings<'a>, private_openings::V5PrivateOpeningError> {
++    verify_v5_private_openings(
++        crate::verify::sbf_hashv,
++        roots,
++        queries,
++        proof,
++    )
++}
++
+ fn verify_v5_private_suffix<'a>(
+     parsed: &'a ParsedProbeData<'a>,
+     queries: &[u32; V5_CU_PROBE_QUERY_COUNT],
+@@ -582,8 +598,7 @@ fn verify_v5_private_suffix<'a>(
+-    let verified = verify_v5_private_openings(
+-        crate::verify::sbf_hashv,
++    let verified = verify_v5_private_openings_sbf(
+         &parsed.v5_private_roots,
+         queries,
+         parsed.v5_private_proof,
+     )
+     .map_err(|_| ProgramError::InvalidAccountData)?;
+     if verified.c1.records != parsed.candidate_c1 || verified.c2.records != parsed.c2 {
+@@ -2326,6 +2342,24 @@ fn outputs_sink(mode: u8, outputs: &[ProbeOutput]) -> Result<[u8; 32], ProgramError> {
+     Ok(crate::verify::sbf_hashv(&[SINK_DOMAIN, &[mode], &material]))
+ }
+ 
++/// Extraction-only first-order wrapper for the exact production inverse
++/// callback. The replay checks its LLBC body is the single original FRI call.
++#[inline(always)]
++fn check_v5_fri_queries_inv<'a>(
++    openings: &VerifiedV5PrivateOpenings<'a>,
++    prepared: &V5PreparedPcsClaims,
++    alphas: [QM31; V5_CU_PROBE_RELATION_FOLDS],
++    final_polynomial: [QM31; V5_CU_PROBE_RELATION_FINAL_VALUES],
++) -> Result<fri_checks::V5FriCheckSink, fri_checks::V5FriCheckError> {
++    check_v5_fri_queries(
++        openings,
++        prepared,
++        alphas,
++        final_polynomial,
++        M31::inv,
++    )
++}
++
+ #[inline(never)]
+ fn verify_mode9_fri_phase(
+     parsed: &ParsedProbeData<'_>,
+@@ -2337,13 +2355,12 @@ fn verify_mode9_fri_phase(
+     let private_openings = verify_v5_private_suffix(parsed, queries)?;
+     let prepared_claims = prepare_v5_pcs_claims(gamma, parsed.relation_claims)
+         .map_err(|_| ProgramError::InvalidAccountData)?;
+-    let fri = check_v5_fri_queries(
++    let fri = check_v5_fri_queries_inv(
+         &private_openings,
+         &prepared_claims,
+         *alphas,
+         *final_polynomial,
+-        M31::inv,
+     )
+     .map_err(|_| ProgramError::InvalidAccountData)?;
+     Ok((fri.folded_layer0_sum, prepared_claims))
+ }
