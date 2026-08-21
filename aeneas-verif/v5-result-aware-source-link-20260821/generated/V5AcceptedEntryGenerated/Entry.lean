@@ -8,47 +8,25 @@ set_option linter.hashCommand false
 set_option linter.unusedVariables false
 
 /- You can set the `maxHeartbeats` value with the `-max-heartbeats` CLI option -/
-set_option maxHeartbeats 1000000
+set_option maxHeartbeats 800000
 
 /- You can set the `maxRecDepth` value with the `-max-recdepth` CLI option -/
-set_option maxRecDepth 2048
+set_option maxRecDepth 4096
 
 /- You can remove the following line by using the CLI option `-all-computable`: -/
 noncomputable section
 
 namespace V5AcceptedEntryGenerated
 
-/-- Trait implementation: [core::array::equality::{impl core::cmp::PartialEq<[U; N]> for [T; N]}]
-    Source: '/rustc/library/core/src/array/equality.rs', lines 5:0-7:28
-    Name pattern: [core::cmp::PartialEq<[@T; @N], [@U; @N]>] -/
-@[reducible, rust_trait_impl "core::cmp::PartialEq<[@T; @N], [@U; @N]>"]
-def Array.Insts.CoreCmpPartialEqArray {T : Type} {U : Type} (N : Std.Usize)
-  (cmpPartialEqInst : core.cmp.PartialEq T U) : core.cmp.PartialEq (Array T N)
-  (Array U N) := {
-  eq := core.array.equality.PartialEqArray.eq cmpPartialEqInst
-  ne := core.array.equality.PartialEqArray.ne cmpPartialEqInst
-}
-
-/-- [core::array::equality::{impl core::cmp::PartialEq<[U; N]> for [T]}::ne]:
-    Source: '/rustc/library/core/src/array/equality.rs', lines 55:4-55:40
-    Name pattern: [core::array::equality::{core::cmp::PartialEq<[@T], [@U; @N]>}::ne]
+/-- [core::array::{[T; N]}::map]:
+    Source: '/rustc/library/core/src/array/mod.rs', lines 592:4-596:28
+    Name pattern: [core::array::{[@T; @N]}::map]
     Visibility: public -/
-@[rust_fun "core::array::equality::{core::cmp::PartialEq<[@T], [@U; @N]>}::ne"]
-axiom Slice.Insts.CoreCmpPartialEqArray.ne
-  {T : Type} {U : Type} {N : Std.Usize} (cmpPartialEqInst : core.cmp.PartialEq
-  T U) :
-  (Slice T) → (Array U N) → Result Bool
-
-/-- [core::array::equality::{impl core::cmp::PartialEq<[U; N]> for &'_0 [T]}::ne]:
-    Source: '/rustc/library/core/src/array/equality.rs', lines 90:4-90:40
-    Name pattern: [core::array::equality::{core::cmp::PartialEq<&'0 [@T], [@U; @N]>}::ne]
-    Visibility: public -/
-@[rust_fun
-  "core::array::equality::{core::cmp::PartialEq<&'0 [@T], [@U; @N]>}::ne"]
-axiom Shared0Slice.Insts.CoreCmpPartialEqArray.ne
-  {T : Type} {U : Type} {N : Std.Usize} (cmpPartialEqInst : core.cmp.PartialEq
-  T U) :
-  (Slice T) → (Array U N) → Result Bool
+@[rust_fun "core::array::{[@T; @N]}::map"]
+axiom core.array.Array.map
+  {T : Type} {F : Type} {U : Type} {N : Std.Usize}
+  (opsfunctionFnMutFTupleTUInst : core.ops.function.FnMut F T U) :
+  (Array T N) → F → Result (Array U N)
 
 /-- [core::hint::black_box]:
     Source: '/rustc/library/core/src/hint.rs', lines 490:0-490:40
@@ -56,6 +34,28 @@ axiom Shared0Slice.Insts.CoreCmpPartialEqArray.ne
     Visibility: public -/
 @[rust_fun "core::hint::black_box"]
 axiom core.hint.black_box {T : Type} : T → Result T
+
+/-- [core::iter::traits::iterator::Iterator::position]:
+    Source: '/rustc/library/core/src/iter/traits/iterator.rs', lines 3134:4-3137:37
+    Name pattern: [core::iter::traits::iterator::Iterator::position]
+    Visibility: public -/
+@[trait_default, rust_fun "core::iter::traits::iterator::Iterator::position"]
+axiom core.iter.traits.iterator.Iterator.position.default
+  {Self : Type} {P : Type} {Clause0_Item : Type} (IteratorInst :
+  core.iter.traits.iterator.Iterator Self Clause0_Item)
+  (opsfunctionFnMutPTupleClause0_ItemBoolInst : core.ops.function.FnMut P
+  Clause0_Item Bool) :
+  Self → P → Result ((Option Std.Usize) × Self)
+
+/-- [core::option::{core::option::Option<T>}::map_or]:
+    Source: '/rustc/library/core/src/option.rs', lines 1221:4-1224:28
+    Name pattern: [core::option::{core::option::Option<@T>}::map_or]
+    Visibility: public -/
+@[rust_fun "core::option::{core::option::Option<@T>}::map_or"]
+axiom core.option.Option.map_or
+  {T : Type} {U : Type} {F : Type} (opsfunctionFnOnceFTupleTUInst :
+  core.ops.function.FnOnce F T U) :
+  (Option T) → U → F → Result U
 
 /-- [core::option::{core::option::Option<T>}::ok_or]:
     Source: '/rustc/library/core/src/option.rs', lines 1334:4-1334:73
@@ -65,27 +65,88 @@ axiom core.hint.black_box {T : Type} : T → Result T
 axiom core.option.Option.ok_or
   {T : Type} {E : Type} : (Option T) → E → Result (core.result.Result T E)
 
+/-- [core::option::{core::option::Option<T>}::ok_or_else]:
+    Source: '/rustc/library/core/src/option.rs', lines 1360:4-1362:52
+    Name pattern: [core::option::{core::option::Option<@T>}::ok_or_else]
+    Visibility: public -/
+@[rust_fun "core::option::{core::option::Option<@T>}::ok_or_else"]
+axiom core.option.Option.ok_or_else
+  {T : Type} {E : Type} {F : Type} (opsfunctionFnOnceFTupleEInst :
+  core.ops.function.FnOnce F Unit E) :
+  (Option T) → F → Result (core.result.Result T E)
+
+/-- [core::option::{core::option::Option<&'_0 T>}::copied]:
+    Source: '/rustc/library/core/src/option.rs', lines 2135:4-2137:16
+    Name pattern: [core::option::{core::option::Option<&'0 @T>}::copied]
+    Visibility: public -/
+@[rust_fun "core::option::{core::option::Option<&'0 @T>}::copied"]
+axiom core.option.OptionShared0T.copied
+  {T : Type} (markerCopyInst : core.marker.Copy T) :
+  (Option T) → Result (Option T)
+
+/-- [core::option::{impl core::cmp::PartialEq<core::option::Option<T>> for core::option::Option<T>}::eq]:
+    Source: '/rustc/library/core/src/option.rs', lines 2440:4-2440:38
+    Name pattern: [core::option::{core::cmp::PartialEq<core::option::Option<@T>, core::option::Option<@T>>}::eq]
+    Visibility: public -/
+@[rust_fun
+  "core::option::{core::cmp::PartialEq<core::option::Option<@T>, core::option::Option<@T>>}::eq"]
+axiom core.option.Option.Insts.CoreCmpPartialEqOption.eq
+  {T : Type} (cmpPartialEqInst : core.cmp.PartialEq T T) :
+  (Option T) → (Option T) → Result Bool
+
+/-- Trait implementation: [core::option::{impl core::cmp::PartialEq<core::option::Option<T>> for core::option::Option<T>}]
+    Source: '/rustc/library/core/src/option.rs', lines 2438:0-2438:56
+    Name pattern: [core::cmp::PartialEq<core::option::Option<@T>, core::option::Option<@T>>] -/
+@[reducible, rust_trait_impl
+  "core::cmp::PartialEq<core::option::Option<@T>, core::option::Option<@T>>"]
+impl_def core.option.Option.Insts.CoreCmpPartialEqOption {T : Type}
+  (cmpPartialEqInst : core.cmp.PartialEq T T) : core.cmp.PartialEq (Option T)
+  (Option T) := {
+  eq := core.option.Option.Insts.CoreCmpPartialEqOption.eq cmpPartialEqInst
+  ne := core.cmp.PartialEq.ne.trait_default
+    (core.option.Option.Insts.CoreCmpPartialEqOption cmpPartialEqInst)
+}
+
 /-- [core::result::{core::result::Result<T, E>}::map_err]:
     Source: '/rustc/library/core/src/result.rs', lines 962:4-964:53
     Name pattern: [core::result::{core::result::Result<@T, @E>}::map_err]
     Visibility: public -/
 @[rust_fun "core::result::{core::result::Result<@T, @E>}::map_err"]
-axiom core.result.Result.map_err
+def core.result.Result.map_err
   {T : Type} {E : Type} {F : Type} {O : Type} (opsfunctionFnOnceOTupleEFInst :
   core.ops.function.FnOnce O E F) :
   (core.result.Result T E) → O → Result (core.result.Result T F)
+  | .Ok value, _ => ok (.Ok value)
+  | .Err error, closure => do
+      let mapped ← opsfunctionFnOnceOTupleEFInst.call_once closure error
+      ok (.Err mapped)
 
-/-- Trait implementation: [core::slice::cmp::{impl core::cmp::PartialEq<[U]> for [T]}]
-    Source: '/rustc/library/core/src/slice/cmp.rs', lines 14:0-16:28
-    Name pattern: [core::cmp::PartialEq<[@T], [@U]>] -/
-@[reducible, rust_trait_impl "core::cmp::PartialEq<[@T], [@U]>"]
-impl_def Slice.Insts.CoreCmpPartialEqSlice {T : Type} {U : Type}
-  (cmpPartialEqInst : core.cmp.PartialEq T U) : core.cmp.PartialEq (Slice T)
-  (Slice U) := {
-  eq := core.slice.cmp.PartialEqSlice.eq cmpPartialEqInst
-  ne := core.cmp.PartialEq.ne.trait_default (Slice.Insts.CoreCmpPartialEqSlice
-    cmpPartialEqInst)
-}
+/-- [core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a T> for core::slice::iter::Iter<'a, T>}::position]:
+    Source: '/rustc/library/core/src/slice/iter/macros.rs', lines 377:12-379:45
+    Name pattern: [core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, @T>, &'a @T>}::position]
+    Visibility: public -/
+@[rust_fun
+  "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, @T>, &'a @T>}::position"]
+axiom
+  core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.position
+  {T : Type} {P : Type} (opsfunctionFnMutPTupleSharedATBoolInst :
+  core.ops.function.FnMut P T Bool) :
+  (core.slice.iter.Iter T) → P → Result ((Option Std.Usize) ×
+    (core.slice.iter.Iter T))
+
+/-- [core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a mut T> for core::slice::iter::IterMut<'a, T>}::position]:
+    Source: '/rustc/library/core/src/slice/iter/macros.rs', lines 377:12-379:45
+    Name pattern: [core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, @T>, &'a mut @T>}::position]
+    Visibility: public -/
+@[rust_fun
+  "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, @T>, &'a mut @T>}::position"]
+axiom
+  core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT.position
+  {T : Type} {P : Type} (opsfunctionFnMutPTupleMutATBoolInst :
+  core.ops.function.FnMut P T Bool) :
+  (core.slice.iter.IterMut T) → P → Result ((Option Std.Usize) ×
+    (core.slice.iter.IterMut T) × (core.slice.iter.IterMut T →
+    core.slice.iter.IterMut T))
 
 /-- Type-correct view used to construct Rust's `Enumerate` adapter. -/
 def core.slice.iter.IteratorIterMut.next_without_writeback
@@ -156,6 +217,67 @@ impl_def core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT (T :
 @[reducible, rust_type "aspis_core::field::M31"]
 def aspis_core.field.M31 := Std.U32
 
+/-- [aspis_core::circle_fri::DerivedCircleQueryFoldInverses]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/circle_fri.rs', lines 178:0-178:41
+    Name pattern: [aspis_core::circle_fri::DerivedCircleQueryFoldInverses]
+    Visibility: public -/
+@[rust_type "aspis_core::circle_fri::DerivedCircleQueryFoldInverses"]
+structure aspis_core.circle_fri.DerivedCircleQueryFoldInverses where
+  circle : alloc.vec.Vec (Array aspis_core.field.M31 2#usize)
+  later : Array (alloc.vec.Vec (Array aspis_core.field.M31 3#usize)) 3#usize
+  final_x : alloc.vec.Vec aspis_core.field.M31
+
+/-- [aspis_core::circle_fri::FoldDenominator]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/circle_fri.rs', lines 185:0-185:24
+    Name pattern: [aspis_core::circle_fri::FoldDenominator]
+    Visibility: public -/
+@[rust_type "aspis_core::circle_fri::FoldDenominator"]
+inductive aspis_core.circle_fri.FoldDenominator where
+| CircleY : aspis_core.circle_fri.FoldDenominator
+| CircleX : aspis_core.circle_fri.FoldDenominator
+| LineFirstPairX : aspis_core.circle_fri.FoldDenominator
+| LineSecondPairX : aspis_core.circle_fri.FoldDenominator
+| LineSecondFoldX : aspis_core.circle_fri.FoldDenominator
+
+/-- [aspis_core::circle_fri::CircleFriError]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/circle_fri.rs', lines 194:0-194:23
+    Name pattern: [aspis_core::circle_fri::CircleFriError]
+    Visibility: public -/
+@[rust_type "aspis_core::circle_fri::CircleFriError"]
+inductive aspis_core.circle_fri.CircleFriError where
+| CircleIndexOutOfRange : aspis_core.circle_fri.CircleFriError
+| CircleFiberOutOfRange : aspis_core.circle_fri.CircleFriError
+| InvalidLineLayer : aspis_core.circle_fri.CircleFriError
+| InvalidLineFoldLayer : aspis_core.circle_fri.CircleFriError
+| LineIndexOutOfRange : aspis_core.circle_fri.CircleFriError
+| LineFiberOutOfRange : aspis_core.circle_fri.CircleFriError
+| QueryOutOfRange : aspis_core.circle_fri.CircleFriError
+| InvalidBitReverseLength : aspis_core.circle_fri.CircleFriError
+| BitReverseIndexOutOfRange : aspis_core.circle_fri.CircleFriError
+| ZeroDenominator :
+  aspis_core.circle_fri.FoldDenominator →
+  aspis_core.circle_fri.CircleFriError
+| InvalidInverseBackend : aspis_core.circle_fri.CircleFriError
+
+/-- [aspis_core::circle_fri::derive_query_fold_inverses_for_circle]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/circle_fri.rs', lines 385:0-390:59
+    Name pattern: [aspis_core::circle_fri::derive_query_fold_inverses_for_circle]
+    Visibility: public -/
+@[rust_fun "aspis_core::circle_fri::derive_query_fold_inverses_for_circle"]
+axiom aspis_core.circle_fri.derive_query_fold_inverses_for_circle
+  :
+  Std.U32 → (Slice Std.U32) → (Array (Slice Std.U32) 3#usize) →
+    (aspis_core.field.M31 → Result aspis_core.field.M31) → Result
+    (core.result.Result aspis_core.circle_fri.DerivedCircleQueryFoldInverses
+    aspis_core.circle_fri.CircleFriError)
+
+/-- [aspis_core::field::PreparedQm31Multiplier]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/field.rs', lines 362:0-362:33
+    Name pattern: [aspis_core::field::PreparedQm31Multiplier]
+    Visibility: public -/
+@[rust_type "aspis_core::field::PreparedQm31Multiplier"]
+axiom aspis_core.field.PreparedQm31Multiplier : Type
+
 /-- [aspis_core::field::CM31]
     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/field.rs', lines 194:0-194:15
     Name pattern: [aspis_core::field::CM31]
@@ -173,6 +295,247 @@ structure aspis_core.field.CM31 where
 structure aspis_core.field.QM31 where
   c0 : aspis_core.field.CM31
   c1 : aspis_core.field.CM31
+
+/-- [aspis_core::circle_fri::normalized_circle_to_line_arity4_prepared_polynomial_refs]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/circle_fri.rs', lines 826:0-831:9
+    Name pattern: [aspis_core::circle_fri::normalized_circle_to_line_arity4_prepared_polynomial_refs]
+    Visibility: public -/
+@[rust_fun
+  "aspis_core::circle_fri::normalized_circle_to_line_arity4_prepared_polynomial_refs"]
+axiom
+  aspis_core.circle_fri.normalized_circle_to_line_arity4_prepared_polynomial_refs
+  :
+  (Array aspis_core.field.QM31 4#usize) → (Array
+    aspis_core.field.PreparedQm31Multiplier 3#usize) → aspis_core.field.M31
+    → aspis_core.field.M31 → Result aspis_core.field.QM31
+
+/-- [aspis_core::circle_line_merkle::CIRCLE_LINE_TAGS]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/circle_line_merkle.rs', lines 18:0-18:57
+    Name pattern: [aspis_core::circle_line_merkle::CIRCLE_LINE_TAGS]
+    Visibility: public -/
+@[rust_const "aspis_core::circle_line_merkle::CIRCLE_LINE_TAGS"]
+axiom aspis_core.circle_line_merkle.CIRCLE_LINE_TAGS
+  : Result (Array Std.U8 3#usize)
+
+/-- [aspis_core::circle_line_merkle::CircleLineQueryIndices]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/circle_line_merkle.rs', lines 102:0-102:33
+    Name pattern: [aspis_core::circle_line_merkle::CircleLineQueryIndices]
+    Visibility: public -/
+@[rust_type "aspis_core::circle_line_merkle::CircleLineQueryIndices"]
+structure aspis_core.circle_line_merkle.CircleLineQueryIndices where
+  layer0 : alloc.vec.Vec Std.U32
+  later : Array (alloc.vec.Vec Std.U32) 3#usize
+
+/-- [aspis_core::circle_merkle::CIRCLE_C1_LAYER0_TAG]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/circle_merkle.rs', lines 21:0-21:34
+    Name pattern: [aspis_core::circle_merkle::CIRCLE_C1_LAYER0_TAG]
+    Visibility: public -/
+@[rust_const "aspis_core::circle_merkle::CIRCLE_C1_LAYER0_TAG"]
+axiom aspis_core.circle_merkle.CIRCLE_C1_LAYER0_TAG : Result Std.U8
+
+/-- [aspis_core::circle_merkle::CIRCLE_C2_LAYER0_TAG]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/circle_merkle.rs', lines 22:0-22:34
+    Name pattern: [aspis_core::circle_merkle::CIRCLE_C2_LAYER0_TAG]
+    Visibility: public -/
+@[rust_const "aspis_core::circle_merkle::CIRCLE_C2_LAYER0_TAG"]
+axiom aspis_core.circle_merkle.CIRCLE_C2_LAYER0_TAG : Result Std.U8
+
+/-- [aspis_core::circle_pcs_shape::CirclePcsShape]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/circle_pcs_shape.rs', lines 21:0-21:25
+    Name pattern: [aspis_core::circle_pcs_shape::CirclePcsShape]
+    Visibility: public -/
+@[rust_type "aspis_core::circle_pcs_shape::CirclePcsShape"]
+structure aspis_core.circle_pcs_shape.CirclePcsShape where
+  trace_log_size : Std.U8
+  domain_log_size : Std.U8
+  query_count : Std.U16
+  opening_points : Std.U8
+  c1_columns : Std.U16
+  c2_columns : Std.U16
+  c1_layer0_tag : Std.U8
+  c2_layer0_tag : Std.U8
+  later_layer_tags : Array Std.U8 3#usize
+
+/-- [aspis_core::circle_pcs_shape::CirclePcsShapeError]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/circle_pcs_shape.rs', lines 34:0-34:28
+    Name pattern: [aspis_core::circle_pcs_shape::CirclePcsShapeError]
+    Visibility: public -/
+@[rust_type
+  "aspis_core::circle_pcs_shape::CirclePcsShapeError"]
+inductive aspis_core.circle_pcs_shape.CirclePcsShapeError where
+| UnsupportedTraceLog :
+  Std.U8 →
+  aspis_core.circle_pcs_shape.CirclePcsShapeError
+| DomainTooSmall :
+  Std.U8 →
+  Std.U8 →
+  aspis_core.circle_pcs_shape.CirclePcsShapeError
+| DomainTooLarge : Std.U8 → aspis_core.circle_pcs_shape.CirclePcsShapeError
+| EmptyQueries : aspis_core.circle_pcs_shape.CirclePcsShapeError
+| TooManyQueries :
+  Std.U16 →
+  Std.Usize →
+  aspis_core.circle_pcs_shape.CirclePcsShapeError
+| EmptyOpeningPoints : aspis_core.circle_pcs_shape.CirclePcsShapeError
+| EmptyC1 : aspis_core.circle_pcs_shape.CirclePcsShapeError
+| EmptyC2 : aspis_core.circle_pcs_shape.CirclePcsShapeError
+| WidthOverflow : aspis_core.circle_pcs_shape.CirclePcsShapeError
+| DuplicateTreeTag : Std.U8 → aspis_core.circle_pcs_shape.CirclePcsShapeError
+
+/-- [aspis_core::circle_pcs_shape::CirclePcsDecodeError]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/circle_pcs_shape.rs', lines 48:0-48:29
+    Name pattern: [aspis_core::circle_pcs_shape::CirclePcsDecodeError]
+    Visibility: public -/
+@[rust_type
+  "aspis_core::circle_pcs_shape::CirclePcsDecodeError"]
+inductive aspis_core.circle_pcs_shape.CirclePcsDecodeError where
+| Shape :
+  aspis_core.circle_pcs_shape.CirclePcsShapeError →
+  aspis_core.circle_pcs_shape.CirclePcsDecodeError
+| EvaluationLength :
+  Std.Usize →
+  Std.Usize →
+  aspis_core.circle_pcs_shape.CirclePcsDecodeError
+| C1LeafLength :
+  Std.Usize →
+  Std.Usize →
+  aspis_core.circle_pcs_shape.CirclePcsDecodeError
+| C2LeafLength :
+  Std.Usize →
+  Std.Usize →
+  aspis_core.circle_pcs_shape.CirclePcsDecodeError
+| NonCanonicalEvaluation :
+  Std.Usize →
+  aspis_core.circle_pcs_shape.CirclePcsDecodeError
+| NonCanonicalC1 :
+  Std.Usize →
+  aspis_core.circle_pcs_shape.CirclePcsDecodeError
+| NonCanonicalC2 :
+  Std.Usize →
+  aspis_core.circle_pcs_shape.CirclePcsDecodeError
+
+/-- [aspis_core::circle_pcs_shape::{impl core::convert::From<aspis_core::circle_pcs_shape::CirclePcsShapeError> for aspis_core::circle_pcs_shape::CirclePcsDecodeError}::from]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/circle_pcs_shape.rs', lines 59:4-59:47
+    Name pattern: [aspis_core::circle_pcs_shape::{core::convert::From<aspis_core::circle_pcs_shape::CirclePcsDecodeError, aspis_core::circle_pcs_shape::CirclePcsShapeError>}::from]
+    Visibility: public -/
+@[rust_fun
+  "aspis_core::circle_pcs_shape::{core::convert::From<aspis_core::circle_pcs_shape::CirclePcsDecodeError, aspis_core::circle_pcs_shape::CirclePcsShapeError>}::from"]
+axiom
+  aspis_core.circle_pcs_shape.CirclePcsDecodeError.Insts.CoreConvertFromCirclePcsShapeError.from
+  :
+  aspis_core.circle_pcs_shape.CirclePcsShapeError → Result
+    aspis_core.circle_pcs_shape.CirclePcsDecodeError
+
+/-- [aspis_core::circle_pcs_shape::CirclePcsPreparedClaims]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/circle_pcs_shape.rs', lines 65:0-65:34
+    Name pattern: [aspis_core::circle_pcs_shape::CirclePcsPreparedClaims]
+    Visibility: public -/
+@[rust_type "aspis_core::circle_pcs_shape::CirclePcsPreparedClaims"]
+structure aspis_core.circle_pcs_shape.CirclePcsPreparedClaims where
+  claims : alloc.vec.Vec aspis_core.field.QM31
+  powers : alloc.vec.Vec aspis_core.field.QM31
+
+/-- [aspis_core::circle_pcs_shape::{aspis_core::circle_pcs_shape::CirclePcsShape}::validate]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/circle_pcs_shape.rs', lines 71:4-71:62
+    Name pattern: [aspis_core::circle_pcs_shape::{aspis_core::circle_pcs_shape::CirclePcsShape}::validate]
+    Visibility: public -/
+@[rust_fun
+  "aspis_core::circle_pcs_shape::{aspis_core::circle_pcs_shape::CirclePcsShape}::validate"]
+axiom aspis_core.circle_pcs_shape.CirclePcsShape.validate
+  :
+  aspis_core.circle_pcs_shape.CirclePcsShape → Result (core.result.Result
+    aspis_core.circle_pcs_shape.CirclePcsShape
+    aspis_core.circle_pcs_shape.CirclePcsShapeError)
+
+/-- [aspis_core::circle_pcs_shape::{aspis_core::circle_pcs_shape::CirclePcsShape}::total_columns]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/circle_pcs_shape.rs', lines 137:4-137:45
+    Name pattern: [aspis_core::circle_pcs_shape::{aspis_core::circle_pcs_shape::CirclePcsShape}::total_columns]
+    Visibility: public -/
+@[rust_fun
+  "aspis_core::circle_pcs_shape::{aspis_core::circle_pcs_shape::CirclePcsShape}::total_columns"]
+axiom aspis_core.circle_pcs_shape.CirclePcsShape.total_columns
+  : aspis_core.circle_pcs_shape.CirclePcsShape → Result Std.Usize
+
+/-- [aspis_core::circle_query::CircleQueryLeaf]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/circle_query.rs', lines 63:0-63:24
+    Name pattern: [aspis_core::circle_query::CircleQueryLeaf]
+    Visibility: public -/
+@[rust_type "aspis_core::circle_query::CircleQueryLeaf"]
+inductive aspis_core.circle_query.CircleQueryLeaf where
+| C1 : aspis_core.circle_query.CircleQueryLeaf
+| C2 : aspis_core.circle_query.CircleQueryLeaf
+| Later : Std.U8 → aspis_core.circle_query.CircleQueryLeaf
+
+/-- [aspis_core::circle_query::CircleQueryError]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/circle_query.rs', lines 70:0-70:25
+    Name pattern: [aspis_core::circle_query::CircleQueryError]
+    Visibility: public -/
+@[rust_type "aspis_core::circle_query::CircleQueryError"]
+inductive aspis_core.circle_query.CircleQueryError where
+| QueryOutOfRange : Std.Usize → aspis_core.circle_query.CircleQueryError
+| LeafLength :
+  aspis_core.circle_query.CircleQueryLeaf →
+  Std.Usize →
+  Std.Usize →
+  aspis_core.circle_query.CircleQueryError
+| NonCanonicalM31 : Std.Usize → aspis_core.circle_query.CircleQueryError
+| NonCanonicalQm31 :
+  aspis_core.circle_query.CircleQueryLeaf →
+  Std.Usize →
+  aspis_core.circle_query.CircleQueryError
+| C1KernelInvariant : aspis_core.circle_query.CircleQueryError
+| LayerValueMismatch :
+  Std.U8 →
+  Std.Usize →
+  aspis_core.circle_query.CircleQueryError
+| TerminalValueMismatch :
+  Std.Usize →
+  aspis_core.circle_query.CircleQueryError
+| Fold :
+  aspis_core.circle_fri.CircleFriError →
+  aspis_core.circle_query.CircleQueryError
+
+/-- [aspis_core::circle_query::check_fixed_line_transition_prepared_polynomial_powers]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/circle_query.rs', lines 575:0-582:33
+    Name pattern: [aspis_core::circle_query::check_fixed_line_transition_prepared_polynomial_powers]
+    Visibility: public -/
+@[rust_fun
+  "aspis_core::circle_query::check_fixed_line_transition_prepared_polynomial_powers"]
+axiom
+  aspis_core.circle_query.check_fixed_line_transition_prepared_polynomial_powers
+  :
+  (Slice Std.U8) → (Slice Std.U8) → Std.Usize → Std.U8 → (Array
+    aspis_core.field.M31 3#usize) → (Array
+    aspis_core.field.PreparedQm31Multiplier 3#usize) → Result
+    (core.result.Result Unit aspis_core.circle_query.CircleQueryError)
+
+/-- [aspis_core::circle_query::check_fixed_terminal_transition_prepared_polynomial_refs]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/circle_query.rs', lines 658:0-665:33
+    Name pattern: [aspis_core::circle_query::check_fixed_terminal_transition_prepared_polynomial_refs]
+    Visibility: public -/
+@[rust_fun
+  "aspis_core::circle_query::check_fixed_terminal_transition_prepared_polynomial_refs"]
+axiom
+  aspis_core.circle_query.check_fixed_terminal_transition_prepared_polynomial_refs
+  :
+  (Slice Std.U8) → (Array aspis_core.field.QM31 4#usize) → Std.Usize →
+    (Array aspis_core.field.M31 3#usize) → aspis_core.field.M31 → (Array
+    aspis_core.field.PreparedQm31Multiplier 3#usize) → Result
+    (core.result.Result Unit aspis_core.circle_query.CircleQueryError)
+
+/-- [aspis_core::field::P]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/field.rs', lines 16:0-16:16
+    Name pattern: [aspis_core::field::P]
+    Visibility: public -/
+@[rust_const "aspis_core::field::P"] axiom aspis_core.field.P : Result Std.U32
+
+/-- [aspis_core::field::{aspis_core::field::M31}::inv]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/field.rs', lines 154:4-154:27
+    Name pattern: [aspis_core::field::{aspis_core::field::M31}::inv]
+    Visibility: public -/
+@[rust_fun "aspis_core::field::{aspis_core::field::M31}::inv"]
+axiom aspis_core.field.M31.inv
+  : aspis_core.field.M31 → Result aspis_core.field.M31
 
 /-- [aspis_core::field::{impl core::cmp::PartialEq<aspis_core::field::QM31> for aspis_core::field::QM31}::eq]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/field.rs', lines 351:22-351:31
@@ -195,6 +558,25 @@ impl_def aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31 : core.cmp.PartialEq
     aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31
 }
 
+/-- [aspis_core::field::{aspis_core::field::PreparedQm31Multiplier}::new]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/field.rs', lines 368:4-368:35
+    Name pattern: [aspis_core::field::{aspis_core::field::PreparedQm31Multiplier}::new]
+    Visibility: public -/
+@[rust_fun
+  "aspis_core::field::{aspis_core::field::PreparedQm31Multiplier}::new"]
+axiom aspis_core.field.PreparedQm31Multiplier.new
+  : aspis_core.field.QM31 → Result aspis_core.field.PreparedQm31Multiplier
+
+/-- [aspis_core::field::qm31_sum_products3_prepared]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/field.rs', lines 574:0-574:97
+    Name pattern: [aspis_core::field::qm31_sum_products3_prepared]
+    Visibility: public -/
+@[rust_fun "aspis_core::field::qm31_sum_products3_prepared"]
+axiom aspis_core.field.qm31_sum_products3_prepared
+  :
+  (Array aspis_core.field.PreparedQm31Multiplier 3#usize) → (Array
+    aspis_core.field.QM31 3#usize) → Result aspis_core.field.QM31
+
 /-- [aspis_core::field::{aspis_core::field::QM31}::ZERO]
     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/field.rs', lines 715:4-715:24
     Name pattern: [aspis_core::field::{aspis_core::field::QM31}::ZERO]
@@ -202,19 +584,22 @@ impl_def aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31 : core.cmp.PartialEq
 @[rust_const "aspis_core::field::{aspis_core::field::QM31}::ZERO"]
 axiom aspis_core.field.QM31.ZERO : Result aspis_core.field.QM31
 
-/-- [aspis_core::field::{aspis_core::field::QM31}::ONE]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/field.rs', lines 725:4-725:23
-    Name pattern: [aspis_core::field::{aspis_core::field::QM31}::ONE]
-    Visibility: public -/
-@[rust_const "aspis_core::field::{aspis_core::field::QM31}::ONE"]
-axiom aspis_core.field.QM31.ONE : Result aspis_core.field.QM31
-
 /-- [aspis_core::field::{aspis_core::field::QM31}::add]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/field.rs', lines 742:4-742:39
     Name pattern: [aspis_core::field::{aspis_core::field::QM31}::add]
     Visibility: public -/
 @[rust_fun "aspis_core::field::{aspis_core::field::QM31}::add"]
 axiom aspis_core.field.QM31.add
+  :
+  aspis_core.field.QM31 → aspis_core.field.QM31 → Result
+    aspis_core.field.QM31
+
+/-- [aspis_core::field::{aspis_core::field::QM31}::mul]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/field.rs', lines 775:4-775:39
+    Name pattern: [aspis_core::field::{aspis_core::field::QM31}::mul]
+    Visibility: public -/
+@[rust_fun "aspis_core::field::{aspis_core::field::QM31}::mul"]
+axiom aspis_core.field.QM31.mul
   :
   aspis_core.field.QM31 → aspis_core.field.QM31 → Result
     aspis_core.field.QM31
@@ -235,47 +620,23 @@ axiom aspis_core.field.QM31.square
 axiom aspis_core.field.QM31.from_le_bytes
   : (Slice Std.U8) → Result (Option aspis_core.field.QM31)
 
-/-- [aspis_core::proof::M31_CIRCLE_BASIS_DISCRIMINATOR]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/proof.rs', lines 93:0-93:51
-    Name pattern: [aspis_core::proof::M31_CIRCLE_BASIS_DISCRIMINATOR]
+/-- [aspis_core::field::qm31_m31_dot4_prepared_limbs_4b_bytes]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/field.rs', lines 1506:0-1509:22
+    Name pattern: [aspis_core::field::qm31_m31_dot4_prepared_limbs_4b_bytes]
     Visibility: public -/
-@[rust_const "aspis_core::proof::M31_CIRCLE_BASIS_DISCRIMINATOR"]
-axiom aspis_core.proof.M31_CIRCLE_BASIS_DISCRIMINATOR
-  : Result (Array Std.U8 22#usize)
+@[rust_fun "aspis_core::field::qm31_m31_dot4_prepared_limbs_4b_bytes"]
+axiom aspis_core.field.qm31_m31_dot4_prepared_limbs_4b_bytes
+  {N : Std.Usize} :
+  (Array (Array Std.U32 4#usize) N) → (Slice Std.U8) → Result (Option
+    (Array aspis_core.field.QM31 4#usize))
 
-/-- [aspis_core::state_only_hiding::StateOnlyHidingScheduleError]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/state_only_hiding.rs', lines 128:0-128:37
-    Name pattern: [aspis_core::state_only_hiding::StateOnlyHidingScheduleError]
+/-- [aspis_core::state_only_prefix::STATE_ONLY_SPEND_QUERY_COUNT]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/state_only_prefix.rs', lines 56:0-56:43
+    Name pattern: [aspis_core::state_only_prefix::STATE_ONLY_SPEND_QUERY_COUNT]
     Visibility: public -/
-@[rust_type
-  "aspis_core::state_only_hiding::StateOnlyHidingScheduleError"]
-inductive aspis_core.state_only_hiding.StateOnlyHidingScheduleError where
-| ZeroMaskNonce : aspis_core.state_only_hiding.StateOnlyHidingScheduleError
-| MaskLayoutFingerprint :
-  aspis_core.state_only_hiding.StateOnlyHidingScheduleError
-| LayoutFactorFingerprint :
-  aspis_core.state_only_hiding.StateOnlyHidingScheduleError
-| ChallengeSampleExhausted :
-  aspis_core.state_only_hiding.StateOnlyHidingScheduleError
-
-/-- [aspis_core::transcript::Transcript]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 259:0-259:21
-    Name pattern: [aspis_core::transcript::Transcript]
-    Visibility: public -/
-@[rust_type "aspis_core::transcript::Transcript"]
-axiom aspis_core.transcript.Transcript : Type
-
-/-- [aspis_core::state_only_hiding::begin_state_only_masked_sumcheck]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/state_only_hiding.rs', lines 227:0-230:47
-    Name pattern: [aspis_core::state_only_hiding::begin_state_only_masked_sumcheck]
-    Visibility: public -/
-@[rust_fun "aspis_core::state_only_hiding::begin_state_only_masked_sumcheck"]
-axiom aspis_core.state_only_hiding.begin_state_only_masked_sumcheck
-  :
-  aspis_core.transcript.Transcript → aspis_core.field.QM31 → Result
-    ((core.result.Result aspis_core.field.QM31
-    aspis_core.state_only_hiding.StateOnlyHidingScheduleError) ×
-    aspis_core.transcript.Transcript)
+@[rust_const "aspis_core::state_only_prefix::STATE_ONLY_SPEND_QUERY_COUNT"]
+axiom aspis_core.state_only_prefix.STATE_ONLY_SPEND_QUERY_COUNT
+  : Result Std.U16
 
 /-- [aspis_core::state_only_private_merkle::STATE_ONLY_PRIVATE_LEAF_SALT_BYTES]
     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/state_only_private_merkle.rs', lines 11:0-11:51
@@ -285,6 +646,44 @@ axiom aspis_core.state_only_hiding.begin_state_only_masked_sumcheck
   "aspis_core::state_only_private_merkle::STATE_ONLY_PRIVATE_LEAF_SALT_BYTES"]
 axiom aspis_core.state_only_private_merkle.STATE_ONLY_PRIVATE_LEAF_SALT_BYTES
   : Result Std.Usize
+
+/-- [aspis_core::state_only_private_openings::StateOnlyPrivateOpeningOffsets]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/state_only_private_openings.rs', lines 36:0-36:41
+    Name pattern: [aspis_core::state_only_private_openings::StateOnlyPrivateOpeningOffsets]
+    Visibility: public -/
+@[rust_type
+  "aspis_core::state_only_private_openings::StateOnlyPrivateOpeningOffsets"]
+structure aspis_core.state_only_private_openings.StateOnlyPrivateOpeningOffsets
+  where
+  count : Std.Usize
+  records : Std.Usize
+  frontier_count : Std.Usize
+  frontier : Std.Usize
+  «end» : Std.Usize
+
+/-- [aspis_core::state_only_private_openings::StateOnlyPrivateOpening]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/state_only_private_openings.rs', lines 46:0-46:38
+    Name pattern: [aspis_core::state_only_private_openings::StateOnlyPrivateOpening]
+    Visibility: public -/
+@[rust_type "aspis_core::state_only_private_openings::StateOnlyPrivateOpening"]
+structure aspis_core.state_only_private_openings.StateOnlyPrivateOpening where
+  count : Std.Usize
+  value_width : Std.Usize
+  records : Slice Std.U8
+  frontier : Slice Std.U8
+  offsets :
+    aspis_core.state_only_private_openings.StateOnlyPrivateOpeningOffsets
+
+/-- [aspis_core::state_only_private_openings::{aspis_core::state_only_private_openings::StateOnlyPrivateOpening<'a>}::value]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/state_only_private_openings.rs', lines 68:4-68:59
+    Name pattern: [aspis_core::state_only_private_openings::{aspis_core::state_only_private_openings::StateOnlyPrivateOpening<'a>}::value]
+    Visibility: public -/
+@[rust_fun
+  "aspis_core::state_only_private_openings::{aspis_core::state_only_private_openings::StateOnlyPrivateOpening<'a>}::value"]
+axiom aspis_core.state_only_private_openings.StateOnlyPrivateOpening.value
+  :
+  aspis_core.state_only_private_openings.StateOnlyPrivateOpening → Std.Usize
+    → Result (Option (Slice Std.U8))
 
 /-- [aspis_core::state_only_query::STATE_ONLY_FIBER_SLOTS]
     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/state_only_query.rs', lines 20:0-20:39
@@ -300,86 +699,6 @@ axiom aspis_core.state_only_query.STATE_ONLY_FIBER_SLOTS : Result Std.Usize
 @[rust_const "aspis_core::state_only_spend_query::SPEND_C2_LEAF_BYTES"]
 axiom aspis_core.state_only_spend_query.SPEND_C2_LEAF_BYTES : Result Std.Usize
 
-/-- [aspis_core::state_only_sumcheck::STATE_ONLY_SUMCHECK_BYTES]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/state_only_sumcheck.rs', lines 17:0-17:42
-    Name pattern: [aspis_core::state_only_sumcheck::STATE_ONLY_SUMCHECK_BYTES]
-    Visibility: public -/
-@[rust_const "aspis_core::state_only_sumcheck::STATE_ONLY_SUMCHECK_BYTES"]
-axiom aspis_core.state_only_sumcheck.STATE_ONLY_SUMCHECK_BYTES
-  : Result Std.Usize
-
-/-- [aspis_core::state_only_sumcheck::StateOnlySumcheckVerification]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/state_only_sumcheck.rs', lines 57:0-57:40
-    Name pattern: [aspis_core::state_only_sumcheck::StateOnlySumcheckVerification]
-    Visibility: public -/
-@[rust_type "aspis_core::state_only_sumcheck::StateOnlySumcheckVerification"]
-structure aspis_core.state_only_sumcheck.StateOnlySumcheckVerification where
-  point : Array aspis_core.field.QM31 10#usize
-  terminal_claim : aspis_core.field.QM31
-
-/-- [aspis_core::state_only_sumcheck::StateOnlySumcheckVerifyError]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/state_only_sumcheck.rs', lines 63:0-63:37
-    Name pattern: [aspis_core::state_only_sumcheck::StateOnlySumcheckVerifyError]
-    Visibility: public -/
-@[rust_type
-  "aspis_core::state_only_sumcheck::StateOnlySumcheckVerifyError"]
-inductive aspis_core.state_only_sumcheck.StateOnlySumcheckVerifyError where
-| BadLength : aspis_core.state_only_sumcheck.StateOnlySumcheckVerifyError
-| NonCanonicalValue :
-  Std.Usize →
-  Std.Usize →
-  aspis_core.state_only_sumcheck.StateOnlySumcheckVerifyError
-| BoundaryMismatch :
-  Std.Usize →
-  aspis_core.state_only_sumcheck.StateOnlySumcheckVerifyError
-| TerminalMismatch :
-  aspis_core.state_only_sumcheck.StateOnlySumcheckVerifyError
-| ChallengeSampleExhausted :
-  aspis_core.state_only_sumcheck.StateOnlySumcheckVerifyError
-
-/-- [aspis_core::transcript::ChallengeSampleExhausted]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 227:0-227:35
-    Name pattern: [aspis_core::transcript::ChallengeSampleExhausted]
-    Visibility: public -/
-@[reducible, rust_type "aspis_core::transcript::ChallengeSampleExhausted"]
-def aspis_core.transcript.ChallengeSampleExhausted := Unit
-
-/-- [aspis_core::statement_sumcheck::PaymentConstraintChallenges]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/statement_sumcheck.rs', lines 26:0-26:38
-    Name pattern: [aspis_core::statement_sumcheck::PaymentConstraintChallenges]
-    Visibility: public -/
-@[rust_type "aspis_core::statement_sumcheck::PaymentConstraintChallenges"]
-structure aspis_core.statement_sumcheck.PaymentConstraintChallenges where
-  theta : aspis_core.field.QM31
-  zerocheck_point : Array aspis_core.field.QM31 10#usize
-  mu : aspis_core.field.QM31
-
-/-- [aspis_core::state_only_sumcheck::begin_state_only_zerocheck]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/state_only_sumcheck.rs', lines 80:0-82:66
-    Name pattern: [aspis_core::state_only_sumcheck::begin_state_only_zerocheck]
-    Visibility: public -/
-@[rust_fun "aspis_core::state_only_sumcheck::begin_state_only_zerocheck"]
-axiom aspis_core.state_only_sumcheck.begin_state_only_zerocheck
-  :
-  aspis_core.transcript.Transcript → Result ((core.result.Result
-    aspis_core.statement_sumcheck.PaymentConstraintChallenges
-    aspis_core.transcript.ChallengeSampleExhausted) ×
-    aspis_core.transcript.Transcript)
-
-/-- [aspis_core::state_only_sumcheck::verify_state_only_sumcheck_streaming]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/state_only_sumcheck.rs', lines 257:0-261:72
-    Name pattern: [aspis_core::state_only_sumcheck::verify_state_only_sumcheck_streaming]
-    Visibility: public -/
-@[rust_fun
-  "aspis_core::state_only_sumcheck::verify_state_only_sumcheck_streaming"]
-axiom aspis_core.state_only_sumcheck.verify_state_only_sumcheck_streaming
-  :
-  aspis_core.transcript.Transcript → (Slice Std.U8) → aspis_core.field.QM31
-    → Result ((core.result.Result
-    aspis_core.state_only_sumcheck.StateOnlySumcheckVerification
-    aspis_core.state_only_sumcheck.StateOnlySumcheckVerifyError) ×
-    aspis_core.transcript.Transcript)
-
 /-- [aspis_core::sumcheck::SUMCHECK_COEFFICIENTS]
     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/sumcheck.rs', lines 18:0-18:38
     Name pattern: [aspis_core::sumcheck::SUMCHECK_COEFFICIENTS]
@@ -387,133 +706,12 @@ axiom aspis_core.state_only_sumcheck.verify_state_only_sumcheck_streaming
 @[rust_const "aspis_core::sumcheck::SUMCHECK_COEFFICIENTS"]
 axiom aspis_core.sumcheck.SUMCHECK_COEFFICIENTS : Result Std.Usize
 
-/-- [aspis_core::transcript::label::PROFILE]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 63:4-63:25
-    Name pattern: [aspis_core::transcript::label::PROFILE]
+/-- [aspis_core::transcript::Transcript]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 259:0-259:21
+    Name pattern: [aspis_core::transcript::Transcript]
     Visibility: public -/
-@[rust_const "aspis_core::transcript::label::PROFILE"]
-axiom aspis_core.transcript.label.PROFILE : Result Std.U8
-
-/-- [aspis_core::transcript::label::STATEMENT]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 64:4-64:27
-    Name pattern: [aspis_core::transcript::label::STATEMENT]
-    Visibility: public -/
-@[rust_const "aspis_core::transcript::label::STATEMENT"]
-axiom aspis_core.transcript.label.STATEMENT : Result Std.U8
-
-/-- [aspis_core::transcript::label::CLAIM]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 70:4-70:23
-    Name pattern: [aspis_core::transcript::label::CLAIM]
-    Visibility: public -/
-@[rust_const "aspis_core::transcript::label::CLAIM"]
-axiom aspis_core.transcript.label.CLAIM : Result Std.U8
-
-/-- [aspis_core::transcript::label::SECOND_PHASE_CLAIM]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 83:4-83:36
-    Name pattern: [aspis_core::transcript::label::SECOND_PHASE_CLAIM]
-    Visibility: public -/
-@[rust_const "aspis_core::transcript::label::SECOND_PHASE_CLAIM"]
-axiom aspis_core.transcript.label.SECOND_PHASE_CLAIM : Result Std.U8
-
-/-- [aspis_core::transcript::label::M31_CIRCLE_BASIS]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 85:4-85:34
-    Name pattern: [aspis_core::transcript::label::M31_CIRCLE_BASIS]
-    Visibility: public -/
-@[rust_const "aspis_core::transcript::label::M31_CIRCLE_BASIS"]
-axiom aspis_core.transcript.label.M31_CIRCLE_BASIS : Result Std.U8
-
-/-- [aspis_core::transcript::label::M31_CIRCLE_STATEMENT_POINTS]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 93:4-93:45
-    Name pattern: [aspis_core::transcript::label::M31_CIRCLE_STATEMENT_POINTS]
-    Visibility: public -/
-@[rust_const "aspis_core::transcript::label::M31_CIRCLE_STATEMENT_POINTS"]
-axiom aspis_core.transcript.label.M31_CIRCLE_STATEMENT_POINTS : Result Std.U8
-
-/-- [aspis_core::transcript::label::M31_CIRCLE_STATEMENT_EVALUATIONS]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 95:4-95:50
-    Name pattern: [aspis_core::transcript::label::M31_CIRCLE_STATEMENT_EVALUATIONS]
-    Visibility: public -/
-@[rust_const "aspis_core::transcript::label::M31_CIRCLE_STATEMENT_EVALUATIONS"]
-axiom aspis_core.transcript.label.M31_CIRCLE_STATEMENT_EVALUATIONS
-  : Result Std.U8
-
-/-- [aspis_core::transcript::label::M31_PAYMENT_BATCH_POW_NONCE]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 132:4-132:45
-    Name pattern: [aspis_core::transcript::label::M31_PAYMENT_BATCH_POW_NONCE]
-    Visibility: public -/
-@[rust_const "aspis_core::transcript::label::M31_PAYMENT_BATCH_POW_NONCE"]
-axiom aspis_core.transcript.label.M31_PAYMENT_BATCH_POW_NONCE : Result Std.U8
-
-/-- [aspis_core::transcript::{aspis_core::transcript::Transcript}::new]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 265:4-265:42
-    Name pattern: [aspis_core::transcript::{aspis_core::transcript::Transcript}::new]
-    Visibility: public -/
-@[rust_fun "aspis_core::transcript::{aspis_core::transcript::Transcript}::new"]
-axiom aspis_core.transcript.Transcript.new
-  :
-  (Slice (Slice Std.U8) → Result (Array Std.U8 32#usize)) → Result
-    aspis_core.transcript.Transcript
-
-/-- [aspis_core::transcript::{aspis_core::transcript::Transcript}::absorb]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 272:4-272:52
-    Name pattern: [aspis_core::transcript::{aspis_core::transcript::Transcript}::absorb]
-    Visibility: public -/
-@[rust_fun
-  "aspis_core::transcript::{aspis_core::transcript::Transcript}::absorb"]
-axiom aspis_core.transcript.Transcript.absorb
-  :
-  aspis_core.transcript.Transcript → Std.U8 → (Slice Std.U8) → Result
-    aspis_core.transcript.Transcript
-
-/-- [aspis_core::transcript::{aspis_core::transcript::Transcript}::challenge_qm31]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 307:4-307:78
-    Name pattern: [aspis_core::transcript::{aspis_core::transcript::Transcript}::challenge_qm31]
-    Visibility: public -/
-@[rust_fun
-  "aspis_core::transcript::{aspis_core::transcript::Transcript}::challenge_qm31"]
-axiom aspis_core.transcript.Transcript.challenge_qm31
-  :
-  aspis_core.transcript.Transcript → Result ((core.result.Result
-    aspis_core.field.QM31 aspis_core.transcript.ChallengeSampleExhausted) ×
-    aspis_core.transcript.Transcript)
-
-/-- [aspis_core::transcript::{aspis_core::transcript::Transcript}::challenge_nonzero_qm31]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 350:4-350:86
-    Name pattern: [aspis_core::transcript::{aspis_core::transcript::Transcript}::challenge_nonzero_qm31]
-    Visibility: public -/
-@[rust_fun
-  "aspis_core::transcript::{aspis_core::transcript::Transcript}::challenge_nonzero_qm31"]
-axiom aspis_core.transcript.Transcript.challenge_nonzero_qm31
-  :
-  aspis_core.transcript.Transcript → Result ((core.result.Result
-    aspis_core.field.QM31 aspis_core.transcript.ChallengeSampleExhausted) ×
-    aspis_core.transcript.Transcript)
-
-/-- [aspis_core::transcript::{aspis_core::transcript::Transcript}::grinding_ok]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 472:4-472:59
-    Name pattern: [aspis_core::transcript::{aspis_core::transcript::Transcript}::grinding_ok]
-    Visibility: public -/
-@[rust_fun
-  "aspis_core::transcript::{aspis_core::transcript::Transcript}::grinding_ok"]
-axiom aspis_core.transcript.Transcript.grinding_ok
-  : aspis_core.transcript.Transcript → Std.U64 → Std.U8 → Result Bool
-
-/-- [aspis_statement::atomic_statement::ATOMIC_PAYMENT_TREE_DEPTH]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-statement/src/atomic_statement.rs', lines 20:0-20:42
-    Name pattern: [aspis_statement::atomic_statement::ATOMIC_PAYMENT_TREE_DEPTH]
-    Visibility: public -/
-@[rust_const "aspis_statement::atomic_statement::ATOMIC_PAYMENT_TREE_DEPTH"]
-axiom aspis_statement.atomic_statement.ATOMIC_PAYMENT_TREE_DEPTH
-  : Result Std.Usize
-
-/-- [aspis_statement::atomic_statement::ATOMIC_PAYMENT_STATEMENT_VERSION]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-statement/src/atomic_statement.rs', lines 21:0-21:46
-    Name pattern: [aspis_statement::atomic_statement::ATOMIC_PAYMENT_STATEMENT_VERSION]
-    Visibility: public -/
-@[rust_const
-  "aspis_statement::atomic_statement::ATOMIC_PAYMENT_STATEMENT_VERSION"]
-axiom aspis_statement.atomic_statement.ATOMIC_PAYMENT_STATEMENT_VERSION
-  : Result Std.U8
+@[rust_type "aspis_core::transcript::Transcript"]
+axiom aspis_core.transcript.Transcript : Type
 
 /-- [aspis_statement::atomic_statement::ATOMIC_PAYMENT_STATEMENT_PAYLOAD_BYTES]
     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-statement/src/atomic_statement.rs', lines 22:0-22:55
@@ -548,102 +746,15 @@ structure aspis_statement.atomic_statement.AtomicPaymentStatementV4 where
   output_anchor : Array aspis_core.field.M31 8#usize
   deployment_domain : Array Std.U8 32#usize
 
-/-- [aspis_statement::atomic_statement::{impl core::cmp::PartialEq<aspis_statement::atomic_statement::AtomicPaymentStatementV4> for aspis_statement::atomic_statement::AtomicPaymentStatementV4}::eq]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-statement/src/atomic_statement.rs', lines 35:23-35:32
-    Name pattern: [aspis_statement::atomic_statement::{core::cmp::PartialEq<aspis_statement::atomic_statement::AtomicPaymentStatementV4, aspis_statement::atomic_statement::AtomicPaymentStatementV4>}::eq]
-    Visibility: public -/
-@[rust_fun
-  "aspis_statement::atomic_statement::{core::cmp::PartialEq<aspis_statement::atomic_statement::AtomicPaymentStatementV4, aspis_statement::atomic_statement::AtomicPaymentStatementV4>}::eq"]
-axiom
-  aspis_statement.atomic_statement.AtomicPaymentStatementV4.Insts.CoreCmpPartialEqAtomicPaymentStatementV4.eq
-  :
-  aspis_statement.atomic_statement.AtomicPaymentStatementV4 →
-    aspis_statement.atomic_statement.AtomicPaymentStatementV4 → Result Bool
-
-/-- Trait implementation: [aspis_statement::atomic_statement::{impl core::cmp::PartialEq<aspis_statement::atomic_statement::AtomicPaymentStatementV4> for aspis_statement::atomic_statement::AtomicPaymentStatementV4}]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-statement/src/atomic_statement.rs', lines 35:23-35:32
-    Name pattern: [core::cmp::PartialEq<aspis_statement::atomic_statement::AtomicPaymentStatementV4, aspis_statement::atomic_statement::AtomicPaymentStatementV4>] -/
-@[reducible, rust_trait_impl
-  "core::cmp::PartialEq<aspis_statement::atomic_statement::AtomicPaymentStatementV4, aspis_statement::atomic_statement::AtomicPaymentStatementV4>"]
-impl_def
-  aspis_statement.atomic_statement.AtomicPaymentStatementV4.Insts.CoreCmpPartialEqAtomicPaymentStatementV4
-  : core.cmp.PartialEq
-  aspis_statement.atomic_statement.AtomicPaymentStatementV4
-  aspis_statement.atomic_statement.AtomicPaymentStatementV4 := {
-  eq :=
-    aspis_statement.atomic_statement.AtomicPaymentStatementV4.Insts.CoreCmpPartialEqAtomicPaymentStatementV4.eq
-  ne := core.cmp.PartialEq.ne.trait_default
-    aspis_statement.atomic_statement.AtomicPaymentStatementV4.Insts.CoreCmpPartialEqAtomicPaymentStatementV4
-}
-
-/-- [aspis_statement::atomic_statement::AtomicStatementError]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-statement/src/atomic_statement.rs', lines 62:0-62:29
-    Name pattern: [aspis_statement::atomic_statement::AtomicStatementError]
-    Visibility: public -/
-@[rust_type
-  "aspis_statement::atomic_statement::AtomicStatementError"]
-inductive aspis_statement.atomic_statement.AtomicStatementError where
-| NonCanonicalDigest : aspis_statement.atomic_statement.AtomicStatementError
-| NonCanonicalAssetId : aspis_statement.atomic_statement.AtomicStatementError
-| FeeOutOfRange : aspis_statement.atomic_statement.AtomicStatementError
-| PathDepthMismatch : aspis_statement.atomic_statement.AtomicStatementError
-| InsertionIndexOutOfRange :
-  aspis_statement.atomic_statement.AtomicStatementError
-| CurrentAnchorMismatch : aspis_statement.atomic_statement.AtomicStatementError
-| OutputAnchorMismatch : aspis_statement.atomic_statement.AtomicStatementError
-
-/-- [aspis_statement::atomic_statement::decode_digest_canonical]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-statement/src/atomic_statement.rs', lines 81:0-81:88
-    Name pattern: [aspis_statement::atomic_statement::decode_digest_canonical]
-    Visibility: public -/
-@[rust_fun "aspis_statement::atomic_statement::decode_digest_canonical"]
-axiom aspis_statement.atomic_statement.decode_digest_canonical
-  :
-  (Array Std.U8 32#usize) → Result (core.result.Result (Array
-    aspis_core.field.M31 8#usize)
-    aspis_statement.atomic_statement.AtomicStatementError)
-
-/-- [aspis_statement::atomic_statement::decode_asset_id_canonical]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-statement/src/atomic_statement.rs', lines 90:0-90:81
-    Name pattern: [aspis_statement::atomic_statement::decode_asset_id_canonical]
-    Visibility: public -/
-@[rust_fun "aspis_statement::atomic_statement::decode_asset_id_canonical"]
-axiom aspis_statement.atomic_statement.decode_asset_id_canonical
-  :
-  Std.U32 → Result (core.result.Result aspis_core.field.M31
-    aspis_statement.atomic_statement.AtomicStatementError)
-
-/-- [aspis_statement::atomic_statement::encode_atomic_payment_statement_v4]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-statement/src/atomic_statement.rs', lines 151:0-153:79
-    Name pattern: [aspis_statement::atomic_statement::encode_atomic_payment_statement_v4]
-    Visibility: public -/
-@[rust_fun
-  "aspis_statement::atomic_statement::encode_atomic_payment_statement_v4"]
-axiom aspis_statement.atomic_statement.encode_atomic_payment_statement_v4
-  :
-  aspis_statement.atomic_statement.AtomicPaymentStatementV4 → Result
-    (core.result.Result (Array Std.U8 216#usize)
-    aspis_statement.atomic_statement.AtomicStatementError)
-
-/-- [aspis_statement::state_only_terminal::StateOnlyTerminalError]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-statement/src/state_only_terminal.rs', lines 46:0-46:31
-    Name pattern: [aspis_statement::state_only_terminal::StateOnlyTerminalError]
-    Visibility: public -/
-@[rust_type
-  "aspis_statement::state_only_terminal::StateOnlyTerminalError"]
-inductive aspis_statement.state_only_terminal.StateOnlyTerminalError where
-| PublicFeeOutOfRange :
-  aspis_statement.state_only_terminal.StateOnlyTerminalError
-
 /-- [solana_hash::Hash]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-hash-2.3.0/src/lib.rs', lines 53:0-53:15
+    Source: '/private/tmp/v5-transcript-relation.jJScR4/vendor/solana-hash/src/lib.rs', lines 53:0-53:15
     Name pattern: [solana_hash::Hash]
     Visibility: public -/
 @[rust_type "solana_hash::Hash"]
 axiom solana_hash.Hash : Type
 
 /-- [solana_hash::{solana_hash::Hash}::to_bytes]:
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-hash-2.3.0/src/lib.rs', lines 148:4-148:45
+    Source: '/private/tmp/v5-transcript-relation.jJScR4/vendor/solana-hash/src/lib.rs', lines 148:4-148:45
     Name pattern: [solana_hash::{solana_hash::Hash}::to_bytes]
     Visibility: public -/
 @[rust_fun "solana_hash::{solana_hash::Hash}::to_bytes"]
@@ -651,7 +762,7 @@ axiom solana_hash.Hash.to_bytes
   : solana_hash.Hash → Result (Array Std.U8 32#usize)
 
 /-- [solana_program_error::ProgramError]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-program-error-2.2.2/src/lib.rs', lines 33:0-33:21
+    Source: '/private/tmp/v5-transcript-relation.jJScR4/vendor/solana-program-error/src/lib.rs', lines 33:0-33:21
     Name pattern: [solana_program_error::ProgramError]
     Visibility: public -/
 @[rust_type "solana_program_error::ProgramError"]
@@ -684,7 +795,7 @@ inductive solana_program_error.ProgramError where
 | IncorrectAuthority : solana_program_error.ProgramError
 
 /-- [solana_sha256_hasher::hashv]:
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-sha256-hasher-2.3.0/src/lib.rs', lines 32:0-32:36
+    Source: '/private/tmp/v5-transcript-relation.jJScR4/vendor/solana-sha256-hasher/src/lib.rs', lines 32:0-32:36
     Name pattern: [solana_sha256_hasher::hashv]
     Visibility: public -/
 @[rust_fun "solana_sha256_hasher::hashv"]
@@ -697,13 +808,6 @@ axiom solana_sha256_hasher.hashv
 @[global_simps, irreducible]
 def v5_atomic_terminal.V5_ATOMIC_TERMINAL_POINT_COORDINATES : Std.Usize :=
   10#usize
-
-/-- [aspis_verifier_parser_extraction::v5_atomic_terminal::V5_ATOMIC_TERMINAL_STATEMENT_OFFSET]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 36:0-36:57
-    Visibility: public -/
-@[global_simps, irreducible]
-def v5_atomic_terminal.V5_ATOMIC_TERMINAL_STATEMENT_OFFSET : Std.Usize :=
-  0#usize
 
 /-- [aspis_verifier_parser_extraction::v5_atomic_terminal::V5_ATOMIC_TERMINAL_LAMBDA_OFFSET]
     Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 37:0-37:91
@@ -755,72 +859,6 @@ def v5_atomic_terminal.V5_ATOMIC_TERMINAL_CONTEXT_BYTES
   let i ← v5_atomic_terminal.V5_ATOMIC_TERMINAL_MU_OFFSET
   i + 16#usize
 
-/-- [aspis_verifier_parser_extraction::v5_atomic_terminal::V5AtomicTerminalChallenges]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 62:0-69:1
-    Visibility: public -/
-structure v5_atomic_terminal.V5AtomicTerminalChallenges where
-  lambda : aspis_core.field.QM31
-  chi : aspis_core.field.QM31
-  theta : aspis_core.field.QM31
-  zerocheck_point : Array aspis_core.field.QM31 10#usize
-  mu : aspis_core.field.QM31
-  eta : aspis_core.field.QM31
-
-/-- [aspis_verifier_parser_extraction::v5_atomic_terminal::{impl core::cmp::PartialEq<aspis_verifier_parser_extraction::v5_atomic_terminal::V5AtomicTerminalChallenges> for aspis_verifier_parser_extraction::v5_atomic_terminal::V5AtomicTerminalChallenges}::eq]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 61:29-61:38
-    Visibility: public -/
-def
-  v5_atomic_terminal.V5AtomicTerminalChallenges.Insts.CoreCmpPartialEqV5AtomicTerminalChallenges.eq
-  (self : v5_atomic_terminal.V5AtomicTerminalChallenges)
-  (other : v5_atomic_terminal.V5AtomicTerminalChallenges) :
-  Result Bool
-  := do
-  let b ←
-    aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31.eq self.lambda
-      other.lambda
-  if b
-  then
-    let b1 ←
-      aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31.eq self.chi other.chi
-    if b1
-    then
-      let b2 ←
-        aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31.eq self.theta
-          other.theta
-      if b2
-      then
-        let b3 ←
-          core.array.equality.PartialEqArray.eq
-            aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31
-            self.zerocheck_point other.zerocheck_point
-        if b3
-        then
-          let b4 ←
-            aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31.eq self.mu
-              other.mu
-          if b4
-          then
-            aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31.eq self.eta
-              other.eta
-          else ok false
-        else ok false
-      else ok false
-    else ok false
-  else ok false
-
-/-- Trait implementation: [aspis_verifier_parser_extraction::v5_atomic_terminal::{impl core::cmp::PartialEq<aspis_verifier_parser_extraction::v5_atomic_terminal::V5AtomicTerminalChallenges> for aspis_verifier_parser_extraction::v5_atomic_terminal::V5AtomicTerminalChallenges}]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 61:29-61:38 -/
-@[reducible]
-impl_def
-  v5_atomic_terminal.V5AtomicTerminalChallenges.Insts.CoreCmpPartialEqV5AtomicTerminalChallenges
-  : core.cmp.PartialEq v5_atomic_terminal.V5AtomicTerminalChallenges
-  v5_atomic_terminal.V5AtomicTerminalChallenges := {
-  eq :=
-    v5_atomic_terminal.V5AtomicTerminalChallenges.Insts.CoreCmpPartialEqV5AtomicTerminalChallenges.eq
-  ne := core.cmp.PartialEq.ne.trait_default
-    v5_atomic_terminal.V5AtomicTerminalChallenges.Insts.CoreCmpPartialEqV5AtomicTerminalChallenges
-}
-
 /-- [aspis_verifier_parser_extraction::v5_atomic_terminal::VerifiedV5AtomicTerminal]
     Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 79:0-83:1
     Visibility: public -/
@@ -828,550 +866,6 @@ structure v5_atomic_terminal.VerifiedV5AtomicTerminal where
   real : aspis_core.field.QM31
   mask : aspis_core.field.QM31
   masked : aspis_core.field.QM31
-
-/-- [aspis_verifier_parser_extraction::v5_atomic_terminal::V5AtomicTerminalError]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 86:0-99:1
-    Visibility: public -/
-inductive v5_atomic_terminal.V5AtomicTerminalError where
-| WrongContextBytes :
-  Std.Usize →
-  Std.Usize →
-  v5_atomic_terminal.V5AtomicTerminalError
-| InvalidStatement : v5_atomic_terminal.V5AtomicTerminalError
-| NonCanonicalContextField :
-  Std.Usize →
-  v5_atomic_terminal.V5AtomicTerminalError
-| WrongPointBytes :
-  Std.Usize →
-  Std.Usize →
-  v5_atomic_terminal.V5AtomicTerminalError
-| WrongClaimBytes :
-  Std.Usize →
-  Std.Usize →
-  v5_atomic_terminal.V5AtomicTerminalError
-| NonCanonicalPoint :
-  Std.Usize →
-  Std.Usize →
-  v5_atomic_terminal.V5AtomicTerminalError
-| NonCanonicalClaim :
-  Std.Usize →
-  Std.Usize →
-  v5_atomic_terminal.V5AtomicTerminalError
-| OpeningPointMismatch : Std.Usize → v5_atomic_terminal.V5AtomicTerminalError
-| Semantic :
-  aspis_statement.state_only_terminal.StateOnlyTerminalError →
-  v5_atomic_terminal.V5AtomicTerminalError
-| RealMismatch : v5_atomic_terminal.V5AtomicTerminalError
-| MaskMismatch : v5_atomic_terminal.V5AtomicTerminalError
-| MaskedMismatch : v5_atomic_terminal.V5AtomicTerminalError
-
-/-- [aspis_verifier_parser_extraction::v5_atomic_terminal::decode_statement::closure#2]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 136:17-136:60 -/
-@[reducible]
-def v5_atomic_terminal.decode_statement.closure_2 := Unit
-
-/-- [aspis_verifier_parser_extraction::v5_atomic_terminal::decode_statement::{impl core::ops::function::FnOnce<(aspis_statement::atomic_statement::AtomicStatementError,), aspis_verifier_parser_extraction::v5_atomic_terminal::V5AtomicTerminalError> for aspis_verifier_parser_extraction::v5_atomic_terminal::decode_statement::closure#2}::call_once]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 136:17-136:60 -/
-def
-  v5_atomic_terminal.decode_statement.closure_2.Insts.CoreOpsFunctionFnOnceTupleAtomicStatementErrorV5AtomicTerminalError.call_once
-  (c : v5_atomic_terminal.decode_statement.closure_2)
-  (tupled_args : aspis_statement.atomic_statement.AtomicStatementError) :
-  Result v5_atomic_terminal.V5AtomicTerminalError
-  := do
-  ok v5_atomic_terminal.V5AtomicTerminalError.InvalidStatement
-
-/-- Trait implementation: [aspis_verifier_parser_extraction::v5_atomic_terminal::decode_statement::{impl core::ops::function::FnOnce<(aspis_statement::atomic_statement::AtomicStatementError,), aspis_verifier_parser_extraction::v5_atomic_terminal::V5AtomicTerminalError> for aspis_verifier_parser_extraction::v5_atomic_terminal::decode_statement::closure#2}]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 136:17-136:60 -/
-@[reducible]
-def
-  v5_atomic_terminal.decode_statement.closure_2.Insts.CoreOpsFunctionFnOnceTupleAtomicStatementErrorV5AtomicTerminalError
-  : core.ops.function.FnOnce v5_atomic_terminal.decode_statement.closure_2
-  aspis_statement.atomic_statement.AtomicStatementError
-  v5_atomic_terminal.V5AtomicTerminalError := {
-  call_once :=
-    v5_atomic_terminal.decode_statement.closure_2.Insts.CoreOpsFunctionFnOnceTupleAtomicStatementErrorV5AtomicTerminalError.call_once
-}
-
-/-- [aspis_verifier_parser_extraction::v5_atomic_terminal::decode_statement::closure#1]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 129:21-129:64 -/
-@[reducible]
-def v5_atomic_terminal.decode_statement.closure_1 := Unit
-
-/-- [aspis_verifier_parser_extraction::v5_atomic_terminal::decode_statement::{impl core::ops::function::FnOnce<(aspis_statement::atomic_statement::AtomicStatementError,), aspis_verifier_parser_extraction::v5_atomic_terminal::V5AtomicTerminalError> for aspis_verifier_parser_extraction::v5_atomic_terminal::decode_statement::closure#1}::call_once]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 129:21-129:64 -/
-def
-  v5_atomic_terminal.decode_statement.closure_1.Insts.CoreOpsFunctionFnOnceTupleAtomicStatementErrorV5AtomicTerminalError.call_once
-  (c : v5_atomic_terminal.decode_statement.closure_1)
-  (tupled_args : aspis_statement.atomic_statement.AtomicStatementError) :
-  Result v5_atomic_terminal.V5AtomicTerminalError
-  := do
-  ok v5_atomic_terminal.V5AtomicTerminalError.InvalidStatement
-
-/-- Trait implementation: [aspis_verifier_parser_extraction::v5_atomic_terminal::decode_statement::{impl core::ops::function::FnOnce<(aspis_statement::atomic_statement::AtomicStatementError,), aspis_verifier_parser_extraction::v5_atomic_terminal::V5AtomicTerminalError> for aspis_verifier_parser_extraction::v5_atomic_terminal::decode_statement::closure#1}]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 129:21-129:64 -/
-@[reducible]
-def
-  v5_atomic_terminal.decode_statement.closure_1.Insts.CoreOpsFunctionFnOnceTupleAtomicStatementErrorV5AtomicTerminalError
-  : core.ops.function.FnOnce v5_atomic_terminal.decode_statement.closure_1
-  aspis_statement.atomic_statement.AtomicStatementError
-  v5_atomic_terminal.V5AtomicTerminalError := {
-  call_once :=
-    v5_atomic_terminal.decode_statement.closure_1.Insts.CoreOpsFunctionFnOnceTupleAtomicStatementErrorV5AtomicTerminalError.call_once
-}
-
-/-- [aspis_verifier_parser_extraction::v5_atomic_terminal::decode_statement::closure::closure]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 117:21-117:64 -/
-@[reducible]
-def v5_atomic_terminal.decode_statement.closure.closure := Unit
-
-/-- [aspis_verifier_parser_extraction::v5_atomic_terminal::decode_statement::closure::{impl core::ops::function::FnOnce<(aspis_statement::atomic_statement::AtomicStatementError,), aspis_verifier_parser_extraction::v5_atomic_terminal::V5AtomicTerminalError> for aspis_verifier_parser_extraction::v5_atomic_terminal::decode_statement::closure::closure}::call_once]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 117:21-117:64 -/
-def
-  v5_atomic_terminal.decode_statement.closure.closure.Insts.CoreOpsFunctionFnOnceTupleAtomicStatementErrorV5AtomicTerminalError.call_once
-  (c : v5_atomic_terminal.decode_statement.closure.closure)
-  (tupled_args : aspis_statement.atomic_statement.AtomicStatementError) :
-  Result v5_atomic_terminal.V5AtomicTerminalError
-  := do
-  ok v5_atomic_terminal.V5AtomicTerminalError.InvalidStatement
-
-/-- Trait implementation: [aspis_verifier_parser_extraction::v5_atomic_terminal::decode_statement::closure::{impl core::ops::function::FnOnce<(aspis_statement::atomic_statement::AtomicStatementError,), aspis_verifier_parser_extraction::v5_atomic_terminal::V5AtomicTerminalError> for aspis_verifier_parser_extraction::v5_atomic_terminal::decode_statement::closure::closure}]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 117:21-117:64 -/
-@[reducible]
-def
-  v5_atomic_terminal.decode_statement.closure.closure.Insts.CoreOpsFunctionFnOnceTupleAtomicStatementErrorV5AtomicTerminalError
-  : core.ops.function.FnOnce
-  v5_atomic_terminal.decode_statement.closure.closure
-  aspis_statement.atomic_statement.AtomicStatementError
-  v5_atomic_terminal.V5AtomicTerminalError := {
-  call_once :=
-    v5_atomic_terminal.decode_statement.closure.closure.Insts.CoreOpsFunctionFnOnceTupleAtomicStatementErrorV5AtomicTerminalError.call_once
-}
-
-/-- [aspis_verifier_parser_extraction::v5_atomic_terminal::decode_statement::closure]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 115:17-118:5 -/
-@[reducible]
-def v5_atomic_terminal.decode_statement.closure := Slice Std.U8
-
-/-- [aspis_verifier_parser_extraction::v5_atomic_terminal::decode_statement::{impl core::ops::function::Fn<(usize,), core::result::Result<[aspis_core::field::M31; 8usize], aspis_verifier_parser_extraction::v5_atomic_terminal::V5AtomicTerminalError>> for aspis_verifier_parser_extraction::v5_atomic_terminal::decode_statement::closure<'_0>}::call]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 115:17-118:5 -/
-def
-  v5_atomic_terminal.decode_statement.closure.Insts.CoreOpsFunctionFnTupleUsizeResultArrayM318V5AtomicTerminalError.call
-  (c : v5_atomic_terminal.decode_statement.closure) (tupled_args : Std.Usize) :
-  Result (core.result.Result (Array aspis_core.field.M31 8#usize)
-    v5_atomic_terminal.V5AtomicTerminalError)
-  := do
-  let i ← tupled_args + 32#usize
-  let s ←
-    core.slice.index.Slice.index (core.slice.index.SliceIndexRangeUsizeSlice
-      Std.U8) c { start := tupled_args, «end» := i }
-  let r ← core.array.TryFromSharedArraySlice.try_from 32#usize s
-  let a ← core.result.Result.unwrap core.fmt.DebugTryFromSliceError r
-  let r1 ← aspis_statement.atomic_statement.decode_digest_canonical a
-  core.result.Result.map_err
-    v5_atomic_terminal.decode_statement.closure.closure.Insts.CoreOpsFunctionFnOnceTupleAtomicStatementErrorV5AtomicTerminalError
-    r1 ()
-
-/-- [aspis_verifier_parser_extraction::v5_atomic_terminal::decode_statement]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 107:0-141:1 -/
-def v5_atomic_terminal.decode_statement
-  (bytes : Slice Std.U8) :
-  Result (core.result.Result
-    aspis_statement.atomic_statement.AtomicPaymentStatementV4
-    v5_atomic_terminal.V5AtomicTerminalError)
-  := do
-  let i := Slice.len bytes
-  let i1 ←
-    aspis_statement.atomic_statement.ATOMIC_PAYMENT_STATEMENT_PAYLOAD_BYTES
-  if i != i1
-  then
-    ok (core.result.Result.Err
-      v5_atomic_terminal.V5AtomicTerminalError.InvalidStatement)
-  else
-    let i2 ← Slice.index_usize bytes 0#usize
-    let i3 ←
-      aspis_statement.atomic_statement.ATOMIC_PAYMENT_STATEMENT_VERSION
-    if i2 != i3
-    then
-      ok (core.result.Result.Err
-        v5_atomic_terminal.V5AtomicTerminalError.InvalidStatement)
-    else
-      let i4 ← Slice.index_usize bytes 1#usize
-      let i5 ← lift (core.convert.num.FromUsizeU8.from i4)
-      let i6 ← aspis_statement.atomic_statement.ATOMIC_PAYMENT_TREE_DEPTH
-      if i5 != i6
-      then
-        ok (core.result.Result.Err
-          v5_atomic_terminal.V5AtomicTerminalError.InvalidStatement)
-      else
-        let s ←
-          core.slice.index.Slice.index
-            (core.slice.index.SliceIndexRangeUsizeSlice Std.U8) bytes
-            { start := 2#usize, «end» := 8#usize }
-        let a := Array.repeat 6#usize 0#u8
-        let b ← Slice.Insts.CoreCmpPartialEqArray.ne core.cmp.PartialEqU8 s a
-        if b
-        then
-          ok (core.result.Result.Err
-            v5_atomic_terminal.V5AtomicTerminalError.InvalidStatement)
-        else
-          let s1 ←
-            core.slice.index.Slice.index
-              (core.slice.index.SliceIndexRangeUsizeSlice Std.U8) bytes
-              { start := 8#usize, «end» := 40#usize }
-          let r ←
-            core.array.TryFromArrayCopySlice.try_from 32#usize
-              core.marker.CopyU8 s1
-          let a1 ←
-            core.result.Result.unwrap core.fmt.DebugTryFromSliceError r
-          let s2 ←
-            core.slice.index.Slice.index
-              (core.slice.index.SliceIndexRangeUsizeSlice Std.U8) bytes
-              { start := 40#usize, «end» := 48#usize }
-          let r1 ←
-            core.array.TryFromArrayCopySlice.try_from 8#usize
-              core.marker.CopyU8 s2
-          let a2 ←
-            core.result.Result.unwrap core.fmt.DebugTryFromSliceError r1
-          let i7 ← lift (core.num.U64.from_le_bytes a2)
-          let r2 ←
-            v5_atomic_terminal.decode_statement.closure.Insts.CoreOpsFunctionFnTupleUsizeResultArrayM318V5AtomicTerminalError.call
-              bytes 48#usize
-          let cf ← core.result.Result.Insts.CoreOpsTry.branch r2
-          match cf with
-          | core.ops.control_flow.ControlFlow.Continue val =>
-            let r3 ←
-              v5_atomic_terminal.decode_statement.closure.Insts.CoreOpsFunctionFnTupleUsizeResultArrayM318V5AtomicTerminalError.call
-                bytes 80#usize
-            let cf1 ← core.result.Result.Insts.CoreOpsTry.branch r3
-            match cf1 with
-            | core.ops.control_flow.ControlFlow.Continue val1 =>
-              let r4 ←
-                v5_atomic_terminal.decode_statement.closure.Insts.CoreOpsFunctionFnTupleUsizeResultArrayM318V5AtomicTerminalError.call
-                  bytes 112#usize
-              let cf2 ← core.result.Result.Insts.CoreOpsTry.branch r4
-              match cf2 with
-              | core.ops.control_flow.ControlFlow.Continue val2 =>
-                let s3 ←
-                  core.slice.index.Slice.index
-                    (core.slice.index.SliceIndexRangeUsizeSlice Std.U8) bytes
-                    { start := 176#usize, «end» := 180#usize }
-                let r5 ←
-                  core.array.TryFromArrayCopySlice.try_from 4#usize
-                    core.marker.CopyU8 s3
-                let a3 ←
-                  core.result.Result.unwrap core.fmt.DebugTryFromSliceError r5
-                let i8 ← lift (core.num.U32.from_le_bytes a3)
-                let r6 ←
-                  aspis_statement.atomic_statement.decode_asset_id_canonical i8
-                let r7 ←
-                  core.result.Result.map_err
-                    v5_atomic_terminal.decode_statement.closure_1.Insts.CoreOpsFunctionFnOnceTupleAtomicStatementErrorV5AtomicTerminalError
-                    r6 ()
-                let cf3 ← core.result.Result.Insts.CoreOpsTry.branch r7
-                match cf3 with
-                | core.ops.control_flow.ControlFlow.Continue val3 =>
-                  let s4 ←
-                    core.slice.index.Slice.index
-                      (core.slice.index.SliceIndexRangeUsizeSlice Std.U8) bytes
-                      { start := 180#usize, «end» := 184#usize }
-                  let r8 ←
-                    core.array.TryFromArrayCopySlice.try_from 4#usize
-                      core.marker.CopyU8 s4
-                  let a4 ←
-                    core.result.Result.unwrap core.fmt.DebugTryFromSliceError
-                      r8
-                  let i9 ← lift (core.num.U32.from_le_bytes a4)
-                  let r9 ←
-                    v5_atomic_terminal.decode_statement.closure.Insts.CoreOpsFunctionFnTupleUsizeResultArrayM318V5AtomicTerminalError.call
-                      bytes 144#usize
-                  let cf4 ← core.result.Result.Insts.CoreOpsTry.branch r9
-                  match cf4 with
-                  | core.ops.control_flow.ControlFlow.Continue val4 =>
-                    let s5 ←
-                      core.slice.index.Slice.index
-                        (core.slice.index.SliceIndexRangeUsizeSlice Std.U8)
-                        bytes { start := 184#usize, «end» := 216#usize }
-                    let r10 ←
-                      core.array.TryFromArrayCopySlice.try_from 32#usize
-                        core.marker.CopyU8 s5
-                    let a5 ←
-                      core.result.Result.unwrap core.fmt.DebugTryFromSliceError
-                        r10
-                    let r11 ←
-                      aspis_statement.atomic_statement.encode_atomic_payment_statement_v4
-                        {
-                          pool := a1,
-                          sequence := i7,
-                          spend :=
-                            {
-                              anchor := val,
-                              nullifier := val1,
-                              output_commitment := val2,
-                              asset_id := val3,
-                              fee := i9
-                            },
-                          output_anchor := val4,
-                          deployment_domain := a5
-                        }
-                    let r12 ←
-                      core.result.Result.map_err
-                        v5_atomic_terminal.decode_statement.closure_2.Insts.CoreOpsFunctionFnOnceTupleAtomicStatementErrorV5AtomicTerminalError
-                        r11 ()
-                    let cf5 ← core.result.Result.Insts.CoreOpsTry.branch r12
-                    match cf5 with
-                    | core.ops.control_flow.ControlFlow.Continue val5 =>
-                      let s6 ← core.array.Array.as_slice val5
-                      let b1 ←
-                        core.cmp.impls.PartialEqShared.ne
-                          (Slice.Insts.CoreCmpPartialEqSlice
-                          core.cmp.PartialEqU8) s6 bytes
-                      if b1
-                      then
-                        ok (core.result.Result.Err
-                          v5_atomic_terminal.V5AtomicTerminalError.InvalidStatement)
-                      else
-                        ok (core.result.Result.Ok
-                          {
-                            pool := a1,
-                            sequence := i7,
-                            spend :=
-                              {
-                                anchor := val,
-                                nullifier := val1,
-                                output_commitment := val2,
-                                asset_id := val3,
-                                fee := i9
-                              },
-                            output_anchor := val4,
-                            deployment_domain := a5
-                          })
-                    | core.ops.control_flow.ControlFlow.Break residual =>
-                      core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-                        aspis_statement.atomic_statement.AtomicPaymentStatementV4
-                        (core.convert.FromSame
-                        v5_atomic_terminal.V5AtomicTerminalError) residual
-                  | core.ops.control_flow.ControlFlow.Break residual =>
-                    core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-                      aspis_statement.atomic_statement.AtomicPaymentStatementV4
-                      (core.convert.FromSame
-                      v5_atomic_terminal.V5AtomicTerminalError) residual
-                | core.ops.control_flow.ControlFlow.Break residual =>
-                  core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-                    aspis_statement.atomic_statement.AtomicPaymentStatementV4
-                    (core.convert.FromSame
-                    v5_atomic_terminal.V5AtomicTerminalError) residual
-              | core.ops.control_flow.ControlFlow.Break residual =>
-                core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-                  aspis_statement.atomic_statement.AtomicPaymentStatementV4
-                  (core.convert.FromSame
-                  v5_atomic_terminal.V5AtomicTerminalError) residual
-            | core.ops.control_flow.ControlFlow.Break residual =>
-              core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-                aspis_statement.atomic_statement.AtomicPaymentStatementV4
-                (core.convert.FromSame
-                v5_atomic_terminal.V5AtomicTerminalError) residual
-          | core.ops.control_flow.ControlFlow.Break residual =>
-            core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-              aspis_statement.atomic_statement.AtomicPaymentStatementV4
-              (core.convert.FromSame v5_atomic_terminal.V5AtomicTerminalError)
-              residual
-
-/-- [aspis_verifier_parser_extraction::v5_atomic_terminal::decode_context_qm31]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 143:0-150:1 -/
-def v5_atomic_terminal.decode_context_qm31
-  (bytes : Slice Std.U8) (offset : Std.Usize) (field : Std.Usize) :
-  Result (core.result.Result aspis_core.field.QM31
-    v5_atomic_terminal.V5AtomicTerminalError)
-  := do
-  let i ← offset + 16#usize
-  let s ←
-    core.slice.index.Slice.index (core.slice.index.SliceIndexRangeUsizeSlice
-      Std.U8) bytes { start := offset, «end» := i }
-  let o ← aspis_core.field.QM31.from_le_bytes s
-  core.option.Option.ok_or o
-    (v5_atomic_terminal.V5AtomicTerminalError.NonCanonicalContextField field)
-
-/-- [aspis_verifier_parser_extraction::v5_atomic_terminal::decode_v5_atomic_terminal_context]: loop body 0:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 173:4-192:1
-    Visibility: public -/
-@[rust_loop_body]
-def v5_atomic_terminal.decode_v5_atomic_terminal_context_loop.body
-  (to_slice_mut_back : Slice aspis_core.field.QM31 → Array
-  aspis_core.field.QM31 10#usize)
-  (iter_mut_back : core.slice.iter.IterMut aspis_core.field.QM31 → Slice
-  aspis_core.field.QM31)
-  (enumerate_back : core.iter.adapters.enumerate.Enumerate
-  (core.slice.iter.IterMut aspis_core.field.QM31) → core.slice.iter.IterMut
-  aspis_core.field.QM31) (bytes : Slice Std.U8) (eta : aspis_core.field.QM31)
-  (statement : aspis_statement.atomic_statement.AtomicPaymentStatementV4)
-  (lambda : aspis_core.field.QM31) (chi : aspis_core.field.QM31)
-  (theta : aspis_core.field.QM31)
-  (iter : core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
-  aspis_core.field.QM31))
-  (back : core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
-  aspis_core.field.QM31) → core.iter.adapters.enumerate.Enumerate
-  (core.slice.iter.IterMut aspis_core.field.QM31)) :
-  Result (ControlFlow ((core.iter.adapters.enumerate.Enumerate
-    (core.slice.iter.IterMut aspis_core.field.QM31)) ×
-    (core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
-    aspis_core.field.QM31) → core.iter.adapters.enumerate.Enumerate
-    (core.slice.iter.IterMut aspis_core.field.QM31))) (core.result.Result
-    (aspis_statement.atomic_statement.AtomicPaymentStatementV4 ×
-    v5_atomic_terminal.V5AtomicTerminalChallenges)
-    v5_atomic_terminal.V5AtomicTerminalError))
-  := do
-  let (o, iter1, next_back) ←
-    core.iter.adapters.enumerate.IteratorEnumerateMut.next iter
-  match o with
-  | none =>
-    let i ← v5_atomic_terminal.V5_ATOMIC_TERMINAL_MU_OFFSET
-    let r ← v5_atomic_terminal.decode_context_qm31 bytes i 13#usize
-    let cf ← core.result.Result.Insts.CoreOpsTry.branch r
-    match cf with
-    | core.ops.control_flow.ControlFlow.Continue val =>
-      let iter2 := next_back iter1 none
-      let im := enumerate_back (back iter2)
-      let s := iter_mut_back im
-      let zerocheck_point := to_slice_mut_back s
-      ok (done (core.result.Result.Ok (statement,
-        { lambda, chi, theta, zerocheck_point, mu := val, eta })))
-    | core.ops.control_flow.ControlFlow.Break residual =>
-      let r1 ←
-        core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-          (aspis_statement.atomic_statement.AtomicPaymentStatementV4 ×
-          v5_atomic_terminal.V5AtomicTerminalChallenges) (core.convert.FromSame
-          v5_atomic_terminal.V5AtomicTerminalError) residual
-      ok (done r1)
-  | some p =>
-    let (coordinate, _) := p
-    let i ← coordinate * 16#usize
-    let i1 ← v5_atomic_terminal.V5_ATOMIC_TERMINAL_ZEROCHECK_OFFSET
-    let i2 ← i1 + i
-    let i3 ← 3#usize + coordinate
-    let r ← v5_atomic_terminal.decode_context_qm31 bytes i2 i3
-    let cf ← core.result.Result.Insts.CoreOpsTry.branch r
-    match cf with
-    | core.ops.control_flow.ControlFlow.Continue val =>
-      ok (cont (iter1,
-        fun e => let e1 := next_back e (some (coordinate, val))
-                 back e1))
-    | core.ops.control_flow.ControlFlow.Break residual =>
-      let r1 ←
-        core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-          (aspis_statement.atomic_statement.AtomicPaymentStatementV4 ×
-          v5_atomic_terminal.V5AtomicTerminalChallenges) (core.convert.FromSame
-          v5_atomic_terminal.V5AtomicTerminalError) residual
-      ok (done r1)
-
-/-- [aspis_verifier_parser_extraction::v5_atomic_terminal::decode_v5_atomic_terminal_context]: loop 0:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 173:4-192:1
-    Visibility: public -/
-@[rust_loop]
-def v5_atomic_terminal.decode_v5_atomic_terminal_context_loop
-  (to_slice_mut_back : Slice aspis_core.field.QM31 → Array
-  aspis_core.field.QM31 10#usize)
-  (iter_mut_back : core.slice.iter.IterMut aspis_core.field.QM31 → Slice
-  aspis_core.field.QM31)
-  (enumerate_back : core.iter.adapters.enumerate.Enumerate
-  (core.slice.iter.IterMut aspis_core.field.QM31) → core.slice.iter.IterMut
-  aspis_core.field.QM31)
-  (iter : core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
-  aspis_core.field.QM31))
-  (back : core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
-  aspis_core.field.QM31) → core.iter.adapters.enumerate.Enumerate
-  (core.slice.iter.IterMut aspis_core.field.QM31)) (bytes : Slice Std.U8)
-  (eta : aspis_core.field.QM31)
-  (statement : aspis_statement.atomic_statement.AtomicPaymentStatementV4)
-  (lambda : aspis_core.field.QM31) (chi : aspis_core.field.QM31)
-  (theta : aspis_core.field.QM31) :
-  Result (core.result.Result
-    (aspis_statement.atomic_statement.AtomicPaymentStatementV4 ×
-    v5_atomic_terminal.V5AtomicTerminalChallenges)
-    v5_atomic_terminal.V5AtomicTerminalError)
-  := do
-  loop
-    (fun (iter1, back1) =>
-      v5_atomic_terminal.decode_v5_atomic_terminal_context_loop.body
-      to_slice_mut_back iter_mut_back enumerate_back bytes eta statement lambda
-      chi theta iter1 back1)
-    (iter, back)
-
-/-- [aspis_verifier_parser_extraction::v5_atomic_terminal::decode_v5_atomic_terminal_context]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 156:0-192:1
-    Visibility: public -/
-def v5_atomic_terminal.decode_v5_atomic_terminal_context
-  (bytes : Slice Std.U8) (eta : aspis_core.field.QM31) :
-  Result (core.result.Result
-    (aspis_statement.atomic_statement.AtomicPaymentStatementV4 ×
-    v5_atomic_terminal.V5AtomicTerminalChallenges)
-    v5_atomic_terminal.V5AtomicTerminalError)
-  := do
-  let i := Slice.len bytes
-  let i1 ← v5_atomic_terminal.V5_ATOMIC_TERMINAL_CONTEXT_BYTES
-  if i != i1
-  then
-    let i2 := Slice.len bytes
-    ok (core.result.Result.Err
-      (v5_atomic_terminal.V5AtomicTerminalError.WrongContextBytes i1 i2))
-  else
-    let i2 ← v5_atomic_terminal.V5_ATOMIC_TERMINAL_LAMBDA_OFFSET
-    let s ←
-      core.slice.index.Slice.index (core.slice.index.SliceIndexRangeUsizeSlice
-        Std.U8) bytes
-        {
-          start := v5_atomic_terminal.V5_ATOMIC_TERMINAL_STATEMENT_OFFSET,
-          «end» := i2
-        }
-    let r ← v5_atomic_terminal.decode_statement s
-    let cf ← core.result.Result.Insts.CoreOpsTry.branch r
-    match cf with
-    | core.ops.control_flow.ControlFlow.Continue val =>
-      let r1 ← v5_atomic_terminal.decode_context_qm31 bytes i2 0#usize
-      let cf1 ← core.result.Result.Insts.CoreOpsTry.branch r1
-      match cf1 with
-      | core.ops.control_flow.ControlFlow.Continue val1 =>
-        let i3 ← v5_atomic_terminal.V5_ATOMIC_TERMINAL_CHI_OFFSET
-        let r2 ← v5_atomic_terminal.decode_context_qm31 bytes i3 1#usize
-        let cf2 ← core.result.Result.Insts.CoreOpsTry.branch r2
-        match cf2 with
-        | core.ops.control_flow.ControlFlow.Continue val2 =>
-          let i4 ← v5_atomic_terminal.V5_ATOMIC_TERMINAL_THETA_OFFSET
-          let r3 ← v5_atomic_terminal.decode_context_qm31 bytes i4 2#usize
-          let cf3 ← core.result.Result.Insts.CoreOpsTry.branch r3
-          match cf3 with
-          | core.ops.control_flow.ControlFlow.Continue val3 =>
-            let q ← aspis_core.field.QM31.ZERO
-            let zerocheck_point := Array.repeat 10#usize q
-            let (s1, to_slice_mut_back) ←
-              lift (Array.to_slice_mut zerocheck_point)
-            let (im, iter_mut_back) ← core.slice.Slice.iter_mut s1
-            let (iter, enumerate_back) ←
-              core.iter.adapters.enumerate.IteratorEnumerateMut.enumerate im
-            v5_atomic_terminal.decode_v5_atomic_terminal_context_loop
-              to_slice_mut_back iter_mut_back enumerate_back iter (fun e => e)
-              bytes eta val val1 val2 val3
-          | core.ops.control_flow.ControlFlow.Break residual =>
-            core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-              (aspis_statement.atomic_statement.AtomicPaymentStatementV4 ×
-              v5_atomic_terminal.V5AtomicTerminalChallenges)
-              (core.convert.FromSame v5_atomic_terminal.V5AtomicTerminalError)
-              residual
-        | core.ops.control_flow.ControlFlow.Break residual =>
-          core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-            (aspis_statement.atomic_statement.AtomicPaymentStatementV4 ×
-            v5_atomic_terminal.V5AtomicTerminalChallenges)
-            (core.convert.FromSame v5_atomic_terminal.V5AtomicTerminalError)
-            residual
-      | core.ops.control_flow.ControlFlow.Break residual =>
-        core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-          (aspis_statement.atomic_statement.AtomicPaymentStatementV4 ×
-          v5_atomic_terminal.V5AtomicTerminalChallenges) (core.convert.FromSame
-          v5_atomic_terminal.V5AtomicTerminalError) residual
-    | core.ops.control_flow.ControlFlow.Break residual =>
-      core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-        (aspis_statement.atomic_statement.AtomicPaymentStatementV4 ×
-        v5_atomic_terminal.V5AtomicTerminalChallenges) (core.convert.FromSame
-        v5_atomic_terminal.V5AtomicTerminalError) residual
 
 /-- [aspis_verifier_parser_extraction::v5_cu_probe::V5_CU_PROBE_QUERY_COUNT]
     Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 130:0-130:46
@@ -1464,128 +958,6 @@ def v5_cu_probe.V5_CU_PROBE_RELATION_FOLDS : Std.Usize := 4#usize
     Visibility: public -/
 @[global_simps, irreducible]
 def v5_cu_probe.V5_CU_PROBE_RELATION_FINAL_VALUES : Std.Usize := 4#usize
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::V5_CU_REAL_PREFIX_HEADER_BYTES]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 186:0-186:53
-    Visibility: public -/
-@[global_simps, irreducible]
-def v5_cu_probe.V5_CU_REAL_PREFIX_HEADER_BYTES : Std.Usize := 23#usize
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::V5_CU_REAL_PREFIX_C1_ROOT_OFFSET]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 187:0-187:83
-    Visibility: public -/
-@[global_simps, irreducible]
-def v5_cu_probe.V5_CU_REAL_PREFIX_C1_ROOT_OFFSET : Std.Usize :=
-  v5_cu_probe.V5_CU_REAL_PREFIX_HEADER_BYTES
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::V5_CU_REAL_PREFIX_C2_ROOT_OFFSET]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 188:0-188:90
-    Visibility: public -/
-@[global_simps, irreducible]
-def v5_cu_probe.V5_CU_REAL_PREFIX_C2_ROOT_OFFSET : Result Std.Usize :=
-  v5_cu_probe.V5_CU_REAL_PREFIX_C1_ROOT_OFFSET + 32#usize
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::V5_CU_REAL_PREFIX_INITIAL_B_CLAIM_OFFSET]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 189:0-189:98
-    Visibility: public -/
-@[global_simps, irreducible]
-def v5_cu_probe.V5_CU_REAL_PREFIX_INITIAL_B_CLAIM_OFFSET
-  : Result Std.Usize := do
-  let i ← v5_cu_probe.V5_CU_REAL_PREFIX_C2_ROOT_OFFSET
-  i + 32#usize
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::V5_CU_REAL_PREFIX_SUMCHECK_OFFSET]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 190:0-191:58
-    Visibility: public -/
-@[global_simps, irreducible]
-def v5_cu_probe.V5_CU_REAL_PREFIX_SUMCHECK_OFFSET : Result Std.Usize := do
-  let i ← v5_cu_probe.V5_CU_REAL_PREFIX_INITIAL_B_CLAIM_OFFSET
-  i + v5_cu_probe.QM31_BYTES
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::V5_CU_REAL_PREFIX_CLAIMS_OFFSET]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 192:0-193:66
-    Visibility: public -/
-@[global_simps, irreducible]
-def v5_cu_probe.V5_CU_REAL_PREFIX_CLAIMS_OFFSET : Result Std.Usize := do
-  let i ← v5_cu_probe.V5_CU_REAL_PREFIX_SUMCHECK_OFFSET
-  let i1 ← aspis_core.state_only_sumcheck.STATE_ONLY_SUMCHECK_BYTES
-  i + i1
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::V5_CU_REAL_PREFIX_TERMINAL_OFFSET]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 194:0-195:85
-    Visibility: public -/
-@[global_simps, irreducible]
-def v5_cu_probe.V5_CU_REAL_PREFIX_TERMINAL_OFFSET : Result Std.Usize := do
-  let i ←
-    v5_cu_probe.V5_CU_PROBE_RELATION_CLAIMS_PER_LANE *
-      v5_cu_probe.V5_CU_PROBE_RELATION_LANES
-  let i1 ← i * v5_cu_probe.QM31_BYTES
-  let i2 ← v5_cu_probe.V5_CU_REAL_PREFIX_CLAIMS_OFFSET
-  i2 + i1
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::V5_CU_REAL_PREFIX_INACTIVE_CLAIM_OFFSET]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 196:0-197:55
-    Visibility: public -/
-@[global_simps, irreducible]
-def v5_cu_probe.V5_CU_REAL_PREFIX_INACTIVE_CLAIM_OFFSET
-  : Result Std.Usize := do
-  let i ← 3#usize * v5_cu_probe.QM31_BYTES
-  let i1 ← v5_cu_probe.V5_CU_REAL_PREFIX_TERMINAL_OFFSET
-  i1 + i
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::V5_CU_REAL_PREFIX_RESERVED_OFFSET]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 198:0-199:57
-    Visibility: public -/
-@[global_simps, irreducible]
-def v5_cu_probe.V5_CU_REAL_PREFIX_RESERVED_OFFSET : Result Std.Usize := do
-  let i ← v5_cu_probe.V5_CU_REAL_PREFIX_INACTIVE_CLAIM_OFFSET
-  i + v5_cu_probe.QM31_BYTES
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::V5_CU_REAL_PREFIX_PUBLIC_FS_SALT_BYTES]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 200:0-200:61
-    Visibility: public -/
-@[global_simps, irreducible]
-def v5_cu_probe.V5_CU_REAL_PREFIX_PUBLIC_FS_SALT_BYTES : Std.Usize := 32#usize
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::V5_CU_REAL_PREFIX_PUBLIC_FS_SALT_COUNT]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 201:0-201:60
-    Visibility: public -/
-@[global_simps, irreducible]
-def v5_cu_probe.V5_CU_REAL_PREFIX_PUBLIC_FS_SALT_COUNT : Std.Usize := 5#usize
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::V5_CU_REAL_PREFIX_PUBLIC_FS_SALTS_OFFSET]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 202:0-202:94
-    Visibility: public -/
-@[global_simps, irreducible]
-def v5_cu_probe.V5_CU_REAL_PREFIX_PUBLIC_FS_SALTS_OFFSET : Result Std.Usize :=
-  v5_cu_probe.V5_CU_REAL_PREFIX_RESERVED_OFFSET
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::V5_CU_REAL_PREFIX_PUBLIC_FS_SALTS_BYTES]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 203:0-204:84
-    Visibility: public -/
-@[global_simps, irreducible]
-def v5_cu_probe.V5_CU_REAL_PREFIX_PUBLIC_FS_SALTS_BYTES : Result Std.Usize :=
-  v5_cu_probe.V5_CU_REAL_PREFIX_PUBLIC_FS_SALT_COUNT *
-    v5_cu_probe.V5_CU_REAL_PREFIX_PUBLIC_FS_SALT_BYTES
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::V5_CU_REAL_PREFIX_ZERO_RESERVE_OFFSET]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 205:0-206:87
-    Visibility: public -/
-@[global_simps, irreducible]
-def v5_cu_probe.V5_CU_REAL_PREFIX_ZERO_RESERVE_OFFSET : Result Std.Usize := do
-  let i ← v5_cu_probe.V5_CU_REAL_PREFIX_PUBLIC_FS_SALTS_OFFSET
-  let i1 ← v5_cu_probe.V5_CU_REAL_PREFIX_PUBLIC_FS_SALTS_BYTES
-  i + i1
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::V5_CU_REAL_PREFIX_C1_ROOT_OFFSET_EXACT]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 213:0-213:57 -/
-@[global_simps, irreducible]
-def v5_cu_probe.V5_CU_REAL_PREFIX_C1_ROOT_OFFSET_EXACT : Std.Usize := 23#usize
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::V5_CU_REAL_PREFIX_C2_ROOT_OFFSET_EXACT]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 214:0-214:57 -/
-@[global_simps, irreducible]
-def v5_cu_probe.V5_CU_REAL_PREFIX_C2_ROOT_OFFSET_EXACT : Std.Usize := 55#usize
 
 /-- [aspis_verifier_parser_extraction::v5_cu_probe::V5_CU_PROBE_ACCOUNT_MAGIC]
     Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 234:0-234:60
@@ -1685,10 +1057,154 @@ def v5_cu_probe.V5_CU_PROBE_PREFIX_OFFSET : Result Std.Usize := do
   let i1 ← v5_cu_probe.V5_CU_PROBE_RELATION_FINAL_BYTES
   i + i1
 
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::wire_skeleton::QM31_BYTES]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_wire_skeleton.rs', lines 32:0-32:29 -/
+@[global_simps, irreducible]
+def v5_cu_probe.wire_skeleton.QM31_BYTES : Std.Usize := 16#usize
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::wire_skeleton::V5_WIRE_SUMCHECK_DEGREE]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_wire_skeleton.rs', lines 29:0-29:46
+    Visibility: public -/
+@[global_simps, irreducible]
+def v5_cu_probe.wire_skeleton.V5_WIRE_SUMCHECK_DEGREE : Std.Usize := 27#usize
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::wire_skeleton::V5_WIRE_ROUND_COEFFICIENTS]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_wire_skeleton.rs', lines 30:0-30:74
+    Visibility: public -/
+@[global_simps, irreducible]
+def v5_cu_probe.wire_skeleton.V5_WIRE_ROUND_COEFFICIENTS : Result Std.Usize :=
+  v5_cu_probe.wire_skeleton.V5_WIRE_SUMCHECK_DEGREE + 1#usize
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::wire_skeleton::V5_WIRE_ROUND_MESSAGE_BYTES]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_wire_skeleton.rs', lines 48:0-48:87
+    Visibility: public -/
+@[global_simps, irreducible]
+def v5_cu_probe.wire_skeleton.V5_WIRE_ROUND_MESSAGE_BYTES
+  : Result Std.Usize := do
+  let i ← v5_cu_probe.wire_skeleton.V5_WIRE_ROUND_COEFFICIENTS
+  i * v5_cu_probe.wire_skeleton.QM31_BYTES
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::wire_skeleton::V5_WIRE_ROUND_RECORD_BYTES]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_wire_skeleton.rs', lines 49:0-49:74
+    Visibility: public -/
+@[global_simps, irreducible]
+def v5_cu_probe.wire_skeleton.V5_WIRE_ROUND_RECORD_BYTES : Result Std.Usize :=
+  v5_cu_probe.wire_skeleton.V5_WIRE_ROUND_MESSAGE_BYTES
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::wire_skeleton::V5_WIRE_HEADER_BYTES]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_wire_skeleton.rs', lines 44:0-44:43
+    Visibility: public -/
+@[global_simps, irreducible]
+def v5_cu_probe.wire_skeleton.V5_WIRE_HEADER_BYTES : Std.Usize := 23#usize
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::wire_skeleton::V5_WIRE_ROOT_OFFSET]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_wire_skeleton.rs', lines 45:0-45:60
+    Visibility: public -/
+@[global_simps, irreducible]
+def v5_cu_probe.wire_skeleton.V5_WIRE_ROOT_OFFSET : Std.Usize :=
+  v5_cu_probe.wire_skeleton.V5_WIRE_HEADER_BYTES
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::wire_skeleton::DIGEST_BYTES]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_wire_skeleton.rs', lines 33:0-33:31 -/
+@[global_simps, irreducible]
+def v5_cu_probe.wire_skeleton.DIGEST_BYTES : Std.Usize := 32#usize
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::wire_skeleton::V5_WIRE_INITIAL_CLAIM_OFFSET]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_wire_skeleton.rs', lines 46:0-46:83
+    Visibility: public -/
+@[global_simps, irreducible]
+def v5_cu_probe.wire_skeleton.V5_WIRE_INITIAL_CLAIM_OFFSET
+  : Result Std.Usize :=
+  v5_cu_probe.wire_skeleton.V5_WIRE_ROOT_OFFSET +
+    v5_cu_probe.wire_skeleton.DIGEST_BYTES
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::wire_skeleton::V5_WIRE_ROUNDS_OFFSET]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_wire_skeleton.rs', lines 47:0-47:83
+    Visibility: public -/
+@[global_simps, irreducible]
+def v5_cu_probe.wire_skeleton.V5_WIRE_ROUNDS_OFFSET : Result Std.Usize := do
+  let i ← v5_cu_probe.wire_skeleton.V5_WIRE_INITIAL_CLAIM_OFFSET
+  i + v5_cu_probe.wire_skeleton.QM31_BYTES
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::wire_skeleton::V5_WIRE_ROUNDS]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_wire_skeleton.rs', lines 28:0-28:37
+    Visibility: public -/
+@[global_simps, irreducible]
+def v5_cu_probe.wire_skeleton.V5_WIRE_ROUNDS : Std.Usize := 10#usize
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::wire_skeleton::V5_WIRE_OPENINGS_OFFSET]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_wire_skeleton.rs', lines 50:0-51:72
+    Visibility: public -/
+@[global_simps, irreducible]
+def v5_cu_probe.wire_skeleton.V5_WIRE_OPENINGS_OFFSET : Result Std.Usize := do
+  let i ← v5_cu_probe.wire_skeleton.V5_WIRE_ROUND_RECORD_BYTES
+  let i1 ← v5_cu_probe.wire_skeleton.V5_WIRE_ROUNDS * i
+  let i2 ← v5_cu_probe.wire_skeleton.V5_WIRE_ROUNDS_OFFSET
+  i2 + i1
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::wire_skeleton::V5_WIRE_CLAIMS_PER_LANE]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_wire_skeleton.rs', lines 26:0-26:45
+    Visibility: public -/
+@[global_simps, irreducible]
+def v5_cu_probe.wire_skeleton.V5_WIRE_CLAIMS_PER_LANE : Std.Usize := 4#usize
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::wire_skeleton::V5_WIRE_AUX_LANES]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_wire_skeleton.rs', lines 18:0-18:39
+    Visibility: public -/
+@[global_simps, irreducible]
+def v5_cu_probe.wire_skeleton.V5_WIRE_AUX_LANES : Std.Usize := 3#usize
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::wire_skeleton::V5_WIRE_C1_LANES]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_wire_skeleton.rs', lines 17:0-17:39
+    Visibility: public -/
+@[global_simps, irreducible]
+def v5_cu_probe.wire_skeleton.V5_WIRE_C1_LANES : Std.Usize := 16#usize
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::wire_skeleton::V5_WIRE_LANES]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_wire_skeleton.rs', lines 19:0-19:70
+    Visibility: public -/
+@[global_simps, irreducible]
+def v5_cu_probe.wire_skeleton.V5_WIRE_LANES : Result Std.Usize :=
+  v5_cu_probe.wire_skeleton.V5_WIRE_C1_LANES +
+    v5_cu_probe.wire_skeleton.V5_WIRE_AUX_LANES
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::wire_skeleton::V5_WIRE_OPENING_CLAIMS]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_wire_skeleton.rs', lines 27:0-27:82
+    Visibility: public -/
+@[global_simps, irreducible]
+def v5_cu_probe.wire_skeleton.V5_WIRE_OPENING_CLAIMS : Result Std.Usize := do
+  let i ← v5_cu_probe.wire_skeleton.V5_WIRE_LANES
+  i * v5_cu_probe.wire_skeleton.V5_WIRE_CLAIMS_PER_LANE
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::wire_skeleton::V5_WIRE_TERMINALS_OFFSET]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_wire_skeleton.rs', lines 52:0-53:66
+    Visibility: public -/
+@[global_simps, irreducible]
+def v5_cu_probe.wire_skeleton.V5_WIRE_TERMINALS_OFFSET : Result Std.Usize := do
+  let i ← v5_cu_probe.wire_skeleton.V5_WIRE_OPENING_CLAIMS
+  let i1 ← i * v5_cu_probe.wire_skeleton.QM31_BYTES
+  let i2 ← v5_cu_probe.wire_skeleton.V5_WIRE_OPENINGS_OFFSET
+  i2 + i1
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::wire_skeleton::V5_WIRE_SYNTHETIC_LANES_OFFSET]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_wire_skeleton.rs', lines 54:0-54:92
+    Visibility: public -/
+@[global_simps, irreducible]
+def v5_cu_probe.wire_skeleton.V5_WIRE_SYNTHETIC_LANES_OFFSET
+  : Result Std.Usize := do
+  let i ← 3#usize * v5_cu_probe.wire_skeleton.QM31_BYTES
+  let i1 ← v5_cu_probe.wire_skeleton.V5_WIRE_TERMINALS_OFFSET
+  i1 + i
+
 /-- [aspis_verifier_parser_extraction::v5_cu_probe::wire_skeleton::V5_WIRE_PREFIX_BYTES]
     Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_wire_skeleton.rs', lines 55:0-56:66
     Visibility: public -/
-axiom v5_cu_probe.wire_skeleton.V5_WIRE_PREFIX_BYTES : Result Std.Usize
+@[global_simps, irreducible]
+def v5_cu_probe.wire_skeleton.V5_WIRE_PREFIX_BYTES : Result Std.Usize := do
+  let i ← v5_cu_probe.wire_skeleton.V5_WIRE_LANES
+  let i1 ← i * v5_cu_probe.wire_skeleton.DIGEST_BYTES
+  let i2 ← v5_cu_probe.wire_skeleton.V5_WIRE_SYNTHETIC_LANES_OFFSET
+  i2 + i1
 
 /-- [aspis_verifier_parser_extraction::v5_cu_probe::V5_CU_PROBE_ATOMIC_TERMINAL_CONTEXT_OFFSET]
     Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 266:0-267:53
@@ -2109,8 +1625,18 @@ def v5_cu_probe.parse_v5_wire_prefix
 
 /-- [aspis_verifier_parser_extraction::v5_cu_probe::real_v5_prefix_root]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1247:0-1252:1 -/
-axiom v5_cu_probe.real_v5_prefix_root
-  : (Slice Std.U8) → Std.Usize → Result (Array Std.U8 32#usize)
+def v5_cu_probe.real_v5_prefix_root
+  (prefix1 : Slice Std.U8) (start : Std.Usize) :
+  Result (Array Std.U8 32#usize)
+  := do
+  let i ← start + 32#usize
+  let s ←
+    core.slice.index.Slice.index (core.slice.index.SliceIndexRangeUsizeSlice
+      Std.U8) prefix1 { start, «end» := i }
+  let r ← core.array.TryFromSharedArraySlice.try_from 32#usize s
+  match r with
+  | core.result.Result.Ok root => ok root
+  | core.result.Result.Err _ => fail panic
 
 /-- [aspis_verifier_parser_extraction::v5_cu_probe::parse_v5_private_roots_at]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 455:0-465:1 -/
@@ -2137,28 +1663,6 @@ def v5_cu_probe.parse_v5_private_roots
   := do
   v5_cu_probe.parse_v5_private_roots_at data
     v5_cu_probe.V5_CU_PROBE_PRIVATE_ROOTS_OFFSET_EXACT
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::v5_prefix_roots_match_private]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 473:0-476:1 -/
-def v5_cu_probe.v5_prefix_roots_match_private
-  (prefix1 : Slice Std.U8)
-  (private_roots : v5_cu_probe.private_openings.V5PrivateOpeningRoots) :
-  Result Bool
-  := do
-  let a ←
-    v5_cu_probe.real_v5_prefix_root prefix1
-      v5_cu_probe.V5_CU_REAL_PREFIX_C1_ROOT_OFFSET_EXACT
-  let b ←
-    core.array.equality.PartialEqArray.eq core.cmp.PartialEqU8 a
-      private_roots.c1
-  if b
-  then
-    let a1 ←
-      v5_cu_probe.real_v5_prefix_root prefix1
-        v5_cu_probe.V5_CU_REAL_PREFIX_C2_ROOT_OFFSET_EXACT
-    core.array.equality.PartialEqArray.eq core.cmp.PartialEqU8 a1
-      private_roots.c2
-  else ok false
 
 /-- [aspis_verifier_parser_extraction::v5_cu_probe::parse_probe_data_with_layout]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 478:0-527:1 -/
@@ -2423,77 +1927,24 @@ def v5_cu_probe.parse_probe_data
     let i2 ← v5_cu_probe.V5_CU_PROBE_PRIVATE_PROOF_OFFSET
     v5_cu_probe.parse_probe_data_with_layout data none i2
 
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::v5_batch_work_difficulty]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 636:0-638:1 -/
-def v5_cu_probe.v5_batch_work_difficulty : Result Std.U8 := do
-  ok 37#u8
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::private_openings::VerifiedV5PrivateOpenings]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_private_openings.rs', lines 73:0-79:1
+    Visibility: public -/
+structure v5_cu_probe.private_openings.VerifiedV5PrivateOpenings where
+  c1 : aspis_core.state_only_private_openings.StateOnlyPrivateOpening
+  c2 : aspis_core.state_only_private_openings.StateOnlyPrivateOpening
+  later : Array aspis_core.state_only_private_openings.StateOnlyPrivateOpening
+    3#usize
+  indices : aspis_core.circle_line_merkle.CircleLineQueryIndices
+  bytes_consumed : Std.Usize
 
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::v5_batch_work_record]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 673:0-675:1 -/
-def v5_cu_probe.v5_batch_work_record
-  (nonce : Std.U64) : Result (Array Std.U8 8#usize) := do
-  ok (core.num.U64.to_le_bytes nonce)
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::v5_batch_work_absorb_input]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 691:0-696:1 -/
-def v5_cu_probe.v5_batch_work_absorb_input
-  (nonce : Std.U64) : Result (Std.U8 × (Array Std.U8 8#usize)) := do
-  let a ← v5_cu_probe.v5_batch_work_record nonce
-  let i ← aspis_core.transcript.label.M31_PAYMENT_BATCH_POW_NONCE
-  ok (i, a)
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::absorb_real_v5_batch_nonce]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 709:0-712:1 -/
-def v5_cu_probe.absorb_real_v5_batch_nonce
-  (transcript : aspis_core.transcript.Transcript) (nonce : Std.U64) :
-  Result aspis_core.transcript.Transcript
-  := do
-  let (label, record1) ← v5_cu_probe.v5_batch_work_absorb_input nonce
-  let s ← lift (Array.to_slice record1)
-  aspis_core.transcript.Transcript.absorb transcript label s
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::v5_real_work_is_valid]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 721:0-723:1 -/
-def v5_cu_probe.v5_real_work_is_valid
-  (transcript : aspis_core.transcript.Transcript) (nonce : Std.U64)
-  (bits : Std.U8) :
-  Result Bool
-  := do
-  aspis_core.transcript.Transcript.grinding_ok transcript nonce bits
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::require_real_v5_work]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 726:0-731:1 -/
-def v5_cu_probe.require_real_v5_work
-  (transcript : aspis_core.transcript.Transcript) (nonce : Std.U64)
-  (bits : Std.U8) :
-  Result (core.result.Result Unit solana_program_error.ProgramError)
-  := do
-  let b ← v5_cu_probe.v5_real_work_is_valid transcript nonce bits
-  if b
-  then ok (core.result.Result.Ok ())
-  else
-    ok (core.result.Result.Err
-      solana_program_error.ProgramError.InvalidAccountData)
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::check_and_absorb_real_v5_batch_nonce]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 734:0-738:1 -/
-def v5_cu_probe.check_and_absorb_real_v5_batch_nonce
-  (transcript : aspis_core.transcript.Transcript) (nonce : Std.U64) :
-  Result ((core.result.Result Unit solana_program_error.ProgramError) ×
-    aspis_core.transcript.Transcript)
-  := do
-  let i ← v5_cu_probe.v5_batch_work_difficulty
-  let r ← v5_cu_probe.require_real_v5_work transcript nonce i
-  let cf ← core.result.Result.Insts.CoreOpsTry.branch r
-  match cf with
-  | core.ops.control_flow.ControlFlow.Continue _ =>
-    let transcript1 ← v5_cu_probe.absorb_real_v5_batch_nonce transcript nonce
-    ok (core.result.Result.Ok (), transcript1)
-  | core.ops.control_flow.ControlFlow.Break residual =>
-    let r1 ←
-      core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-        Unit (core.convert.FromSame solana_program_error.ProgramError) residual
-    ok (r1, transcript)
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_private_suffix]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 578:0-593:1 -/
+axiom v5_cu_probe.verify_v5_private_suffix
+  :
+  v5_cu_probe.ParsedProbeData → (Array Std.U32 18#usize) → Result
+    (core.result.Result v5_cu_probe.private_openings.VerifiedV5PrivateOpenings
+    solana_program_error.ProgramError)
 
 /-- [aspis_verifier_parser_extraction::v5_cu_probe::replay_real_v5_relation_rounds]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 782:0-866:1 -/
@@ -2512,53 +1963,6 @@ axiom v5_cu_probe.derive_v5_selected_good_queries_from_transcript
     aspis_core.field.QM31 4#usize) × (Array Std.U32 18#usize))
     solana_program_error.ProgramError)
 
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::decode_qm31]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1148:0-1158:1 -/
-def v5_cu_probe.decode_qm31
-  (bytes : Slice Std.U8) (index : Std.Usize) :
-  Result (core.result.Result aspis_core.field.QM31
-    solana_program_error.ProgramError)
-  := do
-  let o ← lift (Usize.checked_mul index v5_cu_probe.QM31_BYTES)
-  let r ←
-    core.option.Option.ok_or o
-      solana_program_error.ProgramError.InvalidAccountData
-  let cf ← core.result.Result.Insts.CoreOpsTry.branch r
-  match cf with
-  | core.ops.control_flow.ControlFlow.Continue val =>
-    let i ← val + v5_cu_probe.QM31_BYTES
-    let o1 ←
-      core.slice.Slice.get (core.slice.index.SliceIndexRangeUsizeSlice Std.U8)
-        bytes { start := val, «end» := i }
-    let r1 ←
-      core.option.Option.ok_or o1
-        solana_program_error.ProgramError.InvalidAccountData
-    let cf1 ← core.result.Result.Insts.CoreOpsTry.branch r1
-    match cf1 with
-    | core.ops.control_flow.ControlFlow.Continue val1 =>
-      let o2 ← aspis_core.field.QM31.from_le_bytes val1
-      core.option.Option.ok_or o2
-        solana_program_error.ProgramError.InvalidAccountData
-    | core.ops.control_flow.ControlFlow.Break residual =>
-      core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-        aspis_core.field.QM31 (core.convert.FromSame
-        solana_program_error.ProgramError) residual
-  | core.ops.control_flow.ControlFlow.Break residual =>
-    core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-      aspis_core.field.QM31 (core.convert.FromSame
-      solana_program_error.ProgramError) residual
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::V5_REAL_HOST_TRANSCRIPT_DOMAIN]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1163:0-1163:77 -/
-@[global_simps, irreducible]
-def v5_cu_probe.V5_REAL_HOST_TRANSCRIPT_DOMAIN : Slice Std.U8 :=
-  Array.to_slice
-    (Array.make 27#usize [
-      97#u8, 115#u8, 112#u8, 105#u8, 115#u8, 45#u8, 118#u8, 53#u8, 45#u8,
-      114#u8, 101#u8, 97#u8, 108#u8, 45#u8, 119#u8, 105#u8, 116#u8, 110#u8,
-      101#u8, 115#u8, 115#u8, 45#u8, 99#u8, 117#u8, 45#u8, 118#u8, 49#u8
-      ])
-
 /-- [aspis_verifier_parser_extraction::v5_cu_probe::VerifiedRealV5Wire]
     Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1166:0-1175:1 -/
 structure v5_cu_probe.VerifiedRealV5Wire where
@@ -2571,815 +1975,15 @@ structure v5_cu_probe.VerifiedRealV5Wire where
   terminal_masked : aspis_core.field.QM31
   inactive_claim : aspis_core.field.QM31
 
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::decode_prefix_qm31]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1177:0-1184:1 -/
-axiom v5_cu_probe.decode_prefix_qm31
-  :
-  (Slice Std.U8) → Std.Usize → Result (core.result.Result
-    aspis_core.field.QM31 solana_program_error.ProgramError)
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::encode_relation_points]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1186:0-1204:1 -/
-axiom v5_cu_probe.encode_relation_points
-  : (Array aspis_core.field.QM31 10#usize) → Result (Array Std.U8 480#usize)
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::v5_public_fs_salt]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1234:0-1244:1 -/
-axiom v5_cu_probe.v5_public_fs_salt
-  : (Slice Std.U8) → Std.Usize → Result (Array Std.U8 32#usize)
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::absorb_real_v5_round_root]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1301:0-1309:1 -/
-axiom v5_cu_probe.absorb_real_v5_round_root
-  :
-  aspis_core.transcript.Transcript → Std.Usize → (Array Std.U8 32#usize)
-    → (Array Std.U8 32#usize) → Result aspis_core.transcript.Transcript
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::absorb_real_v5_c2_root]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1311:0-1318:1 -/
-axiom v5_cu_probe.absorb_real_v5_c2_root
-  :
-  aspis_core.transcript.Transcript → (Array Std.U8 32#usize) → (Array
-    Std.U8 32#usize) → Result aspis_core.transcript.Transcript
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_live_statement_digest]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1321:0-1332:1 -/
-axiom v5_cu_probe.verify_live_statement_digest
-  :
-  aspis_statement.atomic_statement.AtomicPaymentStatementV4 → (Array Std.U8
-    32#usize) → (Slice (Slice Std.U8) → Result (Array Std.U8 32#usize)) →
-    Result (core.result.Result Unit solana_program_error.ProgramError)
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_reserved_tail]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1360:0-1365:1 -/
-axiom v5_cu_probe.verify_v5_reserved_tail
-  :
-  (Slice Std.U8) → Result (core.result.Result Unit
-    solana_program_error.ProgramError)
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::v5_wire_prefix_header_is_valid]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1371:0-1396:1 -/
-axiom v5_cu_probe.v5_wire_prefix_header_is_valid
-  : (Slice Std.U8) → Result Bool
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::closure#7]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1493:21-1493:57 -/
-@[reducible]
-def v5_cu_probe.verify_v5_wire_prefix.closure_7 := Unit
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::{impl core::ops::function::FnOnce<(aspis_verifier_parser_extraction::v5_atomic_terminal::V5AtomicTerminalError,), solana_program_error::ProgramError> for aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::closure#7}::call_once]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1493:21-1493:57 -/
-def
-  v5_cu_probe.verify_v5_wire_prefix.closure_7.Insts.CoreOpsFunctionFnOnceTupleV5AtomicTerminalErrorProgramError.call_once
-  (c : v5_cu_probe.verify_v5_wire_prefix.closure_7)
-  (tupled_args : v5_atomic_terminal.V5AtomicTerminalError) :
-  Result solana_program_error.ProgramError
-  := do
-  ok solana_program_error.ProgramError.InvalidAccountData
-
-/-- Trait implementation: [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::{impl core::ops::function::FnOnce<(aspis_verifier_parser_extraction::v5_atomic_terminal::V5AtomicTerminalError,), solana_program_error::ProgramError> for aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::closure#7}]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1493:21-1493:57 -/
-@[reducible]
-def
-  v5_cu_probe.verify_v5_wire_prefix.closure_7.Insts.CoreOpsFunctionFnOnceTupleV5AtomicTerminalErrorProgramError
-  : core.ops.function.FnOnce v5_cu_probe.verify_v5_wire_prefix.closure_7
-  v5_atomic_terminal.V5AtomicTerminalError solana_program_error.ProgramError
-  := {
-  call_once :=
-    v5_cu_probe.verify_v5_wire_prefix.closure_7.Insts.CoreOpsFunctionFnOnceTupleV5AtomicTerminalErrorProgramError.call_once
-}
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::closure#6]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1482:17-1482:53 -/
-@[reducible]
-def v5_cu_probe.verify_v5_wire_prefix.closure_6 := Unit
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::{impl core::ops::function::FnOnce<(aspis_core::transcript::ChallengeSampleExhausted,), solana_program_error::ProgramError> for aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::closure#6}::call_once]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1482:17-1482:53 -/
-def
-  v5_cu_probe.verify_v5_wire_prefix.closure_6.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError.call_once
-  (c : v5_cu_probe.verify_v5_wire_prefix.closure_6)
-  (tupled_args : aspis_core.transcript.ChallengeSampleExhausted) :
-  Result solana_program_error.ProgramError
-  := do
-  ok solana_program_error.ProgramError.InvalidAccountData
-
-/-- Trait implementation: [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::{impl core::ops::function::FnOnce<(aspis_core::transcript::ChallengeSampleExhausted,), solana_program_error::ProgramError> for aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::closure#6}]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1482:17-1482:53 -/
-@[reducible]
-def
-  v5_cu_probe.verify_v5_wire_prefix.closure_6.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError
-  : core.ops.function.FnOnce v5_cu_probe.verify_v5_wire_prefix.closure_6
-  aspis_core.transcript.ChallengeSampleExhausted
-  solana_program_error.ProgramError := {
-  call_once :=
-    v5_cu_probe.verify_v5_wire_prefix.closure_6.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError.call_once
-}
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::closure#5]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1474:17-1474:53 -/
-@[reducible]
-def v5_cu_probe.verify_v5_wire_prefix.closure_5 := Unit
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::{impl core::ops::function::FnOnce<(aspis_core::transcript::ChallengeSampleExhausted,), solana_program_error::ProgramError> for aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::closure#5}::call_once]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1474:17-1474:53 -/
-def
-  v5_cu_probe.verify_v5_wire_prefix.closure_5.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError.call_once
-  (c : v5_cu_probe.verify_v5_wire_prefix.closure_5)
-  (tupled_args : aspis_core.transcript.ChallengeSampleExhausted) :
-  Result solana_program_error.ProgramError
-  := do
-  ok solana_program_error.ProgramError.InvalidAccountData
-
-/-- Trait implementation: [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::{impl core::ops::function::FnOnce<(aspis_core::transcript::ChallengeSampleExhausted,), solana_program_error::ProgramError> for aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::closure#5}]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1474:17-1474:53 -/
-@[reducible]
-def
-  v5_cu_probe.verify_v5_wire_prefix.closure_5.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError
-  : core.ops.function.FnOnce v5_cu_probe.verify_v5_wire_prefix.closure_5
-  aspis_core.transcript.ChallengeSampleExhausted
-  solana_program_error.ProgramError := {
-  call_once :=
-    v5_cu_probe.verify_v5_wire_prefix.closure_5.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError.call_once
-}
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::closure#4]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1445:13-1445:49 -/
-@[reducible]
-def v5_cu_probe.verify_v5_wire_prefix.closure_4 := Unit
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::{impl core::ops::function::FnOnce<(aspis_core::state_only_sumcheck::StateOnlySumcheckVerifyError,), solana_program_error::ProgramError> for aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::closure#4}::call_once]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1445:13-1445:49 -/
-def
-  v5_cu_probe.verify_v5_wire_prefix.closure_4.Insts.CoreOpsFunctionFnOnceTupleStateOnlySumcheckVerifyErrorProgramError.call_once
-  (c : v5_cu_probe.verify_v5_wire_prefix.closure_4)
-  (tupled_args : aspis_core.state_only_sumcheck.StateOnlySumcheckVerifyError) :
-  Result solana_program_error.ProgramError
-  := do
-  ok solana_program_error.ProgramError.InvalidAccountData
-
-/-- Trait implementation: [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::{impl core::ops::function::FnOnce<(aspis_core::state_only_sumcheck::StateOnlySumcheckVerifyError,), solana_program_error::ProgramError> for aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::closure#4}]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1445:13-1445:49 -/
-@[reducible]
-def
-  v5_cu_probe.verify_v5_wire_prefix.closure_4.Insts.CoreOpsFunctionFnOnceTupleStateOnlySumcheckVerifyErrorProgramError
-  : core.ops.function.FnOnce v5_cu_probe.verify_v5_wire_prefix.closure_4
-  aspis_core.state_only_sumcheck.StateOnlySumcheckVerifyError
-  solana_program_error.ProgramError := {
-  call_once :=
-    v5_cu_probe.verify_v5_wire_prefix.closure_4.Insts.CoreOpsFunctionFnOnceTupleStateOnlySumcheckVerifyErrorProgramError.call_once
-}
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::closure#3]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1439:17-1439:53 -/
-@[reducible]
-def v5_cu_probe.verify_v5_wire_prefix.closure_3 := Unit
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::{impl core::ops::function::FnOnce<(aspis_core::state_only_hiding::StateOnlyHidingScheduleError,), solana_program_error::ProgramError> for aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::closure#3}::call_once]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1439:17-1439:53 -/
-def
-  v5_cu_probe.verify_v5_wire_prefix.closure_3.Insts.CoreOpsFunctionFnOnceTupleStateOnlyHidingScheduleErrorProgramError.call_once
-  (c : v5_cu_probe.verify_v5_wire_prefix.closure_3)
-  (tupled_args : aspis_core.state_only_hiding.StateOnlyHidingScheduleError) :
-  Result solana_program_error.ProgramError
-  := do
-  ok solana_program_error.ProgramError.InvalidAccountData
-
-/-- Trait implementation: [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::{impl core::ops::function::FnOnce<(aspis_core::state_only_hiding::StateOnlyHidingScheduleError,), solana_program_error::ProgramError> for aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::closure#3}]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1439:17-1439:53 -/
-@[reducible]
-def
-  v5_cu_probe.verify_v5_wire_prefix.closure_3.Insts.CoreOpsFunctionFnOnceTupleStateOnlyHidingScheduleErrorProgramError
-  : core.ops.function.FnOnce v5_cu_probe.verify_v5_wire_prefix.closure_3
-  aspis_core.state_only_hiding.StateOnlyHidingScheduleError
-  solana_program_error.ProgramError := {
-  call_once :=
-    v5_cu_probe.verify_v5_wire_prefix.closure_3.Insts.CoreOpsFunctionFnOnceTupleStateOnlyHidingScheduleErrorProgramError.call_once
-}
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::closure#2]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1436:17-1436:53 -/
-@[reducible]
-def v5_cu_probe.verify_v5_wire_prefix.closure_2 := Unit
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::{impl core::ops::function::FnOnce<(aspis_core::transcript::ChallengeSampleExhausted,), solana_program_error::ProgramError> for aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::closure#2}::call_once]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1436:17-1436:53 -/
-def
-  v5_cu_probe.verify_v5_wire_prefix.closure_2.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError.call_once
-  (c : v5_cu_probe.verify_v5_wire_prefix.closure_2)
-  (tupled_args : aspis_core.transcript.ChallengeSampleExhausted) :
-  Result solana_program_error.ProgramError
-  := do
-  ok solana_program_error.ProgramError.InvalidAccountData
-
-/-- Trait implementation: [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::{impl core::ops::function::FnOnce<(aspis_core::transcript::ChallengeSampleExhausted,), solana_program_error::ProgramError> for aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::closure#2}]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1436:17-1436:53 -/
-@[reducible]
-def
-  v5_cu_probe.verify_v5_wire_prefix.closure_2.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError
-  : core.ops.function.FnOnce v5_cu_probe.verify_v5_wire_prefix.closure_2
-  aspis_core.transcript.ChallengeSampleExhausted
-  solana_program_error.ProgramError := {
-  call_once :=
-    v5_cu_probe.verify_v5_wire_prefix.closure_2.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError.call_once
-}
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::closure#1]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1433:17-1433:53 -/
-@[reducible]
-def v5_cu_probe.verify_v5_wire_prefix.closure_1 := Unit
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::{impl core::ops::function::FnOnce<(aspis_core::transcript::ChallengeSampleExhausted,), solana_program_error::ProgramError> for aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::closure#1}::call_once]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1433:17-1433:53 -/
-def
-  v5_cu_probe.verify_v5_wire_prefix.closure_1.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError.call_once
-  (c : v5_cu_probe.verify_v5_wire_prefix.closure_1)
-  (tupled_args : aspis_core.transcript.ChallengeSampleExhausted) :
-  Result solana_program_error.ProgramError
-  := do
-  ok solana_program_error.ProgramError.InvalidAccountData
-
-/-- Trait implementation: [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::{impl core::ops::function::FnOnce<(aspis_core::transcript::ChallengeSampleExhausted,), solana_program_error::ProgramError> for aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::closure#1}]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1433:17-1433:53 -/
-@[reducible]
-def
-  v5_cu_probe.verify_v5_wire_prefix.closure_1.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError
-  : core.ops.function.FnOnce v5_cu_probe.verify_v5_wire_prefix.closure_1
-  aspis_core.transcript.ChallengeSampleExhausted
-  solana_program_error.ProgramError := {
-  call_once :=
-    v5_cu_probe.verify_v5_wire_prefix.closure_1.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError.call_once
-}
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::closure]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1430:17-1430:53 -/
-@[reducible]
-def v5_cu_probe.verify_v5_wire_prefix.closure := Unit
-
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::{impl core::ops::function::FnOnce<(aspis_core::transcript::ChallengeSampleExhausted,), solana_program_error::ProgramError> for aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::closure}::call_once]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1430:17-1430:53 -/
-def
-  v5_cu_probe.verify_v5_wire_prefix.closure.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError.call_once
-  (c : v5_cu_probe.verify_v5_wire_prefix.closure)
-  (tupled_args : aspis_core.transcript.ChallengeSampleExhausted) :
-  Result solana_program_error.ProgramError
-  := do
-  ok solana_program_error.ProgramError.InvalidAccountData
-
-/-- Trait implementation: [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::{impl core::ops::function::FnOnce<(aspis_core::transcript::ChallengeSampleExhausted,), solana_program_error::ProgramError> for aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix::closure}]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1430:17-1430:53 -/
-@[reducible]
-def
-  v5_cu_probe.verify_v5_wire_prefix.closure.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError
-  : core.ops.function.FnOnce v5_cu_probe.verify_v5_wire_prefix.closure
-  aspis_core.transcript.ChallengeSampleExhausted
-  solana_program_error.ProgramError := {
-  call_once :=
-    v5_cu_probe.verify_v5_wire_prefix.closure.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError.call_once
-}
-
 /-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_v5_wire_prefix]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1399:0-1519:1 -/
-def v5_cu_probe.verify_v5_wire_prefix
-  (parsed : v5_cu_probe.ParsedProbeData)
-  (live_statement : aspis_statement.atomic_statement.AtomicPaymentStatementV4)
-  (statement_digest : Array Std.U8 32#usize)
-  (hash : Slice (Slice Std.U8) → Result (Array Std.U8 32#usize)) :
-  Result (core.result.Result (v5_cu_probe.VerifiedRealV5Wire ×
+axiom v5_cu_probe.verify_v5_wire_prefix
+  :
+  v5_cu_probe.ParsedProbeData →
+    aspis_statement.atomic_statement.AtomicPaymentStatementV4 → (Array Std.U8
+    32#usize) → (Slice (Slice Std.U8) → Result (Array Std.U8 32#usize)) →
+    Result (core.result.Result (v5_cu_probe.VerifiedRealV5Wire ×
     aspis_core.transcript.Transcript) solana_program_error.ProgramError)
-  := do
-  let b ← v5_cu_probe.v5_wire_prefix_header_is_valid parsed.v5_wire_prefix
-  if b
-  then
-    let i ← v5_cu_probe.V5_CU_REAL_PREFIX_ZERO_RESERVE_OFFSET
-    let s ←
-      core.slice.index.Slice.index
-        (core.slice.index.SliceIndexRangeFromUsizeSlice Std.U8)
-        parsed.v5_wire_prefix { start := i }
-    let r ← v5_cu_probe.verify_v5_reserved_tail s
-    let cf ← core.result.Result.Insts.CoreOpsTry.branch r
-    match cf with
-    | core.ops.control_flow.ControlFlow.Continue _ =>
-      let b1 ←
-        v5_cu_probe.v5_prefix_roots_match_private parsed.v5_wire_prefix
-          parsed.v5_private_roots
-      if b1
-      then
-        let r1 ←
-          v5_cu_probe.verify_live_statement_digest live_statement
-            statement_digest hash
-        let cf1 ← core.result.Result.Insts.CoreOpsTry.branch r1
-        match cf1 with
-        | core.ops.control_flow.ControlFlow.Continue _ =>
-          let transcript ← aspis_core.transcript.Transcript.new hash
-          let i1 ← aspis_core.transcript.label.PROFILE
-          let transcript1 ←
-            aspis_core.transcript.Transcript.absorb transcript i1
-              v5_cu_probe.V5_REAL_HOST_TRANSCRIPT_DOMAIN
-          let a ← aspis_core.proof.M31_CIRCLE_BASIS_DISCRIMINATOR
-          let s1 ← lift (Array.to_slice a)
-          let i2 ← aspis_core.transcript.label.M31_CIRCLE_BASIS
-          let transcript2 ←
-            aspis_core.transcript.Transcript.absorb transcript1 i2 s1
-          let s2 ← lift (Array.to_slice statement_digest)
-          let i3 ← aspis_core.transcript.label.STATEMENT
-          let transcript3 ←
-            aspis_core.transcript.Transcript.absorb transcript2 i3 s2
-          let a1 ←
-            v5_cu_probe.v5_public_fs_salt parsed.v5_wire_prefix 0#usize
-          let transcript4 ←
-            v5_cu_probe.absorb_real_v5_round_root transcript3 0#usize
-              parsed.v5_private_roots.c1 a1
-          let (r2, transcript5) ←
-            aspis_core.transcript.Transcript.challenge_qm31 transcript4
-          let r3 ←
-            core.result.Result.map_err
-              v5_cu_probe.verify_v5_wire_prefix.closure.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError
-              r2 ()
-          let cf2 ← core.result.Result.Insts.CoreOpsTry.branch r3
-          match cf2 with
-          | core.ops.control_flow.ControlFlow.Continue val =>
-            let (r4, transcript6) ←
-              aspis_core.transcript.Transcript.challenge_qm31 transcript5
-            let r5 ←
-              core.result.Result.map_err
-                v5_cu_probe.verify_v5_wire_prefix.closure_1.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError
-                r4 ()
-            let cf3 ← core.result.Result.Insts.CoreOpsTry.branch r5
-            match cf3 with
-            | core.ops.control_flow.ControlFlow.Continue val1 =>
-              let a2 ←
-                v5_cu_probe.v5_public_fs_salt parsed.v5_wire_prefix 1#usize
-              let transcript7 ←
-                v5_cu_probe.absorb_real_v5_c2_root transcript6
-                  parsed.v5_private_roots.c2 a2
-              let (r6, transcript8) ←
-                aspis_core.state_only_sumcheck.begin_state_only_zerocheck
-                  transcript7
-              let r7 ←
-                core.result.Result.map_err
-                  v5_cu_probe.verify_v5_wire_prefix.closure_2.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError
-                  r6 ()
-              let cf4 ← core.result.Result.Insts.CoreOpsTry.branch r7
-              match cf4 with
-              | core.ops.control_flow.ControlFlow.Continue val2 =>
-                let i4 ← v5_cu_probe.V5_CU_REAL_PREFIX_INITIAL_B_CLAIM_OFFSET
-                let r8 ←
-                  v5_cu_probe.decode_prefix_qm31 parsed.v5_wire_prefix i4
-                let cf5 ← core.result.Result.Insts.CoreOpsTry.branch r8
-                match cf5 with
-                | core.ops.control_flow.ControlFlow.Continue val3 =>
-                  let (r9, transcript9) ←
-                    aspis_core.state_only_hiding.begin_state_only_masked_sumcheck
-                      transcript8 val3
-                  let r10 ←
-                    core.result.Result.map_err
-                      v5_cu_probe.verify_v5_wire_prefix.closure_3.Insts.CoreOpsFunctionFnOnceTupleStateOnlyHidingScheduleErrorProgramError
-                      r9 ()
-                  let cf6 ← core.result.Result.Insts.CoreOpsTry.branch r10
-                  match cf6 with
-                  | core.ops.control_flow.ControlFlow.Continue val4 =>
-                    let i5 ← v5_cu_probe.V5_CU_REAL_PREFIX_SUMCHECK_OFFSET
-                    let i6 ← v5_cu_probe.V5_CU_REAL_PREFIX_CLAIMS_OFFSET
-                    let s3 ←
-                      core.slice.index.Slice.index
-                        (core.slice.index.SliceIndexRangeUsizeSlice Std.U8)
-                        parsed.v5_wire_prefix { start := i5, «end» := i6 }
-                    let (r11, transcript10) ←
-                      aspis_core.state_only_sumcheck.verify_state_only_sumcheck_streaming
-                        transcript9 s3 val3
-                    let r12 ←
-                      core.result.Result.map_err
-                        v5_cu_probe.verify_v5_wire_prefix.closure_4.Insts.CoreOpsFunctionFnOnceTupleStateOnlySumcheckVerifyErrorProgramError
-                        r11 ()
-                    let cf7 ← core.result.Result.Insts.CoreOpsTry.branch r12
-                    match cf7 with
-                    | core.ops.control_flow.ControlFlow.Continue val5 =>
-                      let expected_points ←
-                        v5_cu_probe.encode_relation_points val5.point
-                      let b2 ←
-                        Shared0Slice.Insts.CoreCmpPartialEqArray.ne
-                          core.cmp.PartialEqU8 parsed.relation_points
-                          expected_points
-                      if b2
-                      then
-                        ok (core.result.Result.Err
-                          solana_program_error.ProgramError.InvalidAccountData)
-                      else
-                        let i7 ←
-                          v5_cu_probe.V5_CU_REAL_PREFIX_TERMINAL_OFFSET
-                        let s4 ←
-                          core.slice.index.Slice.index
-                            (core.slice.index.SliceIndexRangeUsizeSlice Std.U8)
-                            parsed.v5_wire_prefix
-                            { start := i6, «end» := i7 }
-                        let b3 ←
-                          core.cmp.impls.PartialEqShared.ne
-                            (Slice.Insts.CoreCmpPartialEqSlice
-                            core.cmp.PartialEqU8) s4 parsed.relation_claims
-                        if b3
-                        then
-                          ok (core.result.Result.Err
-                            solana_program_error.ProgramError.InvalidAccountData)
-                        else
-                          let i8 ←
-                            aspis_core.transcript.label.M31_CIRCLE_STATEMENT_POINTS
-                          let transcript11 ←
-                            aspis_core.transcript.Transcript.absorb
-                              transcript10 i8 parsed.relation_points
-                          let i9 ←
-                            aspis_core.transcript.label.M31_CIRCLE_STATEMENT_EVALUATIONS
-                          let transcript12 ←
-                            aspis_core.transcript.Transcript.absorb
-                              transcript11 i9 parsed.relation_claims
-                          let r13 ←
-                            v5_cu_probe.decode_prefix_qm31
-                              parsed.v5_wire_prefix i7
-                          let cf8 ←
-                            core.result.Result.Insts.CoreOpsTry.branch r13
-                          match cf8 with
-                          | core.ops.control_flow.ControlFlow.Continue val6 =>
-                            let i10 ← i7 + v5_cu_probe.QM31_BYTES
-                            let r14 ←
-                              v5_cu_probe.decode_prefix_qm31
-                                parsed.v5_wire_prefix i10
-                            let cf9 ←
-                              core.result.Result.Insts.CoreOpsTry.branch r14
-                            match cf9 with
-                            | core.ops.control_flow.ControlFlow.Continue val7
-                              =>
-                              let i11 ← 2#usize * v5_cu_probe.QM31_BYTES
-                              let i12 ← i7 + i11
-                              let r15 ←
-                                v5_cu_probe.decode_prefix_qm31
-                                  parsed.v5_wire_prefix i12
-                              let cf10 ←
-                                core.result.Result.Insts.CoreOpsTry.branch r15
-                              match cf10 with
-                              | core.ops.control_flow.ControlFlow.Continue val8
-                                =>
-                                let b4 ←
-                                  core.cmp.PartialEq.ne.trait_default
-                                    aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31
-                                    val8 val5.terminal_claim
-                                if b4
-                                then
-                                  ok (core.result.Result.Err
-                                    solana_program_error.ProgramError.InvalidAccountData)
-                                else
-                                  let i13 ←
-                                    v5_cu_probe.V5_CU_REAL_PREFIX_INACTIVE_CLAIM_OFFSET
-                                  let s5 ←
-                                    core.slice.index.Slice.index
-                                      (core.slice.index.SliceIndexRangeUsizeSlice
-                                      Std.U8) parsed.v5_wire_prefix
-                                      { start := i7, «end» := i13 }
-                                  let i14 ← aspis_core.transcript.label.CLAIM
-                                  let transcript13 ←
-                                    aspis_core.transcript.Transcript.absorb
-                                      transcript12 i14 s5
-                                  let (r16, transcript14) ←
-                                    v5_cu_probe.check_and_absorb_real_v5_batch_nonce
-                                      transcript13 parsed.v5_batch_nonce
-                                  let cf11 ←
-                                    core.result.Result.Insts.CoreOpsTry.branch
-                                      r16
-                                  match cf11 with
-                                  | core.ops.control_flow.ControlFlow.Continue
-                                    _ =>
-                                    let (r17, transcript15) ←
-                                      aspis_core.transcript.Transcript.challenge_nonzero_qm31
-                                        transcript14
-                                    let r18 ←
-                                      core.result.Result.map_err
-                                        v5_cu_probe.verify_v5_wire_prefix.closure_5.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError
-                                        r17 ()
-                                    let cf12 ←
-                                      core.result.Result.Insts.CoreOpsTry.branch
-                                        r18
-                                    match cf12 with
-                                    |
-                                      core.ops.control_flow.ControlFlow.Continue
-                                      val9 =>
-                                      let r19 ←
-                                        v5_cu_probe.decode_prefix_qm31
-                                          parsed.v5_wire_prefix i13
-                                      let cf13 ←
-                                        core.result.Result.Insts.CoreOpsTry.branch
-                                          r19
-                                      match cf13 with
-                                      |
-                                        core.ops.control_flow.ControlFlow.Continue
-                                        val10 =>
-                                        let i15 ←
-                                          v5_cu_probe.V5_CU_REAL_PREFIX_RESERVED_OFFSET
-                                        let s6 ←
-                                          core.slice.index.Slice.index
-                                            (core.slice.index.SliceIndexRangeUsizeSlice
-                                            Std.U8) parsed.v5_wire_prefix
-                                            { start := i13, «end» := i15 }
-                                        let i16 ←
-                                          aspis_core.transcript.label.SECOND_PHASE_CLAIM
-                                        let transcript16 ←
-                                          aspis_core.transcript.Transcript.absorb
-                                            transcript15 i16 s6
-                                        let (r20, transcript17) ←
-                                          aspis_core.transcript.Transcript.challenge_nonzero_qm31
-                                            transcript16
-                                        let r21 ←
-                                          core.result.Result.map_err
-                                            v5_cu_probe.verify_v5_wire_prefix.closure_6.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError
-                                            r20 ()
-                                        let cf14 ←
-                                          core.result.Result.Insts.CoreOpsTry.branch
-                                            r21
-                                        match cf14 with
-                                        |
-                                          core.ops.control_flow.ControlFlow.Continue
-                                          val11 =>
-                                          let b5 ←
-                                            core.cmp.PartialEq.ne.trait_default
-                                              aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31
-                                              parsed.gamma val9
-                                          if b5
-                                          then
-                                            ok (core.result.Result.Err
-                                              solana_program_error.ProgramError.InvalidAccountData)
-                                          else
-                                            let r22 ←
-                                              v5_cu_probe.decode_qm31
-                                                parsed.relation_scales 0#usize
-                                            let cf15 ←
-                                              core.result.Result.Insts.CoreOpsTry.branch
-                                                r22
-                                            match cf15 with
-                                            |
-                                              core.ops.control_flow.ControlFlow.Continue
-                                              val12 =>
-                                              let q ←
-                                                aspis_core.field.QM31.ONE
-                                              let b6 ←
-                                                core.cmp.PartialEq.ne.trait_default
-                                                  aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31
-                                                  val12 q
-                                              if b6
-                                              then
-                                                ok (core.result.Result.Err
-                                                  solana_program_error.ProgramError.InvalidAccountData)
-                                              else
-                                                let r23 ←
-                                                  v5_cu_probe.decode_qm31
-                                                    parsed.relation_scales
-                                                    1#usize
-                                                let cf16 ←
-                                                  core.result.Result.Insts.CoreOpsTry.branch
-                                                    r23
-                                                match cf16 with
-                                                |
-                                                  core.ops.control_flow.ControlFlow.Continue
-                                                  val13 =>
-                                                  let b7 ←
-                                                    core.cmp.PartialEq.ne.trait_default
-                                                      aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31
-                                                      val13 val11
-                                                  if b7
-                                                  then
-                                                    ok (core.result.Result.Err
-                                                      solana_program_error.ProgramError.InvalidAccountData)
-                                                  else
-                                                    let r24 ←
-                                                      v5_cu_probe.decode_qm31
-                                                        parsed.relation_scales
-                                                        2#usize
-                                                    let cf17 ←
-                                                      core.result.Result.Insts.CoreOpsTry.branch
-                                                        r24
-                                                    match cf17 with
-                                                    |
-                                                      core.ops.control_flow.ControlFlow.Continue
-                                                      val14 =>
-                                                      let q1 ←
-                                                        aspis_core.field.QM31.square
-                                                          val11
-                                                      let b8 ←
-                                                        core.cmp.PartialEq.ne.trait_default
-                                                          aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31
-                                                          val14 q1
-                                                      if b8
-                                                      then
-                                                        ok
-                                                          (core.result.Result.Err
-                                                          solana_program_error.ProgramError.InvalidAccountData)
-                                                      else
-                                                        let r25 ←
-                                                          v5_atomic_terminal.decode_v5_atomic_terminal_context
-                                                            parsed.v5_atomic_terminal_context
-                                                            val4
-                                                        let r26 ←
-                                                          core.result.Result.map_err
-                                                            v5_cu_probe.verify_v5_wire_prefix.closure_7.Insts.CoreOpsFunctionFnOnceTupleV5AtomicTerminalErrorProgramError
-                                                            r25 ()
-                                                        let cf18 ←
-                                                          core.result.Result.Insts.CoreOpsTry.branch
-                                                            r26
-                                                        match cf18 with
-                                                        |
-                                                          core.ops.control_flow.ControlFlow.Continue
-                                                          val15 =>
-                                                          let
-                                                            (context_statement,
-                                                            context) :=
-                                                            val15
-                                                          let b9 ←
-                                                            core.cmp.impls.PartialEqShared.ne
-                                                              aspis_statement.atomic_statement.AtomicPaymentStatementV4.Insts.CoreCmpPartialEqAtomicPaymentStatementV4
-                                                              context_statement
-                                                              live_statement
-                                                          if b9
-                                                          then
-                                                            ok
-                                                              (core.result.Result.Err
-                                                              solana_program_error.ProgramError.InvalidAccountData)
-                                                          else
-                                                            let b10 ←
-                                                              core.cmp.PartialEq.ne.trait_default
-                                                                v5_atomic_terminal.V5AtomicTerminalChallenges.Insts.CoreCmpPartialEqV5AtomicTerminalChallenges
-                                                                context
-                                                                {
-                                                                  lambda := val,
-                                                                  chi := val1,
-                                                                  theta :=
-                                                                    val2.theta,
-                                                                  zerocheck_point :=
-                                                                    val2.zerocheck_point,
-                                                                  mu := val2.mu,
-                                                                  eta := val4
-                                                                }
-                                                            if b10
-                                                            then
-                                                              ok
-                                                                (core.result.Result.Err
-                                                                solana_program_error.ProgramError.InvalidAccountData)
-                                                            else
-                                                              ok
-                                                                (core.result.Result.Ok
-                                                                ({
-                                                                   eta := val4,
-                                                                   round_challenges :=
-                                                                    val5.point,
-                                                                   gamma :=
-                                                                    val9,
-                                                                   kappa :=
-                                                                    val11,
-                                                                   terminal_real :=
-                                                                    val6,
-                                                                   terminal_mask :=
-                                                                    val7,
-                                                                   terminal_masked :=
-                                                                    val8,
-                                                                   inactive_claim :=
-                                                                    val10
-                                                                 },
-                                                                transcript17))
-                                                        |
-                                                          core.ops.control_flow.ControlFlow.Break
-                                                          residual =>
-                                                          core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-                                                            (v5_cu_probe.VerifiedRealV5Wire
-                                                            ×
-                                                            aspis_core.transcript.Transcript)
-                                                            (core.convert.FromSame
-                                                            solana_program_error.ProgramError)
-                                                            residual
-                                                    |
-                                                      core.ops.control_flow.ControlFlow.Break
-                                                      residual =>
-                                                      core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-                                                        (v5_cu_probe.VerifiedRealV5Wire
-                                                        ×
-                                                        aspis_core.transcript.Transcript)
-                                                        (core.convert.FromSame
-                                                        solana_program_error.ProgramError)
-                                                        residual
-                                                |
-                                                  core.ops.control_flow.ControlFlow.Break
-                                                  residual =>
-                                                  core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-                                                    (v5_cu_probe.VerifiedRealV5Wire
-                                                    ×
-                                                    aspis_core.transcript.Transcript)
-                                                    (core.convert.FromSame
-                                                    solana_program_error.ProgramError)
-                                                    residual
-                                            |
-                                              core.ops.control_flow.ControlFlow.Break
-                                              residual =>
-                                              core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-                                                (v5_cu_probe.VerifiedRealV5Wire
-                                                ×
-                                                aspis_core.transcript.Transcript)
-                                                (core.convert.FromSame
-                                                solana_program_error.ProgramError)
-                                                residual
-                                        |
-                                          core.ops.control_flow.ControlFlow.Break
-                                          residual =>
-                                          core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-                                            (v5_cu_probe.VerifiedRealV5Wire ×
-                                            aspis_core.transcript.Transcript)
-                                            (core.convert.FromSame
-                                            solana_program_error.ProgramError)
-                                            residual
-                                      | core.ops.control_flow.ControlFlow.Break
-                                        residual =>
-                                        core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-                                          (v5_cu_probe.VerifiedRealV5Wire ×
-                                          aspis_core.transcript.Transcript)
-                                          (core.convert.FromSame
-                                          solana_program_error.ProgramError)
-                                          residual
-                                    | core.ops.control_flow.ControlFlow.Break
-                                      residual =>
-                                      core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-                                        (v5_cu_probe.VerifiedRealV5Wire ×
-                                        aspis_core.transcript.Transcript)
-                                        (core.convert.FromSame
-                                        solana_program_error.ProgramError)
-                                        residual
-                                  | core.ops.control_flow.ControlFlow.Break
-                                    residual =>
-                                    core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-                                      (v5_cu_probe.VerifiedRealV5Wire ×
-                                      aspis_core.transcript.Transcript)
-                                      (core.convert.FromSame
-                                      solana_program_error.ProgramError)
-                                      residual
-                              | core.ops.control_flow.ControlFlow.Break
-                                residual =>
-                                core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-                                  (v5_cu_probe.VerifiedRealV5Wire ×
-                                  aspis_core.transcript.Transcript)
-                                  (core.convert.FromSame
-                                  solana_program_error.ProgramError) residual
-                            | core.ops.control_flow.ControlFlow.Break residual
-                              =>
-                              core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-                                (v5_cu_probe.VerifiedRealV5Wire ×
-                                aspis_core.transcript.Transcript)
-                                (core.convert.FromSame
-                                solana_program_error.ProgramError) residual
-                          | core.ops.control_flow.ControlFlow.Break residual =>
-                            core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-                              (v5_cu_probe.VerifiedRealV5Wire ×
-                              aspis_core.transcript.Transcript)
-                              (core.convert.FromSame
-                              solana_program_error.ProgramError) residual
-                    | core.ops.control_flow.ControlFlow.Break residual =>
-                      core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-                        (v5_cu_probe.VerifiedRealV5Wire ×
-                        aspis_core.transcript.Transcript)
-                        (core.convert.FromSame
-                        solana_program_error.ProgramError) residual
-                  | core.ops.control_flow.ControlFlow.Break residual =>
-                    core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-                      (v5_cu_probe.VerifiedRealV5Wire ×
-                      aspis_core.transcript.Transcript) (core.convert.FromSame
-                      solana_program_error.ProgramError) residual
-                | core.ops.control_flow.ControlFlow.Break residual =>
-                  core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-                    (v5_cu_probe.VerifiedRealV5Wire ×
-                    aspis_core.transcript.Transcript) (core.convert.FromSame
-                    solana_program_error.ProgramError) residual
-              | core.ops.control_flow.ControlFlow.Break residual =>
-                core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-                  (v5_cu_probe.VerifiedRealV5Wire ×
-                  aspis_core.transcript.Transcript) (core.convert.FromSame
-                  solana_program_error.ProgramError) residual
-            | core.ops.control_flow.ControlFlow.Break residual =>
-              core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-                (v5_cu_probe.VerifiedRealV5Wire ×
-                aspis_core.transcript.Transcript) (core.convert.FromSame
-                solana_program_error.ProgramError) residual
-          | core.ops.control_flow.ControlFlow.Break residual =>
-            core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-              (v5_cu_probe.VerifiedRealV5Wire ×
-              aspis_core.transcript.Transcript) (core.convert.FromSame
-              solana_program_error.ProgramError) residual
-        | core.ops.control_flow.ControlFlow.Break residual =>
-          core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-            (v5_cu_probe.VerifiedRealV5Wire ×
-            aspis_core.transcript.Transcript) (core.convert.FromSame
-            solana_program_error.ProgramError) residual
-      else
-        ok (core.result.Result.Err
-          solana_program_error.ProgramError.InvalidAccountData)
-    | core.ops.control_flow.ControlFlow.Break residual =>
-      core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-        (v5_cu_probe.VerifiedRealV5Wire × aspis_core.transcript.Transcript)
-        (core.convert.FromSame solana_program_error.ProgramError) residual
-  else
-    ok (core.result.Result.Err
-      solana_program_error.ProgramError.InvalidAccountData)
 
 /-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_mode9_atomic_terminal_with_prefix]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1550:0-1571:1 -/
@@ -3391,25 +1995,245 @@ axiom v5_cu_probe.verify_mode9_atomic_terminal_with_prefix
     v5_atomic_terminal.VerifiedV5AtomicTerminal
     solana_program_error.ProgramError)
 
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::decode_v5_fri_alphas]: loop body 0:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 2259:4-2263:1 -/
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::decode_v5_fri_alphas]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 2255:0-2263:1 -/
+axiom v5_cu_probe.decode_v5_fri_alphas
+  :
+  v5_cu_probe.ParsedProbeData → Result (core.result.Result (Array
+    aspis_core.field.QM31 4#usize) solana_program_error.ProgramError)
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::check_v5_fri_queries::closure]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 445:34-452:5 -/
+@[reducible]
+def v5_cu_probe.fri_checks.check_v5_fri_queries.closure := Unit
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::check_v5_fri_queries::{impl core::ops::function::FnMut<(aspis_core::field::QM31,), [aspis_core::field::PreparedQm31Multiplier; 3usize]> for aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::check_v5_fri_queries::closure}::call_mut]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 445:34-452:5 -/
+def
+  v5_cu_probe.fri_checks.check_v5_fri_queries.closure.Insts.CoreOpsFunctionFnMutTupleQM31ArrayPreparedQm31Multiplier3.call_mut
+  (c : v5_cu_probe.fri_checks.check_v5_fri_queries.closure)
+  (tupled_args : aspis_core.field.QM31) :
+  Result ((Array aspis_core.field.PreparedQm31Multiplier 3#usize) ×
+    v5_cu_probe.fri_checks.check_v5_fri_queries.closure)
+  := do
+  let alpha_squared ← aspis_core.field.QM31.square tupled_args
+  let pqm ← aspis_core.field.PreparedQm31Multiplier.new tupled_args
+  let pqm1 ← aspis_core.field.PreparedQm31Multiplier.new alpha_squared
+  let q ← aspis_core.field.QM31.mul alpha_squared tupled_args
+  let pqm2 ← aspis_core.field.PreparedQm31Multiplier.new q
+  ok (Array.make 3#usize [ pqm, pqm1, pqm2 ], c)
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::check_v5_fri_queries::{impl core::ops::function::FnOnce<(aspis_core::field::QM31,), [aspis_core::field::PreparedQm31Multiplier; 3usize]> for aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::check_v5_fri_queries::closure}::call_once]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 445:34-452:5 -/
+def
+  v5_cu_probe.fri_checks.check_v5_fri_queries.closure.Insts.CoreOpsFunctionFnOnceTupleQM31ArrayPreparedQm31Multiplier3.call_once
+  (c : v5_cu_probe.fri_checks.check_v5_fri_queries.closure)
+  (q : aspis_core.field.QM31) :
+  Result (Array aspis_core.field.PreparedQm31Multiplier 3#usize)
+  := do
+  let (a, _) ←
+    v5_cu_probe.fri_checks.check_v5_fri_queries.closure.Insts.CoreOpsFunctionFnMutTupleQM31ArrayPreparedQm31Multiplier3.call_mut
+      c q
+  ok a
+
+/-- Trait implementation: [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::check_v5_fri_queries::{impl core::ops::function::FnOnce<(aspis_core::field::QM31,), [aspis_core::field::PreparedQm31Multiplier; 3usize]> for aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::check_v5_fri_queries::closure}]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 445:34-452:5 -/
+@[reducible]
+def
+  v5_cu_probe.fri_checks.check_v5_fri_queries.closure.Insts.CoreOpsFunctionFnOnceTupleQM31ArrayPreparedQm31Multiplier3
+  : core.ops.function.FnOnce
+  v5_cu_probe.fri_checks.check_v5_fri_queries.closure aspis_core.field.QM31
+  (Array aspis_core.field.PreparedQm31Multiplier 3#usize) := {
+  call_once :=
+    v5_cu_probe.fri_checks.check_v5_fri_queries.closure.Insts.CoreOpsFunctionFnOnceTupleQM31ArrayPreparedQm31Multiplier3.call_once
+}
+
+/-- Trait implementation: [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::check_v5_fri_queries::{impl core::ops::function::FnMut<(aspis_core::field::QM31,), [aspis_core::field::PreparedQm31Multiplier; 3usize]> for aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::check_v5_fri_queries::closure}]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 445:34-452:5 -/
+@[reducible]
+def
+  v5_cu_probe.fri_checks.check_v5_fri_queries.closure.Insts.CoreOpsFunctionFnMutTupleQM31ArrayPreparedQm31Multiplier3
+  : core.ops.function.FnMut v5_cu_probe.fri_checks.check_v5_fri_queries.closure
+  aspis_core.field.QM31 (Array aspis_core.field.PreparedQm31Multiplier 3#usize)
+  := {
+  FnOnceInst :=
+    v5_cu_probe.fri_checks.check_v5_fri_queries.closure.Insts.CoreOpsFunctionFnOnceTupleQM31ArrayPreparedQm31Multiplier3
+  call_mut :=
+    v5_cu_probe.fri_checks.check_v5_fri_queries.closure.Insts.CoreOpsFunctionFnMutTupleQM31ArrayPreparedQm31Multiplier3.call_mut
+}
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::private_openings::V5_PRIVATE_VALUE_WIDTHS]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_private_openings.rs', lines 24:0-24:94
+    Visibility: public -/
+@[global_simps, irreducible]
+def v5_cu_probe.private_openings.V5_PRIVATE_VALUE_WIDTHS
+  : Array Std.Usize 5#usize :=
+  Array.make 5#usize [ 256#usize, 192#usize, 64#usize, 64#usize, 64#usize ]
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::gamma_combine_v5_layer0_exact::closure]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 388:16-390:5 -/
+@[reducible]
+def v5_cu_probe.fri_checks.gamma_combine_v5_layer0_exact.closure :=
+  Slice Std.U8
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::first_noncanonical_m31_offset::closure#1]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 353:19-353:36 -/
+@[reducible]
+def v5_cu_probe.fri_checks.first_noncanonical_m31_offset.closure_1 := Unit
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::first_noncanonical_m31_offset::{impl core::ops::function::FnOnce<(usize,), usize> for aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::first_noncanonical_m31_offset::closure#1}::call_once]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 353:19-353:36 -/
+def
+  v5_cu_probe.fri_checks.first_noncanonical_m31_offset.closure_1.Insts.CoreOpsFunctionFnOnceTupleUsizeUsize.call_once
+  (c : v5_cu_probe.fri_checks.first_noncanonical_m31_offset.closure_1)
+  (tupled_args : Std.Usize) :
+  Result Std.Usize
+  := do
+  tupled_args * 4#usize
+
+/-- Trait implementation: [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::first_noncanonical_m31_offset::{impl core::ops::function::FnOnce<(usize,), usize> for aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::first_noncanonical_m31_offset::closure#1}]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 353:19-353:36 -/
+@[reducible]
+def
+  v5_cu_probe.fri_checks.first_noncanonical_m31_offset.closure_1.Insts.CoreOpsFunctionFnOnceTupleUsizeUsize
+  : core.ops.function.FnOnce
+  v5_cu_probe.fri_checks.first_noncanonical_m31_offset.closure_1 Std.Usize
+  Std.Usize := {
+  call_once :=
+    v5_cu_probe.fri_checks.first_noncanonical_m31_offset.closure_1.Insts.CoreOpsFunctionFnOnceTupleUsizeUsize.call_once
+}
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::first_noncanonical_m31_offset::closure]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 350:18-352:9 -/
+@[reducible]
+def v5_cu_probe.fri_checks.first_noncanonical_m31_offset.closure := Unit
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::first_noncanonical_m31_offset::{impl core::ops::function::FnMut<(&'_ [u8],), bool> for aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::first_noncanonical_m31_offset::closure}::call_mut]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 350:18-352:9 -/
+def
+  v5_cu_probe.fri_checks.first_noncanonical_m31_offset.closure.Insts.CoreOpsFunctionFnMutTupleSharedSliceU8Bool.call_mut
+  (c : v5_cu_probe.fri_checks.first_noncanonical_m31_offset.closure)
+  (tupled_args : Slice Std.U8) :
+  Result (Bool × v5_cu_probe.fri_checks.first_noncanonical_m31_offset.closure)
+  := do
+  let i ← Slice.index_usize tupled_args 0#usize
+  let i1 ← Slice.index_usize tupled_args 1#usize
+  let i2 ← Slice.index_usize tupled_args 2#usize
+  let i3 ← Slice.index_usize tupled_args 3#usize
+  let i4 ←
+    lift (core.num.U32.from_le_bytes (Array.make 4#usize [ i, i1, i2, i3 ]))
+  let i5 ← aspis_core.field.P
+  ok (i4 >= i5, c)
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::first_noncanonical_m31_offset::{impl core::ops::function::FnOnce<(&'_ [u8],), bool> for aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::first_noncanonical_m31_offset::closure}::call_once]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 350:18-352:9 -/
+def
+  v5_cu_probe.fri_checks.first_noncanonical_m31_offset.closure.Insts.CoreOpsFunctionFnOnceTupleSharedSliceU8Bool.call_once
+  (c : v5_cu_probe.fri_checks.first_noncanonical_m31_offset.closure)
+  (s : Slice Std.U8) :
+  Result Bool
+  := do
+  let (b, _) ←
+    v5_cu_probe.fri_checks.first_noncanonical_m31_offset.closure.Insts.CoreOpsFunctionFnMutTupleSharedSliceU8Bool.call_mut
+      c s
+  ok b
+
+/-- Trait implementation: [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::first_noncanonical_m31_offset::{impl core::ops::function::FnOnce<(&'_ [u8],), bool> for aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::first_noncanonical_m31_offset::closure}]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 350:18-352:9 -/
+@[reducible]
+def
+  v5_cu_probe.fri_checks.first_noncanonical_m31_offset.closure.Insts.CoreOpsFunctionFnOnceTupleSharedSliceU8Bool
+  : core.ops.function.FnOnce
+  v5_cu_probe.fri_checks.first_noncanonical_m31_offset.closure (Slice Std.U8)
+  Bool := {
+  call_once :=
+    v5_cu_probe.fri_checks.first_noncanonical_m31_offset.closure.Insts.CoreOpsFunctionFnOnceTupleSharedSliceU8Bool.call_once
+}
+
+/-- Trait implementation: [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::first_noncanonical_m31_offset::{impl core::ops::function::FnMut<(&'_ [u8],), bool> for aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::first_noncanonical_m31_offset::closure}]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 350:18-352:9 -/
+@[reducible]
+def
+  v5_cu_probe.fri_checks.first_noncanonical_m31_offset.closure.Insts.CoreOpsFunctionFnMutTupleSharedSliceU8Bool
+  : core.ops.function.FnMut
+  v5_cu_probe.fri_checks.first_noncanonical_m31_offset.closure (Slice Std.U8)
+  Bool := {
+  FnOnceInst :=
+    v5_cu_probe.fri_checks.first_noncanonical_m31_offset.closure.Insts.CoreOpsFunctionFnOnceTupleSharedSliceU8Bool
+  call_mut :=
+    v5_cu_probe.fri_checks.first_noncanonical_m31_offset.closure.Insts.CoreOpsFunctionFnMutTupleSharedSliceU8Bool.call_mut
+}
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::first_noncanonical_m31_offset]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 347:0-354:1 -/
+def v5_cu_probe.fri_checks.first_noncanonical_m31_offset
+  (bytes : Slice Std.U8) : Result Std.Usize := do
+  let ce ← core.slice.Slice.chunks_exact bytes 4#usize
+  let (o, _) ←
+    core.iter.traits.iterator.Iterator.position.default
+      (core.iter.traits.iterator.IteratorChunksExact Std.U8)
+      v5_cu_probe.fri_checks.first_noncanonical_m31_offset.closure.Insts.CoreOpsFunctionFnMutTupleSharedSliceU8Bool
+      ce ()
+  core.option.Option.map_or
+    v5_cu_probe.fri_checks.first_noncanonical_m31_offset.closure_1.Insts.CoreOpsFunctionFnOnceTupleUsizeUsize
+    o 0#usize ()
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::gamma_combine_v5_layer0_exact::{impl core::ops::function::FnOnce<(), aspis_core::circle_pcs_shape::CirclePcsDecodeError> for aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::gamma_combine_v5_layer0_exact::closure<'_0>}::call_once]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 388:16-390:5 -/
+def
+  v5_cu_probe.fri_checks.gamma_combine_v5_layer0_exact.closure.Insts.CoreOpsFunctionFnOnceTupleCirclePcsDecodeError.call_once
+  (c : v5_cu_probe.fri_checks.gamma_combine_v5_layer0_exact.closure)
+  (_ : Unit) :
+  Result aspis_core.circle_pcs_shape.CirclePcsDecodeError
+  := do
+  let i ← v5_cu_probe.fri_checks.first_noncanonical_m31_offset c
+  ok (aspis_core.circle_pcs_shape.CirclePcsDecodeError.NonCanonicalC1 i)
+
+/-- Trait implementation: [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::gamma_combine_v5_layer0_exact::{impl core::ops::function::FnOnce<(), aspis_core::circle_pcs_shape::CirclePcsDecodeError> for aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::gamma_combine_v5_layer0_exact::closure<'_0>}]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 388:16-390:5 -/
+@[reducible]
+def
+  v5_cu_probe.fri_checks.gamma_combine_v5_layer0_exact.closure.Insts.CoreOpsFunctionFnOnceTupleCirclePcsDecodeError
+  : core.ops.function.FnOnce
+  v5_cu_probe.fri_checks.gamma_combine_v5_layer0_exact.closure Unit
+  aspis_core.circle_pcs_shape.CirclePcsDecodeError := {
+  call_once :=
+    v5_cu_probe.fri_checks.gamma_combine_v5_layer0_exact.closure.Insts.CoreOpsFunctionFnOnceTupleCirclePcsDecodeError.call_once
+}
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::V5PreparedPcsClaims]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 128:0-132:1
+    Visibility: public -/
+structure v5_cu_probe.fri_checks.V5PreparedPcsClaims where
+  inner : aspis_core.circle_pcs_shape.CirclePcsPreparedClaims
+  c1_weight_limbs : Array (Array Std.U32 4#usize) 16#usize
+  c2_multipliers : Array aspis_core.field.PreparedQm31Multiplier 3#usize
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::V5_FRI_C2_COLUMNS]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 42:0-42:35 -/
+@[global_simps, irreducible]
+def v5_cu_probe.fri_checks.V5_FRI_C2_COLUMNS : Std.Usize := 3#usize
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::gamma_combine_v5_layer0_exact]: loop body 1:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 394:8-407:1 -/
 @[rust_loop_body]
-def v5_cu_probe.decode_v5_fri_alphas_loop.body
-  (parsed : v5_cu_probe.ParsedProbeData)
+def v5_cu_probe.fri_checks.gamma_combine_v5_layer0_exact_loop0_loop0.body
+  (c2_leaf : Slice Std.U8) (helper : Std.Usize)
   (iter : core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
-  aspis_core.field.QM31))
+  (Array aspis_core.field.QM31 3#usize)))
   (back : core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
-  aspis_core.field.QM31) → core.iter.adapters.enumerate.Enumerate
-  (core.slice.iter.IterMut aspis_core.field.QM31)) :
+  (Array aspis_core.field.QM31 3#usize)) →
+  core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut (Array
+  aspis_core.field.QM31 3#usize))) :
   Result (ControlFlow ((core.iter.adapters.enumerate.Enumerate
-    (core.slice.iter.IterMut aspis_core.field.QM31)) ×
-    (core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
-    aspis_core.field.QM31) → core.iter.adapters.enumerate.Enumerate
-    (core.slice.iter.IterMut aspis_core.field.QM31))) ((Option
+    (core.slice.iter.IterMut (Array aspis_core.field.QM31 3#usize))) ×
+    (core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut (Array
+    aspis_core.field.QM31 3#usize)) → core.iter.adapters.enumerate.Enumerate
+    (core.slice.iter.IterMut (Array aspis_core.field.QM31 3#usize)))) ((Option
     (core.result.Result (Array aspis_core.field.QM31 4#usize)
-    solana_program_error.ProgramError)) ×
-    (core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
-    aspis_core.field.QM31))))
+    aspis_core.circle_pcs_shape.CirclePcsDecodeError)) ×
+    (core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut (Array
+    aspis_core.field.QM31 3#usize)))))
   := do
   let (o, iter1, next_back) ←
     core.iter.adapters.enumerate.IteratorEnumerateMut.next iter
@@ -3417,79 +2241,1073 @@ def v5_cu_probe.decode_v5_fri_alphas_loop.body
   | none => ok (done (none, let e := next_back iter1 none
                             back e))
   | some p =>
-    let (round, _) := p
-    let r ← v5_cu_probe.decode_qm31 parsed.relation_alphas round
+    let (slot, values) := p
+    let i ← helper * 4#usize
+    let i1 ← i + slot
+    let offset ← i1 * 16#usize
+    let i2 ← offset + 16#usize
+    let s ←
+      core.slice.index.Slice.index (core.slice.index.SliceIndexRangeUsizeSlice
+        Std.U8) c2_leaf { start := offset, «end» := i2 }
+    let o1 ← aspis_core.field.QM31.from_le_bytes s
+    let r ←
+      core.option.Option.ok_or o1
+        (aspis_core.circle_pcs_shape.CirclePcsDecodeError.NonCanonicalC2
+        offset)
     let cf ← core.result.Result.Insts.CoreOpsTry.branch r
     match cf with
     | core.ops.control_flow.ControlFlow.Continue val =>
+      let (_, index_mut_back) ← Array.index_mut_usize values helper
       ok (cont (iter1,
-        fun e => let e1 := next_back e (some (round, val))
-                 back e1))
+        fun e =>
+          let a := index_mut_back val
+          let e1 := next_back e (some (slot, a))
+          back e1))
     | core.ops.control_flow.ControlFlow.Break residual =>
       let r1 ←
         core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
           (Array aspis_core.field.QM31 4#usize) (core.convert.FromSame
-          solana_program_error.ProgramError) residual
+          aspis_core.circle_pcs_shape.CirclePcsDecodeError) residual
       ok (done (some r1, let e := next_back iter1 o
                          back e))
 
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::decode_v5_fri_alphas]: loop 0:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 2259:4-2263:1 -/
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::gamma_combine_v5_layer0_exact]: loop 1:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 394:8-407:1 -/
 @[rust_loop]
-def v5_cu_probe.decode_v5_fri_alphas_loop
-  (parsed : v5_cu_probe.ParsedProbeData)
+def v5_cu_probe.fri_checks.gamma_combine_v5_layer0_exact_loop0_loop0
+  (iter : core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
+  (Array aspis_core.field.QM31 3#usize)))
+  (back : core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
+  (Array aspis_core.field.QM31 3#usize)) →
+  core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut (Array
+  aspis_core.field.QM31 3#usize))) (c2_leaf : Slice Std.U8)
+  (helper : Std.Usize) :
+  Result ((Option (core.result.Result (Array aspis_core.field.QM31 4#usize)
+    aspis_core.circle_pcs_shape.CirclePcsDecodeError)) ×
+    (core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut (Array
+    aspis_core.field.QM31 3#usize))))
+  := do
+  loop
+    (fun (iter1, back1) =>
+      v5_cu_probe.fri_checks.gamma_combine_v5_layer0_exact_loop0_loop0.body
+      c2_leaf helper iter1 back1)
+    (iter, back)
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::gamma_combine_v5_layer0_exact]: loop body 0:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 393:4-407:1 -/
+@[rust_loop_body]
+def v5_cu_probe.fri_checks.gamma_combine_v5_layer0_exact_loop0.body
+  (c2_leaf : Slice Std.U8) (iter : core.ops.range.Range Std.Usize)
+  (helper_values : Array (Array aspis_core.field.QM31 3#usize) 4#usize) :
+  Result (ControlFlow ((core.ops.range.Range Std.Usize) × (Array (Array
+    aspis_core.field.QM31 3#usize) 4#usize)) ((Array (Array
+    aspis_core.field.QM31 3#usize) 4#usize) × (Option (core.result.Result
+    (Array aspis_core.field.QM31 4#usize)
+    aspis_core.circle_pcs_shape.CirclePcsDecodeError))))
+  := do
+  let (o, iter1) ←
+    core.iter.range.IteratorRange.next core.iter.range.StepUsize iter
+  match o with
+  | none => ok (done (helper_values, none))
+  | some helper =>
+    let (s, to_slice_mut_back) ← lift (Array.to_slice_mut helper_values)
+    let (im, iter_mut_back) ← core.slice.Slice.iter_mut s
+    let (iter2, enumerate_back) ←
+      core.iter.adapters.enumerate.IteratorEnumerateMut.enumerate im
+    let (pending_return, back) ←
+      v5_cu_probe.fri_checks.gamma_combine_v5_layer0_exact_loop0_loop0 iter2
+        (fun e => e) c2_leaf helper
+    match pending_return with
+    | none =>
+      let im1 := enumerate_back back
+      let s1 := iter_mut_back im1
+      let a := to_slice_mut_back s1
+      ok (cont (iter1, a))
+    | some _ =>
+      let im1 := enumerate_back back
+      let s1 := iter_mut_back im1
+      let a := to_slice_mut_back s1
+      ok (done (a, pending_return))
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::gamma_combine_v5_layer0_exact]: loop 0:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 393:4-407:1 -/
+@[rust_loop]
+def v5_cu_probe.fri_checks.gamma_combine_v5_layer0_exact_loop0
+  (iter : core.ops.range.Range Std.Usize) (c2_leaf : Slice Std.U8)
+  (helper_values : Array (Array aspis_core.field.QM31 3#usize) 4#usize) :
+  Result ((Array (Array aspis_core.field.QM31 3#usize) 4#usize) × (Option
+    (core.result.Result (Array aspis_core.field.QM31 4#usize)
+    aspis_core.circle_pcs_shape.CirclePcsDecodeError)))
+  := do
+  loop
+    (fun (iter1, helper_values1) =>
+      v5_cu_probe.fri_checks.gamma_combine_v5_layer0_exact_loop0.body c2_leaf
+      iter1 helper_values1)
+    (iter, helper_values)
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::gamma_combine_v5_layer0_exact]: loop body 2:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 400:4-405:5 -/
+@[rust_loop_body]
+def v5_cu_probe.fri_checks.gamma_combine_v5_layer0_exact_loop1.body
+  (a : Array aspis_core.field.PreparedQm31Multiplier 3#usize)
+  (helper_values : Array (Array aspis_core.field.QM31 3#usize) 4#usize)
   (iter : core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
   aspis_core.field.QM31))
   (back : core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
   aspis_core.field.QM31) → core.iter.adapters.enumerate.Enumerate
   (core.slice.iter.IterMut aspis_core.field.QM31)) :
-  Result ((Option (core.result.Result (Array aspis_core.field.QM31 4#usize)
-    solana_program_error.ProgramError)) ×
+  Result (ControlFlow
+    ((core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
+      aspis_core.field.QM31)) ×
+      (core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
+        aspis_core.field.QM31) → core.iter.adapters.enumerate.Enumerate
+        (core.slice.iter.IterMut aspis_core.field.QM31)))
+    ((core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
+      aspis_core.field.QM31)) ×
+      (core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
+        aspis_core.field.QM31) → core.iter.adapters.enumerate.Enumerate
+        (core.slice.iter.IterMut aspis_core.field.QM31))))
+  := do
+  let (o, iter1, next_back) ←
+    core.iter.adapters.enumerate.IteratorEnumerateMut.next iter
+  match o with
+  | none => ok (done (iter1, fun e => let e1 := next_back e none
+                                      back e1))
+  | some p =>
+    let (slot, output) := p
+    let a1 ← Array.index_usize helper_values slot
+    let q ← aspis_core.field.qm31_sum_products3_prepared a a1
+    let output1 ← aspis_core.field.QM31.add output q
+    ok (cont (iter1,
+      fun e => let e1 := next_back e (some (slot, output1))
+               back e1))
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::gamma_combine_v5_layer0_exact]: loop 2:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 400:4-405:5 -/
+@[rust_loop]
+def v5_cu_probe.fri_checks.gamma_combine_v5_layer0_exact_loop1
+  (iter : core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
+  aspis_core.field.QM31))
+  (back : core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
+  aspis_core.field.QM31) → core.iter.adapters.enumerate.Enumerate
+  (core.slice.iter.IterMut aspis_core.field.QM31))
+  (a : Array aspis_core.field.PreparedQm31Multiplier 3#usize)
+  (helper_values : Array (Array aspis_core.field.QM31 3#usize) 4#usize) :
+  Result ((core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
+    aspis_core.field.QM31)) ×
     (core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
-    aspis_core.field.QM31)))
+      aspis_core.field.QM31) → core.iter.adapters.enumerate.Enumerate
+      (core.slice.iter.IterMut aspis_core.field.QM31)))
   := do
   loop
-    (fun (iter1, back1) => v5_cu_probe.decode_v5_fri_alphas_loop.body parsed
-      iter1 back1)
+    (fun (iter1, back1) =>
+      v5_cu_probe.fri_checks.gamma_combine_v5_layer0_exact_loop1.body a
+      helper_values iter1 back1)
     (iter, back)
 
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::decode_v5_fri_alphas]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 2255:0-2263:1 -/
-def v5_cu_probe.decode_v5_fri_alphas
-  (parsed : v5_cu_probe.ParsedProbeData) :
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::gamma_combine_v5_layer0_exact]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 364:0-407:1 -/
+def v5_cu_probe.fri_checks.gamma_combine_v5_layer0_exact
+  (c1_leaf : Slice Std.U8) (c2_leaf : Slice Std.U8)
+  (prepared : v5_cu_probe.fri_checks.V5PreparedPcsClaims) :
   Result (core.result.Result (Array aspis_core.field.QM31 4#usize)
-    solana_program_error.ProgramError)
+    aspis_core.circle_pcs_shape.CirclePcsDecodeError)
   := do
-  let q ← aspis_core.field.QM31.ZERO
-  let alphas := Array.repeat 4#usize q
-  let (s, to_slice_mut_back) ← lift (Array.to_slice_mut alphas)
-  let (im, iter_mut_back) ← core.slice.Slice.iter_mut s
-  let (iter, enumerate_back) ←
-    core.iter.adapters.enumerate.IteratorEnumerateMut.enumerate im
-  let (pending_return, back) ←
-    v5_cu_probe.decode_v5_fri_alphas_loop parsed iter (fun e => e)
-  match pending_return with
-  | none =>
-    let im1 := enumerate_back back
-    let s1 := iter_mut_back im1
-    let alphas1 := to_slice_mut_back s1
-    ok (core.result.Result.Ok alphas1)
-  | some r => ok r
+  let c1_expected ←
+    Array.index_usize v5_cu_probe.private_openings.V5_PRIVATE_VALUE_WIDTHS
+      0#usize
+  let c2_expected ←
+    Array.index_usize v5_cu_probe.private_openings.V5_PRIVATE_VALUE_WIDTHS
+      1#usize
+  let i := Slice.len c1_leaf
+  if i != c1_expected
+  then
+    let i1 := Slice.len c1_leaf
+    ok (core.result.Result.Err
+      (aspis_core.circle_pcs_shape.CirclePcsDecodeError.C1LeafLength
+      c1_expected i1))
+  else
+    let i1 := Slice.len c2_leaf
+    if i1 != c2_expected
+    then
+      let i2 := Slice.len c2_leaf
+      ok (core.result.Result.Err
+        (aspis_core.circle_pcs_shape.CirclePcsDecodeError.C2LeafLength
+        c2_expected i2))
+    else
+      let o ←
+        aspis_core.field.qm31_m31_dot4_prepared_limbs_4b_bytes
+          prepared.c1_weight_limbs c1_leaf
+      let r ←
+        core.option.Option.ok_or_else
+          v5_cu_probe.fri_checks.gamma_combine_v5_layer0_exact.closure.Insts.CoreOpsFunctionFnOnceTupleCirclePcsDecodeError
+          o c1_leaf
+      let cf ← core.result.Result.Insts.CoreOpsTry.branch r
+      match cf with
+      | core.ops.control_flow.ControlFlow.Continue val =>
+        let q ← aspis_core.field.QM31.ZERO
+        let a := Array.repeat 3#usize q
+        let helper_values := Array.repeat 4#usize a
+        let (helper_values1, pending_return) ←
+          v5_cu_probe.fri_checks.gamma_combine_v5_layer0_exact_loop0
+            {
+              start := 0#usize,
+              «end» := v5_cu_probe.fri_checks.V5_FRI_C2_COLUMNS
+            } c2_leaf helper_values
+        match pending_return with
+        | none =>
+          let (s, to_slice_mut_back) ← lift (Array.to_slice_mut val)
+          let (im, iter_mut_back) ← core.slice.Slice.iter_mut s
+          let (iter, enumerate_back) ←
+            core.iter.adapters.enumerate.IteratorEnumerateMut.enumerate im
+          let (e, back) ←
+            v5_cu_probe.fri_checks.gamma_combine_v5_layer0_exact_loop1 iter
+              (fun e => e) prepared.c2_multipliers helper_values1
+          let e1 := back e
+          let im1 := enumerate_back e1
+          let s1 := iter_mut_back im1
+          let combined := to_slice_mut_back s1
+          ok (core.result.Result.Ok combined)
+        | some r1 => ok r1
+      | core.ops.control_flow.ControlFlow.Break residual =>
+        core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+          (Array aspis_core.field.QM31 4#usize) (core.convert.FromSame
+          aspis_core.circle_pcs_shape.CirclePcsDecodeError) residual
 
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::V5PreparedPcsClaims]
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 128:0-132:1
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::V5FriCheckError]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 87:0-96:1
     Visibility: public -/
-axiom v5_cu_probe.fri_checks.V5PreparedPcsClaims : Type
+inductive v5_cu_probe.fri_checks.V5FriCheckError where
+| Decode :
+  aspis_core.circle_pcs_shape.CirclePcsDecodeError →
+  v5_cu_probe.fri_checks.V5FriCheckError
+| Fold :
+  aspis_core.circle_fri.CircleFriError →
+  v5_cu_probe.fri_checks.V5FriCheckError
+| Query :
+  aspis_core.circle_query.CircleQueryError →
+  v5_cu_probe.fri_checks.V5FriCheckError
+| QueryCountMismatch :
+  Std.Usize →
+  Std.Usize →
+  v5_cu_probe.fri_checks.V5FriCheckError
+| PreparedShape : v5_cu_probe.fri_checks.V5FriCheckError
+| MissingOpening :
+  Std.U8 →
+  Std.U32 →
+  v5_cu_probe.fri_checks.V5FriCheckError
+| FirstFoldMismatch : Std.U32 → v5_cu_probe.fri_checks.V5FriCheckError
+| NonCanonicalLater :
+  Std.U8 →
+  Std.Usize →
+  v5_cu_probe.fri_checks.V5FriCheckError
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::opening_value_for_monotone_index]: loop body 0:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 335:4-337:5 -/
+@[rust_loop_body]
+def v5_cu_probe.fri_checks.opening_value_for_monotone_index_loop.body
+  (indices : Slice Std.U32) (index : Std.U32) (ordinal : Std.Usize) :
+  Result (ControlFlow Std.Usize Std.Usize)
+  := do
+  let i := Slice.len indices
+  if ordinal < i
+  then
+    let i1 ← Slice.index_usize indices ordinal
+    if i1 < index
+    then let ordinal1 ← ordinal + 1#usize
+         ok (cont ordinal1)
+    else ok (done ordinal)
+  else ok (done ordinal)
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::opening_value_for_monotone_index]: loop 0:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 335:4-337:5 -/
+@[rust_loop]
+def v5_cu_probe.fri_checks.opening_value_for_monotone_index_loop
+  (indices : Slice Std.U32) (ordinal : Std.Usize) (index : Std.U32) :
+  Result Std.Usize
+  := do
+  loop
+    (fun ordinal1 =>
+      v5_cu_probe.fri_checks.opening_value_for_monotone_index_loop.body indices
+      index ordinal1)
+    ordinal
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::opening_value_for_monotone_index]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 328:0-344:1 -/
+def v5_cu_probe.fri_checks.opening_value_for_monotone_index
+  (opening : aspis_core.state_only_private_openings.StateOnlyPrivateOpening)
+  (indices : Slice Std.U32) (ordinal : Std.Usize) (index : Std.U32)
+  (layer : Std.U8) :
+  Result ((core.result.Result (Slice Std.U8)
+    v5_cu_probe.fri_checks.V5FriCheckError) × Std.Usize)
+  := do
+  let ordinal1 ←
+    v5_cu_probe.fri_checks.opening_value_for_monotone_index_loop indices
+      ordinal index
+  let o ←
+    core.slice.Slice.get (core.slice.index.SliceIndexUsizeSlice Std.U32)
+      indices ordinal1
+  let o1 ← core.option.OptionShared0T.copied core.marker.CopyU32 o
+  let b ←
+    core.cmp.PartialEq.ne.trait_default
+      (core.option.Option.Insts.CoreCmpPartialEqOption core.cmp.PartialEqU32)
+      o1 (some index)
+  if b
+  then
+    ok (core.result.Result.Err
+      (v5_cu_probe.fri_checks.V5FriCheckError.MissingOpening layer index),
+      ordinal1)
+  else
+    let o2 ←
+      aspis_core.state_only_private_openings.StateOnlyPrivateOpening.value
+        opening ordinal1
+    let r ←
+      core.option.Option.ok_or o2
+        (v5_cu_probe.fri_checks.V5FriCheckError.MissingOpening layer index)
+    ok (r, ordinal1)
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::V5FriCheckSink]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 117:0-121:1
+    Visibility: public -/
+structure v5_cu_probe.fri_checks.V5FriCheckSink where
+  folded_layer0_sum : aspis_core.field.QM31
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::{impl core::convert::From<aspis_core::circle_query::CircleQueryError> for aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::V5FriCheckError}::from]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 111:4-113:5
+    Visibility: public -/
+def
+  v5_cu_probe.fri_checks.V5FriCheckError.Insts.CoreConvertFromCircleQueryError.from
+  (error : aspis_core.circle_query.CircleQueryError) :
+  Result v5_cu_probe.fri_checks.V5FriCheckError
+  := do
+  ok (v5_cu_probe.fri_checks.V5FriCheckError.Query error)
+
+/-- Trait implementation: [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::{impl core::convert::From<aspis_core::circle_query::CircleQueryError> for aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::V5FriCheckError}]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 110:0-114:1 -/
+@[reducible]
+def
+  v5_cu_probe.fri_checks.V5FriCheckError.Insts.CoreConvertFromCircleQueryError
+  : core.convert.From v5_cu_probe.fri_checks.V5FriCheckError
+  aspis_core.circle_query.CircleQueryError := {
+  «from» :=
+    v5_cu_probe.fri_checks.V5FriCheckError.Insts.CoreConvertFromCircleQueryError.from
+}
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::{impl core::convert::From<aspis_core::circle_fri::CircleFriError> for aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::V5FriCheckError}::from]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 105:4-107:5
+    Visibility: public -/
+def
+  v5_cu_probe.fri_checks.V5FriCheckError.Insts.CoreConvertFromCircleFriError.from
+  (error : aspis_core.circle_fri.CircleFriError) :
+  Result v5_cu_probe.fri_checks.V5FriCheckError
+  := do
+  ok (v5_cu_probe.fri_checks.V5FriCheckError.Fold error)
+
+/-- Trait implementation: [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::{impl core::convert::From<aspis_core::circle_fri::CircleFriError> for aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::V5FriCheckError}]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 104:0-108:1 -/
+@[reducible]
+def v5_cu_probe.fri_checks.V5FriCheckError.Insts.CoreConvertFromCircleFriError
+  : core.convert.From v5_cu_probe.fri_checks.V5FriCheckError
+  aspis_core.circle_fri.CircleFriError := {
+  «from» :=
+    v5_cu_probe.fri_checks.V5FriCheckError.Insts.CoreConvertFromCircleFriError.from
+}
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::{impl core::convert::From<aspis_core::circle_pcs_shape::CirclePcsDecodeError> for aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::V5FriCheckError}::from]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 99:4-101:5
+    Visibility: public -/
+def
+  v5_cu_probe.fri_checks.V5FriCheckError.Insts.CoreConvertFromCirclePcsDecodeError.from
+  (error : aspis_core.circle_pcs_shape.CirclePcsDecodeError) :
+  Result v5_cu_probe.fri_checks.V5FriCheckError
+  := do
+  ok (v5_cu_probe.fri_checks.V5FriCheckError.Decode error)
+
+/-- Trait implementation: [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::{impl core::convert::From<aspis_core::circle_pcs_shape::CirclePcsDecodeError> for aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::V5FriCheckError}]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 98:0-102:1 -/
+@[reducible]
+def
+  v5_cu_probe.fri_checks.V5FriCheckError.Insts.CoreConvertFromCirclePcsDecodeError
+  : core.convert.From v5_cu_probe.fri_checks.V5FriCheckError
+  aspis_core.circle_pcs_shape.CirclePcsDecodeError := {
+  «from» :=
+    v5_cu_probe.fri_checks.V5FriCheckError.Insts.CoreConvertFromCirclePcsDecodeError.from
+}
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::V5_FRI_OPENING_POINTS]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 37:0-37:43
+    Visibility: public -/
+@[global_simps, irreducible]
+def v5_cu_probe.fri_checks.V5_FRI_OPENING_POINTS : Std.Usize := 4#usize
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::V5_FRI_PCS_SHAPE]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 45:0-55:2
+    Visibility: public -/
+@[global_simps, irreducible]
+def v5_cu_probe.fri_checks.V5_FRI_PCS_SHAPE
+  : Result aspis_core.circle_pcs_shape.CirclePcsShape := do
+  let i ←
+    lift (UScalar.cast .U8 v5_cu_probe.fri_checks.V5_FRI_OPENING_POINTS)
+  let i1 ← aspis_core.state_only_prefix.STATE_ONLY_SPEND_QUERY_COUNT
+  let i2 ← aspis_core.circle_merkle.CIRCLE_C1_LAYER0_TAG
+  let i3 ← aspis_core.circle_merkle.CIRCLE_C2_LAYER0_TAG
+  let a ← aspis_core.circle_line_merkle.CIRCLE_LINE_TAGS
+  ok
+    {
+      trace_log_size := 10#u8,
+      domain_log_size := 19#u8,
+      query_count := i1,
+      opening_points := i,
+      c1_columns := 16#u16,
+      c2_columns := 3#u16,
+      c1_layer0_tag := i2,
+      c2_layer0_tag := i3,
+      later_layer_tags := a
+    }
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::V5_FRI_QUERY_COUNT]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 35:0-35:76
+    Visibility: public -/
+@[global_simps, irreducible]
+def v5_cu_probe.fri_checks.V5_FRI_QUERY_COUNT : Result Std.Usize := do
+  let i ← aspis_core.state_only_prefix.STATE_ONLY_SPEND_QUERY_COUNT
+  ok (UScalar.cast .Usize i)
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::check_v5_fri_queries]: loop body 2:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 503:4-552:5
+    Visibility: public -/
+@[rust_loop_body]
+def v5_cu_probe.fri_checks.check_v5_fri_queries_loop0_loop0_loop0.body
+  (a : Array aspis_core.state_only_private_openings.StateOnlyPrivateOpening
+  3#usize) (a1 : Array (alloc.vec.Vec Std.U32) 3#usize)
+  (final_polynomial : Array aspis_core.field.QM31 4#usize)
+  (coordinates : aspis_core.circle_fri.DerivedCircleQueryFoldInverses)
+  (alpha_powers : Array (Array aspis_core.field.PreparedQm31Multiplier 3#usize)
+  4#usize) (layer : Std.Usize)
+  (pending_return : Option (core.result.Result
+  v5_cu_probe.fri_checks.V5FriCheckSink
+  v5_cu_probe.fri_checks.V5FriCheckError))
+  (iter : core.iter.adapters.enumerate.Enumerate (core.slice.iter.Iter
+  Std.U32)) (outgoing_ordinal : Std.Usize) :
+  Result (ControlFlow ((core.iter.adapters.enumerate.Enumerate
+    (core.slice.iter.Iter Std.U32)) × Std.Usize)
+    (aspis_core.circle_fri.DerivedCircleQueryFoldInverses × (Option
+    (core.result.Result v5_cu_probe.fri_checks.V5FriCheckSink
+    v5_cu_probe.fri_checks.V5FriCheckError)) × Std.U32))
+  := do
+  let (o, iter1) ←
+    core.iter.adapters.enumerate.IteratorEnumerate.next
+      (core.iter.traits.iterator.IteratorSliceIter Std.U32) iter
+  match o with
+  | none => ok (done (coordinates, pending_return, 1#u32))
+  | some p =>
+    let (ordinal, index) := p
+    let sopo ← Array.index_usize a layer
+    let o1 ←
+      aspis_core.state_only_private_openings.StateOnlyPrivateOpening.value sopo
+        ordinal
+    let i ← lift (UScalar.cast .U8 layer)
+    let i1 ← i + 1#u8
+    let r ←
+      core.option.Option.ok_or o1
+        (v5_cu_probe.fri_checks.V5FriCheckError.MissingOpening i1 index)
+    let cf ← core.result.Result.Insts.CoreOpsTry.branch r
+    match cf with
+    | core.ops.control_flow.ControlFlow.Continue val =>
+      let v ← Array.index_usize coordinates.later layer
+      let s := alloc.vec.Vec.deref v
+      let o2 ←
+        core.slice.Slice.get (core.slice.index.SliceIndexUsizeSlice (Array
+          aspis_core.field.M31 3#usize)) s ordinal
+      let i2 ← lift (UScalar.cast .U8 layer)
+      let i3 ← i2 + 1#u8
+      let r1 ←
+        core.option.Option.ok_or o2
+          (v5_cu_probe.fri_checks.V5FriCheckError.MissingOpening i3 index)
+      let cf1 ← core.result.Result.Insts.CoreOpsTry.branch r1
+      match cf1 with
+      | core.ops.control_flow.ControlFlow.Continue val1 =>
+        if layer < 2#usize
+        then
+          let parent ← index >>> 2#i32
+          let i4 ← layer + 1#usize
+          let sopo1 ← Array.index_usize a i4
+          let v1 ← Array.index_usize a1 i4
+          let s1 := alloc.vec.Vec.deref v1
+          let i5 ← lift (UScalar.cast .U8 layer)
+          let i6 ← i5 + 2#u8
+          let (r2, outgoing_ordinal1) ←
+            v5_cu_probe.fri_checks.opening_value_for_monotone_index sopo1 s1
+              outgoing_ordinal parent i6
+          let cf2 ← core.result.Result.Insts.CoreOpsTry.branch r2
+          match cf2 with
+          | core.ops.control_flow.ControlFlow.Continue val2 =>
+            let i7 ← lift (UScalar.cast .Usize index)
+            let i8 ← lift (UScalar.cast .U8 layer)
+            let i9 ← i8 + 1#u8
+            let a2 ← Array.index_usize alpha_powers i4
+            let r3 ←
+              aspis_core.circle_query.check_fixed_line_transition_prepared_polynomial_powers
+                val val2 i7 i9 val1 a2
+            let cf3 ← core.result.Result.Insts.CoreOpsTry.branch r3
+            match cf3 with
+            | core.ops.control_flow.ControlFlow.Continue _ =>
+              ok (cont (iter1, outgoing_ordinal1))
+            | core.ops.control_flow.ControlFlow.Break residual =>
+              let r4 ←
+                core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+                  v5_cu_probe.fri_checks.V5FriCheckSink
+                  v5_cu_probe.fri_checks.V5FriCheckError.Insts.CoreConvertFromCircleQueryError
+                  residual
+              ok (done (coordinates, some r4, 0#u32))
+          | core.ops.control_flow.ControlFlow.Break residual =>
+            let r3 ←
+              core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+                v5_cu_probe.fri_checks.V5FriCheckSink (core.convert.FromSame
+                v5_cu_probe.fri_checks.V5FriCheckError) residual
+            ok (done (coordinates, some r3, 0#u32))
+        else
+          let s1 := alloc.vec.Vec.deref coordinates.final_x
+          let o3 ←
+            core.slice.Slice.get (core.slice.index.SliceIndexUsizeSlice
+              aspis_core.field.M31) s1 ordinal
+          let r2 ←
+            core.option.Option.ok_or o3
+              (v5_cu_probe.fri_checks.V5FriCheckError.MissingOpening 4#u8
+              index)
+          let cf2 ← core.result.Result.Insts.CoreOpsTry.branch r2
+          match cf2 with
+          | core.ops.control_flow.ControlFlow.Continue val2 =>
+            let i4 ← lift (UScalar.cast .Usize index)
+            let a2 ← Array.index_usize alpha_powers 3#usize
+            let r3 ←
+              aspis_core.circle_query.check_fixed_terminal_transition_prepared_polynomial_refs
+                val final_polynomial i4 val1 val2 a2
+            let cf3 ← core.result.Result.Insts.CoreOpsTry.branch r3
+            match cf3 with
+            | core.ops.control_flow.ControlFlow.Continue _ =>
+              ok (cont (iter1, outgoing_ordinal))
+            | core.ops.control_flow.ControlFlow.Break residual =>
+              let r4 ←
+                core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+                  v5_cu_probe.fri_checks.V5FriCheckSink
+                  v5_cu_probe.fri_checks.V5FriCheckError.Insts.CoreConvertFromCircleQueryError
+                  residual
+              ok (done (coordinates, some r4, 0#u32))
+          | core.ops.control_flow.ControlFlow.Break residual =>
+            let r3 ←
+              core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+                v5_cu_probe.fri_checks.V5FriCheckSink (core.convert.FromSame
+                v5_cu_probe.fri_checks.V5FriCheckError) residual
+            ok (done (coordinates, some r3, 0#u32))
+      | core.ops.control_flow.ControlFlow.Break residual =>
+        let r2 ←
+          core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+            v5_cu_probe.fri_checks.V5FriCheckSink (core.convert.FromSame
+            v5_cu_probe.fri_checks.V5FriCheckError) residual
+        ok (done (coordinates, some r2, 0#u32))
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      let r1 ←
+        core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+          v5_cu_probe.fri_checks.V5FriCheckSink (core.convert.FromSame
+          v5_cu_probe.fri_checks.V5FriCheckError) residual
+      ok (done (coordinates, some r1, 0#u32))
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::check_v5_fri_queries]: loop 2:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 503:4-552:5
+    Visibility: public -/
+@[rust_loop]
+def v5_cu_probe.fri_checks.check_v5_fri_queries_loop0_loop0_loop0
+  (iter : core.iter.adapters.enumerate.Enumerate (core.slice.iter.Iter
+  Std.U32))
+  (a : Array aspis_core.state_only_private_openings.StateOnlyPrivateOpening
+  3#usize) (a1 : Array (alloc.vec.Vec Std.U32) 3#usize)
+  (final_polynomial : Array aspis_core.field.QM31 4#usize)
+  (coordinates : aspis_core.circle_fri.DerivedCircleQueryFoldInverses)
+  (alpha_powers : Array (Array aspis_core.field.PreparedQm31Multiplier 3#usize)
+  4#usize) (layer : Std.Usize) (outgoing_ordinal : Std.Usize)
+  (pending_return : Option (core.result.Result
+  v5_cu_probe.fri_checks.V5FriCheckSink
+  v5_cu_probe.fri_checks.V5FriCheckError)) :
+  Result (aspis_core.circle_fri.DerivedCircleQueryFoldInverses × (Option
+    (core.result.Result v5_cu_probe.fri_checks.V5FriCheckSink
+    v5_cu_probe.fri_checks.V5FriCheckError)) × Std.U32)
+  := do
+  loop
+    (fun (iter1, outgoing_ordinal1) =>
+      v5_cu_probe.fri_checks.check_v5_fri_queries_loop0_loop0_loop0.body a a1
+      final_polynomial coordinates alpha_powers layer pending_return iter1
+      outgoing_ordinal1)
+    (iter, outgoing_ordinal)
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::check_v5_fri_queries]: loop body 1:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 503:4-555:1
+    Visibility: public -/
+@[rust_loop_body]
+def v5_cu_probe.fri_checks.check_v5_fri_queries_loop0_loop0.body
+  (a : Array aspis_core.state_only_private_openings.StateOnlyPrivateOpening
+  3#usize) (a1 : Array (alloc.vec.Vec Std.U32) 3#usize)
+  (final_polynomial : Array aspis_core.field.QM31 4#usize)
+  (alpha_powers : Array (Array aspis_core.field.PreparedQm31Multiplier 3#usize)
+  4#usize) (folded_layer0_sum : aspis_core.field.QM31)
+  (iter : core.ops.range.Range Std.Usize)
+  (coordinates : aspis_core.circle_fri.DerivedCircleQueryFoldInverses)
+  (pending_return : Option (core.result.Result
+  v5_cu_probe.fri_checks.V5FriCheckSink
+  v5_cu_probe.fri_checks.V5FriCheckError)) :
+  Result (ControlFlow ((core.ops.range.Range Std.Usize) ×
+    aspis_core.circle_fri.DerivedCircleQueryFoldInverses × (Option
+    (core.result.Result v5_cu_probe.fri_checks.V5FriCheckSink
+    v5_cu_probe.fri_checks.V5FriCheckError))) (Option (core.result.Result
+    v5_cu_probe.fri_checks.V5FriCheckSink
+    v5_cu_probe.fri_checks.V5FriCheckError)))
+  := do
+  let (o, iter1) ←
+    core.iter.range.IteratorRange.next core.iter.range.StepUsize iter
+  match o with
+  | none => ok (done (some (core.result.Result.Ok { folded_layer0_sum })))
+  | some layer =>
+    let v ← Array.index_usize a1 layer
+    let s := alloc.vec.Vec.deref v
+    let i ← core.slice.Slice.iter s
+    let iter2 ←
+      core.iter.traits.iterator.Iterator.enumerate.trait_default
+        (core.iter.traits.iterator.IteratorSliceIter Std.U32) i
+    let (coordinates1, pending_return1, i1) ←
+      v5_cu_probe.fri_checks.check_v5_fri_queries_loop0_loop0_loop0 iter2 a a1
+        final_polynomial coordinates alpha_powers layer 0#usize pending_return
+    match i1 with
+    | 1#uscalar => ok (cont (iter1, coordinates1, pending_return1))
+    | _ =>
+      match pending_return1 with
+      | none => ok (done none)
+      | some _ => ok (done pending_return1)
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::check_v5_fri_queries]: loop 1:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 503:4-555:1
+    Visibility: public -/
+@[rust_loop]
+def v5_cu_probe.fri_checks.check_v5_fri_queries_loop0_loop0
+  (iter : core.ops.range.Range Std.Usize)
+  (a : Array aspis_core.state_only_private_openings.StateOnlyPrivateOpening
+  3#usize) (a1 : Array (alloc.vec.Vec Std.U32) 3#usize)
+  (final_polynomial : Array aspis_core.field.QM31 4#usize)
+  (coordinates : aspis_core.circle_fri.DerivedCircleQueryFoldInverses)
+  (alpha_powers : Array (Array aspis_core.field.PreparedQm31Multiplier 3#usize)
+  4#usize) (folded_layer0_sum : aspis_core.field.QM31)
+  (pending_return : Option (core.result.Result
+  v5_cu_probe.fri_checks.V5FriCheckSink
+  v5_cu_probe.fri_checks.V5FriCheckError)) :
+  Result (Option (core.result.Result v5_cu_probe.fri_checks.V5FriCheckSink
+    v5_cu_probe.fri_checks.V5FriCheckError))
+  := do
+  loop
+    (fun (iter1, coordinates1, pending_return1) =>
+      v5_cu_probe.fri_checks.check_v5_fri_queries_loop0_loop0.body a a1
+      final_polynomial alpha_powers folded_layer0_sum iter1 coordinates1
+      pending_return1)
+    (iter, coordinates, pending_return)
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::check_v5_fri_queries]: loop body 0:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 456:4-555:1
+    Visibility: public -/
+@[rust_loop_body]
+def v5_cu_probe.fri_checks.check_v5_fri_queries_loop0.body
+  (openings : v5_cu_probe.private_openings.VerifiedV5PrivateOpenings)
+  (i : Std.Usize) (i1 : Std.Usize)
+  (sopoo :
+  aspis_core.state_only_private_openings.StateOnlyPrivateOpeningOffsets)
+  (i2 : Std.Usize) (i3 : Std.Usize)
+  (sopoo1 :
+  aspis_core.state_only_private_openings.StateOnlyPrivateOpeningOffsets)
+  (a : Array aspis_core.state_only_private_openings.StateOnlyPrivateOpening
+  3#usize) (a1 : Array (alloc.vec.Vec Std.U32) 3#usize)
+  (v : alloc.vec.Vec aspis_core.field.QM31)
+  (v1 : alloc.vec.Vec aspis_core.field.QM31)
+  (a2 : Array (Array Std.U32 4#usize) 16#usize)
+  (a3 : Array aspis_core.field.PreparedQm31Multiplier 3#usize)
+  (final_polynomial : Array aspis_core.field.QM31 4#usize)
+  (coordinates : aspis_core.circle_fri.DerivedCircleQueryFoldInverses)
+  (alpha_powers : Array (Array aspis_core.field.PreparedQm31Multiplier 3#usize)
+  4#usize)
+  (iter : core.iter.adapters.enumerate.Enumerate (core.slice.iter.Iter
+  Std.U32)) (folded_layer0_sum : aspis_core.field.QM31)
+  (layer1_ordinal : Std.Usize) :
+  Result (ControlFlow ((core.iter.adapters.enumerate.Enumerate
+    (core.slice.iter.Iter Std.U32)) × aspis_core.field.QM31 × Std.Usize)
+    (Option (core.result.Result v5_cu_probe.fri_checks.V5FriCheckSink
+    v5_cu_probe.fri_checks.V5FriCheckError)))
+  := do
+  let (o, iter1) ←
+    core.iter.adapters.enumerate.IteratorEnumerate.next
+      (core.iter.traits.iterator.IteratorSliceIter Std.U32) iter
+  match o with
+  | none =>
+    let pending_return ←
+      v5_cu_probe.fri_checks.check_v5_fri_queries_loop0_loop0
+        { start := 0#usize, «end» := 3#usize } a a1 final_polynomial
+        coordinates alpha_powers folded_layer0_sum none
+    match pending_return with
+    | none => ok (done none)
+    | some _ => ok (done pending_return)
+  | some p =>
+    let (ordinal, query) := p
+    let o1 ←
+      aspis_core.state_only_private_openings.StateOnlyPrivateOpening.value
+        { openings.c1 with count := i, value_width := i1, offsets := sopoo }
+        ordinal
+    let r ←
+      core.option.Option.ok_or o1
+        (v5_cu_probe.fri_checks.V5FriCheckError.MissingOpening 0#u8 query)
+    let cf ← core.result.Result.Insts.CoreOpsTry.branch r
+    match cf with
+    | core.ops.control_flow.ControlFlow.Continue val =>
+      let o2 ←
+        aspis_core.state_only_private_openings.StateOnlyPrivateOpening.value
+          { openings.c2 with count := i2, value_width := i3, offsets := sopoo1
+          } ordinal
+      let r1 ←
+        core.option.Option.ok_or o2
+          (v5_cu_probe.fri_checks.V5FriCheckError.MissingOpening 0#u8 query)
+      let cf1 ← core.result.Result.Insts.CoreOpsTry.branch r1
+      match cf1 with
+      | core.ops.control_flow.ControlFlow.Continue val1 =>
+        let r2 ←
+          v5_cu_probe.fri_checks.gamma_combine_v5_layer0_exact val val1
+            {
+              inner := { claims := v, powers := v1 },
+              c1_weight_limbs := a2,
+              c2_multipliers := a3
+            }
+        let cf2 ← core.result.Result.Insts.CoreOpsTry.branch r2
+        match cf2 with
+        | core.ops.control_flow.ControlFlow.Continue val2 =>
+          let s := alloc.vec.Vec.deref coordinates.circle
+          let o3 ←
+            core.slice.Slice.get (core.slice.index.SliceIndexUsizeSlice (Array
+              aspis_core.field.M31 2#usize)) s ordinal
+          let r3 ←
+            core.option.Option.ok_or o3
+              (v5_cu_probe.fri_checks.V5FriCheckError.MissingOpening 0#u8
+              query)
+          let cf3 ← core.result.Result.Insts.CoreOpsTry.branch r3
+          match cf3 with
+          | core.ops.control_flow.ControlFlow.Continue val3 =>
+            let inv_2x ← Array.index_usize val3 0#usize
+            let inv_2y ← Array.index_usize val3 1#usize
+            let a4 ← Array.index_usize alpha_powers 0#usize
+            let folded ←
+              aspis_core.circle_fri.normalized_circle_to_line_arity4_prepared_polynomial_refs
+                val2 a4 inv_2x inv_2y
+            let parent ← query >>> 2#i32
+            let sopo ← Array.index_usize a 0#usize
+            let v2 ← Array.index_usize a1 0#usize
+            let s1 := alloc.vec.Vec.deref v2
+            let (r4, layer1_ordinal1) ←
+              v5_cu_probe.fri_checks.opening_value_for_monotone_index sopo s1
+                layer1_ordinal parent 1#u8
+            let cf4 ← core.result.Result.Insts.CoreOpsTry.branch r4
+            match cf4 with
+            | core.ops.control_flow.ControlFlow.Continue val4 =>
+              let i4 ← lift (query &&& 3#u32)
+              let i5 ← lift (UScalar.cast .Usize i4)
+              let offset ← i5 * 16#usize
+              let i6 ← offset + 16#usize
+              let s2 ←
+                core.slice.index.Slice.index
+                  (core.slice.index.SliceIndexRangeUsizeSlice Std.U8) val4
+                  { start := offset, «end» := i6 }
+              let o4 ← aspis_core.field.QM31.from_le_bytes s2
+              let r5 ←
+                core.option.Option.ok_or o4
+                  (v5_cu_probe.fri_checks.V5FriCheckError.NonCanonicalLater
+                  1#u8 offset)
+              let cf5 ← core.result.Result.Insts.CoreOpsTry.branch r5
+              match cf5 with
+              | core.ops.control_flow.ControlFlow.Continue val5 =>
+                let b ←
+                  core.cmp.PartialEq.ne.trait_default
+                    aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31 folded
+                    val5
+                if b
+                then
+                  ok (done (some (core.result.Result.Err
+                    (v5_cu_probe.fri_checks.V5FriCheckError.FirstFoldMismatch
+                    query))))
+                else
+                  let folded_layer0_sum1 ←
+                    aspis_core.field.QM31.add folded_layer0_sum folded
+                  ok (cont (iter1, folded_layer0_sum1, layer1_ordinal1))
+              | core.ops.control_flow.ControlFlow.Break residual =>
+                let r6 ←
+                  core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+                    v5_cu_probe.fri_checks.V5FriCheckSink
+                    (core.convert.FromSame
+                    v5_cu_probe.fri_checks.V5FriCheckError) residual
+                ok (done (some r6))
+            | core.ops.control_flow.ControlFlow.Break residual =>
+              let r5 ←
+                core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+                  v5_cu_probe.fri_checks.V5FriCheckSink (core.convert.FromSame
+                  v5_cu_probe.fri_checks.V5FriCheckError) residual
+              ok (done (some r5))
+          | core.ops.control_flow.ControlFlow.Break residual =>
+            let r4 ←
+              core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+                v5_cu_probe.fri_checks.V5FriCheckSink (core.convert.FromSame
+                v5_cu_probe.fri_checks.V5FriCheckError) residual
+            ok (done (some r4))
+        | core.ops.control_flow.ControlFlow.Break residual =>
+          let r3 ←
+            core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+              v5_cu_probe.fri_checks.V5FriCheckSink
+              v5_cu_probe.fri_checks.V5FriCheckError.Insts.CoreConvertFromCirclePcsDecodeError
+              residual
+          ok (done (some r3))
+      | core.ops.control_flow.ControlFlow.Break residual =>
+        let r2 ←
+          core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+            v5_cu_probe.fri_checks.V5FriCheckSink (core.convert.FromSame
+            v5_cu_probe.fri_checks.V5FriCheckError) residual
+        ok (done (some r2))
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      let r1 ←
+        core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+          v5_cu_probe.fri_checks.V5FriCheckSink (core.convert.FromSame
+          v5_cu_probe.fri_checks.V5FriCheckError) residual
+      ok (done (some r1))
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::check_v5_fri_queries]: loop 0:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 456:4-555:1
+    Visibility: public -/
+@[rust_loop]
+def v5_cu_probe.fri_checks.check_v5_fri_queries_loop0
+  (openings : v5_cu_probe.private_openings.VerifiedV5PrivateOpenings)
+  (iter : core.iter.adapters.enumerate.Enumerate (core.slice.iter.Iter
+  Std.U32)) (i : Std.Usize) (i1 : Std.Usize)
+  (sopoo :
+  aspis_core.state_only_private_openings.StateOnlyPrivateOpeningOffsets)
+  (i2 : Std.Usize) (i3 : Std.Usize)
+  (sopoo1 :
+  aspis_core.state_only_private_openings.StateOnlyPrivateOpeningOffsets)
+  (a : Array aspis_core.state_only_private_openings.StateOnlyPrivateOpening
+  3#usize) (a1 : Array (alloc.vec.Vec Std.U32) 3#usize)
+  (v : alloc.vec.Vec aspis_core.field.QM31)
+  (v1 : alloc.vec.Vec aspis_core.field.QM31)
+  (a2 : Array (Array Std.U32 4#usize) 16#usize)
+  (a3 : Array aspis_core.field.PreparedQm31Multiplier 3#usize)
+  (final_polynomial : Array aspis_core.field.QM31 4#usize)
+  (coordinates : aspis_core.circle_fri.DerivedCircleQueryFoldInverses)
+  (alpha_powers : Array (Array aspis_core.field.PreparedQm31Multiplier 3#usize)
+  4#usize) (folded_layer0_sum : aspis_core.field.QM31)
+  (layer1_ordinal : Std.Usize) :
+  Result (Option (core.result.Result v5_cu_probe.fri_checks.V5FriCheckSink
+    v5_cu_probe.fri_checks.V5FriCheckError))
+  := do
+  loop
+    (fun (iter1, folded_layer0_sum1, layer1_ordinal1) =>
+      v5_cu_probe.fri_checks.check_v5_fri_queries_loop0.body openings i i1
+      sopoo i2 i3 sopoo1 a a1 v v1 a2 a3 final_polynomial coordinates
+      alpha_powers iter1 folded_layer0_sum1 layer1_ordinal1)
+    (iter, folded_layer0_sum, layer1_ordinal)
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::check_v5_fri_queries]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 412:0-555:1
+    Visibility: public -/
+def v5_cu_probe.fri_checks.check_v5_fri_queries
+  (openings : v5_cu_probe.private_openings.VerifiedV5PrivateOpenings)
+  (prepared : v5_cu_probe.fri_checks.V5PreparedPcsClaims)
+  (alphas : Array aspis_core.field.QM31 4#usize)
+  (final_polynomial : Array aspis_core.field.QM31 4#usize)
+  (inverse : aspis_core.field.M31 → Result aspis_core.field.M31) :
+  Result (core.result.Result v5_cu_probe.fri_checks.V5FriCheckSink
+    v5_cu_probe.fri_checks.V5FriCheckError)
+  := do
+  let cps ← v5_cu_probe.fri_checks.V5_FRI_PCS_SHAPE
+  let r ← aspis_core.circle_pcs_shape.CirclePcsShape.validate cps
+  let r1 ←
+    core.result.Result.map_err (BuiltinFnOnce
+      aspis_core.circle_pcs_shape.CirclePcsShapeError
+      aspis_core.circle_pcs_shape.CirclePcsDecodeError) r
+      (aspis_core.circle_pcs_shape.CirclePcsDecodeError.Insts.CoreConvertFromCirclePcsShapeError.from)
+  let cf ← core.result.Result.Insts.CoreOpsTry.branch r1
+  match cf with
+  | core.ops.control_flow.ControlFlow.Continue val =>
+    let i := alloc.vec.Vec.len openings.indices.layer0
+    let i1 ← v5_cu_probe.fri_checks.V5_FRI_QUERY_COUNT
+    if i != i1
+    then
+      let i2 := alloc.vec.Vec.len openings.indices.layer0
+      ok (core.result.Result.Err
+        (v5_cu_probe.fri_checks.V5FriCheckError.QueryCountMismatch i1 i2))
+    else
+      let i2 := alloc.vec.Vec.len prepared.inner.powers
+      let i3 ← aspis_core.circle_pcs_shape.CirclePcsShape.total_columns val
+      if i2 != i3
+      then
+        ok (core.result.Result.Err
+          v5_cu_probe.fri_checks.V5FriCheckError.PreparedShape)
+      else
+        let i4 := alloc.vec.Vec.len prepared.inner.claims
+        if i4 != v5_cu_probe.fri_checks.V5_FRI_OPENING_POINTS
+        then
+          ok (core.result.Result.Err
+            v5_cu_probe.fri_checks.V5FriCheckError.PreparedShape)
+        else
+          let i5 ← lift (core.convert.num.FromU32U8.from val.domain_log_size)
+          let s := alloc.vec.Vec.deref openings.indices.layer0
+          let v ← Array.index_usize openings.indices.later 0#usize
+          let s1 := alloc.vec.Vec.deref v
+          let v1 ← Array.index_usize openings.indices.later 1#usize
+          let s2 := alloc.vec.Vec.deref v1
+          let v2 ← Array.index_usize openings.indices.later 2#usize
+          let s3 := alloc.vec.Vec.deref v2
+          let r2 ←
+            aspis_core.circle_fri.derive_query_fold_inverses_for_circle i5 s
+              (Array.make 3#usize [ s1, s2, s3 ]) inverse
+          let cf1 ← core.result.Result.Insts.CoreOpsTry.branch r2
+          match cf1 with
+          | core.ops.control_flow.ControlFlow.Continue val1 =>
+            let alpha_powers ←
+              core.array.Array.map
+                v5_cu_probe.fri_checks.check_v5_fri_queries.closure.Insts.CoreOpsFunctionFnMutTupleQM31ArrayPreparedQm31Multiplier3
+                alphas ()
+            let folded_layer0_sum ← aspis_core.field.QM31.ZERO
+            let s4 := alloc.vec.Vec.deref openings.indices.layer0
+            let i6 ← core.slice.Slice.iter s4
+            let iter ←
+              core.iter.traits.iterator.Iterator.enumerate.trait_default
+                (core.iter.traits.iterator.IteratorSliceIter Std.U32) i6
+            let pending_return ←
+              v5_cu_probe.fri_checks.check_v5_fri_queries_loop0 openings iter
+                openings.c1.count openings.c1.value_width openings.c1.offsets
+                openings.c2.count openings.c2.value_width openings.c2.offsets
+                openings.later openings.indices.later prepared.inner.claims
+                prepared.inner.powers prepared.c1_weight_limbs
+                prepared.c2_multipliers final_polynomial val1 alpha_powers
+                folded_layer0_sum 0#usize
+            match pending_return with
+            | none => fail panic
+            | some r3 => ok r3
+          | core.ops.control_flow.ControlFlow.Break residual =>
+            core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+              v5_cu_probe.fri_checks.V5FriCheckSink
+              v5_cu_probe.fri_checks.V5FriCheckError.Insts.CoreConvertFromCircleFriError
+              residual
+  | core.ops.control_flow.ControlFlow.Break residual =>
+    core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+      v5_cu_probe.fri_checks.V5FriCheckSink
+      v5_cu_probe.fri_checks.V5FriCheckError.Insts.CoreConvertFromCirclePcsDecodeError
+      residual
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::prepare_v5_pcs_claims]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 234:0-282:1
+    Visibility: public -/
+axiom v5_cu_probe.fri_checks.prepare_v5_pcs_claims
+  :
+  aspis_core.field.QM31 → (Slice Std.U8) → Result (core.result.Result
+    v5_cu_probe.fri_checks.V5PreparedPcsClaims
+    v5_cu_probe.fri_checks.V5FriCheckError)
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_mode9_fri_phase::closure#1]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 2347:13-2347:49 -/
+@[reducible]
+def v5_cu_probe.verify_mode9_fri_phase.closure_1 := Unit
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_mode9_fri_phase::{impl core::ops::function::FnOnce<(aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::V5FriCheckError,), solana_program_error::ProgramError> for aspis_verifier_parser_extraction::v5_cu_probe::verify_mode9_fri_phase::closure#1}::call_once]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 2347:13-2347:49 -/
+def
+  v5_cu_probe.verify_mode9_fri_phase.closure_1.Insts.CoreOpsFunctionFnOnceTupleV5FriCheckErrorProgramError.call_once
+  (c : v5_cu_probe.verify_mode9_fri_phase.closure_1)
+  (tupled_args : v5_cu_probe.fri_checks.V5FriCheckError) :
+  Result solana_program_error.ProgramError
+  := do
+  ok solana_program_error.ProgramError.InvalidAccountData
+
+/-- Trait implementation: [aspis_verifier_parser_extraction::v5_cu_probe::verify_mode9_fri_phase::{impl core::ops::function::FnOnce<(aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::V5FriCheckError,), solana_program_error::ProgramError> for aspis_verifier_parser_extraction::v5_cu_probe::verify_mode9_fri_phase::closure#1}]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 2347:13-2347:49 -/
+@[reducible]
+def
+  v5_cu_probe.verify_mode9_fri_phase.closure_1.Insts.CoreOpsFunctionFnOnceTupleV5FriCheckErrorProgramError
+  : core.ops.function.FnOnce v5_cu_probe.verify_mode9_fri_phase.closure_1
+  v5_cu_probe.fri_checks.V5FriCheckError solana_program_error.ProgramError := {
+  call_once :=
+    v5_cu_probe.verify_mode9_fri_phase.closure_1.Insts.CoreOpsFunctionFnOnceTupleV5FriCheckErrorProgramError.call_once
+}
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_mode9_fri_phase::closure]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 2339:17-2339:53 -/
+@[reducible]
+def v5_cu_probe.verify_mode9_fri_phase.closure := Unit
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_mode9_fri_phase::{impl core::ops::function::FnOnce<(aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::V5FriCheckError,), solana_program_error::ProgramError> for aspis_verifier_parser_extraction::v5_cu_probe::verify_mode9_fri_phase::closure}::call_once]:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 2339:17-2339:53 -/
+def
+  v5_cu_probe.verify_mode9_fri_phase.closure.Insts.CoreOpsFunctionFnOnceTupleV5FriCheckErrorProgramError.call_once
+  (c : v5_cu_probe.verify_mode9_fri_phase.closure)
+  (tupled_args : v5_cu_probe.fri_checks.V5FriCheckError) :
+  Result solana_program_error.ProgramError
+  := do
+  ok solana_program_error.ProgramError.InvalidAccountData
+
+/-- Trait implementation: [aspis_verifier_parser_extraction::v5_cu_probe::verify_mode9_fri_phase::{impl core::ops::function::FnOnce<(aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::V5FriCheckError,), solana_program_error::ProgramError> for aspis_verifier_parser_extraction::v5_cu_probe::verify_mode9_fri_phase::closure}]
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 2339:17-2339:53 -/
+@[reducible]
+def
+  v5_cu_probe.verify_mode9_fri_phase.closure.Insts.CoreOpsFunctionFnOnceTupleV5FriCheckErrorProgramError
+  : core.ops.function.FnOnce v5_cu_probe.verify_mode9_fri_phase.closure
+  v5_cu_probe.fri_checks.V5FriCheckError solana_program_error.ProgramError := {
+  call_once :=
+    v5_cu_probe.verify_mode9_fri_phase.closure.Insts.CoreOpsFunctionFnOnceTupleV5FriCheckErrorProgramError.call_once
+}
 
 /-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_mode9_fri_phase]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 2330:0-2349:1 -/
-axiom v5_cu_probe.verify_mode9_fri_phase
-  :
-  v5_cu_probe.ParsedProbeData → (Array Std.U32 18#usize) → (Array
-    aspis_core.field.QM31 4#usize) → (Array aspis_core.field.QM31 4#usize)
-    → aspis_core.field.QM31 → Result (core.result.Result
-    (aspis_core.field.QM31 × v5_cu_probe.fri_checks.V5PreparedPcsClaims)
+def v5_cu_probe.verify_mode9_fri_phase
+  (parsed : v5_cu_probe.ParsedProbeData) (queries : Array Std.U32 18#usize)
+  (final_polynomial : Array aspis_core.field.QM31 4#usize)
+  (alphas : Array aspis_core.field.QM31 4#usize)
+  (gamma : aspis_core.field.QM31) :
+  Result (core.result.Result (aspis_core.field.QM31 ×
+    v5_cu_probe.fri_checks.V5PreparedPcsClaims)
     solana_program_error.ProgramError)
+  := do
+  let r ← v5_cu_probe.verify_v5_private_suffix parsed queries
+  let cf ← core.result.Result.Insts.CoreOpsTry.branch r
+  match cf with
+  | core.ops.control_flow.ControlFlow.Continue vvpo =>
+    let r1 ←
+      v5_cu_probe.fri_checks.prepare_v5_pcs_claims gamma parsed.relation_claims
+    let r2 ←
+      core.result.Result.map_err
+        v5_cu_probe.verify_mode9_fri_phase.closure.Insts.CoreOpsFunctionFnOnceTupleV5FriCheckErrorProgramError
+        r1 ()
+    let cf1 ← core.result.Result.Insts.CoreOpsTry.branch r2
+    match cf1 with
+    | core.ops.control_flow.ControlFlow.Continue val =>
+      let r3 ←
+        v5_cu_probe.fri_checks.check_v5_fri_queries vvpo val alphas
+          final_polynomial (aspis_core.field.M31.inv)
+      let r4 ←
+        core.result.Result.map_err
+          v5_cu_probe.verify_mode9_fri_phase.closure_1.Insts.CoreOpsFunctionFnOnceTupleV5FriCheckErrorProgramError
+          r3 ()
+      let cf2 ← core.result.Result.Insts.CoreOpsTry.branch r4
+      match cf2 with
+      | core.ops.control_flow.ControlFlow.Continue val1 =>
+        ok (core.result.Result.Ok (val1.folded_layer0_sum, val))
+      | core.ops.control_flow.ControlFlow.Break residual =>
+        core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+          (aspis_core.field.QM31 × v5_cu_probe.fri_checks.V5PreparedPcsClaims)
+          (core.convert.FromSame solana_program_error.ProgramError) residual
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+        (aspis_core.field.QM31 × v5_cu_probe.fri_checks.V5PreparedPcsClaims)
+        (core.convert.FromSame solana_program_error.ProgramError) residual
+  | core.ops.control_flow.ControlFlow.Break residual =>
+    core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+      (aspis_core.field.QM31 × v5_cu_probe.fri_checks.V5PreparedPcsClaims)
+      (core.convert.FromSame solana_program_error.ProgramError) residual
 
 /-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_mode9_relation_phase]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 2352:0-2381:1 -/
