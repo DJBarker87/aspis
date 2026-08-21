@@ -86,6 +86,7 @@ ROOT_PREFIX="$root/" perl -pe '
   s/import All\.FunsExternal/import V5TranscriptPrimitivesGenerated.FunsExternal/;
   s/namespace v5_transcript_primitives_harness/namespace V5TranscriptPrimitivesGenerated/g;
   s/end v5_transcript_primitives_harness/end V5TranscriptPrimitivesGenerated/g;
+  s/\@\[discriminant isize, rust_type "aspis_core::transcript::QuerySampleError"\]/\@[rust_type "aspis_core::transcript::QuerySampleError"\]/;
   s/\Q$ENV{ROOT_PREFIX}\E//g;
 ' "$raw_generated/Types.lean" > "$normalized_generated/Types.lean"
 

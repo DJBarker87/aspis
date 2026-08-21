@@ -3,6 +3,7 @@
 import Aeneas.Std
 import Aeneas.Tactic.RustAttributes
 import V5RelationCallerGenerated
+import V5TranscriptPrimitivesGenerated.Funs
 open Aeneas Aeneas.Std Result ControlFlow Error
 set_option linter.dupNamespace false
 set_option linter.hashCommand false
@@ -291,10 +292,14 @@ axiom
     Visibility: public -/
 @[rust_fun
   "alloc::vec::{core::convert::TryFrom<[@T; @N], alloc::vec::Vec<@T>, alloc::vec::Vec<@T>>}::try_from"]
-axiom Array.Insts.CoreConvertTryFromVecVec.try_from
-  {T : Type} (A : Type) (N : Std.Usize) :
-  (alloc.vec.Vec T) → Result (core.result.Result (Array T N) (alloc.vec.Vec
-    T))
+def Array.Insts.CoreConvertTryFromVecVec.try_from
+    {T : Type} (_allocator : Type) (size : Std.Usize)
+    (value : alloc.vec.Vec T) :
+    Result (core.result.Result (Array T size) (alloc.vec.Vec T)) :=
+  if hlength : value.val.length = size.val then
+    ok (.Ok ⟨value.val, hlength⟩)
+  else
+    ok (.Err value)
 
 /-- [aspis_core::field::M31]
     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/field.rs', lines 20:0-20:14
@@ -420,8 +425,9 @@ axiom
     Visibility: public -/
 @[rust_const
   "aspis_core::circle_hiding_prefix::PAYMENT_HIDING_QUERY_DRAW_LIMIT"]
-axiom aspis_core.circle_hiding_prefix.PAYMENT_HIDING_QUERY_DRAW_LIMIT
-  : Result Std.Usize
+def aspis_core.circle_hiding_prefix.PAYMENT_HIDING_QUERY_DRAW_LIMIT :
+    Result Std.Usize :=
+  ok 64#usize
 
 /-- [aspis_core::circle_line_merkle::CIRCLE_LINE_TAGS]
     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/circle_line_merkle.rs', lines 18:0-18:57
@@ -971,7 +977,8 @@ inductive aspis_core.state_only_hiding.StateOnlyHidingScheduleError where
     Name pattern: [aspis_core::transcript::Transcript]
     Visibility: public -/
 @[rust_type "aspis_core::transcript::Transcript"]
-axiom aspis_core.transcript.Transcript : Type
+abbrev aspis_core.transcript.Transcript :=
+  V5TranscriptPrimitivesGenerated.aspis_core.transcript.Transcript
 
 /-- [aspis_core::state_only_hiding::begin_state_only_masked_sumcheck]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/state_only_hiding.rs', lines 227:0-230:47
@@ -1262,24 +1269,16 @@ def aspis_core.transcript.label.M31_PAYMENT_BATCH_POW_NONCE : Result Std.U8 :=
     Name pattern: [aspis_core::transcript::label::M31_STATE_ONLY_QUERY_CANDIDATE]
     Visibility: public -/
 @[rust_const "aspis_core::transcript::label::M31_STATE_ONLY_QUERY_CANDIDATE"]
-axiom aspis_core.transcript.label.M31_STATE_ONLY_QUERY_CANDIDATE
-  : Result Std.U8
+def aspis_core.transcript.label.M31_STATE_ONLY_QUERY_CANDIDATE : Result Std.U8 :=
+  ok 44#u8
 
 /-- [aspis_core::transcript::QuerySampleError]
     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 231:0-231:25
     Name pattern: [aspis_core::transcript::QuerySampleError]
     Visibility: public -/
 @[rust_type "aspis_core::transcript::QuerySampleError"]
-inductive aspis_core.transcript.QuerySampleError where
-| BoundNotPowerOfTwo : Std.U32 → aspis_core.transcript.QuerySampleError
-| CountExceedsBound :
-  Std.Usize →
-  Std.U32 →
-  aspis_core.transcript.QuerySampleError
-| DrawLimitExhausted :
-  Std.Usize →
-  Std.Usize →
-  aspis_core.transcript.QuerySampleError
+abbrev aspis_core.transcript.QuerySampleError :=
+  V5TranscriptPrimitivesGenerated.aspis_core.transcript.QuerySampleError
 
 /-- [aspis_core::transcript::OodSampleError]
     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 242:0-242:23
@@ -1326,10 +1325,8 @@ axiom aspis_core.transcript.Transcript.new
     Visibility: public -/
 @[rust_fun
   "aspis_core::transcript::{aspis_core::transcript::Transcript}::absorb"]
-axiom aspis_core.transcript.Transcript.absorb
-  :
-  aspis_core.transcript.Transcript → Std.U8 → (Slice Std.U8) → Result
-    aspis_core.transcript.Transcript
+def aspis_core.transcript.Transcript.absorb :=
+  V5TranscriptPrimitivesGenerated.aspis_core.transcript.Transcript.absorb
 
 /-- [aspis_core::transcript::{aspis_core::transcript::Transcript}::challenge_qm31]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 307:4-307:78
@@ -1386,12 +1383,8 @@ axiom aspis_core.transcript.Transcript.challenge_secure_circle_point
     Visibility: public -/
 @[rust_fun
   "aspis_core::transcript::{aspis_core::transcript::Transcript}::challenge_queries_without_replacement"]
-axiom aspis_core.transcript.Transcript.challenge_queries_without_replacement
-  :
-  aspis_core.transcript.Transcript → Std.Usize → Std.U32 → Std.Usize →
-    Result ((core.result.Result (alloc.vec.Vec Std.U32)
-    aspis_core.transcript.QuerySampleError) ×
-    aspis_core.transcript.Transcript)
+def aspis_core.transcript.Transcript.challenge_queries_without_replacement :=
+  V5TranscriptPrimitivesGenerated.aspis_core.transcript.Transcript.challenge_queries_without_replacement
 
 /-- [aspis_core::transcript::{aspis_core::transcript::Transcript}::grinding_ok]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 472:4-472:59
@@ -1399,8 +1392,8 @@ axiom aspis_core.transcript.Transcript.challenge_queries_without_replacement
     Visibility: public -/
 @[rust_fun
   "aspis_core::transcript::{aspis_core::transcript::Transcript}::grinding_ok"]
-axiom aspis_core.transcript.Transcript.grinding_ok
-  : aspis_core.transcript.Transcript → Std.U64 → Std.U8 → Result Bool
+def aspis_core.transcript.Transcript.grinding_ok :=
+  V5TranscriptPrimitivesGenerated.aspis_core.transcript.Transcript.grinding_ok
 
 /-- [aspis_core::circle_fri::RATE512_CIRCLE_LOW8_WINDOW]
     Source: '/private/tmp/v5-entry-combined-audit.tWVn7M/target/aarch64-apple-darwin/debug/build/aspis-core-6981277361ad4898/out/circle_tables.rs', lines 36151:0-36151:53
