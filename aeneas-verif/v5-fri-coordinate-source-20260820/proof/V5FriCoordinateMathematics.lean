@@ -311,9 +311,200 @@ theorem line2_child_to_line3_parent (query : Fin 8192) :
   rw [hfirst, hsecond]
   exact normalize_storedLine13_child parent slot
 
+/-! ## Coordinate identities used by the source-output proof -/
+
+/-- The second stored radix-four child carries the y-coordinate of the
+slot-zero line-1 circle point as its x-coordinate. -/
+theorem storedLine17_slot0_y_eq_slot2_x (index : Fin 32768) :
+    (storedLine17Point (childIndex index 0)).1.2 =
+      storedLine17X (childIndex index 2) := by
+  have hrotation := storedLine17_child_as_rotation index 2
+  have hreverse : reverseBits 2 ((2 : Fin 4) : Nat) = 1 := by
+    norm_num [reverseBits]
+  rw [hreverse, pow_one] at hrotation
+  have hx := congrArg X hrotation
+  simpa [storedLine17X, X, quarterTurn] using hx.symm
+
+/-- The same y-as-rotated-x identity for the released line-2 domain. -/
+theorem storedLine15_slot0_y_eq_slot2_x (index : Fin 8192) :
+    (storedLine15Point (childIndex index 0)).1.2 =
+      storedLine15X (childIndex index 2) := by
+  have hrotation := storedLine15_child_as_rotation index 2
+  have hreverse : reverseBits 2 ((2 : Fin 4) : Nat) = 1 := by
+    norm_num [reverseBits]
+  rw [hreverse, pow_one] at hrotation
+  have hx := congrArg X hrotation
+  simpa [storedLine15X, X, quarterTurn] using hx.symm
+
+/-- The same y-as-rotated-x identity for the released line-3 domain. -/
+theorem storedLine13_slot0_y_eq_slot2_x (index : Fin 2048) :
+    (storedLine13Point (childIndex index 0)).1.2 =
+      storedLine13X (childIndex index 2) := by
+  have hrotation := storedLine13_child_as_rotation index 2
+  have hreverse : reverseBits 2 ((2 : Fin 4) : Nat) = 1 := by
+    norm_num [reverseBits]
+  rw [hreverse, pow_one] at hrotation
+  have hx := congrArg X hrotation
+  simpa [storedLine13X, X, quarterTurn] using hx.symm
+
+/-! ## Public release-table slot identities -/
+
+theorem released_line1_slot0 (index : Fin 32768) :
+    releasedEvaluationPoints.line1 index 0 =
+      storedLine17X (childIndex index 0) := by
+  simp [releasedEvaluationPoints, releasedLinePoints]
+  rfl
+
+theorem released_line1_slot1 (index : Fin 32768) :
+    releasedEvaluationPoints.line1 index 1 =
+      storedLine17X (childIndex index 2) := by
+  simp [releasedEvaluationPoints, releasedLinePoints]
+  rfl
+
+theorem released_line1_slot2 (index : Fin 32768) :
+    releasedEvaluationPoints.line1 index 2 =
+      storedLine16X (AspisV5FriReleasedLineGeometry.binaryChildIndex index) := by
+  simp [releasedEvaluationPoints, releasedLinePoints]
+  rfl
+
+theorem released_line2_slot0 (index : Fin 8192) :
+    releasedEvaluationPoints.line2 index 0 =
+      storedLine15X (childIndex index 0) := by
+  simp [releasedEvaluationPoints, releasedLinePoints]
+  rfl
+
+theorem released_line2_slot1 (index : Fin 8192) :
+    releasedEvaluationPoints.line2 index 1 =
+      storedLine15X (childIndex index 2) := by
+  simp [releasedEvaluationPoints, releasedLinePoints]
+  rfl
+
+theorem released_line2_slot2 (index : Fin 8192) :
+    releasedEvaluationPoints.line2 index 2 =
+      storedLine14X (AspisV5FriReleasedLineGeometry.binaryChildIndex index) := by
+  simp [releasedEvaluationPoints, releasedLinePoints]
+  rfl
+
+theorem released_line3_slot0 (index : Fin 2048) :
+    releasedEvaluationPoints.line3 index 0 =
+      storedLine13X (childIndex index 0) := by
+  simp [releasedEvaluationPoints, releasedLinePoints]
+  rfl
+
+theorem released_line3_slot1 (index : Fin 2048) :
+    releasedEvaluationPoints.line3 index 1 =
+      storedLine13X (childIndex index 2) := by
+  simp [releasedEvaluationPoints, releasedLinePoints]
+  rfl
+
+theorem released_line3_slot2 (index : Fin 2048) :
+    releasedEvaluationPoints.line3 index 2 =
+      storedLine12X (AspisV5FriReleasedLineGeometry.binaryChildIndex index) := by
+  simp [releasedEvaluationPoints, releasedLinePoints]
+  rfl
+
+theorem storedLine17_point_coordinates (index : Fin 32768) :
+    (storedLine17Point (childIndex index 0)).1.1 =
+        releasedEvaluationPoints.line1 index 0 ∧
+    (storedLine17Point (childIndex index 0)).1.2 =
+        releasedEvaluationPoints.line1 index 1 ∧
+    2 * (storedLine17Point (childIndex index 0)).1.1 ^ 2 - 1 =
+        releasedEvaluationPoints.line1 index 2 := by
+  constructor
+  · calc
+      (storedLine17Point (childIndex index 0)).1.1 =
+          storedLine17X (childIndex index 0) := by
+        simp only [storedLine17X, X]
+      _ = releasedEvaluationPoints.line1 index 0 :=
+        (released_line1_slot0 index).symm
+  · constructor
+    · exact (storedLine17_slot0_y_eq_slot2_x index).trans
+        (released_line1_slot1 index).symm
+    · calc
+        2 * (storedLine17Point (childIndex index 0)).1.1 ^ 2 - 1 =
+            AspisCircleTensorBinding.doubledFactor
+              (storedLine17X (childIndex index 0)) 1 := by
+          simp only [AspisCircleTensorBinding.doubledFactor, storedLine17X, X]
+        _ = storedLine16X
+              (AspisV5FriReleasedLineGeometry.binaryChildIndex index) :=
+          storedLine17_t2_slot0 index
+        _ = releasedEvaluationPoints.line1 index 2 :=
+          (released_line1_slot2 index).symm
+
+theorem storedLine15_point_coordinates (index : Fin 8192) :
+    (storedLine15Point (childIndex index 0)).1.1 =
+        releasedEvaluationPoints.line2 index 0 ∧
+    (storedLine15Point (childIndex index 0)).1.2 =
+        releasedEvaluationPoints.line2 index 1 ∧
+    2 * (storedLine15Point (childIndex index 0)).1.1 ^ 2 - 1 =
+        releasedEvaluationPoints.line2 index 2 := by
+  constructor
+  · calc
+      (storedLine15Point (childIndex index 0)).1.1 =
+          storedLine15X (childIndex index 0) := by
+        simp only [storedLine15X, X]
+      _ = releasedEvaluationPoints.line2 index 0 :=
+        (released_line2_slot0 index).symm
+  · constructor
+    · exact (storedLine15_slot0_y_eq_slot2_x index).trans
+        (released_line2_slot1 index).symm
+    · calc
+        2 * (storedLine15Point (childIndex index 0)).1.1 ^ 2 - 1 =
+            AspisCircleTensorBinding.doubledFactor
+              (storedLine15X (childIndex index 0)) 1 := by
+          simp only [AspisCircleTensorBinding.doubledFactor, storedLine15X, X]
+        _ = storedLine14X
+              (AspisV5FriReleasedLineGeometry.binaryChildIndex index) :=
+          storedLine15_t2_slot0 index
+        _ = releasedEvaluationPoints.line2 index 2 :=
+          (released_line2_slot2 index).symm
+
+theorem storedLine13_point_coordinates (index : Fin 2048) :
+    (storedLine13Point (childIndex index 0)).1.1 =
+        releasedEvaluationPoints.line3 index 0 ∧
+    (storedLine13Point (childIndex index 0)).1.2 =
+        releasedEvaluationPoints.line3 index 1 ∧
+    2 * (storedLine13Point (childIndex index 0)).1.1 ^ 2 - 1 =
+        releasedEvaluationPoints.line3 index 2 := by
+  constructor
+  · calc
+      (storedLine13Point (childIndex index 0)).1.1 =
+          storedLine13X (childIndex index 0) := by
+        simp only [storedLine13X, X]
+      _ = releasedEvaluationPoints.line3 index 0 :=
+        (released_line3_slot0 index).symm
+  · constructor
+    · exact (storedLine13_slot0_y_eq_slot2_x index).trans
+        (released_line3_slot1 index).symm
+    · calc
+        2 * (storedLine13Point (childIndex index 0)).1.1 ^ 2 - 1 =
+            AspisCircleTensorBinding.doubledFactor
+              (storedLine13X (childIndex index 0)) 1 := by
+          simp only [AspisCircleTensorBinding.doubledFactor, storedLine13X, X]
+        _ = storedLine12X
+              (AspisV5FriReleasedLineGeometry.binaryChildIndex index) :=
+          storedLine13_t2_slot0 index
+        _ = releasedEvaluationPoints.line3 index 2 :=
+          (released_line3_slot2 index).symm
+
 #print axioms windows_reconstruct_storedInitialFibrePoint
 #print axioms circle_child_to_line1_parent
 #print axioms line1_child_to_line2_parent
 #print axioms line2_child_to_line3_parent
+#print axioms storedLine17_slot0_y_eq_slot2_x
+#print axioms storedLine15_slot0_y_eq_slot2_x
+#print axioms storedLine13_slot0_y_eq_slot2_x
+#print axioms released_line1_slot0
+#print axioms released_line1_slot1
+#print axioms released_line1_slot2
+#print axioms released_line2_slot0
+#print axioms released_line2_slot1
+#print axioms released_line2_slot2
+#print axioms released_line3_slot0
+#print axioms released_line3_slot1
+#print axioms released_line3_slot2
+#print axioms storedLine17_point_coordinates
+#print axioms storedLine15_point_coordinates
+#print axioms storedLine13_point_coordinates
 
 end AspisV5FriCoordinateMathematics

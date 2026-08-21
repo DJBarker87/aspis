@@ -76,6 +76,36 @@ def pairOutput (flat : Coordinate.M31Vec) (start count : Nat) :
     List (Array Coordinate.M31 2#usize) :=
   (List.range count).map (pairAt flat start)
 
+theorem pairOutput_get
+    (flat : Coordinate.M31Vec) (start count ordinal : Nat)
+    (hordinal : ordinal < count) :
+    (pairOutput flat start count)[ordinal]! = pairAt flat start ordinal := by
+  unfold pairOutput
+  rw [getElemBang_eq_getElem _ ordinal (by simp [hordinal])]
+  simp [hordinal]
+
+theorem pairOutput_get_zero
+    (flat : Coordinate.M31Vec) (start count ordinal : Nat)
+    (hordinal : ordinal < count) :
+    (pairOutput flat start count)[ordinal]!.val[0]! =
+      flat.val[start + 2 * ordinal]! := by
+  rw [pairOutput_get flat start count ordinal hordinal]
+  unfold pairAt
+  change ([flat.val[start + 2 * ordinal]!,
+    flat.val[start + 2 * ordinal + 1]!] : List Coordinate.M31)[0]! = _
+  rfl
+
+theorem pairOutput_get_one
+    (flat : Coordinate.M31Vec) (start count ordinal : Nat)
+    (hordinal : ordinal < count) :
+    (pairOutput flat start count)[ordinal]!.val[1]! =
+      flat.val[start + 2 * ordinal + 1]! := by
+  rw [pairOutput_get flat start count ordinal hordinal]
+  unfold pairAt
+  change ([flat.val[start + 2 * ordinal]!,
+    flat.val[start + 2 * ordinal + 1]!] : List Coordinate.M31)[1]! = _
+  rfl
+
 private def PairInvariant
     (layer : Slice Std.U32) (flat : Coordinate.M31Vec) (start : Nat)
     (state : Std.Usize × Coordinate.PairVec × Std.Usize) : Prop :=
@@ -207,6 +237,51 @@ def tripleAt (flat : Coordinate.M31Vec) (start ordinal : Nat) :
 def tripleOutput (flat : Coordinate.M31Vec) (start count : Nat) :
     List (Array Coordinate.M31 3#usize) :=
   (List.range count).map (tripleAt flat start)
+
+theorem tripleOutput_get
+    (flat : Coordinate.M31Vec) (start count ordinal : Nat)
+    (hordinal : ordinal < count) :
+    (tripleOutput flat start count)[ordinal]! =
+      tripleAt flat start ordinal := by
+  unfold tripleOutput
+  rw [getElemBang_eq_getElem _ ordinal (by simp [hordinal])]
+  simp [hordinal]
+
+theorem tripleOutput_get_zero
+    (flat : Coordinate.M31Vec) (start count ordinal : Nat)
+    (hordinal : ordinal < count) :
+    (tripleOutput flat start count)[ordinal]!.val[0]! =
+      flat.val[start + 3 * ordinal]! := by
+  rw [tripleOutput_get flat start count ordinal hordinal]
+  unfold tripleAt
+  change ([flat.val[start + 3 * ordinal]!,
+    flat.val[start + 3 * ordinal + 1]!,
+    flat.val[start + 3 * ordinal + 2]!] : List Coordinate.M31)[0]! = _
+  rfl
+
+theorem tripleOutput_get_one
+    (flat : Coordinate.M31Vec) (start count ordinal : Nat)
+    (hordinal : ordinal < count) :
+    (tripleOutput flat start count)[ordinal]!.val[1]! =
+      flat.val[start + 3 * ordinal + 1]! := by
+  rw [tripleOutput_get flat start count ordinal hordinal]
+  unfold tripleAt
+  change ([flat.val[start + 3 * ordinal]!,
+    flat.val[start + 3 * ordinal + 1]!,
+    flat.val[start + 3 * ordinal + 2]!] : List Coordinate.M31)[1]! = _
+  rfl
+
+theorem tripleOutput_get_two
+    (flat : Coordinate.M31Vec) (start count ordinal : Nat)
+    (hordinal : ordinal < count) :
+    (tripleOutput flat start count)[ordinal]!.val[2]! =
+      flat.val[start + 3 * ordinal + 2]! := by
+  rw [tripleOutput_get flat start count ordinal hordinal]
+  unfold tripleAt
+  change ([flat.val[start + 3 * ordinal]!,
+    flat.val[start + 3 * ordinal + 1]!,
+    flat.val[start + 3 * ordinal + 2]!] : List Coordinate.M31)[2]! = _
+  rfl
 
 private def TripleInvariant
     (layer : Slice Std.U32) (flat : Coordinate.M31Vec) (start : Nat)

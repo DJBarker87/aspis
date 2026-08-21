@@ -821,6 +821,35 @@ structure ThreeLaterPassRuns
         later laterIndices finalPolynomial coordinates2 alphaPowers 2#usize
         0#usize none = .ok (coordinates3, none, 1#u32)
 
+/-- The generated later-pass loop threads the coordinate table through all
+three passes without changing it.  This is derived from the translated loop,
+not assumed by the mathematical model. -/
+theorem ThreeLaterPassRuns.coordinates_preserved
+    {later : Array Opening 3#usize}
+    {laterIndices : Array (alloc.vec.Vec Std.U32) 3#usize}
+    {finalPolynomial : Array aspis_core.field.QM31 4#usize}
+    {alphaPowers : Array
+      (Array aspis_core.field.PreparedQm31Multiplier 3#usize) 4#usize}
+    {coordinates : aspis_core.circle_fri.DerivedCircleQueryFoldInverses}
+    (runs : ThreeLaterPassRuns later laterIndices finalPolynomial
+      alphaPowers coordinates) :
+    runs.coordinates1 = coordinates ∧
+      runs.coordinates2 = coordinates ∧
+      runs.coordinates3 = coordinates := by
+  have h0 := inner_completed_preserves_constants later laterIndices
+    finalPolynomial coordinates runs.coordinates1 alphaPowers 0#usize
+    none none (alloc.vec.Vec.deref runs.indices0) 0#usize 0#usize
+    (by simp) runs.run0
+  have h1 := inner_completed_preserves_constants later laterIndices
+    finalPolynomial runs.coordinates1 runs.coordinates2 alphaPowers 1#usize
+    none none (alloc.vec.Vec.deref runs.indices1) 0#usize 0#usize
+    (by simp) runs.run1
+  have h2 := inner_completed_preserves_constants later laterIndices
+    finalPolynomial runs.coordinates2 runs.coordinates3 alphaPowers 2#usize
+    none none (alloc.vec.Vec.deref runs.indices2) 0#usize 0#usize
+    (by simp) runs.run2
+  exact ⟨h0.1, h1.1.trans h0.1, h2.1.trans (h1.1.trans h0.1)⟩
+
 theorem outer_accepted_three_pass_runs
     (later : Array Opening 3#usize)
     (laterIndices : Array (alloc.vec.Vec Std.U32) 3#usize)
@@ -1082,6 +1111,8 @@ theorem v5_fri_source_shape_domain_log_is_19
   repeat' first
     | split at hShape
     | simp_all [Bind.bind, Aeneas.Std.bind, Std.lift]
+  subst shape
+  rfl
 
 theorem ProductionFriPreparationTrace.domainLog_eq_19
     {openings : VerifiedOpenings}
@@ -1102,8 +1133,14 @@ theorem ProductionFriPreparationTrace.domainLog_eq_19
     hValidate trace.sourceShape trace.validatedShape hValidation
   have hSourceDomain := v5_fri_source_shape_domain_log_is_19
     trace.sourceShape trace.sourceShapeCall
-  rw [hValidated, hSourceDomain] at trace.domainLogCall
-  simpa using trace.domainLogCall.symm
+  have hDomainLogCall := trace.domainLogCall
+  rw [hValidated, hSourceDomain] at hDomainLogCall
+  calc
+    trace.domainLog = core.convert.num.FromU32U8.from 19#u8 :=
+      hDomainLogCall.symm
+    _ = 19#u32 := by
+      apply UScalar.eq_of_val_eq
+      norm_num
 
 /-- Successful unchanged-source acceptance exposes both the exact preparation
 calls and the first accepted loop.  The second `split at *` normalizes only
@@ -1161,7 +1198,7 @@ theorem top_level_acceptance_exposes_preparation_and_layerZero_loop
     assumption
   · apply Nonempty.intro
     eapply ProductionFriPreparationTrace.mk
-    all_goals first | rfl | assumption
+    all_goals first | rfl | assumption | simp_all
 
 /-- Compatibility projection retaining the previous API for callers which do
 not yet consume the preparation trace. -/

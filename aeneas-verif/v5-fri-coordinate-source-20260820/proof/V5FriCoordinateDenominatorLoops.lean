@@ -696,6 +696,95 @@ def ThreeLineLayerPost
     LinePointPost after1 line2 (after2, none) ∧
     LinePointPost after2 line3 out
 
+/-- The combined three-layer postcondition retains the initial prefix and
+places every later denominator at its exact production offset. -/
+theorem threeLineLayerPost_exact_values
+    (initial lineValues : Coordinate.M31Vec)
+    (line1 line2 line3 : Coordinate.PointVec)
+    (hpost : ThreeLineLayerPost initial line1 line2 line3
+      (lineValues, none)) :
+    lineValues.val.length = initial.val.length +
+        3 * line1.val.length + 3 * line2.val.length +
+        3 * line3.val.length ∧
+    (∀ index, index < initial.val.length →
+      lineValues.val[index]! = initial.val[index]!) ∧
+    (∀ index, index < line1.val.length →
+      m31Value lineValues.val[initial.val.length + 3 * index]! =
+          2 * m31Value line1.val[index]!.x ∧
+      m31Value lineValues.val[initial.val.length + 3 * index + 1]! =
+          2 * m31Value line1.val[index]!.y ∧
+      m31Value lineValues.val[initial.val.length + 3 * index + 2]! =
+          2 * (2 * m31Value line1.val[index]!.x ^ 2 - 1)) ∧
+    (∀ index, index < line2.val.length →
+      m31Value lineValues.val[
+          initial.val.length + 3 * line1.val.length + 3 * index]! =
+          2 * m31Value line2.val[index]!.x ∧
+      m31Value lineValues.val[
+          initial.val.length + 3 * line1.val.length + 3 * index + 1]! =
+          2 * m31Value line2.val[index]!.y ∧
+      m31Value lineValues.val[
+          initial.val.length + 3 * line1.val.length + 3 * index + 2]! =
+          2 * (2 * m31Value line2.val[index]!.x ^ 2 - 1)) ∧
+    (∀ index, index < line3.val.length →
+      m31Value lineValues.val[
+          initial.val.length + 3 * line1.val.length +
+            3 * line2.val.length + 3 * index]! =
+          2 * m31Value line3.val[index]!.x ∧
+      m31Value lineValues.val[
+          initial.val.length + 3 * line1.val.length +
+            3 * line2.val.length + 3 * index + 1]! =
+          2 * m31Value line3.val[index]!.y ∧
+      m31Value lineValues.val[
+          initial.val.length + 3 * line1.val.length +
+            3 * line2.val.length + 3 * index + 2]! =
+          2 * (2 * m31Value line3.val[index]!.x ^ 2 - 1)) := by
+  unfold ThreeLineLayerPost at hpost
+  rcases hpost with ⟨after1, after2, hpost1, hpost2, hpost3⟩
+  unfold LinePointPost at hpost1 hpost2 hpost3
+  have hlen1 := hpost1.1
+  have hprefix1 := hpost1.2.2.2.1
+  have hvalues1 := hpost1.2.2.2.2
+  have hlen2 := hpost2.1
+  have hprefix2 := hpost2.2.2.2.1
+  have hvalues2 := hpost2.2.2.2.2
+  have hlen3 := hpost3.1
+  have hprefix3 := hpost3.2.2.2.1
+  have hvalues3 := hpost3.2.2.2.2
+  simp only at hlen1 hprefix1 hvalues1 hlen2 hprefix2 hvalues2 hlen3 hprefix3 hvalues3
+  refine ⟨by omega, ?_, ?_, ?_, ?_⟩
+  · intro index hindex
+    rw [hprefix3 index (by omega), hprefix2 index (by omega),
+      hprefix1 index hindex]
+  · intro index hindex
+    have hslot0 : initial.val.length + 3 * index < after1.val.length := by
+      omega
+    have hslot1 : initial.val.length + 3 * index + 1 <
+        after1.val.length := by omega
+    have hslot2 : initial.val.length + 3 * index + 2 <
+        after1.val.length := by omega
+    have hvalues := hvalues1 index hindex
+    rw [hprefix3 _ (by omega), hprefix2 _ hslot0,
+      hprefix3 _ (by omega), hprefix2 _ hslot1,
+      hprefix3 _ (by omega), hprefix2 _ hslot2]
+    exact hvalues
+  · intro index hindex
+    have hslot0 : after1.val.length + 3 * index < after2.val.length := by
+      omega
+    have hslot1 : after1.val.length + 3 * index + 1 <
+        after2.val.length := by omega
+    have hslot2 : after1.val.length + 3 * index + 2 <
+        after2.val.length := by omega
+    have hvalues := hvalues2 index hindex
+    rw [show initial.val.length + 3 * line1.val.length =
+        after1.val.length by omega,
+      hprefix3 _ hslot0, hprefix3 _ hslot1, hprefix3 _ hslot2]
+    exact hvalues
+  · intro index hindex
+    have hvalues := hvalues3 index hindex
+    rw [show initial.val.length + 3 * line1.val.length +
+        3 * line2.val.length = after2.val.length by omega]
+    exact hvalues
+
 /-- The fixed three-layer translated loop runs the later FRI layers in the
 source order: first layer, second layer, then third layer. -/
 theorem three_line_layer_denominator_loop_exact
