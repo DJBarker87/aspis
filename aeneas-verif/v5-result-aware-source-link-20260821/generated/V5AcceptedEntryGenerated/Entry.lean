@@ -4,6 +4,10 @@ import Aeneas.Std
 import Aeneas.Tactic.RustAttributes
 import V5RelationCallerGenerated
 import V5TranscriptPrimitivesGenerated.Funs
+import V5TranscriptQGenerated.Funs
+import V5TranscriptNonzeroGenerated.Funs
+import V5TranscriptOodGenerated.Funs
+import V5TranscriptCircleGenerated.Funs
 open Aeneas Aeneas.Std Result ControlFlow Error
 set_option linter.dupNamespace false
 set_option linter.hashCommand false
@@ -1328,17 +1332,121 @@ axiom aspis_core.transcript.Transcript.new
 def aspis_core.transcript.Transcript.absorb :=
   V5TranscriptPrimitivesGenerated.aspis_core.transcript.Transcript.absorb
 
+/- The broad accepted-entry extraction predates the Aeneas loop-join support
+needed by the four field samplers.  These structural adapters call focused
+translations of the same unchanged Rust methods.  The translated transcript
+uses an effectful hash callback; this snapshot's existing transcript model
+uses the same callback without a failure branch, so the adapter wraps it in
+`ok` and preserves the original callback when returning the updated state. -/
+private def transcriptToQ
+    (self : aspis_core.transcript.Transcript) :
+    V5TranscriptQGenerated.aspis_core.transcript.Transcript where
+  state := self.state
+  hash := fun slices => ok (self.hash slices)
+
+private def transcriptFromQ
+    (original : aspis_core.transcript.Transcript)
+    (translated : V5TranscriptQGenerated.aspis_core.transcript.Transcript) :
+    aspis_core.transcript.Transcript :=
+  { original with state := translated.state }
+
+private def qm31FromQ
+    (value : V5TranscriptQGenerated.aspis_core.field.QM31) :
+    aspis_core.field.QM31 where
+  c0 := { a := value.c0.a, b := value.c0.b }
+  c1 := { a := value.c1.a, b := value.c1.b }
+
+private def transcriptToNonzero
+    (self : aspis_core.transcript.Transcript) :
+    V5TranscriptNonzeroGenerated.transcript.Transcript where
+  state := self.state
+  hash := fun slices => ok (self.hash slices)
+
+private def transcriptFromNonzero
+    (original : aspis_core.transcript.Transcript)
+    (translated : V5TranscriptNonzeroGenerated.transcript.Transcript) :
+    aspis_core.transcript.Transcript :=
+  { original with state := translated.state }
+
+private def qm31FromNonzero
+    (value : V5TranscriptNonzeroGenerated.field.QM31) :
+    aspis_core.field.QM31 where
+  c0 := { a := value.c0.a, b := value.c0.b }
+  c1 := { a := value.c1.a, b := value.c1.b }
+
+private def transcriptToOod
+    (self : aspis_core.transcript.Transcript) :
+    V5TranscriptOodGenerated.transcript.Transcript where
+  state := self.state
+  hash := fun slices => ok (self.hash slices)
+
+private def transcriptFromOod
+    (original : aspis_core.transcript.Transcript)
+    (translated : V5TranscriptOodGenerated.transcript.Transcript) :
+    aspis_core.transcript.Transcript :=
+  { original with state := translated.state }
+
+private def qm31FromOod
+    (value : V5TranscriptOodGenerated.field.QM31) :
+    aspis_core.field.QM31 where
+  c0 := { a := value.c0.a, b := value.c0.b }
+  c1 := { a := value.c1.a, b := value.c1.b }
+
+private def oodErrorFromGenerated :
+    V5TranscriptOodGenerated.transcript.OodSampleError →
+      aspis_core.transcript.OodSampleError
+  | .ChallengeSampleExhausted => .ChallengeSampleExhausted
+  | .SubfieldSampleExhausted => .SubfieldSampleExhausted
+
+private def transcriptToCircle
+    (self : aspis_core.transcript.Transcript) :
+    V5TranscriptCircleGenerated.transcript.Transcript where
+  state := self.state
+  hash := fun slices => ok (self.hash slices)
+
+private def transcriptFromCircle
+    (original : aspis_core.transcript.Transcript)
+    (translated : V5TranscriptCircleGenerated.transcript.Transcript) :
+    aspis_core.transcript.Transcript :=
+  { original with state := translated.state }
+
+private def qm31FromCircle
+    (value : V5TranscriptCircleGenerated.field.QM31) :
+    aspis_core.field.QM31 where
+  c0 := { a := value.c0.a, b := value.c0.b }
+  c1 := { a := value.c1.a, b := value.c1.b }
+
+private def circlePointFromGenerated
+    (value : V5TranscriptCircleGenerated.circle.SecureCirclePoint) :
+    aspis_core.circle.SecureCirclePoint where
+  x := qm31FromCircle value.x
+  y := qm31FromCircle value.y
+
+private def circleErrorFromGenerated :
+    V5TranscriptCircleGenerated.transcript.CirclePointSampleError →
+      aspis_core.transcript.CirclePointSampleError
+  | .ChallengeSampleExhausted => .ChallengeSampleExhausted
+  | .ParameterSampleExhausted => .ParameterSampleExhausted
+
 /-- [aspis_core::transcript::{aspis_core::transcript::Transcript}::challenge_qm31]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 307:4-307:78
     Name pattern: [aspis_core::transcript::{aspis_core::transcript::Transcript}::challenge_qm31]
     Visibility: public -/
 @[rust_fun
   "aspis_core::transcript::{aspis_core::transcript::Transcript}::challenge_qm31"]
-axiom aspis_core.transcript.Transcript.challenge_qm31
-  :
-  aspis_core.transcript.Transcript → Result ((core.result.Result
-    aspis_core.field.QM31 aspis_core.transcript.ChallengeSampleExhausted) ×
-    aspis_core.transcript.Transcript)
+def aspis_core.transcript.Transcript.challenge_qm31
+    (self : aspis_core.transcript.Transcript) :
+    Result ((core.result.Result aspis_core.field.QM31
+      aspis_core.transcript.ChallengeSampleExhausted) ×
+      aspis_core.transcript.Transcript) := do
+  let (sampled, translated) ←
+    V5TranscriptQGenerated.aspis_core.transcript.Transcript.challenge_qm31
+      (transcriptToQ self)
+  let sampled' :=
+    match sampled with
+    | .Ok value => core.result.Result.Ok (qm31FromQ value)
+    | .Err _ => core.result.Result.Err ()
+  ok (sampled', transcriptFromQ self translated)
 
 /-- [aspis_core::transcript::{aspis_core::transcript::Transcript}::challenge_nonzero_qm31]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 350:4-350:86
@@ -1346,11 +1454,19 @@ axiom aspis_core.transcript.Transcript.challenge_qm31
     Visibility: public -/
 @[rust_fun
   "aspis_core::transcript::{aspis_core::transcript::Transcript}::challenge_nonzero_qm31"]
-axiom aspis_core.transcript.Transcript.challenge_nonzero_qm31
-  :
-  aspis_core.transcript.Transcript → Result ((core.result.Result
-    aspis_core.field.QM31 aspis_core.transcript.ChallengeSampleExhausted) ×
-    aspis_core.transcript.Transcript)
+def aspis_core.transcript.Transcript.challenge_nonzero_qm31
+    (self : aspis_core.transcript.Transcript) :
+    Result ((core.result.Result aspis_core.field.QM31
+      aspis_core.transcript.ChallengeSampleExhausted) ×
+      aspis_core.transcript.Transcript) := do
+  let (sampled, translated) ←
+    V5TranscriptNonzeroGenerated.transcript.Transcript.challenge_nonzero_qm31
+      (transcriptToNonzero self)
+  let sampled' :=
+    match sampled with
+    | .Ok value => core.result.Result.Ok (qm31FromNonzero value)
+    | .Err _ => core.result.Result.Err ()
+  ok (sampled', transcriptFromNonzero self translated)
 
 /-- [aspis_core::transcript::{aspis_core::transcript::Transcript}::challenge_ood_qm31]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 365:4-365:72
@@ -1358,11 +1474,19 @@ axiom aspis_core.transcript.Transcript.challenge_nonzero_qm31
     Visibility: public -/
 @[rust_fun
   "aspis_core::transcript::{aspis_core::transcript::Transcript}::challenge_ood_qm31"]
-axiom aspis_core.transcript.Transcript.challenge_ood_qm31
-  :
-  aspis_core.transcript.Transcript → Result ((core.result.Result
-    aspis_core.field.QM31 aspis_core.transcript.OodSampleError) ×
-    aspis_core.transcript.Transcript)
+def aspis_core.transcript.Transcript.challenge_ood_qm31
+    (self : aspis_core.transcript.Transcript) :
+    Result ((core.result.Result aspis_core.field.QM31
+      aspis_core.transcript.OodSampleError) ×
+      aspis_core.transcript.Transcript) := do
+  let (sampled, translated) ←
+    V5TranscriptOodGenerated.transcript.Transcript.challenge_ood_qm31
+      (transcriptToOod self)
+  let sampled' :=
+    match sampled with
+    | .Ok value => core.result.Result.Ok (qm31FromOod value)
+    | .Err error => core.result.Result.Err (oodErrorFromGenerated error)
+  ok (sampled', transcriptFromOod self translated)
 
 /-- [aspis_core::transcript::{aspis_core::transcript::Transcript}::challenge_secure_circle_point]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 382:4-384:58
@@ -1370,12 +1494,19 @@ axiom aspis_core.transcript.Transcript.challenge_ood_qm31
     Visibility: public -/
 @[rust_fun
   "aspis_core::transcript::{aspis_core::transcript::Transcript}::challenge_secure_circle_point"]
-axiom aspis_core.transcript.Transcript.challenge_secure_circle_point
-  :
-  aspis_core.transcript.Transcript → Result ((core.result.Result
-    aspis_core.circle.SecureCirclePoint
-    aspis_core.transcript.CirclePointSampleError) ×
-    aspis_core.transcript.Transcript)
+def aspis_core.transcript.Transcript.challenge_secure_circle_point
+    (self : aspis_core.transcript.Transcript) :
+    Result ((core.result.Result aspis_core.circle.SecureCirclePoint
+      aspis_core.transcript.CirclePointSampleError) ×
+      aspis_core.transcript.Transcript) := do
+  let (sampled, translated) ←
+    V5TranscriptCircleGenerated.transcript.Transcript.challenge_secure_circle_point
+      (transcriptToCircle self)
+  let sampled' :=
+    match sampled with
+    | .Ok value => core.result.Result.Ok (circlePointFromGenerated value)
+    | .Err error => core.result.Result.Err (circleErrorFromGenerated error)
+  ok (sampled', transcriptFromCircle self translated)
 
 /-- [aspis_core::transcript::{aspis_core::transcript::Transcript}::challenge_queries_without_replacement]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 429:4-434:55
@@ -8437,12 +8568,90 @@ axiom v5_cu_probe.verify_mode9_atomic_terminal_with_prefix
     v5_atomic_terminal.VerifiedV5AtomicTerminal
     solana_program_error.ProgramError)
 
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::decode_v5_fri_alphas]: loop body 0:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 2259:4-2263:1 -/
+@[rust_loop_body]
+def v5_cu_probe.decode_v5_fri_alphas_loop.body
+  (parsed : v5_cu_probe.ParsedProbeData)
+  (iter : core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
+  aspis_core.field.QM31))
+  (back : core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
+  aspis_core.field.QM31) → core.iter.adapters.enumerate.Enumerate
+  (core.slice.iter.IterMut aspis_core.field.QM31)) :
+  Result (ControlFlow ((core.iter.adapters.enumerate.Enumerate
+    (core.slice.iter.IterMut aspis_core.field.QM31)) ×
+    (core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
+    aspis_core.field.QM31) → core.iter.adapters.enumerate.Enumerate
+    (core.slice.iter.IterMut aspis_core.field.QM31))) ((Option
+    (core.result.Result (Array aspis_core.field.QM31 4#usize)
+    solana_program_error.ProgramError)) ×
+    (core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
+    aspis_core.field.QM31))))
+  := do
+  let (o, iter1, next_back) ←
+    core.iter.adapters.enumerate.IteratorEnumerateMut.next iter
+  match o with
+  | none => ok (done (none, let e := next_back iter1 none
+                            back e))
+  | some p =>
+    let (round, _) := p
+    let r ← v5_cu_probe.decode_qm31 parsed.relation_alphas round
+    let cf ← core.result.Result.Insts.CoreOpsTry.branch r
+    match cf with
+    | core.ops.control_flow.ControlFlow.Continue val =>
+      ok (cont (iter1,
+        fun e => let e1 := next_back e (some (round, val))
+                 back e1))
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      let r1 ←
+        core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+          (Array aspis_core.field.QM31 4#usize) (core.convert.FromSame
+          solana_program_error.ProgramError) residual
+      ok (done (some r1, let e := next_back iter1 o
+                         back e))
+
+/-- [aspis_verifier_parser_extraction::v5_cu_probe::decode_v5_fri_alphas]: loop 0:
+    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 2259:4-2263:1 -/
+@[rust_loop]
+def v5_cu_probe.decode_v5_fri_alphas_loop
+  (parsed : v5_cu_probe.ParsedProbeData)
+  (iter : core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
+  aspis_core.field.QM31))
+  (back : core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
+  aspis_core.field.QM31) → core.iter.adapters.enumerate.Enumerate
+  (core.slice.iter.IterMut aspis_core.field.QM31)) :
+  Result ((Option (core.result.Result (Array aspis_core.field.QM31 4#usize)
+    solana_program_error.ProgramError)) ×
+    (core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
+    aspis_core.field.QM31)))
+  := do
+  loop
+    (fun (iter1, back1) => v5_cu_probe.decode_v5_fri_alphas_loop.body parsed
+      iter1 back1)
+    (iter, back)
+
 /-- [aspis_verifier_parser_extraction::v5_cu_probe::decode_v5_fri_alphas]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 2255:0-2263:1 -/
-axiom v5_cu_probe.decode_v5_fri_alphas
-  :
-  v5_cu_probe.ParsedProbeData → Result (core.result.Result (Array
-    aspis_core.field.QM31 4#usize) solana_program_error.ProgramError)
+def v5_cu_probe.decode_v5_fri_alphas
+  (parsed : v5_cu_probe.ParsedProbeData) :
+  Result (core.result.Result (Array aspis_core.field.QM31 4#usize)
+    solana_program_error.ProgramError)
+  := do
+  let q ← aspis_core.field.QM31.ZERO
+  let alphas := Array.repeat 4#usize q
+  let (s, to_slice_mut_back) ← lift (Array.to_slice_mut alphas)
+  let (im, iter_mut_back) ← core.slice.Slice.iter_mut s
+  let (iter, enumerate_back) ←
+    core.iter.adapters.enumerate.IteratorEnumerateMut.enumerate im
+  let (pending_return, back) ←
+    v5_cu_probe.decode_v5_fri_alphas_loop parsed iter (fun e => e)
+  match pending_return with
+  | none =>
+    let im1 := enumerate_back back
+    let s1 := iter_mut_back im1
+    let alphas1 := to_slice_mut_back s1
+    ok (core.result.Result.Ok alphas1)
+  | some r => ok r
 
 /-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::check_v5_fri_queries::closure]
     Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 445:34-452:5 -/

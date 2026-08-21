@@ -1,4 +1,5 @@
 import V5AcceptedPostWorkSuccessors
+import V5AcceptedEntryAlphaDecode
 import V5QuerySamplerFixedCall
 import AspisFormal.V5AcceptedExecutionDerivedQueries
 
@@ -27,6 +28,95 @@ set_option maxHeartbeats 8000000
 
 abbrev EntryTranscript :=
   V5AcceptedEntryGenerated.aspis_core.transcript.Transcript
+
+def roundUsize (round : Fin 4) : Std.Usize :=
+  if round = 0 then 0#usize
+  else if round = 1 then 1#usize
+  else if round = 2 then 2#usize
+  else 3#usize
+
+def alphaAt (alphas : Array EntryQM31 4#usize) (round : Fin 4) : EntryQM31 :=
+  alphas.val.get ⟨round.val, by
+    rw [alphas.property]
+    exact round.isLt⟩
+
+/-- The four field challenges immediately following the four accepted work
+checks are exactly the four values returned by the production alpha decoder.
+This is a same-execution fact: both sides are obtained by inverting the same
+accepted composite call. -/
+structure AcceptedFoldChallengeProjection
+    (parsed : EntryParsed) (alphas : Array EntryQM31 4#usize) : Prop where
+  immediate : ∀ round : Fin 4,
+    ∃ nonce beforeFold afterFold afterChallenge,
+      Array.index_usize parsed.v5_fold_nonces (roundUsize round) = .ok nonce ∧
+      V5AcceptedEntryGenerated.v5_cu_probe.check_and_absorb_real_v5_fold_nonce
+          beforeFold (roundUsize round) nonce = .ok (.Ok (), afterFold) ∧
+      V5AcceptedEntryGenerated.aspis_core.transcript.Transcript.challenge_qm31
+          afterFold = .ok (.Ok (alphaAt alphas round), afterChallenge)
+
+private theorem nested_ok_unique {valueType errorType : Type}
+    {left right : valueType}
+    (equality :
+      (.ok (.Ok left) : Result (core.result.Result valueType errorType)) =
+        .ok (.Ok right)) :
+    left = right := by
+  exact core.result.Result.Ok.inj (Result.ok.inj equality)
+
+theorem accepted_fold_successors_and_alpha_decode_are_same_values
+    (parsed : EntryParsed) (alphas : Array EntryQM31 4#usize)
+    (folds : AcceptedFourFoldChallengeSuccessors parsed)
+    (alphaSuccess :
+      V5AcceptedEntryGenerated.v5_cu_probe.decode_v5_fri_alphas parsed =
+        .ok (.Ok alphas)) :
+    AcceptedFoldChallengeProjection parsed alphas := by
+  obtain ⟨zero, alpha0, alpha1, alpha2, alpha3, _, decode0, decode1,
+      decode2, decode3, alphasExact⟩ :=
+    AspisV5AcceptedEntryAlphaDecode.decode_v5_fri_alphas_success_calls
+      parsed alphas alphaSuccess
+  rcases folds with ⟨fold0, fold1, fold2, fold3⟩
+  constructor
+  intro round
+  fin_cases round
+  · rcases fold0 with
+      ⟨nonce, beforeFold, afterFold, sampled, decoded, afterChallenge,
+        nonceExact, workExact, sampleExact, decodedExact, _, same⟩
+    have decodedIsAlpha : decoded = alpha0 :=
+      (nested_ok_unique (decode0.symm.trans decodedExact)).symm
+    have sampledIsAlpha : sampled = alpha0 := same.trans decodedIsAlpha
+    refine ⟨nonce, beforeFold, afterFold, afterChallenge, ?_, ?_, ?_⟩
+    · simpa [roundUsize] using nonceExact
+    · simpa [roundUsize] using workExact
+    · simpa [alphaAt, alphasExact, sampledIsAlpha] using sampleExact
+  · rcases fold1 with
+      ⟨nonce, beforeFold, afterFold, sampled, decoded, afterChallenge,
+        nonceExact, workExact, sampleExact, decodedExact, _, same⟩
+    have decodedIsAlpha : decoded = alpha1 :=
+      (nested_ok_unique (decode1.symm.trans decodedExact)).symm
+    have sampledIsAlpha : sampled = alpha1 := same.trans decodedIsAlpha
+    refine ⟨nonce, beforeFold, afterFold, afterChallenge, ?_, ?_, ?_⟩
+    · simpa [roundUsize] using nonceExact
+    · simpa [roundUsize] using workExact
+    · simpa [alphaAt, alphasExact, sampledIsAlpha] using sampleExact
+  · rcases fold2 with
+      ⟨nonce, beforeFold, afterFold, sampled, decoded, afterChallenge,
+        nonceExact, workExact, sampleExact, decodedExact, _, same⟩
+    have decodedIsAlpha : decoded = alpha2 :=
+      (nested_ok_unique (decode2.symm.trans decodedExact)).symm
+    have sampledIsAlpha : sampled = alpha2 := same.trans decodedIsAlpha
+    refine ⟨nonce, beforeFold, afterFold, afterChallenge, ?_, ?_, ?_⟩
+    · simpa [roundUsize] using nonceExact
+    · simpa [roundUsize] using workExact
+    · simpa [alphaAt, alphasExact, sampledIsAlpha] using sampleExact
+  · rcases fold3 with
+      ⟨nonce, beforeFold, afterFold, sampled, decoded, afterChallenge,
+        nonceExact, workExact, sampleExact, decodedExact, _, same⟩
+    have decodedIsAlpha : decoded = alpha3 :=
+      (nested_ok_unique (decode3.symm.trans decodedExact)).symm
+    have sampledIsAlpha : sampled = alpha3 := same.trans decodedIsAlpha
+    refine ⟨nonce, beforeFold, afterFold, afterChallenge, ?_, ?_, ?_⟩
+    · simpa [roundUsize] using nonceExact
+    · simpa [roundUsize] using workExact
+    · simpa [alphaAt, alphasExact, sampledIsAlpha] using sampleExact
 
 /-- Exact blocks, returned positions, and draw bound for the sampler call
 which immediately follows the accepted final work check. -/
