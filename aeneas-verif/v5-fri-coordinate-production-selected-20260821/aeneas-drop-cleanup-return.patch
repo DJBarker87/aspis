@@ -1,0 +1,14 @@
+diff --git a/src/PrePasses.ml b/src/PrePasses.ml
+index d6ecefbb..031b8edb 100644
+--- a/src/PrePasses.ml
++++ b/src/PrePasses.ml
+@@ -732,6 +732,9 @@ let restore_structured_nested_returns (_crate : crate) (f : fun_decl) : fun_decl
+             let rec take_cleanup reversed = function
+               | ({ kind = StorageDead _ | Nop; _ } as cleanup) :: tail ->
+                   take_cleanup (cleanup :: reversed) tail
++              | ({ kind = Drop _; _ } as cleanup) :: tail
++                when !Config.drop_as_no_op ->
++                  take_cleanup (cleanup :: reversed) tail
+               | tail -> (List.rev reversed, tail)
+             in
+             let cleanup, tail = take_cleanup [] rest in
