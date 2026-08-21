@@ -7,11 +7,11 @@ readonly MATHLIB_TAG="v4.32.0"
 readonly MATHLIB_COMMIT="81a5d257c8e410db227a6665ed08f64fea08e997"
 readonly LEAN_VERSION="4.32.0"
 readonly LEAN_COMMIT="8c9756b28d64dab099da31a4c09229a9e6a2ef35"
-readonly PATCH_SHA256="04e9c2cf33d941b8e8959c9bc4b27607164e69a5d182377d8708b59f9eca2dc4"
+readonly PATCH_SHA256="0c9d562ad70757523edaf2b4e5979b46bac8966ce5c53bb6d99dcc3a6c6c09e3"
 readonly LAKE_MANIFEST_SHA256="5d15524cf34ff705bebbd037e80baec63683d5d5a3a37a539a62f17405a2fc62"
 readonly SOURCE_HASHES_SHA256="a030daa0cf90263783dbedfe4809a11e9ee409a7a332e06c9e418941eb75509e"
 readonly NORMALIZED_HASHES_SHA256="0a7cdedfa6264f5248da8117384da055150e7db5c6acaa6dfeca7de097c1a0fe"
-readonly PATCHED_AENEAS_HASHES_SHA256="ef18cff71157c665bb92040c261d1a8543a5dfadffa74583ed81b963be4a804b"
+readonly PATCHED_AENEAS_HASHES_SHA256="af52cbb15fbebaf53686b5525aa7e87310eb53f295ee2ccfa6aa32ef6a6a7480"
 readonly STAGED_HASHES_SHA256="0f8378c55c72645d9c15194f3cd641d716ac52e381785689722a9b8853044654"
 readonly EXTRACTED_FIELD_SOURCE_BLOB="96e8c04efee6a8231adb2723dac9acf975993e06"
 readonly EXTRACTED_FIELD_SOURCE_SHA256="b424ea2c70902e477a2580d683279645b3dd0423bfa1c9043494bc6a99dfad1e"
@@ -206,7 +206,7 @@ git -C "$aeneas_checkout" apply --check --unidiff-zero "$patch_file"
 git -C "$aeneas_checkout" apply --unidiff-zero "$patch_file"
 git -C "$aeneas_checkout" diff --check
 
-readonly expected_patch_files=$'backends/lean/Aeneas/Tactic/Simproc/ReduceZMod/ReduceZMod.lean\nbackends/lean/AeneasMeta/BvEnumToBitVec.lean\nbackends/lean/AeneasMeta/Simp/Simp.lean\nbackends/lean/lakefile.lean\nbackends/lean/lean-toolchain'
+readonly expected_patch_files="$(awk '{print $2}' "$patched_aeneas_hashes" | LC_ALL=C sort)"
 readonly actual_patch_files="$(git -C "$aeneas_checkout" diff --name-only | LC_ALL=C sort)"
 if [[ "$actual_patch_files" != "$expected_patch_files" ]]; then
   echo "Lean-4.32 patch changed an unexpected Aeneas file" >&2

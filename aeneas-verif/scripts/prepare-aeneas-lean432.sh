@@ -3,8 +3,9 @@ set -euo pipefail
 
 readonly aeneas_commit="b59d5188c082f704a418c7cb4e52ad69328002d1"
 readonly aeneas_url="https://github.com/AeneasVerif/aeneas.git"
-readonly patch_sha256="04e9c2cf33d941b8e8959c9bc4b27607164e69a5d182377d8708b59f9eca2dc4"
+readonly patch_sha256="0c9d562ad70757523edaf2b4e5979b46bac8966ce5c53bb6d99dcc3a6c6c09e3"
 readonly manifest_sha256="5d15524cf34ff705bebbd037e80baec63683d5d5a3a37a539a62f17405a2fc62"
+readonly patched_hashes_sha256="af52cbb15fbebaf53686b5525aa7e87310eb53f295ee2ccfa6aa32ef6a6a7480"
 
 readonly script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 readonly verification_dir="$(cd "$script_dir/.." && pwd -P)"
@@ -13,7 +14,7 @@ readonly patch_file="$harness_dir/aeneas-b59d5188-lean432.patch"
 readonly manifest_file="$harness_dir/lake-manifest.json"
 readonly patched_hashes="$harness_dir/patched-aeneas-hashes.sha256"
 
-for command_name in git jq lake; do
+for command_name in git jq lake opam; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
     echo "missing required command: $command_name" >&2
     exit 2
@@ -41,6 +42,7 @@ require_sha256() {
 
 require_sha256 "$patch_sha256" "$patch_file"
 require_sha256 "$manifest_sha256" "$manifest_file"
+require_sha256 "$patched_hashes_sha256" "$patched_hashes"
 
 if [[ -n "${AENEAS_LEAN432_OUT:-}" ]]; then
   out=$AENEAS_LEAN432_OUT
@@ -68,7 +70,7 @@ git -C "$checkout" apply --check --unidiff-zero "$patch_file"
 git -C "$checkout" apply --unidiff-zero "$patch_file"
 git -C "$checkout" diff --check
 
-readonly expected_patch_files=$'backends/lean/Aeneas/Tactic/Simproc/ReduceZMod/ReduceZMod.lean\nbackends/lean/AeneasMeta/BvEnumToBitVec.lean\nbackends/lean/AeneasMeta/Simp/Simp.lean\nbackends/lean/lakefile.lean\nbackends/lean/lean-toolchain'
+readonly expected_patch_files="$(awk '{print $2}' "$patched_hashes" | LC_ALL=C sort)"
 readonly actual_patch_files="$(git -C "$checkout" diff --name-only | LC_ALL=C sort)"
 if [[ "$actual_patch_files" != "$expected_patch_files" ]]; then
   echo "Lean 4.32 compatibility patch changed unexpected files" >&2
@@ -84,6 +86,17 @@ fi
     shasum -a 256 -c "$patched_hashes"
   fi
 )
+
+readonly opam_switch="${ASPIS_AENEAS_OPAM_SWITCH:-5.3.0}"
+(
+  cd "$checkout/src"
+  opam exec --switch="$opam_switch" -- dune build main.exe
+)
+readonly aeneas_bin="$checkout/src/_build/default/main.exe"
+if [[ ! -x "$aeneas_bin" ]]; then
+  echo "patched Aeneas translator did not build" >&2
+  exit 1
+fi
 
 cp "$manifest_file" "$backend/lake-manifest.json"
 cp "$manifest_file" "$out/lake-manifest.before.json"
@@ -114,9 +127,11 @@ readonly lean_path="$(cd "$backend" && lake env printenv LEAN_PATH)"
 echo "Pinned Aeneas Lean 4.32 library: PASS"
 echo "AENEAS_LEAN432_OUT=$out"
 echo "AENEAS_LEAN_LIB=$lean_lib"
+echo "AENEAS_BIN=$aeneas_bin"
 
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
   printf 'aeneas_lean432_out=%s\n' "$out" >> "$GITHUB_OUTPUT"
   printf 'aeneas_lean_lib=%s\n' "$lean_lib" >> "$GITHUB_OUTPUT"
   printf 'aeneas_lean_path=%s\n' "$lean_path" >> "$GITHUB_OUTPUT"
+  printf 'aeneas_bin=%s\n' "$aeneas_bin" >> "$GITHUB_OUTPUT"
 fi

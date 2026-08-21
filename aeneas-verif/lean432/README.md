@@ -17,20 +17,24 @@ modify or reuse the existing `aeneas-verif/proof/.lake` Lean 4.31 package.
 - dependency lock: `lake-manifest.json`, SHA-256
   `5d15524cf34ff705bebbd037e80baec63683d5d5a3a37a539a62f17405a2fc62`
 
-The compatibility patch has SHA-256
-`04e9c2cf33d941b8e8959c9bc4b27607164e69a5d182377d8708b59f9eca2dc4`.
-It changes the Lean and mathlib pins plus exactly three Aeneas source files:
+The tracked patch has SHA-256
+`0c9d562ad70757523edaf2b4e5979b46bac8966ce5c53bb6d99dcc3a6c6c09e3`.
+It contains two independently checkable groups of changes:
 
-1. `AeneasMeta/BvEnumToBitVec.lean`: use the Lean 4.32 import path. Lean 4.32
-   privatized the former eager-realization helpers. This scoped build retains
-   enum validation and its marker but intentionally omits eager realization;
-   the checked chain is rejected if it invokes `bv_tac` or `bv_decide`. The
-   patched module labels the surrounding eager-realization explanation as
-   historical Lean 4.31 rationale and explicitly overrides it for this build.
-2. `AeneasMeta/Simp/Simp.lean`: adapt the changed optional-fvar result and add
-   the now-required `HashSet FVarId` annotation.
-3. `Aeneas/Tactic/Simproc/ReduceZMod/ReduceZMod.lean`: use the Lean 4.32-safe
-   `ZMod` power pattern.
+1. Five backend files pin Lean and mathlib and make the generated definitions
+   compile under Lean 4.32. These include the import, optional-fvar, and `ZMod`
+   pattern updates previously carried by this harness.
+2. Thirty-two translator files extend Aeneas' existing symbolic joins and
+   function-pointer translation far enough to translate the unchanged
+   production transcript samplers. A loop now returns the common
+   mutable-iterator value recorded by its loan projection, and a safe Rust
+   function-item-to-function-pointer cast is translated as an effectful
+   checked call. No field inverse or sampler behavior is supplied as a Lean
+   axiom.
+
+`patched-aeneas-hashes.sha256` authenticates every changed file. The preparation
+script checks both the exact file list and every post-patch hash before it
+builds the translator.
 
 `Aeneas/Data/Array.lean` is deliberately not patched. It is outside the
 `Aeneas.Std` plus `Aeneas.Tactic.RustAttributes` import closure used here.
@@ -133,8 +137,10 @@ The chain uses Aeneas runtime definitions and lemmas for `Result`, scalar
 operations, `partial_fixpoint`, `RangeIter`, `WP.spec_imp_exists`, and
 `massert`. The hand proofs use mathlib tactics, not Aeneas `step`, `progress`,
 `scalar_tac`, or `bv_tac`. Building `Aeneas.Std` still transitively compiles a
-small amount of Aeneas meta/tactic code, which is why the three scoped
-compatibility changes above are necessary.
+small amount of Aeneas meta/tactic code, which is why the scoped compatibility
+changes above are necessary. `prepare-aeneas-lean432.sh` also builds the
+patched translator and prints its exact path as `AENEAS_BIN`; source-replay
+scripts must use that binary rather than an untracked local checkout.
 
 ## Verification record
 
@@ -146,8 +152,11 @@ after building the exact five targets listed above in the same clean checkout,
 all eleven modules compiled and all 30 axiom reports parsed to exactly
 `{propext, Classical.choice, Quot.sound}` with no `sorryAx` or `ofReduceBool`.
 
-The durable script now includes those targets, the full input snapshot, and
-the end-of-build hash rechecks. Per the sprint stop directive, that hardened
-from-zero wrapper has not been launched a second time; only offline patch,
-hash, syntax, and warm-cache smoke checks were run after hardening. The next
-release gate should execute the command in **Run** once from zero.
+The extended translator patch was also applied from zero to the pinned Aeneas
+commit and rebuilt with OCaml 5.3.0. That fresh binary translated all four
+unchanged production transcript samplers (`challenge_qm31`,
+`challenge_nonzero_qm31`, `challenge_ood_qm31`, and
+`challenge_secure_circle_point`), and each generated Lean bundle compiled with
+Lean 4.32. The release gate should still execute the command in **Run** once
+from zero so the complete field-proof harness and translator are checked in a
+single retained directory.
