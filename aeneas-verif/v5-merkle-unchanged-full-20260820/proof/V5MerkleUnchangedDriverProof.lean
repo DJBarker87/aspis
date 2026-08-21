@@ -647,6 +647,173 @@ structure GeneratedFiveCallTrace
   call4 : GeneratedSectionCall hash s4 roots topology 4#usize 3#usize
     level4 next4 level5 next5 remainder4 finalRemainder parsed4 finalParsed
 
+private theorem array_update_success_eq
+    {T : Type} {n : Std.Usize} (values : Array T n)
+    (index : Std.Usize) (value : T) (out : Array T n)
+    (bound : index.val < values.length)
+    (run : Array.update values index value = .ok out) :
+    out = Aeneas.Std.Array.set values index value := by
+  obtain ⟨witness, witnessRun, witnessEq⟩ :=
+    Aeneas.Std.WP.spec_imp_exists
+      (Array.update_spec values index value bound)
+  have witnessOut : witness = out :=
+    Result.ok.inj (witnessRun.symm.trans run)
+  simpa [witnessOut] using witnessEq
+
+private theorem array_index_after_same_update
+    {T : Type} {n : Std.Usize} (values : Array T n)
+    (index : Std.Usize) (value : T) (out : Array T n)
+    (bound : index.val < values.length)
+    (run : Array.update values index value = .ok out) :
+    Array.index_usize out index = .ok value := by
+  rw [array_update_success_eq values index value out bound run]
+  unfold Array.index_usize
+  have listBound : index.val < values.val.length := by
+    simpa using bound
+  change (match (values.val.set index.val value)[index.val]? with
+    | none => Result.fail .arrayOutOfBounds
+    | some element => Result.ok element) = Result.ok value
+  rw [List.getElem?_set_self listBound]
+
+private theorem array_index_after_other_update
+    {T : Type} {n : Std.Usize} (values : Array T n)
+    (updatedIndex queryIndex : Std.Usize) (value : T) (out : Array T n)
+    (updatedBound : updatedIndex.val < values.length)
+    (queryBound : queryIndex.val < values.length)
+    (different : updatedIndex.val ≠ queryIndex.val)
+    (run : Array.update values updatedIndex value = .ok out) :
+    Array.index_usize out queryIndex = Array.index_usize values queryIndex := by
+  rw [array_update_success_eq values updatedIndex value out updatedBound run]
+  unfold Array.index_usize
+  change (match (values.val.set updatedIndex.val value)[queryIndex.val]? with
+    | none => Result.fail .arrayOutOfBounds
+    | some element => Result.ok element) =
+    (match values.val[queryIndex.val]? with
+    | none => Result.fail .arrayOutOfBounds
+    | some element => Result.ok element)
+  rw [List.getElem?_set_ne different]
+
+private theorem option_unwrap_success_eq_some
+    {T : Type} (option : Option T) (value : T)
+    (run : core.option.Option.unwrap option = .ok value) :
+    option = some value := by
+  cases option with
+  | none => simp [core.option.Option.unwrap, Result.ofOption] at run
+  | some actual =>
+      simp [core.option.Option.unwrap, Result.ofOption] at run
+      subst actual
+      rfl
+
+theorem GeneratedFiveCallTrace.finalParsed_index_zero
+    {hash : Slice (Slice Std.U8) → Digest}
+    {s0 s1 s2 s3 s4 : Slice Std.U32}
+    {roots : Array Digest 5#usize} {topology : Topology}
+    {level0 next0 : HashBuffer} {proofBytes : Slice Std.U8}
+    {parsed0 : Array (Option Opening) 5#usize}
+    {finalRemainder : Slice Std.U8}
+    {finalParsed : Array (Option Opening) 5#usize}
+    (trace : GeneratedFiveCallTrace hash s0 s1 s2 s3 s4 roots topology
+      level0 next0 proofBytes parsed0 finalRemainder finalParsed) :
+    Array.index_usize finalParsed 0#usize =
+      .ok (some trace.call0.opening) := by
+  rw [array_index_after_other_update trace.parsed4 4#usize 0#usize
+      (some trace.call4.opening) finalParsed (by simp) (by simp) (by norm_num)
+      trace.call4.parsed_update,
+    array_index_after_other_update trace.parsed3 3#usize 0#usize
+      (some trace.call3.opening) trace.parsed4 (by simp) (by simp)
+      (by norm_num) trace.call3.parsed_update,
+    array_index_after_other_update trace.parsed2 2#usize 0#usize
+      (some trace.call2.opening) trace.parsed3 (by simp) (by simp)
+      (by norm_num) trace.call2.parsed_update,
+    array_index_after_other_update trace.parsed1 1#usize 0#usize
+      (some trace.call1.opening) trace.parsed2 (by simp) (by simp)
+      (by norm_num) trace.call1.parsed_update]
+  exact array_index_after_same_update parsed0 0#usize
+    (some trace.call0.opening) trace.parsed1 (by simp)
+    trace.call0.parsed_update
+
+theorem GeneratedFiveCallTrace.finalParsed_index_one
+    {hash : Slice (Slice Std.U8) → Digest}
+    {s0 s1 s2 s3 s4 : Slice Std.U32}
+    {roots : Array Digest 5#usize} {topology : Topology}
+    {level0 next0 : HashBuffer} {proofBytes : Slice Std.U8}
+    {parsed0 : Array (Option Opening) 5#usize}
+    {finalRemainder : Slice Std.U8}
+    {finalParsed : Array (Option Opening) 5#usize}
+    (trace : GeneratedFiveCallTrace hash s0 s1 s2 s3 s4 roots topology
+      level0 next0 proofBytes parsed0 finalRemainder finalParsed) :
+    Array.index_usize finalParsed 1#usize =
+      .ok (some trace.call1.opening) := by
+  rw [array_index_after_other_update trace.parsed4 4#usize 1#usize
+      (some trace.call4.opening) finalParsed (by simp) (by simp) (by norm_num)
+      trace.call4.parsed_update,
+    array_index_after_other_update trace.parsed3 3#usize 1#usize
+      (some trace.call3.opening) trace.parsed4 (by simp) (by simp)
+      (by norm_num) trace.call3.parsed_update,
+    array_index_after_other_update trace.parsed2 2#usize 1#usize
+      (some trace.call2.opening) trace.parsed3 (by simp) (by simp)
+      (by norm_num) trace.call2.parsed_update]
+  exact array_index_after_same_update trace.parsed1 1#usize
+    (some trace.call1.opening) trace.parsed2 (by simp)
+    trace.call1.parsed_update
+
+theorem GeneratedFiveCallTrace.finalParsed_index_two
+    {hash : Slice (Slice Std.U8) → Digest}
+    {s0 s1 s2 s3 s4 : Slice Std.U32}
+    {roots : Array Digest 5#usize} {topology : Topology}
+    {level0 next0 : HashBuffer} {proofBytes : Slice Std.U8}
+    {parsed0 : Array (Option Opening) 5#usize}
+    {finalRemainder : Slice Std.U8}
+    {finalParsed : Array (Option Opening) 5#usize}
+    (trace : GeneratedFiveCallTrace hash s0 s1 s2 s3 s4 roots topology
+      level0 next0 proofBytes parsed0 finalRemainder finalParsed) :
+    Array.index_usize finalParsed 2#usize =
+      .ok (some trace.call2.opening) := by
+  rw [array_index_after_other_update trace.parsed4 4#usize 2#usize
+      (some trace.call4.opening) finalParsed (by simp) (by simp) (by norm_num)
+      trace.call4.parsed_update,
+    array_index_after_other_update trace.parsed3 3#usize 2#usize
+      (some trace.call3.opening) trace.parsed4 (by simp) (by simp)
+      (by norm_num) trace.call3.parsed_update]
+  exact array_index_after_same_update trace.parsed2 2#usize
+    (some trace.call2.opening) trace.parsed3 (by simp)
+    trace.call2.parsed_update
+
+theorem GeneratedFiveCallTrace.finalParsed_index_three
+    {hash : Slice (Slice Std.U8) → Digest}
+    {s0 s1 s2 s3 s4 : Slice Std.U32}
+    {roots : Array Digest 5#usize} {topology : Topology}
+    {level0 next0 : HashBuffer} {proofBytes : Slice Std.U8}
+    {parsed0 : Array (Option Opening) 5#usize}
+    {finalRemainder : Slice Std.U8}
+    {finalParsed : Array (Option Opening) 5#usize}
+    (trace : GeneratedFiveCallTrace hash s0 s1 s2 s3 s4 roots topology
+      level0 next0 proofBytes parsed0 finalRemainder finalParsed) :
+    Array.index_usize finalParsed 3#usize =
+      .ok (some trace.call3.opening) := by
+  rw [array_index_after_other_update trace.parsed4 4#usize 3#usize
+      (some trace.call4.opening) finalParsed (by simp) (by simp) (by norm_num)
+      trace.call4.parsed_update]
+  exact array_index_after_same_update trace.parsed3 3#usize
+    (some trace.call3.opening) trace.parsed4 (by simp)
+    trace.call3.parsed_update
+
+theorem GeneratedFiveCallTrace.finalParsed_index_four
+    {hash : Slice (Slice Std.U8) → Digest}
+    {s0 s1 s2 s3 s4 : Slice Std.U32}
+    {roots : Array Digest 5#usize} {topology : Topology}
+    {level0 next0 : HashBuffer} {proofBytes : Slice Std.U8}
+    {parsed0 : Array (Option Opening) 5#usize}
+    {finalRemainder : Slice Std.U8}
+    {finalParsed : Array (Option Opening) 5#usize}
+    (trace : GeneratedFiveCallTrace hash s0 s1 s2 s3 s4 roots topology
+      level0 next0 proofBytes parsed0 finalRemainder finalParsed) :
+    Array.index_usize finalParsed 4#usize =
+      .ok (some trace.call4.opening) :=
+  array_index_after_same_update trace.parsed4 4#usize
+    (some trace.call4.opening) finalParsed (by simp)
+    trace.call4.parsed_update
+
 /-- Once each helper identifies the literal section prefix it consumed, the
 five threaded remainders and the public empty-remainder check imply that the
 entire proof slice is exactly the five section encodings in source order. -/
@@ -768,6 +935,7 @@ structure GeneratedFromProofCallTrace
   topology : Topology
   finalRemainder : Slice Std.U8
   finalParsed : Array (Option Opening) 5#usize
+  bytesConsumed : Std.Usize
   layer0Leaves_eq :
     private_openings.V5_PRIVATE_LAYER0_LEAVES = .ok layer0Leaves
   indices_eq :
@@ -782,8 +950,8 @@ structure GeneratedFromProofCallTrace
   topology_eq :
     aspis_core.merkle.Radix4BinaryCapTopology.new depth0
       (alloc.vec.Vec.deref indices.layer0) = .ok (some topology)
-  callTrace : Nonempty
-    (GeneratedFiveCallTrace hash
+  callTrace :
+    GeneratedFiveCallTrace hash
       (alloc.vec.Vec.deref indices.layer0)
       (alloc.vec.Vec.deref indices.layer0)
       (alloc.vec.Vec.deref later0)
@@ -792,7 +960,18 @@ structure GeneratedFromProofCallTrace
       rootsArray topology
       (alloc.vec.Vec.with_capacity Digest (alloc.vec.Vec.len indices.layer0))
       (alloc.vec.Vec.with_capacity Digest (alloc.vec.Vec.len indices.layer0))
-      proofBytes (Array.repeat 5#usize none) finalRemainder finalParsed)
+      proofBytes (Array.repeat 5#usize none) finalRemainder finalParsed
+  bytes_consumed_eq :
+    lift (Std.Usize.wrapping_sub (Slice.len proofBytes)
+      (Slice.len finalRemainder)) = .ok bytesConsumed
+  verified_eq : verified =
+    { c1 := callTrace.call0.opening
+      c2 := callTrace.call1.opening
+      later := Array.make 3#usize
+        [callTrace.call2.opening, callTrace.call3.opening,
+          callTrace.call4.opening]
+      indices := indices
+      bytes_consumed := bytesConsumed }
   returned_remainder_eq : finalRemainder = remainder
 
 theorem generated_from_proof_success_yields_call_trace
@@ -903,7 +1082,7 @@ theorem generated_from_proof_success_yields_call_trace
                       proofBytes (Array.repeat 5#usize none) =
                     .ok (finalRemainder, finalParsed, none) := by
                 simpa [private_openings.V5_PRIVATE_SECTION_COUNT] using hloop
-              have callTrace :=
+              have callTraceNonempty :=
                 generated_loop_success_yields_five_call_trace hash
                   (alloc.vec.Vec.deref indices.layer0)
                   (alloc.vec.Vec.deref indices.layer0)
@@ -917,6 +1096,48 @@ theorem generated_from_proof_success_yields_call_trace
                     (alloc.vec.Vec.len indices.layer0))
                   proofBytes (Array.repeat 5#usize none)
                   finalRemainder finalParsed hloop'
+              let callTrace := Classical.choice callTraceNonempty
+              have option0Some :=
+                option_unwrap_success_eq_some option0 opening0 hopening0
+              have option1Some :=
+                option_unwrap_success_eq_some option1 opening1 hopening1
+              have option2Some :=
+                option_unwrap_success_eq_some option2 opening2 hopening2
+              have option3Some :=
+                option_unwrap_success_eq_some option3 opening3 hopening3
+              have option4Some :=
+                option_unwrap_success_eq_some option4 opening4 hopening4
+              rw [option0Some] at hoption0
+              rw [option1Some] at hoption1
+              rw [option2Some] at hoption2
+              rw [option3Some] at hoption3
+              rw [option4Some] at hoption4
+              have opening0Eq : opening0 = callTrace.call0.opening := by
+                exact Option.some.inj (Result.ok.inj
+                  (hoption0.symm.trans callTrace.finalParsed_index_zero))
+              have opening1Eq : opening1 = callTrace.call1.opening := by
+                exact Option.some.inj (Result.ok.inj
+                  (hoption1.symm.trans callTrace.finalParsed_index_one))
+              have opening2Eq : opening2 = callTrace.call2.opening := by
+                exact Option.some.inj (Result.ok.inj
+                  (hoption2.symm.trans callTrace.finalParsed_index_two))
+              have opening3Eq : opening3 = callTrace.call3.opening := by
+                exact Option.some.inj (Result.ok.inj
+                  (hoption3.symm.trans callTrace.finalParsed_index_three))
+              have opening4Eq : opening4 = callTrace.call4.opening := by
+                exact Option.some.inj (Result.ok.inj
+                  (hoption4.symm.trans callTrace.finalParsed_index_four))
+              have verifiedEq : verified =
+                  { c1 := callTrace.call0.opening
+                    c2 := callTrace.call1.opening
+                    later := Array.make 3#usize
+                      [callTrace.call2.opening, callTrace.call3.opening,
+                        callTrace.call4.opening]
+                    indices := indices
+                    bytes_consumed := bytesConsumed } := by
+                rw [← opening0Eq, ← opening1Eq, ← opening2Eq,
+                  ← opening3Eq, ← opening4Eq]
+                exact _hverified.symm
               exact ⟨{
                 layer0Leaves := layer0Leaves
                 indices := indices
@@ -928,6 +1149,7 @@ theorem generated_from_proof_success_yields_call_trace
                 topology := topology
                 finalRemainder := finalRemainder
                 finalParsed := finalParsed
+                bytesConsumed := bytesConsumed
                 layer0Leaves_eq := hlayer0Leaves
                 indices_eq := hqueryResult
                 later0_eq := hlater0
@@ -937,6 +1159,8 @@ theorem generated_from_proof_success_yields_call_trace
                 depth0_eq := hdepth0
                 topology_eq := htopologyOption
                 callTrace := callTrace
+                bytes_consumed_eq := hbytesConsumed
+                verified_eq := verifiedEq
                 returned_remainder_eq := hremainder
               }⟩
 

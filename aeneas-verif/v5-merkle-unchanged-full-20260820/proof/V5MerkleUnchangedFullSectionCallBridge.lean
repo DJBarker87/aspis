@@ -1,5 +1,6 @@
 import V5MerkleUnchangedFullSectionNodeClosure
 import V5MerkleUnchangedFullParserBounds
+import AspisFormal.V5MerkleConsumedValueBridge
 
 /-! One successful exact generated helper call yields the maintained accepted
 section, including the literal returned remainder. -/
@@ -18,6 +19,7 @@ variable [HashContext]
 
 open AspisV5MerkleAuthenticationBinding
 open AspisV5MerkleRustBridge
+open AspisV5MerkleConsumedValueBridge
 open AspisV5TopologyConstruction
 open AspisV5MerkleUnchangedFullHelperBridge
 open AspisV5MerkleUnchangedFullParserBridge
@@ -37,6 +39,86 @@ abbrev GeneratedDigestVec := alloc.vec.Vec GeneratedDigest
 abbrev GeneratedOpening :=
   aspis_core.state_only_private_openings.StateOnlyPrivateOpening
 abbrev ModelByte := AspisV5MerkleAuthenticationBinding.Byte
+
+/-- Exact mathematical view of the opening returned by the unchanged
+production helper.  This is the same field projection used by the FRI
+consumer extraction. -/
+def generatedOpeningToReturned (opening : GeneratedOpening) :
+    ReturnedOpening where
+  count := opening.count.val
+  valueWidth := opening.value_width.val
+  records := opening.records.val.map
+    AspisV5MerkleUnchangedFullHelperBridge.generatedU8ToByte
+  frontier := opening.frontier.val.map
+    AspisV5MerkleUnchangedFullHelperBridge.generatedU8ToByte
+  offsets :=
+    { count := opening.offsets.count.val
+      records := opening.offsets.records.val
+      frontierCount := opening.offsets.frontier_count.val
+      frontier := opening.offsets.frontier.val
+      endOffset := opening.offsets.end.val }
+
+/-- The raw parser facts retained by the unchanged extraction, together with
+the exact record/frontier tables used to construct a section trace, identify
+every returned slice and offset with `openingOfTrace`. -/
+theorem generated_opening_equals_openingOfTrace
+    {sha256 : List ModelByte → Digest32}
+    {tree : V5PrivateSection} {queries : Finset V5Query}
+    {generatedWidth expectedCount : Std.Usize}
+    {proofBytes remainder : Slice Std.U8}
+    {opening : GeneratedOpening}
+    {leafLevel : GeneratedDigestVec}
+    (raw : ExactRawParserOutput proofBytes expectedCount generatedWidth
+      opening remainder)
+    (widthModel : generatedWidth.val = valueWidth tree)
+    (countModel : expectedCount.val =
+      (orderedActiveIndices tree queries 0).length)
+    (base : ExactSectionGeneratedBaseWithSplit sha256 tree queries leafLevel
+      opening.records opening.frontier proofBytes remainder)
+    {root : Digest32}
+    (sectionData : ExactReleasedSectionTraceData
+      (root := root) base.toExactSectionBaseData) :
+    generatedOpeningToReturned opening = openingOfTrace sectionData.trace := by
+  rcases raw with ⟨frontierCount, openingCount, openingWidth, offsetCount,
+    offsetRecords, _recordsSlice, rawRecordsLength, offsetFrontierCount,
+    offsetFrontier, _frontierSlice, rawFrontierLength, offsetEnd,
+    _endBound, _remainder⟩
+  have recordsBytes :
+      opening.records.val.map
+          AspisV5MerkleUnchangedFullHelperBridge.generatedU8ToByte =
+        sectionData.trace.records.flatten := by
+    rw [ExactSectionTrace.records, sectionData.recordAt_eq_base]
+    exact base.generated_records_bytes_eq.symm
+  have frontierBytes :
+      opening.frontier.val.map
+          AspisV5MerkleUnchangedFullHelperBridge.generatedU8ToByte =
+        flattenDigests sectionData.trace.frontier := by
+    rw [flattenDigests, sectionData.frontier_eq_base]
+    exact base.generated_frontier_bytes_eq.symm
+  have recordsLength : opening.records.val.length =
+      sectionData.trace.records.flatten.length := by
+    simpa using congrArg List.length recordsBytes
+  have frontierLength : opening.frontier.val.length =
+      (flattenDigests sectionData.trace.frontier).length := by
+    simpa using congrArg List.length frontierBytes
+  have recordProduct :
+      expectedCount.val * (generatedWidth.val + 32) =
+        sectionData.trace.records.flatten.length :=
+    rawRecordsLength.symm.trans recordsLength
+  have frontierProduct : frontierCount * 32 =
+      (flattenDigests sectionData.trace.frontier).length :=
+    rawFrontierLength.symm.trans frontierLength
+  have traceCount : expectedCount.val = sectionData.trace.records.length := by
+    simpa [ExactSectionTrace.records] using countModel
+  unfold generatedOpeningToReturned openingOfTrace
+  simp only [ReturnedOpening.mk.injEq, OpeningOffsets.mk.injEq]
+  refine ⟨openingCount.trans traceCount,
+    (congrArg UScalar.val openingWidth).trans widthModel,
+    recordsBytes, frontierBytes, ?_⟩
+  refine ⟨offsetCount, offsetRecords, ?_, ?_, ?_⟩
+  · rw [offsetFrontierCount, recordProduct]
+  · rw [offsetFrontier, recordProduct]
+  · rw [offsetEnd, recordProduct, frontierProduct]
 
 /-- The callback premise already used for leaves also discharges the replay
 adapter's result-shaped hash premise.  This is one boundary, not two. -/
@@ -318,8 +400,139 @@ theorem generated_helper_success_yields_exact_acceptance
           AspisV5MerkleUnchangedFullHelperBridge.generatedU8ToByte := by
       rw [sectionData.wire_eq_base]
 
+/-- Strong accepted-direction result retained for the FRI consumer: the exact
+section trace is accompanied by equality of the helper's returned opening.
+This prevents the authentication proof from dropping the slices later read by
+the FRI arithmetic. -/
+def ExactReturnedSectionAcceptance
+    (sha256 : List ModelByte → Digest32)
+    (tree : V5PrivateSection) (root : Digest32)
+    (queries : Finset V5Query) (proofBytes remainder : List ModelByte)
+    (opening : GeneratedOpening) : Prop :=
+  ∃ trace : ExactSectionTrace sha256 tree root queries,
+    proofBytes = trace.wire ++ remainder ∧
+    generatedOpeningToReturned opening = openingOfTrace trace
+
+theorem generated_helper_success_yields_exact_returned_section
+    (sha256 : List ModelByte → Digest32)
+    (hhash : HashCallbackEqualsSha256 sha256 HashContext.hash)
+    (tree : V5PrivateSection) (queries : Finset V5Query)
+    (queryCount : queries.card = 18)
+    (root : GeneratedDigest) (binaryDepth : Std.U32) (treeTag : Std.U8)
+    (valueWidth : Std.Usize) (expectedIndices : Slice Std.U32)
+    (proofBytes : Slice Std.U8)
+    (topology : aspis_core.merkle.Radix4BinaryCapTopology)
+    (radixLevel : Std.Usize) (level next : GeneratedDigestVec)
+    (opening : GeneratedOpening) (remainder : Slice Std.U8)
+    (outputLevel outputNext : GeneratedDigestVec)
+    (depthModel : binaryDepth.val =
+      AspisV5MerkleAuthenticationBinding.binaryDepth tree)
+    (tagModel : treeTag.val =
+      (AspisV5MerkleAuthenticationBinding.treeTag tree).val)
+    (widthModel : valueWidth.val =
+      AspisV5MerkleAuthenticationBinding.valueWidth tree)
+    (radixModel : radixLevel.val = sectionRadixStart tree)
+    (indicesModel : expectedIndices.val.map (fun index => index.val) =
+      orderedActiveIndices tree queries 0)
+    (fields : FullExactConstructedTopologyFields queries topology)
+    (hrun :
+      aspis_core.state_only_private_openings.verify_state_only_private_opening_from_proof_with_topology
+        HashContext.hash root binaryDepth treeTag valueWidth expectedIndices
+        proofBytes topology radixLevel level next =
+          .ok (.Ok (opening, remainder), outputLevel, outputNext)) :
+    ExactReturnedSectionAcceptance sha256 tree
+      (AspisV5MerkleUnchangedFullRadixSoundness.generatedArrayToDigest root)
+      queries
+      (proofBytes.val.map
+        AspisV5MerkleUnchangedFullHelperBridge.generatedU8ToByte)
+      (remainder.val.map
+        AspisV5MerkleUnchangedFullHelperBridge.generatedU8ToByte)
+      opening := by
+  have hvalueWidth := released_value_width_nonzero tree valueWidth widthModel
+  have hcountBound := released_index_count_bound tree queries queryCount
+    expectedIndices indicesModel
+  obtain ⟨matched, hmatched⟩ := released_helper_success_has_matched_suffix
+    root binaryDepth treeTag valueWidth expectedIndices proofBytes topology
+    radixLevel level next opening remainder outputLevel outputNext hvalueWidth
+    hcountBound hrun
+  let execution := Classical.choice
+    (released_helper_success_yields_execution root binaryDepth treeTag
+      valueWidth expectedIndices proofBytes topology radixLevel level next
+      opening remainder outputLevel outputNext hvalueWidth hcountBound matched
+      hmatched hrun)
+  let raw := parse_private_opening_success_exact proofBytes
+    (Slice.len expectedIndices) valueWidth opening remainder execution.parse_run
+  have hqueries : queries.Nonempty := by
+    rw [← Finset.card_pos]
+    omega
+  have hqueriesForBase := hqueries
+  obtain ⟨query, hquery⟩ := hqueries
+  have hactive : (activeIndices tree queries 0).Nonempty :=
+    ⟨sectionIndex tree query, sectionIndex_mem_active tree hquery⟩
+  have horderedPositive :
+      0 < (orderedActiveIndices tree queries 0).length := by
+    unfold orderedActiveIndices
+    rw [Finset.length_sort]
+    exact Finset.card_pos.mpr hactive
+  have hindicesLength : expectedIndices.val.length =
+      (orderedActiveIndices tree queries 0).length := by
+    have := congrArg List.length indicesModel
+    simpa using this
+  have hexpectedPositive : 0 < (Slice.len expectedIndices).val := by
+    rw [Slice.len_val]
+    change 0 < expectedIndices.val.length
+    rw [hindicesLength]
+    exact horderedPositive
+  have hwidthMinimum : 64 ≤ valueWidth.val := by
+    rw [widthModel]
+    cases tree <;> norm_num [AspisV5MerkleAuthenticationBinding.valueWidth]
+  have hprefixRoom : 32 ≤
+      2 + (Slice.len expectedIndices).val * (valueWidth.val + 32) + 4 := by
+    rw [Slice.len_val]
+    change 32 ≤ 2 + expectedIndices.val.length * (valueWidth.val + 32) + 4
+    have hcountMinimum : 1 ≤ expectedIndices.val.length := by omega
+    have hfactorMinimum : 96 ≤ valueWidth.val + 32 := by omega
+    have hproductMinimum := Nat.mul_le_mul hcountMinimum hfactorMinimum
+    norm_num at hproductMinimum
+    omega
+  have frontierRoom := raw_parser_frontier_has_digest_room proofBytes
+    (Slice.len expectedIndices) valueWidth opening remainder raw hprefixRoom
+  have fixedHash := hash_callback_implies_fixed_hashv sha256 hhash
+  let trace := Classical.choice
+    (released_helper_success_yields_full_exact_trace sha256 fixedHash hhash
+      root binaryDepth treeTag valueWidth expectedIndices proofBytes topology
+      radixLevel level next opening remainder outputLevel outputNext
+      hvalueWidth hcountBound frontierRoom matched hmatched hrun)
+  let baseSplit := Classical.choice
+    (released_helper_yields_exact_section_base_with_split trace tree queries
+      tagModel widthModel indicesModel hqueriesForBase)
+  let base := baseSplit.toExactSectionGeneratedBaseData
+  let sources := Classical.choice
+    (released_helper_yields_exact_level_sources trace tree queries radixModel
+      fields)
+  let binary := Classical.choice
+    (released_helper_yields_exact_binary_cap trace tree queries base sources
+      depthModel fields)
+  let sectionData := Classical.choice
+    (released_helper_yields_exact_section_trace_data trace tree queries base
+      sources binary fields)
+  refine ⟨sectionData.trace, ?_, ?_⟩
+  · calc
+      proofBytes.val.map
+            AspisV5MerkleUnchangedFullHelperBridge.generatedU8ToByte =
+          baseSplit.wire ++ remainder.val.map
+            AspisV5MerkleUnchangedFullHelperBridge.generatedU8ToByte :=
+        baseSplit.generated_proof_split
+      _ = sectionData.trace.wire ++ remainder.val.map
+            AspisV5MerkleUnchangedFullHelperBridge.generatedU8ToByte := by
+        rw [sectionData.wire_eq_base]
+  · apply generated_opening_equals_openingOfTrace raw widthModel
+      (by simpa [Slice.len_val] using hindicesLength) baseSplit sectionData
+
 #print axioms hash_callback_implies_fixed_hashv
 #print axioms released_helper_success_has_matched_suffix
 #print axioms generated_helper_success_yields_exact_acceptance
+#print axioms generated_opening_equals_openingOfTrace
+#print axioms generated_helper_success_yields_exact_returned_section
 
 end AspisV5MerkleUnchangedFullSectionCallBridge
