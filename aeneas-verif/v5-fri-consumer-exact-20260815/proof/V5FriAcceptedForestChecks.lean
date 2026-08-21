@@ -69,23 +69,19 @@ local instance exactQM31NeZeroTwo : NeZero (2 : K) :=
   ⟨exactQM31_two_ne_zero⟩
 
 /-- Exact agreement required only at the literal successful Rust calls used
-by the accepted FRI execution.  It identifies no fold equation: the fold
-equations are consequences of the generated-call proofs in
-`V5FriConsumerValueSemantics`. -/
+by one accepted FRI execution with this prepared claim object.  It identifies
+no fold equation: the fold equations are consequences of the generated-call
+proofs in `V5FriConsumerValueSemantics`. -/
 structure AcceptedCallDecoderAgreement
+    (prepared : fri_checks.V5PreparedPcsClaims)
     (decoder : Decoder) : Prop where
-  layer0 : ∀ c1 c2 prepared combined,
+  layer0 : ∀ c1 c2 combined,
     fri_checks.gamma_combine_v5_layer0_exact c1 c2 prepared =
         .ok (.Ok combined) →
       ∀ slot : Fin 4,
         decoder.layer0 (c1.val.map generatedU8ToByte)
             (c2.val.map generatedU8ToByte) slot =
           qm31View (toExactQM31 combined.val[slot.val]!)
-  later : ∀ tree leaf layer slot value,
-    V5FriArithmeticExact.circle_query.decode_selected_later_slot leaf layer
-        (Std.Usize.ofNatCore slot.val (by scalar_tac)) = .ok (.Ok value) →
-      decoder.later tree (leaf.val.map generatedU8ToByte) slot =
-        qm31View value
   laterReference : ∀ tree leaf slot,
     decoder.later tree (leaf.val.map generatedU8ToByte) slot =
       referenceDecoded leaf slot
@@ -1243,7 +1239,7 @@ theorem accepted_execution_circle_check
     (hsource : ProductionUsesReleasedFriTables schedule)
     (transcript : IdealTranscript K)
     (decoder : Decoder) (hCalls : ExactFriHelperCallEquality)
-    (hAgreement : AcceptedCallDecoderAgreement decoder)
+    (hAgreement : AcceptedCallDecoderAgreement prepared decoder)
     (hBinding : AcceptedFriModelInputBinding prepared execution.sourceAlphas
       finalPolynomial schedule transcript)
     (hCoordinates : ReleasedCoordinateOutputEvidence
@@ -1335,7 +1331,7 @@ theorem accepted_execution_circle_check
             rw [hcoordinate.2.2.1, hcoordinate.2.2.2]
             congr 1
             funext slot
-            exact hAgreement.layer0 read.c1Value read.c2Value prepared
+            exact hAgreement.layer0 read.c1Value read.c2Value
               read.combined (by simpa using read.combineCall) slot
     _ = qm31View (toExactQM31 read.decodedParent) := hfold
     _ = decoder.later .line1
@@ -1363,7 +1359,7 @@ theorem accepted_execution_line1_check
     (schedule : FixedSchedule (ZMod AspisCircleGroupOrder.P) K)
     (hsource : ProductionUsesReleasedFriTables schedule)
     (decoder : Decoder) (hCalls : ExactFriHelperCallEquality)
-    (hAgreement : AcceptedCallDecoderAgreement decoder)
+    (hAgreement : AcceptedCallDecoderAgreement prepared decoder)
     (hDecoder : ProductionDecoderReferenceEquality)
     (hCoordinates : ReleasedCoordinateOutputEvidence
       (alloc.vec.Vec.deref openings.indices.layer0)
@@ -1501,7 +1497,7 @@ theorem accepted_execution_line2_check
     (schedule : FixedSchedule (ZMod AspisCircleGroupOrder.P) K)
     (hsource : ProductionUsesReleasedFriTables schedule)
     (decoder : Decoder) (hCalls : ExactFriHelperCallEquality)
-    (hAgreement : AcceptedCallDecoderAgreement decoder)
+    (hAgreement : AcceptedCallDecoderAgreement prepared decoder)
     (hDecoder : ProductionDecoderReferenceEquality)
     (hCoordinates : ReleasedCoordinateOutputEvidence
       (alloc.vec.Vec.deref openings.indices.layer0)
@@ -1646,7 +1642,7 @@ theorem accepted_execution_line3_check
     (hsource : ProductionUsesReleasedFriTables schedule)
     (transcript : IdealTranscript K)
     (decoder : Decoder) (hCalls : ExactFriHelperCallEquality)
-    (hAgreement : AcceptedCallDecoderAgreement decoder)
+    (hAgreement : AcceptedCallDecoderAgreement prepared decoder)
     (hDecoder : ProductionDecoderReferenceEquality)
     (hBinding : AcceptedFriModelInputBinding prepared execution.sourceAlphas
       finalPolynomial schedule transcript)
@@ -1863,7 +1859,7 @@ theorem accepted_production_execution_yields_forest_fri_checks
     (queries : QuerySchedule 18 131072)
     (hqueryMember : ∀ i, queries i ∈ querySet)
     (decoder : Decoder) (hCalls : ExactFriHelperCallEquality)
-    (hAgreement : AcceptedCallDecoderAgreement decoder)
+    (hAgreement : AcceptedCallDecoderAgreement prepared decoder)
     (hDecoder : ProductionDecoderReferenceEquality)
     (hBinding : AcceptedFriModelInputBinding prepared execution.sourceAlphas
       finalPolynomial schedule transcript)
@@ -1982,7 +1978,7 @@ theorem accepted_production_execution_yields_forest_fri_checks_of_projection
     (projection : TranscriptExecutionProjection relationInput transcriptInput
       derived driverResult querySet queries)
     (decoder : Decoder) (hCalls : ExactFriHelperCallEquality)
-    (hAgreement : AcceptedCallDecoderAgreement decoder)
+    (hAgreement : AcceptedCallDecoderAgreement prepared decoder)
     (hDecoder : ProductionDecoderReferenceEquality)
     (hBinding : AcceptedFriModelInputBinding prepared execution.sourceAlphas
       finalPolynomial schedule transcript)
@@ -2022,7 +2018,7 @@ theorem accepted_production_execution_yields_released_forest_fri_checks
     (projection : TranscriptExecutionProjection relationInput transcriptInput
       derived driverResult querySet queries)
     (decoder : Decoder) (hCalls : ExactFriHelperCallEquality)
-    (hAgreement : AcceptedCallDecoderAgreement decoder)
+    (hAgreement : AcceptedCallDecoderAgreement prepared decoder)
     (hDecoder : ProductionDecoderReferenceEquality)
     (hBinding : AcceptedFriModelInputBinding prepared execution.sourceAlphas
       finalPolynomial (exactReleasedFriTables base) transcript)

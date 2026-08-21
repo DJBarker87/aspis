@@ -126,13 +126,32 @@ different unless the already named SHA-256 Merkle-collision event occurs.
 `remove_released_fri_arithmetic_failure_into_collision` therefore removes the
 old generic "FRI arithmetic failed" branch from the released security event.
 
-The result does not hide its remaining code connections.  It still takes the
-literal Rust/helper call equalities, the byte-decoder equality, the values
-passed from the transcript into the FRI call, and the production/coordinate-
-adapter equality as inputs.  These inputs state code-to-code or code-to-value
-equalities; none assumes a FRI fold equation.  The shape validator's small
-success-return property is now universally checked in
-`../v5-shape-validation-20260821/`.
+The result does not hide its remaining code connections. Five FRI
+source/model inputs remain visible:
+
+- equality between six opaque helper calls in this extraction and the
+  separately proved arithmetic helpers;
+- agreement between the accepted call's byte decoding and the mathematical
+  decoder, scoped to the one prepared claim object used by that call;
+- equality between the production transition decoders and the loop-free
+  decoder references;
+- equality between the challenges and final polynomial passed by the
+  transcript driver and the values used by the FRI model; and
+- the shape validator's property that success returns the input shape.
+
+The first three are code-to-code or code-to-value statements. The fourth is
+the remaining outer-driver value connection. The fifth is a small Rust
+control-flow fact. None assumes a FRI fold equation or a cryptographic
+security claim. The decoder-reference equality is checked for every 64-byte
+leaf and slot by the Kani bundle in
+`../v5-fri-transition-reference-20260820/`. The shape property is checked for
+every input by `../v5-shape-validation-20260821/`. Those universal checks do
+not themselves produce Lean proof terms, so both propositions remain visible
+parameters here.
+
+The theorem also takes the separately documented production/coordinate-
+adapter equality that connects the returned coordinate tables to the released
+tables.
 
 ## Opaque called operations
 
