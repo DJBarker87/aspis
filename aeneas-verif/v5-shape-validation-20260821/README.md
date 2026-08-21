@@ -1,31 +1,53 @@
-# V5 shape-validation return-value proof
+# V5 shape-validation proof
 
-The production FRI consumer validates a fixed `CirclePcsShape` before it
-derives the coordinate tables.  The Lean consumer extraction originally left
-that method opaque.  The coordinate proof therefore needed this small code
-fact as an input:
+The production FRI verifier calls `CirclePcsShape::validate` before it uses a
+shape. The earlier Lean proof had to assume one small fact about that call:
 
-> If `CirclePcsShape::validate(input)` succeeds with `output`, then
-> `output == input`.
+> If validation succeeds and returns `output`, then `output` is the original
+> `input`.
 
-The Kani harness proves that statement for every possible value of every
-field in `CirclePcsShape`.  It calls the unchanged production
-`CirclePcsShape::validate` through a behavior-free wrapper.  The successful
-run checked 312 properties with no failures; 13 paths were unreachable.
+This directory now proves that fact from the selected production Rust.
 
-This discharges `ValidationSuccessPreservesShape` as a Rust code-verification
-obligation.  It is not a cryptographic assumption.  The Lean theorem remains
-explicitly parameterized by that proposition because Kani does not emit a
-Lean proof term.
+`formal_validate_shape` is an extraction-only wrapper around the unchanged
+Rust method. Charon extracts that wrapper and the validator it calls. Aeneas
+translates the extracted functions into Lean. The checked-in `ShapeSource`
+files contain the resulting validator, including every rejecting check and
+the loop that rejects duplicate tree tags.
 
-The check is pinned to:
+`ShapePreservesInput.lean` proves two facts:
 
-- `cargo-kani 0.67.0`;
-- production `crates/aspis-core/src/circle_pcs_shape.rs` blob
-  `27fea89d4095718a0df5d22532d6cd4d24a5a6b3`.
+1. The loop can only return the shape assembled from the nine original input
+   fields on its successful branch.
+2. Therefore the complete generated validator can only return its input on
+   success.
 
-Run:
+`ConsumerShapeClosure.lean` connects that result to the exact FRI-consumer
+type and proves the previously requested
+`ValidationSuccessPreservesShape` proposition. The consumer's former opaque
+`validate` declaration is replaced, for this replay, by the generated
+validator definition.
+
+The final theorem reports only Lean's standard logical foundations:
+
+```text
+propext, Classical.choice, Quot.sound
+```
+
+It does not depend on a Kani result or a new mathematical or cryptographic
+assumption. The small Kani harness remains as an optional independent check;
+it is not used by the Lean theorem.
+
+## Replay
+
+First run the maintained V5 FRI-consumer replay. Then provide its output and
+the matching Aeneas Lean library:
 
 ```sh
+export V5_FRI_ACCEPTED_FOREST_REPLAY_OUT=/path/to/fri-replay-output
+export AENEAS_LEAN_LIB=/path/to/aeneas/.lake/build/lib/lean
 ./aeneas-verif/v5-shape-validation-20260821/verify.sh
 ```
+
+The replay compiles the generated validator, the return-value proof, the
+consumer with the transparent validator, the affected consumer proofs, and
+the final connection theorem under Lean 4.32.

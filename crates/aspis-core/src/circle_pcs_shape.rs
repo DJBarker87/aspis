@@ -200,6 +200,16 @@ impl CirclePcsShape {
     }
 }
 
+/// Extraction-only root for checking the exact successful return value of
+/// `CirclePcsShape::validate`. The production build does not enable this
+/// feature, so this wrapper is absent from the deployed program.
+#[cfg(feature = "formal-verification")]
+pub fn formal_validate_shape(
+    input: CirclePcsShape,
+) -> Result<CirclePcsShape, CirclePcsShapeError> {
+    input.validate()
+}
+
 pub fn prepare_circle_pcs_claims(
     shape: CirclePcsShape,
     gamma: QM31,
