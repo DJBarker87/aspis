@@ -1,7 +1,7 @@
 import V5RelationGeneratedFieldProjection
 import AspisFormal.V5CuArithmeticEquivalences
 
-set_option maxHeartbeats 3000000
+set_option maxHeartbeats 12000000
 
 /-!
 # Exact boundary and Horner kernels in the full V5 extraction
@@ -20,8 +20,8 @@ open AspisV5RelationSumcheckSoundness
 abbrev RawQM31 := V5RelationFullGenerated.aspis_core.field.QM31
 abbrev ExactQM31 := ComponentBRealEvaluatorProof.ExactQM31
 
-deriving instance Inhabited for V5RelationFullGenerated.aspis_core.field.CM31
-deriving instance Inhabited for V5RelationFullGenerated.aspis_core.field.QM31
+deriving instance Inhabited for V5RelationLinkedGenerated.aspis_core.field.CM31
+deriving instance Inhabited for V5RelationLinkedGenerated.aspis_core.field.QM31
 
 def CanonicalArray (polynomial : Array RawQM31 7#usize) : Prop :=
   ∀ index, index < 7 → CanonicalQM31 polynomial.val[index]!
