@@ -116,5 +116,33 @@ AENEAS_LEAN_LIB=/path/to/aeneas/backends/lean/.lake/build/lib/lean \
 
 The replay checks all recorded source and generated-file identities and then
 compiles the generated definitions, the complete accepted-execution proof,
-and the maintained observation bridge. It does not regenerate the LLBC; that
-requires the pinned Charon/Aeneas extraction environment.
+the maintained observation bridge, and the byte/accessor adapter. It does not
+regenerate the LLBC; that requires the pinned Charon/Aeneas extraction
+environment.
+
+The larger replay below compiles the arithmetic, coordinate, decoder,
+consumer, and accepted-forest proofs together from clean output directories:
+
+```sh
+LEAN432_BIN=/path/to/lean-4.32.0/bin/lean \
+AENEAS_LEAN_LIB=/path/to/aeneas/backends/lean/.lake/build/lib/lean \
+V5_FRI_ARITHMETIC_BASE_LEAN_OUT=/path/to/checked-field-oleans \
+V5_FRI_COMPONENTB_LEAN_OUT=/path/to/checked-component-b-oleans \
+./aeneas-verif/v5-fri-consumer-exact-20260815/replay-accepted-forest-lean432.sh
+```
+
+After replaying both this bundle and
+`v5-merkle-unchanged-full-20260820`, check the returned-value bridge with:
+
+```sh
+AENEAS_LEAN_LIB=/path/to/aeneas-lean432-oleans \
+V5_MERKLE_UNCHANGED_LEAN_OUT=/path/to/merkle-replay-output \
+V5_FRI_CONSUMER_REPLAY_OUT=/path/to/fri-replay-output \
+  ./aeneas-verif/v5-fri-consumer-exact-20260815/replay-returned-output-lean432.sh
+```
+
+`V5MerkleFriReturnedOutputBridge.lean` proves field-for-field that the opening
+value returned by the independently translated Merkle driver has exactly the
+view consumed by the independently translated FRI verifier. The conversion
+changes only Lean namespace types; opening bytes, offsets, query indices, and
+the consumed-byte count are unchanged.
