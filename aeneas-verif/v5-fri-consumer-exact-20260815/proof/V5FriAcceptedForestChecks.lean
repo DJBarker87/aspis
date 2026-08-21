@@ -1864,10 +1864,13 @@ theorem accepted_production_execution_yields_forest_fri_checks
     (hBinding : AcceptedFriModelInputBinding prepared execution.sourceAlphas
       finalPolynomial schedule transcript)
     (hValidate : ValidationSuccessPreservesShape)
-    (hAdapter : ExactProductionCoordinateAdapterAcceptedEquality) :
+    (hCoordinateSource :
+      AcceptedExecutionCoordinateSourceCertificate execution) :
     ForestFriChecks decoder (sha256MerkleHashing sha256) run.forest schedule
       transcript queries := by
   rcases execution.preparationTrace with ⟨trace⟩
+  have hAdapter : AcceptedProductionCoordinateAdapterEquality trace :=
+    hCoordinateSource trace
   have hlater0 : trace.later0 = execution.laterRuns.indices0 := by
     have h := execution.laterRuns.indicesAt0
     rw [trace.later0Read] at h
@@ -1983,14 +1986,15 @@ theorem accepted_production_execution_yields_forest_fri_checks_of_projection
     (hBinding : AcceptedFriModelInputBinding prepared execution.sourceAlphas
       finalPolynomial schedule transcript)
     (hValidate : ValidationSuccessPreservesShape)
-    (hAdapter : ExactProductionCoordinateAdapterAcceptedEquality) :
+    (hCoordinateSource :
+      AcceptedExecutionCoordinateSourceCertificate execution) :
     ForestFriChecks decoder (sha256MerkleHashing sha256) run.forest schedule
       transcript queries := by
   exact accepted_production_execution_yields_forest_fri_checks run openings
     prepared finalPolynomial sink execution hdriver schedule hsource transcript
     queries (scheduledQuery_mem_of_projection relationInput transcriptInput
       derived driverResult querySet queries projection) decoder hCalls
-    hAgreement hDecoder hBinding hValidate hAdapter
+    hAgreement hDecoder hBinding hValidate hCoordinateSource
 
 /-- Specializing the schedule to the exact released tables removes the
 separate table-equality premise.  The transcript projection also supplies all
@@ -2023,7 +2027,8 @@ theorem accepted_production_execution_yields_released_forest_fri_checks
     (hBinding : AcceptedFriModelInputBinding prepared execution.sourceAlphas
       finalPolynomial (exactReleasedFriTables base) transcript)
     (hValidate : ValidationSuccessPreservesShape)
-    (hAdapter : ExactProductionCoordinateAdapterAcceptedEquality) :
+    (hCoordinateSource :
+      AcceptedExecutionCoordinateSourceCertificate execution) :
     ForestFriChecks decoder (sha256MerkleHashing sha256) run.forest
       (exactReleasedFriTables base) transcript queries := by
   exact
@@ -2031,7 +2036,8 @@ theorem accepted_production_execution_yields_released_forest_fri_checks
       openings prepared finalPolynomial sink execution hdriver
       (exactReleasedFriTables base) (exactReleasedFriTables_source_shape base)
       transcript queries relationInput transcriptInput derived driverResult
-      projection decoder hCalls hAgreement hDecoder hBinding hValidate hAdapter
+      projection decoder hCalls hAgreement hDecoder hBinding hValidate
+      hCoordinateSource
 
 /-- Once one exact accepted forest has all four FRI checks, the FRI-arithmetic
 failure arm of the released security event is impossible.  A purported
