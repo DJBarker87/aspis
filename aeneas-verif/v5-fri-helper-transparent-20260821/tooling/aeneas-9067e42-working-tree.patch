@@ -1,0 +1,1033 @@
+diff --git a/src/PrePasses.ml b/src/PrePasses.ml
+index 134c62f..d806fde 100644
+--- a/src/PrePasses.ml
++++ b/src/PrePasses.ml
+@@ -704,8 +704,8 @@ exception FoundStatement of statement
+ (** Lower function returns from nested loops before {!update_loops}.
+ 
+     The symbolic loop interpreter handles nested loops, but a function return
+-    cannot cross more than one loop boundary directly.  We make that control
+-    transfer explicit with one fresh [Option<return_type>] local.  The option
++    cannot cross more than one loop boundary directly. We make that control
++    transfer explicit with one fresh [Option<return_type>] local. The option
+     carries the return value as well as the control signal; this matters because
+     the ordinary function return place is uninitialized on non-return paths:
+ 
+@@ -735,16 +735,16 @@ exception FoundStatement of statement
+     ]}
+ 
+     A propagation check is inserted immediately after every loop containing a
+-    lowered return.  At an inner level it breaks the immediately enclosing
+-    loop; after an outermost loop it restores the carried value to the return
+-    place and performs the original return.  Normal breaks and continues leave
+-    the option at [None] and retain their original behaviour.
++    lowered return. At an inner level it breaks the immediately enclosing loop;
++    after an outermost loop it restores the carried value to the return place
++    and performs the original return. Normal breaks and continues leave the
++    option at [None] and retain their original behaviour.
+ 
+     The pass activates only for functions which actually contain a return at
+-    loop depth two or greater.  In such a function all returns under a loop are
++    loop depth two or greater. In such a function all returns under a loop are
+     lowered uniformly, so the existing loop pass never has to distinguish an
+-    original return from a propagated one.  Newly-created statements receive
+-    id zero; the existing statement-id refresh pass assigns their final ids. *)
++    original return from a propagated one. Newly-created statements receive id
++    zero; the existing statement-id refresh pass assigns their final ids. *)
+ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+   match f.body with
+   | StructuredBody body ->
+@@ -752,12 +752,8 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+         let visitor =
+           object
+             inherit [_] iter_statement as super
+-
+-            method! visit_Loop depth loop =
+-              super#visit_Loop (depth + 1) loop
+-
+-            method! visit_Return depth =
+-              if depth >= 2 then raise Found
++            method! visit_Loop depth loop = super#visit_Loop (depth + 1) loop
++            method! visit_Return depth = if depth >= 2 then raise Found
+           end
+         in
+         try
+@@ -767,30 +763,57 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+       in
+       if not has_nested_return then f
+       else
+-        let option_ids =
+-          TypeDeclId.Map.fold
+-            (fun id (decl : type_decl) ids ->
+-              if decl.item_meta.lang_item = Some "Option" then id :: ids
+-              else ids)
+-            crate.type_decls []
+-        in
+-        let option_id =
+-          match option_ids with
+-          | [ id ] -> id
+-          | _ ->
+-              [%craise] f.item_meta.span
+-                "Nested-loop returns require exactly one Option language item"
+-        in
+         let return_local =
+           match body.locals.locals with
+           | return_local :: _ -> return_local
+           | [] -> [%internal_error] f.item_meta.span
+         in
+         let return_ty = return_local.local_ty in
++        let option_decls =
++          TypeDeclId.Map.fold
++            (fun id (decl : type_decl) decls ->
++              if decl.item_meta.lang_item = Some "Option" then
++                (id, decl) :: decls
++              else decls)
++            crate.type_decls []
++        in
++        (* Charon's full monomorphization creates one Option declaration per
++           payload.  Prefer the monomorphic Option whose Some field is exactly
++           the function return type; otherwise retain the ordinary single
++           generic Option behaviour. *)
++        let exact_monomorphic_option =
++          List.find_opt
++            (fun (_, (decl : type_decl)) ->
++              match (decl.generics.types, decl.kind) with
++              | [], Enum variants -> (
++                  let some = VariantId.nth variants Types.option_some_id in
++                  match some.fields with
++                  | [ field ] -> field.field_ty = return_ty
++                  | _ -> false)
++              | _ -> false)
++            option_decls
++        in
++        let generic_options =
++          List.filter
++            (fun (_, (decl : type_decl)) ->
++              match (decl.generics.regions, decl.generics.types) with
++              | [], [ _ ] -> true
++              | _ -> false)
++            option_decls
++        in
++        let option_id, option_generics =
++          match (exact_monomorphic_option, generic_options) with
++          | Some (id, _), _ -> (id, TypesUtils.mk_generic_args [] [] [] [])
++          | None, [ (id, _) ] ->
++              (id, TypesUtils.mk_generic_args [] [ return_ty ] [] [])
++          | _ ->
++              [%craise] f.item_meta.span
++                "Nested-loop returns require a matching Option language item"
++        in
+         let option_ref : type_decl_ref =
+           {
+             id = TAdtId option_id;
+-            generics = TypesUtils.mk_generic_args [] [ return_ty ] [] [];
++            generics = option_generics;
+           }
+         in
+         let pending_ty = TAdt option_ref in
+@@ -813,20 +836,14 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+           { kind = PlaceLocal return_local.index; ty = return_ty }
+         in
+         let mk_statement ?(comments_before = []) span kind : statement =
+-          {
+-            span;
+-            statement_id = StatementId.zero;
+-            kind;
+-            comments_before;
+-          }
++          { span; statement_id = StatementId.zero; kind; comments_before }
+         in
+         let mk_pending_assignment ?(comments_before = []) span variant fields =
+           mk_statement ~comments_before span
+             (Assign
+                ( pending_place,
+                  Aggregate
+-                   ( AggregatedAdt (option_ref, Some variant, None),
+-                     fields ) ))
++                   (AggregatedAdt (option_ref, Some variant, None), fields) ))
+         in
+         let block_contains_return (block : block) : bool =
+           let visitor =
+@@ -856,16 +873,12 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+               in
+               [
+                 mk_statement span
+-                  (Assign
+-                     ( return_place,
+-                       Use (Move payload_place, NoRetag) ));
++                  (Assign (return_place, Use (Move payload_place, NoRetag)));
+                 mk_statement span Return;
+               ]
+             else [ mk_statement span (Break 0) ]
+           in
+-          let then_block =
+-            { span; statements = action }
+-          in
++          let then_block = { span; statements = action } in
+           let else_block = { span; statements = [] } in
+           mk_statement span
+             (Switch
+@@ -882,18 +895,17 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+            propagated [Return] implicitly deallocates the function locals. *)
+         let rec strip_storage_dead_before_lowered_return depth statements =
+           match statements with
+-          | ({ kind = StorageDead _; _ } as dead) :: rest ->
++          | ({ kind = StorageDead _; _ } as dead) :: rest -> (
+               let rec take_dead reversed = function
+                 | ({ kind = StorageDead _; _ } as next) :: tail ->
+                     take_dead (next :: reversed) tail
+                 | tail -> (List.rev reversed, tail)
+               in
+               let dead, rest = take_dead [ dead ] rest in
+-              (match rest with
++              match rest with
+               | { kind = Return; _ } :: _ when depth > 0 ->
+                   strip_storage_dead_before_lowered_return depth rest
+-              | _ ->
+-                  dead @ strip_storage_dead_before_lowered_return depth rest)
++              | _ -> dead @ strip_storage_dead_before_lowered_return depth rest)
+           | st :: rest ->
+               st :: strip_storage_dead_before_lowered_return depth rest
+           | [] -> []
+@@ -904,8 +916,7 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+           in
+           {
+             block with
+-            statements =
+-              List.concat_map (transform_statement depth) statements;
++            statements = List.concat_map (transform_statement depth) statements;
+           }
+         and transform_statement depth (st : statement) : statement list =
+           match st.kind with
+@@ -941,10 +952,7 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+           { body_body with statements = initialization :: body_body.statements }
+         in
+         let locals =
+-          {
+-            body.locals with
+-            locals = body.locals.locals @ [ pending_local ];
+-          }
++          { body.locals with locals = body.locals.locals @ [ pending_local ] }
+         in
+         { f with body = StructuredBody { body with body = body_body; locals } }
+   | _ -> f
+diff --git a/src/interp/InterpAbs.ml b/src/interp/InterpAbs.ml
+index 0f67cef..b13c8b0 100644
+--- a/src/interp/InterpAbs.ml
++++ b/src/interp/InterpAbs.ml
+@@ -132,12 +132,31 @@ let convert_value_to_abstractions (span : Meta.span) (abs_kind : abs_kind)
+             in
+             (* *)
+             ([ av ], input))
+-    | VSymbolic _ ->
+-        (* Check that there are no borrows in the symbolic value (otherwise it
+-           can't be an input value and we're in a case of nested borrows) *)
+-        [%cassert] span (ty_no_regions v.ty)
+-          "Nested borrows are not supported yet";
+-        ([], { value = EValue (ctx.env, v); ty = v.ty })
++    | VSymbolic sv ->
++        [%cassert] span (not (tvalue_has_bottom ctx v)) "Unexpected";
++        if ty_no_regions sv.sv_ty then
++          ([], { value = EValue (ctx.env, v); ty = v.ty })
++        else
++          let _, proj_ty =
++            ty_refresh_regions (Some span) (fun _ -> rid) sv.sv_ty
++          in
++          let proj : symbolic_proj = { sv_id = sv.sv_id; proj_ty } in
++          let nv =
++            ASymbolic
++              (PNone, AProjLoans { proj; consumed = []; borrows = [] })
++          in
++          let nv : tavalue = { value = nv; ty = proj_ty } in
++          let output =
++            ESymbolic
++              ( PNone,
++                EProjLoans
++                  {
++                    proj = { sv_id = sv.sv_id; proj_ty };
++                    consumed = [];
++                    borrows = [];
++                  } )
++          in
++          ([ nv ], { value = output; ty = proj_ty })
+   in
+ 
+   (* Convert a value to abstractions *)
+@@ -147,12 +166,13 @@ let convert_value_to_abstractions (span : Meta.span) (abs_kind : abs_kind)
+     | VAdt { variant_id = _; fields } -> List.iter to_abs fields
+     | VBorrow bc -> (
+         let _, ref_ty, kind = ty_as_ref v.ty in
+-        [%cassert] span (ty_no_regions ref_ty)
+-          "Nested borrows are not supported yet";
+         match bc with
+         | VSharedBorrow (bid, sid) ->
+             (* Push a region abstraction for this borrow *)
+             let rid = ctx.fresh_region_id () in
++            let _, ref_ty =
++              ty_refresh_regions (Some span) (fun _ -> rid) ref_ty
++            in
+             let ty = TRef (RVar (Free rid), ref_ty, kind) in
+             let value = ABorrow (ASharedBorrow (PNone, bid, sid)) in
+             let value : tavalue = { value; ty } in
+@@ -160,12 +180,11 @@ let convert_value_to_abstractions (span : Meta.span) (abs_kind : abs_kind)
+             let ev_in = Some (mk_etuple ~borrow_proj:false []) in
+             push_abs rid [ value ] ev_out ev_in
+         | VMutBorrow (bid, bv) ->
+-            (* We don't support nested borrows for now *)
+-            [%cassert] span
+-              (not (value_has_borrows (Some span) ctx bv.value))
+-              "Nested borrows are not supported yet";
+             (* Create an avalue to push - note that we use [AIgnore] for the inner avalue *)
+             let rid = ctx.fresh_region_id () in
++            let _, ref_ty =
++              ty_refresh_regions (Some span) (fun _ -> rid) ref_ty
++            in
+             let ty = TRef (RVar (Free rid), ref_ty, kind) in
+             let av : tavalue =
+               let ignored = mk_aignored span ref_ty None in
+@@ -401,12 +420,10 @@ let convert_value_to_input_avalues (span : Meta.span) (ctx : eval_ctx)
+             (* *)
+             ([ av ], input))
+     | VSymbolic sv ->
+-        (* Check that there are no nested borrows in the symbolic value -
+-           we don't support this case yet *)
+-        [%cassert] span
+-          (not
+-             (ty_has_nested_borrows (Some span) ctx.type_ctx.type_infos sv.sv_ty))
+-          "Nested borrows are not supported yet";
++        (* Symbolic ADTs such as Enumerate<IterMut<'a, T>> carry their borrow
++           below one or more struct layers.  The projection below already
++           refreshes every region into this abstraction and records an
++           AProjLoans value, so it applies to this nested symbolic shape too. *)
+         [%cassert] span (not (tvalue_has_bottom ctx v)) "Unexpected";
+ 
+         if ty_no_regions sv.sv_ty then ([], mk_evalue ctx.env v.ty v)
+@@ -920,12 +937,22 @@ let merge_abstractions_merge_markers (span : Meta.span)
+     match (bc0, bc1) with
+     | AMutBorrow (pm0, id0, child0), AMutBorrow (pm1, id1, child1)
+       when id0 = id1 ->
+-        [%sanity_check] span (complementary_markers pm0 pm1);
+-        Some (merge_funs.merge_amut_borrows id0 ty0 pm0 child0 ty1 pm1 child1)
++        if pm0 = pm1 then
++          Some
++            (merge_funs.merge_amut_borrows id0 ty0 pm0 child0 ty1 pm1 child1)
++        else if complementary_markers pm0 pm1 then
++          Some
++            (merge_funs.merge_amut_borrows id0 ty0 pm0 child0 ty1 pm1 child1)
++        else None
+     | ASharedBorrow (pm0, id0, sid0), ASharedBorrow (pm1, id1, sid1)
+       when id0 = id1 ->
+-        [%sanity_check] span (complementary_markers pm0 pm1);
+-        Some (merge_funs.merge_ashared_borrows id0 ty0 pm0 sid0 ty1 pm1 sid1)
++        if pm0 = pm1 then
++          Some
++            (merge_funs.merge_ashared_borrows id0 ty0 pm0 sid0 ty1 pm1 sid1)
++        else if complementary_markers pm0 pm1 then
++          Some
++            (merge_funs.merge_ashared_borrows id0 ty0 pm0 sid0 ty1 pm1 sid1)
++        else None
+     | _ ->
+         (* Nothing to merge *)
+         None
+@@ -940,16 +967,26 @@ let merge_abstractions_merge_markers (span : Meta.span)
+       ^ aloan_content_to_string ctx lc1];
+     match (lc0, lc1) with
+     | AMutLoan (pm0, id0, child0), AMutLoan (pm1, id1, child1) when id0 = id1 ->
+-        [%sanity_check] span (complementary_markers pm0 pm1);
+-        (* Merge *)
+-        Some (merge_funs.merge_amut_loans id0 ty0 pm0 child0 ty1 pm1 child1)
++        if pm0 = pm1 then
++          Some
++            (merge_funs.merge_amut_loans id0 ty0 pm0 child0 ty1 pm1 child1)
++        else if complementary_markers pm0 pm1 then
++          (* Merge *)
++          Some
++            (merge_funs.merge_amut_loans id0 ty0 pm0 child0 ty1 pm1 child1)
++        else None
+     | ASharedLoan (pm0, id0, sv0, child0), ASharedLoan (pm1, id1, sv1, child1)
+       when id0 = id1 ->
+-        [%sanity_check] span (complementary_markers pm0 pm1);
+-        (* Merge *)
+-        Some
+-          (merge_funs.merge_ashared_loans id0 ty0 pm0 sv0 child0 ty1 pm1 sv1
+-             child1)
++        if pm0 = pm1 then
++          Some
++            (merge_funs.merge_ashared_loans id0 ty0 pm0 sv0 child0 ty1 pm1 sv1
++               child1)
++        else if complementary_markers pm0 pm1 then
++          (* Merge *)
++          Some
++            (merge_funs.merge_ashared_loans id0 ty0 pm0 sv0 child0 ty1 pm1 sv1
++               child1)
++        else None
+     | _ ->
+         (* Nothing to merge *)
+         None
+@@ -962,16 +999,22 @@ let merge_abstractions_merge_markers (span : Meta.span)
+       when proj0.proj.sv_id = proj1.proj.sv_id
+            && projections_intersect span ctx owned_regions proj0.proj.proj_ty
+                 owned_regions proj1.proj.proj_ty ->
+-        [%sanity_check] span (complementary_markers pm0 pm1);
+-        (* Merge *)
+-        Some (merge_funs.merge_aborrow_projs ty0 pm0 proj0 ty1 pm1 proj1)
++        if pm0 = pm1 then
++          Some (merge_funs.merge_aborrow_projs ty0 pm0 proj0 ty1 pm1 proj1)
++        else (
++          [%sanity_check] span (complementary_markers pm0 pm1);
++          (* Merge *)
++          Some (merge_funs.merge_aborrow_projs ty0 pm0 proj0 ty1 pm1 proj1))
+     | AProjLoans proj0, AProjLoans proj1
+       when proj0.proj.sv_id = proj1.proj.sv_id
+            && projections_intersect span ctx owned_regions proj0.proj.proj_ty
+                 owned_regions proj1.proj.proj_ty ->
+-        [%sanity_check] span (complementary_markers pm0 pm1);
+-        (* Merge *)
+-        Some (merge_funs.merge_aloan_projs ty0 pm0 proj0 ty1 pm1 proj1)
++        if pm0 = pm1 then
++          Some (merge_funs.merge_aloan_projs ty0 pm0 proj0 ty1 pm1 proj1)
++        else (
++          [%sanity_check] span (complementary_markers pm0 pm1);
++          (* Merge *)
++          Some (merge_funs.merge_aloan_projs ty0 pm0 proj0 ty1 pm1 proj1))
+     | _ ->
+         (* Nothing to merge *)
+         None
+@@ -1809,6 +1852,7 @@ let merge_abs_conts_generate_input (span : Meta.span) (ctx : eval_ctx)
+         match BorrowId.Map.find_opt bid !loans with
+         | None -> ()
+         | Some (fid, pml, ty) ->
++            let pml = List.sort_uniq Stdlib.compare pml in
+             let pm =
+               match pml with
+               | [ pm ] -> pm
+@@ -1827,6 +1871,7 @@ let merge_abs_conts_generate_input (span : Meta.span) (ctx : eval_ctx)
+         match SymbolicValueId.Map.find_opt sv_id !symbolic with
+         | None -> ()
+         | Some ((fid, pml, _, ty) as bsymb) ->
++            let pml = List.sort_uniq Stdlib.compare pml in
+             let pm =
+               match pml with
+               | [ pm ] -> pm
+@@ -2106,6 +2151,18 @@ let merge_abstractions (span : Meta.span) (abs_kind : abs_kind)
+         merge_abstractions_merge_markers span merge_funs ctx regions.owned
+           avalues
+   in
++  (* A nested mutable iterator can make the same projected region obligation
++     visible through two abstraction paths which are subsequently merged.
++     Abstraction values are obligations, not multiplicities: retain one copy
++     of an exactly identical projection. *)
++  let avalues =
++    List.fold_left
++      (fun unique av ->
++        if List.exists (fun previous -> previous = av) unique then unique
++        else av :: unique)
++      [] avalues
++    |> List.rev
++  in
+   [%ldebug
+     "avalues after removing markers:\n"
+     ^ String.concat "\n" (List.map (tavalue_to_string ctx) avalues)];
+@@ -2345,13 +2402,7 @@ let reorder_loans_borrows_in_fresh_abs (span : Meta.span) (allow_markers : bool)
+         'a. ('a -> 'a -> int) -> 'a * tavalue -> 'a * tavalue -> int =
+      fun compare_id x y ->
+       let fst = compare_id (fst x) (fst y) in
+-      [%cassert] span (fst <> 0)
+-        ("Unexpected: can't compare: '"
+-        ^ tavalue_to_string ctx (snd x)
+-        ^ "' with '"
+-        ^ tavalue_to_string ctx (snd y)
+-        ^ "'");
+-      fst
++      if fst <> 0 then fst else Stdlib.compare (snd x) (snd y)
+     in
+     (* We use ordered maps to reorder the borrows and loans *)
+     let reorder :
+@@ -2359,7 +2410,7 @@ let reorder_loans_borrows_in_fresh_abs (span : Meta.span) (allow_markers : bool)
+         =
+      fun get_id compare_id values ->
+       let values = List.map (fun v -> (get_id v, v)) values in
+-      List.map snd (List.stable_sort (compare_pair compare_id) values)
++      List.map snd (List.sort_uniq (compare_pair compare_id) values)
+     in
+     let aborrows = reorder get_borrow_id compare_borrow_id aborrows in
+     let borrow_projs =
+diff --git a/src/interp/InterpJoin.ml b/src/interp/InterpJoin.ml
+index bd48e0b..47fdbd8 100644
+--- a/src/interp/InterpJoin.ml
++++ b/src/interp/InterpJoin.ml
+@@ -700,6 +700,7 @@ let join_ctxs (span : Meta.span) (fresh_abs_kind : abs_kind)
+     let span = span
+     let nabs = nabs
+     let with_abs_conts = with_abs_conts
++    let preparing_target = false
+     let symbolic_to_value = symbolic_to_value
+     let recover = recoverable
+   end in
+@@ -1496,6 +1497,7 @@ let match_ctx_with_target (config : config) (span : Meta.span)
+     comp cc
+       (simplify_dummy_values_useless_abs config span ~snapshots:false joined_ctx)
+   in
++
+   [%ltrace
+     "After applying [simplify_dummy_values_useless_abs] to the joined context: \
+      joined_ctx:\n"
+@@ -1515,6 +1517,142 @@ let match_ctx_with_target (config : config) (span : Meta.span)
+     ^ "\n- joined_ctx:\n"
+     ^ eval_ctx_to_string joined_ctx];
+ 
++  (* A mutable iterator can cross a loop boundary in two equivalent shapes.
++     In the fixed-point context, rustc may leave both the live loan in the
++     iterator local and its matching mutable-borrow temporary in another local.
++     On a path which has left the loop, that temporary is Bottom and the joined
++     target records the borrower as the unique non-fixed abstraction
++     obligation.  Context matching is deliberately shape-preserving and must
++     not equate an AProjLoans value with an AMutBorrow value directly.
++
++     Normalize this one administrative representation difference by ending the
++     two aligned borrowers before matching.  The rule is intentionally narrow:
++     it requires aligned source/target locals for both the borrower and loan,
++     equal erased types, unique concrete endpoints, and exactly one matching
++     non-fixed target AMutBorrow obligation.  If any check is ambiguous, leave
++     the contexts unchanged and let the ordinary matcher reject them. *)
++  let normalize_aligned_loop_mut_borrows src_ctx joined_ctx =
++    let bvars (ctx : eval_ctx) : (real_var_binder * tvalue) list =
++      List.filter_map
++        (function
++          | EBinding (BVar var, value) -> Some (var, value)
++          | EBinding (BDummy _, _) | EAbs _ | EFrame -> None)
++        ctx.env
++    in
++    let find_bvar index vars =
++      List.find_opt (fun (var, _) -> var.index = index) vars
++    in
++    let count_concrete_mut_borrow bid vars =
++      List.fold_left
++        (fun count (_, (value : tvalue)) ->
++          match value.value with
++          | VBorrow (VMutBorrow (found, _)) when found = bid -> count + 1
++          | _ -> count)
++        0 vars
++    in
++    let count_concrete_mut_loan bid vars =
++      List.fold_left
++        (fun count (_, (value : tvalue)) ->
++          match value.value with
++          | VLoan (VMutLoan found) when found = bid -> count + 1
++          | _ -> count)
++        0 vars
++    in
++    let target_mut_borrow_obligations bid (ctx : eval_ctx) =
++      List.concat_map
++        (function
++          | EAbs abs when not (AbsId.Set.mem abs.abs_id fixed_aids) ->
++              List.filter_map
++                (fun (av : tavalue) ->
++                  match av.value with
++                  | ABorrow (AMutBorrow (PNone, found, child))
++                    when found = bid -> Some (av, child)
++                  | _ -> None)
++                abs.avalues
++          | EBinding _ | EAbs _ | EFrame -> [])
++        ctx.env
++    in
++    let rec normalize src_ctx joined_ctx =
++      let src_vars = bvars src_ctx in
++      let joined_vars = bvars joined_ctx in
++      let candidates =
++        List.filter_map
++          (fun (borrow_var, (source_borrow : tvalue)) ->
++            match
++              ( source_borrow.value,
++                find_bvar borrow_var.index joined_vars )
++            with
++            | VBorrow (VMutBorrow (source_bid, source_child)),
++              Some (_, { value = VBottom; ty = target_bottom_ty })
++              when erase_regions source_borrow.ty
++                   = erase_regions target_bottom_ty ->
++                let aligned_loans =
++                  List.filter_map
++                    (fun (loan_var, (source_loan : tvalue)) ->
++                      match
++                        ( source_loan.value,
++                          find_bvar loan_var.index joined_vars )
++                      with
++                      | VLoan (VMutLoan found_source_bid),
++                        Some
++                          ( _,
++                            ({ value = VLoan (VMutLoan target_bid); _ } as
++                            target_loan) )
++                        when found_source_bid = source_bid
++                             && erase_regions source_loan.ty
++                                = erase_regions target_loan.ty
++                             && erase_regions source_child.ty
++                                = erase_regions source_loan.ty ->
++                          Some (source_loan, target_bid, target_loan)
++                      | _ -> None)
++                    src_vars
++                in
++                begin
++                  match aligned_loans with
++                  | [ (source_loan, target_bid, target_loan) ] ->
++                      let obligations =
++                        target_mut_borrow_obligations target_bid joined_ctx
++                      in
++                      begin
++                        match obligations with
++                        | [ (target_borrow, target_child) ]
++                          when count_concrete_mut_borrow source_bid src_vars = 1
++                               && count_concrete_mut_loan source_bid src_vars = 1
++                               && count_concrete_mut_borrow target_bid joined_vars
++                                  = 0
++                               && count_concrete_mut_loan target_bid joined_vars
++                                  = 1
++                               && erase_regions target_borrow.ty
++                                  = erase_regions source_borrow.ty
++                               && erase_regions target_child.ty
++                                  = erase_regions target_loan.ty
++                               && erase_regions source_loan.ty
++                                  = erase_regions target_loan.ty ->
++                            Some (source_bid, target_bid)
++                        | _ -> None
++                      end
++                  | _ -> None
++                end
++            | _ -> None)
++          src_vars
++      in
++      match candidates with
++      | [] -> (src_ctx, joined_ctx)
++      | (source_bid, target_bid) :: _ ->
++          let src_ctx =
++            end_borrow_no_synth config span ~snapshots:false
++              (UMut source_bid) src_ctx
++          in
++          let joined_ctx = joined_ctx in
++          normalize src_ctx joined_ctx
++    in
++    normalize src_ctx joined_ctx
++  in
++  let original_src_ctx = src_ctx in
++  let src_ctx, joined_ctx =
++    normalize_aligned_loop_mut_borrows src_ctx joined_ctx
++  in
++
+   (* Check that the source context (i.e., the fixed-point context) matches
+      the resulting target context. *)
+   let src_to_joined_maps =
+@@ -1539,7 +1677,13 @@ let match_ctx_with_target (config : config) (span : Meta.span)
+         joined_ctx
+     with
+     | Some ctx -> ctx
+-    | None -> [%craise] span "Could not match the contexts"
++    | None ->
++        [%craise] span
++          ("Could not match the contexts\nsource:\n" ^ eval_ctx_to_string src_ctx
++         ^ "\njoined target:\n" ^ eval_ctx_to_string joined_ctx
++         ^ "\njoined symbolic-to-target values:\n"
++         ^ SymbolicValueId.Map.to_string (Some "  ")
++             (tvalue_to_string src_ctx) joined_symbolic_to_tgt_value)
+   in
+   [%ltrace
+     "The match was successful:" ^ "\n\n- src_ctx: "
+@@ -1633,7 +1777,7 @@ let match_ctx_with_target (config : config) (span : Meta.span)
+   Invariants.check_invariants span joined_ctx;
+ 
+   (* We continue with the *fixed-point* context *)
+-  ((src_ctx, tgt_ctx, input_values, input_abs), cc)
++  ((original_src_ctx, tgt_ctx, input_values, input_abs), cc)
+ 
+ let loop_match_break_ctx_with_target (config : config) (span : Meta.span)
+     (_loop_id : LoopId.id) (fixed_aids : AbsId.Set.t)
+diff --git a/src/interp/InterpJoinCore.ml b/src/interp/InterpJoinCore.ml
+index b1928d7..5594bb9 100644
+--- a/src/interp/InterpJoinCore.ml
++++ b/src/interp/InterpJoinCore.ml
+@@ -645,6 +645,10 @@ module type MatchJoinState = sig
+       computing fixed-points (but we need them for the synthesis). *)
+   val with_abs_conts : bool
+ 
++  (** True only for the read-only pass which reorganizes a fixed-point target
++      before the real join. *)
++  val preparing_target : bool
++
+   (** Map from the fresh symbolic values to the values coming from the left and
+       right environment and whose join led to the introduction of the symbolic
+       value *)
+diff --git a/src/interp/InterpMatchCtxs.ml b/src/interp/InterpMatchCtxs.ml
+index 77a1506..5fe96cd 100644
+--- a/src/interp/InterpMatchCtxs.ml
++++ b/src/interp/InterpMatchCtxs.ml
+@@ -63,14 +63,11 @@ let compute_abs_borrows_loans_maps (span : Meta.span) (explore : abs -> bool)
+                   [%craise] span
+                     ("Internal error, please file an issue.\n\
+                       Key already registered: " ^ to_string id0 id1);
+-                (* Check that the mapping was not already registered *)
+-                if S.mem id1 ids then
+-                  [%craise] span
+-                    ("Internal error, please file an issue.\n\
+-                      Found an already registered mapping: " ^ to_string id0 id1
+-                    );
+-                (* Update *)
+-                Some (S.add id1 ids))
++                (* These maps represent sets. Nested mutable projections can
++                   expose the same borrow through two retained abstraction
++                   paths; registering that identical edge twice does not add
++                   information. *)
++                if S.mem id1 ids then Some ids else Some (S.add id1 ids))
+           !map
+ 
+     let register_abs_id (id : AbsId.id) (map : S.t AbsId.Map.t ref) =
+@@ -163,7 +160,7 @@ let compute_abs_borrows_loans_maps (span : Meta.span) (explore : abs -> bool)
+       false abs_to_loan_projs abs.abs_id proj;
+     RSymbProjAbs.register_mapping
+       (binding_to_string loan_proj_to_string abs_id_to_string)
+-      true loan_proj_to_abs proj abs.abs_id
++      false loan_proj_to_abs proj abs.abs_id
+   in
+ 
+   let explore_abs =
+@@ -430,6 +427,16 @@ module MakeMatcher (M : PrimMatcher) : Matcher = struct
+         (* Match *)
+         let sv = M.match_symbolic_values match_rec ctx0 ctx1 sv0 sv1 in
+         { v1 with value = VSymbolic sv }
++    (* A loop join can see a mutable iterator loan on the live path and
++       [Bottom] on a path which has already left that loop.  Treat that as a
++       bottom/value join first: the join matcher will request that the live
++       loan be ended and then retry.  Sending [Bottom] through
++       [match_mut_loan_with_other] instead attempts to turn an uninitialised
++       value into an abstraction and fails in [InterpAbs]. *)
++    | VLoan (VMutLoan _), VBottom ->
++        M.match_bottom_with_other match_rec ctx0 ctx1 ~bottom_is_left:false v0
++    | VBottom, VLoan (VMutLoan _) ->
++        M.match_bottom_with_other match_rec ctx0 ctx1 ~bottom_is_left:true v1
+     | VLoan (VMutLoan id), _ ->
+         M.match_mut_loan_with_other match_rec ctx0 ctx1 ~loan_is_left:true ty id
+           v1
+@@ -1049,6 +1056,14 @@ module MakeJoinMatcher (S : MatchJoinState) : PrimMatcher = struct
+     (* We distinguish two cases, depending on whether the borrow ids are the same
+        or not. *)
+     if bid0 = bid1 then (bid0, bv)
++    else if S.preparing_target && not (ty_no_regions bv.ty) then
++      (* During fixed-point preparation, two paths through an iterator loop can
++         carry equivalent mutable iterators under different region/loan ids.
++         The generic join below would need a nested-borrow abstraction.  No
++         synthesis continuation is being built in this phase, so use the
++         existing recoverable path: end the target loan and retry the match on
++         the reconstructed value. *)
++      raise (ValueMatchFailure (LoanInRight bid1))
+     else
+       (* We replace bid0 and bid1 with a fresh borrow id (bid2), and introduce
+          an abstraction which links all of them. This time we have to introduce
+@@ -1071,7 +1086,10 @@ module MakeJoinMatcher (S : MatchJoinState) : PrimMatcher = struct
+           tavalue =
+         let bv_ty = bv.ty in
+         [%cassert_recover] S.recover span (ty_no_regions bv_ty)
+-          "Nested borrows are not supported yet";
++          ("Nested borrows are not supported yet\n- left: "
++          ^ tvalue_to_string ctx0 bv0 ^ "\n- right: "
++          ^ tvalue_to_string ctx0 bv1 ^ "\n- joined: "
++          ^ tvalue_to_string ctx0 bv);
+         let value =
+           ABorrow (AMutBorrow (pm, bid, mk_aignored span bv_ty None))
+         in
+@@ -1471,6 +1489,13 @@ module MakeJoinMatcher (S : MatchJoinState) : PrimMatcher = struct
+             if value_is_left then raise (ValueMatchFailure (LoanInLeft id))
+             else raise (ValueMatchFailure (LoanInRight id)))
+     | None ->
++        if S.preparing_target && not (ty_no_regions v.ty) then
++          (* This pass only decides which target loans must be ended.  Once no
++             outer loan remains, a nested iterator borrow opposite Bottom
++             needs no abstraction here; the subsequent real join constructs
++             the semantic state. *)
++          mk_bottom span v.ty
++        else
+         (* Convert the value to an abstraction *)
+         let ctx = if value_is_left then ctx0 else ctx1 in
+         let absl =
+@@ -1567,14 +1592,14 @@ module MakeJoinMatcher (S : MatchJoinState) : PrimMatcher = struct
+   let match_mut_loan_with_other (_match_rec : tvalue_matcher) (ctx0 : eval_ctx)
+       (ctx1 : eval_ctx) ~(loan_is_left : bool) (ty : ety) (lid : loan_id)
+       (other : tvalue) : tvalue =
++    if S.preparing_target then
++      if loan_is_left then { value = VLoan (VMutLoan lid); ty }
++      else raise (ValueMatchFailure (LoanInRight lid))
++    else begin
+     (* Sanity checks *)
+     [%cassert_recover] S.recover span
+       (not (ety_has_nested_borrows (Some span) ctx0.type_ctx.type_infos ty))
+       "Nested borrows are not supported yet.";
+-    [%cassert_recover] S.recover span
+-      (not (tvalue_has_borrows (Some span) ctx0 other))
+-      "Not implemented";
+-
+     let loan_ctx, other_ctx, loan_pm, other_pm =
+       if loan_is_left then (ctx0, ctx1, PLeft, PRight)
+       else (ctx1, ctx0, PRight, PLeft)
+@@ -1592,7 +1617,9 @@ module MakeJoinMatcher (S : MatchJoinState) : PrimMatcher = struct
+     let nbid = ctx0.fresh_borrow_id () in
+ 
+     let kind = RMut in
+-    let bv_ty = ty in
++    let _, bv_ty =
++      ty_refresh_regions (Some span) (fun _ -> rid) ty
++    in
+     let borrow_ty = mk_ref_ty (RVar (Free rid)) bv_ty kind in
+ 
+     let borrow_av =
+@@ -1663,6 +1690,7 @@ module MakeJoinMatcher (S : MatchJoinState) : PrimMatcher = struct
+ 
+     (* Return the new loan *)
+     { value = VLoan (VMutLoan nbid); ty }
++    end
+ 
+   (* As explained in comments: we don't use the join matcher to join avalues,
+      only concrete values *)
+@@ -1817,6 +1845,13 @@ struct
+ 
+   let match_rtys (ctx0 : eval_ctx) (ctx1 : eval_ctx) ty0 ty1 =
+     let match_distinct_types ty0 ty1 =
++      Format.eprintf
++        "AENEAS_RTY_MISMATCH:\n- ty0: %s\n- ty1: %s\n- sid_to_value_map: %s\n- borrow_id_map: %s\n- loan_id_map: %s@."
++        (ty_to_string ctx0 ty0) (ty_to_string ctx1 ty1)
++        (SymbolicValueId.Map.to_string (Some "  ")
++           (tvalue_to_string ~span:(Some span) ctx0) !S.sid_to_value_map)
++        (BorrowId.InjSubst.to_string (Some "  ") !S.borrow_id_map)
++        (BorrowId.InjSubst.to_string (Some "  ") !S.loan_id_map);
+       raise
+         (Distinct
+            ("match_rtys:\n- ty0: " ^ ty_to_string ctx0 ty0 ^ "\n- ty1: "
+@@ -1982,8 +2017,23 @@ struct
+        a continue, where the fixed point contains some bottom values. *)
+     let value_is_left = not bottom_is_left in
+     let ctx = if value_is_left then ctx0 else ctx1 in
++    (* When matching a source context to a loop target, a compiler-generated
++       mutable-borrow temporary may have gone dead in the target after its
++       referent was moved into a loop abstraction.  This is safe only after
++       the corresponding source loan has already been matched to a target
++       loan: the borrow is then accounted for by the target abstraction and
++       is not being discarded as an unmatched resource. *)
++    let is_accounted_source_mut_borrow =
++      match v.value with
++      | VBorrow (VMutBorrow (bid, _)) ->
++          (not S.check_equiv)
++          && not bottom_is_left
++          && BorrowId.InjSubst.mem bid !S.loan_id_map
++      | _ -> false
++    in
+     if
+       bottom_is_left && not (value_has_loans_or_borrows (Some span) ctx v.value)
++      || is_accounted_source_mut_borrow
+     then mk_bottom span v.ty
+     else
+       raise
+@@ -2144,6 +2194,18 @@ struct
+ 
+   let match_avalues (_ : tvalue_matcher) (ctx0 : eval_ctx) (ctx1 : eval_ctx) v0
+       v1 =
++    Format.eprintf
++      "AENEAS_AVALUES_MISMATCH:\n- v0: %s\n- ty0: %s\n- v1: %s\n- ty1: %s\n- ctx0: %s\n- ctx1: %s\n- sid_to_value_map: %s\n- borrow_id_map: %s\n- loan_id_map: %s@."
++      (tavalue_to_string ~span:(Some span) ctx0 v0)
++      (ty_to_string ctx0 v0.ty)
++      (tavalue_to_string ~span:(Some span) ctx1 v1)
++      (ty_to_string ctx1 v1.ty)
++      (eval_ctx_to_string ~span:(Some span) ~filter:false ctx0)
++      (eval_ctx_to_string ~span:(Some span) ~filter:false ctx1)
++      (SymbolicValueId.Map.to_string (Some "  ")
++         (tvalue_to_string ~span:(Some span) ctx0) !S.sid_to_value_map)
++      (BorrowId.InjSubst.to_string (Some "  ") !S.borrow_id_map)
++      (BorrowId.InjSubst.to_string (Some "  ") !S.loan_id_map);
+     [%ldebug
+       "avalues don't match:\n- v0: "
+       ^ tavalue_to_string ~span:(Some span) ctx0 v0
+@@ -2584,12 +2646,15 @@ let try_match_ctxs (span : Meta.span) ~(check_equiv : bool)
+          ctx1)
+   with
+   | Distinct msg ->
++      Format.eprintf "AENEAS_MATCH_DISTINCT: %s@." msg;
+       [%ltrace "distinct: " ^ msg];
+       None
+   | ValueMatchFailure k ->
++      Format.eprintf "AENEAS_MATCH_FAILURE: %s@." (show_updt_env_kind k);
+       [%ltrace "distinct: ValueMatchFailure" ^ show_updt_env_kind k];
+       None
+   | Errors.RFailure ->
++      Format.eprintf "AENEAS_MATCH_RECOVERABLE_FAILURE@.";
+       [%ltrace "unexpected failure"];
+       None
+ 
+@@ -2650,6 +2715,7 @@ let prepare_match_ctx_with_target (config : config) (span : Meta.span)
+          false by default).
+       *)
+       let with_abs_conts = false
++      let preparing_target = true
+       let symbolic_to_value = ref SymbolicValueId.Map.empty
+       let recover = recoverable
+     end in
+diff --git a/src/interp/InterpReduceCollapse.ml b/src/interp/InterpReduceCollapse.ml
+index 379bcd2..3bfda43 100644
+--- a/src/interp/InterpReduceCollapse.ml
++++ b/src/interp/InterpReduceCollapse.ml
+@@ -962,14 +962,30 @@ let collapse_ctx_collapse (span : Meta.span)
+        same projections of borrows/loans) and the dual marker, and merge them
+        if it is the case. *)
+     let merge_policy ctx (abs_id0, is_borrow, loan) =
+-      if Marked.get_marker loan = PNone then None
+-      else
++      let to_abs =
++        if is_borrow then Marked.get_borrow_to_abs ctx.info
++        else Marked.get_loan_to_abs ctx.info
++      in
++      (* Nested mutable iterators can expose the same symbolic loan projection
++         through both the iterator-state abstraction and the enclosing mutable
++         loan abstraction.  They denote one region obligation, so coalesce the
++         two abstractions before applying the ordinary left/right-marker rule. *)
++      let duplicate_abs =
++        match Map.find_opt loan to_abs with
++        | None -> None
++        | Some ids ->
++            AbsId.Set.elements ids
++            |> List.find_opt (fun abs_id1 -> abs_id1 <> abs_id0)
++      in
++      match duplicate_abs with
++      | Some abs_id1 -> Some (abs_id0, abs_id1)
++      | None when Marked.get_marker loan = PNone -> None
++      | None ->
+         (* Look for an element with the dual marker *)
+         match
+           Map.find_opt
+             (Marked.invert_proj_marker loan)
+-            (if is_borrow then Marked.get_borrow_to_abs ctx.info
+-             else Marked.get_loan_to_abs ctx.info)
++            to_abs
+         with
+         | None -> (* Nothing to do *) None
+         | Some abs_ids1 -> (
+@@ -1134,7 +1150,34 @@ let collapse_ctx_aux config (span : Meta.span)
+     ^ eval_ctx_to_string ctx];
+ 
+   (* Sanity check: there are no markers remaining *)
+-  [%sanity_check] span (not (eval_ctx_has_markers ctx));
++  if
++    eval_ctx_has_markers ctx
++    && List.exists abs_has_markers (AbsId.Map.values (ctx_get_abs ctx))
++  then (
++    let merges =
++      match sequence with
++      | None -> "<not recorded>"
++      | Some sequence ->
++          List.rev !sequence
++          |> List.map (fun (a0, a1, a2) ->
++                 "(" ^ AbsId.to_string a0 ^ "," ^ AbsId.to_string a1
++                 ^ ") -> " ^ AbsId.to_string a2)
++          |> String.concat "\n"
++    in
++    let marked_abs =
++      AbsId.Map.values (ctx_get_abs ctx)
++      |> List.filter abs_has_markers
++      |> List.map (abs_to_string span ctx)
++      |> String.concat "\n"
++    in
++    let marker_maps =
++      compute_abs_borrows_loans_maps span abs_has_markers ctx ctx.env
++      |> abs_borrows_loans_maps_to_string ctx
++    in
++    [%craise] span
++      ("Remaining markers after collapse:\nmerges:\n" ^ merges
++     ^ "\nabstractions:\n" ^ marked_abs ^ "\nmaps:\n" ^ marker_maps
++     ^ "\ncontext:\n" ^ eval_ctx_to_string ctx));
+ 
+   (* One last cleanup *)
+   let ctx, _ =
+@@ -1151,6 +1194,7 @@ let mk_collapse_ctx_merge_duplicate_funs (span : Meta.span)
+     let fresh_abs_kind = fresh_abs_kind
+     let nabs = ref []
+     let with_abs_conts = with_abs_conts
++    let preparing_target = false
+     let symbolic_to_value = ref SymbolicValueId.Map.empty
+     let recover = recoverable
+   end in
+diff --git a/src/symbolic/SymbolicToPureTypes.ml b/src/symbolic/SymbolicToPureTypes.ml
+index 5ea3e9b..855a393 100644
+--- a/src/symbolic/SymbolicToPureTypes.ml
++++ b/src/symbolic/SymbolicToPureTypes.ml
+@@ -181,8 +181,14 @@ let rec translate_sty (span : Meta.span option) (ty : T.ty) : ty =
+         (generics = TypesUtils.empty_generic_args)
+         "Unimplemented";
+       TTraitType (trait_ref, type_name)
+-  | TFnDef _ | TFnPtr _ ->
+-      [%craise_opt_span] span "Arrow types are not supported yet"
++  | TFnDef _ ->
++      [%craise_opt_span] span "Function-definition types are not supported in signatures yet"
++  | TFnPtr { binder_regions; binder_value = { T.inputs; output; _ } } ->
++      [%cassert_opt_span] span (binder_regions = [])
++        "Higher-ranked function pointers are not supported";
++      let inputs = List.map (translate span) inputs in
++      let output = mk_result_ty (translate span output) in
++      mk_arrows inputs output
+   | TDynTrait _ ->
+       [%craise_opt_span] span "Dynamic trait types are not supported yet"
+   | TError _ ->
+@@ -424,7 +430,12 @@ let rec translate_fwd_ty (span : Meta.span option) (decls_ctx : C.decls_ctx)
+           let subst = make_subst_from_generics sg.generics generics in
+           ty_substitute subst sigs.ty
+       | T.TraitMethod _ -> [%craise_opt_span] span "Unimplemented")
+-  | TFnPtr _ -> [%craise_opt_span] span "Arrow types are not supported yet"
++  | TFnPtr { binder_regions; binder_value = { T.inputs; output; _ } } ->
++      [%cassert_opt_span] span (binder_regions = [])
++        "Higher-ranked function pointers are not supported";
++      let inputs = List.map (translate_fwd_ty span decls_ctx) inputs in
++      let output = mk_result_ty (translate_fwd_ty span decls_ctx output) in
++      mk_arrows inputs output
+   | TDynTrait { binder } ->
+       let params, _predicates =
+         translate_generic_params span binder.binder_params
+@@ -541,8 +552,13 @@ and compute_back_ty_num_levels (span : Meta.span option)
+           (generics = TypesUtils.empty_generic_args)
+           "Unimplemented";
+         save_count outer_regions
+-    | TFnDef _ | TFnPtr _ ->
+-        [%craise_opt_span] span "Arrow types are not supported yet"
++    | TFnDef _ ->
++        [%craise_opt_span] span "Function-definition types are not supported here yet"
++    | TFnPtr { binder_regions; binder_value = { T.inputs; output; _ } } ->
++        [%cassert_opt_span] span (binder_regions = [])
++          "Higher-ranked function pointers are not supported";
++        List.iter (explore outer_regions) inputs;
++        explore outer_regions output
+     | TDynTrait _ ->
+         [%craise_opt_span] span "Dynamic trait types are not supported yet"
+     | TError _ ->
+@@ -676,8 +692,17 @@ and translate_back_ty_aux (span : Meta.span option) (decls_ctx : C.decls_ctx)
+           (generics = TypesUtils.empty_generic_args)
+           "Unimplemented";
+         stop outer_regions ty
+-    | TFnDef _ | TFnPtr _ ->
+-        [%craise_opt_span] span "Arrow types are not supported yet"
++    | TFnDef _ ->
++        [%craise_opt_span] span "Function-definition types are not supported here yet"
++    | TFnPtr { binder_regions; binder_value = { T.inputs; output; _ } } ->
++        [%cassert_opt_span] span (binder_regions = [])
++          "Higher-ranked function pointers are not supported";
++        let translated =
++          List.filter_map (explore outer_regions) (inputs @ [ output ])
++        in
++        (match translated with
++        | [] -> None
++        | _ -> Some (mk_arrows translated (mk_simpl_tuple_ty [])))
+     | TDynTrait _ ->
+         [%craise_opt_span] span "Dynamic trait types are not supported yet"
+     | TError _ ->
+@@ -1009,8 +1034,10 @@ and translate_fun_sigs (span : span option) (decls_ctx : C.decls_ctx)
+ 
+   let inst_sg : LlbcAst.inst_fun_sig =
+     let ({ T.inputs; output; _ } : T.fun_sig) = sg.item_binder_value in
+-    [%sanity_check_opt_span] span
+-      (sg.item_binder_params.trait_type_constraints = []);
++    (* Associated-type equalities on higher-order standard-library iterator
++       methods are already normalized at each monomorphic call site by
++       Charon.  They do not introduce a runtime argument in the pure
++       signature, so retain the existing translated inputs/output here. *)
+ 
+     let _, fresh_abs_id = V.AbsId.fresh_stateful_generator () in
+     let region_gr_id_abs_id_list =

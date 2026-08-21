@@ -1,0 +1,14 @@
+[package]
+name = "aspis-v5-fri-helper-transparent"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+aspis-core = { path = "../../../crates/aspis-core" }
+
+[workspace]

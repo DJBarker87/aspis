@@ -26,6 +26,7 @@ namespace V5FriConsumerExact
     Name pattern: [aspis_core::field::PreparedQm31Multiplier]
     Visibility: public -/
 @[rust_type "aspis_core::field::PreparedQm31Multiplier"]
-axiom aspis_core.field.PreparedQm31Multiplier : Type
+structure aspis_core.field.PreparedQm31Multiplier where
+  components : Array (Array Std.U32 3#usize) 3#usize
 
 end V5FriConsumerExact

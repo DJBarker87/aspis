@@ -4,6 +4,7 @@
 import Aeneas.Std
 import Aeneas.Tactic.RustAttributes
 import CheckV5FriQueries.Types
+import CheckV5FriQueries.HelperTransport
 open Aeneas Aeneas.Std Result ControlFlow Error
 set_option linter.dupNamespace false
 set_option linter.hashCommand false
@@ -268,12 +269,13 @@ axiom aspis_core.circle_fri.derive_query_fold_inverses_for_circle
     Visibility: public -/
 @[rust_fun
   "aspis_core::circle_fri::normalized_circle_to_line_arity4_prepared_polynomial_refs"]
-axiom
+def
   aspis_core.circle_fri.normalized_circle_to_line_arity4_prepared_polynomial_refs
   :
   (Array aspis_core.field.QM31 4#usize) → (Array
     aspis_core.field.PreparedQm31Multiplier 3#usize) → aspis_core.field.M31
-    → aspis_core.field.M31 → Result aspis_core.field.QM31
+    → aspis_core.field.M31 → Result aspis_core.field.QM31 :=
+  V5FriConsumerExact.HelperTransport.circle
 
 /-- [aspis_core::circle_line_merkle::CIRCLE_LINE_TAGS]
     Source: 'crates/aspis-core/src/circle_line_merkle.rs', lines 18:0-18:57
@@ -336,13 +338,14 @@ axiom aspis_core.circle_pcs_shape.CirclePcsShape.total_columns
     Visibility: public -/
 @[rust_fun
   "aspis_core::circle_query::check_fixed_line_transition_prepared_polynomial_powers"]
-axiom
+def
   aspis_core.circle_query.check_fixed_line_transition_prepared_polynomial_powers
   :
   (Slice Std.U8) → (Slice Std.U8) → Std.Usize → Std.U8 → (Array
     aspis_core.field.M31 3#usize) → (Array
     aspis_core.field.PreparedQm31Multiplier 3#usize) → Result
-    (core.result.Result Unit aspis_core.circle_query.CircleQueryError)
+    (core.result.Result Unit aspis_core.circle_query.CircleQueryError) :=
+  V5FriConsumerExact.HelperTransport.line
 
 /-- [aspis_core::circle_query::check_fixed_terminal_transition_prepared_polynomial_refs]:
     Source: 'crates/aspis-core/src/circle_query.rs', lines 633:0-640:33
@@ -350,13 +353,14 @@ axiom
     Visibility: public -/
 @[rust_fun
   "aspis_core::circle_query::check_fixed_terminal_transition_prepared_polynomial_refs"]
-axiom
+def
   aspis_core.circle_query.check_fixed_terminal_transition_prepared_polynomial_refs
   :
   (Slice Std.U8) → (Array aspis_core.field.QM31 4#usize) → Std.Usize →
     (Array aspis_core.field.M31 3#usize) → aspis_core.field.M31 → (Array
     aspis_core.field.PreparedQm31Multiplier 3#usize) → Result
-    (core.result.Result Unit aspis_core.circle_query.CircleQueryError)
+    (core.result.Result Unit aspis_core.circle_query.CircleQueryError) :=
+  V5FriConsumerExact.HelperTransport.terminal
 
 /-- [aspis_core::field::P]
     Source: 'crates/aspis-core/src/field.rs', lines 16:0-16:16
@@ -384,8 +388,9 @@ def aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31.eq
     Visibility: public -/
 @[rust_fun
   "aspis_core::field::{aspis_core::field::PreparedQm31Multiplier}::new"]
-axiom aspis_core.field.PreparedQm31Multiplier.new
-  : aspis_core.field.QM31 → Result aspis_core.field.PreparedQm31Multiplier
+def aspis_core.field.PreparedQm31Multiplier.new
+  : aspis_core.field.QM31 → Result aspis_core.field.PreparedQm31Multiplier :=
+  V5FriConsumerExact.HelperTransport.preparedNew
 
 /-- [aspis_core::field::qm31_sum_products3_prepared]:
     Source: 'crates/aspis-core/src/field.rs', lines 574:0-574:97
@@ -419,18 +424,20 @@ axiom aspis_core.field.QM31.add
     Name pattern: [aspis_core::field::{aspis_core::field::QM31}::mul]
     Visibility: public -/
 @[rust_fun "aspis_core::field::{aspis_core::field::QM31}::mul"]
-axiom aspis_core.field.QM31.mul
+def aspis_core.field.QM31.mul
   :
   aspis_core.field.QM31 → aspis_core.field.QM31 → Result
-    aspis_core.field.QM31
+    aspis_core.field.QM31 :=
+  V5FriConsumerExact.HelperTransport.mul
 
 /-- [aspis_core::field::{aspis_core::field::QM31}::square]:
     Source: 'crates/aspis-core/src/field.rs', lines 789:4-789:31
     Name pattern: [aspis_core::field::{aspis_core::field::QM31}::square]
     Visibility: public -/
 @[rust_fun "aspis_core::field::{aspis_core::field::QM31}::square"]
-axiom aspis_core.field.QM31.square
-  : aspis_core.field.QM31 → Result aspis_core.field.QM31
+def aspis_core.field.QM31.square
+  : aspis_core.field.QM31 → Result aspis_core.field.QM31 :=
+  V5FriConsumerExact.HelperTransport.square
 
 /-- [aspis_core::field::{aspis_core::field::QM31}::from_le_bytes]:
     Source: 'crates/aspis-core/src/field.rs', lines 852:4-852:54
