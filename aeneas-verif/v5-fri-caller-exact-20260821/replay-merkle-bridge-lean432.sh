@@ -6,6 +6,7 @@ readonly root="$(cd "$bundle/../.." && pwd -P)"
 readonly generated="$bundle/generated"
 readonly caller_proof="$bundle/proof/V5FriCallerParametric.lean"
 readonly bridge_proof="$bundle/proof/V5FriCallerMerkleBridge.lean"
+readonly resolver_proof="$bundle/proof/V5FriCallerAcceptedResolverBridge.lean"
 readonly lean_bin="${LEAN432_BIN:-$(cd "$root/AspisFormal" && elan which lean)}"
 readonly aeneas_lib="${AENEAS_LEAN_LIB:?set AENEAS_LEAN_LIB to the matching Aeneas Lean library}"
 readonly merkle_out="${V5_MERKLE_UNCHANGED_LEAN_OUT:?set V5_MERKLE_UNCHANGED_LEAN_OUT to a successful unchanged-Merkle replay output}"
@@ -36,6 +37,8 @@ sha256() {
   a1e1678fef7051200b559240dc71dfaab84efcb049ef33fe85b91a0a57d760ea ]]
 [[ "$(sha256 "$bridge_proof")" == \
   8c175163521af742721215edefdb5a36e07e15b1e791175200f0db945dc759bd ]]
+[[ "$(sha256 "$resolver_proof")" == \
+  fe2ecce5a08941638fffde05cb992dc2ab92a2b5fdd88d1e49b73d948f78e873 ]]
 
 aspis_path=${ASPIS_FORMAL_LEAN_PATH:-$(
   cd "$root/AspisFormal" && NO_DNA=1 lake env printenv LEAN_PATH
@@ -62,9 +65,12 @@ export LEAN_PATH="$out:$generated:$returned_out:$merkle_out:$fri_out:$aspis_path
   -o "$out/V5FriCallerParametric.olean" "$caller_proof" >> "$log" 2>&1
 "$lean_bin" -j 1 -R "$bundle/proof" \
   -o "$out/V5FriCallerMerkleBridge.olean" "$bridge_proof" >> "$log" 2>&1
+"$lean_bin" -j 1 -R "$bundle/proof" \
+  -o "$out/V5FriCallerAcceptedResolverBridge.olean" "$resolver_proof" \
+  >> "$log" 2>&1
 
 if rg -n '\b(sorry|admit|native_decide|unsafe|ofReduceBool)\b|^axiom ' \
-    "$caller_proof" "$bridge_proof"; then
+    "$caller_proof" "$bridge_proof" "$resolver_proof"; then
   echo "forbidden proof shortcut or axiom" >&2
   exit 1
 fi
@@ -73,6 +79,8 @@ if rg -n 'sorryAx|ofReduceBool' "$log"; then
   exit 1
 fi
 if ! rg -F "accepted_exact_merkle_call_yields_authenticated_fri_view' depends on axioms:" \
+    "$log" >/dev/null ||
+   ! rg -F "accepted_false_source_caller_event_with_released_tables' depends on axioms:" \
     "$log" >/dev/null ||
    ! rg -F "Classical.choice" "$log" >/dev/null ||
    ! rg -F "Quot.sound" "$log" >/dev/null; then
