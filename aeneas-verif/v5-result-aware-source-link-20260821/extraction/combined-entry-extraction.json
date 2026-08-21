@@ -54,9 +54,9 @@
     "llbc_sha256": "6141fb647a6b8502ed2a7193a398d25a8d5377f7cb5aef1efec6b63be1cab5c6",
     "raw_entry_sha256": "968c81a26a3b562320b1e154e7423b7999cf0de4ffadc3d70aebe213d8ae38af",
     "normalization_patch": "combined-entry-normalization.patch",
-    "normalization_patch_sha256": "8d41fe95b26973814b9b3e48a46673ebce238e6388f874cfa6717094d7a9bc6c",
+    "normalization_patch_sha256": "c056c0d5bd233f433d355d50c1282d366321926a2067c99c495c359682fe8303",
     "normalized_entry_path": "../generated/V5AcceptedEntryGenerated/Entry.lean",
-    "normalized_entry_sha256": "0ca26d93f3df17d26909ef8aa7838c405289e456985356d74af5cfaa84938233"
+    "normalized_entry_sha256": "fd30f879e2c52c942e08be83c74c5b368563c3580a96999ca6d0c5c5bc25bee7"
   },
   "normalization_evidence": {
     "fri_block_source_commit": "12f6e6d817102500f2fefe61e84398053c3253ec",
@@ -79,7 +79,16 @@
     "field_equality_audited_extraction": "../../v5-relation-acceptance-20260815/generated/V5RelationCallerGenerated.lean",
     "field_equality_audited_extraction_sha256": "f4afc2e982ea89bb7ee2b26a595b739408384f8d04f1f5f9b4300a51930308a0",
     "field_equality_audited_proof": "../../v5-relation-acceptance-20260815/proof/V5RelationAcceptanceSourceProof.lean",
-    "field_equality_audited_proof_sha256": "59c3c9f615008a56bb5a04fa1a35a03805b6a28f7137b3fc24c2d1f1ddfb9f61"
+    "field_equality_audited_proof_sha256": "59c3c9f615008a56bb5a04fa1a35a03805b6a28f7137b3fc24c2d1f1ddfb9f61",
+    "relation_caller_generated_path": "../../v5-relation-acceptance-20260815/generated/V5RelationCallerGenerated.lean",
+    "relation_caller_generated_sha256": "f4afc2e982ea89bb7ee2b26a595b739408384f8d04f1f5f9b4300a51930308a0",
+    "prepared_multiplier_source_path": "crates/aspis-core/src/field.rs",
+    "prepared_multiplier_source_git_blob": "a28ff94de05265102ca819849805a7f73c675800",
+    "prepared_multiplier_generated_declaration_sha256": "f77c765a94b61dd81d43801f09ce68c413ae2cd160298477759d5616c1b06cca",
+    "relation_phase_source_git_blob": "ca28d560e44e5e82e689321f32289831c889a0bd",
+    "relation_phase_generated_body_sha256": "4cfd8373d5b83d19dac9f6538cbd439a18335cfe5661951cf70d298edd86dd0b",
+    "relation_namespace_adapter_sha256": "3de756f88b2ef17f2889c7d757e95934c678a41772f2e762e4eb9b76301cd8d8",
+    "relation_namespace_adapter_scope": "Field-for-field conversion between the combined accepted-entry namespace and the focused relation-caller namespace; the accepted-entry relation call invokes the focused translated outer caller directly, without changing that bundle's separately recorded helper boundaries."
   },
   "logs": {
     "charon_sha256": "aaa7f531af379e2047b4b6fc250cc27b175cf46f87e78d33a10b9cce6f36363c",
@@ -90,7 +99,8 @@
     "prefix_work_bridge_sha256": "01ed420279e332412c214f9fb5156665964a492e6415f6b8a6c3ff23afe0029a",
     "remaining_work_bridge_sha256": "12a61b03bfe78c70f3adbb978d432d2ea7299883799ca0b51866b53208fc12e5",
     "post_work_successors_sha256": "a156037907e3a5ae4bedda491a16a7ce31e18a95ee4747b5d165ee52cb1aacd9",
-    "work_execution_projection_sha256": "375ae486b63d6bfbfe32870d5908e46b743a9be7d9c3e07f2f64a169cd32580f"
+    "work_execution_projection_sha256": "375ae486b63d6bfbfe32870d5908e46b743a9be7d9c3e07f2f64a169cd32580f",
+    "relation_prepared_adapter_sha256": "82133590f4180f03dcd58d5dc0da390f0e70ef9abe3d053e05afe11370101a17"
   },
   "verification": {
     "generated_entry_compiles": true,
@@ -100,6 +110,8 @@
     "remaining_work_bridge_compiles": true,
     "post_work_successors_compiles": true,
     "work_execution_projection_compiles": true,
+    "relation_prepared_adapter_compiles": true,
+    "relation_transport_parameters_removed": true,
     "forbidden_tokens": [
       "sorry",
       "admit",

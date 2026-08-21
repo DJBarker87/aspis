@@ -2,6 +2,7 @@
 -- [aspis_verifier_parser_extraction]
 import Aeneas.Std
 import Aeneas.Tactic.RustAttributes
+import V5RelationCallerGenerated
 open Aeneas Aeneas.Std Result ControlFlow Error
 set_option linter.dupNamespace false
 set_option linter.hashCommand false
@@ -397,7 +398,8 @@ axiom aspis_core.circle_fri.derive_query_fold_inverses_for_circle
     Name pattern: [aspis_core::field::PreparedQm31Multiplier]
     Visibility: public -/
 @[rust_type "aspis_core::field::PreparedQm31Multiplier"]
-axiom aspis_core.field.PreparedQm31Multiplier : Type
+structure aspis_core.field.PreparedQm31Multiplier where
+  components : Array (Array aspis_core.field.M31 3#usize) 3#usize
 
 /-- [aspis_core::circle_fri::normalized_circle_to_line_arity4_prepared_polynomial_refs]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/circle_fri.rs', lines 826:0-831:9
@@ -9758,13 +9760,144 @@ def v5_cu_probe.verify_mode9_fri_phase
 
 /-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_mode9_relation_phase]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 2352:0-2381:1 -/
-axiom v5_cu_probe.verify_mode9_relation_phase
-  :
-  v5_cu_probe.ParsedProbeData → (Array aspis_core.field.QM31 4#usize) →
-    (Array aspis_core.field.QM31 4#usize) → aspis_core.field.QM31 →
-    aspis_core.field.QM31 → (Array aspis_core.field.QM31 10#usize) →
-    v5_cu_probe.fri_checks.V5PreparedPcsClaims → Result (core.result.Result
-    aspis_core.field.QM31 solana_program_error.ProgramError)
+def v5_cu_probe.relationCallerMapFixedArray
+    {A B : Type} {count : Std.Usize} (convert : A → B)
+    (values : Array A count) : Array B count :=
+  ⟨values.val.map convert, by simpa using values.property⟩
+
+def v5_cu_probe.relationCallerMapVec
+    {A B : Type} (convert : A → B)
+    (values : alloc.vec.Vec A) : alloc.vec.Vec B :=
+  ⟨values.val.map convert, by simpa using values.property⟩
+
+def v5_cu_probe.qm31ToRelationCaller
+    (value : aspis_core.field.QM31) :
+    V5RelationCallerGenerated.aspis_core.field.QM31 :=
+  { c0 := { a := value.c0.a, b := value.c0.b }
+    c1 := { a := value.c1.a, b := value.c1.b } }
+
+def v5_cu_probe.qm31FromRelationCaller
+    (value : V5RelationCallerGenerated.aspis_core.field.QM31) :
+    aspis_core.field.QM31 :=
+  { c0 := { a := value.c0.a, b := value.c0.b }
+    c1 := { a := value.c1.a, b := value.c1.b } }
+
+def v5_cu_probe.preparedMultiplierToRelationCaller
+    (value : aspis_core.field.PreparedQm31Multiplier) :
+    V5RelationCallerGenerated.aspis_core.field.PreparedQm31Multiplier :=
+  { components :=
+      v5_cu_probe.relationCallerMapFixedArray
+        (v5_cu_probe.relationCallerMapFixedArray fun value => value)
+        value.components }
+
+def v5_cu_probe.privateRootsToRelationCaller
+    (roots : v5_cu_probe.private_openings.V5PrivateOpeningRoots) :
+    V5RelationCallerGenerated.v5_cu_probe.private_openings.V5PrivateOpeningRoots :=
+  { c1 := roots.c1
+    c2 := roots.c2
+    later := roots.later }
+
+def v5_cu_probe.parsedToRelationCaller
+    (parsed : v5_cu_probe.ParsedProbeData) :
+    V5RelationCallerGenerated.v5_cu_probe.ParsedProbeData :=
+  { gamma := v5_cu_probe.qm31ToRelationCaller parsed.gamma
+    production_c1 := parsed.production_c1
+    candidate_c1 := parsed.candidate_c1
+    c2 := parsed.c2
+    relation_scales := parsed.relation_scales
+    relation_points := parsed.relation_points
+    relation_claims := parsed.relation_claims
+    relation_alphas := parsed.relation_alphas
+    relation_final := parsed.relation_final
+    v5_fold_nonces := parsed.v5_fold_nonces
+    v5_batch_nonce := parsed.v5_batch_nonce
+    v5_wire_prefix := parsed.v5_wire_prefix
+    v5_atomic_terminal_context := parsed.v5_atomic_terminal_context
+    v5_private_roots :=
+      v5_cu_probe.privateRootsToRelationCaller parsed.v5_private_roots
+    v5_final_coefficients := parsed.v5_final_coefficients
+    v5_relation_stress := parsed.v5_relation_stress
+    v5_final_nonce := parsed.v5_final_nonce
+    v5_query_selector := parsed.v5_query_selector
+    v5_private_proof := parsed.v5_private_proof }
+
+def v5_cu_probe.preparedClaimsToRelationCaller
+    (claims : v5_cu_probe.fri_checks.V5PreparedPcsClaims) :
+    V5RelationCallerGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims :=
+  { inner :=
+      { claims :=
+          v5_cu_probe.relationCallerMapVec
+            v5_cu_probe.qm31ToRelationCaller claims.inner.claims
+        powers :=
+          v5_cu_probe.relationCallerMapVec
+            v5_cu_probe.qm31ToRelationCaller claims.inner.powers }
+    c1_weight_limbs := claims.c1_weight_limbs
+    c2_multipliers :=
+      v5_cu_probe.relationCallerMapFixedArray
+        v5_cu_probe.preparedMultiplierToRelationCaller claims.c2_multipliers }
+
+def v5_cu_probe.programErrorFromRelationCaller
+    (error : V5RelationCallerGenerated.solana_program_error.ProgramError) :
+    solana_program_error.ProgramError :=
+  match error with
+  | .Custom code => .Custom code
+  | .InvalidArgument => .InvalidArgument
+  | .InvalidInstructionData => .InvalidInstructionData
+  | .InvalidAccountData => .InvalidAccountData
+  | .AccountDataTooSmall => .AccountDataTooSmall
+  | .InsufficientFunds => .InsufficientFunds
+  | .IncorrectProgramId => .IncorrectProgramId
+  | .MissingRequiredSignature => .MissingRequiredSignature
+  | .AccountAlreadyInitialized => .AccountAlreadyInitialized
+  | .UninitializedAccount => .UninitializedAccount
+  | .NotEnoughAccountKeys => .NotEnoughAccountKeys
+  | .AccountBorrowFailed => .AccountBorrowFailed
+  | .MaxSeedLengthExceeded => .MaxSeedLengthExceeded
+  | .InvalidSeeds => .InvalidSeeds
+  | .BorshIoError message => .BorshIoError message
+  | .AccountNotRentExempt => .AccountNotRentExempt
+  | .UnsupportedSysvar => .UnsupportedSysvar
+  | .IllegalOwner => .IllegalOwner
+  | .MaxAccountsDataAllocationsExceeded => .MaxAccountsDataAllocationsExceeded
+  | .InvalidRealloc => .InvalidRealloc
+  | .MaxInstructionTraceLengthExceeded => .MaxInstructionTraceLengthExceeded
+  | .BuiltinProgramsMustConsumeComputeUnits => .BuiltinProgramsMustConsumeComputeUnits
+  | .InvalidAccountOwner => .InvalidAccountOwner
+  | .ArithmeticOverflow => .ArithmeticOverflow
+  | .Immutable => .Immutable
+  | .IncorrectAuthority => .IncorrectAuthority
+
+/-- Exact namespace adapter around the translated outer relation-phase caller
+from the same Rust source snapshot.  The accepted composite extraction and
+the focused relation extraction use distinct Lean namespaces; every input,
+output, and error constructor is converted field-for-field here.  The focused
+caller's separately recorded helper boundaries are unchanged. -/
+def v5_cu_probe.verify_mode9_relation_phase
+    (parsed : v5_cu_probe.ParsedProbeData)
+    (finalPolynomial : Array aspis_core.field.QM31 4#usize)
+    (alphas : Array aspis_core.field.QM31 4#usize)
+    (kappa inactiveClaim : aspis_core.field.QM31)
+    (roundChallenges : Array aspis_core.field.QM31 10#usize)
+    (preparedClaims : v5_cu_probe.fri_checks.V5PreparedPcsClaims) :
+    Result (core.result.Result aspis_core.field.QM31
+      solana_program_error.ProgramError) := do
+  let callerResult ←
+    V5RelationCallerGenerated.v5_cu_probe.verify_mode9_relation_phase
+      (v5_cu_probe.parsedToRelationCaller parsed)
+      (v5_cu_probe.relationCallerMapFixedArray
+        v5_cu_probe.qm31ToRelationCaller finalPolynomial)
+      (v5_cu_probe.relationCallerMapFixedArray
+        v5_cu_probe.qm31ToRelationCaller alphas)
+      (v5_cu_probe.qm31ToRelationCaller kappa)
+      (v5_cu_probe.qm31ToRelationCaller inactiveClaim)
+      (v5_cu_probe.relationCallerMapFixedArray
+        v5_cu_probe.qm31ToRelationCaller roundChallenges)
+      (v5_cu_probe.preparedClaimsToRelationCaller preparedClaims)
+  match callerResult with
+  | .Ok terminalClaim =>
+      ok (.Ok (v5_cu_probe.qm31FromRelationCaller terminalClaim))
+  | .Err error =>
+      ok (.Err (v5_cu_probe.programErrorFromRelationCaller error))
 
 /-- [aspis_verifier_parser_extraction::verify::sbf_hashv]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/verify.rs', lines 16:0-18:1 -/
