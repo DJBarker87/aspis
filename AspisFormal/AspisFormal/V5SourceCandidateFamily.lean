@@ -1,3 +1,4 @@
+import AspisFormal.V5AcceptedExecutionDerivedQueries
 import AspisFormal.V5ReleasedFailureReduction
 
 /-!
@@ -26,19 +27,34 @@ prover.  That remains the separately stated random-oracle boundary.
 namespace AspisV5SourceCandidateFamily
 
 open AspisCircleGroupOrder
+open AspisFormal.ArithmetizationCore
+open AspisFormal.HashMerkleModel
+open AspisV5AcceptedSpendRelation
 open AspisV5AcceptedExecutionReleasedSecurity
+open AspisV5AcceptedExecutionDerivedQueries
+open AspisV5AcceptedExecutionReleasedSchedule
 open AspisV5AcceptedExecutionSecurityBridge
 open AspisV5CompactTerminal
 open AspisV5ComponentCConcreteFoldLinearity
 open AspisV5FriCoherentCandidateExtraction
 open AspisV5FriConcreteEncoderCommutation
+open AspisV5FriGlobalCausalStrategy
+open AspisV5FriPublishedOutputEncoderDecoding
+open AspisV5FriRelationCandidateBridge
 open AspisV5FriReleasedAdaptiveExtraction
 open AspisV5FriReleasedLineGeometry
 open AspisV5RelationStressSourceBridge
 open AspisV5ReleasedFailureReduction
 open AspisV5Tag67AcceptedFalseInclusion
 open AspisV5Tag67FalseAcceptanceDecomposition
+open AspisV5Tag67CandidateTraceExtraction
 open AspisV5Tag67RelationListInclusion
+open AspisV5MerkleAuthenticationBinding
+open AspisV5MerkleConsumedValueBridge
+open AspisV5MerkleRustBridge
+open AspisV5NonceWorkAuthentication
+open AspisV5TranscriptConnection
+open AspisV5WithoutReplacementQuerySoundness
 
 variable {K : Type*} [Field K] [Fintype K] [DecidableEq K]
   [Algebra (ZMod P) K] [NeZero (2 : K)]
@@ -230,6 +246,101 @@ theorem caller_success_removes_source_and_family_failures
     (fun failure => failure projections.1)
     (fun failure => failure projections.2) event
 
+/-- The released accepted-false endpoint specialized to the relation input
+and candidate family constructed from one decoded source caller.  Successful
+caller execution supplies the source-verifier success and proves both
+relation/family projections, so those two failure branches are `False` in the
+result rather than caller-supplied probability events. -/
+theorem accepted_false_source_observation_with_constructed_family
+    {PointValue State : Type*}
+    (rc : RoundConstants)
+    {deployedOwner : Digest -> Digest}
+    {deployedNote : Digest -> F -> F -> Digest -> Digest}
+    {deployedNullifier : Digest -> Digest -> Digest}
+    {deployedNode : Digest -> Digest -> Digest}
+    (sha256 : List Byte -> AspisV5MerkleRustBridge.Digest32)
+    (rustObservation : V5ProductionCall -> Option OpeningAndFriObservation)
+    (rustCall : V5ProductionCall)
+    (observation : OpeningAndFriObservation)
+    (hconsumer : ExactRustV5OpeningAndFriConsumerEquality sha256
+      rustObservation)
+    (hobservation : rustObservation rustCall = some observation)
+    (base : FixedSchedule (ZMod P) K)
+    (hproduction : ProductionUsesReleasedFriTables base)
+    (hpublished : PublishedOrdinaryPolynomialCurveDecoding (K := K))
+    (causalFamily : CausalTranscriptFamily K)
+    (data : SourceMode9CallerData K)
+    (records : CandidateRecords
+      (AcceptedCandidate base causalFamily (sourceMode9RelationInput data)) K)
+    (statement : V5PublicStatement)
+    (decoder : OpeningFibreDecoder K)
+    (expectedC2 : V5Query -> Fin 4 -> K)
+    (transcriptInput : V5TranscriptInputs)
+    (derived : V5DerivedValues K PointValue)
+    (driverResult : V5TranscriptDriverResult K PointValue)
+    (queryBlocks : List (FixedBytes 32))
+    (hdecode : derive18Queries queryBlocks = some derived.queries)
+    (workFunctions : ExecutableWorkFunctions State
+      (SqueezeResult K PointValue))
+    (workInputs : PositionedWorkInputs State (SqueezeResult K PointValue))
+    {terminalClaim : K}
+    (hcaller : runSourceMode9RelationCaller data
+      (acceptedTranscript causalFamily
+        (sourceMode9RelationInput data)).publishedFinal = some terminalClaim)
+    (noWitness : ¬ StatementHasSpendWitness statement deployedOwner
+      deployedNote deployedNullifier deployedNode) :
+    let input := sourceMode9RelationInput data
+    let relationFamily := releasedSourceCandidateFamily base causalFamily data
+    let queries := decodedQuerySchedule queryBlocks derived.queries hdecode
+    ReleasedAcceptedExecutionSecurityEvent
+      False False
+      (¬ TranscriptExecutionProjection input transcriptInput derived
+        driverResult rustCall.queries queries)
+      (¬ WorkExecutionProjection transcriptInput derived workInputs)
+      (¬ ∃ reference : AcceptedV5Forest
+          (sha256MerkleHashing sha256) rustCall.roots rustCall.queries,
+        ForestProjectsToTranscript decoder (sha256MerkleHashing sha256)
+          reference (acceptedTranscript causalFamily input) expectedC2)
+      False
+      (HashCollision (sha256MerkleHashing sha256))
+      (¬ ExecutableWorkAcceptance workFunctions workInputs)
+      (∃ forest : AcceptedV5Forest (sha256MerkleHashing sha256)
+          rustCall.roots rustCall.queries,
+        ¬ ForestFriChecks decoder (sha256MerkleHashing sha256) forest
+          (acceptedSchedule base input)
+          (acceptedTranscript causalFamily input) queries)
+      (QueryPhaseFailure (acceptedSchedule base input)
+        (acceptedTranscript causalFamily input) queries)
+      (∃ hfinal : FinalXMatchesReleasedDomain base,
+        ∃ htables : InverseTablesMatch base releasedEvaluationPoints,
+          ∃ hdecoding :
+              PublishedOrdinaryPolynomialCurveDecoding (K := K),
+            (adaptiveBadSets base causalFamily hfinal htables hdecoding
+              (constructedAdaptiveStrategies base causalFamily)).Occurs
+              input.round0.alpha input.round1.alpha input.round2.alpha
+                input.round3.alpha)
+      (∃ candidate : AcceptedCandidate base causalFamily input,
+        CandidateEarlierFailure rc (relationFamily.execution candidate)
+          input.challenges statement (records candidate))
+      (Fintype.card (AcceptedCandidate base causalFamily input) <= 240 /\
+        input.challenges ∈ boundedCandidateRepairEvent
+          (fun candidate => (relationFamily.execution candidate).adaptiveData))
+      (¬ Poseidon2Faithful rc deployedOwner deployedNote deployedNullifier
+        deployedNode) := by
+  dsimp only
+  have hsource := sourceCaller_success_implies_relation_success data
+    (acceptedTranscript causalFamily
+      (sourceMode9RelationInput data)).publishedFinal hcaller
+  have event :=
+    accepted_false_source_observation_event_with_derived_queries rc sha256
+      rustObservation rustCall observation hconsumer hobservation base
+      hproduction hpublished causalFamily (sourceMode9RelationInput data)
+      (releasedSourceCandidateFamily base causalFamily data) records statement
+      decoder expectedC2 transcriptInput derived driverResult queryBlocks
+      hdecode workFunctions workInputs hsource noWitness
+  exact caller_success_removes_source_and_family_failures base causalFamily
+    data hcaller event
+
 #print axioms sourceFixedBodyCandidateFamily_matches_caller
 #print axioms released_source_relation_input_matches_family
 #print axioms released_source_family_matches_fri_transcript
@@ -237,5 +348,6 @@ theorem caller_success_removes_source_and_family_failures
 #print axioms
   released_source_relation_and_family_projections_of_caller_success
 #print axioms caller_success_removes_source_and_family_failures
+#print axioms accepted_false_source_observation_with_constructed_family
 
 end AspisV5SourceCandidateFamily
