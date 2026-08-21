@@ -10,6 +10,7 @@ the finalized mainnet transaction. Paths are relative to the repository root.
 | What does a valid private spend mean? | `crates/aspis-statement/src/spend.rs`, `crates/aspis-statement/src/atomic_statement.rs` |
 | Where is the mathematics checked? | `AspisFormal/README.md`, then the modules under `AspisFormal/AspisFormal/` |
 | Where is selected production Rust connected to Lean? | `aeneas-verif/README.md` and the pinned packages it indexes |
+| What exactly does an accepted V5 execution call? | `docs/v5-accepted-source-map.md` |
 | Where is the V5 Solana path? | `programs/aspis-verifier/src/dispatch.rs`, `v5_full_transaction.rs`, and `v5_cu_probe.rs` |
 | Where is the exact V5 program recorded? | `release/aspis-v5-tag67-frozen-candidate-v1/` |
 | Where is the finalized V5 mainnet lifecycle recorded? | `release/aspis-v5-tag67-mainnet-v1/` and `docs/v5-mainnet-demo.md` |

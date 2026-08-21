@@ -328,7 +328,9 @@ and public release claims against the committed manifests and hashes.
 | `docs/` | Explanations, assumptions, code navigation, reviews, and release history |
 | `paper/aspis-spend/` | Full construction and security argument |
 
-The detailed [code map](docs/code-map.md) links concepts to production entry
+The [accepted V5 source map](docs/v5-accepted-source-map.md) gives auditors a
+15-stop path through the released verifier. The broader [code
+map](docs/code-map.md) links concepts to production entry
 points.
 
 ## Historical result

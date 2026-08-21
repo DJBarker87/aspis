@@ -3,12 +3,6 @@ members = [
     "crates/aspis-core",
     "crates/aspis-prover",
     "crates/aspis-statement",
-    "protocol/crates/aspis-joinsplit-prover",
-    "protocol/crates/aspis-protocol",
-    "protocol/programs/aspis-pool-program",
-    "protocol/programs/aspis-protocol-bench-program",
-    "protocol/programs/aspis-v5-verifier-program",
-    "protocol/tools/aspis-protocol-bench",
     "programs/aspis-verifier",
     "xtask",
 ]

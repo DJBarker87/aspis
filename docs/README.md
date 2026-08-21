@@ -20,10 +20,12 @@ mainnet-beta state transition.
    proof layers, program identity, and mainnet bundle
 6. [Security assumptions](assumptions-ledger.md) — cryptographic,
    translation, compiler, and runtime boundaries
-7. [Code map](code-map.md) — concept-to-file navigation
-8. [Technical paper](../paper/aspis-spend/) — construction, security
+7. [Accepted V5 source map](v5-accepted-source-map.md) — the 15 review stops
+   from instruction dispatch through proof checks and the state update
+8. [Code map](code-map.md) — broader concept-to-file navigation
+9. [Technical paper](../paper/aspis-spend/) — construction, security
    argument, and supporting records
-9. [Design history and previous releases](design-history.md) — evolution of
+10. [Design history and previous releases](design-history.md) — evolution of
    the current V5 result and the earlier q18/g37 record
 
 ## Evidence by layer
