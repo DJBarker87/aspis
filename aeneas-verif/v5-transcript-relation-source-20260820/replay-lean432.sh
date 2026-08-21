@@ -81,9 +81,9 @@ check_blob e2a5b6412e9410ffd1e392d8ea32033aab76f83f \
   aeneas-verif/v5-transcript-relation-source-20260820/relation-harness/Cargo.toml
 check_blob 728dc91c3f1f9d6443df8b793c617b340a2e2a45 \
   aeneas-verif/v5-transcript-relation-source-20260820/relation-harness/Cargo.lock
-check_blob ba1e691eb658c35fc3512fadb679ce25fe99a49d \
+check_blob a1d3b661d4cae680027fd2236422042774c66d94 \
   aeneas-verif/v5-transcript-relation-source-20260820/generated/V5TranscriptRelationHelper/TypesExternal.lean
-check_blob f764e0ac5d133a26147d926d69146e2919de70ea \
+check_blob e8e80f86c38a2a5562330b34fd53f2defc840ebe \
   aeneas-verif/v5-transcript-relation-source-20260820/generated/V5TranscriptRelationHelper/FunsExternal.lean
 check_blob ff2c2318274298244b47e01e2ca1690a7435ff3c \
   aeneas-verif/v5-relation-acceptance-20260815/generated/V5RelationCallerGenerated.lean
@@ -91,7 +91,7 @@ check_blob 61044bf7ada9152f33aa1e228761c159d7fcca46 \
   aeneas-verif/v5-relation-acceptance-20260815/proof/V5RelationAcceptanceSourceProof.lean
 check_blob bd965e686efa6c2b4bd29c16efc173a3dc7ab688 \
   aeneas-verif/v5-transcript-relation-source-20260820/import-normalization/V5RelationCallerGenerated-for-join.patch
-check_blob d9056fd171c57d4c40d3c7e619722add814cd377 \
+check_blob cf809590ce8f89ac83b1e72f4e7ec0a80081d72b \
   aeneas-verif/v5-transcript-relation-source-20260820/proof/V5TranscriptRelationFinalJoin.lean
 check_blob 8ca023e0a55d300c3ff22690c162b2dc4f1502cc \
   AspisFormal/AspisFormal/V5TranscriptConnection.lean

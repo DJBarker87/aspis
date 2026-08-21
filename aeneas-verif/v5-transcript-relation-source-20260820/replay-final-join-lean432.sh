@@ -45,19 +45,19 @@ check_blob ff2c2318274298244b47e01e2ca1690a7435ff3c \
   aeneas-verif/v5-relation-acceptance-20260815/generated/V5RelationCallerGenerated.lean
 check_blob 61044bf7ada9152f33aa1e228761c159d7fcca46 \
   aeneas-verif/v5-relation-acceptance-20260815/proof/V5RelationAcceptanceSourceProof.lean
-check_blob ba1e691eb658c35fc3512fadb679ce25fe99a49d \
+check_blob a1d3b661d4cae680027fd2236422042774c66d94 \
   aeneas-verif/v5-transcript-relation-source-20260820/generated/V5TranscriptRelationHelper/TypesExternal.lean
 check_blob 9dff5ad45b5c7f506d55b0dc3971134039fba8e6 \
   aeneas-verif/v5-transcript-relation-source-20260820/generated/V5TranscriptRelationHelper/Types.lean
-check_blob f764e0ac5d133a26147d926d69146e2919de70ea \
+check_blob e8e80f86c38a2a5562330b34fd53f2defc840ebe \
   aeneas-verif/v5-transcript-relation-source-20260820/generated/V5TranscriptRelationHelper/FunsExternal.lean
 check_blob cb672ec424bfbff342ef4ef2d5203ee87d145185 \
   aeneas-verif/v5-transcript-relation-source-20260820/generated/V5TranscriptRelationHelper/Funs.lean
-check_blob bc97080bddd26f9ef42210eeec75fc45dfdd156e \
+check_blob 938009384a7ad09a13d57541b8d327ada67bbdd1 \
   aeneas-verif/v5-transcript-relation-source-20260820/proof/V5TranscriptRelationSourceProof.lean
 check_blob bd965e686efa6c2b4bd29c16efc173a3dc7ab688 \
   aeneas-verif/v5-transcript-relation-source-20260820/import-normalization/V5RelationCallerGenerated-for-join.patch
-check_blob d9056fd171c57d4c40d3c7e619722add814cd377 \
+check_blob cf809590ce8f89ac83b1e72f4e7ec0a80081d72b \
   aeneas-verif/v5-transcript-relation-source-20260820/proof/V5TranscriptRelationFinalJoin.lean
 check_blob 8ca023e0a55d300c3ff22690c162b2dc4f1502cc \
   AspisFormal/AspisFormal/V5TranscriptConnection.lean
@@ -189,6 +189,8 @@ if grep -n -E 'sorryAx|ofReduceBool' "$log"; then
 fi
 for theorem in \
     erase_source_relation_exact \
+    exact_source_relation \
+    generated_helper_matches_exact_source_relation \
     generated_helper_matches_erased_source_relation \
     generated_schedule_and_final_polynomial_gate; do
   if ! grep -Fq "$theorem' depends on axioms:" "$log"; then
@@ -201,6 +203,8 @@ echo "Lean 4.32 V5 relation transcript/final-gate join replay: PASS"
 echo "V5_TRANSCRIPT_FINAL_JOIN_OUT=$out"
 echo "axiom audit:"
 sed -n "/erase_source_relation_exact' depends on axioms:/,/]/p; \
+  /exact_source_relation' depends on axioms:/,/]/p; \
+  /generated_helper_matches_exact_source_relation' depends on axioms:/,/]/p; \
   /generated_helper_matches_erased_source_relation' depends on axioms:/,/]/p; \
   /generated_schedule_and_final_polynomial_gate' depends on axioms:/,/]/p" "$log"
 echo "log: $log"

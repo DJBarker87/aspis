@@ -32,18 +32,23 @@ iterations.  It covers every `ParsedProbeData` value represented by the
 generated types.  Its printed axioms are only Lean's standard `propext`,
 `Classical.choice`, and `Quot.sound` foundations.
 
-The observation model deliberately erases field values and hash state.  This
-bundle proves source call order, indices, and nonce flow.  It does not prove
-SHA-256 security, Fiat--Shamir random-oracle security, field decoding, or the
-mathematical relation verifier; those are separate repository layers.
+The observation model now keeps two records of the same generated execution.
+The first keeps the original call-order view. The second records the exact
+arguments passed to every transcript-changing helper: all eight OOD byte
+windows, all four 112-byte sumcheck windows, all four fold nonces, and the
+three later roots and public salts. Challenge values and hash state remain
+abstract here. This bundle does not prove SHA-256 security, Fiat--Shamir
+random-oracle security, field decoding, or the mathematical relation
+verifier; those are separate repository layers.
 
-`V5TranscriptRelationFinalJoin.lean` connects this exact observation trace to
-the maintained byte-complete relation schedule: erasing only the values which
-the extraction deliberately cannot observe produces the generated Rust trace
-for all four rounds and all four fold nonces.  The same file imports the
-independently translated production relation caller and proves alongside that
-schedule equality that caller success forces the returned four coefficients
-to equal the final polynomial already accepted by FRI.
+`V5TranscriptRelationFinalJoin.lean` connects both generated records to the
+maintained relation schedule. `generated_helper_matches_exact_source_relation`
+states the byte-for-byte result. Its only input-side premise is
+`ExactRelationParsedProjection`, which says that the fields supplied by
+`parse_probe_data` are the corresponding maintained input fields. The same
+file imports the independently translated production relation caller and
+also proves that caller success forces the returned four coefficients to
+equal the final polynomial already accepted by FRI.
 
 This joined theorem is not the missing arithmetic proof.  The nested
 `verify_v5_relation_stress_with_additive` call is still opaque in the caller
@@ -52,12 +57,12 @@ maintained relation model remains a separate obligation.
 
 ## Remaining boundary
 
-The transcript helpers are deliberately represented by an observation model
-that records their order, indices, and nonces while erasing field values and
-hash state.  The proof therefore establishes exact source control flow on that
-surface.  Concrete field arithmetic and hash behavior are proved or assumed in
-their separate repository layers; this file does not silently fold them into
-the source theorem.
+The exact byte result still relies on connecting the production
+`parse_probe_data` output to `ExactRelationParsedProjection`. The relation
+helper proof starts from that parsed structure; it does not re-prove the outer
+wire decoder. Challenge sampling and hash behavior are handled in their
+separate transcript and cryptographic layers. The nested relation arithmetic
+call remains outside this bundle, as described above.
 
 ## Files
 
@@ -65,8 +70,8 @@ the source theorem.
 - `generated/`: Aeneas output plus explicit observation definitions.
 - `proof/V5TranscriptRelationSourceProof.lean`: exact body, inner-loop,
   outer-loop, and complete-helper proofs.
-- `proof/V5TranscriptRelationFinalJoin.lean`: exact observable projection to
-  the maintained schedule and the production final-polynomial gate.
+- `proof/V5TranscriptRelationFinalJoin.lean`: byte-for-byte projection to the
+  maintained schedule and the production final-polynomial gate.
 - `import-normalization/`: a one-line patch applied only to a temporary replay
   copy so two independent generated modules can coexist without changing the
   checked-in Aeneas snapshots.

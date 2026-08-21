@@ -31,6 +31,55 @@ def fourRoundEvents (nonces : Fin 4 → Nat) : List RelationTranscriptEvent :=
   roundEvents 0 (nonces 0) ++ roundEvents 1 (nonces 1) ++
     roundEvents 2 (nonces 2) ++ roundEvents 3 (nonces 3)
 
+/-! The extraction's original observation surface above deliberately erased
+payload bytes.  These definitions describe the byte-preserving surface used
+below.  Each window is taken from the exact `ParsedProbeData` member and the
+same literal offset that the generated helper computes. -/
+
+def stressWindow (parsed : v5_cu_probe.ParsedProbeData)
+    (start width : Nat) : List Std.U8 :=
+  exactBytesAt width parsed.v5_relation_stress.val start
+
+def prefixByteAt (parsed : v5_cu_probe.ParsedProbeData)
+    (index : Nat) : Std.U8 :=
+  exactByteAt parsed.v5_wire_prefix.val index
+
+def publicSaltBytes (parsed : v5_cu_probe.ParsedProbeData)
+    (saltSection : Nat) : List Std.U8 :=
+  (exact32At parsed.v5_wire_prefix.val (5863 + saltSection * 32)).val
+
+def sampleExactEvents (parsed : v5_cu_probe.ParsedProbeData)
+    (round sample : Nat) : List ExactRelationTranscriptEvent :=
+  (if round = 0 then [.secureCirclePoint] else [.lineOodPoint]) ++
+    [.absorbOod (if round = 0 then 16 else 17) round sample
+        (stressWindow parsed (160 + 16 * (2 * round + sample)) 16),
+      .squeezeQm31]
+
+def roundTailExactEvents (parsed : v5_cu_probe.ParsedProbeData)
+    (nonces : Array Std.U64 4#usize)
+    (roots : v5_cu_probe.private_openings.V5PrivateOpeningRoots)
+    (round : Nat) : List ExactRelationTranscriptEvent :=
+  [.relationSumcheck round (stressWindow parsed (416 + 112 * round) 112),
+    .foldWork round (nonces.val[round]!.val), .squeezeQm31] ++
+    if round < 3 then
+      [.laterRoot (round + 1) roots.later.val[round]!.val
+        (publicSaltBytes parsed (round + 2))]
+    else []
+
+def roundExactEvents (parsed : v5_cu_probe.ParsedProbeData)
+    (nonces : Array Std.U64 4#usize)
+    (roots : v5_cu_probe.private_openings.V5PrivateOpeningRoots)
+    (round : Nat) : List ExactRelationTranscriptEvent :=
+  sampleExactEvents parsed round 0 ++ sampleExactEvents parsed round 1 ++
+    roundTailExactEvents parsed nonces roots round
+
+def fourRoundExactEvents (parsed : v5_cu_probe.ParsedProbeData) :
+    List ExactRelationTranscriptEvent :=
+  roundExactEvents parsed parsed.v5_fold_nonces parsed.v5_private_roots 0 ++
+    roundExactEvents parsed parsed.v5_fold_nonces parsed.v5_private_roots 1 ++
+    roundExactEvents parsed parsed.v5_fold_nonces parsed.v5_private_roots 2 ++
+    roundExactEvents parsed parsed.v5_fold_nonces parsed.v5_private_roots 3
+
 private theorem usizeMulExact (x y z : Std.Usize)
     (hbound : x.val * y.val ≤ Std.Usize.max)
     (hval : z.val = x.val * y.val) :
@@ -177,12 +226,14 @@ private theorem active_body_exact
     ∃ next : Std.Usize,
       next.val = sample.val + 1 ∧
       v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body
-          parsed () nonces batch roots final selector round
+          parsed parsed.gamma nonces batch roots final selector round
           { start := sample, «end» := 2#usize } transcript =
         .ok (.cont
           ({ start := next, «end» := 2#usize },
             { events := transcript.events ++
-                sampleEvents round.val sample.val })) := by
+                sampleEvents round.val sample.val
+              exactEvents := transcript.exactEvents ++
+                sampleExactEvents parsed round.val sample.val })) := by
   let next : Std.Usize :=
     Std.Usize.ofNatCore (sample.val + 1) (by scalar_tac)
   have hnextVal : next.val = sample.val + 1 := by simp [next]
@@ -214,7 +265,8 @@ private theorem active_body_exact
       core.iter.range.UScalarStep,
       core.iter.range.UScalarStep.forward_checked,
       core.cmp.PartialOrdUsize, core.cmp.impls.PartialOrdUsize.lt,
-      sampleEvents, v5_relation_stress.V5_RELATION_STRESS_OOD_SAMPLES,
+      sampleEvents, sampleExactEvents, stressWindow,
+      v5_relation_stress.V5_RELATION_STRESS_OOD_SAMPLES,
       v5_relation_stress.V5_RELATION_STRESS_CIRCLE_OFFSET,
       v5_relation_stress.V5_RELATION_STRESS_OOD_OFFSET,
       v5_relation_stress.V5_RELATION_STRESS_MIX_OFFSET,
@@ -239,9 +291,10 @@ private theorem active_body_exact
     · apply UScalar.eq_of_val_eq
       simp
     · change
-        ({ events := ((transcript.events ++ [_]) ++ [_]) ++ [_] } :
+        ({ events := ((transcript.events ++ [_]) ++ [_]) ++ [_]
+           exactEvents := ((transcript.exactEvents ++ [_]) ++ [_]) ++ [_] } :
           aspis_core.transcript.Transcript) = _
-      simp [List.append_assoc, sampleEvents]
+      simp [List.append_assoc, sampleEvents, sampleExactEvents, stressWindow]
 
 #print axioms active_body_exact
 
@@ -255,11 +308,14 @@ private theorem tail_body_exact
     (round : Std.Usize)
     (hround : round.val < 4) :
     v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body
-        parsed () nonces batch roots final selector round
+        parsed parsed.gamma nonces batch roots final selector round
         { start := 2#usize, «end» := 2#usize } transcript =
       .ok (.done
         ({ events := transcript.events ++ roundTailEvents round.val
-            (nonces.val[round.val]!.val) }, roots, 1#u32)) := by
+            (nonces.val[round.val]!.val)
+           exactEvents := transcript.exactEvents ++
+            roundTailExactEvents parsed nonces roots round.val },
+          roots, 1#u32)) := by
   have hrange : round.val = 0 ∨ round.val = 1 ∨
       round.val = 2 ∨ round.val = 3 := by omega
   rcases hrange with hr | hr | hr | hr
@@ -277,7 +333,9 @@ private theorem tail_body_exact
       core.iter.range.IteratorRange.next, core.iter.range.StepUsize,
       core.iter.range.UScalarStep,
       core.cmp.PartialOrdUsize, core.cmp.impls.PartialOrdUsize.lt,
-      roundTailEvents, v5_relation_stress.V5_RELATION_STRESS_OOD_SAMPLES,
+      roundTailEvents, roundTailExactEvents, stressWindow, exactBytesAt,
+      publicSaltBytes,
+      prefixByteAt, v5_relation_stress.V5_RELATION_STRESS_OOD_SAMPLES,
       v5_relation_stress.V5_RELATION_STRESS_ROUNDS,
       v5_relation_stress.V5_RELATION_STRESS_SUMCHECK_OFFSET,
       v5_relation_stress.V5_RELATION_STRESS_MIX_OFFSET,
@@ -303,11 +361,14 @@ private theorem tail_body_exact
   all_goals
     first
     | change
-        ({ events := (((transcript.events ++ [_]) ++ [_]) ++ [_]) ++ [_] } :
+        ({ events := (((transcript.events ++ [_]) ++ [_]) ++ [_]) ++ [_]
+           exactEvents :=
+             (((transcript.exactEvents ++ [_]) ++ [_]) ++ [_]) ++ [_] } :
           aspis_core.transcript.Transcript) = _
       simp [List.append_assoc]
     | change
-        ({ events := ((transcript.events ++ [_]) ++ [_]) ++ [_] } :
+        ({ events := ((transcript.events ++ [_]) ++ [_]) ++ [_]
+           exactEvents := ((transcript.exactEvents ++ [_]) ++ [_]) ++ [_] } :
           aspis_core.transcript.Transcript) = _
       simp [List.append_assoc]
 
@@ -323,11 +384,13 @@ theorem generated_inner_round_exact
     (round : Std.Usize)
     (hround : round.val < 4) :
     v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0
-        parsed { start := 0#usize, «end» := 2#usize } transcript () nonces
+        parsed { start := 0#usize, «end» := 2#usize } transcript parsed.gamma nonces
         batch roots final selector round =
       .ok
         ({ events := transcript.events ++ roundEvents round.val
-            (nonces.val[round.val]!.val) }, roots, 1#u32) := by
+            (nonces.val[round.val]!.val)
+           exactEvents := transcript.exactEvents ++
+            roundExactEvents parsed nonces roots round.val }, roots, 1#u32) := by
   obtain ⟨sample1, hsample1Val, hsample1⟩ :=
     active_body_exact parsed nonces batch final roots selector transcript
       round 0#usize hround (by simp)
@@ -335,10 +398,12 @@ theorem generated_inner_round_exact
     UScalar.eq_of_val_eq (by simpa using hsample1Val)
   subst sample1
   let transcript1 : aspis_core.transcript.Transcript :=
-    { events := transcript.events ++ sampleEvents round.val 0 }
+    { events := transcript.events ++ sampleEvents round.val 0
+      exactEvents := transcript.exactEvents ++
+        sampleExactEvents parsed round.val 0 }
   have hsample1' :
       v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body
-          parsed () nonces batch roots final selector round
+          parsed parsed.gamma nonces batch roots final selector round
           { start := 0#usize, «end» := 2#usize } transcript =
         .ok (.cont
           ({ start := 1#usize, «end» := 2#usize }, transcript1)) := by
@@ -350,10 +415,12 @@ theorem generated_inner_round_exact
     UScalar.eq_of_val_eq (by simpa using hsample2Val)
   subst sample2
   let transcript2 : aspis_core.transcript.Transcript :=
-    { events := transcript1.events ++ sampleEvents round.val 1 }
+    { events := transcript1.events ++ sampleEvents round.val 1
+      exactEvents := transcript1.exactEvents ++
+        sampleExactEvents parsed round.val 1 }
   have hsample2' :
       v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body
-          parsed () nonces batch roots final selector round
+          parsed parsed.gamma nonces batch roots final selector round
           { start := 1#usize, «end» := 2#usize } transcript1 =
         .ok (.cont
           ({ start := 2#usize, «end» := 2#usize }, transcript2)) := by
@@ -372,8 +439,8 @@ theorem generated_inner_round_exact
   rw [loop.eq_def]
   simp only
   rw [htail]
-  simpa [transcript2, transcript1, roundEvents, roundTailEvents,
-    List.append_assoc]
+  simpa [transcript2, transcript1, roundEvents, roundExactEvents,
+    roundTailEvents, List.append_assoc]
 
 #print axioms generated_inner_round_exact
 
@@ -389,12 +456,14 @@ theorem generated_outer_body_active_exact
     ∃ next : Std.Usize,
       next.val = round.val + 1 ∧
       v5_cu_probe.replay_real_v5_relation_rounds_loop0.body
-          parsed () nonces batch final selector
+          parsed parsed.gamma nonces batch final selector
           { start := round, «end» := 4#usize } transcript roots =
         .ok (.cont
           ({ start := next, «end» := 4#usize },
             { events := transcript.events ++ roundEvents round.val
-                (nonces.val[round.val]!.val) }, roots)) := by
+                (nonces.val[round.val]!.val)
+              exactEvents := transcript.exactEvents ++
+                roundExactEvents parsed nonces roots round.val }, roots)) := by
   let next : Std.Usize :=
     Std.Usize.ofNatCore (round.val + 1) (by scalar_tac)
   have hnextVal : next.val = round.val + 1 := by simp [next]
@@ -420,7 +489,7 @@ theorem generated_outer_body_done_exact
     (selector : Std.U8)
     (transcript : aspis_core.transcript.Transcript) :
     v5_cu_probe.replay_real_v5_relation_rounds_loop0.body
-        parsed () nonces batch final selector
+        parsed parsed.gamma nonces batch final selector
         { start := 4#usize, «end» := 4#usize } transcript roots =
       .ok (.done (some (.Ok transcript))) := by
   simp [v5_cu_probe.replay_real_v5_relation_rounds_loop0.body,
@@ -440,11 +509,16 @@ theorem generated_four_round_loop_exact
     (selector : Std.U8)
     (transcript : aspis_core.transcript.Transcript) :
     v5_cu_probe.replay_real_v5_relation_rounds_loop0 parsed
-        { start := 0#usize, «end» := 4#usize } transcript () nonces batch
+        { start := 0#usize, «end» := 4#usize } transcript parsed.gamma nonces batch
         roots final selector =
       .ok (some (.Ok
         { events := transcript.events ++ fourRoundEvents
-            (fun index => nonces.val[index.val]!.val) })) := by
+            (fun index => nonces.val[index.val]!.val)
+          exactEvents := transcript.exactEvents ++
+            roundExactEvents parsed nonces roots 0 ++
+            roundExactEvents parsed nonces roots 1 ++
+            roundExactEvents parsed nonces roots 2 ++
+            roundExactEvents parsed nonces roots 3 })) := by
   let nonceAt : Fin 4 → Nat :=
     fun index => nonces.val[index.val]!.val
   obtain ⟨round1, hround1Val, hround0⟩ :=
@@ -454,10 +528,12 @@ theorem generated_four_round_loop_exact
     UScalar.eq_of_val_eq (by simpa using hround1Val)
   subst round1
   let transcript1 : aspis_core.transcript.Transcript :=
-    { events := transcript.events ++ roundEvents 0 (nonceAt 0) }
+    { events := transcript.events ++ roundEvents 0 (nonceAt 0)
+      exactEvents := transcript.exactEvents ++
+        roundExactEvents parsed nonces roots 0 }
   have hround0' :
       v5_cu_probe.replay_real_v5_relation_rounds_loop0.body
-          parsed () nonces batch final selector
+          parsed parsed.gamma nonces batch final selector
           { start := 0#usize, «end» := 4#usize } transcript roots =
         .ok (.cont
           ({ start := 1#usize, «end» := 4#usize }, transcript1, roots)) := by
@@ -470,10 +546,12 @@ theorem generated_four_round_loop_exact
     UScalar.eq_of_val_eq (by simpa using hround2Val)
   subst round2
   let transcript2 : aspis_core.transcript.Transcript :=
-    { events := transcript1.events ++ roundEvents 1 (nonceAt 1) }
+    { events := transcript1.events ++ roundEvents 1 (nonceAt 1)
+      exactEvents := transcript1.exactEvents ++
+        roundExactEvents parsed nonces roots 1 }
   have hround1' :
       v5_cu_probe.replay_real_v5_relation_rounds_loop0.body
-          parsed () nonces batch final selector
+          parsed parsed.gamma nonces batch final selector
           { start := 1#usize, «end» := 4#usize } transcript1 roots =
         .ok (.cont
           ({ start := 2#usize, «end» := 4#usize }, transcript2, roots)) := by
@@ -486,10 +564,12 @@ theorem generated_four_round_loop_exact
     UScalar.eq_of_val_eq (by simpa using hround3Val)
   subst round3
   let transcript3 : aspis_core.transcript.Transcript :=
-    { events := transcript2.events ++ roundEvents 2 (nonceAt 2) }
+    { events := transcript2.events ++ roundEvents 2 (nonceAt 2)
+      exactEvents := transcript2.exactEvents ++
+        roundExactEvents parsed nonces roots 2 }
   have hround2' :
       v5_cu_probe.replay_real_v5_relation_rounds_loop0.body
-          parsed () nonces batch final selector
+          parsed parsed.gamma nonces batch final selector
           { start := 2#usize, «end» := 4#usize } transcript2 roots =
         .ok (.cont
           ({ start := 3#usize, «end» := 4#usize }, transcript3, roots)) := by
@@ -502,10 +582,12 @@ theorem generated_four_round_loop_exact
     UScalar.eq_of_val_eq (by simpa using hround4Val)
   subst round4
   let transcript4 : aspis_core.transcript.Transcript :=
-    { events := transcript3.events ++ roundEvents 3 (nonceAt 3) }
+    { events := transcript3.events ++ roundEvents 3 (nonceAt 3)
+      exactEvents := transcript3.exactEvents ++
+        roundExactEvents parsed nonces roots 3 }
   have hround3' :
       v5_cu_probe.replay_real_v5_relation_rounds_loop0.body
-          parsed () nonces batch final selector
+          parsed parsed.gamma nonces batch final selector
           { start := 3#usize, «end» := 4#usize } transcript3 roots =
         .ok (.cont
           ({ start := 4#usize, «end» := 4#usize }, transcript4, roots)) := by
@@ -548,13 +630,14 @@ theorem generated_replay_relation_rounds_exact
     v5_cu_probe.replay_real_v5_relation_rounds transcript parsed =
       .ok (.Ok
         { events := transcript.events ++ fourRoundEvents
-            (fun index => parsed.v5_fold_nonces.val[index.val]!.val) }) := by
+            (fun index => parsed.v5_fold_nonces.val[index.val]!.val)
+          exactEvents := transcript.exactEvents ++ fourRoundExactEvents parsed }) := by
   have hloop := generated_four_round_loop_exact parsed parsed.v5_fold_nonces
     parsed.v5_batch_nonce parsed.v5_final_nonce parsed.v5_private_roots
     parsed.v5_query_selector transcript
   simp [v5_cu_probe.replay_real_v5_relation_rounds,
     v5_cu_probe.verify_v5_relation_final_zero_tail,
-    v5_relation_stress.V5_RELATION_STRESS_ROUNDS, hloop]
+    v5_relation_stress.V5_RELATION_STRESS_ROUNDS, fourRoundExactEvents, hloop]
 
 #print axioms generated_replay_relation_rounds_exact
 
