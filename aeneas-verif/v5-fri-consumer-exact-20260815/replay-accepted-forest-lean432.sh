@@ -48,7 +48,7 @@ sed \
 
 (
   cd "$root/AspisFormal"
-  NO_DNA=1 lake build AspisFormal.V5AcceptedExecutionReleasedSecurity
+  NO_DNA=1 lake build AspisFormal.V5AcceptedExecutionDeterministicClosure
 ) >>"$log" 2>&1
 
 aspis_path=${ASPIS_FORMAL_LEAN_PATH:-$(
@@ -142,6 +142,8 @@ compile V5FriConsumerCoordinateBridge \
   "$consumer_proof/V5FriConsumerCoordinateBridge.lean"
 compile V5FriAcceptedForestChecks \
   "$consumer_proof/V5FriAcceptedForestChecks.lean"
+compile V5AcceptedExecutionFinalClosure \
+  "$consumer_proof/V5AcceptedExecutionFinalClosure.lean"
 
 if rg -n '\b(sorry|admit|native_decide|unsafe|ofReduceBool|axiom)\b' \
     "$consumer_proof" "$coordinate/proof" "$arithmetic/proof" \
