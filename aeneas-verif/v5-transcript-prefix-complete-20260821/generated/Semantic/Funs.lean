@@ -121,7 +121,7 @@ def
           core.array.TryFromSharedArraySlice.try_from 448#usize encoded
         -- Proof-term normalization: Aeneas' model of `Result.expect` ignores
         -- the diagnostic string on both branches.  The source literal makes
-        -- Aeneas.Std.toStr introduce a `decide +native` size proof, so use the
+        -- Aeneas.Std.toStr introduce a compiled size proof, so use the
         -- semantically identical empty diagnostic to keep this generated
         -- source model kernel-checkable without that axiom.
         let encoded1 ←

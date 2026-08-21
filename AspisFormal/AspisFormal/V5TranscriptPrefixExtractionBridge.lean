@@ -8,12 +8,13 @@ helpers through opaque external declarations.  Therefore its generated Lean
 term cannot itself expose a transcript trace.
 
 This file interprets the mechanically checked successful-path normalization.
-Direct absorbs and challenges are observed without assumptions.  The six
-larger helpers remain explicit observations supplied by `PrefixHelperEvents`.
-If those six observations match their maintained models on the accepted
+Direct absorbs and challenges are observed without assumptions. The six
+larger helpers are explicit observations supplied by `PrefixHelperEvents`.
+Separate source proofs now establish all six helper bodies from unchanged
+Rust. If those observations match their maintained models on the accepted
 arguments, the extracted prefix has exactly `sourcePrefix`'s event order and
-payloads.  The theorem does not assert that the opaque generated declarations
-have those observations.
+payloads. This file deliberately keeps the observation interface visible
+rather than turning external generated declarations into hidden axioms.
 
 The terminal-context and returned-value theorems are unconditional facts
 about the checked normalized dataflow.  Nothing here adds a SHA-256,
@@ -132,7 +133,7 @@ def generatedSuccessfulPrefixTrace
   runPrefixCalls (eventObserver helpers) []
     (generatedSuccessfulPrefixCalls input derived values)
 
-/-! ## Explicit remaining helper boundary -/
+/-! ## Explicit helper interface -/
 
 /-- Exactly what must be established about the helper bodies that were opaque
 in this Aeneas extraction.  The predicate mentions only the arguments used by

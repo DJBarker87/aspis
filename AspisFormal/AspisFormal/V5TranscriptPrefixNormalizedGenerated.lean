@@ -3,16 +3,18 @@ import AspisFormal.V5TranscriptSourceAdapter
 /-!
 # Normalized successful path of the extracted V5 prefix helper
 
-This file is the small typed form checked against the pinned Aeneas output by
-`aeneas-verif/v5-transcript-prefix-20260815/check-normalized-success-path.py`.
+This file is the small typed form checked against the fresh extraction of the
+unchanged production function by
+`aeneas-verif/v5-transcript-prefix-complete-20260821/check-unchanged-normalized-success-path.py`.
 It records the transcript-affecting external calls, their arguments, the
 values returned by those calls, the terminal-context comparison, and the
 successful return value.
 
 The checked normalization deliberately removes parser and rejection branches
-and retains only the branch ending in `Result.Ok`.  It is not a second source
-extraction and it is not claimed to be definitionally equal to the generated
-function, whose external transcript operations are opaque.
+and retains only the branch ending in `Result.Ok`. It is not a second source
+extraction. The checker binds every retained expression, call count, argument,
+and returned value to the pinned generated function; the larger external
+helpers are proved separately from their unchanged Rust bodies.
 -/
 
 namespace AspisV5TranscriptPrefixNormalizedGenerated

@@ -22,7 +22,7 @@ Their real hash inputs and state changes are proved separately in
 `../v5-transcript-primitives-20260820/`. SHA-256 security is not claimed by
 this bundle.
 
-Two prefix helpers remain to be joined: the zerocheck challenge setup and the
-ten-round semantic sumcheck. The extraction harness already exposes the
-zerocheck entry point; its mutable-array loop currently needs one more Aeneas
-translation fix.
+The zerocheck challenge setup and ten-round semantic sumcheck are now proved
+from unchanged Rust in `../v5-transcript-prefix-complete-20260821/`. Together,
+the two bundles cover all six larger helper calls made by the outer prefix
+function.
