@@ -161,13 +161,13 @@ def aspis_core.field.M31.half
   (self : aspis_core.field.M31) : Result aspis_core.field.M31 := do
   let i ← lift (self &&& 1#u32)
   if i = 0#u32
-  then let i1 ← lift (Std.U32.wrapping_shr self 1#i32)
+  then let i1 ← lift (Std.U32.wrapping_shr self 1#u32)
        ok i1
   else
     let i1 ← lift (UScalar.cast .U64 self)
     let i2 ← lift (UScalar.cast .U64 aspis_core.field.P)
     let i3 ← lift (Std.U64.wrapping_add i1 i2)
-    let i4 ← lift (Std.U64.wrapping_shr i3 1#i32)
+    let i4 ← lift (Std.U64.wrapping_shr i3 1#u32)
     let i5 ← lift (UScalar.cast .U32 i4)
     ok i5
 

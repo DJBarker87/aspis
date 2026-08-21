@@ -21,12 +21,29 @@ open V5FriArithmeticExact
     Name pattern: [core::iter::traits::iterator::Iterator::any]
     Visibility: public -/
 @[trait_default, rust_fun "core::iter::traits::iterator::Iterator::any"]
-axiom core.iter.traits.iterator.Iterator.any.default
+def core.iter.traits.iterator.Iterator.any.default
   {Self : Type} {F : Type} {Clause0_Item : Type} (IteratorInst :
   core.iter.traits.iterator.Iterator Self Clause0_Item)
   (opsfunctionFnMutFTupleClause0_ItemBoolInst : core.ops.function.FnMut F
   Clause0_Item Bool) :
-  Self → F → Result (Bool × Self)
+  Self → F → Result (Bool × Self) :=
+  fun self predicate => do
+    let (found, self', _) ←
+      loop
+        (fun (self', predicate') => do
+          let (item, self'') ← IteratorInst.next self'
+          match item with
+          | none => ok (done (false, self'', predicate'))
+          | some item' =>
+            let (isMatch, predicate'') ←
+              opsfunctionFnMutFTupleClause0_ItemBoolInst.call_mut
+                predicate' item'
+            if isMatch then
+              ok (done (true, self'', predicate''))
+            else
+              ok (cont (self'', predicate'')))
+        (self, predicate)
+    ok (found, self')
 
 /-- [core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a mut T> for core::slice::iter::IterMut<'a, T>}::any]:
     Source: '/rustc/library/core/src/slice/iter/macros.rs', lines 326:12-329:45

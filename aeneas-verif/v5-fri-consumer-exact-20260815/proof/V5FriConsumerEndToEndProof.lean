@@ -1057,6 +1057,45 @@ decreasing_by
 the production FRI loops.  This records the real dynamic-coordinate call and
 the real four-entry alpha preparation map; it assumes neither the released
 table values nor any fold equation. -/
+def toProductionCoordinateOutput
+    (output : aspis_core.circle_fri.DerivedCircleQueryFoldInverses) :
+    V5CoordinateSelectedProductionSource.circle_fri.DerivedCircleQueryFoldInverses where
+  circle := output.circle
+  later := output.later
+  final_x := output.final_x
+
+/-- A successful call through the consumer translation's transparent
+transport is exactly a successful call of the complete production-helper
+extraction. -/
+theorem productionCoordinateCall_of_consumerCoordinateCall
+    (domainLog : Std.U32) (layer0 : Slice Std.U32)
+    (later : Array (Slice Std.U32) 3#usize)
+    (inverse : aspis_core.field.M31 → aspis_core.field.M31)
+    (output : aspis_core.circle_fri.DerivedCircleQueryFoldInverses)
+    (hcall :
+      aspis_core.circle_fri.derive_query_fold_inverses_for_circle
+          domainLog layer0 later inverse = .ok (.Ok output)) :
+    V5CoordinateSelectedProductionSource.circle_fri.derive_query_fold_inverses_for_circle
+        domainLog layer0 later inverse =
+      .ok (.Ok (toProductionCoordinateOutput output)) := by
+  unfold aspis_core.circle_fri.derive_query_fold_inverses_for_circle at hcall
+  generalize hproduction :
+      V5CoordinateSelectedProductionSource.circle_fri.derive_query_fold_inverses_for_circle
+        domainLog layer0 later inverse = productionResult at hcall
+  cases productionResult with
+  | fail error => simp [Bind.bind, Aeneas.Std.bind] at hcall
+  | div => simp [Bind.bind, Aeneas.Std.bind] at hcall
+  | ok result =>
+      cases result with
+      | Err error =>
+          simp [aspis_core.circle_fri.fromProductionResult] at hcall
+      | Ok productionOutput =>
+          cases productionOutput
+          cases output
+          simpa [aspis_core.circle_fri.fromProductionResult,
+            aspis_core.circle_fri.fromProductionOutput,
+            toProductionCoordinateOutput] using hcall
+
 structure ProductionFriPreparationTrace
     (openings : VerifiedOpenings)
     (alphas : Array aspis_core.field.QM31 4#usize)
@@ -1084,12 +1123,13 @@ structure ProductionFriPreparationTrace
   later0Read : Array.index_usize openings.indices.later 0#usize = .ok later0
   later1Read : Array.index_usize openings.indices.later 1#usize = .ok later1
   later2Read : Array.index_usize openings.indices.later 2#usize = .ok later2
-  coordinateCall :
-    aspis_core.circle_fri.derive_query_fold_inverses_for_circle domainLog
+  productionCoordinateCall :
+    V5CoordinateSelectedProductionSource.circle_fri.derive_query_fold_inverses_for_circle
+        domainLog
         (alloc.vec.Vec.deref openings.indices.layer0)
         (Array.make 3#usize [alloc.vec.Vec.deref later0,
           alloc.vec.Vec.deref later1, alloc.vec.Vec.deref later2]) inverse =
-      .ok (.Ok coordinates)
+      .ok (.Ok (toProductionCoordinateOutput coordinates))
   alphaPowersCall :
     core.array.Array.map
         fri_checks.check_v5_fri_queries.closure.Insts.CoreOpsFunctionFnMutTupleQM31ArrayPreparedQm31Multiplier3
@@ -1200,7 +1240,12 @@ theorem top_level_acceptance_exposes_preparation_and_layerZero_loop
     assumption
   · apply Nonempty.intro
     eapply ProductionFriPreparationTrace.mk
-    all_goals first | rfl | assumption | simp_all
+    all_goals try rfl
+    all_goals try assumption
+    case productionCoordinateCall =>
+      apply productionCoordinateCall_of_consumerCoordinateCall
+      simp_all
+    all_goals simp_all
 
 /-- Compatibility projection retaining the previous API for callers which do
 not yet consume the preparation trace. -/

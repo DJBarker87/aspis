@@ -63,10 +63,9 @@ open AspisV5FriPreparedSumSemantics
 @[simp] theorem source_reduce_u64_eq_arithmetic (value : Std.U64) :
     V5FriHelperTransparent.aspis_core.field.reduce_u64 value =
       V5FriArithmeticExact.field.reduce_u64 value := by
-  simp [V5FriHelperTransparent.aspis_core.field.reduce_u64,
-    V5FriArithmeticExact.field.reduce_u64,
-    V5FriHelperTransparent.aspis_core.field.P,
-    V5FriArithmeticExact.field.P]
+  unfold V5FriHelperTransparent.aspis_core.field.reduce_u64
+    V5FriArithmeticExact.field.reduce_u64
+  rw [source_p_eq_arithmetic]
 
 @[simp] theorem source_m31_reduce_u64_eq_arithmetic (value : Std.U64) :
     V5FriHelperTransparent.aspis_core.field.M31.reduce_u64 value =

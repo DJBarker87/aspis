@@ -1,6 +1,7 @@
 import V5FriConsumerValueSemantics
 import V5FriConsumerReadSemantics
 import V5FriCoordinateReleasedPointConnection
+import V5CoordinateProductionTopCallProof
 
 set_option autoImplicit false
 set_option maxHeartbeats 8000000
@@ -9,13 +10,10 @@ set_option maxRecDepth 20000
 /-!
 # Production FRI coordinates and the released tables
 
-The unchanged consumer extraction leaves the production coordinate helper as
-an external call.  The coordinate extraction proves the accepted adapter
-implementation.  This file records only the source-tool boundary for the one
-successful coordinate call already present in a production execution trace.
-It does not assume equality for arbitrary slices, rejected calls, or inverse
-functions.  All mathematical claims about the returned value are derived from
-the translated adapter proof.
+The consumer trace contains a successful call of the separately extracted
+production coordinate helper.  The coordinate proof now inverts that actual
+generated call and proves the released meaning of every returned table entry.
+No equality to the older duplicate adapter implementation is assumed.
 -/
 
 open Aeneas Aeneas.Std Result ControlFlow Error
@@ -28,6 +26,7 @@ open AspisV5FriConsumerObservationBridge
 open AspisV5MerkleAuthenticationBinding
 open AspisV5MerkleConsumedValueBridge
 open AspisV5MerkleRustBridge
+open V5CoordinateProductionTopCallProof
 
 namespace Consumer
 open V5FriConsumerExact
@@ -219,16 +218,10 @@ def toCoordinateOutput (output : Consumer.Output) : Coordinate.Output where
 @[simp] theorem toCoordinateOutput_finalX (output : Consumer.Output) :
     (toCoordinateOutput output).final_x = output.final_x := rfl
 
-/-! The equality below is deliberately a source-tool boundary, not a theorem
-proved by Lean's kernel.  Its arguments identify one successful call already
-recorded by `ProductionFriPreparationTrace`: the domain-19 layer-zero slice,
-the three exact later-layer slices read by the production caller, and the
-returned output.  The reproducible coordinate source bundle pins the unchanged
-Rust, its extraction patch, the directly translated private parent helper, and
-the translated adapter used on the right-hand side. -/
-
-/-- Adapter equality for one successful production preparation trace. -/
-def AcceptedProductionCoordinateAdapterEquality
+/-- Direct semantic certificate for one successful production preparation
+trace.  This is the conclusion now derived from the generated source call,
+not an implementation-equality assumption. -/
+def AcceptedProductionCoordinateSemanticCertificate
     {openings : V5FriConsumerExact.private_openings.VerifiedV5PrivateOpenings}
     {alphas : Array V5FriConsumerExact.aspis_core.field.QM31 4#usize}
     {inverse :
@@ -240,30 +233,13 @@ def AcceptedProductionCoordinateAdapterEquality
         3#usize) 4#usize}
     (trace : ProductionFriPreparationTrace openings alphas inverse
       coordinates alphaPowers) : Prop :=
-  V5FriCoordinateAdapter.aspis_core.circle_fri.derive_query_fold_inverses_for_circle
-      19#u32
+  ReleasedCoordinateOutputEvidence
       (alloc.vec.Vec.deref openings.indices.layer0)
-      (alloc.vec.Vec.deref trace.later0)
-      (alloc.vec.Vec.deref trace.later1)
-      (alloc.vec.Vec.deref trace.later2) =
-    .ok (.Ok (toCoordinateOutput coordinates))
-
-/-- Source-certificate boundary for the preparation trace contained in one
-accepted production execution.  Unlike the former statement, this does not
-quantify over calls unrelated to that execution. -/
-def AcceptedExecutionCoordinateSourceCertificate
-    {openings : V5FriConsumerExact.private_openings.VerifiedV5PrivateOpenings}
-    {prepared : V5FriConsumerExact.fri_checks.V5PreparedPcsClaims}
-    {finalPolynomial : Array V5FriConsumerExact.aspis_core.field.QM31 4#usize}
-    {sink : V5FriConsumerExact.fri_checks.V5FriCheckSink}
-    (execution : AcceptedProductionFriExecution openings prepared
-      finalPolynomial sink) : Prop :=
-  ∀ trace : ProductionFriPreparationTrace openings execution.sourceAlphas
-      execution.sourceInverse execution.coordinates execution.alphaPowers,
-    AcceptedProductionCoordinateAdapterEquality trace
+      (alloc.vec.Vec.deref trace.later0) (alloc.vec.Vec.deref trace.later1)
+      (alloc.vec.Vec.deref trace.later2) (toCoordinateOutput coordinates)
 
 /-- An accepted production preparation call returns exactly the released
-coordinate tables once the source/adapter equality is supplied. -/
+coordinate tables by the generated-source top-call theorem. -/
 theorem production_trace_released_coordinate_tables_exact
     {openings : V5FriConsumerExact.private_openings.VerifiedV5PrivateOpenings}
     {alphas : Array V5FriConsumerExact.aspis_core.field.QM31 4#usize}
@@ -277,7 +253,6 @@ theorem production_trace_released_coordinate_tables_exact
     (trace : ProductionFriPreparationTrace openings alphas inverse
       coordinates alphaPowers)
     (hValidate : ValidationSuccessPreservesShape)
-    (hAdapter : AcceptedProductionCoordinateAdapterEquality trace)
     (hlayer0 : IndicesBelow
       (alloc.vec.Vec.deref openings.indices.layer0) 131072)
     (hlater0 : IndicesBelow (alloc.vec.Vec.deref trace.later0) 32768)
@@ -294,15 +269,20 @@ theorem production_trace_released_coordinate_tables_exact
       (alloc.vec.Vec.deref trace.later2)
       (toCoordinateOutput coordinates) := by
   have hdomain := trace.domainLog_eq_19 hValidate
-  have _hproduction := trace.coordinateCall
-  rw [hdomain] at _hproduction
-  exact accepted_released_coordinate_tables_exact
+  have hproduction := trace.productionCoordinateCall
+  rw [hdomain] at hproduction
+  have hreleased := source_accepted_full_call_released_coordinates
     (alloc.vec.Vec.deref openings.indices.layer0)
     (alloc.vec.Vec.deref trace.later0)
     (alloc.vec.Vec.deref trace.later1)
     (alloc.vec.Vec.deref trace.later2)
-    (toCoordinateOutput coordinates) hlayer0 hlater0 hlater1 hlater2
-    hnonempty hcapacity hAdapter
+    (Array.make 3#usize [alloc.vec.Vec.deref trace.later0,
+      alloc.vec.Vec.deref trace.later1, alloc.vec.Vec.deref trace.later2])
+    inverse (toProductionCoordinateOutput coordinates)
+    (by rfl) (by rfl) (by rfl) hlayer0 hlater0 hlater1 hlater2
+    hnonempty hcapacity hproduction
+  simpa [V5CoordinateProductionReleasedProof.toAdapterOutput,
+    toProductionCoordinateOutput, toCoordinateOutput] using hreleased
 
 /-- The exact authenticated parser run supplies all range, nonempty, and
 capacity facts required by the coordinate theorem.  Callers no longer need to
@@ -322,8 +302,7 @@ theorem production_trace_released_coordinate_tables_from_exact_run
     (trace : ProductionFriPreparationTrace openings alphas inverse
       coordinates alphaPowers)
     (hdriver : generatedDriverOutput openings = driverOutputOfRun run [])
-    (hValidate : ValidationSuccessPreservesShape)
-    (hAdapter : AcceptedProductionCoordinateAdapterEquality trace) :
+    (hValidate : ValidationSuccessPreservesShape) :
     ReleasedCoordinateOutputEvidence
       (alloc.vec.Vec.deref openings.indices.layer0)
       (alloc.vec.Vec.deref trace.later0)
@@ -388,7 +367,6 @@ theorem production_trace_released_coordinate_tables_from_exact_run
           trace.later2.val.length) ≤ Std.Usize.max := by
     omega
   apply production_trace_released_coordinate_tables_exact trace hValidate
-    hAdapter
   · simpa [binaryDepth] using hlayer0
   · simpa [binaryDepth] using hline1
   · simpa [binaryDepth] using hline2

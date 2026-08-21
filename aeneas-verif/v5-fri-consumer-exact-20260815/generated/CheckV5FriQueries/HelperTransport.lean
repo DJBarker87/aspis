@@ -3,6 +3,7 @@ import FriArithmetic.Funs
 import AspisCoreCm31Multiplicative
 import V5FriByteDecoderSource.Funs
 import V5FriHelperTransparent.Funs
+import V5Dot16Reference.Funs
 
 open Aeneas Aeneas.Std Result ControlFlow Error
 
@@ -72,6 +73,12 @@ abbrev QM31 := V5FriByteDecoderSource.aspis_core.field.QM31
 
 end Decoder
 
+namespace Dot16
+
+abbrev QM31 := V5FriDot16ReferenceGenerated.aspis_core.field.QM31
+
+end Dot16
+
 def mapResult {A B : Type} (f : A → B) : Result A → Result B
   | .fail error => .fail error
   | .div => .div
@@ -129,6 +136,15 @@ def fromDecoderCM31 (value : Decoder.CM31) : Consumer.CM31 :=
 
 def fromDecoderQM31 (value : Decoder.QM31) : Consumer.QM31 :=
   ⟨fromDecoderCM31 value.c0, fromDecoderCM31 value.c1⟩
+
+def fromDot16QM31 (value : Dot16.QM31) : Consumer.QM31 :=
+  ⟨⟨value.c0.a, value.c0.b⟩, ⟨value.c1.a, value.c1.b⟩⟩
+
+/-- Exact transport of the source constant.  The consumer snapshot encoded
+associated constants as `Result`, while the separately extracted unchanged
+field source exposes the value directly. -/
+def zero : Result Consumer.QM31 :=
+  ok (fromSourceQM31 V5FriHelperTransparent.aspis_core.field.QM31.ZERO)
 
 def toSourcePrepared (value : Consumer.Prepared) : Source.Prepared :=
   ⟨value.components⟩
@@ -248,9 +264,45 @@ def mul (left right : Consumer.QM31) : Result Consumer.QM31 :=
     (V5FriHelperTransparent.mul
       (toSourceQM31 left) (toSourceQM31 right))
 
+/-- Exact transport of the separately extracted unchanged `QM31::add` body. -/
+def add (left right : Consumer.QM31) : Result Consumer.QM31 :=
+  mapResult fromSourceQM31
+    (V5FriHelperTransparent.aspis_core.field.QM31.add
+      (toSourceQM31 left) (toSourceQM31 right))
+
 def preparedNew (input : Consumer.QM31) : Result Consumer.Prepared :=
   mapResult fromSourcePrepared
     (V5FriHelperTransparent.prepare (toSourceQM31 input))
+
+/-- Exact transport of the separately extracted unchanged
+`qm31_sum_products3_prepared` source body. -/
+def preparedDot (left : Array Consumer.Prepared 3#usize)
+    (right : Array Consumer.QM31 3#usize) : Result Consumer.QM31 :=
+  mapResult fromSourceQM31
+    (V5FriHelperTransparent.aspis_core.field.qm31_sum_products3_prepared
+      (mapArray toSourcePrepared left) (mapArray toSourceQM31 right))
+
+/-- Release-pinned monomorphic source normalization of
+`qm31_m31_dot4_prepared_limbs_4b_bytes::<16>`.  The fixed-index Rust body is
+the same four-slot, sixteen-column computation, translated separately so no
+mutable-iterator loan remains external to Lean. -/
+def dot16 (weights : Array (Array Std.U32 4#usize) 16#usize)
+    (bytes : Slice Std.U8) : Result (Option (Array Consumer.QM31 4#usize)) :=
+  if hbytes : bytes.val.length = 256 then
+    mapResult (Option.map (mapArray fromDot16QM31))
+      (V5FriDot16ReferenceGenerated.indexed_dot16 weights
+        ⟨bytes.val, by simpa [hbytes]⟩)
+  else
+    ok none
+
+def dot4PreparedLimbs4bBytes {N : Std.Usize}
+    (weights : Array (Array Std.U32 4#usize) N)
+    (bytes : Slice Std.U8) :
+    Result (Option (Array Consumer.QM31 4#usize)) :=
+  if hN : N = 16#usize then
+    dot16 (hN ▸ weights) bytes
+  else
+    ok none
 
 def circle (values : Array Consumer.QM31 4#usize)
     (alphaPowers : Array Consumer.Prepared 3#usize)

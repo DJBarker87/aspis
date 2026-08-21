@@ -5,6 +5,8 @@ import Aeneas.Std
 import Aeneas.Tactic.RustAttributes
 import CheckV5FriQueries.Types
 import CheckV5FriQueries.HelperTransport
+import V5CoordinateProductionFull.FunsDriver
+import ShapeSource.Funs
 open Aeneas Aeneas.Std Result ControlFlow Error
 set_option linter.dupNamespace false
 set_option linter.hashCommand false
@@ -124,22 +126,43 @@ theorem core.array.Array.map_forall₂
     Name pattern: [core::iter::traits::iterator::Iterator::position]
     Visibility: public -/
 @[trait_default, rust_fun "core::iter::traits::iterator::Iterator::position"]
-axiom core.iter.traits.iterator.Iterator.position.default
+def core.iter.traits.iterator.Iterator.position.default
   {Self : Type} {P : Type} {Clause0_Item : Type} (IteratorInst :
   core.iter.traits.iterator.Iterator Self Clause0_Item)
   (opsfunctionFnMutPTupleClause0_ItemBoolInst : core.ops.function.FnMut P
   Clause0_Item Bool) :
-  Self → P → Result ((Option Std.Usize) × Self)
+  Self → P → Result ((Option Std.Usize) × Self) :=
+  fun self predicate => do
+    let (position, self', _) ←
+      loop
+        (fun (self', predicate', index) => do
+          let (item, self'') ← IteratorInst.next self'
+          match item with
+          | none => ok (done (none, self'', predicate'))
+          | some item' =>
+            let (isMatch, predicate'') ←
+              opsfunctionFnMutPTupleClause0_ItemBoolInst.call_mut
+                predicate' item'
+            if isMatch then
+              ok (done (some index, self'', predicate''))
+            else
+              let nextIndex ← index + 1#usize
+              ok (cont (self'', predicate'', nextIndex)))
+        (self, predicate, 0#usize)
+    ok (position, self')
 
 /-- [core::option::{core::option::Option<T>}::map_or]:
     Source: '/rustc/library/core/src/option.rs', lines 1221:4-1224:28
     Name pattern: [core::option::{core::option::Option<@T>}::map_or]
     Visibility: public -/
 @[rust_fun "core::option::{core::option::Option<@T>}::map_or"]
-axiom core.option.Option.map_or
+def core.option.Option.map_or
   {T : Type} {U : Type} {F : Type} (opsfunctionFnOnceFTupleTUInst :
   core.ops.function.FnOnce F T U) :
   (Option T) → U → F → Result U
+  | none, default, _ => ok default
+  | some value, _, closure =>
+      opsfunctionFnOnceFTupleTUInst.call_once closure value
 
 /-- [core::option::{core::option::Option<T>}::ok_or]:
     Source: '/rustc/library/core/src/option.rs', lines 1334:4-1334:73
@@ -157,10 +180,14 @@ def core.option.Option.ok_or
     Name pattern: [core::option::{core::option::Option<@T>}::ok_or_else]
     Visibility: public -/
 @[rust_fun "core::option::{core::option::Option<@T>}::ok_or_else"]
-axiom core.option.Option.ok_or_else
+def core.option.Option.ok_or_else
   {T : Type} {E : Type} {F : Type} (opsfunctionFnOnceFTupleEInst :
   core.ops.function.FnOnce F Unit E) :
   (Option T) → F → Result (core.result.Result T E)
+  | some value, _ => ok (.Ok value)
+  | none, closure => do
+      let error ← opsfunctionFnOnceFTupleEInst.call_once closure ()
+      ok (.Err error)
 
 /-- [core::option::{core::option::Option<&'_0 T>}::copied]:
     Source: '/rustc/library/core/src/option.rs', lines 2135:4-2137:16
@@ -251,17 +278,63 @@ axiom
     (core.slice.iter.IterMut T) × (core.slice.iter.IterMut T →
     core.slice.iter.IterMut T))
 
-/-- [aspis_core::circle_fri::derive_query_fold_inverses_for_circle]:
-    Source: 'crates/aspis-core/src/circle_fri.rs', lines 385:0-390:59
-    Name pattern: [aspis_core::circle_fri::derive_query_fold_inverses_for_circle]
-    Visibility: public -/
+def aspis_core.circle_fri.fromProductionFoldDenominator :
+    V5CoordinateSelectedProductionSource.circle_fri.FoldDenominator →
+      aspis_core.circle_fri.FoldDenominator
+  | .CircleY => .CircleY
+  | .CircleX => .CircleX
+  | .LineFirstPairX => .LineFirstPairX
+  | .LineSecondPairX => .LineSecondPairX
+  | .LineSecondFoldX => .LineSecondFoldX
+
+def aspis_core.circle_fri.fromProductionError :
+    V5CoordinateSelectedProductionSource.circle_fri.CircleFriError →
+      aspis_core.circle_fri.CircleFriError
+  | .CircleIndexOutOfRange => .CircleIndexOutOfRange
+  | .CircleFiberOutOfRange => .CircleFiberOutOfRange
+  | .InvalidLineLayer => .InvalidLineLayer
+  | .InvalidLineFoldLayer => .InvalidLineFoldLayer
+  | .LineIndexOutOfRange => .LineIndexOutOfRange
+  | .LineFiberOutOfRange => .LineFiberOutOfRange
+  | .QueryOutOfRange => .QueryOutOfRange
+  | .InvalidBitReverseLength => .InvalidBitReverseLength
+  | .BitReverseIndexOutOfRange => .BitReverseIndexOutOfRange
+  | .ZeroDenominator kind =>
+      .ZeroDenominator (aspis_core.circle_fri.fromProductionFoldDenominator kind)
+  | .InvalidInverseBackend => .InvalidInverseBackend
+
+def aspis_core.circle_fri.fromProductionOutput
+    (output :
+      V5CoordinateSelectedProductionSource.circle_fri.DerivedCircleQueryFoldInverses) :
+    aspis_core.circle_fri.DerivedCircleQueryFoldInverses where
+  circle := output.circle
+  later := output.later
+  final_x := output.final_x
+
+def aspis_core.circle_fri.fromProductionResult :
+    core.result.Result
+        V5CoordinateSelectedProductionSource.circle_fri.DerivedCircleQueryFoldInverses
+        V5CoordinateSelectedProductionSource.circle_fri.CircleFriError →
+      core.result.Result aspis_core.circle_fri.DerivedCircleQueryFoldInverses
+        aspis_core.circle_fri.CircleFriError
+  | .Ok output => .Ok (aspis_core.circle_fri.fromProductionOutput output)
+  | .Err error => .Err (aspis_core.circle_fri.fromProductionError error)
+
+/- The consumer extraction sees this function as an external call because its
+translation unit contains only the FRI consumer.  The declaration is a
+transparent structural transport to the separately recorded complete Aeneas
+extraction of the unchanged production helper, not an axiom. -/
 @[rust_fun "aspis_core::circle_fri::derive_query_fold_inverses_for_circle"]
-axiom aspis_core.circle_fri.derive_query_fold_inverses_for_circle
-  :
-  Std.U32 → (Slice Std.U32) → (Array (Slice Std.U32) 3#usize) →
-    (aspis_core.field.M31 → aspis_core.field.M31) → Result
-    (core.result.Result aspis_core.circle_fri.DerivedCircleQueryFoldInverses
-    aspis_core.circle_fri.CircleFriError)
+def aspis_core.circle_fri.derive_query_fold_inverses_for_circle
+    (domainLog : Std.U32) (layer0 : Slice Std.U32)
+    (later : Array (Slice Std.U32) 3#usize)
+    (inverse : aspis_core.field.M31 → aspis_core.field.M31) : Result
+      (core.result.Result aspis_core.circle_fri.DerivedCircleQueryFoldInverses
+        aspis_core.circle_fri.CircleFriError) := do
+  let result ←
+    V5CoordinateSelectedProductionSource.circle_fri.derive_query_fold_inverses_for_circle
+      domainLog layer0 later inverse
+  ok (aspis_core.circle_fri.fromProductionResult result)
 
 /-- [aspis_core::circle_fri::normalized_circle_to_line_arity4_prepared_polynomial_refs]:
     Source: 'crates/aspis-core/src/circle_fri.rs', lines 826:0-831:9
@@ -282,22 +355,25 @@ def
     Name pattern: [aspis_core::circle_line_merkle::CIRCLE_LINE_TAGS]
     Visibility: public -/
 @[rust_const "aspis_core::circle_line_merkle::CIRCLE_LINE_TAGS"]
-axiom aspis_core.circle_line_merkle.CIRCLE_LINE_TAGS
-  : Result (Array Std.U8 3#usize)
+def aspis_core.circle_line_merkle.CIRCLE_LINE_TAGS
+  : Result (Array Std.U8 3#usize) :=
+  ok (Array.make 3#usize [65#u8, 66#u8, 67#u8])
 
 /-- [aspis_core::circle_merkle::CIRCLE_C1_LAYER0_TAG]
     Source: 'crates/aspis-core/src/circle_merkle.rs', lines 21:0-21:34
     Name pattern: [aspis_core::circle_merkle::CIRCLE_C1_LAYER0_TAG]
     Visibility: public -/
 @[rust_const "aspis_core::circle_merkle::CIRCLE_C1_LAYER0_TAG"]
-axiom aspis_core.circle_merkle.CIRCLE_C1_LAYER0_TAG : Result Std.U8
+def aspis_core.circle_merkle.CIRCLE_C1_LAYER0_TAG : Result Std.U8 :=
+  ok 64#u8
 
 /-- [aspis_core::circle_merkle::CIRCLE_C2_LAYER0_TAG]
     Source: 'crates/aspis-core/src/circle_merkle.rs', lines 22:0-22:34
     Name pattern: [aspis_core::circle_merkle::CIRCLE_C2_LAYER0_TAG]
     Visibility: public -/
 @[rust_const "aspis_core::circle_merkle::CIRCLE_C2_LAYER0_TAG"]
-axiom aspis_core.circle_merkle.CIRCLE_C2_LAYER0_TAG : Result Std.U8
+def aspis_core.circle_merkle.CIRCLE_C2_LAYER0_TAG : Result Std.U8 :=
+  ok 192#u8
 
 /-- [aspis_core::circle_pcs_shape::{impl core::convert::From<aspis_core::circle_pcs_shape::CirclePcsShapeError> for aspis_core::circle_pcs_shape::CirclePcsDecodeError}::from]:
     Source: 'crates/aspis-core/src/circle_pcs_shape.rs', lines 59:4-59:47
@@ -305,11 +381,12 @@ axiom aspis_core.circle_merkle.CIRCLE_C2_LAYER0_TAG : Result Std.U8
     Visibility: public -/
 @[rust_fun
   "aspis_core::circle_pcs_shape::{core::convert::From<aspis_core::circle_pcs_shape::CirclePcsDecodeError, aspis_core::circle_pcs_shape::CirclePcsShapeError>}::from"]
-axiom
+def
   aspis_core.circle_pcs_shape.CirclePcsDecodeError.Insts.CoreConvertFromCirclePcsShapeError.from
   :
   aspis_core.circle_pcs_shape.CirclePcsShapeError → Result
-    aspis_core.circle_pcs_shape.CirclePcsDecodeError
+    aspis_core.circle_pcs_shape.CirclePcsDecodeError :=
+  fun error => ok (.Shape error)
 
 /-- [aspis_core::circle_pcs_shape::{aspis_core::circle_pcs_shape::CirclePcsShape}::validate]:
     Source: 'crates/aspis-core/src/circle_pcs_shape.rs', lines 71:4-71:62
@@ -317,11 +394,12 @@ axiom
     Visibility: public -/
 @[rust_fun
   "aspis_core::circle_pcs_shape::{aspis_core::circle_pcs_shape::CirclePcsShape}::validate"]
-axiom aspis_core.circle_pcs_shape.CirclePcsShape.validate
-  :
-  aspis_core.circle_pcs_shape.CirclePcsShape → Result (core.result.Result
+def aspis_core.circle_pcs_shape.CirclePcsShape.validate
+  (input : aspis_core.circle_pcs_shape.CirclePcsShape) :
+  Result (core.result.Result
     aspis_core.circle_pcs_shape.CirclePcsShape
-    aspis_core.circle_pcs_shape.CirclePcsShapeError)
+    aspis_core.circle_pcs_shape.CirclePcsShapeError) :=
+  V5ShapeValidationSource.circle_pcs_shape.CirclePcsShape.validate input
 
 /-- [aspis_core::circle_pcs_shape::{aspis_core::circle_pcs_shape::CirclePcsShape}::total_columns]:
     Source: 'crates/aspis-core/src/circle_pcs_shape.rs', lines 137:4-137:45
@@ -329,8 +407,11 @@ axiom aspis_core.circle_pcs_shape.CirclePcsShape.validate
     Visibility: public -/
 @[rust_fun
   "aspis_core::circle_pcs_shape::{aspis_core::circle_pcs_shape::CirclePcsShape}::total_columns"]
-axiom aspis_core.circle_pcs_shape.CirclePcsShape.total_columns
-  : aspis_core.circle_pcs_shape.CirclePcsShape → Result Std.Usize
+def aspis_core.circle_pcs_shape.CirclePcsShape.total_columns
+  (self : aspis_core.circle_pcs_shape.CirclePcsShape) : Result Std.Usize := do
+  let c1 ← lift (core.convert.num.FromUsizeU16.from self.c1_columns)
+  let c2 ← lift (core.convert.num.FromUsizeU16.from self.c2_columns)
+  lift (c1 + c2)
 
 /-- [aspis_core::circle_query::check_fixed_line_transition_prepared_polynomial_powers]:
     Source: 'crates/aspis-core/src/circle_query.rs', lines 550:0-557:33
@@ -366,7 +447,9 @@ def
     Source: 'crates/aspis-core/src/field.rs', lines 16:0-16:16
     Name pattern: [aspis_core::field::P]
     Visibility: public -/
-@[rust_const "aspis_core::field::P"] axiom aspis_core.field.P : Result Std.U32
+@[rust_const "aspis_core::field::P"]
+def aspis_core.field.P : Result Std.U32 :=
+  ok 2147483647#u32
 
 /-- [aspis_core::field::{impl core::cmp::PartialEq<aspis_core::field::QM31> for aspis_core::field::QM31}::eq]:
     Source: 'crates/aspis-core/src/field.rs', lines 351:22-351:31
@@ -397,27 +480,30 @@ def aspis_core.field.PreparedQm31Multiplier.new
     Name pattern: [aspis_core::field::qm31_sum_products3_prepared]
     Visibility: public -/
 @[rust_fun "aspis_core::field::qm31_sum_products3_prepared"]
-axiom aspis_core.field.qm31_sum_products3_prepared
+def aspis_core.field.qm31_sum_products3_prepared
   :
   (Array aspis_core.field.PreparedQm31Multiplier 3#usize) → (Array
-    aspis_core.field.QM31 3#usize) → Result aspis_core.field.QM31
+    aspis_core.field.QM31 3#usize) → Result aspis_core.field.QM31 :=
+  V5FriConsumerExact.HelperTransport.preparedDot
 
 /-- [aspis_core::field::{aspis_core::field::QM31}::ZERO]
     Source: 'crates/aspis-core/src/field.rs', lines 715:4-715:24
     Name pattern: [aspis_core::field::{aspis_core::field::QM31}::ZERO]
     Visibility: public -/
 @[rust_const "aspis_core::field::{aspis_core::field::QM31}::ZERO"]
-axiom aspis_core.field.QM31.ZERO : Result aspis_core.field.QM31
+def aspis_core.field.QM31.ZERO : Result aspis_core.field.QM31 :=
+  V5FriConsumerExact.HelperTransport.zero
 
 /-- [aspis_core::field::{aspis_core::field::QM31}::add]:
     Source: 'crates/aspis-core/src/field.rs', lines 742:4-742:39
     Name pattern: [aspis_core::field::{aspis_core::field::QM31}::add]
     Visibility: public -/
 @[rust_fun "aspis_core::field::{aspis_core::field::QM31}::add"]
-axiom aspis_core.field.QM31.add
+def aspis_core.field.QM31.add
   :
   aspis_core.field.QM31 → aspis_core.field.QM31 → Result
-    aspis_core.field.QM31
+    aspis_core.field.QM31 :=
+  V5FriConsumerExact.HelperTransport.add
 
 /-- [aspis_core::field::{aspis_core::field::QM31}::mul]:
     Source: 'crates/aspis-core/src/field.rs', lines 775:4-775:39
@@ -453,18 +539,20 @@ def aspis_core.field.QM31.from_le_bytes
     Name pattern: [aspis_core::field::qm31_m31_dot4_prepared_limbs_4b_bytes]
     Visibility: public -/
 @[rust_fun "aspis_core::field::qm31_m31_dot4_prepared_limbs_4b_bytes"]
-axiom aspis_core.field.qm31_m31_dot4_prepared_limbs_4b_bytes
+def aspis_core.field.qm31_m31_dot4_prepared_limbs_4b_bytes
   {N : Std.Usize} :
   (Array (Array Std.U32 4#usize) N) → (Slice Std.U8) → Result (Option
-    (Array aspis_core.field.QM31 4#usize))
+    (Array aspis_core.field.QM31 4#usize)) :=
+  V5FriConsumerExact.HelperTransport.dot4PreparedLimbs4bBytes
 
 /-- [aspis_core::state_only_prefix::STATE_ONLY_SPEND_QUERY_COUNT]
     Source: 'crates/aspis-core/src/state_only_prefix.rs', lines 56:0-56:43
     Name pattern: [aspis_core::state_only_prefix::STATE_ONLY_SPEND_QUERY_COUNT]
     Visibility: public -/
 @[rust_const "aspis_core::state_only_prefix::STATE_ONLY_SPEND_QUERY_COUNT"]
-axiom aspis_core.state_only_prefix.STATE_ONLY_SPEND_QUERY_COUNT
-  : Result Std.U16
+def aspis_core.state_only_prefix.STATE_ONLY_SPEND_QUERY_COUNT
+  : Result Std.U16 :=
+  ok 18#u16
 
 /-- [aspis_core::state_only_private_merkle::STATE_ONLY_PRIVATE_LEAF_SALT_BYTES]
     Source: 'crates/aspis-core/src/state_only_private_merkle.rs', lines 11:0-11:51

@@ -1137,6 +1137,14 @@ private theorem core_slice_get_some_eq
   · rw [List.getElem!_of_getElem?]
     simpa using hget
 
+private theorem transport_function_value
+    {I A : Type} (f : I → A) {source target : I} {value expected : A}
+    (hvalue : value = f source) (hindex : source = target)
+    (hexpected : f target = expected) : value = expected := by
+  subst target
+  exact hvalue.trans hexpected
+
+set_option maxRecDepth 32000 in
 /-- The two inverse coordinates read by one first-pass iteration are the exact
 released schedule entries for that query, and are canonical raw M31 values. -/
 theorem layerZero_read_has_released_coordinates
@@ -1201,23 +1209,36 @@ theorem layerZero_read_has_released_coordinates
     change AspisV5FriCoordinateFieldSemantics.canonicalM31
       coordinates.circle.val[ordinal.val]!.val[1]!
     exact hcanonical.2
-  have hvalues := hevidence.circle ordinal.val htarget
+  obtain ⟨hcircleX, hcircleY⟩ := hevidence.circle ordinal.val htarget
+  simp only [toCoordinateOutput_circle] at hcircleX hcircleY
   have hxValue : AspisV5FriCoordinateFieldSemantics.m31Value read.inv2x =
       schedule.circleInv2x query := by
     rw [hxEq]
-    have hreleased := hvalues.1
     change AspisV5FriCoordinateFieldSemantics.m31Value
-      coordinates.circle.val[ordinal.val]!.val[0]! = _ at hreleased
-    rw [hfin] at hreleased
-    exact hreleased.trans (hsource.circleInv2x query).symm
+      coordinates.circle.val[ordinal.val]!.val[0]! = _
+    have hschedule :
+        (2 * AspisV5FriReleasedLineGeometry.releasedEvaluationPoints.circleX
+          query)⁻¹ = schedule.circleInv2x query :=
+      (hsource.circleInv2x query).symm
+    exact transport_function_value
+      (fun index : Fin 131072 =>
+        (2 * AspisV5FriReleasedLineGeometry.releasedEvaluationPoints.circleX
+          index)⁻¹)
+      hcircleX hfin hschedule
   have hyValue : AspisV5FriCoordinateFieldSemantics.m31Value read.inv2y =
       schedule.circleInv2y query := by
     rw [hyEq]
-    have hreleased := hvalues.2
     change AspisV5FriCoordinateFieldSemantics.m31Value
-      coordinates.circle.val[ordinal.val]!.val[1]! = _ at hreleased
-    rw [hfin] at hreleased
-    exact hreleased.trans (hsource.circleInv2y query).symm
+      coordinates.circle.val[ordinal.val]!.val[1]! = _
+    have hschedule :
+        (2 * AspisV5FriReleasedLineGeometry.releasedEvaluationPoints.circleY
+          query)⁻¹ = schedule.circleInv2y query :=
+      (hsource.circleInv2y query).symm
+    exact transport_function_value
+      (fun index : Fin 131072 =>
+        (2 * AspisV5FriReleasedLineGeometry.releasedEvaluationPoints.circleY
+          index)⁻¹)
+      hcircleY hfin hschedule
   refine ⟨hxCanonical, hyCanonical, ?_, ?_⟩
   · change algebraMap (ZMod AspisCircleGroupOrder.P) K
         (AspisV5FriCoordinateFieldSemantics.m31Value read.inv2x) = _
@@ -2225,14 +2246,10 @@ theorem accepted_production_execution_yields_forest_fri_checks
     (hAgreement : AuthenticatedCallDecoderAgreement run prepared decoder)
     (hBinding : AcceptedFriModelInputBinding prepared execution.sourceAlphas
       finalPolynomial schedule transcript)
-    (hValidate : ValidationSuccessPreservesShape)
-    (hCoordinateSource :
-      AcceptedExecutionCoordinateSourceCertificate execution) :
+    (hValidate : ValidationSuccessPreservesShape) :
     ForestFriChecks decoder (sha256MerkleHashing sha256) run.forest schedule
       transcript queries := by
   rcases execution.preparationTrace with ⟨trace⟩
-  have hAdapter : AcceptedProductionCoordinateAdapterEquality trace :=
-    hCoordinateSource trace
   have hlater0 : trace.later0 = execution.laterRuns.indices0 := by
     have h := execution.laterRuns.indicesAt0
     rw [trace.later0Read] at h
@@ -2247,7 +2264,7 @@ theorem accepted_production_execution_yields_forest_fri_checks
     exact Result.ok.inj h
   have hCoordinatesTrace :=
     production_trace_released_coordinate_tables_from_exact_run run trace
-      hdriver hValidate hAdapter
+      hdriver hValidate
   have hCoordinates : ReleasedCoordinateOutputEvidence
       (alloc.vec.Vec.deref openings.indices.layer0)
       (alloc.vec.Vec.deref execution.laterRuns.indices0)
@@ -2347,16 +2364,14 @@ theorem accepted_production_execution_yields_forest_fri_checks_of_projection
     (hAgreement : AuthenticatedCallDecoderAgreement run prepared decoder)
     (hBinding : AcceptedFriModelInputBinding prepared execution.sourceAlphas
       finalPolynomial schedule transcript)
-    (hValidate : ValidationSuccessPreservesShape)
-    (hCoordinateSource :
-      AcceptedExecutionCoordinateSourceCertificate execution) :
+    (hValidate : ValidationSuccessPreservesShape) :
     ForestFriChecks decoder (sha256MerkleHashing sha256) run.forest schedule
       transcript queries := by
   exact accepted_production_execution_yields_forest_fri_checks run openings
     prepared finalPolynomial sink execution hdriver schedule hsource transcript
     queries (scheduledQuery_mem_of_projection relationInput transcriptInput
-      derived driverResult querySet queries projection) decoder hCalls
-    hAgreement hBinding hValidate hCoordinateSource
+    derived driverResult querySet queries projection) decoder hCalls
+    hAgreement hBinding hValidate
 
 /-- The released wrapper fixes the decoder to the concrete production-call
 decoder.  The consumer's selected read is now derived internally from the
@@ -2386,9 +2401,7 @@ theorem accepted_production_execution_yields_released_forest_fri_checks
     (hCalls : ExactFriHelperCallEquality)
     (hBinding : AcceptedFriModelInputBinding prepared execution.sourceAlphas
       finalPolynomial (exactReleasedFriTables base) transcript)
-    (hValidate : ValidationSuccessPreservesShape)
-    (hCoordinateSource :
-      AcceptedExecutionCoordinateSourceCertificate execution) :
+    (hValidate : ValidationSuccessPreservesShape) :
     ForestFriChecks (productionOpeningFibreDecoder prepared)
       (sha256MerkleHashing sha256) run.forest (exactReleasedFriTables base)
       transcript queries := by
@@ -2400,7 +2413,7 @@ theorem accepted_production_execution_yields_released_forest_fri_checks
       (exactReleasedFriTables base) (exactReleasedFriTables_source_shape base)
       transcript queries relationInput transcriptInput derived driverResult
       projection (productionOpeningFibreDecoder prepared) hCalls hAgreement
-      hBinding hValidate hCoordinateSource
+      hBinding hValidate
 
 /-- Once one exact accepted forest has all four FRI checks, the FRI-arithmetic
 failure arm of the released security event is impossible.  A purported

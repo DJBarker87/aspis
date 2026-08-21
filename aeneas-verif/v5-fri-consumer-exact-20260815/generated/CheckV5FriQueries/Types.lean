@@ -38,7 +38,7 @@ structure aspis_core.circle_fri.DerivedCircleQueryFoldInverses where
     Source: 'crates/aspis-core/src/circle_fri.rs', lines 185:0-185:24
     Name pattern: [aspis_core::circle_fri::FoldDenominator]
     Visibility: public -/
-@[discriminant isize, rust_type "aspis_core::circle_fri::FoldDenominator"]
+@[rust_type "aspis_core::circle_fri::FoldDenominator"]
 inductive aspis_core.circle_fri.FoldDenominator where
 | CircleY : aspis_core.circle_fri.FoldDenominator
 | CircleX : aspis_core.circle_fri.FoldDenominator
@@ -46,11 +46,24 @@ inductive aspis_core.circle_fri.FoldDenominator where
 | LineSecondPairX : aspis_core.circle_fri.FoldDenominator
 | LineSecondFoldX : aspis_core.circle_fri.FoldDenominator
 
+def aspis_core.circle_fri.FoldDenominator.read_discriminant :
+    aspis_core.circle_fri.FoldDenominator → Std.Isize
+  | .CircleY => 0#isize
+  | .CircleX => 1#isize
+  | .LineFirstPairX => 2#isize
+  | .LineSecondPairX => 3#isize
+  | .LineSecondFoldX => 4#isize
+
+instance consumerFoldDenominatorDiscriminant :
+    Discriminant aspis_core.circle_fri.FoldDenominator Std.Isize where
+  read_discriminant :=
+    aspis_core.circle_fri.FoldDenominator.read_discriminant
+
 /-- [aspis_core::circle_fri::CircleFriError]
     Source: 'crates/aspis-core/src/circle_fri.rs', lines 194:0-194:23
     Name pattern: [aspis_core::circle_fri::CircleFriError]
     Visibility: public -/
-@[discriminant isize, rust_type "aspis_core::circle_fri::CircleFriError"]
+@[rust_type "aspis_core::circle_fri::CircleFriError"]
 inductive aspis_core.circle_fri.CircleFriError where
 | CircleIndexOutOfRange : aspis_core.circle_fri.CircleFriError
 | CircleFiberOutOfRange : aspis_core.circle_fri.CircleFriError
@@ -65,6 +78,24 @@ inductive aspis_core.circle_fri.CircleFriError where
   aspis_core.circle_fri.FoldDenominator →
   aspis_core.circle_fri.CircleFriError
 | InvalidInverseBackend : aspis_core.circle_fri.CircleFriError
+
+def aspis_core.circle_fri.CircleFriError.read_discriminant :
+    aspis_core.circle_fri.CircleFriError → Std.Isize
+  | .CircleIndexOutOfRange => 0#isize
+  | .CircleFiberOutOfRange => 1#isize
+  | .InvalidLineLayer => 2#isize
+  | .InvalidLineFoldLayer => 3#isize
+  | .LineIndexOutOfRange => 4#isize
+  | .LineFiberOutOfRange => 5#isize
+  | .QueryOutOfRange => 6#isize
+  | .InvalidBitReverseLength => 7#isize
+  | .BitReverseIndexOutOfRange => 8#isize
+  | .ZeroDenominator _ => 9#isize
+  | .InvalidInverseBackend => 10#isize
+
+instance consumerCircleFriErrorDiscriminant :
+    Discriminant aspis_core.circle_fri.CircleFriError Std.Isize where
+  read_discriminant := aspis_core.circle_fri.CircleFriError.read_discriminant
 
 /-- [aspis_core::field::CM31]
     Source: 'crates/aspis-core/src/field.rs', lines 194:0-194:15

@@ -18,8 +18,10 @@ open Aeneas Aeneas.Std Result ControlFlow Error
 namespace AspisV5AcceptedProductionFriClosure
 
 open AspisV5AcceptedExecutionSecurityBridge
+open AspisV5AcceptedExecutionReleasedSchedule
 open AspisV5ComponentCConcreteFoldLinearity
 open AspisV5FriAcceptedForestChecks
+open AspisV5FriCoherentCandidateExtraction
 open AspisV5FriConsumerCoordinateBridge
 open AspisV5FriConsumerExactProof
 open AspisV5FriConsumerObservationBridge
@@ -33,13 +35,13 @@ open AspisV5WithoutReplacementQuerySoundness
 open V5FriConsumerExact
 
 /-- One concrete accepted FRI call supplies the exact authenticated run and
-all four FRI comparisons used by the security theorem.  The remaining two
-arguments are the model binding for the accepted transcript values and the
-coordinate-source equality; they are kept visible until their source bridges
-are joined in the final wrapper. -/
+all four FRI comparisons used by the security theorem.  The remaining model
+binding connects the accepted transcript values to the ideal transcript used
+by the security theorem. -/
 theorem accepted_call_yields_authenticated_released_fri_checks
     {PointValue : Type*}
-    (sha256 : List AspisV5MerkleAuthenticationBinding.Byte → Digest32)
+    (sha256 : List AspisV5MerkleAuthenticationBinding.Byte →
+      AspisV5MerkleRustBridge.Digest32)
     (rustObservation : V5ProductionCall → Option OpeningAndFriObservation)
     (rustCall : V5ProductionCall)
     (acceptedCall : AcceptedFriCall)
@@ -59,17 +61,12 @@ theorem accepted_call_yields_authenticated_released_fri_checks
       AspisV5FriAcceptedForestChecks.K PointValue)
     (projection : TranscriptExecutionProjection relationInput transcriptInput
       derived driverResult rustCall.queries queries)
-    (hDecoder : ProductionDecoderReferenceEquality)
     (hBinding : ∀ execution : AcceptedProductionFriExecution
         acceptedCall.openings acceptedCall.prepared
         acceptedCall.finalPolynomial acceptedCall.sink,
       AcceptedFriModelInputBinding acceptedCall.prepared
         execution.sourceAlphas acceptedCall.finalPolynomial
-        (exactReleasedFriTables base) transcript)
-    (hCoordinate : ∀ execution : AcceptedProductionFriExecution
-        acceptedCall.openings acceptedCall.prepared
-        acceptedCall.finalPolynomial acceptedCall.sink,
-      AcceptedExecutionCoordinateSourceCertificate execution) :
+        (exactReleasedFriTables base) transcript) :
     ∃ run : ExactV5Run sha256 rustCall.roots rustCall.queries,
       run.proofBytes = rustCall.proofBytes ∧
       ForestFriChecks (productionOpeningFibreDecoder acceptedCall.prepared)
@@ -92,9 +89,7 @@ theorem accepted_call_yields_authenticated_released_fri_checks
       acceptedCall.sink execution hdriver base transcript queries relationInput
       transcriptInput derived driverResult projection
       AspisV5FriTransparentHelperEquality.transparentFriHelperCallEquality
-      hDecoder
       (hBinding execution) V5ShapeValidationProof.validationSuccessPreservesShape
-      (hCoordinate execution)
   exact ⟨run, hbytes, hchecks⟩
 
 #print axioms accepted_call_yields_authenticated_released_fri_checks
