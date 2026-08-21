@@ -1,6 +1,7 @@
 import CheckV5FriQueries.Types
 import FriArithmetic.Funs
 import AspisCoreCm31Multiplicative
+import V5FriByteDecoderSource.Funs
 import V5FriHelperTransparent.Funs
 
 open Aeneas Aeneas.Std Result ControlFlow Error
@@ -64,6 +65,13 @@ abbrev CircleQueryError :=
 
 end Source
 
+namespace Decoder
+
+abbrev CM31 := V5FriByteDecoderSource.aspis_core.field.CM31
+abbrev QM31 := V5FriByteDecoderSource.aspis_core.field.QM31
+
+end Decoder
+
 def mapResult {A B : Type} (f : A → B) : Result A → Result B
   | .fail error => .fail error
   | .div => .div
@@ -115,6 +123,12 @@ def toSourceQM31 (value : Consumer.QM31) : Source.QM31 :=
 
 def fromSourceQM31 (value : Source.QM31) : Consumer.QM31 :=
   ⟨fromSourceCM31 value.c0, fromSourceCM31 value.c1⟩
+
+def fromDecoderCM31 (value : Decoder.CM31) : Consumer.CM31 :=
+  ⟨value.a, value.b⟩
+
+def fromDecoderQM31 (value : Decoder.QM31) : Consumer.QM31 :=
+  ⟨fromDecoderCM31 value.c0, fromDecoderCM31 value.c1⟩
 
 def toSourcePrepared (value : Consumer.Prepared) : Source.Prepared :=
   ⟨value.components⟩
@@ -217,6 +231,13 @@ def fromSourceQueryResult :
       core.result.Result Unit Consumer.CircleQueryError
   | .Ok unit => .Ok unit
   | .Err error => .Err (fromSourceCircleQueryError error)
+
+/-- The consumer extraction left this production call external.  Reuse the
+independent Charon/Aeneas extraction of the same unchanged Rust decoder and
+transport only its duplicate record type. -/
+def fromLeBytes (bytes : Slice Std.U8) : Result (Option Consumer.QM31) :=
+  mapResult (Option.map fromDecoderQM31)
+    (V5FriByteDecoderSource.aspis_core.field.QM31.from_le_bytes bytes)
 
 def square (input : Consumer.QM31) : Result Consumer.QM31 :=
   mapResult fromSourceQM31

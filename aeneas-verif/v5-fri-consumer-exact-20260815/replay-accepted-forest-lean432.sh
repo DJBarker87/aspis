@@ -8,6 +8,8 @@ readonly consumer_proof="$bundle/proof"
 readonly arithmetic="$root/aeneas-verif/v5-fri-arithmetic-exact-20260820"
 readonly coordinate="$root/aeneas-verif/v5-fri-coordinate-source-20260820"
 readonly decoder="$root/aeneas-verif/v5-fri-transition-reference-20260820"
+readonly byte_decoder="$root/aeneas-verif/v5-fri-byte-decoders-20260814"
+readonly helper="$root/aeneas-verif/v5-fri-helper-transparent-20260821"
 readonly lean_bin="${LEAN432_BIN:-$(command -v lean)}"
 readonly aeneas_lib="${AENEAS_LEAN_LIB:?set AENEAS_LEAN_LIB to the matching Aeneas Lean library}"
 readonly arithmetic_base_out="${V5_FRI_ARITHMETIC_BASE_LEAN_OUT:?set V5_FRI_ARITHMETIC_BASE_LEAN_OUT to the checked M31/QM31 proof olean directory}"
@@ -34,7 +36,8 @@ fi
 readonly out
 readonly log="$out/lean432.log"
 mkdir -p "$out/FriArithmetic" "$out/Coordinates" \
-  "$out/V5FriDecoderReference" "$out/CheckV5FriQueries"
+  "$out/V5FriDecoderReference" "$out/V5FriByteDecoderSource" \
+  "$out/V5FriHelperTransparent" "$out/CheckV5FriQueries"
 : >"$log"
 
 # The two independent extractions contain the same two Rust enums.  Attribute
@@ -122,11 +125,29 @@ compile V5FriDecoderReference/Funs \
 compile V5FriDecoderReferenceSemantics \
   "$decoder/proof/V5FriDecoderReferenceSemantics.lean"
 
+compile V5FriByteDecoderSource/Types \
+  "$byte_decoder/generated/V5FriByteDecoderSource/Types.lean"
+compile V5FriByteDecoderSource/FunsExternal \
+  "$byte_decoder/generated/V5FriByteDecoderSource/FunsExternal.lean"
+compile V5FriByteDecoderSource/Funs \
+  "$byte_decoder/generated/V5FriByteDecoderSource/Funs.lean"
+
+compile V5FriHelperTransparent/Types \
+  "$helper/generated/V5FriHelperTransparent/Types.lean"
+compile V5FriHelperTransparent/FunsExternal \
+  "$helper/generated/V5FriHelperTransparent/FunsExternal.lean"
+compile V5FriHelperTransparent/Funs \
+  "$helper/generated/V5FriHelperTransparent/Funs.lean"
+
 compile CheckV5FriQueries/TypesExternal \
   "$consumer_generated/TypesExternal.lean"
 compile CheckV5FriQueries/Types "$consumer_generated/Types.lean"
+compile CheckV5FriQueries/HelperTransport \
+  "$consumer_generated/HelperTransport.lean"
 compile CheckV5FriQueries/FunsExternal "$consumer_generated/FunsExternal.lean"
 compile CheckV5FriQueries/Funs "$consumer_generated/Funs.lean"
+compile V5FriConsumerDecoderBridge \
+  "$consumer_proof/V5FriConsumerDecoderBridge.lean"
 compile V5FriConsumerExactProof "$consumer_proof/V5FriConsumerExactProof.lean"
 compile V5FriConsumerEndToEndProof \
   "$consumer_proof/V5FriConsumerEndToEndProof.lean"
@@ -147,7 +168,7 @@ compile V5AcceptedExecutionFinalClosure \
 
 if rg -n '\b(sorry|admit|native_decide|unsafe|ofReduceBool|axiom)\b' \
     "$consumer_proof" "$coordinate/proof" "$arithmetic/proof" \
-    "$decoder/proof"; then
+    "$decoder/proof" "$byte_decoder/generated/V5FriByteDecoderSource"; then
   echo "forbidden proof shortcut" >&2
   exit 1
 fi

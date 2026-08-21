@@ -444,8 +444,9 @@ def aspis_core.field.QM31.square
     Name pattern: [aspis_core::field::{aspis_core::field::QM31}::from_le_bytes]
     Visibility: public -/
 @[rust_fun "aspis_core::field::{aspis_core::field::QM31}::from_le_bytes"]
-axiom aspis_core.field.QM31.from_le_bytes
-  : (Slice Std.U8) → Result (Option aspis_core.field.QM31)
+def aspis_core.field.QM31.from_le_bytes
+  : (Slice Std.U8) → Result (Option aspis_core.field.QM31) :=
+  V5FriConsumerExact.HelperTransport.fromLeBytes
 
 /-- [aspis_core::field::qm31_m31_dot4_prepared_limbs_4b_bytes]:
     Source: 'crates/aspis-core/src/field.rs', lines 1506:0-1509:22

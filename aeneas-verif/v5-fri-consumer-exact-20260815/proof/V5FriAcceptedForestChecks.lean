@@ -1,3 +1,4 @@
+import V5FriConsumerDecoderBridge
 import V5FriConsumerCoordinateBridge
 import V5FriDecoderReferenceSemantics
 import AspisFormal.V5MerkleTranscriptProjection
@@ -28,6 +29,7 @@ open AspisV5AcceptedExecutionReleasedSecurity
 open AspisV5ComponentCConcreteFoldLinearity
 open AspisV5FriArithmeticSemantics
 open AspisV5FriConsumerCoordinateBridge
+open AspisV5FriConsumerDecoderBridge
 open AspisV5FriConsumerExactProof
 open AspisV5FriConsumerObservationBridge
 open AspisV5FriConsumerReadSemantics
@@ -75,9 +77,9 @@ about malformed or unauthenticated leaves.
 `line1Selected` is the one narrow cross-extraction edge: on an authenticated
 line-one leaf which the exact full production decoder has accepted, it says
 that the consumer snapshot's successful selected 16-byte decode is the same
-array entry.  This is precisely the equality established by the universal
-byte-decoder/Kani bundle in `v5-fri-byte-decoders-20260814`; no fold or Merkle
-claim is included in that field. -/
+array entry.  The equality is derived below from the namespaced production
+byte-decoder extraction and the independent reference decoder; no fold or
+Merkle claim is included in that field. -/
 structure AuthenticatedCallDecoderAgreement
     {sha256 : List AspisV5MerkleAuthenticationBinding.Byte → Digest32}
     {roots : V5PrivateRoots Digest32} {queries : Finset V5Query}
@@ -230,10 +232,10 @@ noncomputable def productionOpeningFibreDecoder
   c2 := fun _ _ => 0
   later := fun _ => productionLaterDecoded
 
-/-- The sole remaining decoder equality.  It compares two extracted views of
-the same fully validated line-one leaf: the consumer's selected 16-byte read
-and the exact full production decoder.  The universal byte-decoder/Kani proof
-is intended to instantiate precisely this statement. -/
+/-- The equality needed between the consumer's selected 16-byte read and the
+exact full production decoder.  It is proved below from the extracted byte
+decoder and the existing full-decoder source equality; callers no longer
+supply it as an assumption. -/
 def ConsumerSelectedFullDecoderEquality : Prop :=
   ∀ (query : Std.U32) leaf selected value layer values,
     V5FriArithmeticExact.circle_query.decode_later_leaf leaf layer =
@@ -249,14 +251,100 @@ def ConsumerSelectedFullDecoderEquality : Prop :=
     aspis_core.field.QM31.from_le_bytes selected = .ok (some value) →
     toExactQM31 value = values.val[(query &&& 3#u32).val]!
 
-/-- Construct the exact-run agreement for the concrete decoder.  The only
-input is the narrow cross-extraction selected/full decoder equality above. -/
+private theorem reference_slot_decode_of_slice
+    (leaf : Array Std.U8 64#usize) (layer : Std.U8) (slot : Fin 4)
+    (selected : Slice Std.U8)
+    (value : AspisV5FriDecoderReferenceSemantics.Ref.QM31)
+    (hslice :
+      core.slice.index.Slice.index
+          (core.slice.index.SliceIndexRangeUsizeSlice Std.U8)
+          (Array.to_slice leaf)
+          { start := Std.Usize.wrapping_mul
+              (Std.Usize.ofNatCore slot.val (by scalar_tac)) 16#usize,
+            «end» := Std.Usize.wrapping_add
+              (Std.Usize.wrapping_mul
+                (Std.Usize.ofNatCore slot.val (by scalar_tac)) 16#usize)
+              16#usize } = .ok selected)
+    (hdecode :
+      V5FriDecoderReference.aspis_core.field.QM31.from_le_bytes selected =
+        .ok (some value)) :
+    V5FriDecoderReference.decode_later_slot_reference leaf layer
+        (Std.Usize.ofNatCore slot.val (by scalar_tac)) = .ok (.Ok value) := by
+  unfold V5FriDecoderReference.decode_later_slot_reference
+  unfold V5FriDecoderReference.aspis_core.circle_query.CIRCLE_QUERY_QM31_BYTES
+  unfold core.array.Array.index core.ops.index.IndexSlice
+  simp only [Std.lift, bind_tc_ok]
+  rw [hslice]
+  simp only [bind_tc_ok]
+  rw [hdecode]
+  rfl
+
+/-- The selected consumer decode is the corresponding entry of every
+successful full production decode.  The proof joins two transparent
+Charon/Aeneas extractions of `QM31::from_le_bytes`; the only remaining source
+boundary is the already-recorded full-decoder equality. -/
+theorem consumer_selected_full_decoder_equality
+    (hDecoder : ProductionDecoderReferenceEquality) :
+    ConsumerSelectedFullDecoderEquality := by
+  intro query leaf selected value layer values hfull hslice hvalue
+  have hlength := production_full_decoder_success_length leaf layer values hfull
+  let fixed : Array Std.U8 64#usize :=
+    ⟨leaf.val, by simpa using hlength⟩
+  have hfixedSlice : Array.to_slice fixed = leaf := by
+    apply Subtype.ext
+    rfl
+  have hfixedFull :
+      V5FriArithmeticExact.circle_query.decode_later_leaf
+          (Array.to_slice fixed) layer = .ok (.Ok values) := by
+    rw [hfixedSlice]
+    exact hfull
+  obtain ⟨refValues, hrefFull, hvalues⟩ :=
+    hDecoder.full fixed layer values hfixedFull
+  let slot : Fin 4 :=
+    ⟨(query &&& 3#u32).val, by
+      rw [UScalar.val_and]
+      exact Nat.lt_of_le_of_lt Nat.and_le_right (by norm_num)⟩
+  have hslotUsize :
+      Std.Usize.ofNatCore slot.val (by scalar_tac) =
+        UScalar.cast .Usize (query &&& 3#u32) := by
+    apply UScalar.eq_of_val_eq
+    scalar_tac
+  have hfixedSelectedSlice :
+      core.slice.index.Slice.index
+          (core.slice.index.SliceIndexRangeUsizeSlice Std.U8)
+          (Array.to_slice fixed)
+          { start := Std.Usize.wrapping_mul
+              (Std.Usize.ofNatCore slot.val (by scalar_tac)) 16#usize,
+            «end» := Std.Usize.wrapping_add
+              (Std.Usize.wrapping_mul
+                (Std.Usize.ofNatCore slot.val (by scalar_tac)) 16#usize)
+              16#usize } = .ok selected := by
+    rw [hfixedSlice, hslotUsize]
+    exact hslice
+  have hconsumerReference :=
+    consumer_qm31_decode_success_reference selected value hvalue
+  have hselectedReference := reference_slot_decode_of_slice fixed layer slot
+    selected (consumerToRefQM31 value) hfixedSelectedSlice hconsumerReference
+  have hfullReference :=
+    reference_leaf_success_slot fixed layer refValues hrefFull slot
+  have hreturned :
+      consumerToRefQM31 value = refValues.val[slot.val]! := by
+    have hresults := hselectedReference.symm.trans hfullReference
+    exact core.result.Result.Ok.inj (Result.ok.inj hresults)
+  rw [hvalues]
+  change toExactQM31 value = (refArrayToExact refValues).val[slot.val]!
+  rw [refArrayToExact_entry]
+  rw [← hreturned]
+  rfl
+
+/-- Construct the exact-run agreement for the concrete decoder from the
+existing full-decoder source equality. -/
 theorem productionOpeningFibreDecoder_authenticated_agreement
     {sha256 : List AspisV5MerkleAuthenticationBinding.Byte → Digest32}
     {roots : V5PrivateRoots Digest32} {queries : Finset V5Query}
     (run : ExactV5Run sha256 roots queries)
     (prepared : fri_checks.V5PreparedPcsClaims)
-    (hSelected : ConsumerSelectedFullDecoderEquality) :
+    (hDecoder : ProductionDecoderReferenceEquality) :
     AuthenticatedCallDecoderAgreement run prepared
       (productionOpeningFibreDecoder prepared) := by
   constructor
@@ -266,7 +354,8 @@ theorem productionOpeningFibreDecoder_authenticated_agreement
     exact productionLaterDecoded_of_generated_leaf leaf slot
   · intro query _hactive leaf selected value layer values _hbytes hfull
       hslice hvalue
-    exact hSelected query leaf selected value layer values hfull hslice hvalue
+    exact consumer_selected_full_decoder_equality hDecoder query leaf selected
+      value layer values hfull hslice hvalue
 
 /-- Successful execution of the extracted exact line helper exposes the full
 incoming-leaf decoder call which necessarily succeeded before the arithmetic
@@ -2272,8 +2361,8 @@ theorem accepted_production_execution_yields_forest_fri_checks_of_projection
     hAgreement hDecoder hBinding hValidate hCoordinateSource
 
 /-- The released wrapper fixes the decoder to the concrete production-call
-decoder.  Its only decoder premise is the narrow equality between the
-consumer's selected read and the full validated production decoder. -/
+decoder.  The consumer's selected read is now derived internally from the
+same extracted byte decoder as the full validated production decoder. -/
 theorem accepted_production_execution_yields_released_forest_fri_checks
     {PointValue : Type*}
     {sha256 : List AspisV5MerkleAuthenticationBinding.Byte → Digest32}
@@ -2297,7 +2386,6 @@ theorem accepted_production_execution_yields_released_forest_fri_checks
     (projection : TranscriptExecutionProjection relationInput transcriptInput
       derived driverResult querySet queries)
     (hCalls : ExactFriHelperCallEquality)
-    (hSelected : ConsumerSelectedFullDecoderEquality)
     (hDecoder : ProductionDecoderReferenceEquality)
     (hBinding : AcceptedFriModelInputBinding prepared execution.sourceAlphas
       finalPolynomial (exactReleasedFriTables base) transcript)
@@ -2308,7 +2396,7 @@ theorem accepted_production_execution_yields_released_forest_fri_checks
       (sha256MerkleHashing sha256) run.forest (exactReleasedFriTables base)
       transcript queries := by
   have hAgreement := productionOpeningFibreDecoder_authenticated_agreement
-    run prepared hSelected
+    run prepared hDecoder
   exact
     accepted_production_execution_yields_forest_fri_checks_of_projection run
       openings prepared finalPolynomial sink execution hdriver
@@ -2378,6 +2466,7 @@ theorem remove_released_fri_arithmetic_failure_into_collision
   | publishedDecoding failure => exact failure.elim
 
 #print axioms generated_indices_nodup_of_eq_ordered
+#print axioms consumer_selected_full_decoder_equality
 #print axioms successful_parent_read_matches_exact_run
 #print axioms layerZero_read_matches_exact_run
 #print axioms laterZero_read_matches_exact_run

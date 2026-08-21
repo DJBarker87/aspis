@@ -4,6 +4,7 @@ set -euo pipefail
 readonly bundle="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 readonly root="$(cd "$bundle/../.." && pwd -P)"
 readonly generated="$bundle/generated/V5FriDecoderGenerated"
+readonly namespaced="$bundle/generated/V5FriByteDecoderSource"
 readonly proof="$bundle/proof/V5FriDecoderProof.lean"
 readonly lean_bin="${LEAN432_BIN:-$(command -v lean)}"
 readonly aeneas_lib="${AENEAS_LEAN_LIB:?set AENEAS_LEAN_LIB to the patched Aeneas Lean library}"
@@ -27,7 +28,7 @@ else
 fi
 readonly out
 readonly log="$out/lean432.log"
-mkdir -p "$out/V5FriDecoderGenerated"
+mkdir -p "$out/V5FriDecoderGenerated" "$out/V5FriByteDecoderSource"
 : > "$log"
 
 aspis_path=$(cd "$root/AspisFormal" && NO_DNA=1 lake env printenv LEAN_PATH)
@@ -42,10 +43,13 @@ compile() {
 compile V5FriDecoderGenerated/Types "$generated/Types.lean"
 compile V5FriDecoderGenerated/FunsExternal "$generated/FunsExternal.lean"
 compile V5FriDecoderGenerated/Funs "$generated/Funs.lean"
+compile V5FriByteDecoderSource/Types "$namespaced/Types.lean"
+compile V5FriByteDecoderSource/FunsExternal "$namespaced/FunsExternal.lean"
+compile V5FriByteDecoderSource/Funs "$namespaced/Funs.lean"
 compile V5FriDecoderProof "$proof"
 
 if rg -n '\b(sorry|admit|native_decide|axiom|unsafe|ofReduceBool)\b' \
-    "$proof" "$generated/FunsExternal.lean"; then
+    "$proof" "$generated/FunsExternal.lean" "$namespaced/FunsExternal.lean"; then
   echo "forbidden proof token or handwritten external declaration" >&2
   exit 1
 fi
