@@ -18,16 +18,20 @@ The checked Lean files have these SHA-256 identities:
 
 | File | SHA-256 |
 |---|---|
-| `TypesExternal.lean` | `ce5dd8d1a02924721a8102696e7b5ad94db22d7ed2b2cf61e501155bf1ca163c` |
+| `TypesExternal.lean` | `8184109b4cf2fe609835f1cab610516276f575afeef53793f12d7ecc589b7c37` |
 | `Types.lean` | `c121162321fc5f7bfc00bb58f18b342d182529dca03eb4534157fcaf085cd58e` |
-| `FunsExternal.lean` | `a412449bf88bcb439c5cc8c5d32220c1984a7d454e3c86bb5b08e88e046e3b3f` |
+| `FunsExternal.lean` | `d9781f69ad77b8d453e86c818c1978643f719ccab3425e0c50dcaf88dc053318` |
 | `Funs.lean` | `370be7ac485d08bef17844e240b3d759f639cb078c91b2880c6e2747d21b3745` |
 
 `Funs.lean` includes only the narrow compatibility expansion required for
 the mutable enumerated slice iterator and two translated shift literals.
 `FunsExternal.lean` replaces the relevant generated standard-library
-placeholders with their transparent definitions. The production verifier
-source is unchanged.
+placeholders with transparent definitions, including the state-threading
+semantics of fixed-array `map` and `Result::map_err`. Its generated external
+declarations are kept inside the extraction namespace so that this snapshot
+can be imported beside the independent arithmetic snapshot; the derived
+`QM31` equality is the transparent four-limb equality implemented by Rust.
+The production verifier source is unchanged.
 
 ## What is proved
 
@@ -68,6 +72,13 @@ The main declarations are:
 The proof contains no `sorry`, `admit`, `native_decide`, or unsafe proof
 shortcut.
 
+`V5FriConsumerValueSemantics.lean` then joins each accepted source read to
+the independently extracted arithmetic helpers. It proves the exact circle
+fold, line fold, and final-polynomial comparison for an accepted read. Its
+only cross-extraction input is equality of the literal helper calls after
+structural conversion of the duplicate generated types; it does not assume a
+fold equation or a `ForestFriChecks` conclusion.
+
 ## Maintained observation connection
 
 `V5FriConsumerObservationBridge.lean` supplies the explicit adapter required
@@ -91,13 +102,47 @@ read the maintained schedule. The remaining source input to this composition
 is the parser-output theorem connecting the returned Rust opening views and
 index arrays to the authenticated run.
 
+## Opening-byte adapter
+
+`V5FriConsumerValueAdapter.lean` connects each successful generated Rust
+opening accessor call to the byte-level returned-opening model used by the
+authenticated FRI schedule. In particular,
+`generatedOpeningToReturned_value_of_success` proves that a successful
+`StateOnlyPrivateOpening::value(ordinal)` call returns exactly the model's
+value bytes at the same ordinal, assuming the parser-established record-width
+and record-length bounds. The proof unfolds the generated checked arithmetic
+and slice access; it is not a trace-test assumption.
+
+## Accepted proof to the four FRI checks
+
+`V5FriAcceptedForestChecks.lean` now joins the source facts above to the exact
+field arithmetic, the authenticated Merkle values, and the released coordinate
+tables.  For every accepted query it proves the circle fold, both middle line
+folds, and the final polynomial comparison.  The combined theorem is
+`accepted_production_execution_yields_released_forest_fri_checks`.
+
+It also proves that a second accepted Merkle forest cannot make those checks
+different unless the already named SHA-256 Merkle-collision event occurs.
+`remove_released_fri_arithmetic_failure_into_collision` therefore removes the
+old generic "FRI arithmetic failed" branch from the released security event.
+
+The result does not hide its remaining code connections.  It still takes the
+literal Rust/helper call equalities, the byte-decoder equality, the values
+passed from the transcript into the FRI call, and the production/coordinate-
+adapter equality as inputs.  These inputs state code-to-code or code-to-value
+equalities; none assumes a FRI fold equation.  The shape validator's small
+success-return property is now universally checked in
+`../v5-shape-validation-20260821/`.
+
 ## Opaque called operations
 
-The generated translation treats several called operations as opaque:
+The generated translation still treats several called operations as opaque:
 shape validation and column counts, inverse derivation and the supplied
-inverse callback, fixed-array mapping for alpha powers, circle-to-line
-normalisation, line and terminal transition checks, field decoding and
-arithmetic, prepared multiplication, and fixed proof-system constants. These
+inverse callback, circle-to-line normalisation, line and terminal transition
+checks, field decoding and arithmetic, prepared multiplication, and fixed
+proof-system constants. Fixed-array mapping for alpha powers is no longer in
+that list: its exact state-threading and pointwise semantics are defined and
+proved in this bundle. These
 operations determine whether a run accepts and are covered elsewhere by the
 mathematical and arithmetic proofs. This package proves a conditional source
 statement: whenever the exact generated top-level function accepts, none of

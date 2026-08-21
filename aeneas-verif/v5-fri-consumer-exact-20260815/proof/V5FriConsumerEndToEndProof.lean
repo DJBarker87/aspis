@@ -222,8 +222,8 @@ theorem later_completed_loop_reads_target
         .ok (coordinatesOut, pendingOut, 1#u32)) :
     ∃ carriedAt : Std.Usize, ∃ nextPosition : Std.Usize,
       nextPosition.val = target.val + 1 ∧
-      Nonempty (LaterBodyReadEvidence later laterIndices layer target carriedAt
-        values[target.val]) := by
+      Nonempty (LaterBodyReadEvidence later laterIndices coordinates alphaPowers
+        layer target carriedAt values[target.val]) := by
   have hcurrent : current.val < values.val.length := by omega
   obtain ⟨nextPosition, hnextValue, hnext⟩ :=
     enumerate_slice_at_next_run values current hcurrent
@@ -274,7 +274,8 @@ theorem terminal_completed_loop_reads_target
         .ok (coordinatesOut, pendingOut, 1#u32)) :
     ∃ nextPosition : Std.Usize,
       nextPosition.val = target.val + 1 ∧
-      Nonempty (TerminalBodyReadEvidence later layer target) := by
+      Nonempty (TerminalBodyReadEvidence later finalPolynomial coordinates
+        alphaPowers layer target values[target.val]) := by
   have hcurrent : current.val < values.val.length := by omega
   obtain ⟨nextPosition, hnextValue, hnext⟩ :=
     enumerate_slice_at_next_run values current hcurrent
@@ -297,7 +298,6 @@ theorem terminal_completed_loop_reads_target
       pending pendingOut values nextPosition target carriedNext
     · rw [hnextValue]
       omega
-    · exact htarget
     · exact hloopNext
 termination_by target.val - current.val
 decreasing_by
@@ -821,6 +821,35 @@ structure ThreeLaterPassRuns
         later laterIndices finalPolynomial coordinates2 alphaPowers 2#usize
         0#usize none = .ok (coordinates3, none, 1#u32)
 
+/-- The generated later-pass loop threads the coordinate table through all
+three passes without changing it.  This is derived from the translated loop,
+not assumed by the mathematical model. -/
+theorem ThreeLaterPassRuns.coordinates_preserved
+    {later : Array Opening 3#usize}
+    {laterIndices : Array (alloc.vec.Vec Std.U32) 3#usize}
+    {finalPolynomial : Array aspis_core.field.QM31 4#usize}
+    {alphaPowers : Array
+      (Array aspis_core.field.PreparedQm31Multiplier 3#usize) 4#usize}
+    {coordinates : aspis_core.circle_fri.DerivedCircleQueryFoldInverses}
+    (runs : ThreeLaterPassRuns later laterIndices finalPolynomial
+      alphaPowers coordinates) :
+    runs.coordinates1 = coordinates ∧
+      runs.coordinates2 = coordinates ∧
+      runs.coordinates3 = coordinates := by
+  have h0 := inner_completed_preserves_constants later laterIndices
+    finalPolynomial coordinates runs.coordinates1 alphaPowers 0#usize
+    none none (alloc.vec.Vec.deref runs.indices0) 0#usize 0#usize
+    (by simp) runs.run0
+  have h1 := inner_completed_preserves_constants later laterIndices
+    finalPolynomial runs.coordinates1 runs.coordinates2 alphaPowers 1#usize
+    none none (alloc.vec.Vec.deref runs.indices1) 0#usize 0#usize
+    (by simp) runs.run1
+  have h2 := inner_completed_preserves_constants later laterIndices
+    finalPolynomial runs.coordinates2 runs.coordinates3 alphaPowers 2#usize
+    none none (alloc.vec.Vec.deref runs.indices2) 0#usize 0#usize
+    (by simp) runs.run2
+  exact ⟨h0.1, h1.1.trans h0.1, h2.1.trans (h1.1.trans h0.1)⟩
+
 theorem outer_accepted_three_pass_runs
     (later : Array Opening 3#usize)
     (laterIndices : Array (alloc.vec.Vec Std.U32) 3#usize)
@@ -910,22 +939,26 @@ theorem outer_accepted_reads_every_later_target
             (alloc.vec.Vec.deref runs.indices0).val.length),
         ∃ (carriedAt nextPosition : Std.Usize),
           nextPosition.val = target.val + 1 ∧
-          Nonempty (LaterBodyReadEvidence later laterIndices 0#usize target
-            carriedAt (sliceValueAt
+          Nonempty (LaterBodyReadEvidence later laterIndices coordinates
+            alphaPowers 0#usize target carriedAt (sliceValueAt
               (alloc.vec.Vec.deref runs.indices0) target htarget))) ∧
       (∀ (target : Std.Usize)
           (htarget : target.val <
             (alloc.vec.Vec.deref runs.indices1).val.length),
         ∃ (carriedAt nextPosition : Std.Usize),
           nextPosition.val = target.val + 1 ∧
-          Nonempty (LaterBodyReadEvidence later laterIndices 1#usize target
-            carriedAt (sliceValueAt
+          Nonempty (LaterBodyReadEvidence later laterIndices runs.coordinates1
+            alphaPowers 1#usize target carriedAt (sliceValueAt
               (alloc.vec.Vec.deref runs.indices1) target htarget))) ∧
-      (∀ target : Std.Usize,
-        target.val < (alloc.vec.Vec.deref runs.indices2).val.length →
+      (∀ (target : Std.Usize)
+          (htarget : target.val <
+            (alloc.vec.Vec.deref runs.indices2).val.length),
         ∃ nextPosition : Std.Usize,
           nextPosition.val = target.val + 1 ∧
-          Nonempty (TerminalBodyReadEvidence later 2#usize target)) := by
+          Nonempty (TerminalBodyReadEvidence later finalPolynomial
+            runs.coordinates2 alphaPowers 2#usize target
+            (sliceValueAt (alloc.vec.Vec.deref runs.indices2) target
+              htarget))) := by
   obtain ⟨runs⟩ := outer_accepted_three_pass_runs later laterIndices
     finalPolynomial alphaPowers folded coordinates sink hloop
   refine ⟨runs, ?_, ?_, ?_⟩
@@ -1020,6 +1053,157 @@ decreasing_by
   rw [hnextValue]
   omega
 
+/-- Exact source-call trace for the two values constructed immediately before
+the production FRI loops.  This records the real dynamic-coordinate call and
+the real four-entry alpha preparation map; it assumes neither the released
+table values nor any fold equation. -/
+structure ProductionFriPreparationTrace
+    (openings : VerifiedOpenings)
+    (alphas : Array aspis_core.field.QM31 4#usize)
+    (inverse : aspis_core.field.M31 → aspis_core.field.M31)
+    (coordinates : aspis_core.circle_fri.DerivedCircleQueryFoldInverses)
+    (alphaPowers : Array
+      (Array aspis_core.field.PreparedQm31Multiplier 3#usize) 4#usize) :
+    Type where
+  sourceShape : aspis_core.circle_pcs_shape.CirclePcsShape
+  validatedShape : aspis_core.circle_pcs_shape.CirclePcsShape
+  validationResult : core.result.Result
+    aspis_core.circle_pcs_shape.CirclePcsShape
+    aspis_core.circle_pcs_shape.CirclePcsShapeError
+  sourceShapeCall : fri_checks.V5_FRI_PCS_SHAPE = .ok sourceShape
+  validationCall :
+    aspis_core.circle_pcs_shape.CirclePcsShape.validate sourceShape =
+      .ok validationResult
+  validationSucceeded : validationResult = .Ok validatedShape
+  domainLog : Std.U32
+  domainLogCall :
+    core.convert.num.FromU32U8.from validatedShape.domain_log_size = domainLog
+  later0 : alloc.vec.Vec Std.U32
+  later1 : alloc.vec.Vec Std.U32
+  later2 : alloc.vec.Vec Std.U32
+  later0Read : Array.index_usize openings.indices.later 0#usize = .ok later0
+  later1Read : Array.index_usize openings.indices.later 1#usize = .ok later1
+  later2Read : Array.index_usize openings.indices.later 2#usize = .ok later2
+  coordinateCall :
+    aspis_core.circle_fri.derive_query_fold_inverses_for_circle domainLog
+        (alloc.vec.Vec.deref openings.indices.layer0)
+        (Array.make 3#usize [alloc.vec.Vec.deref later0,
+          alloc.vec.Vec.deref later1, alloc.vec.Vec.deref later2]) inverse =
+      .ok (.Ok coordinates)
+  alphaPowersCall :
+    core.array.Array.map
+        fri_checks.check_v5_fri_queries.closure.Insts.CoreOpsFunctionFnMutTupleQM31ArrayPreparedQm31Multiplier3
+        alphas () = .ok alphaPowers
+
+/-- The only property of shape validation needed by the coordinate bridge:
+successful validation returns the shape it was given.  The unchanged Rust
+method is checked universally by
+`aeneas-verif/v5-shape-validation-20260821/verify.sh`. -/
+def ValidationSuccessPreservesShape : Prop :=
+  ∀ input output,
+    aspis_core.circle_pcs_shape.CirclePcsShape.validate input =
+        .ok (.Ok output) →
+      output = input
+
+theorem v5_fri_source_shape_domain_log_is_19
+    (shape : aspis_core.circle_pcs_shape.CirclePcsShape)
+    (hShape : fri_checks.V5_FRI_PCS_SHAPE = .ok shape) :
+    shape.domain_log_size = 19#u8 := by
+  unfold fri_checks.V5_FRI_PCS_SHAPE at hShape
+  repeat' first
+    | split at hShape
+    | simp_all [Bind.bind, Aeneas.Std.bind, Std.lift]
+  subst shape
+  rfl
+
+theorem ProductionFriPreparationTrace.domainLog_eq_19
+    {openings : VerifiedOpenings}
+    {alphas : Array aspis_core.field.QM31 4#usize}
+    {inverse : aspis_core.field.M31 → aspis_core.field.M31}
+    {coordinates : aspis_core.circle_fri.DerivedCircleQueryFoldInverses}
+    {alphaPowers : Array
+      (Array aspis_core.field.PreparedQm31Multiplier 3#usize) 4#usize}
+    (trace : ProductionFriPreparationTrace openings alphas inverse
+      coordinates alphaPowers)
+    (hValidate : ValidationSuccessPreservesShape) :
+    trace.domainLog = 19#u32 := by
+  have hValidation :
+      aspis_core.circle_pcs_shape.CirclePcsShape.validate trace.sourceShape =
+        .ok (.Ok trace.validatedShape) := by
+    simpa [trace.validationSucceeded] using trace.validationCall
+  have hValidated : trace.validatedShape = trace.sourceShape :=
+    hValidate trace.sourceShape trace.validatedShape hValidation
+  have hSourceDomain := v5_fri_source_shape_domain_log_is_19
+    trace.sourceShape trace.sourceShapeCall
+  have hDomainLogCall := trace.domainLogCall
+  rw [hValidated, hSourceDomain] at hDomainLogCall
+  calc
+    trace.domainLog = core.convert.num.FromU32U8.from 19#u8 :=
+      hDomainLogCall.symm
+    _ = 19#u32 := by
+      apply UScalar.eq_of_val_eq
+      norm_num
+
+/-- Successful unchanged-source acceptance exposes both the exact preparation
+calls and the first accepted loop.  The second `split at *` normalizes only
+the already-recorded `Result`/`ControlFlow` constructors, retaining the two
+source-call equations above. -/
+theorem top_level_acceptance_exposes_preparation_and_layerZero_loop
+    (openings : VerifiedOpenings)
+    (prepared : fri_checks.V5PreparedPcsClaims)
+    (alphas : Array aspis_core.field.QM31 4#usize)
+    (finalPolynomial : Array aspis_core.field.QM31 4#usize)
+    (inverse : aspis_core.field.M31 → aspis_core.field.M31)
+    (sink : fri_checks.V5FriCheckSink)
+    (haccept : fri_checks.check_v5_fri_queries openings prepared alphas
+      finalPolynomial inverse = .ok (.Ok sink)) :
+    ∃ (coordinates : aspis_core.circle_fri.DerivedCircleQueryFoldInverses)
+        (alphaPowers : Array
+          (Array aspis_core.field.PreparedQm31Multiplier 3#usize) 4#usize)
+        (folded : aspis_core.field.QM31),
+      (fri_checks.check_v5_fri_queries_loop0 openings
+          (enumerateSliceAt (alloc.vec.Vec.deref openings.indices.layer0)
+            0#usize)
+          openings.c1.count openings.c1.value_width openings.c1.offsets
+          openings.c2.count openings.c2.value_width openings.c2.offsets
+          openings.later openings.indices.later prepared.inner.claims
+          prepared.inner.powers prepared.c1_weight_limbs
+          prepared.c2_multipliers finalPolynomial coordinates alphaPowers
+          folded 0#usize = .ok (some (.Ok sink)) ∧
+      Nonempty (ProductionFriPreparationTrace openings alphas inverse
+        coordinates alphaPowers)) := by
+  unfold fri_checks.check_v5_fri_queries at haccept
+  generalize hcps : fri_checks.V5_FRI_PCS_SHAPE = cpsResult at haccept
+  cases cpsResult <;> simp [Bind.bind, Aeneas.Std.bind] at haccept
+  repeat' first
+    | split at haccept
+    | simp_all [Bind.bind, Aeneas.Std.bind, Std.lift,
+        core.result.Result.map_err,
+        core.result.Result.Insts.CoreOpsTry.branch,
+        from_residual_ne_ok, core.slice.Slice.iter,
+        core.iter.traits.iterator.Iterator.enumerate.trait_default,
+        core.iter.traits.iterator.Iterator.enumerate.default,
+        enumerateSliceAt]
+  repeat' first
+    | split at *
+    | simp_all [Bind.bind, Aeneas.Std.bind, Std.lift,
+        core.result.Result.map_err,
+        core.result.Result.Insts.CoreOpsTry.branch,
+        from_residual_ne_ok, core.slice.Slice.iter,
+        core.iter.traits.iterator.Iterator.enumerate.trait_default,
+        core.iter.traits.iterator.Iterator.enumerate.default,
+        enumerateSliceAt]
+  eapply Exists.intro
+  eapply Exists.intro
+  constructor
+  · eapply Exists.intro
+    assumption
+  · apply Nonempty.intro
+    eapply ProductionFriPreparationTrace.mk
+    all_goals first | rfl | assumption | simp_all
+
+/-- Compatibility projection retaining the previous API for callers which do
+not yet consume the preparation trace. -/
 theorem top_level_acceptance_exposes_layerZero_loop
     (openings : VerifiedOpenings)
     (prepared : fri_checks.V5PreparedPcsClaims)
@@ -1042,18 +1226,10 @@ theorem top_level_acceptance_exposes_layerZero_loop
           prepared.inner.powers prepared.c1_weight_limbs
           prepared.c2_multipliers finalPolynomial coordinates alphaPowers
           folded 0#usize = .ok (some (.Ok sink)) := by
-  unfold fri_checks.check_v5_fri_queries at haccept
-  generalize hcps : fri_checks.V5_FRI_PCS_SHAPE = cpsResult at haccept
-  cases cpsResult <;> simp [Bind.bind, Aeneas.Std.bind] at haccept
-  repeat' first
-    | split at haccept
-    | simp_all [Bind.bind, Aeneas.Std.bind, Std.lift,
-        core.result.Result.Insts.CoreOpsTry.branch,
-        from_residual_ne_ok, core.slice.Slice.iter,
-        core.iter.traits.iterator.Iterator.enumerate.trait_default,
-        core.iter.traits.iterator.Iterator.enumerate.default,
-        enumerateSliceAt]
-  exact ⟨_, _, _, by assumption⟩
+  obtain ⟨coordinates, alphaPowers, folded, hloop, _trace⟩ :=
+    top_level_acceptance_exposes_preparation_and_layerZero_loop openings
+      prepared alphas finalPolynomial inverse sink haccept
+  exact ⟨coordinates, alphaPowers, folded, hloop⟩
 
 /-- Complete source-level evidence extracted from an accepted execution of
 the unchanged Charon/Aeneas translation.  Every query position in each of
@@ -1063,11 +1239,18 @@ structure AcceptedProductionFriExecution
     (prepared : fri_checks.V5PreparedPcsClaims)
     (finalPolynomial : Array aspis_core.field.QM31 4#usize)
     (sink : fri_checks.V5FriCheckSink) : Type where
+  sourceAlphas : Array aspis_core.field.QM31 4#usize
+  sourceInverse : aspis_core.field.M31 → aspis_core.field.M31
   coordinates : aspis_core.circle_fri.DerivedCircleQueryFoldInverses
   alphaPowers : Array
     (Array aspis_core.field.PreparedQm31Multiplier 3#usize) 4#usize
   foldedStart : aspis_core.field.QM31
   foldedFinal : aspis_core.field.QM31
+  sourceAcceptance :
+    fri_checks.check_v5_fri_queries openings prepared sourceAlphas
+        finalPolynomial sourceInverse = .ok (.Ok sink)
+  preparationTrace : Nonempty (ProductionFriPreparationTrace openings
+    sourceAlphas sourceInverse coordinates alphaPowers)
   layerZeroRun :
     fri_checks.check_v5_fri_queries_loop0 openings
         (enumerateSliceAt (alloc.vec.Vec.deref openings.indices.layer0)
@@ -1093,7 +1276,9 @@ structure AcceptedProductionFriExecution
         Nonempty (LayerZeroBodyReadEvidence openings openings.c1.count
           openings.c1.value_width openings.c1.offsets openings.c2.count
           openings.c2.value_width openings.c2.offsets openings.later
-          openings.indices.later
+          openings.indices.later prepared.inner.claims prepared.inner.powers
+          prepared.c1_weight_limbs prepared.c2_multipliers coordinates
+          alphaPowers
           (enumerateSliceAt (alloc.vec.Vec.deref openings.indices.layer0)
             nextPosition)
           (enumerateSliceAt (alloc.vec.Vec.deref openings.indices.layer0)
@@ -1108,7 +1293,7 @@ structure AcceptedProductionFriExecution
       ∃ (carriedAt nextPosition : Std.Usize),
         nextPosition.val = target.val + 1 ∧
         Nonempty (LaterBodyReadEvidence openings.later openings.indices.later
-          0#usize target carriedAt
+          coordinates alphaPowers 0#usize target carriedAt
           (sliceValueAt (alloc.vec.Vec.deref laterRuns.indices0)
             target htarget))
   later1Reads :
@@ -1118,15 +1303,19 @@ structure AcceptedProductionFriExecution
       ∃ (carriedAt nextPosition : Std.Usize),
         nextPosition.val = target.val + 1 ∧
         Nonempty (LaterBodyReadEvidence openings.later openings.indices.later
-          1#usize target carriedAt
+          laterRuns.coordinates1 alphaPowers 1#usize target carriedAt
           (sliceValueAt (alloc.vec.Vec.deref laterRuns.indices1)
             target htarget))
   later2Reads :
-    ∀ (target : Std.Usize),
-      target.val < (alloc.vec.Vec.deref laterRuns.indices2).val.length →
+    ∀ (target : Std.Usize)
+      (htarget : target.val <
+        (alloc.vec.Vec.deref laterRuns.indices2).val.length),
       ∃ nextPosition : Std.Usize,
         nextPosition.val = target.val + 1 ∧
-        Nonempty (TerminalBodyReadEvidence openings.later 2#usize target)
+        Nonempty (TerminalBodyReadEvidence openings.later finalPolynomial
+          laterRuns.coordinates2 alphaPowers 2#usize target
+          (sliceValueAt (alloc.vec.Vec.deref laterRuns.indices2) target
+            htarget))
 
 /-- End-to-end unchanged-source theorem for the FRI consumer: successful
 top-level acceptance entails the exact first pass, all three later passes,
@@ -1142,8 +1331,8 @@ theorem unchanged_source_acceptance_yields_complete_fri_execution
       finalPolynomial inverse = .ok (.Ok sink)) :
     Nonempty (AcceptedProductionFriExecution openings prepared
       finalPolynomial sink) := by
-  obtain ⟨coordinates, alphaPowers, foldedStart, hlayerZero⟩ :=
-    top_level_acceptance_exposes_layerZero_loop openings prepared
+  obtain ⟨coordinates, alphaPowers, foldedStart, hlayerZero, hpreparation⟩ :=
+    top_level_acceptance_exposes_preparation_and_layerZero_loop openings prepared
       alphas finalPolynomial inverse sink haccept
   obtain ⟨foldedFinal, houter⟩ :=
     layerZero_accepted_reaches_outer openings openings.c1.count
@@ -1157,10 +1346,14 @@ theorem unchanged_source_acceptance_yields_complete_fri_execution
     openings.later openings.indices.later finalPolynomial alphaPowers
     foldedFinal coordinates sink houter
   refine ⟨{
+    sourceAlphas := alphas
+    sourceInverse := inverse
     coordinates := coordinates
     alphaPowers := alphaPowers
     foldedStart := foldedStart
     foldedFinal := foldedFinal
+    sourceAcceptance := haccept
+    preparationTrace := hpreparation
     layerZeroRun := hlayerZero
     outerRun := houter
     laterRuns := laterRuns

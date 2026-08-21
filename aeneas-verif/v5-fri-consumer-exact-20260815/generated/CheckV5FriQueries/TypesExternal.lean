@@ -15,9 +15,17 @@ set_option maxHeartbeats 800000
 /- You can set the `maxRecDepth` value with the `-max-recdepth` CLI option -/
 set_option maxRecDepth 3000
 
+/- Keep external declarations inside the extraction namespace.  Aeneas emits
+them at the root by default; namespacing is semantics-preserving and permits
+this consumer snapshot to be imported beside the independent arithmetic
+snapshot without declaration collisions. -/
+namespace V5FriConsumerExact
+
 /-- [aspis_core::field::PreparedQm31Multiplier]
     Source: 'crates/aspis-core/src/field.rs', lines 362:0-362:33
     Name pattern: [aspis_core::field::PreparedQm31Multiplier]
     Visibility: public -/
 @[rust_type "aspis_core::field::PreparedQm31Multiplier"]
 axiom aspis_core.field.PreparedQm31Multiplier : Type
+
+end V5FriConsumerExact

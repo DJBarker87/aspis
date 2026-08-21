@@ -96,6 +96,7 @@ default verifier dispatch, and the SBF has SHA-256
 | `component-c-runtime-downstream/` | Four rounds, finish, packer, and public deployed output |
 | `tag67-work-wire-correspondence/` | Work-byte reads, predicate, ordered six-step verifier, and final integration |
 | `v5-transcript-absorb-input/` | Transcript payload ordering |
+| `v5-merkle-unchanged-full-20260820/` | Unchanged generated Merkle verifier acceptance through all five trees to the maintained model |
 | `proof/` and `lean432/` | Pinned field-operation proof base and Lean 4.32 compatibility harness |
 | `FIELD-OPS.md`, `M31-INVERSE.md`, `CM31-MULTIPLICATIVE.md`, `QM31-ADDITIVE.md` | Focused arithmetic proof reports |
 

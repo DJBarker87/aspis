@@ -7,15 +7,16 @@ readonly generated="$bundle/generated/CheckV5FriQueries"
 readonly proof="$bundle/proof/V5FriConsumerExactProof.lean"
 readonly end_to_end_proof="$bundle/proof/V5FriConsumerEndToEndProof.lean"
 readonly observation_bridge="$bundle/proof/V5FriConsumerObservationBridge.lean"
+readonly value_adapter="$bundle/proof/V5FriConsumerValueAdapter.lean"
 readonly lean_bin="${LEAN432_BIN:-$(command -v lean)}"
 readonly aeneas_lib="${AENEAS_LEAN_LIB:?set AENEAS_LEAN_LIB to the matching Aeneas Lean library}"
 
 readonly expected_commit="f0bf37b216e426878623ba6ddec2127e9f6f4748"
 readonly expected_tree="a0f99ac9591fb568b6fce9fda5ef4dd7ac32e5f0"
 readonly expected_source_blob="3b1f37f2504aa2b309cad82605c88cab11afcb85"
-readonly expected_types_external="ce5dd8d1a02924721a8102696e7b5ad94db22d7ed2b2cf61e501155bf1ca163c"
+readonly expected_types_external="8184109b4cf2fe609835f1cab610516276f575afeef53793f12d7ecc589b7c37"
 readonly expected_types="c121162321fc5f7bfc00bb58f18b342d182529dca03eb4534157fcaf085cd58e"
-readonly expected_funs_external="a412449bf88bcb439c5cc8c5d32220c1984a7d454e3c86bb5b08e88e046e3b3f"
+readonly expected_funs_external="d9781f69ad77b8d453e86c818c1978643f719ccab3425e0c50dcaf88dc053318"
 readonly expected_funs="370be7ac485d08bef17844e240b3d759f639cb078c91b2880c6e2747d21b3745"
 
 case "$($lean_bin --version)" in
@@ -69,9 +70,10 @@ compile CheckV5FriQueries/Funs "$generated/Funs.lean"
 compile V5FriConsumerExactProof "$proof"
 compile V5FriConsumerEndToEndProof "$end_to_end_proof"
 compile V5FriConsumerObservationBridge "$observation_bridge"
+compile V5FriConsumerValueAdapter "$value_adapter"
 
 if rg -n '\b(sorry|admit|native_decide|unsafe|ofReduceBool)\b' \
-    "$proof" "$end_to_end_proof" "$observation_bridge"; then
+    "$proof" "$end_to_end_proof" "$observation_bridge" "$value_adapter"; then
   echo "forbidden proof shortcut" >&2
   exit 1
 fi

@@ -223,6 +223,12 @@ structure LayerZeroBodyReadEvidence
     (c1Offsets : OpeningOffsets) (c2Count c2Width : Std.Usize)
     (c2Offsets : OpeningOffsets) (later : Array Opening 3#usize)
     (laterIndices : Array (alloc.vec.Vec Std.U32) 3#usize)
+    (claims powers : alloc.vec.Vec aspis_core.field.QM31)
+    (weights : Array (Array Std.U32 4#usize) 16#usize)
+    (multipliers : Array aspis_core.field.PreparedQm31Multiplier 3#usize)
+    (coordinates : aspis_core.circle_fri.DerivedCircleQueryFoldInverses)
+    (alphaPowers : Array
+      (Array aspis_core.field.PreparedQm31Multiplier 3#usize) 4#usize)
     (iterNext iterOut : core.iter.adapters.enumerate.Enumerate
       (core.slice.iter.Iter Std.U32))
     (ordinal carried : Std.Usize) (query : Std.U32) : Type where
@@ -236,6 +242,30 @@ structure LayerZeroBodyReadEvidence
   c2Read :
     (checkedC2 openings c2Count c2Width c2Offsets).value ordinal =
       .ok (some c2Value)
+  combined : Array aspis_core.field.QM31 4#usize
+  combineCall :
+    fri_checks.gamma_combine_v5_layer0_exact c1Value c2Value
+        { inner := { claims := claims, powers := powers },
+          c1_weight_limbs := weights,
+          c2_multipliers := multipliers } =
+      .ok (.Ok combined)
+  circlePair : Array aspis_core.field.M31 2#usize
+  circleRead :
+    core.slice.Slice.get
+        (core.slice.index.SliceIndexUsizeSlice
+          (Array aspis_core.field.M31 2#usize))
+        (alloc.vec.Vec.deref coordinates.circle) ordinal =
+      .ok (some circlePair)
+  inv2x : aspis_core.field.M31
+  inv2y : aspis_core.field.M31
+  inv2xRead : Array.index_usize circlePair 0#usize = .ok inv2x
+  inv2yRead : Array.index_usize circlePair 1#usize = .ok inv2y
+  alpha : Array aspis_core.field.PreparedQm31Multiplier 3#usize
+  alphaRead : Array.index_usize alphaPowers 0#usize = .ok alpha
+  foldedValue : aspis_core.field.QM31
+  foldCall :
+    aspis_core.circle_fri.normalized_circle_to_line_arity4_prepared_polynomial_refs
+        combined alpha inv2x inv2y = .ok foldedValue
   parentOpening : Opening
   parentIndices : alloc.vec.Vec Std.U32
   parentOpeningAt : Array.index_usize later 0#usize = .ok parentOpening
@@ -246,6 +276,24 @@ structure LayerZeroBodyReadEvidence
         (alloc.vec.Vec.deref parentIndices) carried
         (Std.U32.wrapping_shr query 2#u32) 1#u8 =
       .ok (.Ok parentValue, parentOrdinal)
+  selectedSlice : Slice Std.U8
+  selectedSliceRead :
+    core.slice.index.Slice.index
+        (core.slice.index.SliceIndexRangeUsizeSlice Std.U8) parentValue
+        { start := Std.Usize.wrapping_mul
+            (UScalar.cast .Usize (query &&& 3#u32)) 16#usize,
+          «end» := Std.Usize.wrapping_add
+            (Std.Usize.wrapping_mul
+              (UScalar.cast .Usize (query &&& 3#u32)) 16#usize) 16#usize } =
+      .ok selectedSlice
+  decodedParent : aspis_core.field.QM31
+  decodeParentCall :
+    aspis_core.field.QM31.from_le_bytes selectedSlice =
+      .ok (some decodedParent)
+  acceptedEqualityCall :
+    core.cmp.PartialEq.ne.trait_default
+        aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31
+        foldedValue decodedParent = .ok false
   iterOutExact : iterOut = iterNext
 
 /-- Inversion of the unchanged extracted layer-zero loop body.  If an
@@ -281,8 +329,9 @@ theorem production_layerZero_body_cont_reads
           folded carried =
         .ok (.cont (iterOut, foldedOut, carriedOut))) :
     Nonempty (LayerZeroBodyReadEvidence openings c1Count c1Width c1Offsets
-      c2Count c2Width c2Offsets later laterIndices iterNext iterOut ordinal
-      carried query) := by
+      c2Count c2Width c2Offsets later laterIndices claims powers weights
+      multipliers coordinates alphaPowers iterNext iterOut ordinal carried
+      query) := by
   unfold fri_checks.check_v5_fri_queries_loop0.body at hrun
   rw [hnext] at hrun
   simp only [bind_tc_ok] at hrun
@@ -435,111 +484,134 @@ theorem production_layerZero_body_cont_reads
                                     (fun value => some value)
                                     (iterOut, foldedOut, carriedOut) hrun
                                 | Ok parentValue =>
-                                  exact ⟨{
-                                    c1Value := c1Value
-                                    c2Value := c2Value
-                                    parentValue := parentValue
-                                    parentOrdinal := parentOrdinal
-                                    c1Read := by simpa [checkedC1] using hc1
-                                    c2Read := by simpa [checkedC2] using hc2
-                                    parentOpening := parentOpening
-                                    parentIndices := parentIndices
-                                    parentOpeningAt := hopening
-                                    parentIndicesAt := hindices
-                                    parentRead := hparent
-                                    iterOutExact := by
-                                      generalize hsliced :
-                                          core.slice.index.Slice.index
-                                            (core.slice.index.SliceIndexRangeUsizeSlice
-                                              Std.U8) parentValue
-                                            { start := Std.Usize.wrapping_mul
-                                                (UScalar.cast .Usize
-                                                  (query &&& 3#u32)) 16#usize,
-                                              «end» := Std.Usize.wrapping_add
-                                                (Std.Usize.wrapping_mul
-                                                  (UScalar.cast .Usize
-                                                    (query &&& 3#u32))
-                                                  16#usize) 16#usize } =
-                                          sliceResult at hrun
-                                      cases sliceResult with
-                                      | fail error =>
-                                        simp_all [Bind.bind, Aeneas.Std.bind]
-                                      | div =>
-                                        simp_all [Bind.bind, Aeneas.Std.bind]
-                                      | ok sliceValue =>
-                                        simp only [bind_tc_ok] at hrun
-                                        generalize hdecode :
-                                            aspis_core.field.QM31.from_le_bytes
-                                              sliceValue = decodeResult at hrun
-                                        cases decodeResult with
+                                  generalize hsliced :
+                                      core.slice.index.Slice.index
+                                        (core.slice.index.SliceIndexRangeUsizeSlice
+                                          Std.U8) parentValue
+                                        { start := Std.Usize.wrapping_mul
+                                            (UScalar.cast .Usize
+                                              (query &&& 3#u32)) 16#usize,
+                                          «end» := Std.Usize.wrapping_add
+                                            (Std.Usize.wrapping_mul
+                                              (UScalar.cast .Usize
+                                                (query &&& 3#u32))
+                                              16#usize) 16#usize } =
+                                      sliceResult at hrun
+                                  cases sliceResult with
+                                  | fail error =>
+                                    simp_all [Bind.bind, Aeneas.Std.bind]
+                                  | div =>
+                                    simp_all [Bind.bind, Aeneas.Std.bind]
+                                  | ok sliceValue =>
+                                    simp only [bind_tc_ok] at hrun
+                                    generalize hdecode :
+                                        aspis_core.field.QM31.from_le_bytes
+                                          sliceValue = decodeResult at hrun
+                                    cases decodeResult with
+                                    | fail error =>
+                                      simp_all [Bind.bind, Aeneas.Std.bind]
+                                    | div =>
+                                      simp_all [Bind.bind, Aeneas.Std.bind]
+                                    | ok decodedOption =>
+                                      cases decodedOption with
+                                      | none =>
+                                        simp_all [core.option.Option.ok_or,
+                                          core.result.Result.Insts.CoreOpsTry.branch,
+                                          core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                                          core.convert.FromSame,
+                                          core.convert.FromSame.from]
+                                      | some decoded =>
+                                        simp_all only [hdecode,
+                                          core.option.Option.ok_or, bind_tc_ok,
+                                          core.result.Result.Insts.CoreOpsTry.branch]
+                                        generalize hequal :
+                                            core.cmp.PartialEq.ne.trait_default
+                                              aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31
+                                              foldedValue decoded = equalResult
+                                          at hrun
+                                        cases equalResult with
                                         | fail error =>
-                                          simp_all [Bind.bind,
-                                            Aeneas.Std.bind]
+                                          simp_all [Bind.bind, Aeneas.Std.bind]
                                         | div =>
-                                          simp_all [Bind.bind,
-                                            Aeneas.Std.bind]
-                                        | ok decodedOption =>
-                                          cases decodedOption with
-                                          | none =>
-                                            simp_all [
-                                              core.option.Option.ok_or,
-                                              core.result.Result.Insts.CoreOpsTry.branch,
-                                              core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
-                                              core.convert.FromSame,
-                                              core.convert.FromSame.from]
-                                          | some decoded =>
-                                            simp_all only [hdecode,
-                                              core.option.Option.ok_or,
-                                              bind_tc_ok,
-                                              core.result.Result.Insts.CoreOpsTry.branch]
-                                            generalize hequal :
-                                                core.cmp.PartialEq.ne.trait_default
-                                                  aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31
-                                                  foldedValue decoded =
-                                                    equalResult at hrun
-                                            cases equalResult with
+                                          simp_all [Bind.bind, Aeneas.Std.bind]
+                                        | ok differs =>
+                                          simp only [bind_tc_ok] at hrun
+                                          cases differs with
+                                          | true => simp at hrun
+                                          | false =>
+                                            generalize hadd :
+                                                aspis_core.field.QM31.add folded
+                                                  foldedValue = addResult at hrun
+                                            cases addResult with
                                             | fail error =>
                                               simp_all [Bind.bind,
                                                 Aeneas.Std.bind]
                                             | div =>
                                               simp_all [Bind.bind,
                                                 Aeneas.Std.bind]
-                                            | ok differs =>
-                                              simp only [bind_tc_ok] at hrun
-                                              cases differs with
-                                              | true => simp at hrun
-                                              | false =>
-                                                generalize hadd :
-                                                    aspis_core.field.QM31.add
-                                                      folded foldedValue =
-                                                        addResult at hrun
-                                                cases addResult with
-                                                | fail error =>
-                                                  simp_all [Bind.bind,
-                                                    Aeneas.Std.bind]
-                                                | div =>
-                                                  simp_all [Bind.bind,
-                                                    Aeneas.Std.bind]
-                                                | ok sum =>
-                                                  rw [if_neg (by decide :
-                                                    ¬(false = true))] at hrun
-                                                  simp only [bind_tc_ok,
-                                                    Result.ok.injEq,
-                                                    ControlFlow.cont.injEq,
-                                                    Prod.mk.injEq] at hrun
-                                                  exact hrun.1.symm }⟩
+                                            | ok sum =>
+                                              rw [if_neg (by decide :
+                                                ¬(false = true))] at hrun
+                                              simp only [bind_tc_ok,
+                                                Result.ok.injEq,
+                                                ControlFlow.cont.injEq,
+                                                Prod.mk.injEq] at hrun
+                                              exact ⟨{
+                                                c1Value := c1Value
+                                                c2Value := c2Value
+                                                parentValue := parentValue
+                                                parentOrdinal := parentOrdinal
+                                                c1Read := by
+                                                  simpa [checkedC1] using hc1
+                                                c2Read := by
+                                                  simpa [checkedC2] using hc2
+                                                combined := combined
+                                                combineCall := hcombine
+                                                circlePair := circlePair
+                                                circleRead := hcircle
+                                                inv2x := invX
+                                                inv2y := invY
+                                                inv2xRead := hinvX
+                                                inv2yRead := hinvY
+                                                alpha := alpha
+                                                alphaRead := halpha
+                                                foldedValue := foldedValue
+                                                foldCall := hfold
+                                                parentOpening := parentOpening
+                                                parentIndices := parentIndices
+                                                parentOpeningAt := hopening
+                                                parentIndicesAt := hindices
+                                                parentRead := hparent
+                                                selectedSlice := sliceValue
+                                                selectedSliceRead := hsliced
+                                                decodedParent := decoded
+                                                decodeParentCall := hdecode
+                                                acceptedEqualityCall := hequal
+                                                iterOutExact := hrun.1.symm }⟩
 
 /-- Reads which must have occurred before a non-terminal later-layer
 iteration can continue. -/
 structure LaterBodyReadEvidence
     (later : Array Opening 3#usize)
     (laterIndices : Array (alloc.vec.Vec Std.U32) 3#usize)
+    (coordinates : aspis_core.circle_fri.DerivedCircleQueryFoldInverses)
+    (alphaPowers : Array
+      (Array aspis_core.field.PreparedQm31Multiplier 3#usize) 4#usize)
     (layer ordinal carried : Std.Usize) (index : Std.U32) : Type where
   incomingOpening : Opening
   incomingValue : Slice Std.U8
   incomingOpeningAt :
     Array.index_usize later layer = .ok incomingOpening
   incomingRead : incomingOpening.value ordinal = .ok (some incomingValue)
+  coordinateArray : alloc.vec.Vec (Array aspis_core.field.M31 3#usize)
+  coordinate : Array aspis_core.field.M31 3#usize
+  coordinateArrayAt :
+    Array.index_usize coordinates.later layer = .ok coordinateArray
+  coordinateRead :
+    core.slice.Slice.get
+        (core.slice.index.SliceIndexUsizeSlice
+          (Array aspis_core.field.M31 3#usize))
+        (alloc.vec.Vec.deref coordinateArray) ordinal = .ok (some coordinate)
   parentOpening : Opening
   parentIndices : alloc.vec.Vec Std.U32
   parentValue : Slice Std.U8
@@ -556,6 +628,15 @@ structure LaterBodyReadEvidence
         (Std.U32.wrapping_shr index 2#u32)
         (Std.U8.wrapping_add (UScalar.cast .U8 layer) 2#u8) =
       .ok (.Ok parentValue, parentOrdinal)
+  alpha : Array aspis_core.field.PreparedQm31Multiplier 3#usize
+  alphaRead :
+    Array.index_usize alphaPowers (Std.Usize.wrapping_add layer 1#usize) =
+      .ok alpha
+  transitionCall :
+    aspis_core.circle_query.check_fixed_line_transition_prepared_polynomial_powers
+        incomingValue parentValue (UScalar.cast .Usize index)
+        (Std.U8.wrapping_add (UScalar.cast .U8 layer) 1#u8)
+        coordinate alpha = .ok (.Ok ())
 
 /-- Inversion of either non-terminal production later-layer body. -/
 theorem production_later_body_cont_reads
@@ -580,8 +661,8 @@ theorem production_later_body_cont_reads
       fri_checks.check_v5_fri_queries_loop0_loop0_loop0.body later
           laterIndices finalPolynomial coordinates alphaPowers layer pending
           iter carried = .ok (.cont (iterOut, carriedOut))) :
-    Nonempty (LaterBodyReadEvidence later laterIndices layer ordinal carried
-      index) := by
+    Nonempty (LaterBodyReadEvidence later laterIndices coordinates alphaPowers
+      layer ordinal carried index) := by
   unfold fri_checks.check_v5_fri_queries_loop0_loop0_loop0.body at hrun
   rw [hnext] at hrun
   simp only [bind_tc_ok] at hrun
@@ -670,29 +751,102 @@ theorem production_later_body_cont_reads
                         (fun value => (coordinates, some value, 0#u32))
                         (iterOut, carriedOut) hrun
                     | Ok parentValue =>
-                      exact ⟨{
-                        incomingOpening := incomingOpening
-                        incomingValue := incomingValue
-                        incomingOpeningAt := hopening
-                        incomingRead := hincoming
-                        parentOpening := parentOpening
-                        parentIndices := parentIndices
-                        parentValue := parentValue
-                        parentOrdinal := parentOrdinal
-                        parentOpeningAt := hparentOpening
-                        parentIndicesAt := hparentIndices
-                        parentRead := hparent }⟩
+                      simp only [
+                        core.result.Result.Insts.CoreOpsTry.branch,
+                        bind_tc_ok, Std.lift] at hrun
+                      generalize halpha :
+                          Array.index_usize alphaPowers
+                            (Std.Usize.wrapping_add layer 1#usize) =
+                              alphaResult at hrun
+                      cases alphaResult with
+                      | fail error =>
+                        simp [Bind.bind, Aeneas.Std.bind] at hrun
+                      | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                      | ok alpha =>
+                        simp only [bind_tc_ok] at hrun
+                        generalize htransition :
+                            aspis_core.circle_query.check_fixed_line_transition_prepared_polynomial_powers
+                              incomingValue parentValue
+                              (UScalar.cast .Usize index)
+                              (Std.U8.wrapping_add
+                                (UScalar.cast .U8 layer) 1#u8)
+                              coordinate alpha = transitionResult at hrun
+                        cases transitionResult with
+                        | fail error =>
+                          simp [Bind.bind, Aeneas.Std.bind] at hrun
+                        | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                        | ok transitionInner =>
+                          cases transitionInner with
+                          | Err error =>
+                            simp only [bind_tc_ok,
+                              core.result.Result.Insts.CoreOpsTry.branch]
+                              at hrun
+                            exfalso
+                            exact result_bind_done_ne_cont _
+                              (fun value =>
+                                (coordinates, some value, 0#u32))
+                              (iterOut, carriedOut) hrun
+                          | Ok unit =>
+                            cases unit
+                            simp only [
+                              core.result.Result.Insts.CoreOpsTry.branch,
+                              bind_tc_ok, Result.ok.injEq,
+                              ControlFlow.cont.injEq, Prod.mk.injEq] at hrun
+                            exact ⟨{
+                              incomingOpening := incomingOpening
+                              incomingValue := incomingValue
+                              incomingOpeningAt := hopening
+                              incomingRead := hincoming
+                              coordinateArray := coordinateArray
+                              coordinate := coordinate
+                              coordinateArrayAt := hcoordinateArray
+                              coordinateRead := hcoordinate
+                              parentOpening := parentOpening
+                              parentIndices := parentIndices
+                              parentValue := parentValue
+                              parentOrdinal := parentOrdinal
+                              parentOpeningAt := hparentOpening
+                              parentIndicesAt := hparentIndices
+                              parentRead := hparent
+                              alpha := alpha
+                              alphaRead := halpha
+                              transitionCall := htransition }⟩
 
 /-- The opening read which must occur before a terminal-layer iteration can
 continue.  The terminal polynomial and inverse-coordinate operations happen
 after this exact read and therefore cannot change its ordinal. -/
 structure TerminalBodyReadEvidence
-    (later : Array Opening 3#usize) (layer ordinal : Std.Usize) : Type where
+    (later : Array Opening 3#usize)
+    (finalPolynomial : Array aspis_core.field.QM31 4#usize)
+    (coordinates : aspis_core.circle_fri.DerivedCircleQueryFoldInverses)
+    (alphaPowers : Array
+      (Array aspis_core.field.PreparedQm31Multiplier 3#usize) 4#usize)
+    (layer ordinal : Std.Usize) (index : Std.U32) : Type where
   incomingOpening : Opening
   incomingValue : Slice Std.U8
   incomingOpeningAt :
     Array.index_usize later layer = .ok incomingOpening
   incomingRead : incomingOpening.value ordinal = .ok (some incomingValue)
+  coordinateArray : alloc.vec.Vec (Array aspis_core.field.M31 3#usize)
+  coordinate : Array aspis_core.field.M31 3#usize
+  coordinateArrayAt :
+    Array.index_usize coordinates.later layer = .ok coordinateArray
+  coordinateRead :
+    core.slice.Slice.get
+        (core.slice.index.SliceIndexUsizeSlice
+          (Array aspis_core.field.M31 3#usize))
+        (alloc.vec.Vec.deref coordinateArray) ordinal = .ok (some coordinate)
+  finalX : aspis_core.field.M31
+  finalXRead :
+    core.slice.Slice.get
+        (core.slice.index.SliceIndexUsizeSlice aspis_core.field.M31)
+        (alloc.vec.Vec.deref coordinates.final_x) ordinal = .ok (some finalX)
+  alpha : Array aspis_core.field.PreparedQm31Multiplier 3#usize
+  alphaRead : Array.index_usize alphaPowers 3#usize = .ok alpha
+  transitionCall :
+    aspis_core.circle_query.check_fixed_terminal_transition_prepared_polynomial_refs
+        incomingValue finalPolynomial (UScalar.cast .Usize index)
+        coordinate finalX alpha = .ok (.Ok ())
 
 theorem production_terminal_body_cont_reads
     (later : Array Opening 3#usize)
@@ -716,7 +870,8 @@ theorem production_terminal_body_cont_reads
       fri_checks.check_v5_fri_queries_loop0_loop0_loop0.body later
           laterIndices finalPolynomial coordinates alphaPowers layer pending
           iter carried = .ok (.cont (iterOut, carriedOut))) :
-    Nonempty (TerminalBodyReadEvidence later layer ordinal) := by
+    Nonempty (TerminalBodyReadEvidence later finalPolynomial coordinates
+      alphaPowers layer ordinal index) := by
   unfold fri_checks.check_v5_fri_queries_loop0_loop0_loop0.body at hrun
   rw [hnext] at hrun
   simp only [bind_tc_ok] at hrun
@@ -738,11 +893,99 @@ theorem production_terminal_body_cont_reads
           core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
           core.convert.FromSame, core.convert.FromSame.from, Std.lift] at hrun
       | some incomingValue =>
-        exact ⟨{
-          incomingOpening := incomingOpening
-          incomingValue := incomingValue
-          incomingOpeningAt := hopening
-          incomingRead := hincoming }⟩
+        simp only [core.option.Option.ok_or, bind_tc_ok,
+          core.result.Result.Insts.CoreOpsTry.branch, Std.lift] at hrun
+        generalize hcoordinateArray :
+            Array.index_usize coordinates.later layer = coordinateArrayResult
+          at hrun
+        cases coordinateArrayResult with
+        | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+        | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+        | ok coordinateArray =>
+          simp only [bind_tc_ok] at hrun
+          generalize hcoordinate :
+              core.slice.Slice.get
+                (core.slice.index.SliceIndexUsizeSlice
+                  (Array aspis_core.field.M31 3#usize))
+                (alloc.vec.Vec.deref coordinateArray) ordinal =
+                  coordinateResult at hrun
+          cases coordinateResult with
+          | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+          | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+          | ok coordinateOption =>
+            cases coordinateOption with
+            | none => simp [core.option.Option.ok_or,
+                core.result.Result.Insts.CoreOpsTry.branch,
+                core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                core.convert.FromSame, core.convert.FromSame.from] at hrun
+            | some coordinate =>
+              simp only [core.option.Option.ok_or, bind_tc_ok,
+                core.result.Result.Insts.CoreOpsTry.branch] at hrun
+              rw [if_neg hlayer] at hrun
+              generalize hfinalX :
+                  core.slice.Slice.get
+                    (core.slice.index.SliceIndexUsizeSlice
+                      aspis_core.field.M31)
+                    (alloc.vec.Vec.deref coordinates.final_x) ordinal =
+                      finalXResult at hrun
+              cases finalXResult with
+              | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+              | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+              | ok finalXOption =>
+                cases finalXOption with
+                | none => simp [core.option.Option.ok_or,
+                    core.result.Result.Insts.CoreOpsTry.branch,
+                    core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                    core.convert.FromSame, core.convert.FromSame.from] at hrun
+                | some finalX =>
+                  simp only [core.option.Option.ok_or, bind_tc_ok,
+                    core.result.Result.Insts.CoreOpsTry.branch, Std.lift]
+                    at hrun
+                  generalize halpha :
+                      Array.index_usize alphaPowers 3#usize = alphaResult
+                    at hrun
+                  cases alphaResult with
+                  | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                  | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                  | ok alpha =>
+                    simp only [bind_tc_ok] at hrun
+                    generalize htransition :
+                        aspis_core.circle_query.check_fixed_terminal_transition_prepared_polynomial_refs
+                          incomingValue finalPolynomial
+                          (UScalar.cast .Usize index) coordinate finalX alpha =
+                            transitionResult at hrun
+                    cases transitionResult with
+                    | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                    | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+                    | ok transitionInner =>
+                      cases transitionInner with
+                      | Err error =>
+                        simp only [bind_tc_ok,
+                          core.result.Result.Insts.CoreOpsTry.branch] at hrun
+                        exfalso
+                        exact result_bind_done_ne_cont _
+                          (fun value => (coordinates, some value, 0#u32))
+                          (iterOut, carriedOut) hrun
+                      | Ok unit =>
+                        cases unit
+                        simp only [
+                          core.result.Result.Insts.CoreOpsTry.branch,
+                          bind_tc_ok, Result.ok.injEq,
+                          ControlFlow.cont.injEq, Prod.mk.injEq] at hrun
+                        exact ⟨{
+                          incomingOpening := incomingOpening
+                          incomingValue := incomingValue
+                          incomingOpeningAt := hopening
+                          incomingRead := hincoming
+                          coordinateArray := coordinateArray
+                          coordinate := coordinate
+                          coordinateArrayAt := hcoordinateArray
+                          coordinateRead := hcoordinate
+                          finalX := finalX
+                          finalXRead := hfinalX
+                          alpha := alpha
+                          alphaRead := halpha
+                          transitionCall := htransition }⟩
 
 /-- An active layer-zero iteration has no source branch which returns an
 accepted sink.  Acceptance is constructed only after the iterator is
@@ -1030,8 +1273,9 @@ theorem production_layerZero_accepted_loop_head
           weights multipliers finalPolynomial coordinates alphaPowers
           foldedNext carriedNext = .ok (some (.Ok sink)) ∧
       Nonempty (LayerZeroBodyReadEvidence openings c1Count c1Width c1Offsets
-        c2Count c2Width c2Offsets later laterIndices iterNext iterNext ordinal
-        carried query) := by
+        c2Count c2Width c2Offsets later laterIndices claims powers weights
+        multipliers coordinates alphaPowers iterNext iterNext ordinal carried
+        query) := by
   unfold fri_checks.check_v5_fri_queries_loop0 at hloop
   rw [loop.eq_def] at hloop
   simp only at hloop
@@ -1099,7 +1343,8 @@ theorem production_layerZero_accepted_loop_reads_target
     ∃ carriedAt nextPosition,
       nextPosition.val = target.val + 1 ∧
       Nonempty (LayerZeroBodyReadEvidence openings c1Count c1Width c1Offsets
-        c2Count c2Width c2Offsets later laterIndices
+        c2Count c2Width c2Offsets later laterIndices claims powers weights
+        multipliers coordinates alphaPowers
         (enumerateSliceAt values nextPosition)
         (enumerateSliceAt values nextPosition) target carriedAt
         values[target.val]) := by
@@ -1291,8 +1536,8 @@ theorem production_later_completed_loop_reads_target
         .ok (coordinatesOut, pendingOut, 1#u32)) :
     ∃ carriedAt : Std.Usize, ∃ nextPosition : Std.Usize,
       nextPosition.val = target.val + 1 ∧
-      Nonempty (LaterBodyReadEvidence later laterIndices layer target carriedAt
-        values[target.val]) := by
+      Nonempty (LaterBodyReadEvidence later laterIndices coordinates alphaPowers
+        layer target carriedAt values[target.val]) := by
   have hcurrent : current.val < values.val.length := by omega
   obtain ⟨nextPosition, hnextValue, hnext⟩ :=
     enumerate_slice_at_next_run values current hcurrent
@@ -1345,7 +1590,8 @@ theorem production_terminal_completed_loop_reads_target
         .ok (coordinatesOut, pendingOut, 1#u32)) :
     ∃ nextPosition : Std.Usize,
       nextPosition.val = target.val + 1 ∧
-      Nonempty (TerminalBodyReadEvidence later layer target) := by
+      Nonempty (TerminalBodyReadEvidence later finalPolynomial coordinates
+        alphaPowers layer target values[target.val]) := by
   have hcurrent : current.val < values.val.length := by omega
   obtain ⟨nextPosition, hnextValue, hnext⟩ :=
     enumerate_slice_at_next_run values current hcurrent
@@ -1368,7 +1614,6 @@ theorem production_terminal_completed_loop_reads_target
       pending pendingOut values nextPosition target carriedNext
     · rw [hnextValue]
       omega
-    · exact htarget
     · exact hloopNext
 termination_by target.val - current.val
 decreasing_by

@@ -187,7 +187,8 @@ theorem extracted_m31_half_even_corresponds
   refine ⟨out, ?_, hraw, ?_, ?_⟩
   · unfold field.M31.half
     simp only [Std.lift, bind_tc_ok]
-    rw [if_pos hcondition, halfShiftCountOne_exact]
+    rw [if_pos hcondition]
+    rfl
   · rw [hraw]
     exact rawM31HalfCanonical hx
   · rw [hraw]
@@ -216,7 +217,7 @@ theorem extracted_m31_half_odd_corresponds
   refine ⟨out, ?_, hraw, ?_, ?_⟩
   · unfold field.M31.half
     simp only [Std.lift, bind_tc_ok]
-    rw [if_neg hnot, halfShiftCountOne_exact]
+    rw [if_neg hnot]
     rfl
   · rw [hraw]
     exact rawM31HalfCanonical hx
