@@ -10,14 +10,15 @@ Merkle verifier, and the concrete accepted FRI-call resolver.  Its main result
 derives the maintained parser/output equality instead of taking that equality
 as an independent premise.
 
-Two source/tool statements are explicit inputs.  First,
+Three source/tool statements are explicit inputs.  First,
 `AcceptedCallerMerkleSourceEquality` is the exact one-call wrapper which fixes
 the production SHA-256 callback.  Second,
-`AcceptedResolverUsesProductionCaller` says that every successful high-level
-resolver result has the translated caller witness with the same roots, query
-array, proof bytes, and returned opening.  The theorem below derives the
-former whole-consumer equality from those narrower statements; it does not
-claim that the outer resolver connection has already been extracted.
+the fixed-inverse FRI wrapper must retain the opening returned by the Merkle
+call.  Third, `AcceptedVerifierExecutionBuildsProductionCallerEnvironment`
+states that an accepted outer verifier execution supplies the parsed input,
+queries, challenges, successful caller result, and input bindings recorded by
+the concrete environment.  The theorem below derives the former observation
+and whole-consumer equalities; neither is accepted as a free input.
 -/
 
 open Aeneas Aeneas.Std Result ControlFlow Error
@@ -265,6 +266,52 @@ structure ProductionCallerEnvironment
         AspisV5MerkleUnchangedFullHelperBridge.generatedU8ToByte =
       call.proofBytes
 
+/-- The one remaining outer-entry source statement.  It says exactly that a
+successful execution of the deployed verifier supplies the concrete values
+and successful FRI call recorded by `ProductionCallerEnvironment`.
+
+The existing extracted composite caller proves the call order from prefix
+verification through the FRI and relation phases.  The transcript bundle
+proves the values returned by the prefix/replay/query path.  Neither artifact
+translates the `AccountInfo` borrow-and-parse entry point or the two
+higher-ranked callback wrappers, so this implication is kept as one named
+source edge instead of being hidden inside an observation function. -/
+def AcceptedVerifierExecutionBuildsProductionCallerEnvironment
+    (openingsCall : AspisV5FriCallerParametric.OpeningCall)
+    (hash : AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedHash)
+    (verifierAccepts : AspisV5MerkleRustBridge.V5ProductionCall → Prop) :
+    Prop :=
+  ∀ call, verifierAccepts call →
+    Nonempty (ProductionCallerEnvironment openingsCall hash call)
+
+/-- A dependent single-call environment.  This lets one concrete accepted
+verifier execution feed the universal observation API without assuming
+anything about calls which were not executed. -/
+noncomputable def singleProductionCallerEnvironment
+    (openingsCall : AspisV5FriCallerParametric.OpeningCall)
+    (hash : AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedHash)
+    (target : AspisV5MerkleRustBridge.V5ProductionCall)
+    (targetEnvironment : ProductionCallerEnvironment openingsCall hash
+      target) :
+    (call : AspisV5MerkleRustBridge.V5ProductionCall) →
+      Option (ProductionCallerEnvironment openingsCall hash call) :=
+  fun call => by
+    classical
+    exact if h : call = target then
+      some (h.symm ▸ targetEnvironment)
+    else none
+
+@[simp] theorem singleProductionCallerEnvironment_at_target
+    (openingsCall : AspisV5FriCallerParametric.OpeningCall)
+    (hash : AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedHash)
+    (target : AspisV5MerkleRustBridge.V5ProductionCall)
+    (targetEnvironment : ProductionCallerEnvironment openingsCall hash
+      target) :
+    singleProductionCallerEnvironment openingsCall hash target
+      targetEnvironment target = some targetEnvironment := by
+  classical
+  simp [singleProductionCallerEnvironment]
+
 /-- Concrete high-level resolver obtained by running the translated caller in
 the supplied production environment and retaining its accepted FRI call. -/
 def resolveFromProductionCaller
@@ -342,12 +389,49 @@ theorem production_caller_environment_implies_consumer_equality
   exact resolveFromProductionCaller_uses_production_caller openingsCall hash
     environment
 
+/-- One accepted outer-verifier execution now constructs both the concrete
+observation and the exact Merkle/FRI consumer theorem needed downstream.  No
+free observation equality or total resolver is supplied by the caller of this
+theorem: the resolver is the dependent single-call environment above. -/
+theorem accepted_verifier_execution_builds_production_caller_observation
+    (sha256 : List AspisV5MerkleAuthenticationBinding.Byte →
+      AspisV5MerkleRustBridge.Digest32)
+    (hash : AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedHash)
+    (openingsCall : AspisV5FriCallerParametric.OpeningCall)
+    (verifierAccepts : AspisV5MerkleRustBridge.V5ProductionCall → Prop)
+    (hentry : AcceptedVerifierExecutionBuildsProductionCallerEnvironment
+      openingsCall hash verifierAccepts)
+    (hsource :
+      AspisV5FriCallerMerkleBridge.AcceptedCallerMerkleSourceEquality
+        openingsCall hash)
+    (hhash : AspisV5MerkleUnchangedFullHelperBridge.HashCallbackEqualsSha256
+      sha256 hash)
+    (target : AspisV5MerkleRustBridge.V5ProductionCall)
+    (haccepted : verifierAccepts target) :
+    ∃ targetEnvironment : ProductionCallerEnvironment openingsCall hash target,
+      let environment := singleProductionCallerEnvironment openingsCall hash
+        target targetEnvironment
+      let rustObservation :=
+        AspisV5FriConsumerObservationBridge.observationFromAcceptedResolver
+          (resolveFromProductionCaller openingsCall hash environment)
+      rustObservation target = some targetEnvironment.acceptedCall.observation ∧
+        ExactRustV5OpeningAndFriConsumerEquality sha256 rustObservation := by
+  obtain ⟨targetEnvironment⟩ := hentry target haccepted
+  refine ⟨targetEnvironment, ?_, ?_⟩
+  · simp [AspisV5FriConsumerObservationBridge.observationFromAcceptedResolver,
+      resolveFromProductionCaller]
+  · exact production_caller_environment_implies_consumer_equality sha256 hash
+      openingsCall
+      (singleProductionCallerEnvironment openingsCall hash target
+        targetEnvironment)
+      hsource hhash
+
 variable {K : Type*} [Field K] [Fintype K] [DecidableEq K]
   [Algebra (ZMod P) K] [NeZero (2 : K)]
 
-/-- Released accepted-false event with the former abstract whole-consumer and
-universal resolver premises replaced by the translated caller's concrete
-production environment and the two focused one-call wrapper edges. -/
+/-- Released accepted-false event with the former abstract observation,
+whole-consumer equality, and universal resolver premises replaced by one
+accepted outer-verifier execution and the focused callback-wrapper edges. -/
 theorem accepted_false_source_caller_event_with_released_tables
     {PointValue State : Type*}
     (rc : RoundConstants)
@@ -368,19 +452,16 @@ theorem accepted_false_source_caller_event_with_released_tables
       AspisV5MerkleRustBridge.Digest32)
     (hash : AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedHash)
     (openingsCall : AspisV5FriCallerParametric.OpeningCall)
-    (environment : (call : AspisV5MerkleRustBridge.V5ProductionCall) →
-      Option (ProductionCallerEnvironment openingsCall hash call))
+    (verifierAccepts : AspisV5MerkleRustBridge.V5ProductionCall → Prop)
+    (hentry : AcceptedVerifierExecutionBuildsProductionCallerEnvironment
+      openingsCall hash verifierAccepts)
     (hopeningSource :
       AspisV5FriCallerMerkleBridge.AcceptedCallerMerkleSourceEquality
         openingsCall hash)
     (hhash : AspisV5MerkleUnchangedFullHelperBridge.HashCallbackEqualsSha256
       sha256 hash)
     (rustCall : V5ProductionCall)
-    (observation : OpeningAndFriObservation)
-    (hobservation :
-      AspisV5FriConsumerObservationBridge.observationFromAcceptedResolver
-        (resolveFromProductionCaller openingsCall hash environment)
-        rustCall = some observation)
+    (hverifierAccepted : verifierAccepts rustCall)
     (base : FixedSchedule (ZMod P) K)
     (hproduction : ProductionUsesReleasedFriTables base)
     (hpublished : PublishedOrdinaryPolynomialCurveDecoding (K := K))
@@ -441,8 +522,13 @@ theorem accepted_false_source_caller_event_with_released_tables
           (relationFamily.execution candidate).adaptiveData))
     (¬ Poseidon2Faithful rc deployedOwner deployedNote deployedNullifier
       deployedNode) := by
-  have hconsumer := production_caller_environment_implies_consumer_equality
-    sha256 hash openingsCall environment hopeningSource hhash
+  obtain ⟨targetEnvironment, hobservation, hconsumer⟩ :=
+    accepted_verifier_execution_builds_production_caller_observation
+      sha256 hash openingsCall verifierAccepts hentry hopeningSource hhash
+      rustCall hverifierAccepted
+  let environment := singleProductionCallerEnvironment openingsCall hash
+    rustCall targetEnvironment
+  let observation := targetEnvironment.acceptedCall.observation
   exact
     AspisV5AcceptedExecutionReleasedSecurity.accepted_false_source_observation_event_with_released_tables
       rc sha256
@@ -458,6 +544,7 @@ theorem accepted_false_source_caller_event_with_released_tables
 #print axioms accepted_resolver_caller_implies_consumer_equality
 #print axioms resolveFromProductionCaller_uses_production_caller
 #print axioms production_caller_environment_implies_consumer_equality
+#print axioms accepted_verifier_execution_builds_production_caller_observation
 #print axioms accepted_false_source_caller_event_with_released_tables
 
 end AspisV5FriCallerAcceptedResolverBridge

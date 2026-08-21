@@ -56,10 +56,23 @@ exactly the information omitted from the small mathematical production call:
 the parsed verifier input, ordered query array, transcript challenges, three
 caller functions, successful translated caller result, and accepted FRI call.
 `resolveFromProductionCaller_uses_production_caller` derives the former
-universal resolver premise from that data. The remaining focused source/tool
-edges are the fixed SHA-256 Merkle wrapper and the fixed-inverse FRI wrapper;
-the latter states only that the successful FRI call retained the same returned
-opening.
+universal resolver premise from that data.
+
+The released endpoint no longer asks its caller to provide an observation or
+an arbitrary resolver.  `AcceptedVerifierExecutionBuildsProductionCallerEnvironment`
+names the remaining outer-entry source statement: an accepted verifier run
+must produce that concrete environment.  The theorem constructs a resolver
+for that one executed call, derives the observation, and proves its exact
+Merkle/FRI consumer relation.
+
+The existing Aeneas composite-caller artifact proves the call sequence from
+prefix verification through FRI and relation verification.  It deliberately
+leaves those phases opaque and does not translate the `AccountInfo`
+borrow-and-parse entry point.  The remaining source/tool work at this boundary
+is therefore explicit: connect accepted outer execution to the concrete
+environment, translate or check the fixed SHA-256 Merkle wrapper, and translate
+or check the fixed-inverse FRI wrapper.  The current wrapper statement asserts
+only that the successful FRI call retained the same Merkle opening.
 
 ## Recorded files
 
@@ -72,7 +85,7 @@ opening.
 | `generated/V5FriCaller/Types.lean` | `8a9c03aeaa3a4fccb06b141276a78d0848089ac35f83f6a72ea69e76c984af73` |
 | `proof/V5FriCallerParametric.lean` | `a1e1678fef7051200b559240dc71dfaab84efcb049ef33fe85b91a0a57d760ea` |
 | `proof/V5FriCallerMerkleBridge.lean` | `8c175163521af742721215edefdb5a36e07e15b1e791175200f0db945dc759bd` |
-| `proof/V5FriCallerAcceptedResolverBridge.lean` | `deaeb51487e6a42c986a5ff93069fb9c9d2a340e77489723f2719c5f89297a21` |
+| `proof/V5FriCallerAcceptedResolverBridge.lean` | `96757cbdfcc43c8539056200f6bf7e44e543db65ed320dc4629cc32d6169edae` |
 
 The source file has Git blob
 `ca28d560e44e5e82e689321f32289831c889a0bd`. The extraction used Charon
