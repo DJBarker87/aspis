@@ -68,24 +68,49 @@ private theorem exactQM31_two_ne_zero : (2 : K) ≠ 0 := by
 local instance exactQM31NeZeroTwo : NeZero (2 : K) :=
   ⟨exactQM31_two_ne_zero⟩
 
-/-- Exact agreement required only at the literal successful Rust calls used
-by one accepted FRI execution with this prepared claim object.  It identifies
-no fold equation: the fold equations are consequences of the generated-call
-proofs in `V5FriConsumerValueSemantics`. -/
-structure AcceptedCallDecoderAgreement
+/-- Decoder agreement only for values authenticated by this exact accepted
+Merkle run.  Unlike the former global condition, this record says nothing
+about malformed or unauthenticated leaves.
+
+`line1Selected` is the one narrow cross-extraction edge: on an authenticated
+line-one leaf which the exact full production decoder has accepted, it says
+that the consumer snapshot's successful selected 16-byte decode is the same
+array entry.  This is precisely the equality established by the universal
+byte-decoder/Kani bundle in `v5-fri-byte-decoders-20260814`; no fold or Merkle
+claim is included in that field. -/
+structure AuthenticatedCallDecoderAgreement
+    {sha256 : List AspisV5MerkleAuthenticationBinding.Byte → Digest32}
+    {roots : V5PrivateRoots Digest32} {queries : Finset V5Query}
+    (run : ExactV5Run sha256 roots queries)
     (prepared : fri_checks.V5PreparedPcsClaims)
     (decoder : Decoder) : Prop where
-  layer0 : ∀ c1 c2 combined,
+  layer0 : ∀ (index : Nat), index ∈ activeIndices .c1 queries 0 →
+    ∀ c1 c2 combined,
+      c1.val.map generatedU8ToByte =
+          sectionValueAtIndex (run.sections .c1) index →
+      c2.val.map generatedU8ToByte =
+          sectionValueAtIndex (run.sections .c2) index →
     fri_checks.gamma_combine_v5_layer0_exact c1 c2 prepared =
         .ok (.Ok combined) →
       ∀ slot : Fin 4,
         decoder.layer0 (c1.val.map generatedU8ToByte)
             (c2.val.map generatedU8ToByte) slot =
           qm31View (toExactQM31 combined.val[slot.val]!)
-  laterReference : ∀ tree leaf slot,
-    decoder.later tree (leaf.val.map generatedU8ToByte) slot =
-      referenceDecoded leaf slot
-  layerZeroParent : ∀ leaf selected query value,
+  authenticatedLater : ∀ tree index,
+    index ∈ activeIndices tree queries 0 →
+      ∀ leaf,
+        leaf.val.map generatedU8ToByte =
+            sectionValueAtIndex (run.sections tree) index →
+        ∀ slot,
+          decoder.later tree (leaf.val.map generatedU8ToByte) slot =
+            referenceDecoded leaf slot
+  line1Selected : ∀ (query : Std.U32),
+    query.val ∈ activeIndices .c1 queries 0 →
+    ∀ leaf selected value layer values,
+      leaf.val.map generatedU8ToByte =
+          sectionValueAtIndex (run.sections .line1) (query.val / 4) →
+      V5FriArithmeticExact.circle_query.decode_later_leaf leaf layer =
+          .ok (.Ok values) →
     core.slice.index.Slice.index
         (core.slice.index.SliceIndexRangeUsizeSlice Std.U8) leaf
         { start := Std.Usize.wrapping_mul
@@ -95,11 +120,184 @@ structure AcceptedCallDecoderAgreement
               (UScalar.cast .Usize (query &&& 3#u32)) 16#usize) 16#usize } =
       .ok selected →
     aspis_core.field.QM31.from_le_bytes selected = .ok (some value) →
-    decoder.later .line1 (leaf.val.map generatedU8ToByte)
-        ⟨(query &&& 3#u32).val, by
-          rw [UScalar.val_and]
-          exact Nat.lt_of_le_of_lt Nat.and_le_right (by norm_num)⟩ =
-      qm31View (toExactQM31 value)
+    toExactQM31 value = values.val[(query &&& 3#u32).val]!
+
+private theorem generatedU8ToByte_injective :
+    Function.Injective generatedU8ToByte := by
+  intro left right heq
+  apply UScalar.eq_of_val_eq
+  exact congrArg Fin.val heq
+
+private theorem generatedU8ListMap_injective :
+    Function.Injective (List.map generatedU8ToByte) :=
+  generatedU8ToByte_injective.list_map
+
+/-- A successful extracted layer-zero call whose two byte inputs are the
+given maintained byte lists. -/
+private structure Layer0DecodeWitness
+    (prepared : fri_checks.V5PreparedPcsClaims)
+    (left right : List AspisV5MerkleAuthenticationBinding.Byte) where
+  c1 : Slice Std.U8
+  c2 : Slice Std.U8
+  combined : Array aspis_core.field.QM31 4#usize
+  c1Bytes : c1.val.map generatedU8ToByte = left
+  c2Bytes : c2.val.map generatedU8ToByte = right
+  call : fri_checks.gamma_combine_v5_layer0_exact c1 c2 prepared =
+    .ok (.Ok combined)
+
+/-- The concrete layer-zero decoder used by the final theorem.  Outside a
+successful production combine call it returns zero; the proof only observes
+it at calls which actually succeeded. -/
+noncomputable def productionLayer0Decoded
+    (prepared : fri_checks.V5PreparedPcsClaims)
+    (left right : List AspisV5MerkleAuthenticationBinding.Byte)
+    (slot : Fin 4) : K := by
+  classical
+  exact if h : Nonempty (Layer0DecodeWitness prepared left right) then
+      let witness := Classical.choice h
+      qm31View (toExactQM31 witness.combined.val[slot.val]!)
+    else 0
+
+private theorem productionLayer0Decoded_of_success
+    (prepared : fri_checks.V5PreparedPcsClaims)
+    (c1 c2 : Slice Std.U8)
+    (combined : Array aspis_core.field.QM31 4#usize)
+    (hcall : fri_checks.gamma_combine_v5_layer0_exact c1 c2 prepared =
+      .ok (.Ok combined)) (slot : Fin 4) :
+    productionLayer0Decoded prepared
+        (c1.val.map generatedU8ToByte) (c2.val.map generatedU8ToByte) slot =
+      qm31View (toExactQM31 combined.val[slot.val]!) := by
+  let supplied : Layer0DecodeWitness prepared
+      (c1.val.map generatedU8ToByte) (c2.val.map generatedU8ToByte) :=
+    { c1 := c1, c2 := c2, combined := combined,
+      c1Bytes := rfl, c2Bytes := rfl, call := hcall }
+  have hex : Nonempty (Layer0DecodeWitness prepared
+      (c1.val.map generatedU8ToByte) (c2.val.map generatedU8ToByte)) :=
+    ⟨supplied⟩
+  let chosen := Classical.choice hex
+  have hc1 : chosen.c1 = c1 := by
+    apply Subtype.ext
+    exact generatedU8ListMap_injective chosen.c1Bytes
+  have hc2 : chosen.c2 = c2 := by
+    apply Subtype.ext
+    exact generatedU8ListMap_injective chosen.c2Bytes
+  have hchosen := chosen.call
+  rw [hc1, hc2, hcall] at hchosen
+  have hcombined : chosen.combined = combined := by
+    exact (core.result.Result.Ok.inj (Result.ok.inj hchosen)).symm
+  simp only [productionLayer0Decoded, dif_pos hex]
+  rw [show Classical.choice hex = chosen by rfl, hcombined]
+
+private structure GeneratedLeafWitness
+    (bytes : List AspisV5MerkleAuthenticationBinding.Byte) where
+  leaf : Slice Std.U8
+  byteEquality : leaf.val.map generatedU8ToByte = bytes
+
+/-- The concrete later-layer decoder is the independently proved reference
+decoder on the unique generated-byte preimage. -/
+noncomputable def productionLaterDecoded
+    (bytes : List AspisV5MerkleAuthenticationBinding.Byte)
+    (slot : Fin 4) : K := by
+  classical
+  exact if h : Nonempty (GeneratedLeafWitness bytes) then
+      referenceDecoded (Classical.choice h).leaf slot
+    else 0
+
+private theorem productionLaterDecoded_of_generated_leaf
+    (leaf : Slice Std.U8) (slot : Fin 4) :
+    productionLaterDecoded (leaf.val.map generatedU8ToByte) slot =
+      referenceDecoded leaf slot := by
+  let supplied : GeneratedLeafWitness
+      (leaf.val.map generatedU8ToByte) := ⟨leaf, rfl⟩
+  have hex : Nonempty (GeneratedLeafWitness
+      (leaf.val.map generatedU8ToByte)) := ⟨supplied⟩
+  let chosen := Classical.choice hex
+  have hleaf : chosen.leaf = leaf := by
+    apply Subtype.ext
+    exact generatedU8ListMap_injective chosen.byteEquality
+  simp only [productionLaterDecoded, dif_pos hex]
+  rw [show Classical.choice hex = chosen by rfl, hleaf]
+
+/-- The concrete decoder used by the released end-to-end FRI theorem.
+
+These four FRI equations read C2 only through the successful layer-zero
+production combine, so the standalone `c2` projection is deliberately unused
+here.  The separate transcript-projection theorem checks C2 against its own
+expected value. -/
+noncomputable def productionOpeningFibreDecoder
+    (prepared : fri_checks.V5PreparedPcsClaims) : Decoder where
+  layer0 := productionLayer0Decoded prepared
+  c2 := fun _ _ => 0
+  later := fun _ => productionLaterDecoded
+
+/-- The sole remaining decoder equality.  It compares two extracted views of
+the same fully validated line-one leaf: the consumer's selected 16-byte read
+and the exact full production decoder.  The universal byte-decoder/Kani proof
+is intended to instantiate precisely this statement. -/
+def ConsumerSelectedFullDecoderEquality : Prop :=
+  ∀ (query : Std.U32) leaf selected value layer values,
+    V5FriArithmeticExact.circle_query.decode_later_leaf leaf layer =
+        .ok (.Ok values) →
+    core.slice.index.Slice.index
+        (core.slice.index.SliceIndexRangeUsizeSlice Std.U8) leaf
+        { start := Std.Usize.wrapping_mul
+            (UScalar.cast .Usize (query &&& 3#u32)) 16#usize,
+          «end» := Std.Usize.wrapping_add
+            (Std.Usize.wrapping_mul
+              (UScalar.cast .Usize (query &&& 3#u32)) 16#usize) 16#usize } =
+      .ok selected →
+    aspis_core.field.QM31.from_le_bytes selected = .ok (some value) →
+    toExactQM31 value = values.val[(query &&& 3#u32).val]!
+
+/-- Construct the exact-run agreement for the concrete decoder.  The only
+input is the narrow cross-extraction selected/full decoder equality above. -/
+theorem productionOpeningFibreDecoder_authenticated_agreement
+    {sha256 : List AspisV5MerkleAuthenticationBinding.Byte → Digest32}
+    {roots : V5PrivateRoots Digest32} {queries : Finset V5Query}
+    (run : ExactV5Run sha256 roots queries)
+    (prepared : fri_checks.V5PreparedPcsClaims)
+    (hSelected : ConsumerSelectedFullDecoderEquality) :
+    AuthenticatedCallDecoderAgreement run prepared
+      (productionOpeningFibreDecoder prepared) := by
+  constructor
+  · intro index _hactive c1 c2 combined _hc1Bytes _hc2Bytes hcall slot
+    exact productionLayer0Decoded_of_success prepared c1 c2 combined hcall slot
+  · intro tree index _hactive leaf _hbytes slot
+    exact productionLaterDecoded_of_generated_leaf leaf slot
+  · intro query _hactive leaf selected value layer values _hbytes hfull
+      hslice hvalue
+    exact hSelected query leaf selected value layer values hfull hslice hvalue
+
+/-- Successful execution of the extracted exact line helper exposes the full
+incoming-leaf decoder call which necessarily succeeded before the arithmetic
+comparison. -/
+private theorem accepted_exact_line_call_exposes_incoming_decode
+    {incoming outgoing : Slice Std.U8} {index : Std.Usize} {layer : Std.U8}
+    {inverses : Array V5FriArithmeticExact.field.M31 3#usize}
+    {alphaPowers : Array
+      V5FriArithmeticExact.field.PreparedQm31Multiplier 3#usize}
+    (hAccepted :
+      V5FriArithmeticExact.circle_query.check_fixed_line_transition_prepared_polynomial_powers
+          incoming outgoing index layer inverses alphaPowers = .ok (.Ok ())) :
+    ∃ values : Array V5FriArithmeticExact.field.QM31 4#usize,
+      V5FriArithmeticExact.circle_query.decode_later_leaf incoming layer =
+        .ok (.Ok values) := by
+  unfold
+    V5FriArithmeticExact.circle_query.check_fixed_line_transition_prepared_polynomial_powers
+    at hAccepted
+  generalize hDecode :
+      V5FriArithmeticExact.circle_query.decode_later_leaf incoming layer =
+        decoded at hAccepted
+  cases decoded with
+  | fail error => simp [Bind.bind, Aeneas.Std.bind] at hAccepted
+  | div => simp [Bind.bind, Aeneas.Std.bind] at hAccepted
+  | ok decoded =>
+      cases decoded with
+      | Err error =>
+          simp [Bind.bind, Aeneas.Std.bind,
+            core.result.Result.Insts.CoreOpsTry.branch,
+            from_residual_ne_ok] at hAccepted
+      | Ok values => exact ⟨values, rfl⟩
 
 /-- The values entering the accepted Rust FRI call are the mathematical
 schedule and public final polynomial.  These are direct value equalities and
@@ -1239,7 +1437,8 @@ theorem accepted_execution_circle_check
     (hsource : ProductionUsesReleasedFriTables schedule)
     (transcript : IdealTranscript K)
     (decoder : Decoder) (hCalls : ExactFriHelperCallEquality)
-    (hAgreement : AcceptedCallDecoderAgreement prepared decoder)
+    (hAgreement : AuthenticatedCallDecoderAgreement run prepared decoder)
+    (hDecoder : ProductionDecoderReferenceEquality)
     (hBinding : AcceptedFriModelInputBinding prepared execution.sourceAlphas
       finalPolynomial schedule transcript)
     (hCoordinates : ReleasedCoordinateOutputEvidence
@@ -1279,6 +1478,42 @@ theorem accepted_execution_circle_check
     simpa [sliceValueAt, alloc.vec.Vec.deref] using hrustQuery
   have hbytes := layerZero_read_matches_exact_run run openings hdriver read
     query hquery hordinal hrustQuery
+  have hc1Active : query.val ∈ activeIndices .c1 querySet 0 := by
+    simpa [sectionIndex] using sectionIndex_mem_active .c1 hquery
+  have hline1Active : query.val / 4 ∈ activeIndices .line1 querySet 0 :=
+    layer0_parent_mem_line1 hc1Active
+  have hline1Indices := later_run_zero_indices_eq_ordered run openings hdriver
+    execution.laterRuns.indices0 execution.laterRuns.indicesAt0
+  obtain ⟨line1Target, hline1Target, hline1Ordinal, hline1RustIndex⟩ :=
+    source_index_at_active .line1 querySet execution.laterRuns.indices0
+      hline1Indices (query.val / 4) hline1Active
+  obtain ⟨line1Carried, line1Next, _hline1Next, ⟨line1Read⟩⟩ :=
+    execution.later0Reads line1Target hline1Target
+  have hline1Bytes := laterZero_read_matches_exact_run run openings hdriver
+    line1Read (query.val / 4) hline1Active hline1Ordinal hline1RustIndex
+  have hExactLineCall := hCalls.line line1Read.incomingValue
+    line1Read.parentValue
+    (UScalar.cast .Usize
+      (sliceValueAt (alloc.vec.Vec.deref execution.laterRuns.indices0)
+        line1Target hline1Target))
+    (Std.U8.wrapping_add (UScalar.cast .U8 0#usize) 1#u8)
+    line1Read.coordinate line1Read.alpha line1Read.transitionCall
+  obtain ⟨line1Values, hline1Decode⟩ :=
+    accepted_exact_line_call_exposes_incoming_decode hExactLineCall
+  have hline1LeafEq : line1Read.incomingValue = read.parentValue := by
+    apply Subtype.ext
+    apply generatedU8ListMap_injective
+    exact hline1Bytes.1.trans hbytes.2.2.symm
+  have hparentDecode :
+      V5FriArithmeticExact.circle_query.decode_later_leaf read.parentValue
+          (Std.U8.wrapping_add (UScalar.cast .U8 0#usize) 1#u8) =
+        .ok (.Ok line1Values) := by
+    simpa only [hline1LeafEq] using hline1Decode
+  have hparentDecoderSemantics :=
+    (production_decoders_have_reference_semantics hDecoder).full
+      read.parentValue
+      (Std.U8.wrapping_add (UScalar.cast .U8 0#usize) 1#u8)
+      line1Values hparentDecode
   have hcoordinate := layerZero_read_has_released_coordinates schedule
     hsource
     (alloc.vec.Vec.deref openings.indices.layer0)
@@ -1331,19 +1566,45 @@ theorem accepted_execution_circle_check
             rw [hcoordinate.2.2.1, hcoordinate.2.2.2]
             congr 1
             funext slot
-            exact hAgreement.layer0 read.c1Value read.c2Value
-              read.combined (by simpa using read.combineCall) slot
+            exact hAgreement.layer0 query.val hc1Active
+              read.c1Value read.c2Value read.combined hbytes.1 hbytes.2.1
+              (by simpa using read.combineCall) slot
     _ = qm31View (toExactQM31 read.decodedParent) := hfold
     _ = decoder.later .line1
         (read.parentValue.val.map generatedU8ToByte)
         (@slotIndex 32768 query) := by
           rw [← hslot]
-          exact (hAgreement.layerZeroParent read.parentValue
-            read.selectedSlice
-            (sliceValueAt (alloc.vec.Vec.deref openings.indices.layer0)
-              target htarget)
-            read.decodedParent
-            read.selectedSliceRead read.decodeParentCall).symm
+          let rustQuery :=
+            sliceValueAt (alloc.vec.Vec.deref openings.indices.layer0)
+              target htarget
+          let selectedSlot : Fin 4 :=
+            ⟨(rustQuery &&& 3#u32).val, by
+              rw [UScalar.val_and]
+              exact Nat.lt_of_le_of_lt Nat.and_le_right (by norm_num)⟩
+          have hrustActive : rustQuery.val ∈ activeIndices .c1 querySet 0 := by
+            change
+              (sliceValueAt (alloc.vec.Vec.deref openings.indices.layer0)
+                target htarget).val ∈ activeIndices .c1 querySet 0
+            rw [hrustQuery]
+            exact hc1Active
+          have hrustDiv : rustQuery.val / 4 = query.val / 4 := by
+            simp only [rustQuery]
+            rw [hrustQuery]
+          have hselected := hAgreement.line1Selected rustQuery hrustActive
+            read.parentValue read.selectedSlice read.decodedParent
+            (Std.U8.wrapping_add (UScalar.cast .U8 0#usize) 1#u8)
+            line1Values (by simpa only [hrustDiv] using hbytes.2.2)
+            hparentDecode read.selectedSliceRead read.decodeParentCall
+          calc
+            qm31View (toExactQM31 read.decodedParent) =
+                qm31View line1Values.val[selectedSlot.val]! := by
+                  exact congrArg qm31View hselected
+            _ = referenceDecoded read.parentValue selectedSlot :=
+              hparentDecoderSemantics.2 selectedSlot
+            _ = decoder.later .line1
+                (read.parentValue.val.map generatedU8ToByte) selectedSlot :=
+              (hAgreement.authenticatedLater .line1 (query.val / 4)
+                hline1Active read.parentValue hbytes.2.2 selectedSlot).symm
 
 theorem accepted_execution_line1_check
     {sha256 : List AspisV5MerkleAuthenticationBinding.Byte → Digest32}
@@ -1359,7 +1620,7 @@ theorem accepted_execution_line1_check
     (schedule : FixedSchedule (ZMod AspisCircleGroupOrder.P) K)
     (hsource : ProductionUsesReleasedFriTables schedule)
     (decoder : Decoder) (hCalls : ExactFriHelperCallEquality)
-    (hAgreement : AcceptedCallDecoderAgreement prepared decoder)
+    (hAgreement : AuthenticatedCallDecoderAgreement run prepared decoder)
     (hDecoder : ProductionDecoderReferenceEquality)
     (hCoordinates : ReleasedCoordinateOutputEvidence
       (alloc.vec.Vec.deref openings.indices.layer0)
@@ -1470,7 +1731,8 @@ theorem accepted_execution_line1_check
           rw [← hcoordinate.2 0, ← hcoordinate.2 1, ← hcoordinate.2 2]
           congr 1
           funext slot
-          exact hAgreement.laterReference .line1 read.incomingValue slot
+          exact hAgreement.authenticatedLater .line1 (query.val / 4) hactive
+            read.incomingValue hbytes.1 slot
     _ = referenceDecoded read.parentValue
         ⟨((UScalar.cast .Usize
           (sliceValueAt (alloc.vec.Vec.deref execution.laterRuns.indices0)
@@ -1481,7 +1743,12 @@ theorem accepted_execution_line1_check
         (read.parentValue.val.map generatedU8ToByte)
         (@slotIndex 8192 (queryParent1 query)) := by
           rw [← hslot]
-          exact (hAgreement.laterReference .line2 read.parentValue _).symm
+          exact (hAgreement.authenticatedLater .line2 (query.val / 16)
+            (by
+              have hparent := line1_parent_mem_line2 hactive
+              have hdiv : query.val / 4 / 4 = query.val / 16 := by omega
+              simpa only [hdiv] using hparent)
+            read.parentValue (by simpa only [hdiv] using hbytes.2) _).symm
 
 theorem accepted_execution_line2_check
     {sha256 : List AspisV5MerkleAuthenticationBinding.Byte → Digest32}
@@ -1497,7 +1764,7 @@ theorem accepted_execution_line2_check
     (schedule : FixedSchedule (ZMod AspisCircleGroupOrder.P) K)
     (hsource : ProductionUsesReleasedFriTables schedule)
     (decoder : Decoder) (hCalls : ExactFriHelperCallEquality)
-    (hAgreement : AcceptedCallDecoderAgreement prepared decoder)
+    (hAgreement : AuthenticatedCallDecoderAgreement run prepared decoder)
     (hDecoder : ProductionDecoderReferenceEquality)
     (hCoordinates : ReleasedCoordinateOutputEvidence
       (alloc.vec.Vec.deref openings.indices.layer0)
@@ -1614,7 +1881,8 @@ theorem accepted_execution_line2_check
           rw [← hcoordinate.2 0, ← hcoordinate.2 1, ← hcoordinate.2 2]
           congr 1
           funext slot
-          exact hAgreement.laterReference .line2 read.incomingValue slot
+          exact hAgreement.authenticatedLater .line2 (query.val / 16) hactive
+            read.incomingValue hbytes.1 slot
     _ = referenceDecoded read.parentValue
         ⟨((UScalar.cast .Usize
           (sliceValueAt (alloc.vec.Vec.deref execution.laterRuns.indices1)
@@ -1625,7 +1893,12 @@ theorem accepted_execution_line2_check
         (read.parentValue.val.map generatedU8ToByte)
         (@slotIndex 2048 (queryParent2 query)) := by
           rw [← hslot]
-          exact (hAgreement.laterReference .line3 read.parentValue _).symm
+          exact (hAgreement.authenticatedLater .line3 (query.val / 64)
+            (by
+              have hparent := line2_parent_mem_line3 hactive
+              have hdiv : query.val / 16 / 4 = query.val / 64 := by omega
+              simpa only [hdiv] using hparent)
+            read.parentValue (by simpa only [hdiv] using hbytes.2) _).symm
 
 theorem accepted_execution_line3_check
     {sha256 : List AspisV5MerkleAuthenticationBinding.Byte → Digest32}
@@ -1642,7 +1915,7 @@ theorem accepted_execution_line3_check
     (hsource : ProductionUsesReleasedFriTables schedule)
     (transcript : IdealTranscript K)
     (decoder : Decoder) (hCalls : ExactFriHelperCallEquality)
-    (hAgreement : AcceptedCallDecoderAgreement prepared decoder)
+    (hAgreement : AuthenticatedCallDecoderAgreement run prepared decoder)
     (hDecoder : ProductionDecoderReferenceEquality)
     (hBinding : AcceptedFriModelInputBinding prepared execution.sourceAlphas
       finalPolynomial schedule transcript)
@@ -1746,7 +2019,8 @@ theorem accepted_execution_line3_check
             ← hcoordinate.2.1 2]
           congr 1
           funext slot
-          exact hAgreement.laterReference .line3 read.incomingValue slot
+          exact hAgreement.authenticatedLater .line3 (query.val / 64) hactive
+            read.incomingValue hbytes slot
     _ = AspisV5ComponentCConcreteFoldLinearity.finalTensorValue
         (m31View read.finalX)
         (fun slot => qm31View
@@ -1859,7 +2133,7 @@ theorem accepted_production_execution_yields_forest_fri_checks
     (queries : QuerySchedule 18 131072)
     (hqueryMember : ∀ i, queries i ∈ querySet)
     (decoder : Decoder) (hCalls : ExactFriHelperCallEquality)
-    (hAgreement : AcceptedCallDecoderAgreement prepared decoder)
+    (hAgreement : AuthenticatedCallDecoderAgreement run prepared decoder)
     (hDecoder : ProductionDecoderReferenceEquality)
     (hBinding : AcceptedFriModelInputBinding prepared execution.sourceAlphas
       finalPolynomial schedule transcript)
@@ -1938,7 +2212,8 @@ theorem accepted_production_execution_yields_forest_fri_checks
   · intro i
     exact accepted_execution_circle_check run openings prepared finalPolynomial
       sink execution hdriver schedule hsource transcript decoder hCalls
-      hAgreement hBinding hCoordinates hPowers (queries i) (hqueryMember i)
+      hAgreement hDecoder hBinding hCoordinates hPowers (queries i)
+      (hqueryMember i)
   · intro i
     exact accepted_execution_line1_check run openings prepared finalPolynomial
       sink execution hdriver schedule hsource decoder hCalls hAgreement
@@ -1981,7 +2256,7 @@ theorem accepted_production_execution_yields_forest_fri_checks_of_projection
     (projection : TranscriptExecutionProjection relationInput transcriptInput
       derived driverResult querySet queries)
     (decoder : Decoder) (hCalls : ExactFriHelperCallEquality)
-    (hAgreement : AcceptedCallDecoderAgreement prepared decoder)
+    (hAgreement : AuthenticatedCallDecoderAgreement run prepared decoder)
     (hDecoder : ProductionDecoderReferenceEquality)
     (hBinding : AcceptedFriModelInputBinding prepared execution.sourceAlphas
       finalPolynomial schedule transcript)
@@ -1996,9 +2271,9 @@ theorem accepted_production_execution_yields_forest_fri_checks_of_projection
       derived driverResult querySet queries projection) decoder hCalls
     hAgreement hDecoder hBinding hValidate hCoordinateSource
 
-/-- Specializing the schedule to the exact released tables removes the
-separate table-equality premise.  The transcript projection also supplies all
-18 query-membership facts. -/
+/-- The released wrapper fixes the decoder to the concrete production-call
+decoder.  Its only decoder premise is the narrow equality between the
+consumer's selected read and the full validated production decoder. -/
 theorem accepted_production_execution_yields_released_forest_fri_checks
     {PointValue : Type*}
     {sha256 : List AspisV5MerkleAuthenticationBinding.Byte → Digest32}
@@ -2021,23 +2296,26 @@ theorem accepted_production_execution_yields_released_forest_fri_checks
       PointValue)
     (projection : TranscriptExecutionProjection relationInput transcriptInput
       derived driverResult querySet queries)
-    (decoder : Decoder) (hCalls : ExactFriHelperCallEquality)
-    (hAgreement : AcceptedCallDecoderAgreement prepared decoder)
+    (hCalls : ExactFriHelperCallEquality)
+    (hSelected : ConsumerSelectedFullDecoderEquality)
     (hDecoder : ProductionDecoderReferenceEquality)
     (hBinding : AcceptedFriModelInputBinding prepared execution.sourceAlphas
       finalPolynomial (exactReleasedFriTables base) transcript)
     (hValidate : ValidationSuccessPreservesShape)
     (hCoordinateSource :
       AcceptedExecutionCoordinateSourceCertificate execution) :
-    ForestFriChecks decoder (sha256MerkleHashing sha256) run.forest
-      (exactReleasedFriTables base) transcript queries := by
+    ForestFriChecks (productionOpeningFibreDecoder prepared)
+      (sha256MerkleHashing sha256) run.forest (exactReleasedFriTables base)
+      transcript queries := by
+  have hAgreement := productionOpeningFibreDecoder_authenticated_agreement
+    run prepared hSelected
   exact
     accepted_production_execution_yields_forest_fri_checks_of_projection run
       openings prepared finalPolynomial sink execution hdriver
       (exactReleasedFriTables base) (exactReleasedFriTables_source_shape base)
       transcript queries relationInput transcriptInput derived driverResult
-      projection decoder hCalls hAgreement hDecoder hBinding hValidate
-      hCoordinateSource
+      projection (productionOpeningFibreDecoder prepared) hCalls hAgreement
+      hDecoder hBinding hValidate hCoordinateSource
 
 /-- Once one exact accepted forest has all four FRI checks, the FRI-arithmetic
 failure arm of the released security event is impossible.  A purported
