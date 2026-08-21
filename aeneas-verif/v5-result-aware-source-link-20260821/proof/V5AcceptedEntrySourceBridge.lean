@@ -334,6 +334,18 @@ theorem bind_eq_ok_iff {alpha beta : Type}
       ∃ result, action = .ok result ∧ next result = .ok value := by
   cases action <;> simp [Bind.bind, Aeneas.Std.bind]
 
+theorem branch_eq_ok_of_continue {valueType errorType : Type}
+    (result : core.result.Result valueType errorType) (value : valueType)
+    (success :
+      core.result.Result.Insts.CoreOpsTry.branch result =
+        .ok (.Continue value)) :
+    result = .Ok value := by
+  cases result with
+  | Ok actual =>
+      simpa [core.result.Result.Insts.CoreOpsTry.branch] using success
+  | Err error =>
+      simp [core.result.Result.Insts.CoreOpsTry.branch] at success
+
 theorem range_index_success_length
     (data : Slice Std.U8) (start finish : Std.Usize) (out : Slice Std.U8)
     (success :
@@ -542,8 +554,246 @@ theorem accepted_parse_builds_transcript_projection
     selector := entry_tail_selector parsed statementDigest
   }
 
+abbrev EntryQM31 := V5AcceptedEntryGenerated.aspis_core.field.QM31
+abbrev EntryTranscript :=
+  V5AcceptedEntryGenerated.aspis_core.transcript.Transcript
+abbrev EntryStatement :=
+  V5AcceptedEntryGenerated.aspis_statement.atomic_statement.AtomicPaymentStatementV4
+abbrev EntryVerifiedPrefix :=
+  V5AcceptedEntryGenerated.v5_cu_probe.VerifiedRealV5Wire
+abbrev EntryVerifiedTerminal :=
+  V5AcceptedEntryGenerated.v5_atomic_terminal.VerifiedV5AtomicTerminal
+abbrev EntryPreparedClaims :=
+  V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims
+
+/-- The proposition-only facts carried by one exact successful call and value
+flow of the unchanged composite verifier.  The data are parameters so this
+record remains in `Prop` and can be obtained by inverting a successful result. -/
+structure AcceptedCompositeCallFacts
+    (accountData : Slice Std.U8) (parsed : EntryParsed)
+    (liveStatement : EntryStatement)
+    (statementDigest : Array Std.U8 32#usize)
+    (acceptedValue : EntryQM31)
+    (verifiedPrefix : EntryVerifiedPrefix)
+    (prefixTranscript : EntryTranscript)
+    (verifiedTerminal : EntryVerifiedTerminal)
+    (relationTranscript : EntryTranscript)
+    (finalPolynomial : Array EntryQM31 4#usize)
+    (queries : Array Std.U32 18#usize)
+    (alphas : Array EntryQM31 4#usize)
+    (friSum : EntryQM31)
+    (preparedClaims : EntryPreparedClaims)
+    (relationSum phaseSum : EntryQM31) : Prop where
+  prefixSuccess :
+    V5AcceptedEntryGenerated.v5_cu_probe.verify_v5_wire_prefix
+        parsed liveStatement statementDigest
+        V5AcceptedEntryGenerated.verify.sbf_hashv =
+      .ok (.Ok (verifiedPrefix, prefixTranscript))
+  terminalSuccess :
+    V5AcceptedEntryGenerated.v5_cu_probe.verify_mode9_atomic_terminal_with_prefix
+        parsed liveStatement verifiedPrefix =
+      .ok (.Ok verifiedTerminal)
+  relationSuccess :
+    V5AcceptedEntryGenerated.v5_cu_probe.replay_real_v5_relation_rounds
+        prefixTranscript parsed = .ok (.Ok relationTranscript)
+  querySuccess :
+    V5AcceptedEntryGenerated.v5_cu_probe.derive_v5_selected_good_queries_from_transcript
+        relationTranscript parsed verifiedPrefix.round_challenges =
+      .ok (.Ok (finalPolynomial, queries))
+  alphaSuccess :
+    V5AcceptedEntryGenerated.v5_cu_probe.decode_v5_fri_alphas parsed =
+      .ok (.Ok alphas)
+  friSuccess :
+    V5AcceptedEntryGenerated.v5_cu_probe.verify_mode9_fri_phase
+        parsed queries finalPolynomial alphas verifiedPrefix.gamma =
+      .ok (.Ok (friSum, preparedClaims))
+  relationCheckSuccess :
+    V5AcceptedEntryGenerated.v5_cu_probe.verify_mode9_relation_phase
+        parsed finalPolynomial alphas verifiedPrefix.kappa
+        verifiedPrefix.inactive_claim verifiedPrefix.round_challenges
+        preparedClaims = .ok (.Ok relationSum)
+  phaseSumSuccess :
+    V5AcceptedEntryGenerated.aspis_core.field.QM31.add friSum relationSum =
+      .ok phaseSum
+  acceptedSumSuccess :
+    V5AcceptedEntryGenerated.aspis_core.field.QM31.add
+        phaseSum verifiedTerminal.masked = .ok acceptedValue
+
+/-- The exact successful call and value flow of the unchanged composite
+verifier.  In particular the same four decoded alphas are passed to both the
+FRI checks and the relation checks, and the same final polynomial and queries
+returned by the transcript tail are passed to the FRI checks. -/
+def AcceptedCompositeCallChain
+    (accountData : Slice Std.U8) (parsed : EntryParsed)
+    (liveStatement : EntryStatement)
+    (statementDigest : Array Std.U8 32#usize)
+    (acceptedValue : EntryQM31) : Prop :=
+  ∃ verifiedPrefix prefixTranscript verifiedTerminal relationTranscript
+      finalPolynomial queries alphas friSum preparedClaims relationSum phaseSum,
+    AcceptedCompositeCallFacts accountData parsed liveStatement statementDigest
+      acceptedValue verifiedPrefix prefixTranscript verifiedTerminal
+      relationTranscript finalPolynomial queries alphas friSum preparedClaims
+      relationSum phaseSum
+
+/-- A successful result from the generated production composite verifier
+determines every successful helper call and the exact values passed between
+those calls.  This is an inversion of the extracted Rust body, not an
+additional implementation/model premise. -/
+theorem accepted_composite_builds_call_chain
+    (accountData : Slice Std.U8) (parsed : EntryParsed)
+    (liveStatement : EntryStatement)
+    (statementDigest : Array Std.U8 32#usize)
+    (acceptedValue : EntryQM31)
+    (success :
+      V5AcceptedEntryGenerated.v5_cu_probe.verify_mode9_composite_with_live_statement
+          accountData parsed liveStatement statementDigest =
+        .ok (.Ok acceptedValue)) :
+    AcceptedCompositeCallChain accountData parsed liveStatement
+      statementDigest acceptedValue := by
+  unfold V5AcceptedEntryGenerated.v5_cu_probe.verify_mode9_composite_with_live_statement at success
+  rw [bind_eq_ok_iff] at success
+  obtain ⟨prefixResult, prefixSuccess, success⟩ := success
+  rw [bind_eq_ok_iff] at success
+  obtain ⟨prefixFlow, prefixBranchSuccess, success⟩ := success
+  cases prefixFlow with
+  | Break residual =>
+      cases residual with
+      | Ok impossible => nomatch impossible
+      | Err error =>
+          simp [core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+            core.convert.FromSame, core.convert.FromSame.from] at success
+  | Continue prefixPair =>
+      rcases prefixPair with ⟨verifiedPrefix, prefixTranscript⟩
+      have hprefixResult := branch_eq_ok_of_continue
+        prefixResult (verifiedPrefix, prefixTranscript) prefixBranchSuccess
+      rw [hprefixResult] at prefixSuccess
+      simp only at success
+      rw [bind_eq_ok_iff] at success
+      obtain ⟨terminalResult, terminalSuccess, success⟩ := success
+      rw [bind_eq_ok_iff] at success
+      obtain ⟨terminalFlow, terminalBranchSuccess, success⟩ := success
+      cases terminalFlow with
+      | Break residual =>
+          cases residual with
+          | Ok impossible => nomatch impossible
+          | Err error =>
+              simp [core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                core.convert.FromSame, core.convert.FromSame.from] at success
+      | Continue verifiedTerminal =>
+          have hterminalResult := branch_eq_ok_of_continue
+            terminalResult verifiedTerminal terminalBranchSuccess
+          rw [hterminalResult] at terminalSuccess
+          simp only at success
+          rw [bind_eq_ok_iff] at success
+          obtain ⟨relationResult, relationSuccess, success⟩ := success
+          rw [bind_eq_ok_iff] at success
+          obtain ⟨relationFlow, relationBranchSuccess, success⟩ := success
+          cases relationFlow with
+          | Break residual =>
+              cases residual with
+              | Ok impossible => nomatch impossible
+              | Err error =>
+                  simp [core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                    core.convert.FromSame, core.convert.FromSame.from] at success
+          | Continue relationTranscript =>
+              have hrelationResult := branch_eq_ok_of_continue
+                relationResult relationTranscript relationBranchSuccess
+              rw [hrelationResult] at relationSuccess
+              simp only at success
+              rw [bind_eq_ok_iff] at success
+              obtain ⟨queryResult, querySuccess, success⟩ := success
+              rw [bind_eq_ok_iff] at success
+              obtain ⟨queryFlow, queryBranchSuccess, success⟩ := success
+              cases queryFlow with
+              | Break residual =>
+                  cases residual with
+                  | Ok impossible => nomatch impossible
+                  | Err error =>
+                      simp [core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                        core.convert.FromSame, core.convert.FromSame.from] at success
+              | Continue queryPair =>
+                  rcases queryPair with ⟨finalPolynomial, queries⟩
+                  have hqueryResult := branch_eq_ok_of_continue
+                    queryResult (finalPolynomial, queries) queryBranchSuccess
+                  rw [hqueryResult] at querySuccess
+                  simp only at success
+                  rw [bind_eq_ok_iff] at success
+                  obtain ⟨alphaResult, alphaSuccess, success⟩ := success
+                  rw [bind_eq_ok_iff] at success
+                  obtain ⟨alphaFlow, alphaBranchSuccess, success⟩ := success
+                  cases alphaFlow with
+                  | Break residual =>
+                      cases residual with
+                      | Ok impossible => nomatch impossible
+                      | Err error =>
+                          simp [core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                            core.convert.FromSame, core.convert.FromSame.from] at success
+                  | Continue alphas =>
+                      have halphaResult := branch_eq_ok_of_continue
+                        alphaResult alphas alphaBranchSuccess
+                      rw [halphaResult] at alphaSuccess
+                      simp only at success
+                      rw [bind_eq_ok_iff] at success
+                      obtain ⟨friResult, friSuccess, success⟩ := success
+                      rw [bind_eq_ok_iff] at success
+                      obtain ⟨friFlow, friBranchSuccess, success⟩ := success
+                      cases friFlow with
+                      | Break residual =>
+                          cases residual with
+                          | Ok impossible => nomatch impossible
+                          | Err error =>
+                              simp [core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                                core.convert.FromSame, core.convert.FromSame.from] at success
+                      | Continue friPair =>
+                          rcases friPair with ⟨friSum, preparedClaims⟩
+                          have hfriResult := branch_eq_ok_of_continue
+                            friResult (friSum, preparedClaims) friBranchSuccess
+                          rw [hfriResult] at friSuccess
+                          simp only at success
+                          rw [bind_eq_ok_iff] at success
+                          obtain ⟨relationCheckResult, relationCheckSuccess, success⟩ := success
+                          rw [bind_eq_ok_iff] at success
+                          obtain ⟨relationCheckFlow, relationCheckBranchSuccess, success⟩ := success
+                          cases relationCheckFlow with
+                          | Break residual =>
+                              cases residual with
+                              | Ok impossible => nomatch impossible
+                              | Err error =>
+                                  simp [core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                                    core.convert.FromSame, core.convert.FromSame.from] at success
+                          | Continue relationSum =>
+                              have hrelationCheckResult := branch_eq_ok_of_continue
+                                relationCheckResult relationSum relationCheckBranchSuccess
+                              rw [hrelationCheckResult] at relationCheckSuccess
+                              simp only at success
+                              rw [bind_eq_ok_iff] at success
+                              obtain ⟨_, _, success⟩ := success
+                              rw [bind_eq_ok_iff] at success
+                              obtain ⟨phaseSum, phaseSumSuccess, success⟩ := success
+                              rw [bind_eq_ok_iff] at success
+                              obtain ⟨finalValue, acceptedSumSuccess, success⟩ := success
+                              simp only [Result.ok.injEq,
+                                core.result.Result.Ok.injEq] at success
+                              subst finalValue
+                              refine ⟨verifiedPrefix, prefixTranscript,
+                                verifiedTerminal, relationTranscript,
+                                finalPolynomial, queries, alphas, friSum,
+                                preparedClaims, relationSum, phaseSum, ?_⟩
+                              exact {
+                                prefixSuccess := prefixSuccess
+                                terminalSuccess := terminalSuccess
+                                relationSuccess := relationSuccess
+                                querySuccess := querySuccess
+                                alphaSuccess := alphaSuccess
+                                friSuccess := friSuccess
+                                relationCheckSuccess := relationCheckSuccess
+                                phaseSumSuccess := phaseSumSuccess
+                                acceptedSumSuccess := acceptedSumSuccess
+                              }
+
 #print axioms entry_relation_projection
 #print axioms accepted_parse_final_coefficients_length
 #print axioms accepted_parse_builds_transcript_projection
+#print axioms accepted_composite_builds_call_chain
 
 end AspisV5AcceptedEntrySourceBridge
