@@ -3,7 +3,7 @@
 import Aeneas.Std
 import Aeneas.Tactic.RustAttributes
 import Aeneas.Data.Discriminant
-import Relation.TypesExternal
+import RelationLinked.Types
 open Aeneas Aeneas.Std Result ControlFlow Error
 set_option linter.dupNamespace false
 set_option linter.hashCommand false
@@ -28,19 +28,17 @@ def aspis_core.field.M31 := Std.U32
     Source: '/Users/dominic/ZK-fiat-shamir-final/crates/aspis-core/src/field.rs', lines 194:0-194:15
     Name pattern: [aspis_core::field::CM31]
     Visibility: public -/
-@[rust_type "aspis_core::field::CM31"]
-structure aspis_core.field.CM31 where
-  a : aspis_core.field.M31
-  b : aspis_core.field.M31
+/- Normalization: the production-linked extraction contains the same Rust
+   field types and supplies the executable helper call graph used below. -/
+abbrev aspis_core.field.CM31 :=
+  V5RelationLinkedGenerated.aspis_core.field.CM31
 
 /-- [aspis_core::field::QM31]
     Source: '/Users/dominic/ZK-fiat-shamir-final/crates/aspis-core/src/field.rs', lines 352:0-352:15
     Name pattern: [aspis_core::field::QM31]
     Visibility: public -/
-@[rust_type "aspis_core::field::QM31"]
-structure aspis_core.field.QM31 where
-  c0 : aspis_core.field.CM31
-  c1 : aspis_core.field.CM31
+abbrev aspis_core.field.QM31 :=
+  V5RelationLinkedGenerated.aspis_core.field.QM31
 
 /-- [aspis_core::circle::SecureCirclePoint]
     Source: '/Users/dominic/ZK-fiat-shamir-final/crates/aspis-core/src/circle.rs', lines 11:0-11:28

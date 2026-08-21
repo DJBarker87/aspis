@@ -30,9 +30,9 @@ private theorem usizeAddExact (x y z : Std.Usize)
   rw [valueEquation, valueIsZ]
 
 deriving instance DecidableEq for
-  V5RelationFullGenerated.aspis_core.field.CM31
+  V5RelationLinkedGenerated.aspis_core.field.CM31
 deriving instance DecidableEq for
-  V5RelationFullGenerated.aspis_core.field.QM31
+  V5RelationLinkedGenerated.aspis_core.field.QM31
 
 theorem raw_qm31_eq_spec (left right : RawQM31) :
     V5RelationFullGenerated.aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31.eq

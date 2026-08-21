@@ -5,6 +5,7 @@ import Aeneas.Std
 import Aeneas.Tactic.RustAttributes
 import Aeneas.Data.Discriminant
 import Relation.Types
+import RelationLinked.Funs
 open Aeneas Aeneas.Std Result ControlFlow Error
 set_option linter.dupNamespace false
 set_option linter.hashCommand false
@@ -16,6 +17,62 @@ set_option maxHeartbeats 1000000
 /- You can set the `maxRecDepth` value with the `-max-recdepth` CLI option -/
 set_option maxRecDepth 2048
 open V5RelationFullGenerated
+
+/- The first extraction keeps the generic weight helpers external so its
+   four-loop control flow remains compact.  The production-linked extraction
+   follows those helpers through the unchanged Rust call graph.  These two
+   structural maps join the duplicate extracted WeightAccumulator types; the
+   field values are definitionally shared above. -/
+private def relationWeightComponentToLinked :
+    V5RelationFullGenerated.aspis_core.sumcheck.WeightComponent →
+      V5RelationLinkedGenerated.aspis_core.sumcheck.WeightComponent
+  | .Geometric scale step => .Geometric scale step
+  | .Multilinear scale point => .Multilinear scale point
+  | .Tensor scale factors => .Tensor scale factors
+  | .Product scale factors => .Product scale factors
+  | .Dense values => .Dense values
+  | .Grouped64x16 rows weights logBlocks =>
+      .Grouped64x16 rows weights logBlocks
+  | .Grouped64x16BinaryDeferred rows indices total weights =>
+      .Grouped64x16BinaryDeferred rows indices total weights
+  | .Grouped128x16 rows weights logBlocks =>
+      .Grouped128x16 rows weights logBlocks
+
+private def relationWeightComponentFromLinked :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.WeightComponent →
+      V5RelationFullGenerated.aspis_core.sumcheck.WeightComponent
+  | .Geometric scale step => .Geometric scale step
+  | .Multilinear scale point => .Multilinear scale point
+  | .Tensor scale factors => .Tensor scale factors
+  | .Product scale factors => .Product scale factors
+  | .Dense values => .Dense values
+  | .Grouped64x16 rows weights logBlocks =>
+      .Grouped64x16 rows weights logBlocks
+  | .Grouped64x16BinaryDeferred rows indices total weights =>
+      .Grouped64x16BinaryDeferred rows indices total weights
+  | .Grouped128x16 rows weights logBlocks =>
+      .Grouped128x16 rows weights logBlocks
+
+private def relationWeightToLinked
+    (weights : V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator :=
+  { log_len := weights.log_len
+    components :=
+      ⟨weights.components.val.map relationWeightComponentToLinked,
+        by simpa using weights.components.property⟩ }
+
+private def relationWeightFromLinked
+    (weights : V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator) :
+    V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator :=
+  { log_len := weights.log_len
+    components :=
+      ⟨weights.components.val.map relationWeightComponentFromLinked,
+        by simpa using weights.components.property⟩ }
+
+/- Retain the first extraction's standard-library models for audit under a
+   private namespace.  The linked module has already installed the identical
+   root declarations used by the generated relation body. -/
+namespace V5RelationFullExternalLegacy
 
 /-- [core::array::iter::{impl core::iter::traits::collect::IntoIterator<T, core::array::iter::IntoIter<T, N>> for [T; N]}::into_iter]:
     Source: '/rustc/library/core/src/array/iter.rs', lines 56:4-56:40
@@ -89,13 +146,16 @@ def core.result.Result.ok
   | .Ok value => .ok (some value)
   | .Err _ => .ok none
 
+end V5RelationFullExternalLegacy
+
 /-- [aspis_core::circle::double_x]:
     Source: '/Users/dominic/ZK-fiat-shamir-final/crates/aspis-core/src/circle.rs', lines 69:0-69:32
     Name pattern: [aspis_core::circle::double_x]
     Visibility: public -/
 @[rust_fun "aspis_core::circle::double_x"]
-axiom aspis_core.circle.double_x
-  : aspis_core.field.QM31 → Result aspis_core.field.QM31
+noncomputable def aspis_core.circle.double_x
+  : aspis_core.field.QM31 → Result aspis_core.field.QM31 :=
+  V5RelationLinkedGenerated.aspis_core.circle.double_x
 
 /-- [aspis_core::sumcheck::{aspis_core::sumcheck::WeightAccumulator}::fold]:
     Source: '/Users/dominic/ZK-fiat-shamir-final/crates/aspis-core/src/sumcheck.rs', lines 1223:4-1223:39
@@ -103,10 +163,14 @@ axiom aspis_core.circle.double_x
     Visibility: public -/
 @[rust_fun
   "aspis_core::sumcheck::{aspis_core::sumcheck::WeightAccumulator}::fold"]
-axiom aspis_core.sumcheck.WeightAccumulator.fold
+noncomputable def aspis_core.sumcheck.WeightAccumulator.fold
   :
   aspis_core.sumcheck.WeightAccumulator → aspis_core.field.QM31 → Result
-    aspis_core.sumcheck.WeightAccumulator
+    aspis_core.sumcheck.WeightAccumulator := fun weights alpha => do
+  let folded ←
+    V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.fold
+      (relationWeightToLinked weights) alpha
+  ok (relationWeightFromLinked folded)
 
 /-- [aspis_core::sumcheck::{aspis_core::sumcheck::WeightAccumulator}::dot]:
     Source: '/Users/dominic/ZK-fiat-shamir-final/crates/aspis-core/src/sumcheck.rs', lines 1302:4-1302:46
@@ -114,7 +178,9 @@ axiom aspis_core.sumcheck.WeightAccumulator.fold
     Visibility: public -/
 @[rust_fun
   "aspis_core::sumcheck::{aspis_core::sumcheck::WeightAccumulator}::dot"]
-axiom aspis_core.sumcheck.WeightAccumulator.dot
+noncomputable def aspis_core.sumcheck.WeightAccumulator.dot
   :
   aspis_core.sumcheck.WeightAccumulator → (Slice aspis_core.field.QM31) →
-    Result aspis_core.field.QM31
+    Result aspis_core.field.QM31 := fun weights values =>
+  V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.dot
+    (relationWeightToLinked weights) values
