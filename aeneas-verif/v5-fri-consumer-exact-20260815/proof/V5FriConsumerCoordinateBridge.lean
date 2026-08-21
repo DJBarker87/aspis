@@ -107,6 +107,47 @@ theorem generated_indices_length_le_18
   rw [hlength, ← run.query_count]
   exact Finset.card_image_le
 
+/-- Equality with one exact sorted model list identifies the generated value
+at the model's unique section ordinal. -/
+theorem generated_index_at_sectionOrdinal
+    {tree : V5PrivateSection} {queries : Finset V5Query}
+    (indices : alloc.vec.Vec Std.U32) {index : Nat}
+    (hindex : index ∈ activeIndices tree queries 0)
+    (heq : generatedIndicesToNat indices =
+      orderedActiveIndices tree queries 0) :
+    ∃ hordinal : sectionOrdinal tree queries index < indices.val.length,
+      indices.val[sectionOrdinal tree queries index]!.val = index := by
+  have hmodelBound := sectionOrdinal_lt_count tree hindex
+  have hlength : indices.val.length =
+      (orderedActiveIndices tree queries 0).length := by
+    calc
+      indices.val.length = (generatedIndicesToNat indices).length := by
+        simp [generatedIndicesToNat]
+      _ = (orderedActiveIndices tree queries 0).length :=
+        congrArg List.length heq
+  have hordinal : sectionOrdinal tree queries index < indices.val.length := by
+    omega
+  refine ⟨hordinal, ?_⟩
+  have hget := congrArg
+    (fun values => values[sectionOrdinal tree queries index]?) heq
+  have hmodel := sectionOrdinal_getElem?_eq tree hindex
+  rw [List.getElem?_eq_getElem hmodelBound] at hmodel
+  have hmodelValue :
+      (orderedActiveIndices tree queries 0)[sectionOrdinal tree queries index] =
+        index :=
+    Option.some.inj hmodel
+  rw [List.getElem?_eq_getElem hmodelBound, hmodelValue] at hget
+  simp only [generatedIndicesToNat, List.getElem?_map,
+    List.getElem?_eq_getElem hordinal, Option.map_some,
+    Option.some.injEq] at hget
+  have hbang :
+      indices.val[sectionOrdinal tree queries index]! =
+        indices.val[sectionOrdinal tree queries index] := by
+    apply List.getElem!_of_getElem?
+    simp [hordinal]
+  rw [hbang]
+  simpa using hget
+
 theorem generated_layer0_indices_nonempty
     {sha256 : List AspisV5MerkleAuthenticationBinding.Byte → Digest32}
     {roots : V5PrivateRoots Digest32} {queries : Finset V5Query}

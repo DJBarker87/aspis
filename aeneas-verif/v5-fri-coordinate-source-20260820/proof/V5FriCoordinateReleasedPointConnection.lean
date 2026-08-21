@@ -1273,6 +1273,26 @@ release adapter, at the source index occupying each output ordinal. -/
 structure ReleasedCoordinateOutputEvidence
     (layer0 line1 line2 line3 : Slice Std.U32)
     (output : AspisV5FriCoordinateTopLevel.Coordinate.Output) : Prop where
+  circleCanonical : ∀ ordinal, ordinal < layer0.val.length →
+    AspisV5FriCoordinateFieldSemantics.canonicalM31
+        output.circle.val[ordinal]!.val[0]! ∧
+      AspisV5FriCoordinateFieldSemantics.canonicalM31
+        output.circle.val[ordinal]!.val[1]!
+  line1Canonical : ∀ ordinal, ordinal < line1.val.length →
+    ∀ slot : Fin 3,
+      AspisV5FriCoordinateFieldSemantics.canonicalM31
+        output.later.val[0]!.val[ordinal]!.val[slot.val]!
+  line2Canonical : ∀ ordinal, ordinal < line2.val.length →
+    ∀ slot : Fin 3,
+      AspisV5FriCoordinateFieldSemantics.canonicalM31
+        output.later.val[1]!.val[ordinal]!.val[slot.val]!
+  line3Canonical : ∀ ordinal, ordinal < line3.val.length →
+    ∀ slot : Fin 3,
+      AspisV5FriCoordinateFieldSemantics.canonicalM31
+        output.later.val[2]!.val[ordinal]!.val[slot.val]!
+  finalXCanonical : ∀ ordinal, ordinal < line3.val.length →
+    AspisV5FriCoordinateFieldSemantics.canonicalM31
+      output.final_x.val[ordinal]!
   circle : ∀ ordinal, ordinal < layer0.val.length →
     AspisV5FriCoordinateFieldSemantics.m31Value
         output.circle.val[ordinal]!.val[0]! =
@@ -1378,12 +1398,119 @@ theorem extracted_released_coordinate_tables_exact
   have hfinalExact := accepted_output_final_x_exact
     layer0 line1 line2 line3 circlePoints line1Points line2Points line3Points
     flat output hline3 hpoints houtput
+  have hflatLength : flat.val.length =
+      2 * layer0.val.length + 3 * line1.val.length +
+        3 * line2.val.length + 3 * line3.val.length := by
+    calc
+      flat.val.length = denominators.val.length := hinverses.1
+      _ = circleDenominators.val.length + 3 * line1Points.val.length +
+          3 * line2Points.val.length + 3 * line3Points.val.length :=
+        hlineValues.1
+      _ = 2 * layer0.val.length + 3 * line1.val.length +
+          3 * line2.val.length + 3 * line3.val.length := by
+        rw [hcircle.1, hpoints.circleLength, hpoints.line1Length,
+          hpoints.line2Length, hpoints.line3Length]
+  have hflatCanonical := hinverses.2.1
+  obtain ⟨later0, later1, later2, hlater, hlater0, hlater1, hlater2,
+      hfinalPost⟩ := houtput.2
+  have hlater0Out : output.later.val[0]! = later0 := by
+    rw [hlater]
+    rfl
+  have hlater1Out : output.later.val[1]! = later1 := by
+    rw [hlater]
+    rfl
+  have hlater2Out : output.later.val[2]! = later2 := by
+    rw [hlater]
+    rfl
   refine ⟨output, hrun, {
+    circleCanonical := ?_
+    line1Canonical := ?_
+    line2Canonical := ?_
+    line3Canonical := ?_
+    finalXCanonical := ?_
     circle := ?_
     line1Values := ?_
     line2Values := ?_
     line3Values := ?_
     finalX := hfinalExact }⟩
+  · intro ordinal hord
+    constructor
+    · rw [houtput.1,
+        AspisV5FriCoordinateOutputLoops.pairOutput_get_zero flat 0
+          layer0.val.length ordinal hord]
+      apply hflatCanonical
+      rw [hflatLength]
+      omega
+    · rw [houtput.1,
+        AspisV5FriCoordinateOutputLoops.pairOutput_get_one flat 0
+          layer0.val.length ordinal hord]
+      apply hflatCanonical
+      rw [hflatLength]
+      omega
+  · intro ordinal hord slot
+    rw [hlater0Out, hlater0]
+    fin_cases slot
+    · rw [AspisV5FriCoordinateOutputLoops.tripleOutput_get_zero flat
+        (2 * layer0.val.length) line1.val.length ordinal hord]
+      apply hflatCanonical
+      rw [hflatLength]
+      omega
+    · rw [AspisV5FriCoordinateOutputLoops.tripleOutput_get_one flat
+        (2 * layer0.val.length) line1.val.length ordinal hord]
+      apply hflatCanonical
+      rw [hflatLength]
+      omega
+    · rw [AspisV5FriCoordinateOutputLoops.tripleOutput_get_two flat
+        (2 * layer0.val.length) line1.val.length ordinal hord]
+      apply hflatCanonical
+      rw [hflatLength]
+      omega
+  · intro ordinal hord slot
+    rw [hlater1Out, hlater1]
+    fin_cases slot
+    · rw [AspisV5FriCoordinateOutputLoops.tripleOutput_get_zero flat
+        (2 * layer0.val.length + 3 * line1.val.length)
+          line2.val.length ordinal hord]
+      apply hflatCanonical
+      rw [hflatLength]
+      omega
+    · rw [AspisV5FriCoordinateOutputLoops.tripleOutput_get_one flat
+        (2 * layer0.val.length + 3 * line1.val.length)
+          line2.val.length ordinal hord]
+      apply hflatCanonical
+      rw [hflatLength]
+      omega
+    · rw [AspisV5FriCoordinateOutputLoops.tripleOutput_get_two flat
+        (2 * layer0.val.length + 3 * line1.val.length)
+          line2.val.length ordinal hord]
+      apply hflatCanonical
+      rw [hflatLength]
+      omega
+  · intro ordinal hord slot
+    rw [hlater2Out, hlater2]
+    fin_cases slot
+    · rw [AspisV5FriCoordinateOutputLoops.tripleOutput_get_zero flat
+        (2 * layer0.val.length + 3 * line1.val.length +
+          3 * line2.val.length) line3.val.length ordinal hord]
+      apply hflatCanonical
+      rw [hflatLength]
+      omega
+    · rw [AspisV5FriCoordinateOutputLoops.tripleOutput_get_one flat
+        (2 * layer0.val.length + 3 * line1.val.length +
+          3 * line2.val.length) line3.val.length ordinal hord]
+      apply hflatCanonical
+      rw [hflatLength]
+      omega
+    · rw [AspisV5FriCoordinateOutputLoops.tripleOutput_get_two flat
+        (2 * layer0.val.length + 3 * line1.val.length +
+          3 * line2.val.length) line3.val.length ordinal hord]
+      apply hflatCanonical
+      rw [hflatLength]
+      omega
+  · intro ordinal hord
+    apply hfinalPost.2.1 ordinal
+    rw [hfinalPost.1, hpoints.line3Length]
+    exact hord
   · intro ordinal hord
     have h := hcircleExact ordinal hord
     have hcoordinates := releasedCircleExpected_coordinates layer0 ordinal

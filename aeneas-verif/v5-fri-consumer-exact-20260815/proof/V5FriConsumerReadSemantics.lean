@@ -18,6 +18,7 @@ namespace AspisV5FriConsumerReadSemantics
 
 open V5FriConsumerExact
 open AspisV5FriConsumerObservationBridge
+open AspisV5FriConsumerValueAdapter
 open AspisV5MerkleAuthenticationBinding
 open AspisV5MerkleConsumedValueBridge
 open AspisV5MerkleRustBridge
@@ -189,6 +190,128 @@ theorem accepted_production_monotone_call_hits
         core.option.Option.ok_or] at hcall
       exact ⟨hcall.2.symm, by simpa [hcall.1] using hvalue⟩
 
+/-- Any successful production lookup identifies the unique requested entry.
+This direction does not need a premise about the mutable starting ordinal:
+success itself says that the returned slot contains the requested index, and
+duplicate-freedom identifies that slot. -/
+theorem successful_production_monotone_call_hits_unique_target
+    (opening :
+      aspis_core.state_only_private_openings.StateOnlyPrivateOpening)
+    (indices : Slice Std.U32) (ordinal target resultOrdinal : Std.Usize)
+    (index : Std.U32) (layer : Std.U8) (value : Slice Std.U8)
+    (hnodup : indices.val.Nodup)
+    (htargetBound : target.val < indices.val.length)
+    (htarget : indices.val[target.val]! = index)
+    (hcall :
+      fri_checks.opening_value_for_monotone_index opening indices ordinal index
+          layer = .ok (.Ok value, resultOrdinal)) :
+    resultOrdinal = target ∧
+      aspis_core.state_only_private_openings.StateOnlyPrivateOpening.value
+        opening target = .ok (some value) := by
+  unfold fri_checks.opening_value_for_monotone_index at hcall
+  generalize hloop :
+      fri_checks.opening_value_for_monotone_index_loop indices ordinal index =
+        loopResult at hcall
+  cases loopResult with
+  | fail error => simp [Bind.bind, Aeneas.Std.bind] at hcall
+  | div => simp [Bind.bind, Aeneas.Std.bind] at hcall
+  | ok found =>
+    simp only [bind_tc_ok] at hcall
+    generalize hget :
+        core.slice.Slice.get
+          (core.slice.index.SliceIndexUsizeSlice Std.U32) indices found =
+            getResult at hcall
+    cases getResult with
+    | fail error => simp [Bind.bind, Aeneas.Std.bind] at hcall
+    | div => simp [Bind.bind, Aeneas.Std.bind] at hcall
+    | ok optional =>
+      cases optional with
+      | none =>
+        simp [core.option.OptionShared0T.copied,
+          core.option.Option.Insts.CoreCmpPartialEqOption.eq,
+          core.cmp.PartialEq.ne.trait_default,
+          core.cmp.PartialEq.ne.default] at hcall
+      | some foundIndex =>
+        simp only [bind_tc_ok] at hcall
+        generalize hcopied :
+            core.option.OptionShared0T.copied core.marker.CopyU32
+              (some foundIndex) = copiedResult at hcall
+        cases copiedResult with
+        | fail error => simp [Bind.bind, Aeneas.Std.bind] at hcall
+        | div => simp [Bind.bind, Aeneas.Std.bind] at hcall
+        | ok copied =>
+          simp only [bind_tc_ok] at hcall
+          generalize hne :
+              core.cmp.PartialEq.ne.trait_default
+                (core.option.Option.Insts.CoreCmpPartialEqOption
+                  core.cmp.PartialEqU32) copied (some index) = neResult
+                at hcall
+          cases neResult with
+          | fail error => simp [Bind.bind, Aeneas.Std.bind] at hcall
+          | div => simp [Bind.bind, Aeneas.Std.bind] at hcall
+          | ok differs =>
+            cases differs with
+            | true => simp at hcall
+            | false =>
+              simp only [Bool.false_eq_true, ↓reduceIte, bind_tc_ok] at hcall
+              generalize hvalue :
+                  aspis_core.state_only_private_openings.StateOnlyPrivateOpening.value
+                    opening found = valueResult at hcall
+              cases valueResult with
+              | fail error => simp [Bind.bind, Aeneas.Std.bind] at hcall
+              | div => simp [Bind.bind, Aeneas.Std.bind] at hcall
+              | ok valueOption =>
+                cases valueOption with
+                | none => simp [core.option.Option.ok_or] at hcall
+                | some returned =>
+                  simp [core.option.Option.ok_or] at hcall
+                  have hfoundBound : found.val < indices.val.length := by
+                    unfold core.slice.Slice.get
+                      core.slice.index.SliceIndexUsizeSlice
+                      core.slice.index.Usize.get at hget
+                    change ok indices.val[found.val]? = ok (some foundIndex)
+                      at hget
+                    by_contra hbound
+                    simp [List.getElem?_eq_none (Nat.le_of_not_gt hbound)]
+                      at hget
+                  have hfoundValue : indices.val[found.val]! = index := by
+                    unfold core.slice.Slice.get
+                      core.slice.index.SliceIndexUsizeSlice
+                      core.slice.index.Usize.get at hget
+                    change ok indices.val[found.val]? = ok (some foundIndex)
+                      at hget
+                    have hfoundIndex : indices.val[found.val]! = foundIndex := by
+                      rw [List.getElem!_of_getElem?]
+                      simpa using Result.ok.inj hget
+                    have hcopiedValue : copied = some foundIndex := by
+                      simpa [core.option.OptionShared0T.copied] using
+                        hcopied.symm
+                    subst copied
+                    have hsame : foundIndex = index := by
+                      simpa [core.option.Option.Insts.CoreCmpPartialEqOption.eq,
+                        core.cmp.PartialEq.ne.trait_default,
+                        core.cmp.PartialEq.ne.default] using hne
+                    simpa [hsame] using hfoundIndex
+                  have htargetPlain : indices.val[target.val] = index := by
+                    have hbang : indices.val[target.val]! =
+                        indices.val[target.val] := by
+                      apply List.getElem!_of_getElem?
+                      simp [htargetBound]
+                    simpa [hbang] using htarget
+                  have hfoundPlain : indices.val[found.val] = index := by
+                    have hbang : indices.val[found.val]! =
+                        indices.val[found.val] := by
+                      apply List.getElem!_of_getElem?
+                      simp [hfoundBound]
+                    simpa [hbang] using hfoundValue
+                  have hpositions : found.val = target.val := by
+                    exact hnodup.getElem_inj_iff.mp
+                      (hfoundPlain.trans htargetPlain.symm)
+                  have hfoundTarget : found = target := UScalar.eq_of_val_eq
+                    hpositions
+                  subst found
+                  exact ⟨hcall.2.symm, by simpa [hcall.1] using hvalue⟩
+
 /-- Equality with one exact parser section supplies the two flat-record shape
 facts required by the extracted opening accessor. -/
 theorem generated_opening_shape_of_exact_section
@@ -232,9 +355,35 @@ theorem generated_opening_shape_of_exact_section
         hbits]
   · rw [hrecords, hflat, hcount, hwidth]
 
+/-- A successful generated accessor at the model's section ordinal returns
+exactly the authenticated value bytes for that section index. -/
+theorem generated_value_at_sectionOrdinal_matches_trace
+    {sha256 : List AspisV5MerkleAuthenticationBinding.Byte → Digest32}
+    {tree : V5PrivateSection} {root : Digest32}
+    {queries : Finset V5Query}
+    (opening :
+      aspis_core.state_only_private_openings.StateOnlyPrivateOpening)
+    (trace : ExactSectionTrace sha256 tree root queries)
+    (heq : generatedOpeningToReturned opening = openingOfTrace trace)
+    (ordinal : Std.Usize) {index : Nat}
+    (hordinal : ordinal.val = sectionOrdinal tree queries index)
+    (hindex : index ∈ activeIndices tree queries 0)
+    (value : Slice Std.U8)
+    (hvalue :
+      aspis_core.state_only_private_openings.StateOnlyPrivateOpening.value
+        opening ordinal = .ok (some value)) :
+    value.val.map generatedU8ToByte = sectionValueAtIndex trace index := by
+  have hshape := generated_opening_shape_of_exact_section opening trace heq
+  have hreturned := generatedOpeningToReturned_value_of_success opening
+    ordinal value hshape.1 hshape.2 hvalue
+  rw [heq, hordinal,
+    openingOfTrace_value_at_ordinal trace hindex] at hreturned
+  exact Option.some.inj hreturned.symm
+
 #print axioms production_monotone_loop_hits
 #print axioms production_monotone_value_hits
 #print axioms accepted_production_monotone_call_hits
 #print axioms generated_opening_shape_of_exact_section
+#print axioms generated_value_at_sectionOrdinal_matches_trace
 
 end AspisV5FriConsumerReadSemantics
