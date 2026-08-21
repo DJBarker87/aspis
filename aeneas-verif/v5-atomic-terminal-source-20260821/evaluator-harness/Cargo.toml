@@ -1,0 +1,17 @@
+[package]
+name = "aspis-statement-evaluator-harness"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+path = "../../../crates/aspis-statement/src/lib.rs"
+
+[features]
+insecure-test-logup-compression = []
+spend-dynamic-rate512 = []
+
+[dependencies]
+aspis-core = { path = "../../../crates/aspis-core" }
+
+[workspace]
