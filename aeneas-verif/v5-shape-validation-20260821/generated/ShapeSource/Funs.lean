@@ -84,7 +84,7 @@ def circle_pcs_shape.CirclePcsShape.c1_leaf_bytes_checked
 def circle_pcs_shape.CirclePcsShape.fiber_count
   (self : circle_pcs_shape.CirclePcsShape) : Result Std.Usize := do
   let i ← lift (Std.U8.wrapping_sub self.domain_log_size 2#u8)
-  ok (Std.Usize.wrapping_shl 1#usize i)
+  ok (Std.Usize.wrapping_shl 1#usize (UScalar.cast .U32 i))
 
 /-- [aspis_core_shape_root_extraction::circle_pcs_shape::{aspis_core_shape_root_extraction::circle_pcs_shape::CirclePcsShape}::validate]: loop body 0:
     Source: '../../../crates/aspis-core/src/circle_pcs_shape.rs', lines 117:8-123:5

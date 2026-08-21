@@ -476,8 +476,13 @@ private theorem tail_body_state4_success_has_final_successor
         (tailIter4 seed) (tailBack4 q0 q1 q2 q3) =
           .ok (.done (some (.Ok (polynomial, queries))))) :
     AcceptedFinalQuerySuccessor
-      { parsed with v5_final_nonce := nonce, v5_query_selector := selector }
-      queries := by
+        { parsed with v5_final_nonce := nonce, v5_query_selector := selector }
+        queries ∧
+      polynomial =
+        toSliceBack
+          (iterBack
+            (enumBack
+              (tailBack4 q0 q1 q2 q3 (tailIter4 seed)))) := by
   unfold AcceptedFinalQuerySuccessor
   unfold V5AcceptedEntryGenerated.v5_cu_probe.derive_v5_complete_queries_for_selector_from_transcript_loop.body at success
   simp [V5AcceptedEntryGenerated.core.iter.adapters.enumerate.IteratorEnumerateMut.next,
@@ -568,14 +573,27 @@ private theorem tail_body_state4_success_has_final_successor
                           (core.result.Result.Ok.inj
                             (Option.some.inj
                               (ControlFlow.done.inj (Result.ok.inj success))))
+                      have hpair :=
+                        core.result.Result.Ok.inj
+                          (Option.some.inj
+                            (ControlFlow.done.inj (Result.ok.inj success)))
+                      have hpolynomial :
+                          toSliceBack
+                              (iterBack
+                                (enumBack
+                                  (tailBack4 q0 q1 q2 q3
+                                    (tailIter4 seed)))) = polynomial :=
+                        congrArg Prod.fst hpair
                       subst acceptedQueries
-                      exact ⟨beforeFinal, afterFinal, selectorBytes,
-                        selectorLabel, afterSelector, queryBound, drawLimit,
-                        sampledQueries, afterQueries, helperSuccess,
-                        by simpa [Array.to_slice] using selectorBytesSuccess,
-                        selectorLabelSuccess, selectorAbsorbSuccess,
-                        queryBoundSuccess, drawLimitSuccess, querySuccess,
-                        arraySuccess⟩
+                      constructor
+                      · exact ⟨beforeFinal, afterFinal, selectorBytes,
+                          selectorLabel, afterSelector, queryBound, drawLimit,
+                          sampledQueries, afterQueries, helperSuccess,
+                          by simpa [Array.to_slice] using selectorBytesSuccess,
+                          selectorLabelSuccess, selectorAbsorbSuccess,
+                          queryBoundSuccess, drawLimitSuccess, querySuccess,
+                          arraySuccess⟩
+                      · exact hpolynomial.symm
 
 private theorem tail_body_state4_ne_cont
     (parsed : EntryParsed) (transcript : EntryTranscript)
@@ -840,9 +858,23 @@ private theorem tail_loop_success_has_final_successor
       V5AcceptedEntryGenerated.v5_cu_probe.derive_v5_complete_queries_for_selector_from_transcript_loop
           parsed toSliceBack iterBack enumBack (tailIter0 seed) tailBack0
           transcript nonce selector = .ok (some (.Ok (polynomial, queries)))) :
-    AcceptedFinalQuerySuccessor
-      { parsed with v5_final_nonce := nonce, v5_query_selector := selector }
-      queries := by
+    ∃ q0 q1 q2 q3,
+      V5AcceptedEntryGenerated.v5_cu_probe.decode_qm31
+          parsed.v5_final_coefficients 0#usize = .ok (.Ok q0) ∧
+      V5AcceptedEntryGenerated.v5_cu_probe.decode_qm31
+          parsed.v5_final_coefficients 1#usize = .ok (.Ok q1) ∧
+      V5AcceptedEntryGenerated.v5_cu_probe.decode_qm31
+          parsed.v5_final_coefficients 2#usize = .ok (.Ok q2) ∧
+      V5AcceptedEntryGenerated.v5_cu_probe.decode_qm31
+          parsed.v5_final_coefficients 3#usize = .ok (.Ok q3) ∧
+      AcceptedFinalQuerySuccessor
+        { parsed with v5_final_nonce := nonce, v5_query_selector := selector }
+        queries ∧
+      polynomial =
+        toSliceBack
+          (iterBack
+            (enumBack
+              (tailBack4 q0 q1 q2 q3 (tailIter4 seed)))) := by
   unfold V5AcceptedEntryGenerated.v5_cu_probe.derive_v5_complete_queries_for_selector_from_transcript_loop at success
   rw [Aeneas.Std.loop.eq_def] at success
   simp only at success
@@ -986,9 +1018,13 @@ private theorem tail_loop_success_has_final_successor
                                           have hout : out = some (.Ok (polynomial, queries)) := by
                                             simpa using success
                                           subst out
-                                          exact tail_body_state4_success_has_final_successor
-                                            parsed transcript nonce selector seed q0 q1 q2 q3
-                                            toSliceBack iterBack enumBack polynomial queries hbody
+                                          obtain ⟨hfinal, hpolynomial⟩ :=
+                                            tail_body_state4_success_has_final_successor
+                                              parsed transcript nonce selector seed q0 q1 q2 q3
+                                              toSliceBack iterBack enumBack polynomial queries hbody
+                                          exact ⟨q0, q1, q2, q3,
+                                            rfl, rfl, rfl, rfl, hfinal,
+                                            hpolynomial⟩
 
 theorem complete_tail_success_has_final_work
     (transcript : EntryTranscript) (parsed : EntryParsed)
@@ -1068,7 +1104,23 @@ theorem complete_tail_success_has_final_work
                         .ok (some (.Ok (polynomial, queries))) at loopSuccess
                   exact loopSuccess)
 
-theorem complete_tail_success_has_final_successor
+/-- Exact decoder calls and wire order of the four returned final
+coefficients. -/
+def AcceptedFinalPolynomialDecode
+    (parsed : EntryParsed)
+    (polynomial : Array EntryQM31 4#usize) : Prop :=
+  ∃ q0 q1 q2 q3,
+    V5AcceptedEntryGenerated.v5_cu_probe.decode_qm31
+        parsed.v5_final_coefficients 0#usize = .ok (.Ok q0) ∧
+    V5AcceptedEntryGenerated.v5_cu_probe.decode_qm31
+        parsed.v5_final_coefficients 1#usize = .ok (.Ok q1) ∧
+    V5AcceptedEntryGenerated.v5_cu_probe.decode_qm31
+        parsed.v5_final_coefficients 2#usize = .ok (.Ok q2) ∧
+    V5AcceptedEntryGenerated.v5_cu_probe.decode_qm31
+        parsed.v5_final_coefficients 3#usize = .ok (.Ok q3) ∧
+    polynomial.val = [q0, q1, q2, q3]
+
+private theorem complete_tail_success_has_decoded_polynomial_aux
     (transcript : EntryTranscript) (parsed : EntryParsed)
     (selector : Std.U8)
     (polynomial : Array V5AcceptedEntryGenerated.aspis_core.field.QM31 4#usize)
@@ -1077,7 +1129,8 @@ theorem complete_tail_success_has_final_successor
       V5AcceptedEntryGenerated.v5_cu_probe.derive_v5_complete_queries_for_selector_from_transcript
           transcript parsed selector = .ok (.Ok (polynomial, queries))) :
     AcceptedFinalQuerySuccessor
-      { parsed with v5_query_selector := selector } queries := by
+        { parsed with v5_query_selector := selector } queries ∧
+      AcceptedFinalPolynomialDecode parsed polynomial := by
   unfold V5AcceptedEntryGenerated.v5_cu_probe.derive_v5_complete_queries_for_selector_from_transcript at success
   rw [bind_eq_ok_iff] at success
   obtain ⟨_, _, success⟩ := success
@@ -1131,19 +1184,54 @@ theorem complete_tail_success_has_final_successor
               have hresult : result = .Ok (polynomial, queries) := by
                 simpa using success
               subst result
-              simpa using tail_loop_success_has_final_successor
-                parsed transcript parsed.v5_final_nonce selector seed
-                (Array.from_slice (Array.repeat 4#usize seed))
-                (fun current => current.slice) (fun current => current.iter)
-                polynomial queries (by
-                  change
-                    V5AcceptedEntryGenerated.v5_cu_probe.derive_v5_complete_queries_for_selector_from_transcript_loop
-                      parsed (Array.from_slice (Array.repeat 4#usize seed))
-                      (fun current => current.slice) (fun current => current.iter)
-                      (tailIter0 seed) tailBack0 transcript
-                      parsed.v5_final_nonce selector =
-                        .ok (some (.Ok (polynomial, queries))) at loopSuccess
-                  exact loopSuccess)
+              obtain ⟨q0, q1, q2, q3, hdecode0, hdecode1, hdecode2,
+                  hdecode3, hfinal, hpolynomial⟩ :=
+                tail_loop_success_has_final_successor
+                  parsed transcript parsed.v5_final_nonce selector seed
+                  (Array.from_slice (Array.repeat 4#usize seed))
+                  (fun current => current.slice) (fun current => current.iter)
+                  polynomial queries (by
+                    change
+                      V5AcceptedEntryGenerated.v5_cu_probe.derive_v5_complete_queries_for_selector_from_transcript_loop
+                        parsed (Array.from_slice (Array.repeat 4#usize seed))
+                        (fun current => current.slice) (fun current => current.iter)
+                        (tailIter0 seed) tailBack0 transcript
+                        parsed.v5_final_nonce selector =
+                          .ok (some (.Ok (polynomial, queries))) at loopSuccess
+                    exact loopSuccess)
+              constructor
+              · simpa using hfinal
+              · refine ⟨q0, q1, q2, q3, hdecode0, hdecode1,
+                    hdecode2, hdecode3, ?_⟩
+                simpa [tailIter0, tailIter4, tailBack1, tailBack2,
+                  tailBack3, tailBack4, tailSeedArray, Array.repeat,
+                  Array.from_slice, Array.to_slice, Slice.setAtNat] using
+                    congrArg Subtype.val hpolynomial
+
+theorem complete_tail_success_has_final_successor
+    (transcript : EntryTranscript) (parsed : EntryParsed)
+    (selector : Std.U8)
+    (polynomial : Array V5AcceptedEntryGenerated.aspis_core.field.QM31 4#usize)
+    (queries : Array Std.U32 18#usize)
+    (success :
+      V5AcceptedEntryGenerated.v5_cu_probe.derive_v5_complete_queries_for_selector_from_transcript
+          transcript parsed selector = .ok (.Ok (polynomial, queries))) :
+    AcceptedFinalQuerySuccessor
+      { parsed with v5_query_selector := selector } queries :=
+  (complete_tail_success_has_decoded_polynomial_aux transcript parsed selector
+    polynomial queries success).1
+
+theorem complete_tail_success_has_decoded_polynomial
+    (transcript : EntryTranscript) (parsed : EntryParsed)
+    (selector : Std.U8)
+    (polynomial : Array V5AcceptedEntryGenerated.aspis_core.field.QM31 4#usize)
+    (queries : Array Std.U32 18#usize)
+    (success :
+      V5AcceptedEntryGenerated.v5_cu_probe.derive_v5_complete_queries_for_selector_from_transcript
+          transcript parsed selector = .ok (.Ok (polynomial, queries))) :
+    AcceptedFinalPolynomialDecode parsed polynomial :=
+  (complete_tail_success_has_decoded_polynomial_aux transcript parsed selector
+    polynomial queries success).2
 
 theorem selected_query_success_has_final_work
     (transcript : EntryTranscript) (parsed : EntryParsed)
@@ -1266,6 +1354,72 @@ theorem selected_query_success_has_final_successor
                     exact congrArg Prod.fst (Result.ok.inj deriveCallSuccess)
                   subst completeResult
                   simpa using complete_tail_success_has_final_successor
+                    clonedTranscript parsed parsed.v5_query_selector
+                    polynomial queries completeSuccess
+
+/-- The polynomial returned by the selected-good-query driver is exactly the
+four values decoded from the final-coefficient wire section. -/
+theorem selected_query_success_has_decoded_polynomial
+    (transcript : EntryTranscript) (parsed : EntryParsed)
+    (point : Array V5AcceptedEntryGenerated.aspis_core.field.QM31 10#usize)
+    (polynomial : Array V5AcceptedEntryGenerated.aspis_core.field.QM31 4#usize)
+    (queries : Array Std.U32 18#usize)
+    (success :
+      V5AcceptedEntryGenerated.v5_cu_probe.derive_v5_selected_good_queries_from_transcript
+          transcript parsed point = .ok (.Ok (polynomial, queries))) :
+    AcceptedFinalPolynomialDecode parsed polynomial := by
+  unfold V5AcceptedEntryGenerated.v5_cu_probe.derive_v5_selected_good_queries_from_transcript at success
+  unfold V5AcceptedEntryGenerated.v5_cu_probe.checked_v5_selected_good_candidate at success
+  rw [bind_eq_ok_iff] at success
+  obtain ⟨selectorValid, _, success⟩ := success
+  cases selectorValid with
+  | false => simp at success
+  | true =>
+      simp only [if_true] at success
+      rw [bind_eq_ok_iff] at success
+      obtain ⟨derivePair, deriveCallSuccess, success⟩ := success
+      rcases derivePair with ⟨deriveResult, deriveState⟩
+      rw [bind_eq_ok_iff] at success
+      obtain ⟨deriveFlow, deriveBranchSuccess, success⟩ := success
+      cases deriveFlow with
+      | Break residual =>
+          cases residual with
+          | Ok never => nomatch never
+          | Err error => simp at success
+      | Continue derivedValue =>
+          have hderiveResult := branch_eq_ok_of_continue
+            deriveResult derivedValue deriveBranchSuccess
+          simp only at success
+          rw [bind_eq_ok_iff] at success
+          obtain ⟨evaluatePair, _, success⟩ := success
+          rcases evaluatePair with ⟨evaluateResult, _⟩
+          rw [bind_eq_ok_iff] at success
+          obtain ⟨evaluateFlow, _, success⟩ := success
+          cases evaluateFlow with
+          | Break residual =>
+              cases residual with
+              | Ok never => nomatch never
+              | Err error => simp at success
+          | Continue good =>
+              cases good with
+              | false => simp at success
+              | true =>
+                  have hderivedValue : derivedValue = (polynomial, queries) := by
+                    simpa using success
+                  subst derivedValue
+                  rw [hderiveResult] at deriveCallSuccess
+                  unfold V5AcceptedEntryGenerated.v5_cu_probe.derive_v5_selected_good_queries_from_transcript.closure.Insts.CoreOpsFunctionFnMutTupleU8ResultPairArrayQM314ArrayU3218ProgramError.call_mut at deriveCallSuccess
+                  rw [bind_eq_ok_iff] at deriveCallSuccess
+                  obtain ⟨clonedTranscript, _, deriveCallSuccess⟩ :=
+                    deriveCallSuccess
+                  rw [bind_eq_ok_iff] at deriveCallSuccess
+                  obtain ⟨completeResult, completeSuccess,
+                      deriveCallSuccess⟩ := deriveCallSuccess
+                  have hcompleteResult :
+                      completeResult = .Ok (polynomial, queries) := by
+                    exact congrArg Prod.fst (Result.ok.inj deriveCallSuccess)
+                  subst completeResult
+                  exact complete_tail_success_has_decoded_polynomial
                     clonedTranscript parsed parsed.v5_query_selector
                     polynomial queries completeSuccess
 

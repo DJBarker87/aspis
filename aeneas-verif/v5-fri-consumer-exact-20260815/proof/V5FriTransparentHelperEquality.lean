@@ -166,8 +166,7 @@ open AspisV5FriPreparedSumSemantics
     V5FriArithmeticExact.field.P,
     Std.U32.wrapping_shr,
     Std.U64.wrapping_shr,
-    UScalar.wrapping_shr,
-    ScalarShiftAmount.toNat]
+    UScalar.wrapping_shr]
 
 @[simp] theorem source_cm31_half_eq_arithmetic
     (value : V5FriArithmeticExact.field.CM31) :

@@ -411,7 +411,7 @@ def aspis_core.circle_pcs_shape.CirclePcsShape.total_columns
   (self : aspis_core.circle_pcs_shape.CirclePcsShape) : Result Std.Usize := do
   let c1 ← lift (core.convert.num.FromUsizeU16.from self.c1_columns)
   let c2 ← lift (core.convert.num.FromUsizeU16.from self.c2_columns)
-  lift (c1 + c2)
+  c1 + c2
 
 /-- [aspis_core::circle_query::check_fixed_line_transition_prepared_polynomial_powers]:
     Source: 'crates/aspis-core/src/circle_query.rs', lines 550:0-557:33

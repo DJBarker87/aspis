@@ -126,7 +126,8 @@ theorem source_accepted_denominator_path_exact
     hcircleAccepted (.Ok output) hloop
   have houterIteratorEq :
       (⟨Array.make 3#usize [line1Points, line2Points, line3Points], 0⟩ :
-        core.array.iter.IntoIter PointVec 3#usize) =
+        V5CoordinateSelectedProductionSource.core.array.iter.IntoIter
+          PointVec 3#usize) =
       sourcePointVecIterAt line1Points line2Points line3Points 0 := by
     unfold sourcePointVecIterAt sourcePointVecTriple
     congr 1

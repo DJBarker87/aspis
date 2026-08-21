@@ -155,7 +155,7 @@ abbrev aspis_core.sumcheck.WeightAccumulator :=
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-program-error-2.2.2/src/lib.rs', lines 33:0-33:21
     Name pattern: [solana_program_error::ProgramError]
     Visibility: public -/
-@[discriminant isize, rust_type "solana_program_error::ProgramError"]
+@[rust_type "solana_program_error::ProgramError"]
 inductive solana_program_error.ProgramError where
 | Custom : Std.U32 → solana_program_error.ProgramError
 | InvalidArgument : solana_program_error.ProgramError

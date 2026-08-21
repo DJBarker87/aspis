@@ -193,10 +193,10 @@ theorem production_opening_value_for_monotone_index_hits
   rw [core_slice_get_run indices target htargetBound]
   simp only [bind_tc_ok]
   rw [htarget]
-  simp [core.option.OptionShared0T.copied,
-    core.option.Option.Insts.CoreCmpPartialEqOption.eq,
+  simp [V5FriConsumerExact.core.option.OptionShared0T.copied,
+    V5FriConsumerExact.core.option.Option.Insts.CoreCmpPartialEqOption.eq,
     core.cmp.PartialEq.ne.trait_default, core.cmp.PartialEq.ne.default,
-    hvalue, core.option.Option.ok_or]
+    hvalue, V5FriConsumerExact.core.option.Option.ok_or]
 
 abbrev Opening :=
   V5FriConsumerExact.aspis_core.state_only_private_openings.StateOnlyPrivateOpening
@@ -346,12 +346,12 @@ theorem production_layerZero_body_cont_reads
   | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
   | ok c1Option =>
     cases c1Option with
-    | none => simp [core.option.Option.ok_or,
+    | none => simp [V5FriConsumerExact.core.option.Option.ok_or,
         core.result.Result.Insts.CoreOpsTry.branch,
         core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
         core.convert.FromSame, core.convert.FromSame.from] at hrun
     | some c1Value =>
-      simp only [core.option.Option.ok_or, bind_tc_ok,
+      simp only [V5FriConsumerExact.core.option.Option.ok_or, bind_tc_ok,
         core.result.Result.Insts.CoreOpsTry.branch] at hrun
       generalize hc2 :
           ({ count := c2Count
@@ -364,12 +364,12 @@ theorem production_layerZero_body_cont_reads
       | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
       | ok c2Option =>
         cases c2Option with
-        | none => simp [core.option.Option.ok_or,
+        | none => simp [V5FriConsumerExact.core.option.Option.ok_or,
             core.result.Result.Insts.CoreOpsTry.branch,
             core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
             core.convert.FromSame, core.convert.FromSame.from] at hrun
         | some c2Value =>
-          simp only [core.option.Option.ok_or, bind_tc_ok,
+          simp only [V5FriConsumerExact.core.option.Option.ok_or, bind_tc_ok,
             core.result.Result.Insts.CoreOpsTry.branch] at hrun
           generalize hcombine :
               fri_checks.gamma_combine_v5_layer0_exact c1Value c2Value
@@ -402,13 +402,13 @@ theorem production_layerZero_body_cont_reads
               | ok circleOption =>
                 cases circleOption with
                 | none =>
-                  simp only [core.option.Option.ok_or, bind_tc_ok,
+                  simp only [V5FriConsumerExact.core.option.Option.ok_or, bind_tc_ok,
                     core.result.Result.Insts.CoreOpsTry.branch] at hrun
                   exfalso
                   exact result_bind_done_ne_cont _ (fun value => some value)
                     (iterOut, foldedOut, carriedOut) hrun
                 | some circlePair =>
-                  simp only [core.option.Option.ok_or, bind_tc_ok,
+                  simp only [V5FriConsumerExact.core.option.Option.ok_or, bind_tc_ok,
                     core.result.Result.Insts.CoreOpsTry.branch] at hrun
                   generalize hinvX :
                       Array.index_usize circlePair 0#usize = invXResult at hrun
@@ -515,14 +515,14 @@ theorem production_layerZero_body_cont_reads
                                     | ok decodedOption =>
                                       cases decodedOption with
                                       | none =>
-                                        simp_all [core.option.Option.ok_or,
+                                        simp_all [V5FriConsumerExact.core.option.Option.ok_or,
                                           core.result.Result.Insts.CoreOpsTry.branch,
                                           core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
                                           core.convert.FromSame,
                                           core.convert.FromSame.from]
                                       | some decoded =>
                                         simp_all only [hdecode,
-                                          core.option.Option.ok_or, bind_tc_ok,
+                                          V5FriConsumerExact.core.option.Option.ok_or, bind_tc_ok,
                                           core.result.Result.Insts.CoreOpsTry.branch]
                                         generalize hequal :
                                             core.cmp.PartialEq.ne.trait_default
@@ -679,12 +679,12 @@ theorem production_later_body_cont_reads
     | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
     | ok incomingOption =>
       cases incomingOption with
-      | none => simp [core.option.Option.ok_or,
+      | none => simp [V5FriConsumerExact.core.option.Option.ok_or,
           core.result.Result.Insts.CoreOpsTry.branch,
           core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
           core.convert.FromSame, core.convert.FromSame.from, Std.lift] at hrun
       | some incomingValue =>
-        simp only [core.option.Option.ok_or, bind_tc_ok,
+        simp only [V5FriConsumerExact.core.option.Option.ok_or, bind_tc_ok,
           core.result.Result.Insts.CoreOpsTry.branch, Std.lift] at hrun
         generalize hcoordinateArray :
             Array.index_usize coordinates.later layer = coordinateArrayResult
@@ -705,12 +705,12 @@ theorem production_later_body_cont_reads
           | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
           | ok coordinateOption =>
             cases coordinateOption with
-            | none => simp [core.option.Option.ok_or,
+            | none => simp [V5FriConsumerExact.core.option.Option.ok_or,
                 core.result.Result.Insts.CoreOpsTry.branch,
                 core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
                 core.convert.FromSame, core.convert.FromSame.from] at hrun
             | some coordinate =>
-              simp only [core.option.Option.ok_or, bind_tc_ok,
+              simp only [V5FriConsumerExact.core.option.Option.ok_or, bind_tc_ok,
                 core.result.Result.Insts.CoreOpsTry.branch] at hrun
               rw [if_pos hlayer] at hrun
               generalize hparentOpening :
@@ -888,12 +888,12 @@ theorem production_terminal_body_cont_reads
     | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
     | ok incomingOption =>
       cases incomingOption with
-      | none => simp [core.option.Option.ok_or,
+      | none => simp [V5FriConsumerExact.core.option.Option.ok_or,
           core.result.Result.Insts.CoreOpsTry.branch,
           core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
           core.convert.FromSame, core.convert.FromSame.from, Std.lift] at hrun
       | some incomingValue =>
-        simp only [core.option.Option.ok_or, bind_tc_ok,
+        simp only [V5FriConsumerExact.core.option.Option.ok_or, bind_tc_ok,
           core.result.Result.Insts.CoreOpsTry.branch, Std.lift] at hrun
         generalize hcoordinateArray :
             Array.index_usize coordinates.later layer = coordinateArrayResult
@@ -914,12 +914,12 @@ theorem production_terminal_body_cont_reads
           | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
           | ok coordinateOption =>
             cases coordinateOption with
-            | none => simp [core.option.Option.ok_or,
+            | none => simp [V5FriConsumerExact.core.option.Option.ok_or,
                 core.result.Result.Insts.CoreOpsTry.branch,
                 core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
                 core.convert.FromSame, core.convert.FromSame.from] at hrun
             | some coordinate =>
-              simp only [core.option.Option.ok_or, bind_tc_ok,
+              simp only [V5FriConsumerExact.core.option.Option.ok_or, bind_tc_ok,
                 core.result.Result.Insts.CoreOpsTry.branch] at hrun
               rw [if_neg hlayer] at hrun
               generalize hfinalX :
@@ -933,12 +933,12 @@ theorem production_terminal_body_cont_reads
               | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
               | ok finalXOption =>
                 cases finalXOption with
-                | none => simp [core.option.Option.ok_or,
+                | none => simp [V5FriConsumerExact.core.option.Option.ok_or,
                     core.result.Result.Insts.CoreOpsTry.branch,
                     core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
                     core.convert.FromSame, core.convert.FromSame.from] at hrun
                 | some finalX =>
-                  simp only [core.option.Option.ok_or, bind_tc_ok,
+                  simp only [V5FriConsumerExact.core.option.Option.ok_or, bind_tc_ok,
                     core.result.Result.Insts.CoreOpsTry.branch, Std.lift]
                     at hrun
                   generalize halpha :
@@ -1031,12 +1031,12 @@ theorem production_layerZero_active_body_ne_accepting_done
   | ok c1Option =>
     cases c1Option with
     | none =>
-      simp [core.option.Option.ok_or,
+      simp [V5FriConsumerExact.core.option.Option.ok_or,
         core.result.Result.Insts.CoreOpsTry.branch,
         core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
         core.convert.FromSame, core.convert.FromSame.from] at hrun
     | some c1Value =>
-      simp only [core.option.Option.ok_or, bind_tc_ok,
+      simp only [V5FriConsumerExact.core.option.Option.ok_or, bind_tc_ok,
         core.result.Result.Insts.CoreOpsTry.branch] at hrun
       generalize hc2 :
           ({ count := c2Count
@@ -1050,12 +1050,12 @@ theorem production_layerZero_active_body_ne_accepting_done
       | ok c2Option =>
         cases c2Option with
         | none =>
-          simp [core.option.Option.ok_or,
+          simp [V5FriConsumerExact.core.option.Option.ok_or,
             core.result.Result.Insts.CoreOpsTry.branch,
             core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
             core.convert.FromSame, core.convert.FromSame.from] at hrun
         | some c2Value =>
-          simp only [core.option.Option.ok_or, bind_tc_ok,
+          simp only [V5FriConsumerExact.core.option.Option.ok_or, bind_tc_ok,
             core.result.Result.Insts.CoreOpsTry.branch] at hrun
           generalize hcombine :
               fri_checks.gamma_combine_v5_layer0_exact c1Value c2Value
@@ -1088,12 +1088,12 @@ theorem production_layerZero_active_body_ne_accepting_done
               | ok circleOption =>
                 cases circleOption with
                 | none =>
-                  simp [core.option.Option.ok_or,
+                  simp [V5FriConsumerExact.core.option.Option.ok_or,
                     core.result.Result.Insts.CoreOpsTry.branch,
                     core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
                     core.convert.FromSame, core.convert.FromSame.from] at hrun
                 | some circlePair =>
-                  simp only [core.option.Option.ok_or, bind_tc_ok,
+                  simp only [V5FriConsumerExact.core.option.Option.ok_or, bind_tc_ok,
                     core.result.Result.Insts.CoreOpsTry.branch] at hrun
                   generalize hinvX :
                       Array.index_usize circlePair 0#usize = invXResult at hrun
@@ -1199,13 +1199,13 @@ theorem production_layerZero_active_body_ne_accepting_done
                                     | ok decodedOption =>
                                       cases decodedOption with
                                       | none =>
-                                        simp [core.option.Option.ok_or,
+                                        simp [V5FriConsumerExact.core.option.Option.ok_or,
                                           core.result.Result.Insts.CoreOpsTry.branch,
                                           core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
                                           core.convert.FromSame,
                                           core.convert.FromSame.from] at hrun
                                       | some decoded =>
-                                        simp only [core.option.Option.ok_or,
+                                        simp only [V5FriConsumerExact.core.option.Option.ok_or,
                                           bind_tc_ok,
                                           core.result.Result.Insts.CoreOpsTry.branch]
                                           at hrun
@@ -1404,7 +1404,7 @@ theorem production_later_cont_iter_exact
   repeat' first
     | split at hrun
     | simp_all [Bind.bind, Aeneas.Std.bind, Std.lift,
-        core.option.Option.ok_or,
+        V5FriConsumerExact.core.option.Option.ok_or,
         core.result.Result.Insts.CoreOpsTry.branch,
         core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
         core.convert.FromSame, core.convert.FromSame.from]
@@ -1440,7 +1440,7 @@ theorem production_inner_active_body_ne_completed
   repeat' first
     | split at hrun
     | simp_all [Bind.bind, Aeneas.Std.bind, Std.lift,
-        core.option.Option.ok_or,
+        V5FriConsumerExact.core.option.Option.ok_or,
         core.result.Result.Insts.CoreOpsTry.branch,
         core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
         core.convert.FromSame, core.convert.FromSame.from]

@@ -129,10 +129,10 @@ theorem production_monotone_value_hits
   rw [core_slice_get_run indices target htargetBound]
   simp only [bind_tc_ok]
   rw [htarget]
-  simp [core.option.OptionShared0T.copied,
-    core.option.Option.Insts.CoreCmpPartialEqOption.eq,
+  simp [V5FriConsumerExact.core.option.OptionShared0T.copied,
+    V5FriConsumerExact.core.option.Option.Insts.CoreCmpPartialEqOption.eq,
     core.cmp.PartialEq.ne.trait_default, core.cmp.PartialEq.ne.default,
-    hvalue, core.option.Option.ok_or]
+    hvalue, V5FriConsumerExact.core.option.Option.ok_or]
 
 /-- Successful use of the production helper identifies both the exact target
 ordinal and the exact opening accessor result.  No second implementation of
@@ -167,27 +167,27 @@ theorem accepted_production_monotone_call_hits
         opening target = valueResult at hcall
   cases valueResult with
   | fail error =>
-    simp [core.option.OptionShared0T.copied,
-      core.option.Option.Insts.CoreCmpPartialEqOption.eq,
+    simp [V5FriConsumerExact.core.option.OptionShared0T.copied,
+      V5FriConsumerExact.core.option.Option.Insts.CoreCmpPartialEqOption.eq,
       core.cmp.PartialEq.ne.trait_default, core.cmp.PartialEq.ne.default,
       Bind.bind, Aeneas.Std.bind] at hcall
   | div =>
-    simp [core.option.OptionShared0T.copied,
-      core.option.Option.Insts.CoreCmpPartialEqOption.eq,
+    simp [V5FriConsumerExact.core.option.OptionShared0T.copied,
+      V5FriConsumerExact.core.option.Option.Insts.CoreCmpPartialEqOption.eq,
       core.cmp.PartialEq.ne.trait_default, core.cmp.PartialEq.ne.default,
       Bind.bind, Aeneas.Std.bind] at hcall
   | ok optional =>
     cases optional with
     | none =>
-      simp [core.option.OptionShared0T.copied,
-        core.option.Option.Insts.CoreCmpPartialEqOption.eq,
+      simp [V5FriConsumerExact.core.option.OptionShared0T.copied,
+        V5FriConsumerExact.core.option.Option.Insts.CoreCmpPartialEqOption.eq,
         core.cmp.PartialEq.ne.trait_default, core.cmp.PartialEq.ne.default,
-        core.option.Option.ok_or] at hcall
+        V5FriConsumerExact.core.option.Option.ok_or] at hcall
     | some returned =>
-      simp [core.option.OptionShared0T.copied,
-        core.option.Option.Insts.CoreCmpPartialEqOption.eq,
+      simp [V5FriConsumerExact.core.option.OptionShared0T.copied,
+        V5FriConsumerExact.core.option.Option.Insts.CoreCmpPartialEqOption.eq,
         core.cmp.PartialEq.ne.trait_default, core.cmp.PartialEq.ne.default,
-        core.option.Option.ok_or] at hcall
+        V5FriConsumerExact.core.option.Option.ok_or] at hcall
       exact ⟨hcall.2.symm, by simpa [hcall.1] using hvalue⟩
 
 /-- Any successful production lookup identifies the unique requested entry.
@@ -227,14 +227,14 @@ theorem successful_production_monotone_call_hits_unique_target
     | ok optional =>
       cases optional with
       | none =>
-        simp [core.option.OptionShared0T.copied,
-          core.option.Option.Insts.CoreCmpPartialEqOption.eq,
+        simp [V5FriConsumerExact.core.option.OptionShared0T.copied,
+          V5FriConsumerExact.core.option.Option.Insts.CoreCmpPartialEqOption.eq,
           core.cmp.PartialEq.ne.trait_default,
           core.cmp.PartialEq.ne.default] at hcall
       | some foundIndex =>
         simp only [bind_tc_ok] at hcall
         generalize hcopied :
-            core.option.OptionShared0T.copied core.marker.CopyU32
+            V5FriConsumerExact.core.option.OptionShared0T.copied core.marker.CopyU32
               (some foundIndex) = copiedResult at hcall
         cases copiedResult with
         | fail error => simp [Bind.bind, Aeneas.Std.bind] at hcall
@@ -262,9 +262,9 @@ theorem successful_production_monotone_call_hits_unique_target
               | div => simp [Bind.bind, Aeneas.Std.bind] at hcall
               | ok valueOption =>
                 cases valueOption with
-                | none => simp [core.option.Option.ok_or] at hcall
+                | none => simp [V5FriConsumerExact.core.option.Option.ok_or] at hcall
                 | some returned =>
-                  simp [core.option.Option.ok_or] at hcall
+                  simp [V5FriConsumerExact.core.option.Option.ok_or] at hcall
                   have hfoundBound : found.val < indices.val.length := by
                     unfold core.slice.Slice.get
                       core.slice.index.SliceIndexUsizeSlice
@@ -284,11 +284,11 @@ theorem successful_production_monotone_call_hits_unique_target
                       rw [List.getElem!_of_getElem?]
                       simpa using Result.ok.inj hget
                     have hcopiedValue : copied = some foundIndex := by
-                      simpa [core.option.OptionShared0T.copied] using
+                      simpa [V5FriConsumerExact.core.option.OptionShared0T.copied] using
                         hcopied.symm
                     subst copied
                     have hsame : foundIndex = index := by
-                      simpa [core.option.Option.Insts.CoreCmpPartialEqOption.eq,
+                      simpa [V5FriConsumerExact.core.option.Option.Insts.CoreCmpPartialEqOption.eq,
                         core.cmp.PartialEq.ne.trait_default,
                         core.cmp.PartialEq.ne.default] using hne
                     simpa [hsame] using hfoundIndex

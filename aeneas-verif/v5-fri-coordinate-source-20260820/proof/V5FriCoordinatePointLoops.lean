@@ -59,7 +59,7 @@ def sourceLowIndex (fiber : Std.U32) : Std.Usize :=
   sourceNatural fiber &&& 255#usize
 
 def sourceHighIndex (fiber : Std.U32) : Std.Usize :=
-  Std.Usize.wrapping_shr (sourceNatural fiber) 8#i32
+  Std.Usize.wrapping_shr (sourceNatural fiber) 8#u32
 
 theorem sourceNatural_lt (fiber : Std.U32) :
     (sourceNatural fiber).val < 131072 := by
@@ -460,7 +460,7 @@ private theorem generated_selectedPointCall_eq (fiber : Std.U32) :
           lowIndex
       let lowX ← Array.index_usize lowArray 0#usize
       let lowY ← Array.index_usize lowArray 1#usize
-      let highIndex ← lift (Std.Usize.wrapping_shr natural 8#i32)
+      let highIndex ← lift (Std.Usize.wrapping_shr natural 8#u32)
       if highIndex != 0#usize then
         let highArray ←
           Array.index_usize
@@ -497,7 +497,7 @@ private theorem generated_selectedContinuation_eq
           lowIndex
       let lowX ← Array.index_usize lowArray 0#usize
       let lowY ← Array.index_usize lowArray 1#usize
-      let highIndex ← lift (Std.Usize.wrapping_shr natural 8#i32)
+      let highIndex ← lift (Std.Usize.wrapping_shr natural 8#u32)
       if highIndex != 0#usize then
         let highArray ←
           Array.index_usize
@@ -678,7 +678,7 @@ theorem selected_circle_fiber_points_shared_success
   simp only [Std.lift, bind_tc_ok] at hrun
   cases hvalidation :
       V5FriCoordinateAdapter.aspis_core.circle_fri.selected_circle_fiber_points_shared_loop0
-        fibers (Std.Usize.wrapping_shl 1#usize 17#i32)
+        fibers (Std.Usize.wrapping_shl 1#usize 17#u32)
           (domainLogSize = 19#u32) 0#usize with
   | ok validation =>
       rw [hvalidation, hbuiltRun] at hrun
@@ -877,7 +877,7 @@ theorem remove_line_slot_rotation_produces
 /-! ## Exact parent-point generation -/
 
 theorem shifted_parent_value (child : Std.U32) :
-    (Std.U32.wrapping_shr child 2#i32).val = child.val / 4 := by
+    (Std.U32.wrapping_shr child 2#u32).val = child.val / 4 := by
   unfold Std.U32.wrapping_shr UScalar.wrapping_shr
   change (child.bv >>> (2 : Nat)).toNat = child.bv.toNat / 4
   rw [BitVec.toNat_ushiftRight]
@@ -1034,7 +1034,7 @@ theorem parent_search_bounded
       obtain ⟨child, hchildRun, _hchildValue⟩ :=
         Aeneas.Std.WP.spec_imp_exists
           (Slice.index_usize_spec childIndices ordinal hactive)
-      let shifted := Std.U32.wrapping_shr child 2#i32
+      let shifted := Std.U32.wrapping_shr child 2#u32
       by_cases hless : shifted < parent
       · have hsmall : ordinal.val + 1 < UScalar.size .Usize := by
           have hmax := childIndices.property
@@ -1048,7 +1048,7 @@ theorem parent_search_bounded
           exact wrapping_add_one_exact ordinal hsmall
         simp only [if_pos hcondition]
         rw [hchildRun]
-        have hlessSource : Std.U32.wrapping_shr child 2#i32 < parent := by
+        have hlessSource : Std.U32.wrapping_shr child 2#u32 < parent := by
           simpa [shifted] using hless
         simp only [Std.lift, bind_tc_ok, if_pos hlessSource, WP.spec_ok]
         change SearchInvariant childIndices next ∧
@@ -1058,7 +1058,7 @@ theorem parent_search_bounded
           by rw [hnext]; omega⟩
       · simp only [if_pos hcondition]
         rw [hchildRun]
-        have hlessSource : ¬ Std.U32.wrapping_shr child 2#i32 < parent := by
+        have hlessSource : ¬ Std.U32.wrapping_shr child 2#u32 < parent := by
           simpa [shifted] using hless
         simp only [Std.lift, bind_tc_ok, if_neg hlessSource, WP.spec_ok]
         exact hordinal
@@ -1180,7 +1180,7 @@ theorem parent_points_loop_exact
           obtain ⟨childIndex, hchildIndexRun, hchildIndexValue⟩ :=
             Aeneas.Std.WP.spec_imp_exists
               (Slice.index_usize_spec childIndices selectedChild hchildActive)
-          let shifted := Std.U32.wrapping_shr childIndex 2#i32
+          let shifted := Std.U32.wrapping_shr childIndex 2#u32
           by_cases hmatched : shifted = parent
           · have hchildPointActive :
                 selectedChild.val < childPoints.val.length := by
@@ -1229,8 +1229,8 @@ theorem parent_points_loop_exact
             rw [hchildIndexRun]
             simp only [Std.lift, bind_tc_ok]
             have hequalSource :
-                (Std.U32.wrapping_shr childIndex 2#i32 != parent) = false := by
-              have heq : Std.U32.wrapping_shr childIndex 2#i32 = parent := by
+                (Std.U32.wrapping_shr childIndex 2#u32 != parent) = false := by
+              have heq : Std.U32.wrapping_shr childIndex 2#u32 = parent := by
                 simpa [shifted] using hmatched
               simp [heq]
             simp only [hequalSource, Bool.false_eq_true, if_false]
@@ -1302,7 +1302,7 @@ theorem parent_points_loop_exact
           · have hmismatch : (shifted != parent) = true := by
               simp [hmatched]
             have hmismatchSource :
-                (Std.U32.wrapping_shr childIndex 2#i32 != parent) = true := by
+                (Std.U32.wrapping_shr childIndex 2#u32 != parent) = true := by
               simpa [shifted] using hmismatch
             simp only [if_pos hparentCondition, if_pos hvalid]
             rw [hparentRun]

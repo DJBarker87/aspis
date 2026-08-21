@@ -343,8 +343,8 @@ def sourceKindTriple : Array
     by norm_num⟩
 
 def sourceThreeZipAt (first second third : M31) (index : Nat) :
-    core.iter.adapters.zip.Zip (core.array.iter.IntoIter M31 3#usize)
-      (core.array.iter.IntoIter
+    core.iter.adapters.zip.Zip (V5CoordinateSelectedProductionSource.core.array.iter.IntoIter M31 3#usize)
+      (V5CoordinateSelectedProductionSource.core.array.iter.IntoIter
         V5CoordinateSelectedProductionSource.circle_fri.FoldDenominator
         3#usize) :=
   ⟨⟨sourceCoordinateTriple first second third, index⟩,
@@ -355,8 +355,8 @@ def sourceThreeZip (first second third : M31) :=
 
 private theorem source_three_zip_next_zero (first second third : M31) :
     core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair.next
-        (core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator M31 3#usize)
-        (core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator
+        (V5CoordinateSelectedProductionSource.core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator M31 3#usize)
+        (V5CoordinateSelectedProductionSource.core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator
           V5CoordinateSelectedProductionSource.circle_fri.FoldDenominator 3#usize)
         (sourceThreeZipAt first second third 0) =
       .ok (some (first,
@@ -366,8 +366,8 @@ private theorem source_three_zip_next_zero (first second third : M31) :
 
 private theorem source_three_zip_next_one (first second third : M31) :
     core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair.next
-        (core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator M31 3#usize)
-        (core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator
+        (V5CoordinateSelectedProductionSource.core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator M31 3#usize)
+        (V5CoordinateSelectedProductionSource.core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator
           V5CoordinateSelectedProductionSource.circle_fri.FoldDenominator 3#usize)
         (sourceThreeZipAt first second third 1) =
       .ok (some (second,
@@ -377,8 +377,8 @@ private theorem source_three_zip_next_one (first second third : M31) :
 
 private theorem source_three_zip_next_two (first second third : M31) :
     core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair.next
-        (core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator M31 3#usize)
-        (core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator
+        (V5CoordinateSelectedProductionSource.core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator M31 3#usize)
+        (V5CoordinateSelectedProductionSource.core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator
           V5CoordinateSelectedProductionSource.circle_fri.FoldDenominator 3#usize)
         (sourceThreeZipAt first second third 2) =
       .ok (some (third,
@@ -388,8 +388,8 @@ private theorem source_three_zip_next_two (first second third : M31) :
 
 private theorem source_three_zip_next_three (first second third : M31) :
     core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair.next
-        (core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator M31 3#usize)
-        (core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator
+        (V5CoordinateSelectedProductionSource.core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator M31 3#usize)
+        (V5CoordinateSelectedProductionSource.core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator
           V5CoordinateSelectedProductionSource.circle_fri.FoldDenominator 3#usize)
         (sourceThreeZipAt first second third 3) =
       .ok (none, sourceThreeZipAt first second third 3) := by
@@ -599,8 +599,8 @@ theorem source_line_point_denominator_loop_exact
               V5CoordinateSelectedProductionSource.circle_fri.FoldDenominator.LineSecondPairX,
               V5CoordinateSelectedProductionSource.circle_fri.FoldDenominator.LineSecondFoldX], 0⟩
           ⟩ : core.iter.adapters.zip.Zip
-            (core.array.iter.IntoIter M31 3#usize)
-            (core.array.iter.IntoIter
+            (V5CoordinateSelectedProductionSource.core.array.iter.IntoIter M31 3#usize)
+            (V5CoordinateSelectedProductionSource.core.array.iter.IntoIter
               V5CoordinateSelectedProductionSource.circle_fri.FoldDenominator
               3#usize)) = sourceThreeZip first second third := by
         rfl
@@ -713,33 +713,33 @@ def sourcePointVecTriple (line1 line2 line3 : PointVec) :
   ⟨[line1, line2, line3], by norm_num⟩
 
 def sourcePointVecIterAt (line1 line2 line3 : PointVec) (index : Nat) :
-    core.array.iter.IntoIter PointVec 3#usize :=
+    V5CoordinateSelectedProductionSource.core.array.iter.IntoIter PointVec 3#usize :=
   ⟨sourcePointVecTriple line1 line2 line3, index⟩
 
 private theorem source_point_vec_next_zero
     (line1 line2 line3 : PointVec) :
-    core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next
+    V5CoordinateSelectedProductionSource.core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next
         (sourcePointVecIterAt line1 line2 line3 0) =
       .ok (some line1, sourcePointVecIterAt line1 line2 line3 1) := by
   rfl
 
 private theorem source_point_vec_next_one
     (line1 line2 line3 : PointVec) :
-    core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next
+    V5CoordinateSelectedProductionSource.core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next
         (sourcePointVecIterAt line1 line2 line3 1) =
       .ok (some line2, sourcePointVecIterAt line1 line2 line3 2) := by
   rfl
 
 private theorem source_point_vec_next_two
     (line1 line2 line3 : PointVec) :
-    core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next
+    V5CoordinateSelectedProductionSource.core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next
         (sourcePointVecIterAt line1 line2 line3 2) =
       .ok (some line3, sourcePointVecIterAt line1 line2 line3 3) := by
   rfl
 
 private theorem source_point_vec_next_three
     (line1 line2 line3 : PointVec) :
-    core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next
+    V5CoordinateSelectedProductionSource.core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next
         (sourcePointVecIterAt line1 line2 line3 3) =
       .ok (none, sourcePointVecIterAt line1 line2 line3 3) := by
   rfl

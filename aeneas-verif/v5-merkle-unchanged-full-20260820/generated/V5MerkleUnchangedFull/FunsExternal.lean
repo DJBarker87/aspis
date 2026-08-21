@@ -3,6 +3,16 @@
 -- This is a template file: rename it to "FunsExternal.lean" and fill the holes.
 import Aeneas.Std
 import Aeneas.Tactic.RustAttributes
+-- Reuse the shared Rust-library interpretations already carried by the
+-- relation extraction.  Importing a second generated copy of these global
+-- definitions makes the combined accepted-entry module ill-formed even
+-- though the interpretations are definitionally the same.
+import RelationLinked.FunsExternal
+-- The accepted FRI consumer already supplies this standard iterator helper.
+import FriArithmetic.FunsExternal
+-- The released coordinate translation supplies the shared vector emptiness
+-- interpretation used by both bundles.
+import Coordinates.FunsExternal
 import RuntimeScheduleMerkleReuse
 import V5MerkleUnchangedFull.Types
 open Aeneas Aeneas.Std Result ControlFlow Error
@@ -46,45 +56,6 @@ def core.iter.traits.iterator.Iterator.find.default
         (self, predicate)
     ok (found, self')
 
-/-- [core::iter::traits::iterator::Iterator::any]:
-    Source: '/rustc/library/core/src/iter/traits/iterator.rs', lines 2885:4-2888:37
-    Name pattern: [core::iter::traits::iterator::Iterator::any]
-    Visibility: public -/
-@[trait_default, rust_fun "core::iter::traits::iterator::Iterator::any"]
-def core.iter.traits.iterator.Iterator.any.default
-  {Self : Type} {F : Type} {Clause0_Item : Type} (IteratorInst :
-  core.iter.traits.iterator.Iterator Self Clause0_Item)
-  (opsfunctionFnMutFTupleClause0_ItemBoolInst : core.ops.function.FnMut F
-  Clause0_Item Bool) :
-  Self → F → Result (Bool × Self) :=
-  fun self predicate => do
-    let (found, self', _) ←
-      loop
-        (fun (self', predicate') => do
-          let (item, self'') ← IteratorInst.next self'
-          match item with
-          | none => ok (done (false, self'', predicate'))
-          | some item' =>
-            let (isMatch, predicate'') ←
-              opsfunctionFnMutFTupleClause0_ItemBoolInst.call_mut
-                predicate' item'
-            if isMatch then
-              ok (done (true, self'', predicate''))
-            else
-              ok (cont (self'', predicate'')))
-        (self, predicate)
-    ok (found, self')
-
-/-- [core::option::{core::option::Option<T>}::ok_or]:
-    Source: '/rustc/library/core/src/option.rs', lines 1334:4-1334:73
-    Name pattern: [core::option::{core::option::Option<@T>}::ok_or]
-    Visibility: public -/
-@[rust_fun "core::option::{core::option::Option<@T>}::ok_or"]
-def core.option.Option.ok_or
-  {T : Type} {E : Type} : (Option T) → E → Result (core.result.Result T E)
-  | some value, _ => ok (.Ok value)
-  | none, error => ok (.Err error)
-
 /-- [core::option::{core::option::Option<&'_0 T>}::copied]:
     Source: '/rustc/library/core/src/option.rs', lines 2135:4-2137:16
     Name pattern: [core::option::{core::option::Option<&'0 @T>}::copied]
@@ -110,31 +81,6 @@ def core.option.Option.Insts.CoreCmpPartialEqOption.eq
   | some left, some right => cmpPartialEqInst.eq left right
   | _, _ => ok false
 
-/-- [core::option::{impl core::ops::try_trait::Try for core::option::Option<T>}::branch]:
-    Source: '/rustc/library/core/src/option.rs', lines 2779:4-2779:64
-    Name pattern: [core::option::{core::ops::try_trait::Try<core::option::Option<@T>>}::branch]
-    Visibility: public -/
-@[rust_fun
-  "core::option::{core::ops::try_trait::Try<core::option::Option<@T>>}::branch"]
-def core.option.Option.Insts.CoreOpsTry_traitTry.branch
-  {T : Type} :
-  (Option T) → Result (core.ops.control_flow.ControlFlow (Option
-    core.convert.Infallible) T)
-  | none => ok (.Break none)
-  | some value => ok (.Continue value)
-
-/-- [core::option::{impl core::ops::try_trait::FromResidual<core::option::Option<core::convert::Infallible>> for core::option::Option<T>}::from_residual]:
-    Source: '/rustc/library/core/src/option.rs', lines 2793:4-2793:67
-    Name pattern: [core::option::{core::ops::try_trait::FromResidual<core::option::Option<@T>, core::option::Option<core::convert::Infallible>>}::from_residual]
-    Visibility: public -/
-@[rust_fun
-  "core::option::{core::ops::try_trait::FromResidual<core::option::Option<@T>, core::option::Option<core::convert::Infallible>>}::from_residual"]
-def
-  core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionInfallible.from_residual
-  (T : Type) : (Option core.convert.Infallible) → Result (Option T)
-  | none => ok none
-  | some impossible => nomatch impossible
-
 /-- [core::result::{core::result::Result<T, E>}::map_err]:
     Source: '/rustc/library/core/src/result.rs', lines 962:4-964:53
     Name pattern: [core::result::{core::result::Result<@T, @E>}::map_err]
@@ -144,10 +90,10 @@ def core.result.Result.map_err
   {T : Type} {E : Type} {F : Type} {O : Type} (opsfunctionFnOnceOTupleEFInst :
   core.ops.function.FnOnce O E F) :
   (core.result.Result T E) → O → Result (core.result.Result T F)
-  | .Ok value, _ => ok (.Ok value)
+  | .Ok value, _ => .ok (.Ok value)
   | .Err error, state => do
     let mapped ← opsfunctionFnOnceOTupleEFInst.call_once state error
-    ok (.Err mapped)
+    .ok (.Err mapped)
 
 /-- [core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a T> for core::slice::iter::Iter<'a, T>}::find]:
     Source: '/rustc/library/core/src/slice/iter/macros.rs', lines 343:12-346:46
@@ -224,27 +170,6 @@ def alloc.vec.Vec.as_slice
   {T : Type} (A : Type) (value : alloc.vec.Vec T) : Result (Slice T) :=
   let _ := A
   ok ⟨value.val, value.property⟩
-
-/-- [alloc::vec::{alloc::vec::Vec<T>}::clear]:
-    Source: '/rustc/library/alloc/src/vec/mod.rs', lines 3028:4-3028:27
-    Name pattern: [alloc::vec::{alloc::vec::Vec<@T>}::clear]
-    Visibility: public -/
-@[rust_fun "alloc::vec::{alloc::vec::Vec<@T>}::clear"]
-def alloc.vec.Vec.clear
-  {T : Type} (A : Type) (_value : alloc.vec.Vec T) :
-    Result (alloc.vec.Vec T) :=
-  let _ := A
-  ok (alloc.vec.Vec.new T)
-
-/-- [alloc::vec::{alloc::vec::Vec<T>}::is_empty]:
-    Source: '/rustc/library/alloc/src/vec/mod.rs', lines 3085:4-3085:40
-    Name pattern: [alloc::vec::{alloc::vec::Vec<@T>}::is_empty]
-    Visibility: public -/
-@[rust_fun "alloc::vec::{alloc::vec::Vec<@T>}::is_empty"]
-def alloc.vec.Vec.is_empty
-  {T : Type} (A : Type) (value : alloc.vec.Vec T) : Result Bool :=
-  let _ := A
-  ok (value.val = [])
 
 /-- [aspis_core::circle_line_merkle::CIRCLE_LINE_TAGS]
     Source: 'crates/aspis-core/src/circle_line_merkle.rs', lines 18:0-18:57

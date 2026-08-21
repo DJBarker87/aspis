@@ -21,7 +21,7 @@ namespace V5TranscriptTailUnchangedGenerated
     Source: '/Users/dominic/ZK-transcript-closure-audit/crates/aspis-core/src/transcript.rs', lines 231:0-231:25
     Name pattern: [aspis_core::transcript::QuerySampleError]
     Visibility: public -/
-@[discriminant isize, rust_type "aspis_core::transcript::QuerySampleError"]
+@[rust_type "aspis_core::transcript::QuerySampleError"]
 inductive aspis_core.transcript.QuerySampleError where
 | BoundNotPowerOfTwo : Std.U32 → aspis_core.transcript.QuerySampleError
 | CountExceedsBound :

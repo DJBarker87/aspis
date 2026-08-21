@@ -350,7 +350,7 @@ theorem source_parent_point_call_exact
 theorem checked_u32_shr_i32_two_eq_wrapping (value : Std.U32) :
     value >>> (2#i32 : Std.I32) =
       Aeneas.Std.Result.ok
-        (Std.U32.wrapping_shr value (2#i32 : Std.I32)) := by
+        (Std.U32.wrapping_shr value 2#u32) := by
   obtain ⟨output, hrun, _hval, hbv⟩ :=
     Aeneas.Std.WP.spec_imp_exists
       (UScalar.ShiftRight_IScalar_spec value (2#i32 : Std.I32)
@@ -359,10 +359,9 @@ theorem checked_u32_shr_i32_two_eq_wrapping (value : Std.U32) :
   congr 2
   apply UScalar.eq_of_val_eq
   change output.bv.toNat =
-    (Std.U32.wrapping_shr value (2#i32 : Std.I32)).bv.toNat
-  rw [hbv]
-  unfold Std.U32.wrapping_shr UScalar.wrapping_shr
-  simp [ScalarShiftAmount.toNat, IScalar.toNat]
+    (Std.U32.wrapping_shr value 2#u32).bv.toNat
+  rw [hbv, Std.U32.wrapping_shr_bv_eq]
+  simp [IScalar.toNat]
 
 private def SourceSearchInvariant (childIndices : Slice Std.U32)
     (ordinal : Std.Usize) : Prop :=
@@ -402,7 +401,7 @@ theorem source_parent_search_bounded
       obtain ⟨child, hchildRun, _hchildValue⟩ :=
         Aeneas.Std.WP.spec_imp_exists
           (Slice.index_usize_spec childIndices ordinal hactive)
-      let shifted := Std.U32.wrapping_shr child 2#i32
+      let shifted := Std.U32.wrapping_shr child 2#u32
       by_cases hless : shifted < parent
       · have hsmall : ordinal.val + 1 ≤ UScalar.max .Usize := by
           have hmax := childIndices.property
@@ -430,7 +429,7 @@ theorem source_parent_search_bounded
         simp only [bind_tc_ok]
         rw [checked_u32_shr_i32_two_eq_wrapping]
         have hlessSource :
-            Std.U32.wrapping_shr child 2#i32 < parent := by
+            Std.U32.wrapping_shr child 2#u32 < parent := by
           simpa [shifted] using hless
         simp only [bind_tc_ok, if_pos hlessSource]
         rw [hcheckedAdd]
@@ -445,7 +444,7 @@ theorem source_parent_search_bounded
         simp only [bind_tc_ok]
         rw [checked_u32_shr_i32_two_eq_wrapping]
         have hlessSource :
-            ¬ Std.U32.wrapping_shr child 2#i32 < parent := by
+            ¬ Std.U32.wrapping_shr child 2#u32 < parent := by
           simpa [shifted] using hless
         simp only [bind_tc_ok, if_neg hlessSource, WP.spec_ok]
         exact hordinal
@@ -744,11 +743,11 @@ theorem source_parent_points_loop_exact
         let childIndex := childIndices.val[selectedChild.val]!
         rw [checked_u32_shr_i32_two_eq_wrapping childIndex]
         simp only [bind_tc_ok]
-        let shifted := Std.U32.wrapping_shr childIndex 2#i32
+        let shifted := Std.U32.wrapping_shr childIndex 2#u32
         by_cases hmatched : shifted = parent
         ·
           have hbneFalse :
-              (Std.U32.wrapping_shr childIndex 2#i32 !=
+              (Std.U32.wrapping_shr childIndex 2#u32 !=
                 parentIndices.val[iter.i]!) = false := by
             apply (bne_eq_false_iff_eq).2
             simpa [shifted, parent, parentOrdinal] using hmatched
@@ -841,7 +840,7 @@ theorem source_parent_points_loop_exact
             omega
         ·
           have hbneTrue :
-              (Std.U32.wrapping_shr childIndex 2#i32 !=
+              (Std.U32.wrapping_shr childIndex 2#u32 !=
                 parentIndices.val[iter.i]!) = true := by
             apply (bne_iff_ne).2
             intro heq

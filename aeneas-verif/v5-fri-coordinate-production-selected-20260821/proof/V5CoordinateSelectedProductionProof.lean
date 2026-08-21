@@ -93,7 +93,7 @@ theorem checked_usize_shr_u32_eq_wrapping
 
 theorem checked_usize_shr_i32_eight_eq_wrapping (value : Std.Usize) :
     value >>> (8#i32 : Std.I32) =
-      Aeneas.Std.Result.ok (Std.Usize.wrapping_shr value (8#i32 : Std.I32)) := by
+      Aeneas.Std.Result.ok (Std.Usize.wrapping_shr value 8#u32) := by
   obtain ⟨output, hrun, _hval, hbv⟩ :=
     Aeneas.Std.WP.spec_imp_exists
       (UScalar.ShiftRight_IScalar_spec value (8#i32 : Std.I32)
@@ -105,11 +105,10 @@ theorem checked_usize_shr_i32_eight_eq_wrapping (value : Std.Usize) :
   congr 2
   apply UScalar.eq_of_val_eq
   change output.bv.toNat =
-    (Std.Usize.wrapping_shr value (8#i32 : Std.I32)).bv.toNat
-  rw [hbv]
-  unfold Std.Usize.wrapping_shr UScalar.wrapping_shr
+    (Std.Usize.wrapping_shr value 8#u32).bv.toNat
+  rw [hbv, Std.Usize.wrapping_shr_bv_eq]
   rcases System.Platform.numBits_eq with hbits | hbits <;>
-    simp [hbits, ScalarShiftAmount.toNat, IScalar.toNat]
+    simp [hbits]
 
 theorem u64_and_val_le_right (left right : Std.U64) :
     (left &&& right).val ≤ right.val := by

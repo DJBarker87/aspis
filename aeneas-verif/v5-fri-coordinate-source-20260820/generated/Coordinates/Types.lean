@@ -46,7 +46,7 @@ structure aspis_core.circle_fri.DerivedCircleQueryFoldInverses where
     Source: '/private/tmp/aspis-fri-coordinate-adapter/crates/aspis-core/src/circle_fri.rs', lines 185:0-185:24
     Name pattern: [aspis_core::circle_fri::FoldDenominator]
     Visibility: public -/
-@[discriminant isize, rust_type "aspis_core::circle_fri::FoldDenominator"]
+@[rust_type "aspis_core::circle_fri::FoldDenominator"]
 inductive aspis_core.circle_fri.FoldDenominator where
 | CircleY : aspis_core.circle_fri.FoldDenominator
 | CircleX : aspis_core.circle_fri.FoldDenominator
@@ -58,7 +58,7 @@ inductive aspis_core.circle_fri.FoldDenominator where
     Source: '/private/tmp/aspis-fri-coordinate-adapter/crates/aspis-core/src/circle_fri.rs', lines 194:0-194:23
     Name pattern: [aspis_core::circle_fri::CircleFriError]
     Visibility: public -/
-@[discriminant isize, rust_type "aspis_core::circle_fri::CircleFriError"]
+@[rust_type "aspis_core::circle_fri::CircleFriError"]
 inductive aspis_core.circle_fri.CircleFriError where
 | CircleIndexOutOfRange : aspis_core.circle_fri.CircleFriError
 | CircleFiberOutOfRange : aspis_core.circle_fri.CircleFriError

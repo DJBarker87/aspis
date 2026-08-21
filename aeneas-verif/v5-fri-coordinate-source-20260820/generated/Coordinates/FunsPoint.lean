@@ -76,7 +76,7 @@ def aspis_core.circle_fri.selected_circle_fiber_points_shared_loop1.body
       Array.index_usize aspis_core.circle_fri.RATE512_CIRCLE_LOW8_WINDOW i4
     let low_x ← Array.index_usize a 0#usize
     let low_y ← Array.index_usize a 1#usize
-    let high_index ← lift (Std.Usize.wrapping_shr natural 8#i32)
+    let high_index ← lift (Std.Usize.wrapping_shr natural 8#u32)
     let point ←
       if high_index != 0#usize
       then
@@ -122,7 +122,7 @@ def aspis_core.circle_fri.selected_circle_fiber_points_shared
   (domain_log_size : Std.U32) (fibers : Slice Std.U32) :
   Result ((alloc.vec.Vec aspis_core.circle_fri.BaseCirclePoint) × Bool)
   := do
-  let fiber_count ← lift (Std.Usize.wrapping_shl 1#usize 17#i32)
+  let fiber_count ← lift (Std.Usize.wrapping_shl 1#usize 17#u32)
   let valid ←
     aspis_core.circle_fri.selected_circle_fiber_points_shared_loop0 fibers
       fiber_count (domain_log_size = 19#u32) 0#usize
@@ -205,7 +205,7 @@ def aspis_core.circle_fri.derive_parent_line_points_loop0_loop0.body
   if child_ordinal < i
   then
     let i1 ← Slice.index_usize child_indices child_ordinal
-    let i2 ← lift (Std.U32.wrapping_shr i1 2#i32)
+    let i2 ← lift (Std.U32.wrapping_shr i1 2#u32)
     if i2 < parent
     then
       let child_ordinal1 ←
@@ -257,7 +257,7 @@ def aspis_core.circle_fri.derive_parent_line_points_loop0.body
       then ok (cont (parents, child_ordinal1, parent_ordinal, false))
       else
         let child_index ← Slice.index_usize child_indices child_ordinal1
-        let i2 ← lift (Std.U32.wrapping_shr child_index 2#i32)
+        let i2 ← lift (Std.U32.wrapping_shr child_index 2#u32)
         if i2 != parent
         then ok (cont (parents, child_ordinal1, parent_ordinal, false))
         else

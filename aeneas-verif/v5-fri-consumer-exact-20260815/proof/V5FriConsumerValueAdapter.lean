@@ -128,8 +128,8 @@ theorem extractedValueBytes_eq_model
       aspis_core.state_only_private_merkle.STATE_ONLY_PRIVATE_LEAF_SALT_BYTES,
       hrecordWidth, hcheckedMul, hcheckedAdd,
       core.slice.Slice.get, core.slice.index.SliceIndexRangeUsizeSlice.get,
-      core.option.Option.Insts.CoreOpsTry_traitTry.branch,
-      core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionInfallible.from_residual,
+      V5FriConsumerExact.core.option.Option.Insts.CoreOpsTry_traitTry.branch,
+      V5FriConsumerExact.core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionInfallible.from_residual,
       lift, hstartStop, hendRecords, start, stop, List.slice]
   · have hge : opening.count.val ≤ ordinal.val := Nat.le_of_not_gt hord
     simp [hord, hge]
