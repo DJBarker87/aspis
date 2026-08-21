@@ -389,6 +389,28 @@ theorem production_caller_environment_implies_consumer_equality
   exact resolveFromProductionCaller_uses_production_caller openingsCall hash
     environment
 
+/-- Specialization to the explicit one-call Merkle wrapper.  Its successful
+result equality is a theorem, so callers need supply only the production
+SHA-256 callback equality. -/
+theorem exact_production_caller_environment_implies_consumer_equality
+    (sha256 : List AspisV5MerkleAuthenticationBinding.Byte →
+      AspisV5MerkleRustBridge.Digest32)
+    (hash : AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedHash)
+    (environment : (call : AspisV5MerkleRustBridge.V5ProductionCall) →
+      Option (ProductionCallerEnvironment
+        (AspisV5FriCallerMerkleBridge.exactMerkleOpeningCall hash) hash call))
+    (hhash : AspisV5MerkleUnchangedFullHelperBridge.HashCallbackEqualsSha256
+      sha256 hash) :
+    ExactRustV5OpeningAndFriConsumerEquality sha256
+      (AspisV5FriConsumerObservationBridge.observationFromAcceptedResolver
+        (resolveFromProductionCaller
+          (AspisV5FriCallerMerkleBridge.exactMerkleOpeningCall hash) hash
+          environment)) := by
+  exact production_caller_environment_implies_consumer_equality sha256 hash
+    (AspisV5FriCallerMerkleBridge.exactMerkleOpeningCall hash) environment
+    (AspisV5FriCallerMerkleBridge.exactMerkleOpeningCall_sourceEquality hash)
+    hhash
+
 /-- One accepted outer-verifier execution now constructs both the concrete
 observation and the exact Merkle/FRI consumer theorem needed downstream.  No
 free observation equality or total resolver is supplied by the caller of this
@@ -425,6 +447,38 @@ theorem accepted_verifier_execution_builds_production_caller_observation
       (singleProductionCallerEnvironment openingsCall hash target
         targetEnvironment)
       hsource hhash
+
+/-- Accepted-execution wrapper using the explicit Merkle call model.  The
+former successful-call source equality is discharged internally. -/
+theorem accepted_verifier_execution_builds_exact_production_caller_observation
+    (sha256 : List AspisV5MerkleAuthenticationBinding.Byte →
+      AspisV5MerkleRustBridge.Digest32)
+    (hash : AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedHash)
+    (verifierAccepts : AspisV5MerkleRustBridge.V5ProductionCall → Prop)
+    (hentry : AcceptedVerifierExecutionBuildsProductionCallerEnvironment
+      (AspisV5FriCallerMerkleBridge.exactMerkleOpeningCall hash) hash
+      verifierAccepts)
+    (hhash : AspisV5MerkleUnchangedFullHelperBridge.HashCallbackEqualsSha256
+      sha256 hash)
+    (target : AspisV5MerkleRustBridge.V5ProductionCall)
+    (haccepted : verifierAccepts target) :
+    ∃ targetEnvironment : ProductionCallerEnvironment
+        (AspisV5FriCallerMerkleBridge.exactMerkleOpeningCall hash) hash target,
+      let environment := singleProductionCallerEnvironment
+        (AspisV5FriCallerMerkleBridge.exactMerkleOpeningCall hash) hash target
+        targetEnvironment
+      let rustObservation :=
+        AspisV5FriConsumerObservationBridge.observationFromAcceptedResolver
+          (resolveFromProductionCaller
+            (AspisV5FriCallerMerkleBridge.exactMerkleOpeningCall hash) hash
+            environment)
+      rustObservation target = some targetEnvironment.acceptedCall.observation ∧
+        ExactRustV5OpeningAndFriConsumerEquality sha256 rustObservation := by
+  exact accepted_verifier_execution_builds_production_caller_observation
+    sha256 hash (AspisV5FriCallerMerkleBridge.exactMerkleOpeningCall hash)
+    verifierAccepts hentry
+    (AspisV5FriCallerMerkleBridge.exactMerkleOpeningCall_sourceEquality hash)
+    hhash target haccepted
 
 variable {K : Type*} [Field K] [Fintype K] [DecidableEq K]
   [Algebra (ZMod P) K] [NeZero (2 : K)]
@@ -544,7 +598,10 @@ theorem accepted_false_source_caller_event_with_released_tables
 #print axioms accepted_resolver_caller_implies_consumer_equality
 #print axioms resolveFromProductionCaller_uses_production_caller
 #print axioms production_caller_environment_implies_consumer_equality
+#print axioms exact_production_caller_environment_implies_consumer_equality
 #print axioms accepted_verifier_execution_builds_production_caller_observation
+#print axioms
+  accepted_verifier_execution_builds_exact_production_caller_observation
 #print axioms accepted_false_source_caller_event_with_released_tables
 
 end AspisV5FriCallerAcceptedResolverBridge
