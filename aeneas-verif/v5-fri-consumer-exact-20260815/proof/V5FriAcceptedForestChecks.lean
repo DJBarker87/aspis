@@ -49,6 +49,25 @@ open V5FriConsumerExact
 abbrev K := ExactQM31
 abbrev Decoder := OpeningFibreDecoder K
 
+/-- The exact four-limb field used by the released verifier has odd
+characteristic, so the accepted-execution projection's `2 != 0` requirement
+is proved here rather than left as a caller input. -/
+private theorem exactQM31_two_ne_zero : (2 : K) ≠ 0 := by
+  open AspisV5ComponentCQM31TowerExact in
+    intro h
+    have hmap : algebraMap M31Exact QM31Exact (2 : M31Exact) =
+        algebraMap M31Exact QM31Exact (0 : M31Exact) := by
+      calc
+        algebraMap M31Exact QM31Exact (2 : M31Exact) =
+            (2 : QM31Exact) := map_ofNat _ 2
+        _ = 0 := h
+        _ = algebraMap M31Exact QM31Exact (0 : M31Exact) := (map_zero _).symm
+    have hbase := FaithfulSMul.algebraMap_injective M31Exact QM31Exact hmap
+    exact AspisCircleGroupOrder.two_ne_zero_ZModP hbase
+
+local instance exactQM31NeZeroTwo : NeZero (2 : K) :=
+  ⟨exactQM31_two_ne_zero⟩
+
 /-- Exact agreement required only at the literal successful Rust calls used
 by the accepted FRI execution.  It identifies no fold equation: the fold
 equations are consequences of the generated-call proofs in
@@ -1935,6 +1954,89 @@ theorem accepted_production_execution_yields_forest_fri_checks
       hAgreement hDecoder hBinding hCoordinates hPowers (queries i)
       (hqueryMember i)
 
+/-- The query-membership input above is already a consequence of the exact
+transcript projection used by the released security theorem.  This wrapper
+keeps that fact connected to its source instead of asking a caller to repeat
+it as a separate premise. -/
+theorem accepted_production_execution_yields_forest_fri_checks_of_projection
+    {PointValue : Type*}
+    {sha256 : List AspisV5MerkleAuthenticationBinding.Byte → Digest32}
+    {roots : V5PrivateRoots Digest32} {querySet : Finset V5Query}
+    (run : ExactV5Run sha256 roots querySet)
+    (openings : private_openings.VerifiedV5PrivateOpenings)
+    (prepared : fri_checks.V5PreparedPcsClaims)
+    (finalPolynomial : Array aspis_core.field.QM31 4#usize)
+    (sink : fri_checks.V5FriCheckSink)
+    (execution : AcceptedProductionFriExecution openings prepared
+      finalPolynomial sink)
+    (hdriver : generatedDriverOutput openings = driverOutputOfRun run [])
+    (schedule : FixedSchedule (ZMod AspisCircleGroupOrder.P) K)
+    (hsource : ProductionUsesReleasedFriTables schedule)
+    (transcript : IdealTranscript K)
+    (queries : QuerySchedule 18 131072)
+    (relationInput : AspisV5RelationStressSourceBridge.SourceRelationInput K)
+    (transcriptInput : AspisV5TranscriptConnection.V5TranscriptInputs)
+    (derived : AspisV5TranscriptConnection.V5DerivedValues K PointValue)
+    (driverResult : AspisV5TranscriptConnection.V5TranscriptDriverResult K
+      PointValue)
+    (projection : TranscriptExecutionProjection relationInput transcriptInput
+      derived driverResult querySet queries)
+    (decoder : Decoder) (hCalls : ExactFriHelperCallEquality)
+    (hAgreement : AcceptedCallDecoderAgreement decoder)
+    (hDecoder : ProductionDecoderReferenceEquality)
+    (hBinding : AcceptedFriModelInputBinding prepared execution.sourceAlphas
+      finalPolynomial schedule transcript)
+    (hValidate : ValidationSuccessPreservesShape)
+    (hAdapter : ExactProductionCoordinateAdapterAcceptedEquality) :
+    ForestFriChecks decoder (sha256MerkleHashing sha256) run.forest schedule
+      transcript queries := by
+  exact accepted_production_execution_yields_forest_fri_checks run openings
+    prepared finalPolynomial sink execution hdriver schedule hsource transcript
+    queries (scheduledQuery_mem_of_projection relationInput transcriptInput
+      derived driverResult querySet queries projection) decoder hCalls
+    hAgreement hDecoder hBinding hValidate hAdapter
+
+/-- Specializing the schedule to the exact released tables removes the
+separate table-equality premise.  The transcript projection also supplies all
+18 query-membership facts. -/
+theorem accepted_production_execution_yields_released_forest_fri_checks
+    {PointValue : Type*}
+    {sha256 : List AspisV5MerkleAuthenticationBinding.Byte → Digest32}
+    {roots : V5PrivateRoots Digest32} {querySet : Finset V5Query}
+    (run : ExactV5Run sha256 roots querySet)
+    (openings : private_openings.VerifiedV5PrivateOpenings)
+    (prepared : fri_checks.V5PreparedPcsClaims)
+    (finalPolynomial : Array aspis_core.field.QM31 4#usize)
+    (sink : fri_checks.V5FriCheckSink)
+    (execution : AcceptedProductionFriExecution openings prepared
+      finalPolynomial sink)
+    (hdriver : generatedDriverOutput openings = driverOutputOfRun run [])
+    (base : FixedSchedule (ZMod AspisCircleGroupOrder.P) K)
+    (transcript : IdealTranscript K)
+    (queries : QuerySchedule 18 131072)
+    (relationInput : AspisV5RelationStressSourceBridge.SourceRelationInput K)
+    (transcriptInput : AspisV5TranscriptConnection.V5TranscriptInputs)
+    (derived : AspisV5TranscriptConnection.V5DerivedValues K PointValue)
+    (driverResult : AspisV5TranscriptConnection.V5TranscriptDriverResult K
+      PointValue)
+    (projection : TranscriptExecutionProjection relationInput transcriptInput
+      derived driverResult querySet queries)
+    (decoder : Decoder) (hCalls : ExactFriHelperCallEquality)
+    (hAgreement : AcceptedCallDecoderAgreement decoder)
+    (hDecoder : ProductionDecoderReferenceEquality)
+    (hBinding : AcceptedFriModelInputBinding prepared execution.sourceAlphas
+      finalPolynomial (exactReleasedFriTables base) transcript)
+    (hValidate : ValidationSuccessPreservesShape)
+    (hAdapter : ExactProductionCoordinateAdapterAcceptedEquality) :
+    ForestFriChecks decoder (sha256MerkleHashing sha256) run.forest
+      (exactReleasedFriTables base) transcript queries := by
+  exact
+    accepted_production_execution_yields_forest_fri_checks_of_projection run
+      openings prepared finalPolynomial sink execution hdriver
+      (exactReleasedFriTables base) (exactReleasedFriTables_source_shape base)
+      transcript queries relationInput transcriptInput derived driverResult
+      projection decoder hCalls hAgreement hDecoder hBinding hValidate hAdapter
+
 /-- Once one exact accepted forest has all four FRI checks, the FRI-arithmetic
 failure arm of the released security event is impossible.  A purported
 different accepted forest either exposes the already explicit Merkle
@@ -2009,6 +2111,8 @@ theorem remove_released_fri_arithmetic_failure_into_collision
 #print axioms accepted_execution_line3_check
 #print axioms forest_fri_checks_of_collision_free
 #print axioms accepted_production_execution_yields_forest_fri_checks
+#print axioms AspisV5FriAcceptedForestChecks.accepted_production_execution_yields_forest_fri_checks_of_projection
+#print axioms AspisV5FriAcceptedForestChecks.accepted_production_execution_yields_released_forest_fri_checks
 #print axioms remove_released_fri_arithmetic_failure_into_collision
 
 end AspisV5FriAcceptedForestChecks

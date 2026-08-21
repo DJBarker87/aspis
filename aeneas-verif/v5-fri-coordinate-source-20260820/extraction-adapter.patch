@@ -1,0 +1,395 @@
+diff --git a/crates/aspis-core/src/circle_fri.rs b/crates/aspis-core/src/circle_fri.rs
+index d9382a3..a0881a9 100644
+--- a/crates/aspis-core/src/circle_fri.rs
++++ b/crates/aspis-core/src/circle_fri.rs
+@@ -241,67 +241,38 @@ fn point_from_group_index(index: u64) -> BaseCirclePoint {
+ pub fn selected_circle_fiber_points_shared(
+     domain_log_size: u32,
+     fibers: &[u32],
+-) -> Result<Vec<BaseCirclePoint>, CircleFriError> {
+-    let query_log_size = domain_log_size
+-        .checked_sub(2)
+-        .ok_or(CircleFriError::InvalidBitReverseLength)?;
+-    if domain_log_size == 0 || domain_log_size > CIRCLE_LOG_ORDER - 1 {
+-        return Err(CircleFriError::InvalidBitReverseLength);
+-    }
+-    let fiber_count = 1usize
+-        .checked_shl(query_log_size)
+-        .ok_or(CircleFriError::InvalidBitReverseLength)?;
+-
+-    if domain_log_size == 19 {
+-        let mut points = Vec::with_capacity(fibers.len());
+-        for &fiber in fibers {
+-            if fiber as usize >= fiber_count {
+-                return Err(CircleFriError::CircleFiberOutOfRange);
+-            }
+-            // `fiber < 2^17` was just checked, so the generic helper's
+-            // checked shift and identical range test are redundant here.
+-            let natural = (fiber as usize).reverse_bits() >> (usize::BITS - 17);
+-            let [low_x, low_y] = RATE512_CIRCLE_LOW8_WINDOW[natural & 0xff];
+-            let high_index = natural >> 8;
+-            let mut point = BaseCirclePoint {
+-                x: M31(low_x),
+-                y: M31(low_y),
+-            };
+-            if high_index != 0 {
+-                let [high_x, high_y] = RATE512_CIRCLE_HIGH9_WINDOW[high_index];
+-                point = point.add(BaseCirclePoint {
+-                    x: M31(high_x),
+-                    y: M31(high_y),
+-                });
+-            }
+-            points.push(point);
++) -> (Vec<BaseCirclePoint>, bool) {
++    let fiber_count = 1usize << 17;
++    let mut valid = domain_log_size == 19;
++    let mut validation_ordinal = 0usize;
++    while validation_ordinal < fibers.len() {
++        if fibers[validation_ordinal] as usize >= fiber_count {
++            valid = false;
+         }
+-        return Ok(points);
+-    }
+-
+-    let initial = point_from_group_index(half_odds_initial_index(domain_log_size - 1));
+-    let mut step_power = point_from_group_index(half_odds_step_index(domain_log_size - 1));
+-    let mut step_powers = Vec::with_capacity(query_log_size as usize);
+-    for _ in 0..query_log_size {
+-        step_powers.push(step_power);
+-        step_power = step_power.add(step_power);
++        validation_ordinal += 1;
+     }
+-
+     let mut points = Vec::with_capacity(fibers.len());
+-    for &fiber in fibers {
+-        if fiber as usize >= fiber_count {
+-            return Err(CircleFriError::CircleFiberOutOfRange);
+-        }
+-        let natural = bit_reverse_index(fiber as usize, query_log_size)?;
+-        let mut point = initial;
+-        for (bit, &power) in step_powers.iter().enumerate() {
+-            if natural & (1usize << bit) != 0 {
+-                point = point.add(power);
+-            }
++    let mut fiber_ordinal = 0usize;
++    while fiber_ordinal < fibers.len() {
++        let fiber = fibers[fiber_ordinal];
++        let natural = (fiber as usize).reverse_bits() >> (usize::BITS - 17);
++        let [low_x, low_y] = RATE512_CIRCLE_LOW8_WINDOW[natural & 0xff];
++        let high_index = natural >> 8;
++        let mut point = BaseCirclePoint {
++            x: M31(low_x),
++            y: M31(low_y),
++        };
++        if high_index != 0 {
++            let [high_x, high_y] = RATE512_CIRCLE_HIGH9_WINDOW[high_index];
++            point = point.add(BaseCirclePoint {
++                x: M31(high_x),
++                y: M31(high_y),
++            });
+         }
+         points.push(point);
++        fiber_ordinal += 1;
+     }
+-    Ok(points)
++    (points, valid)
+ }
+ 
+ #[inline(always)]
+@@ -348,30 +319,34 @@ fn derive_parent_line_points(
+     child_points: &[BaseCirclePoint],
+     parent_indices: &[u32],
+     doublings: u8,
+-) -> Result<Vec<BaseCirclePoint>, CircleFriError> {
+-    if child_indices.len() != child_points.len() {
+-        return Err(CircleFriError::QueryOutOfRange);
+-    }
++) -> (Vec<BaseCirclePoint>, bool) {
+     let mut parents = Vec::with_capacity(parent_indices.len());
+     let mut child_ordinal = 0usize;
+-    for &parent in parent_indices {
++    let mut parent_ordinal = 0usize;
++    let mut valid = child_indices.len() == child_points.len();
++    while parent_ordinal < parent_indices.len() && valid {
++        let parent = parent_indices[parent_ordinal];
+         while child_ordinal < child_indices.len() && child_indices[child_ordinal] >> 2 < parent {
+             child_ordinal += 1;
+         }
+-        let child_index = *child_indices
+-            .get(child_ordinal)
+-            .ok_or(CircleFriError::QueryOutOfRange)?;
+-        if child_index >> 2 != parent {
+-            return Err(CircleFriError::QueryOutOfRange);
+-        }
+-        debug_assert!(doublings == 1 || doublings == 2);
+-        let mut point = double_point(child_points[child_ordinal]);
+-        if doublings == 2 {
+-            point = double_point(point);
++        if child_ordinal >= child_indices.len() {
++            valid = false;
++        } else {
++            let child_index = child_indices[child_ordinal];
++            if child_index >> 2 != parent {
++                valid = false;
++            } else {
++                debug_assert!(doublings == 1 || doublings == 2);
++                let mut point = double_point(child_points[child_ordinal]);
++                if doublings == 2 {
++                    point = double_point(point);
++                }
++                parents.push(remove_line_slot_rotation(point, child_index & 3));
++                parent_ordinal += 1;
++            }
+         }
+-        parents.push(remove_line_slot_rotation(point, child_index & 3));
+     }
+-    Ok(parents)
++    (parents, valid)
+ }
+ 
+ /// Derive exactly the public fold coordinates touched by one authenticated
+@@ -380,51 +355,70 @@ fn derive_parent_line_points(
+ /// This computes the same values as the generated `*_CIRCLE_INV_*`,
+ /// `*_LINE*_INV`, and `*_FINAL_X` tables.  It changes neither proof bytes nor
+ /// transcript challenges; it is solely a representation choice for public
+-/// verifier constants.  `later[0..3]` must be the successive unique parent
+-/// sets (`q>>2`, `q>>4`, `q>>6`) of `layer0`.
++/// verifier constants.  `line1`, `line2`, and `line3` must be the successive
++/// unique parent sets (`q>>2`, `q>>4`, `q>>6`) of `layer0`.
+ pub fn derive_query_fold_inverses_for_circle(
+     domain_log_size: u32,
+     layer0: &[u32],
+-    later: [&[u32]; 3],
+-    inverse: fn(M31) -> M31,
++    line1: &[u32],
++    line2: &[u32],
++    line3: &[u32],
+ ) -> Result<DerivedCircleQueryFoldInverses, CircleFriError> {
+     // Four arity-four rounds must leave a nonempty final line domain.
+     if domain_log_size < 8 || domain_log_size > CIRCLE_LOG_ORDER - 1 {
+         return Err(CircleFriError::InvalidBitReverseLength);
+     }
+ 
+-    let circle_points = selected_circle_fiber_points_shared(domain_log_size, layer0)?;
+-    let line1_points = derive_parent_line_points(layer0, &circle_points, later[0], 1)?;
+-    let line2_points = derive_parent_line_points(later[0], &line1_points, later[1], 2)?;
+-    let line3_points = derive_parent_line_points(later[1], &line2_points, later[2], 2)?;
+-    let line_points = [&line1_points, &line2_points, &line3_points];
+-
+-    let denominator_count = layer0
+-        .len()
+-        .checked_mul(2)
+-        .and_then(|count| {
+-            later.iter().try_fold(count, |count, indices| {
+-                indices
+-                    .len()
+-                    .checked_mul(3)
+-                    .and_then(|extra| count.checked_add(extra))
+-            })
+-        })
+-        .ok_or(CircleFriError::QueryOutOfRange)?;
++    let (circle_points, circle_valid) =
++        selected_circle_fiber_points_shared(domain_log_size, layer0);
++    if !circle_valid {
++        return Err(CircleFriError::CircleFiberOutOfRange);
++    }
++    let (line1_points, line1_valid) =
++        derive_parent_line_points(layer0, &circle_points, line1, 1);
++    if !line1_valid {
++        return Err(CircleFriError::QueryOutOfRange);
++    }
++    let (line2_points, line2_valid) =
++        derive_parent_line_points(line1, &line1_points, line2, 2);
++    if !line2_valid {
++        return Err(CircleFriError::QueryOutOfRange);
++    }
++    let (line3_points, line3_valid) =
++        derive_parent_line_points(line2, &line2_points, line3, 2);
++    if !line3_valid {
++        return Err(CircleFriError::QueryOutOfRange);
++    }
++    let denominator_count = layer0.len() * 2
++        + line1.len() * 3
++        + line2.len() * 3
++        + line3.len() * 3;
+     let mut denominators = Vec::with_capacity(denominator_count);
+-    for point in &circle_points {
++    let mut zero_denominator = None;
++    let mut circle_ordinal = 0usize;
++    while circle_ordinal < circle_points.len() {
++        let point = circle_points[circle_ordinal];
+         let x = point.x.double();
+         let y = point.y.double();
+         if x.is_zero() {
+-            return Err(CircleFriError::ZeroDenominator(FoldDenominator::CircleX));
++            zero_denominator = Some(FoldDenominator::CircleX);
+         }
+         if y.is_zero() {
+-            return Err(CircleFriError::ZeroDenominator(FoldDenominator::CircleY));
++            zero_denominator = Some(FoldDenominator::CircleY);
+         }
+         denominators.extend_from_slice(&[x, y]);
+-    }
+-    for points in line_points {
+-        for &point in points {
++        circle_ordinal += 1;
++    }
++    let mut line_layer = 0usize;
++    while line_layer < 3 {
++        let points = match line_layer {
++            0 => &line1_points,
++            1 => &line2_points,
++            _ => &line3_points,
++        };
++        let mut point_ordinal = 0usize;
++        while point_ordinal < points.len() {
++            let point = points[point_ordinal];
+             // Adding G^(2^29)=(0,-1) maps the first pair point to the
+             // second, so its x-coordinate is the first point's y.
+             // Only the doubled point's x-coordinate is released here.  On
+@@ -434,22 +428,48 @@ pub fn derive_query_fold_inverses_for_circle(
+                 point.y.double(),
+                 double_x(point.x).double(),
+             ];
+-            for (coordinate, kind) in coordinates.into_iter().zip([
++            let kinds = [
+                 FoldDenominator::LineFirstPairX,
+                 FoldDenominator::LineSecondPairX,
+                 FoldDenominator::LineSecondFoldX,
+-            ]) {
++            ];
++            let mut coordinate_ordinal = 0usize;
++            while coordinate_ordinal < 3 {
++                let coordinate = coordinates[coordinate_ordinal];
++                let kind = kinds[coordinate_ordinal];
+                 if coordinate.is_zero() {
+-                    return Err(CircleFriError::ZeroDenominator(kind));
++                    zero_denominator = Some(kind);
+                 }
+                 denominators.push(coordinate);
++                coordinate_ordinal += 1;
+             }
++            point_ordinal += 1;
+         }
++        line_layer += 1;
++    }
++    if let Some(kind) = zero_denominator {
++        return Err(CircleFriError::ZeroDenominator(kind));
+     }
+     debug_assert_eq!(denominators.len(), denominator_count);
+ 
+     let mut flat_inverses = vec![M31::ZERO; denominators.len()];
+-    m31_batch_inverse_with(&denominators, &mut flat_inverses, inverse);
++    if !denominators.is_empty() {
++        let mut accumulator = M31::ONE;
++        let mut index = 0usize;
++        while index < denominators.len() {
++            flat_inverses[index] = accumulator;
++            accumulator = accumulator.mul(denominators[index]);
++            index += 1;
++        }
++        let mut accumulator_inverse = M31::inv(accumulator);
++        let mut suffix = denominators.len();
++        while suffix > 0 {
++            suffix -= 1;
++            let prefix = flat_inverses[suffix];
++            flat_inverses[suffix] = prefix.mul(accumulator_inverse);
++            accumulator_inverse = accumulator_inverse.mul(denominators[suffix]);
++        }
++    }
+     if let (Some(denominator), Some(inverse)) = (denominators.first(), flat_inverses.first()) {
+         // Montgomery batch inversion applies one common backend-error factor
+         // to every output, so one nonzero product check validates the single
+@@ -460,28 +480,54 @@ pub fn derive_query_fold_inverses_for_circle(
+     }
+     let mut cursor = 0usize;
+     let mut circle = Vec::with_capacity(layer0.len());
+-    for _ in layer0 {
++    let mut circle_output_ordinal = 0usize;
++    while circle_output_ordinal < layer0.len() {
+         circle.push([flat_inverses[cursor], flat_inverses[cursor + 1]]);
+         cursor += 2;
+-    }
+-    let later_inverses: [Vec<[M31; 3]>; 3] = core::array::from_fn(|layer| {
+-        let mut values = Vec::with_capacity(later[layer].len());
+-        for _ in later[layer] {
+-            values.push([
+-                flat_inverses[cursor],
+-                flat_inverses[cursor + 1],
+-                flat_inverses[cursor + 2],
+-            ]);
+-            cursor += 3;
+-        }
+-        values
+-    });
++        circle_output_ordinal += 1;
++    }
++    let mut later0 = Vec::with_capacity(line1.len());
++    let mut ordinal0 = 0usize;
++    while ordinal0 < line1.len() {
++        later0.push([
++            flat_inverses[cursor],
++            flat_inverses[cursor + 1],
++            flat_inverses[cursor + 2],
++        ]);
++        cursor += 3;
++        ordinal0 += 1;
++    }
++    let mut later1 = Vec::with_capacity(line2.len());
++    let mut ordinal1 = 0usize;
++    while ordinal1 < line2.len() {
++        later1.push([
++            flat_inverses[cursor],
++            flat_inverses[cursor + 1],
++            flat_inverses[cursor + 2],
++        ]);
++        cursor += 3;
++        ordinal1 += 1;
++    }
++    let mut later2 = Vec::with_capacity(line3.len());
++    let mut ordinal2 = 0usize;
++    while ordinal2 < line3.len() {
++        later2.push([
++            flat_inverses[cursor],
++            flat_inverses[cursor + 1],
++            flat_inverses[cursor + 2],
++        ]);
++        cursor += 3;
++        ordinal2 += 1;
++    }
++    let later_inverses = [later0, later1, later2];
+     debug_assert_eq!(cursor, flat_inverses.len());
+ 
+-    let final_x = line3_points
+-        .iter()
+-        .map(|point| double_x(double_x(point.x)))
+-        .collect();
++    let mut final_x = Vec::with_capacity(line3_points.len());
++    let mut final_ordinal = 0usize;
++    while final_ordinal < line3_points.len() {
++        final_x.push(double_x(double_x(line3_points[final_ordinal].x)));
++        final_ordinal += 1;
++    }
+     Ok(DerivedCircleQueryFoldInverses {
+         circle,
+         later: later_inverses,
+diff --git a/crates/aspis-core/src/circle_openings.rs b/crates/aspis-core/src/circle_openings.rs
+index 2e4a07d..7c72a93 100644
+--- a/crates/aspis-core/src/circle_openings.rs
++++ b/crates/aspis-core/src/circle_openings.rs
+@@ -830,12 +830,9 @@ impl<'a> VerifiedCircleOpenings<'a> {
+         let coordinates = derive_query_fold_inverses_for_circle(
+             u32::from(shape.domain_log_size),
+             queries,
+-            [
+-                &self.later.indices.later[0],
+-                &self.later.indices.later[1],
+-                &self.later.indices.later[2],
+-            ],
+-            inverse,
++            &self.later.indices.later[0],
++            &self.later.indices.later[1],
++            &self.later.indices.later[2],
+         )?;
+         let alpha_squared = alphas.map(QM31::square);
+         let alpha = alphas.map(PreparedQm31Multiplier::new);

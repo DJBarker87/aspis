@@ -113,6 +113,27 @@ value bytes at the same ordinal, assuming the parser-established record-width
 and record-length bounds. The proof unfolds the generated checked arithmetic
 and slice access; it is not a trace-test assumption.
 
+## Accepted proof to the four FRI checks
+
+`V5FriAcceptedForestChecks.lean` now joins the source facts above to the exact
+field arithmetic, the authenticated Merkle values, and the released coordinate
+tables.  For every accepted query it proves the circle fold, both middle line
+folds, and the final polynomial comparison.  The combined theorem is
+`accepted_production_execution_yields_released_forest_fri_checks`.
+
+It also proves that a second accepted Merkle forest cannot make those checks
+different unless the already named SHA-256 Merkle-collision event occurs.
+`remove_released_fri_arithmetic_failure_into_collision` therefore removes the
+old generic "FRI arithmetic failed" branch from the released security event.
+
+The result does not hide its remaining code connections.  It still takes the
+literal Rust/helper call equalities, the byte-decoder equality, the values
+passed from the transcript into the FRI call, and the production/coordinate-
+adapter equality as inputs.  These inputs state code-to-code or code-to-value
+equalities; none assumes a FRI fold equation.  The shape validator's small
+success-return property is now universally checked in
+`../v5-shape-validation-20260821/`.
+
 ## Opaque called operations
 
 The generated translation still treats several called operations as opaque:
@@ -143,3 +164,14 @@ compiles the generated definitions, the complete accepted-execution proof,
 the maintained observation bridge, and the byte/accessor adapter. It does not
 regenerate the LLBC; that requires the pinned Charon/Aeneas extraction
 environment.
+
+The larger replay below compiles the arithmetic, coordinate, decoder,
+consumer, and accepted-forest proofs together from clean output directories:
+
+```sh
+LEAN432_BIN=/path/to/lean-4.32.0/bin/lean \
+AENEAS_LEAN_LIB=/path/to/aeneas/backends/lean/.lake/build/lib/lean \
+V5_FRI_ARITHMETIC_BASE_LEAN_OUT=/path/to/checked-field-oleans \
+V5_FRI_COMPONENTB_LEAN_OUT=/path/to/checked-component-b-oleans \
+./aeneas-verif/v5-fri-consumer-exact-20260815/replay-accepted-forest-lean432.sh
+```

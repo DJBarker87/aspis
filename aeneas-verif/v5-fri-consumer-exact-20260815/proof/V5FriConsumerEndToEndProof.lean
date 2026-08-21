@@ -1096,7 +1096,9 @@ structure ProductionFriPreparationTrace
         alphas () = .ok alphaPowers
 
 /-- The only property of shape validation needed by the coordinate bridge:
-successful validation returns the shape it was given. -/
+successful validation returns the shape it was given.  The unchanged Rust
+method is checked universally by
+`aeneas-verif/v5-shape-validation-20260821/verify.sh`. -/
 def ValidationSuccessPreservesShape : Prop :=
   ∀ input output,
     aspis_core.circle_pcs_shape.CirclePcsShape.validate input =

@@ -1,0 +1,10 @@
+[package]
+name = "v5-fri-coordinate-source"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+aspis-core = { path = "../../../crates/aspis-core" }
+
+[workspace]
