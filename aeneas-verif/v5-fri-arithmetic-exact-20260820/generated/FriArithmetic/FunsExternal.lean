@@ -44,7 +44,7 @@ axiom core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT.any
     Source: '/rustc/library/core/src/slice/iter/macros.rs', lines 326:12-329:45
     Name pattern: [core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, @T>, &'a @T>}::any]
     Visibility: public -/
-private def core.slice.iter.Iter.anyAux
+def core.slice.iter.Iter.anyAux
     {T : Type} {F : Type}
     (fnMut : core.ops.function.FnMut F T Bool) :
     Nat → core.slice.iter.Iter T → F →

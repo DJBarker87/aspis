@@ -159,6 +159,12 @@ compile V5FriConsumerValueSemantics \
   "$consumer_proof/V5FriConsumerValueSemantics.lean"
 compile V5FriConsumerReadSemantics \
   "$consumer_proof/V5FriConsumerReadSemantics.lean"
+compile V5FriTransparentHelperEquality \
+  "$consumer_proof/V5FriTransparentHelperEquality.lean"
+compile V5FriProductionDecoderCanonical \
+  "$consumer_proof/V5FriProductionDecoderCanonical.lean"
+compile V5FriProductionDecoderEquality \
+  "$consumer_proof/V5FriProductionDecoderEquality.lean"
 compile V5FriConsumerCoordinateBridge \
   "$consumer_proof/V5FriConsumerCoordinateBridge.lean"
 compile V5FriAcceptedForestChecks \

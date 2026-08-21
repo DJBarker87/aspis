@@ -1,6 +1,7 @@
 import V5FriConsumerDecoderBridge
 import V5FriConsumerCoordinateBridge
 import V5FriDecoderReferenceSemantics
+import V5FriProductionDecoderEquality
 import AspisFormal.V5MerkleTranscriptProjection
 import AspisFormal.V5AcceptedExecutionReleasedSchedule
 import AspisFormal.V5AcceptedExecutionReleasedSecurity
@@ -40,6 +41,7 @@ open AspisV5FriFoldSemantics
 open AspisV5FriCoherentCandidateExtraction
 open AspisV5FriConcreteEncoderCommutation
 open AspisV5FriPreparedSumSemantics
+open AspisV5FriProductionDecoderEquality
 open AspisV5FriSourceLoopOrder
 open AspisV5MerkleAuthenticationBinding
 open AspisV5MerkleConsumedValueBridge
@@ -280,11 +282,10 @@ private theorem reference_slot_decode_of_slice
   rfl
 
 /-- The selected consumer decode is the corresponding entry of every
-successful full production decode.  The proof joins two transparent
-Charon/Aeneas extractions of `QM31::from_le_bytes`; the only remaining source
-boundary is the already-recorded full-decoder equality. -/
-theorem consumer_selected_full_decoder_equality
-    (hDecoder : ProductionDecoderReferenceEquality) :
+successful full production decode.  The proof joins the translated production
+decoder, the independently translated selected decoder, and the loop-free
+reference decoder; callers supply no decoder premise. -/
+theorem consumer_selected_full_decoder_equality :
     ConsumerSelectedFullDecoderEquality := by
   intro query leaf selected value layer values hfull hslice hvalue
   have hlength := production_full_decoder_success_length leaf layer values hfull
@@ -299,7 +300,7 @@ theorem consumer_selected_full_decoder_equality
     rw [hfixedSlice]
     exact hfull
   obtain ⟨refValues, hrefFull, hvalues⟩ :=
-    hDecoder.full fixed layer values hfixedFull
+    productionDecoderReferenceEquality.full fixed layer values hfixedFull
   let slot : Fin 4 :=
     ⟨(query &&& 3#u32).val, by
       rw [UScalar.val_and]
@@ -338,13 +339,12 @@ theorem consumer_selected_full_decoder_equality
   rfl
 
 /-- Construct the exact-run agreement for the concrete decoder from the
-existing full-decoder source equality. -/
+proved production-decoder equality. -/
 theorem productionOpeningFibreDecoder_authenticated_agreement
     {sha256 : List AspisV5MerkleAuthenticationBinding.Byte → Digest32}
     {roots : V5PrivateRoots Digest32} {queries : Finset V5Query}
     (run : ExactV5Run sha256 roots queries)
-    (prepared : fri_checks.V5PreparedPcsClaims)
-    (hDecoder : ProductionDecoderReferenceEquality) :
+    (prepared : fri_checks.V5PreparedPcsClaims) :
     AuthenticatedCallDecoderAgreement run prepared
       (productionOpeningFibreDecoder prepared) := by
   constructor
@@ -354,7 +354,7 @@ theorem productionOpeningFibreDecoder_authenticated_agreement
     exact productionLaterDecoded_of_generated_leaf leaf slot
   · intro query _hactive leaf selected value layer values _hbytes hfull
       hslice hvalue
-    exact consumer_selected_full_decoder_equality hDecoder query leaf selected
+    exact consumer_selected_full_decoder_equality query leaf selected
       value layer values hfull hslice hvalue
 
 /-- Successful execution of the extracted exact line helper exposes the full
@@ -1527,7 +1527,6 @@ theorem accepted_execution_circle_check
     (transcript : IdealTranscript K)
     (decoder : Decoder) (hCalls : ExactFriHelperCallEquality)
     (hAgreement : AuthenticatedCallDecoderAgreement run prepared decoder)
-    (hDecoder : ProductionDecoderReferenceEquality)
     (hBinding : AcceptedFriModelInputBinding prepared execution.sourceAlphas
       finalPolynomial schedule transcript)
     (hCoordinates : ReleasedCoordinateOutputEvidence
@@ -1599,7 +1598,8 @@ theorem accepted_execution_circle_check
         .ok (.Ok line1Values) := by
     simpa only [hline1LeafEq] using hline1Decode
   have hparentDecoderSemantics :=
-    (production_decoders_have_reference_semantics hDecoder).full
+    (production_decoders_have_reference_semantics
+      productionDecoderReferenceEquality).full
       read.parentValue
       (Std.U8.wrapping_add (UScalar.cast .U8 0#usize) 1#u8)
       line1Values hparentDecode
@@ -1710,7 +1710,6 @@ theorem accepted_execution_line1_check
     (hsource : ProductionUsesReleasedFriTables schedule)
     (decoder : Decoder) (hCalls : ExactFriHelperCallEquality)
     (hAgreement : AuthenticatedCallDecoderAgreement run prepared decoder)
-    (hDecoder : ProductionDecoderReferenceEquality)
     (hCoordinates : ReleasedCoordinateOutputEvidence
       (alloc.vec.Vec.deref openings.indices.layer0)
       (alloc.vec.Vec.deref execution.laterRuns.indices0)
@@ -1777,7 +1776,8 @@ theorem accepted_execution_line1_check
     rw [hAlphaAt]
     exact hPowers 1 (by norm_num)
   have hfold := later_read_yields_line_equation read hCalls referenceDecoded
-    (production_decoders_have_reference_semantics hDecoder)
+    (production_decoders_have_reference_semantics
+      productionDecoderReferenceEquality)
     (schedule.alpha 1) hcoordinate.1 hAlphaPowers
   have hslot :
       (⟨((UScalar.cast .Usize
@@ -1854,7 +1854,6 @@ theorem accepted_execution_line2_check
     (hsource : ProductionUsesReleasedFriTables schedule)
     (decoder : Decoder) (hCalls : ExactFriHelperCallEquality)
     (hAgreement : AuthenticatedCallDecoderAgreement run prepared decoder)
-    (hDecoder : ProductionDecoderReferenceEquality)
     (hCoordinates : ReleasedCoordinateOutputEvidence
       (alloc.vec.Vec.deref openings.indices.layer0)
       (alloc.vec.Vec.deref execution.laterRuns.indices0)
@@ -1927,7 +1926,8 @@ theorem accepted_execution_line2_check
     rw [hAlphaAt]
     exact hPowers 2 (by norm_num)
   have hfold := later_read_yields_line_equation read hCalls referenceDecoded
-    (production_decoders_have_reference_semantics hDecoder)
+    (production_decoders_have_reference_semantics
+      productionDecoderReferenceEquality)
     (schedule.alpha 2) hcoordinate.1 hAlphaPowers
   have hslot :
       (⟨((UScalar.cast .Usize
@@ -2005,7 +2005,6 @@ theorem accepted_execution_line3_check
     (transcript : IdealTranscript K)
     (decoder : Decoder) (hCalls : ExactFriHelperCallEquality)
     (hAgreement : AuthenticatedCallDecoderAgreement run prepared decoder)
-    (hDecoder : ProductionDecoderReferenceEquality)
     (hBinding : AcceptedFriModelInputBinding prepared execution.sourceAlphas
       finalPolynomial schedule transcript)
     (hCoordinates : ReleasedCoordinateOutputEvidence
@@ -2083,7 +2082,8 @@ theorem accepted_execution_line3_check
     rw [hAlphaAt]
     exact hPowers 3 (by norm_num)
   have hfold := terminal_read_yields_final_equation read hCalls
-    referenceDecoded (production_decoders_have_reference_semantics hDecoder)
+    referenceDecoded (production_decoders_have_reference_semantics
+      productionDecoderReferenceEquality)
     (schedule.alpha 3) hBinding.finalCanonical hcoordinate.1
     hcoordinate.2.2.1 hAlphaPowers
   rw [exact_run_line3_fibre run decoder query hquery, ← hbytes]
@@ -2223,7 +2223,6 @@ theorem accepted_production_execution_yields_forest_fri_checks
     (hqueryMember : ∀ i, queries i ∈ querySet)
     (decoder : Decoder) (hCalls : ExactFriHelperCallEquality)
     (hAgreement : AuthenticatedCallDecoderAgreement run prepared decoder)
-    (hDecoder : ProductionDecoderReferenceEquality)
     (hBinding : AcceptedFriModelInputBinding prepared execution.sourceAlphas
       finalPolynomial schedule transcript)
     (hValidate : ValidationSuccessPreservesShape)
@@ -2301,20 +2300,20 @@ theorem accepted_production_execution_yields_forest_fri_checks
   · intro i
     exact accepted_execution_circle_check run openings prepared finalPolynomial
       sink execution hdriver schedule hsource transcript decoder hCalls
-      hAgreement hDecoder hBinding hCoordinates hPowers (queries i)
+      hAgreement hBinding hCoordinates hPowers (queries i)
       (hqueryMember i)
   · intro i
     exact accepted_execution_line1_check run openings prepared finalPolynomial
       sink execution hdriver schedule hsource decoder hCalls hAgreement
-      hDecoder hCoordinates hPowers (queries i) (hqueryMember i)
+      hCoordinates hPowers (queries i) (hqueryMember i)
   · intro i
     exact accepted_execution_line2_check run openings prepared finalPolynomial
       sink execution hdriver schedule hsource decoder hCalls hAgreement
-      hDecoder hCoordinates hPowers (queries i) (hqueryMember i)
+      hCoordinates hPowers (queries i) (hqueryMember i)
   · intro i
     exact accepted_execution_line3_check run openings prepared finalPolynomial
       sink execution hdriver schedule hsource transcript decoder hCalls
-      hAgreement hDecoder hBinding hCoordinates hPowers (queries i)
+      hAgreement hBinding hCoordinates hPowers (queries i)
       (hqueryMember i)
 
 /-- The query-membership input above is already a consequence of the exact
@@ -2346,7 +2345,6 @@ theorem accepted_production_execution_yields_forest_fri_checks_of_projection
       derived driverResult querySet queries)
     (decoder : Decoder) (hCalls : ExactFriHelperCallEquality)
     (hAgreement : AuthenticatedCallDecoderAgreement run prepared decoder)
-    (hDecoder : ProductionDecoderReferenceEquality)
     (hBinding : AcceptedFriModelInputBinding prepared execution.sourceAlphas
       finalPolynomial schedule transcript)
     (hValidate : ValidationSuccessPreservesShape)
@@ -2358,7 +2356,7 @@ theorem accepted_production_execution_yields_forest_fri_checks_of_projection
     prepared finalPolynomial sink execution hdriver schedule hsource transcript
     queries (scheduledQuery_mem_of_projection relationInput transcriptInput
       derived driverResult querySet queries projection) decoder hCalls
-    hAgreement hDecoder hBinding hValidate hCoordinateSource
+    hAgreement hBinding hValidate hCoordinateSource
 
 /-- The released wrapper fixes the decoder to the concrete production-call
 decoder.  The consumer's selected read is now derived internally from the
@@ -2386,7 +2384,6 @@ theorem accepted_production_execution_yields_released_forest_fri_checks
     (projection : TranscriptExecutionProjection relationInput transcriptInput
       derived driverResult querySet queries)
     (hCalls : ExactFriHelperCallEquality)
-    (hDecoder : ProductionDecoderReferenceEquality)
     (hBinding : AcceptedFriModelInputBinding prepared execution.sourceAlphas
       finalPolynomial (exactReleasedFriTables base) transcript)
     (hValidate : ValidationSuccessPreservesShape)
@@ -2396,14 +2393,14 @@ theorem accepted_production_execution_yields_released_forest_fri_checks
       (sha256MerkleHashing sha256) run.forest (exactReleasedFriTables base)
       transcript queries := by
   have hAgreement := productionOpeningFibreDecoder_authenticated_agreement
-    run prepared hDecoder
+    run prepared
   exact
     accepted_production_execution_yields_forest_fri_checks_of_projection run
       openings prepared finalPolynomial sink execution hdriver
       (exactReleasedFriTables base) (exactReleasedFriTables_source_shape base)
       transcript queries relationInput transcriptInput derived driverResult
       projection (productionOpeningFibreDecoder prepared) hCalls hAgreement
-      hDecoder hBinding hValidate hCoordinateSource
+      hBinding hValidate hCoordinateSource
 
 /-- Once one exact accepted forest has all four FRI checks, the FRI-arithmetic
 failure arm of the released security event is impossible.  A purported
