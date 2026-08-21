@@ -37,11 +37,10 @@
  
  /-- Trait implementation: [core::slice::cmp::{impl core::cmp::PartialEq<[U]> for [T]}]
      Source: '/rustc/library/core/src/slice/cmp.rs', lines 14:0-16:28
-@@ -201,7 +208,57 @@
-   (core.slice.iter.IterMut T) → P → Result ((Option Std.Usize) ×
+@@ -202,6 +209,56 @@
      (core.slice.iter.IterMut T) × (core.slice.iter.IterMut T →
      core.slice.iter.IterMut T))
-+
+ 
 +/-- Type-correct view used to construct Rust's `Enumerate` adapter. -/
 +def core.slice.iter.IteratorIterMut.next_without_writeback
 +    {T : Type} (iter : core.slice.iter.IterMut T) :
@@ -79,7 +78,7 @@
 +        fun current replacement =>
 +          { current with
 +            iter := writeBack current.iter (replacement.map Prod.snd) })
- 
++
 +/-- Forward/backward form of `Iterator::enumerate` for a mutable slice
 +iterator. -/
 +def core.iter.adapters.enumerate.IteratorEnumerateMut.enumerate
@@ -158,7 +157,55 @@
  inductive aspis_core.circle_query.CircleQueryError where
  | QueryOutOfRange : Std.Usize → aspis_core.circle_query.CircleQueryError
  | LeafLength :
-@@ -876,7 +933,7 @@
+@@ -590,8 +647,11 @@
+     Visibility: public -/
+ @[rust_fun
+   "aspis_core::field::{core::cmp::PartialEq<aspis_core::field::M31, aspis_core::field::M31>}::eq"]
+-axiom aspis_core.field.M31.Insts.CoreCmpPartialEqM31.eq
+-  : aspis_core.field.M31 → aspis_core.field.M31 → Result Bool
++def aspis_core.field.M31.Insts.CoreCmpPartialEqM31.eq
++  (self : aspis_core.field.M31) (other : aspis_core.field.M31) :
++  Result Bool
++  := do
++  ok (self = other)
+ 
+ /-- Trait implementation: [aspis_core::field::{impl core::cmp::PartialEq<aspis_core::field::M31> for aspis_core::field::M31}]
+     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/field.rs', lines 19:22-19:31
+@@ -702,14 +762,31 @@
+ axiom aspis_core.field.CM31.from_m31
+   : aspis_core.field.M31 → Result aspis_core.field.CM31
+ 
++/-- Exact extracted equality body from the release-pinned `field.rs` blob. -/
++def aspis_core.field.CM31.Insts.CoreCmpPartialEqCM31.eq
++  (self : aspis_core.field.CM31) (other : aspis_core.field.CM31) :
++  Result Bool
++  := do
++  let b ← aspis_core.field.M31.Insts.CoreCmpPartialEqM31.eq self.a other.a
++  if b
++  then aspis_core.field.M31.Insts.CoreCmpPartialEqM31.eq self.b other.b
++  else ok false
++
+ /-- [aspis_core::field::{impl core::cmp::PartialEq<aspis_core::field::QM31> for aspis_core::field::QM31}::eq]:
+     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/field.rs', lines 351:22-351:31
+     Name pattern: [aspis_core::field::{core::cmp::PartialEq<aspis_core::field::QM31, aspis_core::field::QM31>}::eq]
+     Visibility: public -/
+ @[rust_fun
+   "aspis_core::field::{core::cmp::PartialEq<aspis_core::field::QM31, aspis_core::field::QM31>}::eq"]
+-axiom aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31.eq
+-  : aspis_core.field.QM31 → aspis_core.field.QM31 → Result Bool
++def aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31.eq
++  (self : aspis_core.field.QM31) (other : aspis_core.field.QM31) :
++  Result Bool
++  := do
++  let b ←
++    aspis_core.field.CM31.Insts.CoreCmpPartialEqCM31.eq self.c0 other.c0
++  if b
++  then aspis_core.field.CM31.Insts.CoreCmpPartialEqCM31.eq self.c1 other.c1
++  else ok false
+ 
+ /-- Trait implementation: [aspis_core::field::{impl core::cmp::PartialEq<aspis_core::field::QM31> for aspis_core::field::QM31}]
+     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/field.rs', lines 351:22-351:31
+@@ -876,7 +953,7 @@
      Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/state_only_hiding.rs', lines 128:0-128:37
      Name pattern: [aspis_core::state_only_hiding::StateOnlyHidingScheduleError]
      Visibility: public -/
@@ -167,7 +214,7 @@
    "aspis_core::state_only_hiding::StateOnlyHidingScheduleError"]
  inductive aspis_core.state_only_hiding.StateOnlyHidingScheduleError where
  | ZeroMaskNonce : aspis_core.state_only_hiding.StateOnlyHidingScheduleError
-@@ -996,7 +1053,7 @@
+@@ -996,7 +1073,7 @@
      Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/state_only_sumcheck.rs', lines 63:0-63:37
      Name pattern: [aspis_core::state_only_sumcheck::StateOnlySumcheckVerifyError]
      Visibility: public -/
@@ -176,7 +223,7 @@
    "aspis_core::state_only_sumcheck::StateOnlySumcheckVerifyError"]
  inductive aspis_core.state_only_sumcheck.StateOnlySumcheckVerifyError where
  | BadLength : aspis_core.state_only_sumcheck.StateOnlySumcheckVerifyError
-@@ -1081,7 +1138,8 @@
+@@ -1081,7 +1158,8 @@
      Name pattern: [aspis_core::transcript::label::GRIND_NONCE]
      Visibility: public -/
  @[rust_const "aspis_core::transcript::label::GRIND_NONCE"]
@@ -186,7 +233,7 @@
  
  /-- [aspis_core::transcript::label::CLAIM]
      Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 70:4-70:23
-@@ -1166,14 +1224,16 @@
+@@ -1166,14 +1244,16 @@
      Name pattern: [aspis_core::transcript::label::M31_CIRCLE_FOLD_POW_NONCE]
      Visibility: public -/
  @[rust_const "aspis_core::transcript::label::M31_CIRCLE_FOLD_POW_NONCE"]
@@ -205,7 +252,7 @@
  
  /-- [aspis_core::transcript::label::M31_STATE_ONLY_QUERY_CANDIDATE]
      Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 188:4-188:48
-@@ -1187,7 +1247,7 @@
+@@ -1187,7 +1267,7 @@
      Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 231:0-231:25
      Name pattern: [aspis_core::transcript::QuerySampleError]
      Visibility: public -/
@@ -214,7 +261,7 @@
  inductive aspis_core.transcript.QuerySampleError where
  | BoundNotPowerOfTwo : Std.U32 → aspis_core.transcript.QuerySampleError
  | CountExceedsBound :
-@@ -1203,7 +1263,7 @@
+@@ -1203,7 +1283,7 @@
      Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 242:0-242:23
      Name pattern: [aspis_core::transcript::OodSampleError]
      Visibility: public -/
@@ -223,7 +270,7 @@
  inductive aspis_core.transcript.OodSampleError where
  | ChallengeSampleExhausted : aspis_core.transcript.OodSampleError
  | SubfieldSampleExhausted : aspis_core.transcript.OodSampleError
-@@ -1212,7 +1272,7 @@
+@@ -1212,7 +1292,7 @@
      Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/transcript.rs', lines 250:0-250:31
      Name pattern: [aspis_core::transcript::CirclePointSampleError]
      Visibility: public -/
@@ -232,7 +279,7 @@
    "aspis_core::transcript::CirclePointSampleError"]
  inductive aspis_core.transcript.CirclePointSampleError where
  | ChallengeSampleExhausted : aspis_core.transcript.CirclePointSampleError
-@@ -1418,7 +1478,7 @@
+@@ -1418,7 +1498,7 @@
      Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-statement/src/atomic_statement.rs', lines 62:0-62:29
      Name pattern: [aspis_statement::atomic_statement::AtomicStatementError]
      Visibility: public -/
@@ -241,7 +288,7 @@
    "aspis_statement::atomic_statement::AtomicStatementError"]
  inductive aspis_statement.atomic_statement.AtomicStatementError where
  | NonCanonicalDigest : aspis_statement.atomic_statement.AtomicStatementError
-@@ -1480,7 +1540,7 @@
+@@ -1480,7 +1560,7 @@
      Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-statement/src/state_only_terminal.rs', lines 46:0-46:31
      Name pattern: [aspis_statement::state_only_terminal::StateOnlyTerminalError]
      Visibility: public -/
@@ -250,7 +297,7 @@
    "aspis_statement::state_only_terminal::StateOnlyTerminalError"]
  inductive aspis_statement.state_only_terminal.StateOnlyTerminalError where
  | PublicFeeOutOfRange :
-@@ -1505,7 +1565,7 @@
+@@ -1505,7 +1585,7 @@
      Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-program-error-2.2.2/src/lib.rs', lines 33:0-33:21
      Name pattern: [solana_program_error::ProgramError]
      Visibility: public -/
@@ -259,7 +306,7 @@
  inductive solana_program_error.ProgramError where
  | Custom : Std.U32 → solana_program_error.ProgramError
  | InvalidArgument : solana_program_error.ProgramError
-@@ -1683,7 +1743,6 @@
+@@ -1683,7 +1763,6 @@
  /-- [aspis_verifier_parser_extraction::v5_atomic_terminal::V5AtomicTerminalError]
      Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_atomic_terminal.rs', lines 86:0-99:1
      Visibility: public -/
@@ -267,7 +314,7 @@
  inductive v5_atomic_terminal.V5AtomicTerminalError where
  | WrongContextBytes :
    Std.Usize →
-@@ -2073,9 +2132,7 @@
+@@ -2073,9 +2152,7 @@
      v5_atomic_terminal.V5AtomicTerminalError))
    := do
    let (o, iter1, next_back) ←
@@ -278,7 +325,7 @@
    match o with
    | none =>
      let i ← v5_atomic_terminal.V5_ATOMIC_TERMINAL_MU_OFFSET
-@@ -2200,9 +2257,7 @@
+@@ -2200,9 +2277,7 @@
                lift (Array.to_slice_mut zerocheck_point)
              let (im, iter_mut_back) ← core.slice.Slice.iter_mut s1
              let (iter, enumerate_back) ←
@@ -289,7 +336,7 @@
              v5_atomic_terminal.decode_v5_atomic_terminal_context_loop
                to_slice_mut_back iter_mut_back enumerate_back iter (fun e => e)
                bytes eta val val1 val2 val3
-@@ -2477,9 +2532,8 @@
+@@ -2477,9 +2552,8 @@
      Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 235:0-235:76
      Visibility: public -/
  @[global_simps, irreducible]
@@ -301,7 +348,7 @@
  
  /-- [aspis_verifier_parser_extraction::v5_cu_probe::V5_CU_PROBE_CANDIDATE_C1_OFFSET]
      Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 239:0-239:89
-@@ -4149,7 +4203,7 @@
+@@ -4149,7 +4223,7 @@
              | core.ops.control_flow.ControlFlow.Continue val2 =>
                let b1 ←
                  core.cmp.PartialEq.ne.trait_default
@@ -310,7 +357,7 @@
                    val.y
                if b1
                then ok (done (transcript1, vpor, 0#u32))
-@@ -4677,9 +4731,7 @@
+@@ -4677,9 +4751,7 @@
      Std.U32 18#usize)) solana_program_error.ProgramError)))
    := do
    let (o, iter1, next_back) ←
@@ -321,7 +368,7 @@
    match o with
    | none =>
      let i1 ← aspis_core.transcript.label.M31_CIRCLE_FINAL_TENSOR_POLY
-@@ -4817,9 +4869,7 @@
+@@ -4817,9 +4889,7 @@
        let (s, to_slice_mut_back) ← lift (Array.to_slice_mut final_polynomial)
        let (im, iter_mut_back) ← core.slice.Slice.iter_mut s
        let (iter, enumerate_back) ←
@@ -332,7 +379,7 @@
        let pending_return ←
          v5_cu_probe.derive_v5_complete_queries_for_selector_from_transcript_loop
            parsed to_slice_mut_back iter_mut_back enumerate_back iter
-@@ -8559,7 +8609,7 @@
+@@ -8559,7 +8629,7 @@
      Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 388:16-390:5 -/
  def
    v5_cu_probe.fri_checks.gamma_combine_v5_layer0_exact.closure.Insts.CoreOpsFunctionFnOnceTupleCirclePcsDecodeError.call_once
@@ -341,7 +388,7 @@
    (_ : Unit) :
    Result aspis_core.circle_pcs_shape.CirclePcsDecodeError
    := do
-@@ -8613,9 +8663,7 @@
+@@ -8613,9 +8683,7 @@
      aspis_core.field.QM31 3#usize)))))
    := do
    let (o, iter1, next_back) ←
@@ -352,7 +399,7 @@
    match o with
    | none => ok (done (none, let e := next_back iter1 none
                              back e))
-@@ -8692,9 +8740,7 @@
+@@ -8692,9 +8760,7 @@
      let (s, to_slice_mut_back) ← lift (Array.to_slice_mut helper_values)
      let (im, iter_mut_back) ← core.slice.Slice.iter_mut s
      let (iter2, enumerate_back) ←
@@ -363,7 +410,7 @@
      let (pending_return, back) ←
        v5_cu_probe.fri_checks.gamma_combine_v5_layer0_exact_loop0_loop0 iter2
          (fun e => e) c2_leaf helper
-@@ -8737,22 +8783,23 @@
+@@ -8737,22 +8803,23 @@
    (back : core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut
    aspis_core.field.QM31) → core.iter.adapters.enumerate.Enumerate
    (core.slice.iter.IterMut aspis_core.field.QM31)) :
@@ -400,7 +447,7 @@
    | some p =>
      let (slot, output) := p
      let a1 ← Array.index_usize helper_values slot
-@@ -8773,9 +8820,11 @@
+@@ -8773,9 +8840,11 @@
    (core.slice.iter.IterMut aspis_core.field.QM31))
    (a : Array aspis_core.field.PreparedQm31Multiplier 3#usize)
    (helper_values : Array (Array aspis_core.field.QM31 3#usize) 4#usize) :
@@ -415,7 +462,7 @@
    := do
    loop
      (fun (iter1, back1) =>
-@@ -8837,13 +8886,12 @@
+@@ -8837,13 +8906,12 @@
            let (s, to_slice_mut_back) ← lift (Array.to_slice_mut val)
            let (im, iter_mut_back) ← core.slice.Slice.iter_mut s
            let (iter, enumerate_back) ←
@@ -433,7 +480,7 @@
            let s1 := iter_mut_back im1
            let combined := to_slice_mut_back s1
            ok (core.result.Result.Ok combined)
-@@ -8856,7 +8904,6 @@
+@@ -8856,7 +8924,6 @@
  /-- [aspis_verifier_parser_extraction::v5_cu_probe::fri_checks::V5FriCheckError]
      Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_fri_checks.rs', lines 87:0-96:1
      Visibility: public -/

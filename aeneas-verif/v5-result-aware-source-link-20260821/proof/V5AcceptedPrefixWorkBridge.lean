@@ -17,10 +17,14 @@ set_option linter.unusedSimpArgs false
 
 open Aeneas Aeneas.Std Result ControlFlow Error
 
+attribute [local simp]
+  core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+  core.convert.FromSame core.convert.FromSame.from
+
 abbrev PrefixHash :=
   Slice (Slice Std.U8) → Result (Array Std.U8 32#usize)
 
-theorem accepted_prefix_has_batch_success
+theorem accepted_prefix_has_batch_and_gamma_successor
     (parsed : EntryParsed)
     (liveStatement : EntryStatement)
     (statementDigest : Array Std.U8 32#usize)
@@ -31,10 +35,12 @@ theorem accepted_prefix_has_batch_success
       V5AcceptedEntryGenerated.v5_cu_probe.verify_v5_wire_prefix
           parsed liveStatement statementDigest hash =
         .ok (.Ok (verified, returnedTranscript))) :
-    ∃ beforeBatch afterBatch,
+    ∃ beforeBatch afterBatch afterGamma,
       V5AcceptedEntryGenerated.v5_cu_probe.check_and_absorb_real_v5_batch_nonce
           beforeBatch parsed.v5_batch_nonce =
-        .ok (.Ok (), afterBatch) := by
+        .ok (.Ok (), afterBatch) ∧
+      V5AcceptedEntryGenerated.aspis_core.transcript.Transcript.challenge_nonzero_qm31
+          afterBatch = .ok (.Ok verified.gamma, afterGamma) := by
   unfold V5AcceptedEntryGenerated.v5_cu_probe.verify_v5_wire_prefix at success
   rw [bind_eq_ok_iff] at success
   obtain ⟨headerValid, _, success⟩ := success
@@ -309,7 +315,181 @@ theorem accepted_prefix_has_batch_success
                                       batchResult unitValue batchBranchSuccess
                                     cases unitValue
                                     rw [hbatchResult] at batchSuccess
-                                    exact ⟨beforeBatch, afterBatch, batchSuccess⟩
+                                    simp only at success
+                                    rw [bind_eq_ok_iff] at success
+                                    obtain ⟨gammaPair, gammaSuccess, success⟩ := success
+                                    rcases gammaPair with ⟨gammaResult, afterGamma⟩
+                                    rw [bind_eq_ok_iff] at success
+                                    obtain ⟨mappedGamma, mappedGammaSuccess, success⟩ := success
+                                    rw [bind_eq_ok_iff] at success
+                                    obtain ⟨gammaFlow, gammaBranchSuccess, success⟩ := success
+                                    cases gammaFlow with
+                                    | Break residual =>
+                                      cases residual with
+                                      | Ok impossible => nomatch impossible
+                                      | Err error => simp at success
+                                    | Continue sampledGamma =>
+                                      have hmappedGamma := branch_eq_ok_of_continue
+                                        mappedGamma sampledGamma gammaBranchSuccess
+                                      rw [hmappedGamma] at mappedGammaSuccess
+                                      cases gammaResult with
+                                      | Err error =>
+                                        simp [V5AcceptedEntryGenerated.core.result.Result.map_err,
+                                          V5AcceptedEntryGenerated.v5_cu_probe.verify_v5_wire_prefix.closure_5.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError.call_once]
+                                          at mappedGammaSuccess
+                                      | Ok actualGamma =>
+                                        simp [V5AcceptedEntryGenerated.core.result.Result.map_err]
+                                          at mappedGammaSuccess
+                                        subst actualGamma
+                                        simp only at success
+                                        rw [bind_eq_ok_iff] at success
+                                        obtain ⟨inactiveResult, inactiveSuccess, success⟩ := success
+                                        rw [bind_eq_ok_iff] at success
+                                        obtain ⟨inactiveFlow, inactiveBranchSuccess, success⟩ := success
+                                        cases inactiveFlow with
+                                        | Break residual =>
+                                          cases residual with
+                                          | Ok impossible => nomatch impossible
+                                          | Err error => simp at success
+                                        | Continue inactiveClaim =>
+                                          simp only at success
+                                          rw [bind_eq_ok_iff] at success
+                                          obtain ⟨_, _, success⟩ := success
+                                          rw [bind_eq_ok_iff] at success
+                                          obtain ⟨_, _, success⟩ := success
+                                          rw [bind_eq_ok_iff] at success
+                                          obtain ⟨_, _, success⟩ := success
+                                          rw [bind_eq_ok_iff] at success
+                                          obtain ⟨_, _, success⟩ := success
+                                          rw [bind_eq_ok_iff] at success
+                                          obtain ⟨kappaPair, _, success⟩ := success
+                                          rcases kappaPair with ⟨_, _⟩
+                                          rw [bind_eq_ok_iff] at success
+                                          obtain ⟨_, _, success⟩ := success
+                                          rw [bind_eq_ok_iff] at success
+                                          obtain ⟨kappaFlow, _, success⟩ := success
+                                          cases kappaFlow with
+                                          | Break residual =>
+                                            cases residual with
+                                            | Ok impossible => nomatch impossible
+                                            | Err error => simp at success
+                                          | Continue kappa =>
+                                            simp only at success
+                                            rw [bind_eq_ok_iff] at success
+                                            obtain ⟨gammaDiffers, _, success⟩ := success
+                                            cases gammaDiffers with
+                                            | true => simp at success
+                                            | false =>
+                                              simp only [Bool.false_eq_true, if_false] at success
+                                              rw [bind_eq_ok_iff] at success
+                                              obtain ⟨scale0Result, _, success⟩ := success
+                                              rw [bind_eq_ok_iff] at success
+                                              obtain ⟨scale0Flow, _, success⟩ := success
+                                              cases scale0Flow with
+                                              | Break residual =>
+                                                cases residual with
+                                                | Ok impossible => nomatch impossible
+                                                | Err error => simp at success
+                                              | Continue scale0 =>
+                                                simp only at success
+                                                rw [bind_eq_ok_iff] at success
+                                                obtain ⟨_, _, success⟩ := success
+                                                rw [bind_eq_ok_iff] at success
+                                                obtain ⟨scale0Differs, _, success⟩ := success
+                                                cases scale0Differs with
+                                                | true => simp at success
+                                                | false =>
+                                                  simp only [Bool.false_eq_true, if_false] at success
+                                                  rw [bind_eq_ok_iff] at success
+                                                  obtain ⟨scale1Result, _, success⟩ := success
+                                                  rw [bind_eq_ok_iff] at success
+                                                  obtain ⟨scale1Flow, _, success⟩ := success
+                                                  cases scale1Flow with
+                                                  | Break residual =>
+                                                    cases residual with
+                                                    | Ok impossible => nomatch impossible
+                                                    | Err error => simp at success
+                                                  | Continue scale1 =>
+                                                    simp only at success
+                                                    rw [bind_eq_ok_iff] at success
+                                                    obtain ⟨scale1Differs, _, success⟩ := success
+                                                    cases scale1Differs with
+                                                    | true => simp at success
+                                                    | false =>
+                                                      simp only [Bool.false_eq_true, if_false] at success
+                                                      rw [bind_eq_ok_iff] at success
+                                                      obtain ⟨scale2Result, _, success⟩ := success
+                                                      rw [bind_eq_ok_iff] at success
+                                                      obtain ⟨scale2Flow, _, success⟩ := success
+                                                      cases scale2Flow with
+                                                      | Break residual =>
+                                                        cases residual with
+                                                        | Ok impossible => nomatch impossible
+                                                        | Err error => simp at success
+                                                      | Continue scale2 =>
+                                                        simp only at success
+                                                        rw [bind_eq_ok_iff] at success
+                                                        obtain ⟨_, _, success⟩ := success
+                                                        rw [bind_eq_ok_iff] at success
+                                                        obtain ⟨scale2Differs, _, success⟩ := success
+                                                        cases scale2Differs with
+                                                        | true => simp at success
+                                                        | false =>
+                                                          simp only [Bool.false_eq_true, if_false] at success
+                                                          rw [bind_eq_ok_iff] at success
+                                                          obtain ⟨terminalResult, _, success⟩ := success
+                                                          rw [bind_eq_ok_iff] at success
+                                                          obtain ⟨_, _, success⟩ := success
+                                                          rw [bind_eq_ok_iff] at success
+                                                          obtain ⟨terminalFlow, _, success⟩ := success
+                                                          cases terminalFlow with
+                                                          | Break residual =>
+                                                            cases residual with
+                                                            | Ok impossible => nomatch impossible
+                                                            | Err error => simp at success
+                                                          | Continue terminal =>
+                                                            rcases terminal with ⟨contextStatement, context⟩
+                                                            simp only at success
+                                                            rw [bind_eq_ok_iff] at success
+                                                            obtain ⟨statementDiffers, _, success⟩ := success
+                                                            cases statementDiffers with
+                                                            | true => simp at success
+                                                            | false =>
+                                                              simp only [Bool.false_eq_true, if_false] at success
+                                                              rw [bind_eq_ok_iff] at success
+                                                              obtain ⟨contextDiffers, _, success⟩ := success
+                                                              cases contextDiffers with
+                                                              | true => simp at success
+                                                              | false =>
+                                                                simp only [Bool.false_eq_true, if_false] at success
+                                                                have hverified : verified.gamma = sampledGamma := by
+                                                                  exact (congrArg
+                                                                    (fun output => output.fst.gamma)
+                                                                    (core.result.Result.Ok.inj
+                                                                      (Result.ok.inj success))).symm
+                                                                subst sampledGamma
+                                                                exact ⟨beforeBatch, afterBatch, afterGamma,
+                                                                  batchSuccess, gammaSuccess⟩
+
+theorem accepted_prefix_has_batch_success
+    (parsed : EntryParsed)
+    (liveStatement : EntryStatement)
+    (statementDigest : Array Std.U8 32#usize)
+    (hash : PrefixHash)
+    (verified : V5AcceptedEntryGenerated.v5_cu_probe.VerifiedRealV5Wire)
+    (returnedTranscript : EntryTranscript)
+    (success :
+      V5AcceptedEntryGenerated.v5_cu_probe.verify_v5_wire_prefix
+          parsed liveStatement statementDigest hash =
+        .ok (.Ok (verified, returnedTranscript))) :
+    ∃ beforeBatch afterBatch,
+      V5AcceptedEntryGenerated.v5_cu_probe.check_and_absorb_real_v5_batch_nonce
+          beforeBatch parsed.v5_batch_nonce =
+        .ok (.Ok (), afterBatch) := by
+  obtain ⟨beforeBatch, afterBatch, _, batchSuccess, _⟩ :=
+    accepted_prefix_has_batch_and_gamma_successor parsed liveStatement
+      statementDigest hash verified returnedTranscript success
+  exact ⟨beforeBatch, afterBatch, batchSuccess⟩
 
 theorem batch_success_implies_difficulty_37_work
     (beforeBatch afterBatch : EntryTranscript)

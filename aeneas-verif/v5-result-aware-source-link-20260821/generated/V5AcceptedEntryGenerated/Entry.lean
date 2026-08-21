@@ -647,8 +647,11 @@ axiom
     Visibility: public -/
 @[rust_fun
   "aspis_core::field::{core::cmp::PartialEq<aspis_core::field::M31, aspis_core::field::M31>}::eq"]
-axiom aspis_core.field.M31.Insts.CoreCmpPartialEqM31.eq
-  : aspis_core.field.M31 → aspis_core.field.M31 → Result Bool
+def aspis_core.field.M31.Insts.CoreCmpPartialEqM31.eq
+  (self : aspis_core.field.M31) (other : aspis_core.field.M31) :
+  Result Bool
+  := do
+  ok (self = other)
 
 /-- Trait implementation: [aspis_core::field::{impl core::cmp::PartialEq<aspis_core::field::M31> for aspis_core::field::M31}]
     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/field.rs', lines 19:22-19:31
@@ -759,14 +762,31 @@ axiom aspis_core.field.CM31.new
 axiom aspis_core.field.CM31.from_m31
   : aspis_core.field.M31 → Result aspis_core.field.CM31
 
+/-- Exact extracted equality body from the release-pinned `field.rs` blob. -/
+def aspis_core.field.CM31.Insts.CoreCmpPartialEqCM31.eq
+  (self : aspis_core.field.CM31) (other : aspis_core.field.CM31) :
+  Result Bool
+  := do
+  let b ← aspis_core.field.M31.Insts.CoreCmpPartialEqM31.eq self.a other.a
+  if b
+  then aspis_core.field.M31.Insts.CoreCmpPartialEqM31.eq self.b other.b
+  else ok false
+
 /-- [aspis_core::field::{impl core::cmp::PartialEq<aspis_core::field::QM31> for aspis_core::field::QM31}::eq]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/field.rs', lines 351:22-351:31
     Name pattern: [aspis_core::field::{core::cmp::PartialEq<aspis_core::field::QM31, aspis_core::field::QM31>}::eq]
     Visibility: public -/
 @[rust_fun
   "aspis_core::field::{core::cmp::PartialEq<aspis_core::field::QM31, aspis_core::field::QM31>}::eq"]
-axiom aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31.eq
-  : aspis_core.field.QM31 → aspis_core.field.QM31 → Result Bool
+def aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31.eq
+  (self : aspis_core.field.QM31) (other : aspis_core.field.QM31) :
+  Result Bool
+  := do
+  let b ←
+    aspis_core.field.CM31.Insts.CoreCmpPartialEqCM31.eq self.c0 other.c0
+  if b
+  then aspis_core.field.CM31.Insts.CoreCmpPartialEqCM31.eq self.c1 other.c1
+  else ok false
 
 /-- Trait implementation: [aspis_core::field::{impl core::cmp::PartialEq<aspis_core::field::QM31> for aspis_core::field::QM31}]
     Source: '/Users/dominic/ZK-merkle-radix-closure/crates/aspis-core/src/field.rs', lines 351:22-351:31
