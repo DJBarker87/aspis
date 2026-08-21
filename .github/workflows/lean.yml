@@ -1,14 +1,8 @@
-name: Lean formalization CI
+name: Formal verification CI
 
 on:
   push:
-    paths:
-      - 'AspisFormal/**'
-      - '.github/workflows/lean.yml'
   pull_request:
-    paths:
-      - 'AspisFormal/**'
-      - '.github/workflows/lean.yml'
   workflow_dispatch:
 
 permissions:
