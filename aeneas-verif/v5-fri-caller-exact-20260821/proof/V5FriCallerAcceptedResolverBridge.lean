@@ -1,0 +1,336 @@
+import V5FriCallerMerkleBridge
+import V5FriConsumerObservationBridge
+import AspisFormal.V5AcceptedExecutionReleasedSecurity
+
+/-!
+# Accepted production caller to released observation
+
+This file joins the extracted outer caller, the independently translated
+Merkle verifier, and the concrete accepted FRI-call resolver.  Its main result
+derives the maintained parser/output equality instead of taking that equality
+as an independent premise.
+
+Two source/tool statements are explicit inputs.  First,
+`AcceptedCallerMerkleSourceEquality` is the exact one-call wrapper which fixes
+the production SHA-256 callback.  Second,
+`AcceptedResolverUsesProductionCaller` says that every successful high-level
+resolver result has the translated caller witness with the same roots, query
+array, proof bytes, and returned opening.  The theorem below derives the
+former whole-consumer equality from those narrower statements; it does not
+claim that the outer resolver connection has already been extracted.
+-/
+
+open Aeneas Aeneas.Std Result ControlFlow Error
+
+namespace AspisV5FriCallerAcceptedResolverBridge
+
+open AspisV5MerkleAuthenticationBinding
+open AspisV5MerkleConsumedValueBridge
+open AspisCircleGroupOrder
+open AspisFormal.ArithmetizationCore
+open AspisFormal.HashMerkleModel
+open AspisV5AcceptedExecutionReleasedSchedule
+open AspisV5AcceptedExecutionSecurityBridge
+open AspisV5AcceptedSpendRelation
+open AspisV5ComponentCConcreteFoldLinearity
+open AspisV5FriCoherentCandidateExtraction
+open AspisV5FriCompatibleCandidateChain
+open AspisV5FriConcreteEncoderCommutation
+open AspisV5FriGlobalCausalStrategy
+open AspisV5FriPublishedOutputEncoderDecoding
+open AspisV5FriRelationCandidateBridge
+open AspisV5FriReleasedAdaptiveExtraction
+open AspisV5FriReleasedLineGeometry
+open AspisV5MerkleRustBridge
+open AspisV5NonceWorkAuthentication
+open AspisV5RelationStressSourceBridge
+open AspisV5Tag67AcceptedFalseInclusion
+open AspisV5Tag67CandidateTraceExtraction
+open AspisV5Tag67FalseAcceptanceDecomposition
+open AspisV5Tag67ModeledRelationAcceptanceBridge
+open AspisV5Tag67RelationListInclusion
+open AspisV5TranscriptConnection
+open AspisV5WithoutReplacementQuerySoundness
+
+/-- The five generated root-array entries determine one maintained root tuple.
+This is a structural fact, not a hash assumption. -/
+theorem generatedRootsMatch_unique
+    {rootsArray : Array
+      AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedDigest 5#usize}
+    {left right : V5PrivateRoots AspisV5MerkleRustBridge.Digest32}
+    (hleft : AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedRootsMatch
+      rootsArray left)
+    (hright : AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedRootsMatch
+      rootsArray right) :
+    left = right := by
+  rcases hleft with
+    ⟨lc1, lc2, lline1, lline2, lline3, hlc1, hlc2, hlline1,
+      hlline2, hlline3, leftC1, leftC2, leftLine1, leftLine2, leftLine3⟩
+  rcases hright with
+    ⟨rc1, rc2, rline1, rline2, rline3, hrc1, hrc2, hrline1,
+      hrline2, hrline3, rightC1, rightC2, rightLine1, rightLine2,
+      rightLine3⟩
+  have c1Eq : lc1 = rc1 := Result.ok.inj (hlc1.symm.trans hrc1)
+  have c2Eq : lc2 = rc2 := Result.ok.inj (hlc2.symm.trans hrc2)
+  have line1Eq : lline1 = rline1 :=
+    Result.ok.inj (hlline1.symm.trans hrline1)
+  have line2Eq : lline2 = rline2 :=
+    Result.ok.inj (hlline2.symm.trans hrline2)
+  have line3Eq : lline3 = rline3 :=
+    Result.ok.inj (hlline3.symm.trans hrline3)
+  cases left
+  cases right
+  simp_all
+
+/-- Evidence for one successful high-level resolver result.  Every field is
+observable at the translated caller boundary.  In particular, the opening
+returned by the Merkle call is the same structural value stored in the
+accepted FRI call; it cannot be replaced by a separately parsed value. -/
+structure AcceptedResolverCallerWitness
+    (openingsCall : AspisV5FriCallerParametric.OpeningCall)
+    (hash : AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedHash)
+    (call : AspisV5MerkleRustBridge.V5ProductionCall)
+    (acceptedCall : AspisV5FriConsumerObservationBridge.AcceptedFriCall) :
+    Type where
+  parsed : AspisV5FriCallerParametric.Parsed
+  queries : Array Std.U32 18#usize
+  finalPolynomial : Array AspisV5FriCallerParametric.QM31 4#usize
+  alphas : Array AspisV5FriCallerParametric.QM31 4#usize
+  gamma : AspisV5FriCallerParametric.QM31
+  output : AspisV5FriCallerParametric.QM31 ×
+    AspisV5FriCallerParametric.Prepared
+  prepareCall : AspisV5FriCallerParametric.PrepareCall
+  friCall : AspisV5FriCallerParametric.FriCall
+  trace : AspisV5FriCallerParametric.AcceptedCallerTrace openingsCall
+    prepareCall friCall parsed queries finalPolynomial alphas gamma output
+  acceptedOpening_eq : acceptedCall.openings =
+    AspisV5MerkleFriReturnedOutputBridge.toFriVerified
+      (AspisV5FriCallerMerkleBridge.toMerkleVerified trace.opening)
+  queryCount : call.queries.card = 18
+  queryModel :
+    (V5MerkleQueryReuseProof.expectedLayer0
+        (Array.to_slice queries).val).map (fun index => index.val) =
+      AspisV5TopologyConstruction.sharedLevelIndices call.queries 0
+  rootsArray : Array
+    AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedDigest 5#usize
+  parsedRoots_eq :
+    (AspisV5FriCallerMerkleBridge.toMerkleRoots
+      parsed.v5_private_roots).as_array =
+      .ok rootsArray
+  rootsMatch :
+    AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedRootsMatch
+      rootsArray call.roots
+  proofBytes_eq :
+    parsed.v5_private_proof.val.map
+        AspisV5MerkleUnchangedFullHelperBridge.generatedU8ToByte =
+      call.proofBytes
+
+/-- Universal connection between the concrete accepted-call resolver and the
+translated production caller.  This records input binding and the identity of
+the returned opening; it does not assume any Merkle or FRI mathematics. -/
+def AcceptedResolverUsesProductionCaller
+    (openingsCall : AspisV5FriCallerParametric.OpeningCall)
+    (hash : AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedHash)
+    (resolve : AspisV5MerkleRustBridge.V5ProductionCall →
+      Option AspisV5FriConsumerObservationBridge.AcceptedFriCall) : Prop :=
+  ∀ call acceptedCall, resolve call = some acceptedCall →
+    Nonempty (AcceptedResolverCallerWitness openingsCall hash call
+      acceptedCall)
+
+/-- The translated caller plus the exact one-call Merkle wrapper supplies the
+parser/output premise used by the maintained released-security theorem. -/
+theorem accepted_resolver_caller_implies_parser_output_equality
+    (sha256 : List AspisV5MerkleAuthenticationBinding.Byte →
+      AspisV5MerkleRustBridge.Digest32)
+    (hash : AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedHash)
+    (openingsCall : AspisV5FriCallerParametric.OpeningCall)
+    (resolve : AspisV5MerkleRustBridge.V5ProductionCall →
+      Option AspisV5FriConsumerObservationBridge.AcceptedFriCall)
+    (hsource :
+      AspisV5FriCallerMerkleBridge.AcceptedCallerMerkleSourceEquality
+        openingsCall hash)
+    (hhash : AspisV5MerkleUnchangedFullHelperBridge.HashCallbackEqualsSha256
+      sha256 hash)
+    (hcaller : AcceptedResolverUsesProductionCaller openingsCall hash
+      resolve) :
+    ExactRustV5OpeningParserOutputEquality sha256
+      (AspisV5FriConsumerObservationBridge.observationFromAcceptedResolver
+        resolve) := by
+  intro call observation hobservation
+  unfold AspisV5FriConsumerObservationBridge.observationFromAcceptedResolver
+    at hobservation
+  cases hresolved : resolve call with
+  | none => simp [hresolved] at hobservation
+  | some acceptedCall =>
+      simp only [hresolved, Option.map_some, Option.some.injEq] at hobservation
+      subst observation
+      obtain ⟨witness⟩ := hcaller call acceptedCall hresolved
+      obtain ⟨rootsArray, modelRoots, run, rootsArrayEq, rootsMatch,
+          proofBytesEq, driverEq⟩ :=
+        AspisV5FriCallerMerkleBridge.accepted_caller_opening_yields_exact_merkle_and_fri_view
+          sha256 call.queries witness.queryCount hash openingsCall
+          witness.prepareCall witness.friCall witness.parsed witness.queries
+          witness.finalPolynomial witness.alphas witness.gamma witness.output
+          witness.trace hsource hhash witness.queryModel
+      have rootsArrayUnique : rootsArray = witness.rootsArray :=
+        Result.ok.inj (rootsArrayEq.symm.trans witness.parsedRoots_eq)
+      have modelRootsEq : modelRoots = call.roots :=
+        generatedRootsMatch_unique
+          (rootsArrayUnique ▸ rootsMatch) witness.rootsMatch
+      subst modelRoots
+      refine ⟨run, proofBytesEq.trans witness.proofBytes_eq, ?_⟩
+      calc
+        (AspisV5FriConsumerObservationBridge.AcceptedFriCall.observation
+            acceptedCall).driver =
+            AspisV5FriConsumerObservationBridge.generatedDriverOutput
+              acceptedCall.openings := rfl
+        _ = AspisV5FriConsumerObservationBridge.generatedDriverOutput
+              (AspisV5MerkleFriReturnedOutputBridge.toFriVerified
+                (AspisV5FriCallerMerkleBridge.toMerkleVerified
+                  witness.trace.opening)) := by
+              rw [witness.acceptedOpening_eq]
+        _ = driverOutputOfRun run [] := driverEq
+
+/-- The concrete FRI observation adapter already proves the four source read
+loops.  Combining that theorem with the parser result removes the former
+whole-consumer equality premise. -/
+theorem accepted_resolver_caller_implies_consumer_equality
+    (sha256 : List AspisV5MerkleAuthenticationBinding.Byte →
+      AspisV5MerkleRustBridge.Digest32)
+    (hash : AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedHash)
+    (openingsCall : AspisV5FriCallerParametric.OpeningCall)
+    (resolve : AspisV5MerkleRustBridge.V5ProductionCall →
+      Option AspisV5FriConsumerObservationBridge.AcceptedFriCall)
+    (hsource :
+      AspisV5FriCallerMerkleBridge.AcceptedCallerMerkleSourceEquality
+        openingsCall hash)
+    (hhash : AspisV5MerkleUnchangedFullHelperBridge.HashCallbackEqualsSha256
+      sha256 hash)
+    (hcaller : AcceptedResolverUsesProductionCaller openingsCall hash
+      resolve) :
+    ExactRustV5OpeningAndFriConsumerEquality sha256
+      (AspisV5FriConsumerObservationBridge.observationFromAcceptedResolver
+        resolve) := by
+  apply
+    AspisV5FriConsumerObservationBridge.opening_parser_and_accepted_resolver_imply_consumer_equality
+  exact accepted_resolver_caller_implies_parser_output_equality sha256 hash
+    openingsCall resolve hsource hhash hcaller
+
+variable {K : Type*} [Field K] [Fintype K] [DecidableEq K]
+  [Algebra (ZMod P) K] [NeZero (2 : K)]
+
+/-- Released accepted-false event with the former abstract whole-consumer
+premise replaced by the translated caller, its concrete accepted FRI-call
+resolver, and the exact one-call Merkle wrapper equality. -/
+theorem accepted_false_source_caller_event_with_released_tables
+    {PointValue State : Type*}
+    (rc : RoundConstants)
+    {deployedOwner : AspisFormal.ArithmetizationCore.Digest →
+      AspisFormal.ArithmetizationCore.Digest}
+    {deployedNote : AspisFormal.ArithmetizationCore.Digest →
+      AspisFormal.ArithmetizationCore.F →
+      AspisFormal.ArithmetizationCore.F →
+      AspisFormal.ArithmetizationCore.Digest →
+      AspisFormal.ArithmetizationCore.Digest}
+    {deployedNullifier : AspisFormal.ArithmetizationCore.Digest →
+      AspisFormal.ArithmetizationCore.Digest →
+      AspisFormal.ArithmetizationCore.Digest}
+    {deployedNode : AspisFormal.ArithmetizationCore.Digest →
+      AspisFormal.ArithmetizationCore.Digest →
+      AspisFormal.ArithmetizationCore.Digest}
+    (sha256 : List AspisV5MerkleAuthenticationBinding.Byte →
+      AspisV5MerkleRustBridge.Digest32)
+    (hash : AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedHash)
+    (openingsCall : AspisV5FriCallerParametric.OpeningCall)
+    (resolve : AspisV5MerkleRustBridge.V5ProductionCall →
+      Option AspisV5FriConsumerObservationBridge.AcceptedFriCall)
+    (hopeningSource :
+      AspisV5FriCallerMerkleBridge.AcceptedCallerMerkleSourceEquality
+        openingsCall hash)
+    (hhash : AspisV5MerkleUnchangedFullHelperBridge.HashCallbackEqualsSha256
+      sha256 hash)
+    (hcaller : AcceptedResolverUsesProductionCaller openingsCall hash
+      resolve)
+    (rustCall : V5ProductionCall)
+    (observation : OpeningAndFriObservation)
+    (hobservation :
+      AspisV5FriConsumerObservationBridge.observationFromAcceptedResolver
+        resolve rustCall = some observation)
+    (base : FixedSchedule (ZMod P) K)
+    (hproduction : ProductionUsesReleasedFriTables base)
+    (hpublished : PublishedOrdinaryPolynomialCurveDecoding (K := K))
+    (causalFamily : CausalTranscriptFamily K)
+    (input : SourceRelationInput K)
+    (relationFamily : CoherentCandidateFamily K
+      (AcceptedCandidate base causalFamily input))
+    (records : CandidateRecords (AcceptedCandidate base causalFamily input) K)
+    (statement : V5PublicStatement)
+    (queries : QuerySchedule 18 131072)
+    (decoder : OpeningFibreDecoder K)
+    (expectedC2 : V5Query → Fin 4 → K)
+    (transcriptInput : V5TranscriptInputs)
+    (derived : V5DerivedValues K PointValue)
+    (driverResult : V5TranscriptDriverResult K PointValue)
+    (workFunctions : ExecutableWorkFunctions State
+      (SqueezeResult K PointValue))
+    (workInputs : PositionedWorkInputs State (SqueezeResult K PointValue))
+    (hrelationSource : ∃ output,
+      runSourceRelationVerifier input = some output)
+    (noWitness : ¬ StatementHasSpendWitness statement deployedOwner
+      deployedNote deployedNullifier deployedNode) :
+    AspisV5AcceptedExecutionReleasedSecurity.ReleasedAcceptedExecutionSecurityEvent
+    (¬ SourceRelationInputMatchesFamily input relationFamily)
+    (¬ FamilyMatchesFriTranscript
+      (concreteCodeEncoders base releasedEvaluationPoints)
+      (acceptedTranscript causalFamily input) relationFamily input.challenges)
+    (¬ TranscriptExecutionProjection input transcriptInput derived
+      driverResult rustCall.queries queries)
+    (¬ WorkExecutionProjection transcriptInput derived workInputs)
+    (¬ ∃ reference : AcceptedV5Forest (sha256MerkleHashing sha256)
+        rustCall.roots rustCall.queries,
+      ForestProjectsToTranscript decoder (sha256MerkleHashing sha256)
+        reference (acceptedTranscript causalFamily input) expectedC2)
+    False
+    (HashCollision (sha256MerkleHashing sha256))
+    (¬ ExecutableWorkAcceptance workFunctions workInputs)
+    (∃ forest : AcceptedV5Forest (sha256MerkleHashing sha256)
+        rustCall.roots rustCall.queries,
+      ¬ ForestFriChecks decoder (sha256MerkleHashing sha256) forest
+        (acceptedSchedule base input)
+        (acceptedTranscript causalFamily input) queries)
+    (QueryPhaseFailure (acceptedSchedule base input)
+      (acceptedTranscript causalFamily input) queries)
+    (∃ (hfinal : FinalXMatchesReleasedDomain base)
+        (htables : InverseTablesMatch base releasedEvaluationPoints)
+        (hdecoding : PublishedOrdinaryPolynomialCurveDecoding (K := K)),
+      (adaptiveBadSets base causalFamily hfinal htables hdecoding
+        (constructedAdaptiveStrategies base causalFamily)).Occurs
+        input.round0.alpha input.round1.alpha input.round2.alpha
+          input.round3.alpha)
+    (∃ candidate : AcceptedCandidate base causalFamily input,
+      CandidateEarlierFailure rc (relationFamily.execution candidate)
+        input.challenges statement (records candidate))
+    (Fintype.card (AcceptedCandidate base causalFamily input) ≤ 240 ∧
+      input.challenges ∈ boundedCandidateRepairEvent
+        (fun candidate =>
+          (relationFamily.execution candidate).adaptiveData))
+    (¬ Poseidon2Faithful rc deployedOwner deployedNote deployedNullifier
+      deployedNode) := by
+  have hconsumer := accepted_resolver_caller_implies_consumer_equality
+    sha256 hash openingsCall resolve hopeningSource hhash hcaller
+  exact
+    AspisV5AcceptedExecutionReleasedSecurity.accepted_false_source_observation_event_with_released_tables
+      rc sha256
+      (AspisV5FriConsumerObservationBridge.observationFromAcceptedResolver
+        resolve)
+      rustCall observation hconsumer hobservation base hproduction hpublished
+      causalFamily input relationFamily records statement queries decoder
+      expectedC2 transcriptInput derived driverResult workFunctions workInputs
+      hrelationSource noWitness
+
+#print axioms generatedRootsMatch_unique
+#print axioms accepted_resolver_caller_implies_parser_output_equality
+#print axioms accepted_resolver_caller_implies_consumer_equality
+#print axioms accepted_false_source_caller_event_with_released_tables
+
+end AspisV5FriCallerAcceptedResolverBridge
