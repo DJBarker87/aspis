@@ -36,26 +36,46 @@ def aspis_core.transcript.ChallengeSampleExhausted := Unit
     Source: 'crates/aspis-core/src/transcript.rs', lines 242:0-242:23
     Name pattern: [aspis_core::transcript::OodSampleError]
     Visibility: public -/
-@[discriminant isize, rust_type "aspis_core::transcript::OodSampleError"]
+@[rust_type "aspis_core::transcript::OodSampleError"]
 inductive aspis_core.transcript.OodSampleError where
 | ChallengeSampleExhausted : aspis_core.transcript.OodSampleError
 | SubfieldSampleExhausted : aspis_core.transcript.OodSampleError
+
+def aspis_core.transcript.OodSampleError.read_discriminant :
+    aspis_core.transcript.OodSampleError → Std.Isize
+  | .ChallengeSampleExhausted => 0#isize
+  | .SubfieldSampleExhausted => 1#isize
+
+instance relationOodSampleErrorDiscriminant :
+    Discriminant aspis_core.transcript.OodSampleError Std.Isize where
+  read_discriminant :=
+    aspis_core.transcript.OodSampleError.read_discriminant
 
 /-- [aspis_core::transcript::CirclePointSampleError]
     Source: 'crates/aspis-core/src/transcript.rs', lines 250:0-250:31
     Name pattern: [aspis_core::transcript::CirclePointSampleError]
     Visibility: public -/
-@[discriminant isize, rust_type
+@[rust_type
   "aspis_core::transcript::CirclePointSampleError"]
 inductive aspis_core.transcript.CirclePointSampleError where
 | ChallengeSampleExhausted : aspis_core.transcript.CirclePointSampleError
 | ParameterSampleExhausted : aspis_core.transcript.CirclePointSampleError
 
+def aspis_core.transcript.CirclePointSampleError.read_discriminant :
+    aspis_core.transcript.CirclePointSampleError → Std.Isize
+  | .ChallengeSampleExhausted => 0#isize
+  | .ParameterSampleExhausted => 1#isize
+
+instance relationCirclePointSampleErrorDiscriminant :
+    Discriminant aspis_core.transcript.CirclePointSampleError Std.Isize where
+  read_discriminant :=
+    aspis_core.transcript.CirclePointSampleError.read_discriminant
+
 /-- [solana_program_error::ProgramError]
     Source: 'registry/solana-program-error-2.2.2/src/lib.rs', lines 33:0-33:21
     Name pattern: [solana_program_error::ProgramError]
     Visibility: public -/
-@[discriminant isize, rust_type "solana_program_error::ProgramError"]
+@[rust_type "solana_program_error::ProgramError"]
 inductive solana_program_error.ProgramError where
 | Custom : Std.U32 → solana_program_error.ProgramError
 | InvalidArgument : solana_program_error.ProgramError
@@ -83,6 +103,40 @@ inductive solana_program_error.ProgramError where
 | ArithmeticOverflow : solana_program_error.ProgramError
 | Immutable : solana_program_error.ProgramError
 | IncorrectAuthority : solana_program_error.ProgramError
+
+def solana_program_error.ProgramError.read_discriminant :
+    solana_program_error.ProgramError → Std.Isize
+  | .Custom _ => 0#isize
+  | .InvalidArgument => 1#isize
+  | .InvalidInstructionData => 2#isize
+  | .InvalidAccountData => 3#isize
+  | .AccountDataTooSmall => 4#isize
+  | .InsufficientFunds => 5#isize
+  | .IncorrectProgramId => 6#isize
+  | .MissingRequiredSignature => 7#isize
+  | .AccountAlreadyInitialized => 8#isize
+  | .UninitializedAccount => 9#isize
+  | .NotEnoughAccountKeys => 10#isize
+  | .AccountBorrowFailed => 11#isize
+  | .MaxSeedLengthExceeded => 12#isize
+  | .InvalidSeeds => 13#isize
+  | .BorshIoError _ => 14#isize
+  | .AccountNotRentExempt => 15#isize
+  | .UnsupportedSysvar => 16#isize
+  | .IllegalOwner => 17#isize
+  | .MaxAccountsDataAllocationsExceeded => 18#isize
+  | .InvalidRealloc => 19#isize
+  | .MaxInstructionTraceLengthExceeded => 20#isize
+  | .BuiltinProgramsMustConsumeComputeUnits => 21#isize
+  | .InvalidAccountOwner => 22#isize
+  | .ArithmeticOverflow => 23#isize
+  | .Immutable => 24#isize
+  | .IncorrectAuthority => 25#isize
+
+instance relationProgramErrorDiscriminant :
+    Discriminant solana_program_error.ProgramError Std.Isize where
+  read_discriminant :=
+    solana_program_error.ProgramError.read_discriminant
 
 /-- [aspis_verifier_kappa_caller_extraction::v5_cu_probe::private_openings::V5PrivateOpeningRoots]
     Source: 'programs/aspis-verifier/src/v5_private_openings.rs', lines 34:0-38:1

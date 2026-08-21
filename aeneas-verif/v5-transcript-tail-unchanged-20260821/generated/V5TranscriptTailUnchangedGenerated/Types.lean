@@ -37,7 +37,7 @@ inductive aspis_core.transcript.QuerySampleError where
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-program-error-2.2.2/src/lib.rs', lines 33:0-33:21
     Name pattern: [solana_program_error::ProgramError]
     Visibility: public -/
-@[discriminant isize, rust_type "solana_program_error::ProgramError"]
+@[rust_type "solana_program_error::ProgramError"]
 inductive solana_program_error.ProgramError where
 | Custom : Std.U32 → solana_program_error.ProgramError
 | InvalidArgument : solana_program_error.ProgramError
@@ -65,6 +65,40 @@ inductive solana_program_error.ProgramError where
 | ArithmeticOverflow : solana_program_error.ProgramError
 | Immutable : solana_program_error.ProgramError
 | IncorrectAuthority : solana_program_error.ProgramError
+
+def solana_program_error.ProgramError.read_discriminant :
+    solana_program_error.ProgramError → Std.Isize
+  | .Custom _ => 0#isize
+  | .InvalidArgument => 1#isize
+  | .InvalidInstructionData => 2#isize
+  | .InvalidAccountData => 3#isize
+  | .AccountDataTooSmall => 4#isize
+  | .InsufficientFunds => 5#isize
+  | .IncorrectProgramId => 6#isize
+  | .MissingRequiredSignature => 7#isize
+  | .AccountAlreadyInitialized => 8#isize
+  | .UninitializedAccount => 9#isize
+  | .NotEnoughAccountKeys => 10#isize
+  | .AccountBorrowFailed => 11#isize
+  | .MaxSeedLengthExceeded => 12#isize
+  | .InvalidSeeds => 13#isize
+  | .BorshIoError _ => 14#isize
+  | .AccountNotRentExempt => 15#isize
+  | .UnsupportedSysvar => 16#isize
+  | .IllegalOwner => 17#isize
+  | .MaxAccountsDataAllocationsExceeded => 18#isize
+  | .InvalidRealloc => 19#isize
+  | .MaxInstructionTraceLengthExceeded => 20#isize
+  | .BuiltinProgramsMustConsumeComputeUnits => 21#isize
+  | .InvalidAccountOwner => 22#isize
+  | .ArithmeticOverflow => 23#isize
+  | .Immutable => 24#isize
+  | .IncorrectAuthority => 25#isize
+
+instance tailProgramErrorDiscriminant :
+    Discriminant solana_program_error.ProgramError Std.Isize where
+  read_discriminant :=
+    solana_program_error.ProgramError.read_discriminant
 
 /-- [aspis_v5_prefix_program_helpers_extraction::v5_cu_probe::ParsedProbeData]
     Source: '../../../programs/aspis-verifier/src/v5_cu_probe.rs', lines 356:0-376:1 -/
