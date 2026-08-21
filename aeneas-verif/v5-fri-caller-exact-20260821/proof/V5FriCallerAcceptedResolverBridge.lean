@@ -505,13 +505,10 @@ theorem accepted_false_source_caller_event_with_released_tables
     (sha256 : List AspisV5MerkleAuthenticationBinding.Byte →
       AspisV5MerkleRustBridge.Digest32)
     (hash : AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedHash)
-    (openingsCall : AspisV5FriCallerParametric.OpeningCall)
     (verifierAccepts : AspisV5MerkleRustBridge.V5ProductionCall → Prop)
     (hentry : AcceptedVerifierExecutionBuildsProductionCallerEnvironment
-      openingsCall hash verifierAccepts)
-    (hopeningSource :
-      AspisV5FriCallerMerkleBridge.AcceptedCallerMerkleSourceEquality
-        openingsCall hash)
+      (AspisV5FriCallerMerkleBridge.exactMerkleOpeningCall hash) hash
+      verifierAccepts)
     (hhash : AspisV5MerkleUnchangedFullHelperBridge.HashCallbackEqualsSha256
       sha256 hash)
     (rustCall : V5ProductionCall)
@@ -577,17 +574,19 @@ theorem accepted_false_source_caller_event_with_released_tables
     (¬ Poseidon2Faithful rc deployedOwner deployedNote deployedNullifier
       deployedNode) := by
   obtain ⟨targetEnvironment, hobservation, hconsumer⟩ :=
-    accepted_verifier_execution_builds_production_caller_observation
-      sha256 hash openingsCall verifierAccepts hentry hopeningSource hhash
-      rustCall hverifierAccepted
-  let environment := singleProductionCallerEnvironment openingsCall hash
-    rustCall targetEnvironment
+    accepted_verifier_execution_builds_exact_production_caller_observation
+      sha256 hash verifierAccepts hentry hhash rustCall hverifierAccepted
+  let environment := singleProductionCallerEnvironment
+    (AspisV5FriCallerMerkleBridge.exactMerkleOpeningCall hash) hash rustCall
+    targetEnvironment
   let observation := targetEnvironment.acceptedCall.observation
   exact
     AspisV5AcceptedExecutionReleasedSecurity.accepted_false_source_observation_event_with_released_tables
       rc sha256
       (AspisV5FriConsumerObservationBridge.observationFromAcceptedResolver
-        (resolveFromProductionCaller openingsCall hash environment))
+        (resolveFromProductionCaller
+          (AspisV5FriCallerMerkleBridge.exactMerkleOpeningCall hash) hash
+          environment))
       rustCall observation hconsumer hobservation base hproduction hpublished
       causalFamily input relationFamily records statement queries decoder
       expectedC2 transcriptInput derived driverResult workFunctions workInputs

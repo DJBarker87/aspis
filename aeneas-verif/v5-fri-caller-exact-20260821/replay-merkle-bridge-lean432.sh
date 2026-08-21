@@ -38,7 +38,7 @@ sha256() {
 [[ "$(sha256 "$bridge_proof")" == \
   8c175163521af742721215edefdb5a36e07e15b1e791175200f0db945dc759bd ]]
 [[ "$(sha256 "$resolver_proof")" == \
-  e14fb9dcf8af70f614fb115270ea411ffc06174a5be131455f1e50b63b9f1e0d ]]
+  a1b4cc92fdc4f88de09fbb589078415c0a9807cb098c0ca429ceb5a6904dd89c ]]
 
 aspis_path=${ASPIS_FORMAL_LEAN_PATH:-$(
   cd "$root/AspisFormal" && NO_DNA=1 lake env printenv LEAN_PATH

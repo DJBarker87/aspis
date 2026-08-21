@@ -85,7 +85,7 @@ only that the successful FRI call retained the same Merkle opening.
 | `generated/V5FriCaller/Types.lean` | `8a9c03aeaa3a4fccb06b141276a78d0848089ac35f83f6a72ea69e76c984af73` |
 | `proof/V5FriCallerParametric.lean` | `a1e1678fef7051200b559240dc71dfaab84efcb049ef33fe85b91a0a57d760ea` |
 | `proof/V5FriCallerMerkleBridge.lean` | `8c175163521af742721215edefdb5a36e07e15b1e791175200f0db945dc759bd` |
-| `proof/V5FriCallerAcceptedResolverBridge.lean` | `e14fb9dcf8af70f614fb115270ea411ffc06174a5be131455f1e50b63b9f1e0d` |
+| `proof/V5FriCallerAcceptedResolverBridge.lean` | `a1b4cc92fdc4f88de09fbb589078415c0a9807cb098c0ca429ceb5a6904dd89c` |
 
 The source file has Git blob
 `ca28d560e44e5e82e689321f32289831c889a0bd`. The extraction used Charon
