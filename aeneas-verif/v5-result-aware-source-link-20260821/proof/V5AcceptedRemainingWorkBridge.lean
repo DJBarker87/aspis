@@ -2564,6 +2564,140 @@ theorem relation_success_has_four_fold_successors
               simpa [V5AcceptedEntryGenerated.v5_relation_stress.V5_RELATION_STRESS_ROUNDS]
                 using outerSuccess)
 
+/-! The fold projection above intentionally retains only the tail of each
+relation round.  The next proposition retains the two successful active
+sample bodies as well.  It is used to connect the eight OOD-mix challenges to
+the values which the same accepted execution compares against the proof
+bytes. -/
+
+def AcceptedRoundOodMixBodies
+    (parsed : EntryParsed) (round : Std.Usize) : Prop :=
+  ∃ (q : EntryQM31) (nonces : Array Std.U64 4#usize)
+      (batch : Std.U64) (roots : EntryRoots) (final : Std.U64)
+      (selector : Std.U8) (before firstDone secondDone : EntryTranscript),
+    V5AcceptedEntryGenerated.v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body
+        parsed q nonces batch roots final selector round
+        { start := 0#usize, «end» := 2#usize } before =
+      .ok (.cont
+        ({ start := 1#usize, «end» := 2#usize }, firstDone)) ∧
+    V5AcceptedEntryGenerated.v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0.body
+        parsed q nonces batch roots final selector round
+        { start := 1#usize, «end» := 2#usize } firstDone =
+      .ok (.cont
+        ({ start := 2#usize, «end» := 2#usize }, secondDone))
+
+def AcceptedFourRoundOodMixBodies (parsed : EntryParsed) : Prop :=
+  AcceptedRoundOodMixBodies parsed 0#usize ∧
+  AcceptedRoundOodMixBodies parsed 1#usize ∧
+  AcceptedRoundOodMixBodies parsed 2#usize ∧
+  AcceptedRoundOodMixBodies parsed 3#usize
+
+private theorem inner_success_has_ood_mix_bodies
+    (parsed : EntryParsed) (q : EntryQM31)
+    (nonces : Array Std.U64 4#usize) (batch : Std.U64)
+    (roots : EntryRoots) (final : Std.U64) (selector : Std.U8)
+    (round : Std.Usize) (transcript returnedTranscript : EntryTranscript)
+    (returnedRoots : EntryRoots)
+    (success :
+      V5AcceptedEntryGenerated.v5_cu_probe.replay_real_v5_relation_rounds_loop0_loop0
+          parsed { start := 0#usize, «end» := 2#usize } transcript q nonces
+          batch roots final selector round =
+        .ok (returnedTranscript, returnedRoots, 1#u32)) :
+    AcceptedRoundOodMixBodies parsed round := by
+  obtain ⟨transcript1, body0, success1⟩ :=
+    inner_loop_start0_success_steps parsed q nonces batch roots final selector
+      round transcript returnedTranscript returnedRoots success
+  obtain ⟨transcript2, body1, _⟩ :=
+    inner_loop_start1_success_steps parsed q nonces batch roots final selector
+      round transcript1 returnedTranscript returnedRoots success1
+  exact ⟨q, nonces, batch, roots, final, selector, transcript,
+    transcript1, transcript2, body0, body1⟩
+
+theorem relation_success_has_four_ood_mix_bodies
+    (parsed : EntryParsed)
+    (transcript returnedTranscript : EntryTranscript)
+    (success :
+      V5AcceptedEntryGenerated.v5_cu_probe.replay_real_v5_relation_rounds
+          transcript parsed = .ok (.Ok returnedTranscript)) :
+    AcceptedFourRoundOodMixBodies parsed := by
+  unfold V5AcceptedEntryGenerated.v5_cu_probe.replay_real_v5_relation_rounds at success
+  rw [bind_eq_ok_iff] at success
+  obtain ⟨zeroResult, _, success⟩ := success
+  rw [bind_eq_ok_iff] at success
+  obtain ⟨zeroFlow, _, success⟩ := success
+  cases zeroFlow with
+  | Break residual =>
+      cases residual with
+      | Ok impossible => nomatch impossible
+      | Err error => simp at success
+  | Continue unitValue =>
+      cases unitValue
+      simp only at success
+      rw [bind_eq_ok_iff] at success
+      obtain ⟨pending, outerSuccess, success⟩ := success
+      cases pending with
+      | none => simp at success
+      | some result =>
+          have hResult : result = .Ok returnedTranscript :=
+            Result.ok.inj success
+          subst result
+          have outerSuccess' :
+              V5AcceptedEntryGenerated.v5_cu_probe.replay_real_v5_relation_rounds_loop0
+                  parsed { start := 0#usize, «end» := 4#usize } transcript
+                  parsed.gamma parsed.v5_fold_nonces parsed.v5_batch_nonce
+                  parsed.v5_private_roots parsed.v5_final_nonce
+                  parsed.v5_query_selector =
+                .ok (some (.Ok returnedTranscript)) := by
+            simpa [V5AcceptedEntryGenerated.v5_relation_stress.V5_RELATION_STRESS_ROUNDS]
+              using outerSuccess
+          obtain ⟨transcript1, roots1, inner0, loop1⟩ :=
+            outer_loop_active_success_steps parsed parsed.gamma
+              parsed.v5_fold_nonces parsed.v5_batch_nonce
+              parsed.v5_private_roots parsed.v5_final_nonce
+              parsed.v5_query_selector
+              { start := 0#usize, «end» := 4#usize }
+              { start := 1#usize, «end» := 4#usize } 0#usize transcript
+              returnedTranscript outer_range_next_0 outerSuccess'
+          obtain ⟨transcript2, roots2, inner1, loop2⟩ :=
+            outer_loop_active_success_steps parsed parsed.gamma
+              parsed.v5_fold_nonces parsed.v5_batch_nonce roots1
+              parsed.v5_final_nonce parsed.v5_query_selector
+              { start := 1#usize, «end» := 4#usize }
+              { start := 2#usize, «end» := 4#usize } 1#usize transcript1
+              returnedTranscript outer_range_next_1 loop1
+          obtain ⟨transcript3, roots3, inner2, loop3⟩ :=
+            outer_loop_active_success_steps parsed parsed.gamma
+              parsed.v5_fold_nonces parsed.v5_batch_nonce roots2
+              parsed.v5_final_nonce parsed.v5_query_selector
+              { start := 2#usize, «end» := 4#usize }
+              { start := 3#usize, «end» := 4#usize } 2#usize transcript2
+              returnedTranscript outer_range_next_2 loop2
+          obtain ⟨transcript4, roots4, inner3, _⟩ :=
+            outer_loop_active_success_steps parsed parsed.gamma
+              parsed.v5_fold_nonces parsed.v5_batch_nonce roots3
+              parsed.v5_final_nonce parsed.v5_query_selector
+              { start := 3#usize, «end» := 4#usize }
+              { start := 4#usize, «end» := 4#usize } 3#usize transcript3
+              returnedTranscript outer_range_next_3 loop3
+          exact ⟨
+            inner_success_has_ood_mix_bodies parsed parsed.gamma
+              parsed.v5_fold_nonces parsed.v5_batch_nonce
+              parsed.v5_private_roots parsed.v5_final_nonce
+              parsed.v5_query_selector 0#usize transcript transcript1 roots1
+              inner0,
+            inner_success_has_ood_mix_bodies parsed parsed.gamma
+              parsed.v5_fold_nonces parsed.v5_batch_nonce roots1
+              parsed.v5_final_nonce parsed.v5_query_selector 1#usize
+              transcript1 transcript2 roots2 inner1,
+            inner_success_has_ood_mix_bodies parsed parsed.gamma
+              parsed.v5_fold_nonces parsed.v5_batch_nonce roots2
+              parsed.v5_final_nonce parsed.v5_query_selector 2#usize
+              transcript2 transcript3 roots3 inner2,
+            inner_success_has_ood_mix_bodies parsed parsed.gamma
+              parsed.v5_fold_nonces parsed.v5_batch_nonce roots3
+              parsed.v5_final_nonce parsed.v5_query_selector 3#usize
+              transcript3 transcript4 roots4 inner3⟩
+
 def AcceptedFoldRequiredWork
     (nonces : Array Std.U64 4#usize) (round : Std.Usize)
     (bits : Std.U8) : Prop :=
