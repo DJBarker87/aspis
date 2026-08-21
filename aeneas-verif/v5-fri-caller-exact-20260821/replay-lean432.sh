@@ -40,7 +40,7 @@ check_sha256 10f8a0d5e42f996968e31e982d9ecb2b4a46be911bafb9a0745743eb6b9139b0 \
   "$patch"
 check_sha256 304fa51aaf3f34dc8eab5aabd62d49abf7c581ea2422ffb3401384f8e50519fb \
   "$generated/V5FriCaller/FunsRaw.lean.txt"
-check_sha256 ac0381caf2872cbc078bdc7f7804bc5ecc759e3ef5059353c7257dd34f2d077c \
+check_sha256 8a9c03aeaa3a4fccb06b141276a78d0848089ac35f83f6a72ea69e76c984af73 \
   "$generated/V5FriCaller/Types.lean"
 check_sha256 a1e1678fef7051200b559240dc71dfaab84efcb049ef33fe85b91a0a57d760ea \
   "$proof"
