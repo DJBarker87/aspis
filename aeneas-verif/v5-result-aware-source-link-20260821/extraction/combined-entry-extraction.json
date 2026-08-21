@@ -1,0 +1,102 @@
+{
+  "description": "One same-source Charon/Aeneas extraction exposing the accepted V5 transcript/work path and the complete FRI checker path.",
+  "extraction_checkout": {
+    "commit": "d648ab0c6f200a74ee6c9eeb76ae5d93ddb3f956",
+    "source_path": "programs/aspis-verifier/src/v5_cu_probe.rs",
+    "source_git_blob": "ca28d560e44e5e82e689321f32289831c889a0bd"
+  },
+  "tools": {
+    "charon_commit": "cb50ff16b9f1066b8a97dc06da704de2da2fa41c",
+    "charon_version": "0.1.223",
+    "charon_binary_sha256": "7fad09bfb0e4e6a52472175a6414f65fcb790918658915785088f86c6231ba1a",
+    "aeneas_base_commit": "d860ac47ed548d3da6d799afc013779ce470516c",
+    "aeneas_patch": "aeneas-result-aware-function-pointers.patch",
+    "aeneas_patch_sha256": "3747ba951a504eb2d44f4668a749b6ce638734c097a697c235f23f03a869f432",
+    "aeneas_binary_sha256": "ff973f1843c11990c54f174bbb3bbedbc3faa2e5166bc7cc684eb20a1ebe4284",
+    "lean_version": "4.32.0"
+  },
+  "charon_options": {
+    "preset": "aeneas",
+    "start_from": [
+      "crate::v5_cu_probe::parse_probe_data",
+      "crate::v5_cu_probe::verify_mode9_composite_with_live_statement"
+    ],
+    "include": [
+      "aspis_core::field::M31",
+      "aspis_core::field::CM31",
+      "aspis_core::field::QM31"
+    ],
+    "opaque": [
+      "aspis_core::field",
+      "crate::v5_cu_probe::verify_mode9_atomic_terminal_with_prefix",
+      "crate::v5_cu_probe::decode_v5_fri_alphas",
+      "crate::v5_cu_probe::verify_v5_private_suffix",
+      "crate::v5_cu_probe::fri_checks::prepare_v5_pcs_claims",
+      "aspis_core::circle_fri::derive_query_fold_inverses_for_circle",
+      "aspis_core::circle_fri::normalized_circle_to_line_arity4_prepared_polynomial_refs",
+      "aspis_core::circle_query::check_fixed_line_transition_prepared_polynomial_powers",
+      "aspis_core::circle_query::check_fixed_terminal_transition_prepared_polynomial_refs",
+      "aspis_core::circle_pcs_shape::{aspis_core::circle_pcs_shape::CirclePcsShape}::validate",
+      "aspis_core::circle_pcs_shape::{aspis_core::circle_pcs_shape::CirclePcsShape}::total_columns",
+      "crate::v5_cu_probe::encode_relation_points",
+      "crate::v5_cu_probe::verify_mode9_relation_phase"
+    ],
+    "cargo_args": [
+      "--offline"
+    ]
+  },
+  "aeneas_options": {
+    "backend": "lean",
+    "namespace": "V5AcceptedEntryGenerated",
+    "single_file": true
+  },
+  "outputs": {
+    "llbc_sha256": "6141fb647a6b8502ed2a7193a398d25a8d5377f7cb5aef1efec6b63be1cab5c6",
+    "raw_entry_sha256": "968c81a26a3b562320b1e154e7423b7999cf0de4ffadc3d70aebe213d8ae38af",
+    "normalization_patch": "combined-entry-normalization.patch",
+    "normalization_patch_sha256": "a2e3e60f2f20d1b49bbb69034db8763b0048e506294e9731c986ba9f5763941c",
+    "normalized_entry_path": "../generated/V5AcceptedEntryGenerated/Entry.lean",
+    "normalized_entry_sha256": "cbbc1d0b347914770af5250d0caa463deec71b37b97b4a5285b722d6b42a6758"
+  },
+  "normalization_evidence": {
+    "fri_block_source_commit": "12f6e6d817102500f2fefe61e84398053c3253ec",
+    "fri_block_start": "v5_cu_probe::fri_checks::check_v5_fri_queries::closure",
+    "fri_block_end_exclusive": "v5_cu_probe::verify_mode9_fri_phase::closure#1",
+    "fri_block_lines": 1207,
+    "fri_block_sha256": "d7b31472d3446e8df3ab4bbcc6f440e21258dcf8bcef1865b60457b91065e13f",
+    "fri_block_byte_identical": true,
+    "work_label_source_path": "crates/aspis-core/src/transcript.rs",
+    "work_label_source_git_blob": "82cb1e4fc4316bff2b108263aa099303bd6c0e97",
+    "work_labels": {
+      "GRIND_NONCE": 5,
+      "M31_CIRCLE_FOLD_POW_NONCE": 20,
+      "M31_PAYMENT_BATCH_POW_NONCE": 28
+    },
+    "work_label_audited_extraction": "../../tag67-work-wire-correspondence/generated/Tag67WorkWireCore.lean",
+    "work_label_audited_extraction_sha256": "2f95adb73e092b845ef3fad6862d181838bb90278cddec32794507c9e52303f9"
+  },
+  "logs": {
+    "charon_sha256": "aaa7f531af379e2047b4b6fc250cc27b175cf46f87e78d33a10b9cce6f36363c",
+    "aeneas_sha256": "bc7ee7915f0f60cf45f5cc4ca5000116038595b6deabf74b57a60a009d69e44f",
+    "lean_entry_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "source_bridge_sha256": "2f68f683395d9ae550f1ca4cac623528e84e5aea11cca3e00b5ae98883df087c",
+    "fri_bridge_sha256": "1db37972ee0a2aa11190df116619d01a67eab0664e7678e419ae4f37ac7b5e8a",
+    "prefix_work_bridge_sha256": "73b9e56d57ea1909b1e546644f5f85c7991f8c60d1bcf23a20a29da4ae6e666a",
+    "remaining_work_bridge_sha256": "99145ee4311b83c5826e746a3a52a745d78189bd10c9402c86c8c525fce7d9d7",
+    "work_execution_projection_sha256": "375ae486b63d6bfbfe32870d5908e46b743a9be7d9c3e07f2f64a169cd32580f"
+  },
+  "verification": {
+    "generated_entry_compiles": true,
+    "source_bridge_compiles": true,
+    "fri_bridge_compiles": true,
+    "prefix_work_bridge_compiles": true,
+    "remaining_work_bridge_compiles": true,
+    "work_execution_projection_compiles": true,
+    "forbidden_tokens": [
+      "sorry",
+      "admit",
+      "native_decide"
+    ],
+    "forbidden_token_scan_clean": true
+  }
+}
