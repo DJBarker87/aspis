@@ -216,12 +216,138 @@ theorem accepted_resolver_caller_implies_consumer_equality
   exact accepted_resolver_caller_implies_parser_output_equality sha256 hash
     openingsCall resolve hsource hhash hcaller
 
+/-- Inputs and one successful result of the translated outer caller.  This is
+the information absent from the deliberately small `V5ProductionCall`, which
+contains only roots, query set, and proof bytes.
+
+The `acceptedOpening_of_fri_success` field is the focused source edge for the
+second one-call wrapper: a successful FRI call stores the same opening value
+in the concrete accepted-call record.  It does not assert any FRI arithmetic
+property; `AcceptedFriCall.accepted` carries the actual extracted acceptance. -/
+structure ProductionCallerEnvironment
+    (openingsCall : AspisV5FriCallerParametric.OpeningCall)
+    (hash : AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedHash)
+    (call : AspisV5MerkleRustBridge.V5ProductionCall) : Type where
+  acceptedCall : AspisV5FriConsumerObservationBridge.AcceptedFriCall
+  parsed : AspisV5FriCallerParametric.Parsed
+  queries : Array Std.U32 18#usize
+  finalPolynomial : Array AspisV5FriCallerParametric.QM31 4#usize
+  alphas : Array AspisV5FriCallerParametric.QM31 4#usize
+  gamma : AspisV5FriCallerParametric.QM31
+  output : AspisV5FriCallerParametric.QM31 ×
+    AspisV5FriCallerParametric.Prepared
+  prepareCall : AspisV5FriCallerParametric.PrepareCall
+  friCall : AspisV5FriCallerParametric.FriCall
+  caller_run : AspisV5FriCallerParametric.verifyFriPhaseWith openingsCall
+    prepareCall friCall parsed queries finalPolynomial alphas gamma =
+      .ok (.Ok output)
+  acceptedOpening_of_fri_success :
+    ∀ opening prepared sink,
+      friCall opening prepared alphas finalPolynomial = .ok (.Ok sink) →
+        acceptedCall.openings =
+          AspisV5MerkleFriReturnedOutputBridge.toFriVerified
+            (AspisV5FriCallerMerkleBridge.toMerkleVerified opening)
+  queryCount : call.queries.card = 18
+  queryModel :
+    (V5MerkleQueryReuseProof.expectedLayer0
+        (Array.to_slice queries).val).map (fun index => index.val) =
+      AspisV5TopologyConstruction.sharedLevelIndices call.queries 0
+  rootsArray : Array
+    AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedDigest 5#usize
+  parsedRoots_eq :
+    (AspisV5FriCallerMerkleBridge.toMerkleRoots
+      parsed.v5_private_roots).as_array = .ok rootsArray
+  rootsMatch :
+    AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedRootsMatch
+      rootsArray call.roots
+  proofBytes_eq :
+    parsed.v5_private_proof.val.map
+        AspisV5MerkleUnchangedFullHelperBridge.generatedU8ToByte =
+      call.proofBytes
+
+/-- Concrete high-level resolver obtained by running the translated caller in
+the supplied production environment and retaining its accepted FRI call. -/
+def resolveFromProductionCaller
+    (openingsCall : AspisV5FriCallerParametric.OpeningCall)
+    (hash : AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedHash)
+    (environment : (call : AspisV5MerkleRustBridge.V5ProductionCall) →
+      Option (ProductionCallerEnvironment openingsCall hash call)) :
+    AspisV5MerkleRustBridge.V5ProductionCall →
+      Option AspisV5FriConsumerObservationBridge.AcceptedFriCall :=
+  fun call => (environment call).map
+    ProductionCallerEnvironment.acceptedCall
+
+/-- The concrete resolver satisfies the former universal caller-connection
+premise.  The accepted caller trace is obtained from the translated caller
+result; it is not supplied in the environment. -/
+theorem resolveFromProductionCaller_uses_production_caller
+    (openingsCall : AspisV5FriCallerParametric.OpeningCall)
+    (hash : AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedHash)
+    (environment : (call : AspisV5MerkleRustBridge.V5ProductionCall) →
+      Option (ProductionCallerEnvironment openingsCall hash call)) :
+    AcceptedResolverUsesProductionCaller openingsCall hash
+      (resolveFromProductionCaller openingsCall hash environment) := by
+  intro call acceptedCall hresolve
+  unfold resolveFromProductionCaller at hresolve
+  cases henv : environment call with
+  | none => simp [henv] at hresolve
+  | some env =>
+      simp only [henv, Option.map_some, Option.some.injEq] at hresolve
+      subst acceptedCall
+      obtain ⟨trace⟩ :=
+        AspisV5FriCallerParametric.accepted_fri_phase_yields_exact_call_trace
+          openingsCall env.prepareCall env.friCall env.parsed env.queries
+          env.finalPolynomial env.alphas env.gamma env.output env.caller_run
+      exact ⟨{
+        parsed := env.parsed
+        queries := env.queries
+        finalPolynomial := env.finalPolynomial
+        alphas := env.alphas
+        gamma := env.gamma
+        output := env.output
+        prepareCall := env.prepareCall
+        friCall := env.friCall
+        trace := trace
+        acceptedOpening_eq :=
+          env.acceptedOpening_of_fri_success trace.opening trace.prepared
+            trace.sink trace.fri_run
+        queryCount := env.queryCount
+        queryModel := env.queryModel
+        rootsArray := env.rootsArray
+        parsedRoots_eq := env.parsedRoots_eq
+        rootsMatch := env.rootsMatch
+        proofBytes_eq := env.proofBytes_eq
+      }⟩
+
+/-- Consumer equality for the concrete resolver, with no free universal
+`AcceptedResolverUsesProductionCaller` premise. -/
+theorem production_caller_environment_implies_consumer_equality
+    (sha256 : List AspisV5MerkleAuthenticationBinding.Byte →
+      AspisV5MerkleRustBridge.Digest32)
+    (hash : AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedHash)
+    (openingsCall : AspisV5FriCallerParametric.OpeningCall)
+    (environment : (call : AspisV5MerkleRustBridge.V5ProductionCall) →
+      Option (ProductionCallerEnvironment openingsCall hash call))
+    (hsource :
+      AspisV5FriCallerMerkleBridge.AcceptedCallerMerkleSourceEquality
+        openingsCall hash)
+    (hhash : AspisV5MerkleUnchangedFullHelperBridge.HashCallbackEqualsSha256
+      sha256 hash) :
+    ExactRustV5OpeningAndFriConsumerEquality sha256
+      (AspisV5FriConsumerObservationBridge.observationFromAcceptedResolver
+        (resolveFromProductionCaller openingsCall hash environment)) := by
+  apply accepted_resolver_caller_implies_consumer_equality sha256 hash
+    openingsCall (resolveFromProductionCaller openingsCall hash environment)
+    hsource hhash
+  exact resolveFromProductionCaller_uses_production_caller openingsCall hash
+    environment
+
 variable {K : Type*} [Field K] [Fintype K] [DecidableEq K]
   [Algebra (ZMod P) K] [NeZero (2 : K)]
 
-/-- Released accepted-false event with the former abstract whole-consumer
-premise replaced by the translated caller, its concrete accepted FRI-call
-resolver, and the exact one-call Merkle wrapper equality. -/
+/-- Released accepted-false event with the former abstract whole-consumer and
+universal resolver premises replaced by the translated caller's concrete
+production environment and the two focused one-call wrapper edges. -/
 theorem accepted_false_source_caller_event_with_released_tables
     {PointValue State : Type*}
     (rc : RoundConstants)
@@ -242,20 +368,19 @@ theorem accepted_false_source_caller_event_with_released_tables
       AspisV5MerkleRustBridge.Digest32)
     (hash : AspisV5MerkleUnchangedPublicAcceptanceBridge.GeneratedHash)
     (openingsCall : AspisV5FriCallerParametric.OpeningCall)
-    (resolve : AspisV5MerkleRustBridge.V5ProductionCall →
-      Option AspisV5FriConsumerObservationBridge.AcceptedFriCall)
+    (environment : (call : AspisV5MerkleRustBridge.V5ProductionCall) →
+      Option (ProductionCallerEnvironment openingsCall hash call))
     (hopeningSource :
       AspisV5FriCallerMerkleBridge.AcceptedCallerMerkleSourceEquality
         openingsCall hash)
     (hhash : AspisV5MerkleUnchangedFullHelperBridge.HashCallbackEqualsSha256
       sha256 hash)
-    (hcaller : AcceptedResolverUsesProductionCaller openingsCall hash
-      resolve)
     (rustCall : V5ProductionCall)
     (observation : OpeningAndFriObservation)
     (hobservation :
       AspisV5FriConsumerObservationBridge.observationFromAcceptedResolver
-        resolve rustCall = some observation)
+        (resolveFromProductionCaller openingsCall hash environment)
+        rustCall = some observation)
     (base : FixedSchedule (ZMod P) K)
     (hproduction : ProductionUsesReleasedFriTables base)
     (hpublished : PublishedOrdinaryPolynomialCurveDecoding (K := K))
@@ -316,13 +441,13 @@ theorem accepted_false_source_caller_event_with_released_tables
           (relationFamily.execution candidate).adaptiveData))
     (¬ Poseidon2Faithful rc deployedOwner deployedNote deployedNullifier
       deployedNode) := by
-  have hconsumer := accepted_resolver_caller_implies_consumer_equality
-    sha256 hash openingsCall resolve hopeningSource hhash hcaller
+  have hconsumer := production_caller_environment_implies_consumer_equality
+    sha256 hash openingsCall environment hopeningSource hhash
   exact
     AspisV5AcceptedExecutionReleasedSecurity.accepted_false_source_observation_event_with_released_tables
       rc sha256
       (AspisV5FriConsumerObservationBridge.observationFromAcceptedResolver
-        resolve)
+        (resolveFromProductionCaller openingsCall hash environment))
       rustCall observation hconsumer hobservation base hproduction hpublished
       causalFamily input relationFamily records statement queries decoder
       expectedC2 transcriptInput derived driverResult workFunctions workInputs
@@ -331,6 +456,8 @@ theorem accepted_false_source_caller_event_with_released_tables
 #print axioms generatedRootsMatch_unique
 #print axioms accepted_resolver_caller_implies_parser_output_equality
 #print axioms accepted_resolver_caller_implies_consumer_equality
+#print axioms resolveFromProductionCaller_uses_production_caller
+#print axioms production_caller_environment_implies_consumer_equality
 #print axioms accepted_false_source_caller_event_with_released_tables
 
 end AspisV5FriCallerAcceptedResolverBridge

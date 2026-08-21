@@ -49,10 +49,17 @@ one-call model. It does not claim that Aeneas translated the wrapper body.
 maintained released-security theorem. It proves that the concrete accepted
 FRI-call resolver has the exact parser output and read schedule, then feeds
 that result into the released accepted-false event. The former abstract
-whole-consumer equality is no longer an input to this endpoint. The remaining
-source inputs are the exact one-call wrapper equality and the explicit record
-that a successful high-level resolver result came from the translated caller
-with the same roots, queries, proof bytes, and returned opening.
+whole-consumer equality is no longer an input to this endpoint.
+
+The concrete resolver is built from `ProductionCallerEnvironment`, which is
+exactly the information omitted from the small mathematical production call:
+the parsed verifier input, ordered query array, transcript challenges, three
+caller functions, successful translated caller result, and accepted FRI call.
+`resolveFromProductionCaller_uses_production_caller` derives the former
+universal resolver premise from that data. The remaining focused source/tool
+edges are the fixed SHA-256 Merkle wrapper and the fixed-inverse FRI wrapper;
+the latter states only that the successful FRI call retained the same returned
+opening.
 
 ## Recorded files
 
@@ -65,7 +72,7 @@ with the same roots, queries, proof bytes, and returned opening.
 | `generated/V5FriCaller/Types.lean` | `8a9c03aeaa3a4fccb06b141276a78d0848089ac35f83f6a72ea69e76c984af73` |
 | `proof/V5FriCallerParametric.lean` | `a1e1678fef7051200b559240dc71dfaab84efcb049ef33fe85b91a0a57d760ea` |
 | `proof/V5FriCallerMerkleBridge.lean` | `8c175163521af742721215edefdb5a36e07e15b1e791175200f0db945dc759bd` |
-| `proof/V5FriCallerAcceptedResolverBridge.lean` | `fe2ecce5a08941638fffde05cb992dc2ab92a2b5fdd88d1e49b73d948f78e873` |
+| `proof/V5FriCallerAcceptedResolverBridge.lean` | `deaeb51487e6a42c986a5ff93069fb9c9d2a340e77489723f2719c5f89297a21` |
 
 The source file has Git blob
 `ca28d560e44e5e82e689321f32289831c889a0bd`. The extraction used Charon
