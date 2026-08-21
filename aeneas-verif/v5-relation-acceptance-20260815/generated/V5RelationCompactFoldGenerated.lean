@@ -25,10 +25,12 @@ namespace V5RelationCompactFoldGenerated
     Visibility: public -/
 @[rust_fun
   "core::array::{core::iter::traits::collect::IntoIterator<&'a mut [@T; @N], &'a mut @T, core::slice::iter::IterMut<'a, @T>>}::into_iter"]
-axiom MutAArray.Insts.CoreIterTraitsCollectIntoIteratorMutATIterMut.into_iter
-  {T : Type} {N : Std.Usize} :
-  Array T N → Result ((core.slice.iter.IterMut T) × (core.slice.iter.IterMut
-    T → Array T N))
+def MutAArray.Insts.CoreIterTraitsCollectIntoIteratorMutATIterMut.into_iter
+  {T : Type} {N : Std.Usize} (array : Array T N) :
+  Result ((core.slice.iter.IterMut T) × (core.slice.iter.IterMut
+    T → Array T N)) :=
+  ok ({ slice := Array.to_slice array },
+    fun iter => Array.from_slice array iter.slice)
 
 /-- [aspis_core::field::P]
     Source: '/Users/dominic/ZK-relation-acceptance/crates/aspis-core/src/field.rs', lines 16:0-16:16
@@ -1030,6 +1032,45 @@ def v5_cu_probe.CompactBTerminalWeights.fold_loop
       v5_cu_probe.CompactBTerminalWeights.fold_loop.body alpha alpha2 alpha3
       prepared_powers iter1 back1 i1)
     (iter, back, i)
+
+/- Charon/Aeneas extracted the complete mutable loop above but omitted the
+   small outer wrapper when translating the mutable-array back function.  This
+   definition is the direct source-shaped assembly of that extracted loop. -/
+def v5_cu_probe.CompactBTerminalWeights.fold
+  (self : v5_cu_probe.CompactBTerminalWeights)
+  (alpha : aspis_core.field.QM31) :
+  Result v5_cu_probe.CompactBTerminalWeights := do
+  let alpha2 ← aspis_core.field.QM31.square alpha
+  let alpha3 ← aspis_core.field.QM31.mul alpha2 alpha
+  let prepared0 ← aspis_core.field.PreparedQm31Multiplier.new alpha3
+  let prepared1 ← aspis_core.field.PreparedQm31Multiplier.new alpha2
+  let prepared2 ← aspis_core.field.PreparedQm31Multiplier.new alpha
+  let preparedPowers :=
+    Array.make 3#usize [prepared0, prepared1, prepared2]
+  let (iter, intoIterBack) ←
+    MutAArray.Insts.CoreIterTraitsCollectIntoIteratorMutATIterMut.into_iter
+      self.blocks
+  let (_, loopBack) ←
+    v5_cu_probe.CompactBTerminalWeights.fold_loop iter (fun im => im)
+      self.folds alpha alpha2 alpha3 preparedPowers
+  let empty : Array v5_cu_probe.CompactBTerminalBlock 0#usize :=
+    Array.make 0#usize []
+  let terminal : core.slice.iter.IterMut v5_cu_probe.CompactBTerminalBlock :=
+    { slice := Array.to_slice empty }
+  let blocks := intoIterBack (loopBack terminal)
+  let deltaFactor ←
+    match self.folds with
+    | 0#uscalar => ok aspis_core.field.QM31.ONE
+    | 1#uscalar => ok aspis_core.field.QM31.ONE
+    | 2#uscalar => ok alpha2
+    | 3#uscalar => ok alpha
+    | _ => fail panic
+  let deltaFactor1 ← aspis_core.field.QM31.half deltaFactor
+  let deltaFactor2 ← aspis_core.field.QM31.half deltaFactor1
+  let deltaScale ←
+    aspis_core.field.QM31.mul self.delta_scale deltaFactor2
+  let folds ← lift (Std.U8.wrapping_add self.folds 1#u8)
+  ok { blocks, delta_scale := deltaScale, folds }
 
 
 end V5RelationCompactFoldGenerated

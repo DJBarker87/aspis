@@ -24,7 +24,9 @@ namespace V5RelationCompactFinalGenerated
     Name pattern: [core::array::iter::IntoIter]
     Visibility: public -/
 @[rust_type "core::array::iter::IntoIter"]
-axiom core.array.iter.IntoIter (T : Type) (N : Std.Usize) : Type
+structure core.array.iter.IntoIter (T : Type) (N : Std.Usize) where
+  array : Array T N
+  index : Nat := 0
 
 /-- [core::array::iter::{impl core::iter::traits::collect::IntoIterator<T, core::array::iter::IntoIter<T, N>> for [T; N]}::into_iter]:
     Source: '/rustc/library/core/src/array/iter.rs', lines 56:4-56:40
@@ -32,9 +34,10 @@ axiom core.array.iter.IntoIter (T : Type) (N : Std.Usize) : Type
     Visibility: public -/
 @[rust_fun
   "core::array::iter::{core::iter::traits::collect::IntoIterator<[@T; @N], @T, core::array::iter::IntoIter<@T, @N>>}::into_iter"]
-axiom Array.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
-  {T : Type} {N : Std.Usize} :
-  Array T N → Result (core.array.iter.IntoIter T N)
+def Array.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
+  {T : Type} {N : Std.Usize} (array : Array T N) :
+  Result (core.array.iter.IntoIter T N) :=
+  .ok { array }
 
 /-- [core::array::iter::{impl core::iter::traits::iterator::Iterator<T> for core::array::iter::IntoIter<T, N>}::next]:
     Source: '/rustc/library/core/src/array/iter.rs', lines 242:4-242:44
@@ -42,10 +45,15 @@ axiom Array.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
     Visibility: public -/
 @[rust_fun
   "core::array::iter::{core::iter::traits::iterator::Iterator<core::array::iter::IntoIter<@T, @N>, @T>}::next"]
-axiom core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next
-  {T : Type} {N : Std.Usize} :
-  core.array.iter.IntoIter T N → Result ((Option T) ×
-    (core.array.iter.IntoIter T N))
+def core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next
+  {T : Type} {N : Std.Usize}
+  (iterator : core.array.iter.IntoIter T N) :
+  Result ((Option T) × (core.array.iter.IntoIter T N)) :=
+  if h : iterator.index < iterator.array.val.length then
+    .ok (some iterator.array.val[iterator.index],
+      { iterator with index := iterator.index + 1 })
+  else
+    .ok (none, iterator)
 
 /-- [aspis_core::field::P]
     Source: '/Users/dominic/ZK-relation-acceptance/crates/aspis-core/src/field.rs', lines 16:0-16:16

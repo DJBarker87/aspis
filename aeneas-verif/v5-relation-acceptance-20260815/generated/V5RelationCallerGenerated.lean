@@ -3,6 +3,11 @@
 import Aeneas.Std
 import Aeneas.Tactic.RustAttributes
 import Aeneas.Data.Discriminant
+import Relation.Funs
+import Prepare.Funs
+import V5RelationCompactNewGenerated
+import V5RelationCompactFoldGenerated
+import V5RelationCompactFinalGenerated
 open Aeneas Aeneas.Std Result ControlFlow Error
 set_option linter.dupNamespace false
 set_option linter.hashCommand false
@@ -45,19 +50,20 @@ def aspis_core.field.M31 := Std.U32
     Source: '/Users/dominic/ZK-relation-acceptance/crates/aspis-core/src/field.rs', lines 194:0-194:15
     Name pattern: [aspis_core::field::CM31]
     Visibility: public -/
-@[rust_type "aspis_core::field::CM31"]
-structure aspis_core.field.CM31 where
-  a : aspis_core.field.M31
-  b : aspis_core.field.M31
+/- Normalization note: this focused caller extraction and the unchanged full
+   relation extraction name the same production Rust type in different Lean
+   namespaces.  Reusing the full extracted type makes the relation call below
+   definitionally identical to the full extracted verifier while preserving
+   the focused caller's public namespace. -/
+abbrev aspis_core.field.CM31 :=
+  V5RelationFullGenerated.aspis_core.field.CM31
 
 /-- [aspis_core::field::QM31]
     Source: '/Users/dominic/ZK-relation-acceptance/crates/aspis-core/src/field.rs', lines 352:0-352:15
     Name pattern: [aspis_core::field::QM31]
     Visibility: public -/
-@[rust_type "aspis_core::field::QM31"]
-structure aspis_core.field.QM31 where
-  c0 : aspis_core.field.CM31
-  c1 : aspis_core.field.CM31
+abbrev aspis_core.field.QM31 :=
+  V5RelationFullGenerated.aspis_core.field.QM31
 
 /-- [aspis_core::circle_pcs_shape::CirclePcsPreparedClaims]
     Source: '/Users/dominic/ZK-relation-acceptance/crates/aspis-core/src/circle_pcs_shape.rs', lines 65:0-65:34
@@ -135,23 +141,15 @@ structure aspis_core.field.PreparedQm31Multiplier where
     Source: '/Users/dominic/ZK-relation-acceptance/crates/aspis-core/src/sumcheck.rs', lines 279:0-279:26
     Name pattern: [aspis_core::sumcheck::TensorWeightError]
     Visibility: public -/
-@[discriminant isize, rust_type "aspis_core::sumcheck::TensorWeightError"]
-inductive aspis_core.sumcheck.TensorWeightError where
-| MultilinearPointLength : aspis_core.sumcheck.TensorWeightError
-| FactorCount : aspis_core.sumcheck.TensorWeightError
-| CircleLogLength : aspis_core.sumcheck.TensorWeightError
-| IndexInterval : aspis_core.sumcheck.TensorWeightError
-| DenseLength : aspis_core.sumcheck.TensorWeightError
-| Grouped64x16LogLength : aspis_core.sumcheck.TensorWeightError
-| Grouped64x16PreparedShape : aspis_core.sumcheck.TensorWeightError
-| Grouped128x16LogLength : aspis_core.sumcheck.TensorWeightError
+abbrev aspis_core.sumcheck.TensorWeightError :=
+  V5RelationFullGenerated.aspis_core.sumcheck.TensorWeightError
 
 /-- [aspis_core::sumcheck::WeightAccumulator]
     Source: '/Users/dominic/ZK-relation-acceptance/crates/aspis-core/src/sumcheck.rs', lines 302:0-302:28
     Name pattern: [aspis_core::sumcheck::WeightAccumulator]
     Visibility: public -/
-@[rust_type "aspis_core::sumcheck::WeightAccumulator"]
-axiom aspis_core.sumcheck.WeightAccumulator : Type
+abbrev aspis_core.sumcheck.WeightAccumulator :=
+  V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator
 
 /-- [solana_program_error::ProgramError]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-program-error-2.2.2/src/lib.rs', lines 33:0-33:21
@@ -232,6 +230,111 @@ structure v5_cu_probe.CompactBTerminalWeights where
   delta_scale : aspis_core.field.QM31
   folds : Std.U8
 
+private def callerToCompactNewQM31
+    (value : aspis_core.field.QM31) :
+    V5RelationCompactNewGenerated.aspis_core.field.QM31 :=
+  { c0 := { a := value.c0.a, b := value.c0.b }
+    c1 := { a := value.c1.a, b := value.c1.b } }
+
+private def compactNewToCallerQM31
+    (value : V5RelationCompactNewGenerated.aspis_core.field.QM31) :
+    aspis_core.field.QM31 :=
+  { c0 := { a := value.c0.a, b := value.c0.b }
+    c1 := { a := value.c1.a, b := value.c1.b } }
+
+private def callerToCompactNewArray {count : Std.Usize}
+    (values : Array aspis_core.field.QM31 count) :
+    Array V5RelationCompactNewGenerated.aspis_core.field.QM31 count :=
+  ⟨values.val.map callerToCompactNewQM31, by simpa using values.property⟩
+
+private def compactNewBlockToCaller
+    (block : V5RelationCompactNewGenerated.v5_cu_probe.CompactBTerminalBlock) :
+    v5_cu_probe.CompactBTerminalBlock :=
+  { scale := compactNewToCallerQM31 block.scale
+    power_lo := compactNewToCallerQM31 block.power_lo
+    power_hi := compactNewToCallerQM31 block.power_hi
+    selector := block.selector }
+
+private def compactNewStateToCaller
+    (state : V5RelationCompactNewGenerated.v5_cu_probe.CompactBTerminalWeights) :
+    v5_cu_probe.CompactBTerminalWeights :=
+  { blocks := ⟨state.blocks.val.map compactNewBlockToCaller,
+      by simpa using state.blocks.property⟩
+    delta_scale := compactNewToCallerQM31 state.delta_scale
+    folds := state.folds }
+
+private def callerToCompactFoldQM31
+    (value : aspis_core.field.QM31) :
+    V5RelationCompactFoldGenerated.aspis_core.field.QM31 :=
+  { c0 := { a := value.c0.a, b := value.c0.b }
+    c1 := { a := value.c1.a, b := value.c1.b } }
+
+private def compactFoldToCallerQM31
+    (value : V5RelationCompactFoldGenerated.aspis_core.field.QM31) :
+    aspis_core.field.QM31 :=
+  { c0 := { a := value.c0.a, b := value.c0.b }
+    c1 := { a := value.c1.a, b := value.c1.b } }
+
+private def callerBlockToCompactFold
+    (block : v5_cu_probe.CompactBTerminalBlock) :
+    V5RelationCompactFoldGenerated.v5_cu_probe.CompactBTerminalBlock :=
+  { scale := callerToCompactFoldQM31 block.scale
+    power_lo := callerToCompactFoldQM31 block.power_lo
+    power_hi := callerToCompactFoldQM31 block.power_hi
+    selector := block.selector }
+
+private def compactFoldBlockToCaller
+    (block : V5RelationCompactFoldGenerated.v5_cu_probe.CompactBTerminalBlock) :
+    v5_cu_probe.CompactBTerminalBlock :=
+  { scale := compactFoldToCallerQM31 block.scale
+    power_lo := compactFoldToCallerQM31 block.power_lo
+    power_hi := compactFoldToCallerQM31 block.power_hi
+    selector := block.selector }
+
+private def callerStateToCompactFold
+    (state : v5_cu_probe.CompactBTerminalWeights) :
+    V5RelationCompactFoldGenerated.v5_cu_probe.CompactBTerminalWeights :=
+  { blocks := ⟨state.blocks.val.map callerBlockToCompactFold,
+      by simpa using state.blocks.property⟩
+    delta_scale := callerToCompactFoldQM31 state.delta_scale
+    folds := state.folds }
+
+private def compactFoldStateToCaller
+    (state : V5RelationCompactFoldGenerated.v5_cu_probe.CompactBTerminalWeights) :
+    v5_cu_probe.CompactBTerminalWeights :=
+  { blocks := ⟨state.blocks.val.map compactFoldBlockToCaller,
+      by simpa using state.blocks.property⟩
+    delta_scale := compactFoldToCallerQM31 state.delta_scale
+    folds := state.folds }
+
+private def callerToCompactFinalQM31
+    (value : aspis_core.field.QM31) :
+    V5RelationCompactFinalGenerated.aspis_core.field.QM31 :=
+  { c0 := { a := value.c0.a, b := value.c0.b }
+    c1 := { a := value.c1.a, b := value.c1.b } }
+
+private def compactFinalToCallerQM31
+    (value : V5RelationCompactFinalGenerated.aspis_core.field.QM31) :
+    aspis_core.field.QM31 :=
+  { c0 := { a := value.c0.a, b := value.c0.b }
+    c1 := { a := value.c1.a, b := value.c1.b } }
+
+private def callerBlockToCompactFinal
+    (block : v5_cu_probe.CompactBTerminalBlock) :
+    V5RelationCompactFinalGenerated.v5_cu_probe.CompactBTerminalBlock :=
+  { scale := callerToCompactFinalQM31 block.scale
+    power_lo := callerToCompactFinalQM31 block.power_lo
+    power_hi := callerToCompactFinalQM31 block.power_hi
+    selector := block.selector }
+
+private def callerStateToCompactFinal
+    (state : v5_cu_probe.CompactBTerminalWeights) :
+    V5RelationCompactFinalGenerated.v5_cu_probe.CompactBTerminalWeights :=
+  { blocks := ⟨state.blocks.val.map callerBlockToCompactFinal,
+      by simpa using state.blocks.property⟩
+    delta_scale := callerToCompactFinalQM31 state.delta_scale
+    folds := state.folds }
+
 /-- [v5_relation_production_harness::v5_cu_probe::RelationExtraWork]
     Source: 'src/../../../../programs/aspis-verifier/src/v5_cu_probe.rs', lines 1120:0-1128:1 -/
 @[discriminant isize]
@@ -272,48 +375,232 @@ structure v5_cu_probe.fri_checks.V5PreparedPcsClaims where
   c1_weight_limbs : Array (Array Std.U32 4#usize) 16#usize
   c2_multipliers : Array aspis_core.field.PreparedQm31Multiplier 3#usize
 
+/- The pinned translator cannot carry the production `map/collect/try_fold`
+   iterator state through the three fixed relation points.  `Prepare.Funs` is
+   the generated definition of the checked fixed-shape extraction adapter.
+   These structural maps join its duplicate extracted Rust types to this
+   caller extraction. -/
+private def callerToPrepareQM31 (value : aspis_core.field.QM31) :
+    V5RelationPrepareGenerated.aspis_core.field.QM31 :=
+  { c0 := { a := value.c0.a, b := value.c0.b }
+    c1 := { a := value.c1.a, b := value.c1.b } }
+
+private def prepareToCallerQM31
+    (value : V5RelationPrepareGenerated.aspis_core.field.QM31) :
+    aspis_core.field.QM31 :=
+  { c0 := { a := value.c0.a, b := value.c0.b }
+    c1 := { a := value.c1.a, b := value.c1.b } }
+
+private def callerToPrepareVec
+    (values : alloc.vec.Vec aspis_core.field.QM31) :
+    alloc.vec.Vec V5RelationPrepareGenerated.aspis_core.field.QM31 :=
+  ⟨values.val.map callerToPrepareQM31, by simpa using values.property⟩
+
+private def prepareToCallerVec
+    (values : alloc.vec.Vec V5RelationPrepareGenerated.aspis_core.field.QM31) :
+    alloc.vec.Vec aspis_core.field.QM31 :=
+  ⟨values.val.map prepareToCallerQM31, by simpa using values.property⟩
+
+private def prepareToCallerArray {count : Std.Usize}
+    (values : Array V5RelationPrepareGenerated.aspis_core.field.QM31 count) :
+    Array aspis_core.field.QM31 count :=
+  ⟨values.val.map prepareToCallerQM31, by simpa using values.property⟩
+
+private def callerToPrepareMultiplier
+    (value : aspis_core.field.PreparedQm31Multiplier) :
+    V5RelationPrepareGenerated.aspis_core.field.PreparedQm31Multiplier :=
+  { components := value.components }
+
+private def callerToPrepareClaims
+    (claims : v5_cu_probe.fri_checks.V5PreparedPcsClaims) :
+    V5RelationPrepareGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims :=
+  { inner :=
+      { claims := callerToPrepareVec claims.inner.claims
+        powers := callerToPrepareVec claims.inner.powers }
+    c1_weight_limbs := claims.c1_weight_limbs
+    c2_multipliers :=
+      ⟨claims.c2_multipliers.val.map callerToPrepareMultiplier,
+        by simpa using claims.c2_multipliers.property⟩ }
+
+private def callerToPrepareRoots
+    (roots : v5_cu_probe.private_openings.V5PrivateOpeningRoots) :
+    V5RelationPrepareGenerated.v5_cu_probe.private_openings.V5PrivateOpeningRoots :=
+  { c1 := roots.c1, c2 := roots.c2, later := roots.later }
+
+private def callerToPrepareParsed (parsed : v5_cu_probe.ParsedProbeData) :
+    V5RelationPrepareGenerated.v5_cu_probe.ParsedProbeData :=
+  { gamma := callerToPrepareQM31 parsed.gamma
+    production_c1 := parsed.production_c1
+    candidate_c1 := parsed.candidate_c1
+    c2 := parsed.c2
+    relation_scales := parsed.relation_scales
+    relation_points := parsed.relation_points
+    relation_claims := parsed.relation_claims
+    relation_alphas := parsed.relation_alphas
+    relation_final := parsed.relation_final
+    v5_fold_nonces := parsed.v5_fold_nonces
+    v5_batch_nonce := parsed.v5_batch_nonce
+    v5_wire_prefix := parsed.v5_wire_prefix
+    v5_atomic_terminal_context := parsed.v5_atomic_terminal_context
+    v5_private_roots := callerToPrepareRoots parsed.v5_private_roots
+    v5_final_coefficients := parsed.v5_final_coefficients
+    v5_relation_stress := parsed.v5_relation_stress
+    v5_final_nonce := parsed.v5_final_nonce
+    v5_query_selector := parsed.v5_query_selector
+    v5_private_proof := parsed.v5_private_proof }
+
+private def prepareProductToCaller
+    (values : alloc.vec.Vec (Array
+      V5RelationPrepareGenerated.aspis_core.field.QM31 2#usize)) :
+    alloc.vec.Vec (Array aspis_core.field.QM31 2#usize) :=
+  ⟨values.val.map prepareToCallerArray, by simpa using values.property⟩
+
+private def prepareWeightComponentToCaller :
+    V5RelationPrepareGenerated.aspis_core.sumcheck.WeightComponent →
+      V5RelationFullGenerated.aspis_core.sumcheck.WeightComponent
+  | .Geometric scale step =>
+      .Geometric (prepareToCallerQM31 scale) (prepareToCallerQM31 step)
+  | .Multilinear scale point =>
+      .Multilinear (prepareToCallerQM31 scale) (prepareToCallerVec point)
+  | .Tensor scale factors =>
+      .Tensor (prepareToCallerQM31 scale) (prepareToCallerVec factors)
+  | .Product scale factors =>
+      .Product (prepareToCallerQM31 scale) (prepareProductToCaller factors)
+  | .Dense values => .Dense (prepareToCallerVec values)
+  | .Grouped64x16 rows weights logBlocks =>
+      .Grouped64x16 rows (prepareToCallerVec weights) logBlocks
+  | .Grouped64x16BinaryDeferred rows indices total weights =>
+      .Grouped64x16BinaryDeferred rows indices
+        (total.map prepareToCallerQM31) (prepareToCallerVec weights)
+  | .Grouped128x16 rows weights logBlocks =>
+      .Grouped128x16 rows (prepareToCallerVec weights) logBlocks
+
+private def prepareWeightsToCaller
+    (weights : V5RelationPrepareGenerated.aspis_core.sumcheck.WeightAccumulator) :
+    aspis_core.sumcheck.WeightAccumulator :=
+  { log_len := weights.log_len
+    components :=
+      ⟨weights.components.val.map prepareWeightComponentToCaller,
+        by simpa using weights.components.property⟩ }
+
+private def prepareBlockToCaller
+    (block : V5RelationPrepareGenerated.v5_cu_probe.CompactBTerminalBlock) :
+    v5_cu_probe.CompactBTerminalBlock :=
+  { scale := prepareToCallerQM31 block.scale
+    power_lo := prepareToCallerQM31 block.power_lo
+    power_hi := prepareToCallerQM31 block.power_hi
+    selector := block.selector }
+
+private def prepareCompactToCaller
+    (state : V5RelationPrepareGenerated.v5_cu_probe.CompactBTerminalWeights) :
+    v5_cu_probe.CompactBTerminalWeights :=
+  { blocks := ⟨state.blocks.val.map prepareBlockToCaller,
+      by simpa using state.blocks.property⟩
+    delta_scale := prepareToCallerQM31 state.delta_scale
+    folds := state.folds }
+
+private def prepareExtraToCaller :
+    V5RelationPrepareGenerated.v5_cu_probe.RelationExtraWork →
+      v5_cu_probe.RelationExtraWork
+  | .None => .None
+  | .Compact state => .Compact (prepareCompactToCaller state)
+  | .StandaloneDot weights count scale =>
+      .StandaloneDot (prepareToCallerVec weights) count
+        (prepareToCallerQM31 scale)
+
+private def prepareRelationToCaller
+    (relation : V5RelationPrepareGenerated.v5_cu_probe.PreparedRelation) :
+    v5_cu_probe.PreparedRelation :=
+  { weights := prepareWeightsToCaller relation.weights
+    relation_value := prepareToCallerQM31 relation.relation_value
+    alphas := prepareToCallerArray relation.alphas
+    final_values := prepareToCallerArray relation.final_values
+    extra_work := prepareExtraToCaller relation.extra_work }
+
 /-- [v5_relation_production_harness::v5_cu_probe::prepare_relation_base_with_kappa_prepared]:
     Source: 'src/../../../../programs/aspis-verifier/src/v5_cu_probe.rs', lines 1725:0-1746:1 -/
-axiom v5_cu_probe.prepare_relation_base_with_kappa_prepared
-  :
-  v5_cu_probe.ParsedProbeData → v5_cu_probe.RelationVariant →
-    aspis_core.field.QM31 → aspis_core.field.QM31 →
-    v5_cu_probe.fri_checks.V5PreparedPcsClaims → Result (core.result.Result
+def v5_cu_probe.prepare_relation_base_with_kappa_prepared
+  (parsed : v5_cu_probe.ParsedProbeData)
+  (variant : v5_cu_probe.RelationVariant)
+  (kappa inactiveClaim : aspis_core.field.QM31)
+  (preparedClaims : v5_cu_probe.fri_checks.V5PreparedPcsClaims) :
+  Result (core.result.Result
     (v5_cu_probe.PreparedRelation × (Array aspis_core.field.QM31 10#usize) ×
-    aspis_core.field.QM31) solana_program_error.ProgramError)
+    aspis_core.field.QM31) solana_program_error.ProgramError) := do
+  match variant with
+  | .FourClaimsCompact =>
+      let result ←
+        V5RelationPrepareGenerated.v5_cu_probe.prepare_relation_base_with_kappa_prepared_for_extraction
+          (callerToPrepareParsed parsed) (callerToPrepareQM31 kappa)
+          (callerToPrepareQM31 inactiveClaim)
+          (callerToPrepareClaims preparedClaims)
+      match result with
+      | .Err _ => ok (.Err solana_program_error.ProgramError.InvalidAccountData)
+      | .Ok (relation, point, denseScale) =>
+          ok (.Ok (prepareRelationToCaller relation,
+            prepareToCallerArray point, prepareToCallerQM31 denseScale))
+  | _ => fail panic
 
 /-- [v5_relation_production_harness::v5_cu_probe::{v5_relation_production_harness::v5_cu_probe::CompactBTerminalWeights}::new]:
     Source: 'src/../../../../programs/aspis-verifier/src/v5_cu_probe.rs', lines 1851:4-1871:5 -/
-axiom v5_cu_probe.CompactBTerminalWeights.new
+def v5_cu_probe.CompactBTerminalWeights.new
   :
   Array aspis_core.field.QM31 10#usize → aspis_core.field.QM31 → Result
-    v5_cu_probe.CompactBTerminalWeights
+    v5_cu_probe.CompactBTerminalWeights := fun point scale => do
+  let state ← V5RelationCompactNewGenerated.v5_cu_probe.CompactBTerminalWeights.new
+    (callerToCompactNewArray point) (callerToCompactNewQM31 scale)
+  ok (compactNewStateToCaller state)
 
 /-- Trait declaration: [v5_relation_production_harness::v5_relation_stress::V5RelationStressAdditive]
     Source: 'src/../../../../programs/aspis-verifier/src/v5_relation_stress.rs', lines 69:0-72:1
     Visibility: public -/
-structure v5_relation_stress.V5RelationStressAdditive (Self : Type) where
-  fold : Self → aspis_core.field.QM31 → Result Self
-  dot : Self → Array aspis_core.field.QM31 4#usize → Result
-    aspis_core.field.QM31
+abbrev v5_relation_stress.V5RelationStressAdditive :=
+  V5RelationFullGenerated.relation_stress.V5RelationStressAdditive
 
 /-- [v5_relation_production_harness::v5_cu_probe::{impl v5_relation_production_harness::v5_relation_stress::V5RelationStressAdditive for v5_relation_production_harness::v5_cu_probe::CompactBTerminalWeights}::dot]:
     Source: 'src/../../../../programs/aspis-verifier/src/v5_cu_probe.rs', lines 1989:4-1991:5
     Visibility: public -/
-axiom
+def
   v5_cu_probe.CompactBTerminalWeights.Insts.V5_relation_production_harnessV5_relation_stressV5RelationStressAdditive.dot
-  :
-  v5_cu_probe.CompactBTerminalWeights → Array aspis_core.field.QM31 4#usize
-    → Result aspis_core.field.QM31
+  (state : v5_cu_probe.CompactBTerminalWeights)
+  (values : Array aspis_core.field.QM31 4#usize) :
+  Result aspis_core.field.QM31 := do
+  let weights ←
+    V5RelationCompactFinalGenerated.v5_cu_probe.CompactBTerminalWeights.final_weights
+      (callerStateToCompactFinal state)
+  let w0 ← Array.index_usize weights 0#usize
+  let w1 ← Array.index_usize weights 1#usize
+  let w2 ← Array.index_usize weights 2#usize
+  let w3 ← Array.index_usize weights 3#usize
+  let v0 ← Array.index_usize values 0#usize
+  let v1 ← Array.index_usize values 1#usize
+  let v2 ← Array.index_usize values 2#usize
+  let v3 ← Array.index_usize values 3#usize
+  let p0 ← V5RelationFullGenerated.aspis_core.field.QM31.mul
+    (compactFinalToCallerQM31 w0) v0
+  let s0 ← V5RelationFullGenerated.aspis_core.field.QM31.add
+    V5RelationFullGenerated.aspis_core.field.QM31.ZERO p0
+  let p1 ← V5RelationFullGenerated.aspis_core.field.QM31.mul
+    (compactFinalToCallerQM31 w1) v1
+  let s1 ← V5RelationFullGenerated.aspis_core.field.QM31.add s0 p1
+  let p2 ← V5RelationFullGenerated.aspis_core.field.QM31.mul
+    (compactFinalToCallerQM31 w2) v2
+  let s2 ← V5RelationFullGenerated.aspis_core.field.QM31.add s1 p2
+  let p3 ← V5RelationFullGenerated.aspis_core.field.QM31.mul
+    (compactFinalToCallerQM31 w3) v3
+  V5RelationFullGenerated.aspis_core.field.QM31.add s2 p3
 
 /-- [v5_relation_production_harness::v5_cu_probe::{impl v5_relation_production_harness::v5_relation_stress::V5RelationStressAdditive for v5_relation_production_harness::v5_cu_probe::CompactBTerminalWeights}::fold]:
     Source: 'src/../../../../programs/aspis-verifier/src/v5_cu_probe.rs', lines 1984:4-1986:5
     Visibility: public -/
-axiom
+def
   v5_cu_probe.CompactBTerminalWeights.Insts.V5_relation_production_harnessV5_relation_stressV5RelationStressAdditive.fold
-  :
-  v5_cu_probe.CompactBTerminalWeights → aspis_core.field.QM31 → Result
-    v5_cu_probe.CompactBTerminalWeights
+  (state : v5_cu_probe.CompactBTerminalWeights)
+  (alpha : aspis_core.field.QM31) : Result
+    v5_cu_probe.CompactBTerminalWeights := do
+  let folded ← V5RelationCompactFoldGenerated.v5_cu_probe.CompactBTerminalWeights.fold
+    (callerStateToCompactFold state) (callerToCompactFoldQM31 alpha)
+  ok (compactFoldStateToCaller folded)
 
 /-- Trait implementation: [v5_relation_production_harness::v5_cu_probe::{impl v5_relation_production_harness::v5_relation_stress::V5RelationStressAdditive for v5_relation_production_harness::v5_cu_probe::CompactBTerminalWeights}]
     Source: 'src/../../../../programs/aspis-verifier/src/v5_cu_probe.rs', lines 1982:0-1992:1 -/
@@ -331,38 +618,27 @@ def
 /-- [v5_relation_production_harness::v5_relation_stress::VerifiedV5RelationStress]
     Source: 'src/../../../../programs/aspis-verifier/src/v5_relation_stress.rs', lines 61:0-64:1
     Visibility: public -/
-structure v5_relation_stress.VerifiedV5RelationStress where
-  final_coefficients : Array aspis_core.field.QM31 4#usize
-  terminal_claim : aspis_core.field.QM31
+abbrev v5_relation_stress.VerifiedV5RelationStress :=
+  V5RelationFullGenerated.relation_stress.VerifiedV5RelationStress
 
 /-- [v5_relation_production_harness::v5_relation_stress::V5RelationStressError]
     Source: 'src/../../../../programs/aspis-verifier/src/v5_relation_stress.rs', lines 44:0-52:1
     Visibility: public -/
-@[discriminant isize]
-inductive v5_relation_stress.V5RelationStressError where
-| NonCanonicalField : Std.Usize → v5_relation_stress.V5RelationStressError
-| InvalidCirclePoint : Std.Usize → v5_relation_stress.V5RelationStressError
-| ZeroMix :
-  Std.Usize →
-  Std.Usize →
-  v5_relation_stress.V5RelationStressError
-| ZeroAlpha : Std.Usize → v5_relation_stress.V5RelationStressError
-| WeightShape :
-  aspis_core.sumcheck.TensorWeightError →
-  v5_relation_stress.V5RelationStressError
-| BoundaryMismatch : Std.Usize → v5_relation_stress.V5RelationStressError
-| TerminalMismatch : v5_relation_stress.V5RelationStressError
+abbrev v5_relation_stress.V5RelationStressError :=
+  V5RelationFullGenerated.relation_stress.V5RelationStressError
 
 /-- [v5_relation_production_harness::v5_relation_stress::verify_v5_relation_stress_with_additive]:
     Source: 'src/../../../../programs/aspis-verifier/src/v5_relation_stress.rs', lines 138:0-198:1
     Visibility: public -/
-axiom v5_relation_stress.verify_v5_relation_stress_with_additive
+def v5_relation_stress.verify_v5_relation_stress_with_additive
   {A : Type} (V5RelationStressAdditiveInst :
   v5_relation_stress.V5RelationStressAdditive A) :
   aspis_core.sumcheck.WeightAccumulator → aspis_core.field.QM31 → Array
     aspis_core.field.QM31 4#usize → Array Std.U8 928#usize → A → Result
     (core.result.Result v5_relation_stress.VerifiedV5RelationStress
-    v5_relation_stress.V5RelationStressError)
+    v5_relation_stress.V5RelationStressError) :=
+  V5RelationFullGenerated.relation_stress.verify_v5_relation_stress_with_additive
+    V5RelationStressAdditiveInst
 
 /-- [v5_relation_production_harness::v5_cu_probe::verify_mode9_relation_phase::closure]
     Source: 'src/../../../../programs/aspis-verifier/src/v5_cu_probe.rs', lines 2376:13-2376:49 -/

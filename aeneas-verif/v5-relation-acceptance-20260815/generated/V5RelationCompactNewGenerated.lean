@@ -24,10 +24,27 @@ namespace V5RelationCompactNewGenerated
     Name pattern: [core::array::from_fn]
     Visibility: public -/
 @[rust_fun "core::array::from_fn"]
-axiom core.array.from_fn
+def core.array.from_fn
   {T : Type} {F : Type} (N : Std.Usize) (opsfunctionFnMutFTupleUsizeTInst :
   core.ops.function.FnMut F Std.Usize T) :
-  F → Result (Array T N)
+  F → Result (Array T N) := fun closure => do
+  if hN : N = 10#usize then
+    let (v0, closure) ← opsfunctionFnMutFTupleUsizeTInst.call_mut closure 0#usize
+    let (v1, closure) ← opsfunctionFnMutFTupleUsizeTInst.call_mut closure 1#usize
+    let (v2, closure) ← opsfunctionFnMutFTupleUsizeTInst.call_mut closure 2#usize
+    let (v3, closure) ← opsfunctionFnMutFTupleUsizeTInst.call_mut closure 3#usize
+    let (v4, closure) ← opsfunctionFnMutFTupleUsizeTInst.call_mut closure 4#usize
+    let (v5, closure) ← opsfunctionFnMutFTupleUsizeTInst.call_mut closure 5#usize
+    let (v6, closure) ← opsfunctionFnMutFTupleUsizeTInst.call_mut closure 6#usize
+    let (v7, closure) ← opsfunctionFnMutFTupleUsizeTInst.call_mut closure 7#usize
+    let (v8, closure) ← opsfunctionFnMutFTupleUsizeTInst.call_mut closure 8#usize
+    let (v9, _) ← opsfunctionFnMutFTupleUsizeTInst.call_mut closure 9#usize
+    let output : Array T N := hN.symm ▸
+      (Array.make 10#usize [v0, v1, v2, v3, v4, v5, v6, v7, v8, v9] :
+        Array T 10#usize)
+    ok output
+  else
+    fail panic
 
 /-- [aspis_core::field::P]
     Source: '/Users/dominic/ZK-relation-acceptance/crates/aspis-core/src/field.rs', lines 16:0-16:16
