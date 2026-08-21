@@ -204,7 +204,43 @@ theorem generated_section_call_yields_exact_acceptance
     next1 parameters.depth parameters.tag parameters.width parameters.radix
     parameters.indices fields call.helper_call
 
+/-- Accepted-direction wrapper which additionally keeps the exact returned
+opening.  This is the form consumed by the five-section/Fri bridge. -/
+theorem generated_section_call_yields_exact_returned_section
+    (sha256 : List ModelByte → Digest32)
+    (tree : V5PrivateSection) (queries : Finset V5Query)
+    (queryCount : queries.card = 18)
+    {hash : GeneratedHash} {selected : Slice Std.U32}
+    {roots : Array GeneratedDigest 5#usize}
+    {topology : aspis_core.merkle.Radix4BinaryCapTopology}
+    {sectionIndex radixLevel : Std.Usize}
+    {level0 next0 level1 next1 : GeneratedDigestVec}
+    {remainder0 remainder1 : Slice Std.U8}
+    {parsed0 parsed1 : Array (Option GeneratedOpening) 5#usize}
+    (call : GeneratedSectionCall hash selected roots topology sectionIndex
+      radixLevel level0 next0 level1 next1 remainder0 remainder1 parsed0
+      parsed1)
+    (hhash : HashCallbackEqualsSha256 sha256 hash)
+    (parameters : ReleasedGeneratedSectionParameters tree queries call)
+    (fields : FullExactConstructedTopologyFields queries topology) :
+    ExactReturnedSectionAcceptance sha256 tree
+      (AspisV5MerkleUnchangedFullRadixSoundness.generatedArrayToDigest
+        call.root)
+      queries
+      (remainder0.val.map
+        AspisV5MerkleUnchangedFullHelperBridge.generatedU8ToByte)
+      (remainder1.val.map
+        AspisV5MerkleUnchangedFullHelperBridge.generatedU8ToByte)
+      call.opening := by
+  letI : HashContext := { hash := hash }
+  exact generated_helper_success_yields_exact_returned_section sha256 hhash tree
+    queries queryCount call.root call.depth call.tag call.width selected
+    remainder0 topology radixLevel level0 next0 call.opening remainder1 level1
+    next1 parameters.depth parameters.tag parameters.width parameters.radix
+    parameters.indices fields call.helper_call
+
 #print axioms generated_section_call_parameters
 #print axioms generated_section_call_yields_exact_acceptance
+#print axioms generated_section_call_yields_exact_returned_section
 
 end AspisV5MerkleUnchangedGeneratedSectionBridge

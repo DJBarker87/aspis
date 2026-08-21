@@ -44,14 +44,17 @@ model:
 2. `V5MerkleUnchangedQueryModelBridge.lean` identifies those lists with the
    five maintained tree-index sets.
 3. `V5MerkleUnchangedFiveSectionComposition.lean` applies the exact helper
-   theorem to each of the five generated calls and builds one `ExactV5Run`.
+   theorem to each of the five generated calls, builds one `ExactV5Run`, and
+   identifies all five returned opening values with that run.
 4. `V5MerkleUnchangedPublicAcceptanceBridge.lean` starts at the generated
-   public verifier's success result and produces both the maintained run and
-   an authenticated five-tree forest.
+   public verifier's success result and produces the maintained run, the
+   exact returned openings, index arrays, consumed-byte count, and an
+   authenticated five-tree forest.
 
 The final theorems are
 `generated_public_acceptance_yields_exact_v5` and
-`generated_public_acceptance_yields_forest`. They do not use
+`generated_public_acceptance_yields_exact_v5_with_output`, with
+`generated_public_acceptance_yields_forest` as the direct forest result. They do not use
 `VerifyStateOnlyPrivateOpeningWithTopologySourceEquality` or
 `VerifyV5DriverCompositionSourceEquality`.
 

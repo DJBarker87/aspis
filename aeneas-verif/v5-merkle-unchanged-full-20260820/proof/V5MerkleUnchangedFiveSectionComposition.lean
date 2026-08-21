@@ -17,10 +17,12 @@ open V5MerkleUnchangedFull
 open V5MerkleUnchangedDriverProof
 open AspisV5MerkleAuthenticationBinding
 open AspisV5MerkleRustBridge
+open AspisV5MerkleConsumedValueBridge
 open AspisV5TopologyConstruction
 open AspisV5MerkleUnchangedFullHelperBridge
 open AspisV5MerkleUnchangedFullConstructorSemantics
 open AspisV5MerkleUnchangedFullSectionTopologyAlignment
+open AspisV5MerkleUnchangedFullSectionCallBridge
 open AspisV5MerkleUnchangedGeneratedSectionBridge
 
 abbrev GeneratedDigest := Array Std.U8 32#usize
@@ -200,7 +202,100 @@ theorem generated_five_call_trace_yields_exact_run
   }
   exact ⟨run, rfl⟩
 
+/-- The stronger five-section composition keeps the five concrete openings
+returned by the unchanged source loop and identifies each with the matching
+authenticated section in the constructed run. -/
+theorem generated_five_call_trace_yields_exact_run_and_openings
+    (sha256 : List ModelByte → Digest32)
+    (queries : Finset V5Query) (queryCount : queries.card = 18)
+    {hash : GeneratedHash}
+    {s0 s1 s2 s3 s4 : Slice Std.U32}
+    {roots : Array GeneratedDigest 5#usize}
+    {topology : aspis_core.merkle.Radix4BinaryCapTopology}
+    {level0 next0 : GeneratedDigestVec}
+    {proofBytes : Slice Std.U8}
+    {parsed0 : Array (Option GeneratedOpening) 5#usize}
+    {finalRemainder : Slice Std.U8}
+    {finalParsed : Array (Option GeneratedOpening) 5#usize}
+    (trace : GeneratedFiveCallTrace hash s0 s1 s2 s3 s4 roots topology
+      level0 next0 proofBytes parsed0 finalRemainder finalParsed)
+    (hhash : HashCallbackEqualsSha256 sha256 hash)
+    (s0Model : s0.val.map (fun index => index.val) =
+      orderedActiveIndices .c1 queries 0)
+    (s1Model : s1.val.map (fun index => index.val) =
+      orderedActiveIndices .c2 queries 0)
+    (s2Model : s2.val.map (fun index => index.val) =
+      orderedActiveIndices .line1 queries 0)
+    (s3Model : s3.val.map (fun index => index.val) =
+      orderedActiveIndices .line2 queries 0)
+    (s4Model : s4.val.map (fun index => index.val) =
+      orderedActiveIndices .line3 queries 0)
+    (fields : FullExactConstructedTopologyFields queries topology)
+    (hempty : finalRemainder.val = []) :
+    ∃ run : ExactV5Run sha256 (rootsOfFiveCallTrace trace) queries,
+      run.proofBytes = proofBytes.val.map generatedU8ToByte ∧
+      generatedOpeningToReturned trace.call0.opening =
+        openingOfTrace (run.sections .c1) ∧
+      generatedOpeningToReturned trace.call1.opening =
+        openingOfTrace (run.sections .c2) ∧
+      generatedOpeningToReturned trace.call2.opening =
+        openingOfTrace (run.sections .line1) ∧
+      generatedOpeningToReturned trace.call3.opening =
+        openingOfTrace (run.sections .line2) ∧
+      generatedOpeningToReturned trace.call4.opening =
+        openingOfTrace (run.sections .line3) := by
+  have p0 := generated_section_call_parameters .c1 queries trace.call0 rfl rfl
+    s0Model
+  have p1 := generated_section_call_parameters .c2 queries trace.call1 rfl rfl
+    s1Model
+  have p2 := generated_section_call_parameters .line1 queries trace.call2 rfl
+    rfl s2Model
+  have p3 := generated_section_call_parameters .line2 queries trace.call3 rfl
+    rfl s3Model
+  have p4 := generated_section_call_parameters .line3 queries trace.call4 rfl
+    rfl s4Model
+  obtain ⟨c1, hc1, hc1Opening⟩ :=
+    generated_section_call_yields_exact_returned_section sha256 .c1 queries
+      queryCount trace.call0 hhash p0 fields
+  obtain ⟨c2, hc2, hc2Opening⟩ :=
+    generated_section_call_yields_exact_returned_section sha256 .c2 queries
+      queryCount trace.call1 hhash p1 fields
+  obtain ⟨line1, hline1, hline1Opening⟩ :=
+    generated_section_call_yields_exact_returned_section sha256 .line1 queries
+      queryCount trace.call2 hhash p2 fields
+  obtain ⟨line2, hline2, hline2Opening⟩ :=
+    generated_section_call_yields_exact_returned_section sha256 .line2 queries
+      queryCount trace.call3 hhash p3 fields
+  obtain ⟨line3, hline3, hline3Opening⟩ :=
+    generated_section_call_yields_exact_returned_section sha256 .line3 queries
+      queryCount trace.call4 hhash p4 fields
+  let sections : ∀ tree,
+      ExactSectionTrace sha256 tree ((rootsOfFiveCallTrace trace).get tree)
+        queries := fun tree => match tree with
+    | .c1 => c1
+    | .c2 => c2
+    | .line1 => line1
+    | .line2 => line2
+    | .line3 => line3
+  let run : ExactV5Run sha256 (rootsOfFiveCallTrace trace) queries := {
+    proofBytes := proofBytes.val.map generatedU8ToByte
+    query_count := queryCount
+    sections := sections
+    proof_eq := by
+      change proofBytes.val.map generatedU8ToByte =
+        c1.wire ++ c2.wire ++ line1.wire ++ line2.wire ++ line3.wire
+      rw [hc1, hc2, hline1, hline2, hline3, hempty]
+      simp only [List.map_nil, List.append_nil, List.append_assoc]
+  }
+  refine ⟨run, rfl, ?_, ?_, ?_, ?_, ?_⟩
+  · exact hc1Opening
+  · exact hc2Opening
+  · exact hline1Opening
+  · exact hline2Opening
+  · exact hline3Opening
+
 #print axioms rootsOfFiveCallTrace_get_c1
 #print axioms generated_five_call_trace_yields_exact_run
+#print axioms generated_five_call_trace_yields_exact_run_and_openings
 
 end AspisV5MerkleUnchangedFiveSectionComposition
