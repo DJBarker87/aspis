@@ -1,0 +1,19 @@
+diff --git a/aeneas-verif/v5-relation-acceptance-20260815/generated/V5RelationCompactFoldGenerated.lean b/aeneas-verif/v5-relation-acceptance-20260815/generated/V5RelationCompactFoldGenerated.lean
+--- a/aeneas-verif/v5-relation-acceptance-20260815/generated/V5RelationCompactFoldGenerated.lean
++++ b/aeneas-verif/v5-relation-acceptance-20260815/generated/V5RelationCompactFoldGenerated.lean
+@@ -1053,11 +1053,10 @@ def v5_cu_probe.CompactBTerminalWeights.fold
+   let (_, loopBack) ←
+     v5_cu_probe.CompactBTerminalWeights.fold_loop iter (fun im => im)
+       self.folds alpha alpha2 alpha3 preparedPowers
+-  let empty : Array v5_cu_probe.CompactBTerminalBlock 0#usize :=
+-    Array.make 0#usize []
+-  let terminal : core.slice.iter.IterMut v5_cu_probe.CompactBTerminalBlock :=
+-    { slice := Array.to_slice empty }
+-  let blocks := intoIterBack (loopBack terminal)
++  -- The loop returns a write-back function for the original mutable
++  -- iterator.  Applying it to an empty iterator discards every block write;
++  -- the Rust source applies it to the iterator created from `self.blocks`.
++  let blocks := intoIterBack (loopBack iter)
+   let deltaFactor ←
+     match self.folds with
+     | 0#uscalar => ok aspis_core.field.QM31.ONE
