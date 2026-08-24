@@ -20,6 +20,7 @@ structure PrepareRelationArithmeticTrace
       V5RelationPrepareGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims)
     (relation : V5RelationPrepareGenerated.v5_cu_probe.PreparedRelation) :
     Type where
+  parsed : V5RelationPrepareGenerated.v5_cu_probe.ParsedProbeData
   kappa2 : V5RelationPrepareGenerated.aspis_core.field.QM31
   kappa3 : V5RelationPrepareGenerated.aspis_core.field.QM31
   claim0 : V5RelationPrepareGenerated.aspis_core.field.QM31
@@ -39,6 +40,9 @@ structure PrepareRelationArithmeticTrace
     V5RelationPrepareGenerated.aspis_core.field.QM31
   pointVec2 : alloc.vec.Vec
     V5RelationPrepareGenerated.aspis_core.field.QM31
+  point0 : Array V5RelationPrepareGenerated.aspis_core.field.QM31 10#usize
+  point1 : Array V5RelationPrepareGenerated.aspis_core.field.QM31 10#usize
+  point2 : Array V5RelationPrepareGenerated.aspis_core.field.QM31 10#usize
   groupedRows : alloc.vec.Vec Std.U8
   groupedMasks : alloc.vec.Vec Std.U16
   kappa2Run :
@@ -47,6 +51,24 @@ structure PrepareRelationArithmeticTrace
   kappa3Run :
     V5RelationPrepareGenerated.aspis_core.field.QM31.mul kappa2 kappa =
       .ok kappa3
+  point0DecodeRun :
+    V5RelationPrepareGenerated.v5_cu_probe.decode_relation_point_for_extraction
+        parsed 0#usize = .ok (.Ok point0)
+  point1DecodeRun :
+    V5RelationPrepareGenerated.v5_cu_probe.decode_relation_point_for_extraction
+        parsed 1#usize = .ok (.Ok point1)
+  point2DecodeRun :
+    V5RelationPrepareGenerated.v5_cu_probe.decode_relation_point_for_extraction
+        parsed 2#usize = .ok (.Ok point2)
+  pointVec0Run :
+    V5RelationPrepareGenerated.v5_cu_probe.relation_point_vec_for_extraction
+        point0 = .ok pointVec0
+  pointVec1Run :
+    V5RelationPrepareGenerated.v5_cu_probe.relation_point_vec_for_extraction
+        point1 = .ok pointVec1
+  pointVec2Run :
+    V5RelationPrepareGenerated.v5_cu_probe.relation_point_vec_for_extraction
+        point2 = .ok pointVec2
   claim0Run :
     V5RelationPrepareGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims.point_claim_at_for_extraction
         preparedClaims 0#usize = .ok claim0
@@ -1048,6 +1070,7 @@ theorem prepare_for_extraction_success_exposes_arithmetic
                                                                                                 returned_relation_has_log_len_ten
                                                                                                   _ relation _ point _ denseScale finalWeightsLog hrun
                                                                                               exact ⟨properties.1, ⟨{
+                                                                                                parsed := parsed
                                                                                                 kappa2 := kappa2
                                                                                                 kappa3 := kappa3
                                                                                                 claim0 := claim0
@@ -1064,10 +1087,19 @@ theorem prepare_for_extraction_success_exposes_arithmetic
                                                                                                 pointVec0 := vec0
                                                                                                 pointVec1 := vec1
                                                                                                 pointVec2 := vec2
+                                                                                                point0 := point0
+                                                                                                point1 := point1
+                                                                                                point2 := point2
                                                                                                 groupedRows := groupedRows
                                                                                                 groupedMasks := groupedMasks
                                                                                                 kappa2Run := hkappa2
                                                                                                 kappa3Run := hkappa3
+                                                                                                point0DecodeRun := hdecode0
+                                                                                                point1DecodeRun := hdecode1
+                                                                                                point2DecodeRun := hdecode2
+                                                                                                pointVec0Run := hvec0
+                                                                                                pointVec1Run := hvec1
+                                                                                                pointVec2Run := hvec2
                                                                                                 claim0Run := hclaim0
                                                                                                 relationValue0Run := hvalue0
                                                                                                 claim1Run := hclaim1
@@ -1093,6 +1125,7 @@ theorem prepare_for_extraction_success_exposes_arithmetic
                                                                                                   weights4 relationValue3 _ _ point0 kappa3
                                                                                                   relation point denseScale finalWeightsLog hrun
                                                                                               exact ⟨properties.1, ⟨{
+                                                                                                parsed := parsed
                                                                                                 kappa2 := kappa2
                                                                                                 kappa3 := kappa3
                                                                                                 claim0 := claim0
@@ -1109,10 +1142,19 @@ theorem prepare_for_extraction_success_exposes_arithmetic
                                                                                                 pointVec0 := vec0
                                                                                                 pointVec1 := vec1
                                                                                                 pointVec2 := vec2
+                                                                                                point0 := point0
+                                                                                                point1 := point1
+                                                                                                point2 := point2
                                                                                                 groupedRows := groupedRows
                                                                                                 groupedMasks := groupedMasks
                                                                                                 kappa2Run := hkappa2
                                                                                                 kappa3Run := hkappa3
+                                                                                                point0DecodeRun := hdecode0
+                                                                                                point1DecodeRun := hdecode1
+                                                                                                point2DecodeRun := hdecode2
+                                                                                                pointVec0Run := hvec0
+                                                                                                pointVec1Run := hvec1
+                                                                                                pointVec2Run := hvec2
                                                                                                 claim0Run := hclaim0
                                                                                                 relationValue0Run := hvalue0
                                                                                                 claim1Run := hclaim1
