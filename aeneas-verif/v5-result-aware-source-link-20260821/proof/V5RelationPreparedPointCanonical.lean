@@ -576,10 +576,55 @@ theorem prepareRelationPointDecodeCanonical
                                                                                   · simpa [Array.make] using canonical8
                                                                                   · simpa [Array.make] using canonical9
 
+/-- Indexwise canonicality for the dynamically sized vectors carried by the
+translated accumulator. -/
+def PrepareCanonicalList (values : List PrepareQM31) : Prop :=
+  ∀ index, index < values.length → PrepareCanonicalQM31 values[index]!
+
+/-- The three arrays retained by one successful preparation and the exact
+vectors copied from them are all canonical. -/
+theorem preparedPointVectorsCanonical
+    {kappa inactiveClaim : PrepareQM31}
+    {preparedClaims :
+      V5RelationPrepareGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims}
+    {relation : V5RelationPrepareGenerated.v5_cu_probe.PreparedRelation}
+    (trace : PrepareRelationArithmeticTrace kappa inactiveClaim
+      preparedClaims relation) :
+    PrepareCanonicalArray trace.point0 ∧
+      PrepareCanonicalArray trace.point1 ∧
+      PrepareCanonicalArray trace.point2 ∧
+      PrepareCanonicalList trace.pointVec0.val ∧
+      PrepareCanonicalList trace.pointVec1.val ∧
+      PrepareCanonicalList trace.pointVec2.val := by
+  have array0 := prepareRelationPointDecodeCanonical trace.parsed 0#usize
+    trace.point0 trace.point0DecodeRun
+  have array1 := prepareRelationPointDecodeCanonical trace.parsed 1#usize
+    trace.point1 trace.point1DecodeRun
+  have array2 := prepareRelationPointDecodeCanonical trace.parsed 2#usize
+    trace.point2 trace.point2DecodeRun
+  have vectors := preparedPointVectorsExact trace
+  refine ⟨array0, array1, array2, ?_, ?_, ?_⟩
+  · intro index bound
+    have bound10 : index < 10 := by
+      simpa [vectors.2.2.2.1] using bound
+    rw [vectors.1]
+    exact array0 ⟨index, bound10⟩
+  · intro index bound
+    have bound10 : index < 10 := by
+      simpa [vectors.2.2.2.2.1] using bound
+    rw [vectors.2.1]
+    exact array1 ⟨index, bound10⟩
+  · intro index bound
+    have bound10 : index < 10 := by
+      simpa [vectors.2.2.2.2.2] using bound
+    rw [vectors.2.2.1]
+    exact array2 ⟨index, bound10⟩
+
 #print axioms prepareM31DecodeCanonical
 #print axioms prepareCM31DecodeCanonical
 #print axioms prepareQM31DecodeCanonical
 #print axioms prepareDecodeQm31Canonical
 #print axioms prepareRelationPointDecodeCanonical
+#print axioms preparedPointVectorsCanonical
 
 end AspisV5RelationPreparedPointCanonical
