@@ -32,9 +32,10 @@ authenticated opening sections, FRI checks, final polynomial, exact decoded
 claim table, initial relation value, and decoded four-round relation tail.
 These values cannot be chosen from different runs. The individual field
 calculations in both final accumulators are proved, and the complete general
-accumulator dot product is connected to its public result. The compact state
-composition and outer accepted-call theorem are still in progress, so the
-final one-run theorem is not yet claimed.
+accumulator dot implementation is connected to its mathematical result. The
+accepted general schedule, compact state composition, and outer accepted-call
+theorem are still in progress, so the final one-run theorem is not yet
+claimed.
 
 This is deliberately narrower than verification of the whole program. The
 surrounding account wrapper, compiler, Solana runtime, and persistent state
@@ -86,8 +87,9 @@ proof. The remaining external events must together fit the reserved
 `0.3 * 2^-100` budget.
 
 Most of the deterministic accepted proof-checker path is connected to the maintained
-mathematical event in Lean. The general production dot product is complete;
-the compact state composition and outer accepted-call theorem remain. What
+mathematical event in Lean. The general production dot implementation is
+proved; its accepted-run schedule, the compact state composition, and the
+outer accepted-call theorem remain. What
 will remain outside the completed source theorem is the security
 of the cryptographic primitives and published reductions, fresh prover
 randomness, the translation and compilation tools, the surrounding Solana
@@ -101,9 +103,10 @@ and [dated mathematical review](docs/reviews/mathematical-status-20260814.md).
 Poseidon2, Merkle, and public-input equations imply the complete spend
 relation. The accepted-path chain supplies the verifier-side parse,
 transcript, opening, FRI, claims, initial relation value, and relation tail
-from one translated execution. The general accumulator is fully joined. The
-remaining deterministic work is to join the compact accumulator's proved
-components and then the outer accepted-call theorem.
+from one translated execution. The general dot implementation is proved. The
+remaining deterministic work is to construct its schedule from that accepted
+execution, join the compact accumulator's proved components, and then prove
+the outer accepted-call theorem.
 `V5FixedVictimTheftGame.lean` separately classifies a fixed-victim attack into
 eight mathematical and chain-level failures for the attack event defined in
 the Lean model. These results do not prove that an extractor recovers a valid

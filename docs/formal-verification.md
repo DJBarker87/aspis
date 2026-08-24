@@ -121,10 +121,10 @@ proved, including the dense and deferred grouped cases, and the complete
 twelve-component iterator is proved equal to its public dot-product result.
 The compact constructor, four fold cases, final assembly, and four-term dot
 calculation are also proved separately. The remaining integration work is to
-connect the compact accumulator's complete state evolution and use it with
-the completed general dot product in the outer accepted-call theorem. That
-theorem will not be described as complete until the composition compiles
-together.
+construct the general schedule from the accepted run's prepared accumulator
+and eight tensor additions, connect the compact accumulator's complete state
+evolution, and use both in the outer accepted-call theorem. That theorem will
+not be described as complete until the composition compiles together.
 
 One extraction boundary is recorded explicitly. The pinned Aeneas version
 emitted an ill-typed back-translation for the compact mutable fold iterator,

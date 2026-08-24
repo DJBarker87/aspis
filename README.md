@@ -34,7 +34,7 @@ flowchart LR
 | Evidence layer | What is established | Primary record |
 | --- | --- | --- |
 | Mathematics in Lean | Lean checks substantial parts of the spend rules, finite calculations, algebra, and component-level hiding arguments, subject to the assumptions named in each theorem | [formal-verification overview](docs/formal-verification.md) and [`AspisFormal/`](AspisFormal/) |
-| Selected Rust to Lean | Charon and Aeneas translate selected Rust functions into Lean. The checked path derives the transcript, work, queries, authenticated openings, FRI execution, decoded 76-claim table, initial relation value, and 58-field relation tail from one successful translated run. The complete general-accumulator dot product and the individual compact-accumulator calculations are also proved; the compact state composition and final one-run theorem are still being joined | [`aeneas-verif/`](aeneas-verif/) |
+| Selected Rust to Lean | Charon and Aeneas translate selected Rust functions into Lean. The checked path derives the transcript, work, queries, authenticated openings, FRI execution, decoded 76-claim table, initial relation value, and 58-field relation tail from one successful translated run. The general dot implementation and the individual compact calculations are also proved; their accepted-run wiring and the final one-run theorem are still being joined | [`aeneas-verif/`](aeneas-verif/) |
 | Source to program bytes | A pinned clean source commit and pinned build tools reproduce the exact 1,258,496-byte V5 SBF | [V5 release preflight](release/preflight/v5-production-freeze.md) and [frozen candidate bundle](release/aspis-v5-tag67-frozen-candidate-v1/) |
 | Program to chain | The deployed SBF identity, proof, statement, exact compute, state transition, and cleanup are preserved in a sanitized offline-verifiable bundle | [V5 mainnet bundle](release/aspis-v5-tag67-mainnet-v1/) |
 
@@ -51,6 +51,8 @@ relation value and complete decoded relation tail. The general accumulator's
 complete twelve-component dot product is checked, as are the individual field
 calculations in the compact accumulator. The remaining source/model work is:
 
+- construct the general weight schedule from the accepted run's prepared
+  accumulator and eight tensor additions, and connect it to the proved dot;
 - connect the compact accumulator's constructor, four folds, final assembly,
   and four-term dot product into one state-evolution theorem; and
 - use that result with the completed general dot product in the outer
@@ -85,8 +87,9 @@ the state update on Solana mainnet-beta. The finalized transaction:
 The exact compiled program is tied to the recorded source and build
 environment. The Charon/Aeneas proof layer connects the selected production
 verifier path to the maintained Lean models through the stages listed above.
-The remaining implementation work is the compact accumulator's full state
-composition and its use in the outer accepted-call theorem.
+The remaining implementation work is the accepted-run general schedule join,
+the compact accumulator's full state composition, and their use in the outer
+accepted-call theorem.
 
 The archived 75,358-byte proof also passes the released verifier callback in a
 new regression test. The same test changes each of the nine public fields in
@@ -155,11 +158,11 @@ same run:
   rounds.
 
 Those facts are not supplied as unrelated Rust/model equality assumptions.
-The general accumulator's complete public dot product and the compact
-accumulator's component calculations are now proved as well, but the compact
-state composition and final accepted-call theorem still have to be joined
-before the maintained security argument can be reached from a single accepted
-call. The
+The general accumulator's complete public dot implementation and the compact
+accumulator's component calculations are now proved as well. The accepted
+general schedule, compact state composition, and final accepted-call theorem
+still have to be joined before the maintained security argument can be
+reached from a single accepted call. The
 [accepted-path source map](docs/v5-accepted-source-map.md) gives the short
 review route, and the [formal-verification overview](docs/formal-verification.md)
 lists the exact theorem names and replay command.
