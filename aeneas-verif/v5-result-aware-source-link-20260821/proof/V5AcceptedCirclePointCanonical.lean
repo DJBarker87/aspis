@@ -429,6 +429,85 @@ theorem acceptedCompleteRelationExposesCanonicalCirclePoints
                                                                           alphaIteratorAt] using
                                                                           exactRounds
 
+/-- Rebuild the complete accepted relation trace from the canonical points
+decoded by the accepted outer relation call.  The earlier trace constructor
+chose an existential point array and then discarded its canonicality proof;
+this constructor keeps both facts from the same inversion. -/
+theorem extracted_mode9_success_exposes_canonical_full_relation_trace
+    (parsed : V5RelationCallerGenerated.v5_cu_probe.ParsedProbeData)
+    (finalPolynomial : Array RawQM31 4#usize)
+    (alphas : Array RawQM31 4#usize)
+    (kappa inactiveClaim : RawQM31)
+    (roundChallenges : Array RawQM31 10#usize)
+    (preparedClaims :
+      V5RelationCallerGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims)
+    (terminalClaim : RawQM31)
+    (success :
+      V5RelationCallerGenerated.v5_cu_probe.verify_mode9_relation_phase
+          parsed finalPolynomial alphas kappa inactiveClaim roundChallenges
+          preparedClaims = .ok (.Ok terminalClaim)) :
+    ∃ trace : AcceptedMode9FullRelationTrace parsed finalPolynomial alphas
+        kappa inactiveClaim roundChallenges preparedClaims terminalClaim,
+      CanonicalCirclePoints trace.circlePoints := by
+  obtain ⟨calls⟩ := extracted_mode9_success_exposes_helper_calls parsed
+    finalPolynomial alphas kappa inactiveClaim roundChallenges preparedClaims
+    terminalClaim success
+  have completeRun :
+      V5RelationFullGenerated.relation_stress.verify_v5_relation_stress_with_additive
+          productionAdditiveInst calls.relation.weights
+          calls.relation.relation_value alphas parsed.v5_relation_stress
+          calls.compact = .ok (.Ok calls.output) := by
+    simpa [productionAdditiveInst,
+      V5RelationCallerGenerated.v5_relation_stress.verify_v5_relation_stress_with_additive]
+      using calls.relationSuccess
+  obtain ⟨circlePoints, circleCanonical, relationLoop⟩ :=
+    acceptedCompleteRelationExposesCanonicalCirclePoints
+      productionAdditiveInst calls.relation.weights
+      calls.relation.relation_value alphas parsed.v5_relation_stress
+      calls.compact calls.output completeRun
+  obtain ⟨weights1, claim1, additive1, weights2, claim2, additive2,
+      weights3, claim3, additive3, weights4, claim4, additive4,
+      round0, round1, round2, round3, terminalLoop⟩ :=
+    AspisV5RelationFullSuccessInversion.accepted_outer_loop_yields_four_ordered_rounds
+      productionAdditiveInst alphas parsed.v5_relation_stress circlePoints
+      calls.relation.weights calls.relation.relation_value calls.compact
+      calls.output relationLoop
+  obtain ⟨finalCoefficients, mainDot, additiveDot, finalDecode, mainDotRun,
+      additiveDotRun, terminalAdd, outputExact⟩ :=
+    AspisV5RelationFullSuccessInversion.accepted_outer_loop_terminal_calls_are_exact
+      productionAdditiveInst alphas parsed.v5_relation_stress circlePoints
+      weights4 claim4 additive4 calls.output terminalLoop
+  let trace : AcceptedMode9FullRelationTrace parsed finalPolynomial alphas
+      kappa inactiveClaim roundChallenges preparedClaims terminalClaim := {
+    calls := calls
+    circlePoints := circlePoints
+    weights1 := weights1
+    weights2 := weights2
+    weights3 := weights3
+    weights4 := weights4
+    claim1 := claim1
+    claim2 := claim2
+    claim3 := claim3
+    claim4 := claim4
+    additive1 := additive1
+    additive2 := additive2
+    additive3 := additive3
+    additive4 := additive4
+    round0Success := round0
+    round1Success := round1
+    round2Success := round2
+    round3Success := round3
+    finalCoefficients := finalCoefficients
+    mainDot := mainDot
+    additiveDot := additiveDot
+    finalDecodeSuccess := finalDecode
+    mainDotSuccess := mainDotRun
+    additiveDotSuccess := additiveDotRun
+    terminalAddSuccess := terminalAdd
+    outputExact := outputExact }
+  exact ⟨trace, circleCanonical⟩
+
 #print axioms acceptedCompleteRelationExposesCanonicalCirclePoints
+#print axioms extracted_mode9_success_exposes_canonical_full_relation_trace
 
 end AspisV5AcceptedCirclePointCanonical

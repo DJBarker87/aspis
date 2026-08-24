@@ -1,5 +1,6 @@
 import V5AcceptedRelationPreparedAdapter
 import V5AcceptedFriModelInputBinding
+import V5AcceptedCirclePointCanonical
 import V5RelationLinkedFieldProjection
 import AspisFormal.V5ProductionFiatShamirBridge
 import AspisFormal.V5SourceCandidateFamily
@@ -27,6 +28,7 @@ open AspisV5AcceptedEntrySourceBridge
 open AspisV5AcceptedEntryFriPhaseBridge
 open AspisV5AcceptedFriModelInputBinding
 open AspisV5AcceptedRelationPreparedAdapter
+open AspisV5AcceptedAccumulatorCanonicalSchedule
 open AspisV5ComponentCConcreteFoldLinearity
 open AspisV5ComponentCPreProjectionDeployed
 open AspisV5FriAcceptedForestChecks
@@ -129,6 +131,8 @@ structure AcceptedSameRunRelationFriSnapshot
       (qm31ArrayToCaller verifiedPrefix.round_challenges)
       (preparedClaimsToCaller preparedClaims)
       (qm31ToCaller relationSum)
+  relationCirclePointsCanonical :
+    CanonicalCirclePoints relationTrace.circlePoints
   acceptedFriCall : AcceptedFriCall
   acceptedFriOpenings : acceptedFriCall.openings =
     V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.openingsToConsumer openings
@@ -145,6 +149,19 @@ structure AcceptedSameRunRelationFriSnapshot
     (mapArray toExactQM31 (entryArrayToConsumer alphas))
   finalCanonical : CanonicalQM31Array4
     (mapArray toExactQM31 (entryArrayToConsumer finalPolynomial))
+
+/-- The two circle points used by the four accepted relation rounds came from
+the canonical production decoder in this same accepted call. -/
+theorem accepted_snapshot_relation_circle_points_are_canonical
+    {accountData : Slice Std.U8}
+    {parsed : SnapshotEntryParsed}
+    {liveStatement : SnapshotEntryStatement}
+    {statementDigest : Array Std.U8 32#usize}
+    {acceptedValue : SnapshotEntryQM31}
+    (snapshot : AcceptedSameRunRelationFriSnapshot accountData parsed
+      liveStatement statementDigest acceptedValue) :
+    CanonicalCirclePoints snapshot.relationTrace.circlePoints :=
+  snapshot.relationCirclePointsCanonical
 
 /-- Preserve every decoded relation-tail field while fixing its public final
 polynomial to the exact four values accepted by this execution. -/
@@ -343,8 +360,8 @@ theorem accepted_composite_builds_same_run_relation_fri_snapshot
       evidence, relationGate⟩ :=
     accepted_composite_reaches_checked_relation_gate terminalBoundary accountData parsed
       liveStatement statementDigest acceptedValue success
-  obtain ⟨relationTrace⟩ :=
-    AspisV5RelationAcceptanceSourceProof.extracted_mode9_success_exposes_full_relation_trace
+  obtain ⟨relationTrace, relationCirclePointsCanonical⟩ :=
+    AspisV5AcceptedCirclePointCanonical.extracted_mode9_success_exposes_canonical_full_relation_trace
       (parsedToCaller parsed) (qm31ArrayToCaller finalPolynomial)
       (qm31ArrayToCaller alphas) (qm31ToCaller verifiedPrefix.kappa)
       (qm31ToCaller verifiedPrefix.inactive_claim)
@@ -379,6 +396,7 @@ theorem accepted_composite_builds_same_run_relation_fri_snapshot
     evidence := evidence
     relationGate := relationGate
     relationTrace := relationTrace
+    relationCirclePointsCanonical := relationCirclePointsCanonical
     acceptedFriCall := acceptedFriCall
     acceptedFriOpenings := acceptedFriOpenings
     acceptedFriPrepared := acceptedFriPrepared
@@ -507,6 +525,7 @@ theorem accepted_snapshot_builds_same_run_relation_family_projections
     (snapshotCallerData snapshot pointMajorClaims tail mainWeights) (by rfl)
 
 #print axioms accepted_composite_builds_same_run_relation_fri_snapshot
+#print axioms accepted_snapshot_relation_circle_points_are_canonical
 #print axioms entryToK_eq_relationCallerValue
 #print axioms accepted_snapshot_builds_fri_model_input_binding
 #print axioms accepted_snapshot_builds_same_run_fri_model_input_binding
