@@ -151,6 +151,19 @@ theorem fullFoldSuccessImpliesLinkedFold
     subst output
     simpa using linkedRun
 
+/-- A successful complete-driver fold preserves the component count.  This
+is the driver-facing consequence of the exact linked fold traversal. -/
+theorem fullFoldSuccessPreservesComponentLength
+    (weights output : FullWeights) (alpha : RawQM31)
+    (success :
+      aspis_core.sumcheck.WeightAccumulator.fold
+          weights alpha = .ok output) :
+    output.components.val.length = weights.components.val.length := by
+  have linkedRun := fullFoldSuccessImpliesLinkedFold weights output alpha success
+  have linkedLength := foldSuccessPreservesComponentLength
+    (weightsToLinked weights) (weightsToLinked output) alpha linkedRun
+  simpa [weightsToLinked] using linkedLength
+
 /-- Driver-facing form of the exact pointwise traversal theorem. -/
 theorem fullFoldSuccessExposesLinkedComponent
     (weights output : FullWeights) (alpha : RawQM31)
@@ -218,6 +231,7 @@ theorem fullFoldSuccessExposesLinkedComponent
   · exact linkedOutputCell.symm.trans outputCell
 
 #print axioms fullFoldSuccessImpliesLinkedFold
+#print axioms fullFoldSuccessPreservesComponentLength
 #print axioms fullFoldSuccessExposesLinkedComponent
 
 end AspisV5RelationFullLinkedAccumulatorBridge
