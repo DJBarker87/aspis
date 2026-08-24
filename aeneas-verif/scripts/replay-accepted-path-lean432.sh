@@ -117,6 +117,10 @@ module_override() {
       echo "aeneas-verif/v5-merkle-unchanged-full-20260820/proof/V5MerkleTopologyConstructorModel.lean" ;;
     V5MutableEnumerateSupport)
       echo "aeneas-verif/v5-relation-full-source-20260820/generated-linked/V5MutableEnumerateSupport.lean" ;;
+    V5AtomicTerminalPrefixWrapperComplete.Funs)
+      echo "aeneas-verif/v5-atomic-terminal-source-20260821/generated/V5AtomicTerminalPrefixWrapperComplete/Funs.lean" ;;
+    V5AtomicTerminalPrefixWrapperComplete.Types)
+      echo "aeneas-verif/v5-atomic-terminal-source-20260821/generated/V5AtomicTerminalPrefixWrapperComplete/Types.lean" ;;
     V5TranscriptTailUnchangedGenerated.Funs)
       echo "aeneas-verif/v5-transcript-tail-unchanged-20260821/generated/V5TranscriptTailUnchangedGenerated/Funs.lean" ;;
     V5TranscriptTailUnchangedGenerated.Types)
