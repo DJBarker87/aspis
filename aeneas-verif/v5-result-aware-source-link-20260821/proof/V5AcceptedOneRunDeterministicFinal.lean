@@ -148,8 +148,83 @@ theorem accepted_composite_security_conclusion
   exact accepted_snapshot_security_conclusion rc sha256 hhash base hproduction
     hpublished snapshot
 
+/-! ## Terminal-evaluator independence
+
+The extracted outer verifier represents the production terminal evaluator as
+an explicit function boundary.  The security argument above does not use that
+evaluator's model equality: after the terminal gate succeeds, the independently
+checked relation and FRI phases are sufficient.  We can therefore quantify over
+an arbitrary evaluator and build the boundary reflexively. -/
+
+abbrev EntryTerminalEvaluator :=
+  V5AtomicTerminalPrefixWrapperCompleteGenerated.aspis_statement.atomic_state_only_terminal.V5TerminalEvaluator
+
+@[reducible] def reflexiveTerminalBoundary
+    (evaluator : EntryTerminalEvaluator) :
+    AspisV5AcceptedEntrySourceBridge.EntryTerminalBoundary where
+  compiledEvaluator := evaluator
+  maintainedModel := evaluator
+  exactSourceModelEquality := rfl
+
+/-- The complete accepted-call theorem holds for every behavior of the opaque
+terminal evaluator.  In particular, no evaluator-to-model equality is a
+premise of the released verifier's soundness path. -/
+theorem accepted_composite_security_conclusion_for_any_terminal_evaluator
+    (rc : AspisFormal.HashMerkleModel.RoundConstants)
+    {deployedOwner : AspisFormal.ArithmetizationCore.Digest →
+      AspisFormal.ArithmetizationCore.Digest}
+    {deployedNote : AspisFormal.ArithmetizationCore.Digest →
+      AspisFormal.ArithmetizationCore.F →
+      AspisFormal.ArithmetizationCore.F →
+      AspisFormal.ArithmetizationCore.Digest →
+      AspisFormal.ArithmetizationCore.Digest}
+    {deployedNullifier : AspisFormal.ArithmetizationCore.Digest →
+      AspisFormal.ArithmetizationCore.Digest →
+      AspisFormal.ArithmetizationCore.Digest}
+    {deployedNode : AspisFormal.ArithmetizationCore.Digest →
+      AspisFormal.ArithmetizationCore.Digest →
+      AspisFormal.ArithmetizationCore.Digest}
+    (terminalEvaluator : EntryTerminalEvaluator)
+    (accountData : Slice Std.U8)
+    (parsed : SnapshotEntryParsed)
+    (liveStatement : SnapshotEntryStatement)
+    (statementDigest : Array Std.U8 32#usize)
+    (acceptedValue : SnapshotEntryQM31)
+    (success :
+      V5AcceptedEntryGenerated.v5_cu_probe.verify_mode9_composite_with_live_statement
+          (reflexiveTerminalBoundary terminalEvaluator) accountData parsed
+          liveStatement statementDigest = .ok (.Ok acceptedValue))
+    (sha256 : List AspisV5MerkleAuthenticationBinding.Byte →
+      AspisV5MerkleRustBridge.Digest32)
+    (hhash :
+      AspisV5MerkleUnchangedFullHelperBridge.HashCallbackEqualsSha256
+        sha256 V5AcceptedEntryGenerated.verify.sbf_hashv_totalized)
+    (base : AspisV5ComponentCConcreteFoldLinearity.FixedSchedule
+      (ZMod AspisCircleGroupOrder.P) K)
+    (hpublished :
+      AspisV5FriPublishedOutputEncoderDecoding.PublishedOrdinaryPolynomialCurveDecoding
+        (K := K)) :
+    ∃ snapshot : AcceptedSameRunRelationFriSnapshot accountData parsed
+        liveStatement statementDigest acceptedValue,
+      ∃ mainWeights : SourceMainWeightSchedule K,
+        AcceptedSnapshotSecurityConclusion rc deployedOwner deployedNote
+          deployedNullifier deployedNode sha256
+          (AspisV5AcceptedExecutionReleasedSchedule.exactReleasedFriTables
+            base) snapshot
+          (acceptedSnapshotPartialCallerData snapshot
+            (acceptedPointClaimTable parsed.relation_claims) mainWeights) := by
+  exact accepted_composite_security_conclusion rc
+    (reflexiveTerminalBoundary terminalEvaluator) accountData parsed
+    liveStatement statementDigest acceptedValue success sha256 hhash
+    (AspisV5AcceptedExecutionReleasedSchedule.exactReleasedFriTables base)
+    (AspisV5AcceptedExecutionReleasedSchedule.exactReleasedFriTables_source_shape
+      base)
+    hpublished
+
 #print axioms accepted_snapshot_exact_deterministic_caller
 #print axioms accepted_snapshot_security_conclusion
 #print axioms accepted_composite_security_conclusion
+#print axioms
+  accepted_composite_security_conclusion_for_any_terminal_evaluator
 
 end AspisV5AcceptedOneRunDeterministicFinal
