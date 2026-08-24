@@ -3,6 +3,10 @@ import V5RelationCompactFoldFieldProjection
 import V5CompactFinalFieldSemantics
 import V5RelationCompactAdditiveDotExact
 import V5AcceptedRelationRoundInversion
+import V5CompactNewSourceUnroll
+import V5CompactFinalReleasedBridge
+import V5CompactFoldCorrectedWrapper
+import V5CompactFoldProgramSemantics
 
 /-!
 # Exact structural semantics of the compact caller wrappers
@@ -59,6 +63,8 @@ local instance : Inhabited FoldBlock :=
      selector := 0#u8 }⟩
 local instance : Inhabited FinalBlock :=
   AspisV5CompactFinalFieldSemantics.instInhabitedBlock
+local instance : Inhabited NewRaw :=
+  V5CompactScratchNew.instInhabitedRaw
 
 def callerToK (value : CallerRaw) : K :=
   AspisV5RelationGeneratedFieldProjection.toMaintainedExact value
@@ -68,6 +74,10 @@ def CallerCanonical (value : CallerRaw) : Prop :=
 
 def callerBlockAt (state : CallerState) (index : Fin 10) : CallerBlock :=
   state.blocks.val[index.val]!
+
+def callerPointAt (point : Array CallerRaw 10#usize)
+    (index : Fin 10) : CallerRaw :=
+  point.val[index.val]!
 
 def callerProjectBlock (block : CallerBlock) :
     AspisV5CompactTerminalOptimized.OptimizedBlock K :=
@@ -101,6 +111,10 @@ def CallerReleasedSelectors (state : CallerState) : Prop :=
 def foldToK (value : FoldRaw) : K :=
   AspisV5RelationCompactFoldFieldProjection.toMaintainedExact value
 
+@[simp] theorem sourceFoldToK_eq_foldToK (value : FoldRaw) :
+    AspisV5CompactFoldStateSemantics.toK value = foldToK value := by
+  rfl
+
 def FoldCanonical (value : FoldRaw) : Prop :=
   AspisV5RelationCompactFoldFieldProjection.CanonicalQM31 value
 
@@ -118,6 +132,12 @@ def foldProjectState (state : FoldState) :
     AspisV5CompactTerminalOptimized.OptimizedState K :=
   { blocks := fun index => foldProjectBlock (foldBlockAt state index)
     deltaScale := foldToK state.delta_scale }
+
+@[simp] theorem sourceFoldProjectState_eq_foldProjectState
+    (state : FoldState) :
+    AspisV5CompactFoldStateSemantics.projectState state =
+      foldProjectState state := by
+  rfl
 
 def FoldCanonicalBlock (block : FoldBlock) : Prop :=
   FoldCanonical block.scale ∧ FoldCanonical block.power_lo ∧
@@ -213,6 +233,37 @@ def callerStateToFinal (state : CallerState) : FinalState :=
     delta_scale := callerToFinalRaw state.delta_scale
     folds := state.folds }
 
+/-- The extracted constructor is definitionally the explicit constructor
+program used by the field-semantics proof, after the separately checked loop
+unrolling theorem. -/
+theorem generatedNew_eq_constructorProgram
+    (point : Array NewRaw 10#usize) (scale : NewRaw) :
+    V5RelationCompactNewGenerated.v5_cu_probe.CompactBTerminalWeights.new
+        point scale = V5CompactScratchNew.constructorProgram point scale := by
+  rw [AspisV5CompactNewSourceUnroll.new_eq_unrolled]
+  rfl
+
+/-- Under the released ten-entry selector schedule, the extracted final
+scatter is exactly the explicit final program used by the field-semantics
+proof. -/
+theorem generatedFinalWeights_eq_finalProgram
+    (state : FinalState)
+    (selectors : AspisV5CompactFinalFieldSemantics.ReleasedSelectors state) :
+    V5RelationCompactFinalGenerated.v5_cu_probe.CompactBTerminalWeights.final_weights
+        state = AspisV5CompactFinalFieldSemantics.finalProgram state := by
+  exact
+    AspisV5CompactFinalReleasedBridge.generated_final_weights_eq_released_program
+      state selectors
+
+@[simp] theorem callerArrayToNew_pointAt
+    (point : Array CallerRaw 10#usize) (index : Fin 10) :
+    V5CompactScratchNew.pointAt (callerArrayToNew point) index =
+      callerToNewRaw (callerPointAt point index) := by
+  have sourceBound : index.val < point.val.length := by
+    simpa [Array.length_eq] using index.isLt
+  unfold V5CompactScratchNew.pointAt callerArrayToNew callerPointAt
+  rw [List.getElem!_map_eq _ _ _ sourceBound]
+
 private theorem fixedArray_getBang_eq_get
     {T : Type} [Inhabited T] {count : Std.Usize}
     (values : Array T count) (index : Fin count.val) :
@@ -222,6 +273,32 @@ private theorem fixedArray_getBang_eq_get
     simpa only [lengthExact] using index.isLt
   apply List.getElem!_of_getElem?
   simp [inBounds]
+
+/-- In bounds, `getElem!` cannot observe which default-value instance was
+chosen.  This lets separately generated Aeneas modules share fixed-array
+facts even though each module declares its own local `Inhabited` instance. -/
+private theorem list_getBang_instance_independent
+    {T : Type} (first second : Inhabited T)
+    (values : List T) (index : Nat) (bound : index < values.length) :
+    @getElem! (List T) Nat T (fun items position => position < items.length)
+        List.instGetElem?NatLtLength first values index =
+      @getElem! (List T) Nat T (fun items position => position < items.length)
+        List.instGetElem?NatLtLength second values index := by
+  have left :
+      @getElem! (List T) Nat T
+          (fun items position => position < items.length)
+          List.instGetElem?NatLtLength first values index =
+        values[index]'bound := by
+    letI : Inhabited T := first
+    exact getElem!_pos values index bound
+  have right :
+      @getElem! (List T) Nat T
+          (fun items position => position < items.length)
+          List.instGetElem?NatLtLength second values index =
+        values[index]'bound := by
+    letI : Inhabited T := second
+    exact getElem!_pos values index bound
+  exact left.trans right.symm
 
 @[simp] theorem callerStateToNew_blockAt (state : CallerState)
     (index : Fin 10) :
@@ -514,6 +591,84 @@ private theorem fixedArray_getBang_eq_get
   simp [AspisV5CompactFinalFieldSemantics.ReleasedSelectors,
     CallerReleasedSelectors]
 
+@[simp] theorem callerStateToFold_releasedSelectors (state : CallerState) :
+    AspisV5CompactFoldProgramSemantics.ReleasedSelectors
+        (callerStateToFold state) ↔
+      CallerReleasedSelectors state := by
+  unfold AspisV5CompactFoldProgramSemantics.ReleasedSelectors
+    CallerReleasedSelectors
+  constructor
+  · intro selectors index
+    have selected := selectors index
+    change (foldBlockAt (callerStateToFold state) index).selector.val =
+      AspisV5CompactTerminal.blockSelector index at selected
+    simpa only [callerStateToFold_blockAt, callerBlockToFold_selector]
+      using selected
+  · intro selectors index
+    change (foldBlockAt (callerStateToFold state) index).selector.val =
+      AspisV5CompactTerminal.blockSelector index
+    simpa only [callerStateToFold_blockAt, callerBlockToFold_selector]
+      using selectors index
+
+@[simp] theorem foldStateToCaller_releasedSelectors (state : FoldState) :
+    CallerReleasedSelectors (foldStateToCaller state) ↔
+      AspisV5CompactFoldProgramSemantics.ReleasedSelectors state := by
+  unfold AspisV5CompactFoldProgramSemantics.ReleasedSelectors
+    CallerReleasedSelectors
+  constructor
+  · intro selectors index
+    have selected := selectors index
+    change (callerBlockAt (foldStateToCaller state) index).selector.val =
+      AspisV5CompactTerminal.blockSelector index at selected
+    have mapped : (foldBlockAt state index).selector.val =
+        AspisV5CompactTerminal.blockSelector index := by
+      simpa only [foldStateToCaller_blockAt, foldBlockToCaller_selector]
+        using selected
+    change (state.blocks.val[index.val]!).selector.val =
+      AspisV5CompactTerminal.blockSelector index
+    convert mapped using 1
+    · apply congrArg (fun block : FoldBlock => block.selector.val)
+      exact list_getBang_instance_independent _ _ state.blocks.val index.val
+          (by simpa [Array.length_eq] using index.isLt)
+  · intro selectors index
+    have selected := selectors index
+    have mapped : (foldBlockAt state index).selector.val =
+        AspisV5CompactTerminal.blockSelector index := by
+      change (state.blocks.val[index.val]!).selector.val =
+        AspisV5CompactTerminal.blockSelector index at selected
+      convert selected using 1
+      · apply congrArg (fun block : FoldBlock => block.selector.val)
+        exact list_getBang_instance_independent _ _ state.blocks.val index.val
+            (by simpa [Array.length_eq] using index.isLt)
+    change (callerBlockAt (foldStateToCaller state) index).selector.val =
+      AspisV5CompactTerminal.blockSelector index
+    simpa only [foldStateToCaller_blockAt, foldBlockToCaller_selector]
+      using mapped
+
+theorem callerCanonicalState_implies_canonicalScales
+    (state : CallerState) (canonical : CallerCanonicalState state) :
+    CallerCanonicalScales state := by
+  exact ⟨fun index => (canonical.1 index).1, canonical.2⟩
+
+/-- Equality with the released optimized run fixes every caller selector to
+the released ten-entry selector schedule. -/
+theorem callerReleasedSelectors_of_project_eq_optimizedRun
+    (state : CallerState) (point : Fin 10 → K) (scale : K)
+    (alphas : Fin 4 → K)
+    (exact : callerProjectState state =
+      AspisV5CompactTerminalOptimized.optimizedRun point scale alphas) :
+    CallerReleasedSelectors state := by
+  intro index
+  have selectorExact := congrArg
+    (fun projected => (projected.blocks index).selector) exact
+  simpa [callerProjectState, callerProjectBlock,
+    AspisV5CompactTerminalOptimized.optimizedRun,
+    AspisV5CompactTerminalOptimized.optimizedFoldZero,
+    AspisV5CompactTerminalOptimized.optimizedFoldOne,
+    AspisV5CompactTerminalOptimized.optimizedFoldTwo,
+    AspisV5CompactTerminalOptimized.optimizedFoldThree,
+    AspisV5CompactTerminalOptimized.optimizedInit] using selectorExact
+
 @[simp] theorem callerStateToNew_folds (state : CallerState) :
     (callerStateToNew state).folds = state.folds := by rfl
 
@@ -557,8 +712,82 @@ theorem caller_new_success_exposes_subcall
     simp only [bind_tc_ok, Result.ok.injEq] at run
     exact ⟨state, rfl, run.symm⟩
 
-/-- A successful caller fold wrapper exposes its exact generated fold call
-and the structural state returned to the caller. -/
+/-- The caller's extracted constructor has the exact maintained initializer
+semantics for every canonical ten-coordinate input and scale. -/
+theorem caller_new_success_exact
+    (point : Array CallerRaw 10#usize) (scale : CallerRaw)
+    (output : CallerState)
+    (pointCanonical : ∀ index : Fin 10,
+      CallerCanonical (callerPointAt point index))
+    (scaleCanonical : CallerCanonical scale)
+    (run : V5RelationCallerGenerated.v5_cu_probe.CompactBTerminalWeights.new
+      point scale = .ok output) :
+    CallerCanonicalState output ∧ output.folds = 0#u8 ∧
+      callerProjectState output =
+        AspisV5CompactTerminalOptimized.optimizedInit
+          (fun index => callerToK (callerPointAt point index))
+          (callerToK scale) := by
+  obtain ⟨state, newRun, outputEq⟩ :=
+    caller_new_success_exposes_subcall point scale output run
+  have programRun := newRun
+  rw [generatedNew_eq_constructorProgram] at programRun
+  have newPointCanonical : ∀ index : Fin 10,
+      V5CompactScratchNew.Canonical
+        (V5CompactScratchNew.pointAt (callerArrayToNew point) index) := by
+    intro index
+    simpa using pointCanonical index
+  have newScaleCanonical :
+      V5CompactScratchNew.Canonical (callerToNewRaw scale) := by
+    simpa using scaleCanonical
+  have semantic := V5CompactScratchNew.constructorProgram_corresponds
+    (callerArrayToNew point) (callerToNewRaw scale) state
+    newPointCanonical newScaleCanonical programRun
+  subst output
+  refine ⟨(newStateToCaller_canonical state).2 semantic.1,
+    by simpa using semantic.2.1, ?_⟩
+  rw [newStateToCaller_project, semantic.2.2]
+  congr 1
+  funext index
+  simp
+
+/-- The caller-shaped form of the corrected compact fold.  The pinned caller
+now uses this source-shaped iterator write-back after the documented
+24 August 2026 integration correction. -/
+def correctedCallerFold (state : CallerState) (alpha : CallerRaw) :
+    Result CallerState := do
+  let folded ← V5CompactFoldCorrectedWrapper.fold
+    (callerStateToFold state) (callerToFoldRaw alpha)
+  ok (foldStateToCaller folded)
+
+/-- A successful corrected caller fold exposes the corrected source-shaped
+subcall and the structural state returned to the caller. -/
+theorem correctedCallerFold_success_exposes_subcall
+    (state output : CallerState) (alpha : CallerRaw)
+    (run : correctedCallerFold state alpha = .ok output) :
+    ∃ folded : FoldState,
+      V5CompactFoldCorrectedWrapper.fold
+          (callerStateToFold state) (callerToFoldRaw alpha) = .ok folded ∧
+      output = foldStateToCaller folded := by
+  unfold correctedCallerFold at run
+  change
+    (do
+      let folded ←
+        V5CompactFoldCorrectedWrapper.fold
+          (callerStateToFold state) (callerToFoldRaw alpha)
+      ok (foldStateToCaller folded)) = .ok output at run
+  generalize subcall :
+      V5CompactFoldCorrectedWrapper.fold
+        (callerStateToFold state) (callerToFoldRaw alpha) = result at run
+  cases result with
+  | fail error => simp [Bind.bind, Aeneas.Std.bind] at run
+  | div => simp [Bind.bind, Aeneas.Std.bind] at run
+  | ok folded =>
+    simp only [bind_tc_ok, Result.ok.injEq] at run
+    exact ⟨folded, rfl, run.symm⟩
+
+/-- A successful call through the pinned generated caller exposes the exact
+generated fold subcall and its structural result.  The generated fold includes
+the documented source-shaped iterator write-back correction. -/
 theorem caller_fold_success_exposes_subcall
     (state output : CallerState) (alpha : CallerRaw)
     (run :
@@ -586,6 +815,41 @@ theorem caller_fold_success_exposes_subcall
   | ok folded =>
     simp only [bind_tc_ok, Result.ok.injEq] at run
     exact ⟨folded, rfl, run.symm⟩
+
+/-- A successful caller fold has the exact maintained-field meaning of the
+corresponding released fold counter.  The four counter-specific source
+equalities are discharged inside `corrected_fold_corresponds`; no universal
+256-way byte-counter reduction is needed. -/
+theorem caller_fold_success_exact
+    (state output : CallerState) (alpha : CallerRaw)
+    (stateCanonical : CallerCanonicalState state)
+    (selectors : CallerReleasedSelectors state)
+    (alphaCanonical : CallerCanonical alpha)
+    (foldBound : state.folds.val < 4)
+    (run : correctedCallerFold state alpha = .ok output) :
+    CallerCanonicalState output ∧ CallerReleasedSelectors output ∧
+      output.folds.val = state.folds.val + 1 ∧
+      callerProjectState output =
+        AspisV5CompactFoldProgramSemantics.optimizedFoldFor state.folds.val
+          (callerToK alpha) (callerProjectState state) := by
+  obtain ⟨folded, foldedRun, outputEq⟩ :=
+    correctedCallerFold_success_exposes_subcall state output alpha run
+  have semantic :=
+    AspisV5CompactFoldProgramSemantics.corrected_fold_corresponds
+      (callerStateToFold state) (callerToFoldRaw alpha) folded
+      ((callerStateToFold_canonical state).2 stateCanonical)
+      ((callerStateToFold_releasedSelectors state).2 selectors)
+      ((callerToFold_canonical alpha).2 alphaCanonical)
+      (by simpa using foldBound) foldedRun
+  subst output
+  refine ⟨(foldStateToCaller_canonical folded).2 semantic.1,
+    (foldStateToCaller_releasedSelectors folded).2 semantic.2.1, ?_, ?_⟩
+  · simpa using semantic.2.2.1
+  · rw [foldStateToCaller_project,
+      ← sourceFoldProjectState_eq_foldProjectState,
+      semantic.2.2.2, sourceFoldProjectState_eq_foldProjectState,
+      callerStateToFold_project, sourceFoldToK_eq_foldToK,
+      callerToFold_exact, callerStateToFold_folds]
 
 /-- A successful caller dot wrapper exposes the exact final-weight subcall
 and the exact fixed dot program.  Arithmetic semantics are supplied by
@@ -621,6 +885,62 @@ theorem caller_dot_success_exposes_subcalls
     simp only [bind_tc_ok] at run
     exact ⟨weights, rfl, run⟩
 
+/-- A successful final-weight call returns canonical weights whose exact
+values are the maintained optimized scatter of the caller state. -/
+theorem caller_final_weights_success_exact
+    (state : CallerState) (weights : Array FinalRaw 4#usize)
+    (canonical : CallerCanonicalScales state)
+    (selectors : CallerReleasedSelectors state)
+    (run :
+      V5RelationCompactFinalGenerated.v5_cu_probe.CompactBTerminalWeights.final_weights
+        (callerStateToFinal state) = .ok weights) :
+    (∀ index : Fin 4,
+      AspisV5CompactFinalFieldSemantics.Canonical weights.val[index.val]!) ∧
+      (fun index : Fin 4 =>
+        AspisV5CompactFinalFieldSemantics.toExact weights.val[index.val]!) =
+        AspisV5CompactTerminalOptimized.optimizedFinalWeights
+          (callerProjectState state) := by
+  have mappedSelectors :=
+    (callerStateToFinal_releasedSelectors state).2 selectors
+  have programRun := run
+  rw [generatedFinalWeights_eq_finalProgram _ mappedSelectors] at programRun
+  have mappedCanonical :=
+    (callerStateToFinal_canonicalScales state).2 canonical
+  have semantic := AspisV5CompactFinalFieldSemantics.finalProgram_corresponds
+    (callerStateToFinal state) weights mappedCanonical programRun
+  have scatter :=
+    AspisV5CompactFinalFieldSemantics.optimizedFinalWeights_eq_exactOutput
+      (callerStateToFinal state) mappedSelectors
+  have semanticCanonical : ∀ index : Fin 4,
+      AspisV5CompactFinalFieldSemantics.Canonical
+        weights.val[index.val]! := by
+    intro index
+    convert semantic.1 index using 1
+    exact list_getBang_instance_independent _ _ weights.val index.val
+      (by simpa [Array.length_eq] using index.isLt)
+  have semanticOutput :
+      (fun index : Fin 4 =>
+        AspisV5CompactFinalFieldSemantics.toExact
+          weights.val[index.val]!) =
+        AspisV5CompactFinalFieldSemantics.exactOutput
+          (callerStateToFinal state) := by
+    funext index
+    convert congrFun semantic.2 index using 1
+    congr 1
+    exact list_getBang_instance_independent _ _ weights.val index.val
+      (by simpa [Array.length_eq] using index.isLt)
+  refine ⟨semanticCanonical, ?_⟩
+  calc
+    (fun index : Fin 4 =>
+        AspisV5CompactFinalFieldSemantics.toExact weights.val[index.val]!) =
+        AspisV5CompactFinalFieldSemantics.exactOutput
+          (callerStateToFinal state) := semanticOutput
+    _ = AspisV5CompactTerminalOptimized.optimizedFinalWeights
+          (AspisV5CompactFinalFieldSemantics.projectState
+            (callerStateToFinal state)) := scatter.symm
+    _ = AspisV5CompactTerminalOptimized.optimizedFinalWeights
+          (callerProjectState state) := by rw [callerStateToFinal_project]
+
 /-- The exact delegated compact calls belonging to one accepted relation
 execution. -/
 structure AcceptedCompactWrapperSubcalls
@@ -642,6 +962,10 @@ structure AcceptedCompactWrapperSubcalls
   finalWeights : Array FinalRaw 4#usize
   initialRun :
     V5RelationCompactNewGenerated.v5_cu_probe.CompactBTerminalWeights.new
+        (callerArrayToNew roundChallenges)
+        (callerToNewRaw trace.calls.denseScale) = .ok initialState
+  initialProgramRun :
+    V5CompactScratchNew.constructorProgram
         (callerArrayToNew roundChallenges)
         (callerToNewRaw trace.calls.denseScale) = .ok initialState
   initialOutput : trace.calls.compact = newStateToCaller initialState
@@ -725,6 +1049,8 @@ theorem accepted_trace_exposes_compact_wrapper_subcalls
   obtain ⟨finalWeights, finalWeightsRun, dotProgramRun⟩ :=
     caller_dot_success_exposes_subcalls trace.additive4
       trace.finalCoefficients trace.additiveDot trace.additiveDotSuccess
+  have initialProgramRun := initialRun
+  rw [generatedNew_eq_constructorProgram] at initialProgramRun
   exact ⟨{
     initialState := initialState
     foldState1 := foldState1
@@ -733,6 +1059,7 @@ theorem accepted_trace_exposes_compact_wrapper_subcalls
     foldState4 := foldState4
     finalWeights := finalWeights
     initialRun := initialRun
+    initialProgramRun := initialProgramRun
     initialOutput := initialOutput
     fold0Run := fold0Run
     fold0Output := fold0Output
@@ -747,9 +1074,15 @@ theorem accepted_trace_exposes_compact_wrapper_subcalls
 
 #print axioms caller_new_success_exposes_subcall
 #print axioms caller_fold_success_exposes_subcall
+#print axioms caller_fold_success_exact
 #print axioms caller_dot_success_exposes_subcalls
+#print axioms generatedNew_eq_constructorProgram
+#print axioms generatedFinalWeights_eq_finalProgram
+#print axioms caller_new_success_exact
+#print axioms caller_final_weights_success_exact
 #print axioms callerStateToNew_project
 #print axioms callerStateToFold_project
+#print axioms callerStateToFold_releasedSelectors
 #print axioms callerStateToFinal_project
 #print axioms callerStateToFinal_releasedSelectors
 #print axioms accepted_trace_exposes_compact_wrapper_subcalls
