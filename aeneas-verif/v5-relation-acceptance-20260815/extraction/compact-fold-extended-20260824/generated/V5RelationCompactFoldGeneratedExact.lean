@@ -17,7 +17,7 @@ set_option maxRecDepth 3000
 /- You can remove the following line by using the CLI option `-all-computable`: -/
 noncomputable section
 
-namespace V5RelationCompactFoldGenerated
+namespace V5RelationCompactFoldGeneratedExact
 
 /-- [core::array::{impl core::iter::traits::collect::IntoIterator<&'a mut T, core::slice::iter::IterMut<'a, T>> for &'a mut [T; N]}::into_iter]:
     Source: '/rustc/library/core/src/array/mod.rs', lines 376:4-376:40
@@ -1071,4 +1071,4 @@ def v5_cu_probe.aeneas_extract_compact_fold
   := do
   v5_cu_probe.CompactBTerminalWeights.fold state alpha
 
-end V5RelationCompactFoldGenerated
+end V5RelationCompactFoldGeneratedExact

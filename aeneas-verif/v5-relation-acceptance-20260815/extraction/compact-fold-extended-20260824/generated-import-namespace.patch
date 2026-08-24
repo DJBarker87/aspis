@@ -1,0 +1,17 @@
+--- generated/V5RelationCompactFoldGenerated.lean
++++ generated/V5RelationCompactFoldGeneratedExact.lean
+@@ -17,7 +17,7 @@
+ 
+ noncomputable section
+ 
+-namespace V5RelationCompactFoldGenerated
++namespace V5RelationCompactFoldGeneratedExact
+ 
+ /-- [core::array::{impl core::iter::traits::collect::IntoIterator<&'a mut T, core::slice::iter::IterMut<'a, T>> for &'a mut [T; N]}::into_iter]:
+     Source: '/rustc/library/core/src/array/mod.rs', lines 376:4-376:40
+@@ -1071,4 +1071,4 @@
+   := do
+   v5_cu_probe.CompactBTerminalWeights.fold state alpha
+ 
+-end V5RelationCompactFoldGenerated
++end V5RelationCompactFoldGeneratedExact

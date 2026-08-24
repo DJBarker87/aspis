@@ -41,10 +41,13 @@
   "lean_normalization": {
     "patch_file": "generated-normalization.patch",
     "patch_sha256": "4849ec178714c939583cabac69a085454162861bbe75b0f83f2b7c7b8d56d5ef",
-    "normalized_lean_file": "generated/V5RelationCompactFoldGenerated.lean",
-    "normalized_lean_sha256": "8385ab8aa51d62b986824da6b090301ea061903e071dbf32bde7723f67540f55",
+    "normalized_output_sha256": "8385ab8aa51d62b986824da6b090301ea061903e071dbf32bde7723f67540f55",
+    "import_namespace_patch_file": "generated-import-namespace.patch",
+    "import_namespace_patch_sha256": "34e7b1eff6ed4de3453108673fca0b08feb6336d23f1f2103bdc52c586e312a3",
+    "importable_lean_file": "generated/V5RelationCompactFoldGeneratedExact.lean",
+    "importable_lean_sha256": "cd993eb00d7546c35ad2bd41a79df684d608fd71dc30bba52a3f323c3345db3a",
     "lean": "4.32.0",
-    "olean_sha256": "cec95b162e60477ce2ada02c4a0b4c444dac28225bcc0b1317bfe04a6de2eae5",
+    "olean_sha256": "f3f1ced79660e6589da23e7a55e4ce8f5043634206fb59de4fe4eb4d65021391",
     "compile_status": "pass"
   },
   "archive": {

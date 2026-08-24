@@ -19,10 +19,17 @@ normalizations:
 3. replace the external declaration for mutable-array `into_iter` with the
    existing exact `Array.to_slice`/`Array.from_slice` model.
 
-The normalized generated file contains no `axiom` or `sorry` and compiles with
-Lean 4.32. The manifest records every source, tool, patch, generated file, and
-compiled-object hash. The 1.7 MB LLBC is archived on the project NUC rather
-than duplicated in Git.
+`generated-import-namespace.patch` then changes only the outer namespace to
+`V5RelationCompactFoldGeneratedExact`. This makes the corrected extraction
+importable beside the older loop-induction artifact without two files claiming
+the same Lean module name. Public source-closure proofs import the explicitly
+named corrected module; the older module remains available only to the already
+checked compatibility/induction layer.
+
+The normalized, namespaced generated file contains no `axiom` or `sorry` and
+compiles with Lean 4.32. The manifest records every source, tool, patch,
+generated file, and compiled-object hash. The 1.7 MB LLBC is archived on the
+project NUC rather than duplicated in Git.
 
 The extraction-only Rust wrapper merely makes the private inherent method a
 Charon root. The host-only Solana patch removes `cdylib` while retaining
