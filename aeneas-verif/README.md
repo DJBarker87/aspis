@@ -4,9 +4,8 @@ This directory addresses a simple risk: a correct mathematical model is not
 enough if the program checks something different.
 
 Charon extracts selected production Rust. Aeneas translates that extraction
-to Lean. Further Lean proofs are connecting one successful run of the
-released V5 proof checker to the mathematical objects used by the security
-argument.
+to Lean. Further Lean proofs connect one successful run of the released V5
+proof checker to the mathematical objects used by the security argument.
 The generated code and the bridge proofs are checked together by Lean.
 
 For a less technical explanation, start with
@@ -35,22 +34,32 @@ caller to provide equalities between selected Rust values and model values.
 The current chain obtains the values listed above by following one successful
 translated call, so they cannot be mixed across different runs.
 
-The source and maintained-field semantics of every release-reachable
-general-accumulator component are now proved, including its dense and
-deferred grouped components. `releasedTerminalDotCandidateExact` proves that
-the complete twelve-component iterator returns the maintained candidate
-claim. The compact constructor, individual
-fold cases, final assembly, and four-term dot calculation are proved. What
-remains is to build the general schedule from the accepted run's prepared
-accumulator and eight tensor additions, connect the compact ten-block state
-evolution, and use both in the final accepted-call theorem. No axiom or
-caller-supplied equality is being used in place of those proofs.
+The accepted general-accumulator schedule is derived from its four initial
+components and eight tensor additions, and every one of the resulting twelve
+components is carried through the production folds to the exact terminal
+weights and dot product. The source and maintained-field semantics cover every
+release-reachable component, including the dense and deferred grouped cases.
+
+The compact constructor, four folds, final assembly, and four-term dot are
+also derived from the same accepted execution. The final theorem uses both
+accumulator equalities internally. Once its clean tracked replay is green, one
+successful selected translated verifier call deterministically yields the
+maintained accepted-path security-event conclusion; callers supply neither
+accumulator equality.
+
+The publication theorem is
+`AspisV5AcceptedOneRunDeterministicFinal.accepted_composite_security_conclusion`
+in `V5AcceptedOneRunDeterministicFinal.lean`.
 
 The pinned Aeneas version emitted an ill-typed mutable-iterator
-back-translation for the compact outer fold. The current proof therefore uses
-a source-shaped outer wrapper around extracted subcalls. This narrow
-provenance boundary is not treated as automatically extracted Rust unless the
-pinned replay can regenerate it.
+back-translation for the compact outer fold. Audit also found that the first
+handwritten replacement reconstructed the array from an empty iterator and
+therefore discarded its writes. Lean contains a counterexample for that old
+wrapper and the proof now uses a corrected Lean wrapper around the extracted
+subcalls. The Rust and deployed program were unaffected. An extended Aeneas
+translation of the exact unchanged production function produces the correct
+iterator handback. The final proof connects its generated caller to the
+fold-semantics theorem rather than assuming their equality.
 
 The final assembly is under
 [`v5-result-aware-source-link-20260821/`](v5-result-aware-source-link-20260821/).
@@ -65,8 +74,11 @@ line of the repository or every part of Solana. It does not prove:
 
 - Charon, Aeneas, Lean, `rustc`, LLVM, the SBF toolchain, or Solana;
 - that SHA-256 or Poseidon2 has the required cryptographic security;
-- the published circle-decoding and Fiat--Shamir theorems themselves;
+- `EntryTerminalBoundary` and the production SHA-256 callback semantics;
+- the released FRI-table binding and the published decoding, PCS/FRI, and
+  Fiat--Shamir results themselves;
 - fresh prover randomness;
+- extraction and the numerical bounds assigned to external failure events;
 - the outer account-borrowing, upload, cleanup, and refund code; or
 - Solana account locking, rollback, and persistent state behavior.
 
@@ -87,6 +99,7 @@ These boundaries are listed in
 | Transcript prefix, work successors, field samplers, and queries | `v5-transcript-prefix-extraction-20260815/`, `v5-transcript-field-samplers-20260821/`, and the accepted-entry bridges |
 | Five authenticated opening sections | `v5-merkle-unchanged-full-20260820/` and `v5-fri-caller-exact-20260821/` |
 | Prepared point claims and full relation call | `v5-relation-acceptance-20260815/` and `v5-relation-full-source-20260820/` |
+| Corrected compact mutable-fold extraction | `v5-relation-acceptance-20260815/extraction/compact-fold-extended-20260824/` |
 | Full FRI consumer | `v5-fri-consumer-exact-20260815/` |
 | Production coordinate calculations | `v5-fri-coordinate-production-full-20260821/` |
 | Mathematical models and security reductions | [`AspisFormal/`](../AspisFormal/) |
@@ -122,9 +135,8 @@ The accepted-path checkpoint replay uses Lean 4.32 and the pinned Aeneas commit
 `b59d5188c082f704a418c7cb4e52ad69328002d1`. The compatibility patch and its
 file hashes are recorded in [`lean432/`](lean432/). The every-commit formal CI
 runs the maintained project and the tracked accepted-path replay; the exact
-local command is also recorded beside the aggregate proof. The wording will
-change to "final" only after the accepted general schedule, compact state
-composition, and outer theorem compile together.
+local command is also recorded beside the aggregate proof. The final replay is
+the publication gate for the one-run deterministic claim.
 
 Generated object files are deliberately not committed. Generated Lean source,
 bridge proofs, extraction manifests, tool revisions, and replay entry points

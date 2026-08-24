@@ -16,7 +16,7 @@ flowchart LR
     L["Lean models and proofs"]
     R["Selected production Rust"]
     A["Charon extraction and Aeneas translation"]
-    E["Accepted-path Lean theorem<br/>(final integration in progress)"]
+    E["Accepted-path Lean theorem<br/>(clean replay is the publication gate)"]
     B["Reproducible Solana program"]
     X["Archived finalized mainnet execution"]
 
@@ -91,7 +91,7 @@ rules. Aspis therefore follows selected Rust into Lean:
 2. Aeneas translates the extracted control flow and data types into Lean.
 3. Bridge proofs connect the generated definitions to the mathematical
    models.
-4. The aggregate proof under construction starts from a successful translated
+4. The final aggregate theorem starts from a successful selected translated
    call to the released proof checker and builds the mathematical evidence
    from that same run.
 
@@ -115,23 +115,39 @@ derives:
   relation value; and
 - the complete 58-field relation tail and the four accepted relation rounds.
 
-All of those witnesses come from one successful execution. The source and
-model semantics of every release-reachable general-accumulator component are
-proved, including the dense and deferred grouped cases, and the complete
-twelve-component iterator is proved equal to its public dot-product result.
-The compact constructor, four fold cases, final assembly, and four-term dot
-calculation are also proved separately. The remaining integration work is to
-construct the general schedule from the accepted run's prepared accumulator
-and eight tensor additions, connect the compact accumulator's complete state
-evolution, and use both in the outer accepted-call theorem. That theorem will
-not be described as complete until the composition compiles together.
+All of those witnesses come from one successful execution. The accepted
+general-accumulator schedule is derived from its four initial components and
+eight tensor additions, and every one of its twelve components is carried
+through the production folds to the exact terminal weights and dot product.
+The source and model semantics include the dense and deferred grouped cases.
 
-One extraction boundary is recorded explicitly. The pinned Aeneas version
-emitted an ill-typed back-translation for the compact mutable fold iterator,
-so its outer fold is currently represented by a small source-shaped Lean
-wrapper over extracted subcalls. The underlying subcalls and their
-mathematics are checked; claiming automatic Rust extraction for that wrapper
-requires either a successful pinned regeneration or a future Aeneas fix.
+The compact constructor, four folds, final assembly, and four-term dot are
+also derived from the accepted execution. The final theorem uses both
+accumulator equalities internally; callers do not provide either equality as
+an assumption. Once its clean tracked replay is green, the same successful
+selected translated verifier call deterministically yields the maintained
+accepted-path security-event conclusion.
+
+The exact publication theorem is
+`AspisV5AcceptedOneRunDeterministicFinal.accepted_composite_security_conclusion`
+in `V5AcceptedOneRunDeterministicFinal.lean`.
+
+One extraction boundary is recorded explicitly. The old handwritten compact
+outer wrapper rebuilt the array from an empty terminal iterator, which
+discarded its writes. Lean now includes a counterexample for that old wrapper
+and a corrected wrapper that rebuilds from the updated original iterator. The
+Rust and deployed program did not contain this error. An extended Aeneas
+translation of the unchanged production function produces the corrected
+iterator handback. The final proof connects that generated caller to the fold
+semantics rather than assuming their equality.
+
+The [extraction record](../aeneas-verif/v5-relation-acceptance-20260815/extraction/compact-fold-extended-20260824/)
+pins the unchanged Rust file, Charon and Aeneas revisions, extraction-only
+patches, LLBC hash, direct generated Lean, normalized generated Lean, and the
+successful Lean 4.32 object hash. The direct output's mutable-array iterator
+declaration is replaced by the existing exact slice/from-slice definition in
+the recorded normalization; the normalized file contains no axiom or omitted
+proof.
 
 The [accepted-path source map](v5-accepted-source-map.md) gives a fifteen-stop
 route through the production code and names the proof for each stop.
@@ -142,6 +158,9 @@ The selected path is the proof checker called by the released spend. It is not
 a verification of every Rust function. In particular, the theorem does not
 prove:
 
+- the production interpretation of the terminal evaluator represented by
+  `EntryTerminalBoundary`;
+- the SHA-256 callback specification or the released FRI-table binding;
 - the outer `AccountInfo` borrowing and Solana dispatch machinery;
 - upload, seal, cleanup, refund, or wallet code;
 - the Rust compiler, LLVM, the SBF toolchain, or the Solana runtime;
@@ -167,12 +186,13 @@ explicit failure cases. The main checked parts are:
 - the finite relation-repair and work-normalized arithmetic meet the released
   bounds when the external event bounds are supplied.
 
-Before the final one-run theorem is complete, the two dot-product equalities
-above remain deterministic Rust/model proof obligations. Once they are
-closed, the remaining boundaries are the cryptographic and platform claims
-that a deterministic source theorem cannot prove:
+Once the final one-run theorem passes its clean replay, no caller-supplied
+main-accumulator, compact-accumulator, or final-composition equality remains.
+The boundaries that remain are cryptographic and platform claims that a
+deterministic source theorem cannot prove:
 
 - the cited decoding, polynomial-commitment, and Fiat--Shamir results;
+- `EntryTerminalBoundary` and the released FRI-table binding;
 - SHA-256 and Poseidon2 implementation and security properties;
 - fresh prover randomness;
 - numerical bounds for extraction, hash, random-oracle, and other external
@@ -254,9 +274,10 @@ lake build
 ### Accepted Rust-to-Lean path
 
 Use the Lean 4.32 checkpoint replay under
-`aeneas-verif/v5-result-aware-source-link-20260821/`. It checks the completed
-parts of the accepted path listed above; it is not yet a replay of the final
-outer theorem. The every-commit formal CI runs the same entry point with the
+`aeneas-verif/v5-result-aware-source-link-20260821/`. The final tracked entry
+point checks the theorem from one successful selected translated verifier call
+to the maintained accepted-path security-event conclusion. A clean replay of
+that entry point is the publication gate. The every-commit formal CI uses the
 pinned Aeneas compatibility environment.
 
 ### Program identity

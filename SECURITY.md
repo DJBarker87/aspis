@@ -30,12 +30,14 @@ to the released proof checker. From that same call it derives the parse,
 transcript challenges, six work checks, 18 distinct queries, five
 authenticated opening sections, FRI checks, final polynomial, exact decoded
 claim table, initial relation value, and decoded four-round relation tail.
-These values cannot be chosen from different runs. The individual field
-calculations in both final accumulators are proved, and the complete general
-accumulator dot implementation is connected to its mathematical result. The
-accepted general schedule, compact state composition, and outer accepted-call
-theorem are still in progress, so the final one-run theorem is not yet
-claimed.
+These values cannot be chosen from different runs. The accepted general
+accumulator's four initial components, eight additions, twelve-component
+schedule, fold traversal, terminal weights, and dot implementation are derived
+from that execution. The compact constructor, four folds, final assembly, and
+dot are derived internally as well. Once the final clean replay is green, one
+successful selected translated verifier call therefore yields the maintained
+accepted-path security-event conclusion without a caller-supplied accumulator
+equality.
 
 This is deliberately narrower than verification of the whole program. The
 surrounding account wrapper, compiler, Solana runtime, and persistent state
@@ -86,15 +88,15 @@ attack cost, not 128 bits and not a raw `2^-100` probability per completed
 proof. The remaining external events must together fit the reserved
 `0.3 * 2^-100` budget.
 
-Most of the deterministic accepted proof-checker path is connected to the maintained
-mathematical event in Lean. The general production dot implementation is
-proved; its accepted-run schedule, the compact state composition, and the
-outer accepted-call theorem remain. What
-will remain outside the completed source theorem is the security
-of the cryptographic primitives and published reductions, fresh prover
-randomness, the translation and compilation tools, the surrounding Solana
-account/state code, and concrete probability bounds for those external
-events. Consequently the repository reports a checked 100-bit
+The final deterministic theorem connects the selected accepted proof-checker
+path to the maintained security-event conclusion, subject to a clean replay.
+Its main and compact accumulator equalities are proved inside the theorem.
+What remains outside that source theorem is `EntryTerminalBoundary`, the
+SHA-256 callback and primitive security, Poseidon2 security, released FRI
+tables, published decoding/PCS/FRI/Fiat--Shamir applicability, fresh prover
+randomness, extraction, translation and compilation, the surrounding Solana
+account/state code and runtime, and concrete probability bounds for the named
+external events. Consequently the repository reports a checked 100-bit
 work-normalized **protocol subtotal**, not an unconditional 100-bit deployed
 theft-resistance number. See the [formal-verification overview](docs/formal-verification.md)
 and [dated mathematical review](docs/reviews/mathematical-status-20260814.md).
@@ -103,10 +105,10 @@ and [dated mathematical review](docs/reviews/mathematical-status-20260814.md).
 Poseidon2, Merkle, and public-input equations imply the complete spend
 relation. The accepted-path chain supplies the verifier-side parse,
 transcript, opening, FRI, claims, initial relation value, and relation tail
-from one translated execution. The general dot implementation is proved. The
-remaining deterministic work is to construct its schedule from that accepted
-execution, join the compact accumulator's proved components, and then prove
-the outer accepted-call theorem.
+from one translated execution. The final theorem derives both the main and
+compact accumulator equalities and uses them to reach the maintained
+accepted-path security-event conclusion; its clean replay is the publication
+gate.
 `V5FixedVictimTheftGame.lean` separately classifies a fixed-victim attack into
 eight mathematical and chain-level failures for the attack event defined in
 the Lean model. These results do not prove that an extractor recovers a valid

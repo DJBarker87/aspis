@@ -3,8 +3,11 @@
 
 Most of the mathematical core is checked in Lean.  The selected accepting
 verifier path is connected to those models through generated Lean and bridge
-proofs up to the decoded relation tail.  Its two final-dot equalities and
-outer composition are still open.  Published decoding and Fiat--Shamir results, primitive
+proofs through the complete maintained relation caller.  One successful
+translated callback supplies the decoded relation data, twelve-component main
+accumulator, compact accumulator, and both final dot products without a
+caller-supplied model-equality premise.
+Published decoding and Fiat--Shamir results, primitive
 security, translation and proof-tool correctness, compilation, and Solana
 runtime behavior remain stated inputs for the concrete instantiation.
 
@@ -15,9 +18,20 @@ success of the translated production entry point.  It derives the parsed
 values, transcript challenges, work checks, selected queries, authenticated
 openings, FRI comparisons, final polynomial, exact claim table, initial
 relation value, and decoded relation tail from that same run.  These are not
-independent hypotheses.  The general and compact terminal dot products have
-not yet been connected to their mathematical calculations, so the outer
-accepted-execution theorem is not claimed in this snapshot.
+independent hypotheses.  The same selected four-round execution supplies the
+general accumulator's exact twelve terminal weights and the compact
+accumulator's full state evolution.  The outer accepted-execution theorem then
+derives the maintained security-event conclusion.
+
+The pinned Aeneas version emitted an ill-typed back-translation for the
+compact mutable fold iterator.  Audit then found that the first handwritten
+replacement reconstructed the array from an empty iterator and discarded its
+writes.  Lean records a counterexample to the old wrapper and now uses a
+corrected wrapper that rebuilds from the updated original iterator.  The Rust
+function and deployed program were unaffected.  An extended, pinned Aeneas
+translation of the unchanged function emits the correct iterator handback and
+compiles under Lean 4.32.  Its generated caller is connected to the accepted
+fold execution used by the outer theorem.
 
 This is not whole-program verification.  The source proof covers the selected
 accepting verifier callback, not every dispatch, upload, diagnostic, host, or
@@ -30,8 +44,8 @@ the result.  The exact source path is in \cref{app:source-checklist}.
 
 The general audit ledger retains source and runtime mismatches as named events
 so that none can disappear from the proof.  Completed accepted-path theorems
-discharge the deterministic verifier correspondences through the relation
-tail; the two final-dot correspondences are not yet discharged.  The
+discharge the selected deterministic verifier correspondence through the
+complete relation caller.  The
 conventional cryptographic statement assigns probability only to
 the remaining protocol, primitive, credential, toolchain, and runtime events.
 It does not assign a fictional tiny failure probability to parser correctness,
@@ -48,9 +62,9 @@ unchanged.
 
 The final event interface states how the event extracted from the selected
 production path is identified with the event covered by the published BCS
-state-restoration theorem.  The deterministic transcript schedule and
-samplers are checked in the source bridge; completing the two final-dot links
-will supply the remaining deterministic caller input.  The published BCS
+state-restoration theorem.  The deterministic transcript schedule, samplers,
+both accumulators, and complete relation caller are checked in the selected
+source bridge.  The published BCS
 theorem and SHA-256 random-oracle model remain external cryptographic inputs,
 not an unfinished V5 FRI code theorem.
 
@@ -106,10 +120,11 @@ Circle domains and encoders & Checked in Lean & Published decoding result is
 used as a stated theorem \\
 Four-round FRI and candidate chain & Checked in Lean & Published BCS
 Fiat--Shamir theorem and SHA-256 random-oracle assumption remain external \\
-Transcript, Merkle, FRI, and relation accepted source path & Checked through
-the claim table, initial relation value, and decoded relation tail & Two
-production final-dot equalities and outer composition remain; translation-tool
-trust and primitive callback semantics remain external \\
+Transcript, Merkle, FRI, and relation accepted source path & One successful
+translated callback yields the complete maintained relation caller, including
+both accumulators and final dots & Opaque terminal-evaluator interface,
+translation-tool trust, published applicability, and primitive callback
+semantics remain external \\
 Work-normalized \(2^{-100}\) budget composition & Checked in Lean & Exact
 event connection and six probabilistic external bounds are supplied;
 deterministic correspondences take budget zero \\

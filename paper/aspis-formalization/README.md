@@ -3,8 +3,9 @@
 This report presents the V5 mathematical construction, its current connection
 to one successful translated production verifier call, and the archived
 Solana mainnet result. The source connection is complete through the decoded
-relation tail; two production final-dot equalities and their outer composition
-remain open. The report is separate from the earlier deployment-focused
+relation tail, both accumulator executions, and the complete maintained
+relation caller for one successful selected translated callback. The report is
+separate from the earlier deployment-focused
 manuscript in `paper/aspis-spend/`.
 
 Each major claim is paired with Lean definitions or theorem names. The

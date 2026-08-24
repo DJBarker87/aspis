@@ -47,11 +47,13 @@ For each connection we distinguish three statements:
   \item the source-shaped composition equals that model;
   \item the production Rust function equals the source-shaped composition.
 \end{enumerate}
-Only the third statement turns the first two into a production theorem.  The
-current accepted-path work proves this connection through the exact initial
-relation value and decoded relation tail.  The two production final-dot
-equalities and their outer composition remain unfinished; boundaries outside
-that source path remain named as well.
+Only the third statement turns the first two into a production theorem.  For
+the selected accepted callback, the source proof now reaches the complete
+relation caller.  It derives the main accumulator's twelve terminal weights,
+the compact accumulator's complete state evolution, and both final dot
+products from the same accepted four-round execution.  The theorem still
+takes the opaque terminal evaluator as a named interface; boundaries outside
+the selected source path remain named as well.
 
 \subsection{Transcript coverage}
 
@@ -108,10 +110,24 @@ The accepted-entry caller is connected to the unchanged extracted relation
 verifier through the exact 76 decoded claims, four prepared claims, initial
 relation value, and 58-field tail consumed by the four ordered rounds.  The
 same four fold challenges and final polynomial are shared with the FRI call.
-The low-mask main-weight arithmetic and compact constructor and prepared
-two- and three-product kernels are proved separately.  The remaining work is
-to connect the complete main and compact accumulators to their terminal dot
-products and then use both equalities in the outer caller theorem.
+For the general accumulator,
+\code{releasedTerminalDotCandidateExact} proves the complete extracted
+twelve-component dot product, including the dense and deferred grouped loops.
+The accepted-run proof identifies each terminal component with its maintained
+weight and identifies the resulting dot with the verifier's returned value.
+For the compact accumulator, the constructor, four fold cases, final assembly,
+and four-term dot product are connected through the corrected extracted
+iterator.  \code{accepted_composite_security_conclusion} uses both results in
+the theorem that starts from one successful selected translated verifier call.
+
+The first handwritten Lean replacement for the compact outer fold rebuilt the
+array from an empty terminal iterator and therefore discarded its writes.  A
+Lean counterexample records that error, and the proof now uses a corrected
+wrapper that rebuilds from the updated original iterator.  This was an error in
+the proof artifact, not in the Rust function or deployed program.  An extended,
+pinned Aeneas translation of the unchanged function now emits the correct
+mutable-iterator handback and compiles under Lean 4.32.  The accepted-run
+theorem connects that generated caller to the fold-semantics proof.
 
 The final candidate construction also has to connect authenticated values and
 transcript challenges to the eligibility, support, message, and response
@@ -177,9 +193,10 @@ returned by the same production execution; exact four folds and final
 polynomial & Published decoding/Fiat--Shamir results and primitive-security
 bounds \\
 Relation & Exact 76-claim table, four prepared claims, initial relation value,
-58-field tail, and four ordered rounds from the same accepted call & Complete
-the main and compact accumulator final-dot equalities and outer composition;
-published Fiat--Shamir result and primitive-security bounds \\
+58-field tail, four ordered rounds, twelve-component main accumulator, compact
+accumulator, and final relation caller from the same accepted call & Opaque
+terminal-evaluator interface; published Fiat--Shamir result and
+primitive-security bounds \\
 Spend state & Five account roles, bump 255, marker and pool writes, close/refund
 projection & Current Rust equality and Solana runtime premises \\
 Hash primitives & Fixed inputs and known-answer executions & Concrete

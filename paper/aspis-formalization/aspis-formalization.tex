@@ -64,14 +64,16 @@ program.  A recorded mainnet transaction verified a 75,358-byte proof,
 published its nullifier, and updated the pool state in 1,334,452 compute units.
 
 The main contribution is a checked mathematical security argument together
-with a detailed, partly completed connection to the production verifier.
+with a selected-path connection to the production verifier.
 Charon extracts selected production Rust and Aeneas translates it into Lean.
 Further Lean proofs start from one successful translated verifier execution
 and derive its transcript values, six work checks, eighteen selected queries,
 five authenticated opening trees, four FRI folds, final polynomial, exact
-76-claim table, initial relation value, and 58-field relation tail.  At the
-paper snapshot, the general and compact final-dot equalities and their outer
-composition remain to be proved.  Separately, a finite Lean 4 security
+76-claim table, initial relation value, 58-field relation tail, both
+accumulators, and final relation checks.  The final source theorem obtains
+these values from the same accepted execution; it does not take a caller-
+supplied accumulator equality or implementation/model equality.  Separately,
+a finite Lean 4 security
 experiment covers accepted false statements by an ideal-protocol event or a
 named external cryptographic or runtime event.  Lean
 checks the private-spend relation, released M31 circle domains and encoders,
@@ -86,7 +88,8 @@ Separate raw accounting does not charge completed grinding work and leaves a
 Solana program is byte-for-byte reproducible from the recorded source and
 tools, and its finalized mainnet execution is archived.  The result is not a
 verification of Charon, Aeneas, Lean, the Rust/SBF compiler, Solana, SHA-256,
-or Poseidon2.  Published circle-decoding and Fiat--Shamir results, concrete
+or Poseidon2.  One terminal-evaluator interface, the released FRI-table
+identity, published circle-decoding and Fiat--Shamir results, concrete
 primitive-security bounds, compiler correctness, and runtime behavior remain
 explicit inputs rather than being presented as Lean conclusions.
 \end{abstract}

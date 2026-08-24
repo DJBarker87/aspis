@@ -3,20 +3,20 @@ set -euo pipefail
 
 # Rebuild the tracked accepted-path Charon/Aeneas proof closure without using
 # any pre-existing object directory under aeneas-verif, /private/tmp, or a
-# development NUC.  The target stays configurable so the final end-to-end
-# theorem can replace the current highest tracked audit without rewriting this
-# gate.
+# development NUC.  The target stays configurable for focused diagnostics,
+# while the default is the final selected accepted-callback theorem.
 
 readonly script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 readonly verification_dir="$(cd "$script_dir/.." && pwd -P)"
 readonly workspace_dir="$(cd "$verification_dir/.." && pwd -P)"
 readonly prepare_aeneas="$script_dir/prepare-aeneas-lean432.sh"
 
-readonly default_target_path="aeneas-verif/v5-result-aware-source-link-20260821/proof/V5AcceptedEntryMerkleConsumerAudit.lean"
-readonly default_target_module="V5AcceptedEntryMerkleConsumerAudit"
+readonly default_target_path="aeneas-verif/v5-result-aware-source-link-20260821/proof/V5AcceptedOneRunDeterministicFinal.lean"
+readonly default_target_module="V5AcceptedOneRunDeterministicFinal"
+readonly default_target_declaration="AspisV5AcceptedOneRunDeterministicFinal.accepted_composite_security_conclusion"
 readonly target_path="${1:-${ASPIS_ACCEPTED_TARGET_PATH:-$default_target_path}}"
 readonly target_module="${2:-${ASPIS_ACCEPTED_TARGET_MODULE:-$default_target_module}}"
-readonly target_declaration="${ASPIS_ACCEPTED_AXIOM_DECL:-}"
+readonly target_declaration="${ASPIS_ACCEPTED_AXIOM_DECL:-$default_target_declaration}"
 readonly revision="${ASPIS_ACCEPTED_REVISION:-HEAD}"
 
 for command_name in awk git grep jq lake mktemp rg sed sort tar; do

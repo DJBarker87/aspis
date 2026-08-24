@@ -34,7 +34,7 @@ flowchart LR
 | Evidence layer | What is established | Primary record |
 | --- | --- | --- |
 | Mathematics in Lean | Lean checks substantial parts of the spend rules, finite calculations, algebra, and component-level hiding arguments, subject to the assumptions named in each theorem | [formal-verification overview](docs/formal-verification.md) and [`AspisFormal/`](AspisFormal/) |
-| Selected Rust to Lean | Charon and Aeneas translate selected Rust functions into Lean. The checked path derives the transcript, work, queries, authenticated openings, FRI execution, decoded 76-claim table, initial relation value, and 58-field relation tail from one successful translated run. The general dot implementation and the individual compact calculations are also proved; their accepted-run wiring and the final one-run theorem are still being joined | [`aeneas-verif/`](aeneas-verif/) |
+| Selected Rust to Lean | Charon and Aeneas translate selected Rust functions into Lean. The final accepted-path theorem follows one successful translated verifier call through the transcript, work, queries, authenticated openings, FRI execution, relation checks, and both final accumulators. Its clean replay is the publication gate | [`aeneas-verif/`](aeneas-verif/) |
 | Source to program bytes | A pinned clean source commit and pinned build tools reproduce the exact 1,258,496-byte V5 SBF | [V5 release preflight](release/preflight/v5-production-freeze.md) and [frozen candidate bundle](release/aspis-v5-tag67-frozen-candidate-v1/) |
 | Program to chain | The deployed SBF identity, proof, statement, exact compute, state transition, and cleanup are preserved in a sanitized offline-verifiable bundle | [V5 mainnet bundle](release/aspis-v5-tag67-mainnet-v1/) |
 
@@ -45,27 +45,31 @@ instead of collapsing them into one broader claim.
 
 ### Current proof-integration status
 
-As of August 24, 2026, the final one-run Rust-to-security theorem is still
-being assembled. The deterministic path is checked through the exact initial
-relation value and complete decoded relation tail. The general accumulator's
-complete twelve-component dot product is checked, as are the individual field
-calculations in the compact accumulator. The remaining source/model work is:
+The final one-run theorem is the publication gate. Once its clean tracked
+replay is green, one successful selected translated call to the released V5
+proof checker deterministically yields the maintained accepted-path
+security-event conclusion. The proof derives the general accumulator's exact
+terminal weights and dot product, and the compact accumulator's constructor,
+four folds, final assembly, and dot product, from that same execution. Those
+equalities are internal results, not assumptions supplied by the theorem's
+caller.
 
-- construct the general weight schedule from the accepted run's prepared
-  accumulator and eight tensor additions, and connect it to the proved dot;
-- connect the compact accumulator's constructor, four folds, final assembly,
-  and four-term dot product into one state-evolution theorem; and
-- use that result with the completed general dot product in the outer
-  accepted-call theorem.
+An audit found that the previous handwritten Lean outer wrapper reconstructed
+the compact array from an empty iterator, so its writes were discarded. This
+was a proof-artifact error, not a Rust or deployed-program error. Lean now
+contains both a small counterexample for the old wrapper and a corrected
+wrapper that reconstructs the array from the updated original iterator. An
+extended Aeneas translation of the unchanged Rust function now produces the
+correct iterator handback. The final proof connects that generated caller to
+the fold semantics rather than assuming their equality.
 
-The compact outer fold is represented by a source-shaped Lean wrapper because
-the pinned Aeneas version emitted an ill-typed back-translation for that
-mutable iterator. Its relationship to the Rust source remains a named,
-reviewable boundary unless a pinned extraction replay regenerates it.
-
-The repository does not yet describe that last composition as proved. This
-status concerns proof coverage of the existing released source; it does not
-require another transaction or change the archived mainnet result.
+This deterministic theorem does not supply the cryptographic or platform
+premises needed for an unconditional numerical security claim.
+`EntryTerminalBoundary`, the SHA-256 callback and primitive security,
+Poseidon2 security, published decoding, PCS/FRI and Fiat--Shamir
+applicability, extraction, released FRI tables, compiler, Solana runtime, and
+numerical event budgets remain explicit. No new transaction is needed because
+this work checks the already released source.
 
 ## Mainnet result
 
@@ -85,11 +89,10 @@ the state update on Solana mainnet-beta. The finalized transaction:
 · [See formal coverage](docs/formal-verification.md)
 
 The exact compiled program is tied to the recorded source and build
-environment. The Charon/Aeneas proof layer connects the selected production
-verifier path to the maintained Lean models through the stages listed above.
-The remaining implementation work is the accepted-run general schedule join,
-the compact accumulator's full state composition, and their use in the outer
-accepted-call theorem.
+environment. Subject to the clean final replay described above, the
+Charon/Aeneas proof layer connects one successful selected production-verifier
+call to the maintained accepted-path security-event conclusion. Both final
+accumulator equalities are derived inside that proof.
 
 The archived 75,358-byte proof also passes the released verifier callback in a
 new regression test. The same test changes each of the nine public fields in
@@ -158,14 +161,14 @@ same run:
   rounds.
 
 Those facts are not supplied as unrelated Rust/model equality assumptions.
-The general accumulator's complete public dot implementation and the compact
-accumulator's component calculations are now proved as well. The accepted
-general schedule, compact state composition, and final accepted-call theorem
-still have to be joined before the maintained security argument can be
-reached from a single accepted call. The
+The final theorem also derives the accepted general accumulator schedule and
+terminal dot, together with the compact accumulator's constructor, folds,
+final assembly, and dot. Once its clean tracked replay is green, the complete
+deterministic connection from one successful translated verifier call to the
+maintained accepted-path security-event conclusion is established. The
 [accepted-path source map](docs/v5-accepted-source-map.md) gives the short
 review route, and the [formal-verification overview](docs/formal-verification.md)
-lists the exact theorem names and replay command.
+lists the exact theorem and replay boundary.
 
 Lean separately checks the private-spend rules, including value balance,
 ownership, both Merkle paths, the nullifier, output note, asset and fee fields,

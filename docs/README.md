@@ -4,10 +4,11 @@ Aspis V5 is the current release. It records a private-spend construction,
 Lean proofs, selected production verifier paths translated with Charon and
 Aeneas, a byte-reproducible Solana program, and a finalized mainnet-beta state
 transition. The Rust-to-model connection is complete through the initial
-relation value and decoded relation tail. The general dot implementation and
-the compact accumulator's component calculations are proved; the accepted
-general schedule, compact state composition, and outer theorem are still
-being joined.
+relation value, decoded relation tail, and both final accumulators. Once the
+final clean replay is green, one successful selected translated verifier call
+deterministically yields the maintained accepted-path security-event
+conclusion; the main and compact accumulator equalities are derived inside
+that theorem.
 
 ## Start here
 

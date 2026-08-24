@@ -36,9 +36,11 @@ The main assumptions are:
    by the mathematical model. The rest of the selected accepted proof-checker
    path is followed from one successful translated execution rather than by
    assuming separate intermediate Rust/model equalities.
-5. Lean, Charon, Aeneas, Rust, LLVM, and the pinned build tools execute
+5. The terminal evaluator supplied to the selected extracted composite call
+   has the production behavior recorded by `EntryTerminalBoundary`.
+6. Lean, Charon, Aeneas, Rust, LLVM, and the pinned build tools execute
    correctly.
-6. Solana performs account locking, system calls, state updates, and compute
+7. Solana performs account locking, system calls, state updates, and compute
    accounting as recorded for the release.
 
 ## Selected production-Rust coverage
@@ -47,16 +49,30 @@ The current source theorem starts at one successful translated call to the
 released V5 proof checker. It follows the parser, transcript, six work checks,
 18-query sampler, five authenticated opening sections, prepared claims, FRI
 consumer, coordinate calculations, and four-round relation checker. The FRI
-and relation values are proved to come from that same execution. The general
-dot implementation is proved as well. Constructing its schedule from the
-accepted run, composing the compact accumulator's individual calculations,
-and using both in the outer accepted-call theorem remain in progress.
+and relation values are proved to come from that same execution. The accepted
+twelve-component accumulator schedule and general dot implementation are also
+proved. The final theorem derives the exact general terminal weights and dot,
+the compact constructor, four folds, final assembly and dot, and the final
+composition internally. Once its clean replay is green, one successful
+selected translated verifier call deterministically yields the maintained
+accepted-path security-event conclusion.
 
 The pinned Aeneas version translated the compact mutable loop body but emitted
-an ill-typed back-function for its small outer fold wrapper. The current Lean
-wrapper is a direct source-shaped assembly over those translated subcalls.
-Until a pinned translator replay regenerates that wrapper, its equality to the
-Rust wrapper remains an explicit implementation boundary.
+an ill-typed back-function for its small outer fold wrapper. Audit then found
+that the handwritten replacement reconstructed the array from an empty
+iterator, discarding its writes. Lean records a counterexample to the old
+wrapper and uses a corrected source-shaped wrapper over the translated
+subcalls. The Rust and deployed program were unaffected. An extended Aeneas
+translation of the unchanged production function emits the correct iterator
+handback. The final proof connects that generated caller to the fold-semantics
+theorem rather than receiving their equality as an assumption.
+
+The tracked [compact-fold extraction record](../aeneas-verif/v5-relation-acceptance-20260815/extraction/compact-fold-extended-20260824/)
+pins the unchanged production file, tools, extraction-only patches, LLBC,
+direct generated source, normalized source, and successful Lean object. The
+normalization replaces the generated mutable-array iterator declaration with
+the already-used exact slice/from-slice model; it does not add a source
+equality assumption.
 
 This replaces the older public description based on separate Component A/B/C
 packages and caller-provided intermediate equalities. Those historical
@@ -84,7 +100,8 @@ evidence that constrains it, and what follows if it fails.
 | The cited extractor and simulation-extraction results hold for this protocol, and Poseidon2 has the required fixed-target second-preimage security for the nullifier target selected by the security game | Authorization and theft resistance | `TheftResistance.lean` proves the generic wrong-secret reduction; `V5TheftResistance.lean` connects it to the exact V5 spend relation. `V5FixedVictimTheftGame.lean` adds credential recovery, alternative openings, and chain failures to one eight-event bound. The extractor input is a complete execution record, not public proof bytes alone. Deployed acceptance/extraction, extraction after observed proofs, target sampling or a uniform per-target bound, and concrete probabilities remain external | Argument soundness may still give witness existence, but authorization possession or the claimed theft bound may not follow |
 | The combined owner-key and note commitment and the Poseidon2 tree hash have the required fixed-target and collision security for the victim note | Ruling out another opening or another leaf at the victim's position under the victim root | `V5TheftResistance.lean` proves the fixed-leaf/different-opening reduction. `ApplicationMerkleBinding.lean` proves that a different leaf at the same position and root exposes a concrete node-hash collision, while a different position may be a valid opening. `V5FixedVictimTheftGame.lean` includes both cases in the fixed-victim event bound. Known-answer tests check selected function results, not primitive security; numerical bounds remain external | The on-chain marker still rejects a repeated nullifier, but the victim note might be reopened under a different nullifier or leaf |
 | The production SHA-256 callback hashes the concatenated Rust slices exactly as the mathematical SHA-256 function hashes their bytes | Transcript and work hashing, Merkle authentication, and the production-to-model primitive boundary | The generated source fixes every label, payload, nonce encoding, and callback call site. Known-answer tests exercise the callback. Cryptographic security and syscall semantics are not proved by Lean | The accepted control-flow theorem still holds, but its hash, Merkle, and transcript interpretation would not describe production |
-| Lean/mathlib, Charon/Aeneas, Rust/LLVM-to-SBF, and the pinned build tools execute correctly | Kernel checking, extraction, compilation, and source-to-binary identity | Version pins, replay scripts, the 77-source/91-toolchain build-time inventory, and the clean-source byte-parity record. The compact mutable loop body is translated, but the current source-shaped outer fold wrapper retains a separate equality boundary until it is regenerated successfully | A proof, translation, or binary may not represent the intended source |
+| `EntryTerminalBoundary` describes the terminal evaluator supplied to the selected extracted composite call | Connecting that successful selected call to the maintained terminal checks | The boundary is explicit in the final theorem signature and the selected terminal bridge records the calls it represents | The deterministic conclusion would apply to the modeled terminal evaluator rather than the production one |
+| Lean/mathlib, Charon/Aeneas, Rust/LLVM-to-SBF, and the pinned build tools execute correctly | Kernel checking, extraction, compilation, and source-to-binary identity | Version pins, replay scripts, the 77-source/91-toolchain build-time inventory, and the clean-source byte-parity record. The corrected compact mutable fold is retained as generated Lean plus its recorded normalization and bridge proof; no source equality is supplied by the final theorem's caller | A proof, translation, or binary may not represent the intended source |
 | Solana's account-locking, System Program CPI, SHA syscall, PDA derivation, and CU schedule behave as recorded | Atomic state transition, marker uniqueness, and the V5 CU policy | `V5NullifierMarkerReplay.lean` proves that the same marker address cannot be consumed successfully twice in sequence, even if two different nullifiers derive that address. Runtime 2.3.13 measurements and an all-selector replay on mainnet Agave 4.1.0 cover absent, program-owned, and prefunded marker paths. Recorded pre-execution runner source requires bump 255 and exact-wire simulation at or below 1,356,912 CU; the immutable lifecycle evidence does not pin the exact executed runner commit. The exact deployed program checked the derived PDA address but did not require the numeric bump to be 255 | If Rust or Solana does not follow the modeled locking, rollback, CPI, and persistent-write behavior, the chain-level argument can fail. The marker theorem has not yet removed PDA aliasing from the deployed theft game; a later runtime or wider runner policy requires a new replay and ceiling |
 | The production host receives fresh, independent OS entropy where the construction requires it | Masking, public Fiat–Shamir salts, and the 17-attempt schedule search | Production-only RNG types, retry-control tests, and exclusion of fixture RNG/selector overrides from the production caller | The hiding or retry-distribution argument may fail |
 
@@ -111,10 +128,10 @@ proves the final integer `<= 2^-100` implication under the named premises.
 `V5DeployedFalseAcceptance.lean` defines the false-acceptance event and the
 conditional probability endpoint. The accepted-path proof chain now supplies
 the deterministic parser, transcript, opening, FRI, decoded claim table,
-initial relation value, and relation tail from one successful translated run.
-The general dot implementation is proved. Its accepted-run schedule, the
-compact state composition, and the outer accepted-call theorem are still
-open. The numerical endpoint also needs the cited
+initial relation value, relation tail, and both accumulator equalities from one
+successful translated run. Once the final clean replay is green, that call
+yields the maintained accepted-path security-event conclusion. The numerical
+endpoint also needs the cited
 decoding and Fiat--Shamir results, Poseidon2 and SHA-256 security, extraction,
 and the per-event bounds. Given those inputs, Lean derives the work-normalized
 `2^-100` result and the ordinary probability bound
@@ -142,8 +159,8 @@ The custom parts are proved separately: one initial candidate is followed
 through all four folds, the distinct-query sampler is analyzed directly, and
 the challenge-dependent nineteen-word reduction avoids an extra decoder-list
 factor. The selected production proof-checker path is connected to those
-objects by the accepted-path proof chain, except for the accepted general
-schedule and compact composition stated above. Hash security, Fiat--Shamir,
+objects by the final accepted-path theorem, subject to its clean replay and
+the explicit terminal/hash callback boundaries. Hash security, Fiat--Shamir,
 extraction,
 compiler, and runtime behavior remain external assumptions rather than hidden
 branches.

@@ -52,7 +52,8 @@ the SHA-256 collision event \\
 \addlinespace
 Production relation &
 \code{V5RelationStressSourceBridge},
-\code{V5AcceptedExecutionSecurityBridge} &
+\code{V5AcceptedSnapshotMainDotExact},
+\code{V5AcceptedOneRunDeterministicFinal} &
 Four accepted source rounds, final dot products, and the relation inputs used
 by the candidate-extraction event \\
 \addlinespace
@@ -202,6 +203,21 @@ Merkle theorem supplies the source connection for the released callback. \\
 \code{rustObservation_exposes_only_authenticated_fri_values}: the specified
 opening/FRI observation uses only values authenticated by the forest. \\
 \addlinespace
+\code{V5AcceptedDeterministicRelationTail} &
+\code{accepted_snapshot_compact_dot_exact}: the accepted compact constructor,
+four folds, and final scatter give the verifier's compact dot without a
+caller-supplied equality. \\
+\addlinespace
+\code{V5AcceptedSnapshotMainDotExact} &
+\code{accepted_snapshot_main_dot_exact}: the accepted twelve-component
+accumulator has the exact terminal weights and dot used by the maintained
+relation caller. \\
+\addlinespace
+\code{V5AcceptedOneRunDeterministicFinal} &
+\code{accepted_composite_security_conclusion}: one successful selected
+translated verifier call yields the maintained accepted-path security-event
+conclusion, subject to its named external interfaces. \\
+\addlinespace
 \code{V5UnifiedSecurityExperiment} &
 \code{final_failure_partition_is_exact}: the six protocol and eighteen
 external entries partition the old twenty-four-entry ledger. \\
@@ -290,11 +306,11 @@ The final result can be checked in four steps.
         discharge the released applicability premises.  Checked arithmetic
         then gives
         \(B_{\mathrm{core}}\leq0.7\cdot2^{-100}\).
-  \item Complete the two production final-dot equalities and outer theorem to
-        discharge the selected verifier's transcript, relation, and opening
-        mismatches.  Prove the remaining
-        primitive, surrounding-code, compiler, and runtime correspondences,
-        making the other nine deterministic mismatch events empty, and bound the
+  \item Use the selected accepted-callback theorem to discharge its
+        transcript, opening, FRI, relation, and accumulator mismatches.  Prove
+        the remaining terminal-evaluator, primitive, surrounding-code,
+        compiler, and runtime correspondences, making the remaining
+        deterministic mismatch events empty, and bound the
         six primitive and credential events by a total of at most
         \(0.3\cdot2^{-100}\).
 \end{enumerate}
@@ -318,9 +334,9 @@ attempts, it must model them or apply a justified multi-attempt bound.
 
 The full eighteen-entry external ledger remains the audit interface.  The
 completed accepted-path theorems discharge the selected verifier's transcript
-and opening entries and connect the relation through its decoded tail.  The
-two final-dot equalities and outer theorem are still required to discharge the
-complete relation entry.  The other deterministic entries still require
+and opening entries and connect the complete relation caller, including both
+accumulators, to the same accepted translated execution.  The other
+deterministic entries still require
 primitive, surrounding-code, compiler, or runtime correspondence, while six
 entries require concrete cryptographic or credential bounds.  A single
 informal statement such as ``standard cryptographic assumptions'' does not
@@ -371,10 +387,11 @@ fixed order, each supplied with the prior suffix, with no final bytes left. \\
 accepted algebraic read is the decoded value portion returned by the
 authenticated opening driver in the same execution. \\
 \addlinespace
-\code{prepare_v5_pcs_claims}, compact folds, and relation rounds & Partial
-selected path & The exact claim table, prepared claims, initial relation value,
-decoded tail, challenges, and four ordered rounds are connected.  The general
-and compact final-dot equalities and outer caller theorem remain open. \\
+\code{prepare_v5_pcs_claims}, compact folds, and relation rounds & Selected
+path & The exact claim table, prepared claims, initial relation value, decoded
+tail, challenges, four ordered rounds, twelve-component main accumulator,
+compact accumulator, and both final dots are connected through the outer
+accepted-callback theorem. \\
 \addlinespace
 All nineteen relation columns and public inputs & Security-event boundary &
 The deterministic accepted path supplies the opening and relation values.
