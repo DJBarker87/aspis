@@ -1421,6 +1421,7 @@ private theorem first_done
         releasedSevenValuesStaged out0 out1 out2 out3 out4 out5 out6)) := by
   unfold V5RelationLinkedGenerated.aspis_core.sumcheck.fold_grouped_rows_loop0.body
   rw [first_next16]
+  rfl
 
 theorem released_first_grouped_rows_loop_exact
     (groupValues : Slice RawQM31)

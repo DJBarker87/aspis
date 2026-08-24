@@ -1,4 +1,4 @@
-import V5RelationLinkedGroupTuplePatterns
+import V5RelationLinkedGroupTuple
 import V5RelationLinkedGroupedRowsStaged
 
 /-!
@@ -32,6 +32,13 @@ abbrev releasedSevenValues :=
 
 local instance : Inhabited RawQM31 :=
   ⟨V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO⟩
+
+@[simp] private theorem castU8ToUsizeVal (value : Std.U8) :
+    (UScalar.cast .Usize value).val = value.val := by
+  rw [UScalar.cast_val_eq, Nat.mod_eq_of_lt]
+  have h := value.hBounds
+  rcases System.Platform.numBits_eq with hbits | hbits <;>
+    norm_num [UScalarTy.numBits, hbits] at h ⊢ <;> omega
 
 /-- Mathematical function represented by a row-group vector and group-value
 vector.  The total `get!` form mirrors the source representation; the release
@@ -81,55 +88,65 @@ theorem released_first_grouped_rows_corresponds
             (releasedSevenValues value0 value1 value2 value3 value4 value5 value6)) := by
   rcases hvalues with ⟨h0, h1, h2, h3, h4, h5, h6⟩
   let values := releasedSevenValues value0 value1 value2 value3 value4 value5 value6
-  have read0 : Slice.index_usize (alloc.vec.Vec.deref values) 0#usize = ok value0 := by
-    simp [values, releasedSevenValues, alloc.vec.Vec.deref, Slice.index_usize]
-  have read1 : Slice.index_usize (alloc.vec.Vec.deref values) 1#usize = ok value1 := by
-    simp [values, releasedSevenValues, alloc.vec.Vec.deref, Slice.index_usize]
-  have read2 : Slice.index_usize (alloc.vec.Vec.deref values) 2#usize = ok value2 := by
-    simp [values, releasedSevenValues, alloc.vec.Vec.deref, Slice.index_usize]
-  have read3 : Slice.index_usize (alloc.vec.Vec.deref values) 3#usize = ok value3 := by
-    simp [values, releasedSevenValues, alloc.vec.Vec.deref, Slice.index_usize]
-  have read4 : Slice.index_usize (alloc.vec.Vec.deref values) 4#usize = ok value4 := by
-    simp [values, releasedSevenValues, alloc.vec.Vec.deref, Slice.index_usize]
-  have read5 : Slice.index_usize (alloc.vec.Vec.deref values) 5#usize = ok value5 := by
-    simp [values, releasedSevenValues, alloc.vec.Vec.deref, Slice.index_usize]
-  have read6 : Slice.index_usize (alloc.vec.Vec.deref values) 6#usize = ok value6 := by
-    simp [values, releasedSevenValues, alloc.vec.Vec.deref, Slice.index_usize]
+  have read0 : Slice.index_usize (alloc.vec.Vec.deref values)
+      (UScalar.cast .Usize 0#u8) = ok value0 := by
+    simp [values, releasedSevenValues, releasedSevenValuesStaged,
+      alloc.vec.Vec.deref, Slice.index_usize, castU8ToUsizeVal]
+  have read1 : Slice.index_usize (alloc.vec.Vec.deref values)
+      (UScalar.cast .Usize 1#u8) = ok value1 := by
+    simp [values, releasedSevenValues, releasedSevenValuesStaged,
+      alloc.vec.Vec.deref, Slice.index_usize, castU8ToUsizeVal]
+  have read2 : Slice.index_usize (alloc.vec.Vec.deref values)
+      (UScalar.cast .Usize 2#u8) = ok value2 := by
+    simp [values, releasedSevenValues, releasedSevenValuesStaged,
+      alloc.vec.Vec.deref, Slice.index_usize, castU8ToUsizeVal]
+  have read3 : Slice.index_usize (alloc.vec.Vec.deref values)
+      (UScalar.cast .Usize 3#u8) = ok value3 := by
+    simp [values, releasedSevenValues, releasedSevenValuesStaged,
+      alloc.vec.Vec.deref, Slice.index_usize, castU8ToUsizeVal]
+  have read4 : Slice.index_usize (alloc.vec.Vec.deref values)
+      (UScalar.cast .Usize 4#u8) = ok value4 := by
+    simp [values, releasedSevenValues, releasedSevenValuesStaged,
+      alloc.vec.Vec.deref, Slice.index_usize, castU8ToUsizeVal]
+  have read5 : Slice.index_usize (alloc.vec.Vec.deref values)
+      (UScalar.cast .Usize 5#u8) = ok value5 := by
+    simp [values, releasedSevenValues, releasedSevenValuesStaged,
+      alloc.vec.Vec.deref, Slice.index_usize, castU8ToUsizeVal]
+  have read6 : Slice.index_usize (alloc.vec.Vec.deref values)
+      (UScalar.cast .Usize 6#u8) = ok value6 := by
+    simp [values, releasedSevenValues, releasedSevenValuesStaged,
+      alloc.vec.Vec.deref, Slice.index_usize, castU8ToUsizeVal]
   obtain ⟨out0, run0, hout0, exact0⟩ :=
     pairPairSourceCorresponds (alloc.vec.Vec.deref values)
-      value0 value1 alpha alpha2 alpha3 (by simpa using read0)
-      (by simpa using read1) h0 h1 halpha halpha2 halpha3
+      value0 value1 alpha alpha2 alpha3 read0 read1 h0 h1 halpha halpha2 halpha3
       halpha2Exact halpha3Exact
   obtain ⟨out1, run1, hout1, exact1⟩ :=
     allSameSourceCorresponds 1#u8 (alloc.vec.Vec.deref values)
-      value1 alpha alpha2 alpha3 (by simpa using read1) h1 halpha halpha2
+      value1 alpha alpha2 alpha3 read1 h1 halpha halpha2
       halpha3 halpha2Exact halpha3Exact
   obtain ⟨out2, run2, hout2, exact2⟩ :=
     tripleFirstSourceCorresponds (alloc.vec.Vec.deref values)
-      value1 value2 alpha alpha2 alpha3 (by simpa using read1)
-      (by simpa using read2) h1 h2 halpha halpha2 halpha3
+      value1 value2 alpha alpha2 alpha3 read1 read2 h1 h2 halpha halpha2 halpha3
       halpha2Exact halpha3Exact
   obtain ⟨out3, run3, hout3, exact3⟩ :=
     splitPairSourceCorresponds 0#u8 2#u8 1#u8 (by decide) (by decide)
       (by decide) (alloc.vec.Vec.deref values) value0 value2 value1
-      alpha alpha2 alpha3 (by simpa using read0) (by simpa using read2)
-      (by simpa using read1) h0 h2 h1 halpha halpha2 halpha3
+      alpha alpha2 alpha3 read0 read2 read1 h0 h2 h1 halpha halpha2 halpha3
       halpha2Exact halpha3Exact
   obtain ⟨out4, run4, hout4, exact4⟩ :=
     oneThreeSourceCorresponds 1#u8 3#u8 (by decide)
       (alloc.vec.Vec.deref values) value1 value3 alpha alpha2 alpha3
-      (by simpa using read1) (by simpa using read3) h1 h3 halpha halpha2
+      read1 read3 h1 h3 halpha halpha2
       halpha3 halpha2Exact halpha3Exact
   obtain ⟨out5, run5, hout5, exact5⟩ :=
     allDifferentSourceCorresponds 3#u8 4#u8 5#u8 6#u8
       (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
       (alloc.vec.Vec.deref values) value3 value4 value5 value6
-      alpha alpha2 alpha3 (by simpa using read3) (by simpa using read4)
-      (by simpa using read5) (by simpa using read6) h3 h4 h5 h6
+      alpha alpha2 alpha3 read3 read4 read5 read6 h3 h4 h5 h6
       halpha halpha2 halpha3 halpha2Exact halpha3Exact
   obtain ⟨out6, run6, hout6, exact6⟩ :=
     allSameSourceCorresponds 6#u8 (alloc.vec.Vec.deref values)
-      value6 alpha alpha2 alpha3 (by simpa using read6) h6 halpha halpha2
+      value6 alpha alpha2 alpha3 read6 h6 halpha halpha2
       halpha3 halpha2Exact halpha3Exact
   refine ⟨out0, out1, out2, out3, out4, out5, out6, ?_,
     ⟨hout0, hout1, hout2, hout3, hout4, hout5, hout6⟩, ?_⟩
@@ -141,7 +158,8 @@ theorem released_first_grouped_rows_corresponds
   · funext index
     fin_cases index <;>
       simp [representedGroupedWeights, releasedRowGroups64, releasedRowGroups16,
-        releasedSevenValues, AspisV5FriRelationCandidateBridge.dualWeightFoldLayer,
+        releasedSevenValues, releasedSevenValuesStaged,
+        AspisV5FriRelationCandidateBridge.dualWeightFoldLayer,
         AspisV5FriRelationCandidateBridge.dualWeightFoldValue,
         AspisV5ComponentCConcreteFoldLinearity.childIndex,
         exact0, exact1, exact2, exact3, exact4, exact5, exact6]
@@ -173,41 +191,53 @@ theorem released_second_grouped_rows_corresponds
             (releasedSevenValues value0 value1 value2 value3 value4 value5 value6)) := by
   rcases hvalues with ⟨h0, h1, h2, h3, h4, h5, h6⟩
   let values := releasedSevenValues value0 value1 value2 value3 value4 value5 value6
-  have read0 : Slice.index_usize (alloc.vec.Vec.deref values) 0#usize = ok value0 := by
-    simp [values, releasedSevenValues, alloc.vec.Vec.deref, Slice.index_usize]
-  have read1 : Slice.index_usize (alloc.vec.Vec.deref values) 1#usize = ok value1 := by
-    simp [values, releasedSevenValues, alloc.vec.Vec.deref, Slice.index_usize]
-  have read2 : Slice.index_usize (alloc.vec.Vec.deref values) 2#usize = ok value2 := by
-    simp [values, releasedSevenValues, alloc.vec.Vec.deref, Slice.index_usize]
-  have read3 : Slice.index_usize (alloc.vec.Vec.deref values) 3#usize = ok value3 := by
-    simp [values, releasedSevenValues, alloc.vec.Vec.deref, Slice.index_usize]
-  have read4 : Slice.index_usize (alloc.vec.Vec.deref values) 4#usize = ok value4 := by
-    simp [values, releasedSevenValues, alloc.vec.Vec.deref, Slice.index_usize]
-  have read5 : Slice.index_usize (alloc.vec.Vec.deref values) 5#usize = ok value5 := by
-    simp [values, releasedSevenValues, alloc.vec.Vec.deref, Slice.index_usize]
-  have read6 : Slice.index_usize (alloc.vec.Vec.deref values) 6#usize = ok value6 := by
-    simp [values, releasedSevenValues, alloc.vec.Vec.deref, Slice.index_usize]
+  have read0 : Slice.index_usize (alloc.vec.Vec.deref values)
+      (UScalar.cast .Usize 0#u8) = ok value0 := by
+    simp [values, releasedSevenValues, releasedSevenValuesStaged,
+      alloc.vec.Vec.deref, Slice.index_usize, castU8ToUsizeVal]
+  have read1 : Slice.index_usize (alloc.vec.Vec.deref values)
+      (UScalar.cast .Usize 1#u8) = ok value1 := by
+    simp [values, releasedSevenValues, releasedSevenValuesStaged,
+      alloc.vec.Vec.deref, Slice.index_usize, castU8ToUsizeVal]
+  have read2 : Slice.index_usize (alloc.vec.Vec.deref values)
+      (UScalar.cast .Usize 2#u8) = ok value2 := by
+    simp [values, releasedSevenValues, releasedSevenValuesStaged,
+      alloc.vec.Vec.deref, Slice.index_usize, castU8ToUsizeVal]
+  have read3 : Slice.index_usize (alloc.vec.Vec.deref values)
+      (UScalar.cast .Usize 3#u8) = ok value3 := by
+    simp [values, releasedSevenValues, releasedSevenValuesStaged,
+      alloc.vec.Vec.deref, Slice.index_usize, castU8ToUsizeVal]
+  have read4 : Slice.index_usize (alloc.vec.Vec.deref values)
+      (UScalar.cast .Usize 4#u8) = ok value4 := by
+    simp [values, releasedSevenValues, releasedSevenValuesStaged,
+      alloc.vec.Vec.deref, Slice.index_usize, castU8ToUsizeVal]
+  have read5 : Slice.index_usize (alloc.vec.Vec.deref values)
+      (UScalar.cast .Usize 5#u8) = ok value5 := by
+    simp [values, releasedSevenValues, releasedSevenValuesStaged,
+      alloc.vec.Vec.deref, Slice.index_usize, castU8ToUsizeVal]
+  have read6 : Slice.index_usize (alloc.vec.Vec.deref values)
+      (UScalar.cast .Usize 6#u8) = ok value6 := by
+    simp [values, releasedSevenValues, releasedSevenValuesStaged,
+      alloc.vec.Vec.deref, Slice.index_usize, castU8ToUsizeVal]
   obtain ⟨out0, run0, hout0, exact0⟩ :=
     oneThreeSourceCorresponds 0#u8 1#u8 (by decide)
       (alloc.vec.Vec.deref values) value0 value1 alpha alpha2 alpha3
-      (by simpa using read0) (by simpa using read1) h0 h1 halpha halpha2
+      read0 read1 h0 h1 halpha halpha2
       halpha3 halpha2Exact halpha3Exact
   obtain ⟨out1, run1, hout1, exact1⟩ :=
     threeAroundSourceCorresponds 1#u8 2#u8 (by decide)
       (alloc.vec.Vec.deref values) value1 value2 alpha alpha2 alpha3
-      (by simpa using read1) (by simpa using read2) h1 h2 halpha halpha2
+      read1 read2 h1 h2 halpha halpha2
       halpha3 halpha2Exact halpha3Exact
   obtain ⟨out2, run2, hout2, exact2⟩ :=
     firstPairSourceCorresponds 1#u8 2#u8 3#u8 (by decide) (by decide)
       (by decide) (alloc.vec.Vec.deref values) value1 value2 value3
-      alpha alpha2 alpha3 (by simpa using read1) (by simpa using read2)
-      (by simpa using read3) h1 h2 h3 halpha halpha2 halpha3
+      alpha alpha2 alpha3 read1 read2 read3 h1 h2 h3 halpha halpha2 halpha3
       halpha2Exact halpha3Exact
   obtain ⟨out3, run3, hout3, exact3⟩ :=
     lastPairSourceCorresponds 4#u8 5#u8 6#u8 (by decide) (by decide)
       (by decide) (alloc.vec.Vec.deref values) value4 value5 value6
-      alpha alpha2 alpha3 (by simpa using read4) (by simpa using read5)
-      (by simpa using read6) h4 h5 h6 halpha halpha2 halpha3
+      alpha alpha2 alpha3 read4 read5 read6 h4 h5 h6 halpha halpha2 halpha3
       halpha2Exact halpha3Exact
   refine ⟨out0, out1, out2, out3, ?_, ⟨hout0, hout1, hout2, hout3⟩, ?_⟩
   · simpa [values, groupsOneThree, groupsThreeAround, groupsFirstPair,
@@ -218,7 +248,7 @@ theorem released_second_grouped_rows_corresponds
   · funext index
     fin_cases index <;>
       simp [representedGroupedWeights, releasedRowGroups16, releasedRowGroups4,
-        releasedSevenValues, releasedFourValues,
+        releasedSevenValues, releasedSevenValuesStaged, releasedFourValues,
         AspisV5FriRelationCandidateBridge.dualWeightFoldLayer,
         AspisV5FriRelationCandidateBridge.dualWeightFoldValue,
         AspisV5ComponentCConcreteFoldLinearity.childIndex,
