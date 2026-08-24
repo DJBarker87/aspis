@@ -35,6 +35,8 @@ abbrev PreparedKernelQM31 :=
   AspisV5PreparedPointClaimsSourceProof.KernelQM31
 abbrev PrepareQM31 :=
   V5RelationPrepareGenerated.aspis_core.field.QM31
+abbrev CallerQM31 :=
+  V5RelationCallerGenerated.aspis_core.field.QM31
 
 private theorem kernelExact_mul_eq_maintained
     (left right : AspisV5PreparedPointClaimsSourceProof.KernelQM31Exact) :
@@ -132,6 +134,20 @@ private theorem prepare_square_run_exact
     _ = AspisV5RelationPrepareFieldProjection.toExact value ^ 2 := result.2
     _ = AspisV5RelationPrepareFieldProjection.toMaintainedExact value ^ 2 :=
       prepareExact_pow_eq_maintained value 2
+
+@[simp] private theorem callerToPrepare_toMaintainedExact
+    (value : CallerQM31) :
+    AspisV5RelationPrepareFieldProjection.toMaintainedExact
+        (AspisV5RelationPrepareCanonicalProof.callerToPrepareQM31 value) =
+      AspisV5RelationLinkedFieldProjection.toMaintainedExact value := by
+  rfl
+
+@[simp] private theorem prepareToCaller_toMaintainedExact
+    (value : PrepareQM31) :
+    AspisV5RelationLinkedFieldProjection.toMaintainedExact
+        (AspisV5RelationPrepareCanonicalProof.prepareToCallerQM31 value) =
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact value := by
+  rfl
 
 private theorem prepare_point_claim_at_success_eq
     (claims :
@@ -393,6 +409,136 @@ theorem prepare_relation_arithmetic_trace_exact
     claim3Exact
   simpa [AspisV5RelationStressSourceBridge.sourceCallerInitialClaim] using
     arithmetic
+
+/-- The public four-claim caller preserves the exact source initial claim
+proved for its translated extraction helper. -/
+theorem caller_prepare_success_relation_value_exact
+    (parsed : V5RelationCallerGenerated.v5_cu_probe.ParsedProbeData)
+    (kappa inactiveClaim : CallerQM31)
+    (preparedClaims :
+      V5RelationCallerGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims)
+    (relation : V5RelationCallerGenerated.v5_cu_probe.PreparedRelation)
+    (point : Array CallerQM31 10#usize)
+    (denseScale : CallerQM31)
+    (gamma : K) (claimTable : Fin 76 → K)
+    (kappaCanonical :
+      AspisV5RelationGeneratedFieldProjection.CanonicalQM31 kappa)
+    (inactiveCanonical :
+      AspisV5RelationGeneratedFieldProjection.CanonicalQM31 inactiveClaim)
+    (claimsCanonical :
+      AspisV5RelationPrepareCanonicalProof.CallerClaimsCanonical
+        preparedClaims)
+    (claimsExact : ∀ row : PointClaimRow,
+      AspisV5RelationLinkedFieldProjection.toMaintainedExact
+          (preparedClaims.inner.claims.val[row.val]'(by
+            rw [claimsCanonical.1]
+            simpa [pointClaimRows] using row.isLt)) =
+        AspisV5RelationStressSourceBridge.sourcePreparedPointClaim
+          gamma claimTable row)
+    (success :
+      V5RelationCallerGenerated.v5_cu_probe.prepare_relation_base_with_kappa_prepared
+          parsed
+          V5RelationCallerGenerated.v5_cu_probe.RelationVariant.FourClaimsCompact
+          kappa inactiveClaim preparedClaims =
+        .ok (.Ok (relation, point, denseScale))) :
+    AspisV5RelationLinkedFieldProjection.toMaintainedExact
+        relation.relation_value =
+      AspisV5RelationStressSourceBridge.sourceCallerInitialClaim
+        (AspisV5RelationLinkedFieldProjection.toMaintainedExact inactiveClaim)
+        (AspisV5RelationLinkedFieldProjection.toMaintainedExact kappa)
+        gamma claimTable := by
+  unfold
+    V5RelationCallerGenerated.v5_cu_probe.prepare_relation_base_with_kappa_prepared
+    at success
+  generalize sourceRunEquation :
+    V5RelationPrepareGenerated.v5_cu_probe.prepare_relation_base_with_kappa_prepared_for_extraction
+      _ _ _ _ = sourceResult at success
+  cases sourceResult with
+  | fail error => simp [sourceRunEquation] at success
+  | div => simp [sourceRunEquation] at success
+  | ok sourceResult =>
+    simp only [sourceRunEquation, bind_tc_ok] at success
+    cases sourceResult with
+    | Err error => simp at success
+    | Ok sourceTriple =>
+      rcases sourceTriple with ⟨sourceRelation, sourcePoint, sourceScale⟩
+      have sourceKappaCanonicalPrepare :
+          AspisV5RelationPrepareCanonicalProof.PrepareCanonicalQM31
+            (AspisV5RelationPrepareCanonicalProof.callerToPrepareQM31 kappa) :=
+        (AspisV5RelationPrepareCanonicalProof.callerToPrepare_canonical_iff
+          kappa).2 kappaCanonical
+      have sourceInactiveCanonicalPrepare :
+          AspisV5RelationPrepareCanonicalProof.PrepareCanonicalQM31
+            (AspisV5RelationPrepareCanonicalProof.callerToPrepareQM31
+              inactiveClaim) :=
+        (AspisV5RelationPrepareCanonicalProof.callerToPrepare_canonical_iff
+          inactiveClaim).2 inactiveCanonical
+      have sourceKappaCanonical :
+          AspisV5RelationPrepareFieldProjection.CanonicalQM31
+            (AspisV5RelationPrepareCanonicalProof.callerToPrepareQM31 kappa) :=
+        (AspisV5RelationPrepareCanonicalProof.prepareCanonical_iff_fieldProjection
+          _).1 sourceKappaCanonicalPrepare
+      have sourceInactiveCanonical :
+          AspisV5RelationPrepareFieldProjection.CanonicalQM31
+            (AspisV5RelationPrepareCanonicalProof.callerToPrepareQM31
+              inactiveClaim) :=
+        (AspisV5RelationPrepareCanonicalProof.prepareCanonical_iff_fieldProjection
+          _).1 sourceInactiveCanonicalPrepare
+      have sourceClaimsCanonical :
+          AspisV5RelationPrepareCanonicalProof.PrepareClaimsCanonical
+            (AspisV5RelationPrepareCanonicalProof.callerToPrepareClaims
+              preparedClaims) :=
+        AspisV5RelationPrepareCanonicalProof.callerClaims_to_prepare_canonical
+          preparedClaims claimsCanonical
+      change
+        V5RelationPrepareGenerated.v5_cu_probe.prepare_relation_base_with_kappa_prepared_for_extraction
+            _
+            (AspisV5RelationPrepareCanonicalProof.callerToPrepareQM31 kappa)
+            (AspisV5RelationPrepareCanonicalProof.callerToPrepareQM31
+              inactiveClaim)
+            (AspisV5RelationPrepareCanonicalProof.callerToPrepareClaims
+              preparedClaims) =
+          .ok (.Ok (sourceRelation, sourcePoint, sourceScale))
+        at sourceRunEquation
+      obtain ⟨_, ⟨trace⟩⟩ :=
+        AspisV5RelationPrepareLogLenProof.Prepare.prepare_for_extraction_success_exposes_arithmetic
+          _
+          (AspisV5RelationPrepareCanonicalProof.callerToPrepareQM31 kappa)
+          (AspisV5RelationPrepareCanonicalProof.callerToPrepareQM31
+            inactiveClaim)
+          (AspisV5RelationPrepareCanonicalProof.callerToPrepareClaims
+            preparedClaims)
+          sourceRelation sourcePoint sourceScale sourceRunEquation
+      have sourceClaimsExact : ∀ row : PointClaimRow,
+          AspisV5RelationPrepareFieldProjection.toMaintainedExact
+              ((AspisV5RelationPrepareCanonicalProof.callerToPrepareClaims
+                preparedClaims).inner.claims.val[row.val]'(by
+                  rw [sourceClaimsCanonical.1]
+                  simpa [pointClaimRows] using row.isLt)) =
+            AspisV5RelationStressSourceBridge.sourcePreparedPointClaim
+              gamma claimTable row := by
+        intro row
+        simpa [AspisV5RelationPrepareCanonicalProof.callerToPrepareClaims,
+          AspisV5RelationPrepareCanonicalProof.callerToPrepareVec,
+          row.isLt, claimsCanonical.1] using claimsExact row
+      have sourceArithmetic := prepare_relation_arithmetic_trace_exact
+        (AspisV5RelationPrepareCanonicalProof.callerToPrepareQM31 kappa)
+        (AspisV5RelationPrepareCanonicalProof.callerToPrepareQM31 inactiveClaim)
+        (AspisV5RelationPrepareCanonicalProof.callerToPrepareClaims
+          preparedClaims)
+        sourceRelation gamma claimTable trace sourceKappaCanonical
+        sourceInactiveCanonical sourceClaimsCanonical sourceClaimsExact
+      simp only at success
+      have tripleEquality := core.result.Result.Ok.inj (Result.ok.inj success)
+      have relationValueEquality := congrArg
+        (fun triple => triple.1.relation_value) tripleEquality
+      change
+        AspisV5RelationPrepareCanonicalProof.prepareToCallerQM31
+            sourceRelation.relation_value = relation.relation_value
+        at relationValueEquality
+      rw [← relationValueEquality,
+        prepareToCaller_toMaintainedExact]
+      simpa only [callerToPrepare_toMaintainedExact] using sourceArithmetic
 
 /-- The exact field value of an accepted-entry QM31 value. -/
 def entryClaimToK (value : AcceptedQM31) : K :=
@@ -1279,6 +1425,156 @@ theorem accepted_snapshot_prepared_claims_exact
   exact prepare_v5_pcs_claims_success_exact snapshot.verifiedPrefix.gamma
     parsed.relation_claims snapshot.preparedClaims prefixCanonical.1
     snapshot.evidence.exactFriCalls.prepareClaimsSuccess
+
+private theorem entry_canonical_to_relation_caller
+    (value : SnapshotEntryQM31)
+    (canonical : EntryCanonicalQM31 value) :
+    AspisV5RelationGeneratedFieldProjection.CanonicalQM31
+      (AspisV5AcceptedRelationPreparedAdapter.qm31ToCaller value) := by
+  rcases AspisV5AcceptedRelationPreparedAdapter.qm31ToCaller_components value
+    with ⟨c0a, c0b, c1a, c1b⟩
+  unfold AspisV5RelationGeneratedFieldProjection.CanonicalQM31
+    AspisV5RelationGeneratedFieldProjection.CanonicalCM31
+  rw [c0a, c0b, c1a, c1b]
+  exact ⟨⟨canonical.1, canonical.2.1⟩,
+    ⟨canonical.2.2.1, canonical.2.2.2⟩⟩
+
+private theorem entry_prepared_claims_to_caller_canonical
+    (claims : SnapshotEntryPreparedClaims)
+    (canonical : PreparedClaimsCanonical claims) :
+    AspisV5RelationPrepareCanonicalProof.CallerClaimsCanonical
+      (AspisV5AcceptedRelationPreparedAdapter.preparedClaimsToCaller
+        claims) := by
+  unfold AspisV5RelationPrepareCanonicalProof.CallerClaimsCanonical
+  change
+    (claims.inner.claims.val.map
+      AspisV5AcceptedRelationPreparedAdapter.qm31ToCaller).length = 4 ∧
+      ∀ (index : Nat)
+        (bound : index < (claims.inner.claims.val.map
+          AspisV5AcceptedRelationPreparedAdapter.qm31ToCaller).length),
+        AspisV5RelationGeneratedFieldProjection.CanonicalQM31
+          (claims.inner.claims.val.map
+            AspisV5AcceptedRelationPreparedAdapter.qm31ToCaller)[index]
+  constructor
+  · simpa using canonical.1
+  · intro index bound
+    have sourceBound : index < claims.inner.claims.val.length := by
+      simpa using bound
+    have finBound : index < 4 := by
+      rw [canonical.1] at sourceBound
+      exact sourceBound
+    have sourceCanonical := canonical.2 ⟨index, finBound⟩
+    have bangEquality : claims.inner.claims.val[index]! =
+        claims.inner.claims.val[index] := by
+      apply List.getElem!_of_getElem?
+      simp [sourceBound]
+    rw [bangEquality] at sourceCanonical
+    simpa [sourceBound] using entry_canonical_to_relation_caller
+      claims.inner.claims.val[index] sourceCanonical
+
+/-- The initial relation value consumed by one accepted same-run execution is
+exactly the source initial claim formed from that execution's public prefix
+and its deterministically decoded 76-entry claim table. -/
+theorem accepted_snapshot_initial_relation_exact
+    {accountData : Slice Std.U8}
+    {parsed : SnapshotEntryParsed}
+    {liveStatement : SnapshotEntryStatement}
+    {statementDigest : Array Std.U8 32#usize}
+    {acceptedValue : SnapshotEntryQM31}
+    (snapshot : AcceptedSameRunRelationFriSnapshot accountData parsed
+      liveStatement statementDigest acceptedValue) :
+    AspisV5RelationLinkedFieldProjection.toMaintainedExact
+        snapshot.relationTrace.calls.relation.relation_value =
+      AspisV5RelationStressSourceBridge.sourceCallerInitialClaim
+        (entryClaimToK snapshot.verifiedPrefix.inactive_claim)
+        (entryClaimToK snapshot.verifiedPrefix.kappa)
+        (entryClaimToK snapshot.verifiedPrefix.gamma)
+        (acceptedPointClaimTable parsed.relation_claims) := by
+  have prefixCanonical :=
+    AspisV5AcceptedPrefixCanonical.accepted_prefix_gamma_and_inactive_canonical
+      parsed liveStatement statementDigest
+      V5AcceptedEntryGenerated.verify.sbf_hashv snapshot.verifiedPrefix
+      snapshot.prefixTranscript snapshot.evidence.compositeCalls.prefixSuccess
+  have preparedCanonical :=
+    prepare_v5_pcs_claims_success_canonical snapshot.verifiedPrefix.gamma
+      parsed.relation_claims snapshot.preparedClaims prefixCanonical.1
+      snapshot.evidence.exactFriCalls.prepareClaimsSuccess
+  have preparedExact := accepted_snapshot_prepared_claims_exact snapshot
+  have callerClaimsCanonical :=
+    entry_prepared_claims_to_caller_canonical snapshot.preparedClaims
+      preparedCanonical
+  have callerClaimsExact : ∀ row : PointClaimRow,
+      AspisV5RelationLinkedFieldProjection.toMaintainedExact
+          ((AspisV5AcceptedRelationPreparedAdapter.preparedClaimsToCaller
+            snapshot.preparedClaims).inner.claims.val[row.val]'(by
+              rw [callerClaimsCanonical.1]
+              simpa [pointClaimRows] using row.isLt)) =
+        AspisV5RelationStressSourceBridge.sourcePreparedPointClaim
+          (entryClaimToK snapshot.verifiedPrefix.gamma)
+          (acceptedPointClaimTable parsed.relation_claims) row := by
+    intro row
+    have exactEntry := preparedExact row
+    have sourceBound : row.val <
+        snapshot.preparedClaims.inner.claims.val.length := by
+      rw [preparedCanonical.1]
+      simpa [pointClaimRows] using row.isLt
+    have mappedEntry :
+        ((AspisV5AcceptedRelationPreparedAdapter.preparedClaimsToCaller
+          snapshot.preparedClaims).inner.claims.val[row.val]'(by
+            rw [callerClaimsCanonical.1]
+            simpa [pointClaimRows] using row.isLt)) =
+          AspisV5AcceptedRelationPreparedAdapter.qm31ToCaller
+            snapshot.preparedClaims.inner.claims.val[row.val] := by
+      change
+        (snapshot.preparedClaims.inner.claims.val.map
+          AspisV5AcceptedRelationPreparedAdapter.qm31ToCaller)[row.val]'(by
+            simpa using sourceBound) = _
+      simp
+    have bangEquality :
+        snapshot.preparedClaims.inner.claims.val[row.val]! =
+          snapshot.preparedClaims.inner.claims.val[row.val] := by
+      apply List.getElem!_of_getElem?
+      simp [sourceBound]
+    calc
+      AspisV5RelationLinkedFieldProjection.toMaintainedExact
+          ((AspisV5AcceptedRelationPreparedAdapter.preparedClaimsToCaller
+            snapshot.preparedClaims).inner.claims.val[row.val]'(by
+              rw [callerClaimsCanonical.1]
+              simpa [pointClaimRows] using row.isLt)) =
+        entryClaimToK snapshot.preparedClaims.inner.claims.val[row.val]! := by
+          rw [mappedEntry, bangEquality]
+          exact
+            (AspisV5AcceptedSameRunRelationFriSnapshot.entryToK_eq_relationCallerValue
+              snapshot.preparedClaims.inner.claims.val[row.val]).symm
+      _ = sourcePreparedPointClaim
+          (entryClaimToK snapshot.verifiedPrefix.gamma)
+          (acceptedPointClaimTable parsed.relation_claims) row := exactEntry
+      _ = AspisV5RelationStressSourceBridge.sourcePreparedPointClaim
+          (entryClaimToK snapshot.verifiedPrefix.gamma)
+          (acceptedPointClaimTable parsed.relation_claims) row :=
+        preparedPointClaim_eq_relationStress _ _ _
+  have callerExact := caller_prepare_success_relation_value_exact
+    (AspisV5AcceptedRelationPreparedAdapter.parsedToCaller parsed)
+    (AspisV5AcceptedRelationPreparedAdapter.qm31ToCaller
+      snapshot.verifiedPrefix.kappa)
+    (AspisV5AcceptedRelationPreparedAdapter.qm31ToCaller
+      snapshot.verifiedPrefix.inactive_claim)
+    (AspisV5AcceptedRelationPreparedAdapter.preparedClaimsToCaller
+      snapshot.preparedClaims)
+    snapshot.relationTrace.calls.relation
+    snapshot.relationTrace.calls.ignoredAlphas
+    snapshot.relationTrace.calls.denseScale
+    (entryClaimToK snapshot.verifiedPrefix.gamma)
+    (acceptedPointClaimTable parsed.relation_claims)
+    (entry_canonical_to_relation_caller snapshot.verifiedPrefix.kappa
+      prefixCanonical.2.2)
+    (entry_canonical_to_relation_caller snapshot.verifiedPrefix.inactive_claim
+      prefixCanonical.2.1)
+    callerClaimsCanonical callerClaimsExact
+    snapshot.relationTrace.calls.prepareSuccess
+  simpa [entryClaimToK,
+    AspisV5AcceptedSameRunRelationFriSnapshot.entryToK_eq_relationCallerValue]
+    using callerExact
 
 
 end AspisV5AcceptedClaimTableExact
