@@ -988,6 +988,9 @@ theorem prepare_for_extraction_success_exposes_arithmetic
                                                                                     simp_all only [Bool.false_eq_true,
                                                                                       if_false, if_true]
                                                                                   all_goals
+                                                                                    have finalWeightsLog :
+                                                                                        weights4.log_len = 10#u32 := by
+                                                                                      assumption
                                                                                     generalize hfinal0 :
                                                                                       V5RelationPrepareGenerated.v5_cu_probe.decode_qm31
                                                                                         _ 0#usize = final0 at hrun
@@ -1043,7 +1046,7 @@ theorem prepare_for_extraction_success_exposes_arithmetic
                                                                                             first
                                                                                             | let properties :=
                                                                                                 returned_relation_has_log_len_ten
-                                                                                                  _ relation _ point _ denseScale hlog4 hrun
+                                                                                                  _ relation _ point _ denseScale finalWeightsLog hrun
                                                                                               exact ⟨properties.1, ⟨{
                                                                                                 kappa2 := kappa2
                                                                                                 kappa3 := kappa3
@@ -1088,7 +1091,7 @@ theorem prepare_for_extraction_success_exposes_arithmetic
                                                                                             | let properties :=
                                                                                                 checked_nonreal_relation_has_log_len_ten
                                                                                                   weights4 relationValue3 _ _ point0 kappa3
-                                                                                                  relation point denseScale hlog4 hrun
+                                                                                                  relation point denseScale finalWeightsLog hrun
                                                                                               exact ⟨properties.1, ⟨{
                                                                                                 kappa2 := kappa2
                                                                                                 kappa3 := kappa3
