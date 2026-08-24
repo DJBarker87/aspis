@@ -1610,6 +1610,82 @@ theorem released_first_grouped_rows_source_exact
     released_first_empty_groups, released_first_empty_values, loopRun,
     released_first_groups_exact]
 
+/-- Public wire-shaped form of the staged 64-to-16 theorem. -/
+theorem released_first_grouped_rows_source_wire_exact
+    (groupValues : Slice RawQM31)
+    (alpha alpha2 alpha3 out0 out1 out2 out3 out4 out5 out6 : RawQM31)
+    (run0 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple
+        (Array.make 4#usize [0#u8, 0#u8, 1#u8, 1#u8])
+          groupValues alpha alpha2 alpha3 = ok out0)
+    (run1 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple
+        (Array.make 4#usize [1#u8, 1#u8, 1#u8, 1#u8])
+          groupValues alpha alpha2 alpha3 = ok out1)
+    (run2 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple
+        (Array.make 4#usize [1#u8, 1#u8, 1#u8, 2#u8])
+          groupValues alpha alpha2 alpha3 = ok out2)
+    (run3 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple
+        (Array.make 4#usize [0#u8, 2#u8, 0#u8, 1#u8])
+          groupValues alpha alpha2 alpha3 = ok out3)
+    (run4 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple
+        (Array.make 4#usize [1#u8, 3#u8, 3#u8, 3#u8])
+          groupValues alpha alpha2 alpha3 = ok out4)
+    (run5 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple
+        (Array.make 4#usize [3#u8, 4#u8, 5#u8, 6#u8])
+          groupValues alpha alpha2 alpha3 = ok out5)
+    (run6 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple
+        (Array.make 4#usize [6#u8, 6#u8, 6#u8, 6#u8])
+          groupValues alpha alpha2 alpha3 = ok out6) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_grouped_rows
+        (alloc.vec.Vec.deref releasedRowGroups64) groupValues alpha alpha2 alpha3 =
+      ok (releasedRowGroups16,
+        releasedSevenValuesStaged out0 out1 out2 out3 out4 out5 out6) := by
+  apply released_first_grouped_rows_source_exact groupValues alpha alpha2
+    alpha3 out0 out1 out2 out3 out4 out5 out6
+  · simpa [firstTuple0] using run0
+  · simpa [firstTuple1] using run1
+  · simpa [firstTuple2] using run2
+  · simpa [firstTuple3] using run3
+  · simpa [firstTuple4] using run4
+  · simpa [firstTuple5] using run5
+  · simpa [firstTuple6] using run6
+
+/-- Public wire-shaped form of the staged 16-to-4 theorem. -/
+theorem released_second_grouped_rows_source_wire_exact
+    (groupValues : Slice RawQM31)
+    (alpha alpha2 alpha3 out0 out1 out2 out3 : RawQM31)
+    (run0 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple
+        (Array.make 4#usize [0#u8, 1#u8, 1#u8, 1#u8])
+          groupValues alpha alpha2 alpha3 = ok out0)
+    (run1 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple
+        (Array.make 4#usize [1#u8, 2#u8, 1#u8, 1#u8])
+          groupValues alpha alpha2 alpha3 = ok out1)
+    (run2 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple
+        (Array.make 4#usize [1#u8, 1#u8, 2#u8, 3#u8])
+          groupValues alpha alpha2 alpha3 = ok out2)
+    (run3 :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.fold_group_tuple
+        (Array.make 4#usize [4#u8, 5#u8, 6#u8, 6#u8])
+          groupValues alpha alpha2 alpha3 = ok out3) :
+    V5RelationLinkedGenerated.aspis_core.sumcheck.fold_grouped_rows
+        (alloc.vec.Vec.deref releasedRowGroups16) groupValues alpha alpha2 alpha3 =
+      ok (releasedRowGroups4, releasedFourValues out0 out1 out2 out3) := by
+  apply released_second_grouped_rows_source_exact groupValues alpha alpha2
+    alpha3 out0 out1 out2 out3
+  · simpa [tuple0] using run0
+  · simpa [tuple1] using run1
+  · simpa [tuple2] using run2
+  · simpa [tuple3] using run3
+
 #print axioms released_second_grouped_rows_loop_exact
 #print axioms released_second_grouped_rows_source_exact
 #print axioms released_first_grouped_rows_loop_exact
