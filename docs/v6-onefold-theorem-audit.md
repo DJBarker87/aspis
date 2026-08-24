@@ -100,6 +100,15 @@ the named BCS conditions, the three-stream work-normalized core is at most
 `0.4 * 2^-100`. The other `0.6 * 2^-100` is not silently spent: it remains
 available for implementation, primitive, hiding, and any ledger corrections.
 
+[`V6RelationFold.lean`](../AspisFormal/AspisFormal/V6RelationFold.lean) records
+that the generic relation-fold theorem already proved for V5 applies unchanged
+to V6. For every arity-four layer, the checked degree-six message has the
+incoming dot product as its boundary and the folded values/dual-folded weights
+as its value at the challenge. The four exact sizes are
+`1024 -> 256 -> 64 -> 16 -> 4`. This closes the blueprint's generic
+relation-fold algebra item; connecting those four calls to a future V6 Rust
+transcript remains implementation work.
+
 The axiom printout for these theorems contains only Lean/mathlib's standard
 logical foundations. There is no `sorry` in this module.
 

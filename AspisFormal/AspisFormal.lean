@@ -209,3 +209,4 @@ import AspisFormal.V6OneFoldCandidateExtraction
 import AspisFormal.V6EncoderDistance
 import AspisFormal.V6PublishedTheoremInterfaces
 import AspisFormal.V6SecurityLedger
+import AspisFormal.V6RelationFold
