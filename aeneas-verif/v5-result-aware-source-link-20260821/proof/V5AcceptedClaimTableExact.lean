@@ -1,0 +1,937 @@
+import V5AcceptedSameRunRelationFriSnapshot
+import V5AcceptedPreparedClaimsCanonical
+import V5AcceptedPrefixCanonical
+
+/-!
+# Exact accepted point-claim table
+
+This file connects the 1,216 relation-claim bytes used by one accepted
+production execution to the four prepared point claims consumed by the
+relation verifier.  The table below is computed by the accepted production
+QM31 decoder.  Failed fields are totalized to zero only to make the definition
+total; a successful `prepare_v5_pcs_claims` run proves that none of the 76
+accepted fields takes that branch.
+-/
+
+namespace AspisV5AcceptedClaimTableExact
+
+open Aeneas Aeneas.Std Result
+open AspisV5AcceptedEntrySourceBridge
+open AspisV5AcceptedFriModelInputBinding
+open AspisV5AcceptedPreparedClaimsCanonical
+open AspisV5AcceptedSameRunRelationFriSnapshot
+open AspisV5ComponentCPreProjectionDeployed
+open AspisV5PreparedPointClaimsSourceBridge
+open AspisV5PreparedPointClaimsSourceProof
+
+set_option autoImplicit false
+set_option maxRecDepth 100000
+set_option maxHeartbeats 12000000
+
+abbrev K := AspisV5FriAcceptedForestChecks.K
+abbrev AcceptedQM31 := AspisV5AcceptedEntrySourceBridge.EntryQM31
+abbrev PreparedKernelQM31 :=
+  AspisV5PreparedPointClaimsSourceProof.KernelQM31
+
+private theorem kernelExact_mul_eq_maintained
+    (left right : AspisV5PreparedPointClaimsSourceProof.KernelQM31Exact) :
+    (left * right : AspisV5PreparedPointClaimsSourceProof.KernelQM31Exact) =
+      ((show K from left) * (show K from right) : K) := by
+  rfl
+
+private theorem kernelExact_pow_eq_maintained
+    (value : AspisV5PreparedPointClaimsSourceProof.KernelQM31Exact)
+    (exponent : Nat) :
+    (value ^ exponent :
+        AspisV5PreparedPointClaimsSourceProof.KernelQM31Exact) =
+      ((show K from value) ^ exponent : K) := by
+  rfl
+
+/-- The exact field value of an accepted-entry QM31 value. -/
+def entryClaimToK (value : AcceptedQM31) : K :=
+  entryToK value
+
+/-- The exact sixteen-byte slice supplied to the production decoder for one
+table position. -/
+def acceptedPointClaimFieldSlice (bytes : Slice Std.U8) (field : Fin 76) :
+    Slice Std.U8 :=
+  ⟨bytes.val.slice (16 * field.val) (16 * field.val + 16), by
+    rw [List.slice_length]
+    have : 16 ≤ Std.Usize.max := by scalar_tac
+    omega⟩
+
+/-- Partial production decode of one accepted table field. -/
+def acceptedPointClaimField (bytes : Slice Std.U8) (field : Fin 76) :
+    Option K :=
+  match V5AcceptedEntryGenerated.aspis_core.field.QM31.from_le_bytes
+      (acceptedPointClaimFieldSlice bytes field) with
+  | .ok (some value) => some (entryClaimToK value)
+  | _ => none
+
+/-- Deterministic 76-entry mathematical table derived from the accepted
+production decoder.  The zero branch is unreachable in every accepted
+preparation run. -/
+def acceptedPointClaimTable (bytes : Slice Std.U8) : Fin 76 → K :=
+  fun field => (acceptedPointClaimField bytes field).getD 0
+
+@[simp] theorem entryClaimToK_eq_kernelExact (value : AcceptedQM31) :
+    entryClaimToK value =
+      kernelQM31ToExact
+        (V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.toPreparedKernelQM31
+          value) := by
+  rfl
+
+@[simp] theorem entryClaimToK_fromPreparedKernel
+    (value : PreparedKernelQM31) :
+    entryClaimToK
+        (V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.fromPreparedKernelQM31
+          value) =
+      kernelQM31ToExact value := by
+  rfl
+
+def entryArrayToPreparedKernel (values : Array AcceptedQM31 19#usize) :
+    Array PreparedKernelQM31 19#usize :=
+  V5AcceptedEntryGenerated.aspis_core.field.mapLinkedArray
+    V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.toPreparedKernelQM31
+    values
+
+@[simp] theorem entryArrayToPreparedKernel_entry
+    (values : Array AcceptedQM31 19#usize) (index : Fin 19) :
+    AspisV5PreparedPointClaimsSourceProof.kernelArrayEntry
+        (entryArrayToPreparedKernel values) index =
+      V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.toPreparedKernelQM31
+        values.val[index.val]! := by
+  simp [entryArrayToPreparedKernel,
+    AspisV5PreparedPointClaimsSourceProof.kernelArrayEntry,
+    V5AcceptedEntryGenerated.aspis_core.field.mapLinkedArray, index.isLt]
+
+/-- The accepted wrapper around the extracted gamma-power kernel preserves
+every exact field value. -/
+theorem preparedKernelGammaPowers_success_exact
+    (gamma : AcceptedQM31) (powers : Array AcceptedQM31 19#usize)
+    (gammaCanonical : EntryCanonicalQM31 gamma)
+    (success :
+      V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.preparedKernelGammaPowers
+          gamma = .ok powers) :
+    ∀ lane : TotalLane,
+      entryClaimToK powers.val[lane.val]! = entryClaimToK gamma ^ lane.val := by
+  let kernelGamma :=
+    V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.toPreparedKernelQM31 gamma
+  have kernelGammaCanonical : KernelCanonicalQM31 kernelGamma :=
+    (toPreparedKernel_canonical_iff gamma).2 gammaCanonical
+  obtain ⟨kernelPowers, kernelRun, kernelPost⟩ :=
+    extracted_gamma_powers_eq_source_weights kernelGamma kernelGammaCanonical
+  have wrapperRun :
+      V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.preparedKernelGammaPowers
+          gamma =
+        .ok (V5AcceptedEntryGenerated.aspis_core.field.mapLinkedArray
+          V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.fromPreparedKernelQM31
+          kernelPowers) := by
+    simp [V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.preparedKernelGammaPowers,
+      V5AcceptedEntryGenerated.aspis_core.field.mapLinkedResult, kernelGamma,
+      kernelRun]
+  rw [wrapperRun] at success
+  cases success
+  intro lane
+  have exactPower := (kernelPost lane).2
+  rw [mapped_fromKernel_entry]
+  change kernelQM31ToExact kernelPowers.val[lane.val]! =
+    kernelQM31ToExact kernelGamma ^ lane.val
+  simpa [AspisV5PreparedPointClaimsSourceProof.kernelArrayEntry,
+    sourceGammaWeight] using exactPower
+
+/-- Exact value returned by one successful accepted-entry field addition. -/
+theorem entry_qm31_add_success_exact
+    (left right output : AcceptedQM31)
+    (leftCanonical : EntryCanonicalQM31 left)
+    (rightCanonical : EntryCanonicalQM31 right)
+    (success :
+      V5AcceptedEntryGenerated.aspis_core.field.QM31.add left right =
+        .ok output) :
+    entryClaimToK output = entryClaimToK left + entryClaimToK right := by
+  let kernelLeft :=
+    V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.toPreparedKernelQM31 left
+  let kernelRight :=
+    V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.toPreparedKernelQM31 right
+  have kernelLeftCanonical : KernelCanonicalQM31 kernelLeft :=
+    (toPreparedKernel_canonical_iff left).2 leftCanonical
+  have kernelRightCanonical : KernelCanonicalQM31 kernelRight :=
+    (toPreparedKernel_canonical_iff right).2 rightCanonical
+  obtain ⟨kernelOutput, kernelRun, _kernelOutputCanonical, kernelExact⟩ :=
+    extracted_kernel_qm31_add_corresponds kernelLeft kernelRight
+      kernelLeftCanonical kernelRightCanonical
+  have kernelAddRun :
+      V5RelationPreparedClaimsGenerated.aspis_core.field.QM31.add
+          kernelLeft kernelRight = .ok kernelOutput := by
+    simpa [V5RelationPreparedClaimsGenerated.extracted_qm31_add] using
+      kernelRun
+  rw [entry_qm31_add_eq_preparedKernel, kernelAddRun] at success
+  simp only [V5AcceptedEntryGenerated.aspis_core.field.mapLinkedResult,
+    Result.ok.injEq] at success
+  subst output
+  change kernelQM31ToExact kernelOutput =
+    kernelQM31ToExact kernelLeft + kernelQM31ToExact kernelRight
+  exact kernelExact
+
+/-- Exact block dot product returned by the accepted wrapper. -/
+theorem preparedKernelClaimDotBlock_success_exact
+    (powers values : Array AcceptedQM31 19#usize)
+    (start count : Std.Usize) (output : AcceptedQM31)
+    (countBound : count.val ≤ 4)
+    (spanBound : start.val + count.val ≤ 19)
+    (powersCanonical : EntryCanonicalArray powers)
+    (valuesCanonical : EntryCanonicalArray values)
+    (success :
+      V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.preparedKernelClaimDotBlock
+          powers values start count = .ok output) :
+    entryClaimToK output =
+      kernelExactBlockDot (entryArrayToPreparedKernel powers)
+        (entryArrayToPreparedKernel values) start.val count.val := by
+  let kernelPowers := entryArrayToPreparedKernel powers
+  let kernelValues := entryArrayToPreparedKernel values
+  have kernelPowersCanonical : KernelCanonicalQM31Array19 kernelPowers :=
+    entryCanonicalArray_toKernel powers powersCanonical
+  have kernelValuesCanonical : KernelCanonicalQM31Array19 kernelValues :=
+    entryCanonicalArray_toKernel values valuesCanonical
+  obtain ⟨kernelOutput, kernelRun, _kernelOutputCanonical, kernelExact⟩ :=
+    extracted_claim_dot_block_corresponds kernelPowers kernelValues start count
+      countBound spanBound kernelPowersCanonical kernelValuesCanonical
+  change
+    V5RelationPreparedClaimsGenerated.fri_checks.v5_claim_dot_block
+        (entryArrayToPreparedKernel powers) (entryArrayToPreparedKernel values)
+        start count = .ok kernelOutput at kernelRun
+  have wrapperRun :
+      V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.preparedKernelClaimDotBlock
+          powers values start count =
+        .ok (V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.fromPreparedKernelQM31
+          kernelOutput) := by
+    unfold
+      V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.preparedKernelClaimDotBlock
+    change
+      V5AcceptedEntryGenerated.aspis_core.field.mapLinkedResult
+          V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.fromPreparedKernelQM31
+          (V5RelationPreparedClaimsGenerated.fri_checks.v5_claim_dot_block
+            (entryArrayToPreparedKernel powers)
+            (entryArrayToPreparedKernel values) start count) = _
+    rw [kernelRun]
+    rfl
+  rw [wrapperRun] at success
+  cases success
+  change kernelQM31ToExact kernelOutput = _
+  exact kernelExact
+
+/-! ## Exact accepted claim decoder loop -/
+
+def DecodedPointPrefix (bytes : Slice Std.U8) (point : PointClaimRow)
+    (column : Nat) (values : Array AcceptedQM31 19#usize) : Prop :=
+  ∀ lane : TotalLane, lane.val < column →
+    entryClaimToK values.val[lane.val]! =
+      acceptedPointClaimTable bytes (pointMajorClaimLayout (point, lane))
+
+theorem acceptedPointClaimTable_of_decoder_success
+    (bytes : Slice Std.U8) (field : Fin 76) (value : AcceptedQM31)
+    (success :
+      V5AcceptedEntryGenerated.aspis_core.field.QM31.from_le_bytes
+          (acceptedPointClaimFieldSlice bytes field) = .ok (some value)) :
+    acceptedPointClaimTable bytes field = entryClaimToK value := by
+  simp [acceptedPointClaimTable, acceptedPointClaimField, success]
+
+private theorem decodedPointPrefix_set_next
+    (bytes : Slice Std.U8) (point : PointClaimRow)
+    (column : Std.Usize) (values : Array AcceptedQM31 19#usize)
+    (value : AcceptedQM31)
+    (columnBound : column.val < 19)
+    (decodedPrefix : DecodedPointPrefix bytes point column.val values)
+    (valueExact : entryClaimToK value =
+      acceptedPointClaimTable bytes
+        (pointMajorClaimLayout
+          (point, ⟨column.val, columnBound⟩))) :
+    DecodedPointPrefix bytes point (column.val + 1)
+      (values.set column value) := by
+  intro lane laneBound
+  by_cases same : lane.val = column.val
+  · have laneEq : lane = ⟨column.val, columnBound⟩ := Fin.ext same
+    subst lane
+    unfold entryClaimToK
+    simp only [Array.set_val_eq]
+    rw [List.set_getElem!_eq _ _ _ _ (by
+      exact ⟨by simpa [Array.length_eq] using columnBound, rfl⟩)]
+    exact valueExact
+  · have before : lane.val < column.val := by omega
+    unfold entryClaimToK
+    simp only [Array.set_val_eq]
+    rw [List.set_getElem!_ne values.val column.val lane.val value
+      (Or.inl (by omega))]
+    exact decodedPrefix lane before
+
+/-- A successful translated 19-field decoder loop returns the exact
+point-major row of the deterministic production-decoded table. -/
+theorem decodeClaimValuesAux_success_exact
+    (remaining : Nat) :
+    ∀ (point : PointClaimRow) (runtimePoint column : Std.Usize)
+      (bytes : Slice Std.U8)
+      (values output : Array AcceptedQM31 19#usize),
+      runtimePoint.val = point.val →
+      column.val + remaining = 19 →
+      bytes.val.length = 1216 →
+      DecodedPointPrefix bytes point column.val values →
+      V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.decodeClaimValuesAux
+          remaining runtimePoint column bytes values = .ok (.Ok output) →
+      ∀ lane : TotalLane,
+        entryClaimToK output.val[lane.val]! =
+          acceptedPointClaimTable bytes
+            (pointMajorClaimLayout (point, lane)) := by
+  induction remaining with
+  | zero =>
+      intro point runtimePoint column bytes values output _ span _
+        decodedPrefix success
+      simp [V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.decodeClaimValuesAux]
+        at success
+      subst output
+      intro lane
+      have laneBound : lane.val < 19 := by
+        simpa [totalLaneCount] using lane.isLt
+      exact decodedPrefix lane (by omega)
+  | succ remaining inductionHypothesis =>
+      intro point runtimePoint column bytes values output pointValue span
+        bytesLength decodedPrefix success
+      have columnBound : column.val < 19 := by omega
+      unfold
+        V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.decodeClaimValuesAux
+        at success
+      generalize pointBaseEquation : runtimePoint * 19#usize = pointBaseResult
+        at success
+      cases pointBaseResult with
+      | fail error => simp [Bind.bind, Aeneas.Std.bind] at success
+      | div => simp [Bind.bind, Aeneas.Std.bind] at success
+      | ok pointBase =>
+        simp only [bind_tc_ok] at success
+        generalize indexEquation : pointBase + column = indexResult at success
+        cases indexResult with
+        | fail error => simp [Bind.bind, Aeneas.Std.bind] at success
+        | div => simp [Bind.bind, Aeneas.Std.bind] at success
+        | ok index =>
+          simp only [bind_tc_ok] at success
+          generalize offsetEquation : index * 16#usize = offsetResult at success
+          cases offsetResult with
+          | fail error => simp [Bind.bind, Aeneas.Std.bind] at success
+          | div => simp [Bind.bind, Aeneas.Std.bind] at success
+          | ok offset =>
+            simp only [bind_tc_ok] at success
+            generalize stopEquation : offset + 16#usize = stopResult at success
+            cases stopResult with
+            | fail error => simp [Bind.bind, Aeneas.Std.bind] at success
+            | div => simp [Bind.bind, Aeneas.Std.bind] at success
+            | ok stop =>
+              simp only [bind_tc_ok] at success
+              generalize encodedEquation :
+                core.slice.index.Slice.index
+                  (core.slice.index.SliceIndexRangeUsizeSlice Std.U8)
+                  bytes { start := offset, «end» := stop } = encodedResult
+                at success
+              cases encodedResult with
+              | fail error => simp [Bind.bind, Aeneas.Std.bind] at success
+              | div => simp [Bind.bind, Aeneas.Std.bind] at success
+              | ok encoded =>
+                simp only [bind_tc_ok] at success
+                generalize decodedEquation :
+                  V5AcceptedEntryGenerated.aspis_core.field.QM31.from_le_bytes
+                    encoded = decodedResult at success
+                cases decodedResult with
+                | fail error => simp [Bind.bind, Aeneas.Std.bind] at success
+                | div => simp [Bind.bind, Aeneas.Std.bind] at success
+                | ok decoded =>
+                  cases decoded with
+                  | none => simp [Bind.bind, Aeneas.Std.bind] at success
+                  | some value =>
+                    simp only [bind_tc_ok] at success
+                    generalize updateEquation :
+                      Array.update values column value = updateResult at success
+                    cases updateResult with
+                    | fail error => simp [Bind.bind, Aeneas.Std.bind] at success
+                    | div => simp [Bind.bind, Aeneas.Std.bind] at success
+                    | ok updated =>
+                      simp only [bind_tc_ok] at success
+                      generalize nextEquation : column + 1#usize = nextResult
+                        at success
+                      cases nextResult with
+                      | fail error =>
+                        simp [Bind.bind, Aeneas.Std.bind] at success
+                      | div => simp [Bind.bind, Aeneas.Std.bind] at success
+                      | ok next =>
+                        simp only [bind_tc_ok] at success
+                        change UScalar.mul runtimePoint 19#usize = .ok pointBase
+                          at pointBaseEquation
+                        change UScalar.mul index 16#usize = .ok offset
+                          at offsetEquation
+                        have pointBaseFacts :=
+                          @UScalar.mul_equiv UScalarTy.Usize runtimePoint
+                            19#usize
+                        rw [pointBaseEquation] at pointBaseFacts
+                        have indexFacts :=
+                          @UScalar.add_equiv UScalarTy.Usize pointBase column
+                        rw [indexEquation] at indexFacts
+                        have offsetFacts :=
+                          @UScalar.mul_equiv UScalarTy.Usize index 16#usize
+                        rw [offsetEquation] at offsetFacts
+                        have stopFacts :=
+                          @UScalar.add_equiv UScalarTy.Usize offset 16#usize
+                        rw [stopEquation] at stopFacts
+                        have nextFacts :=
+                          @UScalar.add_equiv UScalarTy.Usize column 1#usize
+                        rw [nextEquation] at nextFacts
+                        have pointBaseValue :
+                            pointBase.val = runtimePoint.val * 19 := by
+                          exact pointBaseFacts.2.1
+                        have indexValue :
+                            index.val = pointBase.val + column.val := by
+                          exact indexFacts.2.1
+                        have offsetValue : offset.val = index.val * 16 := by
+                          exact offsetFacts.2.1
+                        have stopValue : stop.val = offset.val + 16 := by
+                          exact stopFacts.2.1
+                        have nextValue : next.val = column.val + 1 := by
+                          exact nextFacts.2.1
+                        let lane : TotalLane := ⟨column.val, columnBound⟩
+                        let field : Fin 76 :=
+                          pointMajorClaimLayout (point, lane)
+                        have encodedFacts :=
+                          AspisV5FriProductionDecoderCanonical.slice_range_success_facts
+                            bytes encoded offset stop encodedEquation
+                        have encodedExact :
+                            encoded = acceptedPointClaimFieldSlice bytes field := by
+                          apply Subtype.ext
+                          rw [encodedFacts.2.2]
+                          simp only [acceptedPointClaimFieldSlice]
+                          congr 1 <;>
+                            simp [field, lane, pointMajorClaimLayout_val,
+                              pointValue, pointBaseValue, indexValue,
+                              offsetValue, stopValue] <;> omega
+                        have decoderExact :
+                            acceptedPointClaimTable bytes field =
+                              entryClaimToK value := by
+                          apply acceptedPointClaimTable_of_decoder_success
+                          rw [← encodedExact]
+                          exact decodedEquation
+                        have valueExact : entryClaimToK value =
+                            acceptedPointClaimTable bytes
+                              (pointMajorClaimLayout
+                                (point, ⟨column.val, columnBound⟩)) := by
+                          exact decoderExact.symm
+                        have updatedEquality :
+                            updated = values.set column value :=
+                          array_update_success_eq values column value updated
+                            columnBound updateEquation
+                        have updatedPrefix :
+                            DecodedPointPrefix bytes point (column.val + 1)
+                              updated := by
+                          rw [updatedEquality]
+                          exact decodedPointPrefix_set_next bytes point column
+                            values value columnBound decodedPrefix valueExact
+                        apply inductionHypothesis point runtimePoint next bytes
+                          updated output pointValue
+                        · omega
+                        · exact bytesLength
+                        · simpa [nextValue] using updatedPrefix
+                        · exact success
+
+/-! ## Exact five-block claim sum -/
+
+private theorem entry_exact_block_dot_eq_source_contiguous
+    (gamma : AcceptedQM31)
+    (powers values : Array AcceptedQM31 19#usize)
+    (claims : Fin 76 → K) (point : PointClaimRow)
+    (start count : Nat) (spanBound : start + count ≤ 19)
+    (powersExact : ∀ lane : TotalLane,
+      entryClaimToK powers.val[lane.val]! = entryClaimToK gamma ^ lane.val)
+    (valuesExact : ∀ lane : TotalLane,
+      entryClaimToK values.val[lane.val]! =
+        claims (pointMajorClaimLayout (point, lane))) :
+    kernelExactBlockDot (entryArrayToPreparedKernel powers)
+        (entryArrayToPreparedKernel values) start count =
+      sourceContiguousPointClaimBlock (entryClaimToK gamma)
+        claims point start count := by
+  classical
+  unfold kernelExactBlockDot sourceContiguousPointClaimBlock
+  apply Finset.sum_congr rfl
+  intro offset offsetMembership
+  simp only [Finset.mem_range] at offsetMembership
+  have indexBound : start + offset < 19 := by omega
+  let lane : TotalLane := ⟨start + offset, by
+    simpa [totalLaneCount] using indexBound⟩
+  have powerExact := powersExact lane
+  have valueExact := valuesExact lane
+  have mappedPower :
+      (entryArrayToPreparedKernel powers).val[start + offset]! =
+        V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.toPreparedKernelQM31
+          powers.val[start + offset]! := by
+    simpa [AspisV5PreparedPointClaimsSourceProof.kernelArrayEntry, lane] using
+      entryArrayToPreparedKernel_entry powers lane
+  have mappedValue :
+      (entryArrayToPreparedKernel values).val[start + offset]! =
+        V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.toPreparedKernelQM31
+          values.val[start + offset]! := by
+    simpa [AspisV5PreparedPointClaimsSourceProof.kernelArrayEntry, lane] using
+      entryArrayToPreparedKernel_entry values lane
+  rw [mappedPower, mappedValue]
+  rw [kernelExact_mul_eq_maintained]
+  change entryClaimToK powers.val[lane.val]! *
+      entryClaimToK values.val[lane.val]! = _
+  rw [powerExact, valueExact]
+  simp [sourcePointClaimTerm, sourceGammaWeight, totalLaneCount, indexBound,
+    lane]
+
+/-- The accepted five-block helper returns exactly the maintained prepared
+claim for this point, provided its production-decoded row and gamma powers
+have already been identified. -/
+theorem sumPreparedClaimBlocks_success_exact_source
+    (gamma : AcceptedQM31) (claims : Fin 76 → K)
+    (point : PointClaimRow)
+    (powers values : Array AcceptedQM31 19#usize)
+    (output : AcceptedQM31)
+    (powersCanonical : EntryCanonicalArray powers)
+    (valuesCanonical : EntryCanonicalArray values)
+    (powersExact : ∀ lane : TotalLane,
+      entryClaimToK powers.val[lane.val]! = entryClaimToK gamma ^ lane.val)
+    (valuesExact : ∀ lane : TotalLane,
+      entryClaimToK values.val[lane.val]! =
+        claims (pointMajorClaimLayout (point, lane)))
+    (success :
+      V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.sumPreparedClaimBlocks
+          powers values = .ok output) :
+    entryClaimToK output =
+      sourcePreparedPointClaim (entryClaimToK gamma) claims point := by
+  obtain ⟨block0, block0Run, block0Canonical⟩ :=
+    preparedKernelClaimDotBlock_exists_canonical powers values
+      0#usize 4#usize (by norm_num) (by norm_num)
+      powersCanonical valuesCanonical
+  obtain ⟨block1, block1Run, block1Canonical⟩ :=
+    preparedKernelClaimDotBlock_exists_canonical powers values
+      4#usize 4#usize (by norm_num) (by norm_num)
+      powersCanonical valuesCanonical
+  obtain ⟨block2, block2Run, block2Canonical⟩ :=
+    preparedKernelClaimDotBlock_exists_canonical powers values
+      8#usize 4#usize (by norm_num) (by norm_num)
+      powersCanonical valuesCanonical
+  obtain ⟨block3, block3Run, block3Canonical⟩ :=
+    preparedKernelClaimDotBlock_exists_canonical powers values
+      12#usize 4#usize (by norm_num) (by norm_num)
+      powersCanonical valuesCanonical
+  obtain ⟨block4, block4Run, block4Canonical⟩ :=
+    preparedKernelClaimDotBlock_exists_canonical powers values
+      16#usize 3#usize (by norm_num) (by norm_num)
+      powersCanonical valuesCanonical
+  obtain ⟨sum01, sum01Run, sum01Canonical⟩ :=
+    entry_qm31_add_exists_canonical block0 block1 block0Canonical
+      block1Canonical
+  obtain ⟨sum012, sum012Run, sum012Canonical⟩ :=
+    entry_qm31_add_exists_canonical sum01 block2 sum01Canonical
+      block2Canonical
+  obtain ⟨sum0123, sum0123Run, sum0123Canonical⟩ :=
+    entry_qm31_add_exists_canonical sum012 block3 sum012Canonical
+      block3Canonical
+  obtain ⟨expected, expectedRun, _expectedCanonical⟩ :=
+    entry_qm31_add_exists_canonical sum0123 block4 sum0123Canonical
+      block4Canonical
+  have wholeRun :
+      V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.sumPreparedClaimBlocks
+          powers values = .ok expected := by
+    simp [V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.sumPreparedClaimBlocks,
+      block0Run, block1Run, block2Run, block3Run, block4Run,
+      sum01Run, sum012Run, sum0123Run, expectedRun]
+  rw [wholeRun] at success
+  cases success
+  have block0Exact := preparedKernelClaimDotBlock_success_exact powers values
+    0#usize 4#usize block0 (by norm_num) (by norm_num)
+    powersCanonical valuesCanonical block0Run
+  have block1Exact := preparedKernelClaimDotBlock_success_exact powers values
+    4#usize 4#usize block1 (by norm_num) (by norm_num)
+    powersCanonical valuesCanonical block1Run
+  have block2Exact := preparedKernelClaimDotBlock_success_exact powers values
+    8#usize 4#usize block2 (by norm_num) (by norm_num)
+    powersCanonical valuesCanonical block2Run
+  have block3Exact := preparedKernelClaimDotBlock_success_exact powers values
+    12#usize 4#usize block3 (by norm_num) (by norm_num)
+    powersCanonical valuesCanonical block3Run
+  have block4Exact := preparedKernelClaimDotBlock_success_exact powers values
+    16#usize 3#usize block4 (by norm_num) (by norm_num)
+    powersCanonical valuesCanonical block4Run
+  have sum01Exact := entry_qm31_add_success_exact block0 block1 sum01
+    block0Canonical block1Canonical sum01Run
+  have sum012Exact := entry_qm31_add_success_exact sum01 block2 sum012
+    sum01Canonical block2Canonical sum012Run
+  have sum0123Exact := entry_qm31_add_success_exact sum012 block3 sum0123
+    sum012Canonical block3Canonical sum0123Run
+  have expectedExact := entry_qm31_add_success_exact sum0123 block4 output
+    sum0123Canonical block4Canonical expectedRun
+  rw [expectedExact, sum0123Exact, sum012Exact, sum01Exact,
+    block0Exact, block1Exact, block2Exact, block3Exact, block4Exact]
+  change
+    kernelExactBlockDot (entryArrayToPreparedKernel powers)
+          (entryArrayToPreparedKernel values) 0 4 +
+        kernelExactBlockDot (entryArrayToPreparedKernel powers)
+            (entryArrayToPreparedKernel values) 4 4 +
+      kernelExactBlockDot (entryArrayToPreparedKernel powers)
+          (entryArrayToPreparedKernel values) 8 4 +
+    kernelExactBlockDot (entryArrayToPreparedKernel powers)
+        (entryArrayToPreparedKernel values) 12 4 +
+    kernelExactBlockDot (entryArrayToPreparedKernel powers)
+        (entryArrayToPreparedKernel values) 16 3 = _
+  rw [entry_exact_block_dot_eq_source_contiguous gamma powers values claims
+      point 0 4 (by norm_num) powersExact valuesExact,
+    entry_exact_block_dot_eq_source_contiguous gamma powers values claims
+      point 4 4 (by norm_num) powersExact valuesExact,
+    entry_exact_block_dot_eq_source_contiguous gamma powers values claims
+      point 8 4 (by norm_num) powersExact valuesExact,
+    entry_exact_block_dot_eq_source_contiguous gamma powers values claims
+      point 12 4 (by norm_num) powersExact valuesExact,
+    entry_exact_block_dot_eq_source_contiguous gamma powers values claims
+      point 16 3 (by norm_num) powersExact valuesExact]
+  change sourceFiveBlockPointClaim (entryClaimToK gamma) claims point =
+    sourcePreparedPointClaim (entryClaimToK gamma) claims point
+  rw [sourceFiveBlockPointClaim_eq_sourcePointClaim,
+    sourcePreparedPointClaim_eq_sourcePointClaim]
+
+/-! ## Exact four-point preparation loop -/
+
+def PreparedPointPrefix (gamma : AcceptedQM31) (bytes : Slice Std.U8)
+    (point : Nat) (claims : Array AcceptedQM31 4#usize) : Prop :=
+  ∀ row : PointClaimRow, row.val < point →
+    entryClaimToK claims.val[row.val]! =
+      sourcePreparedPointClaim (entryClaimToK gamma)
+        (acceptedPointClaimTable bytes) row
+
+private theorem preparedPointPrefix_set_next
+    (gamma : AcceptedQM31) (bytes : Slice Std.U8)
+    (point : Std.Usize) (claims : Array AcceptedQM31 4#usize)
+    (claim : AcceptedQM31)
+    (pointBound : point.val < 4)
+    (preparedPrefix : PreparedPointPrefix gamma bytes point.val claims)
+    (claimExact : entryClaimToK claim =
+      sourcePreparedPointClaim (entryClaimToK gamma)
+        (acceptedPointClaimTable bytes)
+        ⟨point.val, by simpa [pointClaimRows] using pointBound⟩) :
+    PreparedPointPrefix gamma bytes (point.val + 1)
+      (claims.set point claim) := by
+  intro row rowBound
+  by_cases same : row.val = point.val
+  · have rowEquality :
+        row = ⟨point.val, by simpa [pointClaimRows] using pointBound⟩ :=
+      Fin.ext same
+    subst row
+    unfold entryClaimToK
+    simp only [Array.set_val_eq]
+    rw [List.set_getElem!_eq _ _ _ _ (by
+      exact ⟨by simpa [Array.length_eq] using pointBound, rfl⟩)]
+    exact claimExact
+  · have before : row.val < point.val := by omega
+    unfold entryClaimToK
+    simp only [Array.set_val_eq]
+    rw [List.set_getElem!_ne claims.val point.val row.val claim
+      (Or.inl (by omega))]
+    exact preparedPrefix row before
+
+/-- A successful translated four-point loop returns exactly the four
+maintained prepared claims computed from the production-decoded byte table. -/
+theorem preparePointClaimsAux_success_exact
+    (remaining : Nat) :
+    ∀ (gamma : AcceptedQM31) (point : Std.Usize)
+      (bytes : Slice Std.U8)
+      (powers : Array AcceptedQM31 19#usize)
+      (claims output : Array AcceptedQM31 4#usize),
+      point.val + remaining = 4 →
+      bytes.val.length = 1216 →
+      EntryCanonicalArray powers →
+      (∀ lane : TotalLane,
+        entryClaimToK powers.val[lane.val]! =
+          entryClaimToK gamma ^ lane.val) →
+      EntryCanonicalArray claims →
+      PreparedPointPrefix gamma bytes point.val claims →
+      V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.preparePointClaimsAux
+          remaining point bytes powers claims = .ok (.Ok output) →
+      ∀ row : PointClaimRow,
+        entryClaimToK output.val[row.val]! =
+          sourcePreparedPointClaim (entryClaimToK gamma)
+            (acceptedPointClaimTable bytes) row := by
+  induction remaining with
+  | zero =>
+      intro gamma point bytes powers claims output span _ _ _ _
+        preparedPrefix success
+      simp [V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.preparePointClaimsAux]
+        at success
+      subst output
+      intro row
+      exact preparedPrefix row (by
+        have rowBound : row.val < 4 := by
+          simpa [pointClaimRows] using row.isLt
+        omega)
+  | succ remaining inductionHypothesis =>
+      intro gamma point bytes powers claims output span bytesLength
+        powersCanonical powersExact claimsCanonical preparedPrefix success
+      have pointBound : point.val < 4 := by omega
+      let pointRow : PointClaimRow :=
+        ⟨point.val, by simpa [pointClaimRows] using pointBound⟩
+      unfold
+        V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.preparePointClaimsAux
+        at success
+      generalize zeroEquation :
+        V5AcceptedEntryGenerated.aspis_core.field.QM31.ZERO = zeroResult
+        at success
+      cases zeroResult with
+      | fail error => simp [Bind.bind, Aeneas.Std.bind] at success
+      | div => simp [Bind.bind, Aeneas.Std.bind] at success
+      | ok zero =>
+        simp only [bind_tc_ok] at success
+        let initialValues : Array AcceptedQM31 19#usize :=
+          Array.repeat 19#usize zero
+        have zeroCanonical : EntryCanonicalQM31 zero :=
+          entry_qm31_zero_success_canonical zero zeroEquation
+        have initialValuesCanonical : EntryCanonicalArray initialValues :=
+          entryCanonicalArray_repeat 19#usize zero zeroCanonical
+        generalize decodeEquation :
+          V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.decodeClaimValuesAux
+            19 point 0#usize bytes initialValues = decodeResult at success
+        cases decodeResult with
+        | fail error => simp [Bind.bind, Aeneas.Std.bind] at success
+        | div => simp [Bind.bind, Aeneas.Std.bind] at success
+        | ok decoded =>
+          cases decoded with
+          | Err error => simp [Bind.bind, Aeneas.Std.bind] at success
+          | Ok values =>
+            simp only [bind_tc_ok] at success
+            have valuesCanonical : EntryCanonicalArray values :=
+              decodeClaimValuesAux_success_canonical 19 point 0#usize bytes
+                initialValues values (by norm_num) initialValuesCanonical
+                decodeEquation
+            have initialValuesPrefix :
+                DecodedPointPrefix bytes pointRow 0 initialValues := by
+              intro lane impossible
+              omega
+            have valuesExact : ∀ lane : TotalLane,
+                entryClaimToK values.val[lane.val]! =
+                  acceptedPointClaimTable bytes
+                    (pointMajorClaimLayout (pointRow, lane)) :=
+              decodeClaimValuesAux_success_exact 19 pointRow point 0#usize
+                bytes initialValues values (by rfl) (by norm_num)
+                bytesLength initialValuesPrefix decodeEquation
+            generalize claimEquation :
+              V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.sumPreparedClaimBlocks
+                powers values = claimResult at success
+            cases claimResult with
+            | fail error => simp [Bind.bind, Aeneas.Std.bind] at success
+            | div => simp [Bind.bind, Aeneas.Std.bind] at success
+            | ok claim =>
+              simp only [bind_tc_ok] at success
+              have claimCanonical : EntryCanonicalQM31 claim :=
+                sumPreparedClaimBlocks_success_canonical powers values claim
+                  powersCanonical valuesCanonical claimEquation
+              have claimExact : entryClaimToK claim =
+                  sourcePreparedPointClaim (entryClaimToK gamma)
+                    (acceptedPointClaimTable bytes) pointRow :=
+                sumPreparedClaimBlocks_success_exact_source gamma
+                  (acceptedPointClaimTable bytes) pointRow powers values claim
+                  powersCanonical valuesCanonical powersExact valuesExact
+                  claimEquation
+              generalize updateEquation :
+                Array.update claims point claim = updateResult at success
+              cases updateResult with
+              | fail error => simp [Bind.bind, Aeneas.Std.bind] at success
+              | div => simp [Bind.bind, Aeneas.Std.bind] at success
+              | ok updatedClaims =>
+                simp only [bind_tc_ok] at success
+                have updatedClaimsCanonical :
+                    EntryCanonicalArray updatedClaims :=
+                  array_update_preserves_entryCanonical claims updatedClaims
+                    point claim pointBound claimsCanonical claimCanonical
+                    updateEquation
+                have updatedEquality :
+                    updatedClaims = claims.set point claim :=
+                  array_update_success_eq claims point claim updatedClaims
+                    pointBound updateEquation
+                have updatedPrefix : PreparedPointPrefix gamma bytes
+                    (point.val + 1) updatedClaims := by
+                  rw [updatedEquality]
+                  exact preparedPointPrefix_set_next gamma bytes point claims
+                    claim pointBound preparedPrefix claimExact
+                generalize nextEquation : point + 1#usize = nextResult
+                  at success
+                cases nextResult with
+                | fail error =>
+                  simp [Bind.bind, Aeneas.Std.bind] at success
+                | div => simp [Bind.bind, Aeneas.Std.bind] at success
+                | ok next =>
+                  simp only [bind_tc_ok] at success
+                  have addFacts :=
+                    @UScalar.add_equiv UScalarTy.Usize point 1#usize
+                  rw [nextEquation] at addFacts
+                  have nextValue : next.val = point.val + 1 := by
+                    calc
+                      next.val = point.val + (1#usize : Std.Usize).val :=
+                        addFacts.2.1
+                      _ = point.val + 1 := by rfl
+                  apply inductionHypothesis gamma next bytes powers
+                    updatedClaims output
+                  · omega
+                  · exact bytesLength
+                  · exact powersCanonical
+                  · exact powersExact
+                  · exact updatedClaimsCanonical
+                  · simpa [nextValue] using updatedPrefix
+                  · exact success
+
+/-- Exact mathematical meaning of the four claims stored in a production
+`V5PreparedPcsClaims` value. -/
+def PreparedClaimsExact (gamma : AcceptedQM31) (bytes : Slice Std.U8)
+    (prepared :
+      V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims) :
+    Prop :=
+  ∀ row : PointClaimRow,
+    entryClaimToK prepared.inner.claims.val[row.val]! =
+      sourcePreparedPointClaim (entryClaimToK gamma)
+        (acceptedPointClaimTable bytes) row
+
+/-- Exact end-to-end specification of the accepted production claim
+preparation call.  It covers the real length check, gamma-power builder,
+76-field decoder, five-block sums, and four stored output claims. -/
+theorem prepare_v5_pcs_claims_success_exact
+    (gamma : AcceptedQM31) (bytes : Slice Std.U8)
+    (prepared :
+      V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims)
+    (gammaCanonical : EntryCanonicalQM31 gamma)
+    (success :
+      V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.prepare_v5_pcs_claims
+          gamma bytes = .ok (.Ok prepared)) :
+    PreparedClaimsExact gamma bytes prepared := by
+  unfold
+    V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.prepare_v5_pcs_claims
+    at success
+  dsimp only at success
+  split at success
+  · simp at success
+  · rename_i lengthCheck
+    have runtimeLength : Slice.len bytes = 1216#usize := by
+      simpa only [bne_iff_ne, ne_eq, not_not] using lengthCheck
+    have bytesLength : bytes.val.length = 1216 := by
+      have valueEquality := congrArg UScalar.val runtimeLength
+      simpa [Slice.len] using valueEquality
+    generalize powersEquation :
+      V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.preparedKernelGammaPowers
+        gamma = powersResult at success
+    cases powersResult with
+    | fail error => simp [Bind.bind, Aeneas.Std.bind] at success
+    | div => simp [Bind.bind, Aeneas.Std.bind] at success
+    | ok powers =>
+      simp only [bind_tc_ok] at success
+      have powersCanonical : EntryCanonicalArray powers :=
+        preparedKernelGammaPowers_success_canonical gamma powers
+          gammaCanonical powersEquation
+      have powersExact : ∀ lane : TotalLane,
+          entryClaimToK powers.val[lane.val]! =
+            entryClaimToK gamma ^ lane.val :=
+        preparedKernelGammaPowers_success_exact gamma powers gammaCanonical
+          powersEquation
+      let emptyLimbs := Array.repeat 4#usize 0#u32
+      generalize c1Equation :
+        V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.prepareC1WeightsAux
+          16 0#usize powers (Array.repeat 16#usize emptyLimbs) = c1Result
+        at success
+      cases c1Result with
+      | fail error => simp [Bind.bind, Aeneas.Std.bind] at success
+      | div => simp [Bind.bind, Aeneas.Std.bind] at success
+      | ok c1WeightLimbs =>
+        simp only [bind_tc_ok] at success
+        generalize zeroEquation :
+          V5AcceptedEntryGenerated.aspis_core.field.QM31.ZERO = zeroResult
+          at success
+        cases zeroResult with
+        | fail error => simp [Bind.bind, Aeneas.Std.bind] at success
+        | div => simp [Bind.bind, Aeneas.Std.bind] at success
+        | ok zero =>
+          simp only [bind_tc_ok] at success
+          have zeroCanonical : EntryCanonicalQM31 zero :=
+            entry_qm31_zero_success_canonical zero zeroEquation
+          generalize multiplierEquation :
+            V5AcceptedEntryGenerated.aspis_core.field.PreparedQm31Multiplier.new
+              zero = multiplierResult at success
+          cases multiplierResult with
+          | fail error => simp [Bind.bind, Aeneas.Std.bind] at success
+          | div => simp [Bind.bind, Aeneas.Std.bind] at success
+          | ok emptyMultiplier =>
+            simp only [bind_tc_ok] at success
+            generalize c2Equation :
+              V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.prepareC2MultipliersAux
+                3 0#usize powers
+                  (Array.repeat 3#usize emptyMultiplier) = c2Result
+              at success
+            cases c2Result with
+            | fail error => simp [Bind.bind, Aeneas.Std.bind] at success
+            | div => simp [Bind.bind, Aeneas.Std.bind] at success
+            | ok c2Multipliers =>
+              simp only [bind_tc_ok] at success
+              let initialClaims : Array AcceptedQM31 4#usize :=
+                Array.repeat 4#usize zero
+              have initialClaimsCanonical : EntryCanonicalArray initialClaims :=
+                entryCanonicalArray_repeat 4#usize zero zeroCanonical
+              have initialClaimsPrefix :
+                  PreparedPointPrefix gamma bytes 0 initialClaims := by
+                intro row impossible
+                omega
+              generalize claimsEquation :
+                V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.preparePointClaimsAux
+                  4 0#usize bytes powers initialClaims = claimsResult
+                at success
+              cases claimsResult with
+              | fail error => simp [Bind.bind, Aeneas.Std.bind] at success
+              | div => simp [Bind.bind, Aeneas.Std.bind] at success
+              | ok claimsResult =>
+                cases claimsResult with
+                | Err error =>
+                  simp [Bind.bind, Aeneas.Std.bind] at success
+                | Ok claims =>
+                  have claimsExact : ∀ row : PointClaimRow,
+                      entryClaimToK claims.val[row.val]! =
+                        sourcePreparedPointClaim (entryClaimToK gamma)
+                          (acceptedPointClaimTable bytes) row :=
+                    preparePointClaimsAux_success_exact 4 gamma 0#usize bytes
+                      powers initialClaims claims (by norm_num) bytesLength
+                      powersCanonical powersExact initialClaimsCanonical
+                      initialClaimsPrefix claimsEquation
+                  have preparedEquality :
+                      prepared = {
+                        inner := {
+                          claims := ⟨claims.val, by scalar_tac⟩
+                          powers := ⟨powers.val, by scalar_tac⟩ }
+                        c1_weight_limbs := c1WeightLimbs
+                        c2_multipliers := c2Multipliers } := by
+                    exact (core.result.Result.Ok.inj
+                      (Result.ok.inj success)).symm
+                  subst prepared
+                  intro row
+                  exact claimsExact row
+
+/-! ## Accepted same-run snapshot -/
+
+/-- The four prepared claims carried by one accepted same-run snapshot are
+exactly the four claims deterministically decoded from that snapshot's
+1,216-byte relation-claim field. -/
+theorem accepted_snapshot_prepared_claims_exact
+    {accountData : Slice Std.U8}
+    {parsed : SnapshotEntryParsed}
+    {liveStatement : SnapshotEntryStatement}
+    {statementDigest : Array Std.U8 32#usize}
+    {acceptedValue : SnapshotEntryQM31}
+    (snapshot : AcceptedSameRunRelationFriSnapshot accountData parsed
+      liveStatement statementDigest acceptedValue) :
+    PreparedClaimsExact snapshot.verifiedPrefix.gamma parsed.relation_claims
+      snapshot.preparedClaims := by
+  have prefixCanonical :=
+    AspisV5AcceptedPrefixCanonical.accepted_prefix_gamma_and_inactive_canonical
+      parsed liveStatement statementDigest
+      V5AcceptedEntryGenerated.verify.sbf_hashv snapshot.verifiedPrefix
+      snapshot.prefixTranscript snapshot.evidence.compositeCalls.prefixSuccess
+  exact prepare_v5_pcs_claims_success_exact snapshot.verifiedPrefix.gamma
+    parsed.relation_claims snapshot.preparedClaims prefixCanonical.1
+    snapshot.evidence.exactFriCalls.prepareClaimsSuccess
+
+
+end AspisV5AcceptedClaimTableExact
