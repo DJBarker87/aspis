@@ -1,13 +1,16 @@
 \section{Conclusion}
 \label{sec:conclusion}
 
-The main result is a machine-checked security decomposition for a concrete
-private-spend verifier.  Lean puts false acceptance in one finite experiment,
-proves that one protocol event and eighteen named external events cover it,
-and proves that the compact ledger describes exactly the same union as the
-earlier detailed ledger.  This joins a checked private-spend relation, released
-circle-code and four-fold FRI arguments, transcript and five-tree Merkle
-models, theft reductions, and state semantics without assuming that their
+The main result is a checked mathematical security decomposition for a
+concrete private spend, together with a production-source connection that is
+complete through the decoded relation tail.  From one accepting translated
+production verifier call, the source proofs derive the transcript, work,
+query, authenticated-opening, FRI, final-polynomial, exact claim-table,
+initial-relation, and relation-tail evidence.  The two production final-dot
+equalities and their outer composition remain open.  Lean separately puts
+false acceptance in one finite experiment and
+joins the private-spend relation, released circle-code and four-fold FRI
+arguments, theft reductions, and state semantics without assuming that their
 failure events are independent.
 
 The \(2^{-100}\) result is a conditional budget consequence of that
@@ -18,19 +21,19 @@ source and runtime correspondence are stated separately.  The raw companion
 statement exposes its oracle-query budget and, for theft after a completed
 grind, retains a \(2^{-70}\) term plus explicit remaining terms.
 
-The main remaining project-specific step is end-to-end code verification:
-prove that every accepting
-production execution supplies the exact transcript, five authenticated
-openings, relation values, final polynomial, public inputs, and state
-transition used by Lean.  Lean already supplies the prefix-timed four-way FRI
-reduction and adaptive fresh-oracle count.  Published decoding and BCS
-Fiat--Shamir results, together with standard primitive, compiler,
-proof-assistant, and runtime assumptions, can remain stated assumptions.
+The accepted verifier callback is connected to the selected translated Rust
+through the stages just listed, not yet through its two terminal dot products.
+This is not a proof of every program function or the surrounding Solana
+runtime.  Published decoding and BCS Fiat--Shamir results, concrete SHA-256
+and Poseidon2 security, translation and proof-tool correctness, compilation,
+and the stated Solana account and persistence behavior remain explicit
+inputs.  The separate production zero-knowledge and numerical theft claims
+also require the external assumptions listed in this report.
 
 The archived program, proof, statement, build provenance, and finalized
 transaction make the implementation being discussed identifiable.  The Lean
-source makes the mathematical core mechanically checkable, and the focused
-Rust translations already cover many of the small functions used by the
-verifier.  The result is not whole-program verification, but it gives a
-precise, checkable account of what is proved and the exact equalities needed
-to complete the production connection.
+source makes the mathematical core mechanically checkable, and the generated
+Rust translations connect most of the accepting verifier path to those
+models.  The result is not whole-program, compiler, or runtime verification,
+and the unfinished final-dot connections are stated explicitly alongside the
+remaining external assumptions.

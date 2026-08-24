@@ -53,8 +53,8 @@ the SHA-256 collision event \\
 Production relation &
 \code{V5RelationStressSourceBridge},
 \code{V5AcceptedExecutionSecurityBridge} &
-Source-shaped relation results and explicit outer Rust equalities needed for
-\code{AcceptedRunExtractsTrace} \\
+Four accepted source rounds, final dot products, and the relation inputs used
+by the candidate-extraction event \\
 \addlinespace
 Soundness experiment &
 \code{V5FinalSecurityAccounting},
@@ -77,10 +77,10 @@ cryptographic comparisons \\
 \end{longtable}
 
 The arrows in this map are not all unconditional.  The encoder layer uses the
-cited decoding result, the transcript and opening layers retain enclosing
-Rust equalities, the probability layer retains event bounds, and the state
-layer retains Solana runtime premises.  Their names are part of the formal
-interfaces.
+cited decoding result, the accepted source layer trusts the translation tools
+and primitive callback semantics, the probability layer retains event bounds,
+and the state layer retains Solana runtime premises.  Their names are part of
+the formal interfaces.
 
 \section{Theorem index}
 \label{app:theorem-index}
@@ -195,8 +195,8 @@ accepted forest. \\
 \addlinespace
 \code{V5MerkleRustBridge} &
 \code{productionAcceptedForest_values_unique}: production values are unique
-under fixed roots and queries outside a SHA-256 collision, assuming the
-focused source equality. \\
+under fixed roots and queries outside a SHA-256 collision; the accepted-path
+Merkle theorem supplies the source connection for the released callback. \\
 \addlinespace
 \code{V5MerkleConsumedValueBridge} &
 \code{rustObservation_exposes_only_authenticated_fri_values}: the specified
@@ -290,9 +290,12 @@ The final result can be checked in four steps.
         discharge the released applicability premises.  Checked arithmetic
         then gives
         \(B_{\mathrm{core}}\leq0.7\cdot2^{-100}\).
-  \item Prove the deterministic production correspondences, making their
-        twelve mismatch events empty, and bound the six remaining primitive
-        and credential events by a total of at most
+  \item Complete the two production final-dot equalities and outer theorem to
+        discharge the selected verifier's transcript, relation, and opening
+        mismatches.  Prove the remaining
+        primitive, surrounding-code, compiler, and runtime correspondences,
+        making the other nine deterministic mismatch events empty, and bound the
+        six primitive and credential events by a total of at most
         \(0.3\cdot2^{-100}\).
 \end{enumerate}
 
@@ -313,10 +316,15 @@ stronger than its law.  If the law conditions on a completed work search, the
 37-bit work factor cannot still be charged.  If an application permits many
 attempts, it must model them or apply a justified multi-attempt bound.
 
-The full eighteen-entry external ledger remains the audit interface.  Twelve
-entries require deterministic correspondence proofs; the other six require
-concrete cryptographic or credential bounds.  A single informal statement such
-as ``standard cryptographic assumptions'' does not discharge either group.
+The full eighteen-entry external ledger remains the audit interface.  The
+completed accepted-path theorems discharge the selected verifier's transcript
+and opening entries and connect the relation through its decoded tail.  The
+two final-dot equalities and outer theorem are still required to discharge the
+complete relation entry.  The other deterministic entries still require
+primitive, surrounding-code, compiler, or runtime correspondence, while six
+entries require concrete cryptographic or credential bounds.  A single
+informal statement such as ``standard cryptographic assumptions'' does not
+discharge either group.
 Each field in \code{AssumedExternalSecurityBounds} refers to an event in the
 exact experiment, and deterministic events receive zero only after their
 correspondence premise has been proved.
@@ -324,9 +332,11 @@ correspondence premise has been proved.
 \section{Production-source checklist}
 \label{app:source-checklist}
 
-This checklist states what a complete source proof must establish.  ``Open''
-means that the pure or source-shaped Lean result exists but the universal
-equality for the named production function is not yet proved.
+This checklist states what the completed accepted-path source proofs establish
+and which source and surrounding boundaries remain.  ``Selected path'' means
+the function is covered as it is reached by one successful translated released
+callback; it does not claim a theorem for unrelated callers or the Solana
+runtime.
 
 \begin{longtable}{@{}R{0.34\textwidth}R{0.14\textwidth}R{0.46\textwidth}@{}}
 \caption{Production source audit.}\label{tab:source-checklist}\\
@@ -338,38 +348,38 @@ Production function or area & Status & Required equality \\
 Production function or area & Status & Required equality \\
 \midrule
 \endhead
-\code{Transcript::absorb} and \code{Transcript::squeeze_block} & Focused
-model & Exact labels, byte payloads, output hash, and state-advance hash are
-modeled; full all-input source equality must be inherited by the outer driver. \\
+\code{Transcript::absorb} and \code{Transcript::squeeze_block} & Selected
+path & Exact labels, byte payloads, output hash, and state-advance hash are
+followed by the accepted transcript execution. \\
 \addlinespace
 \code{Transcript::grinding_ok} and the six check-and-absorb helpers &
 Source-shaped proof and tests & Each nonce is checked against the pre-absorb
 state and correct difficulty, then absorbed once with its exact record. \\
 \addlinespace
 \code{v5_complete_transcript_before_final_with_statement_digest} and query
-derivation & Open & Prove \code{ExactRustV5TranscriptDriverEquality}, including
-all returned challenges, selector, and eighteen query positions. \\
+derivation & Selected path & The accepted run supplies all returned field and
+point challenges, the work successors, and eighteen distinct query positions. \\
 \addlinespace
-\code{verify_state_only_private_opening_from_proof_with_topology} & Open &
-Prove \code{VerifyStateOnlyPrivateOpeningWithTopologySourceEquality}: exact
-record slices, salt split, framed hash calls, shifted indices, slots, binary
-cap, frontier use, and returned suffix. \\
+\code{verify_state_only_private_opening_from_proof_with_topology} & Selected
+path & Exact record slices, salt split, framed hash calls, shifted indices,
+slots, binary cap, frontier use, and returned suffix. \\
 \addlinespace
-\code{verify_v5_private_openings_from_proof} & Open & Prove
-\code{VerifyV5DriverCompositionSourceEquality}: five calls in fixed order,
-each supplied with the prior suffix, with no final bytes left. \\
+\code{verify_v5_private_openings_from_proof} & Selected path & Five calls in
+fixed order, each supplied with the prior suffix, with no final bytes left. \\
 \addlinespace
-\code{check_v5_fri_queries} and its opening lookups & Open outer equality &
-Show every algebraic read is exactly the decoded value portion returned by the
-authenticated opening driver. \\
+\code{check_v5_fri_queries} and its opening lookups & Selected path & Every
+accepted algebraic read is the decoded value portion returned by the
+authenticated opening driver in the same execution. \\
 \addlinespace
-\code{prepare_v5_pcs_claims}, compact folds, and relation rounds & Partial &
-Focused arithmetic and source-shaped equalities are checked; prove the
-enclosing relation caller and raw-success equality. \\
+\code{prepare_v5_pcs_claims}, compact folds, and relation rounds & Partial
+selected path & The exact claim table, prepared claims, initial relation value,
+decoded tail, challenges, and four ordered rounds are connected.  The general
+and compact final-dot equalities and outer caller theorem remain open. \\
 \addlinespace
-All nineteen relation columns and public inputs & Open composition & Prove
-\code{AcceptedRunExtractsTrace}, with no omitted column, residual, fold,
-public field, final coefficient, hash row, or spend Merkle path. \\
+All nineteen relation columns and public inputs & Security-event boundary &
+The deterministic accepted path supplies the opening and relation values.
+Concrete extraction and primitive bounds must cover any false candidate or
+trace that does not encode a valid spend witness. \\
 \addlinespace
 \code{verify_and_apply_atomic_payment_state_traced_inner} & Open & Prove
 \code{ExactCurrentRustStateEquality}, including account roles, owners,

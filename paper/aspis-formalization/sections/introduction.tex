@@ -16,19 +16,23 @@ different kinds of evidence:
   \item focused Rust-to-Lean translations and source-shaped bridge theorems;
   \item build and transaction records for the binary that ran on Solana.
 \end{enumerate}
-Together they describe the mathematical verifier, selected production code,
-the compiled program, and one finalized execution.  The report keeps the
-scope of each result clear so that future source proofs can be added without
-changing the mathematical statement.
+Together they provide a checked mathematical verifier, a source connection
+that is complete through the decoded relation tail, the compiled program, and
+one finalized execution.  The two production final-dot equalities and their
+outer composition remain open at this paper snapshot.  The report keeps that
+unfinished source work and the compiler, cryptographic, and runtime
+boundaries separate from the statements that Lean checks.
 
 The principal result is a checked security decomposition, not an unconditional
 claim of 100-bit deployed security.  Every accepted false outcome in the
-modeled experiment lies in one ideal-protocol event or one of eighteen named
-events for source correspondence, primitive security, credentials, or runtime
-behavior.  Lean proves that this compact ledger covers exactly the same union
-as the earlier detailed ledger and derives the combined probability bound in
-one sample space.  This turns the remaining work into explicit proof
-obligations instead of hiding it inside one broad implementation assumption.
+modeled experiment lies in one ideal-protocol event or one of the explicitly
+named primitive, credential, and runtime events.  Lean proves the event
+decomposition and derives the combined probability bound in one sample space.
+For the selected verifier path, separate theorems obtain the deterministic
+transcript, opening, FRI, claim-table, initial-relation, and relation-tail
+evidence from one successful translated Rust execution instead of accepting
+those intermediate equalities as inputs.  The two final relation dot products
+are not yet included in that result.
 
 The mathematical background is kept short.  Most of the report is devoted to
 the formal model, security experiment, proof reductions, and source locations.
@@ -50,9 +54,11 @@ The contributions reported here are:
         prefix-timed four-round candidate argument, and the exact bounded
         distinct-query calculation.
   \item Byte-level transcript and five-tree Merkle specifications, together
-        with source-shaped and focused Charon/Aeneas proofs that identify the
-        exact remaining equalities for the enclosing production Rust
-        functions.
+        with focused Charon/Aeneas translations and Lean proofs connecting
+        one successful translated production verifier run to the transcript,
+        authenticated values, FRI checks, exact claim table, initial relation
+        value, and decoded relation tail used by the mathematical argument.
+        Two final-dot equalities and their outer composition remain open.
   \item Fixed-victim and observed-history theft reductions, plus explicit
         state models for account checks, the non-overwritable spent marker,
         rollback, finalized persistence, and close/refund behavior.
@@ -76,11 +82,12 @@ statement, and before/after state.
 The \(2^{-100}\) result is a conditional budget theorem for the
 work-normalized experiment defined in Lean.  It is not the headline claim
 that deployed V5 has an unconditional 100-bit false-acceptance bound.  The
-main project-specific work still open is the universal equality between an
-accepting production verifier run and the complete Lean trace.  The published
-decoding and BCS Fiat--Shamir results, SHA-256 and Poseidon2 security, the
-proof assistant, compiler, and Solana runtime are stated as ordinary trusted
-inputs.
+selected accepting verifier path is connected to the maintained models in
+Lean through its decoded relation tail; the two final-dot connections remain
+open.  This also does not verify the compiler, every program function, or the
+Solana runtime.  The published decoding and BCS Fiat--Shamir results, SHA-256
+and Poseidon2 security, the proof assistant and translation tools, compiler,
+and Solana runtime are stated as trusted inputs.
 The mathematical privacy and theft reductions are reported separately from a
 full production privacy or raw theft bound.  \Cref{sec:limitations} gives the
 complete list.

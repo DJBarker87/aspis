@@ -64,9 +64,9 @@ emphasizes that a high-level security proof and a low-level verifier must be
 connected explicitly \cite{FirsovLivshits2024}.  Aspis contributes a different
 point in this space: a maintained application-specific verifier, checked
 private-spend and state semantics, focused translations of selected production
-Rust, and exact outer equalities for the source still to be proved.  Its main
-source result is therefore a precise decomposition, not a completed
-whole-program equivalence theorem.
+Rust, and a theorem deriving the mathematical evidence from one successful
+translated verifier execution.  Its main source result is deliberately scoped
+to that accepted proof-checker path, not a whole-program equivalence theorem.
 
 \subsection{Private payments and Solana verification}
 
@@ -88,10 +88,11 @@ LightProtocolSetup2026}.
 The comparison in \cref{tab:related-comparison} concerns the features needed
 for this paper, not overall product quality.  ``Checked'' means a
 machine-checked security development, not merely a verified build or passing
-test suite.  ``Source link'' distinguishes equivalence to executable code from
-a high-level protocol model.  Aspis is marked partial in both columns because
-substantial Lean and focused source results exist while the enclosing
-production equalities remain open.
+test suite.  ``Source link'' distinguishes a theorem about selected executable
+code from a high-level protocol model.  Aspis is marked partial under checked
+security because its numerical conclusion still uses published cryptographic
+results and primitive-security bounds.  Its source link covers the selected
+accepting proof-checker path, not every program or runtime function.
 
 \begin{table}[ht!]
 \centering
@@ -111,7 +112,7 @@ ArkLib \cite{ArkLib2026} & several systems & no & no & no & framework & planned 
 Protocol 01 \cite{Protocol01Repository2026} & yes & yes & split & devnet & no & no \\
 solana-pqzk \cite{Yano2026SolanaPQZK} & yes & no & no & devnet & no & no \\
 Privacy Cash \cite{PrivacyCashSetup2026,PrivacyCashMainnet2026} & no & yes & yes & mainnet & no & no \\
-Aspis & yes & yes & atomic & archived mainnet & partial & selected; outer equality open \\
+Aspis & yes & yes & atomic & archived mainnet & partial & selected accepted path \\
 \bottomrule
 \end{tabular}
 \end{table}

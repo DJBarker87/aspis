@@ -35,12 +35,11 @@ are not silently included.
 \subsection{Focused extraction}
 
 Charon translates selected safe Rust into its LLBC representation.  Aeneas
-then produces pure Lean functions and proof obligations.  This approach is
-well suited to small parser and arithmetic helpers, but broad Solana functions
-contain framework types, function pointers, syscalls, and control flow that
-are outside the convenient extraction subset.  The project therefore uses
-focused extractions and source-shaped Lean functions for the remaining outer
-drivers.
+then produces pure Lean functions and proof obligations.  Broad Solana
+functions contain framework types, function pointers, syscalls, and control
+flow outside the selected proof scope, so the project uses focused
+extractions for the verifier callback and source-shaped models for the
+surrounding transaction and runtime behavior.
 
 For each connection we distinguish three statements:
 \begin{enumerate}[leftmargin=*]
@@ -48,8 +47,11 @@ For each connection we distinguish three statements:
   \item the source-shaped composition equals that model;
   \item the production Rust function equals the source-shaped composition.
 \end{enumerate}
-Only the third statement turns the first two into a production theorem.  When
-that statement is open, it appears as a named predicate.
+Only the third statement turns the first two into a production theorem.  The
+current accepted-path work proves this connection through the exact initial
+relation value and decoded relation tail.  The two production final-dot
+equalities and their outer composition remain unfinished; boundaries outside
+that source path remain named as well.
 
 \subsection{Transcript coverage}
 
@@ -59,13 +61,13 @@ immediately before its nonce absorb, and proves that the values supplied to
 the FRI and relation code come from the named squeeze results.  The source
 adapter also decodes the exact fixed-body slices and exact selector byte.
 
-The remaining boundary is the universal equality
-\code{ExactRustV5TranscriptDriverEquality}.  Its arguments make the claim
-precise: decode one accepted Rust input into \code{V5TranscriptInputs}, decode
-the returned challenge values, and show that the real driver returns the same
-event trace and consumption record as \code{sourceShapedTranscriptDriver}.
-No theorem in the paper treats this equality as already proved for the full
-production driver.
+Focused translations cover the production field, nonzero-field,
+out-of-domain, secure-circle, and distinct-query samplers.  The accepted-entry
+proof connects their outputs to the exact values consumed by the FRI and
+relation calls in the same successful execution.  The generic equality
+\code{ExactRustV5TranscriptDriverEquality} remains an interface for other
+callers, but it is not a premise of the completed accepted-entry sampler
+proofs.
 
 The transcript hash itself is separated from hash security.  The deterministic
 model says which bytes are hashed and in which order.  The cryptographic model
@@ -76,27 +78,23 @@ random-oracle behavior.
 
 \subsection{Merkle coverage}
 
-The source-shaped Merkle proof is split at two actual Rust functions.  The
-focused helper predicate
-\code{VerifyStateOnlyPrivateOpeningWithTopologySourceEquality} says that the
-helper succeeds exactly when one encoded section has a valid
-\code{ExactSectionTrace} and the returned slice is the literal remainder.
-The outer predicate \code{VerifyV5DriverCompositionSourceEquality} says that
-the five-section Rust driver calls the helper in the fixed tree order, passes
-each remainder to the next call, and requires the final remainder to be
-empty.
+The opening proof follows the actual helper and five-section driver reached by
+the accepted production entry.  It inverts the successful generated execution
+into five exact section traces.  Each trace records the encoded value and salt,
+the tree position, the radix-four levels, the binary cap, the frontier, and the
+literal returned remainder.  The driver proof fixes the five tree order and
+shows that the last call leaves no trailing opening bytes.
 
-Lean proves that these two equalities imply
-\code{VerifyV5PrivateOpeningsFromProofSourceEquality}.  From that statement,
-successful production verification yields an \code{AcceptedV5Forest}.  The
-forest contains one accepted path for every value consumed by the later FRI
-checks.  Outside the explicit SHA-256 collision event, those values are unique
-under the supplied roots and query set.
+Those traces construct an \code{AcceptedV5Forest}.  A separate consumer proof
+shows that the later FRI checks read the value portions returned by these same
+opening calls.  Outside the explicit SHA-256 collision event, the values are
+unique under the supplied roots and query set.
 
-This is materially narrower than assuming that ``Rust acceptance yields a
-forest.''  The remaining work is attached to the two functions that must be
-extracted or otherwise proved equal.  SHA-256 collision resistance remains a
-separate assumption even after those deterministic equalities are proved.
+Thus the accepted-path Merkle theorem does not assume that Rust acceptance
+yields an authenticated forest.  It derives the forest and the consumer
+observation from the successful translated execution.  SHA-256 collision
+resistance and the Solana SHA syscall semantics remain separate assumptions
+after this deterministic source connection.
 
 \subsection{Relation and candidate coverage}
 
@@ -106,12 +104,14 @@ Theorems in \code{V5RelationStressSourceBridge} show that the source-shaped
 caller implies the pure modeled relation checks and that its final
 coefficients equal the values supplied to FRI.
 
-The remaining predicates identify exact production equalities rather than a
-general statement that Rust is correct.  They include
-\code{ExactRustRelationVerifierEquality},
-\code{ExactRustMode9RelationCallerEquality}, and the final raw-success
-connection.  Other source modules prove the M31/QM31 arithmetic kernels,
-prepared-claim packing, row selection, and compact fold body separately.
+The accepted-entry caller is connected to the unchanged extracted relation
+verifier through the exact 76 decoded claims, four prepared claims, initial
+relation value, and 58-field tail consumed by the four ordered rounds.  The
+same four fold challenges and final polynomial are shared with the FRI call.
+The low-mask main-weight arithmetic and compact constructor and prepared
+two- and three-product kernels are proved separately.  The remaining work is
+to connect the complete main and compact accumulators to their terminal dot
+products and then use both equalities in the outer caller theorem.
 
 The final candidate construction also has to connect authenticated values and
 transcript challenges to the eligibility, support, message, and response
@@ -166,19 +166,20 @@ deployment.
 \toprule
 Area & Checked result & Remaining statement \\
 \midrule
-Transcript & Exact pure schedule, primitive hash framing, six work checks,
-and consumed challenge mapping &
-\code{ExactRustV5TranscriptDriverEquality} for the enclosing production driver \\
-Merkle helper & Exact parser, value/salt split, hash inputs, slots, binary cap,
-frontier use, and returned remainder &
-\code{VerifyStateOnlyPrivateOpeningWithTopologySourceEquality} \\
-Merkle driver & Exact order of five sections and empty final remainder &
-\code{VerifyV5DriverCompositionSourceEquality} \\
-FRI reads & Every source-shaped FRI read comes from an authenticated returned
-opening & Production equality for the enclosing opening/FRI consumer \\
-Relation & Prepared claims, compact four-round evaluator, fold/weight algebra,
-and final coefficients & Exact equality for the outer Rust relation caller and
-its raw-success predicate \\
+Transcript & Exact schedule, hash framing, production field/point samplers,
+six work checks, and consumed challenge mapping for the accepted callback &
+SHA-256 syscall and random-oracle assumptions; translation-tool trust \\
+Merkle openings & Exact parser, value/salt split, hash inputs, slots, binary
+cap, frontier, returned remainder, five-section order, and authenticated
+consumer observation & SHA-256 syscall semantics and collision resistance \\
+FRI reads & Every accepted FRI read comes from the authenticated opening
+returned by the same production execution; exact four folds and final
+polynomial & Published decoding/Fiat--Shamir results and primitive-security
+bounds \\
+Relation & Exact 76-claim table, four prepared claims, initial relation value,
+58-field tail, and four ordered rounds from the same accepted call & Complete
+the main and compact accumulator final-dot equalities and outer composition;
+published Fiat--Shamir result and primitive-security bounds \\
 Spend state & Five account roles, bump 255, marker and pool writes, close/refund
 projection & Current Rust equality and Solana runtime premises \\
 Hash primitives & Fixed inputs and known-answer executions & Concrete

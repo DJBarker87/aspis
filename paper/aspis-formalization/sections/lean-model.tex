@@ -164,13 +164,14 @@ proves exact event counts, uniqueness of operation slots, payload widths, and
 the immediate check-before-absorb ordering for every work nonce.
 
 The source adapter decodes the fixed Rust body slices into transcript inputs
-and constructs the same pure event list.  It proves that the exact derived
-values passed to later checks are \(\gamma\), \(\kappa\), the relation
-challenges, out-of-domain points and mixes, four fold challenges, selector,
-and eighteen query positions.  The smallest remaining executable statement
-is \code{ExactRustV5TranscriptDriverEquality}: the production driver, after
-decoding, returns the same trace and consumed values as this source-shaped
-driver.
+and constructs the same pure event list.  The accepted-execution bridge starts
+from one successful translated production call and derives the exact values
+passed to later checks: \(\gamma\), \(\kappa\), the relation challenges,
+out-of-domain points and mixes, four fold challenges, selector, and eighteen
+query positions.  The generic interface
+\code{ExactRustV5TranscriptDriverEquality} remains useful for other callers,
+but the completed accepted-entry transcript proofs do not take that
+whole-driver equality as an input.
 
 \subsection{Authenticated openings}
 
@@ -193,13 +194,14 @@ requires the last remainder to be empty.  From an \code{ExactV5Run}, Lean
 constructs an \code{AcceptedV5Forest}.  It then proves that every value read by
 the FRI schedule is the value part of an authenticated record.
 
-The outer Rust connection remains explicit.  The focused helper equality is
-\code{VerifyStateOnlyPrivateOpeningWithTopologySourceEquality}; the five-call
-driver equality is \code{VerifyV5DriverCompositionSourceEquality}.  Together
-they imply the former whole-driver premise
-\code{VerifyV5PrivateOpeningsFromProofSourceEquality}.  Outside the explicit
-SHA-256 collision event, \code{productionAcceptedForest_values_unique} proves
-that accepted forests under the same roots and queries expose the same values.
+The focused helper and five-call driver have separate generated-source proofs
+covering the parser, returned remainder, topology, frontier, hash inputs, and
+fixed section order.  The accepted-execution bridge applies those results to
+the opening call made by the same successful verifier run and constructs its
+\code{AcceptedV5Forest}; it does not ask the caller to provide a forest or a
+whole-driver equality.  Outside the explicit SHA-256 collision event,
+\code{productionAcceptedForest_values_unique} proves that accepted forests
+under the same roots and queries expose the same values.
 
 \subsection{State model}
 

@@ -104,8 +104,10 @@ computational indistinguishability for an adversary's output or justify why
 each statistical-distance premise is appropriate.  The current development
 does not make that conversion.
 
-The transcript step can become exact once
-\code{ExactRustV5TranscriptDriverEquality} is proved;
+The accepted-path transcript proofs identify the values used by one
+successful verifier execution, but that is not equality of the two prover
+output distributions used here.  The privacy step still needs a general
+driver-law result such as \code{ExactRustV5TranscriptDriverEquality};
 \code{transcript_law_matches_source_of_exact_driver} then gives equality of
 the output laws.  The fixed-function salted-Merkle result
 \code{fixed_function_merkle_commitment_step} supplies an idealized commitment

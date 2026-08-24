@@ -101,6 +101,14 @@ complete interface of the present endpoint.  A later source proof can show
 that some event is empty or assign it budget zero.  Until then, the event
 remains visible.
 
+For the selected released proof-checker path, the accepted-execution theorem
+discharges entries 2, 10, and 11: transcript divergence, the relation bridge,
+and the proof/Merkle opening bridge.  It does so from one successful
+translated execution rather than by assigning those events small
+probabilities.  Entry 3 remains the explicit SHA-256 callback-semantics
+boundary, and entries 7 and 13--19 remain primitive, surrounding-code, or
+Solana-runtime boundaries.
+
 \subsection{Deterministic premises and probabilistic events}
 
 The ledger has two uses that should not be confused.  As an audit ledger, it
@@ -238,8 +246,10 @@ queries and rejection sampling correctly, and bounds the SHA-256-to-random-
 oracle difference.  At the aggregate endpoint,
 \code{WorkNormalizedCoreEventConnection} identifies that production event
 with the protocol event used by the BCS bound.  Neither interface asks for a
-new four-way FRI theorem.  Closing it requires the enclosing Rust transcript
-equality and the published BCS/random-oracle assumptions.
+new four-way FRI theorem.  The accepted-path transcript proofs supply the
+exact deterministic schedule and consumed values.  The published BCS
+result, its production-event applicability, and the SHA-256 random-oracle
+assumption remain external cryptographic inputs.
 
 \subsection{Resource-bounded form}
 

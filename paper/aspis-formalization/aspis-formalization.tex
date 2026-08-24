@@ -43,12 +43,12 @@
 \newcolumntype{T}{>{\raggedright\arraybackslash\ttfamily}p{0.34\textwidth}}
 \newcolumntype{P}{>{\raggedright\arraybackslash}p{0.58\textwidth}}
 
-\title{\Aspis: A Lean-Checked Security Decomposition\\
-{\large for a Deployed Private-Spend Verifier}}
+\title{\Aspis: From Lean-Checked Private-Spend Mathematics\\
+{\large to a Solana Mainnet Execution}}
 \author{Dominic Barker}
-\date{15 August 2026}
+\date{24 August 2026}
 \hypersetup{
-  pdftitle={Aspis: A Lean-Checked Security Decomposition for a Deployed Private-Spend Verifier},
+  pdftitle={Aspis: From Lean-Checked Private-Spend Mathematics to a Solana Mainnet Execution},
   pdfauthor={Dominic Barker},
   pdfsubject={Formal model, soundness analysis, Rust correspondence, and Solana execution evidence},
   pdfkeywords={Lean 4, STARK, private spend, circle code, FRI, Rust, Solana}
@@ -63,28 +63,32 @@
 program.  A recorded mainnet transaction verified a 75,358-byte proof,
 published its nullifier, and updated the pool state in 1,334,452 compute units.
 
-The main contribution is a machine-checked security decomposition for that
-verifier.  In one finite Lean 4 experiment, every accepted false statement is
-covered by one ideal-protocol event or one of eighteen named source,
-primitive, credential, and runtime events.  Lean proves that this ledger has
-no duplicate entries, describes the same union as the earlier detailed
-ledger, and needs no independence assumption.  The development also checks
-the private-spend relation after extraction, the released M31 circle domains
-and encoders, a prefix-timed four-fold FRI candidate argument, distinct-query
-sampling, transcript and five-tree Merkle models, theft reductions, and the
-spent-marker state transition.
+The main contribution is a checked mathematical security argument together
+with a detailed, partly completed connection to the production verifier.
+Charon extracts selected production Rust and Aeneas translates it into Lean.
+Further Lean proofs start from one successful translated verifier execution
+and derive its transcript values, six work checks, eighteen selected queries,
+five authenticated opening trees, four FRI folds, final polynomial, exact
+76-claim table, initial relation value, and 58-field relation tail.  At the
+paper snapshot, the general and compact final-dot equalities and their outer
+composition remain to be proved.  Separately, a finite Lean 4 security
+experiment covers accepted false statements by an ideal-protocol event or a
+named external cryptographic or runtime event.  Lean
+checks the private-spend relation, released M31 circle domains and encoders,
+the four-fold FRI candidate argument, distinct-query sampling, theft
+reductions, and spent-marker state transition.
 
 As a conditional numerical consequence, the work-normalized protocol budget
 is at most \(0.7\cdot2^{-100}\); if the remaining probabilistic terms total at
 most \(0.3\cdot2^{-100}\), the combined budget is at most \(2^{-100}\).
 Separate raw accounting does not charge completed grinding work and leaves a
-\(2^{-70}\) term plus explicit cryptographic and production terms.  Focused
-Charon/Aeneas translations and a byte-for-byte reproducible Solana binary
-support the source and deployment connection.  The main project-specific
-premise still to prove universally is that every accepting production Rust
-execution yields the exact Lean trace; published decoding and Fiat--Shamir
-results and standard primitive, toolchain, and runtime assumptions remain
-stated inputs.
+\(2^{-70}\) term plus explicit cryptographic and runtime terms.  The deployed
+Solana program is byte-for-byte reproducible from the recorded source and
+tools, and its finalized mainnet execution is archived.  The result is not a
+verification of Charon, Aeneas, Lean, the Rust/SBF compiler, Solana, SHA-256,
+or Poseidon2.  Published circle-decoding and Fiat--Shamir results, concrete
+primitive-security bounds, compiler correctness, and runtime behavior remain
+explicit inputs rather than being presented as Lean conclusions.
 \end{abstract}
 
 \input{sections/introduction}

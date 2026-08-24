@@ -1,36 +1,41 @@
 \section{Assumptions and remaining verification}
 \label{sec:limitations}
 
-Most of the mathematical core is checked in Lean.  The main project-specific
-gap is end-to-end production-code correspondence.  Published decoding and
-Fiat--Shamir results, primitive security, and toolchain/runtime correctness
-are the standard stated inputs for the concrete instantiation.
+Most of the mathematical core is checked in Lean.  The selected accepting
+verifier path is connected to those models through generated Lean and bridge
+proofs up to the decoded relation tail.  Its two final-dot equalities and
+outer composition are still open.  Published decoding and Fiat--Shamir results, primitive
+security, translation and proof-tool correctness, compilation, and Solana
+runtime behavior remain stated inputs for the concrete instantiation.
 
 \subsection{End-to-end code connection}
 
-The main open theorem is that every accepting production verifier run
-produces exactly the values consumed by the Lean spend model.  This includes
-parsing, all nineteen relation columns, public inputs, the transcript,
-authenticated openings, folds, final polynomial, and the state callback.
-Lean already proves the spend relation once those values have been extracted.
+For the released proof callback, the accepted-execution work starts from
+success of the translated production entry point.  It derives the parsed
+values, transcript challenges, work checks, selected queries, authenticated
+openings, FRI comparisons, final polynomial, exact claim table, initial
+relation value, and decoded relation tail from that same run.  These are not
+independent hypotheses.  The general and compact terminal dot products have
+not yet been connected to their mathematical calculations, so the outer
+accepted-execution theorem is not claimed in this snapshot.
 
-The production proof is divided into focused equalities for the enclosing
-transcript driver, one Merkle-section helper, the five-section Merkle caller,
-the FRI consumer, the relation caller, the spend transition, and the close
-path.  Small arithmetic, parsing, buffer, transcript, and Merkle functions
-already have source-shaped or Charon/Aeneas proofs.  The exact remaining
-function list is in \cref{app:source-checklist}.
+This is not whole-program verification.  The source proof covers the selected
+accepting verifier callback, not every dispatch, upload, diagnostic, host, or
+cleanup path.  The surrounding spend transition and close/refund models retain
+their stated Rust-to-model and Solana-runtime boundaries.  Charon, Aeneas,
+Lean, the compiler, and the Solana runtime are trusted rather than verified by
+the result.  The exact source path is in \cref{app:source-checklist}.
 
 \subsection{How the assumptions enter the theorem}
 
-The audit ledger retains source and runtime mismatches as named events so that
-none can disappear from the proof.  The conventional cryptographic statement
-instead assumes the twelve deterministic production correspondences and
-assigns probability only to the protocol, primitive, and credential events.
-Under those correspondences, the deterministic event sets are empty and take
-budget zero.  This is the specialization in
-\cref{eq:deterministic-probabilistic-split}; it does not assign a fictional
-tiny failure probability to parser correctness or rollback semantics.
+The general audit ledger retains source and runtime mismatches as named events
+so that none can disappear from the proof.  Completed accepted-path theorems
+discharge the deterministic verifier correspondences through the relation
+tail; the two final-dot correspondences are not yet discharged.  The
+conventional cryptographic statement assigns probability only to
+the remaining protocol, primitive, credential, toolchain, and runtime events.
+It does not assign a fictional tiny failure probability to parser correctness,
+compiler correctness, or rollback semantics.
 
 \subsection{V5 soundness status}
 
@@ -41,11 +46,13 @@ and final probability arithmetic.  This proves the V5-specific four-way FRI
 part rather than assuming that the different S-two folding protocol applies
 unchanged.
 
-The final event interface identifies the event extracted from production with
-the event covered by the published BCS state-restoration theorem.  Its
-remaining inputs are the production transcript equality and the stated BCS
-and SHA-256 random-oracle assumptions.  They are part of the code connection
-and standard cryptographic model, not a separate unfinished V5 FRI theorem.
+The final event interface states how the event extracted from the selected
+production path is identified with the event covered by the published BCS
+state-restoration theorem.  The deterministic transcript schedule and
+samplers are checked in the source bridge; completing the two final-dot links
+will supply the remaining deterministic caller input.  The published BCS
+theorem and SHA-256 random-oracle model remain external cryptographic inputs,
+not an unfinished V5 FRI code theorem.
 
 The \(2^{-100}\) theorem is a work-normalized conditional budget theorem.  The
 resource-bounded form in \cref{eq:resource-bounded-advantage} and the raw theft
@@ -98,10 +105,11 @@ Poseidon2 functions are supplied \\
 Circle domains and encoders & Checked in Lean & Published decoding result is
 used as a stated theorem \\
 Four-round FRI and candidate chain & Checked in Lean & Published BCS
-Fiat--Shamir theorem and SHA-256 random-oracle assumption apply once the
-production equality is supplied \\
-Transcript, Merkle, and relation source models & Checked in Lean & Enclosing
-production Rust equalities remain \\
+Fiat--Shamir theorem and SHA-256 random-oracle assumption remain external \\
+Transcript, Merkle, FRI, and relation accepted source path & Checked through
+the claim table, initial relation value, and decoded relation tail & Two
+production final-dot equalities and outer composition remain; translation-tool
+trust and primitive callback semantics remain external \\
 Work-normalized \(2^{-100}\) budget composition & Checked in Lean & Exact
 event connection and six probabilistic external bounds are supplied;
 deterministic correspondences take budget zero \\
