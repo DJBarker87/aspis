@@ -69,7 +69,7 @@ theorem accepted_fold_successors_and_alpha_decode_are_same_values
       V5AcceptedEntryGenerated.v5_cu_probe.decode_v5_fri_alphas parsed =
         .ok (.Ok alphas)) :
     AcceptedFoldChallengeProjection parsed alphas := by
-  obtain ⟨zero, alpha0, alpha1, alpha2, alpha3, _, decode0, decode1,
+  obtain ⟨alpha0, alpha1, alpha2, alpha3, decode0, decode1,
       decode2, decode3, alphasExact⟩ :=
     AspisV5AcceptedEntryAlphaDecode.decode_v5_fri_alphas_success_calls
       parsed alphas alphaSuccess
