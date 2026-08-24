@@ -273,8 +273,154 @@ decreasing_by all_goals
   rw [nextEnd, nextStart]
   omega
 
+private def reversedFactors (values : alloc.vec.Vec RawQM31) :
+    alloc.vec.Vec RawQM31 :=
+  ⟨values.val.reverse, by simpa using values.property⟩
+
+/-- A successful circle-tensor wrapper passes a canonical reversed factor
+vector to the common tensor insertion helper. -/
+theorem addCircleTensorSuccessCanonicalFactors
+    (weights output :
+      V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator)
+    (scale : RawQM31)
+    (point : V5RelationFullGenerated.aspis_core.circle.SecureCirclePoint)
+    (xCanonical : CanonicalQM31 point.x)
+    (yCanonical : CanonicalQM31 point.y)
+    (success :
+      V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator.add_circle_tensor
+          weights scale point = .ok (.Ok (), output)) :
+    ∃ factors,
+      V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator.add_tensor_factors
+          weights scale factors = .ok (.Ok (), output) ∧
+      CanonicalList factors.val := by
+  unfold
+    V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator.add_circle_tensor
+    at success
+  by_cases short : weights.log_len < 2#u32
+  · rw [if_pos short] at success
+    simp at success
+  · rw [if_neg short] at success
+    simp only [Aeneas.Std.lift, bind_tc_ok] at success
+    let empty := alloc.vec.Vec.with_capacity RawQM31
+      (UScalar.cast .Usize weights.log_len)
+    generalize firstPush : alloc.vec.Vec.push empty point.y = firstResult
+      at success
+    cases firstResult with
+    | fail error => simp at success
+    | div => simp at success
+    | ok first =>
+        simp only [bind_tc_ok] at success
+        have firstValues := pushSuccessExact empty first point.y firstPush
+        have firstCanonical : EveryCanonical first.val := by
+          rw [firstValues]
+          exact everyCanonical_append [] point.y (by simp [EveryCanonical])
+            yCanonical
+        generalize secondPush : alloc.vec.Vec.push first point.x = secondResult
+          at success
+        cases secondResult with
+        | fail error => simp at success
+        | div => simp at success
+        | ok second =>
+            simp only [bind_tc_ok] at success
+            have secondValues := pushSuccessExact first second point.x
+              secondPush
+            have secondCanonical : EveryCanonical second.val := by
+              rw [secondValues]
+              exact everyCanonical_append first.val point.x firstCanonical
+                xCanonical
+            generalize loopEquation :
+                V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator.add_circle_tensor_loop
+                  { start := 2#u32, «end» := weights.log_len } second
+                  point.x = loopResult at success
+            cases loopResult with
+            | fail error => simp at success
+            | div => simp at success
+            | ok loopFactors =>
+                simp only [bind_tc_ok] at success
+                have loopCanonical := circleFactorLoopSuccessCanonical
+                  { start := 2#u32, «end» := weights.log_len } second
+                  loopFactors point.x secondCanonical xCanonical loopEquation
+                let finalFactors := reversedFactors loopFactors
+                have finalCanonical : CanonicalList finalFactors.val := by
+                  apply everyCanonical_toCanonicalList
+                  simpa [finalFactors, reversedFactors] using
+                    everyCanonical_reverse loopFactors.val loopCanonical
+                refine ⟨finalFactors, ?_, finalCanonical⟩
+                simpa [empty, finalFactors, reversedFactors,
+                  alloc.vec.Vec.deref_mut, core.slice.Slice.reverse] using
+                    success
+
+/-- A successful line-tensor wrapper passes a canonical reversed factor
+vector to the common tensor insertion helper. -/
+theorem addLineTensorSuccessCanonicalFactors
+    (weights output :
+      V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator)
+    (scale x : RawQM31) (xCanonical : CanonicalQM31 x)
+    (success :
+      V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator.add_line_tensor
+          weights scale x = .ok (.Ok (), output)) :
+    ∃ factors,
+      V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator.add_tensor_factors
+          weights scale factors = .ok (.Ok (), output) ∧
+      CanonicalList factors.val := by
+  unfold
+    V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator.add_line_tensor
+    at success
+  simp only [Aeneas.Std.lift, bind_tc_ok] at success
+  let empty := alloc.vec.Vec.with_capacity RawQM31
+    (UScalar.cast .Usize weights.log_len)
+  generalize loopEquation :
+      V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator.add_line_tensor_loop
+        { start := 0#u32, «end» := weights.log_len } weights.log_len x
+        empty = loopResult at success
+  cases loopResult with
+  | fail error => simp at success
+  | div => simp at success
+  | ok loopFactors =>
+      simp only [bind_tc_ok] at success
+      have loopCanonical := lineFactorLoopSuccessCanonical
+        { start := 0#u32, «end» := weights.log_len } weights.log_len x
+        empty loopFactors xCanonical
+        (by simp [empty, EveryCanonical, alloc.vec.Vec.with_capacity])
+        loopEquation
+      let finalFactors := reversedFactors loopFactors
+      have finalCanonical : CanonicalList finalFactors.val := by
+        apply everyCanonical_toCanonicalList
+        simpa [finalFactors, reversedFactors] using
+          everyCanonical_reverse loopFactors.val loopCanonical
+      refine ⟨finalFactors, ?_, finalCanonical⟩
+      simpa [empty, finalFactors, reversedFactors,
+        alloc.vec.Vec.deref_mut, core.slice.Slice.reverse] using success
+
+/-- A successful common tensor insertion fixes the exact number of supplied
+factors to the accumulator log length. -/
+theorem addTensorFactorsSuccessLength
+    (weights output :
+      V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator)
+    (scale : RawQM31) (factors : alloc.vec.Vec RawQM31)
+    (success :
+      V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator.add_tensor_factors
+          weights scale factors = .ok (.Ok (), output)) :
+    factors.val.length =
+      (UScalar.cast .Usize weights.log_len).val := by
+  unfold
+    V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator.add_tensor_factors
+    at success
+  simp only [Aeneas.Std.lift, bind_tc_ok] at success
+  by_cases mismatch :
+      alloc.vec.Vec.len factors != UScalar.cast .Usize weights.log_len
+  · rw [if_pos mismatch] at success
+    simp at success
+  · have exactLength :
+        alloc.vec.Vec.len factors = UScalar.cast .Usize weights.log_len := by
+      simpa only [bne_iff_ne, ne_eq, not_not] using mismatch
+    exact congrArg UScalar.val exactLength
+
 #print axioms doubleXSuccessCanonical
 #print axioms circleFactorLoopSuccessCanonical
 #print axioms lineFactorLoopSuccessCanonical
+#print axioms addCircleTensorSuccessCanonicalFactors
+#print axioms addLineTensorSuccessCanonicalFactors
+#print axioms addTensorFactorsSuccessLength
 
 end AspisV5AcceptedTensorFactorCanonical
