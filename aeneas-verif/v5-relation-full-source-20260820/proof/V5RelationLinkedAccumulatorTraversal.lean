@@ -400,7 +400,157 @@ theorem foldSuccessExposesComponent
               alpha3Run, dispatchRun, componentRun, ?_, outputReleased, rfl⟩
             simpa using outputCell
 
+/-- The in-place traversal neither inserts nor removes components. -/
+private theorem loopSuccessPreservesComponentLength
+    (current : RawWeights) (componentIndex : Std.Usize)
+    (currentLog : Std.U32) (alpha alpha2 alpha3 : RawQM31)
+    (preparedAlpha preparedAlpha2 : RawPrepared)
+    (outputLog : Std.U32) (outputComponents : alloc.vec.Vec Component)
+    (success :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.fold_all_components_arity4_loop
+          current currentLog alpha alpha2 alpha3 preparedAlpha preparedAlpha2
+            componentIndex = .ok (outputLog, outputComponents)) :
+    outputComponents.val.length = current.components.val.length := by
+  unfold
+    V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.fold_all_components_arity4_loop
+    at success
+  rw [Aeneas.Std.loop.eq_def] at success
+  unfold
+    V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.fold_all_components_arity4_loop.body
+    at success
+  simp only at success
+  by_cases active : componentIndex < alloc.vec.Vec.len current.components
+  · rw [if_pos active] at success
+    have activeNat : componentIndex.val < current.components.length := by
+      scalar_tac
+    obtain ⟨component, back, indexRun, _componentExact, backExact⟩ :=
+      generatedVecIndexMutSuccess current.components componentIndex activeNat
+    rw [indexRun] at success
+    simp only [bind_tc_ok] at success
+    generalize dispatchRun :
+        V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.fold_component_arity4
+          component currentLog alpha alpha2 alpha3 preparedAlpha
+            preparedAlpha2 = dispatchResult at success
+    cases dispatchResult with
+    | fail error => simp at success
+    | div => simp at success
+    | ok pair =>
+      rcases pair with ⟨replacement, componentOut⟩
+      cases replacement with
+      | none =>
+        simp only [bind_tc_ok, Aeneas.Std.lift] at success
+        have recurse := loopSuccessPreservesComponentLength
+          ({ current with components := back componentOut } : RawWeights)
+          (Std.Usize.wrapping_add componentIndex 1#usize) currentLog alpha
+          alpha2 alpha3 preparedAlpha preparedAlpha2 outputLog outputComponents
+          success
+        rw [recurse, backExact, alloc.vec.Vec.set_val_eq, List.length_set]
+      | some replacementValue =>
+        simp only [bind_tc_ok, Aeneas.Std.lift] at success
+        have recurse := loopSuccessPreservesComponentLength
+          ({ current with components := back replacementValue } : RawWeights)
+          (Std.Usize.wrapping_add componentIndex 1#usize) currentLog alpha
+          alpha2 alpha3 preparedAlpha preparedAlpha2 outputLog outputComponents
+          success
+        rw [recurse, backExact, alloc.vec.Vec.set_val_eq, List.length_set]
+  · rw [if_neg active] at success
+    simp only [Result.ok.injEq, Prod.mk.injEq] at success
+    rcases success with ⟨_, rfl⟩
+    rfl
+termination_by current.components.length - componentIndex.val
+decreasing_by
+  all_goals
+    rw [backExact, alloc.vec.Vec.set_length]
+    have nextValue := wrappingSuccValue current.components componentIndex activeNat
+    rw [nextValue]
+    omega
+
+/-- The public component traversal preserves the component-vector length. -/
+theorem foldAllSuccessPreservesComponentLength
+    (weights output : RawWeights) (currentLog : Std.U32)
+    (alpha alpha2 alpha3 : RawQM31)
+    (preparedAlpha preparedAlpha2 : RawPrepared)
+    (success :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.fold_all_components_arity4
+          weights currentLog alpha alpha2 alpha3 preparedAlpha preparedAlpha2 =
+        .ok output) :
+    output.components.val.length = weights.components.val.length := by
+  unfold
+    V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.fold_all_components_arity4
+    at success
+  generalize loopRun :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.fold_all_components_arity4_loop
+        weights currentLog alpha alpha2 alpha3 preparedAlpha preparedAlpha2
+          0#usize = loopResult at success
+  cases loopResult with
+  | fail error => simp at success
+  | div => simp at success
+  | ok pair =>
+    rcases pair with ⟨outputLog, outputComponents⟩
+    simp only [bind_tc_ok, Result.ok.injEq] at success
+    subst output
+    exact loopSuccessPreservesComponentLength weights 0#usize currentLog alpha
+      alpha2 alpha3 preparedAlpha preparedAlpha2 outputLog outputComponents
+      loopRun
+
+/-- The public fold changes only the log length after the in-place component
+traversal and therefore also preserves the component-vector length. -/
+theorem foldSuccessPreservesComponentLength
+    (weights output : RawWeights) (alpha : RawQM31)
+    (success :
+      V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.fold
+          weights alpha = .ok output) :
+    output.components.val.length = weights.components.val.length := by
+  unfold V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.fold
+    at success
+  generalize squareRun :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.square alpha =
+        squareResult at success
+  cases squareResult with
+  | fail error => simp at success
+  | div => simp at success
+  | ok alpha2 =>
+    simp only [bind_tc_ok] at success
+    generalize prepareRun :
+        V5RelationLinkedGenerated.aspis_core.field.PreparedQm31Multiplier.new
+          alpha = prepareResult at success
+    cases prepareResult with
+    | fail error => simp at success
+    | div => simp at success
+    | ok preparedAlpha =>
+      simp only [bind_tc_ok] at success
+      generalize prepare2Run :
+          V5RelationLinkedGenerated.aspis_core.field.PreparedQm31Multiplier.new
+            alpha2 = prepare2Result at success
+      cases prepare2Result with
+      | fail error => simp at success
+      | div => simp at success
+      | ok preparedAlpha2 =>
+        simp only [bind_tc_ok] at success
+        generalize alpha3Run :
+            V5RelationLinkedGenerated.aspis_core.field.PreparedQm31Multiplier.mul
+              preparedAlpha alpha2 = alpha3Result at success
+        cases alpha3Result with
+        | fail error => simp at success
+        | div => simp at success
+        | ok alpha3 =>
+          simp only [bind_tc_ok] at success
+          generalize dispatchRun :
+              V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.fold_all_components_arity4
+                weights weights.log_len alpha alpha2 alpha3 preparedAlpha
+                  preparedAlpha2 = dispatchResult at success
+          cases dispatchResult with
+          | fail error => simp at success
+          | div => simp at success
+          | ok folded =>
+            simp only [bind_tc_ok, Aeneas.Std.lift, Result.ok.injEq] at success
+            subst output
+            exact foldAllSuccessPreservesComponentLength weights folded
+              weights.log_len alpha alpha2 alpha3 preparedAlpha preparedAlpha2
+              dispatchRun
+
 #print axioms foldAllSuccessExposesComponent
 #print axioms foldSuccessExposesComponent
+#print axioms foldSuccessPreservesComponentLength
 
 end AspisV5RelationLinkedAccumulatorTraversal
