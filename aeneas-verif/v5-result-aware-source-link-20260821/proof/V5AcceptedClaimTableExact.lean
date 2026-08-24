@@ -1,6 +1,7 @@
 import V5AcceptedSameRunRelationFriSnapshot
 import V5AcceptedPreparedClaimsCanonical
 import V5AcceptedPrefixCanonical
+import V5RelationPrepareCanonicalProof
 
 /-!
 # Exact accepted point-claim table
@@ -32,6 +33,8 @@ abbrev K := AspisV5FriAcceptedForestChecks.K
 abbrev AcceptedQM31 := AspisV5AcceptedEntrySourceBridge.EntryQM31
 abbrev PreparedKernelQM31 :=
   AspisV5PreparedPointClaimsSourceProof.KernelQM31
+abbrev PrepareQM31 :=
+  V5RelationPrepareGenerated.aspis_core.field.QM31
 
 private theorem kernelExact_mul_eq_maintained
     (left right : AspisV5PreparedPointClaimsSourceProof.KernelQM31Exact) :
@@ -46,6 +49,350 @@ private theorem kernelExact_pow_eq_maintained
         AspisV5PreparedPointClaimsSourceProof.KernelQM31Exact) =
       ((show K from value) ^ exponent : K) := by
   rfl
+
+private theorem prepareExact_add_eq_maintained
+    (left right : PrepareQM31) :
+    AspisV5RelationPrepareFieldProjection.toExact left +
+        AspisV5RelationPrepareFieldProjection.toExact right =
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact left +
+        AspisV5RelationPrepareFieldProjection.toMaintainedExact right := by
+  rfl
+
+private theorem prepareExact_mul_eq_maintained
+    (left right : PrepareQM31) :
+    AspisV5RelationPrepareFieldProjection.toExact left *
+        AspisV5RelationPrepareFieldProjection.toExact right =
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact left *
+        AspisV5RelationPrepareFieldProjection.toMaintainedExact right := by
+  rfl
+
+private theorem prepareExact_pow_eq_maintained
+    (value : PrepareQM31) (exponent : Nat) :
+    AspisV5RelationPrepareFieldProjection.toExact value ^ exponent =
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact value ^
+        exponent := by
+  rfl
+
+private theorem prepare_add_run_exact
+    (left right output : PrepareQM31)
+    (leftCanonical :
+      AspisV5RelationPrepareFieldProjection.CanonicalQM31 left)
+    (rightCanonical :
+      AspisV5RelationPrepareFieldProjection.CanonicalQM31 right)
+    (run : V5RelationPrepareGenerated.aspis_core.field.QM31.add left right =
+      .ok output) :
+    AspisV5RelationPrepareFieldProjection.CanonicalQM31 output ∧
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact output =
+        AspisV5RelationPrepareFieldProjection.toMaintainedExact left +
+          AspisV5RelationPrepareFieldProjection.toMaintainedExact right := by
+  have result :=
+    AspisV5RelationPrepareFieldProjection.generated_qm31_add_run_corresponds
+      left right output leftCanonical rightCanonical run
+  refine ⟨result.1, ?_⟩
+  rw [show AspisV5RelationPrepareFieldProjection.toMaintainedExact output =
+      AspisV5RelationPrepareFieldProjection.toExact output by rfl]
+  exact result.2.trans (prepareExact_add_eq_maintained left right)
+
+private theorem prepare_mul_run_exact
+    (left right output : PrepareQM31)
+    (leftCanonical :
+      AspisV5RelationPrepareFieldProjection.CanonicalQM31 left)
+    (rightCanonical :
+      AspisV5RelationPrepareFieldProjection.CanonicalQM31 right)
+    (run : V5RelationPrepareGenerated.aspis_core.field.QM31.mul left right =
+      .ok output) :
+    AspisV5RelationPrepareFieldProjection.CanonicalQM31 output ∧
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact output =
+        AspisV5RelationPrepareFieldProjection.toMaintainedExact left *
+          AspisV5RelationPrepareFieldProjection.toMaintainedExact right := by
+  have result :=
+    AspisV5RelationPrepareFieldProjection.generated_qm31_mul_run_corresponds
+      left right output leftCanonical rightCanonical run
+  refine ⟨result.1, ?_⟩
+  rw [show AspisV5RelationPrepareFieldProjection.toMaintainedExact output =
+      AspisV5RelationPrepareFieldProjection.toExact output by rfl]
+  exact result.2.trans (prepareExact_mul_eq_maintained left right)
+
+private theorem prepare_square_run_exact
+    (value output : PrepareQM31)
+    (valueCanonical :
+      AspisV5RelationPrepareFieldProjection.CanonicalQM31 value)
+    (run : V5RelationPrepareGenerated.aspis_core.field.QM31.square value =
+      .ok output) :
+    AspisV5RelationPrepareFieldProjection.CanonicalQM31 output ∧
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact output =
+        AspisV5RelationPrepareFieldProjection.toMaintainedExact value ^ 2 := by
+  have result :=
+    AspisV5RelationPrepareFieldProjection.generated_qm31_square_run_corresponds
+      value output valueCanonical run
+  refine ⟨result.1, ?_⟩
+  calc
+    AspisV5RelationPrepareFieldProjection.toMaintainedExact output =
+        AspisV5RelationPrepareFieldProjection.toExact output := by rfl
+    _ = AspisV5RelationPrepareFieldProjection.toExact value ^ 2 := result.2
+    _ = AspisV5RelationPrepareFieldProjection.toMaintainedExact value ^ 2 :=
+      prepareExact_pow_eq_maintained value 2
+
+private theorem prepare_point_claim_at_success_eq
+    (claims :
+      V5RelationPrepareGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims)
+    (index : Std.Usize) (output : PrepareQM31)
+    (indexBound : index.val < 4)
+    (claimsLength : claims.inner.claims.val.length = 4)
+    (success :
+      V5RelationPrepareGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims.point_claim_at_for_extraction
+          claims index = .ok output) :
+    output = claims.inner.claims.val[index.val] := by
+  have vectorBound : index.val < claims.inner.claims.val.length := by
+    rw [claimsLength]
+    exact indexBound
+  obtain ⟨value, valueRun, valueEquality⟩ :=
+    Aeneas.Std.WP.spec_imp_exists
+      (alloc.vec.Vec.index_usize_spec claims.inner.claims index vectorBound)
+  unfold
+    V5RelationPrepareGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims.point_claim_at_for_extraction
+    at success
+  rw [alloc.vec.Vec.index_slice_index, valueRun] at success
+  have outputEquality : value = output := Result.ok.inj success
+  exact outputEquality.symm.trans valueEquality
+
+private theorem preparedPointClaim_eq_relationStress
+    (gamma : K) (claimTable : Fin 76 → K) (row : PointClaimRow) :
+    sourcePreparedPointClaim gamma claimTable row =
+      AspisV5RelationStressSourceBridge.sourcePreparedPointClaim
+        gamma claimTable row := by
+  rfl
+
+private theorem prepare_trace_from_exact_claims
+    (kappa inactiveClaim : PrepareQM31)
+    (preparedClaims :
+      V5RelationPrepareGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims)
+    (relation : V5RelationPrepareGenerated.v5_cu_probe.PreparedRelation)
+    (trace :
+      AspisV5RelationPrepareLogLenProof.Prepare.PrepareRelationArithmeticTrace
+        kappa inactiveClaim preparedClaims relation)
+    (claim0 claim1 claim2 claim3 : K)
+    (kappaCanonical :
+      AspisV5RelationPrepareFieldProjection.CanonicalQM31 kappa)
+    (inactiveCanonical :
+      AspisV5RelationPrepareFieldProjection.CanonicalQM31 inactiveClaim)
+    (claim0Canonical :
+      AspisV5RelationPrepareFieldProjection.CanonicalQM31 trace.claim0)
+    (claim1Canonical :
+      AspisV5RelationPrepareFieldProjection.CanonicalQM31 trace.claim1)
+    (claim2Canonical :
+      AspisV5RelationPrepareFieldProjection.CanonicalQM31 trace.claim2)
+    (claim3Canonical :
+      AspisV5RelationPrepareFieldProjection.CanonicalQM31 trace.claim3)
+    (claim0Exact :
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact trace.claim0 =
+        claim0)
+    (claim1Exact :
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact trace.claim1 =
+        claim1)
+    (claim2Exact :
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact trace.claim2 =
+        claim2)
+    (claim3Exact :
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact trace.claim3 =
+        claim3) :
+    AspisV5RelationPrepareFieldProjection.toMaintainedExact
+        relation.relation_value =
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact inactiveClaim +
+        claim0 +
+        AspisV5RelationPrepareFieldProjection.toMaintainedExact kappa * claim1 +
+        AspisV5RelationPrepareFieldProjection.toMaintainedExact kappa ^ 2 *
+          claim2 +
+        AspisV5RelationPrepareFieldProjection.toMaintainedExact kappa ^ 3 *
+          claim3 := by
+  have kappa2Result := prepare_square_run_exact kappa trace.kappa2
+    kappaCanonical trace.kappa2Run
+  have kappa3Result := prepare_mul_run_exact trace.kappa2 kappa trace.kappa3
+    kappa2Result.1 kappaCanonical trace.kappa3Run
+  have relationValue0Result := prepare_add_run_exact inactiveClaim trace.claim0
+    trace.relationValue0 inactiveCanonical claim0Canonical
+    trace.relationValue0Run
+  have scaled1Result := prepare_mul_run_exact kappa trace.claim1 trace.scaled1
+    kappaCanonical claim1Canonical trace.scaled1Run
+  have relationValue1Result := prepare_add_run_exact trace.relationValue0
+    trace.scaled1 trace.relationValue1 relationValue0Result.1 scaled1Result.1
+    trace.relationValue1Run
+  have scaled2Result := prepare_mul_run_exact trace.kappa2 trace.claim2
+    trace.scaled2 kappa2Result.1 claim2Canonical trace.scaled2Run
+  have relationValue2Result := prepare_add_run_exact trace.relationValue1
+    trace.scaled2 trace.relationValue2 relationValue1Result.1 scaled2Result.1
+    trace.relationValue2Run
+  have scaled3Result := prepare_mul_run_exact trace.kappa3 trace.claim3
+    trace.scaled3 kappa3Result.1 claim3Canonical trace.scaled3Run
+  have relationValue3Result := prepare_add_run_exact trace.relationValue2
+    trace.scaled3 trace.relationValue3 relationValue2Result.1 scaled3Result.1
+    trace.relationValue3Run
+  let exactKappa :=
+    AspisV5RelationPrepareFieldProjection.toMaintainedExact kappa
+  let exactInactive :=
+    AspisV5RelationPrepareFieldProjection.toMaintainedExact inactiveClaim
+  have kappa2Exact :
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact trace.kappa2 =
+        exactKappa ^ 2 := by
+    simpa [exactKappa] using kappa2Result.2
+  have kappa3Exact :
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact trace.kappa3 =
+        exactKappa ^ 3 := by
+    rw [kappa3Result.2, kappa2Exact]
+    change exactKappa ^ 2 * exactKappa = exactKappa ^ 3
+    exact (pow_succ exactKappa 2).symm
+  have scaled1Exact :
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact trace.scaled1 =
+        exactKappa * claim1 := by
+    rw [scaled1Result.2, claim1Exact]
+  have scaled2Exact :
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact trace.scaled2 =
+        exactKappa ^ 2 * claim2 := by
+    rw [scaled2Result.2, kappa2Exact, claim2Exact]
+  have scaled3Exact :
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact trace.scaled3 =
+        exactKappa ^ 3 * claim3 := by
+    rw [scaled3Result.2, kappa3Exact, claim3Exact]
+  have relationValue0Exact :
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact
+          trace.relationValue0 = exactInactive + claim0 := by
+    rw [relationValue0Result.2, claim0Exact]
+  have relationValue1Exact :
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact
+          trace.relationValue1 =
+        exactInactive + claim0 + exactKappa * claim1 := by
+    rw [relationValue1Result.2, relationValue0Exact, scaled1Exact]
+  have relationValue2Exact :
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact
+          trace.relationValue2 =
+        exactInactive + claim0 + exactKappa * claim1 +
+          exactKappa ^ 2 * claim2 := by
+    rw [relationValue2Result.2, relationValue1Exact, scaled2Exact]
+  have relationValue3Exact :
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact
+          trace.relationValue3 =
+        exactInactive + claim0 + exactKappa * claim1 +
+          exactKappa ^ 2 * claim2 + exactKappa ^ 3 * claim3 := by
+    rw [relationValue3Result.2, relationValue2Exact, scaled3Exact]
+  rw [trace.returnedRelationValue, relationValue3Exact]
+
+set_option maxHeartbeats 200000 in
+/-- Exact arithmetic meaning of the source-extracted relation preparation
+trace.  This theorem is independent of the outer caller adapter: it proves
+the two kappa powers, four vector reads, three multiplications, and four
+additions in the order executed by production. -/
+theorem prepare_relation_arithmetic_trace_exact
+    (kappa inactiveClaim : PrepareQM31)
+    (preparedClaims :
+      V5RelationPrepareGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims)
+    (relation : V5RelationPrepareGenerated.v5_cu_probe.PreparedRelation)
+    (gamma : K) (claimTable : Fin 76 → K)
+    (trace :
+      AspisV5RelationPrepareLogLenProof.Prepare.PrepareRelationArithmeticTrace
+        kappa inactiveClaim preparedClaims relation)
+    (kappaCanonical :
+      AspisV5RelationPrepareFieldProjection.CanonicalQM31 kappa)
+    (inactiveCanonical :
+      AspisV5RelationPrepareFieldProjection.CanonicalQM31 inactiveClaim)
+    (claimsCanonical :
+      AspisV5RelationPrepareCanonicalProof.PrepareClaimsCanonical
+        preparedClaims)
+    (claimsExact : ∀ row : PointClaimRow,
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact
+          (preparedClaims.inner.claims.val[row.val]'(by
+            rw [claimsCanonical.1]
+            simpa [pointClaimRows] using row.isLt)) =
+        AspisV5RelationStressSourceBridge.sourcePreparedPointClaim
+          gamma claimTable row) :
+    AspisV5RelationPrepareFieldProjection.toMaintainedExact
+        relation.relation_value =
+      AspisV5RelationStressSourceBridge.sourceCallerInitialClaim
+        (AspisV5RelationPrepareFieldProjection.toMaintainedExact inactiveClaim)
+        (AspisV5RelationPrepareFieldProjection.toMaintainedExact kappa)
+        gamma claimTable := by
+  have claim0CanonicalPrepare :=
+    AspisV5RelationPrepareCanonicalProof.point_claim_at_success_canonical
+      preparedClaims 0#usize trace.claim0 (by norm_num) claimsCanonical
+      trace.claim0Run
+  have claim0Canonical :
+      AspisV5RelationPrepareFieldProjection.CanonicalQM31 trace.claim0 :=
+    (AspisV5RelationPrepareCanonicalProof.prepareCanonical_iff_fieldProjection
+      trace.claim0).1 claim0CanonicalPrepare
+  have claim0Value := prepare_point_claim_at_success_eq preparedClaims
+    0#usize trace.claim0 (by norm_num) claimsCanonical.1 trace.claim0Run
+  have claim0Exact :
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact trace.claim0 =
+        AspisV5RelationStressSourceBridge.sourcePreparedPointClaim gamma
+          claimTable AspisV5RelationStressSourceBridge.sourcePoint0 := by
+    rw [claim0Value]
+    simpa [AspisV5RelationStressSourceBridge.sourcePoint0] using
+      claimsExact AspisV5RelationStressSourceBridge.sourcePoint0
+  have claim1CanonicalPrepare :=
+    AspisV5RelationPrepareCanonicalProof.point_claim_at_success_canonical
+      preparedClaims 1#usize trace.claim1 (by norm_num) claimsCanonical
+      trace.claim1Run
+  have claim1Canonical :
+      AspisV5RelationPrepareFieldProjection.CanonicalQM31 trace.claim1 :=
+    (AspisV5RelationPrepareCanonicalProof.prepareCanonical_iff_fieldProjection
+      trace.claim1).1 claim1CanonicalPrepare
+  have claim1Value := prepare_point_claim_at_success_eq preparedClaims
+    1#usize trace.claim1 (by norm_num) claimsCanonical.1 trace.claim1Run
+  have claim1Exact :
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact trace.claim1 =
+        AspisV5RelationStressSourceBridge.sourcePreparedPointClaim gamma
+          claimTable AspisV5RelationStressSourceBridge.sourcePoint1 := by
+    rw [claim1Value]
+    simpa [AspisV5RelationStressSourceBridge.sourcePoint1] using
+      claimsExact AspisV5RelationStressSourceBridge.sourcePoint1
+  have claim2CanonicalPrepare :=
+    AspisV5RelationPrepareCanonicalProof.point_claim_at_success_canonical
+      preparedClaims 2#usize trace.claim2 (by norm_num) claimsCanonical
+      trace.claim2Run
+  have claim2Canonical :
+      AspisV5RelationPrepareFieldProjection.CanonicalQM31 trace.claim2 :=
+    (AspisV5RelationPrepareCanonicalProof.prepareCanonical_iff_fieldProjection
+      trace.claim2).1 claim2CanonicalPrepare
+  have claim2Value := prepare_point_claim_at_success_eq preparedClaims
+    2#usize trace.claim2 (by norm_num) claimsCanonical.1 trace.claim2Run
+  have claim2Exact :
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact trace.claim2 =
+        AspisV5RelationStressSourceBridge.sourcePreparedPointClaim gamma
+          claimTable AspisV5RelationStressSourceBridge.sourcePoint2 := by
+    rw [claim2Value]
+    simpa [AspisV5RelationStressSourceBridge.sourcePoint2] using
+      claimsExact AspisV5RelationStressSourceBridge.sourcePoint2
+  have claim3CanonicalPrepare :=
+    AspisV5RelationPrepareCanonicalProof.point_claim_at_success_canonical
+      preparedClaims 3#usize trace.claim3 (by norm_num) claimsCanonical
+      trace.claim3Run
+  have claim3Canonical :
+      AspisV5RelationPrepareFieldProjection.CanonicalQM31 trace.claim3 :=
+    (AspisV5RelationPrepareCanonicalProof.prepareCanonical_iff_fieldProjection
+      trace.claim3).1 claim3CanonicalPrepare
+  have claim3Value := prepare_point_claim_at_success_eq preparedClaims
+    3#usize trace.claim3 (by norm_num) claimsCanonical.1 trace.claim3Run
+  have claim3Exact :
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact trace.claim3 =
+        AspisV5RelationStressSourceBridge.sourcePreparedPointClaim gamma
+          claimTable AspisV5RelationStressSourceBridge.sourcePoint3 := by
+    rw [claim3Value]
+    simpa [AspisV5RelationStressSourceBridge.sourcePoint3] using
+      claimsExact AspisV5RelationStressSourceBridge.sourcePoint3
+  have arithmetic := prepare_trace_from_exact_claims kappa inactiveClaim
+    preparedClaims relation trace
+    (AspisV5RelationStressSourceBridge.sourcePreparedPointClaim gamma
+      claimTable AspisV5RelationStressSourceBridge.sourcePoint0)
+    (AspisV5RelationStressSourceBridge.sourcePreparedPointClaim gamma
+      claimTable AspisV5RelationStressSourceBridge.sourcePoint1)
+    (AspisV5RelationStressSourceBridge.sourcePreparedPointClaim gamma
+      claimTable AspisV5RelationStressSourceBridge.sourcePoint2)
+    (AspisV5RelationStressSourceBridge.sourcePreparedPointClaim gamma
+      claimTable AspisV5RelationStressSourceBridge.sourcePoint3)
+    kappaCanonical inactiveCanonical claim0Canonical claim1Canonical
+    claim2Canonical claim3Canonical claim0Exact claim1Exact claim2Exact
+    claim3Exact
+  simpa [AspisV5RelationStressSourceBridge.sourceCallerInitialClaim] using
+    arithmetic
 
 /-- The exact field value of an accepted-entry QM31 value. -/
 def entryClaimToK (value : AcceptedQM31) : K :=
