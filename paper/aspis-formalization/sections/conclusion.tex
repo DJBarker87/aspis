@@ -23,8 +23,9 @@ grind, retains a \(2^{-70}\) term plus explicit remaining terms.
 
 The accepted verifier callback is connected to the selected translated Rust
 through the stages just listed, using one shared four-round witness for the
-relation values and both accumulators.  This is not a proof of the opaque
-terminal evaluator, every program function, or the surrounding Solana
+relation values and both accumulators.  The theorem permits any terminal
+evaluator because its value is not used by the later security reasoning.  This
+is not a proof of that evaluator, every program function, or the surrounding Solana
 runtime.  Published decoding and BCS Fiat--Shamir results, concrete SHA-256
 and Poseidon2 security, translation and proof-tool correctness, compilation,
 and the stated Solana account and persistence behavior remain explicit

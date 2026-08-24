@@ -91,12 +91,15 @@ proof. The remaining external events must together fit the reserved
 The final deterministic theorem connects the selected accepted proof-checker
 path to the maintained security-event conclusion, subject to a clean replay.
 Its main and compact accumulator equalities are proved inside the theorem.
-What remains outside that source theorem is `EntryTerminalBoundary`, the
-SHA-256 callback and primitive security, Poseidon2 security, released FRI
-tables, published decoding/PCS/FRI/Fiat--Shamir applicability, fresh prover
-randomness, extraction, translation and compilation, the surrounding Solana
-account/state code and runtime, and concrete probability bounds for the named
-external events. Consequently the repository reports a checked 100-bit
+The stronger form works for any terminal evaluator and installs the released
+FRI tables internally. What remains outside that source theorem is the
+SHA-256 callback and primitive security, Poseidon2 security, published
+decoding/PCS/FRI/Fiat--Shamir applicability, fresh prover randomness,
+extraction, translation and compilation, the surrounding Solana account/state
+code and runtime, and concrete probability bounds for the named external
+events. The deterministic classification also has not yet been lifted into
+the probability experiment used by the conditional 100-bit theorem.
+Consequently the repository reports a checked 100-bit
 work-normalized **protocol subtotal**, not an unconditional 100-bit deployed
 theft-resistance number. See the [formal-verification overview](docs/formal-verification.md)
 and [dated mathematical review](docs/reviews/mathematical-status-20260814.md).

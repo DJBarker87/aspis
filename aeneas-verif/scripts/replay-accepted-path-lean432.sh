@@ -13,7 +13,7 @@ readonly prepare_aeneas="$script_dir/prepare-aeneas-lean432.sh"
 
 readonly default_target_path="aeneas-verif/v5-result-aware-source-link-20260821/proof/V5AcceptedOneRunDeterministicFinal.lean"
 readonly default_target_module="V5AcceptedOneRunDeterministicFinal"
-readonly default_target_declaration="AspisV5AcceptedOneRunDeterministicFinal.accepted_composite_security_conclusion"
+readonly default_target_declaration="AspisV5AcceptedOneRunDeterministicFinal.accepted_composite_security_conclusion_for_any_terminal_evaluator"
 readonly target_path="${1:-${ASPIS_ACCEPTED_TARGET_PATH:-$default_target_path}}"
 readonly target_module="${2:-${ASPIS_ACCEPTED_TARGET_MODULE:-$default_target_module}}"
 readonly target_declaration="${ASPIS_ACCEPTED_AXIOM_DECL:-$default_target_declaration}"

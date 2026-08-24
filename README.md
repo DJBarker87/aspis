@@ -65,11 +65,15 @@ the fold semantics rather than assuming their equality.
 
 This deterministic theorem does not supply the cryptographic or platform
 premises needed for an unconditional numerical security claim.
-`EntryTerminalBoundary`, the SHA-256 callback and primitive security,
+The stronger wrapper works for any terminal evaluator because later security
+reasoning does not consume that evaluator's value; it also installs the
+released FRI tables internally. The SHA-256 callback and primitive security,
 Poseidon2 security, published decoding, PCS/FRI and Fiat--Shamir
-applicability, extraction, released FRI tables, compiler, Solana runtime, and
-numerical event budgets remain explicit. No new transaction is needed because
-this work checks the already released source.
+applicability, extraction, compiler, Solana runtime, and numerical event
+budgets remain explicit. The deterministic classification has not yet been
+lifted into the probability space used by the conditional 100-bit theorem.
+No new transaction is needed because this work checks the already released
+source.
 
 ## Mainnet result
 

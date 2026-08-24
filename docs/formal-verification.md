@@ -67,7 +67,11 @@ separately bounded external events.
 
 Aspis therefore does **not** describe a completed proof as having a raw
 `2^-100` false-acceptance probability. It reports a 100-bit work-normalized
-target and states the raw post-grind figure separately.
+target and states the raw post-grind figure separately. The final deterministic
+selected-call theorem is not yet composed with the probability experiment:
+that still requires one causal adversarial law, event inclusions for its
+six-way result, the work-normalization connection, and concrete external
+budgets.
 
 ### Published mathematical results used by Lean
 
@@ -129,8 +133,14 @@ selected translated verifier call deterministically yields the maintained
 accepted-path security-event conclusion.
 
 The exact publication theorem is
-`AspisV5AcceptedOneRunDeterministicFinal.accepted_composite_security_conclusion`
+`AspisV5AcceptedOneRunDeterministicFinal.accepted_composite_security_conclusion_for_any_terminal_evaluator`
 in `V5AcceptedOneRunDeterministicFinal.lean`.
+
+Its terminal evaluator is arbitrary: the later relation and FRI security
+reasoning does not consume the evaluator's returned value. The theorem
+therefore constructs the terminal boundary internally by reflexivity rather
+than asking the caller for an evaluator/model equality. It also installs the
+exact released FRI tables internally.
 
 One extraction boundary is recorded explicitly. The old handwritten compact
 outer wrapper rebuilt the array from an empty terminal iterator, which
@@ -158,9 +168,7 @@ The selected path is the proof checker called by the released spend. It is not
 a verification of every Rust function. In particular, the theorem does not
 prove:
 
-- the production interpretation of the terminal evaluator represented by
-  `EntryTerminalBoundary`;
-- the SHA-256 callback specification or the released FRI-table binding;
+- the SHA-256 callback specification;
 - the outer `AccountInfo` borrowing and Solana dispatch machinery;
 - upload, seal, cleanup, refund, or wallet code;
 - the Rust compiler, LLVM, the SBF toolchain, or the Solana runtime;
@@ -192,9 +200,10 @@ The boundaries that remain are cryptographic and platform claims that a
 deterministic source theorem cannot prove:
 
 - the cited decoding, polynomial-commitment, and Fiat--Shamir results;
-- `EntryTerminalBoundary` and the released FRI-table binding;
 - SHA-256 and Poseidon2 implementation and security properties;
 - fresh prover randomness;
+- the lift from this deterministic one-call classification into the
+  probability experiment used by the conditional 100-bit theorem;
 - numerical bounds for extraction, hash, random-oracle, and other external
   failure events;
 - the translation and compilation toolchain; and

@@ -52,8 +52,10 @@ the selected accepted callback, the source proof now reaches the complete
 relation caller.  It derives the main accumulator's twelve terminal weights,
 the compact accumulator's complete state evolution, and both final dot
 products from the same accepted four-round execution.  The theorem still
-takes the opaque terminal evaluator as a named interface; boundaries outside
-the selected source path remain named as well.
+allows an arbitrary terminal evaluator because later relation and FRI
+security reasoning does not consume its returned value.  It constructs that
+boundary by reflexivity and installs the released FRI tables internally;
+boundaries outside the selected source path remain named as well.
 
 \subsection{Transcript coverage}
 
@@ -117,8 +119,10 @@ The accepted-run proof identifies each terminal component with its maintained
 weight and identifies the resulting dot with the verifier's returned value.
 For the compact accumulator, the constructor, four fold cases, final assembly,
 and four-term dot product are connected through the corrected extracted
-iterator.  \code{accepted_composite_security_conclusion} uses both results in
-the theorem that starts from one successful selected translated verifier call.
+iterator.
+\code{accepted_composite_security_conclusion_for_any_terminal_evaluator} uses
+both results in the theorem that starts from one successful selected
+translated verifier call.
 
 The first handwritten Lean replacement for the compact outer fold rebuilt the
 array from an empty terminal iterator and therefore discarded its writes.  A
@@ -194,8 +198,8 @@ polynomial & Published decoding/Fiat--Shamir results and primitive-security
 bounds \\
 Relation & Exact 76-claim table, four prepared claims, initial relation value,
 58-field tail, four ordered rounds, twelve-component main accumulator, compact
-accumulator, and final relation caller from the same accepted call & Opaque
-terminal-evaluator interface; published Fiat--Shamir result and
+accumulator, and final relation caller from the same accepted call & SHA-256
+callback semantics; published Fiat--Shamir result and
 primitive-security bounds \\
 Spend state & Five account roles, bump 255, marker and pool writes, close/refund
 projection & Current Rust equality and Solana runtime premises \\

@@ -48,7 +48,7 @@ maintained accepted-path security-event conclusion; callers supply neither
 accumulator equality.
 
 The publication theorem is
-`AspisV5AcceptedOneRunDeterministicFinal.accepted_composite_security_conclusion`
+`AspisV5AcceptedOneRunDeterministicFinal.accepted_composite_security_conclusion_for_any_terminal_evaluator`
 in `V5AcceptedOneRunDeterministicFinal.lean`.
 
 The pinned Aeneas version emitted an ill-typed mutable-iterator
@@ -74,11 +74,11 @@ line of the repository or every part of Solana. It does not prove:
 
 - Charon, Aeneas, Lean, `rustc`, LLVM, the SBF toolchain, or Solana;
 - that SHA-256 or Poseidon2 has the required cryptographic security;
-- `EntryTerminalBoundary` and the production SHA-256 callback semantics;
-- the released FRI-table binding and the published decoding, PCS/FRI, and
-  Fiat--Shamir results themselves;
+- the production SHA-256 callback semantics;
+- the published decoding, PCS/FRI, and Fiat--Shamir results themselves;
 - fresh prover randomness;
-- extraction and the numerical bounds assigned to external failure events;
+- extraction, the probability-space connection, and the numerical bounds
+  assigned to external failure events;
 - the outer account-borrowing, upload, cleanup, and refund code; or
 - Solana account locking, rollback, and persistent state behavior.
 
