@@ -22,26 +22,25 @@ The maintained Lean project answers mathematical questions: it proves the
 relations and concrete release calculations stated below, relative to explicit
 cryptographic interfaces where noted. The Charon/Aeneas project answers a
 different implementation question: selected production V5 Rust paths agree
-with those Lean models. Reproducible-build evidence then identifies the exact
-SBF, while tests, runtime replay, exact-wire simulation, and finalized chain
-receipts exercise the deployed system.
+with those Lean models. That implementation proof is complete through the
+exact initial relation value and decoded relation tail; two final dot-product
+equalities and their outer composition remain. Reproducible-build evidence
+then identifies the exact SBF, while tests, runtime replay, exact-wire
+simulation, and finalized chain receipts exercise the deployed system.
 
-These are complementary assurance layers, not one theorem that universally
-proves the cryptography, every Rust path, compilation, and Solana execution at
-once. In particular, the Rust bridge covers Component A at the selected
-release schedule, generated Component B through its ten-round terminal,
-Component C's four rounds through deployed public output, the V5 work wire and
-six ordered work checks, and their selected-schedule composition. The runtime
-verifier recomputes GoodA and GoodB for every selected branch, but the universal
-all-schedule Component-A source theorem remains open.
+These are complementary assurance layers, not one theorem that proves the
+cryptographic primitives, compiler, every Rust path, and Solana at once. The
+accepted-path work starts with one successful translated call to the released
+proof checker and derives its parse, transcript, work, queries, authenticated
+openings, FRI calculations, final polynomial, claim table, initial relation
+value, and relation tail from that same execution. It does not yet derive the
+two final relation dot products required by the outer theorem.
 
-The best independent-review targets are therefore the missing links: the reduction
-from the full execution view to the maintained hiding model and applicability
-of the cited PCS/Fiat–Shamir results; the custom Poseidon2-M31 primitive and
-universal Rust correspondence; the one transcript hash-call equation shown
-below; production Rust and serialization outside the selected extraction; and
-Solana account/state, refund, and runtime-pricing behavior. The complete
-boundary ledger is
+The best independent-review targets are the cited PCS/Fiat--Shamir and
+circle-decoding results; the custom Poseidon2-M31 primitive; the SHA-256
+callback and primitive-security boundary; production Rust outside the
+selected accepting proof-checker path; and Solana account, state, refund, and
+runtime behavior. The complete boundary ledger is
 [`docs/assumptions-ledger.md`](../docs/assumptions-ledger.md).
 
 ## Build the proofs
@@ -71,7 +70,7 @@ compiled-evaluation shortcut. Poseidon2 known-answer theorems use kernel
   hiding lemmas, and selected implementation bindings. Its immutable evidence
   is in
   [`release/aspis-spend-q18-g37-mainnet-v1/`](../release/aspis-spend-q18-g37-mainnet-v1/).
-- **V5** is the later release line (wire tag 67). Its exact frozen SBF finalized the
+- **V5** is the later release line. Its exact frozen SBF finalized the
   atomic path on devnet on 2026-07-23 at 1,335,952 CU and subsequently
   finalized the mainnet-beta V5 state transition at slot 435019536 at
   1,334,452 CU. Its maintained mathematics lives here, and pinned
@@ -114,46 +113,39 @@ The later V5 proof does not retroactively relabel the tag-65 transaction.
 | Accepted candidate-relative false claim enters the counted event | `V5Tag67RelationListInclusion.lean` | **PROVED FOR THE EXPLICIT CANDIDATE EXECUTION. If all four relation boundary checks and the final dot-product check accept, one candidate's folds reach the published final coefficients, and an initial or out-of-domain claim is false for that candidate, then the twelve relation challenges lie in that candidate's counted event. For a fixed family of at most 240 candidates, the union is at most `32 * 240 / |K|`** |
 | V5 list-cap arithmetic | `V5FriListCap.lean` | **PROVED FOR THE FOUR STATED LIST EXPRESSIONS. The Guruswami--Sudan multiplicities are `10`, `10`, `9`, and `6`, and all four resulting numeric bounds are strictly below 240. Applying the Guruswami--Sudan theorem to the actual V5 encoders remains external** |
 | Ideal FRI acceptance supplies one matching initial-list member, or an explicit FRI failure | `V5FriCoherentCandidateExtraction.lean` | **PROVED AS A DETERMINISTIC INCLUSION. Ideal q18 acceptance either hits one of six named failures, or one member of a single initial decoder list of at most 240 reaches the published final coefficients through the exact four folds. There is no independent list choice at each round. The cited decoding theorem remains external; its released parameters and encoder side conditions are audited separately** |
-| A false no-witness statement makes every list member have a scalar mismatch, or an explicit candidate/trace failure | `V5Tag67CandidateTraceExtraction.lean` | **PROVED AS A DETERMINISTIC INCLUSION. The six named failures are the four-claim batch equation, a four-claim batch collision, 19-lane recombination, public-field binding, arithmetic residuals, and hash/Merkle residuals. Production C1/C2 authentication and extraction of the 19 lanes, plus probability bounds for these failures, remain external** |
-| Modeled relation success gives every shared relation check | `V5Tag67ModeledRelationAcceptanceBridge.lean` | **PROVED FOR THE PURE MODEL. Modeled success is equivalent to the four boundary checks and final dot-product check and therefore implies relation acceptance for every initial-list member. Connecting successful Rust callback execution to this model remains external** |
+| A false no-witness statement makes every list member have a scalar mismatch, or an explicit candidate/trace failure | `V5Tag67CandidateTraceExtraction.lean` | **PROVED AS A DETERMINISTIC INCLUSION. The six named failures are the four-claim batch equation, a four-claim batch collision, 19-lane recombination, public-field binding, arithmetic residuals, and hash/Merkle residuals. The source work supplies the production opening and most relation inputs, but its two final-dot equalities are still open; probability bounds for the named failures remain external** |
+| Modeled relation success gives every shared relation check | `V5Tag67ModeledRelationAcceptanceBridge.lean` | **PROVED FOR THE PURE MODEL. Modeled success is equivalent to the four boundary checks and final dot-product check and therefore implies relation acceptance for every initial-list member. Connecting the selected successful Rust callback to this complete relation call still requires the two production final-dot equalities** |
 | Accepted-false inclusion | `V5Tag67AcceptedFalseInclusion.lean` | **PROVED AS AN EXPLICIT FIVE-WAY SPLIT. This older split is refined by the projected raw-accounting and width-nineteen candidate-family modules below; do not read its four broad branches as the current final gap list** |
 | Exact released width-nineteen theorem application | `V5Width19S2ApplicabilityAudit.lean`, `V5Width19CorrelatedAgreement.lean` | **PROVED FOR THE RELEASED PARAMETERS, CONDITIONAL ON THE CITED DECODING RESULT. Lean checks the exact field, code, distance, threshold, list parameters, degree, and nonzero challenge denominator. The paper itself remains an external premise** |
-| Corrected candidate-family event and accounting | `V5Width19CandidateEventBridge.lean`, `V5ProjectedAcceptedFalseRawAccounting.lean`, `V5HundredBitSecurityMargin.lean` | **PROVED FOR THE MODEL AND NAMED CONNECTIONS. The dominant completed-grind batching event is about 71 raw bits. Charging for the 37-bit grind gives a checked core below `0.7 * 2^-100`; external bounded events must fit `0.3 * 2^-100`. Five production-code connections remain** |
+| Corrected candidate-family event and accounting | `V5Width19CandidateEventBridge.lean`, `V5ProjectedAcceptedFalseRawAccounting.lean`, `V5HundredBitSecurityMargin.lean` | **PROVED FOR THE MODEL AND NAMED CONNECTIONS. The dominant completed-grind batching event is about 71 raw bits. Charging for the 37-bit grind gives a checked core below `0.7 * 2^-100`; external bounded events must fit `0.3 * 2^-100`. The selected accepted proof-checker path is connected separately; primitive, literature, compiler, and runtime bounds remain external** |
 | Conservative full-list arithmetic | `V5ConservativeRelationListEndpoint.lean` | **ARITHMETIC CHECK ONLY. Replacing the old relation entry by `32 * 240 / |K|`, Lean checks that the conservative expression remains at most `2^-100`. It keeps the width-29 batch term and `R ≤ 32`, conservative relative to V5 width 19 and `R = 30`, and has only about 0.015 bits of margin. This bounds only the repair-event branch; it does not bound the other four branches, prove Fiat--Shamir or callback correspondence, or establish deployed security. Any further factor requires a new calculation** |
 | Extracted V5 arithmetic, Poseidon and Merkle rows imply the complete spend relation | `V5AcceptedSpendRelation.lean` | **PROVED for the deterministic step after extraction, relative to `Poseidon2Faithful`. The proof does not yet derive those rows from arbitrary acceptance by the deployed V5 verifier or bound the probability that extraction fails** |
-| Work-normalized V5 endpoint | `V5ImplementedWorkNormalizedEndpoint.lean`, `V5WorkNormalizedApplicabilityRepair.lean` | **CONDITIONAL COMPOSITION. Lean proves the width-19/degree-18 `F*` arithmetic, six-event accounting, exact post-`m0` `R = 30`, and the final implication. The deterministic accepted-false inclusion is now proved separately, but this endpoint still needs bounds for its four unfinished branches: raw Rust relation-model correspondence, raw-to-ideal FRI and Merkle binding, the six FRI failures, and the six candidate/trace failures. Virtual-oracle/code membership, separate-output grinding, transcript correspondence, authenticated-round semantics, PCS/Merkle, Fiat--Shamir, and cited MCA/BCS/CMS applicability also remain external** |
-| Explicit V5 false-acceptance composition | `V5DeployedFalseAcceptance.lean` | **PROVED AS A CONDITIONAL STATEMENT. Lean defines the false-acceptance event, takes three parameterized failure predicates, proves their union bound, and derives a work-normalized bound of `2^-100` and an ordinary bound of `min(1, T / 2^100)` for `1 <= T <= 2^128`. A separate source-extracted result gates a caller-supplied predicate family by parsed selector zero, one, or two. The family's real cryptographic meaning, the full callback/run connection, acceptance-to-trace extraction, Poseidon2 faithfulness, the width/round/transcript/commitment assumptions, and the three branch-security bounds remain explicit premises** |
+| Work-normalized V5 endpoint | `V5ImplementedWorkNormalizedEndpoint.lean`, `V5WorkNormalizedApplicabilityRepair.lean` | **CONDITIONAL COMPOSITION. Lean proves the width-19/degree-18 arithmetic, six-event accounting, exact post-`m0` `R = 30`, and the final implication. The selected accepted source path discharges the deterministic transcript, opening, FRI, claim-table, initial-value, and relation-tail links; its two final-dot links remain open. Virtual-oracle/code membership, work reduction, PCS/Merkle security, Fiat--Shamir, published decoding applicability, and numerical primitive bounds remain external** |
+| Explicit V5 false-acceptance composition | `V5DeployedFalseAcceptance.lean` | **PROVED AS A CONDITIONAL STATEMENT. Lean defines the false-acceptance event, proves its union bound, and derives a work-normalized bound of `2^-100` and an ordinary bound of `min(1, T / 2^100)` for `1 <= T <= 2^128`. The current accepted-path work supplies all selected-verifier deterministic evidence except the two final-dot links and outer composition. Poseidon2 faithfulness, extraction, published cryptographic results, and external event bounds remain explicit inputs** |
 | Private-note Merkle binding and fixed-victim theft game | `ApplicationMerkleBinding.lean`, `V5FixedVictimTheftGame.lean` | **PROVED AS AN EVENT CLASSIFICATION. A different leaf at the victim's exact position and root exposes a concrete node-hash collision. For the attack event defined in Lean, the game separates extraction failure, credential recovery, nullifier collision, note-opening collision, Merkle collision, PDA aliasing, runtime/state failure, and invalid victim setup, and proves the eight-term union bound. Connecting every real deployed attack to that event and supplying numerical cryptographic bounds remain external** |
 | Nullifier-marker replay prevention | `V5NullifierMarkerReplay.lean` | **PROVED FOR THE EXPLICIT STATE MODEL. Equal nullifiers derive the same marker address. After a successful marker write, the same nullifier is rejected, and a different nullifier resolving to the same address is also rejected rather than overwriting the marker. Replay prevention therefore does not require PDA injectivity inside this model. The result has not yet been connected to the fixed-victim theft game, which still lists PDA aliasing. The relevant branch is unchanged between the recorded deployed source and current Rust except for the current bump-255 precheck, but that comparison is manual. Machine-checked Rust correspondence and Solana account locking, rollback, and finalized marker persistence remain external** |
 
 ## V5 production Rust connection
 
-The principal integration theorem is
-`FormalClosureStream1.current_source_combined_capstone` in
-[`CurrentSourceABCapstone.lean`](../aeneas-verif/current-source-abc-capstone-20260722/proof/CurrentSourceABCapstone.lean).
+The primary production proof effort is now the accepted-path result under
+[`v5-result-aware-source-link-20260821/`](../aeneas-verif/v5-result-aware-source-link-20260821/).
+The checked chain starts from one successful translated call to
+`verify_mode9_composite_with_live_statement` and constructs the parse,
+transcript, work, query, authenticated-opening, FRI, and relation evidence
+used by the maintained security event. It is complete through the exact
+decoded claim table, initial relation value, and 58-field relation tail. The
+general and compact production final-dot equalities and final outer
+composition remain open as of August 24, 2026.
 
-| Implementation path | Theorem | Status |
-| --- | --- | --- |
-| Source-extracted Component-A matrix execution to maintained GoodA at the selected release schedule | `FormalClosureStream1.component_a_actual_matches_maintained` | **PROVED FOR THE RELEASE SCHEDULE** |
-| Generated Component-B sampler/evaluator/C2 layout to maintained ten-round terminal | `FormalClosureStream1.component_b_actual_matches_maintained` | **PROVED under the theorem's successful-call, input-length, and field-encoding premises** |
-| Actual four Component-C rounds, finish, packer, and deployed public rows | `generated_public_run_output_matches_deployed` | **PROVED for a `GeneratedPublicRun`, whose fields include successful-call, valid-input, and folded-word/coefficient/challenge execution-to-model equalities** |
-| V5 instruction magic byte, LE64 reads, projection, digest predicate, and six ordered work checks | `AspisTag67WorkVerifierClosure.tag67AcceptedWireAndVerifierClosure` | **PROVED subject to one hash-call equation** |
-| Combined A/B/C public output and current V5 verifier at that schedule | `FormalClosureStream1.current_source_combined_capstone` | **PROVED as a package of the selected component results under their successful-call, valid-input, Component-C execution/model, and V5 hash-call hypotheses; it is not `arbitrary verifier acceptance → complete spend relation`** |
+The former Component A/B/C integration theorem remains as a historical staged
+result. The accepted-path chain is stronger for the released verifier where
+completed because its intermediate values are derived from one execution
+instead of being supplied as separate equality hypotheses.
 
-The remaining equation in the **V5 work-verifier subtheorem** is:
-
-```text
-∀ state nonce,
-  actualTranscriptGrindingDigest state nonce =
-    rustHash state ((3 : Byte) :: List.ofFn (nonceLEBytes nonce))
-```
-
-It is the concrete function-pointer call boundary, not a generic
-“Rust matches Lean” premise. It is not the only important assumption in the
-complete A/B/C composition: in particular, `GeneratedPublicRun` carries
-explicit Component-C execution/model equalities, and the final integration theorem
-does not prove that ordinary production-verifier acceptance constructs every
-component hypothesis or implies the maintained spend relation.
+The proof still assumes that Solana's SHA-256 call returns SHA-256 of exactly
+the bytes passed to it. Charon, Aeneas, Lean, the Rust/SBF compiler, Solana,
+SHA-256 and Poseidon2 security, and the cited decoding and Fiat--Shamir results
+are not proved by the source theorem.
 
 ## Status of older open items
 
@@ -166,7 +158,7 @@ Here is the current status of the items most likely to be encountered:
 | Component-C stored-OOD identity and public output | **PROVED FOR THE STATED GENERATED RUN.** `generated_public_run_output_matches_deployed` covers the stored OOD pair, four rounds, finish, and packed output under its explicit run hypotheses. |
 | Discrete q18 availability and a universal Rust proof for GoodA | **THE RUNTIME CHECK IS PROVED; THE UNIVERSAL RUST PROOF IS OPEN.** The verifier recomputes GoodA/GoodB for every selected branch and rejects failure; the 17-attempt host fails closed if it finds no good schedule. The production-Rust theorem currently proves the selected release schedule, not every possible schedule. A universal source theorem would additionally need the generic circle-query kernel, terminal-minor construction, and fraction-free determinant loop invariants. Availability is a liveness question, not an acceptance gap. |
 | Complete serialization proof for all proof bytes | **OPEN.** The final path proves the Component-B layout, Component-C public vector/packer, and V5 work-byte layout separately; it does not prove one serializer theorem for the complete cryptographic view. |
-| V5 relation check, PCS, and Fiat--Shamir soundness | **THE DETERMINISTIC INCLUSION IS PROVED; DEPLOYED PROBABILITY BOUNDS ARE OPEN.** The four new inclusion modules prove that ideal FRI acceptance supplies one member of one initial list through the exact four folds unless one of six named FRI failures occurs; a false no-witness statement makes every list member have a scalar mismatch unless one of six named candidate/trace failures occurs; pure modeled relation success supplies the shared checks; and these facts place a raw accepted false execution in one of those failures or the bounded single-list repair event. The raw relation-model and raw FRI-model failures are also explicit. Only the repair branch has the `32 * 240 / |K|` bound. Rust callback correspondence, Merkle binding, S-two applicability and fold-reduction probabilities, the actual list theorem, C1/C2-to-19-lane extraction, Fiat--Shamir/work, primitive-security, PCS/BCS, and runtime bounds remain external. S-two Theorem 21 proves a different quotient-based protocol. |
+| V5 relation check, PCS, and Fiat--Shamir soundness | **THE MATHEMATICAL MODEL INCLUSION IS PROVED; THE SELECTED SOURCE CONNECTION IS COMPLETE THROUGH THE INITIAL RELATION VALUE AND 58-FIELD TAIL.** The general and compact production final-dot equalities and their final composition remain open. Published decoding/PCS/Fiat--Shamir results, SHA-256 and Poseidon2 security, extraction, compiler, and runtime bounds also remain external. |
 | Universal all-input Rust Poseidon2 equality | **OPEN.** Constants and known-answer executions are pinned; `Poseidon2Faithful` remains the named all-input interface used by the relation theorem. |
 
 The runtime enforces the GoodA/GoodB predicate on every selected branch. The
@@ -188,13 +180,7 @@ lake exe cache get
 lake build
 ```
 
-For the retained production-Rust integration theorems:
-
-```sh
-aeneas-verif/component-c-runtime-downstream/released-trace-families-current-20260722/replay-lean432.sh
-aeneas-verif/current-source-abc-capstone-20260722/replay-lean432.sh
-```
-
-The integration replay requires the authenticated dependency caches described
-in the
-[`aeneas-verif` replay notes](../aeneas-verif/README.md#replaying-the-final-integration).
+For the production-Rust accepted path, use the Lean 4.32 replay recorded under
+[`v5-result-aware-source-link-20260821/`](../aeneas-verif/v5-result-aware-source-link-20260821/).
+The replay uses the pinned Aeneas environment described in
+[`aeneas-verif/README.md`](../aeneas-verif/README.md).

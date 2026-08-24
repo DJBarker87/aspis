@@ -34,7 +34,7 @@ flowchart LR
 | Evidence layer | What is established | Primary record |
 | --- | --- | --- |
 | Mathematics in Lean | Lean checks substantial parts of the spend rules, finite calculations, algebra, and component-level hiding arguments, subject to the assumptions named in each theorem | [formal-verification overview](docs/formal-verification.md) and [`AspisFormal/`](AspisFormal/) |
-| Selected Rust to Lean | Charon and Aeneas translate selected Rust functions into Lean; further proofs compare those functions with the mathematical models, assuming that certain Rust inputs and intermediate values are the ones described by the models | [`aeneas-verif/`](aeneas-verif/) |
+| Selected Rust to Lean | Charon and Aeneas translate selected Rust functions into Lean. The checked path now derives the transcript, work, queries, authenticated openings, FRI execution, decoded 76-claim table, initial relation value, and 58-field relation tail from one successful translated run. Two production dot-product equalities remain before the final one-run theorem is complete | [`aeneas-verif/`](aeneas-verif/) |
 | Source to program bytes | A pinned clean source commit and pinned build tools reproduce the exact 1,258,496-byte V5 SBF | [V5 release preflight](release/preflight/v5-production-freeze.md) and [frozen candidate bundle](release/aspis-v5-tag67-frozen-candidate-v1/) |
 | Program to chain | The deployed SBF identity, proof, statement, exact compute, state transition, and cleanup are preserved in a sanitized offline-verifiable bundle | [V5 mainnet bundle](release/aspis-v5-tag67-mainnet-v1/) |
 
@@ -42,6 +42,21 @@ These layers are complementary. A theorem about a model is not automatically a
 theorem about every Rust instruction, and reproducible program bytes are not a
 proof of their mathematics. Aspis records the links and their boundaries
 instead of collapsing them into one broader claim.
+
+### Current proof-integration status
+
+As of August 24, 2026, the final one-run Rust-to-security theorem is still
+being assembled. The deterministic path is checked through the exact initial
+relation value and complete decoded relation tail. The remaining source/model
+work is confined to two calculations performed by the production relation
+checker:
+
+- the final dot product of the general verifier weight accumulator; and
+- the final dot product of the compact Component-B accumulator.
+
+The repository does not yet describe that last composition as proved. This
+status concerns proof coverage of the existing released source; it does not
+require another transaction or change the archived mainnet result.
 
 ## Mainnet result
 
@@ -61,8 +76,9 @@ the state update on Solana mainnet-beta. The finalized transaction:
 · [See formal coverage](docs/formal-verification.md)
 
 The exact compiled program is tied to the recorded source and build
-environment. The selected production verifier path is separately connected to
-the maintained Lean models through the Charon/Aeneas proof layer.
+environment. The Charon/Aeneas proof layer connects the selected production
+verifier path to the maintained Lean models through the stages listed above;
+the two final dot-product connections are the remaining implementation work.
 
 The archived 75,358-byte proof also passes the released verifier callback in a
 new regression test. The same test changes each of the nine public fields in
@@ -112,98 +128,65 @@ execution, cleanup, and refund receipts.
 
 ## What has been formally checked
 
-Aspis has two connected formal layers:
+Aspis has two connected proof layers. [`AspisFormal/`](AspisFormal/) contains
+the mathematical development. Charon, Aeneas, and further Lean proofs connect
+the selected accepting production verifier path to those models.
 
-1. [`AspisFormal/`](AspisFormal/) checks the maintained mathematical
-   development in Lean 4.
-2. Charon, Aeneas, and additional Lean proofs connect selected production V5
-   Rust paths to those models.
+For the released V5 proof callback, the checked source chain starts from one
+successful translated verifier execution. It currently derives, from that
+same run:
 
-The current Rust-to-Lean work covers the selected Component-A release
-schedule, parts of Components B and C, the public output, the V5 work-byte
-reads, and the six ordered work checks. The final integration theorem assumes
-that several Rust calls succeeded and that some Rust inputs, folded values,
-and challenges equal the values in the Lean models. It does not prove that
-every accepted production proof automatically meets those assumptions or
-satisfies the complete spend relation. The exact theorem name is recorded in
-the [technical proof map](docs/formal-verification.md#current-v5-coverage).
+- the parsed proof and public statement values;
+- the transcript challenges and all six work checks;
+- the exact ordered set of 18 query positions;
+- the five authenticated opening sections and the values read from them;
+- the four FRI folds and final four-coefficient polynomial; and
+- the exact 76 decoded point claims, their four prepared claims, and the
+  resulting initial relation value; and
+- the complete 58-field decoded relation tail and four accepted relation
+  rounds.
 
-Lean proves that the extracted mathematical trace satisfies the complete
-spend rules: value balance, ownership, both Merkle paths, the nullifier, the
-output note, asset and fee fields, and the public statement.
+Those facts are not supplied as unrelated Rust/model equality assumptions.
+The two final production dot-product equalities listed above still have to be
+joined to them before the maintained security argument can be reached from a
+single accepted call. The
+[accepted-path source map](docs/v5-accepted-source-map.md) gives the short
+review route, and the [formal-verification overview](docs/formal-verification.md)
+lists the exact theorem names and replay command.
 
-The soundness argument has also been corrected and tightened for this release:
+Lean separately checks the private-spend rules, including value balance,
+ownership, both Merkle paths, the nullifier, output note, asset and fee fields,
+and public statement. It also checks the released circle domains and encoders,
+the coherent four-fold FRI candidate argument, the challenge-dependent
+nineteen-word reduction, and the bounded distinct-query sampler. The published
+circle-decoding and Fiat--Shamir theorems remain cited inputs; Lean checks that
+their stated field, distance, degree, and query conditions match the release.
 
-- one initial decoder candidate is followed coherently through all four FRI
-  folds, rather than choosing a new list member at each round;
-- the nineteen committed words are handled by a challenge-dependent
-  candidate-family argument, without an extra factor of 240;
-- Lean checks the exact released field, circle code, distance, agreement
-  threshold, list parameters, degree-eighteen batching curve, and nonzero
-  challenge denominator required by the cited circle-decoding result; and
-- the bounded distinct-query sampler and its rejection behavior are proved as
-  finite probability statements.
+The release target is **100 bits of work-normalized attack cost**. The checked
+protocol subtotal is below `0.7 * 2^-100`, leaving `0.3 * 2^-100` for explicit
+external events. If an attacker is considered only after completing the
+37-bit grind, the dominant raw term is about 70–71 bits. Aspis does not describe
+that raw term as 100-bit security.
 
-The dominant raw batching event is about 71 bits after conditioning on a
-completed grind. The 37-bit grind raises the modeled attack work: the checked
-core is below `0.7 * 2^-100`, leaving `0.3 * 2^-100` for separately justified
-external events. This is a **100-bit work-normalized target**, not a claim of a
-raw `2^-100` probability for each completed proof.
+The completed source theorems do not verify Charon, Aeneas, Lean, the Rust/SBF compiler,
+Solana, SHA-256, or Poseidon2. It also does not turn the separate production
+zero-knowledge and numerical theft arguments into unconditional claims. The
+published cryptographic results, concrete primitive-security bounds, fresh
+prover randomness, source-to-binary toolchain, and Solana account and
+persistence behavior remain explicit assumptions. The surrounding atomic
+state and refund path has its own source and runtime boundary.
 
-The remaining project-specific gaps are now mostly production-code links: the
-outer prepared-value loop, the complete transcript driver, two outer Merkle
-callers, and the final mapping from production candidate records into the
-mathematical candidate family. SHA-256, Poseidon2, Fiat--Shamir, the cited
-decoding result, compilation, and Solana execution remain explicit external
-assumptions. Until those links and external-event bounds are supplied, the
-repository does not claim a completed deployed 100-bit theft-resistance
-theorem. No accepting forgery was found.
+The fixed-victim theft model avoids assuming that a compressing nullifier hash
+is one-to-one. It separates credential recovery, a second nullifier preimage,
+a second note opening, a Merkle collision at the victim's position, marker
+address behavior, invalid setup, and Solana runtime failure. A concrete
+deployed theft number still needs extraction and primitive/runtime bounds, so
+the repository does not claim an unconditional standalone theft-resistance
+number.
 
-The theft proof no longer treats the compressing nullifier hash as one-to-one.
-The new fixed-victim game covers recovery of the victim's credential, a
-different secret/randomness pair with the victim's nullifier, a different
-opening of the victim's note commitment, and a different leaf at the victim's
-exact tree position. Lean proves that the last case exposes a concrete
-Poseidon2 node-hash collision. A different path at a different tree position
-can be a normal opening and is therefore not incorrectly called a collision.
-The older complete bound also lists PDA aliasing, Solana runtime/state failure,
-and an invalid victim setup as separate events. A newer marker-state theorem
-shows that even two different nullifiers resolving to the same marker address
-cannot both succeed sequentially: the second is rejected. This narrows the
-state argument, but it has not yet been connected to the deployed theft game;
-that game's current theorem therefore still retains PDA aliasing as a separate
-case.
-
-This completes the case split for the attack event defined in the Lean model,
-but not the connection from every real attack to that event or its numerical
-security. The connection from the exact deployed V5 program to the
-mathematical game, multi-proof extraction, concrete Poseidon2 bounds, the
-marker-state Rust correspondence, the theft-game link, PDA aliasing, and
-Solana runtime guarantees remain external. No standalone V5 theft-resistance
-number is claimed.
-
-This is deliberately a bounded claim. It is not an end-to-end formal proof of
-every Rust function, the compiler, Solana, or the complete private-spend
-system. The V5 work-checking theorem retains one explicit hash-call
-assumption: the production transcript hash call must equal the Lean hash
-function on the transcript state and `DOM_GRIND || nonce_le64`. Other parts
-retain the assumptions summarized above.
-Cryptographic assumptions, untranslated code, extraction, compilation, and
-runtime trust are listed in the [assumptions ledger](docs/assumptions-ledger.md).
-
-The current mathematical review found no concrete forgery or broken finite
-calculation. It records the corrected V5 distinction between roughly 71 raw
-bits for the dominant completed-grind event and a 100-bit work-normalized
-target after charging for grinding. It also lists the remaining code,
-cryptographic, compiler, and runtime assumptions. See the
-[mathematical status review](docs/reviews/mathematical-status-20260814.md).
-
-The [formal-security extension
-review](docs/reviews/v5-formal-security-extension-20260814.html) gives the
-shortest plain-English account of the new results and the work still open.
-
-The [formal-verification overview](docs/formal-verification.md) gives the
-precise theorem map, coverage, and remaining boundaries.
+No concrete mathematical forgery or accepting invalid proof was found. The
+complete boundary is recorded in the [assumptions ledger](docs/assumptions-ledger.md)
+and [security policy](SECURITY.md).
 
 ## What the result demonstrates
 
@@ -245,8 +228,10 @@ at the point where each claim depends on them.
   builds, internal review, and finalized chain evidence, but it has not
   received an external cryptographic or Solana security audit.
 
-The [paper](paper/aspis-spend/) states the construction and security claims in
-full.
+The [formalization report](paper/aspis-formalization/) states the proof scope
+and security assumptions in full. The earlier
+[construction paper](paper/aspis-spend/) records the protocol and deployment
+design.
 
 ## How the transaction works
 
@@ -257,8 +242,8 @@ lifecycle comprised 84 transactions:
 - 2 pool setup transactions;
 - 1 proof-account create;
 - 79 proof uploads;
-- 1 Tag-62 seal; and
-- 1 V5 verify-and-apply transaction (instruction tag 67).
+- 1 proof-account seal; and
+- 1 V5 verify-and-apply transaction.
 
 Deployment and the three cleanup transactions are separate from that count.
 During V5 verification, the proof account is read-only and retained so the result can be
@@ -283,12 +268,13 @@ lake build
 
 From the repository root:
 
-```bash
-aeneas-verif/component-c-runtime-downstream/released-trace-families-current-20260722/replay-lean432.sh
-aeneas-verif/current-source-abc-capstone-20260722/replay-lean432.sh
-```
+Use the Lean 4.32 aggregate replay under
+`aeneas-verif/v5-result-aware-source-link-20260821/`. It checks the tracked
+accepted-path proof closure and its generated-source dependencies. Until the
+two dot-product equalities above are closed, this is a checkpoint replay, not
+a replay of a completed end-to-end theorem.
 
-The [Aeneas replay notes](aeneas-verif/README.md#replaying-the-final-integration)
+The [Aeneas replay notes](aeneas-verif/README.md#replaying-the-accepted-path-checkpoint)
 describe the authenticated dependency caches and pinned tool locations.
 
 ### 3. Check the exact program and frozen release inputs
@@ -326,7 +312,8 @@ and public release claims against the committed manifests and hashes.
 | `release/` | Frozen candidate inputs and finalized public release bundles |
 | `results/` | Runtime measurements, build provenance, and supporting evidence |
 | `docs/` | Explanations, assumptions, code navigation, reviews, and release history |
-| `paper/aspis-spend/` | Full construction and security argument |
+| `paper/aspis-formalization/` | Formalization report and exact security boundary |
+| `paper/aspis-spend/` | Earlier construction and deployment paper |
 
 The [accepted V5 source map](docs/v5-accepted-source-map.md) gives auditors a
 15-stop path through the released verifier. The broader [code

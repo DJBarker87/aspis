@@ -24,7 +24,8 @@ the finalized mainnet transaction. Paths are relative to the repository root.
 | Poseidon2 permutation | `crates/aspis-statement/src/poseidon2.rs` |
 | Maintained Lean development | `AspisFormal/AspisFormal/` |
 | Lean theorem and assumption status | `AspisFormal/README.md` |
-| Full construction and reductions | `paper/aspis-spend/` |
+| Current formal result and security boundary | `paper/aspis-formalization/` |
+| Earlier construction and deployment paper | `paper/aspis-spend/` |
 
 ## Proof system and prover
 
@@ -46,17 +47,19 @@ the finalized mainnet transaction. Paths are relative to the repository root.
 | V5 scope | Principal record |
 | --- | --- |
 | Current theorem map and pinned extraction packages | `aeneas-verif/README.md` |
-| Component A/B/C integration | `aeneas-verif/current-source-abc-capstone-20260722/proof/CurrentSourceABCapstone.lean` |
-| Component-C runtime rounds and public output | `aeneas-verif/component-c-runtime-downstream/released-trace-families-current-20260722/proof/RuntimeReleasedTraceFamiliesCurrentJoin.lean` |
-| V5 work-byte reads and ordered checks | `aeneas-verif/tag67-work-wire-correspondence/proof/Tag67WorkVerifierClosure.lean` |
+| One successful production proof-checker execution | `aeneas-verif/v5-result-aware-source-link-20260821/` |
+| Exact transcript operations and six work checks | `aeneas-verif/v5-result-aware-source-link-20260821/proof/` |
+| Five private-opening trees and FRI checks | `aeneas-verif/v5-merkle-unchanged-full-20260820/`, `aeneas-verif/v5-fri-consumer-exact-20260815/` |
+| Four relation rounds and final check | `aeneas-verif/v5-relation-acceptance-20260815/`, `aeneas-verif/v5-relation-full-source-20260820/` |
 | Plain-language scope and remaining boundaries | `docs/formal-verification.md` |
 
-The final composition theorem is
-`FormalClosureStream1.current_source_combined_capstone`. It packages the listed
-selected paths under successful-call, valid-input, and explicit
-execution/model hypotheses. It is neither a proof of every Rust function nor
-a theorem that arbitrary verifier acceptance implies the complete spend
-relation.
+The current accepted-path work starts with a successful translated call to
+the production proof checker. It derives the parser, transcript, work, query,
+private-opening, FRI, decoded claim table, initial relation value, and
+relation tail used by the mathematical security argument from that same
+execution. The general and compact final-dot equalities still have to be
+proved before the outer theorem is complete. This is not a proof of every
+Rust function, the compiler, or the Solana runtime.
 
 ## V5 Solana transaction
 

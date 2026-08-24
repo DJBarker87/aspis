@@ -1,9 +1,11 @@
 # Documentation
 
-Aspis V5 is the current release. It connects a private-spend construction to
-Lean proofs, selected production verifier paths through Charon, Aeneas, and
-Lean bridge proofs, a byte-reproducible Solana program, and a finalized
-mainnet-beta state transition.
+Aspis V5 is the current release. It records a private-spend construction,
+Lean proofs, selected production verifier paths translated with Charon and
+Aeneas, a byte-reproducible Solana program, and a finalized mainnet-beta state
+transition. The Rust-to-model connection is complete through the initial
+relation value and decoded relation tail; its two final dot products are still
+being proved.
 
 ## Start here
 
@@ -23,9 +25,11 @@ mainnet-beta state transition.
 7. [Accepted V5 source map](v5-accepted-source-map.md) — the 15 review stops
    from instruction dispatch through proof checks and the state update
 8. [Code map](code-map.md) — broader concept-to-file navigation
-9. [Technical paper](../paper/aspis-spend/) — construction, security
-   argument, and supporting records
-10. [Design history and previous releases](design-history.md) — evolution of
+9. [Formalization report](../paper/aspis-formalization/) — mathematical,
+   Rust-to-Lean, security, and trusted-boundary record
+10. [Construction paper](../paper/aspis-spend/) — earlier protocol and
+   deployment description
+11. [Design history and previous releases](design-history.md) — evolution of
    the current V5 result and the earlier q18/g37 record
 
 ## Evidence by layer

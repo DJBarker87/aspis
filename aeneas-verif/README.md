@@ -1,123 +1,104 @@
-# Proofs connecting production Rust to Lean
+# Proofs connecting the released Rust verifier to Lean
 
-A correct mathematical model is only part of the implementation story. This
-directory connects selected production V5 prover and verifier paths to the
-Lean models in [`AspisFormal/`](../AspisFormal/).
+This directory addresses a simple risk: a correct mathematical model is not
+enough if the program checks something different.
 
-Charon extracts the selected Rust, Aeneas translates the extracted code into
-Lean, and further proofs compare those functions with the mathematical models
-under the successful-call, valid-input, and execution/model assumptions stated
-by each theorem. Lean checks the generated definitions and the comparison proofs
-together.
+Charon extracts selected production Rust. Aeneas translates that extraction
+to Lean. Further Lean proofs are connecting one successful run of the
+released V5 proof checker to the mathematical objects used by the security
+argument.
+The generated code and the bridge proofs are checked together by Lean.
 
-For a plain-language account of both proof layers, start with
-[`docs/formal-verification.md`](../docs/formal-verification.md). The theorem
-map below is the exact technical record of the Rust-to-model coverage.
+For a less technical explanation, start with
+[`docs/formal-verification.md`](../docs/formal-verification.md). For the short
+route through the Rust source, use the
+[`accepted V5 source map`](../docs/v5-accepted-source-map.md).
 
-## Scope in one minute
+## Current accepted-path status
 
-This layer proves correspondence for selected production V5 Rust, not for the
-whole program, the compiler, or the cryptographic premises. Its final chain
-covers:
+The checked chain begins with one successful translated call to
+`verify_mode9_composite_with_live_statement`. From that same execution it now
+derives:
 
-- extracted Component-A matrix execution to maintained GoodA for the selected
-  release schedule;
-- the generated Component-B sampler/evaluator/C2 layout to the maintained
-  ten-round terminal;
-- Component C's four rounds, finish, packer, and deployed public rows for a
-  packaged `GeneratedPublicRun`, which itself carries explicit runtime/model
-  equalities;
-- Tag-67 magic, LE64 reads, projection, digest predicate, and six ordered work
-  checks; and
-- their combined A/B/C public output and Tag-67 verifier at that schedule.
+- the parsed proof body and live public statement;
+- the transcript state, sampled field values, and six proof-of-work checks;
+- the exact 18 distinct query positions used by the verifier;
+- all five authenticated opening sections and the values later read from
+  them;
+- the four FRI folds, coordinate calculations, and final polynomial; and
+- the exact 76 decoded claims, four prepared claims, and initial relation
+  value; and
+- the complete decoded relation tail and four accepted relation rounds.
 
-The runtime verifier independently recomputes GoodA and GoodB for every
-selected branch. The bridge theorem for Component A is nevertheless
-schedule-specific: a universal all-schedule source theorem remains open. A
-complete joint serializer theorem and universal all-input Rust Poseidon2
-equality also remain outside this proof, and the PCS/Fiat–Shamir security
-argument relies on cited cryptographic results.
+The phrase **same execution** matters. Earlier component theorems allowed a
+caller to provide equalities between selected Rust values and model values.
+The current chain obtains the values listed above by following one successful
+translated call, so they cannot be mixed across different runs.
 
-This correspondence layer complements the maintained mathematical proofs,
-source-to-SBF reproducibility, and tests/runtime/mainnet evidence. It does not
-replace them or turn those four layers into a single universal theorem.
+Two deterministic equalities remain before the final theorem is complete:
+the production general-weight final dot and the production compact
+Component-B final dot must each equal the maintained calculation. No axiom or
+caller-supplied equality is being used in place of those proofs.
 
-## Current V5 integration theorem
+The final assembly is under
+[`v5-result-aware-source-link-20260821/`](v5-result-aware-source-link-20260821/).
+Its dependencies include the exact transcript samplers, the unchanged
+five-section Merkle verifier, the full FRI consumer and coordinate driver, the
+prepared-claim loop, and the full relation checker.
 
-The principal result is
-`FormalClosureStream1.current_source_combined_capstone` in
-[`current-source-abc-capstone-20260722/proof/CurrentSourceABCapstone.lean`](current-source-abc-capstone-20260722/proof/CurrentSourceABCapstone.lean).
-It packages:
+## What remains outside the completed source proofs
 
-- extracted Component-A matrix execution for the selected release schedule;
-- generated Component-B evaluation and conditional Component-C public-output
-  results; and
-- reading the Tag-67 work bytes plus all six ordered work checks.
+This is a proof about the selected accepting proof-checker path, not every
+line of the repository or every part of Solana. It does not prove:
 
-The production Rust verifier enforces the GoodA and GoodB gates for every
-accepted selection. The combined theorem's Component-A conjunct is narrower:
-it proves the extracted path for the selected release schedule. Component B
-consumes successful sampler/evaluator and valid-input hypotheses, while
-Component C's `GeneratedPublicRun` carries folded-word, coefficient,
-challenge, and successful-execution equalities. A universal Rust-to-model
-theorem connecting the extracted `candidate_is_good` path to
-`VerifierEnforcesGoodA` remains open, and no current theorem proves that
-arbitrary verifier acceptance constructs every component package or implies
-the complete spend relation.
+- Charon, Aeneas, Lean, `rustc`, LLVM, the SBF toolchain, or Solana;
+- that SHA-256 or Poseidon2 has the required cryptographic security;
+- the published circle-decoding and Fiat--Shamir theorems themselves;
+- fresh prover randomness;
+- the outer account-borrowing, upload, cleanup, and refund code; or
+- Solana account locking, rollback, and persistent state behavior.
 
-The Tag-67 side enters through
-`AspisTag67WorkVerifierClosure.tag67AcceptedWireAndVerifierClosure`. Its only
-remaining Rust-to-Lean assumption is the exact transcript hash application:
+The production SHA-256 callback is connected to the mathematical hash through
+an explicit callback-semantics assumption. That is a boundary around an
+external primitive, not a free assertion that the rest of the Rust verifier
+matches Lean. Numerical primitive, random-oracle, compiler, and runtime
+failure bounds also remain explicit inputs to the security calculation.
 
-```text
-∀ state nonce,
-  actualTranscriptGrindingDigest state nonce =
-    rustHash state ((3 : Byte) :: List.ofFn (nonceLEBytes nonce))
-```
-
-That equation names the function-pointer call that pinned Aeneas cannot
-translate. Given successful work-byte guards and reads, the decoded values,
-exact projection, leading-zero predicate, and six ordered Tag-67 checks follow
-inside that subtheorem. It is the sole remaining equation in the Tag-67
-work-verifier subtheorem, not the sole important premise of the complete
-A/B/C composition.
-
-This proof layer is bound to the V5 release. Tag 67 is enabled in the
-default verifier dispatch, and the SBF has SHA-256
-`4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40`.
+These boundaries are listed in
+[`docs/assumptions-ledger.md`](../docs/assumptions-ledger.md).
 
 ## Proof map
 
-| Path | Role |
+| Area | Main retained package |
 | --- | --- |
-| `current-source-abc-capstone-20260722/` | A/B/C and Tag-67 integration theorem |
-| `component-b-mask/unified-current-20260722/` | Current generated Component-B evaluator/sampler and maintained bridge |
-| `component-b-layout-bindings/` | Rust layout and relation-claim bindings |
-| `component-c-runtime-downstream/` | Four rounds, finish, packer, and public deployed output |
-| `tag67-work-wire-correspondence/` | Work-byte reads, predicate, ordered six-step verifier, and final integration |
-| `v5-transcript-absorb-input/` | Transcript payload ordering |
-| `v5-merkle-unchanged-full-20260820/` | Unchanged generated Merkle verifier acceptance through all five trees to the maintained model |
-| `proof/` and `lean432/` | Pinned field-operation proof base and Lean 4.32 compatibility harness |
-| `FIELD-OPS.md`, `M31-INVERSE.md`, `CM31-MULTIPLICATIVE.md`, `QM31-ADDITIVE.md` | Focused arithmetic proof reports |
+| One accepted composite call and shared values | `v5-result-aware-source-link-20260821/` |
+| Transcript prefix, work successors, field samplers, and queries | `v5-transcript-prefix-extraction-20260815/`, `v5-transcript-field-samplers-20260821/`, and the accepted-entry bridges |
+| Five authenticated opening sections | `v5-merkle-unchanged-full-20260820/` and `v5-fri-caller-exact-20260821/` |
+| Prepared point claims and full relation call | `v5-relation-acceptance-20260815/` and `v5-relation-full-source-20260820/` |
+| Full FRI consumer | `v5-fri-consumer-exact-20260815/` |
+| Production coordinate calculations | `v5-fri-coordinate-production-full-20260821/` |
+| Mathematical models and security reductions | [`AspisFormal/`](../AspisFormal/) |
+| Pinned Lean 4.32/Aeneas environment | `lean432/` and `scripts/prepare-aeneas-lean432.sh` |
 
-The dated directory suffixes identify the extraction snapshot used by the
-release theorem; they are snapshot labels, not active work queues.
+The dated suffixes identify extraction snapshots. They are not a claim that
+the corresponding Rust was written on that date.
 
-## Best places to challenge this layer
+## How to review a generated-source claim
 
-An outside review adds the most value by checking the selected-source identity
-and extraction replay, the schedule-specific Component-A bridge, the
-successful-call/valid-input and Component-C execution/model hypotheses,
-Rust paths outside them, the exact transcript hash-call equation above, and
-serialization paths not covered by one complete joint theorem. Primitive security,
-source-to-SBF compilation, Solana account/state/refund behavior, and runtime
-pricing belong to the adjacent assurance layers and remain equally important
-review targets; the full boundary is in
-[`docs/assumptions-ledger.md`](../docs/assumptions-ledger.md).
+For each important function, check four things:
 
-## Replaying the final integration
+1. the extraction manifest names the production Rust file and function;
+2. the generated Lean contains the translated control flow;
+3. the bridge theorem proves the mathematical statement from a successful
+   generated result; and
+4. the aggregate replay imports that exact generated module and theorem.
 
-The maintained Lean project is the quick, fresh-clone check:
+The source map reduces the accepting execution to fifteen review stops so an
+auditor does not need to begin with the roughly 189 KB verifier file.
+
+## Replaying the accepted-path checkpoint
+
+The maintained mathematical project is the quick independent check:
 
 ```sh
 cd AspisFormal
@@ -125,28 +106,22 @@ lake exe cache get
 lake build
 ```
 
-The retained V5 translations were produced with Aeneas
-`b59d5188c082f704a418c7cb4e52ad69328002d1` and Charon
-`cb50ff16b9f1066b8a97dc06da704de2da2fa41c`. Their final proofs replay under
-pinned Lean 4.32 through these entry points:
+The accepted-path checkpoint replay uses Lean 4.32 and the pinned Aeneas commit
+`b59d5188c082f704a418c7cb4e52ad69328002d1`. The compatibility patch and its
+file hashes are recorded in [`lean432/`](lean432/). The every-commit formal CI
+runs the maintained project and the tracked accepted-path replay; the exact
+local command is also recorded beside the aggregate proof. The wording will
+change to "final" only after the two remaining dot-product equalities and the
+outer theorem compile together.
 
-```sh
-aeneas-verif/component-c-runtime-downstream/released-trace-families-current-20260722/replay-lean432.sh
-aeneas-verif/current-source-abc-capstone-20260722/replay-lean432.sh
-```
+Generated object files are deliberately not committed. Generated Lean source,
+bridge proofs, extraction manifests, tool revisions, and replay entry points
+are retained so a fresh checkout can reproduce the checked result.
 
-The integration replay accepts explicit `LEAN432_BIN`,
-`COMPONENT_B_ARITHMETIC_OLEAN_DIR`, `GOOD_A_OLEAN_DIR`, and
-`COMPONENT_C_OLEAN_DIR` locations so a reviewer can reuse or rebuild the pinned
-dependency caches without committing generated object files.
+## Historical component proofs
 
-## Curated versus archived material
-
-`main` keeps normalized generated Lean, proof source, reports, and the final
-replay entry points. Regenerable LLBC, raw/versioned translations, build logs,
-and superseded retarget experiments are preserved at
-[`research-archive-v5-production-closure-2026-07-22`](https://github.com/DJBarker87/aspis/tree/research-archive-v5-production-closure-2026-07-22).
-This reduces the tracked directory from roughly 40 MB to about 5 MB without
-discarding the extraction history.
-The archive tag resolves to
-[`859d8588d2761fac6714226877c9317f7d697a03`](https://github.com/DJBarker87/aspis/commit/859d8588d2761fac6714226877c9317f7d697a03).
+The dated Component A/B/C integration package remains useful as a record of
+the staged work. It is not the primary V5 claim after the accepted-path work
+began. Public documentation should use the accepted-path status above; the
+older component theorem retains its original, narrower hypotheses for
+historical review.

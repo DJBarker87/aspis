@@ -22,12 +22,15 @@ satisfies these conditions:
 - the public nullifier is derived from the private input.
 
 The intended soundness statement is that an accepted proof implies such a
-valid witness exists. Lean now proves the spend rules once a normalized trace
+valid witness exists. Lean proves the spend rules once a normalized trace
 package containing all required residuals and public-field matches has been
-constructed. Deriving that package from arbitrary accepted proof bytes is
-still an explicit cryptographic and implementation assumption, as recorded
-in the [assumptions ledger](assumptions-ledger.md). Interpreting an accepted
-proof as knowledge by the prover needs a further extraction assumption. After
+constructed. The selected Rust-to-Lean path now derives the parser,
+transcript, work, openings, FRI checks, claim table, initial relation value,
+and relation tail from one successful translated execution. Its general and
+compact final-dot equalities still have to be connected before that complete
+package follows from the selected production verifier. Interpreting an
+accepted proof as knowledge by the prover also needs the separate extraction
+assumption recorded in the [assumptions ledger](assumptions-ledger.md). After
 one accepted spend, the program records its public nullifier and rejects later
 transactions using that nullifier. Lean reduces a different valid opening of
 the exact same fixed input leaf to recovery failure or a second preimage of the
@@ -45,8 +48,8 @@ limit. Aspis therefore uses a temporary program-owned proof account:
 1. Create the pool and initialize it.
 2. Create the proof account.
 3. Upload the proof in 79 chunks of at most 960 bytes.
-4. Seal the account after checking its complete byte image (instruction tag 62).
-5. Verify and apply the spend with the V5 instruction (tag 67).
+4. Seal the account after checking its complete byte image.
+5. Verify the proof and apply the spend with the released V5 instruction.
 
 That is 84 lifecycle transactions: 2 pool transactions, 1 proof-account
 create, 79 uploads, 1 seal, and 1 spend. Program deployment and the three
@@ -91,9 +94,11 @@ on-chain verification cost. Aspis uses M31 arithmetic, a circle-domain
 WHIR-style commitment, Poseidon2 inside the relation, and Solana's native
 SHA-256 syscall for the Fiat–Shamir transcript.
 
-The [paper](../paper/aspis-spend/) defines the construction precisely. The
-[assumptions ledger](assumptions-ledger.md) identifies the cryptographic
-assumptions rather than treating them as Lean conclusions.
+The [formalization report](../paper/aspis-formalization/) defines the current
+proof scope and security boundary. The earlier
+[construction paper](../paper/aspis-spend/) records the protocol and
+deployment design. The [assumptions ledger](assumptions-ledger.md) identifies
+the cryptographic assumptions rather than treating them as Lean conclusions.
 
 ## From construction to mainnet
 
@@ -102,7 +107,7 @@ Aspis records four complementary evidence layers:
 | Layer | Evidence |
 | --- | --- |
 | Mathematical construction | Lean checks substantial parts of the statement, algebra, concrete release calculations, hiding argument, and V5 component models |
-| Selected production implementation | Charon and Aeneas translate selected Rust; Lean bridge proofs connect those definitions to the maintained models |
+| Selected production implementation | Charon and Aeneas translate selected Rust; Lean bridge proofs connect the accepted path through its claim table, initial relation value, and decoded relation tail. Two final-dot equalities remain |
 | Exact program | Pinned source and build tools reproduce the frozen SBF byte for byte |
 | Chain result | Finalized receipts bind that SBF, proof, statement, state transition, compute use, and cleanup |
 

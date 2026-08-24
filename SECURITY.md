@@ -10,9 +10,8 @@ problems.
 
 ## How to read the security case
 
-Aspis does not claim one universal end-to-end proof from cryptographic
-assumptions through a finalized Solana transaction. Its assurance comes from
-four complementary layers:
+Aspis separates four kinds of evidence rather than presenting them as one
+unqualified proof of Solana itself:
 
 1. Lean checks the maintained mathematical construction and concrete release
    calculations, subject to the named cryptographic interfaces.
@@ -26,35 +25,21 @@ four complementary layers:
 Each layer answers a different question; evidence in one layer does not erase
 an assumption at the boundary to the next.
 
-The selected production-Rust theorems cover Component-A matrix execution to
-maintained GoodA for the release schedule; selected Component-B
-sampler/evaluator/C2 behavior; a packaged Component-C public run; and the V5
-instruction magic byte, LE64 reads, projection, digest predicate, and six ordered work checks.
-The final Lean theorem combines those results by assuming that the relevant
-Rust calls return successfully, their inputs have the required lengths and
-field encodings, and several intermediate Rust values equal the corresponding
-Lean values. It does not prove that every accepted production proof meets all
-of those assumptions or implies the complete spend relation. The runtime verifier recomputes GoodA and
-GoodB for every selected branch, but a universal all-schedule source theorem
-for Component A remains open.
+The current accepted-path proof chain starts with one successful translated call
+to the released proof checker. From that same call it derives the parse,
+transcript challenges, six work checks, 18 distinct queries, five
+authenticated opening sections, FRI checks, final polynomial, exact decoded
+claim table, initial relation value, and decoded four-round relation tail.
+These values cannot be chosen from different runs. The two production final
+dot products remain open implementation proofs, so the final one-run theorem
+is not yet claimed.
 
-The sole retained function-call equation in the **V5 work-verifier
-subtheorem** is:
-
-```text
-∀ state nonce,
-  actualTranscriptGrindingDigest state nonce =
-    rustHash state ((3 : Byte) :: List.ofFn (nonceLEBytes nonce))
-```
-
-It is a concrete function-pointer boundary that the pinned Aeneas translation
-cannot cross, not a generic assumption that Rust equals Lean. Once that
-equation and the successful generated reads/guards are supplied, the exact
-projection, leading-zero predicate, and six ordered V5 work checks are theorem
-conclusions. The Component B/C proofs and the final combined theorem still
-assume that the relevant Rust calls return successfully, that inputs have the
-required lengths and encodings, and that specified intermediate values match
-the Lean model.
+This is deliberately narrower than verification of the whole program. The
+surrounding account wrapper, compiler, Solana runtime, and persistent state
+transition retain their own stated boundaries. SHA-256 and Poseidon2
+implementation and security properties, the cited decoding and Fiat--Shamir
+results, and the numerical bounds assigned to external failure events are
+also explicit assumptions rather than Lean conclusions.
 
 ## Security evidence
 
@@ -98,26 +83,32 @@ attack cost, not 128 bits and not a raw `2^-100` probability per completed
 proof. The remaining external events must together fit the reserved
 `0.3 * 2^-100` budget.
 
-The principal unfinished work is connecting the complete production control
-flow to the mathematical model: one prepared-value loop, the transcript
-driver, two Merkle callers, and the final production-candidate mapping. The
-cited decoding and Fiat--Shamir results, SHA-256 and Poseidon2 security,
-compilation, and Solana behavior remain explicit external assumptions. Until
-those links and bounds are supplied, this is not a completed deployed
-100-bit theft-resistance theorem. See the
-[dated mathematical review](docs/reviews/mathematical-status-20260814.md).
+Most of the deterministic accepted proof-checker path is connected to the maintained
+mathematical event in Lean. Before the final connection is complete, the
+general and compact production final-dot equalities remain. What will remain
+outside the completed source theorem is the security
+of the cryptographic primitives and published reductions, fresh prover
+randomness, the translation and compilation tools, the surrounding Solana
+account/state code, and concrete probability bounds for those external
+events. Consequently the repository reports a checked 100-bit
+work-normalized **protocol subtotal**, not an unconditional 100-bit deployed
+theft-resistance number. See the [formal-verification overview](docs/formal-verification.md)
+and [dated mathematical review](docs/reviews/mathematical-status-20260814.md).
 
-`V5AcceptedSpendRelation.lean` proves that a successfully extracted V5 trace
-with the checked arithmetic, Poseidon2, Merkle, and public-input equations
-satisfies the complete spend relation. The remaining production-code links
-are listed above rather than hidden inside a generic failure event.
+`V5AcceptedSpendRelation.lean` proves that the extracted arithmetic,
+Poseidon2, Merkle, and public-input equations imply the complete spend
+relation. The accepted-path chain supplies the verifier-side parse,
+transcript, opening, FRI, claims, initial relation value, and relation tail
+from one translated execution; the two final-dot bridges are still being
+closed.
 `V5FixedVictimTheftGame.lean` separately classifies a fixed-victim attack into
 eight mathematical and chain-level failures for the attack event defined in
-the Lean model. Neither file supplies the still-missing deployed connection or
-extraction theorem, or numerical Poseidon2 and runtime bounds. The marker-state
-model proves that two sequential successful marker writes cannot share an
-address. Connecting the Rust and Solana execution to that model, and using it
-to remove the PDA-alias case from the theft game, remains open.
+the Lean model. These results do not prove that an extractor recovers a valid
+witness from every observed accepted proof, or supply numerical Poseidon2 and
+runtime bounds. The marker-state model proves that two sequential successful
+marker writes cannot share an address. Connecting the surrounding Rust and
+Solana state transition to that model, and using it to remove the PDA-alias
+case from the theft game, remains open.
 
 The project has not yet received an external security audit or published a
 coverage-guided fuzzing campaign.
@@ -137,15 +128,12 @@ The highest-value external work is to attack the boundaries between the four
 layers, rather than merely rerunning already-green checks:
 
 1. Whether the listed failure cases cover every way a false proof could be
-   accepted. The Lean model now reduces an accepted false execution to four
-   explicit unbounded failure branches or the bounded single-list relation
-   event. The remaining concrete targets are to connect the Rust callback and
-   authenticated C1/C2 data to that model, then prove probability bounds for
-   the named FRI, lane-extraction, batching, hash, transcript, work, and
-   runtime failures. The review must also establish whether the cited coding
-   and Fiat--Shamir results apply and whether the full Rust execution really
-   has the hiding behavior described by the mathematical model. The
-   calculators and rank checks do not prove these links.
+   accepted, and whether the cited coding and Fiat--Shamir results apply with
+   the exact hypotheses recorded by the release. Lean checks the released
+   field, code dimensions, distances, degree limits, query schedule, and
+   finite arithmetic; an outside review should challenge the imported
+   cryptographic theorems and the probability assigned to every external
+   event.
 2. The custom Poseidon2-M31 primitive used for commitments, nullifiers, and
    Merkle compression, including its cryptographic security and universal
    all-input Rust equality. Constants and known-answer executions are pinned;
@@ -162,14 +150,13 @@ layers, rather than merely rerunning already-green checks:
    bytes alone. The deployed connection, extraction after observed proofs,
    target sampling, concrete Poseidon2 bounds, PDA-alias game reduction, and
    exact Rust/Solana state behavior remain outside the proof.
-3. The assumptions that the Component-B/C Rust calls return successfully,
-   their inputs have the required lengths and field encodings, their folded
-   values, coefficients, challenges, serialized bytes, and transcript match
-   the Lean model, plus the remaining V5 hash-call equation.
-4. Production Rust outside the selected Charon/Aeneas paths, especially the
-   still-open universal Component-A source theorem, a complete joint serializer
-   theorem, and a proof that ordinary acceptance supplies the facts currently
-   passed into the selected component theorems as assumptions.
+3. The trusted boundary around Charon, Aeneas, Lean, the Rust/LLVM/SBF
+   toolchain, and the production SHA-256 callback. These tools and primitive
+   semantics are pinned and replayed, not themselves proved by the final
+   theorem.
+4. Production Rust outside the selected accepted proof-checker path,
+   especially the outer account parser, atomic state wrapper, serializers,
+   and paths not exercised by the released spend.
 5. Solana account validation and aliasing, proof-account and marker state
    mutation, ordered all-or-nothing updates, refund and cleanup behavior, and
    the host executor's signer and recovery dependency surface.
