@@ -30,7 +30,7 @@ and relation tail from one successful translated execution. The accepted
 general accumulator's twelve-component schedule and dot implementation are
 proved, as are the compact accumulator's constructor, four folds, final
 assembly, and dot. The final theorem derives both accumulator equalities from
-the same execution. Once its clean replay is green, the maintained
+the same execution. Its clean tracked replay passed on 24 August 2026, and the maintained
 accepted-path security-event conclusion follows from one successful selected
 translated verifier call.
 Interpreting an
@@ -112,7 +112,7 @@ Aspis records four complementary evidence layers:
 | Layer | Evidence |
 | --- | --- |
 | Mathematical construction | Lean checks substantial parts of the statement, algebra, concrete release calculations, hiding argument, and V5 component models |
-| Selected production implementation | Charon and Aeneas translate selected Rust; Lean bridge proofs follow one successful selected verifier call through its claim table, relation checks, and both final accumulators. Once the final replay is green, that call yields the maintained accepted-path security-event conclusion without caller-supplied accumulator equalities |
+| Selected production implementation | Charon and Aeneas translate selected Rust; Lean bridge proofs follow one successful selected verifier call through its claim table, relation checks, and both final accumulators. The final clean replay passed on 24 August 2026, and that call yields the maintained accepted-path security-event conclusion without caller-supplied accumulator equalities |
 | Exact program | Pinned source and build tools reproduce the frozen SBF byte for byte |
 | Chain result | Finalized receipts bind that SBF, proof, statement, state transition, compute use, and cleanup |
 

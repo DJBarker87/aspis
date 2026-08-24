@@ -34,7 +34,7 @@ flowchart LR
 | Evidence layer | What is established | Primary record |
 | --- | --- | --- |
 | Mathematics in Lean | Lean checks substantial parts of the spend rules, finite calculations, algebra, and component-level hiding arguments, subject to the assumptions named in each theorem | [formal-verification overview](docs/formal-verification.md) and [`AspisFormal/`](AspisFormal/) |
-| Selected Rust to Lean | Charon and Aeneas translate selected Rust functions into Lean. The final accepted-path theorem follows one successful translated verifier call through the transcript, work, queries, authenticated openings, FRI execution, relation checks, and both final accumulators. Its clean replay is the publication gate | [`aeneas-verif/`](aeneas-verif/) |
+| Selected Rust to Lean | Charon and Aeneas translate selected Rust functions into Lean. The final accepted-path theorem follows one successful translated verifier call through the transcript, work, queries, authenticated openings, FRI execution, relation checks, and both final accumulators. Its clean tracked replay passed on 24 August 2026 | [`aeneas-verif/`](aeneas-verif/) |
 | Source to program bytes | A pinned clean source commit and pinned build tools reproduce the exact 1,258,496-byte V5 SBF | [V5 release preflight](release/preflight/v5-production-freeze.md) and [frozen candidate bundle](release/aspis-v5-tag67-frozen-candidate-v1/) |
 | Program to chain | The deployed SBF identity, proof, statement, exact compute, state transition, and cleanup are preserved in a sanitized offline-verifiable bundle | [V5 mainnet bundle](release/aspis-v5-tag67-mainnet-v1/) |
 
@@ -45,8 +45,8 @@ instead of collapsing them into one broader claim.
 
 ### Current proof-integration status
 
-The final one-run theorem is the publication gate. Once its clean tracked
-replay is green, one successful selected translated call to the released V5
+The final one-run theorem passed its clean tracked replay on 24 August 2026.
+One successful selected translated call to the released V5
 proof checker deterministically yields the maintained accepted-path
 security-event conclusion. The proof derives the general accumulator's exact
 terminal weights and dot product, and the compact accumulator's constructor,
@@ -175,7 +175,7 @@ same run:
 Those facts are not supplied as unrelated Rust/model equality assumptions.
 The final theorem also derives the accepted general accumulator schedule and
 terminal dot, together with the compact accumulator's constructor, folds,
-final assembly, and dot. Once its clean tracked replay is green, the complete
+final assembly, and dot. Its clean tracked replay passed on 24 August 2026, so the complete
 deterministic connection from one successful translated verifier call to the
 maintained accepted-path security-event conclusion is established. The
 [accepted-path source map](docs/v5-accepted-source-map.md) gives the short

@@ -16,7 +16,7 @@ flowchart LR
     L["Lean models and proofs"]
     R["Selected production Rust"]
     A["Charon extraction and Aeneas translation"]
-    E["Accepted-path Lean theorem<br/>(clean replay is the publication gate)"]
+    E["Accepted-path Lean theorem<br/>(clean replay passed 24 August 2026)"]
     B["Reproducible Solana program"]
     X["Archived finalized mainnet execution"]
 
@@ -128,7 +128,7 @@ The source and model semantics include the dense and deferred grouped cases.
 The compact constructor, four folds, final assembly, and four-term dot are
 also derived from the accepted execution. The final theorem uses both
 accumulator equalities internally; callers do not provide either equality as
-an assumption. Once its clean tracked replay is green, the same successful
+an assumption. Its clean tracked replay passed on 24 August 2026, so the same successful
 selected translated verifier call deterministically yields the maintained
 accepted-path security-event conclusion.
 
@@ -194,7 +194,7 @@ explicit failure cases. The main checked parts are:
 - the finite relation-repair and work-normalized arithmetic meet the released
   bounds when the external event bounds are supplied.
 
-Once the final one-run theorem passes its clean replay, no caller-supplied
+The final one-run theorem passed its clean replay on 24 August 2026. No caller-supplied
 main-accumulator, compact-accumulator, or final-composition equality remains.
 The boundaries that remain are cryptographic and platform claims that a
 deterministic source theorem cannot prove:
@@ -294,7 +294,7 @@ Use the Lean 4.32 checkpoint replay under
 `aeneas-verif/v5-result-aware-source-link-20260821/`. The final tracked entry
 point checks the theorem from one successful selected translated verifier call
 to the maintained accepted-path security-event conclusion. A clean replay of
-that entry point is the publication gate. The every-commit formal CI uses the
+all 331 tracked closure modules passed on 24 August 2026. The every-commit formal CI uses the
 pinned Aeneas compatibility environment.
 
 ### Program identity

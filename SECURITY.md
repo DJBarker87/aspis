@@ -34,7 +34,7 @@ These values cannot be chosen from different runs. The accepted general
 accumulator's four initial components, eight additions, twelve-component
 schedule, fold traversal, terminal weights, and dot implementation are derived
 from that execution. The compact constructor, four folds, final assembly, and
-dot are derived internally as well. Once the final clean replay is green, one
+dot are derived internally as well. The final clean replay passed on 24 August 2026, so one
 successful selected translated verifier call therefore yields the maintained
 accepted-path security-event conclusion without a caller-supplied accumulator
 equality.
@@ -89,7 +89,8 @@ proof. The remaining external events must together fit the reserved
 `0.3 * 2^-100` budget.
 
 The final deterministic theorem connects the selected accepted proof-checker
-path to the maintained security-event conclusion, subject to a clean replay.
+path to the maintained security-event conclusion. Its clean tracked replay
+passed on 24 August 2026.
 Its main and compact accumulator equalities are proved inside the theorem.
 The stronger form works for any terminal evaluator and installs the released
 FRI tables internally. What remains outside that source theorem is the
@@ -118,8 +119,8 @@ relation. The accepted-path chain supplies the verifier-side parse,
 transcript, opening, FRI, claims, initial relation value, and relation tail
 from one translated execution. The final theorem derives both the main and
 compact accumulator equalities and uses them to reach the maintained
-accepted-path security-event conclusion; its clean replay is the publication
-gate.
+accepted-path security-event conclusion. Its clean tracked replay passed on
+24 August 2026.
 `V5FixedVictimTheftGame.lean` separately classifies a fixed-victim attack into
 eight mathematical and chain-level failures for the attack event defined in
 the Lean model. These results do not prove that an extractor recovers a valid

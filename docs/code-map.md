@@ -60,7 +60,7 @@ relation tail used by the mathematical security argument from that same
 execution. The accepted twelve-component general schedule, its dot
 implementation, and the compact accumulator's complete state calculation are
 proved. The final theorem derives both accumulator equalities internally and,
-once its clean replay is green, takes that same successful translated call to
+after its clean replay passed on 24 August 2026, takes that same successful translated call to
 the maintained accepted-path security-event conclusion. This is not a proof
 of every Rust function, the compiler, or the Solana runtime.
 

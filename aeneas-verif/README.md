@@ -42,7 +42,8 @@ release-reachable component, including the dense and deferred grouped cases.
 
 The compact constructor, four folds, final assembly, and four-term dot are
 also derived from the same accepted execution. The final theorem uses both
-accumulator equalities internally. Once its clean tracked replay is green, one
+accumulator equalities internally. Its clean tracked replay passed on
+24 August 2026, so one
 successful selected translated verifier call deterministically yields the
 maintained accepted-path security-event conclusion; callers supply neither
 accumulator equality.
@@ -142,8 +143,8 @@ The accepted-path checkpoint replay uses Lean 4.32 and the pinned Aeneas commit
 `b59d5188c082f704a418c7cb4e52ad69328002d1`. The compatibility patch and its
 file hashes are recorded in [`lean432/`](lean432/). The every-commit formal CI
 runs the maintained project and the tracked accepted-path replay; the exact
-local command is also recorded beside the aggregate proof. The final replay is
-the publication gate for the one-run deterministic claim.
+local command is also recorded beside the aggregate proof. That replay passed
+on 24 August 2026 for all 331 tracked modules in the accepted-path closure.
 
 Generated object files are deliberately not committed. Generated Lean source,
 bridge proofs, extraction manifests, tool revisions, and replay entry points

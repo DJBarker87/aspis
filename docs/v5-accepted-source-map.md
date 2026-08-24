@@ -27,7 +27,7 @@ spend**.
 | 12 | `verify_v5_private_suffix` → `verify_v5_private_openings` | Authenticates the five opening sections against the five roots at the transcript-derived positions and checks that the returned C1/C2 records are the records consumed later. | `private_suffix_success_yields_exact_merkle` derives the exact five-tree call, returned opening conversion, and both C1/C2 record guards from the same accepted Entry. The accepted-forest projection then leaves SHA-256 collision resistance as a cryptographic assumption. |
 | 13 | `prepare_v5_pcs_claims` | Decodes the 4 × 19 claim table and combines each row with the exact powers of the transcript challenge. | `V5PreparedPointClaimsSourceBridge.sourcePreparedPointClaim_eq_sourcePointClaim` and the pinned preparation-loop replay. |
 | 14 | `check_v5_fri_queries` | Checks all 18 layer-zero openings and every later fold through the four-coefficient final polynomial. | `V5CoordinateProductionTopCallProof.source_accepted_full_call_released_coordinates` proves the real production coordinate call; `AspisV5FriConsumerCoordinateBridge.production_trace_released_coordinate_tables_from_exact_run` connects it to the consumer; `AspisV5FriAcceptedForestChecks.accepted_production_execution_yields_released_forest_fri_checks` proves the four FRI checks without a coordinate-equality premise. |
-| 15 | `verify_mode9_relation_phase` and return to the atomic state wrapper | Checks the four relation rounds against the same final polynomial. Only after the composite verifier returns success can the atomic wrapper write the nullifier marker and new pool state. | The source proofs derive the exact 76 claims, initial relation value, 58-field relation tail, accepted twelve-component schedule, main terminal dot, and compact terminal dot. The final theorem derives both accumulator equalities internally and reaches the maintained accepted-path security-event conclusion from the same successful translated call. Its clean replay is the publication gate. The state bridge is listed in row 2. |
+| 15 | `verify_mode9_relation_phase` and return to the atomic state wrapper | Checks the four relation rounds against the same final polynomial. Only after the composite verifier returns success can the atomic wrapper write the nullifier marker and new pool state. | The source proofs derive the exact 76 claims, initial relation value, 58-field relation tail, accepted twelve-component schedule, main terminal dot, and compact terminal dot. The final theorem derives both accumulator equalities internally and reaches the maintained accepted-path security-event conclusion from the same successful translated call. Its clean tracked replay passed on 24 August 2026. The state bridge is listed in row 2. |
 
 ## How to read the proof claims
 
@@ -42,7 +42,7 @@ There are three different kinds of support in the last column:
 The tracked replay joins the generated-source and model theorems through the
 exact initial relation value and decoded four-round tail. The accepted general
 schedule and both final accumulator equalities are derived from that same
-accepted execution. Once the final clean replay is green, the tracked theorem
+accepted execution. The final clean replay passed on 24 August 2026, and the tracked theorem
 reaches the maintained accepted-path security-event conclusion. The compact
 outer fold uses the corrected extended-Aeneas translation rather than an
 assumed source equality. The old handwritten

@@ -38,6 +38,16 @@ __pycache__/
 /paper/aspis-spend/*.log
 /paper/aspis-spend/*.out
 
+# Current formalization paper build intermediates.  The rendered PDF in this
+# directory is tracked; only LaTeX's disposable side files are ignored.
+/output/pdf/aspis-formalization.aux
+/output/pdf/aspis-formalization.bbl
+/output/pdf/aspis-formalization.blg
+/output/pdf/aspis-formalization.fdb_latexmk
+/output/pdf/aspis-formalization.fls
+/output/pdf/aspis-formalization.log
+/output/pdf/aspis-formalization.out
+
 # Local review context and unsanitized network-run diagnostics. Publication
 # copies with local paths and signed wires removed live in the release bundle.
 /.superstack/

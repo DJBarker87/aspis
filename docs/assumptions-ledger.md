@@ -51,7 +51,7 @@ and relation values are proved to come from that same execution. The accepted
 twelve-component accumulator schedule and general dot implementation are also
 proved. The final theorem derives the exact general terminal weights and dot,
 the compact constructor, four folds, final assembly and dot, and the final
-composition internally. Once its clean replay is green, one successful
+composition internally. Its clean tracked replay passed on 24 August 2026, so one successful
 selected translated verifier call deterministically yields the maintained
 accepted-path security-event conclusion.
 
@@ -126,7 +126,7 @@ proves the final integer `<= 2^-100` implication under the named premises.
 conditional probability endpoint. The accepted-path proof chain now supplies
 the deterministic parser, transcript, opening, FRI, decoded claim table,
 initial relation value, relation tail, and both accumulator equalities from one
-successful translated run. Once the final clean replay is green, that call
+successful translated run. The final clean replay passed on 24 August 2026, and that call
 yields the maintained accepted-path security-event conclusion. The numerical
 endpoint also needs the cited
 decoding and Fiat--Shamir results, Poseidon2 and SHA-256 security, extraction,
@@ -162,7 +162,8 @@ The custom parts are proved separately: one initial candidate is followed
 through all four folds, the distinct-query sampler is analyzed directly, and
 the challenge-dependent nineteen-word reduction avoids an extra decoder-list
 factor. The selected production proof-checker path is connected to those
-objects by the final accepted-path theorem, subject to its clean replay and
+objects by the final accepted-path theorem, whose clean replay passed on
+24 August 2026, subject to
 the explicit terminal/hash callback boundaries. Hash security, Fiat--Shamir,
 extraction,
 compiler, and runtime behavior remain external assumptions rather than hidden
