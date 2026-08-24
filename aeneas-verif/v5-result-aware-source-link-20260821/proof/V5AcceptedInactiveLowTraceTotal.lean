@@ -5,7 +5,7 @@ import V5AcceptedInactiveInitialSemantics
 
 The existing low-mask proof gives exact semantics to every released source
 trace.  This file proves the complementary totality fact: canonical challenge
-inputs actually admit such a trace, and therefore any successful call to the
+inputs actually have such a trace, and therefore any successful call to the
 deterministic extracted helper returns that traced seven-value vector.
 -/
 
