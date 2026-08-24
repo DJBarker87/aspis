@@ -1426,8 +1426,42 @@ structure AcceptedSampleExecution
     V5RelationFullGenerated.aspis_core.field.QM31.add incoming product =
       .ok outgoing
 
+/-- The exact production weight update selected by one accepted sample.
+For round zero this retains the circle point read from the accepted point
+array and the successful `add_circle_tensor` call.  For later rounds it
+retains the decoded line coordinate and the successful `add_line_tensor`
+call.  The inactive alternative is discharged from the round test, so this
+record contains no independently supplied tensor data. -/
+structure AcceptedSampleWeightUpdate
+    (bytes : Array Std.U8 928#usize)
+    (circlePoints : Array
+      V5RelationFullGenerated.aspis_core.circle.SecureCirclePoint 2#usize)
+    (round sample : Std.Usize)
+    (mix : RawQM31)
+    (weights nextWeights :
+      V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator) : Type where
+  circle : round = 0#usize →
+    ∃ point,
+      Array.index_usize circlePoints sample = .ok point ∧
+      V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator.add_circle_tensor
+        weights mix point = .ok (.Ok (), nextWeights)
+  line : round ≠ 0#usize →
+    ∃ lineOffset lineValue,
+      V5RelationFullGenerated.relation_stress.V5_RELATION_STRESS_LINE_OFFSET =
+        .ok lineOffset ∧
+      V5RelationFullGenerated.relation_stress.decode_indexed bytes lineOffset
+        (Std.Usize.wrapping_add
+          (Std.Usize.wrapping_mul
+            (Std.Usize.wrapping_sub round 1#usize)
+            V5RelationFullGenerated.relation_stress.V5_RELATION_STRESS_OOD_SAMPLES)
+          sample) = .ok (.Ok lineValue) ∧
+      V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator.add_line_tensor
+        weights mix lineValue = .ok (.Ok (), nextWeights)
+
 structure AcceptedSampleBodyExecution
     (bytes : Array Std.U8 928#usize)
+    (circlePoints : Array
+      V5RelationFullGenerated.aspis_core.circle.SecureCirclePoint 2#usize)
     (round sample : Std.Usize)
     (incoming outgoing : RawQM31)
     (actualNextRange expectedNextRange : core.ops.range.Range Std.Usize)
@@ -1437,6 +1471,8 @@ structure AcceptedSampleBodyExecution
   scalar : AcceptedSampleExecution bytes round sample incoming outgoing
   rangeExact : actualNextRange = expectedNextRange
   weightLogExact : nextWeights.log_len = weights.log_len
+  weightUpdate : AcceptedSampleWeightUpdate bytes circlePoints round sample
+    scalar.mix weights nextWeights
 
 private theorem accepted_sample_arithmetic_tail
     {Done : Type}
@@ -1515,8 +1551,8 @@ theorem accepted_sample_body_exposes_execution
       V5RelationFullGenerated.relation_stress.verify_v5_relation_stress_with_additive_loop0_loop0_loop0.body
           additiveInst bytes additive circlePoints round alpha none range
           weights claim = .ok (.cont (actualNextRange, nextWeights, nextClaim))) :
-    Nonempty (AcceptedSampleBodyExecution bytes round sample claim nextClaim
-      actualNextRange expectedNextRange weights nextWeights) := by
+    Nonempty (AcceptedSampleBodyExecution bytes circlePoints round sample claim
+      nextClaim actualNextRange expectedNextRange weights nextWeights) := by
   unfold
     V5RelationFullGenerated.relation_stress.verify_v5_relation_stress_with_additive_loop0_loop0_loop0.body
     at run
@@ -1635,7 +1671,14 @@ theorem accepted_sample_body_exposes_execution
                                             exact
                                               add_circle_tensor_success_preserves_log_length
                                                 weights tensorWeights mixValue
-                                                point (by simpa using tensorEquation) }⟩
+                                                point (by simpa using tensorEquation)
+                                          weightUpdate := {
+                                            circle := fun _ =>
+                                              ⟨point, pointEquation, by
+                                                simpa [weightsExact] using
+                                                  tensorEquation⟩
+                                            line := fun nonzero =>
+                                              (nonzero roundZero).elim } }⟩
                           · simp only [roundZero, if_false] at run
                             generalize lineOffsetEquation :
                                 V5RelationFullGenerated.relation_stress.V5_RELATION_STRESS_LINE_OFFSET =
@@ -1718,7 +1761,16 @@ theorem accepted_sample_body_exposes_execution
                                                       add_line_tensor_success_preserves_log_length
                                                         weights tensorWeights
                                                         mixValue lineValue
-                                                        (by simpa using tensorEquation) }⟩
+                                                        (by simpa using tensorEquation)
+                                                  weightUpdate := {
+                                                    circle := fun zero =>
+                                                      (roundZero zero).elim
+                                                    line := fun _ =>
+                                                      ⟨lineOffset, lineValue,
+                                                        lineOffsetEquation,
+                                                        lineDecodeEquation, by
+                                                          simpa [weightsExact]
+                                                            using tensorEquation⟩ } }⟩
 
 /-- An active sample cannot terminate the round with the successful
 `(pending = none, status = 1)` marker.  Every active success continues to the
@@ -1991,6 +2043,8 @@ structure AcceptedTwoSampleRoundExecution {A : Type}
     (additiveInst :
       V5RelationFullGenerated.relation_stress.V5RelationStressAdditive A)
     (bytes : Array Std.U8 928#usize)
+    (circlePoints : Array
+      V5RelationFullGenerated.aspis_core.circle.SecureCirclePoint 2#usize)
     (additive nextAdditive : A)
     (round : Std.Usize)
     (alpha : RawQM31)
@@ -2005,6 +2059,10 @@ structure AcceptedTwoSampleRoundExecution {A : Type}
   sample1 : AcceptedSampleExecution bytes round 1#usize claim1 claim2
   sample0WeightLog : weights1.log_len = weights0.log_len
   sample1WeightLog : weights2.log_len = weights1.log_len
+  sample0WeightUpdate : AcceptedSampleWeightUpdate bytes circlePoints round
+    0#usize sample0.mix weights0 weights1
+  sample1WeightUpdate : AcceptedSampleWeightUpdate bytes circlePoints round
+    1#usize sample1.mix weights1 weights2
   polynomial : AcceptedConcretePolynomialExecution additiveInst weights2
     nextWeights claim2 nextClaim alpha bytes additive nextAdditive round
 
@@ -2024,6 +2082,8 @@ theorem accepted_round_exposes_raw_arithmetic
     (additiveInst :
       V5RelationFullGenerated.relation_stress.V5RelationStressAdditive A)
     (bytes : Array Std.U8 928#usize)
+    (circlePoints : Array
+      V5RelationFullGenerated.aspis_core.circle.SecureCirclePoint 2#usize)
     (additive nextAdditive : A)
     (round : Std.Usize)
     (alpha : RawQM31)
@@ -2034,8 +2094,8 @@ theorem accepted_round_exposes_raw_arithmetic
       AspisV5RelationGeneratedFieldProjection.CanonicalQM31 claim0)
     (alphaCanonical :
       AspisV5RelationGeneratedFieldProjection.CanonicalQM31 alpha)
-    (trace : AcceptedTwoSampleRoundExecution additiveInst bytes additive
-      nextAdditive round alpha weights0 nextWeights claim0 nextClaim) :
+    (trace : AcceptedTwoSampleRoundExecution additiveInst bytes circlePoints
+      additive nextAdditive round alpha weights0 nextWeights claim0 nextClaim) :
     Nonempty (AcceptedRawRoundProjection claim0 alpha nextClaim) := by
   obtain ⟨polynomial⟩ :=
     accepted_concrete_polynomial_exposes_exact_execution additiveInst
@@ -2123,8 +2183,8 @@ theorem accepted_two_sample_loop_exposes_execution
           additiveInst (range2At 0#usize) weights0 claim0 bytes additive
           circlePoints round alpha none =
         .ok (nextWeights, nextClaim, nextAdditive, none, 1#u32)) :
-    Nonempty (AcceptedTwoSampleRoundExecution additiveInst bytes additive
-      nextAdditive round alpha weights0 nextWeights claim0 nextClaim) := by
+    Nonempty (AcceptedTwoSampleRoundExecution additiveInst bytes circlePoints
+      additive nextAdditive round alpha weights0 nextWeights claim0 nextClaim) := by
   unfold
     V5RelationFullGenerated.relation_stress.verify_v5_relation_stress_with_additive_loop0_loop0_loop0
     at run
@@ -2278,6 +2338,8 @@ theorem accepted_two_sample_loop_exposes_execution
                             sample1 := sample1Body.scalar
                             sample0WeightLog := sample0Body.weightLogExact
                             sample1WeightLog := sample1Body.weightLogExact
+                            sample0WeightUpdate := sample0Body.weightUpdate
+                            sample1WeightUpdate := sample1Body.weightUpdate
                             polynomial := polynomial }⟩
 
 /-- A successful active outer-round body exposes the exact generated inner
@@ -2307,8 +2369,8 @@ theorem accepted_outer_round_body_exposes_execution
           additiveInst bytes circlePoints iter weights claim additive none =
         .ok (.cont
           (nextIter, nextWeights, nextClaim, nextAdditive, none))) :
-    Nonempty (AcceptedTwoSampleRoundExecution additiveInst bytes additive
-      nextAdditive round alpha weights nextWeights claim nextClaim) := by
+    Nonempty (AcceptedTwoSampleRoundExecution additiveInst bytes circlePoints
+      additive nextAdditive round alpha weights nextWeights claim nextClaim) := by
   unfold
     V5RelationFullGenerated.relation_stress.verify_v5_relation_stress_with_additive_loop0_loop0.body
     at run
@@ -2448,19 +2510,23 @@ structure AcceptedFourRoundExecution
       kappa inactiveClaim roundChallenges preparedClaims terminalClaim) :
     Type where
   round0 : AcceptedTwoSampleRoundExecution productionAdditiveInst
-    parsed.v5_relation_stress trace.calls.compact trace.additive1 0#usize
+    parsed.v5_relation_stress trace.circlePoints trace.calls.compact
+    trace.additive1 0#usize
     (acceptedAlphaAt alphas 0) trace.calls.relation.weights trace.weights1
     trace.calls.relation.relation_value trace.claim1
   round1 : AcceptedTwoSampleRoundExecution productionAdditiveInst
-    parsed.v5_relation_stress trace.additive1 trace.additive2 1#usize
+    parsed.v5_relation_stress trace.circlePoints trace.additive1 trace.additive2
+    1#usize
     (acceptedAlphaAt alphas 1) trace.weights1 trace.weights2 trace.claim1
     trace.claim2
   round2 : AcceptedTwoSampleRoundExecution productionAdditiveInst
-    parsed.v5_relation_stress trace.additive2 trace.additive3 2#usize
+    parsed.v5_relation_stress trace.circlePoints trace.additive2 trace.additive3
+    2#usize
     (acceptedAlphaAt alphas 2) trace.weights2 trace.weights3 trace.claim2
     trace.claim3
   round3 : AcceptedTwoSampleRoundExecution productionAdditiveInst
-    parsed.v5_relation_stress trace.additive3 trace.additive4 3#usize
+    parsed.v5_relation_stress trace.circlePoints trace.additive3 trace.additive4
+    3#usize
     (acceptedAlphaAt alphas 3) trace.weights3 trace.weights4 trace.claim3
     trace.claim4
 
@@ -2557,8 +2623,8 @@ theorem accepted_full_trace_exposes_four_raw_round_projections
     Nonempty (AcceptedFourRawRoundProjections trace) := by
   obtain ⟨rounds⟩ := accepted_full_trace_exposes_four_round_executions trace
   obtain ⟨round0⟩ := accepted_round_exposes_raw_arithmetic
-    productionAdditiveInst parsed.v5_relation_stress trace.calls.compact
-    trace.additive1 0#usize (acceptedAlphaAt alphas 0)
+    productionAdditiveInst parsed.v5_relation_stress trace.circlePoints
+    trace.calls.compact trace.additive1 0#usize (acceptedAlphaAt alphas 0)
     trace.calls.relation.weights trace.weights1
     trace.calls.relation.relation_value trace.claim1 initialCanonical
     (alphaCanonical 0) rounds.round0
@@ -2569,8 +2635,8 @@ theorem accepted_full_trace_exposes_four_raw_round_projections
       AspisV5AcceptedRelationRoundProjection.accepted_raw_round_outgoing_canonical
         round0.raw
   obtain ⟨round1⟩ := accepted_round_exposes_raw_arithmetic
-    productionAdditiveInst parsed.v5_relation_stress trace.additive1
-    trace.additive2 1#usize (acceptedAlphaAt alphas 1) trace.weights1
+    productionAdditiveInst parsed.v5_relation_stress trace.circlePoints
+    trace.additive1 trace.additive2 1#usize (acceptedAlphaAt alphas 1) trace.weights1
     trace.weights2 trace.claim1 trace.claim2 claim1Canonical
     (alphaCanonical 1) rounds.round1
   have claim2Canonical :
@@ -2580,8 +2646,8 @@ theorem accepted_full_trace_exposes_four_raw_round_projections
       AspisV5AcceptedRelationRoundProjection.accepted_raw_round_outgoing_canonical
         round1.raw
   obtain ⟨round2⟩ := accepted_round_exposes_raw_arithmetic
-    productionAdditiveInst parsed.v5_relation_stress trace.additive2
-    trace.additive3 2#usize (acceptedAlphaAt alphas 2) trace.weights2
+    productionAdditiveInst parsed.v5_relation_stress trace.circlePoints
+    trace.additive2 trace.additive3 2#usize (acceptedAlphaAt alphas 2) trace.weights2
     trace.weights3 trace.claim2 trace.claim3 claim2Canonical
     (alphaCanonical 2) rounds.round2
   have claim3Canonical :
@@ -2591,8 +2657,8 @@ theorem accepted_full_trace_exposes_four_raw_round_projections
       AspisV5AcceptedRelationRoundProjection.accepted_raw_round_outgoing_canonical
         round2.raw
   obtain ⟨round3⟩ := accepted_round_exposes_raw_arithmetic
-    productionAdditiveInst parsed.v5_relation_stress trace.additive3
-    trace.additive4 3#usize (acceptedAlphaAt alphas 3) trace.weights3
+    productionAdditiveInst parsed.v5_relation_stress trace.circlePoints
+    trace.additive3 trace.additive4 3#usize (acceptedAlphaAt alphas 3) trace.weights3
     trace.weights4 trace.claim3 trace.claim4 claim3Canonical
     (alphaCanonical 3) rounds.round3
   exact ⟨{
