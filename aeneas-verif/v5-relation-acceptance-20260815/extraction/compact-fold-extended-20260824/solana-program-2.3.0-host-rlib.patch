@@ -1,0 +1,11 @@
+diff --git a/Cargo.toml b/Cargo.toml
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -72,7 +72,6 @@ all-features = true
+ [lib]
+ name = "solana_program"
+ crate-type = [
+-    "cdylib",
+     "rlib",
+ ]
+ path = "src/lib.rs"

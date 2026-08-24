@@ -1,0 +1,54 @@
+{
+  "schema": "aspis-aeneas-compact-fold-extraction-v1",
+  "date": "2026-08-24",
+  "production_source": {
+    "archived_repository_commit": "99118a87d211b779b1b86f0aa06add34912b462e",
+    "source_archive_sha256": "b75defbaa963a8dc27123d2a4ab92ada4d8a696bb3c1be48640cbe325193c4ca",
+    "v5_cu_probe_git_blob": "ca28d560e44e5e82e689321f32289831c889a0bd",
+    "v5_cu_probe_sha256": "6f40c88c7a6b9f1ce657dd07eaa3e323c4bd3578839d874ba0a16c0117ce8224"
+  },
+  "extraction_only_changes": {
+    "rust_root_wrapper_patch": {
+      "file": "v5-compact-fold-extraction-wrapper.patch",
+      "sha256": "63153f9b8c4514126bccf375abd81ac16f5bf153ebfeb00146b8d0fc430fd36e"
+    },
+    "solana_program_host_rlib_patch": {
+      "file": "solana-program-2.3.0-host-rlib.patch",
+      "sha256": "3a87d2374216c081f3866b58a0e1a854184af602c2a4edd738a946619291ef1e"
+    },
+    "production_semantics_changed": false
+  },
+  "charon": {
+    "commit": "cb50ff16b9f1066b8a97dc06da704de2da2fa41c",
+    "binary_sha256": "b2b0961a3c55aca64752b2fa4a4701ba0c06b860236979e5727c07de8ac2310c",
+    "rustc": "rustc 1.98.0-nightly (14210df0e 2026-05-31)",
+    "rust_toolchain": "nightly-2026-06-01",
+    "rustflags": "-A dangerous_implicit_autorefs",
+    "start_from": "crate::v5_cu_probe::aeneas_extract_compact_fold",
+    "include": ["aspis_core::field"],
+    "llbc_file": "V5CompactFoldExtendedFull.llbc",
+    "llbc_sha256": "e6cb2e08e07211bed3faabe5e76cad562f30f637002fbb68a16339330ebdc933"
+  },
+  "aeneas": {
+    "base_commit": "d860ac47ed548d3da6d799afc013779ce470516c",
+    "patch_file": "aeneas-v5-outer-final.patch",
+    "patch_sha256": "a1d5c2a6f515106ad87ec0d3bb9725d10b64e8f13b997ca85a016c552e2bd4b6",
+    "binary_sha256": "62d73a4ad748bb54c7f5af3fab3b21133e766eb3cf85074e126eadcddd0d85ae",
+    "namespace": "V5RelationCompactFoldGenerated",
+    "raw_lean_file": "generated/V5CompactFoldExtendedFull.raw.lean",
+    "raw_lean_sha256": "64674b657d552de5059e74f2d0a9e9a0540b122462485e4d08d6e34749da1bad"
+  },
+  "lean_normalization": {
+    "patch_file": "generated-normalization.patch",
+    "patch_sha256": "4849ec178714c939583cabac69a085454162861bbe75b0f83f2b7c7b8d56d5ef",
+    "normalized_lean_file": "generated/V5RelationCompactFoldGenerated.lean",
+    "normalized_lean_sha256": "8385ab8aa51d62b986824da6b090301ea061903e071dbf32bde7723f67540f55",
+    "lean": "4.32.0",
+    "olean_sha256": "cec95b162e60477ce2ada02c4a0b4c444dac28225bcc0b1317bfe04a6de2eae5",
+    "compile_status": "pass"
+  },
+  "archive": {
+    "llbc": "/home/dombarker/project-offloads/ZK-v5-formal/artifacts/compact-fold-extended-20260824/V5CompactFoldExtendedFull.llbc",
+    "host": "project NUC"
+  }
+}

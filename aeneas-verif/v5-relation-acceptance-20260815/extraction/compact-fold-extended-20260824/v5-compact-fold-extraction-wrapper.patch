@@ -1,0 +1,21 @@
+diff --git a/programs/aspis-verifier/src/v5_cu_probe.rs b/programs/aspis-verifier/src/v5_cu_probe.rs
+--- a/programs/aspis-verifier/src/v5_cu_probe.rs
++++ b/programs/aspis-verifier/src/v5_cu_probe.rs
+@@ -1979,6 +1979,17 @@ impl CompactBTerminalWeights {
+     }
+ }
+ 
++// Extraction-only free root. The production method above is unchanged;
++// Charon's item filter cannot start directly from an inherent private impl.
++#[doc(hidden)]
++pub(crate) fn aeneas_extract_compact_fold(
++    mut state: CompactBTerminalWeights,
++    alpha: QM31,
++) -> CompactBTerminalWeights {
++    state.fold(alpha);
++    state
++}
++
+ impl V5RelationStressAdditive for CompactBTerminalWeights {
+     #[inline(always)]
+     fn fold(&mut self, alpha: QM31) {

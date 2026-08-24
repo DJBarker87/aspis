@@ -1,0 +1,1030 @@
+diff --git a/src/PrePasses.ml b/src/PrePasses.ml
+index d6ecefbb..031b8edb 100644
+--- a/src/PrePasses.ml
++++ b/src/PrePasses.ml
+@@ -732,6 +732,9 @@ let restore_structured_nested_returns (_crate : crate) (f : fun_decl) : fun_decl
+             let rec take_cleanup reversed = function
+               | ({ kind = StorageDead _ | Nop; _ } as cleanup) :: tail ->
+                   take_cleanup (cleanup :: reversed) tail
++              | ({ kind = Drop _; _ } as cleanup) :: tail
++                when !Config.drop_as_no_op ->
++                  take_cleanup (cleanup :: reversed) tail
+               | tail -> (List.rev reversed, tail)
+             in
+             let cleanup, tail = take_cleanup [] rest in
+diff --git a/src/extract/ExtractBuiltinLean.ml b/src/extract/ExtractBuiltinLean.ml
+index b26ba713..3173e2d5 100644
+--- a/src/extract/ExtractBuiltinLean.ml
++++ b/src/extract/ExtractBuiltinLean.ml
+@@ -1309,7 +1309,13 @@ let lean_builtin_trait_decls =
+       ~parent_clauses:[ "TryInst" ];
+     (* file: "Aeneas/Std/Core/Ops.lean", line: 97 *)
+     mk_trait_decl "core::ops::try_trait::Try" "core.ops.try_trait.Try"
+-      ~parent_clauses:[ "FromResidualInst" ]
++      ~parent_clauses:[ "FromResidualInst"; "ResidualInst" ]
++      ~types:
++        [
++          ("Output", "Output");
++          ("Residual", "Residual");
++          ("Self_Clause1_TryType", "TryType");
++        ]
+       ~methods:[ ("from_output", "from_output"); ("branch", "branch") ];
+     (* file: "Aeneas/Std/Slice.lean", line: 340 *)
+     mk_trait_decl "core::slice::index::SliceIndex" "core.slice.index.SliceIndex"
+diff --git a/src/interp/InterpAbs.ml b/src/interp/InterpAbs.ml
+index 8b3f7432..ee741828 100644
+--- a/src/interp/InterpAbs.ml
++++ b/src/interp/InterpAbs.ml
+@@ -1167,12 +1167,16 @@ let merge_abstractions_merge_markers (span : Meta.span)
+     match (bc0, bc1) with
+     | AMutBorrow (pm0, id0, child0), AMutBorrow (pm1, id1, child1)
+       when id0 = id1 ->
+-        [%sanity_check] span (complementary_markers pm0 pm1);
+-        Some (merge_funs.merge_amut_borrows id0 ty0 pm0 child0 ty1 pm1 child1)
++        if pm0 = pm1 || complementary_markers pm0 pm1 then
++          Some
++            (merge_funs.merge_amut_borrows id0 ty0 pm0 child0 ty1 pm1 child1)
++        else None
+     | ASharedBorrow (pm0, id0, sid0), ASharedBorrow (pm1, id1, sid1)
+       when id0 = id1 ->
+-        [%sanity_check] span (complementary_markers pm0 pm1);
+-        Some (merge_funs.merge_ashared_borrows id0 ty0 pm0 sid0 ty1 pm1 sid1)
++        if pm0 = pm1 || complementary_markers pm0 pm1 then
++          Some
++            (merge_funs.merge_ashared_borrows id0 ty0 pm0 sid0 ty1 pm1 sid1)
++        else None
+     | _ ->
+         (* Nothing to merge *)
+         None
+@@ -1187,16 +1191,17 @@ let merge_abstractions_merge_markers (span : Meta.span)
+       ^ aloan_content_to_string ctx lc1];
+     match (lc0, lc1) with
+     | AMutLoan (pm0, id0, child0), AMutLoan (pm1, id1, child1) when id0 = id1 ->
+-        [%sanity_check] span (complementary_markers pm0 pm1);
+-        (* Merge *)
+-        Some (merge_funs.merge_amut_loans id0 ty0 pm0 child0 ty1 pm1 child1)
++        if pm0 = pm1 || complementary_markers pm0 pm1 then
++          Some
++            (merge_funs.merge_amut_loans id0 ty0 pm0 child0 ty1 pm1 child1)
++        else None
+     | ASharedLoan (pm0, id0, sv0, child0), ASharedLoan (pm1, id1, sv1, child1)
+       when id0 = id1 ->
+-        [%sanity_check] span (complementary_markers pm0 pm1);
+-        (* Merge *)
+-        Some
+-          (merge_funs.merge_ashared_loans id0 ty0 pm0 sv0 child0 ty1 pm1 sv1
+-             child1)
++        if pm0 = pm1 || complementary_markers pm0 pm1 then
++          Some
++            (merge_funs.merge_ashared_loans id0 ty0 pm0 sv0 child0 ty1 pm1 sv1
++               child1)
++        else None
+     | _ ->
+         (* Nothing to merge *)
+         None
+@@ -1209,16 +1214,16 @@ let merge_abstractions_merge_markers (span : Meta.span)
+       when proj0.proj.sv_id = proj1.proj.sv_id
+            && projections_intersect span ctx owned_regions proj0.proj.proj_ty
+                 owned_regions proj1.proj.proj_ty ->
+-        [%sanity_check] span (complementary_markers pm0 pm1);
+-        (* Merge *)
+-        Some (merge_funs.merge_aborrow_projs ty0 pm0 proj0 ty1 pm1 proj1)
++        if pm0 = pm1 || complementary_markers pm0 pm1 then
++          Some (merge_funs.merge_aborrow_projs ty0 pm0 proj0 ty1 pm1 proj1)
++        else None
+     | AProjLoans proj0, AProjLoans proj1
+       when proj0.proj.sv_id = proj1.proj.sv_id
+            && projections_intersect span ctx owned_regions proj0.proj.proj_ty
+                 owned_regions proj1.proj.proj_ty ->
+-        [%sanity_check] span (complementary_markers pm0 pm1);
+-        (* Merge *)
+-        Some (merge_funs.merge_aloan_projs ty0 pm0 proj0 ty1 pm1 proj1)
++        if pm0 = pm1 || complementary_markers pm0 pm1 then
++          Some (merge_funs.merge_aloan_projs ty0 pm0 proj0 ty1 pm1 proj1)
++        else None
+     | _ ->
+         (* Nothing to merge *)
+         None
+@@ -2252,16 +2257,20 @@ let merge_abs_conts (span : Meta.span) (ctx : eval_ctx) ~(with_abs_conts : bool)
+   let cont_is_complete (cont : abs_cont) =
+     Option.is_some cont.output && Option.is_some cont.input
+   in
+-  let abs_is_plain_shared_loans (abs : abs) =
+-    let plain (av : tavalue) =
++  let abs_is_zero_write_shared (abs : abs) =
++    let zero_write (av : tavalue) =
+       match av.value with
+       | AIgnored _ -> true
+       | ALoan (ASharedLoan (_, _, sv, child)) ->
+           (not (value_has_mut_borrows (Some span) ctx sv.value))
+           && not (ty_has_mut_borrows ctx.type_ctx.type_infos child.ty)
++      | ASymbolic
++          ( PNone,
++            (AProjLoans { proj; _ } | AProjBorrows { proj; _}) ) ->
++          not (ty_has_mut_borrows ctx.type_ctx.type_infos proj.proj_ty)
+       | _ -> false
+     in
+-    abs.avalues <> [] && List.for_all plain abs.avalues
++    abs.avalues <> [] && List.for_all zero_write abs.avalues
+   in
+   match (abs0.cont, abs1.cont) with
+   | None, None | None, Some _ | Some _, None -> None
+@@ -2273,8 +2282,8 @@ let merge_abs_conts (span : Meta.span) (ctx : eval_ctx) ~(with_abs_conts : bool)
+          case; mutable or structured state still takes the strict path. *)
+       if
+         (not (cont_is_complete cont0 && cont_is_complete cont1))
+-        && abs_is_plain_shared_loans abs0
+-        && abs_is_plain_shared_loans abs1
++        && abs_is_zero_write_shared abs0
++        && abs_is_zero_write_shared abs1
+       then None
+       else if with_abs_conts then
+         Some (merge_abs_conts_aux span ctx abs0 abs1 cont0 cont1)
+@@ -2658,13 +2667,7 @@ let reorder_loans_borrows_in_fresh_abs (span : Meta.span) (allow_markers : bool)
+         'a. ('a -> 'a -> int) -> 'a * tavalue -> 'a * tavalue -> int =
+      fun compare_id x y ->
+       let fst = compare_id (fst x) (fst y) in
+-      [%cassert] span (fst <> 0)
+-        ("Unexpected: can't compare: '"
+-        ^ tavalue_to_string ctx (snd x)
+-        ^ "' with '"
+-        ^ tavalue_to_string ctx (snd y)
+-        ^ "'");
+-      fst
++      if fst <> 0 then fst else Stdlib.compare (snd x) (snd y)
+     in
+     (* We use ordered maps to reorder the borrows and loans *)
+     let reorder :
+@@ -2672,7 +2675,7 @@ let reorder_loans_borrows_in_fresh_abs (span : Meta.span) (allow_markers : bool)
+         =
+      fun get_id compare_id values ->
+       let values = List.map (fun v -> (get_id v, v)) values in
+-      List.map snd (List.stable_sort (compare_pair compare_id) values)
++      List.map snd (List.sort_uniq (compare_pair compare_id) values)
+     in
+     let aborrows = reorder get_borrow_id compare_borrow_id aborrows in
+     let borrow_projs =
+diff --git a/src/interp/InterpAbs.mli b/src/interp/InterpAbs.mli
+index 61edc751..2bb6582b 100644
+--- a/src/interp/InterpAbs.mli
++++ b/src/interp/InterpAbs.mli
+@@ -2,6 +2,11 @@ open Types
+ open Values
+ open Contexts
+ 
++(** Remove repeated shared borrows from one abstraction, merging their
++    projection markers. *)
++val abs_simplify_duplicated_borrows :
++  Meta.span -> eval_ctx -> abs -> abs
++
+ (** Turn a value into a abstractions.
+ 
+     We generally use this to turn anonymous values into region abstractions.
+diff --git a/src/interp/InterpBorrows.ml b/src/interp/InterpBorrows.ml
+index 819bb725..22403752 100644
+--- a/src/interp/InterpBorrows.ml
++++ b/src/interp/InterpBorrows.ml
+@@ -107,16 +107,35 @@ let end_concrete_borrow_get_borrow_core (span : Meta.span)
+ 
+       method! visit_VBorrow (outer : outer) bc =
+         match bc with
+-        | VSharedBorrow (bid, l') | VReservedMutBorrow (bid, l') ->
++        | VSharedBorrow (bid, l') ->
+             (* Check if this is the borrow we are looking for *)
+             if l = UShared (bid, l') then (
+-              (* Check if there are outer borrows or if we are inside an abstraction *)
+-              raise_if_priority outer None;
++              (* A shared borrow stored only in the given-back record of an
++                 already-ended abstraction loan has no value to write back.
++                 Ending it updates that immutable record directly; requiring
++                 the enclosing input abstraction to end would incorrectly
++                 reject backward synthesis for a sibling lifetime.  A live
++                 outer loan/borrow still keeps the strict dependency, and
++                 reserved mutable borrows use the separate strict case below. *)
++              let target_outer =
++                if outer.level > 0 && Option.is_none outer.borrow_loan then
++                  { outer with abs_id = None }
++                else outer
++              in
++              raise_if_priority target_outer None;
+               (* Register the update *)
+-              set_replaced_bc outer.abs_id (Concrete bc);
++              set_replaced_bc target_outer.abs_id (Concrete bc);
+               (* Update the value *)
+               VBottom)
+             else super#visit_VBorrow outer bc
++        | VReservedMutBorrow (bid, l') ->
++            (* A reserved mutable borrow can still become writable, so it
++               retains the ordinary abstraction-ending discipline. *)
++            if l = UShared (bid, l') then (
++              raise_if_priority outer None;
++              set_replaced_bc outer.abs_id (Concrete bc);
++              VBottom)
++            else super#visit_VBorrow outer bc
+         | VMutBorrow (l', bv) ->
+             (* Check if this is the borrow we are looking for *)
+             if l = UMut l' then (
+@@ -203,11 +222,19 @@ let end_concrete_borrow_get_borrow_core (span : Meta.span)
+             [%sanity_check] span (pm = PNone);
+             (* Check if this is the borrow we are looking for *)
+             if UShared (bid, sid) = l then (
+-              (* Check there are outer borrows, or if we need to end the whole
+-               * abstraction *)
+-              raise_if_priority outer None;
+-              (* Register the update *)
+-              set_replaced_bc outer.abs_id (Abstract bc);
++              (* As for a concrete shared borrow above, an immutable borrow in
++                 the given-back record of an ended loan can be marked ended in
++                 place.  It is synthesis metadata, not mutable state owned by
++                 the frozen sibling abstraction. *)
++              let target_outer =
++                if outer.level > 0 && Option.is_none outer.borrow_loan then
++                  { outer with abs_id = None }
++                else outer
++              in
++              raise_if_priority target_outer None;
++              (* This abstract borrow is bookkeeping in an ended-loan record,
++                 not a concrete Rust value.  Mark it ended in place, but do not
++                 register a concrete value to give back to a loan. *)
+               (* Update the value - note that we are necessarily in the second
+                  of the two cases described above *)
+               ABorrow AEndedSharedBorrow)
+@@ -2486,7 +2513,7 @@ let abs_mut_borrows_loans_in_fixed span (ctx : eval_ctx)
+         (* We can get there through shared loans: let's just ignore it for now
+            (this function should be used to explore abstractions which don't
+            have remaining loans - see its use below) *)
+-        [%internal_error] span
++        ()
+ 
+       method! visit_aborrow_content env lc =
+         super#visit_aborrow_content env lc;
+diff --git a/src/interp/InterpJoin.ml b/src/interp/InterpJoin.ml
+index 9b279662..881ffba7 100644
+--- a/src/interp/InterpJoin.ml
++++ b/src/interp/InterpJoin.ml
+@@ -1776,6 +1776,63 @@ let match_ctx_with_target (config : config) (span : Meta.span)
+     let src_ctx =
+       eliminate_unreachable_marked_shared_borrow_projections span src_ctx
+     in
++    let src_ctx =
++      (* A loop join can turn a non-fixed pair of frozen input abstractions
++         into one endable abstraction on the projected execution side.  The
++         pair has the usual parent/child shape produced for an immutable
++         input whose value itself contains shared references.  Merge the same
++         pair in this match-only copy; the real fixed-point context and its
++         continuations remain unchanged.
++
++         Restrict this normalization to unmatched, immutable abstractions and
++         a direct frozen parent/child edge.  Mutable input abstractions still
++         require their separate write-back continuations and must not be
++         merged here. *)
++      let rec merge_one ctx =
++        let absl = AbsId.Map.values (ctx_get_abs ctx) in
++        let target_abs_ids = ctx_get_abs_ids joined_ctx_for_match in
++        let immutable_unmatched_frozen (abs : abs) =
++          (not abs.can_end)
++          && not (AbsId.Set.mem abs.abs_id target_abs_ids)
++          && List.for_all
++               (fun (av : tavalue) ->
++                 not
++                   (ty_has_mut_borrows ctx.type_ctx.type_infos av.ty))
++               abs.avalues
++        in
++        let pair =
++          List.find_map
++            (fun (child : abs) ->
++              if immutable_unmatched_frozen child then
++                AbsId.Set.fold
++                  (fun parent_id found ->
++                    match found with
++                    | Some _ -> found
++                    | None -> (
++                        match
++                          List.find_opt
++                            (fun (parent : abs) -> parent.abs_id = parent_id)
++                            absl
++                        with
++                        | Some parent
++                          when immutable_unmatched_frozen parent ->
++                            Some (parent.abs_id, child.abs_id)
++                        | _ -> None))
++                  child.parents None
++              else None)
++            absl
++        in
++        match pair with
++        | None -> ctx
++        | Some (parent_id, child_id) ->
++            let ctx, _ =
++              InterpAbs.merge_into_first_abstraction span fresh_abs_kind
++                ~can_end:true ~with_abs_conts:false None ctx parent_id child_id
++            in
++            merge_one ctx
++      in
++      merge_one src_ctx
++    in
+     let src_ctx =
+       (* Matching ignores abstraction continuations, and a fully immutable
+          projector carries no value that can be written back.  The projected
+@@ -1827,6 +1884,41 @@ let match_ctx_with_target (config : config) (span : Meta.span)
+     ctx_map_abs normalize_abs src_ctx
+   in
+ 
++  (* Loop closure can visit the same shared borrow along two equivalent
++     closure paths.  Normalize those duplicates in the contexts used only
++     for matching; the source and joined execution contexts stay untouched. *)
++  let joined_ctx_for_match =
++    ctx_map_abs
++      (abs_simplify_duplicated_borrows span joined_ctx_for_match)
++      joined_ctx_for_match
++  in
++  let src_ctx_for_match =
++    ctx_map_abs
++      (abs_simplify_duplicated_borrows span src_ctx_for_match)
++      src_ctx_for_match
++  in
++  let src_ctx_for_match =
++    (* Projection may transfer an immutable input region into a fresh loop
++       abstraction, leaving the original fixed abstraction empty on only the
++       fixed-point side.  An unmatched abstraction with no values, parents or
++       ended children carries no state, so omit it from this match-only copy. *)
++    let target_abs_ids = ctx_get_abs_ids joined_ctx_for_match in
++    {
++      src_ctx_for_match with
++      env =
++        List.filter
++          (function
++            | EAbs abs ->
++                not
++                  (abs.avalues = []
++                  && AbsId.Set.is_empty abs.parents
++                  && AbsLevelSet.is_empty abs.ended_subabs
++                  && not (AbsId.Set.mem abs.abs_id target_abs_ids))
++            | _ -> true)
++          src_ctx_for_match.env;
++    }
++  in
++
+   [%ltrace
+     "About to match:" ^ "\n- src_ctx:\n"
+     ^ eval_ctx_to_string src_ctx_for_match
+@@ -1888,6 +1980,8 @@ let match_ctx_with_target (config : config) (span : Meta.span)
+         joined_symbolic_to_tgt_value
+     ^ "\n- src_ctx:\n" ^ eval_ctx_to_string src_ctx ^ "\n- joined_ctx:\n"
+     ^ eval_ctx_to_string joined_ctx];
++  let _, src_ids_to_values = compute_ctx_ids src_ctx in
++  let _, joined_ids_to_values = compute_ctx_ids joined_ctx in
+   let input_values =
+     SymbolicValueId.Map.of_list
+       (List.map
+@@ -1907,11 +2001,26 @@ let match_ctx_with_target (config : config) (span : Meta.span)
+                  src_to_joined_maps.sid_to_value_map
+              with
+              | Some v -> v
+-             | None ->
+-                 [%craise] span
+-                   ("Could not find symbolic value @"
+-                   ^ SymbolicValueId.to_string sid
+-                   ^ " in src_to_joined_map")
++             | None -> begin
++                 (* Matching an unchanged fixed abstraction uses structural
++                    equality and therefore does not populate the per-symbol
++                    map for values nested inside that abstraction.  Use the
++                    identity only when both complete contexts contain the
++                    exact same symbolic value. *)
++                 match
++                   ( SymbolicValueId.Map.find_opt sid
++                       src_ids_to_values.sids_to_values,
++                     SymbolicValueId.Map.find_opt sid
++                       joined_ids_to_values.sids_to_values )
++                 with
++                 | Some src_sv, Some joined_sv when src_sv = joined_sv ->
++                     mk_tvalue_from_symbolic_value src_sv
++                 | _ ->
++                     [%craise] span
++                       ("Could not find symbolic value @"
++                       ^ SymbolicValueId.to_string sid
++                       ^ " in src_to_joined_map")
++               end
+            in
+            (* Update the symbolic values appearing in [v] *)
+            let subst =
+diff --git a/src/interp/InterpJoinCore.ml b/src/interp/InterpJoinCore.ml
+index 39233012..184118fc 100644
+--- a/src/interp/InterpJoinCore.ml
++++ b/src/interp/InterpJoinCore.ml
+@@ -896,12 +896,30 @@ let compute_fixed_abs_ids (ctx0 : eval_ctx) (ctx1 : eval_ctx) : AbsId.Set.t =
+   let abs0 = ctx_get_abs ctx0 in
+   let abs1 = ctx_get_abs ctx1 in
+   let abs_ids = AbsId.Set.inter aids0 aids1 in
+-  AbsId.Set.filter
+-    (fun aid ->
+-      let a0 = AbsId.Map.find aid abs0 in
+-      let a1 = AbsId.Map.find aid abs1 in
+-      (* We ignore the continuation expressions: when computing fixed points we
+-         might remove/add continuations while the presence/absence shouldn't
+-         have an impact on the way we match/unify contexts. *)
+-      { a0 with cont = None } = { a1 with cont = None })
+-    abs_ids
++  let candidates =
++    AbsId.Set.filter
++      (fun aid ->
++        let a0 = AbsId.Map.find aid abs0 in
++        let a1 = AbsId.Map.find aid abs1 in
++        (* We ignore the continuation expressions: when computing fixed points we
++           might remove/add continuations while the presence/absence shouldn't
++           have an impact on the way we match/unify contexts. *)
++        { a0 with cont = None } = { a1 with cont = None })
++      abs_ids
++  in
++  (* A syntactically unchanged abstraction is not fixed if it names a parent
++     which must be refreshed at the join. Otherwise refreshing that parent in
++     one context changes the child, after it has already been placed in the
++     fixed prefix, and the prefix comparison fails. Compute the greatest
++     parent-closed subset instead. *)
++  let rec close_under_parents fixed =
++    let closed =
++      AbsId.Set.filter
++        (fun aid ->
++          let abs = AbsId.Map.find aid abs0 in
++          AbsId.Set.subset abs.parents fixed)
++        fixed
++    in
++    if AbsId.Set.equal closed fixed then fixed else close_under_parents closed
++  in
++  close_under_parents candidates
+diff --git a/src/interp/InterpLoopsFixedPoint.ml b/src/interp/InterpLoopsFixedPoint.ml
+index b7ac0ca5..3d1b3701 100644
+--- a/src/interp/InterpLoopsFixedPoint.ml
++++ b/src/interp/InterpLoopsFixedPoint.ml
+@@ -1,4 +1,6 @@
+ open Values
++open Types
++open TypesUtils
+ open Contexts
+ module S = SynthesizeSymbolic
+ open Cps
+@@ -130,6 +132,71 @@ let compute_loop_entry_fixed_point (config : config) (span : Meta.span)
+   let equiv_ctxs (i : int) (ctx1 : eval_ctx) (ctx2 : eval_ctx) : bool =
+     [%ltrace "equiv_ctx:"];
+     update_fixed_ids [ ctx2 ];
++    let erase_immutable_projection_bookkeeping (ctx : eval_ctx) =
++      let ctx =
++        ctx_map_abs
++          (fun abs ->
++            if AbsId.Set.mem abs.abs_id !fixed_ids.aids then abs
++            else
++              {
++                abs with
++                avalues =
++                  List.filter
++                    (fun (av : tavalue) ->
++                      match av.value with
++                      | AIgnored _ -> false
++                      | ASymbolic
++                          ( PNone,
++                            ( AProjLoans { proj; _ }
++                            | AProjBorrows { proj; _ } ) ) ->
++                          ty_has_mut_borrows ctx.type_ctx.type_infos proj.proj_ty
++                      | _ -> true)
++                    abs.avalues;
++              })
++          ctx
++      in
++      ctx_map_abs (abs_simplify_duplicated_borrows span ctx) ctx
++    in
++    let ctx1 = erase_immutable_projection_bookkeeping ctx1 in
++    let ctx2 = erase_immutable_projection_bookkeeping ctx2 in
++    let remove_unmatched_empty_abstractions (other : eval_ctx)
++        (ctx : eval_ctx) =
++      let other_abs_ids = ctx_get_abs_ids other in
++      {
++        ctx with
++        env =
++          List.filter
++            (function
++              | EAbs abs ->
++                  not
++                    ((not (AbsId.Set.mem abs.abs_id !fixed_ids.aids))
++                    && abs.avalues = []
++                    && AbsId.Set.is_empty abs.parents
++                    && AbsLevelSet.is_empty abs.ended_subabs
++                    && not (AbsId.Set.mem abs.abs_id other_abs_ids))
++              | _ -> true)
++            ctx.env;
++      }
++    in
++    let ctx1_for_equiv = remove_unmatched_empty_abstractions ctx2 ctx1 in
++    let ctx2_for_equiv = remove_unmatched_empty_abstractions ctx1 ctx2 in
++    (* Regions owned by non-fixed abstractions are existential loop state even
++       if their numeric ids occurred before the current iteration.  Compare
++       those regions modulo renaming; borrow and loan identities remain fixed
++       and continue to check the actual state graph. *)
++    let existential_regions (ctx : eval_ctx) =
++      List.fold_left
++        (fun regions -> function
++          | EAbs abs when not (AbsId.Set.mem abs.abs_id !fixed_ids.aids) ->
++              RegionId.Set.union regions abs.regions.owned
++          | _ -> regions)
++        RegionId.Set.empty ctx.env
++    in
++    let existential_regions =
++      RegionId.Set.union
++        (existential_regions ctx1_for_equiv)
++        (existential_regions ctx2_for_equiv)
++    in
+     let lookup_shared_value _ = [%craise] span "Unreachable" in
+     (* If there is just a single iteration left it means we *should* have reached
+        a fixed point (otherwise we will fail). In case the fail hard option is on,
+@@ -137,14 +204,16 @@ let compute_loop_entry_fixed_point (config : config) (span : Meta.span)
+        the user will see a full call stack, which eases deboguing. *)
+     if i = 1 && !Config.fail_hard then
+       let _ =
+-        match_ctxs span ~check_equiv:true ~recoverable:false !fixed_ids
+-          lookup_shared_value lookup_shared_value ctx1 ctx2
++        match_ctxs span ~check_equiv:true ~recoverable:false
++          ~renamable_rids:existential_regions !fixed_ids lookup_shared_value
++          lookup_shared_value ctx1_for_equiv ctx2_for_equiv
+       in
+       true
+     else
+       Option.is_some
+-        (try_match_ctxs span ~check_equiv:true !fixed_ids lookup_shared_value
+-           lookup_shared_value ctx1 ctx2)
++        (try_match_ctxs span ~check_equiv:true
++           ~renamable_rids:existential_regions !fixed_ids lookup_shared_value
++           lookup_shared_value ctx1_for_equiv ctx2_for_equiv)
+   in
+   let max_num_iter = Config.loop_fixed_point_max_num_iters in
+   (* Keep a trace of the subsequent contexts we computed *)
+diff --git a/src/interp/InterpMatchCtxs.ml b/src/interp/InterpMatchCtxs.ml
+index de328360..9bde3d2d 100644
+--- a/src/interp/InterpMatchCtxs.ml
++++ b/src/interp/InterpMatchCtxs.ml
+@@ -86,6 +86,22 @@ let compute_abs_borrows_loans_maps (span : Meta.span) (explore : abs -> bool)
+             | Some ids -> Some (S.add id1 ids))
+           !map
+ 
++    (* Preserve an injective reverse map while permitting the same relation to
++       be encountered twice through a copied frozen value. *)
++    let register_singleton_mapping_idempotent
++        (to_string : M.key -> S.elt -> string) (map : S.t M.t ref)
++        (id0 : M.key) (id1 : S.elt) : unit =
++      map :=
++        M.update id0
++          (function
++            | None -> Some (S.singleton id1)
++            | Some ids when S.mem id1 ids -> Some ids
++            | Some _ ->
++                [%craise] span
++                  ("Internal error, please file an issue.\n\
++                    Key already registered: " ^ to_string id0 id1))
++          !map
++
+     let register_abs_id (id : AbsId.id) (map : S.t AbsId.Map.t ref) =
+       if AbsId.Map.mem id !map then () else map := AbsId.Map.add id S.empty !map
+   end in
+@@ -127,14 +143,13 @@ let compute_abs_borrows_loans_maps (span : Meta.span) (explore : abs -> bool)
+     "@loan_proj(" ^ marked_norm_symb_proj_to_string ctx x ^ ")"
+   in
+   let register_borrow_id (abs : abs) pm bid sid =
+-    RAbsUniqueBorrow.register_mapping
+-      (binding_to_string abs_id_to_string uborrow_to_string)
+-      false abs_to_borrows abs.abs_id (pm, bid, sid);
++    RAbsUniqueBorrow.register_mapping_idempotent abs_to_borrows abs.abs_id
++      (pm, bid, sid);
+     RAbsBorrow.register_mapping_idempotent abs_to_non_unique_borrows abs.abs_id
+       (pm, bid);
+-    RUniqueBorrowAbs.register_mapping
++    RUniqueBorrowAbs.register_singleton_mapping_idempotent
+       (binding_to_string uborrow_to_string abs_id_to_string)
+-      true borrow_to_abs (pm, bid, sid) abs.abs_id;
++      borrow_to_abs (pm, bid, sid) abs.abs_id;
+     RBorrowAbs.register_mapping_idempotent non_unique_borrow_to_abs (pm, bid)
+       abs.abs_id
+   in
+@@ -1424,8 +1439,11 @@ module MakeJoinMatcher (S : MatchJoinState) : PrimMatcher = struct
+     let id0 = sv0.sv_id in
+     let id1 = sv1.sv_id in
+     if id0 = id1 then (
+-      (* Sanity check *)
+-      [%sanity_check_recover] S.recover span (sv0 = sv1);
++      (* A shared symbolic value can be reached through branch-local region
++         abstractions.  Its lifetime names may therefore differ across the
++         two contexts even though its runtime type and identity are the same. *)
++      [%sanity_check_recover] S.recover span
++        (erase_regions sv0.sv_ty = erase_regions sv1.sv_ty);
+       (* We keep the same id, but we need to register the mapping *)
+       add_symbolic_value id0
+         (mk_tvalue_from_symbolic_value sv0)
+@@ -2344,6 +2362,7 @@ end
+ 
+ let match_ctxs (span : Meta.span) ~(check_equiv : bool)
+     ?(check_kind : bool = true) ?(check_can_end : bool = true)
++    ?(renamable_rids : RegionId.Set.t = RegionId.Set.empty)
+     ~(recoverable : bool) (fixed_ids : ids_sets)
+     (lookup_shared_value_in_ctx0 : BorrowId.id -> tvalue)
+     (lookup_shared_value_in_ctx1 : BorrowId.id -> tvalue) (ctx0 : eval_ctx)
+@@ -2363,7 +2382,7 @@ let match_ctxs (span : Meta.span) ~(check_equiv : bool)
+   end in
+   let rid_map =
+     let module IdMap = IdMap (RegionId) in
+-    IdMap.mk_map_ref fixed_ids.rids
++    IdMap.mk_map_ref (RegionId.Set.diff fixed_ids.rids renamable_rids)
+   in
+   let blid_map =
+     let module IdMap = IdMap (BorrowId) in
+@@ -2771,14 +2790,15 @@ let match_ctxs (span : Meta.span) ~(check_equiv : bool)
+ 
+ let try_match_ctxs (span : Meta.span) ~(check_equiv : bool)
+     ?(check_kind : bool = true) ?(check_can_end : bool = true)
++    ?(renamable_rids : RegionId.Set.t = RegionId.Set.empty)
+     (fixed_ids : ids_sets) (lookup_shared_value_in_ctx0 : BorrowId.id -> tvalue)
+     (lookup_shared_value_in_ctx1 : BorrowId.id -> tvalue) (ctx0 : eval_ctx)
+     (ctx1 : eval_ctx) : ids_maps option =
+   try
+     Some
+       (match_ctxs span ~check_equiv ~check_kind ~check_can_end ~recoverable:true
+-         fixed_ids lookup_shared_value_in_ctx0 lookup_shared_value_in_ctx1 ctx0
+-         ctx1)
++         ~renamable_rids fixed_ids lookup_shared_value_in_ctx0
++         lookup_shared_value_in_ctx1 ctx0 ctx1)
+   with
+   | Distinct msg ->
+       [%ltrace "distinct: " ^ msg];
+diff --git a/src/interp/InterpMatchCtxs.mli b/src/interp/InterpMatchCtxs.mli
+index d723e599..842cee69 100644
+--- a/src/interp/InterpMatchCtxs.mli
++++ b/src/interp/InterpMatchCtxs.mli
+@@ -4,6 +4,7 @@
+     if two contexts are equivalent (modulo conversion). *)
+ 
+ open Values
++open Types
+ open Contexts
+ open Cps
+ open InterpUtils
+@@ -95,6 +96,7 @@ val try_match_ctxs :
+   check_equiv:bool ->
+   ?check_kind:bool ->
+   ?check_can_end:bool ->
++  ?renamable_rids:RegionId.Set.t ->
+   ids_sets ->
+   (loan_id -> tvalue) ->
+   (loan_id -> tvalue) ->
+@@ -113,6 +115,7 @@ val match_ctxs :
+   check_equiv:bool ->
+   ?check_kind:bool ->
+   ?check_can_end:bool ->
++  ?renamable_rids:RegionId.Set.t ->
+   recoverable:bool ->
+   ids_sets ->
+   (loan_id -> tvalue) ->
+diff --git a/src/interp/InterpProjectors.ml b/src/interp/InterpProjectors.ml
+index 56f8b94d..648459bb 100644
+--- a/src/interp/InterpProjectors.ml
++++ b/src/interp/InterpProjectors.ml
+@@ -87,11 +87,17 @@ let rec apply_proj_borrows_on_shared_borrow (span : Meta.span) (ctx : eval_ctx)
+     | VLoan _, _ -> [%craise] span "Unreachable"
+     | VSymbolic s, _ ->
+         [%ldebug "symbolic"];
+-        (* Check that the projection doesn't contain ended regions *)
++        (* A value reached below a live shared loan is frozen.  Re-projecting
++           an immutable reference contained in that value is therefore a
++           fresh shared reborrow, even if an older shared projection of the
++           same symbolic value has already ended.  There is no value to hand
++           back through such a projection.  Keep the strict ended-region
++           check as soon as the projected type contains a mutable borrow. *)
+         [%sanity_check] span
+-          (not
+-             (projections_intersect span ctx ctx.ended_regions s.sv_ty regions
+-                ty));
++          ((not (ty_has_mut_borrows ctx.type_ctx.type_infos ty))
++          || not
++               (projections_intersect span ctx ctx.ended_regions s.sv_ty
++                  regions ty));
+         [ AsbProjReborrows { sv_id = s.sv_id; proj_ty = ty } ]
+     | VAdt adt, TArray (ty, _) ->
+         List.flatten
+diff --git a/src/interp/InterpReduceCollapse.ml b/src/interp/InterpReduceCollapse.ml
+index 7bc2a2c4..52f13812 100644
+--- a/src/interp/InterpReduceCollapse.ml
++++ b/src/interp/InterpReduceCollapse.ml
+@@ -1368,14 +1368,27 @@ let collapse_ctx_collapse (span : Meta.span)
+        same projections of borrows/loans) and the dual marker, and merge them
+        if it is the case. *)
+     let merge_policy ctx (abs_id0, is_borrow, loan) =
+-      if Marked.get_marker loan = PNone then None
+-      else
++      let to_abs =
++        if is_borrow then Marked.get_borrow_to_abs ctx.info
++        else Marked.get_loan_to_abs ctx.info
++      in
++      (* A nested shared array can expose the same marked projection through
++         two retained abstraction paths.  They represent one obligation, so
++         merge those abstractions before looking for the dual marker. *)
++      let duplicate_abs =
++        match Map.find_opt loan to_abs with
++        | None -> None
++        | Some ids ->
++            AbsId.Set.elements ids
++            |> List.find_opt (fun abs_id1 -> abs_id1 <> abs_id0)
++      in
++      match duplicate_abs with
++      | Some abs_id1 -> Some (abs_id0, abs_id1)
++      | None when Marked.get_marker loan = PNone -> None
++      | None ->
+         (* Look for an element with the dual marker *)
+         match
+-          Map.find_opt
+-            (Marked.invert_proj_marker loan)
+-            (if is_borrow then Marked.get_borrow_to_abs ctx.info
+-             else Marked.get_loan_to_abs ctx.info)
++          Map.find_opt (Marked.invert_proj_marker loan) to_abs
+         with
+         | None -> (* Nothing to do *) None
+         | Some abs_ids1 -> (
+@@ -1575,6 +1588,11 @@ let collapse_ctx_aux config (span : Meta.span)
+      abstraction ending has consumed every relationship it needs.  Removing
+      both sides together requires no replay insertion for the opposite branch. *)
+   let ctx = eliminate_closed_shared_projection_pairs ctx in
++  (* At this final point every remaining projection over an immutable type has
++     no value to write back.  Widen its branch marker to the joined shared
++     value even when a replay sequence exists; the sequence is relevant only
++     to mutable state. *)
++  let ctx = eliminate_shared_only_projection_markers ctx in
+   (* Sanity check: there are no markers remaining *)
+   [%cassert] span
+     (not (eval_ctx_has_markers ctx))
+diff --git a/src/symbolic/SymbolicToPureAbs.ml b/src/symbolic/SymbolicToPureAbs.ml
+index eb15f135..b2c19e95 100644
+--- a/src/symbolic/SymbolicToPureAbs.ml
++++ b/src/symbolic/SymbolicToPureAbs.ml
+@@ -235,6 +235,62 @@ let abs_to_ty (ctx : bs_ctx) (abs : V.abs) : ty option =
+   if inputs = [] && outputs = [] then None
+   else Some (mk_arrows inputs (mk_simpl_tuple_ty outputs))
+ 
++(** Return, in continuation-input order, the symbolic values projected as
++    mutable loans by an abstraction. Loop translation uses these identities to
++    reconnect an output continuation to the ordinary loop value it consumes.
++    This mirrors the symbolic branch of [register_inputs] without allocating
++    fresh variables. *)
++let abs_symbolic_input_ids (ctx : bs_ctx) (abs : V.abs) :
++    V.SymbolicValueId.id list =
++  let span = ctx.span in
++  let type_infos = ctx.type_ctx.type_infos in
++  let ids = ref [] in
++  let keep_region (r : T.region) =
++    match r with
++    | T.RVar (Free rid) -> T.RegionId.Set.mem rid abs.regions.owned
++    | _ -> false
++  in
++  let rec register (av : V.tavalue) : unit =
++    match av.value with
++    | V.AAdt { borrow_proj = _; variant_id = _; fields } ->
++        List.iter register fields
++    | V.ALoan lc -> (
++        match lc with
++        | V.AMutLoan (_, _, child)
++        | V.ASharedLoan (_, _, _, child)
++        | V.AIgnoredMutLoan (_, child)
++        | V.AIgnoredSharedLoan child -> register child
++        | V.AEndedMutLoan _
++        | V.AEndedSharedLoan _
++        | V.AEndedIgnoredMutLoan _ -> ())
++    | V.ABorrow bc -> (
++        match bc with
++        | V.AMutBorrow (_, _, child) | V.AIgnoredMutBorrow (_, child) ->
++            register child
++        | V.ASharedBorrow _
++        | V.AEndedMutBorrow _
++        | V.AEndedSharedBorrow
++        | V.AEndedIgnoredMutBorrow _
++        | V.AProjSharedBorrow _ -> ())
++    | V.ASymbolic (pm, proj) -> (
++        [%sanity_check] span (pm = PNone);
++        match proj with
++        | V.AProjLoans { proj = { sv_id; proj_ty = _ }; consumed; borrows } ->
++            [%sanity_check] span (consumed = []);
++            [%sanity_check] span (borrows = []);
++            if
++              TypesUtils.ty_has_mut_borrow_for_region_in_pred type_infos
++                keep_region av.ty
++            then ids := sv_id :: !ids
++        | V.AProjBorrows _
++        | V.AEndedProjLoans _
++        | V.AEndedProjBorrows _
++        | V.AEmpty -> ())
++    | V.AIgnored _ -> ()
++  in
++  List.iter register abs.avalues;
++  List.rev !ids
++
+ let compute_tevalue_proj_kind (span : Meta.span) (type_infos : type_infos)
+     (abs_regions : T.RegionId.Set.t) (abs_level : abs_level)
+     (current_level : abs_level) (ev : V.tevalue) : proj_kind =
+@@ -730,7 +786,7 @@ let einput_to_texpr (ctx : bs_ctx) (ectx : C.eval_ctx) (rids : T.RegionId.Set.t)
+                     [%sanity_check] span
+                       (V.AbsId.Set.mem abs_id ctx.ignored_abs_ids);
+                     (None, false)
+-                | Some { fvar; can_fail } ->
++                | Some { fvar; can_fail; _ } ->
+                     (* The list of lists of arguments is only used in the presence
+                      of nested borrows with function applications *)
+                     let args =
+diff --git a/src/symbolic/SymbolicToPureCore.ml b/src/symbolic/SymbolicToPureCore.ml
+index 60fbf8ae..7226405a 100644
+--- a/src/symbolic/SymbolicToPureCore.ml
++++ b/src/symbolic/SymbolicToPureCore.ml
+@@ -110,7 +110,15 @@ type loop_info = {
+ }
+ [@@deriving show]
+ 
+-type back_fun_info = { fvar : texpr; can_fail : bool } [@@deriving show]
++type back_fun_info = {
++  fvar : texpr;
++  can_fail : bool;
++  fallback_args : texpr list;
++      (** Exact loop value arguments retained for an output continuation when
++          the ended abstraction no longer exposes its consumed loan. Ordinary
++          function-call continuations leave this list empty. *)
++}
++[@@deriving show]
+ 
+ (** Some meta-information. See [bs_ctx.meta_symb_places] *)
+ type meta_symb_place = texpr * string [@@deriving show, ord]
+diff --git a/src/symbolic/SymbolicToPureExpressions.ml b/src/symbolic/SymbolicToPureExpressions.ml
+index 116c06e1..6549f576 100644
+--- a/src/symbolic/SymbolicToPureExpressions.ml
++++ b/src/symbolic/SymbolicToPureExpressions.ml
+@@ -526,7 +526,7 @@ and translate_function_call_aux (call : S.call) (e : S.expr) (ctx : bs_ctx) :
+               List.map
+                 (fun (aid, fv) ->
+                   let fvar = mk_texpr_from_fvar (Option.get fv) in
+-                  (aid, { fvar; can_fail = false }))
++                  (aid, { fvar; can_fail = false; fallback_args = [] }))
+                 backs
+             in
+             let ctx =
+@@ -1347,12 +1347,15 @@ and translate_end_abstraction_join_or_loop (ectx : C.eval_ctx) (abs : V.abs)
+         (V.AbsId.Set.mem abs.abs_id ctx.ignored_abs_ids
+         || (back_inputs = [] && outputs = []));
+       next_e ctx
+-  | Some { fvar = func; can_fail } ->
++  | Some { fvar = func; can_fail; fallback_args } ->
+       [%ltrace
+         let args = List.map (texpr_to_string ctx) args in
+         "func: " ^ texpr_to_string ctx func ^ "\nfunc type: "
+         ^ pure_ty_to_string ctx func.ty
+         ^ "\n\nargs:\n" ^ String.concat "\n" args];
++      let args =
++        if args = [] && fallback_args <> [] then fallback_args else args
++      in
+       let call = [%add_loc] mk_apps ctx.span func args in
+       (* Introduce a match if necessary *)
+       let ctx, (output, call) = decompose_let_match ctx output call in
+@@ -1916,6 +1919,7 @@ and translate_loop (loop : S.loop) (ctx0 : bs_ctx) : texpr =
+   (* Introduce free variables for the inputs *)
+   let bind_inputs (ctx : bs_ctx) (absl : V.abs list)
+       (values : V.symbolic_value list) : bs_ctx * tpat list * tpat list =
++    let source_absl = absl in
+     let ctx, absl =
+       (* Compute the type of the input abstractions *)
+       let abs_tys = List.map (abs_to_ty ctx) absl in
+@@ -1940,7 +1944,12 @@ and translate_loop (loop : S.loop) (ctx0 : bs_ctx) : texpr =
+         let fvars =
+           List.map
+             (fun (aid, fv) ->
+-              (aid, { fvar = mk_texpr_from_fvar fv; can_fail = false }))
++              ( aid,
++                {
++                  fvar = mk_texpr_from_fvar fv;
++                  can_fail = false;
++                  fallback_args = [];
++                } ))
+             fvars
+         in
+         {
+@@ -1952,7 +1961,40 @@ and translate_loop (loop : S.loop) (ctx0 : bs_ctx) : texpr =
+       (* *)
+       (ctx, List.map snd fvars)
+     in
++    let value_svs = values in
+     let ctx, values = fresh_vars_for_symbolic_values values ctx in
++    let value_args =
++      List.fold_left2
++        (fun map (sv : V.symbolic_value) fv ->
++          V.SymbolicValueId.Map.add sv.sv_id (mk_texpr_from_fvar fv) map)
++        V.SymbolicValueId.Map.empty value_svs values
++    in
++    let ctx =
++      List.fold_left
++        (fun ctx abs ->
++          match V.AbsId.Map.find_opt abs.V.abs_id ctx.abs_id_to_info with
++          | None -> ctx
++          | Some info ->
++              let symbolic_inputs = abs_symbolic_input_ids ctx abs in
++              let fallback_args =
++                List.filter_map
++                  (fun sv_id ->
++                    V.SymbolicValueId.Map.find_opt sv_id value_args)
++                  symbolic_inputs
++              in
++              if symbolic_inputs = [] ||
++                 List.length fallback_args <> List.length symbolic_inputs
++              then ctx
++              else
++                {
++                  ctx with
++                  abs_id_to_info =
++                    V.AbsId.Map.add abs.abs_id
++                      { info with fallback_args }
++                      ctx.abs_id_to_info;
++                })
++        ctx source_absl
++    in
+     let mk_pats = List.map (mk_tpat_from_fvar None) in
+     (ctx, mk_pats absl, mk_pats values)
+   in
+@@ -2122,7 +2164,12 @@ and translate_let (ctx0 : bs_ctx) (lete : S.let_expr) : texpr =
+         let fvars =
+           List.map
+             (fun (aid, fv) ->
+-              (aid, { fvar = mk_texpr_from_fvar fv; can_fail = false }))
++              ( aid,
++                {
++                  fvar = mk_texpr_from_fvar fv;
++                  can_fail = false;
++                  fallback_args = [];
++                } ))
+             fvars
+         in
+         {
+diff --git a/src/symbolic/SymbolicToPureTypes.ml b/src/symbolic/SymbolicToPureTypes.ml
+index eb1e4159..35fce846 100644
+--- a/src/symbolic/SymbolicToPureTypes.ml
++++ b/src/symbolic/SymbolicToPureTypes.ml
+@@ -1038,8 +1038,9 @@ and translate_fun_sigs (span : span option) (decls_ctx : C.decls_ctx)
+ 
+   let inst_sg : LlbcAst.inst_fun_sig =
+     let ({ T.inputs; output; _ } : T.fun_sig) = sg.item_binder_value in
+-    [%sanity_check_opt_span] span
+-      (sg.item_binder_params.trait_type_constraints = []);
++    (* Charon normalizes associated-type equalities at each monomorphic
++       higher-order iterator call. They do not add a runtime argument to the
++       translated pure signature. *)
+ 
+     let _, fresh_abs_id = V.AbsId.fresh_stateful_generator () in
+     let region_gr_id_abs_id_list =
+diff --git a/tests/lean/lakefile.lean b/tests/lean/lakefile.lean
+index e81e7628..0647cac7 100644
+--- a/tests/lean/lakefile.lean
++++ b/tests/lean/lakefile.lean
+@@ -79,6 +79,7 @@ package «tests» {}
+ @[default_target] lean_lib LoopsSequences
+ @[default_target] lean_lib MiniTree
+ @[default_target] lean_lib MultipleReturnedSlices
++@[default_target] lean_lib MutableIteratorHandback
+ @[default_target] lean_lib MultiTarget
+ @[default_target] lean_lib MutBorrowInSharedBorrow
+ @[default_target] lean_lib Names
+diff --git a/tests/src/mutable-iterator-handback.rs b/tests/src/mutable-iterator-handback.rs
+index fe06be9a..484527f1 100644
+--- a/tests/src/mutable-iterator-handback.rs
++++ b/tests/src/mutable-iterator-handback.rs
+@@ -44,3 +44,35 @@ pub fn fill_with_direct_iter_mut(
+     }
+     Ok(())
+ }
++
++pub struct BorrowedInput<'a> {
++    pub values: &'a [u32],
++}
++
++fn checked_from_prefix(
++    prefix: &[u32],
++    index: usize,
++    reject_at: usize,
++) -> Result<u32, FillError> {
++    if index == reject_at {
++        Err(FillError::Rejected)
++    } else {
++        Ok(prefix[index] + 1)
++    }
++}
++
++// The shared sub-slice creates a child abstraction whose parent is not fixed
++// across the mutable iterator loop. The child must follow its parent into the
++// non-fixed join suffix rather than being compared after only the parent id was
++// refreshed.
++pub fn fill_with_shared_parent_and_enumerated_iter_mut(
++    input: &BorrowedInput<'_>,
++    output: &mut [u32; 4],
++    reject_at: usize,
++) -> Result<(), FillError> {
++    let prefix = &input.values[..4];
++    for (index, slot) in output.iter_mut().enumerate() {
++        *slot = checked_from_prefix(prefix, index, reject_at)?;
++    }
++    Ok(())
++}
