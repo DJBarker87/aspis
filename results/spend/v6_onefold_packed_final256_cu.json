@@ -1,5 +1,5 @@
 {
-  "scope": "isolated local-validator packed parsing, q16 frontier derivation, and sixteen packed final256 evaluations; not a complete V6 verifier",
+  "scope": "isolated local-validator packed parsing, q16 frontier derivation, typed shared-salt two-tree binary Merkle authentication, and sixteen packed final256 evaluations; not a complete V6 verifier",
   "profile": "B10, 26 M31 C1 columns + 3 QM31 C2 columns, q16, frontier cap 209",
   "proof_body_bytes": 33785,
   "hard_limit_bytes": 40960,
@@ -23,43 +23,48 @@
     7983,
     33159
   ],
-  "compute_units": 646559,
+  "compute_units": 1013295,
   "repeated_compute_units": [
-    646559,
-    646559,
-    646559
+    1013295,
+    1013295,
+    1013295
   ],
   "deterministic_three_of_three": true,
   "phase_markers": [
     {
       "label": "entry",
-      "remaining": 1398979,
+      "remaining": 1398978,
       "delta_from_previous": null
     },
     {
       "label": "parsed",
-      "remaining": 1398731,
-      "delta_from_previous": 248
+      "remaining": 1398683,
+      "delta_from_previous": 295
     },
     {
       "label": "frontier",
-      "remaining": 1391305,
-      "delta_from_previous": 7426
+      "remaining": 1391256,
+      "delta_from_previous": 7427
+    },
+    {
+      "label": "merkle",
+      "remaining": 1024569,
+      "delta_from_previous": 366687
     },
     {
       "label": "final-evaluations",
-      "remaining": 754397,
+      "remaining": 387661,
       "delta_from_previous": 636908
     },
     {
       "label": "sink",
-      "remaining": 753490,
+      "remaining": 386754,
       "delta_from_previous": 907
     }
   ],
   "sbf_path": "target/deploy/aspis_verifier_v6_onefold_probe.so",
-  "sbf_bytes": 43128,
-  "sbf_sha256": "f69202252f9ff2cfd1465a5fc4adacc1bbca6cb563a61c780a809161eff52180",
+  "sbf_bytes": 53264,
+  "sbf_sha256": "3dd1c79fbf6aaa569ce3a85ddab59c48cb037099f211629460b18cc37db88355",
   "build_command": "NO_DNA=1 cargo-build-sbf --manifest-path programs/aspis-verifier/Cargo.toml --no-default-features --features v6-cu-probe",
-  "conclusion": "This result measures only the first exact implementation slice. Merkle authentication, transcript, relation checks, semantic terminal, and state transition must be added before applying the 1.35M-CU release gate."
+  "conclusion": "This result measures the first exact implementation slice including both binary Merkle trees. Transcript, relation checks, semantic terminal, and state transition must be added before applying the 1.35M-CU release gate."
 }

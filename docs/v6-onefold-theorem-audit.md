@@ -134,6 +134,10 @@ logical foundations. There is no `sorry` in this module.
   allocation;
 - returns only the first compact candidate, so a prover cannot skip an earlier
   valid schedule; and
+- authenticates all sixteen C1 and C2 records against two distinct typed
+  18-level binary trees, using one shared hidden salt per queried position;
+- consumes each minimal frontier exactly and rejects duplicate or out-of-range
+  query positions; and
 - canonically decodes the disclosed 256-coefficient final polynomial once and
   reuses it for all sixteen query evaluations.
 
@@ -146,18 +150,20 @@ not yet the complete prover, transcript, Merkle verifier, or Solana entrypoint.
 An isolated local-validator SBF probe now measures this exact first slice over
 the full 33,785-byte body and a pinned sixteen-query schedule whose binary
 authentication frontier is the maximum 209 nodes for each tree. Three runs
-each used 646,559 compute units. The measured phases were 248 CU for structural
-parsing, 7,426 CU for frontier derivation, 636,908 CU for the sixteen terminal
-evaluations, and 907 CU for the result sink. The result is recorded in
+each used 1,013,295 compute units. The measured phases were 295 CU for
+structural parsing, 7,427 CU for frontier derivation, 366,687 CU for both
+typed binary Merkle trees, 636,908 CU for the sixteen terminal evaluations,
+and 907 CU for the result sink. The result is recorded in
 [`v6_onefold_packed_final256_cu.json`](../results/spend/v6_onefold_packed_final256_cu.json).
 
 This is a positive implementation result because the original version, which
 rescanned the packed body and decoded the terminal vector independently for
-every query, exhausted the 1.4-million-CU transaction limit. It is not a full
-verifier measurement: Merkle authentication, transcript derivation, relation
-checks, the semantic check, and the state transition are absent. The terminal
-evaluation remains the dominant cost and must be reduced before the complete
-verifier can meet the release gate.
+every query, exhausted the 1.4-million-CU transaction limit before doing any
+Merkle work. It is not a full verifier measurement: transcript derivation,
+relation checks, the semantic check, and the state transition are absent. The
+current slice leaves 336,705 CU below the intended 1.35-million-CU release
+gate, so the remaining implementation must be measured incrementally and may
+still require further arithmetic savings.
 
 ### Supported by the cited papers
 
@@ -241,12 +247,12 @@ screen.
    treatment used for V5.
 
 9. **Compute and prover measurements.** The first isolated Solana measurement
-   now covers structural parsing, the worst permitted frontier schedule, and
-   all sixteen final-vector evaluations in 646,559 CU. It does not cover the
-   relation reductions, binary Merkle hashes, transcript, semantic check, or
-   state transition. Those pieces, the 152-MiB raw codeword footprint, full
-   prover peak memory, and grind time need direct measurement before any
-   deployment decision.
+   now covers structural parsing, the worst permitted frontier schedule, both
+   typed shared-salt binary Merkle trees, and all sixteen final-vector
+   evaluations in 1,013,295 CU. It does not cover the relation reductions,
+   transcript, semantic check, or state transition. Those pieces, the 152-MiB
+   raw codeword footprint, full prover peak memory, and grind time need direct
+   measurement before any deployment decision.
 
 ## Decision
 

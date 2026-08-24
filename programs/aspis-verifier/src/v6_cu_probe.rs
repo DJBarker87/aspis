@@ -6,7 +6,8 @@
 
 use aspis_core::field::QM31;
 use aspis_core::v6_onefold::{
-    binary_frontier_nodes, evaluate_packed_final256_at_queries, V6OneFoldWire, V6_QUERY_COUNT,
+    binary_frontier_nodes, evaluate_packed_final256_at_queries, verify_v6_binary_openings,
+    V6OneFoldWire, V6_QUERY_COUNT,
 };
 use solana_program::{
     account_info::AccountInfo,
@@ -95,6 +96,11 @@ pub fn process_v6_cu_probe_instruction(
     msg!("aspis-v6-cu:frontier");
     sol_log_compute_units();
 
+    verify_v6_binary_openings(crate::verify::sbf_hashv, &parsed, queries)
+        .map_err(|_| ProgramError::InvalidAccountData)?;
+    msg!("aspis-v6-cu:merkle");
+    sol_log_compute_units();
+
     let evaluated = evaluate_packed_final256_at_queries(parsed.fixed_fields_packed, queries)
         .map_err(|_| ProgramError::InvalidAccountData)?;
     let outputs = evaluated.map(qm31_bytes);
@@ -114,7 +120,12 @@ mod tests {
     use super::*;
     use crate::lifecycle::PROOF_ACCOUNT_HEADER_LEN;
     use crate::test_support::make_account;
-    use aspis_core::v6_onefold::{V6_BODY_WITHOUT_FRONTIERS, V6_FRONTIER_CAP_PER_TREE};
+    use aspis_core::merkle::node_hash;
+    use aspis_core::state_only_private_merkle::private_leaf_hash;
+    use aspis_core::v6_onefold::{
+        V6_BODY_WITHOUT_FRONTIERS, V6_C1_TREE_TAG, V6_C2_TREE_TAG, V6_FIXED_PACKED_FIELD_BYTES,
+        V6_FRONTIER_CAP_PER_TREE,
+    };
 
     fn clustered_queries() -> [u32; V6_QUERY_COUNT] {
         core::array::from_fn(|index| index as u32)
@@ -131,6 +142,85 @@ mod tests {
         wire
     }
 
+    fn minimal_binary_root(entries: &[(u32, [u8; 32])], frontier: &[[u8; 32]]) -> [u8; 32] {
+        let mut stream = frontier.iter();
+        let mut level = entries.to_vec();
+        for _ in 0..18 {
+            let mut next = Vec::with_capacity(level.len());
+            let mut index = 0usize;
+            while index < level.len() {
+                let (position, digest) = level[index];
+                let parent = if position & 1 == 0
+                    && index + 1 < level.len()
+                    && level[index + 1].0 == position + 1
+                {
+                    let combined =
+                        node_hash(crate::verify::sbf_hashv, &digest, &level[index + 1].1);
+                    index += 2;
+                    combined
+                } else {
+                    let sibling = stream.next().unwrap();
+                    index += 1;
+                    if position & 1 == 0 {
+                        node_hash(crate::verify::sbf_hashv, &digest, sibling)
+                    } else {
+                        node_hash(crate::verify::sbf_hashv, sibling, &digest)
+                    }
+                };
+                next.push((position >> 1, parent));
+            }
+            level = next;
+        }
+        assert!(stream.next().is_none());
+        level[0].1
+    }
+
+    fn valid_body(queries: [u32; V6_QUERY_COUNT], frontier: usize) -> Vec<u8> {
+        let mut body = vec![0u8; V6_BODY_WITHOUT_FRONTIERS + 2 * frontier * 32];
+        let parsed = V6OneFoldWire::parse(&body, frontier, frontier).unwrap();
+        let mut order: [(u32, usize); V6_QUERY_COUNT] =
+            core::array::from_fn(|ordinal| (queries[ordinal], ordinal));
+        order.sort_unstable_by_key(|entry| entry.0);
+        let c1_entries: Vec<_> = order
+            .iter()
+            .map(|(query, ordinal)| {
+                let record = parsed.query(*ordinal).unwrap();
+                (
+                    *query,
+                    private_leaf_hash(
+                        crate::verify::sbf_hashv,
+                        V6_C1_TREE_TAG,
+                        record.c1_packed,
+                        record.salt,
+                    ),
+                )
+            })
+            .collect();
+        let c2_entries: Vec<_> = order
+            .iter()
+            .map(|(query, ordinal)| {
+                let record = parsed.query(*ordinal).unwrap();
+                (
+                    *query,
+                    private_leaf_hash(
+                        crate::verify::sbf_hashv,
+                        V6_C2_TREE_TAG,
+                        record.c2_packed,
+                        record.salt,
+                    ),
+                )
+            })
+            .collect();
+        let zero_frontier = vec![[0u8; 32]; frontier];
+        let c1_root = minimal_binary_root(&c1_entries, &zero_frontier);
+        let c2_root = minimal_binary_root(&c2_entries, &zero_frontier);
+        body[V6_FIXED_PACKED_FIELD_BYTES..V6_FIXED_PACKED_FIELD_BYTES + 32]
+            .copy_from_slice(&c1_root);
+        body[V6_FIXED_PACKED_FIELD_BYTES + 32..V6_FIXED_PACKED_FIELD_BYTES + 64]
+            .copy_from_slice(&c2_root);
+        body
+    }
+
     #[test]
     fn exact_sealed_probe_accepts_and_mismatched_frontier_rejects() {
         let program_id = crate::id();
@@ -139,9 +229,12 @@ mod tests {
         let frontier = binary_frontier_nodes(queries, 18).unwrap();
         assert!(frontier <= V6_FRONTIER_CAP_PER_TREE);
         let body_len = V6_BODY_WITHOUT_FRONTIERS + 2 * frontier * 32;
+        let body = valid_body(queries, frontier);
+        assert_eq!(body.len(), body_len);
         let mut data = vec![0u8; PROOF_ACCOUNT_HEADER_LEN + body_len];
         data[0..4].copy_from_slice(b"ASPU");
         data[4..8].copy_from_slice(&(body_len as u32).to_le_bytes());
+        data[PROOF_ACCOUNT_HEADER_LEN..].copy_from_slice(&body);
         let mut lamports = 1;
         let proof = make_account(
             &proof_key,

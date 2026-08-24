@@ -9,6 +9,9 @@ use alloc::vec::Vec;
 
 use crate::circle_fri::line_domain_x_for_circle;
 use crate::field::{CM31, M31, P, QM31};
+use crate::merkle::verify_minimal_subtree_bytes;
+use crate::state_only_private_merkle::private_leaf_hash;
+use crate::HashFn;
 
 pub const V6_C1_COLUMNS: usize = 26;
 pub const V6_C2_COLUMNS: usize = 3;
@@ -35,6 +38,8 @@ pub const V6_QUERY_SECTION_BYTES: usize = V6_QUERY_COUNT * V6_QUERY_BYTES;
 pub const V6_BODY_WITHOUT_FRONTIERS: usize = V6_FIXED_BYTES + V6_QUERY_SECTION_BYTES;
 pub const V6_MAX_BODY_BYTES: usize = V6_BODY_WITHOUT_FRONTIERS + 2 * V6_FRONTIER_CAP_PER_TREE * 32;
 pub const V6_HARD_BODY_LIMIT: usize = 40 * 1024;
+pub const V6_C1_TREE_TAG: u8 = 0x70;
+pub const V6_C2_TREE_TAG: u8 = 0xf0;
 
 const fn packed_bytes(limbs: usize) -> usize {
     (limbs * 31 + 7) / 8
@@ -46,6 +51,7 @@ pub enum V6WireError {
     WrongLength,
     NonCanonicalM31,
     InvalidQuerySchedule,
+    MerkleMismatch,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -293,6 +299,69 @@ pub fn first_compact_candidate<const Q: usize, const C: usize>(
     Ok(None)
 }
 
+/// Authenticate the sixteen packed C1 and C2 records against two distinct
+/// typed binary trees. Each query uses one shared hidden salt, but the tree
+/// tags make a C1 leaf and a C2 leaf different hash inputs even when their
+/// values happen to agree.
+pub fn verify_v6_binary_openings(
+    hash: HashFn,
+    wire: &V6OneFoldWire<'_>,
+    queries: [u32; V6_QUERY_COUNT],
+) -> Result<(), V6WireError> {
+    let mut order: [(u32, usize); V6_QUERY_COUNT] =
+        core::array::from_fn(|ordinal| (queries[ordinal], ordinal));
+    order.sort_unstable_by_key(|entry| entry.0);
+    if order[V6_QUERY_COUNT - 1].0 >= 1 << 18 {
+        return Err(V6WireError::InvalidQuerySchedule);
+    }
+    for pair in order.windows(2) {
+        if pair[0].0 == pair[1].0 {
+            return Err(V6WireError::InvalidQuerySchedule);
+        }
+    }
+
+    let mut c1_entries = Vec::with_capacity(V6_QUERY_COUNT);
+    let mut c2_entries = Vec::with_capacity(V6_QUERY_COUNT);
+    for (query, ordinal) in order {
+        let record = wire
+            .query(ordinal)
+            .ok_or(V6WireError::InvalidQuerySchedule)?;
+        validate_packed_m31(record.c1_packed, V6_C1_LIMBS_PER_QUERY)?;
+        validate_packed_m31(record.c2_packed, V6_C2_LIMBS_PER_QUERY)?;
+        c1_entries.push((
+            query,
+            private_leaf_hash(hash, V6_C1_TREE_TAG, record.c1_packed, record.salt),
+        ));
+        c2_entries.push((
+            query,
+            private_leaf_hash(hash, V6_C2_TREE_TAG, record.c2_packed, record.salt),
+        ));
+    }
+
+    let mut level = Vec::with_capacity(V6_QUERY_COUNT);
+    let mut next = Vec::with_capacity(V6_QUERY_COUNT);
+    if !verify_minimal_subtree_bytes(
+        hash,
+        wire.c1_root,
+        18,
+        &c1_entries,
+        wire.c1_frontier,
+        &mut level,
+        &mut next,
+    ) || !verify_minimal_subtree_bytes(
+        hash,
+        wire.c2_root,
+        18,
+        &c2_entries,
+        wire.c2_frontier,
+        &mut level,
+        &mut next,
+    ) {
+        return Err(V6WireError::MerkleMismatch);
+    }
+    Ok(())
+}
+
 fn natural_line_weights_256(mut point: M31) -> [M31; V6_FINAL_QM31_VALUES] {
     let mut factors = [M31::ZERO; 8];
     for factor in &mut factors {
@@ -416,8 +485,10 @@ pub fn evaluate_packed_final256_at_queries(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::merkle::node_hash;
     use alloc::vec;
     use alloc::vec::Vec;
+    use sha2::{Digest, Sha256};
 
     fn pack(values: &[u32]) -> Vec<u8> {
         let mut out = vec![0u8; packed_bytes(values.len())];
@@ -435,6 +506,51 @@ mod tests {
 
     fn valid_body(c1_frontier: usize, c2_frontier: usize) -> Vec<u8> {
         vec![0u8; V6_BODY_WITHOUT_FRONTIERS + 32 * (c1_frontier + c2_frontier)]
+    }
+
+    fn test_hash(inputs: &[&[u8]]) -> [u8; 32] {
+        let mut hasher = Sha256::new();
+        for input in inputs {
+            hasher.update(input);
+        }
+        hasher.finalize().into()
+    }
+
+    fn minimal_binary_root(
+        depth: u32,
+        entries: &[(u32, [u8; 32])],
+        frontier: &[[u8; 32]],
+    ) -> [u8; 32] {
+        let mut stream = frontier.iter();
+        let mut level = entries.to_vec();
+        for _ in 0..depth {
+            let mut next = Vec::with_capacity(level.len());
+            let mut index = 0usize;
+            while index < level.len() {
+                let (position, digest) = level[index];
+                let parent = if position & 1 == 0
+                    && index + 1 < level.len()
+                    && level[index + 1].0 == position + 1
+                {
+                    let combined = node_hash(test_hash, &digest, &level[index + 1].1);
+                    index += 2;
+                    combined
+                } else {
+                    let sibling = stream.next().unwrap();
+                    index += 1;
+                    if position & 1 == 0 {
+                        node_hash(test_hash, &digest, sibling)
+                    } else {
+                        node_hash(test_hash, sibling, &digest)
+                    }
+                };
+                next.push((position >> 1, parent));
+            }
+            level = next;
+        }
+        assert!(stream.next().is_none());
+        assert_eq!(level.len(), 1);
+        level[0].1
     }
 
     #[test]
@@ -619,6 +735,73 @@ mod tests {
         assert_eq!(
             evaluate_packed_final256_at_queries(parsed.fixed_fields_packed, [0; V6_QUERY_COUNT]),
             Err(V6WireError::NonCanonicalM31)
+        );
+    }
+
+    #[test]
+    fn typed_shared_salt_binary_openings_match_both_roots() {
+        let queries = [
+            122_108, 40_038, 180_031, 111_504, 57_828, 27_366, 58_493, 6_257, 191_948, 128_942,
+            244_032, 98_351, 184_446, 150_408, 7_983, 33_159,
+        ];
+        let frontier_nodes = binary_frontier_nodes(queries, 18).unwrap();
+        assert_eq!(frontier_nodes, V6_FRONTIER_CAP_PER_TREE);
+        let mut body = valid_body(frontier_nodes, frontier_nodes);
+
+        let parsed = V6OneFoldWire::parse(&body, frontier_nodes, frontier_nodes).unwrap();
+        let mut order: [(u32, usize); V6_QUERY_COUNT] =
+            core::array::from_fn(|ordinal| (queries[ordinal], ordinal));
+        order.sort_unstable_by_key(|entry| entry.0);
+        let c1_entries: Vec<_> = order
+            .iter()
+            .map(|(query, ordinal)| {
+                let record = parsed.query(*ordinal).unwrap();
+                (
+                    *query,
+                    private_leaf_hash(test_hash, V6_C1_TREE_TAG, record.c1_packed, record.salt),
+                )
+            })
+            .collect();
+        let c2_entries: Vec<_> = order
+            .iter()
+            .map(|(query, ordinal)| {
+                let record = parsed.query(*ordinal).unwrap();
+                (
+                    *query,
+                    private_leaf_hash(test_hash, V6_C2_TREE_TAG, record.c2_packed, record.salt),
+                )
+            })
+            .collect();
+        assert_ne!(c1_entries[0].1, c2_entries[0].1);
+        let zero_frontier = vec![[0u8; 32]; frontier_nodes];
+        let c1_root = minimal_binary_root(18, &c1_entries, &zero_frontier);
+        let c2_root = minimal_binary_root(18, &c2_entries, &zero_frontier);
+        let c1_root_offset = V6_FIXED_PACKED_FIELD_BYTES;
+        body[c1_root_offset..c1_root_offset + 32].copy_from_slice(&c1_root);
+        body[c1_root_offset + 32..c1_root_offset + 64].copy_from_slice(&c2_root);
+
+        let parsed = V6OneFoldWire::parse(&body, frontier_nodes, frontier_nodes).unwrap();
+        assert_eq!(
+            verify_v6_binary_openings(test_hash, &parsed, queries),
+            Ok(())
+        );
+
+        let mut changed_value = body.clone();
+        changed_value[V6_FIXED_BYTES] ^= 1;
+        let parsed = V6OneFoldWire::parse(&changed_value, frontier_nodes, frontier_nodes).unwrap();
+        assert_eq!(
+            verify_v6_binary_openings(test_hash, &parsed, queries),
+            Err(V6WireError::MerkleMismatch)
+        );
+
+        let mut changed_shared_salt = body;
+        changed_shared_salt
+            [V6_FIXED_BYTES + V6_C1_PACKED_BYTES_PER_QUERY + V6_C2_PACKED_BYTES_PER_QUERY] ^= 1;
+        let parsed =
+            V6OneFoldWire::parse(&changed_shared_salt, frontier_nodes, frontier_nodes).unwrap();
+        assert_eq!(
+            verify_v6_binary_openings(test_hash, &parsed, queries),
+            Err(V6WireError::MerkleMismatch)
         );
     }
 }
