@@ -172,7 +172,7 @@ theorem accepted_snapshot_builds_transcript_work_evidence
   refine {
     exactGeneratedWork := snapshot.evidence.exactWorkCalls
     immediateSuccessors := accepted_composite_call_facts_prove_post_work_successors
-      accountData parsed liveStatement statementDigest acceptedValue
+      snapshot.terminalBoundary accountData parsed liveStatement statementDigest acceptedValue
       snapshot.verifiedPrefix snapshot.prefixTranscript
       snapshot.verifiedTerminal snapshot.relationTranscript
       snapshot.finalPolynomial snapshot.queries snapshot.alphas snapshot.friSum
@@ -188,7 +188,7 @@ theorem accepted_snapshot_builds_transcript_work_evidence
       AspisV5AcceptedTranscriptQueryBridge.accepted_fold_successors_and_alpha_decode_are_same_values
         parsed snapshot.alphas
         (accepted_composite_call_facts_prove_post_work_successors
-          accountData parsed liveStatement statementDigest acceptedValue
+          snapshot.terminalBoundary accountData parsed liveStatement statementDigest acceptedValue
           snapshot.verifiedPrefix snapshot.prefixTranscript
           snapshot.verifiedTerminal snapshot.relationTranscript
           snapshot.finalPolynomial snapshot.queries snapshot.alphas snapshot.friSum
