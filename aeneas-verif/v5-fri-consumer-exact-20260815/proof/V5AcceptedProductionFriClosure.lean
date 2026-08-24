@@ -34,6 +34,75 @@ open AspisV5TranscriptConnection
 open AspisV5WithoutReplacementQuerySoundness
 open V5FriConsumerExact
 
+/-- Same-run form of the accepted-call closure.  The model binding is stated
+for the exact alpha array carried by `acceptedCall`; the strengthened source
+execution theorem proves that the extracted four-pass witness used below has
+that same array.  No universally quantified binding over hypothetical
+alternative successful executions is required. -/
+theorem accepted_call_yields_authenticated_released_fri_checks_same_inputs
+    {PointValue : Type*}
+    (sha256 : List AspisV5MerkleAuthenticationBinding.Byte →
+      AspisV5MerkleRustBridge.Digest32)
+    (rustObservation : V5ProductionCall → Option OpeningAndFriObservation)
+    (rustCall : V5ProductionCall)
+    (acceptedCall : AcceptedFriCall)
+    (hconsumer : ExactRustV5OpeningAndFriConsumerEquality sha256
+      rustObservation)
+    (hobservation : rustObservation rustCall =
+      some acceptedCall.observation)
+    (schedule : FixedSchedule (ZMod AspisCircleGroupOrder.P)
+      AspisV5FriAcceptedForestChecks.K)
+    (hsource : ProductionUsesReleasedFriTables schedule)
+    (transcript : IdealTranscript AspisV5FriAcceptedForestChecks.K)
+    (queries : QuerySchedule 18 131072)
+    (relationInput : SourceRelationInput
+      AspisV5FriAcceptedForestChecks.K)
+    (transcriptInput : V5TranscriptInputs)
+    (derived : V5DerivedValues AspisV5FriAcceptedForestChecks.K PointValue)
+    (driverResult : V5TranscriptDriverResult
+      AspisV5FriAcceptedForestChecks.K PointValue)
+    (projection : TranscriptExecutionProjection relationInput transcriptInput
+      derived driverResult rustCall.queries queries)
+    (binding : AcceptedFriModelInputBinding acceptedCall.prepared
+      acceptedCall.alphas acceptedCall.finalPolynomial
+      schedule transcript) :
+    ∃ run : ExactV5Run sha256 rustCall.roots rustCall.queries,
+      run.proofBytes = rustCall.proofBytes ∧
+      ForestFriChecks (productionOpeningFibreDecoder acceptedCall.prepared)
+        (sha256MerkleHashing sha256) run.forest
+        schedule transcript queries := by
+  obtain ⟨run, hbytes, hobservationExact⟩ :=
+    hconsumer rustCall acceptedCall.observation hobservation
+  have hdriver : generatedDriverOutput acceptedCall.openings =
+      driverOutputOfRun run [] := by
+    have h := congrArg OpeningAndFriObservation.driver hobservationExact
+    simpa [AcceptedFriCall.observation, observationOfRun] using h
+  obtain ⟨execution, alphasExact, _inverseExact⟩ :=
+    unchanged_source_acceptance_yields_complete_fri_execution_with_inputs
+      acceptedCall.openings acceptedCall.prepared acceptedCall.alphas
+      acceptedCall.finalPolynomial acceptedCall.inverse acceptedCall.sink
+      acceptedCall.accepted
+  have executionBinding : AcceptedFriModelInputBinding acceptedCall.prepared
+      execution.sourceAlphas acceptedCall.finalPolynomial
+      schedule transcript := by
+    simpa [alphasExact] using binding
+  have decoderAgreement :=
+    productionOpeningFibreDecoder_authenticated_agreement run
+      acceptedCall.prepared
+  have checks :=
+    accepted_production_execution_yields_forest_fri_checks_of_projection run
+      acceptedCall.openings acceptedCall.prepared acceptedCall.finalPolynomial
+      acceptedCall.sink execution hdriver schedule hsource transcript queries
+      relationInput transcriptInput derived driverResult projection
+      (productionOpeningFibreDecoder acceptedCall.prepared)
+      AspisV5FriTransparentHelperEquality.transparentFriHelperCallEquality
+      decoderAgreement executionBinding
+      V5ShapeValidationProof.validationSuccessPreservesShape
+  exact ⟨run, hbytes, checks⟩
+
+#print axioms
+  accepted_call_yields_authenticated_released_fri_checks_same_inputs
+
 /-- One concrete accepted FRI call supplies the exact authenticated run and
 all four FRI comparisons used by the security theorem.  The remaining model
 binding connects the accepted transcript values to the ideal transcript used

@@ -1362,10 +1362,12 @@ structure AcceptedProductionFriExecution
           (sliceValueAt (alloc.vec.Vec.deref laterRuns.indices2) target
             htarget))
 
-/-- End-to-end unchanged-source theorem for the FRI consumer: successful
-top-level acceptance entails the exact first pass, all three later passes,
-and a production read witness for every enumerated query in each pass. -/
-theorem unchanged_source_acceptance_yields_complete_fri_execution
+/-- Strong form of the unchanged-source theorem.  Besides the complete
+four-pass execution, it retains that the execution's alpha and inverse inputs
+are exactly the inputs of the successful top-level call.  These equalities
+prevent a later composition from choosing a different successful execution
+whose source inputs are unrelated to the accepted caller. -/
+theorem unchanged_source_acceptance_yields_complete_fri_execution_with_inputs
     (openings : VerifiedOpenings)
     (prepared : fri_checks.V5PreparedPcsClaims)
     (alphas : Array aspis_core.field.QM31 4#usize)
@@ -1374,8 +1376,10 @@ theorem unchanged_source_acceptance_yields_complete_fri_execution
     (sink : fri_checks.V5FriCheckSink)
     (haccept : fri_checks.check_v5_fri_queries openings prepared alphas
       finalPolynomial inverse = .ok (.Ok sink)) :
-    Nonempty (AcceptedProductionFriExecution openings prepared
-      finalPolynomial sink) := by
+    ∃ execution : AcceptedProductionFriExecution openings prepared
+        finalPolynomial sink,
+      execution.sourceAlphas = alphas ∧
+        execution.sourceInverse = inverse := by
   obtain ⟨coordinates, alphaPowers, foldedStart, hlayerZero, hpreparation⟩ :=
     top_level_acceptance_exposes_preparation_and_layerZero_loop openings prepared
       alphas finalPolynomial inverse sink haccept
@@ -1405,7 +1409,7 @@ theorem unchanged_source_acceptance_yields_complete_fri_execution
     layerZeroReads := ?_
     later0Reads := ?_
     later1Reads := ?_
-    later2Reads := ?_ }⟩
+    later2Reads := ?_ }, rfl, rfl⟩
   · intro target htarget
     exact production_layerZero_accepted_loop_reads_target openings
       openings.c1.count openings.c1.value_width openings.c1.offsets
@@ -1434,6 +1438,26 @@ theorem unchanged_source_acceptance_yields_complete_fri_execution
       (alloc.vec.Vec.deref laterRuns.indices2) 0#usize target 0#usize
       (by simp) htarget laterRuns.run2
 
+/-- Compatibility projection for callers which need only the complete
+execution object. -/
+theorem unchanged_source_acceptance_yields_complete_fri_execution
+    (openings : VerifiedOpenings)
+    (prepared : fri_checks.V5PreparedPcsClaims)
+    (alphas : Array aspis_core.field.QM31 4#usize)
+    (finalPolynomial : Array aspis_core.field.QM31 4#usize)
+    (inverse : aspis_core.field.M31 → aspis_core.field.M31)
+    (sink : fri_checks.V5FriCheckSink)
+    (haccept : fri_checks.check_v5_fri_queries openings prepared alphas
+      finalPolynomial inverse = .ok (.Ok sink)) :
+    Nonempty (AcceptedProductionFriExecution openings prepared
+      finalPolynomial sink) := by
+  obtain ⟨execution, _, _⟩ :=
+    unchanged_source_acceptance_yields_complete_fri_execution_with_inputs
+      openings prepared alphas finalPolynomial inverse sink haccept
+  exact ⟨execution⟩
+
+#print axioms
+  unchanged_source_acceptance_yields_complete_fri_execution_with_inputs
 #print axioms unchanged_source_acceptance_yields_complete_fri_execution
 
 end AspisV5FriConsumerExactProof

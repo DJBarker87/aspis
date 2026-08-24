@@ -305,6 +305,26 @@ structure ProductionUsesReleasedFriTables
   line3Inverse : forall i slot, schedule.line3Inverse i slot =
     (2 * releasedEvaluationPoints.line3 i slot)⁻¹
 
+/-- Replacing only the four sampled fold challenges preserves every released
+coordinate and final-domain table. -/
+theorem acceptedSchedule_preserves_released_tables
+    {base : FixedSchedule (ZMod P) K}
+    (hsource : ProductionUsesReleasedFriTables base)
+    (input : SourceRelationInput K) :
+    ProductionUsesReleasedFriTables (acceptedSchedule base input) where
+  finalX i := by
+    simpa [acceptedSchedule, scheduleAt] using hsource.finalX i
+  circleInv2x i := by
+    simpa [acceptedSchedule, scheduleAt] using hsource.circleInv2x i
+  circleInv2y i := by
+    simpa [acceptedSchedule, scheduleAt] using hsource.circleInv2y i
+  line1Inverse i slot := by
+    simpa [acceptedSchedule, scheduleAt] using hsource.line1Inverse i slot
+  line2Inverse i slot := by
+    simpa [acceptedSchedule, scheduleAt] using hsource.line2Inverse i slot
+  line3Inverse i slot := by
+    simpa [acceptedSchedule, scheduleAt] using hsource.line3Inverse i slot
+
 set_option maxHeartbeats 1000000 in
 -- Elaborating all six function-valued record equalities needs the larger cap.
 theorem exactReleasedFriTables_source_shape
@@ -465,6 +485,7 @@ theorem accepted_event_with_released_tables
 #print axioms released_line2_ne_zero
 #print axioms released_line3_ne_zero
 #print axioms exactReleasedFriTables_match
+#print axioms acceptedSchedule_preserves_released_tables
 #print axioms finalXMatches_of_production_tables
 #print axioms inverseTablesMatch_of_production_tables
 #print axioms remove_released_table_and_published_failures
