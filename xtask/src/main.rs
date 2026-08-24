@@ -116,7 +116,7 @@ fn main() -> Result<()> {
             let dir = stage2_results_dir()?;
             let outcome = v6_cu_probe::run(&dir)?;
             eprintln!(
-                "v6-onefold-cu-probe: packed parser plus q16 final256 evaluations used {} CU; wrote {}",
+                "v6-onefold-cu-probe: packed parser, two Merkle trees, and q16 one-fold checks used {} CU; wrote {}",
                 outcome.compute_units,
                 outcome.path.display(),
             );

@@ -219,11 +219,11 @@ pub fn run(results_dir: &Path) -> Result<V6OneFoldCuOutcome> {
         "V6 probe CU was not deterministic"
     );
     let phase_markers = parse_cu_markers(&simulations[0].logs, "aspis-v6-cu:");
-    ensure!(phase_markers.len() == 6, "V6 probe omitted phase markers");
+    ensure!(phase_markers.len() == 9, "V6 probe omitted phase markers");
 
     let path = results_dir.join("v6_onefold_packed_final256_cu.json");
     let summary = V6OneFoldCuSummary {
-        scope: "isolated local-validator packed parsing, q16 frontier derivation, typed shared-salt two-tree binary Merkle authentication, and sixteen packed final256 evaluations; not a complete V6 verifier",
+        scope: "isolated local-validator packed parsing, q16 frontier derivation, typed shared-salt two-tree binary Merkle authentication, 26+3 gamma combination, one circle-to-line fold, and sixteen explicit-final evaluations; not a complete V6 verifier",
         profile: "B10, 26 M31 C1 columns + 3 QM31 C2 columns, q16, frontier cap 209",
         proof_body_bytes: V6_MAX_BODY_BYTES,
         hard_limit_bytes: V6_HARD_BODY_LIMIT,
@@ -242,7 +242,7 @@ pub fn run(results_dir: &Path) -> Result<V6OneFoldCuOutcome> {
         sbf_bytes: sbf_bytes.len(),
         sbf_sha256: hex(&Sha256::digest(&sbf_bytes)),
         build_command: "NO_DNA=1 cargo-build-sbf --manifest-path programs/aspis-verifier/Cargo.toml --no-default-features --features v6-cu-probe",
-        conclusion: "This result measures the first exact implementation slice including both binary Merkle trees. Transcript, relation checks, semantic terminal, and state transition must be added before applying the 1.35M-CU release gate.",
+        conclusion: "This exact slice is 4,682 CU below the 1.35M engineering gate, but it is not a complete verifier and leaves no credible one-transaction budget for transcript, relation, semantic, and state-transition checks. Further terminal optimization or a formally bound two-stage verifier is required.",
     };
     fs::write(
         &path,
