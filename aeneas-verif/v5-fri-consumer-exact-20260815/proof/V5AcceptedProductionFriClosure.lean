@@ -1,4 +1,5 @@
 import V5FriAcceptedForestChecks
+import V5FriAcceptedInputsAdapter
 import V5FriTransparentHelperEquality
 import ConsumerShapeClosure
 
@@ -21,6 +22,7 @@ open AspisV5AcceptedExecutionSecurityBridge
 open AspisV5AcceptedExecutionReleasedSchedule
 open AspisV5ComponentCConcreteFoldLinearity
 open AspisV5FriAcceptedForestChecks
+open AspisV5FriAcceptedInputsAdapter
 open AspisV5FriCoherentCandidateExtraction
 open AspisV5FriConsumerCoordinateBridge
 open AspisV5FriConsumerExactProof
@@ -78,7 +80,7 @@ theorem accepted_call_yields_authenticated_released_fri_checks_same_inputs
     have h := congrArg OpeningAndFriObservation.driver hobservationExact
     simpa [AcceptedFriCall.observation, observationOfRun] using h
   obtain ⟨execution, alphasExact, _inverseExact⟩ :=
-    unchanged_source_acceptance_yields_complete_fri_execution_with_inputs
+    accepted_call_yields_complete_fri_execution_with_exact_inputs
       acceptedCall.openings acceptedCall.prepared acceptedCall.alphas
       acceptedCall.finalPolynomial acceptedCall.inverse acceptedCall.sink
       acceptedCall.accepted

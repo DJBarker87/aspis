@@ -6,6 +6,7 @@ import V5AcceptedExecutionFinalClosure
 import V5FriCallerAcceptedResolverBridge
 import V5AcceptedClaimTableExact
 import V5AcceptedDeterministicRelationTail
+import V5AtomicTerminalPrefixWrapperComplete.FunsExternal
 
 /-!
 # One accepted production run to the released security event
@@ -351,6 +352,8 @@ theorem accepted_snapshot_leaves_only_security_events_of_relation
       entryToK snapshot.finalPolynomial.val[slot.val]! =
         transcript.publishedFinal slot := by
     intro slot
+    change entryToK snapshot.finalPolynomial.val[slot.val]! =
+      snapshotPublishedFinal snapshot slot
     rfl
   have binding := accepted_snapshot_builds_fri_model_input_binding snapshot
     schedule transcript scheduleAlpha transcriptFinal
@@ -623,7 +626,10 @@ theorem accepted_snapshot_security_conclusion_of_exact_caller
   have alphaValue : ∀ layer : Fin 4,
       entryToK snapshot.alphas.val[layer.val]! = data.alphas layer := by
     intro layer
-    rfl
+    exact (congrFun
+      (acceptedSnapshotPartialCallerData_alphas snapshot
+        (acceptedPointClaimTable parsed.relation_claims) mainWeights)
+      layer).symm
   refine ⟨mainWeights, ?_⟩
   exact accepted_snapshot_security_conclusion_of_relation rc sha256 hhash
     base hproduction hpublished snapshot data alphaValue callerExact
