@@ -10,6 +10,7 @@ import V5MerkleUnchangedFull.Funs
 import Coordinates.FunsPoint
 import RelationLinked.Funs
 import V5RelationKernels
+import V5AtomicTerminalPrefixWrapperComplete.Funs
 open Aeneas Aeneas.Std Result ControlFlow Error
 set_option linter.dupNamespace false
 set_option linter.hashCommand false
@@ -9481,15 +9482,174 @@ def v5_cu_probe.verify_v5_wire_prefix
     ok (core.result.Result.Err
       solana_program_error.ProgramError.InvalidAccountData)
 
-/-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_mode9_atomic_terminal_with_prefix]:
-    Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 1550:0-1571:1 -/
-axiom v5_cu_probe.verify_mode9_atomic_terminal_with_prefix
-  :
-  v5_cu_probe.ParsedProbeData →
-    aspis_statement.atomic_statement.AtomicPaymentStatementV4 →
-    v5_cu_probe.VerifiedRealV5Wire → Result (core.result.Result
-    v5_atomic_terminal.VerifiedV5AtomicTerminal
-    solana_program_error.ProgramError)
+/-- Convert the accepted-entry field representation to the independently
+translated terminal-wrapper representation.  Both structures come from the
+same unchanged Rust type; the separate namespaces prevent an accidental
+definitional identification between two extraction runs. -/
+def v5_cu_probe.toTerminalClosedQM31
+    (value : aspis_core.field.QM31) :
+    V5AtomicTerminalPrefixWrapperCompleteGenerated.aspis_core.field.QM31 :=
+  {
+    c0 := { a := value.c0.a, b := value.c0.b }
+    c1 := { a := value.c1.a, b := value.c1.b }
+  }
+
+def v5_cu_probe.fromTerminalClosedQM31
+    (value :
+      V5AtomicTerminalPrefixWrapperCompleteGenerated.aspis_core.field.QM31) :
+    aspis_core.field.QM31 :=
+  {
+    c0 := { a := value.c0.a, b := value.c0.b }
+    c1 := { a := value.c1.a, b := value.c1.b }
+  }
+
+def v5_cu_probe.terminalClosedMapFixedArray
+    {A B : Type} {count : Std.Usize} (convert : A → B)
+    (values : Array A count) : Array B count :=
+  ⟨values.val.map convert, by simpa using values.property⟩
+
+def v5_cu_probe.toTerminalClosedSpendPublic
+    (value : aspis_statement.spend.SpendPublic) :
+    V5AtomicTerminalPrefixWrapperCompleteGenerated.aspis_statement.spend.SpendPublic :=
+  {
+    anchor := value.anchor
+    nullifier := value.nullifier
+    output_commitment := value.output_commitment
+    asset_id := value.asset_id
+    fee := value.fee
+  }
+
+def v5_cu_probe.toTerminalClosedStatement
+    (value : aspis_statement.atomic_statement.AtomicPaymentStatementV4) :
+    V5AtomicTerminalPrefixWrapperCompleteGenerated.aspis_statement.atomic_statement.AtomicPaymentStatementV4 :=
+  {
+    pool := value.pool
+    sequence := value.sequence
+    spend := v5_cu_probe.toTerminalClosedSpendPublic value.spend
+    output_anchor := value.output_anchor
+    deployment_domain := value.deployment_domain
+  }
+
+def v5_cu_probe.toTerminalClosedPrivateRoots
+    (value : v5_cu_probe.private_openings.V5PrivateOpeningRoots) :
+    V5AtomicTerminalPrefixWrapperCompleteGenerated.v5_cu_probe.private_openings.V5PrivateOpeningRoots :=
+  {
+    c1 := value.c1
+    c2 := value.c2
+    later := value.later
+  }
+
+def v5_cu_probe.toTerminalClosedParsed
+    (value : v5_cu_probe.ParsedProbeData) :
+    V5AtomicTerminalPrefixWrapperCompleteGenerated.v5_cu_probe.ParsedProbeData :=
+  {
+    gamma := v5_cu_probe.toTerminalClosedQM31 value.gamma
+    production_c1 := value.production_c1
+    candidate_c1 := value.candidate_c1
+    c2 := value.c2
+    relation_scales := value.relation_scales
+    relation_points := value.relation_points
+    relation_claims := value.relation_claims
+    relation_alphas := value.relation_alphas
+    relation_final := value.relation_final
+    v5_fold_nonces := value.v5_fold_nonces
+    v5_batch_nonce := value.v5_batch_nonce
+    v5_wire_prefix := value.v5_wire_prefix
+    v5_atomic_terminal_context := value.v5_atomic_terminal_context
+    v5_private_roots :=
+      v5_cu_probe.toTerminalClosedPrivateRoots value.v5_private_roots
+    v5_final_coefficients := value.v5_final_coefficients
+    v5_relation_stress := value.v5_relation_stress
+    v5_final_nonce := value.v5_final_nonce
+    v5_query_selector := value.v5_query_selector
+    v5_private_proof := value.v5_private_proof
+  }
+
+def v5_cu_probe.toTerminalClosedVerifiedPrefix
+    (value : v5_cu_probe.VerifiedRealV5Wire) :
+    V5AtomicTerminalPrefixWrapperCompleteGenerated.v5_cu_probe.VerifiedRealV5Wire :=
+  {
+    eta := v5_cu_probe.toTerminalClosedQM31 value.eta
+    round_challenges :=
+      v5_cu_probe.terminalClosedMapFixedArray
+        v5_cu_probe.toTerminalClosedQM31 value.round_challenges
+    gamma := v5_cu_probe.toTerminalClosedQM31 value.gamma
+    kappa := v5_cu_probe.toTerminalClosedQM31 value.kappa
+    terminal_real := v5_cu_probe.toTerminalClosedQM31 value.terminal_real
+    terminal_mask := v5_cu_probe.toTerminalClosedQM31 value.terminal_mask
+    terminal_masked := v5_cu_probe.toTerminalClosedQM31 value.terminal_masked
+    inactive_claim := v5_cu_probe.toTerminalClosedQM31 value.inactive_claim
+  }
+
+def v5_cu_probe.fromTerminalClosedVerifiedTerminal
+    (value :
+      V5AtomicTerminalPrefixWrapperCompleteGenerated.v5_atomic_terminal.VerifiedV5AtomicTerminal) :
+    v5_atomic_terminal.VerifiedV5AtomicTerminal :=
+  {
+    real := v5_cu_probe.fromTerminalClosedQM31 value.real
+    mask := v5_cu_probe.fromTerminalClosedQM31 value.mask
+    masked := v5_cu_probe.fromTerminalClosedQM31 value.masked
+  }
+
+def v5_cu_probe.fromTerminalClosedProgramError
+    (value :
+      V5AtomicTerminalPrefixWrapperCompleteGenerated.solana_program_error.ProgramError) :
+    solana_program_error.ProgramError :=
+  match value with
+  | .Custom code => .Custom code
+  | .InvalidArgument => .InvalidArgument
+  | .InvalidInstructionData => .InvalidInstructionData
+  | .InvalidAccountData => .InvalidAccountData
+  | .AccountDataTooSmall => .AccountDataTooSmall
+  | .InsufficientFunds => .InsufficientFunds
+  | .IncorrectProgramId => .IncorrectProgramId
+  | .MissingRequiredSignature => .MissingRequiredSignature
+  | .AccountAlreadyInitialized => .AccountAlreadyInitialized
+  | .UninitializedAccount => .UninitializedAccount
+  | .NotEnoughAccountKeys => .NotEnoughAccountKeys
+  | .AccountBorrowFailed => .AccountBorrowFailed
+  | .MaxSeedLengthExceeded => .MaxSeedLengthExceeded
+  | .InvalidSeeds => .InvalidSeeds
+  | .BorshIoError message => .BorshIoError message
+  | .AccountNotRentExempt => .AccountNotRentExempt
+  | .UnsupportedSysvar => .UnsupportedSysvar
+  | .IllegalOwner => .IllegalOwner
+  | .MaxAccountsDataAllocationsExceeded =>
+      .MaxAccountsDataAllocationsExceeded
+  | .InvalidRealloc => .InvalidRealloc
+  | .MaxInstructionTraceLengthExceeded => .MaxInstructionTraceLengthExceeded
+  | .BuiltinProgramsMustConsumeComputeUnits =>
+      .BuiltinProgramsMustConsumeComputeUnits
+  | .InvalidAccountOwner => .InvalidAccountOwner
+  | .ArithmeticOverflow => .ArithmeticOverflow
+  | .Immutable => .Immutable
+  | .IncorrectAuthority => .IncorrectAuthority
+
+/-- Source-closed replacement for the former broad terminal-wrapper axiom.
+
+The called definition is generated directly from the unchanged private
+production function.  Its Charon call graph also contains the unchanged context
+decoder, point decoder, and `verify_v5_atomic_terminal_from_bytes`; only the
+named evaluator and primitive operations remain external boundaries. -/
+def v5_cu_probe.verify_mode9_atomic_terminal_with_prefix
+    (terminalBoundary :
+      V5AtomicTerminalPrefixWrapperCompleteGenerated.aspis_statement.atomic_state_only_terminal.V5TerminalEvaluatorBoundary)
+    (parsed : v5_cu_probe.ParsedProbeData)
+    (live_statement : aspis_statement.atomic_statement.AtomicPaymentStatementV4)
+    (verified_prefix : v5_cu_probe.VerifiedRealV5Wire) :
+    Result (core.result.Result v5_atomic_terminal.VerifiedV5AtomicTerminal
+      solana_program_error.ProgramError) := do
+  let terminalResult ←
+    @V5AtomicTerminalPrefixWrapperCompleteGenerated.v5_cu_probe.verify_mode9_atomic_terminal_with_prefix
+      terminalBoundary
+      (v5_cu_probe.toTerminalClosedParsed parsed)
+      (v5_cu_probe.toTerminalClosedStatement live_statement)
+      (v5_cu_probe.toTerminalClosedVerifiedPrefix verified_prefix)
+  match terminalResult with
+  | .Ok verified =>
+      ok (.Ok (v5_cu_probe.fromTerminalClosedVerifiedTerminal verified))
+  | .Err error =>
+      ok (.Err (v5_cu_probe.fromTerminalClosedProgramError error))
 
 /-- [aspis_verifier_parser_extraction::v5_cu_probe::decode_v5_fri_alphas]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 2255:0-2263:1 -/
@@ -11345,6 +11505,8 @@ def v5_cu_probe.verify_mode9_relation_phase
 /-- [aspis_verifier_parser_extraction::v5_cu_probe::verify_mode9_composite_with_live_statement]:
     Source: '/Users/dominic/ZK-merkle-radix-closure/programs/aspis-verifier/src/v5_cu_probe.rs', lines 2384:0-2424:1 -/
 def v5_cu_probe.verify_mode9_composite_with_live_statement
+  (terminalBoundary :
+    V5AtomicTerminalPrefixWrapperCompleteGenerated.aspis_statement.atomic_state_only_terminal.V5TerminalEvaluatorBoundary)
   (account_data : Slice Std.U8) (parsed : v5_cu_probe.ParsedProbeData)
   (live_statement : aspis_statement.atomic_statement.AtomicPaymentStatementV4)
   (statement_digest : Array Std.U8 32#usize) :
@@ -11359,7 +11521,7 @@ def v5_cu_probe.verify_mode9_composite_with_live_statement
   | core.ops.control_flow.ControlFlow.Continue val =>
     let (verified_prefix, prefix_transcript) := val
     let r1 ←
-      v5_cu_probe.verify_mode9_atomic_terminal_with_prefix parsed
+      v5_cu_probe.verify_mode9_atomic_terminal_with_prefix terminalBoundary parsed
         live_statement verified_prefix
     let cf1 ← core.result.Result.Insts.CoreOpsTry.branch r1
     match cf1 with

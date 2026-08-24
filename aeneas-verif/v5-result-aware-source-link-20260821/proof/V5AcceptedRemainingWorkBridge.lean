@@ -2944,6 +2944,7 @@ def AcceptedSixRequiredWork (parsed : EntryParsed) : Prop :=
   AcceptedFinalRequiredWork parsed
 
 theorem accepted_call_facts_prove_six_work
+    (terminalBoundary : EntryTerminalBoundary)
     (accountData : Slice Std.U8) (parsed : EntryParsed)
     (liveStatement : EntryStatement)
     (statementDigest : Array Std.U8 32#usize)
@@ -2958,7 +2959,7 @@ theorem accepted_call_facts_prove_six_work
     (friSum : EntryQM31)
     (preparedClaims : EntryPreparedClaims)
     (relationSum phaseSum : EntryQM31)
-    (facts : AcceptedCompositeCallFacts accountData parsed liveStatement
+    (facts : AcceptedCompositeCallFacts terminalBoundary accountData parsed liveStatement
       statementDigest acceptedValue verifiedPrefix prefixTranscript
       verifiedTerminal relationTranscript finalPolynomial queries alphas friSum
       preparedClaims relationSum phaseSum) :
@@ -2976,21 +2977,22 @@ theorem accepted_call_facts_prove_six_work
       verifiedPrefix.round_challenges finalPolynomial queries facts.querySuccess
 
 theorem accepted_composite_proves_six_work
+    (terminalBoundary : EntryTerminalBoundary)
     (accountData : Slice Std.U8) (parsed : EntryParsed)
     (liveStatement : EntryStatement)
     (statementDigest : Array Std.U8 32#usize)
     (acceptedValue : EntryQM31)
     (success :
       V5AcceptedEntryGenerated.v5_cu_probe.verify_mode9_composite_with_live_statement
-          accountData parsed liveStatement statementDigest =
+          terminalBoundary accountData parsed liveStatement statementDigest =
         .ok (.Ok acceptedValue)) :
     AcceptedSixRequiredWork parsed := by
   obtain ⟨verifiedPrefix, prefixTranscript, verifiedTerminal,
       relationTranscript, finalPolynomial, queries, alphas, friSum,
       preparedClaims, relationSum, phaseSum, facts⟩ :=
-    accepted_composite_builds_call_chain accountData parsed liveStatement
+    accepted_composite_builds_call_chain terminalBoundary accountData parsed liveStatement
       statementDigest acceptedValue success
-  exact accepted_call_facts_prove_six_work accountData parsed liveStatement
+  exact accepted_call_facts_prove_six_work terminalBoundary accountData parsed liveStatement
     statementDigest acceptedValue verifiedPrefix prefixTranscript
     verifiedTerminal relationTranscript finalPolynomial queries alphas friSum
     preparedClaims relationSum phaseSum facts

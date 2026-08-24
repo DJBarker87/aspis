@@ -649,31 +649,33 @@ theorem accepted_six_required_work_implies_generated_execution
   }
 
 theorem accepted_composite_proves_generated_six_work_execution
+    (terminalBoundary : EntryTerminalBoundary)
     (accountData : Slice Std.U8) (parsed : EntryParsed)
     (liveStatement : EntryStatement)
     (statementDigest : Array Std.U8 32#usize)
     (acceptedValue : EntryQM31)
     (success :
       V5AcceptedEntryGenerated.v5_cu_probe.verify_mode9_composite_with_live_statement
-          accountData parsed liveStatement statementDigest =
+          terminalBoundary accountData parsed liveStatement statementDigest =
         .ok (.Ok acceptedValue)) :
     AcceptedGeneratedSixWorkExecution parsed :=
   accepted_six_required_work_implies_generated_execution parsed
-    (accepted_composite_proves_six_work accountData parsed liveStatement
+    (accepted_composite_proves_six_work terminalBoundary accountData parsed liveStatement
       statementDigest acceptedValue success)
 
 theorem accepted_composite_proves_positioned_six_work_execution
+    (terminalBoundary : EntryTerminalBoundary)
     (accountData : Slice Std.U8) (parsed : EntryParsed)
     (liveStatement : EntryStatement)
     (statementDigest : Array Std.U8 32#usize)
     (acceptedValue : EntryQM31)
     (success :
       V5AcceptedEntryGenerated.v5_cu_probe.verify_mode9_composite_with_live_statement
-          accountData parsed liveStatement statementDigest =
+          terminalBoundary accountData parsed liveStatement statementDigest =
         .ok (.Ok acceptedValue)) :
     AcceptedGeneratedPositionedSixWorkExecution parsed :=
   generated_six_work_execution_uses_exact_nonce_slots parsed
-    (accepted_composite_proves_generated_six_work_execution accountData parsed
+    (accepted_composite_proves_generated_six_work_execution terminalBoundary accountData parsed
       liveStatement statementDigest acceptedValue success)
 
 /-! ## Exact labels and byte payloads at the six production calls -/
@@ -800,17 +802,18 @@ theorem positioned_execution_has_exact_six_work_calls
 }
 
 theorem accepted_composite_proves_exact_six_work_calls
+    (terminalBoundary : EntryTerminalBoundary)
     (accountData : Slice Std.U8) (parsed : EntryParsed)
     (liveStatement : EntryStatement)
     (statementDigest : Array Std.U8 32#usize)
     (acceptedValue : EntryQM31)
     (success :
       V5AcceptedEntryGenerated.v5_cu_probe.verify_mode9_composite_with_live_statement
-          accountData parsed liveStatement statementDigest =
+          terminalBoundary accountData parsed liveStatement statementDigest =
         .ok (.Ok acceptedValue)) :
     AcceptedGeneratedExactSixWorkCalls parsed :=
   positioned_execution_has_exact_six_work_calls parsed
-    (accepted_composite_proves_positioned_six_work_execution accountData parsed
+    (accepted_composite_proves_positioned_six_work_execution terminalBoundary accountData parsed
       liveStatement statementDigest acceptedValue success)
 
 #print axioms accepted_composite_proves_generated_six_work_execution

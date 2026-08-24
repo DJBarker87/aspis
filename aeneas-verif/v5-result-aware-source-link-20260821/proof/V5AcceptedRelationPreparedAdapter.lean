@@ -245,6 +245,7 @@ theorem accepted_relation_call_reaches_checked_gate
 /-- One accepted composite execution reaches the checked relation-caller gate
 with exactly the values shared with its FRI phase. -/
 theorem accepted_composite_reaches_checked_relation_gate
+    (terminalBoundary : EntryTerminalBoundary)
     (accountData : Slice Std.U8)
     (parsed : EntryParsed)
     (liveStatement : EntryStatement)
@@ -252,12 +253,12 @@ theorem accepted_composite_reaches_checked_relation_gate
     (acceptedValue : EntryQM31)
     (success :
       V5AcceptedEntryGenerated.v5_cu_probe.verify_mode9_composite_with_live_statement
-          accountData parsed liveStatement statementDigest =
+          terminalBoundary accountData parsed liveStatement statementDigest =
         .ok (.Ok acceptedValue)) :
     ∃ verifiedPrefix prefixTranscript verifiedTerminal relationTranscript
         finalPolynomial queries alphas friSum preparedClaims relationSum
         phaseSum openings sink output,
-      AcceptedCompositeExactEvidence accountData parsed liveStatement
+      AcceptedCompositeExactEvidence terminalBoundary accountData parsed liveStatement
         statementDigest acceptedValue verifiedPrefix prefixTranscript
         verifiedTerminal relationTranscript finalPolynomial queries alphas
         friSum preparedClaims relationSum phaseSum openings sink ∧
@@ -267,7 +268,7 @@ theorem accepted_composite_reaches_checked_relation_gate
   obtain ⟨verifiedPrefix, prefixTranscript, verifiedTerminal,
       relationTranscript, finalPolynomial, queries, alphas, friSum,
       preparedClaims, relationSum, phaseSum, openings, sink, evidence⟩ :=
-    accepted_composite_builds_exact_evidence accountData parsed liveStatement
+    accepted_composite_builds_exact_evidence terminalBoundary accountData parsed liveStatement
       statementDigest acceptedValue success
   obtain ⟨output, gate⟩ :=
     accepted_relation_call_reaches_checked_gate parsed finalPolynomial alphas

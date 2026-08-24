@@ -43,6 +43,24 @@ Lean definition contains the outer wrapper, both decoders, and the complete
 terminal checks in one namespace.  Only the compiled semantic evaluator is
 deliberately opaque at extraction time.
 
+The unmodified Aeneas output is kept under
+`raw/V5AtomicTerminalPrefixWrapperComplete`. The files under `generated/` are
+the version imported by the proof on Lean 4.32. The complete, deterministic
+difference between them is
+`extraction/prefix-wrapper-lean432-normalization.patch`. It narrows imports,
+removes duplicate generated discriminant registrations, supplies the exact
+mutable-iterator adapter expected by the extracted loop, and makes the
+compiled evaluator an explicit input carrying an equality to the maintained
+model. It does not change the extracted decoder or terminal checks.
+
+`generated/V5AtomicTerminalPrefixWrapperComplete/FunsExternal.lean` implements
+the ordinary external operations used by this path. Field operations delegate
+to the separately checked production field translation. The terminal
+evaluator is not declared as a Lean axiom: callers must supply the compiled
+function, the maintained model, and a proof that the two functions are equal.
+This leaves that equality visible at the theorem boundary instead of silently
+assuming it inside generated code.
+
 The direct verifier-crate extraction uses Charon's distributed Rust sysroot
 (`--sysroot default`).  This avoids attempting to link Solana's dependency
 `cdylib` against Charon's MIR sysroot while still extracting built MIR for the

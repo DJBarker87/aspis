@@ -96,6 +96,7 @@ structure AcceptedSameRunRelationFriSnapshot
     (liveStatement : SnapshotEntryStatement)
     (statementDigest : Array Std.U8 32#usize)
     (acceptedValue : SnapshotEntryQM31) : Type where
+  terminalBoundary : AspisV5AcceptedEntrySourceBridge.EntryTerminalBoundary
   verifiedPrefix : SnapshotEntryVerifiedPrefix
   prefixTranscript : SnapshotEntryTranscript
   verifiedTerminal : SnapshotEntryVerifiedTerminal
@@ -111,7 +112,7 @@ structure AcceptedSameRunRelationFriSnapshot
   sink : SnapshotEntryFriSink
   relationOutput :
     V5RelationCallerGenerated.v5_relation_stress.VerifiedV5RelationStress
-  evidence : AcceptedCompositeExactEvidence accountData parsed liveStatement
+  evidence : AcceptedCompositeExactEvidence terminalBoundary accountData parsed liveStatement
     statementDigest acceptedValue verifiedPrefix prefixTranscript
     verifiedTerminal relationTranscript finalPolynomial queries alphas friSum
     preparedClaims relationSum phaseSum openings sink
@@ -323,6 +324,8 @@ complete extracted relation execution and the accepted focused FRI call with
 the exact same values.  No relation/FRI/model correspondence premise is an
 argument to this theorem. -/
 theorem accepted_composite_builds_same_run_relation_fri_snapshot
+    (terminalBoundary :
+      AspisV5AcceptedEntrySourceBridge.EntryTerminalBoundary)
     (accountData : Slice Std.U8)
     (parsed : SnapshotEntryParsed)
     (liveStatement : SnapshotEntryStatement)
@@ -330,7 +333,7 @@ theorem accepted_composite_builds_same_run_relation_fri_snapshot
     (acceptedValue : SnapshotEntryQM31)
     (success :
       V5AcceptedEntryGenerated.v5_cu_probe.verify_mode9_composite_with_live_statement
-          accountData parsed liveStatement statementDigest =
+          terminalBoundary accountData parsed liveStatement statementDigest =
         .ok (.Ok acceptedValue)) :
     Nonempty (AcceptedSameRunRelationFriSnapshot accountData parsed
       liveStatement statementDigest acceptedValue) := by
@@ -338,7 +341,7 @@ theorem accepted_composite_builds_same_run_relation_fri_snapshot
       relationTranscript, finalPolynomial, queries, alphas, friSum,
       preparedClaims, relationSum, phaseSum, openings, sink, relationOutput,
       evidence, relationGate⟩ :=
-    accepted_composite_reaches_checked_relation_gate accountData parsed
+    accepted_composite_reaches_checked_relation_gate terminalBoundary accountData parsed
       liveStatement statementDigest acceptedValue success
   obtain ⟨relationTrace⟩ :=
     AspisV5RelationAcceptanceSourceProof.extracted_mode9_success_exposes_full_relation_trace
@@ -358,6 +361,7 @@ theorem accepted_composite_builds_same_run_relation_fri_snapshot
     relationTranscript parsed verifiedPrefix.round_challenges finalPolynomial
     queries evidence.compositeCalls.querySuccess
   exact ⟨{
+    terminalBoundary := terminalBoundary
     verifiedPrefix := verifiedPrefix
     prefixTranscript := prefixTranscript
     verifiedTerminal := verifiedTerminal

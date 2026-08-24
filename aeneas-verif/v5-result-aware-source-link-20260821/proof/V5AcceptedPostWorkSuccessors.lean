@@ -27,6 +27,7 @@ structure AcceptedCompositePostWorkSuccessors
   finalQueries : AcceptedFinalQuerySuccessor parsed queries
 
 theorem accepted_composite_call_facts_prove_post_work_successors
+    (terminalBoundary : EntryTerminalBoundary)
     (accountData : Slice Std.U8) (parsed : EntryParsed)
     (liveStatement : EntryStatement)
     (statementDigest : Array Std.U8 32#usize)
@@ -41,13 +42,13 @@ theorem accepted_composite_call_facts_prove_post_work_successors
     (friSum : EntryQM31)
     (preparedClaims : EntryPreparedClaims)
     (relationSum phaseSum : EntryQM31)
-    (facts : AcceptedCompositeCallFacts accountData parsed liveStatement
+    (facts : AcceptedCompositeCallFacts terminalBoundary accountData parsed liveStatement
       statementDigest acceptedValue verifiedPrefix prefixTranscript
       verifiedTerminal relationTranscript finalPolynomial queries alphas friSum
       preparedClaims relationSum phaseSum) :
     AcceptedCompositePostWorkSuccessors parsed verifiedPrefix queries := by
   exact {
-    requiredWork := accepted_call_facts_prove_six_work accountData parsed
+    requiredWork := accepted_call_facts_prove_six_work terminalBoundary accountData parsed
       liveStatement statementDigest acceptedValue verifiedPrefix
       prefixTranscript verifiedTerminal relationTranscript finalPolynomial
       queries alphas friSum preparedClaims relationSum phaseSum facts
@@ -62,17 +63,18 @@ theorem accepted_composite_call_facts_prove_post_work_successors
   }
 
 theorem accepted_composite_proves_post_work_successors
+    (terminalBoundary : EntryTerminalBoundary)
     (accountData : Slice Std.U8) (parsed : EntryParsed)
     (liveStatement : EntryStatement)
     (statementDigest : Array Std.U8 32#usize)
     (acceptedValue : EntryQM31)
     (success :
       V5AcceptedEntryGenerated.v5_cu_probe.verify_mode9_composite_with_live_statement
-          accountData parsed liveStatement statementDigest =
+          terminalBoundary accountData parsed liveStatement statementDigest =
         .ok (.Ok acceptedValue)) :
     ∃ verifiedPrefix prefixTranscript verifiedTerminal relationTranscript
         finalPolynomial queries alphas friSum preparedClaims relationSum phaseSum,
-      AcceptedCompositeCallFacts accountData parsed liveStatement statementDigest
+      AcceptedCompositeCallFacts terminalBoundary accountData parsed liveStatement statementDigest
         acceptedValue verifiedPrefix prefixTranscript verifiedTerminal
         relationTranscript finalPolynomial queries alphas friSum preparedClaims
         relationSum phaseSum ∧
@@ -80,12 +82,12 @@ theorem accepted_composite_proves_post_work_successors
   obtain ⟨verifiedPrefix, prefixTranscript, verifiedTerminal,
       relationTranscript, finalPolynomial, queries, alphas, friSum,
       preparedClaims, relationSum, phaseSum, facts⟩ :=
-    accepted_composite_builds_call_chain accountData parsed liveStatement
+    accepted_composite_builds_call_chain terminalBoundary accountData parsed liveStatement
       statementDigest acceptedValue success
   exact ⟨verifiedPrefix, prefixTranscript, verifiedTerminal,
     relationTranscript, finalPolynomial, queries, alphas, friSum,
     preparedClaims, relationSum, phaseSum, facts,
-    accepted_composite_call_facts_prove_post_work_successors accountData parsed
+    accepted_composite_call_facts_prove_post_work_successors terminalBoundary accountData parsed
       liveStatement statementDigest acceptedValue verifiedPrefix
       prefixTranscript verifiedTerminal relationTranscript finalPolynomial
       queries alphas friSum preparedClaims relationSum phaseSum facts⟩

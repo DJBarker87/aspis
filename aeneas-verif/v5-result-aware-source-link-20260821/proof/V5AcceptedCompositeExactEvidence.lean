@@ -21,6 +21,7 @@ set_option maxRecDepth 100000
 set_option maxHeartbeats 8000000
 
 structure AcceptedCompositeExactEvidence
+    (terminalBoundary : AspisV5AcceptedEntrySourceBridge.EntryTerminalBoundary)
     (accountData : Slice Std.U8)
     (parsed : AspisV5AcceptedEntrySourceBridge.EntryParsed)
     (liveStatement : AspisV5AcceptedEntrySourceBridge.EntryStatement)
@@ -39,7 +40,7 @@ structure AcceptedCompositeExactEvidence
     (relationSum phaseSum : AspisV5AcceptedEntrySourceBridge.EntryQM31)
     (openings : AspisV5AcceptedEntryFriPhaseBridge.EntryOpenings)
     (sink : AspisV5AcceptedEntryFriPhaseBridge.EntryFriSink) : Prop where
-  compositeCalls : AcceptedCompositeCallFacts accountData parsed liveStatement
+  compositeCalls : AcceptedCompositeCallFacts terminalBoundary accountData parsed liveStatement
     statementDigest acceptedValue verifiedPrefix prefixTranscript
     verifiedTerminal relationTranscript finalPolynomial queries alphas friSum
     preparedClaims relationSum phaseSum
@@ -48,6 +49,7 @@ structure AcceptedCompositeExactEvidence
     alphas verifiedPrefix.gamma friSum preparedClaims openings sink
 
 def AcceptedCompositeExactEvidenceExists
+    (terminalBoundary : AspisV5AcceptedEntrySourceBridge.EntryTerminalBoundary)
     (accountData : Slice Std.U8)
     (parsed : AspisV5AcceptedEntrySourceBridge.EntryParsed)
     (liveStatement : AspisV5AcceptedEntrySourceBridge.EntryStatement)
@@ -56,7 +58,7 @@ def AcceptedCompositeExactEvidenceExists
   ∃ verifiedPrefix prefixTranscript verifiedTerminal relationTranscript
       finalPolynomial queries alphas friSum preparedClaims relationSum phaseSum
       openings sink,
-    AcceptedCompositeExactEvidence accountData parsed liveStatement
+    AcceptedCompositeExactEvidence terminalBoundary accountData parsed liveStatement
       statementDigest acceptedValue verifiedPrefix prefixTranscript
       verifiedTerminal relationTranscript finalPolynomial queries alphas
       friSum preparedClaims relationSum phaseSum openings sink
@@ -65,6 +67,7 @@ def AcceptedCompositeExactEvidenceExists
 evidence.  No separately supplied parser, work, FRI, or value-flow premise is
 needed. -/
 theorem accepted_composite_builds_exact_evidence
+    (terminalBoundary : AspisV5AcceptedEntrySourceBridge.EntryTerminalBoundary)
     (accountData : Slice Std.U8)
     (parsed : AspisV5AcceptedEntrySourceBridge.EntryParsed)
     (liveStatement : AspisV5AcceptedEntrySourceBridge.EntryStatement)
@@ -72,14 +75,14 @@ theorem accepted_composite_builds_exact_evidence
     (acceptedValue : AspisV5AcceptedEntrySourceBridge.EntryQM31)
     (success :
       V5AcceptedEntryGenerated.v5_cu_probe.verify_mode9_composite_with_live_statement
-          accountData parsed liveStatement statementDigest =
+          terminalBoundary accountData parsed liveStatement statementDigest =
         .ok (.Ok acceptedValue)) :
-    AcceptedCompositeExactEvidenceExists accountData parsed liveStatement
+    AcceptedCompositeExactEvidenceExists terminalBoundary accountData parsed liveStatement
       statementDigest acceptedValue := by
   obtain ⟨verifiedPrefix, prefixTranscript, verifiedTerminal,
       relationTranscript, finalPolynomial, queries, alphas, friSum,
       preparedClaims, relationSum, phaseSum, compositeFacts⟩ :=
-    accepted_composite_builds_call_chain accountData parsed liveStatement
+    accepted_composite_builds_call_chain terminalBoundary accountData parsed liveStatement
       statementDigest acceptedValue success
   obtain ⟨openings, sink, friFacts⟩ :=
     accepted_fri_phase_builds_exact_call parsed queries finalPolynomial alphas
@@ -90,7 +93,8 @@ theorem accepted_composite_builds_exact_evidence
   exact {
     compositeCalls := compositeFacts
     exactWorkCalls := accepted_composite_proves_exact_six_work_calls
-      accountData parsed liveStatement statementDigest acceptedValue success
+      terminalBoundary accountData parsed liveStatement statementDigest
+      acceptedValue success
     exactFriCalls := friFacts
   }
 

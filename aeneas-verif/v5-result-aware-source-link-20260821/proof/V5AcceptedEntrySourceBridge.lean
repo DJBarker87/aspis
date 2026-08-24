@@ -565,11 +565,14 @@ abbrev EntryVerifiedTerminal :=
   V5AcceptedEntryGenerated.v5_atomic_terminal.VerifiedV5AtomicTerminal
 abbrev EntryPreparedClaims :=
   V5AcceptedEntryGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims
+abbrev EntryTerminalBoundary :=
+  V5AtomicTerminalPrefixWrapperCompleteGenerated.aspis_statement.atomic_state_only_terminal.V5TerminalEvaluatorBoundary
 
 /-- The proposition-only facts carried by one exact successful call and value
 flow of the unchanged composite verifier.  The data are parameters so this
 record remains in `Prop` and can be obtained by inverting a successful result. -/
 structure AcceptedCompositeCallFacts
+    (terminalBoundary : EntryTerminalBoundary)
     (accountData : Slice Std.U8) (parsed : EntryParsed)
     (liveStatement : EntryStatement)
     (statementDigest : Array Std.U8 32#usize)
@@ -591,7 +594,7 @@ structure AcceptedCompositeCallFacts
       .ok (.Ok (verifiedPrefix, prefixTranscript))
   terminalSuccess :
     V5AcceptedEntryGenerated.v5_cu_probe.verify_mode9_atomic_terminal_with_prefix
-        parsed liveStatement verifiedPrefix =
+        terminalBoundary parsed liveStatement verifiedPrefix =
       .ok (.Ok verifiedTerminal)
   relationSuccess :
     V5AcceptedEntryGenerated.v5_cu_probe.replay_real_v5_relation_rounds
@@ -624,13 +627,14 @@ verifier.  In particular the same four decoded alphas are passed to both the
 FRI checks and the relation checks, and the same final polynomial and queries
 returned by the transcript tail are passed to the FRI checks. -/
 def AcceptedCompositeCallChain
+    (terminalBoundary : EntryTerminalBoundary)
     (accountData : Slice Std.U8) (parsed : EntryParsed)
     (liveStatement : EntryStatement)
     (statementDigest : Array Std.U8 32#usize)
     (acceptedValue : EntryQM31) : Prop :=
   ∃ verifiedPrefix prefixTranscript verifiedTerminal relationTranscript
       finalPolynomial queries alphas friSum preparedClaims relationSum phaseSum,
-    AcceptedCompositeCallFacts accountData parsed liveStatement statementDigest
+    AcceptedCompositeCallFacts terminalBoundary accountData parsed liveStatement statementDigest
       acceptedValue verifiedPrefix prefixTranscript verifiedTerminal
       relationTranscript finalPolynomial queries alphas friSum preparedClaims
       relationSum phaseSum
@@ -640,15 +644,16 @@ determines every successful helper call and the exact values passed between
 those calls.  This is an inversion of the extracted Rust body, not an
 additional implementation/model premise. -/
 theorem accepted_composite_builds_call_chain
+    (terminalBoundary : EntryTerminalBoundary)
     (accountData : Slice Std.U8) (parsed : EntryParsed)
     (liveStatement : EntryStatement)
     (statementDigest : Array Std.U8 32#usize)
     (acceptedValue : EntryQM31)
     (success :
       V5AcceptedEntryGenerated.v5_cu_probe.verify_mode9_composite_with_live_statement
-          accountData parsed liveStatement statementDigest =
+          terminalBoundary accountData parsed liveStatement statementDigest =
         .ok (.Ok acceptedValue)) :
-    AcceptedCompositeCallChain accountData parsed liveStatement
+    AcceptedCompositeCallChain terminalBoundary accountData parsed liveStatement
       statementDigest acceptedValue := by
   unfold V5AcceptedEntryGenerated.v5_cu_probe.verify_mode9_composite_with_live_statement at success
   rw [bind_eq_ok_iff] at success
