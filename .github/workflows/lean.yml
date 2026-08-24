@@ -11,9 +11,12 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build and kernel-check the Lean formalization
         uses: leanprover/lean-action@38fbc41a8c28c4cbaec22d7f7de508ec2e7c0dd9 # v1.5.0
         with:
           lake-package-directory: "AspisFormal"
+      - name: Replay the accepted-path Rust-to-Lean bridge
+        run: aeneas-verif/scripts/replay-accepted-path-lean432.sh
