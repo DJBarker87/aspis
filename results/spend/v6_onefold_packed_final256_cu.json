@@ -1,0 +1,65 @@
+{
+  "scope": "isolated local-validator packed parsing, q16 frontier derivation, and sixteen packed final256 evaluations; not a complete V6 verifier",
+  "profile": "B10, 26 M31 C1 columns + 3 QM31 C2 columns, q16, frontier cap 209",
+  "proof_body_bytes": 33785,
+  "hard_limit_bytes": 40960,
+  "margin_bytes": 7175,
+  "frontier_nodes_per_tree": 209,
+  "queries": [
+    122108,
+    40038,
+    180031,
+    111504,
+    57828,
+    27366,
+    58493,
+    6257,
+    191948,
+    128942,
+    244032,
+    98351,
+    184446,
+    150408,
+    7983,
+    33159
+  ],
+  "compute_units": 786351,
+  "repeated_compute_units": [
+    786351,
+    786351,
+    786351
+  ],
+  "deterministic_three_of_three": true,
+  "phase_markers": [
+    {
+      "label": "entry",
+      "remaining": 1398979,
+      "delta_from_previous": null
+    },
+    {
+      "label": "parsed",
+      "remaining": 1398731,
+      "delta_from_previous": 248
+    },
+    {
+      "label": "frontier",
+      "remaining": 1391305,
+      "delta_from_previous": 7426
+    },
+    {
+      "label": "final-evaluations",
+      "remaining": 614605,
+      "delta_from_previous": 776700
+    },
+    {
+      "label": "sink",
+      "remaining": 613698,
+      "delta_from_previous": 907
+    }
+  ],
+  "sbf_path": "target/deploy/aspis_verifier_v6_onefold_probe.so",
+  "sbf_bytes": 41624,
+  "sbf_sha256": "890c13f360a85753d2c403df366f1fea94c7b7864873197226b53dac14a2f813",
+  "build_command": "NO_DNA=1 cargo-build-sbf --manifest-path programs/aspis-verifier/Cargo.toml --no-default-features --features v6-cu-probe",
+  "conclusion": "This result measures only the first exact implementation slice. Merkle authentication, transcript, relation checks, semantic terminal, and state transition must be added before applying the 1.35M-CU release gate."
+}

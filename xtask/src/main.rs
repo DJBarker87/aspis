@@ -15,6 +15,7 @@ mod v5_component_c_obstruction;
 mod v5_component_c_rank;
 mod v5_cu_probe;
 mod v5_mainnet_refund;
+mod v6_cu_probe;
 
 use std::fs;
 use std::path::PathBuf;
@@ -107,6 +108,16 @@ fn main() -> Result<()> {
             eprintln!(
                 "v5-cu-probe: genuine tag-67 full atomic transaction accepted at {} CU; wrote {}",
                 outcome.candidate_kernel_cu,
+                outcome.path.display(),
+            );
+            Ok(())
+        }
+        Some("v6-onefold-cu-probe") => {
+            let dir = stage2_results_dir()?;
+            let outcome = v6_cu_probe::run(&dir)?;
+            eprintln!(
+                "v6-onefold-cu-probe: packed parser plus q16 final256 evaluations used {} CU; wrote {}",
+                outcome.compute_units,
                 outcome.path.display(),
             );
             Ok(())

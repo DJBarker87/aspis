@@ -31,6 +31,9 @@ spend-dynamic-rate512 = ["aspis-statement/spend-dynamic-rate512"]
 # An entrypoint build is deliberately incompatible with `spend-production`;
 # feature-unified host tooling must also enable `no-entrypoint`.
 v5-cu-probe = []
+# Local-validator-only entrypoint for the V6 26+3 packed parser and arithmetic
+# kernels. It is intentionally incompatible with every production entrypoint.
+v6-cu-probe = []
 # Frozen production switch. This compiles tag 67 into the minimal production
 # dispatcher and routes it only through the atomic verify-and-apply wrapper.
 # The executable, transcript, formal, and CU gates are recorded in the release

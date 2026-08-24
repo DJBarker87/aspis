@@ -57,9 +57,27 @@ compile_error!(
     "V5_TAG67_PRODUCTION_FORBIDS_PROBE: production tag 67 and the diagnostic probe entrypoint cannot coexist"
 );
 
+#[cfg(all(
+    feature = "v6-cu-probe",
+    any(feature = "spend-production", feature = "v5-production-tag67"),
+    not(feature = "no-entrypoint")
+))]
+compile_error!(
+    "V6_CU_PROBE_FORBIDS_PRODUCTION: the V6 local CU probe must use its isolated entrypoint"
+);
+
+#[cfg(all(
+    feature = "v6-cu-probe",
+    feature = "v5-cu-probe",
+    not(feature = "no-entrypoint")
+))]
+compile_error!("V6_CU_PROBE_FORBIDS_V5_PROBE: select exactly one local probe entrypoint");
+
 pub mod atomic_payment;
 pub mod dispatch;
 pub mod lifecycle;
+#[cfg(feature = "v6-cu-probe")]
+pub mod v6_cu_probe;
 #[cfg(any(feature = "v5-cu-probe", feature = "v5-production-tag67"))]
 pub mod v5_atomic_terminal;
 #[cfg(any(feature = "v5-cu-probe", feature = "v5-production-tag67"))]

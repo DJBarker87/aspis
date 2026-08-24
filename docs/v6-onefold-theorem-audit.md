@@ -134,14 +134,30 @@ logical foundations. There is no `sorry` in this module.
   allocation;
 - returns only the first compact candidate, so a prover cannot skip an earlier
   valid schedule; and
-- evaluates the disclosed 256-coefficient final polynomial directly from its
-  packed representation without materialising a 4-KiB QM31 vector.
+- canonically decodes the disclosed 256-coefficient final polynomial once and
+  reuses it for all sixteen query evaluations.
 
 Targeted tests cover exact byte offsets and sizes, packed-bit boundaries,
 malformed lengths and field values, clustered and spread query schedules, the
 first-compact rule, and equality of the streaming evaluator with an independent
 in-place tensor contraction. This is working implementation code, but it is
 not yet the complete prover, transcript, Merkle verifier, or Solana entrypoint.
+
+An isolated local-validator SBF probe now measures this exact first slice over
+the full 33,785-byte body and a pinned sixteen-query schedule whose binary
+authentication frontier is the maximum 209 nodes for each tree. Three runs
+each used 786,351 compute units. The measured phases were 248 CU for structural
+parsing, 7,426 CU for frontier derivation, 776,700 CU for the sixteen terminal
+evaluations, and 907 CU for the result sink. The result is recorded in
+[`v6_onefold_packed_final256_cu.json`](../results/spend/v6_onefold_packed_final256_cu.json).
+
+This is a positive implementation result because the original version, which
+rescanned the packed body and decoded the terminal vector independently for
+every query, exhausted the 1.4-million-CU transaction limit. It is not a full
+verifier measurement: Merkle authentication, transcript derivation, relation
+checks, the semantic check, and the state transition are absent. The terminal
+evaluation remains the dominant cost and must be reduced before the complete
+verifier can meet the release gate.
 
 ### Supported by the cited papers
 
@@ -224,11 +240,13 @@ screen.
    do not exist yet. They will need the same Rust-to-Lean and reproducible-build
    treatment used for V5.
 
-9. **Compute and prover measurements.** The 33,785-byte result is a byte count,
-   not a Solana compute result. The final-vector evaluations, relation
-   reductions, binary Merkle checks, packed decoding, 152-MiB raw codeword
-   footprint, full prover peak memory, and grind time need direct measurement
-   before any deployment decision.
+9. **Compute and prover measurements.** The first isolated Solana measurement
+   now covers structural parsing, the worst permitted frontier schedule, and
+   all sixteen final-vector evaluations in 786,351 CU. It does not cover the
+   relation reductions, binary Merkle hashes, transcript, semantic check, or
+   state transition. Those pieces, the 152-MiB raw codeword footprint, full
+   prover peak memory, and grind time need direct measurement before any
+   deployment decision.
 
 ## Decision
 

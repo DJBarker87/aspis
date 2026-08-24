@@ -5,6 +5,8 @@
 //! derives the exact body length from the two public frontier counts, and
 //! exposes borrowed sections without allocating.
 
+use alloc::vec::Vec;
+
 use crate::circle_fri::line_domain_x_for_circle;
 use crate::field::{CM31, M31, P, QM31};
 
@@ -70,6 +72,29 @@ impl<'a> V6OneFoldWire<'a> {
         c1_frontier_nodes: usize,
         c2_frontier_nodes: usize,
     ) -> Result<Self, V6WireError> {
+        Self::parse_inner(bytes, c1_frontier_nodes, c2_frontier_nodes, true)
+    }
+
+    /// Parse exact section boundaries while deferring field canonicality to
+    /// the consumers that already decode each section.
+    ///
+    /// A complete verifier must consume and canonically decode every field.
+    /// This avoids a redundant whole-proof scan; it does not permit any field
+    /// to remain unchecked.
+    pub fn parse_deferred_canonicality(
+        bytes: &'a [u8],
+        c1_frontier_nodes: usize,
+        c2_frontier_nodes: usize,
+    ) -> Result<Self, V6WireError> {
+        Self::parse_inner(bytes, c1_frontier_nodes, c2_frontier_nodes, false)
+    }
+
+    fn parse_inner(
+        bytes: &'a [u8],
+        c1_frontier_nodes: usize,
+        c2_frontier_nodes: usize,
+        validate_fields: bool,
+    ) -> Result<Self, V6WireError> {
         if c1_frontier_nodes > V6_FRONTIER_CAP_PER_TREE
             || c2_frontier_nodes > V6_FRONTIER_CAP_PER_TREE
         {
@@ -90,18 +115,22 @@ impl<'a> V6OneFoldWire<'a> {
         }
 
         let (fixed_fields_packed, rest) = bytes.split_at(V6_FIXED_PACKED_FIELD_BYTES);
-        validate_packed_m31(fixed_fields_packed, V6_FIXED_M31_LIMBS)?;
+        if validate_fields {
+            validate_packed_m31(fixed_fields_packed, V6_FIXED_M31_LIMBS)?;
+        }
         let (c1_root_bytes, rest) = rest.split_at(32);
         let (c2_root_bytes, rest) = rest.split_at(32);
         let (nonce_bytes, rest) = rest.split_at(V6_WORK_NONCE_BYTES);
         let (query_section, rest) = rest.split_at(V6_QUERY_SECTION_BYTES);
 
-        for query in 0..V6_QUERY_COUNT {
-            let start = query * V6_QUERY_BYTES;
-            let c1_end = start + V6_C1_PACKED_BYTES_PER_QUERY;
-            let c2_end = c1_end + V6_C2_PACKED_BYTES_PER_QUERY;
-            validate_packed_m31(&query_section[start..c1_end], V6_C1_LIMBS_PER_QUERY)?;
-            validate_packed_m31(&query_section[c1_end..c2_end], V6_C2_LIMBS_PER_QUERY)?;
+        if validate_fields {
+            for query in 0..V6_QUERY_COUNT {
+                let start = query * V6_QUERY_BYTES;
+                let c1_end = start + V6_C1_PACKED_BYTES_PER_QUERY;
+                let c2_end = c1_end + V6_C2_PACKED_BYTES_PER_QUERY;
+                validate_packed_m31(&query_section[start..c1_end], V6_C1_LIMBS_PER_QUERY)?;
+                validate_packed_m31(&query_section[c1_end..c2_end], V6_C2_LIMBS_PER_QUERY)?;
+            }
         }
 
         let (c1_frontier, c2_frontier) = rest.split_at(c1_frontier_bytes);
@@ -318,6 +347,59 @@ pub fn evaluate_packed_final256_at_query(
     evaluate_packed_final256(fixed_fields_packed, point)
 }
 
+fn decode_packed_final256(fixed_fields_packed: &[u8]) -> Result<Vec<QM31>, V6WireError> {
+    if fixed_fields_packed.len() != V6_FIXED_PACKED_FIELD_BYTES {
+        return Err(V6WireError::WrongLength);
+    }
+    let mut coefficients = Vec::with_capacity(V6_FINAL_QM31_VALUES);
+    for index in 0..V6_FINAL_QM31_VALUES {
+        let coefficient = packed_qm31_at(fixed_fields_packed, V6_FINAL_QM31_OFFSET + index)
+            .ok_or(V6WireError::WrongLength)?;
+        if coefficient.c0.a.0 >= P
+            || coefficient.c0.b.0 >= P
+            || coefficient.c1.a.0 >= P
+            || coefficient.c1.b.0 >= P
+        {
+            return Err(V6WireError::NonCanonicalM31);
+        }
+        coefficients.push(coefficient);
+    }
+    Ok(coefficients)
+}
+
+fn evaluate_final256_coefficients(coefficients: &[QM31], point: M31) -> Result<QM31, V6WireError> {
+    if coefficients.len() != V6_FINAL_QM31_VALUES {
+        return Err(V6WireError::WrongLength);
+    }
+    let weights = natural_line_weights_256(point);
+    let mut result = QM31::ZERO;
+    for (coefficient, weight) in coefficients.iter().zip(weights) {
+        result = result.add(coefficient.mul_m31(weight));
+    }
+    Ok(result)
+}
+
+/// Canonically decode the disclosed terminal vector once, then evaluate it at
+/// all sixteen verifier queries. The shared heap allocation avoids sixteen
+/// repeated packed-bit scans without putting the 4-KiB coefficient vector on
+/// the SBF stack.
+pub fn evaluate_packed_final256_at_queries(
+    fixed_fields_packed: &[u8],
+    queries: [u32; V6_QUERY_COUNT],
+) -> Result<[QM31; V6_QUERY_COUNT], V6WireError> {
+    let coefficients = decode_packed_final256(fixed_fields_packed)?;
+    let mut outputs = [QM31::ZERO; V6_QUERY_COUNT];
+    for (output, query) in outputs.iter_mut().zip(queries) {
+        if query >= 1 << 18 {
+            return Err(V6WireError::InvalidQuerySchedule);
+        }
+        let point = line_domain_x_for_circle(20, 1, query as usize)
+            .map_err(|_| V6WireError::InvalidQuerySchedule)?;
+        *output = evaluate_final256_coefficients(&coefficients, point)?;
+    }
+    Ok(outputs)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -477,5 +559,53 @@ mod tests {
             factor = factor.mul(factor).double().sub(M31::ONE);
         }
         assert_eq!(actual, level[0]);
+    }
+
+    #[test]
+    fn shared_decode_matches_sixteen_independent_evaluations() {
+        let mut limbs = vec![0u32; V6_FIXED_M31_LIMBS];
+        for coefficient in 0..V6_FINAL_QM31_VALUES {
+            let start = 4 * (V6_FINAL_QM31_OFFSET + coefficient);
+            for limb in 0..4 {
+                limbs[start + limb] = ((coefficient * 31 + limb * 7 + 3) as u32) % P;
+            }
+        }
+        let packed = pack(&limbs);
+        let queries: [u32; V6_QUERY_COUNT] =
+            core::array::from_fn(|index| 1_001 + index as u32 * 7_919);
+        let shared = evaluate_packed_final256_at_queries(&packed, queries).unwrap();
+        for (index, query) in queries.into_iter().enumerate() {
+            assert_eq!(
+                shared[index],
+                evaluate_packed_final256_at_query(&packed, query).unwrap()
+            );
+        }
+    }
+
+    #[test]
+    fn deferred_parser_does_not_hide_noncanonical_terminal_coefficients() {
+        let mut body = valid_body(209, 209);
+        let limb = 4 * V6_FINAL_QM31_OFFSET;
+        let bit_start = limb * 31;
+        let encoded = pack(&[P]);
+        for bit in 0..31 {
+            let output_bit = bit_start + bit;
+            let mask = 1u8 << (output_bit % 8);
+            if ((encoded[bit / 8] >> (bit % 8)) & 1) != 0 {
+                body[output_bit / 8] |= mask;
+            } else {
+                body[output_bit / 8] &= !mask;
+            }
+        }
+
+        assert_eq!(
+            V6OneFoldWire::parse(&body, 209, 209),
+            Err(V6WireError::NonCanonicalM31)
+        );
+        let parsed = V6OneFoldWire::parse_deferred_canonicality(&body, 209, 209).unwrap();
+        assert_eq!(
+            evaluate_packed_final256_at_queries(parsed.fixed_fields_packed, [0; V6_QUERY_COUNT]),
+            Err(V6WireError::NonCanonicalM31)
+        );
     }
 }
