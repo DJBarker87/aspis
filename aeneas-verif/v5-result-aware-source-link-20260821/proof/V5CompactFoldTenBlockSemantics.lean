@@ -138,7 +138,57 @@ theorem fold_zero_success_unrolled
       ten_reverse_sets_exact]
   all_goals intros <;> rfl
 
+theorem generated_source_loop_ten
+    (folds : Std.U8) (foldBound : folds.val < 4)
+    (alpha alpha2 alpha3 : Raw)
+    (prepared : Array Prepared 3#usize)
+    (blocks : Array Block 10#usize) :
+    v5_cu_probe.CompactBTerminalWeights.fold_loop
+        { slice := Array.to_slice blocks } (fun current => current) folds
+        alpha alpha2 alpha3 prepared =
+      sourceBackN 10 folds alpha alpha2 alpha3 prepared
+        { slice := Array.to_slice blocks } (fun current => current) := by
+  apply generated_source_loop_eq_sourceBackN 10 folds foldBound
+  change 0 + 10 = blocks.val.length
+  simpa using blocks.property.symm
+
+set_option maxHeartbeats 12000000 in
+set_option maxRecDepth 24000 in
+theorem fold_success_unrolled
+    (state output : State) (alpha : Raw)
+    (foldBound : state.folds.val < 4)
+    (run : V5CompactFoldCorrectedWrapper.fold state alpha = .ok output) :
+    unrolledFold state alpha = .ok output := by
+  rcases state with ⟨blocks, deltaScale, folds⟩
+  unfold V5CompactFoldCorrectedWrapper.fold at run
+  simp only [
+    MutAArray.Insts.CoreIterTraitsCollectIntoIteratorMutATIterMut.into_iter,
+    bind_tc_ok] at run
+  simp only [generated_source_loop_ten folds foldBound] at run
+  have index0 := array_index_run blocks 0#usize (by decide)
+  have index1 := array_index_run blocks 1#usize (by decide)
+  have index2 := array_index_run blocks 2#usize (by decide)
+  have index3 := array_index_run blocks 3#usize (by decide)
+  have index4 := array_index_run blocks 4#usize (by decide)
+  have index5 := array_index_run blocks 5#usize (by decide)
+  have index6 := array_index_run blocks 6#usize (by decide)
+  have index7 := array_index_run blocks 7#usize (by decide)
+  have index8 := array_index_run blocks 8#usize (by decide)
+  have index9 := array_index_run blocks 9#usize (by decide)
+  convert run using 1 <;>
+    simp (config := { maxSteps := 2000000 })
+    [unrolledFold, sourceBackN,
+      core.slice.iter.IteratorIterMut.next, Slice.setAtNat,
+      Array.to_slice, Array.from_slice, Slice.getElem_Nat_eq,
+      rebuilt_slice_get_eq_bang, Array.make,
+      index0, index1, index2, index3, index4,
+      index5, index6, index7, index8, index9,
+      ten_reverse_sets_exact]
+  all_goals intros <;> rfl
+
 #print axioms generated_zero_loop_ten
 #print axioms fold_zero_success_unrolled
+#print axioms generated_source_loop_ten
+#print axioms fold_success_unrolled
 
 end V5CompactFoldSource
