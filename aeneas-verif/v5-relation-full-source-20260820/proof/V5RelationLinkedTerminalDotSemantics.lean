@@ -93,6 +93,19 @@ private theorem exactVecEntryEq
   apply List.getElem!_of_getElem?
   simp [hindex]
 
+private theorem usizeZeroVal : (0#usize).val = 0 := by
+  norm_num
+
+private theorem maintainedZeroExact :
+    toMaintainedExact
+        V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO = 0 := by
+  exact zero_toMaintained
+
+private theorem sumIcoFour (summand : Nat → ExactQM31) :
+    ∑ row ∈ Finset.Ico 0 4, summand row =
+      summand 0 + summand 1 + summand 2 + summand 3 := by
+  norm_num [Finset.sum_Ico_succ_top, Finset.sum_range_succ]
+
 /-- Exact source semantics of the dense component loop.  The theorem is
 stated from an arbitrary in-bounds cursor because the iterator proof reuses
 it without unrolling four copies of the source body. -/
@@ -335,7 +348,493 @@ decreasing_by
   rw [nextIndexValue]
   omega
 
+/-! ## Direct component meaning -/
+
+abbrev Component :=
+  V5RelationLinkedGenerated.aspis_core.sumcheck.WeightComponent
+
+/-- Exact four-entry covector denoted by one supported terminal component.
+The two unsupported grouped encodings and the release-unreachable geometric
+and product encodings are assigned zero; `ReleasedTerminalComponent` below
+excludes them from every theorem. -/
+def terminalComponentWeights (component : Component) : Fin 4 → ExactQM31 :=
+  match component with
+  | .Multilinear scale point =>
+      let s := toMaintainedExact scale
+      let high := toMaintainedExact point.val[0]!
+      let low := toMaintainedExact point.val[1]!
+      ![s * (1 - high) * (1 - low),
+        s * (1 - high) * low,
+        s * high * (1 - low),
+        s * high * low]
+  | .Tensor scale factors =>
+      let s := toMaintainedExact scale
+      let high := toMaintainedExact factors.val[0]!
+      let low := toMaintainedExact factors.val[1]!
+      ![s, s * low, s * high, s * high * low]
+  | .Dense weights => fun index => toMaintainedExact weights.val[index.val]!
+  | .Grouped64x16BinaryDeferred rowGroups _ _ groupValues =>
+      fun index =>
+        toMaintainedExact
+          groupValues.val[(rowGroups.val[index.val]!).val]!
+  | _ => fun _ => 0
+
+def terminalValues (values : Slice RawQM31) : Fin 4 → ExactQM31 :=
+  fun index => toMaintainedExact values.val[index.val]!
+
+def terminalComponentContribution
+    (component : Component) (values : Slice RawQM31) : ExactQM31 :=
+  AspisV5FriRelationCandidateBridge.candidateClaim
+    (terminalComponentWeights component) (terminalValues values)
+
+/-- Exactly the component shapes reachable after four successful folds in the
+released verifier, together with the length/canonicality facts needed to give
+their raw field values an exact mathematical meaning. -/
+def ReleasedTerminalComponent : Component → Prop
+  | .Multilinear scale point =>
+      CanonicalQM31 scale ∧ point.val.length = 2 ∧ CanonicalList point.val
+  | .Tensor scale factors =>
+      CanonicalQM31 scale ∧ factors.val.length = 2 ∧ CanonicalList factors.val
+  | .Dense weights => weights.val.length = 4 ∧ CanonicalList weights.val
+  | .Grouped64x16BinaryDeferred rowGroups _ _ groupValues =>
+      rowGroups.val.length = 4 ∧ CanonicalList groupValues.val ∧
+        (∀ row, row < 4 →
+          (rowGroups.val[row]!).val < groupValues.val.length)
+  | _ => False
+
+private theorem addExistsExact
+    (left right : RawQM31)
+    (hleft : CanonicalQM31 left) (hright : CanonicalQM31 right) :
+    ∃ out,
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add left right = ok out ∧
+      CanonicalQM31 out ∧
+      toMaintainedExact out =
+        toMaintainedExact left + toMaintainedExact right := by
+  obtain ⟨out, run, canonical, _⟩ :=
+    generated_qm31_add_corresponds left right hleft hright
+  exact ⟨out, run, canonical,
+    (add_run_corresponds left right out hleft hright run).2⟩
+
+private theorem subExistsExact
+    (left right : RawQM31)
+    (hleft : CanonicalQM31 left) (hright : CanonicalQM31 right) :
+    ∃ out,
+      V5RelationLinkedGenerated.aspis_core.field.QM31.sub left right = ok out ∧
+      CanonicalQM31 out ∧
+      toMaintainedExact out =
+        toMaintainedExact left - toMaintainedExact right := by
+  obtain ⟨out, run, canonical, _⟩ :=
+    generated_qm31_sub_corresponds left right hleft hright
+  exact ⟨out, run, canonical,
+    (sub_run_corresponds left right out hleft hright run).2⟩
+
+private theorem mulExistsExact
+    (left right : RawQM31)
+    (hleft : CanonicalQM31 left) (hright : CanonicalQM31 right) :
+    ∃ out,
+      V5RelationLinkedGenerated.aspis_core.field.QM31.mul left right = ok out ∧
+      CanonicalQM31 out ∧
+      toMaintainedExact out =
+        toMaintainedExact left * toMaintainedExact right := by
+  obtain ⟨out, run, canonical, _⟩ :=
+    generated_qm31_mul_corresponds left right hleft hright
+  exact ⟨out, run, canonical,
+    (mul_run_corresponds left right out hleft hright run).2⟩
+
+private theorem squareExistsExact
+    (value : RawQM31) (hvalue : CanonicalQM31 value) :
+    ∃ out,
+      V5RelationLinkedGenerated.aspis_core.field.QM31.square value = ok out ∧
+      CanonicalQM31 out ∧
+      toMaintainedExact out = toMaintainedExact value ^ 2 := by
+  obtain ⟨out, run, canonical, _⟩ :=
+    generated_qm31_square_corresponds value hvalue
+  exact ⟨out, run, canonical,
+    (square_run_corresponds value out hvalue run).2⟩
+
+private theorem terminalRead
+    (values : Slice RawQM31) (hlen : values.val.length = 4)
+    (index : Std.Usize) (hindex : index.val < 4) :
+    Slice.index_usize values index =
+      ok values.val[index.val]! := by
+  apply sliceIndexRun
+  omega
+
+private theorem terminalVecRead
+    (values : alloc.vec.Vec RawQM31) (hlen : values.val.length = 2)
+    (index : Std.Usize) (hindex : index.val < 2) :
+    alloc.vec.Vec.index
+        (core.slice.index.SliceIndexUsizeSlice RawQM31) values
+        index = ok values.val[index.val]! := by
+  apply vecIndexRun
+  omega
+
+/-- The direct multilinear branch computes the dot product with its exact
+four multilinear basis weights. -/
+private theorem multilinearBodyExact
+    (iter nextIter : core.slice.iter.Iter Component)
+    (values : Slice RawQM31) (total : RawQM31)
+    (scale : RawQM31) (point : alloc.vec.Vec RawQM31)
+    (nextRun : core.slice.iter.IteratorSliceIter.next iter =
+      ok (some (.Multilinear scale point), nextIter))
+    (hlen : values.val.length = 4)
+    (hvalues : CanonicalList values.val)
+    (htotal : CanonicalQM31 total)
+    (hcomponent : ReleasedTerminalComponent (.Multilinear scale point)) :
+    ∃ nextTotal,
+      V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.dot_loop0.body
+          values iter total = ok (cont (nextIter, nextTotal)) ∧
+      CanonicalQM31 nextTotal ∧
+      toMaintainedExact nextTotal = toMaintainedExact total +
+        terminalComponentContribution (.Multilinear scale point) values := by
+  rcases hcomponent with ⟨hscale, hpointLength, hpoint⟩
+  have read0 := terminalRead values hlen 0#usize (by decide)
+  have read1 := terminalRead values hlen 1#usize (by decide)
+  have read2 := terminalRead values hlen 2#usize (by decide)
+  have read3 := terminalRead values hlen 3#usize (by decide)
+  have point0Read := terminalVecRead point hpointLength 0#usize (by decide)
+  have point1Read := terminalVecRead point hpointLength 1#usize (by decide)
+  let v0 := values.val[0]!
+  let v1 := values.val[1]!
+  let v2 := values.val[2]!
+  let v3 := values.val[3]!
+  let p0 := point.val[0]!
+  let p1 := point.val[1]!
+  have hv0 : CanonicalQM31 v0 := hvalues 0 (by omega)
+  have hv1 : CanonicalQM31 v1 := hvalues 1 (by omega)
+  have hv2 : CanonicalQM31 v2 := hvalues 2 (by omega)
+  have hv3 : CanonicalQM31 v3 := hvalues 3 (by omega)
+  have hp0 : CanonicalQM31 p0 := hpoint 0 (by omega)
+  have hp1 : CanonicalQM31 p1 := hpoint 1 (by omega)
+  obtain ⟨lowDelta, lowDeltaRun, hLowDelta, eLowDelta⟩ :=
+    subExistsExact v1 v0 hv1 hv0
+  obtain ⟨lowTerm, lowTermRun, hLowTerm, eLowTerm⟩ :=
+    mulExistsExact p1 lowDelta hp1 hLowDelta
+  obtain ⟨low, lowRun, hLow, eLow⟩ :=
+    addExistsExact v0 lowTerm hv0 hLowTerm
+  obtain ⟨highDelta, highDeltaRun, hHighDelta, eHighDelta⟩ :=
+    subExistsExact v3 v2 hv3 hv2
+  obtain ⟨highTerm, highTermRun, hHighTerm, eHighTerm⟩ :=
+    mulExistsExact p1 highDelta hp1 hHighDelta
+  obtain ⟨high, highRun, hHigh, eHigh⟩ :=
+    addExistsExact v2 highTerm hv2 hHighTerm
+  obtain ⟨outerDelta, outerDeltaRun, hOuterDelta, eOuterDelta⟩ :=
+    subExistsExact high low hHigh hLow
+  obtain ⟨outerTerm, outerTermRun, hOuterTerm, eOuterTerm⟩ :=
+    mulExistsExact p0 outerDelta hp0 hOuterDelta
+  obtain ⟨evaluation, evaluationRun, hEvaluation, eEvaluation⟩ :=
+    addExistsExact low outerTerm hLow hOuterTerm
+  obtain ⟨contribution, contributionRun, hContribution, eContribution⟩ :=
+    mulExistsExact scale evaluation hscale hEvaluation
+  obtain ⟨nextTotal, nextTotalRun, hNextTotal, eNextTotal⟩ :=
+    addExistsExact total contribution htotal hContribution
+  have lowDeltaRunWire :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.sub
+        values.val[(1#usize).val]! values.val[(0#usize).val]! = ok lowDelta := by
+    simpa [v0, v1] using lowDeltaRun
+  have lowTermRunWire :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.mul
+        point.val[(1#usize).val]! lowDelta = ok lowTerm := by
+    simpa [p1] using lowTermRun
+  have lowRunWire :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+        values.val[(0#usize).val]! lowTerm = ok low := by
+    simpa [v0] using lowRun
+  have highDeltaRunWire :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.sub
+        values.val[(3#usize).val]! values.val[(2#usize).val]! = ok highDelta := by
+    simpa [v2, v3] using highDeltaRun
+  have highTermRunWire :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.mul
+        point.val[(1#usize).val]! highDelta = ok highTerm := by
+    simpa [p1] using highTermRun
+  have highRunWire :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+        values.val[(2#usize).val]! highTerm = ok high := by
+    simpa [v2] using highRun
+  have outerTermRunWire :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.mul
+        point.val[(0#usize).val]! outerDelta = ok outerTerm := by
+    simpa [p0] using outerTermRun
+  refine ⟨nextTotal, ?_, hNextTotal, ?_⟩
+  · unfold
+      V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.dot_loop0.body
+    rw [nextRun]
+    simp only [bind_tc_ok]
+    rw [read0, point1Read, read1]
+    simp only [bind_tc_ok]
+    rw [lowDeltaRunWire]
+    simp only [bind_tc_ok]
+    rw [lowTermRunWire]
+    simp only [bind_tc_ok]
+    rw [lowRunWire]
+    simp only [bind_tc_ok]
+    rw [read2, read3]
+    simp only [bind_tc_ok]
+    rw [highDeltaRunWire]
+    simp only [bind_tc_ok]
+    rw [highTermRunWire]
+    simp only [bind_tc_ok]
+    rw [highRunWire, point0Read]
+    simp only [bind_tc_ok]
+    rw [outerDeltaRun]
+    simp only [bind_tc_ok]
+    rw [outerTermRunWire]
+    simp only [bind_tc_ok]
+    rw [evaluationRun]
+    simp only [bind_tc_ok]
+    rw [contributionRun]
+    simp only [bind_tc_ok]
+    rw [nextTotalRun]
+    rfl
+  · rw [eNextTotal, eContribution, eEvaluation, eOuterTerm, eOuterDelta,
+      eHigh, eHighTerm, eHighDelta, eLow, eLowTerm, eLowDelta]
+    simp [terminalComponentContribution, terminalComponentWeights,
+      terminalValues, AspisV5FriRelationCandidateBridge.candidateClaim,
+      Fin.sum_univ_four, v0, v1, v2, v3, p0, p1]
+    ring
+
+/-- The direct tensor branch computes the dot product with `[1, low, high,
+high*low]`, scaled by the component scale. -/
+private theorem tensorBodyExact
+    (iter nextIter : core.slice.iter.Iter Component)
+    (values : Slice RawQM31) (total : RawQM31)
+    (scale : RawQM31) (factors : alloc.vec.Vec RawQM31)
+    (nextRun : core.slice.iter.IteratorSliceIter.next iter =
+      ok (some (.Tensor scale factors), nextIter))
+    (hlen : values.val.length = 4)
+    (hvalues : CanonicalList values.val)
+    (htotal : CanonicalQM31 total)
+    (hcomponent : ReleasedTerminalComponent (.Tensor scale factors)) :
+    ∃ nextTotal,
+      V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.dot_loop0.body
+          values iter total = ok (cont (nextIter, nextTotal)) ∧
+      CanonicalQM31 nextTotal ∧
+      toMaintainedExact nextTotal = toMaintainedExact total +
+        terminalComponentContribution (.Tensor scale factors) values := by
+  rcases hcomponent with ⟨hscale, hfactorsLength, hfactors⟩
+  have read0 := terminalRead values hlen 0#usize (by decide)
+  have read1 := terminalRead values hlen 1#usize (by decide)
+  have read2 := terminalRead values hlen 2#usize (by decide)
+  have read3 := terminalRead values hlen 3#usize (by decide)
+  have factor0Read := terminalVecRead factors hfactorsLength 0#usize (by decide)
+  have factor1Read := terminalVecRead factors hfactorsLength 1#usize (by decide)
+  let v0 := values.val[0]!
+  let v1 := values.val[1]!
+  let v2 := values.val[2]!
+  let v3 := values.val[3]!
+  let f0 := factors.val[0]!
+  let f1 := factors.val[1]!
+  have hv0 : CanonicalQM31 v0 := hvalues 0 (by omega)
+  have hv1 : CanonicalQM31 v1 := hvalues 1 (by omega)
+  have hv2 : CanonicalQM31 v2 := hvalues 2 (by omega)
+  have hv3 : CanonicalQM31 v3 := hvalues 3 (by omega)
+  have hf0 : CanonicalQM31 f0 := hfactors 0 (by omega)
+  have hf1 : CanonicalQM31 f1 := hfactors 1 (by omega)
+  obtain ⟨lowTerm, lowTermRun, hLowTerm, eLowTerm⟩ :=
+    mulExistsExact f1 v1 hf1 hv1
+  obtain ⟨low, lowRun, hLow, eLow⟩ :=
+    addExistsExact v0 lowTerm hv0 hLowTerm
+  obtain ⟨highTerm, highTermRun, hHighTerm, eHighTerm⟩ :=
+    mulExistsExact f1 v3 hf1 hv3
+  obtain ⟨high, highRun, hHigh, eHigh⟩ :=
+    addExistsExact v2 highTerm hv2 hHighTerm
+  obtain ⟨outerTerm, outerTermRun, hOuterTerm, eOuterTerm⟩ :=
+    mulExistsExact f0 high hf0 hHigh
+  obtain ⟨evaluation, evaluationRun, hEvaluation, eEvaluation⟩ :=
+    addExistsExact low outerTerm hLow hOuterTerm
+  obtain ⟨contribution, contributionRun, hContribution, eContribution⟩ :=
+    mulExistsExact scale evaluation hscale hEvaluation
+  obtain ⟨nextTotal, nextTotalRun, hNextTotal, eNextTotal⟩ :=
+    addExistsExact total contribution htotal hContribution
+  have lowTermRunWire :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.mul
+        factors.val[(1#usize).val]! values.val[(1#usize).val]! = ok lowTerm := by
+    simpa [f1, v1] using lowTermRun
+  have lowRunWire :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+        values.val[(0#usize).val]! lowTerm = ok low := by
+    simpa [v0] using lowRun
+  have highTermRunWire :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.mul
+        factors.val[(1#usize).val]! values.val[(3#usize).val]! = ok highTerm := by
+    simpa [f1, v3] using highTermRun
+  have highRunWire :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.add
+        values.val[(2#usize).val]! highTerm = ok high := by
+    simpa [v2] using highRun
+  have outerTermRunWire :
+      V5RelationLinkedGenerated.aspis_core.field.QM31.mul
+        factors.val[(0#usize).val]! high = ok outerTerm := by
+    simpa [f0] using outerTermRun
+  refine ⟨nextTotal, ?_, hNextTotal, ?_⟩
+  · unfold
+      V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.dot_loop0.body
+    rw [nextRun]
+    simp only [bind_tc_ok]
+    rw [read0, factor1Read, read1]
+    simp only [bind_tc_ok]
+    rw [lowTermRunWire]
+    simp only [bind_tc_ok]
+    rw [lowRunWire]
+    simp only [bind_tc_ok]
+    rw [read2, read3]
+    simp only [bind_tc_ok]
+    rw [highTermRunWire]
+    simp only [bind_tc_ok]
+    rw [highRunWire, factor0Read]
+    simp only [bind_tc_ok]
+    rw [outerTermRunWire]
+    simp only [bind_tc_ok]
+    rw [evaluationRun]
+    simp only [bind_tc_ok]
+    rw [contributionRun]
+    simp only [bind_tc_ok]
+    rw [nextTotalRun]
+    rfl
+  · rw [eNextTotal, eContribution, eEvaluation, eOuterTerm, eHigh,
+      eHighTerm, eLow, eLowTerm]
+    simp [terminalComponentContribution, terminalComponentWeights,
+      terminalValues, AspisV5FriRelationCandidateBridge.candidateClaim,
+      Fin.sum_univ_four, v0, v1, v2, v3, f0, f1]
+    ring
+
+/-- The direct dense branch adds precisely the four-entry dense
+contribution. -/
+private theorem denseBodyExact
+    (iter nextIter : core.slice.iter.Iter Component)
+    (values : Slice RawQM31) (total : RawQM31)
+    (weights : alloc.vec.Vec RawQM31)
+    (nextRun : core.slice.iter.IteratorSliceIter.next iter =
+      ok (some (.Dense weights), nextIter))
+    (hlen : values.val.length = 4)
+    (hvalues : CanonicalList values.val)
+    (htotal : CanonicalQM31 total)
+    (hcomponent : ReleasedTerminalComponent (.Dense weights)) :
+    ∃ nextTotal,
+      V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.dot_loop0.body
+          values iter total = ok (cont (nextIter, nextTotal)) ∧
+      CanonicalQM31 nextTotal ∧
+      toMaintainedExact nextTotal = toMaintainedExact total +
+        terminalComponentContribution (.Dense weights) values := by
+  rcases hcomponent with ⟨hweightsLength, hweights⟩
+  obtain ⟨contribution, contributionRun, hContribution, eContribution⟩ :=
+    denseDotLoopExact values weights (by omega) (by omega) hvalues hweights
+      V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO zeroCanonical
+      0#usize (by norm_num)
+  obtain ⟨nextTotal, nextTotalRun, hNextTotal, eNextTotal⟩ :=
+    addExistsExact total contribution htotal hContribution
+  refine ⟨nextTotal, ?_, hNextTotal, ?_⟩
+  · unfold
+      V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.dot_loop0.body
+    rw [nextRun]
+    simp only [bind_tc_ok]
+    rw [contributionRun]
+    simp only [bind_tc_ok]
+    rw [nextTotalRun]
+    simp only [bind_tc_ok]
+  · rw [eNextTotal, eContribution]
+    rw [usizeZeroVal, hlen, sumIcoFour, maintainedZeroExact]
+    simp only [terminalComponentContribution, terminalComponentWeights,
+      terminalValues, AspisV5FriRelationCandidateBridge.candidateClaim,
+      Fin.sum_univ_four]
+    norm_num
+
+/-- The direct deferred-group branch adds precisely the four routed group
+values. -/
+private theorem groupedBodyExact
+    (iter nextIter : core.slice.iter.Iter Component)
+    (values : Slice RawQM31) (total : RawQM31)
+    (rowGroups : alloc.vec.Vec Std.U8)
+    (groupIds : alloc.vec.Vec Std.U16) (maybeGroup : Option RawQM31)
+    (groupValues : alloc.vec.Vec RawQM31)
+    (nextRun : core.slice.iter.IteratorSliceIter.next iter =
+      ok (some (.Grouped64x16BinaryDeferred rowGroups groupIds maybeGroup
+        groupValues), nextIter))
+    (hlen : values.val.length = 4)
+    (hvalues : CanonicalList values.val)
+    (htotal : CanonicalQM31 total)
+    (hcomponent : ReleasedTerminalComponent
+      (.Grouped64x16BinaryDeferred rowGroups groupIds maybeGroup
+        groupValues)) :
+    ∃ nextTotal,
+      V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.dot_loop0.body
+          values iter total = ok (cont (nextIter, nextTotal)) ∧
+      CanonicalQM31 nextTotal ∧
+      toMaintainedExact nextTotal = toMaintainedExact total +
+        terminalComponentContribution
+          (.Grouped64x16BinaryDeferred rowGroups groupIds maybeGroup
+            groupValues) values := by
+  rcases hcomponent with ⟨hrowsLength, hgroups, hrouting⟩
+  have routing : ∀ row, row < rowGroups.val.length →
+      (rowGroups.val[row]!).val < groupValues.val.length := by
+    intro row rowBound
+    apply hrouting row
+    omega
+  obtain ⟨contribution, contributionRun, hContribution, eContribution⟩ :=
+    groupedDotLoopExact values rowGroups groupValues (by omega) (by omega)
+      hvalues hgroups routing
+      V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO zeroCanonical
+      0#usize (by norm_num)
+  obtain ⟨nextTotal, nextTotalRun, hNextTotal, eNextTotal⟩ :=
+    addExistsExact total contribution htotal hContribution
+  refine ⟨nextTotal, ?_, hNextTotal, ?_⟩
+  · unfold
+      V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.dot_loop0.body
+    rw [nextRun]
+    simp only [bind_tc_ok]
+    rw [contributionRun]
+    simp only [bind_tc_ok]
+    rw [nextTotalRun]
+    simp only [bind_tc_ok]
+  · rw [eNextTotal, eContribution]
+    rw [usizeZeroVal, hlen, sumIcoFour, maintainedZeroExact]
+    simp only [terminalComponentContribution, terminalComponentWeights,
+      terminalValues, AspisV5FriRelationCandidateBridge.candidateClaim,
+      Fin.sum_univ_four]
+    norm_num
+
+/-- One released terminal component advances the extracted component iterator
+and adds exactly its mathematical four-entry dot contribution. -/
+theorem releasedComponentBodyExact
+    (iter nextIter : core.slice.iter.Iter Component)
+    (values : Slice RawQM31) (total : RawQM31) (component : Component)
+    (nextRun : core.slice.iter.IteratorSliceIter.next iter =
+      ok (some component, nextIter))
+    (hlen : values.val.length = 4)
+    (hvalues : CanonicalList values.val)
+    (htotal : CanonicalQM31 total)
+    (hcomponent : ReleasedTerminalComponent component) :
+    ∃ nextTotal,
+      V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.dot_loop0.body
+          values iter total = ok (cont (nextIter, nextTotal)) ∧
+      CanonicalQM31 nextTotal ∧
+      toMaintainedExact nextTotal = toMaintainedExact total +
+        terminalComponentContribution component values := by
+  cases component with
+  | Geometric scale base => simp [ReleasedTerminalComponent] at hcomponent
+  | Multilinear scale point =>
+      exact multilinearBodyExact iter nextIter values total scale point nextRun
+        hlen hvalues htotal hcomponent
+  | Tensor scale factors =>
+      exact tensorBodyExact iter nextIter values total scale factors nextRun
+        hlen hvalues htotal hcomponent
+  | Product scale pairs => simp [ReleasedTerminalComponent] at hcomponent
+  | Dense weights =>
+      exact denseBodyExact iter nextIter values total weights nextRun hlen
+        hvalues htotal hcomponent
+  | Grouped64x16 rowGroups groupValues groupCount =>
+      simp [ReleasedTerminalComponent] at hcomponent
+  | Grouped64x16BinaryDeferred rowGroups groupIds maybeGroup groupValues =>
+      exact groupedBodyExact iter nextIter values total rowGroups groupIds
+        maybeGroup groupValues nextRun hlen hvalues htotal hcomponent
+  | Grouped128x16 rowGroups groupValues groupCount =>
+      simp [ReleasedTerminalComponent] at hcomponent
+
 #print axioms denseDotLoopExact
 #print axioms groupedDotLoopExact
+#print axioms multilinearBodyExact
+#print axioms tensorBodyExact
+#print axioms releasedComponentBodyExact
 
 end AspisV5RelationLinkedTerminalDotSemantics
