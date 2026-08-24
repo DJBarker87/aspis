@@ -402,6 +402,43 @@ theorem prepare_success_dense_scale_canonical
   rw [returnedDenseScale]
   exact kappa3Canonical
 
+/-- The same returned scale has the exact maintained-field value `kappa³`;
+this is obtained from the generated square and multiplication calls, not from
+an independently supplied scale. -/
+theorem prepare_success_dense_scale_exact
+    (parsed : V5RelationPrepareGenerated.v5_cu_probe.ParsedProbeData)
+    (kappa inactiveClaim : PrepareQM31)
+    (preparedClaims :
+      V5RelationPrepareGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims)
+    (relation : V5RelationPrepareGenerated.v5_cu_probe.PreparedRelation)
+    (point : Array PrepareQM31 10#usize)
+    (denseScale : PrepareQM31)
+    (kappaCanonical : PrepareCanonicalQM31 kappa)
+    (success :
+      V5RelationPrepareGenerated.v5_cu_probe.prepare_relation_base_with_kappa_prepared_for_extraction
+          parsed kappa inactiveClaim preparedClaims =
+        .ok (.Ok (relation, point, denseScale))) :
+    AspisV5RelationPrepareFieldProjection.toMaintainedExact denseScale =
+      AspisV5RelationPrepareFieldProjection.toMaintainedExact kappa ^ 3 := by
+  obtain ⟨_, ⟨trace, returnedDenseScale⟩⟩ :=
+    AspisV5RelationPrepareLogLenProof.Prepare.prepare_for_extraction_success_exposes_arithmetic
+      parsed kappa inactiveClaim preparedClaims relation point denseScale success
+  have kappaSquare :=
+    AspisV5RelationPrepareFieldProjection.generated_qm31_square_run_corresponds
+      kappa trace.kappa2
+      ((prepareCanonical_iff_fieldProjection kappa).1 kappaCanonical)
+      trace.kappa2Run
+  have kappaProduct :=
+    AspisV5RelationPrepareFieldProjection.generated_qm31_mul_run_corresponds
+      trace.kappa2 kappa trace.kappa3 kappaSquare.1
+      ((prepareCanonical_iff_fieldProjection kappa).1 kappaCanonical)
+      trace.kappa3Run
+  rw [returnedDenseScale]
+  change AspisV5RelationPrepareFieldProjection.toExact trace.kappa3 =
+    AspisV5RelationPrepareFieldProjection.toExact kappa ^ 3
+  rw [kappaProduct.2, kappaSquare.2]
+  rfl
+
 /-- The public relation-preparation wrapper preserves the same canonical
 initial relation value proved for its translated extraction helper. -/
 theorem caller_prepare_success_relation_value_canonical
@@ -528,12 +565,69 @@ theorem caller_prepare_success_dense_scale_canonical
       rw [← scaleEquality]
       exact (prepareToCaller_canonical_iff sourceScale).2 sourceScaleCanonical
 
+/-- Exact maintained-field form of the public caller's returned dense scale. -/
+theorem caller_prepare_success_dense_scale_exact
+    (parsed : V5RelationCallerGenerated.v5_cu_probe.ParsedProbeData)
+    (kappa inactiveClaim : CallerQM31)
+    (preparedClaims :
+      V5RelationCallerGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims)
+    (relation : V5RelationCallerGenerated.v5_cu_probe.PreparedRelation)
+    (point : Array CallerQM31 10#usize)
+    (denseScale : CallerQM31)
+    (kappaCanonical :
+      AspisV5RelationGeneratedFieldProjection.CanonicalQM31 kappa)
+    (success :
+      V5RelationCallerGenerated.v5_cu_probe.prepare_relation_base_with_kappa_prepared
+          parsed
+          V5RelationCallerGenerated.v5_cu_probe.RelationVariant.FourClaimsCompact
+          kappa inactiveClaim preparedClaims =
+        .ok (.Ok (relation, point, denseScale))) :
+    AspisV5RelationGeneratedFieldProjection.toMaintainedExact denseScale =
+      AspisV5RelationGeneratedFieldProjection.toMaintainedExact kappa ^ 3 := by
+  unfold
+    V5RelationCallerGenerated.v5_cu_probe.prepare_relation_base_with_kappa_prepared
+    at success
+  generalize sourceRunEquation :
+      V5RelationPrepareGenerated.v5_cu_probe.prepare_relation_base_with_kappa_prepared_for_extraction
+        _ _ _ _ = sourceResult at success
+  cases sourceResult with
+  | fail error => simp [sourceRunEquation] at success
+  | div => simp [sourceRunEquation] at success
+  | ok sourceResult =>
+    simp only [sourceRunEquation, bind_tc_ok] at success
+    cases sourceResult with
+    | Err error => simp at success
+    | Ok sourceTriple =>
+      rcases sourceTriple with ⟨sourceRelation, sourcePoint, sourceScale⟩
+      have sourceKappaCanonical :
+          PrepareCanonicalQM31 (callerToPrepareQM31 kappa) :=
+        (callerToPrepare_canonical_iff kappa).2 kappaCanonical
+      change
+        V5RelationPrepareGenerated.v5_cu_probe.prepare_relation_base_with_kappa_prepared_for_extraction
+            _ (callerToPrepareQM31 kappa)
+            (callerToPrepareQM31 inactiveClaim)
+            (callerToPrepareClaims preparedClaims) =
+          .ok (.Ok (sourceRelation, sourcePoint, sourceScale))
+        at sourceRunEquation
+      have sourceScaleExact := prepare_success_dense_scale_exact _
+        (callerToPrepareQM31 kappa) (callerToPrepareQM31 inactiveClaim)
+        (callerToPrepareClaims preparedClaims) sourceRelation sourcePoint
+        sourceScale sourceKappaCanonical sourceRunEquation
+      simp only at success
+      have tripleEquality := core.result.Result.Ok.inj (Result.ok.inj success)
+      have scaleEquality := congrArg (fun triple => triple.2.2) tripleEquality
+      change prepareToCallerQM31 sourceScale = denseScale at scaleEquality
+      rw [← scaleEquality]
+      exact sourceScaleExact
+
 #print axioms prepare_qm31_mul_success_canonical
 #print axioms prepare_qm31_square_success_canonical
 #print axioms prepare_qm31_add_success_canonical
 #print axioms prepare_success_relation_value_canonical
 #print axioms prepare_success_dense_scale_canonical
+#print axioms prepare_success_dense_scale_exact
 #print axioms caller_prepare_success_relation_value_canonical
 #print axioms caller_prepare_success_dense_scale_canonical
+#print axioms caller_prepare_success_dense_scale_exact
 
 end AspisV5RelationPrepareCanonicalProof

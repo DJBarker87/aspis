@@ -182,6 +182,37 @@ theorem accepted_snapshot_dense_scale_is_canonical
         prefixCanonical.2.2)
       snapshot.relationTrace.calls.prepareSuccess
 
+/-- The accepted compact constructor scale is not merely canonical: its
+maintained-field value is exactly the cube of the accepted kappa challenge. -/
+theorem accepted_snapshot_dense_scale_is_kappa_cube
+    {accountData : Slice Std.U8}
+    {parsed : SnapshotEntryParsed}
+    {liveStatement : SnapshotEntryStatement}
+    {statementDigest : Array Std.U8 32#usize}
+    {acceptedValue : SnapshotEntryQM31}
+    (snapshot : AcceptedSameRunRelationFriSnapshot accountData parsed
+      liveStatement statementDigest acceptedValue) :
+    AspisV5RelationGeneratedFieldProjection.toMaintainedExact
+        snapshot.relationTrace.calls.denseScale =
+      AspisV5RelationGeneratedFieldProjection.toMaintainedExact
+          (qm31ToCaller snapshot.verifiedPrefix.kappa) ^ 3 := by
+  have prefixCanonical :=
+    AspisV5AcceptedPrefixCanonical.accepted_prefix_gamma_and_inactive_canonical
+      parsed liveStatement statementDigest
+      V5AcceptedEntryGenerated.verify.sbf_hashv snapshot.verifiedPrefix
+      snapshot.prefixTranscript snapshot.evidence.compositeCalls.prefixSuccess
+  exact
+    AspisV5RelationPrepareCanonicalProof.caller_prepare_success_dense_scale_exact
+      (parsedToCaller parsed) (qm31ToCaller snapshot.verifiedPrefix.kappa)
+      (qm31ToCaller snapshot.verifiedPrefix.inactive_claim)
+      (preparedClaimsToCaller snapshot.preparedClaims)
+      snapshot.relationTrace.calls.relation
+      snapshot.relationTrace.calls.ignoredAlphas
+      snapshot.relationTrace.calls.denseScale
+      (entry_canonical_to_relation_caller snapshot.verifiedPrefix.kappa
+        prefixCanonical.2.2)
+      snapshot.relationTrace.calls.prepareSuccess
+
 /-- The initial relation value in one accepted same-run snapshot is
 canonical.  Its kappa and inactive claim come from the exact accepted prefix
 sampler/decoder, and its four claims come from the exact accepted preparation
@@ -310,6 +341,7 @@ theorem accepted_snapshot_runs_source_relation_verifier
 #print axioms accepted_snapshot_relation_alphas_are_canonical
 #print axioms accepted_snapshot_round_challenges_are_canonical
 #print axioms accepted_snapshot_dense_scale_is_canonical
+#print axioms accepted_snapshot_dense_scale_is_kappa_cube
 #print axioms accepted_snapshot_initial_relation_is_canonical
 #print axioms accepted_snapshot_runs_source_relation_verifier
 
