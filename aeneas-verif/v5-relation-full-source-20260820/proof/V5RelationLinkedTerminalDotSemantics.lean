@@ -29,6 +29,8 @@ abbrev ExactQM31 := AspisV5ComponentCQM31TowerExact.QM31Exact
 
 deriving instance Inhabited for V5RelationLinkedGenerated.aspis_core.field.CM31
 deriving instance Inhabited for V5RelationLinkedGenerated.aspis_core.field.QM31
+deriving instance Inhabited for
+  V5RelationLinkedGenerated.aspis_core.sumcheck.WeightComponent
 
 def CanonicalList (values : List RawQM31) : Prop :=
   ∀ index, index < values.length → CanonicalQM31 values[index]!
@@ -831,10 +833,258 @@ theorem releasedComponentBodyExact
   | Grouped128x16 rowGroups groupValues groupCount =>
       simp [ReleasedTerminalComponent] at hcomponent
 
+/-! ## Complete direct component iterator -/
+
+def terminalIteratorContribution
+    (iter : core.slice.iter.Iter Component) (values : Slice RawQM31) :
+    ExactQM31 :=
+  ∑ index ∈ Finset.Ico iter.i iter.slice.val.length,
+    terminalComponentContribution iter.slice.val[index]! values
+
+private theorem iteratorNextSome
+    (iter : core.slice.iter.Iter Component)
+    (hactive : iter.i < iter.slice.val.length) :
+    core.slice.iter.IteratorSliceIter.next iter =
+      ok (some iter.slice.val[iter.i]!,
+        ({ slice := iter.slice, i := iter.i + 1 } :
+          core.slice.iter.Iter Component)) := by
+  unfold core.slice.iter.IteratorSliceIter.next
+  rw [dif_pos (by simpa [Slice.len, Slice.length] using hactive)]
+  simp only
+  apply congrArg (fun value : Component =>
+    (Result.ok (some value,
+      ({ slice := iter.slice, i := iter.i + 1 } :
+        core.slice.iter.Iter Component)) :
+      Result (Option Component × core.slice.iter.Iter Component)))
+  exact (Slice.getElem_Nat_eq iter.slice iter.i hactive).trans
+    (List.Inhabited_getElem_eq_getElem! _ _ hactive)
+
+private theorem iteratorNextNone
+    (iter : core.slice.iter.Iter Component)
+    (hdone : iter.i = iter.slice.val.length) :
+    core.slice.iter.IteratorSliceIter.next iter = ok (none, iter) := by
+  rcases iter with ⟨slice, index⟩
+  simp only at hdone ⊢
+  subst index
+  simp [core.slice.iter.IteratorSliceIter.next, Slice.len, Slice.length]
+
+/-- Exact semantics of the complete extracted fast-path iterator, from any
+in-bounds cursor.  This is constructive: under the released component-shape
+invariant the extracted loop is proved to return, rather than merely being
+classified after a successful call. -/
+theorem releasedDirectDotLoopExact
+    (iter : core.slice.iter.Iter Component)
+    (values : Slice RawQM31) (total : RawQM31)
+    (hcursor : iter.i ≤ iter.slice.val.length)
+    (hcomponents : ∀ index, index < iter.slice.val.length →
+      ReleasedTerminalComponent iter.slice.val[index]!)
+    (hlen : values.val.length = 4)
+    (hvalues : CanonicalList values.val)
+    (htotal : CanonicalQM31 total) :
+    ∃ out,
+      V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.dot_loop0
+          iter values total = ok out ∧
+      CanonicalQM31 out ∧
+      toMaintainedExact out = toMaintainedExact total +
+        terminalIteratorContribution iter values := by
+  unfold
+    V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.dot_loop0
+  by_cases hactive : iter.i < iter.slice.val.length
+  · let component := iter.slice.val[iter.i]!
+    let nextIter : core.slice.iter.Iter Component :=
+      { slice := iter.slice, i := iter.i + 1 }
+    have nextRun : core.slice.iter.IteratorSliceIter.next iter =
+        ok (some component, nextIter) := by
+      simpa [component, nextIter] using iteratorNextSome iter hactive
+    have hcomponent : ReleasedTerminalComponent component :=
+      hcomponents iter.i hactive
+    obtain ⟨nextTotal, bodyRun, hNextTotal, eNextTotal⟩ :=
+      releasedComponentBodyExact iter nextIter values total component nextRun
+        hlen hvalues htotal hcomponent
+    have nextCursor : nextIter.i ≤ nextIter.slice.val.length := by
+      simp only [nextIter]
+      omega
+    have nextComponents : ∀ index, index < nextIter.slice.val.length →
+        ReleasedTerminalComponent nextIter.slice.val[index]! := by
+      intro index indexBound
+      simpa [nextIter] using hcomponents index (by simpa [nextIter] using indexBound)
+    obtain ⟨out, nextLoopRun, hOut, eOut⟩ :=
+      releasedDirectDotLoopExact nextIter values nextTotal nextCursor
+        nextComponents hlen hvalues hNextTotal
+    have nextLoopRun' :
+        loop
+            (fun state =>
+              V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.dot_loop0.body
+                values state.1 state.2)
+            (nextIter, nextTotal) = ok out := by
+      simpa only [
+        V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.dot_loop0]
+        using nextLoopRun
+    rw [loop.eq_1]
+    simp only [Prod.fst, Prod.snd]
+    rw [bodyRun]
+    simp only [bind_tc_ok]
+    rw [nextLoopRun']
+    refine ⟨out, rfl, hOut, ?_⟩
+    rw [eOut, eNextTotal]
+    let summand := fun index : Nat =>
+      terminalComponentContribution iter.slice.val[index]! values
+    have split := Finset.sum_Ico_consecutive summand
+      (Nat.le_succ iter.i)
+      (show iter.i + 1 ≤ iter.slice.val.length by omega)
+    have singleton :
+        ∑ index ∈ Finset.Ico iter.i (iter.i + 1), summand index =
+          summand iter.i := by
+      rw [Finset.sum_Ico_succ_top (Nat.le_refl iter.i)]
+      simp
+    simp only [terminalIteratorContribution, nextIter, component, summand]
+    rw [← split, singleton]
+    ring
+  · have doneIndex : iter.i = iter.slice.val.length := by omega
+    have nextRun := iteratorNextNone iter doneIndex
+    have bodyRun :
+        V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.dot_loop0.body
+            values iter total = ok (ControlFlow.done total) := by
+      unfold
+        V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.dot_loop0.body
+      rw [nextRun]
+      rfl
+    rw [loop.eq_1]
+    simp only [Prod.fst, Prod.snd]
+    rw [bodyRun]
+    refine ⟨total, rfl, htotal, ?_⟩
+    change toMaintainedExact total = toMaintainedExact total +
+      ∑ index ∈ Finset.Ico iter.i iter.slice.val.length,
+        terminalComponentContribution iter.slice.val[index]! values
+    rw [doneIndex]
+    simp
+termination_by iter.slice.val.length - iter.i
+decreasing_by
+  omega
+
+/-! ## Public released terminal dot -/
+
+abbrev RawWeights :=
+  V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator
+
+def terminalAccumulatorContribution
+    (weights : RawWeights) (values : Slice RawQM31) : ExactQM31 :=
+  ∑ index ∈ Finset.range weights.components.val.length,
+    terminalComponentContribution weights.components.val[index]! values
+
+def terminalAccumulatorWeights
+    (weights : RawWeights) : Fin 4 → ExactQM31 :=
+  fun coordinate =>
+    ∑ index ∈ Finset.range weights.components.val.length,
+      terminalComponentWeights weights.components.val[index]! coordinate
+
+/-- The exact extracted public `WeightAccumulator.dot` call at the released
+terminal shape returns the sum of the exact contributions of every stored
+component.  The theorem also proves successful execution and a canonical raw
+field result. -/
+theorem releasedTerminalDotExact
+    (weights : RawWeights) (values : Array RawQM31 4#usize)
+    (logLength : weights.log_len = 2#u32)
+    (hcomponents : ∀ index, index < weights.components.val.length →
+      ReleasedTerminalComponent weights.components.val[index]!)
+    (hvalues : ∀ index, index < 4 →
+      CanonicalQM31 values.val[index]!) :
+    ∃ out,
+      V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.dot
+          weights (Array.to_slice values) = ok out ∧
+      CanonicalQM31 out ∧
+      toMaintainedExact out =
+        terminalAccumulatorContribution weights (Array.to_slice values) := by
+  let valueSlice := Array.to_slice values
+  let iter : core.slice.iter.Iter Component :=
+    { slice := ⟨weights.components.val, weights.components.property⟩, i := 0 }
+  have valueLength : valueSlice.val.length = 4 := by
+    simpa [valueSlice, Array.to_slice] using values.property
+  have valueCanonical : CanonicalList valueSlice.val := by
+    intro index indexBound
+    apply hvalues index
+    omega
+  have iterComponents : ∀ index, index < iter.slice.val.length →
+      ReleasedTerminalComponent iter.slice.val[index]! := by
+    intro index indexBound
+    apply hcomponents index
+    simpa [iter] using indexBound
+  obtain ⟨out, loopRun, hOut, eOut⟩ :=
+    releasedDirectDotLoopExact iter valueSlice
+      V5RelationLinkedGenerated.aspis_core.field.QM31.ZERO
+      (by simp [iter]) iterComponents valueLength valueCanonical zeroCanonical
+  refine ⟨out, ?_, hOut, ?_⟩
+  · have valueCount : Slice.len (Array.to_slice values) = 4#usize := by
+      apply UScalar.eq_of_val_eq
+      simp [Slice.len, Array.to_slice, values.property]
+    unfold
+      V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.dot
+    rw [logLength]
+    simp only [if_true]
+    rw [valueCount]
+    simp only [if_true]
+    unfold
+      SharedAVec.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_iter
+    simp only [bind_tc_ok]
+    simpa [iter, valueSlice] using loopRun
+  · rw [eOut, maintainedZeroExact]
+    change 0 + terminalIteratorContribution iter valueSlice =
+      terminalAccumulatorContribution weights valueSlice
+    simp [terminalIteratorContribution, terminalAccumulatorContribution, iter]
+
+/-- Summing the component dots is the same as first summing their four
+weights coordinatewise and then taking one four-entry dot. -/
+theorem terminalAccumulatorContribution_eq_candidateClaim
+    (weights : RawWeights) (values : Slice RawQM31) :
+    terminalAccumulatorContribution weights values =
+      AspisV5FriRelationCandidateBridge.candidateClaim
+        (terminalAccumulatorWeights weights) (terminalValues values) := by
+  unfold terminalAccumulatorContribution terminalComponentContribution
+    terminalAccumulatorWeights terminalValues
+    AspisV5FriRelationCandidateBridge.candidateClaim
+  let components := weights.components.val
+  change
+    (∑ index ∈ Finset.range components.length,
+      ∑ coordinate : Fin 4,
+        terminalValues values coordinate *
+          terminalComponentWeights components[index]! coordinate) =
+    ∑ coordinate : Fin 4,
+      terminalValues values coordinate *
+        (∑ index ∈ Finset.range components.length,
+          terminalComponentWeights components[index]! coordinate)
+  simp_rw [Finset.mul_sum]
+  rw [Finset.sum_comm]
+
+/-- Release-facing form: the extracted terminal call returns exactly the
+candidate claim for the accumulator's combined four weights. -/
+theorem releasedTerminalDotCandidateExact
+    (weights : RawWeights) (values : Array RawQM31 4#usize)
+    (logLength : weights.log_len = 2#u32)
+    (hcomponents : ∀ index, index < weights.components.val.length →
+      ReleasedTerminalComponent weights.components.val[index]!)
+    (hvalues : ∀ index, index < 4 →
+      CanonicalQM31 values.val[index]!) :
+    ∃ out,
+      V5RelationLinkedGenerated.aspis_core.sumcheck.WeightAccumulator.dot
+          weights (Array.to_slice values) = ok out ∧
+      CanonicalQM31 out ∧
+      toMaintainedExact out =
+        AspisV5FriRelationCandidateBridge.candidateClaim
+          (terminalAccumulatorWeights weights)
+          (terminalValues (Array.to_slice values)) := by
+  obtain ⟨out, run, canonical, exact⟩ :=
+    releasedTerminalDotExact weights values logLength hcomponents hvalues
+  exact ⟨out, run, canonical,
+    exact.trans (terminalAccumulatorContribution_eq_candidateClaim weights
+      (Array.to_slice values))⟩
+
 #print axioms denseDotLoopExact
 #print axioms groupedDotLoopExact
 #print axioms multilinearBodyExact
 #print axioms tensorBodyExact
 #print axioms releasedComponentBodyExact
+#print axioms releasedDirectDotLoopExact
+#print axioms releasedTerminalDotExact
+#print axioms releasedTerminalDotCandidateExact
 
 end AspisV5RelationLinkedTerminalDotSemantics
