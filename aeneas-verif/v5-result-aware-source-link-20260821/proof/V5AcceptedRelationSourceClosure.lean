@@ -6,6 +6,7 @@ import V5AcceptedPreparedClaimsCanonical
 import V5RelationPrepareCanonicalProof
 import V5RelationPrepareLogLenProof
 import V5RelationTerminalDotCanonical
+import V5AcceptedCompactFoldExactBridge
 
 /-!
 # Closing the accepted relation execution against the maintained verifier
@@ -296,6 +297,50 @@ theorem accepted_snapshot_final_coefficients_are_canonical
   rw [mappedEntry]
   exact callerCanonical
 
+/-- The compact terminal contribution computed inside one accepted deployed
+relation execution is exactly the maintained optimized compact formula over
+the ten accepted transcript coordinates, `kappa³` scale value, four accepted
+fold challenges, and four decoded final coefficients. -/
+theorem accepted_snapshot_compact_terminal_exact
+    {accountData : Slice Std.U8}
+    {parsed : SnapshotEntryParsed}
+    {liveStatement : SnapshotEntryStatement}
+    {statementDigest : Array Std.U8 32#usize}
+    {acceptedValue : SnapshotEntryQM31}
+    (snapshot : AcceptedSameRunRelationFriSnapshot accountData parsed
+      liveStatement statementDigest acceptedValue) :
+    AspisV5RelationGeneratedFieldProjection.CanonicalQM31
+        snapshot.relationTrace.additiveDot ∧
+      AspisV5RelationGeneratedFieldProjection.toMaintainedExact
+          snapshot.relationTrace.additiveDot =
+        AspisV5CompactTerminalOptimized.optimizedCompactFinalDot
+          (fun index =>
+            AspisV5RelationGeneratedFieldProjection.toMaintainedExact
+              (qm31ArrayToCaller
+                snapshot.verifiedPrefix.round_challenges).val[index.val]!)
+          (AspisV5RelationGeneratedFieldProjection.toMaintainedExact
+            snapshot.relationTrace.calls.denseScale)
+          (fun index =>
+            AspisV5RelationGeneratedFieldProjection.toMaintainedExact
+              (acceptedAlphaAt (qm31ArrayToCaller snapshot.alphas) index))
+          (fun index =>
+            AspisV5RelationGeneratedFieldProjection.toMaintainedExact
+              snapshot.relationTrace.finalCoefficients.val[index.val]!) := by
+  apply
+    AspisV5AcceptedCompactExecutionExact.accepted_trace_compact_terminal_exact
+      snapshot.relationTrace
+      (AspisV5AcceptedCompactFoldExactBridge.accepted_trace_compact_fold_source_equality
+        snapshot.relationTrace)
+  · intro index
+    unfold AspisV5CompactCallerWrapperExact.CallerCanonical
+    simpa [AspisV5CompactCallerWrapperExact.callerPointAt] using
+      accepted_snapshot_round_challenges_are_canonical snapshot index
+  · exact accepted_snapshot_dense_scale_is_canonical snapshot
+  · exact accepted_snapshot_relation_alphas_are_canonical snapshot
+  · intro index
+    exact accepted_snapshot_final_coefficients_are_canonical snapshot
+      index.val index.isLt
+
 /-- One accepted production snapshot now constructs the concrete maintained
 source relation input and proves that the maintained four-round verifier
 accepts it with the exact decoded final coefficients and terminal claim. -/
@@ -343,6 +388,7 @@ theorem accepted_snapshot_runs_source_relation_verifier
 #print axioms accepted_snapshot_dense_scale_is_canonical
 #print axioms accepted_snapshot_dense_scale_is_kappa_cube
 #print axioms accepted_snapshot_initial_relation_is_canonical
+#print axioms accepted_snapshot_compact_terminal_exact
 #print axioms accepted_snapshot_runs_source_relation_verifier
 
 end AspisV5AcceptedRelationSourceClosure
