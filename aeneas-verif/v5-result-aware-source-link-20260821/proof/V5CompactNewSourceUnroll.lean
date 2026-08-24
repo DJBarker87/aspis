@@ -350,26 +350,91 @@ private theorem ten_wrapping_sub_one :
   cases h : System.Platform.numBits_eq <;>
     simp_all [UScalar.size, UScalarTy.numBits, Usize.size, Usize.numBits]
 
-set_option maxHeartbeats 4000000 in
+private theorem zero_wrapping_add_one :
+    Std.Usize.wrapping_add 0#usize 1#usize = 1#usize := by
+  apply UScalar.eq_of_val_eq
+  simp only [Usize.wrapping_add_val_eq, Usize.ofNatCore_val_eq]
+  cases h : System.Platform.numBits_eq <;>
+    simp_all [UScalar.size, UScalarTy.numBits, Usize.size, Usize.numBits]
+
+private theorem one_wrapping_add_one :
+    Std.Usize.wrapping_add 1#usize 1#usize = 2#usize := by
+  apply UScalar.eq_of_val_eq
+  simp only [Usize.wrapping_add_val_eq, Usize.ofNatCore_val_eq]
+  cases h : System.Platform.numBits_eq <;>
+    simp_all [UScalar.size, UScalarTy.numBits, Usize.size, Usize.numBits]
+
+private theorem two_wrapping_add_one :
+    Std.Usize.wrapping_add 2#usize 1#usize = 3#usize := by
+  apply UScalar.eq_of_val_eq
+  simp only [Usize.wrapping_add_val_eq, Usize.ofNatCore_val_eq]
+  cases h : System.Platform.numBits_eq <;>
+    simp_all [UScalar.size, UScalarTy.numBits, Usize.size, Usize.numBits]
+
+private theorem three_wrapping_add_one :
+    Std.Usize.wrapping_add 3#usize 1#usize = 4#usize := by
+  apply UScalar.eq_of_val_eq
+  simp only [Usize.wrapping_add_val_eq, Usize.ofNatCore_val_eq]
+  cases h : System.Platform.numBits_eq <;>
+    simp_all [UScalar.size, UScalarTy.numBits, Usize.size, Usize.numBits]
+
+private theorem four_wrapping_add_one :
+    Std.Usize.wrapping_add 4#usize 1#usize = 5#usize := by
+  apply UScalar.eq_of_val_eq
+  simp only [Usize.wrapping_add_val_eq, Usize.ofNatCore_val_eq]
+  cases h : System.Platform.numBits_eq <;>
+    simp_all [UScalar.size, UScalarTy.numBits, Usize.size, Usize.numBits]
+
+private theorem five_wrapping_add_one :
+    Std.Usize.wrapping_add 5#usize 1#usize = 6#usize := by
+  apply UScalar.eq_of_val_eq
+  simp only [Usize.wrapping_add_val_eq, Usize.ofNatCore_val_eq]
+  cases h : System.Platform.numBits_eq <;>
+    simp_all [UScalar.size, UScalarTy.numBits, Usize.size, Usize.numBits]
+
+private theorem six_wrapping_add_one :
+    Std.Usize.wrapping_add 6#usize 1#usize = 7#usize := by
+  apply UScalar.eq_of_val_eq
+  simp only [Usize.wrapping_add_val_eq, Usize.ofNatCore_val_eq]
+  cases h : System.Platform.numBits_eq <;>
+    simp_all [UScalar.size, UScalarTy.numBits, Usize.size, Usize.numBits]
+
+private theorem seven_wrapping_add_one :
+    Std.Usize.wrapping_add 7#usize 1#usize = 8#usize := by
+  apply UScalar.eq_of_val_eq
+  simp only [Usize.wrapping_add_val_eq, Usize.ofNatCore_val_eq]
+  cases h : System.Platform.numBits_eq <;>
+    simp_all [UScalar.size, UScalarTy.numBits, Usize.size, Usize.numBits]
+
+private theorem eight_wrapping_add_one :
+    Std.Usize.wrapping_add 8#usize 1#usize = 9#usize := by
+  apply UScalar.eq_of_val_eq
+  simp only [Usize.wrapping_add_val_eq, Usize.ofNatCore_val_eq]
+  cases h : System.Platform.numBits_eq <;>
+    simp_all [UScalar.size, UScalarTy.numBits, Usize.size, Usize.numBits]
+
+set_option maxHeartbeats 1000000 in
 set_option maxRecDepth 12000 in
 theorem new_eq_unrolled (point : Array Raw 10#usize) (scale : Raw) :
     v5_cu_probe.CompactBTerminalWeights.new point scale =
       unrolledNew point scale := by
-  cases platformBits : System.Platform.numBits_eq <;>
-  simp_all (config := { maxSteps := 400000 })
-    [v5_cu_probe.CompactBTerminalWeights.new,
-      generated_loop_eq_unrolledScaleLoop, unrolledScaleLoop, scaleStep,
-      v5_cu_probe.CompactBTerminalWeights.new.closure.Insts.CoreOpsFunctionFnMutTupleUsizeCompactBTerminalBlock.call_mut,
-      core.array.from_fn,
-      core.iter.traits.iterator.Iterator.rev.trait_default,
-      core.iter.traits.iterator.Iterator.rev.default,
-      Aeneas.Std.lift,
-      ten_wrapping_sub_one,
-      Std.Usize.wrapping_add, UScalar.wrapping_add,
-      Array.update, Array.index_usize, Array.repeat,
-      platformBits,
-      unrolledNew, Array.length_eq,
-      v5_cu_probe.V5_CU_PROBE_B_STRUCTURED_BLOCKS,
+  simp only [v5_cu_probe.CompactBTerminalWeights.new,
+    v5_cu_probe.V5_CU_PROBE_B_STRUCTURED_BLOCKS,
+    ten_wrapping_sub_one, Aeneas.Std.lift, bind_tc_ok,
+    core.iter.traits.iterator.Iterator.rev.trait_default,
+    core.iter.traits.iterator.Iterator.rev.default]
+  simp only [generated_loop_eq_unrolledScaleLoop]
+  unfold unrolledScaleLoop scaleStep
+  rw [eight_wrapping_add_one, seven_wrapping_add_one,
+    six_wrapping_add_one, five_wrapping_add_one,
+    four_wrapping_add_one, three_wrapping_add_one,
+    two_wrapping_add_one, one_wrapping_add_one,
+    zero_wrapping_add_one]
+  simp only [Aeneas.Std.lift, bind_tc_ok]
+  simp (config := { maxSteps := 400000 })
+    [v5_cu_probe.CompactBTerminalWeights.new.closure.Insts.CoreOpsFunctionFnMutTupleUsizeCompactBTerminalBlock.call_mut,
+      core.array.from_fn, Array.update, Array.index_usize, Array.repeat,
+      unrolledNew, Array.length_eq, Aeneas.Std.Array.make,
       v5_cu_probe.V5_CU_PROBE_B_BLOCK_SELECTORS]
 
 #print axioms new_eq_unrolled
