@@ -210,3 +210,5 @@ import AspisFormal.V6EncoderDistance
 import AspisFormal.V6PublishedTheoremInterfaces
 import AspisFormal.V6SecurityLedger
 import AspisFormal.V6RelationFold
+import AspisFormal.V6Width29CorrelatedAgreement
+import AspisFormal.V6FirstCompactSampler

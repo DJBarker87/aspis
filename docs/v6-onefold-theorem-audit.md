@@ -4,7 +4,7 @@ This note records the first check of the proposed B10 V6 profile. The proposal
 is promising enough to prototype, but its `101.51`-bit result is not yet a
 proved security claim.
 
-The 30,685-byte working profile is the released-compatible PCS width:
+The working V6 profile is now the selected-hiding width:
 
 | Parameter | Value |
 | --- | ---: |
@@ -17,17 +17,22 @@ The 30,685-byte working profile is the released-compatible PCS width:
 | Binary frontier limit | 209 nodes per tree |
 | Selectable query streams | 3 |
 | Work bits | batch 34, fold 31, final 34 |
-| PCS columns | 16 M31 C1 + 3 QM31 C2 |
-| Screened proof body | 30,685 bytes |
+| PCS columns | 26 M31 C1 + 3 QM31 C2 |
+| Screened proof body | 33,785 bytes |
+| Hard proof-body limit | 40 KiB |
+| Optimization target | as close to 30 KiB as practical |
 
-This width distinction matters. The selected hiding algebra currently has ten
-additional mask-only C1 columns, for 26 C1 + 3 C2. It has not been integrated
-into the production PCS. At the same query count and frontier limit, that
-profile is 33,785 bytes, not 30,685 bytes, and does not fit below 30 KiB. It
-would require a frontier limit of at most 161; the research screen estimates
-that event to be far too rare. V6 therefore needs either a different hiding
-integration or another compression method before both claims can be made at
-once.
+The earlier 30,685-byte screen used the released-compatible 16+3 PCS width.
+That is retained only as a comparison point. V6 will use all ten additional
+mask-only C1 columns, giving 26+3 and a 33,785-byte body. This is 7,175 bytes
+below the 40-KiB hard limit and takes 36 uploads at 960 bytes. Compression
+toward 30 KiB is desirable but is not a viability requirement.
+
+At this width the two uncompressed codeword tables contain 152 bytes per
+evaluation point: 104 bytes for 26 M31 columns and 48 bytes for three QM31
+columns. The raw `2^20` tables therefore occupy 152 MiB before Merkle trees,
+scratch space, and masking material. The earlier 112-MiB estimate applied to
+16+3, not to the selected 26+3 profile.
 
 ## Results so far
 
@@ -53,9 +58,10 @@ proves the following exact facts:
   `9853 + 466q + 64f`; at `q=16` and `f=209` it gives 30,685 bytes, 35 bytes
   below 30 KiB, and 32 uploads at 960 bytes.
 - For the selected-hiding 26+3 width, Lean derives 670 fixed QM31 values and a
-  33,785-byte body at the same query/frontier settings. It also checks that
-  frontier 161 is the largest integer limit that keeps this width below
-  30 KiB.
+  33,785-byte body at the same query/frontier settings. It checks the exact
+  7,175-byte margin below 40 KiB and 36 uploads at 960 bytes. Frontier 161 is
+  the largest limit that would force the body below 30 KiB, but that is not the
+  selected protocol.
 - A deliberately over-split inventory has 23 possible post-commitment prover
   response boundaries. If each genuine BCS round maps to a distinct boundary,
   the round count is at most 23 and therefore at most 30.
@@ -77,23 +83,28 @@ at-most-1,024 initial overlap. From an ordinary natural-line evaluation
 identity, it derives the at-most-255 final overlap. What remains for the V6
 encoder is the concrete evaluation identity, not a separate distance claim.
 
+[`V6Width29CorrelatedAgreement.lean`](../AspisFormal/AspisFormal/V6Width29CorrelatedAgreement.lean)
+proves the finite root-counting argument for the selected 26+3 batch. A fixed
+nonzero 29-lane discrepancy is hidden by at most 28 nonzero challenges. The
+result permits the response strategy to choose a different nearby codeword
+for every challenge, so it does not introduce a decoder-list multiplier.
+
 [`V6PublishedTheoremInterfaces.lean`](../AspisFormal/AspisFormal/V6PublishedTheoremInterfaces.lean)
 pins the literature boundary to two exact predicates rather than a general
-claim that “FRI applies.” For the 19-column initial batch, the list expression
-is exactly 112 and the degree-18 challenge cap is 216,558,659,960,832. With
-34 work bits this conditional term is below `2^-110`. For the only fold, the
+claim that “FRI applies.” For the 29-column initial batch, the list expression
+is exactly 112 and the degree-28 challenge cap is 336,869,026,605,739. With
+34 work bits this conditional term is below `2^-109`, but not `2^-110`. For the only fold, the
 output list expression is below 113; the conservative degree-three challenge
 cap is 9,396,508,281,246, which is below `2^-111` after 31 work bits. Lean then
 connects each named literature predicate to the exact bad-challenge set used
 by the local extraction model.
 
 The companion Python screen used coefficient 28 for the initial batching
-term. The cited width-19 curve has degree 18, so that screen is conservative;
-the theorem-specific calculation above is slightly stronger.
+term. That is exactly the degree required by the selected 29-column profile.
 
 [`V6SecurityLedger.lean`](../AspisFormal/AspisFormal/V6SecurityLedger.lean)
 checks a conservative rounded budget. It removes the three FRI fold terms that
-no longer exist, uses `2^-110` for the initial batch, `2^-111` for the sole
+no longer exist, uses `2^-109` for the initial batch, `2^-111` for the sole
 fold, and `2^-109` for the compact-conditioned q16 miss, and provisionally
 retains the V5 bounds for the remaining relation and semantic checks. Under
 the named BCS conditions, the three-stream work-normalized core is at most
@@ -111,6 +122,26 @@ transcript remains implementation work.
 
 The axiom printout for these theorems contains only Lean/mathlib's standard
 logical foundations. There is no `sorry` in this module.
+
+### Implemented host/SBF-neutral slice
+
+[`v6_onefold.rs`](../crates/aspis-core/src/v6_onefold.rs) now fixes the exact
+26+3 grammar independently of any deployed instruction. It:
+
+- parses the variable-length two-frontier body and rejects trailing bytes;
+- rejects every non-canonical packed M31 limb and nonzero spare bit;
+- derives the binary frontier size for a sixteen-query schedule without heap
+  allocation;
+- returns only the first compact candidate, so a prover cannot skip an earlier
+  valid schedule; and
+- evaluates the disclosed 256-coefficient final polynomial directly from its
+  packed representation without materialising a 4-KiB QM31 vector.
+
+Targeted tests cover exact byte offsets and sizes, packed-bit boundaries,
+malformed lengths and field values, clustered and spread query schedules, the
+first-compact rule, and equality of the streaming evaluator with an independent
+in-place tensor contraction. This is working implementation code, but it is
+not yet the complete prover, transcript, Merkle verifier, or Solana entrypoint.
 
 ### Supported by the cited papers
 
@@ -143,7 +174,7 @@ screen.
 
 1. **Exact published-theorem application.** The paper's circle-code and
    correlated-agreement hypotheses must be matched to the V6 encoder,
-   19-column batch, domains, agreement predicates, and the one-fold failure
+   29-column batch, domains, agreement predicates, and the one-fold failure
    event. The list theorems no longer need opaque distance assumptions, but
    the eventual concrete encoder must be proved to have the circle and line
    evaluation identities used by the new distance module.
@@ -166,11 +197,10 @@ screen.
    24 candidate draws; those draws are not silently included in the BCS round
    count.
 
-5. **PCS/hiding profile integration.** The screened 30,685-byte body uses the
-   released-compatible 16+3 PCS width, whereas the selected hiding proof uses
-   26+3. V6 must either integrate hiding without carrying all ten extra C1
-   columns in the opened PCS records, or accept a larger proof, before it can
-   claim both the selected hiding result and the 30 KiB body.
+5. **PCS/hiding profile integration.** V6 is pinned to 26+3, so the PCS,
+   transcript, query openings, relation, terminal, and hiding proofs must all
+   use that same width. The 16+3 production-compatible path is not the V6
+   security profile.
 
 6. **Security ledger.** The V5 event list cannot simply be copied. Events for
    three removed FRI layers should disappear, the initial batch and sole fold
@@ -194,10 +224,11 @@ screen.
    do not exist yet. They will need the same Rust-to-Lean and reproducible-build
    treatment used for V5.
 
-9. **Compute and prover measurements.** The 30 KiB result is a byte count, not
-   a Solana compute result. The final-vector evaluations, relation reductions,
-   binary Merkle checks, packed decoding, prover memory, and grind time need a
-   host prototype before any deployment decision.
+9. **Compute and prover measurements.** The 33,785-byte result is a byte count,
+   not a Solana compute result. The final-vector evaluations, relation
+   reductions, binary Merkle checks, packed decoding, 152-MiB raw codeword
+   footprint, full prover peak memory, and grind time need direct measurement
+   before any deployment decision.
 
 ## Decision
 

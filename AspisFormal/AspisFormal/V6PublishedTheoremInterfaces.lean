@@ -1,4 +1,4 @@
-import AspisFormal.V5Width19CorrelatedAgreement
+import AspisFormal.V6Width29CorrelatedAgreement
 import AspisFormal.V5FriDegreeThreeCorrelatedAgreement
 import AspisFormal.V6EncoderDistance
 
@@ -10,9 +10,10 @@ proofs. It does something narrower and essential: states the exact predicates
 Aspis needs from them and checks all finite parameter substitutions around
 those predicates.
 
-For the initial 19-column batch, the scalar-power curve has degree 18,
-Guruswami--Sudan multiplicity three gives list expression 112, and the exact
-challenge cap is `216558659960832`.
+For the selected initial 29-column batch, the scalar-power curve has degree
+28. Guruswami--Sudan multiplicity three gives list expression 112. The
+published expression is `1010607079817216 / 3`, so the integer challenge cap
+is its ceiling, `336869026605739`.
 
 For the sole arity-four fold, the curve has degree three and the output-code
 list expression is below 113. Using 113 as an integer upper bound gives the
@@ -25,7 +26,7 @@ root-union arguments turn those caps into bad-challenge cardinality bounds.
 namespace AspisV6PublishedTheoremInterfaces
 
 open AspisSoundnessLedger
-open AspisV5Width19CorrelatedAgreement
+open AspisV6Width29CorrelatedAgreement
 open AspisV5FriDegreeThreeCorrelatedAgreement
 open AspisV6OneFoldParameterAudit
 
@@ -33,10 +34,10 @@ def initialAgreementThreshold : Nat := 38229
 def outputAgreementThreshold : Nat := 9557
 def initialListExpressionCap : Nat := 112
 def outputListExpressionCap : Nat := 113
-def initialBatchCurveDegree : Nat := 18
+def initialBatchCurveDegree : Nat := 28
 def foldCurveDegree : Nat := 3
 
-def initialBatchChallengeCap : Nat := 216558659960832
+def initialBatchChallengeCap : Nat := 336869026605739
 def foldChallengeCap : Nat := 9396508281246
 
 theorem exact_initial_list_expression :
@@ -48,12 +49,12 @@ theorem exact_initial_list_expression :
     norm_num]
   norm_num [initialListExpressionCap]
 
-theorem exact_initial_batch_challenge_cap :
+theorem initial_batch_expression_eq_cap_sub_one_third :
     (initialListExpressionCap : Real) *
         ((2 * (initialListExpressionCap : Real) ^ 4 / 3) *
           (1 / 1024) + 1) *
         initialBatchCurveDegree * 1048576 =
-      initialBatchChallengeCap := by
+      initialBatchChallengeCap - 1 / 3 := by
   norm_num [initialListExpressionCap, initialBatchCurveDegree,
     initialBatchChallengeCap]
 
@@ -84,11 +85,11 @@ theorem conservative_fold_challenge_cap :
         foldCurveDegree * 262144 = foldChallengeCap := by
   norm_num [outputListExpressionCap, foldCurveDegree, foldChallengeCap]
 
-/-- Exact Appendix-A.2 predicate needed for the B10 nineteen-column batch. -/
-def PublishedInitialWidth19CurveDecodability
+/-- Exact Appendix-A.2 predicate needed for the B10 26+3-column batch. -/
+def PublishedInitialWidth29CurveDecodability
     {K Message : Type*} [Field K] [Fintype K] [DecidableEq K]
     (encoder : Message → Fin 1048576 → K) : Prop :=
-  Width19CurveDecodable encoder initialAgreementThreshold
+  Width29CurveDecodable encoder initialAgreementThreshold
     initialBatchChallengeCap
 
 /-- Exact degree-three curve predicate needed for the sole V6 fold. -/
@@ -100,13 +101,13 @@ def PublishedOneFoldCurveDecodability
 theorem initial_bad_response_challenges_card_le
     {K Message : Type*} [Field K] [Fintype K] [DecidableEq K]
     (encoder : Message → Fin 1048576 → K)
-    (published : PublishedInitialWidth19CurveDecodability encoder)
-    (lanes : Fin 19 → Fin 1048576 → K)
-    (strategy : Width19ProximateStrategy K (Fin 1048576) Message) :
-    (width19GoodChallenges encoder initialAgreementThreshold lanes
-      (width19BadStrategy encoder initialAgreementThreshold lanes strategy)).card ≤
+    (published : PublishedInitialWidth29CurveDecodability encoder)
+    (lanes : Fin 29 → Fin 1048576 → K)
+    (strategy : Width29ProximateStrategy K (Fin 1048576) Message) :
+    (width29GoodChallenges encoder initialAgreementThreshold lanes
+      (width29BadStrategy encoder initialAgreementThreshold lanes strategy)).card ≤
         initialBatchChallengeCap := by
-  exact width19_bad_response_challenges_card_le
+  exact width29_bad_response_challenges_card_le
     encoder initialAgreementThreshold initialBatchChallengeCap published
     lanes strategy
 
@@ -123,12 +124,11 @@ theorem fold_bad_response_challenges_card_le
     encoder outputAgreementThreshold foldChallengeCap published lanes strategy
     hfalse
 
-/-- The exact degree-18 initial theorem, with 34 bits of authenticated work,
-is already below `2^-110`. The companion screen used coefficient 28 and is
-therefore conservative for this particular published interface. -/
+/-- The exact degree-28 initial theorem, with 34 bits of authenticated work,
+is below `2^-109` but not below `2^-110`. -/
 theorem conditional_initial_batch_probability_le :
     (initialBatchChallengeCap : Real) / (FIELD - 1) / 2 ^ 34 ≤
-      (1 : Real) / 2 ^ 110 := by
+      (1 : Real) / 2 ^ 109 := by
   norm_num [initialBatchChallengeCap, FIELD]
 
 /-- The integer-113 fold cap, with 31 bits of authenticated work, is below
@@ -141,7 +141,7 @@ theorem conditional_fold_probability_le :
 /-! ## Audit -/
 
 #print axioms exact_initial_list_expression
-#print axioms exact_initial_batch_challenge_cap
+#print axioms initial_batch_expression_eq_cap_sub_one_third
 #print axioms output_list_expression_lt_113
 #print axioms conservative_fold_challenge_cap
 #print axioms initial_bad_response_challenges_card_le

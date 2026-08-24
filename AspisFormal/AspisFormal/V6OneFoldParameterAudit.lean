@@ -20,10 +20,9 @@ The checked facts are:
   `255`, imply direct list caps `100` and `99` respectively;
 * the generic circle encoder/fold square really does specialize to
   `1024 -> 256` coefficients and `2^20 -> 2^18` symbols; and
-* the proposed byte formula gives `30685`, thirty-five bytes below `30 KiB`,
-  for the released-compatible `16 + 3` PCS width; and
-* the unintegrated selected-hiding `26 + 3` width gives `33785` bytes at the
-  same frontier cap and therefore does not fit below `30 KiB`.
+* the released-compatible `16 + 3` PCS width would give `30685` bytes; and
+* the selected V6 `26 + 3` width gives `33785` bytes at the same frontier cap,
+  below the 40-KiB hard limit but not below the 30-KiB optimization target.
 
 The published circle/RS decoding and correlated-agreement theorems, the
 one-round Fiat--Shamir/BCS reduction, and the exact production transcript are
@@ -246,6 +245,7 @@ def bytesPerQueryFor (profile : WireProfile) : Nat :=
     packedBytes (4 * profile.c2Columns * 4 * 31) + 32
 
 def maxProofBodyBytes : Nat := 30 * 1024
+def hardProofBodyBytes : Nat := 40 * 1024
 
 def proofBodyBytesFor (profile : WireProfile) : Nat :=
   fixedWireBytesFor profile + bytesPerQueryFor profile * profile.queries +
@@ -286,6 +286,18 @@ theorem selected_hiding_does_not_fit_30_kib :
   norm_num [proofBodyBytesFor, fixedWireBytesFor, bytesPerQueryFor,
     packedBytes, fixedQm31Count, selectedHidingWireProfile,
     maxProofBodyBytes]
+
+theorem selected_hiding_fits_40_kib :
+    proofBodyBytesFor selectedHidingWireProfile + 7175 =
+      hardProofBodyBytes := by
+  norm_num [proofBodyBytesFor, fixedWireBytesFor, bytesPerQueryFor,
+    packedBytes, fixedQm31Count, selectedHidingWireProfile,
+    hardProofBodyBytes]
+
+theorem selected_hiding_upload_count :
+    (proofBodyBytesFor selectedHidingWireProfile + 959) / 960 = 36 := by
+  norm_num [proofBodyBytesFor, fixedWireBytesFor, bytesPerQueryFor,
+    packedBytes, fixedQm31Count, selectedHidingWireProfile]
 
 def selectedHidingCompactWireProfile (frontier : Nat) : WireProfile where
   c1Columns := 26
@@ -426,6 +438,8 @@ structure PublishedOneFoldReduction (K : Type*) [Field K] where
 #print axioms one_circle_fold_ends_in_explicit_final256
 #print axioms released_compatible_body_margin
 #print axioms selected_hiding_does_not_fit_30_kib
+#print axioms selected_hiding_fits_40_kib
+#print axioms selected_hiding_upload_count
 #print axioms selected_hiding_largest_frontier_below_30_kib
 #print axioms genuine_round_count_le_30_of_boundary_embedding
 #print axioms screened_compact_probability_ge_three_eighths

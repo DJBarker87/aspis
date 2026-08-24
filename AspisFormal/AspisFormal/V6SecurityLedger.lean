@@ -10,7 +10,7 @@ must still be connected to the exact V6 event and transcript.
 
 The changed dominant terms are bounded by:
 
-* initial 19-column batch plus work: `2^-110`;
+* initial 29-column batch plus work: `2^-109`;
 * sole arity-four fold plus work: `2^-111`;
 * compact-conditioned q16 query miss plus work: `2^-109`.
 
@@ -34,7 +34,7 @@ open AspisWorkNormalizedEndpoint
 arithmetic. The one-OOD `2^-213` entry is conservative because V5's bound
 covered four layers. -/
 noncomputable def conditionalRoundUpper : Real :=
-  1 / 2 ^ 110 + 1 / 2 ^ 111 + 1 / 2 ^ 109 + 1 / 2 ^ 213
+  1 / 2 ^ 109 + 1 / 2 ^ 111 + 1 / 2 ^ 109 + 1 / 2 ^ 213
     + 1 / 2 ^ 119 + 1 / 2 ^ 119 + 1 / 2 ^ 119 + 1 / 2 ^ 119
     + 1 / 2 ^ 112 + 1 / 2 ^ 111 + 1 / 2 ^ 120
     + 1 / 2 ^ 123 + 1 / 2 ^ 123 + 1 / 2 ^ 115
