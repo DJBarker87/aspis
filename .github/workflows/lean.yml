@@ -14,11 +14,16 @@ jobs:
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up pinned OCaml for Aeneas
+        uses: ocaml/setup-ocaml@f92e0606b7ae4873dd1238465ea4bf6f8e40d85c # v3
+        with:
+          ocaml-compiler: "5.3.0"
+          opam-pin: false
       - name: Build and kernel-check the Lean formalization
         uses: leanprover/lean-action@38fbc41a8c28c4cbaec22d7f7de508ec2e7c0dd9 # v1.5.0
         with:
           lake-package-directory: "AspisFormal"
-      - name: Install accepted-path replay tools
+      - name: Install accepted-path replay search tool
         run: sudo apt-get update && sudo apt-get install -y ripgrep
       - name: Replay the accepted-path Rust-to-Lean bridge
         run: aeneas-verif/scripts/replay-accepted-path-lean432.sh

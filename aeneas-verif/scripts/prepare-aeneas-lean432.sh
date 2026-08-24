@@ -21,6 +21,8 @@ for command_name in git jq lake opam; do
   fi
 done
 
+readonly opam_switch="${ASPIS_AENEAS_OPAM_SWITCH:-$(opam switch show)}"
+
 sha256_of() {
   if command -v sha256sum >/dev/null 2>&1; then
     sha256sum "$1" | awk '{print $1}'
@@ -87,7 +89,6 @@ fi
   fi
 )
 
-readonly opam_switch="${ASPIS_AENEAS_OPAM_SWITCH:-5.3.0}"
 (
   cd "$checkout/src"
   opam exec --switch="$opam_switch" -- dune build main.exe
