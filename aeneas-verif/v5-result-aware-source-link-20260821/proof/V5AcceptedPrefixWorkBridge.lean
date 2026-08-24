@@ -35,7 +35,12 @@ theorem accepted_prefix_has_batch_gamma_and_inactive_decode
       V5AcceptedEntryGenerated.v5_cu_probe.verify_v5_wire_prefix
           parsed liveStatement statementDigest hash =
         .ok (.Ok (verified, returnedTranscript))) :
-    ∃ beforeBatch afterBatch afterGamma inactiveOffset beforeKappa afterKappa,
+    ∃ beforeSemantic afterSemantic semanticProof initialClaim semanticVerification
+        beforeBatch afterBatch afterGamma inactiveOffset beforeKappa afterKappa,
+      V5AcceptedEntryGenerated.aspis_core.state_only_sumcheck.verify_state_only_sumcheck_streaming
+          beforeSemantic semanticProof initialClaim =
+        .ok (.Ok semanticVerification, afterSemantic) ∧
+      verified.round_challenges = semanticVerification.point ∧
       V5AcceptedEntryGenerated.v5_cu_probe.check_and_absorb_real_v5_batch_nonce
           beforeBatch parsed.v5_batch_nonce =
         .ok (.Ok (), afterBatch) ∧
@@ -178,11 +183,11 @@ theorem accepted_prefix_has_batch_gamma_and_inactive_decode
                   | Err error =>
                     simp [core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
                       core.convert.FromSame, core.convert.FromSame.from] at success
-                | Continue _ =>
+                | Continue initialClaim =>
                   simp only at success
                   rw [bind_eq_ok_iff] at success
                   obtain ⟨maskPair, _, success⟩ := success
-                  rcases maskPair with ⟨_, _⟩
+                  rcases maskPair with ⟨_, beforeSemantic⟩
                   rw [bind_eq_ok_iff] at success
                   obtain ⟨_, _, success⟩ := success
                   rw [bind_eq_ok_iff] at success
@@ -201,14 +206,14 @@ theorem accepted_prefix_has_batch_gamma_and_inactive_decode
                     rw [bind_eq_ok_iff] at success
                     obtain ⟨_, _, success⟩ := success
                     rw [bind_eq_ok_iff] at success
-                    obtain ⟨_, _, success⟩ := success
+                    obtain ⟨semanticProof, _, success⟩ := success
                     rw [bind_eq_ok_iff] at success
-                    obtain ⟨semanticPair, _, success⟩ := success
-                    rcases semanticPair with ⟨_, _⟩
+                    obtain ⟨semanticPair, semanticSuccess, success⟩ := success
+                    rcases semanticPair with ⟨semanticResult, afterSemantic⟩
                     rw [bind_eq_ok_iff] at success
-                    obtain ⟨_, _, success⟩ := success
+                    obtain ⟨mappedSemantic, mappedSemanticSuccess, success⟩ := success
                     rw [bind_eq_ok_iff] at success
-                    obtain ⟨semanticFlow, _, success⟩ := success
+                    obtain ⟨semanticFlow, semanticBranchSuccess, success⟩ := success
                     cases semanticFlow with
                     | Break residual =>
                       cases residual with
@@ -216,7 +221,23 @@ theorem accepted_prefix_has_batch_gamma_and_inactive_decode
                       | Err error =>
                         simp [core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
                           core.convert.FromSame, core.convert.FromSame.from] at success
-                    | Continue _ =>
+                    | Continue semanticVerification =>
+                      have hmappedSemantic := branch_eq_ok_of_continue
+                        mappedSemantic semanticVerification semanticBranchSuccess
+                      rw [hmappedSemantic] at mappedSemanticSuccess
+                      have hsemanticResult :
+                          semanticResult = .Ok semanticVerification := by
+                        cases semanticResult with
+                        | Err error =>
+                          simp [V5AcceptedEntryGenerated.core.result.Result.map_err,
+                            V5AcceptedEntryGenerated.v5_cu_probe.verify_v5_wire_prefix.closure_4.Insts.CoreOpsFunctionFnOnceTupleStateOnlySumcheckVerifyErrorProgramError.call_once]
+                            at mappedSemanticSuccess
+                        | Ok actualSemantic =>
+                          simp [V5AcceptedEntryGenerated.core.result.Result.map_err]
+                            at mappedSemanticSuccess
+                          subst actualSemantic
+                          rfl
+                      rw [hsemanticResult] at semanticSuccess
                       simp only at success
                       rw [bind_eq_ok_iff] at success
                       obtain ⟨_, _, success⟩ := success
@@ -503,9 +524,21 @@ theorem accepted_prefix_has_batch_gamma_and_inactive_decode
                                                                     (fun output => output.fst.kappa)
                                                                     (core.result.Result.Ok.inj
                                                                       (Result.ok.inj success))).symm
+                                                                have hverifiedPoint :
+                                                                    verified.round_challenges =
+                                                                      semanticVerification.point := by
+                                                                  exact (congrArg
+                                                                    (fun output =>
+                                                                      output.fst.round_challenges)
+                                                                    (core.result.Result.Ok.inj
+                                                                      (Result.ok.inj success))).symm
                                                                 subst sampledGamma
-                                                                exact ⟨beforeBatch, afterBatch, afterGamma,
-                                                                  inactiveOffset, transcript16, afterKappa,
+                                                                exact ⟨beforeSemantic, afterSemantic,
+                                                                  semanticProof, initialClaim,
+                                                                  semanticVerification, beforeBatch,
+                                                                  afterBatch, afterGamma, inactiveOffset,
+                                                                  transcript16, afterKappa,
+                                                                  semanticSuccess, hverifiedPoint,
                                                                   batchSuccess, gammaSuccess,
                                                                   hverifiedInactive.symm ▸ inactiveSuccess,
                                                                   hverifiedKappa.symm ▸ kappaSuccess⟩
@@ -530,8 +563,8 @@ theorem accepted_prefix_has_batch_and_gamma_successor
         .ok (.Ok (), afterBatch) ∧
       V5AcceptedEntryGenerated.aspis_core.transcript.Transcript.challenge_nonzero_qm31
           afterBatch = .ok (.Ok verified.gamma, afterGamma) := by
-  obtain ⟨beforeBatch, afterBatch, afterGamma, _, _, _, batchSuccess,
-      gammaSuccess, _, _⟩ :=
+  obtain ⟨_, _, _, _, _, beforeBatch, afterBatch, afterGamma, _, _, _, _, _,
+      batchSuccess, gammaSuccess, _, _⟩ :=
     accepted_prefix_has_batch_gamma_and_inactive_decode parsed liveStatement
       statementDigest hash verified returnedTranscript success
   exact ⟨beforeBatch, afterBatch, afterGamma, batchSuccess, gammaSuccess⟩

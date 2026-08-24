@@ -151,12 +151,15 @@ private theorem returned_relation_has_log_len_ten
           V5RelationPrepareGenerated.solana_program_error.ProgramError)) =
       .ok (.Ok (expected, expectedPoint, expectedScale))) :
     expected.weights.log_len = 10#u32 ∧
-      expected.relation_value = produced.relation_value := by
+      expected.relation_value = produced.relation_value ∧
+      expectedScale = producedScale := by
   have houter := Result.ok.inj hrun
   have htriple := core.result.Result.Ok.inj houter
   have hrelation : produced = expected := congrArg Prod.fst htriple
+  have hscale : producedScale = expectedScale :=
+    congrArg (fun triple => triple.2.2) htriple
   subst expected
-  exact ⟨hlog, rfl⟩
+  exact ⟨hlog, rfl, hscale.symm⟩
 
 private theorem checked_nonreal_relation_has_log_len_ten
     (weights : V5RelationPrepareGenerated.aspis_core.sumcheck.WeightAccumulator)
@@ -203,7 +206,8 @@ private theorem checked_nonreal_relation_has_log_len_ten
           V5RelationPrepareGenerated.solana_program_error.ProgramError)) =
         .ok (.Ok (expected, expectedPoint, expectedScale))) :
     expected.weights.log_len = 10#u32 ∧
-      expected.relation_value = relationValue := by
+      expected.relation_value = relationValue ∧
+      expectedScale = producedScale := by
   cases hcontains0 : core.slice.Slice.contains
       V5RelationPrepareGenerated.aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31
       (Array.to_slice alphas)
@@ -380,8 +384,9 @@ theorem prepare_for_extraction_success_exposes_arithmetic
           parsed kappa inactiveClaim preparedClaims =
         .ok (.Ok (relation, point, denseScale))) :
     relation.weights.log_len = 10#u32 ∧
-      Nonempty (PrepareRelationArithmeticTrace kappa inactiveClaim
-        preparedClaims relation) := by
+      ∃ trace : PrepareRelationArithmeticTrace kappa inactiveClaim
+          preparedClaims relation,
+        denseScale = trace.kappa3 := by
   unfold
     V5RelationPrepareGenerated.v5_cu_probe.prepare_relation_base_with_kappa_prepared_for_extraction at hrun
   simp only [
@@ -838,7 +843,8 @@ theorem prepare_for_extraction_success_exposes_arithmetic
                                                                                                 claim3Run := hclaim3
                                                                                                 scaled3Run := hscaled3
                                                                                                 relationValue3Run := hvalue3
-                                                                                                returnedRelationValue := properties.2 }⟩⟩
+                                                                                                returnedRelationValue := properties.2.1 },
+                                                                                                properties.2.2⟩⟩
                                                                                             | let properties :=
                                                                                                 checked_nonreal_relation_has_log_len_ten
                                                                                                   weights4 relationValue3 _ _ point0 kappa3
@@ -870,7 +876,8 @@ theorem prepare_for_extraction_success_exposes_arithmetic
                                                                                                 claim3Run := hclaim3
                                                                                                 scaled3Run := hscaled3
                                                                                                 relationValue3Run := hvalue3
-                                                                                                returnedRelationValue := properties.2 }⟩⟩
+                                                                                                returnedRelationValue := properties.2.1 },
+                                                                                                properties.2.2⟩⟩
 
 /-- The log-length projection retained for existing callers. -/
 theorem prepare_for_extraction_success_has_log_len_ten

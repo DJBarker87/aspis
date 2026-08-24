@@ -387,8 +387,9 @@ theorem accepted_prefix_gamma_and_inactive_canonical
     EntryCanonicalQM31 verified.gamma ∧
       EntryCanonicalQM31 verified.inactive_claim ∧
       EntryCanonicalQM31 verified.kappa := by
-  obtain ⟨_, afterBatch, afterGamma, inactiveOffset, beforeKappa, afterKappa,
-      _, gammaSuccess, inactiveSuccess, kappaSuccess⟩ :=
+  obtain ⟨_, _, _, _, _, _, afterBatch, afterGamma, inactiveOffset,
+      beforeKappa, afterKappa, _, _, _, gammaSuccess, inactiveSuccess,
+      kappaSuccess⟩ :=
     accepted_prefix_has_batch_gamma_and_inactive_decode parsed liveStatement
       statementDigest hash verified returnedTranscript success
   exact ⟨

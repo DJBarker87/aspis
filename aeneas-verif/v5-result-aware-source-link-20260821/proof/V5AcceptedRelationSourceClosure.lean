@@ -1,6 +1,7 @@
 import V5AcceptedSameRunRelationFriSnapshot
 import V5AcceptedRelationRoundInversion
 import V5AcceptedPrefixCanonical
+import V5AcceptedCompactInputsCanonical
 import V5AcceptedPreparedClaimsCanonical
 import V5RelationPrepareCanonicalProof
 import V5RelationPrepareLogLenProof
@@ -125,6 +126,61 @@ theorem entry_prepared_claims_to_caller_canonical
     have mapped := entry_canonical_to_relation_caller
       claims.inner.claims.val[index] sourceCanonical
     simpa [sourceBound] using mapped
+
+/-- Every compact Component-B point coordinate supplied to the accepted
+relation caller comes from the successful ten-round semantic sumcheck and is
+canonical in the caller namespace. -/
+theorem accepted_snapshot_round_challenges_are_canonical
+    {accountData : Slice Std.U8}
+    {parsed : SnapshotEntryParsed}
+    {liveStatement : SnapshotEntryStatement}
+    {statementDigest : Array Std.U8 32#usize}
+    {acceptedValue : SnapshotEntryQM31}
+    (snapshot : AcceptedSameRunRelationFriSnapshot accountData parsed
+      liveStatement statementDigest acceptedValue) :
+    ∀ index : Fin 10,
+      AspisV5RelationGeneratedFieldProjection.CanonicalQM31
+        (qm31ArrayToCaller snapshot.verifiedPrefix.round_challenges).val[
+          index.val]! := by
+  have entryCanonical :=
+    AspisV5AcceptedCompactInputsCanonical.accepted_prefix_round_challenges_canonical
+      parsed liveStatement statementDigest
+      V5AcceptedEntryGenerated.verify.sbf_hashv snapshot.verifiedPrefix
+      snapshot.prefixTranscript snapshot.evidence.compositeCalls.prefixSuccess
+  intro index
+  rw [qm31ArrayToCaller_get_bang]
+  exact entry_canonical_to_relation_caller
+    snapshot.verifiedPrefix.round_challenges.val[index.val]!
+    (entryCanonical index)
+
+/-- The compact constructor scale in one accepted relation trace is the
+canonical `kappa³` value returned by that same successful preparation call. -/
+theorem accepted_snapshot_dense_scale_is_canonical
+    {accountData : Slice Std.U8}
+    {parsed : SnapshotEntryParsed}
+    {liveStatement : SnapshotEntryStatement}
+    {statementDigest : Array Std.U8 32#usize}
+    {acceptedValue : SnapshotEntryQM31}
+    (snapshot : AcceptedSameRunRelationFriSnapshot accountData parsed
+      liveStatement statementDigest acceptedValue) :
+    AspisV5RelationGeneratedFieldProjection.CanonicalQM31
+      snapshot.relationTrace.calls.denseScale := by
+  have prefixCanonical :=
+    AspisV5AcceptedPrefixCanonical.accepted_prefix_gamma_and_inactive_canonical
+      parsed liveStatement statementDigest
+      V5AcceptedEntryGenerated.verify.sbf_hashv snapshot.verifiedPrefix
+      snapshot.prefixTranscript snapshot.evidence.compositeCalls.prefixSuccess
+  exact
+    AspisV5RelationPrepareCanonicalProof.caller_prepare_success_dense_scale_canonical
+      (parsedToCaller parsed) (qm31ToCaller snapshot.verifiedPrefix.kappa)
+      (qm31ToCaller snapshot.verifiedPrefix.inactive_claim)
+      (preparedClaimsToCaller snapshot.preparedClaims)
+      snapshot.relationTrace.calls.relation
+      snapshot.relationTrace.calls.ignoredAlphas
+      snapshot.relationTrace.calls.denseScale
+      (entry_canonical_to_relation_caller snapshot.verifiedPrefix.kappa
+        prefixCanonical.2.2)
+      snapshot.relationTrace.calls.prepareSuccess
 
 /-- The initial relation value in one accepted same-run snapshot is
 canonical.  Its kappa and inactive claim come from the exact accepted prefix
@@ -252,6 +308,8 @@ theorem accepted_snapshot_runs_source_relation_verifier
     accepted_trace_runs_source_relation_verifier rounds terminalExact⟩
 
 #print axioms accepted_snapshot_relation_alphas_are_canonical
+#print axioms accepted_snapshot_round_challenges_are_canonical
+#print axioms accepted_snapshot_dense_scale_is_canonical
 #print axioms accepted_snapshot_initial_relation_is_canonical
 #print axioms accepted_snapshot_runs_source_relation_verifier
 

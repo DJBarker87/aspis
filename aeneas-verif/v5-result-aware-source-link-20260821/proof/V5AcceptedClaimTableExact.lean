@@ -500,7 +500,7 @@ theorem caller_prepare_success_relation_value_exact
               preparedClaims) =
           .ok (.Ok (sourceRelation, sourcePoint, sourceScale))
         at sourceRunEquation
-      obtain ⟨_, ⟨trace⟩⟩ :=
+      obtain ⟨_, ⟨trace, _⟩⟩ :=
         AspisV5RelationPrepareLogLenProof.Prepare.prepare_for_extraction_success_exposes_arithmetic
           _
           (AspisV5RelationPrepareCanonicalProof.callerToPrepareQM31 kappa)
