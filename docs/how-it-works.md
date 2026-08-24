@@ -26,9 +26,11 @@ valid witness exists. Lean proves the spend rules once a normalized trace
 package containing all required residuals and public-field matches has been
 constructed. The selected Rust-to-Lean path now derives the parser,
 transcript, work, openings, FRI checks, claim table, initial relation value,
-and relation tail from one successful translated execution. Its general and
-compact final-dot equalities still have to be connected before that complete
-package follows from the selected production verifier. Interpreting an
+and relation tail from one successful translated execution. The calculations
+inside its general and compact final accumulators are proved, and the complete
+general dot product is connected. The compact state composition still has to
+be connected before that complete package follows from the selected
+production verifier. Interpreting an
 accepted proof as knowledge by the prover also needs the separate extraction
 assumption recorded in the [assumptions ledger](assumptions-ledger.md). After
 one accepted spend, the program records its public nullifier and rejects later
@@ -107,7 +109,7 @@ Aspis records four complementary evidence layers:
 | Layer | Evidence |
 | --- | --- |
 | Mathematical construction | Lean checks substantial parts of the statement, algebra, concrete release calculations, hiding argument, and V5 component models |
-| Selected production implementation | Charon and Aeneas translate selected Rust; Lean bridge proofs connect the accepted path through its claim table, initial relation value, and decoded relation tail. Two final-dot equalities remain |
+| Selected production implementation | Charon and Aeneas translate selected Rust; Lean bridge proofs connect the accepted path through its claim table, initial relation value, decoded relation tail, and complete general dot product. The compact state composition and outer theorem remain |
 | Exact program | Pinned source and build tools reproduce the frozen SBF byte for byte |
 | Chain result | Finalized receipts bind that SBF, proof, statement, state transition, compute use, and cleanup |
 

@@ -115,12 +115,23 @@ derives:
   relation value; and
 - the complete 58-field relation tail and the four accepted relation rounds.
 
-All of those witnesses come from one successful execution. The remaining
-integration work is to prove that the two production final dot products--the
-general weight accumulator and the compact Component-B accumulator--equal the
-corresponding mathematical calculations. The final one-run theorem will not
-be described as complete until both equalities and the outer composition
-compile together.
+All of those witnesses come from one successful execution. The source and
+model semantics of every release-reachable general-accumulator component are
+proved, including the dense and deferred grouped cases, and the complete
+twelve-component iterator is proved equal to its public dot-product result.
+The compact constructor, four fold cases, final assembly, and four-term dot
+calculation are also proved separately. The remaining integration work is to
+connect the compact accumulator's complete state evolution and use it with
+the completed general dot product in the outer accepted-call theorem. That
+theorem will not be described as complete until the composition compiles
+together.
+
+One extraction boundary is recorded explicitly. The pinned Aeneas version
+emitted an ill-typed back-translation for the compact mutable fold iterator,
+so its outer fold is currently represented by a small source-shaped Lean
+wrapper over extracted subcalls. The underlying subcalls and their
+mathematics are checked; claiming automatic Rust extraction for that wrapper
+requires either a successful pinned regeneration or a future Aeneas fix.
 
 The [accepted-path source map](v5-accepted-source-map.md) gives a fifteen-stop
 route through the production code and names the proof for each stop.

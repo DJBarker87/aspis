@@ -57,9 +57,10 @@ The current accepted-path work starts with a successful translated call to
 the production proof checker. It derives the parser, transcript, work, query,
 private-opening, FRI, decoded claim table, initial relation value, and
 relation tail used by the mathematical security argument from that same
-execution. The general and compact final-dot equalities still have to be
-proved before the outer theorem is complete. This is not a proof of every
-Rust function, the compiler, or the Solana runtime.
+execution. The complete general dot product and the compact accumulator's
+component calculations are proved; the compact state composition and final
+use in the outer theorem remain. This is not a proof of every Rust function,
+the compiler, or the Solana runtime.
 
 ## V5 Solana transaction
 

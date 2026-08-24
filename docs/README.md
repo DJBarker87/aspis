@@ -4,8 +4,9 @@ Aspis V5 is the current release. It records a private-spend construction,
 Lean proofs, selected production verifier paths translated with Charon and
 Aeneas, a byte-reproducible Solana program, and a finalized mainnet-beta state
 transition. The Rust-to-model connection is complete through the initial
-relation value and decoded relation tail; its two final dot products are still
-being proved.
+relation value and decoded relation tail. The complete general dot product and
+the compact accumulator's component calculations are proved; the compact
+state composition and outer theorem are still being joined.
 
 ## Start here
 

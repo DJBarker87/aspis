@@ -23,8 +23,27 @@ jobs:
         with:
           ocaml-compiler: "5.3.0"
           opam-pin: false
-      - name: Install pinned Aeneas build tool
-        run: opam install dune.3.24.0 -y
+      - name: Install pinned Aeneas build dependencies
+        run: |
+          opam pin add name_matcher_parser git+https://github.com/AeneasVerif/charon.git#cb50ff16b9f1066b8a97dc06da704de2da2fa41c --no-action -y
+          opam pin add charon git+https://github.com/AeneasVerif/charon.git#cb50ff16b9f1066b8a97dc06da704de2da2fa41c --no-action -y
+          opam install -y \
+            dune.3.24.0 \
+            calendar.3.0.0 \
+            core_unix.v0.17.1 \
+            domainslib.0.5.2 \
+            easy_logging.0.8.2 \
+            menhir.20260209 \
+            ocamlgraph.2.2.0 \
+            ppx_deriving.6.1.2 \
+            ppx_deriving_yojson.3.10.0 \
+            progress.0.5.0 \
+            unionFind.20250818 \
+            visitors.20260520 \
+            yojson.3.0.0 \
+            zarith.1.14 \
+            name_matcher_parser.0.1 \
+            charon.0.1
       - name: Build and kernel-check the Lean formalization
         uses: leanprover/lean-action@38fbc41a8c28c4cbaec22d7f7de508ec2e7c0dd9 # v1.5.0
         with:

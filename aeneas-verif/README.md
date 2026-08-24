@@ -35,10 +35,20 @@ caller to provide equalities between selected Rust values and model values.
 The current chain obtains the values listed above by following one successful
 translated call, so they cannot be mixed across different runs.
 
-Two deterministic equalities remain before the final theorem is complete:
-the production general-weight final dot and the production compact
-Component-B final dot must each equal the maintained calculation. No axiom or
-caller-supplied equality is being used in place of those proofs.
+The source and maintained-field semantics of every release-reachable
+general-accumulator component are now proved, including its dense and
+deferred grouped components. The complete twelve-component iterator and
+public dot-product result are also proved. The compact constructor, individual
+fold cases, final assembly, and four-term dot calculation are proved. What
+remains is to connect the compact ten-block state evolution and use it with
+the completed general dot product in the final accepted-call theorem. No
+axiom or caller-supplied equality is being used in place of those proofs.
+
+The pinned Aeneas version emitted an ill-typed mutable-iterator
+back-translation for the compact outer fold. The current proof therefore uses
+a source-shaped outer wrapper around extracted subcalls. This narrow
+provenance boundary is not treated as automatically extracted Rust unless the
+pinned replay can regenerate it.
 
 The final assembly is under
 [`v5-result-aware-source-link-20260821/`](v5-result-aware-source-link-20260821/).
@@ -111,8 +121,8 @@ The accepted-path checkpoint replay uses Lean 4.32 and the pinned Aeneas commit
 file hashes are recorded in [`lean432/`](lean432/). The every-commit formal CI
 runs the maintained project and the tracked accepted-path replay; the exact
 local command is also recorded beside the aggregate proof. The wording will
-change to "final" only after the two remaining dot-product equalities and the
-outer theorem compile together.
+change to "final" only after the compact state composition and outer theorem
+compile together.
 
 Generated object files are deliberately not committed. Generated Lean source,
 bridge proofs, extraction manifests, tool revisions, and replay entry points

@@ -27,7 +27,7 @@ spend**.
 | 12 | `verify_v5_private_suffix` → `verify_v5_private_openings` | Authenticates the five opening sections against the five roots at the transcript-derived positions and checks that the returned C1/C2 records are the records consumed later. | `private_suffix_success_yields_exact_merkle` derives the exact five-tree call, returned opening conversion, and both C1/C2 record guards from the same accepted Entry. The accepted-forest projection then leaves SHA-256 collision resistance as a cryptographic assumption. |
 | 13 | `prepare_v5_pcs_claims` | Decodes the 4 × 19 claim table and combines each row with the exact powers of the transcript challenge. | `V5PreparedPointClaimsSourceBridge.sourcePreparedPointClaim_eq_sourcePointClaim` and the pinned preparation-loop replay. |
 | 14 | `check_v5_fri_queries` | Checks all 18 layer-zero openings and every later fold through the four-coefficient final polynomial. | `V5CoordinateProductionTopCallProof.source_accepted_full_call_released_coordinates` proves the real production coordinate call; `AspisV5FriConsumerCoordinateBridge.production_trace_released_coordinate_tables_from_exact_run` connects it to the consumer; `AspisV5FriAcceptedForestChecks.accepted_production_execution_yields_released_forest_fri_checks` proves the four FRI checks without a coordinate-equality premise. |
-| 15 | `verify_mode9_relation_phase` and return to the atomic state wrapper | Checks the four relation rounds against the same final polynomial. Only after the composite verifier returns success can the atomic wrapper write the nullifier marker and new pool state. | The source proofs derive the exact 76 claims, initial relation value, and 58-field relation tail. The remaining work is the general accumulator's final dot, the compact Component-B final dot, and their use in the outer theorem. The state bridge is listed in row 2. |
+| 15 | `verify_mode9_relation_phase` and return to the atomic state wrapper | Checks the four relation rounds against the same final polynomial. Only after the composite verifier returns success can the atomic wrapper write the nullifier marker and new pool state. | The source proofs derive the exact 76 claims, initial relation value, and 58-field relation tail. The complete general-accumulator public dot product and each compact constructor/fold/final/dot calculation are proved. The remaining work is to connect the compact state evolution and use it in the outer theorem. The state bridge is listed in row 2. |
 
 ## How to read the proof claims
 
@@ -40,9 +40,13 @@ There are three different kinds of support in the last column:
    such as Solana account handling or the identity of the deployed program.
 
 The tracked replay joins the generated-source and model theorems through the
-exact initial relation value and decoded four-round tail. The production
-general-weight and compact Component-B final-dot equalities remain before the
-end-to-end replay can be described as complete. It does
+exact initial relation value and decoded four-round tail. The component
+semantics of both final accumulators are proved, and the complete general
+public dot product is joined. The compact state composition and outer
+accepted-call theorem remain before the end-to-end replay can be described as
+complete. The compact outer fold also retains a narrow
+source-shaped-wrapper boundary because pinned Aeneas did not emit usable Lean
+for that mutable iterator. It does
 not prove Charon, Aeneas, Lean, `rustc`, LLVM, the Solana build tools, SHA-256,
 Poseidon2, or the Solana runtime. Those remaining assumptions are listed in
 [`assumptions-ledger.md`](assumptions-ledger.md).
