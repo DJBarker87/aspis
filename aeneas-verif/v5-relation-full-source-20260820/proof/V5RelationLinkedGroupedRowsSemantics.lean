@@ -1,4 +1,4 @@
-import V5RelationLinkedGroupTuple
+import V5RelationLinkedGroupTuplePatterns
 import V5RelationLinkedGroupedRowsStaged
 
 /-!
