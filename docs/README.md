@@ -35,6 +35,12 @@ that theorem.
 11. [Design history and previous releases](design-history.md) — evolution of
    the current V5 result and the earlier q18/g37 record
 
+## V6 research
+
+The [V6 one-fold theorem audit](v6-onefold-theorem-audit.md) records the first
+checked results and the unresolved security work for the proposed 30 KiB
+B10/q16 profile. It is research work, not a released protocol claim.
+
 ## Evidence by layer
 
 | Layer | Record |
