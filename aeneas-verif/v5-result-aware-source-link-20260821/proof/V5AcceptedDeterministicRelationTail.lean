@@ -15,6 +15,7 @@ namespace AspisV5AcceptedDeterministicRelationTail
 open Aeneas Aeneas.Std Result
 open AspisV5AcceptedRelationRoundInversion
 open AspisV5AcceptedRelationRoundProjection
+open AspisV5AcceptedRelationPreparedAdapter
 open AspisV5AcceptedRelationSourceClosure
 open AspisV5AcceptedSameRunRelationFriSnapshot
 open AspisV5RelationStressSourceBridge
@@ -30,8 +31,25 @@ abbrev K := AspisV5FriAcceptedForestChecks.K
 deriving instance Inhabited for
   V5RelationFullGenerated.aspis_core.circle.SecureCirclePoint
 
-/-- The accepted four-round scalar projection selected deterministically from
-the proof that the translated production execution supplies one. -/
+/-- The accepted execution and its scalar projection selected together.  The
+combined witness retains the exact eight decoder outputs used by both views. -/
+noncomputable def acceptedSnapshotRoundEvidence
+    {accountData : Slice Std.U8}
+    {parsed : SnapshotEntryParsed}
+    {liveStatement : SnapshotEntryStatement}
+    {statementDigest : Array Std.U8 32#usize}
+    {acceptedValue : SnapshotEntryQM31}
+    (snapshot : AcceptedSameRunRelationFriSnapshot accountData parsed
+      liveStatement statementDigest acceptedValue) :
+    AcceptedFourRoundExecutionProjections snapshot.relationTrace :=
+  Classical.choice
+    (accepted_full_trace_exposes_four_execution_projections
+      snapshot.relationTrace
+      (accepted_snapshot_initial_relation_is_canonical snapshot)
+      (accepted_snapshot_relation_alphas_are_canonical snapshot))
+
+/-- The deterministic maintained scalar projection of the combined accepted
+witness. -/
 noncomputable def acceptedSnapshotRounds
     {accountData : Slice Std.U8}
     {parsed : SnapshotEntryParsed}
@@ -41,8 +59,7 @@ noncomputable def acceptedSnapshotRounds
     (snapshot : AcceptedSameRunRelationFriSnapshot accountData parsed
       liveStatement statementDigest acceptedValue) :
     AcceptedFourRawRoundProjections snapshot.relationTrace :=
-  Classical.choose
-    (accepted_snapshot_runs_source_relation_verifier snapshot)
+  (acceptedSnapshotRoundEvidence snapshot).projections
 
 /-- The deterministic projection inherits the already-proved successful
 maintained four-round execution. -/
@@ -60,8 +77,26 @@ theorem acceptedSnapshotRounds_run
         finalCoefficients := fun index =>
           toField snapshot.relationTrace.finalCoefficients.val[index.val]!
         terminalClaim := toField snapshot.relationTrace.claim4 } :=
-  Classical.choose_spec
-    (accepted_snapshot_runs_source_relation_verifier snapshot)
+  by
+    have initialLog :=
+      AspisV5RelationPrepareLogLenProof.Prepare.prepareSuccess_implies_weights_log_len
+        (AspisV5AcceptedRelationPreparedAdapter.parsedToCaller parsed)
+        (AspisV5AcceptedRelationPreparedAdapter.qm31ToCaller
+          snapshot.verifiedPrefix.kappa)
+        (AspisV5AcceptedRelationPreparedAdapter.qm31ToCaller
+          snapshot.verifiedPrefix.inactive_claim)
+        (AspisV5AcceptedRelationPreparedAdapter.preparedClaimsToCaller
+          snapshot.preparedClaims)
+        snapshot.relationTrace.calls.relation
+        snapshot.relationTrace.calls.ignoredAlphas
+        snapshot.relationTrace.calls.denseScale
+        snapshot.relationTrace.calls.prepareSuccess
+    have terminalExact :=
+      AspisV5RelationTerminalDotCanonical.accepted_trace_terminal_add_exact_of_initial
+        snapshot.relationTrace initialLog
+        (accepted_snapshot_final_coefficients_are_canonical snapshot)
+    exact accepted_trace_runs_source_relation_verifier
+      (acceptedSnapshotRounds snapshot) terminalExact
 
 /-- The exact four-round production control-flow evidence selected once from
 the accepted trace.  Its eight sample records retain the actual tensor calls
@@ -75,8 +110,7 @@ noncomputable def acceptedSnapshotExecutions
     (snapshot : AcceptedSameRunRelationFriSnapshot accountData parsed
       liveStatement statementDigest acceptedValue) :
     AcceptedFourRoundExecution snapshot.relationTrace :=
-  Classical.choice
-    (accepted_full_trace_exposes_four_round_executions snapshot.relationTrace)
+  (acceptedSnapshotRoundEvidence snapshot).execution
 
 /-- Select one of the four maintained round records without introducing a
 free round schedule. -/
@@ -570,6 +604,62 @@ theorem snapshotPublishedFinal_eq_relationTrace
   rw [qm31ArrayToCaller_get_bang]
   rfl
 
+/-- The compact-dot premise needed by the complete deterministic relation
+input is derived from the accepted production execution itself.  In
+particular, the production constructor scale is rewritten to the exact
+accepted `kappa³`, rather than supplied as an external equality. -/
+theorem accepted_snapshot_compact_dot_exact
+    {accountData : Slice Std.U8}
+    {parsed : SnapshotEntryParsed}
+    {liveStatement : SnapshotEntryStatement}
+    {statementDigest : Array Std.U8 32#usize}
+    {acceptedValue : SnapshotEntryQM31}
+    (snapshot : AcceptedSameRunRelationFriSnapshot accountData parsed
+      liveStatement statementDigest acceptedValue) :
+    optimizedCompactFinalDot
+        (fun coordinate =>
+          entryToK snapshot.verifiedPrefix.round_challenges.val[
+            coordinate.val]!)
+        ((entryToK snapshot.verifiedPrefix.kappa) ^ 3)
+        (fun layer => entryToK snapshot.alphas.val[layer.val]!)
+        (snapshotPublishedFinal snapshot) =
+      toField snapshot.relationTrace.additiveDot := by
+  have compact := accepted_snapshot_compact_terminal_exact snapshot
+  have pointExact :
+      (fun coordinate : Fin 10 =>
+        entryToK snapshot.verifiedPrefix.round_challenges.val[
+          coordinate.val]!) =
+      (fun coordinate : Fin 10 =>
+        AspisV5RelationGeneratedFieldProjection.toMaintainedExact
+          (qm31ArrayToCaller
+            snapshot.verifiedPrefix.round_challenges).val[coordinate.val]!) := by
+    funext coordinate
+    rw [entryToK_eq_relationCallerValue, qm31ArrayToCaller_get_bang]
+    rfl
+  have scaleExact : (entryToK snapshot.verifiedPrefix.kappa) ^ 3 =
+      AspisV5RelationGeneratedFieldProjection.toMaintainedExact
+        snapshot.relationTrace.calls.denseScale := by
+    rw [entryToK_eq_relationCallerValue]
+    exact (accepted_snapshot_dense_scale_is_kappa_cube snapshot).symm
+  have alphaExact :
+      (fun layer : Fin 4 => entryToK snapshot.alphas.val[layer.val]!) =
+      (fun layer : Fin 4 =>
+        AspisV5RelationGeneratedFieldProjection.toMaintainedExact
+          (acceptedAlphaAt (qm31ArrayToCaller snapshot.alphas) layer)) := by
+    funext layer
+    rw [entryToK_eq_relationCallerValue]
+    unfold acceptedAlphaAt
+    rw [fixedArray_getBang_eq_get snapshot.alphas layer]
+    rw [qm31ArrayToCaller_get]
+    rfl
+  have finalExact : snapshotPublishedFinal snapshot =
+      (fun index : Fin 4 =>
+        AspisV5RelationGeneratedFieldProjection.toMaintainedExact
+          snapshot.relationTrace.finalCoefficients.val[index.val]!) := by
+    simpa [toField] using snapshotPublishedFinal_eq_relationTrace snapshot
+  rw [pointExact, scaleExact, alphaExact, finalExact]
+  exact compact.2.symm
+
 /-- Once the independently proved initial-claim, main-dot, and compact-dot
 equalities are supplied, all remaining fields of the complete source caller
 input are definitionally the exact accepted source relation input. -/
@@ -632,6 +722,7 @@ theorem acceptedSnapshotPartialCallerData_relationInput_exact
   rfl
 
 #print axioms acceptedSnapshotRounds_run
+#print axioms accepted_snapshot_compact_dot_exact
 #print axioms acceptedSnapshotPartialCallerData_relationInput_exact
 
 end AspisV5AcceptedDeterministicRelationTail

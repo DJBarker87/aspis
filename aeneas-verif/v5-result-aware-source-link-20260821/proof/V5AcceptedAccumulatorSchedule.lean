@@ -224,7 +224,10 @@ structure AcceptedFourRoundAccumulatorSchedule
   round2Length : trace.weights3.components.val.length = 10
   round3Length : trace.weights4.components.val.length = 12
 
-theorem acceptedFullTraceExposesAccumulatorSchedule
+/-- Build the complete accumulator schedule around a specified accepted
+four-round execution.  Keeping the execution explicit lets downstream proofs
+share one decoder witness with the scalar relation projection. -/
+theorem acceptedFourRoundExecutionExposesAccumulatorSchedule
     {parsed : V5RelationCallerGenerated.v5_cu_probe.ParsedProbeData}
     {finalPolynomial : Array RawQM31 4#usize}
     {alphas : Array RawQM31 4#usize}
@@ -234,9 +237,10 @@ theorem acceptedFullTraceExposesAccumulatorSchedule
       V5RelationCallerGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims}
     {terminalClaim : RawQM31}
     (trace : AcceptedMode9FullRelationTrace parsed finalPolynomial alphas
-      kappa inactiveClaim roundChallenges preparedClaims terminalClaim) :
-    Nonempty (AcceptedFourRoundAccumulatorSchedule trace) := by
-  obtain ⟨rounds⟩ := accepted_full_trace_exposes_four_round_executions trace
+      kappa inactiveClaim roundChallenges preparedClaims terminalClaim)
+    (rounds : AcceptedFourRoundExecution trace) :
+    ∃ schedule : AcceptedFourRoundAccumulatorSchedule trace,
+      schedule.rounds = rounds := by
   obtain ⟨sourceRelation, prepareTrace, initialMapped, initialExact⟩ :=
     AspisV5RelationCallerInitialComponents.callerPrepareSuccessExposesSourceComponents
       parsed kappa inactiveClaim preparedClaims trace.calls.relation
@@ -311,9 +315,29 @@ theorem acceptedFullTraceExposesAccumulatorSchedule
     round0Length := round0Length
     round1Length := round1Length
     round2Length := round2Length
-    round3Length := round3Length }⟩
+    round3Length := round3Length }, rfl⟩
+
+/-- Existence wrapper for clients which do not need to name the selected
+four-round execution. -/
+theorem acceptedFullTraceExposesAccumulatorSchedule
+    {parsed : V5RelationCallerGenerated.v5_cu_probe.ParsedProbeData}
+    {finalPolynomial : Array RawQM31 4#usize}
+    {alphas : Array RawQM31 4#usize}
+    {kappa inactiveClaim : RawQM31}
+    {roundChallenges : Array RawQM31 10#usize}
+    {preparedClaims :
+      V5RelationCallerGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims}
+    {terminalClaim : RawQM31}
+    (trace : AcceptedMode9FullRelationTrace parsed finalPolynomial alphas
+      kappa inactiveClaim roundChallenges preparedClaims terminalClaim) :
+    Nonempty (AcceptedFourRoundAccumulatorSchedule trace) := by
+  obtain ⟨rounds⟩ := accepted_full_trace_exposes_four_round_executions trace
+  obtain ⟨schedule, _⟩ :=
+    acceptedFourRoundExecutionExposesAccumulatorSchedule trace rounds
+  exact ⟨schedule⟩
 
 #print axioms acceptedRoundExposesTensorSchedule
+#print axioms acceptedFourRoundExecutionExposesAccumulatorSchedule
 #print axioms acceptedFullTraceExposesAccumulatorSchedule
 
 end AspisV5AcceptedAccumulatorSchedule

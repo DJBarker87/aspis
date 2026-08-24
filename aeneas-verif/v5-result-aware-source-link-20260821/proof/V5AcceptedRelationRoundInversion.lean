@@ -2075,9 +2075,35 @@ structure AcceptedRawRoundProjection
   alphaExact : raw.alpha = alpha
   outgoingExact : raw.outgoing = outgoing
 
+/-- A maintained round projection which retains the exact two decoded values
+and mixes from the production execution that produced it.  This prevents a
+later choice of an arithmetically valid projection from losing its byte-level
+decoder provenance. -/
+structure AcceptedRawRoundProjectionForExecution
+    {A : Type}
+    (additiveInst :
+      V5RelationFullGenerated.relation_stress.V5RelationStressAdditive A)
+    (bytes : Array Std.U8 928#usize)
+    (circlePoints : Array
+      V5RelationFullGenerated.aspis_core.circle.SecureCirclePoint 2#usize)
+    (additive nextAdditive : A)
+    (round : Std.Usize)
+    (alpha : RawQM31)
+    (weights0 nextWeights :
+      V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator)
+    (claim0 nextClaim : RawQM31)
+    (trace : AcceptedTwoSampleRoundExecution additiveInst bytes circlePoints
+      additive nextAdditive round alpha weights0 nextWeights claim0 nextClaim) :
+    Type where
+  projection : AcceptedRawRoundProjection claim0 alpha nextClaim
+  firstValueExact : projection.raw.firstValue = trace.sample0.value
+  firstMixExact : projection.raw.firstMix = trace.sample0.mix
+  secondValueExact : projection.raw.secondValue = trace.sample1.value
+  secondMixExact : projection.raw.secondMix = trace.sample1.mix
+
 /-- One accepted translated round yields exactly the arithmetic record used
-by the maintained round theorem. -/
-theorem accepted_round_exposes_raw_arithmetic
+by the maintained round theorem, while retaining the exact decoder outputs. -/
+theorem accepted_round_exposes_raw_arithmetic_for_execution
     {A : Type}
     (additiveInst :
       V5RelationFullGenerated.relation_stress.V5RelationStressAdditive A)
@@ -2096,7 +2122,9 @@ theorem accepted_round_exposes_raw_arithmetic
       AspisV5RelationGeneratedFieldProjection.CanonicalQM31 alpha)
     (trace : AcceptedTwoSampleRoundExecution additiveInst bytes circlePoints
       additive nextAdditive round alpha weights0 nextWeights claim0 nextClaim) :
-    Nonempty (AcceptedRawRoundProjection claim0 alpha nextClaim) := by
+    Nonempty (AcceptedRawRoundProjectionForExecution additiveInst bytes
+      circlePoints additive nextAdditive round alpha weights0 nextWeights
+      claim0 nextClaim trace) := by
   obtain ⟨polynomial⟩ :=
     accepted_concrete_polynomial_exposes_exact_execution additiveInst
       trace.weights2 nextWeights trace.claim2 nextClaim alpha bytes additive
@@ -2157,10 +2185,42 @@ theorem accepted_round_exposes_raw_arithmetic
     boundaryRun := polynomial.boundaryRun
     evaluateRun := polynomial.evaluateRun }
   exact ⟨{
-    raw := raw
-    incomingExact := rfl
-    alphaExact := rfl
-    outgoingExact := rfl }⟩
+    projection := {
+      raw := raw
+      incomingExact := rfl
+      alphaExact := rfl
+      outgoingExact := rfl }
+    firstValueExact := rfl
+    firstMixExact := rfl
+    secondValueExact := rfl
+    secondMixExact := rfl }⟩
+
+/-- Compatibility projection for callers that only need maintained
+arithmetic. -/
+theorem accepted_round_exposes_raw_arithmetic
+    {A : Type}
+    (additiveInst :
+      V5RelationFullGenerated.relation_stress.V5RelationStressAdditive A)
+    (bytes : Array Std.U8 928#usize)
+    (circlePoints : Array
+      V5RelationFullGenerated.aspis_core.circle.SecureCirclePoint 2#usize)
+    (additive nextAdditive : A)
+    (round : Std.Usize)
+    (alpha : RawQM31)
+    (weights0 nextWeights :
+      V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator)
+    (claim0 nextClaim : RawQM31)
+    (incomingCanonical :
+      AspisV5RelationGeneratedFieldProjection.CanonicalQM31 claim0)
+    (alphaCanonical :
+      AspisV5RelationGeneratedFieldProjection.CanonicalQM31 alpha)
+    (trace : AcceptedTwoSampleRoundExecution additiveInst bytes circlePoints
+      additive nextAdditive round alpha weights0 nextWeights claim0 nextClaim) :
+    Nonempty (AcceptedRawRoundProjection claim0 alpha nextClaim) := by
+  obtain ⟨linked⟩ := accepted_round_exposes_raw_arithmetic_for_execution
+    additiveInst bytes circlePoints additive nextAdditive round alpha weights0
+    nextWeights claim0 nextClaim incomingCanonical alphaCanonical trace
+  exact ⟨linked.projection⟩
 
 /-- Invert the generated fixed two-sample loop in execution order.  The two
 active bodies must continue through ranges `0→1→2`; only the exhausted
@@ -2666,6 +2726,140 @@ theorem accepted_full_trace_exposes_four_raw_round_projections
     round1 := round1
     round2 := round2
     round3 := round3 }⟩
+
+/-- One four-round witness retaining both the production executions and the
+maintained projections built from those exact executions. -/
+structure AcceptedFourRoundExecutionProjections
+    {parsed : V5RelationCallerGenerated.v5_cu_probe.ParsedProbeData}
+    {finalPolynomial : Array RawQM31 4#usize}
+    {alphas : Array RawQM31 4#usize}
+    {kappa inactiveClaim : RawQM31}
+    {roundChallenges : Array RawQM31 10#usize}
+    {preparedClaims :
+      V5RelationCallerGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims}
+    {terminalClaim : RawQM31}
+    (trace : AcceptedMode9FullRelationTrace parsed finalPolynomial alphas
+      kappa inactiveClaim roundChallenges preparedClaims terminalClaim) :
+    Type where
+  execution : AcceptedFourRoundExecution trace
+  projections : AcceptedFourRawRoundProjections trace
+  round0FirstValueExact :
+    projections.round0.raw.firstValue = execution.round0.sample0.value
+  round0FirstMixExact :
+    projections.round0.raw.firstMix = execution.round0.sample0.mix
+  round0SecondValueExact :
+    projections.round0.raw.secondValue = execution.round0.sample1.value
+  round0SecondMixExact :
+    projections.round0.raw.secondMix = execution.round0.sample1.mix
+  round1FirstValueExact :
+    projections.round1.raw.firstValue = execution.round1.sample0.value
+  round1FirstMixExact :
+    projections.round1.raw.firstMix = execution.round1.sample0.mix
+  round1SecondValueExact :
+    projections.round1.raw.secondValue = execution.round1.sample1.value
+  round1SecondMixExact :
+    projections.round1.raw.secondMix = execution.round1.sample1.mix
+  round2FirstValueExact :
+    projections.round2.raw.firstValue = execution.round2.sample0.value
+  round2FirstMixExact :
+    projections.round2.raw.firstMix = execution.round2.sample0.mix
+  round2SecondValueExact :
+    projections.round2.raw.secondValue = execution.round2.sample1.value
+  round2SecondMixExact :
+    projections.round2.raw.secondMix = execution.round2.sample1.mix
+  round3FirstValueExact :
+    projections.round3.raw.firstValue = execution.round3.sample0.value
+  round3FirstMixExact :
+    projections.round3.raw.firstMix = execution.round3.sample0.mix
+  round3SecondValueExact :
+    projections.round3.raw.secondValue = execution.round3.sample1.value
+  round3SecondMixExact :
+    projections.round3.raw.secondMix = execution.round3.sample1.mix
+
+/-- The accepted four-round execution and its maintained projection can be
+selected together, preserving all eight decoder outputs. -/
+theorem accepted_full_trace_exposes_four_execution_projections
+    {parsed : V5RelationCallerGenerated.v5_cu_probe.ParsedProbeData}
+    {finalPolynomial : Array RawQM31 4#usize}
+    {alphas : Array RawQM31 4#usize}
+    {kappa inactiveClaim : RawQM31}
+    {roundChallenges : Array RawQM31 10#usize}
+    {preparedClaims :
+      V5RelationCallerGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims}
+    {terminalClaim : RawQM31}
+    (trace : AcceptedMode9FullRelationTrace parsed finalPolynomial alphas
+      kappa inactiveClaim roundChallenges preparedClaims terminalClaim)
+    (initialCanonical :
+      AspisV5RelationGeneratedFieldProjection.CanonicalQM31
+        trace.calls.relation.relation_value)
+    (alphaCanonical : ∀ slot : Fin 4,
+      AspisV5RelationGeneratedFieldProjection.CanonicalQM31
+        (acceptedAlphaAt alphas slot)) :
+    Nonempty (AcceptedFourRoundExecutionProjections trace) := by
+  obtain ⟨execution⟩ := accepted_full_trace_exposes_four_round_executions trace
+  obtain ⟨round0⟩ := accepted_round_exposes_raw_arithmetic_for_execution
+    productionAdditiveInst parsed.v5_relation_stress trace.circlePoints
+    trace.calls.compact trace.additive1 0#usize (acceptedAlphaAt alphas 0)
+    trace.calls.relation.weights trace.weights1
+    trace.calls.relation.relation_value trace.claim1 initialCanonical
+    (alphaCanonical 0) execution.round0
+  have claim1Canonical :
+      AspisV5RelationGeneratedFieldProjection.CanonicalQM31 trace.claim1 := by
+    rw [← round0.projection.outgoingExact]
+    exact
+      AspisV5AcceptedRelationRoundProjection.accepted_raw_round_outgoing_canonical
+        round0.projection.raw
+  obtain ⟨round1⟩ := accepted_round_exposes_raw_arithmetic_for_execution
+    productionAdditiveInst parsed.v5_relation_stress trace.circlePoints
+    trace.additive1 trace.additive2 1#usize (acceptedAlphaAt alphas 1)
+    trace.weights1 trace.weights2 trace.claim1 trace.claim2 claim1Canonical
+    (alphaCanonical 1) execution.round1
+  have claim2Canonical :
+      AspisV5RelationGeneratedFieldProjection.CanonicalQM31 trace.claim2 := by
+    rw [← round1.projection.outgoingExact]
+    exact
+      AspisV5AcceptedRelationRoundProjection.accepted_raw_round_outgoing_canonical
+        round1.projection.raw
+  obtain ⟨round2⟩ := accepted_round_exposes_raw_arithmetic_for_execution
+    productionAdditiveInst parsed.v5_relation_stress trace.circlePoints
+    trace.additive2 trace.additive3 2#usize (acceptedAlphaAt alphas 2)
+    trace.weights2 trace.weights3 trace.claim2 trace.claim3 claim2Canonical
+    (alphaCanonical 2) execution.round2
+  have claim3Canonical :
+      AspisV5RelationGeneratedFieldProjection.CanonicalQM31 trace.claim3 := by
+    rw [← round2.projection.outgoingExact]
+    exact
+      AspisV5AcceptedRelationRoundProjection.accepted_raw_round_outgoing_canonical
+        round2.projection.raw
+  obtain ⟨round3⟩ := accepted_round_exposes_raw_arithmetic_for_execution
+    productionAdditiveInst parsed.v5_relation_stress trace.circlePoints
+    trace.additive3 trace.additive4 3#usize (acceptedAlphaAt alphas 3)
+    trace.weights3 trace.weights4 trace.claim3 trace.claim4 claim3Canonical
+    (alphaCanonical 3) execution.round3
+  let projections : AcceptedFourRawRoundProjections trace := {
+    round0 := round0.projection
+    round1 := round1.projection
+    round2 := round2.projection
+    round3 := round3.projection }
+  exact ⟨{
+    execution := execution
+    projections := projections
+    round0FirstValueExact := round0.firstValueExact
+    round0FirstMixExact := round0.firstMixExact
+    round0SecondValueExact := round0.secondValueExact
+    round0SecondMixExact := round0.secondMixExact
+    round1FirstValueExact := round1.firstValueExact
+    round1FirstMixExact := round1.firstMixExact
+    round1SecondValueExact := round1.secondValueExact
+    round1SecondMixExact := round1.secondMixExact
+    round2FirstValueExact := round2.firstValueExact
+    round2FirstMixExact := round2.firstMixExact
+    round2SecondValueExact := round2.secondValueExact
+    round2SecondMixExact := round2.secondMixExact
+    round3FirstValueExact := round3.firstValueExact
+    round3FirstMixExact := round3.firstMixExact
+    round3SecondValueExact := round3.secondValueExact
+    round3SecondMixExact := round3.secondMixExact }⟩
 
 /-- The four projected records are four successful maintained source-model
 rounds, with their exact accepted claims. -/
