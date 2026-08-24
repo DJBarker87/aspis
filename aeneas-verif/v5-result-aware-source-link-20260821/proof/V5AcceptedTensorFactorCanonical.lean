@@ -57,8 +57,8 @@ theorem everyCanonical_toCanonicalList
   rw [bangExact]
   exact List.get_mem values ⟨index, bound⟩
 
-private theorem pushSuccessExact
-    (values output : alloc.vec.Vec RawQM31) (value : RawQM31)
+private theorem pushSuccessExact {T : Type}
+    (values output : alloc.vec.Vec T) (value : T)
     (success : alloc.vec.Vec.push values value = .ok output) :
     output.val = values.val ++ [value] := by
   unfold alloc.vec.Vec.push at success
@@ -416,11 +416,49 @@ theorem addTensorFactorsSuccessLength
       simpa only [bne_iff_ne, ne_eq, not_not] using mismatch
     exact congrArg UScalar.val exactLength
 
+/-- The common insertion helper exposes its exact append shape directly from
+success; no separately supplied vector-capacity premise is needed. -/
+theorem addTensorFactorsSuccessShapeExact
+    (weights output :
+      V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator)
+    (scale : RawQM31) (factors : alloc.vec.Vec RawQM31)
+    (success :
+      V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator.add_tensor_factors
+          weights scale factors = .ok (.Ok (), output)) :
+    output.log_len = weights.log_len ∧
+      output.components.val = weights.components.val ++
+        [.Tensor scale factors] := by
+  unfold
+    V5RelationFullGenerated.aspis_core.sumcheck.WeightAccumulator.add_tensor_factors
+    at success
+  simp only [Aeneas.Std.lift, bind_tc_ok] at success
+  by_cases wrongLength :
+      alloc.vec.Vec.len factors != UScalar.cast .Usize weights.log_len
+  · rw [if_pos wrongLength] at success
+    simp at success
+  · rw [if_neg wrongLength] at success
+    let component :
+        V5RelationFullGenerated.aspis_core.sumcheck.WeightComponent :=
+      .Tensor scale factors
+    generalize pushEquation :
+        alloc.vec.Vec.push weights.components component = pushResult at success
+    cases pushResult with
+    | fail error => simp at success
+    | div => simp at success
+    | ok nextComponents =>
+        simp only [bind_tc_ok, Result.ok.injEq, Prod.mk.injEq] at success
+        rcases success with ⟨_, outputExact⟩
+        subst output
+        have nextValues := pushSuccessExact weights.components nextComponents
+          component pushEquation
+        exact ⟨rfl, by simpa [component] using nextValues⟩
+
 #print axioms doubleXSuccessCanonical
 #print axioms circleFactorLoopSuccessCanonical
 #print axioms lineFactorLoopSuccessCanonical
 #print axioms addCircleTensorSuccessCanonicalFactors
 #print axioms addLineTensorSuccessCanonicalFactors
 #print axioms addTensorFactorsSuccessLength
+#print axioms addTensorFactorsSuccessShapeExact
 
 end AspisV5AcceptedTensorFactorCanonical
