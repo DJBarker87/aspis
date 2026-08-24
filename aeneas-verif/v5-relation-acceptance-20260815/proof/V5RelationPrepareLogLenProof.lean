@@ -33,6 +33,14 @@ structure PrepareRelationArithmeticTrace
   relationValue2 : V5RelationPrepareGenerated.aspis_core.field.QM31
   scaled3 : V5RelationPrepareGenerated.aspis_core.field.QM31
   relationValue3 : V5RelationPrepareGenerated.aspis_core.field.QM31
+  pointVec0 : alloc.vec.Vec
+    V5RelationPrepareGenerated.aspis_core.field.QM31
+  pointVec1 : alloc.vec.Vec
+    V5RelationPrepareGenerated.aspis_core.field.QM31
+  pointVec2 : alloc.vec.Vec
+    V5RelationPrepareGenerated.aspis_core.field.QM31
+  groupedRows : alloc.vec.Vec Std.U8
+  groupedMasks : alloc.vec.Vec Std.U16
   kappa2Run :
     V5RelationPrepareGenerated.aspis_core.field.QM31.square kappa =
       .ok kappa2
@@ -72,6 +80,24 @@ structure PrepareRelationArithmeticTrace
   relationValue3Run :
     V5RelationPrepareGenerated.aspis_core.field.QM31.add relationValue2 scaled3 =
       .ok relationValue3
+  groupedRowsExact :
+    groupedRows.val =
+      V5RelationPrepareGenerated.v5_cu_probe.V5_ATOMIC_V3_INACTIVE_ROW_GROUPS.val
+  groupedMasksExact :
+    groupedMasks.val =
+      V5RelationPrepareGenerated.v5_cu_probe.V5_ATOMIC_V3_INACTIVE_GROUP_MASKS.val
+  initialComponentsExact :
+    relation.weights.components.val =
+      [V5RelationPrepareGenerated.aspis_core.sumcheck.WeightComponent.Multilinear
+          V5RelationPrepareGenerated.aspis_core.field.QM31.ONE pointVec0,
+       V5RelationPrepareGenerated.aspis_core.sumcheck.WeightComponent.Multilinear
+          kappa pointVec1,
+       V5RelationPrepareGenerated.aspis_core.sumcheck.WeightComponent.Multilinear
+          kappa2 pointVec2,
+       V5RelationPrepareGenerated.aspis_core.sumcheck.WeightComponent.Grouped64x16BinaryDeferred
+          groupedRows groupedMasks none
+          (alloc.vec.Vec.new
+            V5RelationPrepareGenerated.aspis_core.field.QM31)]
   returnedRelationValue : relation.relation_value = relationValue3
 
 private theorem prepare_closure0_maps_error
@@ -152,14 +178,15 @@ private theorem returned_relation_has_log_len_ten
       .ok (.Ok (expected, expectedPoint, expectedScale))) :
     expected.weights.log_len = 10#u32 ∧
       expected.relation_value = produced.relation_value ∧
-      expectedScale = producedScale := by
+      expectedScale = producedScale ∧
+      expected.weights = produced.weights := by
   have houter := Result.ok.inj hrun
   have htriple := core.result.Result.Ok.inj houter
   have hrelation : produced = expected := congrArg Prod.fst htriple
   have hscale : producedScale = expectedScale :=
     congrArg (fun triple => triple.2.2) htriple
   subst expected
-  exact ⟨hlog, rfl, hscale.symm⟩
+  exact ⟨hlog, rfl, hscale.symm, rfl⟩
 
 private theorem checked_nonreal_relation_has_log_len_ten
     (weights : V5RelationPrepareGenerated.aspis_core.sumcheck.WeightAccumulator)
@@ -207,7 +234,8 @@ private theorem checked_nonreal_relation_has_log_len_ten
         .ok (.Ok (expected, expectedPoint, expectedScale))) :
     expected.weights.log_len = 10#u32 ∧
       expected.relation_value = relationValue ∧
-      expectedScale = producedScale := by
+      expectedScale = producedScale ∧
+      expected.weights = weights := by
   cases hcontains0 : core.slice.Slice.contains
       V5RelationPrepareGenerated.aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31
       (Array.to_slice alphas)
@@ -310,6 +338,105 @@ theorem grouped_loop_preserves_log_len
     rw [hpush]
     simp
 
+/-- A successful generated grouped-mask loop installs exactly the vectors
+copied from its released row and mask inputs and appends no other component. -/
+theorem grouped_loop_success_shape
+    (logLen : Std.U32)
+    (components : alloc.vec.Vec
+      V5RelationPrepareGenerated.aspis_core.sumcheck.WeightComponent)
+    (rows : Array Std.U8 64#usize) (masks : Slice Std.U16)
+    (high : Std.Usize)
+    (hcapacity : components.val.length < Std.Usize.max)
+    (output : V5RelationPrepareGenerated.aspis_core.sumcheck.WeightAccumulator)
+    (hrun :
+      V5RelationPrepareGenerated.aspis_core.sumcheck.WeightAccumulator.add_grouped_64x16_binary_masks_deferred_prepared_loop
+          logLen components rows masks high = .ok (.Ok (), output)) :
+    ∃ rowVec maskVec,
+      rowVec.val = rows.val ∧
+      maskVec.val = masks.val ∧
+      output.log_len = logLen ∧
+      output.components.val = components.val ++
+        [V5RelationPrepareGenerated.aspis_core.sumcheck.WeightComponent.Grouped64x16BinaryDeferred
+          rowVec maskVec none
+          (alloc.vec.Vec.new
+            V5RelationPrepareGenerated.aspis_core.field.QM31)] := by
+  have exactLoop :
+      V5RelationPrepareGenerated.aspis_core.sumcheck.WeightAccumulator.add_grouped_64x16_binary_masks_deferred_prepared_loop
+          logLen components rows masks high
+        ⦃ result =>
+          result = (.Ok (), output) →
+            ∃ rowVec maskVec,
+              rowVec.val = rows.val ∧
+              maskVec.val = masks.val ∧
+              output.log_len = logLen ∧
+              output.components.val = components.val ++
+                [V5RelationPrepareGenerated.aspis_core.sumcheck.WeightComponent.Grouped64x16BinaryDeferred
+                  rowVec maskVec none
+                  (alloc.vec.Vec.new
+                    V5RelationPrepareGenerated.aspis_core.field.QM31)]
+        ⦄div := by
+    unfold
+      V5RelationPrepareGenerated.aspis_core.sumcheck.WeightAccumulator.add_grouped_64x16_binary_masks_deferred_prepared_loop
+    generalize high = current
+    revert current
+    dspec_induction loop
+    intro loop' ih current
+    simp only
+    unfold
+      V5RelationPrepareGenerated.aspis_core.sumcheck.WeightAccumulator.add_grouped_64x16_binary_masks_deferred_prepared_loop.body
+    simp only [Aeneas.Std.lift, bind_tc_ok]
+    by_cases active : current < Slice.len (Array.to_slice rows)
+    · rw [if_pos active]
+      have hbound : current.val < rows.val.length := by
+        simpa [UScalar.lt_equiv, Slice.len_val] using active
+      obtain ⟨row, hrow, _⟩ :=
+        Aeneas.Std.WP.spec_imp_exists
+          (Array.index_usize_spec rows current hbound)
+      rw [hrow]
+      simp only [lift, bind_tc_ok]
+      by_cases invalid : core.convert.num.FromUsizeU8.from row >= Slice.len masks
+      · rw [if_pos invalid]
+        simp
+      · rw [if_neg invalid]
+        simp only [lift, bind_tc_ok]
+        exact ih _
+    · rw [if_neg active]
+      unfold
+        V5RelationPrepareGenerated.aspis_core.sumcheck.WeightAccumulator.install_grouped_64x16_binary_masks_deferred_prepared
+      simp only [lift, bind_tc_ok]
+      obtain ⟨rowVec, hrows, rowValues⟩ :=
+        Aeneas.Std.WP.spec_imp_exists
+          (alloc.slice.Slice.to_vec_spec core.clone.CloneU8
+            (Array.to_slice rows) (by simp))
+      rw [hrows]
+      simp only [bind_tc_ok]
+      obtain ⟨maskVec, hmasks, maskValues⟩ :=
+        Aeneas.Std.WP.spec_imp_exists
+          (alloc.slice.Slice.to_vec_spec core.clone.CloneU16 masks (by simp))
+      rw [hmasks]
+      simp only [bind_tc_ok]
+      let component :=
+        V5RelationPrepareGenerated.aspis_core.sumcheck.WeightComponent.Grouped64x16BinaryDeferred
+          rowVec maskVec none
+          (alloc.vec.Vec.new
+            V5RelationPrepareGenerated.aspis_core.field.QM31)
+      obtain ⟨next, hpush, nextValues⟩ :=
+        Aeneas.Std.WP.spec_imp_exists
+          (alloc.vec.Vec.push_spec components component hcapacity)
+      rw [hpush]
+      simp only [bind_tc_ok]
+      intro returned
+      have outputExact :
+          ({ log_len := logLen, components := next } :
+            V5RelationPrepareGenerated.aspis_core.sumcheck.WeightAccumulator) =
+            output := congrArg Prod.snd returned
+      subst output
+      refine ⟨rowVec, maskVec, ?_, ?_, rfl, ?_⟩
+      · simpa using congrArg (fun values => values.val) rowValues.symm
+      · simpa using congrArg (fun values => values.val) maskValues.symm
+      · simpa [component] using nextValues
+  exact Aeneas.Std.WP.dspec_imp_forall exactLoop (.Ok (), output) hrun rfl
+
 /-- A successful generated grouped-mask installation has the exact released
 relation log length.  The capacity premise is the ordinary translated `Vec`
 allocation side condition; the preparation driver below reaches this call
@@ -338,6 +465,41 @@ theorem add_grouped_success_has_log_len_ten
   have hself : self.log_len = 10#u32 := by
     scalar_tac
   simpa [hself] using hout
+
+/-- Exact-list form of the successful grouped-mask installation. -/
+theorem add_grouped_success_exact
+    (self : V5RelationPrepareGenerated.aspis_core.sumcheck.WeightAccumulator)
+    (rows : Array Std.U8 64#usize) (masks : Slice Std.U16)
+    (output : V5RelationPrepareGenerated.aspis_core.sumcheck.WeightAccumulator)
+    (hcapacity : self.components.val.length < Std.Usize.max)
+    (hrun :
+      V5RelationPrepareGenerated.aspis_core.sumcheck.WeightAccumulator.add_grouped_64x16_binary_masks_deferred_prepared
+          self rows masks = .ok (.Ok (), output)) :
+    ∃ rowVec maskVec,
+      rowVec.val = rows.val ∧
+      maskVec.val = masks.val ∧
+      output.log_len = 10#u32 ∧
+      output.components.val = self.components.val ++
+        [V5RelationPrepareGenerated.aspis_core.sumcheck.WeightComponent.Grouped64x16BinaryDeferred
+          rowVec maskVec none
+          (alloc.vec.Vec.new
+            V5RelationPrepareGenerated.aspis_core.field.QM31)] := by
+  unfold
+    V5RelationPrepareGenerated.aspis_core.sumcheck.WeightAccumulator.add_grouped_64x16_binary_masks_deferred_prepared at hrun
+  simp only [core.slice.Slice.is_empty, bind_tc_ok] at hrun
+  by_cases hlog : self.log_len != 10#u32
+  · simp [hlog] at hrun
+  rw [if_neg hlog] at hrun
+  by_cases hempty : masks.length = 0
+  · simp [hempty] at hrun
+  simp [hempty] at hrun
+  obtain ⟨rowVec, maskVec, rowsExact, masksExact, outputLog, outputShape⟩ :=
+    grouped_loop_success_shape self.log_len self.components rows masks
+      0#usize hcapacity output hrun
+  have selfLog : self.log_len = 10#u32 := by
+    scalar_tac
+  exact ⟨rowVec, maskVec, rowsExact, masksExact,
+    outputLog.trans selfLog, outputShape⟩
 
 /-- Successful insertion of one multilinear component preserves `log_len`
 and appends exactly one component. -/
@@ -370,6 +532,37 @@ theorem add_multilinear_success_shape
   refine ⟨rfl, ?_⟩
   rw [hnext, List.length_append]
   simp
+
+/-- The stronger exact-list form of a successful multilinear insertion. -/
+theorem add_multilinear_success_exact
+    (self : V5RelationPrepareGenerated.aspis_core.sumcheck.WeightAccumulator)
+    (scale : V5RelationPrepareGenerated.aspis_core.field.QM31)
+    (point : alloc.vec.Vec V5RelationPrepareGenerated.aspis_core.field.QM31)
+    (output : V5RelationPrepareGenerated.aspis_core.sumcheck.WeightAccumulator)
+    (hcapacity : self.components.val.length < Std.Usize.max)
+    (hrun :
+      V5RelationPrepareGenerated.aspis_core.sumcheck.WeightAccumulator.add_multilinear
+          self scale point = .ok (.Ok (), output)) :
+    output.log_len = self.log_len ∧
+      output.components.val = self.components.val ++
+        [V5RelationPrepareGenerated.aspis_core.sumcheck.WeightComponent.Multilinear
+          scale point] := by
+  let component :=
+    V5RelationPrepareGenerated.aspis_core.sumcheck.WeightComponent.Multilinear
+      scale point
+  obtain ⟨next, hpush, nextValues⟩ :=
+    Aeneas.Std.WP.spec_imp_exists
+      (alloc.vec.Vec.push_spec self.components component hcapacity)
+  unfold
+    V5RelationPrepareGenerated.aspis_core.sumcheck.WeightAccumulator.add_multilinear at hrun
+  simp only [lift, bind_tc_ok] at hrun
+  by_cases hlength : alloc.vec.Vec.len point != UScalar.cast .Usize self.log_len
+  · simp [hlength] at hrun
+  rw [if_neg hlength, hpush] at hrun
+  simp only [bind_tc_ok, ok.injEq, Prod.mk.injEq,
+    core.result.Result.Ok.injEq] at hrun
+  rcases hrun with ⟨_, rfl⟩
+  exact ⟨rfl, by simpa [component] using nextValues⟩
 
 theorem prepare_for_extraction_success_exposes_arithmetic
     (parsed : V5RelationPrepareGenerated.v5_cu_probe.ParsedProbeData)
@@ -454,6 +647,9 @@ theorem prepare_for_extraction_success_exposes_arithmetic
                   have hshape1 := add_multilinear_success_shape
                     weights0 V5RelationPrepareGenerated.aspis_core.field.QM31.ONE
                     vec0 weights1 (by scalar_tac) hadd0
+                  have hcomponents1 := add_multilinear_success_exact
+                    weights0 V5RelationPrepareGenerated.aspis_core.field.QM31.ONE
+                    vec0 weights1 (by scalar_tac) hadd0
                   simp only [weights0, hadd0, bind_tc_ok,
                     core.result.Result.map_err,
                     core.result.Result.Insts.CoreOpsTry.branch] at hrun
@@ -523,6 +719,8 @@ theorem prepare_for_extraction_success_exposes_arithmetic
                                     simp [weights0]
                                     scalar_tac
                                   have hshape2 := add_multilinear_success_shape
+                                    weights1 kappa vec1 weights2 hcap1 hadd1
+                                  have hcomponents2 := add_multilinear_success_exact
                                     weights1 kappa vec1 weights2 hcap1 hadd1
                                   simp only [hadd1, bind_tc_ok,
                                     core.result.Result.map_err,
@@ -601,6 +799,10 @@ theorem prepare_for_extraction_success_exposes_arithmetic
                                                       scalar_tac
                                                     have hshape3 :=
                                                       add_multilinear_success_shape
+                                                        weights2 kappa2 vec2 weights3
+                                                        hcap2 hadd2
+                                                    have hcomponents3 :=
+                                                      add_multilinear_success_exact
                                                         weights2 kappa2 vec2 weights3
                                                         hcap2 hadd2
                                                     simp only [hadd2, bind_tc_ok,
@@ -683,6 +885,32 @@ theorem prepare_for_extraction_success_exposes_arithmetic
                                                                           V5RelationPrepareGenerated.v5_cu_probe.V5_ATOMIC_V3_INACTIVE_ROW_GROUPS
                                                                           (Array.to_slice V5RelationPrepareGenerated.v5_cu_probe.V5_ATOMIC_V3_INACTIVE_GROUP_MASKS)
                                                                           weights4 hcap3 hgroup
+                                                                      obtain ⟨groupedRows, groupedMasks,
+                                                                          groupedRowsExact,
+                                                                          groupedMasksExact, _,
+                                                                          hcomponents4⟩ :=
+                                                                        add_grouped_success_exact
+                                                                          weights3
+                                                                          V5RelationPrepareGenerated.v5_cu_probe.V5_ATOMIC_V3_INACTIVE_ROW_GROUPS
+                                                                          (Array.to_slice V5RelationPrepareGenerated.v5_cu_probe.V5_ATOMIC_V3_INACTIVE_GROUP_MASKS)
+                                                                          weights4 hcap3 hgroup
+                                                                      have initialComponents4 :
+                                                                          weights4.components.val =
+                                                                            [V5RelationPrepareGenerated.aspis_core.sumcheck.WeightComponent.Multilinear
+                                                                                V5RelationPrepareGenerated.aspis_core.field.QM31.ONE vec0,
+                                                                             V5RelationPrepareGenerated.aspis_core.sumcheck.WeightComponent.Multilinear
+                                                                                kappa vec1,
+                                                                             V5RelationPrepareGenerated.aspis_core.sumcheck.WeightComponent.Multilinear
+                                                                                kappa2 vec2,
+                                                                             V5RelationPrepareGenerated.aspis_core.sumcheck.WeightComponent.Grouped64x16BinaryDeferred
+                                                                                groupedRows groupedMasks none
+                                                                                (alloc.vec.Vec.new
+                                                                                  V5RelationPrepareGenerated.aspis_core.field.QM31)] := by
+                                                                        rw [hcomponents4,
+                                                                          hcomponents3.2,
+                                                                          hcomponents2.2,
+                                                                          hcomponents1.2]
+                                                                        simp [weights0]
                                                                       simp only [hgroup, bind_tc_ok,
                                                                         core.result.Result.map_err,
                                                                         core.result.Result.Insts.CoreOpsTry.branch] at hrun
@@ -830,6 +1058,11 @@ theorem prepare_for_extraction_success_exposes_arithmetic
                                                                                                 relationValue2 := relationValue2
                                                                                                 scaled3 := scaled3
                                                                                                 relationValue3 := relationValue3
+                                                                                                pointVec0 := vec0
+                                                                                                pointVec1 := vec1
+                                                                                                pointVec2 := vec2
+                                                                                                groupedRows := groupedRows
+                                                                                                groupedMasks := groupedMasks
                                                                                                 kappa2Run := hkappa2
                                                                                                 kappa3Run := hkappa3
                                                                                                 claim0Run := hclaim0
@@ -843,8 +1076,15 @@ theorem prepare_for_extraction_success_exposes_arithmetic
                                                                                                 claim3Run := hclaim3
                                                                                                 scaled3Run := hscaled3
                                                                                                 relationValue3Run := hvalue3
+                                                                                                groupedRowsExact := groupedRowsExact
+                                                                                                groupedMasksExact := groupedMasksExact
+                                                                                                initialComponentsExact :=
+                                                                                                  (congrArg
+                                                                                                    (fun weights => weights.components.val)
+                                                                                                    properties.2.2.2).trans
+                                                                                                    initialComponents4
                                                                                                 returnedRelationValue := properties.2.1 },
-                                                                                                properties.2.2⟩⟩
+                                                                                                properties.2.2.1⟩⟩
                                                                                             | let properties :=
                                                                                                 checked_nonreal_relation_has_log_len_ten
                                                                                                   weights4 relationValue3 _ _ point0 kappa3
@@ -863,6 +1103,11 @@ theorem prepare_for_extraction_success_exposes_arithmetic
                                                                                                 relationValue2 := relationValue2
                                                                                                 scaled3 := scaled3
                                                                                                 relationValue3 := relationValue3
+                                                                                                pointVec0 := vec0
+                                                                                                pointVec1 := vec1
+                                                                                                pointVec2 := vec2
+                                                                                                groupedRows := groupedRows
+                                                                                                groupedMasks := groupedMasks
                                                                                                 kappa2Run := hkappa2
                                                                                                 kappa3Run := hkappa3
                                                                                                 claim0Run := hclaim0
@@ -876,8 +1121,15 @@ theorem prepare_for_extraction_success_exposes_arithmetic
                                                                                                 claim3Run := hclaim3
                                                                                                 scaled3Run := hscaled3
                                                                                                 relationValue3Run := hvalue3
+                                                                                                groupedRowsExact := groupedRowsExact
+                                                                                                groupedMasksExact := groupedMasksExact
+                                                                                                initialComponentsExact :=
+                                                                                                  (congrArg
+                                                                                                    (fun weights => weights.components.val)
+                                                                                                    properties.2.2.2).trans
+                                                                                                    initialComponents4
                                                                                                 returnedRelationValue := properties.2.1 },
-                                                                                                properties.2.2⟩⟩
+                                                                                                properties.2.2.1⟩⟩
 
 /-- The log-length projection retained for existing callers. -/
 theorem prepare_for_extraction_success_has_log_len_ten
