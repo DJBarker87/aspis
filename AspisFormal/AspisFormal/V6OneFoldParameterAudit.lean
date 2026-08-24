@@ -20,7 +20,10 @@ The checked facts are:
   `255`, imply direct list caps `100` and `99` respectively;
 * the generic circle encoder/fold square really does specialize to
   `1024 -> 256` coefficients and `2^20 -> 2^18` symbols; and
-* the proposed byte formula gives `30685`, thirty-five bytes below `30 KiB`.
+* the proposed byte formula gives `30685`, thirty-five bytes below `30 KiB`,
+  for the released-compatible `16 + 3` PCS width; and
+* the unintegrated selected-hiding `26 + 3` width gives `33785` bytes at the
+  same frontier cap and therefore does not fit below `30 KiB`.
 
 The published circle/RS decoding and correlated-agreement theorems, the
 one-round Fiat--Shamir/BCS reduction, and the exact production transcript are
@@ -202,29 +205,102 @@ theorem one_circle_fold_ends_in_explicit_final256
   exact circleFoldLayer_circleLiftEncoder
     finalEncoder alpha x y inverse2x inverse2y hx hy
 
-/-! ## Exact wire arithmetic from the proposed grammar -/
+/-! ## Exact wire arithmetic from the proposed grammar
 
-def fixedWireBytes : Nat := 9853
-def bytesPerQuery : Nat := 466
-def bytesPerFrontierNodePair : Nat := 64
+The repository has two relevant column widths.  V5's production PCS uses 16
+M31 C1 columns and 3 QM31 C2 columns.  The selected hiding algebra adds ten
+mask-only C1 columns, but that 26 + 3 width is not integrated into the PCS.
+Keeping the profile explicit prevents the 30,685-byte result for 16 + 3 from
+being accidentally advertised as a result for 26 + 3. -/
+
+structure WireProfile where
+  c1Columns : Nat
+  c2Columns : Nat
+  queries : Nat
+  frontier : Nat
+  deriving DecidableEq
+
+def releasedCompatibleWireProfile : WireProfile where
+  c1Columns := 16
+  c2Columns := 3
+  queries := 16
+  frontier := 209
+
+def selectedHidingWireProfile : WireProfile where
+  c1Columns := 26
+  c2Columns := 3
+  queries := 16
+  frontier := 209
+
+def packedBytes (bits : Nat) : Nat := (bits + 7) / 8
+
+def fixedQm31Count (profile : WireProfile) : Nat :=
+  1 + 10 * 27 + 4 * (profile.c1Columns + profile.c2Columns) +
+    1 + 2 + 4 * 6 + 256
+
+def fixedWireBytesFor (profile : WireProfile) : Nat :=
+  packedBytes (4 * fixedQm31Count profile * 31) + 2 * 32 + 3 * 8
+
+def bytesPerQueryFor (profile : WireProfile) : Nat :=
+  packedBytes (4 * profile.c1Columns * 31) +
+    packedBytes (4 * profile.c2Columns * 4 * 31) + 32
+
 def maxProofBodyBytes : Nat := 30 * 1024
 
-def proofBodyBytes (queries frontier : Nat) : Nat :=
-  fixedWireBytes + bytesPerQuery * queries +
-    bytesPerFrontierNodePair * frontier
+def proofBodyBytesFor (profile : WireProfile) : Nat :=
+  fixedWireBytesFor profile + bytesPerQueryFor profile * profile.queries +
+    2 * profile.frontier * 32
 
-theorem balanced_body_size : proofBodyBytes 16 209 = 30685 := by
-  norm_num [proofBodyBytes, fixedWireBytes, bytesPerQuery,
-    bytesPerFrontierNodePair]
+theorem released_compatible_fixed_qm31_count :
+    fixedQm31Count releasedCompatibleWireProfile = 630 := by
+  norm_num [fixedQm31Count, releasedCompatibleWireProfile]
 
-theorem balanced_body_margin :
-    proofBodyBytes 16 209 + 35 = maxProofBodyBytes := by
-  norm_num [proofBodyBytes, fixedWireBytes, bytesPerQuery,
-    bytesPerFrontierNodePair, maxProofBodyBytes]
+theorem released_compatible_body_size :
+    proofBodyBytesFor releasedCompatibleWireProfile = 30685 := by
+  norm_num [proofBodyBytesFor, fixedWireBytesFor, bytesPerQueryFor,
+    packedBytes, fixedQm31Count, releasedCompatibleWireProfile]
 
-theorem balanced_upload_count : (proofBodyBytes 16 209 + 959) / 960 = 32 := by
-  norm_num [proofBodyBytes, fixedWireBytes, bytesPerQuery,
-    bytesPerFrontierNodePair]
+theorem released_compatible_body_margin :
+    proofBodyBytesFor releasedCompatibleWireProfile + 35 =
+      maxProofBodyBytes := by
+  norm_num [proofBodyBytesFor, fixedWireBytesFor, bytesPerQueryFor,
+    packedBytes, fixedQm31Count, releasedCompatibleWireProfile,
+    maxProofBodyBytes]
+
+theorem released_compatible_upload_count :
+    (proofBodyBytesFor releasedCompatibleWireProfile + 959) / 960 = 32 := by
+  norm_num [proofBodyBytesFor, fixedWireBytesFor, bytesPerQueryFor,
+    packedBytes, fixedQm31Count, releasedCompatibleWireProfile]
+
+theorem selected_hiding_fixed_qm31_count :
+    fixedQm31Count selectedHidingWireProfile = 670 := by
+  norm_num [fixedQm31Count, selectedHidingWireProfile]
+
+theorem selected_hiding_body_size :
+    proofBodyBytesFor selectedHidingWireProfile = 33785 := by
+  norm_num [proofBodyBytesFor, fixedWireBytesFor, bytesPerQueryFor,
+    packedBytes, fixedQm31Count, selectedHidingWireProfile]
+
+theorem selected_hiding_does_not_fit_30_kib :
+    maxProofBodyBytes < proofBodyBytesFor selectedHidingWireProfile := by
+  norm_num [proofBodyBytesFor, fixedWireBytesFor, bytesPerQueryFor,
+    packedBytes, fixedQm31Count, selectedHidingWireProfile,
+    maxProofBodyBytes]
+
+def selectedHidingCompactWireProfile (frontier : Nat) : WireProfile where
+  c1Columns := 26
+  c2Columns := 3
+  queries := 16
+  frontier := frontier
+
+theorem selected_hiding_largest_frontier_below_30_kib :
+    proofBodyBytesFor (selectedHidingCompactWireProfile 161) ≤
+        maxProofBodyBytes ∧
+      maxProofBodyBytes <
+        proofBodyBytesFor (selectedHidingCompactWireProfile 162) := by
+  norm_num [proofBodyBytesFor, fixedWireBytesFor, bytesPerQueryFor,
+    packedBytes, fixedQm31Count, selectedHidingCompactWireProfile,
+    maxProofBodyBytes]
 
 /-! ## Conservative BCS round inventory -/
 
@@ -348,7 +424,9 @@ structure PublishedOneFoldReduction (K : Type*) [Field K] where
 #print axioms initial_list_card_lt_101
 #print axioms output_list_card_lt_100
 #print axioms one_circle_fold_ends_in_explicit_final256
-#print axioms balanced_body_margin
+#print axioms released_compatible_body_margin
+#print axioms selected_hiding_does_not_fit_30_kib
+#print axioms selected_hiding_largest_frontier_below_30_kib
 #print axioms genuine_round_count_le_30_of_boundary_embedding
 #print axioms screened_compact_probability_ge_three_eighths
 

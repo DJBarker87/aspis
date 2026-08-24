@@ -4,7 +4,7 @@ This note records the first check of the proposed B10 V6 profile. The proposal
 is promising enough to prototype, but its `101.51`-bit result is not yet a
 proved security claim.
 
-The working profile is:
+The 30,685-byte working profile is the released-compatible PCS width:
 
 | Parameter | Value |
 | --- | ---: |
@@ -17,7 +17,17 @@ The working profile is:
 | Binary frontier limit | 209 nodes per tree |
 | Selectable query streams | 3 |
 | Work bits | batch 34, fold 31, final 34 |
+| PCS columns | 16 M31 C1 + 3 QM31 C2 |
 | Screened proof body | 30,685 bytes |
+
+This width distinction matters. The selected hiding algebra currently has ten
+additional mask-only C1 columns, for 26 C1 + 3 C2. It has not been integrated
+into the production PCS. At the same query count and frontier limit, that
+profile is 33,785 bytes, not 30,685 bytes, and does not fit below 30 KiB. It
+would require a frontier limit of at most 161; the research screen estimates
+that event to be far too rare. V6 therefore needs either a different hiding
+integration or another compression method before both claims can be made at
+once.
 
 ## Results so far
 
@@ -39,8 +49,13 @@ proves the following exact facts:
   has at most 99 members.
 - The existing generic encoder proof specializes exactly to one circle fold
   ending in the disclosed 256-coefficient vector.
-- The proposed grammar formula is `9853 + 466q + 64f`; at `q=16` and `f=209`
-  it gives 30,685 bytes, 35 bytes below 30 KiB, and 32 uploads at 960 bytes.
+- For the released-compatible 16+3 width, the proposed grammar formula is
+  `9853 + 466q + 64f`; at `q=16` and `f=209` it gives 30,685 bytes, 35 bytes
+  below 30 KiB, and 32 uploads at 960 bytes.
+- For the selected-hiding 26+3 width, Lean derives 670 fixed QM31 values and a
+  33,785-byte body at the same query/frontier settings. It also checks that
+  frontier 161 is the largest integer limit that keeps this width below
+  30 KiB.
 - A deliberately over-split inventory has 23 possible post-commitment prover
   response boundaries. If each genuine BCS round maps to a distinct boundary,
   the round count is at most 23 and therefore at most 30.
@@ -142,7 +157,13 @@ screen.
    24 candidate draws; those draws are not silently included in the BCS round
    count.
 
-5. **Security ledger.** The V5 event list cannot simply be copied. Events for
+5. **PCS/hiding profile integration.** The screened 30,685-byte body uses the
+   released-compatible 16+3 PCS width, whereas the selected hiding proof uses
+   26+3. V6 must either integrate hiding without carrying all ten extra C1
+   columns in the opened PCS records, or accept a larger proof, before it can
+   claim both the selected hiding result and the 30 KiB body.
+
+6. **Security ledger.** The V5 event list cannot simply be copied. Events for
    three removed FRI layers should disappear, the initial batch and sole fold
    change parameters, the query event becomes conditioned, and new events are
    needed for packed decoding, the explicit final vector, compact sampling,
@@ -154,17 +175,17 @@ screen.
    new transcript, and use the explicit external-event allowance for the
    remaining computational assumptions.
 
-6. **Hiding.** Reusing one 32-byte secret salt for two separately typed leaf
+7. **Hiding.** Reusing one 32-byte secret salt for two separately typed leaf
    hashes needs a joint two-tree hiding proof. The numerical hiding result in
    the research report is still conditional on that proof and on revised
    masking-rank certificates.
 
-7. **Transcript and implementation.** The exact order, labels, byte grammar,
+8. **Transcript and implementation.** The exact order, labels, byte grammar,
    rejection rules, retry counters, Rust verifier, and compiled Solana program
    do not exist yet. They will need the same Rust-to-Lean and reproducible-build
    treatment used for V5.
 
-8. **Compute and prover measurements.** The 30 KiB result is a byte count, not
+9. **Compute and prover measurements.** The 30 KiB result is a byte count, not
    a Solana compute result. The final-vector evaluations, relation reductions,
    binary Merkle checks, packed decoding, prover memory, and grind time need a
    host prototype before any deployment decision.
