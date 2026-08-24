@@ -10,6 +10,70 @@ namespace Prepare
 
 open V5RelationPrepareGenerated
 
+/-- The scalar calls that construct the initial claim consumed by the
+relation verifier.  All fields come from one successful translated
+preparation call. -/
+structure PrepareRelationArithmeticTrace
+    (kappa inactiveClaim :
+      V5RelationPrepareGenerated.aspis_core.field.QM31)
+    (preparedClaims :
+      V5RelationPrepareGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims)
+    (relation : V5RelationPrepareGenerated.v5_cu_probe.PreparedRelation) :
+    Type where
+  kappa2 : V5RelationPrepareGenerated.aspis_core.field.QM31
+  kappa3 : V5RelationPrepareGenerated.aspis_core.field.QM31
+  claim0 : V5RelationPrepareGenerated.aspis_core.field.QM31
+  claim1 : V5RelationPrepareGenerated.aspis_core.field.QM31
+  claim2 : V5RelationPrepareGenerated.aspis_core.field.QM31
+  claim3 : V5RelationPrepareGenerated.aspis_core.field.QM31
+  relationValue0 : V5RelationPrepareGenerated.aspis_core.field.QM31
+  scaled1 : V5RelationPrepareGenerated.aspis_core.field.QM31
+  relationValue1 : V5RelationPrepareGenerated.aspis_core.field.QM31
+  scaled2 : V5RelationPrepareGenerated.aspis_core.field.QM31
+  relationValue2 : V5RelationPrepareGenerated.aspis_core.field.QM31
+  scaled3 : V5RelationPrepareGenerated.aspis_core.field.QM31
+  relationValue3 : V5RelationPrepareGenerated.aspis_core.field.QM31
+  kappa2Run :
+    V5RelationPrepareGenerated.aspis_core.field.QM31.square kappa =
+      .ok kappa2
+  kappa3Run :
+    V5RelationPrepareGenerated.aspis_core.field.QM31.mul kappa2 kappa =
+      .ok kappa3
+  claim0Run :
+    V5RelationPrepareGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims.point_claim_at_for_extraction
+        preparedClaims 0#usize = .ok claim0
+  relationValue0Run :
+    V5RelationPrepareGenerated.aspis_core.field.QM31.add inactiveClaim claim0 =
+      .ok relationValue0
+  claim1Run :
+    V5RelationPrepareGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims.point_claim_at_for_extraction
+        preparedClaims 1#usize = .ok claim1
+  scaled1Run :
+    V5RelationPrepareGenerated.aspis_core.field.QM31.mul kappa claim1 =
+      .ok scaled1
+  relationValue1Run :
+    V5RelationPrepareGenerated.aspis_core.field.QM31.add relationValue0 scaled1 =
+      .ok relationValue1
+  claim2Run :
+    V5RelationPrepareGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims.point_claim_at_for_extraction
+        preparedClaims 2#usize = .ok claim2
+  scaled2Run :
+    V5RelationPrepareGenerated.aspis_core.field.QM31.mul kappa2 claim2 =
+      .ok scaled2
+  relationValue2Run :
+    V5RelationPrepareGenerated.aspis_core.field.QM31.add relationValue1 scaled2 =
+      .ok relationValue2
+  claim3Run :
+    V5RelationPrepareGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims.point_claim_at_for_extraction
+        preparedClaims 3#usize = .ok claim3
+  scaled3Run :
+    V5RelationPrepareGenerated.aspis_core.field.QM31.mul kappa3 claim3 =
+      .ok scaled3
+  relationValue3Run :
+    V5RelationPrepareGenerated.aspis_core.field.QM31.add relationValue2 scaled3 =
+      .ok relationValue3
+  returnedRelationValue : relation.relation_value = relationValue3
+
 private theorem prepare_closure0_maps_error
     (error : V5RelationPrepareGenerated.aspis_core.sumcheck.TensorWeightError) :
     V5RelationPrepareGenerated.core.result.Result.map_err
@@ -86,12 +150,13 @@ private theorem returned_relation_has_log_len_ten
             V5RelationPrepareGenerated.aspis_core.field.QM31)
           V5RelationPrepareGenerated.solana_program_error.ProgramError)) =
       .ok (.Ok (expected, expectedPoint, expectedScale))) :
-    expected.weights.log_len = 10#u32 := by
+    expected.weights.log_len = 10#u32 ∧
+      expected.relation_value = produced.relation_value := by
   have houter := Result.ok.inj hrun
   have htriple := core.result.Result.Ok.inj houter
   have hrelation : produced = expected := congrArg Prod.fst htriple
-  rw [← hrelation]
-  exact hlog
+  subst expected
+  exact ⟨hlog, rfl⟩
 
 private theorem checked_nonreal_relation_has_log_len_ten
     (weights : V5RelationPrepareGenerated.aspis_core.sumcheck.WeightAccumulator)
@@ -137,7 +202,8 @@ private theorem checked_nonreal_relation_has_log_len_ten
             V5RelationPrepareGenerated.aspis_core.field.QM31)
           V5RelationPrepareGenerated.solana_program_error.ProgramError)) =
         .ok (.Ok (expected, expectedPoint, expectedScale))) :
-    expected.weights.log_len = 10#u32 := by
+    expected.weights.log_len = 10#u32 ∧
+      expected.relation_value = relationValue := by
   cases hcontains0 : core.slice.Slice.contains
       V5RelationPrepareGenerated.aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31
       (Array.to_slice alphas)
@@ -301,7 +367,7 @@ theorem add_multilinear_success_shape
   rw [hnext, List.length_append]
   simp
 
-theorem prepare_for_extraction_success_has_log_len_ten
+theorem prepare_for_extraction_success_exposes_arithmetic
     (parsed : V5RelationPrepareGenerated.v5_cu_probe.ParsedProbeData)
     (kappa inactiveClaim : V5RelationPrepareGenerated.aspis_core.field.QM31)
     (preparedClaims :
@@ -313,7 +379,9 @@ theorem prepare_for_extraction_success_has_log_len_ten
       V5RelationPrepareGenerated.v5_cu_probe.prepare_relation_base_with_kappa_prepared_for_extraction
           parsed kappa inactiveClaim preparedClaims =
         .ok (.Ok (relation, point, denseScale))) :
-    relation.weights.log_len = 10#u32 := by
+    relation.weights.log_len = 10#u32 ∧
+      Nonempty (PrepareRelationArithmeticTrace kappa inactiveClaim
+        preparedClaims relation) := by
   unfold
     V5RelationPrepareGenerated.v5_cu_probe.prepare_relation_base_with_kappa_prepared_for_extraction at hrun
   simp only [
@@ -740,11 +808,86 @@ theorem prepare_for_extraction_success_has_log_len_ten
                                                                                             rw [hunwrapFinal3] at hrun
                                                                                             simp only [bind_tc_ok] at hrun
                                                                                             first
-                                                                                            | exact returned_relation_has_log_len_ten
-                                                                                                _ relation _ point _ denseScale hlog4 hrun
-                                                                                            | exact checked_nonreal_relation_has_log_len_ten
-                                                                                                weights4 relationValue3 _ _ point0 kappa3
-                                                                                                relation point denseScale hlog4 hrun
+                                                                                            | let properties :=
+                                                                                                returned_relation_has_log_len_ten
+                                                                                                  _ relation _ point _ denseScale hlog4 hrun
+                                                                                              exact ⟨properties.1, ⟨{
+                                                                                                kappa2 := kappa2
+                                                                                                kappa3 := kappa3
+                                                                                                claim0 := claim0
+                                                                                                claim1 := claim1
+                                                                                                claim2 := claim2
+                                                                                                claim3 := claim3
+                                                                                                relationValue0 := relationValue0
+                                                                                                scaled1 := scaled1
+                                                                                                relationValue1 := relationValue1
+                                                                                                scaled2 := scaled2
+                                                                                                relationValue2 := relationValue2
+                                                                                                scaled3 := scaled3
+                                                                                                relationValue3 := relationValue3
+                                                                                                kappa2Run := hkappa2
+                                                                                                kappa3Run := hkappa3
+                                                                                                claim0Run := hclaim0
+                                                                                                relationValue0Run := hvalue0
+                                                                                                claim1Run := hclaim1
+                                                                                                scaled1Run := hscaled1
+                                                                                                relationValue1Run := hvalue1
+                                                                                                claim2Run := hclaim2
+                                                                                                scaled2Run := hscaled2
+                                                                                                relationValue2Run := hvalue2
+                                                                                                claim3Run := hclaim3
+                                                                                                scaled3Run := hscaled3
+                                                                                                relationValue3Run := hvalue3
+                                                                                                returnedRelationValue := properties.2 }⟩⟩
+                                                                                            | let properties :=
+                                                                                                checked_nonreal_relation_has_log_len_ten
+                                                                                                  weights4 relationValue3 _ _ point0 kappa3
+                                                                                                  relation point denseScale hlog4 hrun
+                                                                                              exact ⟨properties.1, ⟨{
+                                                                                                kappa2 := kappa2
+                                                                                                kappa3 := kappa3
+                                                                                                claim0 := claim0
+                                                                                                claim1 := claim1
+                                                                                                claim2 := claim2
+                                                                                                claim3 := claim3
+                                                                                                relationValue0 := relationValue0
+                                                                                                scaled1 := scaled1
+                                                                                                relationValue1 := relationValue1
+                                                                                                scaled2 := scaled2
+                                                                                                relationValue2 := relationValue2
+                                                                                                scaled3 := scaled3
+                                                                                                relationValue3 := relationValue3
+                                                                                                kappa2Run := hkappa2
+                                                                                                kappa3Run := hkappa3
+                                                                                                claim0Run := hclaim0
+                                                                                                relationValue0Run := hvalue0
+                                                                                                claim1Run := hclaim1
+                                                                                                scaled1Run := hscaled1
+                                                                                                relationValue1Run := hvalue1
+                                                                                                claim2Run := hclaim2
+                                                                                                scaled2Run := hscaled2
+                                                                                                relationValue2Run := hvalue2
+                                                                                                claim3Run := hclaim3
+                                                                                                scaled3Run := hscaled3
+                                                                                                relationValue3Run := hvalue3
+                                                                                                returnedRelationValue := properties.2 }⟩⟩
+
+/-- The log-length projection retained for existing callers. -/
+theorem prepare_for_extraction_success_has_log_len_ten
+    (parsed : V5RelationPrepareGenerated.v5_cu_probe.ParsedProbeData)
+    (kappa inactiveClaim : V5RelationPrepareGenerated.aspis_core.field.QM31)
+    (preparedClaims :
+      V5RelationPrepareGenerated.v5_cu_probe.fri_checks.V5PreparedPcsClaims)
+    (relation : V5RelationPrepareGenerated.v5_cu_probe.PreparedRelation)
+    (point : Array V5RelationPrepareGenerated.aspis_core.field.QM31 10#usize)
+    (denseScale : V5RelationPrepareGenerated.aspis_core.field.QM31)
+    (hrun :
+      V5RelationPrepareGenerated.v5_cu_probe.prepare_relation_base_with_kappa_prepared_for_extraction
+          parsed kappa inactiveClaim preparedClaims =
+        .ok (.Ok (relation, point, denseScale))) :
+    relation.weights.log_len = 10#u32 :=
+  (prepare_for_extraction_success_exposes_arithmetic parsed kappa inactiveClaim
+    preparedClaims relation point denseScale hrun).1
 
 /-- The exact caller-facing theorem needed by the accepted relation/Fri
 composition: every successful released four-claim preparation returns weights

@@ -24,7 +24,7 @@ attribute [local simp]
 abbrev PrefixHash :=
   Slice (Slice Std.U8) → Result (Array Std.U8 32#usize)
 
-theorem accepted_prefix_has_batch_and_gamma_successor
+theorem accepted_prefix_has_batch_gamma_and_inactive_decode
     (parsed : EntryParsed)
     (liveStatement : EntryStatement)
     (statementDigest : Array Std.U8 32#usize)
@@ -35,12 +35,17 @@ theorem accepted_prefix_has_batch_and_gamma_successor
       V5AcceptedEntryGenerated.v5_cu_probe.verify_v5_wire_prefix
           parsed liveStatement statementDigest hash =
         .ok (.Ok (verified, returnedTranscript))) :
-    ∃ beforeBatch afterBatch afterGamma,
+    ∃ beforeBatch afterBatch afterGamma inactiveOffset beforeKappa afterKappa,
       V5AcceptedEntryGenerated.v5_cu_probe.check_and_absorb_real_v5_batch_nonce
           beforeBatch parsed.v5_batch_nonce =
         .ok (.Ok (), afterBatch) ∧
       V5AcceptedEntryGenerated.aspis_core.transcript.Transcript.challenge_nonzero_qm31
-          afterBatch = .ok (.Ok verified.gamma, afterGamma) := by
+          afterBatch = .ok (.Ok verified.gamma, afterGamma) ∧
+      V5AcceptedEntryGenerated.v5_cu_probe.decode_prefix_qm31
+          parsed.v5_wire_prefix inactiveOffset =
+        .ok (.Ok verified.inactive_claim) ∧
+      V5AcceptedEntryGenerated.aspis_core.transcript.Transcript.challenge_nonzero_qm31
+          beforeKappa = .ok (.Ok verified.kappa, afterKappa) := by
   unfold V5AcceptedEntryGenerated.v5_cu_probe.verify_v5_wire_prefix at success
   rw [bind_eq_ok_iff] at success
   obtain ⟨headerValid, _, success⟩ := success
@@ -291,7 +296,7 @@ theorem accepted_prefix_has_batch_and_gamma_successor
                                 | false =>
                                   simp only [Bool.false_eq_true, if_false] at success
                                   rw [bind_eq_ok_iff] at success
-                                  obtain ⟨_, _, success⟩ := success
+                                  obtain ⟨inactiveOffset, _, success⟩ := success
                                   rw [bind_eq_ok_iff] at success
                                   obtain ⟨_, _, success⟩ := success
                                   rw [bind_eq_ok_iff] at success
@@ -352,6 +357,10 @@ theorem accepted_prefix_has_batch_and_gamma_successor
                                           | Ok impossible => nomatch impossible
                                           | Err error => simp at success
                                         | Continue inactiveClaim =>
+                                          have hinactiveResult :=
+                                            branch_eq_ok_of_continue inactiveResult
+                                              inactiveClaim inactiveBranchSuccess
+                                          rw [hinactiveResult] at inactiveSuccess
                                           simp only at success
                                           rw [bind_eq_ok_iff] at success
                                           obtain ⟨_, _, success⟩ := success
@@ -360,20 +369,35 @@ theorem accepted_prefix_has_batch_and_gamma_successor
                                           rw [bind_eq_ok_iff] at success
                                           obtain ⟨_, _, success⟩ := success
                                           rw [bind_eq_ok_iff] at success
-                                          obtain ⟨_, _, success⟩ := success
+                                          obtain ⟨transcript16, _, success⟩ := success
                                           rw [bind_eq_ok_iff] at success
-                                          obtain ⟨kappaPair, _, success⟩ := success
-                                          rcases kappaPair with ⟨_, _⟩
+                                          obtain ⟨kappaPair, kappaSuccess, success⟩ := success
+                                          rcases kappaPair with ⟨kappaResult, afterKappa⟩
                                           rw [bind_eq_ok_iff] at success
-                                          obtain ⟨_, _, success⟩ := success
+                                          obtain ⟨mappedKappa, mappedKappaSuccess, success⟩ := success
                                           rw [bind_eq_ok_iff] at success
-                                          obtain ⟨kappaFlow, _, success⟩ := success
+                                          obtain ⟨kappaFlow, kappaBranchSuccess, success⟩ := success
                                           cases kappaFlow with
                                           | Break residual =>
                                             cases residual with
                                             | Ok impossible => nomatch impossible
                                             | Err error => simp at success
                                           | Continue kappa =>
+                                            have hmappedKappa := branch_eq_ok_of_continue
+                                              mappedKappa kappa kappaBranchSuccess
+                                            rw [hmappedKappa] at mappedKappaSuccess
+                                            have hkappaResult : kappaResult = .Ok kappa := by
+                                              cases kappaResult with
+                                              | Err error =>
+                                                simp [V5AcceptedEntryGenerated.core.result.Result.map_err,
+                                                  V5AcceptedEntryGenerated.v5_cu_probe.verify_v5_wire_prefix.closure_6.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedProgramError.call_once]
+                                                  at mappedKappaSuccess
+                                              | Ok actualKappa =>
+                                                simp [V5AcceptedEntryGenerated.core.result.Result.map_err]
+                                                  at mappedKappaSuccess
+                                                subst actualKappa
+                                                rfl
+                                            rw [hkappaResult] at kappaSuccess
                                             simp only at success
                                             rw [bind_eq_ok_iff] at success
                                             obtain ⟨gammaDiffers, _, success⟩ := success
@@ -467,9 +491,50 @@ theorem accepted_prefix_has_batch_and_gamma_successor
                                                                     (fun output => output.fst.gamma)
                                                                     (core.result.Result.Ok.inj
                                                                       (Result.ok.inj success))).symm
+                                                                have hverifiedInactive :
+                                                                    verified.inactive_claim = inactiveClaim := by
+                                                                  exact (congrArg
+                                                                    (fun output => output.fst.inactive_claim)
+                                                                    (core.result.Result.Ok.inj
+                                                                      (Result.ok.inj success))).symm
+                                                                have hverifiedKappa :
+                                                                    verified.kappa = kappa := by
+                                                                  exact (congrArg
+                                                                    (fun output => output.fst.kappa)
+                                                                    (core.result.Result.Ok.inj
+                                                                      (Result.ok.inj success))).symm
                                                                 subst sampledGamma
                                                                 exact ⟨beforeBatch, afterBatch, afterGamma,
-                                                                  batchSuccess, gammaSuccess⟩
+                                                                  inactiveOffset, transcript16, afterKappa,
+                                                                  batchSuccess, gammaSuccess,
+                                                                  hverifiedInactive.symm ▸ inactiveSuccess,
+                                                                  hverifiedKappa.symm ▸ kappaSuccess⟩
+
+/-- The previously used batch/gamma projection remains available with its
+original statement.  The richer theorem above additionally retains the
+decoder call that produced the accepted inactive claim. -/
+theorem accepted_prefix_has_batch_and_gamma_successor
+    (parsed : EntryParsed)
+    (liveStatement : EntryStatement)
+    (statementDigest : Array Std.U8 32#usize)
+    (hash : PrefixHash)
+    (verified : V5AcceptedEntryGenerated.v5_cu_probe.VerifiedRealV5Wire)
+    (returnedTranscript : EntryTranscript)
+    (success :
+      V5AcceptedEntryGenerated.v5_cu_probe.verify_v5_wire_prefix
+          parsed liveStatement statementDigest hash =
+        .ok (.Ok (verified, returnedTranscript))) :
+    ∃ beforeBatch afterBatch afterGamma,
+      V5AcceptedEntryGenerated.v5_cu_probe.check_and_absorb_real_v5_batch_nonce
+          beforeBatch parsed.v5_batch_nonce =
+        .ok (.Ok (), afterBatch) ∧
+      V5AcceptedEntryGenerated.aspis_core.transcript.Transcript.challenge_nonzero_qm31
+          afterBatch = .ok (.Ok verified.gamma, afterGamma) := by
+  obtain ⟨beforeBatch, afterBatch, afterGamma, _, _, _, batchSuccess,
+      gammaSuccess, _, _⟩ :=
+    accepted_prefix_has_batch_gamma_and_inactive_decode parsed liveStatement
+      statementDigest hash verified returnedTranscript success
+  exact ⟨beforeBatch, afterBatch, afterGamma, batchSuccess, gammaSuccess⟩
 
 theorem accepted_prefix_has_batch_success
     (parsed : EntryParsed)
