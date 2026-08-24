@@ -372,11 +372,24 @@ fn evaluate_final256_coefficients(coefficients: &[QM31], point: M31) -> Result<Q
         return Err(V6WireError::WrongLength);
     }
     let weights = natural_line_weights_256(point);
-    let mut result = QM31::ZERO;
+    // Each accumulator is below 256 * (P - 1)^2 < 2^70. Keeping the raw
+    // 32-by-32-bit products in u128 and reducing once per output limb avoids
+    // 1,024 modular reductions per query without changing the field result.
+    let mut c0a = 0u128;
+    let mut c0b = 0u128;
+    let mut c1a = 0u128;
+    let mut c1b = 0u128;
     for (coefficient, weight) in coefficients.iter().zip(weights) {
-        result = result.add(coefficient.mul_m31(weight));
+        let weight = u64::from(weight.0);
+        c0a += u128::from(u64::from(coefficient.c0.a.0) * weight);
+        c0b += u128::from(u64::from(coefficient.c0.b.0) * weight);
+        c1a += u128::from(u64::from(coefficient.c1.a.0) * weight);
+        c1b += u128::from(u64::from(coefficient.c1.b.0) * weight);
     }
-    Ok(result)
+    Ok(QM31 {
+        c0: CM31::new(M31::reduce_u128(c0a), M31::reduce_u128(c0b)),
+        c1: CM31::new(M31::reduce_u128(c1a), M31::reduce_u128(c1b)),
+    })
 }
 
 /// Canonically decode the disclosed terminal vector once, then evaluate it at

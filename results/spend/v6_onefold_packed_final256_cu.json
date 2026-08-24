@@ -23,11 +23,11 @@
     7983,
     33159
   ],
-  "compute_units": 786351,
+  "compute_units": 646559,
   "repeated_compute_units": [
-    786351,
-    786351,
-    786351
+    646559,
+    646559,
+    646559
   ],
   "deterministic_three_of_three": true,
   "phase_markers": [
@@ -48,18 +48,18 @@
     },
     {
       "label": "final-evaluations",
-      "remaining": 614605,
-      "delta_from_previous": 776700
+      "remaining": 754397,
+      "delta_from_previous": 636908
     },
     {
       "label": "sink",
-      "remaining": 613698,
+      "remaining": 753490,
       "delta_from_previous": 907
     }
   ],
   "sbf_path": "target/deploy/aspis_verifier_v6_onefold_probe.so",
-  "sbf_bytes": 41624,
-  "sbf_sha256": "890c13f360a85753d2c403df366f1fea94c7b7864873197226b53dac14a2f813",
+  "sbf_bytes": 43128,
+  "sbf_sha256": "f69202252f9ff2cfd1465a5fc4adacc1bbca6cb563a61c780a809161eff52180",
   "build_command": "NO_DNA=1 cargo-build-sbf --manifest-path programs/aspis-verifier/Cargo.toml --no-default-features --features v6-cu-probe",
   "conclusion": "This result measures only the first exact implementation slice. Merkle authentication, transcript, relation checks, semantic terminal, and state transition must be added before applying the 1.35M-CU release gate."
 }

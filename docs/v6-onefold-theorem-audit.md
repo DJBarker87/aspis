@@ -146,8 +146,8 @@ not yet the complete prover, transcript, Merkle verifier, or Solana entrypoint.
 An isolated local-validator SBF probe now measures this exact first slice over
 the full 33,785-byte body and a pinned sixteen-query schedule whose binary
 authentication frontier is the maximum 209 nodes for each tree. Three runs
-each used 786,351 compute units. The measured phases were 248 CU for structural
-parsing, 7,426 CU for frontier derivation, 776,700 CU for the sixteen terminal
+each used 646,559 compute units. The measured phases were 248 CU for structural
+parsing, 7,426 CU for frontier derivation, 636,908 CU for the sixteen terminal
 evaluations, and 907 CU for the result sink. The result is recorded in
 [`v6_onefold_packed_final256_cu.json`](../results/spend/v6_onefold_packed_final256_cu.json).
 
@@ -242,7 +242,7 @@ screen.
 
 9. **Compute and prover measurements.** The first isolated Solana measurement
    now covers structural parsing, the worst permitted frontier schedule, and
-   all sixteen final-vector evaluations in 786,351 CU. It does not cover the
+   all sixteen final-vector evaluations in 646,559 CU. It does not cover the
    relation reductions, binary Merkle hashes, transcript, semantic check, or
    state transition. Those pieces, the 152-MiB raw codeword footprint, full
    prover peak memory, and grind time need direct measurement before any
