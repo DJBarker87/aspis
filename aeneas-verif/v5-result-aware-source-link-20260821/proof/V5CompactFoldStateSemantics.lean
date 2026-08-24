@@ -637,7 +637,202 @@ theorem foldOneBlock_corresponds
                               · simp [projectBlock, optimizedOneBlock, zero_exact]
                               · rfl
 
+def optimizedTwoEvenBlock (alpha : K)
+    (block : AspisV5CompactTerminalOptimized.OptimizedBlock K) :
+    AspisV5CompactTerminalOptimized.OptimizedBlock K :=
+  { scale := (block.scale + alpha ^ 3 * block.powerLo) / 4
+    powerLo := 0
+    powerHi := block.powerHi
+    selector := block.selector }
+
+theorem foldTwoEvenBlock_corresponds
+    (prepared : Array Prepared 3#usize) (alpha alpha3 : Raw)
+    (block output : Block)
+    (alphaCanonical : Canonical alpha)
+    (alpha3Canonical : Canonical alpha3)
+    (alpha3Exact : toK alpha3 = toK alpha ^ 3)
+    (represented0 : AspisV5RelationCompactFoldPreparedSum.RepresentsPrepared
+      prepared.val[0]! alpha3)
+    (blockCanonical : CanonicalBlock block)
+    (run : foldTwoEvenBlock prepared block = ok output) :
+    CanonicalBlock output ∧
+      projectBlock output = optimizedTwoEvenBlock (toK alpha) (projectBlock block) := by
+  unfold foldTwoEvenBlock at run
+  rw [array_index_run prepared 0#usize (by decide)] at run
+  simp only [bind_tc_ok] at run
+  obtain ⟨weighted, weightedRun, weightedCanonical, weightedExact⟩ :=
+    AspisV5RelationCompactFoldPreparedSum.generated_prepared_mul_corresponds
+      prepared.val[(0#usize).val]! alpha3 block.power_lo represented0
+      alpha3Canonical blockCanonical.2.1
+  rw [weightedRun] at run
+  simp only [bind_tc_ok] at run
+  obtain ⟨factor, factorRun, _, _⟩ :=
+    generated_qm31_add_corresponds block.scale weighted
+      blockCanonical.1 weightedCanonical
+  rw [factorRun] at run
+  simp only [bind_tc_ok] at run
+  have factorSem := add_run_exact block.scale weighted factor
+    blockCanonical.1 weightedCanonical factorRun
+  obtain ⟨half, halfRun, _, _⟩ := generated_qm31_half_corresponds factor factorSem.1
+  rw [halfRun] at run
+  simp only [bind_tc_ok] at run
+  have halfSem := half_run_exact factor half factorSem.1 halfRun
+  obtain ⟨quarter, quarterRun, _, _⟩ := generated_qm31_half_corresponds half halfSem.1
+  rw [quarterRun] at run
+  simp only [bind_tc_ok] at run
+  have quarterSem := half_run_exact half quarter halfSem.1 quarterRun
+  cases run
+  have quarterK : toK quarter = toK factor / 4 := by
+    rw [quarterSem.2, halfSem.2, div_two_div_two]
+  have weightedK : toK weighted = toK alpha3 * toK block.power_lo :=
+    weightedExact
+  constructor
+  · exact ⟨quarterSem.1, zero_canonical, blockCanonical.2.2⟩
+  · apply optimizedBlock_ext
+    · simp only [projectBlock, optimizedTwoEvenBlock]
+      rw [quarterK, factorSem.2, weightedK, alpha3Exact]
+    · simp [projectBlock, optimizedTwoEvenBlock, zero_exact]
+    · rfl
+    · rfl
+
+theorem preparedPair12_semantic (prepared : Array Prepared 3#usize)
+    (alpha2 alpha : Raw)
+    (canonical2 : Canonical alpha2) (canonical1 : Canonical alpha)
+    (represented1 : AspisV5RelationCompactFoldPreparedSum.RepresentsPrepared
+      prepared.val[1]! alpha2)
+    (represented2 : AspisV5RelationCompactFoldPreparedSum.RepresentsPrepared
+      prepared.val[2]! alpha) :
+    AspisV5RelationCompactFoldPreparedSum.PreparedArrayFor
+      (Array.make 2#usize
+        [prepared.val[(1#usize).val]!, prepared.val[(2#usize).val]!])
+      (Array.make 2#usize [alpha2, alpha]) := by
+  intro index indexLt
+  have cases : index = 0 ∨ index = 1 := by omega
+  rcases cases with rfl | rfl
+  · simpa [Array.make] using
+      AspisV5RelationCompactFoldPreparedSum.representsPrepared_implies_preparedFor
+        prepared.val[1]! alpha2 represented1 canonical2
+  · simpa [Array.make] using
+      AspisV5RelationCompactFoldPreparedSum.representsPrepared_implies_preparedFor
+        prepared.val[2]! alpha represented2 canonical1
+
+def optimizedTwoOddBlock (alpha : K)
+    (block : AspisV5CompactTerminalOptimized.OptimizedBlock K) :
+    AspisV5CompactTerminalOptimized.OptimizedBlock K :=
+  { scale := (alpha ^ 2 * block.scale + alpha * block.powerLo) / 4
+    powerLo := 0
+    powerHi := block.powerHi
+    selector := block.selector }
+
+theorem foldTwoOddBlock_corresponds
+    (prepared : Array Prepared 3#usize) (alpha alpha2 : Raw)
+    (block output : Block)
+    (alphaCanonical : Canonical alpha)
+    (alpha2Canonical : Canonical alpha2)
+    (alpha2Exact : toK alpha2 = toK alpha ^ 2)
+    (represented1 : AspisV5RelationCompactFoldPreparedSum.RepresentsPrepared
+      prepared.val[1]! alpha2)
+    (represented2 : AspisV5RelationCompactFoldPreparedSum.RepresentsPrepared
+      prepared.val[2]! alpha)
+    (blockCanonical : CanonicalBlock block)
+    (run : foldTwoOddBlock prepared block = ok output) :
+    CanonicalBlock output ∧
+      projectBlock output = optimizedTwoOddBlock (toK alpha) (projectBlock block) := by
+  unfold foldTwoOddBlock at run
+  rw [array_index_run prepared 1#usize (by decide),
+    array_index_run prepared 2#usize (by decide)] at run
+  simp only [bind_tc_ok] at run
+  let left2 := Array.make 2#usize
+    [prepared.val[(1#usize).val]!, prepared.val[(2#usize).val]!]
+  let rawLeft2 := Array.make 2#usize [alpha2, alpha]
+  let right2 := Array.make 2#usize [block.scale, block.power_lo]
+  have leftSemantic :
+      AspisV5RelationCompactFoldPreparedSum.PreparedArrayFor left2 rawLeft2 := by
+    simpa [left2, rawLeft2] using preparedPair12_semantic prepared alpha2 alpha
+      alpha2Canonical alphaCanonical represented1 represented2
+  have rightCanonical :
+      AspisV5RelationCompactFoldPreparedSum.CanonicalQM31Array2 right2 := by
+    intro index indexLt
+    have cases : index = 0 ∨ index = 1 := by omega
+    rcases cases with rfl | rfl
+    · simpa [right2, Array.make, Canonical] using blockCanonical.1
+    · simpa [right2, Array.make, Canonical] using blockCanonical.2.1
+  obtain ⟨factor, factorRun, factorCanonical, factorExact⟩ :=
+    AspisV5RelationCompactFoldPreparedSum.generated_sum_products2_prepared_corresponds
+      left2 rawLeft2 right2 leftSemantic rightCanonical
+  rw [factorRun] at run
+  simp only [bind_tc_ok] at run
+  obtain ⟨half, halfRun, _, _⟩ := generated_qm31_half_corresponds factor factorCanonical
+  rw [halfRun] at run
+  simp only [bind_tc_ok] at run
+  have halfSem := half_run_exact factor half factorCanonical halfRun
+  obtain ⟨quarter, quarterRun, _, _⟩ := generated_qm31_half_corresponds half halfSem.1
+  rw [quarterRun] at run
+  simp only [bind_tc_ok] at run
+  have quarterSem := half_run_exact half quarter halfSem.1 quarterRun
+  cases run
+  have quarterK : toK quarter = toK factor / 4 := by
+    rw [quarterSem.2, halfSem.2, div_two_div_two]
+  have factorK : toK factor =
+      AspisV5RelationCompactFoldPreparedSum.exactProductDot rawLeft2 right2 :=
+    factorExact
+  constructor
+  · exact ⟨quarterSem.1, zero_canonical, blockCanonical.2.2⟩
+  · apply optimizedBlock_ext
+    · simp only [projectBlock, optimizedTwoOddBlock]
+      rw [quarterK, factorK]
+      simp [rawLeft2, right2, Array.make,
+        AspisV5RelationCompactFoldPreparedSum.exactProductDot,
+        toK, Finset.sum_range_succ]
+      have alpha2M : toMaintainedExact alpha2 =
+          toMaintainedExact alpha ^ 2 := alpha2Exact
+      rw [alpha2M]
+    · simp [projectBlock, optimizedTwoOddBlock, zero_exact]
+    · rfl
+    · rfl
+
+def optimizedThreeBlock (factor : K)
+    (block : AspisV5CompactTerminalOptimized.OptimizedBlock K) :
+    AspisV5CompactTerminalOptimized.OptimizedBlock K :=
+  { block with scale := block.scale * (factor / 4) }
+
+theorem foldThreeBlock_corresponds
+    (factor : Raw) (block output : Block)
+    (factorCanonical : Canonical factor)
+    (blockCanonical : CanonicalBlock block)
+    (run : foldThreeBlock factor block = ok output) :
+    CanonicalBlock output ∧
+      projectBlock output = optimizedThreeBlock (toK factor) (projectBlock block) := by
+  unfold foldThreeBlock at run
+  obtain ⟨half, halfRun, _, _⟩ := generated_qm31_half_corresponds factor factorCanonical
+  rw [halfRun] at run
+  simp only [bind_tc_ok] at run
+  have halfSem := half_run_exact factor half factorCanonical halfRun
+  obtain ⟨quarter, quarterRun, _, _⟩ := generated_qm31_half_corresponds half halfSem.1
+  rw [quarterRun] at run
+  simp only [bind_tc_ok] at run
+  have quarterSem := half_run_exact half quarter halfSem.1 quarterRun
+  obtain ⟨scale, scaleRun, _, _⟩ := generated_qm31_mul_corresponds
+    block.scale quarter blockCanonical.1 quarterSem.1
+  rw [scaleRun] at run
+  simp only [bind_tc_ok] at run
+  have scaleSem := mul_run_exact block.scale quarter scale
+    blockCanonical.1 quarterSem.1 scaleRun
+  cases run
+  have quarterK : toK quarter = toK factor / 4 := by
+    rw [quarterSem.2, halfSem.2, div_two_div_two]
+  constructor
+  · exact ⟨scaleSem.1, blockCanonical.2⟩
+  · apply optimizedBlock_ext
+    · simp [projectBlock, optimizedThreeBlock, scaleSem.2, quarterK]
+    · rfl
+    · rfl
+    · rfl
+
 #print axioms foldZeroBlock_corresponds
 #print axioms foldOneBlock_corresponds
+#print axioms foldTwoEvenBlock_corresponds
+#print axioms foldTwoOddBlock_corresponds
+#print axioms foldThreeBlock_corresponds
 
 end AspisV5CompactFoldStateSemantics
