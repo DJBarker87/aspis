@@ -332,7 +332,7 @@ private theorem preparedNewSuccessRepresents
 
 /-- The power/cache calls exposed by the complete accumulator fold have the
 exact canonical field meaning required by both structured helper proofs. -/
-private theorem acceptedFoldPowerRunsExact
+theorem acceptedFoldPowerRunsExact
     (alpha alpha2 alpha3 : RawQM31)
     (preparedAlpha preparedAlpha2 :
       V5RelationLinkedGenerated.aspis_core.field.PreparedQm31Multiplier)
