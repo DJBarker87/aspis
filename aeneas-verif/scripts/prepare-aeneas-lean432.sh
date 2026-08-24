@@ -3,9 +3,9 @@ set -euo pipefail
 
 readonly aeneas_commit="b59d5188c082f704a418c7cb4e52ad69328002d1"
 readonly aeneas_url="https://github.com/AeneasVerif/aeneas.git"
-readonly patch_sha256="0c9d562ad70757523edaf2b4e5979b46bac8966ce5c53bb6d99dcc3a6c6c09e3"
+readonly patch_sha256="5abaafc2d345511dda0eb96cd40154daff137f79dc4bcfa8247a45acea639c9c"
 readonly manifest_sha256="5d15524cf34ff705bebbd037e80baec63683d5d5a3a37a539a62f17405a2fc62"
-readonly patched_hashes_sha256="af52cbb15fbebaf53686b5525aa7e87310eb53f295ee2ccfa6aa32ef6a6a7480"
+readonly patched_hashes_sha256="142e88198375125dd5e09fe8a21bc99deab8c6b16e998c3ad388cfab4a49bc3d"
 
 readonly script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 readonly verification_dir="$(cd "$script_dir/.." && pwd -P)"
@@ -112,13 +112,16 @@ fi
     "Lean (version 4.32.0,"*) ;;
     *) echo "expected Lean 4.32.0" >&2; exit 1 ;;
   esac
-  lake build Aeneas.Std Aeneas.Tactic.RustAttributes
+  lake build Aeneas.Std Aeneas.Data.Discriminant Aeneas.Tactic.RustAttributes \
+    Aeneas.Tactic.Step.Step
   cmp lake-manifest.json "$out/lake-manifest.before.json"
 )
 
 readonly lean_lib="$backend/.lake/build/lib/lean"
 if [[ ! -f "$lean_lib/Aeneas/Std.olean" ]] ||
-    [[ ! -f "$lean_lib/Aeneas/Tactic/RustAttributes.olean" ]]; then
+    [[ ! -f "$lean_lib/Aeneas/Data/Discriminant.olean" ]] ||
+    [[ ! -f "$lean_lib/Aeneas/Tactic/RustAttributes.olean" ]] ||
+    [[ ! -f "$lean_lib/Aeneas/Tactic/Step/Step.olean" ]]; then
   echo "pinned Aeneas Lean library did not build completely" >&2
   exit 1
 fi
