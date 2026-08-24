@@ -157,12 +157,13 @@ complete prover or verifier.
 An isolated local-validator SBF probe now measures this exact first slice over
 the full 33,785-byte body and a pinned sixteen-query schedule whose binary
 authentication frontier is the maximum 209 nodes for each tree. Three runs
-each used 1,345,318 compute units. The measured phases were 294 CU for
-structural parsing, 7,426 CU for frontier derivation, 366,686 CU for both
-typed binary Merkle trees, 636,567 CU for the sixteen terminal evaluations,
-22,147 CU for circle-coordinate derivation and batch inversion, 287,935 CU
-for the packed 26+3 combinations, 22,285 CU for the sixteen folds and equality
-checks, and 907 CU for the result sink. The result is recorded in
+each used 1,014,439 compute units. The measured phases were 294 CU for
+structural parsing, 7,426 CU for frontier derivation, 403,319 CU for fused
+canonical packed decoding, 26+3 batching, and both typed binary Merkle trees,
+556,990 CU for the sixteen terminal evaluations, 22,147 CU for
+circle-coordinate derivation and batch inversion, 22,285 CU for the sixteen
+folds and equality checks, and 907 CU for the result sink. The result is
+recorded in
 [`v6_onefold_packed_final256_cu.json`](../results/spend/v6_onefold_packed_final256_cu.json).
 
 This is a positive implementation result because the original version, which
@@ -170,12 +171,11 @@ rescanned the packed body and decoded the terminal vector independently for
 every query, exhausted the 1.4-million-CU transaction limit before doing any
 Merkle work. It is not a full verifier measurement: transcript derivation,
 relation checks, the semantic check, and the state transition are absent. The
-current slice is only 4,682 CU below the intended 1.35-million-CU engineering
-gate. It therefore rules out treating the present implementation as the first
-part of a complete one-transaction verifier: there is no credible budget for
-all remaining checks. Work must either make the terminal check materially
-cheaper or use a two-stage verifier whose receipt binding and state-transition
-safety are proved before deployment.
+current slice is 335,561 CU below the intended 1.35-million-CU engineering
+gate. This restores a plausible one-transaction route. It is not yet evidence
+that the complete verifier fits: every remaining check must be added to this
+same composed path and measured before choosing one transaction over a
+formally bound two-stage fallback.
 
 ### Supported by the cited papers
 
@@ -262,20 +262,21 @@ screen.
    now covers structural parsing, the worst permitted frontier schedule, both
    typed shared-salt binary Merkle trees, and all sixteen final-vector
    evaluations, exact 26+3 batching, public query coordinates, and the sole
-   circle-to-line fold in 1,345,318 CU. It does not cover the relation
+   circle-to-line fold in 1,014,439 CU. It does not cover the relation
    reductions, transcript, semantic check, or state transition. The measured
-   margin is too small to add them unchanged. Those pieces, the 152-MiB raw
-   codeword footprint, full prover peak memory, and grind time need direct
-   measurement before any deployment decision.
+   remaining 335,561-CU engineering margin is promising but unallocated.
+   Those pieces, the 152-MiB raw codeword footprint, full prover peak memory,
+   and grind time need direct measurement before any deployment decision.
 
 ## Decision
 
 The mathematical Phase-0 kill condition has not fired. The one-fold endpoint
 and `m = 3` are supported by the cited theorem statements, and the exact finite
-arithmetic is checked in Lean. The first exact SBF slice also works, but its
-1,345,318-CU cost creates an implementation-level decision point: materially
-reduce the final-vector path or prove and implement a two-stage verifier. It
-is not ready for a production verifier or a mainnet transaction.
+arithmetic is checked in Lean. The first exact SBF slice also works at
+1,014,439 CU after removing a redundant packed-data pass. A one-transaction
+implementation is plausible, but not established until the remaining checks
+are on the measured path. It is not ready for a production verifier or a
+mainnet transaction.
 
 If the exact published-theorem application fails, B11/q15 is the practical
 fallback to test. B12/q14 should not be the default merely to get below 30,000

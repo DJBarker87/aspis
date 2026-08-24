@@ -7,8 +7,8 @@
 use aspis_core::field::{CM31, M31, QM31};
 use aspis_core::v6_onefold::{
     binary_frontier_nodes, evaluate_packed_final256_at_queries, fold_v6_onefold_queries,
-    gamma_combine_v6_queries, prepare_v6_onefold_coordinates, verify_v6_binary_openings,
-    V6OneFoldWire, V6_QUERY_COUNT,
+    prepare_v6_onefold_coordinates, verify_and_gamma_combine_v6_binary_openings, V6OneFoldWire,
+    V6_QUERY_COUNT,
 };
 use solana_program::{
     account_info::AccountInfo,
@@ -97,11 +97,6 @@ pub fn process_v6_cu_probe_instruction(
     msg!("aspis-v6-cu:frontier");
     sol_log_compute_units();
 
-    verify_v6_binary_openings(crate::verify::sbf_hashv, &parsed, queries)
-        .map_err(|_| ProgramError::InvalidAccountData)?;
-    msg!("aspis-v6-cu:merkle");
-    sol_log_compute_units();
-
     let gamma = QM31 {
         c0: CM31::new(M31(17), M31(23)),
         c1: CM31::new(M31(31), M31(47)),
@@ -110,6 +105,15 @@ pub fn process_v6_cu_probe_instruction(
         c0: CM31::new(M31(53), M31(59)),
         c1: CM31::new(M31(61), M31(67)),
     };
+    let combined = verify_and_gamma_combine_v6_binary_openings(
+        crate::verify::sbf_hashv,
+        &parsed,
+        queries,
+        gamma,
+    )
+    .map_err(|_| ProgramError::InvalidAccountData)?;
+    msg!("aspis-v6-cu:merkle-and-gamma");
+    sol_log_compute_units();
     let expected = evaluate_packed_final256_at_queries(parsed.fixed_fields_packed, queries)
         .map_err(|_| ProgramError::InvalidAccountData)?;
     msg!("aspis-v6-cu:final-evaluations");
@@ -117,10 +121,6 @@ pub fn process_v6_cu_probe_instruction(
     let coordinates =
         prepare_v6_onefold_coordinates(queries).map_err(|_| ProgramError::InvalidAccountData)?;
     msg!("aspis-v6-cu:coordinates");
-    sol_log_compute_units();
-    let combined =
-        gamma_combine_v6_queries(&parsed, gamma).map_err(|_| ProgramError::InvalidAccountData)?;
-    msg!("aspis-v6-cu:gamma-combination");
     sol_log_compute_units();
     let folded = fold_v6_onefold_queries(&combined, &coordinates, alpha);
     if folded != expected {

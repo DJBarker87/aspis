@@ -23,11 +23,11 @@
     7983,
     33159
   ],
-  "compute_units": 1345318,
+  "compute_units": 1014439,
   "repeated_compute_units": [
-    1345318,
-    1345318,
-    1345318
+    1014439,
+    1014439,
+    1014439
   ],
   "deterministic_three_of_three": true,
   "phase_markers": [
@@ -47,39 +47,34 @@
       "delta_from_previous": 7426
     },
     {
-      "label": "merkle",
-      "remaining": 1024573,
-      "delta_from_previous": 366686
+      "label": "merkle-and-gamma",
+      "remaining": 987940,
+      "delta_from_previous": 403319
     },
     {
       "label": "final-evaluations",
-      "remaining": 388006,
-      "delta_from_previous": 636567
+      "remaining": 430950,
+      "delta_from_previous": 556990
     },
     {
       "label": "coordinates",
-      "remaining": 365859,
+      "remaining": 408803,
       "delta_from_previous": 22147
     },
     {
-      "label": "gamma-combination",
-      "remaining": 77924,
-      "delta_from_previous": 287935
-    },
-    {
       "label": "onefold-query-checks",
-      "remaining": 55639,
+      "remaining": 386518,
       "delta_from_previous": 22285
     },
     {
       "label": "sink",
-      "remaining": 54732,
+      "remaining": 385611,
       "delta_from_previous": 907
     }
   ],
   "sbf_path": "target/deploy/aspis_verifier_v6_onefold_probe.so",
-  "sbf_bytes": 117536,
-  "sbf_sha256": "aa245ac2437f3be6835923cad9cc93b74e412635c2838c053b022beac0763779",
+  "sbf_bytes": 115592,
+  "sbf_sha256": "ea217c9565c742c2efcedd4e5d904c8691f38975116a0eb240346e21befd9eec",
   "build_command": "NO_DNA=1 cargo-build-sbf --manifest-path programs/aspis-verifier/Cargo.toml --no-default-features --features v6-cu-probe",
-  "conclusion": "This exact slice is 4,682 CU below the 1.35M engineering gate, but it is not a complete verifier and leaves no credible one-transaction budget for transcript, relation, semantic, and state-transition checks. Further terminal optimization or a formally bound two-stage verifier is required."
+  "conclusion": "This exact slice is 335,561 CU below the 1.35M engineering gate after canonical packed decoding, 26+3 batching, and Merkle authentication were fused. A one-transaction verifier is plausible again, but transcript, relation, semantic, and state-transition checks still require implementation and measurement."
 }

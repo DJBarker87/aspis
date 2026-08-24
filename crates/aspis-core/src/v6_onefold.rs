@@ -415,6 +415,72 @@ pub fn verify_v6_binary_openings(
     Ok(())
 }
 
+/// Authenticate and gamma-combine the same packed records in one decoding
+/// pass. This is the composed verifier path: the combination routine performs
+/// the canonical M31 checks that the Merkle-only wrapper performs separately,
+/// while the hash still binds the exact packed bytes and shared salt.
+pub fn verify_and_gamma_combine_v6_binary_openings(
+    hash: HashFn,
+    wire: &V6OneFoldWire<'_>,
+    queries: [u32; V6_QUERY_COUNT],
+    gamma: QM31,
+) -> Result<[[QM31; 4]; V6_QUERY_COUNT], V6WireError> {
+    let mut order: [(u32, usize); V6_QUERY_COUNT] =
+        core::array::from_fn(|ordinal| (queries[ordinal], ordinal));
+    order.sort_unstable_by_key(|entry| entry.0);
+    if order[V6_QUERY_COUNT - 1].0 >= 1 << 18 {
+        return Err(V6WireError::InvalidQuerySchedule);
+    }
+    for pair in order.windows(2) {
+        if pair[0].0 == pair[1].0 {
+            return Err(V6WireError::InvalidQuerySchedule);
+        }
+    }
+
+    let powers = StateOnlySpendQueryPowers::new(gamma);
+    let mut combined = [[QM31::ZERO; 4]; V6_QUERY_COUNT];
+    let mut c1_entries = Vec::with_capacity(V6_QUERY_COUNT);
+    let mut c2_entries = Vec::with_capacity(V6_QUERY_COUNT);
+    for (query, ordinal) in order {
+        let record = wire
+            .query(ordinal)
+            .ok_or(V6WireError::InvalidQuerySchedule)?;
+        combined[ordinal] =
+            gamma_combine_v6_packed_layer0(record.c1_packed, record.c2_packed, &powers)?;
+        c1_entries.push((
+            query,
+            private_leaf_hash(hash, V6_C1_TREE_TAG, record.c1_packed, record.salt),
+        ));
+        c2_entries.push((
+            query,
+            private_leaf_hash(hash, V6_C2_TREE_TAG, record.c2_packed, record.salt),
+        ));
+    }
+
+    let mut level = Vec::with_capacity(V6_QUERY_COUNT);
+    let mut next = Vec::with_capacity(V6_QUERY_COUNT);
+    if !verify_minimal_subtree_bytes(
+        hash,
+        wire.c1_root,
+        18,
+        &c1_entries,
+        wire.c1_frontier,
+        &mut level,
+        &mut next,
+    ) || !verify_minimal_subtree_bytes(
+        hash,
+        wire.c2_root,
+        18,
+        &c2_entries,
+        wire.c2_frontier,
+        &mut level,
+        &mut next,
+    ) {
+        return Err(V6WireError::MerkleMismatch);
+    }
+    Ok(combined)
+}
+
 /// Combine one packed 26-M31-plus-3-QM31 fibre with the exact scalar-power
 /// table used by the selected state-only spend profile.
 pub fn gamma_combine_v6_packed_layer0(
@@ -571,23 +637,28 @@ fn evaluate_final256_coefficients(coefficients: &[QM31], point: M31) -> Result<Q
         return Err(V6WireError::WrongLength);
     }
     let weights = natural_line_weights_256(point);
-    // Each accumulator is below 256 * (P - 1)^2 < 2^70. Keeping the raw
-    // 32-by-32-bit products in u128 and reducing once per output limb avoids
-    // 1,024 modular reductions per query without changing the field result.
-    let mut c0a = 0u128;
-    let mut c0b = 0u128;
-    let mut c1a = 0u128;
-    let mut c1b = 0u128;
-    for (coefficient, weight) in coefficients.iter().zip(weights) {
-        let weight = u64::from(weight.0);
-        c0a += u128::from(u64::from(coefficient.c0.a.0) * weight);
-        c0b += u128::from(u64::from(coefficient.c0.b.0) * weight);
-        c1a += u128::from(u64::from(coefficient.c1.a.0) * weight);
-        c1b += u128::from(u64::from(coefficient.c1.b.0) * weight);
+    // Four canonical products fit strictly below 2^64. Reduce each four-term
+    // block, then accumulate the 64 canonical block results in u64. This is
+    // the same dot product as the whole-vector u128 form, but avoids emulated
+    // 128-bit carry-chain additions in the SBF hot loop.
+    let mut sums = [0u64; 4];
+    for block in 0..V6_FINAL_QM31_VALUES / 4 {
+        let mut raw = [0u64; 4];
+        for index in block * 4..block * 4 + 4 {
+            let coefficient = coefficients[index];
+            let weight = u64::from(weights[index].0);
+            raw[0] += u64::from(coefficient.c0.a.0) * weight;
+            raw[1] += u64::from(coefficient.c0.b.0) * weight;
+            raw[2] += u64::from(coefficient.c1.a.0) * weight;
+            raw[3] += u64::from(coefficient.c1.b.0) * weight;
+        }
+        for limb in 0..4 {
+            sums[limb] += u64::from(M31::reduce_u64(raw[limb]).0);
+        }
     }
     Ok(QM31 {
-        c0: CM31::new(M31::reduce_u128(c0a), M31::reduce_u128(c0b)),
-        c1: CM31::new(M31::reduce_u128(c1a), M31::reduce_u128(c1b)),
+        c0: CM31::new(M31::reduce_u64(sums[0]), M31::reduce_u64(sums[1])),
+        c1: CM31::new(M31::reduce_u64(sums[2]), M31::reduce_u64(sums[3])),
     })
 }
 
@@ -1014,6 +1085,14 @@ mod tests {
         assert_eq!(
             verify_v6_binary_openings(test_hash, &parsed, queries),
             Ok(())
+        );
+        let gamma = QM31 {
+            c0: CM31::new(M31(17), M31(23)),
+            c1: CM31::new(M31(31), M31(47)),
+        };
+        assert_eq!(
+            verify_and_gamma_combine_v6_binary_openings(test_hash, &parsed, queries, gamma),
+            Ok([[QM31::ZERO; 4]; V6_QUERY_COUNT])
         );
 
         let mut changed_value = body.clone();

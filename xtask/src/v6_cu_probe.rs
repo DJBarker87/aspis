@@ -219,7 +219,7 @@ pub fn run(results_dir: &Path) -> Result<V6OneFoldCuOutcome> {
         "V6 probe CU was not deterministic"
     );
     let phase_markers = parse_cu_markers(&simulations[0].logs, "aspis-v6-cu:");
-    ensure!(phase_markers.len() == 9, "V6 probe omitted phase markers");
+    ensure!(phase_markers.len() == 8, "V6 probe omitted phase markers");
 
     let path = results_dir.join("v6_onefold_packed_final256_cu.json");
     let summary = V6OneFoldCuSummary {
@@ -242,7 +242,7 @@ pub fn run(results_dir: &Path) -> Result<V6OneFoldCuOutcome> {
         sbf_bytes: sbf_bytes.len(),
         sbf_sha256: hex(&Sha256::digest(&sbf_bytes)),
         build_command: "NO_DNA=1 cargo-build-sbf --manifest-path programs/aspis-verifier/Cargo.toml --no-default-features --features v6-cu-probe",
-        conclusion: "This exact slice is 4,682 CU below the 1.35M engineering gate, but it is not a complete verifier and leaves no credible one-transaction budget for transcript, relation, semantic, and state-transition checks. Further terminal optimization or a formally bound two-stage verifier is required.",
+        conclusion: "This exact slice is 335,561 CU below the 1.35M engineering gate after canonical packed decoding, 26+3 batching, and Merkle authentication were fused. A one-transaction verifier is plausible again, but transcript, relation, semantic, and state-transition checks still require implementation and measurement.",
     };
     fs::write(
         &path,
