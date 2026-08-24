@@ -51,6 +51,13 @@ The publication theorem is
 `AspisV5AcceptedOneRunDeterministicFinal.accepted_composite_security_conclusion_for_any_terminal_evaluator`
 in `V5AcceptedOneRunDeterministicFinal.lean`.
 
+The translated entry path proves the production check between the live
+statement and its digest. It does not yet prove that every field of that Rust
+statement is the corresponding field of the abstract public-statement object
+used by the mathematical false-acceptance and theft models. This is a model
+boundary after the selected-call execution proof, not an untracked equality
+inside that execution.
+
 The pinned Aeneas version emitted an ill-typed mutable-iterator
 back-translation for the compact outer fold. Audit also found that the first
 handwritten replacement reconstructed the array from an empty iterator and

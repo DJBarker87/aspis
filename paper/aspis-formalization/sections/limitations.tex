@@ -40,6 +40,12 @@ their stated Rust-to-model and Solana-runtime boundaries.  Charon, Aeneas,
 Lean, the compiler, and the Solana runtime are trusted rather than verified by
 the result.  The exact source path is in \cref{app:source-checklist}.
 
+The translated entry path checks consistency between its live statement and
+statement digest.  The present source theorem does not yet identify every
+field of that Rust statement with the abstract public-statement object used by
+the false-acceptance and theft experiments.  This missing model link is one
+reason the report does not claim a complete deployed-theft theorem.
+
 \subsection{How the assumptions enter the theorem}
 
 The general audit ledger retains source and runtime mismatches as named events

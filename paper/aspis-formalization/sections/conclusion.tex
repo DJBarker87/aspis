@@ -32,6 +32,11 @@ and the stated Solana account and persistence behavior remain explicit
 inputs.  The separate production zero-knowledge and numerical theft claims
 also require the external assumptions listed in this report.
 
+The generated entry path checks the live statement against its digest.  A
+field-by-field link from that Rust statement to the abstract public statement
+in the false-acceptance and theft models remains open, so the deterministic
+selected-call theorem is not presented as a complete deployed-theft theorem.
+
 The archived program, proof, statement, build provenance, and finalized
 transaction make the implementation being discussed identifiable.  The Lean
 source makes the mathematical core mechanically checkable, and the generated

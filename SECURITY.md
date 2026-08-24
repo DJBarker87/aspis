@@ -99,6 +99,14 @@ extraction, translation and compilation, the surrounding Solana account/state
 code and runtime, and concrete probability bounds for the named external
 events. The deterministic classification also has not yet been lifted into
 the probability experiment used by the conditional 100-bit theorem.
+
+The translated Rust checks consistency between its live statement and
+statement digest. A field-by-field theorem identifying that Rust statement
+with the abstract public statement used by the mathematical false-acceptance
+and theft models is still missing. Until it is supplied, the deterministic
+accepted-path result should not be described as a complete deployed-theft
+theorem.
+
 Consequently the repository reports a checked 100-bit
 work-normalized **protocol subtotal**, not an unconditional 100-bit deployed
 theft-resistance number. See the [formal-verification overview](docs/formal-verification.md)

@@ -54,6 +54,14 @@ four folds, final assembly, and dot product, from that same execution. Those
 equalities are internal results, not assumptions supplied by the theorem's
 caller.
 
+One model link remains outside that theorem. The translated Rust checks that
+the live statement and its digest agree, but the proof does not yet identify
+each field of that Rust statement with the abstract public-statement object
+used by the mathematical false-acceptance and theft models. That missing link
+does not make the recorded proof arbitrary; it limits the claim that the
+deterministic source theorem is already a fully instantiated deployed-theft
+theorem.
+
 An audit found that the previous handwritten Lean outer wrapper reconstructed
 the compact array from an empty iterator, so its writes were discarded. This
 was a proof-artifact error, not a Rust or deployed-program error. Lean now

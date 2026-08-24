@@ -134,6 +134,12 @@ and the per-event bounds. Given those inputs, Lean derives the work-normalized
 `2^-100` result and the ordinary probability bound
 `min(1, T / 2^100)` for `1 <= T <= 2^128`.
 
+The translated entry path checks the live statement against its digest. A
+separate field-by-field link from that Rust statement to the abstract public
+statement in the false-acceptance and theft models has not yet been proved.
+Accordingly, the numerical endpoint is not presented as an unconditional
+deployed-theft bound.
+
 `V5BoundedQuerySamplerUniformity.lean` and
 `V5WithoutReplacementQuerySoundness.lean` remove one smaller premise from the
 finite arithmetic. Conditioned on obtaining 18 distinct values within 64

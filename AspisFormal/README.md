@@ -42,6 +42,12 @@ folds, final assembly, and dot. The final theorem composes those results
 without caller-supplied accumulator equalities; its clean replay is the
 publication gate.
 
+The generated Rust path checks its live statement against the statement
+digest. The remaining statement boundary is narrower: no theorem yet matches
+every field of that generated Rust statement to the abstract public-statement
+object used by the false-acceptance and theft models. The deterministic source
+result therefore stops short of a fully instantiated deployed-theft theorem.
+
 The best independent-review targets are the cited PCS/Fiat--Shamir and
 circle-decoding results; the custom Poseidon2-M31 primitive; the SHA-256
 callback and primitive-security boundary; production Rust outside the

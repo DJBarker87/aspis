@@ -209,6 +209,14 @@ deterministic source theorem cannot prove:
 - the translation and compilation toolchain; and
 - Solana account and state semantics.
 
+There is also one explicit model-connection task. The translated Rust checks
+that its live statement matches its statement digest, but the current theorem
+does not identify those Rust statement fields one-by-one with the abstract
+public statement used by the mathematical false-acceptance and theft models.
+This prevents claiming a complete deployed-theft theorem even though the
+selected accepting verifier execution is connected through both final
+accumulators.
+
 The exact list, use, evidence, and consequence of failure are in the
 [`assumptions ledger`](assumptions-ledger.md).
 
