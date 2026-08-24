@@ -150,7 +150,7 @@ theorem acceptedScheduleLogLengths
 
 /-- First prepared multilinear cell, viewed after the two round-zero tensor
 appends and before the first fold. -/
-private def acceptedInitialMultilinear0
+def acceptedInitialMultilinear0
     {parsed : V5RelationCallerGenerated.v5_cu_probe.ParsedProbeData}
     {finalPolynomial : Array RawQM31 4#usize}
     {alphas : Array RawQM31 4#usize}
@@ -182,7 +182,7 @@ private def acceptedInitialMultilinear0
   · simp [prepareVecToCaller, lengths.2.2.2.1]
 
 /-- Second prepared multilinear cell before the first fold. -/
-private def acceptedInitialMultilinear1
+def acceptedInitialMultilinear1
     {parsed : V5RelationCallerGenerated.v5_cu_probe.ParsedProbeData}
     {finalPolynomial : Array RawQM31 4#usize}
     {alphas : Array RawQM31 4#usize}
@@ -213,7 +213,7 @@ private def acceptedInitialMultilinear1
   · simp [prepareVecToCaller, lengths.2.2.2.2.1]
 
 /-- Third prepared multilinear cell before the first fold. -/
-private def acceptedInitialMultilinear2
+def acceptedInitialMultilinear2
     {parsed : V5RelationCallerGenerated.v5_cu_probe.ParsedProbeData}
     {finalPolynomial : Array RawQM31 4#usize}
     {alphas : Array RawQM31 4#usize}
