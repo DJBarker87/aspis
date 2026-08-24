@@ -23,6 +23,9 @@ set_option maxHeartbeats 12000000
 
 abbrev PrepareQM31 := V5RelationPrepareGenerated.aspis_core.field.QM31
 
+private instance : Inhabited PrepareQM31 :=
+  ⟨V5RelationPrepareGenerated.aspis_core.field.QM31.ZERO⟩
+
 private theorem optionResidualNone (T : Type) :
     V5RelationPrepareGenerated.core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionInfallible.from_residual
         T none = .ok none := rfl
@@ -301,9 +304,282 @@ theorem prepareDecodeQm31Canonical
                       exact prepareQM31DecodeCanonical selected decoded
                         decodeEquation
 
+/-- Every entry of a fixed preparation array is represented below the base
+field modulus. -/
+def PrepareCanonicalArray {count : Std.Usize}
+    (values : Array PrepareQM31 count) : Prop :=
+  ∀ index : Fin count.val, PrepareCanonicalQM31 values.val[index.val]!
+
+private theorem prepareSameErrorResidual
+    {T E : Type} (error : E) :
+    core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+        T (core.convert.FromSame E) (.Err error) =
+      .ok (.Err error) := by
+  rfl
+
+/-- A successful execution of the exact ten-call relation-point wrapper
+returns ten canonical QM31 values.  This follows the translated wrapper call
+by call; it does not assume a property of an abstract parser. -/
+theorem prepareRelationPointDecodeCanonical
+    (parsed : V5RelationPrepareGenerated.v5_cu_probe.ParsedProbeData)
+    (pointIndex : Std.Usize)
+    (output : Array PrepareQM31 10#usize)
+    (success :
+      V5RelationPrepareGenerated.v5_cu_probe.decode_relation_point_for_extraction
+          parsed pointIndex = .ok (.Ok output)) :
+    PrepareCanonicalArray output := by
+  unfold
+    V5RelationPrepareGenerated.v5_cu_probe.decode_relation_point_for_extraction
+    at success
+  simp only [Aeneas.Std.lift, bind_tc_ok] at success
+  generalize baseEquation :
+      Std.Usize.wrapping_mul pointIndex
+        (UScalar.cast .Usize
+          V5RelationPrepareGenerated.v5_cu_probe.V5_CU_PROBE_RELATION_LOG_ROWS) =
+        base at success
+  cases h0 : V5RelationPrepareGenerated.v5_cu_probe.decode_qm31
+      parsed.relation_points base with
+  | fail error => simp [h0] at success
+  | div => simp [h0] at success
+  | ok decoded0 =>
+      cases decoded0 with
+      | Err error =>
+          simp [h0, core.result.Result.Insts.CoreOpsTry.branch,
+            prepareSameErrorResidual] at success
+      | Ok value0 =>
+          simp only [h0, core.result.Result.Insts.CoreOpsTry.branch,
+            bind_tc_ok] at success
+          have canonical0 := prepareDecodeQm31Canonical
+            parsed.relation_points base value0 h0
+          cases h1 : V5RelationPrepareGenerated.v5_cu_probe.decode_qm31
+              parsed.relation_points
+              (Std.Usize.wrapping_add base 1#usize) with
+          | fail error => simp [h1] at success
+          | div => simp [h1] at success
+          | ok decoded1 =>
+              cases decoded1 with
+              | Err error =>
+                  simp [h1, core.result.Result.Insts.CoreOpsTry.branch,
+                    prepareSameErrorResidual] at success
+              | Ok value1 =>
+                  simp only [h1, core.result.Result.Insts.CoreOpsTry.branch,
+                    bind_tc_ok] at success
+                  have canonical1 := prepareDecodeQm31Canonical
+                    parsed.relation_points
+                    (Std.Usize.wrapping_add base 1#usize)
+                    value1 h1
+                  cases h2 : V5RelationPrepareGenerated.v5_cu_probe.decode_qm31
+                      parsed.relation_points
+                      (Std.Usize.wrapping_add base 2#usize) with
+                  | fail error => simp [h2] at success
+                  | div => simp [h2] at success
+                  | ok decoded2 =>
+                      cases decoded2 with
+                      | Err error =>
+                          simp [h2, core.result.Result.Insts.CoreOpsTry.branch,
+                            prepareSameErrorResidual] at success
+                      | Ok value2 =>
+                          simp only [h2,
+                            core.result.Result.Insts.CoreOpsTry.branch,
+                            bind_tc_ok] at success
+                          have canonical2 := prepareDecodeQm31Canonical
+                            parsed.relation_points
+                            (Std.Usize.wrapping_add base 2#usize) value2 h2
+                          cases h3 :
+                              V5RelationPrepareGenerated.v5_cu_probe.decode_qm31
+                                parsed.relation_points
+                                (Std.Usize.wrapping_add base 3#usize) with
+                          | fail error => simp [h3] at success
+                          | div => simp [h3] at success
+                          | ok decoded3 =>
+                              cases decoded3 with
+                              | Err error =>
+                                  simp [h3,
+                                    core.result.Result.Insts.CoreOpsTry.branch,
+                                    prepareSameErrorResidual] at success
+                              | Ok value3 =>
+                                  simp only [h3,
+                                    core.result.Result.Insts.CoreOpsTry.branch,
+                                    bind_tc_ok] at success
+                                  have canonical3 := prepareDecodeQm31Canonical
+                                    parsed.relation_points
+                                    (Std.Usize.wrapping_add base 3#usize)
+                                    value3 h3
+                                  cases h4 :
+                                      V5RelationPrepareGenerated.v5_cu_probe.decode_qm31
+                                        parsed.relation_points
+                                        (Std.Usize.wrapping_add base 4#usize) with
+                                  | fail error => simp [h4] at success
+                                  | div => simp [h4] at success
+                                  | ok decoded4 =>
+                                      cases decoded4 with
+                                      | Err error =>
+                                          simp [h4,
+                                            core.result.Result.Insts.CoreOpsTry.branch,
+                                            prepareSameErrorResidual] at success
+                                      | Ok value4 =>
+                                          simp only [h4,
+                                            core.result.Result.Insts.CoreOpsTry.branch,
+                                            bind_tc_ok] at success
+                                          have canonical4 :=
+                                            prepareDecodeQm31Canonical
+                                              parsed.relation_points
+                                              (Std.Usize.wrapping_add base
+                                                4#usize) value4 h4
+                                          cases h5 :
+                                              V5RelationPrepareGenerated.v5_cu_probe.decode_qm31
+                                                parsed.relation_points
+                                                (Std.Usize.wrapping_add base
+                                                  5#usize) with
+                                          | fail error => simp [h5] at success
+                                          | div => simp [h5] at success
+                                          | ok decoded5 =>
+                                              cases decoded5 with
+                                              | Err error =>
+                                                  simp [h5,
+                                                    core.result.Result.Insts.CoreOpsTry.branch,
+                                                    prepareSameErrorResidual]
+                                                    at success
+                                              | Ok value5 =>
+                                                  simp only [h5,
+                                                    core.result.Result.Insts.CoreOpsTry.branch,
+                                                    bind_tc_ok] at success
+                                                  have canonical5 :=
+                                                    prepareDecodeQm31Canonical
+                                                      parsed.relation_points
+                                                      (Std.Usize.wrapping_add
+                                                        base 5#usize) value5 h5
+                                                  cases h6 :
+                                                      V5RelationPrepareGenerated.v5_cu_probe.decode_qm31
+                                                        parsed.relation_points
+                                                        (Std.Usize.wrapping_add
+                                                          base 6#usize) with
+                                                  | fail error =>
+                                                      simp [h6] at success
+                                                  | div => simp [h6] at success
+                                                  | ok decoded6 =>
+                                                      cases decoded6 with
+                                                      | Err error =>
+                                                          simp [h6,
+                                                            core.result.Result.Insts.CoreOpsTry.branch,
+                                                            prepareSameErrorResidual]
+                                                            at success
+                                                      | Ok value6 =>
+                                                          simp only [h6,
+                                                            core.result.Result.Insts.CoreOpsTry.branch,
+                                                            bind_tc_ok]
+                                                            at success
+                                                          have canonical6 :=
+                                                            prepareDecodeQm31Canonical
+                                                              parsed.relation_points
+                                                              (Std.Usize.wrapping_add
+                                                                base 6#usize)
+                                                              value6 h6
+                                                          cases h7 :
+                                                              V5RelationPrepareGenerated.v5_cu_probe.decode_qm31
+                                                                parsed.relation_points
+                                                                (Std.Usize.wrapping_add
+                                                                  base 7#usize) with
+                                                          | fail error =>
+                                                              simp [h7] at success
+                                                          | div =>
+                                                              simp [h7] at success
+                                                          | ok decoded7 =>
+                                                              cases decoded7 with
+                                                              | Err error =>
+                                                                  simp [h7,
+                                                                    core.result.Result.Insts.CoreOpsTry.branch,
+                                                                    prepareSameErrorResidual]
+                                                                    at success
+                                                              | Ok value7 =>
+                                                                  simp only [h7,
+                                                                    core.result.Result.Insts.CoreOpsTry.branch,
+                                                                    bind_tc_ok]
+                                                                    at success
+                                                                  have canonical7 :=
+                                                                    prepareDecodeQm31Canonical
+                                                                      parsed.relation_points
+                                                                      (Std.Usize.wrapping_add
+                                                                        base 7#usize)
+                                                                      value7 h7
+                                                                  cases h8 :
+                                                                      V5RelationPrepareGenerated.v5_cu_probe.decode_qm31
+                                                                        parsed.relation_points
+                                                                        (Std.Usize.wrapping_add
+                                                                          base 8#usize) with
+                                                                  | fail error =>
+                                                                      simp [h8]
+                                                                        at success
+                                                                  | div =>
+                                                                      simp [h8]
+                                                                        at success
+                                                                  | ok decoded8 =>
+                                                                      cases decoded8 with
+                                                                      | Err error =>
+                                                                          simp [h8,
+                                                                            core.result.Result.Insts.CoreOpsTry.branch,
+                                                                            prepareSameErrorResidual]
+                                                                            at success
+                                                                      | Ok value8 =>
+                                                                          simp only [h8,
+                                                                            core.result.Result.Insts.CoreOpsTry.branch,
+                                                                            bind_tc_ok]
+                                                                            at success
+                                                                          have canonical8 :=
+                                                                            prepareDecodeQm31Canonical
+                                                                              parsed.relation_points
+                                                                              (Std.Usize.wrapping_add
+                                                                                base 8#usize)
+                                                                              value8 h8
+                                                                          cases h9 :
+                                                                              V5RelationPrepareGenerated.v5_cu_probe.decode_qm31
+                                                                                parsed.relation_points
+                                                                                (Std.Usize.wrapping_add
+                                                                                  base 9#usize) with
+                                                                          | fail error =>
+                                                                              simp [h9]
+                                                                                at success
+                                                                          | div =>
+                                                                              simp [h9]
+                                                                                at success
+                                                                          | ok decoded9 =>
+                                                                              cases decoded9 with
+                                                                              | Err error =>
+                                                                                  simp [h9,
+                                                                                    core.result.Result.Insts.CoreOpsTry.branch,
+                                                                                    prepareSameErrorResidual]
+                                                                                    at success
+                                                                              | Ok value9 =>
+                                                                                  simp only [h9,
+                                                                                    core.result.Result.Insts.CoreOpsTry.branch,
+                                                                                    bind_tc_ok,
+                                                                                    Result.ok.injEq,
+                                                                                    core.result.Result.Ok.injEq]
+                                                                                    at success
+                                                                                  have canonical9 :=
+                                                                                    prepareDecodeQm31Canonical
+                                                                                      parsed.relation_points
+                                                                                      (Std.Usize.wrapping_add
+                                                                                        base 9#usize)
+                                                                                      value9 h9
+                                                                                  subst output
+                                                                                  intro index
+                                                                                  fin_cases index
+                                                                                  · simpa [Array.make] using canonical0
+                                                                                  · simpa [Array.make] using canonical1
+                                                                                  · simpa [Array.make] using canonical2
+                                                                                  · simpa [Array.make] using canonical3
+                                                                                  · simpa [Array.make] using canonical4
+                                                                                  · simpa [Array.make] using canonical5
+                                                                                  · simpa [Array.make] using canonical6
+                                                                                  · simpa [Array.make] using canonical7
+                                                                                  · simpa [Array.make] using canonical8
+                                                                                  · simpa [Array.make] using canonical9
+
 #print axioms prepareM31DecodeCanonical
 #print axioms prepareCM31DecodeCanonical
 #print axioms prepareQM31DecodeCanonical
 #print axioms prepareDecodeQm31Canonical
+#print axioms prepareRelationPointDecodeCanonical
 
 end AspisV5RelationPreparedPointCanonical
