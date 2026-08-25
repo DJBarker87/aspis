@@ -293,6 +293,23 @@ def initialRestorationAccumulator
   failures := []
   charges := []
 
+/-- Scheduler-native entry form.  The root is runtime data constructed by the
+initial prover/verifier dispatcher; no execution equation is stored in the
+live accumulator. -/
+def initialRestorationAccumulatorFromRoot
+    {Statement Proof Payload : Type*}
+    (root : ConcreteRestorationNode Statement Proof Payload) :
+    ConcreteRestorationAccumulator Statement Proof Payload where
+  nodes := [root]
+  failures := []
+  charges := []
+
+@[simp] theorem initial_accumulator_from_root_is_singleton
+    {Statement Proof Payload : Type*}
+    (root : ConcreteRestorationNode Statement Proof Payload) :
+    (initialRestorationAccumulatorFromRoot root).nodes = [root] := by
+  rfl
+
 @[simp] theorem initial_accumulator_root_is_exact_execution
     {HiddenTape TapeIdentity Observation Statement Proof Payload : Type*}
     {source : RawTag73SameTapeSource HiddenTape TapeIdentity Observation
@@ -423,10 +440,10 @@ structure ConcreteRestorationConfiguration where
 
 /-- Validate an extractor request and replay only the recorded prefix.  This
 computation reads no fresh scheduler coordinate. -/
-def prepareConcreteRestoration
-    {HiddenTape TapeIdentity Observation Statement Proof Payload : Type*}
-    (source : RawTag73SameTapeSource HiddenTape TapeIdentity Observation
-      Statement Proof Payload)
+def prepareConcreteRestorationFromStartProgram
+    {Statement Proof Payload : Type*}
+    (startProgram : OracleMachine
+      (CheckedRawTag73AdversaryReturnedValue Statement Proof Payload))
     (configuration : ConcreteRestorationConfiguration)
     (accumulator : ConcreteRestorationAccumulator Statement Proof Payload)
     (request : ConcreteRestorationRequest) :
@@ -462,7 +479,7 @@ def prepareConcreteRestoration
                       occurrence.before)
                     configuration.oracleLimits .extractorReplay
                     occurrence.before.length parentNode.proverEntryOracle
-                    (source.capability.start source.observation)
+                    startProgram
                   match prefixRun.halt with
                   | .returned _ =>
                       .failed .prefixReturnedEarly prefixRun.steps 1
@@ -496,6 +513,20 @@ def prepareConcreteRestoration
                                 prefixRun := some prefixRun
                                 programmingBase := prefixRun.oracle
                                 prefixSteps := prefixRun.steps }
+
+/-- Compatibility entry for a conventional raw same-tape source.  Prefix
+preparation reads only the source's one closed literal start program. -/
+def prepareConcreteRestoration
+    {HiddenTape TapeIdentity Observation Statement Proof Payload : Type*}
+    (source : RawTag73SameTapeSource HiddenTape TapeIdentity Observation
+      Statement Proof Payload)
+    (configuration : ConcreteRestorationConfiguration)
+    (accumulator : ConcreteRestorationAccumulator Statement Proof Payload)
+    (request : ConcreteRestorationRequest) :
+    ConcretePreparationResult Statement Proof Payload :=
+  prepareConcreteRestorationFromStartProgram
+    (source.capability.start source.observation) configuration accumulator
+      request
 
 /-! ## Pair programming without a post-fork controller -/
 
@@ -687,10 +718,10 @@ private def continueWithFailure
   resume (.failed reason) failed
 
 private def dispatchPreparedRestoration
-    {HiddenTape TapeIdentity Observation Statement Proof Payload Result : Type*}
+    {Statement Proof Payload Result : Type*}
     {globalOracleCalls : Nat}
-    (source : RawTag73SameTapeSource HiddenTape TapeIdentity Observation
-      Statement Proof Payload)
+    (startProgram : OracleMachine
+      (CheckedRawTag73AdversaryReturnedValue Statement Proof Payload))
     (environment : FutureFreeEnvironment)
     (configuration : ConcreteRestorationConfiguration)
     (prepared : PreparedConcreteRestoration Statement Proof Payload)
@@ -737,7 +768,7 @@ private def dispatchPreparedRestoration
                         (ConcreteRestorationClientRun Statement Proof Payload
                           Result)
                         (totalizeOracleMachine configuration.proverReplayFuel
-                          (source.capability.start source.observation)))
+                          startProgram))
                       configuration.proverReplayFuel afterCoherent
                       (fun (proverStage : SchedulerStageResult
                             (ConcreteRestorationClientRun Statement Proof Payload
@@ -849,10 +880,10 @@ private def dispatchPreparedRestoration
       resume
 
 private def dispatchConcreteRestoration
-    {HiddenTape TapeIdentity Observation Statement Proof Payload Result : Type*}
+    {Statement Proof Payload Result : Type*}
     {globalOracleCalls : Nat}
-    (source : RawTag73SameTapeSource HiddenTape TapeIdentity Observation
-      Statement Proof Payload)
+    (startProgram : OracleMachine
+      (CheckedRawTag73AdversaryReturnedValue Statement Proof Payload))
     (environment : FutureFreeEnvironment)
     (configuration : ConcreteRestorationConfiguration)
     (accumulator : ConcreteRestorationAccumulator Statement Proof Payload)
@@ -863,22 +894,23 @@ private def dispatchConcreteRestoration
           (ConcreteRestorationClientRun Statement Proof Payload Result)) :
     SchedulerNativeCursor globalOracleCalls
       (ConcreteRestorationClientRun Statement Proof Payload Result) :=
-  match prepareConcreteRestoration source configuration accumulator request with
+  match prepareConcreteRestorationFromStartProgram startProgram configuration
+      accumulator request with
   | .failed reason prefixSteps prefixRestarts =>
       continueWithFailure request reason
         (accumulator.addCharges
           [.prefixReplayQueries prefixSteps, .restart prefixRestarts]) resume
   | .ready prepared =>
-      dispatchPreparedRestoration source environment configuration prepared
+      dispatchPreparedRestoration startProgram environment configuration prepared
         accumulator resume
 
 /-- Total fuel-bounded interpreter.  The recursive call consumes one
 restoration-fuel unit before any asynchronous scheduler stage is installed. -/
 private def runConcreteRestorationClient
-    {HiddenTape TapeIdentity Observation Statement Proof Payload Result : Type*}
+    {Statement Proof Payload Result : Type*}
     {globalOracleCalls : Nat}
-    (source : RawTag73SameTapeSource HiddenTape TapeIdentity Observation
-      Statement Proof Payload)
+    (startProgram : OracleMachine
+      (CheckedRawTag73AdversaryReturnedValue Statement Proof Payload))
     (environment : FutureFreeEnvironment)
     (configuration : ConcreteRestorationConfiguration) :
     Nat → ConcreteRestorationAccumulator Statement Proof Payload →
@@ -893,11 +925,29 @@ private def runConcreteRestorationClient
         { halt := .restorationFuelExhausted
           accumulator := failed }
   | fuel + 1, accumulator, .restore request next =>
-      dispatchConcreteRestoration source environment configuration accumulator
+      dispatchConcreteRestoration startProgram environment configuration accumulator
         request
         (fun reply nextAccumulator =>
-          runConcreteRestorationClient source environment configuration fuel
+          runConcreteRestorationClient startProgram environment configuration fuel
             nextAccumulator (next reply))
+
+/-- Scheduler-native lower-level entry.  A surrounding cursor constructs the
+root from its actual initial prover and verifier callbacks, while every replay
+uses this one literal closed start program. -/
+def startConcreteRestorationClientFromRoot
+    {Statement Proof Payload Result : Type*}
+    {globalOracleCalls : Nat}
+    (startProgram : OracleMachine
+      (CheckedRawTag73AdversaryReturnedValue Statement Proof Payload))
+    (environment : FutureFreeEnvironment)
+    (root : ConcreteRestorationNode Statement Proof Payload)
+    (configuration : ConcreteRestorationConfiguration)
+    (restorationFuel : Nat)
+    (client : ConcreteRestorationClient Result) :
+    SchedulerNativeCursor globalOracleCalls
+      (ConcreteRestorationClientRun Statement Proof Payload Result) :=
+  runConcreteRestorationClient startProgram environment configuration
+    restorationFuel (initialRestorationAccumulatorFromRoot root) client
 
 /-- Entry point deriving the initial node store from one actual raw verifier
 execution. -/
@@ -912,8 +962,9 @@ def startConcreteRestorationClient
     (client : ConcreteRestorationClient Result) :
     SchedulerNativeCursor globalOracleCalls
       (ConcreteRestorationClientRun Statement Proof Payload Result) :=
-  runConcreteRestorationClient source execution.environment configuration
-    restorationFuel
+  runConcreteRestorationClient
+    (source.capability.start source.observation) execution.environment
+      configuration restorationFuel
     (initialRestorationAccumulator execution) client
 
 @[simp] theorem start_pure_client_returns_exact_root_accumulator
@@ -931,6 +982,23 @@ def startConcreteRestorationClient
             accumulator := initialRestorationAccumulator execution } := by
   simp [startConcreteRestorationClient, runConcreteRestorationClient]
 
+@[simp] theorem start_pure_client_from_root_returns_exact_accumulator
+    {Statement Proof Payload Result : Type*}
+    {globalOracleCalls : Nat}
+    (startProgram : OracleMachine
+      (CheckedRawTag73AdversaryReturnedValue Statement Proof Payload))
+    (environment : FutureFreeEnvironment)
+    (root : ConcreteRestorationNode Statement Proof Payload)
+    (configuration : ConcreteRestorationConfiguration)
+    (restorationFuel : Nat) (result : Result) :
+    startConcreteRestorationClientFromRoot
+      (globalOracleCalls := globalOracleCalls) startProgram environment root
+      configuration restorationFuel (.pure result) =
+        .returned
+          { halt := .returned result
+            accumulator := initialRestorationAccumulatorFromRoot root } := by
+  simp [startConcreteRestorationClientFromRoot, runConcreteRestorationClient]
+
 #print axioms initial_accumulator_root_is_exact_execution
 #print axioms add_charges_oracle_query_total
 #print axioms add_charges_programmed_point_total
@@ -939,6 +1007,8 @@ def startConcreteRestorationClient
 #print axioms raw_microstep_at_forced_verifier_action
 #print axioms canonical_scheduled_fork_uses_exact_coordinates
 #print axioms start_pure_client_returns_exact_root_accumulator
+#print axioms initial_accumulator_from_root_is_singleton
+#print axioms start_pure_client_from_root_returns_exact_accumulator
 
 end
 
