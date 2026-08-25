@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "status": "V8-NATIVE-NEXT-DIRECT-COMPRESSION-REJECTED",
+  "updated_at": "2026-08-25",
+  "v7_frozen_baseline": {
+    "profile": "V7-26C1-3C2-B10-q16-onefold-digest208-frontier203-fullC2-work35-31-34",
+    "measured_host_accepted_proof_bytes": 30504,
+    "formal_max_body_bytes": 30504,
+    "formal_max_equals_measured": true,
+    "proof_sha256": "e8e15ce268447b92ac1344292bc879dcb0bf7534621ce077d8790097975dcecb",
+    "digest_bytes": 26,
+    "digest_bits": 208,
+    "generic_collision_bits": 104,
+    "queries": 16,
+    "query_bytes": 621,
+    "c1_bytes_per_query": 403,
+    "c2_bytes_per_query": 186,
+    "complete_c2_disclosed": true,
+    "private_salt_bytes": 32,
+    "fixed_packed_field_bytes": 9936,
+    "roots_bytes": 52,
+    "work_nonces_bytes": 24,
+    "query_section_bytes": 9936,
+    "frontier_section_bytes": 10556,
+    "frontier_cap_per_tree": 203,
+    "frontier_nodes_per_tree": 203,
+    "compact_counter": 4,
+    "work_bits": [
+      35,
+      31,
+      34
+    ],
+    "finalized_devnet_compute_units": 1257959,
+    "headroom_to_1_3m": 42041,
+    "strict_compute_limit": 1300000,
+    "devnet_evidence": "results/spend/v7-devnet-20260825-fullc2/v7-devnet-execution-resume1.json"
+  },
+  "v8_targets": {
+    "five_uploads_plus_separate_verify": 19375,
+    "five_proof_bearing_transactions": 19095,
+    "five_total_lifecycle_transactions_model": 18937,
+    "preferred_release_target": 18500,
+    "preferred_18KiB_target": 18432,
+    "preferred_full_verifier_cu": 1300000,
+    "hard_full_verifier_cu": 1350000,
+    "work_normalized_security_bits": 100
+  },
+  "direct_compression_rejection": {
+    "status": "REJECTED",
+    "construction": "Fenzi-Zhang zip Construction 2.2: lossless Compress/Decompress wrapper followed by unchanged base verification",
+    "source": "https://eprint.iacr.org/2025/1446",
+    "source_archive_version": "20250808:232705",
+    "source_accessed": "2026-08-25",
+    "input_entropy_bits_per_byte": 7.993428,
+    "best_codec": "brotli 1.2.0 quality 1; tied with quality 0 window 15",
+    "best_output_bytes": 30508,
+    "best_output_ratio": 1.0001311303435616,
+    "best_output_change_bytes": 4,
+    "best_output_sha256": "d2e71b945d4d5c30204fc72b79c134f3f8add38885e01d1d4c00aa5a6c979c41",
+    "round_trip_byte_identical": true,
+    "round_trip_sha256": "e8e15ce268447b92ac1344292bc879dcb0bf7534621ce077d8790097975dcecb",
+    "production_v7_host_verifier_accepted_after_decompression": true,
+    "all_work_checked": true,
+    "evidence": "results/v8/v8-a-frozen-v7-brotli-q1-20260825/v8-a-compression-experiment.json",
+    "decision": "REJECTED—do not revisit absent a genuinely different cryptographic proof system"
+  },
+  "best_output_gate_results": [
+    {
+      "target": "preferred_18KiB_target",
+      "limit_bytes": 18432,
+      "cleared": false,
+      "shortfall_bytes": 12076
+    },
+    {
+      "target": "preferred_release_target",
+      "limit_bytes": 18500,
+      "cleared": false,
+      "shortfall_bytes": 12008
+    },
+    {
+      "target": "five_total_lifecycle_transactions_model",
+      "limit_bytes": 18937,
+      "cleared": false,
+      "shortfall_bytes": 11571
+    },
+    {
+      "target": "five_proof_bearing_transactions",
+      "limit_bytes": 19095,
+      "cleared": false,
+      "shortfall_bytes": 11413
+    },
+    {
+      "target": "five_uploads_plus_separate_verify",
+      "limit_bytes": 19375,
+      "cleared": false,
+      "shortfall_bytes": 11133
+    }
+  ],
+  "native_next_track": {
+    "status": "ACTIVE",
+    "route": "genuinely different native cryptographic proof system or PCS/IOPP",
+    "requirements": [
+      "preserve the exact private-spend statement and state-transition semantics",
+      "retain at least 100-bit work-normalized security",
+      "meet a proof-body gate at or below 19375 bytes, preferably 18500 bytes",
+      "replace enough verification work to remain at or below 1.30M CU preferred and 1.35M CU hard",
+      "provide an exact finite theorem, complete-view hiding argument, and same-run source bridge"
+    ],
+    "candidate_classes": [
+      "native constrained-code PCS/IOPP",
+      "STIR/WHIR/TensorSwitch-class redesign",
+      "lower-degree native private base with a proved compact opening system",
+      "another genuinely different transparent proof system"
+    ],
+    "excluded": [
+      "further ordinary codec sweeps over the frozen V7 proof",
+      "a wrapper that decompresses and then adds substantial work above the complete V7 verifier",
+      "claims based only on projected compression ratios"
+    ]
+  }
+}

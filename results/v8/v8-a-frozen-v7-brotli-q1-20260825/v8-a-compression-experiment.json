@@ -1,0 +1,97 @@
+{
+  "artifact": "aspis_v8_a_frozen_v7_lossless_compression_kill_experiment",
+  "compressor": {
+    "binary": "/opt/homebrew/bin/brotli",
+    "compressed_bytes": 30508,
+    "compressed_path": "/Users/dominic/ZK-v7/results/v8/v8-a-frozen-v7-brotli-q1-20260825/v8-a-frozen-v7.br",
+    "compressed_sha256": "d2e71b945d4d5c30204fc72b79c134f3f8add38885e01d1d4c00aa5a6c979c41",
+    "compression_command": "/usr/bin/time -lp /opt/homebrew/bin/brotli -q 1 -c /Users/dominic/ZK-v7/results/spend/v7-devnet-20260825-fullc2/v7-proof.bin > /Users/dominic/ZK-v7/results/v8/v8-a-frozen-v7-brotli-q1-20260825/v8-a-frozen-v7.br",
+    "compression_maximum_resident_set_bytes": 1966080,
+    "compression_peak_memory_footprint_bytes": 1261904,
+    "compression_wall_ms": 8,
+    "decompression_command": "/usr/bin/time -lp /opt/homebrew/bin/brotli -d -c /Users/dominic/ZK-v7/results/v8/v8-a-frozen-v7-brotli-q1-20260825/v8-a-frozen-v7.br > /Users/dominic/ZK-v7/results/v8/v8-a-frozen-v7-brotli-q1-20260825/v8-a-decompressed-v7.bin",
+    "decompression_maximum_resident_set_bytes": 1720320,
+    "decompression_peak_memory_footprint_bytes": 1114448,
+    "decompression_wall_ms": 6,
+    "output_ratio": 1.0001311303435616,
+    "reduction_bytes": -4,
+    "reduction_fraction": -0.0001311303435616029,
+    "version": "brotli 1.2.0"
+  },
+  "construction": {
+    "instantiation": "Brotli 1.2.0 quality 1, the smallest ordinary lossless output observed for this exact frozen proof",
+    "name": "Fenzi-Zhang zip Construction 2.2",
+    "paper": "IACR ePrint 2025/1446",
+    "v8_acceptance": "Decompress(compressed_proof) followed by exact V7 read-only verifier"
+  },
+  "decision_band": "compression_alone_not_v8_route",
+  "frozen_v7": {
+    "compact_counter": 4,
+    "complete_c2_disclosed": true,
+    "digest_bits": 208,
+    "digest_bytes": 26,
+    "frontier_nodes_per_tree": 203,
+    "generic_collision_bits": 104,
+    "metadata_path": "/Users/dominic/ZK-v7/results/spend/v7-devnet-20260825-fullc2/v7-honest-proof.json",
+    "profile": "V7-26C1-3C2-B10-q16-onefold-digest208-f203-fullC2",
+    "proof_bytes": 30504,
+    "proof_path": "/Users/dominic/ZK-v7/results/spend/v7-devnet-20260825-fullc2/v7-proof.bin",
+    "proof_sha256": "e8e15ce268447b92ac1344292bc879dcb0bf7534621ce077d8790097975dcecb",
+    "queries": 16,
+    "query_bytes": 621,
+    "statement_path": "/Users/dominic/ZK-v7/results/spend/v7-devnet-20260825-fullc2/v7-statement.json",
+    "statement_sha256": "7dd15bd17b8f052d540d0187caf4f1d616f4220e66a14be78b56f9c736a5a375",
+    "work_bits": [
+      35,
+      31,
+      34
+    ]
+  },
+  "gates": [
+    {
+      "cleared": false,
+      "headroom_bytes": -12076,
+      "name": "preferred_18KiB",
+      "target_bytes": 18432
+    },
+    {
+      "cleared": false,
+      "headroom_bytes": -12008,
+      "name": "preferred_release",
+      "target_bytes": 18500
+    },
+    {
+      "cleared": false,
+      "headroom_bytes": -11571,
+      "name": "five_total_lifecycle",
+      "target_bytes": 18937
+    },
+    {
+      "cleared": false,
+      "headroom_bytes": -11413,
+      "name": "five_proof_bearing",
+      "target_bytes": 19095
+    },
+    {
+      "cleared": false,
+      "headroom_bytes": -11133,
+      "name": "five_uploads_plus_verify",
+      "target_bytes": 19375
+    }
+  ],
+  "host_verifier": {
+    "accepted": true,
+    "all_work_checked": true,
+    "compact_counter": 4,
+    "frontier_nodes": 203,
+    "verifier_wall_ms": 0
+  },
+  "round_trip": {
+    "byte_identical": true,
+    "decompressed_bytes": 30504,
+    "decompressed_path": "/Users/dominic/ZK-v7/results/v8/v8-a-frozen-v7-brotli-q1-20260825/v8-a-decompressed-v7.bin",
+    "decompressed_sha256": "e8e15ce268447b92ac1344292bc879dcb0bf7534621ce077d8790097975dcecb"
+  },
+  "schema_version": 1,
+  "scope": "host_only_no_cryptographic_change_no_deployment"
+}
