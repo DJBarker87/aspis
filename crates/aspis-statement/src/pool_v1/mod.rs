@@ -13,6 +13,8 @@ pub mod format;
 pub mod historical_anchor;
 pub mod incremental_merkle;
 pub mod nullifier_marker;
+#[cfg(not(target_os = "solana"))]
+pub mod payment_constraint_residuals;
 pub mod payment_relation;
 #[cfg(not(target_os = "solana"))]
 pub mod payment_trace;
@@ -88,6 +90,21 @@ pub use nullifier_marker::{
     validate_pool_v1_nullifier_marker, PoolV1NullifierMarkerFormatError, PoolV1NullifierMarkerV1,
     POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES, POOL_V1_NULLIFIER_MARKER_MAGIC,
     POOL_V1_NULLIFIER_MARKER_SEED, POOL_V1_NULLIFIER_MARKER_VERSION,
+};
+#[cfg(not(target_os = "solana"))]
+pub use payment_constraint_residuals::{
+    evaluate_pool_v1_private_transfer_constraint_residuals_v1,
+    evaluate_pool_v1_withdrawal_constraint_residuals_v1,
+    PoolV1PaymentConstraintResidualErrorV1, PoolV1PaymentConstraintResidualsV1,
+    PoolV1PaymentResidualClassV1, POOL_V1_PAYMENT_AFFINE_INTRINSIC_DEGREE,
+    POOL_V1_PAYMENT_BOOLEAN_INTRINSIC_DEGREE, POOL_V1_PAYMENT_MAX_INTRINSIC_DEGREE,
+    POOL_V1_PAYMENT_PATH_ORDERING_INTRINSIC_DEGREE,
+    POOL_V1_PAYMENT_PATH_ORDERING_RESIDUAL_COUNT, POOL_V1_PAYMENT_POSEIDON_RESIDUAL_COUNT,
+    POOL_V1_PAYMENT_POSEIDON_SBOX_DEGREE,
+    POOL_V1_PAYMENT_SELECTED_ORACLE_INDIVIDUAL_DEGREE,
+    POOL_V1_PAYMENT_TWO_ROUND_INTRINSIC_DEGREE,
+    POOL_V1_PAYMENT_VALUE_BOOLEAN_RESIDUAL_COUNT,
+    POOL_V1_PAYMENT_ZEROCHECK_INDIVIDUAL_DEGREE,
 };
 pub use payment_relation::{
     decode_pool_v1_private_transfer_public_v1, decode_pool_v1_withdrawal_public_v1,
