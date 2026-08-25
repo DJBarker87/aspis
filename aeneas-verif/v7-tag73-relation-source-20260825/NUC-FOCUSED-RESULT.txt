@@ -77,3 +77,33 @@ Proof20 axiom inventory:
 
 No `sorryAx` appears. A package-wide scan of active generated and proof Lean
 sources found no `sorry` or `admit` token.
+
+Frozen-original to staged accepted-control bridge: PASS
+- passing unit: aspis-tag73-frozen-staged-bridge-proof02.scope
+- invocation: 3219dd8d4b974424a1d5a0aa67e1ad53
+- prerequisite target: V7Tag73ExtractionTransformEquivalence.lean
+- prerequisite elapsed: 2.29s
+- prerequisite maximum RSS: 2,537,468 KiB
+- target: V7Tag73FrozenStagedAcceptedPathBridge.lean
+- principal theorem:
+  V7Tag73FrozenStagedAcceptedPathBridge.frozen_staged_tag73_accepted_control_result_exact
+- target elapsed: 2.29s
+- target maximum RSS: 2,525,356 KiB
+- swaps: 0 for both focused leaves
+- source SHA-256: 368433dd185ef4c90e197c985216180bd8df0935dc3dbb1bc68e650c58963e42
+- olean SHA-256: 9bae1b02ac1c34ac458ed51fe4bb6eb94889cf3d3900b50556ba37fc8e61272c
+- pass-log SHA-256: f26f0291d01ef71cfeb3ada032cfdbc44bcf0ba4732e2427556a895fee65732e
+- focused-runner SHA-256: 1b60d6feb643b179e2405535dc15f0f3b0c3dcbbd84c1416906ce57f8a262bbb
+- exact command: systemd-run --user --scope
+  --unit=aspis-tag73-frozen-staged-bridge-proof02 -p MemoryMax=12G
+  -p MemorySwapMax=0 -p TasksMax=64 bash -lc
+  'cd /home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a &&
+  FOCUSED_LOG=/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/frozen-staged-bridge-proof02.log
+  ./nuc-check-frozen-staged-bridge.sh'
+
+The principal bridge theorem prints only `propext` and `Quot.sound`. It has no
+project axiom and no `sorryAx`. The retained proof01 log records the sole
+failed layout: Lean rejected `prefix` as a reserved identifier before
+elaboration; the binder was renamed to `prelude` without changing a theorem
+statement's meaning. Proof01 log SHA-256:
+`93d592f5b050d26455b137116e849602aa9d0ce40e7b2746ad7b9b2a9fc2847a`.

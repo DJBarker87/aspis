@@ -1,0 +1,115 @@
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73ExtractionTransformEquivalence.lean:124:28: warning: This simp argument is unused:
+  run
+
+Hint: Omit it from the simp argument list.
+  simp [r̵u̵n̵,̵ ̵Bind.bind, Aeneas.Std.bind]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73ExtractionTransformEquivalence.lean:125:21: warning: This simp argument is unused:
+  run
+
+Hint: Omit it from the simp argument list.
+  simp [r̵u̵n̵,̵ ̵Bind.bind, Aeneas.Std.bind]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+'AspisV7Tag73ExtractionTransformEquivalence.point_rows_0_1_2_result_exact' depends on axioms: [propext]
+'AspisV7Tag73ExtractionTransformEquivalence.ood_samples_0_1_result_exact' depends on axioms: [propext]
+'AspisV7Tag73ExtractionTransformEquivalence.relation_rounds_1_2_3_result_exact' depends on axioms: [propext]
+'AspisV7Tag73ExtractionTransformEquivalence.relation_rounds_1_2_3_success_iff' depends on axioms: [propext]
+'AspisV7Tag73ExtractionTransformEquivalence.relation_rounds_1_2_3_failure_iff' depends on axioms: [propext]
+'AspisV7Tag73ExtractionTransformEquivalence.relation_rounds_1_2_3_divergence_iff' depends on axioms: [propext]
+'AspisV7Tag73ExtractionTransformEquivalence.zip_indexed_common_prefix_result_exact' depends on axioms: [propext]
+'AspisV7Tag73ExtractionTransformEquivalence.indexed_maximum_result_exact' does not depend on any axioms
+'AspisV7Tag73ExtractionTransformEquivalence.named_error_adapter_result_exact' does not depend on any axioms
+'AspisV7Tag73ExtractionTransformEquivalence.terminal_shape_log2_len4' does not depend on any axioms
+	Command being timed: "/home/dombarker/.elan/bin/lake env lean -j1 -o /home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73ExtractionTransformEquivalence.olean /home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73ExtractionTransformEquivalence.lean"
+	User time (seconds): 1.41
+	System time (seconds): 0.74
+	Percent of CPU this job got: 93%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:02.29
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 2537468
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 22
+	Minor (reclaiming a frame) page faults: 105641
+	Voluntary context switches: 7945
+	Involuntary context switches: 99
+	Swaps: 0
+	File system inputs: 136424
+	File system outputs: 744
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:28:5: error: unexpected token 'prefix'; expected '_' or identifier
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:28:13: error: unexpected identifier; expected prec
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:33:27: error: unexpected identifier; expected ':'
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:41:5: error: unexpected token 'prefix'; expected '_' or identifier
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:41:13: error: unexpected identifier; expected prec
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:46:27: error: unexpected identifier; expected ':'
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:54:5: error: unexpected token 'prefix'; expected '_' or identifier
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:54:13: error: unexpected identifier; expected prec
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:57:58: error: unexpected identifier; expected ':'
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:58:60: error: unexpected identifier; expected ':'
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:65:5: error: unexpected token 'prefix'; expected '_' or identifier
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:65:13: error: unexpected identifier; expected prec
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:68:58: error: unexpected identifier; expected ':'
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:70:60: error: unexpected identifier; expected ':'
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:76:5: error: unexpected token 'prefix'; expected '_' or identifier
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:76:13: error: unexpected identifier; expected prec
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:79:58: error: unexpected identifier; expected ':'
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:81:60: error: unexpected identifier; expected ':'
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:87:5: error: unexpected token 'prefix'; expected '_' or identifier
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:87:13: error: unexpected identifier; expected prec
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:90:58: error: unexpected identifier; expected ':'
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:92:60: error: unexpected identifier; expected ':'
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:139:5: error: unexpected token 'prefix'; expected '_' or identifier
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:139:13: error: unexpected identifier; expected prec
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:142:56: error: unexpected token '('; expected ':'
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:148:5: error: unexpected token 'prefix'; expected '_' or identifier
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:148:13: error: unexpected identifier; expected prec
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:151:56: error: unexpected token '('; expected ':'
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:158:5: error: unexpected token 'prefix'; expected '_' or identifier
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:158:13: error: unexpected identifier; expected prec
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:162:63: error: unexpected identifier; expected ':'
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:164:65: error: unexpected identifier; expected ':'
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:180:5: error: unexpected token 'prefix'; expected '_' or identifier
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:180:13: error: unexpected identifier; expected prec
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:184:63: error: unexpected identifier; expected ':'
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:186:65: error: unexpected identifier; expected ':'
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:190:14: error(lean.unknownIdentifier): Unknown constant `frozen_staged_finish_control_result_exact`
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:191:14: error(lean.unknownIdentifier): Unknown constant `frozen_staged_finish_control_success_iff`
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:192:14: error(lean.unknownIdentifier): Unknown constant `frozen_staged_finish_control_failure_iff`
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:193:14: error(lean.unknownIdentifier): Unknown constant `frozen_staged_finish_control_divergence_iff`
+'V7Tag73FrozenStagedAcceptedPathBridge.terminal_dispatch_reachable_result_exact' depends on axioms: [propext]
+'V7Tag73FrozenStagedAcceptedPathBridge.tag73_terminal_dispatch_result_exact' does not depend on any axioms
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:196:14: error(lean.unknownIdentifier): Unknown constant `frozen_staged_tag73_accepted_control_result_exact`
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean:197:14: error(lean.unknownIdentifier): Unknown constant `frozen_staged_tag73_accepted_control_success_iff`
+Command exited with non-zero status 1
+	Command being timed: "/home/dombarker/.elan/bin/lake env lean -j1 -o /home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.olean /home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73FrozenStagedAcceptedPathBridge.lean"
+	User time (seconds): 1.23
+	System time (seconds): 0.75
+	Percent of CPU this job got: 100%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.97
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 2515964
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 4
+	Minor (reclaiming a frame) page faults: 108038
+	Voluntary context switches: 767
+	Involuntary context switches: 99
+	Swaps: 0
+	File system inputs: 520
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 1

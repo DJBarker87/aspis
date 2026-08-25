@@ -1,0 +1,182 @@
+diff --git a/crates/aspis-core/src/v6_transcript.rs b/crates/aspis-core/src/v6_transcript.rs
+index 0000000..0000000 100644
+--- a/crates/aspis-core/src/v6_transcript.rs
++++ b/crates/aspis-core/src/v6_transcript.rs
+@@ -607,6 +607,97 @@ fn derive_first_compact_queries(
+     Err(V6TranscriptError::CompactCandidatesExhausted)
+ }
+ 
++// Extraction-only naming of the deterministic post-query tail.  Moving this
++// block into a non-inlined function changes neither ownership nor control
++// order: all inputs are moved exactly once, `trace` is unused by the caller
++// afterwards, and the helper returns the original `Result` directly.
++#[allow(clippy::too_many_arguments)]
++#[inline(never)]
++fn finish_onefold_relation_round_tail_extraction<Trace>(
++    mut transcript: Transcript,
++    relation_fields: Box<[[QM31; V6_RELATION_SENT_VALUES]; V6_RELATION_ROUNDS]>,
++    mut alpha: [QM31; V6_RELATION_ROUNDS],
++    mut running_claim: QM31,
++    mut weights: WeightAccumulator,
++    mut folded_values: Box<[QM31; V6_FINAL_QM31_VALUES]>,
++    authenticated_queries: V6AuthenticatedQueryBatch,
++    gamma: QM31,
++    kappa: QM31,
++    queries: [u32; V6_QUERY_COUNT],
++    selector: u8,
++    compact_counter: u8,
++    frontier_nodes: usize,
++    semantic_point: [QM31; V6_SEMANTIC_ROUNDS],
++    query_batch_challenge: QM31,
++    transcript_state_after_queries: [u8; 32],
++    mut trace: Trace,
++) -> Result<V6VerifiedTranscript, V6TranscriptError>
++where
++    Trace: FnMut(V6RelationDiagnosticPhase),
++{
++    let polynomial = decode_compact_relation_polynomial(&relation_fields[1], running_claim);
++    absorb_compact_relation_polynomial(&mut transcript, 1, &polynomial);
++    alpha[1] = transcript
++        .challenge_qm31()
++        .map_err(|_| V6TranscriptError::ChallengeSampling)?;
++    running_claim = evaluate(&polynomial, alpha[1]);
++    trace(V6RelationDiagnosticPhase::RoundOnePolynomial);
++    weights.fold_deferred_relation_arity4(alpha[1]);
++    if !weights.merge_equal_multilinear_components(0, 2) {
++        return Err(V6TranscriptError::RelationShape);
++    }
++    trace(V6RelationDiagnosticPhase::RoundOneWeights);
++    fold_values_prefix::<256>(&mut folded_values, alpha[1]);
++    trace(V6RelationDiagnosticPhase::RoundOne);
++
++    let polynomial = decode_compact_relation_polynomial(&relation_fields[2], running_claim);
++    absorb_compact_relation_polynomial(&mut transcript, 2, &polynomial);
++    alpha[2] = transcript
++        .challenge_qm31()
++        .map_err(|_| V6TranscriptError::ChallengeSampling)?;
++    running_claim = evaluate(&polynomial, alpha[2]);
++    trace(V6RelationDiagnosticPhase::RoundTwoPolynomial);
++    weights.fold_deferred_relation_arity4(alpha[2]);
++    trace(V6RelationDiagnosticPhase::RoundTwoWeights);
++    fold_values_prefix::<64>(&mut folded_values, alpha[2]);
++    trace(V6RelationDiagnosticPhase::RoundTwo);
++
++    let polynomial = decode_compact_relation_polynomial(&relation_fields[3], running_claim);
++    absorb_compact_relation_polynomial(&mut transcript, 3, &polynomial);
++    alpha[3] = transcript
++        .challenge_qm31()
++        .map_err(|_| V6TranscriptError::ChallengeSampling)?;
++    running_claim = evaluate(&polynomial, alpha[3]);
++    trace(V6RelationDiagnosticPhase::RoundThreePolynomial);
++    weights.fold_deferred_relation_arity4(alpha[3]);
++    trace(V6RelationDiagnosticPhase::RoundThreeWeights);
++    fold_values_prefix::<16>(&mut folded_values, alpha[3]);
++    trace(V6RelationDiagnosticPhase::RoundThree);
++
++    if weights.dot(&folded_values[..4]) != running_claim {
++        return Err(V6TranscriptError::RelationTerminal);
++    }
++    trace(V6RelationDiagnosticPhase::Terminal);
++    let folded_query_sum = authenticated_queries
++        .values
++        .into_iter()
++        .fold(QM31::ZERO, QM31::add);
++
++    Ok(V6VerifiedTranscript {
++        gamma,
++        kappa,
++        alpha,
++        queries,
++        selector,
++        compact_counter,
++        frontier_nodes,
++        semantic_point,
++        query_batch_challenge,
++        folded_query_sum,
++        transcript_state_after_queries,
++    })
++}
++
+ #[allow(clippy::too_many_arguments)]
+ #[inline(never)]
+ fn finish_onefold_relation<QueryFold, DeriveQueries, Trace>(
+@@ -808,71 +904,25 @@ where
+     transcript.absorb(query_batch_labels.1, &query_claim_bytes);
+     trace(V6RelationDiagnosticPhase::QueryBatch);
+ 
+-    // Extraction-only source-equivalent spelling of the fixed range 1..4.
+-    // The deployed source remains unchanged; the accepted-source package
+-    // separately proves that this preserves every success and first-error
+-    // result for an arbitrary round transition.
+-    let polynomial = decode_compact_relation_polynomial(&relation_fields[1], running_claim);
+-    absorb_compact_relation_polynomial(&mut transcript, 1, &polynomial);
+-    alpha[1] = transcript
+-        .challenge_qm31()
+-        .map_err(|_| V6TranscriptError::ChallengeSampling)?;
+-    running_claim = evaluate(&polynomial, alpha[1]);
+-    trace(V6RelationDiagnosticPhase::RoundOnePolynomial);
+-    weights.fold_deferred_relation_arity4(alpha[1]);
+-    if !weights.merge_equal_multilinear_components(0, 2) {
+-        return Err(V6TranscriptError::RelationShape);
+-    }
+-    trace(V6RelationDiagnosticPhase::RoundOneWeights);
+-    fold_values_prefix::<256>(&mut folded_values, alpha[1]);
+-    trace(V6RelationDiagnosticPhase::RoundOne);
+-
+-    let polynomial = decode_compact_relation_polynomial(&relation_fields[2], running_claim);
+-    absorb_compact_relation_polynomial(&mut transcript, 2, &polynomial);
+-    alpha[2] = transcript
+-        .challenge_qm31()
+-        .map_err(|_| V6TranscriptError::ChallengeSampling)?;
+-    running_claim = evaluate(&polynomial, alpha[2]);
+-    trace(V6RelationDiagnosticPhase::RoundTwoPolynomial);
+-    weights.fold_deferred_relation_arity4(alpha[2]);
+-    trace(V6RelationDiagnosticPhase::RoundTwoWeights);
+-    fold_values_prefix::<64>(&mut folded_values, alpha[2]);
+-    trace(V6RelationDiagnosticPhase::RoundTwo);
+-
+-    let polynomial = decode_compact_relation_polynomial(&relation_fields[3], running_claim);
+-    absorb_compact_relation_polynomial(&mut transcript, 3, &polynomial);
+-    alpha[3] = transcript
+-        .challenge_qm31()
+-        .map_err(|_| V6TranscriptError::ChallengeSampling)?;
+-    running_claim = evaluate(&polynomial, alpha[3]);
+-    trace(V6RelationDiagnosticPhase::RoundThreePolynomial);
+-    weights.fold_deferred_relation_arity4(alpha[3]);
+-    trace(V6RelationDiagnosticPhase::RoundThreeWeights);
+-    fold_values_prefix::<16>(&mut folded_values, alpha[3]);
+-    trace(V6RelationDiagnosticPhase::RoundThree);
+-
+-    if weights.dot(&folded_values[..4]) != running_claim {
+-        return Err(V6TranscriptError::RelationTerminal);
+-    }
+-    trace(V6RelationDiagnosticPhase::Terminal);
+-    let folded_query_sum = authenticated_queries
+-        .values
+-        .into_iter()
+-        .fold(QM31::ZERO, QM31::add);
+-
+-    Ok(V6VerifiedTranscript {
++    finish_onefold_relation_round_tail_extraction(
++        transcript,
++        relation_fields,
++        alpha,
++        running_claim,
++        weights,
++        folded_values,
++        authenticated_queries,
+         gamma,
+         kappa,
+-        alpha,
+         queries,
+         selector,
+         compact_counter,
+         frontier_nodes,
+         semantic_point,
+         query_batch_challenge,
+-        folded_query_sum,
+         transcript_state_after_queries,
+-    })
++        trace,
++    )
+ }

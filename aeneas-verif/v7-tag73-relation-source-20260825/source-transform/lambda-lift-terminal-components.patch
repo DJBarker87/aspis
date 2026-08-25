@@ -1,0 +1,146 @@
+diff --git a/crates/aspis-core/src/sumcheck.rs b/crates/aspis-core/src/sumcheck.rs
+index 0000000..0000000 100644
+--- a/crates/aspis-core/src/sumcheck.rs
++++ b/crates/aspis-core/src/sumcheck.rs
+@@ -1657,7 +1657,68 @@ impl WeightAccumulator {
+         }
+         sum
+     }
+ 
++    fn terminal_non_line_contributions_extraction(
++        components: &[WeightComponent],
++        values: &[QM31],
++        mut total: QM31,
++    ) -> QM31 {
++        for component in components {
++            let contribution = match component {
++                WeightComponent::Geometric { scale, base } => {
++                    let base2 = base.square();
++                    let evaluation = values[0]
++                        .add(base.mul(values[1]))
++                        .add(base2.mul(values[2]))
++                        .add(base2.mul(*base).mul(values[3]));
++                    scale.mul(evaluation)
++                }
++                WeightComponent::Multilinear { scale, point } => {
++                    debug_assert_eq!(point.len(), 2);
++                    let low = values[0].add(point[1].mul(values[1].sub(values[0])));
++                    let high = values[2].add(point[1].mul(values[3].sub(values[2])));
++                    scale.mul(low.add(point[0].mul(high.sub(low))))
++                }
++                WeightComponent::Tensor { scale, factors } => {
++                    debug_assert_eq!(factors.len(), 2);
++                    let low = values[0].add(factors[1].mul(values[1]));
++                    let high = values[2].add(factors[1].mul(values[3]));
++                    scale.mul(low.add(factors[0].mul(high)))
++                }
++                WeightComponent::LineM31Tensor { .. } => QM31::ZERO,
++                WeightComponent::LineM31Batch { .. } => QM31::ZERO,
++                WeightComponent::Product { scale, pairs } => {
++                    debug_assert_eq!(pairs.len(), 2);
++                    let evaluation = values[0]
++                        .mul(pairs[0][0].mul(pairs[1][0]))
++                        .add(values[1].mul(pairs[0][0].mul(pairs[1][1])))
++                        .add(values[2].mul(pairs[0][1].mul(pairs[1][0])))
++                        .add(values[3].mul(pairs[0][1].mul(pairs[1][1])));
++                    scale.mul(evaluation)
++                }
++                WeightComponent::Dense { values: weights } =>
++                    Self::dense_terminal_contribution_extraction(values, weights),
++                WeightComponent::Grouped64x16 { .. } => {
++                    unreachable!("grouped component becomes dense before log length two")
++                }
++                WeightComponent::Grouped64x16BinaryDeferred {
++                    row_groups,
++                    group_values,
++                    ..
++                } => Self::grouped_terminal_contribution_extraction(
++                    values,
++                    row_groups,
++                    group_values,
++                ),
++                WeightComponent::Grouped128x16 { .. } => {
++                    unreachable!("grouped component becomes dense before log length two")
++                }
++            };
++            total = total.add(contribution);
++        }
++        total
++    }
++
+     pub fn dot(&self, values: &[QM31]) -> QM31 {
+         debug_assert_eq!(values.len(), 1usize << self.log_len);
+         if self.log_len == 2 && values.len() == 4 {
+@@ -1737,7 +1798,7 @@ impl WeightAccumulator {
+                 c0: CM31::new(limbs[0], limbs[1]),
+                 c1: CM31::new(limbs[2], limbs[3]),
+             };
+-            let mut total = if line_count == 0 {
++            let total = if line_count == 0 {
+                 QM31::ZERO
+             } else {
+                 Self::halve_qm31(
+@@ -1753,60 +1814,9 @@ impl WeightAccumulator {
+                     line_deferred_halvings,
+                 )
+             };
+-            for component in &self.components {
+-                let contribution = match component {
+-                    WeightComponent::Geometric { scale, base } => {
+-                        let base2 = base.square();
+-                        let evaluation = values[0]
+-                            .add(base.mul(values[1]))
+-                            .add(base2.mul(values[2]))
+-                            .add(base2.mul(*base).mul(values[3]));
+-                        scale.mul(evaluation)
+-                    }
+-                    WeightComponent::Multilinear { scale, point } => {
+-                        debug_assert_eq!(point.len(), 2);
+-                        let low = values[0].add(point[1].mul(values[1].sub(values[0])));
+-                        let high = values[2].add(point[1].mul(values[3].sub(values[2])));
+-                        scale.mul(low.add(point[0].mul(high.sub(low))))
+-                    }
+-                    WeightComponent::Tensor { scale, factors } => {
+-                        debug_assert_eq!(factors.len(), 2);
+-                        let low = values[0].add(factors[1].mul(values[1]));
+-                        let high = values[2].add(factors[1].mul(values[3]));
+-                        scale.mul(low.add(factors[0].mul(high)))
+-                    }
+-                    WeightComponent::LineM31Tensor { .. } => QM31::ZERO,
+-                    WeightComponent::LineM31Batch { .. } => QM31::ZERO,
+-                    WeightComponent::Product { scale, pairs } => {
+-                        debug_assert_eq!(pairs.len(), 2);
+-                        let evaluation = values[0]
+-                            .mul(pairs[0][0].mul(pairs[1][0]))
+-                            .add(values[1].mul(pairs[0][0].mul(pairs[1][1])))
+-                            .add(values[2].mul(pairs[0][1].mul(pairs[1][0])))
+-                            .add(values[3].mul(pairs[0][1].mul(pairs[1][1])));
+-                        scale.mul(evaluation)
+-                    }
+-                    WeightComponent::Dense { values: weights } =>
+-                        Self::dense_terminal_contribution_extraction(values, weights),
+-                    WeightComponent::Grouped64x16 { .. } => {
+-                        unreachable!("grouped component becomes dense before log length two")
+-                    }
+-                    WeightComponent::Grouped64x16BinaryDeferred {
+-                        row_groups,
+-                        group_values,
+-                        ..
+-                    } => Self::grouped_terminal_contribution_extraction(
+-                        values,
+-                        row_groups,
+-                        group_values,
+-                    ),
+-                    WeightComponent::Grouped128x16 { .. } => {
+-                        unreachable!("grouped component becomes dense before log length two")
+-                    }
+-                };
+-                total = total.add(contribution);
+-            }
+-            return total;
++            return Self::terminal_non_line_contributions_extraction(
++                &self.components, values, total,
++            );
+         }
+         let mut sum = QM31::ZERO;
+         let mut index = 0usize;

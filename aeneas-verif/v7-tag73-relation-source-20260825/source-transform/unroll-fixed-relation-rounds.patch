@@ -1,0 +1,160 @@
+diff --git a/crates/aspis-core/src/v6_transcript.rs b/crates/aspis-core/src/v6_transcript.rs
+index 8422e8f..0000000 100644
+--- a/crates/aspis-core/src/v6_transcript.rs
++++ b/crates/aspis-core/src/v6_transcript.rs
+@@ -657,10 +657,15 @@ where
+     let mut running_claim = inactive_claim.add(qm31_sum_products3(point_scales, combined_claims));
+     let mut weights = WeightAccumulator::empty(10);
+-    for row in 0..V6_POINT_CLAIM_ROWS {
+-        weights
+-            .add_multilinear(point_scales[row], points[row].to_vec())
+-            .map_err(|_| V6TranscriptError::RelationShape)?;
+-    }
++    // Extraction-only unrolling of the pinned three statement-point rows.
++    weights
++        .add_multilinear(point_scales[0], points[0].to_vec())
++        .map_err(|_| V6TranscriptError::RelationShape)?;
++    weights
++        .add_multilinear(point_scales[1], points[1].to_vec())
++        .map_err(|_| V6TranscriptError::RelationShape)?;
++    weights
++        .add_multilinear(point_scales[2], points[2].to_vec())
++        .map_err(|_| V6TranscriptError::RelationShape)?;
+     weights
+         .add_grouped_64x16_binary_masks_deferred_prepared(inactive_row_groups, inactive_group_masks)
+         .map_err(|_| V6TranscriptError::RelationShape)?;
+@@ -667,21 +667,36 @@ where
+     trace(V6RelationDiagnosticPhase::PreparedWeights);
+ 
+-    for sample in 0..2 {
+-        let point = transcript
+-            .challenge_secure_circle_point()
+-            .map_err(|_| V6TranscriptError::ChallengeSampling)?;
+-        let value = fields.next_qm31()?;
+-        let mut record = [0u8; 17];
+-        record[0] = sample as u8;
+-        value.write_le_bytes(&mut record[1..]);
+-        transcript.absorb(label::V6_CIRCLE_OOD_VALUE, &record);
+-        let mix = transcript
+-            .challenge_qm31()
+-            .map_err(|_| V6TranscriptError::ChallengeSampling)?;
+-        weights
+-            .add_circle_tensor(mix, point)
+-            .map_err(|_| V6TranscriptError::RelationShape)?;
+-        running_claim = running_claim.add(mix.mul(value));
+-    }
++    // Extraction-only unrolling of the pinned range 0..2.
++    let point = transcript
++        .challenge_secure_circle_point()
++        .map_err(|_| V6TranscriptError::ChallengeSampling)?;
++    let value = fields.next_qm31()?;
++    let mut record = [0u8; 17];
++    record[0] = 0;
++    value.write_le_bytes(&mut record[1..]);
++    transcript.absorb(label::V6_CIRCLE_OOD_VALUE, &record);
++    let mix = transcript
++        .challenge_qm31()
++        .map_err(|_| V6TranscriptError::ChallengeSampling)?;
++    weights
++        .add_circle_tensor(mix, point)
++        .map_err(|_| V6TranscriptError::RelationShape)?;
++    running_claim = running_claim.add(mix.mul(value));
++
++    let point = transcript
++        .challenge_secure_circle_point()
++        .map_err(|_| V6TranscriptError::ChallengeSampling)?;
++    let value = fields.next_qm31()?;
++    let mut record = [0u8; 17];
++    record[0] = 1;
++    value.write_le_bytes(&mut record[1..]);
++    transcript.absorb(label::V6_CIRCLE_OOD_VALUE, &record);
++    let mix = transcript
++        .challenge_qm31()
++        .map_err(|_| V6TranscriptError::ChallengeSampling)?;
++    weights
++        .add_circle_tensor(mix, point)
++        .map_err(|_| V6TranscriptError::RelationShape)?;
++    running_claim = running_claim.add(mix.mul(value));
+     trace(V6RelationDiagnosticPhase::CircleSamples);
+ 
+@@ -779,38 +779,49 @@ where
+     transcript.absorb(query_batch_labels.1, &query_claim_bytes);
+     trace(V6RelationDiagnosticPhase::QueryBatch);
+ 
+-    for round in 1..V6_RELATION_ROUNDS {
+-        let polynomial = decode_compact_relation_polynomial(&relation_fields[round], running_claim);
+-        absorb_compact_relation_polynomial(&mut transcript, round, &polynomial);
+-        alpha[round] = transcript
+-            .challenge_qm31()
+-            .map_err(|_| V6TranscriptError::ChallengeSampling)?;
+-        running_claim = evaluate(&polynomial, alpha[round]);
+-        trace(match round {
+-            1 => V6RelationDiagnosticPhase::RoundOnePolynomial,
+-            2 => V6RelationDiagnosticPhase::RoundTwoPolynomial,
+-            _ => V6RelationDiagnosticPhase::RoundThreePolynomial,
+-        });
+-        weights.fold_deferred_relation_arity4(alpha[round]);
+-        if round == 1 && !weights.merge_equal_multilinear_components(0, 2) {
+-            return Err(V6TranscriptError::RelationShape);
+-        }
+-        trace(match round {
+-            1 => V6RelationDiagnosticPhase::RoundOneWeights,
+-            2 => V6RelationDiagnosticPhase::RoundTwoWeights,
+-            _ => V6RelationDiagnosticPhase::RoundThreeWeights,
+-        });
+-        match round {
+-            1 => fold_values_prefix::<256>(&mut folded_values, alpha[round]),
+-            2 => fold_values_prefix::<64>(&mut folded_values, alpha[round]),
+-            _ => fold_values_prefix::<16>(&mut folded_values, alpha[round]),
+-        }
+-        trace(match round {
+-            1 => V6RelationDiagnosticPhase::RoundOne,
+-            2 => V6RelationDiagnosticPhase::RoundTwo,
+-            _ => V6RelationDiagnosticPhase::RoundThree,
+-        });
++    // Extraction-only source-equivalent spelling of the fixed range 1..4.
++    // The deployed source remains unchanged; the accepted-source package
++    // separately proves that this preserves every success and first-error
++    // result for an arbitrary round transition.
++    let polynomial = decode_compact_relation_polynomial(&relation_fields[1], running_claim);
++    absorb_compact_relation_polynomial(&mut transcript, 1, &polynomial);
++    alpha[1] = transcript
++        .challenge_qm31()
++        .map_err(|_| V6TranscriptError::ChallengeSampling)?;
++    running_claim = evaluate(&polynomial, alpha[1]);
++    trace(V6RelationDiagnosticPhase::RoundOnePolynomial);
++    weights.fold_deferred_relation_arity4(alpha[1]);
++    if !weights.merge_equal_multilinear_components(0, 2) {
++        return Err(V6TranscriptError::RelationShape);
+     }
++    trace(V6RelationDiagnosticPhase::RoundOneWeights);
++    fold_values_prefix::<256>(&mut folded_values, alpha[1]);
++    trace(V6RelationDiagnosticPhase::RoundOne);
++
++    let polynomial = decode_compact_relation_polynomial(&relation_fields[2], running_claim);
++    absorb_compact_relation_polynomial(&mut transcript, 2, &polynomial);
++    alpha[2] = transcript
++        .challenge_qm31()
++        .map_err(|_| V6TranscriptError::ChallengeSampling)?;
++    running_claim = evaluate(&polynomial, alpha[2]);
++    trace(V6RelationDiagnosticPhase::RoundTwoPolynomial);
++    weights.fold_deferred_relation_arity4(alpha[2]);
++    trace(V6RelationDiagnosticPhase::RoundTwoWeights);
++    fold_values_prefix::<64>(&mut folded_values, alpha[2]);
++    trace(V6RelationDiagnosticPhase::RoundTwo);
++
++    let polynomial = decode_compact_relation_polynomial(&relation_fields[3], running_claim);
++    absorb_compact_relation_polynomial(&mut transcript, 3, &polynomial);
++    alpha[3] = transcript
++        .challenge_qm31()
++        .map_err(|_| V6TranscriptError::ChallengeSampling)?;
++    running_claim = evaluate(&polynomial, alpha[3]);
++    trace(V6RelationDiagnosticPhase::RoundThreePolynomial);
++    weights.fold_deferred_relation_arity4(alpha[3]);
++    trace(V6RelationDiagnosticPhase::RoundThreeWeights);
++    fold_values_prefix::<16>(&mut folded_values, alpha[3]);
++    trace(V6RelationDiagnosticPhase::RoundThree);
++
+     if weights.dot(&folded_values[..4]) != running_claim {
+         return Err(V6TranscriptError::RelationTerminal);
+     }

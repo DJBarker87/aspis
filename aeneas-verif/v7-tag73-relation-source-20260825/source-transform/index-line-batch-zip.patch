@@ -1,0 +1,23 @@
+diff --git a/crates/aspis-core/src/sumcheck.rs b/crates/aspis-core/src/sumcheck.rs
+index 9cb353d..0000000 100644
+--- a/crates/aspis-core/src/sumcheck.rs
++++ b/crates/aspis-core/src/sumcheck.rs
+@@ -1615,11 +1615,16 @@ impl WeightAccumulator {
+                     WeightComponent::LineM31Batch {
+                         scales,
+                         xs,
+                         deferred_halvings,
+                     } => {
+-                        for (&scale, &x) in scales.iter().zip(xs) {
+-                            accumulate_line(scale, x, *deferred_halvings);
++                        // Extraction-only exact spelling of `zip`: process the
++                        // common prefix and stop at the shorter input.
++                        let mut line_index = 0usize;
++                        let line_len = core::cmp::min(scales.len(), xs.len());
++                        while line_index < line_len {
++                            accumulate_line(scales[line_index], xs[line_index], *deferred_halvings);
++                            line_index += 1;
+                         }
+                     }
+                     _ => {}
+                 }

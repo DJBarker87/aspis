@@ -1,0 +1,39 @@
+diff --git a/crates/aspis-core/src/sumcheck.rs b/crates/aspis-core/src/sumcheck.rs
+index 0000000..0000000 100644
+--- a/crates/aspis-core/src/sumcheck.rs
++++ b/crates/aspis-core/src/sumcheck.rs
+@@ -1750,10 +1750,13 @@ impl WeightAccumulator {
+         values: &[QM31],
+         mut total: QM31,
+     ) -> QM31 {
+-        for component in components {
++        let mut component_index = 0usize;
++        while component_index < components.len() {
++            let component = &components[component_index];
+             let contribution =
+                 Self::terminal_component_contribution_extraction(component, values);
+             total = total.add(contribution);
++            component_index += 1;
+         }
+         total
+     }
+@@ -1773,7 +1776,9 @@ impl WeightAccumulator {
+             let mut line_count = 0usize;
+             let mut line_constant_limbs = [M31::ZERO; 4];
+             let mut line_raw = [[0u64; 4]; 3];
+             let mut line_sums = [[M31::ZERO; 4]; 3];
+-            for component in &self.components {
++            let mut component_index = 0usize;
++            while component_index < self.components.len() {
++                let component = &self.components[component_index];
+                 match component {
+                     WeightComponent::LineM31Tensor { scale, x } => {
+@@ -1815,7 +1820,8 @@ impl WeightAccumulator {
+                         line_sums = next_sums;
+                     }
+                     _ => {}
+                 }
++                component_index += 1;
+             }
+             if line_count % 4 != 0 {
+                 for slot in 0..3 {

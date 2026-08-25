@@ -1,0 +1,42 @@
+diff --git a/crates/aspis-core/src/field.rs b/crates/aspis-core/src/field.rs
+index 0000000..0000000 100644
+--- a/crates/aspis-core/src/field.rs
++++ b/crates/aspis-core/src/field.rs
+@@ -2030,7 +2030,7 @@ fn qm31_dot3_accumulate_index_extraction(
+     raw
+ }
+ 
+-fn qm31_dot3_indexed_extraction(
++pub(crate) fn qm31_dot3_indexed_extraction(
+     weights: &[QM31],
+     values0: &[QM31],
+     values1: &[QM31],
+diff --git a/crates/aspis-core/src/v6_transcript.rs b/crates/aspis-core/src/v6_transcript.rs
+index 0000000..0000000 100644
+--- a/crates/aspis-core/src/v6_transcript.rs
++++ b/crates/aspis-core/src/v6_transcript.rs
+@@ -11,8 +11,8 @@
+ use alloc::{boxed::Box, vec, vec::Vec};
+ 
+ use crate::field::{
+-    qm31_add_sum_products3_prepared, qm31_dot3, qm31_power_table, qm31_sum_products3,
+-    PreparedQm31Multiplier, CM31, M31, M31_QUARTER, QM31,
++    qm31_add_sum_products3_prepared, qm31_dot3_indexed_extraction, qm31_power_table,
++    qm31_sum_products3, PreparedQm31Multiplier, CM31, M31, M31_QUARTER, QM31,
+ };
+ use crate::proof::M31_CIRCLE_BASIS_DISCRIMINATOR;
+ use crate::state_only_hiding::{
+@@ -454,7 +454,12 @@ fn gamma_point_claims_and_query_powers(
+     debug_assert_eq!(V6_TOTAL_COLUMNS, SPEND_TOTAL_COLUMNS);
+     let powers = qm31_power_table::<SPEND_TOTAL_COLUMNS>(gamma);
+     (
+-        qm31_dot3(&powers, [&claims[0], &claims[1], &claims[2]]),
++        qm31_dot3_indexed_extraction(
++            &powers,
++            &claims[0],
++            &claims[1],
++            &claims[2],
++        ),
+         StateOnlySpendQueryPowers::from_full_table(&powers),
+         powers[SPEND_D_GENERATOR_INDEX],
+     )

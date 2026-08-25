@@ -1,0 +1,128 @@
+diff --git a/crates/aspis-core/src/sumcheck.rs b/crates/aspis-core/src/sumcheck.rs
+index 0000000..0000000 100644
+--- a/crates/aspis-core/src/sumcheck.rs
++++ b/crates/aspis-core/src/sumcheck.rs
+@@ -1558,7 +1558,47 @@ impl WeightAccumulator {
+         self.components = alloc::vec![WeightComponent::Dense { values: folded }];
+         self.log_len -= 3;
+     }
+ 
++    // Extraction-only lambda lift of the `dot` line accumulator.  All state
++    // is returned by value so Aeneas does not have to merge a closure's
++    // captured mutable borrows across the exact indexed batch loop.
++    fn accumulate_terminal_line_extraction(
++        line_deferred_halvings: u8,
++        mut line_count: usize,
++        mut line_constant_limbs: [M31; 4],
++        mut line_raw: [[u64; 4]; 3],
++        mut line_sums: [[M31; 4]; 3],
++        mut scale: QM31,
++        x: M31,
++        mut halvings: u8,
++    ) -> (usize, [M31; 4], [[u64; 4]; 3], [[M31; 4]; 3]) {
++        while halvings < line_deferred_halvings {
++            scale = scale.add(scale);
++            halvings += 1;
++        }
++        let high = Self::double_x_m31(x);
++        let factors = [x, high, x.mul(high)];
++        let limbs = [scale.c0.a.0, scale.c0.b.0, scale.c1.a.0, scale.c1.b.0];
++        for limb in 0..4 {
++            line_constant_limbs[limb] = line_constant_limbs[limb].add(M31(limbs[limb]));
++            for slot in 0..3 {
++                line_raw[slot][limb] +=
++                    u64::from(limbs[limb]) * u64::from(factors[slot].0);
++            }
++        }
++        line_count += 1;
++        if line_count % 4 == 0 {
++            for slot in 0..3 {
++                for limb in 0..4 {
++                    line_sums[slot][limb] = line_sums[slot][limb]
++                        .add(M31::reduce_u64(line_raw[slot][limb]));
++                    line_raw[slot][limb] = 0;
++                }
++            }
++        }
++        (line_count, line_constant_limbs, line_raw, line_sums)
++    }
++
+     pub fn dot(&self, values: &[QM31]) -> QM31 {
+         debug_assert_eq!(values.len(), 1usize << self.log_len);
+         if self.log_len == 2 && values.len() == 4 {
+@@ -1583,35 +1623,25 @@ impl WeightAccumulator {
+             let mut line_constant_limbs = [M31::ZERO; 4];
+             let mut line_raw = [[0u64; 4]; 3];
+             let mut line_sums = [[M31::ZERO; 4]; 3];
+             for component in &self.components {
+-                let mut accumulate_line = |mut scale: QM31, x: M31, mut halvings: u8| {
+-                    while halvings < line_deferred_halvings {
+-                        scale = scale.add(scale);
+-                        halvings += 1;
+-                    }
+-                    let high = Self::double_x_m31(x);
+-                    let factors = [x, high, x.mul(high)];
+-                    let limbs = [scale.c0.a.0, scale.c0.b.0, scale.c1.a.0, scale.c1.b.0];
+-                    for limb in 0..4 {
+-                        line_constant_limbs[limb] = line_constant_limbs[limb].add(M31(limbs[limb]));
+-                        for slot in 0..3 {
+-                            line_raw[slot][limb] +=
+-                                u64::from(limbs[limb]) * u64::from(factors[slot].0);
+-                        }
+-                    }
+-                    line_count += 1;
+-                    if line_count % 4 == 0 {
+-                        for slot in 0..3 {
+-                            for limb in 0..4 {
+-                                line_sums[slot][limb] = line_sums[slot][limb]
+-                                    .add(M31::reduce_u64(line_raw[slot][limb]));
+-                                line_raw[slot][limb] = 0;
+-                            }
+-                        }
+-                    }
+-                };
+                 match component {
+-                    WeightComponent::LineM31Tensor { scale, x } => accumulate_line(*scale, *x, 0),
++                    WeightComponent::LineM31Tensor { scale, x } => {
++                        let (next_count, next_constant, next_raw, next_sums) =
++                            Self::accumulate_terminal_line_extraction(
++                                line_deferred_halvings,
++                                line_count,
++                                line_constant_limbs,
++                                line_raw,
++                                line_sums,
++                                *scale,
++                                *x,
++                                0,
++                            );
++                        line_count = next_count;
++                        line_constant_limbs = next_constant;
++                        line_raw = next_raw;
++                        line_sums = next_sums;
++                    }
+                     WeightComponent::LineM31Batch {
+                         scales,
+                         xs,
+@@ -1622,7 +1652,21 @@ impl WeightAccumulator {
+                         let mut line_index = 0usize;
+                         let line_len = core::cmp::min(scales.len(), xs.len());
+                         while line_index < line_len {
+-                            accumulate_line(scales[line_index], xs[line_index], *deferred_halvings);
++                            let (next_count, next_constant, next_raw, next_sums) =
++                                Self::accumulate_terminal_line_extraction(
++                                    line_deferred_halvings,
++                                    line_count,
++                                    line_constant_limbs,
++                                    line_raw,
++                                    line_sums,
++                                    scales[line_index],
++                                    xs[line_index],
++                                    *deferred_halvings,
++                                );
++                            line_count = next_count;
++                            line_constant_limbs = next_constant;
++                            line_raw = next_raw;
++                            line_sums = next_sums;
+                             line_index += 1;
+                         }
+                     }

@@ -1,0 +1,33 @@
+diff --git a/crates/aspis-core/src/v6_transcript.rs b/crates/aspis-core/src/v6_transcript.rs
+index 0000000..0000000 100644
+--- a/crates/aspis-core/src/v6_transcript.rs
++++ b/crates/aspis-core/src/v6_transcript.rs
+@@ -136,6 +136,10 @@
+     fn from(error: V6WireError) -> Self {
+         Self::Wire(error)
+     }
++}
++
++fn v6_wire_error_to_transcript_extraction(error: V6WireError) -> V6TranscriptError {
++    V6TranscriptError::Wire(error)
+ }
+ 
+ #[derive(Debug)]
+@@ -789,7 +793,7 @@
+             compact_counter,
+             frontier_nodes,
+         };
+-        query_fold(&query_view).map_err(V6TranscriptError::Wire)?
++        query_fold(&query_view).map_err(v6_wire_error_to_transcript_extraction)?
+     };
+     let query_claim = add_v6_final256_query_batch(
+         &mut weights,
+@@ -946,7 +950,7 @@
+         false,
+         |candidate_transcript| {
+             let schedule = derive_first_v7_compact_queries(candidate_transcript)
+-                .map_err(V6TranscriptError::Wire)?;
++                .map_err(v6_wire_error_to_transcript_extraction)?;
+             Ok((
+                 schedule.queries,
+                 schedule.counter,

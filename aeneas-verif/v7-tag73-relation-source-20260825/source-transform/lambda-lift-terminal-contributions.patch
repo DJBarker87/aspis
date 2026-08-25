@@ -1,0 +1,79 @@
+diff --git a/crates/aspis-core/src/sumcheck.rs b/crates/aspis-core/src/sumcheck.rs
+index 0000000..0000000 100644
+--- a/crates/aspis-core/src/sumcheck.rs
++++ b/crates/aspis-core/src/sumcheck.rs
+@@ -1631,7 +1631,33 @@ impl WeightAccumulator {
+         }
+         (line_count, line_constant_limbs, line_raw, line_sums)
+     }
+ 
++    fn dense_terminal_contribution_extraction(values: &[QM31], weights: &[QM31]) -> QM31 {
++        let mut sum = QM31::ZERO;
++        let mut index = 0usize;
++        while index < values.len() {
++            sum = sum.add(values[index].mul(weights[index]));
++            index += 1;
++        }
++        sum
++    }
++
++    fn grouped_terminal_contribution_extraction(
++        values: &[QM31],
++        row_groups: &[u8],
++        group_values: &[QM31],
++    ) -> QM31 {
++        let mut sum = QM31::ZERO;
++        let mut index = 0usize;
++        while index < values.len() {
++            sum = sum.add(
++                values[index].mul(group_values[usize::from(row_groups[index])]),
++            );
++            index += 1;
++        }
++        sum
++    }
++
+     pub fn dot(&self, values: &[QM31]) -> QM31 {
+         debug_assert_eq!(values.len(), 1usize << self.log_len);
+         if self.log_len == 2 && values.len() == 4 {
+@@ -1760,33 +1786,20 @@ impl WeightAccumulator {
+                             .add(values[3].mul(pairs[0][1].mul(pairs[1][1])));
+                         scale.mul(evaluation)
+                     }
+-                    WeightComponent::Dense { values: weights } => {
+-                        let mut sum = QM31::ZERO;
+-                        let mut index = 0usize;
+-                        while index < values.len() {
+-                            sum = sum.add(values[index].mul(weights[index]));
+-                            index += 1;
+-                        }
+-                        sum
+-                    }
++                    WeightComponent::Dense { values: weights } =>
++                        Self::dense_terminal_contribution_extraction(values, weights),
+                     WeightComponent::Grouped64x16 { .. } => {
+                         unreachable!("grouped component becomes dense before log length two")
+                     }
+                     WeightComponent::Grouped64x16BinaryDeferred {
+                         row_groups,
+                         group_values,
+                         ..
+-                    } => {
+-                        let mut sum = QM31::ZERO;
+-                        let mut index = 0usize;
+-                        while index < values.len() {
+-                            sum = sum.add(
+-                                values[index].mul(group_values[usize::from(row_groups[index])]),
+-                            );
+-                            index += 1;
+-                        }
+-                        sum
+-                    }
++                    } => Self::grouped_terminal_contribution_extraction(
++                        values,
++                        row_groups,
++                        group_values,
++                    ),
+                     WeightComponent::Grouped128x16 { .. } => {
+                         unreachable!("grouped component becomes dense before log length two")
+                     }

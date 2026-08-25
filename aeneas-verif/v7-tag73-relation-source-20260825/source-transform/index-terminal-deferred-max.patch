@@ -1,0 +1,62 @@
+diff --git a/crates/aspis-core/src/sumcheck.rs b/crates/aspis-core/src/sumcheck.rs
+index 0000000..0000000 100644
+--- a/crates/aspis-core/src/sumcheck.rs
++++ b/crates/aspis-core/src/sumcheck.rs
+@@ -1558,6 +1558,38 @@ impl WeightAccumulator {
+         self.log_len -= 3;
+     }
+ 
++    // Extraction-only indexed spelling of
++    // `components.iter().filter_map(...).max().unwrap_or(0)`.  Deferred
++    // halvings are `u8`, so starting at zero and retaining every larger
++    // value is exactly the same maximum, including the empty case.
++    fn terminal_component_deferred_halvings_extraction(
++        component: &WeightComponent,
++    ) -> u8 {
++        match component {
++            WeightComponent::LineM31Batch {
++                deferred_halvings, ..
++            } => *deferred_halvings,
++            _ => 0,
++        }
++    }
++
++    fn terminal_line_deferred_halvings_extraction(
++        components: &[WeightComponent],
++    ) -> u8 {
++        let mut maximum = 0u8;
++        let mut component_index = 0usize;
++        while component_index < components.len() {
++            let candidate = Self::terminal_component_deferred_halvings_extraction(
++                &components[component_index],
++            );
++            if maximum < candidate {
++                maximum = candidate;
++            }
++            component_index += 1;
++        }
++        maximum
++    }
++
+     // Extraction-only lambda lift of the `dot` line accumulator.  All state
+     // is returned by value so Aeneas does not have to merge a closure's
+     // captured mutable borrows across the exact indexed batch loop.
+@@ -1736,16 +1768,7 @@ impl WeightAccumulator {
+             // QM31 multiplication per query after independently evaluating
+             // the same coefficient tuple.
+-            let line_deferred_halvings = self
+-                .components
+-                .iter()
+-                .filter_map(|component| match component {
+-                    WeightComponent::LineM31Batch {
+-                        deferred_halvings, ..
+-                    } => Some(*deferred_halvings),
+-                    _ => None,
+-                })
+-                .max()
+-                .unwrap_or(0);
++            let line_deferred_halvings =
++                Self::terminal_line_deferred_halvings_extraction(&self.components);
+             let mut line_count = 0usize;
+             let mut line_constant_limbs = [M31::ZERO; 4];
+             let mut line_raw = [[0u64; 4]; 3];

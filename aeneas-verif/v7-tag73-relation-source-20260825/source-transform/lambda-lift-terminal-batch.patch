@@ -1,0 +1,89 @@
+diff --git a/crates/aspis-core/src/sumcheck.rs b/crates/aspis-core/src/sumcheck.rs
+index 0000000..0000000 100644
+--- a/crates/aspis-core/src/sumcheck.rs
++++ b/crates/aspis-core/src/sumcheck.rs
+@@ -1598,7 +1598,40 @@ impl WeightAccumulator {
+         }
+         (line_count, line_constant_limbs, line_raw, line_sums)
+     }
+ 
++    fn accumulate_terminal_line_batch_extraction(
++        line_deferred_halvings: u8,
++        mut line_count: usize,
++        mut line_constant_limbs: [M31; 4],
++        mut line_raw: [[u64; 4]; 3],
++        mut line_sums: [[M31; 4]; 3],
++        scales: &[QM31],
++        xs: &[M31],
++        deferred_halvings: u8,
++    ) -> (usize, [M31; 4], [[u64; 4]; 3], [[M31; 4]; 3]) {
++        let mut line_index = 0usize;
++        let line_len = core::cmp::min(scales.len(), xs.len());
++        while line_index < line_len {
++            let (next_count, next_constant, next_raw, next_sums) =
++                Self::accumulate_terminal_line_extraction(
++                    line_deferred_halvings,
++                    line_count,
++                    line_constant_limbs,
++                    line_raw,
++                    line_sums,
++                    scales[line_index],
++                    xs[line_index],
++                    deferred_halvings,
++                );
++            line_count = next_count;
++            line_constant_limbs = next_constant;
++            line_raw = next_raw;
++            line_sums = next_sums;
++            line_index += 1;
++        }
++        (line_count, line_constant_limbs, line_raw, line_sums)
++    }
++
+     pub fn dot(&self, values: &[QM31]) -> QM31 {
+         debug_assert_eq!(values.len(), 1usize << self.log_len);
+         if self.log_len == 2 && values.len() == 4 {
+@@ -1646,28 +1679,21 @@ impl WeightAccumulator {
+                         xs,
+                         deferred_halvings,
+                     } => {
+-                        // Extraction-only exact spelling of `zip`: process the
+-                        // common prefix and stop at the shorter input.
+-                        let mut line_index = 0usize;
+-                        let line_len = core::cmp::min(scales.len(), xs.len());
+-                        while line_index < line_len {
+-                            let (next_count, next_constant, next_raw, next_sums) =
+-                                Self::accumulate_terminal_line_extraction(
+-                                    line_deferred_halvings,
+-                                    line_count,
+-                                    line_constant_limbs,
+-                                    line_raw,
+-                                    line_sums,
+-                                    scales[line_index],
+-                                    xs[line_index],
+-                                    *deferred_halvings,
+-                                );
+-                            line_count = next_count;
+-                            line_constant_limbs = next_constant;
+-                            line_raw = next_raw;
+-                            line_sums = next_sums;
+-                            line_index += 1;
+-                        }
++                        let (next_count, next_constant, next_raw, next_sums) =
++                            Self::accumulate_terminal_line_batch_extraction(
++                                line_deferred_halvings,
++                                line_count,
++                                line_constant_limbs,
++                                line_raw,
++                                line_sums,
++                                scales,
++                                xs,
++                                *deferred_halvings,
++                            );
++                        line_count = next_count;
++                        line_constant_limbs = next_constant;
++                        line_raw = next_raw;
++                        line_sums = next_sums;
+                     }
+                     _ => {}
+                 }

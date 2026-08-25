@@ -1,0 +1,111 @@
+diff --git a/crates/aspis-core/src/sumcheck.rs b/crates/aspis-core/src/sumcheck.rs
+index 0000000..0000000 100644
+--- a/crates/aspis-core/src/sumcheck.rs
++++ b/crates/aspis-core/src/sumcheck.rs
+@@ -1662,6 +1662,45 @@ impl WeightAccumulator {
+             line_index += 1;
+         }
+         (line_count, line_constant_limbs, line_raw, line_sums)
++    }
++
++    fn accumulate_terminal_component_extraction(
++        line_deferred_halvings: u8,
++        line_count: usize,
++        line_constant_limbs: [M31; 4],
++        line_raw: [[u64; 4]; 3],
++        line_sums: [[M31; 4]; 3],
++        component: &WeightComponent,
++    ) -> (usize, [M31; 4], [[u64; 4]; 3], [[M31; 4]; 3]) {
++        match component {
++            WeightComponent::LineM31Tensor { scale, x } => {
++                Self::accumulate_terminal_line_extraction(
++                    line_deferred_halvings,
++                    line_count,
++                    line_constant_limbs,
++                    line_raw,
++                    line_sums,
++                    *scale,
++                    *x,
++                    0,
++                )
++            }
++            WeightComponent::LineM31Batch {
++                scales,
++                xs,
++                deferred_halvings,
++            } => Self::accumulate_terminal_line_batch_extraction(
++                line_deferred_halvings,
++                line_count,
++                line_constant_limbs,
++                line_raw,
++                line_sums,
++                scales,
++                xs,
++                *deferred_halvings,
++            ),
++            _ => (line_count, line_constant_limbs, line_raw, line_sums),
++        }
+     }
+ 
+     fn dense_terminal_contribution_extraction(values: &[QM31], weights: &[QM31]) -> QM31 {
+@@ -1780,47 +1819,19 @@ impl WeightAccumulator {
+             let mut component_index = 0usize;
+             while component_index < self.components.len() {
+                 let component = &self.components[component_index];
+-                match component {
+-                    WeightComponent::LineM31Tensor { scale, x } => {
+-                        let (next_count, next_constant, next_raw, next_sums) =
+-                            Self::accumulate_terminal_line_extraction(
+-                                line_deferred_halvings,
+-                                line_count,
+-                                line_constant_limbs,
+-                                line_raw,
+-                                line_sums,
+-                                *scale,
+-                                *x,
+-                                0,
+-                            );
+-                        line_count = next_count;
+-                        line_constant_limbs = next_constant;
+-                        line_raw = next_raw;
+-                        line_sums = next_sums;
+-                    }
+-                    WeightComponent::LineM31Batch {
+-                        scales,
+-                        xs,
+-                        deferred_halvings,
+-                    } => {
+-                        let (next_count, next_constant, next_raw, next_sums) =
+-                            Self::accumulate_terminal_line_batch_extraction(
+-                                line_deferred_halvings,
+-                                line_count,
+-                                line_constant_limbs,
+-                                line_raw,
+-                                line_sums,
+-                                scales,
+-                                xs,
+-                                *deferred_halvings,
+-                            );
+-                        line_count = next_count;
+-                        line_constant_limbs = next_constant;
+-                        line_raw = next_raw;
+-                        line_sums = next_sums;
+-                    }
+-                    _ => {}
+-                }
++                let (next_count, next_constant, next_raw, next_sums) =
++                    Self::accumulate_terminal_component_extraction(
++                        line_deferred_halvings,
++                        line_count,
++                        line_constant_limbs,
++                        line_raw,
++                        line_sums,
++                        component,
++                    );
++                line_count = next_count;
++                line_constant_limbs = next_constant;
++                line_raw = next_raw;
++                line_sums = next_sums;
+                 component_index += 1;
+             }
+             if line_count % 4 != 0 {

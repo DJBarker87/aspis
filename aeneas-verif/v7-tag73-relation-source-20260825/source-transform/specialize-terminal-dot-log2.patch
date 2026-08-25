@@ -1,0 +1,20 @@
+diff --git a/crates/aspis-core/src/sumcheck.rs b/crates/aspis-core/src/sumcheck.rs
+index 0000000..0000000 100644
+--- a/crates/aspis-core/src/sumcheck.rs
++++ b/crates/aspis-core/src/sumcheck.rs
+@@ -1826,13 +1826,9 @@ impl WeightAccumulator {
+                 &self.components, values, total,
+             );
+         }
+-        let mut sum = QM31::ZERO;
+-        let mut index = 0usize;
+-        while index < values.len() {
+-            sum = sum.add(values[index].mul(self.weight_at(index as u32)));
+-            index += 1;
+-        }
+-        sum
++        unreachable!(
++            "Tag-73 finish extraction proves log_len=2 and four terminal values"
++        )
+     }
+ }

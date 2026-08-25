@@ -1,0 +1,195 @@
+diff --git a/crates/aspis-core/src/field.rs b/crates/aspis-core/src/field.rs
+index 0000000..0000000 100644
+--- a/crates/aspis-core/src/field.rs
++++ b/crates/aspis-core/src/field.rs
+@@ -1947,10 +1947,95 @@
+ /// the common weight's CM31/Karatsuba decomposition is performed once per
+ /// element. The 256-element outer windows have the same overflow proof as
+ /// [`qm31_dot`].
+-pub fn qm31_dot3(weights: &[QM31], values: [&[QM31]; 3]) -> [QM31; 3] {
+-    for row in values {
+-        assert_eq!(weights.len(), row.len());
++fn qm31_dot3_accumulate_value_extraction(
++    mut raw: [u64; 9],
++    left: [[M31; 3]; 3],
++    value: QM31,
++) -> [u64; 9] {
++    let value_sum = value.c0.add(value.c1);
++    let right = [
++        [value.c0.a, value.c0.b, value.c0.a.add(value.c0.b)],
++        [value.c1.a, value.c1.b, value.c1.a.add(value.c1.b)],
++        [value_sum.a, value_sum.b, value_sum.a.add(value_sum.b)],
++    ];
++    let mut component = 0usize;
++    while component < 3 {
++        let offset = 3 * component;
++        raw[offset] += u64::from(left[component][0].0) * u64::from(right[component][0].0);
++        raw[offset + 1] +=
++            u64::from(left[component][1].0) * u64::from(right[component][1].0);
++        raw[offset + 2] +=
++            u64::from(left[component][2].0) * u64::from(right[component][2].0);
++        component += 1;
+     }
++    raw
++}
++
++fn qm31_dot3_reduce_raw_extraction(mut outer: [u64; 9], raw: [u64; 9]) -> [u64; 9] {
++    let mut channel = 0usize;
++    while channel < 9 {
++        outer[channel] += u64::from(M31::reduce_u64(raw[channel]).0);
++        channel += 1;
++    }
++    outer
++}
++
++fn qm31_dot3_reduce_outer_extraction(
++    mut sums: [M31; 9],
++    outer: [u64; 9],
++) -> [M31; 9] {
++    let mut channel = 0usize;
++    while channel < 9 {
++        sums[channel] = sums[channel].add(M31::reduce_u64(outer[channel]));
++        channel += 1;
++    }
++    sums
++}
++
++fn qm31_dot3_result_component_extraction(sums: [M31; 9], offset: usize) -> CM31 {
++    CM31 {
++        a: sums[offset].sub(sums[offset + 1]),
++        b: sums[offset + 2]
++            .sub(sums[offset])
++            .sub(sums[offset + 1]),
++    }
++}
++
++fn qm31_dot3_result_row_extraction(sums: [M31; 9]) -> QM31 {
++    let m0 = qm31_dot3_result_component_extraction(sums, 0);
++    let m1 = qm31_dot3_result_component_extraction(sums, 3);
++    let m2 = qm31_dot3_result_component_extraction(sums, 6);
++    QM31 {
++        c0: m0.add(mul_by_r(m1)),
++        c1: m2.sub(m0).sub(m1),
++    }
++}
++
++fn qm31_dot3_accumulate_index_extraction(
++    mut raw: [[u64; 9]; 3],
++    weight: QM31,
++    value0: QM31,
++    value1: QM31,
++    value2: QM31,
++) -> [[u64; 9]; 3] {
++    let weight_sum = weight.c0.add(weight.c1);
++    let left = [
++        [weight.c0.a, weight.c0.b, weight.c0.a.add(weight.c0.b)],
++        [weight.c1.a, weight.c1.b, weight.c1.a.add(weight.c1.b)],
++        [weight_sum.a, weight_sum.b, weight_sum.a.add(weight_sum.b)],
++    ];
++    raw[0] = qm31_dot3_accumulate_value_extraction(raw[0], left, value0);
++    raw[1] = qm31_dot3_accumulate_value_extraction(raw[1], left, value1);
++    raw[2] = qm31_dot3_accumulate_value_extraction(raw[2], left, value2);
++    raw
++}
++
++fn qm31_dot3_indexed_extraction(
++    weights: &[QM31],
++    values0: &[QM31],
++    values1: &[QM31],
++    values2: &[QM31],
++) -> [QM31; 3] {
+     let mut sums = [[M31::ZERO; 9]; 3];
+     const OUTER_COLUMNS: usize = 256;
+     for outer_start in (0..weights.len()).step_by(OUTER_COLUMNS) {
+@@ -1960,62 +2045,41 @@
+             let end = core::cmp::min(start + 4, outer_end);
+             let mut raw = [[0u64; 9]; 3];
+             for index in start..end {
+-                let weight = weights[index];
+-                let weight_sum = weight.c0.add(weight.c1);
+-                let left = [
+-                    [weight.c0.a, weight.c0.b, weight.c0.a.add(weight.c0.b)],
+-                    [weight.c1.a, weight.c1.b, weight.c1.a.add(weight.c1.b)],
+-                    [weight_sum.a, weight_sum.b, weight_sum.a.add(weight_sum.b)],
+-                ];
+-                for row in 0..3 {
+-                    let value = values[row][index];
+-                    let value_sum = value.c0.add(value.c1);
+-                    let right = [
+-                        [value.c0.a, value.c0.b, value.c0.a.add(value.c0.b)],
+-                        [value.c1.a, value.c1.b, value.c1.a.add(value.c1.b)],
+-                        [value_sum.a, value_sum.b, value_sum.a.add(value_sum.b)],
+-                    ];
+-                    for component in 0..3 {
+-                        let offset = 3 * component;
+-                        raw[row][offset] +=
+-                            u64::from(left[component][0].0) * u64::from(right[component][0].0);
+-                        raw[row][offset + 1] +=
+-                            u64::from(left[component][1].0) * u64::from(right[component][1].0);
+-                        raw[row][offset + 2] +=
+-                            u64::from(left[component][2].0) * u64::from(right[component][2].0);
+-                    }
+-                }
+-            }
+-            for row in 0..3 {
+-                for channel in 0..9 {
+-                    outer[row][channel] += u64::from(M31::reduce_u64(raw[row][channel]).0);
+-                }
+-            }
+-        }
+-        for row in 0..3 {
+-            for channel in 0..9 {
+-                sums[row][channel] = sums[row][channel].add(M31::reduce_u64(outer[row][channel]));
++                raw = qm31_dot3_accumulate_index_extraction(
++                    raw,
++                    weights[index],
++                    values0[index],
++                    values1[index],
++                    values2[index],
++                );
+             }
++            let outer0 = qm31_dot3_reduce_raw_extraction(outer[0], raw[0]);
++            outer[0] = outer0;
++            let outer1 = qm31_dot3_reduce_raw_extraction(outer[1], raw[1]);
++            outer[1] = outer1;
++            let outer2 = qm31_dot3_reduce_raw_extraction(outer[2], raw[2]);
++            outer[2] = outer2;
+         }
++        let sums0 = qm31_dot3_reduce_outer_extraction(sums[0], outer[0]);
++        sums[0] = sums0;
++        let sums1 = qm31_dot3_reduce_outer_extraction(sums[1], outer[1]);
++        sums[1] = sums1;
++        let sums2 = qm31_dot3_reduce_outer_extraction(sums[2], outer[2]);
++        sums[2] = sums2;
+     }
+ 
+-    core::array::from_fn(|row| {
+-        let component = |offset: usize| CM31 {
+-            a: sums[row][offset].sub(sums[row][offset + 1]),
+-            b: sums[row][offset + 2]
+-                .sub(sums[row][offset])
+-                .sub(sums[row][offset + 1]),
+-        };
+-        let m0 = component(0);
+-        let m1 = component(3);
+-        let m2 = component(6);
+-        QM31 {
+-            c0: m0.add(mul_by_r(m1)),
+-            c1: m2.sub(m0).sub(m1),
+-        }
+-    })
++    [
++        qm31_dot3_result_row_extraction(sums[0]),
++        qm31_dot3_result_row_extraction(sums[1]),
++        qm31_dot3_result_row_extraction(sums[2]),
++    ]
+ }
+ 
++pub fn qm31_dot3(weights: &[QM31], values: [&[QM31]; 3]) -> [QM31; 3] {
++    let [values0, values1, values2] = values;
++    qm31_dot3_indexed_extraction(weights, values0, values1, values2)
++}
++
+ /// Montgomery batch inversion over M31: one field inversion for the whole
+ /// batch plus 3(n-1) multiplications. Panics if any element is zero.
+ pub fn m31_batch_inverse(values: &[M31], out: &mut [M31]) {
