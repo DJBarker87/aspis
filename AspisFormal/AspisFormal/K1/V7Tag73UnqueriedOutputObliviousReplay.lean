@@ -24,6 +24,8 @@ namespace AspisK1.V7Tag73UnqueriedOutputObliviousReplay
 
 open AspisK1.V7Tag73TranscriptSchedule
 open AspisK1.V7Tag73DeterministicRefinement
+open AspisK1.V7Tag73AtomicPairFork
+open AspisK1.V7Tag73NoPairOccurrenceTrichotomy
 open AspisK1.V7Tag73NoPairReplay
 open AspisK1.V7Tag73PausedRecursiveReplay
 open AspisK1.V7Tag73SharedOracleVerifierRunner
@@ -217,9 +219,57 @@ theorem operational_segment_unqueried_output_is_oblivious_through_advance
     (recordedPrefixController segment.run.oracle.history.length
       segment.records) .extractorReplay
 
+/-- Executable-scan form of the main theorem.  Reusing the existing
+first-either scan with the same input in both positions is exactly a
+single-input absence test; no caller supplies the universal avoidance
+predicate. -/
+theorem operational_segment_scanned_unqueried_output_is_oblivious_through_advance
+    {Result : Type*} {start : OracleMachine Result}
+    (segment : OperationalReturnedSegment start)
+    (outputInput advanceInput : ShaInput)
+    (outputScan : firstEitherInputOccurrence outputInput outputInput
+      segment.records = none)
+    (advanceQueried : ∃ record ∈ segment.records,
+      record.input = advanceInput)
+    (fresh : lookupEntry segment.run.oracle outputInput = none) :
+    ∃ pairs : List (ShaInput × ShaOutput),
+      MachineQueryPath segment.entryProgram pairs segment.returnedValue ∧
+      queryAnswerTrace segment.records = pairs ∧
+      PathAvoidsInput pairs outputInput ∧
+      PathQueriesInput pairs advanceInput ∧
+      ∀ assignedOutput : ShaOutput,
+        let programming : Programming :=
+          { input := outputInput, output := assignedOutput }
+        let programmed := appendProgrammedPoint .extractorReplay
+          segment.run.oracle programming
+        let limits := outputObliviousReplayLimits segment.run.oracle
+          pairs.length
+        programOracle limits .extractorReplay segment.run.oracle programming =
+            .ok programmed ∧
+        let replay := runMachine
+          (recordedPrefixController segment.run.oracle.history.length
+            segment.records)
+          limits .extractorReplay pairs.length programmed segment.entryProgram
+        replay.halt = .returned segment.returnedValue ∧
+        queryAnswerTrace (historySince programmed replay.oracle) = pairs ∧
+        replay.oracle.table = programmed.table ∧
+        replay.oracle.programmingHistory = programmed.programmingHistory ∧
+        replay.oracle.totalCalls = segment.run.oracle.totalCalls + pairs.length ∧
+        replay.oracle.freshCalls = segment.run.oracle.freshCalls ∧
+        replay.steps = pairs.length := by
+  have absent := (first_either_input_occurrence_none_iff outputInput
+    outputInput segment.records).mp outputScan
+  apply operational_segment_unqueried_output_is_oblivious_through_advance
+    segment outputInput advanceInput
+  · intro record member
+    exact (absent record member).1
+  · exact advanceQueried
+  · exact fresh
+
 #print axioms machine_path_replay_is_oblivious_to_unqueried_programmed_output
 #print axioms operational_segment_path_avoids
 #print axioms operational_segment_unqueried_output_is_oblivious_through_advance
+#print axioms operational_segment_scanned_unqueried_output_is_oblivious_through_advance
 
 end
 
