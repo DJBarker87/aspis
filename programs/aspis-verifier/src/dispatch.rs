@@ -61,6 +61,11 @@ fn production_require_empty(input: &[u8]) -> ProgramResult {
 ///   state transition, enabled by `v6-production-tag72`.
 /// - 73: complete compact V7 one-fold verification plus the retained-proof
 ///   atomic state transition, enabled by `v7-production-tag73`.
+/// - 74: initialize an exact pending verifier-owned Pool authorization
+///   receipt for one complete unsealed Tag-73 proof upload.
+/// - 75: verify that Tag-73 proof and finalize its exact pending receipt.
+/// - 76: close a canonical pending or finalized Pool authorization receipt
+///   and refund its embedded authority.
 /// - `ASVQ`: exact Pool-selected Tag-73 read-only profile dispatch, enabled by
 ///   `v7-pool-dispatch-profile`. This is a four-byte discriminator rather than
 ///   another numeric prefix because `ASVQ` is already the frozen CPI request.
@@ -247,6 +252,24 @@ pub fn process_spend_production_instruction(
             accounts,
             instruction_data,
         ),
+        #[cfg(feature = "v7-pool-dispatch-profile")]
+        crate::v7_pool_receipt::V7_POOL_RECEIPT_INITIALIZE_TAG => {
+            crate::v7_pool_receipt::process_v7_pool_receipt_initialize_instruction(
+                program_id, accounts, wire,
+            )
+        }
+        #[cfg(feature = "v7-pool-dispatch-profile")]
+        crate::v7_pool_receipt::V7_POOL_RECEIPT_FINALIZE_TAG => {
+            crate::v7_pool_receipt::process_v7_pool_receipt_finalize_instruction(
+                program_id, accounts, wire,
+            )
+        }
+        #[cfg(feature = "v7-pool-dispatch-profile")]
+        crate::v7_pool_receipt::V7_POOL_RECEIPT_CLOSE_TAG => {
+            crate::v7_pool_receipt::process_v7_pool_receipt_close_instruction(
+                program_id, accounts, wire,
+            )
+        }
         _ => Err(ProgramError::InvalidInstructionData),
     }
 }
@@ -378,6 +401,17 @@ mod tests {
             process_spend_production_instruction(&id(), &[], &[73]),
             Err(ProgramError::InvalidInstructionData)
         );
+        #[cfg(not(feature = "v7-pool-dispatch-profile"))]
+        for tag in [
+            crate::v7_pool_receipt::V7_POOL_RECEIPT_INITIALIZE_TAG,
+            crate::v7_pool_receipt::V7_POOL_RECEIPT_FINALIZE_TAG,
+            crate::v7_pool_receipt::V7_POOL_RECEIPT_CLOSE_TAG,
+        ] {
+            assert_eq!(
+                process_spend_production_instruction(&id(), &[], &[tag]),
+                Err(ProgramError::InvalidInstructionData)
+            );
+        }
     }
 
     #[cfg(feature = "v5-production-tag67")]
@@ -440,5 +474,21 @@ mod tests {
             process_spend_production_instruction(&id(), &[], &wire),
             Err(ProgramError::NotEnoughAccountKeys)
         );
+    }
+
+    #[cfg(feature = "v7-pool-dispatch-profile")]
+    #[test]
+    fn tag74_to_76_route_only_through_pool_receipt_handlers() {
+        for tag in [
+            crate::v7_pool_receipt::V7_POOL_RECEIPT_INITIALIZE_TAG,
+            crate::v7_pool_receipt::V7_POOL_RECEIPT_FINALIZE_TAG,
+            crate::v7_pool_receipt::V7_POOL_RECEIPT_CLOSE_TAG,
+        ] {
+            assert_eq!(
+                process_spend_production_instruction(&id(), &[], &[tag]),
+                Err(ProgramError::NotEnoughAccountKeys),
+                "receipt tag {tag} was not routed through its exact account gate"
+            );
+        }
     }
 }

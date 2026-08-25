@@ -261,14 +261,13 @@ fn statement_matches_dispatch_binding(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn process_v7_pool_tag73_asvq_instruction_with_runtime<F, S>(
+pub(crate) fn verify_v7_pool_tag73_asvq_with_runtime<F>(
     program_id: &Pubkey,
     accounts: &[AccountInfo<'_>],
     instruction_data: &[u8],
     hash: HashFn,
     verify: F,
-    set_return_data: S,
-) -> ProgramResult
+) -> Result<VerifierDispatchBindingV1, ProgramError>
 where
     F: FnOnce(
         &[u8],
@@ -280,7 +279,6 @@ where
         [u8; 32],
         bool,
     ) -> ProgramResult,
-    S: FnOnce(&[u8]),
 {
     let [proof_account] = accounts else {
         return Err(if accounts.is_empty() {
@@ -366,9 +364,41 @@ where
         payload.check_pow,
     )?;
 
+    Ok(request.binding)
+}
+
+fn process_v7_pool_tag73_asvq_instruction_with_runtime<F, S>(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'_>],
+    instruction_data: &[u8],
+    hash: HashFn,
+    verify: F,
+    set_return_data: S,
+) -> ProgramResult
+where
+    F: FnOnce(
+        &[u8],
+        usize,
+        &Pubkey,
+        [u8; 32],
+        &Pubkey,
+        &AtomicPaymentStatementV4,
+        [u8; 32],
+        bool,
+    ) -> ProgramResult,
+    S: FnOnce(&[u8]),
+{
+    let binding = verify_v7_pool_tag73_asvq_with_runtime(
+        program_id,
+        accounts,
+        instruction_data,
+        hash,
+        verify,
+    )?;
+
     let result = encode_verifier_dispatch_result_v1(&VerifierDispatchResultV1 {
         success_code: POOL_V1_VERIFIER_DISPATCH_SUCCESS_CODE,
-        binding: request.binding,
+        binding,
     })
     .map_err(|_| ProgramError::InvalidInstructionData)?;
     let _: &[u8; POOL_V1_VERIFIER_DISPATCH_RESULT_BYTES] = &result;
