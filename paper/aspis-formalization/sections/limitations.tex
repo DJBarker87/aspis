@@ -1,151 +1,86 @@
-\section{Assumptions and remaining verification}
+\section{Assumptions and claim boundary}
 \label{sec:limitations}
 
-Most of the mathematical core is checked in Lean.  The selected accepting
-verifier path is connected to those models through generated Lean and bridge
-proofs through the complete maintained relation caller.  One successful
-translated callback supplies the decoded relation data, twelve-component main
-accumulator, compact accumulator, and both final dot products without a
-caller-supplied model-equality premise.
-Published decoding and Fiat--Shamir results, primitive
-security, translation and proof-tool correctness, compilation, and Solana
-runtime behavior remain stated inputs for the concrete instantiation.
+The end-to-end theorem begins with a successful execution of the translated
+deployed proof checker and ends with the complete evidence consumed by the
+formal security classification.  The surrounding upload, account, cleanup,
+compiler, and chain layers have their own specifications and artifact records.
+Two open composition statements sit directly on the path to a deployed
+probability theorem:
 
-\subsection{End-to-end code connection}
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Statement identification.}  The translated entry path checks
+        the live statement against its digest.  A field-by-field theorem must
+        identify that object with the abstract statement used by the
+        false-acceptance and theft experiments.
+  \item \textbf{Experiment lift.}  The deterministic classification of one
+        successful call must be embedded in the causal probability law used
+        for work-normalized accounting, including oracle queries, rejection
+        sampling, and repeated attempts.
+\end{enumerate}
 
-For the released proof callback, the accepted-execution work starts from
-success of the translated production entry point.  It derives the parsed
-values, transcript challenges, work checks, selected queries, authenticated
-openings, FRI comparisons, final polynomial, exact claim table, initial
-relation value, and decoded relation tail from that same run.  These are not
-independent hypotheses.  The same selected four-round execution supplies the
-general accumulator's exact twelve terminal weights and the compact
-accumulator's full state evolution.  The outer accepted-execution theorem then
-derives the maintained security-event conclusion.
+The accepted-execution theorem is a soundness result: it starts from verifier
+success and derives its consequences.  Honest-selector and work-schedule
+components have separate completeness proofs, and the archived proof gives a
+full successful execution.  A universal theorem from every valid witness and
+honest prover choice to verifier success is outside the result stated here.
 
-The pinned Aeneas version emitted an ill-typed back-translation for the
-compact mutable fold iterator.  Audit then found that the first handwritten
-replacement reconstructed the array from an empty iterator and discarded its
-writes.  Lean records a counterexample to the old wrapper and now uses a
-corrected wrapper that rebuilds from the updated original iterator.  The Rust
-function and deployed program were unaffected.  An extended, pinned Aeneas
-translation of the unchanged function emits the correct iterator handback and
-compiles under Lean 4.32.  Its generated caller is connected to the accepted
-fold execution used by the outer theorem.
+All other assumptions enter through the interfaces summarized below.
 
-This is not whole-program verification.  The source proof covers the selected
-accepting verifier callback, not every dispatch, upload, diagnostic, host, or
-cleanup path.  The surrounding spend transition and close/refund models retain
-their stated Rust-to-model and Solana-runtime boundaries.  Charon, Aeneas,
-Lean, the compiler, and the Solana runtime are trusted rather than verified by
-the result.  The exact source path is in \cref{app:source-checklist}.
-
-The translated entry path checks consistency between its live statement and
-statement digest.  The present source theorem does not yet identify every
-field of that Rust statement with the abstract public-statement object used by
-the false-acceptance and theft experiments.  This missing model link is one
-reason the report does not claim a complete deployed-theft theorem.
-
-\subsection{How the assumptions enter the theorem}
-
-The general audit ledger retains source and runtime mismatches as named events
-so that none can disappear from the proof.  Completed accepted-path theorems
-discharge the selected deterministic verifier correspondence through the
-complete relation caller.  The
-conventional cryptographic statement assigns probability only to
-the remaining protocol, primitive, credential, toolchain, and runtime events.
-It does not assign a fictional tiny failure probability to parser correctness,
-compiler correctness, or rollback semantics.
-
-\subsection{V5 soundness status}
-
-Lean checks the exact circle domains, encoder order, degrees, distances,
-local radix-four folds, prefix-conditioned bad sets, compatible candidate
-chain, relation reductions, query calculation, adaptive fresh-oracle count,
-and final probability arithmetic.  This proves the V5-specific four-way FRI
-part rather than assuming that the different S-two folding protocol applies
-unchanged.
-
-The final event interface states how the event extracted from the selected
-production path is identified with the event covered by the published BCS
-state-restoration theorem.  The deterministic transcript schedule, samplers,
-both accumulators, and complete relation caller are checked in the selected
-source bridge.  No current theorem, however, references both the final
-selected-call conclusion and the work-normalized adversarial experiment.  The
-missing experiment-level join must construct one causal probability law, lift
-the deterministic six-way classification to event inclusion, and prove the
-work-normalization and external-event connections.  The published BCS
-theorem and SHA-256 random-oracle model remain external cryptographic inputs,
-not an unfinished V5 FRI code theorem.
-
-The \(2^{-100}\) theorem is a work-normalized conditional budget theorem.  The
-resource-bounded form in \cref{eq:resource-bounded-advantage} and the raw theft
-theorem keep the completed-work factor out and report their remaining terms
-separately.
-
-\subsection{Standard trusted inputs}
-
-The development uses the following normal assumptions:
-\begin{itemize}[leftmargin=*]
-  \item correctness of the published circle-code decoding result;
-  \item correctness of the published BCS state-restoration and Fiat--Shamir
-        soundness result for the modeled public-coin IOP;
-  \item collision, target-preimage, and modeled random-oracle security for
-        SHA-256 where each property is used;
-  \item the stated Poseidon2 implementation and security properties;
-  \item correctness of Lean, mathlib, Charon/Aeneas for the translations used,
-        Rust, LLVM, and the Solana build tools; and
-  \item the stated Solana behavior for address derivation, account ownership,
-        writable locks, rollback, committed persistence, and finalized state.
-\end{itemize}
-
-These assumptions need to be named and given suitable parameters in a concrete
-security claim, but they do not normally need to be reproved inside the Aspis
-development.  Known-answer tests and reproducible builds support implementation
-identity; they are not used as proofs of collision resistance.
-
-\subsection{Privacy scope}
-
-The mathematical hiding theorem proves witness independence for its complete
-finite modeled view.  Extending it to a deployed zero-knowledge claim requires
-the production masking, entropy, retry, commitment, serialization, and public
-observation model.  This is additional work only if the paper claims full
-deployed zero knowledge; it is not needed for the private-spend soundness
-theorem.
-
-\subsection{Status summary}
-
-\begin{table}[h]
+\begin{table}[t]
 \centering
 \small
-\caption{Current proof status.}
-\label{tab:claim-status}
-\begin{tabularx}{\textwidth}{@{}R{0.30\textwidth}R{0.20\textwidth}Y@{}}
+\caption{Assumptions used by the paper's claims.}
+\label{tab:assumptions}
+\begin{tabularx}{\textwidth}{@{}R{0.22\textwidth}Y Y@{}}
 \toprule
-Area & Status & Remaining work or assumption \\
+Interface & Role & Evidence supplied here \\
 \midrule
-Spend relation after extraction & Checked in Lean & Faithful deployed
-Poseidon2 functions are supplied \\
-Circle domains and encoders & Checked in Lean & Published decoding result is
-used as a stated theorem \\
-Four-round FRI and candidate chain & Checked in Lean & Published BCS
-Fiat--Shamir theorem and SHA-256 random-oracle assumption remain external \\
-Transcript, Merkle, FRI, and relation accepted source path & One successful
-translated callback yields the complete maintained relation caller, including
-both accumulators and final dots; the terminal evaluator may be arbitrary and
-released FRI tables are installed internally & Translation-tool trust,
-published applicability, primitive callback semantics, and the
-probability-space connection remain external \\
-Work-normalized \(2^{-100}\) budget composition & Checked in Lean & Exact
-event connection and six probabilistic external bounds are supplied;
-deterministic correspondences take budget zero \\
-Spent-marker and refund model & Checked in Lean & Production Rust equality and
-standard Solana behavior are supplied \\
-Source, binary, and finalized execution & Reproduced and recorded & Relies on
-the recorded build and chain tools \\
-Production zero knowledge & Separate extension & Requires the production
-prover and complete public-view connection \\
+Circle-code decoding & Turns proximity at the evaluated parameters into a
+bounded candidate list & Lean checks every concrete parameter and encoder
+hypothesis against the published proposition \\
+Fiat--Shamir analysis & Converts the causal interactive argument to the
+SHA-256 transcript with a query budget & Exact byte schedule and public-coin
+count are checked; the published state-restoration theorem is assumed \\
+SHA-256 & Transcript oracle and Merkle binding & Exact reached inputs and
+Solana hash-call framing are specified; collision, preimage, and random-oracle
+bounds are cryptographic assumptions \\
+Poseidon2 & Notes, nullifiers, and trace Merkle nodes & Round function and
+reached-input correspondence are specified; concrete collision and preimage
+bounds are assumptions \\
+Credentials & Authorizes the input note & Theft reductions isolate recovery
+of the victim secret as its own event \\
+Translation and proof tools & Connect selected Rust to Lean and check the
+theorems & Pinned translation, complete dependency replay, and axiom report \\
+Compiler and build & Connect recorded source to Solana program bytes & Clean
+reproducible build and byte comparison \\
+Solana runtime & Account locking, address creation, rollback, persistence,
+and finalized observation & Explicit state model plus archived transaction and
+account records \\
+Deployed-view privacy & Connects the finite masking law to deployed views & Exact
+modeled hiding theorem and a two-sided hybrid with named comparison errors \\
 \bottomrule
 \end{tabularx}
 \end{table}
-\FloatBarrier
+
+\subsection{Poseidon2 parameter status}
+
+The construction uses Poseidon2 over \(\F\) with width sixteen, exponent five,
+eight full rounds, and fourteen partial rounds
+\cite{GrassiKhovratovichSchofnegger2023Poseidon2}.  Recent algebraic analysis
+improves attacks on several Poseidon2 variants and recommends evaluating each
+parameter set separately \cite{MerzRodriguezGarcia2026Poseidon2}.  That work
+reports no full-round break for the recommended instances it studies and
+places its ideal-degree estimates above \(2^{128}\) when the exponent is at
+least three.  It does not publish a concrete advantage for the exact Aspis
+tuple.  We therefore keep the Poseidon2 collision and preimage terms symbolic.
+
+\subsection{Interpretation}
+
+The formal result is end to end for the selected successful proof-checking
+execution.  The main numerical statement is the conditional work-normalized
+theorem of \cref{thm:conditional-soundness}; the raw statement is
+\cref{eq:resource-bounded-advantage}.  The mainnet transaction in
+\cref{sec:evaluation} identifies the binary, proof, cost, and state transition
+used for evaluation.  These three statements have distinct scopes and share
+the artifact links needed to audit their connections.

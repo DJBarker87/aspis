@@ -1,158 +1,143 @@
-\section{Protocol background}
+\section{Background and construction}
 \label{sec:background}
 
-\subsection{The public statement and private witness}
+\subsection{Notation}
 
-The public statement contains the pool address, sequence number, current note
-root, input nullifier, output note commitment, next note root, asset, fee, and
-deployment domain.  The pool, sequence number, and deployment domain bind the
-proof to one state transition and one deployment.  The six values consumed by
-the mathematical spend relation are the two roots, nullifier, output
-commitment, asset, and fee.
+Let \(\F\) be the Mersenne prime field used for trace values, and let \(\K\) be its
+degree-four extension used for verifier challenges.  We write \(H\) for a
+domain-separated hash function and use distinct domains for note commitments,
+nullifiers, Merkle nodes, and transcript operations.  A \emph{transparent}
+proof uses public hash-based commitments and therefore requires no structured
+reference string or ceremony.
 
-The private witness contains an input note opening, its ownership credential,
-the input note's fixed-depth Merkle path, and the data needed to form the
-output note and next root.  Prover masks, Merkle salts, transcript salts, and
-retry randomness are proof-generation randomness, not part of the witness
-relation.
+The proof system follows the interactive-oracle-proof view underlying STARKs
+\cite{BenSassonChiesaSpooner2016,
+BenSassonBentovHoreshRiabzev2018STARK}.  The prover commits to encoded
+execution data, the verifier derives public challenges from the transcript,
+and a FRI-style test checks proximity to a low-degree codeword
+\cite{BenSassonBentovHoreshRiabzev2018FRI}.  Here \emph{FRI} refers to the
+low-degree test: the verifier queries a few committed positions and repeatedly
+folds the alleged codeword until only a small polynomial remains.
 
-Write the input and output values as \(v_{\mathrm{in}}\) and
-\(v_{\mathrm{out}}\), the public fee as \(f\), and the public asset as \(a\).
-The relation includes the integer equality
+\subsection{Private-spend relation}
+
+The public statement is
+\[
+  x=(P,s,R_{\mathrm{old}},N,C_{\mathrm{out}},R_{\mathrm{new}},a,f,d),
+\]
+where \(P\) identifies the pool, \(s\) is its sequence number,
+\(R_{\mathrm{old}}\) and \(R_{\mathrm{new}}\) are the old and new note-tree
+roots, \(N\) is the input nullifier, \(C_{\mathrm{out}}\) is the output-note
+commitment, \(a\) is the asset identifier, \(f\) is the public fee, and \(d\)
+binds the statement to a deployment domain.  A nullifier is a public,
+one-time tag derived from the input note's secret opening.  Publishing it
+prevents a second successful spend without revealing which commitment in the
+note tree was consumed.
+
+The private witness contains the input-note opening and ownership credential,
+the input note's depth-twenty Merkle path, and the opening data for the output
+note.  With input and output values \(v_{\mathrm{in}}\) and
+\(v_{\mathrm{out}}\), the relation enforces
 \begin{equation}
-  v_{\mathrm{in}} = v_{\mathrm{out}} + f,
+  v_{\mathrm{in}}=v_{\mathrm{out}}+f,
+  \qquad
+  0\leq v_{\mathrm{in}},v_{\mathrm{out}},f<2^{30}.
   \label{eq:value-balance}
 \end{equation}
-with all three quantities constrained below \(2^{30}\).  The bound prevents a
-valid field equation from hiding an integer wraparound.  Both notes carry the
-same public asset.  Ownership is derived from a secret credential, the
-nullifier is derived from the credential and input salt, and each note
-commitment binds owner, value, asset, and note randomness.
+The range conditions make the field equation an integer conservation law,
+ruling out modular wraparound.  Both notes use asset \(a\).  The input
+credential determines its owner and nullifier, while each note commitment
+binds the owner, value, asset, and note randomness.
 
-Both note-tree paths have depth twenty.  The input path reconstructs the
-current root from the input leaf.  The output path uses the same path bits and
-siblings but substitutes the output leaf, producing the next root.  This is a
-same-position leaf replacement.  It is not a general append-only note-tree
-operation.
+The input path reconstructs \(R_{\mathrm{old}}\).  Replacing its leaf by the
+output commitment at the same depth-twenty position, with the same direction
+bits and siblings, reconstructs \(R_{\mathrm{new}}\).  Thus the evaluated
+statement is a one-input, one-output replacement in a fixed-position note
+tree.
 
-\begin{definition}[Spend witness]
-For deployed owner, note, nullifier, and node functions, a public statement
-has a spend witness when there are opened columns and integer input/output
-values that match the six public spend fields and satisfy the full
-\code{SpendRelation} predicate.
+Note commitments, nullifiers, and trace Merkle nodes use Poseidon2, an
+arithmetic-oriented hash function designed for efficient use inside proof
+systems \cite{GrassiKhovratovichSchofnegger2023Poseidon2}.
+
+\begin{definition}[Valid private spend]
+\label{def:spend}
+A public statement \(x\) is valid if there exists a private witness satisfying
+the range and value-conservation conditions, ownership and nullifier
+derivations, input and output note-commitment equations, and both Merkle-root
+equations described above.
 \end{definition}
 
-The exact Lean definition is
-\code{AspisV5AcceptedSpendRelation.StatementHasSpendWitness}.  The more detailed
-\code{SpendRelation} is defined in \code{ArithmetizationCore} and includes the
-range, balance, ownership, note, nullifier, and two Merkle-root clauses.
+\subsection{Evaluated proof parameters}
 
-\subsection{The proof profile}
-
-The deployed V5 profile works over the Mersenne prime field
-\(\F\), where \(p=2^{31}-1\), and a degree-four extension field
-\(\K\).  It commits to sixteen base-field lanes and three extension-field
-lanes.  A nonzero batching challenge combines these nineteen lanes with
-powers \(\gamma^0,\ldots,\gamma^{18}\).  The highest exponent is therefore
-eighteen, not twenty-eight as in an earlier experiment.
-
-The first codeword is evaluated on a circle domain.  Four circle symbols form
-one query fibre.  Four radix-four folds reduce the initial word to three later
-line layers and then to four final coefficients.  Each round also carries two
-out-of-domain values and relation messages.  The verifier authenticates the
-two initial commitments and three later-layer commitments with five salted
-Merkle trees.
+The prover commits to sixteen base-field columns and three extension-field
+columns.  A nonzero challenge \(\gamma\in\K\) combines these nineteen columns as
+\(\sum_{i=0}^{18}\gamma^i c_i\).  The initial codeword is evaluated on a
+circle domain over \(\F\); four circle symbols form one query fibre.  Four
+radix-four folds reduce it through three later line domains to a polynomial
+with four coefficients.  Five salted Merkle trees authenticate the two
+initial commitments and the three later layers.
 
 \begin{table}[t]
 \centering
-\caption{Fixed V5 parameters used by the formal model.}
+\small
+\caption{Parameters of the evaluated proof.}
 \label{tab:profile-parameters}
 \begin{tabular}{@{}ll@{}}
 \toprule
 Quantity & Value \\
 \midrule
-Base field & \(\F\) \\
+Base field & \(\mathbb F_{2^{31}-1}\) \\
 Challenge field & degree-four extension \(\K\) \\
 Trace rows & \(2^{10}\) \\
 Initial evaluation symbols & \(2^{19}\) \\
 Initial query fibres & \(2^{17}=131{,}072\) \\
-Batched lanes & 19 \\
-Batch challenge degree & 18 \\
-Queries & 18 distinct fibres from at most 64 draws \\
-Folds & four radix-four rounds \\
+Batched columns & 19 \\
+Distinct queries & 18, selected from at most 64 draws \\
+Low-degree folds & four radix-four rounds \\
 Final polynomial & four coefficients in \(\K\) \\
-Work checks & batch, four folds, and final \\
-Work difficulties & 37, 34, 33, 30, 25, and 32 bits \\
-Post-initial public-coin rounds & 30 \\
-Authenticated private trees & five \\
-Merkle record form & value bytes followed by a 32-byte salt \\
+Proof-of-work difficulties & 37, 34, 33, 30, 25, and 32 bits \\
+Public-coin boundaries & 30 after the initial commitment \\
+Authenticated trees & five \\
+Proof body & 75,358 bytes \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The protocol is related to STARK, FRI, circle-code, and multilinear
-polynomial work~\cite{BenSassonBentovHoreshRiabzev2018STARK,
-BenSassonBentovHoreshRiabzev2018FRI,HaboeckLubarovNabaglo2023,
-HaboeckLevitPapini2024,CarmonEtAl2026Stwo}.  It is not an unchanged instance
-of any one cited protocol.  In particular, its four-way fold, separate
-out-of-domain relation, bounded distinct-query sampler, work schedule, and
-mixed Merkle layout require separate arguments.
+The circle-domain construction follows work on circle codes and Circle
+STARKs \cite{HaboeckLubarovNabaglo2023,HaboeckLevitPapini2024,
+CarmonEtAl2026Stwo}.  The evaluated profile uses its own four-way folding
+schedule, relation messages, bounded distinct-query sampler, and sequential
+work schedule; \cref{sec:soundness} gives the corresponding checked reduction.
 
-\subsection{Transcript order}
+\subsection{Transcript and query selection}
 
-The transcript uses SHA-256 with typed labels.  At a high level it absorbs the
-profile and statement, the initial roots and salts, public claims, relation
-points and messages, each later root and salt, the final polynomial, and six
-work nonces.  It squeezes the batching challenge, relation challenges, four
-fold challenges, selector, and query material.  Each work nonce is checked
-before it is absorbed, and the challenge protected by that check is squeezed
-afterwards.
+The Fiat--Shamir transform replaces the verifier's random challenges with
+hashes of the public transcript.  The transcript absorbs the proof parameters and
+statement, commitment roots and public salts, algebraic claims, relation
+points and messages, later-layer roots, final polynomial, and six work
+nonces.  Each nonce is tested against the current transcript state before
+being absorbed; the protected challenge is sampled only afterwards.  Typed
+labels and length-delimited payloads separate the operations.
 
-The query selector is absorbed after the committed data, all relation
-messages, all four fold challenges, all work nonces, and the final polynomial
-have been fixed.  The query sampler then reads 32-byte squeeze blocks as
-little-endian 32-bit words, masks them into the \(2^{17}\)-element query
-space, keeps first occurrences, and succeeds only after collecting eighteen
-distinct positions within the 64-draw limit.
+A work nonce succeeds when the corresponding SHA-256 digest has the required
+number of leading zero bits.  Finding it takes repeated trials.  The
+random-oracle model used in the security reduction treats the hash output on
+each new input as an independent uniform value while returning the same value
+on repeated inputs.
 
-\subsection{On-chain transition}
+After every commitment, relation message, fold challenge, nonce, and final
+coefficient has been fixed, the verifier derives query material from SHA-256.
+It interprets each 32-byte block as eight little-endian 32-bit words, masks
+each word into the \(2^{17}\)-element query domain, and keeps first
+occurrences.  Verification proceeds only if eighteen distinct positions are
+obtained within sixty-four draws.
 
-The accepting instruction checks the proof before changing the pool.  On
-success it creates or validates the spent-marker account derived from the
-public nullifier, writes the nullifier marker, updates the pool root and
-sequence, and returns success.  A pre-existing marker is a rejection.  The
-formal state model treats a rejected instruction as leaving visible state
-unchanged.  A later close instruction refunds the retained proof account to
-the supplied refund account without undoing the spend.
+\subsection{Atomic state transition}
 
-The proof bytes are uploaded and finalized before the spend instruction.
-Thus the atomic claim concerns verification together with the marker and pool
-write.  It does not claim that proof upload occurred in the same transaction.
-
-\begin{table}[t]
-\centering
-\small
-\caption{Background definitions and checked facts.}
-\label{tab:background-anchors}
-\begin{tabularx}{\textwidth}{@{}YY@{}}
-\toprule
-Topic & Lean item \\
-\midrule
-Public statement and six-field match &
-\code{AspisV5AcceptedSpendRelation.V5PublicStatement},
-\code{AspisV5AcceptedSpendRelation.OpenedColumnsMatchStatement} \\
-Integer conservation &
-\code{value_conservation_no_wraparound} \\
-Circle generator order &
-\code{AspisCircleGroupOrder.orderOf_g} \\
-Released query sampler &
-\code{AspisV5TranscriptConnection.derive18Queries} \\
-Five tree identifiers and widths &
-\code{AspisV5MerkleAuthenticationBinding.released_depths},
-\code{AspisV5MerkleAuthenticationBinding.released_value_widths},
-\code{AspisV5MerkleAuthenticationBinding.released_tree_tags} \\
-State transition &
-\code{AspisV5ProductionStateBridge.runCurrentProductionSpend} \\
-\bottomrule
-\end{tabularx}
-\end{table}
+The proof body is sealed in a program-owned account before the spend
+transaction.  The spend instruction validates the public statement and proof,
+checks that the nullifier has no existing marker, and then records both the
+marker and the new pool state in the same Solana transaction.  Solana's
+transaction semantics make these writes atomic when the instruction succeeds.
+A later cleanup transaction may close the retained proof account and refund
+its balance; the nullifier and pool update remain in state.

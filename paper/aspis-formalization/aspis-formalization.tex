@@ -8,11 +8,8 @@
 \usepackage{amsmath,amssymb,amsthm,mathtools}
 \usepackage{booktabs}
 \usepackage{array}
-\usepackage{longtable}
 \usepackage{tabularx}
 \usepackage{enumitem}
-\usepackage{placeins}
-\usepackage{xcolor}
 \usepackage[numbers,sort&compress]{natbib}
 \usepackage{xurl}
 \usepackage[hidelinks]{hyperref}
@@ -34,23 +31,17 @@
 \newcommand{\K}{\mathbb{K}}
 \newcommand{\bits}{\,\mathrm{bits}}
 \newcommand{\Prob}{\Pr}
-% Keep code upright inside italic theorem bodies.  xurl supplies safe line
-% breaks for long identifiers; the small stretch avoids visible letterspacing.
-\newcommand{\code}[1]{{\Urlmuskip=0mu plus .1mu\relax
-  \def\UrlFont{\ttfamily\upshape}\nolinkurl{#1}}}
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
 \newcolumntype{R}[1]{>{\raggedright\arraybackslash}p{#1}}
-\newcolumntype{T}{>{\raggedright\arraybackslash\ttfamily}p{0.34\textwidth}}
-\newcolumntype{P}{>{\raggedright\arraybackslash}p{0.58\textwidth}}
 
-\title{\Aspis: From Lean-Checked Private-Spend Mathematics\\
-{\large to a Solana Mainnet Execution}}
+\title{\Aspis: End-to-End Formal Verification of a Transparent\\
+Private Spend on Solana}
 \author{Dominic Barker}
 \date{24 August 2026}
-\hypersetup{
-  pdftitle={Aspis: From Lean-Checked Private-Spend Mathematics to a Solana Mainnet Execution},
+\hypersetup{%
+  pdftitle={Aspis: End-to-End Formal Verification of a Transparent Private Spend on Solana},
   pdfauthor={Dominic Barker},
-  pdfsubject={Formal model, soundness analysis, Rust correspondence, and Solana execution evidence},
+  pdfsubject={End-to-end formal verification, transparent private spends, and reproducible Solana evidence},
   pdfkeywords={Lean 4, STARK, private spend, circle code, FRI, Rust, Solana}
 }
 
@@ -59,58 +50,53 @@
 \maketitle
 
 \begin{abstract}
-\Aspis{} is a transparent private-spend verifier implemented as a Solana
-program.  A recorded mainnet transaction verified a 75,358-byte proof,
-published its nullifier, and updated the pool state in 1,334,452 compute units.
+Deploying a cryptographic proof verifier creates a gap between a protocol argument
+and the program that accepts a proof.  We present \Aspis{}, a transparent
+(trusted-setup-free) private-spend verifier for Solana, together with an
+end-to-end formal verification pipeline for its successful proof-checking
+path.  The pipeline starts from the deployed Rust verifier, translates the
+selected execution path into Lean~4, and proves that every successful call determines
+every acceptance-critical value used later in the security argument: the
+public-statement digest, Fiat--Shamir transcript and work checks, distinct
+queries, authenticated openings, four low-degree-test folds, final polynomial,
+and the complete algebraic relation including both final accumulators.  All
+are derived from that same execution, with no intermediate acceptance result
+supplied as a separate premise.
 
-The main contribution is a checked mathematical security argument together
-with a selected-path connection to the production verifier.
-Charon extracts selected production Rust and Aeneas translates it into Lean.
-Further Lean proofs start from one successful translated verifier execution
-and derive its transcript values, six work checks, eighteen selected queries,
-five authenticated opening trees, four FRI folds, final polynomial, exact
-76-claim table, initial relation value, 58-field relation tail, both
-accumulators, and final relation checks.  The final source theorem obtains
-these values from the same accepted execution; it does not take a caller-
-supplied accumulator equality or terminal-evaluator/model equality.  Separately,
-a finite Lean 4 security
-experiment covers accepted false statements by an ideal-protocol event or a
-named external cryptographic or runtime event.  Lean
-checks the private-spend relation, released M31 circle domains and encoders,
-the four-fold FRI candidate argument, distinct-query sampling, theft
-reductions, and spent-marker state transition.
-The translated entry path checks its live statement against its digest, but a
-field-by-field identification of that Rust statement with the abstract public
-statement in the false-acceptance and theft experiments remains open.
+The mathematical development formalizes the private-spend relation, the
+concrete field and evaluation domains, the low-degree and query-sampling
+arguments, theft reductions, and the nullifier-controlled state transition.
+A single formal experiment classifies accepted false statements into an
+ideal-protocol failure and named cryptographic, credential, compiler, and
+runtime events.  Under the stated decoding and Fiat--Shamir results, the
+work-normalized protocol contribution is at most
+\(0.7\cdot2^{-100}\); assuming the external events contribute at most
+\(0.3\cdot2^{-100}\), the combined bound is \(2^{-100}\).  A separate raw
+accounting gives no credit for completed grinding work.
 
-As a conditional numerical consequence, the work-normalized protocol budget
-is at most \(0.7\cdot2^{-100}\); if the remaining probabilistic terms total at
-most \(0.3\cdot2^{-100}\), the combined budget is at most \(2^{-100}\).
-Separate raw accounting does not charge completed grinding work and leaves a
-\(2^{-70}\) term plus explicit cryptographic and runtime terms.  The deployed
-Solana program is byte-for-byte reproducible from the recorded source and
-tools, and its finalized mainnet execution is archived.  The result is not a
-verification of Charon, Aeneas, Lean, the Rust/SBF compiler, Solana, SHA-256,
-or Poseidon2.  The Solana SHA-256 callback identity, published
-circle-decoding and Fiat--Shamir results, concrete
-primitive-security bounds, compiler correctness, and runtime behavior remain
-explicit inputs rather than being presented as Lean conclusions.
+The evidence package contains a clean 331-module Lean replay, pinned
+Rust-to-Lean inputs, a deterministic source-to-binary build, and an archived
+mainnet transaction.  The transaction verifies a 75,358-byte proof and
+atomically records the nullifier and pool update in 1,334,452 compute units.
+The field-level identification of the live Rust statement with the abstract
+security statement, and the causal lift of the deterministic result into the
+probability experiment, remain explicit composition assumptions.
 \end{abstract}
 
 \input{sections/introduction}
 \input{sections/background}
-\input{sections/related-work}
 \input{sections/lean-model}
+\input{sections/proof-design}
 \input{sections/implementation}
 \input{sections/soundness}
 \input{sections/theft-and-state}
 \input{sections/privacy}
-\input{sections/proof-design}
 \input{sections/evaluation}
+\input{sections/limitations}
+\input{sections/related-work}
 \input{sections/conclusion}
 
 \appendix
-\input{sections/limitations}
 \input{sections/appendices}
 
 \bibliographystyle{plainnat}

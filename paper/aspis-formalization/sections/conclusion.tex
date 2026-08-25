@@ -1,45 +1,28 @@
 \section{Conclusion}
 \label{sec:conclusion}
 
-The main result is a checked mathematical security decomposition for a
-concrete private spend, together with a production-source connection that is
-complete through the selected relation caller.  From one accepting translated
-production verifier call, the source proofs derive the transcript, work,
-query, authenticated-opening, FRI, final-polynomial, exact claim-table,
-initial-relation, relation-tail, main-accumulator, compact-accumulator, and
-final-dot evidence.  Lean separately puts
-false acceptance in one finite experiment and
-joins the private-spend relation, released circle-code and four-fold FRI
-arguments, theft reductions, and state semantics without assuming that their
-failure events are independent.
+Aspis connects a transparent private-spend argument to every successful
+execution of its deployed verifier.  For any translated Rust call that returns
+success, Lean
+derives the statement digest, transcript, work checks, queries, authenticated
+openings, four low-degree folds, final polynomial, full algebraic claim table,
+relation rounds, and both final accumulators.  The proof obtains these facts
+from the same run and then connects them to the spend relation and
+nullifier-controlled state model.
 
-The \(2^{-100}\) result is a conditional budget consequence of that
-decomposition.  For the work-normalized experiment, checked arithmetic places
-the protocol budget below \(0.7\cdot2^{-100}\); if the remaining probabilistic
-terms fit \(0.3\cdot2^{-100}\), their sum fits \(2^{-100}\).  Deterministic
-source and runtime correspondence are stated separately.  The raw companion
-statement exposes its oracle-query budget and, for theft after a completed
-grind, retains a \(2^{-70}\) term plus explicit remaining terms.
+The security result uses one probability experiment and a checked failure
+decomposition.  Under the published decoding and Fiat--Shamir results, the
+work-normalized protocol budget is at most \(0.7\cdot2^{-100}\).  Primitive
+and credential bounds totaling at most \(0.3\cdot2^{-100}\), together with
+the stated implementation and runtime correspondences, give the conditional
+\(2^{-100}\) bound.  The raw accounting keeps the completed grinding work out
+of the exponent and exposes the remaining terms.
 
-The accepted verifier callback is connected to the selected translated Rust
-through the stages just listed, using one shared four-round witness for the
-relation values and both accumulators.  The theorem permits any terminal
-evaluator because its value is not used by the later security reasoning.  This
-is not a proof of that evaluator, every program function, or the surrounding Solana
-runtime.  Published decoding and BCS Fiat--Shamir results, concrete SHA-256
-and Poseidon2 security, translation and proof-tool correctness, compilation,
-and the stated Solana account and persistence behavior remain explicit
-inputs.  The separate production zero-knowledge and numerical theft claims
-also require the external assumptions listed in this report.
-
-The generated entry path checks the live statement against its digest.  A
-field-by-field link from that Rust statement to the abstract public statement
-in the false-acceptance and theft models remains open, so the deterministic
-selected-call theorem is not presented as a complete deployed-theft theorem.
-
-The archived program, proof, statement, build provenance, and finalized
-transaction make the implementation being discussed identifiable.  The Lean
-source makes the mathematical core mechanically checkable, and the generated
-Rust translations connect the selected accepting verifier path to those
-models.  The result is not whole-program, compiler, or runtime verification;
-the remaining external assumptions are stated explicitly.
+The public evidence package makes the result reproducible at each boundary: a
+331-module theorem replay, pinned Rust translation, deterministic program
+build, archived proof and statement, and finalized mainnet state transition.
+The two remaining composition tasks are precise: identify the live Rust
+statement field by field with the abstract security statement, and place the
+deterministic accepted-call classification inside the causal probability
+experiment.  They define the next formal steps without weakening the theorem
+reported here.

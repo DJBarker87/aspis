@@ -21,29 +21,20 @@ satisfies these conditions:
 - the output commitment and next pool root are computed correctly; and
 - the public nullifier is derived from the private input.
 
-The intended soundness statement is that an accepted proof implies such a
-valid witness exists. Lean proves the spend rules once a normalized trace
-package containing all required residuals and public-field matches has been
-constructed. The selected Rust-to-Lean path now derives the parser,
-transcript, work, openings, FRI checks, claim table, initial relation value,
-and relation tail from one successful translated execution. The accepted
-general accumulator's twelve-component schedule and dot implementation are
-proved, as are the compact accumulator's constructor, four folds, final
-assembly, and dot. The final theorem derives both accumulator equalities from
-the same execution. Its clean tracked replay passed on 24 August 2026, and the maintained
-accepted-path security-event conclusion follows from one successful selected
-translated verifier call.
-Interpreting an
-accepted proof as knowledge by the prover also needs the separate extraction
-assumption recorded in the [assumptions ledger](assumptions-ledger.md). After
-one accepted spend, the program records its public nullifier and rejects later
-transactions using that nullifier. Lean reduces a different valid opening of
-the exact same fixed input leaf to recovery failure or a second preimage of the
-combined owner-and-note commitment. Lean now also proves that a different leaf
-at the victim's exact tree position and root exposes a tree-node hash
-collision, and places that case in an eight-event fixed-victim attack bound.
-The connection from arbitrary deployed acceptance to that game, and numerical
-bounds for the listed cryptographic and runtime failures, remain open.
+The soundness goal is that an accepted proof corresponds to a witness meeting
+all of these rules, except with the probability assigned to explicit failure
+events. Lean checks the spend relation and the finite failure decomposition.
+The deployed-source proof then follows any accepted translated verifier call
+end to end through the parser, transcript, six work checks, 18 queries, five
+authenticated opening sections, FRI folds, 76 claims, 58 relation fields, and
+both final accumulators. Its clean replay passed on 24 August 2026.
+
+After acceptance, the program records the public nullifier and later spends
+with the same marker address are rejected. Lean separately checks the
+sequential marker model and reduces fixed-victim theft to eight named
+cryptographic, extraction, setup, and runtime events. The
+[assumptions ledger](assumptions-ledger.md) gives the exact probability and
+platform interfaces used to interpret those results.
 
 ## Why the proof is uploaded first
 
@@ -111,8 +102,8 @@ Aspis records four complementary evidence layers:
 
 | Layer | Evidence |
 | --- | --- |
-| Mathematical construction | Lean checks substantial parts of the statement, algebra, concrete release calculations, hiding argument, and V5 component models |
-| Selected production implementation | Charon and Aeneas translate selected Rust; Lean bridge proofs follow one successful selected verifier call through its claim table, relation checks, and both final accumulators. The final clean replay passed on 24 August 2026, and that call yields the maintained accepted-path security-event conclusion without caller-supplied accumulator equalities |
+| Mathematical construction | Lean checks the spend relation, release arithmetic, circle domains, four-fold FRI argument, distinct-query calculation, hiding reductions, theft reductions, and marker-state model |
+| Selected deployed implementation | Charon and Aeneas translate the accepting Rust callback; Lean follows any successful call end to end from parsing through both final accumulators and derives the maintained security-event conclusion |
 | Exact program | Pinned source and build tools reproduce the frozen SBF byte for byte |
 | Chain result | Finalized receipts bind that SBF, proof, statement, state transition, compute use, and cleanup |
 
@@ -142,7 +133,7 @@ The pinned recipient therefore received 10,980,894,882 lamports. The proof
 refund is already included in the later payer sweep and is not added a second
 time.
 
-## Limits of the demonstration
+## Release profile
 
 - The statement has one input and one output.
 - The release has no deposit or append path, wallet, or growing privacy set;

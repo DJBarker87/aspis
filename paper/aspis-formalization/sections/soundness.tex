@@ -1,386 +1,210 @@
-\section{Security decomposition and conditional bounds}
+\section{Security experiment and soundness}
 \label{sec:soundness}
 
-\subsection{Why one experiment matters}
+\subsection{Threat model}
 
-A list of individually small probabilities is not yet a security theorem.  The
-events must be defined on the same probability space, false acceptance must be
-contained in their union, and each event must be charged once.  Otherwise a
-bound can omit a branch, count one branch twice, or combine probabilities from
-incompatible experiments.
+The adversary chooses a public statement and proof after observing the public
+history.  It succeeds when the verifier accepts but the statement has no
+witness satisfying \cref{def:spend}.  The adversary may adapt its oracle
+queries and later messages to the transcript prefix already available.  Its
+resources include SHA-256 oracle queries and the work spent searching for the
+six nonces.
 
-The module \code{V5UnifiedSecurityExperiment} gives the V5 endpoint this
-shape.  It uses a finite probability mass function from mathlib rather than a
-new probabilistic programming language.  The complete coins may include
-random-oracle answers, prover choices, and any other finite randomness needed
-by a concrete instantiation.
+All failure events are defined in one finite probability space
+\((\Omega,\mu)\).  Let \(A_{\mathrm{false}}\subseteq\Omega\) be the event of
+accepting a false statement.  Let \(C\) be the protocol failure event, which
+combines the low-degree, query, relation, and work terms.  The remaining
+events describe either a deterministic mismatch between the deployed
+execution and the formal experiment or a cryptographic failure such as a hash
+collision.
 
-\begin{experiment}[Work-normalized V5 adversarial experiment]
-\label{exp:unified}
-For a finite type \(\Omega\), a
-\code{WorkNormalizedV5AdversarialExperiment Omega} contains:
-\begin{enumerate}[leftmargin=*]
-  \item one probability mass function \(\mu\) on \(\Omega\);
-  \item a set \(A_{\mathrm{false}}\) of accepted false outcomes;
-  \item one record containing all named failure events; and
-  \item a pointwise proof that
-        \(A_{\mathrm{false}}\) is contained in their unified union.
-\end{enumerate}
-The law is explicitly work-normalized.  It is not the conditional law of an
-attempt after the adversary has completed the grind.
-\end{experiment}
+This single-experiment formulation matters because event bounds taken from
+different conditioned experiments cannot safely be added.  In Lean, the
+coverage theorem is pointwise:
+\begin{equation}
+  A_{\mathrm{false}}
+  \subseteq C\cup\bigcup_{i=1}^{18}E_i.
+  \label{eq:event-coverage}
+\end{equation}
+The detailed protocol ledger has six entries: the query and final-work event,
+four fold events, and relation repair.  Lean proves that their union equals
+\(C\).
+The eighteen external events are grouped in \cref{tab:failure-interface}.
 
-Existing accepted-execution reductions can construct this experiment through
-\code{ofFinalClassification}.  The more specific constructor
-\code{ofReleasedAcceptedExecution} takes the maintained released-execution
-classification and its coverage proof.  These constructors prove event
-inclusion; they do not create probability bounds for the included events.
-
-\subsection{Exact failure ledger}
-
-An older final ledger has twenty-four entries.  Six belong to the ideal proof
-system: the query/final-work miss, four FRI rounds, and relation repair.  The
-corrected arithmetic treats their union as one protocol event.  The remaining
-eighteen entries describe implementation, primitive, credential, Merkle, and
-runtime failures.
-
-Lean proves that the two lists are duplicate-free, disjoint, and concatenate
-to the old twenty-four-entry order.  It then defines a nineteen-entry unified
-list: one protocol event followed by the eighteen external events.  The
-theorem \code{total_unified_failure_eq_total_final_failure} proves equality of
-the two union events, not merely an implication.
-
-\begin{table}[p]
+\begin{table}[t]
 \centering
 \small
-\caption{The nineteen failure kinds in the unified experiment.}
-\label{tab:unified-ledger}
-\begin{tabularx}{\textwidth}{@{}R{0.07\textwidth}R{0.34\textwidth}Y@{}}
+\caption{External interface of the false-acceptance experiment.}
+\label{tab:failure-interface}
+\begin{tabularx}{\textwidth}{@{}R{0.25\textwidth}R{0.10\textwidth}Y@{}}
 \toprule
-No. & Event & Meaning \\
+Group & Count & Events \\
 \midrule
-1 & Work-normalized protocol event & Union of the query/final-work miss,
-four FRI-round events, and relation repair \\
-2 & Transcript Rust-to-Lean divergence & Production transcript behavior
-differs from the exact Lean driver \\
-3 & SHA-256 implementation divergence & Reached SHA-256 call differs from
-the specified function \\
-4 & SHA-256 collision & Distinct reached inputs have one digest \\
-5 & SHA-256 preimage event & The adversary reaches a stated target digest \\
-6 & SHA-256 random-oracle event & The ideal-oracle assumption fails in the
-used reduction \\
-7 & Poseidon2 implementation divergence & Deployed and modeled Poseidon2
-differ on a reached input \\
-8 & Poseidon2 collision & Distinct reached inputs collide \\
-9 & Poseidon2 preimage event & A stated target image is reached \\
-10 & Accepted-run relation bridge & Accepted production execution does not
-produce the modeled relation success \\
-11 & Proof/Merkle opening bridge & Production opening acceptance does not
-produce the authenticated forest used by the algebraic checks \\
-12 & Victim credential recovery & The adversary learns the victim's secret
-credential \\
-13 & Rust/state-model mismatch & Production state behavior differs from the
-Lean transition \\
-14 & System program or address mismatch & Account creation or address
-derivation differs from the model \\
-15 & Writable-account lock failure & Conflicting writes are not serialized as
-assumed \\
-16 & Rejection rollback failure & A rejected transaction leaves a visible
-partial state change \\
-17 & Marker persistence failure & A committed spent marker does not persist \\
-18 & Finalized-state observation failure & The observed finalized state does
-not match the modeled committed state \\
-19 & Close/refund mismatch & Proof close or refund differs from the modeled
-recipient and balance \\
+Implementation correspondence & 5 & Transcript translation, reached SHA-256
+semantics, reached Poseidon2 semantics, relation implementation, and
+authenticated-opening implementation \\
+Cryptographic primitives & 5 & SHA-256 collision, target preimage, and
+random-oracle replacement; Poseidon2 collision and target preimage \\
+Credentials & 1 & Recovery of the victim's secret credential \\
+State and runtime & 7 & Program/state correspondence, address and system
+program behavior, writable-account locking, rejection rollback, marker
+persistence, finalized observation, and cleanup/refund behavior \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-The list is not a claim that all events have nonzero probability.  It is the
-complete interface of the present endpoint.  A later source proof can show
-that some event is empty or assign it budget zero.  Until then, the event
-remains visible.
+For the selected translated execution, \cref{thm:end-to-end-execution}
+supplies transcript, relation, and opening correspondence.  The other
+deterministic interfaces are recorded so that proofs can make their events
+empty instead of assigning them arbitrary small probabilities.
 
-For the selected released proof-checker path, the accepted-execution theorem
-discharges entries 2, 10, and 11: transcript divergence, the relation bridge,
-and the proof/Merkle opening bridge.  It does so from one successful
-translated execution rather than by assigning those events small
-probabilities.  Entry 3 remains the explicit SHA-256 callback-semantics
-boundary, and entries 7 and 13--19 remain primitive, surrounding-code, or
-Solana-runtime boundaries.
+\subsection{Symbolic decomposition}
 
-\subsection{Deterministic premises and probabilistic events}
-
-The ledger has two uses that should not be confused.  As an audit ledger, it
-keeps every way that production could depart from the mathematical experiment.
-As a cryptographic theorem, most of those departures are better stated as
-deterministic premises.
-
-Let \(D_{\mathrm{prod}}\) assert the exact transcript, SHA-256 implementation,
-Poseidon2 implementation, relation, Merkle, state, system-program, account
-lock, rollback, persistence, finalized-observation, and close/refund
-correspondences.  These are entries 2, 3, 7, 10, 11, and 13--19 in
-\cref{tab:unified-ledger}.  If \(D_{\mathrm{prod}}\) holds pointwise for every
-reached execution, those twelve events are empty; they do not need an
-artificial tiny probability.
-
-The remaining external entries are genuinely probabilistic assumptions:
-SHA-256 collision, target preimage, and random-oracle replacement; Poseidon2
-collision and target preimage; and victim credential recovery.  Write these
-six events as \(P_1,\ldots,P_6\).  Specializing the checked union bound with
-zero bounds for the deterministic events gives the conventional form
+Taking measures in \cref{eq:event-coverage} and applying the union bound gives
 \begin{equation}
   \Prob[A_{\mathrm{false}}]
-    \leq \Prob[C] + \sum_{j=1}^{6}\Prob[P_j],
-  \qquad\text{assuming }D_{\mathrm{prod}}.
-  \label{eq:deterministic-probabilistic-split}
-\end{equation}
-The nineteen-entry ledger remains useful because it records exactly what must
-be proved before \(D_{\mathrm{prod}}\) may be used.  The security statement
-need not pretend that a parser mismatch or rollback error naturally has a
-100-bit probability.
-
-\subsection{Symbolic union bound}
-
-Let \(C\) be the single protocol event and let
-\(E_1,\ldots,E_{18}\) be the external events.  From the pointwise
-classification and measure monotonicity, Lean proves
-\begin{equation}
-  \Prob[A_{\mathrm{false}}]
-    \leq \Prob[C] + \sum_{i=1}^{18}\Prob[E_i].
+  \leq \Prob[C]+\sum_{i=1}^{18}\Prob[E_i].
   \label{eq:symbolic-union}
 \end{equation}
-This is
-\code{accepted_false_probability_le_core_plus_external_sum}.  The theorem
-uses one PMF and maps the exact ordered list, so there is no separate
-independence assumption.  It is an ordinary union bound.
+Lean proves this inequality over the exact ordered event list and proves that
+each event appears once.  No independence assumption is used.
 
-Lean stores bounds for all eighteen external entries in
-\code{AssumedExternalSecurityBounds}.  Its fields cover the transcript and
-primitives, relation bridge, Merkle bridge, credential recovery, and seven
-runtime events.  The theorem \code{external_budget_sum_eq_total} proves that
-their sum is the declared external budget.  Therefore
+For the conventional cryptographic presentation, let
+\(D_{\mathrm{prod}}\) assert all deterministic implementation, compilation,
+and runtime correspondences.  Under \(D_{\mathrm{prod}}\), those mismatch
+events are empty.  The remaining six probabilistic events are the five
+primitive events and credential recovery; writing them as
+\(P_1,\ldots,P_6\) yields
 \begin{equation}
-  \sum_{i=1}^{18}\Prob[E_i]\leq B_{\mathrm{external}}
+  \Prob[A_{\mathrm{false}}]
+  \leq \Prob[C]+\sum_{j=1}^{6}\Prob[P_j]
+  \qquad\text{under }D_{\mathrm{prod}}.
+  \label{eq:deterministic-probabilistic-split}
 \end{equation}
-follows from the individual assumptions without introducing a second core
-term.  Under \(D_{\mathrm{prod}}\), the twelve deterministic fields are
-instantiated with zero and the budget is allocated only to the six
-probabilistic terms.
+This split preserves the larger audit ledger while giving deterministic
+claims their natural logical role.
 
-\subsection{Query probability}
+\subsection{Bounded distinct-query sampling}
 
-The query calculation is one of the fully finite parts of the model.  Each
-32-byte squeeze block provides eight little-endian words.  The sampler masks
-each word to seventeen bits, scans in order, and keeps only first occurrences.
-It accepts after collecting eighteen distinct positions and rejects if the
-64-draw supply is exhausted first.
-
-Conditioned on success, Lean proves that every ordered list of eighteen
-distinct positions has the same number of preimages.  For a fixed bad set of
-size at most \(A\) in a domain of size \(N\), the probability that every
-query lies in the set is
+The query sampler is modeled exactly, including its sixty-four-draw limit and
+first-occurrence rule.  Conditioned on collecting eighteen positions, every
+ordered list of eighteen distinct elements has the same number of preimages.
+For a fixed bad set of size at most \(A\) in a domain of size \(N\), the
+probability that all queries land in that set is therefore
 \begin{equation}
   \prod_{j=0}^{17}\frac{A-j}{N-j}.
   \label{eq:without-replacement}
 \end{equation}
-For the released calculation, \(N=131{,}072\) and \(A\leq6{,}082\).
-Without conditioning, the event ``sampler succeeds and every output is bad''
-is bounded by the same ratio because exhaustion rejects.
-
-Theorems in \code{V5BoundedQuerySamplerUniformity} prove the uniformity of the
-bounded first-occurrence sampler.  The fixed-set ratio and its finite
-inequality are in \code{V5WithoutReplacementQuerySoundness}.  These results
-do not show that SHA-256 outputs are independent uniform words, that the Rust
-sampler equals the finite model, or that an invalid FRI word determines the
-required bad set.  Those statements occur in other event branches.
-
-\subsection{FRI and relation reductions}
-
-The low-degree part has three logically different steps.
-
-First, the released encoders and distances must meet the hypotheses of the
-cited decoding theorem.  Lean checks the field size, point distinctness,
-stored evaluation order, degree limits, distances, agreement thresholds,
-rounding, and list multiplicities.  The decoding theorem itself is an
-external mathematical input.
-
-Second, candidate selection must be causal and coherent.  The forward theorem
-constructs four prefix-conditioned bad sets, each fixed before its challenge,
-and restores one initial list member through all four folds or enters one of
-those counted events.  The list is not chosen again after each fold.  The
-width-nineteen correlated-agreement argument handles a challenge-dependent
-family of committed lanes without adding an unjustified factor of 240 to the
-batching event.  The adaptive fresh-oracle theorem then bounds repeated
-attempts without assuming that the bad sets from different attempts are
-independent.
-
-Third, the candidate must satisfy the private-spend relation.  The relation
-sumcheck theorem bounds the challenge tuples that can repair false scalar
-claims.  The candidate/trace reduction lists the remaining ways in which a
-false no-witness statement could avoid such a mismatch: four-claim batching,
-lane recombination, public-field binding, arithmetic residual extraction, or
-hash/Merkle residual extraction.  The production callback and authenticated
-opening connections remain separate external events.
-
-The V5 four-way folding protocol is not identical to the published S-two
-protocol~\cite{CarmonEtAl2026Stwo}.  The project therefore proves its own
-prefix-timed four-way reduction in Lean instead of importing S-two's FRI
-reduction unchanged.  Fiat--Shamir compilation is then supplied by the
-published BCS state-restoration result~\cite{BenSassonChiesaSpooner2016}; the
-production transcript equality and SHA-256 random-oracle assumption are kept
-explicit.
-
-More precisely, the V5-specific chain theorem proves that ideal FRI acceptance
-restores one complete four-fold candidate chain or reaches a bad set fixed by
-the appropriate transcript prefix.  The released accepted-false experiment
-then proves coverage by those FRI events and the relation events.  Finally,
-the adaptive fresh-oracle theorem bounds \(Q\) completed fresh attempts by
-\(Q\) times the one-attempt bound, even when the next attempt depends on the
-entire previous history.
-
-The remaining Fiat--Shamir connection is
-\code{ProductionAdaptiveFreshOracleConnection}.  It must prove that the exact
-production byte transcript gives the ideal fresh attempts, counts repeated
-queries and rejection sampling correctly, and bounds the SHA-256-to-random-
-oracle difference.  At the aggregate endpoint,
-\code{WorkNormalizedCoreEventConnection} identifies that production event
-with the protocol event used by the BCS bound.  Neither interface asks for a
-new four-way FRI theorem.  The accepted-path transcript proofs supply the
-exact deterministic schedule and consumed values.  The published BCS
-result, its production-event applicability, and the SHA-256 random-oracle
-assumption remain external cryptographic inputs.
-
-\subsection{Resource-bounded form}
-
-The same accounting can be written in the usual raw advantage form.  Let
-\(1\leq Q\leq2^{128}\) be the adversary's SHA-256 random-oracle query budget,
-let
-\(R\leq32\) be the number of public-coin boundaries admitted by the released
-BCS accounting (the exact V5 schedule has 30), let
-\(\varepsilon_{\mathrm{I}}\) bound each interactive branch, and use a 256-bit
-oracle output.  The BCS expression represented in Lean follows the published
-state-restoration specialization~\cite{CarmonEtAl2026Stwo}:
+The same expression upper-bounds the unconditioned event that sampling
+succeeds and every output is bad, because exhaustion causes rejection.  The
+concrete calculation uses
 \[
-  b(Q)=\left(1+\frac{R}{Q}\right)\varepsilon_{\mathrm{I}}
-       +3\left(Q+\frac1Q\right)2^{-256}.
+  N=131{,}072,
+  \qquad A\leq6{,}082.
 \]
-The factor three in the released ledger covers its three protocol branches.
-Multiplying by \(Q\) gives the ordinary resource-bounded statement
-\begin{equation}
-  \operatorname{Adv}^{\mathrm{false}}_{\mathrm{V5}}(\mathcal A;Q)
-  \leq 3(Q+R)\varepsilon_{\mathrm{I}}
-       +9(Q^2+1)2^{-256}
-       +\varepsilon_{\mathrm{prim}}(\mathcal A,Q)
-       +\varepsilon_{\mathrm{cred}}(\mathcal A),
-  \label{eq:resource-bounded-advantage}
-\end{equation}
-assuming \(D_{\mathrm{prod}}\), the decoding hypotheses, and applicability of
-the cited BCS theorem.  Here \(\varepsilon_{\mathrm{prim}}\) collects the
-explicit SHA-256 and Poseidon2 assumptions not already represented by the BCS
-capacity term, and \(\varepsilon_{\mathrm{cred}}\) bounds victim-secret
-recovery.  The paper does not assign concrete values to those two functions.
-Equation~\eqref{eq:resource-bounded-advantage} is the standard companion to
-the work-normalized presentation; it makes both the query budget and the raw
-growth with \(Q\) visible.
+Lean proves both uniformity and the resulting finite rational inequality.
 
-\subsection{Corrected numerical core}
+\subsection{Low-degree and relation reductions}
 
-The corrected arithmetic uses nineteen batching lanes, highest exponent
-eighteen, the nonzero extension-field denominator, exactly thirty public-coin
-rounds after the initial committed data, and six separately positioned work
-checks.  The dominant batching event has about 71 bits after the 37-bit grind
-has been completed.  Charging for that grind produces a modeled core of about
-100.56 bits.  Lean proves the conservative inequality
+The low-degree proof has three layers.  First, the formalization checks that
+the concrete encoders meet the field, ordering, degree, distance, agreement,
+and multiplicity hypotheses of the cited circle-code decoding result.  The
+general decoding theorem remains a literature assumption.
+
+Second, \cref{thm:four-fold-extraction} preserves one decoder candidate through
+all four folds.  Each exceptional challenge set is determined by the
+appropriate transcript prefix.  A separate adaptive-oracle theorem shows
+that \(Q\) completed fresh attempts cost at most \(Q\) times the one-attempt
+bound, even when the next attempt depends on the full previous history.
+
+Third, the algebraic relation connects the extracted candidate to
+\cref{def:spend}.  Nineteen columns are batched with a nonzero extension-field
+challenge of maximum exponent eighteen.  Sequential challenges bound the
+tuples capable of repairing false scalar claims, while the fold-duality proof
+keeps candidate values and verifier weights consistent.  The final semantic
+step is \cref{thm:spend-after-extraction}.
+
+The Fiat--Shamir step uses the published state-restoration analysis for
+interactive oracle proofs \cite{BenSassonChiesaSpooner2016,
+BlockGarretaKatzThalerTiwariZajac2023,CarmonEtAl2026Stwo}.  The byte-level
+transcript proof determines the exact oracle inputs and causal schedule.  The
+random-oracle replacement and applicability of the published theorem are
+explicit assumptions at this boundary.
+
+\subsection{Work-normalized accounting}
+
+The six proof-of-work checks restrict the fraction of transcript attempts that
+reach their protected challenges.  In a work-normalized experiment, repeated
+trials are charged to the adversary.  With nineteen columns, maximum batching
+exponent eighteen, thirty public-coin boundaries, and the work difficulties
+in \cref{tab:profile-parameters}, Lean verifies the concrete rational
+arithmetic and proves
 \begin{equation}
-  B_{\mathrm{core}}
-    \leq \frac{7}{10\cdot2^{100}}.
+  B_{\mathrm{protocol}}
+  \leq \frac{7}{10\cdot2^{100}}.
   \label{eq:core-budget}
 \end{equation}
-The exact theorem is
-\code{corrected_selected_release_core_le_seven_tenths}.  Its type retains the
-decoding, code-membership, grinding-output, Rust transcript, authenticated
-round, Merkle/PCS, Fiat--Shamir, and cited-theorem premises.  Arithmetic does
-not discharge those premises.
+This inequality is conditional on the checked decoding applicability,
+code-membership connection, authenticated openings, Fiat--Shamir theorem,
+and grinding-output model described above.
 
-\subsection{Conditional budget theorem}
-
-The external budget is required to satisfy
+Let \(B_{\mathrm{external}}\) bound the six probabilistic events remaining
+under \(D_{\mathrm{prod}}\), and assume
 \begin{equation}
   B_{\mathrm{external}}
-    \leq \frac{3}{10\cdot2^{100}}.
+  \leq \frac{3}{10\cdot2^{100}}.
   \label{eq:external-budget}
 \end{equation}
-The structure \code{WorkNormalizedCoreEventConnection} records the final
-application boundary: the exact event obtained from the production trace must
-be the event to which the BCS state-restoration bound is applied.  The V5
-four-way reduction used at that boundary is already proved.  Discharging the
-structure requires the production trace equality and the stated BCS and
-random-oracle assumptions; it is not a further FRI decoding theorem.
 
-\begin{theorem}[Machine-checked conditional security composition]
+\begin{theorem}[Conditional work-normalized soundness]
 \label{thm:conditional-soundness}
-For a \code{WorkNormalizedV5AdversarialExperiment}, assume:
-\begin{enumerate}[leftmargin=*]
-  \item its accepted-false event has the proved pointwise classification;
-  \item the exact protocol event is connected to the released arithmetic;
-  \item the maintained applicability premises for that arithmetic hold;
-  \item the protocol budget satisfies \cref{eq:core-budget};
-  \item \(D_{\mathrm{prod}}\) holds, so the twelve deterministic mismatch
-        events have probability zero; and
-  \item the six probabilistic external event bounds hold and satisfy
-        \cref{eq:external-budget}.
-\end{enumerate}
-Then
+Assume the event coverage of \cref{eq:event-coverage}; the checked connection
+from the exact protocol event to the concrete arithmetic; the published
+decoding and Fiat--Shamir results with their verified parameter hypotheses;
+the deterministic correspondences \(D_{\mathrm{prod}}\); and primitive and
+credential bounds satisfying \cref{eq:external-budget}.  Then
 \[
   \Prob[A_{\mathrm{false}}]\leq2^{-100}.
 \]
 \end{theorem}
 
-Lean proves this as
-\code{work_normalized_accepted_false_probability_le_two_pow_neg_100_of_released_core}.
-The proof is short because the substantive result is the preceding
-classification and exact ledger equality.  This theorem checks that the
-stated protocol and external budgets compose to \(2^{-100}\); it does not
-independently prove those budgets for deployed Rust.
+The final step is ordinary arithmetic:
+\[
+  \Prob[A_{\mathrm{false}}]
+  \leq B_{\mathrm{protocol}}+B_{\mathrm{external}}
+  \leq 0.7\cdot2^{-100}+0.3\cdot2^{-100}
+  =2^{-100}.
+\]
+The substantive checked content is the preceding pointwise classification,
+event-ledger equality, parameter application, and protocol arithmetic.
 
-\begin{remark}[Raw and work-normalized probability]
-Dividing an attack probability by its expected work is useful for comparing
-attacks under a query/work budget.  It is not the probability of failure once
-the work has already been paid.  Removing the released 37-bit work charge
-restores a factor of \(2^{37}\) to the dominant event.  The raw completed-grind
-bound is therefore much weaker than \(2^{-100}\).  No result in this paper
-describes the deployed verifier as having a raw 100-bit false-acceptance
-probability per completed proof.
-\end{remark}
+\subsection{Raw resource-bounded accounting}
 
-\begin{table}[t]
-\centering
-\small
-\caption{Soundness definitions and theorems.}
-\label{tab:soundness-anchors}
-\begin{tabularx}{\textwidth}{@{}YY@{}}
-\toprule
-Purpose & Lean item \\
-\midrule
-One finite law and accepted-false event &
-\code{WorkNormalizedV5AdversarialExperiment} \\
-Exact old/new ledger equality &
-\code{total_unified_failure_eq_total_final_failure} \\
-One core plus eighteen external terms &
-\code{accepted_false_probability_le_core_plus_external_sum} \\
-Exact external budget sum &
-\code{external_budget_sum_eq_total} \\
-Bounded distinct-query uniformity &
-\code{AspisV5BoundedQuerySamplerUniformity.deployed_q18_conditioned_uniform} \\
-Released prefix-timed four-round chain &
-\code{AspisV5FriForwardCompatibleChain.accepted_ideal_fri_restores_complete_chain_or_prefix_bad} \\
-Adaptive fresh-attempt bound &
-\code{AspisV5ForwardAcceptedFalseRawAccounting.adaptiveCompatibilityReleasedFriFailureProbability_le_queryBudget_mul} \\
-70-percent core budget &
-\code{AspisV5HundredBitSecurityMargin.corrected_selected_release_core_le_seven_tenths} \\
-Conditional 100-bit budget implication &
-\code{work_normalized_accepted_false_probability_le_two_pow_neg_100_of_released_core} \\
-\bottomrule
-\end{tabularx}
-\end{table}
+Work-normalized probability and probability after a completed grind answer
+different questions.  Let \(1\leq Q\leq2^{128}\) be the adversary's SHA-256
+oracle-query budget, let \(R\leq32\) bound the public-coin boundaries, and let
+\(\varepsilon_{\mathrm I}\) bound each interactive protocol branch.  The
+state-restoration specialization represented in Lean is
+\[
+  b(Q)=\left(1+\frac{R}{Q}\right)\varepsilon_{\mathrm I}
+       +3\left(Q+\frac1Q\right)2^{-256}.
+\]
+Its corresponding resource-bounded form is
+\begin{align}
+  \operatorname{Adv}^{\mathrm{false}}_{\Aspis}(\mathcal A;Q)
+  \leq {}&3(Q+R)\varepsilon_{\mathrm I}
+       +9(Q^2+1)2^{-256} \notag\\
+       &+\varepsilon_{\mathrm{prim}}(\mathcal A,Q)
+       +\varepsilon_{\mathrm{cred}}(\mathcal A),
+  \label{eq:resource-bounded-advantage}
+\end{align}
+under \(D_{\mathrm{prod}}\) and the same decoding and Fiat--Shamir
+assumptions.  The two final functions collect the primitive and credential
+advantages and are left symbolic.
+
+Once the 37-bit initial work search has been completed, its factor cannot also
+be charged in the exponent.  Removing that normalization leaves the dominant
+explicit term at roughly 70--71 bits, plus the displayed primitive,
+credential, and runtime terms.  We report this raw view alongside
+\cref{thm:conditional-soundness} so the unit of every security figure remains
+clear.

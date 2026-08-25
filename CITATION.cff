@@ -1,27 +1,27 @@
 cff-version: 1.2.0
-message: "Cite the formalization report for the current V5 result. Cite the earlier construction paper when discussing the historical q18/g37 release."
-title: "Aspis: From Lean-Checked Private-Spend Mathematics to Solana Mainnet"
+message: "Cite the paper for the formal result and the evidence archive when referring to the recorded mainnet execution."
+title: "Aspis: End-to-End Formal Verification of a Transparent Private Spend on Solana"
 type: software
-date-released: 2026-07-25
+version: "5"
+date-released: 2026-08-24
 authors:
   - family-names: "Barker"
     given-names: "Dominic"
     website: "https://github.com/DJBarker87"
 abstract: >-
-  Aspis connects Lean 4 private-spend mathematics to one successful run of
-  the selected production verifier path translated through Charon and Aeneas,
-  then to a byte-reproducible 1,258,496-byte Solana SBF binary and an archived
-  finalized mainnet transaction. The current source proofs follow the parse,
-  transcript, work checks, 18 selected queries, five authenticated opening
-  sections, four FRI folds, final polynomial, exact claim table, initial
-  relation value, and decoded relation tail from the same accepted execution.
-  Two production final-dot equalities and their outer composition remain open.
-  The release targets 100 bits of
-  work-normalized attack cost; the dominant raw post-grind term is about
-  70--71 bits. Published decoding and Fiat--Shamir results, primitive
-  security, translation and compilation tools, and Solana runtime behavior
-  remain explicit assumptions. The project has not received an external
-  security audit.
+  Aspis provides an end-to-end Lean proof for every successful execution of a
+  transparent private-spend verifier on Solana. Starting from the translated
+  deployed Rust path, the proof derives the parse, Fiat-Shamir transcript, six
+  work checks, 18 distinct queries, five authenticated opening sections, four
+  low-degree folds, final polynomial, complete algebraic claim data, and both
+  final accumulators from the same call. The 331-module replay is paired with
+  pinned translation inputs, a byte-reproducible 1,258,496-byte Solana
+  program, and a finalized mainnet transaction that verified a 75,358-byte
+  proof in 1,334,452 compute units. The paper proves a conditional
+  work-normalized security bound and reports raw post-grind accounting
+  separately. Published decoding and Fiat-Shamir results, concrete primitive
+  security, toolchain correctness, and Solana runtime behavior are explicit
+  assumptions.
 keywords:
   - "zero knowledge"
   - "transparent arguments"
@@ -41,7 +41,7 @@ license:
   - MIT
 preferred-citation:
   type: article
-  title: "Aspis: From Lean-Checked Private-Spend Mathematics to a Solana Mainnet Execution"
+  title: "Aspis: End-to-End Formal Verification of a Transparent Private Spend on Solana"
   authors:
     - family-names: "Barker"
       given-names: "Dominic"

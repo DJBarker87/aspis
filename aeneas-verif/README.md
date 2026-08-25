@@ -1,10 +1,10 @@
-# Proofs connecting the released Rust verifier to Lean
+# End-to-end Lean proof of the released accepted verifier path
 
 This directory addresses a simple risk: a correct mathematical model is not
 enough if the program checks something different.
 
-Charon extracts selected production Rust. Aeneas translates that extraction
-to Lean. Further Lean proofs connect one successful run of the released V5
+Charon extracts selected deployed Rust. Aeneas translates that extraction
+to Lean. Further Lean proofs connect any successful run of the released V5
 proof checker to the mathematical objects used by the security argument.
 The generated code and the bridge proofs are checked together by Lean.
 
@@ -13,9 +13,9 @@ For a less technical explanation, start with
 route through the Rust source, use the
 [`accepted V5 source map`](../docs/v5-accepted-source-map.md).
 
-## Current accepted-path status
+## Final accepted-path theorem
 
-The checked chain begins with one successful translated call to
+The checked chain begins with any successful translated call to
 `verify_mode9_composite_with_live_statement`. From that same execution it now
 derives:
 
@@ -31,20 +31,20 @@ derives:
 
 The phrase **same execution** matters. Earlier component theorems allowed a
 caller to provide equalities between selected Rust values and model values.
-The current chain obtains the values listed above by following one successful
-translated call, so they cannot be mixed across different runs.
+The current chain obtains the values listed above by following an arbitrary
+successful translated call, so they cannot be mixed across different runs.
 
 The accepted general-accumulator schedule is derived from its four initial
 components and eight tensor additions, and every one of the resulting twelve
-components is carried through the production folds to the exact terminal
+components is carried through the deployed folds to the exact terminal
 weights and dot product. The source and maintained-field semantics cover every
 release-reachable component, including the dense and deferred grouped cases.
 
 The compact constructor, four folds, final assembly, and four-term dot are
 also derived from the same accepted execution. The final theorem uses both
 accumulator equalities internally. Its clean tracked replay passed on
-24 August 2026, so one
-successful selected translated verifier call deterministically yields the
+24 August 2026, so every successful selected translated verifier call
+deterministically yields the
 maintained accepted-path security-event conclusion; callers supply neither
 accumulator equality.
 
@@ -52,7 +52,7 @@ The publication theorem is
 `AspisV5AcceptedOneRunDeterministicFinal.accepted_composite_security_conclusion_for_any_terminal_evaluator`
 in `V5AcceptedOneRunDeterministicFinal.lean`.
 
-The translated entry path proves the production check between the live
+The translated entry path proves the deployed check between the live
 statement and its digest. It does not yet prove that every field of that Rust
 statement is the corresponding field of the abstract public-statement object
 used by the mathematical false-acceptance and theft models. This is a model
@@ -65,7 +65,7 @@ handwritten replacement reconstructed the array from an empty iterator and
 therefore discarded its writes. Lean contains a counterexample for that old
 wrapper and the proof now uses a corrected Lean wrapper around the extracted
 subcalls. The Rust and deployed program were unaffected. An extended Aeneas
-translation of the exact unchanged production function produces the correct
+translation of the exact unchanged deployed function produces the correct
 iterator handback. The final proof connects its generated caller to the
 fold-semantics theorem rather than assuming their equality.
 
@@ -75,26 +75,20 @@ Its dependencies include the exact transcript samplers, the unchanged
 five-section Merkle verifier, the full FRI consumer and coordinate driver, the
 prepared-claim loop, and the full relation checker.
 
-## What remains outside the completed source proofs
+## Assumptions and composition boundary
 
-This is a proof about the selected accepting proof-checker path, not every
-line of the repository or every part of Solana. It does not prove:
+The theorem is scoped to the selected accepting proof-checker callback. Its
+named interfaces are Charon/Aeneas and Lean correctness, SHA-256 callback and
+primitive semantics, Poseidon2 security, published decoding and Fiat-Shamir
+results, compilation, and Solana runtime behavior. The outer account wrapper,
+upload, cleanup, and refund paths have separate source and runtime evidence.
 
-- Charon, Aeneas, Lean, `rustc`, LLVM, the SBF toolchain, or Solana;
-- that SHA-256 or Poseidon2 has the required cryptographic security;
-- the production SHA-256 callback semantics;
-- the published decoding, PCS/FRI, and Fiat--Shamir results themselves;
-- fresh prover randomness;
-- extraction, the probability-space connection, and the numerical bounds
-  assigned to external failure events;
-- the outer account-borrowing, upload, cleanup, and refund code; or
-- Solana account locking, rollback, and persistent state behavior.
-
-The production SHA-256 callback is connected to the mathematical hash through
-an explicit callback-semantics assumption. That is a boundary around an
-external primitive, not a free assertion that the rest of the Rust verifier
-matches Lean. Numerical primitive, random-oracle, compiler, and runtime
-failure bounds also remain explicit inputs to the security calculation.
+Two formal compositions remain at this boundary: the field-by-field map from
+the translated Rust statement to the abstract public statement, and the lift
+from the deterministic accepted-call classification into the work-normalized
+probability experiment. These determine the wording of deployed theft and
+numerical-security claims; they do not introduce caller-supplied equalities
+inside the completed verifier execution.
 
 These boundaries are listed in
 [`docs/assumptions-ledger.md`](../docs/assumptions-ledger.md).
@@ -120,7 +114,7 @@ the corresponding Rust was written on that date.
 
 For each important function, check four things:
 
-1. the extraction manifest names the production Rust file and function;
+1. the extraction manifest names the deployed Rust file and function;
 2. the generated Lean contains the translated control flow;
 3. the bridge theorem proves the mathematical statement from a successful
    generated result; and
@@ -129,7 +123,7 @@ For each important function, check four things:
 The source map reduces the accepting execution to fifteen review stops so an
 auditor does not need to begin with the roughly 189 KB verifier file.
 
-## Replaying the accepted-path checkpoint
+## Replaying the final accepted-path theorem
 
 The maintained mathematical project is the quick independent check:
 
@@ -139,14 +133,20 @@ lake exe cache get
 lake build
 ```
 
-The accepted-path checkpoint replay uses Lean 4.32 and the pinned Aeneas commit
+The accepted-path replay uses Lean 4.32 and the pinned Aeneas commit
 `b59d5188c082f704a418c7cb4e52ad69328002d1`. The compatibility patch and its
 file hashes are recorded in [`lean432/`](lean432/). The every-commit formal CI
 runs the maintained project and the tracked accepted-path replay; the exact
 local command is also recorded beside the aggregate proof. That replay passed
 on 24 August 2026 for all 331 tracked modules in the accepted-path closure.
 
-Generated object files are deliberately not committed. Generated Lean source,
+From the repository root:
+
+```sh
+aeneas-verif/scripts/replay-accepted-path-lean432.sh
+```
+
+Generated object files are not committed. Generated Lean source,
 bridge proofs, extraction manifests, tool revisions, and replay entry points
 are retained so a fresh checkout can reproduce the checked result.
 

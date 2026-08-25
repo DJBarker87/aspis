@@ -21,7 +21,7 @@ The transaction is the observed final stage of a longer documented path:
 | Layer | What is recorded |
 | --- | --- |
 | Mathematical model | Lean checks substantial parts of the construction, release calculations, and maintained V5 verifier model |
-| Selected production Rust | Charon/Aeneas translations and Lean bridge proofs connect the selected release path to those models |
+| Selected deployed Rust | Charon/Aeneas translations and Lean bridge proofs connect the selected release path to those models |
 | Compiled program | Pinned source and build tools reproduce the exact Solana program byte for byte |
 | Mainnet execution | Program identity, exact proof, finalized state transition, compute use, and account changes are recorded below |
 
@@ -69,9 +69,9 @@ initialization.
 
 The exact archived proof separately passes the released verifier callback in
 `programs/aspis-verifier/tests/v5_mainnet_release_proof.rs`; changing any of
-the nine public fields makes that replay fail. This is direct implementation
-evidence for the published bytes, not a substitute for the still-open general
-proof that every deployed V5-verifier acceptance implies the complete spend relation.
+the nine public fields makes that replay fail. This byte-level regression test
+complements the end-to-end accepted-path theorem by fixing the exact published
+proof and statement instance.
 
 ## Transaction count
 
@@ -82,8 +82,8 @@ The V5 spend lifecycle comprised 84 transactions:
 | Pool create and initialize | 2 |
 | Proof-account create | 1 |
 | Proof uploads, up to 960 bytes per chunk | 79 |
-| Tag-62 proof seal | 1 |
-| V5 verify and apply (instruction tag 67) | 1 |
+| Proof seal | 1 |
+| V5 verify and apply | 1 |
 | **Total** | **84** |
 
 This did not change from 71 to 84 during the run. The q18/g37 figure of 71
