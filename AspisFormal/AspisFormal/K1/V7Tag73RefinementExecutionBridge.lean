@@ -778,7 +778,93 @@ theorem run_q16_constructs_exact_cloned_forest
   · simpa [q16Plan, bindings, List.append_assoc] using combined
   · exact markedSaved
 
-/-! The after-scan and full-plan composition follows this q16 layer. -/
+/-! ## After-scan and complete first execution -/
+
+/-- Successful work-erased refinement executes the complete literal ancestor
+plan.  This theorem composes the adaptive prefix, the cloned q16 forest, the
+post-q16 event list, and the terminal marker; it has no decoder, acceptance,
+witness, or probability premise. -/
+theorem refine_work_erased_constructs_full_plan_run
+    (table : FixedOracleTable) (tape : DeployedFixedTape)
+    (raw : InteractiveRawTrace)
+    (run : refineWorkErased table tape = some raw) :
+    ∃ finalCore,
+      runActionCores table
+        (FixedBindings.ofContext tape.messages.context)
+        (fullPlan tape) initialCore = some finalCore := by
+  rw [refineWorkErased] at run
+  obtain ⟨prefixState, hprefix, run⟩ := Option.bind_eq_some_iff.mp run
+  obtain ⟨afterQ16, hq16, run⟩ := Option.bind_eq_some_iff.mp run
+  obtain ⟨finalState, hafterScan, _⟩ := Option.bind_eq_some_iff.mp run
+  let bindings := FixedBindings.ofContext tape.messages.context
+  obtain ⟨prefixCore, hprefixCore, hprefixSame, _, _, _, _, baseEmpty⟩ :=
+    run_prefix_work_erased_constructs_exact_actions table tape prefixState
+      hprefix
+  obtain ⟨q16Core, hq16Core, hq16Same, _⟩ :=
+    run_q16_constructs_exact_cloned_forest table tape prefixCore prefixState
+      afterQ16 hprefixSame baseEmpty hq16
+  obtain ⟨scanCore, hscanCore, _, _, _, _⟩ :=
+    machine_events_actions_agree table bindings
+      (afterAcceptedQueryScan tape.messages) q16Core afterQ16 finalState
+      hq16Same hafterScan
+  have terminalRun : runActionCores table bindings [.terminal] scanCore =
+      some scanCore := by
+    simp [runActionCores, runActionCore, deriveReply,
+      applyActionWorkErased]
+  have prefixAndQ16 := run_action_cores_append_of_runs table bindings _ _
+    initialCore prefixCore q16Core hprefixCore hq16Core
+  have throughScan := run_action_cores_append_of_runs table bindings _ _
+    initialCore q16Core scanCore prefixAndQ16 hscanCore
+  have complete := run_action_cores_append_of_runs table bindings _ _
+    initialCore scanCore scanCore throughScan terminalRun
+  refine ⟨scanCore, ?_⟩
+  simpa [fullPlan, bindings, List.append_assoc] using complete
+
+/-- The fixed-table first execution is constructed from operational refinement
+success; table coverage is not an input. -/
+theorem refine_work_erased_constructs_concrete_first_execution
+    (table : FixedOracleTable) (tape : DeployedFixedTape)
+    (raw : InteractiveRawTrace)
+    (run : refineWorkErased table tape = some raw) :
+    Nonempty (ConcreteFirstExecution table tape) := by
+  obtain ⟨finalCore, fullRun⟩ :=
+    refine_work_erased_constructs_full_plan_run table tape raw run
+  exact concrete_first_execution_of_full_plan_run table tape finalCore fullRun
+
+/-- Forgetting the deterministic decoder check from a successful checked
+work-erased refinement recovers the exact underlying operational replay. -/
+theorem checked_refine_work_erased_forgets_check
+    (table : FixedOracleTable) (decoders : DeterministicDecoders)
+    (tape : DeployedFixedTape) (raw : InteractiveRawTrace)
+    (run : checkedRefineWorkErased table decoders tape = some raw) :
+    refineWorkErased table tape = some raw := by
+  classical
+  unfold checkedRefineWorkErased at run
+  split at run <;> simp_all
+
+/-- A successful checked work-erased refinement therefore constructs the
+complete concrete first execution without assuming any challenge-validity or
+trace-cover proposition. -/
+theorem checked_refine_work_erased_constructs_concrete_first_execution
+    (table : FixedOracleTable) (decoders : DeterministicDecoders)
+    (tape : DeployedFixedTape) (raw : InteractiveRawTrace)
+    (run : checkedRefineWorkErased table decoders tape = some raw) :
+    Nonempty (ConcreteFirstExecution table tape) := by
+  exact refine_work_erased_constructs_concrete_first_execution table tape raw
+    (checked_refine_work_erased_forgets_check table decoders tape raw run)
+
+/-- The stronger checked exact refinement also constructs the same complete
+work-erased interactive first execution, by the already proved pointwise
+monotonicity theorem for the three work predicates. -/
+theorem checked_refine_constructs_concrete_first_execution
+    (table : FixedOracleTable) (decoders : DeterministicDecoders)
+    (tape : DeployedFixedTape) (raw : InteractiveRawTrace)
+    (run : checkedRefine table decoders tape = some raw) :
+    Nonempty (ConcreteFirstExecution table tape) := by
+  have erased := checked_refinement_success_survives_work_erasure table decoders
+    tape raw run
+  exact checked_refine_work_erased_constructs_concrete_first_execution table
+    decoders tape raw erased
 
 #print axioms table_execution_trace_of_run_action_cores
 #print axioms concrete_first_execution_of_full_plan_run
@@ -797,5 +883,10 @@ theorem run_q16_constructs_exact_cloned_forest
 #print axioms candidate_actions_agree
 #print axioms discarded_candidates_actions_restore_shared_base
 #print axioms run_q16_constructs_exact_cloned_forest
+#print axioms refine_work_erased_constructs_full_plan_run
+#print axioms refine_work_erased_constructs_concrete_first_execution
+#print axioms checked_refine_work_erased_forgets_check
+#print axioms checked_refine_work_erased_constructs_concrete_first_execution
+#print axioms checked_refine_constructs_concrete_first_execution
 
 end AspisK1.V7Tag73RefinementExecutionBridge
