@@ -37,6 +37,7 @@ structure Registry where
   immutable : Bool
   paused : Bool
   generation : Nat
+  minimumActivationDelaySlots : Nat
   deriving DecidableEq, Repr
 
 structure Entry where
@@ -143,6 +144,114 @@ theorem retiring_profile_does_not_reinterpret_existing_state {Tree Vault : Type}
     (state : SystemState Tree Vault) (profileBinding releaseBinding : Nat) :
     (retireProfile state profileBinding releaseBinding).pool = state.pool := rfl
 
+/-! ## Governance scheduling and continuity -/
+
+/-- A newly scheduled entry is pending, belongs to this Pool/policy and cannot
+become active before the registry's configured delay has elapsed. -/
+def ScheduledAt (registry : Registry) (now : Nat) (entry : Entry) : Prop :=
+  registry.minimumActivationDelaySlots > 0 ∧
+    entry.status = .pending ∧
+    entry.pool = registry.pool ∧
+    entry.policyBinding = registry.policyBinding ∧
+    now + registry.minimumActivationDelaySlots ≤ entry.activationSlot
+
+theorem scheduled_activation_respects_nonzero_delay
+    (registry : Registry) (now : Nat) (entry : Entry)
+    (scheduled : ScheduledAt registry now entry) :
+    now < entry.activationSlot := by
+  rcases scheduled with ⟨delayPositive, _, _, _, scheduledAt⟩
+  omega
+
+/-- Activation is a status-only transition and is legal only after the exact
+scheduled slot. -/
+def activateAt (slot : Nat) (entry : Entry) : Option Entry :=
+  if entry.status = .pending ∧ entry.activationSlot ≤ slot then
+    some { entry with status := .active }
+  else
+    none
+
+theorem activation_cannot_precede_scheduled_slot
+    (slot : Nat) (entry activated : Entry)
+    (run : activateAt slot entry = some activated) :
+    entry.activationSlot ≤ slot ∧
+      activated = { entry with status := .active } := by
+  simp only [activateAt] at run
+  split at run
+  · rename_i legal
+    exact ⟨legal.2, Option.some.inj run |>.symm⟩
+  · simp at run
+
+/-- Compatibility is supplied by the policy-bound release manifest. The
+on-chain entry identifies that manifest by profile/release/policy bindings;
+the governance source bridge must authenticate it rather than inventing a
+second cryptographic relation here. -/
+def ExactRetirementContinuity (Compatible : Entry → Prop) (slot : Nat)
+    (retiring replacement : Entry) : Prop :=
+  (retiring.profileBinding ≠ replacement.profileBinding ∨
+      retiring.releaseBinding ≠ replacement.releaseBinding) ∧
+    Compatible retiring ∧
+    Compatible replacement ∧
+    replacement.pool = retiring.pool ∧
+    replacement.policyBinding = retiring.policyBinding ∧
+    ActiveAt replacement slot
+
+theorem retirement_requires_distinct_active_compatible_replacement
+    (Compatible : Entry → Prop) (slot : Nat) (retiring replacement : Entry)
+    (continuity : ExactRetirementContinuity Compatible slot retiring replacement) :
+    (retiring.profileBinding ≠ replacement.profileBinding ∨
+        retiring.releaseBinding ≠ replacement.releaseBinding) ∧
+      Compatible replacement ∧
+      replacement.pool = retiring.pool ∧
+      replacement.policyBinding = retiring.policyBinding ∧
+      ActiveAt replacement slot := by
+  exact ⟨continuity.1, continuity.2.2.1, continuity.2.2.2.1,
+    continuity.2.2.2.2.1, continuity.2.2.2.2.2⟩
+
+structure GovernedSystemState (Tree Vault : Type) where
+  pool : StablePoolState Tree Vault
+  registry : Registry
+  entries : List Entry
+  deriving DecidableEq
+
+def setRegistryPause {Tree Vault : Type} (state : GovernedSystemState Tree Vault)
+    (paused : Bool) : GovernedSystemState Tree Vault :=
+  { state with
+    registry := { state.registry with
+      paused
+      generation := state.registry.generation + 1 } }
+
+def scheduleProfile {Tree Vault : Type} (state : GovernedSystemState Tree Vault)
+    (entry : Entry) : GovernedSystemState Tree Vault :=
+  { state with
+    registry := { state.registry with generation := state.registry.generation + 1 }
+    entries := entry :: state.entries }
+
+def retireGovernedProfile {Tree Vault : Type}
+    (state : GovernedSystemState Tree Vault)
+    (profileBinding releaseBinding : Nat) : GovernedSystemState Tree Vault :=
+  { state with
+    registry := { state.registry with generation := state.registry.generation + 1 }
+    entries := state.entries.map (retireEntry profileBinding releaseBinding) }
+
+theorem governance_mutations_preserve_pool_identity_tree_and_vault
+    {Tree Vault : Type} (state : GovernedSystemState Tree Vault)
+    (entry : Entry) (paused : Bool) (profileBinding releaseBinding : Nat) :
+    (setRegistryPause state paused).pool = state.pool ∧
+      (scheduleProfile state entry).pool = state.pool ∧
+      (retireGovernedProfile state profileBinding releaseBinding).pool = state.pool := by
+  exact ⟨rfl, rfl, rfl⟩
+
+theorem governance_mutations_increment_generation_once
+    {Tree Vault : Type} (state : GovernedSystemState Tree Vault)
+    (entry : Entry) (paused : Bool) (profileBinding releaseBinding : Nat) :
+    (setRegistryPause state paused).registry.generation =
+        state.registry.generation + 1 ∧
+      (scheduleProfile state entry).registry.generation =
+        state.registry.generation + 1 ∧
+      (retireGovernedProfile state profileBinding releaseBinding).registry.generation =
+        state.registry.generation + 1 := by
+  exact ⟨rfl, rfl, rfl⟩
+
 /-- Abstract fail-closed settlement gate: the absence of an authenticated
 entry returns the pre-state exactly. The Rust source bridge must prove that no
 write occurs before this authorization result exists. -/
@@ -168,6 +277,11 @@ theorem exact_registry_account_sizes :
 #print axioms adding_profile_preserves_pool_identity
 #print axioms adding_profile_preserves_tree_and_vault
 #print axioms retiring_profile_does_not_reinterpret_existing_state
+#print axioms scheduled_activation_respects_nonzero_delay
+#print axioms activation_cannot_precede_scheduled_slot
+#print axioms retirement_requires_distinct_active_compatible_replacement
+#print axioms governance_mutations_preserve_pool_identity_tree_and_vault
+#print axioms governance_mutations_increment_generation_once
 #print axioms no_registry_entry_implies_no_spend_state_change
 #print axioms exact_registry_account_sizes
 
