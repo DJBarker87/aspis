@@ -1,0 +1,79 @@
+V7 Tag-73 focused relation Lean check: PASS
+Date: 2026-08-25
+Host: nuc (Linux x86_64)
+Aeneas Lean backend source: d860ac47ed548d3da6d799afc013779ce470516c
+Lean: 4.31.0
+Policy: systemd user service, MemoryMax=12G, MemorySwapMax=0, TasksMax=64, sequential `lean -j1`
+Unit: aspis-tag73-relation-lean-20260825.service
+Invocation: f723687ad025455da79746db9dda7eed
+Result: success
+Service runtime: 22.243s
+CPU time: 21.313s
+Largest per-leaf maximum RSS: 2,542,288 KiB (`V7Tag73Final256Decoder/Funs.lean`)
+Observed swaps in every `/usr/bin/time -v` leaf: 0
+Focused log SHA-256: 4c54ac0b0f51de035b6205138bd739759594a7304c94e6139de2f004af3b2261
+
+Compiled leaves:
+- V7Tag73C4Evaluate/{Types,Funs}.lean
+- V7Tag73FixedReaderEnds/{Types,FunsExternal,Funs}.lean
+- V7Tag73Final256Decoder/{TypesExternal,Types,FunsExternal,Funs}.lean
+- V7Tag73FixedReaderEndsSourceBridge.lean
+- V7Tag73Final256SourceBridge.lean
+- V7Tag73C4EvaluateSourceBridge.lean
+
+All printed theorem axiom inventories exclude `sorryAx`.
+
+Tag-73 staged whole-finish closure: PASS
+Date: 2026-08-25
+Host: nuc (Linux x86_64)
+Policy: focused systemd scopes, MemoryMax=12G, MemorySwapMax=0, TasksMax=64, sequential `lean -j1`
+
+Generated staged finish:
+- target: V7Tag73FinishRelationUnrolled/Funs.lean
+- elapsed: 9.30s
+- maximum RSS: 2,792,632 KiB
+- swaps: 0
+- log SHA-256: 5ba291a579d9ce0a9eb0be5e1e8b6e76bafc44e0ecdfb47f50bfd7c033ca5779
+
+Round-tail returned-field/QM31 bridge:
+- target: V7Tag73RoundTailSourceBridge.lean
+- theorem: V7Tag73RoundTailSourceBridge.round_tail_success_returned_binding
+- theorem: V7Tag73RoundTailSourceBridge.qm31_ne_ok_false_iff_eq
+- elapsed: 38.52s
+- maximum RSS: 3,227,948 KiB
+- swaps: 0
+- log SHA-256: 3f7f4fcd7d417e486efbd91e316814793f3e5ca54b6ea78e3558bef96de3bf5e
+
+Whole-finish accepted inversion:
+- target: V7Tag73FinishSourceBridge.lean
+- theorem: V7Tag73FinishSourceBridge.finish_success_selector_semantic
+- elapsed: 3.95s
+- maximum RSS: 2,734,916 KiB
+- swaps: 0
+- log SHA-256: b69067f7c6a3aca12166bf978a88b07988f1523b7bdcd7e6331ed1ca3439e74b
+
+Proof20 exact accepted round-tail trace:
+- unit: aspis-tag73-round-tail-trace-proof20.scope
+- invocation: ee2eff3b4080448da9a61b623d39f4a5
+- target: V7Tag73RoundTailTrace.lean
+- theorem: V7Tag73RoundTailTrace.accepted_tail_exposes_exact_trace
+- elapsed: 5.93s
+- maximum RSS: 2,642,708 KiB
+- swaps: 0
+- exit status: 0
+- source SHA-256: 1b78e19706c7788da7ac2d13a837ebf910ba15abdc1065ef853a1a6990ff4f86
+- olean SHA-256: de16f2f19a13bd1a0d8b7ed873648e471fb026142bc577f777a2aeaf373cc8b5
+- log SHA-256: bf5ee34608398a861e4ac005c4246654bfe625ec09edd77c1b29314638589b3c
+- exact command: systemd-run --user --scope --unit=aspis-tag73-round-tail-trace-proof20 -p MemoryMax=12G -p MemorySwapMax=0 -p TasksMax=64 bash -lc 'cd /home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a && ./nuc-check-round-tail-trace.sh'
+
+Proof20 axiom inventory:
+- propext
+- Classical.choice
+- Quot.sound
+- transcript.Transcript
+- transcript.Transcript.absorb
+- transcript.Transcript.challenge_qm31
+- sumcheck.WeightAccumulator.fold_grouped64_binary_deferred_arity4._native.decide.ax_3
+
+No `sorryAx` appears. A package-wide scan of active generated and proof Lean
+sources found no `sorry` or `admit` token.

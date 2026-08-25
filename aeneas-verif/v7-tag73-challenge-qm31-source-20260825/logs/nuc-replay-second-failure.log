@@ -1,0 +1,144 @@
+/home/dombarker/project-offloads/ZK-v5-formal/toolchains/charon/charon/target/release/charon: OK
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/toolchain/output/aeneas-b59d5188-lean432-extended-static: OK
+/home/dombarker/project-offloads/aspis-pool-entrypoint-20260825-a1/aeneas-verif/lean432/aeneas-b59d5188-lean432.patch: OK
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/toolchain/output/aeneas-b59d5188-lean432-extended-static: ELF 64-bit LSB executable, x86-64, version 1 (GNU/Linux), statically linked, BuildID[sha1]=67487699243b4d47329202af955d23347c11aecc, for GNU/Linux 3.2.0, with debug_info, not stripped
+/home/dombarker/project-offloads/aspis-v7-accepted-semantic-relation-20260825-agent/AspisFormal/lake-manifest.json: OK
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/formal-source/AspisFormal/K1/V7Tag73TranscriptSchedule.lean: OK
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/formal-source/AspisFormal/K1/V7Tag73DeterministicRefinement.lean: OK
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/formal-source/AspisFormal/K1/V7Tag73SamplerDecoder.lean: OK
+/home/dombarker/project-offloads/aspis-pool-entrypoint-20260825-a1/aeneas-verif/v7-tag73-compact-semantic-source-20260825/generated-full/V7CompactSemanticChallengeOpaqueNoDedup/Types.lean: OK
+/home/dombarker/project-offloads/aspis-pool-entrypoint-20260825-a1/aeneas-verif/v7-tag73-compact-semantic-source-20260825/generated-full/V7CompactSemanticChallengeOpaqueNoDedup/Funs.lean: OK
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/harness/Cargo.lock: OK
+crates/aspis-core/src/transcript.rs: OK
+crates/aspis-core/src/field.rs: OK
+crates/aspis-core/src/circle.rs: OK
+crates/aspis-core/src/lib.rs: OK
+crates/aspis-core/Cargo.toml: OK
+   Compiling aspis-core v0.1.0 (/tmp/tmp.4DTETAsV68/source/crates/aspis-core)
+warning: unexpected `cfg` condition value: `solana`
+   --> /tmp/tmp.4DTETAsV68/source/crates/aspis-core/src/circle_prefix.rs:585:11
+    |
+585 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+    = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /tmp/tmp.4DTETAsV68/source/crates/aspis-core/src/circle_prefix.rs:594:11
+    |
+594 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /tmp/tmp.4DTETAsV68/source/crates/aspis-core/src/circle_prefix.rs:638:11
+    |
+638 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: function `verify_circle_layer0_opening_from_proof_deferred_canonical_for_depth_and_c2_leaf_bytes` is never used
+   --> /tmp/tmp.4DTETAsV68/source/crates/aspis-core/src/circle_merkle.rs:419:15
+    |
+419 | pub(crate) fn verify_circle_layer0_opening_from_proof_deferred_canonical_for_depth_and_c2_leaf_bytes<
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `verify_circle_openings_deferred_canonical` is never used
+   --> /tmp/tmp.4DTETAsV68/source/crates/aspis-core/src/circle_openings.rs:993:15
+    |
+993 | pub(crate) fn verify_circle_openings_deferred_canonical<'a>(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `verify_radix4_minimal_subtree_prevalidated_in_place` is never used
+   --> /tmp/tmp.4DTETAsV68/source/crates/aspis-core/src/merkle.rs:329:15
+    |
+329 | pub(crate) fn verify_radix4_minimal_subtree_prevalidated_in_place(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `aspis-core` (lib) generated 6 warnings
+    Checking v7-tag73-challenge-qm31-source v0.1.0 (/tmp/tmp.4DTETAsV68/source/aeneas-verif/v7-tag73-challenge-qm31-source-20260825/harness)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.50s
+   Compiling aspis-core v0.1.0 (/tmp/tmp.4DTETAsV68/source/crates/aspis-core)
+warning: unexpected `cfg` condition value: `solana`
+   --> /tmp/tmp.4DTETAsV68/source/crates/aspis-core/src/circle_prefix.rs:585:11
+    |
+585 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+    = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /tmp/tmp.4DTETAsV68/source/crates/aspis-core/src/circle_prefix.rs:594:11
+    |
+594 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /tmp/tmp.4DTETAsV68/source/crates/aspis-core/src/circle_prefix.rs:638:11
+    |
+638 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: function `verify_circle_layer0_opening_from_proof_deferred_canonical_for_depth_and_c2_leaf_bytes` is never used
+   --> /tmp/tmp.4DTETAsV68/source/crates/aspis-core/src/circle_merkle.rs:419:15
+    |
+419 | pub(crate) fn verify_circle_layer0_opening_from_proof_deferred_canonical_for_depth_and_c2_leaf_bytes<
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `verify_circle_openings_deferred_canonical` is never used
+   --> /tmp/tmp.4DTETAsV68/source/crates/aspis-core/src/circle_openings.rs:993:15
+    |
+993 | pub(crate) fn verify_circle_openings_deferred_canonical<'a>(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `verify_radix4_minimal_subtree_prevalidated_in_place` is never used
+   --> /tmp/tmp.4DTETAsV68/source/crates/aspis-core/src/merkle.rs:329:15
+    |
+329 | pub(crate) fn verify_radix4_minimal_subtree_prevalidated_in_place(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `aspis-core` (lib) generated 6 warnings
+   Compiling v7-tag73-challenge-qm31-source v0.1.0 (/tmp/tmp.4DTETAsV68/source/aeneas-verif/v7-tag73-challenge-qm31-source-20260825/harness)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.91s
+Command exited with non-zero status 1
+	Command being timed: "env LEAN_NUM_THREADS=1 REPO_ROOT=/home/dombarker/project-offloads/aspis-pool-entrypoint-20260825-a1 DEPLOYED_SOURCE_ROOT=/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/source FORMAL_K1_ROOT=/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/formal-source/AspisFormal/K1 COMPACT_BUNDLE_ROOT=/home/dombarker/project-offloads/aspis-pool-entrypoint-20260825-a1/aeneas-verif/v7-tag73-compact-semantic-source-20260825/generated-full/V7CompactSemanticChallengeOpaqueNoDedup /home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/replay.sh"
+	User time (seconds): 7.94
+	System time (seconds): 1.10
+	Percent of CPU this job got: 95%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:09.51
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 493240
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 3416
+	Minor (reclaiming a frame) page faults: 388272
+	Voluntary context switches: 9148
+	Involuntary context switches: 349
+	Swaps: 0
+	File system inputs: 1600864
+	File system outputs: 460928
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 1

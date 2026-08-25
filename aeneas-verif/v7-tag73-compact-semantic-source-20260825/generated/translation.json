@@ -1,0 +1,919 @@
+{
+  "aeneas_version": "unknown",
+  "charon_version": "0.1.223",
+  "crate": "aspis_core",
+  "functions": [
+    {
+      "def_id": 4,
+      "lean_name": "V7CompactSemanticGenerated.core.result.Result.map_err",
+      "lean_file": "V7CompactSemantic/FunsExternal_Template.lean",
+      "rust_name": "core::result::{core::result::Result<T, E>}::map_err",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/result.rs",
+        "begin_line": 962,
+        "end_line": 964
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7CompactSemanticGenerated.field.M31.reduce_u64",
+      "lean_file": "V7CompactSemantic/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::field::{aspis_core::field::M31}::reduce_u64",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 95,
+        "end_line": 97
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 12,
+      "lean_name": "V7CompactSemanticGenerated.field.CM31.new",
+      "lean_file": "V7CompactSemantic/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::field::{aspis_core::field::CM31}::new",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 207,
+        "end_line": 209
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V7CompactSemanticGenerated.field.QM31.Insts.CoreCmpPartialEqQM31.eq",
+      "lean_file": "V7CompactSemantic/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::field::{impl core::cmp::PartialEq<aspis_core::field::QM31> for aspis_core::field::QM31}::eq",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 359,
+        "end_line": 359
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 152,
+      "lean_name": "V7CompactSemanticGenerated.field.PreparedQm31Multiplier.new",
+      "lean_file": "V7CompactSemantic/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::field::{aspis_core::field::PreparedQm31Multiplier}::new",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 376,
+        "end_line": 385
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 153,
+      "lean_name": "V7CompactSemanticGenerated.field.PreparedQm31Multiplier.mul",
+      "lean_file": "V7CompactSemantic/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::field::{aspis_core::field::PreparedQm31Multiplier}::mul",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 388,
+        "end_line": 405
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 217,
+      "lean_name": "V7CompactSemanticGenerated.field.qm31_sum_products3",
+      "lean_file": "V7CompactSemantic/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::field::qm31_sum_products3",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 529,
+        "end_line": 531
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 154,
+      "lean_name": "V7CompactSemanticGenerated.field.QM31.add",
+      "lean_file": "V7CompactSemantic/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::field::{aspis_core::field::QM31}::add",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 824,
+        "end_line": 829
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V7CompactSemanticGenerated.field.QM31.sub",
+      "lean_file": "V7CompactSemantic/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::field::{aspis_core::field::QM31}::sub",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 832,
+        "end_line": 837
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 151,
+      "lean_name": "V7CompactSemanticGenerated.field.QM31.mul",
+      "lean_file": "V7CompactSemantic/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::field::{aspis_core::field::QM31}::mul",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 857,
+        "end_line": 865
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 150,
+      "lean_name": "V7CompactSemanticGenerated.field.QM31.square",
+      "lean_file": "V7CompactSemantic/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::field::{aspis_core::field::QM31}::square",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 871,
+        "end_line": 878
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V7CompactSemanticGenerated.field.QM31.write_le_bytes",
+      "lean_file": "V7CompactSemantic/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::field::{aspis_core::field::QM31}::write_le_bytes",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 940,
+        "end_line": 943
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7CompactSemanticGenerated.state_only_hiding.begin_state_only_masked_sumcheck",
+      "lean_file": "V7CompactSemantic/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::state_only_hiding::begin_state_only_masked_sumcheck",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/state_only_hiding.rs",
+        "begin_line": 227,
+        "end_line": 239
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 17,
+      "lean_name": "V7CompactSemanticGenerated.transcript.Transcript.absorb",
+      "lean_file": "V7CompactSemantic/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::transcript::{aspis_core::transcript::Transcript}::absorb",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/transcript.rs",
+        "begin_line": 312,
+        "end_line": 327
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 18,
+      "lean_name": "V7CompactSemanticGenerated.transcript.Transcript.challenge_qm31",
+      "lean_file": "V7CompactSemantic/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::transcript::{aspis_core::transcript::Transcript}::challenge_qm31",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/transcript.rs",
+        "begin_line": 365,
+        "end_line": 403
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 15,
+      "lean_name": "V7CompactSemanticGenerated.state_only_sumcheck.state_only_boundary_sum_loop.body",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::state_only_sumcheck::state_only_boundary_sum",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/state_only_sumcheck.rs",
+        "begin_line": 124,
+        "end_line": 129
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "V7CompactSemanticGenerated.state_only_sumcheck.state_only_boundary_sum"
+    },
+    {
+      "def_id": 15,
+      "lean_name": "V7CompactSemanticGenerated.state_only_sumcheck.state_only_boundary_sum_loop",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::state_only_sumcheck::state_only_boundary_sum",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/state_only_sumcheck.rs",
+        "begin_line": 124,
+        "end_line": 129
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "V7CompactSemanticGenerated.state_only_sumcheck.state_only_boundary_sum"
+    },
+    {
+      "def_id": 15,
+      "lean_name": "V7CompactSemanticGenerated.state_only_sumcheck.state_only_boundary_sum",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::state_only_sumcheck::state_only_boundary_sum",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/state_only_sumcheck.rs",
+        "begin_line": 110,
+        "end_line": 134
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 210,
+      "lean_name": "V7CompactSemanticGenerated.state_only_sumcheck.evaluate_state_only_polynomial.closure.Insts.CoreOpsFunctionFnTupleUsizeQM31.call",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::state_only_sumcheck::evaluate_state_only_polynomial::{impl core::ops::function::Fn<(usize,), aspis_core::field::QM31> for aspis_core::state_only_sumcheck::evaluate_state_only_polynomial::closure<'_0, '_1>}::call",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/state_only_sumcheck.rs",
+        "begin_line": 169,
+        "end_line": 179
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 19,
+      "lean_name": "V7CompactSemanticGenerated.state_only_sumcheck.evaluate_state_only_polynomial_loop.body",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::state_only_sumcheck::evaluate_state_only_polynomial",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/state_only_sumcheck.rs",
+        "begin_line": 182,
+        "end_line": 185
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "V7CompactSemanticGenerated.state_only_sumcheck.evaluate_state_only_polynomial"
+    },
+    {
+      "def_id": 19,
+      "lean_name": "V7CompactSemanticGenerated.state_only_sumcheck.evaluate_state_only_polynomial_loop",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::state_only_sumcheck::evaluate_state_only_polynomial",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/state_only_sumcheck.rs",
+        "begin_line": 182,
+        "end_line": 185
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "V7CompactSemanticGenerated.state_only_sumcheck.evaluate_state_only_polynomial"
+    },
+    {
+      "def_id": 19,
+      "lean_name": "V7CompactSemanticGenerated.state_only_sumcheck.evaluate_state_only_polynomial",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::state_only_sumcheck::evaluate_state_only_polynomial",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/state_only_sumcheck.rs",
+        "begin_line": 160,
+        "end_line": 187
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 155,
+      "lean_name": "V7CompactSemanticGenerated.v6_onefold.PackedM31Reader.next_loop.body",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::{aspis_core::v6_onefold::PackedM31Reader<'a>}::next",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 311,
+        "end_line": 311
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "V7CompactSemanticGenerated.v6_onefold.PackedM31Reader.next"
+    },
+    {
+      "def_id": 155,
+      "lean_name": "V7CompactSemanticGenerated.v6_onefold.PackedM31Reader.next_loop",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::{aspis_core::v6_onefold::PackedM31Reader<'a>}::next",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 311,
+        "end_line": 311
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "V7CompactSemanticGenerated.v6_onefold.PackedM31Reader.next"
+    },
+    {
+      "def_id": 155,
+      "lean_name": "V7CompactSemanticGenerated.v6_onefold.PackedM31Reader.next",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::{aspis_core::v6_onefold::PackedM31Reader<'a>}::next",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 310,
+        "end_line": 321
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 22,
+      "lean_name": "V7CompactSemanticGenerated.v6_onefold.PackedM31Reader.qm31",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::{aspis_core::v6_onefold::PackedM31Reader<'a>}::qm31",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 324,
+        "end_line": 329
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7CompactSemanticGenerated.v6_onefold.V6FixedFieldReader.next_qm31",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::{aspis_core::v6_onefold::V6FixedFieldReader<'a>}::next_qm31",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 277,
+        "end_line": 287
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 25,
+      "lean_name": "V7CompactSemanticGenerated.v6_transcript.V6TranscriptError.Insts.CoreConvertFromV6WireError.from",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::v6_transcript::{impl core::convert::From<aspis_core::v6_onefold::V6WireError> for aspis_core::v6_transcript::V6TranscriptError}::from",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_transcript.rs",
+        "begin_line": 136,
+        "end_line": 138
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 21,
+      "lean_name": "V7CompactSemanticGenerated.v6_transcript.verify_compact_semantic_sumcheck.closure_1.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedV6TranscriptError.call_once",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::v6_transcript::verify_compact_semantic_sumcheck::{impl core::ops::function::FnOnce<(aspis_core::transcript::ChallengeSampleExhausted,), aspis_core::v6_transcript::V6TranscriptError> for aspis_core::v6_transcript::verify_compact_semantic_sumcheck::closure#1}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_transcript.rs",
+        "begin_line": 390,
+        "end_line": 390
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 20,
+      "lean_name": "V7CompactSemanticGenerated.v6_transcript.verify_compact_semantic_sumcheck.closure.Insts.CoreOpsFunctionFnOnceTupleStateOnlyHidingScheduleErrorV6TranscriptError.call_once",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::v6_transcript::verify_compact_semantic_sumcheck::{impl core::ops::function::FnOnce<(aspis_core::state_only_hiding::StateOnlyHidingScheduleError,), aspis_core::v6_transcript::V6TranscriptError> for aspis_core::v6_transcript::verify_compact_semantic_sumcheck::closure}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_transcript.rs",
+        "begin_line": 341,
+        "end_line": 341
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7CompactSemanticGenerated.v6_transcript.verify_compact_semantic_sumcheck_loop0_loop0.body",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::v6_transcript::verify_compact_semantic_sumcheck",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_transcript.rs",
+        "begin_line": 358,
+        "end_line": 378
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 0, 0 ], "is_body": true },
+      "parent_lean_name": "V7CompactSemanticGenerated.v6_transcript.verify_compact_semantic_sumcheck"
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7CompactSemanticGenerated.v6_transcript.verify_compact_semantic_sumcheck_loop0_loop0",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::v6_transcript::verify_compact_semantic_sumcheck",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_transcript.rs",
+        "begin_line": 358,
+        "end_line": 378
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 0, 0 ], "is_body": false },
+      "parent_lean_name": "V7CompactSemanticGenerated.v6_transcript.verify_compact_semantic_sumcheck"
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7CompactSemanticGenerated.v6_transcript.verify_compact_semantic_sumcheck_loop0.body",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::v6_transcript::verify_compact_semantic_sumcheck",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_transcript.rs",
+        "begin_line": 345,
+        "end_line": 395
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "V7CompactSemanticGenerated.v6_transcript.verify_compact_semantic_sumcheck"
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7CompactSemanticGenerated.v6_transcript.verify_compact_semantic_sumcheck_loop0",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::v6_transcript::verify_compact_semantic_sumcheck",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_transcript.rs",
+        "begin_line": 345,
+        "end_line": 395
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "V7CompactSemanticGenerated.v6_transcript.verify_compact_semantic_sumcheck"
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7CompactSemanticGenerated.v6_transcript.verify_compact_semantic_sumcheck",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::v6_transcript::verify_compact_semantic_sumcheck",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_transcript.rs",
+        "begin_line": 335,
+        "end_line": 395
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    }
+  ],
+  "types": [
+    {
+      "def_id": 57,
+      "lean_name": "V7CompactSemanticGenerated.field.PreparedQm31Multiplier",
+      "lean_file": "V7CompactSemantic/TypesExternal_Template.lean",
+      "rust_name": "aspis_core::field::PreparedQm31Multiplier",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 370,
+        "end_line": 372
+      }
+    },
+    {
+      "def_id": 15,
+      "lean_name": "V7CompactSemanticGenerated.field.M31",
+      "lean_file": "V7CompactSemantic/Types.lean",
+      "rust_name": "aspis_core::field::M31",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 20,
+        "end_line": 20
+      }
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V7CompactSemanticGenerated.field.CM31",
+      "lean_file": "V7CompactSemantic/Types.lean",
+      "rust_name": "aspis_core::field::CM31",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 191,
+        "end_line": 194
+      }
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7CompactSemanticGenerated.field.QM31",
+      "lean_file": "V7CompactSemantic/Types.lean",
+      "rust_name": "aspis_core::field::QM31",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 360,
+        "end_line": 363
+      }
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V7CompactSemanticGenerated.state_only_hiding.StateOnlyHidingScheduleError",
+      "lean_file": "V7CompactSemantic/Types.lean",
+      "rust_name": "aspis_core::state_only_hiding::StateOnlyHidingScheduleError",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/state_only_hiding.rs",
+        "begin_line": 128,
+        "end_line": 133
+      }
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7CompactSemanticGenerated.transcript.Transcript",
+      "lean_file": "V7CompactSemantic/Types.lean",
+      "rust_name": "aspis_core::transcript::Transcript",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/transcript.rs",
+        "begin_line": 298,
+        "end_line": 301
+      }
+    },
+    {
+      "def_id": 58,
+      "lean_name": "V7CompactSemanticGenerated.state_only_sumcheck.evaluate_state_only_polynomial.closure",
+      "lean_file": "V7CompactSemantic/Types.lean",
+      "rust_name": "aspis_core::state_only_sumcheck::evaluate_state_only_polynomial::closure",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/state_only_sumcheck.rs",
+        "begin_line": 169,
+        "end_line": 179
+      }
+    },
+    {
+      "def_id": 18,
+      "lean_name": "V7CompactSemanticGenerated.transcript.ChallengeSampleExhausted",
+      "lean_file": "V7CompactSemantic/Types.lean",
+      "rust_name": "aspis_core::transcript::ChallengeSampleExhausted",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/transcript.rs",
+        "begin_line": 266,
+        "end_line": 266
+      }
+    },
+    {
+      "def_id": 7,
+      "lean_name": "V7CompactSemanticGenerated.v6_onefold.V6WireError",
+      "lean_file": "V7CompactSemantic/Types.lean",
+      "rust_name": "aspis_core::v6_onefold::V6WireError",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 73,
+        "end_line": 80
+      }
+    },
+    {
+      "def_id": 20,
+      "lean_name": "V7CompactSemanticGenerated.v6_onefold.PackedM31Reader",
+      "lean_file": "V7CompactSemantic/Types.lean",
+      "rust_name": "aspis_core::v6_onefold::PackedM31Reader",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 249,
+        "end_line": 254
+      }
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7CompactSemanticGenerated.v6_onefold.V6FixedFieldReader",
+      "lean_file": "V7CompactSemantic/Types.lean",
+      "rust_name": "aspis_core::v6_onefold::V6FixedFieldReader",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 262,
+        "end_line": 265
+      }
+    },
+    {
+      "def_id": 21,
+      "lean_name": "V7CompactSemanticGenerated.v6_transcript.V6WorkStage",
+      "lean_file": "V7CompactSemantic/Types.lean",
+      "rust_name": "aspis_core::v6_transcript::V6WorkStage",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_transcript.rs",
+        "begin_line": 78,
+        "end_line": 82
+      }
+    },
+    {
+      "def_id": 4,
+      "lean_name": "V7CompactSemanticGenerated.v6_transcript.V6TranscriptError",
+      "lean_file": "V7CompactSemantic/Types.lean",
+      "rust_name": "aspis_core::v6_transcript::V6TranscriptError",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_transcript.rs",
+        "begin_line": 110,
+        "end_line": 133
+      }
+    },
+    {
+      "def_id": 19,
+      "lean_name": "V7CompactSemanticGenerated.v6_transcript.verify_compact_semantic_sumcheck.closure_1",
+      "lean_file": "V7CompactSemantic/Types.lean",
+      "rust_name": "aspis_core::v6_transcript::verify_compact_semantic_sumcheck::closure#1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_transcript.rs",
+        "begin_line": 390,
+        "end_line": 390
+      }
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V7CompactSemanticGenerated.v6_transcript.verify_compact_semantic_sumcheck.closure",
+      "lean_file": "V7CompactSemantic/Types.lean",
+      "rust_name": "aspis_core::v6_transcript::verify_compact_semantic_sumcheck::closure",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_transcript.rs",
+        "begin_line": 341,
+        "end_line": 341
+      }
+    }
+  ],
+  "globals": [
+    {
+      "def_id": 4,
+      "lean_name": "V7CompactSemanticGenerated.field.P",
+      "lean_file": "V7CompactSemantic/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::field::P",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 16,
+        "end_line": 16
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7CompactSemanticGenerated.field.QM31.ZERO",
+      "lean_file": "V7CompactSemantic/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::field::{aspis_core::field::QM31}::ZERO",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 797,
+        "end_line": 806
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7CompactSemanticGenerated.transcript.label.V6_COMPACT_SEMANTIC_ROUND",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::transcript::label::V6_COMPACT_SEMANTIC_ROUND",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/transcript.rs",
+        "begin_line": 203,
+        "end_line": 203
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7CompactSemanticGenerated.v6_onefold.V6_SEMANTIC_ROUNDS",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_SEMANTIC_ROUNDS",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 27,
+        "end_line": 27
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V7CompactSemanticGenerated.v6_onefold.V6_SEMANTIC_SENT_VALUES",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_SEMANTIC_SENT_VALUES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 28,
+        "end_line": 28
+      },
+      "can_fail": false
+    }
+  ],
+  "trait_decls": [],
+  "trait_impls": [
+    {
+      "def_id": 5,
+      "lean_name": "V7CompactSemanticGenerated.v6_transcript.V6TranscriptError.Insts.CoreConvertFromV6WireError",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::v6_transcript::{impl core::convert::From<aspis_core::v6_onefold::V6WireError> for aspis_core::v6_transcript::V6TranscriptError}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_transcript.rs",
+        "begin_line": 135,
+        "end_line": 139
+      },
+      "impl_trait_def_id": 2,
+      "impl_trait_rust_name": "core::convert::From",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7CompactSemanticGenerated.v6_transcript.verify_compact_semantic_sumcheck.closure_1.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedV6TranscriptError",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::v6_transcript::verify_compact_semantic_sumcheck::{impl core::ops::function::FnOnce<(aspis_core::transcript::ChallengeSampleExhausted,), aspis_core::v6_transcript::V6TranscriptError> for aspis_core::v6_transcript::verify_compact_semantic_sumcheck::closure#1}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_transcript.rs",
+        "begin_line": 390,
+        "end_line": 390
+      },
+      "impl_trait_def_id": 0,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7CompactSemanticGenerated.v6_transcript.verify_compact_semantic_sumcheck.closure.Insts.CoreOpsFunctionFnOnceTupleStateOnlyHidingScheduleErrorV6TranscriptError",
+      "lean_file": "V7CompactSemantic/Funs.lean",
+      "rust_name": "aspis_core::v6_transcript::verify_compact_semantic_sumcheck::{impl core::ops::function::FnOnce<(aspis_core::state_only_hiding::StateOnlyHidingScheduleError,), aspis_core::v6_transcript::V6TranscriptError> for aspis_core::v6_transcript::verify_compact_semantic_sumcheck::closure}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_transcript.rs",
+        "begin_line": 341,
+        "end_line": 341
+      },
+      "impl_trait_def_id": 0,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    }
+  ]
+}

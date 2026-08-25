@@ -1,0 +1,83 @@
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73RoundTailTrace.lean:188:26: warning: Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice
+
+Note: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73RoundTailTrace.lean:202:26: warning: Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice
+
+Note: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73RoundTailTrace.lean:315:16: warning: This simp argument is unused:
+  core.result.Result.map_err
+
+Hint: Omit it from the simp argument list.
+  simp [c̵o̵r̵e̵.̵r̵e̵s̵u̵l̵t̵.̵R̵e̵s̵u̵l̵t̵.̵m̵a̵p̵_̵e̵r̵r̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵v6_transcript.finish_onefold_relation_round_tail_extraction.closure_1.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedV6TranscriptError.call_once,
+              core.result.Result.Insts.CoreOpsTry.branch,
+              core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+              core.convert.FromSame.from, Bind.bind, Aeneas.Std.bind] at hrun
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73RoundTailTrace.lean:317:12: warning: This simp argument is unused:
+  core.result.Result.Insts.CoreOpsTry.branch
+
+Hint: Omit it from the simp argument list.
+  simp [core.result.Result.map_err,
+              v6_transcript.finish_onefold_relation_round_tail_extraction.closure_1.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedV6TranscriptError.call_once,
+              core.result.Result.Insts.CoreOpsTry.̵b̵r̵a̵n̵c̵h̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵c̵o̵r̵e̵.̵r̵e̵s̵u̵l̵t̵.̵R̵e̵s̵u̵l̵t̵.̵I̵n̵s̵t̵s̵.̵C̵o̵r̵e̵O̵p̵s̵Try̵T̵r̵aitFromResidualResultInfallible.from_residual,
+              core.convert.FromSame.from, Bind.bind, Aeneas.Std.bind] at hrun
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73RoundTailTrace.lean:372:20: warning: This simp argument is unused:
+  core.result.Result.map_err
+
+Hint: Omit it from the simp argument list.
+  simp [c̵o̵r̵e̵.̵r̵e̵s̵u̵l̵t̵.̵R̵e̵s̵u̵l̵t̵.̵m̵a̵p̵_̵e̵r̵r̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵v6_transcript.finish_onefold_relation_round_tail_extraction.closure_2.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedV6TranscriptError.call_once,
+                  core.result.Result.Insts.CoreOpsTry.branch,
+                  core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                  core.convert.FromSame.from, Bind.bind, Aeneas.Std.bind] at hrun
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73RoundTailTrace.lean:374:16: warning: This simp argument is unused:
+  core.result.Result.Insts.CoreOpsTry.branch
+
+Hint: Omit it from the simp argument list.
+  simp [core.result.Result.map_err,
+                  v6_transcript.finish_onefold_relation_round_tail_extraction.closure_2.Insts.CoreOpsFunctionFnOnceTupleChallengeSampleExhaustedV6TranscriptError.call_once,
+                  core.result.Result.Insts.CoreOpsTry.̵b̵r̵a̵n̵c̵h̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵c̵o̵r̵e̵.̵r̵e̵s̵u̵l̵t̵.̵R̵e̵s̵u̵l̵t̵.̵I̵n̵s̵t̵s̵.̵C̵o̵r̵e̵O̵p̵s̵Try̵T̵r̵aitFromResidualResultInfallible.from_residual,
+                  core.convert.FromSame.from, Bind.bind, Aeneas.Std.bind] at hrun
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+'V7Tag73RoundTailTrace.accepted_tail_exposes_exact_trace' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ transcript.Transcript,
+ transcript.Transcript.absorb,
+ transcript.Transcript.challenge_qm31,
+ sumcheck.WeightAccumulator.fold_grouped64_binary_deferred_arity4._native.decide.ax_3]
+	Command being timed: "/home/dombarker/.elan/bin/lake env lean -j1 -o /home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73RoundTailTrace.olean /home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73RoundTailTrace.lean"
+	User time (seconds): 5.28
+	System time (seconds): 0.66
+	Percent of CPU this job got: 100%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:05.93
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 2642708
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 103
+	Minor (reclaiming a frame) page faults: 102645
+	Voluntary context switches: 1658
+	Involuntary context switches: 96
+	Swaps: 0
+	File system inputs: 3176
+	File system outputs: 8744
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+1b78e19706c7788da7ac2d13a837ebf910ba15abdc1065ef853a1a6990ff4f86  /home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73RoundTailTrace.lean
+de16f2f19a13bd1a0d8b7ed873648e471fb026142bc577f777a2aeaf373cc8b5  /home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/V7Tag73RoundTailTrace.olean
+V7 Tag-73 round-tail exact trace: PASS

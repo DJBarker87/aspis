@@ -1,0 +1,116 @@
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:59:4: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:79:46: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:90:44: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:94:44: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:98:44: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:102:44: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:133:35: warning: This simp argument is unused:
+  Nat.mul_one
+
+Hint: Omit it from the simp argument list.
+  simp only [BitVec.fromLEBytes, BitVec.toNat_or, BitVec.toNat_setWidth,
+  ̵  ̵ ̵ ̵BitVec.toNat_shiftLeft,
+  ̲  ̲ ̲ ̲Nat.shiftLeft_eq, List.length_cons,
+  ̵  ̵ ̵ ̵List.length_nil, Nat.mul_zero, Nat.m̵u̵l̵_̵o̵n̵e̵,̵ ̵N̵a̵t̵.̵reducePow,
+      BitVec.toNat_ofNat, Nat.zero_mod, Nat.zero_mul, Nat.or_zero]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:173:50: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:177:50: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:181:50: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:185:50: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:436:39: error: unknown universe level `u`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:436:57: error: unknown universe level `v`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:438:4: error: Invalid resulting type: Expected a sort or an indexed family of sorts
+
+Hint: Examples of valid sorts include `Type _`, `Sort _`, and `Prop`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:450:18: error: unknown universe level `u`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:450:36: error: unknown universe level `v`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:460:18: error: unknown universe level `u`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:460:36: error: unknown universe level `v`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:482:13: error(lean.unknownIdentifier): Unknown identifier `ExactLoopTrace`
+
+Note: It is not possible to treat `ExactLoopTrace` as an implicitly bound variable here because the `autoImplicit` option is set to `false`.
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:494:8: error(lean.unknownIdentifier): Unknown identifier `exactLoopTrace_runs`
+'V7Tag73ChallengeQm31SourceCertificate.squeeze_block_run_is_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73ChallengeQm31SourceCertificate.generated_candidate_eq_decoder_mask' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73ChallengeQm31SourceCertificate.generated_rejects_exactly_noncanonical' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73ChallengeQm31SourceCertificate.challenge_qm31_eq_sourceSamplerRun' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73ChallengeQm31SourceCertificate.outer_body_uses_exact_eight_attempt_range' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73ChallengeQm31SourceCertificate.inner_body_active_in_block_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73ChallengeQm31SourceCertificate.inner_body_active_at_resqueeze_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:605:14: error(lean.unknownIdentifier): Unknown constant `exactLoopTrace_runs`
+'V7Tag73ChallengeQm31SourceCertificate.inner_loop_runs_from_exact_trace' depends on axioms: [propext,
+ sorryAx,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73ChallengeQm31SourceCertificate.inner_body_range_exhausted' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73ChallengeQm31SourceCertificate.outer_body_accepts_and_continues' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73ChallengeQm31SourceCertificate.outer_body_exhaustion_returns_immediately' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73ChallengeQm31SourceCertificate.exact_four_limb_word_and_block_cap' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+Command exited with non-zero status 1
+	Command being timed: "/home/dombarker/.elan/toolchains/leanprover--lean4---v4.32.0/bin/lean -o /home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/proof-olean/V7Tag73ChallengeQm31SourceCertificate.olean /home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean"
+	User time (seconds): 5.88
+	System time (seconds): 3.20
+	Percent of CPU this job got: 64%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:14.11
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 6772792
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 51408
+	Minor (reclaiming a frame) page faults: 233773
+	Voluntary context switches: 97313
+	Involuntary context switches: 158
+	Swaps: 0
+	File system inputs: 10416632
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 1

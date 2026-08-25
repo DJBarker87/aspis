@@ -1,0 +1,368 @@
+/home/dombarker/project-offloads/ZK-v5-formal/toolchains/charon/charon/target/release/charon: OK
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/toolchain/output/aeneas-b59d5188-lean432-extended-static: OK
+/home/dombarker/project-offloads/aspis-pool-entrypoint-20260825-a1/aeneas-verif/lean432/aeneas-b59d5188-lean432.patch: OK
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/toolchain/output/aeneas-b59d5188-lean432-extended-static: ELF 64-bit LSB executable, x86-64, version 1 (GNU/Linux), statically linked, BuildID[sha1]=67487699243b4d47329202af955d23347c11aecc, for GNU/Linux 3.2.0, with debug_info, not stripped
+/home/dombarker/project-offloads/aspis-v7-accepted-semantic-relation-20260825-agent/AspisFormal/lake-manifest.json: OK
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/formal-source/AspisFormal/K1/V7Tag73TranscriptSchedule.lean: OK
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/formal-source/AspisFormal/K1/V7Tag73DeterministicRefinement.lean: OK
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/formal-source/AspisFormal/K1/V7Tag73SamplerDecoder.lean: OK
+/home/dombarker/project-offloads/aspis-pool-entrypoint-20260825-a1/aeneas-verif/v7-tag73-compact-semantic-source-20260825/generated-full/V7CompactSemanticChallengeOpaqueNoDedup/Types.lean: OK
+/home/dombarker/project-offloads/aspis-pool-entrypoint-20260825-a1/aeneas-verif/v7-tag73-compact-semantic-source-20260825/generated-full/V7CompactSemanticChallengeOpaqueNoDedup/Funs.lean: OK
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/harness/Cargo.lock: OK
+crates/aspis-core/src/transcript.rs: OK
+crates/aspis-core/src/field.rs: OK
+crates/aspis-core/src/circle.rs: OK
+crates/aspis-core/src/lib.rs: OK
+crates/aspis-core/Cargo.toml: OK
+   Compiling aspis-core v0.1.0 (/tmp/tmp.zGUm7ZW0CY/source/crates/aspis-core)
+warning: unexpected `cfg` condition value: `solana`
+   --> /tmp/tmp.zGUm7ZW0CY/source/crates/aspis-core/src/circle_prefix.rs:585:11
+    |
+585 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+    = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /tmp/tmp.zGUm7ZW0CY/source/crates/aspis-core/src/circle_prefix.rs:594:11
+    |
+594 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /tmp/tmp.zGUm7ZW0CY/source/crates/aspis-core/src/circle_prefix.rs:638:11
+    |
+638 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: function `verify_circle_layer0_opening_from_proof_deferred_canonical_for_depth_and_c2_leaf_bytes` is never used
+   --> /tmp/tmp.zGUm7ZW0CY/source/crates/aspis-core/src/circle_merkle.rs:419:15
+    |
+419 | pub(crate) fn verify_circle_layer0_opening_from_proof_deferred_canonical_for_depth_and_c2_leaf_bytes<
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `verify_circle_openings_deferred_canonical` is never used
+   --> /tmp/tmp.zGUm7ZW0CY/source/crates/aspis-core/src/circle_openings.rs:993:15
+    |
+993 | pub(crate) fn verify_circle_openings_deferred_canonical<'a>(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `verify_radix4_minimal_subtree_prevalidated_in_place` is never used
+   --> /tmp/tmp.zGUm7ZW0CY/source/crates/aspis-core/src/merkle.rs:329:15
+    |
+329 | pub(crate) fn verify_radix4_minimal_subtree_prevalidated_in_place(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `aspis-core` (lib) generated 6 warnings
+    Checking v7-tag73-challenge-qm31-source v0.1.0 (/tmp/tmp.zGUm7ZW0CY/source/aeneas-verif/v7-tag73-challenge-qm31-source-20260825/harness)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.35s
+   Compiling aspis-core v0.1.0 (/tmp/tmp.zGUm7ZW0CY/source/crates/aspis-core)
+warning: unexpected `cfg` condition value: `solana`
+   --> /tmp/tmp.zGUm7ZW0CY/source/crates/aspis-core/src/circle_prefix.rs:585:11
+    |
+585 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+    = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /tmp/tmp.zGUm7ZW0CY/source/crates/aspis-core/src/circle_prefix.rs:594:11
+    |
+594 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /tmp/tmp.zGUm7ZW0CY/source/crates/aspis-core/src/circle_prefix.rs:638:11
+    |
+638 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: function `verify_circle_layer0_opening_from_proof_deferred_canonical_for_depth_and_c2_leaf_bytes` is never used
+   --> /tmp/tmp.zGUm7ZW0CY/source/crates/aspis-core/src/circle_merkle.rs:419:15
+    |
+419 | pub(crate) fn verify_circle_layer0_opening_from_proof_deferred_canonical_for_depth_and_c2_leaf_bytes<
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `verify_circle_openings_deferred_canonical` is never used
+   --> /tmp/tmp.zGUm7ZW0CY/source/crates/aspis-core/src/circle_openings.rs:993:15
+    |
+993 | pub(crate) fn verify_circle_openings_deferred_canonical<'a>(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `verify_radix4_minimal_subtree_prevalidated_in_place` is never used
+   --> /tmp/tmp.zGUm7ZW0CY/source/crates/aspis-core/src/merkle.rs:329:15
+    |
+329 | pub(crate) fn verify_radix4_minimal_subtree_prevalidated_in_place(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `aspis-core` (lib) generated 6 warnings
+   Compiling v7-tag73-challenge-qm31-source v0.1.0 (/tmp/tmp.zGUm7ZW0CY/source/aeneas-verif/v7-tag73-challenge-qm31-source-20260825/harness)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.36s
+bundled /translated/options/mir: null
+replayed /translated/options/mir: "Built"
+remaining structured LLBC tree: byte-equal
+normalized structured LLBC sha256: 0c9f44a7a426b7efd1404e8776795958d89f203eca2915994d013a756b27d857
+canonical LLBC actual:   0c9f44a7a426b7efd1404e8776795958d89f203eca2915994d013a756b27d857
+canonical LLBC expected: 0c9f44a7a426b7efd1404e8776795958d89f203eca2915994d013a756b27d857
+[[92mInfo[39m ] Imported: /tmp/tmp.zGUm7ZW0CY/V7Tag73ChallengeQm31Full.llbc
+[?25lApplied prepasses:  [--------------------------------------------------]  0/43 ⠋Applied prepasses:  [#-------------------------------------------------]  1/43 ⠋Applied prepasses:  [##################################################] 43/43 ✔️
+[?25h[?25lTranslated globals:  [---------------------------------------------------] 0/5 ⠋Translated globals:  [###################################################] 5/5 ✔️
+[?25h[?25lTranslated opaque functions:  [----------------------------------------]  0/33 ⠋Translated opaque functions:  [########################################] 33/33 ✔️
+[?25h[?25lTranslated transparent functions:  [-------------------------------------] 0/6 ⠋Translated transparent functions:  [######-------------------------------] 1/6 ⠋Translated transparent functions:  [########################-------------] 4/6 ⠋Translated transparent functions:  [##############################-------] 5/6 ⠙Translated transparent functions:  [#####################################] 6/6 ⠹Translated transparent functions:  [#####################################] 6/6 ✔️
+[?25h[?25lTranslated trait declarations:  [--------------------------------------]  0/31 ⠋Translated trait declarations:  [##############------------------------] 12/31 ✔️
+[?25h[?25lTranslated trait impls:  [---------------------------------------------]  0/26 ⠋Translated trait impls:  [######################-----------------------] 13/26 ✔️
+[?25h[?25lPost-processed translated opaque functions:  [-------------------------]  0/33 ⠋Post-processed translated opaque functions:  [-------------------------]  1/33 ⠙Post-processed translated opaque functions:  [#########################] 33/33 ✔️
+[?25h[?25lPost-processed translated transparent functions:  [----------------------] 0/6 ⠋Post-processed translated transparent functions:  [###-------------------] 1/6 ⠋Post-processed translated transparent functions:  [######################] 6/6 ⠙Post-processed translated transparent functions:  [######################] 6/6 ✔️
+[?25h[[92mInfo[39m ] Generated: /tmp/tmp.zGUm7ZW0CY/raw-generated/Types.lean
+[[92mInfo[39m ] Generated: /tmp/tmp.zGUm7ZW0CY/raw-generated/FunsExternal_Template.lean
+[[92mInfo[39m ] Generated: /tmp/tmp.zGUm7ZW0CY/raw-generated/Funs.lean
+[[92mInfo[39m ] Total execution time: 1.153311 seconds
+'AspisK1.V7Tag73TranscriptSchedule.frozen_record_lengths' does not depend on any axioms
+'AspisK1.V7Tag73TranscriptSchedule.hiding_precommit_length' depends on axioms: [propext]
+'AspisK1.V7Tag73TranscriptSchedule.root_salt_input_length' depends on axioms: [propext]
+'AspisK1.V7Tag73TranscriptSchedule.payload_lengths' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisK1.V7Tag73TranscriptSchedule.three_work_stages_are_distinct' does not depend on any axioms
+'AspisK1.V7Tag73TranscriptSchedule.no_work_stage_has_first_success_policy' depends on axioms: [propext, Quot.sound]
+'AspisK1.V7Tag73TranscriptSchedule.absorb_binds_exact_previous_state' does not depend on any axioms
+'AspisK1.V7Tag73TranscriptSchedule.squeeze_binds_exact_previous_state' does not depend on any axioms
+'AspisK1.V7Tag73TranscriptSchedule.grinding_does_not_advance_transcript' does not depend on any axioms
+'AspisK1.V7Tag73TranscriptSchedule.every_challenge_binds_exact_preceding_prefix' depends on axioms: [propext]
+'AspisK1.V7Tag73TranscriptSchedule.c2_occurs_after_lambda_and_chi' depends on axioms: [propext, Quot.sound]
+'AspisK1.V7Tag73TranscriptSchedule.selected_counter_is_first_cap203' depends on axioms: [propext]
+'AspisK1.V7Tag73TranscriptSchedule.candidate_branches_share_one_base' does not depend on any axioms
+'AspisK1.V7Tag73TranscriptSchedule.selected_candidate_uses_recorded_sampler_blocks' depends on axioms: [propext,
+ Quot.sound]
+'AspisK1.V7Tag73TranscriptSchedule.query_batch_challenge_binds_selected_candidate_branch' depends on axioms: [propext,
+ Quot.sound]
+'AspisK1.V7Tag73TranscriptSchedule.accepts_implies_batched_not_pointwise_claim' depends on axioms: [propext]
+'AspisK1.V7Tag73DeterministicRefinement.table_lookup_is_deterministic' does not depend on any axioms
+'AspisK1.V7Tag73DeterministicRefinement.four_transcript_domains_are_pairwise_distinct' does not depend on any axioms
+'AspisK1.V7Tag73DeterministicRefinement.absorb_query_grammar' does not depend on any axioms
+'AspisK1.V7Tag73DeterministicRefinement.squeeze_output_query_grammar' does not depend on any axioms
+'AspisK1.V7Tag73DeterministicRefinement.squeeze_advance_query_grammar' does not depend on any axioms
+'AspisK1.V7Tag73DeterministicRefinement.squeeze_output_and_advance_inputs_are_distinct' depends on axioms: [propext]
+'AspisK1.V7Tag73DeterministicRefinement.grind_query_grammar' does not depend on any axioms
+'AspisK1.V7Tag73DeterministicRefinement.public_root_salt_query_has_literal_grammar' does not depend on any axioms
+'AspisK1.V7Tag73DeterministicRefinement.public_root_salt_has_no_transcript_domain_metadata' does not depend on any axioms
+'AspisK1.V7Tag73DeterministicRefinement.public_root_salt_query_length' depends on axioms: [propext]
+'AspisK1.V7Tag73DeterministicRefinement.grind_input_does_not_encode_stage' does not depend on any axioms
+'AspisK1.V7Tag73DeterministicRefinement.query_step_appends_one' depends on axioms: [propext]
+'AspisK1.V7Tag73DeterministicRefinement.squeeze_step_emits_two_distinct_queries' depends on axioms: [propext,
+ Quot.sound]
+'AspisK1.V7Tag73DeterministicRefinement.squeeze_many_exact_sizes' depends on axioms: [propext, Quot.sound]
+'AspisK1.V7Tag73DeterministicRefinement.grind_probe_does_not_advance' depends on axioms: [propext]
+'AspisK1.V7Tag73DeterministicRefinement.grinding_probes_do_not_advance' depends on axioms: [propext, Quot.sound]
+'AspisK1.V7Tag73DeterministicRefinement.grinding_choice_does_not_advance' depends on axioms: [propext, Quot.sound]
+'AspisK1.V7Tag73DeterministicRefinement.grinding_choice_success_survives_work_erasure' depends on axioms: [propext,
+ Quot.sound]
+'AspisK1.V7Tag73DeterministicRefinement.machine_events_success_survives_work_erasure' depends on axioms: [propext,
+ Quot.sound]
+'AspisK1.V7Tag73DeterministicRefinement.stage_nonce_absorb_labels_are_distinct' does not depend on any axioms
+'AspisK1.V7Tag73DeterministicRefinement.stage_local_work_thresholds' does not depend on any axioms
+'AspisK1.V7Tag73DeterministicRefinement.discarded_candidates_restore_one_base' depends on axioms: [propext, Quot.sound]
+'AspisK1.V7Tag73DeterministicRefinement.selected_q16_branch_starts_from_shared_base' depends on axioms: [propext,
+ Quot.sound]
+'AspisK1.V7Tag73DeterministicRefinement.checked_refinement_is_well_formed' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisK1.V7Tag73DeterministicRefinement.checked_refinement_preserves_selected_counter' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisK1.V7Tag73DeterministicRefinement.checked_refinement_preserves_acceptance' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisK1.V7Tag73DeterministicRefinement.refinement_success_survives_work_erasure' depends on axioms: [propext,
+ Quot.sound]
+'AspisK1.V7Tag73DeterministicRefinement.checked_refinement_success_survives_work_erasure' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisK1.V7Tag73DeterministicRefinement.refined_model_accepts_implies_work_erased_model_accepts' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/formal-source/AspisFormal/K1/V7Tag73SamplerDecoder.lean:99:4: warning: Variable name `fuel` is not explicitly referenced.
+
+The binding can be removed (if unused) or named `_` (if used implicitly).
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/formal-source/AspisFormal/K1/V7Tag73SamplerDecoder.lean:154:9: warning: Variable name `valid` is not explicitly referenced.
+
+The binding can be removed (if unused) or named `_` (if used implicitly).
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/formal-source/AspisFormal/K1/V7Tag73SamplerDecoder.lean:309:4: warning: Variable name `fuel` is not explicitly referenced.
+
+The binding can be removed (if unused) or named `_` (if used implicitly).
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/formal-source/AspisFormal/K1/V7Tag73SamplerDecoder.lean:422:9: warning: Variable name `exactUse` is not explicitly referenced.
+
+The binding can be removed (if unused) or named `_` (if used implicitly).
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+'AspisK1.V7Tag73SamplerDecoder.blockWords_length' depends on axioms: [propext, Quot.sound]
+'AspisK1.V7Tag73SamplerDecoder.flattenedWords_length' depends on axioms: [propext, Quot.sound]
+'AspisK1.V7Tag73SamplerDecoder.littleEndianWord_lt_two_pow_32' depends on axioms: [propext, Quot.sound]
+'AspisK1.V7Tag73SamplerDecoder.maskedM31_lt_modulus' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisK1.V7Tag73SamplerDecoder.q16Candidate_lt_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisK1.V7Tag73SamplerDecoder.decodeOrdinaryExact_functional' depends on axioms: [propext, Quot.sound]
+'AspisK1.V7Tag73SamplerDecoder.decodeOrdinaryExact_block_cap' depends on axioms: [propext, Quot.sound]
+'AspisK1.V7Tag73SamplerDecoder.decodeNonzeroExact_block_cap' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisK1.V7Tag73SamplerDecoder.decodeSecureCircleParameterExact_block_cap' depends on axioms: [propext, Quot.sound]
+'AspisK1.V7Tag73SamplerDecoder.keepFirst_existing' depends on axioms: [propext, Quot.sound]
+'AspisK1.V7Tag73SamplerDecoder.keepFirst_fresh' depends on axioms: [propext, Quot.sound]
+'AspisK1.V7Tag73SamplerDecoder.keepFirst_preserves_nodup' depends on axioms: [propext, Quot.sound]
+'AspisK1.V7Tag73SamplerDecoder.keepFirst_q16_preserves_bounded' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisK1.V7Tag73SamplerDecoder.scanUniqueUntil_draw_cap' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisK1.V7Tag73SamplerDecoder.scanUniqueUntil_preserves_nodup' depends on axioms: [propext, Quot.sound]
+'AspisK1.V7Tag73SamplerDecoder.scanUniqueUntil_preserves_bounded' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisK1.V7Tag73SamplerDecoder.scanQ16_draw_cap' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisK1.V7Tag73SamplerDecoder.scanQ16_positions_nodup' depends on axioms: [propext, Quot.sound]
+'AspisK1.V7Tag73SamplerDecoder.scanQ16_positions_bounded' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisK1.V7Tag73SamplerDecoder.decodeCandidateOutcome_functional' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisK1.V7Tag73SamplerDecoder.decodeCandidateOutcome_uses_exact_blocks' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisK1.V7Tag73SamplerDecoder.every_query_schedule_has_exact_deployed_block_cap' depends on axioms: [propext]
+'AspisK1.V7Tag73SamplerDecoder.decodeChallengeParameter_functional' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisK1.V7Tag73SamplerDecoderExact.decodeLimb_success_first_accepted' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisK1.V7Tag73SamplerDecoderExact.decodeLimb_of_first_accepted' depends on axioms: [propext, Quot.sound]
+'AspisK1.V7Tag73SamplerDecoderExact.decodeLimb_eight_exhaustion' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisK1.V7Tag73SamplerDecoderExact.decodeFourLimbs_word_cap' depends on axioms: [propext, Classical.choice, Quot.sound]
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:59:4: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:79:46: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:90:44: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:94:44: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:98:44: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:102:44: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:133:35: warning: This simp argument is unused:
+  Nat.mul_one
+
+Hint: Omit it from the simp argument list.
+  simp only [BitVec.fromLEBytes, BitVec.toNat_or, BitVec.toNat_setWidth,
+  ̵  ̵ ̵ ̵BitVec.toNat_shiftLeft,
+  ̲  ̲ ̲ ̲Nat.shiftLeft_eq, List.length_cons,
+  ̵  ̵ ̵ ̵List.length_nil, Nat.mul_zero, Nat.m̵u̵l̵_̵o̵n̵e̵,̵ ̵N̵a̵t̵.̵reducePow,
+      BitVec.toNat_ofNat, Nat.zero_mod, Nat.zero_mul, Nat.or_zero]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:173:50: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:177:50: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:181:50: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean:185:50: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+'V7Tag73ChallengeQm31SourceCertificate.squeeze_block_run_is_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73ChallengeQm31SourceCertificate.generated_candidate_eq_decoder_mask' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73ChallengeQm31SourceCertificate.generated_rejects_exactly_noncanonical' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73ChallengeQm31SourceCertificate.challenge_qm31_eq_sourceSamplerRun' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73ChallengeQm31SourceCertificate.outer_body_uses_exact_eight_attempt_range' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73ChallengeQm31SourceCertificate.inner_body_active_in_block_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73ChallengeQm31SourceCertificate.inner_body_active_at_resqueeze_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73ChallengeQm31SourceCertificate.exactLoopTrace_runs' depends on axioms: [propext, Classical.choice, Quot.sound]
+'V7Tag73ChallengeQm31SourceCertificate.inner_loop_runs_from_exact_trace' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73ChallengeQm31SourceCertificate.inner_body_range_exhausted' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73ChallengeQm31SourceCertificate.outer_body_accepts_and_continues' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73ChallengeQm31SourceCertificate.outer_body_exhaustion_returns_immediately' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73ChallengeQm31SourceCertificate.exact_four_limb_word_and_block_cap' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7CompactSemanticFullGenerated.transcript.Transcript.challenge_qm31_is_source_generated' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+canonical LLBC sha256: 0c9f44a7a426b7efd1404e8776795958d89f203eca2915994d013a756b27d857
+V7 Tag-73 challenge_qm31 source replay: PASS
+	Command being timed: "env REPO_ROOT=/home/dombarker/project-offloads/aspis-pool-entrypoint-20260825-a1 DEPLOYED_SOURCE_ROOT=/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/source FORMAL_K1_ROOT=/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/formal-source/AspisFormal/K1 COMPACT_BUNDLE_ROOT=/home/dombarker/project-offloads/aspis-pool-entrypoint-20260825-a1/aeneas-verif/v7-tag73-compact-semantic-source-20260825/generated-full/V7CompactSemanticChallengeOpaqueNoDedup DIAGNOSTICS_DIR=/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/diagnostics/final LEAN_NUM_THREADS=1 /home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/replay.sh"
+	User time (seconds): 44.06
+	System time (seconds): 9.00
+	Percent of CPU this job got: 134%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:39.54
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 6946924
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 69
+	Minor (reclaiming a frame) page faults: 1600890
+	Voluntary context switches: 206642
+	Involuntary context switches: 7249
+	Swaps: 0
+	File system inputs: 5768
+	File system outputs: 489752
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

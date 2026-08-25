@@ -1,0 +1,5 @@
+302edc38e3d158b6a16eda4cdb39fb5847c2996772e9d30c3c99b4cccf4d308e  crates/aspis-core/src/transcript.rs
+e118899472e3049db688573570296f06696be659524bbf6a62ace537f0316312  crates/aspis-core/src/field.rs
+8f6f0f32c8dd93e3ee459df0c1d0ef710b01996d3bc929dbeffb3f7d14a0227c  crates/aspis-core/src/circle.rs
+61180526f742be0b9c52db22165e7308f43f824222f46131da5ce7f996b09954  crates/aspis-core/src/lib.rs
+8ad8e5fe47f897d327acc323003fc00adf40b7a0101c24d344bbea64838d3f92  crates/aspis-core/Cargo.toml

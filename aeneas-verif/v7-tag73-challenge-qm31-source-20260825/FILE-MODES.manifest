@@ -1,0 +1,6 @@
+0755 ./replay.sh
+0755 ./normalization/assert-mir-only-drift.pl
+0755 ./normalization/canonicalize-llbc.pl
+0755 ./normalization/compare-canonical-json.pl
+0755 ./normalization/normalize-generated.pl
+0755 ./toolchain/build-patched-aeneas.sh

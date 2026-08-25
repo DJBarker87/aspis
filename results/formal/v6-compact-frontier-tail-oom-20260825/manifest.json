@@ -1,0 +1,41 @@
+{
+  "schema": "aspis-formal-build-failure-v1",
+  "recorded_utc_date": "2026-08-25",
+  "target": "AspisFormal.V6CompactFrontierTailCertificate",
+  "command": "/home/dombarker/.elan/bin/lake build AspisFormal.V6CompactFrontierTailCertificate",
+  "result": "FAILED_RESOURCE_EXHAUSTION",
+  "lean_exit_code": 137,
+  "wrapper_exit_code": 1,
+  "olean_produced": false,
+  "elapsed_wall_seconds": 17611,
+  "elapsed_reported": "4:53:31",
+  "user_cpu_seconds": 349837.34,
+  "system_cpu_seconds": 9661.01,
+  "average_cpu_percent": 2041,
+  "maximum_resident_set_kib": 40295820,
+  "maximum_resident_set_bytes": 41262919680,
+  "major_page_faults": 127097,
+  "minor_page_faults": 55735148,
+  "swaps": 0,
+  "host": {
+    "name": "nuc",
+    "kernel": "Linux 6.8.0-110-generic x86_64",
+    "logical_cpus": 22,
+    "memory_bytes": 66698657792,
+    "lean": "4.32.0 x86_64-unknown-linux-gnu 8c9756b28d64dab099da31a4c09229a9e6a2ef35"
+  },
+  "workspace": {
+    "path": "/home/dombarker/project-offloads/aspis-v6-formal-optimized-20260825",
+    "base_commit": "be33db324531ca2fa72ec723007d407f3c4e8a2b",
+    "module_sha256": "90ba23f83212cba4adae06b184d4f6127661ad905ff521d5a8d59b080efc0c0a",
+    "generator_sha256": "688da410039cdb4d677dcdb7b11d291b93bd95bac4fbe15d494b4b0aa1b28f2f"
+  },
+  "log": {
+    "file": "v6-compact-frontier-tail-optimized.log",
+    "bytes": 5465,
+    "lines": 67,
+    "sha256": "9835e34b85af20f047e655317591221baa83d0c27285f0e1f9608f5091ecf078",
+    "remote_mtime": "2026-08-25 12:49:47.506686686 +0000"
+  },
+  "interpretation": "This run is failure evidence only. It establishes neither theorem closure nor an accepted release artifact. The monolithic target must not be rerun; its public theorem surface is being preserved through a low-memory module split."
+}

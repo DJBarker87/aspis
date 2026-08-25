@@ -1,15 +1,15 @@
 import AspisFormal.SoundnessWorkNormalizedEndpoint
 import AspisFormal.V6PublishedTheoremInterfaces
+import AspisFormal.V7CompactFrontierCertificate
 import AspisFormal.V7CompactOneFold
 
 /-!
 # V7 compact-profile security arithmetic
 
 This module checks the exact arithmetic for the cap-203, one-stream profile.
-The favourable frontier numerator is deliberately named `frontierFavourableCandidate`
-until the generated recurrence replay certifies its provenance.  No theorem in
-this file claims that provenance; the final release ledger must replace that
-candidate boundary with the generated certificate.
+The favourable frontier numerator comes from the kernel-checked recurrence
+prefix in `V7CompactFrontierCertificate`; it is not a pinned probability
+input.
 
 Relative to V6, batch work rises from 34 to 35 bits, the fold and final work
 remain 31 and 34 bits, and the proof cannot choose among public selector
@@ -26,25 +26,21 @@ namespace AspisV7CompactSecurityLedger
 open AspisSoundnessLedger
 open AspisWorkNormalizedEndpoint
 open AspisV6PublishedTheoremInterfaces
+open AspisV7CompactFrontierCertificate
 
-def frontierTotal : Nat :=
-  23758572837246225120935263320500846372979925468707821836403823401582444544
-
-/-- Generator output for `depth=18`, `q=16`, `frontier <= 203`.  This is an
-arithmetic input here, not yet a recurrence theorem. -/
-def frontierFavourableCandidate : Nat :=
-  2168847668270364480248463894820533103335517458992692508721007794996625408
+def frontierTotal : Nat := AspisV7CompactFrontierCertificate.compactTotal
+def frontierFavourable : Nat :=
+  AspisV7CompactFrontierCertificate.compactFavourable
 
 def candidateCount : Nat := 64
 
 theorem frontier_total_eq_choose : frontierTotal = Nat.choose (2 ^ 18) 16 := by
-  rw [Nat.choose_eq_descFactorial_div_factorial]
-  norm_num [frontierTotal, Nat.descFactorial, Nat.factorial]
+  exact AspisV7CompactFrontierCertificate.compactTotal_eq_choose
 
 /-- One candidate is favourable with probability strictly above nine percent. -/
 theorem one_candidate_probability_gt_nine_percent :
-    9 * frontierTotal < 100 * frontierFavourableCandidate := by
-  norm_num [frontierTotal, frontierFavourableCandidate]
+    9 * frontierTotal < 100 * frontierFavourable := by
+  exact AspisV7CompactFrontierCertificate.one_candidate_probability_gt_nine_percent
 
 /-- Under the release's independent-candidate random-oracle interface, the
 64-candidate exhaustion probability is below `1/400`. -/
@@ -68,7 +64,7 @@ noncomputable def exactOneFoldUpper : Real :=
 
 noncomputable def exactCompactQueryUpper : Real :=
   ((Nat.choose 9557 16 : Nat) : Real) /
-    (frontierFavourableCandidate : Real) / 2 ^ 34
+    (frontierFavourable : Real) / 2 ^ 34
 
 theorem exact_initial_batch_upper_le_two_pow_neg_110 :
     exactInitialBatchUpper ≤ (1 : Real) / 2 ^ 110 := by
@@ -81,10 +77,7 @@ theorem exact_one_fold_upper_le_two_pow_neg_111 :
 /-- The cap-203 conditional q16 term is approximately `2^-107.0065`. -/
 theorem exact_compact_query_upper_le_two_pow_neg_107 :
     exactCompactQueryUpper ≤ (1 : Real) / 2 ^ 107 := by
-  unfold exactCompactQueryUpper
-  rw [Nat.choose_eq_descFactorial_div_factorial]
-  norm_num [frontierFavourableCandidate,
-    Nat.descFactorial, Nat.factorial]
+  exact AspisV7CompactFrontierCertificate.conditioned_q16_div_work_le_two_pow_neg_107
 
 noncomputable def conditionalRoundUpperExact : Real :=
   exactInitialBatchUpper + exactOneFoldUpper + exactCompactQueryUpper
@@ -145,7 +138,14 @@ theorem conditional_work_normalized_core_le_one_half
         exactOneFoldUpper exactCompactQueryUpper
       rw [Nat.choose_eq_descFactorial_div_factorial]
       norm_num [initialBatchChallengeCap, foldChallengeCap, FIELD,
-        frontierFavourableCandidate, Nat.descFactorial, Nat.factorial]
+        frontierFavourable, AspisV7CompactFrontierCertificate.compactFavourable,
+        AspisV7CompactFrontierCertificate.compactDelta,
+        AspisV6CompactFrontierCertificate.compactFavourable,
+        AspisV6CompactFrontierCertificate.compactTotal,
+        AspisV6CompactFrontierCertificate.compactTail,
+        AspisV6CompactFrontierTailCertificate.expectedCompactTail,
+        AspisV7CompactFrontierDeltaCertificate.expectedCompactDelta,
+        Nat.descFactorial, Nat.factorial]
 
 #print axioms frontier_total_eq_choose
 #print axioms one_candidate_probability_gt_nine_percent

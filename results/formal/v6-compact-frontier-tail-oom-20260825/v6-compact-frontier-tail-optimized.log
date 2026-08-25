@@ -1,0 +1,67 @@
+ℹ [8655/8656] Replayed AspisFormal.V6CompactFrontierRecurrence
+info: AspisFormal/V6CompactFrontierRecurrence.lean:101:0: 'AspisV6CompactFrontierRecurrence.frontierCoeff_eq_zero_of_frontier_gt_mul' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+✖ [8656/8656] Building AspisFormal.V6CompactFrontierTailCertificate (17606s)
+trace: .> LEAN_PATH=/home/dombarker/project-offloads/aspis-v6-formal-optimized-20260825/AspisFormal/.lake/packages/Cli/.lake/build/lib/lean:/home/dombarker/project-offloads/aspis-v6-formal-optimized-20260825/AspisFormal/.lake/packages/batteries/.lake/build/lib/lean:/home/dombarker/project-offloads/aspis-v6-formal-optimized-20260825/AspisFormal/.lake/packages/Qq/.lake/build/lib/lean:/home/dombarker/project-offloads/aspis-v6-formal-optimized-20260825/AspisFormal/.lake/packages/aesop/.lake/build/lib/lean:/home/dombarker/project-offloads/aspis-v6-formal-optimized-20260825/AspisFormal/.lake/packages/proofwidgets/.lake/build/lib/lean:/home/dombarker/project-offloads/aspis-v6-formal-optimized-20260825/AspisFormal/.lake/packages/importGraph/.lake/build/lib/lean:/home/dombarker/project-offloads/aspis-v6-formal-optimized-20260825/AspisFormal/.lake/packages/LeanSearchClient/.lake/build/lib/lean:/home/dombarker/project-offloads/aspis-v6-formal-optimized-20260825/AspisFormal/.lake/packages/plausible/.lake/build/lib/lean:/home/dombarker/project-offloads/aspis-v6-formal-optimized-20260825/AspisFormal/.lake/packages/mathlib/.lake/build/lib/lean:/home/dombarker/project-offloads/aspis-v6-formal-optimized-20260825/AspisFormal/.lake/build/lib/lean /home/dombarker/.elan/toolchains/leanprover--lean4---v4.32.0/bin/lean /home/dombarker/project-offloads/aspis-v6-formal-optimized-20260825/AspisFormal/AspisFormal/V6CompactFrontierTailCertificate.lean -o /home/dombarker/project-offloads/aspis-v6-formal-optimized-20260825/AspisFormal/.lake/build/lib/lean/AspisFormal/V6CompactFrontierTailCertificate.olean -i /home/dombarker/project-offloads/aspis-v6-formal-optimized-20260825/AspisFormal/.lake/build/lib/lean/AspisFormal/V6CompactFrontierTailCertificate.ilean -c /home/dombarker/project-offloads/aspis-v6-formal-optimized-20260825/AspisFormal/.lake/build/ir/AspisFormal/V6CompactFrontierTailCertificate.c --setup /home/dombarker/project-offloads/aspis-v6-formal-optimized-20260825/AspisFormal/.lake/build/ir/AspisFormal/V6CompactFrontierTailCertificate.setup.json --json
+warning: AspisFormal/V6CompactFrontierTailCertificate.lean:8:0: Unscoped option maxHeartbeats is not allowed:
+Please scope this to individual declarations, as in
+```
+set_option maxHeartbeats in
+-- comment explaining why this is necessary
+example : ... := ...
+```
+
+Note: This linter can be disabled with `set_option linter.style.setOption false`
+warning: AspisFormal/V6CompactFrontierTailCertificate.lean:121:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: AspisFormal/V6CompactFrontierTailCertificate.lean:122:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: AspisFormal/V6CompactFrontierTailCertificate.lean:288:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: AspisFormal/V6CompactFrontierTailCertificate.lean:289:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: AspisFormal/V6CompactFrontierTailCertificate.lean:290:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: AspisFormal/V6CompactFrontierTailCertificate.lean:291:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: AspisFormal/V6CompactFrontierTailCertificate.lean:292:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+info: stdout:
+{"caption":"","data":"This line exceeds the 100 character limit, please shorten it!\n\nNote: This linter can be disabled with `set_option linter.style.longLine false`","endPos":{"column":161,"line":
+
+error: Lean exited with code 137
+Some required targets logged failures:
+- AspisFormal.V6CompactFrontierTailCertificate
+error: build failed
+Command exited with non-zero status 1
+	Command being timed: "/home/dombarker/.elan/bin/lake build AspisFormal.V6CompactFrontierTailCertificate"
+	User time (seconds): 349837.34
+	System time (seconds): 9661.01
+	Percent of CPU this job got: 2041%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 4:53:31
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 40295820
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 127097
+	Minor (reclaiming a frame) page faults: 55735148
+	Voluntary context switches: 479194160
+	Involuntary context switches: 53327256
+	Swaps: 0
+	File system inputs: 21617520
+	File system outputs: 15080
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 1
